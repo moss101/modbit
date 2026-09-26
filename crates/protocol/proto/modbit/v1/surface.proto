@@ -1869,6 +1869,43 @@ message HandoffExported {
   repeated string parts = 5;       // file names in bundle_dir the manifest names
 }
 
+// ---- Cloud SLO event ladder (IMP-EV-0023; docs/34 "Metrics") ----
+//
+// A cloud_isolated task's starts as recorded rungs (`SloStageRecorded`) and
+// what they add up to. A rung never reached is -1, never 0.
+message GetSloLadder {
+  Id task_id = 1;
+}
+
+message SloStartView {
+  string run_id = 1;
+  int64 requested_at_ms = 2;
+  string prewarm = 3;              // what a warm pool offered: NONE today
+  int64 sandbox_requested_at_ms = 4;
+  int64 sandbox_ready_at_ms = 5;
+  int64 first_token_at_ms = 6;
+  int64 first_tool_at_ms = 7;
+  string start = 8;                // COLD (provisioned) | WARM (reused) | UNKNOWN
+  int64 provision_ms = 9;          // sandbox requested → ready
+  int64 ready_ms = 10;             // requested → sandbox ready
+  int64 first_token_ms = 11;       // requested → first token
+  int64 first_tool_ms = 12;        // requested → first tool
+}
+
+message SloFiguresView {
+  uint64 starts = 1;
+  int64 ready_p50_ms = 2;
+  int64 ready_max_ms = 3;
+  int64 first_token_p50_ms = 4;
+  int64 first_token_max_ms = 5;
+}
+
+message SloLadderView {
+  repeated SloStartView starts = 1;
+  SloFiguresView cold = 2;
+  SloFiguresView warm = 3;
+}
+
 // ---- Diagnostics export (IMP-EV-0142; docs/71 "Desktop diagnostics package") ----
 //
 // Read-only: a package explaining the Core for one session (optionally one

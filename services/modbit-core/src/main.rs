@@ -58,6 +58,7 @@ mod sandboxes;
 mod server;
 mod side;
 mod skills;
+mod slo;
 mod spawn;
 mod statistics;
 mod subagent;

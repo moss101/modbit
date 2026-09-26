@@ -3433,6 +3433,23 @@ async fn run_loop(
                     tokio::select! {
                         ev = events.recv() => {
                             let Some(ev) = ev else { break };
+                            // IMP-EV-0023: the run's first model output.
+                            if matches!(
+                                ev,
+                                ModelEvent::MessageDelta { .. }
+                                    | ModelEvent::ReasoningDelta { .. }
+                                    | ModelEvent::ToolCallComplete { .. }
+                            ) {
+                                crate::slo::first(
+                                    &core,
+                                    &task,
+                                    &actor,
+                                    &run_id.to_string(),
+                                    "FIRST_TOKEN",
+                                    cfg.model.clone(),
+                                )
+                                .await;
+                            }
                             match ev {
                                 ModelEvent::MessageDelta { text: t } => text.push_str(&t),
                                 ModelEvent::ToolCallComplete {
@@ -7192,6 +7209,18 @@ async fn execute_tool(
             cancel: Some(cancel.clone()),
             compensates: None,
         };
+        // IMP-EV-0023: the run's first tool dispatch.
+        if let Some(run) = lt.run {
+            crate::slo::first(
+                core,
+                task,
+                actor,
+                &run.to_string(),
+                "FIRST_TOOL",
+                name.to_owned(),
+            )
+            .await;
+        }
         let done = match core.tools.invoke(&core.store, req).await {
             Ok(d) => d,
             Err(e) => {

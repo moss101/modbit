@@ -8046,6 +8046,172 @@ export declare type HandoffExported = Message<"modbit.v1.HandoffExported"> & {
 export declare const HandoffExportedSchema: GenMessage<HandoffExported>;
 
 /**
+ * ---- Cloud SLO event ladder (IMP-EV-0023; docs/34 "Metrics") ----
+ *
+ * A cloud_isolated task's starts as recorded rungs (`SloStageRecorded`) and
+ * what they add up to. A rung never reached is -1, never 0.
+ *
+ * @generated from message modbit.v1.GetSloLadder
+ */
+export declare type GetSloLadder = Message<"modbit.v1.GetSloLadder"> & {
+  /**
+   * @generated from field: modbit.v1.Id task_id = 1;
+   */
+  taskId?: Id | undefined;
+};
+
+/**
+ * Describes the message modbit.v1.GetSloLadder.
+ * Use `create(GetSloLadderSchema)` to create a new message.
+ */
+export declare const GetSloLadderSchema: GenMessage<GetSloLadder>;
+
+/**
+ * @generated from message modbit.v1.SloStartView
+ */
+export declare type SloStartView = Message<"modbit.v1.SloStartView"> & {
+  /**
+   * @generated from field: string run_id = 1;
+   */
+  runId: string;
+
+  /**
+   * @generated from field: int64 requested_at_ms = 2;
+   */
+  requestedAtMs: bigint;
+
+  /**
+   * what a warm pool offered: NONE today
+   *
+   * @generated from field: string prewarm = 3;
+   */
+  prewarm: string;
+
+  /**
+   * @generated from field: int64 sandbox_requested_at_ms = 4;
+   */
+  sandboxRequestedAtMs: bigint;
+
+  /**
+   * @generated from field: int64 sandbox_ready_at_ms = 5;
+   */
+  sandboxReadyAtMs: bigint;
+
+  /**
+   * @generated from field: int64 first_token_at_ms = 6;
+   */
+  firstTokenAtMs: bigint;
+
+  /**
+   * @generated from field: int64 first_tool_at_ms = 7;
+   */
+  firstToolAtMs: bigint;
+
+  /**
+   * COLD (provisioned) | WARM (reused) | UNKNOWN
+   *
+   * @generated from field: string start = 8;
+   */
+  start: string;
+
+  /**
+   * sandbox requested → ready
+   *
+   * @generated from field: int64 provision_ms = 9;
+   */
+  provisionMs: bigint;
+
+  /**
+   * requested → sandbox ready
+   *
+   * @generated from field: int64 ready_ms = 10;
+   */
+  readyMs: bigint;
+
+  /**
+   * requested → first token
+   *
+   * @generated from field: int64 first_token_ms = 11;
+   */
+  firstTokenMs: bigint;
+
+  /**
+   * requested → first tool
+   *
+   * @generated from field: int64 first_tool_ms = 12;
+   */
+  firstToolMs: bigint;
+};
+
+/**
+ * Describes the message modbit.v1.SloStartView.
+ * Use `create(SloStartViewSchema)` to create a new message.
+ */
+export declare const SloStartViewSchema: GenMessage<SloStartView>;
+
+/**
+ * @generated from message modbit.v1.SloFiguresView
+ */
+export declare type SloFiguresView = Message<"modbit.v1.SloFiguresView"> & {
+  /**
+   * @generated from field: uint64 starts = 1;
+   */
+  starts: bigint;
+
+  /**
+   * @generated from field: int64 ready_p50_ms = 2;
+   */
+  readyP50Ms: bigint;
+
+  /**
+   * @generated from field: int64 ready_max_ms = 3;
+   */
+  readyMaxMs: bigint;
+
+  /**
+   * @generated from field: int64 first_token_p50_ms = 4;
+   */
+  firstTokenP50Ms: bigint;
+
+  /**
+   * @generated from field: int64 first_token_max_ms = 5;
+   */
+  firstTokenMaxMs: bigint;
+};
+
+/**
+ * Describes the message modbit.v1.SloFiguresView.
+ * Use `create(SloFiguresViewSchema)` to create a new message.
+ */
+export declare const SloFiguresViewSchema: GenMessage<SloFiguresView>;
+
+/**
+ * @generated from message modbit.v1.SloLadderView
+ */
+export declare type SloLadderView = Message<"modbit.v1.SloLadderView"> & {
+  /**
+   * @generated from field: repeated modbit.v1.SloStartView starts = 1;
+   */
+  starts: SloStartView[];
+
+  /**
+   * @generated from field: modbit.v1.SloFiguresView cold = 2;
+   */
+  cold?: SloFiguresView | undefined;
+
+  /**
+   * @generated from field: modbit.v1.SloFiguresView warm = 3;
+   */
+  warm?: SloFiguresView | undefined;
+};
+
+/**
+ * Describes the message modbit.v1.SloLadderView.
+ * Use `create(SloLadderViewSchema)` to create a new message.
+ */
+export declare const SloLadderViewSchema: GenMessage<SloLadderView>;
+
+/**
  * ---- Diagnostics export (IMP-EV-0142; docs/71 "Desktop diagnostics package") ----
  *
  * Read-only: a package explaining the Core for one session (optionally one

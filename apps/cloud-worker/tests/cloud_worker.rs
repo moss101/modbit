@@ -3311,3 +3311,298 @@ async fn qual_px_011_a_webhook_for_a_held_session_is_relayed_and_the_worker_make
     worker.stop().await;
     gateway.served.stop();
 }
+
+/// The `SloStageRecorded` rungs of `task` on a cloud log page, in order.
+fn slo_stages(events: &[Value], task: &str) -> Vec<modbit_observability::slo::Stage> {
+    events
+        .iter()
+        .filter(|e| {
+            e["envelope"]["event_type"] == "SloStageRecorded"
+                && e["envelope"]["task_id"]
+                    .as_str()
+                    .is_some_and(|t| t.replace('-', "") == task.replace('-', ""))
+        })
+        .map(|e| {
+            let p = &e["payload"];
+            modbit_observability::slo::Stage {
+                stage: p["stage"].as_str().unwrap_or_default().to_owned(),
+                at_ms: p["at_ms"].as_i64().unwrap_or_default(),
+                run_id: p["run_id"].as_str().map(str::to_owned),
+                warm: p["warm"].as_bool(),
+                detail: p["detail"].as_str().unwrap_or_default().to_owned(),
+            }
+        })
+        .collect()
+}
+
+/// QUAL-EV-0023 (REQ-EV-0023, docs/34 "Metrics"): a staging run — the real
+/// Cloud API, a worker, the Sandbox Gateway and its backend (MicroVM in the
+/// hosted job) — emits every rung of the SLO ladder for a `cloud_isolated`
+/// task's start: requested, prewarm (`NONE`: there is no warm pool),
+/// sandbox requested and ready, first token and first tool, in order on
+/// the cloud log, from which the cold start's latencies derive. The same
+/// task started again on its Core while it holds its sandbox (returned
+/// from review) is a warm start: the sandbox is reused, and `GetSloLadder`
+/// derives both starts' latencies and the cold and warm figures.
+#[tokio::test]
+#[allow(clippy::too_many_lines)]
+async fn qual_ev_0023_a_cloud_tasks_starts_emit_every_slo_timestamp_and_cold_and_warm_latencies() {
+    let Some(store_cfg) = store_config().await else {
+        eprintln!(
+            "SKIPPED: MODBIT_CLOUD_TEST_DATABASE_URL unset (the hosted cloud job runs this against Postgres and a sandbox)"
+        );
+        return;
+    };
+    let script = vec![
+        json!({"calls": [{"name": "plan.update", "args": {"outcome": "the notes are read in the sandbox", "expected_files": []}}]}),
+        json!({"calls": [{"name": "fs.read", "args": {"path": "NOTES.md"}}]}),
+        json!({"calls": [{"name": "task.complete", "args": {"summary": "read", "self_review": {"findings": []}}}]}),
+        // The second start, after the task is returned from review.
+        json!({"calls": [{"name": "fs.read", "args": {"path": "NOTES.md"}}]}),
+        json!({"calls": [{"name": "task.complete", "args": {"summary": "read again", "self_review": {"findings": []}}}]}),
+    ];
+    let (model_base, _seen) = scripted_model(script).await;
+    let served = serve(ApiConfig {
+        store: store_cfg.clone(),
+        token_key: None,
+        bind: "127.0.0.1:0".into(),
+        rate_capacity: 500,
+        rate_per_second: 100.0,
+        worker_key: None,
+        github_webhook_secret: None,
+    })
+    .await
+    .expect("api");
+    let api = Api {
+        base: format!("http://{}", served.addr),
+        http: reqwest::Client::new(),
+        served,
+    };
+    let store = &api.served.state.store;
+    let tenant = store.create_tenant("slo-test").await.unwrap();
+    let (_p, secret) = store.create_principal(tenant, "user", "ada").await.unwrap();
+    let (_, tok) = api
+        .post("", "/v1/auth/token", json!({"secret": secret}))
+        .await;
+    let a = tok["access_token"].as_str().unwrap().to_owned();
+    let keep = tempfile::tempdir().unwrap();
+    let data = keep.path().to_path_buf();
+    let root = repo(&data.join("repo"));
+    let gateway = Gateway::start(&store_cfg, &data.join("gateway")).await;
+    let (_, created) = api
+        .post(
+            &a,
+            "/v1/sessions",
+            json!({"command_id": uuid::Uuid::now_v7().to_string()}),
+        )
+        .await;
+    let sid = created["session_id"].as_str().unwrap().to_owned();
+    let (s, task) = api.post(&a, &format!("/v1/sessions/{sid}/tasks"), json!({"command_id": uuid::Uuid::now_v7().to_string(), "goal_text": "read the notes", "execution_profile": "cloud_isolated", "workspace_root": root})).await;
+    assert_eq!(s, 201, "{task}");
+    let tid = task["task_id"].as_str().unwrap().to_owned();
+    let worker = start(worker_config_with(
+        &store_cfg,
+        "worker-slo",
+        &data.join("w"),
+        &model_base,
+        Duration::from_secs(10),
+        &gateway,
+        None,
+    ))
+    .await
+    .expect("worker");
+    until("the task to reach review", 180, async || {
+        let (_, v) = api.get(&a, &format!("/v1/sessions/{sid}")).await;
+        (v["tasks"][0]["state"] == "READY_FOR_REVIEW").then_some(())
+    })
+    .await;
+
+    // ---- the cold start, from the cloud log -------------------------------
+    let stages = until("the ladder on the cloud log", 60, async || {
+        let (_, evs) = api
+            .get(
+                &a,
+                &format!("/v1/events?session_id={sid}&after=0&limit=1000"),
+            )
+            .await;
+        let stages = slo_stages(evs["events"].as_array()?, &tid);
+        (stages.len() >= 6).then_some(stages)
+    })
+    .await;
+    let names: Vec<&str> = stages.iter().map(|s| s.stage.as_str()).collect();
+    assert_eq!(
+        names,
+        modbit_observability::slo::STAGES.to_vec(),
+        "every rung, in ladder order: {stages:#?}"
+    );
+    assert!(
+        stages.windows(2).all(|w| w[0].at_ms <= w[1].at_ms),
+        "timestamps never go back: {stages:#?}"
+    );
+    assert_eq!(stages[1].detail, "NONE", "no warm pool exists");
+    assert_eq!(stages[3].warm, Some(false), "a provisioned sandbox is cold");
+    assert!(
+        !stages[3].detail.is_empty(),
+        "the ready rung names the sandbox"
+    );
+    let run = stages[4]
+        .run_id
+        .clone()
+        .expect("the first token names its run");
+    assert_eq!(stages[5].run_id.as_deref(), Some(run.as_str()));
+    let cold = modbit_observability::slo::ladder(&stages);
+    assert_eq!(cold.len(), 1);
+    assert_eq!(cold[0].warm, Some(false));
+    for (what, v) in [
+        ("provision", cold[0].provision_ms),
+        ("ready", cold[0].ready_ms),
+        ("first token", cold[0].first_token_ms),
+        ("first tool", cold[0].first_tool_ms),
+    ] {
+        assert!(v.is_some(), "{what} derives: {:?}", cold[0]);
+    }
+
+    // ---- a warm start on the same Core ------------------------------------
+    let ready = std::fs::read_to_string(
+        data.join("w")
+            .join("sessions")
+            .join(&sid)
+            .join("core.ready"),
+    )
+    .expect("the worker's Core publishes its ready line");
+    let ready = modbit_protocol::local::ReadyLine::parse(ready.trim()).expect("ready line");
+    let secret = modbit_protocol::local::decode_hex(&ready.boot_secret_hex).unwrap();
+    let mut c = modbit_protocol::client::Client::connect(
+        &ready.endpoint,
+        &secret,
+        modbit_protocol::v1::ClientKind::Desktop,
+        "qual-ev-0023",
+    )
+    .await
+    .expect("attach");
+    let sid_id = modbit_protocol::v1::Id {
+        value: uuid::Uuid::parse_str(&sid).unwrap().as_bytes().to_vec(),
+    };
+    let tid_id = modbit_protocol::v1::Id {
+        value: uuid::Uuid::parse_str(&tid).unwrap().as_bytes().to_vec(),
+    };
+    let snap: modbit_protocol::v1::SessionSnapshot = cmd(
+        &mut c,
+        "GetSessionSnapshot",
+        modbit_protocol::v1::GetSessionSnapshot {
+            session_id: Some(sid_id.clone()),
+        }
+        .encode_to_vec(),
+        None,
+    )
+    .await
+    .expect("snapshot");
+    let g = Some(snap.lease_generation);
+    let _: modbit_protocol::v1::ReviewDecided = cmd(
+        &mut c,
+        "DecideReview",
+        modbit_protocol::v1::DecideReview {
+            task_id: Some(tid_id.clone()),
+            decision: "RETURN".into(),
+            rejected: vec![],
+            note: String::new(),
+            expected_workspace_revision: 0,
+        }
+        .encode_to_vec(),
+        g,
+    )
+    .await
+    .expect("returned");
+    let _: modbit_protocol::v1::TaskRunStarted = cmd(
+        &mut c,
+        "StartTask",
+        modbit_protocol::v1::StartTask {
+            task_id: Some(tid_id.clone()),
+            endpoint: "openai".into(),
+            model: "gpt-5".into(),
+            max_turns: 0,
+            max_tool_calls: 0,
+            max_no_progress_turns: 0,
+            skills: vec![],
+        }
+        .encode_to_vec(),
+        g,
+    )
+    .await
+    .expect("started again");
+    let ladder: modbit_protocol::v1::SloLadderView =
+        until("the warm start's first tool", 120, async || {
+            let v: modbit_protocol::v1::SloLadderView = cmd(
+                &mut c,
+                "GetSloLadder",
+                modbit_protocol::v1::GetSloLadder {
+                    task_id: Some(tid_id.clone()),
+                }
+                .encode_to_vec(),
+                None,
+            )
+            .await
+            .ok()?;
+            (v.starts.len() == 2 && v.starts[1].first_tool_at_ms >= 0).then_some(v)
+        })
+        .await;
+    let (first, second) = (&ladder.starts[0], &ladder.starts[1]);
+    assert_eq!(
+        (first.start.as_str(), second.start.as_str()),
+        ("COLD", "WARM"),
+        "{ladder:#?}"
+    );
+    for s in [first, second] {
+        assert!(
+            s.requested_at_ms > 0
+                && s.sandbox_requested_at_ms >= s.requested_at_ms
+                && s.sandbox_ready_at_ms >= s.sandbox_requested_at_ms
+                && s.first_token_at_ms >= s.sandbox_ready_at_ms
+                && s.first_tool_at_ms >= s.first_token_at_ms
+                && s.prewarm == "NONE"
+                && !s.run_id.is_empty(),
+            "every timestamp, in order: {s:#?}"
+        );
+        assert!(
+            s.provision_ms >= 0 && s.ready_ms >= 0 && s.first_token_ms >= 0 && s.first_tool_ms >= 0,
+            "{s:#?}"
+        );
+    }
+    assert_ne!(first.run_id, second.run_id, "two runs");
+    assert!(
+        second.provision_ms <= first.provision_ms,
+        "reusing the sandbox is no slower than provisioning it: {ladder:#?}"
+    );
+    let (cold, warm) = (ladder.cold.unwrap(), ladder.warm.unwrap());
+    assert_eq!((cold.starts, warm.starts), (1, 1));
+    assert!(
+        cold.first_token_p50_ms >= 0 && warm.first_token_p50_ms >= 0,
+        "{ladder:#?}"
+    );
+    // The sandbox lives while the task does: end the task so the guest is
+    // released before the next test uses the backend.
+    drop(c);
+    let (s, _) = api
+        .post(
+            &a,
+            &format!("/v1/tasks/{tid}:cancel"),
+            json!({"command_id": uuid::Uuid::now_v7().to_string()}),
+        )
+        .await;
+    assert_eq!(s, 202);
+    until("the sandbox to be released", 120, async || {
+        let (_, v) = api
+            .get(
+                &a,
+                &format!("/v1/events?session_id={sid}&after=0&limit=1000"),
+            )
+            .await;
+        v["events"]
+            .as_array()?
+            .iter()
+            .any(|e| e["envelope"]["event_type"] == "SandboxReleased")
+            .then_some(())
+    })
+    .await;
+    worker.stop().await;
+}

@@ -7,8 +7,8 @@
   "scope_rule": "docs/*.md, root *.md except MANIFEST.md, docs/decisions/*.md, graph JSON/Markdown, tools/*.py, evidence payloads; manifests exclude themselves and transient caches",
   "counts": {
     "docs": 90,
-    "root_and_tooling": 1615,
-    "docs_bytes": 1381845
+    "root_and_tooling": 1616,
+    "docs_bytes": 1383777
   },
   "sections": [
     {
@@ -311,8 +311,8 @@
       "section": "implementation",
       "section_title": "Implementation specifications",
       "title": "Protocol, APIs, and Event Schemas",
-      "bytes": 51108,
-      "sha256": "dcb2f1da90c49425f3c76ad7fd92442832082b982e04a6cbdc4e0c094249256b"
+      "bytes": 51754,
+      "sha256": "e20e66955993bb5d7e5194b94a23a3480cbd849c25477940f6355d0d1cd13bf1"
     },
     {
       "path": "docs/31_DATABASE_AND_STORAGE_SCHEMA.md",
@@ -347,8 +347,8 @@
       "section": "implementation",
       "section_title": "Implementation specifications",
       "title": "Observability, Cost, and Operations Data",
-      "bytes": 12742,
-      "sha256": "9b2fb19189ce638f19f7b6e198536b419cf669f6f6e729ad422c7cb810abea95"
+      "bytes": 14028,
+      "sha256": "18b87e334eb9933417a841b414dfb4810b11a4c9c48b62af71238869187a5fc6"
     },
     {
       "path": "docs/35_DEPENDENCY_AND_BINDING_DECISIONS.md",
@@ -1604,6 +1604,11 @@
       "path": "evidence/m10/IMP-EV-0017/evidence.json",
       "bytes": 2796,
       "sha256": "a45616131bc4f1fb680973450821c1e3ed9aed2788e6a124140a45397dfd80b3"
+    },
+    {
+      "path": "evidence/m10/IMP-EV-0023/TASK_CARD.md",
+      "bytes": 3441,
+      "sha256": "08f0206e519e1d1aa56c26cd2fc3ffe0ae83f3c0f5ae2fe9ca7719fd629073a6"
     },
     {
       "path": "evidence/m10/IMP-EV-0032/TASK_CARD.md",

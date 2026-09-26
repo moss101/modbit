@@ -14,6 +14,7 @@
 
 pub mod baseline;
 pub mod diagnostics;
+pub mod slo;
 
 pub use baseline::{
     BaselineBundle, Interventions, TaskOutcome, Usage, bundle_digest, digest_of, publish,

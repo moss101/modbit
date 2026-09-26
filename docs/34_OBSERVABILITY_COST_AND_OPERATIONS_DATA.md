@@ -54,6 +54,8 @@ Do not put raw prompts, source code, secrets or terminal contents into metrics l
 - cross-tenant authorization denials;
 - emergency stops.
 
+As built (IMP-EV-0023, REQ-EV-0023): the cloud SLO event ladder. A `cloud_isolated` task's start is recorded on its log as `SloStageRecorded { stage, at_ms, run_id?, warm?, detail }` rung by rung — `REQUESTED` when the run is asked for, `PREWARM` with what a warm pool offered (`NONE`: no warm pool exists), `SANDBOX_REQUESTED` and `SANDBOX_READY` around the gateway's provisioning (`warm` when the task's own sandbox was reused rather than provisioned, the sandbox id as detail), and each run's `FIRST_TOKEN` (the model's first output) and `FIRST_TOOL` (its first tool dispatch). Local tasks record none. `modbit_observability::slo` derives each start's provisioning, request→ready, request→first token and request→first tool latencies and the cold and warm figures (count, median, largest); `GetSloLadder { task_id }` serves them, a rung never reached is -1, never 0. Today every start through the Cloud API is cold (a task's sandbox lives for the task; the API relays no second start); a warm start is a second run on the Core while the task holds its sandbox — after a person returns the work. Proven by `qual_ev_0023_a_cloud_tasks_starts_emit_every_slo_timestamp_and_cold_and_warm_latencies` (the hosted cloud job: Postgres, the Sandbox Gateway on the MicroVM backend).
+
 ## User-visible evidence
 
 Task review shows human-scale data, not telemetry internals: model used when label policy permits, commands/tests, changed files, verification status, browser/external effects, approvals and receipts. Cost can be shown per task with estimated/actual provider usage.
