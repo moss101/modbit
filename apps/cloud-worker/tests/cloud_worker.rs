@@ -3579,6 +3579,31 @@ async fn qual_ev_0023_a_cloud_tasks_starts_emit_every_slo_timestamp_and_cold_and
         cold.first_token_p50_ms >= 0 && warm.first_token_p50_ms >= 0,
         "{ladder:#?}"
     );
+    // M10.1: the session dashboard on the same Core shows the same ladder.
+    let dash: modbit_protocol::v1::DashboardView = cmd(
+        &mut c,
+        "GetDashboard",
+        modbit_protocol::v1::GetDashboard {
+            session_id: Some(sid_id.clone()),
+        }
+        .encode_to_vec(),
+        None,
+    )
+    .await
+    .expect("dashboard");
+    assert_eq!(
+        (
+            dash.slo_cold.as_ref().unwrap().starts,
+            dash.slo_warm.as_ref().unwrap().starts
+        ),
+        (1, 1),
+        "{dash:#?}"
+    );
+    assert_eq!(
+        dash.slo_cold, ladder.cold,
+        "the dashboard's figures are the ladder's"
+    );
+    assert!(dash.tasks.iter().any(|t| t.starts == 2), "{:?}", dash.tasks);
     // The sandbox lives while the task does: end the task so the guest is
     // released before the next test uses the backend.
     drop(c);

@@ -8046,6 +8046,302 @@ export declare type HandoffExported = Message<"modbit.v1.HandoffExported"> & {
 export declare const HandoffExportedSchema: GenMessage<HandoffExported>;
 
 /**
+ * ---- Telemetry, cost and SLO dashboard (M10.1; docs/34, docs/77) ----
+ *
+ * One session's operations picture, aggregated from the canonical log at
+ * the moment it is asked for — the usage ledger (IMP-EV-0032), the SLO
+ * ladder (IMP-EV-0023), tool outcomes, task states, failures and the
+ * providers' health. Never a sample, never a feed of its own.
+ *
+ * @generated from message modbit.v1.GetDashboard
+ */
+export declare type GetDashboard = Message<"modbit.v1.GetDashboard"> & {
+  /**
+   * @generated from field: modbit.v1.Id session_id = 1;
+   */
+  sessionId?: Id | undefined;
+};
+
+/**
+ * Describes the message modbit.v1.GetDashboard.
+ * Use `create(GetDashboardSchema)` to create a new message.
+ */
+export declare const GetDashboardSchema: GenMessage<GetDashboard>;
+
+/**
+ * @generated from message modbit.v1.DashboardModelRow
+ */
+export declare type DashboardModelRow = Message<"modbit.v1.DashboardModelRow"> & {
+  /**
+   * @generated from field: string model = 1;
+   */
+  model: string;
+
+  /**
+   * @generated from field: uint32 calls = 2;
+   */
+  calls: number;
+
+  /**
+   * @generated from field: uint64 input_tokens = 3;
+   */
+  inputTokens: bigint;
+
+  /**
+   * @generated from field: uint64 cached_input_tokens = 4;
+   */
+  cachedInputTokens: bigint;
+
+  /**
+   * @generated from field: uint64 output_tokens = 5;
+   */
+  outputTokens: bigint;
+
+  /**
+   * @generated from field: uint64 cost_minor = 6;
+   */
+  costMinor: bigint;
+
+  /**
+   * unpriced or unreported: cost incomplete
+   *
+   * @generated from field: uint32 unpriced_calls = 7;
+   */
+  unpricedCalls: number;
+};
+
+/**
+ * Describes the message modbit.v1.DashboardModelRow.
+ * Use `create(DashboardModelRowSchema)` to create a new message.
+ */
+export declare const DashboardModelRowSchema: GenMessage<DashboardModelRow>;
+
+/**
+ * @generated from message modbit.v1.DashboardTaskRow
+ */
+export declare type DashboardTaskRow = Message<"modbit.v1.DashboardTaskRow"> & {
+  /**
+   * @generated from field: string task_id = 1;
+   */
+  taskId: string;
+
+  /**
+   * @generated from field: string state = 2;
+   */
+  state: string;
+
+  /**
+   * @generated from field: uint32 model_calls = 3;
+   */
+  modelCalls: number;
+
+  /**
+   * @generated from field: uint64 input_tokens = 4;
+   */
+  inputTokens: bigint;
+
+  /**
+   * @generated from field: uint64 output_tokens = 5;
+   */
+  outputTokens: bigint;
+
+  /**
+   * @generated from field: uint64 cost_minor = 6;
+   */
+  costMinor: bigint;
+
+  /**
+   * @generated from field: bool cost_complete = 7;
+   */
+  costComplete: boolean;
+
+  /**
+   * @generated from field: uint32 tool_calls = 8;
+   */
+  toolCalls: number;
+
+  /**
+   * SLO ladder starts (cloud tasks)
+   *
+   * @generated from field: uint32 starts = 9;
+   */
+  starts: number;
+};
+
+/**
+ * Describes the message modbit.v1.DashboardTaskRow.
+ * Use `create(DashboardTaskRowSchema)` to create a new message.
+ */
+export declare const DashboardTaskRowSchema: GenMessage<DashboardTaskRow>;
+
+/**
+ * @generated from message modbit.v1.DashboardFailureRow
+ */
+export declare type DashboardFailureRow = Message<"modbit.v1.DashboardFailureRow"> & {
+  /**
+   * @generated from field: uint64 offset = 1;
+   */
+  offset: bigint;
+
+  /**
+   * @generated from field: string task_id = 2;
+   */
+  taskId: string;
+
+  /**
+   * @generated from field: string event_type = 3;
+   */
+  eventType: string;
+
+  /**
+   * @generated from field: string class = 4;
+   */
+  class: string;
+
+  /**
+   * @generated from field: string code = 5;
+   */
+  code: string;
+};
+
+/**
+ * Describes the message modbit.v1.DashboardFailureRow.
+ * Use `create(DashboardFailureRowSchema)` to create a new message.
+ */
+export declare const DashboardFailureRowSchema: GenMessage<DashboardFailureRow>;
+
+/**
+ * @generated from message modbit.v1.DashboardView
+ */
+export declare type DashboardView = Message<"modbit.v1.DashboardView"> & {
+  /**
+   * @generated from field: string session_id = 1;
+   */
+  sessionId: string;
+
+  /**
+   * @generated from field: int64 generated_at_ms = 2;
+   */
+  generatedAtMs: bigint;
+
+  /**
+   * Runtime.
+   *
+   * @generated from field: map<string, uint32> tasks_by_state = 3;
+   */
+  tasksByState: { [key: string]: number };
+
+  /**
+   * @generated from field: uint32 tool_succeeded = 4;
+   */
+  toolSucceeded: number;
+
+  /**
+   * @generated from field: uint32 tool_failed = 5;
+   */
+  toolFailed: number;
+
+  /**
+   * @generated from field: uint32 tool_unknown_outcome = 6;
+   */
+  toolUnknownOutcome: number;
+
+  /**
+   * @generated from field: uint32 tool_cancelled = 7;
+   */
+  toolCancelled: number;
+
+  /**
+   * Cost, from the usage ledger.
+   *
+   * @generated from field: uint64 cost_minor = 8;
+   */
+  costMinor: bigint;
+
+  /**
+   * @generated from field: string currency = 9;
+   */
+  currency: string;
+
+  /**
+   * @generated from field: uint32 scale = 10;
+   */
+  scale: number;
+
+  /**
+   * @generated from field: uint32 priced_calls = 11;
+   */
+  pricedCalls: number;
+
+  /**
+   * @generated from field: uint32 unpriced_calls = 12;
+   */
+  unpricedCalls: number;
+
+  /**
+   * @generated from field: uint32 unreported_calls = 13;
+   */
+  unreportedCalls: number;
+
+  /**
+   * @generated from field: uint64 input_tokens = 14;
+   */
+  inputTokens: bigint;
+
+  /**
+   * @generated from field: uint64 cached_input_tokens = 15;
+   */
+  cachedInputTokens: bigint;
+
+  /**
+   * @generated from field: uint64 output_tokens = 16;
+   */
+  outputTokens: bigint;
+
+  /**
+   * @generated from field: repeated modbit.v1.DashboardModelRow models = 17;
+   */
+  models: DashboardModelRow[];
+
+  /**
+   * @generated from field: repeated modbit.v1.DashboardTaskRow tasks = 18;
+   */
+  tasks: DashboardTaskRow[];
+
+  /**
+   * SLO, from the ladder across the session's cloud tasks.
+   *
+   * @generated from field: modbit.v1.SloFiguresView slo_cold = 19;
+   */
+  sloCold?: SloFiguresView | undefined;
+
+  /**
+   * @generated from field: modbit.v1.SloFiguresView slo_warm = 20;
+   */
+  sloWarm?: SloFiguresView | undefined;
+
+  /**
+   * Reliability.
+   *
+   * @generated from field: repeated modbit.v1.DashboardFailureRow recent_failures = 21;
+   */
+  recentFailures: DashboardFailureRow[];
+
+  /**
+   * name: requests/successes/failures/rate-limited/first-token ms
+   *
+   * @generated from field: repeated string providers = 22;
+   */
+  providers: string[];
+};
+
+/**
+ * Describes the message modbit.v1.DashboardView.
+ * Use `create(DashboardViewSchema)` to create a new message.
+ */
+export declare const DashboardViewSchema: GenMessage<DashboardView>;
+
+/**
  * ---- Cloud SLO event ladder (IMP-EV-0023; docs/34 "Metrics") ----
  *
  * A cloud_isolated task's starts as recorded rungs (`SloStageRecorded`) and

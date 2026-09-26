@@ -74,7 +74,7 @@ fn exit_for_state(state: &str) -> u8 {
     }
 }
 
-const USAGE: &str = "usage: modbit-cli --data-dir <dir> (session create | session show --session <id> | task create --session <id> [--workspace <dir>] [--command-id <hex>] <goal> | task from-issue --session <id> [--workspace <dir>] [--command-id <hex>] <issue-url> | events tail --session <id> [--after N] [--count N] [--json] | task attach --session <id> --task <id> <file> | question list --task <id> | question answer --session <id> --task <id> --question <id> [--option <id>] [--endpoint <name>] [--model <id>] [--wait] [text] | tool list [--task <id>] | tool invoke --session <id> --task <id> [--call <id>] <tool> <arguments-json> | approval list --session <id> | approval resolve --session <id> --approval <id> [--intent <hash>] (approve|deny) [reason] | stop --session <id> [reason] | receipts [--task <id>] | lease list --task <id> | task run --session <id> --task <id> [--endpoint <name>] [--model <id>] [--max-turns N] [--skill <name>]... [--wait] | task cancel --session <id> --task <id> | task status --task <id> | review show --task <id> | review decide --session <id> --task <id> (accept|return) [--reject path#index ...] [note] | change undo --session <id> --task <id> --call <id> [--apply] | context show <task-id> | task fork --session <id> --task <id> [--checkpoint <id>] [--carry PLAN,DECISIONS,EVIDENCE,CONTEXT] [--worktree <dir>] [goal] | task rewind --task <id> [--checkpoint <id>] [--apply --session <id>] | session route --session <id> | session tree --session <id> | task assurance --task <id> | task economics --task <id> | task work --task <id> | task agents --task <id> | capacity show | attention list --session <id> | plan show --task <id> | plan revise --session <id> --task <id> [--plan-json <file>] [note] | task patch --session <id> --task <id> --path <p> --revision <n> [--file-revision <sha>] (--old <text> | --old-file <f>) (--new <text> | --new-file <f>) | baseline publish --session <id> [--revision <rev>] | task allow-language --session <id> --task <id> --language <l> [--reason r] | task attach-context --session <id> --task <id> --source <s> [--title t] <file> | task select --session <id> --task <id> [--path p]... [--lines a:b] [--symbol s] [--hunk path#index]... [--source review|editor|cli] | agent install <file> [--from claude] [--replace] | agent list | skill install <dir> [--expect-hash <hex>] [--replace] | skill remove <name> | skill list | language list | model list | model probe --endpoint <name> --model <id> [--tools] <prompt> | task steer --session <id> --task <id> [--mode STEER|COLLECT|FOLLOW_UP] [--input-id <hex>] <text> | workspace trust --session <id> [--scope <s>] <root> | provider configure --provider <openai|anthropic> [--base-url <url>] [--clear] | recovery show | pr (open | update) --session <id> --task <id> --revision <n> [--base <ref>] [--title <t>] [--remote <name>] | starter list [--workspace <dir>] | doctor --session <id> | trace --session <id> [--task <id>] | export diagnostics --session <id> [--task <id>] [--include-content] --out <file> | diagnostics verify <file> | export handoff --session <id> --task <id> --out <dir> | usage reconcile --task <id> --invoice <file> [--tolerance-bp N])";
+const USAGE: &str = "usage: modbit-cli --data-dir <dir> (session create | session show --session <id> | task create --session <id> [--workspace <dir>] [--command-id <hex>] <goal> | task from-issue --session <id> [--workspace <dir>] [--command-id <hex>] <issue-url> | events tail --session <id> [--after N] [--count N] [--json] | task attach --session <id> --task <id> <file> | question list --task <id> | question answer --session <id> --task <id> --question <id> [--option <id>] [--endpoint <name>] [--model <id>] [--wait] [text] | tool list [--task <id>] | tool invoke --session <id> --task <id> [--call <id>] <tool> <arguments-json> | approval list --session <id> | approval resolve --session <id> --approval <id> [--intent <hash>] (approve|deny) [reason] | stop --session <id> [reason] | receipts [--task <id>] | lease list --task <id> | task run --session <id> --task <id> [--endpoint <name>] [--model <id>] [--max-turns N] [--skill <name>]... [--wait] | task cancel --session <id> --task <id> | task status --task <id> | review show --task <id> | review decide --session <id> --task <id> (accept|return) [--reject path#index ...] [note] | change undo --session <id> --task <id> --call <id> [--apply] | context show <task-id> | task fork --session <id> --task <id> [--checkpoint <id>] [--carry PLAN,DECISIONS,EVIDENCE,CONTEXT] [--worktree <dir>] [goal] | task rewind --task <id> [--checkpoint <id>] [--apply --session <id>] | session route --session <id> | session tree --session <id> | task assurance --task <id> | task economics --task <id> | task work --task <id> | task agents --task <id> | capacity show | attention list --session <id> | plan show --task <id> | plan revise --session <id> --task <id> [--plan-json <file>] [note] | task patch --session <id> --task <id> --path <p> --revision <n> [--file-revision <sha>] (--old <text> | --old-file <f>) (--new <text> | --new-file <f>) | baseline publish --session <id> [--revision <rev>] | task allow-language --session <id> --task <id> --language <l> [--reason r] | task attach-context --session <id> --task <id> --source <s> [--title t] <file> | task select --session <id> --task <id> [--path p]... [--lines a:b] [--symbol s] [--hunk path#index]... [--source review|editor|cli] | agent install <file> [--from claude] [--replace] | agent list | skill install <dir> [--expect-hash <hex>] [--replace] | skill remove <name> | skill list | language list | model list | model probe --endpoint <name> --model <id> [--tools] <prompt> | task steer --session <id> --task <id> [--mode STEER|COLLECT|FOLLOW_UP] [--input-id <hex>] <text> | workspace trust --session <id> [--scope <s>] <root> | provider configure --provider <openai|anthropic> [--base-url <url>] [--clear] | recovery show | pr (open | update) --session <id> --task <id> --revision <n> [--base <ref>] [--title <t>] [--remote <name>] | starter list [--workspace <dir>] | doctor --session <id> | trace --session <id> [--task <id>] | export diagnostics --session <id> [--task <id>] [--include-content] --out <file> | diagnostics verify <file> | export handoff --session <id> --task <id> --out <dir> | usage reconcile --task <id> --invoice <file> [--tolerance-bp N] | dashboard --session <id>)";
 
 fn parse_id(hex: &str) -> Result<Id, String> {
     let bytes = decode_hex(hex)
@@ -2331,6 +2331,92 @@ async fn run_command(ready: &ReadyLine, rest: Vec<String>) -> Result<(), String>
                 h.manifest_hash,
                 h.parts.join(",")
             );
+        }
+        // M10.1: the session's telemetry, cost and SLO dashboard, as the Core
+        // aggregates it from its log.
+        ["dashboard", "--session", sid] => {
+            let ack = client
+                .command(envelope(
+                    "GetDashboard",
+                    modbit_protocol::v1::GetDashboard {
+                        session_id: Some(parse_id(sid)?),
+                    }
+                    .encode_to_vec(),
+                ))
+                .await
+                .map_err(|e| e.to_string())?;
+            let v: modbit_protocol::v1::DashboardView =
+                Client::result(&ack).map_err(|e| e.to_string())?;
+            let states: Vec<String> = v
+                .tasks_by_state
+                .iter()
+                .map(|(k, n)| format!("{k}={n}"))
+                .collect();
+            println!("tasks {}", states.join(" "));
+            println!(
+                "cost cost_minor={} currency={} scale={} priced={} unpriced={} unreported={}",
+                v.cost_minor,
+                if v.currency.is_empty() {
+                    "-"
+                } else {
+                    v.currency.as_str()
+                },
+                v.scale,
+                v.priced_calls,
+                v.unpriced_calls,
+                v.unreported_calls
+            );
+            println!(
+                "tokens input={} cached={} output={}",
+                v.input_tokens, v.cached_input_tokens, v.output_tokens
+            );
+            for m in &v.models {
+                println!(
+                    "model {} calls={} input={} output={} cost_minor={} unpriced={}",
+                    m.model,
+                    m.calls,
+                    m.input_tokens,
+                    m.output_tokens,
+                    m.cost_minor,
+                    m.unpriced_calls
+                );
+            }
+            for t in &v.tasks {
+                println!(
+                    "task {} state={} model_calls={} tool_calls={} cost_minor={} complete={} starts={}",
+                    t.task_id,
+                    t.state,
+                    t.model_calls,
+                    t.tool_calls,
+                    t.cost_minor,
+                    t.cost_complete,
+                    t.starts
+                );
+            }
+            println!(
+                "tools succeeded={} failed={} unknown_outcome={} cancelled={}",
+                v.tool_succeeded, v.tool_failed, v.tool_unknown_outcome, v.tool_cancelled
+            );
+            for (name, f) in [("cold", &v.slo_cold), ("warm", &v.slo_warm)] {
+                let f = (*f).unwrap_or_default();
+                println!(
+                    "slo {name} starts={} ready_p50_ms={} ready_max_ms={} first_token_p50_ms={} first_token_max_ms={}",
+                    f.starts,
+                    f.ready_p50_ms,
+                    f.ready_max_ms,
+                    f.first_token_p50_ms,
+                    f.first_token_max_ms
+                );
+            }
+            for f in &v.recent_failures {
+                println!(
+                    "failure {} {} {} {} task={}",
+                    f.offset, f.event_type, f.class, f.code, f.task_id
+                );
+            }
+            for p in &v.providers {
+                println!("provider {p}");
+            }
         }
         ["language", "list"] => {
             let ack = client
