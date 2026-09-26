@@ -8,7 +8,7 @@
   "counts": {
     "docs": 90,
     "root_and_tooling": 1614,
-    "docs_bytes": 1380375
+    "docs_bytes": 1381845
   },
   "sections": [
     {
@@ -248,8 +248,8 @@
       "section": "architecture",
       "section_title": "Architecture and subsystems",
       "title": "Security, Policy, Capabilities, Secrets, and Effect Ledger",
-      "bytes": 20225,
-      "sha256": "35bcea180e8f9bfee42b8cf21e6afcf2bf0ce11fb86cd2b8d93a421dd3de7628"
+      "bytes": 20490,
+      "sha256": "5b46eabc1fe83deee7155bc40860a8d2e98d658d2810e40d3183c6ccce5c1364"
     },
     {
       "path": "docs/24_CLOUD_CONTROL_PLANE_AND_SYNC.md",
@@ -311,8 +311,8 @@
       "section": "implementation",
       "section_title": "Implementation specifications",
       "title": "Protocol, APIs, and Event Schemas",
-      "bytes": 51084,
-      "sha256": "64be543f520c583332bf1fd2b00c1b3130392b2cdf04b0f7d6c584b0f66b78fa"
+      "bytes": 51108,
+      "sha256": "dcb2f1da90c49425f3c76ad7fd92442832082b982e04a6cbdc4e0c094249256b"
     },
     {
       "path": "docs/31_DATABASE_AND_STORAGE_SCHEMA.md",
@@ -617,8 +617,8 @@
       "section": "verification",
       "section_title": "Verification and testing",
       "title": "Verification execution contracts: baseline, targeting, result normalization, flake handling and diff invariants",
-      "bytes": 16239,
-      "sha256": "2ebf3003e7f1059fe71db444eec5f1df677088d94bafa32e3c528df865768155"
+      "bytes": 17420,
+      "sha256": "fae7f2d05cd40298da9ac6ee10fdd94ad3e5f87d40e263067f274162c4df735a"
     },
     {
       "path": "docs/70_CI_CD_RELEASE_AND_SUPPLY_CHAIN.md",
@@ -5952,8 +5952,8 @@
     },
     {
       "path": "evidence/m4/EPR-008/TASK_CARD.md",
-      "bytes": 13544,
-      "sha256": "32bf46599365a61e32b537dcbc24eb89c408eae2f1920218de46ccfd423a584f"
+      "bytes": 22360,
+      "sha256": "e7da212d3251f773815ca14cbebf8ea714e3d86c0fc4f3693fd1ad8ced3fceb6"
     },
     {
       "path": "evidence/m4/EPR-008/ci-run-34637382928.json",
@@ -8888,12 +8888,12 @@
     {
       "path": "graph/PROJECT_GRAPH.md",
       "bytes": 41847,
-      "sha256": "901a4a9badf9d25b1ad73d7afeeb47d48e060f0e5eb3d97bf323bdf1abf68f34"
+      "sha256": "de9388445a9edb605808c8071f7bc42fd46e242de52f4ee2d387a2fa53b04ddc"
     },
     {
       "path": "graph/project-graph.json",
-      "bytes": 1609545,
-      "sha256": "c9c07e3e68892994d9fe871c5bc2a4f15d33292aabe595d8f2c66afe20303b4e"
+      "bytes": 1609813,
+      "sha256": "be9281d45e9d6fcc373013f080cc40189ed7968d74646c98ea64ee02301a4c4b"
     },
     {
       "path": "tools/build_graph.py",

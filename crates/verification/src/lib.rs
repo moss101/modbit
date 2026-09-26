@@ -31,6 +31,7 @@ pub use gate::{
 };
 pub use invariants::{
     ChangedFile, Class, InvariantContext, Violation, denies, evaluate_diff, evaluate_file,
+    protected_path_key,
 };
 pub use plan::{CheckCommand, VerificationPlan, derive};
 pub use report::{

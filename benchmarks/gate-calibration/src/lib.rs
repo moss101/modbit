@@ -536,6 +536,7 @@ pub async fn run_acceptance_case(
         acceptance_named: case.acceptance.clone(),
         baseline_failing,
         protected_paths: vec![],
+        protected_unlocked: vec![],
         formatting_churn_lines: 200,
         expected_revision: None,
     };

@@ -123,6 +123,16 @@ pub struct HarnessState {
     /// (docs/64 DI-9), from the assurance policy; `None` = the defaults.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub protected_paths: Option<Vec<String>>,
+    /// Protected paths the user allowed this task to change by answering
+    /// `continue` to a typed question naming them (docs/64 DI-9); rebuilt
+    /// from `ProtectedPathsUnlocked` on the log.
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub protected_unlocked: Vec<String>,
+    /// The user's `continue` answer to a question naming protected paths,
+    /// not yet recorded as `ProtectedPathsUnlocked`: question id, paths,
+    /// answer.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub protected_answer: Option<(String, Vec<String>, String)>,
     /// The factual risk of the candidate as last derived at a COMPLETION
     /// run (REQ-EPR-008): level, minimum assurance, obligations, reasons.
     /// Recorded for the model and the gate; never lowered by a later run.

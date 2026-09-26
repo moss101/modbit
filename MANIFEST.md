@@ -14,14 +14,14 @@ A dossier package is valid only if every path below exists with the listed SHA-2
 | Section | Range | Files | Bytes |
 |---|---|---:|---:|
 | Authority and orientation | 00–09 | 8 | 65563 |
-| Architecture and subsystems | 10–29 | 20 | 385262 |
-| Implementation specifications | 30–39 | 10 | 158594 |
+| Architecture and subsystems | 10–29 | 20 | 385527 |
+| Implementation specifications | 30–39 | 10 | 158618 |
 | Requirements, tasks and traceability | 40–49 | 10 | 351840 |
-| Verification and testing | 50–69 | 15 | 214012 |
+| Verification and testing | 50–69 | 15 | 215193 |
 | Delivery and operations | 70–79 | 8 | 62793 |
 | Agent process and governance | 80–97 | 18 | 127876 |
 | Live state | 98–99 | 1 | 14435 |
-| **Total docs** | | **90** | **1380375** |
+| **Total docs** | | **90** | **1381845** |
 
 ## Specification files (`docs/`)
 
@@ -48,14 +48,14 @@ A dossier package is valid only if every path below exists with the listed SHA-2
 | 20 | `docs/20_WORKSPACE_GIT_AND_TRUSTED_CODE_SURFACE.md` | Workspace, Git, Worktrees, Diagnostics, and Trusted Code Surface | architecture | 5632 | `12981015ae69e28a83f8c8ea04330a16e3c6d9c0ab70f7cb8af6fd581754b0d7` |
 | 21 | `docs/21_TERMINAL_EXECUTION_AND_SANDBOX.md` | Terminal, Execution Router, and Sandbox Architecture | architecture | 30764 | `7373d4480d7ff4165b57db3204cb2df9eb13d3df2050471f6838af1a67329f4f` |
 | 22 | `docs/22_BROWSER_AND_COMPUTER_USE.md` | Browser and Computer-Use Architecture | architecture | 31715 | `0a846ff68035d09959118091e559439cd5d0f893e9d005e4d52b2ce495baebf7` |
-| 23 | `docs/23_SECURITY_POLICY_EFFECT_LEDGER.md` | Security, Policy, Capabilities, Secrets, and Effect Ledger | architecture | 20225 | `35bcea180e8f9bfee42b8cf21e6afcf2bf0ce11fb86cd2b8d93a421dd3de7628` |
+| 23 | `docs/23_SECURITY_POLICY_EFFECT_LEDGER.md` | Security, Policy, Capabilities, Secrets, and Effect Ledger | architecture | 20490 | `5b46eabc1fe83deee7155bc40860a8d2e98d658d2810e40d3183c6ccce5c1364` |
 | 24 | `docs/24_CLOUD_CONTROL_PLANE_AND_SYNC.md` | Cloud Control Plane, Remote Execution, and Sync | architecture | 17593 | `f6e858b9aa75e6f2d452b26d824ad2975436bc19d932dc4dad3906d9fde335a7` |
 | 25 | `docs/25_MULTIMODAL_MEDIA_AND_NOTEBOOK_RUNTIME.md` | Multimodal, Media and Notebook Runtime | architecture | 8001 | `8f711ffd6294c377dbba537086356fc869d171240d6ccdf5bef5a0c2d5b9ba3e` |
 | 26 | `docs/26_SKILL_REGISTRY_AND_EVOLUTION.md` | Skill Registry and Evolution Integration — Skill Evolution Without a Second Runtime | architecture | 11590 | `e5b69188c09e95c66a4bb2b42549e00b5f55790b81c163d29f892c62d6a1eec3` |
 | 27 | `docs/27_EXECUTION_POLICY_ROUTER_AND_VERIFIED_ORCHESTRATION.md` | Execution policy router and verified orchestration | architecture | 67667 | `e4957aff5554b6eea8b04b43dfcecbb1871a11b7e16cdb278f8b110bc86daf5a` |
 | 28 | `docs/28_AGENT_COMPETENCE_PLANNING_VERIFICATION_AND_REPAIR.md` | Agent competence: planning, verification and repair | architecture | 13352 | `a5ef2265accb8b1a52f0c9cb60c6418bca67f5f979e598d971f2979e2fa121d7` |
 | 29 | `docs/29_CLIENT_SURFACES_AND_SOURCE_CONTROL_INTEGRATION.md` | Client surfaces and source-control integration | architecture | 26540 | `6f3290b2c5750cc130b4ab3880efa77d1e890adf2e591805a8a7267eb99d5aa2` |
-| 30 | `docs/30_PROTOCOL_APIS_AND_EVENT_SCHEMAS.md` | Protocol, APIs, and Event Schemas | implementation | 51084 | `64be543f520c583332bf1fd2b00c1b3130392b2cdf04b0f7d6c584b0f66b78fa` |
+| 30 | `docs/30_PROTOCOL_APIS_AND_EVENT_SCHEMAS.md` | Protocol, APIs, and Event Schemas | implementation | 51108 | `dcb2f1da90c49425f3c76ad7fd92442832082b982e04a6cbdc4e0c094249256b` |
 | 31 | `docs/31_DATABASE_AND_STORAGE_SCHEMA.md` | Database and Storage Schema | implementation | 15319 | `d3e06f3b23aec1e27b22d3020a4c2c96a58a758dda2155cfa584d8389f1e4189` |
 | 32 | `docs/32_DESKTOP_FRONTEND_IMPLEMENTATION.md` | Desktop Frontend Implementation | implementation | 13542 | `33dc6dd7225c3139a0ff6735b0e37d9ea0934ed3e1d6ddb0213f7aabfe69c748` |
 | 33 | `docs/33_CORE_AND_CLOUD_BACKEND_IMPLEMENTATION.md` | Core and Cloud Backend Implementation | implementation | 13639 | `907fccbdc9e41e1002f8576ebdccf2b5875e9368760e8b41849d0f53a6057a84` |
@@ -89,7 +89,7 @@ A dossier package is valid only if every path below exists with the listed SHA-2
 | 61 | `docs/61_EXECUTION_POLICY_QUALIFICATION_AND_ROLLOUT_GATES.md` | Execution policy qualification and rollout gates | verification | 44986 | `c9929445ac4d98fde8fea87be19d54d9e01808052af53d09ed3f1b113db3badb` |
 | 62 | `docs/62_PRODUCT_EXTENSION_REQUIREMENTS_TASKS_AND_QUALIFICATIONS.md` | Product extension requirements, tasks and qualifications | verification | 88197 | `1212dbd1e9e1bb505b6ae751c39236daece9d1c37eeba7d8e1dde41f5aca6016` |
 | 63 | `docs/63_AGENT_COMPETENCE_BENCHMARKS_AND_REGRESSION_SUITES.md` | Agent competence benchmarks and regression suites | verification | 8291 | `431c384790f08d1650efa467d07ef2ac0ad4fc4325c61645433339d347aa933d` |
-| 64 | `docs/64_VERIFICATION_EXECUTION_CONTRACTS.md` | Verification execution contracts: baseline, targeting, result normalization, flake handling and diff invariants | verification | 16239 | `2ebf3003e7f1059fe71db444eec5f1df677088d94bafa32e3c528df865768155` |
+| 64 | `docs/64_VERIFICATION_EXECUTION_CONTRACTS.md` | Verification execution contracts: baseline, targeting, result normalization, flake handling and diff invariants | verification | 17420 | `fae7f2d05cd40298da9ac6ee10fdd94ad3e5f87d40e263067f274162c4df735a` |
 | 70 | `docs/70_CI_CD_RELEASE_AND_SUPPLY_CHAIN.md` | CI/CD, Release Engineering, and Supply Chain | delivery | 3502 | `a2cc865ecdd804938d638d5ffc3ba66581249787c1f452dfc69b45d27757a706` |
 | 71 | `docs/71_OPERATIONS_RUNBOOK.md` | Operations and Incident Runbook | delivery | 6783 | `3a09024b56e46bec8d6253d6f1cd10687a6bcc985cfed9577087a4345c695068` |
 | 72 | `docs/72_RISK_REGISTER_AND_OPEN_DECISIONS.md` | Risk Register and Open Technical Decisions | delivery | 9116 | `9e4f22e5d977b82b8d059a1a829e783a2dabbc1662569a3d581d0e2a6b4ba47e` |
@@ -1139,7 +1139,7 @@ A dossier package is valid only if every path below exists with the listed SHA-2
 | `evidence/m3/PX-040/ci-run-34507573124-tests.log` | retained evidence | 4206 | `a9e2a291c1bc0b8c6332b023ecd1361533d8286c33ba45c5465fcca3c2eacb50` |
 | `evidence/m3/PX-040/ci-run-34507573124.json` | retained evidence | 37317 | `cc7122950bffe169b616acd26ddc066cc491cfb3ea9bc94299350fbd41b06594` |
 | `evidence/m3/PX-040/evidence.json` | retained evidence | 1272 | `dc1c5415da2d653b16d94162aa23478c0d9694a3c0442c91e93c17db2e9e58ec` |
-| `evidence/m4/EPR-008/TASK_CARD.md` | retained evidence | 13544 | `32bf46599365a61e32b537dcbc24eb89c408eae2f1920218de46ccfd423a584f` |
+| `evidence/m4/EPR-008/TASK_CARD.md` | retained evidence | 22360 | `e7da212d3251f773815ca14cbebf8ea714e3d86c0fc4f3693fd1ad8ced3fceb6` |
 | `evidence/m4/EPR-008/ci-run-34637382928.json` | retained evidence | 37317 | `6eb917c33fa1e4c3a1a6340de2ebc9e4c2e02a95027c75e5fb519fa0f7c66608` |
 | `evidence/m4/EPR-008/ci-run-36111360538.json` | retained evidence | 42314 | `bbc94c5ff50ec9d07017571334adfafce627035c3c6963cd4f62a1dd81d1de8b` |
 | `evidence/m4/EPR-008/ci-run-36177270964.json` | retained evidence | 42518 | `5af82e1176edbad211c1e2246021023360853f8d52a625f5e2e6b6a362a962ae` |
@@ -1726,8 +1726,8 @@ A dossier package is valid only if every path below exists with the listed SHA-2
 | `evidence/m9/PX-009/TASK_CARD.md` | retained evidence | 3716 | `143ff5f9be712b78a43f415d143fba93a8568e2f9b6980d28e278d4731838fa2` |
 | `evidence/m9/PX-009/ci-run-35830456557.json` | retained evidence | 42199 | `508168affe8ad4b8a13e97c3d4f855efbf4255325e88b58fec882ad41376033a` |
 | `evidence/m9/PX-009/evidence.json` | retained evidence | 2230 | `61d514ff843ff8750fecb6fd7d4936bd84d3255b2e9d2e72cbbc32901de9d99e` |
-| `graph/PROJECT_GRAPH.md` | human view of the graph | 41847 | `901a4a9badf9d25b1ad73d7afeeb47d48e060f0e5eb3d97bf323bdf1abf68f34` |
-| `graph/project-graph.json` | project driver graph with live status | 1609545 | `c9c07e3e68892994d9fe871c5bc2a4f15d33292aabe595d8f2c66afe20303b4e` |
+| `graph/PROJECT_GRAPH.md` | human view of the graph | 41847 | `de9388445a9edb605808c8071f7bc42fd46e242de52f4ee2d387a2fa53b04ddc` |
+| `graph/project-graph.json` | project driver graph with live status | 1609813 | `be9281d45e9d6fcc373013f080cc40189ed7968d74646c98ea64ee02301a4c4b` |
 | `tools/build_graph.py` | regenerates graph structure from docs | 56932 | `7a13adf9a591a21f9a99705d5a0f2fee5a316b3b43897d0964fbe8b1af30a4ce` |
 | `tools/build_manifest.py` | regenerates this manifest | 14871 | `b35f87f995ebea778ef5002f42c4dcb2f195f303ae121d7b4d73070d95d665b7` |
 | `tools/check_dossier.py` | integrity gate | 17596 | `5c9b7a782d245223726f860ca583d766929a6f5662b644adebee64d257ad426b` |

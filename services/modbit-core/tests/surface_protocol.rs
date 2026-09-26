@@ -19643,6 +19643,662 @@ async fn epr_008_di_9_refuses_a_nested_deploy_write_without_a_typed_question() {
     );
 }
 
+/// The DI-9 unlock fixture (docs/64 §4): a deployment descriptor on the
+/// policy's deploy surface and a check that passes once it is scaled.
+fn di_9_repo() -> (tempfile::TempDir, String) {
+    plain_repo(&[
+        ("deploy/prod.yaml", "replicas: 1\n"),
+        ("check.sh", "grep -q 'replicas: 3' deploy/prod.yaml\n"),
+    ])
+}
+
+/// A task on `root` from `origin` under `profile`, for the DI-9 unlock tests.
+async fn di_9_task(
+    c: &mut Client,
+    session: &Id,
+    g: Option<u64>,
+    root: &str,
+    id: u8,
+    origin: &str,
+    profile: &str,
+) -> Id {
+    let ack = c
+        .command(envelope_fenced(
+            id16(id),
+            "CreateTask",
+            CreateTask {
+                session_id: Some(session.clone()),
+                goal_text: "scale the api to three replicas".into(),
+                workspace_id: None,
+                execution_profile: profile.into(),
+                origin: origin.into(),
+                workspace_root: root.into(),
+                issue_url: String::new(),
+                issue_json: String::new(),
+            }
+            .encode_to_vec(),
+            g,
+        ))
+        .await
+        .unwrap();
+    Client::result::<TaskCreated>(&ack)
+        .unwrap()
+        .task_id
+        .unwrap()
+}
+
+/// Start or resume `task` and wait until its loop stops.
+async fn di_9_run(
+    c: &mut Client,
+    task: &Id,
+    g: Option<u64>,
+    id: u8,
+) -> modbit_protocol::v1::TaskStatus {
+    use modbit_protocol::v1::{StartTask, TaskRunStarted};
+    let ack = c
+        .command(envelope_fenced(
+            id16(id),
+            "StartTask",
+            StartTask {
+                task_id: Some(task.clone()),
+                endpoint: String::new(),
+                model: "gpt-5-mini".into(),
+                max_turns: 30,
+                max_tool_calls: 0,
+                max_no_progress_turns: 5,
+                skills: vec![],
+            }
+            .encode_to_vec(),
+            g,
+        ))
+        .await
+        .unwrap();
+    let _: TaskRunStarted = Client::result(&ack).unwrap();
+    wait_task(c, task, 120).await
+}
+
+/// The unanswered question of `task`, as the desktop lists it.
+async fn di_9_pending(c: &mut Client, task: &Id) -> modbit_protocol::v1::QuestionView {
+    use modbit_protocol::v1::{ListQuestions, QuestionList};
+    let ack = c
+        .command(envelope(
+            Id {
+                value: (0..16).map(|_| rand::random::<u8>()).collect(),
+            },
+            "ListQuestions",
+            ListQuestions {
+                task_id: Some(task.clone()),
+            }
+            .encode_to_vec(),
+        ))
+        .await
+        .unwrap();
+    let l: QuestionList = Client::result(&ack).unwrap();
+    let open: Vec<_> = l.questions.into_iter().filter(|q| !q.answered).collect();
+    assert_eq!(open.len(), 1, "{open:#?}");
+    open.into_iter().next().unwrap()
+}
+
+/// The user answers through the SurfaceProtocol, as the desktop does.
+async fn di_9_answer(
+    c: &mut Client,
+    task: &Id,
+    g: Option<u64>,
+    id: u8,
+    question_id: &str,
+    option_id: &str,
+) {
+    use modbit_protocol::v1::{QuestionResponded, RespondToQuestion};
+    let ack = c
+        .command(envelope_fenced(
+            id16(id),
+            "RespondToQuestion",
+            RespondToQuestion {
+                task_id: Some(task.clone()),
+                question_id: question_id.into(),
+                option_id: option_id.into(),
+                text: String::new(),
+            }
+            .encode_to_vec(),
+            g,
+        ))
+        .await
+        .unwrap();
+    let r: QuestionResponded = Client::result(&ack).unwrap();
+    assert!(!r.already_answered, "{r:?}");
+}
+
+/// Every tool result the model has seen, across its requests.
+fn di_9_told(seen: &std::sync::Arc<std::sync::Mutex<Vec<serde_json::Value>>>) -> Vec<String> {
+    let mut out: Vec<String> = Vec::new();
+    for b in seen.lock().unwrap().iter() {
+        for m in b["messages"].as_array().into_iter().flatten() {
+            if m["role"] == "tool" {
+                let t = m["content"].as_str().unwrap_or_default().to_owned();
+                if !out.contains(&t) {
+                    out.push(t);
+                }
+            }
+        }
+    }
+    out
+}
+
+/// Payloads of every `event_type` event on the log, in order.
+fn di_9_of(
+    evs: &[(String, String, serde_json::Value)],
+    event_type: &str,
+) -> Vec<serde_json::Value> {
+    evs.iter()
+        .filter(|(_, t, _)| t == event_type)
+        .map(|(_, _, p)| p.clone())
+        .collect()
+}
+
+/// DI-9 DENY decisions on `path` at `stage`.
+fn di_9_denials(evs: &[(String, String, serde_json::Value)], path: &str, stage: &str) -> usize {
+    di_9_of(evs, "DiffInvariantViolated")
+        .iter()
+        .filter(|v| {
+            v["invariant"] == "DI-9"
+                && v["class"] == "DENY"
+                && v["stage"] == stage
+                && v["paths"] == serde_json::json!([path])
+        })
+        .count()
+}
+
+/// EPR-008 (docs/64 §4 DI-9, REQ-EPR-008): a protected path changes only
+/// after a typed question, and then it does change. The write to
+/// `deploy/prod.yaml` is DI-9 DENY and the model is told how the path
+/// opens. The model asks through `user.ask`, naming the path in `paths`;
+/// the Core records the question with its own options, labelled with the
+/// path (the model's yes/no is dropped), and the run suspends. The user
+/// answers `continue` through the SurfaceProtocol; on resume the Core
+/// records `ProtectedPathsUnlocked`. The Core is then killed while the task
+/// waits on an unrelated question, and the restarted Core rebuilds the
+/// unlock from the log: the same write lands once, the COMPLETION run
+/// raises no DI-9, and the task reaches the user's review. Before this
+/// change the unlock did not exist and every retry was DENY.
+#[tokio::test]
+async fn epr_008_di_9_a_users_continue_to_a_question_naming_the_path_unlocks_it_across_a_restart() {
+    use serde_json::json;
+    let (repo, root) = di_9_repo();
+    let path = "deploy/prod.yaml";
+    let write = json!({"calls": [{"name": "change.apply", "args": {"path": path, "op": "replace", "content": "replicas: 3\n"}}]});
+    let script = vec![
+        json!({"calls": [{"name": "plan.update", "args": {"outcome": "scale the api to three replicas", "expected_files": [path], "verification": ["sh check.sh"]}}]}),
+        json!({"calls": [{"name": "fs.read", "args": {"path": path}}]}),
+        write.clone(),
+        json!({"calls": [{"name": "user.ask", "args": {"question": "May I change deploy/prod.yaml to scale the api to three replicas?", "options": [{"id": "yes", "label": "Yes"}, {"id": "no", "label": "No"}], "reason": "protected_effect", "paths": [path]}}]}),
+        json!({"calls": [{"name": "user.ask", "args": {"question": "Should the rollout keep the current resource limits?", "options": [{"id": "keep", "label": "keep them"}, {"id": "raise", "label": "raise them"}], "reason": "change_set"}}]}),
+        write,
+        json!({"calls": [{"name": "test.run", "args": {"argv": ["sh", "check.sh"], "inherit_env": true}}]}),
+        json!({"calls": [{"name": "task.complete", "args": {"summary": "scaled the api to three replicas", "self_review": {"findings": []}, "verification": ["sh check.sh"]}}]}),
+    ];
+    let (base, seen) = scripted_model(script, None).await;
+    let dir = tempfile::tempdir().unwrap();
+    let env = [
+        ("MODBIT_OPENAI_BASE_URL", base.as_str()),
+        ("OPENAI_API_KEY", ""),
+        ("ANTHROPIC_API_KEY", ""),
+    ];
+    let mut core = CoreProcess::spawn_with_env(dir.path(), &env);
+    let mut c = core.client().await;
+    let (session, _) = create_session(&mut c, id16(0x90)).await;
+    let g = lease_for(&session);
+    trust_repository(&mut c, &session, g, &root, 0x91).await;
+    let task = di_9_task(&mut c, &session, g, &root, 0x92, "desktop", "local_trusted").await;
+    let st = di_9_run(&mut c, &task, g, 0x93).await;
+    let evs = task_events(&core, &session, &task).await;
+    assert_eq!(
+        (st.state.as_str(), st.wait_reason.as_str()),
+        ("Waiting", "UserInput"),
+        "{st:?}\n{:#?}\n{evs:#?}",
+        di_9_told(&seen)
+    );
+    // Before the answer: DI-9 DENY before any effect, the model is told how
+    // the path opens, and nothing reached the disk.
+    assert_eq!(di_9_denials(&evs, path, "TRANSACTION"), 1, "{evs:#?}");
+    let told = di_9_told(&seen);
+    assert!(
+        told.iter().any(|t| t.contains("DIFF_INVARIANT_DENY")
+            && t.contains("DI-9 (deploy/prod.yaml)")
+            && t.contains("ask the user with user.ask naming it in `paths`")),
+        "{told:#?}"
+    );
+    assert_eq!(
+        std::fs::read_to_string(repo.path().join(path)).unwrap(),
+        "replicas: 1\n"
+    );
+    // The question the user sees carries the Core's options, labelled with
+    // the path; the model's own yes/no is not what the user answers.
+    let asked = di_9_of(&evs, "UserQuestionAsked");
+    assert_eq!(asked.len(), 1, "{asked:#?}");
+    assert_eq!(asked[0]["protected_paths"], json!([path]), "{asked:#?}");
+    let q = di_9_pending(&mut c, &task).await;
+    assert_eq!(
+        q.options.iter().map(|o| o.id.as_str()).collect::<Vec<_>>(),
+        ["continue", "stop"],
+        "{q:?}"
+    );
+    assert!(
+        q.options.iter().all(|o| o.label.contains(path)) && !q.allow_free_text,
+        "{q:?}"
+    );
+    // The user answers `continue`; the resumed run records the unlock, then
+    // waits on its next, unrelated question. The model reads the answer as
+    // the result of its question.
+    di_9_answer(&mut c, &task, g, 0x94, &q.question_id, "continue").await;
+    let st = di_9_run(&mut c, &task, g, 0x95).await;
+    let evs = task_events(&core, &session, &task).await;
+    assert_eq!(
+        (st.state.as_str(), st.wait_reason.as_str()),
+        ("Waiting", "UserInput"),
+        "{st:?}\n{evs:#?}"
+    );
+    assert!(
+        di_9_told(&seen)
+            .iter()
+            .any(|t| t.contains("\"status\":\"ANSWERED\"")
+                && t.contains("\"option_id\":\"continue\"")),
+        "{:#?}",
+        di_9_told(&seen)
+    );
+    let unlocked = di_9_of(&evs, "ProtectedPathsUnlocked");
+    assert_eq!(unlocked.len(), 1, "{evs:#?}");
+    assert_eq!(unlocked[0]["paths"], json!([path]));
+    assert_eq!(unlocked[0]["question_id"], q.question_id.as_str());
+    assert_eq!(unlocked[0]["answer"], "continue");
+    assert_eq!(
+        std::fs::read_to_string(repo.path().join(path)).unwrap(),
+        "replicas: 1\n",
+        "not written yet"
+    );
+    // The Core dies while the task waits; the unlock lives on the log.
+    drop(c);
+    core.kill();
+    let core2 = CoreProcess::spawn_with_env(dir.path(), &env);
+    let mut c2 = core2.client().await;
+    let g2 = Some(acquire_lease(&mut c2, id16(0x96), session.clone(), "resumer").await);
+    let q2 = di_9_pending(&mut c2, &task).await;
+    assert_eq!(
+        q2.options.iter().map(|o| o.id.as_str()).collect::<Vec<_>>(),
+        ["keep", "raise"],
+        "an unrelated question keeps the model's options: {q2:?}"
+    );
+    di_9_answer(&mut c2, &task, g2, 0x97, &q2.question_id, "keep").await;
+    let st = di_9_run(&mut c2, &task, g2, 0x98).await;
+    let evs = task_events(&core2, &session, &task).await;
+    assert_eq!(
+        st.state,
+        "ReadyForReview",
+        "{st:?}\n{:#?}\n{evs:#?}",
+        di_9_told(&seen)
+    );
+    // One unlock, recorded before the restart, rebuilt after it and not
+    // recorded again.
+    assert_eq!(di_9_of(&evs, "ProtectedPathsUnlocked").len(), 1, "{evs:#?}");
+    // The same write landed once, after the unlock. DI-9 denied only the
+    // write before the answer, and the COMPLETION run judged the whole diff
+    // without a DI-9 finding.
+    assert_eq!(di_9_denials(&evs, path, "TRANSACTION"), 1, "{evs:#?}");
+    assert!(
+        !di_9_of(&evs, "DiffInvariantViolated")
+            .iter()
+            .any(|v| v["invariant"] == "DI-9" && v["stage"] == "COMPLETION"),
+        "{evs:#?}"
+    );
+    let at = |t: &str, p: &str| {
+        evs.iter()
+            .position(|(_, x, v)| x == t && (p.is_empty() || v["path"] == p))
+            .unwrap_or_else(|| panic!("{t} {p}: {evs:#?}"))
+    };
+    assert!(at("ProtectedPathsUnlocked", "") < at("FileChanged", path));
+    assert_eq!(
+        di_9_of(&evs, "FileChanged")
+            .iter()
+            .filter(|f| f["path"] == path)
+            .count(),
+        1,
+        "{evs:#?}"
+    );
+    assert_eq!(
+        std::fs::read_to_string(repo.path().join(path)).unwrap(),
+        "replicas: 3\n"
+    );
+}
+
+/// EPR-008 (docs/64 §4 DI-9), the negative half: only the user's `continue`
+/// to a question naming the path opens it. The user says yes to a question
+/// that names no path, continues on a question naming another protected
+/// path, and stops on the question naming this one: `deploy/prod.yaml`
+/// stays closed through all three, every retry is DI-9 DENY, nothing is
+/// written, and the only unlock on the log is the other path's.
+#[tokio::test]
+async fn epr_008_di_9_a_question_that_does_not_name_the_path_or_is_declined_unlocks_nothing() {
+    use serde_json::json;
+    let (repo, root) = di_9_repo();
+    let path = "deploy/prod.yaml";
+    let write = json!({"calls": [{"name": "change.apply", "args": {"path": path, "op": "replace", "content": "replicas: 3\n"}}]});
+    let yes_no = json!([{"id": "yes", "label": "Yes"}, {"id": "no", "label": "No"}]);
+    let script = vec![
+        json!({"calls": [{"name": "plan.update", "args": {"outcome": "scale the api to three replicas", "expected_files": [path], "verification": ["sh check.sh"]}}]}),
+        json!({"calls": [{"name": "fs.read", "args": {"path": path}}]}),
+        write.clone(),
+        json!({"calls": [{"name": "user.ask", "args": {"question": "May I go ahead with the rollout change?", "options": yes_no, "reason": "protected_effect"}}]}),
+        write.clone(),
+        json!({"calls": [{"name": "user.ask", "args": {"question": "May I change deploy/staging.yaml first?", "options": yes_no, "reason": "protected_effect", "paths": ["deploy/staging.yaml"]}}]}),
+        write.clone(),
+        json!({"calls": [{"name": "user.ask", "args": {"question": "May I change deploy/prod.yaml?", "options": yes_no, "reason": "protected_effect", "paths": [path]}}]}),
+        write,
+        json!({"calls": [{"name": "user.ask", "args": {"question": "The rollout is still closed. Stop here?", "options": yes_no, "reason": "other"}}]}),
+    ];
+    let (base, seen) = scripted_model(script, None).await;
+    let dir = tempfile::tempdir().unwrap();
+    let env = [
+        ("MODBIT_OPENAI_BASE_URL", base.as_str()),
+        ("OPENAI_API_KEY", ""),
+        ("ANTHROPIC_API_KEY", ""),
+    ];
+    let core = CoreProcess::spawn_with_env(dir.path(), &env);
+    let mut c = core.client().await;
+    let (session, _) = create_session(&mut c, id16(0xA0)).await;
+    let g = lease_for(&session);
+    trust_repository(&mut c, &session, g, &root, 0xA1).await;
+    let task = di_9_task(&mut c, &session, g, &root, 0xA2, "desktop", "local_trusted").await;
+    let mut id = 0xA3u8;
+    let mut st = di_9_run(&mut c, &task, g, id).await;
+    // The user's answers, in order: yes to the unnamed question, continue
+    // for another path, stop for this one.
+    for answer in ["yes", "continue", "stop"] {
+        assert_eq!(
+            (st.state.as_str(), st.wait_reason.as_str()),
+            ("Waiting", "UserInput"),
+            "{st:?}\n{:#?}",
+            di_9_told(&seen)
+        );
+        let q = di_9_pending(&mut c, &task).await;
+        di_9_answer(&mut c, &task, g, id + 1, &q.question_id, answer).await;
+        st = di_9_run(&mut c, &task, g, id + 2).await;
+        id += 3;
+    }
+    let evs = task_events(&core, &session, &task).await;
+    assert_eq!(
+        (st.state.as_str(), st.wait_reason.as_str()),
+        ("Waiting", "UserInput"),
+        "{st:?}\n{evs:#?}"
+    );
+    // Four writes, four DENY; nothing written.
+    assert_eq!(di_9_denials(&evs, path, "TRANSACTION"), 4, "{evs:#?}");
+    assert!(
+        !di_9_of(&evs, "FileChanged")
+            .iter()
+            .any(|f| f["path"] == path),
+        "{evs:#?}"
+    );
+    assert_eq!(
+        std::fs::read_to_string(repo.path().join(path)).unwrap(),
+        "replicas: 1\n"
+    );
+    // The unnamed question kept the model's options and names no path; the
+    // two questions naming a path carry the Core's options.
+    let asked = di_9_of(&evs, "UserQuestionAsked");
+    assert_eq!(asked.len(), 4, "{asked:#?}");
+    assert!(asked[0]["protected_paths"].is_null(), "{asked:#?}");
+    assert_eq!(asked[0]["options"][0]["id"], "yes");
+    assert_eq!(asked[1]["protected_paths"], json!(["deploy/staging.yaml"]));
+    assert_eq!(asked[2]["protected_paths"], json!([path]));
+    for a in &asked[1..3] {
+        assert_eq!(a["options"][0]["id"], "continue", "{a}");
+        assert_eq!(a["options"][1]["id"], "stop", "{a}");
+    }
+    // The only unlock is the other path's.
+    let unlocked = di_9_of(&evs, "ProtectedPathsUnlocked");
+    assert_eq!(unlocked.len(), 1, "{unlocked:#?}");
+    assert_eq!(unlocked[0]["paths"], json!(["deploy/staging.yaml"]));
+}
+
+/// EPR-008 (docs/64 §4 DI-9): the answer must be the user's. While the
+/// question naming `deploy/prod.yaml` is unanswered the run cannot resume
+/// (QUESTION_PENDING) and nothing opens. Then a `continue` is written into
+/// the log as the agent's while the Core is down: a well-formed event on
+/// the aggregate's hash chain that closes the question for the loop. The
+/// restarted Core resumes and the model reads "continue", but the answer
+/// unlocks nothing: its write is DI-9 DENY again and no unlock is recorded.
+#[tokio::test]
+async fn epr_008_di_9_an_unanswered_or_agent_answered_question_unlocks_nothing() {
+    use serde_json::json;
+    let (repo, root) = di_9_repo();
+    let path = "deploy/prod.yaml";
+    let script = vec![
+        json!({"calls": [{"name": "plan.update", "args": {"outcome": "scale the api to three replicas", "expected_files": [path], "verification": ["sh check.sh"]}}]}),
+        json!({"calls": [{"name": "fs.read", "args": {"path": path}}]}),
+        json!({"calls": [{"name": "user.ask", "args": {"question": "May I change deploy/prod.yaml to scale the api to three replicas?", "options": [{"id": "continue", "label": "yes"}], "reason": "protected_effect", "paths": [path]}}]}),
+        json!({"calls": [{"name": "change.apply", "args": {"path": path, "op": "replace", "content": "replicas: 3\n"}}]}),
+        json!({"calls": [{"name": "user.ask", "args": {"question": "The rollout is still closed. Stop here?", "options": [{"id": "yes", "label": "Yes"}, {"id": "no", "label": "No"}], "reason": "other"}}]}),
+    ];
+    let (base, seen) = scripted_model(script, None).await;
+    let dir = tempfile::tempdir().unwrap();
+    let env = [
+        ("MODBIT_OPENAI_BASE_URL", base.as_str()),
+        ("OPENAI_API_KEY", ""),
+        ("ANTHROPIC_API_KEY", ""),
+    ];
+    let mut core = CoreProcess::spawn_with_env(dir.path(), &env);
+    let mut c = core.client().await;
+    let (session, _) = create_session(&mut c, id16(0xB0)).await;
+    let g = lease_for(&session);
+    trust_repository(&mut c, &session, g, &root, 0xB1).await;
+    let task = di_9_task(&mut c, &session, g, &root, 0xB2, "desktop", "local_trusted").await;
+    let st = di_9_run(&mut c, &task, g, 0xB3).await;
+    assert_eq!(
+        (st.state.as_str(), st.wait_reason.as_str()),
+        ("Waiting", "UserInput"),
+        "{st:?}\n{:#?}",
+        di_9_told(&seen)
+    );
+    let q = di_9_pending(&mut c, &task).await;
+    // Unanswered: the run does not resume and nothing opens.
+    let start = modbit_protocol::v1::StartTask {
+        task_id: Some(task.clone()),
+        endpoint: String::new(),
+        model: "gpt-5-mini".into(),
+        max_turns: 30,
+        max_tool_calls: 0,
+        max_no_progress_turns: 5,
+        skills: vec![],
+    }
+    .encode_to_vec();
+    let err = c
+        .command(envelope_fenced(id16(0xB4), "StartTask", start, g))
+        .await
+        .unwrap_err();
+    assert!(
+        matches!(err, ClientError::Rejected { ref code, .. } if code == "QUESTION_PENDING"),
+        "{err}"
+    );
+    let evs = task_events(&core, &session, &task).await;
+    assert!(
+        di_9_of(&evs, "ProtectedPathsUnlocked").is_empty(),
+        "{evs:#?}"
+    );
+    // The agent's answer: `continue`, on the log, but not the user's.
+    drop(c);
+    core.kill();
+    {
+        let mut store = modbit_event_store::EventStore::open(&dir.path().join("core")).unwrap();
+        let sid = modbit_domain::SessionId::from_bytes(session.value.clone().try_into().unwrap());
+        let asked = store
+            .read_session(&sid, 0, usize::MAX)
+            .unwrap()
+            .into_iter()
+            .find(|e| e.envelope.event_type == "UserQuestionAsked")
+            .unwrap();
+        let env = &asked.envelope;
+        let task_id = env.task_id.unwrap();
+        store
+            .append(modbit_event_store::AppendRequest {
+                tenant_id: env.tenant_id,
+                session_id: env.session_id,
+                task_id: env.task_id,
+                run_id: None,
+                turn_id: None,
+                step_id: None,
+                aggregate_type: env.aggregate_type,
+                aggregate_id: env.aggregate_id,
+                expected_sequence: None,
+                events: vec![modbit_event_store::NewEvent::new(
+                    "UserQuestionAnswered",
+                    serde_json::to_value(modbit_domain::task::TaskEvent::UserQuestionAnswered {
+                        question_id: q.question_id.clone(),
+                        option_id: Some("continue".into()),
+                        text: None,
+                    })
+                    .unwrap(),
+                    modbit_domain::Actor::Agent(format!("solver:{task_id}")),
+                )],
+            })
+            .unwrap();
+    }
+    let core2 = CoreProcess::spawn_with_env(dir.path(), &env);
+    let mut c2 = core2.client().await;
+    let g2 = Some(acquire_lease(&mut c2, id16(0xB5), session.clone(), "resumer").await);
+    let st = di_9_run(&mut c2, &task, g2, 0xB6).await;
+    let evs = task_events(&core2, &session, &task).await;
+    assert_eq!(
+        (st.state.as_str(), st.wait_reason.as_str()),
+        ("Waiting", "UserInput"),
+        "{st:?}\n{evs:#?}"
+    );
+    // The loop resumed on the forged answer and the model read "continue"...
+    let told = di_9_told(&seen);
+    assert!(
+        told.iter()
+            .any(|t| t.contains("\"status\":\"ANSWERED\"") && t.contains("continue")),
+        "{told:#?}"
+    );
+    // ...but nothing opened: the write is DENY and no unlock is recorded.
+    assert_eq!(di_9_denials(&evs, path, "TRANSACTION"), 1, "{evs:#?}");
+    assert!(
+        di_9_of(&evs, "ProtectedPathsUnlocked").is_empty(),
+        "{evs:#?}"
+    );
+    assert!(
+        !di_9_of(&evs, "FileChanged")
+            .iter()
+            .any(|f| f["path"] == path),
+        "{evs:#?}"
+    );
+    assert_eq!(
+        std::fs::read_to_string(repo.path().join(path)).unwrap(),
+        "replicas: 1\n"
+    );
+}
+
+/// EPR-008 (docs/64 §4 DI-9; docs/28 §3 and docs/14 §10 headless
+/// resolution; docs/23 unattended profiles): where no user can answer, no
+/// question can open a protected path. A CLI task and a desktop task under
+/// `local_autonomous` (in `no_approval_profiles`) both have their write
+/// refused DI-9 DENY and are told the path stays closed and why; the
+/// `user.ask` naming the path is refused PROTECTED_PATH_FAIL_CLOSED without
+/// suspending the run or recording a question; nothing is unlocked and
+/// nothing is written. A later unrelated question still suspends the run.
+#[tokio::test]
+async fn epr_008_di_9_headless_and_unattended_tasks_fail_closed() {
+    use serde_json::json;
+    let path = "deploy/prod.yaml";
+    let script = vec![
+        json!({"calls": [{"name": "plan.update", "args": {"outcome": "scale the api to three replicas", "expected_files": [path], "verification": ["sh check.sh"]}}]}),
+        json!({"calls": [{"name": "fs.read", "args": {"path": path}}]}),
+        json!({"calls": [{"name": "change.apply", "args": {"path": path, "op": "replace", "content": "replicas: 3\n"}}]}),
+        json!({"calls": [{"name": "user.ask", "args": {"question": "May I change deploy/prod.yaml?", "options": [{"id": "yes", "label": "Yes"}, {"id": "no", "label": "No"}], "reason": "protected_effect", "paths": [path]}}]}),
+        json!({"calls": [{"name": "user.ask", "args": {"question": "Should the note record the replica count?", "options": [{"id": "yes", "label": "Yes"}, {"id": "no", "label": "No"}], "reason": "other"}}]}),
+    ];
+    let (base, seen) = scripted_model(script, None).await;
+    let dir = tempfile::tempdir().unwrap();
+    let env = [
+        ("MODBIT_OPENAI_BASE_URL", base.as_str()),
+        ("OPENAI_API_KEY", ""),
+        ("ANTHROPIC_API_KEY", ""),
+    ];
+    let core = CoreProcess::spawn_with_env(dir.path(), &env);
+    let mut c = core.client().await;
+    let (session, _) = create_session(&mut c, id16(0xC0)).await;
+    let g = lease_for(&session);
+    for (i, (origin, profile, why)) in [
+        ("cli", "local_trusted", "headless task, FAIL_CLOSED"),
+        (
+            "desktop",
+            "local_autonomous",
+            "`local_autonomous` runs unattended",
+        ),
+    ]
+    .into_iter()
+    .enumerate()
+    {
+        let (repo, root) = di_9_repo();
+        let n = u8::try_from(i).unwrap() * 4;
+        trust_repository(&mut c, &session, g, &root, 0xC1 + n).await;
+        let task = di_9_task(&mut c, &session, g, &root, 0xC2 + n, origin, profile).await;
+        let st = di_9_run(&mut c, &task, g, 0xC3 + n).await;
+        let evs = task_events(&core, &session, &task).await;
+        let told: Vec<String> = seen
+            .lock()
+            .unwrap()
+            .last()
+            .and_then(|b| b["messages"].as_array().cloned())
+            .unwrap_or_default()
+            .iter()
+            .filter(|m| m["role"] == "tool")
+            .map(|m| m["content"].as_str().unwrap_or_default().to_owned())
+            .collect();
+        assert_eq!(
+            (st.state.as_str(), st.wait_reason.as_str()),
+            ("Waiting", "UserInput"),
+            "{origin}/{profile}: {st:?}\n{told:#?}\n{evs:#?}"
+        );
+        assert_eq!(
+            di_9_denials(&evs, path, "TRANSACTION"),
+            1,
+            "{origin}: {evs:#?}"
+        );
+        assert!(
+            told.iter().any(|t| t.contains("DIFF_INVARIANT_DENY")
+                && t.contains("the protected path stays closed in this task")
+                && t.contains(why)),
+            "{origin}: {told:#?}"
+        );
+        assert!(
+            told.iter()
+                .any(|t| t.contains("error_code: PROTECTED_PATH_FAIL_CLOSED")
+                    && t.contains("no answer can unlock deploy/prod.yaml")
+                    && t.contains(why)),
+            "{origin}: {told:#?}"
+        );
+        // The refused question was never recorded: the only question on the
+        // log is the unrelated one the run now waits on.
+        let asked = di_9_of(&evs, "UserQuestionAsked");
+        assert_eq!(asked.len(), 1, "{origin}: {asked:#?}");
+        assert!(asked[0]["protected_paths"].is_null(), "{asked:#?}");
+        assert!(
+            evs.iter().any(|(a, t, p)| a == "run_step"
+                && t == "StepFailed"
+                && p["failure_code"] == "PROTECTED_PATH_FAIL_CLOSED"),
+            "{origin}: {evs:#?}"
+        );
+        assert!(
+            di_9_of(&evs, "ProtectedPathsUnlocked").is_empty(),
+            "{origin}"
+        );
+        assert_eq!(
+            std::fs::read_to_string(repo.path().join(path)).unwrap(),
+            "replicas: 1\n",
+            "{origin}"
+        );
+    }
+}
+
 /// QUAL-EPR-008 / EPR-E2E-008 (REQ-EPR-008; docs/27 §9.3, docs/38): real
 /// protected fixtures changed through the production path. A task edits
 /// an auth module and adds a migration, its check passes, it completes:

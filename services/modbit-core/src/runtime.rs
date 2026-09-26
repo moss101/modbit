@@ -1539,6 +1539,8 @@ pub(crate) async fn rebuild(
     // the user answers one.
     let mut scope_questions: std::collections::HashSet<String> = std::collections::HashSet::new();
     let mut questions: std::collections::HashMap<String, String> = std::collections::HashMap::new();
+    // docs/64 DI-9: the questions that named protected paths, until answered.
+    let mut protected_questions: HashMap<String, Vec<String>> = HashMap::new();
     let mut applied = 0usize;
     for ev in events
         .iter()
@@ -1763,6 +1765,15 @@ pub(crate) async fn rebuild(
                     (payload["question_id"].as_str(), payload["call_id"].as_str())
                 {
                     questions.insert(q.to_owned(), c.to_owned());
+                    let protected: Vec<String> = payload["protected_paths"]
+                        .as_array()
+                        .into_iter()
+                        .flatten()
+                        .filter_map(|p| p.as_str().map(str::to_owned))
+                        .collect();
+                    if !protected.is_empty() {
+                        protected_questions.insert(q.to_owned(), protected);
+                    }
                 }
             }
             "ContextEpochOpened" => {
@@ -1847,7 +1858,38 @@ pub(crate) async fn rebuild(
                     }
                 }
             }
+            "ProtectedPathsUnlocked" => {
+                // docs/64 DI-9: the Core recorded the user's unlock; a record
+                // from anyone else opens nothing.
+                if matches!(ev.envelope.actor, Actor::Core(_)) {
+                    for p in payload["paths"].as_array().into_iter().flatten() {
+                        if let Some(p) = p.as_str()
+                            && !state.protected_unlocked.iter().any(|u| u == p)
+                        {
+                            state.protected_unlocked.push(p.to_owned());
+                        }
+                    }
+                    if state
+                        .protected_answer
+                        .as_ref()
+                        .is_some_and(|(q, _, _)| payload["question_id"].as_str() == Some(q))
+                    {
+                        state.protected_answer = None;
+                    }
+                }
+            }
             "UserQuestionAnswered" => {
+                // docs/64 DI-9: the user's `continue` — never an answer the
+                // agent wrote — to a question naming protected paths unlocks
+                // exactly those paths; the next turn records it.
+                if let Some(q) = payload["question_id"].as_str()
+                    && let Some(paths) = protected_questions.remove(q)
+                    && matches!(ev.envelope.actor, Actor::User(_))
+                    && payload["option_id"].as_str() == Some(PROTECTED_CONTINUE)
+                {
+                    state.protected_answer =
+                        Some((q.to_owned(), paths, PROTECTED_CONTINUE.to_owned()));
+                }
                 // A scope question is answered by the user, never by the agent
                 // (docs/28 §3): only the user's answer to a question asked
                 // while the expansion waited decides it, not an answer the
@@ -2309,8 +2351,8 @@ fn projection(
     });
     tools.push(ToolProjection {
         name: ASK_TOOL.into(),
-        description: "Ask the user one typed question only when the change set, the verification or a protected effect depends on the answer; offer concrete options. Never ask what the repository can answer. The run suspends until the answer arrives.".into(),
-        input_schema: serde_json::json!({"type":"object","properties":{"question":{"type":"string"},"options":{"type":"array","items":{"type":"object","properties":{"id":{"type":"string"},"label":{"type":"string"}},"required":["id","label"]}},"allow_free_text":{"type":"boolean"},"reason":{"type":"string","enum":["change_set","verification","protected_effect","other"]}},"required":["question","reason"]}),
+        description: "Ask the user one typed question only when the change set, the verification or a protected effect depends on the answer; offer concrete options. Never ask what the repository can answer. To change a protected path, name it in paths. The run suspends until the answer arrives.".into(),
+        input_schema: serde_json::json!({"type":"object","properties":{"question":{"type":"string"},"paths":{"type":"array","items":{"type":"string"}},"options":{"type":"array","items":{"type":"object","properties":{"id":{"type":"string"},"label":{"type":"string"}},"required":["id","label"]}},"allow_free_text":{"type":"boolean"},"reason":{"type":"string","enum":["change_set","verification","protected_effect","other"]}},"required":["question","reason"]}),
     });
     // The withheld tools are named on the plan tool with what unlocks them
     // (docs/16 M5.1): the model is told, not left to guess at a refusal.
@@ -2811,6 +2853,39 @@ async fn run_loop(
                 for p in paths {
                     if !state.scope_unlocked.contains(&p) {
                         state.scope_unlocked.push(p);
+                    }
+                }
+            }
+        }
+        // docs/64 DI-9 (REQ-EPR-008): the user's answer to a typed question
+        // naming protected paths unlocks exactly those paths for this task;
+        // recorded once, by the Core, so a restarted Core rebuilds it.
+        if let Some((question_id, paths, answer)) = state.protected_answer.take() {
+            let recorded = {
+                let mut store = core.store.lock().await;
+                append(
+                    &mut store,
+                    &core,
+                    lt,
+                    AggregateType::Task,
+                    *task.task_id.as_bytes(),
+                    vec![typed(
+                        "ProtectedPathsUnlocked",
+                        &TaskEvent::ProtectedPathsUnlocked {
+                            question_id,
+                            paths: paths.clone(),
+                            answer,
+                        },
+                        Actor::Core("change-engine".into()),
+                    )],
+                )
+                .is_ok()
+            };
+            // Nothing on the log, nothing open.
+            if recorded {
+                for p in paths {
+                    if !state.protected_unlocked.contains(&p) {
+                        state.protected_unlocked.push(p);
                     }
                 }
             }
@@ -3955,15 +4030,23 @@ async fn run_loop(
                     )
                 }
                 ASK_TOOL => {
-                    let (entry, question_id) =
-                        handle_ask(&core, &task, lturn, &actor, &call_id, &arguments_json).await;
+                    let (entry, question_id) = handle_ask(
+                        &core,
+                        &task,
+                        lturn,
+                        &actor,
+                        &state,
+                        &call_id,
+                        &arguments_json,
+                    )
+                    .await;
                     match question_id {
-                        Some(q) => {
+                        Ok(q) => {
                             pending_question = Some(q);
                             progress = true;
                             (entry, StepType::UserQuestion, None)
                         }
-                        None => (entry, StepType::UserQuestion, Some("BAD_QUESTION".into())),
+                        Err(code) => (entry, StepType::UserQuestion, Some(code.into())),
                     }
                 }
                 VERIFY_TOOL => {
@@ -4390,12 +4473,7 @@ async fn run_loop(
                                 plan_revisions,
                             } = &refusal
                             {
-                                let headless = !matches!(
-                                    task.origin,
-                                    modbit_domain::task::TaskOrigin::Desktop
-                                        | modbit_domain::task::TaskOrigin::IdeAdapter
-                                );
-                                let fails_closed = headless
+                                let fails_closed = headless(&task)
                                     && state.scope_policy.headless_resolution == "FAIL_CLOSED";
                                 let resolution = if fails_closed {
                                     "FAIL_CLOSED"
@@ -8072,6 +8150,7 @@ fn invariant_context(state: &HarnessState) -> InvariantContext {
             .protected_paths
             .clone()
             .unwrap_or_else(|| vec![".github/".into(), ".modbit/".into()]),
+        protected_unlocked: state.protected_unlocked.clone(),
         formatting_churn_lines: 50,
         expected_revision: None,
     }
@@ -8213,6 +8292,17 @@ async fn transaction_invariants(
             events,
         );
     }
+    // docs/64 DI-9: the model is told how a protected path opens, or that
+    // nothing can open it in this task.
+    if violations
+        .iter()
+        .any(|x| x.id == "DI-9" && x.class == Class::Deny)
+    {
+        deny_reasons.push(match protected_question_unavailable(core, task) {
+            None => "to change a protected path, ask the user with user.ask naming it in `paths`; only the user's `continue` unlocks it for this task".to_owned(),
+            Some(why) => format!("the protected path stays closed in this task: {why}"),
+        });
+    }
     if deny_reasons.is_empty() {
         None
     } else {
@@ -8246,12 +8336,13 @@ async fn handle_ask(
     task: &Task,
     lt: Lineage,
     actor: &Actor,
+    state: &HarnessState,
     call_id: &str,
     arguments_json: &str,
-) -> (TranscriptEntry, Option<String>) {
+) -> (TranscriptEntry, Result<String, &'static str>) {
     let v: serde_json::Value = serde_json::from_str(arguments_json).unwrap_or_default();
     let question = v["question"].as_str().unwrap_or_default().trim().to_owned();
-    let options: Vec<modbit_domain::task::QuestionOption> = v["options"]
+    let mut options: Vec<modbit_domain::task::QuestionOption> = v["options"]
         .as_array()
         .map(|a| {
             a.iter()
@@ -8264,21 +8355,71 @@ async fn handle_ask(
                 .collect()
         })
         .unwrap_or_default();
-    let allow_free_text = v["allow_free_text"].as_bool().unwrap_or(options.is_empty());
+    let mut allow_free_text = v["allow_free_text"].as_bool().unwrap_or(options.is_empty());
     let reason = v["reason"].as_str().unwrap_or("other").to_owned();
-    if question.is_empty() || (options.is_empty() && !allow_free_text) {
-        return (
+    let refused = |code: &'static str, error: String| {
+        (
             TranscriptEntry::ToolResult {
                 call_id: call_id.into(),
                 name: ASK_TOOL.into(),
-                text: "status: REFUSED\nerror_code: BAD_QUESTION\nerror: a question needs text and either options or free text".into(),
+                text: format!("status: REFUSED\nerror_code: {code}\nerror: {error}"),
                 failure_signature: None,
                 clears: vec![],
                 wrote: None,
                 progress: false,
                 media: vec![],
             },
-            None,
+            Err(code),
+        )
+    };
+    // docs/64 DI-9: the protected paths the question asks leave to change,
+    // judged by the policy's own matcher. The Core owns what the answer
+    // means: it sets the typed options, whose labels name the paths, and only
+    // the user's `continue` unlocks them — whatever options the model wrote.
+    let patterns = invariant_context(state).protected_paths;
+    let mut protected: Vec<String> = Vec::new();
+    for p in v["paths"]
+        .as_array()
+        .into_iter()
+        .flatten()
+        .filter_map(|p| p.as_str())
+    {
+        let key = modbit_verification::protected_path_key(p);
+        if !key.is_empty()
+            && modbit_policy::ProtectedSurface::matches_patterns(&patterns, &key)
+            && !state.protected_unlocked.contains(&key)
+            && !protected.contains(&key)
+        {
+            protected.push(key);
+        }
+    }
+    if !protected.is_empty() {
+        if let Some(why) = protected_question_unavailable(core, task) {
+            return refused(
+                "PROTECTED_PATH_FAIL_CLOSED",
+                format!(
+                    "no answer can unlock {} in this task: {why}",
+                    protected.join(", ")
+                ),
+            );
+        }
+        let named = protected.join(", ");
+        options = vec![
+            modbit_domain::task::QuestionOption {
+                id: PROTECTED_CONTINUE.to_owned(),
+                label: format!("Continue: allow this task to change {named}"),
+            },
+            modbit_domain::task::QuestionOption {
+                id: PROTECTED_STOP.to_owned(),
+                label: format!("Stop: leave {named} unchanged"),
+            },
+        ];
+        allow_free_text = false;
+    }
+    if question.is_empty() || (options.is_empty() && !allow_free_text) {
+        return refused(
+            "BAD_QUESTION",
+            "a question needs text and either options or free text".into(),
         );
     }
     // docs/28: never ask what the repository can answer. A yes/no question
@@ -8321,6 +8462,7 @@ async fn handle_ask(
                 allow_free_text,
                 reason,
                 flags: flags.clone(),
+                protected_paths: protected.clone(),
             },
             actor.clone(),
         )],
@@ -8330,11 +8472,19 @@ async fn handle_ask(
             call_id: call_id.into(),
             name: ASK_TOOL.into(),
             text: format!(
-                "status: PENDING\nquestion_id: {question_id}\nthe run is suspended until the user answers{}",
+                "status: PENDING\nquestion_id: {question_id}\nthe run is suspended until the user answers{}{}",
                 if flags.is_empty() {
                     String::new()
                 } else {
                     format!("\nflags: {}", flags.join(","))
+                },
+                if protected.is_empty() {
+                    String::new()
+                } else {
+                    format!(
+                        "\nprotected_paths: {}\noptions set by the Core: {PROTECTED_CONTINUE} | {PROTECTED_STOP}; only the user's `{PROTECTED_CONTINUE}` unlocks these paths",
+                        protected.join(", ")
+                    )
                 }
             ),
             failure_signature: None,
@@ -8343,8 +8493,45 @@ async fn handle_ask(
             progress: true,
             media: vec![],
         },
-        Some(question_id),
+        Ok(question_id),
     )
+}
+
+/// The option of a question naming protected paths that unlocks them
+/// (docs/64 DI-9); the Core sets it, the model cannot.
+const PROTECTED_CONTINUE: &str = "continue";
+/// The option that leaves the protected paths closed.
+const PROTECTED_STOP: &str = "stop";
+
+/// Whether no user is present to answer a typed question in `task` (docs/28
+/// §3, docs/14 §10): a task that did not come from the desktop or an IDE.
+fn headless(task: &Task) -> bool {
+    !matches!(
+        task.origin,
+        modbit_domain::task::TaskOrigin::Desktop | modbit_domain::task::TaskOrigin::IdeAdapter
+    )
+}
+
+/// Why no question can unlock a protected path (docs/64 DI-9) in `task`, if
+/// none can. A profile that runs unattended cannot wait for an answer
+/// (docs/23), and a headless task fails closed: a protected path is never
+/// auto-allowed, whatever the scope policy's headless resolution says.
+fn protected_question_unavailable(core: &Core, task: &Task) -> Option<String> {
+    if core
+        .tools
+        .envelope()
+        .no_approval_profiles
+        .contains(&task.execution_profile)
+    {
+        Some(format!(
+            "execution profile `{}` runs unattended and cannot wait for an answer",
+            task.execution_profile
+        ))
+    } else if headless(task) {
+        Some("no user is present to answer (headless task, FAIL_CLOSED)".to_owned())
+    } else {
+        None
+    }
 }
 
 #[cfg(test)]
