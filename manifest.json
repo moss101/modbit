@@ -7,8 +7,8 @@
   "scope_rule": "docs/*.md, root *.md except MANIFEST.md, docs/decisions/*.md, graph JSON/Markdown, tools/*.py, evidence payloads; manifests exclude themselves and transient caches",
   "counts": {
     "docs": 90,
-    "root_and_tooling": 1637,
-    "docs_bytes": 1396240
+    "root_and_tooling": 1639,
+    "docs_bytes": 1398321
   },
   "sections": [
     {
@@ -608,8 +608,8 @@
       "section": "verification",
       "section_title": "Verification and testing",
       "title": "Agent competence benchmarks and regression suites",
-      "bytes": 8291,
-      "sha256": "431c384790f08d1650efa467d07ef2ac0ad4fc4325c61645433339d347aa933d"
+      "bytes": 10372,
+      "sha256": "0123956ac1431d47487f96049e83a395704f6b1ae0c4b11d7503d4f8ae347c62"
     },
     {
       "path": "docs/64_VERIFICATION_EXECUTION_CONTRACTS.md",
@@ -1754,6 +1754,16 @@
       "path": "evidence/m10/IMP-EV-0212/evidence.json",
       "bytes": 6218,
       "sha256": "ab24733d32e8dd6677e73efa1da1766d0988bc7e139091ecd9cd98588ec39df2"
+    },
+    {
+      "path": "evidence/m10/IMP-EV-0244/TASK_CARD.md",
+      "bytes": 3272,
+      "sha256": "da757ac54ebe8f50e011adb97e67a92c1329cecd6e4eb40c5b358d8968882086"
+    },
+    {
+      "path": "evidence/m10/IMP-EV-0246/TASK_CARD.md",
+      "bytes": 2990,
+      "sha256": "a26c851ca0dfacb2129eebdae8fe37a57b29ae93dfa5131696ba0f670847f977"
     },
     {
       "path": "evidence/m10/M10.1/TASK_CARD.md",

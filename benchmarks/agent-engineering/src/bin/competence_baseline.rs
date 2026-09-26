@@ -30,8 +30,8 @@ use std::process::{Command, Stdio};
 use std::time::{Duration, Instant};
 
 use modbit_bench_agent_engineering::{
-    Bundle, Economics, Environment, EventLog, HARNESS_VERSION, Protocol, Suite, TaskSpec,
-    TrialOutcome, count, metrics, parse_events, protected_intact, sha256_hex,
+    Bundle, Economics, Environment, EventLog, HARNESS_VERSION, HarnessProfile, Protocol, Suite,
+    TaskSpec, TrialOutcome, count, metrics, parse_events, protected_intact, sha256_hex,
 };
 
 struct Args {
@@ -47,11 +47,15 @@ struct Args {
     keep: bool,
     cli: PathBuf,
     core: PathBuf,
+    /// A declarative trial profile (IMP-EV-0244, shadow only).
+    profile: Option<PathBuf>,
+    /// Generate, repair and fall back per task (IMP-EV-0244/0246, shadow).
+    adaptive: bool,
 }
 
 fn usage() -> ! {
     eprintln!(
-        "usage: competence-baseline --suite <tasks.json> --fixtures <dir> --out <dir> --endpoint <openai|anthropic> [--model <id>] [--trials N] [--max-turns N] [--task <id>]... [--trial-timeout-secs N] [--keep] [--cli <bin>] [--core <bin>]"
+        "usage: competence-baseline --suite <tasks.json> --fixtures <dir> --out <dir> --endpoint <openai|anthropic> [--model <id>] [--trials N] [--max-turns N] [--task <id>]... [--trial-timeout-secs N] [--keep] [--cli <bin>] [--core <bin>] [--profile <file> | --adaptive]"
     );
     std::process::exit(1)
 }
@@ -71,6 +75,8 @@ fn parse_args() -> Args {
         keep: false,
         cli: PathBuf::new(),
         core: PathBuf::new(),
+        profile: None,
+        adaptive: false,
     };
     let mut i = 0;
     let value = |i: &mut usize| -> String {
@@ -94,6 +100,8 @@ fn parse_args() -> Args {
             "--keep" => a.keep = true,
             "--cli" => a.cli = PathBuf::from(value(&mut i)),
             "--core" => a.core = PathBuf::from(value(&mut i)),
+            "--profile" => a.profile = Some(PathBuf::from(value(&mut i))),
+            "--adaptive" => a.adaptive = true,
             _ => usage(),
         }
         i += 1;
@@ -306,16 +314,32 @@ fn run_trial(
     suite_path: &Path,
     task: &TaskSpec,
     trial: u32,
-    max_turns: u32,
+    profile: &HarnessProfile,
+    label: &str,
 ) -> Result<TrialResult, String> {
     let slug = task.id.replace('/', "__");
-    let trial_dir = args.out.join("trials").join(format!("{slug}-{trial}"));
+    let trial_dir = args
+        .out
+        .join("trials")
+        .join(format!("{slug}-{trial}{label}"));
     std::fs::create_dir_all(&trial_dir).map_err(|e| e.to_string())?;
+    // One scratch directory per attempt (the label names it): on Windows a
+    // previous attempt's processes can still hold its files, so removing a
+    // shared directory could fail silently and the next attempt would commit
+    // the leftovers into its base. A leftover that cannot be removed is an
+    // error, never a base.
     let scratch = std::env::temp_dir().join(format!(
-        "modbit-bench-{}-{slug}-{trial}",
-        std::process::id()
+        "modbit-bench-{}-{slug}-{trial}{}",
+        std::process::id(),
+        label.replace(['/', '\\', ':'], "_")
     ));
     let _ = std::fs::remove_dir_all(&scratch);
+    if scratch.exists() {
+        return Err(format!(
+            "{}: a previous trial's scratch directory could not be removed (a process still holds it)",
+            scratch.display()
+        ));
+    }
     let workspace = scratch.join("workspace");
     let data_dir = scratch.join("profile");
     std::fs::create_dir_all(&data_dir).map_err(|e| e.to_string())?;
@@ -403,22 +427,26 @@ fn run_trial(
     );
     let task_id = first_word_after(&r.stdout, "task ")
         .ok_or_else(|| format!("task create: {}{}", r.stdout, r.stderr))?;
-    let turns = max_turns.to_string();
-    let run_args = [
+    // The trial's budgets are its profile's (the known-good profile's are
+    // the frozen protocol's `--max-turns` alone).
+    let mut owned: Vec<String> = [
         "task",
         "run",
         "--session",
-        &session,
+        session.as_str(),
         "--task",
-        &task_id,
+        task_id.as_str(),
         "--endpoint",
-        &args.endpoint,
+        args.endpoint.as_str(),
         "--model",
-        &args.model,
-        "--max-turns",
-        &turns,
-        "--wait",
-    ];
+        args.model.as_str(),
+    ]
+    .into_iter()
+    .map(str::to_owned)
+    .collect();
+    owned.extend(profile.run_args());
+    owned.push("--wait".into());
+    let run_args: Vec<&str> = owned.iter().map(String::as_str).collect();
     let started = Instant::now();
     let mut r = cli.call(&run_args, args.trial_timeout);
     let mut interactions = 0u32;
@@ -816,10 +844,39 @@ fn main() {
         .collect(),
         os: format!("{}-{}", std::env::consts::OS, std::env::consts::ARCH),
     };
+    // IMP-EV-0244/0246 (EXPERIMENT): the known-good profile is the frozen
+    // protocol; a given profile or the adaptive loop makes this a shadow
+    // experiment, reported as such and never as a baseline.
+    let mut known_good = HarnessProfile::known_good(&suite.protocol);
+    known_good.max_turns = max_turns;
+    let fixed: Option<HarnessProfile> = args.profile.as_ref().map(|path| {
+        let p: HarnessProfile = std::fs::read(path)
+            .ok()
+            .and_then(|b| serde_json::from_slice(&b).ok())
+            .unwrap_or_else(|| {
+                eprintln!(
+                    "competence-baseline: {} is not a harness profile",
+                    path.display()
+                );
+                std::process::exit(1)
+            });
+        if let Err(e) = p.validate() {
+            eprintln!("competence-baseline: profile refused: {e}");
+            std::process::exit(1)
+        }
+        p
+    });
+    let configuration = if args.adaptive {
+        format!("shadow:adaptive/{}", known_good.digest())
+    } else {
+        fixed
+            .as_ref()
+            .map_or_else(|| "direct".to_owned(), HarnessProfile::configuration)
+    };
     let protocol = Protocol {
         trials_per_task: trials,
         max_turns,
-        configuration: "direct".into(),
+        configuration: configuration.clone(),
         endpoint: args.endpoint.clone(),
         model: args.model.clone(),
         base_url_host: base_host(&args.endpoint),
@@ -843,10 +900,24 @@ fn main() {
         max_turns
     );
     let mut outcomes = Vec::new();
+    let mut attempts: Vec<serde_json::Value> = Vec::new();
     for task in &selected {
         for trial in 1..=trials {
             let started = Instant::now();
-            match run_trial(&args, &suite, &args.suite, task, trial, max_turns) {
+            let result = if args.adaptive {
+                adaptive_trial(&args, &suite, task, trial, &known_good, &mut attempts)
+            } else {
+                run_trial(
+                    &args,
+                    &suite,
+                    &args.suite,
+                    task,
+                    trial,
+                    fixed.as_ref().unwrap_or(&known_good),
+                    "",
+                )
+            };
+            match result {
                 Ok(r) => {
                     let o = r.outcome;
                     eprintln!(
@@ -888,6 +959,32 @@ fn main() {
         trials: outcomes,
         generated_at: now_rfc3339(),
     };
+    if configuration != "direct" {
+        // A shadow experiment: its own report, never a baseline.
+        let report = serde_json::json!({
+            "kind": "profile-experiment",
+            "experiment": ["IMP-EV-0244", "IMP-EV-0246"],
+            "hypothesis": "a task-conditioned, bounded-repaired profile verifies as often as the known-good one at lower cost",
+            "configuration": configuration,
+            "known_good": known_good,
+            "known_good_digest": known_good.digest(),
+            "profile": fixed,
+            "attempts": attempts,
+            "protocol": bundle.protocol,
+            "environment": bundle.environment,
+            "metrics": bundle.metrics,
+            "trials": bundle.trials,
+            "generated_at": bundle.generated_at,
+        });
+        let bytes = serde_json::to_vec_pretty(&report).unwrap_or_default();
+        std::fs::write(args.out.join("experiment.json"), &bytes).expect("write experiment.json");
+        println!(
+            "experiment: {} ({configuration}; {} attempts) — a shadow run is never a baseline",
+            args.out.join("experiment.json").display(),
+            attempts.len()
+        );
+        return;
+    }
     if let Err(e) = bundle.validate() {
         eprintln!("competence-baseline: bundle refused: {e}");
         std::process::exit(1);
@@ -907,6 +1004,61 @@ fn main() {
         "\nbundle: {} (sha256 {digest})",
         args.out.join("baseline.json").display()
     );
+}
+
+/// One trial the adaptive way (IMP-EV-0244/0246): the task-conditioned
+/// variant first; a failing variant repaired at most twice from what the
+/// trial showed; the third repair refused and the known-good fallback run.
+/// Every attempt and the refusal are recorded; the trial's outcome is the
+/// last attempt's.
+fn adaptive_trial(
+    args: &Args,
+    suite: &Suite,
+    task: &TaskSpec,
+    trial: u32,
+    known_good: &HarnessProfile,
+    attempts: &mut Vec<serde_json::Value>,
+) -> Result<TrialResult, String> {
+    let mut profile = modbit_bench_agent_engineering::generate(task, known_good);
+    for n in 0.. {
+        let r = run_trial(
+            args,
+            suite,
+            &args.suite,
+            task,
+            trial,
+            &profile,
+            &format!("-a{n}"),
+        )?;
+        let o = &r.outcome;
+        attempts.push(serde_json::json!({
+            "task": task.id, "trial": trial, "attempt": n,
+            "profile": profile.id, "digest": profile.digest(), "repairs": profile.repairs,
+            "known_good": profile.is_known_good(),
+            "max_turns": profile.max_turns, "max_no_progress_turns": profile.max_no_progress_turns,
+            "state": o.state, "verified": o.verified_success,
+        }));
+        if o.verified_success || profile.is_known_good() {
+            return Ok(r);
+        }
+        let features = if o.counts.no_progress_escalations > 0 {
+            vec!["boundary:no_progress".to_owned()]
+        } else {
+            vec!["budget:max_turns".to_owned()]
+        };
+        profile = match modbit_bench_agent_engineering::repair(&profile, &features) {
+            Ok(p) => p,
+            Err(e) => {
+                attempts.push(serde_json::json!({
+                    "task": task.id, "trial": trial, "attempt": n + 1,
+                    "refused": e.to_string(), "fallback": known_good.id,
+                }));
+                eprintln!("competence-baseline: {} trial {trial}: {e}", task.id);
+                known_good.clone()
+            }
+        };
+    }
+    unreachable!("the loop returns")
 }
 
 /// `merge --out <dir> <bundle dir>...`: one bundle from per-task bundles of
