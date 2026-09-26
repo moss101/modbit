@@ -15,13 +15,13 @@ A dossier package is valid only if every path below exists with the listed SHA-2
 |---|---|---:|---:|
 | Authority and orientation | 00–09 | 8 | 65563 |
 | Architecture and subsystems | 10–29 | 20 | 387802 |
-| Implementation specifications | 30–39 | 10 | 162214 |
+| Implementation specifications | 30–39 | 10 | 168056 |
 | Requirements, tasks and traceability | 40–49 | 10 | 351840 |
 | Verification and testing | 50–69 | 15 | 217875 |
 | Delivery and operations | 70–79 | 8 | 62793 |
 | Agent process and governance | 80–97 | 18 | 127876 |
 | Live state | 98–99 | 1 | 14435 |
-| **Total docs** | | **90** | **1390398** |
+| **Total docs** | | **90** | **1396240** |
 
 ## Specification files (`docs/`)
 
@@ -55,7 +55,7 @@ A dossier package is valid only if every path below exists with the listed SHA-2
 | 27 | `docs/27_EXECUTION_POLICY_ROUTER_AND_VERIFIED_ORCHESTRATION.md` | Execution policy router and verified orchestration | architecture | 67667 | `e4957aff5554b6eea8b04b43dfcecbb1871a11b7e16cdb278f8b110bc86daf5a` |
 | 28 | `docs/28_AGENT_COMPETENCE_PLANNING_VERIFICATION_AND_REPAIR.md` | Agent competence: planning, verification and repair | architecture | 13352 | `a5ef2265accb8b1a52f0c9cb60c6418bca67f5f979e598d971f2979e2fa121d7` |
 | 29 | `docs/29_CLIENT_SURFACES_AND_SOURCE_CONTROL_INTEGRATION.md` | Client surfaces and source-control integration | architecture | 26540 | `6f3290b2c5750cc130b4ab3880efa77d1e890adf2e591805a8a7267eb99d5aa2` |
-| 30 | `docs/30_PROTOCOL_APIS_AND_EVENT_SCHEMAS.md` | Protocol, APIs, and Event Schemas | implementation | 52230 | `3c422b66017c0311aac42170de1b02867b7fa5a8f9aa90779357cd5fc1d72b5b` |
+| 30 | `docs/30_PROTOCOL_APIS_AND_EVENT_SCHEMAS.md` | Protocol, APIs, and Event Schemas | implementation | 53615 | `a55b9bfad1f03bdd53d266ea28f584258e94df95abec92993d8471c306c4618a` |
 | 31 | `docs/31_DATABASE_AND_STORAGE_SCHEMA.md` | Database and Storage Schema | implementation | 15319 | `d3e06f3b23aec1e27b22d3020a4c2c96a58a758dda2155cfa584d8389f1e4189` |
 | 32 | `docs/32_DESKTOP_FRONTEND_IMPLEMENTATION.md` | Desktop Frontend Implementation | implementation | 13542 | `33dc6dd7225c3139a0ff6735b0e37d9ea0934ed3e1d6ddb0213f7aabfe69c748` |
 | 33 | `docs/33_CORE_AND_CLOUD_BACKEND_IMPLEMENTATION.md` | Core and Cloud Backend Implementation | implementation | 13639 | `907fccbdc9e41e1002f8576ebdccf2b5875e9368760e8b41849d0f53a6057a84` |
@@ -63,7 +63,7 @@ A dossier package is valid only if every path below exists with the listed SHA-2
 | 35 | `docs/35_DEPENDENCY_AND_BINDING_DECISIONS.md` | Dependency and Binding Decisions | implementation | 2545 | `037a85253201401822bde5ff76b0b6625057099995d06b30c0d1aec4e572b1f9` |
 | 36 | `docs/36_BUILD_BUY_DEPENDENCY_AND_LICENSE_POLICY.md` | Build / Buy / Dependency / License Decisions | implementation | 3363 | `538f768996bec4254231f7671517e68bea6cf529f51b60588a5b2dd91007071a` |
 | 37 | `docs/37_EXISTING_CODE_DONOR_AND_REUSE_POLICY.md` | Existing-Code Donor and Reuse Policy | implementation | 3835 | `4dfad8325e6ed11e390952f46ff14caf6fa30fc72142f1ae58e32a22a620d4ee` |
-| 38 | `docs/38_EXECUTION_POLICY_CONTRACTS_AND_ALGORITHMS.md` | Execution policy contracts and algorithms | implementation | 26711 | `acf48cf6983b29b2f49620f50cf1d27927ad80439742a47ec234daebfafee639` |
+| 38 | `docs/38_EXECUTION_POLICY_CONTRACTS_AND_ALGORITHMS.md` | Execution policy contracts and algorithms | implementation | 31168 | `1d64711f6354bd794c2ddd0c8704be8ab49806a3e4eece603321994ed38f68bf` |
 | 39 | `docs/39_UX_FLOWS_ONBOARDING_AND_INTERACTION_BUDGETS.md` | UX flows, onboarding and interaction budgets | implementation | 15814 | `d941a887e6775d6c756b91470cb52b702d383d777451f87cda4b55f2454fd4a2` |
 | 40 | `docs/40_EVIDENCE_DERIVED_REQUIREMENT_LEDGER.md` | Evidence-Derived Requirement Ledger — Build Edition | requirements | 76383 | `d673606834f48960f015f4719c0b6fd956988469c39348aa859c4c0d91e20336` |
 | 41 | `docs/41_EVIDENCE_DERIVED_IMPLEMENTATION_TASKS.md` | Evidence-Derived Implementation Tasks | requirements | 149169 | `90aadd632622877351db607f6c521b6b7d121ad55690ef0f313680b31dd26311` |
@@ -267,6 +267,7 @@ A dossier package is valid only if every path below exists with the listed SHA-2
 | `evidence/m1/M1.5/evidence.json` | retained evidence | 1739 | `5e0a7f11ce1a4b72fd57b7a762dc17005284345c4d98cf5b7eb9d3dc31e24caf` |
 | `evidence/m1/M1.5/local-desktop-e2e-with-recovery-banner.log` | retained evidence | 313 | `f1c58150b0ac188655b0c3440b9cbd549085d01e3e8fd5c031053f6a2bdfedfb` |
 | `evidence/m1/ci-run-34347242710.json` | retained evidence | 1231 | `a238323591f3fc267ff1b4ee8095929379787e5ff43f8b18753446a77c8f4b03` |
+| `evidence/m10/EPR-012/TASK_CARD.md` | retained evidence | 6289 | `16590a6f7cba62012dfca3d0e432c9da17e4996589f79695fb4042a5a17cc7db` |
 | `evidence/m10/IMP-EV-0017/TASK_CARD.md` | retained evidence | 6326 | `86b061d0b4e4bc0b511cbc77d634bd8dc6e6395d09fb9c077560167d4f091b41` |
 | `evidence/m10/IMP-EV-0017/ci-run-36130922146.json` | retained evidence | 42314 | `89dc2d4b40f29a17ea7a201ace35122ef872e25e07b76c5a536e17fcf5755a23` |
 | `evidence/m10/IMP-EV-0017/evidence.json` | retained evidence | 2796 | `a45616131bc4f1fb680973450821c1e3ed9aed2788e6a124140a45397dfd80b3` |

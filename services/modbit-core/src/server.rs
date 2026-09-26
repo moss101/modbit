@@ -221,6 +221,8 @@ pub async fn run_as(
                 }
             }));
     }
+    // EPR-012: the last activated registry generation, verified again.
+    crate::model_registry::restore(&core).await;
     let _ = std::fs::remove_file(data_dir.join("core.ready"));
     let listener = Listener::bind(&endpoint)
         .await
@@ -590,6 +592,10 @@ async fn serve_connection(core: Arc<Core>, mut stream: BoxedStream) -> Result<()
                     "TrustRepository",
                     "ListStarterTasks",
                     "ActivateModelRegistry",
+                    "RollbackModelRegistry",
+                    "RecordPromotionEvidence",
+                    "PromoteCanary",
+                    "SearchPolicy",
                     "GetModelRegistry",
                     "MaterializeOutcomeStatistics",
                     "GetOutcomeStatistics",
@@ -1121,6 +1127,10 @@ fn required_client_capability(env: &CommandEnvelope) -> Option<&'static str> {
         // same class of decision as configuring the provider (REQ-EPR-010).
         "ConfigureProvider"
         | "ActivateModelRegistry"
+        | "RollbackModelRegistry"
+        | "RecordPromotionEvidence"
+        | "PromoteCanary"
+        | "SearchPolicy"
         | "ProbeModel"
         | "ConfigureForge"
         | "ReconcileUsage"
@@ -4293,8 +4303,45 @@ async fn handle_command(core: &Arc<Core>, env: CommandEnvelope) -> CommandAck {
             let Ok(p) = wire::ActivateModelRegistry::decode(env.payload.as_slice()) else {
                 return reject(cid, "BAD_PAYLOAD", "ActivateModelRegistry");
             };
-            let view = crate::model_registry::activate(core, &p.signed_json);
+            let view =
+                crate::model_registry::activate(core, &p.signed_json, &p.expected_generation).await;
             accept(cid, false, view.encode_to_vec())
+        }
+        "RollbackModelRegistry" => {
+            let Ok(p) = wire::RollbackModelRegistry::decode(env.payload.as_slice()) else {
+                return reject(cid, "BAD_PAYLOAD", "RollbackModelRegistry");
+            };
+            let view = crate::model_registry::rollback(core, &p.expected_generation).await;
+            accept(cid, false, view.encode_to_vec())
+        }
+        "PromoteCanary" => {
+            let Ok(p) = wire::PromoteCanary::decode(env.payload.as_slice()) else {
+                return reject(cid, "BAD_PAYLOAD", "PromoteCanary");
+            };
+            let view = crate::model_registry::promote_canary(
+                core,
+                &p.canary_generation,
+                &p.expected_generation,
+                &p.canary_requests,
+            )
+            .await;
+            accept(cid, false, view.encode_to_vec())
+        }
+        "SearchPolicy" => {
+            let Ok(p) = wire::SearchPolicy::decode(env.payload.as_slice()) else {
+                return reject(cid, "BAD_PAYLOAD", "SearchPolicy");
+            };
+            let view = crate::promotion::search(core, &p).await;
+            accept(cid, false, view.encode_to_vec())
+        }
+        "RecordPromotionEvidence" => {
+            let Ok(p) = wire::RecordPromotionEvidence::decode(env.payload.as_slice()) else {
+                return reject(cid, "BAD_PAYLOAD", "RecordPromotionEvidence");
+            };
+            match crate::promotion::record_evidence(core, &p).await {
+                Ok(v) => accept(cid, false, v.encode_to_vec()),
+                Err((code, detail)) => reject(cid, &code, detail),
+            }
         }
         "GetModelRegistry" => {
             let view = crate::model_registry::current(core);

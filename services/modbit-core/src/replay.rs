@@ -316,9 +316,7 @@ pub(crate) async fn start(
         .find(|(t, p)| t == "RoutingPlanAdmitted" && p["plan_id"] == chosen)
         .map(|(_, p)| p["stats_version"].as_str().unwrap_or_default().to_owned())
         .unwrap_or_default();
-    let current = core
-        .gateway
-        .registry()
+    let current = crate::model_registry::for_task(core, &task)
         .map(|r| r.generation().to_owned())
         .unwrap_or_default();
     if decided_under.is_empty() || decided_under != current {

@@ -2069,6 +2069,17 @@ dependencies = [
 ]
 
 [[package]]
+name = "modbit-bench-policy-lab"
+version = "0.0.0"
+dependencies = [
+ "hex",
+ "modbit-bench-outcome-statistics",
+ "serde",
+ "serde_json",
+ "sha2 0.11.0",
+]
+
+[[package]]
 name = "modbit-bench-retrieval"
 version = "0.0.0"
 dependencies = [
@@ -2216,7 +2227,9 @@ dependencies = [
  "hex",
  "libc",
  "modbit-bench-context-economics",
+ "modbit-bench-gate-calibration",
  "modbit-bench-outcome-statistics",
+ "modbit-bench-policy-lab",
  "modbit-browser",
  "modbit-checkpoint",
  "modbit-compaction",

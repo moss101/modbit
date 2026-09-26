@@ -276,7 +276,7 @@ pub(crate) async fn admit(
         };
     let plan_id = plan.plan_id.clone();
     let plan_ref = modbit_domain::routing::plan_digest(&plan);
-    let registry = core.gateway.registry();
+    let registry = crate::model_registry::for_task(core, &task);
     let feasibility = feasibility_of(&store, registry.as_ref(), session_id, &plan);
     let bindings: Vec<String> = plan
         .slots
@@ -660,6 +660,66 @@ pub(crate) fn switch_economics(
         .collect()
 }
 
+/// Tokens a request's initial leg is priced at when the compile has no
+/// better figure.
+pub(crate) const EXPECTED_INPUT_TOKENS: u64 = 40_000;
+
+/// The compile's evidence from a statistics snapshot: every key's lower
+/// bound, mean and count, or cold start without one.
+pub(crate) fn evidence_of(
+    snapshot: Option<&modbit_bench_outcome_statistics::Snapshot>,
+) -> modbit_providers::compiler::Evidence {
+    use modbit_providers::compiler::Evidence;
+    use modbit_providers::feasibility::LegEvidence;
+    match snapshot {
+        Some(s) => Evidence {
+            stats_version: s.stats_version.clone(),
+            legs: s
+                .aggregates
+                .iter()
+                .map(|a| LegEvidence {
+                    key_id: a.key_id.clone(),
+                    lcb: a.interval.0,
+                    mean: a.mean,
+                    samples: a.samples,
+                })
+                .collect(),
+        },
+        None => Evidence {
+            stats_version: "none".into(),
+            legs: vec![],
+        },
+    }
+}
+
+/// The mode's thresholds a registry floor compiles under.
+pub(crate) fn thresholds_for(
+    floor: &modbit_providers::registry::QualityFloor,
+    generation: &str,
+    switch_cost_minor: u64,
+) -> modbit_providers::feasibility::Thresholds {
+    modbit_providers::feasibility::Thresholds {
+        mode: floor.mode.clone(),
+        tau: floor.min_quality,
+        delta: 0.05,
+        min_samples: modbit_bench_outcome_statistics::MIN_CONFIDENT_SAMPLES,
+        switch_cost_minor,
+        thresholds_version: generation.to_owned(),
+    }
+}
+
+/// REQ-EV-0029: what a request demands of a binding before anything is
+/// weighed. The agent loop calls tools, and the context has to hold what
+/// the compile prices the request at. Images are not a hard need: a binding
+/// without vision gets them described (docs/25).
+pub(crate) fn needs() -> modbit_providers::registry::Needs {
+    modbit_providers::registry::Needs {
+        tools: true,
+        min_context_tokens: u32::try_from(EXPECTED_INPUT_TOKENS).unwrap_or(u32::MAX),
+        ..Default::default()
+    }
+}
+
 #[allow(clippy::too_many_arguments)]
 pub(crate) fn compile_for_run(
     core: &Core,
@@ -671,11 +731,11 @@ pub(crate) fn compile_for_run(
     request_cap_minor: u64,
     context: Option<&RouteContext>,
 ) -> Result<CompiledForRun, (String, String)> {
-    use modbit_bench_outcome_statistics::MIN_CONFIDENT_SAMPLES;
-    use modbit_providers::compiler::{CompileInput, Evidence};
-    use modbit_providers::feasibility::{LegEvidence, Thresholds};
+    use modbit_providers::compiler::CompileInput;
     let compile_started = std::time::Instant::now();
-    let Some(registry) = core.gateway.registry() else {
+    // REQ-EPR-012: the canary, when one is running and this task's policy
+    // allows canary routing; otherwise production.
+    let Some(registry) = crate::model_registry::for_task(core, task) else {
         return Err((
             "NO_ACTIVE_REGISTRY".into(),
             "no signed registry is active; the direct path is the only plan the product compiles without one".into(),
@@ -703,30 +763,12 @@ pub(crate) fn compile_for_run(
     // The statistics the registry pins, when this session has materialized
     // them; otherwise no evidence, which the compiler treats as cold start.
     let snapshot = crate::statistics::latest_snapshot(store, task.session_id).map(|(s, _)| s);
-    let evidence = match snapshot.as_ref() {
-        Some(s) => Evidence {
-            stats_version: s.stats_version.clone(),
-            legs: s
-                .aggregates
-                .iter()
-                .map(|a| LegEvidence {
-                    key_id: a.key_id.clone(),
-                    lcb: a.interval.0,
-                    mean: a.mean,
-                    samples: a.samples,
-                })
-                .collect(),
-        },
-        None => Evidence {
-            stats_version: "none".into(),
-            legs: vec![],
-        },
-    };
+    let evidence = evidence_of(snapshot.as_ref());
     // REQ-EPR-009: at a re-evaluation the switch cost is what leaving the
     // binding in force costs once the warm prefix, the re-prefill, the cache
     // write, the latency and the hysteresis margin are counted; the lowest
     // hurdle over the alternatives is what a cheaper plan must clear.
-    let expected_input_tokens = 40_000;
+    let expected_input_tokens = EXPECTED_INPUT_TOKENS;
     let now_ms = modbit_domain::Timestamp::now().0;
     let economics: Vec<(String, modbit_providers::economics::StaySwitch)> = context
         .map(|ctx| switch_economics(&registry, ctx, now_ms, expected_input_tokens))
@@ -736,14 +778,7 @@ pub(crate) fn compile_for_run(
         .map(|(_, e)| e.switch_cost.total_minor)
         .min()
         .unwrap_or(0);
-    let thresholds = Thresholds {
-        mode: floor.mode.clone(),
-        tau: floor.min_quality,
-        delta: 0.05,
-        min_samples: MIN_CONFIDENT_SAMPLES,
-        switch_cost_minor,
-        thresholds_version: registry.generation().to_owned(),
-    };
+    let thresholds = thresholds_for(&floor, registry.generation(), switch_cost_minor);
     let cap = if request_cap_minor == 0 {
         floor.max_cost_minor
     } else {
@@ -778,15 +813,7 @@ pub(crate) fn compile_for_run(
         },
         lease_generation,
         routing_epoch: next_epoch,
-        // REQ-EV-0029: what the request demands of a binding before anything
-        // is weighed. The agent loop calls tools, and the context has to hold
-        // what the compile prices the request at. Images are not a hard need:
-        // a binding without vision gets them described (docs/25).
-        needs: modbit_providers::registry::Needs {
-            tools: true,
-            min_context_tokens: u32::try_from(expected_input_tokens).unwrap_or(u32::MAX),
-            ..Default::default()
-        },
+        needs: needs(),
         execution_profile: task.execution_profile.clone(),
         allowed_residencies: vec![],
         request_cap: money(cap),

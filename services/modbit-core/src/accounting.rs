@@ -2168,8 +2168,14 @@ pub(crate) async fn reconcile(
         cached_input_tokens: p.cached_input_tokens,
         cache_write_input_tokens: p.cache_write_tokens,
     };
-    let priced =
-        binding.and_then(|(ep, m)| price(core.gateway.registry().as_ref(), &ep, &m, &usage));
+    let priced = binding.and_then(|(ep, m)| {
+        price(
+            crate::model_registry::priced_by(core, &ep, &m).as_ref(),
+            &ep,
+            &m,
+            &usage,
+        )
+    });
     let invoice_ref = store
         .objects()
         .put(p.invoice_json.as_bytes())

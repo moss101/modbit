@@ -265,6 +265,43 @@ pub struct RegistryDocument {
     pub quality_floors: Vec<QualityFloor>,
     /// The bindings.
     pub entries: Vec<RegistryEntry>,
+    /// Present when this document is a promotion over the active one
+    /// (EPR-012): what it replaces and the evidence it stands on, by
+    /// reference. The registry still holds no statistics.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub promotion: Option<Promotion>,
+}
+
+/// What a candidate generation must carry to be promoted (REQ-EPR-012):
+/// the generation it replaces — its activation is a compare-and-swap on
+/// that one, and the one a rollback returns to — and its evidence, by
+/// content reference into the activating Core's object store. Nothing in
+/// it is a measurement; the measurements are what the references name.
+#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct Promotion {
+    /// The active generation this candidate replaces.
+    pub previous_good_generation: String,
+    /// sha256 of the gate-calibration bundle (EPR-019) measured for it.
+    pub calibration_ref: String,
+    /// sha256 of the approved threshold profile its release check uses.
+    pub threshold_profile_ref: String,
+    /// sha256 of the offline parameter-search report that chose it.
+    pub search_report_ref: String,
+    /// Counterfactual replays (EPR-011) of its plans, by replay id.
+    #[serde(default)]
+    pub replays: Vec<String>,
+    /// Exploration it enables, in basis points of requests (0: none).
+    #[serde(default)]
+    pub exploration_bp: u32,
+    /// Whether that exploration may reach critical or high-assurance
+    /// requests.
+    #[serde(default)]
+    pub exploration_critical: bool,
+    /// Requests the canary must be observed on before `PromoteCanary` may
+    /// make it production (0 is refused: every promotion is canaried).
+    #[serde(default)]
+    pub min_canary_requests: u32,
 }
 
 /// A document with the signature over its exact bytes.
@@ -289,6 +326,57 @@ pub struct ModelRegistry {
     pub key_id: String,
     /// Digest of the exact bytes that were verified.
     pub document_digest: String,
+}
+
+impl ModelRegistry {
+    /// Keep revoked every binding in `revoked` (`endpoint/model`), whatever
+    /// this document says: a revocation outlives the generation that made it,
+    /// so a later document — a rollback above all — cannot bring a revoked
+    /// model back (REQ-EPR-012). Returns the bindings this changed.
+    pub fn keep_revoked(&mut self, revoked: &std::collections::BTreeSet<String>) -> Vec<String> {
+        let mut changed = Vec::new();
+        for e in &mut self.document.entries {
+            let key = format!("{}/{}", e.endpoint, e.model);
+            if !e.revoked && revoked.contains(&key) {
+                e.revoked = true;
+                changed.push(key);
+            }
+        }
+        changed
+    }
+
+    /// Every binding this document revokes, as `endpoint/model`.
+    #[must_use]
+    pub fn revoked(&self) -> Vec<String> {
+        self.document
+            .entries
+            .iter()
+            .filter(|e| e.revoked)
+            .map(|e| format!("{}/{}", e.endpoint, e.model))
+            .collect()
+    }
+
+    /// The first required role left without a live binding, if any.
+    #[must_use]
+    pub fn unbound_role(&self) -> Option<&'static str> {
+        REQUIRED_ROLES.iter().copied().find(|role| {
+            !self
+                .document
+                .entries
+                .iter()
+                .any(|e| !e.revoked && e.roles.iter().any(|r| r == role))
+        })
+    }
+
+    /// The `auto` mode's quality floor, when the document sets one.
+    #[must_use]
+    pub fn auto_floor(&self) -> Option<f64> {
+        self.document
+            .quality_floors
+            .iter()
+            .find(|f| f.mode == "auto")
+            .map(|f| f.min_quality)
+    }
 }
 
 /// What a caller needs from a binding.

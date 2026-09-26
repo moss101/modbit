@@ -1180,6 +1180,59 @@ message RoutingActivationView {
 
 message ActivateModelRegistry {
   string signed_json = 1;          // a serialized SignedRegistry
+  // EPR-012: the generation this activation replaces — a compare-and-swap,
+  // required for a promotion; empty means "whatever is active".
+  string expected_generation = 2;
+}
+
+// EPR-012: back to the generation the active one replaced, as a
+// compare-and-swap on the active generation; revocations made since stay.
+// Naming the running canary ends the canary; production is untouched.
+message RollbackModelRegistry {
+  string expected_generation = 1;
+}
+
+// EPR-012: a promotion that passed the gate runs as a canary beside
+// production (only for tasks whose policy sets `routing.canary` ALLOW);
+// this makes it production on the canary's own observed requests, as a
+// compare-and-swap on both generations.
+message PromoteCanary {
+  string canary_generation = 1;
+  string expected_generation = 2;  // the production generation it replaces
+  repeated string canary_requests = 3; // `<session id>:<task id>`
+}
+
+// EPR-012: evidence a promotion cites by reference — a gate-calibration
+// bundle (EPR-019) or an approved threshold profile — checked for its kind
+// and stored as an object. The search report comes only from SearchPolicy.
+message RecordPromotionEvidence {
+  string kind = 1;                 // CALIBRATION | THRESHOLD_PROFILE
+  string json = 2;
+}
+
+// EPR-012: the offline Policy Lab. Searches the candidate document's auto
+// floors (spec_json: a policy-lab Spec) through the router's own compiler on
+// the statistics materialized in the train session, confirms the choice on
+// the untouched holdout session's, and stores the report as evidence.
+message SearchPolicy {
+  string spec_json = 1;
+  string candidate_document_json = 2; // the unsigned RegistryDocument
+  Id train_session_id = 3;
+  Id holdout_session_id = 4;
+}
+
+message PolicySearchView {
+  string report_ref = 1;           // sha256 of the stored search evidence
+  string verdict = 2;              // FEASIBLE | NO_FEASIBLE_CONFIGURATION | HOLDOUT_REGRESSION
+  double chosen_floor = 3;         // meaningful when FEASIBLE
+  string report_json = 4;
+  string refusal_code = 5;
+  string refusal_detail = 6;
+}
+
+message PromotionEvidenceRecorded {
+  string kind = 1;
+  string evidence_ref = 2;         // sha256 of the stored evidence
 }
 
 message ModelRegistryView {
@@ -1192,6 +1245,9 @@ message ModelRegistryView {
   repeated RegistryBindingView bindings = 7;
   string refusal_code = 8;         // empty when active
   string refusal_detail = 9;
+  string previous_good_generation = 10; // what this activation replaced (EPR-012)
+  string activation = 11;          // ACTIVATED | CANARY | PROMOTED | ROLLED_BACK | CANARY_ENDED
+  string canary_generation = 12;   // the canary running beside production, if any
 }
 
 message RegistryBindingView {

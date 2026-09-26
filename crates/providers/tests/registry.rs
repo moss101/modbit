@@ -60,6 +60,7 @@ fn entry(model: &str, roles: &[&str], tools: bool) -> RegistryEntry {
 
 fn document() -> RegistryDocument {
     RegistryDocument {
+        promotion: None,
         schema_version: REGISTRY_SCHEMA_VERSION,
         registry_generation: "registry-2026-09-11".into(),
         stats_version: "stats-2026-09-05".into(),
