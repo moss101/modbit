@@ -1210,6 +1210,17 @@ impl Broker {
                     Ok(0) | Err(_) => break,
                     Ok(n) => {
                         s_read.append(TAG_PTY, &buf[..n]);
+                        // A Windows pseudo-console asks its terminal where the
+                        // cursor is (DSR, `ESC [ 6 n`) and holds the child's
+                        // input until it hears back. The broker is that
+                        // terminal: it answers, top-left (PX-030 found the
+                        // hang).
+                        #[cfg(windows)]
+                        if buf[..n].windows(4).any(|w| w == b"\x1b[6n")
+                            && let Stdin::Pty(w) = &mut *s_read.stdin.blocking_lock()
+                        {
+                            let _ = w.write_all(b"\x1b[1;1R").and_then(|()| w.flush());
+                        }
                     }
                 }
             }

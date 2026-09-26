@@ -381,10 +381,24 @@ async fn pty_mode_runs_a_real_terminal_session() {
     c.write_stdin(&s.session_id, b"hi\r").await.unwrap();
     c.write_stdin(&s.session_id, b"quit\r").await.unwrap();
     // Bounded: a terminal that never reports its exit fails here, not by
-    // hanging the suite.
-    let (_, out, _, exited) = tokio::time::timeout(Duration::from_secs(60), run_to_exit(&mut c))
-        .await
-        .expect("the PTY session reports its exit within a minute");
+    // hanging the suite — with what it did say, so a platform difference is
+    // diagnosable from the failure alone.
+    let deadline = tokio::time::Instant::now() + Duration::from_secs(60);
+    let mut out = Vec::new();
+    let mut seen = Vec::new();
+    let exited = loop {
+        match tokio::time::timeout_at(deadline, c.next()).await {
+            Err(_) => panic!(
+                "the PTY session did not report its exit within a minute; output so far {:?}; events {seen:?}",
+                String::from_utf8_lossy(&out)
+            ),
+            Ok(ev) => match ev {
+                Ok(Some(Event::Output(o))) => out.extend(o.data),
+                Ok(Some(Event::Exited(e))) => break e,
+                other => seen.push(format!("{other:?}").chars().take(300).collect::<String>()),
+            },
+        }
+    };
     let text = String::from_utf8_lossy(&out);
     assert!(
         text.contains("got:hi") && text.contains("got:quit"),

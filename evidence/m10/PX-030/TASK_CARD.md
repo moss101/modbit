@@ -22,7 +22,7 @@
 
 ## Finding (fixed here)
 
-- Running the PTY session on Windows for the first time hung the suite: after the child exited, the broker dropped the pseudo-console's master but still held its stdin writer, so on Windows the ConPTY stayed open, the output reader never reached end-of-file, and the session never recorded its exit. `modbit-execd` now releases the stdin writer with the master when the process ends and bounds the final drain (5 s); the test bounds the whole session (60 s) so a regression fails instead of hanging.
+- Running the PTY session on Windows for the first time hung the suite, for two reasons, both product bugs of the terminal broker on Windows. First, after the child exited the broker dropped the pseudo-console's master but still held its stdin writer, so the ConPTY stayed open, the reader never reached end-of-file and the exit was never recorded: the broker now releases the writer with the master and bounds the final drain (5 s). Second, portable-pty creates the ConPTY with `PSEUDOCONSOLE_INHERIT_CURSOR`, so the pseudo-console asks its terminal for the cursor position (`ESC [ 6 n`) and holds the child's input until answered — nothing answered, so the child never read a line: the broker, acting as the terminal, now answers (`ESC [ 1 ; 1 R`). The test bounds the whole session (60 s) and reports the output and events it saw, so a regression fails with its evidence instead of hanging.
 
 ## Verification
 
