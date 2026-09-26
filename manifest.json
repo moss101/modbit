@@ -7,7 +7,7 @@
   "scope_rule": "docs/*.md, root *.md except MANIFEST.md, docs/decisions/*.md, graph JSON/Markdown, tools/*.py, evidence payloads; manifests exclude themselves and transient caches",
   "counts": {
     "docs": 90,
-    "root_and_tooling": 1614,
+    "root_and_tooling": 1615,
     "docs_bytes": 1381845
   },
   "sections": [
@@ -5952,8 +5952,8 @@
     },
     {
       "path": "evidence/m4/EPR-008/TASK_CARD.md",
-      "bytes": 22360,
-      "sha256": "e7da212d3251f773815ca14cbebf8ea714e3d86c0fc4f3693fd1ad8ced3fceb6"
+      "bytes": 22534,
+      "sha256": "eb274c27546f70d42121305d69b8f82e8fd944ae70c0d5b46bd848d32cc16e57"
     },
     {
       "path": "evidence/m4/EPR-008/ci-run-34637382928.json",
@@ -5971,9 +5971,14 @@
       "sha256": "5af82e1176edbad211c1e2246021023360853f8d52a625f5e2e6b6a362a962ae"
     },
     {
+      "path": "evidence/m4/EPR-008/ci-run-36200566918.json",
+      "bytes": 42618,
+      "sha256": "94f57004656e745559447320f8d3dc4e1c508c4cc4f9b131df0bde7b72d4eba6"
+    },
+    {
       "path": "evidence/m4/EPR-008/evidence.json",
-      "bytes": 8616,
-      "sha256": "bce9d610973b6a16376b205459ffd19bf58f06136fcdccd480fcbc1aa49ed757"
+      "bytes": 11451,
+      "sha256": "223afbb7b32f6a47c41ba4fe7e8fbd86327b36ae8dc8b1f1dec58e3c7dba5e4b"
     },
     {
       "path": "evidence/m4/EPR-009/TASK_CARD.md",
@@ -8892,8 +8897,8 @@
     },
     {
       "path": "graph/project-graph.json",
-      "bytes": 1609813,
-      "sha256": "be9281d45e9d6fcc373013f080cc40189ed7968d74646c98ea64ee02301a4c4b"
+      "bytes": 1612134,
+      "sha256": "32923c0f5c5ed1d994f3cddab7a02d33679714e783f9a98ab11372447f7219e7"
     },
     {
       "path": "tools/build_graph.py",

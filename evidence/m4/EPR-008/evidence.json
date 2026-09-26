@@ -34,7 +34,7 @@
   {
    "id": "gha-34635211773",
    "kind": "hosted CI on 1f91757",
-   "result": "FAIL: Windows rust job \u2014 plain_repo still let Git for Windows rewrite line endings (the autocrlf setting had landed in another fixture); fixed in 432a41c",
+   "result": "FAIL: Windows rust job — plain_repo still let Git for Windows rewrite line endings (the autocrlf setting had landed in another fixture); fixed in 432a41c",
    "url": "https://github.com/moss101/modbit/actions/runs/34635211773",
    "fix": "432a41c"
   },
@@ -62,7 +62,7 @@
     "crates/verification/src/invariants.rs::tests::di_9_and_the_risk_rules_agree_on_every_path"
    ],
    "negative_proof": "Run before the fix: four of the five unit tests fail (deploy/prod.yaml, infra/main.tf, services/api/Dockerfile) and the Core test finds no DiffInvariantViolated for services/api/deploy/prod.yaml; the root-prefix/fallback test passes before and after.",
-   "limitations": "DI-9 stays a permanent DENY: no answered typed question lifts it (UserQuestionAnswered feeds only the docs/28 \u00a73 scope unlock); follow-up, not part of this regression.",
+   "limitations": "DI-9 stays a permanent DENY: no answered typed question lifts it (UserQuestionAnswered feeds only the docs/28 §3 scope unlock); follow-up, not part of this regression.",
    "commit": "d036dd1",
    "pr": "https://github.com/moss101/modbit/pull/38",
    "ci": {
@@ -99,6 +99,31 @@
     "conclusion": "success",
     "url": "https://github.com/moss101/modbit/actions/runs/36177270964",
     "json": "evidence/m4/EPR-008/ci-run-36177270964.json"
+   }
+  },
+  {
+   "id": "di-9-unlock",
+   "found": "2026-09-25, the limitation recorded by the di-9-matcher regression: DI-9 was a permanent DENY",
+   "defect": "docs/64 §4 says a protected path changes only after a typed question, but evaluate_file raised DI-9 whenever the path matched the policy, invariant_context filled the paths without reference to any answer, and UserQuestionAnswered fed only the scope unlock of docs/28 §3: after the user said yes to changing deploy/prod.yaml the write was still refused DIFF_INVARIANT_DENY.",
+   "audit": "IMPLEMENTED-PARTIAL: the DENY half was wired, the typed-question half did not exist; first missing link nothing carried an answered question into InvariantContext.",
+   "fix": "user.ask takes `paths`; handle_ask records the DI-9-protected ones on UserQuestionAsked.protected_paths and sets Core-owned continue/stop options labelled with them; only an Actor::User `continue` unlocks, recorded as ProtectedPathsUnlocked by Actor::Core(\"change-engine\") and rebuilt only from the Core into InvariantContext.protected_unlocked (exact paths); headless and no_approval_profiles tasks fail closed PROTECTED_PATH_FAIL_CLOSED.",
+   "tests": [
+    "services/modbit-core/tests/surface_protocol.rs::epr_008_di_9_a_users_continue_to_a_question_naming_the_path_unlocks_it_across_a_restart",
+    "services/modbit-core/tests/surface_protocol.rs::epr_008_di_9_a_question_that_does_not_name_the_path_or_is_declined_unlocks_nothing",
+    "services/modbit-core/tests/surface_protocol.rs::epr_008_di_9_an_unanswered_or_agent_answered_question_unlocks_nothing",
+    "services/modbit-core/tests/surface_protocol.rs::epr_008_di_9_headless_and_unattended_tasks_fail_closed",
+    "crates/verification/src/invariants.rs::tests::di_9_opens_exactly_the_paths_the_user_unlocked"
+   ],
+   "negative_proof": "Run before the fix on the pre-fix Core (8d1f742): the user's yes to a question naming deploy/prod.yaml left the next write DI-9 DENY; the positive, declined and fail-closed tests fail; five runtime mutations (unlock not reaching InvariantContext, any actor, any option, no fail-closed refusal, the model's options standing) each turn exactly their test red.",
+   "limitations": "The unlock belongs to one task and names exact paths (a fork must ask again; no directory unlock). A question naming protected paths asked while a scope expansion waits also counts as the scope question (docs/28 §3); narrowing that to questions naming the waiting paths is an open follow-up.",
+   "commit": "472a0cf",
+   "pr": "https://github.com/moss101/modbit/pull/41",
+   "ci": {
+    "run_id": "36200566918",
+    "head_sha": "732ca14cfb29dd7995e3157f23c599f873c6b3f1",
+    "conclusion": "success",
+    "url": "https://github.com/moss101/modbit/actions/runs/36200566918",
+    "json": "evidence/m4/EPR-008/ci-run-36200566918.json"
    }
   }
  ]

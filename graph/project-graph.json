@@ -28559,7 +28559,15 @@
     "test:every_dotenv_file_is_a_secret_and_nothing_that_only_looks_like_one",
     "test:every_credential_store_docs_23_protects_is_a_secret_and_its_lookalikes_are_not",
     "test:every_credential_store_the_workspace_protects_is_on_the_secret_surface",
-    "artifact:evidence/m4/EPR-008/ci-run-36177270964.json"
+    "artifact:evidence/m4/EPR-008/ci-run-36177270964.json",
+    "commit:472a0cf",
+    "test:epr_008_di_9_a_users_continue_to_a_question_naming_the_path_unlocks_it_across_a_restart",
+    "test:epr_008_di_9_a_question_that_does_not_name_the_path_or_is_declined_unlocks_nothing",
+    "test:epr_008_di_9_an_unanswered_or_agent_answered_question_unlocks_nothing",
+    "test:epr_008_di_9_headless_and_unattended_tasks_fail_closed",
+    "test:di_9_opens_exactly_the_paths_the_user_unlocked",
+    "run:gha-36200566918",
+    "artifact:evidence/m4/EPR-008/ci-run-36200566918.json"
    ],
    "notes": [
     {
@@ -28651,9 +28659,39 @@
      "from": "E2E_PROVEN",
      "to": "COMPLETE",
      "note": "sealed again: card regression section, evidence.json regressions[] dotenv-secret-surface, CI run json"
+    },
+    {
+     "at": "2026-09-26T00:19:09Z",
+     "from": "COMPLETE",
+     "to": "IMPLEMENTING",
+     "note": "regression found 2026-09-25 (the di-9-matcher regression's recorded limitation): DI-9 was a permanent DENY; no answered typed question lifted it, because UserQuestionAnswered fed only the docs/28 scope unlock, so after the user said yes to changing deploy/prod.yaml the write was still refused"
+    },
+    {
+     "at": "2026-09-26T00:19:09Z",
+     "from": "IMPLEMENTING",
+     "to": "WIRED",
+     "note": "fixed in 472a0cf (PR #41): user.ask names paths; the Core owns the continue/stop options; only an Actor::User continue unlocks, recorded as ProtectedPathsUnlocked by Core(change-engine) and rebuilt into InvariantContext.protected_unlocked; headless and unattended tasks fail closed"
+    },
+    {
+     "at": "2026-09-26T00:19:09Z",
+     "from": "WIRED",
+     "to": "REAL_TESTING",
+     "note": "real Core epr_008_di_9_* (unlock across a restart; not-named or declined questions; unanswered or agent-answered questions; headless and unattended fail closed) and the verification unit test, red on the pre-fix Core and each under its runtime mutation"
+    },
+    {
+     "at": "2026-09-26T00:19:09Z",
+     "from": "REAL_TESTING",
+     "to": "E2E_PROVEN",
+     "note": "hosted CI run 36200566918 green (14/14, attempt 3; attempts 1-2 lost the Windows desktop E2E to unrelated flakes: states.spec.ts:344, then the quiet-hours window crossing midnight at states.spec.ts:196) on macOS, Linux and Windows at 732ca14 (squashed as 472a0cf)"
+    },
+    {
+     "at": "2026-09-26T00:19:09Z",
+     "from": "E2E_PROVEN",
+     "to": "COMPLETE",
+     "note": "sealed again: card regression section (limitation bullet updated for the PX-038 regressions), evidence.json regressions[] di-9-unlock, CI run json"
     }
    ],
-   "status_changed_on": "2026-09-25T19:26:36Z"
+   "status_changed_on": "2026-09-26T00:19:09Z"
   },
   {
    "id": "EPR-009",

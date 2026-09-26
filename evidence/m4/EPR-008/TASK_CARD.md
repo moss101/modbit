@@ -105,4 +105,4 @@ Named tests (run on macOS, Linux and Windows by `.github/workflows/ci.yml`):
 - Limitations:
   - The unlock belongs to one task and names exact paths. A forked task does not inherit it (the carry-over capsule holds no unlock) and must ask again, and a directory cannot be unlocked as a whole.
   - The `user.ask` result the model reads is the answer itself; the PENDING text that names the Core's options is recorded but never model-visible, as for every question.
-  - The scope unlock of docs/28 §3 (PX-038) still takes any recorded answer to a pending scope question, whoever wrote it. Today only the SurfaceProtocol writes answers, so this is defense in depth; a follow-up task was offered.
+  - Resolved since (PX-038 regressions, d441f1a and 839cfca): the scope unlock of docs/28 §3 now takes only the user's own answer to the scope question, and only a scope decision the Core recorded opens a path. Still open: a question naming protected paths that is asked while a scope expansion waits also counts as the scope question; narrowing it to questions naming the waiting paths is a follow-up.
