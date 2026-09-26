@@ -21748,8 +21748,16 @@
    "milestone": "M10",
    "qual": "QUAL-EV-0244",
    "source": "docs/41",
-   "status": "NOT_STARTED",
-   "evidence": []
+   "status": "COMPLETE",
+   "evidence": [
+    "run:gha-36229605642",
+    "test:qual_ev_0244_a_generated_profile_runs_only_in_shadow_and_never_as_the_baseline",
+    "artifact:evidence/m10/IMP-EV-0244/TASK_CARD.md",
+    "artifact:evidence/m10/IMP-EV-0244/evidence.json",
+    "artifact:evidence/m10/IMP-EV-0244/ci-run-36229605642.json",
+    "commit:54b775d"
+   ],
+   "status_changed_on": "2026-09-26T08:52:52Z"
   },
   {
    "id": "IMP-EV-0245",
@@ -21820,8 +21828,16 @@
    "milestone": "M10",
    "qual": "QUAL-EV-0246",
    "source": "docs/41",
-   "status": "NOT_STARTED",
-   "evidence": []
+   "status": "COMPLETE",
+   "evidence": [
+    "run:gha-36229605642",
+    "test:qual_ev_0246_the_third_repair_is_refused_and_the_known_good_fallback_still_verifies",
+    "artifact:evidence/m10/IMP-EV-0246/TASK_CARD.md",
+    "artifact:evidence/m10/IMP-EV-0246/evidence.json",
+    "artifact:evidence/m10/IMP-EV-0246/ci-run-36229605642.json",
+    "commit:54b775d"
+   ],
+   "status_changed_on": "2026-09-26T08:52:52Z"
   },
   {
    "id": "IMP-EV-0247",

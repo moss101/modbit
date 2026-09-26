@@ -1,0 +1,33 @@
+{
+ "task": "IMP-EV-0246",
+ "requirements": [
+  "REQ-EV-0246",
+  "QUAL-EV-0246",
+  "docs/63",
+  "docs/41 (EXPERIMENT)"
+ ],
+ "scenarios": [
+  "the provider fails the first three attempts whatever their profile: the generated variant and both repairs fail, the third repair is refused (at most 2), and the known-good fallback \u2014 the frozen protocol with 24 turns \u2014 runs and verifies; the experiment is shadow only, no baseline written"
+ ],
+ "tests": [
+  "benchmarks/agent-engineering/tests/harness.rs::qual_ev_0246_the_third_repair_is_refused_and_the_known_good_fallback_still_verifies",
+  "benchmarks/agent-engineering/src/workspace.rs::tests::python_byproducts_are_not_part_of_a_trial_workspace"
+ ],
+ "audit": "NOT-FOUND: no profile variant existed to repair, and nothing consumed a trial's failure signals to change one.",
+ "proof": "The real harness, CLI and Core with a staged scripted provider; each attempt in its own scratch workspace.",
+ "negative_proof": "The third repair is refused; on Windows CI the fallback was first rejected by the gate because a shared scratch directory leaked a previous attempt's __pycache__ into the base \u2014 fixed by per-attempt scratch directories and byproduct exclusion, after which Windows verifies.",
+ "limitations": "The failure is forced by the provider, so the test proves the bound and the fallback, not that a repair helps; repair maps two features, not the full failure taxonomy (REQ-EV-0245).",
+ "ci": {
+  "run_id": "36229605642",
+  "head_sha": "6dc9060895d3456d302bd2b83afca52c8e7360c5",
+  "conclusion": "success",
+  "note": "all jobs green on macOS, Linux and Windows",
+  "json": "evidence/m10/IMP-EV-0246/ci-run-36229605642.json"
+ },
+ "batch_commits": [
+  "54b775d"
+ ],
+ "runs": [
+  "36229605642"
+ ]
+}

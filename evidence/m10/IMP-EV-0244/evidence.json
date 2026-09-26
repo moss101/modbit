@@ -1,0 +1,34 @@
+{
+ "task": "IMP-EV-0244",
+ "requirements": [
+  "REQ-EV-0244",
+  "QUAL-EV-0244",
+  "docs/63",
+  "docs/41 (EXPERIMENT)"
+ ],
+ "scenarios": [
+  "the known-good profile's flags are the frozen protocol's (--max-turns 24); a generated variant differs and names the known-good digest it came from",
+  "run with --profile it writes experiment.json (profile-experiment, shadow:<digest>, the variant's budgets, one trial) and no baseline.json; the frozen run of the same task writes the direct baseline, which validates, and the same bundle labelled with the variant is refused NotABaseline",
+  "no workspace package reaches the harness through a normal or build dependency (the resolved cargo metadata graph), with a positive control"
+ ],
+ "tests": [
+  "benchmarks/agent-engineering/tests/harness.rs::qual_ev_0244_a_generated_profile_runs_only_in_shadow_and_never_as_the_baseline"
+ ],
+ "audit": "NOT-FOUND: every trial ran the fixed `direct` configuration; no declarative profile type; the CLI could not set a run's tool-call or no-progress budgets.",
+ "proof": "The real competence-baseline harness driving the real CLI and Core with a scripted provider on the internal suite's python-service/reject-zero task.",
+ "negative_proof": "A variant-labelled bundle is refused as a baseline; the dependency-graph check has a positive control proving it sees a product dependency where one exists.",
+ "limitations": "A scripted provider stands in for a live model; no live cost/success comparison; variants change budgets and skill selection only; no benefit measured, so nothing is promoted.",
+ "ci": {
+  "run_id": "36229605642",
+  "head_sha": "6dc9060895d3456d302bd2b83afca52c8e7360c5",
+  "conclusion": "success",
+  "note": "all jobs green on macOS, Linux and Windows; earlier Windows runs exposed and led to fixing trial scratch-directory reuse",
+  "json": "evidence/m10/IMP-EV-0244/ci-run-36229605642.json"
+ },
+ "batch_commits": [
+  "54b775d"
+ ],
+ "runs": [
+  "36229605642"
+ ]
+}
