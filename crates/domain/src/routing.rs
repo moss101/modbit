@@ -220,6 +220,11 @@ pub struct Provenance {
     /// authorize).
     #[serde(default)]
     pub legacy_decode: Option<LegacyDecode>,
+    /// EPR-013: the skill set the request's statistics were keyed on (`none`,
+    /// or `name@<content hash prefix>` joined by `+`); empty on records
+    /// written before it existed.
+    #[serde(default)]
+    pub skill_set: String,
 }
 
 /// The provenance of a record that was read through a legacy adapter.
@@ -805,6 +810,7 @@ impl ConditionalExecutionPlan {
                 gate_version: v.clone(),
                 risk_version: v,
                 legacy_decode: None,
+                skill_set: String::new(),
             },
             input_digest: digest(&[
                 path.endpoint,

@@ -204,6 +204,8 @@ fn baseline_outcomes_become_attributable_samples() {
         interventions: Interventions::default(),
         model: "gpt-5-mini".into(),
         endpoint: "openai".into(),
+        skills: vec![],
+        effort: String::new(),
     };
     let bundle = publish(
         "build-1",

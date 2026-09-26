@@ -111,6 +111,25 @@ pub struct TaskOutcome {
     pub model: String,
     /// Endpoint name.
     pub endpoint: String,
+    /// EPR-013: the skills the task ran with, as its `SkillSelected` events
+    /// recorded them. Absent (and not in the digest) when it ran none.
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub skills: Vec<SkillUse>,
+    /// EPR-013: the reasoning effort the invocations asked for; empty is the
+    /// provider's default (and not in the digest).
+    #[serde(default, skip_serializing_if = "String::is_empty")]
+    pub effort: String,
+}
+
+/// One skill a task ran with (EPR-013).
+#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
+pub struct SkillUse {
+    /// Skill name.
+    pub name: String,
+    /// Package content hash.
+    pub content_hash: String,
+    /// Evaluation-qualified when it was selected.
+    pub qualified: bool,
 }
 
 /// A published baseline: what the direct path did, pinned to what produced it.
@@ -120,6 +139,11 @@ pub struct BaselineBundle {
     pub schema_version: u32,
     /// Build identity of the Core that produced it.
     pub build_digest: String,
+    /// EPR-013: the harness version its outcomes were produced under (the
+    /// build and its context configuration); empty on bundles written before
+    /// it existed, which are keyed on `build_digest`.
+    #[serde(default, skip_serializing_if = "String::is_empty")]
+    pub harness_version: String,
     /// Repository revision the tasks ran against.
     pub repository_revision: String,
     /// Environment digest (toolchain and platform identity).
@@ -170,6 +194,7 @@ pub fn publish(
     let mut bundle = BaselineBundle {
         schema_version: 1,
         build_digest: build_digest.to_owned(),
+        harness_version: String::new(),
         repository_revision: repository_revision.to_owned(),
         environment_digest: environment_digest.to_owned(),
         created_at_ms,
@@ -179,6 +204,15 @@ pub fn publish(
         note: NOTE.to_owned(),
         bundle_digest: String::new(),
     };
+    bundle.bundle_digest = bundle_digest(&bundle);
+    bundle
+}
+
+/// The same bundle, recording the harness version its outcomes were
+/// produced under (EPR-013), sealed again.
+#[must_use]
+pub fn with_harness(mut bundle: BaselineBundle, harness_version: &str) -> BaselineBundle {
+    bundle.harness_version = harness_version.to_owned();
     bundle.bundle_digest = bundle_digest(&bundle);
     bundle
 }

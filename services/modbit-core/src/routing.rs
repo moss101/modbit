@@ -480,10 +480,16 @@ pub(crate) fn feasibility_of(
         .slots
         .iter()
         .find(|s| s.trigger == modbit_domain::routing::Trigger::QualityRejected);
+    // EPR-013: measured under the skill set the plan pinned.
+    let skill_set = if plan.provenance.skill_set.is_empty() {
+        "none".to_owned()
+    } else {
+        plan.provenance.skill_set.clone()
+    };
     let initial_key = initial.map(|s| modbit_bench_outcome_statistics::StatKey::Solver {
         model: s.model.clone(),
-        skill: "none".into(),
-        harness: crate::baseline::build_digest(),
+        skill: skill_set.clone(),
+        harness: crate::baseline::harness_version(),
     });
     let continuation_key = initial.zip(continuation).map(|(i, c)| {
         modbit_bench_outcome_statistics::StatKey::Escalation {
@@ -730,6 +736,7 @@ pub(crate) fn compile_for_run(
     pin: Option<(String, String)>,
     request_cap_minor: u64,
     context: Option<&RouteContext>,
+    explicit_skills: &[String],
 ) -> Result<CompiledForRun, (String, String)> {
     use modbit_providers::compiler::CompileInput;
     let compile_started = std::time::Instant::now();
@@ -823,7 +830,7 @@ pub(crate) fn compile_for_run(
         // REQ-EPR-007: the reviewer slot rides along whenever the policy can
         // require independent review and assurance can trigger it.
         include_reviewer: assurance_available,
-        harness: crate::baseline::build_digest(),
+        harness: crate::baseline::harness_version(),
         policy_version: core.gateway.policy().version(),
         // The profiler is in shadow (REQ-EPR-003): it informs nothing yet, and
         // the plan says so rather than borrowing its version.
@@ -838,6 +845,9 @@ pub(crate) fn compile_for_run(
         expected_input_tokens,
         current_binding: context.map(|c| (c.endpoint.clone(), c.model.clone())),
         allowed_models: model_policy(core, task),
+        // EPR-013: the skill set this run will select, so the request's
+        // statistics are those of the skills it runs with.
+        skill_set: crate::skills::preview_set(core, task, explicit_skills),
     };
     let compiled = modbit_providers::compiler::compile(&input)
         .map_err(|r| (r.code().to_owned(), format!("{r:?}")))?;
@@ -1198,6 +1208,7 @@ pub(crate) async fn compile(
         pin,
         request_cap_minor,
         None,
+        &[],
     ) {
         Ok(c) => c,
         Err((code, detail)) => return refuse(&code, detail),

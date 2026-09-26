@@ -2406,6 +2406,7 @@ mod tests {
                 gate_version: "gate-1".into(),
                 risk_version: "risk-1".into(),
                 legacy_decode: None,
+                skill_set: String::new(),
             },
             input_digest: "b".repeat(64),
             slots: vec![Slot {

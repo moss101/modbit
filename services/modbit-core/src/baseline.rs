@@ -25,6 +25,18 @@ pub(crate) fn build_digest() -> String {
     ))
 }
 
+/// The harness version outcomes are keyed on (EPR-013): this build and the
+/// context configuration its runs compile under, so statistics gathered at
+/// one context budget never qualify a run at another.
+#[must_use]
+pub(crate) fn harness_version() -> String {
+    modbit_observability::baseline::digest_of(&format!(
+        "{} ctx={}",
+        build_digest(),
+        crate::runtime::compaction_budget()
+    ))
+}
+
 /// The environment the tasks ran in: the platform and the toolchains the
 /// verification engine would use, hashed the same way it hashes them.
 #[must_use]
@@ -88,6 +100,8 @@ pub(crate) async fn assemble(
                 interventions: Interventions::default(),
                 model: String::new(),
                 endpoint: String::new(),
+                skills: vec![],
+                effort: String::new(),
             };
             let (mut first, mut last) = (i64::MAX, 0_i64);
             let mut model_started: Option<i64> = None;
@@ -117,6 +131,9 @@ pub(crate) async fn assemble(
                         if let Some(ep) = p["model_route"]["endpoint"].as_str() {
                             o.endpoint = ep.to_owned();
                         }
+                        if let Some(effort) = p["model_route"]["reasoning_effort"].as_str() {
+                            o.effort = effort.to_owned();
+                        }
                         if let Some(k) = p["model_route"]["cache_key"].as_str() {
                             if last_key.as_deref() == Some(k) {
                                 o.cache_units.0 += 1;
@@ -124,6 +141,17 @@ pub(crate) async fn assemble(
                                 o.cache_units.1 += 1;
                             }
                             last_key = Some(k.to_owned());
+                        }
+                    }
+                    // EPR-013: the skills it ran with, as selected.
+                    "SkillSelected" => {
+                        let use_ = modbit_observability::baseline::SkillUse {
+                            name: p["name"].as_str().unwrap_or_default().to_owned(),
+                            content_hash: p["content_hash"].as_str().unwrap_or_default().to_owned(),
+                            qualified: p["qualified"].as_bool().unwrap_or(false),
+                        };
+                        if !o.skills.contains(&use_) {
+                            o.skills.push(use_);
                         }
                     }
                     "ModelInvocationCompleted" | "TurnFailed" | "TurnInterrupted" => {
@@ -212,12 +240,15 @@ pub(crate) async fn assemble(
             tasks.push(o);
         }
     }
-    publish(
-        &build_digest(),
-        repository_revision,
-        &environment_digest(),
-        modbit_domain::Timestamp::now().0,
-        tasks,
+    modbit_observability::baseline::with_harness(
+        publish(
+            &build_digest(),
+            repository_revision,
+            &environment_digest(),
+            modbit_domain::Timestamp::now().0,
+            tasks,
+        ),
+        &harness_version(),
     )
 }
 

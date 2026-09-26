@@ -470,25 +470,67 @@ impl Snapshot {
     }
 }
 
-/// Derive samples from a published baseline bundle (REQ-EPR-000 → EPR-015).
+/// The skill set a key names (EPR-013): `none`, or every skill as
+/// `name@<content hash prefix>`, sorted and joined by `+`. A changed skill is
+/// a different set, so the statistics of the old one never qualify it.
+#[must_use]
+pub fn skill_set(skills: &[(String, String)]) -> String {
+    if skills.is_empty() {
+        return "none".into();
+    }
+    let mut v: Vec<String> = skills
+        .iter()
+        .map(|(n, h)| format!("{n}@{}", &h[..h.len().min(12)]))
+        .collect();
+    v.sort();
+    v.dedup();
+    v.join("+")
+}
+
+/// The model configuration a key names (EPR-013): the model, and the
+/// reasoning effort when one other than the provider's default was asked
+/// for, so outcomes at different efforts never pool.
+#[must_use]
+pub fn model_config(model: &str, effort: &str) -> String {
+    if effort.is_empty() || effort == "default" {
+        model.to_owned()
+    } else {
+        format!("{model}@effort={effort}")
+    }
+}
+
+/// Derive samples from a published baseline bundle (REQ-EPR-000 → EPR-015,
+/// EPR-013).
 ///
-/// Every task in the bundle is one attributable observation of the solver that
-/// ran it. The direct path runs no Skill and its harness identity is the build
-/// that ran it, so the key says exactly that rather than leaving a component
-/// blank or inventing one.
+/// Every task in the bundle is one attributable observation of the solver
+/// that ran it, keyed on its model configuration, the skill set it ran with
+/// and the harness version it ran under. A task that ran any skill that was
+/// not evaluation-qualified is not an observation of a qualified
+/// combination, so it is left out rather than pooled.
 #[must_use]
 pub fn samples_from_baseline(
     bundle: &modbit_observability::baseline::BaselineBundle,
 ) -> Vec<Sample> {
+    let harness = if bundle.harness_version.is_empty() {
+        bundle.build_digest.clone()
+    } else {
+        bundle.harness_version.clone()
+    };
     bundle
         .tasks
         .iter()
+        .filter(|t| t.skills.iter().all(|s| s.qualified))
         .map(|t| Sample {
             outcome_id: format!("{}:{}", bundle.bundle_digest, t.task_id),
             key: StatKey::Solver {
-                model: t.model.clone(),
-                skill: "none".into(),
-                harness: bundle.build_digest.clone(),
+                model: model_config(&t.model, &t.effort),
+                skill: skill_set(
+                    &t.skills
+                        .iter()
+                        .map(|s| (s.name.clone(), s.content_hash.clone()))
+                        .collect::<Vec<_>>(),
+                ),
+                harness: harness.clone(),
             },
             success: t.verified,
             // Cost stays unknown unless the provider reported the usage it was

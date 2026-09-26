@@ -103,6 +103,10 @@ pub struct CompileInput<'a> {
     /// or `model` labels), when it restricts them: a hard filter applied
     /// before any quality or cost is weighed. `None` = unrestricted.
     pub allowed_models: Option<Vec<String>>,
+    /// EPR-013: the skill set the request runs with (`none`, or
+    /// `name@<content hash prefix>` joined by `+`); its statistics are the
+    /// ones keyed on it, so a changed skill has none yet. Empty is `none`.
+    pub skill_set: String,
     /// REQ-EPR-007: whether the assurance policy can require independent
     /// review of this request, so every plan carries a prevalidated
     /// reviewer slot (the cheapest eligible `reviewer`-role binding, a
@@ -490,6 +494,11 @@ pub fn compile(input: &CompileInput<'_>) -> Result<Compiled, CompileRefused> {
                 reserved: money(reserved),
             },
         };
+    let skill_set = if input.skill_set.is_empty() {
+        "none".to_owned()
+    } else {
+        input.skill_set.clone()
+    };
     let provenance = Provenance {
         policy_version: input.policy_version.clone(),
         registry_generation: registry.generation().to_owned(),
@@ -499,9 +508,12 @@ pub fn compile(input: &CompileInput<'_>) -> Result<Compiled, CompileRefused> {
         gate_version: input.gate_version.clone(),
         risk_version: input.risk_version.clone(),
         legacy_decode: None,
+        skill_set: skill_set.clone(),
     };
     let scope = &input.scope;
-    let solver_key = |e: &RegistryEntry| format!("solver|{}|none|{}", e.model, input.harness);
+    // EPR-013: the request's statistics are those of its skill set.
+    let solver_key =
+        |e: &RegistryEntry| format!("solver|{}|{}|{}", e.model, skill_set, input.harness);
     let escalation_key = |a: &RegistryEntry, b: &RegistryEntry| {
         format!(
             "escalation|{}|{}|acceptance|workspace|configured",

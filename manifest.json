@@ -7,8 +7,8 @@
   "scope_rule": "docs/*.md, root *.md except MANIFEST.md, docs/decisions/*.md, graph JSON/Markdown, tools/*.py, evidence payloads; manifests exclude themselves and transient caches",
   "counts": {
     "docs": 90,
-    "root_and_tooling": 1643,
-    "docs_bytes": 1398321
+    "root_and_tooling": 1644,
+    "docs_bytes": 1400815
   },
   "sections": [
     {
@@ -383,8 +383,8 @@
       "section": "implementation",
       "section_title": "Implementation specifications",
       "title": "Execution policy contracts and algorithms",
-      "bytes": 31168,
-      "sha256": "1d64711f6354bd794c2ddd0c8704be8ab49806a3e4eece603321994ed38f68bf"
+      "bytes": 33662,
+      "sha256": "20334514a3f9873573e1e31dd6cb055c47cc2d8cb33807369b6aee79be58ee03"
     },
     {
       "path": "docs/39_UX_FLOWS_ONBOARDING_AND_INTERACTION_BUDGETS.md",
@@ -1604,6 +1604,11 @@
       "path": "evidence/m10/EPR-012/evidence.json",
       "bytes": 3483,
       "sha256": "75a733bb2d3be57068215cc60ac4f68ca51c4d01a23476894465d9de90f2f536"
+    },
+    {
+      "path": "evidence/m10/EPR-013/TASK_CARD.md",
+      "bytes": 4364,
+      "sha256": "806bc0e0a80a9178dc8fefbf95d2d3206523741855d51daf7b9ff32ab1a37675"
     },
     {
       "path": "evidence/m10/IMP-EV-0017/TASK_CARD.md",
