@@ -20355,8 +20355,24 @@
    "milestone": "M10",
    "qual": "QUAL-EV-0211",
    "source": "docs/41",
-   "status": "NOT_STARTED",
-   "evidence": []
+   "status": "COMPLETE",
+   "evidence": [
+    "run:gha-36197002804",
+    "run:gha-36206814406",
+    "run:gha-36196671564",
+    "test:live_recorded_tool_round_trip_on_each_configured_wire",
+    "test:replay_recorded_openai_wire_tool_round_trip",
+    "test:replay_recorded_anthropic_wire_tool_round_trip",
+    "test:qual_ev_0211_the_core_routes_and_streams_over_the_anthropic_wire",
+    "test:forge_adapter_reads_github_issues_directly_with_the_token_in_its_header_only",
+    "artifact:evidence/m10/IMP-EV-0211/TASK_CARD.md",
+    "artifact:evidence/m10/IMP-EV-0211/evidence.json",
+    "artifact:evidence/m10/IMP-EV-0211/ci-run-36206814406.json",
+    "artifact:evidence/m10/IMP-EV-0211/live-run-36197002804/live_recorded_tool_round_trip_on_each_configured_wire.json",
+    "commit:7fca947"
+   ],
+   "owner_agent": "Production readiness assessment",
+   "status_changed_on": "2026-09-26T06:09:59Z"
   },
   {
    "id": "IMP-EV-0212",

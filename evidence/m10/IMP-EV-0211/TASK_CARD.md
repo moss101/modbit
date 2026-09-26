@@ -118,7 +118,8 @@ Every integration the product has is declared, with a test at each level it need
     - both wires recorded (`fs.read({"path":"README.md"})`, then `demo`);
     - both result records `passed`;
     - the gate step failed only because the recordings were not yet committed — the first run cannot find a fixture that it is itself creating.
-  - **Second run:** see `evidence.json`. With the recordings committed, the live tests and the gate step (`--live`) are all green.
+  - **Run 36197002804:** with the recordings committed, the live tests and the gate step (`--live`) are all green.
+- **CI:** run 36206814406 on the merged head (5f76628, squashed as 7fca947), every job green on macOS, Linux and Windows.
 - **Offline:**
   - both recordings replay through the real adapter on every CI platform;
   - the refusal test and the safety test pass;

@@ -1,0 +1,72 @@
+{
+ "task": "IMP-EV-0211",
+ "requirements": [
+  "REQ-EV-0211",
+  "QUAL-EV-0211",
+  "docs/50 test pyramid levels 2, 3 and 6",
+  "docs/15 Live provider proof",
+  "docs/82 no placeholder production evidence",
+  "docs/83 definition of done"
+ ],
+ "scenarios": [
+  "the inventory: tools/integrations.json declares 8 integrations over the 7 workspace members whose production source opens an outbound connection; the gate finds every such member from the source (reqwest, object_store, hyper clients, websocket client connects, TcpStream::connect; fetch/http.request/net.request/WebSocket in TypeScript) and refuses an undeclared one or a stale claim",
+  "every named test exists as a test, not as a helper; an external-API integration has a component level (the adapter called directly), an integration level (through the Core) and an external level of live_ tests that a workflow's cargo test -p <crate> live_ actually selects, plus a recorded safe fixture replayed offline",
+  "live run 36196671564 on the real gateway (z.ai glm-5.3-flash, both protocols, the repository's own provider secrets): streaming, the tool round trip and cancellation proven on both wires; each wire's round trip recorded through a proxy that keeps request bodies and response chunks and never a credential header; both recordings committed with that run's id and bound by sha256 to its retained result record",
+  "live run 36197002804, recordings committed: every live test passed and the workflow's last step, integration_gate.py --live, confirmed each proved its wire",
+  "offline on every platform: the real adapter reproduces both recorded round trips from a server that answers only the recorded requests (same tool call, same provider stream ids and models); a request body the provider was never sent is refused with its first difference; the committed recordings carry provenance and nothing the product's redactor would replace",
+  "a real Core streams over the Anthropic protocol through its own routing (new integration level): catalog listed, text and typed tool-call probes, key only in x-api-key, health counted, and no file the Core wrote holds the key",
+  "the GitHub forge adapter called directly (new component level): the token only in Authorization and never returned even when echoed, GitHub's 404 typed, another host refused before any byte",
+  "the nightly live proof, red since 2026-09-22, is green again: cancellation fires on the first streamed token of either kind (a model that reasons first sent no answer text within 256 tokens)"
+ ],
+ "tests": [
+  "crates/providers/tests/recorded.rs::{live_recorded_tool_round_trip_on_each_configured_wire, replay_recorded_openai_wire_tool_round_trip, replay_recorded_anthropic_wire_tool_round_trip, replay_refuses_a_request_the_provider_never_accepted, recorded_fixtures_carry_provenance_and_no_credential}",
+  "crates/providers/tests/conformance.rs::live_streaming_tool_round_trip_and_cancellation_against_production_endpoints",
+  "services/modbit-core/tests/surface_protocol.rs::qual_ev_0211_the_core_routes_and_streams_over_the_anthropic_wire",
+  "crates/tools/tests/forge.rs::forge_adapter_reads_github_issues_directly_with_the_token_in_its_header_only",
+  "tools/test_dossier.py::IntegrationGateTests (20 cases)",
+  "tools/integration_gate.py (the gate: dossier integrity job; --live in live-providers.yml)"
+ ],
+ "audit": "IMPLEMENTED-PARTIAL with one BROKEN-DRIFTED part. The provider gateway had component tests against wire-faithful servers and a nightly live test, and the OpenAI wire had Core-level tests. But a skipped live test returned ok and the workflow exited 0 without secrets, so nothing told a skip from a pass; no real exchange had ever been recorded; the Anthropic wire had no Core-level test and the forge adapter no component test; and nothing listed the integrations. The nightly live proof had failed daily since 2026-09-22 on a test assumption about when the first answer token arrives.",
+ "proof": "Two live runs on the real gateway with the repository's credentials; their recordings replayed through the real adapter on macOS, Linux and Windows; a real Core over the Anthropic protocol; the forge adapter over a real socket; and a gate, run in CI, that holds the declared inventory to the code, the workflows, the fixtures and the retained records of the run that made them.",
+ "negative_proof": "mutation-1: an adapter that sends a changed prompt_cache_key is refused at /body/prompt_cache_key; mutation-2: a decoder reading the provider id from the wrong field fails on the stream ids; mutation-3: a real skipped live run exits 0 from cargo test and 1 from integration_gate.py --live with four failures; 20 gate cases each fail for exactly one cause (undeclared Rust and TypeScript connections, stale claim, missing test, helper-not-test, no live or component level, unaccepted or missing deferral record, --release on a deferral, a live test no workflow runs, a non-live_ external test, a credential header, a fixture recorded outside CI, a fixture no retained run wrote, an edited fixture, a skipped record, no record, a pass that proved another integration, a real service without its integration level or with an external one).",
+ "found_on_the_way": [
+  "the nightly live proof had been red for four days: the cancellation step cancelled only on a MessageDelta, and glm-5.3-flash now reasons first, spending all 256 tokens counting inside its reasoning; the fix cancels on the first streamed token of either kind and gives the counting request room",
+  "the replay server first counted a request as served after writing the stream terminator, but the adapter is done at the last event, so the count raced the assertion; it now counts on acceptance",
+  "the first test-detection rule accepted any #[test] within six lines above a function, which let a helper right below a test pass as one; the gate now reads only the attributes directly on the function"
+ ],
+ "limitations": "forge.github's real-API level stays deferred by DR-M6-002 until the owner supplies MODBIT_GITHUB_TOKEN and a test repository (docs/77 \u00a75 item 2), so integration_gate.py --release fails on it today \u2014 the requirement working, not a gap; no live forge test was written because it could not be run. The live level runs on a compatible gateway (DR-M9-002) and does not discharge docs/15's production-endpoint clause. A fixture's authenticity rests on its sha256 in the retained record of a named CI run, not on a signature. Each recorded answer arrived as one network chunk, so frame splitting is covered by the component suite, not by the recordings. Coverage is detected by source patterns for outbound clients; a connection through a crate not on the list would not be seen.",
+ "live_runs": [
+  "36196671564",
+  "36197002804"
+ ],
+ "batch_commits": [
+  "7fca947"
+ ],
+ "runs": [
+  "36206814406",
+  "36196671564",
+  "36197002804"
+ ],
+ "ci": {
+  "run_id": "36206814406",
+  "head_sha": "5f7662878986dd4a58f6abbc21c565f5a14e2341",
+  "conclusion": "success",
+  "note": "every job green on macOS, Linux and Windows (including the cloud job and the dossier job's new integration-gate step) on the rebase onto c96d005; the pre-rebase head was also all green on the first attempt (run 36197582841)",
+  "json": "evidence/m10/IMP-EV-0211/ci-run-36206814406.json"
+ },
+ "live": {
+  "recording_run": {
+   "run_id": "36196671564",
+   "conclusion": "failure",
+   "note": "live tests green on both wires and both recordings made; the gate step failed only because the recordings it was creating were not yet committed",
+   "records": "evidence/m10/IMP-EV-0211/live-run-36196671564/"
+  },
+  "green_run": {
+   "run_id": "36197002804",
+   "conclusion": "success",
+   "note": "recordings committed: every live test passed and integration_gate.py --live confirmed each proved its wire",
+   "records": "evidence/m10/IMP-EV-0211/live-run-36197002804/"
+  },
+  "endpoint": "api.z.ai (OpenAI protocol at /api/coding/paas/v4, Anthropic protocol at /api/anthropic), model glm-5.3-flash, DR-M9-002"
+ }
+}
