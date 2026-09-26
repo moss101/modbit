@@ -10310,8 +10310,16 @@
    "milestone": "M10",
    "qual": "QUAL-EV-0023",
    "source": "docs/41",
-   "status": "NOT_STARTED",
-   "evidence": []
+   "status": "COMPLETE",
+   "evidence": [
+    "run:gha-36204843520",
+    "test:qual_ev_0023_a_cloud_tasks_starts_emit_every_slo_timestamp_and_cold_and_warm_latencies",
+    "artifact:evidence/m10/IMP-EV-0023/TASK_CARD.md",
+    "artifact:evidence/m10/IMP-EV-0023/evidence.json",
+    "artifact:evidence/m10/IMP-EV-0023/ci-run-36204843520.json",
+    "commit:b58cf1a"
+   ],
+   "status_changed_on": "2026-09-26T00:49:55Z"
   },
   {
    "id": "IMP-EV-0024",

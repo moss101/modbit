@@ -1,0 +1,34 @@
+{
+ "task": "IMP-EV-0023",
+ "requirements": [
+  "REQ-EV-0023",
+  "QUAL-EV-0023",
+  "docs/34",
+  "docs/30"
+ ],
+ "scenarios": [
+  "a cloud_isolated task through the real Cloud API over Postgres and S3 with a worker and the Sandbox Gateway reaches review; its cloud log carries REQUESTED, PREWARM (NONE), SANDBOX_REQUESTED, SANDBOX_READY (cold, sandbox id), FIRST_TOKEN and FIRST_TOOL in ladder order with non-decreasing timestamps, naming one run",
+  "returned from review and started again on the worker's Core, GetSloLadder shows two starts, COLD then WARM (sandbox reused), every timestamp present and ordered, two runs, warm provisioning no slower than cold; figures hold one cold and one warm start"
+ ],
+ "tests": [
+  "apps/cloud-worker/tests/cloud_worker.rs::qual_ev_0023_a_cloud_tasks_starts_emit_every_slo_timestamp_and_cold_and_warm_latencies",
+  "crates/observability/src/slo.rs::tests::a_ladder_derives_each_starts_latencies_and_separates_cold_from_warm"
+ ],
+ "audit": "NOT-FOUND: scattered cloud-table timestamps and an in-memory first-token figure per endpoint; no rung for a sandbox request or a run's first token or tool, no warm/cold derivation.",
+ "proof": "Real cloud stack (Cloud API, Postgres, S3, worker, Sandbox Gateway; the MicroVM backend in the hosted cloud job): the ladder is task events on the canonical log, derived by one pure function.",
+ "negative_proof": "Recording a reused sandbox as cold fails the test on COLD/WARM.",
+ "limitations": "No warm pool (PREWARM NONE; an owner decision); every start through the Cloud API is cold today; FIRST_TOKEN/FIRST_TOOL may repeat after a mid-run Core restart and the derivation takes the first per start.",
+ "batch_commits": [
+  "b58cf1a"
+ ],
+ "runs": [
+  "36204843520"
+ ],
+ "ci": {
+  "run_id": "36204843520",
+  "head_sha": "3e9b3cf013d44a74eb3ef821aa200368b52347c1",
+  "conclusion": "success",
+  "note": "every job green on macOS, Linux and Windows (including the cloud job) on the final rebase onto 31f53c0",
+  "json": "evidence/m10/IMP-EV-0023/ci-run-36204843520.json"
+ }
+}
