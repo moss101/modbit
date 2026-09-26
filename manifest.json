@@ -7,8 +7,8 @@
   "scope_rule": "docs/*.md, root *.md except MANIFEST.md, docs/decisions/*.md, graph JSON/Markdown, tools/*.py, evidence payloads; manifests exclude themselves and transient caches",
   "counts": {
     "docs": 90,
-    "root_and_tooling": 1618,
-    "docs_bytes": 1383777
+    "root_and_tooling": 1629,
+    "docs_bytes": 1388734
   },
   "sections": [
     {
@@ -176,8 +176,8 @@
       "section": "architecture",
       "section_title": "Architecture and subsystems",
       "title": "Execution Policy Router and Provider Gateway",
-      "bytes": 13578,
-      "sha256": "aa41d18ef25b22eb9dfb9452eab9d53a3a043ed0b4572868d3e3fe295d592b01"
+      "bytes": 15853,
+      "sha256": "421f4a345d4c7409d8a182f911c686b339a3d50841242c819dba7aff50bdaa21"
     },
     {
       "path": "docs/16_TOOL_CAPABILITY_AND_PROCEDURAL_RUNTIME.md",
@@ -491,8 +491,8 @@
       "section": "verification",
       "section_title": "Verification and testing",
       "title": "Test Strategy — Real-System Completion Gates",
-      "bytes": 5886,
-      "sha256": "9c25cf0c759ffb1c3edbe90c42e83b294c49a6b31a7dd43b6206752e2c0f65ba"
+      "bytes": 8568,
+      "sha256": "50aaa50088599fceeb0cc59f0c29eb9adea5b2939147107d9b713015848437aa"
     },
     {
       "path": "docs/51_E2E_ACCEPTANCE_TEST_CATALOG.md",
@@ -1664,6 +1664,56 @@
       "path": "evidence/m10/IMP-EV-0142/evidence.json",
       "bytes": 2532,
       "sha256": "577c822a3d8370f4369e3bcc78dc4c30d4d5227bc01b5fd6a0370e72d7543357"
+    },
+    {
+      "path": "evidence/m10/IMP-EV-0211/TASK_CARD.md",
+      "bytes": 13316,
+      "sha256": "b0d01836ab19e53d7d7f7acb29ad58dd771580a69e19d75f325691d308234250"
+    },
+    {
+      "path": "evidence/m10/IMP-EV-0211/live-run-36196671564/live-providers.log",
+      "bytes": 11657,
+      "sha256": "203d6dd4240468483a34bffa15eb32ee11d322bdedd4327dacf3269137acb901"
+    },
+    {
+      "path": "evidence/m10/IMP-EV-0211/live-run-36196671564/live_recorded_tool_round_trip_on_each_configured_wire.json",
+      "bytes": 2721,
+      "sha256": "00bb1ec80b234051fd0091593bb741a3a9dce182985141cad755de4636883494"
+    },
+    {
+      "path": "evidence/m10/IMP-EV-0211/live-run-36196671564/live_streaming_tool_round_trip_and_cancellation_against_production_endpoints.json",
+      "bytes": 534,
+      "sha256": "b63b6f27edb156d41371d2f3ca43820f30786d2925ab0bd0fd80aa9e8dac2055"
+    },
+    {
+      "path": "evidence/m10/IMP-EV-0211/live-run-36197002804/live-providers.log",
+      "bytes": 11657,
+      "sha256": "3c1b2dd0617561d06c38be05cbd6a3bc25c5159ed9693efca27ed46c371fe2c9"
+    },
+    {
+      "path": "evidence/m10/IMP-EV-0211/live-run-36197002804/live_recorded_tool_round_trip_on_each_configured_wire.json",
+      "bytes": 4023,
+      "sha256": "11225b218f4b21719e09f783b70ddf4eee9a08baabeda5e059f944e12d490528"
+    },
+    {
+      "path": "evidence/m10/IMP-EV-0211/live-run-36197002804/live_streaming_tool_round_trip_and_cancellation_against_production_endpoints.json",
+      "bytes": 534,
+      "sha256": "891e443604fd12e25d4294937383362e32a0d89e5e0241714386ae9be57b0248"
+    },
+    {
+      "path": "evidence/m10/IMP-EV-0211/mutation-1-request-body.log",
+      "bytes": 687,
+      "sha256": "f2746555b45f1f6e9dfb50095c8cf56508f0221eebd4c044eb0b7b911aeabc06"
+    },
+    {
+      "path": "evidence/m10/IMP-EV-0211/mutation-2-stream-reading.log",
+      "bytes": 403,
+      "sha256": "68ef32262befaed77af5dfac5a2e67cb721afcd3fefe7983ea7edc90e85f22b5"
+    },
+    {
+      "path": "evidence/m10/IMP-EV-0211/mutation-3-skipped-live-run.log",
+      "bytes": 1433,
+      "sha256": "76cf9ca6a6265ffbfd059ecd6d964fac0b5ed29420e6b58dadf3a2380a15135b"
     },
     {
       "path": "evidence/m10/IMP-EV-0212/TASK_CARD.md",
@@ -8951,9 +9001,14 @@
       "sha256": "7062c754275a5d323705f021e35b75adf9f75dd82378c34b19470c8c4b272296"
     },
     {
+      "path": "tools/integration_gate.py",
+      "bytes": 18020,
+      "sha256": "413fa4b02d659f391a6abd5740096f45fa9e09417bdaa6f478182a655c520b56"
+    },
+    {
       "path": "tools/test_dossier.py",
-      "bytes": 46283,
-      "sha256": "ebc25d08cc8701564f4819d3c0d84359c7fbc4fa48057734766d069cbd2a5dbb"
+      "bytes": 56933,
+      "sha256": "4caba500c63eb998259b7cfc7f9a06a72db92512530a8678bf288b5a439aefd6"
     }
   ],
   "renames_v3_to_v3_1": {
