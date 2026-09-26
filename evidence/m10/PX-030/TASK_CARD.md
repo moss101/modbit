@@ -20,6 +20,10 @@
 - PTY and symlink path-policy tests run on Windows (ConPTY; real file and directory symlinks).
 - `apps/desktop/e2e/secrets.spec.ts`; desktop main treats `basic_text` as no keychain (`keychainUsable`, `keychainBackend` in `providerStatus`).
 
+## Finding (fixed here)
+
+- Running the PTY session on Windows for the first time hung the suite: after the child exited, the broker dropped the pseudo-console's master but still held its stdin writer, so on Windows the ConPTY stayed open, the output reader never reached end-of-file, and the session never recorded its exit. `modbit-execd` now releases the stdin writer with the master when the process ends and bounds the final drain (5 s); the test bounds the whole session (60 s) so a regression fails instead of hanging.
+
 ## Verification
 
 - `python3 tools/support_claims.py --self-test` (six claims caught, six definitions passed) and the repository scan (122 files, none); planted claims in docs/76, `apps/cli/src/main.rs` and the desktop renderer each fail the scan; `windows: RELEASE_GRADE` without PX-031 fails it.

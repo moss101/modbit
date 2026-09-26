@@ -7,8 +7,8 @@
   "scope_rule": "docs/*.md, root *.md except MANIFEST.md, docs/decisions/*.md, graph JSON/Markdown, tools/*.py, evidence payloads; manifests exclude themselves and transient caches",
   "counts": {
     "docs": 90,
-    "root_and_tooling": 1646,
-    "docs_bytes": 1400815
+    "root_and_tooling": 1649,
+    "docs_bytes": 1402521
   },
   "sections": [
     {
@@ -680,8 +680,8 @@
       "section": "delivery",
       "section_title": "Delivery and operations",
       "title": "Language and platform support matrix",
-      "bytes": 5687,
-      "sha256": "753831f02bc261061c80249f4a7eca23e6e8891f886df25b52bb41331fc80b3f"
+      "bytes": 7393,
+      "sha256": "db8cbe06341303eb9c201cd0f65c7339af6698833775feb75984c8828e55efd4"
     },
     {
       "path": "docs/77_RELEASE_ZERO_EXECUTION_GOAL.md",
@@ -1814,6 +1814,11 @@
       "path": "evidence/m10/M10.1/evidence.json",
       "bytes": 2550,
       "sha256": "a05dbedc4cf213fcc4c2b4a6ef285fabb409a5f9dbe9e787c750e229341cd04d"
+    },
+    {
+      "path": "evidence/m10/PX-030/TASK_CARD.md",
+      "bytes": 3641,
+      "sha256": "383675a7758d8c9da8ee46ae5d5e75e3b92b5ef28522de8f2d9a3308e4e4888e"
     },
     {
       "path": "evidence/m2/IMP-EV-0011/TASK_CARD.md",
@@ -9066,6 +9071,11 @@
       "sha256": "5c9b7a782d245223726f860ca583d766929a6f5662b644adebee64d257ad426b"
     },
     {
+      "path": "tools/ci_label.py",
+      "bytes": 3514,
+      "sha256": "5d779c114472ed76e222eb15240cadfb72bb66dfa1bd2a6a8e381dceec326bb7"
+    },
+    {
       "path": "tools/dossier_epr.py",
       "bytes": 9310,
       "sha256": "4b5e399ee1b4886662294e3780d7f0630195e29c8198256ff7719d5236591a18"
@@ -9089,6 +9099,11 @@
       "path": "tools/integration_gate.py",
       "bytes": 18020,
       "sha256": "413fa4b02d659f391a6abd5740096f45fa9e09417bdaa6f478182a655c520b56"
+    },
+    {
+      "path": "tools/support_claims.py",
+      "bytes": 6653,
+      "sha256": "0e208c363d38a5f0466bf60a5f3121a7ed60a34c9ad662118d7d1d46bb5bbc00"
     },
     {
       "path": "tools/test_dossier.py",

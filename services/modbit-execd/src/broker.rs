@@ -1247,8 +1247,16 @@ impl Broker {
             } else {
                 wait.await.ok().flatten()
             };
+            // The process is gone: release every handle on the terminal so
+            // its output reaches end-of-file. On Windows the pseudo-console
+            // stays open while any end of it — the stdin writer included —
+            // is held, and the reader would wait forever (PX-030 found it).
+            *s.stdin.lock().await = Stdin::Closed;
             drop(master);
-            let _ = reader_task.await;
+            // Output written after the exit is drained if it arrives at
+            // once; a reader that never sees end-of-file does not hold the
+            // exit record back.
+            let _ = tokio::time::timeout(std::time::Duration::from_secs(5), reader_task).await;
             let code = status.map(|st| st.exit_code() as i32);
             broker.finish(&s, code, None, timed_out, started).await;
         });

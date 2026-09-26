@@ -380,7 +380,11 @@ async fn pty_mode_runs_a_real_terminal_session() {
     };
     c.write_stdin(&s.session_id, b"hi\r").await.unwrap();
     c.write_stdin(&s.session_id, b"quit\r").await.unwrap();
-    let (_, out, _, exited) = run_to_exit(&mut c).await;
+    // Bounded: a terminal that never reports its exit fails here, not by
+    // hanging the suite.
+    let (_, out, _, exited) = tokio::time::timeout(Duration::from_secs(60), run_to_exit(&mut c))
+        .await
+        .expect("the PTY session reports its exit within a minute");
     let text = String::from_utf8_lossy(&out);
     assert!(
         text.contains("got:hi") && text.contains("got:quit"),
