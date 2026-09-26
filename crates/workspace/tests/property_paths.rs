@@ -42,12 +42,11 @@ fn root_with_links() -> (tempfile::TempDir, tempfile::TempDir, PathBuf) {
     std::fs::write(root.path().join("src/main.rs"), "fn main() {}\n").unwrap();
     std::fs::write(root.path().join("README.md"), "# demo\n").unwrap();
     std::fs::write(outside.path().join("secret.txt"), "top secret").unwrap();
-    #[cfg(unix)]
-    {
-        std::os::unix::fs::symlink(outside.path().join("secret.txt"), root.path().join("link"))
-            .unwrap();
-        std::os::unix::fs::symlink(outside.path(), root.path().join("linkdir")).unwrap();
-    }
+    link(
+        &outside.path().join("secret.txt"),
+        &root.path().join("link"),
+    );
+    link(outside.path(), &root.path().join("linkdir"));
     let canonical = root.path().canonicalize().unwrap();
     (root, outside, canonical)
 }
@@ -70,7 +69,7 @@ proptest! {
                 // The planted links live at the root: a normalized path whose
                 // first component is one of them escapes, wherever it goes next.
                 let first = resolved.relative.split('/').next().unwrap_or("");
-                let via_link = cfg!(unix) && (first == "link" || first == "linkdir");
+                let via_link = first == "link" || first == "linkdir";
                 prop_assert!(!via_link, "an escaping link resolved: {p:?} -> {}", resolved.absolute.display());
             }
             Err(Error::OutsideRoot { .. } | Error::Protected { .. } | Error::Io { .. }) => {}
@@ -97,7 +96,6 @@ proptest! {
 /// first read and becomes a link to the outside before the write. Every
 /// operation resolves the path anew, so the write is refused and nothing
 /// outside the root changes.
-#[cfg(unix)]
 #[test]
 fn a_target_swapped_for_an_escaping_link_between_operations_is_refused() {
     use modbit_workspace::{WorkspaceService, WritePrecondition};
@@ -109,11 +107,10 @@ fn a_target_swapped_for_an_escaping_link_between_operations_is_refused() {
     assert_eq!(first.path, "notes.txt");
     // The race: the checked file is replaced by a link to a secret outside.
     std::fs::remove_file(root.path().join("notes.txt")).unwrap();
-    std::os::unix::fs::symlink(
-        outside.path().join("secret.txt"),
-        root.path().join("notes.txt"),
-    )
-    .unwrap();
+    link(
+        &outside.path().join("secret.txt"),
+        &root.path().join("notes.txt"),
+    );
     let err = ws
         .atomic_replace("notes.txt", b"overwritten", WritePrecondition::default())
         .unwrap_err();
@@ -130,7 +127,7 @@ fn a_target_swapped_for_an_escaping_link_between_operations_is_refused() {
     std::fs::write(root.path().join("docs/a.md"), "a").unwrap();
     assert!(ws.read("docs/a.md").is_ok());
     std::fs::remove_dir_all(root.path().join("docs")).unwrap();
-    std::os::unix::fs::symlink(outside.path(), root.path().join("docs")).unwrap();
+    link(outside.path(), &root.path().join("docs"));
     let err = ws
         .atomic_replace("docs/secret.txt", b"x", WritePrecondition::default())
         .unwrap_err();
@@ -139,4 +136,17 @@ fn a_target_swapped_for_an_escaping_link_between_operations_is_refused() {
         std::fs::read_to_string(outside.path().join("secret.txt")).unwrap(),
         "top secret"
     );
+}
+
+/// A symbolic link on any platform: Windows needs to know a file link from a
+/// directory link (PX-030: the path policy is conformance-tested on every OS).
+fn link(target: &std::path::Path, at: &std::path::Path) {
+    #[cfg(unix)]
+    std::os::unix::fs::symlink(target, at).unwrap();
+    #[cfg(windows)]
+    if target.is_dir() {
+        std::os::windows::fs::symlink_dir(target, at).unwrap();
+    } else {
+        std::os::windows::fs::symlink_file(target, at).unwrap();
+    }
 }

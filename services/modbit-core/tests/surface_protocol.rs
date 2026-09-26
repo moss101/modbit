@@ -29133,8 +29133,7 @@ async fn qual_px_005_a_user_edit_lands_only_through_the_change_transaction() {
         .join("\n")
         + "\n";
     let (repo, root) = plain_repo(&[("notes.txt", &original), (".env", "SECRET=1\n")]);
-    #[cfg(unix)]
-    std::os::unix::fs::symlink(repo.path().join(".env"), repo.path().join("link.txt")).unwrap();
+    symlink_any(&repo.path().join(".env"), &repo.path().join("link.txt"));
     let dir = tempfile::tempdir().unwrap();
     let core = CoreProcess::spawn(dir.path());
     let mut c = core.client_of(ClientKind::Desktop).await;
@@ -29294,7 +29293,6 @@ async fn qual_px_005_a_user_edit_lands_only_through_the_change_transaction() {
     );
     // Protected: a path that resolves to a protected file is denied after
     // symlink resolution (docs/23), and the protected file itself is too.
-    #[cfg(unix)]
     {
         let err = c
             .command(patch(
@@ -44706,4 +44704,17 @@ async fn qual_epr_013_statistics_are_keyed_on_qualified_skill_combinations_and_p
         );
     }
     drop(c);
+}
+
+/// A symbolic link on any platform: Windows needs to know a file link from a
+/// directory link (PX-030: the path policy is conformance-tested on every OS).
+fn symlink_any(target: &std::path::Path, at: &std::path::Path) {
+    #[cfg(unix)]
+    std::os::unix::fs::symlink(target, at).unwrap();
+    #[cfg(windows)]
+    if target.is_dir() {
+        std::os::windows::fs::symlink_dir(target, at).unwrap();
+    } else {
+        std::os::windows::fs::symlink_file(target, at).unwrap();
+    }
 }

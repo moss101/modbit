@@ -106,6 +106,8 @@ function App() {
   const [core, setCore] = useState<CoreStatus>({ state: "starting", restarts: 0 });
   const [model, setModel] = useState<Model>(emptyModel);
   const [screen, setScreen] = useState<ScreenState>("loading");
+  // PX-030 / docs/76: what this platform has earned, from main, and nothing more.
+  const [platform, setPlatform] = useState<{ state: string; statement: string } | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [recovered, setRecovered] = useState<string | null>(null);
   const [recovery, setRecovery] = useState<RecoveryInfo | null>(null);
@@ -179,6 +181,7 @@ function App() {
     setError(null);
     try {
       const local = await window.modbit.localState();
+      if (local.platform) setPlatform({ state: local.platform.state, statement: local.platform.statement });
       if (!local.sessionId) {
         setModel(emptyModel());
         setScreen("empty");
@@ -663,6 +666,11 @@ function App() {
         <span className="status" data-testid="core-status" aria-live="polite">
           {core.state === "connected" ? `Core connected (pid ${core.pid})` : core.state === "restarting" ? `Core restarting…` : core.state === "failed" ? "Core failed" : "Core starting…"}
         </span>
+        {platform && (
+          <span className="meta" data-testid="platform-state" data-state={platform.state} title={platform.statement}>
+            {platform.statement}
+          </span>
+        )}
       </header>
       <div role="region" aria-label="Status and notifications">
       <StateLine state={fleet} testid="fleet-state" />

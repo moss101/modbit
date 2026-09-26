@@ -314,19 +314,23 @@ jobs:
         run: python3 tools/example_runner.py
       - name: Every integration is qualified at every level it needs; mock-only cannot pass (REQ-EV-0211)
         run: python3 tools/integration_gate.py
+      - name: Platform support claims (PX-030, docs/76)
+        run: |
+          python3 tools/support_claims.py --self-test
+          python3 tools/ci_label.py --self-test
+          python3 tools/support_claims.py
 
   ci-compatible:
     name: CI_COMPATIBLE summary (not release-grade)
     needs: [rust, node, cloud, desktop-e2e, protocol-roundtrip, locked-files, dossier]
+    # Runs whatever happened upstream, so a failed platform suite is named
+    # here and fails this job too — the label is earned, never assumed.
+    if: always()
     runs-on: ubuntu-latest
-    timeout-minutes: 75
+    timeout-minutes: 10
     steps:
-      - name: Record platform label
-        run: |
-          {
-            echo "## Platform result: CI_COMPATIBLE only"
-            echo
-            echo "Core, CLI and runtime built and tested on macOS, Linux and Windows."
-            echo "This label is never release-grade by itself (docs/76, PX-030); release"
-            echo "promotion requires platform-specific E2E evidence (PX-031) and a Decision Record."
-          } >> "$GITHUB_STEP_SUMMARY"
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
+      - name: Label the run from its job results (PX-030)
+        env:
+          NEEDS_JSON: ${{ toJSON(needs) }}
+        run: python3 tools/ci_label.py

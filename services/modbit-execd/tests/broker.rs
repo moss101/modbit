@@ -365,7 +365,8 @@ async fn qual_ev_0025_stdin_is_explicit_and_two_requests_do_not_share_environmen
     );
 }
 
-#[cfg(unix)]
+/// PX-030: the PTY runs on every platform — a Unix pseudo-terminal, a
+/// Windows ConPTY — and the same session reads input and exits.
 #[tokio::test]
 async fn pty_mode_runs_a_real_terminal_session() {
     let dir = tempfile::tempdir().unwrap();

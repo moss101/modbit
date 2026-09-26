@@ -462,3 +462,33 @@ fn cli_drives_a_real_core_end_to_end() {
             .is_some_and(|x| x == "sock"))
     );
 }
+
+/// PX-030 / docs/76: the CLI states what this platform has earned — CI
+/// compatibility, a development guarantee — and never presents it as
+/// support; it needs no Core and no profile to say so.
+#[test]
+fn px_030_the_cli_states_the_platform_as_ci_compatible_and_not_as_support() {
+    let out = std::process::Command::new(env!("CARGO_BIN_EXE_modbit-cli"))
+        .arg("platform")
+        .output()
+        .unwrap();
+    assert!(
+        out.status.success(),
+        "{}",
+        String::from_utf8_lossy(&out.stderr)
+    );
+    let text = String::from_utf8_lossy(&out.stdout);
+    let label = match std::env::consts::OS {
+        "macos" => "macOS",
+        "windows" => "Windows",
+        _ => "Linux",
+    };
+    assert!(
+        text.starts_with(&format!(
+            "platform {label} {}: CI_COMPATIBLE",
+            std::env::consts::ARCH
+        )),
+        "{text}"
+    );
+    assert!(text.contains("not a support claim"), "{text}");
+}

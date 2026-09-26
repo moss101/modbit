@@ -35,6 +35,12 @@ test("new task renders from Core ids, fleet reduces Core events, and survives Co
 
   // Empty state first.
   await expect(page.getByTestId("fleet-empty")).toBeVisible();
+  // PX-030 / docs/76: the app states what this platform has earned — CI
+  // compatibility, a development guarantee — and never presents it as support.
+  const platform = page.getByTestId("platform-state");
+  await expect(platform).toHaveAttribute("data-state", "CI_COMPATIBLE");
+  await expect(platform).toContainText("CI_COMPATIBLE");
+  await expect(platform).toContainText("not a support claim");
 
   // New Task: CreateSession then CreateTask; the card appears with the durable id.
   await page.getByTestId("goal").fill("Make the flaky test deterministic");

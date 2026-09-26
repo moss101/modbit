@@ -12,6 +12,7 @@ import { CoreSupervisor, freshId, type CoreClient, type CoreStatus } from "@modb
 import { serializeEvent, type WireEvent } from "./events.js";
 import { BrowserHost } from "./browser.js";
 import { CredentialStore } from "./credentials.js";
+import { platformState } from "./platform.js";
 
 const dataDir = process.env.MODBIT_DATA_DIR ?? join(app.getPath("userData"), "modbit");
 // A profile named by MODBIT_DATA_DIR is a whole profile: the renderer's
@@ -48,6 +49,21 @@ let subscription: { sessionId: string; cursor: bigint } | null = null;
  * persisted at all and the user is told so.
  */
 const providerFile = join(dataDir, "provider.enc");
+/**
+ * PX-030 (docs/76 "keychain and secret storage"): the OS keychain is usable
+ * only when `safeStorage` encrypts with a key the operating system keeps. On
+ * Linux without a secret service Electron can fall back to `basic_text`, a
+ * fixed key that is obfuscation, not custody: that counts as no keychain, so
+ * nothing is persisted and the user is told.
+ */
+function keychainBackend(): string {
+  if (process.platform === "darwin") return "keychain";
+  if (process.platform === "win32") return "dpapi";
+  return process.platform === "linux" ? safeStorage.getSelectedStorageBackend() : "unknown";
+}
+function keychainUsable(): boolean {
+  return safeStorage.isEncryptionAvailable() && keychainBackend() !== "basic_text" && keychainBackend() !== "unknown";
+}
 type ProviderRecord = { provider: string; baseUrl: string; keyCiphertext: string };
 function loadProvider(): ProviderRecord | null {
   try {
@@ -57,14 +73,14 @@ function loadProvider(): ProviderRecord | null {
   }
 }
 function storeProvider(provider: string, baseUrl: string, apiKey: string): { persisted: boolean } {
-  if (!safeStorage.isEncryptionAvailable()) return { persisted: false };
+  if (!keychainUsable()) return { persisted: false };
   const keyCiphertext = safeStorage.encryptString(apiKey).toString("base64");
   writeFileSync(providerFile, JSON.stringify({ provider, baseUrl, keyCiphertext } satisfies ProviderRecord), { mode: 0o600 });
   return { persisted: true };
 }
 function recallProviderKey(rec: ProviderRecord): string | null {
   try {
-    return safeStorage.isEncryptionAvailable() ? safeStorage.decryptString(Buffer.from(rec.keyCiphertext, "base64")) : null;
+    return keychainUsable() ? safeStorage.decryptString(Buffer.from(rec.keyCiphertext, "base64")) : null;
   } catch {
     return null;
   }
@@ -137,7 +153,7 @@ const HEX32 = /^[0-9a-f]{32}$/;
 // M7.8 (docs/22 "Credentials"): the credential broker — login secrets in
 // safeStorage custody, bound to an origin; the Core learns handles only.
 const credentials = new CredentialStore(join(dataDir, "credentials.enc"), {
-  available: () => safeStorage.isEncryptionAvailable(),
+  available: () => keychainUsable(),
   encrypt: (p) => safeStorage.encryptString(p).toString("base64"),
   decrypt: (c) => safeStorage.decryptString(Buffer.from(c, "base64")),
 });
@@ -209,7 +225,7 @@ function handle(channel: string, fn: (e: IpcMainInvokeEvent, ...args: unknown[])
   });
 }
 handle("core:status", () => supervisor.status);
-handle("core:localState", () => loadLocalState());
+handle("core:localState", () => ({ ...loadLocalState(), platform: platformState() }));
 // Context Inspector (REQ-EV-0035 / 0131 / 0175): what the pack selected and
 // excluded, and what the prompt envelope injected.
 // Workspace context bridge (REQ-EV-0141 / 0160): what the reviewer has
@@ -637,7 +653,7 @@ handle("onboarding:provider", async (_e: IpcMainInvokeEvent, provider: unknown, 
     errorCode: probe.errorCode,
     errorMessage: probe.errorMessage,
     persisted: stored.persisted,
-    keychainAvailable: safeStorage.isEncryptionAvailable(),
+    keychainAvailable: keychainUsable(),
   };
 });
 handle("onboarding:providerStatus", async () => {
@@ -646,7 +662,7 @@ handle("onboarding:providerStatus", async () => {
   // what this profile will hand it on the next start.
   const endpoints = await requireClient().listProviders().catch(() => []);
   const ready = endpoints.filter((e) => e.credentialAvailable).map((e) => e.endpoint);
-  return { configured: ready.length > 0, endpoints: [...new Set(ready)], stored: rec !== null, provider: rec?.provider ?? "", keychainAvailable: safeStorage.isEncryptionAvailable() };
+  return { configured: ready.length > 0, endpoints: [...new Set(ready)], stored: rec !== null, provider: rec?.provider ?? "", keychainAvailable: keychainUsable(), keychainBackend: keychainBackend() };
 });
 handle("onboarding:trust", async (_e: IpcMainInvokeEvent, sessionId: unknown, workspaceRoot: unknown) => {
   const sid = requireSessionId(sessionId);

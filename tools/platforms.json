@@ -1,0 +1,8 @@
+{
+  "note": "Platform states (docs/76). CI_COMPATIBLE is a development guarantee, never a user-facing support claim. A platform becomes RELEASE_GRADE only by PX-031 evidence (packaged desktop E2E and the Release Zero subset on that platform) and, for Windows and Linux, a Decision Record; tools/support_claims.py refuses RELEASE_GRADE here until PX-031 is COMPLETE in the graph.",
+  "platforms": {
+    "macos": "CI_COMPATIBLE",
+    "windows": "CI_COMPATIBLE",
+    "linux": "CI_COMPATIBLE"
+  }
+}
