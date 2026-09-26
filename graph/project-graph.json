@@ -28928,8 +28928,16 @@
    ],
    "task_card": "docs/49_EXECUTION_POLICY_REQUIREMENTS_AND_TASKS.md#epr-012",
    "audit_at_adoption": "DOCUMENTED-ONLY; no product caller or executor present",
-   "status": "NOT_STARTED",
-   "evidence": []
+   "status": "COMPLETE",
+   "evidence": [
+    "run:gha-36227217131",
+    "test:qual_epr_012_a_policy_is_searched_canaried_and_promoted_only_on_its_evidence_and_rolls_back_without_resurrecting_revocations",
+    "artifact:evidence/m10/EPR-012/TASK_CARD.md",
+    "artifact:evidence/m10/EPR-012/evidence.json",
+    "artifact:evidence/m10/EPR-012/ci-run-36227217131.json",
+    "commit:43f0436"
+   ],
+   "status_changed_on": "2026-09-26T08:09:53Z"
   },
   {
    "id": "EPR-013",

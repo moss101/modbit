@@ -66,7 +66,7 @@ flowchart LR
   M7["M7<br/>Live browser<br/>28/28 done"]
   M8["M8<br/>Cloud isolated execution<br/>28/28 done"]
   M9["M9<br/>Engineering memory/effects/security hardening<br/>33/33 done"]
-  M10["M10<br/>Release hardening<br/>8/22 done"]
+  M10["M10<br/>Release hardening<br/>9/22 done"]
   M0 --> M1
   M1 --> M2
   M2 --> M3
@@ -114,7 +114,7 @@ Critical path (reliability spine): **M0 → M1 → M2 → M4**. Do not start bro
 | M7 Live browser | COMPLETE | yes | 8 | 20 | 28 | 0 | M2 | E2E-013..016. |
 | M8 Cloud isolated execution | COMPLETE | yes | 9 | 19 | 28 | 0 | M4, M7 | E2E-017/018/024. |
 | M9 Engineering memory/effects/security hardening | COMPLETE | yes | 6 | 27 | 33 | 0 | M4, M5 | memory cannot be created from transcript without promotion; receipt chain verifies; threat tests pass. |
-| M10 Release hardening | IN_PROGRESS | yes | 7 | 15 | 8 | 0 | M3, M5, M6, M7, M8, M9 | full Release Zero proof + package evidence + EPR gates A–G SATISFIED. |
+| M10 Release hardening | IN_PROGRESS | yes | 7 | 15 | 9 | 0 | M3, M5, M6, M7, M8, M9 | full Release Zero proof + package evidence + EPR gates A–G SATISFIED. |
 
 ## Subsystems → milestones
 
@@ -231,7 +231,7 @@ flowchart LR
   EPR_009["EPR-009<br/>Persist routing epochs and switch economics<br/>COMPLETE"]
   EPR_010["EPR-010<br/>Capture request, leg and gate accounting/outcomes<br/>COMPLETE"]
   EPR_011["EPR-011<br/>Build isolated counterfactual replay<br/>COMPLETE"]
-  EPR_012["EPR-012<br/>Jointly evaluate conditional parameters and promote policy<br/>NOT_STARTED"]
+  EPR_012["EPR-012<br/>Jointly evaluate conditional parameters and promote policy<br/>COMPLETE"]
   EPR_013["EPR-013<br/>Qualify model × Skill outcome statistics<br/>NOT_STARTED"]
   EPR_014["EPR-014<br/>Conditional plan migration and slot admission<br/>COMPLETE"]
   EPR_015["EPR-015<br/>Versioned Outcome Statistics materialization<br/>COMPLETE"]
@@ -295,7 +295,7 @@ flowchart LR
 | EPR-009 | M4 / 2-4 | COMPLETE | core-runtime | EPR-005, M4.6 | REQ-EPR-009 / QUAL-EPR-009 |
 | EPR-010 | M9 / 5 | COMPLETE | observability | EPR-007, EPR-009 | REQ-EPR-010 / QUAL-EPR-010 |
 | EPR-011 | M9 / 5 | COMPLETE | eval-bench | EPR-007, EPR-010, M9.3 | REQ-EPR-011 / QUAL-EPR-011 |
-| EPR-012 | M10 / 5 | NOT_STARTED | eval-bench | EPR-011, EPR-009, EPR-019, M10.1 | REQ-EPR-012 / QUAL-EPR-012 |
+| EPR-012 | M10 / 5 | COMPLETE | eval-bench | EPR-011, EPR-009, EPR-019, M10.1 | REQ-EPR-012 / QUAL-EPR-012 |
 | EPR-013 | M10 / 6 | NOT_STARTED | skills | EPR-012, M5.7 | REQ-EPR-013 / QUAL-EPR-013 |
 | EPR-014 | M3 / 1 | COMPLETE | core-runtime | EPR-001 | REQ-EPR-014 / QUAL-EPR-014 |
 | EPR-015 | M3 / 1 | COMPLETE | eval-bench | EPR-002 | REQ-EPR-015 / QUAL-EPR-015 |
@@ -324,7 +324,7 @@ Releases are projections over work items and gates (docs/75). Readiness is compu
 |---|---|---:|---:|---:|---|---|
 | ALPHA: Local coding loop and recovery spine | READY | 114 | 114 | 0 | none | / ALPHA / Local coding loop and recovery spine / M0, M1, M2, M4 / M2.10 / EPR- / — / — / |
 | BETA: Intelligence, fleet and browser | READY | 318 | 318 | 0 | none | / BETA / Intelligence, fleet and browser / M0, M1, M2, M3, M4, M5, M6, M7 / — / — / — / — / |
-| RELEASE_ZERO: Full end-to-end proof | NOT_READY | 401 | 387 | 0 | EPR-GATE-A, EPR-GATE-B, EPR-GATE-C, EPR-GATE-D, EPR-GATE-E, EPR-GATE-F, EPR-GATE-G | / RELEASE_ZERO / Full end-to-end proof / ALL / — / — / — / EPR-GATE-A, EPR-GATE-B, EPR-GATE-C, EPR-GATE-D, EPR-GATE-E, EPR-GATE-F, EPR-GATE-G / |
+| RELEASE_ZERO: Full end-to-end proof | NOT_READY | 401 | 388 | 0 | EPR-GATE-A, EPR-GATE-B, EPR-GATE-C, EPR-GATE-D, EPR-GATE-E, EPR-GATE-F, EPR-GATE-G | / RELEASE_ZERO / Full end-to-end proof / ALL / — / — / — / EPR-GATE-A, EPR-GATE-B, EPR-GATE-C, EPR-GATE-D, EPR-GATE-E, EPR-GATE-F, EPR-GATE-G / |
 
 ## Scoped v1.1 supersessions and source provenance
 

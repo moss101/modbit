@@ -1,0 +1,39 @@
+{
+ "task": "EPR-012",
+ "requirements": [
+  "REQ-EPR-012",
+  "QUAL-EPR-012",
+  "EPR-E2E-012",
+  "EPR-FI-012",
+  "docs/27 \u00a712-14",
+  "docs/38 PromoteRoutingPolicy",
+  "docs/61"
+ ],
+ "scenarios": [
+  "real outcome statistics: 30 verified runs in a train session and 30 in a separate holdout session (plus 2 in a thin one) materialized as train-1, holdout-1, holdout-thin; SearchPolicy over floors 0.72/0.8/0.95 at target 0.8 through the router's own compiler is FEASIBLE at 0.8 and confirmed on the untouched holdout; against the thin holdout HOLDOUT_REGRESSION; the train session as its own holdout SEARCH_SPEC_INVALID; a submitted search report is refused",
+  "a routed request replayed isolated on its alternative with propensity recorded; the EPR-019 suite's calibration bundle; threshold profiles recorded as labelled test fixtures",
+  "EPR-FI-012: stale CAS and a promotion naming another previous-good conflict; a lowered floor a search chose and a holdout regression are POLICY_QUALITY_REGRESSION; a floor the search did not choose, no canary, no or unknown replays, a repriced candidate, an unapproved or unmet profile are POLICY_EVIDENCE_MISSING; exploration of critical requests or beyond 1000 bp is UNSAFE_EXPLORATION; statistics other than those searched REGISTRY_INCOMPATIBLE; a second gated canary while one runs conflicts",
+  "EPR-E2E-012: CANARY started, ended (CANARY_ENDED) and started again, restored after a Core restart; a plain repository's task routes under production, a routing.canary ALLOW repository's under the canary and reaches review; PromoteCanary refused with no request, a production-routed request and a stale production generation, then PROMOTED; concurrent promotion conflicts; the earlier request's plan keeps its generation; a revoking generation, a CAS rollback that keeps gpt-5 revoked, and a restarted Core restoring it"
+ ],
+ "tests": [
+  "services/modbit-core/tests/surface_protocol.rs::qual_epr_012_a_policy_is_searched_canaried_and_promoted_only_on_its_evidence_and_rolls_back_without_resurrecting_revocations",
+  "benchmarks/policy-lab/tests/search.rs"
+ ],
+ "audit": "DOCUMENTED-ONLY: a signed registry activated unconditionally with no previous-good, rollback or history; nothing searched a policy offline, held out a partition, checked calibration/replay/propensity evidence or staged a canary.",
+ "proof": "Real Core, host sandbox, signed registries, scripted provider, 62 real verified tasks as statistics, the EPR-019 calibration suite; activation, canary, promotion, rollback and restart through the one registry publisher.",
+ "negative_proof": "Eight mutations each fail the qualification: no install CAS, no previous-good check, revocations not kept, no floor check, replay evidence ignored, the search not reproduced, canary routing for every task, a canary request not required to be routed under the canary.",
+ "limitations": "Only the auto floor is searched; routing performs no exploration; rollback triggers are operator actions; no threshold profile is owner-approved (docs/61 \u00a75 item 3), so the qualification's profiles are labelled fixtures and no production promotion has occurred.",
+ "batch_commits": [
+  "43f0436"
+ ],
+ "runs": [
+  "36227217131"
+ ],
+ "ci": {
+  "run_id": "36227217131",
+  "head_sha": "fdc00925d72fe69be696dc89f440f8b385167e4b",
+  "conclusion": "success",
+  "note": "all jobs green on macOS, Linux and Windows on the first attempt",
+  "json": "evidence/m10/EPR-012/ci-run-36227217131.json"
+ }
+}
