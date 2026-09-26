@@ -365,7 +365,8 @@ async fn qual_ev_0025_stdin_is_explicit_and_two_requests_do_not_share_environmen
     );
 }
 
-#[cfg(unix)]
+/// PX-030: the PTY runs on every platform — a Unix pseudo-terminal, a
+/// Windows ConPTY — and the same session reads input and exits.
 #[tokio::test]
 async fn pty_mode_runs_a_real_terminal_session() {
     let dir = tempfile::tempdir().unwrap();
@@ -379,7 +380,25 @@ async fn pty_mode_runs_a_real_terminal_session() {
     };
     c.write_stdin(&s.session_id, b"hi\r").await.unwrap();
     c.write_stdin(&s.session_id, b"quit\r").await.unwrap();
-    let (_, out, _, exited) = run_to_exit(&mut c).await;
+    // Bounded: a terminal that never reports its exit fails here, not by
+    // hanging the suite — with what it did say, so a platform difference is
+    // diagnosable from the failure alone.
+    let deadline = tokio::time::Instant::now() + Duration::from_secs(60);
+    let mut out = Vec::new();
+    let mut seen = Vec::new();
+    let exited = loop {
+        match tokio::time::timeout_at(deadline, c.next()).await {
+            Err(_) => panic!(
+                "the PTY session did not report its exit within a minute; output so far {:?}; events {seen:?}",
+                String::from_utf8_lossy(&out)
+            ),
+            Ok(ev) => match ev {
+                Ok(Some(Event::Output(o))) => out.extend(o.data),
+                Ok(Some(Event::Exited(e))) => break e,
+                other => seen.push(format!("{other:?}").chars().take(300).collect::<String>()),
+            },
+        }
+    };
     let text = String::from_utf8_lossy(&out);
     assert!(
         text.contains("got:hi") && text.contains("got:quit"),

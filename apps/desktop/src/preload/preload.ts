@@ -190,7 +190,7 @@ export interface AttentionItem {
 
 export interface ModbitBridge {
   coreStatus(): Promise<unknown>;
-  localState(): Promise<{ sessionId?: string }>;
+  localState(): Promise<{ sessionId?: string; platform?: { os: string; arch: string; state: string; statement: string } }>;
   languages(): Promise<{ language: string; tier: string; label: string; fixture: string; proven: string[]; provisional: string[]; notClaimed: string[]; note: string }[]>;
   contextInspector(taskId: string): Promise<ContextInspectorSummary>;
   taskEconomics(taskId: string): Promise<TaskEconomicsSummary>;
@@ -257,7 +257,7 @@ export interface ModbitBridge {
   debugRendererLog(): Promise<{ reason: string; exitCode: number; reloaded: boolean; atMs: number }[]>;
   // Onboarding (REQ-PX-022). The key goes to main and never comes back.
   setupProvider(provider: "openai" | "anthropic", apiKey: string, baseUrl?: string): Promise<{ endpoint: string; model: string; ok: boolean; errorCode: string; errorMessage: string; persisted: boolean; keychainAvailable: boolean }>;
-  providerStatus(): Promise<{ configured: boolean; endpoints: string[]; stored: boolean; provider: string; keychainAvailable: boolean }>;
+  providerStatus(): Promise<{ configured: boolean; endpoints: string[]; stored: boolean; provider: string; keychainAvailable: boolean; keychainBackend: string }>;
   trustRepository(sessionId: string, workspaceRoot: string): Promise<{ workspaceRoot: string; offset: string }>;
   starterTasks(workspaceRoot: string): Promise<{ stacks: string[]; tasks: { id: string; title: string; goalText: string; stack: string }[] }>;
 }

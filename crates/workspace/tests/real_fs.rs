@@ -157,18 +157,16 @@ fn revision_binds_to_the_real_git_head_and_resets_changed_set_on_new_commit() {
     assert_eq!(ws.revision().number, 3);
 }
 
-#[cfg(unix)]
 #[test]
 fn symlink_escapes_and_parent_traversal_are_rejected_for_reads_and_writes() {
     let (root, state) = setup();
     let outside = tempfile::tempdir().unwrap();
     std::fs::write(outside.path().join("secret.txt"), "top secret").unwrap();
-    std::os::unix::fs::symlink(
-        outside.path().join("secret.txt"),
-        root.path().join("link.txt"),
-    )
-    .unwrap();
-    std::os::unix::fs::symlink(outside.path(), root.path().join("linkdir")).unwrap();
+    link(
+        &outside.path().join("secret.txt"),
+        &root.path().join("link.txt"),
+    );
+    link(outside.path(), &root.path().join("linkdir"));
     let mut ws = WorkspaceService::open(root.path(), state.path(), &[]).unwrap();
     for p in [
         "link.txt",
@@ -190,11 +188,10 @@ fn symlink_escapes_and_parent_traversal_are_rejected_for_reads_and_writes() {
         "nothing outside was touched"
     );
     // A symlink that stays inside the root is fine and resolves to the real file.
-    std::os::unix::fs::symlink(
-        root.path().join("src/main.rs"),
-        root.path().join("inner-link.rs"),
-    )
-    .unwrap();
+    link(
+        &root.path().join("src/main.rs"),
+        &root.path().join("inner-link.rs"),
+    );
     assert_eq!(ws.read("inner-link.rs").unwrap().path, "inner-link.rs");
     ws.atomic_replace(
         "inner-link.rs",
@@ -608,4 +605,17 @@ fn edits_preserve_crlf_and_refuse_non_utf8() {
         [0xff, 0xfe, 0x00, b'x']
     );
     assert_eq!(LineEnding::of("a\r\nb\n"), LineEnding::Undecided);
+}
+
+/// A symbolic link on any platform: Windows needs to know a file link from a
+/// directory link (PX-030: the path policy is conformance-tested on every OS).
+fn link(target: &std::path::Path, at: &std::path::Path) {
+    #[cfg(unix)]
+    std::os::unix::fs::symlink(target, at).unwrap();
+    #[cfg(windows)]
+    if target.is_dir() {
+        std::os::windows::fs::symlink_dir(target, at).unwrap();
+    } else {
+        std::os::windows::fs::symlink_file(target, at).unwrap();
+    }
 }
