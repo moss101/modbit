@@ -1030,6 +1030,7 @@ fn route_new_run(
             pin,
             0,
             context.as_ref(),
+            &cfg.skills,
         )?;
         let mut events = crate::routing::compiled_events(&c, actor.clone());
         let chosen = c
@@ -1262,6 +1263,7 @@ async fn reroute_at_boundary(
         None,
         0,
         Some(&context),
+        &cfg.skills,
     );
     let c = match compiled {
         Ok(c) => c,
@@ -5721,7 +5723,7 @@ async fn unretrieved_targets(
 /// The model-visible transcript budget before a compaction epoch opens
 /// (docs/19). `MODBIT_COMPACTION_TOKEN_BUDGET` overrides it for tests and
 /// for a deployment with a smaller context window.
-fn compaction_budget() -> u32 {
+pub(crate) fn compaction_budget() -> u32 {
     std::env::var("MODBIT_COMPACTION_TOKEN_BUDGET")
         .ok()
         .and_then(|v| v.parse().ok())

@@ -186,7 +186,7 @@ fn evaluate(
         assurance_available: shape.assurance_available,
         manual_pin: None,
         include_reviewer: shape.assurance_available,
-        harness: crate::baseline::build_digest(),
+        harness: crate::baseline::harness_version(),
         policy_version: core.gateway.policy().version(),
         profiler_version: "none".into(),
         gate_version: "gate-1".into(),
@@ -198,6 +198,7 @@ fn evaluate(
         expected_input_tokens: crate::routing::EXPECTED_INPUT_TOKENS,
         current_binding: None,
         allowed_models: None,
+        skill_set: shape.skill_set.clone(),
     };
     match modbit_providers::compiler::compile(&input) {
         Ok(c) => {

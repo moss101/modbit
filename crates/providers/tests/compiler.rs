@@ -162,6 +162,7 @@ fn input<'a>(
         current_binding: None,
         include_reviewer: false,
         allowed_models: None,
+        skill_set: String::new(),
     }
 }
 

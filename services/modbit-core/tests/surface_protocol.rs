@@ -14152,6 +14152,7 @@ async fn qual_epr_014_a_conditional_plan_is_admitted_whole_and_its_activation_is
                 gate_version: "gate-1".into(),
                 risk_version: "risk-1".into(),
                 legacy_decode: None,
+                skill_set: String::new(),
             },
             input_digest: "e".repeat(64),
             slots,
@@ -15158,6 +15159,7 @@ async fn qual_epr_016_feasibility_is_measured_at_admission_under_pinned_versions
             gate_version: "gate-1".into(),
             risk_version: "risk-1".into(),
             legacy_decode: None,
+            skill_set: String::new(),
         },
         input_digest: "f".repeat(64),
         slots: vec![
@@ -24460,6 +24462,7 @@ async fn qual_epr_006_a_quality_rejection_continues_the_run_on_the_prevalidated_
                 gate_version: "gate-1".into(),
                 risk_version: "risk-1".into(),
                 legacy_decode: None,
+                skill_set: String::new(),
             },
             input_digest: "e".repeat(64),
             slots: vec![
@@ -37464,6 +37467,7 @@ async fn qual_epr_010_the_request_record_reconciles_to_provider_usage_and_keeps_
             gate_version: "gate-1".into(),
             risk_version: "risk-1".into(),
             legacy_decode: None,
+            skill_set: String::new(),
         },
         input_digest: "e".repeat(64),
         slots: vec![
@@ -44156,4 +44160,550 @@ async fn qual_epr_012_a_policy_is_searched_canaried_and_promoted_only_on_its_evi
     assert_eq!(revoked_now(&restored), vec!["gpt-5".to_owned()]);
     drop(c);
     core.kill();
+}
+
+/// QUAL-EPR-013 / EPR-E2E-013 / EPR-FI-013 (REQ-EPR-013; docs/27 §7.3,
+/// §13.2, docs/38 "MaterializeOutcomeStatistics"): outcome statistics are
+/// keyed on the model × Skill × effort × harness combination that produced
+/// them, only evaluation-qualified combinations count, and a plan pins the
+/// skill set it was measured under — against a live Core with a real
+/// scripted provider that succeeds only when the skill's instructions reach
+/// it (the measured slice benefit).
+///
+/// An operator-installed skill, signed and carrying a PROMOTE evaluation of
+/// its exact content, is qualified: 30 verified runs with it in a train
+/// session and 30 in a separate holdout session become statistics keyed on
+/// `fixer@<hash>`; three runs without it fail and stay thin. A routed
+/// request with the skill is feasible and its plan pins the skill set; the
+/// same request without it is not. The offline Policy Lab finds the
+/// combination feasible and confirmed on the untouched holdout, and the
+/// bare model infeasible. A signed skill without an evaluation runs but its
+/// outcomes are left out of the statistics; a repository's own skill is
+/// never qualified, whatever evaluation sits beside it (self-promotion). A
+/// changed skill (drift) has no statistics, so the request is infeasible
+/// again. A revoked pack is refused on the next run and the task's lease is
+/// the one it would have had anyway. In an isolated replay a skill asking
+/// for more than the replay ceiling is refused while one within it is
+/// selected. (Without a host sandbox — Windows — the replay part is skipped.)
+#[tokio::test]
+#[allow(clippy::too_many_lines)]
+async fn qual_epr_013_statistics_are_keyed_on_qualified_skill_combinations_and_plans_pin_the_skill_set()
+ {
+    use ed25519_dalek::SigningKey;
+    use modbit_protocol::v1::{
+        ActivateModelRegistry, CounterfactualReplayView, MaterializeOutcomeStatistics,
+        ModelRegistryView, OutcomeBaselinePublished, OutcomeStatisticsView, PolicySearchView,
+        PublishOutcomeBaseline, ReplayCounterfactual, SearchPolicy, StartTask, TaskRunStarted,
+    };
+    use serde_json::json;
+    fn rid() -> Id {
+        Id {
+            value: (0..16).map(|_| rand::random::<u8>()).collect(),
+        }
+    }
+    const MARKER: &str = "SKILL-FIXER-7Q";
+    let registry_key = SigningKey::from_bytes(&[84u8; 32]);
+    let registry_keys = format!(
+        "ops:{}",
+        hex::encode(registry_key.verifying_key().to_bytes())
+    );
+    let base = accounting_registry(
+        "skills-a",
+        &registry_key,
+        &[("gpt-5-mini", 25, 5, 200), ("gpt-5", 125, 25, 1_000)],
+    );
+    let skill_key = SigningKey::from_bytes(&[85u8; 32]);
+    let skill_keys = format!(
+        "skills-1:{}",
+        hex::encode(skill_key.verifying_key().to_bytes())
+    );
+    let dir = tempfile::tempdir().unwrap();
+    let skills = dir.path().join("skills");
+    // A package: SKILL.md, then a signature, then (when qualified) a PROMOTE
+    // evaluation of that exact content. Returns the content hash.
+    let package = |root: &std::path::Path,
+                   name: &str,
+                   body: &str,
+                   ceiling: &[&str],
+                   evaluate: bool|
+     -> String {
+        let d = root.join(name);
+        std::fs::create_dir_all(&d).unwrap();
+        std::fs::write(
+            d.join("SKILL.md"),
+            format!(
+                "---\nname: {name}\nversion: 1.0.0\ndescription: {name}.\ntriggers: [{name}-now]\ncapability_ceiling: [{}]\n---\n# {name}\n\n{body}\n",
+                ceiling.join(", ")
+            ),
+        )
+        .unwrap();
+        let pkg = modbit_skills::load_package(&d).unwrap();
+        std::fs::write(
+            d.join("SIGNATURE.json"),
+            serde_json::to_string(&modbit_skills::sign(&pkg, "skills-1", &skill_key, 1)).unwrap(),
+        )
+        .unwrap();
+        let _ = std::fs::remove_file(d.join("EVALUATION.json"));
+        if evaluate {
+            std::fs::write(
+                d.join("EVALUATION.json"),
+                json!({"benchmark_version": "bench-1", "content_hash": pkg.content_hash, "disposition": "PROMOTE", "verified_completion_delta_bp": 900, "safety_failures": 0}).to_string(),
+            )
+            .unwrap();
+        }
+        pkg.content_hash
+    };
+    let fixer_hash = package(
+        &skills,
+        "fixer",
+        &format!("Always write `line 1 fixed`. {MARKER}"),
+        &["fs.read", "fs.write"],
+        true,
+    );
+    let fixer_set =
+        modbit_bench_outcome_statistics::skill_set(&[("fixer".into(), fixer_hash.clone())]);
+    package(&skills, "plain", "Be plain.", &["fs.read"], false);
+    package(
+        &skills,
+        "scribe",
+        "Write notes into the scratch tree only.",
+        &["fs.read", "fs.write"],
+        true,
+    );
+    package(
+        &skills,
+        "committer",
+        "Commit and push the result.",
+        &["fs.read", "git.commit", "git.push"],
+        true,
+    );
+    let files: [(&str, &str); 3] = [
+        ("notes.txt", "line 1\n"),
+        ("check.sh", "grep -q 'fixed' notes.txt\n"),
+        (
+            ".modbit/verification.json",
+            "{\"commands\": [{\"id\": \"notes\", \"argv\": [\"sh\", \"check.sh\"]}]}",
+        ),
+    ];
+    let (_repo_s, root_s) = plain_repo(&files);
+    let (_repo_n, root_n) = plain_repo(&files);
+    // A repository that ships its own signed skill with a PROMOTE evaluation
+    // beside it — as an agent could have written it.
+    let (repo_p, root_p) = plain_repo(&files);
+    package(
+        &repo_p.path().join(".modbit").join("skills"),
+        "local",
+        "Local advice.",
+        &["fs.read"],
+        true,
+    );
+    let step = |calls: serde_json::Value| json!({ "calls": calls });
+    let good = vec![
+        step(
+            json!([{"name": "plan.update", "args": {"outcome": "fix", "expected_files": ["notes.txt"]}}]),
+        ),
+        step(json!([{"name": "fs.read", "args": {"path": "notes.txt"}}])),
+        step(
+            json!([{"name": "change.apply", "args": {"path": "notes.txt", "op": "replace", "content": "line 1 fixed\n"}}]),
+        ),
+        step(
+            json!([{"name": "task.complete", "args": {"summary": "fixed", "self_review": {"findings": []}}}]),
+        ),
+    ];
+    let bad = vec![
+        step(
+            json!([{"name": "plan.update", "args": {"outcome": "look", "expected_files": ["notes.txt"]}}]),
+        ),
+        step(json!([{"name": "fs.read", "args": {"path": "notes.txt"}}])),
+        step(
+            json!([{"name": "task.complete", "args": {"summary": "looked", "self_review": {"findings": []}}}]),
+        ),
+    ];
+    let (model, _) = scripted_model_reactive(
+        bad,
+        vec![],
+        None,
+        None,
+        vec![],
+        false,
+        vec![(format!("needle:{MARKER}"), good)],
+    )
+    .await;
+    std::fs::write(
+        dir.path().join("admin-config.json"),
+        r#"{"permissions": {"eval.replay": "ALLOW"}}"#,
+    )
+    .unwrap();
+    let env: Vec<(&str, &str)> = vec![
+        ("MODBIT_OPENAI_BASE_URL", model.as_str()),
+        ("OPENAI_API_KEY", ""),
+        ("ANTHROPIC_API_KEY", ""),
+        ("MODBIT_REGISTRY_KEYS", registry_keys.as_str()),
+        ("MODBIT_SKILL_KEYS", skill_keys.as_str()),
+    ];
+    let core = CoreProcess::spawn_with_env(dir.path(), &env);
+    let mut c = core.client().await;
+    async fn call<T: prost::Message + Default>(
+        c: &mut Client,
+        kind: &str,
+        g: Option<u64>,
+        body: Vec<u8>,
+    ) -> T {
+        let ack = c
+            .command(envelope_fenced(rid(), kind, body, g))
+            .await
+            .unwrap();
+        Client::result(&ack).unwrap_or_else(|e| panic!("{kind}: {e:?}"))
+    }
+    async fn run(
+        c: &mut Client,
+        session: &Id,
+        g: Option<u64>,
+        root: &str,
+        model: &str,
+        skills: &[&str],
+        goal: &str,
+    ) -> Id {
+        let task = if goal.is_empty() {
+            create_task_with_profile_id(c, session, g, root, rid(), "local_trusted").await
+        } else {
+            let ack = c
+                .command(envelope_fenced(
+                    rid(),
+                    "CreateTask",
+                    modbit_protocol::v1::CreateTask {
+                        session_id: Some(session.clone()),
+                        goal_text: goal.into(),
+                        workspace_id: None,
+                        execution_profile: "local_trusted".into(),
+                        origin: "cli".into(),
+                        workspace_root: root.into(),
+                        issue_url: String::new(),
+                        issue_json: String::new(),
+                    }
+                    .encode_to_vec(),
+                    g,
+                ))
+                .await
+                .unwrap();
+            Client::result::<TaskCreated>(&ack)
+                .unwrap()
+                .task_id
+                .unwrap()
+        };
+        let _: TaskRunStarted = call(
+            c,
+            "StartTask",
+            g,
+            StartTask {
+                task_id: Some(task.clone()),
+                endpoint: String::new(),
+                model: model.into(),
+                max_turns: 6,
+                max_tool_calls: 0,
+                max_no_progress_turns: 2,
+                skills: skills.iter().map(|s| (*s).to_owned()).collect(),
+            }
+            .encode_to_vec(),
+        )
+        .await;
+        let st = wait_task(c, &task, 180).await;
+        assert!(!st.loop_alive, "{st:?}");
+        task
+    }
+    async fn materialize(
+        c: &mut Client,
+        session: &Id,
+        g: Option<u64>,
+        version: &str,
+    ) -> OutcomeStatisticsView {
+        let _: OutcomeBaselinePublished = call(
+            c,
+            "PublishOutcomeBaseline",
+            g,
+            PublishOutcomeBaseline {
+                session_id: Some(session.clone()),
+                repository_revision: String::new(),
+            }
+            .encode_to_vec(),
+        )
+        .await;
+        call(
+            c,
+            "MaterializeOutcomeStatistics",
+            g,
+            MaterializeOutcomeStatistics {
+                session_id: Some(session.clone()),
+                stats_version: version.into(),
+            }
+            .encode_to_vec(),
+        )
+        .await
+    }
+    // The registry joins the train statistics.
+    let signed = resigned_registry(&base, &registry_key, "skills-a", 0.8, "train-s", &[], None);
+    let a: ModelRegistryView = call(
+        &mut c,
+        "ActivateModelRegistry",
+        None,
+        ActivateModelRegistry {
+            signed_json: signed,
+            expected_generation: String::new(),
+        }
+        .encode_to_vec(),
+    )
+    .await;
+    assert!(a.active, "{a:?}");
+
+    // Train: 30 qualified runs with the skill, 3 without, 2 with an
+    // unqualified skill; holdout: 30 with the skill.
+    let (train, _) = create_session(&mut c, rid()).await;
+    let tg = lease_for(&train);
+    let first = run(&mut c, &train, tg, &root_s, "gpt-5-mini", &["fixer"], "").await;
+    let evs = task_events(&core, &train, &first).await;
+    let selected = evs
+        .iter()
+        .find(|(_, t, _)| t == "SkillSelected")
+        .map(|(_, _, p)| p.clone())
+        .unwrap_or_else(|| panic!("{evs:#?}"));
+    assert_eq!(
+        (selected["name"].as_str(), selected["qualified"].as_bool()),
+        (Some("fixer"), Some(true)),
+        "{selected}"
+    );
+    assert_eq!(
+        wait_task(&mut c, &first, 5).await.state,
+        "ReadyForReview",
+        "the skill's instructions reached the provider"
+    );
+    for _ in 1..30 {
+        run(&mut c, &train, tg, &root_s, "gpt-5-mini", &["fixer"], "").await;
+    }
+    for _ in 0..3 {
+        run(&mut c, &train, tg, &root_n, "gpt-5-mini", &[], "").await;
+    }
+    let unqualified = run(&mut c, &train, tg, &root_n, "gpt-5-mini", &["plain"], "").await;
+    let evs = task_events(&core, &train, &unqualified).await;
+    assert!(
+        evs.iter().any(|(_, t, p)| t == "SkillSelected"
+            && p["name"] == "plain"
+            && p["qualified"] == false),
+        "a signed skill without an evaluation runs, unqualified: {evs:#?}"
+    );
+    let s = materialize(&mut c, &train, tg, "train-s").await;
+    assert!(s.materialized, "{s:?}");
+    assert_eq!(
+        s.samples, 33,
+        "30 with the skill and 3 without; the unqualified run is left out: {s:?}"
+    );
+    let key_with = s
+        .aggregates
+        .iter()
+        .find(|a| a.key_id.contains(&format!("|{fixer_set}|")))
+        .unwrap_or_else(|| panic!("{s:#?}"));
+    assert_eq!(
+        (key_with.samples, key_with.successes),
+        (30, 30),
+        "{key_with:?}"
+    );
+    let key_without = s
+        .aggregates
+        .iter()
+        .find(|a| a.key_id.contains("|none|"))
+        .unwrap_or_else(|| panic!("{s:#?}"));
+    assert_eq!(
+        (
+            key_without.samples,
+            key_without.successes,
+            key_without.low_confidence
+        ),
+        (3, 0, true),
+        "{key_without:?}"
+    );
+    let (holdout, _) = create_session(&mut c, rid()).await;
+    let hg = lease_for(&holdout);
+    for _ in 0..30 {
+        run(&mut c, &holdout, hg, &root_s, "gpt-5-mini", &["fixer"], "").await;
+    }
+    let h = materialize(&mut c, &holdout, hg, "holdout-s").await;
+    assert_eq!(h.samples, 30, "{h:?}");
+
+    // The measured slice: routed requests in the train session, with and
+    // without the skill.
+    let admitted = |evs: &[(String, String, serde_json::Value)]| {
+        let plan = evs
+            .iter()
+            .find(|(_, t, _)| t == "RoutingPlanCompiled")
+            .map(|(_, _, p)| p.clone())
+            .unwrap_or_default();
+        let adm = evs
+            .iter()
+            .find(|(_, t, _)| t == "RoutingPlanAdmitted")
+            .map(|(_, _, p)| p.clone())
+            .unwrap_or_default();
+        (
+            plan["plan"]["provenance"]["skill_set"]
+                .as_str()
+                .unwrap_or_default()
+                .to_owned(),
+            adm["feasibility"].as_str().unwrap_or_default().to_owned(),
+        )
+    };
+    let routed = run(&mut c, &train, tg, &root_s, "", &["fixer"], "").await;
+    assert_eq!(
+        admitted(&task_events(&core, &train, &routed).await),
+        (fixer_set.clone(), "FEASIBLE".to_owned()),
+        "the skill's combination qualifies the plan"
+    );
+    let bare = run(&mut c, &train, tg, &root_n, "", &[], "").await;
+    assert_eq!(
+        admitted(&task_events(&core, &train, &bare).await),
+        ("none".to_owned(), "QUALITY_FLOOR_INFEASIBLE".to_owned()),
+        "the bare model has no qualifying evidence"
+    );
+
+    // The offline Policy Lab: the combination is feasible and holds on the
+    // untouched holdout; the bare model is not.
+    let search = |skill_set: &str| {
+        let doc: serde_json::Value = serde_json::from_str(&resigned_registry(
+            &base,
+            &registry_key,
+            "skills-b",
+            0.8,
+            "train-s",
+            &[],
+            None,
+        ))
+        .unwrap();
+        SearchPolicy {
+            spec_json: json!({
+                "candidate_generation": "skills-b", "target": 0.8, "floors": [0.8],
+                "train_stats_version": "train-s", "holdout_stats_version": "holdout-s",
+                "request": {"skill_set": skill_set},
+            })
+            .to_string(),
+            candidate_document_json: doc["document_json"].as_str().unwrap().to_owned(),
+            train_session_id: Some(train.clone()),
+            holdout_session_id: Some(holdout.clone()),
+        }
+        .encode_to_vec()
+    };
+    let with_skill: PolicySearchView = call(&mut c, "SearchPolicy", None, search(&fixer_set)).await;
+    assert_eq!(with_skill.verdict, "FEASIBLE", "{with_skill:?}");
+    let report: serde_json::Value = serde_json::from_str(&with_skill.report_json).unwrap();
+    assert_eq!(report["spec"]["request"]["skill_set"], json!(fixer_set));
+    let bare_search: PolicySearchView = call(&mut c, "SearchPolicy", None, search("none")).await;
+    assert_eq!(
+        bare_search.verdict, "NO_FEASIBLE_CONFIGURATION",
+        "{bare_search:?}"
+    );
+
+    // EPR-FI-013: a repository's own skill is never qualified, whatever
+    // evaluation sits beside it.
+    let (proj, _) = create_session(&mut c, rid()).await;
+    let pg = lease_for(&proj);
+    let local = run(&mut c, &proj, pg, &root_p, "gpt-5-mini", &["local"], "").await;
+    let evs = task_events(&core, &proj, &local).await;
+    assert!(
+        evs.iter().any(|(_, t, p)| t == "SkillSelected"
+            && p["name"] == "local"
+            && p["qualified"] == false),
+        "{evs:#?}"
+    );
+    // Drift: the skill changes; its statistics no longer apply.
+    let drifted = package(
+        &skills,
+        "fixer",
+        &format!("Always write `line 1 fixed`, carefully. {MARKER}"),
+        &["fs.read", "fs.write"],
+        true,
+    );
+    assert_ne!(drifted, fixer_hash);
+    let after = run(&mut c, &train, tg, &root_s, "", &["fixer"], "").await;
+    let (set, feasibility) = admitted(&task_events(&core, &train, &after).await);
+    assert_ne!(set, fixer_set, "the plan pins the changed skill");
+    assert_eq!(
+        feasibility, "QUALITY_FLOOR_INFEASIBLE",
+        "stale statistics do not qualify a changed skill"
+    );
+    // Revocation: refused on the next run; the lease is what it would be anyway.
+    std::fs::write(skills.join("revoked.json"), json!(["fixer"]).to_string()).unwrap();
+    let revoked = run(&mut c, &proj, pg, &root_s, "gpt-5-mini", &["fixer"], "").await;
+    let control = run(&mut c, &proj, pg, &root_s, "gpt-5-mini", &[], "").await;
+    let evs = task_events(&core, &proj, &revoked).await;
+    assert!(
+        evs.iter().any(|(_, t, p)| t == "SkillRejected"
+            && p["name"] == "fixer"
+            && p["code"] == "SKILL_REVOKED"),
+        "{evs:#?}"
+    );
+    assert!(
+        !evs.iter().any(|(_, t, _)| t == "SkillSelected"),
+        "{evs:#?}"
+    );
+    let lease_ops = |evs: &[(String, String, serde_json::Value)]| {
+        evs.iter()
+            .find(|(_, t, _)| t == "CapabilityLeaseGranted")
+            .map(|(_, _, p)| p["operations"].clone())
+    };
+    assert_eq!(
+        lease_ops(&evs),
+        lease_ops(&task_events(&core, &proj, &control).await),
+        "revocation changes no permission"
+    );
+
+    // A replay's ceiling: a skill asking beyond it is refused, one within it runs.
+    if !cfg!(windows) {
+        let (rs, _) = create_session(&mut c, rid()).await;
+        let rg = lease_for(&rs);
+        let request = run(
+            &mut c,
+            &rs,
+            rg,
+            &root_s,
+            "",
+            &["fixer"],
+            "committer-now and scribe-now",
+        )
+        .await;
+        let evs = task_events(&core, &rs, &request).await;
+        let decision = evs
+            .iter()
+            .find(|(_, t, _)| t == "RoutingDecisionRecorded")
+            .map(|(_, _, p)| p.clone())
+            .unwrap_or_else(|| panic!("{evs:#?}"));
+        let alternative = decision["candidates"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .find(|k| k["bindings"] == json!(["openai/gpt-5"]) && k["hard_eligible"] == true)
+            .map(|k| k["plan_id"].as_str().unwrap().to_owned())
+            .unwrap_or_else(|| panic!("{decision:#}"));
+        let v: CounterfactualReplayView = call(
+            &mut c,
+            "ReplayCounterfactual",
+            rg,
+            ReplayCounterfactual {
+                task_id: Some(request.clone()),
+                plan_id: alternative,
+            }
+            .encode_to_vec(),
+        )
+        .await;
+        let replay_task = v.replay_task_id.clone().unwrap();
+        let _ = wait_task(&mut c, &replay_task, 180).await;
+        let evs = task_events(&core, &rs, &replay_task).await;
+        assert!(
+            evs.iter().any(|(_, t, p)| t == "SkillRejected"
+                && p["name"] == "committer"
+                && p["code"] == "SKILL_EXCEEDS_REVIEWER_CEILING"),
+            "{evs:#?}"
+        );
+        assert!(
+            evs.iter()
+                .any(|(_, t, p)| t == "SkillSelected" && p["name"] == "scribe"),
+            "{evs:#?}"
+        );
+    }
+    drop(c);
 }

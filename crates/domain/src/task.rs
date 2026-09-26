@@ -960,6 +960,12 @@ pub enum TaskEvent {
         tool_projection: Vec<String>,
         /// Required tools the turn does not project.
         tools_unavailable: Vec<String>,
+        /// EPR-013: evaluation-qualified — a trusted signature over the
+        /// content, a PROMOTE evaluation of that exact content, and a package
+        /// outside any workspace an agent can write. Only runs whose skills
+        /// are all qualified become outcome statistics.
+        #[serde(default)]
+        qualified: bool,
     },
     /// `RulesSelected` (REQ-EV-0059 / 0105 / 0129): the workspace and user
     /// rules in the prompt from this turn, each with its layer, source, hash

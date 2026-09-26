@@ -25,6 +25,8 @@ fn outcome(id: &str, verified: bool, usage: Usage) -> TaskOutcome {
         },
         model: "gpt-5-mini".into(),
         endpoint: "openai".into(),
+        skills: vec![],
+        effort: String::new(),
     }
 }
 

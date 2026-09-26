@@ -75,6 +75,9 @@ pub struct RequestShape {
     pub cap_minor: u64,
     /// Whether an acceptance gate with real assurance is available.
     pub assurance_available: bool,
+    /// The skill set the request runs with (EPR-013; `none` when empty):
+    /// the combination whose statistics are searched.
+    pub skill_set: String,
 }
 
 /// What the router's compiler said about one configuration on one partition.
