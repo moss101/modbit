@@ -1,7 +1,7 @@
 # Modbit Project Graph
 
 > Generated from `graph/project-graph.json` by `tools/graph.py render --write`. Do not edit by hand; edit the graph through `tools/graph.py set` or regenerate structure with `tools/build_graph.py`.  
-> Graph generated on 2026-09-26; view rendered on 2026-09-26.
+> Graph generated on 2026-09-30; view rendered on 2026-09-30.
 
 ## What the graph is
 
@@ -504,7 +504,7 @@ flowchart LR
 | Task | Status | Title | Acceptance / note |
 |---|---|---|---|
 | `M10.1` | COMPLETE | telemetry/cost/SLO dashboards |  |
-| `M10.2` | NOT_STARTED | updater/signing/SBOM |  |
+| `M10.2` | IMPLEMENTING | updater/signing/SBOM |  |
 | `M10.3` | NOT_STARTED | full RC E2E catalog |  |
 | `M10.4` | NOT_STARTED | performance regression gates |  |
 | `M10.5` | NOT_STARTED | docs/runbooks/support diagnostics |  |
