@@ -46,5 +46,6 @@ nsis:
   allowToChangeInstallationDirectory: true
 linux:
   category: Development
+  executableName: modbit-desktop
   target: [AppImage, tar.gz]
   maintainer: Modbit

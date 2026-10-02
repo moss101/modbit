@@ -253,6 +253,84 @@ jobs:
           path: apps/desktop/test-results
           if-no-files-found: ignore
 
+  desktop-packaged:
+    name: packaged desktop — the package starts its own Core and updates itself (${{ matrix.os }})
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 90
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [macos-latest, ubuntu-latest, windows-latest]
+    steps:
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
+      - name: Install pinned Rust toolchain (rust-toolchain.toml)
+        run: rustup show
+      - uses: Swatinem/rust-cache@6323deb102c322ba6fcbdcafc7e3dddab59af2b6 # v2
+      - uses: pnpm/action-setup@b906affcce14559ad1aafd4ab0e942779e9f58b1 # v4 (reads packageManager)
+      - uses: actions/setup-node@a0853c24544627f65ddf259abe73b1d18a591444 # v5
+        with:
+          node-version-file: .node-version
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      # RUSTFLAGS "-D warnings" is for our own crates; the release Core is what ships.
+      - name: Build the release Core and execd that the package carries
+        run: cargo build --release --locked -p modbit-core -p modbit-execd
+      - name: Package the desktop app (unpacked, with no signing identity, so the candidate says it is unsigned)
+        run: pnpm --filter @modbit/desktop run package:dir
+      - name: Packaged app starts the Core it carries (Linux under xvfb)
+        shell: bash
+        run: |
+          if [ "$RUNNER_OS" = "Linux" ]; then
+            sudo apt-get update -qq && sudo apt-get install -y -qq xvfb > /dev/null
+            xvfb-run -a pnpm --filter @modbit/desktop run e2e:packaged
+          else
+            pnpm --filter @modbit/desktop run e2e:packaged
+          fi
+      - name: Upload traces on failure
+        if: failure()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: desktop-packaged-traces-${{ matrix.os }}
+          path: apps/desktop/test-results
+          if-no-files-found: ignore
+
+  supply-chain:
+    name: supply chain — SBOMs, license gate, dependency audit, reproducible build (docs/70)
+    runs-on: ubuntu-latest
+    timeout-minutes: 90
+    steps:
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
+      - name: Install pinned Rust toolchain (rust-toolchain.toml)
+        run: rustup show
+      - uses: Swatinem/rust-cache@6323deb102c322ba6fcbdcafc7e3dddab59af2b6 # v2
+      - uses: pnpm/action-setup@b906affcce14559ad1aafd4ab0e942779e9f58b1 # v4 (reads packageManager)
+      - uses: actions/setup-node@a0853c24544627f65ddf259abe73b1d18a591444 # v5
+        with:
+          node-version-file: .node-version
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - name: Install the approved SBOM generator (DR-M10-2-2026-10-02)
+        run: cargo install --locked cargo-cyclonedx --version 0.5.9
+      - name: Known vulnerabilities in the shipped npm dependencies
+        run: pnpm audit --prod
+      - name: Generate CycloneDX SBOMs for modbit-core, modbit-execd and the desktop
+        run: node tools/release/release.mjs sbom --out-dir target/sbom
+      - name: License gate over the SBOMs (docs/36)
+        run: node tools/release/release.mjs licenses target/sbom/*.cdx.json
+      - name: Release tooling tests (signing, SBOM and license checks)
+        run: pnpm --filter @modbit/desktop exec node --test src/main/update/release-cli.test.ts src/main/update/sbom-cli.test.ts src/main/update/manifest.test.ts
+      - name: Reproducible build — the same inputs give the same digests twice
+        run: node tools/release/repro.mjs --out target/repro.json
+      - name: Upload SBOMs and the reproducibility evidence
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: supply-chain-evidence
+          path: |
+            target/sbom
+            target/repro.json
+          if-no-files-found: warn
+
   protocol-roundtrip:
     name: protocol Rust<->TS round trip and generated-code freshness (M0.3)
     runs-on: ubuntu-latest
@@ -322,7 +400,7 @@ jobs:
 
   ci-compatible:
     name: CI_COMPATIBLE summary (not release-grade)
-    needs: [rust, node, cloud, desktop-e2e, protocol-roundtrip, locked-files, dossier]
+    needs: [rust, node, cloud, desktop-e2e, desktop-packaged, supply-chain, protocol-roundtrip, locked-files, dossier]
     # Runs whatever happened upstream, so a failed platform suite is named
     # here and fails this job too — the label is earned, never assumed.
     if: always()
