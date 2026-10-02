@@ -7,13 +7,16 @@
 //   schema-version                       the Core database schema this tree writes
 //   checksums <dir> [--out SHA256SUMS]   sha256 of every file, sorted, sha256sum format
 //   manifest  --version V --channel C --artifact platform:arch:url:path ... --out F [options]
-//   verify    <manifest.json> --keys <update-keys.json> [--artifact-dir dir]
+//   verify    <manifest.json> --keys <update-keys.json> [--artifact-dir dir] [--sbom-dir dir]
+//   sbom      --out-dir D                CycloneDX 1.5 JSON for modbit-core, modbit-execd and the desktop
+//   licenses  <sbom.json>...             fail on a license outside tools/release/license-policy.json
 //
 // The signing key comes from the MODBIT_UPDATE_SIGNING_KEY environment variable
 // (the CI secret store) or --private-key-file; never from an argument, never
 // from the repository.
+import { spawnSync } from "node:child_process";
 import { createHash } from "node:crypto";
-import { chmodSync, existsSync, mkdirSync, readFileSync, readdirSync, statSync, writeFileSync } from "node:fs";
+import { chmodSync, copyFileSync, existsSync, mkdirSync, readFileSync, readdirSync, rmSync, statSync, writeFileSync } from "node:fs";
 import { dirname, isAbsolute, join, relative, resolve, sep } from "node:path";
 import { fileURLToPath } from "node:url";
 import { generateUpdateKeyPair, keyIdOf, signManifest, UpdateError, verifyArtifact, verifyManifest } from "../../apps/desktop/src/main/update/manifest.ts";
@@ -85,6 +88,98 @@ function coreSchemaVersions() {
   return { oldest: Math.min(...versions), newest: Math.max(...versions) };
 }
 
+
+/** Run a tool and fail the release with its output, never with a guess. */
+function run(cmd, args, opts = {}) {
+  const r = spawnSync(cmd, args, { encoding: "utf8", maxBuffer: 256 * 1024 * 1024, ...opts });
+  if (r.error) fail(`${cmd}: ${r.error.message}`);
+  if (r.status !== 0) fail(`${cmd} ${args.join(" ")} exited ${r.status}\n${r.stderr || r.stdout}`);
+  return r.stdout;
+}
+
+const SHIPPED_RUST = [
+  { dir: "services/modbit-core", name: "modbit-core" },
+  { dir: "services/modbit-execd", name: "modbit-execd" },
+];
+
+/** `cargo cyclonedx` writes one file per workspace member into the tree; keep the shipped binaries' and leave nothing behind. */
+function rustSboms(outDir) {
+  const generated = [];
+  run("cargo", ["cyclonedx", "--manifest-path", join(repoRoot, "Cargo.toml"), "--format", "json", "--spec-version", "1.5", "--describe", "binaries"]);
+  const found = [];
+  const scan = (dir) => {
+    for (const name of readdirSync(dir)) {
+      if (["node_modules", "target", ".git"].includes(name)) continue;
+      const p = join(dir, name);
+      if (statSync(p).isDirectory()) scan(p);
+      else if (name.endsWith("_bin.cdx.json")) found.push(p);
+    }
+  };
+  scan(repoRoot);
+  try {
+    for (const { dir, name } of SHIPPED_RUST) {
+      const src = join(repoRoot, dir, `${name}_bin.cdx.json`);
+      if (!existsSync(src)) fail(`cargo cyclonedx produced no SBOM for ${name}`);
+      const dest = join(outDir, `${name}.cdx.json`);
+      copyFileSync(src, dest);
+      generated.push(dest);
+    }
+  } finally {
+    for (const f of found) rmSync(f, { force: true });
+  }
+  return generated;
+}
+
+/** pnpm's own CycloneDX output reads pnpm-lock.yaml; the Electron runtime the packager adds is declared beside it. */
+function desktopSbom(outDir) {
+  const dest = join(outDir, "desktop.cdx.json");
+  run("pnpm", ["sbom", "--filter", "@modbit/desktop", "--sbom-format", "cyclonedx", "--sbom-spec-version", "1.5", "--sbom-type", "application", "--prod", "--out", dest], { cwd: repoRoot });
+  const bom = JSON.parse(readFileSync(dest, "utf8"));
+  const pkg = JSON.parse(readFileSync(join(repoRoot, "apps/desktop/package.json"), "utf8"));
+  const electron = pkg.devDependencies?.electron;
+  if (!electron) fail("apps/desktop/package.json pins no electron version");
+  bom.components = [
+    ...(bom.components ?? []),
+    {
+      type: "framework",
+      "bom-ref": `pkg:npm/electron@${electron}`,
+      name: "electron",
+      version: electron,
+      purl: `pkg:npm/electron@${electron}`,
+      scope: "required",
+      licenses: [{ license: { id: "MIT" } }],
+      description: "The runtime the packager copies into every desktop artifact; Chromium and Node.js are inside it.",
+    },
+  ];
+  writeFileSync(dest, `${JSON.stringify(bom, null, 2)}\n`);
+  return [dest];
+}
+
+/** What makes a document an SBOM worth signing: CycloneDX, with components, each named and versioned. */
+function checkSbom(path) {
+  let bom;
+  try {
+    bom = JSON.parse(readFileSync(path, "utf8"));
+  } catch (e) {
+    fail(`${path} is not JSON: ${e.message}`);
+  }
+  if (bom.bomFormat !== "CycloneDX") fail(`${path} is not a CycloneDX document`);
+  if (!Array.isArray(bom.components) || bom.components.length === 0) fail(`${path} lists no components`);
+  const bad = bom.components.find((c) => !c.name || !c.version);
+  if (bad) fail(`${path} has a component without a name and version: ${JSON.stringify(bad).slice(0, 120)}`);
+  return bom;
+}
+
+function licensesOf(component) {
+  const out = [];
+  for (const l of component.licenses ?? []) {
+    if (l.expression) out.push(...l.expression.split(/\s+(?:AND|OR|WITH)\s+|[()]/i).map((t) => t.trim()).filter(Boolean));
+    else if (l.license?.id) out.push(l.license.id);
+    else if (l.license?.name) out.push(l.license.name);
+  }
+  return out;
+}
+
 function loadPinned(path) {
   const parsed = JSON.parse(readFileSync(path, "utf8"));
   if (!Array.isArray(parsed.keys)) fail(`${path} is not {"keys": [...]}`);
@@ -137,6 +232,48 @@ switch (command) {
     console.log(`${lines.length} checksums written to ${outPath}`);
     break;
   }
+  case "sbom": {
+    const outDir = resolve(required(flags, "out-dir"));
+    mkdirSync(outDir, { recursive: true });
+    const files = [...rustSboms(outDir), ...desktopSbom(outDir)];
+    for (const f of files) {
+      const bom = checkSbom(f);
+      console.log(`${f}: CycloneDX ${bom.specVersion}, ${bom.components.length} components, sha256 ${sha256(readFileSync(f))}`);
+    }
+    break;
+  }
+  case "licenses": {
+    if (positional.length === 0) fail("licenses <sbom.json>...");
+    const policy = JSON.parse(readFileSync(join(repoRoot, "tools/release/license-policy.json"), "utf8"));
+    const allowed = new Set(policy.allowed);
+    // First party is what this workspace builds: its Cargo packages and its npm packages.
+    const firstParty = new Set(JSON.parse(run("cargo", ["metadata", "--format-version", "1", "--no-deps"], { cwd: repoRoot })).packages.map((p) => p.name));
+    for (const dir of ["packages", "apps"]) {
+      for (const n of existsSync(join(repoRoot, dir)) ? readdirSync(join(repoRoot, dir)) : []) {
+        const pj = join(repoRoot, dir, n, "package.json");
+        if (existsSync(pj)) firstParty.add(String(JSON.parse(readFileSync(pj, "utf8")).name).replace(/^@[^/]+\//, ""));
+      }
+    }
+    const exceptions = new Map(policy.reviewed.map((r) => [`${r.name}`, r]));
+    const findings = [];
+    for (const file of positional) {
+      for (const c of checkSbom(file).components) {
+        if (firstParty.has(c.name)) continue;
+        const ids = licensesOf(c);
+        if (ids.length === 0) {
+          if (!exceptions.has(c.name)) findings.push(`${file}: ${c.name}@${c.version} declares no license`);
+          continue;
+        }
+        // An OR expression is satisfied by any allowed alternative; AND and WITH need every term allowed.
+        const expr = (c.licenses ?? []).map((l) => l.expression).find(Boolean);
+        const ok = expr && /\sOR\s/i.test(expr) && !/\sAND\s/i.test(expr) ? ids.some((i) => allowed.has(i)) : ids.every((i) => allowed.has(i));
+        if (!ok && !exceptions.has(c.name)) findings.push(`${file}: ${c.name}@${c.version} license ${ids.join(" / ")} is not in the policy and has no recorded review`);
+      }
+    }
+    if (findings.length > 0) fail(`license gate (docs/36): copyleft and unknown licenses need legal review before merge\n${findings.join("\n")}`);
+    console.log(`licenses: ${positional.length} SBOM(s) pass the policy`);
+    break;
+  }
   case "manifest": {
     const artifacts = (flags.get("artifact") ?? []).map((spec) => {
       const m = /^(macos|windows|linux):([^:]+):(https?:\/\/[^|]+)\|(.+)$/.exec(spec);
@@ -178,7 +315,17 @@ switch (command) {
           verifyArtifact(payload, a.platform, a.arch, readFileSync(join(dir, name)));
         }
       }
-      console.log(`manifest for ${payload.version} verifies${dir ? `; ${payload.artifacts.length} artifacts match their signed size and sha256` : ""}`);
+      const sbomDir = one(flags, "sbom-dir");
+      if (sbomDir !== undefined) {
+        if (payload.sbom.length === 0) fail("the manifest lists no SBOM");
+        for (const e of payload.sbom) {
+          const p = join(sbomDir, e.name);
+          if (!existsSync(p)) fail(`SBOM ${e.name} is listed in the manifest but missing from ${sbomDir}`);
+          if (sha256(readFileSync(p)) !== e.sha256) fail(`SBOM ${e.name} does not match the digest the manifest signs`);
+          checkSbom(p);
+        }
+      }
+      console.log(`manifest for ${payload.version} verifies${dir ? `; ${payload.artifacts.length} artifacts match their signed size and sha256` : ""}${sbomDir ? `; ${payload.sbom.length} SBOMs match their signed digests` : ""}`);
     } catch (e) {
       if (e instanceof UpdateError) fail(e.message);
       throw e;
@@ -192,5 +339,5 @@ switch (command) {
     break;
   }
   default:
-    fail("commands: keygen | schema-version | checksums | manifest | verify | key-id");
+    fail("commands: keygen | schema-version | checksums | sbom | licenses | manifest | verify | key-id");
 }
