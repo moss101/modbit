@@ -1,0 +1,42 @@
+# Packaging only (DR-M10-2-2026-10-02). The signed-manifest updater in
+# src/main/update and tools/release is the only updater: no electron-updater,
+# no publish provider, no builder-generated update feed.
+appId: dev.modbit.desktop
+productName: Modbit
+copyright: Modbit
+directories:
+  output: release
+  buildResources: build-resources
+files:
+  - dist/**
+  - package.json
+  - "!dist/**/*.map"
+asar: true
+# The Core and its execd broker ship beside each other: the Core finds execd
+# as a sibling of its own executable (services/modbit-core/src/tools.rs).
+extraResources:
+  - from: ../../target/release
+    to: .
+    filter: [modbit-core, modbit-core.exe, modbit-execd, modbit-execd.exe]
+compression: normal
+npmRebuild: false
+nodeGypRebuild: false
+buildDependenciesFromSource: false
+publish: null
+generateUpdatesFilesForAllChannels: false
+mac:
+  category: public.app-category.developer-tools
+  target: [dmg, zip]
+  # Signing and notarization need the owner's Apple Developer ID; until it is
+  # supplied the candidate is unsigned and says so (82_NO_PLACEHOLDER_...).
+  identity: null
+win:
+  target: [nsis, zip]
+nsis:
+  oneClick: false
+  perMachine: false
+  allowToChangeInstallationDirectory: true
+linux:
+  category: Development
+  target: [AppImage, tar.gz]
+  maintainer: Modbit

@@ -12,7 +12,10 @@
     "build": "node build.mjs",
     "test": "node --test \"src/**/*.test.ts\"",
     "e2e": "node build.mjs && playwright test -c e2e/playwright.config.ts",
-    "start": "node build.mjs && electron dist/main/main.cjs"
+    "e2e:packaged": "playwright test -c e2e/playwright.packaged.config.ts",
+    "start": "node build.mjs && electron dist/main/main.cjs",
+    "package": "node build.mjs && electron-builder --config electron-builder.yml",
+    "package:dir": "node build.mjs && electron-builder --config electron-builder.yml --dir"
   },
   "modbit": {
     "owner": "desktop",
@@ -27,12 +30,16 @@
     "react-dom": "19.2.8"
   },
   "devDependencies": {
-    "axe-core": "4.10.3",
+    "@cyclonedx/cyclonedx-npm": "6.0.1",
     "@playwright/test": "1.63.0",
     "@types/react": "19.2.18",
     "@types/react-dom": "19.2.7",
+    "axe-core": "4.10.3",
     "electron": "44.3.0",
+    "electron-builder": "26.15.3",
     "esbuild": "0.28.2"
   },
-  "main": "dist/main/main.cjs"
+  "main": "dist/main/main.cjs",
+  "author": "Modbit",
+  "homepage": "https://github.com/moss101/modbit"
 }

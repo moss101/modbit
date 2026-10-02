@@ -19,7 +19,11 @@ const dataDir = process.env.MODBIT_DATA_DIR ?? join(app.getPath("userData"), "mo
 // storage (preferences, caches) lives under it too, so two profiles — or
 // two E2E runs — never share what one viewer stored (PX-024).
 if (process.env.MODBIT_DATA_DIR) app.setPath("userData", join(dataDir, "electron"));
-const coreBin = process.env.MODBIT_CORE_BIN ?? resolve(app.getAppPath(), "..", "..", "target", "debug", process.platform === "win32" ? "modbit-core.exe" : "modbit-core");
+const coreName = process.platform === "win32" ? "modbit-core.exe" : "modbit-core";
+// M10.2: a packaged app carries its own release Core and execd broker in the
+// resources directory (electron-builder `extraResources`); from a checkout the
+// debug build under target/ is used. MODBIT_CORE_BIN overrides both.
+const coreBin = process.env.MODBIT_CORE_BIN ?? (app.isPackaged ? join(process.resourcesPath, coreName) : resolve(app.getAppPath(), "..", "..", "target", "debug", coreName));
 mkdirSync(dataDir, { recursive: true });
 
 /** Client-local convenience only: which session this window last used. The
