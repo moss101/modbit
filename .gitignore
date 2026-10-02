@@ -11,3 +11,4 @@ playwright-report/
 apps/target/
 .vscode-test/
 apps/desktop/release/
+apps/desktop/package-resources/

@@ -13,6 +13,7 @@ import { serializeEvent, type WireEvent } from "./events.js";
 import { BrowserHost } from "./browser.js";
 import { CredentialStore } from "./credentials.js";
 import { platformState } from "./platform.js";
+import { UpdateService } from "./update/service.js";
 
 const dataDir = process.env.MODBIT_DATA_DIR ?? join(app.getPath("userData"), "modbit");
 // A profile named by MODBIT_DATA_DIR is a whole profile: the renderer's
@@ -229,6 +230,24 @@ function handle(channel: string, fn: (e: IpcMainInvokeEvent, ...args: unknown[])
   });
 }
 handle("core:status", () => supervisor.status);
+// M10.2 (docs/70 "Desktop update"): signed-manifest updates. Staging only until
+// the person asks to install; a build with no pinned key verifies nothing and
+// refuses every update.
+const updater = new UpdateService({
+  version: app.getVersion(),
+  platform: process.platform,
+  arch: process.arch,
+  isPackaged: app.isPackaged,
+  resourcesPath: process.resourcesPath,
+  execPath: process.execPath,
+  dataDir,
+  coreBin,
+  quit: () => app.quit(),
+});
+handle("update:view", () => updater.view());
+handle("update:check", () => updater.check());
+handle("update:install", () => updater.installPending());
+handle("update:rollback", () => updater.rollback());
 handle("core:localState", () => ({ ...loadLocalState(), platform: platformState() }));
 // Context Inspector (REQ-EV-0035 / 0131 / 0175): what the pack selected and
 // excluded, and what the prompt envelope injected.
@@ -743,6 +762,7 @@ app.whenReady().then(async () => {
     cb({ responseHeaders: { ...details.responseHeaders, "Content-Security-Policy": ["default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; connect-src 'none'; object-src 'none'; base-uri 'none'; form-action 'none'"] } });
   });
   createWindow();
+  updater.start();
   await supervisor.start();
 });
 
@@ -753,6 +773,7 @@ app.on("window-all-closed", () => {
 // Core child and the socket, or the main process lingers.
 app.on("before-quit", () => {
   browserHost.closeAll();
+  updater.stop();
   supervisor.stop();
 });
 export type { WireEvent };

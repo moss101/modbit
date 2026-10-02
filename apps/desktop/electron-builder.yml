@@ -18,6 +18,14 @@ extraResources:
   - from: ../../target/release
     to: .
     filter: [modbit-core, modbit-core.exe, modbit-execd, modbit-execd.exe]
+  # The install helper and what the package pins about its updates stay outside
+  # the asar: the helper runs as plain Node beside the app, not inside it.
+  - from: dist/main
+    to: .
+    filter: [apply-helper.cjs]
+  - from: package-resources
+    to: .
+    filter: [update-keys.json, update-config.json]
 compression: normal
 npmRebuild: false
 nodeGypRebuild: false

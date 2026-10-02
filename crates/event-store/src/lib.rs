@@ -34,7 +34,7 @@ pub mod projections;
 pub mod schema;
 mod store;
 
-pub use migrations::MigrationReport;
+pub use migrations::{MigrationReport, SchemaInfo, backup_database, schema_info};
 pub use objects::ObjectStore;
 pub use store::{
     AppendRequest, CommandOutcome, CommandRecord, EventStore, EvidenceHit, EvidenceScope,
