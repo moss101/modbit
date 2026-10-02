@@ -9,7 +9,7 @@
 //   node tools/release/repro.mjs --out evidence.json [--work-dir dir]
 import { spawnSync } from "node:child_process";
 import { createHash } from "node:crypto";
-import { cpSync, existsSync, mkdirSync, mkdtempSync, readFileSync, readdirSync, rmSync, statSync, writeFileSync } from "node:fs";
+import { existsSync, mkdirSync, mkdtempSync, readFileSync, readdirSync, rmSync, statSync, writeFileSync } from "node:fs";
 import { homedir, tmpdir } from "node:os";
 import { dirname, join, relative, resolve, sep } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -53,11 +53,15 @@ const cargoHome = process.env.CARGO_HOME ?? join(homedir(), ".cargo");
 const work = flag("work-dir") ? resolve(flag("work-dir")) : mkdtempSync(join(tmpdir(), "modbit-repro-"));
 mkdirSync(work, { recursive: true });
 
+// Both runs build in the same target path, emptied between runs: build scripts
+// embed their OUT_DIR (the generated protocol code), and a path that differs
+// between runs shows up in the binary and in the Mach-O UUID derived from it.
+const target = join(work, "target");
 const buildEnv = {
   ...process.env,
   SOURCE_DATE_EPOCH: epoch,
-  // Paths of the checkout and of the cargo registry must not reach the binary.
-  RUSTFLAGS: `--remap-path-prefix=${repoRoot}=/modbit-src --remap-path-prefix=${cargoHome}=/cargo ${process.env.RUSTFLAGS ?? ""}`.trim(),
+  // Paths of the checkout, the build output and the cargo registry must not reach the binary.
+  RUSTFLAGS: `--remap-path-prefix=${repoRoot}=/modbit-src --remap-path-prefix=${target}=/modbit-target --remap-path-prefix=${cargoHome}=/cargo ${process.env.RUSTFLAGS ?? ""}`.trim(),
   CARGO_INCREMENTAL: "0",
 };
 
@@ -67,24 +71,18 @@ const RUST = [
 ];
 const runs = [];
 for (const label of ["a", "b"]) {
-  const target = join(work, `target-${label}`);
   rmSync(target, { recursive: true, force: true });
   console.error(`repro: build ${label}: cargo build --release --locked (clean target ${target})`);
   run("cargo", ["build", "--release", "--locked", "-p", "modbit-core", "-p", "modbit-execd"], { cwd: repoRoot, env: { ...buildEnv, CARGO_TARGET_DIR: target } });
   const digests = {};
   for (const r of RUST) digests[`rust/${r.name}`] = sha256(readFileSync(join(target, "release", r.file)));
 
-  // The desktop bundles, built into a scratch copy of the app so the two runs share no output.
-  const appCopy = join(work, `desktop-${label}`);
-  rmSync(appCopy, { recursive: true, force: true });
-  cpSync(join(repoRoot, "apps", "desktop"), appCopy, {
-    recursive: true,
-    filter: (src) => !/[\\/](node_modules|dist|release|package-resources|test-results)([\\/]|$)/.test(relative(join(repoRoot, "apps", "desktop"), src)),
-  });
-  // Dependencies resolve through the repository's pnpm install; the copy sees them by symlink.
-  run("node", ["--no-warnings", "-e", `require("node:fs").symlinkSync(${JSON.stringify(join(repoRoot, "apps", "desktop", "node_modules"))}, ${JSON.stringify(join(appCopy, "node_modules"))}, "dir")`]);
-  run("node", ["build.mjs"], { cwd: appCopy, env: buildEnv });
-  const dist = join(appCopy, "dist");
+  // The desktop bundles, built in place from an emptied dist/: esbuild takes
+  // the lockfile-resolved sources and writes nothing else.
+  const appDir = join(repoRoot, "apps", "desktop");
+  rmSync(join(appDir, "dist"), { recursive: true, force: true });
+  run("node", ["build.mjs"], { cwd: appDir, env: buildEnv });
+  const dist = join(appDir, "dist");
   for (const f of walk(dist)) {
     // The source maps name their sources relative to the build directory; the digest of the maps is of the bundle's content, which is what we compare.
     digests[`desktop/${relative(dist, f).split(sep).join("/")}`] = sha256(readFileSync(f));
