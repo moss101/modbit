@@ -2,12 +2,12 @@
   "product": "Modbit",
   "edition": "V3.3 EPR v1.1",
   "authority_date": "2026-09-05",
-  "generated_on": "2026-09-26",
+  "generated_on": "2026-10-02",
   "hash_algorithm": "sha256",
   "scope_rule": "docs/*.md, root *.md except MANIFEST.md, docs/decisions/*.md, graph JSON/Markdown, tools/*.py, evidence payloads; manifests exclude themselves and transient caches",
   "counts": {
     "docs": 90,
-    "root_and_tooling": 1650,
+    "root_and_tooling": 1652,
     "docs_bytes": 1402521
   },
   "sections": [
@@ -1814,6 +1814,16 @@
       "path": "evidence/m10/M10.1/evidence.json",
       "bytes": 2550,
       "sha256": "a05dbedc4cf213fcc4c2b4a6ef285fabb409a5f9dbe9e787c750e229341cd04d"
+    },
+    {
+      "path": "evidence/m10/M10.2/DR-M10-2-PACKAGING-AND-SBOM.md",
+      "bytes": 4138,
+      "sha256": "e8f3bcb2d44a940274c4e7d3ab463ae0e0c5f2aeb67f5571c92b03f0dcaf76a8"
+    },
+    {
+      "path": "evidence/m10/M10.2/TASK_CARD.md",
+      "bytes": 10901,
+      "sha256": "b2cc6c4a3652baa4de0b3fb5e8bf467fae109561d404df76dcfe31341285cedf"
     },
     {
       "path": "evidence/m10/PX-030/TASK_CARD.md",
@@ -9052,13 +9062,13 @@
     },
     {
       "path": "graph/PROJECT_GRAPH.md",
-      "bytes": 41844,
-      "sha256": "ee227e3ff434a79029fb1aa7f5c3f598c3a42ce13f9b9391f3c7ccaf7eeefc3f"
+      "bytes": 41845,
+      "sha256": "43d94246d18c7c17108faa93e485f33a03f4b6958051ba9050875b2d5cc1fb61"
     },
     {
       "path": "graph/project-graph.json",
-      "bytes": 1615223,
-      "sha256": "b21d3bb02a80ae98bc26c3d1419349e9669d02b758f87cbc584ed9f1d73d92ee"
+      "bytes": 1615926,
+      "sha256": "6ee49fa15497a9cbf0517589e4964386cf17c1c9608e8df13869cf4ead68c3de"
     },
     {
       "path": "tools/build_graph.py",

@@ -13,13 +13,18 @@ import { serializeEvent, type WireEvent } from "./events.js";
 import { BrowserHost } from "./browser.js";
 import { CredentialStore } from "./credentials.js";
 import { platformState } from "./platform.js";
+import { UpdateService } from "./update/service.js";
 
 const dataDir = process.env.MODBIT_DATA_DIR ?? join(app.getPath("userData"), "modbit");
 // A profile named by MODBIT_DATA_DIR is a whole profile: the renderer's
 // storage (preferences, caches) lives under it too, so two profiles — or
 // two E2E runs — never share what one viewer stored (PX-024).
 if (process.env.MODBIT_DATA_DIR) app.setPath("userData", join(dataDir, "electron"));
-const coreBin = process.env.MODBIT_CORE_BIN ?? resolve(app.getAppPath(), "..", "..", "target", "debug", process.platform === "win32" ? "modbit-core.exe" : "modbit-core");
+const coreName = process.platform === "win32" ? "modbit-core.exe" : "modbit-core";
+// M10.2: a packaged app carries its own release Core and execd broker in the
+// resources directory (electron-builder `extraResources`); from a checkout the
+// debug build under target/ is used. MODBIT_CORE_BIN overrides both.
+const coreBin = process.env.MODBIT_CORE_BIN ?? (app.isPackaged ? join(process.resourcesPath, coreName) : resolve(app.getAppPath(), "..", "..", "target", "debug", coreName));
 mkdirSync(dataDir, { recursive: true });
 
 /** Client-local convenience only: which session this window last used. The
@@ -225,6 +230,24 @@ function handle(channel: string, fn: (e: IpcMainInvokeEvent, ...args: unknown[])
   });
 }
 handle("core:status", () => supervisor.status);
+// M10.2 (docs/70 "Desktop update"): signed-manifest updates. Staging only until
+// the person asks to install; a build with no pinned key verifies nothing and
+// refuses every update.
+const updater = new UpdateService({
+  version: app.getVersion(),
+  platform: process.platform,
+  arch: process.arch,
+  isPackaged: app.isPackaged,
+  resourcesPath: process.resourcesPath,
+  execPath: process.execPath,
+  dataDir,
+  coreBin,
+  quit: () => app.quit(),
+});
+handle("update:view", () => updater.view());
+handle("update:check", () => updater.check());
+handle("update:install", () => updater.installPending());
+handle("update:rollback", () => updater.rollback());
 handle("core:localState", () => ({ ...loadLocalState(), platform: platformState() }));
 // Context Inspector (REQ-EV-0035 / 0131 / 0175): what the pack selected and
 // excluded, and what the prompt envelope injected.
@@ -739,6 +762,7 @@ app.whenReady().then(async () => {
     cb({ responseHeaders: { ...details.responseHeaders, "Content-Security-Policy": ["default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; connect-src 'none'; object-src 'none'; base-uri 'none'; form-action 'none'"] } });
   });
   createWindow();
+  updater.start();
   await supervisor.start();
 });
 
@@ -749,6 +773,7 @@ app.on("window-all-closed", () => {
 // Core child and the socket, or the main process lingers.
 app.on("before-quit", () => {
   browserHost.closeAll();
+  updater.stop();
   supervisor.stop();
 });
 export type { WireEvent };

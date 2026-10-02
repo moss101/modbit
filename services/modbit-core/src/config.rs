@@ -68,6 +68,16 @@ pub fn device_policy_path() -> std::path::PathBuf {
     }
 }
 
+/// The machine's device constraints, read the way a task reads them (same
+/// file, same parse, same "broken file is no opinion" rule). The desktop
+/// updater asks for these offline (`modbit-core device-policy`) so the
+/// `update_channel` and `minimum_version` it enforces are the ones the Core's
+/// own `GetEffectivePolicy` shows (docs/23, M10.2).
+#[must_use]
+pub fn device_constraints() -> Option<modbit_policy::config::DeviceConstraints> {
+    read_layer(&device_policy_path())?.device
+}
+
 /// The layers for a task, in authority order: device, admin, project, user.
 #[must_use]
 pub fn layers_for(data_dir: &Path, workspace_root: Option<&str>) -> BTreeMap<Authority, Layer> {

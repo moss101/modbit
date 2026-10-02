@@ -11,6 +11,7 @@ packages:
 allowBuilds:
   "@bufbuild/buf": true
   electron: true
+  electron-winstaller: false # Squirrel.Windows installer; the Windows target is NSIS
   esbuild: true
 minimumReleaseAgeExclude:
   - electron@44.3.0

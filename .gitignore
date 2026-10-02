@@ -10,3 +10,5 @@ playwright-report/
 # Playwright's JSON report from the desktop E2E run (a local artifact).
 apps/target/
 .vscode-test/
+apps/desktop/release/
+apps/desktop/package-resources/

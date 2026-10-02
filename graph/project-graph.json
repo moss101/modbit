@@ -3,7 +3,7 @@
  "product": "Modbit",
  "edition": "V3.3 EPR v1.1",
  "authority_date": "2026-09-05",
- "generated_on": "2026-09-26",
+ "generated_on": "2026-10-02",
  "generator": "tools/build_graph.py",
  "status_vocabulary": [
   "NOT_STARTED",
@@ -4721,8 +4721,23 @@
    "milestone": "M10",
    "order": 1,
    "source": "docs/43",
-   "status": "NOT_STARTED",
-   "evidence": []
+   "status": "IMPLEMENTING",
+   "evidence": [],
+   "notes": [
+    {
+     "at": "2026-09-30T03:52:53Z",
+     "from": "NOT_STARTED",
+     "to": "AUDITING",
+     "note": "Existing-code audit: NOT-FOUND (no packaging, release workflow, SBOM tooling, signing or update client; DevicePolicy.update_channel/minimum_version represented but enforced by nothing). Owner inputs of docs/77 s5 item 4 recorded on the task card."
+    },
+    {
+     "at": "2026-09-30T03:52:53Z",
+     "from": "AUDITING",
+     "to": "IMPLEMENTING",
+     "note": "Increment 1: signed update manifest core (verify, rollout, migration compatibility, rollback) and release tooling; app wiring, packaged build and SBOM follow."
+    }
+   ],
+   "status_changed_on": "2026-09-30T03:52:53Z"
   },
   {
    "id": "M10.3",
