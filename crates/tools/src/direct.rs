@@ -898,6 +898,45 @@ struct Barrier {
 /// How many changed paths are listed inline in the structured output.
 const DIFF_INLINE_ENTRIES: usize = 12;
 
+/// Content hashes learned by the last snapshot of each workspace root, so the
+/// next call re-reads only files whose size or mtime moved (a pure cache, see
+/// [`modbit_workspace::snapshot::HashCache`]); a handful of roots at most.
+fn hash_caches() -> &'static std::sync::Mutex<
+    std::collections::HashMap<std::path::PathBuf, Arc<modbit_workspace::snapshot::HashCache>>,
+> {
+    static CACHES: std::sync::OnceLock<
+        std::sync::Mutex<
+            std::collections::HashMap<
+                std::path::PathBuf,
+                Arc<modbit_workspace::snapshot::HashCache>,
+            >,
+        >,
+    > = std::sync::OnceLock::new();
+    CACHES.get_or_init(Default::default)
+}
+
+const HASH_CACHE_ROOTS: usize = 8;
+
+fn cached_hashes(root: &std::path::Path) -> Arc<modbit_workspace::snapshot::HashCache> {
+    hash_caches()
+        .lock()
+        .ok()
+        .and_then(|m| m.get(root).cloned())
+        .unwrap_or_default()
+}
+
+fn remember_hashes(root: &std::path::Path, cache: modbit_workspace::snapshot::HashCache) {
+    if let Ok(mut m) = hash_caches().lock() {
+        if m.len() >= HASH_CACHE_ROOTS
+            && !m.contains_key(root)
+            && let Some(k) = m.keys().next().cloned()
+        {
+            m.remove(&k);
+        }
+        m.insert(root.to_path_buf(), Arc::new(cache));
+    }
+}
+
 impl Barrier {
     /// Snapshot the call's workspace. `None` where there is nothing to
     /// guard on the host: no workspace root, no broker (nothing will run),
@@ -915,8 +954,13 @@ impl Barrier {
             None => (modbit_workspace::PathPolicy::new(&root, &[]).ok()?, None),
         };
         let p = policy.clone();
+        let cache = cached_hashes(policy.root());
         let before = tokio::task::spawn_blocking(move || {
-            modbit_workspace::snapshot::capture(&p, modbit_workspace::snapshot::Limits::default())
+            modbit_workspace::snapshot::capture_cached(
+                &p,
+                modbit_workspace::snapshot::Limits::default(),
+                &cache,
+            )
         })
         .await
         .ok()?;
@@ -937,7 +981,7 @@ impl Barrier {
     /// file service wrote in the same window (the diff cannot be told from
     /// that write). Those are flagged, never silent.
     async fn settle(self, ctx: &InvokeContext, mut out: ToolOutcome) -> ToolOutcome {
-        use modbit_workspace::snapshot::{Limits, capture, diff, restore};
+        use modbit_workspace::snapshot::{Limits, capture_cached, diff, restore};
         let (policy, revision_after) = match &ctx.workspace {
             Some(ws) => {
                 let g = ws.lock().await;
@@ -946,10 +990,14 @@ impl Barrier {
             None => (self.policy.clone(), None),
         };
         let p = policy.clone();
-        let Ok(after) = tokio::task::spawn_blocking(move || capture(&p, Limits::default())).await
+        let cache = self.before.hash_cache();
+        let Ok(after) =
+            tokio::task::spawn_blocking(move || capture_cached(&p, Limits::default(), &cache))
+                .await
         else {
             return out;
         };
+        remember_hashes(policy.root(), after.hash_cache());
         let deltas = diff(&self.before, &after, &policy);
         let incomplete = self.before.incomplete || after.incomplete;
         if deltas.is_empty() && !incomplete {

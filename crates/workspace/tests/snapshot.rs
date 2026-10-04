@@ -279,3 +279,44 @@ fn the_walk_is_bounded_and_an_incomplete_snapshot_never_invents_additions_or_del
         "{d:?}"
     );
 }
+
+fn set_mtime(path: &Path, t: std::time::SystemTime) {
+    std::fs::File::options()
+        .write(true)
+        .open(path)
+        .unwrap()
+        .set_modified(t)
+        .unwrap();
+}
+
+/// A snapshot that reuses an earlier snapshot's hashes still sees every real
+/// change: a file whose size or mtime moved is read again, a recently written
+/// ("racy") file is always read again, and a protected file is never trusted
+/// from the cache — even one whose mtime was forged back.
+#[test]
+fn a_cached_capture_never_hides_a_change() {
+    let (root, policy) = tree();
+    let p = root.path();
+    let old = std::time::SystemTime::now() - std::time::Duration::from_secs(3600);
+    for f in ["src/main.rs", ".env"] {
+        set_mtime(&p.join(f), old);
+    }
+    std::fs::write(p.join("src/racy.rs"), "aaaa\n").unwrap();
+    let first = capture(&policy, Limits::default());
+    let cache = first.hash_cache();
+    assert!(!cache.is_empty());
+    // unchanged tree: nothing differs
+    let again = modbit_workspace::snapshot::capture_cached(&policy, Limits::default(), &cache);
+    assert!(diff(&first, &again, &policy).is_empty());
+    // a modified file (new mtime) is read again
+    std::fs::write(p.join("src/main.rs"), "fn main() { 7 }\n").unwrap();
+    // a racy file rewritten with the same size right after the snapshot
+    std::fs::write(p.join("src/racy.rs"), "bbbb\n").unwrap();
+    // a protected file rewritten with the same size and its mtime forged back
+    std::fs::write(p.join(".env"), "SECRET=9\n").unwrap();
+    set_mtime(&p.join(".env"), old);
+    let after = modbit_workspace::snapshot::capture_cached(&policy, Limits::default(), &cache);
+    let d = diff(&first, &after, &policy);
+    let paths: Vec<&str> = d.iter().map(|x| x.path.as_str()).collect();
+    assert_eq!(paths, [".env", "src/main.rs", "src/racy.rs"], "{d:?}");
+}

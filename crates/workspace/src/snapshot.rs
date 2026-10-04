@@ -81,10 +81,53 @@ enum Entry {
         fingerprint: String,
         exact: bool,
         exec: bool,
+        size: u64,
+        mtime_ns: u128,
     },
     Symlink {
         target: String,
     },
+}
+
+/// A file is "racy" when it was modified within this long of the moment its
+/// hash was taken: a rewrite that keeps size and mtime cannot be excluded, so
+/// such a file is always re-read (the same rule git applies to its index).
+const RACY_NS: u128 = 2_000_000_000;
+
+fn now_ns() -> u128 {
+    std::time::SystemTime::now()
+        .duration_since(std::time::UNIX_EPOCH)
+        .map_or(0, |d| d.as_nanos())
+}
+
+/// What an earlier snapshot learned about file contents: a file whose size
+/// and mtime are unchanged, and that was not racy when hashed, is not read
+/// again. A pure cache: it can only skip a read of a file that provably has
+/// the content it had, never change what a snapshot reports.
+#[derive(Clone, Debug, Default)]
+pub struct HashCache {
+    taken_at_ns: u128,
+    files: std::collections::HashMap<String, (u64, u128, String)>,
+}
+
+impl HashCache {
+    /// Number of files remembered.
+    #[must_use]
+    pub fn len(&self) -> usize {
+        self.files.len()
+    }
+
+    /// Whether nothing is remembered.
+    #[must_use]
+    pub fn is_empty(&self) -> bool {
+        self.files.is_empty()
+    }
+
+    fn lookup(&self, rel: &str, size: u64, mtime_ns: u128) -> Option<&str> {
+        let (s, m, fp) = self.files.get(rel)?;
+        (*s == size && *m == mtime_ns && m.saturating_add(RACY_NS) < self.taken_at_ns)
+            .then_some(fp.as_str())
+    }
 }
 
 impl Entry {
@@ -122,6 +165,7 @@ pub struct Snapshot {
     pub incomplete: bool,
     /// Entries scanned.
     pub scanned: usize,
+    taken_at_ns: u128,
 }
 
 /// What happened to one path.
@@ -233,6 +277,13 @@ fn git_surfaces(root: &Path) -> (Option<PathBuf>, Option<PathBuf>) {
 /// Take a snapshot of the tree under `policy`'s root.
 #[must_use]
 pub fn capture(policy: &PathPolicy, limits: Limits) -> Snapshot {
+    capture_cached(policy, limits, &HashCache::default())
+}
+
+/// [`capture`] that reads only the files an earlier snapshot's
+/// [`HashCache`] cannot vouch for.
+#[must_use]
+pub fn capture_cached(policy: &PathPolicy, limits: Limits, cache: &HashCache) -> Snapshot {
     let root = policy.root().to_path_buf();
     let (hooks_dir, git_config) = git_surfaces(&root);
     let mut snap = Snapshot {
@@ -243,6 +294,7 @@ pub fn capture(policy: &PathPolicy, limits: Limits) -> Snapshot {
         git_config: git_config.clone(),
         incomplete: false,
         scanned: 0,
+        taken_at_ns: now_ns(),
     };
     let mut hashed_total: u64 = 0;
     // (absolute directory, root-relative name, real directory is a watched git surface)
@@ -255,6 +307,7 @@ pub fn capture(policy: &PathPolicy, limits: Limits) -> Snapshot {
             &mut snap,
             policy,
             limits,
+            cache,
             &mut hashed_total,
             c,
             ".git/config".to_owned(),
@@ -292,6 +345,7 @@ pub fn capture(policy: &PathPolicy, limits: Limits) -> Snapshot {
                         &mut snap,
                         policy,
                         limits,
+                        cache,
                         &mut hashed_total,
                         &entry.path(),
                         child_rel,
@@ -307,6 +361,7 @@ fn record_file(
     snap: &mut Snapshot,
     policy: &PathPolicy,
     limits: Limits,
+    cache: &HashCache,
     hashed_total: &mut u64,
     path: &Path,
     rel: String,
@@ -326,6 +381,25 @@ fn record_file(
     }
     let protected = policy.protected_match(&rel).is_some();
     let size = meta.len();
+    let mtime = meta
+        .modified()
+        .ok()
+        .and_then(|t| t.duration_since(std::time::UNIX_EPOCH).ok())
+        .map_or(0, |d| d.as_nanos());
+    // Protected files are always read: their bytes are retained for a restore.
+    if !protected && let Some(fp) = cache.lookup(&rel, size, mtime) {
+        snap.entries.insert(
+            rel,
+            Entry::File {
+                fingerprint: fp.to_owned(),
+                exact: true,
+                exec: is_exec(&meta),
+                size,
+                mtime_ns: mtime,
+            },
+        );
+        return;
+    }
     let within_budget = size <= limits.max_hashed_file_bytes
         && hashed_total.saturating_add(size) <= limits.max_total_hashed_bytes;
     let retainable = protected && size <= limits.max_retained_file_bytes;
@@ -340,6 +414,8 @@ fn record_file(
                         fingerprint,
                         exact: true,
                         exec: is_exec(&meta),
+                        size,
+                        mtime_ns: mtime,
                     },
                 );
                 if retainable {
@@ -356,17 +432,14 @@ fn record_file(
             Err(_) => return,
         }
     }
-    let mtime = meta
-        .modified()
-        .ok()
-        .and_then(|t| t.duration_since(std::time::UNIX_EPOCH).ok())
-        .map_or(0, |d| d.as_nanos());
     snap.entries.insert(
         rel,
         Entry::File {
             fingerprint: format!("size:{size}:mtime:{mtime}"),
             exact: false,
             exec: is_exec(&meta),
+            size,
+            mtime_ns: mtime,
         },
     );
 }
@@ -384,6 +457,28 @@ impl Snapshot {
             return h.join(rest);
         }
         self.root.join(rel)
+    }
+
+    /// What this snapshot learned about contents, for the next capture.
+    #[must_use]
+    pub fn hash_cache(&self) -> HashCache {
+        HashCache {
+            taken_at_ns: self.taken_at_ns,
+            files: self
+                .entries
+                .iter()
+                .filter_map(|(k, e)| match e {
+                    Entry::File {
+                        fingerprint,
+                        exact: true,
+                        size,
+                        mtime_ns,
+                        ..
+                    } => Some((k.clone(), (*size, *mtime_ns, fingerprint.clone()))),
+                    _ => None,
+                })
+                .collect(),
+        }
     }
 
     /// Number of entries recorded.
@@ -412,7 +507,7 @@ pub fn diff(before: &Snapshot, after: &Snapshot, policy: &PathPolicy) -> Vec<Fil
     for k in keys {
         let (b, a) = (before.entries.get(k), after.entries.get(k));
         let kind = match (b, a) {
-            (Some(b), Some(a)) if b != a => ChangeKind::Modified,
+            (Some(b), Some(a)) if b.label() != a.label() => ChangeKind::Modified,
             (None, Some(_)) if !partial => ChangeKind::Added,
             (Some(_), None) if !partial => ChangeKind::Deleted,
             _ => continue,
