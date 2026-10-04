@@ -228,7 +228,7 @@ pub(crate) async fn assemble(
             );
             o.verification = match completion_status.as_str() {
                 "" => "NOT_RUN",
-                "PASSED" if checks.is_empty() => "NO_CHECKS",
+                "PASSED" | "UNKNOWN" if checks.is_empty() => "NO_CHECKS",
                 "PASSED" => "PASSED",
                 _ => "FAILED",
             }

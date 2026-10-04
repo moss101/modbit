@@ -1280,6 +1280,7 @@ pub(crate) fn derive(
             let passed = checks.iter().filter(|c| c["status"] == "PASS").count();
             let v = match s(&x["status"]).as_str() {
                 "PASSED" if passed == 0 => "NO_CHECKS",
+                "UNKNOWN" if checks.is_empty() => "NO_CHECKS",
                 "PASSED" => "PASSED",
                 _ => "FAILED",
             };

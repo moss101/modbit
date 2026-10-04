@@ -2825,6 +2825,10 @@ async fn scripted_model_reactive(
 fn git_repo_with_failing_check() -> (tempfile::TempDir, String) {
     let repo = tempfile::tempdir().unwrap();
     std::fs::write(repo.path().join("qty.txt"), "quantity = -5\n").unwrap();
+    // FIX-03: a completion needs a mandatory check; this fixture's subject
+    // is the agent loop, so the repository declares a no-op one.
+    std::fs::create_dir_all(repo.path().join(".modbit")).unwrap();
+    std::fs::write(repo.path().join(NOOP_CHECK.0), NOOP_CHECK.1).unwrap();
     // The "test": passes only once the file says quantities are validated.
     std::fs::write(
         repo.path().join("check.sh"),
@@ -3956,6 +3960,10 @@ async fn m2_9_review_surface_applies_per_hunk_decisions_and_commits() {
             .join("\n")
     );
     std::fs::write(repo.path().join("notes.txt"), &original).unwrap();
+    // FIX-03: completing a change needs a mandatory check; this test's
+    // subject is the review surface, so the repository declares a no-op one.
+    std::fs::create_dir_all(repo.path().join(".modbit")).unwrap();
+    std::fs::write(repo.path().join(NOOP_CHECK.0), NOOP_CHECK.1).unwrap();
     for args in [
         vec!["init", "-q", "-b", "main"],
         vec!["add", "-A"],
@@ -4798,7 +4806,27 @@ async fn qual_ev_0194_approvals_are_canonical_and_never_resolved_by_the_model() 
     );
 }
 
+/// A repository-configured check that always passes. A COMPLETION run with no
+/// mandatory check is INDETERMINATE (FIX-03), so fixtures whose subject is
+/// something other than verification declare this one.
+const NOOP_CHECK: (&str, &str) = (
+    ".modbit/verification.json",
+    "{\"commands\": [{\"id\": \"fixture-noop\", \"argv\": [\"git\", \"--version\"]}]}",
+);
+
+/// A committed repository of `files` that has a mandatory check (the no-op
+/// one unless `files` configures its own).
 fn plain_repo(files: &[(&str, &str)]) -> (tempfile::TempDir, String) {
+    if files.iter().any(|(p, _)| *p == NOOP_CHECK.0) {
+        return bare_repo(files);
+    }
+    let mut with_check = files.to_vec();
+    with_check.push(NOOP_CHECK);
+    bare_repo(&with_check)
+}
+
+/// A committed repository of exactly `files`: no check unless they say so.
+fn bare_repo(files: &[(&str, &str)]) -> (tempfile::TempDir, String) {
     let repo = tempfile::tempdir().unwrap();
     for (p, c) in files {
         let path = repo.path().join(p);
@@ -12124,7 +12152,9 @@ async fn qual_ev_0188_a_media_tool_result_reaches_the_model_as_a_split_follow_up
 async fn qual_ev_0173_task_economics_report_quality_and_cost_from_the_log() {
     use modbit_protocol::v1::{GetTaskEconomics, StartTask, TaskEconomicsView, TaskRunStarted};
     use serde_json::json;
-    let (repo, root) = plain_repo(&[("notes.md", "totals are cents\n")]);
+    // No derivable suite and no configured check, on purpose: the subject is
+    // what the view says of a candidate nothing verified.
+    let (repo, root) = bare_repo(&[("notes.md", "totals are cents\n")]);
     let script = vec![
         json!({"calls": [{"name": "plan.update", "args": {"outcome": "read the notes", "expected_files": ["notes.md"]}}]}),
         json!({"calls": [{"name": "fs.read", "args": {"path": "notes.md"}}]}),

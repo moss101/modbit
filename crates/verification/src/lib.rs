@@ -21,19 +21,20 @@ pub mod tiers;
 
 pub use adapters::{RawRun, detect, parse, parse_cargo, parse_junit_xml, parse_vitest_json};
 pub use engine::{
-    ArtifactSink, Attribution, AttributionReport, CommandRunner, Quarantine, VerificationEngine,
-    VerificationPolicy, VerificationRun, attribute, attribute_against, environment_digest,
+    ArtifactSink, Attribution, AttributionReport, CommandRunner, IndeterminateReason, Quarantine,
+    VerificationEngine, VerificationPolicy, VerificationRun, attribute, attribute_against,
+    environment_digest,
 };
 pub use gate::{
     AcceptanceGateResult, CheckEvidence, EvidenceItem, EvidenceStatus, GATE_VERSION, GateInput,
-    InvariantEvidence, RequiredAssurance, ReviewEvidence, Verdict, VerificationEvidence,
-    evaluate as evaluate_gate,
+    InvariantEvidence, NO_MANDATORY_CHECKS, RequiredAssurance, ReviewEvidence, Verdict,
+    VerificationEvidence, evaluate as evaluate_gate,
 };
 pub use invariants::{
     ChangedFile, Class, InvariantContext, Violation, denies, evaluate_diff, evaluate_file,
     protected_path_key,
 };
-pub use plan::{CheckCommand, VerificationPlan, derive};
+pub use plan::{CONFIGURED_ID_PREFIX, CheckCommand, VerificationPlan, derive};
 pub use report::{
     CheckKind, CheckResult, CheckStatus, Confidence, Counts, Location, ParserInfo, ReportStatus,
     RunnerFamily, RunnerInfo, Stage, TestReport, failure_signature, normalize_message,

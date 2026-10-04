@@ -143,7 +143,9 @@ pub(crate) async fn view(core: &Core, task_id: TaskId) -> wire::TaskEconomicsVie
     // with no derivable suite is reported as NO_CHECKS, never as verified.
     v.verification = match completion_status.as_str() {
         "" => "NOT_RUN",
-        "PASSED" if checks.is_empty() => "NO_CHECKS",
+        // An empty mandatory check set records UNKNOWN (FIX-03): the same
+        // fact as a run that passed with nothing to run, still not verified.
+        "PASSED" | "UNKNOWN" if checks.is_empty() => "NO_CHECKS",
         "PASSED" => "PASSED",
         _ => "FAILED",
     }

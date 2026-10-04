@@ -7990,6 +7990,29 @@ async fn run_verification_stage(
         target: core.tools.execd.as_ref().map(|e| e.target.clone()),
         execution_profile: task.execution_profile.clone(),
         cancel: core.runtime.cancel_token(&task.task_id).await,
+        // FIX-03: repository-defined argv is decided by the kernel under the
+        // task's lease, like any other shell effect.
+        kernel: {
+            let store = core.store.lock().await;
+            Some(crate::verify::KernelGate {
+                lease: store
+                    .leases_for_task(&task.task_id)
+                    .ok()
+                    .and_then(|l| l.into_iter().next()),
+                execution_profile: task.execution_profile.clone(),
+                emergency_stopped: store
+                    .session(&task.session_id)
+                    .ok()
+                    .flatten()
+                    .and_then(|s| s.emergency_stopped_at)
+                    .is_some(),
+                config: core.tools.configurations.for_task(
+                    task.task_id,
+                    &core.data_dir,
+                    Some(root.as_str()),
+                ),
+            })
+        },
     };
     let sink = crate::verify::ObjectSinkAdapter(core.store.lock().await.objects().clone());
     let engine = VerificationEngine::new(&runner, &sink, VerificationPolicy::default());
@@ -8160,7 +8183,7 @@ async fn run_verification_stage(
                     .map(|s| (id.clone(), s))
                 })
                 .collect();
-            let attribution = modbit_verification::attribute_against(&base, &vrun, &plan);
+            let mut attribution = modbit_verification::attribute_against(&base, &vrun, &plan);
             for (check, a) in &attribution.checks {
                 if *a != modbit_verification::Attribution::Pass {
                     events.push(typed(
@@ -8176,6 +8199,39 @@ async fn run_verification_stage(
             }
             let residue = candidate_exclusions(core, task, &root).await;
             let files = crate::verify::changed_files(std::path::Path::new(&root), &residue);
+            // FIX-03: an empty mandatory check set is INDETERMINATE. It
+            // leaves nothing to verify only for a candidate that changes
+            // nothing — no file differs from HEAD and the task landed no
+            // write — such as an investigation or a question. A candidate
+            // that does change something goes on only with the user's
+            // explicit waiver (`user.ask`, reason `verification_waiver`),
+            // recorded on the log, for exactly this revision of the work.
+            let no_checks = vrun.indeterminate_reason
+                == Some(modbit_verification::IndeterminateReason::NoMandatoryChecks);
+            // A run the kernel kept from running a repository's command
+            // (a plan-mode task holds no `shell.exec`) is UNKNOWN too; for a
+            // candidate that changes nothing that is the same thing.
+            let nothing_to_verify = (no_checks
+                || vrun.status == modbit_verification::ReportStatus::Unknown)
+                && files.is_empty()
+                && !crate::gate::task_wrote(&*core.store.lock().await, task);
+            let waiver = if no_checks && !nothing_to_verify {
+                crate::gate::verification_waived(&*core.store.lock().await, task)
+            } else {
+                None
+            };
+            let unverified_ok = nothing_to_verify || waiver.is_some();
+            if unverified_ok {
+                attribution.blocks_acceptance = false;
+                attribution.inconclusive = false;
+                attribution.reasons.clear();
+                text.push_str(&match &waiver {
+                    Some(q) => format!(
+                        "verification: WAIVED by the user (question {q}); no mandatory check ran and the gate stays INCONCLUSIVE\n"
+                    ),
+                    None => "verification: nothing to verify (the candidate changes nothing and no mandatory check is configured)\n".to_owned(),
+                });
+            }
             let ctx = invariant_context(state);
             let violations = modbit_verification::evaluate_diff(&ctx, &files, None);
             // A FLAG whose path the current plan declares has already been
@@ -8314,10 +8370,14 @@ async fn run_verification_stage(
             }
             // REQ-EPR-017: the Acceptance Gate, evaluated from what the log
             // holds once this run's records land — independently of the
-            // risk it consumes as an obligation. Its verdict is recorded;
-            // the run's own outcome below is the harness's, and a
-            // candidate the gate cannot accept still goes to the user's
-            // review carrying the obligation.
+            // risk it consumes as an obligation. Its verdict is recorded.
+            // The verification evidence it weighs (missing, stale,
+            // indeterminate or failed checks) is enforced below (FIX-03): a
+            // completion the gate cannot accept on that evidence is refused.
+            // What stays pending after a run — an independent review, a
+            // human decision — still goes to the user's review carrying the
+            // obligation.
+            let mut gate_blockers: Vec<String>;
             {
                 let (policy, _) = crate::assurance::policy_for(
                     &core.assurance_policy,
@@ -8359,6 +8419,17 @@ async fn run_verification_stage(
                 drop(st);
                 text.push_str(&crate::gate::summary(&gate));
                 text.push('\n');
+                gate_blockers = crate::gate::verification_blockers(&gate);
+                if unverified_ok {
+                    gate_blockers.retain(|b| {
+                        !b.contains(modbit_verification::NO_MANDATORY_CHECKS)
+                            && !(nothing_to_verify && b.starts_with("tests "))
+                    });
+                }
+                for b in &gate_blockers {
+                    state.open_failures.push(format!("completion:{b}"));
+                    text.push_str(&format!("blocked: {b}\n"));
+                }
                 state.acceptance = Some(serde_json::json!({
                     "verdict": gate.verdict.label(),
                     "candidate_revision": gate.candidate_revision,
@@ -8368,16 +8439,19 @@ async fn run_verification_stage(
                     "gate_ref": gate_ref,
                     "independent_review_required": gate.independent_review_required,
                     "human_required": gate.human_required,
+                    "verification_waived": waiver,
                 }));
             }
             ok = !attribution.blocks_acceptance
                 && !deny
+                && gate_blockers.is_empty()
                 && state.open_flags.is_empty()
-                && matches!(
-                    vrun.status,
-                    modbit_verification::ReportStatus::Passed
-                        | modbit_verification::ReportStatus::Failed
-                );
+                && (unverified_ok
+                    || matches!(
+                        vrun.status,
+                        modbit_verification::ReportStatus::Passed
+                            | modbit_verification::ReportStatus::Failed
+                    ));
             if ok {
                 state.completion_verified_revision = state.candidate_revision;
             }
@@ -8798,6 +8872,30 @@ async fn handle_ask(
         ];
         allow_free_text = false;
     }
+    // FIX-03: a question asking the user to waive verification. The Core owns
+    // what the answer means — it sets the options, and only the user's
+    // `waive_verification` waives (see `gate::verification_waived`) — and no
+    // answer can come from a task that cannot wait for a person.
+    if reason == crate::gate::VERIFICATION_WAIVER_REASON {
+        if let Some(why) = protected_question_unavailable(core, task) {
+            return refused(
+                "VERIFICATION_WAIVER_UNAVAILABLE",
+                format!("no user can waive verification in this task: {why}"),
+            );
+        }
+        options = vec![
+            modbit_domain::task::QuestionOption {
+                id: crate::gate::WAIVE_VERIFICATION.to_owned(),
+                label: "Waive verification: propose this change for review with no mandatory check"
+                    .to_owned(),
+            },
+            modbit_domain::task::QuestionOption {
+                id: crate::gate::KEEP_VERIFICATION.to_owned(),
+                label: "Keep verification required: do not waive".to_owned(),
+            },
+        ];
+        allow_free_text = false;
+    }
     if question.is_empty() || (options.is_empty() && !allow_free_text) {
         return refused(
             "BAD_QUESTION",
@@ -9143,6 +9241,7 @@ mod tests {
             tool_projection: vec![],
             response_format: None,
             cache_key: None,
+            cache_breakpoints: vec![],
             max_output_tokens: 64,
             timeout_ms: 1000,
             policy_tags: vec![],
