@@ -544,6 +544,7 @@ fn pytest_junit_and_configured_command_adapters() {
         reports: vec![],
         report_refs: vec![],
         duration_ms: 0,
+        indeterminate_reason: None,
     };
     let comp = VerificationRun {
         reports: vec![report.clone()],

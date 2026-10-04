@@ -8,6 +8,11 @@ use serde::{Deserialize, Serialize};
 
 use crate::report::RunnerFamily;
 
+/// Id prefix of a check the repository declares for itself in
+/// `.modbit/verification.json`: the argv comes from repository content, so it
+/// is an effect the capability kernel decides before it runs (FIX-03).
+pub const CONFIGURED_ID_PREFIX: &str = "configured:";
+
 /// One configured check command.
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
 pub struct CheckCommand {
@@ -21,6 +26,15 @@ pub struct CheckCommand {
     pub mandatory: bool,
     /// Structured reporter file the runner writes (relative to cwd), if any.
     pub reporter_file: Option<String>,
+}
+
+impl CheckCommand {
+    /// Whether the argv was defined by repository content rather than derived
+    /// by the engine from a detected stack.
+    #[must_use]
+    pub fn is_repo_defined(&self) -> bool {
+        self.id.starts_with(CONFIGURED_ID_PREFIX)
+    }
 }
 
 /// An adapter's diagnostics batch the plan was derived with (PX-004): an
@@ -92,7 +106,7 @@ pub fn configured_commands(root: &Path) -> Vec<CheckCommand> {
             }
             let id = c["id"].as_str().filter(|i| !i.is_empty())?;
             Some(CheckCommand {
-                id: format!("configured:{id}"),
+                id: format!("{CONFIGURED_ID_PREFIX}{id}"),
                 family: RunnerFamily::ConfiguredCommand,
                 argv,
                 mandatory: c["mandatory"].as_bool().unwrap_or(true),

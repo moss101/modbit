@@ -193,6 +193,14 @@ fn qual_px_000_headless_cli_task_lifecycle() {
     let repo = tmp.path().join("repo");
     std::fs::create_dir_all(&repo).unwrap();
     std::fs::write(repo.join("a.txt"), "a\n").unwrap();
+    // A completion needs a mandatory check (FIX-03); this test's subject is
+    // the headless lifecycle, so the repository declares a no-op one.
+    std::fs::create_dir_all(repo.join(".modbit")).unwrap();
+    std::fs::write(
+        repo.join(".modbit/verification.json"),
+        r#"{"commands": [{"id": "fixture-noop", "argv": ["git", "--version"]}]}"#,
+    )
+    .unwrap();
     git(&repo, &["init", "-q", "-b", "main"]);
     git(&repo, &["add", "-A"]);
     git(
@@ -857,6 +865,13 @@ fn parity_fixture(parent: &Path, name: &str) -> String {
     std::fs::write(
         repo.join(".modbit/config.json"),
         serde_json::json!({ "hooks": [hook] }).to_string(),
+    )
+    .unwrap();
+    // A completion needs a mandatory check (FIX-03); this fixture's subject
+    // is parity between surfaces, so the repository declares a no-op one.
+    std::fs::write(
+        repo.join(".modbit/verification.json"),
+        r#"{"commands": [{"id": "fixture-noop", "argv": ["git", "--version"]}]}"#,
     )
     .unwrap();
     git(&repo, &["init", "-q", "-b", "main"]);

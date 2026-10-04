@@ -2795,6 +2795,10 @@ async fn scripted_model_reactive(
 fn git_repo_with_failing_check() -> (tempfile::TempDir, String) {
     let repo = tempfile::tempdir().unwrap();
     std::fs::write(repo.path().join("qty.txt"), "quantity = -5\n").unwrap();
+    // FIX-03: a completion needs a mandatory check; this fixture's subject
+    // is the agent loop, so the repository declares a no-op one.
+    std::fs::create_dir_all(repo.path().join(".modbit")).unwrap();
+    std::fs::write(repo.path().join(NOOP_CHECK.0), NOOP_CHECK.1).unwrap();
     // The "test": passes only once the file says quantities are validated.
     std::fs::write(
         repo.path().join("check.sh"),
@@ -3926,6 +3930,10 @@ async fn m2_9_review_surface_applies_per_hunk_decisions_and_commits() {
             .join("\n")
     );
     std::fs::write(repo.path().join("notes.txt"), &original).unwrap();
+    // FIX-03: completing a change needs a mandatory check; this test's
+    // subject is the review surface, so the repository declares a no-op one.
+    std::fs::create_dir_all(repo.path().join(".modbit")).unwrap();
+    std::fs::write(repo.path().join(NOOP_CHECK.0), NOOP_CHECK.1).unwrap();
     for args in [
         vec!["init", "-q", "-b", "main"],
         vec!["add", "-A"],
@@ -4768,7 +4776,27 @@ async fn qual_ev_0194_approvals_are_canonical_and_never_resolved_by_the_model() 
     );
 }
 
+/// A repository-configured check that always passes. A COMPLETION run with no
+/// mandatory check is INDETERMINATE (FIX-03), so fixtures whose subject is
+/// something other than verification declare this one.
+const NOOP_CHECK: (&str, &str) = (
+    ".modbit/verification.json",
+    "{\"commands\": [{\"id\": \"fixture-noop\", \"argv\": [\"git\", \"--version\"]}]}",
+);
+
+/// A committed repository of `files` that has a mandatory check (the no-op
+/// one unless `files` configures its own).
 fn plain_repo(files: &[(&str, &str)]) -> (tempfile::TempDir, String) {
+    if files.iter().any(|(p, _)| *p == NOOP_CHECK.0) {
+        return bare_repo(files);
+    }
+    let mut with_check = files.to_vec();
+    with_check.push(NOOP_CHECK);
+    bare_repo(&with_check)
+}
+
+/// A committed repository of exactly `files`: no check unless they say so.
+fn bare_repo(files: &[(&str, &str)]) -> (tempfile::TempDir, String) {
     let repo = tempfile::tempdir().unwrap();
     for (p, c) in files {
         let path = repo.path().join(p);
@@ -11524,7 +11552,9 @@ async fn qual_ev_0188_a_media_tool_result_reaches_the_model_as_a_split_follow_up
 async fn qual_ev_0173_task_economics_report_quality_and_cost_from_the_log() {
     use modbit_protocol::v1::{GetTaskEconomics, StartTask, TaskEconomicsView, TaskRunStarted};
     use serde_json::json;
-    let (repo, root) = plain_repo(&[("notes.md", "totals are cents\n")]);
+    // No derivable suite and no configured check, on purpose: the subject is
+    // what the view says of a candidate nothing verified.
+    let (repo, root) = bare_repo(&[("notes.md", "totals are cents\n")]);
     let script = vec![
         json!({"calls": [{"name": "plan.update", "args": {"outcome": "read the notes", "expected_files": ["notes.md"]}}]}),
         json!({"calls": [{"name": "fs.read", "args": {"path": "notes.md"}}]}),
@@ -44725,7 +44755,8 @@ fn symlink_any(target: &std::path::Path, at: &std::path::Path) {
 /// events (VER-03 / FIX-03).
 async fn ver_03_run(
     files: &[(&str, &str)],
-    edit: &str,
+    edit: Option<&str>,
+    admin_config: Option<&str>,
     extra_completions: usize,
 ) -> (
     modbit_protocol::v1::TaskStatus,
@@ -44733,12 +44764,16 @@ async fn ver_03_run(
 ) {
     use modbit_protocol::v1::{StartTask, TaskRunStarted};
     use serde_json::json;
-    let (_repo, root) = plain_repo(files);
+    let (_repo, root) = bare_repo(files);
     let mut script = vec![
         json!({"calls": [{"name": "plan.update", "args": {"outcome": "edit notes", "expected_files": ["notes.txt"]}}]}),
         json!({"calls": [{"name": "fs.read", "args": {"path": "notes.txt"}}]}),
-        json!({"calls": [{"name": "change.apply", "args": {"path": "notes.txt", "op": "replace", "content": edit}}]}),
     ];
+    if let Some(edit) = edit {
+        script.push(
+            json!({"calls": [{"name": "change.apply", "args": {"path": "notes.txt", "op": "replace", "content": edit}}]}),
+        );
+    }
     for _ in 0..=extra_completions {
         script.push(
             json!({"calls": [{"name": "task.complete", "args": {"summary": "edited", "self_review": {"findings": []}}}]}),
@@ -44747,6 +44782,9 @@ async fn ver_03_run(
     script.push(json!({"text": "I have nothing further to do."}));
     let (base, _seen) = scripted_model(script, None).await;
     let dir = tempfile::tempdir().unwrap();
+    if let Some(admin) = admin_config {
+        std::fs::write(dir.path().join("admin-config.json"), admin).unwrap();
+    }
     let core = CoreProcess::spawn_with_env(
         dir.path(),
         &[
@@ -44803,7 +44841,13 @@ const VER_03_CONFIG: (&str, &str) = (
 /// proposal is refused rather than moving the task to review.
 #[tokio::test]
 async fn ver_03_a_repository_with_no_checks_cannot_reach_accept() {
-    let (st, evs) = ver_03_run(&[("notes.txt", "line 1\n")], "line 1 edited\n", 1).await;
+    let (st, evs) = ver_03_run(
+        &[("notes.txt", "line 1\n")],
+        Some("line 1 edited\n"),
+        None,
+        1,
+    )
+    .await;
     let runs = ver_03_of(&evs, "VerificationRunRecorded");
     let completion: Vec<&serde_json::Value> =
         runs.iter().filter(|r| r["stage"] == "COMPLETION").collect();
@@ -44845,7 +44889,8 @@ async fn ver_03_a_repository_with_no_checks_cannot_reach_accept() {
 async fn ver_03_a_configured_failing_check_rejects() {
     let (st, evs) = ver_03_run(
         &[("notes.txt", "line 1\n"), VER_03_CHECK, VER_03_CONFIG],
-        "broken\n",
+        Some("broken\n"),
+        None,
         1,
     )
     .await;
@@ -44864,7 +44909,8 @@ async fn ver_03_a_configured_failing_check_rejects() {
 async fn ver_03_a_configured_passing_check_accepts() {
     let (st, evs) = ver_03_run(
         &[("notes.txt", "line 1\n"), VER_03_CHECK, VER_03_CONFIG],
-        "line 1 edited\n",
+        Some("line 1 edited\n"),
+        None,
         0,
     )
     .await;
@@ -44879,4 +44925,211 @@ async fn ver_03_a_configured_passing_check_accepts() {
         "{gates:#?}"
     );
     assert_eq!(st.state, "ReadyForReview", "{st:?}");
+}
+
+/// FIX-03: a task whose candidate changes nothing (an investigation or a
+/// question) has nothing to verify, so an empty mandatory check set does not
+/// stop it from being proposed for review. The gate still records what it
+/// saw: INCONCLUSIVE, `tests` missing, with the typed reason.
+#[tokio::test]
+async fn ver_03_a_task_that_changes_nothing_has_nothing_to_verify() {
+    let (st, evs) = ver_03_run(&[("notes.txt", "line 1\n")], None, None, 0).await;
+    assert_eq!(st.state, "ReadyForReview", "{st:?}");
+    let gates = ver_03_of(&evs, "AcceptanceGateEvaluated");
+    assert!(
+        !gates.is_empty() && gates.iter().all(|g| g["verdict"] == "INCONCLUSIVE"),
+        "the gate does not call an unverified candidate accepted: {gates:#?}"
+    );
+}
+
+/// FIX-03 (audit G section 8, repo-controlled verification commands): the
+/// argv a repository defines in `.modbit/verification.json` is decided by the
+/// Capability Kernel before it runs. With `shell.exec` denied by the admin
+/// configuration the command never starts, its check is UNKNOWN, and the
+/// completion is refused; with it allowed the same command runs.
+#[tokio::test]
+async fn ver_03_repository_defined_verification_argv_gets_a_kernel_decision() {
+    let marks = tempfile::tempdir().unwrap();
+    let marker = |name: &str| marks.path().join(name).to_string_lossy().into_owned();
+    let denied_marker = marker("denied.ran");
+    let allowed_marker = marker("allowed.ran");
+    let check = |m: &str| format!("touch '{m}'\ngrep -q 'line' notes.txt\n");
+    let denied_check = check(&denied_marker);
+    let allowed_check = check(&allowed_marker);
+    let (st, evs) = ver_03_run(
+        &[
+            ("notes.txt", "line 1\n"),
+            ("check.sh", denied_check.as_str()),
+            VER_03_CONFIG,
+        ],
+        Some("line 1 edited\n"),
+        Some(r#"{"permissions": {"shell.exec": "DENY"}}"#),
+        1,
+    )
+    .await;
+    assert!(
+        !std::path::Path::new(&denied_marker).exists(),
+        "a command the kernel denied must never start"
+    );
+    assert_ne!(st.state, "ReadyForReview", "{st:?}");
+    let runs = ver_03_of(&evs, "VerificationRunRecorded");
+    let completion: Vec<&serde_json::Value> =
+        runs.iter().filter(|r| r["stage"] == "COMPLETION").collect();
+    assert!(
+        !completion.is_empty()
+            && completion.iter().all(|r| r["status"] == "UNKNOWN"
+                && r["checks"]
+                    .as_array()
+                    .is_some_and(|c| c.iter().all(|c| c["status"] == "UNKNOWN"))),
+        "{completion:#?}"
+    );
+    let gates = ver_03_of(&evs, "AcceptanceGateEvaluated");
+    assert!(
+        !gates.is_empty() && gates.iter().all(|g| g["verdict"] != "ACCEPT"),
+        "{gates:#?}"
+    );
+    // The same repository without the denial: the command runs and passes.
+    let (st, _evs) = ver_03_run(
+        &[
+            ("notes.txt", "line 1\n"),
+            ("check.sh", allowed_check.as_str()),
+            VER_03_CONFIG,
+        ],
+        Some("line 1 edited\n"),
+        None,
+        0,
+    )
+    .await;
+    assert!(
+        std::path::Path::new(&allowed_marker).exists(),
+        "an allowed repository-defined command runs"
+    );
+    assert_eq!(st.state, "ReadyForReview", "{st:?}");
+}
+
+/// FIX-03: where a changed candidate has no mandatory check, the only way to
+/// propose it is the user's explicit, recorded waiver. The model asks with
+/// `user.ask` (reason `verification_waiver`); the Core sets the options
+/// whatever the model wrote; only the user's `waive_verification` answer
+/// waives; the gate still says INCONCLUSIVE and the user's answer stands on
+/// the log. A headless task has nobody to ask and fails closed.
+#[tokio::test]
+async fn ver_03_a_changed_candidate_with_no_checks_needs_the_users_recorded_waiver() {
+    use serde_json::json;
+    let (_repo, root) = bare_repo(&[("notes.txt", "line 1\n")]);
+    let ask = json!({"calls": [{"name": "user.ask", "args": {"question": "No check can verify this change. Waive verification?", "options": [{"id": "yes", "label": "Yes"}, {"id": "no", "label": "No"}], "reason": "verification_waiver"}}]});
+    let complete = json!({"calls": [{"name": "task.complete", "args": {"summary": "edited", "self_review": {"findings": []}}}]});
+    let script = vec![
+        json!({"calls": [{"name": "plan.update", "args": {"outcome": "edit notes", "expected_files": ["notes.txt"]}}]}),
+        json!({"calls": [{"name": "fs.read", "args": {"path": "notes.txt"}}]}),
+        json!({"calls": [{"name": "change.apply", "args": {"path": "notes.txt", "op": "replace", "content": "line 1 edited\n"}}]}),
+        // refused: nothing verifies the change
+        complete.clone(),
+        ask,
+        // after the user's answer
+        complete,
+    ];
+    let (base, seen) = scripted_model(script, None).await;
+    let dir = tempfile::tempdir().unwrap();
+    let core = CoreProcess::spawn_with_env(
+        dir.path(),
+        &[
+            ("MODBIT_OPENAI_BASE_URL", base.as_str()),
+            ("OPENAI_API_KEY", ""),
+            ("ANTHROPIC_API_KEY", ""),
+        ],
+    );
+    let mut c = core.client().await;
+    let (session, _) = create_session(&mut c, id16(0x70)).await;
+    let g = lease_for(&session);
+    trust_repository(&mut c, &session, g, &root, 0x71).await;
+    let task = di_9_task(&mut c, &session, g, &root, 0x72, "desktop", "local_trusted").await;
+    let st = di_9_run(&mut c, &task, g, 0x73).await;
+    let evs = task_events(&core, &session, &task).await;
+    assert_eq!(
+        (st.state.as_str(), st.wait_reason.as_str()),
+        ("Waiting", "UserInput"),
+        "{st:?}\n{evs:#?}"
+    );
+    // The refused completion told the model why, with the typed reason.
+    let told = di_9_told(&seen);
+    assert!(
+        told.iter()
+            .any(|t| t.contains("COMPLETION_REFUSED") && t.contains("NO_MANDATORY_CHECKS")),
+        "{told:#?}"
+    );
+    // The user sees the Core's options, not the model's yes/no.
+    let q = di_9_pending(&mut c, &task).await;
+    assert_eq!(
+        q.options.iter().map(|o| o.id.as_str()).collect::<Vec<_>>(),
+        ["waive_verification", "keep_verification"],
+        "{q:?}"
+    );
+    assert!(!q.allow_free_text, "{q:?}");
+    di_9_answer(&mut c, &task, g, 0x74, &q.question_id, "waive_verification").await;
+    let st = di_9_run(&mut c, &task, g, 0x75).await;
+    let evs = task_events(&core, &session, &task).await;
+    assert_eq!(st.state, "ReadyForReview", "{st:?}\n{evs:#?}");
+    // The waiver changes what the task may do, never what the gate says.
+    let gates = ver_03_of(&evs, "AcceptanceGateEvaluated");
+    assert!(
+        !gates.is_empty() && gates.iter().all(|g| g["verdict"] == "INCONCLUSIVE"),
+        "{gates:#?}"
+    );
+    // Both COMPLETION runs found no mandatory check; the second was let
+    // through by the user's recorded answer, which stands on the log.
+    let runs = ver_03_of(&evs, "VerificationRunRecorded");
+    assert_eq!(
+        runs.iter()
+            .filter(|r| r["stage"] == "COMPLETION" && r["status"] == "UNKNOWN")
+            .count(),
+        2,
+        "{runs:#?}"
+    );
+    let asked = ver_03_of(&evs, "UserQuestionAsked");
+    assert!(
+        asked.len() == 1 && asked[0]["reason"] == "verification_waiver",
+        "{asked:#?}"
+    );
+    let answered = ver_03_of(&evs, "UserQuestionAnswered");
+    assert!(
+        answered.len() == 1 && answered[0]["option_id"] == "waive_verification",
+        "{answered:#?}"
+    );
+
+    // A headless task has no user to ask: the waiver fails closed.
+    let (_repo2, root2) = bare_repo(&[("notes.txt", "line 1\n")]);
+    let ask2 = json!({"calls": [{"name": "user.ask", "args": {"question": "Waive verification?", "options": [], "allow_free_text": true, "reason": "verification_waiver"}}]});
+    let (base2, seen2) = scripted_model(
+        vec![
+            json!({"calls": [{"name": "plan.update", "args": {"outcome": "edit notes", "expected_files": ["notes.txt"]}}]}),
+            json!({"calls": [{"name": "fs.read", "args": {"path": "notes.txt"}}]}),
+            json!({"calls": [{"name": "change.apply", "args": {"path": "notes.txt", "op": "replace", "content": "line 1 edited\n"}}]}),
+            ask2,
+        ],
+        None,
+    )
+    .await;
+    let dir2 = tempfile::tempdir().unwrap();
+    let core2 = CoreProcess::spawn_with_env(
+        dir2.path(),
+        &[
+            ("MODBIT_OPENAI_BASE_URL", base2.as_str()),
+            ("OPENAI_API_KEY", ""),
+            ("ANTHROPIC_API_KEY", ""),
+        ],
+    );
+    let mut c2 = core2.client().await;
+    let (session2, _) = create_session(&mut c2, id16(0x76)).await;
+    let g2 = lease_for(&session2);
+    let task2 = di_9_task(&mut c2, &session2, g2, &root2, 0x77, "cli", "local_trusted").await;
+    let st2 = di_9_run(&mut c2, &task2, g2, 0x78).await;
+    assert_ne!(st2.state, "ReadyForReview", "{st2:?}");
+    assert!(
+        di_9_told(&seen2)
+            .iter()
+            .any(|t| t.contains("VERIFICATION_WAIVER_UNAVAILABLE")),
+        "{:#?}",
+        di_9_told(&seen2)
+    );
 }

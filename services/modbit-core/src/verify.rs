@@ -26,9 +26,82 @@ pub struct BrokerRunner {
     /// its process group is killed — and reported cancelled, instead of
     /// running to its exit or timeout.
     pub cancel: Option<tokio_util::sync::CancellationToken>,
+    /// What the Capability Kernel decides a repository-defined command
+    /// under (FIX-03). `None` = nothing to decide it with: such a command
+    /// is refused, never run unchecked.
+    pub kernel: Option<KernelGate>,
+}
+
+/// The authority a repository-defined verification command is decided under:
+/// the task's lease and execution profile, the session's emergency stop and
+/// the configuration snapshot in force, exactly what a `test.run` call by the
+/// model is decided under.
+pub struct KernelGate {
+    /// The task's lease, when it holds one.
+    pub lease: Option<modbit_domain::lease::CapabilityLease>,
+    /// Task execution profile.
+    pub execution_profile: String,
+    /// Session emergency stop is active.
+    pub emergency_stopped: bool,
+    /// Resolved configuration the task runs under.
+    pub config: std::sync::Arc<modbit_policy::config::ResolvedConfig>,
+}
+
+impl KernelGate {
+    /// The kernel's decision for running `argv` as check `check_id`: a
+    /// shell effect (`shell.exec`, the class of `test.run`) under the task's
+    /// lease. Anything but ALLOW refuses the command with the kernel's code.
+    pub fn decide(&self, check_id: &str, argv: &[String]) -> Result<(), String> {
+        use sha2::Digest;
+        let mut h = sha2::Sha256::new();
+        h.update(check_id.as_bytes());
+        for a in argv {
+            h.update([0]);
+            h.update(a.as_bytes());
+        }
+        let intent_hash = hex::encode(h.finalize());
+        let required = vec!["shell.exec".to_owned()];
+        let decision =
+            modbit_policy::CapabilityKernel::default().decide(&modbit_policy::KernelRequest {
+                tool_name: "verification.configured_command",
+                effect_class: modbit_domain::toolcall::EffectClass::ReversibleWrite,
+                required_capabilities: &required,
+                execution_profile: &self.execution_profile,
+                lease: self.lease.as_ref(),
+                approval: None,
+                intent_hash: &intent_hash,
+                config: Some(&self.config),
+                emergency_stopped: self.emergency_stopped,
+                now: modbit_domain::Timestamp::now(),
+            });
+        match decision {
+            modbit_policy::KernelDecision::Allow { .. } => Ok(()),
+            modbit_policy::KernelDecision::Deny { code, reason } => Err(format!(
+                "capability kernel denied `{check_id}`: {code}: {reason}"
+            )),
+            modbit_policy::KernelDecision::ApprovalRequired { reason, .. } => Err(format!(
+                "capability kernel requires an approval for `{check_id}` and a verification stage cannot ask: {reason}"
+            )),
+        }
+    }
 }
 
 impl CommandRunner for BrokerRunner {
+    fn authorize<'a>(
+        &'a self,
+        check_id: &'a str,
+        argv: &'a [String],
+    ) -> BoxFuture<'a, Result<(), String>> {
+        Box::pin(async move {
+            match &self.kernel {
+                Some(k) => k.decide(check_id, argv),
+                None => Err(format!(
+                    "`{check_id}` is defined by repository content and no capability kernel context was attached"
+                )),
+            }
+        })
+    }
+
     fn run<'a>(
         &'a self,
         argv: &'a [String],
