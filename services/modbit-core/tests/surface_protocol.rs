@@ -1331,6 +1331,16 @@ fn hex_id(id: &Id) -> String {
 /// M2.5: Capability Kernel + basic approval flow (docs/23). The lease granted
 /// at task creation is the authority; destructive effects wait for an approval
 /// bound to the exact intent; receipts chain; emergency stop revokes leases.
+/// A worktree path the `git.worktree.*` tools accept (FIX-01: model-requested
+/// worktrees live under the workspace's own worktree root), as JSON-safe text.
+fn tool_worktree_path(root: &str, name: &str) -> String {
+    modbit_tools::direct::worktree_root(std::path::Path::new(root))
+        .unwrap()
+        .join(name)
+        .to_string_lossy()
+        .replace('\\', "/")
+}
+
 #[tokio::test]
 async fn m2_5_capability_kernel_gates_destructive_tools_behind_intent_bound_approvals() {
     use modbit_protocol::v1::{
@@ -1372,7 +1382,6 @@ async fn m2_5_capability_kernel_gates_destructive_tools_behind_intent_bound_appr
         .to_string_lossy()
         .trim_start_matches(r"\\?\")
         .to_owned();
-    let root_json = root.replace('\\', "/");
     let core = CoreProcess::spawn(dir.path());
     let mut c = core.client().await;
     let (session, _) = create_session(&mut c, id16(0xF0)).await;
@@ -1469,7 +1478,7 @@ async fn m2_5_capability_kernel_gates_destructive_tools_behind_intent_bound_appr
         Ok(Client::result(&ack).unwrap())
     }
     // Reversible write under the lease: allowed.
-    let wt = format!("{root_json}-wt");
+    let wt = tool_worktree_path(&root, "wt");
     let r = call(
         &mut c,
         0x20,
@@ -1684,7 +1693,7 @@ async fn m2_5_capability_kernel_gates_destructive_tools_behind_intent_bound_appr
     assert_eq!(rc.receipt_hash.len(), 64);
     assert!(rc.policy_decision.starts_with("approval:"));
     // Denied approval: the call fails and stays failed.
-    let wt2 = format!("{root_json}-wt2");
+    let wt2 = tool_worktree_path(&root, "wt2");
     let r = call(
         &mut c,
         0x2A,
@@ -4668,7 +4677,7 @@ async fn qual_ev_0194_approvals_are_canonical_and_never_resolved_by_the_model() 
         "{:?}",
         tools.tools.iter().map(|t| &t.name).collect::<Vec<_>>()
     );
-    let wt = format!("{}-wt", root.replace('\\', "/"));
+    let wt = tool_worktree_path(&root, "wt");
     let r = c
         .command(envelope_fenced(
             id16(0xE3),
@@ -16610,7 +16619,7 @@ async fn qual_ev_0055_e2e_004_core_crash_during_approval_restores_the_same_appro
     use serde_json::json;
     let (repo, root) = plain_repo(&[("a.txt", "a\n")]);
     // A worktree the agent will ask to close (destructive: approval-gated).
-    let wt = repo.path().join("wt-close");
+    let wt = std::path::PathBuf::from(tool_worktree_path(&root, "wt-close"));
     assert!(
         Command::new("git")
             .arg("-C")
@@ -18397,7 +18406,7 @@ async fn qual_m4_6_e2e_005_a_protected_effect_of_unknown_outcome_is_held_for_the
     };
     use serde_json::json;
     let (repo, root) = plain_repo(&[("a.txt", "a\n")]);
-    let wt = repo.path().join("wt-held");
+    let wt = std::path::PathBuf::from(tool_worktree_path(&root, "wt-held"));
     assert!(
         Command::new("git")
             .arg("-C")
@@ -19311,7 +19320,7 @@ async fn qual_ev_0077_0122_a_fork_carries_decisions_and_evidence_but_no_stale_pe
     };
     use serde_json::json;
     let (repo, root) = plain_repo(&[("a.txt", "a\n"), ("b.txt", "b\n")]);
-    let wt = repo.path().join("wt-close");
+    let wt = std::path::PathBuf::from(tool_worktree_path(&root, "wt-close"));
     assert!(
         Command::new("git")
             .arg("-C")
@@ -26560,7 +26569,7 @@ async fn qual_ev_0151_0275_attention_items_are_derived_from_canonical_state_and_
     };
     use serde_json::json;
     let (repo, root) = plain_repo(&[("a.txt", "a\n")]);
-    let wt = repo.path().join("wt-stale");
+    let wt = std::path::PathBuf::from(tool_worktree_path(&root, "wt-stale"));
     assert!(
         Command::new("git")
             .arg("-C")
@@ -35000,8 +35009,6 @@ async fn qual_ev_0270_the_protected_effect_receipt_chain_detects_tamper_delete_a
         .unwrap()
         .task_id
         .unwrap();
-    // Forward slashes so the path is valid JSON on Windows too (git accepts them).
-    let root_json = root.replace('\\', "/");
     produce_receipt(
         &mut c,
         &session,
@@ -35009,7 +35016,7 @@ async fn qual_ev_0270_the_protected_effect_receipt_chain_detects_tamper_delete_a
         g,
         0x20,
         0xA0,
-        &format!("{root_json}-wt1"),
+        &tool_worktree_path(&root, "wt1"),
     )
     .await;
     produce_receipt(
@@ -35019,7 +35026,7 @@ async fn qual_ev_0270_the_protected_effect_receipt_chain_detects_tamper_delete_a
         g,
         0x30,
         0xB0,
-        &format!("{root_json}-wt2"),
+        &tool_worktree_path(&root, "wt2"),
     )
     .await;
 

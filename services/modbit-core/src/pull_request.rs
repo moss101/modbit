@@ -84,26 +84,34 @@ fn all_events(store: &modbit_event_store::EventStore, task_id: TaskId) -> Vec<se
 
 /// `owner`, `repo` of a remote URL on the forge's web host.
 fn parse_remote(url: &str, web_host: &str) -> Result<(String, String), (String, String)> {
+    // A remote URL may carry `user:token@`; the refusals below are shown to the
+    // model and recorded, so they name the URL without its credentials.
+    let shown = modbit_git::redact_url_credentials(url);
     let rest = url
         .strip_prefix("https://")
         .or_else(|| url.strip_prefix("http://"))
         .or_else(|| url.strip_prefix("ssh://git@"))
         .or_else(|| url.strip_prefix("git@"))
-        .ok_or_else(|| refuse("FORGE_REMOTE", format!("remote `{url}` is not a forge URL")))?;
+        .ok_or_else(|| {
+            refuse(
+                "FORGE_REMOTE",
+                format!("remote `{shown}` is not a forge URL"),
+            )
+        })?;
     let (host, path) = rest
         .split_once('/')
         .or_else(|| rest.split_once(':'))
         .ok_or_else(|| {
             refuse(
                 "FORGE_REMOTE",
-                format!("remote `{url}` names no repository"),
+                format!("remote `{shown}` names no repository"),
             )
         })?;
     let host = host.split('@').next_back().unwrap_or(host);
     if host != web_host {
         return Err(refuse(
             "FORGE_HOST_MISMATCH",
-            format!("remote `{url}` is on `{host}`, the configured forge is `{web_host}`"),
+            format!("remote `{shown}` is on `{host}`, the configured forge is `{web_host}`"),
         ));
     }
     let mut parts = path
@@ -115,7 +123,7 @@ fn parse_remote(url: &str, web_host: &str) -> Result<(String, String), (String, 
     if owner.is_empty() || repo.is_empty() {
         return Err(refuse(
             "FORGE_REMOTE",
-            format!("remote `{url}` names no owner/repo"),
+            format!("remote `{shown}` names no owner/repo"),
         ));
     }
     Ok((owner.to_owned(), repo.to_owned()))
@@ -305,9 +313,15 @@ pub async fn run(
     } else {
         req.remote
     };
-    let url = repo
-        .remote_url(remote)
-        .map_err(|e| refuse("FORGE_REMOTE", format!("remote `{remote}`: {e}")))?;
+    let url = repo.remote_url(remote).map_err(|e| {
+        refuse(
+            "FORGE_REMOTE",
+            format!(
+                "remote `{}`: {e}",
+                modbit_git::redact_url_credentials(remote)
+            ),
+        )
+    })?;
     let (owner, repo_name) = parse_remote(&url, &cfg.web_host)?;
     let branch = format!(
         "modbit/pr-{}",
@@ -444,8 +458,15 @@ pub async fn run(
                 .ok()
                 .flatten()
                 .is_some_and(|h| h != accepted.commit);
-        repo.push_branch(remote, &branch, force)
-            .map_err(|e| refuse("GIT_PUSH", format!("pushing `{branch}` to `{remote}`: {e}")))?;
+        repo.push_branch(remote, &branch, force).map_err(|e| {
+            refuse(
+                "GIT_PUSH",
+                format!(
+                    "pushing `{branch}` to `{}`: {e}",
+                    modbit_git::redact_url_credentials(remote)
+                ),
+            )
+        })?;
     }
     let done = core
         .tools
