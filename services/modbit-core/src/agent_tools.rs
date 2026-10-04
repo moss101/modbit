@@ -9,6 +9,7 @@ use std::sync::Arc;
 use modbit_core_runtime::harness::HarnessState;
 use modbit_domain::agent::{AgentBinding, AgentStatus, SpawnMode, SubagentResult, SubtaskSpec};
 use modbit_domain::event::{Actor, AggregateType};
+use modbit_domain::state::StateMachine;
 use modbit_domain::task::{Task, TaskEvent};
 use modbit_domain::{AgentId, RunId};
 
@@ -629,6 +630,16 @@ pub(crate) async fn handle_cancel(
     let was_running = core.runtime.cancel(&child).await;
     {
         let mut store = core.store.lock().await;
+        // A child with no loop (parked, or left suspended by a restart) has
+        // nothing that would ever end it: cancel its task durably here.
+        if !was_running
+            && let Ok(Some(child_task)) = store.task(&child)
+            && !child_task.state.is_terminal()
+            && let Err(e) =
+                crate::runtime::cancel_without_loop(&mut store, core, &child_task, actor)
+        {
+            eprintln!("modbit-core: agent.cancel of idle child task {child}: {e}");
+        }
         let _ = append(
             &mut store,
             core,

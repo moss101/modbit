@@ -6097,49 +6097,16 @@ async fn handle_command(core: &Arc<Core>, env: CommandEnvelope) -> CommandAck {
             if !was_running && !task.state.is_terminal() {
                 // No loop alive: cancel durably here.
                 let mut store = core.store.lock().await;
-                if let Ok(runs) = store.runs_for_task(&task_id) {
-                    for r in runs.into_iter().filter(|r| !r.state.is_terminal()) {
-                        let _ = store.append(AppendRequest {
-                            tenant_id: core.tenant_id,
-                            session_id: task.session_id,
-                            task_id: Some(task_id),
-                            run_id: Some(r.run_id),
-                            turn_id: None,
-                            step_id: None,
-                            aggregate_type: AggregateType::Run,
-                            aggregate_id: *r.run_id.as_bytes(),
-                            expected_sequence: None,
-                            events: vec![typed(
-                                "RunCancelled",
-                                &modbit_domain::run::RunEvent::RunCancelled,
-                                actor.clone(),
-                            )],
-                        });
-                    }
+                if let Err(e) = crate::runtime::cancel_without_loop(&mut store, core, &task, &actor)
+                {
+                    return reject(cid, error_code(&e), e.to_string());
                 }
-                match store.append(AppendRequest {
-                    tenant_id: core.tenant_id,
-                    session_id: task.session_id,
-                    task_id: Some(task_id),
-                    run_id: None,
-                    turn_id: None,
-                    step_id: None,
-                    aggregate_type: AggregateType::Task,
-                    aggregate_id: *task_id.as_bytes(),
-                    expected_sequence: None,
-                    events: vec![typed(
-                        "TaskCancelled",
-                        &TaskEvent::TaskCancelled,
-                        actor.clone(),
-                    )],
-                }) {
-                    Ok(ev) => {
-                        if let Some(last) = ev.last() {
-                            core.last_offset.send_replace(last.offset);
-                        }
-                    }
-                    Err(e) => return reject(cid, error_code(&e), e.to_string()),
-                }
+            }
+            // FIX-16: cancelling a parent cancels the children it still has
+            // alive (a cancellation domain, not a flag on one task).
+            if !task.state.is_terminal() || was_running {
+                crate::spawn::cancel_children(core, &task, "the parent task was cancelled", &actor)
+                    .await;
             }
             if !was_running {
                 crate::sandboxes::release_if_ended(core, task_id, &actor).await;

@@ -28521,8 +28521,10 @@ async fn m6_3_subagents_are_admitted_transactionally_and_hand_typed_results_back
         // before; its own script is five turns long): refused before anything
         // is taken.
         json!({"calls": [{"name": "agent.spawn", "args": {"idempotency_key": "child-c", "objective": "rewrite src/a/x.txt", "write_scope": ["src/a/x.txt"], "max_turns": 6}}]}),
-        // The same key again: a transport retry reattaches, no second child.
-        json!({"calls": [{"name": "agent.spawn", "args": {"idempotency_key": "child-a", "objective": "create src/a/a.txt containing alpha", "write_scope": ["src/a/"], "work_node": "a", "max_turns": 6}}]}),
+        // The same key again with the same spec (FIX-16: a retry repeats the
+        // spec exactly; a different spec under the key is IDEMPOTENCY_CONFLICT):
+        // a transport retry reattaches, no second child.
+        json!({"calls": [{"name": "agent.spawn", "args": {"idempotency_key": "child-a", "objective": "create src/a/a.txt containing alpha", "write_scope": ["src/a/"], "work_node": "a", "verification": "the file exists", "max_turns": 6}}]}),
         json!({"calls": [{"name": "agent.spawn", "args": {"idempotency_key": "child-b", "objective": "create src/b/b.txt containing beta", "write_scope": ["src/b/"], "work_node": "b", "max_turns": 6}}]}),
         // An explorer: read tools only, a disjoint (unused) scope.
         json!({"calls": [{"name": "agent.spawn", "args": {"idempotency_key": "child-e", "objective": "explore README.md and report", "write_scope": ["docs/"], "required_tools": ["fs.read", "fs.list", "search.exact"], "max_turns": 6}}]}),
@@ -44717,4 +44719,576 @@ fn symlink_any(target: &std::path::Path, at: &std::path::Path) {
     } else {
         std::os::windows::fs::symlink_file(target, at).unwrap();
     }
+}
+
+// ---- FIX-16: the cancellation cascade, the completion gate over children,
+// surfaced work-graph errors and idempotency conflicts. Real Core process,
+// real worktrees and runs, a scripted model over real HTTP; a child is held
+// live by a stalled model request until something cancels it.
+
+async fn fix16_start(c: &mut Client, task: &Id, id: u8, g: Option<u64>) {
+    use modbit_protocol::v1::{StartTask, TaskRunStarted};
+    let _: TaskRunStarted = Client::result(
+        &c.command(envelope_fenced(
+            id16(id),
+            "StartTask",
+            StartTask {
+                task_id: Some(task.clone()),
+                endpoint: String::new(),
+                model: "gpt-5-mini".into(),
+                max_turns: 14,
+                max_tool_calls: 0,
+                max_no_progress_turns: 6,
+                skills: vec![],
+            }
+            .encode_to_vec(),
+            g,
+        ))
+        .await
+        .unwrap(),
+    )
+    .unwrap();
+}
+
+fn fix16_child_task(evs: &[(String, String, serde_json::Value)], key: &str) -> Id {
+    let a = evs
+        .iter()
+        .find(|(_, t, p)| t == "SubagentAdmitted" && p["idempotency_key"] == key)
+        .unwrap_or_else(|| panic!("no SubagentAdmitted for {key}: {evs:#?}"));
+    Id {
+        value: hex::decode(a.2["child_task_id"].as_str().unwrap().replace('-', "")).unwrap(),
+    }
+}
+
+/// The text of every tool result the parent saw by its last request.
+fn fix16_parent_tool_texts(
+    seen: &std::sync::Arc<std::sync::Mutex<Vec<serde_json::Value>>>,
+) -> Vec<String> {
+    let bodies = seen.lock().unwrap().clone();
+    bodies
+        .iter()
+        .rfind(|b| b.to_string().contains("PARENT-GOAL-MARKER"))
+        .map(|b| {
+            b["messages"]
+                .as_array()
+                .unwrap()
+                .iter()
+                .filter(|m| m["role"] == "tool")
+                .map(|m| m["content"].as_str().unwrap_or_default().to_owned())
+                .collect()
+        })
+        .unwrap_or_default()
+}
+
+/// Wait until the child agent's request is held open (it has planned and its
+/// next request is in flight, stalled).
+async fn fix16_wait_child_stalled(
+    seen: &std::sync::Arc<std::sync::Mutex<Vec<serde_json::Value>>>,
+    needle: &str,
+) {
+    let deadline = std::time::Instant::now() + Duration::from_secs(90);
+    loop {
+        let stalled = seen.lock().unwrap().iter().any(|b| {
+            b.to_string().contains(needle)
+                && b["messages"]
+                    .as_array()
+                    .unwrap()
+                    .iter()
+                    .filter(|m| m["role"] == "tool")
+                    .count()
+                    == 1
+        });
+        if stalled {
+            return;
+        }
+        assert!(
+            std::time::Instant::now() < deadline,
+            "the child never reached its stalled request"
+        );
+        tokio::time::sleep(Duration::from_millis(100)).await;
+    }
+}
+
+async fn fix16_agents(c: &mut Client, task: &Id, id: u8) -> modbit_protocol::v1::AgentGraphView {
+    use modbit_protocol::v1::GetAgentGraph;
+    let ack = c
+        .command(envelope(
+            id16(id),
+            "GetAgentGraph",
+            GetAgentGraph {
+                task_id: Some(task.clone()),
+            }
+            .encode_to_vec(),
+        ))
+        .await
+        .unwrap();
+    Client::result(&ack).unwrap()
+}
+
+#[tokio::test]
+async fn fix_16_cancelling_a_parent_cancels_its_live_child() {
+    use serde_json::json;
+    let (_repo, root) = plain_repo(&[("README.md", "# cascade\n"), ("src/a/.keep", "")]);
+    let parent = vec![
+        json!({"calls": [{"name": "plan.update", "args": {"outcome": "module a exists", "expected_files": ["README.md"]}}]}),
+        json!({"calls": [{"name": "agent.spawn", "args": {"idempotency_key": "child-a", "objective": "create src/a/a.txt containing alpha", "write_scope": ["src/a/"], "work_node": "a", "max_turns": 6}}]}),
+        json!({"calls": [{"name": "agent.wait", "args": {"idempotency_key": "child-a", "timeout_ms": 600000}}]}),
+    ];
+    // The child's second request is held open for ten minutes: only a
+    // cancellation that reaches it ends the child.
+    let child_a = vec![
+        json!({"calls": [{"name": "plan.update", "args": {"outcome": "a.txt exists", "expected_files": ["src/a/a.txt"]}}]}),
+        json!({"stall": true, "then": {"calls": [{"name": "change.apply", "args": {"path": "src/a/a.txt", "op": "replace", "content": "alpha\n"}}]}}),
+    ];
+    let (base, seen) = scripted_models(
+        parent,
+        vec![("needle:Task goal: create src/a/a.txt", child_a)],
+        None,
+    )
+    .await;
+    let dir = tempfile::tempdir().unwrap();
+    let env = [
+        ("MODBIT_OPENAI_BASE_URL", base.as_str()),
+        ("OPENAI_API_KEY", ""),
+        ("ANTHROPIC_API_KEY", ""),
+        ("MODBIT_CAPACITY", "model=4,provider=8"),
+    ];
+    let mut core = CoreProcess::spawn_with_env(dir.path(), &env);
+    let mut c = core.client().await;
+    let (session, _) = create_session(&mut c, id16(0xC1)).await;
+    let g = lease_for(&session);
+    let task = create_task_with_goal(
+        &mut c,
+        &session,
+        g,
+        &root,
+        0xC2,
+        "PARENT-GOAL-MARKER: delegate module a",
+    )
+    .await;
+    fix16_start(&mut c, &task, 0xC3, g).await;
+    fix16_wait_child_stalled(&seen, "Task goal: create src/a/a.txt").await;
+    let evs = task_events(&core, &session, &task).await;
+    let child = fix16_child_task(&evs, "child-a");
+    let st = wait_task(&mut c, &child, 0).await;
+    assert!(st.loop_alive, "the child is live before the cancel: {st:?}");
+    // Cancel the PARENT only.
+    let ack = c
+        .command(envelope_fenced(
+            id16(0xC4),
+            "CancelTask",
+            modbit_protocol::v1::CancelTask {
+                task_id: Some(task.clone()),
+            }
+            .encode_to_vec(),
+            g,
+        ))
+        .await
+        .unwrap();
+    let r: modbit_protocol::v1::TaskCancelRequested = Client::result(&ack).unwrap();
+    assert!(r.was_running, "{r:?}");
+    let pst = wait_task(&mut c, &task, 30).await;
+    assert_eq!(
+        (pst.state.as_str(), pst.loop_alive),
+        ("Cancelled", false),
+        "{pst:?}"
+    );
+    // The child's loop ends with it: Cancelled, run cancelled, no loop.
+    let deadline = std::time::Instant::now() + Duration::from_secs(30);
+    let cst = loop {
+        let cst = wait_task(&mut c, &child, 0).await;
+        if (!cst.loop_alive && cst.state == "Cancelled") || std::time::Instant::now() > deadline {
+            break cst;
+        }
+        tokio::time::sleep(Duration::from_millis(100)).await;
+    };
+    assert_eq!(
+        (cst.state.as_str(), cst.run_state.as_str(), cst.loop_alive),
+        ("Cancelled", "Cancelled", false),
+        "cancelling the parent must cancel its live child: {cst:?}"
+    );
+    // Its node on the parent's graph says so, and nothing is left holding capacity.
+    let deadline = std::time::Instant::now() + Duration::from_secs(30);
+    loop {
+        let graph = fix16_agents(&mut c, &task, 0xC5).await;
+        let node = graph.nodes.iter().find(|n| n.kind == "SUBAGENT").unwrap();
+        if node.status == "CANCELLED" {
+            break;
+        }
+        assert!(
+            std::time::Instant::now() < deadline,
+            "the child's node never read CANCELLED: {graph:?}"
+        );
+        tokio::time::sleep(Duration::from_millis(100)).await;
+    }
+    let ack = c
+        .command(envelope(
+            id16(0xC6),
+            "GetCapacity",
+            modbit_protocol::v1::GetCapacity {}.encode_to_vec(),
+        ))
+        .await
+        .unwrap();
+    let cap: modbit_protocol::v1::CapacityView = Client::result(&ack).unwrap();
+    assert!(cap.tickets.is_empty(), "{cap:?}");
+    drop(c);
+    core.kill();
+}
+
+#[tokio::test]
+async fn fix_16_a_parent_cannot_complete_beside_a_live_child_and_the_conflicting_key_is_refused() {
+    use serde_json::json;
+    let (_repo, root) = plain_repo(&[("README.md", "# gate\n"), ("src/a/.keep", "")]);
+    let spec_a = json!({"idempotency_key": "child-a", "objective": "create src/a/a.txt containing alpha", "write_scope": ["src/a/"], "work_node": "a", "max_turns": 6, "verification": "the file exists"});
+    let parent = vec![
+        json!({"calls": [{"name": "plan.update", "args": {"outcome": "module a exists", "expected_files": ["README.md"]}}]}),
+        json!({"calls": [{"name": "agent.spawn", "args": spec_a}]}),
+        // Same key, a different spec: not a retry.
+        json!({"calls": [{"name": "agent.spawn", "args": {"idempotency_key": "child-a", "objective": "delete everything under src/", "write_scope": ["src/"], "work_node": "a", "max_turns": 6}}]}),
+        // The same spec again: a retry, reattached.
+        json!({"calls": [{"name": "agent.spawn", "args": spec_a}]}),
+        // An unknown dependency: refused with nothing taken, and said so.
+        json!({"calls": [{"name": "agent.spawn", "args": {"idempotency_key": "child-g", "objective": "write docs", "write_scope": ["docs/"], "depends_on": ["ghost"], "max_turns": 4}}]}),
+        // Completion with the child alive: refused, typed.
+        json!({"calls": [{"name": "task.complete", "args": {"summary": "done", "self_review": {"findings": []}}}]}),
+        json!({"calls": [{"name": "agent.cancel", "args": {"idempotency_key": "child-a", "reason": "not needed"}}]}),
+        json!({"calls": [{"name": "task.complete", "args": {"summary": "done without the child", "self_review": {"findings": []}}}]}),
+    ];
+    let child_a = vec![
+        json!({"calls": [{"name": "plan.update", "args": {"outcome": "a.txt exists", "expected_files": ["src/a/a.txt"]}}]}),
+        json!({"stall": true, "then": {"calls": [{"name": "change.apply", "args": {"path": "src/a/a.txt", "op": "replace", "content": "alpha\n"}}]}}),
+    ];
+    let (base, seen) = scripted_models(
+        parent,
+        vec![("needle:Task goal: create src/a/a.txt", child_a)],
+        None,
+    )
+    .await;
+    let dir = tempfile::tempdir().unwrap();
+    let env = [
+        ("MODBIT_OPENAI_BASE_URL", base.as_str()),
+        ("OPENAI_API_KEY", ""),
+        ("ANTHROPIC_API_KEY", ""),
+        ("MODBIT_CAPACITY", "model=4,provider=8"),
+    ];
+    let mut core = CoreProcess::spawn_with_env(dir.path(), &env);
+    let mut c = core.client().await;
+    let (session, _) = create_session(&mut c, id16(0xD1)).await;
+    let g = lease_for(&session);
+    let task = create_task_with_goal(
+        &mut c,
+        &session,
+        g,
+        &root,
+        0xD2,
+        "PARENT-GOAL-MARKER: delegate module a",
+    )
+    .await;
+    fix16_start(&mut c, &task, 0xD3, g).await;
+    let st = wait_for_state(&mut c, &task, "ReadyForReview", 180).await;
+    assert_eq!(st.state, "ReadyForReview", "{st:?}");
+    let texts = fix16_parent_tool_texts(&seen);
+    assert!(
+        texts[1].contains("status: SUCCESS") && texts[1].contains("reattached: false"),
+        "{}",
+        texts[1]
+    );
+    // Same key, different spec: typed refusal, not the old child.
+    assert!(
+        texts[2].contains("status: REFUSED")
+            && texts[2].contains("error_code: IDEMPOTENCY_CONFLICT")
+            && texts[2].contains("objective")
+            && texts[2].contains("write_scope"),
+        "{}",
+        texts[2]
+    );
+    // The identical retry still reattaches.
+    assert!(
+        texts[3].contains("status: SUCCESS") && texts[3].contains("reattached: true"),
+        "{}",
+        texts[3]
+    );
+    // The work-graph error is surfaced, not swallowed.
+    assert!(
+        texts[4].contains("status: REFUSED")
+            && texts[4].contains("error_code: WORK_GRAPH_INVALID")
+            && texts[4].contains("ghost")
+            && texts[4].contains("nothing was taken"),
+        "{}",
+        texts[4]
+    );
+    // The completion gate: typed, names the child and what to do.
+    assert!(
+        texts[5].contains("status: REFUSED")
+            && texts[5].contains("COMPLETION_REFUSED")
+            && texts[5].contains("CHILDREN_NOT_SETTLED")
+            && texts[5].contains("child-a")
+            && texts[5].contains("agent.cancel"),
+        "{}",
+        texts[5]
+    );
+    assert!(texts[6].contains("status: SUCCESS"), "{}", texts[6]);
+    // (The last completion's own result is never sent back: the run ended
+    // in ReadyForReview above, which is its success.)
+    let evs = task_events(&core, &session, &task).await;
+    let of = |t: &str| -> Vec<serde_json::Value> {
+        evs.iter()
+            .filter(|(_, ty, _)| ty == t)
+            .map(|(_, _, p)| p.clone())
+            .collect()
+    };
+    // One child ever existed: the conflicting spawn created nothing.
+    assert_eq!(
+        of("SubagentAdmitted").len(),
+        1,
+        "{:#?}",
+        of("SubagentAdmitted")
+    );
+    let refused = of("SubagentAdmissionRefused");
+    assert_eq!(refused.len(), 2, "{refused:#?}");
+    assert_eq!(refused[0]["code"], "IDEMPOTENCY_CONFLICT");
+    assert_eq!(refused[0]["stage"], "IDEMPOTENCY");
+    assert_eq!(refused[1]["code"], "WORK_GRAPH_INVALID");
+    assert_eq!(refused[1]["stage"], "WORK_GRAPH");
+    assert_eq!(refused[1]["rolled_back"], json!([]));
+    let child = fix16_child_task(&evs, "child-a");
+    let deadline = std::time::Instant::now() + Duration::from_secs(30);
+    loop {
+        let cst = wait_task(&mut c, &child, 0).await;
+        if cst.state == "Cancelled" && !cst.loop_alive {
+            break;
+        }
+        assert!(
+            std::time::Instant::now() < deadline,
+            "the cancelled child never ended: {cst:?}"
+        );
+        tokio::time::sleep(Duration::from_millis(100)).await;
+    }
+    drop(c);
+    core.kill();
+}
+
+#[tokio::test]
+async fn fix_16_a_work_graph_failure_after_the_worktree_is_surfaced_and_compensated() {
+    use serde_json::json;
+    let (_repo, root) = plain_repo(&[("README.md", "# fault\n"), ("src/a/.keep", "")]);
+    let parent = vec![
+        json!({"calls": [{"name": "plan.update", "args": {"outcome": "x", "expected_files": ["README.md"]}}]}),
+        json!({"calls": [{"name": "agent.spawn", "args": {"idempotency_key": "child-f", "objective": "create src/a/a.txt", "write_scope": ["src/a/"], "max_turns": 4}}]}),
+        json!({"calls": [{"name": "task.complete", "args": {"summary": "gave up delegating", "self_review": {"findings": []}}}]}),
+    ];
+    let (base, seen) = scripted_model(parent, None).await;
+    let dir = tempfile::tempdir().unwrap();
+    let env = [
+        ("MODBIT_OPENAI_BASE_URL", base.as_str()),
+        ("OPENAI_API_KEY", ""),
+        ("ANTHROPIC_API_KEY", ""),
+        ("MODBIT_CAPACITY", "model=4,provider=8"),
+        ("MODBIT_FAULT_SPAWN", "WORK_GRAPH"),
+    ];
+    let mut core = CoreProcess::spawn_with_env(dir.path(), &env);
+    let mut c = core.client().await;
+    let (session, _) = create_session(&mut c, id16(0xE1)).await;
+    let g = lease_for(&session);
+    let task = create_task_with_goal(
+        &mut c,
+        &session,
+        g,
+        &root,
+        0xE2,
+        "PARENT-GOAL-MARKER: fault",
+    )
+    .await;
+    fix16_start(&mut c, &task, 0xE3, g).await;
+    let st = wait_for_state(&mut c, &task, "ReadyForReview", 120).await;
+    assert_eq!(st.state, "ReadyForReview", "{st:?}");
+    let evs = task_events(&core, &session, &task).await;
+    let refused: Vec<serde_json::Value> = evs
+        .iter()
+        .filter(|(_, t, _)| t == "SubagentAdmissionRefused")
+        .map(|(_, _, p)| p.clone())
+        .collect();
+    assert_eq!(refused.len(), 1, "{refused:#?}");
+    assert_eq!(refused[0]["code"], "WORK_GRAPH_INVALID");
+    assert_eq!(refused[0]["stage"], "WORK_GRAPH");
+    let rolled: Vec<String> = refused[0]["rolled_back"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .map(|r| r.as_str().unwrap().to_owned())
+        .collect();
+    assert!(
+        rolled
+            .iter()
+            .any(|r| r.contains("worktree") && r.ends_with("removed")),
+        "{rolled:?}"
+    );
+    assert!(
+        rolled
+            .iter()
+            .any(|r| r.contains("child task") && r.contains("cancelled")),
+        "{rolled:?}"
+    );
+    assert!(
+        rolled
+            .iter()
+            .any(|r| r.contains("capacity ticket") && r.contains("released")),
+        "{rolled:?}"
+    );
+    assert!(!evs.iter().any(|(_, t, _)| t == "SubagentAdmitted"));
+    assert!(
+        evs.iter()
+            .filter(|(_, t, _)| t == "AgentNodeCreated")
+            .all(|(_, _, n)| n["node"]["kind"] == "PRIMARY"),
+        "no child node"
+    );
+    let leftover = std::fs::read_dir(dir.path().join("worktrees"))
+        .map(|d| d.count())
+        .unwrap_or(0);
+    assert_eq!(leftover, 0, "no orphan worktree");
+    let ack = c
+        .command(envelope(
+            id16(0xE4),
+            "GetCapacity",
+            modbit_protocol::v1::GetCapacity {}.encode_to_vec(),
+        ))
+        .await
+        .unwrap();
+    let cap: modbit_protocol::v1::CapacityView = Client::result(&ack).unwrap();
+    assert!(cap.tickets.is_empty(), "no leaked ticket: {cap:?}");
+    // The model was told, typed — not left to believe the child exists.
+    let texts = fix16_parent_tool_texts(&seen);
+    assert!(
+        texts[1].contains("status: REFUSED") && texts[1].contains("WORK_GRAPH_INVALID"),
+        "{}",
+        texts[1]
+    );
+    drop(c);
+    core.kill();
+}
+
+/// FIX-18 (audit): a checkpoint is the dirty state relative to the HEAD it
+/// was captured at, so a restore after HEAD moved — a new commit, a reset
+/// and a different commit (what a rebase or amend leaves) — must not write a
+/// mixture of the old overlay and the new base. It is refused, typed
+/// `HEAD_DRIFT`, in the restore and in its preview, with the worktree
+/// untouched; once HEAD is the recorded one again the same restore works.
+/// Real Core, a real git repository, real `git` commands moving HEAD.
+#[tokio::test]
+async fn fix_18_restore_refuses_after_head_drift_and_works_when_head_is_back() {
+    let (repo, root) = plain_repo(&[("a.txt", "one\n"), ("b.txt", "b\n")]);
+    let git = |args: &[&str]| -> String {
+        let out = Command::new("git")
+            .arg("-C")
+            .arg(repo.path())
+            .args(["-c", "user.name=t", "-c", "user.email=t@e"])
+            .args(args)
+            .output()
+            .unwrap();
+        assert!(
+            out.status.success(),
+            "git {args:?}: {}",
+            String::from_utf8_lossy(&out.stderr)
+        );
+        String::from_utf8_lossy(&out.stdout).trim().to_owned()
+    };
+    let h1 = git(&["rev-parse", "HEAD"]);
+    let dir = tempfile::tempdir().unwrap();
+    let mut core = CoreProcess::spawn_with_env(dir.path(), &[]);
+    let mut c = core.client().await;
+    let (session, _) = create_session(&mut c, id16(0xF1)).await;
+    let g = lease_for(&session);
+    let task = create_task_with_goal(&mut c, &session, g, &root, 0xF2, "drift").await;
+    // The checkpoint: a.txt edited, a new file, at HEAD h1.
+    std::fs::write(repo.path().join("a.txt"), "dirty\n").unwrap();
+    std::fs::write(repo.path().join("new.txt"), "new\n").unwrap();
+    let created = create_checkpoint(&mut c, &task, g, "BASELINE", "before the history moves").await;
+    assert!(created.committed, "{created:?}");
+    let cp = created.checkpoint.unwrap().checkpoint_id;
+    let restored_events = |evs: &[(String, String, serde_json::Value)]| {
+        evs.iter()
+            .filter(|(_, t, _)| t == "CheckpointRestored")
+            .count()
+    };
+
+    // 1. HEAD moves forward: the worktree's changes are committed on top.
+    std::fs::write(repo.path().join("b.txt"), "b2\n").unwrap();
+    git(&["add", "-A"]);
+    git(&["commit", "-q", "-m", "later"]);
+    let h2 = git(&["rev-parse", "HEAD"]);
+    assert_ne!(h1, h2);
+    let before = (
+        std::fs::read_to_string(repo.path().join("a.txt")).unwrap(),
+        std::fs::read_to_string(repo.path().join("b.txt")).unwrap(),
+    );
+    let r = restore_checkpoint(&mut c, &task, g, &cp).await;
+    assert!(!r.restored, "{r:?}");
+    assert_eq!(r.refusal, "HEAD_DRIFT", "{r:?}");
+    assert!(
+        r.detail.contains(&h1[..12])
+            && r.detail.contains(&h2[..12])
+            && r.detail.contains("moved forward"),
+        "{r:?}"
+    );
+    let pv = preview_rewind(&mut c, &task, &cp).await;
+    assert_eq!(
+        pv.refusal, "HEAD_DRIFT",
+        "a preview must not promise it: {pv:?}"
+    );
+    assert_eq!(
+        before,
+        (
+            std::fs::read_to_string(repo.path().join("a.txt")).unwrap(),
+            std::fs::read_to_string(repo.path().join("b.txt")).unwrap(),
+        ),
+        "a refused restore wrote nothing"
+    );
+
+    // 2. HEAD diverges: the recorded commit is rewritten (an amend — what a
+    //    rebase does to every commit it replays), so it is no longer an
+    //    ancestor of HEAD.
+    git(&["reset", "-q", "--hard", &h1]);
+    std::fs::write(repo.path().join("b.txt"), "b3\n").unwrap();
+    git(&["add", "-A"]);
+    git(&["commit", "-q", "--amend", "-m", "base, rewritten"]);
+    let h3 = git(&["rev-parse", "HEAD"]);
+    assert!(h3 != h1 && h3 != h2);
+    let r = restore_checkpoint(&mut c, &task, g, &cp).await;
+    assert_eq!(r.refusal, "HEAD_DRIFT", "{r:?}");
+    assert!(r.detail.contains("diverged"), "{r:?}");
+    assert_eq!(
+        std::fs::read_to_string(repo.path().join("b.txt")).unwrap(),
+        "b3\n"
+    );
+    assert!(!repo.path().join("new.txt").exists());
+    let evs = task_events(&core, &session, &task).await;
+    assert_eq!(
+        restored_events(&evs),
+        0,
+        "no CheckpointRestored was recorded"
+    );
+
+    // 3. HEAD is the recorded commit again: the same restore now works and
+    //    brings the overlay back on that base.
+    git(&["reset", "-q", "--hard", &h1]);
+    let pv = preview_rewind(&mut c, &task, &cp).await;
+    assert_eq!(pv.refusal, "", "{pv:?}");
+    let r = restore_checkpoint(&mut c, &task, g, &cp).await;
+    assert!(r.restored, "{r:?}");
+    assert_eq!(
+        std::fs::read_to_string(repo.path().join("a.txt")).unwrap(),
+        "dirty\n"
+    );
+    assert_eq!(
+        std::fs::read_to_string(repo.path().join("new.txt")).unwrap(),
+        "new\n"
+    );
+    assert_eq!(
+        std::fs::read_to_string(repo.path().join("b.txt")).unwrap(),
+        "b\n"
+    );
+    let evs = task_events(&core, &session, &task).await;
+    assert_eq!(restored_events(&evs), 1);
+    drop(c);
+    core.kill();
 }

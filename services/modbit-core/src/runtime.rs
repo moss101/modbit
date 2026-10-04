@@ -23,6 +23,7 @@ use modbit_core_runtime::harness::{
 };
 use modbit_domain::event::{Actor, AggregateType};
 use modbit_domain::run::{OwnerLocation, RunEvent, RunState};
+use modbit_domain::state::StateMachine;
 use modbit_domain::step::VerificationStage;
 use modbit_domain::step::{StepEvent, StepType};
 use modbit_domain::task::{InputMode, Task, TaskEvent, TaskState, WaitReason};
@@ -580,6 +581,58 @@ impl Runtime {
     pub async fn live_loops(&self) -> usize {
         self.tasks.lock().await.len()
     }
+}
+
+/// Cancel, durably, a task that has no live loop: its non-terminal runs end
+/// `RunCancelled`, then the task `TaskCancelled`. The same record a loop
+/// writes when it ends cancelled, for a task nothing is running (a parked or
+/// suspended one). The caller has already decided the task is not running.
+pub(crate) fn cancel_without_loop(
+    store: &mut EventStore,
+    core: &Core,
+    task: &Task,
+    actor: &Actor,
+) -> std::result::Result<(), modbit_event_store::Error> {
+    if let Ok(runs) = store.runs_for_task(&task.task_id) {
+        for r in runs.into_iter().filter(|r| !r.state.is_terminal()) {
+            let _ = store.append(AppendRequest {
+                tenant_id: core.tenant_id,
+                session_id: task.session_id,
+                task_id: Some(task.task_id),
+                run_id: Some(r.run_id),
+                turn_id: None,
+                step_id: None,
+                aggregate_type: AggregateType::Run,
+                aggregate_id: *r.run_id.as_bytes(),
+                expected_sequence: None,
+                events: vec![typed(
+                    "RunCancelled",
+                    &modbit_domain::run::RunEvent::RunCancelled,
+                    actor.clone(),
+                )],
+            });
+        }
+    }
+    let ev = store.append(AppendRequest {
+        tenant_id: core.tenant_id,
+        session_id: task.session_id,
+        task_id: Some(task.task_id),
+        run_id: None,
+        turn_id: None,
+        step_id: None,
+        aggregate_type: AggregateType::Task,
+        aggregate_id: *task.task_id.as_bytes(),
+        expected_sequence: None,
+        events: vec![typed(
+            "TaskCancelled",
+            &TaskEvent::TaskCancelled,
+            actor.clone(),
+        )],
+    })?;
+    if let Some(last) = ev.last() {
+        core.last_offset.send_replace(last.offset);
+    }
+    Ok(())
 }
 
 /// Append events on several aggregates in one transaction under one lineage
@@ -5099,6 +5152,12 @@ async fn run_loop(
         ),
     };
     let fenced_end = matches!(end, LoopEnd::Fenced { .. });
+    // FIX-16: a parent whose loop ends cancelled — or proposes completion,
+    // which the completion gate allows only with no child alive — takes
+    // any child it still has with it; a Waiting end leaves its children
+    // resumable, the parent being resumable too.
+    let settle_children =
+        matches!(end, LoopEnd::Cancelled | LoopEnd::ReadyForReview) && state.capsule.is_none();
     let review_ended_short = crate::critique::is_review(&task)
         && !matches!(
             end,
@@ -5649,6 +5708,15 @@ async fn run_loop(
         &cfg.ticket_id,
     );
     drop(store);
+    if settle_children {
+        crate::spawn::cancel_children(
+            &core,
+            &task,
+            "the parent's run ended; the child is not left running",
+            &actor,
+        )
+        .await;
+    }
     // REQ-EV-0042: `after_run` hooks see how the run ended. It is over, so
     // nothing they answer changes it; a failure is on the record.
     if hooks.has(modbit_tools::hooks::HookPoint::AfterRun) {
@@ -7077,6 +7145,27 @@ async fn handle_complete(
         precheck = Err(HarnessRefusal::CompletionBlocked {
             reasons: unverified,
         });
+    }
+    // FIX-16: a parent is not done while a child it spawned is not over —
+    // its work would be abandoned mid-flight or merged by nobody. The model
+    // is told each child by name and status, and what it can do about it.
+    // (No integration state exists yet to settle a finished child against:
+    // a child is settled when it is terminal.)
+    if precheck.is_ok() {
+        let unsettled = crate::spawn::unsettled_children(core, &task.task_id).await;
+        if !unsettled.is_empty() {
+            precheck = Err(HarnessRefusal::CompletionBlocked {
+                reasons: unsettled
+                    .iter()
+                    .map(|c| {
+                        format!(
+                            "CHILDREN_NOT_SETTLED: child `{}` ({}) is {}; collect it with agent.wait, or stop it with agent.cancel, before completing",
+                            c.key, c.agent_id, c.status
+                        )
+                    })
+                    .collect(),
+            });
+        }
     }
     let verdict = if precheck.is_ok() {
         // docs/14 §8 (M4.3): a checkpoint before the COMPLETION run, so the

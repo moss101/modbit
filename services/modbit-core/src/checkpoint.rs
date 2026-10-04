@@ -462,6 +462,60 @@ pub(crate) struct Restored {
     pub preconditions_checked: u32,
 }
 
+/// A checkpoint's files are the worktree's *dirty state relative to the HEAD
+/// it was captured at* (docs/19). Restoring it onto a different HEAD does not
+/// reproduce the worktree it was taken from: every path that was clean then
+/// is now whatever the new HEAD says, while the dirty paths come back from
+/// the old base. So when the repository's HEAD is no longer the recorded one
+/// (a new commit, an amend, a rebase, a reset, another branch), the restore
+/// and its preview are refused, typed `HEAD_DRIFT`, before anything is
+/// planned or written (FIX-18). `ForkTask` from the checkpoint is the way to
+/// its exact state: the fork's worktree is created at the recorded HEAD.
+/// A checkpoint that recorded no HEAD has nothing to compare.
+pub(crate) fn head_drift(
+    repo: &modbit_git::Repo,
+    recorded: Option<&str>,
+    checkpoint_id: CheckpointId,
+) -> Option<RestoreRefused> {
+    let recorded = recorded.filter(|h| !h.is_empty())?;
+    let current = repo.head().ok();
+    if current.as_deref() == Some(recorded) {
+        return None;
+    }
+    let short = |h: &str| h.chars().take(12).collect::<String>();
+    let (now, relation) = match &current {
+        None => (
+            "no HEAD".to_owned(),
+            "the repository has no commit checked out".to_owned(),
+        ),
+        Some(cur) => (
+            short(cur),
+            match repo.merge_base(recorded, cur) {
+                Ok(base) if base == recorded => {
+                    "the repository moved forward: commits were added".to_owned()
+                }
+                Ok(_) => {
+                    "the history diverged (an amend, rebase, reset or another branch)".to_owned()
+                }
+                // No common ancestor: unrelated histories, or the recorded
+                // commit is gone from the repository altogether.
+                Err(_) if repo.rev_parse(&format!("{recorded}^{{commit}}")).is_ok() => {
+                    "the history diverged (an amend, rebase, reset or another branch)".to_owned()
+                }
+                Err(_) => "the recorded commit is no longer in the repository (garbage collected)"
+                    .to_owned(),
+            },
+        ),
+    };
+    Some(RestoreRefused {
+        code: "HEAD_DRIFT",
+        detail: format!(
+            "checkpoint {checkpoint_id} was captured at HEAD {}; the repository is now at {now} ({relation}); a restore would mix the checkpoint's files with a different base. Nothing was written. Fork the task from the checkpoint to get its exact state on its own worktree, or capture a new checkpoint at the current HEAD",
+            short(recorded)
+        ),
+    })
+}
+
 /// Restore the worktree to a checkpoint: resolve its chain from the log,
 /// read back and hash-check every object it names, and only then write —
 /// files the checkpoint has from their objects, files it does not have back
@@ -506,6 +560,11 @@ pub(crate) async fn restore(
         Err(e) => return Ok(Err(chain_refusal(e))),
     };
     let repo = modbit_git::Repo::open(&canonical)?;
+    // FIX-18: the base the checkpoint's files are relative to must still be
+    // the repository's HEAD.
+    if let Some(refused) = head_drift(&repo, state.git_head.as_deref(), state.checkpoint_id) {
+        return Ok(Err(refused));
+    }
     let mut ws = ws.lock().await;
     // REQ-EV-0123: the caller's optimistic preconditions — the content it
     // last saw at each path (a preview) — are checked before anything is
