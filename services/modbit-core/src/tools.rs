@@ -663,16 +663,48 @@ impl ToolHost {
         Ok(sem)
     }
 
-    /// The Context Ledger of a task (M3.8).
+    /// The Context Ledger of a task (M3.8). The first access in a process
+    /// rebuilds it from the task's log (`restore_ledger`), so the pack the
+    /// prompt injects and the Inspector's pack view survive a Core restart.
     pub(crate) async fn ledger(
         &self,
+        store: &Arc<Mutex<EventStore>>,
         task_id: TaskId,
     ) -> Arc<Mutex<modbit_context::ContextLedger>> {
+        if let Some(l) = self.ledgers.lock().await.get(&task_id) {
+            return Arc::clone(l);
+        }
+        let restored = restore_ledger(&*store.lock().await, task_id);
         let mut map = self.ledgers.lock().await;
         Arc::clone(
             map.entry(task_id)
-                .or_insert_with(|| Arc::new(Mutex::new(modbit_context::ContextLedger::default()))),
+                .or_insert_with(|| Arc::new(Mutex::new(restored))),
         )
+    }
+
+    /// Before a prompt is compiled: drop the latest pack's fragments whose
+    /// file changed after they were read, so a pre-edit excerpt is never
+    /// re-injected under its old revision and hash (FIX-12, audit N7). Reads
+    /// the bytes on disk now, as `unretrieved_targets` does. Returns what was
+    /// dropped.
+    pub(crate) async fn revalidate_pack(
+        &self,
+        store: &Arc<Mutex<EventStore>>,
+        task_id: TaskId,
+        root: Option<&str>,
+    ) -> Vec<modbit_context::Invalidated> {
+        let Some(root) = root.map(Path::new) else {
+            return vec![];
+        };
+        let ledger = self.ledger(store, task_id).await;
+        let mut ledger = ledger.lock().await;
+        // A file with several entries is read once.
+        let mut seen: HashMap<String, Option<modbit_context::FileState>> = HashMap::new();
+        ledger.invalidate_stale(|p| {
+            seen.entry(p.to_owned())
+                .or_insert_with(|| workspace_file_state(root, p))
+                .clone()
+        })
     }
 
     /// The evidence graph of a workspace root, built from the exact index, the
@@ -866,7 +898,7 @@ impl ToolHost {
                 },
                 selection: selection_of(store, task_id).await,
                 documents: attached_documents(store, task_id).await,
-                ledger: self.ledger(task_id).await,
+                ledger: self.ledger(store, task_id).await,
                 objects: store.lock().await.objects().clone(),
                 store: Arc::clone(store),
                 tenant_id,
@@ -1391,7 +1423,7 @@ impl ToolHost {
                 } else {
                     pre_revision
                 };
-                let ledger = self.ledger(task_id).await;
+                let ledger = self.ledger(store, task_id).await;
                 let mut ledger = ledger.lock().await;
                 for p in &paths {
                     ledger.mark_used(p, use_rev, &tool_call_id.to_string(), tool_name);
@@ -1412,6 +1444,36 @@ impl ToolHost {
                         &actor,
                     ));
                 }
+            }
+        }
+        // FIX-12 (audit N8): the pack the call compiled and the ledger snapshot
+        // taken with it are on the log, in the same transaction as the call's
+        // outcome, so a restarted Core rebuilds the ledger instead of losing it.
+        if result.status == ToolStatus::Success && tool_name == "context.pack" {
+            let o = &result.structured_output;
+            if let (Some(pack_ref), Some(ledger_ref), Some(pack_id)) = (
+                o["pack_ref"].as_str(),
+                o["ledger_ref"].as_str(),
+                o["pack"]["pack_id"].as_str(),
+            ) {
+                let count = |k: &str| {
+                    u32::try_from(o["pack"][k].as_array().map_or(0, Vec::len)).unwrap_or(u32::MAX)
+                };
+                retrieval_events.push(typed_task_event(
+                    "ContextPackRecorded",
+                    &modbit_domain::task::TaskEvent::ContextPackRecorded {
+                        pack_id: pack_id.to_owned(),
+                        pack_ref: pack_ref.to_owned(),
+                        ledger_ref: ledger_ref.to_owned(),
+                        workspace_revision: o["pack"]["workspace_revision"].as_u64().unwrap_or(0),
+                        tool_call_id: tool_call_id.to_string(),
+                        token_used: u32::try_from(o["pack"]["token_used"].as_u64().unwrap_or(0))
+                            .unwrap_or(u32::MAX),
+                        entries: count("entries"),
+                        stubs: count("stubs"),
+                    },
+                    &actor,
+                ));
             }
         }
         // Terminal cursor metadata (docs/19 layer 2, M4.5): what the run now
@@ -2389,6 +2451,107 @@ pub(crate) fn read_workspace_file(ws: &WorkspaceService, path: &str) -> Option<V
     std::fs::read(&r.absolute).ok()
 }
 
+/// What the workspace holds for a pack entry's path now. A path that is not a
+/// plain relative path (a pack entry never is one, but a ledger rebuilt from a
+/// log is not trusted to be) is not checked, so it stays as it was.
+fn workspace_file_state(root: &Path, path: &str) -> Option<modbit_context::FileState> {
+    let rel = Path::new(path);
+    if rel.is_absolute()
+        || rel
+            .components()
+            .any(|c| !matches!(c, std::path::Component::Normal(_)))
+    {
+        return None;
+    }
+    match std::fs::read(root.join(rel)) {
+        Ok(bytes) => Some(modbit_context::FileState::Hash(
+            modbit_workspace::content_hash(&bytes),
+        )),
+        Err(e) if e.kind() == std::io::ErrorKind::NotFound => {
+            Some(modbit_context::FileState::Missing)
+        }
+        Err(_) => None,
+    }
+}
+
+/// Rebuild a task's Context Ledger from its log (FIX-12, audit N8): the
+/// ledger snapshot the newest `ContextPackRecorded` names (the packs, the
+/// latest pack, the direct reads, the usefulness marks at that moment), then
+/// every `RetrievalRecorded` after it replayed — a read is a retrieval record
+/// and, for the paths a pack holds, a use. A snapshot that cannot be loaded
+/// is skipped and the retrieval records alone rebuild the reads.
+pub(crate) fn restore_ledger(store: &EventStore, task_id: TaskId) -> modbit_context::ContextLedger {
+    const PAGE: usize = 5_000;
+    struct Retrieval {
+        path: String,
+        revision: u64,
+        content_hash: Option<String>,
+        tool_call_id: String,
+        tool_name: String,
+    }
+    let mut ledger = modbit_context::ContextLedger::default();
+    let mut tail: Vec<Retrieval> = Vec::new();
+    let mut after = 0u64;
+    loop {
+        let Ok(events) = store.read_aggregate(task_id.as_bytes(), after, PAGE) else {
+            break;
+        };
+        for e in &events {
+            after = e.envelope.sequence;
+            let Ok(p) = store.payload(&e.envelope) else {
+                continue;
+            };
+            match e.envelope.event_type.as_str() {
+                "ContextPackRecorded" => {
+                    let snapshot = p["ledger_ref"]
+                        .as_str()
+                        .and_then(|h| store.objects().get(h).ok())
+                        .and_then(|b| {
+                            serde_json::from_slice::<modbit_context::ContextLedger>(&b).ok()
+                        });
+                    if let Some(l) = snapshot {
+                        // The snapshot already holds every read before the pack.
+                        ledger = l;
+                        tail.clear();
+                    }
+                }
+                "RetrievalRecorded" => {
+                    if let Some(path) = p["path"].as_str() {
+                        tail.push(Retrieval {
+                            path: path.to_owned(),
+                            revision: p["workspace_revision"].as_u64().unwrap_or(0),
+                            content_hash: p["content_hash"].as_str().map(str::to_owned),
+                            tool_call_id: p["tool_call_id"].as_str().unwrap_or_default().to_owned(),
+                            tool_name: p["tool_name"].as_str().unwrap_or_default().to_owned(),
+                        });
+                    }
+                }
+                _ => {}
+            }
+        }
+        if events.len() < PAGE {
+            break;
+        }
+    }
+    for r in tail {
+        // The live path marks a read at its own revision and a write at the
+        // revision before it (the record of a write carries the one after).
+        if r.tool_name == "fs.read" || r.tool_name.starts_with("lsp.") {
+            ledger.mark_used(&r.path, r.revision, &r.tool_call_id, &r.tool_name);
+        } else {
+            ledger.mark_used_before(&r.path, r.revision, &r.tool_call_id, &r.tool_name);
+        }
+        ledger.record_read(
+            &r.path,
+            r.revision,
+            r.content_hash.as_deref(),
+            &r.tool_call_id,
+            &r.tool_name,
+        );
+    }
+    ledger
+}
+
 /// A typed Task event as a `NewEvent` (mirrors the runtime's `typed`).
 /// Every string leaf of a tool's observation, bounded (M7.7).
 fn collect_strings(v: &serde_json::Value, out: &mut Vec<String>) {
@@ -2813,12 +2976,9 @@ type ChangedChunkSource = (String, Option<(String, Vec<(String, u64, u64)>)>);
 
 /// Symbol byte spans of a path as chunk boundaries (`name`, start, end).
 fn symbol_spans(symbols: &modbit_retrieval::SymbolIndex, path: &str) -> Vec<(String, u64, u64)> {
-    symbols
-        .symbols_in(path)
-        .iter()
-        .filter(|s| s.container.is_none())
-        .map(|s| (s.name.clone(), s.span.0, s.span.1))
-        .collect()
+    // A definition too large for one chunk (a big `impl`, a class) is
+    // embedded member by member, not by its first 4 KiB (FIX-12, N9).
+    symbols.chunk_spans(path, modbit_retrieval::semantic::MAX_CHUNK_BYTES)
 }
 
 impl modbit_tools::SearchPort for IndexPort {
@@ -3230,8 +3390,8 @@ impl modbit_tools::SearchPort for IndexPort {
                 for p in &required {
                     if let Some((t, hash, rehydrated)) = hydrated(p) {
                         let chosen = selected.contains(p);
-                        // A line range selects that range; everything else
-                        // enters whole.
+                        // A line range selects that range; anything else enters as
+                        // the head of the file (bounded, `excerpt`), not whole.
                         let span = self
                             .selection
                             .lines
@@ -3334,7 +3494,16 @@ impl modbit_tools::SearchPort for IndexPort {
                         span: h.span,
                         score: h.score,
                         sources: h.sources.clone(),
-                        reasons: h.reasons.clone(),
+                        reasons: h
+                            .reasons
+                            .iter()
+                            .cloned()
+                            .chain(
+                                h.evidence
+                                    .iter()
+                                    .map(|e| format!("method:{}#{}", e.source, e.rank)),
+                            )
+                            .collect(),
                         content_hash: Some(hash),
                         text,
                         critical: diagnostic,

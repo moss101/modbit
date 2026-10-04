@@ -523,6 +523,41 @@ pub struct ContextLedger {
     /// with its provenance (REQ-EV-0169).
     #[serde(default)]
     pub last_pack: Option<ContextPack>,
+    /// Fragments of `last_pack` dropped because their file changed after
+    /// they were read (newest last, bounded).
+    #[serde(default)]
+    pub invalidated: Vec<Invalidated>,
+}
+
+/// Most invalidations the ledger remembers.
+const MAX_INVALIDATED: usize = 200;
+
+/// What the workspace holds for a path now.
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub enum FileState {
+    /// The file exists with this content hash.
+    Hash(String),
+    /// The file is gone.
+    Missing,
+}
+
+/// A pack fragment dropped because its file changed after it was read.
+#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
+pub struct Invalidated {
+    /// Pack the fragment came from.
+    pub pack_id: String,
+    /// Its entry id.
+    pub entry_id: String,
+    /// Path.
+    pub path: String,
+    /// Lines of the fragment.
+    pub lines: Option<(u32, u32)>,
+    /// Content hash it was read at.
+    pub read_hash: String,
+    /// Content hash now (`None`: the file is gone).
+    pub current_hash: Option<String>,
+    /// It was a signature-only stub.
+    pub stub: bool,
 }
 
 impl ContextLedger {
@@ -634,6 +669,84 @@ impl ContextLedger {
                 .reads
                 .iter()
                 .any(|r| r.path == path && r.workspace_revision == revision)
+    }
+
+    /// Like `mark_used`, for a use whose revision is not on the record: mark
+    /// the unused entries of `path` retrieved at the newest revision before
+    /// `revision`. A write is recorded at the revision after it, while it uses
+    /// what was retrieved before it; this is how a restarted Core re-derives
+    /// that use from the retrieval record alone.
+    pub fn mark_used_before(
+        &mut self,
+        path: &str,
+        revision: u64,
+        tool_call_id: &str,
+        tool_name: &str,
+    ) -> usize {
+        let newest = self
+            .entries
+            .iter()
+            .filter(|e| e.path == path && e.workspace_revision < revision)
+            .map(|e| e.workspace_revision)
+            .max();
+        newest.map_or(0, |r| self.mark_used(path, r, tool_call_id, tool_name))
+    }
+
+    /// Drop from the latest pack every workspace excerpt (and stub) whose
+    /// file no longer holds the bytes it was read from — changed or deleted
+    /// since — so a stale excerpt is never re-injected under its old
+    /// revision and hash (FIX-12, audit N7). `current` answers what the
+    /// workspace holds for a path now (`None`: cannot tell, the entry stays).
+    /// The ledger entries stay: they record what was retrieved and when. The
+    /// dropped fragments are returned and kept in `invalidated`.
+    pub fn invalidate_stale(
+        &mut self,
+        mut current: impl FnMut(&str) -> Option<FileState>,
+    ) -> Vec<Invalidated> {
+        let Some(pack) = self.last_pack.as_mut() else {
+            return vec![];
+        };
+        let pack_id = pack.pack_id.clone();
+        let mut dropped: Vec<Invalidated> = Vec::new();
+        let mut check = |source_ref: &str,
+                         entry_id: &str,
+                         provenance: &Provenance,
+                         lines: Option<(u32, u32)>,
+                         stub: bool|
+         -> bool {
+            // Attached documents and other non-workspace sources have no file
+            // to compare against.
+            if !source_ref.starts_with("workspace:") {
+                return true;
+            }
+            let Some(read_hash) = provenance.content_hash.as_deref() else {
+                return true;
+            };
+            let now = match current(&provenance.path) {
+                None => return true,
+                Some(FileState::Hash(h)) if h == read_hash => return true,
+                Some(FileState::Hash(h)) => Some(h),
+                Some(FileState::Missing) => None,
+            };
+            dropped.push(Invalidated {
+                pack_id: pack_id.clone(),
+                entry_id: entry_id.to_owned(),
+                path: provenance.path.clone(),
+                lines,
+                read_hash: read_hash.to_owned(),
+                current_hash: now,
+                stub,
+            });
+            false
+        };
+        pack.entries
+            .retain(|e| check(&e.source_ref, &e.entry_id, &e.provenance, e.lines, false));
+        pack.stubs
+            .retain(|s| check(&s.source_ref, &s.entry_id, &s.provenance, s.lines, true));
+        self.invalidated.extend(dropped.iter().cloned());
+        let excess = self.invalidated.len().saturating_sub(MAX_INVALIDATED);
+        self.invalidated.drain(..excess);
+        dropped
     }
 
     /// (injected, used) counts.

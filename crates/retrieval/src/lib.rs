@@ -27,6 +27,6 @@ pub use graph::{CommitRecord, EvidenceGraph, GraphQuery, GraphView};
 pub use impact::{ImpactSelection, ImpactedTest, precision_recall, select_impacted};
 pub use index::{Hit, IndexError, IndexStats, PathHit, RepositoryIndex, SearchOptions};
 pub use lexical::{ChangedDoc, LexicalHit, LexicalIndex};
-pub use planner::{FusedHit, Level, PlanRequest, PlanResult, Sources};
+pub use planner::{FusedHit, Level, MethodEvidence, PlanRequest, PlanResult, Sources};
 pub use semantic::{Chunk, Embedder, FileSource, HashingEmbedder, SemanticHit, SemanticIndex};
 pub use symbols::{ChangedSymbols, Symbol, SymbolIndex, SymbolQuery};

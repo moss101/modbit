@@ -53,7 +53,7 @@ pub fn layers(core: &Core, task: &Task, trusted: bool) -> Vec<Layer> {
 pub async fn active_paths(core: &Core, task: &Task, state: &HarnessState) -> Vec<String> {
     let mut paths: Vec<String> = Vec::new();
     {
-        let ledger = core.tools.ledger(task.task_id).await;
+        let ledger = core.tools.ledger(&core.store, task.task_id).await;
         let ledger = ledger.lock().await;
         paths.extend(ledger.reads.iter().map(|r| r.path.clone()));
         paths.extend(ledger.entries.iter().map(|e| e.path.clone()));

@@ -1509,6 +1509,31 @@ pub enum TaskEvent {
         /// Tool.
         tool_name: String,
     },
+    /// `ContextPackRecorded` (FIX-12, audit N8): the task compiled a Context
+    /// Pack with `context.pack`. It names the pack and the Context Ledger
+    /// snapshot taken right after the pack entered the ledger (both in the
+    /// object store), so a restarted Core rebuilds the ledger — the pack the
+    /// prompt injects, the Inspector's pack view and the usefulness marks —
+    /// from the log. Additive; no state change.
+    ContextPackRecorded {
+        /// The pack's id.
+        pack_id: String,
+        /// Object hash of the pack JSON.
+        pack_ref: String,
+        /// Object hash of the ledger snapshot (every pack so far, the direct
+        /// reads and the usefulness marks at that moment).
+        ledger_ref: String,
+        /// Workspace revision the pack was compiled at.
+        workspace_revision: u64,
+        /// The `context.pack` call.
+        tool_call_id: String,
+        /// Estimated tokens the pack uses.
+        token_used: u32,
+        /// Entries packed.
+        entries: u32,
+        /// Signature-only stubs packed.
+        stubs: u32,
+    },
     /// `RepairAttemptRecorded` (docs/28 §5, PX-018): recorded before the
     /// attempt's change and verification run; no state change.
     RepairAttemptRecorded {
@@ -2132,6 +2157,7 @@ impl TaskEvent {
             Self::ScopeExpansionRecorded { .. } => "ScopeExpansionRecorded",
             Self::ProtectedPathsUnlocked { .. } => "ProtectedPathsUnlocked",
             Self::RetrievalRecorded { .. } => "RetrievalRecorded",
+            Self::ContextPackRecorded { .. } => "ContextPackRecorded",
             Self::RepairAttemptRecorded { .. } => "RepairAttemptRecorded",
             Self::RepairAttemptConcluded { .. } => "RepairAttemptConcluded",
             Self::RepairEscalated { .. } => "RepairEscalated",
@@ -2310,6 +2336,7 @@ impl Task {
             | TaskEvent::ScopeExpansionRecorded { .. }
             | TaskEvent::ProtectedPathsUnlocked { .. }
             | TaskEvent::RetrievalRecorded { .. }
+            | TaskEvent::ContextPackRecorded { .. }
             | TaskEvent::RepairAttemptRecorded { .. }
             | TaskEvent::RepairAttemptConcluded { .. }
             | TaskEvent::RepairEscalated { .. }
