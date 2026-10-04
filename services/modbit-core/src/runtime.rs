@@ -2102,7 +2102,7 @@ fn media_parts(call_id: &str, media: &[MediaRef]) -> Vec<ContentPart> {
 /// Fill the media parts of a transcript copy with the bytes of their egress
 /// copies, or drop them when the model cannot take that modality. The stored
 /// transcript keeps references only, so nothing here changes what was logged.
-async fn hydrate_media(
+pub(crate) async fn hydrate_media(
     core: &Core,
     transcript: &mut [Message],
     vision: bool,
@@ -2651,6 +2651,8 @@ async fn run_loop(
         &cfg.endpoint,
         &cfg.model,
     );
+    // REQ-EV-0190: what the user attached reaches the model with the task.
+    let mut attachments = crate::media_bridge::AttachmentView::default();
     // REQ-EV-0021/0062/0146 (docs/21 "Environment revisions"): a fresh run
     // pins the environment as it is; a resumed one checks what it pinned
     // against what is there and, when they differ, waits for an explicit
@@ -3175,9 +3177,14 @@ async fn run_loop(
                         })
                         .unwrap_or_default()
                 };
+                // REQ-EV-0190: the task's attachments join the user turn as the
+                // egress copies a workspace read of the same bytes would give.
+                attachments.refresh(&core, &task).await;
+                let task_attachments = attachments.hydrated_parts(&core, vision, &mut bridge).await;
                 let compiled =
                     modbit_prompt_compiler::compile(modbit_prompt_compiler::PromptInput {
                         goal: task.goal_text.clone(),
+                        task_attachments,
                         workspace_root: task.workspace_root.clone(),
                         execution_profile: task.execution_profile.clone(),
                         workspace_rules: rules.select(&core, &task, lt, &actor, &state).await,

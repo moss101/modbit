@@ -6376,6 +6376,158 @@ async fn qual_ev_0190_attachments_normalize_to_the_same_canonical_envelope_as_wo
     );
 }
 
+/// VER-05 / FIX-11 (REQ-EV-0190 + REQ-EV-0188): a user attachment is not just
+/// recorded, the model sees it. A PNG attached before the task starts rides
+/// the first request as an image part of the user turn, in the transport's
+/// own shape, by its egress copy (the bytes with their metadata stripped),
+/// every turn after it too, labelled untrusted; a model whose catalog entry
+/// takes no images is told so by name and is never sent an image block; the
+/// log keeps the digest and never the bytes.
+#[tokio::test]
+async fn ver_05_an_ingested_attachment_reaches_the_model_as_an_image_part_of_the_user_turn() {
+    use modbit_protocol::v1::{AttachmentIngested, IngestAttachment, StartTask, TaskRunStarted};
+    use serde_json::json;
+    let fixture = std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
+        .join("../../tests/fixtures/media/label.png");
+    let png = std::fs::read(&fixture).unwrap();
+    // A 3x2 GIF with a comment block: GIF got no egress copy before FIX-11.
+    let mut gif = b"GIF89a".to_vec();
+    gif.extend_from_slice(&[3, 0, 2, 0, 0x80, 0, 0, 0, 0, 0, 255, 255, 255]);
+    gif.extend_from_slice(&[0x21, 0xFE, 4]);
+    gif.extend_from_slice(b"gps!");
+    gif.push(0);
+    gif.extend_from_slice(&[0x2C, 0, 0, 0, 0, 3, 0, 2, 0, 0, 2, 2, 0x44, 0x01, 0, 0x3B]);
+    for (model, vision, seq, name, data, url_prefix) in [
+        (
+            "gpt-5-mini",
+            true,
+            0xB0u8,
+            "screenshot.png",
+            png.clone(),
+            "data:image/png;base64,iVBORw0KGgo",
+        ),
+        (
+            "o3-mini",
+            false,
+            0xB8u8,
+            "screenshot.png",
+            png.clone(),
+            "data:image/png;base64,iVBORw0KGgo",
+        ),
+        (
+            "gpt-5-mini",
+            true,
+            0xC0u8,
+            "anim.gif",
+            gif,
+            "data:image/gif;base64,R0lGODlh",
+        ),
+    ] {
+        let (repo, root) = plain_repo(&[("notes.md", "the screenshot is attached\n")]);
+        let script = vec![
+            json!({"calls": [{"name": "plan.update", "args": {"outcome": "look at the attachment", "expected_files": ["notes.md"]}}]}),
+            json!({"calls": [{"name": "task.complete", "args": {"summary": "looked", "self_review": {"findings": []}}}]}),
+        ];
+        let (base, seen) = scripted_model(script, None).await;
+        let dir = tempfile::tempdir().unwrap();
+        let env = [
+            ("MODBIT_OPENAI_BASE_URL", base.as_str()),
+            ("OPENAI_API_KEY", ""),
+            ("ANTHROPIC_API_KEY", ""),
+        ];
+        let core = CoreProcess::spawn_with_env(dir.path(), &env);
+        let mut c = core.client().await;
+        let (session, _) = create_session(&mut c, id16(seq)).await;
+        let g = lease_for(&session);
+        let task =
+            create_task_with_profile(&mut c, &session, g, &root, seq + 1, "local_trusted").await;
+        let ack = c
+            .command(envelope_fenced(
+                id16(seq + 2),
+                "IngestAttachment",
+                IngestAttachment {
+                    task_id: Some(task.clone()),
+                    filename: name.into(),
+                    channel: "desktop".into(),
+                    data: data.clone(),
+                }
+                .encode_to_vec(),
+                g,
+            ))
+            .await
+            .unwrap();
+        let a: AttachmentIngested = Client::result(&ack).unwrap();
+        assert_eq!(a.kind, "IMAGE", "{a:?}");
+        let ack = c
+            .command(envelope_fenced(
+                id16(seq + 3),
+                "StartTask",
+                StartTask {
+                    task_id: Some(task.clone()),
+                    endpoint: String::new(),
+                    model: model.into(),
+                    max_turns: 8,
+                    max_tool_calls: 0,
+                    max_no_progress_turns: 4,
+                    skills: vec![],
+                }
+                .encode_to_vec(),
+                g,
+            ))
+            .await
+            .unwrap();
+        let _: TaskRunStarted = Client::result(&ack).unwrap();
+        let st = wait_task(&mut c, &task, 120).await;
+        assert_eq!(st.state, "ReadyForReview", "{model}: {st:?}");
+        let bodies = seen.lock().unwrap().clone();
+        assert!(bodies.len() >= 2, "{model}: {} requests", bodies.len());
+        for (n, body) in bodies.iter().enumerate() {
+            let wire = body.to_string();
+            let image_blocks: Vec<&serde_json::Value> = body["messages"]
+                .as_array()
+                .unwrap()
+                .iter()
+                .filter(|m| m["role"] == "user")
+                .filter_map(|m| m["content"].as_array())
+                .flatten()
+                .filter(|b| b["type"] == "image_url")
+                .collect();
+            if vision {
+                assert_eq!(
+                    image_blocks.len(),
+                    1,
+                    "{model}: request {n} must carry the attached image once: {wire:.600}"
+                );
+                let url = image_blocks[0]["image_url"]["url"].as_str().unwrap();
+                assert!(
+                    url.starts_with(url_prefix) && url.len() > 40,
+                    "{model}: request {n}: {url:.80}"
+                );
+                assert!(
+                    wire.contains(name) && wire.contains("untrusted"),
+                    "{model}: the attachment is named and labelled untrusted: {wire:.600}"
+                );
+                if name.ends_with(".gif") {
+                    assert!(!wire.contains("Z3BzIQ"), "the GIF comment was stripped");
+                }
+            } else {
+                assert!(
+                    image_blocks.is_empty() && !wire.contains("image_url"),
+                    "{model}: a text-only model is never sent an image block"
+                );
+                assert!(
+                    wire.contains("UNSUPPORTED_MODALITY") && wire.contains(name),
+                    "{model}: the attachment is said, not dropped in silence: {wire:.600}"
+                );
+            }
+        }
+        // The log keeps the digest, never the bytes.
+        let logged = serde_json::to_string(&task_events(&core, &session, &task).await).unwrap();
+        assert!(!logged.contains("iVBORw0KGgo"), "the log carries no bytes");
+        let _ = repo;
+    }
+}
+
 /// M3.1: the exact/regex/path index behind `search.*` on a real repository:
 /// hits carry path/line/column/span and are bound to the index revision; the
 /// index excludes generated and ignored paths; a write through change.apply

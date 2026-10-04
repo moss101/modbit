@@ -12,7 +12,7 @@
 
 #![forbid(unsafe_code)]
 
-use modbit_providers::{Message, ModelPolicy, ModelRequest, Role, ToolProjection};
+use modbit_providers::{ContentPart, Message, ModelPolicy, ModelRequest, Role, ToolProjection};
 use serde::{Deserialize, Serialize};
 use sha2::{Digest, Sha256};
 
@@ -26,6 +26,11 @@ pub const COMPILER_VERSION: &str = "m7.7-basic-2";
 pub struct PromptInput {
     /// Task goal.
     pub goal: String,
+    /// What the user attached to the task (REQ-EV-0190), already hydrated for
+    /// the routed model: parts that join the task's user turn. Empty when
+    /// nothing was attached.
+    #[serde(default)]
+    pub task_attachments: Vec<ContentPart>,
     /// Canonical workspace root, when any.
     pub workspace_root: Option<String>,
     /// Execution profile.
@@ -212,16 +217,20 @@ pub fn compile(input: PromptInput) -> CompiledPrompt {
         Message::text(Role::System, SYSTEM_SEGMENT),
         Message::text(Role::System, format!("Workspace rules:\n{rules}")),
         Message::text(Role::System, format!("Compaction epoch:\n{epoch}")),
-        Message::text(
-            Role::User,
-            format!(
-                "Task goal: {}\n\nWorkspace root: {}\nExecution profile: {}\n\nharness_state:\n{}",
-                input.goal,
-                input.workspace_root.as_deref().unwrap_or("(none)"),
-                input.execution_profile,
-                serde_json::to_string_pretty(&input.harness_state).unwrap_or_default()
-            ),
-        ),
+        {
+            let mut task_turn = Message::text(
+                Role::User,
+                format!(
+                    "Task goal: {}\n\nWorkspace root: {}\nExecution profile: {}\n\nharness_state:\n{}",
+                    input.goal,
+                    input.workspace_root.as_deref().unwrap_or("(none)"),
+                    input.execution_profile,
+                    serde_json::to_string_pretty(&input.harness_state).unwrap_or_default()
+                ),
+            );
+            task_turn.parts.extend(input.task_attachments);
+            task_turn
+        },
     ];
     if !ok.is_empty() {
         messages.push(Message::text(
@@ -259,6 +268,7 @@ mod tests {
     fn input(goal: &str, tools: usize) -> PromptInput {
         PromptInput {
             goal: goal.into(),
+            task_attachments: vec![],
             workspace_root: Some("/repo".into()),
             execution_profile: "local_trusted".into(),
             workspace_rules: vec![],
