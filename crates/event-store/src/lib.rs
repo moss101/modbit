@@ -38,7 +38,7 @@ pub use migrations::MigrationReport;
 pub use objects::ObjectStore;
 pub use store::{
     AppendRequest, CommandOutcome, CommandRecord, EventStore, EvidenceHit, EvidenceScope,
-    MemoryRow, NewEvent, PayloadFilter, RecoveryOutcome, StoredEvent,
+    MemoryRow, NewEvent, PayloadFilter, ReceiptSealer, RecoveryOutcome, StoredEvent,
 };
 
 /// Errors from the store.
@@ -118,6 +118,21 @@ pub enum Error {
         presented: u64,
         /// Generation the session is at.
         current: u64,
+    },
+    /// A receipt was appended whose `previous_receipt_hash` is not the
+    /// chain's tail at commit time (docs/23 "Protected-effect receipt
+    /// chain"): another receipt landed first, so appending this one would
+    /// fork the chain. Nothing is written; seal over the new tail (or append
+    /// through [`EventStore::append_all_chained`], which does it in the
+    /// transaction) and retry.
+    #[error(
+        "receipt chain moved: the receipt links to {presented:?} but the chain tail is {tail:?}"
+    )]
+    ReceiptChainStale {
+        /// The `previous_receipt_hash` the receipt carries.
+        presented: Option<String>,
+        /// The hash of the receipt at the tail of the chain now.
+        tail: Option<String>,
     },
 }
 

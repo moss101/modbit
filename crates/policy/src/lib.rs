@@ -20,5 +20,6 @@ pub use assurance::{
 };
 pub use config::{Authority, Layer, Permission, Provenance, Resolved, ResolvedConfig, resolve};
 pub use kernel::{
-    CapabilityKernel, KernelDecision, KernelRequest, PolicyEnvelope, default_lease_for_profile,
+    CapabilityKernel, KernelDecision, KernelRequest, PolicyEnvelope, ResourceSelector,
+    ResourceTarget, default_lease_for_profile,
 };

@@ -5,7 +5,10 @@
 //! Decision order, each step able only to tighten (monotonic deny):
 //! 1. emergency stop blocks every non-read effect in the session;
 //! 2. a valid lease must be presented and must cover every required
-//!    operation (tool name alone is not authority);
+//!    operation (tool name alone is not authority) and every resource the
+//!    host resolved for the call: the lease's resource selectors
+//!    (`capability:glob`, docs/23) are evaluated against the call's
+//!    [`ResourceTarget`]s, and a selector that cannot be read fails closed;
 //! 3. the [`PolicyEnvelope`] (admin/device authority) denies capabilities and
 //!    caps the effect class per execution profile; nothing downstream widens it
 //!    (REQ-EV-0091, REQ-EV-0093, REQ-EV-0045);
@@ -13,7 +16,10 @@
 //! 5. the resolved configuration's per-capability permission (`DENY` denies,
 //!    `ASK` escalates);
 //! 6. effect classes on the approval list escalate unless an approval bound to
-//!    this exact intent hash is present and unexpired.
+//!    this exact intent hash is present, unexpired and not yet spent: an
+//!    approval authorizes one execution, and the dispatch that runs it spends
+//!    it (`Approval::consumed_at`), so the same approval never authorizes a
+//!    second dispatch — that asks again.
 //!
 //! The kernel never sees argument text: only the tool's registered effect
 //! class, its required capability ids and the intent hash reach it.
@@ -119,6 +125,93 @@ impl Default for PolicyEnvelope {
     }
 }
 
+/// One resource a call touches, as the host resolved it: the capability that
+/// reaches it and its name in the lease's selector vocabulary (for files, the
+/// absolute path).
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct ResourceTarget {
+    /// Capability id (`fs.write`).
+    pub capability: String,
+    /// Resource (`/repo/src/lib.rs`).
+    pub resource: String,
+}
+
+/// A lease resource selector, `capability:glob` (docs/23 examples:
+/// `fs.write:/repo/src/**`, `network.egress:api.github.com:443`).
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct ResourceSelector<'a> {
+    /// Capability the selector constrains.
+    pub capability: &'a str,
+    /// Glob over the resource name: `**` any run of characters, `*` any run
+    /// within one path segment, `?` one character within a segment; a
+    /// trailing `/**` also covers the directory itself.
+    pub pattern: &'a str,
+}
+
+impl<'a> ResourceSelector<'a> {
+    /// Parse one selector. `None` for anything that is not
+    /// `capability:pattern` with a plain capability id and a non-empty
+    /// pattern: an unreadable selector is not read generously.
+    #[must_use]
+    pub fn parse(text: &'a str) -> Option<Self> {
+        let (capability, pattern) = text.split_once(':')?;
+        let plain = !capability.is_empty()
+            && capability
+                .bytes()
+                .all(|b| b.is_ascii_alphanumeric() || matches!(b, b'.' | b'_' | b'-'));
+        (plain && !pattern.is_empty() && pattern.len() <= 4096 && !pattern.contains('\0'))
+            .then_some(Self {
+                capability,
+                pattern,
+            })
+    }
+
+    /// Whether `resource` is inside this selector.
+    #[must_use]
+    pub fn covers(&self, resource: &str) -> bool {
+        let pattern = squeeze(&self.pattern.replace('\\', "/"));
+        let resource = squeeze(&resource.replace('\\', "/"));
+        if glob(pattern.as_bytes(), resource.as_bytes()) {
+            return true;
+        }
+        pattern
+            .strip_suffix("/**")
+            .is_some_and(|dir| dir == resource.trim_end_matches('/'))
+    }
+}
+
+/// Collapse runs of `/` (a root written with a trailing slash joins to `//`).
+fn squeeze(s: &str) -> String {
+    let mut out = String::with_capacity(s.len());
+    for c in s.chars() {
+        if c != '/' || !out.ends_with('/') {
+            out.push(c);
+        }
+    }
+    out
+}
+
+/// `**` / `*` / `?` glob over bytes (UTF-8 safe: the wildcards are ASCII).
+fn glob(pattern: &[u8], text: &[u8]) -> bool {
+    match pattern.split_first() {
+        None => text.is_empty(),
+        Some((b'*', rest)) if rest.first() == Some(&b'*') => {
+            let rest = &rest[1..];
+            (0..=text.len()).any(|i| glob(rest, &text[i..]))
+        }
+        Some((b'*', rest)) => {
+            let segment = text.iter().position(|b| *b == b'/').unwrap_or(text.len());
+            (0..=segment).any(|i| glob(rest, &text[i..]))
+        }
+        Some((b'?', rest)) => text
+            .split_first()
+            .is_some_and(|(c, t)| *c != b'/' && glob(rest, t)),
+        Some((c, rest)) => text
+            .split_first()
+            .is_some_and(|(t, tail)| t == c && glob(rest, tail)),
+    }
+}
+
 /// What the kernel is asked.
 #[derive(Clone, Debug)]
 pub struct KernelRequest<'a> {
@@ -132,6 +225,12 @@ pub struct KernelRequest<'a> {
     pub execution_profile: &'a str,
     /// Lease presented, if any.
     pub lease: Option<&'a CapabilityLease>,
+    /// Resources the call touches, resolved by the host (never argument
+    /// text): each must be covered by a selector of the lease for its
+    /// capability. Empty when the tool names no resource the host can
+    /// resolve; the boundary that owns the resource (workspace path policy,
+    /// egress broker) still judges it.
+    pub targets: &'a [ResourceTarget],
     /// Approval bound to this call, if any.
     pub approval: Option<&'a Approval>,
     /// sha256 of the normalized arguments.
@@ -244,6 +343,45 @@ impl CapabilityKernel {
                 "CAPABILITY_NOT_LEASED",
                 format!("lease does not grant `{missing}`"),
             );
+        }
+        // 2b. the lease's resource selectors. A lease whose selectors cannot
+        // be read is not authority for anything; a call that touches a
+        // resource its lease does not name is outside the lease.
+        let mut selectors = Vec::with_capacity(lease.resources.len());
+        for text in &lease.resources {
+            match ResourceSelector::parse(text) {
+                Some(sel) => selectors.push(sel),
+                None => {
+                    return deny(
+                        "LEASE_RESOURCE_MALFORMED",
+                        format!(
+                            "lease {} carries the selector `{text}`, which is not `capability:pattern`; a lease that cannot be read grants nothing",
+                            lease.lease_id
+                        ),
+                    );
+                }
+            }
+        }
+        for t in req.targets {
+            let mut named = selectors.iter().filter(|s| s.capability == t.capability);
+            if named.clone().next().is_none() {
+                return deny(
+                    "LEASE_RESOURCE_NOT_COVERED",
+                    format!(
+                        "lease names no `{}` resource, so it does not cover `{}`",
+                        t.capability, t.resource
+                    ),
+                );
+            }
+            if !named.any(|s| s.covers(&t.resource)) {
+                return deny(
+                    "LEASE_RESOURCE_NOT_COVERED",
+                    format!(
+                        "`{}` is outside the lease's `{}` resources",
+                        t.resource, t.capability
+                    ),
+                );
+            }
         }
         // 3. envelope (admin/device authority).
         let Some(ceiling) = self.envelope.profile_ceilings.get(req.execution_profile) else {
@@ -372,6 +510,24 @@ impl CapabilityKernel {
                 "APPROVAL_DENIED",
                 format!("approval {} was denied", a.approval_id),
             ),
+            // Spent: it authorized one execution and that dispatch has
+            // happened. The same intent is asked again, never run again.
+            Some(a) if a.is_consumed() => KernelDecision::ApprovalRequired {
+                reason: format!(
+                    "approval {} was already used by a dispatch of this call; an approval authorizes one execution, so it must be asked again",
+                    a.approval_id
+                ),
+                scope_json: serde_json::json!({
+                    "tool": req.tool_name,
+                    "effect_class": req.effect_class,
+                    "capabilities": req.required_capabilities,
+                    "execution_profile": req.execution_profile,
+                    "lease_id": lease.lease_id.to_string(),
+                    "intent_hash": req.intent_hash,
+                    "supersedes_approval": a.approval_id.to_string(),
+                })
+                .to_string(),
+            },
             Some(a) if a.state == modbit_domain::approval::ApprovalState::Approved => deny(
                 "APPROVAL_MISMATCH",
                 format!(

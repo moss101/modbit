@@ -672,6 +672,7 @@ impl ToolRuntime {
             has_workspace: ctx.workspace.is_some(),
             has_lease: ctx.capability_lease_id.is_some(),
             intent_hash: args_hash.clone(),
+            paths: crate::policy::path_targets(&spec.required_capabilities, &args),
         });
         if !spec
             .execution_profiles

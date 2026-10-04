@@ -350,15 +350,30 @@ pub(crate) async fn reconcile_unknown(
     };
     let (resolution, observed, advice) = match rule {
         Reconciliation::HoldForReceipt => {
-            let receipt = core
+            let receipts = core
                 .store
                 .lock()
                 .await
                 .receipts(Some(&task.task_id))
-                .unwrap_or_default()
-                .into_iter()
-                .find(|r| r.tool_call_id == pending.tool_call_id);
+                .unwrap_or_default();
+            // The result receipt says how the effect ended. An authorization
+            // alone (FIX-08) says only that it was allowed to start: the
+            // effect is in doubt, and is not assumed done.
+            let authorization =
+                modbit_policy::ledger::authorization_of(&receipts, &pending.tool_call_id);
+            let receipt = modbit_policy::ledger::result_of(&receipts, &pending.tool_call_id);
             match receipt {
+                None if authorization.is_some() => {
+                    let a = authorization.expect("checked");
+                    (
+                        "AUTHORIZED_IN_DOUBT",
+                        format!(
+                            "authorization receipt {} (intent {}) with no result receipt",
+                            a.receipt_hash, a.intent_hash
+                        ),
+                        "the effect ledger holds an authorization for this call and no result: the call was allowed to start and the Core stopped before it reported, so the effect may or may not have happened. It is not retried automatically. Inspect the target before deciding; a retry is a new call and needs its own approval".to_owned(),
+                    )
+                }
                 Some(r) => (
                     "RECEIPT_FOUND",
                     format!("effect receipt {} status {}", r.receipt_hash, r.status),
