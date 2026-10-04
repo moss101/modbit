@@ -12,7 +12,7 @@ use crate::server::Core;
 
 /// The inspector view of a task.
 pub(crate) async fn view(core: &Core, task_id: TaskId) -> wire::ContextInspectorView {
-    let ledger = core.tools.ledger(task_id).await;
+    let ledger = core.tools.ledger(&core.store, task_id).await;
     let ledger = ledger.lock().await;
     let mut v = wire::ContextInspectorView::default();
     // What the last compiled turn injected and refused (the prompt envelope).

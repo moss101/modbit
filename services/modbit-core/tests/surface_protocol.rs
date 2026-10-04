@@ -44718,3 +44718,239 @@ fn symlink_any(target: &std::path::Path, at: &std::path::Path) {
         std::os::windows::fs::symlink_file(target, at).unwrap();
     }
 }
+
+/// A pricing module long enough that the refund ceiling sits far past the
+/// first sixty lines (FIX-12, audit N6).
+fn fix_12_pricing_source() -> String {
+    let mut s = String::from("//! Pricing rules.\n\n");
+    for i in 0..120 {
+        s.push_str(&format!(
+            "/// Filler rule {i}.\npub fn filler_rule_{i}() -> u32 {{ {i} }}\n"
+        ));
+    }
+    s.push_str("/// Clamp a refund to the ceiling set for returned orders.\n");
+    s.push_str("pub fn clamp_refund(requested: u32, ceiling: u32) -> u32 {\n");
+    s.push_str("    requested.min(ceiling)\n}\n");
+    for i in 0..40 {
+        s.push_str(&format!(
+            "/// Trailing rule {i}.\npub fn trailing_rule_{i}() -> u32 {{ {i} }}\n"
+        ));
+    }
+    s
+}
+
+/// The "Retrieved context" message of a recorded provider request, if the
+/// prompt carried one: the pack as the model reads it each turn.
+fn fix_12_retrieved_context(body: &serde_json::Value) -> Option<String> {
+    body["messages"].as_array()?.iter().find_map(|m| {
+        let c = m["content"].as_str()?;
+        c.starts_with("Retrieved context (every fragment")
+            .then(|| c.to_owned())
+    })
+}
+
+/// FIX-12 (audit N4, N6, N8), end to end on the real Core: a question asked in
+/// plain words returns the region of a long file that answers it (not the
+/// first sixty lines), and the pack the Inspector shows is the same pack, with
+/// the same usefulness marks, after the Core process is killed and a new one
+/// starts over the same log.
+#[tokio::test]
+async fn fix_12_a_pack_for_a_question_names_the_region_and_survives_a_core_restart() {
+    use modbit_protocol::v1::{
+        ContextInspectorView, GetContextInspector, StartTask, TaskRunStarted,
+    };
+    use serde_json::json;
+    let pricing = fix_12_pricing_source();
+    let target_line = pricing
+        .lines()
+        .position(|l| l.contains("pub fn clamp_refund"))
+        .unwrap() as u32
+        + 1;
+    assert!(target_line > 200, "{target_line}");
+    let (repo, root) = plain_repo(&[
+        ("src/pricing.rs", &pricing),
+        ("src/orders.rs", "pub fn place_order() {}\n"),
+        ("NOTES.md", "pricing notes\n"),
+    ]);
+    let script = vec![
+        json!({"calls": [{"name": "context.pack", "args": {"query": "where is the refund ceiling for returned orders enforced", "token_budget": 2000}}]}),
+        json!({"calls": [{"name": "fs.read", "args": {"path": "src/pricing.rs"}}]}),
+        json!({"calls": [{"name": "task.complete", "args": {"summary": "looked", "self_review": {"findings": []}}}]}),
+    ];
+    let (base, _seen) = scripted_model(script, None).await;
+    let dir = tempfile::tempdir().unwrap();
+    let env = [
+        ("MODBIT_OPENAI_BASE_URL", base.as_str()),
+        ("OPENAI_API_KEY", ""),
+        ("ANTHROPIC_API_KEY", ""),
+    ];
+    let mut core = CoreProcess::spawn_with_env(dir.path(), &env);
+    let mut c = core.client().await;
+    let (session, _) = create_session(&mut c, id16(0xC1)).await;
+    let g = lease_for(&session);
+    let task = create_task_with_profile(&mut c, &session, g, &root, 0xC2, "local_trusted").await;
+    let ack = c
+        .command(envelope_fenced(
+            id16(0xC3),
+            "StartTask",
+            StartTask {
+                task_id: Some(task.clone()),
+                endpoint: String::new(),
+                model: "gpt-5-mini".into(),
+                max_turns: 8,
+                max_tool_calls: 0,
+                max_no_progress_turns: 4,
+                skills: vec![],
+            }
+            .encode_to_vec(),
+            g,
+        ))
+        .await
+        .unwrap();
+    let _: TaskRunStarted = Client::result(&ack).unwrap();
+    let st = wait_task(&mut c, &task, 120).await;
+    assert!(!st.loop_alive, "{st:?}");
+    // A new connection each time: the Core may be a new process.
+    async fn view(core: &CoreProcess, cmd: u8, task: &Id) -> ContextInspectorView {
+        let mut c = core.client().await;
+        let ack = c
+            .command(envelope(
+                id16(cmd),
+                "GetContextInspector",
+                GetContextInspector {
+                    task_id: Some(task.clone()),
+                }
+                .encode_to_vec(),
+            ))
+            .await
+            .unwrap();
+        Client::result(&ack).unwrap()
+    }
+    let before = view(&core, 0xC4, &task).await;
+    // N4 + N6: the pack holds the matching region, not the file head.
+    let entry = before
+        .entries
+        .iter()
+        .find(|e| {
+            e.path == "src/pricing.rs" && e.line_start <= target_line && target_line <= e.line_end
+        })
+        .unwrap_or_else(|| panic!("no entry covers line {target_line}: {before:?}"));
+    assert!(entry.line_start > 60, "not the head of the file: {entry:?}");
+    assert!(
+        entry.sources.iter().any(|s| s == "lexical"),
+        "the lexical hit named the region: {entry:?}"
+    );
+    assert!(
+        entry
+            .retrieval_reasons
+            .iter()
+            .any(|r| r.starts_with("method:")),
+        "per-method evidence is part of the provenance: {entry:?}"
+    );
+    assert!(entry.used, "the read of the path is a use: {entry:?}");
+    assert!(
+        !before.pack_id.is_empty() && before.token_used > 0,
+        "{before:?}"
+    );
+    let evs = task_events(&core, &session, &task).await;
+    assert!(
+        evs.iter()
+            .any(|(_, t, p)| t == "ContextPackRecorded" && p["pack_id"] == before.pack_id),
+        "the pack is on the log: {evs:#?}"
+    );
+    // A new process over the same log.
+    core.kill();
+    let core = CoreProcess::spawn_with_env(dir.path(), &env);
+    let after = view(&core, 0xC5, &task).await;
+    assert_eq!(after.pack_id, before.pack_id, "{after:?}");
+    assert_eq!(after.workspace_revision, before.workspace_revision);
+    assert_eq!(after.token_used, before.token_used);
+    assert_eq!(after.token_budget, before.token_budget);
+    assert_eq!(
+        after.entries, before.entries,
+        "entries, used marks included"
+    );
+    assert_eq!(after.injected_refs, before.injected_refs);
+    assert_eq!(after.injected_tokens, before.injected_tokens);
+    drop(repo);
+}
+
+/// FIX-12 (audit N7): once the task edits a file, the pack excerpt of that
+/// file is not shown to the model again under its old revision and hash.
+#[tokio::test]
+async fn fix_12_a_pack_excerpt_is_dropped_from_the_prompt_after_its_file_is_edited() {
+    use modbit_protocol::v1::{StartTask, TaskRunStarted};
+    use serde_json::json;
+    let pricing = fix_12_pricing_source();
+    let (repo, root) = plain_repo(&[
+        ("src/pricing.rs", &pricing),
+        ("NOTES.md", "pricing notes\n"),
+    ]);
+    let script = vec![
+        json!({"calls": [{"name": "plan.update", "args": {"outcome": "raise the refund ceiling", "expected_files": ["src/pricing.rs"]}}]}),
+        json!({"calls": [{"name": "context.pack", "args": {"query": "where is the refund ceiling for returned orders enforced", "token_budget": 2000}}]}),
+        json!({"calls": [{"name": "change.apply", "args": {"path": "src/pricing.rs", "op": "replace", "content": "//! rewritten\n"}}]}),
+        json!({"calls": [{"name": "task.complete", "args": {"summary": "edited", "self_review": {"findings": []}}}]}),
+    ];
+    let (base, seen) = scripted_model(script, None).await;
+    let dir = tempfile::tempdir().unwrap();
+    let env = [
+        ("MODBIT_OPENAI_BASE_URL", base.as_str()),
+        ("OPENAI_API_KEY", ""),
+        ("ANTHROPIC_API_KEY", ""),
+    ];
+    let core = CoreProcess::spawn_with_env(dir.path(), &env);
+    let mut c = core.client().await;
+    let (session, _) = create_session(&mut c, id16(0xC6)).await;
+    let g = lease_for(&session);
+    let task = create_task_with_profile(&mut c, &session, g, &root, 0xC7, "local_trusted").await;
+    let ack = c
+        .command(envelope_fenced(
+            id16(0xC8),
+            "StartTask",
+            StartTask {
+                task_id: Some(task.clone()),
+                endpoint: String::new(),
+                model: "gpt-5-mini".into(),
+                max_turns: 10,
+                max_tool_calls: 0,
+                max_no_progress_turns: 4,
+                skills: vec![],
+            }
+            .encode_to_vec(),
+            g,
+        ))
+        .await
+        .unwrap();
+    let _: TaskRunStarted = Client::result(&ack).unwrap();
+    let st = wait_task(&mut c, &task, 120).await;
+    assert!(!st.loop_alive, "{st:?}");
+    assert_eq!(
+        std::fs::read_to_string(repo.path().join("src/pricing.rs")).unwrap(),
+        "//! rewritten\n",
+        "the edit landed"
+    );
+    let tool_results = |b: &serde_json::Value| {
+        b["messages"]
+            .as_array()
+            .map_or(0, |m| m.iter().filter(|x| x["role"] == "tool").count())
+    };
+    let bodies = seen.lock().unwrap().clone();
+    // Before the edit the prompt carries the excerpt...
+    assert!(
+        bodies.iter().any(|b| tool_results(b) == 2
+            && fix_12_retrieved_context(b).is_some_and(|c| c.contains("clamp_refund"))),
+        "the pack never reached the prompt: {}",
+        bodies.len()
+    );
+    // ... and after it, no request does.
+    let after: Vec<&serde_json::Value> = bodies.iter().filter(|b| tool_results(b) >= 3).collect();
+    assert!(!after.is_empty());
+    for b in after {
+        assert!(
+            fix_12_retrieved_context(b).is_none_or(|c| !c.contains("clamp_refund")),
+            "a pre-edit excerpt was re-injected: {:?}",
+            fix_12_retrieved_context(b)
+        );
+    }
+}

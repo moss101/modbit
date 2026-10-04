@@ -3145,7 +3145,13 @@ async fn run_loop(
                 // REQ-EV-0169: the task's latest Context Pack enters the prompt with
                 // its provenance; the envelope refuses any fragment that lacks it.
                 let context_fragments = {
-                    let ledger = core.tools.ledger(task.task_id).await;
+                    // A fragment whose file changed after it was read is stale
+                    // evidence: it is dropped here, never re-injected under its
+                    // old revision and hash (FIX-12, audit N7).
+                    core.tools
+                        .revalidate_pack(&core.store, task.task_id, task.workspace_root.as_deref())
+                        .await;
+                    let ledger = core.tools.ledger(&core.store, task.task_id).await;
                     let ledger = ledger.lock().await;
                     ledger
                         .last_pack
@@ -5689,7 +5695,7 @@ async fn unretrieved_targets(
     if current.is_empty() {
         return (vec![], rev);
     }
-    let ledger = core.tools.ledger(task.task_id).await;
+    let ledger = core.tools.ledger(&core.store, task.task_id).await;
     let mut missing: Vec<(String, String)> = {
         let ledger = ledger.lock().await;
         current

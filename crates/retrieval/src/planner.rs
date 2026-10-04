@@ -6,8 +6,10 @@
 //! structural / engineering answer). Candidates from every source are fused
 //! by reciprocal rank plus deterministic boosts — exact symbol/path match,
 //! workspace freshness, changed lines, diagnostic linkage and dependency
-//! distance — and duplicates collapse on code-span identity. No LLM is in
-//! the ranking path.
+//! distance. Fusion is per region of a file (FIX-12): candidates of different
+//! methods whose line ranges overlap are one hit that scores the sum of each
+//! method's best reciprocal rank and keeps that evidence for provenance.
+//! No LLM is in the ranking path.
 
 use std::collections::BTreeMap;
 
