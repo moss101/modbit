@@ -10,6 +10,7 @@ use sha2::{Digest, Sha256};
 
 use crate::pipeline::InvokeContext;
 use crate::registry::{BoxFuture, Idempotency, Tool, ToolOutcome, ToolRegistry, ToolSpec};
+use crate::shell_class::classify_args as classify_shell_args;
 use crate::{EffectClass, Result};
 
 const PROFILES: &[&str] = &[
@@ -141,6 +142,38 @@ fn ws_err(e: modbit_workspace::Error) -> ToolOutcome {
 }
 
 macro_rules! tool {
+    // A tool whose effect class depends on its arguments (FIX-02): the
+    // classifier owns the mapping; the pipeline and the Core ask it through
+    // `effect_in_profile`.
+    ($ty:ident, $spec:expr, classify = $classify:path, |$ctx:ident, $args:ident| $body:expr) => {
+        struct $ty(ToolSpec);
+        impl Tool for $ty {
+            fn spec(&self) -> &ToolSpec {
+                &self.0
+            }
+            fn effect_of(&self, args: &Value) -> EffectClass {
+                $classify(args).class
+            }
+            fn effect_in_profile(&self, args: &Value, profile: &str) -> EffectClass {
+                $classify(args).class_in(profile)
+            }
+            fn effect_reason(&self, args: &Value, profile: &str) -> Option<String> {
+                $classify(args).reason_in(profile)
+            }
+            fn invoke<'a>(
+                &'a self,
+                $ctx: &'a InvokeContext,
+                $args: Value,
+            ) -> BoxFuture<'a, ToolOutcome> {
+                Box::pin(async move { $body })
+            }
+        }
+        impl $ty {
+            fn shared() -> Arc<dyn Tool> {
+                Arc::new(Self($spec))
+            }
+        }
+    };
     ($ty:ident, $spec:expr, |$ctx:ident, $args:ident| $body:expr) => {
         struct $ty(ToolSpec);
         impl Tool for $ty {
@@ -1573,6 +1606,7 @@ tool!(
         &["shell.exec"],
         Idempotency::NonIdempotent
     ),
+    classify = classify_shell_args,
     |ctx, args| {
         let Some(target) = &ctx.exec else {
             return ToolOutcome::infra("NO_BROKER", "no terminal broker is attached to this Core");
@@ -1898,6 +1932,7 @@ tool!(
         &["shell.exec"],
         Idempotency::NonIdempotent
     )),
+    classify = classify_shell_args,
     |ctx, args| {
         let rid = request_id(ctx, &args, "shell");
         run_process(ctx, &args, &rid).await
@@ -1914,6 +1949,7 @@ tool!(
         &["shell.exec"],
         Idempotency::NonIdempotent
     )),
+    classify = classify_shell_args,
     |ctx, args| {
         let rid = request_id(ctx, &args, "test");
         let started = std::time::Instant::now();
