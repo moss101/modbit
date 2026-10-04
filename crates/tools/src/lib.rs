@@ -28,6 +28,7 @@ pub mod notebook;
 pub mod pipeline;
 pub mod policy;
 pub mod registry;
+pub mod shell_class;
 
 pub use modbit_domain::toolcall::EffectClass;
 pub use pipeline::{

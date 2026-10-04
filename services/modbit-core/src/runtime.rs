@@ -7581,12 +7581,13 @@ async fn execute_tool(
         }
         let r = &done.result;
         let status = format!("{:?}", r.status).to_uppercase();
-        let mut obs = harness::observe(
+        let mut obs = harness::observe_streams(
             &status,
             r.error_code.as_deref(),
             r.error_message.as_deref(),
             &r.structured_output.to_string(),
             r.stdout_ref.as_deref(),
+            r.stderr_ref.as_deref(),
             &done.result_ref,
             OBSERVATION_CEILING_BYTES,
         );

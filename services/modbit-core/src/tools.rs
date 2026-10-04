@@ -975,7 +975,9 @@ impl ToolHost {
                 tool.as_ref(),
                 serde_json::from_str::<serde_json::Value>(arguments_json),
             ) {
-                (Some(t), Ok(args)) => t.effect_of(&args).max(t.spec().effect_class),
+                (Some(t), Ok(args)) => t
+                    .effect_in_profile(&args, execution_profile)
+                    .max(t.spec().effect_class),
                 _ => spec
                     .as_ref()
                     .map(|s| s.effect_class)

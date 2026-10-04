@@ -432,12 +432,13 @@ async fn run_inner(
                         built = true;
                     }
                     (
-                        harness::observe(
+                        harness::observe_streams(
                             &format!("{:?}", v.result.status).to_uppercase(),
                             v.result.error_code.as_deref(),
                             v.result.error_message.as_deref(),
                             &v.result.structured_output.to_string(),
                             None,
+                            v.result.stderr_ref.as_deref(),
                             &v.result_ref,
                             8 * 1024,
                         )

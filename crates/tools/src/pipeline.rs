@@ -564,7 +564,17 @@ impl ToolRuntime {
 
         // The call's effect class: what the tool says of these arguments, never
         // below the registered class (a tool cannot talk its way down).
-        let mut effect_class = tool.effect_of(&args).max(spec.effect_class);
+        let mut effect_class = tool
+            .effect_in_profile(&args, &ctx.execution_profile)
+            .max(spec.effect_class);
+        if effect_class > spec.effect_class
+            && let Some(why) = tool.effect_reason(&args, &ctx.execution_profile)
+        {
+            stages.push(StageRecord {
+                stage: "classify".into(),
+                outcome: format!("{effect_class:?}: {why}"),
+            });
+        }
 
         // M7.7: arguments carrying a credential of the host are refused
         // before the kernel is asked — no approval, no effect, and the
@@ -608,7 +618,9 @@ impl ToolRuntime {
                     if errors.is_empty() {
                         args = rewritten;
                         args_hash = hex::encode(Sha256::digest(canonical(&args).as_bytes()));
-                        effect_class = tool.effect_of(&args).max(spec.effect_class);
+                        effect_class = tool
+                            .effect_in_profile(&args, &ctx.execution_profile)
+                            .max(spec.effect_class);
                         stages.push(StageRecord {
                             stage: "hooks".into(),
                             outcome: format!(
