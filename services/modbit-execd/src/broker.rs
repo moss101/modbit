@@ -1,4 +1,5 @@
-//! Broker: sessions, process/PTY lifecycle, durable output log, replay.
+//! Broker: sessions, process/PTY lifecycle, durable bounded output log,
+//! replay, ownership.
 
 use std::collections::HashMap;
 use std::io::{Read, Write};
@@ -13,23 +14,17 @@ use modbit_protocol::framing::{FrameError, read_message, write_message};
 use modbit_protocol::local::{Endpoint, ReadyLine, encode_hex};
 use modbit_protocol::v1::exec_frame::Body;
 use modbit_protocol::v1::{
-    Attach, Cancel, ExecError, ExecFrame, ExecRequest, ExecStarted, HelloAck, OutputChunk,
-    ProcessExited, SessionInfo, SessionList, WriteStdin,
+    Attach, Cancel, ExecError, ExecFrame, ExecRequest, ExecStarted, HelloAck, ListSessions,
+    OutputChunk, ProcessExited, SessionInfo, SessionList, WriteStdin,
 };
 use serde::{Deserialize, Serialize};
-use sha2::{Digest, Sha256};
 use subtle::ConstantTimeEq;
 use tokio::sync::{Mutex, mpsc, watch};
 
+use crate::seglog::{self, ReadOutcome, SegLog, TAG_PTY, TAG_STDERR, TAG_STDOUT};
+
 /// Largest output frame sent to a client (REQ-EV-0108).
 const CHUNK: usize = 64 * 1024;
-
-/// Index entry: 8-byte data offset, 1-byte stream tag, 4-byte length. The
-/// data log holds raw output bytes only, so a client cursor is a pure byte
-/// offset and `cursor + data.len()` is the next cursor.
-const TAG_STDOUT: u8 = 1;
-const TAG_STDERR: u8 = 2;
-const TAG_PTY: u8 = 3;
 
 fn tag_name(t: u8) -> &'static str {
     match t {
@@ -59,7 +54,10 @@ struct Session {
     /// Working directory (EPR-018: a review environment's processes are
     /// found and ended by it).
     cwd: String,
-    log_path: PathBuf,
+    /// The principal that owns the session (`task:<id>`), or empty for a
+    /// session the host itself started. Only the owner and the host (the
+    /// empty requester) may list, read, write to or cancel it.
+    owner: String,
     /// Bytes written to the log (cursor high-water mark); watchers wake on change.
     written: watch::Sender<u64>,
     running: AtomicBool,
@@ -68,9 +66,10 @@ struct Session {
     killer: Mutex<Option<Killer>>,
     cancelled: AtomicBool,
     data_bytes: AtomicU64,
-    hasher: std::sync::Mutex<Sha256>,
-    log: std::sync::Mutex<(std::fs::File, std::fs::File)>,
-    index_path: PathBuf,
+    /// The segmented, indexed output log (bounded by the replay window).
+    log: std::sync::Mutex<SegLog>,
+    /// Where the log's segments live (readers open them outside the lock).
+    log_dir: PathBuf,
     /// Durable metadata beside the log (M4.5): what a restarted broker
     /// needs to serve the session's replay and report its state.
     meta_path: PathBuf,
@@ -92,6 +91,8 @@ struct SessionMeta {
     argv: Vec<String>,
     #[serde(default)]
     cwd: String,
+    #[serde(default)]
+    owner: String,
     started_at_ms: i64,
     /// Exit, once known.
     exited: Option<ExitMeta>,
@@ -111,6 +112,9 @@ struct ExitMeta {
     cancelled: bool,
     #[serde(default)]
     lost: bool,
+    /// The cursor of the first byte `output_ref` holds (0 = all of it).
+    #[serde(default)]
+    retained_from: u64,
 }
 
 /// Whether an environment variable is one that carries a credential (M7.7,
@@ -169,12 +173,14 @@ impl Session {
             timed_out: e.timed_out,
             cancelled: e.cancelled,
             lost: self.lost.load(Ordering::SeqCst),
+            retained_from: e.retained_from,
         });
         let meta = SessionMeta {
             id: self.id.clone(),
             request_id: self.request_id.clone(),
             argv: self.argv.clone(),
             cwd: self.cwd.clone(),
+            owner: self.owner.clone(),
             started_at_ms: self.started_at_ms,
             exited,
             generation: self.generation.load(Ordering::SeqCst),
@@ -199,28 +205,95 @@ impl Session {
 
     /// Append one record; returns the new data high-water mark.
     fn append(&self, tag: u8, data: &[u8]) -> u64 {
-        let mut guard = self.log.lock().expect("log");
-        let (log, index) = &mut *guard;
-        let offset = *self.written.borrow();
-        let _ = log.write_all(data);
-        let _ = log.flush();
-        let mut entry = Vec::with_capacity(13);
-        entry.extend_from_slice(&offset.to_be_bytes());
-        entry.push(tag);
-        entry.extend_from_slice(&(data.len() as u32).to_be_bytes());
-        let _ = index.write_all(&entry);
-        let _ = index.flush();
-        self.hasher.lock().expect("hasher").update(data);
-        self.data_bytes
-            .fetch_add(data.len() as u64, Ordering::SeqCst);
-        let new = offset + data.len() as u64;
-        self.written.send_replace(new);
-        new
+        let mut log = self.log.lock().expect("log");
+        match log.append(tag, data) {
+            Ok(new) => {
+                self.data_bytes.store(new, Ordering::SeqCst);
+                self.written.send_replace(new);
+                new
+            }
+            Err(e) => {
+                eprintln!("modbit-execd: session {}: output not stored: {e}", self.id);
+                log.written()
+            }
+        }
     }
+
+    /// The next piece of output at `cursor` (at most one record, at most
+    /// `CHUNK` bytes) or why there is none. The segment table is read under
+    /// the writer's lock; the bytes are read outside it, through the index,
+    /// so a reader never re-reads the log and never blocks the writer.
+    fn read_chunk(&self, cursor: u64, high: u64) -> std::io::Result<ReadOutcome> {
+        let mut last = None;
+        for _ in 0..4 {
+            let (segments, _) = self.log.lock().expect("log").snapshot();
+            match seglog::read_at(&self.log_dir, &self.id, &segments, high, cursor, CHUNK) {
+                Err(e) if e.kind() == std::io::ErrorKind::NotFound => last = Some(e),
+                other => return other,
+            }
+        }
+        Err(last.expect("loop ran"))
+    }
+
+    fn oldest_cursor(&self) -> u64 {
+        self.log.lock().expect("log").oldest()
+    }
+
+    /// Whether `requester` may act on this session: the host (empty) always,
+    /// a task only on a session it owns.
+    fn permits(&self, requester: &str) -> bool {
+        requester.is_empty() || requester == self.owner
+    }
+}
+
+fn not_owned(session_id: &str, requester: &str) -> ExecFrame {
+    err_frame(
+        session_id,
+        "SESSION_NOT_OWNED",
+        format!("session {session_id} belongs to another owner than `{requester}`"),
+    )
+}
+
+/// The bounds a broker keeps (docs/21 "sliding replay window"). Disk per
+/// session is at most `replay_window_bytes + segment_bytes`; finished
+/// sessions are dropped by count and by age.
+#[derive(Clone, Debug)]
+pub struct Limits {
+    /// Output kept replayable per session.
+    pub replay_window_bytes: u64,
+    /// Rotation size of the on-disk log.
+    pub segment_bytes: u64,
+    /// Finished sessions kept (oldest dropped first).
+    pub retain_sessions: usize,
+    /// Finished sessions older than this are dropped (`None` = never).
+    pub retain_age: Option<Duration>,
+}
+
+impl Default for Limits {
+    fn default() -> Self {
+        Self {
+            replay_window_bytes: 64 * 1024 * 1024,
+            segment_bytes: 4 * 1024 * 1024,
+            retain_sessions: 256,
+            retain_age: Some(Duration::from_secs(7 * 24 * 3600)),
+        }
+    }
+}
+
+/// Everything `run` needs.
+pub struct Config {
+    pub data_dir: PathBuf,
+    pub orphan_grace: Option<Duration>,
+    /// The content-addressed object store `output_ref`s are sealed into
+    /// (the Core's own store when the Core starts the broker).
+    pub object_dir: PathBuf,
+    pub limits: Limits,
 }
 
 struct Broker {
     data_dir: PathBuf,
+    object_dir: PathBuf,
+    limits: Limits,
     boot_secret: Vec<u8>,
     sessions: Mutex<HashMap<String, Arc<Session>>>,
     by_request: Mutex<HashMap<String, String>>,
@@ -241,7 +314,7 @@ impl Drop for ClientGuard {
 /// 12): every session with a log and metadata comes back — replayable from
 /// its durable log by cursor; one that was still running when the previous
 /// broker died is LOST (its process is gone, its exit unknown).
-fn load_sessions(data_dir: &Path) -> Vec<Arc<Session>> {
+fn load_sessions(data_dir: &Path, object_dir: &Path, limits: &Limits) -> Vec<Arc<Session>> {
     let dir = data_dir.join("sessions");
     let mut out = Vec::new();
     let Ok(entries) = std::fs::read_dir(&dir) else {
@@ -258,15 +331,16 @@ fn load_sessions(data_dir: &Path) -> Vec<Arc<Session>> {
         let Ok(meta) = serde_json::from_slice::<SessionMeta>(&bytes) else {
             continue;
         };
-        let log_path = dir.join(format!("{}.log", meta.id));
-        let index_path = dir.join(format!("{}.idx", meta.id));
-        let Ok(log) = std::fs::OpenOptions::new().append(true).open(&log_path) else {
-            continue;
+        let log = match SegLog::open(
+            &dir,
+            &meta.id,
+            limits.replay_window_bytes,
+            limits.segment_bytes,
+        ) {
+            Ok(Some(l)) => l,
+            _ => continue,
         };
-        let Ok(index) = std::fs::OpenOptions::new().append(true).open(&index_path) else {
-            continue;
-        };
-        let size = std::fs::metadata(&log_path).map(|m| m.len()).unwrap_or(0);
+        let size = log.written();
         let (written, _) = watch::channel(size);
         let lost = meta.exited.is_none();
         let exited = match &meta.exited {
@@ -279,26 +353,30 @@ fn load_sessions(data_dir: &Path) -> Vec<Arc<Session>> {
                 total_bytes: x.total_bytes,
                 timed_out: x.timed_out,
                 cancelled: x.cancelled,
+                retained_from: x.retained_from,
             },
             None => {
                 // The process is gone with the previous broker: seal what the
                 // log holds so the OutputRef and the replay still work.
-                let bytes = std::fs::read(&log_path).unwrap_or_default();
-                let hash = hex::encode(Sha256::digest(&bytes));
-                let obj = data_dir.join("objects").join(&hash[..2]).join(&hash[2..]);
-                if !obj.exists() {
-                    let _ = std::fs::create_dir_all(obj.parent().expect("parent"));
-                    let _ = std::fs::write(&obj, &bytes);
+                let (segments, _) = log.snapshot();
+                let sealed = seglog::seal(&dir, &meta.id, &segments, object_dir);
+                if let Err(e) = &sealed {
+                    eprintln!(
+                        "modbit-execd: session {}: sealing its output failed: {e}",
+                        meta.id
+                    );
                 }
+                let sealed = sealed.ok();
                 ProcessExited {
                     session_id: meta.id.clone(),
                     exit_code: None,
                     signal: None,
                     duration_ms: 0,
-                    output_ref: hash,
+                    output_ref: sealed.as_ref().map(|s| s.hash.clone()).unwrap_or_default(),
                     total_bytes: size,
                     timed_out: false,
                     cancelled: false,
+                    retained_from: sealed.map_or(0, |s| s.retained_from),
                 }
             }
         };
@@ -307,7 +385,7 @@ fn load_sessions(data_dir: &Path) -> Vec<Arc<Session>> {
             request_id: meta.request_id.clone(),
             argv: meta.argv.clone(),
             cwd: meta.cwd.clone(),
-            log_path,
+            owner: meta.owner.clone(),
             written,
             running: AtomicBool::new(false),
             exited: Mutex::new(Some(exited)),
@@ -315,9 +393,8 @@ fn load_sessions(data_dir: &Path) -> Vec<Arc<Session>> {
             killer: Mutex::new(None),
             cancelled: AtomicBool::new(meta.exited.as_ref().is_some_and(|x| x.cancelled)),
             data_bytes: AtomicU64::new(size),
-            hasher: std::sync::Mutex::new(Sha256::new()),
-            log: std::sync::Mutex::new((log, index)),
-            index_path,
+            log: std::sync::Mutex::new(log),
+            log_dir: dir.clone(),
             meta_path: path,
             started_at_ms: meta.started_at_ms,
             generation: AtomicU64::new(meta.generation),
@@ -349,22 +426,31 @@ fn write_owner_only(path: &Path, content: &str) -> std::io::Result<()> {
 /// Run until the listener fails, Ctrl-C, or — with an orphan grace — until
 /// no Core has been connected for that long (docs/54 fault 11: a process
 /// outlives a client disconnect, but not forever without an owner).
-pub async fn run(data_dir: PathBuf, orphan_grace: Option<Duration>) -> Result<()> {
+pub async fn run(config: Config) -> Result<()> {
+    let Config {
+        data_dir,
+        orphan_grace,
+        object_dir,
+        mut limits,
+    } = config;
+    limits.replay_window_bytes = limits.replay_window_bytes.max(limits.segment_bytes);
     std::fs::create_dir_all(data_dir.join("sessions"))?;
-    std::fs::create_dir_all(data_dir.join("objects"))?;
+    std::fs::create_dir_all(&object_dir)?;
     let boot_secret: Vec<u8> = (0..32).map(|_| rand::random::<u8>()).collect();
     let nonce = encode_hex(&(0..6).map(|_| rand::random::<u8>()).collect::<Vec<_>>());
     let endpoint =
         Endpoint::for_dir(&data_dir.join("execd"), &nonce).context("choosing endpoint")?;
     let mut sessions = HashMap::new();
     let mut by_request = HashMap::new();
-    for s in load_sessions(&data_dir) {
+    for s in load_sessions(&data_dir, &object_dir, &limits) {
         by_request.insert(s.request_id.clone(), s.id.clone());
         sessions.insert(s.id.clone(), s);
     }
     let recovered = sessions.len();
     let broker = Arc::new(Broker {
         data_dir: data_dir.clone(),
+        object_dir,
+        limits,
         boot_secret: boot_secret.clone(),
         sessions: Mutex::new(sessions),
         by_request: Mutex::new(by_request),
@@ -373,6 +459,7 @@ pub async fn run(data_dir: PathBuf, orphan_grace: Option<Duration>) -> Result<()
     for s in broker.sessions.lock().await.values() {
         s.write_meta().await;
     }
+    broker.prune_finished().await;
     let listener = Listener::bind(&endpoint)
         .await
         .context("binding endpoint")?;
@@ -638,6 +725,8 @@ async fn serve(broker: Arc<Broker>, mut stream: BoxedStream) -> Result<()> {
                         let text = e.to_string();
                         let code = if text.starts_with("SANDBOX_UNAVAILABLE") {
                             "SANDBOX_UNAVAILABLE"
+                        } else if text.starts_with("SESSION_NOT_OWNED") {
+                            "SESSION_NOT_OWNED"
                         } else {
                             "EXEC_FAILED"
                         };
@@ -649,7 +738,11 @@ async fn serve(broker: Arc<Broker>, mut stream: BoxedStream) -> Result<()> {
                 session_id,
                 after_cursor,
                 generation,
+                requester,
             })) => match broker.sessions.lock().await.get(&session_id).cloned() {
+                Some(s) if !s.permits(&requester) => {
+                    let _ = tx.send(not_owned(&session_id, &requester)).await;
+                }
                 Some(s) => {
                     // Terminal replay generation (docs/13): an older reader is
                     // refused; a newer one takes over and older attachments end.
@@ -677,8 +770,15 @@ async fn serve(broker: Arc<Broker>, mut stream: BoxedStream) -> Result<()> {
                     let _ = tx.send(err_frame("", "UNKNOWN_SESSION", session_id)).await;
                 }
             },
-            Some(Body::Stdin(WriteStdin { session_id, data })) => {
-                if let Some(s) = broker.sessions.lock().await.get(&session_id).cloned() {
+            Some(Body::Stdin(WriteStdin {
+                session_id,
+                data,
+                requester,
+            })) => {
+                let found = broker.sessions.lock().await.get(&session_id).cloned();
+                if let Some(s) = found.as_ref().filter(|s| !s.permits(&requester)) {
+                    let _ = tx.send(not_owned(&s.id, &requester)).await;
+                } else if let Some(s) = found {
                     let mut guard = s.stdin.lock().await;
                     let result = match &mut *guard {
                         Stdin::Pipe(w) => {
@@ -701,8 +801,14 @@ async fn serve(broker: Arc<Broker>, mut stream: BoxedStream) -> Result<()> {
                     let _ = tx.send(err_frame("", "UNKNOWN_SESSION", session_id)).await;
                 }
             }
-            Some(Body::Cancel(Cancel { session_id })) => {
-                if let Some(s) = broker.sessions.lock().await.get(&session_id).cloned() {
+            Some(Body::Cancel(Cancel {
+                session_id,
+                requester,
+            })) => {
+                let found = broker.sessions.lock().await.get(&session_id).cloned();
+                if let Some(s) = found.as_ref().filter(|s| !s.permits(&requester)) {
+                    let _ = tx.send(not_owned(&s.id, &requester)).await;
+                } else if let Some(s) = found {
                     s.cancelled.store(true, Ordering::SeqCst);
                     kill(&s).await;
                 } else {
@@ -725,10 +831,11 @@ async fn serve(broker: Arc<Broker>, mut stream: BoxedStream) -> Result<()> {
                     })
                     .await;
             }
-            Some(Body::List(_)) => {
+            Some(Body::List(ListSessions { requester })) => {
                 let sessions = broker.sessions.lock().await;
                 let mut list: Vec<SessionInfo> = Vec::new();
-                for s in sessions.values() {
+                // A task sees the sessions it owns; the host sees them all.
+                for s in sessions.values().filter(|s| s.permits(&requester)) {
                     let exit_code = s.exited.lock().await.as_ref().and_then(|e| e.exit_code);
                     list.push(SessionInfo {
                         session_id: s.id.clone(),
@@ -741,6 +848,8 @@ async fn serve(broker: Arc<Broker>, mut stream: BoxedStream) -> Result<()> {
                         replay_generation: s.generation.load(Ordering::SeqCst),
                         started_at_ms: s.started_at_ms,
                         cwd: s.cwd.clone(),
+                        owner: s.owner.clone(),
+                        oldest_cursor: s.oldest_cursor(),
                     });
                 }
                 list.sort_by(|a, b| a.session_id.cmp(&b.session_id));
@@ -815,7 +924,10 @@ fn kill_group(pid: u32) {
 }
 
 /// Replay the log from `after_cursor` then follow live output until exit,
-/// or until a newer attach generation supersedes this one.
+/// or until a newer attach generation supersedes this one. A cursor older
+/// than the replay window ends the attachment with `CURSOR_EXPIRED` (the
+/// oldest readable cursor is in the message); output is read through the
+/// index one record piece at a time, so memory per attachment is one chunk.
 fn spawn_forwarder(
     s: Arc<Session>,
     after_cursor: u64,
@@ -837,27 +949,55 @@ fn spawn_forwarder(
                 return;
             }
             let high = *rx.borrow_and_update();
-            if cursor < high {
-                match read_records(&s.log_path, &s.index_path, cursor, high) {
-                    Ok(records) => {
-                        for (rec_cursor, tag, data) in records {
-                            for (i, piece) in data.chunks(CHUNK).enumerate() {
-                                let frame = ExecFrame {
-                                    body: Some(Body::Output(OutputChunk {
-                                        session_id: s.id.clone(),
-                                        cursor: rec_cursor + (i * CHUNK) as u64,
-                                        stream: tag_name(tag).into(),
-                                        data: piece.to_vec(),
-                                    })),
-                                };
-                                if tx.send(frame).await.is_err() {
-                                    return;
-                                }
-                            }
+            while cursor < high {
+                let read = {
+                    let s = Arc::clone(&s);
+                    tokio::task::spawn_blocking(move || s.read_chunk(cursor, high)).await
+                };
+                match read {
+                    Ok(Ok(ReadOutcome::Chunk { tag, data })) => {
+                        let len = data.len() as u64;
+                        let frame = ExecFrame {
+                            body: Some(Body::Output(OutputChunk {
+                                session_id: s.id.clone(),
+                                cursor,
+                                stream: tag_name(tag).into(),
+                                data,
+                            })),
+                        };
+                        if tx.send(frame).await.is_err() {
+                            return;
                         }
-                        cursor = high;
+                        cursor += len;
                     }
-                    Err(_) => return,
+                    Ok(Ok(ReadOutcome::Expired { oldest })) => {
+                        let _ = tx
+                            .send(err_frame(
+                                &s.id,
+                                "CURSOR_EXPIRED",
+                                format!(
+                                    "cursor {cursor} is older than the replay window; oldest_cursor={oldest}"
+                                ),
+                            ))
+                            .await;
+                        return;
+                    }
+                    Ok(Ok(ReadOutcome::End)) | Ok(Err(_)) | Err(_) => {
+                        // A segment vanished mid-read (the session is being
+                        // pruned, or the window moved on): report where the
+                        // window is now rather than ending silently.
+                        let oldest = s.oldest_cursor();
+                        let _ = tx
+                            .send(err_frame(
+                                &s.id,
+                                "CURSOR_EXPIRED",
+                                format!(
+                                    "cursor {cursor} is no longer readable; oldest_cursor={oldest}"
+                                ),
+                            ))
+                            .await;
+                        return;
+                    }
                 }
             }
             if !s.running.load(Ordering::SeqCst) && cursor >= *s.written.borrow() {
@@ -877,45 +1017,24 @@ fn spawn_forwarder(
     });
 }
 
-/// Records overlapping `[from, to)` of the data log, clipped to the range:
-/// (data cursor, tag, data).
-fn read_records(
-    log_path: &Path,
-    index_path: &Path,
-    from: u64,
-    to: u64,
-) -> std::io::Result<Vec<(u64, u8, Vec<u8>)>> {
-    use std::io::{Seek, SeekFrom};
-    let index = std::fs::read(index_path)?;
-    let mut f = std::fs::File::open(log_path)?;
-    let mut out = Vec::new();
-    for e in index.chunks_exact(13) {
-        let offset = u64::from_be_bytes(e[..8].try_into().expect("8 bytes"));
-        let tag = e[8];
-        let len = u32::from_be_bytes(e[9..13].try_into().expect("4 bytes")) as u64;
-        let end = offset + len;
-        if end <= from || offset >= to {
-            continue;
-        }
-        let start = offset.max(from);
-        let stop = end.min(to);
-        f.seek(SeekFrom::Start(start))?;
-        let mut buf = vec![0u8; (stop - start) as usize];
-        f.read_exact(&mut buf)?;
-        out.push((start, tag, buf));
-    }
-    Ok(out)
-}
-
 impl Broker {
     /// Start (or replay) a request.
     async fn start(self: &Arc<Self>, req: ExecRequest) -> Result<(Arc<Session>, bool)> {
         if req.request_id.is_empty() {
             anyhow::bail!("request_id is required");
         }
-        if let Some(id) = self.by_request.lock().await.get(&req.request_id).cloned()
+        let existing = self.by_request.lock().await.get(&req.request_id).cloned();
+        if let Some(id) = existing
             && let Some(s) = self.sessions.lock().await.get(&id).cloned()
         {
+            // A retry replays the session, but only for its owner: a request
+            // id is no handle on someone else's process.
+            if !s.permits(&req.owner) {
+                anyhow::bail!(
+                    "SESSION_NOT_OWNED: request `{}` belongs to another owner",
+                    req.request_id
+                );
+            }
             return Ok((s, true));
         }
         if req.argv.is_empty() {
@@ -940,18 +1059,21 @@ impl Broker {
             req
         };
         let id = encode_hex(&(0..8).map(|_| rand::random::<u8>()).collect::<Vec<_>>());
-        let log_path = self.data_dir.join("sessions").join(format!("{id}.log"));
-        let index_path = self.data_dir.join("sessions").join(format!("{id}.idx"));
-        let meta_path = self.data_dir.join("sessions").join(format!("{id}.json"));
-        let log = std::fs::File::create(&log_path)?;
-        let index = std::fs::File::create(&index_path)?;
+        let log_dir = self.data_dir.join("sessions");
+        let meta_path = log_dir.join(format!("{id}.json"));
+        let log = SegLog::create(
+            &log_dir,
+            &id,
+            self.limits.replay_window_bytes,
+            self.limits.segment_bytes,
+        )?;
         let (written, _) = watch::channel(0u64);
         let session = Arc::new(Session {
             id: id.clone(),
             request_id: req.request_id.clone(),
             argv: req.argv.clone(),
             cwd: cwd.to_string_lossy().into_owned(),
-            log_path,
+            owner: req.owner.clone(),
             written,
             running: AtomicBool::new(true),
             exited: Mutex::new(None),
@@ -959,9 +1081,8 @@ impl Broker {
             killer: Mutex::new(None),
             cancelled: AtomicBool::new(false),
             data_bytes: AtomicU64::new(0),
-            hasher: std::sync::Mutex::new(Sha256::new()),
-            log: std::sync::Mutex::new((log, index)),
-            index_path,
+            log: std::sync::Mutex::new(log),
+            log_dir,
             meta_path,
             started_at_ms: now_ms(),
             generation: AtomicU64::new(0),
@@ -1274,8 +1395,10 @@ impl Broker {
         Ok(())
     }
 
-    /// Finalize: spill the complete output to a content-addressed object and
-    /// record the exit.
+    /// Finalize: seal the retained output into the content-addressed object
+    /// store (the Core's, when it started this broker) and record the exit.
+    /// The object is the output the log still holds; `retained_from` is the
+    /// cursor of its first byte, 0 when the window never dropped any.
     async fn finish(
         &self,
         s: &Arc<Session>,
@@ -1284,33 +1407,31 @@ impl Broker {
         timed_out: bool,
         started: Instant,
     ) {
-        let hash = {
-            let h = std::mem::take(&mut *s.hasher.lock().expect("hasher"));
-            hex::encode(h.finalize())
+        let (segments, total) = s.log.lock().expect("log").snapshot();
+        let sealed = {
+            let (dir, id, root) = (s.log_dir.clone(), s.id.clone(), self.object_dir.clone());
+            tokio::task::spawn_blocking(move || seglog::seal(&dir, &id, &segments, &root))
+                .await
+                .map_err(|e| std::io::Error::other(e.to_string()))
+                .and_then(|r| r)
         };
-        let total = s.data_bytes.load(Ordering::SeqCst);
-        // The data log is already raw output: publish it under objects/<2>/<rest>, idempotent.
-        let obj = self
-            .data_dir
-            .join("objects")
-            .join(&hash[..2])
-            .join(&hash[2..]);
-        if !obj.exists() {
-            let _ = std::fs::create_dir_all(obj.parent().expect("parent"));
-            let tmp = obj.with_extension("tmp");
-            if std::fs::copy(&s.log_path, &tmp).is_ok() {
-                let _ = std::fs::rename(&tmp, &obj);
-            }
+        if let Err(e) = &sealed {
+            eprintln!(
+                "modbit-execd: session {}: sealing its output failed: {e}",
+                s.id
+            );
         }
+        let sealed = sealed.ok();
         let exited = ProcessExited {
             session_id: s.id.clone(),
             exit_code,
             signal,
             duration_ms: started.elapsed().as_millis() as u64,
-            output_ref: hash,
+            output_ref: sealed.as_ref().map(|x| x.hash.clone()).unwrap_or_default(),
             total_bytes: total,
             timed_out,
             cancelled: s.cancelled.load(Ordering::SeqCst),
+            retained_from: sealed.map_or(0, |x| x.retained_from),
         };
         *s.exited.lock().await = Some(exited);
         *s.stdin.lock().await = Stdin::Closed;
@@ -1318,6 +1439,54 @@ impl Broker {
         s.write_meta().await;
         // Wake forwarders so they deliver the exit.
         s.written.send_modify(|_| {});
+        self.prune_finished().await;
+    }
+
+    /// Drop finished sessions beyond the retention policy: older than
+    /// `retain_age`, then oldest first past `retain_sessions`. Their logs and
+    /// metadata go; the sealed objects are the object store's to keep.
+    async fn prune_finished(&self) {
+        let mut finished: Vec<(i64, Arc<Session>)> = Vec::new();
+        {
+            let sessions = self.sessions.lock().await;
+            for s in sessions.values() {
+                if s.running.load(Ordering::SeqCst) {
+                    continue;
+                }
+                let ended = match s.exited.lock().await.as_ref() {
+                    Some(x) => s.started_at_ms + x.duration_ms as i64,
+                    None => continue,
+                };
+                finished.push((ended, Arc::clone(s)));
+            }
+        }
+        finished.sort_by_key(|(ended, _)| *ended);
+        let now = now_ms();
+        let age_ms = self.limits.retain_age.map(|a| a.as_millis() as i64);
+        let excess = finished.len().saturating_sub(self.limits.retain_sessions);
+        let victims: Vec<Arc<Session>> = finished
+            .into_iter()
+            .enumerate()
+            .filter(|(i, (ended, _))| *i < excess || age_ms.is_some_and(|a| now - ended > a))
+            .map(|(_, (_, s))| s)
+            .collect();
+        if victims.is_empty() {
+            return;
+        }
+        {
+            let mut sessions = self.sessions.lock().await;
+            for v in &victims {
+                sessions.remove(&v.id);
+            }
+        }
+        {
+            let mut by_request = self.by_request.lock().await;
+            by_request.retain(|_, id| !victims.iter().any(|v| &v.id == id));
+        }
+        for v in victims {
+            v.log.lock().expect("log").remove_all();
+            let _ = std::fs::remove_file(&v.meta_path);
+        }
     }
 }
 

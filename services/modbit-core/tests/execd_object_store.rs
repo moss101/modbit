@@ -426,3 +426,320 @@ async fn background_run_output_ref_resolves_through_the_core_object_paths() {
         "artifact.range resolves a background run's output_ref"
     );
 }
+
+/// The object is read back verified: bytes that no longer match the digest
+/// that names them are `OBJECT_MISMATCH` (corrupt state), never served.
+#[tokio::test]
+async fn a_tampered_execd_object_is_refused_on_read_not_served() {
+    let (_repo, root) = plain_repo();
+    let dir = tempfile::tempdir().unwrap();
+    let core = CoreProcess::spawn(dir.path(), &[]);
+    let mut c = core.client().await;
+    let (session, g) = create_session(&mut c, 0x30).await;
+    let task = create_task(&mut c, &session, g, &root, 0x31).await;
+    let mut calls = Calls(0);
+    let r = calls
+        .invoke(
+            &mut c,
+            &task,
+            g,
+            "shell.exec",
+            &json!({"argv": ["sh", "-c", "echo honest; echo noise >&2"], "inherit_env": true}),
+        )
+        .await;
+    assert_eq!(r.status, "SUCCESS", "{r:?}");
+    let output_ref = so(&r)["output_ref"].as_str().unwrap().to_owned();
+    let object = dir
+        .path()
+        .join("core")
+        .join("objects")
+        .join(&output_ref[..2])
+        .join(&output_ref[2..]);
+    assert!(object.exists(), "the broker sealed into the Core's store");
+    std::fs::write(&object, b"forged bytes").unwrap();
+    let r = calls
+        .invoke(
+            &mut c,
+            &task,
+            g,
+            "artifact.range",
+            &json!({"ref": output_ref, "offset": 0, "max_bytes": 64}),
+        )
+        .await;
+    assert_eq!(
+        (r.status.as_str(), r.error_code.as_str()),
+        ("INFRA_FAILURE", "OBJECT_MISMATCH"),
+        "{r:?}"
+    );
+}
+
+/// Objects a previous version's broker left in its own store
+/// (`<data>/execd/objects`, unreadable by the Core) are adopted into the
+/// Core's store at start, digest-verified; a file whose bytes do not match
+/// its name is not adopted.
+#[tokio::test]
+async fn objects_left_in_the_old_broker_store_are_adopted_into_the_core_store() {
+    let dir = tempfile::tempdir().unwrap();
+    let good = b"old broker output\n";
+    let hash = hex::encode(Sha256::digest(good));
+    let legacy = dir.path().join("execd").join("objects").join(&hash[..2]);
+    std::fs::create_dir_all(&legacy).unwrap();
+    std::fs::write(legacy.join(&hash[2..]), good).unwrap();
+    let bad_hash = hex::encode(Sha256::digest(b"claimed"));
+    let bad_dir = dir
+        .path()
+        .join("execd")
+        .join("objects")
+        .join(&bad_hash[..2]);
+    std::fs::create_dir_all(&bad_dir).unwrap();
+    std::fs::write(bad_dir.join(&bad_hash[2..]), b"not what the name says").unwrap();
+    let core = CoreProcess::spawn(dir.path(), &[]);
+    let mut c = core.client().await;
+    assert_eq!(
+        read_object_range(&mut c, 0x50, &hash).await.as_deref(),
+        Ok(&good[..])
+    );
+    assert!(
+        read_object_range(&mut c, 0x51, &bad_hash).await.is_err(),
+        "a mismatching file is not adopted"
+    );
+}
+
+fn dir_bytes(path: &std::path::Path) -> u64 {
+    let mut total = 0;
+    if let Ok(entries) = std::fs::read_dir(path) {
+        for e in entries.flatten() {
+            match e.metadata() {
+                Ok(m) if m.is_dir() => total += dir_bytes(&e.path()),
+                Ok(m) => total += m.len(),
+                Err(_) => {}
+            }
+        }
+    }
+    total
+}
+
+/// A host-level connection to the broker (the user's own terminal lease: no
+/// task principal), found through the ready file the Core's broker wrote.
+async fn host_client(data_dir: &std::path::Path) -> modbit_terminal::ExecClient {
+    let ready = std::fs::read_to_string(data_dir.join("execd").join("execd.ready")).unwrap();
+    let ready = ReadyLine::parse(ready.trim()).unwrap();
+    modbit_terminal::ExecClient::connect(
+        &ready.endpoint,
+        &decode_hex(&ready.boot_secret_hex).unwrap(),
+    )
+    .await
+    .unwrap()
+}
+
+/// FIX-20: through the real tools, a second task of the same session cannot
+/// list, read or cancel another task's shell (a typed refusal, and the real
+/// process keeps running), cannot take its handle by replaying its request
+/// id; the owner can do all of it, and so can the host (the user's lease).
+#[tokio::test]
+async fn a_second_task_cannot_list_read_or_cancel_another_tasks_shell() {
+    let (_repo, root) = plain_repo();
+    let dir = tempfile::tempdir().unwrap();
+    let core = CoreProcess::spawn(dir.path(), &[]);
+    let mut c = core.client().await;
+    let (session, g) = create_session(&mut c, 0x60).await;
+    let owner = create_task(&mut c, &session, g, &root, 0x61).await;
+    let intruder = create_task(&mut c, &session, g, &root, 0x62).await;
+    let mut calls = Calls(0);
+    let start = json!({
+        "argv": ["sh", "-c", "while true; do echo tick; sleep 0.05; done"],
+        "inherit_env": true, "timeout_ms": 120000, "request_id": "owned-shell"
+    });
+    let r = calls.invoke(&mut c, &owner, g, "shell.start", &start).await;
+    assert_eq!(r.status, "SUCCESS", "{r:?}");
+    let sid = so(&r)["session_id"].as_str().unwrap().to_owned();
+    let refused = |r: &ToolInvoked, what: &str| {
+        assert_eq!(
+            (r.status.as_str(), r.error_code.as_str()),
+            ("APPLICATION_FAILURE", "SESSION_NOT_OWNED"),
+            "{what}: {r:?}"
+        );
+    };
+    // The intruder: its own listing is empty, and the rest is refused.
+    let r = calls
+        .invoke(&mut c, &intruder, g, "shell.list", &json!({}))
+        .await;
+    assert_eq!(r.status, "SUCCESS", "{r:?}");
+    assert_eq!(
+        so(&r)["sessions"],
+        json!([]),
+        "another task's shell is not listed"
+    );
+    let r = calls
+        .invoke(
+            &mut c,
+            &intruder,
+            g,
+            "shell.read",
+            &json!({"session_id": sid, "after_cursor": 0}),
+        )
+        .await;
+    refused(&r, "shell.read");
+    let r = calls
+        .invoke(
+            &mut c,
+            &intruder,
+            g,
+            "shell.cancel",
+            &json!({"session_id": sid}),
+        )
+        .await;
+    refused(&r, "shell.cancel");
+    let r = calls
+        .invoke(&mut c, &intruder, g, "shell.start", &start)
+        .await;
+    refused(&r, "replaying the owner's request id");
+    // Nothing the intruder did touched the process.
+    tokio::time::sleep(std::time::Duration::from_millis(300)).await;
+    let r = calls
+        .invoke(&mut c, &owner, g, "shell.list", &json!({}))
+        .await;
+    let listed = so(&r)["sessions"].as_array().unwrap().clone();
+    assert_eq!(listed.len(), 1, "{listed:?}");
+    assert_eq!(listed[0]["session_id"], sid.as_str());
+    assert_eq!(listed[0]["running"], true, "the refused cancel did nothing");
+    // The host (the user's own lease) sees and reads it.
+    let mut host = host_client(dir.path()).await;
+    host.list().await.unwrap();
+    let Some(modbit_terminal::Event::Sessions(all)) = host.next().await.unwrap() else {
+        panic!("expected a listing")
+    };
+    assert!(all.iter().any(|s| s.session_id == sid && s.running));
+    // The owner reads and cancels it.
+    let r = calls
+        .invoke(
+            &mut c,
+            &owner,
+            g,
+            "shell.read",
+            &json!({"session_id": sid, "after_cursor": 0, "wait_ms": 300, "max_bytes": 64}),
+        )
+        .await;
+    assert_eq!(r.status, "SUCCESS", "{r:?}");
+    assert!(so(&r)["preview"].as_str().unwrap().starts_with("tick\n"));
+    let r = calls
+        .invoke(
+            &mut c,
+            &owner,
+            g,
+            "shell.cancel",
+            &json!({"session_id": sid}),
+        )
+        .await;
+    assert_eq!(r.status, "SUCCESS", "{r:?}");
+    assert_eq!(so(&r)["cancelled"], true);
+}
+
+/// FIX-20 / FIX-09 through the real tools: a 20 MiB run under a 2 MiB replay
+/// window. A cursor outside the window is the typed `CURSOR_EXPIRED` naming
+/// the oldest cursor; from it the preview is the exact stream bytes; the
+/// run's `output_ref` resolves in the Core's store to exactly the retained
+/// tail; and disk stays a few windows, not 20 MiB.
+#[tokio::test]
+async fn a_noisy_shell_is_bounded_and_its_window_is_typed_through_the_tools() {
+    let (_repo, root) = plain_repo();
+    let dir = tempfile::tempdir().unwrap();
+    let core = CoreProcess::spawn(
+        dir.path(),
+        &[
+            ("MODBIT_EXECD_REPLAY_WINDOW_BYTES", "2097152"),
+            ("MODBIT_EXECD_SEGMENT_BYTES", "524288"),
+        ],
+    );
+    let mut c = core.client().await;
+    let (session, g) = create_session(&mut c, 0x70).await;
+    let task = create_task(&mut c, &session, g, &root, 0x71).await;
+    let mut calls = Calls(0);
+    const TOTAL: u64 = 20 * 1024 * 1024;
+    // The stream is "abcdefghij\n" repeated: the byte at offset o is known.
+    let at = |o: u64| b"abcdefghij\n"[(o % 11) as usize];
+    let start = json!({
+        "argv": ["sh", "-c", format!("yes abcdefghij | head -c {TOTAL}")],
+        "inherit_env": true, "timeout_ms": 120000
+    });
+    let r = calls.invoke(&mut c, &task, g, "shell.start", &start).await;
+    assert_eq!(r.status, "SUCCESS", "{r:?}");
+    let sid = so(&r)["session_id"].as_str().unwrap().to_owned();
+    let deadline = std::time::Instant::now() + std::time::Duration::from_secs(60);
+    loop {
+        let r = calls
+            .invoke(&mut c, &task, g, "shell.list", &json!({}))
+            .await;
+        let s = so(&r)["sessions"][0].clone();
+        if s["running"] == false {
+            assert_eq!(s["bytes_so_far"], TOTAL);
+            break;
+        }
+        assert!(std::time::Instant::now() < deadline, "the run did not end");
+        tokio::time::sleep(std::time::Duration::from_millis(50)).await;
+    }
+    // Outside the window: typed, with where the window starts.
+    let r = calls
+        .invoke(
+            &mut c,
+            &task,
+            g,
+            "shell.read",
+            &json!({"session_id": sid, "after_cursor": 0, "max_bytes": 64}),
+        )
+        .await;
+    assert_eq!(
+        (r.status.as_str(), r.error_code.as_str()),
+        ("APPLICATION_FAILURE", "CURSOR_EXPIRED"),
+        "{r:?}"
+    );
+    let oldest: u64 = r
+        .error_message
+        .split("oldest_cursor=")
+        .nth(1)
+        .unwrap()
+        .trim()
+        .parse()
+        .unwrap();
+    assert!(oldest > 0 && oldest < TOTAL, "{}", r.error_message);
+    // Inside it: exact bytes, from a cursor mid-line.
+    let from = oldest + 5;
+    let r = calls
+        .invoke(
+            &mut c,
+            &task,
+            g,
+            "shell.read",
+            &json!({"session_id": sid, "after_cursor": from, "max_bytes": 64, "wait_ms": 2000}),
+        )
+        .await;
+    assert_eq!(r.status, "SUCCESS", "{r:?}");
+    let out = so(&r);
+    let preview = out["preview"].as_str().unwrap().as_bytes().to_vec();
+    assert_eq!(preview.len(), 64);
+    for (i, b) in preview.iter().enumerate() {
+        assert_eq!(*b, at(from + i as u64), "byte {i} at cursor {from}");
+    }
+    // The exit, with its object: the retained tail, in the Core's store.
+    let exited = out["exited"].clone();
+    assert!(exited.is_object(), "the read reached the exit: {out}");
+    assert_eq!(exited["total_bytes"], TOTAL);
+    assert_eq!(exited["retained_from"], oldest);
+    let output_ref = exited["output_ref"].as_str().unwrap().to_owned();
+    let tail = read_object_range(&mut c, 0x42, &output_ref).await.unwrap();
+    assert_eq!(tail.len() as u64, TOTAL - oldest);
+    assert!(
+        tail.iter()
+            .enumerate()
+            .all(|(i, b)| *b == at(oldest + i as u64)),
+        "the object is the retained tail, byte for byte"
+    );
+    assert_eq!(hex::encode(Sha256::digest(&tail)), output_ref);
+    // Disk: a few windows, never the 20 MiB the process wrote.
+    let used =
+        dir_bytes(&dir.path().join("execd")) + dir_bytes(&dir.path().join("core").join("objects"));
+    assert!(
+        used < 10 * 1024 * 1024,
+        "broker + objects hold {used} bytes"
+    );
+}

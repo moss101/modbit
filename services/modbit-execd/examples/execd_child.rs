@@ -29,6 +29,47 @@ fn main() {
             }
             out.flush().unwrap();
         }
+        // FIX-20: `MODBIT_EXECD_TEST_MIB` MiB of deterministic 64-byte lines
+        // (line i is `{i:063}\n`, so the byte at any offset is known), then
+        // exit (`noisy`) or keep running (`noisy-live`).
+        "noisy" | "noisy-live" => {
+            let mib: usize = std::env::var("MODBIT_EXECD_TEST_MIB")
+                .ok()
+                .and_then(|v| v.parse().ok())
+                .unwrap_or(1);
+            let mut block = Vec::with_capacity(64 * 1024);
+            let mut line = 0usize;
+            let total_lines = mib * 1024 * 1024 / 64;
+            while line < total_lines {
+                block.clear();
+                while block.len() < 64 * 1024 && line < total_lines {
+                    block.extend_from_slice(format!("{line:063}\n").as_bytes());
+                    line += 1;
+                }
+                out.write_all(&block).unwrap();
+            }
+            out.flush().unwrap();
+            if role == "noisy-live" {
+                // Long enough to outlive the test's broker kill, short enough
+                // that nothing is left running afterwards.
+                let until = std::time::Instant::now() + Duration::from_secs(25);
+                while std::time::Instant::now() < until {
+                    std::thread::sleep(Duration::from_millis(50));
+                }
+            }
+        }
+        // FIX-20: many tiny records (one write each), the shape that made the
+        // index re-read quadratic: line i is `{i:07}\n`.
+        "chatty" => {
+            let n: usize = std::env::var("MODBIT_EXECD_TEST_LINES")
+                .ok()
+                .and_then(|v| v.parse().ok())
+                .unwrap_or(1000);
+            for i in 0..n {
+                writeln!(out, "{i:07}").unwrap();
+                out.flush().unwrap();
+            }
+        }
         "ticker" => {
             for i in 0.. {
                 writeln!(out, "tick {i}").unwrap();

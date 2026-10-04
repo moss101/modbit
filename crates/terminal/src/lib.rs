@@ -58,6 +58,10 @@ pub enum Event {
 /// An authenticated connection to `modbit-execd`.
 pub struct ExecClient {
     stream: BoxedStream,
+    /// Who this connection speaks for (FIX-20): empty = the host (the Core
+    /// itself, or the user's own terminal lease); `task:<id>` = a task, which
+    /// the broker lets reach only the sessions that task owns.
+    principal: String,
 }
 
 impl std::fmt::Debug for ExecClient {
@@ -87,7 +91,10 @@ impl ExecClient {
         match read_message::<_, ExecFrame>(&mut stream).await? {
             Some(ExecFrame {
                 body: Some(Body::HelloAck(a)),
-            }) if a.compatible => Ok(Self { stream }),
+            }) if a.compatible => Ok(Self {
+                stream,
+                principal: String::new(),
+            }),
             Some(ExecFrame {
                 body: Some(Body::HelloAck(a)),
             }) => Err(Error::Refused(a.reason)),
@@ -101,13 +108,32 @@ impl ExecClient {
         }
     }
 
+    /// Speak for `principal` from now on (FIX-20): every session this
+    /// connection starts is owned by it, and every attach, stdin write,
+    /// cancel and listing carries it, so the broker refuses what is not its.
+    /// A connection that never calls this speaks for the host.
+    #[must_use]
+    pub fn act_as(mut self, principal: impl Into<String>) -> Self {
+        self.principal = principal.into();
+        self
+    }
+
+    /// The principal a task's tool calls speak as.
+    #[must_use]
+    pub fn task_principal(task_id: impl std::fmt::Display) -> String {
+        format!("task:{task_id}")
+    }
+
     async fn send(&mut self, body: Body) -> Result<()> {
         write_message(&mut self.stream, &ExecFrame { body: Some(body) }).await?;
         Ok(())
     }
 
     /// Submit a structured request.
-    pub async fn exec(&mut self, req: ExecRequest) -> Result<()> {
+    pub async fn exec(&mut self, mut req: ExecRequest) -> Result<()> {
+        if req.owner.is_empty() {
+            req.owner = self.principal.clone();
+        }
         self.send(Body::Exec(req)).await
     }
 
@@ -129,6 +155,7 @@ impl ExecClient {
             session_id: session_id.into(),
             after_cursor,
             generation,
+            requester: self.principal.clone(),
         }))
         .await
     }
@@ -138,6 +165,7 @@ impl ExecClient {
         self.send(Body::Stdin(modbit_protocol::v1::WriteStdin {
             session_id: session_id.into(),
             data: data.to_vec(),
+            requester: self.principal.clone(),
         }))
         .await
     }
@@ -146,14 +174,17 @@ impl ExecClient {
     pub async fn cancel(&mut self, session_id: &str) -> Result<()> {
         self.send(Body::Cancel(modbit_protocol::v1::Cancel {
             session_id: session_id.into(),
+            requester: self.principal.clone(),
         }))
         .await
     }
 
     /// List sessions.
     pub async fn list(&mut self) -> Result<()> {
-        self.send(Body::List(modbit_protocol::v1::ListSessions {}))
-            .await
+        self.send(Body::List(modbit_protocol::v1::ListSessions {
+            requester: self.principal.clone(),
+        }))
+        .await
     }
 
     /// EPR-018: ask whether the broker's host confines review processes.

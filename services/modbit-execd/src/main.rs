@@ -4,7 +4,19 @@
 //! OutputRef, and lets an authenticated Core attach, detach, write stdin and
 //! cancel. It is not authorized to create capabilities or decide policy.
 //!
-//! Usage: `modbit-execd --data-dir <dir>`
+//! Usage: `modbit-execd --data-dir <dir> [--object-dir <dir>]
+//! [--replay-window-bytes <n>] [--segment-bytes <n>] [--retain-sessions <n>]
+//! [--retain-secs <n>] [--tether-stdin] [--orphan-grace-secs <n>]`
+//!
+//! Bounds (flag, else the `MODBIT_EXECD_*` variable, else the default): a
+//! session keeps its last `--replay-window-bytes` of output replayable
+//! (default 64 MiB; the log rotates in `--segment-bytes` segments, default
+//! 4 MiB, so disk per session is at most window + segment); a cursor older
+//! than the window is answered `CURSOR_EXPIRED`. Finished sessions are kept
+//! up to `--retain-sessions` (256) and `--retain-secs` (7 days; 0 = no age
+//! limit). `output_ref` objects are sealed into `--object-dir`, by default
+//! `<data-dir>/objects`; the Core starts the broker with its own object
+//! store there, so one content-addressed store serves both.
 //!
 //! On Linux it is also its own review-sandbox launcher (EPR-018):
 //! `modbit-execd --review-sandbox-exec -- <argv...>` runs `argv` with no
@@ -16,11 +28,27 @@ use std::process::ExitCode;
 mod broker;
 #[cfg(target_os = "linux")]
 mod seccomp_net;
+mod seglog;
 
 fn main() -> ExitCode {
     let mut data_dir: Option<PathBuf> = None;
     let mut tether_stdin = false;
     let mut orphan_grace: Option<std::time::Duration> = None;
+    let mut object_dir: Option<PathBuf> = None;
+    let mut limits = broker::Limits::default();
+    let env_u64 = |name: &str| std::env::var(name).ok().and_then(|v| v.parse::<u64>().ok());
+    if let Some(v) = env_u64("MODBIT_EXECD_REPLAY_WINDOW_BYTES") {
+        limits.replay_window_bytes = v;
+    }
+    if let Some(v) = env_u64("MODBIT_EXECD_SEGMENT_BYTES") {
+        limits.segment_bytes = v;
+    }
+    if let Some(v) = env_u64("MODBIT_EXECD_RETAIN_SESSIONS") {
+        limits.retain_sessions = usize::try_from(v).unwrap_or(usize::MAX);
+    }
+    if let Some(v) = env_u64("MODBIT_EXECD_RETAIN_SECS") {
+        limits.retain_age = (v > 0).then(|| std::time::Duration::from_secs(v));
+    }
     let mut args = std::env::args().skip(1);
     while let Some(a) = args.next() {
         match a.as_str() {
@@ -51,9 +79,24 @@ fn main() -> ExitCode {
                     .filter(|s| *s > 0)
                     .map(std::time::Duration::from_secs);
             }
+            "--object-dir" => object_dir = args.next().map(PathBuf::from),
+            "--replay-window-bytes" | "--segment-bytes" | "--retain-sessions" | "--retain-secs" => {
+                let Some(v) = args.next().and_then(|v| v.parse::<u64>().ok()) else {
+                    eprintln!("modbit-execd: `{a}` needs a number");
+                    return ExitCode::from(2);
+                };
+                match a.as_str() {
+                    "--replay-window-bytes" => limits.replay_window_bytes = v,
+                    "--segment-bytes" => limits.segment_bytes = v,
+                    "--retain-sessions" => {
+                        limits.retain_sessions = usize::try_from(v).unwrap_or(usize::MAX);
+                    }
+                    _ => limits.retain_age = (v > 0).then(|| std::time::Duration::from_secs(v)),
+                }
+            }
             "-h" | "--help" => {
                 println!(
-                    "usage: modbit-execd --data-dir <dir> [--tether-stdin] [--orphan-grace-secs <n>]"
+                    "usage: modbit-execd --data-dir <dir> [--object-dir <dir>] [--replay-window-bytes <n>] [--segment-bytes <n>] [--retain-sessions <n>] [--retain-secs <n>] [--tether-stdin] [--orphan-grace-secs <n>]"
                 );
                 return ExitCode::SUCCESS;
             }
@@ -88,7 +131,15 @@ fn main() -> ExitCode {
             return ExitCode::from(1);
         }
     };
-    match rt.block_on(broker::run(data_dir, orphan_grace)) {
+    // A segment below one page is a configuration mistake, not a policy.
+    limits.segment_bytes = limits.segment_bytes.max(4096);
+    let config = broker::Config {
+        object_dir: object_dir.unwrap_or_else(|| data_dir.join("objects")),
+        data_dir,
+        orphan_grace,
+        limits,
+    };
+    match rt.block_on(broker::run(config)) {
         Ok(()) => ExitCode::SUCCESS,
         Err(e) => {
             eprintln!("modbit-execd: {e:#}");

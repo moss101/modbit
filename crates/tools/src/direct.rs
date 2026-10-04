@@ -840,6 +840,19 @@ async fn run_process_in_sandbox(
     o
 }
 
+/// Connect to the broker speaking for the calling task (FIX-20): sessions
+/// it starts are owned by the task, and the broker refuses it every session
+/// another owner holds.
+async fn broker_client(
+    ctx: &InvokeContext,
+    target: &crate::pipeline::ExecTarget,
+) -> std::result::Result<ExecClient, ToolOutcome> {
+    ExecClient::connect(&target.endpoint, &target.boot_secret)
+        .await
+        .map(|c| c.act_as(ExecClient::task_principal(ctx.task_id)))
+        .map_err(|e| ToolOutcome::infra("BROKER_UNAVAILABLE", e.to_string()))
+}
+
 async fn run_process(ctx: &InvokeContext, args: &Value, request_id: &str) -> ToolOutcome {
     if ctx.execution_profile == "cloud_isolated" {
         let Some(sb) = sandbox_of(ctx) else {
@@ -914,10 +927,12 @@ async fn run_process(ctx: &InvokeContext, args: &Value, request_id: &str) -> Too
             value: l.as_bytes().to_vec(),
         }),
         terminal_session_id: None,
+        // The calling client stamps the owning task (`broker_client`).
+        owner: String::new(),
     };
-    let mut client = match ExecClient::connect(&target.endpoint, &target.boot_secret).await {
+    let mut client = match broker_client(ctx, target).await {
         Ok(c) => c,
-        Err(e) => return ToolOutcome::infra("BROKER_UNAVAILABLE", e.to_string()),
+        Err(o) => return o,
     };
     if let Err(e) = client.exec(req).await {
         return ToolOutcome::infra("BROKER_SEND", e.to_string());
@@ -1583,9 +1598,9 @@ tool!(
             Err(o) => return o,
         };
         let argv = req.argv.clone();
-        let mut client = match ExecClient::connect(&target.endpoint, &target.boot_secret).await {
+        let mut client = match broker_client(ctx, target).await {
             Ok(c) => c,
-            Err(e) => return ToolOutcome::infra("BROKER_UNAVAILABLE", e.to_string()),
+            Err(o) => return o,
         };
         if let Err(e) = client.exec(req).await {
             return ToolOutcome::infra("BROKER_SEND", e.to_string());
@@ -1600,11 +1615,16 @@ tool!(
                 }
                 Ok(Some(Event::Exited(x))) => {
                     return ToolOutcome::ok(
-                        json!({"session_id": x.session_id, "request_id": rid, "argv": argv, "running": false, "exit_code": x.exit_code, "output_ref": x.output_ref, "total_bytes": x.total_bytes}),
+                        json!({"session_id": x.session_id, "request_id": rid, "argv": argv, "running": false, "exit_code": x.exit_code, "output_ref": x.output_ref, "total_bytes": x.total_bytes, "retained_from": x.retained_from}),
                     );
                 }
                 Ok(Some(_)) => {}
                 Ok(None) => return ToolOutcome::infra("BROKER_CLOSED", "connection closed"),
+                // A refusal the model can act on (the request id is another
+                // task's: SESSION_NOT_OWNED) keeps its code.
+                Err(modbit_terminal::Error::Exec { code, message, .. }) => {
+                    return ToolOutcome::fail(&code, message);
+                }
                 Err(e) => return ToolOutcome::infra("BROKER_ERROR", e.to_string()),
             }
         }
@@ -1615,7 +1635,7 @@ tool!(
     ShellRead,
     spec(
         "shell.read",
-        "Read a background command's output from a byte cursor: a bounded preview (max_bytes, default 8192), the next cursor, running/exit status and, once exited, the full OutputRef; waits at most wait_ms (default 250) for output (REQ-EV-0221).",
+        "Read a background command's output from a byte cursor: a bounded preview (max_bytes, default 8192), the next cursor, running/exit status and, once exited, the OutputRef (retained_from says where its bytes start when the replay window dropped the head); a cursor older than the replay window is CURSOR_EXPIRED and names oldest_cursor; waits at most wait_ms (default 250) for output (REQ-EV-0221).",
         EffectClass::ReadOnly,
         json!({"type":"object","properties":{"session_id":{"type":"string"},"after_cursor":{"type":"integer","minimum":0},"wait_ms":{"type":"integer","minimum":0,"maximum":10000},"max_bytes":{"type":"integer","minimum":1}},"required":["session_id"],"additionalProperties":false}),
         &["shell.exec"],
@@ -1635,9 +1655,9 @@ tool!(
                 .and_then(Value::as_u64)
                 .unwrap_or(READ_WAIT_MS),
         );
-        let mut client = match ExecClient::connect(&target.endpoint, &target.boot_secret).await {
+        let mut client = match broker_client(ctx, target).await {
             Ok(c) => c,
-            Err(e) => return ToolOutcome::infra("BROKER_UNAVAILABLE", e.to_string()),
+            Err(o) => return o,
         };
         if let Err(e) = client
             .attach_fenced(&session_id, after, target.replay_generation)
@@ -1689,7 +1709,7 @@ tool!(
                 Ok(Some(Event::Exited(x))) => {
                     running = false;
                     exited = Some(
-                        json!({"exit_code": x.exit_code, "signal": x.signal, "timed_out": x.timed_out, "cancelled": x.cancelled, "output_ref": x.output_ref, "total_bytes": x.total_bytes, "duration_ms": x.duration_ms}),
+                        json!({"exit_code": x.exit_code, "signal": x.signal, "timed_out": x.timed_out, "cancelled": x.cancelled, "output_ref": x.output_ref, "total_bytes": x.total_bytes, "retained_from": x.retained_from, "duration_ms": x.duration_ms}),
                     );
                     break;
                 }
@@ -1711,7 +1731,7 @@ tool!(
     ShellList,
     spec(
         "shell.list",
-        "List the broker's background command sessions with their status (REQ-EV-0221).",
+        "List this task's background command sessions with their status and the oldest cursor still replayable; another task's sessions are not shown and cannot be read or cancelled (REQ-EV-0221).",
         EffectClass::ReadOnly,
         json!({"type":"object","properties":{},"additionalProperties":false}),
         &["shell.exec"],
@@ -1721,9 +1741,9 @@ tool!(
         let Some(target) = &ctx.exec else {
             return ToolOutcome::infra("NO_BROKER", "no terminal broker is attached to this Core");
         };
-        let mut client = match ExecClient::connect(&target.endpoint, &target.boot_secret).await {
+        let mut client = match broker_client(ctx, target).await {
             Ok(c) => c,
-            Err(e) => return ToolOutcome::infra("BROKER_UNAVAILABLE", e.to_string()),
+            Err(o) => return o,
         };
         if let Err(e) = client.list().await {
             return ToolOutcome::infra("BROKER_SEND", e.to_string());
@@ -1733,7 +1753,7 @@ tool!(
                 Ok(Some(Event::Sessions(list))) => {
                     let sessions: Vec<Value> = list
                         .iter()
-                        .map(|x| json!({"session_id": x.session_id, "request_id": x.request_id, "argv": x.argv, "running": x.running, "bytes_so_far": x.bytes_so_far, "exit_code": x.exit_code, "status": x.status, "replay_generation": x.replay_generation, "started_at_ms": x.started_at_ms}))
+                        .map(|x| json!({"session_id": x.session_id, "request_id": x.request_id, "argv": x.argv, "running": x.running, "bytes_so_far": x.bytes_so_far, "exit_code": x.exit_code, "status": x.status, "replay_generation": x.replay_generation, "started_at_ms": x.started_at_ms, "oldest_cursor": x.oldest_cursor}))
                         .collect();
                     return ToolOutcome::ok(json!({"sessions": sessions}));
                 }
@@ -1760,9 +1780,9 @@ tool!(
             return ToolOutcome::infra("NO_BROKER", "no terminal broker is attached to this Core");
         };
         let session_id = s(&args, "session_id");
-        let mut client = match ExecClient::connect(&target.endpoint, &target.boot_secret).await {
+        let mut client = match broker_client(ctx, target).await {
             Ok(c) => c,
-            Err(e) => return ToolOutcome::infra("BROKER_UNAVAILABLE", e.to_string()),
+            Err(o) => return o,
         };
         // Attach live first so the exit is observed, then cancel.
         if let Err(e) = client
@@ -1779,7 +1799,7 @@ tool!(
             match tokio::time::timeout(deadline, client.next()).await {
                 Ok(Ok(Some(Event::Exited(x)))) => {
                     return ToolOutcome::ok(
-                        json!({"session_id": session_id, "cancelled": true, "exit_code": x.exit_code, "signal": x.signal, "output_ref": x.output_ref, "total_bytes": x.total_bytes}),
+                        json!({"session_id": session_id, "cancelled": true, "exit_code": x.exit_code, "signal": x.signal, "output_ref": x.output_ref, "total_bytes": x.total_bytes, "retained_from": x.retained_from}),
                     );
                 }
                 Ok(Ok(Some(_))) => {}
@@ -1868,6 +1888,7 @@ async fn exec_request(
             value: l.as_bytes().to_vec(),
         }),
         terminal_session_id: None,
+        owner: String::new(),
     })
 }
 
