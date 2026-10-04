@@ -212,12 +212,56 @@ fn stop_inheriting_foreign_handles() {}
 /// data directory and wait for its ready line. `replay_generation` is the
 /// Core's boot generation: the fence every attach from this Core carries.
 pub fn spawn_execd(data_dir: &Path, replay_generation: u64) -> Result<Execd> {
+    import_legacy_execd_objects(data_dir);
     let execd = spawn_or_reattach(data_dir, replay_generation)?;
     if execd.reattached {
         eprintln!("modbit-core: reattached to the terminal broker a previous Core left alive");
     }
     hold_broker_open(execd.target.clone());
     Ok(execd)
+}
+
+/// The Core's content-addressed object store, which the terminal broker
+/// seals its `output_ref` objects into (FIX-09): one store for what
+/// `artifact.range` and `ReadObjectRange` read and what the broker names.
+pub fn core_object_dir(data_dir: &Path) -> PathBuf {
+    data_dir.join("core").join("objects")
+}
+
+/// Before the broker sealed into the Core's store it kept its own
+/// (`<data>/execd/objects`), which nothing in the Core could read. Move what
+/// a previous version left there into the Core's store, verifying each
+/// object's digest against its name; an object that does not match is left
+/// where it is rather than adopted.
+fn import_legacy_execd_objects(data_dir: &Path) {
+    let legacy = data_dir.join("execd").join("objects");
+    let Ok(shards) = std::fs::read_dir(&legacy) else {
+        return;
+    };
+    let Ok(store) = modbit_event_store::ObjectStore::open(core_object_dir(data_dir)) else {
+        return;
+    };
+    for shard in shards.flatten() {
+        let Ok(files) = std::fs::read_dir(shard.path()) else {
+            continue;
+        };
+        let prefix = shard.file_name().to_string_lossy().into_owned();
+        for f in files.flatten() {
+            let name = f.file_name().to_string_lossy().into_owned();
+            if prefix.len() != 2 || name.len() != 62 {
+                continue;
+            }
+            let Ok(bytes) = std::fs::read(f.path()) else {
+                continue;
+            };
+            if store
+                .put(&bytes)
+                .is_ok_and(|h| h == format!("{prefix}{name}"))
+            {
+                let _ = std::fs::remove_file(f.path());
+            }
+        }
+    }
 }
 
 fn spawn_or_reattach(data_dir: &Path, replay_generation: u64) -> Result<Execd> {
@@ -259,6 +303,8 @@ fn spawn_or_reattach(data_dir: &Path, replay_generation: u64) -> Result<Execd> {
     let mut child = command
         .arg("--data-dir")
         .arg(&execd_dir)
+        .arg("--object-dir")
+        .arg(core_object_dir(data_dir))
         .arg("--orphan-grace-secs")
         .arg(orphan_grace_secs().to_string())
         .stdin(Stdio::null())

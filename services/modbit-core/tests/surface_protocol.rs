@@ -28214,18 +28214,41 @@ async fn qual_epr_018_the_review_environment_is_sandboxed_confined_and_disposed(
         "{:?}",
         branches
     );
-    // The sleeper is gone (seen from the candidate's own read-only listing).
+    // FIX-20: the review task's terminal belongs to the review task. The
+    // candidate's own listing no longer shows it (a task sees only the
+    // sessions it owns) ...
     let r = invoke_tool(&mut c, &task, g, 0x8A, 0xC6, "shell.list", "{}").await;
     assert_eq!(r.status, "SUCCESS", "{r:?}");
     let so: serde_json::Value = serde_json::from_str(&r.structured_output_json).unwrap();
-    let sleeper = so["sessions"]
-        .as_array()
-        .unwrap()
-        .iter()
-        .find(|s| s["session_id"] == handle)
-        .cloned()
-        .unwrap();
-    assert_eq!(sleeper["running"], false, "{sleeper:?}");
+    assert!(
+        so["sessions"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .all(|s| s["session_id"] != handle),
+        "the candidate does not see the review task's shell: {so}"
+    );
+    // ... so the sleeper is observed as the user's own lease sees it: the
+    // host-level listing of the broker. It is gone.
+    let sleeper = {
+        let ready = std::fs::read_to_string(dir.path().join("execd").join("execd.ready")).unwrap();
+        let ready = modbit_protocol::local::ReadyLine::parse(ready.trim()).unwrap();
+        let secret = modbit_protocol::local::decode_hex(&ready.boot_secret_hex).unwrap();
+        let mut host = modbit_terminal::ExecClient::connect(&ready.endpoint, &secret)
+            .await
+            .unwrap();
+        host.list().await.unwrap();
+        loop {
+            match host.next().await.unwrap() {
+                Some(modbit_terminal::Event::Sessions(list)) => {
+                    break list.into_iter().find(|s| s.session_id == handle).unwrap();
+                }
+                Some(_) => {}
+                None => panic!("the broker closed"),
+            }
+        }
+    };
+    assert!(!sleeper.running, "{sleeper:?}");
     // The review task ended and its lease is revoked: nothing runs there again.
     let rst = wait_task(&mut c, &review_task, 5).await;
     assert_eq!(rst.state, "Cancelled", "{rst:?}");
