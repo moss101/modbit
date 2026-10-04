@@ -620,10 +620,13 @@ async fn execute_relayed(
             .and_then(|a| Client::result::<wire::TaskCancelRequested>(&a).map(|r| json!({"task_id": task_id.to_string(), "outcome": if r.was_running { "cancel requested at the next safe boundary" } else { "cancelled" }, "was_running": r.was_running})))
         }
         "Task:pause" | "Task:resume" => {
-            // The Core has no pause (PX-024): the request is honestly refused.
+            // The Core has no PauseTask/ResumeTask command yet (the runtime's
+            // `park` is an internal boundary, not a client command): the
+            // request is honestly refused.
             return rejected(
                 "PAUSE_UNSUPPORTED",
-                "the execution owner has no pause; cancel (confirmed) or steer".into(),
+                "the Core exposes no pause or resume command yet; cancel (confirmed) or steer instead"
+                    .into(),
             );
         }
         k if k.starts_with("Approval:") => {

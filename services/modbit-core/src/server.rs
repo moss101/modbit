@@ -277,8 +277,24 @@ pub async fn run_as(
                     && connections.load(std::sync::atomic::Ordering::SeqCst) == 0
                     && last_activity.lock().expect("activity").elapsed().as_secs() >= secs
                 {
-                    eprintln!("modbit-core: idle for {secs}s with no client; exiting");
-                    break;
+                    // FIX-17: no client does not mean no work. A detached
+                    // `task run` leaves its loop (and any background
+                    // command it started) running with nobody connected;
+                    // exiting would suspend the task and, after the
+                    // broker's orphan grace, kill the command. The idle
+                    // clock restarts when the work ends.
+                    let loops = core.runtime.live_loops().await;
+                    let background = if loops == 0 {
+                        core.tools.running_background_sessions().await
+                    } else {
+                        0
+                    };
+                    if loops > 0 || background > 0 {
+                        *last_activity.lock().expect("activity") = std::time::Instant::now();
+                    } else {
+                        eprintln!("modbit-core: idle for {secs}s with no client and no live run; exiting");
+                        break;
+                    }
                 }
             }
             _ = &mut shutdown => break,

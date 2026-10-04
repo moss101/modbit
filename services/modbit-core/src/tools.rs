@@ -420,6 +420,40 @@ pub struct SandboxGatewayCustody {
 }
 
 impl ToolHost {
+    /// How many background command sessions the broker has running (FIX-17).
+    /// The broker stops its processes once no Core returns within its orphan
+    /// grace, so a Core that exits while one runs kills it: an idle-exiting
+    /// Core waits for them. A broker that cannot be reached holds nothing;
+    /// one that does not answer in time is treated as holding something
+    /// (the Core stays up rather than guess).
+    pub(crate) async fn running_background_sessions(&self) -> usize {
+        use modbit_terminal::{Event, ExecClient};
+        let Some(execd) = &self.execd else {
+            return 0;
+        };
+        let target = execd.target.clone();
+        let ask = async move {
+            let mut client = ExecClient::connect(&target.endpoint, &target.boot_secret)
+                .await
+                .ok()?;
+            client.list().await.ok()?;
+            loop {
+                match client.next().await {
+                    Ok(Some(Event::Sessions(list))) => {
+                        return Some(list.iter().filter(|s| s.running).count());
+                    }
+                    Ok(Some(_)) => {}
+                    _ => return None,
+                }
+            }
+        };
+        match tokio::time::timeout(std::time::Duration::from_secs(2), ask).await {
+            Ok(Some(n)) => n,
+            Ok(None) => 0,
+            Err(_) => 1,
+        }
+    }
+
     /// Build the host: direct tools, default policy, broker.
     pub fn new(
         data_dir: &Path,

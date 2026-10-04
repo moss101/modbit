@@ -572,6 +572,14 @@ impl Runtime {
     pub async fn is_running(&self, task_id: &TaskId) -> bool {
         self.tasks.lock().await.contains_key(task_id)
     }
+
+    /// How many agent loops are alive on this Core, subagent children
+    /// included (each is its own task here). A Core with any is not idle:
+    /// the detached CLI `task run` has no client connected while its loop
+    /// works (FIX-17).
+    pub async fn live_loops(&self) -> usize {
+        self.tasks.lock().await.len()
+    }
 }
 
 /// Append events on several aggregates in one transaction under one lineage
