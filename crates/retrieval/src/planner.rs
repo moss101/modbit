@@ -128,6 +128,25 @@ pub struct FusedHit {
     pub content_hash: Option<String>,
     /// Retrieval level that first produced it.
     pub level: Level,
+    /// What each method contributed to the hit (provenance of the fusion):
+    /// the method's best rank and reciprocal-rank score for this region.
+    #[serde(default)]
+    pub evidence: Vec<MethodEvidence>,
+}
+
+/// One method's contribution to a fused hit.
+#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
+pub struct MethodEvidence {
+    /// The method (`exact` | `symbols` | `paths` | `lexical` | `semantic` |
+    /// `graph.*`).
+    pub source: String,
+    /// The method's best (lowest) rank among the candidates that landed in
+    /// this region.
+    pub rank: usize,
+    /// Its reciprocal-rank score; the hit's score is the sum over methods.
+    pub rrf: f32,
+    /// The line range that method matched, when it matched a range.
+    pub lines: Option<(u32, u32)>,
 }
 
 /// The plan result.
@@ -322,24 +341,33 @@ const RRF_K: f32 = 60.0;
 /// Graph-expansion candidates start this many ranks below the primary lists.
 const EXPANSION_RANK_OFFSET: usize = 20;
 
+/// Two line ranges belong to one region when they overlap or are at most
+/// this many lines apart.
+const REGION_GAP: u32 = 2;
+/// A region built from several candidates does not grow past this many
+/// lines unless one range simply contains the other.
+const MAX_REGION_LINES: u32 = 120;
+
 struct Fused {
     hit: FusedHit,
     distance: Option<u32>,
 }
 
-/// Fuse ranked candidate lists (reciprocal rank) and apply the boosts.
-fn fuse(
-    candidates: &[Candidate],
-    query: &str,
-    graph: &EvidenceGraph,
-    diagnostics: &[(String, u32)],
-    external: &[(String, u32)],
-) -> Vec<FusedHit> {
-    let mut by_key: BTreeMap<(String, Option<(u64, u64)>), Fused> = BTreeMap::new();
-    for c in candidates {
-        let key = (c.path.clone(), c.span);
-        let rrf = 1.0 / (RRF_K + c.rank as f32 + 1.0);
-        let e = by_key.entry(key).or_insert_with(|| Fused {
+fn near(a: (u32, u32), b: (u32, u32)) -> bool {
+    a.0 <= b.1.saturating_add(REGION_GAP) && b.0 <= a.1.saturating_add(REGION_GAP)
+}
+
+fn contains_range(a: (u32, u32), b: (u32, u32)) -> bool {
+    (a.0 <= b.0 && b.1 <= a.1) || (b.0 <= a.0 && a.1 <= b.1)
+}
+
+fn union_len(a: (u32, u32), b: (u32, u32)) -> u32 {
+    a.1.max(b.1) - a.0.min(b.0) + 1
+}
+
+impl Fused {
+    fn new(c: &Candidate) -> Self {
+        Self {
             hit: FusedHit {
                 path: c.path.clone(),
                 lines: c.lines,
@@ -349,31 +377,127 @@ fn fuse(
                 reasons: vec![],
                 content_hash: c.content_hash.clone(),
                 level: c.level,
+                evidence: vec![],
             },
             distance: c.distance,
-        });
-        e.hit.score += rrf;
-        if !e.hit.sources.contains(&c.source) {
-            e.hit.sources.push(c.source.clone());
         }
-        if e.hit.content_hash.is_none() {
-            e.hit.content_hash = c.content_hash.clone();
+    }
+
+    /// Whether a ranged candidate lands in this region.
+    fn takes(&self, lines: (u32, u32)) -> bool {
+        self.hit.lines.is_some_and(|r| {
+            near(r, lines) && (union_len(r, lines) <= MAX_REGION_LINES || contains_range(r, lines))
+        })
+    }
+
+    fn score(&self) -> f32 {
+        self.hit.evidence.iter().map(|e| e.rrf).sum()
+    }
+
+    /// Fold one candidate in. A method counts once per region, at its best
+    /// rank: a method that matched the same region several times (five exact
+    /// lines of one function, two needles) is one voice, so reinforcement
+    /// comes from different methods agreeing, not from one method repeating.
+    fn absorb(&mut self, c: &Candidate) {
+        let rrf = 1.0 / (RRF_K + c.rank as f32 + 1.0);
+        match self.hit.evidence.iter_mut().find(|e| e.source == c.source) {
+            Some(e) if c.rank < e.rank => {
+                e.rank = c.rank;
+                e.rrf = rrf;
+                e.lines = c.lines;
+            }
+            Some(_) => {}
+            None => self.hit.evidence.push(MethodEvidence {
+                source: c.source.clone(),
+                rank: c.rank,
+                rrf,
+                lines: c.lines,
+            }),
         }
-        if e.hit.lines.is_none() {
-            e.hit.lines = c.lines;
+        if let (Some(r), Some(l)) = (self.hit.lines, c.lines) {
+            self.hit.lines = Some((r.0.min(l.0), r.1.max(l.1)));
+            self.hit.span = match (self.hit.span, c.span) {
+                (Some(a), Some(b)) => Some((a.0.min(b.0), a.1.max(b.1))),
+                (a, b) => a.or(b),
+            };
         }
-        e.distance = match (e.distance, c.distance) {
+        if self.hit.content_hash.is_none() {
+            self.hit.content_hash = c.content_hash.clone();
+        }
+        self.distance = match (self.distance, c.distance) {
             (Some(a), Some(b)) => Some(a.min(b)),
             (a, b) => a.or(b),
         };
-        if c.level < e.hit.level {
-            e.hit.level = c.level;
+        if c.level < self.hit.level {
+            self.hit.level = c.level;
         }
     }
+
+    fn finish(mut self) -> Self {
+        self.hit.score = self.score();
+        self.hit.sources = self.hit.evidence.iter().map(|e| e.source.clone()).collect();
+        self
+    }
+}
+
+/// Group candidates into regions: per path, the ranged candidates (exact
+/// lines, symbol and semantic chunks, lexical chunks) that overlap are one
+/// region; a candidate that names the whole file (a path match, a graph
+/// neighbour, a lexical hit on a file that is one chunk) reinforces the
+/// path's best region, or stands alone when the path has none (FIX-12,
+/// audit N5: BM25 must reinforce a vector or exact hit on the same file).
+fn regions(candidates: &[Candidate]) -> Vec<Fused> {
+    let mut by_path: BTreeMap<&str, Vec<Fused>> = BTreeMap::new();
+    for c in candidates.iter().filter(|c| c.lines.is_some()) {
+        let rs = by_path.entry(c.path.as_str()).or_default();
+        let lines = c.lines.unwrap_or_default();
+        match rs.iter_mut().find(|r| r.takes(lines)) {
+            Some(r) => r.absorb(c),
+            None => {
+                let mut r = Fused::new(c);
+                r.absorb(c);
+                rs.push(r);
+            }
+        }
+    }
+    for c in candidates.iter().filter(|c| c.lines.is_none()) {
+        let rs = by_path.entry(c.path.as_str()).or_default();
+        let best = rs
+            .iter()
+            .enumerate()
+            .max_by(|(_, a), (_, b)| {
+                a.score()
+                    .partial_cmp(&b.score())
+                    .unwrap_or(std::cmp::Ordering::Equal)
+                    .then(b.hit.lines.cmp(&a.hit.lines))
+            })
+            .map(|(i, _)| i);
+        match best {
+            Some(i) => rs[i].absorb(c),
+            None => {
+                let mut r = Fused::new(c);
+                r.absorb(c);
+                rs.push(r);
+            }
+        }
+    }
+    by_path.into_values().flatten().map(Fused::finish).collect()
+}
+
+/// Fuse ranked candidate lists (reciprocal rank across methods, over
+/// regions) and apply the boosts.
+fn fuse(
+    candidates: &[Candidate],
+    query: &str,
+    graph: &EvidenceGraph,
+    diagnostics: &[(String, u32)],
+    external: &[(String, u32)],
+) -> Vec<FusedHit> {
+    let by_key = regions(candidates);
     let q_leaf = leaf(query.trim()).to_ascii_lowercase();
     let q_lower = query.trim().to_ascii_lowercase();
     let mut out: Vec<FusedHit> = by_key
-        .into_values()
+        .into_iter()
         .map(|mut f| {
             let h = &mut f.hit;
             // Exact symbol / path match.
@@ -674,8 +798,8 @@ fn run_level(
                     for (i, h) in hits.into_iter().enumerate() {
                         cands.push(Candidate {
                             path: h.path,
-                            lines: None,
-                            span: None,
+                            lines: h.lines,
+                            span: h.span,
                             content_hash: None,
                             source: "lexical".into(),
                             rank: i,

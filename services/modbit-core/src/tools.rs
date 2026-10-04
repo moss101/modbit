@@ -2646,12 +2646,9 @@ type ChangedChunkSource = (String, Option<(String, Vec<(String, u64, u64)>)>);
 
 /// Symbol byte spans of a path as chunk boundaries (`name`, start, end).
 fn symbol_spans(symbols: &modbit_retrieval::SymbolIndex, path: &str) -> Vec<(String, u64, u64)> {
-    symbols
-        .symbols_in(path)
-        .iter()
-        .filter(|s| s.container.is_none())
-        .map(|s| (s.name.clone(), s.span.0, s.span.1))
-        .collect()
+    // A definition too large for one chunk (a big `impl`, a class) is
+    // embedded member by member, not by its first 4 KiB (FIX-12, N9).
+    symbols.chunk_spans(path, modbit_retrieval::semantic::MAX_CHUNK_BYTES)
 }
 
 impl modbit_tools::SearchPort for IndexPort {
