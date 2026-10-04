@@ -21,7 +21,10 @@ fn media_block(mime: &str, alt: &str, data: &crate::contract::MediaPayload) -> V
 pub fn request_body(req: &ModelRequest) -> Value {
     let mut system = String::new();
     let mut messages: Vec<Value> = Vec::new();
-    for m in &req.messages {
+    // A `tool_result` block with no `tool_use` is a 400; it never goes out
+    // (FIX-07).
+    let history = crate::contract::without_orphan_tool_results(&req.messages);
+    for m in history.iter() {
         match m.role {
             Role::System => {
                 for p in &m.parts {

@@ -156,6 +156,69 @@ impl Message {
     }
 }
 
+/// The messages without any tool result (or media answering one) whose tool
+/// call no earlier assistant message announced (FIX-07, audit C).
+///
+/// A strict endpoint answers such an orphan with a 400 — a `tool` message
+/// that is not a response to a preceding `tool_calls`, a `tool_result` block
+/// with no `tool_use` — and it can reach the adapter when history was cut
+/// through a turn (a compaction replayed from a log written before the cut was
+/// aligned). The orphan is dropped, not rewritten into a user message: a
+/// tool's text must never be promoted to a role it did not have. A message
+/// left with no parts is dropped too. The borrowed slice is returned when
+/// nothing needs repair, which is the normal case.
+#[must_use]
+pub fn without_orphan_tool_results(messages: &[Message]) -> std::borrow::Cow<'_, [Message]> {
+    use std::collections::HashSet;
+    let announces = |m: &Message, ids: &mut HashSet<String>| {
+        if m.role == Role::Assistant {
+            for p in &m.parts {
+                if let ContentPart::ToolCall { call_id, .. } = p {
+                    ids.insert(call_id.clone());
+                }
+            }
+        }
+    };
+    let orphan = |p: &ContentPart, ids: &HashSet<String>| match p {
+        ContentPart::ToolResult { call_id, .. }
+        | ContentPart::Media {
+            call_id: Some(call_id),
+            ..
+        } => !ids.contains(call_id),
+        _ => false,
+    };
+    let mut ids = HashSet::new();
+    let mut dirty = false;
+    for m in messages {
+        if m.parts.iter().any(|p| orphan(p, &ids)) {
+            dirty = true;
+            break;
+        }
+        announces(m, &mut ids);
+    }
+    if !dirty {
+        return std::borrow::Cow::Borrowed(messages);
+    }
+    let mut ids = HashSet::new();
+    let mut out = Vec::with_capacity(messages.len());
+    for m in messages {
+        let parts: Vec<ContentPart> = m
+            .parts
+            .iter()
+            .filter(|p| !orphan(p, &ids))
+            .cloned()
+            .collect();
+        announces(m, &mut ids);
+        if !parts.is_empty() || m.parts.is_empty() {
+            out.push(Message {
+                role: m.role,
+                parts,
+            });
+        }
+    }
+    std::borrow::Cow::Owned(out)
+}
+
 /// A tool as projected to the model (docs/16 "Dynamic task-scoped projection").
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
 pub struct ToolProjection {
