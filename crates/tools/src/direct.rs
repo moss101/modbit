@@ -1,5 +1,6 @@
 //! Direct tools over the real substrate crates (docs/17 inventory).
 
+use std::path::{Path, PathBuf};
 use std::sync::Arc;
 
 use modbit_protocol::v1::ExecRequest;
@@ -611,7 +612,54 @@ tool!(
 );
 
 fn git_err(e: modbit_git::Error) -> ToolOutcome {
-    ToolOutcome::fail("GIT", e.to_string())
+    let code = match &e {
+        modbit_git::Error::InvalidRef { .. } => "INVALID_REF",
+        _ => "GIT",
+    };
+    // `Error`'s text is already stripped of URL credentials (modbit-git).
+    ToolOutcome::fail(code, e.to_string())
+}
+
+/// The one directory model-requested worktrees may live in: a sibling of the
+/// workspace root, `<root>.modbit-worktrees`. It is outside the working tree
+/// (a worktree nested in the tree would show up as an untracked embedded
+/// repository in the user's own status, snapshots and checkpoints) and it is
+/// Modbit's own, so the model cannot place a checkout on, or remove, anything
+/// else.
+#[must_use]
+pub fn worktree_root(workspace_root: &Path) -> Option<PathBuf> {
+    let name = workspace_root.file_name()?.to_os_string();
+    let mut dir_name = name;
+    dir_name.push(".modbit-worktrees");
+    Some(workspace_root.parent()?.join(dir_name))
+}
+
+/// Confine a model-supplied worktree path to [`worktree_root`] with the
+/// workspace crate's own path policy (lexical `..` and absolute-path checks,
+/// symlink resolution, protected patterns), so there is one confinement rule.
+/// A relative path is relative to that directory.
+fn confine_worktree_path(
+    workspace_root: &Path,
+    given: &str,
+) -> std::result::Result<PathBuf, Box<ToolOutcome>> {
+    let refuse = |code: &str, msg: String| Box::new(ToolOutcome::fail(code, msg));
+    let Some(root) = worktree_root(workspace_root) else {
+        return Err(refuse(
+            "PATH_OUTSIDE_ROOT",
+            "the workspace root has no parent directory to hold worktrees".into(),
+        ));
+    };
+    std::fs::create_dir_all(&root)
+        .map_err(|e| refuse("IO", format!("worktree root `{}`: {e}", root.display())))?;
+    let policy = modbit_workspace::PathPolicy::new(&root, &[]).map_err(|e| Box::new(ws_err(e)))?;
+    let resolved = policy.check(given).map_err(|e| Box::new(ws_err(e)))?;
+    if resolved.relative.is_empty() {
+        return Err(refuse(
+            "PATH_OUTSIDE_ROOT",
+            "a worktree needs its own directory under the worktree root".into(),
+        ));
+    }
+    Ok(resolved.absolute)
 }
 
 tool!(
@@ -704,10 +752,16 @@ tool!(
             .map(str::to_owned)
             .unwrap_or_else(|| "HEAD".into());
         let branch = s(&args, "branch");
+        // Confine the path before anything is created: a refused path must not
+        // leave a branch behind.
+        let path = match confine_worktree_path(root, &s(&args, "path")) {
+            Ok(p) => p,
+            Err(o) => return *o,
+        };
         if let Err(e) = repo.create_branch(&branch, &base) {
             return git_err(e);
         }
-        match repo.worktree_add(std::path::Path::new(&s(&args, "path")), &branch) {
+        match repo.worktree_add(&path, &branch) {
             Ok(wt) => {
                 ToolOutcome::ok(json!({"branch": branch, "path": wt.dir(), "head": wt.head().ok()}))
             }
@@ -734,8 +788,26 @@ tool!(
             Ok(r) => r,
             Err(e) => return git_err(e),
         };
-        match repo.worktree_remove(std::path::Path::new(&s(&args, "path"))) {
-            Ok(()) => ToolOutcome::ok(json!({"removed": s(&args, "path")})),
+        let path = match confine_worktree_path(root, &s(&args, "path")) {
+            Ok(p) => p,
+            Err(o) => return *o,
+        };
+        // Only a worktree this repository has registered, and only one under
+        // the worktree root (the check above): never the user's own checkout.
+        let registered = match repo.worktree_list() {
+            Ok(list) => list
+                .iter()
+                .any(|w| w.path.canonicalize().unwrap_or_else(|_| w.path.clone()) == path),
+            Err(e) => return git_err(e),
+        };
+        if !registered {
+            return ToolOutcome::fail(
+                "NOT_A_WORKTREE",
+                format!("`{}` is not a worktree of this repository", path.display()),
+            );
+        }
+        match repo.worktree_remove(&path) {
+            Ok(()) => ToolOutcome::ok(json!({"removed": path})),
             Err(e) => git_err(e),
         }
     }

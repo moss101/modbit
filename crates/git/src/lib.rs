@@ -5,15 +5,23 @@
 //! provenance-bound snapshot commit under `refs/modbit/snapshots/` that never
 //! moves HEAD or the index.
 //!
+//! Every `git` process is built by one hardened command builder (`harden`):
+//! repository hooks, fsmonitor, filters, merge drivers, textconv and signing
+//! programs never run, caller-supplied refs are validated and follow
+//! `--end-of-options`, and URL credentials are redacted from errors (FIX-01).
+//!
 //! Canonical owner: workspace-git (`docs/12`).
 
 #![forbid(unsafe_code)]
 
 use std::path::{Path, PathBuf};
-use std::process::Command;
 
 pub mod diff;
+mod harden;
 pub use diff::{FileDiff, Hunk, apply_selected, parse_unified};
+pub use harden::{
+    redact_url_credentials, validate_branch_syntax, validate_remote, validate_revision,
+};
 
 use serde::{Deserialize, Serialize};
 
@@ -32,6 +40,17 @@ pub enum Error {
         code: Option<i32>,
         /// Stderr.
         stderr: String,
+    },
+    /// A revision, branch or remote supplied by a caller was refused before it
+    /// reached a command line (option-shaped, ambiguous, or not a valid name).
+    #[error("invalid {kind} `{value}`: {reason}")]
+    InvalidRef {
+        /// What was being named (`revision`, `branch`, `remote`).
+        kind: String,
+        /// The offending text (escaped, credentials redacted).
+        value: String,
+        /// Why it was refused.
+        reason: String,
     },
     /// The path is not inside a Git repository.
     #[error("`{0}` is not a git repository")]
@@ -60,24 +79,28 @@ pub struct Repo {
     dir: PathBuf,
 }
 
-/// Run git in `dir`; returns stdout.
-fn run(dir: &Path, args: &[&str]) -> Result<String> {
-    let out = Command::new("git")
-        .arg("-C")
-        .arg(dir)
-        .args(args)
-        .env("GIT_TERMINAL_PROMPT", "0")
-        .env("LC_ALL", "C")
-        .output()
-        .map_err(Error::Spawn)?;
+/// Run git in `dir` (through the one hardened command builder, [`harden`]);
+/// returns stdout bytes. `envs` are extra variables for this call only.
+fn run_bytes(dir: &Path, args: &[&str], envs: &[(&str, &str)]) -> Result<Vec<u8>> {
+    let mut cmd = harden::command(dir, args)?;
+    cmd.args(args);
+    for (k, v) in envs {
+        cmd.env(k, v);
+    }
+    let out = cmd.output().map_err(Error::Spawn)?;
     if !out.status.success() {
         return Err(Error::Git {
-            args: args.iter().map(|s| (*s).to_owned()).collect(),
+            args: args.iter().map(|s| redact_url_credentials(s)).collect(),
             code: out.status.code(),
-            stderr: String::from_utf8_lossy(&out.stderr).trim().to_owned(),
+            stderr: redact_url_credentials(String::from_utf8_lossy(&out.stderr).trim()),
         });
     }
-    Ok(String::from_utf8_lossy(&out.stdout).into_owned())
+    Ok(out.stdout)
+}
+
+/// Run git in `dir`; returns stdout.
+fn run(dir: &Path, args: &[&str]) -> Result<String> {
+    run_bytes(dir, args, &[]).map(|b| String::from_utf8_lossy(&b).into_owned())
 }
 
 /// Status of one path (porcelain v2 simplified).
@@ -207,7 +230,9 @@ impl Repo {
 
     /// Initialize a new repository with an initial branch.
     pub fn init(dir: &Path, initial_branch: &str) -> Result<Self> {
+        validate_branch_syntax(initial_branch)?;
         std::fs::create_dir_all(dir).map_err(Error::Spawn)?;
+        check_branch_name(dir, initial_branch)?;
         run(dir, &["init", "-q", "-b", initial_branch])?;
         // Repositories Modbit creates store bytes as given: no line-ending
         // rewriting on checkout (Git for Windows defaults autocrlf=true).
@@ -238,34 +263,49 @@ impl Repo {
         })
     }
 
-    /// Typed status.
+    /// Typed status, from `status --porcelain=v1 -z` (NUL-terminated records,
+    /// never quoted, so names with spaces, quotes or non-ASCII bytes survive).
+    ///
+    /// Renames are not detected (`--no-renames`): a rename is reported as the
+    /// deleted old path and the added new path, which is what a consumer that
+    /// captures or restores per path needs. The two-letter code keeps the
+    /// porcelain-v2 spelling: `.` for "unchanged in this column".
     pub fn status(&self) -> Result<Vec<StatusEntry>> {
-        let out = run(
+        let out = run_bytes(
             &self.dir,
-            &["status", "--porcelain=v2", "--untracked-files=all"],
+            &[
+                "status",
+                "--porcelain=v1",
+                "-z",
+                "--no-renames",
+                "--untracked-files=all",
+            ],
+            &[],
         )?;
         let mut entries = Vec::new();
-        for line in out.lines() {
-            let mut parts = line.splitn(9, ' ');
-            match parts.next() {
-                Some("1") | Some("2") => {
-                    let code = parts.next().unwrap_or("").to_owned();
-                    let path = line.rsplit(' ').next().unwrap_or("").to_owned();
-                    entries.push(StatusEntry { path, code });
-                }
-                Some("u") => {
-                    let path = line.rsplit(' ').next().unwrap_or("").to_owned();
-                    entries.push(StatusEntry {
-                        path,
-                        code: parts.next().unwrap_or("UU").to_owned(),
-                    });
-                }
-                Some("?") => entries.push(StatusEntry {
-                    path: line[2..].to_owned(),
-                    code: "??".into(),
-                }),
-                _ => {}
+        let mut records = out.split(|b| *b == 0).filter(|r| !r.is_empty());
+        while let Some(rec) = records.next() {
+            if rec.len() < 4 || rec[2] != b' ' {
+                return Err(Error::Parse(format!(
+                    "status record `{}`",
+                    String::from_utf8_lossy(rec)
+                )));
             }
+            let (xy, path) = (&rec[..2], &rec[3..]);
+            // With renames/copies enabled in config the record is followed by
+            // the origin path; `--no-renames` makes that unreachable, but a
+            // record we do not understand must not shift the stream.
+            if matches!(xy[0], b'R' | b'C') || matches!(xy[1], b'R' | b'C') {
+                records.next();
+            }
+            let code: String = xy
+                .iter()
+                .map(|b| if *b == b' ' { '.' } else { char::from(*b) })
+                .collect();
+            entries.push(StatusEntry {
+                path: String::from_utf8_lossy(path).into_owned(),
+                code,
+            });
         }
         entries.sort_by(|a, b| a.path.cmp(&b.path));
         Ok(entries)
@@ -293,16 +333,45 @@ impl Repo {
         self.head()
     }
 
+    /// Resolve `revision` to the object it names. The text is validated
+    /// ([`validate_revision`]: no option shape, whitespace, control characters
+    /// or range) and passed after `--end-of-options`; a revision git cannot
+    /// resolve is refused. Every public operation that takes a caller-supplied
+    /// revision goes through this (or [`validate_revision`] alone when a lookup
+    /// per call would be wasteful).
+    pub fn resolve(&self, revision: &str) -> Result<String> {
+        validate_revision(revision)?;
+        run(
+            &self.dir,
+            &["rev-parse", "--verify", "--end-of-options", revision],
+        )
+        .map(|s| s.trim().to_owned())
+    }
+
     /// Create `branch` at `base` (a revision) without checking it out.
     pub fn create_branch(&self, branch: &str, base: &str) -> Result<()> {
-        run(&self.dir, &["branch", "--no-track", branch, base]).map(|_| ())
+        check_branch_name(&self.dir, branch)?;
+        let base = self.resolve(&format!("{base}^{{commit}}"))?;
+        run(
+            &self.dir,
+            &["branch", "--no-track", "--end-of-options", branch, &base],
+        )
+        .map(|_| ())
     }
 
     /// Add a worktree at `path` checked out on `branch` (which must exist).
     pub fn worktree_add(&self, path: &Path, branch: &str) -> Result<Repo> {
+        self.resolve(branch)?;
         run(
             &self.dir,
-            &["worktree", "add", "-q", &git_path(path)?, branch],
+            &[
+                "worktree",
+                "add",
+                "-q",
+                "--end-of-options",
+                &git_path(path)?,
+                branch,
+            ],
         )?;
         Repo::open(path)
     }
@@ -311,7 +380,13 @@ impl Repo {
     pub fn worktree_remove(&self, path: &Path) -> Result<()> {
         run(
             &self.dir,
-            &["worktree", "remove", "--force", &git_path(path)?],
+            &[
+                "worktree",
+                "remove",
+                "--force",
+                "--end-of-options",
+                &git_path(path)?,
+            ],
         )
         .map(|_| ())
     }
@@ -340,24 +415,41 @@ impl Repo {
         Ok(list)
     }
 
-    fn numstat(&self, args: &[&str]) -> Result<Vec<DiffFile>> {
-        let mut a = vec!["diff", "--numstat", "-M"];
-        a.extend_from_slice(args);
-        let out = run(&self.dir, &a)?;
+    /// `git diff` over `revs` (already-resolved object ids or `HEAD`): the
+    /// flags that keep repository programs out (`--no-ext-diff`,
+    /// `--no-textconv`) and `--end-of-options` before the operands.
+    fn diff_args<'a>(flags: &[&'a str], revs: &[&'a str]) -> Vec<&'a str> {
+        let mut a = vec!["diff", "--no-ext-diff", "--no-textconv", "-M"];
+        a.extend_from_slice(flags);
+        a.push("--end-of-options");
+        a.extend_from_slice(revs);
+        a.push("--");
+        a
+    }
+
+    fn numstat(&self, revs: &[&str]) -> Result<Vec<DiffFile>> {
+        // `-z`: `add\tdel\tpath\0`, and for a rename `add\tdel\t\0old\0new\0`.
+        let out = run_bytes(&self.dir, &Self::diff_args(&["--numstat", "-z"], revs), &[])?;
         let mut files = Vec::new();
-        for line in out.lines() {
-            let mut it = line.split('\t');
+        let mut records = out.split(|b| *b == 0).filter(|r| !r.is_empty());
+        while let Some(rec) = records.next() {
+            let rec = String::from_utf8_lossy(rec);
+            let mut it = rec.splitn(3, '\t');
             let (add, del, path) = (
                 it.next().unwrap_or(""),
                 it.next().unwrap_or(""),
                 it.next().unwrap_or(""),
             );
-            let path = path
-                .rsplit(" => ")
-                .next()
-                .unwrap_or(path)
-                .trim_end_matches('}')
-                .to_owned();
+            let path = if path.is_empty() {
+                // Rename or copy: the next two records are the old and new path.
+                let _old = records.next();
+                records
+                    .next()
+                    .map(|p| String::from_utf8_lossy(p).into_owned())
+                    .unwrap_or_default()
+            } else {
+                path.to_owned()
+            };
             files.push(DiffFile {
                 path,
                 additions: add.parse().ok(),
@@ -367,11 +459,13 @@ impl Repo {
         Ok(files)
     }
 
-    /// Typed diff between two revisions.
+    /// Typed diff between two revisions. Both are validated and resolved to
+    /// object ids before they reach the command line, so a model-supplied
+    /// `--output=…`, a range, or whitespace is refused, not interpreted.
     pub fn diff(&self, base: &str, target: &str) -> Result<Diff> {
-        let range = format!("{base}..{target}");
-        let files = self.numstat(&[&range])?;
-        let unified = run(&self.dir, &["diff", "-M", &range])?;
+        let (b, t) = (self.resolve(base)?, self.resolve(target)?);
+        let files = self.numstat(&[&b, &t])?;
+        let unified = run(&self.dir, &Self::diff_args(&[], &[&b, &t]))?;
         Ok(Diff {
             base: base.into(),
             target: target.into(),
@@ -383,7 +477,7 @@ impl Repo {
     /// Typed diff of the worktree (staged + unstaged) against HEAD.
     pub fn diff_worktree(&self) -> Result<Diff> {
         let files = self.numstat(&["HEAD"])?;
-        let unified = run(&self.dir, &["diff", "-M", "HEAD"])?;
+        let unified = run(&self.dir, &Self::diff_args(&[], &["HEAD"]))?;
         Ok(Diff {
             base: "HEAD".into(),
             target: "WORKTREE".into(),
@@ -399,6 +493,8 @@ impl Repo {
             &self.dir,
             &[
                 "log",
+                "--no-ext-diff",
+                "--no-textconv",
                 &format!("--max-count={}", max.max(1)),
                 "--name-only",
                 "--format=%x1e%H%x1f%an%x1f%aI%x1f%s",
@@ -433,7 +529,11 @@ impl Repo {
 
     /// Merge base.
     pub fn merge_base(&self, a: &str, b: &str) -> Result<String> {
-        Ok(run(&self.dir, &["merge-base", a, b])?.trim().to_owned())
+        validate_revision(a)?;
+        validate_revision(b)?;
+        Ok(run(&self.dir, &["merge-base", "--end-of-options", a, b])?
+            .trim()
+            .to_owned())
     }
 
     /// Start a merge transaction: merge `source` into this worktree's branch
@@ -443,10 +543,8 @@ impl Repo {
             .current_branch()?
             .ok_or_else(|| Error::Parse("merge target must be on a branch".into()))?;
         let target_before = self.head()?;
-        let base = self.merge_base(&target_before, source)?;
-        let source_sha = run(&self.dir, &["rev-parse", "--verify", source])?
-            .trim()
-            .to_owned();
+        let source_sha = self.resolve(source)?;
+        let base = self.merge_base(&target_before, &source_sha)?;
         let result = run(
             &self.dir,
             &[
@@ -458,13 +556,26 @@ impl Repo {
                 "--no-commit",
                 "--no-ff",
                 "-q",
-                source,
+                "--end-of-options",
+                &source_sha,
             ],
         );
-        let conflicts: Vec<String> = run(&self.dir, &["diff", "--name-only", "--diff-filter=U"])?
-            .lines()
-            .map(str::to_owned)
-            .collect();
+        let conflicts: Vec<String> = run_bytes(
+            &self.dir,
+            &[
+                "diff",
+                "--no-ext-diff",
+                "--no-textconv",
+                "--name-only",
+                "-z",
+                "--diff-filter=U",
+            ],
+            &[],
+        )?
+        .split(|b| *b == 0)
+        .filter(|p| !p.is_empty())
+        .map(|p| String::from_utf8_lossy(p).into_owned())
+        .collect();
         let state = if !conflicts.is_empty() {
             MergeState::Conflicted
         } else if result.is_ok() {
@@ -542,8 +653,18 @@ impl Repo {
                 detail: "nothing to abort".into(),
             });
         }
+        validate_revision(&tx.target_before)?;
         let _ = run(&self.dir, &["merge", "--abort"]);
-        run(&self.dir, &["reset", "-q", "--hard", &tx.target_before])?;
+        run(
+            &self.dir,
+            &[
+                "reset",
+                "-q",
+                "--hard",
+                "--end-of-options",
+                &tx.target_before,
+            ],
+        )?;
         tx.state = MergeState::Aborted;
         Ok(())
     }
@@ -552,6 +673,7 @@ impl Repo {
     /// commit under `refs/modbit/snapshots/<id>` using a temporary index;
     /// HEAD, the index and the worktree are untouched.
     pub fn snapshot_dirty(&self, id: &str) -> Result<Snapshot> {
+        harden::plain_token("snapshot id", id)?;
         let parent = self.head()?;
         let paths: Vec<String> = self.status()?.into_iter().map(|e| e.path).collect();
         let git_dir = run(&self.dir, &["rev-parse", "--git-dir"])?
@@ -568,22 +690,8 @@ impl Repo {
         .into_owned();
         let _ = &tmp_index;
         let with_index = |args: &[&str]| -> Result<String> {
-            let out = Command::new("git")
-                .arg("-C")
-                .arg(&self.dir)
-                .args(args)
-                .env("GIT_INDEX_FILE", &tmp_index)
-                .env("LC_ALL", "C")
-                .output()
-                .map_err(Error::Spawn)?;
-            if !out.status.success() {
-                return Err(Error::Git {
-                    args: args.iter().map(|s| (*s).to_owned()).collect(),
-                    code: out.status.code(),
-                    stderr: String::from_utf8_lossy(&out.stderr).trim().to_owned(),
-                });
-            }
-            Ok(String::from_utf8_lossy(&out.stdout).into_owned())
+            run_bytes(&self.dir, args, &[("GIT_INDEX_FILE", &tmp_index)])
+                .map(|b| String::from_utf8_lossy(&b).into_owned())
         };
         with_index(&["read-tree", "HEAD"])?;
         with_index(&["add", "-A", "."])?;
@@ -625,7 +733,12 @@ impl Repo {
 
     /// The URL a remote is configured with (the spelling in the
     /// configuration; `insteadOf` rewrites apply when git connects, not here).
+    ///
+    /// The raw spelling may carry credentials (`https://user:token@host/…`):
+    /// the caller that echoes it anywhere must pass it through
+    /// [`redact_url_credentials`]. Errors from this crate are already redacted.
     pub fn remote_url(&self, remote: &str) -> Result<String> {
+        validate_remote(remote)?;
         run(
             &self.dir,
             &["config", "--get", &format!("remote.{remote}.url")],
@@ -633,19 +746,49 @@ impl Repo {
         .map(|s| s.trim().to_owned())
     }
 
+    /// `remote` names a remote configured in this repository (never a URL or
+    /// path: a push or ls-remote target is chosen by configuration, not by
+    /// whoever supplied the argument).
+    fn configured_remote(&self, remote: &str) -> Result<()> {
+        validate_remote(remote)?;
+        self.remote_url(remote)
+            .map(|_| ())
+            .map_err(|_| Error::InvalidRef {
+                kind: "remote".into(),
+                value: redact_url_credentials(&remote.escape_debug().to_string()),
+                reason: "is not a configured remote of this repository".into(),
+            })
+    }
+
     /// Point `branch` at `revision` (created or moved), without checking it out.
     pub fn set_branch(&self, branch: &str, revision: &str) -> Result<()> {
-        run(&self.dir, &["branch", "-f", "--no-track", branch, revision]).map(|_| ())
+        check_branch_name(&self.dir, branch)?;
+        let revision = self.resolve(&format!("{revision}^{{commit}}"))?;
+        run(
+            &self.dir,
+            &[
+                "branch",
+                "-f",
+                "--no-track",
+                "--end-of-options",
+                branch,
+                &revision,
+            ],
+        )
+        .map(|_| ())
     }
 
     /// Push `branch` to `remote` (PX-007: the typed branch push; no shell).
     /// `force` updates a remote branch that already exists at another commit.
     pub fn push_branch(&self, remote: &str, branch: &str, force: bool) -> Result<String> {
+        check_branch_name(&self.dir, branch)?;
+        self.configured_remote(remote)?;
         let refspec = format!("refs/heads/{branch}:refs/heads/{branch}");
         let mut args = vec!["push", "--porcelain", "--no-verify"];
         if force {
             args.push("--force");
         }
+        args.push("--end-of-options");
         args.push(remote);
         args.push(&refspec);
         run(&self.dir, &args)
@@ -654,11 +797,14 @@ impl Repo {
     /// The commit a remote branch is at, as this repository last saw it
     /// (`git ls-remote`; no fetch of objects).
     pub fn remote_branch_head(&self, remote: &str, branch: &str) -> Result<Option<String>> {
+        check_branch_name(&self.dir, branch)?;
+        self.configured_remote(remote)?;
         let out = run(
             &self.dir,
             &[
                 "ls-remote",
                 "--heads",
+                "--end-of-options",
                 remote,
                 &format!("refs/heads/{branch}"),
             ],
@@ -670,33 +816,49 @@ impl Repo {
             .map(str::to_owned))
     }
 
-    /// The commit a revision resolves to.
+    /// The commit a revision resolves to (see [`Repo::resolve`]).
     pub fn rev_parse(&self, revision: &str) -> Result<String> {
-        run(&self.dir, &["rev-parse", "--verify", revision]).map(|s| s.trim().to_owned())
+        self.resolve(revision)
     }
 
     /// Whether a ref exists.
     pub fn ref_exists(&self, reference: &str) -> bool {
-        run(&self.dir, &["rev-parse", "--verify", "-q", reference]).is_ok()
+        validate_revision(reference).is_ok()
+            && run(
+                &self.dir,
+                &["rev-parse", "--verify", "-q", "--end-of-options", reference],
+            )
+            .is_ok()
     }
 
-    /// Read a file at a revision.
+    /// Read a file at a revision (no textconv, no external programs).
     pub fn show(&self, revision: &str, path: &str) -> Result<Vec<u8>> {
-        let out = Command::new("git")
-            .arg("-C")
-            .arg(&self.dir)
-            .args(["show", &format!("{revision}:{path}")])
-            .output()
-            .map_err(Error::Spawn)?;
-        if !out.status.success() {
-            return Err(Error::Git {
-                args: vec!["show".into()],
-                code: out.status.code(),
-                stderr: String::from_utf8_lossy(&out.stderr).trim().to_owned(),
-            });
-        }
-        Ok(out.stdout)
+        validate_revision(revision)?;
+        run_bytes(
+            &self.dir,
+            &[
+                "show",
+                "--no-ext-diff",
+                "--no-textconv",
+                "--end-of-options",
+                &format!("{revision}:{path}"),
+            ],
+            &[],
+        )
     }
+}
+
+/// `name` is a valid branch name (git's own `check-ref-format` rules) and not
+/// option-shaped.
+fn check_branch_name(dir: &Path, name: &str) -> Result<()> {
+    validate_branch_syntax(name)?;
+    run(dir, &["check-ref-format", &format!("refs/heads/{name}")])
+        .map(|_| ())
+        .map_err(|_| Error::InvalidRef {
+            kind: "branch".into(),
+            value: name.escape_debug().to_string(),
+            reason: "is not a valid branch name".into(),
+        })
 }
 
 /// A path as the git binary accepts it: canonicalized Windows paths carry the
