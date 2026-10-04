@@ -783,9 +783,13 @@ impl ToolHost {
         // until its next round (M9.4). A call already in flight keeps the
         // snapshot it was decided with.
         let root_text = root.as_ref().map(|p| p.to_string_lossy().into_owned());
-        let task_config =
-            self.configurations
-                .for_task(task_id, &self.data_dir, root_text.as_deref());
+        // FIX-05: a call decided with no snapshot (nothing resolved the
+        // task's configuration yet) is decided only under a configuration
+        // whose every layer could be read.
+        let task_config = self
+            .configurations
+            .try_for_task(task_id, &self.data_dir, root_text.as_deref())
+            .map_err(|e| anyhow::anyhow!("{}: {e}", crate::config::ConfigError::CODE))?;
         let port = KernelPort {
             kernel: CapabilityKernel::default(),
             lease,

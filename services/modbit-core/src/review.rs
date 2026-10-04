@@ -62,7 +62,7 @@ struct Candidate {
 /// The verification residue of the task's workspace, when it has one.
 async fn residue_of(core: &Core, task: &Task) -> std::collections::BTreeSet<String> {
     match task.workspace_root.as_deref() {
-        Some(root) => crate::runtime::verification_residue(core, root).await,
+        Some(root) => crate::runtime::candidate_exclusions(core, task, root).await,
         None => std::collections::BTreeSet::new(),
     }
 }
@@ -89,7 +89,7 @@ fn candidate(
         .map_err(|e| ("GIT".to_owned(), e.to_string()))?;
     let untracked: Vec<&str> = status
         .iter()
-        .filter(|e| e.code.starts_with('?') && !e.path.starts_with(".modbit"))
+        .filter(|e| e.code.starts_with('?') && !crate::verify::is_scratch(&e.path))
         .filter(|e| !crate::verify::is_residue(&e.path, residue))
         .map(|e| e.path.as_str())
         .collect();
@@ -107,7 +107,7 @@ fn candidate(
         .map_err(|e| ("GIT".to_owned(), e.to_string()))?;
     let files = parse_unified(&diff.unified)
         .into_iter()
-        .filter(|f| !f.path.starts_with(".modbit"))
+        .filter(|f| !crate::verify::is_scratch(&f.path))
         .filter(|f| !crate::verify::is_residue(&f.path, residue))
         .collect();
     Ok(Candidate {
