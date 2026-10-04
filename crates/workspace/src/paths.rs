@@ -80,6 +80,17 @@ impl PathPolicy {
         &self.root
     }
 
+    /// The protected pattern a root-relative, forward-slash path matches, if
+    /// any. Purely lexical (no filesystem access): the check the snapshot
+    /// diff applies to paths a process changed.
+    #[must_use]
+    pub fn protected_match(&self, rel: &str) -> Option<&str> {
+        self.protected
+            .matches(rel)
+            .first()
+            .map(|&i| self.protected_patterns[i].as_str())
+    }
+
     /// Lexical normalization: reject absolute paths outside the root, `..`
     /// that climbs above the root, and empty components.
     fn normalize(&self, given: &str) -> Result<PathBuf> {

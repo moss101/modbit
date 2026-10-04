@@ -1180,6 +1180,35 @@ pub fn observe(
     result_ref: &str,
     ceiling_bytes: usize,
 ) -> Observation {
+    observe_streams(
+        status,
+        error_code,
+        error_message,
+        structured_output,
+        stdout_ref,
+        None,
+        result_ref,
+        ceiling_bytes,
+    )
+}
+
+/// [`observe`] for a result with both output streams: the `stderr_ref` is
+/// named in the header beside the `stdout_ref`, so a cut of the structured
+/// output at the ceiling never hides that stderr exists or where the whole of
+/// it is (FIX-10: compiler errors and stack traces are on stderr; the
+/// `stderr_preview` itself rides in the structured output).
+#[must_use]
+#[allow(clippy::too_many_arguments)]
+pub fn observe_streams(
+    status: &str,
+    error_code: Option<&str>,
+    error_message: Option<&str>,
+    structured_output: &str,
+    stdout_ref: Option<&str>,
+    stderr_ref: Option<&str>,
+    result_ref: &str,
+    ceiling_bytes: usize,
+) -> Observation {
     let total = structured_output.len();
     let included = total.min(ceiling_bytes);
     let mut cut = included;
@@ -1202,6 +1231,9 @@ pub fn observe(
     }
     if let Some(s) = stdout_ref {
         text.push_str(&format!("stdout_ref: {s}\n"));
+    }
+    if let Some(s) = stderr_ref {
+        text.push_str(&format!("stderr_ref: {s}\n"));
     }
     text.push_str("output:\n");
     text.push_str(body);
@@ -1566,5 +1598,31 @@ mod tests {
             failure_signature("test.run", "EXIT", "a\n\nb\nc\nd"),
             failure_signature("test.run", "EXIT", "a\nb\nc\nzzz")
         );
+    }
+
+    #[test]
+    fn a_stderr_ref_is_named_in_the_header_even_when_the_output_is_cut() {
+        let structured = format!(
+            r#"{{"exit_code":101,"stderr_preview":"error[E0425]","stdout_preview":"{}"}}"#,
+            "x".repeat(500)
+        );
+        let o = observe_streams(
+            "APPLICATION_FAILURE",
+            Some("NON_ZERO_EXIT"),
+            None,
+            &structured,
+            Some("out-ref"),
+            Some("err-ref"),
+            "result-ref",
+            64,
+        );
+        assert!(o.truncated);
+        assert!(
+            o.text
+                .contains("stdout_ref: out-ref\nstderr_ref: err-ref\n")
+        );
+        // the existing entry point is the same thing without a stderr
+        let o = observe("SUCCESS", None, None, "{}", Some("s"), "r", 64);
+        assert!(!o.text.contains("stderr_ref"));
     }
 }

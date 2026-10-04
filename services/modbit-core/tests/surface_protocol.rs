@@ -20997,6 +20997,77 @@ async fn qual_epr_008_a_dotenv_file_a_process_rewrites_is_a_secret_and_stops_an_
     );
 }
 
+/// FIX-10 (audit D): the stderr of a failing non-PTY command used to reach
+/// nobody — `structured_output` carried only the stdout preview, so a
+/// compiler error or a stack trace was invisible to the model. Real Core, real
+/// broker, real process: the PROVIDER REQUEST that follows the failing
+/// `shell.exec` carries the stderr text, and the observation header names the
+/// `stderr_ref` of the whole of it. The marker is assembled by the command, so
+/// it appears in no request until the process has actually written it.
+#[tokio::test]
+async fn fix_10_the_stderr_of_a_failing_command_is_in_the_next_provider_request() {
+    use modbit_protocol::v1::{StartTask, TaskRunStarted};
+    use serde_json::json;
+    let (_repo, root) = plain_repo(&[("a.txt", "a\n")]);
+    let script = vec![
+        json!({"calls": [{"name": "plan.update", "args": {"outcome": "reproduce the failure", "expected_files": []}}]}),
+        json!({"calls": [{"name": "shell.exec", "args": {"argv": ["sh", "-c", "echo building; printf '%s%s\\n' 'error[E0425]: ' 'STDERR_ONLY_MARKER' >&2; exit 3"], "inherit_env": true}}]}),
+        json!({"calls": [{"name": "task.complete", "args": {"summary": "saw it", "self_review": {"findings": []}}}]}),
+    ];
+    let (base, seen) = scripted_model(script, None).await;
+    let dir = tempfile::tempdir().unwrap();
+    let env = [
+        ("MODBIT_OPENAI_BASE_URL", base.as_str()),
+        ("OPENAI_API_KEY", ""),
+        ("ANTHROPIC_API_KEY", ""),
+    ];
+    let core = CoreProcess::spawn_with_env(dir.path(), &env);
+    let mut c = core.client().await;
+    let (session, _) = create_session(&mut c, id16(0x0E)).await;
+    let g = lease_for(&session);
+    let task = create_task_with_profile(&mut c, &session, g, &root, 0x0F, "local_autonomous").await;
+    let start = envelope_fenced(
+        id16(0x10),
+        "StartTask",
+        StartTask {
+            task_id: Some(task.clone()),
+            endpoint: "openai".into(),
+            model: "gpt-5".into(),
+            max_turns: 8,
+            max_tool_calls: 0,
+            max_no_progress_turns: 2,
+            skills: vec![],
+        }
+        .encode_to_vec(),
+        g,
+    );
+    let _: TaskRunStarted = Client::result(&c.command(start).await.unwrap()).unwrap();
+    let _ = wait_task(&mut c, &task, 90).await;
+    let requests = seen.lock().unwrap().clone();
+    let texts: Vec<String> = requests
+        .iter()
+        .map(|r| serde_json::to_string(r).unwrap())
+        .collect();
+    let needle = "error[E0425]: STDERR_ONLY_MARKER";
+    let first = texts
+        .iter()
+        .position(|t| t.contains(needle))
+        .unwrap_or_else(|| panic!("stderr never reached a provider request: {texts:?}"));
+    assert!(
+        first > 0,
+        "the stderr is a reply to the call, not part of the first request"
+    );
+    let with_stderr = &texts[first];
+    assert!(
+        with_stderr.contains("stderr_ref"),
+        "the observation names where the whole stderr is: {with_stderr}"
+    );
+    assert!(
+        with_stderr.contains("NON_ZERO_EXIT"),
+        "alongside the failure it explains: {with_stderr}"
+    );
+}
+
 async fn decide_review(
     c: &mut Client,
     task: &Id,
