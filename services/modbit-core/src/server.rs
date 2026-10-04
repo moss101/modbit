@@ -155,6 +155,15 @@ pub async fn run_as(
             format!("; notes: {}", recovery.notes.join(" | "))
         }
     );
+    // FIX-05: the Core's own configuration layers are checked at start. A
+    // broken one does not stop the Core (the person who can fix it has to
+    // be able to reach it), but no task starts under it and it is said here.
+    for problem in crate::config::problems(&data_dir, None) {
+        eprintln!(
+            "modbit-core: {}: {problem}; every task start is refused until it is fixed",
+            crate::config::ConfigError::CODE
+        );
+    }
     // Interrupted agent loops suspend at a turn boundary (docs/14); nothing re-executes.
     let suspended =
         crate::runtime::reconcile_after_restart(&mut store, tenant_id, recovery.boot_generation);
@@ -3891,11 +3900,14 @@ async fn handle_command(core: &Arc<Core>, env: CommandEnvelope) -> CommandAck {
                 Ok(None) => return reject(cid, "UNKNOWN_TASK", task_id.to_string()),
                 Err(e) => return reject(cid, error_code(&e), e.to_string()),
             };
-            let cfg = core.tools.configurations.for_task(
+            let cfg = match core.tools.configurations.try_for_task(
                 task_id,
                 &core.data_dir,
                 task.workspace_root.as_deref(),
-            );
+            ) {
+                Ok(c) => c,
+                Err(e) => return reject(cid, crate::config::ConfigError::CODE, e.to_string()),
+            };
             let device_path = crate::config::device_policy_path();
             let view = wire::EffectivePolicyView {
                 generation: modbit_policy::config::generation(&cfg),
@@ -5211,6 +5223,16 @@ async fn handle_command(core: &Arc<Core>, env: CommandEnvelope) -> CommandAck {
                     "EMERGENCY_STOP",
                     "the session is under an emergency stop; no run starts in it",
                 );
+            }
+            // FIX-05: a configuration file that is there and cannot be read
+            // is not "no opinion". Nothing starts under less policy than its
+            // owners set; the refusal names the file and what is wrong.
+            if let Some(problem) =
+                crate::config::problems(&core.data_dir, task.workspace_root.as_deref())
+                    .into_iter()
+                    .next()
+            {
+                return reject(cid, crate::config::ConfigError::CODE, problem.to_string());
             }
             // REQ-PX-022: a desktop task runs only on a repository the user
             // trusted in this session, explicitly and scoped to that root.

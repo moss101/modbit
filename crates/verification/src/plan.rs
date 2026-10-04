@@ -74,7 +74,16 @@ pub fn configured_commands(root: &Path) -> Vec<CheckCommand> {
     let Ok(text) = std::fs::read_to_string(root.join(".modbit/verification.json")) else {
         return vec![];
     };
-    let Ok(v) = serde_json::from_str::<serde_json::Value>(&text) else {
+    configured_commands_from(&text)
+}
+
+/// [`configured_commands`] over the text of `.modbit/verification.json` as
+/// the caller read it: a run reads the file once, when it starts, so a
+/// process that rewrites it during the run does not choose what the run
+/// executes (FIX-04).
+#[must_use]
+pub fn configured_commands_from(text: &str) -> Vec<CheckCommand> {
+    let Ok(v) = serde_json::from_str::<serde_json::Value>(text) else {
         return vec![];
     };
     v["commands"]
@@ -109,6 +118,20 @@ pub fn derive(
     root: &Path,
     task_named: &[String],
     extra_commands: &[CheckCommand],
+) -> VerificationPlan {
+    let configured = std::fs::read_to_string(root.join(".modbit/verification.json")).ok();
+    derive_with_configured(root, task_named, extra_commands, configured.as_deref())
+}
+
+/// [`derive`] with the text of `.modbit/verification.json` supplied by the
+/// caller (`None`: the repository declared no commands) instead of read from
+/// the working tree now.
+#[must_use]
+pub fn derive_with_configured(
+    root: &Path,
+    task_named: &[String],
+    extra_commands: &[CheckCommand],
+    configured: Option<&str>,
 ) -> VerificationPlan {
     let mut stacks = Vec::new();
     let mut commands = Vec::new();
@@ -189,7 +212,7 @@ pub fn derive(
     // A repository can declare its own checks (docs/64 "Adapters", PX-029):
     // this is how a language with no runner of ours gets evidence at all, and
     // the plan says the evidence is heuristic because it is exit-code based.
-    for c in configured_commands(root) {
+    for c in configured.map(configured_commands_from).unwrap_or_default() {
         if !commands.iter().any(|x| x.id == c.id) {
             limitations.push(format!(
                 "`{}` is a repository-configured command; its evidence is HEURISTIC (exit code and output)",

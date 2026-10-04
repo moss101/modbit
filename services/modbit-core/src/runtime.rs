@@ -2640,7 +2640,15 @@ async fn run_loop(
     // Rules (REQ-EV-0059/0105/0129): loaded once, selected every turn from
     // the paths the task has made active, recorded when the selection
     // changes.
-    let mut rules = crate::rules::RunRules::load(&core, &task);
+    // A repository's rules enter the prompt only once the session trusts it
+    // (FIX-04), as its hooks run only then.
+    let repository_trusted = match task.workspace_root.as_deref() {
+        Some(root) => {
+            crate::onboarding::is_trusted(&*core.store.lock().await, task.session_id, root)
+        }
+        None => false,
+    };
+    let mut rules = crate::rules::RunRules::load(&core, &task, repository_trusted);
     // The vision bridge for a text-only routed model (REQ-EV-0184/0185):
     // one description per media digest per run, recorded on the task.
     let mut bridge = crate::media_bridge::BridgeSession::new(
@@ -2721,11 +2729,23 @@ async fn run_loop(
         // decided under it, and a call already in flight finished under the
         // snapshot it was decided with.
         {
-            let (now, previous) = core.tools.configurations.refresh(
+            // FIX-05: a layer that has become unreadable since the last
+            // round is not "no opinion". The snapshot in force stays, and
+            // the run stops here rather than carry on under less policy
+            // than its owner set.
+            let (now, previous) = match core.tools.configurations.try_refresh(
                 task.task_id,
                 &core.data_dir,
                 task.workspace_root.as_deref(),
-            );
+            ) {
+                Ok(r) => r,
+                Err(e) => {
+                    break 'outer LoopEnd::NeedsAttention {
+                        code: crate::config::ConfigError::CODE,
+                        reason: e.to_string(),
+                    };
+                }
+            };
             if let Some(previous) = previous {
                 let (tightened, loosened) =
                     modbit_policy::config::permission_changes(&previous.config, &now.config);
@@ -6337,6 +6357,34 @@ pub(crate) async fn verification_residue(
     out
 }
 
+/// What the candidate diff of `task` leaves out: the verification residue of
+/// its workspace, and uncommitted work under `.modbit/` that was already
+/// there, byte for byte, when the task started (the user's own local rules
+/// or skills, which the task did not do). A file under `.modbit/` the task
+/// wrote, by the file service or by a process, is in the candidate (FIX-04).
+pub(crate) async fn candidate_exclusions(
+    core: &Core,
+    task: &Task,
+    root: &str,
+) -> std::collections::BTreeSet<String> {
+    let mut out = verification_residue(core, root).await;
+    let dirty: Vec<String> = modbit_git::Repo::open(std::path::Path::new(root))
+        .and_then(|r| r.status())
+        .unwrap_or_default()
+        .into_iter()
+        .map(|e| e.path)
+        .filter(|p| p.starts_with(".modbit/"))
+        .collect();
+    if !dirty.is_empty() {
+        out.extend(
+            core.tools
+                .configurations
+                .unchanged_since_start(task.task_id, root, &dirty),
+        );
+    }
+    out
+}
+
 /// The workspace's `FileChanged` records after `since` revision, oldest
 /// first: (tool call, path, after hash, op, revision).
 type ChangeRecord = (
@@ -7485,8 +7533,19 @@ async fn verification_plan(
         .as_ref()
         .map(|p| p.verification.clone())
         .unwrap_or_default();
-    let mut plan =
-        modbit_verification::derive(root.unwrap_or(std::path::Path::new(".")), &named, &[]);
+    // FIX-04: the repository's own verification commands are the ones the
+    // task found when it started; a file a process wrote during the run is
+    // read by the next task, after its review.
+    let root_or_cwd = root.unwrap_or(std::path::Path::new("."));
+    let mut plan = match core.tools.configurations.verification_json(task.task_id) {
+        Some(configured) => modbit_verification::plan::derive_with_configured(
+            root_or_cwd,
+            &named,
+            &[],
+            configured.as_deref(),
+        ),
+        None => modbit_verification::derive(root_or_cwd, &named, &[]),
+    };
     // docs/64 §6 (PX-035): targeting a run by impact evidence is heuristic and
     // the plan says so; only the COMPLETION run supports acceptance.
     plan.limitations
@@ -7823,7 +7882,7 @@ async fn run_verification_stage(
                     ));
                 }
             }
-            let residue = verification_residue(core, &root).await;
+            let residue = candidate_exclusions(core, task, &root).await;
             let files = crate::verify::changed_files(std::path::Path::new(&root), &residue);
             let ctx = invariant_context(state);
             let violations = modbit_verification::evaluate_diff(&ctx, &files, None);

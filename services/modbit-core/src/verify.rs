@@ -238,6 +238,17 @@ pub fn untracked_paths(root: &Path) -> std::collections::BTreeSet<String> {
         .collect()
 }
 
+/// Whether a path is Modbit's own scratch in a working tree (the file
+/// service's temporary files, a reporter's output, the guest's browser
+/// profile): named `.modbit-*`, never the repository's `.modbit/` directory.
+/// That directory holds the project's configuration, rules, skills and
+/// verification commands, so a change under it is a change to be judged and
+/// reviewed, not scratch to be left out of the candidate (FIX-04).
+#[must_use]
+pub fn is_scratch(path: &str) -> bool {
+    path.starts_with(".modbit-")
+}
+
 /// Whether a path is inside a residue entry (a directory recorded as residue
 /// covers everything under it).
 #[must_use]
@@ -264,7 +275,7 @@ pub fn changed_files(
     };
     entries
         .into_iter()
-        .filter(|e| !e.path.starts_with(".modbit"))
+        .filter(|e| !is_scratch(&e.path))
         .filter(|e| !is_residue(&e.path, residue))
         .map(|e| {
             let old = repo
