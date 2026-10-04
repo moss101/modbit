@@ -310,7 +310,21 @@ fn cli_drives_a_real_core_end_to_end() {
         ok && out.contains("status=ACTIVE") && out.contains("profile=local_trusted"),
         "{all}"
     );
-    let wt = repo_str.clone() + "-wt";
+    // A worktree lives under Modbit's own directory next to the workspace
+    // (FIX-01), not at an arbitrary path the model names.
+    let wt = {
+        let repo_path = std::path::Path::new(&repo_str);
+        repo_path
+            .parent()
+            .unwrap()
+            .join(format!(
+                "{}.modbit-worktrees",
+                repo_path.file_name().unwrap().to_string_lossy()
+            ))
+            .join("wt")
+            .to_string_lossy()
+            .into_owned()
+    };
     let wt_json = wt.replace('\\', "/");
     let (ok, out, all) = cli(
         &data_dir,
@@ -397,7 +411,10 @@ fn cli_drives_a_real_core_end_to_end() {
     assert!(!std::path::Path::new(&wt).exists());
     let (ok, out, all) = cli(&data_dir, &core, &["receipts", "--task", &tid]);
     assert!(
-        ok && out.contains("receipt_chain valid=true count=1") && out.contains("status=SUCCESS"),
+        // One effect leaves an authorization receipt and its result (FIX-08).
+        ok && out.contains("receipt_chain valid=true count=2")
+            && out.contains("status=AUTHORIZED")
+            && out.contains("status=SUCCESS"),
         "{all}"
     );
     let (ok, out, all) = cli(&data_dir, &core, &["stop", "--session", &sid, "halt"]);

@@ -45609,7 +45609,9 @@ async fn ver_07_an_agent_change_apply_into_dot_modbit_is_refused_before_it_lands
         ".modbit/verification.json",
         ".modbit/hooks/planted.json",
     ];
-    let (repo, root) = plain_repo(&[("notes.txt", "line 1\n")]);
+    // `bare_repo`: `plain_repo` ships its own `.modbit/verification.json`
+    // (FIX-03), and this test plants that very path.
+    let (repo, root) = bare_repo(&[("notes.txt", "line 1\n")]);
     let mut script = vec![
         json!({"calls": [{"name": "plan.update", "args": {"outcome": "plant", "expected_files": paths}}]}),
     ];
@@ -46177,7 +46179,7 @@ async fn fix_08_concurrent_protected_effects_leave_one_linear_chain_of_authoriza
                 "local_trusted",
             )
             .await;
-            let wt = format!("{}-wt", root.replace('\\', "/"));
+            let wt = tool_worktree_path(&root, "wt");
             let created = invoke_call(
                 &mut w,
                 &task,
@@ -46751,10 +46753,12 @@ fn fix_12_pricing_source() -> String {
 /// The "Retrieved context" message of a recorded provider request, if the
 /// prompt carried one: the pack as the model reads it each turn.
 fn fix_12_retrieved_context(body: &serde_json::Value) -> Option<String> {
+    // The volatile tail (FIX-13) carries it after the harness state, so it is
+    // found by its header anywhere in a message, not at the start of one.
     body["messages"].as_array()?.iter().find_map(|m| {
         let c = m["content"].as_str()?;
-        c.starts_with("Retrieved context (every fragment")
-            .then(|| c.to_owned())
+        c.find("Retrieved context (every fragment")
+            .map(|at| c[at..].to_owned())
     })
 }
 

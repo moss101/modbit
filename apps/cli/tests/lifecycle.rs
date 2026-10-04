@@ -159,6 +159,14 @@ fn fixture(
     let repo = tmp.join("repo");
     std::fs::create_dir_all(&repo).unwrap();
     std::fs::write(repo.join("a.txt"), "a\n").unwrap();
+    // A completion needs a mandatory check (FIX-03); these tests' subject is
+    // the Core's lifecycle, so the repository declares a no-op one.
+    std::fs::create_dir_all(repo.join(".modbit")).unwrap();
+    std::fs::write(
+        repo.join(".modbit/verification.json"),
+        r#"{"commands": [{"id": "fixture-noop", "argv": ["git", "--version"]}]}"#,
+    )
+    .unwrap();
     git(&repo, &["init", "-q", "-b", "main"]);
     git(&repo, &["add", "-A"]);
     git(
