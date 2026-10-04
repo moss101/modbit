@@ -441,6 +441,7 @@ async fn call_bridge(
         tool_projection: vec![],
         response_format: None,
         cache_key: None,
+        cache_breakpoints: vec![],
         max_output_tokens: 1024,
         timeout_ms: 60_000,
         policy_tags: vec!["vision-bridge".into()],

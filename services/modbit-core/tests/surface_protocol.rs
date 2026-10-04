@@ -6528,6 +6528,215 @@ async fn ver_05_an_ingested_attachment_reaches_the_model_as_an_image_part_of_the
     }
 }
 
+/// FIX-13 (audit C defect 8): the Inspector reports what the provider says it
+/// served from its prompt cache, summed from the usage the provider reported,
+/// next to (not instead of) the count of turns routed on a repeated cache key.
+/// The provider here is a scripted OpenAI-compatible server that reports a
+/// warm cache from its second request on; its own report is the oracle.
+#[tokio::test]
+async fn fix_13_the_inspector_reports_the_cached_tokens_the_provider_reported() {
+    use modbit_protocol::v1::{
+        ContextInspectorView, GetContextInspector, StartTask, TaskRunStarted,
+    };
+    use serde_json::json;
+    let (repo, root) = plain_repo(&[("notes.md", "n\n")]);
+    let script = vec![
+        json!({"calls": [{"name": "plan.update", "args": {"outcome": "look", "expected_files": ["notes.md"]}}]}),
+        json!({"calls": [{"name": "fs.read", "args": {"path": "notes.md"}}]}),
+        json!({"calls": [{"name": "task.complete", "args": {"summary": "looked", "self_review": {"findings": []}}}]}),
+    ];
+    let (base, _seen) = scripted_model_cached(script).await;
+    let port: u16 = base.rsplit(':').next().unwrap().parse().unwrap();
+    let dir = tempfile::tempdir().unwrap();
+    let env = [
+        ("MODBIT_OPENAI_BASE_URL", base.as_str()),
+        ("OPENAI_API_KEY", ""),
+        ("ANTHROPIC_API_KEY", ""),
+    ];
+    let core = CoreProcess::spawn_with_env(dir.path(), &env);
+    let mut c = core.client().await;
+    let (session, _) = create_session(&mut c, id16(0xD0)).await;
+    let g = lease_for(&session);
+    let task = create_task_with_profile(&mut c, &session, g, &root, 0xD1, "local_trusted").await;
+    let ack = c
+        .command(envelope_fenced(
+            id16(0xD2),
+            "StartTask",
+            StartTask {
+                task_id: Some(task.clone()),
+                endpoint: String::new(),
+                model: "gpt-5-mini".into(),
+                max_turns: 8,
+                max_tool_calls: 0,
+                max_no_progress_turns: 4,
+                skills: vec![],
+            }
+            .encode_to_vec(),
+            g,
+        ))
+        .await
+        .unwrap();
+    let _: TaskRunStarted = Client::result(&ack).unwrap();
+    let st = wait_task(&mut c, &task, 120).await;
+    assert_eq!(st.state, "ReadyForReview", "{st:?}");
+    let ack = c
+        .command(envelope(
+            id16(0xD3),
+            "GetContextInspector",
+            GetContextInspector {
+                task_id: Some(task.clone()),
+            }
+            .encode_to_vec(),
+        ))
+        .await
+        .unwrap();
+    let v: ContextInspectorView = Client::result(&ack).unwrap();
+    let served: Vec<ReportedUsage> = REPORTED_USAGE
+        .lock()
+        .unwrap()
+        .iter()
+        .filter(|u| u.0 == port)
+        .cloned()
+        .collect();
+    assert!(served.len() >= 3, "{served:?}");
+    let (input, cached) = served.iter().fold((0, 0), |(i, c), u| (i + u.2, c + u.3));
+    assert!(cached > 0, "the scripted provider reported a warm cache");
+    assert_eq!(
+        (
+            v.reported_input_tokens,
+            v.reported_cached_input_tokens,
+            usize::try_from(v.reported_invocations).unwrap()
+        ),
+        (input, cached, served.len()),
+        "the Inspector carries the provider's own report, token for token: {v:?}"
+    );
+    // The key-based counts stay what they were: one decision per invocation.
+    assert_eq!(
+        usize::try_from(v.prefix_cache_hits + v.prefix_cache_misses).unwrap(),
+        served.len()
+    );
+    let _ = repo;
+}
+
+/// FIX-14 (audit G): the live loop asks a model for what its catalog entry
+/// says, not for one hard-coded 4096 tokens and 120 s: the request body
+/// carries the entry's output budget, effort and tier, and the log records
+/// the plan's budget and the invocation's route with the same numbers. A live
+/// provider honouring the larger budget is shown only by a live run.
+#[tokio::test]
+async fn fix_14_the_loop_dispatches_with_the_catalog_entrys_budget_timeout_effort_and_tier() {
+    use modbit_protocol::v1::{StartTask, TaskRunStarted};
+    use serde_json::json;
+    for (case, spec, model, budget, timeout, effort, tier) in [
+        // The built-in entry: a large write is no longer cut at 4096.
+        (
+            0xE0u8,
+            None,
+            "gpt-5-mini",
+            16_384,
+            120_000 + 12_288 * 30,
+            None,
+            None,
+        ),
+        // A configured entry: its own budget, timeout, effort and tier.
+        (
+            0xE8u8,
+            Some(
+                "gpt-fx=1/2;ctx=200000;out=65536;budget=32768;timeout=777000;reasoning=true;effort=low;tier=flex",
+            ),
+            "gpt-fx",
+            32_768,
+            777_000,
+            Some("low"),
+            Some("flex"),
+        ),
+    ] {
+        let (repo, root) = plain_repo(&[("notes.md", "n\n")]);
+        let script = vec![
+            json!({"calls": [{"name": "plan.update", "args": {"outcome": "look", "expected_files": ["notes.md"]}}]}),
+            json!({"calls": [{"name": "task.complete", "args": {"summary": "looked", "self_review": {"findings": []}}}]}),
+        ];
+        let (base, seen) = scripted_model(script, None).await;
+        let dir = tempfile::tempdir().unwrap();
+        let mut env = vec![
+            ("MODBIT_OPENAI_BASE_URL", base.as_str()),
+            ("OPENAI_API_KEY", ""),
+            ("ANTHROPIC_API_KEY", ""),
+        ];
+        if let Some(spec) = spec {
+            env.push(("MODBIT_OPENAI_MODELS", spec));
+        }
+        let core = CoreProcess::spawn_with_env(dir.path(), &env);
+        let mut c = core.client().await;
+        let (session, _) = create_session(&mut c, id16(case)).await;
+        let g = lease_for(&session);
+        let task =
+            create_task_with_profile(&mut c, &session, g, &root, case + 1, "local_trusted").await;
+        let ack = c
+            .command(envelope_fenced(
+                id16(case + 2),
+                "StartTask",
+                StartTask {
+                    task_id: Some(task.clone()),
+                    endpoint: String::new(),
+                    model: model.into(),
+                    max_turns: 8,
+                    max_tool_calls: 0,
+                    max_no_progress_turns: 4,
+                    skills: vec![],
+                }
+                .encode_to_vec(),
+                g,
+            ))
+            .await
+            .unwrap();
+        let _: TaskRunStarted = Client::result(&ack).unwrap();
+        let st = wait_task(&mut c, &task, 120).await;
+        assert_eq!(st.state, "ReadyForReview", "{model}: {st:?}");
+        // The wire: what the provider was asked.
+        let bodies = seen.lock().unwrap().clone();
+        assert!(bodies.len() >= 2, "{}", bodies.len());
+        for body in &bodies {
+            assert_eq!(
+                body["max_completion_tokens"], budget,
+                "{model}: {body:.300}"
+            );
+            assert_eq!(
+                body.get("reasoning_effort").and_then(|v| v.as_str()),
+                effort,
+                "{model}"
+            );
+            assert_eq!(
+                body.get("service_tier").and_then(|v| v.as_str()),
+                tier,
+                "{model}"
+            );
+        }
+        // The log: the plan's budget and every invocation's route say the same.
+        let events = task_events(&core, &session, &task).await;
+        let plan = events
+            .iter()
+            .find(|(_, t, _)| t == "RoutingPlanCompiled")
+            .unwrap_or_else(|| panic!("{events:#?}"));
+        let slot_budget = &plan.2["plan"]["slots"][0]["budget"];
+        assert_eq!(slot_budget["max_output_tokens"], budget, "{slot_budget}");
+        assert_eq!(slot_budget["timeout_ms"], timeout, "{slot_budget}");
+        let routes: Vec<&serde_json::Value> = events
+            .iter()
+            .filter(|(_, t, _)| t == "ModelInvocationStarted")
+            .map(|(_, _, p)| &p["model_route"])
+            .collect();
+        assert!(!routes.is_empty());
+        for route in routes {
+            assert_eq!(route["timeout_ms"], timeout, "{route}");
+            assert_eq!(route["max_output_tokens"], budget, "{route}");
+            assert_eq!(route["reasoning_effort"].as_str(), effort, "{route}");
+            assert_eq!(route["service_tier"].as_str(), tier, "{route}");
+        }
+        let _ = repo;
+    }
+}
+
 /// M3.1: the exact/regex/path index behind `search.*` on a real repository:
 /// hits carry path/line/column/span and are bound to the index revision; the
 /// index excludes generated and ignored paths; a write through change.apply

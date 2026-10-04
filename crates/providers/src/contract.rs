@@ -15,6 +15,18 @@ pub enum ProviderKind {
     Anthropic,
 }
 
+impl ProviderKind {
+    /// Whether this family's adapter implements structured (JSON) output:
+    /// the OpenAI adapter sends `response_format: json_object`; the Anthropic
+    /// Messages API has no such mode and its adapter implements none (forcing
+    /// a tool would take the tool channel the agent loop needs). A capability
+    /// the adapter does not implement is never claimed or silently dropped.
+    #[must_use]
+    pub fn implements_structured_output(self) -> bool {
+        matches!(self, Self::OpenAi)
+    }
+}
+
 /// A credential the gateway can present. The raw value is resolved only at
 /// request time and is never printed (docs/15 "Credentials").
 #[derive(Clone, Serialize, Deserialize, PartialEq, Eq)]
@@ -195,6 +207,15 @@ pub struct ModelRequest {
     pub response_format: Option<String>,
     /// Stable-prefix cache key metadata (hash of stable segments).
     pub cache_key: Option<String>,
+    /// Indices into `messages` after which the prompt prefix is stable
+    /// across turns (docs/15 "Prompt cache economics"): everything up to and
+    /// including each listed message is a cacheable prefix. A transport with
+    /// explicit cache markers (Anthropic `cache_control`) places one at each;
+    /// a transport that caches automatically (OpenAI prefix caching) ignores
+    /// them. Empty = the caller declares no stable prefix and no marker is
+    /// sent.
+    #[serde(default)]
+    pub cache_breakpoints: Vec<usize>,
     /// Output cap.
     pub max_output_tokens: u32,
     /// Timeout for the whole stream.

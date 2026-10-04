@@ -207,6 +207,7 @@ async fn run_inner(
             tool_projection: tools.clone(),
             response_format: None,
             cache_key: None,
+            cache_breakpoints: vec![],
             max_output_tokens: 1024,
             timeout_ms: 120_000,
             policy_tags: vec![],

@@ -199,6 +199,10 @@ fn model(name: &str, tools: bool) -> ModelCapability {
         agent_loop: tools,
         input_price_per_mtok: 1.0,
         output_price_per_mtok: 2.0,
+        output_budget_tokens: 0,
+        request_timeout_ms: 0,
+        default_reasoning_effort: None,
+        default_service_tier: None,
     }
 }
 
@@ -218,6 +222,7 @@ fn endpoint(
         max_retries: retries,
         auth: AuthScheme::Native,
         extra_body: Default::default(),
+        max_concurrency: 0,
     }
 }
 
@@ -248,6 +253,7 @@ fn request(
         },
         response_format: None,
         cache_key: Some("stable-prefix-hash".into()),
+        cache_breakpoints: vec![],
         max_output_tokens: 256,
         timeout_ms,
         policy_tags: vec!["tenant:test".into()],
@@ -1586,6 +1592,7 @@ async fn qual_ev_0188_tool_media_is_split_for_strict_endpoints_and_embedded_wher
         max_retries: 0,
         auth: AuthScheme::Native,
         extra_body: Default::default(),
+        max_concurrency: 0,
     }]);
     let tool_message = Message {
         role: Role::Tool,

@@ -2115,7 +2115,11 @@ export declare type ContextInspectorView = Message<"modbit.v1.ContextInspectorVi
   manifestRef: string;
 
   /**
-   * turns that reused the previous stable prefix
+   * By cache KEY: turns routed on the same stable-prefix key as the turn before
+   * (what the prompt asked the provider to reuse), not what the provider
+   * served; the provider-reported numbers are fields 27-29.
+   *
+   * turns that reused the previous stable prefix key
    *
    * @generated from field: uint32 prefix_cache_hits = 20;
    */
@@ -2156,6 +2160,27 @@ export declare type ContextInspectorView = Message<"modbit.v1.ContextInspectorVi
    * @generated from field: repeated modbit.v1.CompactionRequestView compactions = 26;
    */
   compactions: CompactionRequestView[];
+
+  /**
+   * What the provider reported serving from its prompt cache (FIX-13): summed
+   * over the model invocations whose usage the provider actually reported
+   * (an invocation that dropped before its usage frame is unknown, never
+   * zero). `reported_cached_input_tokens / reported_input_tokens` is the real
+   * cache hit rate; the key-based counts above are not.
+   *
+   * @generated from field: uint64 reported_input_tokens = 27;
+   */
+  reportedInputTokens: bigint;
+
+  /**
+   * @generated from field: uint64 reported_cached_input_tokens = 28;
+   */
+  reportedCachedInputTokens: bigint;
+
+  /**
+   * @generated from field: uint32 reported_invocations = 29;
+   */
+  reportedInvocations: number;
 };
 
 /**

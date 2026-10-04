@@ -51,6 +51,7 @@ fn turn(endpoint: &str, model: &str, messages: Vec<Message>) -> ModelRequest {
         }],
         response_format: None,
         cache_key: Some("stable-prefix-hash".into()),
+        cache_breakpoints: vec![],
         // Room for a model that reasons before it acts.
         max_output_tokens: 1024,
         timeout_ms: 120_000,
@@ -324,6 +325,10 @@ fn replay_endpoint(kind: ProviderKind, fixture: &Value, base_url: &str) -> Endpo
             agent_loop: true,
             input_price_per_mtok: 1.0,
             output_price_per_mtok: 2.0,
+            output_budget_tokens: 0,
+            request_timeout_ms: 0,
+            default_reasoning_effort: None,
+            default_service_tier: None,
         }],
         max_retries: 0,
         auth: if p["auth"] == "bearer" {
@@ -332,6 +337,7 @@ fn replay_endpoint(kind: ProviderKind, fixture: &Value, base_url: &str) -> Endpo
             AuthScheme::Native
         },
         extra_body: p["extra_body"].as_object().cloned().unwrap_or_default(),
+        max_concurrency: 0,
     }
 }
 

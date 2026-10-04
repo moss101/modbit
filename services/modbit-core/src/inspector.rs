@@ -59,6 +59,9 @@ pub(crate) async fn view(core: &Core, task_id: TaskId) -> wire::ContextInspector
     v.manifest_ref = economy.manifest_ref;
     v.prefix_cache_hits = economy.hits;
     v.prefix_cache_misses = economy.misses;
+    v.reported_input_tokens = economy.reported_input_tokens;
+    v.reported_cached_input_tokens = economy.reported_cached_input_tokens;
+    v.reported_invocations = economy.reported_invocations;
     let Some(pack) = ledger.last_pack.as_ref() else {
         return v;
     };
@@ -149,8 +152,14 @@ struct Economy {
     epochs: u32,
     compacted_entries: u64,
     manifest_ref: String,
+    /// By cache key: what the prompt asked the provider to reuse.
     hits: u32,
     misses: u32,
+    /// What the provider reported serving from its cache, over the
+    /// invocations whose usage it actually reported.
+    reported_input_tokens: u64,
+    reported_cached_input_tokens: u64,
+    reported_invocations: u32,
 }
 
 /// Counted from the log, never estimated: every epoch the task opened, and
@@ -190,6 +199,15 @@ async fn epochs_and_cache(core: &Core, task_id: TaskId) -> Economy {
                     out.misses += 1;
                 }
                 last_key = Some(key.to_owned());
+            }
+            // The provider's own number (FIX-13): a key that repeats says the
+            // prompt could be reused, only the provider's usage says it was.
+            // An invocation that dropped before its usage frame is unknown,
+            // never counted as a miss.
+            "ModelUsageRecorded" if p["reported"].as_bool().unwrap_or(false) => {
+                out.reported_invocations += 1;
+                out.reported_input_tokens += p["input_tokens"].as_u64().unwrap_or(0);
+                out.reported_cached_input_tokens += p["cached_input_tokens"].as_u64().unwrap_or(0);
             }
             _ => {}
         }
