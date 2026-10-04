@@ -35,7 +35,9 @@ pub use pipeline::{
     LanguageServicePort, ObjectSink, PipelineOutcome, SearchPort, SearchRequest, StageRecord,
     ToolCallResult, ToolRuntime, ToolStatus, arguments_hash,
 };
-pub use policy::{CapabilityPort, PolicyDecision, PolicyRequest, ProfilePolicy};
+pub use policy::{
+    CapabilityPort, PathTarget, PolicyDecision, PolicyRequest, ProfilePolicy, path_targets,
+};
 pub use registry::{Idempotency, Tool, ToolOutcome, ToolRegistry, ToolSpec};
 
 /// Errors.

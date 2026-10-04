@@ -250,6 +250,15 @@ pub struct EventStore {
 /// it must not reach back into the store.
 pub type PayloadFilter = std::sync::Arc<dyn Fn(&str, &mut serde_json::Value) + Send + Sync>;
 
+/// Seals a receipt: fills its `receipt_hash` from every other field
+/// (`modbit_policy::ledger::seal`). The store links the chain; the ledger
+/// owns the hash.
+pub type ReceiptSealer =
+    fn(modbit_domain::toolcall::EffectReceipt) -> modbit_domain::toolcall::EffectReceipt;
+
+/// The event type that carries a protected-effect receipt.
+const RECEIPT_EVENT: &str = "EffectReceiptAppended";
+
 impl std::fmt::Debug for EventStore {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         f.debug_struct("EventStore")
@@ -578,6 +587,33 @@ impl EventStore {
         reqs: Vec<AppendRequest>,
         lease_generation: Option<u64>,
     ) -> Result<Vec<StoredEvent>> {
+        self.append_all_inner(reqs, lease_generation, None)
+    }
+
+    /// [`Self::append_all`] for a batch that carries protected-effect
+    /// receipts (FIX-08): inside the one `IMMEDIATE` transaction that writes
+    /// the batch, every `EffectReceiptAppended` is linked to the chain's tail
+    /// *at that moment* (`previous_receipt_hash` is overwritten with it) and
+    /// sealed with `seal`, in batch order, so concurrent writers cannot fork
+    /// the chain: the transaction lock serializes them and each receipt is
+    /// sealed over the receipt that committed before it. The store does not
+    /// own the hash function (the ledger in `modbit-policy` does); it only
+    /// guarantees the tail is read where it cannot move.
+    pub fn append_all_chained(
+        &mut self,
+        reqs: Vec<AppendRequest>,
+        lease_generation: Option<u64>,
+        seal: ReceiptSealer,
+    ) -> Result<Vec<StoredEvent>> {
+        self.append_all_inner(reqs, lease_generation, Some(seal))
+    }
+
+    fn append_all_inner(
+        &mut self,
+        mut reqs: Vec<AppendRequest>,
+        lease_generation: Option<u64>,
+        seal: Option<ReceiptSealer>,
+    ) -> Result<Vec<StoredEvent>> {
         let tx = self
             .conn
             .transaction_with_behavior(TransactionBehavior::Immediate)?;
@@ -596,6 +632,28 @@ impl EventStore {
                     presented: g,
                     current,
                 });
+            }
+        }
+        if let Some(seal) = seal {
+            let mut tail = crate::projections::last_receipt_hash(&tx)?;
+            for req in &mut reqs {
+                for ev in &mut req.events {
+                    if ev.event_type != RECEIPT_EVENT {
+                        continue;
+                    }
+                    let mut e: modbit_domain::toolcall::ToolCallEvent =
+                        serde_json::from_value(ev.payload.clone())?;
+                    if let modbit_domain::toolcall::ToolCallEvent::EffectReceiptAppended {
+                        receipt,
+                    } = &mut e
+                    {
+                        receipt.previous_receipt_hash = tail.clone();
+                        let sealed = seal(receipt.clone());
+                        tail = Some(sealed.receipt_hash.clone());
+                        *receipt = sealed;
+                    }
+                    ev.payload = serde_json::to_value(&e)?;
+                }
             }
         }
         let mut out = Vec::new();
@@ -1533,6 +1591,17 @@ fn append_in(
     }
     let mut out = Vec::with_capacity(req.events.len());
     for (sequence, ev) in (current + 1..).zip(req.events) {
+        if ev.event_type == RECEIPT_EVENT {
+            // FIX-08: a receipt links to the tail as it is at commit time or
+            // it does not land — whatever path appended it.
+            let presented = ev.payload["receipt"]["previous_receipt_hash"]
+                .as_str()
+                .map(str::to_owned);
+            let tail = crate::projections::last_receipt_hash(tx)?;
+            if presented != tail {
+                return Err(Error::ReceiptChainStale { presented, tail });
+            }
+        }
         let payload_text = ev.payload.to_string();
         let payload = if payload_text.len() > INLINE_PAYLOAD_CEILING {
             let hash = objects.put(payload_text.as_bytes())?;

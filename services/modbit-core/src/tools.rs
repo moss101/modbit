@@ -715,6 +715,7 @@ impl ToolHost {
                             required_capabilities: &s.required_capabilities,
                             execution_profile: p,
                             lease: Some(l),
+                            targets: &[],
                             approval: None,
                             intent_hash: "",
                             config: None,
@@ -797,6 +798,10 @@ impl ToolHost {
             emergency_stopped,
             projection,
             config: Arc::clone(&task_config),
+            // The root as the lease was granted over it (the task's own
+            // text, not its canonical form): selectors and targets must be
+            // spelled from the same root to be compared.
+            root: workspace_root.clone(),
         };
         let search: Option<Arc<dyn modbit_tools::SearchPort>> = match (&workspace, &root) {
             (Some(ws), Some(r)) => Some(Arc::new(IndexPort {
@@ -980,6 +985,14 @@ impl ToolHost {
             actor: actor.clone(),
             prior_state,
             lease_generation,
+            lease_id,
+            execution_target: execution_target(root.as_deref()),
+            compensates,
+            reversibility: self
+                .runtime
+                .registry()
+                .get(tool_name)
+                .map(|t| t.spec().reversibility()),
         });
         let ctx = InvokeContext {
             task_id,
@@ -1662,10 +1675,7 @@ impl ToolHost {
                         intent_hash: result.arguments_hash.clone(),
                         policy_decision: decision,
                         approval_id: used_approval,
-                        execution_target: root
-                            .as_ref()
-                            .map(|r| format!("local:{}", r.display()))
-                            .unwrap_or_else(|| "local".into()),
+                        execution_target: execution_target(root.as_deref()),
                         evidence_ref: None,
                         status: format!("{:?}", result.status).to_uppercase(),
                         occurred_at: now,
@@ -1685,11 +1695,12 @@ impl ToolHost {
         let result_ref = store.lock().await.objects().put(&result_json)?;
         if let Some(mut r) = receipt.take() {
             r.evidence_ref = Some(result_ref.clone());
-            r.previous_receipt_hash = store.lock().await.last_receipt_hash()?;
-            let sealed = modbit_policy::ledger::seal(r);
+            // Linked and sealed inside the append transaction
+            // (`append_all_chained`): the chain's tail is read where it
+            // cannot move (FIX-08), so this is a placeholder, not a read.
             events.push(typed(
                 "EffectReceiptAppended",
-                &ToolCallEvent::EffectReceiptAppended { receipt: sealed },
+                &ToolCallEvent::EffectReceiptAppended { receipt: r },
                 actor.clone(),
             ));
         }
@@ -1972,7 +1983,10 @@ impl ToolHost {
             }
         }
         if !batch.is_empty() {
-            store.lock().await.append_all(batch, None)?;
+            store
+                .lock()
+                .await
+                .append_all_chained(batch, None, modbit_policy::ledger::seal)?;
         }
         Ok(Invoked {
             result,
@@ -2058,6 +2072,49 @@ struct KernelPort {
     /// The configuration snapshot the call is decided under (REQ-EV-0041):
     /// its per-capability `DENY` denies and `ASK` escalates.
     config: Arc<modbit_policy::config::ResolvedConfig>,
+    /// The task's workspace root, as its lease's selectors spell it.
+    root: Option<String>,
+}
+
+/// The absolute resources a call's workspace paths name, in the lease's
+/// selector vocabulary (FIX-15). Only a path that stays inside the root is a
+/// target: an absolute path or one that climbs out is not resolved here —
+/// the workspace's own path policy refuses it, as it always did — so a
+/// selector can narrow what a lease covers but never be the reason a path the
+/// workspace would have refused reads as a different error.
+fn resource_targets(
+    root: Option<&str>,
+    paths: &[modbit_tools::PathTarget],
+) -> Vec<modbit_policy::ResourceTarget> {
+    let Some(root) = root.map(|r| r.trim_end_matches(['/', '\\'])) else {
+        return vec![];
+    };
+    paths
+        .iter()
+        .filter_map(|p| {
+            if p.path.starts_with(['/', '\\']) || p.path.contains(':') {
+                return None;
+            }
+            let mut parts: Vec<&str> = Vec::new();
+            for seg in p.path.split(['/', '\\']) {
+                match seg {
+                    "" | "." => {}
+                    ".." => {
+                        parts.pop()?;
+                    }
+                    s => parts.push(s),
+                }
+            }
+            Some(modbit_policy::ResourceTarget {
+                capability: p.capability.clone(),
+                resource: if parts.is_empty() {
+                    root.to_owned()
+                } else {
+                    format!("{root}/{}", parts.join("/"))
+                },
+            })
+        })
+        .collect()
 }
 
 impl CapabilityPort for KernelPort {
@@ -2083,6 +2140,7 @@ impl CapabilityPort for KernelPort {
             required_capabilities: &req.required_capabilities,
             execution_profile: &req.execution_profile,
             lease: self.lease.as_ref(),
+            targets: &resource_targets(self.root.as_deref(), &req.paths),
             approval: self.approval.as_ref(),
             intent_hash: &req.intent_hash,
             config: Some(&self.config),
@@ -2123,6 +2181,19 @@ struct DispatchLog {
     prior_state: Option<ToolCallState>,
     /// The lease the dispatch is fenced by (M4.4).
     lease_generation: Option<u64>,
+    /// The lease the call presented (named on its authorization receipt).
+    lease_id: Option<modbit_domain::CapabilityLeaseId>,
+    /// Where the effect will run (as the result receipt names it).
+    execution_target: String,
+    /// The effect a compensating call counteracts.
+    compensates: Option<modbit_domain::EffectId>,
+    /// The tool's own reversibility declaration, when it is registered.
+    reversibility: Option<modbit_domain::toolcall::Reversibility>,
+}
+
+/// Where a call's effect runs, as a receipt records it.
+fn execution_target(root: Option<&std::path::Path>) -> String {
+    root.map_or_else(|| "local".into(), |r| format!("local:{}", r.display()))
 }
 
 impl modbit_tools::DispatchJournal for DispatchLog {
@@ -2135,6 +2206,7 @@ impl modbit_tools::DispatchJournal for DispatchLog {
                 PolicyDecision::Allow { rule, .. } => rule.clone(),
                 other => format!("{other:?}"),
             };
+            let decision_text = decision.clone();
             let mut events = Vec::new();
             if self.prior_state != Some(ToolCallState::ApprovalPending) {
                 events.push(typed(
@@ -2157,6 +2229,48 @@ impl modbit_tools::DispatchJournal for DispatchLog {
                 &ToolCallEvent::ToolCallDispatched,
                 self.actor.clone(),
             ));
+            // FIX-08: an effect that can reach beyond the workspace is
+            // authorized *in the chain* before it runs — intent hash, the
+            // decision, the approval and the lease, in the same transaction
+            // as the dispatch. The result receipt chains after it; a Core
+            // killed in between leaves this one with no result, which is how
+            // the effect is known to be in doubt (`ledger::in_doubt`).
+            if record.effect_class >= modbit_domain::toolcall::EffectClass::ProtectedWrite {
+                let approval_id = match &record.decision {
+                    PolicyDecision::Allow { approval_id, .. } => {
+                        approval_id.as_ref().and_then(|a| ApprovalId::parse(a).ok())
+                    }
+                    _ => None,
+                };
+                events.push(typed(
+                    "EffectReceiptAppended",
+                    &ToolCallEvent::EffectReceiptAppended {
+                        receipt: EffectReceipt {
+                            effect_id: modbit_domain::EffectId::new(),
+                            previous_receipt_hash: None,
+                            task_id: self.task_id,
+                            tool_call_id: record.tool_call_id,
+                            capability_lease_id: self.lease_id,
+                            intent_hash: record.arguments_hash.clone(),
+                            policy_decision: decision_text.clone(),
+                            approval_id,
+                            execution_target: self.execution_target.clone(),
+                            evidence_ref: None,
+                            status: modbit_policy::ledger::STATUS_AUTHORIZED.into(),
+                            occurred_at: modbit_domain::Timestamp::now(),
+                            reversibility: Some(self.reversibility.unwrap_or_else(|| {
+                                modbit_domain::toolcall::Reversibility::of(
+                                    record.effect_class,
+                                    false,
+                                )
+                            })),
+                            compensates: self.compensates,
+                            receipt_hash: String::new(),
+                        },
+                    },
+                    self.actor.clone(),
+                ));
+            }
             let mut st = self.store.lock().await;
             let expected_sequence = st
                 .tool_call(&record.tool_call_id)
@@ -2175,10 +2289,11 @@ impl modbit_tools::DispatchJournal for DispatchLog {
                 events,
             };
             // docs/33: a superseded owner cannot start an effect.
-            match self.lease_generation {
-                Some(g) => st.append_fenced(req, g),
-                None => st.append(req),
-            }
+            st.append_all_chained(
+                vec![req],
+                self.lease_generation,
+                modbit_policy::ledger::seal,
+            )
             .map(|_| ())
             .map_err(|e| e.to_string())
         })
@@ -3525,6 +3640,49 @@ pub(crate) fn error_code(e: &anyhow::Error) -> &'static str {
         Some(Io(_)) => "IO",
         Some(Json(_)) => "JSON",
         Some(SchemaTooNew { .. }) => "SCHEMA_TOO_NEW",
+        Some(ReceiptChainStale { .. }) => "RECEIPT_CHAIN_STALE",
         None => "INFRA_FAILURE",
+    }
+}
+
+#[cfg(test)]
+mod resource_target_tests {
+    use super::resource_targets;
+    use modbit_tools::PathTarget;
+
+    fn p(path: &str) -> PathTarget {
+        PathTarget {
+            capability: "fs.write".into(),
+            path: path.into(),
+        }
+    }
+
+    fn resolved(root: Option<&str>, paths: &[&str]) -> Vec<String> {
+        let paths: Vec<PathTarget> = paths.iter().map(|x| p(x)).collect();
+        resource_targets(root, &paths)
+            .into_iter()
+            .map(|t| t.resource)
+            .collect()
+    }
+
+    /// FIX-15: a workspace path becomes the absolute resource the lease's
+    /// selectors are spelled in; a path that is not plainly inside the root
+    /// is left to the workspace's own path policy (no target, no new error).
+    #[test]
+    fn workspace_paths_resolve_inside_the_root_and_nothing_else() {
+        assert_eq!(
+            resolved(Some("/repo/"), &["src/./a/../b.rs", "."]),
+            vec!["/repo/src/b.rs".to_owned(), "/repo".to_owned()],
+            "normalized lexically, trailing slash on the root tolerated"
+        );
+        assert!(resolved(Some("/repo"), &["../x", "a/../../x", "/etc/passwd", "C:/x"]).is_empty());
+        assert!(
+            resolved(None, &["a.txt"]).is_empty(),
+            "no root, no resource"
+        );
+        assert_eq!(
+            resolved(Some(r"C:\repo"), &[r"src\a.rs"]),
+            vec![r"C:\repo/src/a.rs".to_owned()]
+        );
     }
 }

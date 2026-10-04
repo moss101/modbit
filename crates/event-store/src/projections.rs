@@ -1628,16 +1628,38 @@ fn approval_from_row(r: &rusqlite::Row<'_>) -> rusqlite::Result<Approval> {
         resolved_at: r.get::<_, Option<i64>>(10)?.map(Timestamp),
         resolver: r.get(11)?,
         expires_at: r.get::<_, Option<i64>>(12)?.map(Timestamp),
+        consumed_at: r.get::<_, Option<i64>>(13)?.map(Timestamp),
     })
 }
 
-const APPROVAL_COLS: &str = "approval_id, task_id, tool_call_id, tool_name, effect_class, intent_hash, scope_json, status, generation, requested_at, resolved_at, resolver_user_id, expires_at";
+/// The columns [`approval_from_row`] reads, qualified by the approvals alias
+/// `a`. The last one is the approval's consumption (FIX-15): an approval is
+/// bound to one tool call, and the call's `ToolCallDispatched` — the event
+/// the write-ahead journal appends, in the same transaction, before the
+/// effector runs — is the moment the approval is spent. It is read off the
+/// call's projection rather than stored twice, so there is no state in which
+/// an approval is spent without a dispatch or a dispatch ran without spending
+/// it.
+fn approval_cols() -> String {
+    "approval_id, task_id, tool_call_id, tool_name, effect_class, intent_hash, scope_json, status, generation, requested_at, resolved_at, resolver_user_id, expires_at"
+        .split(", ")
+        .map(|c| format!("a.{c}"))
+        .chain(std::iter::once(
+            "(SELECT t.dispatched_at FROM tool_calls t WHERE t.tool_call_id = a.tool_call_id)"
+                .to_owned(),
+        ))
+        .collect::<Vec<_>>()
+        .join(", ")
+}
 
 /// Load an approval.
 pub fn load_approval(tx: &rusqlite::Connection, id: &ApprovalId) -> Result<Option<Approval>> {
     Ok(tx
         .query_row(
-            &format!("SELECT {APPROVAL_COLS} FROM approvals WHERE approval_id = ?1"),
+            &format!(
+                "SELECT {} FROM approvals a WHERE a.approval_id = ?1",
+                approval_cols()
+            ),
             params![id.as_bytes().as_slice()],
             approval_from_row,
         )
@@ -1652,7 +1674,8 @@ pub fn load_approval_for_call(
     Ok(tx
         .query_row(
             &format!(
-                "SELECT {APPROVAL_COLS} FROM approvals WHERE tool_call_id = ?1 ORDER BY requested_at DESC, approval_id DESC LIMIT 1"
+                "SELECT {} FROM approvals a WHERE a.tool_call_id = ?1 ORDER BY a.requested_at DESC, a.approval_id DESC LIMIT 1",
+                approval_cols()
             ),
             params![id.as_bytes().as_slice()],
             approval_from_row,
@@ -1663,7 +1686,8 @@ pub fn load_approval_for_call(
 /// The approvals of a task, oldest first.
 pub fn load_approvals_for_task(tx: &rusqlite::Connection, task: &TaskId) -> Result<Vec<Approval>> {
     let mut stmt = tx.prepare(&format!(
-        "SELECT {APPROVAL_COLS} FROM approvals WHERE task_id = ?1 ORDER BY requested_at, approval_id"
+        "SELECT {} FROM approvals a WHERE a.task_id = ?1 ORDER BY a.requested_at, a.approval_id",
+        approval_cols()
     ))?;
     let rows = stmt.query_map(params![task.as_bytes().as_slice()], approval_from_row)?;
     Ok(rows.collect::<std::result::Result<Vec<_>, _>>()?)
@@ -1676,11 +1700,7 @@ pub fn load_approvals_for_session(
 ) -> Result<Vec<Approval>> {
     let mut stmt = tx.prepare(&format!(
         "SELECT {} FROM approvals a JOIN tasks t ON t.task_id = a.task_id WHERE t.session_id = ?1 ORDER BY (a.status <> 'REQUESTED'), a.requested_at, a.approval_id",
-        APPROVAL_COLS
-            .split(", ")
-            .map(|c| format!("a.{c}"))
-            .collect::<Vec<_>>()
-            .join(", ")
+        approval_cols()
     ))?;
     let rows = stmt.query_map(params![session.as_bytes().as_slice()], approval_from_row)?;
     Ok(rows.collect::<std::result::Result<Vec<_>, _>>()?)

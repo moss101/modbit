@@ -1679,19 +1679,40 @@ async fn m2_5_capability_kernel_gates_destructive_tools_behind_intent_bound_appr
         .unwrap();
     let receipts: EffectReceiptList = Client::result(&ack).unwrap();
     assert!(receipts.chain_valid, "{}", receipts.detail);
-    assert_eq!(receipts.receipts.len(), 1);
-    let rc = &receipts.receipts[0];
+    // FIX-08: the effect is chained twice — authorized when it was
+    // dispatched (before the effector ran), then its result — and a replay
+    // of the call adds neither.
+    assert_eq!(receipts.receipts.len(), 2, "{receipts:?}");
+    let (auth, rc) = (&receipts.receipts[0], &receipts.receipts[1]);
+    assert_eq!(
+        (auth.status.as_str(), auth.previous_receipt_hash.as_str()),
+        ("AUTHORIZED", "")
+    );
+    assert!(auth.evidence_ref.is_empty(), "no result existed yet");
+    assert_eq!(auth.intent_hash, rc.intent_hash);
+    assert_eq!(auth.policy_decision, rc.policy_decision);
+    assert_eq!(auth.approval_id, rc.approval_id);
+    assert_eq!(
+        rc.previous_receipt_hash, auth.receipt_hash,
+        "the result chains after the authorization"
+    );
     assert_eq!(hex_id(rc.approval_id.as_ref().unwrap()), approval_hex);
     assert_eq!(
         hex_id(rc.capability_lease_id.as_ref().unwrap()),
         hex_id(lease.lease_id.as_ref().unwrap())
     );
     assert_eq!(
-        (rc.status.as_str(), rc.previous_receipt_hash.as_str()),
-        ("SUCCESS", "")
+        hex_id(auth.capability_lease_id.as_ref().unwrap()),
+        hex_id(lease.lease_id.as_ref().unwrap())
     );
+    assert_eq!(rc.status.as_str(), "SUCCESS");
     assert_eq!(rc.receipt_hash.len(), 64);
     assert!(rc.policy_decision.starts_with("approval:"));
+    assert_eq!(
+        vec![uuid_of(rc.effect_id.as_ref().unwrap())],
+        r.effect_receipt_ids,
+        "the call reports its result receipt"
+    );
     // Denied approval: the call fails and stays failed.
     let wt2 = tool_worktree_path(&root, "wt2");
     let r = call(
@@ -17046,10 +17067,12 @@ async fn qual_ev_0055_e2e_004_core_crash_during_approval_restores_the_same_appro
         1,
         "one dispatch"
     );
+    // One effect, two chained receipts (FIX-08): its authorization, written
+    // with the dispatch, and its result.
     assert_eq!(
         count("tool_call", "EffectReceiptAppended", None),
-        1,
-        "one receipt"
+        2,
+        "one authorization and one result receipt"
     );
     assert_eq!(count("tool_call", "ToolCallSucceeded", None), 1);
     let resumed = trail
@@ -18741,13 +18764,18 @@ async fn qual_m4_6_e2e_005_a_protected_effect_of_unknown_outcome_is_held_for_the
         "{attention}"
     );
     assert_eq!(approvals_of(&mut c2, &session).await[0].status, "APPROVED");
+    // FIX-08: the only receipt on the log is the authorization written with
+    // the dispatch, before the effect ran; no result receipt was recorded
+    // before the kill, which is what leaves the effect in doubt.
+    let held: Vec<&serde_json::Value> = trail
+        .iter()
+        .filter(|(_, t, _)| t == "EffectReceiptAppended")
+        .map(|(_, _, p)| &p["receipt"])
+        .collect();
+    assert_eq!(held.len(), 1, "{held:?}");
     assert_eq!(
-        trail
-            .iter()
-            .filter(|(_, t, _)| t == "EffectReceiptAppended")
-            .count(),
-        0,
-        "no receipt was recorded before the kill"
+        held[0]["status"], "AUTHORIZED",
+        "no result receipt was recorded before the kill"
     );
     let g2 = Some(acquire_lease(&mut c2, id16(0x99), session.clone(), "reconciler").await);
     // A call that is not of unknown outcome cannot be reconciled.
@@ -29104,6 +29132,43 @@ async fn m6_3_subagents_are_admitted_transactionally_and_hand_typed_results_back
     );
     assert!(of(&child_evs, "SubagentCapsuleBound").len() == 1);
     assert_eq!(of(&child_evs, "TaskCreated")[0]["origin"], "subagent");
+    // FIX-15: the narrowing is the Capability Kernel's own. A client call on
+    // the child (which skips the model loop's write-scope gate) for a path
+    // outside the lease's `fs.write` resources is refused by the kernel
+    // before any effector, naming the resource.
+    let ack = c
+        .command(envelope_fenced(
+            random_id(),
+            "InvokeTool",
+            modbit_protocol::v1::InvokeTool {
+                task_id: Some(child_a_task.clone()),
+                tool_name: "change.apply".into(),
+                arguments_json: r#"{"path":"src/b/outside.txt","op":"create","content":"no\n"}"#
+                    .into(),
+                tool_call_id: Some(random_id()),
+                output_budget_bytes: 4096,
+            }
+            .encode_to_vec(),
+            g,
+        ))
+        .await
+        .unwrap();
+    let denied: modbit_protocol::v1::ToolInvoked = Client::result(&ack).unwrap();
+    assert_eq!(
+        (denied.status.as_str(), denied.error_code.as_str()),
+        ("POLICY_DENIED", "LEASE_RESOURCE_NOT_COVERED"),
+        "{denied:?}"
+    );
+    assert!(
+        denied.error_message.contains("src/b/outside.txt"),
+        "{denied:?}"
+    );
+    assert!(
+        !std::path::Path::new(a["worktree"].as_str().unwrap())
+            .join("src/b/outside.txt")
+            .exists(),
+        "nothing was written"
+    );
     // E2E-010: the two branches merge deterministically into the parent's
     // main and both files are there.
     // The runtime commits nothing of its own: the worktree changes are
@@ -35245,19 +35310,32 @@ async fn qual_ev_0270_the_protected_effect_receipt_chain_detects_tamper_delete_a
 
     let base = effect_receipts(&mut c, &task, 0x40).await;
     assert!(base.chain_valid, "baseline valid: {}", base.detail);
-    assert_eq!(base.receipts.len(), 2, "{base:?}");
-    // The second links to the first (a hash-linked chain), each hash 64 hex.
-    assert_eq!(base.receipts[0].previous_receipt_hash, "");
+    // Two effects, each an authorization (written with the dispatch) and a
+    // result (FIX-08): four receipts in one chain.
+    assert_eq!(base.receipts.len(), 4, "{base:?}");
     assert_eq!(
-        base.receipts[1].previous_receipt_hash,
-        base.receipts[0].receipt_hash
+        base.receipts
+            .iter()
+            .map(|r| r.status.as_str())
+            .collect::<Vec<_>>(),
+        ["AUTHORIZED", "SUCCESS", "AUTHORIZED", "SUCCESS"]
     );
+    // Each links to the one before it (a hash-linked chain), each hash 64 hex.
+    assert_eq!(base.receipts[0].previous_receipt_hash, "");
+    for pair in base.receipts.windows(2) {
+        assert_eq!(pair[1].previous_receipt_hash, pair[0].receipt_hash);
+    }
     assert!(base.receipts.iter().all(|r| r.receipt_hash.len() == 64));
-    // Each receipt is bound to its approval, lease, call and result.
+    // Each receipt is bound to its approval, lease and call; a result is also
+    // bound to the result it reports (an authorization precedes any result).
     assert!(base.receipts.iter().all(|r| r.approval_id.is_some()
         && r.capability_lease_id.is_some()
-        && !r.evidence_ref.is_empty()
         && r.intent_hash.len() == 64));
+    assert!(
+        base.receipts
+            .iter()
+            .all(|r| r.evidence_ref.is_empty() == (r.status == "AUTHORIZED"))
+    );
 
     // Tamper the store directly and re-read: the Core recomputes the chain
     // from the stored rows on every read (it caches no verdict).
@@ -35274,7 +35352,7 @@ async fn qual_ev_0270_the_protected_effect_receipt_chain_detects_tamper_delete_a
             .map(Result::unwrap)
             .collect()
     };
-    assert_eq!(seqs.len(), 2, "two receipts in the store");
+    assert_eq!(seqs.len(), 4, "four receipts in the store");
 
     // 1. Tamper: a stored field changes so its hash no longer recomputes.
     conn.execute(
@@ -35286,7 +35364,7 @@ async fn qual_ev_0270_the_protected_effect_receipt_chain_detects_tamper_delete_a
     assert!(!v.chain_valid, "tamper detected: {v:?}");
     assert!(v.detail.contains("does not recompute"), "{}", v.detail);
     conn.execute(
-        "UPDATE effect_receipts SET status = 'SUCCESS' WHERE seq = ?1",
+        "UPDATE effect_receipts SET status = 'AUTHORIZED' WHERE seq = ?1",
         params![seqs[0]],
     )
     .unwrap();
@@ -35343,7 +35421,7 @@ async fn qual_ev_0270_the_protected_effect_receipt_chain_detects_tamper_delete_a
     .unwrap();
     let v = effect_receipts(&mut c, &task, 0x45).await;
     assert!(!v.chain_valid, "delete detected: {v:?}");
-    assert_eq!(v.receipts.len(), 1, "one row remains: {v:?}");
+    assert_eq!(v.receipts.len(), 3, "three rows remain: {v:?}");
     drop(repo);
 }
 
@@ -39182,13 +39260,36 @@ async fn qual_ev_0066_an_external_effect_is_never_undoable_and_its_compensation_
     // 3. The compensation receipt is its own: a new effect naming the original.
     let r2 = receipts(&mut c, &task, 0x5F).await;
     assert!(r2.chain_valid, "{r2:?}");
-    assert_eq!(r2.receipts.len(), r1.receipts.len() + 1);
+    // The compensation is an effect like any other (FIX-08): its
+    // authorization and its result, both naming what they compensate.
+    assert_eq!(r2.receipts.len(), r1.receipts.len() + 2);
+    let comps: Vec<_> = r2
+        .receipts
+        .iter()
+        .filter(|r| r.compensates.is_some())
+        .collect();
+    assert_eq!(
+        comps.iter().map(|r| r.status.as_str()).collect::<Vec<_>>(),
+        ["AUTHORIZED", "SUCCESS"],
+        "{comps:?}"
+    );
+    assert!(
+        comps
+            .iter()
+            .all(|r| hex(&r.compensates) == hex(&pr_receipt.effect_id)
+                && r.tool_call_id == comps[0].tool_call_id)
+    );
+    // The result receipt is the one the call reports.
     let comp = r2
         .receipts
         .iter()
-        .find(|r| r.compensates.is_some())
+        .find(|r| {
+            modbit_domain::EffectId::parse(&done.effect_receipt_ids[0])
+                .is_ok_and(|e| hex::encode(e.as_bytes()) == hex(&r.effect_id))
+        })
         .expect("a compensation receipt")
         .clone();
+    assert_eq!(comp.status, "SUCCESS");
     assert_eq!(hex(&comp.compensates), hex(&pr_receipt.effect_id));
     assert_ne!(hex(&comp.effect_id), hex(&pr_receipt.effect_id));
     assert_eq!(
@@ -45508,4 +45609,417 @@ async fn ver_07_a_users_own_patch_into_dot_modbit_still_lands() {
         std::fs::read_to_string(repo.path().join(path)).unwrap(),
         "Keep commits small and focused.\n"
     );
+}
+
+fn random_id() -> Id {
+    Id {
+        value: (0..16).map(|_| rand::random::<u8>()).collect(),
+    }
+}
+
+/// VER-08 / FIX-08 against the real Core: protected effects from many tasks
+/// at once (each its own repository, so git's own locks do not serialize
+/// them) all cross the approval gate and execute together. The receipt chain
+/// the Core's store holds is one linear sequence: every receipt's previous
+/// hash is the hash of the receipt before it, no two share a parent, and each
+/// effect leaves an authorization receipt (written with the dispatch, before
+/// the effector ran) followed — somewhere later in the chain — by its result
+/// receipt.
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
+async fn fix_08_concurrent_protected_effects_leave_one_linear_chain_of_authorization_then_result() {
+    use modbit_protocol::v1::{
+        ApprovalResolvedAck, EffectReceiptList, GetEffectReceipts, InvokeTool, ResolveApproval,
+        ToolInvoked,
+    };
+    const WORKERS: usize = 6;
+    async fn invoke_call(
+        w: &mut Client,
+        task: &Id,
+        tool: &str,
+        args: &str,
+        call: Id,
+        g: Option<u64>,
+    ) -> ToolInvoked {
+        let ack = w
+            .command(envelope_fenced(
+                random_id(),
+                "InvokeTool",
+                InvokeTool {
+                    task_id: Some(task.clone()),
+                    tool_name: tool.into(),
+                    arguments_json: args.into(),
+                    tool_call_id: Some(call),
+                    output_budget_bytes: 4096,
+                }
+                .encode_to_vec(),
+                g,
+            ))
+            .await
+            .unwrap();
+        Client::result(&ack).unwrap()
+    }
+    let dir = tempfile::tempdir().unwrap();
+    let core = CoreProcess::spawn(dir.path());
+    let mut c = core.client().await;
+    let (session, _) = create_session(&mut c, id16(0xE0)).await;
+    let g = lease_for(&session);
+    let barrier = std::sync::Arc::new(tokio::sync::Barrier::new(WORKERS));
+    let mut handles = Vec::new();
+    for _ in 0..WORKERS {
+        let mut w = core.client().await;
+        let (session, barrier) = (session.clone(), barrier.clone());
+        handles.push(tokio::spawn(async move {
+            let (repo, root) = plain_repo(&[("a.txt", "a\n")]);
+            let task = create_task_with_profile_id(
+                &mut w,
+                &session,
+                g,
+                &root,
+                random_id(),
+                "local_trusted",
+            )
+            .await;
+            let wt = format!("{}-wt", root.replace('\\', "/"));
+            let created = invoke_call(
+                &mut w,
+                &task,
+                "git.worktree.create",
+                &format!(r#"{{"branch":"task/w","path":"{wt}"}}"#),
+                random_id(),
+                g,
+            )
+            .await;
+            assert_eq!(created.status, "SUCCESS", "{created:?}");
+            let close_call = random_id();
+            let close_args = format!(r#"{{"path":"{wt}"}}"#);
+            let pending = invoke_call(
+                &mut w,
+                &task,
+                "git.worktree.close",
+                &close_args,
+                close_call.clone(),
+                g,
+            )
+            .await;
+            assert_eq!(pending.status, "APPROVAL_PENDING", "{pending:?}");
+            let approval = approvals_of(&mut w, &session)
+                .await
+                .into_iter()
+                .find(|a| a.tool_call_id.as_ref() == Some(&close_call))
+                .expect("the call's approval is listed");
+            let ack = w
+                .command(envelope_fenced(
+                    random_id(),
+                    "ResolveApproval",
+                    ResolveApproval {
+                        approval_id: approval.approval_id.clone(),
+                        approve: true,
+                        reason: "ok".into(),
+                        intent_hash: approval.intent_hash.clone(),
+                    }
+                    .encode_to_vec(),
+                    g,
+                ))
+                .await
+                .unwrap();
+            assert_eq!(
+                Client::result::<ApprovalResolvedAck>(&ack).unwrap().status,
+                "APPROVED"
+            );
+            // Everyone dispatches together: the dispatch and the result
+            // receipts of six effects race for the chain's tail.
+            barrier.wait().await;
+            let done = invoke_call(
+                &mut w,
+                &task,
+                "git.worktree.close",
+                &close_args,
+                close_call.clone(),
+                g,
+            )
+            .await;
+            assert_eq!(done.status, "SUCCESS", "{done:?}");
+            assert_eq!(done.effect_receipt_ids.len(), 1, "{done:?}");
+            drop(repo);
+            (task, close_call, approval, done)
+        }));
+    }
+    let mut effects = Vec::new();
+    for h in handles {
+        effects.push(h.await.unwrap());
+    }
+    let ack = c
+        .command(envelope(
+            random_id(),
+            "GetEffectReceipts",
+            GetEffectReceipts { task_id: None }.encode_to_vec(),
+        ))
+        .await
+        .unwrap();
+    let all: EffectReceiptList = Client::result(&ack).unwrap();
+    assert!(
+        all.chain_valid,
+        "the Core verifies its own chain: {}",
+        all.detail
+    );
+    // Linear: each receipt links to the one before it; nobody shares a parent.
+    let mut parents = std::collections::HashSet::new();
+    let mut prev = String::new();
+    for (i, r) in all.receipts.iter().enumerate() {
+        assert_eq!(
+            r.previous_receipt_hash, prev,
+            "receipt {i} forked the chain"
+        );
+        assert!(
+            parents.insert(r.previous_receipt_hash.clone()),
+            "receipt {i} shares its parent"
+        );
+        prev = r.receipt_hash.clone();
+    }
+    assert_eq!(
+        all.receipts.len(),
+        2 * WORKERS,
+        "an authorization and a result for every effect"
+    );
+    for (task, call, approval, done) in &effects {
+        let mine: Vec<(usize, &modbit_protocol::v1::EffectReceiptView)> = all
+            .receipts
+            .iter()
+            .enumerate()
+            .filter(|(_, r)| r.tool_call_id.as_ref() == Some(call))
+            .collect();
+        assert_eq!(mine.len(), 2, "{task:?}: {mine:?}");
+        let ((ai, auth), (ri, result)) = (mine[0], mine[1]);
+        assert_eq!(auth.status, "AUTHORIZED");
+        assert_eq!(result.status, "SUCCESS");
+        assert!(ai < ri, "authorization precedes the result in the chain");
+        assert_eq!(auth.intent_hash, approval.intent_hash);
+        assert_eq!(result.intent_hash, approval.intent_hash);
+        assert_eq!(auth.approval_id, approval.approval_id);
+        assert_eq!(result.approval_id, approval.approval_id);
+        assert_eq!(
+            auth.policy_decision, result.policy_decision,
+            "the same decision is chained before and after the effect"
+        );
+        assert!(auth.evidence_ref.is_empty(), "no result existed yet");
+        assert_eq!(
+            vec![uuid_of(result.effect_id.as_ref().unwrap())],
+            done.effect_receipt_ids,
+            "the call reports its result receipt"
+        );
+        // The per-task view is the same two receipts.
+        let ack = c
+            .command(envelope(
+                random_id(),
+                "GetEffectReceipts",
+                GetEffectReceipts {
+                    task_id: Some(task.clone()),
+                }
+                .encode_to_vec(),
+            ))
+            .await
+            .unwrap();
+        let per_task: EffectReceiptList = Client::result(&ack).unwrap();
+        assert!(per_task.chain_valid, "{}", per_task.detail);
+        assert_eq!(per_task.receipts.len(), 2);
+    }
+}
+
+/// FIX-08: kill the Core — a real abort — after the dispatch of a protected
+/// effect committed and before its result could be recorded. The log then
+/// holds an authorization receipt and no result receipt: the effect is in
+/// doubt, the chain still verifies, and the restarted Core reconciles the
+/// call against that authorization (`AUTHORIZED_IN_DOUBT`) instead of
+/// reading it as a completed effect or replaying it.
+#[tokio::test]
+async fn fix_08_core_killed_between_dispatch_and_result_leaves_an_authorization_without_a_result() {
+    use modbit_protocol::v1::{
+        ApprovalResolvedAck, EffectReceiptList, GetEffectReceipts, ResolveApproval, StartTask,
+        TaskRunStarted,
+    };
+    use serde_json::json;
+    let (repo, root) = plain_repo(&[("a.txt", "a\n")]);
+    let wt = repo.path().join("wt-doubt");
+    assert!(
+        Command::new("git")
+            .arg("-C")
+            .arg(repo.path())
+            .args(["worktree", "add", "-q", "-b", "task/doubt"])
+            .arg(&wt)
+            .status()
+            .unwrap()
+            .success()
+    );
+    let wt_s = wt
+        .canonicalize()
+        .unwrap()
+        .to_string_lossy()
+        .trim_start_matches(r"\\?\")
+        .to_owned();
+    let script = vec![
+        json!({"calls": [{"name": "plan.update", "args": {"outcome": "close the stale worktree", "expected_files": [], "protected_effects": ["git.worktree.close"]}}]}),
+        json!({"calls": [{"name": "git.worktree.close", "args": {"path": wt_s}}]}),
+        json!({"calls": [{"name": "task.complete", "args": {"summary": "reconciled", "self_review": {"findings": []}}}]}),
+    ];
+    let (base, _seen) = scripted_model(script, None).await;
+    let dir = tempfile::tempdir().unwrap();
+    let env = [
+        ("MODBIT_OPENAI_BASE_URL", base.as_str()),
+        ("OPENAI_API_KEY", ""),
+        ("ANTHROPIC_API_KEY", ""),
+    ];
+    // The first receipt the Core commits is the authorization written with
+    // the dispatch: abort right after that commit, before the effector runs.
+    let armed = [
+        ("MODBIT_OPENAI_BASE_URL", base.as_str()),
+        ("OPENAI_API_KEY", ""),
+        ("ANTHROPIC_API_KEY", ""),
+        ("MODBIT_FAULT_KILL_AFTER_EVENT", "EffectReceiptAppended:1"),
+    ];
+    let mut core = CoreProcess::spawn_with_env(dir.path(), &armed);
+    let mut c = core.client().await;
+    let (session, _) = create_session(&mut c, id16(0xE1)).await;
+    let g = lease_for(&session);
+    let task = create_task_with_profile(&mut c, &session, g, &root, 0xE2, "local_trusted").await;
+    let start = StartTask {
+        task_id: Some(task.clone()),
+        endpoint: "openai".into(),
+        model: "gpt-5".into(),
+        max_turns: 0,
+        max_tool_calls: 0,
+        max_no_progress_turns: 0,
+        skills: vec![],
+    }
+    .encode_to_vec();
+    let ack = c
+        .command(envelope_fenced(id16(0xE3), "StartTask", start.clone(), g))
+        .await
+        .unwrap();
+    let _: TaskRunStarted = Client::result(&ack).unwrap();
+    let deadline = std::time::Instant::now() + Duration::from_secs(30);
+    let approval = loop {
+        let list = approvals_of(&mut c, &session).await;
+        if let Some(a) = list.iter().find(|a| a.status == "REQUESTED") {
+            break a.clone();
+        }
+        assert!(std::time::Instant::now() < deadline, "no approval opened");
+        tokio::time::sleep(Duration::from_millis(50)).await;
+    };
+    // Approving lets the call dispatch; the Core dies the moment the dispatch
+    // and its authorization receipt are durable.
+    let resolved = c
+        .command(envelope_fenced(
+            id16(0xE4),
+            "ResolveApproval",
+            ResolveApproval {
+                approval_id: approval.approval_id.clone(),
+                approve: true,
+                reason: "ok".into(),
+                intent_hash: approval.intent_hash.clone(),
+            }
+            .encode_to_vec(),
+            g,
+        ))
+        .await;
+    if let Ok(ack) = &resolved {
+        assert_eq!(
+            Client::result::<ApprovalResolvedAck>(ack).unwrap().status,
+            "APPROVED"
+        );
+    }
+    let status = core
+        .wait_exit(Duration::from_secs(30))
+        .expect("the armed Core aborts after the dispatch commit");
+    assert!(!status.success(), "{status:?}");
+    drop(c);
+    assert!(wt.exists(), "the effector never ran: nothing was closed");
+
+    // Restart on the same data directory.
+    let core2 = CoreProcess::spawn_with_env(dir.path(), &env);
+    let mut c2 = core2.client().await;
+    let ack = c2
+        .command(envelope(
+            random_id(),
+            "GetEffectReceipts",
+            GetEffectReceipts {
+                task_id: Some(task.clone()),
+            }
+            .encode_to_vec(),
+        ))
+        .await
+        .unwrap();
+    let held: EffectReceiptList = Client::result(&ack).unwrap();
+    assert!(held.chain_valid, "{}", held.detail);
+    assert_eq!(
+        held.receipts.len(),
+        1,
+        "an authorization and no result: {held:?}"
+    );
+    let auth = &held.receipts[0];
+    assert_eq!(auth.status, "AUTHORIZED");
+    assert_eq!(auth.previous_receipt_hash, "");
+    assert_eq!(auth.intent_hash, approval.intent_hash);
+    assert_eq!(auth.approval_id, approval.approval_id);
+    assert!(auth.policy_decision.starts_with("approval:"), "{auth:?}");
+    assert!(auth.evidence_ref.is_empty());
+    let ps = protocol_state(&mut c2, &task).await;
+    assert_eq!(ps.boundary, "RECONCILING", "{ps:?}");
+    assert_eq!(ps.calls.len(), 1, "{ps:?}");
+    assert_eq!(ps.calls[0].phase, "UNKNOWN_OUTCOME");
+    assert_eq!(ps.calls[0].effect_class, "Destructive");
+
+    // Resume: the in-doubt effect is reconciled against its authorization,
+    // reported to the model, never replayed.
+    let g2 = Some(acquire_lease(&mut c2, id16(0xE5), session.clone(), "resumer").await);
+    let ack = c2
+        .command(envelope_fenced(id16(0xE6), "StartTask", start.clone(), g2))
+        .await
+        .unwrap();
+    let started: TaskRunStarted = Client::result(&ack).unwrap();
+    assert!(started.resumed);
+    // Wait for the resumed run to settle; this test is about what the log
+    // holds by then, not about how the scripted model's run ends.
+    let _ = wait_task(&mut c2, &task, 60).await;
+    let trail = task_events(&core2, &session, &task).await;
+    let count = |ty: &str| trail.iter().filter(|(_, t, _)| t == ty).count();
+    assert_eq!(
+        count("ToolCallDispatched"),
+        1,
+        "no replay of the effect\n{trail:#?}"
+    );
+    assert_eq!(count("ToolCallUnknownOutcome"), 1);
+    let reconciled = trail
+        .iter()
+        .find(|(_, t, _)| t == "ToolCallReconciled")
+        .map(|(_, _, p)| p.clone())
+        .expect("the reconciliation is on the log");
+    assert_eq!(
+        reconciled["resolution"], "AUTHORIZED_IN_DOUBT",
+        "{reconciled}"
+    );
+    assert!(
+        reconciled["observed"]
+            .as_str()
+            .unwrap_or_default()
+            .contains(&auth.receipt_hash),
+        "it names the authorization it found: {reconciled}"
+    );
+    assert!(wt.exists(), "the effect was not replayed");
+    // The authorization stays what it was: no result was ever recorded, and
+    // the chain still verifies.
+    let ack = c2
+        .command(envelope(
+            random_id(),
+            "GetEffectReceipts",
+            GetEffectReceipts {
+                task_id: Some(task.clone()),
+            }
+            .encode_to_vec(),
+        ))
+        .await
+        .unwrap();
+    let after: EffectReceiptList = Client::result(&ack).unwrap();
+    assert!(after.chain_valid, "{}", after.detail);
+    assert_eq!(after.receipts.len(), 1, "{after:?}");
+    assert_eq!(after.receipts[0].status, "AUTHORIZED");
 }
