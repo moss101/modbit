@@ -44718,3 +44718,165 @@ fn symlink_any(target: &std::path::Path, at: &std::path::Path) {
         std::os::windows::fs::symlink_file(target, at).unwrap();
     }
 }
+
+/// One real task through the real Core against a fixture repository whose
+/// files are `files`: the scripted model plans, edits `notes.txt` to
+/// `edit` and proposes completion. Returns the task's final status and its
+/// events (VER-03 / FIX-03).
+async fn ver_03_run(
+    files: &[(&str, &str)],
+    edit: &str,
+    extra_completions: usize,
+) -> (
+    modbit_protocol::v1::TaskStatus,
+    Vec<(String, String, serde_json::Value)>,
+) {
+    use modbit_protocol::v1::{StartTask, TaskRunStarted};
+    use serde_json::json;
+    let (_repo, root) = plain_repo(files);
+    let mut script = vec![
+        json!({"calls": [{"name": "plan.update", "args": {"outcome": "edit notes", "expected_files": ["notes.txt"]}}]}),
+        json!({"calls": [{"name": "fs.read", "args": {"path": "notes.txt"}}]}),
+        json!({"calls": [{"name": "change.apply", "args": {"path": "notes.txt", "op": "replace", "content": edit}}]}),
+    ];
+    for _ in 0..=extra_completions {
+        script.push(
+            json!({"calls": [{"name": "task.complete", "args": {"summary": "edited", "self_review": {"findings": []}}}]}),
+        );
+    }
+    script.push(json!({"text": "I have nothing further to do."}));
+    let (base, _seen) = scripted_model(script, None).await;
+    let dir = tempfile::tempdir().unwrap();
+    let core = CoreProcess::spawn_with_env(
+        dir.path(),
+        &[
+            ("MODBIT_OPENAI_BASE_URL", &base),
+            ("OPENAI_API_KEY", ""),
+            ("ANTHROPIC_API_KEY", ""),
+        ],
+    );
+    let mut c = core.client().await;
+    let (session, _) = create_session(&mut c, id16(0x31)).await;
+    let g = lease_for(&session);
+    let task = create_task_with_profile(&mut c, &session, g, &root, 0x32, "local_trusted").await;
+    let ack = c
+        .command(envelope_fenced(
+            id16(0x33),
+            "StartTask",
+            StartTask {
+                task_id: Some(task.clone()),
+                endpoint: String::new(),
+                model: "gpt-5-mini".into(),
+                max_turns: 12,
+                max_tool_calls: 0,
+                max_no_progress_turns: 2,
+                skills: vec![],
+            }
+            .encode_to_vec(),
+            g,
+        ))
+        .await
+        .unwrap();
+    let _: TaskRunStarted = Client::result(&ack).unwrap();
+    let st = wait_task(&mut c, &task, 120).await;
+    let evs = task_events(&core, &session, &task).await;
+    (st, evs)
+}
+
+fn ver_03_of(evs: &[(String, String, serde_json::Value)], t: &str) -> Vec<serde_json::Value> {
+    evs.iter()
+        .filter(|(_, ty, _)| ty == t)
+        .map(|(_, _, p)| p.clone())
+        .collect()
+}
+
+const VER_03_CHECK: (&str, &str) = ("check.sh", "grep -q 'line' notes.txt\n");
+const VER_03_CONFIG: (&str, &str) = (
+    ".modbit/verification.json",
+    "{\"commands\": [{\"id\": \"notes\", \"argv\": [\"sh\", \"check.sh\"]}]}",
+);
+
+/// VER-03 / FIX-03 (audit G section 8): a repository with no configured
+/// checks and no stack the engine derives a runner for has an EMPTY
+/// mandatory check set. That is INDETERMINATE, never a pass: the COMPLETION
+/// run is not PASSED, the Acceptance Gate cannot ACCEPT, and the completion
+/// proposal is refused rather than moving the task to review.
+#[tokio::test]
+async fn ver_03_a_repository_with_no_checks_cannot_reach_accept() {
+    let (st, evs) = ver_03_run(&[("notes.txt", "line 1\n")], "line 1 edited\n", 1).await;
+    let runs = ver_03_of(&evs, "VerificationRunRecorded");
+    let completion: Vec<&serde_json::Value> =
+        runs.iter().filter(|r| r["stage"] == "COMPLETION").collect();
+    assert!(!completion.is_empty(), "{runs:#?}");
+    assert!(
+        completion
+            .iter()
+            .all(|r| r["status"] == "UNKNOWN" && r["checks"].as_array().is_some_and(Vec::is_empty)),
+        "an empty check set must be UNKNOWN (INDETERMINATE), never PASSED: {completion:#?}"
+    );
+    let gates = ver_03_of(&evs, "AcceptanceGateEvaluated");
+    assert!(
+        !gates.is_empty(),
+        "the gate is evaluated at the COMPLETION run"
+    );
+    assert!(
+        gates.iter().all(|g| g["verdict"] == "INCONCLUSIVE"
+            && g["missing_evidence"]
+                .as_array()
+                .is_some_and(|m| m.iter().any(|k| k == "tests"))),
+        "no mandatory checks leaves the gate INCONCLUSIVE with `tests` missing: {gates:#?}"
+    );
+    assert_ne!(st.state, "ReadyForReview", "{st:?}");
+    assert!(
+        !evs.iter().any(|(_, t, _)| t == "TaskReadyForReview"),
+        "a vacuous pass must not propose the task for review"
+    );
+    // The model is told why, with the typed reason.
+    assert!(
+        evs.iter()
+            .any(|(_, t, p)| t == "StepFailed" && p["failure_code"] == "UNKNOWN"),
+        "the refused completion is a failed verification step: {evs:#?}"
+    );
+}
+
+/// VER-03 / FIX-03: a configured check that the candidate breaks is a
+/// REJECT, and the completion is refused.
+#[tokio::test]
+async fn ver_03_a_configured_failing_check_rejects() {
+    let (st, evs) = ver_03_run(
+        &[("notes.txt", "line 1\n"), VER_03_CHECK, VER_03_CONFIG],
+        "broken\n",
+        1,
+    )
+    .await;
+    let gates = ver_03_of(&evs, "AcceptanceGateEvaluated");
+    assert!(
+        !gates.is_empty() && gates.iter().all(|g| g["verdict"] == "REJECT"),
+        "{gates:#?}"
+    );
+    assert_ne!(st.state, "ReadyForReview", "{st:?}");
+    assert!(!evs.iter().any(|(_, t, _)| t == "TaskReadyForReview"));
+}
+
+/// VER-03 / FIX-03: a configured check that passes at the candidate is
+/// ACCEPT, and the task is proposed for review.
+#[tokio::test]
+async fn ver_03_a_configured_passing_check_accepts() {
+    let (st, evs) = ver_03_run(
+        &[("notes.txt", "line 1\n"), VER_03_CHECK, VER_03_CONFIG],
+        "line 1 edited\n",
+        0,
+    )
+    .await;
+    let runs = ver_03_of(&evs, "VerificationRunRecorded");
+    let completion: Vec<&serde_json::Value> =
+        runs.iter().filter(|r| r["stage"] == "COMPLETION").collect();
+    assert_eq!(completion.len(), 1, "{runs:#?}");
+    assert_eq!(completion[0]["status"], "PASSED", "{completion:#?}");
+    let gates = ver_03_of(&evs, "AcceptanceGateEvaluated");
+    assert!(
+        !gates.is_empty() && gates.iter().all(|g| g["verdict"] == "ACCEPT"),
+        "{gates:#?}"
+    );
+    assert_eq!(st.state, "ReadyForReview", "{st:?}");
+}
