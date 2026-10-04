@@ -766,6 +766,64 @@ test("human activity preemption: a real key from the person takes control; the a
 });
 
 /**
+ * FIX-19 (audit): the person's mouse press and scroll in the view take
+ * control for them exactly as a key does; hovering alone does not.
+ */
+test("human activity preemption: a mouse press or a scroll from the person takes control; a hover does not", async () => {
+  test.setTimeout(120_000);
+  const repo = mkdtempSync(join(tmpdir(), "modbit-browser-repo-"));
+  writeFileSync(join(repo, "notes.txt"), "line 1\n");
+  git(repo, "init", "-q", "-b", "main");
+  git(repo, "add", "-A");
+  git(repo, "-c", "user.name=t", "-c", "user.email=t@e", "commit", "-q", "-m", "base");
+  const model = await scriptedModel([]);
+  const dataDir = mkdtempSync(join(tmpdir(), "modbit-e2e-pointer-"));
+  const viewInput = async (app: ElectronApplication, events: { type: string; [k: string]: unknown }[]) => {
+    await app.evaluate(({ webContents }, evs) => {
+      const wc = webContents.getAllWebContents().find((c) => c.getURL() === "about:blank");
+      wc?.focus();
+      for (const e of evs) wc?.sendInputEvent(e as never);
+    }, events);
+  };
+  try {
+    const { app, page } = await launch(dataDir, { MODBIT_OPENAI_BASE_URL: model.url });
+    await page.getByTestId("workspace").fill(repo);
+    await page.getByTestId("goal").fill("watch the page");
+    await page.getByTestId("run").click();
+    const card = page.getByTestId("task-card").first();
+    await expect(card).toContainText("watch the page", { timeout: 30_000 });
+    await card.getByTestId("task-browser").click();
+    const panel = page.getByTestId("browser");
+    await expect(panel).toHaveAttribute("data-browser-session-id", /^[0-9a-f]{32}$/, { timeout: 30_000 });
+    const control = page.getByTestId("browser-control");
+    await expect(control).toHaveAttribute("data-controller", "AGENT");
+    await expect(control).toHaveAttribute("data-lease-generation", "1");
+    // A mouse press: control moves to the person.
+    await viewInput(app, [
+      { type: "mouseDown", x: 10, y: 10, button: "left", clickCount: 1 },
+      { type: "mouseUp", x: 10, y: 10, button: "left", clickCount: 1 },
+    ]);
+    await expect(control).toHaveAttribute("data-controller", "USER", { timeout: 15_000 });
+    await expect(control).toHaveAttribute("data-lease-generation", "2");
+    await page.getByTestId("browser-return-control").click();
+    await expect(control).toHaveAttribute("data-controller", "AGENT", { timeout: 15_000 });
+    await expect(control).toHaveAttribute("data-lease-generation", "3");
+    // A hover is not acting.
+    await viewInput(app, [{ type: "mouseMove", x: 20, y: 20 }]);
+    await page.waitForTimeout(750);
+    await expect(control).toHaveAttribute("data-controller", "AGENT");
+    await expect(control).toHaveAttribute("data-lease-generation", "3");
+    // A scroll: control moves again.
+    await viewInput(app, [{ type: "mouseWheel", x: 20, y: 20, deltaX: 0, deltaY: -120 }]);
+    await expect(control).toHaveAttribute("data-controller", "USER", { timeout: 15_000 });
+    await expect(control).toHaveAttribute("data-lease-generation", "4");
+    await closeApp(app);
+  } finally {
+    model.server.close();
+  }
+});
+
+/**
  * IMP-EV-0089 / IMP-EV-0090 / IMP-EV-0085 (docs/22): on a real page, each
  * fault is its typed failure with recovery guidance — an overlay over a
  * button (`TARGET_OCCLUDED`), a div that takes no text

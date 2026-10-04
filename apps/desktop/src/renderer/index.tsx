@@ -1336,7 +1336,14 @@ function Browser({ browsing, card, sessionId, onReopen, onClose }: { browsing: {
     window.addEventListener("resize", place);
     window.addEventListener("scroll", place, true);
     const refresh = () => {
-      void window.modbit.describeBrowser(bsid).then(setHost).catch(() => setHost(null));
+      void window.modbit
+        .describeBrowser(bsid)
+        .then((h) => {
+          setHost(h);
+          // FIX-19: the host is the authority on its own fence: once a new session lease lifted it, the panel stops saying it stands.
+          if (h && !h.stopped) setStopped(null);
+        })
+        .catch(() => setHost(null));
       if (taskId) void window.modbit.browserSession(bsid, taskId).then(setCore).catch(() => {});
     };
     refresh();
@@ -1387,7 +1394,7 @@ function Browser({ browsing, card, sessionId, onReopen, onClose }: { browsing: {
         </button>
         {(stopped ?? host?.stopped) && (
           <span className="meta" role="status" data-testid="browser-stopped">
-            ⚠ emergency stop: {stopped ?? host?.stopped} — no agent input runs until a new session lease is taken
+            ⚠ emergency stop: {stopped ?? host?.stopped} — the host runs no agent input until a new session lease is taken (the Core blocks new effects for the session's life)
           </span>
         )}
       </div>

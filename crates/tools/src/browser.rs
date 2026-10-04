@@ -128,7 +128,7 @@ pub const FAILURE_TAXONOMY: &[(&str, &str)] = &[
     ),
     (
         "TARGET_OCCLUDED",
-        "something covers the element: read the page, dismiss what is over it (a dialog, a menu, an overlay) or scroll, then act again",
+        "something covers the element: read the page, then dismiss what is over it — click its own close or dismiss control, or press Escape — and act again; there is no scroll action, so an element outside the viewport cannot be brought into view, only another visible one used",
     ),
     (
         "WINDOW_UNVERIFIABLE",
@@ -233,8 +233,15 @@ tool!(
             Ok(x) => x,
             Err(o) => return o,
         };
+        // The generation this input is decided under (FIX-19): a hand-over
+        // before it is sent makes it stale, not applied.
+        let observed = port.lease(session).await.map(|l| l.generation);
         match port
-            .request(session, HostRequest::Navigate { url: url.clone() })
+            .request_stamped(
+                session,
+                HostRequest::Navigate { url: url.clone() },
+                observed,
+            )
             .await
         {
             Ok(HostResponse::State { state }) => {
@@ -684,6 +691,10 @@ async fn act(ctx: &InvokeContext, args: Value) -> ToolOutcome {
         Ok(x) => x,
         Err(o) => return o,
     };
+    // The generation this action is decided under (FIX-19): the page reads
+    // below take time, and a hand-over during them makes the action stale
+    // at the port instead of landing under the new lease.
+    let observed_generation = port.lease(session).await.map(|l| l.generation);
     // Resolve by identity at the current page: never act on a node whose
     // identity moved (REQ-EV-0278).
     let at = args
@@ -871,7 +882,7 @@ async fn act(ctx: &InvokeContext, args: Value) -> ToolOutcome {
     }
     let fingerprint_before = modbit_browser::compiler::state_fingerprint(&before);
     let (after_state, navigated, detail) = match port
-        .request(
+        .request_stamped(
             session,
             HostRequest::Act {
                 backend_dom_node_id: node,
@@ -881,6 +892,7 @@ async fn act(ctx: &InvokeContext, args: Value) -> ToolOutcome {
                 at,
                 credential_handle: credential_handle.clone(),
             },
+            observed_generation,
         )
         .await
     {

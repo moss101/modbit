@@ -113,6 +113,9 @@ const supervisor = new CoreSupervisor(
         // IMP-EV-0085: an emergency stop anyone raised on the session halts
         // the browser host's input at once, independent of the Core's loop.
         if (ev.eventType === "EmergencyStopActivated" && ev.sessionId) browserHost.emergencyStop(ev.sessionId, String((ev.payload as { reason?: unknown } | null)?.reason ?? "emergency stop"));
+        // FIX-19: a new session lease lifts the host's stop on that session
+        // (the Browser panel says it does); the Core's own stop is the Core's.
+        if (ev.eventType === "SessionLeaseAcquired" && ev.sessionId) browserHost.sessionLeaseAcquired(ev.sessionId, Number((ev.payload as { lease_generation?: unknown } | null)?.lease_generation ?? 0));
         send("core:event", ev);
       };
       // Recovery: re-take the session lease (a new generation fences any stale

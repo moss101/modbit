@@ -250,13 +250,21 @@ impl BrowserSessions {
     }
 }
 
-impl BrowserPort for BrowserSessions {
-    fn request<'a>(
-        &'a self,
+impl BrowserSessions {
+    /// One request to the session's host, under the control lease. An agent
+    /// input (`Navigate`, `Act`) is stamped with the lease generation its
+    /// caller decided it under (`observed`; the current one when the caller
+    /// did not say) and is refused `STALE_GENERATION` when the session has
+    /// been handed over since — checked against the generation the session
+    /// holds when the request is read and again as it is sent, not against
+    /// itself. The frame carries the stamp, so the host fences it too.
+    async fn send(
+        &self,
         session: BrowserSessionId,
         request: HostRequest,
-    ) -> BoxFuture<'a, Result<HostResponse, PortError>> {
-        Box::pin(async move {
+        observed: Option<u64>,
+    ) -> Result<HostResponse, PortError> {
+        {
             let (link, lease) = {
                 let s = self.sessions.lock().await;
                 let Some(rec) = s.get(&session) else {
@@ -277,19 +285,26 @@ impl BrowserPort for BrowserSessions {
                 (link, rec.lease)
             };
             // An agent input under the user's control is refused here, before
-            // it reaches the host (docs/22: takeover blocks input at once).
-            if matches!(
+            // it reaches the host (docs/22: takeover blocks input at once);
+            // one decided under an earlier generation is refused as stale.
+            let agent_input = matches!(
                 request,
                 HostRequest::Navigate { .. } | HostRequest::Act { .. }
-            ) && !lease.admits_agent_input(lease.generation)
-            {
-                return Err(PortError::Refused {
-                    code: "HUMAN_ACTIVE".into(),
-                    message: format!(
-                        "the person holds control of the session (lease generation {})",
-                        lease.generation
-                    ),
-                });
+            );
+            let stamp = observed.unwrap_or(lease.generation);
+            if agent_input {
+                if lease.controller != modbit_browser::Controller::Agent {
+                    return Err(PortError::Refused {
+                        code: "HUMAN_ACTIVE".into(),
+                        message: format!(
+                            "the person holds control of the session (lease generation {})",
+                            lease.generation
+                        ),
+                    });
+                }
+                if !lease.admits_agent_input(stamp) {
+                    return Err(stale_generation(stamp, lease.generation));
+                }
             }
             let request_id = BrowserSessionId::new().to_string();
             let (tx, rx) = oneshot::channel();
@@ -297,12 +312,36 @@ impl BrowserPort for BrowserSessions {
                 .lock()
                 .await
                 .insert(request_id.clone(), (session, tx));
+            // The awaits above are where a hand-over can land: the lease
+            // read again, now, is what the stamp is held against.
+            if agent_input {
+                let now = self.sessions.lock().await.get(&session).map(|r| r.lease);
+                match now {
+                    Some(l) if l.admits_agent_input(stamp) => {}
+                    Some(l) if l.controller != modbit_browser::Controller::Agent => {
+                        self.pending.lock().await.remove(&request_id);
+                        return Err(PortError::Refused {
+                            code: "HUMAN_ACTIVE".into(),
+                            message: format!(
+                                "the person took control of the session (lease generation {})",
+                                l.generation
+                            ),
+                        });
+                    }
+                    other => {
+                        self.pending.lock().await.remove(&request_id);
+                        return Err(stale_generation(stamp, other.map_or(0, |l| l.generation)));
+                    }
+                }
+            }
             let frame = wire::BrowserHostRequest {
                 request_id: request_id.clone(),
                 browser_session_id: Some(wire::Id {
                     value: session.as_bytes().to_vec(),
                 }),
-                lease_generation: lease.generation,
+                // An agent input carries the generation it was decided under;
+                // an observation is not fenced and carries the current one.
+                lease_generation: if agent_input { stamp } else { lease.generation },
                 request_json: serde_json::to_string(&request).unwrap_or_default(),
             };
             if link.tx.send(frame).await.is_err() {
@@ -324,7 +363,38 @@ impl BrowserPort for BrowserSessions {
                     Err(PortError::Timeout)
                 }
             }
-        })
+        }
+    }
+}
+
+/// The refusal for an agent input decided under a lease generation the
+/// session has since moved past (docs/22: an input from before a hand-over
+/// never lands after it).
+fn stale_generation(stamped: u64, current: u64) -> PortError {
+    PortError::Refused {
+        code: "STALE_GENERATION".into(),
+        message: format!(
+            "the input was decided under lease generation {stamped}; the session is at {current}"
+        ),
+    }
+}
+
+impl BrowserPort for BrowserSessions {
+    fn request<'a>(
+        &'a self,
+        session: BrowserSessionId,
+        request: HostRequest,
+    ) -> BoxFuture<'a, Result<HostResponse, PortError>> {
+        Box::pin(self.send(session, request, None))
+    }
+
+    fn request_stamped<'a>(
+        &'a self,
+        session: BrowserSessionId,
+        request: HostRequest,
+        observed_generation: Option<u64>,
+    ) -> BoxFuture<'a, Result<HostResponse, PortError>> {
+        Box::pin(self.send(session, request, observed_generation))
     }
 
     fn lease<'a>(&'a self, session: BrowserSessionId) -> BoxFuture<'a, Option<ControlLease>> {
@@ -586,4 +656,139 @@ pub(crate) fn task_events(
 /// The port the tool host hands `browser.*`.
 pub(crate) fn port(sessions: &Arc<BrowserSessions>) -> Arc<dyn BrowserPort> {
     Arc::clone(sessions) as Arc<dyn BrowserPort>
+}
+
+#[cfg(test)]
+mod tests {
+    //! FIX-19: the Core's control-lease fence compares the generation an
+    //! agent input was decided under with the generation the session holds
+    //! now — a real fence, no longer the lease's generation against itself.
+    use super::*;
+    use modbit_browser::Controller;
+
+    /// A session with a host that answers every request with the page state
+    /// and records the lease generation each frame carried.
+    async fn session_with_host() -> (
+        Arc<BrowserSessions>,
+        BrowserSessionId,
+        Arc<std::sync::Mutex<Vec<u64>>>,
+    ) {
+        let sessions = Arc::new(BrowserSessions::default());
+        let id = BrowserSessionId::new();
+        sessions.open(id, TaskId::new(), SessionId::new()).await;
+        let (tx, mut rx) = mpsc::channel::<wire::BrowserHostRequest>(8);
+        sessions
+            .attach(
+                id,
+                HostLink {
+                    kind: "test".into(),
+                    tx,
+                    connection: 1,
+                    view: None,
+                },
+            )
+            .await
+            .unwrap();
+        let seen = Arc::new(std::sync::Mutex::new(Vec::new()));
+        let (s2, seen2) = (Arc::clone(&sessions), Arc::clone(&seen));
+        tokio::spawn(async move {
+            while let Some(frame) = rx.recv().await {
+                seen2.lock().unwrap().push(frame.lease_generation);
+                s2.deliver(
+                    &frame.request_id,
+                    HostResponse::State {
+                        state: PageState::default(),
+                    },
+                )
+                .await;
+            }
+        });
+        (sessions, id, seen)
+    }
+
+    fn act() -> HostRequest {
+        HostRequest::Act {
+            backend_dom_node_id: 1,
+            action: "click".into(),
+            value: String::new(),
+            key: String::new(),
+            at: None,
+            credential_handle: None,
+        }
+    }
+
+    fn refused_code(r: Result<HostResponse, PortError>) -> String {
+        match r {
+            Err(PortError::Refused { code, .. }) => code,
+            other => panic!("expected a refusal, got {other:?}"),
+        }
+    }
+
+    #[tokio::test]
+    async fn an_input_decided_before_a_hand_over_is_stale_after_it_even_when_the_agent_holds_control_again()
+     {
+        let (sessions, id, seen) = session_with_host().await;
+        // Decided under generation 1, sent under generation 1: lands, stamped 1.
+        sessions
+            .request_stamped(id, act(), Some(1))
+            .await
+            .expect("current generation lands");
+        assert_eq!(*seen.lock().unwrap(), vec![1]);
+        // The person takes control (2) and returns it (3): the agent holds
+        // the session again, but an input decided under 1 is not applied.
+        sessions.hand_control(id, Controller::User).await.unwrap();
+        sessions.hand_control(id, Controller::Agent).await.unwrap();
+        let code = refused_code(sessions.request_stamped(id, act(), Some(1)).await);
+        assert_eq!(code, "STALE_GENERATION");
+        let code = refused_code(
+            sessions
+                .request_stamped(
+                    id,
+                    HostRequest::Navigate {
+                        url: "https://a.test/".into(),
+                    },
+                    Some(2),
+                )
+                .await,
+        );
+        assert_eq!(code, "STALE_GENERATION", "generation 2 was the person's");
+        assert_eq!(
+            *seen.lock().unwrap(),
+            vec![1],
+            "nothing stale reached the host"
+        );
+        // Decided under the current generation: lands, and the host is told
+        // the generation it was decided under.
+        sessions
+            .request_stamped(id, act(), Some(3))
+            .await
+            .expect("current generation lands");
+        // A caller that does not say (`request`) is stamped with the current one.
+        sessions.request(id, act()).await.expect("unstamped lands");
+        assert_eq!(*seen.lock().unwrap(), vec![1, 3, 3]);
+    }
+
+    #[tokio::test]
+    async fn the_person_holding_control_is_human_active_and_observation_is_never_fenced() {
+        let (sessions, id, seen) = session_with_host().await;
+        sessions.hand_control(id, Controller::User).await.unwrap();
+        // Whatever the stamp, while the person holds control the input is
+        // HUMAN_ACTIVE (the model is told to wait, not to re-read).
+        for stamp in [None, Some(1), Some(2)] {
+            let code = refused_code(sessions.request_stamped(id, act(), stamp).await);
+            assert_eq!(code, "HUMAN_ACTIVE", "{stamp:?}");
+        }
+        // Observation is not an agent input: allowed under any stamp, any holder.
+        for stamp in [None, Some(1), Some(99)] {
+            sessions
+                .request_stamped(id, HostRequest::State, stamp)
+                .await
+                .expect("observation is never fenced");
+        }
+        assert_eq!(
+            seen.lock().unwrap().len(),
+            3,
+            "only the observations reached the host"
+        );
+    }
 }

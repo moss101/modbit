@@ -307,6 +307,23 @@ pub trait BrowserPort: Send + Sync {
         request: HostRequest,
     ) -> BoxFuture<'a, Result<HostResponse, PortError>>;
 
+    /// [`BrowserPort::request`] for an agent input decided while the session's
+    /// control lease was at `observed_generation` (FIX-19): the port refuses
+    /// it `STALE_GENERATION` when the session has been handed over since, and
+    /// stamps the host's request with that generation so the host fences it
+    /// too. `None` is the generation the session holds now, which is what
+    /// [`BrowserPort::request`] means. A port with no lease to fence by may
+    /// ignore the stamp.
+    fn request_stamped<'a>(
+        &'a self,
+        session: BrowserSessionId,
+        request: HostRequest,
+        observed_generation: Option<u64>,
+    ) -> BoxFuture<'a, Result<HostResponse, PortError>> {
+        let _ = observed_generation;
+        self.request(session, request)
+    }
+
     /// The control lease of `session` as the Core records it.
     fn lease<'a>(&'a self, session: BrowserSessionId) -> BoxFuture<'a, Option<ControlLease>>;
 

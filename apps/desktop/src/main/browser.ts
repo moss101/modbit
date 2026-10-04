@@ -11,7 +11,8 @@
  */
 import { BrowserWindow, session as electronSession, WebContentsView, type WebContents } from "electron";
 import type { CoreClient } from "@modbit/ide-adapter-core";
-import { admitsAgentInput } from "./lease.js";
+import { admitsAgentInput, isHumanInput } from "./lease.js";
+import { StopRegistry } from "./stop.js";
 
 export interface HostedSession {
   browserSessionId: string;
@@ -132,7 +133,15 @@ export class BrowserHost {
     // dispatches it) takes control for the person at once; the agent's
     // next input is refused (`HUMAN_ACTIVE`) until control is returned.
     wc.on("before-input-event", (_e, input) => {
-      if (this.agentInputInFlight > 0 || Date.now() < this.agentInputUntil || input.type !== "keyDown") return;
+      if (this.agentInputInFlight > 0 || Date.now() < this.agentInputUntil || !isHumanInput(input.type)) return;
+      void this.preempt(h);
+    });
+    // FIX-19: a mouse press or a scroll is the person acting as much as a
+    // key is. Electron reports pointer input on `input-event` (the
+    // `before-input-event` hook only carries the keyboard); the same guards
+    // keep the host's own dispatched input out.
+    wc.on("input-event", (_e: unknown, input: { type: string }) => {
+      if (this.agentInputInFlight > 0 || Date.now() < this.agentInputUntil || !isHumanInput(input.type)) return;
       void this.preempt(h);
     });
     const s = electronSession.fromPartition(h.partition);
@@ -149,8 +158,8 @@ export class BrowserHost {
 
   /** Agent CDP input being dispatched right now (the person's hook ignores it). */
   private agentInputInFlight = 0;
-  /** IMP-EV-0085: sessions under an emergency stop, enforced by the host itself, independent of the Core's loop (a stop is for the session's life). */
-  private readonly stoppedSessions = new Map<string, string>();
+  /** IMP-EV-0085: sessions under an emergency stop, enforced by the host itself, independent of the Core's loop. It holds until a new session lease is acquired (FIX-19: what the panel says); the Core's own stop is the Core's. */
+  private readonly stops = new StopRegistry();
   /** Agent input dispatched by this host in the last moments (the person's hook ignores what arrives inside it). */
   private agentInputUntil = 0;
 
@@ -172,8 +181,26 @@ export class BrowserHost {
 
   /** IMP-EV-0085: halt every agent input this host would deliver for the session, at once, with the reason on record. */
   emergencyStop(sessionId: string, reason: string): void {
-    this.stoppedSessions.set(sessionId, reason || "emergency stop");
+    this.stops.stop(sessionId, reason);
     this.log.push({ browserSessionId: sessionId, kind: "emergency-stop", ok: true, code: reason || "emergency stop", generation: 0, atMs: Date.now() });
+    this.announceStop(sessionId);
+  }
+
+  /**
+   * FIX-19: a session lease was acquired on the session (`SessionLeaseAcquired`
+   * on the log). A new lease above the one the stop was raised under lifts the
+   * host's fence, as the Browser panel tells the person it does; the views of
+   * the session learn it at once. Whatever the Core still refuses stays refused.
+   */
+  sessionLeaseAcquired(sessionId: string, generation: number): void {
+    if (!this.stops.leaseAcquired(sessionId, generation)) return;
+    this.log.push({ browserSessionId: sessionId, kind: "emergency-stop-lifted", ok: true, code: `session lease ${generation}`, generation, atMs: Date.now() });
+    this.announceStop(sessionId);
+  }
+
+  /** The views of `sessionId` learn that its stop was raised or lifted. */
+  private announceStop(sessionId: string): void {
+    for (const h of this.sessions.values()) if (h.sessionId === sessionId) this.notify("browser:state", { browserSessionId: h.browserSessionId, ...this.state(h) });
   }
 
   private bump(h: HostedSession): void {
@@ -285,7 +312,7 @@ export class BrowserHost {
     const h = this.sessions.get(browserSessionId);
     if (!h || h.view.webContents.isDestroyed()) return null;
     const s = this.state(h);
-    return { browserSessionId: h.browserSessionId, taskId: h.taskId, partition: h.partition, attached: h.attached, shown: h.shown, url: s.url, title: s.title, stateVersion: h.stateVersion, leaseGeneration: h.leaseGeneration, controller: h.controller, webContentsId: h.webContentsId, osProcessId: h.view.webContents.isDestroyed() ? 0 : h.view.webContents.getOSProcessId(), humanInputAt: h.humanInputAt, stopped: this.stoppedSessions.get(h.sessionId) ?? null };
+    return { browserSessionId: h.browserSessionId, taskId: h.taskId, partition: h.partition, attached: h.attached, shown: h.shown, url: s.url, title: s.title, stateVersion: h.stateVersion, leaseGeneration: h.leaseGeneration, controller: h.controller, webContentsId: h.webContentsId, osProcessId: h.view.webContents.isDestroyed() ? 0 : h.view.webContents.getOSProcessId(), humanInputAt: h.humanInputAt, stopped: this.stops.reason(h.sessionId) };
   }
 
   /**
@@ -363,8 +390,8 @@ export class BrowserHost {
       if (h.restarting) return { kind: "error", code: "VIEW_RESTARTING", message: "the view's process died and is being restarted; retry the observation" };
       if (req.kind === "navigate" || req.kind === "act") {
         // IMP-EV-0085: under an emergency stop no input runs, whatever the Core's loop does.
-        const stop = this.stoppedSessions.get(h.sessionId);
-        if (stop !== undefined) return { kind: "error", code: "EMERGENCY_STOPPED", message: stop };
+        const stop = this.stops.reason(h.sessionId);
+        if (stop !== null) return { kind: "error", code: "EMERGENCY_STOPPED", message: stop };
         // Agent input under the control lease (M7.6): the generation the Core
         // stamped must be the one this host holds, and the agent must hold control.
         const verdict = admitsAgentInput(Number(r.leaseGeneration), h.leaseGeneration, h.controller);
