@@ -510,7 +510,10 @@ message ContextInspectorView {
   uint32 compaction_epochs = 17;     // epochs opened on this task
   uint64 compacted_entries = 18;     // transcript entries summarised away
   string manifest_ref = 19;          // the installed epoch's manifest
-  uint32 prefix_cache_hits = 20;     // turns that reused the previous stable prefix
+  // By cache KEY: turns routed on the same stable-prefix key as the turn before
+  // (what the prompt asked the provider to reuse), not what the provider
+  // served; the provider-reported numbers are fields 27-29.
+  uint32 prefix_cache_hits = 20;     // turns that reused the previous stable prefix key
   uint32 prefix_cache_misses = 21;   // turns that changed it (the first, then each epoch)
   // The selection retrieval is preferring (REQ-EV-0141 / 0160).
   repeated string selection_paths = 22;
@@ -519,6 +522,14 @@ message ContextInspectorView {
   repeated string selection_review_hunks = 25;
   // Compaction requests (docs/19 "Compaction epochs", docs/31 compaction_epochs; M4.2).
   repeated CompactionRequestView compactions = 26;
+  // What the provider reported serving from its prompt cache (FIX-13): summed
+  // over the model invocations whose usage the provider actually reported
+  // (an invocation that dropped before its usage frame is unknown, never
+  // zero). `reported_cached_input_tokens / reported_input_tokens` is the real
+  // cache hit rate; the key-based counts above are not.
+  uint64 reported_input_tokens = 27;
+  uint64 reported_cached_input_tokens = 28;
+  uint32 reported_invocations = 29;
 }
 
 message CompactionRequestView {

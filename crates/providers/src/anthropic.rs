@@ -16,23 +16,53 @@ fn media_block(mime: &str, alt: &str, data: &crate::contract::MediaPayload) -> V
     }
 }
 
+/// Where a cache breakpoint lands once the messages are laid out in this
+/// transport's shape.
+#[derive(Clone, Copy)]
+enum Anchor {
+    /// The last block of the top-level `system` array.
+    System(usize),
+    /// The last content block of the message at this index.
+    Message(usize),
+}
+
+/// The marker this transport takes for "cache everything up to here".
+fn ephemeral() -> Value {
+    json!({"type": "ephemeral"})
+}
+
+/// Most cache markers the Messages API accepts on one request.
+const MAX_CACHE_MARKERS: usize = 4;
+
 /// Build the request body. System messages become the top-level `system`.
+///
+/// When the caller declares stable-prefix breakpoints
+/// (`ModelRequest::cache_breakpoints`), `system` becomes an array of blocks
+/// (one per system message, never flattened into a string that cannot carry a
+/// marker), and an ephemeral `cache_control` marker is placed at each
+/// breakpoint: on the last system block for a system message, on the last
+/// content block of a conversation message otherwise, and on the last tool
+/// definition so the tools stay cacheable on their own while room remains
+/// under the API's four markers. The prefix order the API caches is tools,
+/// system, messages.
 #[must_use]
 pub fn request_body(req: &ModelRequest) -> Value {
-    let mut system = String::new();
+    let mut system_texts: Vec<String> = Vec::new();
     let mut messages: Vec<Value> = Vec::new();
     // A `tool_result` block with no `tool_use` is a 400; it never goes out
-    // (FIX-07).
-    let history = crate::contract::without_orphan_tool_results(&req.messages);
-    for m in history.iter() {
+    // (FIX-07). Breakpoints index the original messages, so each kept message
+    // remembers its original position.
+    let (history, kept) = crate::contract::without_orphan_tool_results_mapped(&req.messages);
+    // For each input message, where a breakpoint after it lands.
+    let mut anchors: Vec<Option<Anchor>> = vec![None; req.messages.len()];
+    for (hi, m) in history.iter().enumerate() {
+        let before = messages.len();
+        let original = kept.as_ref().map_or(hi, |k| k[hi]);
         match m.role {
             Role::System => {
                 for p in &m.parts {
                     if let ContentPart::Text { text } = p {
-                        if !system.is_empty() {
-                            system.push('\n');
-                        }
-                        system.push_str(text);
+                        system_texts.push(text.clone());
                     }
                 }
             }
@@ -109,6 +139,62 @@ pub fn request_body(req: &ModelRequest) -> Value {
                 messages.push(json!({"role": "assistant", "content": blocks}));
             }
         }
+        anchors[original] = match m.role {
+            Role::System => system_texts.len().checked_sub(1).map(Anchor::System),
+            _ if messages.len() > before => Some(Anchor::Message(messages.len() - 1)),
+            _ => None,
+        };
+    }
+    let mut system_blocks: Vec<Value> = system_texts
+        .iter()
+        .map(|t| json!({"type": "text", "text": t}))
+        .collect();
+    let mut tools: Vec<Value> = req
+        .tool_projection
+        .iter()
+        .map(|t| json!({"name": t.name, "description": t.description, "input_schema": t.input_schema}))
+        .collect();
+    if !req.cache_breakpoints.is_empty() {
+        // Distinct anchors, earliest first, at most the API's limit.
+        let mut placed: Vec<(usize, bool)> = Vec::new();
+        let mut order: Vec<usize> = req.cache_breakpoints.clone();
+        order.sort_unstable();
+        order.dedup();
+        for at in order {
+            let Some(Some(anchor)) = anchors.get(at).copied() else {
+                continue;
+            };
+            let key = match anchor {
+                Anchor::System(i) => (i, true),
+                Anchor::Message(i) => (i, false),
+            };
+            if !placed.contains(&key) {
+                placed.push(key);
+            }
+        }
+        // The newest prefixes matter most when more were listed than fit.
+        let keep_from = placed.len().saturating_sub(MAX_CACHE_MARKERS);
+        let placed = &placed[keep_from..];
+        let spare_for_tools = placed.len() < MAX_CACHE_MARKERS;
+        for &(i, is_system) in placed {
+            let block = if is_system {
+                system_blocks.get_mut(i)
+            } else {
+                messages
+                    .get_mut(i)
+                    .and_then(|m| m["content"].as_array_mut())
+                    .and_then(|c| c.last_mut())
+            };
+            // The API refuses a marker on an empty text block.
+            if let Some(block) = block
+                && !(block["type"] == "text" && block["text"] == "")
+            {
+                block["cache_control"] = ephemeral();
+            }
+        }
+        if spare_for_tools && let Some(last) = tools.last_mut() {
+            last["cache_control"] = ephemeral();
+        }
     }
     let mut body = json!({
         "model": req.model_policy.model,
@@ -116,24 +202,32 @@ pub fn request_body(req: &ModelRequest) -> Value {
         "stream": true,
         "max_tokens": req.max_output_tokens,
     });
-    if !system.is_empty() {
-        body["system"] = Value::String(system);
+    if req.cache_breakpoints.is_empty() {
+        let system = system_texts.join("\n");
+        if !system.is_empty() {
+            body["system"] = Value::String(system);
+        }
+    } else if !system_blocks.is_empty() {
+        body["system"] = Value::Array(system_blocks);
     }
-    if !req.tool_projection.is_empty() {
-        body["tools"] = Value::Array(
-            req.tool_projection
-                .iter()
-                .map(|t| json!({"name": t.name, "description": t.description, "input_schema": t.input_schema}))
-                .collect(),
-        );
+    if !tools.is_empty() {
+        body["tools"] = Value::Array(tools);
     }
     if let Some(effort) = &req.model_policy.reasoning_effort {
-        let budget = match effort.as_str() {
+        let wanted: u32 = match effort.as_str() {
             "low" => 1024,
             "high" => 16384,
             _ => 4096,
         };
-        body["thinking"] = json!({"type": "enabled", "budget_tokens": budget});
+        // Thinking is drawn from `max_tokens` and the API requires the
+        // budget to be smaller than it (and at least 1024). It is also held
+        // to half of `max_tokens`, so reasoning can never leave the visible
+        // answer no room. A request whose output cap leaves less than the
+        // minimum goes without a thinking block rather than as a 400.
+        let budget = wanted.min(req.max_output_tokens / 2);
+        if budget >= 1024 {
+            body["thinking"] = json!({"type": "enabled", "budget_tokens": budget});
+        }
     }
     if let Some(tier) = &req.model_policy.service_tier {
         body["service_tier"] = Value::String(tier.clone());

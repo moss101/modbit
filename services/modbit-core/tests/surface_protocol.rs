@@ -6406,6 +6406,367 @@ async fn qual_ev_0190_attachments_normalize_to_the_same_canonical_envelope_as_wo
     );
 }
 
+/// VER-05 / FIX-11 (REQ-EV-0190 + REQ-EV-0188): a user attachment is not just
+/// recorded, the model sees it. A PNG attached before the task starts rides
+/// the first request as an image part of the user turn, in the transport's
+/// own shape, by its egress copy (the bytes with their metadata stripped),
+/// every turn after it too, labelled untrusted; a model whose catalog entry
+/// takes no images is told so by name and is never sent an image block; the
+/// log keeps the digest and never the bytes.
+#[tokio::test]
+async fn ver_05_an_ingested_attachment_reaches_the_model_as_an_image_part_of_the_user_turn() {
+    use modbit_protocol::v1::{AttachmentIngested, IngestAttachment, StartTask, TaskRunStarted};
+    use serde_json::json;
+    let fixture = std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
+        .join("../../tests/fixtures/media/label.png");
+    let png = std::fs::read(&fixture).unwrap();
+    // A 3x2 GIF with a comment block: GIF got no egress copy before FIX-11.
+    let mut gif = b"GIF89a".to_vec();
+    gif.extend_from_slice(&[3, 0, 2, 0, 0x80, 0, 0, 0, 0, 0, 255, 255, 255]);
+    gif.extend_from_slice(&[0x21, 0xFE, 4]);
+    gif.extend_from_slice(b"gps!");
+    gif.push(0);
+    gif.extend_from_slice(&[0x2C, 0, 0, 0, 0, 3, 0, 2, 0, 0, 2, 2, 0x44, 0x01, 0, 0x3B]);
+    for (model, vision, seq, name, data, url_prefix) in [
+        (
+            "gpt-5-mini",
+            true,
+            0xB0u8,
+            "screenshot.png",
+            png.clone(),
+            "data:image/png;base64,iVBORw0KGgo",
+        ),
+        (
+            "o3-mini",
+            false,
+            0xB8u8,
+            "screenshot.png",
+            png.clone(),
+            "data:image/png;base64,iVBORw0KGgo",
+        ),
+        (
+            "gpt-5-mini",
+            true,
+            0xC0u8,
+            "anim.gif",
+            gif,
+            "data:image/gif;base64,R0lGODlh",
+        ),
+    ] {
+        let (repo, root) = plain_repo(&[("notes.md", "the screenshot is attached\n")]);
+        let script = vec![
+            json!({"calls": [{"name": "plan.update", "args": {"outcome": "look at the attachment", "expected_files": ["notes.md"]}}]}),
+            json!({"calls": [{"name": "task.complete", "args": {"summary": "looked", "self_review": {"findings": []}}}]}),
+        ];
+        let (base, seen) = scripted_model(script, None).await;
+        let dir = tempfile::tempdir().unwrap();
+        let env = [
+            ("MODBIT_OPENAI_BASE_URL", base.as_str()),
+            ("OPENAI_API_KEY", ""),
+            ("ANTHROPIC_API_KEY", ""),
+        ];
+        let core = CoreProcess::spawn_with_env(dir.path(), &env);
+        let mut c = core.client().await;
+        let (session, _) = create_session(&mut c, id16(seq)).await;
+        let g = lease_for(&session);
+        let task =
+            create_task_with_profile(&mut c, &session, g, &root, seq + 1, "local_trusted").await;
+        let ack = c
+            .command(envelope_fenced(
+                id16(seq + 2),
+                "IngestAttachment",
+                IngestAttachment {
+                    task_id: Some(task.clone()),
+                    filename: name.into(),
+                    channel: "desktop".into(),
+                    data: data.clone(),
+                }
+                .encode_to_vec(),
+                g,
+            ))
+            .await
+            .unwrap();
+        let a: AttachmentIngested = Client::result(&ack).unwrap();
+        assert_eq!(a.kind, "IMAGE", "{a:?}");
+        let ack = c
+            .command(envelope_fenced(
+                id16(seq + 3),
+                "StartTask",
+                StartTask {
+                    task_id: Some(task.clone()),
+                    endpoint: String::new(),
+                    model: model.into(),
+                    max_turns: 8,
+                    max_tool_calls: 0,
+                    max_no_progress_turns: 4,
+                    skills: vec![],
+                }
+                .encode_to_vec(),
+                g,
+            ))
+            .await
+            .unwrap();
+        let _: TaskRunStarted = Client::result(&ack).unwrap();
+        let st = wait_task(&mut c, &task, 120).await;
+        assert_eq!(st.state, "ReadyForReview", "{model}: {st:?}");
+        let bodies = seen.lock().unwrap().clone();
+        assert!(bodies.len() >= 2, "{model}: {} requests", bodies.len());
+        for (n, body) in bodies.iter().enumerate() {
+            let wire = body.to_string();
+            let image_blocks: Vec<&serde_json::Value> = body["messages"]
+                .as_array()
+                .unwrap()
+                .iter()
+                .filter(|m| m["role"] == "user")
+                .filter_map(|m| m["content"].as_array())
+                .flatten()
+                .filter(|b| b["type"] == "image_url")
+                .collect();
+            if vision {
+                assert_eq!(
+                    image_blocks.len(),
+                    1,
+                    "{model}: request {n} must carry the attached image once: {wire:.600}"
+                );
+                let url = image_blocks[0]["image_url"]["url"].as_str().unwrap();
+                assert!(
+                    url.starts_with(url_prefix) && url.len() > 40,
+                    "{model}: request {n}: {url:.80}"
+                );
+                assert!(
+                    wire.contains(name) && wire.contains("untrusted"),
+                    "{model}: the attachment is named and labelled untrusted: {wire:.600}"
+                );
+                if name.ends_with(".gif") {
+                    assert!(!wire.contains("Z3BzIQ"), "the GIF comment was stripped");
+                }
+            } else {
+                assert!(
+                    image_blocks.is_empty() && !wire.contains("image_url"),
+                    "{model}: a text-only model is never sent an image block"
+                );
+                assert!(
+                    wire.contains("UNSUPPORTED_MODALITY") && wire.contains(name),
+                    "{model}: the attachment is said, not dropped in silence: {wire:.600}"
+                );
+            }
+        }
+        // The log keeps the digest, never the bytes.
+        let logged = serde_json::to_string(&task_events(&core, &session, &task).await).unwrap();
+        assert!(!logged.contains("iVBORw0KGgo"), "the log carries no bytes");
+        let _ = repo;
+    }
+}
+
+/// FIX-13 (audit C defect 8): the Inspector reports what the provider says it
+/// served from its prompt cache, summed from the usage the provider reported,
+/// next to (not instead of) the count of turns routed on a repeated cache key.
+/// The provider here is a scripted OpenAI-compatible server that reports a
+/// warm cache from its second request on; its own report is the oracle.
+#[tokio::test]
+async fn fix_13_the_inspector_reports_the_cached_tokens_the_provider_reported() {
+    use modbit_protocol::v1::{
+        ContextInspectorView, GetContextInspector, StartTask, TaskRunStarted,
+    };
+    use serde_json::json;
+    let (repo, root) = plain_repo(&[("notes.md", "n\n")]);
+    let script = vec![
+        json!({"calls": [{"name": "plan.update", "args": {"outcome": "look", "expected_files": ["notes.md"]}}]}),
+        json!({"calls": [{"name": "fs.read", "args": {"path": "notes.md"}}]}),
+        json!({"calls": [{"name": "task.complete", "args": {"summary": "looked", "self_review": {"findings": []}}}]}),
+    ];
+    let (base, _seen) = scripted_model_cached(script).await;
+    let port: u16 = base.rsplit(':').next().unwrap().parse().unwrap();
+    let dir = tempfile::tempdir().unwrap();
+    let env = [
+        ("MODBIT_OPENAI_BASE_URL", base.as_str()),
+        ("OPENAI_API_KEY", ""),
+        ("ANTHROPIC_API_KEY", ""),
+    ];
+    let core = CoreProcess::spawn_with_env(dir.path(), &env);
+    let mut c = core.client().await;
+    let (session, _) = create_session(&mut c, id16(0xD0)).await;
+    let g = lease_for(&session);
+    let task = create_task_with_profile(&mut c, &session, g, &root, 0xD1, "local_trusted").await;
+    let ack = c
+        .command(envelope_fenced(
+            id16(0xD2),
+            "StartTask",
+            StartTask {
+                task_id: Some(task.clone()),
+                endpoint: String::new(),
+                model: "gpt-5-mini".into(),
+                max_turns: 8,
+                max_tool_calls: 0,
+                max_no_progress_turns: 4,
+                skills: vec![],
+            }
+            .encode_to_vec(),
+            g,
+        ))
+        .await
+        .unwrap();
+    let _: TaskRunStarted = Client::result(&ack).unwrap();
+    let st = wait_task(&mut c, &task, 120).await;
+    assert_eq!(st.state, "ReadyForReview", "{st:?}");
+    let ack = c
+        .command(envelope(
+            id16(0xD3),
+            "GetContextInspector",
+            GetContextInspector {
+                task_id: Some(task.clone()),
+            }
+            .encode_to_vec(),
+        ))
+        .await
+        .unwrap();
+    let v: ContextInspectorView = Client::result(&ack).unwrap();
+    let served: Vec<ReportedUsage> = REPORTED_USAGE
+        .lock()
+        .unwrap()
+        .iter()
+        .filter(|u| u.0 == port)
+        .cloned()
+        .collect();
+    assert!(served.len() >= 3, "{served:?}");
+    let (input, cached) = served.iter().fold((0, 0), |(i, c), u| (i + u.2, c + u.3));
+    assert!(cached > 0, "the scripted provider reported a warm cache");
+    assert_eq!(
+        (
+            v.reported_input_tokens,
+            v.reported_cached_input_tokens,
+            usize::try_from(v.reported_invocations).unwrap()
+        ),
+        (input, cached, served.len()),
+        "the Inspector carries the provider's own report, token for token: {v:?}"
+    );
+    // The key-based counts stay what they were: one decision per invocation.
+    assert_eq!(
+        usize::try_from(v.prefix_cache_hits + v.prefix_cache_misses).unwrap(),
+        served.len()
+    );
+    let _ = repo;
+}
+
+/// FIX-14 (audit G): the live loop asks a model for what its catalog entry
+/// says, not for one hard-coded 4096 tokens and 120 s: the request body
+/// carries the entry's output budget, effort and tier, and the log records
+/// the plan's budget and the invocation's route with the same numbers. A live
+/// provider honouring the larger budget is shown only by a live run.
+#[tokio::test]
+async fn fix_14_the_loop_dispatches_with_the_catalog_entrys_budget_timeout_effort_and_tier() {
+    use modbit_protocol::v1::{StartTask, TaskRunStarted};
+    use serde_json::json;
+    for (case, spec, model, budget, timeout, effort, tier) in [
+        // The built-in entry: a large write is no longer cut at 4096.
+        (
+            0xE0u8,
+            None,
+            "gpt-5-mini",
+            16_384,
+            120_000 + 12_288 * 30,
+            None,
+            None,
+        ),
+        // A configured entry: its own budget, timeout, effort and tier.
+        (
+            0xE8u8,
+            Some(
+                "gpt-fx=1/2;ctx=200000;out=65536;budget=32768;timeout=777000;reasoning=true;effort=low;tier=flex",
+            ),
+            "gpt-fx",
+            32_768,
+            777_000,
+            Some("low"),
+            Some("flex"),
+        ),
+    ] {
+        let (repo, root) = plain_repo(&[("notes.md", "n\n")]);
+        let script = vec![
+            json!({"calls": [{"name": "plan.update", "args": {"outcome": "look", "expected_files": ["notes.md"]}}]}),
+            json!({"calls": [{"name": "task.complete", "args": {"summary": "looked", "self_review": {"findings": []}}}]}),
+        ];
+        let (base, seen) = scripted_model(script, None).await;
+        let dir = tempfile::tempdir().unwrap();
+        let mut env = vec![
+            ("MODBIT_OPENAI_BASE_URL", base.as_str()),
+            ("OPENAI_API_KEY", ""),
+            ("ANTHROPIC_API_KEY", ""),
+        ];
+        if let Some(spec) = spec {
+            env.push(("MODBIT_OPENAI_MODELS", spec));
+        }
+        let core = CoreProcess::spawn_with_env(dir.path(), &env);
+        let mut c = core.client().await;
+        let (session, _) = create_session(&mut c, id16(case)).await;
+        let g = lease_for(&session);
+        let task =
+            create_task_with_profile(&mut c, &session, g, &root, case + 1, "local_trusted").await;
+        let ack = c
+            .command(envelope_fenced(
+                id16(case + 2),
+                "StartTask",
+                StartTask {
+                    task_id: Some(task.clone()),
+                    endpoint: String::new(),
+                    model: model.into(),
+                    max_turns: 8,
+                    max_tool_calls: 0,
+                    max_no_progress_turns: 4,
+                    skills: vec![],
+                }
+                .encode_to_vec(),
+                g,
+            ))
+            .await
+            .unwrap();
+        let _: TaskRunStarted = Client::result(&ack).unwrap();
+        let st = wait_task(&mut c, &task, 120).await;
+        assert_eq!(st.state, "ReadyForReview", "{model}: {st:?}");
+        // The wire: what the provider was asked.
+        let bodies = seen.lock().unwrap().clone();
+        assert!(bodies.len() >= 2, "{}", bodies.len());
+        for body in &bodies {
+            assert_eq!(
+                body["max_completion_tokens"], budget,
+                "{model}: {body:.300}"
+            );
+            assert_eq!(
+                body.get("reasoning_effort").and_then(|v| v.as_str()),
+                effort,
+                "{model}"
+            );
+            assert_eq!(
+                body.get("service_tier").and_then(|v| v.as_str()),
+                tier,
+                "{model}"
+            );
+        }
+        // The log: the plan's budget and every invocation's route say the same.
+        let events = task_events(&core, &session, &task).await;
+        let plan = events
+            .iter()
+            .find(|(_, t, _)| t == "RoutingPlanCompiled")
+            .unwrap_or_else(|| panic!("{events:#?}"));
+        let slot_budget = &plan.2["plan"]["slots"][0]["budget"];
+        assert_eq!(slot_budget["max_output_tokens"], budget, "{slot_budget}");
+        assert_eq!(slot_budget["timeout_ms"], timeout, "{slot_budget}");
+        let routes: Vec<&serde_json::Value> = events
+            .iter()
+            .filter(|(_, t, _)| t == "ModelInvocationStarted")
+            .map(|(_, _, p)| &p["model_route"])
+            .collect();
+        assert!(!routes.is_empty());
+        for route in routes {
+            assert_eq!(route["timeout_ms"], timeout, "{route}");
+            assert_eq!(route["max_output_tokens"], budget, "{route}");
+            assert_eq!(route["reasoning_effort"].as_str(), effort, "{route}");
+            assert_eq!(route["service_tier"].as_str(), tier, "{route}");
+        }
+        let _ = repo;
+    }
+}
+
 /// M3.1: the exact/regex/path index behind `search.*` on a real repository:
 /// hits carry path/line/column/span and are bound to the index revision; the
 /// index excludes generated and ignored paths; a write through change.apply

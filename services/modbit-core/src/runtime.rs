@@ -45,10 +45,9 @@ use crate::server::Core;
 
 /// Inline observation ceiling (docs/14 contract 2, docs/33 "inline size ceiling").
 const OBSERVATION_CEILING_BYTES: usize = 16 * 1024;
-/// Model stream timeout per invocation.
-const MODEL_TIMEOUT_MS: u64 = 120_000;
-/// Output ceiling per invocation.
-const MAX_OUTPUT_TOKENS: u32 = 4096;
+// The model stream timeout and the output ceiling per invocation come from the
+// model's catalog entry (`model_registry::dispatch_limits`), not from a
+// constant shared by every model.
 
 /// How a task is run.
 #[derive(Clone, Debug)]
@@ -1075,6 +1074,7 @@ fn route_new_run(
         ) {
             return Err(refusal);
         }
+        let limits = crate::model_registry::dispatch_limits(core, &cfg.endpoint, &cfg.model);
         let plan = modbit_domain::routing::ConditionalExecutionPlan::direct(
             core.tenant_id,
             task.session_id,
@@ -1085,8 +1085,8 @@ fn route_new_run(
             &modbit_domain::routing::DirectPath {
                 endpoint: &cfg.endpoint,
                 model: &cfg.model,
-                timeout_ms: MODEL_TIMEOUT_MS,
-                max_output_tokens: MAX_OUTPUT_TOKENS,
+                timeout_ms: limits.timeout_ms,
+                max_output_tokens: limits.max_output_tokens,
                 max_retries: 0,
                 max_turns: cfg.budgets.max_turns,
             },
@@ -2102,7 +2102,7 @@ fn media_parts(call_id: &str, media: &[MediaRef]) -> Vec<ContentPart> {
 /// Fill the media parts of a transcript copy with the bytes of their egress
 /// copies, or drop them when the model cannot take that modality. The stored
 /// transcript keeps references only, so nothing here changes what was logged.
-async fn hydrate_media(
+pub(crate) async fn hydrate_media(
     core: &Core,
     transcript: &mut [Message],
     vision: bool,
@@ -2659,6 +2659,8 @@ async fn run_loop(
         &cfg.endpoint,
         &cfg.model,
     );
+    // REQ-EV-0190: what the user attached reaches the model with the task.
+    let mut attachments = crate::media_bridge::AttachmentView::default();
     // REQ-EV-0021/0062/0146 (docs/21 "Environment revisions"): a fresh run
     // pins the environment as it is; a resumed one checks what it pinned
     // against what is there and, when they differ, waits for an explicit
@@ -3144,7 +3146,9 @@ async fn run_loop(
                     .gateway
                     .capability(&cfg.endpoint, &cfg.model)
                     .is_some_and(|c| c.vision);
-                let mut harness_json = serde_json::to_value(&state).unwrap_or_default();
+                // The model-facing state is bounded (audit C defect 2): the
+                // lists that grow with the run keep a top-N and a marker.
+                let mut harness_json = state.prompt_view();
                 // M6.1: the WorkGraph, one line per node, outside the transcript.
                 if !state.work_graph.nodes.is_empty() {
                     harness_json["work"] = serde_json::json!(state.work_graph.summary());
@@ -3195,9 +3199,18 @@ async fn run_loop(
                         })
                         .unwrap_or_default()
                 };
+                // REQ-EV-0190: the task's attachments join the user turn as the
+                // egress copies a workspace read of the same bytes would give.
+                attachments.refresh(&core, &task).await;
+                let task_attachments = attachments.hydrated_parts(&core, vision, &mut bridge).await;
+                // The routed model's own output budget, timeout, effort and
+                // tier (audit G), not one constant for every model.
+                let limits =
+                    crate::model_registry::dispatch_limits(&core, &cfg.endpoint, &cfg.model);
                 let compiled =
                     modbit_prompt_compiler::compile(modbit_prompt_compiler::PromptInput {
                         goal: task.goal_text.clone(),
+                        task_attachments,
                         workspace_root: task.workspace_root.clone(),
                         execution_profile: task.execution_profile.clone(),
                         workspace_rules: rules.select(&core, &task, lt, &actor, &state).await,
@@ -3215,11 +3228,11 @@ async fn run_loop(
                         model_policy: ModelPolicy {
                             endpoint: cfg.endpoint.clone(),
                             model: cfg.model.clone(),
-                            reasoning_effort: None,
-                            service_tier: None,
+                            reasoning_effort: limits.reasoning_effort.clone(),
+                            service_tier: limits.service_tier.clone(),
                         },
-                        max_output_tokens: MAX_OUTPUT_TOKENS,
-                        timeout_ms: MODEL_TIMEOUT_MS,
+                        max_output_tokens: limits.max_output_tokens,
+                        timeout_ms: limits.timeout_ms,
                     });
                 let mut request = compiled.request;
                 request.request_id = format!("{}:{}", task.task_id, ordinal);
@@ -3317,7 +3330,7 @@ async fn run_loop(
                 }
                 // ModelInvoke step.
                 let invoke_step = RunStepId::new();
-                let route_json = serde_json::json!({"endpoint": cfg.endpoint, "model": cfg.model, "cache_key": request.cache_key});
+                let route_json = serde_json::json!({"endpoint": cfg.endpoint, "model": cfg.model, "cache_key": request.cache_key, "reasoning_effort": limits.reasoning_effort, "service_tier": limits.service_tier, "max_output_tokens": limits.max_output_tokens, "timeout_ms": limits.timeout_ms});
                 {
                     let mut store = core.store.lock().await;
                     let _ = append(

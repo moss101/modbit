@@ -15,6 +15,18 @@ pub enum ProviderKind {
     Anthropic,
 }
 
+impl ProviderKind {
+    /// Whether this family's adapter implements structured (JSON) output:
+    /// the OpenAI adapter sends `response_format: json_object`; the Anthropic
+    /// Messages API has no such mode and its adapter implements none (forcing
+    /// a tool would take the tool channel the agent loop needs). A capability
+    /// the adapter does not implement is never claimed or silently dropped.
+    #[must_use]
+    pub fn implements_structured_output(self) -> bool {
+        matches!(self, Self::OpenAi)
+    }
+}
+
 /// A credential the gateway can present. The raw value is resolved only at
 /// request time and is never printed (docs/15 "Credentials").
 #[derive(Clone, Serialize, Deserialize, PartialEq, Eq)]
@@ -169,6 +181,17 @@ impl Message {
 /// nothing needs repair, which is the normal case.
 #[must_use]
 pub fn without_orphan_tool_results(messages: &[Message]) -> std::borrow::Cow<'_, [Message]> {
+    without_orphan_tool_results_mapped(messages).0
+}
+
+/// [`without_orphan_tool_results`] plus, when messages were dropped, the index
+/// in `messages` of each message kept (`None` means the identity mapping).
+/// Cache breakpoints index the original messages, so an adapter that places
+/// them needs the mapping.
+#[must_use]
+pub fn without_orphan_tool_results_mapped(
+    messages: &[Message],
+) -> (std::borrow::Cow<'_, [Message]>, Option<Vec<usize>>) {
     use std::collections::HashSet;
     let announces = |m: &Message, ids: &mut HashSet<String>| {
         if m.role == Role::Assistant {
@@ -197,11 +220,12 @@ pub fn without_orphan_tool_results(messages: &[Message]) -> std::borrow::Cow<'_,
         announces(m, &mut ids);
     }
     if !dirty {
-        return std::borrow::Cow::Borrowed(messages);
+        return (std::borrow::Cow::Borrowed(messages), None);
     }
     let mut ids = HashSet::new();
     let mut out = Vec::with_capacity(messages.len());
-    for m in messages {
+    let mut kept = Vec::with_capacity(messages.len());
+    for (at, m) in messages.iter().enumerate() {
         let parts: Vec<ContentPart> = m
             .parts
             .iter()
@@ -214,9 +238,10 @@ pub fn without_orphan_tool_results(messages: &[Message]) -> std::borrow::Cow<'_,
                 role: m.role,
                 parts,
             });
+            kept.push(at);
         }
     }
-    std::borrow::Cow::Owned(out)
+    (std::borrow::Cow::Owned(out), Some(kept))
 }
 
 /// A tool as projected to the model (docs/16 "Dynamic task-scoped projection").
@@ -258,6 +283,15 @@ pub struct ModelRequest {
     pub response_format: Option<String>,
     /// Stable-prefix cache key metadata (hash of stable segments).
     pub cache_key: Option<String>,
+    /// Indices into `messages` after which the prompt prefix is stable
+    /// across turns (docs/15 "Prompt cache economics"): everything up to and
+    /// including each listed message is a cacheable prefix. A transport with
+    /// explicit cache markers (Anthropic `cache_control`) places one at each;
+    /// a transport that caches automatically (OpenAI prefix caching) ignores
+    /// them. Empty = the caller declares no stable prefix and no marker is
+    /// sent.
+    #[serde(default)]
+    pub cache_breakpoints: Vec<usize>,
     /// Output cap.
     pub max_output_tokens: u32,
     /// Timeout for the whole stream.

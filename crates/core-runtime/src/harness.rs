@@ -193,7 +193,99 @@ pub struct HarnessState {
     pub quality_rejection: Option<String>,
 }
 
+/// Baseline checks the model is shown individually (non-passing first); the
+/// rest are counted by status.
+pub const VIEW_BASELINE_CHECKS: usize = 20;
+/// Newest repair attempts the model is shown; older ones are counted.
+pub const VIEW_REPAIR_ATTEMPTS: usize = 4;
+/// Entries of any other history list (open failures, out-of-plan files, open
+/// flags, KNOWN_FAILING symbols) the model is shown.
+pub const VIEW_LIST: usize = 20;
+
 impl HarnessState {
+    /// The state as the model sees it each turn (docs/14 contract 4), bounded
+    /// (audit C defect 2): the lists that grow with the run keep a top-N chosen
+    /// for what the model needs — failing checks before passing ones, the
+    /// newest attempts and failures — and say how much they left out in a
+    /// `*_summary` / `*_omitted` marker beside the list, never dropping the
+    /// rest in silence. The full state stays in `self` and on the log; only
+    /// what is serialized into the prompt is bounded. The prompt compiler
+    /// bounds whatever is left (nested lists, long strings) as a backstop.
+    #[must_use]
+    pub fn prompt_view(&self) -> serde_json::Value {
+        use serde_json::{Value, json};
+        let mut v = serde_json::to_value(self).unwrap_or_default();
+        let Some(map) = v.as_object_mut() else {
+            return v;
+        };
+        // Baseline checks: non-passing first, then passing, up to the cap.
+        if self.baseline_checks.len() > VIEW_BASELINE_CHECKS {
+            let (failing, passing): (Vec<_>, Vec<_>) = self
+                .baseline_checks
+                .iter()
+                .partition(|(_, status)| status != "PASS");
+            let shown: Vec<&(String, String)> = failing
+                .into_iter()
+                .chain(passing)
+                .take(VIEW_BASELINE_CHECKS)
+                .collect();
+            let mut by_status = std::collections::BTreeMap::<&str, u32>::new();
+            for (_, status) in &self.baseline_checks {
+                *by_status.entry(status.as_str()).or_default() += 1;
+            }
+            map.insert("baseline_checks".into(), json!(shown));
+            map.insert(
+                "baseline_checks_summary".into(),
+                json!({
+                    "total": self.baseline_checks.len(),
+                    "shown": shown.len(),
+                    "omitted": self.baseline_checks.len() - shown.len(),
+                    "by_status": by_status,
+                    "note": "non-passing checks are listed first; the rest are counted, not shown",
+                }),
+            );
+        }
+        // Repair attempts: the newest few, the rest counted.
+        if self.repair_attempts.len() > VIEW_REPAIR_ATTEMPTS {
+            let omitted = self.repair_attempts.len() - VIEW_REPAIR_ATTEMPTS;
+            let shown = &self.repair_attempts[omitted..];
+            map.insert("repair_attempts".into(), json!(shown));
+            map.insert(
+                "repair_attempts_summary".into(),
+                json!({
+                    "total": self.repair_attempts.len(),
+                    "shown": shown.len(),
+                    "omitted": omitted,
+                    "note": "the newest attempts are shown; older ones are on the log",
+                }),
+            );
+        }
+        // Histories where the newest entries matter most keep the tail; the
+        // frozen or declared sets keep their head.
+        let mut cap = |key: &str, keep_newest: bool| {
+            let Some(Value::Array(items)) = map.get_mut(key) else {
+                return;
+            };
+            if items.len() <= VIEW_LIST {
+                return;
+            }
+            let omitted = items.len() - VIEW_LIST;
+            if keep_newest {
+                items.drain(..omitted);
+            } else {
+                items.truncate(VIEW_LIST);
+            }
+            map.insert(format!("{key}_omitted"), json!(omitted));
+        };
+        cap("open_failures", true);
+        cap("out_of_plan_files", true);
+        cap("open_flags", true);
+        cap("baseline_failing", false);
+        cap("original_write_set", false);
+        cap("quarantined", true);
+        v
+    }
+
     /// Start a new leg on the same run (REQ-EPR-006): the continuation's
     /// repair loop and no-progress count begin fresh; the failed leg's
     /// attempts stay on the log, and the candidate revision, the plan and
@@ -1248,6 +1340,122 @@ pub fn observe_streams(
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    /// A run's state after `turn` turns of a long task: every verification
+    /// pass adds checks and failures, every failed fix adds an attempt.
+    fn long_run(turn: usize) -> HarnessState {
+        let mut h = HarnessState {
+            turns: u32::try_from(turn).unwrap(),
+            ..HarnessState::default()
+        };
+        h.baseline_checks = (0..turn * 30)
+            .map(|n| {
+                (
+                    format!("cargo:crate_{n}::tests::check_{n}"),
+                    if n % 7 == 0 { "FAIL" } else { "PASS" }.to_owned(),
+                )
+            })
+            .collect();
+        h.baseline_failing = h
+            .baseline_checks
+            .iter()
+            .filter(|(_, s)| s == "FAIL")
+            .map(|(id, _)| id.clone())
+            .collect();
+        h.open_failures = (0..turn * 2)
+            .map(|n| format!("verify:cargo:t.rs::f{n}:abcd"))
+            .collect();
+        h.out_of_plan_files = (0..turn).map(|n| format!("src/extra{n}.rs")).collect();
+        h.repair_attempts = (0..turn)
+            .map(|n| RepairAttempt {
+                attempt_ordinal: u32::try_from(n + 1).unwrap(),
+                failure_signature: "verify:cargo:t.rs::a:abcd".into(),
+                hypothesis: "the guard is missing ".repeat(turn),
+                evidence_refs: (0..turn).map(|e| format!("obj{e}")).collect(),
+                ..RepairAttempt::default()
+            })
+            .collect();
+        h
+    }
+
+    /// Audit C defect 2 (FIX-13): the lists that grow with a run no longer
+    /// grow the request. After 50 turns of accumulation the model-facing
+    /// state is bounded, says what it left out, and keeps what matters.
+    #[test]
+    fn the_prompt_view_is_bounded_across_fifty_turns_and_says_what_it_omits() {
+        let sizes: Vec<usize> = (1..=50)
+            .map(|turn| {
+                let view = long_run(turn).prompt_view();
+                modbit_prompt_bound(&view).to_string().len()
+            })
+            .collect();
+        let plateau = sizes[10..].iter().copied().max().unwrap();
+        assert!(
+            sizes[49] <= sizes[10] * 3 / 2,
+            "turn 50 is not much larger than turn 11: {sizes:?}"
+        );
+        assert!(plateau < 40 * 1024, "{plateau} bytes");
+        // The unbounded state, for scale: what every turn used to carry.
+        let raw = serde_json::to_string(&long_run(50)).unwrap().len();
+        assert!(raw > 5 * plateau, "{raw} vs {plateau}");
+
+        let h = long_run(50);
+        let v = h.prompt_view();
+        // Failing checks come first; the rest is counted by status.
+        let checks = v["baseline_checks"].as_array().unwrap();
+        assert_eq!(checks.len(), VIEW_BASELINE_CHECKS);
+        assert!(checks.iter().all(|c| c[1] == "FAIL"), "{checks:?}");
+        let s = &v["baseline_checks_summary"];
+        assert_eq!(s["total"], 1500);
+        assert_eq!(s["omitted"], 1500 - VIEW_BASELINE_CHECKS);
+        assert_eq!(s["by_status"]["FAIL"], 215);
+        assert_eq!(s["by_status"]["PASS"], 1285);
+        // The newest attempts are shown, older ones counted.
+        let attempts = v["repair_attempts"].as_array().unwrap();
+        assert_eq!(attempts.len(), VIEW_REPAIR_ATTEMPTS);
+        assert_eq!(attempts.last().unwrap()["attempt_ordinal"], 50);
+        assert_eq!(attempts[0]["attempt_ordinal"], 47);
+        assert_eq!(v["repair_attempts_summary"]["omitted"], 46);
+        // Histories keep their newest entries and say how many went.
+        let open = v["open_failures"].as_array().unwrap();
+        assert_eq!(open.len(), VIEW_LIST);
+        assert_eq!(open.last().unwrap(), "verify:cargo:t.rs::f99:abcd");
+        assert_eq!(v["open_failures_omitted"], 100 - VIEW_LIST);
+        assert_eq!(v["out_of_plan_files_omitted"], 50 - VIEW_LIST);
+        assert_eq!(v["baseline_failing"].as_array().unwrap().len(), VIEW_LIST);
+        assert_eq!(v["baseline_failing_omitted"], 215 - VIEW_LIST);
+        // The state itself is untouched: the view bounds only the prompt.
+        assert_eq!(h.baseline_checks.len(), 1500);
+        assert_eq!(h.repair_attempts.len(), 50);
+        // A short run is shown whole, with no markers.
+        let small = long_run(0).prompt_view();
+        assert!(small.get("baseline_checks_summary").is_none());
+        assert!(small.get("repair_attempts_summary").is_none());
+        assert!(small.get("open_failures_omitted").is_none());
+    }
+
+    /// The compiler bounds the view again (nested lists, long strings); this
+    /// mirrors that final pass for the size assertion without a dependency
+    /// on the compiler crate.
+    fn modbit_prompt_bound(v: &serde_json::Value) -> serde_json::Value {
+        match v {
+            serde_json::Value::Array(a) => serde_json::Value::Array(
+                a.iter()
+                    .take(24)
+                    .map(modbit_prompt_bound)
+                    .collect::<Vec<_>>(),
+            ),
+            serde_json::Value::Object(m) => serde_json::Value::Object(
+                m.iter()
+                    .map(|(k, v)| (k.clone(), modbit_prompt_bound(v)))
+                    .collect(),
+            ),
+            serde_json::Value::String(s) => {
+                serde_json::Value::String(s.chars().take(400).collect())
+            }
+            other => other.clone(),
+        }
+    }
 
     #[test]
     fn repair_loop_records_attempts_and_escalates_on_equivalence_bounds_and_worsening() {
