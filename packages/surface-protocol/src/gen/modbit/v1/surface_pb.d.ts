@@ -13,6 +13,7 @@ import type { Hello, HelloAck } from "./negotiation_pb.js";
 import type { Id } from "./domain_pb.js";
 import type { Timestamp } from "@bufbuild/protobuf/wkt";
 import type { CommandEnvelope, EventEnvelope } from "./envelope_pb.js";
+import type { CompactionSummaryView, CompactionThresholdView, InstructionLayerView, PreTurnPackView } from "./context_rules_pb.js";
 
 /**
  * Describes the file modbit/v1/surface.proto.
@@ -2181,6 +2182,38 @@ export declare type ContextInspectorView = Message<"modbit.v1.ContextInspectorVi
    * @generated from field: uint32 reported_invocations = 29;
    */
   reportedInvocations: number;
+
+  /**
+   * Fields 180-199 are the context rules/pack/compaction block (REQ-PX-107,
+   * 108, 109); the messages are in context_rules.proto.
+   * Every instruction layer of the task's last selection: in force, and the
+   * files that exist and are not (an untrusted repository's AGENTS.md among
+   * them, with the reason).
+   *
+   * @generated from field: repeated modbit.v1.InstructionLayerView instructions = 180;
+   */
+  instructions: InstructionLayerView[];
+
+  /**
+   * The latest goal-seeded pre-turn step.
+   *
+   * @generated from field: modbit.v1.PreTurnPackView pre_turn_pack = 181;
+   */
+  preTurnPack?: PreTurnPackView | undefined;
+
+  /**
+   * How each compaction epoch's summary was made.
+   *
+   * @generated from field: repeated modbit.v1.CompactionSummaryView compaction_summaries = 182;
+   */
+  compactionSummaries: CompactionSummaryView[];
+
+  /**
+   * What the compaction trigger derives from.
+   *
+   * @generated from field: modbit.v1.CompactionThresholdView compaction_thresholds = 183;
+   */
+  compactionThresholds?: CompactionThresholdView | undefined;
 };
 
 /**

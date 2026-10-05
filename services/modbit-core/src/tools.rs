@@ -1505,6 +1505,14 @@ impl ToolHost {
                             .unwrap_or(u32::MAX),
                         entries: count("entries"),
                         stubs: count("stubs"),
+                        trigger: String::new(),
+                        status: "PACKED".into(),
+                        reason: String::new(),
+                        token_budget: u32::try_from(
+                            o["pack"]["token_budget"].as_u64().unwrap_or(0),
+                        )
+                        .unwrap_or(u32::MAX),
+                        seed_digest: String::new(),
                     },
                     &actor,
                 ));

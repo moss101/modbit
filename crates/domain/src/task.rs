@@ -983,6 +983,11 @@ pub enum TaskEvent {
         conflicts: Vec<serde_json::Value>,
         /// Invalid files as `source: why`.
         invalid: Vec<String>,
+        /// The files that exist and are not in force, as `{source, reason}`
+        /// (REQ-PX-107: an untrusted repository's AGENTS.md, a link out of
+        /// the repository, a file past the cap).
+        #[serde(default)]
+        not_loaded: Vec<serde_json::Value>,
     },
     /// `AgentNodeCreated` (M6.1, docs/13 "Agent node", docs/14
     /// "AgentGraph"): a logical agent joined the task's AgentGraph — the
@@ -1344,6 +1349,22 @@ pub enum TaskEvent {
         /// sha256 of the source entries the epoch summarised.
         #[serde(default)]
         source_digest: String,
+        /// `MODEL` (a summary a model wrote and the Core validated) or
+        /// `EXTRACTIVE`; empty on a record from before REQ-PX-109, which
+        /// was always extractive.
+        #[serde(default)]
+        summary_source: String,
+        /// `endpoint/model` of the summarizer, when a model wrote it.
+        #[serde(default)]
+        summarizer: String,
+        /// Why the summary is extractive when the model path was meant or
+        /// tried (`SUMMARIZER_TIMEOUT`, `SUMMARY_INVALID`, ...).
+        #[serde(default)]
+        fallback_reason: String,
+        /// Object hash of the pre-compaction transcript this epoch replaced:
+        /// `artifact.range` reads the exact text back.
+        #[serde(default)]
+        transcript_ref: String,
     },
     /// `CompactionStarted` (docs/19 "Compaction epochs", docs/30
     /// "Durability", M4.2): a compaction was started, asynchronously by a
@@ -1370,6 +1391,16 @@ pub enum TaskEvent {
         target_tokens: u32,
         /// `ASYNC` | `SYNC_FALLBACK`.
         mode: String,
+        /// The routed model's context window the trigger derived from
+        /// (0 = unknown to the catalog).
+        #[serde(default)]
+        window_tokens: u32,
+        /// The transcript budget in force when this compaction started.
+        #[serde(default)]
+        budget_tokens: u32,
+        /// `MODEL_WINDOW` | `ENV_OVERRIDE` | `FALLBACK`.
+        #[serde(default)]
+        budget_source: String,
     },
     /// `CompactionCommitted` (docs/30 "Durability", M4.2): the durability
     /// record of an installed epoch, beside the model-facing
@@ -1387,6 +1418,13 @@ pub enum TaskEvent {
         manifest_hash: String,
         /// `ASYNC` | `SYNC_FALLBACK`.
         mode: String,
+        /// `MODEL` | `EXTRACTIVE` (REQ-PX-109).
+        #[serde(default)]
+        summary_source: String,
+        /// Why the summary is extractive when the model path was meant or
+        /// tried.
+        #[serde(default)]
+        fallback_reason: String,
     },
     /// `CompactionRejectedStale` (docs/19: a result is accepted only while
     /// its source is still current; docs/30 "Durability"; docs/54 fault 10):
@@ -1533,6 +1571,24 @@ pub enum TaskEvent {
         entries: u32,
         /// Signature-only stubs packed.
         stubs: u32,
+        /// What started the pack (REQ-PX-108): empty for a `context.pack`
+        /// call; `TASK_START` | `GOAL_CHANGE` | `COMPACTION` for the Core's
+        /// own pre-turn step.
+        #[serde(default)]
+        trigger: String,
+        /// `PACKED` (also what an older record without one means) |
+        /// `EMPTY` | `DEGRADED`.
+        #[serde(default)]
+        status: String,
+        /// The typed reason of an `EMPTY` or `DEGRADED` pre-turn pack.
+        #[serde(default)]
+        reason: String,
+        /// The token budget the pack was compiled under.
+        #[serde(default)]
+        token_budget: u32,
+        /// sha256 of the text the planner was seeded with.
+        #[serde(default)]
+        seed_digest: String,
     },
     /// `RepairAttemptRecorded` (docs/28 §5, PX-018): recorded before the
     /// attempt's change and verification run; no state change.
