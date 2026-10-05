@@ -321,6 +321,163 @@ class DossierTests(unittest.TestCase):
             for ref in node.get("evidence") or []:
                 self.assertRegex(ref, r"^(run|test|commit|revision|build|env|artifact|event|effect|checkpoint):\S+$", node["id"])
 
+    PARITY_RECORDS = [("DR-PX-2026-10-03-007", "DOC-PX-007", 41, 68, True), ("DR-PX-2026-10-03-008", "DOC-PX-008", 69, 76, True),
+                      ("DR-PX-2026-10-03-009", "DOC-PX-009", 77, 81, False), ("DR-PX-2026-10-03-010", "DOC-PX-010", 82, 86, True),
+                      ("DR-PX-2026-10-03-011", "DOC-PX-011", 87, 93, False), ("DR-PX-2026-10-03-012", "DOC-PX-012", 94, 98, False),
+                      ("DR-PX-2026-10-05-013", "DOC-PX-013", 99, 139, True)]
+
+    def edges(self, g):
+        after, auth, includes = {}, set(), {}
+        for e in g["edges"]:
+            if e["type"] == "after":
+                after.setdefault(e["from"], set()).add(e["to"])
+            elif e["type"] == "authorized_by":
+                auth.add((e["from"], e["to"]))
+            elif e["type"] == "includes":
+                includes.setdefault(e["to"], set()).add(e["from"])
+        return after, auth, includes
+
+    def reaches(self, after, pid, wanted):
+        """True when pid is gated, directly or through earlier PX rows, by any node of `wanted`."""
+        seen, todo = set(), [pid]
+        while todo:
+            cur = todo.pop()
+            for dep in after.get(cur, ()):
+                if dep in wanted:
+                    return True
+                if dep.startswith("PX-") and dep not in seen:
+                    seen.add(dep)
+                    todo.append(dep)
+        return False
+
+    def test_parity_push_rows_are_authorized_gated_and_release_zero_only(self):
+        # DOC-PX-007..012: six Decision Records (2026-10-03) add PX-041..098. Each row is authorized by its record,
+        # scheduled in M10, in no release but RELEASE_ZERO, NOT_STARTED, and gated (directly or through an earlier PX row)
+        # by its record's dossier task, so none can start before the record is accepted and the task is COMPLETE.
+        # 007, 008 and 010 were accepted by the owner on 2026-10-05; 009, 011 and 012 stay proposed.
+        self.rebuild()
+        g = self.graph()
+        nodes = {n["id"]: n for n in g["nodes"]}
+        after, auth, includes = self.edges(g)
+        for dr, task, lo, hi, accepted in self.PARITY_RECORDS:
+            self.assertEqual(nodes[dr]["type"], "change_record")
+            self.assertEqual(nodes[dr]["status"], "APPROVED" if accepted else "PROPOSED", dr)
+            self.assertEqual(nodes[task]["type"], "dossier_task")
+            self.assertIn("DOC-GOV-007", after[task])
+            self.assertIn((task, dr), auth)
+            if not accepted:
+                self.assertNotIn(nodes[task].get("status"), ("E2E_PROVEN", "COMPLETE"), task)
+            for n in range(lo, hi + 1):
+                pid = "PX-%03d" % n
+                self.assertEqual(nodes[pid]["milestone"], "M10", pid)
+                self.assertEqual(nodes[pid]["release"], "RELEASE_ZERO", pid)
+                self.assertEqual(nodes[pid]["status"], "NOT_STARTED", pid)
+                self.assertIn((pid, dr), auth, pid)
+                self.assertNotIn((pid, "DR-PX-2026-09-05-006"), auth, pid)
+                self.assertTrue(self.reaches(after, pid, {task}), "%s is not gated by %s" % (pid, task))
+                self.assertEqual(includes.get(pid), {"RELEASE_ZERO"}, pid)
+        self.assertIn("DOC-PX-008", after["PX-069"])
+        out = self.run_tool("graph", "show", "PX-094")
+        for needle in ("DR-PX-2026-10-03-012", "DOC-PX-012", "QUAL-PX-094"):
+            self.assertIn(needle, out)
+        # the sealed surface is untouched by the additive rows
+        self.run_tool("check_dossier", "--manifest", contains="manifest hashes verified")
+
+    def test_unratified_records_stay_blocked_and_no_accepted_row_depends_on_them(self):
+        # The owner accepted 007, 008 and 010 only. No row of an accepted record (including DR-PX-2026-10-05-013's rows,
+        # when present) may depend, directly or transitively, on a row or dossier task of a proposed record, and a
+        # proposed record's dossier task cannot be moved to E2E_PROVEN or COMPLETE through graph.py.
+        self.rebuild()
+        g = self.graph()
+        nodes = {n["id"]: n for n in g["nodes"]}
+        after, auth, _ = self.edges(g)
+        blocked_tasks, blocked_rows = set(), set()
+        for dr, task, lo, hi, accepted in self.PARITY_RECORDS:
+            if not accepted:
+                blocked_tasks.add(task)
+                blocked_rows.update("PX-%03d" % n for n in range(lo, hi + 1))
+        self.assertEqual(blocked_tasks, {"DOC-PX-009", "DOC-PX-011", "DOC-PX-012"})
+
+        def closure(pid):
+            seen, todo = set(), [pid]
+            while todo:
+                cur = todo.pop()
+                for dep in after.get(cur, ()):
+                    if dep not in seen:
+                        seen.add(dep)
+                        todo.append(dep)
+            return seen
+
+        for pid in sorted(n["id"] for n in g["nodes"] if re.match(r"^PX-\d{3}$", n["id"]) and int(n["id"][3:]) >= 41):
+            if pid in blocked_rows:
+                continue
+            stray = closure(pid) & (blocked_tasks | blocked_rows)
+            self.assertFalse(stray, "%s (accepted record) depends on %s" % (pid, sorted(stray)))
+        for task in sorted(blocked_tasks):
+            self.assertNotIn(nodes[task].get("status"), ("E2E_PROVEN", "COMPLETE"), task)
+        # graph.py refuses the ratification-by-status shortcut: REAL_TESTING is allowed, E2E_PROVEN is refused
+        self.run_tool("graph", "set", "DOC-PX-009", "E2E_PROVEN", "--evidence", "artifact:evidence/dossier-px-007/validation.json",
+                      ok=False, contains="still PROPOSED")
+        self.assertEqual({n["id"]: n for n in self.graph()["nodes"]}["DOC-PX-009"]["status"], nodes["DOC-PX-009"]["status"])
+
+    def test_parity_surface_counts_are_pinned_and_dr_013_is_traced(self):
+        # The additive PX ledger pins nothing in tools/dossier_px.py (totals are computed); the parity-push surface is pinned here
+        # in the same reseal that adds a record: PX-000..139 (140 rows, 137 ADOPT tasks, 3 DEFERRED), seven records of which
+        # 007, 008, 010 and 013 are accepted, and the 41 rows of DR-PX-2026-10-05-013 (39 release-critical, 2 iteration).
+        self.rebuild()
+        g = self.graph()
+        nodes = {n["id"]: n for n in g["nodes"]}
+        reqs = [n for n in g["nodes"] if re.match(r"^REQ-PX-\d{3}$", n["id"])]
+        tasks = [n for n in g["nodes"] if re.match(r"^PX-\d{3}$", n["id"]) and n["type"] == "imp_task"]
+        self.assertEqual(len(reqs), 140)
+        self.assertEqual(len(tasks), 137)
+        self.assertEqual(sorted(n["id"] for n in reqs if n.get("disposition") == "DEFERRED"), ["REQ-PX-003", "REQ-PX-012", "REQ-PX-013"])
+        self.assertEqual(len([r for r in self.PARITY_RECORDS if r[4]]), 4)
+        self.assertEqual(len(self.PARITY_RECORDS), 7)
+        text = (self.root / "docs/62_PRODUCT_EXTENSION_REQUIREMENTS_TASKS_AND_QUALIFICATIONS.md").read_text()
+        tiers = re.findall(r"\*\*Decision Record, phase and evidence tier:\*\* DR-PX-2026-10-05-013; audit group [A-J], [^;]+; (release-critical|iteration) \(", text)
+        self.assertEqual((tiers.count("release-critical"), tiers.count("iteration")), (39, 2))
+        subsystems = {n["id"] for n in g["nodes"] if n["type"] == "subsystem"}
+        owners = {e["from"]: e["to"] for e in g["edges"] if e["type"] == "owned_by"}
+        after, auth, includes = self.edges(g)
+        for n in range(99, 140):
+            pid = "PX-%03d" % n
+            self.assertIn(owners[pid], subsystems, pid)  # an existing owner; no subsystem is introduced
+            self.assertIn("DOC-PX-013", after[pid], pid)
+            self.assertIn((pid, "DR-PX-2026-10-05-013"), auth, pid)
+        # doc 79: every BLD task is traced and every new row appears in the rows table and in the traceability table
+        spec = (self.root / "docs/79_AUDIT_DRIVEN_CAPABILITY_COMPLETION_SPECIFICATION.md").read_text()
+        trace = spec[spec.index("## 7. Traceability"):spec.index("### Row to requirements")]
+        for b in range(1, 31):
+            self.assertIn("| BLD-%02d |" % b, trace)
+        for n in range(99, 140):
+            self.assertRegex(spec, r"\| PX-%03d \| " % n)
+            self.assertIn("PX-%03d" % n, trace)
+        # EPR-pinned behaviour: the new rows only reference EPR rows as prerequisites or related requirements; the sealed EPR docs
+        # are guarded by check_dossier (baseline hashes), so a changed EPR row would already fail the integrity gate.
+        self.run_tool("check_dossier", "--manifest", contains="manifest hashes verified")
+
+    def test_decision_record_status_and_approval_match_the_graph(self):
+        # An accepted record names who approved it; a proposed one says it is pending; the graph change record follows the file.
+        self.rebuild()
+        nodes = {n["id"]: n for n in self.graph()["nodes"]}
+        for dr, _task, _lo, _hi, accepted in self.PARITY_RECORDS:
+            path = next((self.root / "docs/decisions").glob(dr + "-*.md"))
+            head = path.read_text().split("---")[1]
+            self.assertIn("status: accepted" if accepted else "status: proposed", head, dr)
+            by = re.search(r"^approved_by: (.*)$", head, re.M).group(1)
+            if accepted:
+                self.assertIn("owner instruction 2026-10-05", by, dr)
+                self.assertNotIn("pending", by.lower(), dr)
+            else:
+                self.assertTrue(by.startswith("pending owner ratification"), dr)
+            self.assertEqual(nodes[dr]["status"], "APPROVED" if accepted else "PROPOSED")
+        # flipping a record to accepted without recording the approval is refused by the graph builder
+        path = next((self.root / "docs/decisions").glob("DR-PX-2026-10-03-009-*.md"))
+        text = path.read_text().replace("status: proposed", "status: accepted", 1)
+        path.write_text(text)
+        self.run_tool("build_graph", ok=False, contains="approved_by does not record an approval")
+
     def test_implementation_specs_carry_v11_placement(self):
         required = {
             "docs/12_REPOSITORY_AND_MODULE_LAYOUT.md": ("ConditionalExecutionPlan", "Outcome Statistics Store", "review_isolated", "EPR-018"),

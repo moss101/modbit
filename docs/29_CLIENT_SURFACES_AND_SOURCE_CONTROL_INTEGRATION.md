@@ -86,3 +86,5 @@ Shared task history and assignment (REQ-PX-012) and comments with chat notificat
 ## What is out of scope
 
 An embedded editor, Tab completion, or replacing an IDE's own language features remain non-goals. Adapters are entry and review points, not a second product.
+
+**Proposed scoped supersession (DR-PX-2026-10-03-009, not in force until accepted).** The embedded-editor non-goal is lifted for the transactional Workspace Editor only; Tab completion and replacing an IDE's language features remain non-goals.

@@ -66,6 +66,49 @@ PX_STAGES = [("DOC-PX-001", "DOC-GOV-004", "Product extension stage A: authority
 # DR-PX-2026-09-05-006 (docs/97): competence hardening. PX rows from PX6_FIRST_ROW on are authorized by it as well as by DR-PX.
 PX6_CHANGE = "DR-PX-2026-09-05-006"
 PX6_FIRST_ROW = 32
+# DR-PX-2026-10-03-007..012 and DR-PX-2026-10-05-013 (docs/decisions, docs/97): the agent-first workspace, its five sibling goals and the audit-driven completion rows. The change record's status follows the
+# record file in docs/decisions (accepted is APPROVED, proposed is PROPOSED; dr_status); every row of a record is authorized by it and is gated, directly or through
+# an earlier PX row, by its dossier task.
+PX_PARITY = [
+    ("DR-PX-2026-10-03-007", "DOC-PX-007", 41, 68, "65_AGENT_FIRST_WORKSPACE_SPECIFICATION.md", "Agent-first workspace (phases 1-3), PX-041..068",
+     "Proposed: PX-041..068 in doc 62, specified clean-room by doc 65 with tagged requirements, audit, traceability and an unverified register"),
+    ("DR-PX-2026-10-03-008", "DOC-PX-008", 69, 76, "66_NATIVE_COMPUTER_CONTROL_SPECIFICATION.md", "Native computer control and browser control hardening, PX-069..076",
+     "Proposed: PX-069..076, doc 66; semantic-first Computer Runtime, per-call exact-intent approvals, helper process, browser hardening"),
+    ("DR-PX-2026-10-03-009", "DOC-PX-009", 77, 81, "67_WORKSPACE_EDITOR_SPECIFICATION.md", "Workspace Editor, PX-077..081",
+     "Proposed: PX-077..081, doc 67; transactional editor with scoped supersession of MOD-IDE-002 and MOD-SURF-002"),
+    ("DR-PX-2026-10-03-010", "DOC-PX-010", 82, 86, "68_AUTOMATIONS_SPECIFICATION.md", "Automations, PX-082..086",
+     "Proposed: PX-082..086, doc 68; automations through the existing Scheduler, policy and approval owners"),
+    ("DR-PX-2026-10-03-011", "DOC-PX-011", 87, 93, "69_EXTENSION_MARKETPLACE_AND_CUSTOMIZE_SPECIFICATION.md", "Extension marketplace and Customize, PX-087..093",
+     "Proposed: PX-087..093, doc 69; client-side catalog over the extension system, hostile-input handling, Customize"),
+    ("DR-PX-2026-10-03-012", "DOC-PX-012", 94, 98, "78_DESKTOP_SHELL_PLATFORM_INTEGRATION_SPECIFICATION.md", "Desktop shell platform integration, PX-094..098",
+     "Proposed: PX-094..098, doc 78; the Electron main-process change (window chrome, native integration, hardening, updates, versions)"),
+    ("DR-PX-2026-10-05-013", "DOC-PX-013", 99, 139, "79_AUDIT_DRIVEN_CAPABILITY_COMPLETION_SPECIFICATION.md", "Audit-driven capability completion, PX-099..139",
+     "Proposed: PX-099..139, doc 79; the build tasks of the 2026-10-05 audit that no earlier row fully covers, over existing owners only"),
+]
+
+
+def dr_status(dr_id):
+    """Front-matter status of a docs/decisions record, as the graph's change_record status (APPROVED or PROPOSED).
+
+    An accepted record must name who approved it; `approved_by: pending ...` with `status: accepted` is refused, so a
+    record cannot be flipped without the approval being recorded (docs/decisions/README.md).
+    """
+    import glob
+    paths = glob.glob(os.path.join(DOCS, "decisions", dr_id + "-*.md"))
+    if len(paths) != 1:
+        raise SystemExit("expected exactly one decision record file for %s, found %d" % (dr_id, len(paths)))
+    head = open(paths[0], encoding="utf-8").read().split("---")[1]
+    fields = dict(re.findall(r"^(\w+): (.*)$", head, re.M))
+    status = fields.get("status")
+    if status == "accepted":
+        if fields.get("approved_by", "pending").lower().startswith("pending"):
+            raise SystemExit("%s is accepted but approved_by does not record an approval" % dr_id)
+        return "APPROVED"
+    if status == "proposed":
+        return "PROPOSED"
+    raise SystemExit("%s has status %r; the PX records are accepted or proposed" % (dr_id, status))
+
+
 # IMP-EV milestones derive from OWNER_MAP; the entries below are the recorded exceptions, each justified by a Decision Record.
 # Docs 40/41/42 stay byte-identical; the override is stored on the node as `milestone_override` (docs/74).
 MILESTONE_OVERRIDES = {
@@ -590,6 +633,13 @@ def build(previous=None):
          "status": "APPROVED", "source": "docs/" + GOV_LOG_DOC})
     link(PX6_CHANGE, GOV_LOG_DOC, "specified_by")
     link(PX6_CHANGE, px.CHANGE, "refines")
+    for _dr in PX_PARITY:
+        _st = dr_status(_dr[0])
+        add({"id": _dr[0], "type": "change_record", "title": _dr[6].replace("Proposed:", "Approved:", 1) if _st == "APPROVED" else _dr[6],
+             "status": _st, "source": "docs/" + GOV_LOG_DOC})
+        link(_dr[0], GOV_LOG_DOC, "specified_by")
+        link(_dr[0], _dr[4], "specified_by")
+        link(_dr[0], px.CHANGE, "refines")
     for n in preqs + ptasks + pquals + pscen:
         add(n)
     for r in preqs:
@@ -597,14 +647,20 @@ def build(previous=None):
         link(r["id"], r["qual"], "qualified_by")
         link(r["id"], px.LEDGER_DOC, "specified_by")
         link(r["id"], px.CHANGE, "authorized_by")
-        if int(r["id"][-3:]) >= PX6_FIRST_ROW:
+        if PX6_FIRST_ROW <= int(r["id"][-3:]) < PX_PARITY[0][2]:
             link(r["id"], PX6_CHANGE, "authorized_by")
+        for _dr in PX_PARITY:
+            if _dr[2] <= int(r["id"][-3:]) <= _dr[3]:
+                link(r["id"], _dr[0], "authorized_by")
         if r["imp"]:
             link(r["id"], r["imp"], "implemented_by")
     for t in ptasks:
         link(t["id"], px.CHANGE, "authorized_by")
-        if int(t["id"][-3:]) >= PX6_FIRST_ROW:
+        if PX6_FIRST_ROW <= int(t["id"][-3:]) < PX_PARITY[0][2]:
             link(t["id"], PX6_CHANGE, "authorized_by")
+        for _dr in PX_PARITY:
+            if _dr[2] <= int(t["id"][-3:]) <= _dr[3]:
+                link(t["id"], _dr[0], "authorized_by")
         link(t["id"], t["subsystem"], "owned_by")
         link(t["id"], t["milestone"], "scheduled_in")
         link(t["id"], t["qual"], "proven_by")
@@ -757,6 +813,16 @@ def build(previous=None):
     link("DOC-GOV-007", GOV_LOG_DOC, "specified_by")
     link("DOC-GOV-007", GOAL_DOC, "specified_by")
     link("DOC-GOV-007", GOV7_CHANGE, "authorized_by")
+    for _dr in PX_PARITY:
+        add({"id": _dr[1], "type": "dossier_task", "title": "Product extension stage: " + _dr[5], "subsystem": "governance", "source": "docs/" + GOV_LOG_DOC,
+             "acceptance": "Decision Record, its rows, specification, supersession entries and change record added; implementation audit recorded; full integrity gate passes; " +
+                           ("the record is accepted by the owner and its status and approval are recorded; no product proof" if dr_status(_dr[0]) == "APPROVED"
+                            else "the record is flagged for owner ratification and the task stays below COMPLETE until it is accepted; no product proof")})
+        link(_dr[1], "DOC-GOV-007", "after")
+        link(_dr[1], "governance", "owned_by")
+        link(_dr[1], GOV_LOG_DOC, "specified_by")
+        link(_dr[1], _dr[4], "specified_by")
+        link(_dr[1], _dr[0], "authorized_by")
 
     # releases: derived projections over work items (docs/75) ----------------
     ms_of, owner_of = {}, {}

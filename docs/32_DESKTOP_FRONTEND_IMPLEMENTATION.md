@@ -13,6 +13,7 @@
 - TanStack Query for command/query cache where useful; authoritative live state comes from event reducer, not optimistic UI assumptions.
 - A small state machine/reducer layer for local UI state only.
 - Syntax highlighting and diff rendering in Trusted Code Surface; **no Monaco/Code-OSS/editor buffer architecture**.
+- **Proposed (DR-PX-2026-10-03-009, not in force until accepted):** the editor-buffer ban is scoped to allow the Workspace Editor's non-authoritative draft overlay; Monaco and Code-OSS stay banned. The agent-first shell, composer and trays are specified in `65_AGENT_FIRST_WORKSPACE_SPECIFICATION.md` and the main-process integration in `78_DESKTOP_SHELL_PLATFORM_INTEGRATION_SPECIFICATION.md`.
 
 All dependency versions are pinned exactly in lockfiles and updated through automated compatibility/security PRs.
 

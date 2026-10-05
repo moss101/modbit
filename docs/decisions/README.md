@@ -66,3 +66,12 @@ change of mind is a new record that names the old one in `supersedes`.
 | DR-M9-001 | Add `crates/mcp` and `tools/mcp-testserver` to the module layout (the External Tool Hub of M9.4) | accepted | 2026-09-18 | none |
 | DR-M9-002 | The live-provider proofs may run against an OpenAI- or Anthropic-protocol compatible gateway (z.ai, glm-5.3-flash), recorded as such; the providers' own production endpoints stay open | accepted | 2026-09-19 | none |
 | DR-M3-005 | PX-020 seals on the internal competence baseline measured through the real product with a live model; the public SWE-bench Verified slice waits for its container-image harness | accepted | 2026-09-20 | none |
+| DR-PX-2026-10-03-007 | Agent-first workspace (phases 1 to 3): PX-041..068 specified clean-room by doc 65 | accepted | 2026-10-03 | none |
+| DR-PX-2026-10-03-008 | Native computer control (semantic-first, per-call exact-intent approvals) and browser control hardening: PX-069..076, doc 66 | accepted | 2026-10-03 | none |
+| DR-PX-2026-10-03-009 | Workspace Editor, a transactional secondary surface under the no-Monaco, no-Code-OSS constraint: PX-077..081, doc 67 | proposed | 2026-10-03 | none (scoped supersession of MOD-IDE-002 and MOD-SURF-002 on acceptance) |
+| DR-PX-2026-10-03-010 | Automations through the existing Scheduler, policy and approval owners: PX-082..086, doc 68 | accepted | 2026-10-03 | none (scoped supersession of MOD-AUTO-001, in force from the 2026-10-05 acceptance) |
+| DR-PX-2026-10-03-011 | Extension marketplace, hostile-input handling and the Customize surface: PX-087..093, doc 69 | proposed | 2026-10-03 | none |
+| DR-PX-2026-10-03-012 | Desktop shell platform integration (the Electron main-process change): PX-094..098, doc 78 | proposed | 2026-10-03 | none |
+| DR-PX-2026-10-05-013 | Audit-driven capability completion: the build tasks of the 2026-10-05 audit that no earlier row fully covers, PX-099..139, doc 79 | accepted | 2026-10-05 | none |
+
+DR-PX-2026-10-03-007, -008 and -010 were accepted on 2026-10-05 by the owner's instruction (goal: implement `research/audit/01-TASK-LIST.md`); -009, -011 and -012 remain proposed. DR-PX-2026-10-05-013 was accepted the same day on the same instruction.

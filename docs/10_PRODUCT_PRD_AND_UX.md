@@ -96,6 +96,8 @@ Three-column responsive layout:
 
 No editor chrome, explorer tree, extension host, debugger panels or IDE settings.
 
+**Refinement in force from 2026-10-05 (DR-PX-2026-10-03-007, accepted; `65_AGENT_FIRST_WORKSPACE_SPECIFICATION.md`).** The Task workspace becomes a conversation with the Work timeline inside it, an agent list on the left and a collapsible typed-apps panel on the right, with attention-first ordering (MOD-UX-001) computed by the Core. The non-goals of this file are clarified and not removed by sibling records: a pixel-only computer-use product stays a non-goal while semantic-first native control is specified (DR-PX-2026-10-03-008, accepted 2026-10-05); a general-purpose IDE replacement stays a non-goal while a scoped transactional Workspace Editor is specified (DR-PX-2026-10-03-009, still proposed); a marketplace-driven architecture stays a non-goal in that the Core never depends on a catalog while a client-side marketplace is specified (DR-PX-2026-10-03-011, still proposed). Automations (-010, accepted 2026-10-05) and the Electron main-process integration (-012, still proposed) have their own records. The scoped supersession entries are in docs 02 and 03. Until -009, -011 and -012 are accepted the non-goals they touch stand unchanged.
+
 ### 4. Trusted Code Review Surface
 Read-only by default and bound to `{workspace_revision, file_revision}`. It supports syntax highlighting, symbol outline, line anchors, changed-line gutter, side-by-side/unified diff, diagnostics, test links and evidence references. Stale CodeReferences are visibly invalidated after revision changes.
 
