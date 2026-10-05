@@ -109,7 +109,14 @@ impl PathPolicy {
         let mut rel = PathBuf::new();
         let mut depth: i32 = 0;
         let comps: Vec<Component> = if p.is_absolute() {
-            match p.strip_prefix(&self.root) {
+            // On Windows the canonical root is the verbatim `\\?\C:\...` form, so
+            // a path given in the ordinary `C:/...` form is compared against the
+            // root with that prefix removed too.
+            let plain_root = without_verbatim_prefix(&self.root);
+            match p
+                .strip_prefix(&self.root)
+                .or_else(|_| p.strip_prefix(&plain_root))
+            {
                 Ok(r) => r.components().collect(),
                 Err(_) => {
                     return Err(Error::OutsideRoot {
@@ -229,5 +236,40 @@ impl PathPolicy {
             relative: rel_str,
             absolute,
         })
+    }
+}
+
+/// `path` without a Windows verbatim prefix (`\\?\C:\x` becomes `C:\x`,
+/// `\\?\UNC\h\s` becomes `\\h\s`); any other path is returned unchanged.
+fn without_verbatim_prefix(path: &Path) -> PathBuf {
+    let s = path.to_string_lossy();
+    if let Some(rest) = s.strip_prefix(r"\\?\UNC\") {
+        PathBuf::from(format!(r"\\{rest}"))
+    } else if let Some(rest) = s.strip_prefix(r"\\?\") {
+        PathBuf::from(rest)
+    } else {
+        path.to_path_buf()
+    }
+}
+
+#[cfg(test)]
+mod verbatim_prefix_tests {
+    use super::without_verbatim_prefix;
+    use std::path::Path;
+
+    #[test]
+    fn a_verbatim_prefix_is_removed_and_other_paths_are_untouched() {
+        assert_eq!(
+            without_verbatim_prefix(Path::new(r"\\?\C:\work\repo")),
+            Path::new(r"C:\work\repo")
+        );
+        assert_eq!(
+            without_verbatim_prefix(Path::new(r"\\?\UNC\host\share\repo")),
+            Path::new(r"\\host\share\repo")
+        );
+        assert_eq!(
+            without_verbatim_prefix(Path::new("/home/me/repo")),
+            Path::new("/home/me/repo")
+        );
     }
 }

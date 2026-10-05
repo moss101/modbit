@@ -311,8 +311,10 @@ fn cli_drives_a_real_core_end_to_end() {
         "{all}"
     );
     // A worktree lives under Modbit's own directory next to the workspace
-    // (FIX-01), not at an arbitrary path the model names.
-    let wt = {
+    // (FIX-01); the tool takes a path relative to that directory, and the test
+    // looks for the checkout where it lands.
+    let wt = "wt".to_owned();
+    let wt_on_disk = {
         let repo_path = std::path::Path::new(&repo_str);
         repo_path
             .parent()
@@ -322,8 +324,6 @@ fn cli_drives_a_real_core_end_to_end() {
                 repo_path.file_name().unwrap().to_string_lossy()
             ))
             .join("wt")
-            .to_string_lossy()
-            .into_owned()
     };
     let wt_json = wt.replace('\\', "/");
     let (ok, out, all) = cli(
@@ -360,10 +360,7 @@ fn cli_drives_a_real_core_end_to_end() {
         ],
     );
     assert!(ok && out.contains("status=APPROVAL_PENDING"), "{all}");
-    assert!(
-        std::path::Path::new(&wt).exists(),
-        "no effect before approval"
-    );
+    assert!(wt_on_disk.exists(), "no effect before approval");
     let (ok, out, all) = cli(&data_dir, &core, &["approval", "list", "--session", &sid]);
     assert!(ok && out.contains("status=REQUESTED"), "{all}");
     let approval = out
@@ -408,7 +405,7 @@ fn cli_drives_a_real_core_end_to_end() {
         ok && out.contains("status=SUCCESS") && out.contains(&format!("approval={approval}")),
         "{all}"
     );
-    assert!(!std::path::Path::new(&wt).exists());
+    assert!(!wt_on_disk.exists());
     let (ok, out, all) = cli(&data_dir, &core, &["receipts", "--task", &tid]);
     assert!(
         // One effect leaves an authorization receipt and its result (FIX-08).

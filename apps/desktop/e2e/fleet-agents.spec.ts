@@ -83,6 +83,10 @@ test("fleet: a delegating parent shows its phase, agents and the nested child; t
   mkdirSync(join(repo, "src", "a"), { recursive: true });
   writeFileSync(join(repo, "src", "a", ".keep"), "");
   git(repo, "init", "-q", "-b", "main");
+  // A completion needs a mandatory check (FIX-03); this test's subject is not verification, so the repository declares a no-op one.
+  mkdirSync(join(repo, ".modbit"), { recursive: true });
+  writeFileSync(join(repo, ".modbit", "verification.json"), JSON.stringify({ commands: [{ id: "fixture-noop", argv: ["git", "--version"] }] }));
+
   git(repo, "add", "-A");
   git(repo, "-c", "user.name=t", "-c", "user.email=t@e", "commit", "-q", "-m", "base");
   const parent: Reply[] = [

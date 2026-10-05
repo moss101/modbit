@@ -9,7 +9,7 @@
  */
 import { _electron as electron, expect, test, type ElectronApplication, type Page } from "@playwright/test";
 import { execFile, execFileSync } from "node:child_process";
-import { mkdtempSync, writeFileSync } from "node:fs";
+import { mkdtempSync, writeFileSync, mkdirSync } from "node:fs";
 import { createServer, type Server } from "node:http";
 import { tmpdir } from "node:os";
 import { dirname, join, resolve } from "node:path";
@@ -78,6 +78,10 @@ test("the operations dashboard shows the Core's own aggregation of its log, the 
   const repo = mkdtempSync(join(tmpdir(), "modbit-dash-repo-"));
   writeFileSync(join(repo, "notes.txt"), "line 1\nline 2\n");
   git(repo, "init", "-q", "-b", "main");
+  // A completion needs a mandatory check (FIX-03); this test's subject is not verification, so the repository declares a no-op one.
+  mkdirSync(join(repo, ".modbit"), { recursive: true });
+  writeFileSync(join(repo, ".modbit", "verification.json"), JSON.stringify({ commands: [{ id: "fixture-noop", argv: ["git", "--version"] }] }));
+
   git(repo, "config", "core.autocrlf", "false");
   git(repo, "add", "-A");
   git(repo, "-c", "user.name=t", "-c", "user.email=t@e", "commit", "-q", "-m", "base");

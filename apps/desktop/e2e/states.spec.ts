@@ -11,7 +11,7 @@
  */
 import { _electron as electron, expect, test, type ElectronApplication, type Page } from "@playwright/test";
 import { execFileSync } from "node:child_process";
-import { existsSync, mkdtempSync, realpathSync, writeFileSync } from "node:fs";
+import { existsSync, mkdtempSync, realpathSync, writeFileSync, mkdirSync } from "node:fs";
 import { createServer, type Server } from "node:http";
 import { tmpdir } from "node:os";
 import { dirname, join, resolve } from "node:path";
@@ -107,6 +107,10 @@ function repoWithRemote(): { repo: string; bare: string } {
   const bare = mkdtempSync(join(tmpdir(), "modbit-states-bare-"));
   writeFileSync(join(repo, "notes.txt"), "line 1\nline 2\n");
   git(repo, "init", "-q", "-b", "main");
+  // A completion needs a mandatory check (FIX-03); this test's subject is not verification, so the repository declares a no-op one.
+  mkdirSync(join(repo, ".modbit"), { recursive: true });
+  writeFileSync(join(repo, ".modbit", "verification.json"), JSON.stringify({ commands: [{ id: "fixture-noop", argv: ["git", "--version"] }] }));
+
   git(repo, "config", "core.autocrlf", "false");
   git(repo, "add", "-A");
   git(repo, "-c", "user.name=t", "-c", "user.email=t@e", "commit", "-q", "-m", "base");
@@ -346,7 +350,9 @@ test("task workspace: awaiting your answer (the agent's typed question) and awai
   const { repo } = repoWithRemote();
   // A worktree the agent will close: a destructive effect the plan declares
   // and the person approves (docs/23), never run before the approval.
-  const wt = join(mkdtempSync(join(tmpdir(), "modbit-states-wt-")), "held");
+  // A worktree lives under Modbit's own directory next to its workspace (FIX-01).
+  mkdirSync(`${repo}.modbit-worktrees`, { recursive: true });
+  const wt = join(`${repo}.modbit-worktrees`, "held");
   git(repo, "worktree", "add", "-q", "-b", "task/held", wt);
   const wtReal = realpathSync.native(wt).replace(/^\\\\\?\\/, "");
   const port = await reservePort();

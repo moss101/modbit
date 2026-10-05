@@ -72,6 +72,14 @@ async fn store_config() -> Option<CloudStoreConfig> {
 fn repo(dir: &std::path::Path) -> String {
     std::fs::create_dir_all(dir).unwrap();
     std::fs::write(dir.join("NOTES.md"), "# notes\n").unwrap();
+    // A completion needs a mandatory check (FIX-03); these tests' subject is the
+    // cloud lifecycle, so the repository declares a no-op one the sandbox runs.
+    std::fs::create_dir_all(dir.join(".modbit")).unwrap();
+    std::fs::write(
+        dir.join(".modbit/verification.json"),
+        r#"{"commands": [{"id": "fixture-noop", "argv": ["/bin/sh", "-c", "exit 0"]}]}"#,
+    )
+    .unwrap();
     for args in [
         vec!["init", "-q", "-b", "main"],
         vec!["config", "core.autocrlf", "false"],

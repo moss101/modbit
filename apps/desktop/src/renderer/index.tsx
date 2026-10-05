@@ -375,7 +375,9 @@ function App() {
     if (active && active !== document.body && active.getAttribute("data-testid") !== "task-card") return;
     const el = document.querySelector<HTMLElement>(`[data-testid="task-card"][data-task-id="${id}"]`);
     el?.focus({ preventScroll: true });
-  }, [model, reviewing]);
+    // The Core's attention items also move a card between columns (FIX-21), so
+    // they re-run the retention too, not only the event model.
+  }, [model, reviewing, attentionItems]);
   // PX-024 live region: every new attention item is announced once, in
   // words (kind, task, reason) — never by colour alone.
   useEffect(() => {
