@@ -150,6 +150,8 @@ impl Entry {
 #[derive(Clone, Debug)]
 struct Retained {
     bytes: Vec<u8>,
+    /// Permission bits to put back; restored on Unix only.
+    #[cfg_attr(not(unix), allow(dead_code))]
     mode: Option<u32>,
 }
 
