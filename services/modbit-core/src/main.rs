@@ -63,6 +63,7 @@ mod skills;
 mod slo;
 mod spawn;
 mod statistics;
+mod stream;
 mod subagent;
 mod tools;
 mod undo;

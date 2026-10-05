@@ -241,6 +241,9 @@ pub struct EventStore {
     db_path: PathBuf,
     fault: FaultPlan,
     filter: Option<PayloadFilter>,
+    /// Events loaded into memory by the read methods since this store
+    /// opened: a reader that must not load a log can assert it did not move.
+    events_read: std::sync::atomic::AtomicU64,
 }
 
 /// What every appended payload passes before it is hashed and persisted
@@ -388,6 +391,7 @@ impl EventStore {
             db_path,
             fault: FaultPlan::from_env(),
             filter: None,
+            events_read: std::sync::atomic::AtomicU64::new(0),
         };
         if report.applied.iter().any(|v| *v >= 2) {
             // Projections were introduced after events may already exist: derive them.
@@ -1166,6 +1170,82 @@ impl EventStore {
             params![aggregate_id.as_slice(), after as i64, limit as i64],
             row_to_event,
         )?;
+        self.counted(rows.map(|r| r.map_err(Error::from)).collect())
+    }
+
+    fn counted(&self, events: Result<Vec<StoredEvent>>) -> Result<Vec<StoredEvent>> {
+        if let Ok(e) = &events {
+            self.events_read
+                .fetch_add(e.len() as u64, std::sync::atomic::Ordering::Relaxed);
+        }
+        events
+    }
+
+    /// How many events the read methods have loaded since this store opened.
+    #[must_use]
+    pub fn events_read(&self) -> u64 {
+        self.events_read.load(std::sync::atomic::Ordering::Relaxed)
+    }
+
+    /// The log of one task up to `until_offset`, ascending: every event of
+    /// the task's lineage, except that a stream of assistant text is
+    /// represented by its first delta (the rest are read by the caller from
+    /// the stream's own aggregate, only when it needs them).
+    pub fn read_task_log(
+        &self,
+        session_id: &SessionId,
+        task_id: &TaskId,
+        until_offset: u64,
+    ) -> Result<Vec<StoredEvent>> {
+        let mut stmt = self.conn.prepare_cached(&format!(
+            "SELECT {COLUMNS} FROM events WHERE session_id = ?1 AND task_id = ?2 AND offset <= ?3 AND (event_type <> 'AssistantTextDelta' OR sequence = 1) ORDER BY offset ASC"
+        ))?;
+        let rows = stmt.query_map(
+            params![
+                session_id.as_bytes().as_slice(),
+                task_id.as_bytes().as_slice(),
+                until_offset as i64
+            ],
+            row_to_event,
+        )?;
+        self.counted(rows.map(|r| r.map_err(Error::from)).collect())
+    }
+
+    /// Every task of a session, oldest first, from the task projection.
+    pub fn session_tasks(&self, session_id: &SessionId) -> Result<Vec<modbit_domain::task::Task>> {
+        let mut stmt = self.conn.prepare_cached(
+            "SELECT task_id FROM tasks WHERE session_id = ?1 ORDER BY created_at ASC, task_id ASC",
+        )?;
+        let ids: Vec<[u8; 16]> = stmt
+            .query_map(params![session_id.as_bytes().as_slice()], |r| {
+                blob16(r.get::<_, Vec<u8>>(0)?)
+            })?
+            .collect::<std::result::Result<_, _>>()?;
+        let mut out = Vec::with_capacity(ids.len());
+        for id in ids {
+            if let Some(t) = crate::projections::load_task(&self.conn, &TaskId::from_bytes(id))? {
+                out.push(t);
+            }
+        }
+        Ok(out)
+    }
+
+    /// Per-task digests of a session's log, computed by the database in a
+    /// few grouped passes without loading any event (PX-042).
+    pub fn task_digests(&self, session_id: &SessionId) -> Result<Vec<crate::digest::TaskDigest>> {
+        crate::digest::task_digests(&self.conn, session_id)
+    }
+
+    /// Assistant streams (PX-041) that have deltas and no closing record:
+    /// the streams a dead process left open, oldest first.
+    pub fn open_streams(&self) -> Result<Vec<[u8; 16]>> {
+        let mut stmt = self.conn.prepare_cached(
+            "SELECT aggregate_id FROM events WHERE aggregate_type = 'assistant_stream'
+             GROUP BY aggregate_id
+             HAVING SUM(event_type IN ('AssistantMessageCompleted', 'AssistantMessageAborted')) = 0
+             ORDER BY MIN(offset) ASC",
+        )?;
+        let rows = stmt.query_map([], |r| blob16(r.get::<_, Vec<u8>>(0)?))?;
         rows.map(|r| r.map_err(Error::from)).collect()
     }
 
@@ -1201,7 +1281,7 @@ impl EventStore {
             ],
             row_to_event,
         )?;
-        rows.map(|r| r.map_err(Error::from)).collect()
+        self.counted(rows.map(|r| r.map_err(Error::from)).collect())
     }
 
     /// Search the tenant's evidence — event types and payloads (inline or

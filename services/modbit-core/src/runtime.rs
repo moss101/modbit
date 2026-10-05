@@ -3527,12 +3527,26 @@ async fn run_loop(
                 let mut usage_reported = false;
                 let mut error: Option<(String, String)> = None;
                 let mut events = stream.events;
+                // PX-041: what the model streams reaches every client while it
+                // streams — coalesced, redacted, closed by a completion or an
+                // abort record (crate::stream).
+                let mut sink =
+                    crate::stream::Sink::new(lturn, actor.clone(), run_id, turn_id, invoke_step);
                 // A STEER queued while the model streams interrupts the stream
                 // (REQ-EV-0191 interrupt-and-replace); the log offset watch wakes us.
                 let mut offset_rx = core.last_offset.subscribe();
                 let mut interrupted = false;
                 loop {
+                    let delta_due = sink.deadline();
                     tokio::select! {
+                        _ = async {
+                            match delta_due {
+                                Some(at) => tokio::time::sleep_until(at).await,
+                                None => std::future::pending().await,
+                            }
+                        } => {
+                            sink.flush(&core).await;
+                        }
                         ev = events.recv() => {
                             let Some(ev) = ev else { break };
                             // IMP-EV-0023: the run's first model output.
@@ -3553,7 +3567,20 @@ async fn run_loop(
                                 .await;
                             }
                             match ev {
-                                ModelEvent::MessageDelta { text: t } => text.push_str(&t),
+                                ModelEvent::MessageDelta { text: t } => {
+                                    text.push_str(&t);
+                                    if let Err(code) = sink.text(&t) {
+                                        // A response past the stream bound is a
+                                        // runaway: stop the provider and fail
+                                        // the invocation.
+                                        stream_cancel.cancel();
+                                        error = Some((code.to_owned(), "the model's response exceeded the stream bound".to_owned()));
+                                        break;
+                                    }
+                                }
+                                ModelEvent::ReasoningDelta { text: t } => {
+                                    let _ = sink.reasoning(&t);
+                                }
                                 ModelEvent::ToolCallComplete {
                                     call_id,
                                     name,
@@ -3583,6 +3610,38 @@ async fn run_loop(
                             }
                         }
                     }
+                }
+                // A stream that did not finish is closed as aborted, with the
+                // reason typed; partial text is never a message (PX-041).
+                if interrupted {
+                    sink.abort(
+                        &core,
+                        modbit_domain::stream::AbortSource::UserInterrupt,
+                        "STEER_INTERRUPT",
+                        "a steering input replaced the response",
+                    )
+                    .await;
+                } else if cancel.is_cancelled() {
+                    sink.abort(
+                        &core,
+                        modbit_domain::stream::AbortSource::UserInterrupt,
+                        "CANCELLED",
+                        "the task was cancelled while the response streamed",
+                    )
+                    .await;
+                } else if let Some((code, message)) = &error {
+                    let source = if code == crate::stream::TOO_LARGE {
+                        modbit_domain::stream::AbortSource::Runtime
+                    } else {
+                        modbit_domain::stream::AbortSource::Provider
+                    };
+                    sink.abort(
+                        &core,
+                        source,
+                        code,
+                        &core.tools.redactor().error_text(message),
+                    )
+                    .await;
                 }
                 if interrupted {
                     let mut store = core.store.lock().await;
@@ -3820,11 +3879,26 @@ async fn run_loop(
                 // The response of a superseded owner is not applied (M4.4).
                 if let Some((current, owner)) = lease_lost(&core, &task, cfg.lease_generation).await
                 {
+                    sink.abort(
+                        &core,
+                        modbit_domain::stream::AbortSource::Runtime,
+                        "FENCED",
+                        "the session lease moved to another owner while the response streamed",
+                    )
+                    .await;
                     break 'outer LoopEnd::Fenced {
                         current_generation: current,
                         owner,
                     };
                 }
+                // PX-041: the stream closes with its completion record, whose
+                // text is what the model said after redaction; that is also
+                // what the transcript persists.
+                let text = match sink.complete(&core).await {
+                    Some(done) => done.text,
+                    None if text.is_empty() => text,
+                    None => core.tools.redactor().error_text(&text),
+                };
                 // Persist the assistant message before any action (docs/14 contract 1).
                 let assistant = TranscriptEntry::Assistant {
                     text: text.clone(),

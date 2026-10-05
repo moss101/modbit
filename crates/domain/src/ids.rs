@@ -111,6 +111,9 @@ id_type! {
     SandboxLeaseId,
     /// Event in the canonical Event Store.
     EventId,
+    /// One streamed model output (PX-041): the aggregate of its deltas and
+    /// the record that closes it.
+    StreamId,
 }
 
 #[cfg(test)]

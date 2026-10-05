@@ -14,6 +14,9 @@ use crate::{Error, Result};
 #[derive(Debug, Clone)]
 pub struct ObjectStore {
     root: PathBuf,
+    /// Objects read through this store (and its clones) since it opened: a
+    /// reader that must not load bodies can assert this did not move.
+    reads: std::sync::Arc<std::sync::atomic::AtomicU64>,
 }
 
 /// Lowercase hex SHA-256 of `bytes`.
@@ -27,7 +30,16 @@ impl ObjectStore {
     pub fn open(root: impl Into<PathBuf>) -> Result<Self> {
         let root = root.into();
         fs::create_dir_all(&root)?;
-        Ok(Self { root })
+        Ok(Self {
+            root,
+            reads: std::sync::Arc::default(),
+        })
+    }
+
+    /// How many objects have been read since this store opened.
+    #[must_use]
+    pub fn reads(&self) -> u64 {
+        self.reads.load(std::sync::atomic::Ordering::Relaxed)
     }
 
     fn path_for(&self, hash: &str) -> PathBuf {
@@ -58,6 +70,8 @@ impl ObjectStore {
 
     /// Read and verify an object.
     pub fn get(&self, hash: &str) -> Result<Vec<u8>> {
+        self.reads
+            .fetch_add(1, std::sync::atomic::Ordering::Relaxed);
         let path = self.path_for(hash);
         let bytes = fs::read(&path).map_err(|e| Error::Object {
             hash: hash.to_owned(),
@@ -84,6 +98,8 @@ impl ObjectStore {
         length: u64,
     ) -> Result<(Vec<u8>, u64, Vec<u8>)> {
         use std::io::{Read, Seek, SeekFrom};
+        self.reads
+            .fetch_add(1, std::sync::atomic::Ordering::Relaxed);
         let path = self.path_for(hash);
         let mut f = fs::File::open(&path).map_err(|e| Error::Object {
             hash: hash.to_owned(),

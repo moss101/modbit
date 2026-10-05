@@ -15,6 +15,7 @@
 pub mod agent;
 pub mod agent_profile;
 pub mod approval;
+pub mod conversation;
 pub mod event;
 pub mod failure;
 pub mod ids;
@@ -25,6 +26,7 @@ pub mod run;
 pub mod session;
 pub mod state;
 pub mod step;
+pub mod stream;
 pub mod task;
 pub mod time;
 pub mod toolcall;

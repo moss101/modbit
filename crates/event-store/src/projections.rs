@@ -1254,6 +1254,25 @@ pub fn apply(tx: &Transaction<'_>, ev: &StoredEvent, objects: &crate::ObjectStor
             )?;
             materialize_protocol_state(tx, session, l.task_id, at, ProtocolDelta::Rows)?;
         }
+        // PX-041: an assistant stream has no row of its own; the store
+        // refuses what a stream may not hold (a delta out of sequence, over
+        // the bound, or after the record that closed the stream).
+        AggregateType::AssistantStream => {
+            let event: modbit_domain::stream::StreamEvent = serde_json::from_value(payload)?;
+            let sequence = ev.envelope.sequence;
+            let previous: Option<String> = if sequence > 1 {
+                tx.query_row(
+                    "SELECT event_type FROM events WHERE aggregate_id = ?1 AND sequence = ?2",
+                    params![id.as_slice(), (sequence - 1) as i64],
+                    |r| r.get(0),
+                )
+                .optional()?
+            } else {
+                None
+            };
+            modbit_domain::stream::check_next(id, sequence, previous.as_deref(), &event)
+                .map_err(|detail| Error::Projection { offset, detail })?;
+        }
         // Aggregates whose projections belong to later milestones (checkpoints).
         _ => {}
     }

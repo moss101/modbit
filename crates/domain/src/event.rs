@@ -36,6 +36,12 @@ pub enum AggregateType {
     CompactionEpoch,
     /// Workspace (worktree) change stream.
     Workspace,
+    /// One streamed model output (PX-041): text deltas, then the record that
+    /// closes the stream as completed or aborted.
+    AssistantStream,
+    /// A person's curation of a task's conversation (PX-042): read markers
+    /// and archive.
+    Conversation,
 }
 
 impl AggregateType {
@@ -54,6 +60,8 @@ impl AggregateType {
             Self::Checkpoint => "checkpoint",
             Self::CompactionEpoch => "compaction_epoch",
             Self::Workspace => "workspace",
+            Self::AssistantStream => "assistant_stream",
+            Self::Conversation => "conversation",
         }
     }
 
@@ -72,6 +80,8 @@ impl AggregateType {
             "checkpoint" => Self::Checkpoint,
             "compaction_epoch" => Self::CompactionEpoch,
             "workspace" => Self::Workspace,
+            "assistant_stream" => Self::AssistantStream,
+            "conversation" => Self::Conversation,
             _ => return None,
         })
     }

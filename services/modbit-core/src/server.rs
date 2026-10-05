@@ -173,6 +173,12 @@ pub async fn run_as(
             suspended.len()
         );
     }
+    // PX-041: a message that was streaming when the last Core died is closed
+    // as aborted by recovery; nothing resumes mid-token.
+    let aborted = crate::stream::close_after_restart(&mut store, tenant_id);
+    if aborted > 0 {
+        eprintln!("modbit-core: closed {aborted} open assistant stream(s) as aborted by recovery");
+    }
     let start = store.last_offset()?;
     let boot_secret: Vec<u8> = (0..32).map(|_| rand::random::<u8>()).collect();
     let nonce = encode_hex(&(0..6).map(|_| rand::random::<u8>()).collect::<Vec<_>>());
