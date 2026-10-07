@@ -27,6 +27,56 @@ pub struct PolicyRequest {
     pub has_lease: bool,
     /// sha256 of the normalized arguments: the intent an approval binds to.
     pub intent_hash: String,
+    /// Workspace paths the call names (never argument text: the paths the
+    /// pipeline resolved from the validated arguments), each under the
+    /// capability that reaches it. The host joins them to the task root and
+    /// the kernel checks them against the lease's resource selectors.
+    pub paths: Vec<PathTarget>,
+}
+
+/// A workspace-relative path a call names, and the capability reaching it.
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct PathTarget {
+    /// Capability id (`fs.write`, `fs.read`).
+    pub capability: String,
+    /// Path as the call wrote it (workspace-relative).
+    pub path: String,
+}
+
+/// The workspace paths a call's validated arguments name, from the
+/// conventional path-valued arguments (`path`, `paths`, `ops[].path`), under
+/// the file capability the tool requires (`fs.write` over `fs.read`). A tool
+/// that requires no file capability names none; a path-valued argument the
+/// convention does not cover is judged by the workspace's own path policy, as
+/// it always was.
+#[must_use]
+pub fn path_targets(required_capabilities: &[String], args: &serde_json::Value) -> Vec<PathTarget> {
+    let capability = ["fs.write", "fs.read"]
+        .into_iter()
+        .find(|c| required_capabilities.iter().any(|r| r == c));
+    let Some(capability) = capability else {
+        return vec![];
+    };
+    let mut paths: Vec<&str> = Vec::new();
+    if let Some(p) = args.get("path").and_then(serde_json::Value::as_str) {
+        paths.push(p);
+    }
+    if let Some(list) = args.get("paths").and_then(serde_json::Value::as_array) {
+        paths.extend(list.iter().filter_map(serde_json::Value::as_str));
+    }
+    if let Some(ops) = args.get("ops").and_then(serde_json::Value::as_array) {
+        paths.extend(
+            ops.iter()
+                .filter_map(|o| o.get("path").and_then(serde_json::Value::as_str)),
+        );
+    }
+    paths
+        .into_iter()
+        .map(|p| PathTarget {
+            capability: capability.to_owned(),
+            path: p.to_owned(),
+        })
+        .collect()
 }
 
 /// Decision.

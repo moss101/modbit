@@ -212,12 +212,56 @@ fn stop_inheriting_foreign_handles() {}
 /// data directory and wait for its ready line. `replay_generation` is the
 /// Core's boot generation: the fence every attach from this Core carries.
 pub fn spawn_execd(data_dir: &Path, replay_generation: u64) -> Result<Execd> {
+    import_legacy_execd_objects(data_dir);
     let execd = spawn_or_reattach(data_dir, replay_generation)?;
     if execd.reattached {
         eprintln!("modbit-core: reattached to the terminal broker a previous Core left alive");
     }
     hold_broker_open(execd.target.clone());
     Ok(execd)
+}
+
+/// The Core's content-addressed object store, which the terminal broker
+/// seals its `output_ref` objects into (FIX-09): one store for what
+/// `artifact.range` and `ReadObjectRange` read and what the broker names.
+pub fn core_object_dir(data_dir: &Path) -> PathBuf {
+    data_dir.join("core").join("objects")
+}
+
+/// Before the broker sealed into the Core's store it kept its own
+/// (`<data>/execd/objects`), which nothing in the Core could read. Move what
+/// a previous version left there into the Core's store, verifying each
+/// object's digest against its name; an object that does not match is left
+/// where it is rather than adopted.
+fn import_legacy_execd_objects(data_dir: &Path) {
+    let legacy = data_dir.join("execd").join("objects");
+    let Ok(shards) = std::fs::read_dir(&legacy) else {
+        return;
+    };
+    let Ok(store) = modbit_event_store::ObjectStore::open(core_object_dir(data_dir)) else {
+        return;
+    };
+    for shard in shards.flatten() {
+        let Ok(files) = std::fs::read_dir(shard.path()) else {
+            continue;
+        };
+        let prefix = shard.file_name().to_string_lossy().into_owned();
+        for f in files.flatten() {
+            let name = f.file_name().to_string_lossy().into_owned();
+            if prefix.len() != 2 || name.len() != 62 {
+                continue;
+            }
+            let Ok(bytes) = std::fs::read(f.path()) else {
+                continue;
+            };
+            if store
+                .put(&bytes)
+                .is_ok_and(|h| h == format!("{prefix}{name}"))
+            {
+                let _ = std::fs::remove_file(f.path());
+            }
+        }
+    }
 }
 
 fn spawn_or_reattach(data_dir: &Path, replay_generation: u64) -> Result<Execd> {
@@ -259,6 +303,8 @@ fn spawn_or_reattach(data_dir: &Path, replay_generation: u64) -> Result<Execd> {
     let mut child = command
         .arg("--data-dir")
         .arg(&execd_dir)
+        .arg("--object-dir")
+        .arg(core_object_dir(data_dir))
         .arg("--orphan-grace-secs")
         .arg(orphan_grace_secs().to_string())
         .stdin(Stdio::null())
@@ -420,6 +466,40 @@ pub struct SandboxGatewayCustody {
 }
 
 impl ToolHost {
+    /// How many background command sessions the broker has running (FIX-17).
+    /// The broker stops its processes once no Core returns within its orphan
+    /// grace, so a Core that exits while one runs kills it: an idle-exiting
+    /// Core waits for them. A broker that cannot be reached holds nothing;
+    /// one that does not answer in time is treated as holding something
+    /// (the Core stays up rather than guess).
+    pub(crate) async fn running_background_sessions(&self) -> usize {
+        use modbit_terminal::{Event, ExecClient};
+        let Some(execd) = &self.execd else {
+            return 0;
+        };
+        let target = execd.target.clone();
+        let ask = async move {
+            let mut client = ExecClient::connect(&target.endpoint, &target.boot_secret)
+                .await
+                .ok()?;
+            client.list().await.ok()?;
+            loop {
+                match client.next().await {
+                    Ok(Some(Event::Sessions(list))) => {
+                        return Some(list.iter().filter(|s| s.running).count());
+                    }
+                    Ok(Some(_)) => {}
+                    _ => return None,
+                }
+            }
+        };
+        match tokio::time::timeout(std::time::Duration::from_secs(2), ask).await {
+            Ok(Some(n)) => n,
+            Ok(None) => 0,
+            Err(_) => 1,
+        }
+    }
+
     /// Build the host: direct tools, default policy, broker.
     pub fn new(
         data_dir: &Path,
@@ -617,16 +697,48 @@ impl ToolHost {
         Ok(sem)
     }
 
-    /// The Context Ledger of a task (M3.8).
+    /// The Context Ledger of a task (M3.8). The first access in a process
+    /// rebuilds it from the task's log (`restore_ledger`), so the pack the
+    /// prompt injects and the Inspector's pack view survive a Core restart.
     pub(crate) async fn ledger(
         &self,
+        store: &Arc<Mutex<EventStore>>,
         task_id: TaskId,
     ) -> Arc<Mutex<modbit_context::ContextLedger>> {
+        if let Some(l) = self.ledgers.lock().await.get(&task_id) {
+            return Arc::clone(l);
+        }
+        let restored = restore_ledger(&*store.lock().await, task_id);
         let mut map = self.ledgers.lock().await;
         Arc::clone(
             map.entry(task_id)
-                .or_insert_with(|| Arc::new(Mutex::new(modbit_context::ContextLedger::default()))),
+                .or_insert_with(|| Arc::new(Mutex::new(restored))),
         )
+    }
+
+    /// Before a prompt is compiled: drop the latest pack's fragments whose
+    /// file changed after they were read, so a pre-edit excerpt is never
+    /// re-injected under its old revision and hash (FIX-12, audit N7). Reads
+    /// the bytes on disk now, as `unretrieved_targets` does. Returns what was
+    /// dropped.
+    pub(crate) async fn revalidate_pack(
+        &self,
+        store: &Arc<Mutex<EventStore>>,
+        task_id: TaskId,
+        root: Option<&str>,
+    ) -> Vec<modbit_context::Invalidated> {
+        let Some(root) = root.map(Path::new) else {
+            return vec![];
+        };
+        let ledger = self.ledger(store, task_id).await;
+        let mut ledger = ledger.lock().await;
+        // A file with several entries is read once.
+        let mut seen: HashMap<String, Option<modbit_context::FileState>> = HashMap::new();
+        ledger.invalidate_stale(|p| {
+            seen.entry(p.to_owned())
+                .or_insert_with(|| workspace_file_state(root, p))
+                .clone()
+        })
     }
 
     /// The evidence graph of a workspace root, built from the exact index, the
@@ -715,6 +827,7 @@ impl ToolHost {
                             required_capabilities: &s.required_capabilities,
                             execution_profile: p,
                             lease: Some(l),
+                            targets: &[],
                             approval: None,
                             intent_hash: "",
                             config: None,
@@ -783,9 +896,13 @@ impl ToolHost {
         // until its next round (M9.4). A call already in flight keeps the
         // snapshot it was decided with.
         let root_text = root.as_ref().map(|p| p.to_string_lossy().into_owned());
-        let task_config =
-            self.configurations
-                .for_task(task_id, &self.data_dir, root_text.as_deref());
+        // FIX-05: a call decided with no snapshot (nothing resolved the
+        // task's configuration yet) is decided only under a configuration
+        // whose every layer could be read.
+        let task_config = self
+            .configurations
+            .try_for_task(task_id, &self.data_dir, root_text.as_deref())
+            .map_err(|e| anyhow::anyhow!("{}: {e}", crate::config::ConfigError::CODE))?;
         let port = KernelPort {
             kernel: CapabilityKernel::default(),
             lease,
@@ -793,6 +910,10 @@ impl ToolHost {
             emergency_stopped,
             projection,
             config: Arc::clone(&task_config),
+            // The root as the lease was granted over it (the task's own
+            // text, not its canonical form): selectors and targets must be
+            // spelled from the same root to be compared.
+            root: workspace_root.clone(),
         };
         let search: Option<Arc<dyn modbit_tools::SearchPort>> = match (&workspace, &root) {
             (Some(ws), Some(r)) => Some(Arc::new(IndexPort {
@@ -811,7 +932,7 @@ impl ToolHost {
                 },
                 selection: selection_of(store, task_id).await,
                 documents: attached_documents(store, task_id).await,
-                ledger: self.ledger(task_id).await,
+                ledger: self.ledger(store, task_id).await,
                 objects: store.lock().await.objects().clone(),
                 store: Arc::clone(store),
                 tenant_id,
@@ -920,7 +1041,9 @@ impl ToolHost {
                 tool.as_ref(),
                 serde_json::from_str::<serde_json::Value>(arguments_json),
             ) {
-                (Some(t), Ok(args)) => t.effect_of(&args).max(t.spec().effect_class),
+                (Some(t), Ok(args)) => t
+                    .effect_in_profile(&args, execution_profile)
+                    .max(t.spec().effect_class),
                 _ => spec
                     .as_ref()
                     .map(|s| s.effect_class)
@@ -976,6 +1099,14 @@ impl ToolHost {
             actor: actor.clone(),
             prior_state,
             lease_generation,
+            lease_id,
+            execution_target: execution_target(root.as_deref()),
+            compensates,
+            reversibility: self
+                .runtime
+                .registry()
+                .get(tool_name)
+                .map(|t| t.spec().reversibility()),
         });
         let ctx = InvokeContext {
             task_id,
@@ -1326,7 +1457,7 @@ impl ToolHost {
                 } else {
                     pre_revision
                 };
-                let ledger = self.ledger(task_id).await;
+                let ledger = self.ledger(store, task_id).await;
                 let mut ledger = ledger.lock().await;
                 for p in &paths {
                     ledger.mark_used(p, use_rev, &tool_call_id.to_string(), tool_name);
@@ -1347,6 +1478,36 @@ impl ToolHost {
                         &actor,
                     ));
                 }
+            }
+        }
+        // FIX-12 (audit N8): the pack the call compiled and the ledger snapshot
+        // taken with it are on the log, in the same transaction as the call's
+        // outcome, so a restarted Core rebuilds the ledger instead of losing it.
+        if result.status == ToolStatus::Success && tool_name == "context.pack" {
+            let o = &result.structured_output;
+            if let (Some(pack_ref), Some(ledger_ref), Some(pack_id)) = (
+                o["pack_ref"].as_str(),
+                o["ledger_ref"].as_str(),
+                o["pack"]["pack_id"].as_str(),
+            ) {
+                let count = |k: &str| {
+                    u32::try_from(o["pack"][k].as_array().map_or(0, Vec::len)).unwrap_or(u32::MAX)
+                };
+                retrieval_events.push(typed_task_event(
+                    "ContextPackRecorded",
+                    &modbit_domain::task::TaskEvent::ContextPackRecorded {
+                        pack_id: pack_id.to_owned(),
+                        pack_ref: pack_ref.to_owned(),
+                        ledger_ref: ledger_ref.to_owned(),
+                        workspace_revision: o["pack"]["workspace_revision"].as_u64().unwrap_or(0),
+                        tool_call_id: tool_call_id.to_string(),
+                        token_used: u32::try_from(o["pack"]["token_used"].as_u64().unwrap_or(0))
+                            .unwrap_or(u32::MAX),
+                        entries: count("entries"),
+                        stubs: count("stubs"),
+                    },
+                    &actor,
+                ));
             }
         }
         // Terminal cursor metadata (docs/19 layer 2, M4.5): what the run now
@@ -1658,10 +1819,7 @@ impl ToolHost {
                         intent_hash: result.arguments_hash.clone(),
                         policy_decision: decision,
                         approval_id: used_approval,
-                        execution_target: root
-                            .as_ref()
-                            .map(|r| format!("local:{}", r.display()))
-                            .unwrap_or_else(|| "local".into()),
+                        execution_target: execution_target(root.as_deref()),
                         evidence_ref: None,
                         status: format!("{:?}", result.status).to_uppercase(),
                         occurred_at: now,
@@ -1681,11 +1839,12 @@ impl ToolHost {
         let result_ref = store.lock().await.objects().put(&result_json)?;
         if let Some(mut r) = receipt.take() {
             r.evidence_ref = Some(result_ref.clone());
-            r.previous_receipt_hash = store.lock().await.last_receipt_hash()?;
-            let sealed = modbit_policy::ledger::seal(r);
+            // Linked and sealed inside the append transaction
+            // (`append_all_chained`): the chain's tail is read where it
+            // cannot move (FIX-08), so this is a placeholder, not a read.
             events.push(typed(
                 "EffectReceiptAppended",
-                &ToolCallEvent::EffectReceiptAppended { receipt: sealed },
+                &ToolCallEvent::EffectReceiptAppended { receipt: r },
                 actor.clone(),
             ));
         }
@@ -1968,7 +2127,10 @@ impl ToolHost {
             }
         }
         if !batch.is_empty() {
-            store.lock().await.append_all(batch, None)?;
+            store
+                .lock()
+                .await
+                .append_all_chained(batch, None, modbit_policy::ledger::seal)?;
         }
         Ok(Invoked {
             result,
@@ -2054,6 +2216,49 @@ struct KernelPort {
     /// The configuration snapshot the call is decided under (REQ-EV-0041):
     /// its per-capability `DENY` denies and `ASK` escalates.
     config: Arc<modbit_policy::config::ResolvedConfig>,
+    /// The task's workspace root, as its lease's selectors spell it.
+    root: Option<String>,
+}
+
+/// The absolute resources a call's workspace paths name, in the lease's
+/// selector vocabulary (FIX-15). Only a path that stays inside the root is a
+/// target: an absolute path or one that climbs out is not resolved here —
+/// the workspace's own path policy refuses it, as it always did — so a
+/// selector can narrow what a lease covers but never be the reason a path the
+/// workspace would have refused reads as a different error.
+fn resource_targets(
+    root: Option<&str>,
+    paths: &[modbit_tools::PathTarget],
+) -> Vec<modbit_policy::ResourceTarget> {
+    let Some(root) = root.map(|r| r.trim_end_matches(['/', '\\'])) else {
+        return vec![];
+    };
+    paths
+        .iter()
+        .filter_map(|p| {
+            if p.path.starts_with(['/', '\\']) || p.path.contains(':') {
+                return None;
+            }
+            let mut parts: Vec<&str> = Vec::new();
+            for seg in p.path.split(['/', '\\']) {
+                match seg {
+                    "" | "." => {}
+                    ".." => {
+                        parts.pop()?;
+                    }
+                    s => parts.push(s),
+                }
+            }
+            Some(modbit_policy::ResourceTarget {
+                capability: p.capability.clone(),
+                resource: if parts.is_empty() {
+                    root.to_owned()
+                } else {
+                    format!("{root}/{}", parts.join("/"))
+                },
+            })
+        })
+        .collect()
 }
 
 impl CapabilityPort for KernelPort {
@@ -2079,6 +2284,7 @@ impl CapabilityPort for KernelPort {
             required_capabilities: &req.required_capabilities,
             execution_profile: &req.execution_profile,
             lease: self.lease.as_ref(),
+            targets: &resource_targets(self.root.as_deref(), &req.paths),
             approval: self.approval.as_ref(),
             intent_hash: &req.intent_hash,
             config: Some(&self.config),
@@ -2119,6 +2325,19 @@ struct DispatchLog {
     prior_state: Option<ToolCallState>,
     /// The lease the dispatch is fenced by (M4.4).
     lease_generation: Option<u64>,
+    /// The lease the call presented (named on its authorization receipt).
+    lease_id: Option<modbit_domain::CapabilityLeaseId>,
+    /// Where the effect will run (as the result receipt names it).
+    execution_target: String,
+    /// The effect a compensating call counteracts.
+    compensates: Option<modbit_domain::EffectId>,
+    /// The tool's own reversibility declaration, when it is registered.
+    reversibility: Option<modbit_domain::toolcall::Reversibility>,
+}
+
+/// Where a call's effect runs, as a receipt records it.
+fn execution_target(root: Option<&std::path::Path>) -> String {
+    root.map_or_else(|| "local".into(), |r| format!("local:{}", r.display()))
 }
 
 impl modbit_tools::DispatchJournal for DispatchLog {
@@ -2131,6 +2350,7 @@ impl modbit_tools::DispatchJournal for DispatchLog {
                 PolicyDecision::Allow { rule, .. } => rule.clone(),
                 other => format!("{other:?}"),
             };
+            let decision_text = decision.clone();
             let mut events = Vec::new();
             if self.prior_state != Some(ToolCallState::ApprovalPending) {
                 events.push(typed(
@@ -2153,6 +2373,48 @@ impl modbit_tools::DispatchJournal for DispatchLog {
                 &ToolCallEvent::ToolCallDispatched,
                 self.actor.clone(),
             ));
+            // FIX-08: an effect that can reach beyond the workspace is
+            // authorized *in the chain* before it runs — intent hash, the
+            // decision, the approval and the lease, in the same transaction
+            // as the dispatch. The result receipt chains after it; a Core
+            // killed in between leaves this one with no result, which is how
+            // the effect is known to be in doubt (`ledger::in_doubt`).
+            if record.effect_class >= modbit_domain::toolcall::EffectClass::ProtectedWrite {
+                let approval_id = match &record.decision {
+                    PolicyDecision::Allow { approval_id, .. } => {
+                        approval_id.as_ref().and_then(|a| ApprovalId::parse(a).ok())
+                    }
+                    _ => None,
+                };
+                events.push(typed(
+                    "EffectReceiptAppended",
+                    &ToolCallEvent::EffectReceiptAppended {
+                        receipt: EffectReceipt {
+                            effect_id: modbit_domain::EffectId::new(),
+                            previous_receipt_hash: None,
+                            task_id: self.task_id,
+                            tool_call_id: record.tool_call_id,
+                            capability_lease_id: self.lease_id,
+                            intent_hash: record.arguments_hash.clone(),
+                            policy_decision: decision_text.clone(),
+                            approval_id,
+                            execution_target: self.execution_target.clone(),
+                            evidence_ref: None,
+                            status: modbit_policy::ledger::STATUS_AUTHORIZED.into(),
+                            occurred_at: modbit_domain::Timestamp::now(),
+                            reversibility: Some(self.reversibility.unwrap_or_else(|| {
+                                modbit_domain::toolcall::Reversibility::of(
+                                    record.effect_class,
+                                    false,
+                                )
+                            })),
+                            compensates: self.compensates,
+                            receipt_hash: String::new(),
+                        },
+                    },
+                    self.actor.clone(),
+                ));
+            }
             let mut st = self.store.lock().await;
             let expected_sequence = st
                 .tool_call(&record.tool_call_id)
@@ -2171,10 +2433,11 @@ impl modbit_tools::DispatchJournal for DispatchLog {
                 events,
             };
             // docs/33: a superseded owner cannot start an effect.
-            match self.lease_generation {
-                Some(g) => st.append_fenced(req, g),
-                None => st.append(req),
-            }
+            st.append_all_chained(
+                vec![req],
+                self.lease_generation,
+                modbit_policy::ledger::seal,
+            )
             .map(|_| ())
             .map_err(|e| e.to_string())
         })
@@ -2220,6 +2483,107 @@ pub(crate) fn change_targets(tool_name: &str, arguments_json: &str) -> Vec<Strin
 pub(crate) fn read_workspace_file(ws: &WorkspaceService, path: &str) -> Option<Vec<u8>> {
     let r = ws.resolve(path).ok()?;
     std::fs::read(&r.absolute).ok()
+}
+
+/// What the workspace holds for a pack entry's path now. A path that is not a
+/// plain relative path (a pack entry never is one, but a ledger rebuilt from a
+/// log is not trusted to be) is not checked, so it stays as it was.
+fn workspace_file_state(root: &Path, path: &str) -> Option<modbit_context::FileState> {
+    let rel = Path::new(path);
+    if rel.is_absolute()
+        || rel
+            .components()
+            .any(|c| !matches!(c, std::path::Component::Normal(_)))
+    {
+        return None;
+    }
+    match std::fs::read(root.join(rel)) {
+        Ok(bytes) => Some(modbit_context::FileState::Hash(
+            modbit_workspace::content_hash(&bytes),
+        )),
+        Err(e) if e.kind() == std::io::ErrorKind::NotFound => {
+            Some(modbit_context::FileState::Missing)
+        }
+        Err(_) => None,
+    }
+}
+
+/// Rebuild a task's Context Ledger from its log (FIX-12, audit N8): the
+/// ledger snapshot the newest `ContextPackRecorded` names (the packs, the
+/// latest pack, the direct reads, the usefulness marks at that moment), then
+/// every `RetrievalRecorded` after it replayed — a read is a retrieval record
+/// and, for the paths a pack holds, a use. A snapshot that cannot be loaded
+/// is skipped and the retrieval records alone rebuild the reads.
+pub(crate) fn restore_ledger(store: &EventStore, task_id: TaskId) -> modbit_context::ContextLedger {
+    const PAGE: usize = 5_000;
+    struct Retrieval {
+        path: String,
+        revision: u64,
+        content_hash: Option<String>,
+        tool_call_id: String,
+        tool_name: String,
+    }
+    let mut ledger = modbit_context::ContextLedger::default();
+    let mut tail: Vec<Retrieval> = Vec::new();
+    let mut after = 0u64;
+    loop {
+        let Ok(events) = store.read_aggregate(task_id.as_bytes(), after, PAGE) else {
+            break;
+        };
+        for e in &events {
+            after = e.envelope.sequence;
+            let Ok(p) = store.payload(&e.envelope) else {
+                continue;
+            };
+            match e.envelope.event_type.as_str() {
+                "ContextPackRecorded" => {
+                    let snapshot = p["ledger_ref"]
+                        .as_str()
+                        .and_then(|h| store.objects().get(h).ok())
+                        .and_then(|b| {
+                            serde_json::from_slice::<modbit_context::ContextLedger>(&b).ok()
+                        });
+                    if let Some(l) = snapshot {
+                        // The snapshot already holds every read before the pack.
+                        ledger = l;
+                        tail.clear();
+                    }
+                }
+                "RetrievalRecorded" => {
+                    if let Some(path) = p["path"].as_str() {
+                        tail.push(Retrieval {
+                            path: path.to_owned(),
+                            revision: p["workspace_revision"].as_u64().unwrap_or(0),
+                            content_hash: p["content_hash"].as_str().map(str::to_owned),
+                            tool_call_id: p["tool_call_id"].as_str().unwrap_or_default().to_owned(),
+                            tool_name: p["tool_name"].as_str().unwrap_or_default().to_owned(),
+                        });
+                    }
+                }
+                _ => {}
+            }
+        }
+        if events.len() < PAGE {
+            break;
+        }
+    }
+    for r in tail {
+        // The live path marks a read at its own revision and a write at the
+        // revision before it (the record of a write carries the one after).
+        if r.tool_name == "fs.read" || r.tool_name.starts_with("lsp.") {
+            ledger.mark_used(&r.path, r.revision, &r.tool_call_id, &r.tool_name);
+        } else {
+            ledger.mark_used_before(&r.path, r.revision, &r.tool_call_id, &r.tool_name);
+        }
+        ledger.record_read(
+            &r.path,
+            r.revision,
+            r.content_hash.as_deref(),
+            &r.tool_call_id,
+            &r.tool_name,
+        );
+    }
+    ledger
 }
 
 /// A typed Task event as a `NewEvent` (mirrors the runtime's `typed`).
@@ -2646,12 +3010,9 @@ type ChangedChunkSource = (String, Option<(String, Vec<(String, u64, u64)>)>);
 
 /// Symbol byte spans of a path as chunk boundaries (`name`, start, end).
 fn symbol_spans(symbols: &modbit_retrieval::SymbolIndex, path: &str) -> Vec<(String, u64, u64)> {
-    symbols
-        .symbols_in(path)
-        .iter()
-        .filter(|s| s.container.is_none())
-        .map(|s| (s.name.clone(), s.span.0, s.span.1))
-        .collect()
+    // A definition too large for one chunk (a big `impl`, a class) is
+    // embedded member by member, not by its first 4 KiB (FIX-12, N9).
+    symbols.chunk_spans(path, modbit_retrieval::semantic::MAX_CHUNK_BYTES)
 }
 
 impl modbit_tools::SearchPort for IndexPort {
@@ -3063,8 +3424,8 @@ impl modbit_tools::SearchPort for IndexPort {
                 for p in &required {
                     if let Some((t, hash, rehydrated)) = hydrated(p) {
                         let chosen = selected.contains(p);
-                        // A line range selects that range; everything else
-                        // enters whole.
+                        // A line range selects that range; anything else enters as
+                        // the head of the file (bounded, `excerpt`), not whole.
                         let span = self
                             .selection
                             .lines
@@ -3167,7 +3528,16 @@ impl modbit_tools::SearchPort for IndexPort {
                         span: h.span,
                         score: h.score,
                         sources: h.sources.clone(),
-                        reasons: h.reasons.clone(),
+                        reasons: h
+                            .reasons
+                            .iter()
+                            .cloned()
+                            .chain(
+                                h.evidence
+                                    .iter()
+                                    .map(|e| format!("method:{}#{}", e.source, e.rank)),
+                            )
+                            .collect(),
                         content_hash: Some(hash),
                         text,
                         critical: diagnostic,
@@ -3521,6 +3891,49 @@ pub(crate) fn error_code(e: &anyhow::Error) -> &'static str {
         Some(Io(_)) => "IO",
         Some(Json(_)) => "JSON",
         Some(SchemaTooNew { .. }) => "SCHEMA_TOO_NEW",
+        Some(ReceiptChainStale { .. }) => "RECEIPT_CHAIN_STALE",
         None => "INFRA_FAILURE",
+    }
+}
+
+#[cfg(test)]
+mod resource_target_tests {
+    use super::resource_targets;
+    use modbit_tools::PathTarget;
+
+    fn p(path: &str) -> PathTarget {
+        PathTarget {
+            capability: "fs.write".into(),
+            path: path.into(),
+        }
+    }
+
+    fn resolved(root: Option<&str>, paths: &[&str]) -> Vec<String> {
+        let paths: Vec<PathTarget> = paths.iter().map(|x| p(x)).collect();
+        resource_targets(root, &paths)
+            .into_iter()
+            .map(|t| t.resource)
+            .collect()
+    }
+
+    /// FIX-15: a workspace path becomes the absolute resource the lease's
+    /// selectors are spelled in; a path that is not plainly inside the root
+    /// is left to the workspace's own path policy (no target, no new error).
+    #[test]
+    fn workspace_paths_resolve_inside_the_root_and_nothing_else() {
+        assert_eq!(
+            resolved(Some("/repo/"), &["src/./a/../b.rs", "."]),
+            vec!["/repo/src/b.rs".to_owned(), "/repo".to_owned()],
+            "normalized lexically, trailing slash on the root tolerated"
+        );
+        assert!(resolved(Some("/repo"), &["../x", "a/../../x", "/etc/passwd", "C:/x"]).is_empty());
+        assert!(
+            resolved(None, &["a.txt"]).is_empty(),
+            "no root, no resource"
+        );
+        assert_eq!(
+            resolved(Some(r"C:\repo"), &[r"src\a.rs"]),
+            vec![r"C:\repo/src/a.rs".to_owned()]
+        );
     }
 }

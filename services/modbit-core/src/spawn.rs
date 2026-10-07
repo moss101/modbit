@@ -19,6 +19,7 @@ use modbit_domain::agent::{
     WorkNodeChange, WorkStatus, write_scopes_overlap,
 };
 use modbit_domain::event::{Actor, AggregateType};
+use modbit_domain::state::StateMachine;
 use modbit_domain::task::{Task, TaskEvent, TaskState};
 use modbit_domain::toolcall::EffectClass;
 use modbit_domain::{AgentId, RunId, TaskId};
@@ -230,6 +231,48 @@ pub(crate) async fn spawn(
             latest_admission(&store, parent, n.agent_id)
         };
         if let Some(a) = admitted {
+            // FIX-16: a key names one child with one spec. The same key with
+            // a different spec is not a retry — it is a different request
+            // that must not silently become the old child. The comparison is
+            // against the capsule the admission stored (the spec as admitted,
+            // after any profile was compiled in); a capsule that cannot be
+            // read cannot be compared and fails closed.
+            let stored_spec = {
+                let store = core.store.lock().await;
+                store
+                    .objects()
+                    .get(&a.1)
+                    .ok()
+                    .and_then(|b| serde_json::from_slice::<AgentExecutionCapsule>(&b).ok())
+                    .map(|c| c.spec)
+            };
+            let conflict = match &stored_spec {
+                Some(old) if *old == req.spec => None,
+                Some(old) => Some(format!(
+                    "idempotency_key `{}` already names child {} admitted with a different spec (differs in: {}); a retry must repeat the spec exactly — use a new idempotency_key for a different child",
+                    req.idempotency_key,
+                    n.agent_id,
+                    spec_differences(old, &req.spec).join(", ")
+                )),
+                None => Some(format!(
+                    "idempotency_key `{}` already names child {}, whose admitted spec cannot be read to compare; use a new idempotency_key",
+                    req.idempotency_key, n.agent_id
+                )),
+            };
+            if let Some(detail) = conflict {
+                let r = refuse("IDEMPOTENCY_CONFLICT", detail, "IDEMPOTENCY", vec![]);
+                let (store, ev) = record_refusal(core, &r);
+                let mut store = store.lock().await;
+                let _ = append(
+                    &mut store,
+                    core,
+                    lt,
+                    AggregateType::Task,
+                    *parent.task_id.as_bytes(),
+                    vec![ev],
+                );
+                return Err(r);
+            }
             // M6.7: a child the dead Core left suspended continues on its
             // own log when its parent asks for it again — the same identity,
             // lineage, capsule and offsets, a fresh run ticket (docs/25
@@ -441,6 +484,39 @@ pub(crate) async fn spawn(
         }
         warnings
     };
+    // 4b. The work node the child will own, validated against the parent's
+    //     WorkGraph before anything is taken (FIX-16): an unknown dependency,
+    //     a cycle or a bad id refuses the spawn, typed, with nothing to give
+    //     back. (It used to be swallowed and the child admitted with no work
+    //     node recorded, the model none the wiser.)
+    let work_node = req
+        .spec
+        .work_node
+        .clone()
+        .unwrap_or_else(|| format!("agent-{}", req.idempotency_key));
+    {
+        let store = core.store.lock().await;
+        if let Err(e) = apply_work_change(&store, parent, &req.spec, &work_node) {
+            drop(store);
+            let r = refuse(
+                "WORK_GRAPH_INVALID",
+                format!("work node `{work_node}`: {}", work_graph_error_text(&e)),
+                "WORK_GRAPH",
+                vec![],
+            );
+            let (store, ev) = record_refusal(core, &r);
+            let mut store = store.lock().await;
+            let _ = append(
+                &mut store,
+                core,
+                lt,
+                AggregateType::Task,
+                *parent.task_id.as_bytes(),
+                vec![ev],
+            );
+            return Err(r);
+        }
+    }
     // 5. Capacity: the child's own run ticket (REQ-EV-0272).
     let agent_id = AgentId::new();
     let holder = format!("agent:{agent_id}");
@@ -595,11 +671,6 @@ pub(crate) async fn spawn(
     } else {
         req.spec.max_tool_calls
     };
-    let work_node = req
-        .spec
-        .work_node
-        .clone()
-        .unwrap_or_else(|| format!("agent-{}", req.idempotency_key));
     let capsule = AgentExecutionCapsule {
         agent_id,
         parent_agent_id: parent_node.agent_id,
@@ -621,51 +692,48 @@ pub(crate) async fn spawn(
         narrowed_tools: narrowed_tools.clone(),
         profile_context: profile_context.clone(),
     };
-    let (_capsule_ref, work_changed, ready, blocking) = {
+    // The same change again, now that the worktree and ticket are held: the
+    // validated graph can only have moved if a sibling's node did, and a
+    // failure here is compensated like every other late one (worktree,
+    // child task and ticket returned) and told to the model.
+    let applied = {
         let store = core.store.lock().await;
-        let capsule_ref = String::new();
-        // The work node the child owns: named by the spec, or created from
-        // the objective.
-        let mut graph = modbit_domain::agent::WorkGraph {
-            nodes: store.work_nodes(&parent.task_id).unwrap_or_default(),
-        };
-        let plan_version = graph
-            .nodes
-            .iter()
-            .map(|n| n.plan_version)
-            .max()
-            .unwrap_or(0);
-        let change = WorkNodeChange {
-            id: work_node.clone(),
-            title: Some(req.spec.objective.clone()),
-            depends_on: Some(req.spec.depends_on.clone()),
-            status: Some(WorkStatus::Active),
-            expected_artifacts: Some(req.spec.expected_artifacts.clone()),
-            verification: Some(req.spec.verification.clone()),
-            evidence_refs: vec![],
-            blockers: Some(vec![]),
-        };
-        let changed = graph.apply(parent.task_id, plan_version, &[change]);
-        let (mut work_changed, ready) = match changed {
-            Ok(c) => (
-                c,
-                graph
-                    .ready()
-                    .iter()
-                    .map(|n| n.id.clone())
-                    .collect::<Vec<_>>(),
-            ),
-            Err(_) => (vec![], vec![]),
-        };
-        for n in &mut work_changed {
-            n.owner = Some(agent_id);
+        if injected_fault("WORK_GRAPH") {
+            Err("injected fault at the work graph".to_owned())
+        } else {
+            apply_work_change(&store, parent, &req.spec, &work_node)
+                .map_err(|e| work_graph_error_text(&e))
         }
-        // REQ-EV-0180: background only when the parent can go on without
-        // this result — nothing of the parent's own pending work depends
-        // on the child's node. Otherwise the child is scheduled in the
-        // foreground whatever the spawn asked, and the record says why.
-        let blocking = graph.blocks_parent(&work_node);
-        (capsule_ref, work_changed, ready, blocking)
+    };
+    let (work_changed, ready, blocking) = match applied {
+        Ok((changed, ready, blocking)) => {
+            let mut work_changed = changed;
+            for n in &mut work_changed {
+                n.owner = Some(agent_id);
+            }
+            (work_changed, ready, blocking)
+        }
+        Err(detail) => {
+            rollback_fork(core, parent, actor, &forked, &mut rolled_back).await;
+            rollback_ticket(core, parent, lt, actor, &ticket.ticket_id, &mut rolled_back).await;
+            let r = refuse(
+                "WORK_GRAPH_INVALID",
+                format!("work node `{work_node}`: {detail}"),
+                "WORK_GRAPH",
+                rolled_back,
+            );
+            let (store, ev) = record_refusal(core, &r);
+            let mut store = store.lock().await;
+            let _ = append(
+                &mut store,
+                core,
+                lt,
+                AggregateType::Task,
+                *parent.task_id.as_bytes(),
+                vec![ev],
+            );
+            return Err(r);
+        }
     };
     let (mode, scheduling) = match (req.mode, blocking) {
         (SpawnMode::Background, true) => (SpawnMode::Foreground, "BLOCKING"),
@@ -911,6 +979,86 @@ pub(crate) async fn spawn(
     }
 }
 
+/// The change a spawn makes to its parent's WorkGraph: the node the child
+/// owns, active, with the spec's dependencies, artifacts and verification.
+fn work_change(spec: &SubtaskSpec, work_node: &str) -> WorkNodeChange {
+    WorkNodeChange {
+        id: work_node.to_owned(),
+        title: Some(spec.objective.clone()),
+        depends_on: Some(spec.depends_on.clone()),
+        status: Some(WorkStatus::Active),
+        expected_artifacts: Some(spec.expected_artifacts.clone()),
+        verification: Some(spec.verification.clone()),
+        evidence_refs: vec![],
+        blockers: Some(vec![]),
+    }
+}
+
+/// What applying a spawn's work-node change to a copy of the parent's
+/// WorkGraph produces: the nodes that changed, the nodes ready afterwards,
+/// and whether the parent's own pending work depends on the child's node.
+type AppliedWork = (Vec<modbit_domain::agent::WorkNode>, Vec<String>, bool);
+
+/// Apply the spawn's work-node change to a copy of the parent's WorkGraph.
+/// Nothing is recorded; an error is the graph's own refusal.
+fn apply_work_change(
+    store: &modbit_event_store::EventStore,
+    parent: &Task,
+    spec: &SubtaskSpec,
+    work_node: &str,
+) -> Result<AppliedWork, modbit_domain::agent::WorkGraphError> {
+    let mut graph = modbit_domain::agent::WorkGraph {
+        nodes: store.work_nodes(&parent.task_id).unwrap_or_default(),
+    };
+    let plan_version = graph
+        .nodes
+        .iter()
+        .map(|n| n.plan_version)
+        .max()
+        .unwrap_or(0);
+    let changed = graph.apply(
+        parent.task_id,
+        plan_version,
+        &[work_change(spec, work_node)],
+    )?;
+    let ready = graph.ready().iter().map(|n| n.id.clone()).collect();
+    // REQ-EV-0180: background only when the parent can go on without this
+    // result — nothing of the parent's own pending work depends on the
+    // child's node. Otherwise the child is scheduled in the foreground
+    // whatever the spawn asked, and the record says why.
+    let blocking = graph.blocks_parent(work_node);
+    Ok((changed, ready, blocking))
+}
+
+fn work_graph_error_text(e: &modbit_domain::agent::WorkGraphError) -> String {
+    serde_json::to_string(e).unwrap_or_else(|_| format!("{e:?}"))
+}
+
+/// The spec fields two specs disagree on, by name.
+fn spec_differences(a: &SubtaskSpec, b: &SubtaskSpec) -> Vec<&'static str> {
+    let mut d = Vec::new();
+    macro_rules! field {
+        ($f:ident) => {
+            if a.$f != b.$f {
+                d.push(stringify!($f));
+            }
+        };
+    }
+    field!(objective);
+    field!(expected_artifacts);
+    field!(depends_on);
+    field!(read_scope);
+    field!(write_scope);
+    field!(required_tools);
+    field!(execution_profile);
+    field!(verification);
+    field!(max_turns);
+    field!(max_tool_calls);
+    field!(work_node);
+    field!(profile);
+    d
+}
+
 /// The latest admission of `agent_id` on the parent's log:
 /// `(child_task_id, capsule_ref, ticket_id, worktree, branch, work_node, write_scope)`.
 type Admission = (TaskId, String, String, String, String, String, Vec<String>);
@@ -1030,6 +1178,118 @@ async fn fail_node(
             actor.clone(),
         )],
     );
+}
+
+/// A spawned child that is not over: its node is in no terminal status.
+#[derive(Clone, Debug)]
+pub(crate) struct UnsettledChild {
+    pub agent_id: AgentId,
+    pub key: String,
+    pub status: String,
+    pub child_task_id: Option<TaskId>,
+}
+
+/// The children `parent` spawned whose agent nodes are not terminal
+/// (`COMPLETED`, `FAILED`, `CANCELLED`): still admitted, running, parked or
+/// waiting. A parent is not done while it has any (FIX-16).
+pub(crate) async fn unsettled_children(core: &Core, parent: &TaskId) -> Vec<UnsettledChild> {
+    let store = core.store.lock().await;
+    let task = store.task(parent).ok().flatten();
+    store
+        .agent_nodes(parent)
+        .unwrap_or_default()
+        .into_iter()
+        .filter(|n| n.kind == "SUBAGENT")
+        .filter(|n| !matches!(n.status.as_str(), "COMPLETED" | "FAILED" | "CANCELLED"))
+        .map(|n| UnsettledChild {
+            child_task_id: n.child_task_id.or_else(|| {
+                task.as_ref()
+                    .and_then(|t| latest_admission(&store, t, n.agent_id))
+                    .map(|a| a.0)
+            }),
+            agent_id: n.agent_id,
+            key: n.idempotency_key,
+            status: n.status,
+        })
+        .collect()
+}
+
+/// Cancel every child `parent` still has alive, and theirs in turn (FIX-16:
+/// a cancellation domain, not a flag on one task). A child with a live loop
+/// is told to stop at its next safe boundary — its own loop end records the
+/// cancelled result and node, as for `agent.cancel`. A child with no loop (a
+/// parked or restart-suspended one) is cancelled durably here, with its node,
+/// since nothing else would ever end it. Returns the children touched.
+/// Idempotent: a child already over is skipped.
+pub(crate) async fn cancel_children(
+    core: &Arc<Core>,
+    parent: &Task,
+    reason: &str,
+    actor: &Actor,
+) -> Vec<AgentId> {
+    let mut touched = Vec::new();
+    let mut queue = vec![parent.clone()];
+    while let Some(p) = queue.pop() {
+        for child in unsettled_children(core, &p.task_id).await {
+            let Some(child_task_id) = child.child_task_id else {
+                continue;
+            };
+            touched.push(child.agent_id);
+            if core.runtime.cancel(&child_task_id).await {
+                // Its loop ends `Cancelled` and cascades to its own children.
+                continue;
+            }
+            let task = {
+                let mut store = core.store.lock().await;
+                let Ok(Some(task)) = store.task(&child_task_id) else {
+                    continue;
+                };
+                if !task.state.is_terminal()
+                    && let Err(e) =
+                        crate::runtime::cancel_without_loop(&mut store, core, &task, actor)
+                {
+                    eprintln!("modbit-core: cancelling child task {child_task_id}: {e}");
+                }
+                task
+            };
+            crate::sandboxes::release_if_ended(core, child_task_id, actor).await;
+            // The node: from where it stands now to CANCELLED.
+            {
+                let mut store = core.store.lock().await;
+                let current = store
+                    .agent_nodes(&p.task_id)
+                    .unwrap_or_default()
+                    .into_iter()
+                    .find(|n| n.agent_id == child.agent_id)
+                    .map(|n| n.status);
+                if let Some(from) = current
+                    .and_then(|s| serde_json::from_value(serde_json::Value::String(s)).ok())
+                    .filter(|f: &AgentStatus| f.can_transition(AgentStatus::Cancelled))
+                {
+                    let _ = append(
+                        &mut store,
+                        core,
+                        Lineage::task(core.tenant_id, p.session_id, p.task_id),
+                        AggregateType::Task,
+                        *p.task_id.as_bytes(),
+                        vec![typed(
+                            "AgentNodeTransitioned",
+                            &TaskEvent::AgentNodeTransitioned {
+                                agent_id: child.agent_id,
+                                from,
+                                to: AgentStatus::Cancelled,
+                                run_id: None,
+                                reason: reason.to_owned(),
+                            },
+                            actor.clone(),
+                        )],
+                    );
+                }
+            }
+            queue.push(task);
+        }
+    }
+    touched
 }
 
 /// The child's typed result envelope, on the parent's log (M6.5; docs/14

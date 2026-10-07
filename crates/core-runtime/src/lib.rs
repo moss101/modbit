@@ -26,5 +26,6 @@ pub use admission::{Activation, Admission, Refused, RunLedger, admit_activation,
 pub use capacity::{CapacityPool, CapacityRefused, ResourceVector, Shortfall, Ticket};
 pub use diagnostics::{FailureSource, classify};
 pub use harness::{
-    Budgets, Exhausted, HarnessRefusal, HarnessState, Observation, Plan, failure_signature, observe,
+    Budgets, Exhausted, HarnessRefusal, HarnessState, Observation, Plan, failure_signature,
+    observe, observe_streams,
 };

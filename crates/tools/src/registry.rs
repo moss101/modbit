@@ -132,6 +132,25 @@ pub trait Tool: Send + Sync {
         let _ = args;
         self.spec().effect_class
     }
+
+    /// The class the kernel is asked about for one call under `profile`:
+    /// [`Tool::effect_of`] by default. A tool whose arguments name a program
+    /// it cannot fully resolve (the shell tools, FIX-02) is judged more
+    /// strictly where an approval can be asked than where it cannot. Like
+    /// `effect_of` it can only raise the registered class. The pipeline and
+    /// the Core's proposal both call this one, so what is logged, what the
+    /// kernel decides on and what is receipted are the same class.
+    fn effect_in_profile(&self, args: &Value, profile: &str) -> EffectClass {
+        let _ = profile;
+        self.effect_of(args)
+    }
+
+    /// Why [`Tool::effect_in_profile`] raised the class above the registered
+    /// one, for the approval and the evidence record. `None` when it did not.
+    fn effect_reason(&self, args: &Value, profile: &str) -> Option<String> {
+        let _ = (args, profile);
+        None
+    }
 }
 
 /// The registry.

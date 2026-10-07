@@ -155,6 +155,15 @@ pub async fn run_as(
             format!("; notes: {}", recovery.notes.join(" | "))
         }
     );
+    // FIX-05: the Core's own configuration layers are checked at start. A
+    // broken one does not stop the Core (the person who can fix it has to
+    // be able to reach it), but no task starts under it and it is said here.
+    for problem in crate::config::problems(&data_dir, None) {
+        eprintln!(
+            "modbit-core: {}: {problem}; every task start is refused until it is fixed",
+            crate::config::ConfigError::CODE
+        );
+    }
     // Interrupted agent loops suspend at a turn boundary (docs/14); nothing re-executes.
     let suspended =
         crate::runtime::reconcile_after_restart(&mut store, tenant_id, recovery.boot_generation);
@@ -277,8 +286,24 @@ pub async fn run_as(
                     && connections.load(std::sync::atomic::Ordering::SeqCst) == 0
                     && last_activity.lock().expect("activity").elapsed().as_secs() >= secs
                 {
-                    eprintln!("modbit-core: idle for {secs}s with no client; exiting");
-                    break;
+                    // FIX-17: no client does not mean no work. A detached
+                    // `task run` leaves its loop (and any background
+                    // command it started) running with nobody connected;
+                    // exiting would suspend the task and, after the
+                    // broker's orphan grace, kill the command. The idle
+                    // clock restarts when the work ends.
+                    let loops = core.runtime.live_loops().await;
+                    let background = if loops == 0 {
+                        core.tools.running_background_sessions().await
+                    } else {
+                        0
+                    };
+                    if loops > 0 || background > 0 {
+                        *last_activity.lock().expect("activity") = std::time::Instant::now();
+                    } else {
+                        eprintln!("modbit-core: idle for {secs}s with no client and no live run; exiting");
+                        break;
+                    }
                 }
             }
             _ = &mut shutdown => break,
@@ -3891,11 +3916,14 @@ async fn handle_command(core: &Arc<Core>, env: CommandEnvelope) -> CommandAck {
                 Ok(None) => return reject(cid, "UNKNOWN_TASK", task_id.to_string()),
                 Err(e) => return reject(cid, error_code(&e), e.to_string()),
             };
-            let cfg = core.tools.configurations.for_task(
+            let cfg = match core.tools.configurations.try_for_task(
                 task_id,
                 &core.data_dir,
                 task.workspace_root.as_deref(),
-            );
+            ) {
+                Ok(c) => c,
+                Err(e) => return reject(cid, crate::config::ConfigError::CODE, e.to_string()),
+            };
             let device_path = crate::config::device_policy_path();
             let view = wire::EffectivePolicyView {
                 generation: modbit_policy::config::generation(&cfg),
@@ -5212,6 +5240,16 @@ async fn handle_command(core: &Arc<Core>, env: CommandEnvelope) -> CommandAck {
                     "the session is under an emergency stop; no run starts in it",
                 );
             }
+            // FIX-05: a configuration file that is there and cannot be read
+            // is not "no opinion". Nothing starts under less policy than its
+            // owners set; the refusal names the file and what is wrong.
+            if let Some(problem) =
+                crate::config::problems(&core.data_dir, task.workspace_root.as_deref())
+                    .into_iter()
+                    .next()
+            {
+                return reject(cid, crate::config::ConfigError::CODE, problem.to_string());
+            }
             // REQ-PX-022: a desktop task runs only on a repository the user
             // trusted in this session, explicitly and scoped to that root.
             // The headless CLI and the adapters run where the operator points
@@ -6081,49 +6119,16 @@ async fn handle_command(core: &Arc<Core>, env: CommandEnvelope) -> CommandAck {
             if !was_running && !task.state.is_terminal() {
                 // No loop alive: cancel durably here.
                 let mut store = core.store.lock().await;
-                if let Ok(runs) = store.runs_for_task(&task_id) {
-                    for r in runs.into_iter().filter(|r| !r.state.is_terminal()) {
-                        let _ = store.append(AppendRequest {
-                            tenant_id: core.tenant_id,
-                            session_id: task.session_id,
-                            task_id: Some(task_id),
-                            run_id: Some(r.run_id),
-                            turn_id: None,
-                            step_id: None,
-                            aggregate_type: AggregateType::Run,
-                            aggregate_id: *r.run_id.as_bytes(),
-                            expected_sequence: None,
-                            events: vec![typed(
-                                "RunCancelled",
-                                &modbit_domain::run::RunEvent::RunCancelled,
-                                actor.clone(),
-                            )],
-                        });
-                    }
+                if let Err(e) = crate::runtime::cancel_without_loop(&mut store, core, &task, &actor)
+                {
+                    return reject(cid, error_code(&e), e.to_string());
                 }
-                match store.append(AppendRequest {
-                    tenant_id: core.tenant_id,
-                    session_id: task.session_id,
-                    task_id: Some(task_id),
-                    run_id: None,
-                    turn_id: None,
-                    step_id: None,
-                    aggregate_type: AggregateType::Task,
-                    aggregate_id: *task_id.as_bytes(),
-                    expected_sequence: None,
-                    events: vec![typed(
-                        "TaskCancelled",
-                        &TaskEvent::TaskCancelled,
-                        actor.clone(),
-                    )],
-                }) {
-                    Ok(ev) => {
-                        if let Some(last) = ev.last() {
-                            core.last_offset.send_replace(last.offset);
-                        }
-                    }
-                    Err(e) => return reject(cid, error_code(&e), e.to_string()),
-                }
+            }
+            // FIX-16: cancelling a parent cancels the children it still has
+            // alive (a cancellation domain, not a flag on one task).
+            if !task.state.is_terminal() || was_running {
+                crate::spawn::cancel_children(core, &task, "the parent task was cancelled", &actor)
+                    .await;
             }
             if !was_running {
                 crate::sandboxes::release_if_ended(core, task_id, &actor).await;

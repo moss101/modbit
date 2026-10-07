@@ -110,17 +110,32 @@ pub(crate) async fn compensate(
         ));
     };
     if call.state != ToolCallState::Succeeded {
+        // FIX-08: authorized with no result receipt is an effect in doubt —
+        // it may have happened, so it is reconciled against its target
+        // first, never compensated on a guess.
+        let in_doubt = modbit_policy::ledger::in_doubt(&receipts)
+            .iter()
+            .any(|r| r.tool_call_id == call_id);
         return Err(refuse(
             "NOT_COMPENSATABLE",
-            format!(
-                "the call is {:?}; only an effect that happened is compensated",
-                call.state
-            ),
+            if in_doubt {
+                format!(
+                    "the call is {:?} and was authorized but never reported a result: its effect is in doubt; reconcile it against the target before anything compensates it",
+                    call.state
+                )
+            } else {
+                format!(
+                    "the call is {:?}; only an effect that happened is compensated",
+                    call.state
+                )
+            },
         ));
     }
+    // The receipt that reports the effect — not the authorization written
+    // before it ran.
     let Some(original) = receipts
         .iter()
-        .find(|r| r.tool_call_id == call_id && r.compensates.is_none())
+        .find(|r| r.tool_call_id == call_id && !modbit_policy::ledger::is_authorization(r))
     else {
         return Err(refuse(
             "NOT_COMPENSATABLE",

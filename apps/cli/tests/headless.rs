@@ -193,6 +193,14 @@ fn qual_px_000_headless_cli_task_lifecycle() {
     let repo = tmp.path().join("repo");
     std::fs::create_dir_all(&repo).unwrap();
     std::fs::write(repo.join("a.txt"), "a\n").unwrap();
+    // A completion needs a mandatory check (FIX-03); this test's subject is
+    // the headless lifecycle, so the repository declares a no-op one.
+    std::fs::create_dir_all(repo.join(".modbit")).unwrap();
+    std::fs::write(
+        repo.join(".modbit/verification.json"),
+        r#"{"commands": [{"id": "fixture-noop", "argv": ["git", "--version"]}]}"#,
+    )
+    .unwrap();
     git(&repo, &["init", "-q", "-b", "main"]);
     git(&repo, &["add", "-A"]);
     git(
@@ -377,8 +385,10 @@ fn qual_px_000_headless_cli_task_lifecycle() {
     assert!(!Path::new(&wt).exists(), "the approved close happened");
     let (code, out, _) = cli.run(&["receipts", "--task", &tid]);
     assert!(
-        code == 0 && out.contains("receipt_chain valid=true count=1"),
-        "exactly one effect receipt: {out}"
+        code == 0
+            && out.contains("receipt_chain valid=true count=2")
+            && out.contains("status=AUTHORIZED"),
+        "one effect: an authorization receipt and its result receipt (FIX-08): {out}"
     );
     // 5. Kill the Core and resume the stream by cursor: no duplicate, the same offsets continue.
     let (_, before, _) = cli.run(&[
@@ -859,6 +869,13 @@ fn parity_fixture(parent: &Path, name: &str) -> String {
         serde_json::json!({ "hooks": [hook] }).to_string(),
     )
     .unwrap();
+    // A completion needs a mandatory check (FIX-03); this fixture's subject
+    // is parity between surfaces, so the repository declares a no-op one.
+    std::fs::write(
+        repo.join(".modbit/verification.json"),
+        r#"{"commands": [{"id": "fixture-noop", "argv": ["git", "--version"]}]}"#,
+    )
+    .unwrap();
     git(&repo, &["init", "-q", "-b", "main"]);
     git(&repo, &["add", "-A"]);
     git(
@@ -896,15 +913,14 @@ fn parity_script(worktree: &str) -> Vec<serde_json::Value> {
     ]
 }
 
-/// The scratch worktree both surfaces use, in the form the Git tools take. Each
-/// run creates it and its protected effect removes it again, so the two runs can
-/// name the same path — which is what makes the two tasks byte-identical.
-fn parity_worktree(parent: &Path) -> String {
-    parent
-        .join("parity-wt")
-        .to_string_lossy()
-        .trim_start_matches(r"\\?\")
-        .replace('\\', "/")
+/// The scratch worktree both surfaces use, in the form the Git tools take. A
+/// worktree lives under Modbit's own directory next to its workspace (FIX-01)
+/// and a relative path is relative to that directory, so the two runs, each on
+/// its own repository, name the same path and still get their own checkout.
+/// Each run creates it and its protected effect removes it again, which is what
+/// makes the two tasks byte-identical.
+fn parity_worktree(_parent: &Path) -> String {
+    "parity-wt".to_owned()
 }
 
 /// The canonical shape of a finished task, as any surface can read it back:

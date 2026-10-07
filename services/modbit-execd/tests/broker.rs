@@ -19,9 +19,14 @@ struct Execd {
 
 impl Execd {
     fn spawn(dir: &Path) -> Self {
+        Self::spawn_with(dir, &[])
+    }
+
+    fn spawn_with(dir: &Path, extra: &[&str]) -> Self {
         let mut child = Command::new(env!("CARGO_BIN_EXE_modbit-execd"))
             .arg("--data-dir")
             .arg(dir)
+            .args(extra)
             .stdout(Stdio::piped())
             .stderr(Stdio::inherit())
             .spawn()
@@ -97,6 +102,7 @@ fn req(id: &str, role: &str, extra: &[&str]) -> ExecRequest {
         execution_profile: "local_trusted".into(),
         capability_lease_id: None,
         terminal_session_id: None,
+        owner: String::new(),
     }
 }
 
@@ -636,4 +642,467 @@ async fn hostile_arguments_reach_the_process_as_literal_tokens_and_nothing_insid
         !text.contains("HOME_SET=true") || std::env::var("HOME").is_err(),
         "environment is explicit"
     );
+}
+
+// ---------------------------------------------------------------------
+// FIX-20: bounded replay window, indexed log, per-owner sessions.
+// ---------------------------------------------------------------------
+
+const MIB: u64 = 1024 * 1024;
+
+/// The bytes `[from, from + len)` of the `noisy` role's stream: line `i` is
+/// `{i:063}\n`, 64 bytes, so any offset's content is known without storing it.
+fn noisy_bytes(from: u64, len: usize) -> Vec<u8> {
+    let first = from / 64;
+    let mut out = Vec::with_capacity(len + 128);
+    let mut i = first;
+    while (out.len() as u64) < from % 64 + len as u64 {
+        out.extend_from_slice(format!("{i:063}\n").as_bytes());
+        i += 1;
+    }
+    let skip = (from % 64) as usize;
+    out[skip..skip + len].to_vec()
+}
+
+fn noisy_req(id: &str, role: &str, mib: u64) -> ExecRequest {
+    let mut r = req(id, role, &[]);
+    r.env
+        .insert("MODBIT_EXECD_TEST_MIB".into(), mib.to_string());
+    r
+}
+
+/// Total size of every file under `path`.
+fn dir_bytes(path: &Path) -> u64 {
+    let mut total = 0;
+    if let Ok(entries) = std::fs::read_dir(path) {
+        for e in entries.flatten() {
+            match e.metadata() {
+                Ok(m) if m.is_dir() => total += dir_bytes(&e.path()),
+                Ok(m) => total += m.len(),
+                Err(_) => {}
+            }
+        }
+    }
+    total
+}
+
+/// Resident memory of a process in KiB (Unix `ps`); `None` elsewhere.
+fn rss_kib(pid: u32) -> Option<u64> {
+    if cfg!(windows) {
+        return None;
+    }
+    let out = Command::new("ps")
+        .args(["-o", "rss=", "-p", &pid.to_string()])
+        .output()
+        .ok()?;
+    String::from_utf8_lossy(&out.stdout).trim().parse().ok()
+}
+
+async fn list_of(c: &mut ExecClient) -> Vec<modbit_terminal::SessionInfo> {
+    c.list().await.unwrap();
+    loop {
+        if let Event::Sessions(l) = c.next().await.unwrap().unwrap() {
+            return l;
+        }
+    }
+}
+
+/// Read a session from `from` until its exit, checking every chunk against
+/// the `noisy` stream; returns (bytes read, the exit).
+async fn replay_noisy(
+    c: &mut ExecClient,
+    sid: &str,
+    from: u64,
+) -> (u64, modbit_terminal::ProcessExited) {
+    c.attach(sid, from).await.unwrap();
+    let mut next = from;
+    loop {
+        match c.next().await.unwrap().expect("broker closed") {
+            Event::Output(o) => {
+                assert_eq!(o.cursor, next, "replay has no gap or overlap");
+                assert_eq!(
+                    o.data,
+                    noisy_bytes(o.cursor, o.data.len()),
+                    "bytes at cursor {}",
+                    o.cursor
+                );
+                next += o.data.len() as u64;
+            }
+            Event::Exited(e) => return (next - from, e),
+            _ => {}
+        }
+    }
+}
+
+/// FIX-20: a noisy real process (50 MiB) under a 4 MiB replay window. Disk
+/// and broker memory stay bounded; a cursor inside the window replays
+/// byte-exact (also after a hard broker restart); one outside it is the
+/// typed `CURSOR_EXPIRED`; the sealed object is the retained tail, named by
+/// its digest, and says where it starts.
+#[tokio::test]
+async fn fix_20_noisy_process_keeps_disk_and_memory_bounded_and_replay_is_exact_inside_the_window()
+{
+    let dir = tempfile::tempdir().unwrap();
+    let args = [
+        "--replay-window-bytes",
+        "4194304",
+        "--segment-bytes",
+        "1048576",
+    ];
+    let mut execd = Execd::spawn_with(dir.path(), &args);
+    let pid = execd.child.id();
+    let baseline = rss_kib(pid);
+    // The broker's memory and disk are sampled from a task of their own, so
+    // measuring never slows the reader down.
+    let stop = std::sync::Arc::new(std::sync::atomic::AtomicBool::new(false));
+    let sampler = {
+        let (stop, root) = (std::sync::Arc::clone(&stop), dir.path().to_owned());
+        tokio::spawn(async move {
+            let (mut rss, mut disk) = (0u64, 0u64);
+            while !stop.load(std::sync::atomic::Ordering::SeqCst) {
+                rss = rss.max(rss_kib(pid).unwrap_or(0));
+                disk = disk.max(dir_bytes(&root));
+                tokio::time::sleep(Duration::from_millis(15)).await;
+            }
+            (rss, disk)
+        })
+    };
+    let mut c = execd.client().await;
+    c.exec(noisy_req("noisy", "noisy", 50)).await.unwrap();
+    let mut sid = String::new();
+    // A live reader that keeps up sees the exit; one that falls more than a
+    // window behind is told so with the typed error, never given wrong bytes.
+    loop {
+        match c.next().await {
+            Ok(Some(Event::Started(s))) => sid = s.session_id,
+            Ok(Some(Event::Output(_))) => {}
+            Ok(Some(Event::Exited(_))) => break,
+            Err(Error::Exec { code, .. }) if code == "CURSOR_EXPIRED" => break,
+            other => panic!("live follower: {other:?}"),
+        }
+    }
+    let mut d = execd.client().await;
+    let info = loop {
+        let info = list_of(&mut d).await.into_iter().next().unwrap();
+        if info.status == "EXITED" {
+            break info;
+        }
+        tokio::time::sleep(Duration::from_millis(20)).await;
+    };
+    stop.store(true, std::sync::atomic::Ordering::SeqCst);
+    let (peak_rss, mut peak_disk) = sampler.await.unwrap();
+    eprintln!(
+        "fix_20 noisy: 50 MiB written; peak disk {peak_disk} B; broker RSS {baseline:?} -> {peak_rss} KiB"
+    );
+    // Everything still retained, checked byte for byte against the stream.
+    let (_, exited) = replay_noisy(&mut d, &sid, info.oldest_cursor).await;
+    assert_eq!(exited.total_bytes, 50 * MIB);
+    // The retained tail: at least the window, at most window + one segment.
+    let retained = exited.total_bytes - exited.retained_from;
+    assert!(exited.retained_from > 0, "the head was dropped: {exited:?}");
+    assert!(
+        (4 * MIB..=5 * MIB).contains(&retained),
+        "retained {retained} bytes"
+    );
+    let object = dir
+        .path()
+        .join("objects")
+        .join(&exited.output_ref[..2])
+        .join(&exited.output_ref[2..]);
+    let sealed = std::fs::read(&object).unwrap();
+    assert_eq!(sealed.len() as u64, retained);
+    assert_eq!(hex::encode(Sha256::digest(&sealed)), exited.output_ref);
+    assert_eq!(
+        sealed,
+        noisy_bytes(exited.retained_from, retained as usize),
+        "the object is exactly the retained tail of the stream"
+    );
+    // Disk: 50 MiB written, a few window-sizes held (log segments + sealed
+    // object + indexes), never the whole stream.
+    peak_disk = peak_disk.max(dir_bytes(dir.path()));
+    assert!(peak_disk < 12 * MIB, "disk peaked at {peak_disk} bytes");
+    // Memory of the broker: a handful of MiB over where it started.
+    if let Some(base) = baseline {
+        assert!(
+            peak_rss < base + 48 * 1024,
+            "broker RSS peaked at {peak_rss} KiB over a {base} KiB start"
+        );
+    }
+    // The window as the broker reports it.
+    assert_eq!(info.oldest_cursor, exited.retained_from);
+    let oldest = info.oldest_cursor;
+    // Inside the window: byte-exact from a cursor in the middle of a record.
+    let (n, e2) = replay_noisy(&mut d, &sid, oldest + 100).await;
+    assert_eq!(n, exited.total_bytes - oldest - 100);
+    assert_eq!(e2.output_ref, exited.output_ref);
+    // Outside it: the typed error naming where the window starts.
+    for stale in [0, 4 * MIB, oldest - 1] {
+        d.attach(&sid, stale).await.unwrap();
+        match d.next().await {
+            Err(Error::Exec { code, message }) => {
+                assert_eq!(code, "CURSOR_EXPIRED", "{message}");
+                assert!(
+                    message.contains(&format!("oldest_cursor={oldest}")),
+                    "{message}"
+                );
+            }
+            other => panic!("cursor {stale}: expected CURSOR_EXPIRED, got {other:?}"),
+        }
+    }
+    // A hard restart of the broker keeps the same window and the same bytes.
+    drop((c, d));
+    execd.child.kill().unwrap();
+    let _ = execd.child.wait();
+    let execd2 = Execd::spawn_with(dir.path(), &args);
+    let mut e = execd2.client().await;
+    let info = list_of(&mut e).await.into_iter().next().unwrap();
+    assert_eq!(
+        (info.status.as_str(), info.oldest_cursor),
+        ("EXITED", oldest)
+    );
+    let (n, e3) = replay_noisy(&mut e, &sid, oldest + 4096).await;
+    assert_eq!(n, exited.total_bytes - oldest - 4096);
+    assert_eq!(e3.output_ref, exited.output_ref);
+    assert_eq!(e3.retained_from, exited.retained_from);
+}
+
+/// FIX-20: a broker killed with a noisy process running comes back with the
+/// segmented log it left: LOST, the window intact, replay byte-exact from
+/// the oldest cursor, and the sealed object is the retained tail.
+#[tokio::test]
+async fn fix_20_a_killed_broker_recovers_a_segmented_log_and_seals_the_retained_tail() {
+    let dir = tempfile::tempdir().unwrap();
+    let args = [
+        "--replay-window-bytes",
+        "2097152",
+        "--segment-bytes",
+        "524288",
+    ];
+    let mut execd = Execd::spawn_with(dir.path(), &args);
+    let mut a = execd.client().await;
+    a.exec(noisy_req("live", "noisy-live", 12)).await.unwrap();
+    let Event::Started(s) = a.next().await.unwrap().unwrap() else {
+        panic!()
+    };
+    let sid = s.session_id;
+    let deadline = Instant::now() + Duration::from_secs(60);
+    let mut b = execd.client().await;
+    while list_of(&mut b).await[0].bytes_so_far < 12 * MIB {
+        assert!(
+            Instant::now() < deadline,
+            "the process did not write 12 MiB"
+        );
+        tokio::time::sleep(Duration::from_millis(50)).await;
+    }
+    drop((a, b));
+    execd.child.kill().unwrap();
+    let _ = execd.child.wait();
+    let execd2 = Execd::spawn_with(dir.path(), &args);
+    let mut c = execd2.client().await;
+    let info = list_of(&mut c).await.into_iter().next().unwrap();
+    assert_eq!(info.status, "LOST", "{info:?}");
+    assert_eq!(info.bytes_so_far, 12 * MIB);
+    assert!(info.oldest_cursor > 0 && info.oldest_cursor % 64 != 1);
+    let (n, exit) = replay_noisy(&mut c, &sid, info.oldest_cursor + 7).await;
+    assert_eq!(n, 12 * MIB - info.oldest_cursor - 7);
+    assert_eq!(exit.exit_code, None, "the exit is unknown, never invented");
+    assert_eq!(exit.retained_from, info.oldest_cursor);
+    let sealed = std::fs::read(
+        dir.path()
+            .join("objects")
+            .join(&exit.output_ref[..2])
+            .join(&exit.output_ref[2..]),
+    )
+    .unwrap();
+    assert_eq!(
+        sealed,
+        noisy_bytes(info.oldest_cursor, (12 * MIB - info.oldest_cursor) as usize)
+    );
+    // The window lives on: a cursor before it is still the typed error.
+    c.attach(&sid, 0).await.unwrap();
+    assert!(matches!(
+        c.next().await,
+        Err(Error::Exec { ref code, .. }) if code == "CURSOR_EXPIRED"
+    ));
+}
+
+/// FIX-20: many tiny records, the shape that made every wake re-read the
+/// whole index. A live follower gets all 100 000 lines exactly and in time,
+/// and a replay from zero afterwards is the same bytes.
+#[tokio::test]
+async fn fix_20_chatty_process_is_followed_and_replayed_through_the_index() {
+    let dir = tempfile::tempdir().unwrap();
+    let execd = Execd::spawn(dir.path());
+    let mut c = execd.client().await;
+    let mut r = req("chatty", "chatty", &[]);
+    r.env
+        .insert("MODBIT_EXECD_TEST_LINES".into(), "100000".into());
+    c.exec(r).await.unwrap();
+    let started = Instant::now();
+    let (mut sid, mut live) = (String::new(), Vec::new());
+    let exited = loop {
+        match tokio::time::timeout(Duration::from_secs(120), c.next())
+            .await
+            .expect("the follower stalled")
+            .unwrap()
+            .unwrap()
+        {
+            Event::Started(s) => sid = s.session_id,
+            Event::Output(o) => {
+                assert_eq!(o.cursor, live.len() as u64);
+                live.extend(o.data);
+            }
+            Event::Exited(e) => break e,
+            _ => {}
+        }
+    };
+    let took = started.elapsed();
+    let expected: Vec<u8> = (0..100_000)
+        .flat_map(|i| format!("{i:07}\n").into_bytes())
+        .collect();
+    assert_eq!(live, expected);
+    assert_eq!(exited.total_bytes, expected.len() as u64);
+    assert!(took < Duration::from_secs(60), "followed in {took:?}");
+    let mut d = execd.client().await;
+    d.attach(&sid, 0).await.unwrap();
+    let mut replay = Vec::new();
+    loop {
+        match d.next().await.unwrap().unwrap() {
+            Event::Output(o) => {
+                assert_eq!(o.cursor, replay.len() as u64);
+                replay.extend(o.data);
+            }
+            Event::Exited(_) => break,
+            _ => {}
+        }
+    }
+    assert_eq!(replay, expected);
+}
+
+async fn expect_code(c: &mut ExecClient, code: &str, what: &str) {
+    match tokio::time::timeout(Duration::from_secs(10), c.next()).await {
+        Ok(Err(Error::Exec { code: got, message })) => {
+            assert_eq!(got, code, "{what}: {message}");
+        }
+        other => panic!("{what}: expected {code}, got {other:?}"),
+    }
+}
+
+/// FIX-20: a session belongs to the task that started it. Another task is
+/// not listed it, cannot attach, write stdin, cancel, or replay its request
+/// id; the owner and the host (the user's own terminal lease) can; the
+/// owner survives a broker restart.
+#[tokio::test]
+async fn fix_20_a_second_task_cannot_see_read_write_or_cancel_another_tasks_session() {
+    let dir = tempfile::tempdir().unwrap();
+    let mut execd = Execd::spawn(dir.path());
+    let mut owner = execd.client().await.act_as("task:alpha");
+    let mut r = req("owned", "ticker", &[]);
+    r.stdin_mode = "open".into();
+    owner.exec(r.clone()).await.unwrap();
+    let Event::Started(s) = owner.next().await.unwrap().unwrap() else {
+        panic!()
+    };
+    let sid = s.session_id;
+    // Another task: not listed, and refused everything else.
+    let mut other = execd.client().await.act_as("task:beta");
+    assert!(list_of(&mut other).await.is_empty(), "beta lists nothing");
+    other.attach(&sid, 0).await.unwrap();
+    expect_code(&mut other, "SESSION_NOT_OWNED", "attach").await;
+    other.write_stdin(&sid, b"x").await.unwrap();
+    expect_code(&mut other, "SESSION_NOT_OWNED", "stdin").await;
+    other.cancel(&sid).await.unwrap();
+    expect_code(&mut other, "SESSION_NOT_OWNED", "cancel").await;
+    other.exec(r.clone()).await.unwrap();
+    expect_code(&mut other, "SESSION_NOT_OWNED", "replaying the request id").await;
+    // The refused cancel did nothing: the real process is still running.
+    tokio::time::sleep(Duration::from_millis(150)).await;
+    let mut o2 = execd.client().await.act_as("task:alpha");
+    let mine = list_of(&mut o2).await;
+    assert_eq!(mine.len(), 1);
+    assert!(mine[0].running, "{:?}", mine[0]);
+    assert_eq!(mine[0].owner, "task:alpha");
+    // A task with no sessions of its own is not mistaken for the host.
+    let mut third = execd.client().await.act_as("task:gamma");
+    assert!(list_of(&mut third).await.is_empty());
+    // The host sees every session and may read it.
+    let mut host = execd.client().await;
+    assert_eq!(list_of(&mut host).await.len(), 1);
+    host.attach(&sid, 0).await.unwrap();
+    assert!(matches!(
+        host.next().await.unwrap().unwrap(),
+        Event::Output(_)
+    ));
+    // Ownership is durable: after a hard restart the same refusals hold.
+    drop((owner, other, o2, third, host));
+    execd.child.kill().unwrap();
+    let _ = execd.child.wait();
+    let execd2 = Execd::spawn(dir.path());
+    let mut other = execd2.client().await.act_as("task:beta");
+    assert!(list_of(&mut other).await.is_empty());
+    other.attach(&sid, 0).await.unwrap();
+    expect_code(&mut other, "SESSION_NOT_OWNED", "attach after restart").await;
+    let mut owner = execd2.client().await.act_as("task:alpha");
+    owner.attach(&sid, 0).await.unwrap();
+    assert!(matches!(
+        owner.next().await.unwrap().unwrap(),
+        Event::Output(_)
+    ));
+    // A session predating owners (no owner on disk) belongs to the host only.
+    let meta = dir.path().join("sessions").join(format!("{sid}.json"));
+    let mut json: serde_json::Value =
+        serde_json::from_slice(&std::fs::read(&meta).unwrap()).unwrap();
+    assert_eq!(json["owner"], "task:alpha");
+    json.as_object_mut().unwrap().remove("owner");
+    drop((owner, other));
+    drop(execd2);
+    std::fs::write(&meta, serde_json::to_vec(&json).unwrap()).unwrap();
+    let execd3 = Execd::spawn(dir.path());
+    let mut alpha = execd3.client().await.act_as("task:alpha");
+    assert!(list_of(&mut alpha).await.is_empty());
+    let mut host = execd3.client().await;
+    assert_eq!(list_of(&mut host).await[0].owner, "");
+}
+
+/// FIX-20: finished sessions are kept up to a count and dropped oldest
+/// first, with their logs and metadata; running sessions are never dropped.
+#[tokio::test]
+async fn fix_20_finished_sessions_are_retained_by_count_and_their_logs_are_deleted() {
+    let dir = tempfile::tempdir().unwrap();
+    let execd = Execd::spawn_with(dir.path(), &["--retain-sessions", "3"]);
+    let mut c = execd.client().await;
+    let mut ids = Vec::new();
+    for i in 0..6 {
+        c.exec(req(&format!("short-{i}"), "echo-args", &["x"]))
+            .await
+            .unwrap();
+        let (sid, _, _, _) = run_to_exit(&mut c).await;
+        ids.push(sid);
+        // Distinct end times, so "oldest first" is well defined.
+        tokio::time::sleep(Duration::from_millis(5)).await;
+    }
+    let listed: Vec<String> = list_of(&mut c)
+        .await
+        .into_iter()
+        .map(|s| s.session_id)
+        .collect();
+    assert_eq!(listed.len(), 3, "{listed:?}");
+    for kept in &ids[3..] {
+        assert!(listed.contains(kept), "{kept} is among the newest");
+    }
+    let leftovers: Vec<String> = std::fs::read_dir(dir.path().join("sessions"))
+        .unwrap()
+        .flatten()
+        .map(|e| e.file_name().to_string_lossy().into_owned())
+        .filter(|n| ids[..3].iter().any(|gone| n.starts_with(gone.as_str())))
+        .collect();
+    assert!(leftovers.is_empty(), "pruned sessions left {leftovers:?}");
+    // A pruned session is unknown, and its request id starts a fresh one.
+    c.attach(&ids[0], 0).await.unwrap();
+    expect_code(&mut c, "UNKNOWN_SESSION", "attach to a pruned session").await;
+    c.exec(req("short-0", "echo-args", &["x"])).await.unwrap();
+    let Event::Started(s) = c.next().await.unwrap().unwrap() else {
+        panic!()
+    };
+    assert!(!s.replayed);
 }

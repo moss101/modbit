@@ -111,10 +111,12 @@ export interface Event {
 
 export interface Model {
   sessionId: string | null;
+  /** The watermark: the highest event offset applied (or the snapshot's).
+   *  The Core delivers a session's events in strictly increasing offset
+   *  order, so an event at or below it is a replay of something already
+   *  folded in — dropped in O(1), with no set of every offset ever seen. */
   cursor: string;
   tasks: Map<string, TaskCard>;
-  /** Task ids whose TaskCreated event we have seen, keyed by created goal (for cards created before the event arrives). */
-  seenOffsets: Set<string>;
   /** Agent node status by agent id, per task (M6.6). */
   agents: Map<string, Map<string, string>>;
   /** Child task → parent task, learned from `SubagentAdmitted` (which may
@@ -123,7 +125,7 @@ export interface Model {
 }
 
 export function emptyModel(): Model {
-  return { sessionId: null, cursor: "0", tasks: new Map(), seenOffsets: new Set(), agents: new Map(), parents: new Map() };
+  return { sessionId: null, cursor: "0", tasks: new Map(), agents: new Map(), parents: new Map() };
 }
 
 function freshCard(taskId: string, goalText: string, state: string, generation: number, createdAtMs: number, origin: string): TaskCard {
@@ -151,46 +153,117 @@ export function fromSnapshot(s: Snapshot): Model {
   return m;
 }
 
-function countsOf(statuses: Map<string, string> | undefined): AgentCounts {
-  const c = emptyCounts();
-  if (!statuses) return c;
-  for (const st of statuses.values()) {
-    c.total += 1;
-    switch (st) {
-      case "RUNNING":
-      case "ADMITTED":
-      case "ADMISSION_PENDING":
-        c.running += 1;
-        break;
-      case "BACKGROUND":
-        c.background += 1;
-        break;
-      case "WAITING":
-      case "PARKED":
-        c.waiting += 1;
-        break;
-      case "COMPLETED":
-        c.done += 1;
-        break;
-      case "FAILED":
-      case "CANCELLED":
-        c.failed += 1;
-        break;
-      default:
-        break;
-    }
+/** Which counter a node status belongs to; `null` for a status the Fleet does not count. */
+function bucketOf(status: string): Exclude<keyof AgentCounts, "total"> | null {
+  switch (status) {
+    case "RUNNING":
+    case "ADMITTED":
+    case "ADMISSION_PENDING":
+      return "running";
+    case "BACKGROUND":
+      return "background";
+    case "WAITING":
+    case "PARKED":
+      return "waiting";
+    case "COMPLETED":
+      return "done";
+    case "FAILED":
+    case "CANCELLED":
+      return "failed";
+    default:
+      return null;
   }
+}
+
+/** Record `agentId` at `to` and return the counts after: the one counter it
+ *  leaves and the one it joins move, so an agent event costs O(1) however
+ *  many agents the task has (it used to re-count every one of them). */
+function setAgent(counts: AgentCounts, statuses: Map<string, string>, agentId: string, to: string): AgentCounts {
+  const c = { ...counts };
+  const was = statuses.get(agentId);
+  if (was === undefined) c.total += 1;
+  else {
+    const left = bucketOf(was);
+    if (left) c[left] -= 1;
+  }
+  const joined = bucketOf(to);
+  if (joined) c[joined] += 1;
+  statuses.set(agentId, to);
   return c;
 }
 
 /** Link a child card to its parent once both are known: the parents map
  *  and the child's side; the parent's `children` is kept by the parent's
  *  own event arm (its card is rewritten there). */
-function link(next: Model, childId: string, parentId: string): void {
-  next.parents.set(childId, parentId);
-  const child = next.tasks.get(childId);
-  if (child && child.parentTaskId !== parentId) next.tasks.set(childId, { ...child, parentTaskId: parentId });
+function link(d: Draft, childId: string, parentId: string): void {
+  d.parents().set(childId, parentId);
+  const child = d.m.tasks.get(childId);
+  if (child && child.parentTaskId !== parentId) d.tasks().set(childId, { ...child, parentTaskId: parentId });
 }
+
+/** A model being written. The reducer folds events into a `Draft`: its maps
+ *  are copied the first time one is written (once for a whole batch), never
+ *  per event and never when an event touches none of them; the model the
+ *  caller holds is not changed. The watermark is a string, so replaying the
+ *  same event twice (a React updater run twice) gives the same answer. */
+class Draft {
+  readonly m: Model;
+  private ownTasks: boolean;
+  private ownAgents: boolean;
+  private ownParents: boolean;
+  private readonly ownStatuses = new Set<string>();
+  constructor(base: Model, ownAll: boolean) {
+    this.m = { ...base };
+    this.ownTasks = ownAll;
+    this.ownAgents = ownAll;
+    this.ownParents = ownAll;
+    if (ownAll) {
+      this.m.tasks = new Map(base.tasks);
+      this.m.agents = new Map(base.agents);
+      this.m.parents = new Map(base.parents);
+    }
+  }
+  tasks(): Map<string, TaskCard> {
+    if (!this.ownTasks) {
+      this.m.tasks = new Map(this.m.tasks);
+      this.ownTasks = true;
+    }
+    return this.m.tasks;
+  }
+  agents(): Map<string, Map<string, string>> {
+    if (!this.ownAgents) {
+      this.m.agents = new Map(this.m.agents);
+      this.ownAgents = true;
+    }
+    return this.m.agents;
+  }
+  /** The writable status map of one task's agents: copied the first time
+   *  this draft writes it — once per task for a whole batch. */
+  statuses(taskId: string): Map<string, string> {
+    const outer = this.agents();
+    if (this.ownStatuses.has(taskId)) return outer.get(taskId)!;
+    const own = new Map(outer.get(taskId) ?? []);
+    outer.set(taskId, own);
+    this.ownStatuses.add(taskId);
+    return own;
+  }
+  parents(): Map<string, string> {
+    if (!this.ownParents) {
+      this.m.parents = new Map(this.m.parents);
+      this.ownParents = true;
+    }
+    return this.m.parents;
+  }
+}
+
+/** Offset order for decimal offset strings (no leading zeros): by length,
+ *  then lexicographically — no BigInt per event. */
+function offsetAfter(a: string, b: string): boolean {
+  return a.length !== b.length ? a.length > b.length : a > b;
+}
+
+/** The newest security records a card keeps: a bounded list, not a log. */
+const SECURITY_KEEP = 50;
 
 /** A task id as the renderer keys cards: 32 hex chars. Event payloads carry
  *  ids as dashed UUID text; envelopes and snapshots as bytes rendered hex. */
@@ -231,29 +304,51 @@ export function normalizeReason(r: string): string {
  *  snapshots, and applies state events in order per task via `taskId` when
  *  present in the event, else to the most recent task whose sequence matches. */
 export function applyEvent(m: Model, e: Event, taskIdHint?: string): Model {
-  if (m.seenOffsets.has(e.offset)) return m;
-  const next: Model = { ...m, tasks: new Map(m.tasks), seenOffsets: new Set(m.seenOffsets), agents: new Map(m.agents), parents: new Map(m.parents) };
-  next.seenOffsets.add(e.offset);
-  if (BigInt(e.offset) > BigInt(next.cursor)) next.cursor = e.offset;
+  if (!offsetAfter(e.offset, m.cursor)) return m;
+  const d = new Draft(m, false);
+  fold(d, e, taskIdHint);
+  return d.m;
+}
+
+/** Fold a batch of events — each with the task id it belongs to — in one
+ *  pass: the maps are copied once for the whole batch and written in place,
+ *  so a replay of n events costs O(n) however many cards there are. Events
+ *  at or below the watermark are dropped, exactly as `applyEvent` does. */
+export function applyEvents(m: Model, events: readonly { event: Event; taskId?: string }[]): Model {
+  let d: Draft | null = null;
+  let cursor = m.cursor;
+  for (const { event, taskId } of events) {
+    if (!offsetAfter(event.offset, cursor)) continue;
+    d ??= new Draft(m, true);
+    cursor = event.offset;
+    fold(d, event, taskId);
+  }
+  return d ? d.m : m;
+}
+
+function fold(d: Draft, e: Event, taskIdHint?: string): void {
+  const next = d.m;
+  next.cursor = e.offset;
   const p = (e.payload ?? {}) as Record<string, unknown>;
   const target = taskIdHint ?? (typeof p["task_id"] === "string" ? hexId(p["task_id"]) : undefined);
   switch (e.eventType) {
     case "TaskCreated": {
-      if (!target) return next;
+      if (!target) return;
       const card = freshCard(target, String(p["goal_text"] ?? ""), "Created", 1, e.occurredAtMs, String(p["origin"] ?? ""));
-      next.tasks.set(target, card);
+      d.tasks().set(target, card);
+      if (next.agents.has(target)) d.agents().delete(target);
       const parent = next.parents.get(target);
       if (parent) {
-        link(next, target, parent);
+        link(d, target, parent);
         const pc = next.tasks.get(parent);
-        if (pc) next.tasks.set(parent, { ...pc, children: withChild(pc.children, target) });
+        if (pc) d.tasks().set(parent, { ...pc, children: withChild(pc.children, target) });
       }
-      return next;
+      return;
     }
     default: {
-      if (!target) return next;
+      if (!target) return;
       const card = next.tasks.get(target);
-      if (!card) return next;
+      if (!card) return;
       const updated = { ...card, generation: card.generation + 1 };
       switch (e.eventType) {
         case "TaskQueued":
@@ -293,7 +388,7 @@ export function applyEvent(m: Model, e: Event, taskIdHint?: string): Model {
           updated.attachments = (card.attachments ?? 0) + 1;
           break;
         case "SecurityEventRecorded":
-          updated.security = [...(card.security ?? []), { kind: String(p["kind"] ?? ""), toolName: String(p["tool_name"] ?? ""), patterns: Array.isArray(p["patterns"]) ? (p["patterns"] as unknown[]).map(String) : [], action: String(p["action"] ?? "") }];
+          updated.security = [...(card.security ?? []).slice(-(SECURITY_KEEP - 1)), { kind: String(p["kind"] ?? ""), toolName: String(p["tool_name"] ?? ""), patterns: Array.isArray(p["patterns"]) ? (p["patterns"] as unknown[]).map(String) : [], action: String(p["action"] ?? "") }];
           break;
         case "TaskNeedsAttention": {
           updated.nextAction = String(p["reason"] ?? "Needs attention");
@@ -339,29 +434,23 @@ export function applyEvent(m: Model, e: Event, taskIdHint?: string): Model {
         case "AgentNodeCreated": {
           const node = (p["node"] ?? {}) as Record<string, unknown>;
           const id = String(node["agent_id"] ?? "");
-          const statuses = new Map(next.agents.get(target) ?? []);
-          statuses.set(id, String(node["status"] ?? ""));
-          next.agents.set(target, statuses);
-          updated.agents = countsOf(statuses);
+          updated.agents = setAgent(card.agents, d.statuses(target), id, String(node["status"] ?? ""));
           if (String(node["kind"]) === "SUBAGENT") updated.phase = "delegating";
           const child = hexId(node["child_task_id"]);
           if (child) {
-            link(next, child, target);
+            link(d, child, target);
             updated.children = withChild(updated.children, child);
           }
           break;
         }
         case "AgentNodeTransitioned": {
-          const statuses = new Map(next.agents.get(target) ?? []);
-          statuses.set(String(p["agent_id"] ?? ""), String(p["to"] ?? ""));
-          next.agents.set(target, statuses);
-          updated.agents = countsOf(statuses);
+          updated.agents = setAgent(card.agents, d.statuses(target), String(p["agent_id"] ?? ""), String(p["to"] ?? ""));
           break;
         }
         case "SubagentAdmitted": {
           const child = hexId(p["child_task_id"]);
           if (child) {
-            link(next, child, target);
+            link(d, child, target);
             updated.children = withChild(updated.children, child);
           }
           updated.phase = "delegating";
@@ -414,13 +503,13 @@ export function applyEvent(m: Model, e: Event, taskIdHint?: string): Model {
           updated.risk = String(p["level"] ?? "");
           break;
         default:
-          return next;
+          return;
       }
       if (updated.state === "Waiting" && (updated.waitReason === "Approval" || updated.waitReason === "UserInput")) updated.phase = "awaitingHuman";
       if (updated.state === "Completed") updated.phase = "done";
       updated.lastOffset = e.offset;
-      next.tasks.set(target, updated);
-      return next;
+      d.tasks().set(target, updated);
+      return;
     }
   }
 }
@@ -432,10 +521,17 @@ export function childrenOf(m: Model, taskId: string): TaskCard[] {
   return c.children.map((id) => m.tasks.get(id)).filter((x): x is TaskCard => Boolean(x));
 }
 
-/** PRD "Home / Fleet" columns from card state. Needs Attention is derived
- *  from structured reasons, never from logs. */
-export function columnOf(c: TaskCard): FleetColumn {
-  if (c.nextAction && (c.state === "Waiting" || c.state === "Running")) return "needsAttention";
+/** PRD "Home / Fleet" columns from card state. Needs Attention is the
+ *  Core's: a task is in it exactly while the Core's attention view
+ *  (`GetAttention`, REQ-EV-0151 / 0275) holds an item for it — derived from
+ *  canonical unresolved state — and the task is not over. Until the first
+ *  attention answer arrives (`attention` undefined) the card's own
+ *  `nextAction` stands in, so a screen never shows nothing for a moment it
+ *  knows better; once the Core has answered, the renderer's reading of
+ *  `nextAction` has no say. */
+export function columnOf(c: TaskCard, attention?: ReadonlySet<string>): FleetColumn {
+  const live = c.state === "Waiting" || c.state === "Running" || c.state === "Queued";
+  if (attention ? live && attention.has(c.taskId) : c.nextAction && (c.state === "Waiting" || c.state === "Running")) return "needsAttention";
   switch (c.state) {
     case "ReadyForReview":
       return "readyForReview";
@@ -451,10 +547,11 @@ export function columnOf(c: TaskCard): FleetColumn {
   }
 }
 
-export function columns(m: Model): Record<FleetColumn, TaskCard[]> {
+export function columns(m: Model, attention?: readonly { taskId: string }[]): Record<FleetColumn, TaskCard[]> {
   const out: Record<FleetColumn, TaskCard[]> = { needsAttention: [], readyForReview: [], running: [], waiting: [], completed: [], failed: [] };
+  const attended = attention ? new Set(attention.map((i) => i.taskId)) : undefined;
   // A subagent's task is its parent's business: it shows under the parent
   // card, never as a top-level card (M6.6, one primary owns the outcome).
-  for (const c of [...m.tasks.values()].filter((c) => c.parentTaskId === null && c.origin !== "subagent").sort((a, b) => b.createdAtMs - a.createdAtMs || a.taskId.localeCompare(b.taskId))) out[columnOf(c)].push(c);
+  for (const c of [...m.tasks.values()].filter((c) => c.parentTaskId === null && c.origin !== "subagent").sort((a, b) => b.createdAtMs - a.createdAtMs || a.taskId.localeCompare(b.taskId))) out[columnOf(c, attended)].push(c);
   return out;
 }

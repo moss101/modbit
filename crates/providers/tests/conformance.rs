@@ -199,6 +199,10 @@ fn model(name: &str, tools: bool) -> ModelCapability {
         agent_loop: tools,
         input_price_per_mtok: 1.0,
         output_price_per_mtok: 2.0,
+        output_budget_tokens: 0,
+        request_timeout_ms: 0,
+        default_reasoning_effort: None,
+        default_service_tier: None,
     }
 }
 
@@ -218,6 +222,7 @@ fn endpoint(
         max_retries: retries,
         auth: AuthScheme::Native,
         extra_body: Default::default(),
+        max_concurrency: 0,
     }
 }
 
@@ -248,6 +253,7 @@ fn request(
         },
         response_format: None,
         cache_key: Some("stable-prefix-hash".into()),
+        cache_breakpoints: vec![],
         max_output_tokens: 256,
         timeout_ms,
         policy_tags: vec!["tenant:test".into()],
@@ -1586,6 +1592,7 @@ async fn qual_ev_0188_tool_media_is_split_for_strict_endpoints_and_embedded_wher
         max_retries: 0,
         auth: AuthScheme::Native,
         extra_body: Default::default(),
+        max_concurrency: 0,
     }]);
     let tool_message = Message {
         role: Role::Tool,
@@ -1598,12 +1605,24 @@ async fn qual_ev_0188_tool_media_is_split_for_strict_endpoints_and_embedded_wher
             media_part(Some("call_1"), "image/png"),
         ],
     };
+    // The assistant turn that made the call. A tool result with no call is an
+    // orphan the adapters drop (FIX-07), so this fixture now carries the call
+    // a real transcript always has.
+    let call_message = Message {
+        role: Role::Assistant,
+        parts: vec![ContentPart::ToolCall {
+            call_id: "call_1".into(),
+            name: "fs.read".into(),
+            arguments_json: "{\"path\":\"label.png\"}".into(),
+        }],
+    };
     // 1. The canonical request never says where the media goes.
     let req = request(
         "ep",
         "m-vision",
         vec![
             Message::text(Role::User, "what does the label say?"),
+            call_message.clone(),
             tool_message.clone(),
         ],
         true,
@@ -1664,13 +1683,17 @@ async fn qual_ev_0188_tool_media_is_split_for_strict_endpoints_and_embedded_wher
     let anth = modbit_providers::anthropic::request_body(&request(
         "ep",
         "m-vision",
-        vec![tool_message],
+        vec![call_message, tool_message],
         false,
         2_000,
     ));
     let msgs = anth["messages"].as_array().unwrap();
-    assert_eq!(msgs.len(), 1, "{anth}");
-    let result_block = &msgs[0]["content"][0];
+    assert_eq!(
+        msgs.len(),
+        2,
+        "the call and the result, no extra message: {anth}"
+    );
+    let result_block = &msgs[1]["content"][0];
     assert_eq!(result_block["type"], "tool_result");
     assert_eq!(result_block["tool_use_id"], "call_1");
     let inner = result_block["content"].as_array().unwrap();
@@ -1804,4 +1827,127 @@ fn usage_means_the_same_on_both_wires_and_a_repeated_report_is_not_added() {
         (100, 40, 0),
         "the same request on the other wire reads the same"
     );
+}
+
+// ---- FIX-07 / VER-04: a tool result with no announcing call never goes out ----
+
+fn call(id: &str, name: &str) -> ContentPart {
+    ContentPart::ToolCall {
+        call_id: id.into(),
+        name: name.into(),
+        arguments_json: "{}".into(),
+    }
+}
+
+fn result(id: &str, text: &str) -> Message {
+    Message {
+        role: Role::Tool,
+        parts: vec![ContentPart::ToolResult {
+            call_id: id.into(),
+            content: text.into(),
+            is_error: false,
+        }],
+    }
+}
+
+/// The transcript a mis-aligned compaction cut leaves: a turn with two calls
+/// was cut between its results, so the tail opens on the second result, and
+/// a whole turn follows it.
+fn orphan_history() -> Vec<Message> {
+    vec![
+        Message::text(Role::System, "rules"),
+        Message::text(Role::User, "goal"),
+        result("call_1_1", "ORPHAN second result of a compacted turn"),
+        Message {
+            role: Role::Assistant,
+            parts: vec![call("call_2_0", "fs.read")],
+        },
+        result("call_2_0", "whole turn result"),
+        Message::text(Role::User, "next"),
+    ]
+}
+
+#[test]
+fn the_openai_adapter_never_sends_a_tool_message_with_no_tool_call() {
+    let req = request("e", "m-tools", orphan_history(), true, 1000);
+    let body = modbit_providers::openai::request_body(&req).to_string();
+    assert!(!body.contains("ORPHAN"), "{body}");
+    assert!(!body.contains("call_1_1"), "{body}");
+    // The answered call keeps its pairing.
+    let v = modbit_providers::openai::request_body(&req);
+    let msgs = v["messages"].as_array().unwrap();
+    let roles: Vec<&str> = msgs.iter().map(|m| m["role"].as_str().unwrap()).collect();
+    assert_eq!(
+        roles,
+        ["system", "user", "assistant", "tool", "user"],
+        "{v}"
+    );
+    assert_eq!(msgs[2]["tool_calls"][0]["id"], "call_2_0");
+    assert_eq!(msgs[3]["tool_call_id"], "call_2_0");
+}
+
+#[test]
+fn the_anthropic_adapter_never_sends_a_tool_result_block_with_no_tool_use() {
+    let req = request("e", "m-tools", orphan_history(), true, 1000);
+    let v = modbit_providers::anthropic::request_body(&req);
+    let body = v.to_string();
+    assert!(!body.contains("ORPHAN"), "{body}");
+    assert!(!body.contains("call_1_1"), "{body}");
+    let msgs = v["messages"].as_array().unwrap();
+    // No empty user message is left behind where the orphan was.
+    assert!(
+        msgs.iter()
+            .all(|m| !m["content"].as_array().unwrap().is_empty()),
+        "{v}"
+    );
+    let roles: Vec<&str> = msgs.iter().map(|m| m["role"].as_str().unwrap()).collect();
+    assert_eq!(roles, ["user", "assistant", "user", "user"], "{v}");
+    assert_eq!(msgs[1]["content"][0]["id"], "call_2_0");
+    assert_eq!(msgs[2]["content"][0]["tool_use_id"], "call_2_0");
+}
+
+#[test]
+fn orphan_repair_drops_media_of_the_orphan_and_leaves_a_sound_history_untouched() {
+    use modbit_providers::contract::without_orphan_tool_results;
+    let mut with_media = orphan_history();
+    with_media[2].parts.push(ContentPart::Media {
+        source_ref: "a".repeat(64),
+        mime: "image/png".into(),
+        alt: "orphan image".into(),
+        call_id: Some("call_1_1".into()),
+        data_base64: modbit_providers::MediaPayload("AAAA".into()),
+    });
+    let fixed = without_orphan_tool_results(&with_media);
+    assert_eq!(fixed.len(), with_media.len() - 1);
+    assert!(
+        !fixed.iter().any(|m| m
+            .parts
+            .iter()
+            .any(|p| matches!(p, ContentPart::Media { .. }))),
+        "{fixed:?}"
+    );
+    // A history whose results all have their calls is returned as it is.
+    let sound = vec![
+        Message::text(Role::User, "goal"),
+        Message {
+            role: Role::Assistant,
+            parts: vec![call("c0", "fs.read"), call("c1", "fs.read")],
+        },
+        result("c0", "one"),
+        Message::text(Role::User, "a Core note between the results"),
+        result("c1", "two"),
+    ];
+    assert!(matches!(
+        without_orphan_tool_results(&sound),
+        std::borrow::Cow::Borrowed(_)
+    ));
+    // A result that precedes its call is an orphan too: the call must come first.
+    let reversed = vec![
+        result("c9", "too early"),
+        Message {
+            role: Role::Assistant,
+            parts: vec![call("c9", "fs.read")],
+        },
+    ];
+    assert_eq!(without_orphan_tool_results(&reversed).len(), 1);
 }

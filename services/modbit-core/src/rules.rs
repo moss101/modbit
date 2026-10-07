@@ -15,11 +15,17 @@ use modbit_prompt_compiler::rules::{Layer, RuleSet, RulesSelection};
 use crate::runtime::{Lineage, append, typed};
 use crate::server::Core;
 
-/// The layers a run reads rules from, project first (it wins).
+/// What a repository's rules wait for: they are instructions the repository
+/// asks the Core to put in the model's prompt, as its hooks are code it asks
+/// the Core to run, so they are in force only once the session trusts it.
+const UNTRUSTED: &str = "a repository's rules are instructions it asks the Core to give the model: they are in force only once the session trusts the repository (TrustRepository)";
+
+/// The layers a run reads rules from, project first (it wins). The
+/// project's are read only when the repository is `trusted` (FIX-04).
 #[must_use]
-pub fn layers(core: &Core, task: &Task) -> Vec<Layer> {
+pub fn layers(core: &Core, task: &Task, trusted: bool) -> Vec<Layer> {
     let mut out = Vec::new();
-    if let Some(root) = &task.workspace_root {
+    if let Some(root) = task.workspace_root.as_ref().filter(|_| trusted) {
         out.push(Layer {
             name: "project".into(),
             dir: std::path::PathBuf::from(root).join(".modbit").join("rules"),
@@ -47,7 +53,7 @@ pub fn layers(core: &Core, task: &Task) -> Vec<Layer> {
 pub async fn active_paths(core: &Core, task: &Task, state: &HarnessState) -> Vec<String> {
     let mut paths: Vec<String> = Vec::new();
     {
-        let ledger = core.tools.ledger(task.task_id).await;
+        let ledger = core.tools.ledger(&core.store, task.task_id).await;
         let ledger = ledger.lock().await;
         paths.extend(ledger.reads.iter().map(|r| r.path.clone()));
         paths.extend(ledger.entries.iter().map(|e| e.path.clone()));
@@ -69,13 +75,26 @@ pub struct RunRules {
 }
 
 impl RunRules {
-    /// Load the layers.
+    /// Load the layers; `trusted` is whether the session trusts the task's
+    /// repository (`onboarding::is_trusted`). Rules in an untrusted
+    /// repository are not loaded and the refusal is recorded with the
+    /// selection, where the other unusable rule files are.
     #[must_use]
-    pub fn load(core: &Core, task: &Task) -> Self {
-        Self {
-            set: modbit_prompt_compiler::rules::load(&layers(core, task)),
-            last: None,
+    pub fn load(core: &Core, task: &Task, trusted: bool) -> Self {
+        let mut set = modbit_prompt_compiler::rules::load(&layers(core, task, trusted));
+        if !trusted && let Some(root) = &task.workspace_root {
+            let dir = std::path::PathBuf::from(root).join(".modbit").join("rules");
+            let has_rules = std::fs::read_dir(&dir)
+                .into_iter()
+                .flatten()
+                .flatten()
+                .any(|e| e.path().extension().is_some_and(|x| x == "md"));
+            if has_rules {
+                set.invalid
+                    .push((dir.display().to_string(), UNTRUSTED.into()));
+            }
         }
+        Self { set, last: None }
     }
 
     /// Select for this turn and record the selection when it changed;

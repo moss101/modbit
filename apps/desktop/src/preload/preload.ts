@@ -228,7 +228,7 @@ export interface ModbitBridge {
   showBrowser(browserSessionId: string, bounds: { x: number; y: number; width: number; height: number }): Promise<boolean>;
   hideBrowser(browserSessionId: string): Promise<void>;
   closeBrowser(browserSessionId: string): Promise<void>;
-  describeBrowser(browserSessionId: string): Promise<{ browserSessionId: string; taskId: string; partition: string; attached: boolean; shown: boolean; url: string; title: string; stateVersion: number; leaseGeneration: number; controller: "AGENT" | "USER" } | null>;
+  describeBrowser(browserSessionId: string): Promise<{ browserSessionId: string; taskId: string; partition: string; attached: boolean; shown: boolean; url: string; title: string; stateVersion: number; leaseGeneration: number; controller: "AGENT" | "USER"; stopped: string | null; humanInputAt: number } | null>;
   /** M7.6: take (USER) or return (AGENT) control of the session; the lease generation moves on every hand-over. */
   setBrowserControl(browserSessionId: string, controller: "AGENT" | "USER"): Promise<{ controller: string; leaseGeneration: number; changed: boolean }>;
   typeAsPerson(browserSessionId: string, text: string): Promise<boolean>;

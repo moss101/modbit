@@ -15,6 +15,10 @@ pub const GATE_SCHEMA_VERSION: u32 = 1;
 /// Gate rules version; bumps when a rule changes.
 pub const GATE_VERSION: &str = "gate-1";
 
+/// The typed reason on the `tests` evidence when the mandatory check set is
+/// empty (see `IndeterminateReason::NoMandatoryChecks`).
+pub const NO_MANDATORY_CHECKS: &str = "NO_MANDATORY_CHECKS";
+
 /// The verdict.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "SCREAMING_SNAKE_CASE")]
@@ -287,12 +291,26 @@ pub fn evaluate(input: &GateInput) -> AcceptanceGateResult {
                     .filter(|c| matches!(c.status.as_str(), "FAIL" | "ERROR" | "TIMEOUT"))
                     .filter(|c| !excused(&c.check_id))
                     .collect();
+                // An outcome the run could not establish is not a pass:
+                // UNKNOWN (run or check) and a run-level TIMEOUT/ERROR with
+                // no failing check are INDETERMINATE (REQ-EV-0068).
+                let unestablished = matches!(v.status.as_str(), "UNKNOWN" | "TIMEOUT" | "ERROR")
+                    || v.checks
+                        .iter()
+                        .any(|c| kind_of_check(&c.kind) == k && c.status == "UNKNOWN");
+                // No check at all: the mandatory check set was empty, so
+                // nothing was verified (FIX-03, never a pass).
+                let no_checks = k == "tests" && v.checks.is_empty();
                 let status = if incomplete {
                     EvidenceStatus::Incomplete
                 } else if !failed.is_empty()
                     || (k == "tests" && v.status == "FAILED" && v.checks.is_empty())
                 {
                     EvidenceStatus::Fail
+                } else if no_checks {
+                    EvidenceStatus::Missing
+                } else if unestablished {
+                    EvidenceStatus::Incomplete
                 } else {
                     EvidenceStatus::Pass
                 };
@@ -311,7 +329,13 @@ pub fn evaluate(input: &GateInput) -> AcceptanceGateResult {
                     status,
                     required: true,
                     refs: vec![v.verification_run_id.clone()],
-                    detail: format!("{} ({} check(s))", v.status, v.checks.len()),
+                    detail: if status == EvidenceStatus::Missing {
+                        format!(
+                            "{NO_MANDATORY_CHECKS}: the COMPLETION run had no check; nothing was verified"
+                        )
+                    } else {
+                        format!("{} ({} check(s))", v.status, v.checks.len())
+                    },
                 });
             }
             // Policy-required checks must be present and passing.
@@ -723,5 +747,57 @@ mod tests {
             status: "PASS".into(),
         });
         assert_eq!(evaluate(&input(3, req, Some(v))).verdict, Verdict::Accept);
+    }
+    #[test]
+    fn an_empty_check_set_is_inconclusive_never_a_pass() {
+        // A COMPLETION run that recorded PASSED over zero checks verified
+        // nothing (FIX-03): `tests` is MISSING with the typed reason.
+        let mut v = passed(3);
+        v.checks.clear();
+        let g = evaluate(&input(
+            3,
+            required(AssuranceLevel::Standard, false, false),
+            Some(v),
+        ));
+        assert_eq!(g.verdict, Verdict::Inconclusive, "{g:?}");
+        assert_eq!(g.missing_evidence, vec!["tests"]);
+        assert!(
+            g.evidence.iter().any(|e| e.kind == "tests"
+                && e.status == EvidenceStatus::Missing
+                && e.detail.starts_with(NO_MANDATORY_CHECKS)),
+            "{g:?}"
+        );
+    }
+
+    #[test]
+    fn an_outcome_the_run_could_not_establish_is_inconclusive_never_a_pass() {
+        // Run-level UNKNOWN with every check UNKNOWN (a verifier that could
+        // not run) does not pass; a check that did fail still rejects.
+        let mut v = passed(3);
+        v.status = "UNKNOWN".into();
+        for c in &mut v.checks {
+            c.status = "UNKNOWN".into();
+        }
+        let g = evaluate(&input(
+            3,
+            required(AssuranceLevel::Standard, false, false),
+            Some(v.clone()),
+        ));
+        assert_eq!(g.verdict, Verdict::Inconclusive, "{g:?}");
+        assert!(
+            g.missing_evidence.iter().any(|k| k == "tests"),
+            "{:?}",
+            g.missing_evidence
+        );
+        v.checks[1].status = "FAIL".into();
+        assert_eq!(
+            evaluate(&input(
+                3,
+                required(AssuranceLevel::Standard, false, false),
+                Some(v)
+            ))
+            .verdict,
+            Verdict::Reject
+        );
     }
 }

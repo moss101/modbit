@@ -90,6 +90,7 @@ pub(crate) async fn ask(
         tool_projection: vec![],
         response_format: None,
         cache_key: None,
+        cache_breakpoints: vec![],
         max_output_tokens: 2048,
         timeout_ms: 60_000,
         policy_tags: vec!["side_question".into()],

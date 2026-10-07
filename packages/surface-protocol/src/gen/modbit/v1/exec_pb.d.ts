@@ -95,6 +95,15 @@ export declare type ExecRequest = Message<"modbit.v1.ExecRequest"> & {
    * @generated from field: optional string terminal_session_id = 12;
    */
   terminalSessionId?: string | undefined;
+
+  /**
+   * FIX-20: the principal that owns the session (`task:<id>`); empty = the
+   * host itself. Only the owner and the host may list, read, write to or
+   * cancel it; any other requester is refused SESSION_NOT_OWNED.
+   *
+   * @generated from field: string owner = 13;
+   */
+  owner: string;
 };
 
 /**
@@ -216,6 +225,16 @@ export declare type ProcessExited = Message<"modbit.v1.ProcessExited"> & {
    * @generated from field: bool cancelled = 8;
    */
   cancelled: boolean;
+
+  /**
+   * FIX-09/FIX-20: the cursor of the first byte `output_ref` holds. 0 = the
+   * object is the complete output; larger = the replay window had already
+   * dropped the head, and `output_ref` is the sha256 of the retained tail
+   * (`total_bytes - retained_from` bytes), sealed in the Core's object store.
+   *
+   * @generated from field: uint64 retained_from = 9;
+   */
+  retainedFrom: bigint;
 };
 
 /**
@@ -249,6 +268,15 @@ export declare type Attach = Message<"modbit.v1.Attach"> & {
    * @generated from field: uint64 generation = 3;
    */
   generation: bigint;
+
+  /**
+   * FIX-20: who is attaching (`task:<id>`); empty = the host. A task may
+   * attach only to a session it owns. A cursor older than the replay window
+   * is answered CURSOR_EXPIRED (message carries `oldest_cursor=<n>`).
+   *
+   * @generated from field: string requester = 4;
+   */
+  requester: string;
 };
 
 /**
@@ -270,6 +298,13 @@ export declare type WriteStdin = Message<"modbit.v1.WriteStdin"> & {
    * @generated from field: bytes data = 2;
    */
   data: Uint8Array;
+
+  /**
+   * FIX-20, as Attach.requester
+   *
+   * @generated from field: string requester = 3;
+   */
+  requester: string;
 };
 
 /**
@@ -286,6 +321,13 @@ export declare type Cancel = Message<"modbit.v1.Cancel"> & {
    * @generated from field: string session_id = 1;
    */
   sessionId: string;
+
+  /**
+   * FIX-20, as Attach.requester
+   *
+   * @generated from field: string requester = 2;
+   */
+  requester: string;
 };
 
 /**
@@ -298,6 +340,13 @@ export declare const CancelSchema: GenMessage<Cancel>;
  * @generated from message modbit.v1.ListSessions
  */
 export declare type ListSessions = Message<"modbit.v1.ListSessions"> & {
+  /**
+   * FIX-20: a task is listed only the sessions it owns; empty = the host,
+   * which is listed all of them.
+   *
+   * @generated from field: string requester = 1;
+   */
+  requester: string;
 };
 
 /**
@@ -409,6 +458,20 @@ export declare type SessionInfo = Message<"modbit.v1.SessionInfo"> & {
    * @generated from field: string cwd = 10;
    */
   cwd: string;
+
+  /**
+   * FIX-20: the owning principal ("" = host)
+   *
+   * @generated from field: string owner = 11;
+   */
+  owner: string;
+
+  /**
+   * FIX-20: the oldest cursor still replayable
+   *
+   * @generated from field: uint64 oldest_cursor = 12;
+   */
+  oldestCursor: bigint;
 };
 
 /**

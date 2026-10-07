@@ -446,11 +446,16 @@ fn register_providers(core: &Core, ext: &LoadedExtension) -> Vec<String> {
                     agent_loop: m.tools,
                     input_price_per_mtok: 0.0,
                     output_price_per_mtok: 0.0,
+                    output_budget_tokens: 0,
+                    request_timeout_ms: 0,
+                    default_reasoning_effort: None,
+                    default_service_tier: None,
                 })
                 .collect(),
             max_retries: 2,
             auth: Default::default(),
             extra_body: Default::default(),
+            max_concurrency: 0,
         });
         out.push(name);
     }

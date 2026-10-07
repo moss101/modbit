@@ -8,7 +8,7 @@
  */
 import { _electron as electron, expect, test, type ElectronApplication, type Page } from "@playwright/test";
 import { execFileSync } from "node:child_process";
-import { mkdtempSync, readFileSync, writeFileSync } from "node:fs";
+import { mkdtempSync, readFileSync, writeFileSync, mkdirSync } from "node:fs";
 import { createServer, type Server } from "node:http";
 import { tmpdir } from "node:os";
 import { dirname, join, resolve } from "node:path";
@@ -67,6 +67,10 @@ test("review surface: per-hunk decision commits exactly the user's choice and su
   const original = Array.from({ length: 16 }, (_, i) => `line ${i + 1}`).join("\n") + "\n";
   writeFileSync(join(repo, "notes.txt"), original);
   git(repo, "init", "-q", "-b", "main");
+  // A completion needs a mandatory check (FIX-03); this test's subject is not verification, so the repository declares a no-op one.
+  mkdirSync(join(repo, ".modbit"), { recursive: true });
+  writeFileSync(join(repo, ".modbit", "verification.json"), JSON.stringify({ commands: [{ id: "fixture-noop", argv: ["git", "--version"] }] }));
+
   git(repo, "add", "-A");
   git(repo, "-c", "user.name=t", "-c", "user.email=t@e", "commit", "-q", "-m", "base");
   const candidate = original.replace("line 2\n", "line 2 changed\n").replace("line 15\n", "line 15 changed\n");

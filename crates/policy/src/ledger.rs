@@ -5,6 +5,53 @@
 use modbit_domain::toolcall::EffectReceipt;
 use sha2::{Digest, Sha256};
 
+/// `status` of the receipt appended at dispatch, before the effector runs
+/// (FIX-08): the call was authorized — intent hash, decision, approval and
+/// lease are chained — and its effect has not been reported yet. The receipt
+/// appended after execution carries the outcome (`SUCCESS`, `INFRAFAILURE`,
+/// ...) and chains after it.
+pub const STATUS_AUTHORIZED: &str = "AUTHORIZED";
+
+/// Whether `r` is an authorization receipt (written at dispatch).
+#[must_use]
+pub fn is_authorization(r: &EffectReceipt) -> bool {
+    r.status == STATUS_AUTHORIZED
+}
+
+/// The receipt that reports the outcome of `call` (not its authorization).
+#[must_use]
+pub fn result_of<'a>(
+    chain: &'a [EffectReceipt],
+    call: &modbit_domain::ToolCallId,
+) -> Option<&'a EffectReceipt> {
+    chain
+        .iter()
+        .find(|r| r.tool_call_id == *call && !is_authorization(r))
+}
+
+/// The authorization receipt of `call`, if one was written.
+#[must_use]
+pub fn authorization_of<'a>(
+    chain: &'a [EffectReceipt],
+    call: &modbit_domain::ToolCallId,
+) -> Option<&'a EffectReceipt> {
+    chain
+        .iter()
+        .find(|r| r.tool_call_id == *call && is_authorization(r))
+}
+
+/// Effects in doubt: authorized and dispatched, with no result receipt. The
+/// process that dispatched them stopped before it could say how they ended;
+/// whether the effect happened is unknown, so it is neither assumed done nor
+/// retried — it is reconciled against its target (docs/19, docs/23).
+#[must_use]
+pub fn in_doubt(chain: &[EffectReceipt]) -> Vec<&EffectReceipt> {
+    chain
+        .iter()
+        .filter(|r| is_authorization(r) && result_of(chain, &r.tool_call_id).is_none())
+        .collect()
+}
+
 /// Canonical hash of a receipt: sha256 over the canonical JSON (sorted keys)
 /// of every field except `receipt_hash`.
 #[must_use]
@@ -120,5 +167,29 @@ mod tests {
         forged.status = "FAILED".into();
         assert!(verify_chain(&[a.clone(), forged]).is_err());
         assert!(verify_chain(&[b]).is_err(), "missing predecessor");
+    }
+
+    #[test]
+    fn an_authorization_without_a_result_is_in_doubt_until_the_result_chains_after_it() {
+        let auth = receipt(None, STATUS_AUTHORIZED);
+        let call = auth.tool_call_id;
+        let chain = vec![auth.clone()];
+        assert!(verify_chain(&chain).is_ok());
+        assert_eq!(in_doubt(&chain), vec![&auth]);
+        assert!(result_of(&chain, &call).is_none());
+        // A different call's result does not settle it.
+        let other = receipt(Some(auth.receipt_hash.clone()), "SUCCESS");
+        let chain = vec![auth.clone(), other];
+        assert_eq!(in_doubt(&chain), vec![&auth]);
+        // Its own result chains after it and settles it.
+        let result = seal(EffectReceipt {
+            tool_call_id: call,
+            ..receipt(Some(auth.receipt_hash.clone()), "SUCCESS")
+        });
+        let chain = vec![auth.clone(), result.clone()];
+        verify_chain(&chain).unwrap();
+        assert!(in_doubt(&chain).is_empty());
+        assert_eq!(result_of(&chain, &call), Some(&result));
+        assert_eq!(authorization_of(&chain, &call), Some(&auth));
     }
 }

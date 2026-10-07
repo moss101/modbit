@@ -686,6 +686,12 @@ pub(crate) async fn preview_rewind(
         state
     };
     let repo = modbit_git::Repo::open(&canonical)?;
+    // FIX-18: a preview must not promise a restore that HEAD drift refuses.
+    if let Some(refused) =
+        crate::checkpoint::head_drift(&repo, state.git_head.as_deref(), state.checkpoint_id)
+    {
+        return Ok(Err(refused));
+    }
     let ws = ws.lock().await;
     let now = worktree_now(&repo, &ws)?;
     let entries = plan_rewind(&state, &now.current, &now.tracked);

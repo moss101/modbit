@@ -217,7 +217,29 @@ pub struct CompactionRequest<'a> {
     pub compiler_version: &'a str,
     /// Target token budget for the projection.
     pub target_tokens: u32,
+    /// Decisions and approvals read from typed Core events (a resolved
+    /// approval, a recorded or revised plan), oldest first. This is the only
+    /// way an `[Approval]` or `[Decision]` fact enters an epoch: the projection
+    /// is installed as a system message, so nothing a tool returned may be
+    /// promoted into one. Facts of any other kind are ignored.
+    pub core_facts: &'a [PreservedFact],
 }
+
+/// The facts a request may carry from typed Core events.
+const CORE_FACT_KINDS: [FactKind; 2] = [FactKind::Decision, FactKind::Approval];
+
+/// One line of at most `max` characters: a fact is rendered as a single
+/// projection line, so an embedded newline cannot start a second, forged one.
+fn one_line(text: &str, max: usize) -> String {
+    let flat: String = text
+        .chars()
+        .map(|c| if c.is_control() { ' ' } else { c })
+        .collect();
+    flat.trim().chars().take(max).collect()
+}
+
+/// Longest fact text a Core event may contribute to the projection.
+const CORE_FACT_CHARS: usize = 400;
 
 /// Facts carried from earlier epochs, beyond which the oldest are dropped
 /// (the canonical log still has them; the manifest chain still names them).
@@ -242,6 +264,7 @@ pub fn compact(request: &CompactionRequest<'_>) -> CompactionManifest {
         branch_generation,
         compiler_version,
         target_tokens,
+        core_facts,
     } = *request;
     let epoch = previous.map_or(1, |m| m.epoch + 1);
     let previous_epoch = previous.map(|m| m.epoch);
@@ -253,6 +276,11 @@ pub fn compact(request: &CompactionRequest<'_>) -> CompactionManifest {
                 .preserved
                 .iter()
                 .filter(|f| f.kind != FactKind::Handle)
+                // An `[Approval]`/`[Decision]` fact is only carried when a
+                // Core event produced it. Manifests written before facts were
+                // restricted to Core events took them from tool-result text
+                // (origin `epoch N entry I`); those are not carried forward.
+                .filter(|f| !CORE_FACT_KINDS.contains(&f.kind) || f.origin.starts_with("event "))
                 .cloned()
                 .collect();
             if carried.len() > CARRIED_FACTS {
@@ -285,27 +313,10 @@ pub fn compact(request: &CompactionRequest<'_>) -> CompactionManifest {
             ),
             "assistant" => {}
             _ => {
+                // A tool result is data. It is counted, its handles are kept
+                // and a failure signature the Core attached is carried, but
+                // its text is never promoted into an Approval or Decision.
                 tool_calls += 1;
-                let lower = e.text.to_ascii_lowercase();
-                if e.name == "plan.update" || lower.contains("plan version") {
-                    push(
-                        &mut preserved,
-                        PreservedFact {
-                            kind: FactKind::Decision,
-                            text: e.text.lines().take(2).collect::<Vec<_>>().join(" "),
-                            origin,
-                        },
-                    );
-                } else if lower.contains("approval") || lower.contains("approved") {
-                    push(
-                        &mut preserved,
-                        PreservedFact {
-                            kind: FactKind::Approval,
-                            text: e.text.lines().take(2).collect::<Vec<_>>().join(" "),
-                            origin,
-                        },
-                    );
-                }
                 if let Some(sig) = &e.failure_signature {
                     failures.push(sig.clone());
                 }
@@ -315,6 +326,23 @@ pub fn compact(request: &CompactionRequest<'_>) -> CompactionManifest {
             if !resources.contains(&h) {
                 resources.push(h);
             }
+        }
+    }
+    for f in core_facts {
+        if CORE_FACT_KINDS.contains(&f.kind) {
+            let origin = if f.origin.starts_with("event ") {
+                f.origin.clone()
+            } else {
+                format!("event {}", f.origin)
+            };
+            push(
+                &mut preserved,
+                PreservedFact {
+                    kind: f.kind,
+                    text: one_line(&f.text, CORE_FACT_CHARS),
+                    origin,
+                },
+            );
         }
     }
     failures.dedup();
@@ -331,7 +359,7 @@ pub fn compact(request: &CompactionRequest<'_>) -> CompactionManifest {
     if resources.len() > CARRIED_HANDLES {
         resources.drain(..resources.len() - CARRIED_HANDLES);
     }
-    for r in resources.iter().take(20) {
+    for r in resources.iter().skip(resources.len().saturating_sub(20)) {
         push(
             &mut preserved,
             PreservedFact {
@@ -344,19 +372,41 @@ pub fn compact(request: &CompactionRequest<'_>) -> CompactionManifest {
     let carried_note = previous_epoch.map_or_else(String::new, |p| {
         format!(" Facts and handles from epoch {p} are carried below.")
     });
-    let mut projection = format!(
+    let header = format!(
         "Compaction epoch {epoch}: {} earlier transcript entries ({tool_calls} tool result(s)) are summarised here. The canonical log keeps them in full; read any of them back with `artifact.range` on the refs below.{carried_note}\n",
         entries.len()
     );
-    for f in &preserved {
-        let line = format!("- [{:?}] {}\n", f.kind, f.text);
-        if estimate_tokens(&projection) + estimate_tokens(&line) > target_tokens {
-            projection.push_str(
-                "- (further preserved facts omitted for the epoch budget; the log has them)\n",
-            );
+    // Under budget pressure the newest facts win: candidates are taken
+    // newest first (handles, which only recover dropped material, after every
+    // other kind) until the budget is spent, and the chosen ones are then
+    // written in their original order.
+    let lines: Vec<String> = preserved
+        .iter()
+        .map(|f| format!("- [{:?}] {}\n", f.kind, f.text))
+        .collect();
+    let mut order: Vec<usize> = (0..preserved.len()).rev().collect();
+    order.sort_by_key(|&i| preserved[i].kind == FactKind::Handle);
+    let mut chosen = vec![false; preserved.len()];
+    let mut used = header.len();
+    let mut omitted = false;
+    for i in order {
+        if used.div_ceil(4) + lines[i].len().div_ceil(4) > target_tokens as usize {
+            omitted = true;
             break;
         }
-        projection.push_str(&line);
+        used += lines[i].len();
+        chosen[i] = true;
+    }
+    let mut projection = header;
+    for (line, keep) in lines.iter().zip(&chosen) {
+        if *keep {
+            projection.push_str(line);
+        }
+    }
+    if omitted {
+        projection.push_str(
+            "- (further preserved facts omitted for the epoch budget; the log has them)\n",
+        );
     }
     let projection_tokens = estimate_tokens(&projection);
     let source_digest = source_digest(entries);
@@ -420,34 +470,35 @@ impl Fidelity {
     }
 }
 
-/// Measure a manifest against the entries it summarised: what a critical fact
-/// is here is decided by the source, not by the manifest, so a compactor that
-/// silently dropped a labelled fact scores below 1.0.
+/// Measure a manifest against the entries it summarised and the Core facts it
+/// was given: what a critical fact is here is decided by the source, not by the
+/// manifest, so a compactor that silently dropped a labelled fact scores below
+/// 1.0.
 ///
-/// Limitation: this shares `compact`'s labelling heuristic, so it measures
-/// whether the labelled facts survived compaction — not whether the label
-/// itself found everything a reader would call critical.
+/// Limitation: this shares `compact`'s labelling rule, so it measures whether
+/// the labelled facts survived compaction — not whether the label itself found
+/// everything a reader would call critical.
 #[must_use]
-pub fn fidelity(entries: &[SourceEntry], manifest: &CompactionManifest) -> Fidelity {
+pub fn fidelity(
+    entries: &[SourceEntry],
+    core_facts: &[PreservedFact],
+    manifest: &CompactionManifest,
+) -> Fidelity {
     let mut wanted: Vec<String> = Vec::new();
     for e in entries {
-        let lower = e.text.to_ascii_lowercase();
-        let head = |t: &str| t.lines().take(2).collect::<Vec<_>>().join(" ");
         if e.role == "user" {
             wanted.push(e.text.clone());
-        } else if e.role != "assistant"
-            && (e.name == "plan.update"
-                || lower.contains("plan version")
-                || lower.contains("approval")
-                || lower.contains("approved"))
-        {
-            wanted.push(head(&e.text));
         }
         if let Some(sig) = &e.failure_signature {
             wanted.push(sig.clone());
         }
         for h in handles_in(&e.text) {
             wanted.push(h);
+        }
+    }
+    for f in core_facts {
+        if CORE_FACT_KINDS.contains(&f.kind) {
+            wanted.push(one_line(&f.text, CORE_FACT_CHARS));
         }
     }
     wanted.sort();

@@ -79,6 +79,11 @@ pub(crate) async fn view(core: &Core, task_id: TaskId) -> wire::TaskEconomicsVie
                     v.tool_ms += u64::try_from(at - started).unwrap_or(0);
                 }
             }
+            // The latest Context Pack the task compiled (FIX-12: counted from
+            // the log, so it is the same after a Core restart).
+            "ContextPackRecorded" => {
+                v.context_tokens_injected = p["token_used"].as_u64().unwrap_or(0);
+            }
             "ContextEpochOpened" => {
                 v.compaction_epochs += 1;
                 v.compacted_entries += p["source_entries"].as_u64().unwrap_or(0);
@@ -138,7 +143,9 @@ pub(crate) async fn view(core: &Core, task_id: TaskId) -> wire::TaskEconomicsVie
     // with no derivable suite is reported as NO_CHECKS, never as verified.
     v.verification = match completion_status.as_str() {
         "" => "NOT_RUN",
-        "PASSED" if checks.is_empty() => "NO_CHECKS",
+        // An empty mandatory check set records UNKNOWN (FIX-03): the same
+        // fact as a run that passed with nothing to run, still not verified.
+        "PASSED" | "UNKNOWN" if checks.is_empty() => "NO_CHECKS",
         "PASSED" => "PASSED",
         _ => "FAILED",
     }
@@ -146,14 +153,6 @@ pub(crate) async fn view(core: &Core, task_id: TaskId) -> wire::TaskEconomicsVie
     v.verified = v.verification == "PASSED";
     if last_at > first_at {
         v.wall_ms = u64::try_from(last_at - first_at).unwrap_or(0);
-    }
-    // What the prompt envelope injected, from the task's Context Ledger.
-    {
-        let ledger = core.tools.ledger(task_id).await;
-        let ledger = ledger.lock().await;
-        if let Some(pack) = ledger.last_pack.as_ref() {
-            v.context_tokens_injected = u64::from(pack.token_used);
-        }
     }
     // IMP-EV-0032: every call on the canonical ledger, priced at its own
     // binding in the active registry (minor units); attributed per run and

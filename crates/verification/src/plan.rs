@@ -8,6 +8,11 @@ use serde::{Deserialize, Serialize};
 
 use crate::report::RunnerFamily;
 
+/// Id prefix of a check the repository declares for itself in
+/// `.modbit/verification.json`: the argv comes from repository content, so it
+/// is an effect the capability kernel decides before it runs (FIX-03).
+pub const CONFIGURED_ID_PREFIX: &str = "configured:";
+
 /// One configured check command.
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
 pub struct CheckCommand {
@@ -21,6 +26,15 @@ pub struct CheckCommand {
     pub mandatory: bool,
     /// Structured reporter file the runner writes (relative to cwd), if any.
     pub reporter_file: Option<String>,
+}
+
+impl CheckCommand {
+    /// Whether the argv was defined by repository content rather than derived
+    /// by the engine from a detected stack.
+    #[must_use]
+    pub fn is_repo_defined(&self) -> bool {
+        self.id.starts_with(CONFIGURED_ID_PREFIX)
+    }
 }
 
 /// An adapter's diagnostics batch the plan was derived with (PX-004): an
@@ -74,7 +88,16 @@ pub fn configured_commands(root: &Path) -> Vec<CheckCommand> {
     let Ok(text) = std::fs::read_to_string(root.join(".modbit/verification.json")) else {
         return vec![];
     };
-    let Ok(v) = serde_json::from_str::<serde_json::Value>(&text) else {
+    configured_commands_from(&text)
+}
+
+/// [`configured_commands`] over the text of `.modbit/verification.json` as
+/// the caller read it: a run reads the file once, when it starts, so a
+/// process that rewrites it during the run does not choose what the run
+/// executes (FIX-04).
+#[must_use]
+pub fn configured_commands_from(text: &str) -> Vec<CheckCommand> {
+    let Ok(v) = serde_json::from_str::<serde_json::Value>(text) else {
         return vec![];
     };
     v["commands"]
@@ -92,7 +115,7 @@ pub fn configured_commands(root: &Path) -> Vec<CheckCommand> {
             }
             let id = c["id"].as_str().filter(|i| !i.is_empty())?;
             Some(CheckCommand {
-                id: format!("configured:{id}"),
+                id: format!("{CONFIGURED_ID_PREFIX}{id}"),
                 family: RunnerFamily::ConfiguredCommand,
                 argv,
                 mandatory: c["mandatory"].as_bool().unwrap_or(true),
@@ -109,6 +132,20 @@ pub fn derive(
     root: &Path,
     task_named: &[String],
     extra_commands: &[CheckCommand],
+) -> VerificationPlan {
+    let configured = std::fs::read_to_string(root.join(".modbit/verification.json")).ok();
+    derive_with_configured(root, task_named, extra_commands, configured.as_deref())
+}
+
+/// [`derive`] with the text of `.modbit/verification.json` supplied by the
+/// caller (`None`: the repository declared no commands) instead of read from
+/// the working tree now.
+#[must_use]
+pub fn derive_with_configured(
+    root: &Path,
+    task_named: &[String],
+    extra_commands: &[CheckCommand],
+    configured: Option<&str>,
 ) -> VerificationPlan {
     let mut stacks = Vec::new();
     let mut commands = Vec::new();
@@ -189,7 +226,7 @@ pub fn derive(
     // A repository can declare its own checks (docs/64 "Adapters", PX-029):
     // this is how a language with no runner of ours gets evidence at all, and
     // the plan says the evidence is heuristic because it is exit-code based.
-    for c in configured_commands(root) {
+    for c in configured.map(configured_commands_from).unwrap_or_default() {
         if !commands.iter().any(|x| x.id == c.id) {
             limitations.push(format!(
                 "`{}` is a repository-configured command; its evidence is HEURISTIC (exit code and output)",

@@ -122,13 +122,19 @@ function App() {
   // REQ-EV-0151 / 0275: the Core's attention items — derived from canonical
   // unresolved state, re-read after every task event, never invented here.
   const [attentionItems, setAttentionItems] = useState<AttentionItem[]>([]);
+  // FIX-21: the Needs Attention column is the Core's attention view; until
+  // the Core has answered once, the cards' own next action stands in.
+  const [attentionLoaded, setAttentionLoaded] = useState(false);
   const attentionTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const refreshAttention = useCallback((sessionId: string) => {
     if (attentionTimer.current) clearTimeout(attentionTimer.current);
     attentionTimer.current = setTimeout(() => {
       window.modbit
         .attention(sessionId)
-        .then((a) => setAttentionItems(a.items))
+        .then((a) => {
+          setAttentionItems(a.items);
+          setAttentionLoaded(true);
+        })
         .catch(() => {});
     }, 150);
   }, []);
@@ -369,7 +375,9 @@ function App() {
     if (active && active !== document.body && active.getAttribute("data-testid") !== "task-card") return;
     const el = document.querySelector<HTMLElement>(`[data-testid="task-card"][data-task-id="${id}"]`);
     el?.focus({ preventScroll: true });
-  }, [model, reviewing]);
+    // The Core's attention items also move a card between columns (FIX-21), so
+    // they re-run the retention too, not only the event model.
+  }, [model, reviewing, attentionItems]);
   // PX-024 live region: every new attention item is announced once, in
   // words (kind, task, reason) — never by colour alone.
   useEffect(() => {
@@ -463,7 +471,7 @@ function App() {
     [submitting, trusted],
   );
 
-  const cols = useMemo(() => columns(model), [model]);
+  const cols = useMemo(() => columns(model, attentionLoaded ? attentionItems : undefined), [model, attentionItems, attentionLoaded]);
   const attention = cols.needsAttention.length;
   const visible = useCallback((cards: TaskCard[]) => (filter.trim() ? cards.filter((t) => t.goalText.toLowerCase().includes(filter.trim().toLowerCase())) : cards), [filter]);
   const focusedCard = () => document.activeElement?.closest<HTMLElement>('[data-testid="task-card"]') ?? null;
@@ -1336,7 +1344,14 @@ function Browser({ browsing, card, sessionId, onReopen, onClose }: { browsing: {
     window.addEventListener("resize", place);
     window.addEventListener("scroll", place, true);
     const refresh = () => {
-      void window.modbit.describeBrowser(bsid).then(setHost).catch(() => setHost(null));
+      void window.modbit
+        .describeBrowser(bsid)
+        .then((h) => {
+          setHost(h);
+          // FIX-19: the host is the authority on its own fence: once a new session lease lifted it, the panel stops saying it stands.
+          if (h && !h.stopped) setStopped(null);
+        })
+        .catch(() => setHost(null));
       if (taskId) void window.modbit.browserSession(bsid, taskId).then(setCore).catch(() => {});
     };
     refresh();
@@ -1387,7 +1402,7 @@ function Browser({ browsing, card, sessionId, onReopen, onClose }: { browsing: {
         </button>
         {(stopped ?? host?.stopped) && (
           <span className="meta" role="status" data-testid="browser-stopped">
-            ⚠ emergency stop: {stopped ?? host?.stopped} — no agent input runs until a new session lease is taken
+            ⚠ emergency stop: {stopped ?? host?.stopped} — the host runs no agent input until a new session lease is taken (the Core blocks new effects for the session's life)
           </span>
         )}
       </div>

@@ -23,6 +23,10 @@ message ExecRequest {
   string execution_profile = 10;
   Id capability_lease_id = 11;
   optional string terminal_session_id = 12;  // reuse a durable shell session (M2 later)
+  // FIX-20: the principal that owns the session (`task:<id>`); empty = the
+  // host itself. Only the owner and the host may list, read, write to or
+  // cancel it; any other requester is refused SESSION_NOT_OWNED.
+  string owner = 13;
 }
 
 message ExecStarted {
@@ -52,6 +56,11 @@ message ProcessExited {
   uint64 total_bytes = 6;
   bool timed_out = 7;
   bool cancelled = 8;
+  // FIX-09/FIX-20: the cursor of the first byte `output_ref` holds. 0 = the
+  // object is the complete output; larger = the replay window had already
+  // dropped the head, and `output_ref` is the sha256 of the retained tail
+  // (`total_bytes - retained_from` bytes), sealed in the Core's object store.
+  uint64 retained_from = 9;
 }
 
 message Attach {
@@ -62,18 +71,28 @@ message Attach {
   // the session's current one is refused STALE_GENERATION, and a newer one
   // ends every older attachment. 0 = unfenced (a local reader of the log).
   uint64 generation = 3;
+  // FIX-20: who is attaching (`task:<id>`); empty = the host. A task may
+  // attach only to a session it owns. A cursor older than the replay window
+  // is answered CURSOR_EXPIRED (message carries `oldest_cursor=<n>`).
+  string requester = 4;
 }
 
 message WriteStdin {
   string session_id = 1;
   bytes data = 2;
+  string requester = 3;               // FIX-20, as Attach.requester
 }
 
 message Cancel {
   string session_id = 1;
+  string requester = 2;               // FIX-20, as Attach.requester
 }
 
-message ListSessions {}
+message ListSessions {
+  // FIX-20: a task is listed only the sessions it owns; empty = the host,
+  // which is listed all of them.
+  string requester = 1;
+}
 
 // EPR-018: whether this host confines review processes, and how.
 message ProbeSandbox {}
@@ -98,6 +117,8 @@ message SessionInfo {
   uint64 replay_generation = 8;       // the newest attach generation seen
   int64 started_at_ms = 9;
   string cwd = 10;                    // EPR-018: a review environment ends its processes by it
+  string owner = 11;                  // FIX-20: the owning principal ("" = host)
+  uint64 oldest_cursor = 12;          // FIX-20: the oldest cursor still replayable
 }
 
 message SessionList {

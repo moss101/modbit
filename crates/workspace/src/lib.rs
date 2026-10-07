@@ -23,6 +23,7 @@ pub mod environment;
 pub mod paths;
 pub mod revision;
 pub mod service;
+pub mod snapshot;
 
 pub use paths::{PathPolicy, ResolvedPath};
 pub use revision::WorkspaceRevision;

@@ -153,10 +153,17 @@ fn spawn_core(data_dir: &str) -> Result<(std::process::Child, ReadyLine), String
         .append(true)
         .open(std::path::Path::new(data_dir).join("core.log"))
         .map_err(|e| format!("opening core.log: {e}"))?;
+    // 30s by default; `MODBIT_CORE_IDLE_EXIT_SECS` shortens it (qualification
+    // runs). The Core also stays up while a run or background command lives.
+    let idle_exit_secs = std::env::var("MODBIT_CORE_IDLE_EXIT_SECS")
+        .ok()
+        .and_then(|v| v.parse::<u64>().ok())
+        .filter(|n| *n > 0)
+        .unwrap_or(30);
     let mut child = Command::new(&exe)
         .arg("--data-dir")
         .arg(data_dir)
-        .args(["--idle-exit-secs", "30"])
+        .args(["--idle-exit-secs", &idle_exit_secs.to_string()])
         .stdin(Stdio::null())
         .stdout(Stdio::piped())
         .stderr(Stdio::from(log))

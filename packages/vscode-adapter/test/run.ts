@@ -6,7 +6,7 @@
  */
 import { runTests } from "@vscode/test-electron";
 import { execFileSync } from "node:child_process";
-import { mkdtempSync, writeFileSync } from "node:fs";
+import { mkdirSync, mkdtempSync, writeFileSync } from "node:fs";
 import { createServer } from "node:http";
 import { tmpdir } from "node:os";
 import { join, resolve } from "node:path";
@@ -29,11 +29,15 @@ const repo = mkdtempSync(join(tmpdir(), "modbit-vscode-repo-"));
 // A committed type error: the built-in TypeScript service reports it without any edit.
 writeFileSync(join(repo, "src.ts"), "export function total(q: number): number {\n  return q * 2;\n}\nexport const n: number = 'text';\n");
 writeFileSync(join(repo, "notes.txt"), "line 1\nline 2\nline 3\n");
+// A completion needs a mandatory check (FIX-03); this test's subject is not verification, so the repository declares a no-op one.
+mkdirSync(join(repo, ".modbit"), { recursive: true });
+writeFileSync(join(repo, ".modbit", "verification.json"), JSON.stringify({ commands: [{ id: "fixture-noop", argv: ["git", "--version"] }] }));
 git(repo, "init", "-q", "-b", "main");
 git(repo, "config", "core.autocrlf", "false");
 git(repo, "add", "-A");
 git(repo, "-c", "user.name=t", "-c", "user.email=t@e", "commit", "-q", "-m", "base");
-const wt = `${repo}-wt`;
+// A relative worktree path is relative to Modbit's own worktree directory (FIX-01).
+const wt = "wt";
 // The fixture task: plan, a protected worktree close (the approval), an edit, completion.
 const script = [
   { calls: [{ name: "plan.update", args: { outcome: "annotate the notes", expected_files: ["notes.txt"], protected_effects: ["git.worktree.close"] } }] },

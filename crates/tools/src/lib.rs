@@ -28,6 +28,7 @@ pub mod notebook;
 pub mod pipeline;
 pub mod policy;
 pub mod registry;
+pub mod shell_class;
 
 pub use modbit_domain::toolcall::EffectClass;
 pub use pipeline::{
@@ -35,7 +36,9 @@ pub use pipeline::{
     LanguageServicePort, ObjectSink, PipelineOutcome, SearchPort, SearchRequest, StageRecord,
     ToolCallResult, ToolRuntime, ToolStatus, arguments_hash,
 };
-pub use policy::{CapabilityPort, PolicyDecision, PolicyRequest, ProfilePolicy};
+pub use policy::{
+    CapabilityPort, PathTarget, PolicyDecision, PolicyRequest, ProfilePolicy, path_targets,
+};
 pub use registry::{Idempotency, Tool, ToolOutcome, ToolRegistry, ToolSpec};
 
 /// Errors.
