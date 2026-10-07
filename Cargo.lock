@@ -2149,6 +2149,7 @@ dependencies = [
  "anyhow",
  "axum",
  "base64",
+ "ed25519-dalek",
  "futures-util",
  "hex",
  "hmac",
@@ -2175,6 +2176,7 @@ dependencies = [
  "anyhow",
  "axum",
  "base64",
+ "ed25519-dalek",
  "futures-util",
  "hex",
  "hmac",
@@ -2303,6 +2305,7 @@ dependencies = [
 name = "modbit-domain"
 version = "0.0.0"
 dependencies = [
+ "ed25519-dalek",
  "hex",
  "serde",
  "serde_json",

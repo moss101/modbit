@@ -331,6 +331,10 @@ async fn host_inner(
     // task is queued and has not started) is tried again on the next pass,
     // for a bounded while, rather than lost to a one-shot delivery.
     let mut ingest_attempts: std::collections::HashMap<uuid::Uuid, u32> = Default::default();
+    // PX-129: the tenant's signed policy bundle, verified here and handed to
+    // the session's Core as its administrator layer.
+    let mut policy = crate::policy::PolicySync::new(tenant, dir);
+    let mut lapse_logged = false;
     loop {
         if *fenced.borrow() {
             core.stop();
@@ -420,18 +424,31 @@ async fn host_inner(
             }
             Err(e) => eprintln!("modbit-cloud-worker[{}]: handoffs: {e}", cfg.worker_id),
         }
-        // Queued tasks run.
-        if let Err(e) = start_queued(
-            &mut c,
-            cfg,
-            sid,
-            local_generation,
-            &mut started,
-            &handoffs_ready,
-        )
-        .await
-        {
-            eprintln!("modbit-cloud-worker[{}]: start: {e}", cfg.worker_id);
+        // Queued tasks run — unless the tenant holds a policy bundle and no
+        // valid one is in force (fail closed).
+        let standing = policy.standing(store).await;
+        if let crate::policy::Standing::Lapsed { generation } = standing {
+            if !lapse_logged {
+                eprintln!(
+                    "modbit-cloud-worker[{}]: the tenant's policy bundle (generation {generation}) has expired and no fresh one is published; no task starts until one is",
+                    cfg.worker_id
+                );
+                lapse_logged = true;
+            }
+        } else {
+            lapse_logged = false;
+            if let Err(e) = start_queued(
+                &mut c,
+                cfg,
+                sid,
+                local_generation,
+                &mut started,
+                &handoffs_ready,
+            )
+            .await
+            {
+                eprintln!("modbit-cloud-worker[{}]: start: {e}", cfg.worker_id);
+            }
         }
         tokio::select! {
             _ = tokio::time::sleep(Duration::from_millis(400)) => {}

@@ -229,6 +229,18 @@ impl Api {
         (r.status().as_u16(), r.json().await.unwrap_or(Value::Null))
     }
 
+    pub async fn call_put(&self, token: &str, path: &str, body: Value) -> (u16, Value) {
+        let r = self
+            .http
+            .put(format!("{}{path}", self.base))
+            .bearer_auth(token)
+            .json(&body)
+            .send()
+            .await
+            .unwrap();
+        (r.status().as_u16(), r.json().await.unwrap_or(Value::Null))
+    }
+
     pub async fn get(&self, token: &str, path: &str) -> (u16, Value) {
         let r = self
             .http

@@ -18,6 +18,8 @@
 pub mod auth;
 mod browser_view;
 mod forge;
+pub mod oidc;
+mod provisioning;
 pub mod rate;
 mod routes;
 mod stream;
@@ -28,6 +30,7 @@ use axum::Router;
 use modbit_event_store::cloud::{CloudStore, CloudStoreConfig};
 
 pub use auth::TokenKey;
+pub use oidc::OidcConfig;
 
 /// Shared state.
 pub struct AppState {
@@ -52,11 +55,13 @@ pub struct AppState {
     pub github_webhook_secret: Option<Vec<u8>>,
     /// Settings beyond [`Config`] (PX-126, PX-129).
     pub extras: Extras,
+    /// PX-129: the identity provider's metadata and keys, cached.
+    pub oidc_cache: tokio::sync::Mutex<oidc::OidcCache>,
 }
 
 /// Settings of the optional parts of the API, kept apart from [`Config`] so
 /// that adding one never changes how a `Config` is built.
-#[derive(Clone, Debug)]
+#[derive(Clone)]
 pub struct Extras {
     /// PX-126: the oldest event time (a check run's completion, a comment's
     /// creation) a webhook delivery may carry; an older one is refused
@@ -64,6 +69,22 @@ pub struct Extras {
     pub webhook_max_age_ms: i64,
     /// PX-126: how far in the future an event time may be (clock skew).
     pub webhook_skew_ms: i64,
+    /// PX-129: the SHA-256 of the platform administrator's secret (never the
+    /// secret itself; `None`: no `/v1/admin` route answers).
+    pub admin_secret_hash: Option<[u8; 32]>,
+    /// PX-129: the identity provider the API signs people in through
+    /// (`None`: the OIDC routes answer `OIDC_DISABLED`).
+    pub oidc: Option<OidcConfig>,
+}
+
+impl std::fmt::Debug for Extras {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("Extras")
+            .field("webhook_max_age_ms", &self.webhook_max_age_ms)
+            .field("admin", &self.admin_secret_hash.is_some())
+            .field("oidc", &self.oidc)
+            .finish_non_exhaustive()
+    }
 }
 
 impl Default for Extras {
@@ -71,15 +92,32 @@ impl Default for Extras {
         Self {
             webhook_max_age_ms: 60 * 60 * 1000,
             webhook_skew_ms: 5 * 60 * 1000,
+            admin_secret_hash: None,
+            oidc: None,
         }
     }
 }
 
 impl Extras {
-    /// From the environment (`MODBIT_CLOUD_WEBHOOK_MAX_AGE_SECS`).
+    /// The platform administrator's secret, kept as its digest.
+    #[must_use]
+    pub fn with_admin_secret(mut self, secret: &str) -> Self {
+        use sha2::Digest;
+        self.admin_secret_hash = Some(sha2::Sha256::digest(secret.as_bytes()).into());
+        self
+    }
+
+    /// From the environment (`MODBIT_CLOUD_WEBHOOK_MAX_AGE_SECS`,
+    /// `MODBIT_CLOUD_ADMIN_SECRET`, `MODBIT_CLOUD_OIDC_*`).
     #[must_use]
     pub fn from_env() -> Self {
         let mut e = Self::default();
+        if let Ok(secret) = std::env::var("MODBIT_CLOUD_ADMIN_SECRET")
+            && !secret.is_empty()
+        {
+            e = e.with_admin_secret(&secret);
+        }
+        e.oidc = OidcConfig::from_env();
         if let Some(secs) = std::env::var("MODBIT_CLOUD_WEBHOOK_MAX_AGE_SECS")
             .ok()
             .and_then(|v| v.parse::<i64>().ok())
@@ -224,6 +262,7 @@ pub async fn serve_with(cfg: Config, extras: Extras) -> anyhow::Result<Served> {
         workers: browser_view::WorkerLinks::default(),
         github_webhook_secret: cfg.github_webhook_secret,
         extras,
+        oidc_cache: tokio::sync::Mutex::new(oidc::OidcCache::default()),
     });
     let listener = tokio::net::TcpListener::bind(&cfg.bind).await?;
     let addr = listener.local_addr()?;

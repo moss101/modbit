@@ -143,6 +143,25 @@ async fn authenticate(
         )
         .into_response();
     };
+    // A disabled principal is refused at its next call, however long its
+    // access token has left (PX-129): the token is signed, the standing is
+    // the store's.
+    match state
+        .store
+        .principal(principal.tenant_id, principal.principal_id)
+        .await
+    {
+        Ok(Some(_)) => {}
+        Ok(None) => {
+            return ApiError::new(
+                StatusCode::UNAUTHORIZED,
+                "PRINCIPAL_DISABLED",
+                "this principal is disabled or does not exist",
+            )
+            .into_response();
+        }
+        Err(e) => return ApiError::from(e).into_response(),
+    }
     if !state.limiter.admit(&principal.principal_id.to_string()) {
         return ApiError::new(
             StatusCode::TOO_MANY_REQUESTS,
@@ -169,6 +188,20 @@ pub fn router(state: Arc<AppState>) -> Router {
         .route("/v1/artifacts/{hash}", get(artifact))
         .route("/v1/objects", axum::routing::put(put_object))
         .route("/v1/handoffs", post(handoff))
+        // PX-129: a tenant administrator's provisioning, and the policy bundle.
+        .route(
+            "/v1/principals",
+            post(crate::provisioning::create_principal).get(crate::provisioning::list_principals),
+        )
+        .route(
+            "/v1/principals/{principal_action}",
+            post(crate::provisioning::principal_action),
+        )
+        .route(
+            "/v1/policy/bundle",
+            axum::routing::put(crate::provisioning::publish_bundle)
+                .get(crate::provisioning::current_bundle),
+        )
         // PX-011: which repositories this tenant takes webhook deliveries for.
         .route(
             "/v1/forge/repositories",
@@ -192,6 +225,26 @@ pub fn router(state: Arc<AppState>) -> Router {
         .route("/v1/health", get(health))
         .route("/v1/auth/token", post(auth_token))
         .route("/v1/auth/refresh", post(auth_refresh))
+        // PX-129: OIDC authorization code with PKCE (the API is the relying party).
+        .route("/v1/auth/oidc/start", post(crate::oidc::start))
+        .route("/v1/auth/oidc/callback", post(crate::oidc::callback))
+        // PX-129: the platform administrator (a secret, not a principal).
+        .route(
+            "/v1/admin/tenants",
+            post(crate::provisioning::create_tenant),
+        )
+        .route(
+            "/v1/admin/tenants/{tenant_id}/principals",
+            post(crate::provisioning::admin_create_principal),
+        )
+        .route(
+            "/v1/admin/tenants/{tenant_id}/org-keys/{key_id}",
+            axum::routing::put(crate::provisioning::admin_org_key),
+        )
+        .route(
+            "/v1/admin/audit",
+            axum::routing::get(crate::provisioning::admin_audit),
+        )
         // M8.8: a worker's outbound link (worker bearer token, not a principal's).
         .route("/v1/workers/link", get(crate::browser_view::worker_link))
         // PX-011: the GitHub App's deliveries (signed under the app's secret, not a bearer).
@@ -231,7 +284,7 @@ async fn health() -> Json<Value> {
     )
 }
 
-fn token_response(state: &AppState, p: &Principal, refresh: String) -> Value {
+pub(crate) fn token_response(state: &AppState, p: &Principal, refresh: String) -> Value {
     json!({
         "access_token": state.key.issue(p, state.access_ttl_ms),
         "expires_in_ms": state.access_ttl_ms,
@@ -296,6 +349,19 @@ async fn auth_refresh(
             "refresh token unknown, expired, spent or revoked",
         ));
     };
+    // A disabled principal buys no new token with an old refresh token.
+    if state
+        .store
+        .principal(p.tenant_id, p.principal_id)
+        .await?
+        .is_none()
+    {
+        return Err(ApiError::new(
+            StatusCode::UNAUTHORIZED,
+            "PRINCIPAL_DISABLED",
+            "this principal is disabled or does not exist",
+        ));
+    }
     Ok(Json(token_response(&state, &p, fresh)))
 }
 
