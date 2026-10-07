@@ -90,7 +90,7 @@ const MAX_CONTEXT_DOCUMENT_BYTES: usize = 256 * 1024;
 
 /// Fencing (docs/13, docs/33): a mutating command must present the session's
 /// current lease generation in `expected_generation`.
-async fn require_lease(
+pub(crate) async fn require_lease(
     core: &Core,
     cid: &Option<wire::Id>,
     env: &CommandEnvelope,
@@ -673,9 +673,28 @@ async fn serve_connection(core: Arc<Core>, mut stream: BoxedStream) -> Result<()
     let mut host_rx: Option<tokio::sync::mpsc::Receiver<wire::BrowserHostRequest>> = None;
     // M8.8: the browser views this connection watches — frames arrive here.
     let mut views = Views::default();
+    // PX-043: the terminals this connection attached to — their frames
+    // arrive here, and end with the connection.
+    let mut terms = crate::terminal_stream::Terminals::new(connection);
+    // The client's frames are read by a task of their own, so a frame that
+    // arrives in pieces is never torn by another arm of the loop winning the
+    // `select!` (a half-read frame cannot be resumed): terminal output makes
+    // that arm busy all the time.
+    let (mut reader, mut writer) = tokio::io::split(stream);
+    let (frames_tx, mut frames) = tokio::sync::mpsc::channel(16);
+    let reader_task = tokio::spawn(async move {
+        loop {
+            let frame = read_frame(&mut reader).await;
+            let last = !matches!(frame, Ok(Some(_)));
+            if frames_tx.send(frame).await.is_err() || last {
+                break;
+            }
+        }
+    });
     let outcome = serve_frames(
         &core,
-        &mut stream,
+        &mut writer,
+        &mut frames,
         &capabilities,
         client_kind,
         &mut subscription,
@@ -683,8 +702,11 @@ async fn serve_connection(core: Arc<Core>, mut stream: BoxedStream) -> Result<()
         connection,
         &mut host_rx,
         &mut views,
+        &mut terms,
     )
     .await;
+    reader_task.abort();
+    terms.detach_all();
     core.browser.connection_closed(connection).await;
     views.unwatch_all(&core).await;
     outcome
@@ -861,7 +883,8 @@ static CONNECTIONS: std::sync::atomic::AtomicU64 = std::sync::atomic::AtomicU64:
 #[allow(clippy::too_many_arguments)]
 async fn serve_frames(
     core: &Arc<Core>,
-    stream: &mut BoxedStream,
+    stream: &mut tokio::io::WriteHalf<BoxedStream>,
+    frames: &mut tokio::sync::mpsc::Receiver<Result<Option<SurfaceFrame>, FrameError>>,
     capabilities: &[&str],
     client_kind: i32,
     subscription: &mut Option<(SessionId, u64)>,
@@ -869,6 +892,7 @@ async fn serve_frames(
     connection: u64,
     host_rx: &mut Option<tokio::sync::mpsc::Receiver<wire::BrowserHostRequest>>,
     views: &mut Views,
+    terms: &mut crate::terminal_stream::Terminals,
 ) -> Result<()> {
     loop {
         // Drain any events the subscriber has not seen yet, in bounded batches.
@@ -895,16 +919,23 @@ async fn serve_frames(
             }
         }
         let frame = tokio::select! {
-            f = read_frame(stream) => match f {
-                Ok(Some(f)) => Some(f),
-                Ok(None) => return Ok(()),
-                Err(e @ (FrameError::TooLarge { .. } | FrameError::Malformed(_) | FrameError::EmptyBody)) => {
+            f = frames.recv() => match f {
+                Some(Ok(Some(f))) => Some(f),
+                Some(Ok(None)) | None => return Ok(()),
+                Some(Err(e @ (FrameError::TooLarge { .. } | FrameError::Malformed(_) | FrameError::EmptyBody))) => {
                     let code = if matches!(e, FrameError::TooLarge { .. }) { "FRAME_TOO_LARGE" } else { "MALFORMED_FRAME" };
                     let _ = write_frame(stream, &error_frame(code, e.to_string())).await;
                     return Ok(());
                 }
-                Err(e) => return Err(e.into()),
+                Some(Err(e)) => return Err(e.into()),
             },
+            // PX-043: a slice of a terminal stream this connection attached to.
+            f = terms.rx.recv() => {
+                if let Some(f) = f {
+                    write_frame(stream, &SurfaceFrame { body: Some(Body::TerminalFrame(f)) }).await?;
+                }
+                None
+            }
             changed = rx.changed(), if subscription.is_some() => {
                 if changed.is_err() { return Ok(()); }
                 None
@@ -974,6 +1005,28 @@ async fn serve_frames(
                     _ if env.command_type == "UnwatchBrowserView" => {
                         unwatch_browser_view(core, env, views).await
                     }
+                    // PX-043 / PX-099: the terminal registry and stream.
+                    _ if env.command_type == "ListTerminals" => {
+                        crate::terminal_stream::list_terminals(core, env).await
+                    }
+                    _ if env.command_type == "AttachTerminal" => {
+                        crate::terminal_stream::attach_terminal(core, env, terms).await
+                    }
+                    _ if env.command_type == "AckTerminal" => {
+                        crate::terminal_stream::ack_terminal(env, terms).await
+                    }
+                    _ if env.command_type == "DetachTerminal" => {
+                        crate::terminal_stream::detach_terminal(core, env, terms).await
+                    }
+                    _ if env.command_type == "SetTerminalInput" => {
+                        crate::terminal_stream::set_terminal_input(core, env, terms).await
+                    }
+                    _ if env.command_type == "ResizeTerminal" => {
+                        crate::terminal_stream::resize_terminal(core, env, terms).await
+                    }
+                    _ if env.command_type == "WriteTerminal" => {
+                        crate::terminal_stream::write_terminal(core, env, terms).await
+                    }
                     _ => handle_command(core, env).await,
                 };
                 // REQ-EV-0017: a rejection is error text on its way to a
@@ -1036,7 +1089,7 @@ async fn serve_frames(
     }
 }
 
-fn id16(id: &wire::Id) -> Option<[u8; 16]> {
+pub(crate) fn id16(id: &wire::Id) -> Option<[u8; 16]> {
     id.value.as_slice().try_into().ok()
 }
 
@@ -1192,6 +1245,19 @@ fn required_client_capability(env: &CommandEnvelope) -> Option<&'static str> {
         "OpenBrowserSession" | "CloseBrowserSession" => "task.author",
         "SetBrowserControl" => "session.control",
         "WatchBrowserView" | "UnwatchBrowserView" => "events.subscribe",
+        // PX-043: reading a terminal is reading the log's tail; typing into
+        // one, taking its lease and resizing it act on a process.
+        "ListTerminals" | "AckTerminal" | "DetachTerminal" => "events.subscribe",
+        "AttachTerminal" => {
+            if wire::AttachTerminal::decode(env.payload.as_slice())
+                .is_ok_and(|p| p.take_input_lease)
+            {
+                "session.control"
+            } else {
+                "events.subscribe"
+            }
+        }
+        "SetTerminalInput" | "ResizeTerminal" | "WriteTerminal" => "session.control",
         "BrowserViewInput" => "session.control",
         "ImportMirroredEvents" | "ReadMirrorEvents" => "session.mirror",
         "IngestAttachment" | "AttachContextDocument" => "attachments.ingest",
@@ -1513,7 +1579,11 @@ async fn attach_browser_host(
     )
 }
 
-fn reject(command_id: Option<wire::Id>, code: &str, message: impl Into<String>) -> CommandAck {
+pub(crate) fn reject(
+    command_id: Option<wire::Id>,
+    code: &str,
+    message: impl Into<String>,
+) -> CommandAck {
     CommandAck {
         command_id,
         status: CommandStatus::Rejected as i32,
@@ -1523,7 +1593,7 @@ fn reject(command_id: Option<wire::Id>, code: &str, message: impl Into<String>) 
     }
 }
 
-fn accept(command_id: Option<wire::Id>, replayed: bool, result: Vec<u8>) -> CommandAck {
+pub(crate) fn accept(command_id: Option<wire::Id>, replayed: bool, result: Vec<u8>) -> CommandAck {
     CommandAck {
         command_id,
         status: if replayed {
@@ -6644,7 +6714,7 @@ fn receipt_view(r: &modbit_domain::toolcall::EffectReceipt) -> wire::EffectRecei
     }
 }
 
-fn typed<E: serde::Serialize>(event_type: &str, e: &E, actor: Actor) -> NewEvent {
+pub(crate) fn typed<E: serde::Serialize>(event_type: &str, e: &E, actor: Actor) -> NewEvent {
     let mut ev = NewEvent::new(
         event_type,
         serde_json::to_value(e).expect("serializable domain event"),

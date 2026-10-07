@@ -14,6 +14,27 @@
 import { connect, type Socket } from "node:net";
 import { create, fromBinary, toBinary, type MessageInitShape } from "@bufbuild/protobuf";
 import {
+  AckTerminalSchema,
+  AttachTerminalSchema,
+  DetachTerminalSchema,
+  ListTerminalsSchema,
+  ResizeTerminalSchema,
+  SetTerminalInputSchema,
+  TerminalAckedSchema,
+  TerminalAttachedSchema,
+  TerminalDetachedSchema,
+  TerminalInputSetSchema,
+  TerminalListSchema,
+  TerminalResizeDoneSchema,
+  TerminalWrittenSchema,
+  WriteTerminalSchema,
+  type TerminalAttached,
+  type TerminalDetached,
+  type TerminalFrame,
+  type TerminalInputSet,
+  type TerminalList,
+  type TerminalResizeDone,
+  type TerminalWritten,
   AcquireSessionLeaseSchema,
   DiagnosticsExportedSchema,
   DiagnosticsVerifiedSchema,
@@ -226,6 +247,13 @@ export class CoreClient {
    * error by the client itself so the Core never waits on it.
    */
   onBrowserRequest: ((r: BrowserHostRequest) => void) | null = null;
+  /**
+   * PX-043: a slice of a terminal stream this connection attached to
+   * (`attachTerminal`). The Core sends at most the attach's window beyond what
+   * `ackTerminal` acknowledged, so a handler that acknowledges what it has
+   * consumed never holds more than the window.
+   */
+  onTerminalFrame: ((f: TerminalFrame) => void) | null = null;
   onClose: ((reason: string) => void) | null = null;
 
   private constructor(kind: ClientKind) {
@@ -302,6 +330,9 @@ export class CoreClient {
         else void this.respondBrowserHost(r.requestId, { kind: "error", code: "NO_HOST", message: "this client hosts no browser" }).catch(() => {});
         return;
       }
+      case "terminalFrame":
+        this.onTerminalFrame?.(f.body.value);
+        return;
       case "error":
         this.fail(`${f.body.value.code}: ${f.body.value.message}`);
         return;
@@ -733,6 +764,61 @@ export class CoreClient {
   async taskStatus(taskId: string): Promise<TaskStatus> {
     const ack = await this.command("GetTaskStatus", toBinary(GetTaskStatusSchema, create(GetTaskStatusSchema, { taskId: { value: unhex(taskId) } })));
     return fromBinary(TaskStatusSchema, ack.result);
+  }
+
+  // ---- PX-043 / PX-099 terminal stream and registry (docs/21) ----
+
+  /** The background terminals of every task (or one): owner, state, start, running timer, replay window. The same for every client. */
+  async listTerminals(taskId?: string): Promise<TerminalList> {
+    const payload = toBinary(ListTerminalsSchema, create(ListTerminalsSchema, taskId ? { taskId: { value: unhex(taskId) } } : {}));
+    const ack = await this.command("ListTerminals", payload);
+    return fromBinary(TerminalListSchema, ack.result);
+  }
+
+  /**
+   * Attach to a terminal from a cursor: frames follow on `onTerminalFrame`.
+   * Rejections are typed: SESSION_NOT_OWNED, CURSOR_EXPIRED (message names
+   * oldest_cursor), CURSOR_BEYOND_HEAD, LEASE_HELD. With `takeInputLease` the
+   * person holds the terminal's input lease (the agent's shell.input is then
+   * refused INPUT_LEASED); that needs the session lease.
+   */
+  async attachTerminal(sessionId: string, taskId: string, terminalId: string, afterCursor: bigint, opts: { windowBytes?: bigint; takeInputLease?: boolean; stealInputLease?: boolean } = {}): Promise<TerminalAttached> {
+    const payload = toBinary(
+      AttachTerminalSchema,
+      create(AttachTerminalSchema, { taskId: { value: unhex(taskId) }, sessionId: terminalId, afterCursor, windowBytes: opts.windowBytes ?? 0n, takeInputLease: opts.takeInputLease ?? false, stealInputLease: opts.stealInputLease ?? false }),
+    );
+    const ack = await this.command("AttachTerminal", payload, undefined, opts.takeInputLease ? this.leases.get(sessionId) : undefined);
+    return fromBinary(TerminalAttachedSchema, ack.result);
+  }
+
+  /** Tell the Core the output up to `cursor` was consumed; it may send that much more. */
+  async ackTerminal(attachId: string, cursor: bigint): Promise<bigint> {
+    const ack = await this.command("AckTerminal", toBinary(AckTerminalSchema, create(AckTerminalSchema, { attachId, cursor })));
+    return fromBinary(TerminalAckedSchema, ack.result).ackedCursor;
+  }
+
+  /** End the attachment (the process is untouched); returns the cursor to resume from. */
+  async detachTerminal(attachId: string): Promise<TerminalDetached> {
+    const ack = await this.command("DetachTerminal", toBinary(DetachTerminalSchema, create(DetachTerminalSchema, { attachId })));
+    return fromBinary(TerminalDetachedSchema, ack.result);
+  }
+
+  /** Take or give back the input lease of an attachment. Requires the session lease. */
+  async setTerminalInput(sessionId: string, attachId: string, hold: boolean, steal = false): Promise<TerminalInputSet> {
+    const ack = await this.command("SetTerminalInput", toBinary(SetTerminalInputSchema, create(SetTerminalInputSchema, { attachId, hold, steal })), undefined, this.leases.get(sessionId));
+    return fromBinary(TerminalInputSetSchema, ack.result);
+  }
+
+  /** Resize the terminal to the viewer's size. Requires the session lease. */
+  async resizeTerminal(sessionId: string, attachId: string, rows: number, cols: number): Promise<TerminalResizeDone> {
+    const ack = await this.command("ResizeTerminal", toBinary(ResizeTerminalSchema, create(ResizeTerminalSchema, { attachId, rows, cols })), undefined, this.leases.get(sessionId));
+    return fromBinary(TerminalResizeDoneSchema, ack.result);
+  }
+
+  /** A person's keystrokes (at most 64 KiB), accepted only while the attachment holds the input lease (LEASE_REQUIRED otherwise). Requires the session lease. */
+  async writeTerminal(sessionId: string, attachId: string, data: Uint8Array): Promise<TerminalWritten> {
+    const ack = await this.command("WriteTerminal", toBinary(WriteTerminalSchema, create(WriteTerminalSchema, { attachId, data })), undefined, this.leases.get(sessionId));
+    return fromBinary(TerminalWrittenSchema, ack.result);
   }
 
   subscribe(sessionId: string, afterOffset: bigint): void {

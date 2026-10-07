@@ -13,6 +13,7 @@ import type { Hello, HelloAck } from "./negotiation_pb.js";
 import type { Id } from "./domain_pb.js";
 import type { Timestamp } from "@bufbuild/protobuf/wkt";
 import type { CommandEnvelope, EventEnvelope } from "./envelope_pb.js";
+import type { TerminalFrame } from "./terminal_pb.js";
 
 /**
  * Describes the file modbit/v1/surface.proto.
@@ -492,6 +493,15 @@ export declare type SurfaceFrame = Message<"modbit.v1.SurfaceFrame"> & {
      */
     value: BrowserViewFrame;
     case: "browserFrame";
+  } | {
+    /**
+     * PX-043 (field block 120-139): a slice of a terminal stream this
+     * connection attached to (AttachTerminal).
+     *
+     * @generated from field: modbit.v1.TerminalFrame terminal_frame = 120;
+     */
+    value: TerminalFrame;
+    case: "terminalFrame";
   } | { case: undefined; value?: undefined };
 };
 
