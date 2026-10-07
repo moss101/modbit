@@ -281,15 +281,59 @@ impl Api {
     }
 }
 
-async fn until<T>(what: &str, secs: u64, mut probe: impl AsyncFnMut() -> Option<T>) -> T {
+async fn until<T>(what: &str, secs: u64, probe: impl AsyncFnMut() -> Option<T>) -> T {
+    until_dumping(what, secs, probe, async || String::new()).await
+}
+
+/// [`until`], whose timeout message carries what `dump` reads at that moment
+/// (a bare "timed out" leaves a hosted-runner failure undiagnosable).
+async fn until_dumping<T>(
+    what: &str,
+    secs: u64,
+    mut probe: impl AsyncFnMut() -> Option<T>,
+    dump: impl AsyncFnOnce() -> String,
+) -> T {
     let deadline = Instant::now() + Duration::from_secs(secs);
     loop {
         if let Some(v) = probe().await {
             return v;
         }
-        assert!(Instant::now() < deadline, "timed out waiting for {what}");
+        if Instant::now() >= deadline {
+            panic!("timed out waiting for {what}\n{}", dump().await);
+        }
         tokio::time::sleep(Duration::from_millis(300)).await;
     }
+}
+
+/// The session's tasks (state, attention) and the last events on the cloud
+/// log, one line each, for a timeout's message.
+async fn session_dump(api: &Api, token: &str, sid: impl std::fmt::Display) -> String {
+    let (status, session) = api.get(token, &format!("/v1/sessions/{sid}")).await;
+    let (_, evs) = api
+        .get(
+            token,
+            &format!("/v1/events?session_id={sid}&after=0&limit=2000"),
+        )
+        .await;
+    let events = evs["events"].as_array().cloned().unwrap_or_default();
+    let tail = events
+        .iter()
+        .rev()
+        .take(40)
+        .rev()
+        .map(|e| {
+            let mut line = e.to_string();
+            line.truncate(600);
+            line
+        })
+        .collect::<Vec<_>>()
+        .join("\n");
+    format!(
+        "session ({status}): {}\n{} events on the cloud log; the last {}:\n{tail}",
+        session["tasks"],
+        events.len(),
+        events.len().min(40)
+    )
 }
 
 fn worker_config(
@@ -1421,6 +1465,12 @@ async fn qual_m8_7_a_local_task_hands_off_to_the_cloud_and_continues_from_its_ch
     let manifest: Value = serde_json::from_str(&exported.manifest_json).unwrap();
     assert_eq!(manifest["kind"], "modbit-handoff");
     assert!(manifest["git"]["bundle"].as_bool().unwrap(), "{manifest}");
+    // The checkpoint travels alone (a per-turn delta's base chain does not):
+    // it must name the laptop's uncommitted edit itself.
+    assert!(
+        manifest["checkpoint"]["files"].as_u64().unwrap_or(0) >= 1,
+        "the handoff checkpoint is a self-contained baseline, not an empty delta: {manifest}"
+    );
     assert!(
         manifest["capabilities"]
             .as_array()
@@ -1671,13 +1721,14 @@ async fn qual_m8_7_a_local_task_hands_off_to_the_cloud_and_continues_from_its_ch
     ))
     .await
     .expect("worker");
-    until(
+    until_dumping(
         "the continuation to reach review in the cloud",
         240,
         async || {
             let (_, v) = api.get(&a, &format!("/v1/sessions/{sid}")).await;
             (v["tasks"][0]["state"] == "READY_FOR_REVIEW").then_some(())
         },
+        async || session_dump(&api, &a, sid).await,
     )
     .await;
     let (_, evs) = api
