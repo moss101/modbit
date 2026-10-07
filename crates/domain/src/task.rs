@@ -2199,6 +2199,22 @@ pub enum TaskEvent {
         /// Tools the new generation withholds, by name.
         withheld_tools: Vec<String>,
     },
+    /// `CapabilitySnapshotRecorded` (REQ-PX-131, docs/23 "Policy
+    /// generations"): at a model-round boundary the Core froze the round's
+    /// capability view — the projected tools, the policy generation, the
+    /// lease and the mode posture — under the next `AuthorizationEpoch`.
+    /// Every kernel decision and receipt of the round carries the epoch and
+    /// is decided against this snapshot; a policy change, a revoked skill or
+    /// a mode switch made during the round takes effect at the next one. A
+    /// restarted Core finds the snapshot here and decides the rest of an
+    /// interrupted round under it. No state change.
+    CapabilitySnapshotRecorded {
+        /// The frozen view.
+        snapshot: crate::epoch::CapabilitySnapshot,
+        /// SHA-256 (hex) of the canonical snapshot; what the round's
+        /// decisions and receipts name.
+        snapshot_hash: String,
+    },
     /// `ReviewCommentsIngested` (PX-008, docs/29 "Review-comment
     /// steering"): the task's pull-request comments read from the forge —
     /// those from an identity the organization allows and addressed to
@@ -2572,6 +2588,7 @@ impl TaskEvent {
             Self::CiEvidenceRecorded { .. } => "CiEvidenceRecorded",
             Self::ReviewCommentsIngested { .. } => "ReviewCommentsIngested",
             Self::PolicyGenerationChanged { .. } => "PolicyGenerationChanged",
+            Self::CapabilitySnapshotRecorded { .. } => "CapabilitySnapshotRecorded",
             Self::RequestOutcomeRecorded { .. } => "RequestOutcomeRecorded",
             Self::HooksResolved { .. } => "HooksResolved",
             Self::HookInvoked { .. } => "HookInvoked",
@@ -2753,7 +2770,8 @@ impl Task {
             | TaskEvent::TerminalControlRecorded { .. }
             | TaskEvent::ProtocolStateResumed { .. }
             | TaskEvent::ToolCallReconciled { .. }
-            | TaskEvent::PolicyGenerationChanged { .. } => {
+            | TaskEvent::PolicyGenerationChanged { .. }
+            | TaskEvent::CapabilitySnapshotRecorded { .. } => {
                 if self.state.is_terminal() {
                     return Err(invalid(&self.state, event.event_type()));
                 }

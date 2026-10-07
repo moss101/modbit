@@ -3056,17 +3056,46 @@ async fn run_loop(
             // round is not "no opinion". The snapshot in force stays, and
             // the run stops here rather than carry on under less policy
             // than its owner set.
-            let (now, previous) = match core.tools.configurations.try_refresh(
-                task.task_id,
-                &core.data_dir,
-                task.workspace_root.as_deref(),
-            ) {
-                Ok(r) => r,
-                Err(e) => {
-                    break 'outer LoopEnd::NeedsAttention {
-                        code: crate::config::ConfigError::CODE,
-                        reason: e.to_string(),
-                    };
+            // REQ-PX-131: a run that resumes with calls outstanding re-enters
+            // the round those calls belong to. That round was frozen before
+            // the Core stopped; it finishes under the configuration and the
+            // mode it was frozen with, and what changed on disk meanwhile
+            // applies at the next boundary.
+            let resumed_round = if resume_calls.is_some() {
+                let store = core.store.lock().await;
+                crate::epoch::resume_round(&core, &store, task.task_id)
+            } else {
+                None
+            };
+            let (now, previous) = if let Some(frozen) = &resumed_round {
+                if let Some(mode) = modbit_domain::mode::TaskMode::parse(&frozen.snapshot.mode) {
+                    edge.freeze_mode(mode);
+                }
+                let config = core.tools.configurations.for_task(
+                    task.task_id,
+                    &core.data_dir,
+                    task.workspace_root.as_deref(),
+                );
+                (
+                    crate::config::Snapshot {
+                        generation: modbit_policy::config::generation(&config),
+                        config,
+                    },
+                    None,
+                )
+            } else {
+                match core.tools.configurations.try_refresh(
+                    task.task_id,
+                    &core.data_dir,
+                    task.workspace_root.as_deref(),
+                ) {
+                    Ok(r) => r,
+                    Err(e) => {
+                        break 'outer LoopEnd::NeedsAttention {
+                            code: crate::config::ConfigError::CODE,
+                            reason: e.to_string(),
+                        };
+                    }
                 }
             };
             if let Some(previous) = previous {
@@ -3805,6 +3834,39 @@ async fn run_loop(
                             ),
                         ],
                     );
+                }
+                // REQ-PX-131: the round's capability view is frozen here —
+                // before the provider is asked and before any call of the
+                // round is decided — under the next authorization epoch. A
+                // round whose snapshot cannot be recorded does not run: no
+                // decision is stamped with an epoch that is not on the log.
+                {
+                    let mode_name = core
+                        .tools
+                        .tasking
+                        .in_force_now(task.task_id)
+                        .unwrap_or_default()
+                        .name();
+                    let round = crate::epoch::Round {
+                        run_id,
+                        turn_id,
+                        ordinal,
+                        mode: mode_name,
+                        projected: &projected_names,
+                        projection_hash: &compiled.tool_projection_hash,
+                        skills: run_skills.selected().to_vec(),
+                    };
+                    let mut store = core.store.lock().await;
+                    if let Err(e) =
+                        crate::epoch::freeze_round(&core, &mut store, lturn, &task, &round, &actor)
+                    {
+                        break 'outer LoopEnd::NeedsAttention {
+                            code: "EPOCH_NOT_RECORDED",
+                            reason: format!(
+                                "the round's capability snapshot could not be recorded: {e}"
+                            ),
+                        };
+                    }
                 }
                 // REQ-EV-0042: the round's `before_model` hooks may stop it
                 // before the provider is asked.

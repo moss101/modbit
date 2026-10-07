@@ -16,6 +16,7 @@ pub mod agent;
 pub mod agent_profile;
 pub mod approval;
 pub mod conversation;
+pub mod epoch;
 pub mod event;
 pub mod failure;
 pub mod ids;

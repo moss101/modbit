@@ -32,6 +32,7 @@ mod dashboard;
 mod doctor;
 mod economics;
 mod environment;
+mod epoch;
 mod escalation;
 mod extensions;
 mod external_diagnostics;

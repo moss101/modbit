@@ -462,6 +462,17 @@ impl Configurations {
         }
     }
 
+    /// Pin `config` as the snapshot in force for `task`. A run that resumes
+    /// inside a model round it froze before the Core stopped decides the rest
+    /// of that round under the configuration the round began with
+    /// (REQ-PX-131); the next round boundary resolves afresh.
+    pub fn install(&self, task: TaskId, config: Arc<ResolvedConfig>) {
+        self.pinned
+            .lock()
+            .unwrap_or_else(|e| e.into_inner())
+            .insert(task, config);
+    }
+
     /// Forget a finished task's configuration.
     pub fn release(&self, task: TaskId) {
         self.pinned

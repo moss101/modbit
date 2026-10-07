@@ -224,6 +224,12 @@ pub struct EffectReceipt {
     /// compensation is its own receipt, never an edit of the original.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub compensates: Option<EffectId>,
+    /// The authority epoch the effect was decided under (REQ-PX-131): the
+    /// round's epoch and the digest of its frozen capability snapshot.
+    /// Absent on receipts written before epochs existed, which keep their
+    /// hash; present on every receipt written by a round.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub authorization: Option<crate::epoch::AuthorizationStamp>,
     /// Hash of the receipt.
     pub receipt_hash: String,
 }
@@ -271,6 +277,10 @@ pub enum ToolCallEvent {
         decision: String,
         /// Approval needed (moves to ApprovalPending when not allowed but approvable).
         approval_required: bool,
+        /// The authority epoch the decision was made under (REQ-PX-131);
+        /// absent on a record from before epochs.
+        #[serde(default, skip_serializing_if = "Option::is_none")]
+        authorization: Option<crate::epoch::AuthorizationStamp>,
     },
     /// `ToolCallApprovalRequested`: validated, policy needs an approval.
     ToolCallApprovalRequested {
@@ -400,6 +410,7 @@ impl ToolCall {
                 allowed,
                 decision,
                 approval_required,
+                ..
             } => {
                 self.policy_decision = Some(decision.clone());
                 if *allowed {
@@ -495,6 +506,7 @@ mod tests {
                 allowed: false,
                 decision: "DENY: protected".into(),
                 approval_required: false,
+                authorization: None,
             },
             Timestamp(3),
         )
@@ -530,6 +542,7 @@ mod tests {
                 allowed: true,
                 decision: "ALLOW".into(),
                 approval_required: false,
+                authorization: None,
             },
             Timestamp(3),
         )

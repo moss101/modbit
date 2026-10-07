@@ -334,6 +334,8 @@ message EffectReceiptView {
   string receipt_hash = 13;
   string reversibility = 14;       // REVERSIBLE | PARTIALLY_REVERSIBLE | COMPENSATABLE | IRREVERSIBLE; "" before REQ-EV-0066
   Id compensates = 15;             // the effect this one compensates, when it is a compensation
+  uint64 authorization_epoch = 320;       // REQ-PX-131: the model round's epoch the effect was decided under; 0 before epochs
+  string capability_snapshot_hash = 321;  // the digest of that epoch's frozen capability snapshot
 }
 
 message EffectReceiptList {

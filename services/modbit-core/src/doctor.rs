@@ -204,7 +204,7 @@ pub(crate) async fn export(
             }
         }
         pkg.integrity.receipts = match store.receipts(None) {
-            Ok(all) => match modbit_policy::ledger::verify_chain(&all) {
+            Ok(all) => match crate::epoch::verify_chain(&store, &all) {
                 Ok(()) => "valid".into(),
                 Err(e) => format!("invalid: {e}"),
             },

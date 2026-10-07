@@ -10,6 +10,7 @@
 
 pub mod assurance;
 pub mod config;
+pub mod epoch;
 pub mod kernel;
 pub mod ledger;
 

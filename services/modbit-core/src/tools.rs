@@ -431,6 +431,9 @@ pub struct ToolHost {
     /// The admin/project/user configuration resolved and pinned per task
     /// (REQ-EV-0039, REQ-EV-0128).
     pub configurations: crate::config::Configurations,
+    /// The frozen capability view of each task's newest model round
+    /// (REQ-PX-131): the epoch every decision and receipt is stamped with.
+    pub(crate) epochs: crate::epoch::Epochs,
     /// The Hook Bus (REQ-EV-0042/0139/0240): loaded extensions per session
     /// and the runs a fail-closed after-hook stopped.
     pub hooks: Arc<crate::hooks::HookBus>,
@@ -563,6 +566,7 @@ impl ToolHost {
             forge: crate::forge::ForgeCustody::from_env(),
             mcp,
             configurations: crate::config::Configurations::default(),
+            epochs: crate::epoch::Epochs::default(),
             hooks: Arc::new(crate::hooks::HookBus::default()),
             data_dir: data_dir.to_path_buf(),
             browser,
@@ -927,6 +931,14 @@ impl ToolHost {
                 .map_err(|e| anyhow::anyhow!("MODE_UNREADABLE: {e}"))?
         };
         let lease_ref = lease.clone();
+        // REQ-PX-131: the epoch of the model round this call is decided in
+        // (or, outside a round, of the last one): it stamps the decision and
+        // every receipt of the call. The configuration, the mode and the
+        // projection the kernel reads below are the ones that round froze.
+        let authorization = {
+            let st = store.lock().await;
+            self.epochs.current(&st, task_id)
+        };
         let port = KernelPort {
             mode,
             kernel: CapabilityKernel::default(),
@@ -1121,6 +1133,7 @@ impl ToolHost {
                 .registry()
                 .get(tool_name)
                 .map(|t| t.spec().reversibility()),
+            authorization: authorization.clone(),
         });
         let ctx = InvokeContext {
             task_id,
@@ -1761,6 +1774,7 @@ impl ToolHost {
                         allowed: false,
                         decision,
                         approval_required: false,
+                        authorization: authorization.clone(),
                     },
                     actor.clone(),
                 ));
@@ -1812,6 +1826,7 @@ impl ToolHost {
                             |t| t.spec().reversibility(),
                         )),
                         compensates,
+                        authorization: authorization.clone(),
                         receipt_hash: String::new(),
                     });
                 }
@@ -2334,6 +2349,8 @@ struct DispatchLog {
     compensates: Option<modbit_domain::EffectId>,
     /// The tool's own reversibility declaration, when it is registered.
     reversibility: Option<modbit_domain::toolcall::Reversibility>,
+    /// The authority epoch the dispatch is decided under (REQ-PX-131).
+    authorization: Option<modbit_domain::epoch::AuthorizationStamp>,
 }
 
 /// Where a call's effect runs, as a receipt records it.
@@ -2366,6 +2383,7 @@ impl modbit_tools::DispatchJournal for DispatchLog {
                     allowed: true,
                     decision,
                     approval_required: false,
+                    authorization: self.authorization.clone(),
                 },
                 self.actor.clone(),
             ));
@@ -2410,6 +2428,7 @@ impl modbit_tools::DispatchJournal for DispatchLog {
                                 )
                             })),
                             compensates: self.compensates,
+                            authorization: self.authorization.clone(),
                             receipt_hash: String::new(),
                         },
                     },

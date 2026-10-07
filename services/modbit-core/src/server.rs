@@ -732,6 +732,7 @@ async fn serve_connection(core: Arc<Core>, mut stream: BoxedStream) -> Result<()
                     "GetImpact",
                     "GetSymbolEdges",
                     "GetIndexStatus",
+                    "GetCapabilitySnapshots",
                 ]
                 .map(String::from)
                 .to_vec(),
@@ -4437,7 +4438,7 @@ pub(crate) async fn handle_command(core: &Arc<Core>, env: CommandEnvelope) -> Co
                 Ok(r) => r,
                 Err(e) => return reject(cid, error_code(&e), e.to_string()),
             };
-            let verified = modbit_policy::ledger::verify_chain(&all);
+            let verified = crate::epoch::verify_chain(&store, &all);
             let receipts: Vec<_> = all
                 .iter()
                 .filter(|r| task.is_none_or(|t| r.task_id == t))
@@ -6590,6 +6591,20 @@ pub(crate) async fn handle_command(core: &Arc<Core>, env: CommandEnvelope) -> Co
                 Err((code, msg)) => reject(cid, &code, msg),
             }
         }
+        // REQ-PX-131: the capability snapshots a task's rounds were frozen with.
+        "GetCapabilitySnapshots" => {
+            let Ok(p) = wire::GetCapabilitySnapshots::decode(env.payload.as_slice()) else {
+                return reject(cid, "BAD_PAYLOAD", "GetCapabilitySnapshots");
+            };
+            let Some(task_id) = p.task_id.as_ref().and_then(id16).map(TaskId::from_bytes) else {
+                return reject(cid, "BAD_PAYLOAD", "task_id required");
+            };
+            let store = core.store.lock().await;
+            match crate::epoch::view(core, &store, task_id, p.after_epoch) {
+                Ok(v) => accept(cid, false, v.encode_to_vec()),
+                Err(e) => reject(cid, "SNAPSHOTS_UNREADABLE", e),
+            }
+        }
         "GetIndexStatus" => {
             let Ok(p) = wire::GetIndexStatus::decode(env.payload.as_slice()) else {
                 return reject(cid, "BAD_PAYLOAD", "GetIndexStatus");
@@ -7286,6 +7301,12 @@ fn receipt_view(r: &modbit_domain::toolcall::EffectReceipt) -> wire::EffectRecei
             .map(|x| x.label().to_owned())
             .unwrap_or_default(),
         compensates: r.compensates.map(|e| wire_id(e.as_bytes())),
+        authorization_epoch: r.authorization.as_ref().map_or(0, |a| a.epoch),
+        capability_snapshot_hash: r
+            .authorization
+            .as_ref()
+            .map(|a| a.snapshot_hash.clone())
+            .unwrap_or_default(),
     }
 }
 

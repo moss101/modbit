@@ -137,6 +137,7 @@ fn an_approval_is_consumed_by_the_dispatch_of_its_call_and_stays_approved() {
                         allowed: true,
                         decision: format!("approval:{approval}"),
                         approval_required: false,
+                        authorization: None,
                     },
                 ),
                 typed("ToolCallDispatched", &ToolCallEvent::ToolCallDispatched),

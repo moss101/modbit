@@ -1,0 +1,44 @@
+// Security and runtime read models of the audit-driven completion rows
+// PX-130 (credential broker), PX-131 (authorization epochs), PX-132 (process
+// services) and PX-139 (observability), as clients see them (docs/62, docs/79).
+// Commands travel as CommandEnvelope payloads named by `command_type`. Fields
+// this wave adds to messages of other files take the block 320-339.
+syntax = "proto3";
+
+package modbit.v1;
+
+import "modbit/v1/domain.proto";
+
+// ---------------------------------------------------------------- PX-131
+
+// The capability snapshots a task's model rounds were frozen with, and
+// whether their record is consistent.
+message GetCapabilitySnapshots {
+  Id task_id = 1;
+  uint64 after_epoch = 2;          // only epochs greater than this; 0 = all
+}
+
+message CapabilitySnapshotView {
+  uint64 epoch = 1;                // monotonic per task, from 1
+  string run_id = 2;
+  string turn_id = 3;
+  uint32 round = 4;                // the turn's ordinal in its run
+  string config_generation = 5;    // the policy generation the round was decided under
+  string mode = 6;
+  string execution_profile = 7;
+  string lease_id = 8;             // "" = the task held no lease
+  uint64 lease_generation = 9;
+  repeated string lease_operations = 10;
+  repeated string projected_tools = 11;
+  string projection_hash = 12;
+  repeated string skills = 13;     // name@content_hash
+  string snapshot_hash = 14;       // what the round's decisions and receipts name
+  int64 recorded_at_ms = 15;
+}
+
+message CapabilitySnapshotList {
+  repeated CapabilitySnapshotView snapshots = 1;
+  uint64 current_epoch = 2;        // the epoch a decision made now carries; 0 = no round yet
+  bool valid = 3;                  // hashes recompute, epochs are monotonic and gapless
+  string detail = 4;
+}

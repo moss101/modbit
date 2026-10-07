@@ -813,6 +813,7 @@ mod tests {
                 allowed: true,
                 decision: "ALLOW".into(),
                 approval_required: false,
+                authorization: None,
             },
             Timestamp(3),
         )
@@ -835,6 +836,7 @@ mod tests {
                 allowed: true,
                 decision: "ALLOW".into(),
                 approval_required: false,
+                authorization: None,
             },
             Timestamp(3),
         )
@@ -907,6 +909,7 @@ mod tests {
                 allowed: true,
                 decision: "ALLOW".into(),
                 approval_required: false,
+                authorization: None,
             },
             Timestamp(3),
         )
