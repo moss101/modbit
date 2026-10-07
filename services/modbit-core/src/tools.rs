@@ -437,6 +437,8 @@ pub struct ToolHost {
     /// The listening services of the tasks' terminals, as the Core observed
     /// them (REQ-PX-132).
     pub(crate) process_services: crate::process_services::ProcessServices,
+    /// Component health and the optional OpenTelemetry export (REQ-PX-139).
+    pub(crate) telemetry: crate::telemetry::Telemetry,
     /// The Hook Bus (REQ-EV-0042/0139/0240): loaded extensions per session
     /// and the runs a fail-closed after-hook stopped.
     pub hooks: Arc<crate::hooks::HookBus>,
@@ -571,6 +573,7 @@ impl ToolHost {
             configurations: crate::config::Configurations::default(),
             epochs: crate::epoch::Epochs::default(),
             process_services: crate::process_services::ProcessServices::default(),
+            telemetry: crate::telemetry::Telemetry::new(data_dir),
             hooks: Arc::new(crate::hooks::HookBus::default()),
             data_dir: data_dir.to_path_buf(),
             browser,

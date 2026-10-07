@@ -76,6 +76,7 @@ mod statistics;
 mod stream;
 mod subagent;
 mod tasking;
+mod telemetry;
 mod terminal_stream;
 mod tool_projection;
 mod tools;

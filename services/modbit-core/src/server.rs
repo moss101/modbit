@@ -279,6 +279,9 @@ pub async fn run_as(
     // REQ-PX-132: the observer of the listening services of the tasks'
     // terminals runs for the life of the Core.
     crate::process_services::spawn(Arc::clone(&core));
+    // REQ-PX-139: component health, persisted; and the OpenTelemetry export
+    // when (and only when) the Core is configured to export.
+    crate::telemetry::spawn(Arc::clone(&core));
     // PX-111: the indexes of the workspaces unfinished tasks work in open from
     // the persisted store in the background, so the first query after a
     // restart finds them loaded (and a corrupt or stale store is found and
@@ -737,6 +740,7 @@ async fn serve_connection(core: Arc<Core>, mut stream: BoxedStream) -> Result<()
                     "GetIndexStatus",
                     "GetCapabilitySnapshots",
                     "ListProcessServices",
+                    "GetComponentHealth",
                 ]
                 .map(String::from)
                 .to_vec(),
@@ -6611,6 +6615,8 @@ pub(crate) async fn handle_command(core: &Arc<Core>, env: CommandEnvelope) -> Co
         }
         // REQ-PX-132: the services the task's terminals started.
         "ListProcessServices" => crate::process_services::list(core, env).await,
+        // REQ-PX-139: component health with the age of each observation.
+        "GetComponentHealth" => crate::telemetry::component_health(core, env).await,
         "GetIndexStatus" => {
             let Ok(p) = wire::GetIndexStatus::decode(env.payload.as_slice()) else {
                 return reject(cid, "BAD_PAYLOAD", "GetIndexStatus");

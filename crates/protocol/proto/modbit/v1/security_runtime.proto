@@ -97,3 +97,41 @@ message ProcessServiceList {
   repeated ProcessServiceView services = 1;
   int64 scanned_at_ms = 2;
 }
+
+// ---------------------------------------------------------------- PX-139
+
+// Component health, persisted, and the state of the OpenTelemetry export.
+message GetComponentHealth {}
+
+message ComponentHealthView {
+  string name = 1;                 // provider:<endpoint> | execd | sandbox_gateway | telemetry | ...
+  string state = 2;                // OK | DEGRADED | DOWN | UNKNOWN | DISABLED
+  string detail = 3;
+  int64 observed_at_ms = 4;
+  int64 age_ms = 5;                // now - observed_at_ms
+  bool observed_this_run = 6;      // false: read back from the previous run and not yet replaced
+}
+
+message TelemetryExportView {
+  bool enabled = 1;                // off by default
+  string endpoint = 2;             // scheme://host:port only; never a path, query or credential
+  string disabled_reason = 3;
+  uint64 spans_queued = 4;
+  uint64 spans_sent = 5;
+  uint64 spans_dropped_overflow = 6; // dropped because the bounded queue was full
+  uint64 spans_lost = 7;           // dropped after their attempts failed
+  uint64 requests_ok = 8;
+  uint64 requests_failed = 9;
+  uint64 metric_exports_ok = 10;
+  uint64 metric_exports_failed = 11;
+  uint64 queue_depth = 12;
+  string last_error = 13;          // redacted and bounded
+  int64 last_success_ms = 14;
+  int64 last_attempt_ms = 15;
+}
+
+message ComponentHealthList {
+  repeated ComponentHealthView components = 1;
+  int64 now_ms = 2;
+  TelemetryExportView export = 3;
+}

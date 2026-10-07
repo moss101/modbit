@@ -354,12 +354,25 @@ pub(crate) fn spawn(core: Arc<Core>) {
         let mut client: Option<ExecClient> = None;
         loop {
             let delay = match pass(&core, &mut client).await {
-                Ok(true) => poll_ms(),
-                Ok(false) => IDLE_POLL_MS,
+                Ok(busy) => {
+                    if core.tools.execd.is_some() {
+                        core.tools.telemetry.observe(
+                            "execd",
+                            modbit_observability::health::HealthState::Ok,
+                            "the terminal broker answered",
+                        );
+                    }
+                    if busy { poll_ms() } else { IDLE_POLL_MS }
+                }
                 Err(e) => {
                     // The broker is away or answered badly: reconnect next time.
                     client = None;
                     eprintln!("modbit-core: process services: {e}");
+                    core.tools.telemetry.observe(
+                        "execd",
+                        modbit_observability::health::HealthState::Down,
+                        &core.tools.redactor().error_text(&e),
+                    );
                     IDLE_POLL_MS
                 }
             };
