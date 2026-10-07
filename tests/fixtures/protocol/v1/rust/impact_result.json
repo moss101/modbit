@@ -1,0 +1,53 @@
+{
+  "expected": {
+    "ambiguousEdges": 2,
+    "changed": [
+      "src/util.rs"
+    ],
+    "dependents": [
+      {
+        "confidence": "resolved",
+        "distance": 1,
+        "edgePath": [
+          {
+            "confidence": "resolved",
+            "from": "src/render.rs",
+            "kind": "call",
+            "line": 5,
+            "symbol": "pad",
+            "to": "src/util.rs"
+          }
+        ],
+        "path": "src/render.rs",
+        "rank": 1.02,
+        "reasons": [
+          "call"
+        ],
+        "tests": [
+          "tests/render_test.rs"
+        ]
+      }
+    ],
+    "limitation": "heuristic",
+    "partial": true,
+    "partialReason": "more than 1 dependents; the list is cut at 1",
+    "revision": "9007199254740993",
+    "symbols": [
+      "pad"
+    ],
+    "tests": [
+      {
+        "covers": [
+          "src/render.rs"
+        ],
+        "distance": 2,
+        "path": "tests/render_test.rs",
+        "reasons": [
+          "covers_dependent"
+        ]
+      }
+    ],
+    "unresolvedEdges": 311
+  },
+  "type": "modbit.v1.ImpactResult"
+}
