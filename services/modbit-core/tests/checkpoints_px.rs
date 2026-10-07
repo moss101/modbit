@@ -2222,3 +2222,218 @@ async fn px_101_cancelling_a_paused_task_frees_its_slot_and_a_killed_core_resume
         .await;
     assert!(capacity_view(&mut fx2).await.tickets.is_empty());
 }
+
+// ----------------------------------------------------------------------------
+// REQ-PX-102: the `max_bytes` bound of the collector.
+// ----------------------------------------------------------------------------
+
+async fn gc_policy(
+    fx: &mut Fx,
+    policy: modbit_protocol::v1::CheckpointRetentionPolicy,
+    dry_run: bool,
+) -> Result<(CheckpointGcReport, bool), ClientError> {
+    let (task, session, g) = (fx.task.clone(), fx.session.clone(), fx.g);
+    send(
+        &mut fx.c,
+        None,
+        "RunCheckpointGc",
+        RunCheckpointGc {
+            session_id: Some(session),
+            task_id: Some(task),
+            reason: "bytes".into(),
+            policy: Some(policy),
+            dry_run,
+        },
+        Some(g),
+    )
+    .await
+}
+
+fn bounded(max_bytes: u64) -> modbit_protocol::v1::CheckpointRetentionPolicy {
+    // Floors that would keep every checkpoint of a young task, so that
+    // anything removed is removed by the byte bound alone.
+    modbit_protocol::v1::CheckpointRetentionPolicy {
+        keep_recent: 1000,
+        min_age_ms: 24 * 60 * 60 * 1000,
+        max_bytes,
+    }
+}
+
+/// QUAL-PX-102 (the byte bound, real Core, real object store): with
+/// `max_bytes` set, the collector keeps the newest checkpoints that fit the
+/// bound and removes the rest — the age and count floors give way to it —
+/// while a labelled checkpoint, the fork parent and the latest, each with the
+/// chain it needs, never do. The bound is applied when asked and is not
+/// sticky; a larger bound removes nothing; tighter bounds free more, and each
+/// run's report equals the change on the filesystem; a dry run says what the
+/// real run does; every survivor restores what it recorded and a collected
+/// checkpoint answers COLLECTED; a repeat run changes nothing.
+#[tokio::test]
+#[allow(clippy::too_many_lines)]
+async fn px_102_the_byte_bound_keeps_the_newest_that_fit_and_never_the_referenced_one_it_must_keep()
+{
+    let mut fx = many_checkpoints(20).await;
+    let l = fx.checkpoints().await;
+    let hand: Vec<_> = l
+        .checkpoints
+        .iter()
+        .filter(|c| c.reason.starts_with("hand "))
+        .cloned()
+        .collect();
+    assert_eq!(hand.len(), 20);
+    // A label on an old checkpoint, and a fork taken from another.
+    name(&mut fx, &hand[5].checkpoint_id, "keep me")
+        .await
+        .unwrap();
+    let forked: TaskForked = ok(
+        &mut fx.c,
+        "ForkTask",
+        ForkTask {
+            task_id: Some(fx.task.clone()),
+            checkpoint_id: hand[2].checkpoint_id.clone(),
+            ..Default::default()
+        },
+        Some(fx.g),
+    )
+    .await;
+    let latest = fx.checkpoints().await.current_checkpoint_id;
+
+    // The floors alone keep a young task whole ...
+    let (floors_only, _) = gc_policy(&mut fx, bounded(0), true).await.unwrap();
+    assert_eq!(floors_only.removed, 0, "{floors_only:?}");
+    // ... and a bound larger than everything removes nothing either.
+    let (roomy, _) = gc_policy(&mut fx, bounded(1 << 30), true).await.unwrap();
+    assert_eq!(roomy.removed, 0, "{roomy:?}");
+    // A tight bound makes the floors give way: it removes what they kept.
+    let (dry, _) = gc_policy(&mut fx, bounded(14_000), true).await.unwrap();
+    assert!(dry.dry_run && dry.removed > 0, "{dry:?}");
+    let (objects_0, bytes_0) = object_files(&fx.data);
+    assert_eq!(
+        object_files(&fx.data),
+        (objects_0, bytes_0),
+        "a dry run frees nothing"
+    );
+
+    // Tighter and tighter bounds, for real: each frees more, each report is
+    // the change on the filesystem, the protected ones stay.
+    let mut previous = (objects_0, bytes_0);
+    let mut removed_total = 0u32;
+    let mut freed_total = 0u64;
+    let mut runs = 0usize;
+    for bound in [14_000u64, 10_000, 8_000, 7_000] {
+        let (report, _) = gc_policy(&mut fx, bounded(bound), false).await.unwrap();
+        if bound == 14_000 {
+            assert_eq!(
+                report.removed_ids, dry.removed_ids,
+                "the dry run said what the run did"
+            );
+        }
+        assert!(report.removed > 0, "bound {bound}: {report:?}");
+        // Content is freed only when no survivor names it, so a run may
+        // remove checkpoints and free nothing yet; the first one does free.
+        if bound == 14_000 {
+            assert!(
+                report.blobs_removed > 0 && report.bytes_freed > 0,
+                "{report:?}"
+            );
+        }
+        freed_total += report.bytes_freed;
+        let now = object_files(&fx.data);
+        assert_eq!(
+            (previous.0 - now.0) as u32,
+            report.blobs_removed,
+            "bound {bound}: the report's counts equal the change on the filesystem"
+        );
+        assert_eq!(previous.1 - now.1, report.bytes_freed, "bound {bound}");
+        previous = now;
+        removed_total += report.removed;
+        runs += 1;
+        let after = fx.checkpoints().await;
+        let alive = |id: &str| {
+            after.checkpoints.iter().any(|c| {
+                c.checkpoint_id == id && matches!(c.status.as_str(), "CURRENT" | "SUPERSEDED")
+            })
+        };
+        for must in [
+            latest.clone(),
+            hand[5].checkpoint_id.clone(),
+            hand[2].checkpoint_id.clone(),
+        ] {
+            assert!(alive(&must), "bound {bound}: {must} must survive");
+        }
+    }
+    assert!(
+        removed_total >= 20,
+        "the tightest bound left only the protected: {removed_total}"
+    );
+    assert!(
+        freed_total > 0 && previous.1 < bytes_0,
+        "the bound freed space"
+    );
+    // A repeat run at the tightest bound has nothing left to do and leaves no record.
+    let (again, _) = gc_policy(&mut fx, bounded(1), false).await.unwrap();
+    assert_eq!(
+        (again.removed, again.blobs_removed, again.bytes_freed),
+        (0, 0, 0),
+        "{again:?}"
+    );
+    assert_eq!(
+        fx.events(&["CheckpointGcCompleted"]).await.len(),
+        runs,
+        "one record per run that did something"
+    );
+
+    // Survivors restore what they recorded (their chains survived with them).
+    let after = fx.checkpoints().await;
+    let survivors: Vec<_> = after
+        .checkpoints
+        .iter()
+        .filter(|c| matches!(c.status.as_str(), "CURRENT" | "SUPERSEDED"))
+        .cloned()
+        .collect();
+    assert!(survivors.len() < 12, "{} survived", survivors.len());
+    for (k, label) in [(5usize, "keep me")] {
+        let (r, _) = fx
+            .restore(RestoreCheckpoint {
+                name: label.into(),
+                ..Default::default()
+            })
+            .await
+            .unwrap();
+        assert!(r.restored, "{label}: {r:?}");
+        assert_eq!(
+            std::fs::read_to_string(format!("{}/hand.txt", fx.root)).unwrap(),
+            format!("hand-written version {k}\n").repeat(40)
+        );
+    }
+    let (r, _) = fx
+        .restore(RestoreCheckpoint {
+            checkpoint_id: hand[2].checkpoint_id.clone(),
+            ..Default::default()
+        })
+        .await
+        .unwrap();
+    assert!(r.restored, "the fork parent restores: {r:?}");
+    assert_eq!(
+        std::fs::read_to_string(format!("{}/hand.txt", fx.root)).unwrap(),
+        "hand-written version 2\n".repeat(40)
+    );
+    assert!(std::path::Path::new(&forked.worktree).exists());
+    // A checkpoint the bound removed is refused, typed.
+    let gone = after
+        .checkpoints
+        .iter()
+        .find(|c| c.status == "COLLECTED")
+        .expect("the bound collected checkpoints")
+        .checkpoint_id
+        .clone();
+    let refused = fx
+        .restore(RestoreCheckpoint {
+            checkpoint_id: gone,
+            ..Default::default()
+        })
+        .await
+        .unwrap()
+        .0;
+    assert_eq!(refused.refusal, "COLLECTED", "{refused:?}");
+}
