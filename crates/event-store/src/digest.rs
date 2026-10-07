@@ -15,6 +15,10 @@ use crate::Result;
 /// or aborted message, a state that needs them, a question or an approval.
 const VISIBLE: &str = "'AssistantMessageCompleted','AssistantMessageAborted','TaskReadyForReview','TaskNeedsAttention','TaskFailed','TaskCompleted','TaskCancelled','UserQuestionAsked','ApprovalRequested'";
 
+/// Event types that can raise an attention item (`services/modbit-core`
+/// `attention`): the only events whose absence proves a task needs no one.
+const ATTENTION: &str = "'TaskNeedsAttention','UserQuestionAsked','CapacityDenied','SubagentAdmissionRefused','SubagentProtectedEffect'";
+
 /// What the log says about one task, in numbers.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct TaskDigest {
@@ -45,6 +49,11 @@ pub struct TaskDigest {
     pub model: Option<(String, String)>,
     /// Offset of the first event of the task's own aggregate (its creation).
     pub created_offset: u64,
+    /// Events that can raise an attention item (a needs-attention record, a
+    /// question, a refused capacity ticket, a child's refusal): a task with
+    /// none cannot be in need of anyone, so nothing about it is read to find
+    /// out.
+    pub attention_events: u32,
 }
 
 /// Digest every task of `session` that has at least one event.
@@ -62,7 +71,8 @@ pub(crate) fn task_digests(conn: &Connection, session: &SessionId) -> Result<Vec
                 COALESCE(MAX(CASE WHEN event_type = 'ConversationRead' THEN json_extract(payload_inline, '$.up_to_offset') END), 0),
                 COALESCE(MAX(CASE WHEN event_type = 'ConversationArchived' THEN offset END), 0),
                 COALESCE(MAX(CASE WHEN event_type = 'ConversationUnarchived' THEN offset END), 0),
-                COALESCE(MIN(CASE WHEN event_type = 'TaskCreated' THEN offset END), 0)
+                COALESCE(MIN(CASE WHEN event_type = 'TaskCreated' THEN offset END), 0),
+                COALESCE(SUM(CASE WHEN event_type IN ({ATTENTION}) THEN 1 ELSE 0 END), 0)
          FROM events
          WHERE session_id = ?1 AND task_id IS NOT NULL
          GROUP BY task_id
@@ -90,6 +100,7 @@ pub(crate) fn task_digests(conn: &Connection, session: &SessionId) -> Result<Vec
                 context_tokens: None,
                 model: None,
                 created_offset: r.get::<_, i64>(11)? as u64,
+                attention_events: u32::try_from(r.get::<_, i64>(12)?).unwrap_or(u32::MAX),
             })
         })?
         .collect::<std::result::Result<_, _>>()?;

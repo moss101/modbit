@@ -66,6 +66,7 @@ mod statistics;
 mod stream;
 mod subagent;
 mod tools;
+mod transcript;
 mod undo;
 mod usage;
 mod user_patch;
