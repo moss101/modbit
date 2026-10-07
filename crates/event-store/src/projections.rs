@@ -916,7 +916,16 @@ pub fn apply(tx: &Transaction<'_>, ev: &StoredEvent, objects: &crate::ObjectStor
                         running: *running,
                     },
                 )),
+                // A background process the Core saw end (or a client killed)
+                // moves the handle's cursor to exited exactly as the run's own
+                // observation of the exit does (REQ-PX-043).
                 TaskEvent::ProcessExited {
+                    handle_id,
+                    output_ref,
+                    exit_code,
+                    ..
+                }
+                | TaskEvent::BackgroundProcessEnded {
                     handle_id,
                     output_ref,
                     exit_code,

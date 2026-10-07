@@ -1181,5 +1181,47 @@ pub fn samples() -> Vec<Sample> {
             }),
             decode: reencode::<ConversationSearchResults>,
         },
+        // PX-043: stopping a task's background terminal.
+        Sample {
+            name: "kill_terminal",
+            type_name: "modbit.v1.KillTerminal",
+            bytes: KillTerminal {
+                task_id: id(0x41),
+                session_id: "0123456789abcdef".into(),
+                reason: "the dev server is wedged".into(),
+            }
+            .encode_to_vec(),
+            expected: json!({
+                "taskId": idhex(0x41), "sessionId": "0123456789abcdef",
+                "reason": "the dev server is wedged"
+            }),
+            decode: reencode::<KillTerminal>,
+        },
+        Sample {
+            name: "terminal_killed",
+            type_name: "modbit.v1.TerminalKilled",
+            bytes: TerminalKilled {
+                task_id: id(0x41),
+                session_id: "0123456789abcdef".into(),
+                outcome: "KILLED".into(),
+                exit_code: None,
+                signal: Some(9),
+                output_ref: "cd".repeat(32),
+                total_bytes: 9_007_199_254_740_993,
+                ended_by: "user:b1b1b1b1".into(),
+                reason: "the dev server is wedged".into(),
+                decision: "allow: local_trusted:reversiblewrite".into(),
+                offset: 412,
+            }
+            .encode_to_vec(),
+            expected: json!({
+                "taskId": idhex(0x41), "sessionId": "0123456789abcdef", "outcome": "KILLED",
+                "exitCode": null, "signal": 9, "outputRef": "cd".repeat(32),
+                "totalBytes": "9007199254740993", "endedBy": "user:b1b1b1b1",
+                "reason": "the dev server is wedged",
+                "decision": "allow: local_trusted:reversiblewrite", "offset": "412"
+            }),
+            decode: reencode::<TerminalKilled>,
+        },
     ]
 }

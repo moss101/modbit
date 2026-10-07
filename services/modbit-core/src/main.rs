@@ -15,6 +15,7 @@ mod agent_tools;
 mod agents;
 mod assurance;
 mod attention;
+mod background_process;
 mod baseline;
 mod branch;
 mod browser;

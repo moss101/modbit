@@ -18,6 +18,9 @@ import {
   AttachTerminalSchema,
   DetachTerminalSchema,
   ListTerminalsSchema,
+  KillTerminalSchema,
+  TerminalKilledSchema,
+  type TerminalKilled,
   ResizeTerminalSchema,
   SetTerminalInputSchema,
   TerminalAckedSchema,
@@ -1018,6 +1021,20 @@ export class CoreClient {
   async writeTerminal(sessionId: string, attachId: string, data: Uint8Array): Promise<TerminalWritten> {
     const ack = await this.command("WriteTerminal", toBinary(WriteTerminalSchema, create(WriteTerminalSchema, { attachId, data })), undefined, this.leases.get(sessionId));
     return fromBinary(TerminalWrittenSchema, ack.result);
+  }
+
+  /**
+   * PX-043: stop a task's background terminal (the tray's kill control). The
+   * Core fences it by the session lease, has the Capability Kernel decide it
+   * under the task's lease, ends the process, and records who and why on the
+   * task as a typed event that wakes the agent once. The same `commandId`
+   * kills once. Typed refusals: SESSION_NOT_OWNED, UNKNOWN_SESSION,
+   * STALE_LEASE, and the kernel's own code (MODE_POSTURE, EMERGENCY_STOP, ...).
+   */
+  async killTerminal(sessionId: string, taskId: string, terminalId: string, reason = "", commandId?: Uint8Array): Promise<TerminalKilled> {
+    const payload = toBinary(KillTerminalSchema, create(KillTerminalSchema, { taskId: { value: unhex(taskId) }, sessionId: terminalId, reason }));
+    const ack = await this.command("KillTerminal", payload, commandId, this.leases.get(sessionId));
+    return fromBinary(TerminalKilledSchema, ack.result);
   }
 
   subscribe(sessionId: string, afterOffset: bigint): void {

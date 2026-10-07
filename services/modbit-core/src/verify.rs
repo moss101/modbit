@@ -91,6 +91,53 @@ impl KernelGate {
     }
 }
 
+/// What the Capability Kernel says of an effect a person asked for.
+pub(crate) enum UserEffect {
+    /// Allowed under this rule.
+    Allowed(String),
+    /// The policy asked for an approval and the person's own command, made
+    /// under the session lease, stands for it.
+    ApprovedByCommand(String),
+    /// Never: the kernel's code and reason.
+    Denied(String, String),
+}
+
+impl KernelGate {
+    /// The kernel's decision for an effect a PERSON asked the Core to carry
+    /// out on the task's behalf (`KillTerminal`): decided as the same tool
+    /// call the agent would make — `shell.exec`, a reversible write — under
+    /// the task's lease, profile, mode and configuration. A denial is final.
+    /// An approval the policy would ask a person for is the person's own
+    /// command, so it needs no second one.
+    pub(crate) fn decide_user_effect(&self, tool_name: &str, intent: &str) -> UserEffect {
+        use sha2::Digest;
+        let intent_hash = hex::encode(sha2::Sha256::digest(intent.as_bytes()));
+        let required = vec!["shell.exec".to_owned()];
+        match modbit_policy::CapabilityKernel::default().decide(&modbit_policy::KernelRequest {
+            tool_name,
+            effect_class: modbit_domain::toolcall::EffectClass::ReversibleWrite,
+            required_capabilities: &required,
+            execution_profile: &self.execution_profile,
+            mode: self.mode,
+            lease: self.lease.as_ref(),
+            targets: &[],
+            approval: None,
+            intent_hash: &intent_hash,
+            config: Some(&self.config),
+            emergency_stopped: self.emergency_stopped,
+            now: modbit_domain::Timestamp::now(),
+        }) {
+            modbit_policy::KernelDecision::Allow { rule, .. } => UserEffect::Allowed(rule),
+            modbit_policy::KernelDecision::Deny { code, reason } => {
+                UserEffect::Denied(code, reason)
+            }
+            modbit_policy::KernelDecision::ApprovalRequired { reason, .. } => {
+                UserEffect::ApprovedByCommand(reason)
+            }
+        }
+    }
+}
+
 impl CommandRunner for BrokerRunner {
     fn authorize<'a>(
         &'a self,

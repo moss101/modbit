@@ -521,6 +521,52 @@ fn fold(store: &EventStore, task: &Task, until: u64) -> Result<Folded, Refusal> 
                     }
                 }
             }
+            // ---- a background terminal ended (REQ-PX-043): the end the Core
+            // recorded, who ended it and why. A kill is `STOPPED`; it is a
+            // row of its own, never a message in the conversation.
+            "BackgroundProcessEnded" => {
+                let handle = p["handle_id"].as_str().unwrap_or_default().to_owned();
+                let how = p["how"].as_str().unwrap_or("EXITED");
+                let status = match how {
+                    "KILLED" => "STOPPED",
+                    "LOST" => "LOST",
+                    _ => "EXITED",
+                };
+                let by = p["ended_by"].as_str().unwrap_or_default();
+                let reason = p["reason"].as_str().unwrap_or_default();
+                let mut r = row(
+                    format!("terminal:{handle}"),
+                    wire::TranscriptRowKind::ToolCard,
+                    e,
+                    turn.clone().or_else(|| open_turn.clone()),
+                );
+                hints(&mut r).status = status.into();
+                hints(&mut r).short_text = format!(
+                    "terminal {} {}{}",
+                    &handle[..handle.len().min(8)],
+                    status.to_lowercase(),
+                    if by.is_empty() {
+                        String::new()
+                    } else {
+                        format!(" by {by}")
+                    }
+                );
+                r.text = if reason.is_empty() {
+                    hints(&mut r).short_text.clone()
+                } else {
+                    format!("{}: {}", hints(&mut r).short_text, bounded(reason, 256).0)
+                };
+                r.facts = Some(Facts::Tool(wire::ToolFacts {
+                    tool_call_id: String::new(),
+                    tool_name: "shell.background".into(),
+                    tool_class: "SHELL".into(),
+                    effect_class: String::new(),
+                    state: status.into(),
+                    result_ref: p["output_ref"].as_str().unwrap_or_default().into(),
+                    ..Default::default()
+                }));
+                atoms.push(r);
+            }
             // ---- turns
             "TurnPrepared" => {
                 let t = turn.clone().unwrap_or_default();

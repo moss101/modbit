@@ -317,6 +317,9 @@ pub async fn run_as(
     std::io::stdout().flush().ok();
     let ready_path = data_dir.join("core.ready");
     write_owner_only(&ready_path, format!("{ready_line}\n").as_bytes());
+    // PX-043: background processes that end are recorded on their task's log
+    // by the Core noticing, so the agent can be told once.
+    crate::background_process::spawn_watcher(Arc::clone(&core));
     let shutdown = shutdown_signal();
     tokio::pin!(shutdown);
     // Idle exit (headless clients): a Core spawned by a CLI stays up for later
@@ -1111,6 +1114,10 @@ async fn serve_frames(
                     _ if env.command_type == "WriteTerminal" => {
                         crate::terminal_stream::write_terminal(core, env, terms).await
                     }
+                    // PX-043: stopping a task's background terminal.
+                    _ if env.command_type == "KillTerminal" => {
+                        crate::background_process::kill_terminal(core, env).await
+                    }
                     _ => handle_command(core, env).await,
                 };
                 // REQ-EV-0017: a rejection is error text on its way to a
@@ -1353,7 +1360,9 @@ fn required_client_capability(env: &CommandEnvelope) -> Option<&'static str> {
                 "events.subscribe"
             }
         }
-        "SetTerminalInput" | "ResizeTerminal" | "WriteTerminal" => "session.control",
+        "SetTerminalInput" | "ResizeTerminal" | "WriteTerminal" | "KillTerminal" => {
+            "session.control"
+        }
         "BrowserViewInput" => "session.control",
         "ImportMirroredEvents" | "ReadMirrorEvents" => "session.mirror",
         "IngestAttachment" | "AttachContextDocument" => "attachments.ingest",

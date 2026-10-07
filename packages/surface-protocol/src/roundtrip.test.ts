@@ -34,11 +34,12 @@ import { file_modbit_v1_checkpoints } from "./gen/modbit/v1/checkpoints_pb.js";
 import { file_modbit_v1_skills_budgets } from "./gen/modbit/v1/skills_budgets_pb.js";
 import { file_modbit_v1_context_knowledge } from "./gen/modbit/v1/context_knowledge_pb.js";
 import { file_modbit_v1_conversation_search } from "./gen/modbit/v1/conversation_search_pb.js";
+import { file_modbit_v1_terminal_control } from "./gen/modbit/v1/terminal_control_pb.js";
 
 const here = dirname(fileURLToPath(import.meta.url));
 const fixtures = join(here, "../../../tests/fixtures/protocol/v1");
 const messagesByType = new Map<string, DescMessage>(
-  [file_modbit_v1_domain, file_modbit_v1_envelope, file_modbit_v1_tool, file_modbit_v1_output_ref, file_modbit_v1_negotiation, file_modbit_v1_surface, file_modbit_v1_stream, file_modbit_v1_terminal, file_modbit_v1_tasking, file_modbit_v1_checkpoints, file_modbit_v1_skills_budgets, file_modbit_v1_context_knowledge, file_modbit_v1_conversation_search]
+  [file_modbit_v1_domain, file_modbit_v1_envelope, file_modbit_v1_tool, file_modbit_v1_output_ref, file_modbit_v1_negotiation, file_modbit_v1_surface, file_modbit_v1_stream, file_modbit_v1_terminal, file_modbit_v1_tasking, file_modbit_v1_checkpoints, file_modbit_v1_skills_budgets, file_modbit_v1_context_knowledge, file_modbit_v1_conversation_search, file_modbit_v1_terminal_control]
     .flatMap((f) => f.messages)
     .map((m) => [m.typeName, m]),
 );
