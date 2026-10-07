@@ -45935,10 +45935,9 @@ async fn fix_05_a_corrupt_configuration_file_refuses_the_task_start_and_names_th
     let said = format!("{:?}", c.command(start(&bad, 0xF6)).await.unwrap_err());
     assert!(said.contains("CONFIG_UNREADABLE"), "{said}");
     assert!(said.contains("project"), "{said}");
-    assert!(
-        said.contains(&*project.to_string_lossy()) || said.contains(".modbit/config.json"),
-        "{said}"
-    );
+    // The message is `Debug`-formatted here, which doubles a Windows path's
+    // backslashes, so the file is recognised by its name.
+    assert!(said.contains("config.json"), "{said}");
     let ok = di_9_task(
         &mut c,
         &session,
