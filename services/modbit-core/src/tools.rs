@@ -3074,31 +3074,83 @@ fn read_selectors_of(lease: Option<&CapabilityLease>, workspace_root: Option<&st
     if covers_root { vec![] } else { sels }
 }
 
-/// Drop from `v` every element of an array that is an object naming a
-/// `path` the selectors do not cover (REQ-PX-116): a child whose lease reads
-/// only part of the worktree is not shown the rest by a search.
-fn scope_results(v: &mut serde_json::Value, root: &str, selectors: &[String]) {
-    let inside = |path: &str| {
-        let resource = format!(
-            "{}/{}",
-            root.trim_end_matches('/'),
-            path.trim_start_matches("./")
-        );
-        selectors.iter().any(|s| {
-            modbit_policy::kernel::ResourceSelector::parse(s)
-                .is_some_and(|sel| sel.covers(&resource))
+/// Whether a root-relative path lies inside the `fs.read` selectors of a
+/// lease that reads less than the worktree (REQ-PX-116).
+fn in_read_scope(root: &str, selectors: &[String], path: &str) -> bool {
+    let resource = format!(
+        "{}/{}",
+        root.trim_end_matches('/'),
+        path.trim_start_matches("./")
+    );
+    selectors.iter().any(|s| {
+        modbit_policy::kernel::ResourceSelector::parse(s).is_some_and(|sel| sel.covers(&resource))
+    })
+}
+
+/// Keys whose string value names a workspace path in a search answer.
+const PATH_KEYS: &[&str] = &["path", "from_path", "to_path"];
+/// Keys whose array holds bare path strings.
+const PATH_LIST_KEYS: &[&str] = &["covers", "tests", "changed", "paths", "stale_paths"];
+/// Keys whose array holds `[path, count]` pairs (the evidence graph).
+const PATH_PAIR_KEYS: &[&str] = &["imports", "importers", "cochange"];
+
+/// Whether an answer object names a path the selectors do not cover: one of
+/// its own path keys, or a step of the edge path that put it in an impact
+/// result (a dependent reached only through a file the child may not read
+/// would show that file's place in the graph).
+fn names_outside(
+    obj: &serde_json::Map<String, serde_json::Value>,
+    inside: &dyn Fn(&str) -> bool,
+) -> bool {
+    let named_outside = |o: &serde_json::Map<String, serde_json::Value>, keys: &[&str]| {
+        keys.iter().any(|k| {
+            o.get(*k)
+                .and_then(|p| p.as_str())
+                .is_some_and(|p| !inside(p))
         })
     };
+    if named_outside(obj, PATH_KEYS) {
+        return true;
+    }
+    obj.get("edge_path")
+        .and_then(|e| e.as_array())
+        .is_some_and(|steps| {
+            steps.iter().any(|st| {
+                st.as_object()
+                    .is_some_and(|o| named_outside(o, &["from", "to"]))
+            })
+        })
+}
+
+/// Drop from `v` everything that names a path the selectors do not cover
+/// (REQ-PX-116): an object in an array with a path key outside them, a bare
+/// path in a path list, a `[path, n]` pair, an impact dependent whose edge
+/// path runs through such a file. A child whose lease reads only part of the
+/// worktree is not shown the rest by a search, indexed or scanned, a graph
+/// query or an impact selection.
+fn scope_results(v: &mut serde_json::Value, root: &str, selectors: &[String]) {
+    let inside = |path: &str| in_read_scope(root, selectors, path);
+    scope_value(v, "", &inside);
+}
+
+fn scope_value(v: &mut serde_json::Value, key: &str, inside: &dyn Fn(&str) -> bool) {
     match v {
         serde_json::Value::Array(items) => {
-            items.retain(|e| e.get("path").and_then(|p| p.as_str()).is_none_or(&inside));
+            items.retain(|e| match e {
+                serde_json::Value::Object(o) => !names_outside(o, inside),
+                serde_json::Value::String(p) if PATH_LIST_KEYS.contains(&key) => inside(p),
+                serde_json::Value::Array(pair) if PATH_PAIR_KEYS.contains(&key) => {
+                    pair.first().and_then(|p| p.as_str()).is_none_or(inside)
+                }
+                _ => true,
+            });
             for e in items.iter_mut() {
-                scope_results(e, root, selectors);
+                scope_value(e, key, inside);
             }
         }
         serde_json::Value::Object(map) => {
-            for e in map.values_mut() {
-                scope_results(e, root, selectors);
+            for (k, e) in map.iter_mut() {
+                scope_value(e, k, inside);
             }
         }
         _ => {}
@@ -3677,6 +3729,16 @@ impl IndexPort {
                         rehydrated,
                         signatures: signatures_of(&h.path),
                         source_ref: String::new(),
+                    });
+                }
+                // REQ-PX-116: a child that reads part of the worktree is packed
+                // only from that part. The pack is also what the ledger keeps
+                // and what the next prompt carries, so the cut is made here,
+                // before anything is recorded, not on the answer afterwards.
+                if !self.read_selectors.is_empty() {
+                    cands.retain(|c| {
+                        !c.source_ref.is_empty()
+                            || in_read_scope(&self.scope_root, &self.read_selectors, &c.path)
                     });
                 }
                 let fingerprint = format!("{}|{}", query, plan.ended_at as u8);
