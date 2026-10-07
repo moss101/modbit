@@ -203,6 +203,8 @@ fn model(name: &str, tools: bool) -> ModelCapability {
         request_timeout_ms: 0,
         default_reasoning_effort: None,
         default_service_tier: None,
+        projection_mode: None,
+        max_projection_bytes: 0,
     }
 }
 

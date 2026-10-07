@@ -333,6 +333,36 @@ pub(crate) async fn handle_spawn(
             failure_code: Some("MODE_POSTURE".into()),
         };
     }
+    // PX-117: before a child is admitted, `subagent_start` hooks may refuse
+    // it (they cannot admit one: admission is the Core's transaction).
+    let (hooks, _) =
+        crate::hooks::scope(core, task, Some(run_id), None, Some(generation), actor).await;
+    if let Some((code, reason)) = hooks
+        .fire(
+            modbit_tools::hooks::HookPoint::SubagentStart,
+            None,
+            serde_json::json!({
+                "idempotency_key": key,
+                "objective": spec.objective.chars().take(500).collect::<String>(),
+                "write_scope": spec.write_scope,
+                "mode": v["mode"].as_str().unwrap_or("BACKGROUND"),
+            }),
+        )
+        .await
+        .denied
+    {
+        return Handled {
+            entry: entry(
+                call_id,
+                SPAWN_TOOL,
+                format!(
+                    "status: REFUSED\nerror_code: {code}\nerror: {reason}\nnothing was admitted"
+                ),
+                false,
+            ),
+            failure_code: Some(code),
+        };
+    }
     let mode = match v["mode"].as_str().unwrap_or("BACKGROUND") {
         "FOREGROUND" => SpawnMode::Foreground,
         _ => SpawnMode::Background,
@@ -582,6 +612,30 @@ pub(crate) async fn handle_wait(
     };
     let text = wait_for(core, task, agent_id, timeout_ms).await;
     let done = text.starts_with("status: SUCCESS");
+    // PX-117: the parent collected a child's result: `subagent_stop` hooks
+    // observe it (the envelope itself stays untrusted data).
+    if done {
+        let (hooks, _) = crate::hooks::scope(
+            core,
+            task,
+            None,
+            None,
+            None,
+            &Actor::Agent(format!("solver:{}", task.task_id)),
+        )
+        .await;
+        let _ = hooks
+            .fire(
+                modbit_tools::hooks::HookPoint::SubagentStop,
+                None,
+                serde_json::json!({
+                    "agent_id": agent_id.to_string(),
+                    "status": "SUCCESS",
+                    "result_bytes": text.len(),
+                }),
+            )
+            .await;
+    }
     Handled {
         entry: entry(
             call_id,

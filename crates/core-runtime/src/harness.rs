@@ -104,6 +104,21 @@ pub struct HarnessState {
     /// the next turn on; REQ-EV-0134).
     #[serde(default)]
     pub activated_tools: Vec<String>,
+    /// PX-114: the projection mode a person set for this task
+    /// (`ToolProjectionConfigured`); `None` = the model's or the Core's.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub projection_mode: Option<String>,
+    /// PX-114: the schema-bytes budget a person set for this task.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub projection_max_bytes: Option<u64>,
+    /// PX-114: this round projects `exec_only` (a runtime flag, never
+    /// carried to the model or the log).
+    #[serde(skip)]
+    pub exec_only: bool,
+    /// PX-114: the model asked for delegation through the tool search; the
+    /// `agent.*` family is offered for the next round only.
+    #[serde(skip)]
+    pub delegation_offered: bool,
     /// Repair policy (docs/28 §5).
     #[serde(default)]
     pub repair_policy: RepairPolicy,

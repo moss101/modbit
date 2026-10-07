@@ -61,6 +61,16 @@ pub struct ModelCapability {
     /// says otherwise. `None` = the provider's own default.
     #[serde(default)]
     pub default_service_tier: Option<String>,
+    /// How a request to this model projects the tool surface (PX-114):
+    /// `direct` or `exec_only`. `None` = the Core's default. A small model
+    /// that follows a few schemas better than thirty is the case for
+    /// `exec_only`; the paired trial decides whether any model earns it.
+    #[serde(default)]
+    pub projection_mode: Option<String>,
+    /// The most bytes of tool schemas one request to this model may carry
+    /// (PX-114); 0 = the Core's default budget.
+    #[serde(default)]
+    pub max_projection_bytes: u32,
 }
 
 /// The output budget a request asks for when the catalog entry names none:
@@ -1411,7 +1421,10 @@ pub fn endpoints_from(lookup: impl Fn(&str) -> Option<String>) -> Vec<Endpoint> 
 /// for, default [`DEFAULT_OUTPUT_BUDGET_TOKENS`], never above `out`),
 /// `timeout` (whole-request milliseconds, default derived from the budget),
 /// `effort` (`low`|`medium`|`high`, only with `reasoning=true`) and `tier`
-/// (the service tier a request carries). Example:
+/// (the service tier a request carries), `projection` (`direct` |
+/// `exec_only` | `typed`, how the model's tool surface is projected, PX-114) and
+/// `schema_bytes` (the most tool-schema bytes one request may carry).
+/// Example:
 /// `glm-5.3-flash=0.15/0.50;ctx=200000;out=131072;budget=32768`.
 pub fn parse_models_spec(spec: &str) -> Result<Vec<ModelCapability>, String> {
     let mut out = Vec::new();
@@ -1440,6 +1453,7 @@ pub fn parse_models_spec(spec: &str) -> Result<Vec<ModelCapability>, String> {
             (128_000u32, 16_384u32, false, false);
         let (mut budget, mut timeout) = (0u32, 0u64);
         let (mut effort, mut tier): (Option<String>, Option<String>) = (None, None);
+        let (mut projection, mut schema_bytes): (Option<String>, u32) = (None, 0);
         for field in fields.filter(|f| !f.is_empty()) {
             let (k, v) = field
                 .split_once('=')
@@ -1488,9 +1502,22 @@ pub fn parse_models_spec(spec: &str) -> Result<Vec<ModelCapability>, String> {
                     }
                     tier = Some(v.to_owned());
                 }
+                "projection" => {
+                    if !matches!(v, "direct" | "exec_only" | "typed") {
+                        return Err(format!(
+                            "{entry:?}: projection {v:?} is not direct/exec_only/typed"
+                        ));
+                    }
+                    projection = Some(v.to_owned());
+                }
+                "schema_bytes" => {
+                    schema_bytes = v
+                        .parse()
+                        .map_err(|_| format!("{entry:?}: schema_bytes {v:?} is not a byte count"))?
+                }
                 other => {
                     return Err(format!(
-                        "{entry:?}: unknown key {other:?} (ctx, out, vision, reasoning, budget, timeout, effort, tier)"
+                        "{entry:?}: unknown key {other:?} (ctx, out, vision, reasoning, budget, timeout, effort, tier, projection, schema_bytes)"
                     ));
                 }
             }
@@ -1516,6 +1543,8 @@ pub fn parse_models_spec(spec: &str) -> Result<Vec<ModelCapability>, String> {
         entry_cap.request_timeout_ms = timeout;
         entry_cap.default_reasoning_effort = effort;
         entry_cap.default_service_tier = tier;
+        entry_cap.projection_mode = projection;
+        entry_cap.max_projection_bytes = schema_bytes;
         out.push(entry_cap);
     }
     if out.is_empty() {
@@ -1554,6 +1583,8 @@ fn cap(
         request_timeout_ms: 0,
         default_reasoning_effort: None,
         default_service_tier: None,
+        projection_mode: None,
+        max_projection_bytes: 0,
     }
 }
 

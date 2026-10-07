@@ -173,6 +173,8 @@ fn gateway(server: &Server, max_concurrency: u32, max_retries: u32) -> ProviderG
             request_timeout_ms: 0,
             default_reasoning_effort: None,
             default_service_tier: None,
+            projection_mode: None,
+            max_projection_bytes: 0,
         }],
         max_retries,
         auth: AuthScheme::Native,

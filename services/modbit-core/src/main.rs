@@ -71,6 +71,7 @@ mod stream;
 mod subagent;
 mod tasking;
 mod terminal_stream;
+mod tool_projection;
 mod tools;
 mod transcript;
 mod undo;

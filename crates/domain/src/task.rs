@@ -1002,6 +1002,17 @@ pub enum TaskEvent {
         /// Tool names activated.
         tools: Vec<String>,
     },
+    /// `ToolProjectionConfigured` (PX-114): the task's tool projection mode
+    /// and schema-bytes budget were set, by a person's command. It changes
+    /// what the model is shown from the next round on, never what it may do
+    /// (the Capability Kernel decides every call). No state change.
+    ToolProjectionConfigured {
+        /// `direct` or `exec_only`; empty keeps the model's or the Core's.
+        mode: String,
+        /// The most bytes of tool schemas one request may carry; 0 keeps
+        /// the model's or the Core's budget.
+        max_projection_bytes: u64,
+    },
     /// `ProgramStarted` (docs/16 "Procedural Tool Runtime", M5.4): a
     /// `proc.exec` program began in the isolate with the bindings and budget
     /// named; every binding call is its own tool call on the log. No state
@@ -2303,6 +2314,22 @@ pub enum TaskEvent {
         arguments_hash: Option<String>,
         /// Object holding the rewritten arguments, when a rewrite was used.
         arguments_ref: Option<String>,
+        /// PX-117: what became of the context the handler offered: empty
+        /// when none, `INJECTED`, or `DROPPED:<REASON>`.
+        #[serde(default)]
+        context_status: String,
+        /// PX-117: bytes of context offered.
+        #[serde(default)]
+        context_bytes: u64,
+        /// PX-117: `endpoint/model` a prompt hook ran on.
+        #[serde(default)]
+        model: Option<String>,
+        /// PX-117: prompt tokens a prompt hook spent.
+        #[serde(default)]
+        input_tokens: u64,
+        /// PX-117: completion tokens a prompt hook spent.
+        #[serde(default)]
+        output_tokens: u64,
     },
 }
 
@@ -2433,6 +2460,7 @@ impl TaskEvent {
             Self::SelectionRecorded { .. } => "SelectionRecorded",
             Self::SelfReviewRecorded { .. } => "SelfReviewRecorded",
             Self::ToolsActivated { .. } => "ToolsActivated",
+            Self::ToolProjectionConfigured { .. } => "ToolProjectionConfigured",
             Self::ProgramStarted { .. } => "ProgramStarted",
             Self::ProgramEnded { .. } => "ProgramEnded",
             Self::SkillSelected { .. } => "SkillSelected",
@@ -2622,6 +2650,7 @@ impl Task {
             | TaskEvent::TaskHandoffAdmitted { .. }
             | TaskEvent::SelfReviewRecorded { .. }
             | TaskEvent::ToolsActivated { .. }
+            | TaskEvent::ToolProjectionConfigured { .. }
             | TaskEvent::ProgramStarted { .. }
             | TaskEvent::ProgramEnded { .. }
             | TaskEvent::SkillSelected { .. }

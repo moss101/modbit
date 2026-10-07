@@ -329,6 +329,8 @@ fn replay_endpoint(kind: ProviderKind, fixture: &Value, base_url: &str) -> Endpo
             request_timeout_ms: 0,
             default_reasoning_effort: None,
             default_service_tier: None,
+            projection_mode: None,
+            max_projection_bytes: 0,
         }],
         max_retries: 0,
         auth: if p["auth"] == "bearer" {
