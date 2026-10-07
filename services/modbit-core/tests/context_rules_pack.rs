@@ -458,21 +458,26 @@ fn is_summarizer(body: &Value) -> bool {
     })
 }
 
-/// The run's turn number as the Core states it in the volatile tail.
+/// The run's turn number as the Core states it in the volatile tail: the
+/// top-level `turns` of the `harness_state` JSON (other objects in the state,
+/// such as `children_held`, have a `turns` of their own).
 fn turn_of(body: &Value) -> usize {
     let last = body["messages"]
         .as_array()
         .and_then(|m| m.last())
         .and_then(|m| m["content"].as_str())
         .unwrap_or_default();
-    let Some(at) = last.find("\"turns\":") else {
+    let Some(at) = last.find("harness_state:\n") else {
         return 0;
     };
-    last[at + 8..]
-        .chars()
-        .take_while(char::is_ascii_digit)
-        .collect::<String>()
-        .parse()
+    let json = last[at + "harness_state:\n".len()..]
+        .lines()
+        .next()
+        .unwrap_or_default();
+    serde_json::from_str::<Value>(json)
+        .ok()
+        .and_then(|v| v["turns"].as_u64())
+        .and_then(|t| usize::try_from(t).ok())
         .unwrap_or(0)
 }
 
