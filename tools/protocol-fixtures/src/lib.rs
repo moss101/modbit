@@ -1,3 +1,4 @@
+#![recursion_limit = "256"]
 //! Shared sample messages for the Rust <-> TypeScript protocol round trip.
 //!
 //! Each sample is one message with deterministic contents, its canonical
@@ -239,6 +240,17 @@ pub fn samples() -> Vec<Sample> {
                     reason: "before the fork".into(),
                     created_at_ms: 1_700_000_000_000,
                     committed_at_ms: 1_700_000_000_500,
+                    name: "before the refactor".into(),
+                    turn_id: id(0x14),
+                    turn_ordinal: 2,
+                    retention: vec!["NAMED".into(), "FORK_PARENT".into()],
+                    cost: Some(CaptureCost {
+                        capture_ms: 12,
+                        hashed_files: 1,
+                        cache_hits: 40,
+                        blobs_written: 1,
+                        bytes_written: 9_007_199_254_740_993, // > 2^53: 64-bit in TypeScript
+                    }),
                 }],
                 restores: vec![RestoreView {
                     checkpoint_id: "01a09072-1262-70f2-b103-63d3e8f0feda".into(),
@@ -247,6 +259,8 @@ pub fn samples() -> Vec<Sample> {
                     files_written: 1,
                     files_reverted: 1,
                     preconditions_checked: 2,
+                    pre_restore_checkpoint_id: "01a09072-1262-70f2-b103-63d3e8f0fedb".into(),
+                    redo: false,
                 }],
             },
             SessionTreeNode {
@@ -495,12 +509,20 @@ pub fn samples() -> Vec<Sample> {
                             "integrityHash": "b".repeat(64), "gitHead": "c".repeat(40),
                             "files": 1, "removed": 0, "eventOffset": "120",
                             "indexGeneration": "2", "reason": "before the fork",
-                            "createdAtMs": "1700000000000", "committedAtMs": "1700000000500"
+                            "createdAtMs": "1700000000000", "committedAtMs": "1700000000500",
+                            "name": "before the refactor", "turnId": idhex(0x14), "turnOrdinal": 2,
+                            "retention": ["NAMED", "FORK_PARENT"],
+                            "cost": {
+                                "captureMs": "12", "hashedFiles": 1, "cacheHits": 40,
+                                "blobsWritten": 1, "bytesWritten": "9007199254740993"
+                            }
                         }],
                         "restores": [{
                             "checkpointId": "01a09072-1262-70f2-b103-63d3e8f0feda", "epoch": 1,
                             "offset": "140", "filesWritten": 1, "filesReverted": 1,
-                            "preconditionsChecked": 2
+                            "preconditionsChecked": 2,
+                            "preRestoreCheckpointId": "01a09072-1262-70f2-b103-63d3e8f0fedb",
+                            "redo": false
                         }]
                     },
                     {

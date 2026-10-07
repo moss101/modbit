@@ -924,6 +924,47 @@ impl EventStore {
         crate::projections::load_checkpoints(&self.conn, task)
     }
 
+    /// Every committed, not collected checkpoint of every task, by task and
+    /// epoch (what the retention collector must keep blobs for, REQ-PX-102).
+    pub fn all_live_checkpoints(&self) -> Result<Vec<(TaskId, crate::projections::CheckpointRow)>> {
+        crate::projections::load_all_live_checkpoints(&self.conn)
+    }
+
+    /// The tasks of one session, oldest first.
+    pub fn tasks_for_session(&self, id: &SessionId) -> Result<Vec<modbit_domain::task::Task>> {
+        crate::projections::load_tasks_for_session(&self.conn, id)
+    }
+
+    /// Events of one aggregate with `sequence > after` whose type is one of
+    /// `types`, ascending. The ledgers derived from a task's log (the
+    /// checkpoint ledger of REQ-PX-061) read only their own event types.
+    pub fn read_aggregate_of_types(
+        &self,
+        aggregate_id: &[u8; 16],
+        types: &[&str],
+        after: u64,
+    ) -> Result<Vec<StoredEvent>> {
+        if types.is_empty() {
+            return Ok(Vec::new());
+        }
+        let marks = vec!["?"; types.len()].join(",");
+        let sql = format!(
+            "SELECT {COLUMNS} FROM events WHERE aggregate_id = ? AND sequence > ? AND event_type IN ({marks}) ORDER BY sequence ASC"
+        );
+        let mut stmt = self.conn.prepare(&sql)?;
+        let mut args: Vec<rusqlite::types::Value> = vec![
+            rusqlite::types::Value::Blob(aggregate_id.to_vec()),
+            rusqlite::types::Value::Integer(after as i64),
+        ];
+        args.extend(
+            types
+                .iter()
+                .map(|t| rusqlite::types::Value::Text((*t).to_owned())),
+        );
+        let rows = stmt.query_map(rusqlite::params_from_iter(args), row_to_event)?;
+        rows.map(|r| r.map_err(Error::from)).collect()
+    }
+
     /// The agent nodes of a task (docs/31 `agent_nodes`, M6.1), in creation order.
     pub fn agent_nodes(&self, task: &TaskId) -> Result<Vec<crate::projections::AgentNodeRow>> {
         crate::projections::load_agent_nodes(&self.conn, task)
@@ -1201,6 +1242,46 @@ impl EventStore {
             ],
             row_to_event,
         )?;
+        rows.map(|r| r.map_err(Error::from)).collect()
+    }
+
+    /// Events of one session with `offset > after_offset` whose type is one
+    /// of `types`, ascending by offset (the fork edges of a session, the
+    /// retention collector's view of what still names a checkpoint).
+    pub fn read_session_of_types(
+        &self,
+        session_id: &SessionId,
+        types: &[&str],
+        after_offset: u64,
+    ) -> Result<Vec<StoredEvent>> {
+        if types.is_empty() {
+            return Ok(Vec::new());
+        }
+        let marks = vec!["?"; types.len()].join(",");
+        let sql = format!(
+            "SELECT {COLUMNS} FROM events WHERE session_id = ? AND offset > ? AND event_type IN ({marks}) ORDER BY offset ASC"
+        );
+        let mut stmt = self.conn.prepare(&sql)?;
+        let mut args: Vec<rusqlite::types::Value> = vec![
+            rusqlite::types::Value::Blob(session_id.as_bytes().to_vec()),
+            rusqlite::types::Value::Integer(after_offset as i64),
+        ];
+        args.extend(
+            types
+                .iter()
+                .map(|t| rusqlite::types::Value::Text((*t).to_owned())),
+        );
+        let rows = stmt.query_map(rusqlite::params_from_iter(args), row_to_event)?;
+        rows.map(|r| r.map_err(Error::from)).collect()
+    }
+
+    /// Up to `limit` events of every session with `offset > after_offset`,
+    /// ascending (a whole-log pass: the collector's reachability mark).
+    pub fn read_all_after(&self, after_offset: u64, limit: usize) -> Result<Vec<StoredEvent>> {
+        let mut stmt = self.conn.prepare_cached(&format!(
+            "SELECT {COLUMNS} FROM events WHERE offset > ?1 ORDER BY offset ASC LIMIT ?2"
+        ))?;
+        let rows = stmt.query_map(params![after_offset as i64, limit as i64], row_to_event)?;
         rows.map(|r| r.map_err(Error::from)).collect()
     }
 

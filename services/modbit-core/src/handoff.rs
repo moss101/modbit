@@ -44,7 +44,7 @@ fn hex64(s: &str) -> bool {
 }
 
 /// Every 64-hex token in a JSON value.
-fn hashes_in(v: &Value, out: &mut BTreeSet<String>) {
+pub(crate) fn hashes_in(v: &Value, out: &mut BTreeSet<String>) {
     match v {
         Value::String(s) => {
             if hex64(s) {
@@ -58,7 +58,7 @@ fn hashes_in(v: &Value, out: &mut BTreeSet<String>) {
 }
 
 /// Every 64-hex token in text (an object that is JSON or text).
-fn hashes_in_bytes(bytes: &[u8], out: &mut BTreeSet<String>) {
+pub(crate) fn hashes_in_bytes(bytes: &[u8], out: &mut BTreeSet<String>) {
     if let Ok(v) = serde_json::from_slice::<Value>(bytes) {
         hashes_in(&v, out);
         return;

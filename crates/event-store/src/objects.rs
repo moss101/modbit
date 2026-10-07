@@ -56,6 +56,59 @@ impl ObjectStore {
         Ok(hash)
     }
 
+    /// Remove an object; the bytes it held, or `None` when it was not there.
+    /// Only a store whose every reference is accounted for may call this
+    /// (the checkpoint blob store, REQ-PX-102): the Core's main store is
+    /// referenced from the log and is never collected.
+    pub fn remove(&self, hash: &str) -> Result<Option<u64>> {
+        if hash.len() < 3 {
+            return Ok(None);
+        }
+        let path = self.path_for(hash);
+        match fs::metadata(&path) {
+            Ok(m) => {
+                let len = m.len();
+                fs::remove_file(&path)?;
+                Ok(Some(len))
+            }
+            Err(e) if e.kind() == std::io::ErrorKind::NotFound => Ok(None),
+            Err(e) => Err(e.into()),
+        }
+    }
+
+    /// Every object: its hash, its size, and when it was last written.
+    pub fn list(&self) -> Result<Vec<(String, u64, std::time::SystemTime)>> {
+        let mut out = Vec::new();
+        let Ok(top) = fs::read_dir(&self.root) else {
+            return Ok(out);
+        };
+        for dir in top.flatten() {
+            let prefix = dir.file_name().to_string_lossy().into_owned();
+            if prefix.len() != 2 || !dir.path().is_dir() {
+                continue;
+            }
+            let Ok(inner) = fs::read_dir(dir.path()) else {
+                continue;
+            };
+            for f in inner.flatten() {
+                let name = f.file_name().to_string_lossy().into_owned();
+                // Temporary files of a put in flight never name an object.
+                if name.contains('.') || name.len() != 62 {
+                    continue;
+                }
+                let Ok(meta) = f.metadata() else { continue };
+                if meta.is_file() {
+                    out.push((
+                        format!("{prefix}{name}"),
+                        meta.len(),
+                        meta.modified().unwrap_or(std::time::UNIX_EPOCH),
+                    ));
+                }
+            }
+        }
+        Ok(out)
+    }
+
     /// Read and verify an object.
     pub fn get(&self, hash: &str) -> Result<Vec<u8>> {
         let path = self.path_for(hash);

@@ -27,6 +27,10 @@ pub enum WaitReason {
     External,
     /// Waiting on a model provider.
     Provider,
+    /// Paused by a person at a turn boundary (REQ-PX-101, `PauseTask`): the
+    /// run is suspended with its worktree and checkpoint held, and nothing
+    /// resumes it but a `ResumeTask`. Not a fault: no attention is raised.
+    Paused,
 }
 
 /// Where a task came from (docs/30 `origin` on `CreateTask`).
@@ -255,6 +259,33 @@ pub enum TaskEvent {
     TaskResumeRequested {
         /// Who asked.
         requested_by: String,
+    },
+    /// `TaskPaused` (REQ-PX-101): the run parked at a turn boundary because
+    /// a person asked (`PauseTask`). Recorded with `TaskWaiting { Paused }`
+    /// in one transaction; the typed record of why, who and where. No state
+    /// change of its own.
+    TaskPaused {
+        /// Why, in the requester's words (may be empty).
+        reason: String,
+        /// Who asked (`Actor` label).
+        paused_by: String,
+        /// The `PauseTask` command that asked (UUID text).
+        command_id: String,
+        /// The checkpoint the pause holds (the latest committed one), when
+        /// the task has any.
+        checkpoint_id: String,
+        /// Where the run stopped: `TURN_BOUNDARY`.
+        boundary: String,
+        /// The run's budgets, so the resume continues under them unless the
+        /// resumer names others.
+        #[serde(default)]
+        max_turns: u32,
+        /// Tool-call budget.
+        #[serde(default)]
+        max_tool_calls: u32,
+        /// Consecutive turns without progress allowed.
+        #[serde(default)]
+        max_no_progress_turns: u32,
     },
     /// `TaskCancelRequested` (M8.1, docs/30 `:cancel`): the person asked
     /// the execution owner to cancel at its next safe boundary; no state
@@ -1671,6 +1702,29 @@ pub enum TaskEvent {
         event_offset: u64,
         /// Retrieval index generation captured.
         index_generation: u64,
+        /// The turn whose boundary this checkpoint is (UUID text); empty
+        /// for a checkpoint not taken at a turn boundary (REQ-PX-061).
+        #[serde(default)]
+        turn_id: String,
+        /// That turn's ordinal in its run (1-based); 0 when not a turn's.
+        #[serde(default)]
+        turn_ordinal: u32,
+        /// What the capture cost: wall-clock milliseconds.
+        #[serde(default)]
+        capture_ms: u64,
+        /// Dirty files the capture read and hashed.
+        #[serde(default)]
+        hashed_files: u32,
+        /// Dirty files whose content was known from an earlier capture
+        /// (size and mtime unchanged, not racy) and never read.
+        #[serde(default)]
+        cache_hits: u32,
+        /// Content blobs the capture wrote (new content only).
+        #[serde(default)]
+        blobs_written: u32,
+        /// Bytes those blobs hold.
+        #[serde(default)]
+        bytes_written: u64,
     },
     /// `CheckpointRejectedStale` (docs/19: a stale epoch can never overwrite
     /// newer checkpoint state; docs/54 fault 9). No state change.
@@ -1707,6 +1761,108 @@ pub enum TaskEvent {
         /// the caller last saw.
         #[serde(default)]
         preconditions_checked: u32,
+        /// The checkpoint recorded just before the restore changed anything:
+        /// restoring it is the exact inverse ("redo", REQ-PX-061). Empty for
+        /// a restore recorded before that existed.
+        #[serde(default)]
+        pre_restore_checkpoint_id: String,
+        /// The `RestoreCheckpoint` command (UUID text); a replay of it
+        /// returns this record and writes nothing.
+        #[serde(default)]
+        command_id: String,
+        /// This restore was a redo of an earlier one.
+        #[serde(default)]
+        redo: bool,
+    },
+    /// `CheckpointRestoreStarted` (REQ-PX-061): the intent journal of a
+    /// restore. Written after the pre-restore checkpoint is committed and
+    /// before the first byte of the worktree changes, so a Core that dies
+    /// between the two finds an in-doubt restore and rolls it back to the
+    /// pre-restore checkpoint. No state change.
+    CheckpointRestoreStarted {
+        /// The `RestoreCheckpoint` command (UUID text).
+        command_id: String,
+        /// The pre-restore checkpoint (UUID text).
+        pre_restore_checkpoint_id: String,
+        /// The checkpoint being restored to (UUID text).
+        target_checkpoint_id: String,
+    },
+    /// `CheckpointRestoreRolledBack` (REQ-PX-061): an in-doubt restore was
+    /// resolved by restoring the pre-restore checkpoint; the worktree is
+    /// exactly what it was before the restore began. No state change.
+    CheckpointRestoreRolledBack {
+        /// The `RestoreCheckpoint` command (UUID text).
+        command_id: String,
+        /// The checkpoint that was restored to restore the old state.
+        pre_restore_checkpoint_id: String,
+        /// The target the abandoned restore was aiming at.
+        target_checkpoint_id: String,
+        /// Why (`CORE_RESTARTED_MID_RESTORE`).
+        reason: String,
+    },
+    /// `CheckpointNamed` (REQ-PX-102): a person labelled a checkpoint. The
+    /// name is unique within the task. No state change.
+    CheckpointNamed {
+        /// The checkpoint (UUID text).
+        checkpoint_id: String,
+        /// The label.
+        name: String,
+    },
+    /// `CheckpointSkipped` (REQ-PX-061): a turn boundary left no checkpoint,
+    /// and why — the worktree was beyond the capture bounds, or is not a
+    /// repository. A fork at that turn is refused with the same reason. No
+    /// state change.
+    CheckpointSkipped {
+        /// The turn (UUID text).
+        turn_id: String,
+        /// The turn's ordinal in its run.
+        turn_ordinal: u32,
+        /// Stable code: `OVER_BOUNDS` | `CAPTURE_FAILED`.
+        code: String,
+        /// Detail.
+        detail: String,
+    },
+    /// `CheckpointGcStarted` (REQ-PX-102): the retention collector took its
+    /// lease on this task and decided what to remove. The intent half of a
+    /// two-phase effect. No state change.
+    CheckpointGcStarted {
+        /// The run of the collector (UUID text).
+        gc_id: String,
+        /// Who holds the lease.
+        owner: String,
+        /// Why it runs.
+        reason: String,
+        /// The policy in force, as JSON.
+        policy_json: String,
+        /// Checkpoints it will remove (UUID text).
+        candidates: Vec<String>,
+        /// Checkpoints kept, each with why: `<id>:<NAMED|FORK_PARENT|LATEST|PRE_RESTORE|RESTORE_TARGET|CHAIN|RECENT|LIVE>`.
+        kept: Vec<String>,
+    },
+    /// `CheckpointCollected` (REQ-PX-102): these checkpoints are removed
+    /// from the task's restorable set, atomically, before any blob goes.
+    /// No state change.
+    CheckpointCollected {
+        /// The collector run (UUID text).
+        gc_id: String,
+        /// The checkpoints removed (UUID text).
+        checkpoint_ids: Vec<String>,
+    },
+    /// `CheckpointGcCompleted` (REQ-PX-102): what a collector run did. The
+    /// result half of the effect. No state change.
+    CheckpointGcCompleted {
+        /// The collector run (UUID text).
+        gc_id: String,
+        /// Checkpoints looked at.
+        scanned: u32,
+        /// Checkpoints removed.
+        removed: u32,
+        /// Content blobs deleted.
+        blobs_removed: u32,
+        /// Bytes those blobs held.
+        bytes_freed: u64,
+        /// Blobs left because a surviving checkpoint (of any task) names them.
+        blobs_retained: u32,
     },
     /// `TerminalCreated` (docs/30 "Workspace/execution", docs/19 protocol
     /// state "terminal session ID + last acknowledged output cursor"; M4.5):
@@ -2085,6 +2241,7 @@ impl TaskEvent {
             Self::TaskSteered { .. } => "TaskSteered",
             Self::TaskPauseRequested { .. } => "TaskPauseRequested",
             Self::TaskResumeRequested { .. } => "TaskResumeRequested",
+            Self::TaskPaused { .. } => "TaskPaused",
             Self::TaskCancelRequested { .. } => "TaskCancelRequested",
             Self::TaskNeedsAttention { .. } => "TaskNeedsAttention",
             Self::TaskInputQueued { .. } => "TaskInputQueued",
@@ -2168,6 +2325,13 @@ impl TaskEvent {
             Self::CheckpointCommitted { .. } => "CheckpointCommitted",
             Self::CheckpointRejectedStale { .. } => "CheckpointRejectedStale",
             Self::CheckpointRestored { .. } => "CheckpointRestored",
+            Self::CheckpointRestoreStarted { .. } => "CheckpointRestoreStarted",
+            Self::CheckpointRestoreRolledBack { .. } => "CheckpointRestoreRolledBack",
+            Self::CheckpointNamed { .. } => "CheckpointNamed",
+            Self::CheckpointSkipped { .. } => "CheckpointSkipped",
+            Self::CheckpointGcStarted { .. } => "CheckpointGcStarted",
+            Self::CheckpointCollected { .. } => "CheckpointCollected",
+            Self::CheckpointGcCompleted { .. } => "CheckpointGcCompleted",
             Self::TerminalCreated { .. } => "TerminalCreated",
             Self::TerminalOutputAdvanced { .. } => "TerminalOutputAdvanced",
             Self::ProcessExited { .. } => "ProcessExited",
@@ -2295,6 +2459,7 @@ impl Task {
             | TaskEvent::SloStageRecorded { .. }
             | TaskEvent::TaskPauseRequested { .. }
             | TaskEvent::TaskResumeRequested { .. }
+            | TaskEvent::TaskPaused { .. }
             | TaskEvent::TaskCancelRequested { .. }
             | TaskEvent::BrowserCredentialFilled { .. }
             | TaskEvent::SandboxLeaseAcquired { .. }
@@ -2343,10 +2508,6 @@ impl Task {
             | TaskEvent::HarnessBudgetExhausted { .. }
             | TaskEvent::NoProgressDetected { .. }
             | TaskEvent::ReviewDecisionRecorded { .. }
-            | TaskEvent::CheckpointStarted { .. }
-            | TaskEvent::CheckpointCommitted { .. }
-            | TaskEvent::CheckpointRejectedStale { .. }
-            | TaskEvent::CheckpointRestored { .. }
             | TaskEvent::TaskForked { .. }
             | TaskEvent::TerminalCreated { .. }
             | TaskEvent::TerminalOutputAdvanced { .. }
@@ -2359,6 +2520,20 @@ impl Task {
                 }
                 None
             }
+            // The checkpoint ledger (REQ-PX-061/102): a finished task is
+            // exactly the one whose checkpoints are restored, forked from,
+            // named and collected, so these records land in any state.
+            TaskEvent::CheckpointStarted { .. }
+            | TaskEvent::CheckpointCommitted { .. }
+            | TaskEvent::CheckpointRejectedStale { .. }
+            | TaskEvent::CheckpointRestored { .. }
+            | TaskEvent::CheckpointRestoreStarted { .. }
+            | TaskEvent::CheckpointRestoreRolledBack { .. }
+            | TaskEvent::CheckpointNamed { .. }
+            | TaskEvent::CheckpointSkipped { .. }
+            | TaskEvent::CheckpointGcStarted { .. }
+            | TaskEvent::CheckpointCollected { .. }
+            | TaskEvent::CheckpointGcCompleted { .. } => None,
             // A sandbox is given back after the task ended (M8.5), and one
             // may be lost at any time: the records of the substrate's
             // lifecycle land whatever the task's state. So do the request's

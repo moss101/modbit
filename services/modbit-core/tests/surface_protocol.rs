@@ -17972,6 +17972,7 @@ async fn create_checkpoint(
                 task_id: Some(task.clone()),
                 kind: kind.into(),
                 reason: reason.into(),
+                ..Default::default()
             }
             .encode_to_vec(),
             g,
@@ -18018,6 +18019,7 @@ async fn restore_checkpoint(
                 task_id: Some(task.clone()),
                 checkpoint_id: checkpoint_id.into(),
                 expected: vec![],
+                ..Default::default()
             }
             .encode_to_vec(),
             g,
@@ -18250,14 +18252,45 @@ async fn qual_ev_0012_0013_e2e_007_checkpoint_epochs_are_fenced_and_restore_vali
         "c1\n"
     );
     // Deriving the table from the log again gives the same rows.
+    // REQ-PX-061: each of the two restores recorded a pre-restore checkpoint
+    // first and one of the state it wrote after (epochs 4-7), so the table
+    // is the earlier one plus those four; the earlier rows are the same rows.
     let l2 = list_checkpoints(&mut c2, &task).await;
+    let now: Vec<(u32, String)> = l2
+        .checkpoints
+        .iter()
+        .map(|x| (x.epoch, x.status.clone()))
+        .collect();
     assert_eq!(
-        l2.checkpoints
-            .iter()
-            .map(|x| (x.epoch, x.status.clone()))
-            .collect::<Vec<_>>(),
-        statuses
+        now,
+        vec![
+            (1, "REJECTED".into()),
+            (2, "SUPERSEDED".into()),
+            (3, "SUPERSEDED".into()),
+            (4, "SUPERSEDED".into()),
+            (5, "SUPERSEDED".into()),
+            (6, "SUPERSEDED".into()),
+            (7, "CURRENT".into())
+        ]
     );
+    assert_eq!(
+        l2.checkpoints[..3]
+            .iter()
+            .map(|x| x.checkpoint_id.clone())
+            .collect::<Vec<_>>(),
+        l.checkpoints
+            .iter()
+            .map(|x| x.checkpoint_id.clone())
+            .collect::<Vec<_>>()
+    );
+    assert_eq!(
+        l2.checkpoints[3..]
+            .iter()
+            .map(|x| x.reason.as_str())
+            .collect::<Vec<_>>(),
+        ["pre_restore", "post_restore", "pre_restore", "post_restore"]
+    );
+    let _ = statuses;
 
     // docs/14 §8: the agent loop checkpoints before its COMPLETION run.
     let (_repo2, root2) = plain_repo(&[("n.txt", "n\n")]);
@@ -18301,18 +18334,43 @@ async fn qual_ev_0012_0013_e2e_007_checkpoint_epochs_are_fenced_and_restore_vali
     let st = wait_task(&mut c3, &task3, 60).await;
     let trail = task_events(&core3, &session3, &task3).await;
     assert_eq!(st.state, "ReadyForReview", "{st:?}\n{trail:#?}");
-    let before_completion = trail
-        .iter()
-        .find(|(_, t, p)| t == "CheckpointCommitted" && p["kind"] == "BASELINE")
-        .map(|(_, _, p)| p.clone())
-        .expect("a checkpoint before the COMPLETION run");
-    assert_eq!(before_completion["files"], 1, "{before_completion}");
+    // REQ-PX-061: every turn boundary leaves a checkpoint, so the first one
+    // is no longer the completion's; the one recorded before the COMPLETION
+    // run is still there, on the log and in the table, and the chain it ends
+    // holds the note the run wrote.
     let l3 = list_checkpoints(&mut c3, &task3).await;
-    assert_eq!(l3.current_epoch, 1);
-    assert_eq!(l3.checkpoints[0].reason, "before_completion");
-    let bytes = read_object_bytes(&mut c3, id16(0xC7), &l3.checkpoints[0].manifest_ref).await;
-    let m: serde_json::Value = serde_json::from_slice(&bytes).unwrap();
-    assert!(m["files"]["note.txt"].as_str().unwrap().len() == 64, "{m}");
+    let before_completion = l3
+        .checkpoints
+        .iter()
+        .find(|c| c.reason == "before_completion")
+        .expect("a checkpoint before the COMPLETION run");
+    assert!(
+        trail.iter().any(|(_, t, p)| t == "CheckpointCommitted"
+            && p["checkpoint_id"] == before_completion.checkpoint_id.as_str()),
+        "the completion checkpoint is on the log"
+    );
+    let mut chain_files = serde_json::Map::new();
+    let mut at = Some(before_completion.checkpoint_id.clone());
+    let mut chain: Vec<serde_json::Value> = Vec::new();
+    while let Some(id) = at {
+        let v = l3
+            .checkpoints
+            .iter()
+            .find(|c| c.checkpoint_id == id)
+            .unwrap();
+        let bytes = read_object_bytes(&mut c3, id16(0xC7), &v.manifest_ref).await;
+        chain.push(serde_json::from_slice(&bytes).unwrap());
+        at = (!v.base_checkpoint_id.is_empty()).then(|| v.base_checkpoint_id.clone());
+    }
+    for m in chain.iter().rev() {
+        for (k, v) in m["files"].as_object().unwrap() {
+            chain_files.insert(k.clone(), v.clone());
+        }
+    }
+    assert!(
+        chain_files["note.txt"].as_str().unwrap().len() == 64,
+        "{chain_files:?}"
+    );
 }
 
 /// M4.4 (docs/13 "Fencing and epochs", docs/33 "Session kernel lease",
@@ -18424,6 +18482,7 @@ async fn qual_m4_4_a_stale_execution_owner_is_fenced_out_and_the_new_owner_resum
                 task_id: Some(task.clone()),
                 kind: String::new(),
                 reason: "probe".into(),
+                ..Default::default()
             }
             .encode_to_vec(),
             g1,
@@ -19756,9 +19815,16 @@ async fn qual_ev_0242_restart_loses_no_durable_truth_while_live_control_resets()
     assert_eq!(ps_after, ps_before);
     let cps_after = list_checkpoints(&mut c2, &task).await;
     assert_eq!(cps_after, cps_before);
+    // REQ-PX-061: the turn boundaries leave checkpoints of their own; the two
+    // this test is about are still the two that are not a turn's.
     assert_eq!(
-        cps_after.checkpoints.len(),
-        2,
+        cps_after
+            .checkpoints
+            .iter()
+            .filter(|c| c.reason != "turn_boundary")
+            .map(|c| c.reason.as_str())
+            .collect::<Vec<_>>(),
+        ["before_completion", "before the kill"],
         "before_completion + USER: {cps_after:?}"
     );
     let snap_after = session_snapshot_of(&mut c2, &session).await;
@@ -19844,6 +19910,7 @@ async fn fork_task(
                 goal_text: String::new(),
                 carry: carry.iter().map(|s| (*s).to_owned()).collect(),
                 worktree_dir: String::new(),
+                ..Default::default()
             }
             .encode_to_vec(),
             g,
@@ -19867,6 +19934,7 @@ async fn preview_rewind(
             PreviewRewind {
                 task_id: Some(task.clone()),
                 checkpoint_id: checkpoint_id.into(),
+                ..Default::default()
             }
             .encode_to_vec(),
         ))
@@ -19899,6 +19967,7 @@ async fn restore_checkpoint_expecting(
                         content_hash: h.clone(),
                     })
                     .collect(),
+                ..Default::default()
             }
             .encode_to_vec(),
             g,
@@ -20203,7 +20272,22 @@ async fn qual_ev_0077_0122_a_fork_carries_decisions_and_evidence_but_no_stale_pe
         .find(|t| t.task_id.as_ref() == Some(&source))
         .unwrap();
     assert!(src_node.forked_from_task.is_none());
-    assert_eq!(src_node.checkpoints.len(), 1);
+    // REQ-PX-061: every turn boundary now leaves a checkpoint; the one this
+    // test created by hand is still exactly one, and the fork names it.
+    assert_eq!(
+        src_node
+            .checkpoints
+            .iter()
+            .filter(|c| c.reason != "turn_boundary")
+            .count(),
+        1
+    );
+    assert!(
+        src_node
+            .checkpoints
+            .iter()
+            .any(|c| c.checkpoint_id == cp_id)
+    );
     // A fork of the same command id replays; a fork from a running task is refused.
     let again = fork_task(&mut c2, &source, g, 0x7D, &[]).await.unwrap();
     assert_eq!(again.task_id, f.task_id);
@@ -20330,8 +20414,18 @@ async fn qual_ev_0123_rewind_preview_is_non_mutating_and_revert_honours_optimist
     let st = wait_for_state(&mut c, &task, "ReadyForReview", 90).await;
     assert_eq!(st.state, "ReadyForReview", "{st:?}");
     // The completion checkpoint holds qty.txt as the run left it.
+    // REQ-PX-061: the turn boundaries leave their own checkpoints; the
+    // completion's is the one recorded before the COMPLETION run, and the
+    // current one (the last turn's) holds the same final state.
     let cps = list_checkpoints(&mut c, &task).await;
-    assert_eq!(cps.checkpoints.len(), 1, "{cps:?}");
+    assert_eq!(
+        cps.checkpoints
+            .iter()
+            .filter(|c| c.reason == "before_completion")
+            .count(),
+        1,
+        "{cps:?}"
+    );
     let cp_id = cps.current_checkpoint_id.clone();
     let final_qty = std::fs::read_to_string(repo.path().join("qty.txt")).unwrap();
     assert!(final_qty.contains("validated"), "{final_qty}");
@@ -20346,7 +20440,7 @@ async fn qual_ev_0123_rewind_preview_is_non_mutating_and_revert_honours_optimist
     let pv = preview_rewind(&mut c, &task, "").await;
     assert_eq!(pv.refusal, "", "{pv:?}");
     assert_eq!(pv.checkpoint_id, cp_id);
-    assert_eq!(pv.epoch, 1);
+    assert_eq!(pv.epoch, cps.current_epoch);
     let by: std::collections::BTreeMap<&str, &modbit_protocol::v1::RewindEntryView> =
         pv.entries.iter().map(|e| (e.path.as_str(), e)).collect();
     assert_eq!(by["qty.txt"].action, "WRITE");
@@ -20456,7 +20550,22 @@ async fn qual_ev_0123_rewind_preview_is_non_mutating_and_revert_honours_optimist
     assert_eq!(node.restores.len(), 1, "{node:?}");
     assert_eq!(node.restores[0].checkpoint_id, cp_id);
     assert_eq!(node.restores[0].preconditions_checked, 2);
-    assert_eq!(node.checkpoints.len(), 1);
+    // REQ-PX-061: the restore left its own checkpoints (the state before it,
+    // the state it wrote); the completion's is still the one.
+    assert_eq!(
+        node.checkpoints
+            .iter()
+            .filter(|c| c.reason == "before_completion")
+            .count(),
+        1
+    );
+    assert_eq!(
+        node.checkpoints
+            .iter()
+            .filter(|c| c.reason == "pre_restore" || c.reason == "post_restore")
+            .count(),
+        2
+    );
     assert!(
         tree.branches.is_empty(),
         "a revert of the same task opens no branch"

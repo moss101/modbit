@@ -90,7 +90,7 @@ const MAX_CONTEXT_DOCUMENT_BYTES: usize = 256 * 1024;
 
 /// Fencing (docs/13, docs/33): a mutating command must present the session's
 /// current lease generation in `expected_generation`.
-async fn require_lease(
+pub(crate) async fn require_lease(
     core: &Core,
     cid: &Option<wire::Id>,
     env: &CommandEnvelope,
@@ -230,6 +230,10 @@ pub async fn run_as(
                 }
             }));
     }
+    // REQ-PX-061: a restore a dead Core left half-written is rolled back to
+    // the pre-restore checkpoint it recorded first, before any client can
+    // look at the worktree.
+    crate::checkpoint::recover_in_doubt_restores(&core).await;
     // EPR-012: the last activated registry generation, verified again.
     crate::model_registry::restore(&core).await;
     let _ = std::fs::remove_file(data_dir.join("core.ready"));
@@ -636,6 +640,10 @@ async fn serve_connection(core: Arc<Core>, mut stream: BoxedStream) -> Result<()
                     "ProbeModel",
                     "StartTask",
                     "CancelTask",
+                    "PauseTask",
+                    "ResumeTask",
+                    "NameCheckpoint",
+                    "RunCheckpointGc",
                     "GetTaskStatus",
                     "GetReviewBundle",
                     "GetCodeView",
@@ -1036,7 +1044,7 @@ async fn serve_frames(
     }
 }
 
-fn id16(id: &wire::Id) -> Option<[u8; 16]> {
+pub(crate) fn id16(id: &wire::Id) -> Option<[u8; 16]> {
     id.value.as_slice().try_into().ok()
 }
 
@@ -1185,6 +1193,8 @@ fn required_client_capability(env: &CommandEnvelope) -> Option<&'static str> {
         "RebindTaskWorkspace" | "ImportObjects" => "session.mirror",
         "TrustRepository" => "repository.trust",
         "EmergencyStop" => "session.control",
+        // Removing recovery data under a policy is a session-level decision.
+        "RunCheckpointGc" => "session.control",
         "AttachBrowserHost"
         | "BrowserHostResponse"
         | "RegisterBrowserCredential"
@@ -1199,6 +1209,9 @@ fn required_client_capability(env: &CommandEnvelope) -> Option<&'static str> {
         | "CreateTask"
         | "StartTask"
         | "CancelTask"
+        | "PauseTask"
+        | "ResumeTask"
+        | "NameCheckpoint"
         | "QueueInput"
         | "AcquireSessionLease"
         | "InvokeTool"
@@ -1513,7 +1526,11 @@ async fn attach_browser_host(
     )
 }
 
-fn reject(command_id: Option<wire::Id>, code: &str, message: impl Into<String>) -> CommandAck {
+pub(crate) fn reject(
+    command_id: Option<wire::Id>,
+    code: &str,
+    message: impl Into<String>,
+) -> CommandAck {
     CommandAck {
         command_id,
         status: CommandStatus::Rejected as i32,
@@ -1523,7 +1540,7 @@ fn reject(command_id: Option<wire::Id>, code: &str, message: impl Into<String>) 
     }
 }
 
-fn accept(command_id: Option<wire::Id>, replayed: bool, result: Vec<u8>) -> CommandAck {
+pub(crate) fn accept(command_id: Option<wire::Id>, replayed: bool, result: Vec<u8>) -> CommandAck {
     CommandAck {
         command_id,
         status: if replayed {
@@ -1537,7 +1554,7 @@ fn accept(command_id: Option<wire::Id>, replayed: bool, result: Vec<u8>) -> Comm
     }
 }
 
-async fn handle_command(core: &Arc<Core>, env: CommandEnvelope) -> CommandAck {
+pub(crate) async fn handle_command(core: &Arc<Core>, env: CommandEnvelope) -> CommandAck {
     let cid = env.command_id.clone();
     let Some(command_id) = env.command_id.as_ref().and_then(id16) else {
         return reject(cid, "BAD_COMMAND_ID", "command_id must be 16 bytes");
@@ -3343,19 +3360,55 @@ async fn handle_command(core: &Arc<Core>, env: CommandEnvelope) -> CommandAck {
             } else {
                 p.reason.clone()
             };
+            // REQ-PX-102: a label is checked before anything is captured, so a
+            // refused name leaves no checkpoint behind.
+            if !p.name.is_empty() {
+                if let Err(d) = crate::checkpoint::valid_name(&p.name) {
+                    return reject(cid, "BAD_NAME", d);
+                }
+                let store = core.store.lock().await;
+                if crate::checkpoint::ledger(&store, &task)
+                    .names
+                    .values()
+                    .any(|n| *n == p.name)
+                {
+                    return reject(
+                        cid,
+                        "NAME_TAKEN",
+                        format!("`{}` already names a checkpoint of this task", p.name),
+                    );
+                }
+            }
             let lt = crate::runtime::Lineage::task(core.tenant_id, task.session_id, task_id);
             match crate::checkpoint::capture(core, &task, lt, &actor, kind, &reason).await {
                 Ok(c) => {
+                    if c.committed.is_ok() && !p.name.is_empty() {
+                        let mut store = core.store.lock().await;
+                        if let Err(r) = crate::checkpoint::name_checkpoint(
+                            core,
+                            &mut store,
+                            &task,
+                            &actor,
+                            Some(c.manifest.checkpoint_id),
+                            &p.name,
+                            None,
+                        ) {
+                            return reject(cid, r.code, r.detail);
+                        }
+                    }
                     let offset = core.store.lock().await.last_offset().unwrap_or(0);
                     core.last_offset.send_replace(offset);
-                    let row = core
-                        .store
-                        .lock()
-                        .await
-                        .checkpoints(&task_id)
-                        .unwrap_or_default()
-                        .into_iter()
-                        .find(|r| r.checkpoint_id == c.manifest.checkpoint_id.to_string());
+                    let (row, ledger) = {
+                        let store = core.store.lock().await;
+                        (
+                            store
+                                .checkpoints(&task_id)
+                                .unwrap_or_default()
+                                .into_iter()
+                                .find(|r| r.checkpoint_id == c.manifest.checkpoint_id.to_string()),
+                            crate::checkpoint::ledger(&store, &task),
+                        )
+                    };
                     let (committed, refusal) = match &c.committed {
                         Ok(()) => (true, String::new()),
                         Err(modbit_checkpoint::StaleCheckpoint::NotNewer { .. }) => {
@@ -3369,7 +3422,9 @@ async fn handle_command(core: &Arc<Core>, env: CommandEnvelope) -> CommandAck {
                         cid,
                         false,
                         wire::CheckpointCreated {
-                            checkpoint: row.as_ref().map(crate::checkpoint::view),
+                            checkpoint: row.as_ref().map(|r| {
+                                crate::checkpoint::view_with(r, &ledger, &Default::default())
+                            }),
                             committed,
                             refusal,
                         }
@@ -3405,13 +3460,14 @@ async fn handle_command(core: &Arc<Core>, env: CommandEnvelope) -> CommandAck {
             let Some(task_id) = p.task_id.as_ref().and_then(id16).map(TaskId::from_bytes) else {
                 return reject(cid, "BAD_PAYLOAD", "task_id required");
             };
-            let target = if p.checkpoint_id.is_empty() {
-                None
-            } else {
-                match modbit_domain::CheckpointId::parse(&p.checkpoint_id) {
-                    Ok(id) => Some(id),
-                    Err(_) => return reject(cid, "BAD_PAYLOAD", "checkpoint_id is not an id"),
-                }
+            let spec = match crate::checkpoint::target_spec(
+                &p.checkpoint_id,
+                &p.name,
+                p.turn_ordinal,
+                p.turn_id.as_ref(),
+            ) {
+                Ok(s) => s,
+                Err(e) => return reject(cid, "BAD_PAYLOAD", e),
             };
             let task = {
                 let store = core.store.lock().await;
@@ -3428,25 +3484,51 @@ async fn handle_command(core: &Arc<Core>, env: CommandEnvelope) -> CommandAck {
                 return reject(
                     cid,
                     "TASK_RUNNING",
-                    "the agent loop is executing; cancel or wait before restoring",
+                    "the agent loop is executing; cancel, pause or wait before restoring",
                 );
             }
             if let Err(ack) = require_lease(core, &cid, &env, &task.session_id).await {
                 return ack;
             }
+            let target = {
+                let store = core.store.lock().await;
+                match crate::checkpoint::resolve_target(&store, &task, &spec) {
+                    Ok(t) => t,
+                    Err(refused) => {
+                        return accept(
+                            cid,
+                            false,
+                            wire::CheckpointRestoreResult {
+                                restored: false,
+                                refusal: refused.code.to_owned(),
+                                detail: refused.detail,
+                                ..Default::default()
+                            }
+                            .encode_to_vec(),
+                        );
+                    }
+                }
+            };
             let lt = crate::runtime::Lineage::task(core.tenant_id, task.session_id, task_id);
-            let expected: Vec<(String, String)> = p
-                .expected
-                .iter()
-                .map(|f| (f.path.clone(), f.content_hash.clone()))
-                .collect();
-            match crate::checkpoint::restore(core, &task, lt, &actor, target, &expected).await {
+            let opts = crate::checkpoint::RestoreOptions {
+                expected: p
+                    .expected
+                    .iter()
+                    .map(|f| (f.path.clone(), f.content_hash.clone()))
+                    .collect(),
+                command: Some(record("RestoreCheckpoint")),
+                redo: p.redo,
+                keep_paths: p.keep_paths.clone(),
+                expected_epoch: p.expected_current_epoch,
+                rollback: false,
+            };
+            match crate::checkpoint::restore_with(core, &task, lt, &actor, target, opts).await {
                 Ok(Ok(r)) => {
                     let offset = core.store.lock().await.last_offset().unwrap_or(0);
                     core.last_offset.send_replace(offset);
                     accept(
                         cid,
-                        false,
+                        r.replayed,
                         wire::CheckpointRestoreResult {
                             restored: true,
                             checkpoint_id: r.checkpoint_id.to_string(),
@@ -3459,6 +3541,13 @@ async fn handle_command(core: &Arc<Core>, env: CommandEnvelope) -> CommandAck {
                             refusal: String::new(),
                             detail: String::new(),
                             preconditions_checked: r.preconditions_checked,
+                            pre_restore_checkpoint_id: r
+                                .pre_restore_checkpoint_id
+                                .map(|c| c.to_string())
+                                .unwrap_or_default(),
+                            replayed: r.replayed,
+                            kept_paths: r.kept_paths,
+                            redo: r.redo,
                         }
                         .encode_to_vec(),
                     )
@@ -3476,6 +3565,63 @@ async fn handle_command(core: &Arc<Core>, env: CommandEnvelope) -> CommandAck {
                 ),
                 Err(e) => reject(cid, "CHECKPOINT", e.to_string()),
             }
+        }
+        // ---- REQ-PX-101 / REQ-PX-102: pause, resume, names, retention ----
+        "PauseTask" => crate::pause::pause_task(core, &env, record("PauseTask")).await,
+        "ResumeTask" => crate::pause::resume_task(core, &env, record("ResumeTask")).await,
+        "NameCheckpoint" => {
+            let Ok(p) = wire::NameCheckpoint::decode(env.payload.as_slice()) else {
+                return reject(cid, "BAD_PAYLOAD", "NameCheckpoint");
+            };
+            let Some(task_id) = p.task_id.as_ref().and_then(id16).map(TaskId::from_bytes) else {
+                return reject(cid, "BAD_PAYLOAD", "task_id required");
+            };
+            let checkpoint = if p.checkpoint_id.is_empty() {
+                None
+            } else {
+                match modbit_domain::CheckpointId::parse(&p.checkpoint_id) {
+                    Ok(id) => Some(id),
+                    Err(_) => return reject(cid, "BAD_PAYLOAD", "checkpoint_id is not an id"),
+                }
+            };
+            let task = match core.store.lock().await.task(&task_id) {
+                Ok(Some(t)) => t,
+                Ok(None) => return reject(cid, "UNKNOWN_TASK", task_id.to_string()),
+                Err(e) => return reject(cid, error_code(&e), e.to_string()),
+            };
+            if let Err(ack) = require_lease(core, &cid, &env, &task.session_id).await {
+                return ack;
+            }
+            let mut store = core.store.lock().await;
+            match crate::checkpoint::name_checkpoint(
+                core,
+                &mut store,
+                &task,
+                &actor,
+                checkpoint,
+                &p.name,
+                Some(record("NameCheckpoint")),
+            ) {
+                Ok(n) => accept(
+                    cid,
+                    n.replayed,
+                    wire::CheckpointNamed {
+                        task_id: Some(wire_id(task_id.as_bytes())),
+                        checkpoint_id: n.checkpoint_id.to_string(),
+                        name: p.name.clone(),
+                        offset: n.offset,
+                        replayed: n.replayed,
+                    }
+                    .encode_to_vec(),
+                ),
+                Err(r) => reject(cid, r.code, r.detail),
+            }
+        }
+        "RunCheckpointGc" => {
+            let Ok(p) = wire::RunCheckpointGc::decode(env.payload.as_slice()) else {
+                return reject(cid, "BAD_PAYLOAD", "RunCheckpointGc");
+            };
+            crate::checkpoint_gc::run_command(core, &env, p, &actor).await
         }
         "GetRoutingSessionState" => {
             let Ok(p) = wire::GetRoutingSessionState::decode(env.payload.as_slice()) else {
@@ -3540,13 +3686,14 @@ async fn handle_command(core: &Arc<Core>, env: CommandEnvelope) -> CommandAck {
             let Some(task_id) = p.task_id.as_ref().and_then(id16).map(TaskId::from_bytes) else {
                 return reject(cid, "BAD_PAYLOAD", "task_id required");
             };
-            let target = if p.checkpoint_id.is_empty() {
-                None
-            } else {
-                match modbit_domain::CheckpointId::parse(&p.checkpoint_id) {
-                    Ok(id) => Some(id),
-                    Err(_) => return reject(cid, "BAD_PAYLOAD", "checkpoint_id is not an id"),
-                }
+            let spec = match crate::checkpoint::target_spec(
+                &p.checkpoint_id,
+                &p.name,
+                p.turn_ordinal,
+                p.turn_id.as_ref(),
+            ) {
+                Ok(s) => s,
+                Err(e) => return reject(cid, "BAD_PAYLOAD", e),
             };
             let task = {
                 let store = core.store.lock().await;
@@ -3559,6 +3706,24 @@ async fn handle_command(core: &Arc<Core>, env: CommandEnvelope) -> CommandAck {
             if task.workspace_root.is_none() {
                 return reject(cid, "NO_WORKSPACE", "the task has no workspace root");
             }
+            let target = {
+                let store = core.store.lock().await;
+                match crate::checkpoint::resolve_target(&store, &task, &spec) {
+                    Ok(t) => t,
+                    Err(refused) => {
+                        return accept(
+                            cid,
+                            false,
+                            wire::RewindPreview {
+                                refusal: refused.code.to_owned(),
+                                detail: refused.detail,
+                                ..Default::default()
+                            }
+                            .encode_to_vec(),
+                        );
+                    }
+                }
+            };
             // A preview is a read: no lease, no event, no write.
             match crate::branch::preview_rewind(core, &task, target).await {
                 Ok(Ok(pv)) => {
@@ -3620,14 +3785,16 @@ async fn handle_command(core: &Arc<Core>, env: CommandEnvelope) -> CommandAck {
             let Some(task_id) = p.task_id.as_ref().and_then(id16).map(TaskId::from_bytes) else {
                 return reject(cid, "BAD_PAYLOAD", "task_id required");
             };
-            let checkpoint = if p.checkpoint_id.is_empty() {
-                None
-            } else {
-                match modbit_domain::CheckpointId::parse(&p.checkpoint_id) {
-                    Ok(id) => Some(id),
-                    Err(_) => return reject(cid, "BAD_PAYLOAD", "checkpoint_id is not an id"),
-                }
+            let spec = match crate::checkpoint::target_spec(
+                &p.checkpoint_id,
+                &p.checkpoint_name,
+                p.turn_ordinal,
+                p.turn_id.as_ref(),
+            ) {
+                Ok(s) => s,
+                Err(e) => return reject(cid, "BAD_PAYLOAD", e),
             };
+            let named_fork_point = spec != crate::checkpoint::TargetSpec::Current;
             let mut carry = Vec::new();
             for c in &p.carry {
                 match modbit_checkpoint::Carry::parse(c) {
@@ -3656,16 +3823,32 @@ async fn handle_command(core: &Arc<Core>, env: CommandEnvelope) -> CommandAck {
             if source.workspace_root.is_none() {
                 return reject(cid, "NO_WORKSPACE", "the source task has no workspace root");
             }
-            if core.runtime.is_running(&task_id).await {
+            // A named fork point (a turn, a label, a checkpoint) is an
+            // immutable chain: the fork reads nothing the running source is
+            // changing, so it may be taken while the source runs (REQ-PX-061).
+            // "The current checkpoint" of a running source is still moving.
+            if !named_fork_point && core.runtime.is_running(&task_id).await {
                 return reject(
                     cid,
                     "TASK_RUNNING",
-                    "the source's agent loop is executing; fork from a checkpoint once it stops",
+                    "the source's agent loop is executing; fork from a named checkpoint or turn, or once it stops",
                 );
             }
             if let Err(ack) = require_lease(core, &cid, &env, &source.session_id).await {
                 return ack;
             }
+            let (checkpoint, turn) = {
+                let store = core.store.lock().await;
+                match crate::checkpoint::resolve_target(&store, &source, &spec) {
+                    Ok(t) => {
+                        let l = crate::checkpoint::ledger(&store, &source);
+                        let turn =
+                            t.and_then(|c| crate::checkpoint::turn_of(&l, &c.to_string()).cloned());
+                        (t, turn)
+                    }
+                    Err(refused) => return reject(cid, refused.code, refused.detail),
+                }
+            };
             let new_task_id = TaskId::from_bytes(command_id);
             {
                 let store = core.store.lock().await;
@@ -3721,6 +3904,11 @@ async fn handle_command(core: &Arc<Core>, env: CommandEnvelope) -> CommandAck {
                         calls_dropped: f.calls_dropped,
                         files_materialized: f.files_materialized,
                         offset: f.offset,
+                        turn_id: turn
+                            .as_ref()
+                            .and_then(|t| modbit_domain::TurnId::parse(&t.turn_id).ok())
+                            .map(|t| wire_id(t.as_bytes())),
+                        turn_ordinal: turn.as_ref().map_or(0, |t| t.turn_ordinal),
                     }
                     .encode_to_vec(),
                 ),
