@@ -28,11 +28,12 @@ import { file_modbit_v1_output_ref } from "./gen/modbit/v1/output_ref_pb.js";
 import { file_modbit_v1_negotiation } from "./gen/modbit/v1/negotiation_pb.js";
 import { file_modbit_v1_surface } from "./gen/modbit/v1/surface_pb.js";
 import { file_modbit_v1_stream } from "./gen/modbit/v1/stream_pb.js";
+import { file_modbit_v1_terminal } from "./gen/modbit/v1/terminal_pb.js";
 
 const here = dirname(fileURLToPath(import.meta.url));
 const fixtures = join(here, "../../../tests/fixtures/protocol/v1");
 const messagesByType = new Map<string, DescMessage>(
-  [file_modbit_v1_domain, file_modbit_v1_envelope, file_modbit_v1_tool, file_modbit_v1_output_ref, file_modbit_v1_negotiation, file_modbit_v1_surface, file_modbit_v1_stream]
+  [file_modbit_v1_domain, file_modbit_v1_envelope, file_modbit_v1_tool, file_modbit_v1_output_ref, file_modbit_v1_negotiation, file_modbit_v1_surface, file_modbit_v1_stream, file_modbit_v1_terminal]
     .flatMap((f) => f.messages)
     .map((m) => [m.typeName, m]),
 );

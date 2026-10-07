@@ -15,6 +15,7 @@ export * from "./gen/modbit/v1/output_ref_pb.js";
 export * from "./gen/modbit/v1/negotiation_pb.js";
 export * from "./gen/modbit/v1/surface_pb.js";
 export * from "./gen/modbit/v1/stream_pb.js";
+export * from "./gen/modbit/v1/terminal_pb.js";
 
 /** The protocol version this build speaks (mirrors `modbit_protocol::PROTOCOL_VERSION`). */
 export const PROTOCOL_VERSION = { major: 1, minor: 0 } as const;

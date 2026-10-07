@@ -28,6 +28,8 @@
 //!   modbit-cli --data-dir <dir> recovery show
 //!   modbit-cli --data-dir <dir> pr (open | update) --session <hex-id> --task <hex-id> --revision <n> [--base <ref>] [--title <t>] [--remote <name>]
 //!   modbit-cli --data-dir <dir> starter list [--workspace <dir>]
+//!   modbit-cli --data-dir <dir> terminal list [--task <hex-id>]
+//!   modbit-cli --data-dir <dir> terminal attach --task <hex-id> --terminal <id> [--from <cursor>] [--window <bytes>]
 //!
 //! M1.3 mode: each invocation spawns a Core for the data directory, runs one
 //! command, and exits; the Core exits with the CLI. Attaching to a long-running
@@ -39,8 +41,8 @@ use std::process::{Command, ExitCode, Stdio};
 use modbit_protocol::client::Client;
 use modbit_protocol::local::{ReadyLine, decode_hex, encode_hex};
 use modbit_protocol::v1::{
-    AcquireSessionLease, AllowUnsupportedLanguage, ApprovalList, ApprovalResolvedAck,
-    AttachContextDocument, AttachmentIngested, CancelTask, CapabilityLeaseList,
+    AckTerminal, AcquireSessionLease, AllowUnsupportedLanguage, ApprovalList, ApprovalResolvedAck,
+    AttachContextDocument, AttachTerminal, AttachmentIngested, CancelTask, CapabilityLeaseList,
     CheckpointRestoreResult, ClientKind, CommandEnvelope, ConfigureProvider,
     ContextDocumentAttached, ContextInspectorView, CreateSession, CreateTask, DecideReview,
     EffectReceiptList, EmergencyStop, EmergencyStopped, FileHash, ForkTask, GetAgentGraph,
@@ -62,6 +64,7 @@ use modbit_protocol::v1::{
     AgentHeaders, GetAgentHeaders, GetTranscript, TranscriptDensity, TranscriptPage, TranscriptRow,
     TranscriptRowKind,
 };
+use modbit_protocol::v1::{ListTerminals, TerminalAttached, TerminalList, terminal_frame};
 use prost::Message;
 
 /// Process exit code (docs: apps/cli/README.md). Set by task-state commands.
@@ -78,7 +81,7 @@ fn exit_for_state(state: &str) -> u8 {
     }
 }
 
-const USAGE: &str = "usage: modbit-cli --data-dir <dir> (session create | session show --session <id> | task create --session <id> [--workspace <dir>] [--command-id <hex>] <goal> | task from-issue --session <id> [--workspace <dir>] [--command-id <hex>] <issue-url> | events tail --session <id> [--after N] [--count N] [--json] | task attach --session <id> --task <id> <file> | question list --task <id> | question answer --session <id> --task <id> --question <id> [--option <id>] [--endpoint <name>] [--model <id>] [--wait] [text] | tool list [--task <id>] | tool invoke --session <id> --task <id> [--call <id>] <tool> <arguments-json> | approval list --session <id> | approval resolve --session <id> --approval <id> [--intent <hash>] (approve|deny) [reason] | stop --session <id> [reason] | receipts [--task <id>] | lease list --task <id> | task run --session <id> --task <id> [--endpoint <name>] [--model <id>] [--max-turns N] [--max-tool-calls N] [--max-no-progress-turns N] [--skill <name>]... [--wait] | task cancel --session <id> --task <id> | task status --task <id> | task transcript --task <id> [--density compact|balanced|detailed] | task headers --session <id> [--archived] | review show --task <id> | review decide --session <id> --task <id> (accept|return) [--reject path#index ...] [note] | change undo --session <id> --task <id> --call <id> [--apply] | context show <task-id> | task fork --session <id> --task <id> [--checkpoint <id>] [--carry PLAN,DECISIONS,EVIDENCE,CONTEXT] [--worktree <dir>] [goal] | task rewind --task <id> [--checkpoint <id>] [--apply --session <id>] | session route --session <id> | session tree --session <id> | task assurance --task <id> | task economics --task <id> | task work --task <id> | task agents --task <id> | capacity show | attention list --session <id> | plan show --task <id> | plan revise --session <id> --task <id> [--plan-json <file>] [note] | task patch --session <id> --task <id> --path <p> --revision <n> [--file-revision <sha>] (--old <text> | --old-file <f>) (--new <text> | --new-file <f>) | baseline publish --session <id> [--revision <rev>] | task allow-language --session <id> --task <id> --language <l> [--reason r] | task attach-context --session <id> --task <id> --source <s> [--title t] <file> | task select --session <id> --task <id> [--path p]... [--lines a:b] [--symbol s] [--hunk path#index]... [--source review|editor|cli] | agent install <file> [--from claude] [--replace] | agent list | skill install <dir> [--expect-hash <hex>] [--replace] | skill remove <name> | skill revoke <name> [--hash <content-hash>] | skill list | language list | model list | model probe --endpoint <name> --model <id> [--tools] <prompt> | task steer --session <id> --task <id> [--mode STEER|COLLECT|FOLLOW_UP] [--input-id <hex>] <text> | workspace trust --session <id> [--scope <s>] <root> | provider configure --provider <openai|anthropic> [--base-url <url>] [--clear] | recovery show | pr (open | update) --session <id> --task <id> --revision <n> [--base <ref>] [--title <t>] [--remote <name>] | starter list [--workspace <dir>] | doctor --session <id> | trace --session <id> [--task <id>] | export diagnostics --session <id> [--task <id>] [--include-content] --out <file> | diagnostics verify <file> | export handoff --session <id> --task <id> --out <dir> | usage reconcile --task <id> --invoice <file> [--tolerance-bp N] | dashboard --session <id> | platform)";
+const USAGE: &str = "usage: modbit-cli --data-dir <dir> (session create | session show --session <id> | task create --session <id> [--workspace <dir>] [--command-id <hex>] <goal> | task from-issue --session <id> [--workspace <dir>] [--command-id <hex>] <issue-url> | events tail --session <id> [--after N] [--count N] [--json] | task attach --session <id> --task <id> <file> | question list --task <id> | question answer --session <id> --task <id> --question <id> [--option <id>] [--endpoint <name>] [--model <id>] [--wait] [text] | tool list [--task <id>] | tool invoke --session <id> --task <id> [--call <id>] <tool> <arguments-json> | approval list --session <id> | approval resolve --session <id> --approval <id> [--intent <hash>] (approve|deny) [reason] | stop --session <id> [reason] | receipts [--task <id>] | lease list --task <id> | task run --session <id> --task <id> [--endpoint <name>] [--model <id>] [--max-turns N] [--max-tool-calls N] [--max-no-progress-turns N] [--skill <name>]... [--wait] | task cancel --session <id> --task <id> | task status --task <id> | task transcript --task <id> [--density compact|balanced|detailed] | task headers --session <id> [--archived] | review show --task <id> | review decide --session <id> --task <id> (accept|return) [--reject path#index ...] [note] | change undo --session <id> --task <id> --call <id> [--apply] | context show <task-id> | task fork --session <id> --task <id> [--checkpoint <id>] [--carry PLAN,DECISIONS,EVIDENCE,CONTEXT] [--worktree <dir>] [goal] | task rewind --task <id> [--checkpoint <id>] [--apply --session <id>] | session route --session <id> | session tree --session <id> | task assurance --task <id> | task economics --task <id> | task work --task <id> | task agents --task <id> | capacity show | attention list --session <id> | plan show --task <id> | plan revise --session <id> --task <id> [--plan-json <file>] [note] | task patch --session <id> --task <id> --path <p> --revision <n> [--file-revision <sha>] (--old <text> | --old-file <f>) (--new <text> | --new-file <f>) | baseline publish --session <id> [--revision <rev>] | task allow-language --session <id> --task <id> --language <l> [--reason r] | task attach-context --session <id> --task <id> --source <s> [--title t] <file> | task select --session <id> --task <id> [--path p]... [--lines a:b] [--symbol s] [--hunk path#index]... [--source review|editor|cli] | agent install <file> [--from claude] [--replace] | agent list | skill install <dir> [--expect-hash <hex>] [--replace] | skill remove <name> | skill revoke <name> [--hash <content-hash>] | skill list | language list | model list | model probe --endpoint <name> --model <id> [--tools] <prompt> | task steer --session <id> --task <id> [--mode STEER|COLLECT|FOLLOW_UP] [--input-id <hex>] <text> | workspace trust --session <id> [--scope <s>] <root> | provider configure --provider <openai|anthropic> [--base-url <url>] [--clear] | recovery show | pr (open | update) --session <id> --task <id> --revision <n> [--base <ref>] [--title <t>] [--remote <name>] | starter list [--workspace <dir>] | doctor --session <id> | trace --session <id> [--task <id>] | export diagnostics --session <id> [--task <id>] [--include-content] --out <file> | diagnostics verify <file> | export handoff --session <id> --task <id> --out <dir> | usage reconcile --task <id> --invoice <file> [--tolerance-bp N] | dashboard --session <id> | terminal list [--task <id>] | terminal attach --task <id> --terminal <id> [--from N] [--window N] | platform)";
 
 fn parse_id(hex: &str) -> Result<Id, String> {
     let bytes = decode_hex(hex)
@@ -1026,6 +1029,120 @@ async fn run_command(ready: &ReadyLine, rest: Vec<String>) -> Result<(), String>
             .await?;
             if words.contains(&"--wait") {
                 wait_until_idle(&mut client, &task_id).await?;
+            }
+        }
+        // PX-043: the background terminals of every task, as every client sees them.
+        ["terminal", "list", ..] => {
+            let task = opt("--task").map(parse_id).transpose()?;
+            let ack = client
+                .command(envelope(
+                    "ListTerminals",
+                    ListTerminals { task_id: task }.encode_to_vec(),
+                ))
+                .await
+                .map_err(|e| e.to_string())?;
+            let l: TerminalList = Client::result(&ack).map_err(|e| e.to_string())?;
+            for t in l.terminals {
+                println!(
+                    "terminal {} task={} owner={} state={} exit={} elapsed_ms={} bytes={} oldest_cursor={} lease={} title={:?}",
+                    t.session_id,
+                    t.task_id.map(|i| encode_hex(&i.value)).unwrap_or_default(),
+                    t.owner,
+                    t.state,
+                    t.exit_code.map(|c| c.to_string()).unwrap_or_default(),
+                    t.elapsed_ms,
+                    t.bytes_so_far,
+                    t.oldest_cursor,
+                    t.input_lease_holder,
+                    t.title
+                );
+            }
+        }
+        // PX-043: read a terminal from a cursor (read-only), acknowledging as
+        // it goes; the cursor to resume from is printed when the stream ends.
+        ["terminal", "attach", ..] => {
+            let task = parse_id(opt("--task").ok_or(USAGE)?)?;
+            let terminal = opt("--terminal").ok_or(USAGE)?.to_owned();
+            let from: u64 = opt("--from")
+                .map(|v| v.parse().map_err(|_| format!("`{v}` is not a cursor")))
+                .transpose()?
+                .unwrap_or(0);
+            let window: u64 = opt("--window")
+                .map(|v| v.parse().map_err(|_| format!("`{v}` is not a size")))
+                .transpose()?
+                .unwrap_or(0);
+            let ack = client
+                .command(envelope(
+                    "AttachTerminal",
+                    AttachTerminal {
+                        task_id: Some(task),
+                        session_id: terminal,
+                        after_cursor: from,
+                        window_bytes: window,
+                        take_input_lease: false,
+                        steal_input_lease: false,
+                    }
+                    .encode_to_vec(),
+                ))
+                .await
+                .map_err(|e| e.to_string())?;
+            let attached: TerminalAttached = Client::result(&ack).map_err(|e| e.to_string())?;
+            let mut cursor = from;
+            let mut acked = from;
+            let step = (attached.window_bytes / 2).max(1);
+            let mut out = std::io::stdout();
+            loop {
+                let Some(frame) = client
+                    .next_terminal_frame()
+                    .await
+                    .map_err(|e| e.to_string())?
+                else {
+                    eprintln!("terminal: connection closed; resume with --from {cursor}");
+                    break;
+                };
+                match frame.body {
+                    Some(terminal_frame::Body::Output(o)) => {
+                        use std::io::Write;
+                        let _ = out.write_all(&o.data);
+                        let _ = out.flush();
+                        cursor = o.cursor + o.data.len() as u64;
+                        if cursor - acked >= step {
+                            client
+                                .command(envelope(
+                                    "AckTerminal",
+                                    AckTerminal {
+                                        attach_id: attached.attach_id.clone(),
+                                        cursor,
+                                    }
+                                    .encode_to_vec(),
+                                ))
+                                .await
+                                .map_err(|e| e.to_string())?;
+                            acked = cursor;
+                        }
+                    }
+                    Some(terminal_frame::Body::Exited(x)) => {
+                        eprintln!(
+                            "terminal: exited code={:?} total_bytes={} output_ref={}",
+                            x.exit_code, x.total_bytes, x.output_ref
+                        );
+                        break;
+                    }
+                    Some(terminal_frame::Body::Ended(e)) => {
+                        eprintln!(
+                            "terminal: {} ({}); resume with --from {}",
+                            e.reason,
+                            e.message,
+                            if e.reason == "SLOW_CONSUMER" {
+                                e.resume_cursor
+                            } else {
+                                cursor
+                            }
+                        );
+                        break;
+                    }
+                    Some(terminal_frame::Body::Lease(_)) | None => {}
+                }
             }
         }
         ["task", "cancel", ..] => {

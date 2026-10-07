@@ -11,6 +11,7 @@ import "modbit/v1/domain.proto";
 import "modbit/v1/envelope.proto";
 import "modbit/v1/negotiation.proto";
 import "modbit/v1/context_rules.proto";
+import "modbit/v1/terminal.proto";
 
 // Authentication sent with Hello: the boot-scoped secret the client obtained
 // from the Core it spawned (docs/30). Never logged, never persisted.
@@ -139,6 +140,9 @@ message SurfaceFrame {
     BrowserHostRequest browser_request = 8;
     // M8.8: a screencast frame of a browser view this connection watches.
     BrowserViewFrame browser_frame = 9;
+    // PX-043 (field block 120-139): a slice of a terminal stream this
+    // connection attached to (AttachTerminal).
+    TerminalFrame terminal_frame = 120;
   }
 }
 

@@ -519,6 +519,64 @@ pub fn samples() -> Vec<Sample> {
             decode: reencode::<ToolCallResult>,
         },
         Sample {
+            // PX-043: the registry row a client lists (terminal.proto).
+            name: "terminal_view",
+            type_name: "modbit.v1.TerminalView",
+            bytes: TerminalView {
+                session_id: "5e55f00d".into(),
+                task_id: id(0x77),
+                owner: "agent".into(),
+                argv: vec!["sh".into(), "-c".into(), "sleep 30".into()],
+                title: "sh -c sleep 30".into(),
+                state: "EXITED".into(),
+                exit_code: Some(-1),
+                started_at_ms: 1_757_289_600_123,
+                elapsed_ms: 30_001,
+                bytes_so_far: 9_007_199_254_740_993,
+                oldest_cursor: 4_194_288,
+                replay_window_bytes: 67_108_864,
+                pty: true,
+                rows: 40,
+                cols: 120,
+                input_lease_holder: "user:3-ab12cd".into(),
+                output_ref: "ab".repeat(32),
+                cwd: "/work".into(),
+                timed_out: false,
+            }
+            .encode_to_vec(),
+            expected: json!({
+                "sessionId": "5e55f00d", "taskId": idhex(0x77), "owner": "agent",
+                "argv": ["sh", "-c", "sleep 30"], "title": "sh -c sleep 30",
+                "state": "EXITED", "exitCode": -1, "startedAtMs": "1757289600123",
+                "elapsedMs": "30001", "bytesSoFar": "9007199254740993",
+                "oldestCursor": "4194288", "replayWindowBytes": "67108864",
+                "pty": true, "rows": 40, "cols": 120,
+                "inputLeaseHolder": "user:3-ab12cd", "outputRef": "ab".repeat(32),
+                "cwd": "/work", "timedOut": false
+            }),
+            decode: reencode::<TerminalView>,
+        },
+        Sample {
+            // PX-043: attaching from a cursor, with an acknowledgement window.
+            name: "attach_terminal",
+            type_name: "modbit.v1.AttachTerminal",
+            bytes: AttachTerminal {
+                task_id: id(0x77),
+                session_id: "5e55f00d".into(),
+                after_cursor: 18_446_744_073_709_551_615,
+                window_bytes: 262_144,
+                take_input_lease: true,
+                steal_input_lease: false,
+            }
+            .encode_to_vec(),
+            expected: json!({
+                "taskId": idhex(0x77), "sessionId": "5e55f00d",
+                "afterCursor": "18446744073709551615", "windowBytes": "262144",
+                "takeInputLease": true, "stealInputLease": false
+            }),
+            decode: reencode::<AttachTerminal>,
+        },
+        Sample {
             name: "output_ref_read_response",
             type_name: "modbit.v1.OutputRefReadResponse",
             bytes: read.encode_to_vec(),

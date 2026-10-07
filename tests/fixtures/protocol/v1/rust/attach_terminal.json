@@ -1,0 +1,11 @@
+{
+  "expected": {
+    "afterCursor": "18446744073709551615",
+    "sessionId": "5e55f00d",
+    "stealInputLease": false,
+    "takeInputLease": true,
+    "taskId": "77777777777777777777777777777777",
+    "windowBytes": "262144"
+  },
+  "type": "modbit.v1.AttachTerminal"
+}

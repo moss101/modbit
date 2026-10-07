@@ -1808,6 +1808,26 @@ pub enum TaskEvent {
         /// Timed out.
         timed_out: bool,
     },
+    /// `TerminalControlRecorded` (PX-043, PX-099): what a person did to a
+    /// terminal beyond reading it — resized it, took or gave back its input
+    /// lease, typed into it. The typed bytes are never recorded, only how
+    /// many. No state change.
+    TerminalControlRecorded {
+        /// Handle.
+        handle_id: String,
+        /// `RESIZED` | `INPUT_LEASE_TAKEN` | `INPUT_LEASE_RELEASED` |
+        /// `INPUT_WRITTEN`.
+        kind: String,
+        /// Who held the lease (`user:<client>`), for the lease kinds and
+        /// input; empty for a resize.
+        holder: String,
+        /// The size, for a resize.
+        rows: u32,
+        /// The size, for a resize.
+        cols: u32,
+        /// The input's length, for `INPUT_WRITTEN`.
+        bytes: u64,
+    },
     /// `ProtocolStateResumed` (docs/19 layer 2, REQ-EV-0055): a restarted
     /// Core reconstructed the task's protocol state and continued the run
     /// from the boundary it names; the outstanding calls are re-entered by
@@ -2227,6 +2247,7 @@ impl TaskEvent {
             Self::TerminalCreated { .. } => "TerminalCreated",
             Self::TerminalOutputAdvanced { .. } => "TerminalOutputAdvanced",
             Self::ProcessExited { .. } => "ProcessExited",
+            Self::TerminalControlRecorded { .. } => "TerminalControlRecorded",
             Self::ProtocolStateResumed { .. } => "ProtocolStateResumed",
             Self::ToolCallReconciled { .. } => "ToolCallReconciled",
             Self::UsageReconciled { .. } => "UsageReconciled",
@@ -2407,6 +2428,7 @@ impl Task {
             | TaskEvent::TerminalCreated { .. }
             | TaskEvent::TerminalOutputAdvanced { .. }
             | TaskEvent::ProcessExited { .. }
+            | TaskEvent::TerminalControlRecorded { .. }
             | TaskEvent::ProtocolStateResumed { .. }
             | TaskEvent::ToolCallReconciled { .. }
             | TaskEvent::PolicyGenerationChanged { .. } => {

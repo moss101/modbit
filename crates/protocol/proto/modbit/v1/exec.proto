@@ -27,6 +27,10 @@ message ExecRequest {
   // host itself. Only the owner and the host may list, read, write to or
   // cancel it; any other requester is refused SESSION_NOT_OWNED.
   string owner = 13;
+  // PX-099 (field block 120-139): the PTY's initial size; 0 = 40 rows, 120
+  // columns. A later `Resize` changes it.
+  uint32 pty_rows = 120;
+  uint32 pty_cols = 121;
 }
 
 message ExecStarted {
@@ -75,12 +79,84 @@ message Attach {
   // attach only to a session it owns. A cursor older than the replay window
   // is answered CURSOR_EXPIRED (message carries `oldest_cursor=<n>`).
   string requester = 4;
+  // PX-099 (field block 120-139). The most output bytes the broker may have
+  // sent on this attachment beyond the last `Ack`: at the window it pauses
+  // (the log on disk holds the rest, nothing is buffered) and, with no `Ack`
+  // for `stall_ms`, ends the attachment ATTACH_STALLED naming the cursor to
+  // resume from. 0 = an unwindowed attachment (the Core's own reads).
+  uint64 window_bytes = 120;
+  // How long a full window waits for an `Ack` before the attachment is
+  // dropped to cursor-pull; 0 = the broker's default (30 s).
+  uint64 stall_ms = 121;
+  // When true a cursor beyond the session's head is refused
+  // CURSOR_BEYOND_HEAD instead of waiting for output to reach it.
+  bool strict_cursor = 122;
 }
 
 message WriteStdin {
   string session_id = 1;
   bytes data = 2;
   string requester = 3;               // FIX-20, as Attach.requester
+  // PX-099 (field block 120-139). True: the broker answers `StdinWritten`
+  // (with the cursor the log had reached) when the bytes were written.
+  bool want_ack = 120;
+  // True: these are a person's keystrokes, accepted only from the
+  // connection that holds the session's input lease (LEASE_REQUIRED
+  // otherwise). False: the agent's, refused INPUT_LEASED while any person
+  // holds the lease.
+  bool as_user = 121;
+}
+
+// PX-099: the client acknowledges the last output cursor it consumed on its
+// attachment to `session_id` (the cursor after the last byte it has).
+message TerminalAck {
+  string session_id = 1;
+  uint64 cursor = 2;
+}
+
+// PX-099: change the PTY's size; refused NOT_A_PTY for a piped session and
+// BAD_SIZE outside 1..=500 rows, 1..=1000 columns.
+message TerminalResize {
+  string session_id = 1;
+  uint32 rows = 2;
+  uint32 cols = 3;
+  string requester = 4;               // as Attach.requester
+}
+
+message TerminalResized {
+  string session_id = 1;
+  uint32 rows = 2;
+  uint32 cols = 3;
+}
+
+// PX-099: the terminal owner lease. A person attaching to a terminal takes
+// the input lease; while one connection holds it the agent's stdin writes
+// are refused INPUT_LEASED and no other connection's user input is accepted.
+// Only the host (empty requester, the Core speaking for a person) may take
+// it. The lease ends with `ReleaseInputLease`, with the holding connection,
+// and with the session.
+message AcquireTerminalLease {
+  string session_id = 1;
+  string requester = 2;               // as Attach.requester
+  string holder = 3;                  // who the Core says holds it (`user:<client>`), for the record
+  bool steal = 4;                     // take it from another person's connection
+}
+
+message ReleaseTerminalLease {
+  string session_id = 1;
+  string requester = 2;               // as Attach.requester
+}
+
+message TerminalLeaseState {
+  string session_id = 1;
+  bool held = 2;                      // whether the requesting connection now holds it
+  string holder = 3;                  // the current holder, "" = nobody
+}
+
+message StdinWritten {
+  string session_id = 1;
+  uint64 bytes = 2;
+  uint64 cursor = 3;                  // the log's head when the write was made
 }
 
 message Cancel {
@@ -119,6 +195,17 @@ message SessionInfo {
   string cwd = 10;                    // EPR-018: a review environment ends its processes by it
   string owner = 11;                  // FIX-20: the owning principal ("" = host)
   uint64 oldest_cursor = 12;          // FIX-20: the oldest cursor still replayable
+  // PX-099 (field block 120-139).
+  bool pty = 120;
+  uint32 pty_rows = 121;
+  uint32 pty_cols = 122;
+  string input_lease_holder = 123;    // "" = nobody holds the input lease
+  uint64 duration_ms = 124;           // 0 while running
+  bool cancelled = 125;
+  bool timed_out = 126;
+  string output_ref = 127;            // once exited
+  uint64 replay_window_bytes = 128;   // the broker's replay window per session
+  bool lost = 129;
 }
 
 message SessionList {
@@ -147,5 +234,13 @@ message ExecFrame {
     ExecError error = 12;
     ProbeSandbox probe_sandbox = 13;
     SandboxProbed sandbox_probed = 14;
+    // PX-099 (field block 120-139).
+    TerminalAck ack = 120;
+    TerminalResize resize = 121;
+    TerminalResized resized = 122;
+    AcquireTerminalLease acquire_lease = 123;
+    ReleaseTerminalLease release_lease = 124;
+    TerminalLeaseState lease_state = 125;
+    StdinWritten stdin_written = 126;
   }
 }

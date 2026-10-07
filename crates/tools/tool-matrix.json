@@ -218,6 +218,36 @@
       "test": "qual_ev_0221_background_handles_survive_client_restart_with_bounded_preview_and_cancel"
     },
     {
+      "tool": "shell.input",
+      "family": "shell",
+      "source_behaviors": [
+        "write_stdin",
+        "send_keys",
+        "TaskInput"
+      ],
+      "owner": "Terminal Broker",
+      "effect": "ReversibleWrite",
+      "capabilities": [
+        "shell.exec"
+      ],
+      "test": "px_099_the_agent_answers_a_prompt_through_shell_input_and_attach"
+    },
+    {
+      "tool": "shell.attach",
+      "family": "shell",
+      "source_behaviors": [
+        "attach",
+        "tail -f",
+        "BashOutput"
+      ],
+      "owner": "Terminal Broker",
+      "effect": "ReadOnly",
+      "capabilities": [
+        "shell.exec"
+      ],
+      "test": "px_099_the_agent_answers_a_prompt_through_shell_input_and_attach"
+    },
+    {
       "tool": "shell.cancel",
       "family": "shell",
       "source_behaviors": [
