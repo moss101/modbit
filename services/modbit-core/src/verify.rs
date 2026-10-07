@@ -133,6 +133,8 @@ impl CommandRunner for BrokerRunner {
                 capability_lease_id: None,
                 terminal_session_id: None,
                 owner: String::new(),
+                pty_rows: 0,
+                pty_cols: 0,
             };
             let mut client = match ExecClient::connect(&target.endpoint, &target.boot_secret).await
             {

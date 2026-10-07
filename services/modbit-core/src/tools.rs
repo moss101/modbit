@@ -1558,7 +1558,7 @@ impl ToolHost {
                         ));
                     }
                 }
-                "shell.read" if !sid.is_empty() => {
+                "shell.read" | "shell.attach" if !sid.is_empty() => {
                     retrieval_events.push(typed_task_event(
                         "TerminalOutputAdvanced",
                         &modbit_domain::task::TaskEvent::TerminalOutputAdvanced {
