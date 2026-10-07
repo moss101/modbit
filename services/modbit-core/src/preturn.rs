@@ -378,6 +378,7 @@ async fn seed_pack(
             case_insensitive: false,
             path_glob: None,
             max_hits: MAX_HITS,
+            use_index: true,
         };
         tokio::task::spawn_blocking(move || port.search(&request))
             .await

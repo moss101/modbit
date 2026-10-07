@@ -13,6 +13,8 @@
 //! estimator. The ledger records every injected entry and, later, whether a
 //! tool call actually used the path at the revision it was retrieved at.
 
+pub mod memory;
+
 use serde::{Deserialize, Serialize};
 use sha2::{Digest, Sha256};
 

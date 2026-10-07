@@ -48,6 +48,10 @@ pub struct SearchRequest {
     pub path_glob: Option<String>,
     /// Total hit ceiling.
     pub max_hits: usize,
+    /// Let an exact or regex search use the index's trigram prefilter
+    /// (PX-111). `false` forces the full scan, for comparison; the hits are
+    /// the same either way.
+    pub use_index: bool,
 }
 
 /// Port to the host's retrieval index; results are JSON the tool bounds.

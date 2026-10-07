@@ -1,0 +1,45 @@
+{
+  "expected": {
+    "builds": "0",
+    "components": [
+      {
+        "buildMs": "0",
+        "files": "256",
+        "loadMs": "9",
+        "name": "symbols",
+        "persistedBytes": "0",
+        "reason": "",
+        "state": "loaded"
+      },
+      {
+        "buildMs": "410",
+        "files": "256",
+        "loadMs": "0",
+        "name": "lexical",
+        "persistedBytes": "0",
+        "reason": "lexical: checksum mismatch in 0.idx",
+        "state": "rebuilt"
+      }
+    ],
+    "firstReadyMs": "120",
+    "lastRefreshFiles": "1",
+    "lastRefreshMs": "7",
+    "loads": "5",
+    "persistedBytes": "9007199254740993",
+    "persistedGeneration": "3",
+    "rebuildReasons": [
+      "lexical: checksum mismatch in 0.idx"
+    ],
+    "recomputedFiles": "1",
+    "recomputedSample": [
+      "src/util.rs"
+    ],
+    "refreshes": "2",
+    "searchesIndexed": "11",
+    "searchesScanned": "4",
+    "storeDir": "/profile/indexes/0123456789abcdef",
+    "workspaceRevision": "4",
+    "workspaceRoot": "/repo"
+  },
+  "type": "modbit.v1.IndexStatusView"
+}

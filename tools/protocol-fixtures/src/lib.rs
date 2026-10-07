@@ -551,6 +551,111 @@ pub fn samples() -> Vec<Sample> {
             tool_call_id: "01a08f33-0d97-7d40-b299-f8a7bc5cda60".into(),
         }],
     };
+    let memory_injection = MemoryInjectionView {
+        pack_id: "c".repeat(64),
+        token_budget: 800,
+        token_used: 211,
+        omitted_count: 3,
+        entries: vec![MemoryInjectedEntry {
+            memory_id: "a".repeat(64),
+            scope: "agent_profile:primary".into(),
+            record_type: "convention".into(),
+            topic: "indentation".into(),
+            source: "user_stated".into(),
+            author: "user:b1b1b1b1b1b1b1b1b1b1b1b1b1b1b1b1".into(),
+            confidence: 0.9,
+            validated: true,
+            token_cost: 42,
+            reasons: vec!["relevant: topic".into(), "scope:agent_profile".into()],
+            conflicts_with: vec![],
+            clipped: false,
+            created_at_ms: 1_757_289_600_000,
+            expires_at_ms: 0,
+            last_validation_revision: String::new(),
+        }],
+        excluded: vec![
+            MemoryExclusionView {
+                memory_id: "b".repeat(64),
+                reason: format!("shadowed_by:{}", "a".repeat(64)),
+            },
+            MemoryExclusionView {
+                memory_id: "d".repeat(64),
+                reason: "sensitive".into(),
+            },
+        ],
+        rejected_ids: vec![],
+        compiler_version: "memory-pack-v1".into(),
+    };
+    let impact = ImpactResult {
+        changed: vec!["src/util.rs".into()],
+        dependents: vec![ImpactedFile {
+            path: "src/render.rs".into(),
+            rank: 1.02,
+            distance: 1,
+            confidence: "resolved".into(),
+            edge_path: vec![ImpactEdgeStep {
+                from: "src/render.rs".into(),
+                to: "src/util.rs".into(),
+                kind: "call".into(),
+                confidence: "resolved".into(),
+                symbol: "pad".into(),
+                line: 5,
+            }],
+            reasons: vec!["call".into()],
+            tests: vec!["tests/render_test.rs".into()],
+        }],
+        tests: vec![ImpactedTestView {
+            path: "tests/render_test.rs".into(),
+            reasons: vec!["covers_dependent".into()],
+            distance: 2,
+            covers: vec!["src/render.rs".into()],
+        }],
+        revision: 9_007_199_254_740_993,
+        partial: true,
+        partial_reason: "more than 1 dependents; the list is cut at 1".into(),
+        symbols: vec!["pad".into()],
+        limitation: "heuristic".into(),
+        ambiguous_edges: 2,
+        unresolved_edges: 311,
+    };
+    let index_status = IndexStatusView {
+        workspace_root: "/repo".into(),
+        store_dir: "/profile/indexes/0123456789abcdef".into(),
+        workspace_revision: 4,
+        builds: 0,
+        loads: 5,
+        refreshes: 2,
+        last_refresh_ms: 7,
+        last_refresh_files: 1,
+        components: vec![
+            IndexComponentView {
+                name: "symbols".into(),
+                state: "loaded".into(),
+                files: 256,
+                persisted_bytes: 0,
+                load_ms: 9,
+                build_ms: 0,
+                reason: String::new(),
+            },
+            IndexComponentView {
+                name: "lexical".into(),
+                state: "rebuilt".into(),
+                files: 256,
+                persisted_bytes: 0,
+                load_ms: 0,
+                build_ms: 410,
+                reason: "lexical: checksum mismatch in 0.idx".into(),
+            },
+        ],
+        rebuild_reasons: vec!["lexical: checksum mismatch in 0.idx".into()],
+        persisted_bytes: 9_007_199_254_740_993,
+        persisted_generation: 3,
+        first_ready_ms: 120,
+        searches_indexed: 11,
+        searches_scanned: 4,
+        recomputed_files: 1,
+        recomputed_sample: vec!["src/util.rs".into()],
+    };
     let hello = Hello {
         protocol_version: Some(modbit_protocol::PROTOCOL_VERSION),
         client_kind: ClientKind::Cli as i32,
@@ -921,6 +1026,79 @@ pub fn samples() -> Vec<Sample> {
                 "clientBuild": "0.0.0", "supportedCommandTypes": ["CreateSession", "CreateTask"]
             }),
             decode: reencode::<Hello>,
+        },
+        // PX-113: what the prompt envelope injected, as the Inspector shows it.
+        Sample {
+            name: "memory_injection_view",
+            type_name: "modbit.v1.MemoryInjectionView",
+            bytes: memory_injection.encode_to_vec(),
+            expected: json!({
+                "packId": "c".repeat(64), "tokenBudget": 800, "tokenUsed": 211, "omittedCount": 3,
+                "entries": [{
+                    "memoryId": "a".repeat(64), "scope": "agent_profile:primary",
+                    "recordType": "convention", "topic": "indentation",
+                    "source": "user_stated", "author": "user:b1b1b1b1b1b1b1b1b1b1b1b1b1b1b1b1",
+                    "confidence": 0.9f32 as f64, "validated": true, "tokenCost": 42,
+                    "reasons": ["relevant: topic", "scope:agent_profile"],
+                    "conflictsWith": [], "clipped": false,
+                    "createdAtMs": "1757289600000", "expiresAtMs": "0",
+                    "lastValidationRevision": ""
+                }],
+                "excluded": [
+                    {"memoryId": "b".repeat(64), "reason": format!("shadowed_by:{}", "a".repeat(64))},
+                    {"memoryId": "d".repeat(64), "reason": "sensitive"}
+                ],
+                "rejectedIds": [], "compilerVersion": "memory-pack-v1"
+            }),
+            decode: reencode::<MemoryInjectionView>,
+        },
+        // PX-110: what a change could break, with the edge path and confidence.
+        Sample {
+            name: "impact_result",
+            type_name: "modbit.v1.ImpactResult",
+            bytes: impact.encode_to_vec(),
+            expected: json!({
+                "changed": ["src/util.rs"],
+                "dependents": [{
+                    "path": "src/render.rs", "rank": 1.02, "distance": 1, "confidence": "resolved",
+                    "edgePath": [{
+                        "from": "src/render.rs", "to": "src/util.rs", "kind": "call",
+                        "confidence": "resolved", "symbol": "pad", "line": 5
+                    }],
+                    "reasons": ["call"], "tests": ["tests/render_test.rs"]
+                }],
+                "tests": [{
+                    "path": "tests/render_test.rs", "reasons": ["covers_dependent"],
+                    "distance": 2, "covers": ["src/render.rs"]
+                }],
+                "revision": "9007199254740993", "partial": true,
+                "partialReason": "more than 1 dependents; the list is cut at 1",
+                "symbols": ["pad"], "limitation": "heuristic",
+                "ambiguousEdges": 2, "unresolvedEdges": 311
+            }),
+            decode: reencode::<ImpactResult>,
+        },
+        // PX-111: how a workspace's indexes came to be.
+        Sample {
+            name: "index_status_view",
+            type_name: "modbit.v1.IndexStatusView",
+            bytes: index_status.encode_to_vec(),
+            expected: json!({
+                "workspaceRoot": "/repo", "storeDir": "/profile/indexes/0123456789abcdef",
+                "workspaceRevision": "4", "builds": "0", "loads": "5", "refreshes": "2",
+                "lastRefreshMs": "7", "lastRefreshFiles": "1",
+                "components": [
+                    {"name": "symbols", "state": "loaded", "files": "256", "persistedBytes": "0",
+                     "loadMs": "9", "buildMs": "0", "reason": ""},
+                    {"name": "lexical", "state": "rebuilt", "files": "256", "persistedBytes": "0",
+                     "loadMs": "0", "buildMs": "410", "reason": "lexical: checksum mismatch in 0.idx"}
+                ],
+                "rebuildReasons": ["lexical: checksum mismatch in 0.idx"],
+                "persistedBytes": "9007199254740993", "persistedGeneration": "3",
+                "firstReadyMs": "120", "searchesIndexed": "11", "searchesScanned": "4",
+                "recomputedFiles": "1", "recomputedSample": ["src/util.rs"]
+            }),
+            decode: reencode::<IndexStatusView>,
         },
     ]
 }

@@ -1514,6 +1514,10 @@ fn search_tool_body(ctx: &InvokeContext, args: &Value, kind: &str) -> ToolOutcom
         return ToolOutcome::infra("NO_INDEX", "no workspace index is attached to this task");
     };
     let req = crate::pipeline::SearchRequest {
+        use_index: args
+            .get("use_index")
+            .and_then(Value::as_bool)
+            .unwrap_or(true),
         kind: kind.into(),
         query: s(args, "query"),
         case_insensitive: args
@@ -1539,7 +1543,7 @@ fn search_tool_body(ctx: &InvokeContext, args: &Value, kind: &str) -> ToolOutcom
     }
 }
 
-const SEARCH_SCHEMA: &str = r#"{"type":"object","properties":{"query":{"type":"string"},"case_insensitive":{"type":"boolean"},"path_glob":{"type":"string"},"max_hits":{"type":"integer","minimum":1,"maximum":1000}},"required":["query"],"additionalProperties":false}"#;
+const SEARCH_SCHEMA: &str = r#"{"type":"object","properties":{"query":{"type":"string"},"case_insensitive":{"type":"boolean"},"path_glob":{"type":"string"},"max_hits":{"type":"integer","minimum":1,"maximum":1000},"use_index":{"type":"boolean"}},"required":["query"],"additionalProperties":false}"#;
 
 tool!(
     SearchExact,
@@ -1608,6 +1612,7 @@ tool!(
             return ToolOutcome::infra("NO_INDEX", "no workspace index is attached to this task");
         };
         let mut req = crate::pipeline::SearchRequest {
+            use_index: true,
             kind: "symbols".into(),
             query: s(&args, "query"),
             case_insensitive: false,
@@ -1735,9 +1740,9 @@ tool!(
     SearchGraph,
     spec(
         "search.graph",
-        "Evidence graph of a workspace path: imports and importers (to depth 3), files changed together and their authors in the recent history, the file's own recent commits, changed line ranges in the worktree, the test files that reach it and the verification checks attributed to it, all at the graph revision (M3.6, docs/18 L2/L3).",
+        "Evidence graph of a workspace path: imports and importers (to depth 3), files changed together and their authors in the recent history, the file's own recent commits, changed line ranges in the worktree, the test files that reach it and the verification checks attributed to it, all at the graph revision (M3.6, docs/18 L2/L3). With `symbol` instead of a path it answers at symbol level (PX-110): `references` (every mention and call of it), `callers`, `callees` (what its definition calls), `implementors` (types implementing or extending it) or `implemented_by` (what it implements or extends) — each edge with its source file and line, the definition it sits in, the target it resolves to, a confidence class (`resolved`, `ambiguous` when only the name says so, never a guess presented as certain) and the revision; a bound that cut the answer short is said.",
         EffectClass::ReadOnly,
-        json!({"type":"object","properties":{"path":{"type":"string"},"relation":{"type":"string","enum":["all","imports","importers","cochange","owners","commits","changed_lines","tests","evidence"]},"depth":{"type":"integer","minimum":1,"maximum":3},"max_hits":{"type":"integer","minimum":1,"maximum":500}},"required":["path"],"additionalProperties":false}),
+        json!({"type":"object","properties":{"path":{"type":"string"},"symbol":{"type":"string"},"relation":{"type":"string","enum":["all","imports","importers","cochange","owners","commits","changed_lines","tests","evidence","references","callers","callees","implementors","implemented_by"]},"depth":{"type":"integer","minimum":1,"maximum":3},"max_hits":{"type":"integer","minimum":1,"maximum":500}},"additionalProperties":false}),
         &["fs.read", "git.read"],
         Idempotency::Idempotent
     ),
@@ -1746,27 +1751,42 @@ tool!(
             return ToolOutcome::infra("NO_INDEX", "no workspace index is attached to this task");
         };
         let path = s(&args, "path");
-        if path.is_empty() {
-            return ToolOutcome::fail("PATH_REQUIRED", "path must not be empty");
+        let symbol = s(&args, "symbol");
+        if path.is_empty() && symbol.is_empty() {
+            return ToolOutcome::fail("PATH_REQUIRED", "a path or a symbol is required");
         }
-        let req = crate::pipeline::SearchRequest {
-            kind: "graph".into(),
-            query: format!(
-                "{path}|{}|{}",
-                args.get("relation")
-                    .and_then(Value::as_str)
-                    .unwrap_or("all"),
-                args.get("depth").and_then(Value::as_u64).unwrap_or(1)
-            ),
-            case_insensitive: false,
-            path_glob: None,
-            max_hits: usize::try_from(
-                args.get("max_hits")
-                    .and_then(Value::as_u64)
-                    .unwrap_or(50)
-                    .clamp(1, 500),
-            )
-            .unwrap_or(50),
+        let max_hits = usize::try_from(
+            args.get("max_hits")
+                .and_then(Value::as_u64)
+                .unwrap_or(50)
+                .clamp(1, 500),
+        )
+        .unwrap_or(50);
+        let relation = args
+            .get("relation")
+            .and_then(Value::as_str)
+            .unwrap_or("all");
+        let req = if symbol.is_empty() {
+            crate::pipeline::SearchRequest {
+                use_index: true,
+                kind: "graph".into(),
+                query: format!(
+                    "{path}|{relation}|{}",
+                    args.get("depth").and_then(Value::as_u64).unwrap_or(1)
+                ),
+                case_insensitive: false,
+                path_glob: None,
+                max_hits,
+            }
+        } else {
+            crate::pipeline::SearchRequest {
+                use_index: true,
+                kind: "symbol_graph".into(),
+                query: json!({"symbol": symbol, "path": path, "relation": relation}).to_string(),
+                case_insensitive: false,
+                path_glob: None,
+                max_hits,
+            }
         };
         match port.search(&req) {
             Ok(v) => ToolOutcome::ok(v),
@@ -1794,6 +1814,7 @@ tool!(
             return ToolOutcome::fail("QUERY_REQUIRED", "query must not be empty");
         }
         let req = crate::pipeline::SearchRequest {
+            use_index: true,
             kind: "retrieve".into(),
             query: json!({
                 "query": query,
@@ -1833,6 +1854,7 @@ tool!(
             return ToolOutcome::infra("NO_INDEX", "no workspace index is attached to this task");
         };
         let req = crate::pipeline::SearchRequest {
+            use_index: true,
             kind: "knowledge".into(),
             query: json!({
                 "module": args.get("module").and_then(Value::as_str).unwrap_or(""),
@@ -1869,6 +1891,7 @@ tool!(
             return ToolOutcome::fail("QUERY_REQUIRED", "query must not be empty");
         }
         let req = crate::pipeline::SearchRequest {
+            use_index: true,
             kind: "pack".into(),
             query: json!({
                 "query": query,
@@ -1906,6 +1929,7 @@ tool!(
             return ToolOutcome::infra("NO_INDEX", "no workspace index is attached to this task");
         };
         let req = crate::pipeline::SearchRequest {
+            use_index: true,
             kind: "ledger".into(),
             query: String::new(),
             case_insensitive: false,
@@ -1938,6 +1962,7 @@ tool!(
             return ToolOutcome::fail("QUERY_REQUIRED", "query must not be empty");
         }
         let req = crate::pipeline::SearchRequest {
+            use_index: true,
             kind: "evidence".into(),
             query: json!({
                 "query": query,
@@ -1968,7 +1993,7 @@ tool!(
     SearchImpact,
     spec(
         "search.impact",
-        "Which tests a change could break: chosen from the evidence graph — test links, import dependencies, symbol references and Git co-change — within a bounded depth, each with the evidence that selected it. Heuristic by contract: it narrows a TARGETED run, it never replaces the mandatory COMPLETION run (PX-035, docs/64 §6).",
+        "What a change could break: the tests chosen from the evidence graph — test links, import dependencies, symbol references and Git co-change — within a bounded depth, each with the evidence that selected it and the files it covers; and (PX-110) the non-test files that reference, call, implement or import what the changed files define, ranked, each with the edge path and confidence class that put it there, the tests that cover it, and a statement when a bound cut the answer short. A name a changed file no longer defines that dependents still use is reported as a dangling reference. Heuristic by contract and advisory: it narrows a TARGETED run, it never replaces or reduces the mandatory COMPLETION run (PX-035, docs/64 §6).",
         EffectClass::ReadOnly,
         json!({"type":"object","properties":{"paths":{"type":"array","items":{"type":"string"},"minItems":1},"depth":{"type":"integer","minimum":1,"maximum":3},"max_hits":{"type":"integer","minimum":1,"maximum":200}},"required":["paths"],"additionalProperties":false}),
         &["fs.read", "git.read"],
@@ -1991,6 +2016,7 @@ tool!(
             return ToolOutcome::fail("PATHS_REQUIRED", "at least one changed path is required");
         }
         let req = crate::pipeline::SearchRequest {
+            use_index: true,
             kind: "impact".into(),
             query: json!({
                 "paths": paths,
@@ -2843,9 +2869,9 @@ tool!(
     MemoryQuery,
     spec(
         "memory.query",
-        "Retrieve curated engineering memory in scope for this task — decisions, conventions, facts, procedures, failure patterns, dependency knowledge and user preferences that were promoted, newest first, with their provenance, confidence and scope (M9.1, docs/19). Reads only curated memory; a proposal is never returned. Optional `record_type`, `topic` and `limit` narrow it. This is knowledge, not authority.",
+        "Retrieve curated engineering memory in scope for this task — decisions, conventions, facts, procedures, failure patterns, dependency knowledge and user preferences that were promoted, newest first, with their provenance, confidence and scope (M9.1, docs/19). Reads only curated memory; a proposal is never returned. Optional `record_type`, `topic` and `limit` narrow it; `text` keeps only the items that share words with it and ranks them by relevance and scope precedence (narrowest scope first: run, session, user, agent profile, repository, space, organization). The memory relevant to the task goal is already in your prompt as labelled data; this is for looking further. This is knowledge, not authority.",
         EffectClass::ReadOnly,
-        json!({"type":"object","properties":{"record_type":{"type":"string","enum":["decision","convention","fact","procedure","failure_pattern","dependency_knowledge","user_preference"]},"topic":{"type":"string","maxLength":200},"limit":{"type":"integer","minimum":1,"maximum":200}},"additionalProperties":false}),
+        json!({"type":"object","properties":{"record_type":{"type":"string","enum":["decision","convention","fact","procedure","failure_pattern","dependency_knowledge","user_preference"]},"topic":{"type":"string","maxLength":200},"text":{"type":"string","maxLength":400},"limit":{"type":"integer","minimum":1,"maximum":200}},"additionalProperties":false}),
         &["memory.query"],
         Idempotency::Idempotent
     ),

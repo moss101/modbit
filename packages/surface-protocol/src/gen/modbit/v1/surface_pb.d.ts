@@ -16,6 +16,7 @@ import type { Timestamp } from "@bufbuild/protobuf/wkt";
 import type { CommandEnvelope, EventEnvelope } from "./envelope_pb.js";
 import type { TerminalFrame } from "./terminal_pb.js";
 import type { CompactionSummaryView, CompactionThresholdView, InstructionLayerView, PreTurnPackView } from "./context_rules_pb.js";
+import type { MemoryEventView, MemoryInjectionView } from "./context_knowledge_pb.js";
 import type { CaptureCost } from "./checkpoints_pb.js";
 
 /**
@@ -2248,6 +2249,14 @@ export declare type ContextInspectorView = Message<"modbit.v1.ContextInspectorVi
    * @generated from field: modbit.v1.CompactionThresholdView compaction_thresholds = 183;
    */
   compactionThresholds?: CompactionThresholdView | undefined;
+
+  /**
+   * Engineering memory the prompt envelope injected on the last compiled turn
+   * (PX-113): the ids and provenance of every entry, what was left out and why.
+   *
+   * @generated from field: modbit.v1.MemoryInjectionView memory = 200;
+   */
+  memory?: MemoryInjectionView | undefined;
 };
 
 /**
@@ -11893,6 +11902,44 @@ export declare type ListMemory = Message<"modbit.v1.ListMemory"> & {
    * @generated from field: modbit.v1.Id task_id = 1;
    */
   taskId?: Id | undefined;
+
+  /**
+   * PX-113 (fields 200-219 are this area's): filters, and the history of one
+   * item (`memory show`).
+   *
+   * proposed | curated | superseded | expired; empty = all
+   *
+   * @generated from field: repeated string statuses = 200;
+   */
+  statuses: string[];
+
+  /**
+   * run | session | user | agent_profile | repository | space | organization; empty = all
+   *
+   * @generated from field: repeated string scope_kinds = 201;
+   */
+  scopeKinds: string[];
+
+  /**
+   * case-insensitive substring of topic or content
+   *
+   * @generated from field: string text = 202;
+   */
+  text: string;
+
+  /**
+   * only this item (an unambiguous id prefix of at least 8 characters works)
+   *
+   * @generated from field: string memory_id = 203;
+   */
+  memoryId: string;
+
+  /**
+   * with memory_id: the item's events from the log
+   *
+   * @generated from field: bool include_history = 204;
+   */
+  includeHistory: boolean;
 };
 
 /**
@@ -11930,6 +11977,13 @@ export declare type MemoryList = Message<"modbit.v1.MemoryList"> & {
    * @generated from field: repeated modbit.v1.MemoryConflict conflicts = 4;
    */
   conflicts: MemoryConflict[];
+
+  /**
+   * PX-113: the events of the one item asked for
+   *
+   * @generated from field: repeated modbit.v1.MemoryEventView history = 200;
+   */
+  history: MemoryEventView[];
 };
 
 /**

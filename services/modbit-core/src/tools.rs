@@ -394,8 +394,18 @@ pub struct ToolHost {
     pub(crate) lexical: Mutex<HashMap<PathBuf, Arc<Mutex<modbit_retrieval::LexicalIndex>>>>,
     /// Symbol indexes per canonical workspace root (M3.3).
     pub(crate) symbols: Mutex<HashMap<PathBuf, Arc<Mutex<modbit_retrieval::SymbolIndex>>>>,
-    /// Semantic chunk indexes per canonical workspace root (M3.5).
-    pub(crate) semantic: Mutex<HashMap<PathBuf, Arc<Mutex<modbit_retrieval::SemanticIndex>>>>,
+    /// Semantic chunk index slots per canonical workspace root (M3.5): empty
+    /// until a query that needs the embeddings builds them.
+    pub(crate) semantic:
+        Mutex<HashMap<PathBuf, Arc<Mutex<Option<modbit_retrieval::SemanticIndex>>>>>,
+    /// Reference, call and implementor graphs per canonical workspace root (PX-110).
+    pub(crate) refs: Mutex<HashMap<PathBuf, Arc<Mutex<modbit_retrieval::RefGraph>>>>,
+    /// How each workspace's indexes came to be and what searches did (PX-111).
+    pub(crate) index_states: Mutex<HashMap<PathBuf, Arc<crate::index_host::IndexState>>>,
+    /// Serializes opening a workspace's indexes.
+    pub(crate) loading: Mutex<()>,
+    /// Workspaces whose exact index is open and whose derived indexes are not.
+    pub(crate) pending_opens: Mutex<HashMap<PathBuf, crate::index_host::PendingOpen>>,
     /// Evidence graphs per canonical workspace root (M3.6).
     pub(crate) graphs: Mutex<HashMap<PathBuf, Arc<Mutex<modbit_retrieval::EvidenceGraph>>>>,
     /// The repository knowledge map per canonical workspace root, kept as a
@@ -425,7 +435,7 @@ pub struct ToolHost {
     /// and the runs a fail-closed after-hook stopped.
     pub hooks: Arc<crate::hooks::HookBus>,
     /// Where this Core's own configuration and profile live.
-    data_dir: std::path::PathBuf,
+    pub(crate) data_dir: std::path::PathBuf,
     /// The browser sessions `browser.*` reach through their hosts (M7.1).
     pub browser: Arc<dyn modbit_browser::BrowserPort>,
     /// The provider gateway, for the credentials in its custody (M7.7):
@@ -540,6 +550,10 @@ impl ToolHost {
             lexical: Mutex::new(HashMap::new()),
             symbols: Mutex::new(HashMap::new()),
             semantic: Mutex::new(HashMap::new()),
+            refs: Mutex::new(HashMap::new()),
+            index_states: Mutex::new(HashMap::new()),
+            loading: Mutex::new(()),
+            pending_opens: Mutex::new(HashMap::new()),
             graphs: Mutex::new(HashMap::new()),
             knowledge: Mutex::new(HashMap::new()),
             ledgers: Mutex::new(HashMap::new()),
@@ -616,89 +630,47 @@ impl ToolHost {
         CapabilityKernel::default().envelope().clone()
     }
 
-    /// The retrieval index of a workspace root, built at first use (M3.1).
+    /// The retrieval index of a workspace root: opened from the persisted
+    /// store at first use (M3.1, PX-111).
     pub(crate) async fn index(
         &self,
         canonical: &Path,
     ) -> Result<Arc<Mutex<modbit_retrieval::RepositoryIndex>>> {
-        let mut map = self.indexes.lock().await;
-        if let Some(i) = map.get(canonical) {
-            return Ok(Arc::clone(i));
-        }
-        let (ws, _) = self.workspace(&canonical.to_string_lossy()).await?;
-        let revision = ws.lock().await.revision().number;
-        let idx = Arc::new(Mutex::new(
-            modbit_retrieval::RepositoryIndex::build(canonical, revision)
-                .map_err(|e| anyhow::anyhow!("{e}"))?,
-        ));
-        map.insert(canonical.to_path_buf(), Arc::clone(&idx));
-        Ok(idx)
+        self.ensure_exact(canonical).await?;
+        self.indexes
+            .lock()
+            .await
+            .get(canonical)
+            .cloned()
+            .context("the exact index")
     }
 
-    /// The BM25 index of a workspace root, built from the exact index at first use (M3.2).
+    /// The BM25 index of a workspace root (M3.2).
     pub(crate) async fn lexical(
         &self,
         canonical: &Path,
     ) -> Result<Arc<Mutex<modbit_retrieval::LexicalIndex>>> {
-        let mut map = self.lexical.lock().await;
-        if let Some(i) = map.get(canonical) {
-            return Ok(Arc::clone(i));
-        }
-        let index = self.index(canonical).await?;
-        let index = index.lock().await;
-        let lx = modbit_retrieval::LexicalIndex::build(index.texts(), index.revision())
-            .map_err(|e| anyhow::anyhow!("{e}"))?;
-        let lx = Arc::new(Mutex::new(lx));
-        map.insert(canonical.to_path_buf(), Arc::clone(&lx));
-        Ok(lx)
+        self.ensure_loaded(canonical).await?;
+        self.lexical
+            .lock()
+            .await
+            .get(canonical)
+            .cloned()
+            .context("the lexical index")
     }
 
-    /// The symbol index of a workspace root, built from the exact index at first use (M3.3).
+    /// The symbol index of a workspace root (M3.3).
     pub(crate) async fn symbols(
         &self,
         canonical: &Path,
     ) -> Result<Arc<Mutex<modbit_retrieval::SymbolIndex>>> {
-        let mut map = self.symbols.lock().await;
-        if let Some(i) = map.get(canonical) {
-            return Ok(Arc::clone(i));
-        }
-        let index = self.index(canonical).await?;
-        let index = index.lock().await;
-        let sx = Arc::new(Mutex::new(modbit_retrieval::SymbolIndex::build(
-            index.texts_with_hash(),
-            index.revision(),
-        )));
-        map.insert(canonical.to_path_buf(), Arc::clone(&sx));
-        Ok(sx)
-    }
-
-    /// The semantic chunk index of a workspace root, built from the exact and
-    /// symbol indexes with the hashing embedder at first use (M3.5).
-    pub(crate) async fn semantic(
-        &self,
-        canonical: &Path,
-    ) -> Result<Arc<Mutex<modbit_retrieval::SemanticIndex>>> {
-        let mut map = self.semantic.lock().await;
-        if let Some(i) = map.get(canonical) {
-            return Ok(Arc::clone(i));
-        }
-        let index = self.index(canonical).await?;
-        let symbols = self.symbols(canonical).await?;
-        let index = index.lock().await;
-        let symbols = symbols.lock().await;
-        let files: Vec<modbit_retrieval::FileSource> = index
-            .texts()
-            .map(|(p, t, _)| (p, t, symbol_spans(&symbols, p)))
-            .collect();
-        let sem = modbit_retrieval::SemanticIndex::build(
-            Box::new(modbit_retrieval::HashingEmbedder::default()),
-            files.into_iter(),
-            index.revision(),
-        )
-        .map_err(|e| anyhow::anyhow!("{e}"))?;
-        let sem = Arc::new(Mutex::new(sem));
-        map.insert(canonical.to_path_buf(), Arc::clone(&sem));
-        Ok(sem)
+        self.ensure_loaded(canonical).await?;
+        self.symbols
+            .lock()
+            .await
+            .get(canonical)
+            .cloned()
+            .context("the symbol index")
     }
 
     /// The Context Ledger of a task (M3.8). The first access in a process
@@ -745,27 +717,19 @@ impl ToolHost {
         })
     }
 
-    /// The evidence graph of a workspace root, built from the exact index, the
-    /// recent Git history and the worktree diff at first use (M3.6).
+    /// The evidence graph of a workspace root (M3.6): its import edges come
+    /// from the persisted records, its history and worktree diff from Git.
     pub(crate) async fn graph(
         &self,
         canonical: &Path,
     ) -> Result<Arc<Mutex<modbit_retrieval::EvidenceGraph>>> {
-        let mut map = self.graphs.lock().await;
-        if let Some(g) = map.get(canonical) {
-            return Ok(Arc::clone(g));
-        }
-        let index = self.index(canonical).await?;
-        let index = index.lock().await;
-        let g = modbit_retrieval::EvidenceGraph::build(
-            index.texts(),
-            recent_commits(canonical),
-            worktree_changed_lines(canonical),
-            index.revision(),
-        );
-        let g = Arc::new(Mutex::new(g));
-        map.insert(canonical.to_path_buf(), Arc::clone(&g));
-        Ok(g)
+        self.ensure_loaded(canonical).await?;
+        self.graphs
+            .lock()
+            .await
+            .get(canonical)
+            .cloned()
+            .context("the evidence graph")
     }
 
     /// The cached knowledge map slot of a workspace root.
@@ -866,8 +830,10 @@ impl ToolHost {
             index: self.index(r).await?,
             lexical: self.lexical(r).await?,
             symbols: self.symbols(r).await?,
-            semantic: self.semantic(r).await?,
+            semantic: self.semantic_slot(r).await?,
             graph: self.graph(r).await?,
+            refs: self.refs(r).await?,
+            state: self.index_state(r).await?,
             knowledge: self.knowledge(r).await,
             evidence: task_evidence(store, task_id).await,
             external: {
@@ -1217,25 +1183,38 @@ impl ToolHost {
             // scope and the author come from the actor; the repository scope
             // is the canonical workspace root.
             memory: {
-                let (author, user) = match &actor {
-                    Actor::User(id) => (format!("user:{id}"), id.to_string()),
-                    Actor::Agent(a) => (format!("agent:{a}"), String::new()),
-                    Actor::Core(c) => (format!("core:{c}"), String::new()),
-                    Actor::External(e) => (format!("external:{e}"), String::new()),
+                // PX-113: the chain is the task's own — the session's user
+                // and space, the task's repository and agent profile — not
+                // the acting actor's, so an agent's `scope: user` binds to
+                // the person it works for. Every mutation is an event on
+                // this session's log.
+                let run_label = run_id.map(|r| r.to_string());
+                let chain = {
+                    let st = store.lock().await;
+                    match st.task(&task_id) {
+                        Ok(Some(t)) => {
+                            crate::memory::chain_in(&st, tenant_id, &t, run_label.as_deref())
+                        }
+                        _ => crate::memory::ScopeChain::for_task(
+                            tenant_id,
+                            session_id,
+                            run_label.as_deref(),
+                            "",
+                            workspace_root.as_deref(),
+                            None,
+                            None,
+                        ),
+                    }
                 };
-                let chain = crate::memory::ScopeChain::for_task(
-                    tenant_id,
-                    session_id,
-                    run_id.map(|r| r.to_string()).as_deref(),
-                    &user,
-                    root.as_ref()
-                        .map(|p| p.to_string_lossy().into_owned())
-                        .as_deref(),
-                );
                 Some(Arc::new(crate::memory::CoreMemory::new(
                     Arc::clone(store),
                     chain,
-                    author,
+                    crate::memory::MemoryCtx {
+                        tenant: tenant_id,
+                        session: session_id,
+                        task: Some(task_id),
+                        actor: actor.clone(),
+                    },
                     root.as_ref().map(|p| p.to_string_lossy().into_owned()),
                 ))
                     as Arc<dyn modbit_tools::pipeline::MemoryPort>)
@@ -1673,93 +1652,12 @@ impl ToolHost {
         {
             let changes = workspace_changes(&result.structured_output);
             let ws = ws.lock().await;
-            // Index freshness (docs/18): the changed paths re-enter the index at the new revision.
-            if let Ok(index) = self.index(root).await {
-                let paths: Vec<String> = changes.iter().map(|c| c.path.clone()).collect();
-                let rev = ws.revision().number;
-                let mut index = index.lock().await;
-                index.refresh(&paths, rev);
-                if let Ok(lexical) = self.lexical(root).await {
-                    let changed: Vec<modbit_retrieval::ChangedDoc> = paths
-                        .iter()
-                        .map(|p| {
-                            let t = index
-                                .texts()
-                                .find(|(path, _, _)| *path == p.as_str())
-                                .map(|(_, t, l)| (t.to_owned(), l.map(str::to_owned)));
-                            (p.clone(), t)
-                        })
-                        .collect();
-                    if let Err(e) = lexical.lock().await.refresh(&changed, rev) {
-                        eprintln!("modbit-core: lexical index refresh failed: {e}");
-                    }
-                }
-                if let Ok(symbols) = self.symbols(root).await {
-                    let changed: Vec<modbit_retrieval::ChangedSymbols> = paths
-                        .iter()
-                        .map(|p| {
-                            let t = index
-                                .texts_with_hash()
-                                .find(|(path, _, _, _)| *path == p.as_str())
-                                .map(|(_, t, l, h)| {
-                                    (t.to_owned(), l.map(str::to_owned), h.to_owned())
-                                });
-                            (p.clone(), t)
-                        })
-                        .collect();
-                    symbols.lock().await.refresh(&changed, rev);
-                }
-                if let (Ok(semantic), Ok(symbols)) =
-                    (self.semantic(root).await, self.symbols(root).await)
-                {
-                    // docs/18: embedding is queued for changed chunks, then flushed here.
-                    let symbols = symbols.lock().await;
-                    let mut sem = semantic.lock().await;
-                    sem.mark_changed(&paths);
-                    let changed: Vec<ChangedChunkSource> = paths
-                        .iter()
-                        .map(|p| {
-                            let t = index
-                                .texts()
-                                .find(|(path, _, _)| *path == p.as_str())
-                                .map(|(_, t, _)| (t.to_owned(), symbol_spans(&symbols, p)));
-                            (p.clone(), t)
-                        })
-                        .collect();
-                    if let Ok(graph) = self.graph(root).await {
-                        // docs/18: import edges of the changed paths and the worktree's
-                        // changed lines re-enter the graph at the new revision.
-                        let changed: Vec<modbit_retrieval::ChangedDoc> = paths
-                            .iter()
-                            .map(|p| {
-                                let t = index
-                                    .texts()
-                                    .find(|(path, _, _)| *path == p.as_str())
-                                    .map(|(_, t, l)| (t.to_owned(), l.map(str::to_owned)));
-                                (p.clone(), t)
-                            })
-                            .collect();
-                        graph.lock().await.refresh(
-                            changed.iter().map(|(p, c)| {
-                                (
-                                    p.as_str(),
-                                    c.as_ref().map(|(t, l)| (t.as_str(), l.as_deref())),
-                                )
-                            }),
-                            worktree_changed_lines(root),
-                            None,
-                            rev,
-                        );
-                    }
-                    if let Err(e) = sem.flush(
-                        changed.iter().map(|(p, c)| {
-                            (p.as_str(), c.as_ref().map(|(t, s)| (t.as_str(), s.clone())))
-                        }),
-                        rev,
-                    ) {
-                        eprintln!("modbit-core: semantic index refresh failed: {e}");
-                    }
-                }
+            // Index freshness (docs/18, PX-111): the changed paths re-enter
+            // every index at the new revision, each parsed once.
+            let paths: Vec<String> = changes.iter().map(|c| c.path.clone()).collect();
+            let rev = ws.revision().number;
+            if let Err(e) = self.refresh_workspace(root, &paths, rev).await {
+                eprintln!("modbit-core: index refresh failed: {e:#}");
             }
             let objects = store.lock().await.objects().clone();
             file_events = file_changed_events(
@@ -2898,8 +2796,12 @@ struct IndexPort {
     index: Arc<Mutex<modbit_retrieval::RepositoryIndex>>,
     lexical: Arc<Mutex<modbit_retrieval::LexicalIndex>>,
     symbols: Arc<Mutex<modbit_retrieval::SymbolIndex>>,
-    semantic: Arc<Mutex<modbit_retrieval::SemanticIndex>>,
+    semantic: Arc<Mutex<Option<modbit_retrieval::SemanticIndex>>>,
     graph: Arc<Mutex<modbit_retrieval::EvidenceGraph>>,
+    /// Reference, call and implementor edges (PX-110).
+    refs: Arc<Mutex<modbit_retrieval::RefGraph>>,
+    /// Lifecycle and counters of this workspace's indexes (PX-111).
+    state: Arc<crate::index_host::IndexState>,
     knowledge: Arc<Mutex<Option<modbit_retrieval::knowledge::KnowledgeArtifact>>>,
     /// Verification checks of the task's runs as (check id, status).
     evidence: Vec<(String, String)>,
@@ -2975,7 +2877,7 @@ fn excerpt(text: &str, lines: Option<(u32, u32)>) -> (String, Option<(u32, u32)>
 }
 
 /// Recent commits of a root through the real git (empty outside a repository).
-fn recent_commits(root: &Path) -> Vec<modbit_retrieval::CommitRecord> {
+pub(crate) fn recent_commits(root: &Path) -> Vec<modbit_retrieval::CommitRecord> {
     modbit_git::Repo::open(root)
         .and_then(|r| r.log_recent(200))
         .map(|v| {
@@ -2993,7 +2895,7 @@ fn recent_commits(root: &Path) -> Vec<modbit_retrieval::CommitRecord> {
 }
 
 /// Changed line ranges of the worktree versus HEAD (empty outside a repository).
-fn worktree_changed_lines(root: &Path) -> modbit_retrieval::graph::ChangedLines {
+pub(crate) fn worktree_changed_lines(root: &Path) -> modbit_retrieval::graph::ChangedLines {
     modbit_git::Repo::open(root)
         .and_then(|r| r.diff_worktree())
         .map(|d| modbit_retrieval::graph::changed_lines_from_unified(&d.unified))
@@ -3141,11 +3043,11 @@ pub async fn attached_documents(
     out
 }
 
-/// A changed path with its new text and symbol spans (`None` = removed).
-type ChangedChunkSource = (String, Option<(String, Vec<(String, u64, u64)>)>);
-
 /// Symbol byte spans of a path as chunk boundaries (`name`, start, end).
-fn symbol_spans(symbols: &modbit_retrieval::SymbolIndex, path: &str) -> Vec<(String, u64, u64)> {
+pub(crate) fn symbol_spans(
+    symbols: &modbit_retrieval::SymbolIndex,
+    path: &str,
+) -> Vec<(String, u64, u64)> {
     // A definition too large for one chunk (a big `impl`, a class) is
     // embedded member by member, not by its first 4 KiB (FIX-12, N9).
     symbols.chunk_spans(path, modbit_retrieval::semantic::MAX_CHUNK_BYTES)
@@ -3203,6 +3105,40 @@ fn scope_results(v: &mut serde_json::Value, root: &str, selectors: &[String]) {
     }
 }
 
+impl IndexPort {
+    /// Count how an exact or regex search was answered.
+    fn count_search(&self, plan: &modbit_retrieval::SearchPlan) {
+        use std::sync::atomic::Ordering;
+        if plan.path == "indexed" {
+            self.state.searches_indexed.fetch_add(1, Ordering::Relaxed);
+        } else {
+            self.state.searches_scanned.fetch_add(1, Ordering::Relaxed);
+        }
+    }
+}
+
+/// The semantic index, built from the exact and symbol indexes on the first
+/// query that needs the embeddings (the other searches never pay for them).
+fn ensure_semantic<'a>(
+    slot: &'a mut Option<modbit_retrieval::SemanticIndex>,
+    idx: &modbit_retrieval::RepositoryIndex,
+    symbols: &modbit_retrieval::SymbolIndex,
+    revision: u64,
+) -> std::result::Result<&'a modbit_retrieval::SemanticIndex, String> {
+    if slot.is_none() {
+        let files: Vec<modbit_retrieval::FileSource> = idx
+            .texts()
+            .map(|(p, t, _)| (p, t, symbol_spans(symbols, p)))
+            .collect();
+        *slot = Some(modbit_retrieval::SemanticIndex::build(
+            Box::new(modbit_retrieval::HashingEmbedder::default()),
+            files.into_iter(),
+            revision,
+        )?);
+    }
+    slot.as_ref().ok_or_else(|| "semantic index".to_owned())
+}
+
 impl modbit_tools::SearchPort for IndexPort {
     fn search(
         &self,
@@ -3250,21 +3186,31 @@ impl IndexPort {
                 "the index is being refreshed".to_owned(),
             )
         })?;
+        let mut graph_guard = self.graph.try_lock().map_err(|_| {
+            (
+                "INDEX_BUSY".to_owned(),
+                "the graph is being refreshed".to_owned(),
+            )
+        })?;
+        let mut refs_guard = self.refs.try_lock().map_err(|_| {
+            (
+                "INDEX_BUSY".to_owned(),
+                "the reference graph is being refreshed".to_owned(),
+            )
+        })?;
         if ws_rev > idx.revision() {
-            // Freshness (docs/18): a write without a recorded changed set is not possible
-            // through the tools, but an external edit may have moved the revision.
-            idx.rebuild(ws_rev)
-                .map_err(|e| ("INDEX_REBUILD".to_owned(), e.to_string()))?;
-            *lexical = modbit_retrieval::LexicalIndex::build(idx.texts(), ws_rev)
-                .map_err(|e| ("INDEX_REBUILD".to_owned(), e.to_string()))?;
-            *symbols = modbit_retrieval::SymbolIndex::build(idx.texts_with_hash(), ws_rev);
-            let files: Vec<modbit_retrieval::FileSource> = idx
-                .texts()
-                .map(|(p, t, _)| (p, t, symbol_spans(&symbols, p)))
-                .collect();
-            *semantic = modbit_retrieval::SemanticIndex::build(
-                Box::new(modbit_retrieval::HashingEmbedder::default()),
-                files.into_iter(),
+            // Freshness (docs/18): a write without a recorded changed set is
+            // not possible through the tools, but an external edit may have
+            // moved the revision. The files are diffed against the index by
+            // content hash and only what changed is parsed again (PX-111).
+            crate::index_host::refresh_with_guards(
+                &mut idx,
+                &mut lexical,
+                &mut symbols,
+                &mut refs_guard,
+                &mut graph_guard,
+                &mut semantic,
+                None,
                 ws_rev,
             )
             .map_err(|e| ("INDEX_REBUILD".to_owned(), e))?;
@@ -3277,10 +3223,18 @@ impl IndexPort {
         };
         let stats = idx.stats();
         let body = match req.kind.as_str() {
-            "exact" => serde_json::json!({"hits": idx.search_exact(&req.query, &opts)}),
-            "regex" => serde_json::json!({"hits": idx
-                .search_regex(&req.query, &opts)
-                .map_err(|e| ("BAD_REGEX".to_owned(), e.to_string()))?}),
+            "exact" => {
+                let (hits, plan) = idx.search_exact_with(&req.query, &opts, req.use_index);
+                self.count_search(&plan);
+                serde_json::json!({"hits": hits, "search_plan": plan})
+            }
+            "regex" => {
+                let (hits, plan) = idx
+                    .search_regex_with(&req.query, &opts, req.use_index)
+                    .map_err(|e| ("BAD_REGEX".to_owned(), e.to_string()))?;
+                self.count_search(&plan);
+                serde_json::json!({"hits": hits, "search_plan": plan})
+            }
             "lexical" => serde_json::json!({"hits": lexical
                 .search(&req.query, req.max_hits)
                 .map_err(|e| ("BAD_QUERY".to_owned(), e.to_string()))?}),
@@ -3328,6 +3282,8 @@ impl IndexPort {
                 serde_json::json!({"symbols": kept, "text_only": degraded})
             }
             "semantic" => {
+                let semantic = ensure_semantic(&mut semantic, &idx, &symbols, ws_rev)
+                    .map_err(|e| ("INDEX_REBUILD".to_owned(), e))?;
                 let hits = semantic
                     .search(&req.query, req.max_hits)
                     .map_err(|e| ("BAD_QUERY".to_owned(), e))?;
@@ -3341,33 +3297,22 @@ impl IndexPort {
             "retrieve" => {
                 let args: serde_json::Value = serde_json::from_str(&req.query)
                     .map_err(|e| ("BAD_QUERY".to_owned(), e.to_string()))?;
-                let mut graph = self.graph.try_lock().map_err(|_| {
-                    (
-                        "INDEX_BUSY".to_owned(),
-                        "the graph is being refreshed".to_owned(),
-                    )
-                })?;
-                if ws_rev > graph.revision() {
-                    *graph = modbit_retrieval::EvidenceGraph::build(
-                        idx.texts(),
-                        recent_commits(idx.root()),
-                        worktree_changed_lines(idx.root()),
-                        ws_rev,
-                    );
-                }
+                let graph = &mut *graph_guard;
                 let diagnostics = failing_check_locations(&self.evidence, &symbols);
                 let external: Vec<(String, u32)> = self
                     .external
                     .iter()
                     .map(|l| (l.path.clone(), l.line))
                     .collect();
+                let semantic_ref = ensure_semantic(&mut semantic, &idx, &symbols, ws_rev)
+                    .map_err(|e| ("INDEX_REBUILD".to_owned(), e))?;
                 let plan = modbit_retrieval::planner::retrieve(
                     &modbit_retrieval::Sources {
                         index: &idx,
                         lexical: &lexical,
                         symbols: &symbols,
-                        semantic: &semantic,
-                        graph: &graph,
+                        semantic: semantic_ref,
+                        graph,
                     },
                     &modbit_retrieval::PlanRequest {
                         query: args["query"].as_str().unwrap_or_default().to_owned(),
@@ -3404,20 +3349,7 @@ impl IndexPort {
                 })?;
                 let built_now = refresh || cached.is_none();
                 if built_now {
-                    let mut graph = self.graph.try_lock().map_err(|_| {
-                        (
-                            "INDEX_BUSY".to_owned(),
-                            "the graph is being refreshed".to_owned(),
-                        )
-                    })?;
-                    if ws_rev > graph.revision() {
-                        *graph = modbit_retrieval::EvidenceGraph::build(
-                            idx.texts(),
-                            recent_commits(idx.root()),
-                            worktree_changed_lines(idx.root()),
-                            ws_rev,
-                        );
-                    }
+                    let graph = &mut *graph_guard;
                     let paths: Vec<String> = hashes.keys().cloned().collect();
                     let facts: Vec<modbit_retrieval::knowledge::FileFacts<'_>> = paths
                         .iter()
@@ -3539,33 +3471,22 @@ impl IndexPort {
                         required.push(p.clone());
                     }
                 }
-                let mut graph = self.graph.try_lock().map_err(|_| {
-                    (
-                        "INDEX_BUSY".to_owned(),
-                        "the graph is being refreshed".to_owned(),
-                    )
-                })?;
-                if ws_rev > graph.revision() {
-                    *graph = modbit_retrieval::EvidenceGraph::build(
-                        idx.texts(),
-                        recent_commits(idx.root()),
-                        worktree_changed_lines(idx.root()),
-                        ws_rev,
-                    );
-                }
+                let graph = &mut *graph_guard;
                 let diagnostics = failing_check_locations(&self.evidence, &symbols);
                 let external: Vec<(String, u32)> = self
                     .external
                     .iter()
                     .map(|l| (l.path.clone(), l.line))
                     .collect();
+                let semantic_ref = ensure_semantic(&mut semantic, &idx, &symbols, ws_rev)
+                    .map_err(|e| ("INDEX_REBUILD".to_owned(), e))?;
                 let plan = modbit_retrieval::planner::retrieve(
                     &modbit_retrieval::Sources {
                         index: &idx,
                         lexical: &lexical,
                         symbols: &symbols,
-                        semantic: &semantic,
-                        graph: &graph,
+                        semantic: semantic_ref,
+                        graph,
                     },
                     &modbit_retrieval::PlanRequest {
                         query: query.clone(),
@@ -3794,24 +3715,12 @@ impl IndexPort {
                     })
                     .unwrap_or_default();
                 let depth = u32::try_from(args["depth"].as_u64().unwrap_or(2)).unwrap_or(2);
-                let mut graph = self.graph.try_lock().map_err(|_| {
-                    (
-                        "INDEX_BUSY".to_owned(),
-                        "the graph is being refreshed".to_owned(),
-                    )
-                })?;
-                if ws_rev > graph.revision() {
-                    *graph = modbit_retrieval::EvidenceGraph::build(
-                        idx.texts(),
-                        recent_commits(idx.root()),
-                        worktree_changed_lines(idx.root()),
-                        ws_rev,
-                    );
-                }
-                let selection = modbit_retrieval::select_impacted(
+                let graph = &mut *graph_guard;
+                let selection = modbit_retrieval::select_impacted_with_refs(
                     &idx,
                     &symbols,
-                    &graph,
+                    graph,
+                    &refs_guard,
                     &paths,
                     depth,
                     req.max_hits,
@@ -3823,20 +3732,7 @@ impl IndexPort {
                 let path = parts.next().unwrap_or_default().to_owned();
                 let relation = parts.next().unwrap_or("all").to_owned();
                 let depth: u32 = parts.next().and_then(|d| d.parse().ok()).unwrap_or(1);
-                let mut graph = self.graph.try_lock().map_err(|_| {
-                    (
-                        "INDEX_BUSY".to_owned(),
-                        "the graph is being refreshed".to_owned(),
-                    )
-                })?;
-                if ws_rev > graph.revision() {
-                    *graph = modbit_retrieval::EvidenceGraph::build(
-                        idx.texts(),
-                        recent_commits(idx.root()),
-                        worktree_changed_lines(idx.root()),
-                        ws_rev,
-                    );
-                }
+                let graph = &mut *graph_guard;
                 // Runtime evidence (docs/18): a verification check whose id names a
                 // test symbol of this path is attributed to the path.
                 let names: Vec<&str> = symbols
@@ -3864,6 +3760,17 @@ impl IndexPort {
                     max: req.max_hits,
                 });
                 serde_json::json!({"graph": view})
+            }
+            "symbol_graph" => {
+                let args: serde_json::Value = serde_json::from_str(&req.query)
+                    .map_err(|e| ("BAD_QUERY".to_owned(), e.to_string()))?;
+                let symbol = args["symbol"].as_str().unwrap_or_default();
+                let path = args["path"].as_str().filter(|p| !p.is_empty());
+                let relation = args["relation"].as_str().unwrap_or("all");
+                if symbol.is_empty() {
+                    return Err(("BAD_QUERY".to_owned(), "symbol is required".to_owned()));
+                }
+                serde_json::json!({"symbol_graph": refs_guard.symbol_edges(symbol, path, relation, req.max_hits)})
             }
             "paths" => serde_json::json!({"paths": idx
                 .find_paths(&req.query, req.max_hits)

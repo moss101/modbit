@@ -37425,6 +37425,7 @@ async fn memory_list(c: &mut Client, task: &Id, id: u8) -> modbit_protocol::v1::
             "ListMemory",
             ListMemory {
                 task_id: Some(task.clone()),
+                ..Default::default()
             }
             .encode_to_vec(),
             None,
@@ -48116,7 +48117,11 @@ async fn fix_05_a_configuration_file_that_breaks_mid_run_stops_the_run_at_the_ne
     );
     // The model was asked once (the held request); the broken policy
     // stopped the run before a second round.
-    assert_eq!(seen.lock().unwrap().len(), 1, "{:#?}", seen.lock().unwrap());
+    // (The requests are read once: a failing assertion that locked the
+    // mutex a second time while the first guard was alive hung the suite
+    // instead of reporting.)
+    let asked = seen.lock().unwrap().clone();
+    assert_eq!(asked.len(), 1, "{asked:#?}");
 }
 
 /// FIX-04 regression guard: the barrier against an agent's write into

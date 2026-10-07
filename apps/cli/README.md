@@ -49,6 +49,10 @@ question or approve an effect while `task run --wait` holds the Core.
 - `diagnostics verify <file>` replays a package against this profile's log: its digest, every aggregate's chain, and the head it pinned. It exits 1 when anything differs.
 - `export handoff --session <id> --task <id> --out <dir>` parks the task and writes M8.7's handoff bundle (no secret value in it).
 
+## Engineering memory (PX-113, docs/19)
+
+`memory list --task <id> [--status s]... [--scope kind]... [--text t] [--json]` shows the task's scope chain (run, session, user, agent profile, repository, space, organization — proposals included, conflicts named); `memory show --task <id> <memory-id>` shows one item in full with its events from the log. `memory propose`, `promote`, `edit` and `forget` (each with `--session <id> --task <id>`) are the same commands the desktop calls: every one is an event on the log under the session lease, a retry of the same command id replays, and a refusal (a transcript summary, an untrusted source, a stale repository fact, sensitive memory in a shared scope) prints its typed reason and exits 1. An id may be a prefix of at least eight characters when it is unambiguous. What is promoted reaches later sessions' prompts as labelled data through the Context Pack compiler; `context show <task>` lists exactly which items were injected and which were left out and why.
+
 ## Usage and invoices (IMP-EV-0032)
 
 `task economics --task <id>` adds a `ledger` line — the cost in the active registry's minor units, its currency and generation, and how many calls were priced, unpriced or never reported — and, per run and per step, the calls, tokens, cost, tool calls, tool time and verification time. `usage reconcile --task <id> --invoice <file> [--tolerance-bp N]` compares a provider invoice sample (`modbit.invoice-sample/1`, docs/34) with the task's ledger row by provider request id, prints every row that did not match, and exits 1 unless every row is within the tolerance.
