@@ -3266,6 +3266,29 @@ async fn run_loop(
                         })
                         .unwrap_or_default()
                 };
+                // PX-113: the curated engineering memory that applies to this
+                // task — chosen by scope and relevance to the goal, scanned as
+                // untrusted text, packed under its own budget — joins the
+                // prompt as labelled data with its ids and provenance. It is
+                // read from the store every turn, so a memory forgotten
+                // between turns is not in the next request.
+                let prompt_memory = {
+                    let run_label = run_id.to_string();
+                    let chain = crate::memory::chain_of(
+                        &core.store,
+                        core.tenant_id,
+                        &task,
+                        Some(&run_label),
+                    )
+                    .await;
+                    crate::memory::select_for_prompt(
+                        &core.store,
+                        &chain,
+                        &task.goal_text,
+                        task.workspace_root.as_deref(),
+                    )
+                    .await
+                };
                 // REQ-EV-0190: the task's attachments join the user turn as the
                 // egress copies a workspace read of the same bytes would give.
                 attachments.refresh(&core, &task).await;
@@ -3291,6 +3314,7 @@ async fn run_loop(
                             t
                         },
                         context: context_fragments,
+                        memory: prompt_memory.fragments.clone(),
                         tools: tools.clone(),
                         model_policy: ModelPolicy {
                             endpoint: cfg.endpoint.clone(),
@@ -3307,7 +3331,7 @@ async fn run_loop(
                     let store = core.store.lock().await;
                     store
                 .objects()
-                .put(serde_json::json!({"harness_state": harness_json, "segment_hashes": compiled.segment_hashes, "tool_projection_hash": compiled.tool_projection_hash, "injected_fragments": compiled.injected_fragments, "rejected_fragments": compiled.rejected_fragments}).to_string().as_bytes())
+                .put(serde_json::json!({"harness_state": harness_json, "segment_hashes": compiled.segment_hashes, "tool_projection_hash": compiled.tool_projection_hash, "injected_fragments": compiled.injected_fragments, "rejected_fragments": compiled.rejected_fragments, "memory": prompt_memory.record(), "injected_memory": compiled.injected_memory, "rejected_memory": compiled.rejected_memory}).to_string().as_bytes())
                 .ok()
                 };
                 let ctx_step = RunStepId::new();
@@ -8126,6 +8150,14 @@ async fn run_verification_stage(
     );
     let ok;
     let mut text = crate::verify::observation(&vrun, &*core.store.lock().await);
+    // PX-110: where the symbol graph says the change could reach — advice for
+    // the model and the reviewer; the stage above already ran every mandatory
+    // check, and nothing here selects, narrows or skips one.
+    if matches!(stage, Stage::Targeted | Stage::Rerun | Stage::Completion)
+        && let Some(advice) = crate::knowledge::advisory_impact(core, task).await
+    {
+        text.push_str(&advice);
+    }
     for q in &quarantines {
         if !state.quarantined.contains(&q.check_id) {
             state.quarantined.push(q.check_id.clone());

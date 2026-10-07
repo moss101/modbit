@@ -16,10 +16,12 @@ pub(crate) async fn view(core: &Core, task_id: TaskId) -> wire::ContextInspector
     let ledger = ledger.lock().await;
     let mut v = wire::ContextInspectorView::default();
     // What the last compiled turn injected and refused (the prompt envelope).
-    if let Some((pack_id, injected, rejected)) = last_compiled(core, task_id).await {
+    if let Some((pack_id, injected, rejected, memory)) = last_compiled(core, task_id).await {
         v.context_pack_id = pack_id;
         v.injected_refs = injected;
         v.rejected_refs = rejected;
+        // PX-113: the memory the envelope injected, with ids and provenance.
+        v.memory = memory.as_ref().map(memory_view);
     }
     // What the user has selected (REQ-EV-0141 / 0160): the same selection
     // retrieval prefers, so a client can see why an entry is in the pack.
@@ -215,10 +217,75 @@ async fn epochs_and_cache(core: &Core, task_id: TaskId) -> Economy {
     out
 }
 
-/// The last ContextCompile step's record: (context pack id, injected, rejected).
+/// The memory record of a ContextCompile step as the Inspector shows it
+/// (PX-113): ids and provenance only, never the memory text.
+fn memory_view(m: &serde_json::Value) -> wire::MemoryInjectionView {
+    let text = |v: &serde_json::Value, k: &str| v[k].as_str().unwrap_or_default().to_owned();
+    let strings = |v: &serde_json::Value, k: &str| -> Vec<String> {
+        v[k].as_array()
+            .map(|a| {
+                a.iter()
+                    .filter_map(|x| x.as_str().map(str::to_owned))
+                    .collect()
+            })
+            .unwrap_or_default()
+    };
+    let count = |v: &serde_json::Value, k: &str| {
+        u32::try_from(v[k].as_u64().unwrap_or(0)).unwrap_or(u32::MAX)
+    };
+    wire::MemoryInjectionView {
+        pack_id: text(m, "pack_id"),
+        token_budget: count(m, "token_budget"),
+        token_used: count(m, "token_used"),
+        omitted_count: count(m, "omitted_count"),
+        entries: m["entries"]
+            .as_array()
+            .map(|a| {
+                a.iter()
+                    .map(|e| wire::MemoryInjectedEntry {
+                        memory_id: text(e, "memory_id"),
+                        scope: text(e, "scope"),
+                        record_type: text(e, "record_type"),
+                        topic: text(e, "topic"),
+                        source: text(e, "source"),
+                        author: text(e, "author"),
+                        confidence: e["confidence"].as_f64().unwrap_or(0.0) as f32,
+                        validated: e["validated"].as_bool().unwrap_or(false),
+                        token_cost: count(e, "token_cost"),
+                        reasons: strings(e, "reasons"),
+                        conflicts_with: strings(e, "conflicts_with"),
+                        clipped: e["clipped"].as_bool().unwrap_or(false),
+                        created_at_ms: e["created_at_ms"].as_i64().unwrap_or(0),
+                        expires_at_ms: e["expires_at_ms"].as_i64().unwrap_or(0),
+                        last_validation_revision: text(e, "last_validation_revision"),
+                    })
+                    .collect()
+            })
+            .unwrap_or_default(),
+        excluded: m["excluded"]
+            .as_array()
+            .map(|a| {
+                a.iter()
+                    .map(|e| wire::MemoryExclusionView {
+                        memory_id: text(e, "memory_id"),
+                        reason: text(e, "reason"),
+                    })
+                    .collect()
+            })
+            .unwrap_or_default(),
+        rejected_ids: strings(m, "rejected_ids"),
+        compiler_version: text(m, "compiler_version"),
+    }
+}
+
+/// What a ContextCompile step recorded: (context pack id, injected refs,
+/// rejected refs, the memory record).
+type Compiled = (String, Vec<String>, Vec<String>, Option<serde_json::Value>);
+
+/// The last ContextCompile step's record.
 /// The step events live on their own RunStep aggregates, so the session log is
 /// the place that has them all in order.
-async fn last_compiled(core: &Core, task_id: TaskId) -> Option<(String, Vec<String>, Vec<String>)> {
+async fn last_compiled(core: &Core, task_id: TaskId) -> Option<Compiled> {
     let store = core.store.lock().await;
     let task = store.task(&task_id).ok()??;
     let events = store.read_session(&task.session_id, 0, 200_000).ok()?;
@@ -249,6 +316,10 @@ async fn last_compiled(core: &Core, task_id: TaskId) -> Option<(String, Vec<Stri
                     })
                     .unwrap_or_default()
             };
+            let memory = v.get("memory").cloned().map(|mut m| {
+                m["rejected_ids"] = serde_json::json!(strings("rejected_memory"));
+                m
+            });
             found = Some((
                 v["segment_hashes"][3]
                     .as_str()
@@ -256,6 +327,7 @@ async fn last_compiled(core: &Core, task_id: TaskId) -> Option<(String, Vec<Stri
                     .to_owned(),
                 strings("injected_fragments"),
                 strings("rejected_fragments"),
+                memory,
             ));
         }
     }
