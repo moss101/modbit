@@ -842,6 +842,44 @@ impl ToolHost {
             .collect()
     }
 
+    /// The search port over a task's workspace index: the one every
+    /// retrieval tool call and the Core's own goal-seeded pre-turn pack
+    /// (REQ-PX-108) go through, so there is one retrieval entry.
+    pub(crate) async fn index_port(
+        &self,
+        store: &Arc<Mutex<EventStore>>,
+        tenant_id: TenantId,
+        session_id: SessionId,
+        task_id: TaskId,
+        ws: &Arc<Mutex<WorkspaceService>>,
+        r: &Path,
+    ) -> Result<Arc<dyn modbit_tools::SearchPort>> {
+        Ok(Arc::new(IndexPort {
+            index: self.index(r).await?,
+            lexical: self.lexical(r).await?,
+            symbols: self.symbols(r).await?,
+            semantic: self.semantic(r).await?,
+            graph: self.graph(r).await?,
+            knowledge: self.knowledge(r).await,
+            evidence: task_evidence(store, task_id).await,
+            external: {
+                // Lock order: workspace, then store (as every writer does).
+                let svc = ws.lock().await;
+                let st = store.lock().await;
+                crate::external_diagnostics::locations(&st, task_id, &svc)
+            },
+            selection: selection_of(store, task_id).await,
+            documents: attached_documents(store, task_id).await,
+            ledger: self.ledger(store, task_id).await,
+            objects: store.lock().await.objects().clone(),
+            store: Arc::clone(store),
+            tenant_id,
+            session_id,
+            task_id,
+            workspace: Arc::clone(ws),
+        }))
+    }
+
     pub async fn invoke(
         &self,
         store: &Arc<Mutex<EventStore>>,
@@ -916,30 +954,10 @@ impl ToolHost {
             root: workspace_root.clone(),
         };
         let search: Option<Arc<dyn modbit_tools::SearchPort>> = match (&workspace, &root) {
-            (Some(ws), Some(r)) => Some(Arc::new(IndexPort {
-                index: self.index(r).await?,
-                lexical: self.lexical(r).await?,
-                symbols: self.symbols(r).await?,
-                semantic: self.semantic(r).await?,
-                graph: self.graph(r).await?,
-                knowledge: self.knowledge(r).await,
-                evidence: task_evidence(store, task_id).await,
-                external: {
-                    // Lock order: workspace, then store (as every writer does).
-                    let svc = ws.lock().await;
-                    let st = store.lock().await;
-                    crate::external_diagnostics::locations(&st, task_id, &svc)
-                },
-                selection: selection_of(store, task_id).await,
-                documents: attached_documents(store, task_id).await,
-                ledger: self.ledger(store, task_id).await,
-                objects: store.lock().await.objects().clone(),
-                store: Arc::clone(store),
-                tenant_id,
-                session_id,
-                task_id,
-                workspace: Arc::clone(ws),
-            })),
+            (Some(ws), Some(r)) => Some(
+                self.index_port(store, tenant_id, session_id, task_id, ws, r)
+                    .await?,
+            ),
             _ => None,
         };
         let language: Option<Arc<dyn modbit_tools::LanguageServicePort>> = match (&workspace, &root)
@@ -2547,6 +2565,7 @@ pub(crate) fn restore_ledger(store: &EventStore, task_id: TaskId) -> modbit_cont
                 "ContextPackRecorded" => {
                     let snapshot = p["ledger_ref"]
                         .as_str()
+                        .filter(|h| !h.is_empty())
                         .and_then(|h| store.objects().get(h).ok())
                         .and_then(|b| {
                             serde_json::from_slice::<modbit_context::ContextLedger>(&b).ok()
@@ -3524,7 +3543,16 @@ impl modbit_tools::SearchPort for IndexPort {
                         source_ref: format!("attached:{}", d.source),
                     });
                 }
+                // REQ-PX-108: the Core's own pre-turn pack asks for corroborated
+                // evidence only. The hashing embedder returns its nearest
+                // neighbour whether or not anything matched, so a hit whose
+                // sole evidence is that neighbour is padding, and a goal with
+                // no real match yields an empty pack.
+                let corroborated = args["corroborated"].as_bool().unwrap_or(false);
                 for h in &plan.hits {
+                    if corroborated && h.sources.iter().all(|s| s == "semantic") {
+                        continue;
+                    }
                     let Some((t, hash, rehydrated)) = hydrated(&h.path) else {
                         continue;
                     };

@@ -347,6 +347,28 @@ impl Surface {
         out
     }
 
+    /// A person's input to a running task (`STEER` replaces the goal).
+    async fn queue_input(&mut self, task: &Id, mode: &str, text: &str) {
+        use modbit_protocol::v1::{InputQueued, QueueInput};
+        let ack = self
+            .c
+            .command(envelope(
+                random_id(),
+                "QueueInput",
+                QueueInput {
+                    task_id: Some(task.clone()),
+                    input_id: format!("in-{}", rand::random::<u32>()),
+                    mode: mode.into(),
+                    text: text.into(),
+                }
+                .encode_to_vec(),
+                self.lease,
+            ))
+            .await
+            .unwrap();
+        let _: InputQueued = Client::result(&ack).unwrap();
+    }
+
     async fn read_object(&mut self, hash: &str) -> String {
         use modbit_protocol::v1::{ObjectRangeChunk, ReadObjectRange};
         let ack = self
@@ -389,6 +411,8 @@ enum Reply {
     Status(u16),
     /// The request is held open and never answered.
     Hang,
+    /// The same reply, after a pause (a model that takes its time).
+    After(Duration, Box<Reply>),
 }
 
 impl Reply {
@@ -521,8 +545,13 @@ async fn serve(handler: Handler) -> (String, Seen) {
                     s.push(body.clone());
                     s.len() - 1
                 };
-                let reply = handler(&body, index);
+                let mut reply = handler(&body, index);
+                while let Reply::After(pause, next) = reply {
+                    tokio::time::sleep(pause).await;
+                    reply = *next;
+                }
                 match reply {
+                    Reply::After(..) => unreachable!("unwrapped above"),
                     Reply::Hang => {
                         tokio::time::sleep(Duration::from_secs(600)).await;
                     }
@@ -1124,5 +1153,507 @@ async fn px_107_a_hostile_agents_md_changes_no_policy_and_no_tool_projection() {
                     .unwrap_or_default()
                     .contains("AGENTS.md")),
         "{findings:#?}"
+    );
+}
+
+// ============================================================== PX-108
+
+/// A small web-application fixture whose goal-relevant file is findable from
+/// the goal text alone.
+fn webapp() -> (tempfile::TempDir, String) {
+    repo(&[
+        (
+            "src/cart.ts",
+            "// Cart totals.\nexport function computeCartTotal(items: Item[]): number {\n  // ROUNDING-BUG: sums floating point prices\n  return items.reduce((sum, i) => sum + i.price * i.quantity, 0);\n}\n",
+        ),
+        (
+            "src/user.ts",
+            "// User profile.\nexport function loadUserProfile(id: string) {\n  return fetchProfile(id);\n}\n",
+        ),
+        (
+            "src/billing/invoice.ts",
+            "// Invoices.\nexport function renderInvoice(order: Order) {\n  return formatInvoice(order);\n}\n",
+        ),
+        ("README.md", "# webapp\nA small storefront.\n"),
+        ("package.json", "{\"name\": \"webapp\"}\n"),
+    ])
+}
+
+const WEBAPP_GOAL: &str = "Change computeCartTotal so cart totals are computed in integer cents";
+
+/// The retrieved-context section of a request's volatile tail.
+fn retrieved_context(body: &Value) -> String {
+    let last = body["messages"]
+        .as_array()
+        .and_then(|m| m.last())
+        .and_then(|m| m["content"].as_str())
+        .unwrap_or_default();
+    last.split_once("Retrieved context")
+        .map(|(_, rest)| rest.to_owned())
+        .unwrap_or_default()
+}
+
+/// QUAL-PX-108: the first request already carries a pack whose entries name
+/// the goal-relevant file with its revision and hash and the reasons it is
+/// there — without any model tool call — and the pre-turn step is on the log
+/// and in the Inspector.
+#[tokio::test]
+async fn px_108_the_first_request_carries_a_goal_seeded_pack_without_a_model_tool_call() {
+    let (repo_dir, root) = webapp();
+    let mut r = run(
+        &root,
+        true,
+        WEBAPP_GOAL,
+        by_turn(vec![ask()], |_, _| Reply::text("unused")),
+        &[],
+    )
+    .await;
+    let bodies = r.seen.lock().unwrap().clone();
+    let first = &bodies[0];
+    assert!(
+        first["messages"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .all(|m| m["role"] != "tool"),
+        "the first request has no tool result: the pack came without a tool call"
+    );
+    let pack = retrieved_context(first);
+    assert!(
+        pack.contains("src/cart.ts") && pack.contains("ROUNDING-BUG"),
+        "the goal-relevant file is in the first request's pack:\n{pack}"
+    );
+    let hash = sha_hex(&std::fs::read(repo_dir.path().join("src/cart.ts")).unwrap());
+    assert!(
+        pack.contains(&hash[..12]),
+        "the fragment carries the content hash it was read at"
+    );
+    assert!(pack.contains("@revision"), "and the workspace revision");
+    let recorded: Vec<Value> = of(&r.evs, "ContextPackRecorded")
+        .into_iter()
+        .filter(|p| p["trigger"] == "TASK_START")
+        .collect();
+    assert_eq!(recorded.len(), 1, "{recorded:#?}");
+    let rec = &recorded[0];
+    assert_eq!(rec["status"], "PACKED");
+    assert!(rec["entries"].as_u64().unwrap() >= 1);
+    assert!(rec["token_used"].as_u64().unwrap() <= rec["token_budget"].as_u64().unwrap());
+    assert_eq!(rec["seed_digest"].as_str().unwrap().len(), 64);
+    let view = r.surface.inspector(&r.task).await;
+    let step = view
+        .pre_turn_pack
+        .expect("the Inspector shows the pre-turn step");
+    assert_eq!(
+        (step.trigger.as_str(), step.status.as_str()),
+        ("TASK_START", "PACKED")
+    );
+    assert!(step.token_used <= step.token_budget && step.token_budget > 0);
+    let cart = view
+        .entries
+        .iter()
+        .find(|e| e.path == "src/cart.ts")
+        .expect("the cart file is a pack entry");
+    assert_eq!(cart.content_hash, hash);
+    assert!(!cart.reason.is_empty() || !cart.retrieval_reasons.is_empty());
+    assert!(cart.workspace_revision > 0 && cart.injected);
+}
+
+/// QUAL-PX-108: the pack supplements model-initiated retrieval and never
+/// replaces it — the model's own `context.pack` still answers — and a write
+/// by the task drops or re-hydrates the touched fragment before the next
+/// request, never showing the old text under the old hash.
+#[tokio::test]
+async fn px_108_a_write_invalidates_the_fragment_and_model_retrieval_still_works() {
+    let (repo_dir, root) = webapp();
+    let old_hash = sha_hex(&std::fs::read(repo_dir.path().join("src/cart.ts")).unwrap());
+    let new_text = "// Cart totals.\nexport function computeCartTotal(items: Item[]): number {\n  // CENTS-FIXED: integer cents\n  return items.reduce((sum, i) => sum + i.cents * i.quantity, 0);\n}\n";
+    let r = run(
+        &root,
+        true,
+        WEBAPP_GOAL,
+        by_turn(
+            vec![
+                Reply::call("plan.update", json!({"outcome": "use integer cents", "expected_files": ["src/cart.ts"]})),
+                Reply::call("fs.read", json!({"path": "src/cart.ts"})),
+                Reply::call(
+                    "change.apply",
+                    json!({"path": "src/cart.ts", "op": "replace", "content": new_text, "expected_content_hash": old_hash}),
+                ),
+                Reply::call("context.pack", json!({"query": "invoice user profile", "token_budget": 1500})),
+                ask(),
+            ],
+            |_, _| Reply::text("unused"),
+        ),
+        &[],
+    )
+    .await;
+    let bodies = r.seen.lock().unwrap().clone();
+    assert!(bodies.len() >= 5, "{} requests", bodies.len());
+    assert!(retrieved_context(&bodies[2]).contains("ROUNDING-BUG"));
+    for (i, b) in bodies.iter().enumerate().skip(3) {
+        let pack = retrieved_context(b);
+        assert!(
+            !pack.contains("ROUNDING-BUG"),
+            "request {i} shows the pre-edit text:\n{pack}"
+        );
+        assert!(
+            !pack.contains(&old_hash[..12]),
+            "request {i} shows the old hash as current"
+        );
+    }
+    let packs = of(&r.evs, "ContextPackRecorded");
+    assert!(
+        packs.iter().any(|p| p["trigger"] == "")
+            && packs.iter().any(|p| p["trigger"] == "TASK_START"),
+        "the tool's pack and the pre-turn pack are both on the log: {packs:#?}"
+    );
+}
+
+/// A live Core and its surface, for tests that act while the run is going.
+struct Live {
+    base: String,
+    core: CoreProcess,
+    surface: Surface,
+    seen: Seen,
+    data: tempfile::TempDir,
+}
+
+async fn live(handler: Handler, env: &[(&str, &str)], trust_root: Option<&str>) -> Live {
+    let (base, seen) = serve(handler).await;
+    let data = tempfile::tempdir().unwrap();
+    let mut all = base_env(&base);
+    all.extend_from_slice(env);
+    let core = CoreProcess::spawn(data.path(), &all);
+    let mut surface = Surface::open(&core, 0xD0).await;
+    if let Some(root) = trust_root {
+        surface.trust(root).await;
+    }
+    Live {
+        base,
+        core,
+        surface,
+        seen,
+        data,
+    }
+}
+
+/// QUAL-PX-108: across fifty turns the pack stays inside its budget and the
+/// request does not grow with it.
+#[tokio::test]
+async fn px_108_the_pack_stays_inside_the_budget_across_fifty_turns() {
+    let (_repo, root) = webapp();
+    let files = [
+        "README.md",
+        "package.json",
+        "src/user.ts",
+        "src/billing/invoice.ts",
+    ];
+    let mut script: Vec<Reply> = (0..50)
+        .map(|i| Reply::call("fs.read", json!({"path": files[i % files.len()]})))
+        .collect();
+    script.push(ask());
+    let (base, seen) = serve(by_turn(script, |_, _| Reply::text("unused"))).await;
+    let data = tempfile::tempdir().unwrap();
+    let core = CoreProcess::spawn(data.path(), &base_env(&base));
+    let mut s = Surface::open(&core, 0xD0).await;
+    s.trust(&root).await;
+    let task = s.task(&root, WEBAPP_GOAL, "local_autonomous").await;
+    s.start(&task, 80).await;
+    let st = s.settle(&task, 240).await;
+    assert!(!st.loop_alive, "{st:?}");
+    let bodies = seen.lock().unwrap().clone();
+    assert!(bodies.len() >= 50, "{} requests", bodies.len());
+    let packs: Vec<usize> = bodies.iter().map(|b| retrieved_context(b).len()).collect();
+    let evs = s.events(&core, &task).await;
+    let rec = of(&evs, "ContextPackRecorded")
+        .into_iter()
+        .find(|p| p["trigger"] == "TASK_START")
+        .unwrap();
+    let budget = rec["token_budget"].as_u64().unwrap() as usize;
+    for (i, n) in packs.iter().enumerate() {
+        assert!(*n > 0, "request {i} lost its pack");
+        assert!(
+            *n <= budget * 4 + 2_000,
+            "request {i}: {n} bytes against a {budget} token budget"
+        );
+    }
+    // The pack is a fixed set of fragments: it does not grow from turn to turn.
+    assert_eq!(packs.iter().max(), packs.iter().min(), "{packs:?}");
+    assert_eq!(
+        of(&evs, "ContextPackRecorded")
+            .iter()
+            .filter(|p| p["trigger"] != "")
+            .count(),
+        1,
+        "the pre-turn pack was made once"
+    );
+}
+
+/// QUAL-PX-108: a Core killed mid-run and restarted rebuilds the ledger from
+/// the log: the resumed run's first request carries the very pack the log
+/// records, and no second first-turn pack is made.
+#[tokio::test]
+async fn px_108_after_a_core_restart_the_pack_is_the_one_on_the_log() {
+    let (_repo, root) = webapp();
+    let hung = Arc::new(std::sync::atomic::AtomicBool::new(false));
+    let handler: Handler = {
+        let hung = Arc::clone(&hung);
+        Arc::new(move |body, _| {
+            let turn = turn_of(body);
+            if turn == 2 && !hung.swap(true, std::sync::atomic::Ordering::SeqCst) {
+                return Reply::Hang;
+            }
+            match turn {
+                1 => Reply::call("fs.read", json!({"path": "README.md"})),
+                _ => ask(),
+            }
+        })
+    };
+    let mut l = live(handler, &[], Some(&root)).await;
+    let task = l.surface.task(&root, WEBAPP_GOAL, "local_autonomous").await;
+    l.surface.start(&task, 30).await;
+    let deadline = std::time::Instant::now() + Duration::from_secs(60);
+    while l.seen.lock().unwrap().len() < 2 {
+        assert!(
+            std::time::Instant::now() < deadline,
+            "the run never reached turn two"
+        );
+        tokio::time::sleep(Duration::from_millis(50)).await;
+    }
+    let before = l.surface.events(&l.core, &task).await;
+    let pack_id = of(&before, "ContextPackRecorded")
+        .into_iter()
+        .find(|p| p["trigger"] == "TASK_START")
+        .expect("the pack is on the log before the kill")["pack_id"]
+        .as_str()
+        .unwrap()
+        .to_owned();
+    let session = l.surface.session.clone();
+    l.core.kill();
+    let core2 = CoreProcess::spawn(l.data.path(), &base_env(&l.base));
+    let mut s2 = Surface::reopen(&core2, session, "resumer", 0xD9).await;
+    let seen_before = l.seen.lock().unwrap().len();
+    let started = s2.start(&task, 30).await;
+    assert!(started.resumed);
+    let st = s2.settle(&task, 120).await;
+    assert!(!st.loop_alive, "{st:?}");
+    let after = l.seen.lock().unwrap().clone();
+    assert!(
+        after.len() > seen_before,
+        "the resumed run asked the model again"
+    );
+    let first_after = &after[seen_before];
+    assert!(
+        retrieved_context(first_after).contains("ROUNDING-BUG"),
+        "the resumed run's first request carries the pack"
+    );
+    let evs = s2.events(&core2, &task).await;
+    let firsts: Vec<Value> = of(&evs, "ContextPackRecorded")
+        .into_iter()
+        .filter(|p| p["trigger"] == "TASK_START")
+        .collect();
+    assert_eq!(
+        firsts.len(),
+        1,
+        "no second first-turn pack after the restart"
+    );
+    assert_eq!(firsts[0]["pack_id"], pack_id);
+    let view = s2.inspector(&task).await;
+    let step = view
+        .pre_turn_pack
+        .expect("the Inspector rebuilds the step from the log");
+    assert_eq!(step.pack_id, pack_id);
+    assert!(view.entries.iter().any(|e| e.path == "src/cart.ts"));
+}
+
+/// QUAL-PX-108: a goal with no matches yields an empty pack with a recorded
+/// reason and no padding in the prompt.
+#[tokio::test]
+async fn px_108_a_goal_with_no_matches_records_an_empty_pack_with_its_reason() {
+    let (_repo, root) = repo(&[("data.bin.txt", "0101\n")]);
+    let mut r = run(
+        &root,
+        true,
+        "zzqx wvkp jjhh",
+        by_turn(vec![ask()], |_, _| Reply::text("unused")),
+        &[],
+    )
+    .await;
+    let bodies = r.seen.lock().unwrap().clone();
+    let rec = of(&r.evs, "ContextPackRecorded")
+        .into_iter()
+        .find(|p| p["trigger"] == "TASK_START")
+        .expect("the step is recorded even when nothing matched");
+    let dbg = r.surface.inspector(&r.task).await;
+    assert_eq!(rec["status"], "EMPTY", "{rec}\n{:#?}", dbg.entries);
+    assert!(rec["reason"].as_str().unwrap().starts_with("NO_MATCHES"));
+    assert_eq!(
+        (rec["entries"].as_u64(), rec["stubs"].as_u64()),
+        (Some(0), Some(0))
+    );
+    assert!(
+        !retrieved_context(&bodies[0]).contains("--- workspace:"),
+        "an empty pack is not padded: {}",
+        retrieved_context(&bodies[0])
+    );
+    let view = r.surface.inspector(&r.task).await;
+    let step = view.pre_turn_pack.unwrap();
+    assert_eq!(step.status, "EMPTY");
+}
+
+/// QUAL-PX-108 (failure injection): a pack that is not ready by the run's
+/// deadline is a typed `DEGRADED` record, the task is not blocked and still
+/// runs to its question, and the late pack joins afterwards.
+#[tokio::test]
+async fn px_108_a_pack_that_misses_the_deadline_degrades_typed_and_never_blocks_the_task() {
+    let (_repo, root) = webapp();
+    let mut r = run(
+        &root,
+        true,
+        WEBAPP_GOAL,
+        by_turn(
+            vec![Reply::call("fs.read", json!({"path": "README.md"})), ask()],
+            |_, _| Reply::text("unused"),
+        ),
+        &[("MODBIT_PRETURN_PACK_DEADLINE_MS", "1")],
+    )
+    .await;
+    let st = r.surface.status(&r.task).await;
+    assert!(!st.loop_alive && st.state == "Waiting", "{st:?}");
+    let recs = of(&r.evs, "ContextPackRecorded");
+    let degraded = recs
+        .iter()
+        .find(|p| p["trigger"] == "TASK_START" && p["status"] == "DEGRADED")
+        .unwrap_or_else(|| panic!("no typed degrade on the log: {recs:#?}"));
+    assert!(
+        degraded["reason"].as_str().unwrap().starts_with("TIMEOUT"),
+        "{degraded}"
+    );
+    // The run was not held for it: the model was asked and answered.
+    assert!(r.seen.lock().unwrap().len() >= 2);
+    // The job finished in the background and recorded its pack.
+    let deadline = std::time::Instant::now() + Duration::from_secs(30);
+    loop {
+        let evs = r.surface.events(&r.core, &r.task).await;
+        if of(&evs, "ContextPackRecorded")
+            .iter()
+            .any(|p| p["trigger"] == "TASK_START" && p["status"] == "PACKED")
+        {
+            break;
+        }
+        assert!(
+            std::time::Instant::now() < deadline,
+            "the late pack never landed"
+        );
+        tokio::time::sleep(Duration::from_millis(200)).await;
+    }
+}
+
+/// QUAL-PX-108: a steering input that replaces the goal seeds the pack again,
+/// from the new text, naming the file it asks about.
+#[tokio::test]
+async fn px_108_a_goal_change_seeds_the_pack_again_from_the_new_text() {
+    let (_repo, root) = webapp();
+    let handler: Handler = Arc::new(|body, _| match turn_of(body) {
+        1 => Reply::After(
+            Duration::from_millis(2500),
+            Box::new(Reply::call("fs.read", json!({"path": "README.md"}))),
+        ),
+        2 | 3 => Reply::call("fs.read", json!({"path": "package.json"})),
+        _ => ask(),
+    });
+    let mut l = live(handler, &[], Some(&root)).await;
+    let task = l.surface.task(&root, WEBAPP_GOAL, "local_autonomous").await;
+    l.surface.start(&task, 30).await;
+    let deadline = std::time::Instant::now() + Duration::from_secs(30);
+    while l.seen.lock().unwrap().is_empty() {
+        assert!(std::time::Instant::now() < deadline);
+        tokio::time::sleep(Duration::from_millis(20)).await;
+    }
+    l.surface
+        .queue_input(
+            &task,
+            "STEER",
+            "Forget that: work on src/user.ts and loadUserProfile instead",
+        )
+        .await;
+    let st = l.surface.settle(&task, 120).await;
+    assert!(!st.loop_alive, "{st:?}");
+    let evs = l.surface.events(&l.core, &task).await;
+    let recs: Vec<Value> = of(&evs, "ContextPackRecorded")
+        .into_iter()
+        .filter(|p| p["trigger"] != "")
+        .collect();
+    let triggers: Vec<&str> = recs.iter().filter_map(|p| p["trigger"].as_str()).collect();
+    assert_eq!(triggers, ["TASK_START", "GOAL_CHANGE"], "{recs:#?}");
+    assert_ne!(recs[0]["seed_digest"], recs[1]["seed_digest"]);
+    let view = l.surface.inspector(&task).await;
+    assert_eq!(view.pre_turn_pack.unwrap().trigger, "GOAL_CHANGE");
+    assert!(
+        view.entries
+            .iter()
+            .any(|e| e.path == "src/user.ts" && e.reason.contains("critical")),
+        "the file the new goal names is a required entry: {:?}",
+        view.entries
+            .iter()
+            .map(|e| (&e.path, &e.reason))
+            .collect::<Vec<_>>()
+    );
+}
+
+/// QUAL-PX-108 (measured on a fixture, not a live model): a model that reads
+/// the file the pack names reaches the first correct read earlier with the
+/// pack than without it, and never later.
+#[tokio::test]
+async fn px_108_the_first_correct_read_comes_no_later_with_the_pack() {
+    let first_correct_read_turn = |pack_on: bool| async move {
+        let (_repo, root) = webapp();
+        let read_at = Arc::new(std::sync::atomic::AtomicUsize::new(0));
+        let handler: Handler = {
+            let read_at = Arc::clone(&read_at);
+            Arc::new(move |body, _| {
+                let turn = turn_of(body);
+                // A model that reads the file the pack names, and otherwise
+                // looks for it first.
+                let known = retrieved_context(body).contains("computeCartTotal");
+                let looked = body["messages"]
+                    .as_array()
+                    .unwrap()
+                    .iter()
+                    .any(|m| m["role"] == "tool");
+                if known || looked {
+                    let _ = read_at.compare_exchange(
+                        0,
+                        turn,
+                        std::sync::atomic::Ordering::SeqCst,
+                        std::sync::atomic::Ordering::SeqCst,
+                    );
+                    if read_at.load(std::sync::atomic::Ordering::SeqCst) == turn {
+                        return Reply::call("fs.read", json!({"path": "src/cart.ts"}));
+                    }
+                    return ask();
+                }
+                Reply::call(
+                    "context.pack",
+                    json!({"query": "cart total", "token_budget": 1500}),
+                )
+            })
+        };
+        let env: Vec<(&str, &str)> = if pack_on {
+            vec![]
+        } else {
+            vec![("MODBIT_PRETURN_PACK", "off")]
+        };
+        let r = run(&root, true, WEBAPP_GOAL, handler, &env).await;
+        drop(r);
+        read_at.load(std::sync::atomic::Ordering::SeqCst)
+    };
+    let with_pack = first_correct_read_turn(true).await;
+    let without = first_correct_read_turn(false).await;
+    assert!(with_pack >= 1, "the model read the file with the pack");
+    assert!(without >= 1, "and without it");
+    assert!(
+        with_pack < without,
+        "turn {with_pack} with the pack, {without} without"
     );
 }

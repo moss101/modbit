@@ -31,6 +31,13 @@ impl ObjectStore {
     }
 
     fn path_for(&self, hash: &str) -> PathBuf {
+        // A name that is not a sha256 digest is not an object: it maps to a
+        // path nothing is ever stored at, so an empty or hostile name (an
+        // empty ref on a degraded record, `../x` from a client) can neither
+        // panic nor leave the store.
+        if hash.len() != 64 || !hash.bytes().all(|b| b.is_ascii_hexdigit()) {
+            return self.root.join("_not_a_digest_");
+        }
         self.root.join(&hash[..2]).join(&hash[2..])
     }
 

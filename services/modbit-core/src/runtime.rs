@@ -2710,6 +2710,9 @@ async fn run_loop(
         None => false,
     };
     let mut rules = crate::rules::RunRules::load(&core, &task, repository_trusted);
+    // REQ-PX-108: the goal-seeded pre-turn pack. A resumed run finds its
+    // first-turn pack on the log and does not make another.
+    let mut preturn = crate::preturn::PreTurn::load(&core, &task).await;
     // The vision bridge for a text-only routed model (REQ-EV-0184/0185):
     // one description per media digest per run, recorded on the task.
     let mut bridge = crate::media_bridge::BridgeSession::new(
@@ -3046,6 +3049,11 @@ async fn run_loop(
         }
         carried.extend(follow_ups);
         for (input, label) in apply {
+            // A person's steering input replaces the goal: the pre-turn pack
+            // is seeded again from it.
+            if label == "STEER" && !input.untrusted {
+                preturn.goal_changed(input.text.clone());
+            }
             transcript.push(Message::text(Role::User, input.line(label)));
             let QueuedInput {
                 text,
@@ -3199,7 +3207,24 @@ async fn run_loop(
                 // same run, and nothing else changes topology.
                 if epoch.as_ref().map(|m| m.epoch) != epoch_before {
                     reroute_at_boundary(&core, &task, run_id, &mut cfg, "COMPACTION", &actor).await;
+                    preturn.compaction_opened();
                 }
+                // REQ-PX-108: before the first model turn (and after a goal
+                // change or an epoch) the Core seeds the retrieval planner with
+                // the goal and compiles a bounded pack; the prompt below carries
+                // the ledger's latest pack with its provenance. A failure is a
+                // typed record, never a blocked run.
+                preturn
+                    .step(
+                        &core,
+                        &task,
+                        lt,
+                        &actor,
+                        core.gateway
+                            .capability(&cfg.endpoint, &cfg.model)
+                            .map(|c| c.context_tokens),
+                    )
+                    .await;
                 // ContextCompile step.
                 // REQ-EV-0188: media reaches the model only when the routed model
                 // accepts that input; otherwise the result text stands on its own.
