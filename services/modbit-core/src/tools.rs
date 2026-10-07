@@ -850,6 +850,7 @@ impl ToolHost {
     /// The search port over a task's workspace index: the one every
     /// retrieval tool call and the Core's own goal-seeded pre-turn pack
     /// (REQ-PX-108) go through, so there is one retrieval entry.
+    #[allow(clippy::too_many_arguments)] // the task's identity, workspace and lease scope
     pub(crate) async fn index_port(
         &self,
         store: &Arc<Mutex<EventStore>>,
