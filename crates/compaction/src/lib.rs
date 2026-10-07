@@ -14,6 +14,8 @@
 use serde::{Deserialize, Serialize};
 use sha2::{Digest, Sha256};
 
+pub mod summary;
+
 /// What a preserved fact is: the labels that must survive compaction
 /// (docs/19: instructions, decisions, approvals, open failures, handles).
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize)]
@@ -80,6 +82,33 @@ pub struct CompactionManifest {
     pub projection_tokens: u32,
     /// sha256 over the fields above, so a client can check what it was given.
     pub manifest_hash: String,
+    /// `MODEL` when a summarizer model wrote [`Self::narrative`] and the Core
+    /// validated it, `EXTRACTIVE` (or empty, for an epoch from before
+    /// REQ-PX-109) when the Core extracted the projection alone.
+    #[serde(default)]
+    pub summary_source: String,
+    /// `endpoint/model` of the summarizer, when a model wrote the narrative.
+    #[serde(default)]
+    pub summarizer: String,
+    /// Why the epoch is extractive when the model path was meant or tried.
+    #[serde(default)]
+    pub fallback_reason: String,
+    /// The validated model narrative, untrusted prompt content: the prompt
+    /// compiler places it in a user message, never a system one.
+    #[serde(default)]
+    pub narrative: String,
+    /// Objects holding the exact pre-compaction transcript of this epoch and
+    /// of every epoch before it, newest last: `artifact.range` reads them.
+    #[serde(default)]
+    pub transcript_refs: Vec<String>,
+    /// The index object of the newest transcript (entry, role, offset, size,
+    /// preview) the model reads to find what to page.
+    #[serde(default)]
+    pub transcript_index_ref: String,
+    /// Files the validated summaries of the epoch chain say were touched, so
+    /// a later epoch may cite them.
+    #[serde(default)]
+    pub files_touched: Vec<String>,
 }
 
 /// Why a compaction result was refused (docs/19: stale source, wrong
@@ -168,10 +197,206 @@ pub struct SourceEntry {
     pub failure_signature: Option<String>,
 }
 
-/// Estimated tokens (the same deterministic estimator the Context Pack uses).
+/// Estimated tokens (the same deterministic estimator the Context Pack uses):
+/// one token per four bytes.
 #[must_use]
 pub fn estimate_tokens(text: &str) -> u32 {
     u32::try_from(text.len().div_ceil(4)).unwrap_or(u32::MAX)
+}
+
+/// The id of [`estimate_tokens_v2`], as the Inspector names the estimator in
+/// force.
+pub const ESTIMATOR_V2: &str = "tokens-v2";
+
+/// A better token estimate than bytes over four, still deterministic and
+/// provider-free: a run of letters or digits costs a token per four of its
+/// characters, a punctuation or symbol character about half a token (code and
+/// JSON are mostly symbols and short words, where bytes over four undercounts),
+/// whitespace is free (it merges into the next token) and every non-ASCII
+/// character costs a token (CJK and emoji are nearer one token a character
+/// than one per four bytes). The provider's own count, when the run has one,
+/// calibrates it ([`Calibration`]).
+#[must_use]
+pub fn estimate_tokens_v2(text: &str) -> u32 {
+    let mut tokens = 0.0f64;
+    let mut word = 0u32;
+    let flush = |word: &mut u32, tokens: &mut f64| {
+        if *word > 0 {
+            *tokens += f64::from(word.div_ceil(4));
+            *word = 0;
+        }
+    };
+    for c in text.chars() {
+        if c.is_ascii_alphanumeric() || c == '_' {
+            word += 1;
+        } else {
+            flush(&mut word, &mut tokens);
+            if c.is_ascii_whitespace() {
+            } else if c.is_ascii() {
+                tokens += 0.5;
+            } else {
+                tokens += 1.0;
+            }
+        }
+    }
+    flush(&mut word, &mut tokens);
+    // Whole tokens: never below one for text at all.
+    let n = tokens.ceil() as u64;
+    u32::try_from(if text.is_empty() { 0 } else { n.max(1) }).unwrap_or(u32::MAX)
+}
+
+/// The ratio between what the provider counted and what [`estimate_tokens_v2`]
+/// estimated for the same requests, smoothed over the run: a conservative
+/// correction that makes the compaction trigger follow the real tokenizer.
+#[derive(Clone, Copy, Debug, PartialEq)]
+pub struct Calibration {
+    ratio: f64,
+    samples: u32,
+}
+
+impl Default for Calibration {
+    fn default() -> Self {
+        Self {
+            ratio: 1.0,
+            samples: 0,
+        }
+    }
+}
+
+impl Calibration {
+    /// Bounds on the correction: a provider that disagrees with the estimate
+    /// by more than this is reporting something else (a cached prefix, a
+    /// truncated count), not a tokenizer.
+    const MIN: f64 = 0.5;
+    const MAX: f64 = 3.0;
+
+    /// Fold in one request: what the Core estimated and what the provider
+    /// reported as its input tokens. A request with no usage report, or an
+    /// estimate of zero, teaches nothing.
+    pub fn observe(&mut self, estimated: u32, reported: u64) {
+        if estimated == 0 || reported == 0 {
+            return;
+        }
+        let seen = (reported as f64 / f64::from(estimated)).clamp(Self::MIN, Self::MAX);
+        self.ratio = if self.samples == 0 {
+            seen
+        } else {
+            0.5 * self.ratio + 0.5 * seen
+        };
+        self.samples += 1;
+    }
+
+    /// The correction to apply to an estimate.
+    #[must_use]
+    pub fn ratio(&self) -> f64 {
+        self.ratio
+    }
+
+    /// An estimate corrected by what the provider has reported.
+    #[must_use]
+    pub fn apply(&self, estimated: u32) -> u32 {
+        u32::try_from((f64::from(estimated) * self.ratio).ceil() as u64).unwrap_or(u32::MAX)
+    }
+}
+
+/// The exact pre-compaction transcript of a range, as two objects: the
+/// transcript (one JSON object per line, the text byte for byte as the model
+/// saw it) and an index of those lines (entry, role, tool, byte offset and
+/// size, a short preview) the model reads first to find what to page with
+/// `artifact.range`. Entry numbers are the ones the summarizer cites.
+#[must_use]
+pub fn transcript_objects(entries: &[SourceEntry]) -> (Vec<u8>, Vec<u8>) {
+    let mut transcript: Vec<u8> = Vec::new();
+    let mut index: Vec<serde_json::Value> = Vec::new();
+    for (i, e) in entries.iter().enumerate() {
+        let line = serde_json::json!({"entry": i, "role": e.role, "tool": e.name, "text": e.text})
+            .to_string();
+        let preview: String = e
+            .text
+            .split_whitespace()
+            .collect::<Vec<_>>()
+            .join(" ")
+            .chars()
+            .take(80)
+            .collect();
+        index.push(serde_json::json!({
+            "entry": i,
+            "role": e.role,
+            "tool": e.name,
+            "offset": transcript.len(),
+            "bytes": line.len(),
+            "preview": preview,
+        }));
+        transcript.extend_from_slice(line.as_bytes());
+        transcript.push(b'\n');
+    }
+    (transcript, serde_json::to_vec(&index).unwrap_or_default())
+}
+
+/// Record on a manifest where the exact text of the range it replaced is
+/// stored, and tell the model how to read it. The pointer line is appended
+/// after the projection's own budget selection, so no budget can drop it.
+pub fn attach_transcript(manifest: &mut CompactionManifest, transcript_ref: &str, index_ref: &str) {
+    manifest.transcript_refs.push(transcript_ref.to_owned());
+    manifest.transcript_index_ref = index_ref.to_owned();
+    manifest.projection.push_str(&format!(
+        "Pointer to the exact earlier text: the {} transcript entries this epoch replaced are stored byte for byte in object {transcript_ref} (one JSON object per line); object {index_ref} lists each entry with its byte offset and size. Read the index with `artifact.range` on {index_ref}, then page the entry you need with `artifact.range` on {transcript_ref} at its offset.\n",
+        manifest.source_entries
+    ));
+    manifest.projection_tokens = estimate_tokens(&manifest.projection);
+    manifest.seal();
+}
+
+/// Carry a validated model narrative on a manifest, with who wrote it. The
+/// summary source becomes `MODEL`.
+pub fn attach_narrative(
+    manifest: &mut CompactionManifest,
+    summarizer: &str,
+    narrative: String,
+    files: Vec<String>,
+) {
+    manifest.summary_source = "MODEL".into();
+    manifest.summarizer = summarizer.to_owned();
+    manifest.fallback_reason.clear();
+    manifest.narrative = narrative;
+    for f in files {
+        if !manifest.files_touched.contains(&f) {
+            manifest.files_touched.push(f);
+        }
+    }
+    manifest.seal();
+}
+
+/// Record that the epoch is extractive and why the model path was not taken.
+pub fn attach_fallback(manifest: &mut CompactionManifest, reason: &str) {
+    manifest.summary_source = "EXTRACTIVE".into();
+    manifest.fallback_reason = reason.to_owned();
+    manifest.seal();
+}
+
+impl CompactionManifest {
+    /// Recompute [`Self::manifest_hash`] over every field that decides what
+    /// the model sees. Fields an older manifest does not have hash as absent,
+    /// so an extractive epoch with no pointer hashes as it always did.
+    pub fn seal(&mut self) {
+        let mut parts: Vec<String> = vec![
+            self.epoch.to_string(),
+            self.task_generation.to_string(),
+            self.source_head_offset.to_string(),
+            self.branch_generation.to_string(),
+            self.source_digest.clone(),
+            self.compiler_version.clone(),
+            self.projection.clone(),
+        ];
+        if !self.narrative.is_empty() {
+            parts.push(format!("narrative:{}:{}", self.summarizer, self.narrative));
+        }
+        if !self.transcript_refs.is_empty() {
+            parts.push(format!("transcripts:{}", self.transcript_refs.join(",")));
+        }
+        let refs: Vec<&str> = parts.iter().map(String::as_str).collect();
+        self.manifest_hash = sha(&refs);
+    }
 }
 
 fn sha(parts: &[&str]) -> String {
@@ -434,6 +659,17 @@ pub fn compact(request: &CompactionRequest<'_>) -> CompactionManifest {
         projection,
         projection_tokens,
         manifest_hash,
+        summary_source: "EXTRACTIVE".into(),
+        summarizer: String::new(),
+        fallback_reason: String::new(),
+        narrative: String::new(),
+        transcript_refs: previous
+            .map(|m| m.transcript_refs.clone())
+            .unwrap_or_default(),
+        transcript_index_ref: String::new(),
+        files_touched: previous
+            .map(|m| m.files_touched.clone())
+            .unwrap_or_default(),
     }
 }
 

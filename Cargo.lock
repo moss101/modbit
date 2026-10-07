@@ -2203,6 +2203,7 @@ dependencies = [
  "hex",
  "modbit-domain",
  "serde",
+ "serde_json",
  "sha2 0.11.0",
 ]
 

@@ -62,6 +62,19 @@ pub(crate) async fn view(core: &Core, task_id: TaskId) -> wire::ContextInspector
     v.instructions = task_log.instructions;
     v.pre_turn_pack = task_log.pre_turn_pack;
     v.compaction_summaries = task_log.summaries;
+    // What the trigger derives from: the numbers the last compaction started
+    // under, else what the routed model's window gives now.
+    v.compaction_thresholds = task_log.last_started.or_else(|| {
+        let (endpoint, model) = economy.last_route.as_ref()?;
+        let th = crate::compaction_model::thresholds(core, endpoint, model, 0);
+        Some(wire::CompactionThresholdView {
+            context_window_tokens: th.window,
+            hard_budget_tokens: th.hard,
+            soft_budget_tokens: th.soft,
+            source: th.source.label().to_owned(),
+            estimator: th.estimator().to_owned(),
+        })
+    });
     v.manifest_ref = economy.manifest_ref;
     v.prefix_cache_hits = economy.hits;
     v.prefix_cache_misses = economy.misses;
@@ -166,6 +179,8 @@ struct Economy {
     reported_input_tokens: u64,
     reported_cached_input_tokens: u64,
     reported_invocations: u32,
+    /// The routed model of the newest invocation, as `(endpoint, model)`.
+    last_route: Option<(String, String)>,
 }
 
 /// Counted from the log, never estimated: every epoch the task opened, and
@@ -196,6 +211,12 @@ async fn epochs_and_cache(core: &Core, task_id: TaskId) -> Economy {
                 out.manifest_ref = p["manifest_ref"].as_str().unwrap_or_default().to_owned();
             }
             "ModelInvocationStarted" => {
+                if let (Some(ep), Some(m)) = (
+                    p["model_route"]["endpoint"].as_str(),
+                    p["model_route"]["model"].as_str(),
+                ) {
+                    out.last_route = Some((ep.to_owned(), m.to_owned()));
+                }
                 let Some(key) = p["model_route"]["cache_key"].as_str() else {
                     continue;
                 };
@@ -274,6 +295,7 @@ struct TaskContextLog {
     instructions: Vec<wire::InstructionLayerView>,
     pre_turn_pack: Option<wire::PreTurnPackView>,
     summaries: Vec<wire::CompactionSummaryView>,
+    last_started: Option<wire::CompactionThresholdView>,
 }
 
 /// The newest `RulesSelected` (every instruction layer in force, and every
@@ -313,6 +335,26 @@ async fn task_context_log(core: &Core, task_id: TaskId) -> TaskContextLog {
                         seed_digest: s("seed_digest"),
                         offset: e.offset,
                     });
+                }
+                "CompactionStarted" => {
+                    let n = |k: &str| u32::try_from(p[k].as_u64().unwrap_or(0)).unwrap_or(u32::MAX);
+                    let source = p["budget_source"].as_str().unwrap_or_default();
+                    out.last_started =
+                        (!source.is_empty()).then(|| wire::CompactionThresholdView {
+                            context_window_tokens: n("window_tokens"),
+                            hard_budget_tokens: n("budget_tokens"),
+                            soft_budget_tokens: if source == "MODEL_WINDOW" {
+                                n("budget_tokens") * 14 / 17
+                            } else {
+                                n("budget_tokens") * 3 / 4
+                            },
+                            source: source.to_owned(),
+                            estimator: if source == "MODEL_WINDOW" {
+                                "tokens-v2+calibration".into()
+                            } else {
+                                "bytes/4".into()
+                            },
+                        });
                 }
                 "ContextEpochOpened" => {
                     let s = |k: &str| p[k].as_str().unwrap_or_default().to_owned();

@@ -2713,6 +2713,13 @@ async fn run_loop(
     // REQ-PX-108: the goal-seeded pre-turn pack. A resumed run finds its
     // first-turn pack on the log and does not make another.
     let mut preturn = crate::preturn::PreTurn::load(&core, &task).await;
+    // REQ-PX-109: the provider-reported correction to the token estimate, the
+    // prompt that is not transcript, and the hysteresis floor the trigger
+    // waits to exceed after an epoch.
+    let mut calibration = modbit_compaction::Calibration::default();
+    let mut overhead_tokens: u32 = 0;
+    let mut rearm_floor: u32 = 0;
+    let mut summarizer_usage: Vec<crate::compaction_model::SummarizerUsage> = Vec::new();
     // The vision bridge for a text-only routed model (REQ-EV-0184/0185):
     // one description per media digest per run, recorded on the task.
     let mut bridge = crate::media_bridge::BridgeSession::new(
@@ -3197,6 +3204,16 @@ async fn run_loop(
                     &mut transcript,
                     &mut epoch,
                     &mut compaction_worker,
+                    &mut CompactionCtx {
+                        endpoint: &cfg.endpoint,
+                        model: &cfg.model,
+                        state: &state,
+                        cancel: &cancel,
+                        overhead: overhead_tokens,
+                        calibration,
+                        rearm_floor: &mut rearm_floor,
+                        usage: &mut summarizer_usage,
+                    },
                 )
                 .await;
                 // REQ-EPR-009: a compaction epoch is a re-evaluation boundary
@@ -3308,6 +3325,10 @@ async fn run_loop(
                         workspace_rules: rules.select(&core, &task, lt, &actor, &state).await,
                         skills: skill_instructions.clone(),
                         compaction_summary: epoch.as_ref().map(|m| m.projection.clone()),
+                        compaction_narrative: epoch
+                            .as_ref()
+                            .map(|m| m.narrative.clone())
+                            .filter(|n| !n.is_empty()),
                         harness_state: harness_json.clone(),
                         transcript: {
                             // The bytes enter the request, never the log or the ledger.
@@ -3328,6 +3349,19 @@ async fn run_loop(
                     });
                 let mut request = compiled.request;
                 request.request_id = format!("{}:{}", task.task_id, ordinal);
+                // What the request is estimated to cost, and how much of it is
+                // not transcript: the provider's own count calibrates the
+                // estimate, and the compaction trigger counts the transcript
+                // against the window less this overhead.
+                let request_estimate = estimate_request_tokens(&request);
+                overhead_tokens = calibration.apply(
+                    request_estimate.saturating_sub(
+                        transcript
+                            .iter()
+                            .map(|m| modbit_compaction::estimate_tokens_v2(&message_text(m)))
+                            .sum(),
+                    ),
+                );
                 let pack_ref = {
                     let store = core.store.lock().await;
                     store
@@ -3463,6 +3497,9 @@ async fn run_loop(
                         )],
                     );
                 }
+                // The summarizer calls of this boundary are priced on this turn
+                // now that it is streaming.
+                flush_summarizer_usage(&core, lturn, turn_id, &actor, &mut summarizer_usage).await;
                 let needs = Requirements {
                     tools: true,
                     ..Default::default()
@@ -3608,6 +3645,9 @@ async fn run_loop(
                             }
                         }
                     }
+                }
+                if usage_reported {
+                    calibration.observe(request_estimate, usage.input_tokens);
                 }
                 if interrupted {
                     let mut store = core.store.lock().await;
@@ -5920,7 +5960,7 @@ struct CompactionWorker {
     /// point the fault was staging. Nothing holds a result in production.
     released: Arc<std::sync::atomic::AtomicBool>,
     /// The worker.
-    handle: tokio::task::JoinHandle<modbit_compaction::CompactionManifest>,
+    handle: tokio::task::JoinHandle<crate::compaction_model::Built>,
 }
 
 /// Where a compaction may cut the transcript (FIX-07, audit C): the kept tail
@@ -6108,6 +6148,20 @@ async fn compaction_core_facts(core: &Core, task: &Task) -> Vec<modbit_compactio
     out
 }
 
+/// Estimated tokens of a whole request: its messages and the tool schemas it
+/// projects, in the units of `estimate_tokens_v2`.
+fn estimate_request_tokens(request: &modbit_providers::ModelRequest) -> u32 {
+    let messages: u32 = request
+        .messages
+        .iter()
+        .map(|m| modbit_compaction::estimate_tokens_v2(&message_text(m)))
+        .sum();
+    let tools = modbit_compaction::estimate_tokens_v2(
+        &serde_json::to_string(&request.tool_projection).unwrap_or_default(),
+    );
+    messages.saturating_add(tools)
+}
+
 /// Estimated tokens of the model-visible transcript.
 fn transcript_tokens(transcript: &[Message]) -> u32 {
     transcript
@@ -6201,10 +6255,14 @@ async fn install_epoch(
                         branch_generation: manifest.branch_generation,
                         mode: mode.to_owned(),
                         source_digest: manifest.source_digest.clone(),
-                        summary_source: String::new(),
-                        summarizer: String::new(),
-                        fallback_reason: String::new(),
-                        transcript_ref: String::new(),
+                        summary_source: manifest.summary_source.clone(),
+                        summarizer: manifest.summarizer.clone(),
+                        fallback_reason: manifest.fallback_reason.clone(),
+                        transcript_ref: manifest
+                            .transcript_refs
+                            .last()
+                            .cloned()
+                            .unwrap_or_default(),
                     },
                     actor.clone(),
                 ),
@@ -6217,8 +6275,8 @@ async fn install_epoch(
                         manifest_ref: manifest_ref.clone(),
                         manifest_hash: manifest.manifest_hash.clone(),
                         mode: mode.to_owned(),
-                        summary_source: String::new(),
-                        fallback_reason: String::new(),
+                        summary_source: manifest.summary_source.clone(),
+                        fallback_reason: manifest.fallback_reason.clone(),
                     },
                     actor.clone(),
                 ),
@@ -6317,33 +6375,138 @@ async fn close_abandoned_compactions(core: &Core, task: &Task, lt: Lineage, acto
     }
 }
 
+/// What one compaction boundary needs besides the transcript (REQ-PX-109).
+struct CompactionCtx<'a> {
+    /// The routed model: the thresholds follow its window and the summarizer
+    /// may be the run's own model.
+    endpoint: &'a str,
+    model: &'a str,
+    /// The task's own state: the paths its plan and write set name, which a
+    /// summary may cite.
+    state: &'a HarnessState,
+    /// The run's cancellation: a summarizer call dies with the run.
+    cancel: &'a CancellationToken,
+    /// Tokens the rest of the prompt took in the last request, in
+    /// calibrated estimator units.
+    overhead: u32,
+    /// The provider-reported correction to the token estimate.
+    calibration: modbit_compaction::Calibration,
+    /// The transcript size the next compaction waits to exceed (hysteresis).
+    rearm_floor: &'a mut u32,
+    /// What summarizer calls cost, until the turn can take it.
+    usage: &'a mut Vec<crate::compaction_model::SummarizerUsage>,
+}
+
+/// The transcript's size in the units the trigger counts: the calibrated
+/// estimator for a model-aware trigger, the original bytes over four for the
+/// override and the fallback.
+fn measured_tokens(
+    transcript: &[Message],
+    th: &crate::compaction_model::Thresholds,
+    calibration: &modbit_compaction::Calibration,
+) -> u32 {
+    if th.model_aware() {
+        calibration.apply(
+            transcript
+                .iter()
+                .map(|m| modbit_compaction::estimate_tokens_v2(&message_text(m)))
+                .sum(),
+        )
+    } else {
+        transcript_tokens(transcript)
+    }
+}
+
+/// Put what the summarizer calls of a boundary cost on the turn they belong
+/// to: their tokens are the task's tokens, under the role that spent them. A
+/// turn takes usage once its model invocation has started, so the cost waits
+/// in `pending` until then.
+async fn flush_summarizer_usage(
+    core: &Core,
+    lturn: Lineage,
+    turn_id: TurnId,
+    actor: &Actor,
+    pending: &mut Vec<crate::compaction_model::SummarizerUsage>,
+) {
+    if pending.is_empty() {
+        return;
+    }
+    let mut store = core.store.lock().await;
+    for u in pending.drain(..) {
+        let _ = append(
+            &mut store,
+            core,
+            lturn,
+            AggregateType::Turn,
+            *turn_id.as_bytes(),
+            vec![typed(
+                "ModelUsageRecorded",
+                &TurnEvent::ModelUsageRecorded {
+                    input_tokens: u.usage.input_tokens,
+                    output_tokens: u.usage.output_tokens,
+                    cached_input_tokens: u.usage.cached_input_tokens,
+                    reported: u.reported,
+                    route: serde_json::json!({
+                        "endpoint": u.endpoint,
+                        "model": u.model,
+                        "role": "compaction-summarizer",
+                    }),
+                },
+                actor.clone(),
+            )],
+        );
+    }
+}
+
+/// The paths the task's own state names: what a summary may cite as a file
+/// besides what the transcript shows.
+fn state_paths(state: &HarnessState) -> Vec<String> {
+    let mut paths: Vec<String> = state.original_write_set.clone();
+    paths.extend(state.out_of_plan_files.iter().cloned());
+    if let Some(plan) = &state.plan {
+        paths.extend(plan.expected_files.iter().cloned());
+    }
+    paths.sort();
+    paths.dedup();
+    paths
+}
+
 /// One turn boundary of the compaction protocol (docs/19 "Compaction
-/// epochs", M4.2):
+/// epochs", M4.2; REQ-PX-109):
 ///
 /// 1. a finished worker's result installs only if the session branch, the
 ///    prefix it summarised and the epoch order are still current — otherwise
 ///    it is refused and the refusal is logged;
-/// 2. under hard pressure (the transcript is over the budget) a bounded
-///    synchronous compaction runs now, whatever the worker is doing; its
-///    result, when it returns, is stale and refused;
+/// 2. under hard pressure (the transcript is over the budget the routed model
+///    gives it) a bounded synchronous compaction runs now, whatever the
+///    worker is doing; its result, when it returns, is stale and refused;
 /// 3. under soft pressure with no worker in flight, a worker starts on a
 ///    snapshot of the prefix and the request is logged first.
+///
+/// Both compactions build the epoch the same way: the extractive baseline,
+/// then a validated model summary on top when policy names a summarizer, the
+/// baseline standing whenever the model path fails
+/// (`compaction_model::build`).
 #[allow(clippy::too_many_arguments)]
 async fn compaction_step(
-    core: &Core,
+    core: &Arc<Core>,
     task: &Task,
     lt: Lineage,
     actor: &Actor,
     transcript: &mut Vec<Message>,
     epoch: &mut Option<modbit_compaction::CompactionManifest>,
     worker: &mut Option<CompactionWorker>,
+    ctx: &mut CompactionCtx<'_>,
 ) {
-    let budget = compaction_budget();
+    let th = crate::compaction_model::thresholds(core, ctx.endpoint, ctx.model, ctx.overhead);
+    let budget = th.hard;
     // 1. harvest
     if worker.as_ref().is_some_and(|w| w.handle.is_finished()) {
         let w = worker.take().expect("checked");
         match w.handle.await {
-            Ok(manifest) => {
+            Ok(built) => {
+                ctx.usage.extend(built.usage);
+                let manifest = built.manifest;
                 let (_, _, branch_now) = compaction_coordinates(core, task).await;
                 let digest_now =
                     modbit_compaction::source_digest(&compaction_source(transcript, w.cut));
@@ -6359,6 +6522,8 @@ async fn compaction_step(
                             "ASYNC",
                         )
                         .await;
+                        *ctx.rearm_floor =
+                            th.rearm_floor(measured_tokens(transcript, &th, &ctx.calibration));
                     }
                     Err(rejected) => {
                         reject_compaction(
@@ -6392,16 +6557,23 @@ async fn compaction_step(
             }
         }
     }
-    let tokens = transcript_tokens(transcript);
+    let tokens = measured_tokens(transcript, &th, &ctx.calibration);
     let Some(cut) = compaction_cut(transcript) else {
         return;
     };
     let next_epoch = epoch.as_ref().map_or(1, |m| m.epoch + 1);
+    // Hysteresis: a model-aware trigger that has just compacted waits for the
+    // transcript to grow past where the epoch left it.
+    let armed = tokens > *ctx.rearm_floor;
+    let hard = armed && tokens > budget;
+    let soft_over = if th.model_aware() {
+        tokens > th.soft
+    } else {
+        tokens * COMPACTION_SOFT_DENOMINATOR > budget * COMPACTION_SOFT_NUMERATOR
+    };
+    let soft = armed && worker.is_none() && soft_over;
     // REQ-EV-0042: a compaction about to start is a step `before_compaction`
     // hooks may stop; the transcript then stays as it is this round.
-    let hard = tokens > budget;
-    let soft = worker.is_none()
-        && tokens * COMPACTION_SOFT_DENOMINATOR > budget * COMPACTION_SOFT_NUMERATOR;
     if hard || soft {
         let (hooks, _) =
             crate::hooks::scope(core, task, lt.run_id(), None, lt.lease(), actor).await;
@@ -6423,62 +6595,71 @@ async fn compaction_step(
             return;
         }
     }
+    if !hard && !soft {
+        return;
+    }
+    let mode = if hard { "SYNC_FALLBACK" } else { "ASYNC" };
+    let id = modbit_domain::RunStepId::new().to_string();
+    let source = compaction_source(transcript, cut);
+    let (generation, head, branch) = compaction_coordinates(core, task).await;
+    {
+        let mut store = core.store.lock().await;
+        let _ = append(
+            &mut store,
+            core,
+            lt,
+            AggregateType::Task,
+            *task.task_id.as_bytes(),
+            vec![typed(
+                "CompactionStarted",
+                &TaskEvent::CompactionStarted {
+                    compaction_id: id.clone(),
+                    epoch: next_epoch,
+                    previous_epoch: epoch.as_ref().map(|m| m.epoch),
+                    branch_generation: branch,
+                    source_head_offset: head,
+                    source_entries: u32::try_from(source.len()).unwrap_or(u32::MAX),
+                    source_digest: modbit_compaction::source_digest(&source),
+                    compiler_version: modbit_prompt_compiler::COMPILER_VERSION.to_owned(),
+                    target_tokens: budget / 4,
+                    mode: mode.into(),
+                    window_tokens: th.window,
+                    budget_tokens: budget,
+                    budget_source: th.source.label().to_owned(),
+                },
+                actor.clone(),
+            )],
+        );
+    }
+    // The request is on the log: the head the manifest must match is the
+    // one after it.
+    let (generation, head) = {
+        let store = core.store.lock().await;
+        let g = store
+            .task(&task.task_id)
+            .ok()
+            .flatten()
+            .map_or(generation, |t| t.generation);
+        (g, store.last_offset().unwrap_or(head))
+    };
+    let ladder = crate::compaction_model::Ladder {
+        entries: source,
+        previous: epoch.clone(),
+        task_generation: generation,
+        source_head_offset: head,
+        branch_generation: branch,
+        target_tokens: budget / 4,
+        core_facts: compaction_core_facts(core, task).await,
+        known_paths: state_paths(ctx.state),
+        summarizer: crate::compaction_model::resolve(core, task, ctx.endpoint, ctx.model),
+    };
     if hard {
-        // 2. hard pressure: bounded synchronous compaction, now.
-        let id = modbit_domain::RunStepId::new().to_string();
-        let source = compaction_source(transcript, cut);
-        let (generation, head, branch) = compaction_coordinates(core, task).await;
-        {
-            let mut store = core.store.lock().await;
-            let _ = append(
-                &mut store,
-                core,
-                lt,
-                AggregateType::Task,
-                *task.task_id.as_bytes(),
-                vec![typed(
-                    "CompactionStarted",
-                    &TaskEvent::CompactionStarted {
-                        compaction_id: id.clone(),
-                        epoch: next_epoch,
-                        previous_epoch: epoch.as_ref().map(|m| m.epoch),
-                        branch_generation: branch,
-                        source_head_offset: head,
-                        source_entries: u32::try_from(source.len()).unwrap_or(u32::MAX),
-                        source_digest: modbit_compaction::source_digest(&source),
-                        compiler_version: modbit_prompt_compiler::COMPILER_VERSION.to_owned(),
-                        target_tokens: budget / 4,
-                        mode: "SYNC_FALLBACK".into(),
-                        window_tokens: 0,
-                        budget_tokens: budget,
-                        budget_source: String::new(),
-                    },
-                    actor.clone(),
-                )],
-            );
-        }
-        // The request is on the log: the head the manifest must match is the
-        // one after it.
-        let (generation, head) = {
-            let store = core.store.lock().await;
-            let g = store
-                .task(&task.task_id)
-                .ok()
-                .flatten()
-                .map_or(generation, |t| t.generation);
-            (g, store.last_offset().unwrap_or(head))
-        };
-        let core_facts = compaction_core_facts(core, task).await;
-        let manifest = modbit_compaction::compact(&modbit_compaction::CompactionRequest {
-            entries: &source,
-            previous: epoch.as_ref(),
-            task_generation: generation,
-            source_head_offset: head,
-            branch_generation: branch,
-            compiler_version: modbit_prompt_compiler::COMPILER_VERSION,
-            target_tokens: budget / 4,
-            core_facts: &core_facts,
-        });
+        // 2. hard pressure: bounded synchronous compaction, now. The model
+        // call inside it is bounded by the summarizer's own timeout, and its
+        // failure is the extractive epoch, not a failed compaction.
+        let built = crate::compaction_model::build(core, task, ladder, ctx.cancel).await;
+        ctx.usage.extend(built.usage);
+        let manifest = built.manifest;
         // docs/19: the result installs only while its source is still current.
         let (generation_now, head_now, _) = compaction_coordinates(core, task).await;
         match modbit_compaction::accept(
@@ -6501,6 +6682,8 @@ async fn compaction_step(
                     "SYNC_FALLBACK",
                 )
                 .await;
+                *ctx.rearm_floor =
+                    th.rearm_floor(measured_tokens(transcript, &th, &ctx.calibration));
                 // The prefix a worker in flight is summarising has just been
                 // replaced under it. Nothing changes for it here — its result
                 // is judged by `accept_async` at the next boundary either way
@@ -6528,78 +6711,33 @@ async fn compaction_step(
         }
         return;
     }
-    if worker.is_none() && tokens * COMPACTION_SOFT_DENOMINATOR > budget * COMPACTION_SOFT_NUMERATOR
-    {
-        // 3. soft pressure: a worker starts on a snapshot; the request is
-        // logged before the worker exists.
-        let id = modbit_domain::RunStepId::new().to_string();
-        let source = compaction_source(transcript, cut);
-        let (generation, head, branch) = compaction_coordinates(core, task).await;
-        let digest = modbit_compaction::source_digest(&source);
-        {
-            let mut store = core.store.lock().await;
-            let _ = append(
-                &mut store,
-                core,
-                lt,
-                AggregateType::Task,
-                *task.task_id.as_bytes(),
-                vec![typed(
-                    "CompactionStarted",
-                    &TaskEvent::CompactionStarted {
-                        compaction_id: id.clone(),
-                        epoch: next_epoch,
-                        previous_epoch: epoch.as_ref().map(|m| m.epoch),
-                        branch_generation: branch,
-                        source_head_offset: head,
-                        source_entries: u32::try_from(source.len()).unwrap_or(u32::MAX),
-                        source_digest: digest,
-                        compiler_version: modbit_prompt_compiler::COMPILER_VERSION.to_owned(),
-                        target_tokens: budget / 4,
-                        mode: "ASYNC".into(),
-                        window_tokens: 0,
-                        budget_tokens: budget,
-                        budget_source: String::new(),
-                    },
-                    actor.clone(),
-                )],
-            );
-        }
-        let previous = epoch.clone();
-        let core_facts = compaction_core_facts(core, task).await;
-        let hold = compaction_worker_hold();
-        let released = Arc::new(std::sync::atomic::AtomicBool::new(false));
-        let held_until = Arc::clone(&released);
-        let handle = tokio::task::spawn_blocking(move || {
-            // docs/54 fault 10, tests only: hold the result until an epoch
-            // installs without it, so it returns to a history that moved on.
-            if let Some(bound) = hold {
-                let deadline = std::time::Instant::now() + bound;
-                while !held_until.load(std::sync::atomic::Ordering::Acquire)
-                    && std::time::Instant::now() < deadline
-                {
-                    std::thread::sleep(std::time::Duration::from_millis(1));
-                }
+    // 3. soft pressure: a worker starts on a snapshot; the request is
+    // logged before the worker exists.
+    let hold = compaction_worker_hold();
+    let released = Arc::new(std::sync::atomic::AtomicBool::new(false));
+    let held_until = Arc::clone(&released);
+    let (worker_core, worker_task, worker_cancel) =
+        (Arc::clone(core), task.clone(), ctx.cancel.child_token());
+    let handle = tokio::spawn(async move {
+        // docs/54 fault 10, tests only: hold the result until an epoch
+        // installs without it, so it returns to a history that moved on.
+        if let Some(bound) = hold {
+            let deadline = std::time::Instant::now() + bound;
+            while !held_until.load(std::sync::atomic::Ordering::Acquire)
+                && std::time::Instant::now() < deadline
+            {
+                tokio::time::sleep(std::time::Duration::from_millis(1)).await;
             }
-            modbit_compaction::compact(&modbit_compaction::CompactionRequest {
-                entries: &source,
-                previous: previous.as_ref(),
-                task_generation: generation,
-                source_head_offset: head,
-                branch_generation: branch,
-                compiler_version: modbit_prompt_compiler::COMPILER_VERSION,
-                target_tokens: budget / 4,
-                core_facts: &core_facts,
-            })
-        });
-        *worker = Some(CompactionWorker {
-            id,
-            epoch: next_epoch,
-            cut,
-            released,
-            handle,
-        });
-    }
+        }
+        crate::compaction_model::build(&worker_core, &worker_task, ladder, &worker_cancel).await
+    });
+    *worker = Some(CompactionWorker {
+        id,
+        epoch: next_epoch,
+        cut,
+        released,
+        handle,
+    });
 }
 
 /// The text of a message, for the token estimate and the compaction source.

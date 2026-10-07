@@ -22,6 +22,7 @@ mod browser_cloud;
 mod capacity;
 mod checkpoint;
 mod ci_evidence;
+mod compaction_model;
 mod compensation;
 mod config;
 mod critique;

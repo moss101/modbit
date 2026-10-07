@@ -114,8 +114,16 @@ pub struct PromptInput {
     /// bounded; part of the rules segment for the cache.
     #[serde(default)]
     pub skills: Vec<String>,
-    /// Compaction epoch summary (empty until M4).
+    /// Compaction epoch summary (empty until M4): what the Core extracted
+    /// and the pointer to the exact earlier text. A system segment.
     pub compaction_summary: Option<String>,
+    /// The model-written narrative of the epoch (REQ-PX-109), when a
+    /// summarizer produced one the Core validated. It was written from a
+    /// transcript that holds tool output, so it is untrusted prompt content:
+    /// it enters as a *user* message after the task turn, labelled as data,
+    /// never as a system one.
+    #[serde(default)]
+    pub compaction_narrative: Option<String>,
     /// Harness state (docs/14 contract 4): plan, budgets, counters, revision.
     pub harness_state: serde_json::Value,
     /// Transcript: prior assistant messages, tool calls and observations.
@@ -318,6 +326,13 @@ pub fn compile(input: PromptInput) -> CompiledPrompt {
             task_turn
         },
     ];
+    if let Some(narrative) = input
+        .compaction_narrative
+        .as_deref()
+        .filter(|n| !n.is_empty())
+    {
+        messages.push(Message::text(Role::User, narrative));
+    }
     messages.extend(input.transcript);
     // Everything above is the cacheable prefix: the three system segments,
     // the task turn, and the transcript, which only ever grows by appending
@@ -371,6 +386,7 @@ mod tests {
             workspace_rules: vec![],
             skills: vec![],
             compaction_summary: None,
+            compaction_narrative: None,
             harness_state: serde_json::json!({"turn": 1}),
             transcript: vec![],
             context: vec![],
@@ -656,5 +672,46 @@ mod tests {
         let mut k = input("g", 1);
         k.context = vec![fragment("src/z.rs")];
         assert_ne!(compile(j).context_pack_id, compile(k).context_pack_id);
+    }
+    #[test]
+    fn a_model_written_narrative_is_a_user_message_after_the_task_turn_never_a_system_one() {
+        let mut i = input("g", 1);
+        i.compaction_summary = Some("Compaction epoch 1: core facts".into());
+        i.compaction_narrative = Some("Earlier work: NARRATIVE-MARKER".into());
+        i.transcript = vec![Message::text(Role::Assistant, "later turn")];
+        let c = compile(i);
+        let msgs = &c.request.messages;
+        let at = msgs
+            .iter()
+            .position(|m| text_of(m).contains("NARRATIVE-MARKER"))
+            .expect("the narrative is in the request");
+        assert_eq!(
+            msgs[at].role,
+            Role::User,
+            "untrusted model text is not a system message"
+        );
+        assert!(
+            msgs.iter()
+                .filter(|m| m.role == Role::System)
+                .all(|m| !text_of(m).contains("NARRATIVE-MARKER")),
+            "no system message carries it"
+        );
+        assert!(
+            text_of(&msgs[at - 1]).contains("Task goal"),
+            "it follows the task turn"
+        );
+        assert_eq!(
+            text_of(&msgs[at + 1]),
+            "later turn",
+            "and precedes the transcript"
+        );
+        assert!(
+            msgs.iter()
+                .any(|m| m.role == Role::System
+                    && text_of(m).contains("Compaction epoch 1: core facts")),
+            "the Core's facts stay in the system segment"
+        );
+        // Without a narrative there is no extra message.
+        assert_eq!(compile(input("g", 1)).request.messages.len(), 5);
     }
 }
