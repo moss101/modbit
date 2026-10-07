@@ -10,6 +10,7 @@ import "google/protobuf/timestamp.proto";
 import "modbit/v1/domain.proto";
 import "modbit/v1/envelope.proto";
 import "modbit/v1/negotiation.proto";
+import "modbit/v1/context_rules.proto";
 
 // Authentication sent with Hello: the boot-scoped secret the client obtained
 // from the Core it spawned (docs/30). Never logged, never persisted.
@@ -530,6 +531,18 @@ message ContextInspectorView {
   uint64 reported_input_tokens = 27;
   uint64 reported_cached_input_tokens = 28;
   uint32 reported_invocations = 29;
+  // Fields 180-199 are the context rules/pack/compaction block (REQ-PX-107,
+  // 108, 109); the messages are in context_rules.proto.
+  // Every instruction layer of the task's last selection: in force, and the
+  // files that exist and are not (an untrusted repository's AGENTS.md among
+  // them, with the reason).
+  repeated InstructionLayerView instructions = 180;
+  // The latest goal-seeded pre-turn step.
+  PreTurnPackView pre_turn_pack = 181;
+  // How each compaction epoch's summary was made.
+  repeated CompactionSummaryView compaction_summaries = 182;
+  // What the compaction trigger derives from.
+  CompactionThresholdView compaction_thresholds = 183;
 }
 
 message CompactionRequestView {

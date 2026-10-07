@@ -265,6 +265,10 @@ pub struct Requirements {
     pub structured_output: bool,
     /// Input modalities present in the request.
     pub input_modalities: Vec<String>,
+    /// The registry role the request is made in (`None` = `solver`, a run
+    /// turn). A Core-originated call in another role — the compaction
+    /// summarizer — is routed to a model the registry binds for that role.
+    pub role: Option<String>,
 }
 
 /// Requested vs resolved route (REQ-EV-0112 routing record).
@@ -739,11 +743,11 @@ impl ProviderGateway {
             // A binding the canary holds passes too: routing gives it only
             // to requests whose policy allows canary routing, and the canary
             // keeps every revocation production has (REQ-EPR-012).
-            let checked =
-                registry.check_dispatch(&ep.name, &req.model_policy.model, "solver", &wanted);
+            let role = needs.role.as_deref().unwrap_or("solver");
+            let checked = registry.check_dispatch(&ep.name, &req.model_policy.model, role, &wanted);
             let checked = match (checked, canary.as_ref()) {
                 (Err(e), Some(c)) => c
-                    .check_dispatch(&ep.name, &req.model_policy.model, "solver", &wanted)
+                    .check_dispatch(&ep.name, &req.model_policy.model, role, &wanted)
                     .map_err(|_| e),
                 (r, _) => r,
             };

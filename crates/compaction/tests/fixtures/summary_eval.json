@@ -1,0 +1,87 @@
+{
+  "_about": "Hand-authored compaction evaluation corpus (REQ-PX-109, PX-138 groundwork). The probes are questions a continuing agent must still be able to answer after compaction; their answers are written here by a person from the transcript, independently of how the compactor labels facts. A probe is visible when its answer is in the epoch's context (the Core's segment plus the validated narrative) and recoverable when it is in the stored transcript the pointer names.",
+  "cases": [
+    {
+      "id": "cart-total-rounding",
+      "entries": [
+        {"role": "user", "name": "", "text": "Make the cart total use integer cents. Do not touch src/legacy/ and keep the public API of computeCartTotal."},
+        {"role": "assistant", "name": "", "text": "I will read src/cart.rs and its test first. Decision: keep the f64 field on Item but convert to cents inside computeCartTotal, because the invoice module still reads the f64."},
+        {"role": "tool", "name": "fs.read", "text": "status: SUCCESS\npath: src/cart.rs\npub fn compute_cart_total(items: &[Item]) -> f64 { items.iter().map(|i| i.price * i.qty as f64).sum() }"},
+        {"role": "tool", "name": "test.run", "text": "status: FAILED\ntests/cart_total.rs::rounds_half_cents: left 10.049999999999999 right 10.05\n1 failed; 4 passed", "failure_signature": "test.run:TOOL_ERROR:tests/cart_total.rs::rounds_half_cents"},
+        {"role": "assistant", "name": "", "text": "The failing test is rounds_half_cents in tests/cart_total.rs. Next I will change compute_cart_total to sum integer cents and re-run test.run."}
+      ],
+      "reference_summary": {
+        "primary_request": "Make the cart total use integer cents without touching src/legacy/ or the public API.",
+        "user_messages": ["Make the cart total use integer cents. Do not touch src/legacy/ and keep the public API of computeCartTotal."],
+        "plan": "Convert to cents inside compute_cart_total and keep the f64 field on Item.",
+        "todos": [{"text": "change compute_cart_total to sum integer cents", "status": "open"}, {"text": "re-run test.run", "status": "open"}],
+        "decisions": [{"text": "keep the f64 field on Item and convert to cents inside computeCartTotal because the invoice module still reads the f64", "refs": ["entry:1"]}],
+        "files": [{"path": "src/cart.rs", "note": "compute_cart_total sums f64 prices"}, {"path": "tests/cart_total.rs", "note": "rounds_half_cents fails"}],
+        "failures": [{"text": "tests/cart_total.rs::rounds_half_cents fails: 10.049999999999999 instead of 10.05", "refs": ["entry:3"]}],
+        "progress": "Read src/cart.rs and ran the tests; one rounding test fails.",
+        "next_steps": ["change compute_cart_total to integer cents", "re-run test.run"]
+      },
+      "probes": [
+        {"kind": "user", "question": "What must not be touched?", "answer": ["src/legacy/"]},
+        {"kind": "assistant_decision", "question": "Why was the f64 field on Item kept?", "answer": ["invoice module still reads the f64"]},
+        {"kind": "tool_result", "question": "Which test fails?", "answer": ["rounds_half_cents"]},
+        {"kind": "tool_result", "question": "In which file does the failing test live?", "answer": ["tests/cart_total.rs"]},
+        {"kind": "next_step", "question": "What is the next step?", "answer": ["integer cents", "re-run"]}
+      ]
+    },
+    {
+      "id": "login-redirect",
+      "entries": [
+        {"role": "user", "name": "", "text": "The login page redirects to /home even when the next parameter is set. Fix it in web/auth.ts only."},
+        {"role": "assistant", "name": "", "text": "Decision: honour next only when it is a same-origin relative path, to avoid an open redirect. Reading web/auth.ts."},
+        {"role": "tool", "name": "fs.read", "text": "status: SUCCESS\npath: web/auth.ts\nexport function afterLogin(req) { return redirect('/home'); }"},
+        {"role": "user", "name": "", "text": "Also add a test in web/auth.test.ts for the open-redirect case."},
+        {"role": "assistant", "name": "", "text": "Plan recorded: edit web/auth.ts, add web/auth.test.ts. Remaining: write the test first, then the fix."}
+      ],
+      "reference_summary": {
+        "primary_request": "Make the login redirect honour next, in web/auth.ts only, with an open-redirect test.",
+        "user_messages": ["The login page redirects to /home even when the next parameter is set. Fix it in web/auth.ts only.", "Also add a test in web/auth.test.ts for the open-redirect case."],
+        "plan": "Edit web/auth.ts; add web/auth.test.ts.",
+        "todos": [{"text": "write the open-redirect test", "status": "open"}, {"text": "fix afterLogin", "status": "open"}],
+        "decisions": [{"text": "honour next only when it is a same-origin relative path, to avoid an open redirect", "refs": ["entry:1"]}],
+        "files": [{"path": "web/auth.ts", "note": "afterLogin always redirects to /home"}],
+        "failures": [],
+        "progress": "Read web/auth.ts.",
+        "next_steps": ["write the test first, then the fix"]
+      },
+      "probes": [
+        {"kind": "user", "question": "Which file may be changed?", "answer": ["web/auth.ts only"]},
+        {"kind": "user", "question": "Which extra test was asked for?", "answer": ["web/auth.test.ts"]},
+        {"kind": "assistant_decision", "question": "What rule decides when next is honoured?", "answer": ["same-origin relative path"]},
+        {"kind": "tool_result", "question": "Where does the redirect to /home come from?", "answer": ["afterLogin"]},
+        {"kind": "next_step", "question": "What order of work remains?", "answer": ["test first"]}
+      ]
+    },
+    {
+      "id": "migration-ordering",
+      "entries": [
+        {"role": "user", "name": "", "text": "Add a NOT NULL column archived_at to orders in a migration. Production has 40M rows, so no table rewrite."},
+        {"role": "assistant", "name": "", "text": "Decision: add the column nullable, backfill in batches of 10000, then add the constraint with NOT VALID and validate it separately."},
+        {"role": "tool", "name": "shell.exec", "text": "status: SUCCESS\nmigrations/0042_orders_status.sql\nmigrations/0043_orders_index.sql\nlatest: 0043"},
+        {"role": "assistant", "name": "", "text": "The newest migration is 0043, so the new one is migrations/0044_orders_archived_at.sql. I will write it next."}
+      ],
+      "reference_summary": {
+        "primary_request": "Add a NOT NULL archived_at to orders without a table rewrite.",
+        "user_messages": ["Add a NOT NULL column archived_at to orders in a migration. Production has 40M rows, so no table rewrite."],
+        "plan": "Nullable column, batched backfill, NOT VALID constraint, then validate.",
+        "todos": [{"text": "write migrations/0044_orders_archived_at.sql", "status": "open"}],
+        "decisions": [{"text": "add nullable, backfill in batches of 10000, add the constraint NOT VALID and validate separately", "refs": ["entry:1"]}],
+        "files": [{"path": "migrations/0043_orders_index.sql", "note": "newest existing migration"}],
+        "failures": [],
+        "progress": "Listed the migrations; latest is 0043.",
+        "next_steps": ["write migrations/0044_orders_archived_at.sql"]
+      },
+      "probes": [
+        {"kind": "user", "question": "Why no table rewrite?", "answer": ["40M rows"]},
+        {"kind": "assistant_decision", "question": "What batch size for the backfill?", "answer": ["10000"]},
+        {"kind": "tool_result", "question": "What is the newest migration?", "answer": ["0043"]},
+        {"kind": "next_step", "question": "What file is written next?", "answer": ["0044_orders_archived_at.sql"]}
+      ]
+    }
+  ]
+}

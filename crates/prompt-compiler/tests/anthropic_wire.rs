@@ -40,6 +40,7 @@ fn input(turn: usize) -> PromptInput {
         workspace_rules: vec!["Use cargo fmt.".into()],
         skills: vec![],
         compaction_summary: None,
+        compaction_narrative: None,
         harness_state: json!({
             "turns": turn,
             "tool_calls": turn,

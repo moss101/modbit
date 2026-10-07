@@ -56,6 +56,25 @@ pub(crate) async fn view(core: &Core, task_id: TaskId) -> wire::ContextInspector
             committed_at_ms: r.committed_at.map_or(0, |t| t.0),
         })
         .collect();
+    // REQ-PX-107/108/109: the instruction layers in force, the goal-seeded
+    // pre-turn step and how each summary was made, from the task's log.
+    let task_log = task_context_log(core, task_id).await;
+    v.instructions = task_log.instructions;
+    v.pre_turn_pack = task_log.pre_turn_pack;
+    v.compaction_summaries = task_log.summaries;
+    // What the trigger derives from: the numbers the last compaction started
+    // under, else what the routed model's window gives now.
+    v.compaction_thresholds = task_log.last_started.or_else(|| {
+        let (endpoint, model) = economy.last_route.as_ref()?;
+        let th = crate::compaction_model::thresholds(core, endpoint, model, 0);
+        Some(wire::CompactionThresholdView {
+            context_window_tokens: th.window,
+            hard_budget_tokens: th.hard,
+            soft_budget_tokens: th.soft,
+            source: th.source.label().to_owned(),
+            estimator: th.estimator().to_owned(),
+        })
+    });
     v.manifest_ref = economy.manifest_ref;
     v.prefix_cache_hits = economy.hits;
     v.prefix_cache_misses = economy.misses;
@@ -160,6 +179,8 @@ struct Economy {
     reported_input_tokens: u64,
     reported_cached_input_tokens: u64,
     reported_invocations: u32,
+    /// The routed model of the newest invocation, as `(endpoint, model)`.
+    last_route: Option<(String, String)>,
 }
 
 /// Counted from the log, never estimated: every epoch the task opened, and
@@ -190,6 +211,12 @@ async fn epochs_and_cache(core: &Core, task_id: TaskId) -> Economy {
                 out.manifest_ref = p["manifest_ref"].as_str().unwrap_or_default().to_owned();
             }
             "ModelInvocationStarted" => {
+                if let (Some(ep), Some(m)) = (
+                    p["model_route"]["endpoint"].as_str(),
+                    p["model_route"]["model"].as_str(),
+                ) {
+                    out.last_route = Some((ep.to_owned(), m.to_owned()));
+                }
                 let Some(key) = p["model_route"]["cache_key"].as_str() else {
                     continue;
                 };
@@ -260,4 +287,146 @@ async fn last_compiled(core: &Core, task_id: TaskId) -> Option<(String, Vec<Stri
         }
     }
     found
+}
+
+/// What the Inspector reads from the task aggregate in one pass.
+#[derive(Default)]
+struct TaskContextLog {
+    instructions: Vec<wire::InstructionLayerView>,
+    pre_turn_pack: Option<wire::PreTurnPackView>,
+    summaries: Vec<wire::CompactionSummaryView>,
+    last_started: Option<wire::CompactionThresholdView>,
+}
+
+/// The newest `RulesSelected` (every instruction layer in force, and every
+/// file that exists and is not), the newest pre-turn pack record and every
+/// epoch's summary provenance (REQ-PX-107 / 108 / 109). Counted from the log,
+/// so a restarted Core shows the same.
+async fn task_context_log(core: &Core, task_id: TaskId) -> TaskContextLog {
+    const PAGE: usize = 5_000;
+    let mut out = TaskContextLog::default();
+    let store = core.store.lock().await;
+    let mut after = 0u64;
+    loop {
+        let Ok(events) = store.read_aggregate(task_id.as_bytes(), after, PAGE) else {
+            break;
+        };
+        for e in &events {
+            after = e.envelope.sequence;
+            let Ok(p) = store.payload(&e.envelope) else {
+                continue;
+            };
+            match e.envelope.event_type.as_str() {
+                "RulesSelected" => out.instructions = instruction_views(&p),
+                "ContextPackRecorded" if !p["trigger"].as_str().unwrap_or_default().is_empty() => {
+                    let n = |k: &str| u32::try_from(p[k].as_u64().unwrap_or(0)).unwrap_or(u32::MAX);
+                    let s = |k: &str| p[k].as_str().unwrap_or_default().to_owned();
+                    out.pre_turn_pack = Some(wire::PreTurnPackView {
+                        trigger: s("trigger"),
+                        status: s("status"),
+                        reason: s("reason"),
+                        pack_id: s("pack_id"),
+                        pack_ref: s("pack_ref"),
+                        token_budget: n("token_budget"),
+                        token_used: n("token_used"),
+                        entries: n("entries"),
+                        stubs: n("stubs"),
+                        workspace_revision: p["workspace_revision"].as_u64().unwrap_or(0),
+                        seed_digest: s("seed_digest"),
+                        offset: e.offset,
+                    });
+                }
+                "CompactionStarted" => {
+                    let n = |k: &str| u32::try_from(p[k].as_u64().unwrap_or(0)).unwrap_or(u32::MAX);
+                    let source = p["budget_source"].as_str().unwrap_or_default();
+                    out.last_started =
+                        (!source.is_empty()).then(|| wire::CompactionThresholdView {
+                            context_window_tokens: n("window_tokens"),
+                            hard_budget_tokens: n("budget_tokens"),
+                            soft_budget_tokens: if source == "MODEL_WINDOW" {
+                                n("budget_tokens") * 14 / 17
+                            } else {
+                                n("budget_tokens") * 3 / 4
+                            },
+                            source: source.to_owned(),
+                            estimator: if source == "MODEL_WINDOW" {
+                                "tokens-v2+calibration".into()
+                            } else {
+                                "bytes/4".into()
+                            },
+                        });
+                }
+                "ContextEpochOpened" => {
+                    let s = |k: &str| p[k].as_str().unwrap_or_default().to_owned();
+                    out.summaries.push(wire::CompactionSummaryView {
+                        epoch: u32::try_from(p["epoch"].as_u64().unwrap_or(0)).unwrap_or(u32::MAX),
+                        // A record from before REQ-PX-109 was always extractive.
+                        summary_source: if s("summary_source").is_empty() {
+                            "EXTRACTIVE".into()
+                        } else {
+                            s("summary_source")
+                        },
+                        summarizer: s("summarizer"),
+                        fallback_reason: s("fallback_reason"),
+                        transcript_ref: s("transcript_ref"),
+                        transcript_entries: u32::try_from(
+                            p["source_entries"].as_u64().unwrap_or(0),
+                        )
+                        .unwrap_or(u32::MAX),
+                        summary_tokens: u32::try_from(p["projection_tokens"].as_u64().unwrap_or(0))
+                            .unwrap_or(u32::MAX),
+                    });
+                }
+                _ => {}
+            }
+        }
+        if events.len() < PAGE {
+            break;
+        }
+    }
+    out
+}
+
+/// The instruction layers of one `RulesSelected` payload: what is in force,
+/// then what exists and is not, each with its provenance.
+fn instruction_views(p: &serde_json::Value) -> Vec<wire::InstructionLayerView> {
+    let mut out = Vec::new();
+    for a in p["active"].as_array().into_iter().flatten() {
+        let s = |k: &str| a[k].as_str().unwrap_or_default().to_owned();
+        let reason = match a["reason"]["kind"].as_str() {
+            Some("PATH") => format!(
+                "PATH:{} matched {}",
+                a["reason"]["path"].as_str().unwrap_or_default(),
+                a["reason"]["glob"].as_str().unwrap_or_default()
+            ),
+            Some(kind) => kind.to_owned(),
+            None => String::new(),
+        };
+        out.push(wire::InstructionLayerView {
+            layer: s("layer"),
+            id: s("id"),
+            source: s("source"),
+            content_hash: s("hash"),
+            reason,
+            loaded: true,
+            not_loaded_reason: String::new(),
+            bytes: a["bytes"].as_u64().unwrap_or(0),
+            truncated: a["truncated"].as_bool().unwrap_or(false),
+            scanner_findings: a["findings"]
+                .as_array()
+                .into_iter()
+                .flatten()
+                .filter_map(|f| f.as_str().map(str::to_owned))
+                .collect(),
+        });
+    }
+    for n in p["not_loaded"].as_array().into_iter().flatten() {
+        out.push(wire::InstructionLayerView {
+            source: n["source"].as_str().unwrap_or_default().to_owned(),
+            loaded: false,
+            not_loaded_reason: n["reason"].as_str().unwrap_or_default().to_owned(),
+            ..Default::default()
+        });
+    }
+    out
 }
