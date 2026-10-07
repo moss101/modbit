@@ -231,6 +231,40 @@ pub fn samples() -> Vec<Sample> {
         index_used_tokens: 14,
         index_omitted: 0,
         system_root: "/etc/modbit/skills".into(),
+        // REQ-PX-052: the slash menu's union (field block 260-279).
+        slash: vec![
+            SlashEntry {
+                kind: "SKILL".into(),
+                id: "core-guide".into(),
+                display_name: "core-guide".into(),
+                description: "how the product works".into(),
+                scope: "SYSTEM".into(),
+                trust: "SYSTEM".into(),
+                trust_detail: String::new(),
+                enabled: true,
+                invocation: "BOTH".into(),
+                built_in: true,
+                content_hash: "ab".repeat(32),
+                provenance_source: "system".into(),
+                source: "/etc/modbit/skills/core-guide".into(),
+            },
+            SlashEntry {
+                kind: "COMMAND".into(),
+                id: "kit/tidy".into(),
+                display_name: "kit/tidy".into(),
+                description: "tidy up a file".into(),
+                scope: "EXTENSION".into(),
+                trust: "VERIFIED:acme".into(),
+                trust_detail: String::new(),
+                enabled: true,
+                invocation: "USER_ONLY".into(),
+                built_in: false,
+                content_hash: "cd".repeat(32),
+                provenance_source: "extension:kit@1.2.0".into(),
+                source: "/ext/kit".into(),
+            },
+        ],
+        slash_divider_at: 1,
     };
     let budgets = SetTaskBudgets {
         task_id: id(0x31),
@@ -1003,7 +1037,24 @@ pub fn samples() -> Vec<Sample> {
                 }],
                 "rejected": [{"source": "/profile/skills/broken", "code": "MALFORMED_MANIFEST", "reason": "no front matter"}],
                 "indexBudgetTokens": 2000, "indexUsedTokens": 14, "indexOmitted": 0,
-                "systemRoot": "/etc/modbit/skills"
+                "systemRoot": "/etc/modbit/skills",
+                "slash": [
+                    {
+                        "kind": "SKILL", "id": "core-guide", "displayName": "core-guide",
+                        "description": "how the product works", "scope": "SYSTEM", "trust": "SYSTEM",
+                        "trustDetail": "", "enabled": true, "invocation": "BOTH", "builtIn": true,
+                        "contentHash": "ab".repeat(32), "provenanceSource": "system",
+                        "source": "/etc/modbit/skills/core-guide"
+                    },
+                    {
+                        "kind": "COMMAND", "id": "kit/tidy", "displayName": "kit/tidy",
+                        "description": "tidy up a file", "scope": "EXTENSION", "trust": "VERIFIED:acme",
+                        "trustDetail": "", "enabled": true, "invocation": "USER_ONLY", "builtIn": false,
+                        "contentHash": "cd".repeat(32), "provenanceSource": "extension:kit@1.2.0",
+                        "source": "/ext/kit"
+                    }
+                ],
+                "slashDividerAt": 1
             }),
             decode: reencode::<SkillList>,
         },

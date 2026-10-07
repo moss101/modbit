@@ -19,6 +19,9 @@ import {
   DetachTerminalSchema,
   ListTerminalsSchema,
   KillTerminalSchema,
+  ListSkillsSchema,
+  SkillListSchema,
+  type SkillList,
   TerminalKilledSchema,
   type TerminalKilled,
   ResizeTerminalSchema,
@@ -1021,6 +1024,20 @@ export class CoreClient {
   async writeTerminal(sessionId: string, attachId: string, data: Uint8Array): Promise<TerminalWritten> {
     const ack = await this.command("WriteTerminal", toBinary(WriteTerminalSchema, create(WriteTerminalSchema, { attachId, data })), undefined, this.leases.get(sessionId));
     return fromBinary(TerminalWrittenSchema, ack.result);
+  }
+
+  /**
+   * PX-052: the slash menu's inventory. `skills` is the skill registry with
+   * trust and provenance; `slash` is the typed union (skills, extension
+   * commands, subagent profiles) in menu order — built-in entries, then
+   * `slashDividerAt` marks the divider, then the rest alphabetically. With a
+   * task, its project and extension scopes are included. Metadata only.
+   */
+  async listSkills(taskId?: string, sessionId?: string): Promise<SkillList> {
+    const payload = toBinary(ListSkillsSchema, create(ListSkillsSchema, taskId ? { taskId: { value: unhex(taskId) } } : {}));
+    const ack = await this.command("ListSkills", payload);
+    void sessionId;
+    return fromBinary(SkillListSchema, ack.result);
   }
 
   /**

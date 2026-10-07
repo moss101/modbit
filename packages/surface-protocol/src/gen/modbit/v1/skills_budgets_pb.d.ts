@@ -12,6 +12,7 @@
 import type { GenFile, GenMessage } from "@bufbuild/protobuf/codegenv2";
 import type { Message } from "@bufbuild/protobuf";
 import type { Id } from "./domain_pb.js";
+import type { SlashEntry } from "./slash_inventory_pb.js";
 
 /**
  * Describes the file modbit/v1/skills_budgets.proto.
@@ -259,6 +260,22 @@ export declare type SkillList = Message<"modbit.v1.SkillList"> & {
    * @generated from field: string system_root = 6;
    */
   systemRoot: string;
+
+  /**
+   * REQ-PX-052 (field block 260-279): the slash menu's typed union of skills,
+   * extension commands and subagent profiles, in menu order — built-in
+   * entries first, then the others alphabetically. `slash_divider_at` is the
+   * index of the first entry after the divider (0 = no divider: there is no
+   * built-in entry, or nothing but built-in entries).
+   *
+   * @generated from field: repeated modbit.v1.SlashEntry slash = 260;
+   */
+  slash: SlashEntry[];
+
+  /**
+   * @generated from field: uint32 slash_divider_at = 261;
+   */
+  slashDividerAt: number;
 };
 
 /**
