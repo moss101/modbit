@@ -2012,6 +2012,22 @@ pub enum TaskEvent {
         arguments_hash: Option<String>,
         /// Object holding the rewritten arguments, when a rewrite was used.
         arguments_ref: Option<String>,
+        /// PX-117: what became of the context the handler offered: empty
+        /// when none, `INJECTED`, or `DROPPED:<REASON>`.
+        #[serde(default)]
+        context_status: String,
+        /// PX-117: bytes of context offered.
+        #[serde(default)]
+        context_bytes: u64,
+        /// PX-117: `endpoint/model` a prompt hook ran on.
+        #[serde(default)]
+        model: Option<String>,
+        /// PX-117: prompt tokens a prompt hook spent.
+        #[serde(default)]
+        input_tokens: u64,
+        /// PX-117: completion tokens a prompt hook spent.
+        #[serde(default)]
+        output_tokens: u64,
     },
 }
 

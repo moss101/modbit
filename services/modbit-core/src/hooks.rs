@@ -27,12 +27,20 @@ use modbit_domain::task::{HookRefusal, Task, TaskEvent};
 use modbit_domain::{RunId, SessionId, TaskId, TenantId, TurnId};
 use modbit_event_store::{AppendRequest, EventStore, NewEvent};
 use modbit_policy::config::{Authority, ResolvedConfig};
+use modbit_providers::{Message, ModelEvent, ModelPolicy, ModelRequest, Requirements, Role};
 use modbit_tools::extensions::ExtensionManifest;
 use modbit_tools::hooks::{
-    HookEffect, HookPoint, HookRecord, HookRequest, HookSource, HookSpec, Registration,
+    HookEffect, HookPoint, HookRecord, HookRequest, HookSource, HookSpec, PromptAnswer,
+    PromptRunner, Registration,
 };
 use serde_json::Value;
 use tokio::sync::Mutex;
+use tokio_util::sync::CancellationToken;
+
+/// The most context one hook may offer in one answer (PX-117).
+pub(crate) const MAX_CONTEXT_PER_HOOK: usize = 4 * 1024;
+/// The most hook context waiting for the next request.
+pub(crate) const MAX_CONTEXT_PENDING: usize = 8 * 1024;
 
 /// One extension a session has loaded.
 #[derive(Clone, Debug)]
@@ -69,6 +77,9 @@ pub struct HookBus {
     extensions: std::sync::Mutex<HashMap<SessionId, Vec<LoadedExtension>>>,
     rebuilt: std::sync::Mutex<HashSet<SessionId>>,
     halted: std::sync::Mutex<HashMap<TaskId, (String, String)>>,
+    /// Context hooks returned that the Core accepted, waiting for the next
+    /// model request of the task (PX-117).
+    context: std::sync::Mutex<HashMap<TaskId, Vec<modbit_prompt_compiler::HookContext>>>,
 }
 
 fn lock<T>(m: &std::sync::Mutex<T>) -> std::sync::MutexGuard<'_, T> {
@@ -206,6 +217,23 @@ impl HookBus {
         lock(&self.halted).entry(task).or_insert((code, reason));
     }
 
+    /// Context accepted for `task`'s next request, and what is already
+    /// waiting in bytes.
+    fn push_context(&self, task: TaskId, ctx: modbit_prompt_compiler::HookContext) {
+        lock(&self.context).entry(task).or_default().push(ctx);
+    }
+
+    fn pending_context_bytes(&self, task: TaskId) -> usize {
+        lock(&self.context)
+            .get(&task)
+            .map_or(0, |v| v.iter().map(|c| c.text.len()).sum())
+    }
+
+    /// The hook context waiting for `task`'s next request, once.
+    pub(crate) fn take_context(&self, task: TaskId) -> Vec<modbit_prompt_compiler::HookContext> {
+        lock(&self.context).remove(&task).unwrap_or_default()
+    }
+
     /// Why `task`'s run must stop, once.
     pub(crate) fn take_halt(&self, task: TaskId) -> Option<(String, String)> {
         lock(&self.halted).remove(&task)
@@ -330,6 +358,163 @@ pub(crate) struct HookScope {
     pub workspace: Option<Arc<Mutex<modbit_workspace::WorkspaceService>>>,
     /// The last rewrite a hook made to the call, taken by the caller.
     pub rewritten: Arc<std::sync::Mutex<Option<Rewrite>>>,
+    /// Secret values in the Core's custody: hook context that carries one
+    /// loses it (the one redactor, REQ-EV-0017).
+    pub secrets: Arc<Vec<String>>,
+    /// How a prompt hook's question reaches a model (PX-117).
+    pub prompter: Option<Arc<GatewayPrompter>>,
+}
+
+/// Asks a prompt hook's question through the gateway as any governed model
+/// call: the model policy in force applies, the registry resolves a role,
+/// and the usage is recorded on the hook's journal entry.
+pub(crate) struct GatewayPrompter {
+    gateway: modbit_providers::ProviderGateway,
+    registry: Option<modbit_providers::registry::ModelRegistry>,
+    allowed: Option<Vec<String>>,
+    execution_profile: String,
+    task: String,
+    binding: Option<(String, String)>,
+    seq: std::sync::atomic::AtomicU64,
+}
+
+impl GatewayPrompter {
+    pub(crate) fn new(
+        gateway: modbit_providers::ProviderGateway,
+        registry: Option<modbit_providers::registry::ModelRegistry>,
+        allowed: Option<Vec<String>>,
+        execution_profile: String,
+        task: String,
+    ) -> Self {
+        Self {
+            gateway,
+            registry,
+            allowed,
+            execution_profile,
+            task,
+            binding: None,
+            seq: std::sync::atomic::AtomicU64::new(0),
+        }
+    }
+
+    /// The same prompter answering on the task's own route when a hook
+    /// names no role.
+    fn bound(&self, endpoint: &str, model: &str) -> Self {
+        Self {
+            gateway: self.gateway.clone(),
+            registry: self.registry.clone(),
+            allowed: self.allowed.clone(),
+            execution_profile: self.execution_profile.clone(),
+            task: self.task.clone(),
+            binding: Some((endpoint.to_owned(), model.to_owned())),
+            seq: std::sync::atomic::AtomicU64::new(0),
+        }
+    }
+
+    fn resolve(&self, spec: &HookSpec) -> Result<(String, String), String> {
+        if let Some(role) = &spec.role {
+            let needs = modbit_providers::registry::Needs {
+                execution_profile: Some(self.execution_profile.clone()),
+                ..Default::default()
+            };
+            return self
+                .registry
+                .as_ref()
+                .and_then(|r| {
+                    r.bindings_for(role, &needs)
+                        .first()
+                        .map(|e| (e.endpoint.clone(), e.model.clone()))
+                })
+                .ok_or_else(|| format!("the model registry binds no model to the role `{role}`"));
+        }
+        if let Some(b) = &self.binding {
+            return Ok(b.clone());
+        }
+        // No role and no route of the run's own (a permission hook runs in
+        // the tool pipeline): the Core's default route, as StartTask picks it.
+        let endpoints = self.gateway.endpoints();
+        std::env::var("MODBIT_DEFAULT_ENDPOINT")
+            .ok()
+            .and_then(|e| endpoints.iter().find(|x| x.name == e))
+            .or_else(|| endpoints.first())
+            .and_then(|e| {
+                let model = std::env::var("MODBIT_DEFAULT_MODEL")
+                    .ok()
+                    .or_else(|| e.models.iter().find(|m| m.tools).map(|m| m.model.clone()))?;
+                Some((e.name.clone(), model))
+            })
+            .ok_or_else(|| "no model route is available to answer the hook".to_owned())
+    }
+}
+
+impl PromptRunner for GatewayPrompter {
+    fn ask<'a>(
+        &'a self,
+        spec: &'a HookSpec,
+        system: String,
+        user: String,
+    ) -> modbit_tools::registry::BoxFuture<'a, Result<PromptAnswer, String>> {
+        Box::pin(async move {
+            let (endpoint, model) = self.resolve(spec)?;
+            if let Some((code, reason)) = crate::routing::refused_by_model_policy(
+                self.allowed.as_deref(),
+                [(endpoint.clone(), model.clone())],
+            ) {
+                return Err(format!("{code}: {reason}"));
+            }
+            let n = self.seq.fetch_add(1, Ordering::SeqCst);
+            let request = ModelRequest {
+                request_id: format!("hook-{}-{}-{n}", self.task, spec.name),
+                model_policy: ModelPolicy {
+                    endpoint: endpoint.clone(),
+                    model: model.clone(),
+                    reasoning_effort: None,
+                    service_tier: None,
+                },
+                messages: vec![
+                    Message::text(Role::System, system),
+                    Message::text(Role::User, user),
+                ],
+                tool_projection: vec![],
+                response_format: None,
+                cache_key: None,
+                cache_breakpoints: vec![],
+                max_output_tokens: 256,
+                // The hook's own timeout is the bound the step sees; the
+                // request's is a little longer so the hook's fires first.
+                timeout_ms: spec.timeout_ms + 1_000,
+                policy_tags: vec!["hook_prompt".into()],
+            };
+            let cancel = CancellationToken::new();
+            let _stop = cancel.clone().drop_guard();
+            let stream = self
+                .gateway
+                .stream(request, &Requirements::default(), cancel)
+                .map_err(|e| format!("ROUTE_REFUSED: {e}"))?;
+            let mut events = stream.events;
+            let (mut text, mut usage, mut error) =
+                (String::new(), modbit_providers::Usage::default(), None);
+            while let Some(ev) = events.recv().await {
+                match ev {
+                    ModelEvent::MessageDelta { text: t } => text.push_str(&t),
+                    ModelEvent::Usage { usage: u } => usage = u,
+                    ModelEvent::Error { code, message, .. } => {
+                        error = Some(format!("{code}: {message}"))
+                    }
+                    _ => {}
+                }
+            }
+            if let Some(e) = error {
+                return Err(e);
+            }
+            Ok(PromptAnswer {
+                text,
+                model: format!("{endpoint}/{model}"),
+                input_tokens: usage.input_tokens,
+                output_tokens: usage.output_tokens,
+            })
+        })
+    }
 }
 
 impl HookScope {
@@ -363,10 +548,74 @@ impl HookScope {
             tool: tool.map(str::to_owned),
             payload,
         };
-        let effect =
-            modbit_tools::hooks::fire(&self.registrations, &req, self.cwd.as_deref(), &live).await;
+        let prompter = self.prompter.as_deref().map(|p| p as &dyn PromptRunner);
+        let mut effect = modbit_tools::hooks::fire(
+            &self.registrations,
+            &req,
+            self.cwd.as_deref(),
+            &live,
+            prompter,
+        )
+        .await;
+        self.judge_context(&mut effect);
         self.journal(&effect.records).await;
         effect
+    }
+
+    /// The same scope, with a prompt hook that names no role answering on
+    /// this route.
+    pub(crate) fn bound(mut self, endpoint: &str, model: &str) -> Self {
+        self.prompter = self.prompter.map(|p| Arc::new(p.bound(endpoint, model)));
+        self
+    }
+
+    /// Judge the context handlers offered: the content policy (a held
+    /// secret is redacted, control characters are stripped), the injection
+    /// scanner, and the budgets. What passes waits, labelled with the
+    /// hook's identity, for the task's next request; what does not is
+    /// dropped with a typed reason on the hook's journal entry. Context is
+    /// text and nothing else: whatever it says, it adds no tool and moves no
+    /// permission.
+    fn judge_context(&self, effect: &mut HookEffect) {
+        let offers = std::mem::take(&mut effect.context);
+        for offer in offers {
+            let status = {
+                let cleaned: String = offer
+                    .text
+                    .chars()
+                    .filter(|c| !c.is_control() || matches!(c, '\n' | '\t'))
+                    .collect();
+                let redacted = modbit_secrets::Redactor::new(self.secrets.iter().cloned())
+                    .data(&cleaned)
+                    .text;
+                let shapes: Vec<String> = modbit_browser::injection::scan(&redacted)
+                    .into_iter()
+                    .map(|f| f.shape)
+                    .collect();
+                if redacted.len() > MAX_CONTEXT_PER_HOOK
+                    || self.bus.pending_context_bytes(self.task_id) + redacted.len()
+                        > MAX_CONTEXT_PENDING
+                {
+                    "DROPPED:OVER_BUDGET".to_owned()
+                } else if !shapes.is_empty() {
+                    format!("DROPPED:INJECTION_SUSPECTED({})", shapes.join(","))
+                } else {
+                    self.bus.push_context(
+                        self.task_id,
+                        modbit_prompt_compiler::HookContext {
+                            hook_id: offer.hook.clone(),
+                            point: offer.point.label().to_owned(),
+                            text: redacted,
+                            truncated: false,
+                        },
+                    );
+                    "INJECTED".to_owned()
+                }
+            };
+            if let Some(r) = effect.records.get_mut(offer.record) {
+                r.context_status = status;
+            }
+        }
     }
 
     async fn journal(&self, records: &[HookRecord]) {
@@ -402,6 +651,11 @@ impl HookScope {
                         tool: r.tool.clone(),
                         arguments_hash,
                         arguments_ref,
+                        context_status: r.context_status.clone(),
+                        context_bytes: r.context_bytes,
+                        model: r.model.clone(),
+                        input_tokens: r.input_tokens,
+                        output_tokens: r.output_tokens,
                     },
                     self.actor.clone(),
                 )
@@ -437,17 +691,15 @@ impl modbit_tools::hooks::HookPort for HookScope {
         arguments: &'a Value,
     ) -> modbit_tools::registry::BoxFuture<'a, HookEffect> {
         Box::pin(async move {
-            let effect = self
-                .fire(
-                    point,
-                    Some(tool),
-                    serde_json::json!({
-                        "tool": tool,
-                        "effect_class": effect_class,
-                        "arguments": arguments,
-                    }),
-                )
-                .await;
+            let mut payload = serde_json::json!({
+                "tool": tool,
+                "effect_class": effect_class,
+                "arguments": arguments,
+            });
+            if point == HookPoint::PermissionRequest {
+                payload["permission"] = serde_json::json!("approval_required");
+            }
+            let effect = self.fire(point, Some(tool), payload).await;
             // A rewritten change targets what it now names: the workspace
             // is read for those files here, before the kernel decides and
             // before anything is written.
@@ -529,8 +781,21 @@ pub(crate) async fn scope(
             &cfg,
         )
     };
+    let allowed: Option<Vec<String>> = cfg
+        .models_allow
+        .as_ref()
+        .map(|r| r.value.iter().cloned().collect());
+    let prompter = Arc::new(GatewayPrompter::new(
+        core.gateway.clone(),
+        crate::model_registry::for_task(core, task),
+        allowed,
+        task.execution_profile.clone(),
+        task.task_id.to_string(),
+    ));
     (
         HookScope {
+            secrets: Arc::new(core.tools.mcp.secrets_in_custody()),
+            prompter: Some(prompter),
             store: Arc::clone(&core.store),
             bus: Arc::clone(&core.tools.hooks),
             tenant_id: core.tenant_id,

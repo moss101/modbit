@@ -227,6 +227,29 @@ impl ContextFragment {
     }
 }
 
+/// Add hook context to a request already compiled: the same labelled data
+/// the compiler renders, appended to the volatile tail (the newest user
+/// message) so the stable prefix and its cache key are untouched. Context
+/// that a `before_model` hook returns arrives after the request was built.
+pub fn append_hook_context(request: &mut ModelRequest, context: &[HookContext]) {
+    if context.is_empty() {
+        return;
+    }
+    let block: String = context
+        .iter()
+        .map(|h| format!("\n\n{}", h.render()))
+        .collect();
+    if let Some(last) = request.messages.last_mut() {
+        for part in last.parts.iter_mut().rev() {
+            if let ContentPart::Text { text } = part {
+                text.push_str(&block);
+                return;
+            }
+        }
+        last.parts.push(ContentPart::Text { text: block });
+    }
+}
+
 /// What the compiler produced.
 #[derive(Clone, Debug)]
 pub struct CompiledPrompt {

@@ -683,6 +683,21 @@
       "injection_note": "docs/16: a discovered schema and a returned result are untrusted content from a program the host does not control; names are validated and namespaced `external.<server>.<tool>`, descriptions are control-stripped and truncated, schemas are byte- and depth-bounded with no `$ref`, and any field the host does not know (a capability claim, a system instruction, an effect class) is dropped before the host looks at the tool"
     },
     {
+      "tool": "external.describe",
+      "family": "mcp",
+      "source_behaviors": [
+        "MCP tools/list (one tool's schema, on demand)",
+        "lazy tool discovery"
+      ],
+      "owner": "External Tool Hub (services/modbit-core::mcp)",
+      "effect": "ReadOnly",
+      "capabilities": [
+        "external.list"
+      ],
+      "test": "qual_px_115_describe_returns_exactly_the_named_schemas_and_never_authorises_a_call",
+      "injection_note": "docs/16: a described schema is untrusted content from a program the host does not control (PX-115): it carries the UNTRUSTED_EXTERNAL_CONTENT label, is bounded by bytes and tool count, and describing grants nothing: the Capability Kernel decides every external.call"
+    },
+    {
       "tool": "external.call",
       "family": "mcp",
       "source_behaviors": [

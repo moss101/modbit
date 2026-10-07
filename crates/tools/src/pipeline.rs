@@ -706,6 +706,39 @@ impl ToolRuntime {
             stage: "policy".into(),
             outcome: format!("{decision:?}"),
         });
+        // PX-117: before a person is asked, `permission_request` hooks see
+        // the call. They can only refuse it — never approve it: the person's
+        // approval and the kernel's decision are untouched by anything else
+        // they say. A hook that fails here fails closed.
+        if matches!(decision, PolicyDecision::ApprovalRequired { .. })
+            && verdict.denied.is_none()
+            && let Some(hooks) = &ctx.hooks
+        {
+            let e = hooks
+                .before(
+                    crate::hooks::HookPoint::PermissionRequest,
+                    &spec.name,
+                    effect_class,
+                    &args,
+                )
+                .await;
+            if let Some((code, reason)) = &e.denied {
+                verdict.deny(code, reason);
+            }
+            if !e.records.is_empty() {
+                stages.push(StageRecord {
+                    stage: "hooks".into(),
+                    outcome: format!(
+                        "permission_request: {}",
+                        e.records
+                            .iter()
+                            .map(|r| format!("{} {}", r.hook, r.outcome.label()))
+                            .collect::<Vec<_>>()
+                            .join(", ")
+                    ),
+                });
+            }
+        }
         // Approval needed: no effect; the Core opens the approval and the same
         // tool_call_id re-enters the pipeline once it is resolved.
         if let PolicyDecision::ApprovalRequired { reason, .. } = &decision

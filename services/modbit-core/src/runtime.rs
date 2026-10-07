@@ -2850,15 +2850,18 @@ async fn run_loop(
     // REQ-EV-0042/0240: the hooks in force as the run starts — recorded with
     // the declarations refused — and the run's `before_run` hooks, which may
     // stop it before its first round.
-    let (mut hooks, refused_hooks) = crate::hooks::scope(
-        &core,
-        &task,
-        Some(run_id),
-        None,
-        Some(cfg.lease_generation),
-        &actor,
-    )
-    .await;
+    let (mut hooks, refused_hooks) = {
+        let (h, refused) = crate::hooks::scope(
+            &core,
+            &task,
+            Some(run_id),
+            None,
+            Some(cfg.lease_generation),
+            &actor,
+        )
+        .await;
+        (h.bound(&cfg.endpoint, &cfg.model), refused)
+    };
     if !hooks.registrations.is_empty() || !refused_hooks.is_empty() {
         let mut store = core.store.lock().await;
         let _ = append(
@@ -3000,7 +3003,8 @@ async fn run_loop(
             &actor,
         )
         .await
-        .0;
+        .0
+        .bound(&cfg.endpoint, &cfg.model);
         if let Some((code, reason)) = core.tools.hooks.take_halt(task.task_id) {
             break 'outer LoopEnd::NeedsAttention {
                 code: if code == "HOOK_DENIED" {
@@ -3470,7 +3474,9 @@ async fn run_loop(
                         } else {
                             String::new()
                         },
-                        hook_context: vec![],
+                        // PX-117: context hooks returned since the last
+                        // request, scanned and labelled by the Core.
+                        hook_context: core.tools.hooks.take_context(task.task_id),
                         model_policy: ModelPolicy {
                             endpoint: cfg.endpoint.clone(),
                             model: cfg.model.clone(),
@@ -3564,7 +3570,7 @@ async fn run_loop(
                 }
                 // REQ-EV-0042: the round's `before_model` hooks may stop it
                 // before the provider is asked.
-                if let Some((code, reason)) = hooks
+                let before_model = hooks
                     .fire(
                         modbit_tools::hooks::HookPoint::BeforeModel,
                         None,
@@ -3575,14 +3581,19 @@ async fn run_loop(
                             "tools": tools.iter().map(|t| t.name.clone()).collect::<Vec<_>>(),
                         }),
                     )
-                    .await
-                    .denied
-                {
+                    .await;
+                if let Some((code, reason)) = before_model.denied {
                     break 'outer LoopEnd::NeedsAttention {
                         code: "HOOK_DENIED",
                         reason: format!("{code}: {reason}"),
                     };
                 }
+                // PX-117: context a `before_model` hook just returned joins
+                // this very request, as labelled data in its volatile tail.
+                modbit_prompt_compiler::append_hook_context(
+                    &mut request,
+                    &core.tools.hooks.take_context(task.task_id),
+                );
                 // ModelInvoke step.
                 let invoke_step = RunStepId::new();
                 let route_json = serde_json::json!({"endpoint": cfg.endpoint, "model": cfg.model, "cache_key": request.cache_key, "reasoning_effort": limits.reasoning_effort, "service_tier": limits.service_tier, "max_output_tokens": limits.max_output_tokens, "timeout_ms": limits.timeout_ms});
@@ -4612,16 +4623,52 @@ async fn run_loop(
                     (entry, StepType::SelfReview, Some("PROGRAM_RUNNING".into()))
                 }
                 COMPLETE_TOOL => {
-                    let (entry, ok) = handle_complete(
-                        &core,
-                        &task,
-                        lturn,
-                        &actor,
-                        &mut state,
-                        &call_id,
-                        &arguments_json,
-                    )
-                    .await;
+                    // PX-117: a `task_complete` hook may refuse the
+                    // proposal before it is weighed (never accept it: the
+                    // harness and the acceptance gate decide that).
+                    let proposal: serde_json::Value =
+                        serde_json::from_str(&arguments_json).unwrap_or_default();
+                    let hook_refusal = hooks
+                        .fire(
+                            modbit_tools::hooks::HookPoint::TaskComplete,
+                            None,
+                            serde_json::json!({
+                                "summary": proposal["summary"].as_str().unwrap_or_default().chars().take(1000).collect::<String>(),
+                                "findings": proposal["self_review"]["findings"].as_array().map_or(0, Vec::len),
+                                "verification": proposal["self_review"]["verification"],
+                                "plan_version": state.plan.as_ref().map_or(0, |p| p.version),
+                            }),
+                        )
+                        .await
+                        .denied;
+                    let (entry, ok) = if let Some((code, reason)) = hook_refusal {
+                        (
+                            TranscriptEntry::ToolResult {
+                                call_id: call_id.clone(),
+                                name: name.clone(),
+                                text: format!(
+                                    "status: REFUSED\nerror_code: {code}\nerror: {reason}\ncompletion was not accepted; address what the hook names and propose completion again"
+                                ),
+                                failure_signature: None,
+                                clears: vec![],
+                                wrote: None,
+                                progress: false,
+                                media: vec![],
+                            },
+                            false,
+                        )
+                    } else {
+                        handle_complete(
+                            &core,
+                            &task,
+                            lturn,
+                            &actor,
+                            &mut state,
+                            &call_id,
+                            &arguments_json,
+                        )
+                        .await
+                    };
                     completed = ok;
                     (
                         entry,
@@ -5982,6 +6029,21 @@ async fn run_loop(
                 serde_json::json!({
                     "status": format!("{:?}", agent_end.0),
                     "detail": agent_end.1,
+                }),
+            )
+            .await;
+    }
+    // PX-117: the person is told how the run ended. A notification hook
+    // observes; it cannot change the end.
+    if hooks.has(modbit_tools::hooks::HookPoint::Notification) {
+        let _ = hooks
+            .fire(
+                modbit_tools::hooks::HookPoint::Notification,
+                None,
+                serde_json::json!({
+                    "kind": format!("{:?}", agent_end.0),
+                    "detail": agent_end.1.chars().take(500).collect::<String>(),
+                    "task_goal": task.goal_text.chars().take(200).collect::<String>(),
                 }),
             )
             .await;

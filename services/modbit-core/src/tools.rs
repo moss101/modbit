@@ -1256,6 +1256,17 @@ impl ToolHost {
                 flags: Arc::new(resolution.flags),
                 workspace: ctx.workspace.clone(),
                 rewritten: Arc::new(std::sync::Mutex::new(None)),
+                secrets: Arc::new(self.secrets_in_custody()),
+                prompter: Some(Arc::new(crate::hooks::GatewayPrompter::new(
+                    self.gateway.clone(),
+                    self.gateway.registry(),
+                    task_config
+                        .models_allow
+                        .as_ref()
+                        .map(|r| r.value.iter().cloned().collect()),
+                    ctx.execution_profile.clone(),
+                    task_id.to_string(),
+                ))),
             }
         };
         let mut ctx = ctx;

@@ -393,6 +393,10 @@ pub async fn scripted_model_fn(reply_fn: Reply) -> (String, Seen) {
                     .unwrap_or(0);
                 let reply = reply_fn(&body, results);
                 seen.lock().unwrap().push(body);
+                // A reply may be slow: `{"delay_ms": N, ...}`.
+                if let Some(ms) = reply["delay_ms"].as_u64() {
+                    tokio::time::sleep(Duration::from_millis(ms)).await;
+                }
                 let mut frames: Vec<String> = Vec::new();
                 if let Some(t) = reply["text"].as_str() {
                     frames.push(serde_json::json!({"id":"c","model":"scripted-1","choices":[{"index":0,"delta":{"content":t},"finish_reason":null}]}).to_string());
