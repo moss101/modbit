@@ -371,13 +371,22 @@ impl Runtime {
                         }
                     };
                     if cfg.ticket_id.is_empty() {
-                        cfg.ticket_id = Self::take_run_ticket(
-                            &mut store,
-                            core,
-                            &task,
-                            &actor,
-                            lease_generation,
-                        )?;
+                        // REQ-PX-101: a paused task keeps its ticket until
+                        // the idle bound; resumed before it, the same ticket
+                        // continues. Past it the ticket is gone and the
+                        // resume goes through admission, which may refuse it
+                        // `CAPACITY_EXHAUSTED` (the task stays paused).
+                        cfg.ticket_id =
+                            match core.capacity.reuse_hold(&task.task_id, lease_generation) {
+                                Some(ticket) => ticket,
+                                None => Self::take_run_ticket(
+                                    &mut store,
+                                    core,
+                                    &task,
+                                    &actor,
+                                    lease_generation,
+                                )?,
+                            };
                     }
                     let run = match (run, fresh) {
                         (Some(r), _) => r,
@@ -6453,15 +6462,24 @@ async fn run_loop(
             &actor,
         );
     }
-    // M6.2: the run's capacity returns to the pool with the run.
-    core.capacity.release(
-        &mut store,
-        &core,
-        &task,
-        lt.unfenced(),
-        &actor,
-        &cfg.ticket_id,
-    );
+    // M6.2: the run's capacity returns to the pool with the run — except a
+    // run a person paused (REQ-PX-101): the task keeps its ticket, renewed,
+    // until the idle bound, so a pause is cheap to resume and does not hand
+    // its capacity to someone else the moment it is taken.
+    if pause_request.is_some() && !cfg.ticket_id.is_empty() {
+        core.capacity
+            .hold(task.task_id, &cfg.ticket_id, cfg.lease_generation);
+        crate::capacity::spawn_hold_reaper(Arc::clone(&core), task.clone(), cfg.ticket_id.clone());
+    } else {
+        core.capacity.release(
+            &mut store,
+            &core,
+            &task,
+            lt.unfenced(),
+            &actor,
+            &cfg.ticket_id,
+        );
+    }
     drop(store);
     if settle_children {
         crate::spawn::cancel_children(

@@ -6794,6 +6794,14 @@ pub(crate) async fn handle_command(core: &Arc<Core>, env: CommandEnvelope) -> Co
                 {
                     return reject(cid, error_code(&e), e.to_string());
                 }
+                // A paused task's ticket goes back with the task (REQ-PX-101).
+                core.capacity.drop_hold(
+                    &mut store,
+                    core,
+                    &task,
+                    crate::runtime::Lineage::task(core.tenant_id, task.session_id, task.task_id),
+                    &actor,
+                );
             }
             // FIX-16: cancelling a parent cancels the children it still has
             // alive (a cancellation domain, not a flag on one task).
