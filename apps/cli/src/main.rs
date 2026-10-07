@@ -58,6 +58,10 @@ use modbit_protocol::v1::{
     TaskSelectionRecorded, TaskStatus, ToolInvoked, ToolList, TrustRepository, UndoPlanView,
     UndoToolCall, UnsupportedLanguageAllowed, UpdatePullRequest,
 };
+use modbit_protocol::v1::{
+    AgentHeaders, GetAgentHeaders, GetTranscript, TranscriptDensity, TranscriptPage, TranscriptRow,
+    TranscriptRowKind,
+};
 use prost::Message;
 
 /// Process exit code (docs: apps/cli/README.md). Set by task-state commands.
@@ -74,7 +78,7 @@ fn exit_for_state(state: &str) -> u8 {
     }
 }
 
-const USAGE: &str = "usage: modbit-cli --data-dir <dir> (session create | session show --session <id> | task create --session <id> [--workspace <dir>] [--command-id <hex>] <goal> | task from-issue --session <id> [--workspace <dir>] [--command-id <hex>] <issue-url> | events tail --session <id> [--after N] [--count N] [--json] | task attach --session <id> --task <id> <file> | question list --task <id> | question answer --session <id> --task <id> --question <id> [--option <id>] [--endpoint <name>] [--model <id>] [--wait] [text] | tool list [--task <id>] | tool invoke --session <id> --task <id> [--call <id>] <tool> <arguments-json> | approval list --session <id> | approval resolve --session <id> --approval <id> [--intent <hash>] (approve|deny) [reason] | stop --session <id> [reason] | receipts [--task <id>] | lease list --task <id> | task run --session <id> --task <id> [--endpoint <name>] [--model <id>] [--max-turns N] [--max-tool-calls N] [--max-no-progress-turns N] [--skill <name>]... [--wait] | task cancel --session <id> --task <id> | task status --task <id> | review show --task <id> | review decide --session <id> --task <id> (accept|return) [--reject path#index ...] [note] | change undo --session <id> --task <id> --call <id> [--apply] | context show <task-id> | task fork --session <id> --task <id> [--checkpoint <id>] [--carry PLAN,DECISIONS,EVIDENCE,CONTEXT] [--worktree <dir>] [goal] | task rewind --task <id> [--checkpoint <id>] [--apply --session <id>] | session route --session <id> | session tree --session <id> | task assurance --task <id> | task economics --task <id> | task work --task <id> | task agents --task <id> | capacity show | attention list --session <id> | plan show --task <id> | plan revise --session <id> --task <id> [--plan-json <file>] [note] | task patch --session <id> --task <id> --path <p> --revision <n> [--file-revision <sha>] (--old <text> | --old-file <f>) (--new <text> | --new-file <f>) | baseline publish --session <id> [--revision <rev>] | task allow-language --session <id> --task <id> --language <l> [--reason r] | task attach-context --session <id> --task <id> --source <s> [--title t] <file> | task select --session <id> --task <id> [--path p]... [--lines a:b] [--symbol s] [--hunk path#index]... [--source review|editor|cli] | agent install <file> [--from claude] [--replace] | agent list | skill install <dir> [--expect-hash <hex>] [--replace] | skill remove <name> | skill revoke <name> [--hash <content-hash>] | skill list | language list | model list | model probe --endpoint <name> --model <id> [--tools] <prompt> | task steer --session <id> --task <id> [--mode STEER|COLLECT|FOLLOW_UP] [--input-id <hex>] <text> | workspace trust --session <id> [--scope <s>] <root> | provider configure --provider <openai|anthropic> [--base-url <url>] [--clear] | recovery show | pr (open | update) --session <id> --task <id> --revision <n> [--base <ref>] [--title <t>] [--remote <name>] | starter list [--workspace <dir>] | doctor --session <id> | trace --session <id> [--task <id>] | export diagnostics --session <id> [--task <id>] [--include-content] --out <file> | diagnostics verify <file> | export handoff --session <id> --task <id> --out <dir> | usage reconcile --task <id> --invoice <file> [--tolerance-bp N] | dashboard --session <id> | platform)";
+const USAGE: &str = "usage: modbit-cli --data-dir <dir> (session create | session show --session <id> | task create --session <id> [--workspace <dir>] [--command-id <hex>] <goal> | task from-issue --session <id> [--workspace <dir>] [--command-id <hex>] <issue-url> | events tail --session <id> [--after N] [--count N] [--json] | task attach --session <id> --task <id> <file> | question list --task <id> | question answer --session <id> --task <id> --question <id> [--option <id>] [--endpoint <name>] [--model <id>] [--wait] [text] | tool list [--task <id>] | tool invoke --session <id> --task <id> [--call <id>] <tool> <arguments-json> | approval list --session <id> | approval resolve --session <id> --approval <id> [--intent <hash>] (approve|deny) [reason] | stop --session <id> [reason] | receipts [--task <id>] | lease list --task <id> | task run --session <id> --task <id> [--endpoint <name>] [--model <id>] [--max-turns N] [--max-tool-calls N] [--max-no-progress-turns N] [--skill <name>]... [--wait] | task cancel --session <id> --task <id> | task status --task <id> | task transcript --task <id> [--density compact|balanced|detailed] | task headers --session <id> [--archived] | review show --task <id> | review decide --session <id> --task <id> (accept|return) [--reject path#index ...] [note] | change undo --session <id> --task <id> --call <id> [--apply] | context show <task-id> | task fork --session <id> --task <id> [--checkpoint <id>] [--carry PLAN,DECISIONS,EVIDENCE,CONTEXT] [--worktree <dir>] [goal] | task rewind --task <id> [--checkpoint <id>] [--apply --session <id>] | session route --session <id> | session tree --session <id> | task assurance --task <id> | task economics --task <id> | task work --task <id> | task agents --task <id> | capacity show | attention list --session <id> | plan show --task <id> | plan revise --session <id> --task <id> [--plan-json <file>] [note] | task patch --session <id> --task <id> --path <p> --revision <n> [--file-revision <sha>] (--old <text> | --old-file <f>) (--new <text> | --new-file <f>) | baseline publish --session <id> [--revision <rev>] | task allow-language --session <id> --task <id> --language <l> [--reason r] | task attach-context --session <id> --task <id> --source <s> [--title t] <file> | task select --session <id> --task <id> [--path p]... [--lines a:b] [--symbol s] [--hunk path#index]... [--source review|editor|cli] | agent install <file> [--from claude] [--replace] | agent list | skill install <dir> [--expect-hash <hex>] [--replace] | skill remove <name> | skill revoke <name> [--hash <content-hash>] | skill list | language list | model list | model probe --endpoint <name> --model <id> [--tools] <prompt> | task steer --session <id> --task <id> [--mode STEER|COLLECT|FOLLOW_UP] [--input-id <hex>] <text> | workspace trust --session <id> [--scope <s>] <root> | provider configure --provider <openai|anthropic> [--base-url <url>] [--clear] | recovery show | pr (open | update) --session <id> --task <id> --revision <n> [--base <ref>] [--title <t>] [--remote <name>] | starter list [--workspace <dir>] | doctor --session <id> | trace --session <id> [--task <id>] | export diagnostics --session <id> [--task <id>] [--include-content] --out <file> | diagnostics verify <file> | export handoff --session <id> --task <id> --out <dir> | usage reconcile --task <id> --invoice <file> [--tolerance-bp N] | dashboard --session <id> | platform)";
 
 fn parse_id(hex: &str) -> Result<Id, String> {
     let bytes = decode_hex(hex)
@@ -86,6 +90,27 @@ fn parse_id(hex: &str) -> Result<Id, String> {
 fn fresh_id() -> Id {
     Id {
         value: (0..16).map(|_| rand::random::<u8>()).collect(),
+    }
+}
+
+/// One transcript row, indented under its group.
+fn print_transcript_row(r: &TranscriptRow, depth: usize) {
+    let kind = TranscriptRowKind::try_from(r.kind)
+        .map(|k| format!("{k:?}"))
+        .unwrap_or_default();
+    let status = r
+        .hints
+        .as_ref()
+        .map(|h| h.status.as_str())
+        .unwrap_or_default();
+    println!(
+        "{}{:>3} {kind} {status} {}",
+        "  ".repeat(depth),
+        r.ordinal,
+        r.text.replace('\n', " ")
+    );
+    for c in &r.children {
+        print_transcript_row(c, depth + 1);
     }
 }
 
@@ -1670,6 +1695,72 @@ async fn run_command(ready: &ReadyLine, rest: Vec<String>) -> Result<(), String>
                     d.switch_cost_minor,
                     d.offset,
                     d.reason
+                );
+            }
+        }
+        ["task", "transcript", ..] => {
+            // PX-042: the conversation as the Core projects it from the log,
+            // every page of it.
+            let task_id = parse_id(opt("--task").ok_or(USAGE)?)?;
+            let density = match opt("--density").unwrap_or("compact") {
+                "compact" => TranscriptDensity::Compact,
+                "balanced" => TranscriptDensity::Balanced,
+                "detailed" => TranscriptDensity::Detailed,
+                _ => return Err(USAGE.into()),
+            };
+            let mut after = 0u32;
+            let mut pin = 0u64;
+            loop {
+                let ack = client
+                    .command(envelope(
+                        "GetTranscript",
+                        GetTranscript {
+                            task_id: Some(task_id.clone()),
+                            density: density as i32,
+                            after_row: after,
+                            limit: 200,
+                            as_of_offset: pin,
+                        }
+                        .encode_to_vec(),
+                    ))
+                    .await
+                    .map_err(|e| e.to_string())?;
+                let page: TranscriptPage = Client::result(&ack).map_err(|e| e.to_string())?;
+                pin = page.as_of_offset;
+                for r in &page.rows {
+                    print_transcript_row(r, 0);
+                }
+                if !page.has_more {
+                    break;
+                }
+                after = page.next_after_row;
+            }
+        }
+        ["task", "headers", "--session", sid, ..] => {
+            let ack = client
+                .command(envelope(
+                    "GetAgentHeaders",
+                    GetAgentHeaders {
+                        session_id: Some(parse_id(sid)?),
+                        include_archived: words.contains(&"--archived"),
+                    }
+                    .encode_to_vec(),
+                ))
+                .await
+                .map_err(|e| e.to_string())?;
+            let h: AgentHeaders = Client::result(&ack).map_err(|e| e.to_string())?;
+            for a in &h.headers {
+                println!(
+                    "{} {:<18} {}{} files={} +{} -{} ctx={}% {}",
+                    &encode_hex(&a.task_id.clone().unwrap_or_default().value)[..8],
+                    a.status_label,
+                    if a.unread { "* " } else { "" },
+                    a.title,
+                    a.files_changed,
+                    a.lines_added,
+                    a.lines_removed,
+                    a.context_percent,
+                    a.subtitle
                 );
             }
         }

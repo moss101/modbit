@@ -61,6 +61,68 @@ pub fn shape_of(text: &str) -> Option<&'static str> {
         .map(|(_, what)| *what)
 }
 
+/// How far back from the end of a stream of text a credential still being
+/// received is looked for.
+pub const TAIL_WINDOW: usize = 256;
+
+/// The literal starts of credential shapes: text that is a proper prefix of
+/// one of these may be the start of one.
+const GROWTH_PREFIXES: &[&str] = &[
+    "sk-",
+    "ghp_",
+    "gho_",
+    "ghu_",
+    "ghs_",
+    "ghr_",
+    "github_pat_",
+    "mbw_",
+    "Bearer",
+    "AKIA",
+    "AIza",
+    "xoxa-",
+    "xoxb-",
+    "xoxp-",
+    "xoxr-",
+    "xoxs-",
+    "-----BEGIN",
+];
+
+/// Names a credential parameter starts with (matched case-insensitively).
+const PARAMETER_NAMES: &[&str] = &[
+    "api_key",
+    "api-key",
+    "apikey",
+    "access_token",
+    "access-token",
+    "accesstoken",
+    "auth_token",
+    "auth-token",
+    "authtoken",
+];
+
+/// Credential shapes that are anchored at both ends: a tail that matches one
+/// is a credential that may still be growing.
+fn growing() -> &'static [Regex] {
+    static GROWING: OnceLock<Vec<Regex>> = OnceLock::new();
+    GROWING.get_or_init(|| {
+        [
+            r"^sk-[A-Za-z0-9_-]*$",
+            r"^(?:ghp|gho|ghu|ghs|ghr)_[A-Za-z0-9]*$",
+            r"^github_pat_[A-Za-z0-9_]*$",
+            r"^mbw_[0-9a-f]*(?:\.[0-9a-f]*)?$",
+            r"^Bearer\s+[A-Za-z0-9._~+/=-]*$",
+            r"^AKIA[0-9A-Z]*$",
+            r"^AIza[0-9A-Za-z_-]*$",
+            r"^xox[abprs]-[A-Za-z0-9-]*$",
+            r"(?i)^(?:api[_-]?key|access[_-]?token|auth[_-]?token)=?[A-Za-z0-9._~+/-]*$",
+            r"^-----BEGIN[A-Z -]*$",
+        ]
+        .into_iter()
+        .map(|re| Regex::new(re).expect("a valid growth shape"))
+        .collect()
+    })
+}
+
 /// Redacted text and what was replaced.
 #[derive(Clone, Debug, Default, PartialEq, Eq)]
 pub struct Redacted {
@@ -162,6 +224,48 @@ impl Redactor {
     #[must_use]
     pub fn error_text(&self, text: &str) -> String {
         self.error(text).text
+    }
+
+    /// How many bytes at the end of `raw` could still turn into a secret
+    /// once more text arrives: a partial held value, or a credential-shaped
+    /// token that is still growing. A stream of text redacts what it has
+    /// before it publishes and keeps this tail back, so a secret split
+    /// across two chunks is replaced whole rather than leaking in halves
+    /// (PX-041). Only the last [`TAIL_WINDOW`] bytes are considered; a
+    /// credential longer than that is outside what streaming can hold back.
+    #[must_use]
+    pub fn pending_tail(&self, raw: &str) -> usize {
+        let from = raw.len().saturating_sub(TAIL_WINDOW);
+        for (i, _) in raw.char_indices().filter(|(i, _)| *i >= from) {
+            if self.could_grow(&raw[i..]) {
+                return raw.len() - i;
+            }
+        }
+        0
+    }
+
+    fn could_grow(&self, tail: &str) -> bool {
+        if self
+            .held
+            .iter()
+            .any(|h| h.len() > tail.len() && h.starts_with(tail))
+        {
+            return true;
+        }
+        if GROWTH_PREFIXES
+            .iter()
+            .any(|l| l.len() > tail.len() && l.starts_with(tail))
+        {
+            return true;
+        }
+        let lower = tail.to_ascii_lowercase();
+        if PARAMETER_NAMES
+            .iter()
+            .any(|n| n.starts_with(lower.as_str()) && n.len() > lower.len())
+        {
+            return true;
+        }
+        growing().iter().any(|re| re.is_match(tail))
     }
 
     /// Every string in `v` redacted as data; returns the replacements.
@@ -294,6 +398,52 @@ mod tests {
         );
         let mut sealed = serde_json::json!({"receipt": {"detail": KEY}});
         assert_eq!(r.event_payload("EffectReceiptAppended", &mut sealed), 0);
+    }
+
+    #[test]
+    fn a_tail_that_may_still_become_a_secret_is_held_back() {
+        let r = Redactor::new([KEY]);
+        // a partial held value, a growing token, a lone prefix, prose
+        assert_eq!(
+            r.pending_tail("the key is sk-live-0123"),
+            "sk-live-0123".len()
+        );
+        assert_eq!(
+            r.pending_tail("use sk-abcdefghijklmnopqrstu"),
+            "sk-abcdefghijklmnopqrstu".len()
+        );
+        assert_eq!(
+            r.pending_tail("then Bearer abcdefghijklmnopqrstuvwxyz"),
+            "Bearer abcdefghijklmnopqrstuvwxyz".len()
+        );
+        assert_eq!(r.pending_tail("and Bear"), 4);
+        assert_eq!(r.pending_tail("set API_KEY=abcdef"), "API_KEY=abcdef".len());
+        // prose holds at most the one letter that could start a prefix
+        assert_eq!(r.pending_tail("an ordinary sentence about keys"), 1);
+        assert_eq!(r.pending_tail("an ordinary sentence about key"), 0);
+        assert_eq!(r.pending_tail("ends with a word "), 0);
+        // split anywhere, the redacted halves never carry the secret
+        let text = format!("before {KEY} after");
+        for cut in 0..=text.len() {
+            if !text.is_char_boundary(cut) {
+                continue;
+            }
+            let mut pending = text[..cut].to_owned();
+            let held = r.pending_tail(&pending);
+            let first = r.error(&pending[..pending.len() - held]).text;
+            pending = pending[pending.len() - held..].to_owned();
+            pending.push_str(&text[cut..]);
+            let second = r.error(&pending).text;
+            assert!(
+                !first.contains("live") && !second.contains("live"),
+                "{cut}: {first:?} {second:?}"
+            );
+            assert_eq!(
+                format!("{first}{second}"),
+                "before [redacted] after",
+                "{cut}"
+            );
+        }
     }
 
     #[test]

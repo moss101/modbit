@@ -173,6 +173,12 @@ pub async fn run_as(
             suspended.len()
         );
     }
+    // PX-041: a message that was streaming when the last Core died is closed
+    // as aborted by recovery; nothing resumes mid-token.
+    let aborted = crate::stream::close_after_restart(&mut store, tenant_id);
+    if aborted > 0 {
+        eprintln!("modbit-core: closed {aborted} open assistant stream(s) as aborted by recovery");
+    }
     let start = store.last_offset()?;
     let boot_secret: Vec<u8> = (0..32).map(|_| rand::random::<u8>()).collect();
     let nonce = encode_hex(&(0..6).map(|_| rand::random::<u8>()).collect::<Vec<_>>());
@@ -1138,6 +1144,10 @@ fn required_client_capability(env: &CommandEnvelope) -> Option<&'static str> {
             }
         }
         "GetCodeView" => "ui.code_view",
+        // The conversation read model is a read of the log; a read marker and
+        // an archive are the person's own curation of a session.
+        "GetTranscript" | "GetAgentHeaders" => "events.subscribe",
+        "MarkRead" | "ArchiveTask" => "session.control",
         "DecideReview" => "review.decide",
         // Steering a task from its pull request's comments is steering it.
         "ApplyUserPatch" | "SubmitExternalDiagnostics" | "IngestReviewComments" => "task.author",
@@ -3726,6 +3736,189 @@ async fn handle_command(core: &Arc<Core>, env: CommandEnvelope) -> CommandAck {
                 ),
                 Ok(Err(refused)) => reject(cid, refused.code, refused.detail),
                 Err(e) => reject(cid, "FORK", e.to_string()),
+            }
+        }
+        "GetTranscript" => {
+            let Ok(p) = wire::GetTranscript::decode(env.payload.as_slice()) else {
+                return reject(cid, "BAD_PAYLOAD", "GetTranscript");
+            };
+            let Some(task_id) = p.task_id.as_ref().and_then(id16).map(TaskId::from_bytes) else {
+                return reject(cid, "BAD_PAYLOAD", "task_id required");
+            };
+            let store = core.store.lock().await;
+            let task = match store.task(&task_id) {
+                Ok(Some(t)) => t,
+                Ok(None) => return reject(cid, "UNKNOWN_TASK", task_id.to_string()),
+                Err(e) => return reject(cid, error_code(&e), e.to_string()),
+            };
+            // A conversation is read inside its own session: a command that
+            // names another session is refused, not answered.
+            if let Some(named) = env.session_id.as_ref().and_then(id16)
+                && named != *task.session_id.as_bytes()
+            {
+                return reject(cid, "WRONG_SESSION", "the task belongs to another session");
+            }
+            let density = wire::TranscriptDensity::try_from(p.density)
+                .unwrap_or(wire::TranscriptDensity::Unspecified);
+            match crate::transcript::page(
+                &store,
+                &task,
+                &crate::transcript::PageRequest {
+                    density,
+                    after_row: p.after_row,
+                    limit: p.limit,
+                    as_of_offset: p.as_of_offset,
+                },
+            ) {
+                Ok(page) => accept(cid, false, page.encode_to_vec()),
+                Err((code, message)) => reject(cid, code, message),
+            }
+        }
+        "GetAgentHeaders" => {
+            let Ok(p) = wire::GetAgentHeaders::decode(env.payload.as_slice()) else {
+                return reject(cid, "BAD_PAYLOAD", "GetAgentHeaders");
+            };
+            let Some(session_id) = p
+                .session_id
+                .as_ref()
+                .and_then(id16)
+                .map(SessionId::from_bytes)
+            else {
+                return reject(cid, "BAD_PAYLOAD", "session_id required");
+            };
+            let store = core.store.lock().await;
+            match store.session(&session_id) {
+                Ok(Some(_)) => {}
+                Ok(None) => return reject(cid, "UNKNOWN_SESSION", session_id.to_string()),
+                Err(e) => return reject(cid, error_code(&e), e.to_string()),
+            }
+            match crate::transcript::headers(core, &store, session_id, p.include_archived) {
+                Ok(h) => accept(cid, false, h.encode_to_vec()),
+                Err((code, message)) => reject(cid, code, message),
+            }
+        }
+        "MarkRead" | "ArchiveTask" => {
+            let (task_id, up_to, archive) = if env.command_type == "MarkRead" {
+                let Ok(p) = wire::MarkRead::decode(env.payload.as_slice()) else {
+                    return reject(cid, "BAD_PAYLOAD", "MarkRead");
+                };
+                (p.task_id, p.up_to_offset, None)
+            } else {
+                let Ok(p) = wire::ArchiveTask::decode(env.payload.as_slice()) else {
+                    return reject(cid, "BAD_PAYLOAD", "ArchiveTask");
+                };
+                (p.task_id, 0, Some(p.archived))
+            };
+            let Some(task_id) = task_id.as_ref().and_then(id16).map(TaskId::from_bytes) else {
+                return reject(cid, "BAD_PAYLOAD", "task_id required");
+            };
+            let task = {
+                let store = core.store.lock().await;
+                match store.task(&task_id) {
+                    Ok(Some(t)) => t,
+                    Ok(None) => return reject(cid, "UNKNOWN_TASK", task_id.to_string()),
+                    Err(e) => return reject(cid, error_code(&e), e.to_string()),
+                }
+            };
+            if let Err(ack) = require_lease(core, &cid, &env, &task.session_id).await {
+                return ack;
+            }
+            let mut store = core.store.lock().await;
+            // A retried command answers with what it did the first time, whatever
+            // the conversation looks like now.
+            match store.prior_command(&record(&env.command_type)) {
+                Ok(Some(CommandOutcome::Replayed(events) | CommandOutcome::Applied(events))) => {
+                    return accept(cid, true, conversation_result(&store, &events, task_id));
+                }
+                Ok(None) => {}
+                Err(e) => return reject(cid, error_code(&e), e.to_string()),
+            }
+            let digest = match store.task_digests(&task.session_id) {
+                Ok(d) => d.into_iter().find(|d| d.task_id == task_id),
+                Err(e) => return reject(cid, error_code(&e), e.to_string()),
+            };
+            let (read_offset, archived) =
+                digest.map_or((0, false), |d| (d.read_offset, d.archived));
+            let tip = store.last_offset().unwrap_or(0);
+            let event = match archive {
+                None => {
+                    if up_to > tip {
+                        return reject(
+                            cid,
+                            "INVALID_CURSOR",
+                            format!("up_to_offset {up_to} is beyond the log at {tip}"),
+                        );
+                    }
+                    let to = if up_to == 0 { tip } else { up_to };
+                    if to <= read_offset {
+                        // Already read that far: nothing to record.
+                        return accept(
+                            cid,
+                            false,
+                            wire::ReadMarked {
+                                task_id: Some(wire_id(task_id.as_bytes())),
+                                read_offset,
+                                offset: 0,
+                            }
+                            .encode_to_vec(),
+                        );
+                    }
+                    modbit_domain::conversation::ConversationEvent::ConversationRead {
+                        up_to_offset: to,
+                    }
+                }
+                Some(want) => {
+                    if want == archived {
+                        return accept(
+                            cid,
+                            false,
+                            wire::TaskArchived {
+                                task_id: Some(wire_id(task_id.as_bytes())),
+                                archived,
+                                offset: 0,
+                            }
+                            .encode_to_vec(),
+                        );
+                    }
+                    // Archiving a running task would stop it silently; the
+                    // client cancels it first, as its own recorded event.
+                    if want && task.state == modbit_domain::task::TaskState::Running {
+                        return reject(
+                            cid,
+                            "TASK_RUNNING",
+                            "cancel the running task before archiving it",
+                        );
+                    }
+                    if want {
+                        modbit_domain::conversation::ConversationEvent::ConversationArchived
+                    } else {
+                        modbit_domain::conversation::ConversationEvent::ConversationUnarchived
+                    }
+                }
+            };
+            let req = AppendRequest {
+                tenant_id: core.tenant_id,
+                session_id: task.session_id,
+                task_id: Some(task_id),
+                run_id: None,
+                turn_id: None,
+                step_id: None,
+                aggregate_type: AggregateType::Conversation,
+                aggregate_id: modbit_domain::conversation::aggregate_id(task_id),
+                expected_sequence: None,
+                events: vec![typed(event.event_type(), &event, actor)],
+            };
+            match store.execute_command(record(&env.command_type), req) {
+                Ok(outcome) => {
+                    let (events, replayed) = split(outcome);
+                    let offset = events.last().map(|e| e.offset).unwrap_or(0);
+                    if !replayed {
+                        core.last_offset.send_replace(offset);
+                    }
+                    let result = conversation_result(&store, &events, task_id);
+                    accept(cid, replayed, result)
+                }
+                Err(e) => reject(cid, error_code(&e), e.to_string()),
             }
         }
         "GetSessionTree" => {
@@ -6652,6 +6845,31 @@ fn typed<E: serde::Serialize>(event_type: &str, e: &E, actor: Actor) -> NewEvent
     );
     ev.occurred_at = Some(Timestamp::now());
     ev
+}
+
+/// What a `MarkRead` or `ArchiveTask` answered, read back from the event it
+/// appended, so a replay answers exactly as the first run did.
+fn conversation_result(store: &EventStore, events: &[StoredEvent], task_id: TaskId) -> Vec<u8> {
+    let offset = events.last().map_or(0, |e| e.offset);
+    let payload = events
+        .last()
+        .and_then(|e| store.payload(&e.envelope).ok())
+        .unwrap_or_default();
+    let task = Some(wire_id(task_id.as_bytes()));
+    match events.last().map(|e| e.envelope.event_type.as_str()) {
+        Some(modbit_domain::conversation::READ) => wire::ReadMarked {
+            task_id: task,
+            read_offset: payload["up_to_offset"].as_u64().unwrap_or(0),
+            offset,
+        }
+        .encode_to_vec(),
+        other => wire::TaskArchived {
+            task_id: task,
+            archived: other == Some(modbit_domain::conversation::ARCHIVED),
+            offset,
+        }
+        .encode_to_vec(),
+    }
 }
 
 fn split(outcome: CommandOutcome) -> (Vec<StoredEvent>, bool) {

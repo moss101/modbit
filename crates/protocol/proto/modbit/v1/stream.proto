@@ -1,0 +1,278 @@
+// PX-041 / PX-042 (docs/65 AFW-C01..C05, AFW-B02, AFW-B04, AFW-B10): the
+// conversation read model the Core serves.
+//
+// Streaming itself needs no message here: assistant text travels as ordinary
+// events (StoredEventFrame) on the `assistant_stream` aggregate, whose event
+// types and JSON payloads are AssistantTextDelta, AssistantMessageCompleted
+// and AssistantMessageAborted (crates/domain/src/stream.rs). What this file
+// adds are two read projections over the canonical event log, neither of them
+// a store, and the three commands a person uses on a conversation:
+//
+//   GetTranscript     rows of one task's conversation, by cursor and page, in
+//                     one of three densities that differ only in grouping;
+//   GetAgentHeaders   the small header of every task of a session — status
+//                     class, unread, pending approval, changes — computed by
+//                     the Core so no client recomputes it;
+//   MarkRead          the person has seen the conversation up to an offset;
+//   ArchiveTask       archive, and its undo, as events.
+syntax = "proto3";
+
+package modbit.v1;
+
+import "google/protobuf/timestamp.proto";
+import "modbit/v1/domain.proto";
+
+// ---------------------------------------------------------------- transcript
+
+// The three densities of AFW-C05. They are projections of the same log and
+// differ only in how rows are grouped; COMPACT is the default.
+enum TranscriptDensity {
+  TRANSCRIPT_DENSITY_UNSPECIFIED = 0;  // served as COMPACT
+  TRANSCRIPT_DENSITY_COMPACT = 1;      // a finished turn's steps fold under one work group
+  TRANSCRIPT_DENSITY_BALANCED = 2;     // runs of reads and searches, and of shell commands, fold
+  TRANSCRIPT_DENSITY_DETAILED = 3;     // nothing folds
+}
+
+// Row kinds (AFW-C01).
+enum TranscriptRowKind {
+  TRANSCRIPT_ROW_KIND_UNSPECIFIED = 0;
+  TRANSCRIPT_ROW_KIND_USER_MESSAGE = 1;
+  TRANSCRIPT_ROW_KIND_ASSISTANT_MESSAGE = 2;
+  TRANSCRIPT_ROW_KIND_WORK_GROUP = 3;
+  TRANSCRIPT_ROW_KIND_TOOL_CARD = 4;
+  TRANSCRIPT_ROW_KIND_APPROVAL_CARD = 5;
+  TRANSCRIPT_ROW_KIND_TAIL_STATUS = 6;
+  TRANSCRIPT_ROW_KIND_TURN_FOOTER = 7;
+  TRANSCRIPT_ROW_KIND_TIME_BOUNDARY = 8;
+  TRANSCRIPT_ROW_KIND_UNREAD_DIVIDER = 9;
+}
+
+message GetTranscript {
+  Id task_id = 1;
+  TranscriptDensity density = 2;
+  // Cursor: rows with ordinal greater than this (0 = from the start). An
+  // ordinal beyond the last row is INVALID_CURSOR.
+  uint32 after_row = 3;
+  // Rows per page; 0 = 100, capped at 500.
+  uint32 limit = 4;
+  // Fold the log only up to this offset, so successive pages of one read see
+  // one consistent log; 0 = the log as it is now. An offset beyond the log is
+  // INVALID_CURSOR.
+  uint64 as_of_offset = 5;
+}
+
+// What a client needs to fold, group or skip a row without reading its body
+// (AFW-C01 render hints).
+message RowHints {
+  bool renderable = 1;       // false for a row a client should not draw as a message (an aborted stream's partial text)
+  bool groupable = 2;        // may fold into a work group
+  bool has_reasoning = 3;    // a reasoning stream was published for it
+  uint64 duration_ms = 4;
+  string short_text = 5;     // one plain line: the command, the path, the query
+  uint32 lines_added = 6;    // edit line counts
+  uint32 lines_removed = 7;
+  string status = 8;         // STREAMING | COMPLETE | ABORTED | PENDING | RUNNING | SUCCEEDED | FAILED | DENIED | ...
+}
+
+// An assistant message as a stream: only COMPLETED is a finished message.
+message StreamFacts {
+  string stream_id = 1;
+  string phase = 2;          // OPEN | COMPLETED | ABORTED
+  uint64 first_offset = 3;   // log offset of the first delta
+  uint64 last_offset = 4;    // log offset of the stream's latest event
+  uint32 delta_count = 5;
+  string content_hash = 6;   // of the completed text
+  string abort_source = 7;   // USER_INTERRUPT | RUNTIME | PROVIDER | RECOVERY
+  string abort_code = 8;
+}
+
+message UserFacts {
+  string input_id = 1;
+  string source = 2;         // goal | queued_input | answer
+  string mode = 3;           // STEER | COLLECT | FOLLOW_UP for a queued input
+  string provenance = 4;     // empty for the person; forge_review_comment, ...
+  bool untrusted = 5;        // the text is data, never an instruction
+}
+
+message ToolFacts {
+  string tool_call_id = 1;
+  string tool_name = 2;
+  string tool_class = 3;     // READ | SEARCH | SHELL | EDIT | BROWSER | OTHER
+  string effect_class = 4;
+  string state = 5;          // the tool call's lifecycle state
+  string call_id = 6;
+  string arguments_ref = 7;  // object hash of the raw arguments
+  string result_ref = 8;     // object hash of the result
+  string failure_code = 9;
+  repeated string paths = 10;  // files the call changed
+}
+
+message ApprovalFacts {
+  string kind = 1;           // APPROVAL | QUESTION
+  string approval_id = 2;    // the approval id, or the question id
+  string tool_call_id = 3;
+  string tool_name = 4;
+  string effect_class = 5;
+  string state = 6;          // REQUESTED | APPROVED | DENIED | EXPIRED | ANSWERED
+  string resolver = 7;
+}
+
+// What a folded group stands for (AFW-C04): the counts, never the bodies.
+message GroupFacts {
+  string turn_id = 1;
+  string label = 2;          // "Worked for 12 s", "Ran 3 commands", "Explored 4 files"
+  uint32 steps = 3;
+  uint32 reads = 4;
+  uint32 searches = 5;
+  uint32 commands = 6;
+  uint32 edits = 7;
+  uint32 others = 8;
+  uint32 lines_added = 9;
+  uint32 lines_removed = 10;
+  uint64 duration_ms = 11;
+  bool open = 12;            // the turn is still running
+}
+
+message FooterFacts {
+  string turn_id = 1;
+  string run_id = 2;
+  string outcome = 3;        // COMPLETED | INTERRUPTED | FAILED
+  string failure_code = 4;
+  uint64 duration_ms = 5;
+  uint64 input_tokens = 6;
+  uint64 output_tokens = 7;
+}
+
+message TailFacts {
+  string phase = 1;          // RUNNING | WAITING | NEEDS_ATTENTION | READY_FOR_REVIEW | COMPLETED | FAILED | CANCELLED | IDLE
+  string label = 2;          // the current action in plain words: "Running shell command"
+  string detail = 3;
+}
+
+message BoundaryFacts {
+  uint64 gap_ms = 1;         // silence before the next row
+  string day = 2;            // UTC date of the next row, YYYY-MM-DD
+}
+
+message TranscriptRow {
+  uint32 ordinal = 1;        // position among the rows of this density view, from 1 (a group's children count from 1 inside it)
+  string row_id = 2;         // stable across densities and pages
+  TranscriptRowKind kind = 3;
+  uint64 offset = 4;         // log offset of the event that opened the row
+  uint64 last_offset = 5;    // log offset of the latest event that changed it
+  google.protobuf.Timestamp at = 6;
+  string turn_id = 7;
+  RowHints hints = 8;
+  string text = 9;           // bounded plain text: a message, or a summary line
+  bool text_truncated = 10;
+  string text_ref = 11;      // object hash of the whole text of a completed message
+  repeated TranscriptRow children = 12;  // the rows a work group folds, in order
+  oneof facts {
+    UserFacts user = 20;
+    StreamFacts stream = 21;
+    ToolFacts tool = 22;
+    ApprovalFacts approval = 23;
+    GroupFacts group = 24;
+    FooterFacts footer = 25;
+    TailFacts tail = 26;
+    BoundaryFacts boundary = 27;
+  }
+}
+
+message TranscriptPage {
+  Id task_id = 1;
+  TranscriptDensity density = 2;
+  repeated TranscriptRow rows = 3;
+  uint32 total_rows = 4;       // rows in the whole view at as_of_offset
+  uint32 next_after_row = 5;   // the cursor for the next page; 0 when there is none
+  bool has_more = 6;
+  uint64 as_of_offset = 7;     // the log offset the rows were folded to
+  uint64 last_offset = 8;      // the log's tip when this was served
+  string task_state = 9;
+  uint64 read_offset = 10;     // the offset the person last marked as read
+  uint64 events_read = 11;     // how much of the log this read loaded
+}
+
+// -------------------------------------------------------------------- headers
+
+// AFW-B02: the precedence is the order of this enum. The renderer shows the
+// class it is given and never recomputes it.
+enum AgentStatusClass {
+  AGENT_STATUS_CLASS_UNSPECIFIED = 0;
+  AGENT_STATUS_CLASS_NEEDS_ATTENTION = 1;
+  AGENT_STATUS_CLASS_FAILED = 2;
+  AGENT_STATUS_CLASS_READY_FOR_REVIEW_UNSEEN = 3;
+  AGENT_STATUS_CLASS_READY_FOR_REVIEW_SEEN = 4;
+  AGENT_STATUS_CLASS_RUNNING = 5;
+  AGENT_STATUS_CLASS_WAITING = 6;
+  AGENT_STATUS_CLASS_COMPLETED = 7;
+  AGENT_STATUS_CLASS_DRAFT = 8;
+  AGENT_STATUS_CLASS_ARCHIVED = 9;
+}
+
+message GetAgentHeaders {
+  Id session_id = 1;
+  bool include_archived = 2;
+}
+
+message AgentHeader {
+  Id task_id = 1;
+  Id session_id = 2;
+  string workspace_root = 3;
+  string title = 4;
+  string subtitle = 5;
+  google.protobuf.Timestamp created_at = 6;
+  google.protobuf.Timestamp updated_at = 7;
+  AgentStatusClass status_class = 8;
+  string status_label = 9;        // words for the class; never colour alone
+  bool unread = 10;
+  bool pending_approval = 11;
+  bool pending_plan = 12;
+  uint32 context_percent = 13;    // 0 when unknown
+  uint32 files_changed = 14;
+  uint32 lines_added = 15;
+  uint32 lines_removed = 16;
+  google.protobuf.Timestamp last_checkpoint_at = 17;
+  bool subagent = 18;
+  bool archived = 19;
+  string execution_location = 20; // local | cloud
+  string origin = 21;
+  string task_state = 22;
+  uint64 last_offset = 23;
+  uint64 read_offset = 24;
+  uint32 attention_items = 25;
+}
+
+message AgentHeaders {
+  Id session_id = 1;
+  repeated AgentHeader headers = 2;
+  uint64 last_offset = 3;
+  // What this read loaded: headers come from the projection tables and grouped
+  // aggregates, so no event and no object is loaded.
+  uint64 events_read = 4;
+  uint64 objects_read = 5;
+}
+
+// --------------------------------------------------------------- curation
+
+message MarkRead {
+  Id task_id = 1;
+  uint64 up_to_offset = 2;       // 0 = the whole log as it is now
+}
+
+message ReadMarked {
+  Id task_id = 1;
+  uint64 read_offset = 2;
+  uint64 offset = 3;             // where the marker was recorded; 0 when nothing new was recorded
+}
+
+message ArchiveTask {
+  Id task_id = 1;
+  bool archived = 2;             // true archives, false undoes it
+}
+
+message TaskArchived {
+  Id task_id = 1;
+  bool archived = 2;
+  uint64 offset = 3;             // where it was recorded; 0 when the task was already in that state
+}

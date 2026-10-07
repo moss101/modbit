@@ -28,6 +28,7 @@
 
 #[cfg(feature = "cloud")]
 pub mod cloud;
+pub mod digest;
 pub mod migrations;
 pub mod objects;
 pub mod projections;

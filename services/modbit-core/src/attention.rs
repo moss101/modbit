@@ -36,6 +36,17 @@ pub(crate) struct AttentionItem {
 
 /// Every open item of a session, oldest first.
 pub(crate) fn attention(store: &EventStore, session: SessionId) -> Vec<AttentionItem> {
+    attention_of(store, session, |_| true)
+}
+
+/// The open items of the session's tasks `wanted` names, and of its
+/// approvals: a reader that knows from the log's digest that a task cannot
+/// raise one (PX-042 headers) does not have the task's events read.
+pub(crate) fn attention_of(
+    store: &EventStore,
+    session: SessionId,
+    wanted: impl Fn(&Task) -> bool,
+) -> Vec<AttentionItem> {
     let mut items = Vec::new();
     // Approvals still requested (docs/23): resolved ones are gone with
     // `ApprovalResolved`.
@@ -61,7 +72,7 @@ pub(crate) fn attention(store: &EventStore, session: SessionId) -> Vec<Attention
         .open_tasks()
         .unwrap_or_default()
         .into_iter()
-        .filter(|t| t.session_id == session)
+        .filter(|t| t.session_id == session && wanted(t))
         .collect();
     for t in &tasks {
         items.extend(task_items(store, t));

@@ -57,6 +57,19 @@ import {
   GetContextInspectorSchema,
   GetAttentionSchema,
   AttentionViewSchema,
+  GetTranscriptSchema,
+  TranscriptPageSchema,
+  type TranscriptPage,
+  TranscriptDensity,
+  GetAgentHeadersSchema,
+  AgentHeadersSchema,
+  type AgentHeaders,
+  MarkReadSchema,
+  ReadMarkedSchema,
+  type ReadMarked,
+  ArchiveTaskSchema,
+  TaskArchivedSchema,
+  type TaskArchived,
   type AttentionView,
   GetSessionSnapshotSchema,
   LanguageListSchema,
@@ -386,6 +399,53 @@ export class CoreClient {
   async attention(sessionId: string): Promise<AttentionView> {
     const ack = await this.command("GetAttention", toBinary(GetAttentionSchema, create(GetAttentionSchema, { sessionId: { value: unhex(sessionId) } })));
     return fromBinary(AttentionViewSchema, ack.result);
+  }
+
+  /** PX-042: one page of a task's conversation, projected by the Core from the
+   *  log. `afterRow` is the cursor (the previous page's `nextAfterRow`); pass the
+   *  first page's `asOfOffset` back as `asOfOffset` so every page sees one log.
+   *  Assistant text still streaming arrives as `assistant_stream` events on the
+   *  subscription; a row of phase COMPLETED is the finished message. */
+  async getTranscript(
+    taskId: string,
+    opts: { density?: TranscriptDensity; afterRow?: number; limit?: number; asOfOffset?: bigint } = {},
+  ): Promise<TranscriptPage> {
+    const payload = toBinary(
+      GetTranscriptSchema,
+      create(GetTranscriptSchema, {
+        taskId: { value: unhex(taskId) },
+        density: opts.density ?? TranscriptDensity.COMPACT,
+        afterRow: opts.afterRow ?? 0,
+        limit: opts.limit ?? 0,
+        asOfOffset: opts.asOfOffset ?? 0n,
+      }),
+    );
+    const ack = await this.command("GetTranscript", payload);
+    return fromBinary(TranscriptPageSchema, ack.result);
+  }
+
+  /** PX-042: the header of every task of a session; the status class is the Core's. */
+  async getAgentHeaders(sessionId: string, includeArchived = false): Promise<AgentHeaders> {
+    const payload = toBinary(
+      GetAgentHeadersSchema,
+      create(GetAgentHeadersSchema, { sessionId: { value: unhex(sessionId) }, includeArchived }),
+    );
+    const ack = await this.command("GetAgentHeaders", payload);
+    return fromBinary(AgentHeadersSchema, ack.result);
+  }
+
+  /** PX-042: the person has seen the task's conversation up to `upToOffset` (0 = all of it). Idempotent by `commandId`. */
+  async markRead(sessionId: string, taskId: string, upToOffset = 0n, commandId?: Uint8Array): Promise<ReadMarked> {
+    const payload = toBinary(MarkReadSchema, create(MarkReadSchema, { taskId: { value: unhex(taskId) }, upToOffset }));
+    const ack = await this.command("MarkRead", payload, commandId, this.leases.get(sessionId));
+    return fromBinary(ReadMarkedSchema, ack.result);
+  }
+
+  /** PX-042: archive (or, with `archived = false`, undo archiving) a task's conversation. A running task is refused with TASK_RUNNING. */
+  async archiveTask(sessionId: string, taskId: string, archived = true, commandId?: Uint8Array): Promise<TaskArchived> {
+    const payload = toBinary(ArchiveTaskSchema, create(ArchiveTaskSchema, { taskId: { value: unhex(taskId) }, archived }));
+    const ack = await this.command("ArchiveTask", payload, commandId, this.leases.get(sessionId));
+    return fromBinary(TaskArchivedSchema, ack.result);
   }
 
   async contextInspector(taskId: string): Promise<ContextInspectorView> {
