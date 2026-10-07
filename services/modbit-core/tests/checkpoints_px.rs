@@ -8,6 +8,9 @@
 //! of a capture, a restore or a collection) and checks what the next Core
 //! finds.
 
+// Some imports are used only by the Unix-only tests below.
+#![cfg_attr(not(unix), allow(unused_imports))]
+
 use std::collections::BTreeMap;
 use std::io::{BufRead, BufReader};
 use std::process::{Child, Command, Stdio};

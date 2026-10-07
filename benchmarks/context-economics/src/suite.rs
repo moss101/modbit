@@ -22,7 +22,7 @@ pub struct TrialTask {
 }
 
 /// The mandatory check every task repository declares.
-pub const CHECK_ARGV: [&str; 2] = ["python3", "check.py"];
+pub const CHECK_ARGV: [&str; 3] = ["python3", "-B", "check.py"];
 
 fn task(id: &str, goal: &str, files: &[(&str, &str)], reference: &[(&str, &str)]) -> TrialTask {
     let mut files: Vec<(String, String)> = files
@@ -31,7 +31,8 @@ fn task(id: &str, goal: &str, files: &[(&str, &str)], reference: &[(&str, &str)]
         .collect();
     files.push((
         ".modbit/verification.json".into(),
-        "{\"commands\": [{\"id\": \"unit\", \"argv\": [\"python3\", \"check.py\"]}]}".into(),
+        "{\"commands\": [{\"id\": \"unit\", \"argv\": [\"python3\", \"-B\", \"check.py\"]}]}"
+            .into(),
     ));
     TrialTask {
         id: id.to_owned(),
@@ -678,8 +679,13 @@ pub fn apply_reference(task: &TrialTask, dir: &std::path::Path) -> std::io::Resu
 /// # Errors
 /// When `python3` cannot be run.
 pub fn check_passes(dir: &std::path::Path) -> std::io::Result<bool> {
+    // `-B`: no bytecode cache. A rename between two names of the same length
+    // rewrites a module within the same second with the same size, which is
+    // exactly what a Python `.pyc` validates by, so a cached "before" would
+    // otherwise be run as the "after".
     Ok(std::process::Command::new(CHECK_ARGV[0])
-        .arg(CHECK_ARGV[1])
+        .args(&CHECK_ARGV[1..])
+        .env("PYTHONDONTWRITEBYTECODE", "1")
         .current_dir(dir)
         .stdout(std::process::Stdio::null())
         .stderr(std::process::Stdio::null())
