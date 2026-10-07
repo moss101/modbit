@@ -1350,6 +1350,7 @@ async fn qual_m8_7_a_local_task_hands_off_to_the_cloud_and_continues_from_its_ch
             workspace_root: root.clone(),
             issue_url: String::new(),
             issue_json: String::new(),
+            ..Default::default()
         }
         .encode_to_vec(),
         g,
@@ -1370,6 +1371,7 @@ async fn qual_m8_7_a_local_task_hands_off_to_the_cloud_and_continues_from_its_ch
             max_tool_calls: 0,
             max_no_progress_turns: 0,
             skills: vec![],
+            ..Default::default()
         }
         .encode_to_vec(),
         g,
@@ -2501,6 +2503,7 @@ async fn qual_ev_0109_the_same_tool_fixture_runs_locally_and_in_the_cloud_with_e
             workspace_root: local_root.clone(),
             issue_url: String::new(),
             issue_json: String::new(),
+            ..Default::default()
         }
         .encode_to_vec(),
         g,
@@ -2519,6 +2522,7 @@ async fn qual_ev_0109_the_same_tool_fixture_runs_locally_and_in_the_cloud_with_e
             max_tool_calls: 0,
             max_no_progress_turns: 0,
             skills: vec![],
+            ..Default::default()
         }
         .encode_to_vec(),
         g,
@@ -3532,6 +3536,7 @@ async fn qual_ev_0023_a_cloud_tasks_starts_emit_every_slo_timestamp_and_cold_and
             max_tool_calls: 0,
             max_no_progress_turns: 0,
             skills: vec![],
+            ..Default::default()
         }
         .encode_to_vec(),
         g,

@@ -352,6 +352,76 @@ pub enum TaskEvent {
         #[serde(default)]
         untrusted: bool,
     },
+    /// `TaskModeSet` (PX-051, docs/65 AFW-D03): the user set the task's mode.
+    /// The latest one is the task's mode; the posture it selects is enforced
+    /// from the next round boundary (`TaskPostureApplied`). No state change.
+    TaskModeSet {
+        /// The mode.
+        mode: crate::mode::TaskMode,
+        /// The mode it replaced (`None` at creation).
+        #[serde(default)]
+        previous: Option<crate::mode::TaskMode>,
+        /// `create` | `user`.
+        source: String,
+        /// The user's note (log text; never an instruction).
+        #[serde(default)]
+        reason: String,
+        /// Leaving PLAN: the plan version the user accepted (0 = none).
+        #[serde(default)]
+        accepted_plan_version: u32,
+    },
+    /// `TaskPostureApplied` (PX-051): the run's round boundary adopted a mode;
+    /// from here the Capability Kernel enforces that mode's posture. A call in
+    /// flight keeps the posture it was decided under. No state change.
+    TaskPostureApplied {
+        /// The mode now in force.
+        mode: crate::mode::TaskMode,
+        /// The mode that was in force (`None` at run start).
+        #[serde(default)]
+        previous: Option<crate::mode::TaskMode>,
+        /// `RUN_START` | `ROUND`.
+        boundary: String,
+        /// The `TaskModeSet` event offset this mode came from (0 = default).
+        mode_offset: u64,
+    },
+    /// `ExecutionPreferenceSet` (PX-053, docs/65 AFW-D13): the user recorded an
+    /// execution preference for the task. The router reads it at the next
+    /// boundary (`ExecutionPreferenceApplied`). No state change.
+    ExecutionPreferenceSet {
+        /// The whole preference after this patch.
+        preference: crate::mode::ExecutionPreference,
+        /// What the command carried.
+        patch: crate::mode::ExecutionPreference,
+        /// `create` | `start_task` | `user`.
+        source: String,
+    },
+    /// `ExecutionPreferenceApplied` (PX-053): routing read the recorded
+    /// preference at a boundary, and what it did. With no signed registry the
+    /// outcome is `DIRECT` with a typed reason. No state change.
+    ExecutionPreferenceApplied {
+        /// The preference read.
+        preference: crate::mode::ExecutionPreference,
+        /// The `ExecutionPreferenceSet` event offset it came from.
+        preference_offset: u64,
+        /// `RUN_START` | `ROUND`.
+        boundary: String,
+        /// `DIRECT` | `ROUTED` | `PINNED`.
+        outcome: String,
+        /// Typed reason (`NO_ACTIVE_REGISTRY`, `FLOOR_APPLIED`, `FLOOR_UNDEFINED`, `MANUAL_PIN`).
+        reason_code: String,
+        /// Detail.
+        #[serde(default)]
+        detail: String,
+        /// The registry floor row the objective selected, when one compiled.
+        #[serde(default)]
+        floor_mode: String,
+        /// The effort a dispatch carries (`None` = the catalog's own, or the model exposes none).
+        #[serde(default)]
+        effort_applied: Option<String>,
+        /// The service tier a dispatch carries.
+        #[serde(default)]
+        service_tier_applied: Option<String>,
+    },
     /// `PlanRecorded` (docs/28 PX-014): the plan artifact before the first write; no state change.
     PlanRecorded {
         /// Object hash of the plan JSON.
@@ -2091,6 +2161,10 @@ impl TaskEvent {
             Self::UserQuestionAsked { .. } => "UserQuestionAsked",
             Self::UserQuestionAnswered { .. } => "UserQuestionAnswered",
             Self::AttachmentIngested { .. } => "AttachmentIngested",
+            Self::TaskModeSet { .. } => "TaskModeSet",
+            Self::TaskPostureApplied { .. } => "TaskPostureApplied",
+            Self::ExecutionPreferenceSet { .. } => "ExecutionPreferenceSet",
+            Self::ExecutionPreferenceApplied { .. } => "ExecutionPreferenceApplied",
             Self::PlanRecorded { .. } => "PlanRecorded",
             Self::PlanRevised { .. } => "PlanRevised",
             Self::PlanAnnotated { .. } => "PlanAnnotated",
@@ -2274,6 +2348,10 @@ impl Task {
             | TaskEvent::UserQuestionAsked { .. }
             | TaskEvent::UserQuestionAnswered { .. }
             | TaskEvent::AttachmentIngested { .. }
+            | TaskEvent::TaskModeSet { .. }
+            | TaskEvent::TaskPostureApplied { .. }
+            | TaskEvent::ExecutionPreferenceSet { .. }
+            | TaskEvent::ExecutionPreferenceApplied { .. }
             | TaskEvent::PlanRecorded { .. }
             | TaskEvent::PlanRevised { .. }
             | TaskEvent::PlanAnnotated { .. }

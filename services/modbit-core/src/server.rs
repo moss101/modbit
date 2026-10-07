@@ -90,7 +90,7 @@ const MAX_CONTEXT_DOCUMENT_BYTES: usize = 256 * 1024;
 
 /// Fencing (docs/13, docs/33): a mutating command must present the session's
 /// current lease generation in `expected_generation`.
-async fn require_lease(
+pub(crate) async fn require_lease(
     core: &Core,
     cid: &Option<wire::Id>,
     env: &CommandEnvelope,
@@ -652,6 +652,9 @@ async fn serve_connection(core: Arc<Core>, mut stream: BoxedStream) -> Result<()
                     "ListQuestions",
                     "RespondToQuestion",
                     "IngestAttachment",
+                    "SetTaskMode",
+                    "SetExecutionPreference",
+                    "GetTaskPosture",
                 ]
                 .map(String::from)
                 .to_vec(),
@@ -1203,6 +1206,10 @@ fn required_client_capability(env: &CommandEnvelope) -> Option<&'static str> {
         | "AcquireSessionLease"
         | "InvokeTool"
         | "UndoToolCall"
+        // The mode and the preference are the author's to set (PX-051,
+        // PX-053): a client that may start a task may say how it runs.
+        | "SetTaskMode"
+        | "SetExecutionPreference"
         | "ForkTask"
         | "RewindTask"
         | "AdmitRoutingPlan"
@@ -1513,7 +1520,11 @@ async fn attach_browser_host(
     )
 }
 
-fn reject(command_id: Option<wire::Id>, code: &str, message: impl Into<String>) -> CommandAck {
+pub(crate) fn reject(
+    command_id: Option<wire::Id>,
+    code: &str,
+    message: impl Into<String>,
+) -> CommandAck {
     CommandAck {
         command_id,
         status: CommandStatus::Rejected as i32,
@@ -1523,7 +1534,7 @@ fn reject(command_id: Option<wire::Id>, code: &str, message: impl Into<String>) 
     }
 }
 
-fn accept(command_id: Option<wire::Id>, replayed: bool, result: Vec<u8>) -> CommandAck {
+pub(crate) fn accept(command_id: Option<wire::Id>, replayed: bool, result: Vec<u8>) -> CommandAck {
     CommandAck {
         command_id,
         status: if replayed {
@@ -1638,6 +1649,42 @@ async fn handle_command(core: &Arc<Core>, env: CommandEnvelope) -> CommandAck {
             {
                 return reject(cid, "BAD_PAYLOAD", "goal_text required");
             }
+            // PX-051 / PX-053: the mode and the preference the task is
+            // created with are validated before anything is written; the
+            // events join the task's creation batch.
+            if !p.execution_profile.is_empty()
+                && !core
+                    .tools
+                    .envelope()
+                    .profile_ceilings
+                    .contains_key(&p.execution_profile)
+            {
+                return reject(
+                    cid,
+                    "UNKNOWN_PROFILE",
+                    format!(
+                        "`{}` is not an execution profile this Core serves ({})",
+                        p.execution_profile,
+                        core.tools
+                            .envelope()
+                            .profile_ceilings
+                            .keys()
+                            .cloned()
+                            .collect::<Vec<_>>()
+                            .join(", ")
+                    ),
+                );
+            }
+            let tasking_events = match crate::tasking::creation_events(
+                p.mode,
+                p.preference.as_ref(),
+                false,
+                "create",
+                &actor,
+            ) {
+                Ok(e) => e,
+                Err((code, why)) => return reject(cid, &code, why),
+            };
             if let Err(ack) = require_lease(core, &cid, &env, &session_id).await {
                 return ack;
             }
@@ -1784,6 +1831,7 @@ async fn handle_command(core: &Arc<Core>, env: CommandEnvelope) -> CommandAck {
                 typed("TaskQueued", &TaskEvent::TaskQueued, actor.clone()),
             ];
             events.extend(intake_events);
+            events.extend(tasking_events);
             let req = AppendRequest {
                 tenant_id: core.tenant_id,
                 session_id,
@@ -2029,6 +2077,7 @@ async fn handle_command(core: &Arc<Core>, env: CommandEnvelope) -> CommandAck {
                                 .get(t.task_id.as_bytes())
                                 .map(|p| wire_id(p.as_bytes())),
                             workspace_root: t.workspace_root.clone().unwrap_or_default(),
+                            mode: crate::tasking::mode_for(core, &store, t.task_id),
                         });
                     }
                 }
@@ -2117,6 +2166,10 @@ async fn handle_command(core: &Arc<Core>, env: CommandEnvelope) -> CommandAck {
                 }
                 Err(e) => reject(cid, error_code(&e), e.to_string()),
             }
+        }
+        // PX-051 / PX-053: the task's mode and execution preference.
+        "SetTaskMode" | "SetExecutionPreference" | "GetTaskPosture" => {
+            crate::tasking::handle(core, &env).await
         }
         "QueueInput" => {
             let Ok(p) = wire::QueueInput::decode(env.payload.as_slice()) else {
@@ -3900,7 +3953,9 @@ async fn handle_command(core: &Arc<Core>, env: CommandEnvelope) -> CommandAck {
             let Some(task_id) = p.task_id.as_ref().and_then(id16).map(TaskId::from_bytes) else {
                 return reject(cid, "BAD_PAYLOAD", "task_id required");
             };
-            let view = crate::routing::view(core, task_id).await;
+            let mut view = crate::routing::view(core, task_id).await;
+            // PX-053: what the user asked for, and what routing did with it.
+            crate::tasking::annotate_routing(core, task_id, &mut view).await;
             accept(cid, false, view.encode_to_vec())
         }
         // REQ-EV-0040/0041: the configuration a task is decided under.
@@ -3949,6 +4004,7 @@ async fn handle_command(core: &Arc<Core>, env: CommandEnvelope) -> CommandAck {
                     })
                     .collect(),
                 rejected_widenings: cfg.rejected_widenings.clone(),
+                posture: crate::tasking::posture_for(core, &*core.store.lock().await, &task),
             };
             accept(cid, false, view.encode_to_vec())
         }
@@ -5211,7 +5267,7 @@ async fn handle_command(core: &Arc<Core>, env: CommandEnvelope) -> CommandAck {
             )
         }
         "StartTask" => {
-            let Ok(p) = wire::StartTask::decode(env.payload.as_slice()) else {
+            let Ok(mut p) = wire::StartTask::decode(env.payload.as_slice()) else {
                 return reject(cid, "BAD_PAYLOAD", "StartTask");
             };
             let Some(task_id) = p.task_id.as_ref().and_then(id16).map(TaskId::from_bytes) else {
@@ -5369,6 +5425,20 @@ async fn handle_command(core: &Arc<Core>, env: CommandEnvelope) -> CommandAck {
                         return reject(cid, "BROWSER_HOST", why);
                     }
                 }
+            }
+            // PX-053 / PX-100: the objective, effort and tier this start
+            // carries are validated and recorded on the task before the run
+            // routes, so the router's first compile reads them. A manual pin
+            // the user recorded earlier is the model of a start that names
+            // none; it is then a pin like any other (never switched away from,
+            // never past the policy).
+            match crate::tasking::on_start(core, &task, p.preference.as_ref(), &actor).await {
+                Ok(Some((e, m))) if p.model.is_empty() && p.endpoint.is_empty() => {
+                    p.endpoint = e;
+                    p.model = m;
+                }
+                Ok(_) => {}
+                Err((code, why)) => return reject(cid, &code, why),
             }
             // Model policy: request → environment defaults → first registered.
             let endpoints = core.gateway.endpoints();
@@ -6222,6 +6292,8 @@ async fn handle_command(core: &Arc<Core>, env: CommandEnvelope) -> CommandAck {
                     evidence_refs,
                     diagnostic_features,
                     user_explanation,
+                    // PX-051 / PX-053: the mode in force and the preference.
+                    posture: crate::tasking::posture_for(core, &store, &task),
                 }
                 .encode_to_vec(),
             )

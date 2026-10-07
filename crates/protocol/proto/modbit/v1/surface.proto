@@ -10,6 +10,7 @@ import "google/protobuf/timestamp.proto";
 import "modbit/v1/domain.proto";
 import "modbit/v1/envelope.proto";
 import "modbit/v1/negotiation.proto";
+import "modbit/v1/tasking.proto";
 
 // Authentication sent with Hello: the boot-scoped secret the client obtained
 // from the Core it spawned (docs/30). Never logged, never persisted.
@@ -47,6 +48,11 @@ message CreateTask {
   // API makes when no worker holds the session; nothing is read from the
   // forge. Refused without it.
   string issue_json = 8;
+  // PX-051 (tasking.proto): the task's mode; UNSPECIFIED = AGENT. The Core
+  // derives the posture; a client sends the mode and nothing else.
+  TaskMode mode = 140;
+  // PX-053: the user's execution preference at creation (recorded on the task).
+  ExecutionPreference preference = 141;
 }
 
 message GetSessionSnapshot {
@@ -96,6 +102,7 @@ message TaskView {
   string origin = 6;               // desktop | cli | ide_adapter | forge_issue | forge_webhook | fork | subagent (M6.6)
   Id parent_task_id = 7;           // the parent of a subagent's task (M6.3); absent otherwise
   string workspace_root = 8;       // the task's workspace root (M8.2: a worker starts the task there); empty when none
+  TaskMode mode = 140;             // PX-051: the mode the user last set (AGENT when never set)
 }
 
 message SessionSnapshot {
@@ -957,6 +964,10 @@ message StartTask {
   uint32 max_tool_calls = 5;     // 0 = Alpha default (300)
   uint32 max_no_progress_turns = 6; // 0 = Alpha default (3)
   repeated string skills = 7;       // skills selected explicitly by name (M5.5); enabled skills whose triggers match the goal are selected as well
+  // PX-100 (tasking.proto): objective, reasoning effort and service tier for
+  // this task from the start; recorded as the task's execution preference. A
+  // manual pin is `endpoint` and `model` above, so `pin_*` here is refused.
+  ExecutionPreference preference = 140;
 }
 
 message TaskRunStarted {
@@ -998,6 +1009,9 @@ message TaskStatus {
   // code, whether a retry can help and what they can do; redacted, and
   // never the source's own message.
   string user_explanation = 14;
+  // PX-051 / PX-053: the task's mode, the posture in force and its execution
+  // preference (tasking.proto).
+  TaskPostureView posture = 140;
 }
 
 // ---- M2.9 Trusted Code Review Surface (docs/20) ----
@@ -1145,6 +1159,10 @@ message RoutingPlanView {
   repeated RoutingAttemptView attempts = 13;
   repeated string not_claimed = 14; // what this record does not claim
   RoutingAdmissionView admission = 15; // what admission decided (REQ-EPR-014)
+  // PX-053: the user's execution preference and what routing did with it;
+  // with no signed registry the outcome is DIRECT with a typed reason.
+  ExecutionPreferenceView preference = 140;
+  RoutingOutcomeView preference_routing = 141;
 }
 
 // ---- Plan admission (REQ-EPR-014, docs/38 §5.2) ----
@@ -2942,4 +2960,5 @@ message EffectivePolicyView {
   string device_source = 3;        // where the device policy was read, "" when none
   repeated string permissions = 4; // "capability=ALLOW|ASK|DENY by Device|Admin|Project|User"
   repeated string rejected_widenings = 5;
+  TaskPostureView posture = 140;   // PX-051 / PX-053: the mode posture and the preference in force
 }

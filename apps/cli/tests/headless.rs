@@ -1366,6 +1366,7 @@ async fn drive_desktop(endpoint: &Endpoint, secret: &[u8], repo: &str) -> Canoni
                 workspace_root: repo.into(),
                 issue_url: String::new(),
                 issue_json: String::new(),
+                ..Default::default()
             }
             .encode_to_vec(),
             g,
@@ -1491,6 +1492,7 @@ async fn start_desktop_run(c: &mut Client, task_id: &Id, generation: Option<u64>
                 max_tool_calls: 0,
                 max_no_progress_turns: 0,
                 skills: vec![],
+                ..Default::default()
             }
             .encode_to_vec(),
             generation,

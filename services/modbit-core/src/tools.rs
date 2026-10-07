@@ -446,6 +446,9 @@ pub struct ToolHost {
     /// (REQ-EV-0062): its variables and `PATH` entries reach the processes
     /// the tools start.
     pub environments: crate::environment::Environments,
+    /// Each task's mode and execution preference, folded from its log, and
+    /// the mode posture the kernel enforces on it (PX-051, PX-053).
+    pub tasking: crate::tasking::Tasking,
 }
 
 /// The Sandbox Gateway a Cloud Core Worker's Core reaches (M8.5).
@@ -554,6 +557,7 @@ impl ToolHost {
             sandboxes: Mutex::new(HashMap::new()),
             browserless: std::sync::Mutex::new(std::collections::HashSet::new()),
             environments: crate::environment::Environments::default(),
+            tasking: crate::tasking::Tasking::default(),
         })
     }
 
@@ -826,6 +830,7 @@ impl ToolHost {
                             effect_class: s.effect_class,
                             required_capabilities: &s.required_capabilities,
                             execution_profile: p,
+                            mode: modbit_domain::mode::TaskMode::Agent,
                             lease: Some(l),
                             targets: &[],
                             approval: None,
@@ -903,7 +908,17 @@ impl ToolHost {
             .configurations
             .try_for_task(task_id, &self.data_dir, root_text.as_deref())
             .map_err(|e| anyhow::anyhow!("{}: {e}", crate::config::ConfigError::CODE))?;
+        // PX-051: the task's mode posture, as its run's last round boundary
+        // adopted it (or, with no run, as the user last set it). An
+        // unreadable log is a refusal, never a guess.
+        let mode = {
+            let st = store.lock().await;
+            self.tasking
+                .mode_in_force(&st, task_id)
+                .map_err(|e| anyhow::anyhow!("MODE_UNREADABLE: {e}"))?
+        };
         let port = KernelPort {
+            mode,
             kernel: CapabilityKernel::default(),
             lease,
             approval,
@@ -2218,6 +2233,10 @@ struct KernelPort {
     config: Arc<modbit_policy::config::ResolvedConfig>,
     /// The task's workspace root, as its lease's selectors spell it.
     root: Option<String>,
+    /// The mode posture in force for the task (PX-051): the one its run's
+    /// round boundary adopted, so a call already in flight keeps the posture
+    /// it was decided under.
+    mode: modbit_domain::mode::TaskMode,
 }
 
 /// The absolute resources a call's workspace paths name, in the lease's
@@ -2263,6 +2282,20 @@ fn resource_targets(
 
 impl CapabilityPort for KernelPort {
     fn decide(&self, req: &PolicyRequest) -> PolicyDecision {
+        // PX-051: the mode's posture is the kernel's, and it speaks first: a
+        // call the mode forbids is refused with the mode's own typed code even
+        // when the tool was withheld from the projection and named anyway.
+        if let Some(KernelDecision::Deny { code, reason }) = CapabilityKernel::posture_denial(
+            self.mode,
+            req.effect_class,
+            &req.required_capabilities,
+        ) {
+            return PolicyDecision::Deny {
+                code,
+                reason,
+                approval_required: false,
+            };
+        }
         // docs/16 (M5.1): a call to a tool the model was not offered this
         // turn is refused before the kernel is asked — a crafted name is not
         // a projection. The kernel remains the boundary for what was offered.
@@ -2283,6 +2316,7 @@ impl CapabilityPort for KernelPort {
             effect_class: req.effect_class,
             required_capabilities: &req.required_capabilities,
             execution_profile: &req.execution_profile,
+            mode: self.mode,
             lease: self.lease.as_ref(),
             targets: &resource_targets(self.root.as_deref(), &req.paths),
             approval: self.approval.as_ref(),

@@ -574,6 +574,7 @@ async fn execute_relayed(
                     } else {
                         String::new()
                     },
+                    ..Default::default()
                 }
                 .encode_to_vec(),
                 Some(generation),
@@ -724,6 +725,7 @@ async fn start_queued(
                         max_tool_calls: 0,
                         max_no_progress_turns: 0,
                         skills: vec![],
+                        ..Default::default()
                     }
                     .encode_to_vec(),
                     Some(generation),

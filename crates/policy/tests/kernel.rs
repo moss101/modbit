@@ -5,6 +5,7 @@ use std::collections::BTreeMap;
 
 use modbit_domain::approval::{Approval, ApprovalEvent};
 use modbit_domain::lease::{CapabilityLease, CapabilityLeaseEvent};
+use modbit_domain::mode::TaskMode;
 use modbit_domain::toolcall::EffectClass;
 use modbit_domain::{ApprovalId, CapabilityLeaseId, TaskId, TenantId, Timestamp, ToolCallId};
 use modbit_policy::{
@@ -44,6 +45,7 @@ fn req<'a>(
         effect_class: effect,
         required_capabilities: caps,
         execution_profile: profile,
+        mode: TaskMode::Agent,
         lease,
         targets: &[],
         approval: None,
@@ -630,4 +632,88 @@ fn selectors_and_targets_compare_with_repeated_separators_collapsed() {
     assert!(sel.covers("/repo//src//a.rs"));
     assert!(sel.covers("/repo"));
     assert!(!sel.covers("/repo2/a.rs"));
+}
+
+/// PX-051: a task mode is a posture that can only narrow the profile's
+/// envelope. ASK and PLAN admit reads and nothing that writes or executes,
+/// whatever the lease or the profile would have allowed; AGENT, MULTITASK and
+/// DEBUG leave the profile's own envelope standing; no mode widens anything.
+#[test]
+fn px_051_a_mode_posture_narrows_the_profile_envelope_and_never_widens_it() {
+    let k = CapabilityKernel::default();
+    let trusted = lease("local_trusted");
+    let write = caps(&["fs.write"]);
+    let read = caps(&["fs.read"]);
+    let shell = caps(&["shell.exec"]);
+    let with = |mode: TaskMode, tool: &str, effect: EffectClass, c: &[String]| {
+        let mut r = req(tool, effect, c, "local_trusted", Some(&trusted));
+        r.mode = mode;
+        k.decide(&r)
+    };
+    for mode in [TaskMode::Ask, TaskMode::Plan] {
+        // A write the trusted profile would allow is denied by the posture.
+        let d = with(mode, "fs.write", EffectClass::ReversibleWrite, &write);
+        assert_eq!(code(&d), "MODE_POSTURE", "{mode:?}: {d:?}");
+        // So is execution, even of a command classed as a read.
+        let d = with(mode, "test.run", EffectClass::ReadOnly, &shell);
+        assert_eq!(code(&d), "MODE_POSTURE", "{mode:?}: {d:?}");
+        // And a destructive effect, which would have asked for an approval.
+        let d = with(mode, "fs.delete", EffectClass::Destructive, &write);
+        assert_eq!(code(&d), "MODE_POSTURE", "{mode:?}: {d:?}");
+        // A read is not touched by it.
+        assert_eq!(
+            code(&with(mode, "fs.read", EffectClass::ReadOnly, &read)),
+            "ALLOW",
+            "{mode:?}"
+        );
+    }
+    // The other modes leave the profile's envelope exactly as it is.
+    for mode in [TaskMode::Agent, TaskMode::Multitask, TaskMode::Debug] {
+        assert_eq!(
+            code(&with(
+                mode,
+                "fs.write",
+                EffectClass::ReversibleWrite,
+                &write
+            )),
+            "ALLOW",
+            "{mode:?}"
+        );
+        assert_eq!(
+            code(&with(mode, "fs.delete", EffectClass::Destructive, &write)),
+            "APPROVAL_REQUIRED",
+            "{mode:?}"
+        );
+    }
+    // A mode never widens: the autonomous profile still refuses a destructive
+    // effect in every mode.
+    let auto = lease("local_autonomous");
+    for mode in TaskMode::ALL {
+        let mut r = req(
+            "fs.delete",
+            EffectClass::Destructive,
+            &write,
+            "local_autonomous",
+            Some(&auto),
+        );
+        r.mode = mode;
+        assert!(
+            matches!(k.decide(&r), KernelDecision::Deny { .. }),
+            "{mode:?}"
+        );
+    }
+    // The posture the host asks for ahead of everything else is the kernel's.
+    assert!(
+        CapabilityKernel::posture_denial(TaskMode::Ask, EffectClass::ReversibleWrite, &write)
+            .is_some()
+    );
+    assert!(
+        CapabilityKernel::posture_denial(TaskMode::Agent, EffectClass::Destructive, &write)
+            .is_none()
+    );
+    // Names round-trip, and an unknown name is not a mode.
+    for mode in TaskMode::ALL {
+        assert_eq!(TaskMode::parse(mode.name()), Some(mode));
+    }
+    assert_eq!(TaskMode::parse("god"), None);
 }
