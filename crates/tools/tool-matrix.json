@@ -594,6 +594,64 @@
       "test": "qual_px_006_the_forge_adapter_reads_and_writes_github_behind_leases_effects_receipts_and_idempotency_keys"
     },
     {
+      "tool": "forge.pr.read",
+      "family": "forge",
+      "source_behaviors": [
+        "gh pr view",
+        "GitHub get a pull request (MCP github server)"
+      ],
+      "owner": "External Tool Hub (forge adapter)",
+      "effect": "ReadOnly",
+      "capabilities": [
+        "network.egress"
+      ],
+      "test": "qual_px_125_the_forge_adapter_reads_a_pull_request_and_its_diff_and_posts_approved_redacted_comments"
+    },
+    {
+      "tool": "forge.pr.diff",
+      "family": "forge",
+      "source_behaviors": [
+        "gh pr diff",
+        "GitHub list pull request files (MCP github server)"
+      ],
+      "owner": "External Tool Hub (forge adapter)",
+      "effect": "ReadOnly",
+      "capabilities": [
+        "network.egress"
+      ],
+      "test": "qual_px_125_the_forge_adapter_reads_a_pull_request_and_its_diff_and_posts_approved_redacted_comments"
+    },
+    {
+      "tool": "forge.issue.comment",
+      "family": "forge",
+      "source_behaviors": [
+        "gh issue comment",
+        "GitHub add issue comment (MCP github server)"
+      ],
+      "owner": "External Tool Hub (forge adapter)",
+      "effect": "ExternalSideEffect",
+      "capabilities": [
+        "network.egress",
+        "secret.use"
+      ],
+      "test": "qual_px_125_the_forge_adapter_reads_a_pull_request_and_its_diff_and_posts_approved_redacted_comments"
+    },
+    {
+      "tool": "forge.pr.comment",
+      "family": "forge",
+      "source_behaviors": [
+        "gh pr comment",
+        "GitHub add pull request comment (MCP github server)"
+      ],
+      "owner": "External Tool Hub (forge adapter)",
+      "effect": "ExternalSideEffect",
+      "capabilities": [
+        "network.egress",
+        "secret.use"
+      ],
+      "test": "qual_px_125_the_forge_adapter_reads_a_pull_request_and_its_diff_and_posts_approved_redacted_comments"
+    },
+    {
       "tool": "browser.navigate",
       "family": "browser",
       "source_behaviors": [
