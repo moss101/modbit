@@ -758,6 +758,21 @@
       ],
       "test": "qual_ev_0104_0193_a_real_mcp_server_lists_calls_and_cancels_while_two_sessions_share_one_transport",
       "effect_note": "cancelling is a read of the host's own call table plus one notification, so it stays available under an emergency stop; an effectful call cancelled after it was sent is reported EXTERNAL_OUTCOME_UNKNOWN \u2014 the host never claims the effect did not happen (docs/16, docs/54 fault 25)"
+    },
+    {
+      "tool": "skill.load",
+      "family": "skills",
+      "source_behaviors": [
+        "progressive disclosure: read a skill's body on demand",
+        "list the skills a model may load"
+      ],
+      "owner": "Skill Registry (services/modbit-core::skills over crates/skills)",
+      "effect": "ReadOnly",
+      "capabilities": [
+        "fs.read"
+      ],
+      "test": "qual_px_105_052_trust_by_hash_index_and_skill_load_reach_a_model_only_when_the_owner_says",
+      "effect_note": "a bounded, provenance-labelled read of a trusted skill's instructions, procedure or resource; it grants no tool, capability or approval, and an untrusted, revoked, forbidden or user-only skill is refused (REQ-PX-105)"
     }
   ],
   "harness": [
@@ -992,6 +1007,11 @@
       "namespace": "external",
       "inventory_ref": "external.list",
       "justification": "the External Tool Hub is a distinct effector: an MCP server is a program outside the host with its own protocol, lifecycle and trust state, and no skill over existing tools can speak JSON-RPC to it, bound its untrusted declarations, pool its transport per tenant and workspace, or reconcile an interrupted effectful call (docs/16 'MCP / external tools', docs/17 new-tool rule, M9.4)"
+    },
+    {
+      "namespace": "skill",
+      "inventory_ref": "skill.list / load",
+      "justification": "skills are guidance, but the index only names them: reading a body on demand needs a host-served read of the registry as the owner's trust decisions stand now, bounded and labelled, which no fs.read can do because profile skills live outside the workspace (docs/17 skill.list / load, REQ-PX-105)"
     }
   ],
   "namespaces_note": "REQ-EV-0230 build/buy lint: every registered tool namespace names the docs/17 canonical inventory row it realizes and why it exists as a tool rather than a skill over existing tools; a new namespace without a row here, or whose inventory_ref is not in docs/17, fails qual_ev_0230."

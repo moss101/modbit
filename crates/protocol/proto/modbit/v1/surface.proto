@@ -819,6 +819,14 @@ message TaskEconomicsView {
   uint32 unreported_calls = 30;    // the provider never reported usage: cost unknown
   string priced_under = 31;        // the registry generation
   repeated RunUsageView runs = 32; // attribution per run and per step (turn)
+  // REQ-PX-116 (field block 240-259): the children's spend counts with the parent's.
+  uint64 children_cost_minor = 240;   // spend of the task's children (their own priced calls)
+  uint32 children_model_calls = 241;
+  uint64 subtree_cost_minor = 242;    // cost_minor + children_cost_minor
+  uint32 children_unmetered_calls = 243; // child calls whose cost is unknown (never counted as zero)
+  uint64 cost_cap_minor = 244;        // the task's cap, 0 = none
+  uint64 cost_reserved_minor = 245;   // held for live children at this moment
+  uint64 cost_remaining_minor = 246;  // cap - own - children committed; 0 when there is no cap
 }
 
 // IMP-EV-0032: what one run cost, step by step.

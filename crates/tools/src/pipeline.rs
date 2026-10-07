@@ -80,6 +80,17 @@ pub trait MemoryPort: Send + Sync {
     ) -> BoxFuture<'a, Result<serde_json::Value, (String, String)>>;
 }
 
+/// The skill registry a task reads through `skill.load` (REQ-PX-105): the
+/// Core re-reads the profile, System and project scopes and the owner's
+/// trust decisions at every call, and serves only what is enabled. Read-only:
+/// it returns text and grants nothing.
+pub trait SkillPort: Send + Sync {
+    /// Load the part of a skill `args` name (`name?`, `procedure?`,
+    /// `resource?`, `offset?`, `max_bytes?`); with no name, list what may be
+    /// loaded. `Err` carries a typed code and message.
+    fn load(&self, args: &serde_json::Value) -> Result<serde_json::Value, (String, String)>;
+}
+
 /// A language-service request (docs/18 "Semantic language services").
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct LanguageRequest {
@@ -212,6 +223,8 @@ pub struct InvokeContext {
     /// curated memory through it and `memory.propose` records a candidate.
     /// `None` = no memory is served to this task.
     pub memory: Option<Arc<dyn MemoryPort>>,
+    /// The skill registry `skill.load` reads (REQ-PX-105). `None` = none.
+    pub skills: Option<Arc<dyn SkillPort>>,
     /// The host's external tool hub (M9.4, REQ-EV-0104/0193, docs/16):
     /// `external.list` / `external.call` / `external.cancel` reach the
     /// task's MCP servers through it, with the transports, the pool and

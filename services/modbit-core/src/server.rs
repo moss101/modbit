@@ -670,6 +670,10 @@ async fn serve_connection(core: Arc<Core>, mut stream: BoxedStream) -> Result<()
                     "SetTaskMode",
                     "SetExecutionPreference",
                     "GetTaskPosture",
+                    "SetTaskBudgets",
+                    "ListSkills",
+                    "TrustSkill",
+                    "UntrustSkill",
                 ]
                 .map(String::from)
                 .to_vec(),
@@ -1248,6 +1252,12 @@ fn required_client_capability(env: &CommandEnvelope) -> Option<&'static str> {
             "repository.trust"
         }
         "RunExtensionCommand" => "task.author",
+        // REQ-PX-116: a task's limits are the author's; REQ-PX-105: letting
+        // a skill reach the model is trusting content a person did not
+        // write to steer the agent — the same class of decision as trusting
+        // the repository.
+        "SetTaskBudgets" => "task.author",
+        "TrustSkill" | "UntrustSkill" => "repository.trust",
         "ImportAgentConfig" => "repository.trust",
         "ConfigureSandboxGateway" => "sandbox.configure",
         "ExportHandoff" => "task.author",
@@ -5618,6 +5628,12 @@ pub(crate) async fn handle_command(core: &Arc<Core>, env: CommandEnvelope) -> Co
                 Err((code, detail)) => reject(cid, &code, detail),
             }
         }
+        "SetTaskBudgets" => {
+            crate::budgets::set(core, cid, &env, record("SetTaskBudgets"), actor).await
+        }
+        "ListSkills" | "TrustSkill" | "UntrustSkill" => {
+            crate::skills::handle(core, cid, &env, actor).await
+        }
         "ListHooks" => {
             let Ok(p) = wire::ListHooks::decode(env.payload.as_slice()) else {
                 return reject(cid, "BAD_PAYLOAD", "ListHooks");
@@ -7269,7 +7285,7 @@ fn conversation_result(store: &EventStore, events: &[StoredEvent], task_id: Task
     }
 }
 
-fn split(outcome: CommandOutcome) -> (Vec<StoredEvent>, bool) {
+pub(crate) fn split(outcome: CommandOutcome) -> (Vec<StoredEvent>, bool) {
     match outcome {
         CommandOutcome::Applied(e) => (e, false),
         CommandOutcome::Replayed(e) => (e, true),

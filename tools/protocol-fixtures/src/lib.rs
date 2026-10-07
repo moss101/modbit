@@ -198,6 +198,47 @@ pub fn samples() -> Vec<Sample> {
         objects_read: 0,
     };
 
+    let skill_list = SkillList {
+        skills: vec![SkillView {
+            name: "release-notes".into(),
+            version: "1.2.0".into(),
+            description: "write release notes from merged changes".into(),
+            scope: "USER".into(),
+            content_hash: "e".repeat(64),
+            trust: "TRUSTED_BY_OWNER".into(),
+            trust_detail: String::new(),
+            enabled: true,
+            invocation: "BOTH".into(),
+            paths: vec!["docs/**".into()],
+            paths_active: true,
+            index_tokens: 14,
+            indexed: true,
+            index_form: "FULL".into(),
+            selected: false,
+            source: "/profile/skills/release-notes".into(),
+            provenance_source: String::new(),
+            provenance_author: "me".into(),
+            provenance_license: "MIT".into(),
+            required_tools: vec!["fs.read".into()],
+            lifecycle: "ENABLED".into(),
+        }],
+        rejected: vec![SkillRefusalView {
+            source: "/profile/skills/broken".into(),
+            code: "MALFORMED_MANIFEST".into(),
+            reason: "no front matter".into(),
+        }],
+        index_budget_tokens: 2000,
+        index_used_tokens: 14,
+        index_omitted: 0,
+        system_root: "/etc/modbit/skills".into(),
+    };
+    let budgets = SetTaskBudgets {
+        task_id: id(0x31),
+        max_cost_minor: 5000,
+        max_wall_ms: 9_007_199_254_740_993, // > 2^53
+        max_children: 2,
+        forbid_spawn: false,
+    };
     let command = CommandEnvelope {
         command_id: id(0x11),
         tenant_id: id(0x22),
@@ -838,6 +879,38 @@ pub fn samples() -> Vec<Sample> {
                 "lastOffset": "90", "eventsRead": "0", "objectsRead": "0"
             }),
             decode: reencode::<AgentHeaders>,
+        },
+        Sample {
+            name: "skill_list",
+            type_name: "modbit.v1.SkillList",
+            bytes: skill_list.encode_to_vec(),
+            expected: json!({
+                "skills": [{
+                    "name": "release-notes", "version": "1.2.0",
+                    "description": "write release notes from merged changes",
+                    "scope": "USER", "contentHash": "e".repeat(64),
+                    "trust": "TRUSTED_BY_OWNER", "trustDetail": "", "enabled": true,
+                    "invocation": "BOTH", "paths": ["docs/**"], "pathsActive": true,
+                    "indexTokens": 14, "indexed": true, "indexForm": "FULL",
+                    "selected": false, "source": "/profile/skills/release-notes",
+                    "provenanceSource": "", "provenanceAuthor": "me", "provenanceLicense": "MIT",
+                    "requiredTools": ["fs.read"], "lifecycle": "ENABLED"
+                }],
+                "rejected": [{"source": "/profile/skills/broken", "code": "MALFORMED_MANIFEST", "reason": "no front matter"}],
+                "indexBudgetTokens": 2000, "indexUsedTokens": 14, "indexOmitted": 0,
+                "systemRoot": "/etc/modbit/skills"
+            }),
+            decode: reencode::<SkillList>,
+        },
+        Sample {
+            name: "set_task_budgets",
+            type_name: "modbit.v1.SetTaskBudgets",
+            bytes: budgets.encode_to_vec(),
+            expected: json!({
+                "taskId": idhex(0x31), "maxCostMinor": "5000",
+                "maxWallMs": "9007199254740993", "maxChildren": 2, "forbidSpawn": false
+            }),
+            decode: reencode::<SetTaskBudgets>,
         },
         Sample {
             name: "hello",

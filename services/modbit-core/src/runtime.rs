@@ -96,6 +96,9 @@ struct Running {
     /// REQ-EV-0049: park at the next safe boundary — durable, resumable,
     /// distinct from cancel.
     park: CancellationToken,
+    /// The budgets the loop was started under (REQ-PX-116): what a child it
+    /// brings back is regranted against.
+    budgets: Budgets,
     /// REQ-PX-101: who asked for the park, when a person did (`PauseTask`).
     /// A park with no request is the parent's (`agent.park`); one with a
     /// request ends the run `Waiting(Paused)` and records `TaskPaused`.
@@ -444,6 +447,7 @@ impl Runtime {
                                     cancel: cancel.clone(),
                                     park: park.clone(),
                                     pause: Default::default(),
+                                    budgets: cfg.budgets,
                                 },
                             );
                             let core2 = Arc::clone(core);
@@ -519,6 +523,7 @@ impl Runtime {
                 cancel: cancel.clone(),
                 park: park.clone(),
                 pause: Default::default(),
+                budgets: cfg.budgets,
             },
         );
         let core2 = Arc::clone(core);
@@ -550,6 +555,11 @@ impl Runtime {
             });
         }
         Ok((run_id, resumed))
+    }
+
+    /// The budgets a live loop was started under (REQ-PX-116).
+    pub async fn budgets_of(&self, task_id: &TaskId) -> Option<Budgets> {
+        self.tasks.lock().await.get(task_id).map(|r| r.budgets)
     }
 
     /// The live loop's cancellation token, for work that must stop with it
@@ -1649,14 +1659,39 @@ pub(crate) async fn rebuild(
     // docs/64 DI-9: the questions that named protected paths, until answered.
     let mut protected_questions: HashMap<String, Vec<String>> = HashMap::new();
     let mut applied = 0usize;
+    // REQ-PX-116: what the task has spent, from its own log — priced at
+    // each call's own binding in the active registry — and the wall clock
+    // its runs have used (first to last event of each run).
+    let registry = core.gateway.registry();
+    let mut spend = crate::usage::SpendScan::new(registry.as_ref());
     for ev in events
         .iter()
         .filter(|e| e.envelope.task_id == Some(task.task_id))
     {
         last_offset = ev.offset;
         let payload = store.payload(&ev.envelope).unwrap_or_default();
+        spend.observe(&ev.envelope, &payload);
         match ev.envelope.event_type.as_str() {
             "TurnPrepared" => state.turns += 1,
+            "TaskBudgetsSet" => {
+                // The task's own limits (REQ-PX-116). A subagent's are its
+                // capsule's and nothing else's.
+                if task.origin != modbit_domain::task::TaskOrigin::Subagent {
+                    state.budgets.max_cost_minor =
+                        payload["max_cost_minor"].as_u64().filter(|c| *c > 0);
+                    state.budgets.max_wall_ms = payload["max_wall_ms"].as_u64().filter(|c| *c > 0);
+                    state.budgets.max_children = if payload["forbid_spawn"].as_bool() == Some(true)
+                    {
+                        0
+                    } else {
+                        payload["max_children"]
+                            .as_u64()
+                            .filter(|c| *c > 0)
+                            .and_then(|c| u32::try_from(c).ok())
+                            .unwrap_or(harness::DEFAULT_MAX_CHILDREN)
+                    };
+                }
+            }
             "TaskForked" => {
                 // The capsule names what the fork inherited; the model reads
                 // it in harness_state instead of re-deciding.
@@ -1794,6 +1829,13 @@ pub(crate) async fn rebuild(
                         "objective": c.spec.objective,
                         "write_scope": c.spec.write_scope,
                         "read_scope": c.spec.read_scope,
+                        "private_context_refs": c.private_context_refs,
+                        "budget": {
+                            "max_turns": c.max_turns,
+                            "max_tool_calls": c.max_tool_calls,
+                            "max_cost_minor": c.max_cost_minor,
+                            "max_wall_ms": c.max_wall_ms,
+                        },
                         "verification": c.spec.verification,
                         "expected_artifacts": c.spec.expected_artifacts,
                         "branch": c.branch,
@@ -2074,6 +2116,10 @@ pub(crate) async fn rebuild(
     // M6.1: the WorkGraph is a projection of the same log (docs/31
     // `work_nodes`); compaction never touched it (REQ-EV-0052).
     state.work_graph.nodes = store.work_nodes(&task.task_id).unwrap_or_default();
+    let spent = spend.finish();
+    state.cost_minor = spent.cost_minor;
+    state.cost_unmetered_calls = spent.unmetered_calls;
+    state.wall_ms = spent.wall_ms;
     let pending = queued.into_iter().skip(applied).collect();
     (transcript, state, last_offset, pending)
 }
@@ -2423,6 +2469,11 @@ fn projection(
             });
             continue;
         }
+        // REQ-PX-116: `skill.load` is offered only while a skill is loadable
+        // (trusted, enabled, selected) for this task.
+        if s.name == "skill.load" && !state.skills_loadable {
+            continue;
+        }
         if let Some(c) = s.required_capabilities.iter().find(|c| denied.contains(*c)) {
             state.withheld_tools.push(harness::WithheldTool {
                 name: s.name.clone(),
@@ -2538,7 +2589,13 @@ fn projection(
     // nothing either and answers with `review.report` (REQ-EPR-007).
     if crate::critique::is_review(task) {
         tools.push(crate::critique::projection());
-    } else if state.capsule.is_none() && posture.subagents {
+    } else if state.capsule.is_none()
+        && posture.subagents
+        && state.budgets.max_children > 0
+        && crate::spawn::spawn_allowed(core, task)
+    {
+        // REQ-PX-116: delegation is offered only where the task and the
+        // configuration in force allow it.
         tools.extend(crate::agent_tools::projections());
     }
     tools.push(ToolProjection {
@@ -2792,6 +2849,15 @@ async fn run_loop(
     // docs/28 §5 (PX-039): a goal that reports a failure must reproduce it
     // before a fix transaction.
     state.goal_reports_failure = harness::goal_reports_failure(&task.goal_text);
+    // REQ-PX-116: the wall clock the task's earlier runs used, and this
+    // run's own clock from here.
+    let wall_prior = {
+        let st = core.store.lock().await;
+        state
+            .wall_ms
+            .saturating_sub(crate::usage::run_span_ms(&st, &task.session_id, run_id))
+    };
+    let run_clock = std::time::Instant::now();
     // Protocol state (docs/19 layer 2, M4.1): the calls the model asked for
     // that never finished are re-entered by their recorded ids, at the exact
     // boundary the run stopped at; the model is not asked again.
@@ -2865,15 +2931,15 @@ async fn run_loop(
     // kernel — what a skill may use at most; the node's turn-by-turn
     // projection stays the harness's); their instructions are a stable
     // prompt segment, their selection is on the log.
-    let skill_instructions: Vec<String> = {
-        let surface: Vec<String> = core
-            .tools
-            .visible_specs_for(&task.task_id, Some(&task.execution_profile), lease.as_ref())
-            .into_iter()
-            .map(|s| s.name)
-            .collect();
-        crate::skills::select_for_run(&core, &task, lt, &actor, &cfg.skills, &surface).await
-    };
+    let skill_surface: Vec<String> = core
+        .tools
+        .visible_specs_for(&task.task_id, Some(&task.execution_profile), lease.as_ref())
+        .into_iter()
+        .map(|s| s.name)
+        .collect();
+    // REQ-PX-105: re-read every round, so trust, revocation and edits apply
+    // to the next request.
+    let mut run_skills = crate::skills::RunSkills::new(cfg.skills.clone());
     // Rules (REQ-EV-0059/0105/0129): loaded once, selected every turn from
     // the paths the task has made active, recorded when the selection
     // changes.
@@ -3131,6 +3197,11 @@ async fn run_loop(
         state.exec_only = proj_settings.mode
             == modbit_core_runtime::projection::ProjectionMode::ExecOnly
             && !crate::critique::is_review(&task);
+        // REQ-PX-105: trust, revocation and edits apply to this request, and
+        // `skills_loadable` is current before the projection reads it.
+        let skill_instructions: Vec<String> = run_skills
+            .turn(&core, &task, lt, &actor, &mut state, &skill_surface)
+            .await;
         let proj_facts = crate::tool_projection::facts_for(&core, &task, &mut state).await;
         let assembled = projection(
             &core,
@@ -3337,6 +3408,14 @@ async fn run_loop(
             )
             .unwrap_or(0);
             seen_offset = seen_offset.max(off);
+        }
+        // REQ-PX-116: the round boundary is where the whole tree's spend is
+        // judged — the wall clock the runs have used, and what the task's
+        // children hold against it (the log's, so a restart sees the same).
+        state.wall_ms = wall_prior
+            .saturating_add(u64::try_from(run_clock.elapsed().as_millis()).unwrap_or(u64::MAX));
+        if state.capsule.is_none() {
+            crate::spawn::refresh_children_held(&core, &task, &mut state).await;
         }
         if let Err(x) = state.check_turn_budget() {
             break LoopEnd::BudgetExhausted(x);
@@ -4261,6 +4340,21 @@ async fn run_loop(
                         .ok()
                 };
                 apply_entry(&mut transcript, &mut state, assistant);
+                // REQ-PX-116: what this completed request cost, priced as
+                // the ledger prices it, counts against the task's cap now —
+                // the next round boundary sees it.
+                match crate::usage::call_cost(
+                    core.gateway.registry().as_ref(),
+                    &route_record,
+                    &usage,
+                    usage_reported,
+                ) {
+                    crate::usage::CallCost::Priced(m) => {
+                        state.cost_minor = state.cost_minor.saturating_add(m);
+                    }
+                    crate::usage::CallCost::Unmetered => state.cost_unmetered_calls += 1,
+                    crate::usage::CallCost::NoRequest => {}
+                }
                 {
                     let mut store = core.store.lock().await;
                     let _ = append(
@@ -5703,9 +5797,12 @@ async fn run_loop(
             modbit_domain::agent::AgentStatus::Waiting,
             format!("needs attention: {code}"),
         ),
-        LoopEnd::BudgetExhausted(_) => (
+        LoopEnd::BudgetExhausted(x) => (
             modbit_domain::agent::AgentStatus::Waiting,
-            "budget exhausted".into(),
+            format!(
+                "budget exhausted: {} {}/{} (BUDGET_EXHAUSTED)",
+                x.budget, x.used, x.limit
+            ),
         ),
         LoopEnd::NoProgress(n) => (
             modbit_domain::agent::AgentStatus::Waiting,

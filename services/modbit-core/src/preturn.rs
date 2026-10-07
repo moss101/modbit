@@ -343,6 +343,15 @@ async fn seed_pack(
             .workspace(&root)
             .await
             .map_err(|e| ("NO_WORKSPACE".to_owned(), e.to_string()))?;
+        // REQ-PX-116: a child reads only what its lease covers; so does its
+        // pack.
+        let lease = core
+            .store
+            .lock()
+            .await
+            .leases_for_task(&task.task_id)
+            .ok()
+            .and_then(|l| l.into_iter().next());
         let port = core
             .tools
             .index_port(
@@ -352,6 +361,8 @@ async fn seed_pack(
                 task.task_id,
                 &ws,
                 &canonical,
+                lease.as_ref(),
+                task.workspace_root.as_deref(),
             )
             .await
             .map_err(|e| ("INDEX_UNAVAILABLE".to_owned(), e.to_string()))?;

@@ -57,6 +57,184 @@ fn text(v: &Value) -> String {
     v.as_str().unwrap_or_default().to_owned()
 }
 
+/// What the cost of one `ModelUsageRecorded` is, for the hierarchical
+/// budgets (REQ-PX-116): the same pricing rules as the ledger below
+/// (`accounting::price`, minor units, each part rounded up).
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub(crate) enum CallCost {
+    /// Priced, in minor units.
+    Priced(u64),
+    /// A completed request whose cost cannot be stated: the provider
+    /// reported no usage, or no active registry prices the binding.
+    Unmetered,
+    /// An attempt with no route (interrupted before one was chosen): not a
+    /// request the provider was asked for, so nothing to count.
+    NoRequest,
+}
+
+/// Price one usage record: `route` is the recorded route (`Null` when the
+/// attempt never reached a provider).
+pub(crate) fn call_cost(
+    registry: Option<&modbit_providers::registry::ModelRegistry>,
+    route: &Value,
+    usage: &modbit_providers::Usage,
+    reported: bool,
+) -> CallCost {
+    if route.is_null() {
+        return CallCost::NoRequest;
+    }
+    let endpoint = text(&route["endpoint"]);
+    let binding = text(&route["requested_model"]);
+    match reported
+        .then(|| crate::accounting::price(registry, &endpoint, &binding, usage))
+        .flatten()
+    {
+        Some(p) => CallCost::Priced(p.minor),
+        None => CallCost::Unmetered,
+    }
+}
+
+/// The usage a recorded payload carries.
+pub(crate) fn usage_of(p: &Value) -> modbit_providers::Usage {
+    modbit_providers::Usage {
+        input_tokens: p["input_tokens"].as_u64().unwrap_or(0),
+        output_tokens: p["output_tokens"].as_u64().unwrap_or(0),
+        cached_input_tokens: p["cached_input_tokens"].as_u64().unwrap_or(0),
+        cache_write_input_tokens: 0,
+    }
+}
+
+/// First to last event of one run, milliseconds: what a run that is just
+/// starting has already put on the log (the budget's wall clock counts its
+/// own elapsed time from here, so these are not counted twice).
+pub(crate) fn run_span_ms(
+    store: &EventStore,
+    session: &modbit_domain::SessionId,
+    run: modbit_domain::RunId,
+) -> u64 {
+    let (mut lo, mut hi) = (i64::MAX, i64::MIN);
+    for e in store
+        .read_session(session, 0, usize::MAX)
+        .unwrap_or_default()
+    {
+        if e.envelope.run_id == Some(run) {
+            lo = lo.min(e.envelope.occurred_at.0);
+            hi = hi.max(e.envelope.occurred_at.0);
+        }
+    }
+    u64::try_from(hi.saturating_sub(lo)).unwrap_or(0)
+}
+
+/// What a task has spent, read off its events in log order (REQ-PX-116).
+/// One scanner for the task's own run loop and for the parent that totals
+/// its children, so a child's spend is counted the way the child counts it.
+pub(crate) struct SpendScan<'a> {
+    registry: Option<&'a modbit_providers::registry::ModelRegistry>,
+    turns: u64,
+    tool_calls: u64,
+    cost_minor: u64,
+    unmetered_turns: std::collections::HashSet<modbit_domain::TurnId>,
+    run_span: HashMap<modbit_domain::RunId, (i64, i64)>,
+}
+
+/// The finished reading of a [`SpendScan`].
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
+pub(crate) struct Spent {
+    pub turns: u64,
+    pub tool_calls: u64,
+    pub cost_minor: u64,
+    /// Completed requests whose cost is unknown.
+    pub unmetered_calls: u32,
+    /// First to last event of each run, summed.
+    pub wall_ms: u64,
+}
+
+impl Spent {
+    /// As the hierarchical arithmetic holds it.
+    pub(crate) fn held(&self) -> modbit_core_runtime::budget::Held {
+        modbit_core_runtime::budget::Held {
+            turns: self.turns,
+            tool_calls: self.tool_calls,
+            cost_minor: self.cost_minor,
+            wall_ms: self.wall_ms,
+        }
+    }
+}
+
+impl<'a> SpendScan<'a> {
+    pub(crate) fn new(registry: Option<&'a modbit_providers::registry::ModelRegistry>) -> Self {
+        Self {
+            registry,
+            turns: 0,
+            tool_calls: 0,
+            cost_minor: 0,
+            unmetered_turns: std::collections::HashSet::new(),
+            run_span: HashMap::new(),
+        }
+    }
+
+    /// One event of the task, with its decoded payload.
+    pub(crate) fn observe(&mut self, env: &modbit_domain::event::EventEnvelope, payload: &Value) {
+        if let Some(r) = env.run_id {
+            let at = env.occurred_at.0;
+            self.run_span
+                .entry(r)
+                .and_modify(|s| {
+                    s.0 = s.0.min(at);
+                    s.1 = s.1.max(at);
+                })
+                .or_insert((at, at));
+        }
+        match env.event_type.as_str() {
+            "TurnPrepared" => self.turns += 1,
+            "StepScheduled"
+                if serde_json::from_value::<modbit_domain::step::StepType>(
+                    payload["step_type"].clone(),
+                )
+                .is_ok_and(|t| t == modbit_domain::step::StepType::ToolCall) =>
+            {
+                self.tool_calls += 1;
+            }
+            "ModelUsageRecorded" => match call_cost(
+                self.registry,
+                &payload["route"],
+                &usage_of(payload),
+                payload["reported"].as_bool().unwrap_or(false),
+            ) {
+                CallCost::Priced(m) => self.cost_minor = self.cost_minor.saturating_add(m),
+                CallCost::Unmetered => {
+                    if let Some(t) = env.turn_id {
+                        self.unmetered_turns.insert(t);
+                    }
+                }
+                CallCost::NoRequest => {}
+            },
+            // A failed or interrupted attempt is not a completed request
+            // whose cost went unseen: it does not stop a run under a cap.
+            "TurnFailed" | "TurnInterrupted" => {
+                if let Some(t) = env.turn_id {
+                    self.unmetered_turns.remove(&t);
+                }
+            }
+            _ => {}
+        }
+    }
+
+    pub(crate) fn finish(self) -> Spent {
+        Spent {
+            turns: self.turns,
+            tool_calls: self.tool_calls,
+            cost_minor: self.cost_minor,
+            unmetered_calls: u32::try_from(self.unmetered_turns.len()).unwrap_or(u32::MAX),
+            wall_ms: self
+                .run_span
+                .values()
+                .map(|(a, b)| u64::try_from(b - a).unwrap_or(0))
+                .sum(),
+        }
+    }
+}
+
 /// Every model invocation of the session, in log order, priced.
 pub(crate) fn calls(
     store: &EventStore,

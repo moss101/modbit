@@ -1,0 +1,45 @@
+{
+  "expected": {
+    "indexBudgetTokens": 2000,
+    "indexOmitted": 0,
+    "indexUsedTokens": 14,
+    "rejected": [
+      {
+        "code": "MALFORMED_MANIFEST",
+        "reason": "no front matter",
+        "source": "/profile/skills/broken"
+      }
+    ],
+    "skills": [
+      {
+        "contentHash": "eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee",
+        "description": "write release notes from merged changes",
+        "enabled": true,
+        "indexForm": "FULL",
+        "indexTokens": 14,
+        "indexed": true,
+        "invocation": "BOTH",
+        "lifecycle": "ENABLED",
+        "name": "release-notes",
+        "paths": [
+          "docs/**"
+        ],
+        "pathsActive": true,
+        "provenanceAuthor": "me",
+        "provenanceLicense": "MIT",
+        "provenanceSource": "",
+        "requiredTools": [
+          "fs.read"
+        ],
+        "scope": "USER",
+        "selected": false,
+        "source": "/profile/skills/release-notes",
+        "trust": "TRUSTED_BY_OWNER",
+        "trustDetail": "",
+        "version": "1.2.0"
+      }
+    ],
+    "systemRoot": "/etc/modbit/skills"
+  },
+  "type": "modbit.v1.SkillList"
+}

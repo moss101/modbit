@@ -190,7 +190,7 @@ fn exit_for_state(state: &str) -> u8 {
     }
 }
 
-const USAGE: &str = "usage: modbit-cli --data-dir <dir> (session create | session show --session <id> | task create --session <id> [--workspace <dir>] [--command-id <hex>] [--mode agent|plan|debug|multitask|ask] [--profile <execution-profile>] [--objective cost|balance|intelligence] [--effort low|medium|high] [--tier <name>] <goal> | task mode --session <id> --task <id> <mode> | task preference --session <id> --task <id> [--objective o] [--effort e] [--tier t] [--pin <endpoint>/<model> | --clear-pin] | task posture --task <id> | task create --session <id> [--workspace <dir>] [--command-id <hex>] [--mode agent|plan|debug|multitask|ask] [--profile <execution-profile>] [--objective cost|balance|intelligence] [--effort low|medium|high] [--tier <name>] <goal> | task from-issue --session <id> [--workspace <dir>] [--command-id <hex>] <issue-url> | events tail --session <id> [--after N] [--count N] [--json] | task attach --session <id> --task <id> <file> | question list --task <id> | question answer --session <id> --task <id> --question <id> [--option <id>] [--endpoint <name>] [--model <id>] [--wait] [text] | tool list [--task <id>] | tool invoke --session <id> --task <id> [--call <id>] <tool> <arguments-json> | approval list --session <id> | approval resolve --session <id> --approval <id> [--intent <hash>] (approve|deny) [reason] | stop --session <id> [reason] | receipts [--task <id>] | lease list --task <id> | task run --session <id> --task <id> [--endpoint <name>] [--model <id>] [--max-turns N] [--max-tool-calls N] [--max-no-progress-turns N] [--skill <name>]... [--mode <mode>] [--objective o] [--effort e] [--tier t] [--wait] | task run --session <id> --task <id> [--endpoint <name>] [--model <id>] [--max-turns N] [--max-tool-calls N] [--max-no-progress-turns N] [--skill <name>]... [--mode <mode>] [--objective o] [--effort e] [--tier t] [--wait] | task cancel --session <id> --task <id> | task pause --session <id> --task <id> [--wait-ms N] [reason] | task resume --session <id> --task <id> [--endpoint <name>] [--model <id>] [--wait] | task status --task <id> | task transcript --task <id> [--density compact|balanced|detailed] | task headers --session <id> [--archived] | review show --task <id> | review decide --session <id> --task <id> (accept|return) [--reject path#index ...] [note] | change undo --session <id> --task <id> --call <id> [--apply] | context show <task-id> | task fork --session <id> --task <id> [--checkpoint <id> | --turn <ordinal> | --name <label>] [--carry PLAN,DECISIONS,EVIDENCE,CONTEXT] [--worktree <dir>] [goal] | task rewind --task <id> [--checkpoint <id> | task fork --session <id> --task <id> [--checkpoint <id> | task rewind --task <id> [--checkpoint <id> | session route --session <id> | session tree --session <id> | task assurance --task <id> | task economics --task <id> | task work --task <id> | task agents --task <id> | capacity show | attention list --session <id> | plan show --task <id> | plan revise --session <id> --task <id> [--plan-json <file>] [note] | task patch --session <id> --task <id> --path <p> --revision <n> [--file-revision <sha>] (--old <text> | --old-file <f>) (--new <text> | --new-file <f>) | baseline publish --session <id> [--revision <rev>] | task allow-language --session <id> --task <id> --language <l> [--reason r] | task attach-context --session <id> --task <id> --source <s> [--title t] <file> | task select --session <id> --task <id> [--path p]... [--lines a:b] [--symbol s] [--hunk path#index]... [--source review|editor|cli] | agent install <file> [--from claude] [--replace] | agent list | skill install <dir> [--expect-hash <hex>] [--replace] | skill remove <name> | skill revoke <name> [--hash <content-hash>] | skill list | language list | model list | model probe --endpoint <name> --model <id> [--tools] <prompt> | task steer --session <id> --task <id> [--mode STEER|COLLECT|FOLLOW_UP] [--input-id <hex>] <text> | workspace trust --session <id> [--scope <s>] <root> | provider configure --provider <openai|anthropic> [--base-url <url>] [--clear] | recovery show | pr (open | update) --session <id> --task <id> --revision <n> [--base <ref>] [--title <t>] [--remote <name>] | starter list [--workspace <dir>] | doctor --session <id> | trace --session <id> [--task <id>] | export diagnostics --session <id> [--task <id>] [--include-content] --out <file> | diagnostics verify <file> | export handoff --session <id> --task <id> --out <dir> | usage reconcile --task <id> --invoice <file> [--tolerance-bp N] | dashboard --session <id> | terminal list [--task <id>] | terminal attach --task <id> --terminal <id> [--from N] [--window N] | --name <label>] [--redo] [--keep <paths>] [--apply --session <id>] | platform)";
+const USAGE: &str = "usage: modbit-cli --data-dir <dir> (session create | session show --session <id> | task create --session <id> [--workspace <dir>] [--command-id <hex>] [--mode agent|plan|debug|multitask|ask] [--profile <execution-profile>] [--objective cost|balance|intelligence] [--effort low|medium|high] [--tier <name>] <goal> | task mode --session <id> --task <id> <mode> | task preference --session <id> --task <id> [--objective o] [--effort e] [--tier t] [--pin <endpoint>/<model> | --clear-pin] | task posture --task <id> | task from-issue --session <id> [--workspace <dir>] [--command-id <hex>] <issue-url> | events tail --session <id> [--after N] [--count N] [--json] | task attach --session <id> --task <id> <file> | question list --task <id> | question answer --session <id> --task <id> --question <id> [--option <id>] [--endpoint <name>] [--model <id>] [--wait] [text] | tool list [--task <id>] | tool invoke --session <id> --task <id> [--call <id>] <tool> <arguments-json> | approval list --session <id> | approval resolve --session <id> --approval <id> [--intent <hash>] (approve|deny) [reason] | stop --session <id> [reason] | receipts [--task <id>] | lease list --task <id> | task run --session <id> --task <id> [--endpoint <name>] [--model <id>] [--max-turns N] [--max-tool-calls N] [--max-no-progress-turns N] [--skill <name>]... [--mode <mode>] [--objective o] [--effort e] [--tier t] [--wait] | task cancel --session <id> --task <id> | task pause --session <id> --task <id> [--wait-ms N] [reason] | task resume --session <id> --task <id> [--endpoint <name>] [--model <id>] [--wait] | task status --task <id> | task transcript --task <id> [--density compact|balanced|detailed] | task headers --session <id> [--archived] | review show --task <id> | review decide --session <id> --task <id> (accept|return) [--reject path#index ...] [note] | change undo --session <id> --task <id> --call <id> [--apply] | context show <task-id> | task fork --session <id> --task <id> [--checkpoint <id> | --turn <ordinal> | --name <label>] [--carry PLAN,DECISIONS,EVIDENCE,CONTEXT] [--worktree <dir>] [goal] | task rewind --task <id> [--checkpoint <id> | --turn <ordinal> | --name <label>] [--redo] [--keep <paths>] [--apply --session <id>] | session route --session <id> | session tree --session <id> | task assurance --task <id> | task economics --task <id> | task work --task <id> | task agents --task <id> | capacity show | attention list --session <id> | plan show --task <id> | plan revise --session <id> --task <id> [--plan-json <file>] [note] | task patch --session <id> --task <id> --path <p> --revision <n> [--file-revision <sha>] (--old <text> | --old-file <f>) (--new <text> | --new-file <f>) | baseline publish --session <id> [--revision <rev>] | task allow-language --session <id> --task <id> --language <l> [--reason r] | task attach-context --session <id> --task <id> --source <s> [--title t] <file> | task select --session <id> --task <id> [--path p]... [--lines a:b] [--symbol s] [--hunk path#index]... [--source review|editor|cli] | agent install <file> [--from claude] [--replace] | agent list | skill install <dir> [--expect-hash <hex>] [--replace] | skill remove <name> | skill revoke <name> [--hash <content-hash>] | skill list | skill inventory [--task <id>] | skill trust <name>@<content-hash> [--task <id>] | skill untrust <name>[@<content-hash>] | task budget --session <id> --task <id> [--max-cost-minor N] [--max-wall-ms N] [--max-children N] [--forbid-spawn] | language list | model list | model probe --endpoint <name> --model <id> [--tools] <prompt> | task steer --session <id> --task <id> [--mode STEER|COLLECT|FOLLOW_UP] [--input-id <hex>] <text> | workspace trust --session <id> [--scope <s>] <root> | provider configure --provider <openai|anthropic> [--base-url <url>] [--clear] | recovery show | pr (open | update) --session <id> --task <id> --revision <n> [--base <ref>] [--title <t>] [--remote <name>] | starter list [--workspace <dir>] | doctor --session <id> | trace --session <id> [--task <id>] | export diagnostics --session <id> [--task <id>] [--include-content] --out <file> | diagnostics verify <file> | export handoff --session <id> --task <id> --out <dir> | usage reconcile --task <id> --invoice <file> [--tolerance-bp N] | dashboard --session <id> | terminal list [--task <id>] | terminal attach --task <id> --terminal <id> [--from N] [--window N] | platform)";
 
 fn parse_id(hex: &str) -> Result<Id, String> {
     let bytes = decode_hex(hex)
@@ -346,7 +346,14 @@ async fn run(args: Vec<String>) -> Result<(), String> {
     // Skill packages live in the profile (`<data-dir>/skills`), installed
     // and removed by the client with no Core in the loop (REQ-EV-0181);
     // what a run does with them is the Core's, from the registry it reads.
-    if rest.first().map(String::as_str) == Some("skill") {
+    // Trust decisions, the inventory and a task's budgets are the Core's
+    // (REQ-PX-052/105/116): the registry it reads, the trust it enforces.
+    if rest.first().map(String::as_str) == Some("skill")
+        && !matches!(
+            rest.get(1).map(String::as_str),
+            Some("trust" | "untrust" | "inventory")
+        )
+    {
         return skill_command(&data_dir, &rest);
     }
     let (child, ready) = attach_or_spawn(&data_dir).await?;
@@ -503,9 +510,10 @@ fn skill_command(data_dir: &str, rest: &[String]) -> Result<(), String> {
             // for development), so the listing says what a run would use.
             let policy = modbit_skills::SkillPolicy {
                 enable_signed: true,
-                enable_incubator: std::env::var("MODBIT_SKILLS_ENABLE_INCUBATOR")
-                    .map(|v| v == "1" || v.eq_ignore_ascii_case("true"))
-                    .unwrap_or(false),
+                enable_incubator: cfg!(debug_assertions)
+                    && std::env::var("MODBIT_SKILLS_ENABLE_INCUBATOR")
+                        .map(|v| v == "1" || v.eq_ignore_ascii_case("true"))
+                        .unwrap_or(false),
             };
             let registry = modbit_skills::SkillRegistry::discover(&[root], &trusted, &policy);
             for s in &registry.skills {
@@ -1012,9 +1020,107 @@ async fn run_command(ready: &ReadyLine, rest: Vec<String>) -> Result<(), String>
                 );
             }
         }
+        ["skill", "trust", spec, ..] => {
+            // `<name>@<hash>`: the owner names the exact content reviewed.
+            let (name, hash) = spec.split_once('@').ok_or(
+                "usage: skill trust <name>@<content-hash> (the hash `skill inventory` shows; a skill is trusted by the bytes you reviewed)",
+            )?;
+            let task_id = opt("--task").map(parse_id).transpose()?;
+            let ack = client
+                .command(envelope(
+                    "TrustSkill",
+                    modbit_protocol::v1::TrustSkill {
+                        name: name.to_owned(),
+                        content_hash: hash.to_owned(),
+                        task_id,
+                    }
+                    .encode_to_vec(),
+                ))
+                .await
+                .map_err(|e| e.to_string())?;
+            let v: modbit_protocol::v1::SkillTrustResult =
+                Client::result(&ack).map_err(|e| e.to_string())?;
+            println!(
+                "skill {} content_hash={} trust={} records={}",
+                v.name, v.content_hash, v.trust, v.records
+            );
+        }
+        ["skill", "untrust", spec, ..] => {
+            let (name, hash) = spec.split_once('@').unwrap_or((spec, ""));
+            let ack = client
+                .command(envelope(
+                    "UntrustSkill",
+                    modbit_protocol::v1::UntrustSkill {
+                        name: name.to_owned(),
+                        content_hash: hash.to_owned(),
+                    }
+                    .encode_to_vec(),
+                ))
+                .await
+                .map_err(|e| e.to_string())?;
+            let v: modbit_protocol::v1::SkillTrustResult =
+                Client::result(&ack).map_err(|e| e.to_string())?;
+            println!("skill {} trust={}", v.name, v.trust);
+        }
+        ["skill", "inventory", ..] => {
+            let task_id = opt("--task").map(parse_id).transpose()?;
+            let ack = client
+                .command(envelope(
+                    "ListSkills",
+                    modbit_protocol::v1::ListSkills { task_id }.encode_to_vec(),
+                ))
+                .await
+                .map_err(|e| e.to_string())?;
+            let v: modbit_protocol::v1::SkillList =
+                Client::result(&ack).map_err(|e| e.to_string())?;
+            for s in &v.skills {
+                println!(
+                    "skill {} {} scope={} trust={} enabled={} invocation={} index={} selected={} content_hash={}{}",
+                    s.name,
+                    s.version,
+                    s.scope,
+                    s.trust,
+                    s.enabled,
+                    s.invocation,
+                    s.index_form,
+                    s.selected,
+                    s.content_hash,
+                    if s.trust_detail.is_empty() {
+                        String::new()
+                    } else {
+                        format!(" note={:?}", s.trust_detail)
+                    }
+                );
+            }
+            for r in &v.rejected {
+                println!("rejected {} {}: {}", r.source, r.code, r.reason);
+            }
+            println!(
+                "budget {} tokens, {} used, {} omitted; system scope {}",
+                v.index_budget_tokens, v.index_used_tokens, v.index_omitted, v.system_root
+            );
+        }
+        ["task", "budget", ..] => {
+            let sid = parse_id(opt("--session").ok_or(USAGE)?)?;
+            let task_id = parse_id(opt("--task").ok_or(USAGE)?)?;
+            let lease = join_lease(&mut client, &sid).await?;
+            set_budgets(&mut client, &task_id, lease, &words).await?;
+        }
         ["task", "run", ..] => {
             let sid = parse_id(opt("--session").ok_or(USAGE)?)?;
             let task_id = parse_id(opt("--task").ok_or(USAGE)?)?;
+            if [
+                "--max-cost-minor",
+                "--max-wall-ms",
+                "--max-children",
+                "--forbid-spawn",
+            ]
+            .iter()
+            .any(|f| words.contains(f))
+            {
+                let lease = join_lease(&mut client, &sid).await?;
+                set_budgets(&mut client, &task_id, lease, &words).await?;
+            }
             let max_turns: u32 = opt("--max-turns")
                 .map(|v| v.parse().map_err(|_| USAGE))
                 .transpose()?
@@ -3493,6 +3599,48 @@ async fn export_diagnostics(
         .await
         .map_err(|e| e.to_string())?;
     Client::result(&ack).map_err(|e| e.to_string())
+}
+
+/// `SetTaskBudgets` from the flags `task budget` and `task run` take
+/// (REQ-PX-116): cost and wall clock caps, live children, no delegation.
+async fn set_budgets(
+    client: &mut Client,
+    task_id: &Id,
+    lease: u64,
+    words: &[&str],
+) -> Result<(), String> {
+    let num = |flag: &str| -> Result<u64, String> {
+        words
+            .iter()
+            .position(|w| *w == flag)
+            .and_then(|i| words.get(i + 1))
+            .map(|v| v.parse::<u64>().map_err(|_| USAGE.to_owned()))
+            .transpose()
+            .map(|v| v.unwrap_or(0))
+    };
+    let ack = client
+        .command(envelope_fenced(
+            "SetTaskBudgets",
+            modbit_protocol::v1::SetTaskBudgets {
+                task_id: Some(task_id.clone()),
+                max_cost_minor: num("--max-cost-minor")?,
+                max_wall_ms: num("--max-wall-ms")?,
+                max_children: u32::try_from(num("--max-children")?)
+                    .map_err(|_| USAGE.to_owned())?,
+                forbid_spawn: words.contains(&"--forbid-spawn"),
+            }
+            .encode_to_vec(),
+            Some(lease),
+        ))
+        .await
+        .map_err(|e| e.to_string())?;
+    let v: modbit_protocol::v1::TaskBudgetsView =
+        Client::result(&ack).map_err(|e| e.to_string())?;
+    println!(
+        "budgets max_cost_minor={} max_wall_ms={} max_children={} forbid_spawn={}",
+        v.max_cost_minor, v.max_wall_ms, v.max_children, v.forbid_spawn
+    );
+    Ok(())
 }
 
 async fn join_lease(client: &mut Client, sid: &Id) -> Result<u64, String> {

@@ -13,6 +13,7 @@
 
 use std::sync::Arc;
 
+use modbit_core_runtime::budget::{self, ChildHold, Held};
 use modbit_core_runtime::capacity::ResourceVector;
 use modbit_domain::agent::{
     AgentBinding, AgentExecutionCapsule, AgentKind, AgentNode, AgentStatus, SpawnMode, SubtaskSpec,
@@ -53,6 +54,11 @@ pub(crate) struct SpawnRequest {
     pub mode: SpawnMode,
     /// The idempotency key the model gave (REQ-EV-0007).
     pub idempotency_key: String,
+    /// The parent's budgets (REQ-PX-116): the caps the child's is clamped
+    /// to, and how many children it may have alive.
+    pub parent_budgets: modbit_core_runtime::Budgets,
+    /// What the parent has spent itself so far.
+    pub parent_own: Held,
 }
 
 /// What admission produced.
@@ -75,6 +81,8 @@ pub(crate) struct Spawned {
     pub narrowed_tools: Vec<String>,
     /// Non-blocking conflict findings (M6.4) the parent is told.
     pub warnings: Vec<String>,
+    /// What was reserved against the parent, in words (REQ-PX-116).
+    pub budget: String,
 }
 
 /// Why admission refused, with what it rolled back.
@@ -91,6 +99,17 @@ pub(crate) struct SpawnRefused {
 /// was taken, so the rollback is exercised for real.
 fn injected_fault(stage: &str) -> bool {
     std::env::var("MODBIT_FAULT_SPAWN").is_ok_and(|v| v == stage)
+}
+
+/// A process kill injected between the admission append (which reserves the
+/// child's budget) and the child's start (`MODBIT_FAULT_SPAWN_KILL=
+/// AFTER_ADMIT`): the real crash the recovery proof needs, not a simulated
+/// one.
+fn injected_kill(stage: &str) {
+    if std::env::var("MODBIT_FAULT_SPAWN_KILL").is_ok_and(|v| v == stage) {
+        eprintln!("modbit-core: injected kill at {stage} of a spawn");
+        std::process::abort();
+    }
 }
 
 /// Admit and start a child. See the module doc for the transaction.
@@ -308,6 +327,7 @@ pub(crate) async fn spawn(
                 profile: String::new(),
                 narrowed_tools: vec![],
                 warnings: vec![],
+                budget: String::new(),
             });
         }
     }
@@ -389,6 +409,103 @@ pub(crate) async fn spawn(
             return Err(r);
         }
     }
+    // 3b. Delegation policy and limits (REQ-PX-116). `agent.spawn` is a
+    //     permissioned operation like any other: a configuration layer that
+    //     denies it (or asks, which a harness spawn has no way to answer)
+    //     forbids delegation; the task's own `max_children` of 0 does too;
+    //     a parent never has more children alive than `max_children`; and
+    //     the child's budget is a slice of the parent's remainder — clamped
+    //     to it here, reserved against it in the append that makes the child
+    //     exist (step 7), so the parent cannot exceed its own cap through
+    //     its children.
+    // The early look: a spawn that cannot be given a slice is refused before
+    // anything is taken. The slice itself is cut again at step 7.
+    let _early_grant = {
+        let config = core.tools.configurations.for_task(
+            parent.task_id,
+            &core.data_dir,
+            parent.workspace_root.as_deref(),
+        );
+        let forbidden: Option<(&'static str, String)> = match config
+            .permissions
+            .get(SPAWN_CAPABILITY)
+        {
+            Some(p) if p.value == modbit_policy::config::Permission::Deny => Some((
+                "SPAWN_FORBIDDEN",
+                format!(
+                    "the configuration in force denies `{SPAWN_CAPABILITY}` (decided by the {:?} layer); a person changes the policy, the agent does not",
+                    p.provenance.decided_by
+                ),
+            )),
+            Some(p) if p.value == modbit_policy::config::Permission::Ask => Some((
+                "SPAWN_FORBIDDEN",
+                format!(
+                    "the configuration in force asks before `{SPAWN_CAPABILITY}` (the {:?} layer) and a harness spawn has no approval to ask; delegation is off until the policy allows it",
+                    p.provenance.decided_by
+                ),
+            )),
+            _ if req.parent_budgets.max_children == 0 => Some((
+                "SPAWN_FORBIDDEN",
+                "this task forbids delegation (max_children 0): work alone".into(),
+            )),
+            _ => None,
+        };
+        if let Some((code, detail)) = forbidden {
+            let r = refuse(code, detail, "POLICY", vec![]);
+            let (store, ev) = record_refusal(core, &r);
+            let mut store = store.lock().await;
+            let _ = append(
+                &mut store,
+                core,
+                lt,
+                AggregateType::Task,
+                *parent.task_id.as_bytes(),
+                vec![ev],
+            );
+            return Err(r);
+        }
+        let holds = child_holds(core, parent).await;
+        let live = holds.iter().filter(|(_, _, h)| h.live).count();
+        let max_children = req.parent_budgets.max_children as usize;
+        if live >= max_children {
+            let r = refuse(
+                "MAX_CHILDREN_EXCEEDED",
+                format!(
+                    "{live} children are alive and this task allows {max_children} at once (max_children); wait for one to finish with agent.wait, or do the work yourself"
+                ),
+                "LIMIT",
+                vec![],
+            );
+            let (store, ev) = record_refusal(core, &r);
+            let mut store = store.lock().await;
+            let _ = append(
+                &mut store,
+                core,
+                lt,
+                AggregateType::Task,
+                *parent.task_id.as_bytes(),
+                vec![ev],
+            );
+            return Err(r);
+        }
+        match clamp_for(&req, &holds) {
+            Ok(x) => x,
+            Err(detail) => {
+                let r = refuse("PARENT_BUDGET_INSUFFICIENT", detail, "BUDGET", vec![]);
+                let (store, ev) = record_refusal(core, &r);
+                let mut store = store.lock().await;
+                let _ = append(
+                    &mut store,
+                    core,
+                    lt,
+                    AggregateType::Task,
+                    *parent.task_id.as_bytes(),
+                    vec![ev],
+                );
+                return Err(r);
+            }
+        }
+    };
     // 4. Write-set conflicts with the workers already admitted (docs/14
     //    "Semantic conflict detection", M6.3 + M6.4): explicit path
     //    overlap, the same public symbol from the AST symbol graph,
@@ -592,6 +709,7 @@ pub(crate) async fn spawn(
             new_task_id: child_task_id,
             subagent: Some(crate::branch::SubagentFork {
                 write_scope: req.spec.write_scope.clone(),
+                read_scope: req.spec.read_scope.clone(),
                 effect_ceiling_cap: Some(EffectClass::ReversibleWrite),
             }),
         },
@@ -660,17 +778,35 @@ pub(crate) async fn spawn(
         }
     };
     // 7. The capsule, the node and the work ownership, persisted together.
-    let max_turns = if req.spec.max_turns == 0 {
-        20
-    } else {
-        req.spec.max_turns
+    //    The budget is what the clamp leaves of what was asked, taken again
+    //    now: the children already running spend while the worktree is made,
+    //    and the slice is cut from what the parent has left at this moment,
+    //    not at step 3b.
+    let (grant, clamp_notes) = {
+        let holds = child_holds(core, parent).await;
+        match clamp_for(&req, &holds) {
+            Ok(x) => x,
+            Err(detail) => {
+                rollback_fork(core, parent, actor, &forked, &mut rolled_back).await;
+                rollback_ticket(core, parent, lt, actor, &ticket.ticket_id, &mut rolled_back).await;
+                let r = refuse("PARENT_BUDGET_INSUFFICIENT", detail, "BUDGET", rolled_back);
+                let (store, ev) = record_refusal(core, &r);
+                let mut store = store.lock().await;
+                let _ = append(
+                    &mut store,
+                    core,
+                    lt,
+                    AggregateType::Task,
+                    *parent.task_id.as_bytes(),
+                    vec![ev],
+                );
+                return Err(r);
+            }
+        }
     };
-    // An unset tool budget is the runtime's default, never "none".
-    let max_tool_calls = if req.spec.max_tool_calls == 0 {
-        modbit_core_runtime::Budgets::default().max_tool_calls
-    } else {
-        req.spec.max_tool_calls
-    };
+    let max_turns = u32::try_from(grant.turns).unwrap_or(u32::MAX);
+    let max_tool_calls = u32::try_from(grant.tool_calls).unwrap_or(u32::MAX);
+    let private_context_refs = context_refs(core, parent, &req.spec).await;
     let capsule = AgentExecutionCapsule {
         agent_id,
         parent_agent_id: parent_node.agent_id,
@@ -682,11 +818,13 @@ pub(crate) async fn spawn(
         binding: req.binding.clone(),
         max_turns,
         max_tool_calls,
+        max_cost_minor: grant.cost_minor.unwrap_or(0),
+        max_wall_ms: grant.wall_ms.unwrap_or(0),
         effect_ceiling: "REVERSIBLE_WRITE".into(),
         worktree: forked.worktree.clone(),
         branch: forked.branch.clone(),
         allowed_modalities: vec!["text".into(), "image".into()],
-        private_context_refs: vec![],
+        private_context_refs,
         mode: req.mode,
         profile: profile_name.clone(),
         narrowed_tools: narrowed_tools.clone(),
@@ -769,6 +907,55 @@ pub(crate) async fn spawn(
     };
     {
         let mut store = core.store.lock().await;
+        // The reservation is checked against the log and made in the very
+        // append that creates the child, under the store lock: two
+        // admissions of one parent cannot both claim the same remainder,
+        // and a Core killed before this append leaves no reservation and no
+        // child, after it both (REQ-PX-116).
+        let recheck: std::result::Result<(), String> = {
+            let holds: Vec<ChildHold> = child_holds_in(&store, core, parent)
+                .into_iter()
+                .map(|(_, _, h)| h)
+                .collect();
+            let rem = budget::remaining_for_children(
+                &req.parent_budgets.caps(),
+                &req.parent_own,
+                &budget::committed(&holds),
+            );
+            if grant.turns > rem.turns
+                || grant.tool_calls > rem.tool_calls
+                || grant
+                    .cost_minor
+                    .zip(rem.cost_minor)
+                    .is_some_and(|(g, r)| g > r)
+            {
+                Err(format!(
+                    "another admission took the remainder first (turns {}, tool calls {}, cost {:?})",
+                    rem.turns, rem.tool_calls, rem.cost_minor
+                ))
+            } else if injected_fault("BUDGET") {
+                Err("injected fault at the budget reservation".to_owned())
+            } else {
+                Ok(())
+            }
+        };
+        if let Err(detail) = recheck {
+            drop(store);
+            rollback_fork(core, parent, actor, &forked, &mut rolled_back).await;
+            rollback_ticket(core, parent, lt, actor, &ticket.ticket_id, &mut rolled_back).await;
+            let r = refuse("PARENT_BUDGET_INSUFFICIENT", detail, "BUDGET", rolled_back);
+            let (store, ev) = record_refusal(core, &r);
+            let mut store = store.lock().await;
+            let _ = append(
+                &mut store,
+                core,
+                lt,
+                AggregateType::Task,
+                *parent.task_id.as_bytes(),
+                vec![ev],
+            );
+            return Err(r);
+        }
         let mut events = vec![typed(
             "AgentNodeCreated",
             &TaskEvent::AgentNodeCreated { node: node.clone() },
@@ -801,6 +988,11 @@ pub(crate) async fn spawn(
                 scheduling: scheduling.into(),
                 profile: profile_name.clone(),
                 narrowed_tools: narrowed_tools.clone(),
+                reserved_turns: max_turns,
+                reserved_tool_calls: max_tool_calls,
+                reserved_cost_minor: grant.cost_minor.unwrap_or(0),
+                reserved_wall_ms: grant.wall_ms.unwrap_or(0),
+                clamped: clamp_notes.clone(),
             },
             actor.clone(),
         ));
@@ -850,6 +1042,7 @@ pub(crate) async fn spawn(
             )],
         );
     }
+    injected_kill("AFTER_ADMIT");
     // 8. Start the child's run on the admission ticket. A start that fails
     //    is the last rollback: node failed, worktree removed, ticket back.
     let child_task = {
@@ -893,6 +1086,10 @@ pub(crate) async fn spawn(
             max_turns,
             max_tool_calls,
             max_consecutive_no_progress_turns: 3,
+            max_cost_minor: grant.cost_minor,
+            max_wall_ms: grant.wall_ms,
+            // A child does not delegate (REQ-EV-0051).
+            max_children: 0,
         },
         pinned: false,
         plan_id: String::new(),
@@ -949,6 +1146,20 @@ pub(crate) async fn spawn(
                 profile: profile_name,
                 narrowed_tools,
                 warnings,
+                budget: format!(
+                    "turns {max_turns}, tool_calls {max_tool_calls}, cost_minor {}, wall_ms {}{}",
+                    grant
+                        .cost_minor
+                        .map_or("uncapped".to_owned(), |c| c.to_string()),
+                    grant
+                        .wall_ms
+                        .map_or("uncapped".to_owned(), |c| c.to_string()),
+                    if clamp_notes.is_empty() {
+                        String::new()
+                    } else {
+                        format!(" (clamped to your remainder: {})", clamp_notes.join("; "))
+                    }
+                ),
             })
         }
         Err((code, detail)) => {
@@ -1054,6 +1265,8 @@ fn spec_differences(a: &SubtaskSpec, b: &SubtaskSpec) -> Vec<&'static str> {
     field!(verification);
     field!(max_turns);
     field!(max_tool_calls);
+    field!(max_cost_minor);
+    field!(max_wall_ms);
     field!(work_node);
     field!(profile);
     d
@@ -1102,6 +1315,319 @@ pub(crate) fn latest_admission(
                     .unwrap_or_default(),
             ))
         })
+}
+
+/// The clamp of a spawn's budget request against what its parent has left,
+/// given what every child holds now: the grant and what the clamp changed,
+/// in words; or why nothing can be given.
+fn clamp_for(
+    req: &SpawnRequest,
+    holds: &[(AgentId, TaskId, ChildHold)],
+) -> std::result::Result<(budget::Grant, Vec<String>), String> {
+    let only: Vec<ChildHold> = holds.iter().map(|(_, _, h)| *h).collect();
+    let live = only.iter().filter(|h| h.live).count();
+    let max_children = req.parent_budgets.max_children as usize;
+    let rem = budget::remaining_for_children(
+        &req.parent_budgets.caps(),
+        &req.parent_own,
+        &budget::committed(&only),
+    );
+    let asked = budget::Request {
+        turns: u64::from(req.spec.max_turns),
+        tool_calls: u64::from(req.spec.max_tool_calls),
+        cost_minor: req.spec.max_cost_minor,
+        wall_ms: req.spec.max_wall_ms,
+    };
+    let g = budget::clamp(
+        &asked,
+        u64::from(modbit_core_runtime::Budgets::default().max_tool_calls),
+        &rem,
+        u32::try_from(max_children.saturating_sub(live)).unwrap_or(0),
+    )
+    .map_err(|e| {
+        format!(
+            "{e}; a child's budget is a slice of its parent's remainder (turns {}, tool calls {}, cost {}, wall clock {}). Finish the work yourself or wait for a child to settle",
+            rem.turns,
+            rem.tool_calls,
+            rem.cost_minor.map_or("uncapped".to_owned(), |c| c.to_string()),
+            rem.wall_ms.map_or("uncapped".to_owned(), |c| format!("{c} ms")),
+        )
+    })?;
+    let mut notes = Vec::new();
+    if asked.turns != 0 && g.turns < asked.turns {
+        notes.push(format!("max_turns {} -> {}", asked.turns, g.turns));
+    }
+    if asked.tool_calls != 0 && g.tool_calls < asked.tool_calls {
+        notes.push(format!(
+            "max_tool_calls {} -> {}",
+            asked.tool_calls, g.tool_calls
+        ));
+    }
+    if let (true, Some(c)) = (asked.cost_minor != 0, g.cost_minor)
+        && c < asked.cost_minor
+    {
+        notes.push(format!("max_cost_minor {} -> {c}", asked.cost_minor));
+    }
+    if let (true, Some(w)) = (asked.wall_ms != 0, g.wall_ms)
+        && w < asked.wall_ms
+    {
+        notes.push(format!("max_wall_ms {} -> {w}", asked.wall_ms));
+    }
+    Ok((g, notes))
+}
+
+/// The capability a configuration layer denies to forbid delegation
+/// (REQ-PX-116): `{"permissions": {"agent.spawn": "DENY"}}` in the user,
+/// project, admin or device layer. A lower layer can only tighten it.
+pub(crate) const SPAWN_CAPABILITY: &str = "agent.spawn";
+
+/// Whether the configuration in force lets `task` delegate at all — what the
+/// tool projection offers (REQ-PX-116): a layer that denies or asks before
+/// `agent.spawn` takes the tool away rather than leaving a refusal to find.
+pub(crate) fn spawn_allowed(core: &Core, task: &Task) -> bool {
+    let config = core.tools.configurations.for_task(
+        task.task_id,
+        &core.data_dir,
+        task.workspace_root.as_deref(),
+    );
+    !config.permissions.get(SPAWN_CAPABILITY).is_some_and(|p| {
+        matches!(
+            p.value,
+            modbit_policy::config::Permission::Deny | modbit_policy::config::Permission::Ask
+        )
+    })
+}
+
+/// A node counts as alive while it is being run.
+fn node_is_live(status: &str) -> bool {
+    matches!(status, "ADMITTED" | "RUNNING" | "BACKGROUND")
+}
+
+/// What every child of `parent` holds against it, read off the log: the
+/// capsule's reservation, and what the child has spent (counted the way the
+/// child counts its own, `usage::SpendScan`). `(agent, child task, hold)`.
+pub(crate) fn child_holds_in(
+    store: &modbit_event_store::EventStore,
+    core: &Core,
+    parent: &Task,
+) -> Vec<(AgentId, TaskId, ChildHold)> {
+    let nodes: Vec<_> = store
+        .agent_nodes(&parent.task_id)
+        .unwrap_or_default()
+        .into_iter()
+        .filter(|n| n.kind == "SUBAGENT")
+        .collect();
+    if nodes.is_empty() {
+        return vec![];
+    }
+    let registry = core.gateway.registry();
+    let mut scans: std::collections::HashMap<TaskId, crate::usage::SpendScan<'_>> = nodes
+        .iter()
+        .filter_map(|n| {
+            n.child_task_id
+                .or_else(|| latest_admission(store, parent, n.agent_id).map(|a| a.0))
+        })
+        .map(|t| (t, crate::usage::SpendScan::new(registry.as_ref())))
+        .collect();
+    for e in store
+        .read_session(&parent.session_id, 0, usize::MAX)
+        .unwrap_or_default()
+    {
+        if let Some(scan) = e.envelope.task_id.and_then(|t| scans.get_mut(&t)) {
+            let payload = store.payload(&e.envelope).unwrap_or_default();
+            scan.observe(&e.envelope, &payload);
+        }
+    }
+    nodes
+        .into_iter()
+        .filter_map(|n| {
+            let child = n
+                .child_task_id
+                .or_else(|| latest_admission(store, parent, n.agent_id).map(|a| a.0))?;
+            let capsule = n
+                .capsule_ref
+                .as_deref()
+                .and_then(|r| store.objects().get(r).ok())
+                .and_then(|b| serde_json::from_slice::<AgentExecutionCapsule>(&b).ok());
+            let spent = scans
+                .remove(&child)
+                .map(|s| s.finish().held())
+                .unwrap_or_default();
+            let reserved = capsule.map_or_else(Held::default, |c| Held {
+                turns: u64::from(c.max_turns),
+                tool_calls: u64::from(c.max_tool_calls),
+                cost_minor: c.max_cost_minor,
+                wall_ms: c.max_wall_ms,
+            });
+            Some((
+                n.agent_id,
+                child,
+                ChildHold {
+                    reserved,
+                    spent,
+                    live: node_is_live(&n.status),
+                },
+            ))
+        })
+        .collect()
+}
+
+/// [`child_holds_in`] under the store's lock.
+pub(crate) async fn child_holds(core: &Core, parent: &Task) -> Vec<(AgentId, TaskId, ChildHold)> {
+    let store = core.store.lock().await;
+    child_holds_in(&store, core, parent)
+}
+
+/// The parent's round boundary (REQ-PX-116): what its children hold against
+/// its budget now, from the log — a restarted Core reads the same.
+pub(crate) async fn refresh_children_held(
+    core: &Core,
+    task: &Task,
+    state: &mut modbit_core_runtime::harness::HarnessState,
+) {
+    let holds = child_holds(core, task).await;
+    let only: Vec<ChildHold> = holds.iter().map(|(_, _, h)| *h).collect();
+    state.children_held = budget::committed(&only);
+    state.live_children = u32::try_from(only.iter().filter(|h| h.live).count()).unwrap_or(u32::MAX);
+}
+
+/// The budget a child gets when it runs again (follow-up, resume after a
+/// park or a restart): its capsule's own caps, and no more than its parent
+/// can now cover — the reservation made afresh, since the child's unused
+/// part went back to the parent when it stopped. A parent that cannot cover
+/// more leaves the child at what it already spent, so its first round
+/// boundary ends it `BUDGET_EXHAUSTED` with its partial evidence.
+pub(crate) async fn regrant(
+    core: &Core,
+    parent: &Task,
+    child: AgentId,
+    capsule: Option<&AgentExecutionCapsule>,
+) -> modbit_core_runtime::Budgets {
+    let defaults = modbit_core_runtime::Budgets::default();
+    let capsule_caps = budget::Caps {
+        turns: capsule.map_or(20, |c| {
+            if c.max_turns == 0 {
+                20
+            } else {
+                u64::from(c.max_turns)
+            }
+        }),
+        tool_calls: capsule.map_or(u64::from(defaults.max_tool_calls), |c| {
+            if c.max_tool_calls == 0 {
+                u64::from(defaults.max_tool_calls)
+            } else {
+                u64::from(c.max_tool_calls)
+            }
+        }),
+        cost_minor: capsule.and_then(|c| (c.max_cost_minor > 0).then_some(c.max_cost_minor)),
+        wall_ms: capsule.and_then(|c| (c.max_wall_ms > 0).then_some(c.max_wall_ms)),
+    };
+    // The parent's own caps and spend: from its log, the way its loop reads them.
+    let (parent_caps, own, others, used) = {
+        let store = core.store.lock().await;
+        let events = store
+            .read_session(&parent.session_id, 0, usize::MAX)
+            .unwrap_or_default();
+        let registry = core.gateway.registry();
+        let mut caps = modbit_core_runtime::Budgets::default();
+        let mut scan = crate::usage::SpendScan::new(registry.as_ref());
+        for e in events
+            .iter()
+            .filter(|e| e.envelope.task_id == Some(parent.task_id))
+        {
+            let payload = store.payload(&e.envelope).unwrap_or_default();
+            scan.observe(&e.envelope, &payload);
+            if e.envelope.event_type == "TaskBudgetsSet" {
+                caps.max_cost_minor = payload["max_cost_minor"].as_u64().filter(|c| *c > 0);
+                caps.max_wall_ms = payload["max_wall_ms"].as_u64().filter(|c| *c > 0);
+            }
+        }
+        let holds = child_holds_in(&store, core, parent);
+        let mine = holds
+            .iter()
+            .find(|(a, _, _)| *a == child)
+            .map(|(_, _, h)| *h);
+        let others: Vec<ChildHold> = holds
+            .iter()
+            .filter(|(a, _, _)| *a != child)
+            .map(|(_, _, h)| *h)
+            .collect();
+        (
+            caps,
+            scan.finish().held(),
+            budget::committed(&others),
+            mine.map(|h| h.spent).unwrap_or_default(),
+        )
+    };
+    // The parent's turn and tool-call caps are the ones its loop was
+    // started under; its cost and wall-clock caps are on its log.
+    let mut parent_caps = parent_caps;
+    if let Some(b) = core.runtime.budgets_of(&parent.task_id).await {
+        parent_caps.max_turns = b.max_turns;
+        parent_caps.max_tool_calls = b.max_tool_calls;
+    }
+    let rem = budget::remaining_for_children(&parent_caps.caps(), &own, &others);
+    let g = budget::regrant(&capsule_caps, &used, &rem);
+    modbit_core_runtime::Budgets {
+        max_turns: u32::try_from(g.turns).unwrap_or(u32::MAX),
+        max_tool_calls: u32::try_from(g.tool_calls).unwrap_or(u32::MAX),
+        max_consecutive_no_progress_turns: 3,
+        max_cost_minor: g.cost_minor,
+        max_wall_ms: g.wall_ms,
+        max_children: 0,
+    }
+}
+
+/// The references a child starts with (REQ-PX-116): what its parent has
+/// already read that falls inside the child's read and write scope — a path
+/// and the content hash it was read at, never the parent's transcript.
+/// Nothing outside the scope is handed over: a reference to a file the child
+/// cannot read would be a way around its lease.
+async fn context_refs(core: &Core, parent: &Task, spec: &SubtaskSpec) -> Vec<String> {
+    const MAX_REFS: usize = 32;
+    let scope: Vec<String> = spec
+        .read_scope
+        .iter()
+        .chain(spec.write_scope.iter())
+        .map(|p| {
+            p.trim()
+                .trim_start_matches("./")
+                .trim_end_matches("/**")
+                .trim_end_matches('/')
+                .to_owned()
+        })
+        .filter(|p| !p.is_empty())
+        .collect();
+    let in_scope = |path: &str| {
+        scope.is_empty()
+            || scope
+                .iter()
+                .any(|s| path == s || path.starts_with(&format!("{s}/")))
+    };
+    let ledger = core.tools.ledger(&core.store, parent.task_id).await;
+    let ledger = ledger.lock().await;
+    let mut refs: Vec<String> = Vec::new();
+    let reads = ledger.reads.iter().filter_map(|r| {
+        r.content_hash
+            .as_ref()
+            .map(|h| (r.path.as_str(), h.as_str()))
+    });
+    let entries = ledger.entries.iter().filter_map(|e| {
+        e.content_hash
+            .as_ref()
+            .map(|h| (e.path.as_str(), h.as_str()))
+    });
+    for (path, hash) in reads.chain(entries) {
+        if in_scope(path) {
+            let r = format!("workspace:{path}@{hash}");
+            if !refs.contains(&r) {
+                refs.push(r);
+            }
+        }
+    }
+    // The newest are the ones the parent is working from.
+    let skip = refs.len().saturating_sub(MAX_REFS);
+    refs.split_off(skip)
 }
 
 async fn rollback_ticket(
@@ -1323,6 +1849,9 @@ pub(crate) fn record_result(
         AgentStatus::Failed => "FAILED",
         AgentStatus::Cancelled => "CANCELLED",
         AgentStatus::Parked => "PARKED",
+        // A child that ran out of its slice ends with the typed stop and its
+        // partial evidence; its node stays WAITING and resumable (REQ-PX-116).
+        _ if end_reason.starts_with("budget exhausted") => "BUDGET_EXHAUSTED",
         _ => "WAITING",
     };
     // What the child changed in its worktree: every FileChanged on its
@@ -1547,7 +2076,21 @@ pub(crate) async fn resume_child(
     let Some(child) = child else {
         return Ok(None);
     };
-    if !matches!(child.state, TaskState::Waiting(_))
+    // REQ-PX-116: a child a Core died on between its admission (the append
+    // that reserved its budget) and its start is admitted and never ran: its
+    // task is still Queued with no run. It is started now — both the
+    // reservation and the child — rather than left holding its reservation
+    // for ever.
+    let never_started = child.state == TaskState::Queued
+        && node.status == "ADMITTED"
+        && core
+            .store
+            .lock()
+            .await
+            .runs_for_task(&child.task_id)
+            .unwrap_or_default()
+            .is_empty();
+    if (!matches!(child.state, TaskState::Waiting(_)) && !never_started)
         || core.runtime.is_running(&child.task_id).await
     {
         return Ok(None);
@@ -1560,25 +2103,17 @@ pub(crate) async fn resume_child(
             .iter()
             .any(|r| r.state == modbit_domain::run::RunState::Suspended)
     };
-    if !suspended {
+    if !suspended && !never_started {
         return Ok(None);
     }
-    let (max_turns, max_tool_calls, mode) = capsule
-        .as_ref()
-        .map(|c| (c.max_turns, c.max_tool_calls, c.mode))
-        .unwrap_or((20, 0, SpawnMode::Background));
+    let mode = capsule.as_ref().map_or(SpawnMode::Background, |c| c.mode);
+    // The reservation is made afresh: what the child did not use went back
+    // to its parent when it stopped (REQ-PX-116).
+    let budgets = regrant(core, parent, node.agent_id, capsule.as_ref()).await;
     let cfg = StartConfig {
         endpoint: node.endpoint.clone(),
         model: node.model.clone(),
-        budgets: modbit_core_runtime::Budgets {
-            max_turns: if max_turns == 0 { 20 } else { max_turns },
-            max_tool_calls: if max_tool_calls == 0 {
-                modbit_core_runtime::Budgets::default().max_tool_calls
-            } else {
-                max_tool_calls
-            },
-            max_consecutive_no_progress_turns: 3,
-        },
+        budgets,
         pinned: false,
         plan_id: String::new(),
         slot_id: String::new(),
@@ -1642,7 +2177,7 @@ pub(crate) async fn resume_suspended_children(
     };
     for n in nodes
         .into_iter()
-        .filter(|n| n.kind == "SUBAGENT" && n.status == "WAITING")
+        .filter(|n| n.kind == "SUBAGENT" && matches!(n.status.as_str(), "WAITING" | "ADMITTED"))
     {
         let admitted = {
             let store = core.store.lock().await;
@@ -1819,22 +2354,12 @@ pub(crate) async fn follow_up_child(
                     .ok()
                     .and_then(|b| serde_json::from_slice::<AgentExecutionCapsule>(&b).ok())
             };
-            let (max_turns, max_tool_calls, mode) = capsule
-                .as_ref()
-                .map(|c| (c.max_turns, c.max_tool_calls, c.mode))
-                .unwrap_or((20, 0, SpawnMode::Background));
+            let mode = capsule.as_ref().map_or(SpawnMode::Background, |c| c.mode);
+            let budgets = regrant(core, parent, node.agent_id, capsule.as_ref()).await;
             let cfg = StartConfig {
                 endpoint: node.endpoint.clone(),
                 model: node.model.clone(),
-                budgets: modbit_core_runtime::Budgets {
-                    max_turns: if max_turns == 0 { 20 } else { max_turns },
-                    max_tool_calls: if max_tool_calls == 0 {
-                        modbit_core_runtime::Budgets::default().max_tool_calls
-                    } else {
-                        max_tool_calls
-                    },
-                    max_consecutive_no_progress_turns: 3,
-                },
+                budgets,
                 pinned: false,
                 plan_id: String::new(),
                 slot_id: String::new(),

@@ -246,6 +246,7 @@ async fn fs_read_returns_media_envelopes_through_the_registry() {
         secrets_in_custody: vec![],
         environment: None,
         memory: None,
+        skills: None,
         external: None,
         cancel: None,
         hooks: None,
