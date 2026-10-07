@@ -3,6 +3,8 @@ __pycache__/
 .DS_Store
 /target/
 node_modules/
+# a symlinked node_modules (a worktree sharing the main checkout's) is not a directory
+node_modules
 dist/
 *.tsbuildinfo
 test-results/
