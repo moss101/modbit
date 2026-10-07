@@ -69,6 +69,7 @@ fn input(turn: usize) -> PromptInput {
             text: format!("fn p{turn}() {{}}"),
             ephemeral: false,
         }],
+        memory: vec![],
         model_policy: ModelPolicy {
             endpoint: "anthropic".into(),
             model: "claude-sonnet-4-5".into(),

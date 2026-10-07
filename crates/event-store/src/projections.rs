@@ -1254,12 +1254,45 @@ pub fn apply(tx: &Transaction<'_>, ev: &StoredEvent, objects: &crate::ObjectStor
             )?;
             materialize_protocol_state(tx, session, l.task_id, at, ProtocolDelta::Rows)?;
         }
+        // PX-113: a memory event carries the row its item has after it (and
+        // `removed` when the item leaves the store); the projection is the
+        // plain replay of those rows in log order.
+        AggregateType::Memory => project_memory(tx, &payload)?,
         // Aggregates whose projections belong to later milestones (checkpoints).
         _ => {}
     }
     tx.execute(
         "INSERT OR REPLACE INTO projection_state (name, last_offset) VALUES (?1, ?2)",
         params![PROJECTION_NAME, offset as i64],
+    )?;
+    Ok(())
+}
+
+/// Apply one `Memory` event: upsert the row it carries, or delete the item
+/// when it says `removed` (a forgotten item leaves the store; the log keeps
+/// the fact that it was forgotten).
+fn project_memory(tx: &Transaction<'_>, payload: &serde_json::Value) -> Result<()> {
+    if payload["removed"].as_bool() == Some(true) {
+        let id = payload["memory_id"].as_str().unwrap_or_default();
+        tx.execute("DELETE FROM memory_items WHERE id = ?1", params![id])?;
+        return Ok(());
+    }
+    let row: crate::MemoryRow = serde_json::from_value(payload["row"].clone())?;
+    tx.execute(
+        "INSERT OR REPLACE INTO memory_items (id, scope_key, record_type, topic, status, sensitivity, created_at_ms, expires_at_ms, updated_at_ms, doc) \
+         VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10)",
+        params![
+            row.id,
+            row.scope_key,
+            row.record_type,
+            row.topic,
+            row.status,
+            row.sensitivity,
+            row.created_at_ms,
+            row.expires_at_ms,
+            row.updated_at_ms,
+            row.doc,
+        ],
     )?;
     Ok(())
 }
@@ -2288,6 +2321,7 @@ pub fn load_flaky_checks(
 /// Truncate the projection tables and replay every event from offset 0.
 pub fn rebuild(tx: &Transaction<'_>, objects: &crate::ObjectStore) -> Result<u64> {
     for t in [
+        "memory_items",
         "checkpoints",
         "compaction_epochs",
         "protocol_state",

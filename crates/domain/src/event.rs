@@ -36,6 +36,11 @@ pub enum AggregateType {
     CompactionEpoch,
     /// Workspace (worktree) change stream.
     Workspace,
+    /// One engineering-memory item's life (PX-113): proposed, promoted,
+    /// edited, superseded, forgotten. The aggregate id is the first sixteen
+    /// bytes of the item's content-addressed id; the `memory_items` table is
+    /// a projection of these events and rebuilds from them.
+    Memory,
 }
 
 impl AggregateType {
@@ -54,6 +59,7 @@ impl AggregateType {
             Self::Checkpoint => "checkpoint",
             Self::CompactionEpoch => "compaction_epoch",
             Self::Workspace => "workspace",
+            Self::Memory => "memory",
         }
     }
 
@@ -72,6 +78,7 @@ impl AggregateType {
             "checkpoint" => Self::Checkpoint,
             "compaction_epoch" => Self::CompactionEpoch,
             "workspace" => Self::Workspace,
+            "memory" => Self::Memory,
             _ => return None,
         })
     }

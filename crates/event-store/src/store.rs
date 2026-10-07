@@ -27,7 +27,7 @@ pub struct StoredEvent {
 /// whole item as JSON (the Core's `modbit_memory::MemoryItem`); the other
 /// columns index it for scoped query and conflict grouping. This store keeps
 /// the row; the Core owns the item schema and the promotion/query logic.
-#[derive(Clone, Debug, PartialEq, Eq)]
+#[derive(Clone, Debug, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
 pub struct MemoryRow {
     /// Item id.
     pub id: String,
@@ -49,6 +49,17 @@ pub struct MemoryRow {
     pub updated_at_ms: i64,
     /// The whole item as JSON.
     pub doc: String,
+}
+
+/// The aggregate id of a memory item: the first sixteen bytes of the SHA-256
+/// of its id (item ids are 64-character content hashes; the aggregate key is
+/// a fixed sixteen bytes).
+#[must_use]
+pub fn memory_aggregate_id(memory_id: &str) -> [u8; 16] {
+    let digest = Sha256::digest(memory_id.as_bytes());
+    let mut out = [0u8; 16];
+    out.copy_from_slice(&digest[..16]);
+    out
 }
 
 fn memory_row_from(r: &rusqlite::Row<'_>) -> rusqlite::Result<MemoryRow> {
@@ -1072,14 +1083,20 @@ impl EventStore {
         crate::projections::load_runs_for_task(&self.conn, id)
     }
 
-    // ---- engineering memory (M9.1, docs/19) ------------------------------
+    // ---- engineering memory (M9.1, docs/19; PX-113) ----------------------
     //
     // Low-level rows only: the whole item is the `doc` JSON, the columns
     // index it for scoped query and conflict grouping. The Core owns the
-    // schema and the promotion/query/conflict logic (`modbit-memory`); this
-    // store keeps memory's own durable, mutable table.
+    // schema and the promotion/query/conflict logic (`modbit-memory`). Since
+    // PX-113 the table is a PROJECTION of the `Memory` aggregate's events
+    // (`projections::apply` keeps it in the transaction that appends them and
+    // `rebuild_projections` replays it): nothing in the product writes it any
+    // other way, so a row that is not on the log does not survive a rebuild.
 
-    /// Insert or replace a memory row by id (the Core writes the whole item).
+    /// Insert or replace a memory row by id. Projection plumbing: the Core
+    /// never calls this (a mutation is an event); the store's own tests use
+    /// it to seed rows.
+    #[doc(hidden)]
     pub fn memory_upsert(&self, row: &MemoryRow) -> Result<()> {
         self.conn.execute(
             "INSERT OR REPLACE INTO memory_items (id, scope_key, record_type, topic, status, sensitivity, created_at_ms, expires_at_ms, updated_at_ms, doc) \
@@ -1145,6 +1162,92 @@ impl EventStore {
             .query_map([], memory_row_from)?
             .collect::<std::result::Result<Vec<_>, _>>()?;
         Ok(rows)
+    }
+
+    /// Every `Memory` event on the log, oldest first, across sessions (the
+    /// memory ledger the `memory_items` projection replays; PX-113).
+    pub fn read_memory_events(&self, after_offset: u64, limit: usize) -> Result<Vec<StoredEvent>> {
+        let mut stmt = self.conn.prepare_cached(&format!(
+            "SELECT {COLUMNS} FROM events WHERE aggregate_type = 'memory' AND offset > ?1 ORDER BY offset ASC LIMIT ?2"
+        ))?;
+        let rows = stmt.query_map(params![after_offset as i64, limit as i64], row_to_event)?;
+        rows.map(|r| r.map_err(Error::from)).collect()
+    }
+
+    /// Put legacy memory rows on the log (PX-113). Before this milestone the
+    /// table was written directly; a row with no `Memory` event would be
+    /// lost the first time the projections rebuild. Each such row is appended
+    /// once as a `MemoryImported` event on `session_id` (the Core's memory
+    /// ledger session), so the table is from then on a pure projection.
+    /// Returns how many rows were imported.
+    ///
+    /// The import happens once per database: it is marked in `schema_meta`
+    /// (`memory_log_adopted`), and from then on a row that is not on the log
+    /// is not memory — a rebuild drops it, which is what makes the table a
+    /// projection and a direct write to it worthless.
+    pub fn backfill_legacy_memory(
+        &mut self,
+        tenant_id: TenantId,
+        session_id: SessionId,
+    ) -> Result<usize> {
+        let adopted: Option<String> = self
+            .conn
+            .query_row(
+                "SELECT value FROM schema_meta WHERE key = 'memory_log_adopted'",
+                [],
+                |r| r.get(0),
+            )
+            .optional()?;
+        if adopted.is_some() {
+            return Ok(0);
+        }
+        let mut imported = 0;
+        let lagged = self.projection_offset()? != self.last_offset()?;
+        for row in self.memory_all()? {
+            let aggregate_id = memory_aggregate_id(&row.id);
+            let has_events: bool = self.conn.query_row(
+                "SELECT EXISTS (SELECT 1 FROM events WHERE aggregate_type = 'memory' AND aggregate_id = ?1)",
+                params![aggregate_id.as_slice()],
+                |r| r.get(0),
+            )?;
+            if has_events {
+                continue;
+            }
+            self.append(AppendRequest {
+                tenant_id,
+                session_id,
+                task_id: None,
+                run_id: None,
+                turn_id: None,
+                step_id: None,
+                aggregate_type: AggregateType::Memory,
+                aggregate_id,
+                expected_sequence: Some(0),
+                events: vec![NewEvent::new(
+                    "MemoryImported",
+                    serde_json::json!({
+                        "event_type": "MemoryImported",
+                        "memory_id": row.id,
+                        "row": row,
+                        "note": "a row written before memory mutations were events",
+                    }),
+                    Actor::Core("memory-backfill".into()),
+                )],
+            })?;
+            imported += 1;
+        }
+        // An append moves the projection cursor to the new event; if the
+        // projections were behind the log before it, that would hide the lag
+        // from startup recovery, so replay everything now (the imported rows
+        // are on the log, so the replay keeps them).
+        if imported > 0 && lagged {
+            self.rebuild_projections()?;
+        }
+        self.conn.execute(
+            "INSERT OR REPLACE INTO schema_meta (key, value) VALUES ('memory_log_adopted', '1')",
+            [],
+        )?;
+        Ok(imported)
     }
 
     /// Load a run-step projection.

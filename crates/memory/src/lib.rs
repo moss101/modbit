@@ -82,6 +82,54 @@ impl Scope {
         }
     }
 
+    /// The scope's kind label (`run`, `session`, `user`, `agent_profile`,
+    /// `repository`, `space`, `organization`) — the part of [`Scope::key`]
+    /// before the colon.
+    #[must_use]
+    pub fn kind(&self) -> &'static str {
+        match self {
+            Scope::Run { .. } => "run",
+            Scope::Session { .. } => "session",
+            Scope::User { .. } => "user",
+            Scope::AgentProfile { .. } => "agent_profile",
+            Scope::Repository { .. } => "repository",
+            Scope::Space { .. } => "space",
+            Scope::Organization { .. } => "organization",
+        }
+    }
+
+    /// The canonical kind label for a name a person or tool may write
+    /// (`agent` and `agent-profile` are `agent_profile`; case and `-` are
+    /// forgiven). `None` for a name that is no scope — a caller refuses it
+    /// instead of guessing a scope.
+    #[must_use]
+    pub fn canonical_kind(named: &str) -> Option<&'static str> {
+        let n = named.trim().to_ascii_lowercase().replace('-', "_");
+        Some(match n.as_str() {
+            "run" => "run",
+            "session" => "session",
+            "user" => "user",
+            "agent" | "agent_profile" | "agentprofile" => "agent_profile",
+            "repository" | "repo" => "repository",
+            "space" => "space",
+            "organization" | "org" | "tenant" => "organization",
+            _ => return None,
+        })
+    }
+
+    /// Whether memory in this scope may be sensitive (docs/19: "sensitive
+    /// memory requires policy-permitted scope"). The policy is the narrow
+    /// ones: what stays with one run, one session or one person. A
+    /// repository, a space, an organization or an agent profile is shared
+    /// with whoever works there, so sensitive memory is refused in them.
+    #[must_use]
+    pub fn permits_sensitive(&self) -> bool {
+        matches!(
+            self,
+            Scope::Run { .. } | Scope::Session { .. } | Scope::User { .. }
+        )
+    }
+
     /// A stable key for the scope (`kind:id`), used for grouping and dedup.
     #[must_use]
     pub fn key(&self) -> String {
@@ -266,6 +314,69 @@ impl MemoryItem {
         }
     }
 
+    /// The item after a person's edit (PX-113). Only a proposal or a curated
+    /// item can be edited. An edit that changes the topic or the content is
+    /// a different item (ids are content-addressed): the result has a new id,
+    /// names the edited one in `supersedes`, and the caller retires the old
+    /// one in the same transaction. An edit of confidence or time to live
+    /// alone keeps the id and the item is replaced in place. What a person
+    /// edits is what that person states, so an edit by a `user:` author makes
+    /// the item `UserStated` and validated; any other author leaves the source
+    /// as it was and the item as unvalidated as it was.
+    pub fn edited(
+        &self,
+        edit: &MemoryEdit,
+        author: &str,
+        now_ms: i64,
+    ) -> Result<Self, EditRefusal> {
+        if !matches!(self.status, Status::Proposed | Status::Curated) {
+            return Err(EditRefusal::NotEditable {
+                status: self.status,
+            });
+        }
+        let topic = edit
+            .topic
+            .as_deref()
+            .map_or_else(|| self.topic.clone(), |t| t.trim().to_owned());
+        let content = edit.content.clone().unwrap_or_else(|| self.content.clone());
+        if topic.is_empty() || content.trim().is_empty() {
+            return Err(EditRefusal::Empty);
+        }
+        let mut next = MemoryItem::propose(
+            self.scope.clone(),
+            self.record_type,
+            topic,
+            content,
+            self.source,
+            self.author.clone(),
+            edit.confidence.unwrap_or(self.confidence),
+            self.created_at_ms,
+        );
+        next.expires_at_ms = match edit.ttl_ms {
+            Some(Some(ttl)) => Some(now_ms.saturating_add(ttl)),
+            Some(None) => None,
+            None => self.expires_at_ms,
+        };
+        next.sensitivity = edit.sensitivity.unwrap_or(self.sensitivity);
+        next.supersedes = self.supersedes.clone();
+        next.conflicts = self.conflicts.clone();
+        next.last_validation_revision = self.last_validation_revision.clone();
+        next.validated = self.validated;
+        next.status = self.status;
+        if author.starts_with("user:") {
+            next.source = Source::UserStated;
+            next.validated = true;
+            next.author = author.to_owned();
+        }
+        if next.id != self.id {
+            next.created_at_ms = now_ms;
+            if !next.supersedes.contains(&self.id) {
+                next.supersedes.push(self.id.clone());
+            }
+        }
+        Ok(next)
+    }
+
     /// The key an item occupies within its scope: scope + record type +
     /// topic. Two curated items with the same key are in conflict unless one
     /// supersedes the other.
@@ -284,6 +395,35 @@ impl MemoryItem {
     pub fn is_expired(&self, now_ms: i64) -> bool {
         self.expires_at_ms.is_some_and(|e| now_ms >= e)
     }
+}
+
+/// What a person changes in an item ([`MemoryItem::edited`]). Absent fields
+/// stay as they are.
+#[derive(Clone, Debug, Default, PartialEq, Serialize, Deserialize)]
+pub struct MemoryEdit {
+    /// A new topic.
+    pub topic: Option<String>,
+    /// New content.
+    pub content: Option<String>,
+    /// A new confidence.
+    pub confidence: Option<f32>,
+    /// `Some(Some(ms))` sets a time to live from now, `Some(None)` removes it.
+    pub ttl_ms: Option<Option<i64>>,
+    /// A new sensitivity.
+    pub sensitivity: Option<Sensitivity>,
+}
+
+/// Why an edit was refused.
+#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(tag = "code", rename_all = "SCREAMING_SNAKE_CASE")]
+pub enum EditRefusal {
+    /// Only a proposal or a curated item is editable.
+    NotEditable {
+        /// The state it is in.
+        status: Status,
+    },
+    /// The topic or the content would be empty.
+    Empty,
 }
 
 /// What the caller knows at promotion time that the item itself cannot:
@@ -439,6 +579,10 @@ impl MemoryStore {
         let (supersedes, curated) = match self.items.get_mut(id) {
             Some(item) if item.status == Status::Proposed => {
                 item.status = Status::Curated;
+                // Promotion is the governed validation: the gate has run and a
+                // person or policy has said yes, so the curated item carries
+                // that validation from here on.
+                item.validated = true;
                 (item.supersedes.clone(), true)
             }
             _ => (Vec::new(), false),
@@ -499,6 +643,222 @@ impl MemoryStore {
                 ids
             })
             .collect()
+    }
+}
+
+/// What a task offers when it asks which curated memory applies to it.
+#[derive(Clone, Debug, Default)]
+pub struct SelectionInput<'a> {
+    /// The scope keys of the task's chain (any order; precedence comes from
+    /// each item's [`Scope::rank`]).
+    pub scope_keys: &'a [String],
+    /// The task goal (data; only its words are used).
+    pub goal: &'a str,
+    /// Further words that say what the task is about: selected paths,
+    /// symbols, failing checks.
+    pub hints: &'a [String],
+    /// Now (ms): expired items are not selected.
+    pub now_ms: i64,
+    /// The repository's current revision, when known: a repository fact
+    /// validated against another revision is stale.
+    pub current_revision: Option<&'a str>,
+}
+
+/// One item chosen for a task, with why.
+#[derive(Clone, Debug)]
+pub struct Selected<'a> {
+    /// The item.
+    pub item: &'a MemoryItem,
+    /// Ranking score, `0.0..=1.0`.
+    pub score: f32,
+    /// Human-readable reasons (`relevant: topic,content`, `standing`,
+    /// `scope:user`, …).
+    pub reasons: Vec<String>,
+    /// Other curated items on the same scope, type and topic (an unresolved
+    /// conflict, shown to the model as one rather than silently picked).
+    pub conflicts_with: Vec<String>,
+}
+
+/// Why an item was left out of a selection.
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct Excluded {
+    /// The item.
+    pub id: String,
+    /// `sensitive` | `stale_revision` | `shadowed_by:<id>` | `irrelevant`.
+    pub reason: String,
+}
+
+/// The outcome of [`MemoryStore::select`].
+#[derive(Clone, Debug, Default)]
+pub struct Selection<'a> {
+    /// Chosen items, best first (score descending, then narrower scope,
+    /// then id — deterministic).
+    pub selected: Vec<Selected<'a>>,
+    /// What was left out and why.
+    pub excluded: Vec<Excluded>,
+}
+
+/// Words that carry no relevance signal.
+const STOPWORDS: &[&str] = &[
+    "the", "and", "for", "with", "that", "this", "from", "into", "are", "was", "were", "not",
+    "you", "your", "how", "what", "when", "where", "why", "who", "can", "should", "would", "could",
+    "has", "have", "had", "its", "our", "use", "using", "add", "fix", "make", "all",
+];
+
+fn terms_of(text: &str) -> Vec<String> {
+    let mut out: Vec<String> = Vec::new();
+    for w in text.split(|c: char| !c.is_alphanumeric() && c != '_') {
+        // `compute_total` is both itself and `compute`, `total`.
+        for piece in std::iter::once(w).chain(w.split('_')) {
+            let t = piece.to_lowercase();
+            if t.chars().count() >= 3 && !STOPWORDS.contains(&t.as_str()) && !out.contains(&t) {
+                out.push(t);
+            }
+        }
+    }
+    out
+}
+
+impl MemoryStore {
+    /// Choose the curated memory that applies to a task: in scope, unexpired,
+    /// not sensitive (a sensitive item is never offered to a prompt on its
+    /// own), not a repository fact validated against a revision the
+    /// repository has moved past, and relevant — it shares words with the
+    /// task, or it is a standing convention or preference. An item whose
+    /// topic and record type a narrower-scope item also holds is shadowed by
+    /// it: precedence is run, session, user, agent profile, repository,
+    /// space, organization, and the same key in one scope is a conflict that
+    /// is carried, not resolved. Pure and deterministic.
+    #[must_use]
+    pub fn select<'a>(&'a self, input: &SelectionInput<'_>) -> Selection<'a> {
+        let in_scope = self.query(input.scope_keys, input.now_ms);
+        let mut terms = terms_of(input.goal);
+        for h in input.hints {
+            for t in terms_of(h) {
+                if !terms.contains(&t) {
+                    terms.push(t);
+                }
+            }
+        }
+        let mut excluded: Vec<Excluded> = Vec::new();
+        let mut candidates: Vec<(&MemoryItem, f32, Vec<String>)> = Vec::new();
+        for item in in_scope {
+            if item.sensitivity == Sensitivity::Sensitive {
+                excluded.push(Excluded {
+                    id: item.id.clone(),
+                    reason: "sensitive".into(),
+                });
+                continue;
+            }
+            let binds_revision = matches!(item.scope, Scope::Repository { .. })
+                && (item.record_type == RecordType::Fact || item.source == Source::RepositoryScan);
+            if binds_revision
+                && let Some(current) = input.current_revision
+                && item.last_validation_revision.as_deref() != Some(current)
+            {
+                excluded.push(Excluded {
+                    id: item.id.clone(),
+                    reason: "stale_revision".into(),
+                });
+                continue;
+            }
+            let topic = item.topic.to_lowercase();
+            let content = item.content.to_lowercase();
+            let topic_hits = terms.iter().filter(|t| topic.contains(t.as_str())).count();
+            let content_hits = terms
+                .iter()
+                .filter(|t| content.contains(t.as_str()))
+                .count();
+            let standing = matches!(
+                item.record_type,
+                RecordType::UserPreference | RecordType::Convention
+            );
+            if topic_hits == 0 && content_hits == 0 && !standing {
+                excluded.push(Excluded {
+                    id: item.id.clone(),
+                    reason: "irrelevant".into(),
+                });
+                continue;
+            }
+            let denom = (3 * terms.len().max(1)) as f32;
+            let relevance = ((3 * topic_hits + content_hits) as f32 / denom).min(1.0);
+            let precedence = 1.0 - f32::from(item.scope.rank()) / 6.0;
+            let score = 0.5 * relevance
+                + 0.2 * precedence
+                + 0.2 * item.confidence
+                + if item.validated || item.source == Source::UserStated {
+                    0.1
+                } else {
+                    0.0
+                };
+            let mut reasons = Vec::new();
+            if topic_hits + content_hits > 0 {
+                reasons.push(format!(
+                    "relevant: {}",
+                    match (topic_hits > 0, content_hits > 0) {
+                        (true, true) => "topic,content",
+                        (true, false) => "topic",
+                        _ => "content",
+                    }
+                ));
+            }
+            if standing {
+                reasons.push("standing".into());
+            }
+            reasons.push(format!("scope:{}", item.scope.kind()));
+            candidates.push((item, score, reasons));
+        }
+        // Precedence: the narrowest scope holding a (record type, topic)
+        // wins; a broader scope's item on it is shadowed.
+        let key_of = |i: &MemoryItem| {
+            (
+                serde_json::to_string(&i.record_type).unwrap_or_default(),
+                i.topic.trim().to_lowercase(),
+            )
+        };
+        let mut narrowest: BTreeMap<(String, String), (u8, String)> = BTreeMap::new();
+        for (item, _, _) in &candidates {
+            let e = narrowest
+                .entry(key_of(item))
+                .or_insert((item.scope.rank(), item.id.clone()));
+            if (item.scope.rank(), &item.id) < (e.0, &e.1) {
+                *e = (item.scope.rank(), item.id.clone());
+            }
+        }
+        let mut kept: Vec<(&MemoryItem, f32, Vec<String>)> = Vec::new();
+        for (item, score, reasons) in candidates {
+            let (rank, winner) = &narrowest[&key_of(item)];
+            if item.scope.rank() > *rank {
+                excluded.push(Excluded {
+                    id: item.id.clone(),
+                    reason: format!("shadowed_by:{winner}"),
+                });
+            } else {
+                kept.push((item, score, reasons));
+            }
+        }
+        let mut selected: Vec<Selected<'_>> = kept
+            .iter()
+            .map(|(item, score, reasons)| Selected {
+                item,
+                score: *score,
+                reasons: reasons.clone(),
+                conflicts_with: kept
+                    .iter()
+                    .filter(|(o, _, _)| o.id != item.id && o.conflict_key() == item.conflict_key())
+                    .map(|(o, _, _)| o.id.clone())
+                    .collect(),
+            })
+            .collect();
+        selected.sort_by(|a, b| {
+            b.score
+                .partial_cmp(&a.score)
+                .unwrap_or(std::cmp::Ordering::Equal)
+                .then(a.item.scope.rank().cmp(&b.item.scope.rank()))
+                .then(a.item.id.cmp(&b.item.id))
+        });
+        excluded.sort_by(|a, b| a.id.cmp(&b.id));
+        Selection { selected, excluded }
     }
 }
 
@@ -722,5 +1082,322 @@ mod tests {
         // Naming both (the run and the org that contains it) sees both.
         let both = store.query(&[run.key(), org.key()], 2_000);
         assert_eq!(both.len(), 2);
+    }
+
+    fn curated(
+        store: &mut MemoryStore,
+        scope: Scope,
+        record_type: RecordType,
+        topic: &str,
+        content: &str,
+    ) -> String {
+        let it = MemoryItem::propose(
+            scope,
+            record_type,
+            topic,
+            content,
+            Source::UserStated,
+            "user:u1",
+            0.8,
+            1_000,
+        );
+        let id = it.id.clone();
+        store.upsert(it);
+        store.promote(&id);
+        id
+    }
+
+    fn chain() -> Vec<String> {
+        [
+            Scope::Session { id: "s".into() },
+            Scope::User { id: "u".into() },
+            Scope::AgentProfile {
+                id: "primary".into(),
+            },
+            Scope::Repository { id: "/r".into() },
+            Scope::Space { id: "sp".into() },
+            Scope::Organization { id: "o".into() },
+        ]
+        .iter()
+        .map(Scope::key)
+        .collect()
+    }
+
+    #[test]
+    fn scope_names_resolve_and_only_the_narrow_scopes_permit_sensitive_memory() {
+        assert_eq!(Scope::canonical_kind("agent"), Some("agent_profile"));
+        assert_eq!(
+            Scope::canonical_kind("Agent-Profile"),
+            Some("agent_profile")
+        );
+        assert_eq!(Scope::canonical_kind("space"), Some("space"));
+        assert_eq!(Scope::canonical_kind("galaxy"), None);
+        for (scope, permitted) in [
+            (Scope::Run { id: "r".into() }, true),
+            (Scope::Session { id: "s".into() }, true),
+            (Scope::User { id: "u".into() }, true),
+            (Scope::AgentProfile { id: "a".into() }, false),
+            (Scope::Repository { id: "r".into() }, false),
+            (Scope::Space { id: "s".into() }, false),
+            (Scope::Organization { id: "o".into() }, false),
+        ] {
+            assert_eq!(scope.permits_sensitive(), permitted, "{scope:?}");
+            assert_eq!(scope.key().split(':').next(), Some(scope.kind()));
+        }
+    }
+
+    #[test]
+    fn a_narrower_scope_shadows_a_broader_one_on_the_same_topic() {
+        let mut store = MemoryStore::new();
+        let space = curated(
+            &mut store,
+            Scope::Space { id: "sp".into() },
+            RecordType::Convention,
+            "indentation",
+            "use tabs",
+        );
+        let agent = curated(
+            &mut store,
+            Scope::AgentProfile {
+                id: "primary".into(),
+            },
+            RecordType::Convention,
+            "indentation",
+            "use spaces",
+        );
+        let user = curated(
+            &mut store,
+            Scope::User { id: "u".into() },
+            RecordType::Convention,
+            "indentation",
+            "use two spaces",
+        );
+        let keys = chain();
+        let sel = store.select(&SelectionInput {
+            scope_keys: &keys,
+            goal: "format the module",
+            now_ms: 2_000,
+            ..Default::default()
+        });
+        let ids: Vec<&str> = sel.selected.iter().map(|s| s.item.id.as_str()).collect();
+        assert_eq!(ids, vec![user.as_str()], "user < agent < space");
+        let shadowed: Vec<(&str, &str)> = sel
+            .excluded
+            .iter()
+            .map(|e| (e.id.as_str(), e.reason.as_str()))
+            .collect();
+        assert!(
+            shadowed
+                .iter()
+                .any(|(id, r)| *id == agent && *r == format!("shadowed_by:{user}"))
+                && shadowed
+                    .iter()
+                    .any(|(id, r)| *id == space && *r == format!("shadowed_by:{user}")),
+            "{shadowed:?}"
+        );
+        // Without the user's own word, the agent profile outranks the space.
+        let mut without_user = MemoryStore::new();
+        for it in store.all().filter(|i| i.id != user) {
+            without_user.upsert(it.clone());
+        }
+        let sel = without_user.select(&SelectionInput {
+            scope_keys: &keys,
+            goal: "format the module",
+            now_ms: 2_000,
+            ..Default::default()
+        });
+        assert_eq!(sel.selected.len(), 1);
+        assert_eq!(sel.selected[0].item.id, agent);
+    }
+
+    #[test]
+    fn selection_is_by_relevance_and_standing_and_never_offers_sensitive_expired_or_stale_items() {
+        let mut store = MemoryStore::new();
+        let relevant = curated(
+            &mut store,
+            Scope::Repository { id: "/r".into() },
+            RecordType::Procedure,
+            "release process",
+            "run the signing step before tagging",
+        );
+        let unrelated = curated(
+            &mut store,
+            Scope::Repository { id: "/r".into() },
+            RecordType::Procedure,
+            "database migrations",
+            "never edit an applied migration",
+        );
+        let standing = curated(
+            &mut store,
+            Scope::User { id: "u".into() },
+            RecordType::UserPreference,
+            "commit style",
+            "short imperative subjects",
+        );
+        let mut secret = MemoryItem::propose(
+            Scope::User { id: "u".into() },
+            RecordType::Fact,
+            "release process secret",
+            "the release signing passphrase hint",
+            Source::UserStated,
+            "user:u1",
+            0.9,
+            1_000,
+        );
+        secret.sensitivity = Sensitivity::Sensitive;
+        let secret_id = secret.id.clone();
+        store.upsert(secret);
+        store.promote(&secret_id);
+        let mut stale = MemoryItem::propose(
+            Scope::Repository { id: "/r".into() },
+            RecordType::Fact,
+            "release process owner",
+            "the release process is owned by platform",
+            Source::UserStated,
+            "user:u1",
+            0.9,
+            1_000,
+        );
+        stale.last_validation_revision = Some("old".into());
+        let stale_id = stale.id.clone();
+        store.upsert(stale);
+        store.promote(&stale_id);
+        let mut expired = MemoryItem::propose(
+            Scope::User { id: "u".into() },
+            RecordType::Fact,
+            "release process window",
+            "releases happen on tuesday",
+            Source::UserStated,
+            "user:u1",
+            0.9,
+            1_000,
+        );
+        expired.expires_at_ms = Some(1_500);
+        let expired_id = expired.id.clone();
+        store.upsert(expired);
+        store.promote(&expired_id);
+
+        let keys = chain();
+        let sel = store.select(&SelectionInput {
+            scope_keys: &keys,
+            goal: "fix the release process signing",
+            now_ms: 2_000,
+            current_revision: Some("new"),
+            ..Default::default()
+        });
+        let ids: Vec<&str> = sel.selected.iter().map(|s| s.item.id.as_str()).collect();
+        assert!(ids.contains(&relevant.as_str()), "{ids:?}");
+        assert!(
+            ids.contains(&standing.as_str()),
+            "a standing preference applies to any task: {ids:?}"
+        );
+        for out in [&unrelated, &secret_id, &stale_id, &expired_id] {
+            assert!(!ids.contains(&out.as_str()), "{out} must not be selected");
+        }
+        let reason = |id: &str| {
+            sel.excluded
+                .iter()
+                .find(|e| e.id == id)
+                .map(|e| e.reason.clone())
+        };
+        assert_eq!(reason(&unrelated).as_deref(), Some("irrelevant"));
+        assert_eq!(reason(&secret_id).as_deref(), Some("sensitive"));
+        assert_eq!(reason(&stale_id).as_deref(), Some("stale_revision"));
+        // Expired items are not even candidates.
+        assert_eq!(reason(&expired_id), None);
+        // The relevant item outranks the merely standing one.
+        assert_eq!(ids[0], relevant);
+    }
+
+    #[test]
+    fn two_curated_items_in_one_scope_stay_a_conflict_in_the_selection() {
+        let mut store = MemoryStore::new();
+        let a = curated(
+            &mut store,
+            Scope::Repository { id: "/r".into() },
+            RecordType::Convention,
+            "branch naming",
+            "feature/<name>",
+        );
+        let b = curated(
+            &mut store,
+            Scope::Repository { id: "/r".into() },
+            RecordType::Convention,
+            "branch naming",
+            "<name>-wip",
+        );
+        let keys = chain();
+        let sel = store.select(&SelectionInput {
+            scope_keys: &keys,
+            goal: "name the branch",
+            now_ms: 2_000,
+            ..Default::default()
+        });
+        assert_eq!(sel.selected.len(), 2, "no silent pick");
+        for s in &sel.selected {
+            let other = if s.item.id == a { &b } else { &a };
+            assert_eq!(s.conflicts_with, vec![other.clone()]);
+        }
+    }
+
+    #[test]
+    fn an_edit_of_content_is_a_new_item_that_supersedes_and_a_user_edit_states_it() {
+        let it = MemoryItem::propose(
+            Scope::Repository { id: "/r".into() },
+            RecordType::Convention,
+            "indentation",
+            "use tabs",
+            Source::AgentObserved,
+            "agent:a",
+            0.5,
+            1_000,
+        );
+        let edit = MemoryEdit {
+            content: Some("use spaces".into()),
+            ..Default::default()
+        };
+        let by_agent = it.edited(&edit, "agent:a", 2_000).unwrap();
+        assert_ne!(by_agent.id, it.id);
+        assert_eq!(by_agent.supersedes, vec![it.id.clone()]);
+        assert!(!by_agent.validated, "an agent edit validates nothing");
+        assert_eq!(by_agent.source, Source::AgentObserved);
+        let by_user = it.edited(&edit, "user:u1", 2_000).unwrap();
+        assert!(by_user.validated);
+        assert_eq!(by_user.source, Source::UserStated);
+        assert_eq!(by_user.author, "user:u1");
+        assert_eq!(by_user.id, by_agent.id, "the id is content-addressed");
+        // Confidence or time to live alone keeps the id: replaced in place.
+        let ttl = it
+            .edited(
+                &MemoryEdit {
+                    confidence: Some(0.9),
+                    ttl_ms: Some(Some(5_000)),
+                    ..Default::default()
+                },
+                "user:u1",
+                2_000,
+            )
+            .unwrap();
+        assert_eq!(ttl.id, it.id);
+        assert_eq!(ttl.expires_at_ms, Some(7_000));
+        assert!(ttl.supersedes.is_empty());
+        // A retired or empty item is refused.
+        let mut gone = it.clone();
+        gone.status = Status::Superseded;
+        assert!(matches!(
+            gone.edited(&edit, "user:u1", 2_000),
+            Err(EditRefusal::NotEditable { .. })
+        ));
+        assert_eq!(
+            it.edited(
+                &MemoryEdit {
+                    content: Some("  ".into()),
+                    ..Default::default()
+                },
+                "user:u1",
+                2_000
+            ),
+            Err(EditRefusal::Empty)
+        );
     }
 }
