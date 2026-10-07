@@ -1,0 +1,190 @@
+{
+ "tasks": {
+  "DOC-PX-007": {
+   "change_record": "DR-PX-2026-10-03-007",
+   "change_record_status": "PROPOSED",
+   "task_status_at_write": "WIRED"
+  },
+  "DOC-PX-008": {
+   "change_record": "DR-PX-2026-10-03-008",
+   "change_record_status": "PROPOSED",
+   "task_status_at_write": "WIRED"
+  },
+  "DOC-PX-009": {
+   "change_record": "DR-PX-2026-10-03-009",
+   "change_record_status": "PROPOSED",
+   "task_status_at_write": "WIRED"
+  },
+  "DOC-PX-010": {
+   "change_record": "DR-PX-2026-10-03-010",
+   "change_record_status": "PROPOSED",
+   "task_status_at_write": "WIRED"
+  },
+  "DOC-PX-011": {
+   "change_record": "DR-PX-2026-10-03-011",
+   "change_record_status": "PROPOSED",
+   "task_status_at_write": "WIRED"
+  },
+  "DOC-PX-012": {
+   "change_record": "DR-PX-2026-10-03-012",
+   "change_record_status": "PROPOSED",
+   "task_status_at_write": "WIRED"
+  }
+ },
+ "edition": "V3.3 EPR v1.1",
+ "scope": "Six proposed Decision Records (agent-first workspace; native computer control; Workspace Editor; automations; extension marketplace and Customize; desktop shell platform integration), their specifications (docs 65 to 69 and 78), PX-041..098 in doc 62, scoped supersession entries in docs 02 and 03, graph change records and dossier tasks, doc 97 entries. Dossier only; no product behaviour, status or evidence claim changes.",
+ "recorded_at_utc": "2026-10-03T10:47:28.664054+00:00",
+ "environment": {
+  "python": "3.9.6 (default, May 22 2026, 11:13:45) \n[Clang 21.0.0 (clang-2100.1.1.101)]",
+  "platform": "macOS-26.5.1-arm64-arm-64bit",
+  "machine": "arm64",
+  "dependencies": "Python standard library only"
+ },
+ "git": {
+  "baseline_commit": "5fdb47f13368c53df9d68056e160ee0437f3b767",
+  "branch": "worktree-agent-aba874fc14c617f97",
+  "change_commit": "none: the changes are uncommitted in the worktree; the owner asks for the commit and the pull request"
+ },
+ "decision_records": {
+  "DR-PX-2026-10-03-007-agent-first-workspace.md": "c5038778ac8847af3425202350d705717381570736af5cf7fa2bd1bb49940aca",
+  "DR-PX-2026-10-03-008-native-computer-control.md": "3cbffeee7e2fe5ddc2b20e60cc49917effff5e068ff93a1f2c8e648e8695737e",
+  "DR-PX-2026-10-03-009-workspace-editor.md": "395ce8a3a048b0cbbe9ceceef41853fcb3865113c74a77f2de95b6c2de787037",
+  "DR-PX-2026-10-03-010-automations.md": "a3f37cf5e3cdef661464f33b7e09128b9e14d9f02c88ff9d10241f5f625771f5",
+  "DR-PX-2026-10-03-011-extension-marketplace-and-customize.md": "9c41344775bc6dd82d1358e629602ba0b05e9552e55dd1b8e1cc643f7701866b",
+  "DR-PX-2026-10-03-012-desktop-shell-platform-integration.md": "7765b0cbac1f8a9ad921282cf4a01a9ebb00d58f14cfbbf76c20d6b1af8e0953"
+ },
+ "changed_files": {
+  "docs/00_MASTER_INDEX.md": {
+   "before_sha256": "f6f0d02a561b0cc993104b1d33599363900f9a78e440d35d667fb58daafd4d14",
+   "after_sha256": "03fb239c3ad704949560c4c08e103aca2429a9a3a444d9d6dada0970448b9d6e"
+  },
+  "docs/02_AUTHORITY_AND_DECISIONS.md": {
+   "before_sha256": "d56806f57926b7499ec7d3085208304ec679e7caaed50cc0422b15e346106160",
+   "after_sha256": "e86219304a7e3d16dd33a0df46662e076e6d4082e03b58dd5ebc80551e595ce9"
+  },
+  "docs/03_ARCHITECTURAL_CONFLICTS_AND_SUPERSESSIONS.md": {
+   "before_sha256": "6c80da9c6575a10848352f18c794b5896c2006a83d022b6513f7993fe217a95c",
+   "after_sha256": "6301337eb3a06361718c28be533ce070091d5131052a46b1f4f9e2ea7dc4a550"
+  },
+  "docs/10_PRODUCT_PRD_AND_UX.md": {
+   "before_sha256": "ab27458161437b390eb75435877da8abade6fa7954603e0cb439022d24ebf4d9",
+   "after_sha256": "b77f7c51d733689341acc22395faf8466c2669356888ab58d2a497e35cc39a39"
+  },
+  "docs/20_WORKSPACE_GIT_AND_TRUSTED_CODE_SURFACE.md": {
+   "before_sha256": "12981015ae69e28a83f8c8ea04330a16e3c6d9c0ab70f7cb8af6fd581754b0d7",
+   "after_sha256": "3141341c6e15d16acc300ec007deed57ed128da36486b75a1fbb95758689d859"
+  },
+  "docs/29_CLIENT_SURFACES_AND_SOURCE_CONTROL_INTEGRATION.md": {
+   "before_sha256": "6f3290b2c5750cc130b4ab3880efa77d1e890adf2e591805a8a7267eb99d5aa2",
+   "after_sha256": "007d247eda8fc4cc25bf241acbfaec9dd8876d70a3f62fc71b8c4f9270475a78"
+  },
+  "docs/32_DESKTOP_FRONTEND_IMPLEMENTATION.md": {
+   "before_sha256": "33dc6dd7225c3139a0ff6735b0e37d9ea0934ed3e1d6ddb0213f7aabfe69c748",
+   "after_sha256": "12c2bca2dbdf369a01eb94549dfff7f23d270300ad1a880068ce54c9f83769aa"
+  },
+  "docs/62_PRODUCT_EXTENSION_REQUIREMENTS_TASKS_AND_QUALIFICATIONS.md": {
+   "before_sha256": "1212dbd1e9e1bb505b6ae751c39236daece9d1c37eeba7d8e1dde41f5aca6016",
+   "after_sha256": "ad7f81181de3691f7e3f56b1fdb3c98e8768d9999bcc2dcf4b7a5afd548a4160"
+  },
+  "docs/65_AGENT_FIRST_WORKSPACE_SPECIFICATION.md": {
+   "before_sha256": null,
+   "after_sha256": "2fc910d4209d0e6aeffcb4477ed33b8525d7954fc1be0da30ce64feb44d475c9"
+  },
+  "docs/66_NATIVE_COMPUTER_CONTROL_SPECIFICATION.md": {
+   "before_sha256": null,
+   "after_sha256": "14e65cfbabbcb97469325c9d8481434843408790e3711dbb12529e8b704c7ae2"
+  },
+  "docs/67_WORKSPACE_EDITOR_SPECIFICATION.md": {
+   "before_sha256": null,
+   "after_sha256": "ebbfeea104ec2266087b5b70601e5487fb54d5e0dab91031f1e1a05223fe4022"
+  },
+  "docs/68_AUTOMATIONS_SPECIFICATION.md": {
+   "before_sha256": null,
+   "after_sha256": "f5e5c5bc6b728928a48b9360c899158d13c90a17f964b80948c6ac980f8d42f7"
+  },
+  "docs/69_EXTENSION_MARKETPLACE_AND_CUSTOMIZE_SPECIFICATION.md": {
+   "before_sha256": null,
+   "after_sha256": "d33b9b67b6ac11b30b7f5b86674fae1aaeea7d839a0874953e702c0bc8eb44bb"
+  },
+  "docs/78_DESKTOP_SHELL_PLATFORM_INTEGRATION_SPECIFICATION.md": {
+   "before_sha256": null,
+   "after_sha256": "75ed4c47ceeca558b9bf0b2ac45fc729a8299e2302bbb1aee224e06b630d2fae"
+  },
+  "docs/97_DOSSIER_MAINTENANCE_LOG.md": {
+   "before_sha256": "3dd96b5a7519d3371a194697de0cee4ffe48ad1b54d0ad2ff01c257848b4b471",
+   "after_sha256": "bd66900a50592a5970abfbe22526e62b3c584d96c2f9aaf677f76911ff356560"
+  },
+  "tools/build_graph.py": {
+   "before_sha256": "7a13adf9a591a21f9a99705d5a0f2fee5a316b3b43897d0964fbe8b1af30a4ce",
+   "after_sha256": "b5e45856e4d11485e783b7a5c9a2c8ca5a76b112a4edc881bbe55822443807d6"
+  },
+  "tools/test_dossier.py": {
+   "before_sha256": "cfdad6fb1f8d7f6f72da28bf2875e4113a4808b7cae99bc79f8c7a4f8ff712d9",
+   "after_sha256": "7df946c82dddbb1fb31c96d092a6428824b90495362ba70ac7f04fc2cf34d95a"
+  }
+ },
+ "source_revision_algorithm": "SHA-256 over UTF-8 json.dumps(source_sha256, sort_keys=True, separators=(comma,colon)); sources are root *.md except MANIFEST.md, docs/*.md and tools/*.py; excludes generated manifests/graph, evidence and docs/decisions (hashed separately above)",
+ "source_revision_sha256": "7875264741d2550b6f1a190e04e1666b1b2df6b853ed1900cda69f5cf409d650",
+ "tests": {
+  "command": [
+   "python3",
+   "tools/test_dossier.py",
+   "-v"
+  ],
+  "exit_code": 0,
+  "output_ref": "evidence/dossier-px-007/tests.log",
+  "sha256": "cc67957170d5d8b4b7e59faaecc65dcb9b2e508b1f319065589daa8b3a19afa2",
+  "result_line": "Ran 79 tests in 55.802s",
+  "added_test": "test_parity_push_rows_are_authorized_gated_and_release_zero_only"
+ },
+ "integrity_before_evidence_written": {
+  "command": [
+   "python3",
+   "tools/check_dossier.py",
+   "--manifest"
+  ],
+  "exit_code": 1,
+  "output": "[M1] manifest coverage mismatch: missing=['evidence/dossier-px-007/tests.log', 'evidence/dossier-px-007/validation.json'] extra=[]\nFAIL: 1 finding(s)"
+ },
+ "example_runner": {
+  "command": [
+   "python3",
+   "tools/example_runner.py"
+  ],
+  "exit_code": 0,
+  "output": "OK: 11 example block(s); 40 command(s) executed in a copied package, 15 checked against the tool they invoke"
+ },
+ "graph_counts": {
+  "section": 8,
+  "doc": 96,
+  "milestone": 11,
+  "milestone_task": 78,
+  "subsystem": 23,
+  "requirement": 410,
+  "imp_task": 381,
+  "qual_test": 410,
+  "scenario": 213,
+  "decision": 61,
+  "release_gate": 7,
+  "change_record": 17,
+  "source_patch": 2,
+  "dossier_task": 21,
+  "release": 3
+ },
+ "new_px_nodes": {
+  "count": 58,
+  "all_not_started": true,
+  "all_scheduled_in_M10": true,
+  "all_release_zero_only": true
+ },
+ "releases": "RELEASE       STATE            ITEMS  BLOCKED   GATES  TITLE\nALPHA         READY        114/114          0   0/0    Local coding loop and recovery spine\nBETA          READY        318/318          0   0/0    Intelligence, fleet and browser\nRELEASE_ZERO  NOT_READY    391/459          0   0/7    Full end-to-end proof\nALPHA: 0 startable now\nBETA: 0 startable now\nRELEASE_ZERO: 1 startable now: M10.2",
+ "ready_now": "MS   ID             TYPE            STATUS        NOTE               TITLE\nM10  M10.2          milestone_task  NOT_STARTED                      updater/signing/SBOM\nM10  PX-030         imp_task        IMPLEMENTING                     Platform CI compatibility matrix from M0, never release-grade by itself\n\u2014    DOC-PX-007     dossier_task    WIRED         dossier only       Product extension stage: Agent-first workspace (phases 1-3), PX-041..068\n\u2014    DOC-PX-008     dossier_task    WIRED         dossier only       Product extension stage: Native computer control and browser control hardening, PX-069..076\n\u2014    DOC-PX-009     dossier_task    WIRED         dossier only       Product extension stage: Workspace Editor, PX-077..081\n\u2014    DOC-PX-010     dossier_task    WIRED         dossier only       Product extension stage: Automations, PX-082..086\n\u2014    DOC-PX-011     dossier_task    WIRED       ",
+ "invariants": [
+  "ALPHA and BETA stay READY; RELEASE_ZERO NOT_READY with the new rows included",
+  "no PX row of the six records is startable: each is gated by its dossier task, which stays below COMPLETE until the owner accepts the record and it lands",
+  "sealed surface untouched: 291 REQ-EV, 265 IMP-EV, 291 QUAL-EV, EPR-000..019, ADR-R-039..056, gates A to G; tools/dossier_epr.py unchanged",
+  "no Cursor asset, string, colour, theme value, icon name or personal data from the owner's profile appears in any added file (scan run when this file was written found no match)",
+  "every added bash-fenced example: none"
+ ],
+ "finalization": "After this file was written the manifest and graph views were regenerated and check_dossier --manifest rerun (exit code in the handoff message); the retained test log is from the run immediately before."
+}

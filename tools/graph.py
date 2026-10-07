@@ -304,6 +304,11 @@ def cmd_set(args):
         for d in ix.outs(n["id"], "after"):
             if ix.nodes[d].get("status") != "COMPLETE":
                 sys.exit("cannot %s %s: prerequisite %s is %s" % (args.state, n["id"], d, ix.nodes[d].get("status")))
+    if args.state in ("E2E_PROVEN", "COMPLETE") and n["type"] == "dossier_task":
+        for d in ix.outs(n["id"], "authorized_by"):
+            if ix.nodes[d]["type"] == "change_record" and ix.nodes[d].get("status") == "PROPOSED":
+                sys.exit("cannot %s %s: its change record %s is still PROPOSED; the owner must accept it first (docs/decisions/README.md)" % (
+                    args.state, n["id"], d))
     prev = n.get("status", "NOT_STARTED")
     if args.state != prev:
         if args.state == "BLOCKED":
