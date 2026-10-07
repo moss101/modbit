@@ -124,11 +124,22 @@ pub async fn export(
             format!("a task in state {:?} is not handed off", task.state),
         ));
     }
-    // 2. The worktree, as an immutable checkpoint (its blobs are objects).
+    // 2. The worktree, as an immutable checkpoint (its blobs are objects). The
+    // bundle carries this one manifest and nothing of the task's earlier
+    // checkpoints (a per-turn delta's base chain would not travel), so it is
+    // always a self-contained baseline: the cloud writes its files over the
+    // clone and has no other checkpoint to resolve a delta against.
     let lt = Lineage::task(core.tenant_id, task.session_id, task_id);
-    let captured = crate::checkpoint::capture(core, &task, lt, actor, None, "before_handoff")
-        .await
-        .map_err(|e| ("CHECKPOINT".into(), e.to_string()))?;
+    let captured = crate::checkpoint::capture(
+        core,
+        &task,
+        lt,
+        actor,
+        Some(modbit_checkpoint::CheckpointKind::Baseline),
+        "before_handoff",
+    )
+    .await
+    .map_err(|e| ("CHECKPOINT".into(), e.to_string()))?;
     let checkpoint_id = captured.manifest.checkpoint_id.to_string();
     // The manifest as the log references it: the object the Core stored.
     let manifest_ref = core
