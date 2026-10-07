@@ -15,6 +15,7 @@ import "modbit/v1/negotiation.proto";
 import "modbit/v1/context_rules.proto";
 import "modbit/v1/terminal.proto";
 import "modbit/v1/tasking.proto";
+import "modbit/v1/forge_cloud.proto";
 
 // Authentication sent with Hello: the boot-scoped secret the client obtained
 // from the Core it spawned (docs/30). Never logged, never persisted.
@@ -1096,6 +1097,10 @@ message ReviewBundle {
   uint32 receipts = 13;
   repeated string evidence_links = 14;     // "kind:ref" (report, raw output, receipt, event offset)
   repeated CiCheckView ci_evidence = 15;   // PX-009: external, provenance ci; never a verification result
+  // PX-127 (forge_cloud.proto): the pull request's comments the task has
+  // seen, untrusted, with what became of each; and the CI runs refused.
+  repeated ReviewCommentThreadView review_comments = 360;
+  repeated CiRejectedView ci_rejected = 361;
 }
 
 message GetCodeView {

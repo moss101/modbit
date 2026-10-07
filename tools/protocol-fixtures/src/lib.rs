@@ -1100,5 +1100,42 @@ pub fn samples() -> Vec<Sample> {
             }),
             decode: reencode::<IndexStatusView>,
         },
+        // PX-127: a pull-request comment as Review shows it: untrusted text,
+        // what became of it, whether the agent has answered.
+        Sample {
+            name: "review_comment_thread_view",
+            type_name: "modbit.v1.ReviewCommentThreadView",
+            bytes: ReviewCommentThreadView {
+                comment_id: 9_007_199_254_740_993,
+                kind: "review".into(),
+                author: "reviewer".into(),
+                url: "https://github.test/o/r/pull/3#discussion_r11".into(),
+                path: "src/app.ts".into(),
+                line: 2,
+                body: "@modbit please guard negatives".into(),
+                trust: "UNTRUSTED_EXTERNAL_CONTENT".into(),
+                disposition: "STEERED".into(),
+                reason: String::new(),
+                input_id: "forge-comment-11".into(),
+                provenance: "forge_review_comment".into(),
+                ingested_offset: 4096,
+                answered: true,
+                reported_back: false,
+                created_at: "2026-10-07T20:20:26Z".into(),
+            }
+            .encode_to_vec(),
+            expected: json!({
+                "commentId": "9007199254740993", "kind": "review", "author": "reviewer",
+                "url": "https://github.test/o/r/pull/3#discussion_r11",
+                "path": "src/app.ts", "line": "2",
+                "body": "@modbit please guard negatives",
+                "trust": "UNTRUSTED_EXTERNAL_CONTENT", "disposition": "STEERED",
+                "reason": "", "inputId": "forge-comment-11",
+                "provenance": "forge_review_comment", "ingestedOffset": "4096",
+                "answered": true, "reportedBack": false,
+                "createdAt": "2026-10-07T20:20:26Z"
+            }),
+            decode: reencode::<ReviewCommentThreadView>,
+        },
     ]
 }

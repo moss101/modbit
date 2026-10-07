@@ -5357,6 +5357,26 @@ pub(crate) async fn handle_command(core: &Arc<Core>, env: CommandEnvelope) -> Co
             if let Err(ack) = require_lease(core, &cid, &env, &task.session_id).await {
                 return ack;
             }
+            // PX-128: a policy that forbids handoff refuses it before the
+            // run is parked or anything is written — nothing leaves. Only
+            // a higher layer's `DENY` of `task.handoff` counts; a lower
+            // layer can add it, never lift it.
+            let policy = modbit_policy::config::resolve(&crate::config::layers_for(
+                &core.data_dir,
+                task.workspace_root.as_deref(),
+            ));
+            if let Some(p) = policy.permissions.get("task.handoff")
+                && p.value == modbit_policy::config::Permission::Deny
+            {
+                return reject(
+                    cid,
+                    "HANDOFF_FORBIDDEN",
+                    format!(
+                        "the {:?} layer's policy forbids handing a task off the machine; nothing was exported",
+                        p.provenance.decided_by
+                    ),
+                );
+            }
             let out = std::path::PathBuf::from(p.out_dir.trim());
             let exported = crate::handoff::export(core, task_id, &actor, &out).await;
             match exported {

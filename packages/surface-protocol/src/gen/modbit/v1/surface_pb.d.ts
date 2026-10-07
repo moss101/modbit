@@ -17,6 +17,7 @@ import type { CommandEnvelope, EventEnvelope } from "./envelope_pb.js";
 import type { TerminalFrame } from "./terminal_pb.js";
 import type { CompactionSummaryView, CompactionThresholdView, InstructionLayerView, PreTurnPackView } from "./context_rules_pb.js";
 import type { MemoryEventView, MemoryInjectionView } from "./context_knowledge_pb.js";
+import type { ReviewCommentThreadView } from "./forge_cloud_pb.js";
 import type { CaptureCost } from "./checkpoints_pb.js";
 
 /**
@@ -4610,6 +4611,19 @@ export declare type ReviewBundle = Message<"modbit.v1.ReviewBundle"> & {
    * @generated from field: repeated modbit.v1.CiCheckView ci_evidence = 15;
    */
   ciEvidence: CiCheckView[];
+
+  /**
+   * PX-127 (forge_cloud.proto): the pull request's comments the task has
+   * seen, untrusted, with what became of each; and the CI runs refused.
+   *
+   * @generated from field: repeated modbit.v1.ReviewCommentThreadView review_comments = 360;
+   */
+  reviewComments: ReviewCommentThreadView[];
+
+  /**
+   * @generated from field: repeated modbit.v1.CiRejectedView ci_rejected = 361;
+   */
+  ciRejected: CiRejectedView[];
 };
 
 /**

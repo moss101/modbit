@@ -1480,6 +1480,31 @@ function Review({ taskId, sessionId, card, onClose }: { taskId: string; sessionI
       setPrBusy(false);
     }
   };
+  // PX-127: the forge's CI runs and the pull request's comments. The Core
+  // reads the forge; this screen asks it to and shows what it recorded.
+  const [forgeBusy, setForgeBusy] = useState(false);
+  const [forgeNote, setForgeNote] = useState<string | null>(null);
+  const [forgeError, setForgeError] = useState<string | null>(null);
+  const ingestForge = async (what: "ci" | "comments") => {
+    if (forgeBusy) return;
+    setForgeBusy(true);
+    setForgeError(null);
+    setForgeNote(null);
+    try {
+      if (what === "ci") {
+        const r = await window.modbit.ingestCiResults(sessionId, taskId);
+        setForgeNote(`read ${r.checks} check run(s) for ${r.commit.slice(0, 12)}${r.refused > 0 ? `, refused ${r.refused} for another commit` : ""} (offset ${r.offset})`);
+      } else {
+        const r = await window.modbit.ingestReviewComments(sessionId, taskId);
+        setForgeNote(`${r.steered} comment(s) steer the task, ${r.ignored} ignored, ${r.alreadyTaken} already taken (offset ${r.offset})`);
+      }
+      await load();
+    } catch (e) {
+      setForgeError((e as Error).message);
+    } finally {
+      setForgeBusy(false);
+    }
+  };
   const [rejected, setRejected] = useState<Set<string>>(new Set());
   // REQ-EV-0141: hunks the reviewer marks as context. This changes what
   // retrieval prefers and nothing else — it cannot edit or accept anything.
@@ -1782,6 +1807,46 @@ function Review({ taskId, sessionId, card, onClose }: { taskId: string; sessionI
                 </li>
               ))}
             </ul>
+            <h3>Forge CI (external evidence)</h3>
+            <div className="meta">What the forge's checks said about the pushed commit. It informs this review; it is never a verification result and never an acceptance.</div>
+            {bundle.ciEvidence.length === 0 && <p className="empty" data-testid="review-ci-empty">No CI results read yet.</p>}
+            <ul data-testid="review-ci" tabIndex={-1} aria-label="forge CI results">
+              {bundle.ciEvidence.map((c, i) => (
+                <li key={`${c.runId}-${i}`} data-testid="review-ci-run" data-conclusion={c.conclusion || c.status} data-provenance={c.provenance}>
+                  <strong>{c.name}</strong> {c.conclusion === "failure" ? "✖ " : ""}
+                  {c.conclusion || c.status} · run {c.runId} · {c.commit.slice(0, 12)} · provenance {c.provenance}
+                  {c.url && <> · <code>{c.url}</code></>}
+                  {c.logRef && <> · log <code>{c.logRef.slice(0, 12)}</code>{c.logTruncated ? " (cut)" : ""}</>}
+                </li>
+              ))}
+              {bundle.ciRejected.map((r, i) => (
+                <li key={`rej-${i}`} data-testid="review-ci-refused">
+                  refused <strong>{r.name}</strong>: {r.reason} (run on {r.headSha.slice(0, 12)})
+                </li>
+              ))}
+            </ul>
+            <h3>Pull request comments (untrusted)</h3>
+            {bundle.reviewComments.length === 0 && <p className="empty" data-testid="review-comments-empty">No pull request comments read yet.</p>}
+            <ul data-testid="review-comments" tabIndex={-1} aria-label="pull request comments">
+              {bundle.reviewComments.map((t) => (
+                <li key={`${t.commentId}-${t.inputId}-${t.disposition}`} data-testid="review-comment" data-disposition={t.disposition} data-trust={t.trust} data-answered={t.answered ? "true" : "false"}>
+                  <strong>@{t.author}</strong> <span className="meta">[{t.trust}]</span> {t.kind}
+                  {t.path && <> on <code>{t.path}{t.line !== "0" ? `:${t.line}` : ""}</code></>} · {t.disposition === "STEERED" ? (t.answered ? "steered — the agent has answered" : "steered — not yet answered") : `ignored (${t.reason})`}
+                  {t.reportedBack ? " · reported back on the pull request" : ""}
+                  {t.body && <pre className="small" data-testid="review-comment-body">{t.body}</pre>}
+                </li>
+              ))}
+            </ul>
+            <div className="actions">
+              <button type="button" className="small" data-testid="review-ci-ingest" onClick={() => void ingestForge("ci")} disabled={forgeBusy}>
+                Read CI results
+              </button>{" "}
+              <button type="button" className="small" data-testid="review-comments-ingest" onClick={() => void ingestForge("comments")} disabled={forgeBusy}>
+                Read pull request comments
+              </button>
+            </div>
+            {forgeNote && <div className="meta" data-testid="review-forge-note">{forgeNote}</div>}
+            {forgeError && <div role="alert" className="error" data-testid="review-forge-error">{forgeError}</div>}
             {bundle.attributions.length > 0 && (
               <>
                 <h3>Attribution</h3>

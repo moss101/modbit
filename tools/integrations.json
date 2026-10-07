@@ -71,7 +71,10 @@
     ],
     "integration": [
      "services/modbit-core/tests/surface_protocol.rs::qual_px_006_the_forge_adapter_reads_and_writes_github_behind_leases_effects_receipts_and_idempotency_keys",
-     "services/modbit-core/tests/surface_protocol.rs::qual_px_010_a_task_from_a_forge_issue_carries_the_issue_as_untrusted_context_and_runs_the_ordinary_loop"
+     "services/modbit-core/tests/surface_protocol.rs::qual_px_010_a_task_from_a_forge_issue_carries_the_issue_as_untrusted_context_and_runs_the_ordinary_loop",
+     "services/modbit-core/tests/px_125_forge.rs::qual_px_125_the_forge_adapter_reads_a_pull_request_and_its_diff_and_posts_approved_redacted_comments",
+     "apps/cli/tests/px_127_forge.rs::qual_px_127_issue_to_pull_request_to_ci_and_review_comments_in_the_cli_with_provenance_and_nothing_accepted_by_ci",
+     "apps/cloud-worker/tests/px_126_ingestion.rs::qual_px_126_a_signed_check_or_comment_delivery_makes_the_owning_cores_ingestion_record_ci_evidence_and_untrusted_steering"
     ],
     "external": []
    },
