@@ -1,0 +1,11 @@
+{
+  "expected": {
+    "includeArchived": true,
+    "limit": 20,
+    "maxSnippets": 3,
+    "query": "\"file must say\" valid",
+    "sessionId": "31313131313131313131313131313131",
+    "taskId": "32323232323232323232323232323232"
+  },
+  "type": "modbit.v1.SearchConversations"
+}

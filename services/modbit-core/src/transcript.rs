@@ -21,6 +21,7 @@
 use std::collections::HashMap;
 
 use modbit_domain::approval::ApprovalState;
+use modbit_domain::state::StateMachine;
 use modbit_domain::task::{Task, TaskOrigin, TaskState, WaitReason};
 use modbit_domain::{SessionId, StreamId};
 use modbit_event_store::EventStore;
@@ -155,6 +156,16 @@ fn row(
 
 fn hints(r: &mut wire::TranscriptRow) -> &mut wire::RowHints {
     r.hints.get_or_insert_with(Default::default)
+}
+
+/// The density-independent rows of a task's conversation at the log's tip:
+/// what the full-text index of `conversation_search` indexes, so a search
+/// hit names a row `GetTranscript` serves under the same id.
+pub(crate) fn atoms(store: &EventStore, task: &Task) -> Result<Vec<wire::TranscriptRow>, Refusal> {
+    let tip = store
+        .last_offset()
+        .map_err(|e| ("STORE_ERROR", e.to_string()))?;
+    Ok(fold(store, task, tip)?.atoms)
 }
 
 fn fold(store: &EventStore, task: &Task, until: u64) -> Result<Folded, Refusal> {
@@ -1173,6 +1184,11 @@ pub(crate) fn status_class(i: &StatusInputs) -> (wire::AgentStatusClass, &'stati
     (C::Archived, "Archived")
 }
 
+/// The title of a conversation: the first line of its goal, bounded.
+pub(crate) fn title_of(t: &Task) -> String {
+    bounded(t.goal_text.lines().next().unwrap_or_default().trim(), 120).0
+}
+
 fn subtitle_of(root: &str) -> String {
     std::path::Path::new(root)
         .file_name()
@@ -1240,7 +1256,7 @@ pub(crate) fn headers(
             task_id: Some(crate::server::wire_id(t.task_id.as_bytes())),
             session_id: Some(crate::server::wire_id(t.session_id.as_bytes())),
             workspace_root: t.workspace_root.clone().unwrap_or_default(),
-            title: bounded(t.goal_text.lines().next().unwrap_or_default().trim(), 120).0,
+            title: title_of(&t),
             subtitle: t
                 .workspace_root
                 .as_deref()
@@ -1252,9 +1268,16 @@ pub(crate) fn headers(
             status_label: label.into(),
             unread: d.visible_offset > d.read_offset,
             pending_approval: pending.contains(&t.task_id),
-            // No plan-approval gate exists in the Core yet: a plan is recorded
-            // and may be annotated, never held for a decision.
-            pending_plan: false,
+            // Plan mode is the Core's plan gate (docs/65 AFW-D05): the task
+            // records a plan and writes nothing until the person accepts it,
+            // and acceptance is leaving PLAN (`SetTaskMode`, which carries
+            // the plan version accepted). So a plan is pending exactly while
+            // the task is in PLAN mode, has a plan version on its log and has
+            // not ended; outside PLAN mode a recorded plan is the model's
+            // own plan-before-write step and nothing holds it for a decision.
+            pending_plan: !t.state.is_terminal()
+                && d.mode.as_deref() == Some("PLAN")
+                && d.plan_versions > 0,
             context_percent,
             files_changed: d.files_changed,
             lines_added: d.lines_added,

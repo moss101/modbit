@@ -66,6 +66,9 @@ pub struct Core {
     pub(crate) capacity: crate::capacity::Capacity,
     /// Browser sessions and their hosts (M7.1, docs/22).
     pub(crate) browser: Arc<crate::browser::BrowserSessions>,
+    /// The conversation search index (REQ-PX-042): derived from the log,
+    /// bounded, rebuilt on demand.
+    pub(crate) conversation_index: crate::conversation_search::Index,
 }
 
 impl Core {
@@ -253,6 +256,7 @@ pub async fn run_as(
             .map_err(|e| anyhow::anyhow!("{e}"))
             .context("capacity")?,
         browser,
+        conversation_index: crate::conversation_search::Index::from_env(),
     });
     // REQ-EV-0017, docs/23 "Secrets": every payload the Core appends passes
     // the one redactor before it is hashed and persisted — a value in its
@@ -4192,6 +4196,21 @@ pub(crate) async fn handle_command(core: &Arc<Core>, env: CommandEnvelope) -> Co
                 },
             ) {
                 Ok(page) => accept(cid, false, page.encode_to_vec()),
+                Err((code, message)) => reject(cid, code, message),
+            }
+        }
+        "SearchConversations" => {
+            let Ok(p) = wire::SearchConversations::decode(env.payload.as_slice()) else {
+                return reject(cid, "BAD_PAYLOAD", "SearchConversations");
+            };
+            match crate::conversation_search::search(
+                core,
+                &p,
+                env.session_id.as_ref().and_then(id16),
+            )
+            .await
+            {
+                Ok(r) => accept(cid, false, r.encode_to_vec()),
                 Err((code, message)) => reject(cid, code, message),
             }
         }

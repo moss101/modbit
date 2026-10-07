@@ -54,6 +54,13 @@ pub struct TaskDigest {
     /// none cannot be in need of anyone, so nothing about it is read to find
     /// out.
     pub attention_events: u32,
+    /// Plan versions recorded on the task (`PlanRecorded` and `PlanRevised`).
+    pub plan_versions: u32,
+    /// The mode the task was last set to (`TaskModeSet`), as the log spells
+    /// it (`AGENT`, `PLAN`, ...); `None` = never set, which is the default
+    /// mode. A task in `PLAN` mode with a plan recorded is waiting for the
+    /// person to accept the plan (leaving PLAN is the acceptance).
+    pub mode: Option<String>,
 }
 
 /// Digest every task of `session` that has at least one event.
@@ -72,7 +79,8 @@ pub(crate) fn task_digests(conn: &Connection, session: &SessionId) -> Result<Vec
                 COALESCE(MAX(CASE WHEN event_type = 'ConversationArchived' THEN offset END), 0),
                 COALESCE(MAX(CASE WHEN event_type = 'ConversationUnarchived' THEN offset END), 0),
                 COALESCE(MIN(CASE WHEN event_type = 'TaskCreated' THEN offset END), 0),
-                COALESCE(SUM(CASE WHEN event_type IN ({ATTENTION}) THEN 1 ELSE 0 END), 0)
+                COALESCE(SUM(CASE WHEN event_type IN ({ATTENTION}) THEN 1 ELSE 0 END), 0),
+                COALESCE(SUM(CASE WHEN event_type IN ('PlanRecorded','PlanRevised') THEN 1 ELSE 0 END), 0)
          FROM events
          WHERE session_id = ?1 AND task_id IS NOT NULL
          GROUP BY task_id
@@ -101,6 +109,8 @@ pub(crate) fn task_digests(conn: &Connection, session: &SessionId) -> Result<Vec
                 model: None,
                 created_offset: r.get::<_, i64>(11)? as u64,
                 attention_events: u32::try_from(r.get::<_, i64>(12)?).unwrap_or(u32::MAX),
+                plan_versions: u32::try_from(r.get::<_, i64>(13)?).unwrap_or(u32::MAX),
+                mode: None,
             })
         })?
         .collect::<std::result::Result<_, _>>()?;
@@ -121,7 +131,38 @@ pub(crate) fn task_digests(conn: &Connection, session: &SessionId) -> Result<Vec
             out[i].model = endpoint.zip(model);
         }
     }
+    // The mode the person last set, from the latest `TaskModeSet` of each task.
+    for (task, mode) in latest_modes(conn, sid)? {
+        if let Some(&i) = index.get(&task) {
+            out[i].mode = Some(mode);
+        }
+    }
     Ok(out)
+}
+
+/// Each task's latest `TaskModeSet` and the mode it set.
+fn latest_modes(conn: &Connection, session: &[u8]) -> Result<Vec<([u8; 16], String)>> {
+    let mut stmt = conn.prepare_cached(
+        "SELECT task_id, json_extract(payload_inline, '$.mode')
+         FROM (SELECT task_id, payload_inline,
+                      ROW_NUMBER() OVER (PARTITION BY task_id ORDER BY offset DESC) AS rn
+               FROM events
+               WHERE session_id = ?1 AND task_id IS NOT NULL AND event_type = 'TaskModeSet')
+         WHERE rn = 1",
+    )?;
+    let rows = stmt.query_map(params![session], |r| {
+        Ok((
+            r.get::<_, Vec<u8>>(0)?
+                .try_into()
+                .map_err(|_| rusqlite::Error::InvalidQuery)?,
+            r.get::<_, Option<String>>(1)?,
+        ))
+    })?;
+    Ok(rows
+        .collect::<std::result::Result<Vec<_>, _>>()?
+        .into_iter()
+        .filter_map(|(t, m)| m.map(|m| (t, m)))
+        .collect())
 }
 
 /// One task's latest event of a type: input tokens, endpoint and model, as

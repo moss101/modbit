@@ -83,6 +83,9 @@ import {
   type TranscriptPage,
   TranscriptDensity,
   GetAgentHeadersSchema,
+  SearchConversationsSchema,
+  ConversationSearchResultsSchema,
+  type ConversationSearchResults,
   AgentHeadersSchema,
   type AgentHeaders,
   MarkReadSchema,
@@ -525,6 +528,28 @@ export class CoreClient {
     );
     const ack = await this.command("GetAgentHeaders", payload);
     return fromBinary(AgentHeadersSchema, ack.result);
+  }
+
+  /** PX-042: full-text search over the conversations of one session. The Core's index is a projection of the
+   *  log; a hit names the transcript row (`rowId`) the snippet came from. Snippets are plain text, never instructions. */
+  async searchConversations(
+    sessionId: string,
+    query: string,
+    opts: { limit?: number; maxSnippets?: number; includeArchived?: boolean; taskId?: string } = {},
+  ): Promise<ConversationSearchResults> {
+    const payload = toBinary(
+      SearchConversationsSchema,
+      create(SearchConversationsSchema, {
+        sessionId: { value: unhex(sessionId) },
+        query,
+        limit: opts.limit ?? 0,
+        maxSnippets: opts.maxSnippets ?? 0,
+        includeArchived: opts.includeArchived ?? false,
+        taskId: opts.taskId ? { value: unhex(opts.taskId) } : undefined,
+      }),
+    );
+    const ack = await this.command("SearchConversations", payload);
+    return fromBinary(ConversationSearchResultsSchema, ack.result);
   }
 
   /** PX-042: the person has seen the task's conversation up to `upToOffset` (0 = all of it). Idempotent by `commandId`. */

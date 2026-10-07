@@ -1100,5 +1100,86 @@ pub fn samples() -> Vec<Sample> {
             }),
             decode: reencode::<IndexStatusView>,
         },
+        // PX-042: a search over one session's conversations.
+        Sample {
+            name: "search_conversations",
+            type_name: "modbit.v1.SearchConversations",
+            bytes: SearchConversations {
+                session_id: id(0x31),
+                query: "\"file must say\" valid".into(),
+                limit: 20,
+                max_snippets: 3,
+                include_archived: true,
+                task_id: id(0x32),
+            }
+            .encode_to_vec(),
+            expected: json!({
+                "sessionId": idhex(0x31), "query": "\"file must say\" valid", "limit": 20,
+                "maxSnippets": 3, "includeArchived": true, "taskId": idhex(0x32)
+            }),
+            decode: reencode::<SearchConversations>,
+        },
+        Sample {
+            name: "conversation_search_results",
+            type_name: "modbit.v1.ConversationSearchResults",
+            bytes: ConversationSearchResults {
+                session_id: id(0x31),
+                query: "file must say \"file must\"".into(),
+                hits: vec![ConversationHit {
+                    task_id: id(0x32),
+                    title: "Reject negative quantities.".into(),
+                    status_class: AgentStatusClass::ReadyForReviewUnseen as i32,
+                    status_label: "Ready for review".into(),
+                    archived: false,
+                    title_matched: false,
+                    matched_rows: 2,
+                    score: 6,
+                    last_offset: 9_007_199_254_740_993,
+                    snippets: vec![ConversationSnippet {
+                        row_id: "msg:0123".into(),
+                        kind: TranscriptRowKind::AssistantMessage as i32,
+                        source: SnippetSource::Assistant as i32,
+                        offset: 411,
+                        turn_id: "turn-3".into(),
+                        text: "The check failed; the file must say validated.".into(),
+                        cut_before: false,
+                        cut_after: true,
+                        matches: vec![MatchRange { start: 24, end: 37 }],
+                        score: 1,
+                    }],
+                }],
+                total_hits: 1,
+                has_more: false,
+                tasks_considered: 4,
+                tasks_rebuilt: 2,
+                rows_indexed: 13,
+                index_bytes: 9_007_199_254_740_993,
+                index_budget_bytes: 33_554_432,
+                tasks_truncated: 1,
+                index_digest: "ab".repeat(32),
+                as_of_offset: 777,
+            }
+            .encode_to_vec(),
+            expected: json!({
+                "sessionId": idhex(0x31), "query": "file must say \"file must\"",
+                "hits": [{
+                    "taskId": idhex(0x32), "title": "Reject negative quantities.",
+                    "statusClass": "AGENT_STATUS_CLASS_READY_FOR_REVIEW_UNSEEN",
+                    "statusLabel": "Ready for review", "archived": false, "titleMatched": false,
+                    "matchedRows": 2, "score": 6, "lastOffset": "9007199254740993",
+                    "snippets": [{
+                        "rowId": "msg:0123", "kind": "TRANSCRIPT_ROW_KIND_ASSISTANT_MESSAGE",
+                        "source": "SNIPPET_SOURCE_ASSISTANT", "offset": "411", "turnId": "turn-3",
+                        "text": "The check failed; the file must say validated.",
+                        "cutBefore": false, "cutAfter": true,
+                        "matches": [{"start": 24, "end": 37}], "score": 1
+                    }]
+                }],
+                "totalHits": 1, "hasMore": false, "tasksConsidered": 4, "tasksRebuilt": 2,
+                "rowsIndexed": 13, "indexBytes": "9007199254740993", "indexBudgetBytes": "33554432",
+                "tasksTruncated": 1, "indexDigest": "ab".repeat(32), "asOfOffset": "777"
+            }),
+            decode: reencode::<ConversationSearchResults>,
+        },
     ]
 }
