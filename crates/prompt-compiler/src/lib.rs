@@ -515,7 +515,10 @@ pub fn compile(input: PromptInput) -> CompiledPrompt {
         Message::text(Role::System, format!("Compaction epoch:\n{epoch}")),
         {
             // The task turn is as stable as the task: goal, where it runs,
-            // what the user attached. Nothing here changes from turn to turn.
+            // what the user attached, and the curated memory in force. Only
+            // a change to that memory (a promotion, an edit, a forget, an
+            // expiry) changes it between turns, and that is a deliberate
+            // new prefix; the per-turn state is the tail below, never here.
             let mut task_turn = Message::text(
                 Role::User,
                 format!(
@@ -806,6 +809,59 @@ mod tests {
         // With no transcript yet the task turn is the end of the prefix.
         let first = compile(input("g", 1));
         assert_eq!(first.request.cache_breakpoints, [2, 3]);
+    }
+
+    /// Wave 1 (FIX-13 x PX-113): engineering memory shares the cache layout.
+    /// While the curated memory is unchanged it is part of the stable prefix
+    /// (the task turn), so each turn's cached prefix still opens the next
+    /// turn's request and the volatile tail never carries it; a change to the
+    /// memory between turns moves only the task turn and what follows, never
+    /// the system segments or the cache key.
+    #[test]
+    fn memory_keeps_the_prefix_stable_and_a_change_moves_only_the_task_turn() {
+        let compile_turn = |turn: usize, memory: Vec<MemoryFragment>| {
+            let mut i = input("fix the parser", 2);
+            i.harness_state = serde_json::json!({"turns": turn, "no_progress_turns": turn % 3});
+            i.transcript = transcript_of(turn);
+            i.memory = memory;
+            compile(i)
+        };
+        let prefix_bytes = |c: &CompiledPrompt| {
+            let last = *c.request.cache_breakpoints.last().unwrap();
+            serde_json::to_string(&c.request.messages[..=last]).unwrap()
+        };
+        let memory = || {
+            vec![
+                memory_fragment(1, "use tabs"),
+                memory_fragment(2, "no unwrap"),
+            ]
+        };
+        let mut previous = compile_turn(1, memory());
+        for turn in 2..=12 {
+            let next = compile_turn(turn, memory());
+            let before = prefix_bytes(&previous);
+            let after = serde_json::to_string(&next.request.messages).unwrap();
+            assert!(
+                after.starts_with(&before[..before.len() - 1]),
+                "turn {turn}: the memory moved the prefix"
+            );
+            let tail = text_of(next.request.messages.last().unwrap());
+            assert!(
+                !tail.contains("Engineering memory") && !tail.contains("[memory "),
+                "turn {turn}: memory is in the volatile tail: {tail}"
+            );
+            assert!(text_of(&next.request.messages[3]).contains("> use tabs"));
+            previous = next;
+        }
+        // One memory forgotten: the system segments and the cache key stand,
+        // the task turn changes, and so does the pack id.
+        let kept = compile_turn(5, memory());
+        let fewer = compile_turn(5, vec![memory_fragment(1, "use tabs")]);
+        assert_eq!(kept.request.cache_key, fewer.request.cache_key);
+        assert_eq!(kept.segment_hashes[..3], fewer.segment_hashes[..3]);
+        assert_eq!(kept.request.messages[..3], fewer.request.messages[..3]);
+        assert_ne!(kept.request.messages[3], fewer.request.messages[3]);
+        assert_ne!(kept.context_pack_id, fewer.context_pack_id);
     }
 
     /// FIX-13: the volatile state cannot make a turn's request grow without
