@@ -5,6 +5,8 @@
 //! drive. The model is a stand-in; everything the Core does with it is real.
 #![allow(dead_code)]
 
+pub mod mcp_support;
+
 use std::io::{BufRead, BufReader};
 use std::process::{Child, Command, Stdio};
 use std::time::Duration;

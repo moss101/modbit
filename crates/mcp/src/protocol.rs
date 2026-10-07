@@ -31,6 +31,9 @@ pub const METHOD_TOOLS_CALL: &str = "tools/call";
 pub const METHOD_CANCELLED: &str = "notifications/cancelled";
 /// `ping`.
 pub const METHOD_PING: &str = "ping";
+/// `notifications/tools/list_changed`: the server's tool list changed; the
+/// host's cached catalog is stale until it asks again (PX-115).
+pub const METHOD_TOOLS_LIST_CHANGED: &str = "notifications/tools/list_changed";
 
 /// A JSON-RPC error object.
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]

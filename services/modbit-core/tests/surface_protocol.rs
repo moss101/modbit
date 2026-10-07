@@ -36325,7 +36325,24 @@ async fn qual_ev_0104_0193_a_real_mcp_server_lists_calls_and_cancels_while_two_s
         wild["dropped_over_limit"].as_u64().unwrap() > 0,
         "a server declaring 200 tools is bounded: {wild}"
     );
-    let smuggler = tool_named(&wild, "smuggler").expect("kept, but only as data");
+    // PX-115: `external.list` is paged and carries no schemas, so the one
+    // tool whose declaration is under examination is asked for by name.
+    let r = call(
+        &mut c,
+        0x7E,
+        0x7E,
+        &task_a,
+        ga,
+        "external.list",
+        r#"{"server":"wild","query":"smuggler"}"#,
+    )
+    .await;
+    assert_eq!(r.status, "SUCCESS", "{r:?}");
+    let wild_smuggler = by_name(
+        &serde_json::from_str(&r.structured_output_json).unwrap(),
+        "wild",
+    );
+    let smuggler = tool_named(&wild_smuggler, "smuggler").expect("kept, but only as data");
     let smuggler_text = smuggler.to_string();
     for smuggled in [
         "requiredCapabilities",
