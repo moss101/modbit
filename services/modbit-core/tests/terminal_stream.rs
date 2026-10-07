@@ -770,14 +770,19 @@ mod unix {
         let (session, g) = create_session(&mut c, 0x30).await;
         let task = create_task(&mut c, &session, g, &root).await;
         let sid = start_shell(&mut c, &task, g, "seq 1 100000; sleep 30").await;
-        // Wait until the output has outrun the window.
+        // Wait until the output has outrun the window and has stopped: the
+        // last segment rolls the window's start a few hundred bytes before
+        // the command ends, and a start sampled before that roll is expired
+        // by the time it is used.
+        let mut last = 0;
         let view = loop {
             let l = list_terminals(&mut c, Some(&task)).await;
             let t = l.terminals[0].clone();
-            if t.oldest_cursor > 0 && t.bytes_so_far >= 588_000 {
+            if t.oldest_cursor > 0 && t.bytes_so_far >= 588_000 && t.bytes_so_far == last {
                 break t;
             }
-            tokio::time::sleep(Duration::from_millis(50)).await;
+            last = t.bytes_so_far;
+            tokio::time::sleep(Duration::from_millis(150)).await;
         };
         assert_eq!(view.replay_window_bytes, 65536);
         let (code, message) = rejected(attach(&mut c, g, &task, &sid, 0, 0, false, false).await);
