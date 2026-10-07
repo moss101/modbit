@@ -50,6 +50,45 @@ pub struct AppState {
     /// PX-011: the forge app's webhook secret, in memory only — every
     /// delivery verifies under it; `None`: no webhook is accepted.
     pub github_webhook_secret: Option<Vec<u8>>,
+    /// Settings beyond [`Config`] (PX-126, PX-129).
+    pub extras: Extras,
+}
+
+/// Settings of the optional parts of the API, kept apart from [`Config`] so
+/// that adding one never changes how a `Config` is built.
+#[derive(Clone, Debug)]
+pub struct Extras {
+    /// PX-126: the oldest event time (a check run's completion, a comment's
+    /// creation) a webhook delivery may carry; an older one is refused
+    /// `WEBHOOK_STALE` and audited.
+    pub webhook_max_age_ms: i64,
+    /// PX-126: how far in the future an event time may be (clock skew).
+    pub webhook_skew_ms: i64,
+}
+
+impl Default for Extras {
+    fn default() -> Self {
+        Self {
+            webhook_max_age_ms: 60 * 60 * 1000,
+            webhook_skew_ms: 5 * 60 * 1000,
+        }
+    }
+}
+
+impl Extras {
+    /// From the environment (`MODBIT_CLOUD_WEBHOOK_MAX_AGE_SECS`).
+    #[must_use]
+    pub fn from_env() -> Self {
+        let mut e = Self::default();
+        if let Some(secs) = std::env::var("MODBIT_CLOUD_WEBHOOK_MAX_AGE_SECS")
+            .ok()
+            .and_then(|v| v.parse::<i64>().ok())
+            .filter(|s| *s > 0)
+        {
+            e.webhook_max_age_ms = secs * 1000;
+        }
+        e
+    }
 }
 
 /// Service configuration.
@@ -141,8 +180,14 @@ impl Served {
     }
 }
 
-/// Connect the store, apply migrations, start the event listener and serve.
+/// Connect the store, apply migrations, start the event listener and serve
+/// (the optional settings from the environment).
 pub async fn serve(cfg: Config) -> anyhow::Result<Served> {
+    serve_with(cfg, Extras::from_env()).await
+}
+
+/// [`serve`] with explicit optional settings.
+pub async fn serve_with(cfg: Config, extras: Extras) -> anyhow::Result<Served> {
     let store = CloudStore::connect(&cfg.store).await?;
     let (notify, _) = tokio::sync::broadcast::channel(4096);
     let mut rx = store.listen(&cfg.store.database_url).await?;
@@ -178,6 +223,7 @@ pub async fn serve(cfg: Config) -> anyhow::Result<Served> {
         },
         workers: browser_view::WorkerLinks::default(),
         github_webhook_secret: cfg.github_webhook_secret,
+        extras,
     });
     let listener = tokio::net::TcpListener::bind(&cfg.bind).await?;
     let addr = listener.local_addr()?;

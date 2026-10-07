@@ -1239,6 +1239,66 @@ impl CloudStore {
         Ok(rows.iter().map(forge_repository_row).collect())
     }
 
+    /// The task (and its session) that opened the pull request `number` —
+    /// or the one on branch `head` when no number is given — of
+    /// `owner/repo`, within the tenant (PX-126). Read from the log's
+    /// `ForgePullRequestOpened` records, newest first; another tenant's
+    /// tasks are never seen.
+    pub async fn task_for_pull_request(
+        &self,
+        tenant: TenantId,
+        repository: &str,
+        number: Option<u64>,
+        head: Option<&str>,
+    ) -> Result<Option<(TaskId, SessionId)>> {
+        let Some((owner, repo)) = repository.split_once('/') else {
+            return Ok(None);
+        };
+        let client = self.pool.get().await?;
+        let rows = client
+            .query(
+                "SELECT task_id, session_id FROM events WHERE tenant_id = $1 AND event_type = 'ForgePullRequestOpened' AND task_id IS NOT NULL AND lower(payload->>'owner') = $2 AND lower(payload->>'repo') = $3 AND (($4::bigint IS NOT NULL AND (payload->>'number')::bigint = $4) OR ($4::bigint IS NULL AND $5::text IS NOT NULL AND payload->>'head' = $5)) ORDER BY event_offset DESC LIMIT 1",
+                &[
+                    &tenant_uuid(tenant),
+                    &owner.to_ascii_lowercase(),
+                    &repo.to_ascii_lowercase(),
+                    &number.map(|n| n as i64),
+                    &head,
+                ],
+            )
+            .await?;
+        Ok(rows.first().map(|r| {
+            (
+                TaskId::from_bytes(*r.get::<_, uuid::Uuid>(0).as_bytes()),
+                SessionId::from_bytes(*r.get::<_, uuid::Uuid>(1).as_bytes()),
+            )
+        }))
+    }
+
+    /// The tenant whose task opened the pull request `number` of
+    /// `owner/repo`, whoever it is (PX-126: to tell a pull request nobody's
+    /// task opened from one a mapping names the wrong tenant for). Never
+    /// returned to a caller; the API only compares it with the mapped tenant.
+    pub async fn pull_request_owner_tenant(
+        &self,
+        repository: &str,
+        number: u64,
+    ) -> Result<Option<TenantId>> {
+        let Some((owner, repo)) = repository.split_once('/') else {
+            return Ok(None);
+        };
+        let client = self.pool.get().await?;
+        let rows = client
+            .query(
+                "SELECT tenant_id FROM events WHERE event_type = 'ForgePullRequestOpened' AND lower(payload->>'owner') = $1 AND lower(payload->>'repo') = $2 AND (payload->>'number')::bigint = $3 ORDER BY event_offset DESC LIMIT 1",
+                &[&owner.to_ascii_lowercase(), &repo.to_ascii_lowercase(), &(number as i64)],
+            )
+            .await?;
+        Ok(rows
+            .first()
+            .map(|r| TenantId::from_bytes(*r.get::<_, uuid::Uuid>(0).as_bytes())))
+    }
+
     /// Claim a webhook delivery: `Ok(None)` when it is new (recorded
     /// `received`), `Ok(Some(existing))` when the forge delivered this id
     /// before — a replay, whatever its body.

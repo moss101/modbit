@@ -18,6 +18,10 @@ use serde_json::{Value, json};
 use crate::core_process::CoreProcess;
 use crate::{Config, Hosting, HostingMap};
 
+/// How many passes (about 0.4 s each) an ingestion waits for its task to get
+/// a lease before it is refused `LEASE_REQUIRED` for good.
+const INGEST_LEASE_RETRIES: u32 = 300;
+
 /// Per-session progress the worker persists beside the Core's data.
 #[derive(Clone, Debug, Default, serde::Serialize, serde::Deserialize)]
 struct MirrorState {
@@ -323,6 +327,10 @@ async fn host_inner(
     // 3. The loop.
     let mut started: HashSet<[u8; 16]> = HashSet::new();
     let mut handoffs_ready: HashSet<[u8; 16]> = HashSet::new();
+    // PX-126: an ingestion that arrives before its task has a lease (the
+    // task is queued and has not started) is tried again on the next pass,
+    // for a bounded while, rather than lost to a one-shot delivery.
+    let mut ingest_attempts: std::collections::HashMap<uuid::Uuid, u32> = Default::default();
     loop {
         if *fenced.borrow() {
             core.stop();
@@ -347,6 +355,14 @@ async fn host_inner(
                     let (status, code, result) =
                         execute_relayed(&mut c, sid, local_generation, command_id, &kind, &body)
                             .await;
+                    if kind.starts_with("Ingest:") && code == "LEASE_REQUIRED" {
+                        let n = ingest_attempts.entry(command_id).or_insert(0);
+                        *n += 1;
+                        if *n <= INGEST_LEASE_RETRIES {
+                            continue;
+                        }
+                    }
+                    ingest_attempts.remove(&command_id);
                     completions.push((command_id, status, code, result));
                 }
             }
@@ -661,6 +677,63 @@ async fn execute_relayed(
             ))
             .await
             .and_then(|a| Client::result::<wire::TaskResumeResult>(&a).map(|r| json!({"task_id": task_id.to_string(), "resumed": r.resumed, "endpoint": r.endpoint, "model": r.model})))
+        }
+        "Ingest:ci" => {
+            // PX-126: a forge notice that a check finished. The Core reads
+            // the forge itself (its own token, the kernel, the task's lease)
+            // and records what it read as `ci` evidence; nothing in the
+            // delivery is evidence.
+            let task_id = body["task_id"]
+                .as_str()
+                .and_then(|s| modbit_domain::TaskId::parse(s).ok());
+            let Some(task_id) = task_id else {
+                return rejected("BAD_PAYLOAD", "task_id".into());
+            };
+            c.command(envelope(
+                "IngestCiResults",
+                wire::IngestCiResults {
+                    task_id: Some(id_of(task_id.as_bytes())),
+                }
+                .encode_to_vec(),
+                Some(generation),
+            ))
+            .await
+            .and_then(|a| {
+                Client::result::<wire::CiResultsIngested>(&a).map(|r| {
+                    json!({
+                        "task_id": task_id.to_string(), "commit": r.commit, "offset": r.offset,
+                        "evidence_class": r.evidence_class,
+                        "checks": r.checks.iter().map(|c| json!({"name": c.name, "run_id": c.run_id, "status": c.status, "conclusion": c.conclusion})).collect::<Vec<_>>(),
+                        "rejected": r.rejected.len(),
+                    })
+                })
+            })
+        }
+        "Ingest:review_comments" => {
+            let task_id = body["task_id"]
+                .as_str()
+                .and_then(|s| modbit_domain::TaskId::parse(s).ok());
+            let Some(task_id) = task_id else {
+                return rejected("BAD_PAYLOAD", "task_id".into());
+            };
+            c.command(envelope(
+                "IngestReviewComments",
+                wire::IngestReviewComments {
+                    task_id: Some(id_of(task_id.as_bytes())),
+                }
+                .encode_to_vec(),
+                Some(generation),
+            ))
+            .await
+            .and_then(|a| {
+                Client::result::<wire::ReviewCommentsIngestedView>(&a).map(|r| {
+                    json!({
+                        "task_id": task_id.to_string(), "offset": r.offset,
+                        "steered": r.steered.len(), "ignored": r.ignored.len(),
+                        "already_taken": r.already_taken,
+                    })
+                })
+            })
         }
         k if k.starts_with("Approval:") => {
             let approve = k == "Approval:approve";
