@@ -121,18 +121,19 @@ fn declared(effects: &[String], name: &str) -> bool {
 /// The harness's own tools (and the procedural surface itself): the model's
 /// to call, never a program's.
 fn is_harness_tool(name: &str) -> bool {
-    matches!(
-        name,
-        harness::PLAN_TOOL
-            | harness::COMPLETE_TOOL
-            | harness::VERIFY_TOOL
-            | harness::ASK_TOOL
-            | harness::REPAIR_TOOL
-            | harness::TOOL_SEARCH
-            | harness::CONTEXT_TOOL
-            | EXEC_TOOL
-            | WAIT_TOOL
-    )
+    modbit_core_runtime::projection::AGENT_TOOLS.contains(&name)
+        || matches!(
+            name,
+            harness::PLAN_TOOL
+                | harness::COMPLETE_TOOL
+                | harness::VERIFY_TOOL
+                | harness::ASK_TOOL
+                | harness::REPAIR_TOOL
+                | harness::TOOL_SEARCH
+                | harness::CONTEXT_TOOL
+                | EXEC_TOOL
+                | WAIT_TOOL
+        )
 }
 
 /// The bindings a program gets: the turn's projection (registry tools only —

@@ -64,6 +64,7 @@ mod slo;
 mod spawn;
 mod statistics;
 mod subagent;
+mod tool_projection;
 mod tools;
 mod undo;
 mod usage;

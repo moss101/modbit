@@ -450,6 +450,8 @@ fn register_providers(core: &Core, ext: &LoadedExtension) -> Vec<String> {
                     request_timeout_ms: 0,
                     default_reasoning_effort: None,
                     default_service_tier: None,
+                    projection_mode: None,
+                    max_projection_bytes: 0,
                 })
                 .collect(),
             max_retries: 2,

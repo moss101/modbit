@@ -47,6 +47,8 @@ fn input(turn: usize) -> PromptInput {
             "baseline_checks": (0..turn * 5).map(|n| (format!("check_{n}"), "PASS")).collect::<Vec<_>>(),
         }),
         transcript,
+        surface_note: String::new(),
+        hook_context: vec![],
         tools: vec![
             ToolProjection {
                 name: "fs.read".into(),

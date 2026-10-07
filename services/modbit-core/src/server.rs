@@ -630,6 +630,7 @@ async fn serve_connection(core: Arc<Core>, mut stream: BoxedStream) -> Result<()
                     "ReconcileInvoice",
                     "GetEffectivePolicy",
                     "SetTaskSelection",
+                    "SetTaskToolProjection",
                     "AttachContextDocument",
                     "AllowUnsupportedLanguage",
                     "PublishOutcomeBaseline",
@@ -1198,6 +1199,7 @@ fn required_client_capability(env: &CommandEnvelope) -> Option<&'static str> {
         "CreateSession"
         | "CreateTask"
         | "StartTask"
+        | "SetTaskToolProjection"
         | "CancelTask"
         | "QueueInput"
         | "AcquireSessionLease"
@@ -2499,6 +2501,79 @@ async fn handle_command(core: &Arc<Core>, env: CommandEnvelope) -> CommandAck {
                         cid,
                         replayed,
                         wire::TaskSelectionRecorded { offset }.encode_to_vec(),
+                    )
+                }
+                Err(e) => reject(cid, error_code(&e), e.to_string()),
+            }
+        }
+        // PX-114: how a task's tool surface is shown and what it may cost.
+        // A person's choice; the Kernel still decides every call.
+        "SetTaskToolProjection" => {
+            let Ok(p) = wire::SetTaskToolProjection::decode(env.payload.as_slice()) else {
+                return reject(cid, "BAD_PAYLOAD", "SetTaskToolProjection");
+            };
+            let Some(task_id) = p.task_id.as_ref().and_then(id16).map(TaskId::from_bytes) else {
+                return reject(cid, "BAD_PAYLOAD", "task_id required");
+            };
+            if !p.mode.is_empty()
+                && modbit_core_runtime::projection::ProjectionMode::parse(&p.mode).is_none()
+            {
+                return reject(
+                    cid,
+                    "BAD_PAYLOAD",
+                    format!("unknown projection mode `{}` (direct, exec_only)", p.mode),
+                );
+            }
+            if p.mode.is_empty() && p.max_projection_bytes == 0 {
+                return reject(cid, "BAD_PAYLOAD", "a mode or a budget is required");
+            }
+            let session_id = {
+                let store = core.store.lock().await;
+                match store.task(&task_id) {
+                    Ok(Some(t)) => t.session_id,
+                    Ok(None) => return reject(cid, "UNKNOWN_TASK", task_id.to_string()),
+                    Err(e) => return reject(cid, error_code(&e), e.to_string()),
+                }
+            };
+            if let Err(ack) = require_lease(core, &cid, &env, &session_id).await {
+                return ack;
+            }
+            let req = AppendRequest {
+                tenant_id: core.tenant_id,
+                session_id,
+                task_id: Some(task_id),
+                run_id: None,
+                turn_id: None,
+                step_id: None,
+                aggregate_type: AggregateType::Task,
+                aggregate_id: *task_id.as_bytes(),
+                expected_sequence: None,
+                events: vec![typed(
+                    "ToolProjectionConfigured",
+                    &TaskEvent::ToolProjectionConfigured {
+                        mode: p.mode.clone(),
+                        max_projection_bytes: p.max_projection_bytes,
+                    },
+                    actor,
+                )],
+            };
+            let mut store = core.store.lock().await;
+            match store.execute_command(record("SetTaskToolProjection"), req) {
+                Ok(outcome) => {
+                    let (events, replayed) = split(outcome);
+                    let offset = events.last().map_or(0, |e| e.offset);
+                    if !replayed {
+                        core.last_offset.send_replace(offset);
+                    }
+                    accept(
+                        cid,
+                        replayed,
+                        wire::TaskToolProjectionSet {
+                            offset,
+                            mode: p.mode,
+                            max_projection_bytes: p.max_projection_bytes,
+                        }
+                        .encode_to_vec(),
                     )
                 }
                 Err(e) => reject(cid, error_code(&e), e.to_string()),

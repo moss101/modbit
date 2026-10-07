@@ -117,6 +117,25 @@ pub enum TurnEvent {
         /// The leg role the projection was compiled for.
         #[serde(default)]
         leg_role: String,
+        /// PX-114: the projection mode in force (`direct` | `exec_only`);
+        /// empty on a record from before the modes existed.
+        #[serde(default)]
+        mode: String,
+        /// PX-114: bytes of tool schemas this request carries, by the one
+        /// measure (name, description and schema as the provider receives
+        /// them).
+        #[serde(default)]
+        projected_bytes: u64,
+        /// PX-114: bytes the projection would have cost before the budget
+        /// dropped anything.
+        #[serde(default)]
+        requested_bytes: u64,
+        /// PX-114: the schema-bytes budget enforced (0 = unbounded).
+        #[serde(default)]
+        max_projection_bytes: u64,
+        /// PX-114: tools the budget dropped, lowest priority first.
+        #[serde(default)]
+        dropped: Vec<String>,
     },
     /// `ModelInvocationStarted` (Prepared → Streaming, or Executing/Verifying → Streaming for repair).
     ModelInvocationStarted {

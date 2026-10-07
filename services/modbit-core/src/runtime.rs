@@ -2315,7 +2315,12 @@ fn projection(
     task: &Task,
     lease: Option<&modbit_domain::lease::CapabilityLease>,
     state: &mut HarnessState,
-) -> Vec<ToolProjection> {
+    settings: &crate::tool_projection::Settings,
+    facts: crate::tool_projection::Facts,
+) -> crate::tool_projection::Assembled {
+    let exec_only = settings.mode == modbit_core_runtime::projection::ProjectionMode::ExecOnly
+        && !crate::critique::is_review(task);
+    let mut registry_names: std::collections::BTreeSet<String> = std::collections::BTreeSet::new();
     let visible = core
         .tools
         .visible_specs_for(&task.task_id, Some(&task.execution_profile), lease);
@@ -2377,6 +2382,7 @@ fn projection(
             deferred.push((harness::toolset_of(&s.name).to_owned(), s.name.clone()));
             continue;
         }
+        registry_names.insert(s.name.clone());
         tools.push(ToolProjection {
             name: s.name,
             description: format!("{} [effect: {:?}]", s.description, s.effect_class),
@@ -2391,17 +2397,45 @@ fn projection(
             _ => by_set.push((set, vec![name])),
         }
     }
-    let catalog = by_set
+    let mut catalog = by_set
         .iter()
         .map(|(set, names)| format!("{set}: {}", names.join(", ")))
         .collect::<Vec<_>>()
         .join("; ");
+    // A registry that grows must not grow every request: past the bound the
+    // catalog names each toolset and how many tools it holds, and a search
+    // finds the rest.
+    if catalog.len() > crate::tool_projection::MAX_CATALOG_BYTES {
+        catalog = by_set
+            .iter()
+            .map(|(set, names)| format!("{set} ({} tools)", names.len()))
+            .collect::<Vec<_>>()
+            .join("; ");
+    }
+    if exec_only {
+        let harness = crate::tool_projection::harness_deferred_catalog()
+            .iter()
+            .map(|(n, d, _)| format!("{n} ({d})"))
+            .collect::<Vec<_>>()
+            .join("; ");
+        if !catalog.is_empty() {
+            catalog.push_str("; ");
+        }
+        catalog.push_str(&format!("harness: {harness}"));
+    }
     tools.push(ToolProjection {
         name: TOOL_SEARCH.into(),
-        description: format!(
-            "Search the deferred tool catalog by words in a tool's name, toolset or purpose and activate the matches: they are projected with their schemas from the next turn on. Discovery never authorizes — a tool the task's profile or lease denies is not discoverable and stays refused at invocation. Deferred toolsets: {}",
-            if catalog.is_empty() { "none".to_owned() } else { catalog }
-        ),
+        description: if exec_only {
+            format!(
+                "Search the deferred tool catalog by words in a tool's name, toolset or purpose. A host tool found is bound for your programs as `tools.<name>` and its schema is returned here; a harness tool found (delegation, repair, retrieval, verification) is offered as a tool for the next turn. Discovery never authorizes — a tool the task's profile or lease denies is not discoverable and stays refused at invocation. Deferred: {}",
+                if catalog.is_empty() { "none".to_owned() } else { catalog }
+            )
+        } else {
+            format!(
+                "Search the deferred tool catalog by words in a tool's name, toolset or purpose and activate the matches: they are projected with their schemas from the next turn on. Discovery never authorizes — a tool the task's profile or lease denies is not discoverable and stays refused at invocation. Deferred toolsets: {}",
+                if catalog.is_empty() { "none".to_owned() } else { catalog }
+            )
+        },
         input_schema: serde_json::json!({"type":"object","properties":{"query":{"type":"string"},"activate":{"type":"array","items":{"type":"string"}}},"additionalProperties":false}),
     });
     tools.push(ToolProjection {
@@ -2488,14 +2522,30 @@ fn projection(
             )
         })
         .collect();
+    let bindings_text = if exec_only {
+        "the tools listed below".to_owned()
+    } else if program_bindings.is_empty() {
+        "none".to_owned()
+    } else {
+        program_bindings.join(", ")
+    };
+    // The contract text is mode-neutral; `assemble` adds the mode's tail
+    // (direct: when to prefer a direct call; exec_only: the tools a
+    // program reaches, as signatures).
+    let exec_lean = format!(
+        "Run a JavaScript program (async function body: `await` and `return` work) in an isolated runtime with no filesystem, network, process or module access of its own. Its only way out is `await tools.<name>(args)` for the tools below, each an ordinary governed tool call with its own policy decision, approval and receipt; a refused call throws an Error with `code`. `return` the result (JSON); `console.log` for notes. Compose what belongs together in one program. Budgets: cpu_time_ms (default 5000, max {}), memory_bytes, max_tool_calls, max_output_bytes; `declared_effects` narrows the bindings. Returns the outcome, or a handle for proc.wait when still running after {} ms. A tool not listed is found with `tool.search`, which returns its schema and binds it.",
+        crate::procedural::MAX_CPU_TIME_MS,
+        crate::procedural::EXEC_INLINE_GRACE_MS
+    );
+    let exec_base = format!(
+        "Run a JavaScript program (the body of an async function: `await` and `return` work) in an isolated runtime with no filesystem, network, process or module access of its own. Its only way out is `await tools.<toolset>.<name>(args)` for the tools projected this turn ({}; a deferred tool in scope may be called by name too), each an ordinary governed tool call with its own policy decision, approval and receipt; a refused call throws an Error carrying `code`. `console.log` for notes; `return` the result (JSON). `declared_effects` narrows the bindings to the named tools or toolsets. Budgets: cpu_time_ms (default 5000, max {}), memory_bytes, max_tool_calls (bounded by the task's remaining tool budget), max_output_bytes. Returns the outcome, or a handle for proc.wait when the program is still running after {} ms (for instance awaiting an approval).",
+        bindings_text,
+        crate::procedural::MAX_CPU_TIME_MS,
+        crate::procedural::EXEC_INLINE_GRACE_MS
+    );
     tools.push(ToolProjection {
         name: crate::procedural::EXEC_TOOL.into(),
-        description: format!(
-            "Run a JavaScript program (the body of an async function: `await` and `return` work) in an isolated runtime with no filesystem, network, process or module access of its own. Its only way out is `await tools.<toolset>.<name>(args)` for the tools projected this turn ({}; a deferred tool in scope may be called by name too), each an ordinary governed tool call with its own policy decision, approval and receipt; a refused call throws an Error carrying `code`. `console.log` for notes; `return` the result (JSON). `declared_effects` narrows the bindings to the named tools or toolsets. Budgets: cpu_time_ms (default 5000, max {}), memory_bytes, max_tool_calls (bounded by the task's remaining tool budget), max_output_bytes. Returns the outcome, or a handle for proc.wait when the program is still running after {} ms (for instance awaiting an approval). Use it to compose several tool calls in one turn; use direct calls when one call is enough.",
-            if program_bindings.is_empty() { "none".to_owned() } else { program_bindings.join(", ") },
-            crate::procedural::MAX_CPU_TIME_MS,
-            crate::procedural::EXEC_INLINE_GRACE_MS
-        ),
+        description: exec_base.clone(),
         input_schema: serde_json::json!({"type":"object","properties":{"program":{"type":"string","minLength":1},"declared_effects":{"type":"array","items":{"type":"string"}},"budget":{"type":"object","properties":{"cpu_time_ms":{"type":"integer","minimum":1},"memory_bytes":{"type":"integer","minimum":1},"max_tool_calls":{"type":"integer","minimum":1},"max_output_bytes":{"type":"integer","minimum":1}},"additionalProperties":false}},"required":["program"],"additionalProperties":false}),
     });
     tools.push(ToolProjection {
@@ -2511,8 +2561,39 @@ fn projection(
         description: "Run the derived verification plan as a TARGETED stage (build, tests) and get normalized failing checks first; the COMPLETION run happens on task.complete.".into(),
         input_schema: serde_json::json!({"type":"object","properties":{"reason":{"type":"string"}},"additionalProperties":false}),
     });
-    tools.sort_by(|a, b| a.name.cmp(&b.name));
-    tools
+    // PX-114: the mode decides what the request shows, the budget what it
+    // may cost. A tool left out of the request is left out of the fence too
+    // (a call to it is refused, `TOOL_NOT_PROJECTED`); the registry tools
+    // `exec_only` hides stay bindable by a program.
+    let assembled = crate::tool_projection::assemble(
+        settings,
+        tools,
+        &registry_names,
+        &exec_base,
+        &exec_lean,
+        " Use it to compose several tool calls in one turn; use direct calls when one call is enough.",
+        &state.activated_tools,
+        facts,
+        crate::critique::is_review(task),
+    );
+    for name in &assembled.hidden {
+        state.withheld_tools.push(harness::WithheldTool {
+            name: name.clone(),
+            reason: "DEFERRED".into(),
+            how: "deferred in this mode; find it with tool.search and it is offered while the task needs it".into(),
+        });
+    }
+    for name in &assembled.outcome.dropped {
+        state.withheld_tools.push(harness::WithheldTool {
+            name: name.name.clone(),
+            reason: "OVER_BUDGET".into(),
+            how: format!(
+                "the request's tool-schema budget ({} bytes) is full and this is among the lowest-priority tools; a person raises max_projection_bytes",
+                settings.max_bytes
+            ),
+        });
+    }
+    assembled
 }
 
 /// Pending steering inputs after `after_offset` (STEER / FOLLOW_UP / COLLECT).
@@ -2585,6 +2666,38 @@ async fn pending_inputs(core: &Core, task: &Task, after_offset: u64) -> Vec<Queu
         }
     }
     out
+}
+
+/// PX-114: the task's projection mode and schema-bytes budget as a person
+/// last set them (`ToolProjectionConfigured`) after `after_offset`, with the
+/// offset read up to. The newest setting wins; an empty mode or a zero
+/// budget leaves the earlier one in force.
+async fn projection_config_after(
+    core: &Core,
+    task: &Task,
+    after_offset: u64,
+) -> (u64, Option<String>, Option<u64>) {
+    let store = core.store.lock().await;
+    let events = store
+        .read_session(&task.session_id, after_offset, usize::MAX)
+        .unwrap_or_default();
+    let mut last = after_offset;
+    let (mut mode, mut bytes) = (None, None);
+    for ev in &events {
+        last = last.max(ev.offset);
+        if ev.envelope.task_id == Some(task.task_id)
+            && ev.envelope.event_type == "ToolProjectionConfigured"
+        {
+            let p = store.payload(&ev.envelope).unwrap_or_default();
+            if let Some(m) = p["mode"].as_str().filter(|m| !m.is_empty()) {
+                mode = Some(m.to_owned());
+            }
+            if let Some(b) = p["max_projection_bytes"].as_u64().filter(|b| *b > 0) {
+                bytes = Some(b);
+            }
+        }
+    }
+    (last, mode, bytes)
 }
 
 #[allow(clippy::too_many_arguments)]
@@ -2682,6 +2795,9 @@ async fn run_loop(
     }
     let mut tools: Vec<ToolProjection>;
     let mut projected_names: Vec<String>;
+    // PX-114: what a program may bind (the whole projection, shown or not).
+    let mut program_names: Vec<String>;
+    let mut projection_cfg_offset: u64 = 0;
     // The programs of this run (docs/16 "Procedural Tool Runtime", M5.4).
     let mut programs = crate::procedural::Programs::default();
     // Skills (docs/16 "Skills", M5.5): discovered, selected and compiled
@@ -2897,7 +3013,59 @@ async fn run_loop(
         }
         // The projection follows the harness state: deferred tools activated
         // by `tool.search` appear with their schemas from this turn on.
-        tools = projection(&core, &task, lease.as_ref(), &mut state);
+        // PX-114: how the surface is shown (mode) and what it may cost
+        // (budget) follow the task, the routed model and the Core. A
+        // setting a person made since the last round applies now.
+        {
+            let (off, mode, bytes) =
+                projection_config_after(&core, &task, projection_cfg_offset).await;
+            projection_cfg_offset = off;
+            if mode.is_some() {
+                state.projection_mode = mode;
+            }
+            if bytes.is_some() {
+                state.projection_max_bytes = bytes;
+            }
+        }
+        let proj_settings = crate::tool_projection::settings_for(
+            &core,
+            &task,
+            &cfg.endpoint,
+            &cfg.model,
+            &(
+                state
+                    .projection_mode
+                    .as_deref()
+                    .and_then(modbit_core_runtime::projection::ProjectionMode::parse),
+                state
+                    .projection_max_bytes
+                    .and_then(|b| usize::try_from(b).ok()),
+            ),
+        );
+        state.exec_only = proj_settings.mode
+            == modbit_core_runtime::projection::ProjectionMode::ExecOnly
+            && !crate::critique::is_review(&task);
+        let proj_facts = crate::tool_projection::facts_for(&core, &task, &mut state).await;
+        let assembled = projection(
+            &core,
+            &task,
+            lease.as_ref(),
+            &mut state,
+            &proj_settings,
+            proj_facts,
+        );
+        if assembled.outcome.over_budget {
+            break 'outer LoopEnd::NeedsAttention {
+                code: "PROJECTION_OVER_BUDGET",
+                reason: format!(
+                    "the tools a run cannot do without cost {} bytes against a schema budget of {} bytes; a person raises max_projection_bytes (SetTaskToolProjection) or the model's schema_bytes",
+                    assembled.outcome.projected_bytes, proj_settings.max_bytes
+                ),
+            };
+        }
+        let proj_outcome = assembled.outcome;
+        program_names = assembled.program_names;
+        tools = assembled.tools;
         // The names offered this turn: a call outside them is refused at the
         // pipeline (M5.1), whatever the model wrote.
         projected_names = tools.iter().map(|t| t.name.clone()).collect();
@@ -3012,7 +3180,12 @@ async fn run_loop(
                 .map(|s| s.name)
                 .collect()
         };
-        projected_names.extend(deferred_visible.iter().cloned());
+        // `exec_only` fences direct calls at what the request showed; a
+        // program still reaches the deferred tools in scope by name.
+        program_names.extend(deferred_visible.iter().cloned());
+        if !state.exec_only {
+            projected_names.extend(deferred_visible.iter().cloned());
+        }
         // Steering at a safe boundary (docs/14 contract 9): inputs queued
         // before this boundary (including before the loop started).
         let mut inputs = std::mem::take(&mut carried);
@@ -3292,6 +3465,12 @@ async fn run_loop(
                         },
                         context: context_fragments,
                         tools: tools.clone(),
+                        surface_note: if state.exec_only {
+                            crate::tool_projection::EXEC_ONLY_NOTE.to_owned()
+                        } else {
+                            String::new()
+                        },
+                        hook_context: vec![],
                         model_policy: ModelPolicy {
                             endpoint: cfg.endpoint.clone(),
                             model: cfg.model.clone(),
@@ -3368,6 +3547,15 @@ async fn run_loop(
                                         .map(|w| format!("{}:{}", w.name, w.reason))
                                         .collect(),
                                     leg_role: "solver".into(),
+                                    mode: proj_settings.mode.as_str().to_owned(),
+                                    projected_bytes: proj_outcome.projected_bytes as u64,
+                                    requested_bytes: proj_outcome.requested_bytes as u64,
+                                    max_projection_bytes: proj_settings.max_bytes as u64,
+                                    dropped: proj_outcome
+                                        .dropped
+                                        .iter()
+                                        .map(|d| d.name.clone())
+                                        .collect(),
                                 },
                                 actor.clone(),
                             ),
@@ -3964,7 +4152,10 @@ async fn run_loop(
             // A direct call to a deferred-but-visible tool activates it
             // (REQ-EV-0134: discovery by use; authority still sits with the
             // kernel at dispatch).
-            if deferred_visible.contains(&name) && !state.activated_tools.contains(&name) {
+            if !state.exec_only
+                && deferred_visible.contains(&name)
+                && !state.activated_tools.contains(&name)
+            {
                 state.activated_tools.push(name.clone());
                 let mut store = core.store.lock().await;
                 let _ = append(
@@ -4002,6 +4193,31 @@ async fn run_loop(
                 None
             };
             let (entry, step_type, failure_code) = match name.as_str() {
+                // PX-114: a harness tool this turn's request did not offer
+                // (`exec_only` defers delegation, repair, retrieval and
+                // verification; the budget can drop them) is refused like a
+                // registry tool outside the projection. Not offering a tool
+                // is not what protects the run; refusing a crafted call is.
+                _ if crate::tool_projection::is_gated_harness_tool(&name)
+                    && !projected_names.contains(&name) =>
+                {
+                    (
+                        TranscriptEntry::ToolResult {
+                            call_id: call_id.clone(),
+                            name: name.clone(),
+                            text: format!(
+                                "status: REFUSED\nerror_code: TOOL_NOT_PROJECTED\nerror: `{name}` is not in this turn's tool projection; find it with tool.search and call it once it is offered"
+                            ),
+                            failure_signature: None,
+                            clears: vec![],
+                            wrote: None,
+                            progress: false,
+                            media: vec![],
+                        },
+                        StepType::ToolCall,
+                        Some("TOOL_NOT_PROJECTED".to_owned()),
+                    )
+                }
                 _ if protected.is_some() => (
                     protected.take().expect("checked by the guard"),
                     StepType::ToolCall,
@@ -4210,7 +4426,7 @@ async fn run_loop(
                                 serde_json::from_value(v["declared_effects"].clone()).ok()
                             })
                             .unwrap_or_default();
-                    let may_write = crate::procedural::bindings_for(&projected_names, &declared)
+                    let may_write = crate::procedural::bindings_for(&program_names, &declared)
                         .iter()
                         .any(|b| WRITE_TOOLS.contains(&b.as_str()));
                     if may_write && state.plan.is_some() && !state.baseline_recorded {
@@ -4233,7 +4449,7 @@ async fn run_loop(
                         &actor,
                         &mut state,
                         &mut programs,
-                        &projected_names,
+                        &program_names,
                         &call_id,
                         &arguments_json,
                         &cancel,
@@ -7046,6 +7262,17 @@ async fn handle_tool_search(
         })
         .unwrap_or_default();
     let words: Vec<&str> = query.split_whitespace().collect();
+    // PX-114: in `exec_only` the harness tools that are deferred (delegation,
+    // repair, retrieval, verification) are found here too. Finding one never
+    // authorizes it; it is offered, and the Core fences its use at the call.
+    let mut harness_found: Vec<&'static str> = Vec::new();
+    if state.exec_only {
+        for (name, _, keywords) in crate::tool_projection::harness_deferred_catalog() {
+            if crate::tool_projection::harness_matches(name, keywords, &words, &explicit) {
+                harness_found.push(name);
+            }
+        }
+    }
     let visible = core
         .tools
         .visible_specs_for(&task.task_id, Some(&task.execution_profile), lease);
@@ -7075,6 +7302,15 @@ async fn handle_tool_search(
             activated.push(s.name.clone());
         }
     }
+    for name in &harness_found {
+        if *name == "agent.*" {
+            // Delegation is offered for the next round only.
+            state.delegation_offered = true;
+        } else if !state.activated_tools.iter().any(|t| t == name) {
+            state.activated_tools.push((*name).to_owned());
+            activated.push((*name).to_owned());
+        }
+    }
     if !activated.is_empty() {
         let mut store = core.store.lock().await;
         let _ = append(
@@ -7094,7 +7330,7 @@ async fn handle_tool_search(
         );
     }
     let mut text = String::from("status: SUCCESS\n");
-    if matched.is_empty() {
+    if matched.is_empty() && harness_found.is_empty() {
         text.push_str("no deferred tool matches the query within this task's profile and lease; discovery cannot widen what the task may use\n");
     } else {
         for s in &matched {
@@ -7106,10 +7342,29 @@ async fn handle_tool_search(
                 s.required_capabilities.join(","),
                 s.description
             ));
+            if state.exec_only {
+                // The schema the model needs to call it from a program,
+                // returned once, on demand.
+                text.push_str(&format!(
+                    "  call it from a program: {}\n  schema: {}\n",
+                    modbit_core_runtime::projection::compact_signature(&s.name, &s.input_schema),
+                    s.input_schema
+                ));
+            }
+        }
+        for name in &harness_found {
+            text.push_str(&format!(
+                "- {name} [toolset: harness]: offered as a tool from the next turn{}\n",
+                if *name == "agent.*" {
+                    " (and while a child is running)"
+                } else {
+                    ""
+                }
+            ));
         }
         text.push_str(&format!(
             "activated for the next turns: {}\nactivation does not authorize: the Capability Kernel decides every invocation\n",
-            if activated.is_empty() { "(already active)".to_owned() } else { activated.join(", ") }
+            if activated.is_empty() && harness_found.is_empty() { "(already active)".to_owned() } else { activated.iter().cloned().chain(harness_found.iter().map(|s| (*s).to_owned())).collect::<Vec<_>>().join(", ") }
         ));
     }
     TranscriptEntry::ToolResult {
