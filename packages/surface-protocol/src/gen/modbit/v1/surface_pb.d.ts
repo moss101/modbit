@@ -16,6 +16,7 @@ import type { Timestamp } from "@bufbuild/protobuf/wkt";
 import type { CommandEnvelope, EventEnvelope } from "./envelope_pb.js";
 import type { TerminalFrame } from "./terminal_pb.js";
 import type { CompactionSummaryView, CompactionThresholdView, InstructionLayerView, PreTurnPackView } from "./context_rules_pb.js";
+import type { CaptureCost } from "./checkpoints_pb.js";
 
 /**
  * Describes the file modbit/v1/surface.proto.
@@ -7428,6 +7429,13 @@ export declare type CreateCheckpoint = Message<"modbit.v1.CreateCheckpoint"> & {
    * @generated from field: string reason = 3;
    */
   reason: string;
+
+  /**
+   * REQ-PX-102: label the new checkpoint (unique per task; NAME_TAKEN)
+   *
+   * @generated from field: string name = 160;
+   */
+  name: string;
 };
 
 /**
@@ -7463,7 +7471,7 @@ export declare type CheckpointView = Message<"modbit.v1.CheckpointView"> & {
   baseCheckpointId: string;
 
   /**
-   * STARTED | CURRENT | SUPERSEDED | REJECTED
+   * STARTED | CURRENT | SUPERSEDED | REJECTED | COLLECTED
    *
    * @generated from field: string status = 5;
    */
@@ -7529,6 +7537,43 @@ export declare type CheckpointView = Message<"modbit.v1.CheckpointView"> & {
    * @generated from field: int64 committed_at_ms = 16;
    */
   committedAtMs: bigint;
+
+  /**
+   * REQ-PX-061 / REQ-PX-102, block 160-179.
+   *
+   * the user's label, "" when none
+   *
+   * @generated from field: string name = 160;
+   */
+  name: string;
+
+  /**
+   * the turn whose boundary this is; absent when not a turn's
+   *
+   * @generated from field: modbit.v1.Id turn_id = 161;
+   */
+  turnId?: Id | undefined;
+
+  /**
+   * that turn's ordinal in its run (1-based); 0 when not a turn's
+   *
+   * @generated from field: uint32 turn_ordinal = 162;
+   */
+  turnOrdinal: number;
+
+  /**
+   * why the collector keeps it: NAMED | FORK_PARENT | LATEST | PRE_RESTORE | RESTORE_TARGET | CHAIN
+   *
+   * @generated from field: repeated string retention = 163;
+   */
+  retention: string[];
+
+  /**
+   * what the capture cost
+   *
+   * @generated from field: modbit.v1.CaptureCost cost = 164;
+   */
+  cost?: CaptureCost | undefined;
 };
 
 /**
@@ -7633,6 +7678,52 @@ export declare type RestoreCheckpoint = Message<"modbit.v1.RestoreCheckpoint"> &
    * @generated from field: repeated modbit.v1.FileHash expected = 3;
    */
   expected: FileHash[];
+
+  /**
+   * REQ-PX-061 / REQ-PX-102, block 160-179. The target is named by exactly
+   * one of checkpoint_id, name, turn_id or turn_ordinal (none = the current
+   * checkpoint).
+   *
+   * restore the checkpoint carrying this label
+   *
+   * @generated from field: string name = 160;
+   */
+  name: string;
+
+  /**
+   * restore the checkpoint of the latest turn with this ordinal
+   *
+   * @generated from field: uint32 turn_ordinal = 161;
+   */
+  turnOrdinal: number;
+
+  /**
+   * restore the checkpoint of this turn
+   *
+   * @generated from field: modbit.v1.Id turn_id = 162;
+   */
+  turnId?: Id | undefined;
+
+  /**
+   * checkpoint_id is a pre-restore checkpoint: undo that restore (REDO_SUPERSEDED when work moved on since)
+   *
+   * @generated from field: bool redo = 163;
+   */
+  redo: boolean;
+
+  /**
+   * refused as STALE_EPOCH when the task's current epoch differs; 0 = unchecked
+   *
+   * @generated from field: uint32 expected_current_epoch = 164;
+   */
+  expectedCurrentEpoch: number;
+
+  /**
+   * the user's choice for edited files: these paths keep their current content
+   *
+   * @generated from field: repeated string keep_paths = 165;
+   */
+  keepPaths: string[];
 };
 
 /**
@@ -7728,6 +7819,34 @@ export declare type CheckpointRestoreResult = Message<"modbit.v1.CheckpointResto
    * @generated from field: uint32 preconditions_checked = 11;
    */
   preconditionsChecked: number;
+
+  /**
+   * REQ-PX-061, block 160-179.
+   *
+   * the checkpoint of the state before this restore; restoring it is the redo
+   *
+   * @generated from field: string pre_restore_checkpoint_id = 160;
+   */
+  preRestoreCheckpointId: string;
+
+  /**
+   * this command id already restored; nothing was written again
+   *
+   * @generated from field: bool replayed = 161;
+   */
+  replayed: boolean;
+
+  /**
+   * paths left as they were by the caller's choice
+   *
+   * @generated from field: repeated string kept_paths = 162;
+   */
+  keptPaths: string[];
+
+  /**
+   * @generated from field: bool redo = 163;
+   */
+  redo: boolean;
 };
 
 /**
@@ -9110,6 +9229,31 @@ export declare type ForkTask = Message<"modbit.v1.ForkTask"> & {
    * @generated from field: string worktree_dir = 5;
    */
   worktreeDir: string;
+
+  /**
+   * REQ-PX-061 / REQ-PX-102, block 160-179. The fork point is named by at
+   * most one of checkpoint_id, turn_id, turn_ordinal or checkpoint_name; a
+   * named fork point forks a running source too (the chain is immutable).
+   *
+   * fork at the end of this turn
+   *
+   * @generated from field: modbit.v1.Id turn_id = 160;
+   */
+  turnId?: Id | undefined;
+
+  /**
+   * fork at the end of the latest turn with this ordinal
+   *
+   * @generated from field: uint32 turn_ordinal = 161;
+   */
+  turnOrdinal: number;
+
+  /**
+   * fork at the checkpoint carrying this label
+   *
+   * @generated from field: string checkpoint_name = 162;
+   */
+  checkpointName: string;
 };
 
 /**
@@ -9202,6 +9346,18 @@ export declare type TaskForked = Message<"modbit.v1.TaskForked"> & {
    * @generated from field: uint64 offset = 15;
    */
   offset: bigint;
+
+  /**
+   * the turn forked at, when the fork point was a turn
+   *
+   * @generated from field: modbit.v1.Id turn_id = 160;
+   */
+  turnId?: Id | undefined;
+
+  /**
+   * @generated from field: uint32 turn_ordinal = 161;
+   */
+  turnOrdinal: number;
 };
 
 /**
@@ -9228,6 +9384,27 @@ export declare type PreviewRewind = Message<"modbit.v1.PreviewRewind"> & {
    * @generated from field: string checkpoint_id = 2;
    */
   checkpointId: string;
+
+  /**
+   * REQ-PX-102: or the checkpoint carrying this label
+   *
+   * @generated from field: string name = 160;
+   */
+  name: string;
+
+  /**
+   * REQ-PX-061: or the latest turn with this ordinal
+   *
+   * @generated from field: uint32 turn_ordinal = 161;
+   */
+  turnOrdinal: number;
+
+  /**
+   * or this turn
+   *
+   * @generated from field: modbit.v1.Id turn_id = 162;
+   */
+  turnId?: Id | undefined;
 };
 
 /**
@@ -9389,6 +9566,16 @@ export declare type RestoreView = Message<"modbit.v1.RestoreView"> & {
    * @generated from field: uint32 preconditions_checked = 6;
    */
   preconditionsChecked: number;
+
+  /**
+   * @generated from field: string pre_restore_checkpoint_id = 160;
+   */
+  preRestoreCheckpointId: string;
+
+  /**
+   * @generated from field: bool redo = 161;
+   */
+  redo: boolean;
 };
 
 /**

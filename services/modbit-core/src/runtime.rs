@@ -96,6 +96,21 @@ struct Running {
     /// REQ-EV-0049: park at the next safe boundary — durable, resumable,
     /// distinct from cancel.
     park: CancellationToken,
+    /// REQ-PX-101: who asked for the park, when a person did (`PauseTask`).
+    /// A park with no request is the parent's (`agent.park`); one with a
+    /// request ends the run `Waiting(Paused)` and records `TaskPaused`.
+    pause: std::sync::Mutex<Option<PauseRequest>>,
+}
+
+/// A person's request to park a run at its next turn boundary (REQ-PX-101).
+#[derive(Clone, Debug)]
+pub(crate) struct PauseRequest {
+    /// Why, in the requester's words.
+    pub reason: String,
+    /// Who asked.
+    pub actor: Actor,
+    /// The `PauseTask` command (UUID text).
+    pub command_id: String,
 }
 
 /// Runtime state on the Core.
@@ -428,6 +443,7 @@ impl Runtime {
                                 Running {
                                     cancel: cancel.clone(),
                                     park: park.clone(),
+                                    pause: Default::default(),
                                 },
                             );
                             let core2 = Arc::clone(core);
@@ -502,6 +518,7 @@ impl Runtime {
             Running {
                 cancel: cancel.clone(),
                 park: park.clone(),
+                pause: Default::default(),
             },
         );
         let core2 = Arc::clone(core);
@@ -566,6 +583,33 @@ impl Runtime {
             }
             None => false,
         }
+    }
+
+    /// REQ-PX-101: a person asks the run to park at its next turn boundary.
+    /// The request is recorded on the live loop before the park is raised, so
+    /// the loop that stops knows it was asked, by whom. A tool call or a model
+    /// stream in flight is never abandoned: the park is read where the loop
+    /// reads it, at the top of the next turn. `false` when no loop is alive.
+    pub(crate) async fn pause(&self, task_id: &TaskId, request: PauseRequest) -> bool {
+        match self.tasks.lock().await.get(task_id) {
+            Some(r) => {
+                if let Ok(mut p) = r.pause.lock() {
+                    p.get_or_insert(request);
+                }
+                r.park.cancel();
+                true
+            }
+            None => false,
+        }
+    }
+
+    /// The pause request of a loop that is ending, if a person made one.
+    pub(crate) async fn take_pause(&self, task_id: &TaskId) -> Option<PauseRequest> {
+        self.tasks
+            .lock()
+            .await
+            .get(task_id)
+            .and_then(|r| r.pause.lock().ok().and_then(|mut p| p.take()))
     }
 
     /// Whether the loop for a task is alive.
@@ -5225,19 +5269,64 @@ async fn run_loop(
                 evs,
             );
         }
-        // M8.9: a cloud task's worktree lives in its sandbox; a checkpoint at
-        // every turn that ran a tool is what a fresh sandbox is restored
-        // from when this one is lost (docs/21 "Sandbox recovery").
-        if task.execution_profile == modbit_policy::kernel::PROFILE_CLOUD_ISOLATED
-            && ran_sandboxed_tool
-            && !completed
-            && let Err(e) =
-                crate::checkpoint::capture(&core, &task, lturn, &actor, None, "turn_boundary").await
-        {
-            eprintln!(
-                "modbit-core: task {}: the turn-boundary checkpoint failed: {e}",
-                task.task_id
-            );
+        // REQ-PX-061: a delta checkpoint at every turn boundary, in every
+        // profile — what a fork or a rewind "at turn N" is made from, and
+        // (M8.9, docs/21 "Sandbox recovery") what a fresh sandbox is restored
+        // from when a cloud task's is lost. Cheap when nothing changed (see
+        // `checkpoint`'s "Capture cost"); a worktree beyond the bounds, or
+        // one that is not a repository, records why it left none. A cloud
+        // task's worktree changes only through its sandbox tools, so only a
+        // turn that ran one is captured (the listing and the guest reads are
+        // the cost there).
+        let sandboxed = task.execution_profile == modbit_policy::kernel::PROFILE_CLOUD_ISOLATED;
+        let disposable = matches!(
+            task.origin,
+            modbit_domain::task::TaskOrigin::Review | modbit_domain::task::TaskOrigin::Replay
+        );
+        if task.workspace_root.is_some() && !disposable && (!sandboxed || ran_sandboxed_tool) {
+            let meta = crate::checkpoint::CaptureMeta {
+                turn: Some((turn_id, ordinal)),
+            };
+            if let Err(e) = crate::checkpoint::capture_with(
+                &core,
+                &task,
+                lturn,
+                &actor,
+                None,
+                "turn_boundary",
+                meta,
+            )
+            .await
+            {
+                let text = e.to_string();
+                eprintln!(
+                    "modbit-core: task {}: the turn-boundary checkpoint failed: {text}",
+                    task.task_id
+                );
+                let code = if text.starts_with("OVER_BOUNDS") {
+                    "OVER_BOUNDS"
+                } else {
+                    "CAPTURE_FAILED"
+                };
+                let mut store = core.store.lock().await;
+                let _ = append(
+                    &mut store,
+                    &core,
+                    lturn,
+                    AggregateType::Task,
+                    *task.task_id.as_bytes(),
+                    vec![typed(
+                        "CheckpointSkipped",
+                        &TaskEvent::CheckpointSkipped {
+                            turn_id: turn_id.to_string(),
+                            turn_ordinal: ordinal,
+                            code: code.into(),
+                            detail: text,
+                        },
+                        actor.clone(),
+                    )],
+                );
+            }
         }
         if completed {
             break LoopEnd::ReadyForReview;
@@ -5322,6 +5411,12 @@ async fn run_loop(
         } else {
             vec![]
         };
+    // REQ-PX-101: a park a person asked for (`PauseTask`) ends the run paused.
+    let pause_request = if matches!(end, LoopEnd::Parked) {
+        core.runtime.take_pause(&task.task_id).await
+    } else {
+        None
+    };
     let mut store = core.store.lock().await;
     // M6.1: where the primary agent stands once this run is over.
     let agent_end: (modbit_domain::agent::AgentStatus, String) = match &end {
@@ -5363,7 +5458,11 @@ async fn run_loop(
         ),
         LoopEnd::Parked => (
             modbit_domain::agent::AgentStatus::Parked,
-            "parked by the parent (agent.park); resumable".into(),
+            if pause_request.is_some() {
+                "paused by the user at a turn boundary; resumable".into()
+            } else {
+                "parked by the parent (agent.park); resumable".into()
+            },
         ),
     };
     let fenced_end = matches!(end, LoopEnd::Fenced { .. });
@@ -5847,7 +5946,41 @@ async fn run_loop(
         LoopEnd::Parked => {
             // Suspended like a restart would leave it, by choice: the run
             // and its state stay for the resume; no attention is raised —
-            // parking is the parent's decision, not a fault.
+            // parking is the parent's decision (or a person's `PauseTask`),
+            // not a fault. A person's pause is typed: `Waiting(Paused)` and
+            // a `TaskPaused` record of who asked, why, and which checkpoint
+            // the pause holds (REQ-PX-101), in the same transaction as the
+            // run's suspension, so a Core that dies after it finds a paused
+            // task, never a running or a failed one.
+            let mut task_events = vec![typed(
+                "TaskWaiting",
+                &TaskEvent::TaskWaiting {
+                    reason: if pause_request.is_some() {
+                        WaitReason::Paused
+                    } else {
+                        WaitReason::External
+                    },
+                },
+                actor.clone(),
+            )];
+            if let Some(req) = &pause_request {
+                task_events.push(typed(
+                    "TaskPaused",
+                    &TaskEvent::TaskPaused {
+                        reason: req.reason.clone(),
+                        paused_by: format!("{:?}", req.actor),
+                        command_id: req.command_id.clone(),
+                        checkpoint_id: crate::checkpoint::current(&store, &task)
+                            .map(|c| c.checkpoint_id.to_string())
+                            .unwrap_or_default(),
+                        boundary: "TURN_BOUNDARY".into(),
+                        max_turns: state.budgets.max_turns,
+                        max_tool_calls: state.budgets.max_tool_calls,
+                        max_no_progress_turns: state.budgets.max_consecutive_no_progress_turns,
+                    },
+                    req.actor.clone(),
+                ));
+            }
             let _ = append_batch(
                 &mut store,
                 &core,
@@ -5862,17 +5995,7 @@ async fn run_loop(
                             actor.clone(),
                         )],
                     ),
-                    (
-                        AggregateType::Task,
-                        *task.task_id.as_bytes(),
-                        vec![typed(
-                            "TaskWaiting",
-                            &TaskEvent::TaskWaiting {
-                                reason: WaitReason::External,
-                            },
-                            actor.clone(),
-                        )],
-                    ),
+                    (AggregateType::Task, *task.task_id.as_bytes(), task_events),
                 ],
             );
         }

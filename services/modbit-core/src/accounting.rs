@@ -1266,6 +1266,7 @@ pub(crate) fn derive(
                     WaitReason::Provider => "PROVIDER_FAILED",
                     WaitReason::Capacity => "CAPACITY",
                     WaitReason::Approval => "NEEDS_APPROVAL",
+                    WaitReason::Paused => "PAUSED",
                     _ => "NEEDS_ATTENTION",
                 }
             }

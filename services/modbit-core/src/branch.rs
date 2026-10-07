@@ -804,6 +804,11 @@ pub(crate) fn session_tree(
                         files_reverted: p["files_reverted"].as_u64().unwrap_or(0) as u32,
                         preconditions_checked: p["preconditions_checked"].as_u64().unwrap_or(0)
                             as u32,
+                        pre_restore_checkpoint_id: p["pre_restore_checkpoint_id"]
+                            .as_str()
+                            .unwrap_or_default()
+                            .to_owned(),
+                        redo: p["redo"].as_bool().unwrap_or(false),
                     });
                 }
             }

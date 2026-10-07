@@ -620,15 +620,47 @@ async fn execute_relayed(
             .await
             .and_then(|a| Client::result::<wire::TaskCancelRequested>(&a).map(|r| json!({"task_id": task_id.to_string(), "outcome": if r.was_running { "cancel requested at the next safe boundary" } else { "cancelled" }, "was_running": r.was_running})))
         }
-        "Task:pause" | "Task:resume" => {
-            // The Core has no PauseTask/ResumeTask command yet (the runtime's
-            // `park` is an internal boundary, not a client command): the
-            // request is honestly refused.
-            return rejected(
-                "PAUSE_UNSUPPORTED",
-                "the Core exposes no pause or resume command yet; cancel (confirmed) or steer instead"
-                    .into(),
-            );
+        "Task:pause" => {
+            // REQ-PX-101: the same command the local clients use, over the
+            // runtime's durable park. The Core answers at once with whether
+            // the run has parked or parks at the turn boundary.
+            let task_id = body["task_id"]
+                .as_str()
+                .and_then(|s| modbit_domain::TaskId::parse(s).ok());
+            let Some(task_id) = task_id else {
+                return rejected("BAD_PAYLOAD", "task_id".into());
+            };
+            c.command(envelope(
+                "PauseTask",
+                wire::PauseTask {
+                    task_id: Some(id_of(task_id.as_bytes())),
+                    reason: body["reason"].as_str().unwrap_or_default().to_owned(),
+                    wait_ms: 0,
+                }
+                .encode_to_vec(),
+                Some(generation),
+            ))
+            .await
+            .and_then(|a| Client::result::<wire::TaskPauseResult>(&a).map(|r| json!({"task_id": task_id.to_string(), "state": r.state, "waits_for_boundary": r.waits_for_boundary, "note": r.note, "checkpoint_id": r.checkpoint_id})))
+        }
+        "Task:resume" => {
+            let task_id = body["task_id"]
+                .as_str()
+                .and_then(|s| modbit_domain::TaskId::parse(s).ok());
+            let Some(task_id) = task_id else {
+                return rejected("BAD_PAYLOAD", "task_id".into());
+            };
+            c.command(envelope(
+                "ResumeTask",
+                wire::ResumeTask {
+                    task_id: Some(id_of(task_id.as_bytes())),
+                    ..Default::default()
+                }
+                .encode_to_vec(),
+                Some(generation),
+            ))
+            .await
+            .and_then(|a| Client::result::<wire::TaskResumeResult>(&a).map(|r| json!({"task_id": task_id.to_string(), "resumed": r.resumed, "endpoint": r.endpoint, "model": r.model})))
         }
         k if k.starts_with("Approval:") => {
             let approve = k == "Approval:approve";

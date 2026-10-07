@@ -51,14 +51,14 @@ use modbit_protocol::v1::{
     GetTaskEconomics, GetTaskStatus, GetWorkGraph, HunkRef, Id, IngestAttachment, InputQueued,
     InvokeTool, LanguageList, ListApprovals, ListLanguages, ListModels, ListQuestions,
     ListStarterTasks, ListTools, ModelList, ModelProbed, OpenPullRequest, OutcomeBaselinePublished,
-    PreviewRewind, ProbeModel, ProviderConfigured, PublishOutcomeBaseline, PullRequestAck,
-    QuestionList, QuestionResponded, QueueInput, RecoveryReport, RepositoryTrusted,
-    ResolveApproval, RespondToQuestion, RestoreCheckpoint, ReviewBundle, ReviewDecided,
+    PauseTask, PreviewRewind, ProbeModel, ProviderConfigured, PublishOutcomeBaseline,
+    PullRequestAck, QuestionList, QuestionResponded, QueueInput, RecoveryReport, RepositoryTrusted,
+    ResolveApproval, RespondToQuestion, RestoreCheckpoint, ResumeTask, ReviewBundle, ReviewDecided,
     RewindPreview, RoutingSessionStateView, SessionCreated, SessionLeaseAcquired, SessionSnapshot,
     SessionTreeView, SetTaskSelection, StartTask, StarterTaskList, TaskAssuranceView,
-    TaskCancelRequested, TaskCreated, TaskEconomicsView, TaskForked, TaskRunStarted,
-    TaskSelectionRecorded, TaskStatus, ToolInvoked, ToolList, TrustRepository, UndoPlanView,
-    UndoToolCall, UnsupportedLanguageAllowed, UpdatePullRequest,
+    TaskCancelRequested, TaskCreated, TaskEconomicsView, TaskForked, TaskPauseResult,
+    TaskResumeResult, TaskRunStarted, TaskSelectionRecorded, TaskStatus, ToolInvoked, ToolList,
+    TrustRepository, UndoPlanView, UndoToolCall, UnsupportedLanguageAllowed, UpdatePullRequest,
 };
 use modbit_protocol::v1::{
     AgentHeaders, GetAgentHeaders, GetTranscript, TranscriptDensity, TranscriptPage, TranscriptRow,
@@ -190,7 +190,7 @@ fn exit_for_state(state: &str) -> u8 {
     }
 }
 
-const USAGE: &str = "usage: modbit-cli --data-dir <dir> (session create | session show --session <id> | task create --session <id> [--workspace <dir>] [--command-id <hex>] [--mode agent|plan|debug|multitask|ask] [--profile <execution-profile>] [--objective cost|balance|intelligence] [--effort low|medium|high] [--tier <name>] <goal> | task mode --session <id> --task <id> <mode> | task preference --session <id> --task <id> [--objective o] [--effort e] [--tier t] [--pin <endpoint>/<model> | --clear-pin] | task posture --task <id> | task create --session <id> [--workspace <dir>] [--command-id <hex>] [--mode agent|plan|debug|multitask|ask] [--profile <execution-profile>] [--objective cost|balance|intelligence] [--effort low|medium|high] [--tier <name>] <goal> | task from-issue --session <id> [--workspace <dir>] [--command-id <hex>] <issue-url> | events tail --session <id> [--after N] [--count N] [--json] | task attach --session <id> --task <id> <file> | question list --task <id> | question answer --session <id> --task <id> --question <id> [--option <id>] [--endpoint <name>] [--model <id>] [--wait] [text] | tool list [--task <id>] | tool invoke --session <id> --task <id> [--call <id>] <tool> <arguments-json> | approval list --session <id> | approval resolve --session <id> --approval <id> [--intent <hash>] (approve|deny) [reason] | stop --session <id> [reason] | receipts [--task <id>] | lease list --task <id> | task run --session <id> --task <id> [--endpoint <name>] [--model <id>] [--max-turns N] [--max-tool-calls N] [--max-no-progress-turns N] [--skill <name>]... [--mode <mode>] [--objective o] [--effort e] [--tier t] [--wait] | task run --session <id> --task <id> [--endpoint <name>] [--model <id>] [--max-turns N] [--max-tool-calls N] [--max-no-progress-turns N] [--skill <name>]... [--mode <mode>] [--objective o] [--effort e] [--tier t] [--wait] | task cancel --session <id> --task <id> | task status --task <id> | task transcript --task <id> [--density compact|balanced|detailed] | task headers --session <id> [--archived] | review show --task <id> | review decide --session <id> --task <id> (accept|return) [--reject path#index ...] [note] | change undo --session <id> --task <id> --call <id> [--apply] | context show <task-id> | task fork --session <id> --task <id> [--checkpoint <id>] [--carry PLAN,DECISIONS,EVIDENCE,CONTEXT] [--worktree <dir>] [goal] | task rewind --task <id> [--checkpoint <id>] [--apply --session <id>] | session route --session <id> | session tree --session <id> | task assurance --task <id> | task economics --task <id> | task work --task <id> | task agents --task <id> | capacity show | attention list --session <id> | plan show --task <id> | plan revise --session <id> --task <id> [--plan-json <file>] [note] | task patch --session <id> --task <id> --path <p> --revision <n> [--file-revision <sha>] (--old <text> | --old-file <f>) (--new <text> | --new-file <f>) | baseline publish --session <id> [--revision <rev>] | task allow-language --session <id> --task <id> --language <l> [--reason r] | task attach-context --session <id> --task <id> --source <s> [--title t] <file> | task select --session <id> --task <id> [--path p]... [--lines a:b] [--symbol s] [--hunk path#index]... [--source review|editor|cli] | agent install <file> [--from claude] [--replace] | agent list | skill install <dir> [--expect-hash <hex>] [--replace] | skill remove <name> | skill revoke <name> [--hash <content-hash>] | skill list | language list | model list | model probe --endpoint <name> --model <id> [--tools] <prompt> | task steer --session <id> --task <id> [--mode STEER|COLLECT|FOLLOW_UP] [--input-id <hex>] <text> | workspace trust --session <id> [--scope <s>] <root> | provider configure --provider <openai|anthropic> [--base-url <url>] [--clear] | recovery show | pr (open | update) --session <id> --task <id> --revision <n> [--base <ref>] [--title <t>] [--remote <name>] | starter list [--workspace <dir>] | doctor --session <id> | trace --session <id> [--task <id>] | export diagnostics --session <id> [--task <id>] [--include-content] --out <file> | diagnostics verify <file> | export handoff --session <id> --task <id> --out <dir> | usage reconcile --task <id> --invoice <file> [--tolerance-bp N] | dashboard --session <id> | terminal list [--task <id>] | terminal attach --task <id> --terminal <id> [--from N] [--window N] | platform)";
+const USAGE: &str = "usage: modbit-cli --data-dir <dir> (session create | session show --session <id> | task create --session <id> [--workspace <dir>] [--command-id <hex>] [--mode agent|plan|debug|multitask|ask] [--profile <execution-profile>] [--objective cost|balance|intelligence] [--effort low|medium|high] [--tier <name>] <goal> | task mode --session <id> --task <id> <mode> | task preference --session <id> --task <id> [--objective o] [--effort e] [--tier t] [--pin <endpoint>/<model> | --clear-pin] | task posture --task <id> | task create --session <id> [--workspace <dir>] [--command-id <hex>] [--mode agent|plan|debug|multitask|ask] [--profile <execution-profile>] [--objective cost|balance|intelligence] [--effort low|medium|high] [--tier <name>] <goal> | task from-issue --session <id> [--workspace <dir>] [--command-id <hex>] <issue-url> | events tail --session <id> [--after N] [--count N] [--json] | task attach --session <id> --task <id> <file> | question list --task <id> | question answer --session <id> --task <id> --question <id> [--option <id>] [--endpoint <name>] [--model <id>] [--wait] [text] | tool list [--task <id>] | tool invoke --session <id> --task <id> [--call <id>] <tool> <arguments-json> | approval list --session <id> | approval resolve --session <id> --approval <id> [--intent <hash>] (approve|deny) [reason] | stop --session <id> [reason] | receipts [--task <id>] | lease list --task <id> | task run --session <id> --task <id> [--endpoint <name>] [--model <id>] [--max-turns N] [--max-tool-calls N] [--max-no-progress-turns N] [--skill <name>]... [--mode <mode>] [--objective o] [--effort e] [--tier t] [--wait] | task run --session <id> --task <id> [--endpoint <name>] [--model <id>] [--max-turns N] [--max-tool-calls N] [--max-no-progress-turns N] [--skill <name>]... [--mode <mode>] [--objective o] [--effort e] [--tier t] [--wait] | task cancel --session <id> --task <id> | task pause --session <id> --task <id> [--wait-ms N] [reason] | task resume --session <id> --task <id> [--endpoint <name>] [--model <id>] [--wait] | task status --task <id> | task transcript --task <id> [--density compact|balanced|detailed] | task headers --session <id> [--archived] | review show --task <id> | review decide --session <id> --task <id> (accept|return) [--reject path#index ...] [note] | change undo --session <id> --task <id> --call <id> [--apply] | context show <task-id> | task fork --session <id> --task <id> [--checkpoint <id> | --turn <ordinal> | --name <label>] [--carry PLAN,DECISIONS,EVIDENCE,CONTEXT] [--worktree <dir>] [goal] | task rewind --task <id> [--checkpoint <id> | task fork --session <id> --task <id> [--checkpoint <id> | task rewind --task <id> [--checkpoint <id> | session route --session <id> | session tree --session <id> | task assurance --task <id> | task economics --task <id> | task work --task <id> | task agents --task <id> | capacity show | attention list --session <id> | plan show --task <id> | plan revise --session <id> --task <id> [--plan-json <file>] [note] | task patch --session <id> --task <id> --path <p> --revision <n> [--file-revision <sha>] (--old <text> | --old-file <f>) (--new <text> | --new-file <f>) | baseline publish --session <id> [--revision <rev>] | task allow-language --session <id> --task <id> --language <l> [--reason r] | task attach-context --session <id> --task <id> --source <s> [--title t] <file> | task select --session <id> --task <id> [--path p]... [--lines a:b] [--symbol s] [--hunk path#index]... [--source review|editor|cli] | agent install <file> [--from claude] [--replace] | agent list | skill install <dir> [--expect-hash <hex>] [--replace] | skill remove <name> | skill revoke <name> [--hash <content-hash>] | skill list | language list | model list | model probe --endpoint <name> --model <id> [--tools] <prompt> | task steer --session <id> --task <id> [--mode STEER|COLLECT|FOLLOW_UP] [--input-id <hex>] <text> | workspace trust --session <id> [--scope <s>] <root> | provider configure --provider <openai|anthropic> [--base-url <url>] [--clear] | recovery show | pr (open | update) --session <id> --task <id> --revision <n> [--base <ref>] [--title <t>] [--remote <name>] | starter list [--workspace <dir>] | doctor --session <id> | trace --session <id> [--task <id>] | export diagnostics --session <id> [--task <id>] [--include-content] --out <file> | diagnostics verify <file> | export handoff --session <id> --task <id> --out <dir> | usage reconcile --task <id> --invoice <file> [--tolerance-bp N] | dashboard --session <id> | terminal list [--task <id>] | terminal attach --task <id> --terminal <id> [--from N] [--window N] | --name <label>] [--redo] [--keep <paths>] [--apply --session <id>] | platform)";
 
 fn parse_id(hex: &str) -> Result<Id, String> {
     let bytes = decode_hex(hex)
@@ -1396,6 +1396,57 @@ async fn run_command(ready: &ReadyLine, rest: Vec<String>) -> Result<(), String>
             let r: TaskCancelRequested = Client::result(&ack).map_err(|e| e.to_string())?;
             println!("cancel was_running={}", r.was_running);
         }
+        // REQ-PX-101: park a running task at its next turn boundary; resume it.
+        ["task", "pause", ..] => {
+            let sid = parse_id(opt("--session").ok_or(USAGE)?)?;
+            let task_id = parse_id(opt("--task").ok_or(USAGE)?)?;
+            let lease = join_lease(&mut client, &sid).await?;
+            let ack = client
+                .command(envelope_fenced(
+                    "PauseTask",
+                    PauseTask {
+                        task_id: Some(task_id),
+                        reason: positionals(&words, 2).join(" "),
+                        wait_ms: opt("--wait-ms").and_then(|t| t.parse().ok()).unwrap_or(0),
+                    }
+                    .encode_to_vec(),
+                    Some(lease),
+                ))
+                .await
+                .map_err(|e| e.to_string())?;
+            let r: TaskPauseResult = Client::result(&ack).map_err(|e| e.to_string())?;
+            println!(
+                "pause state={} waits_for_boundary={} checkpoint={}\n  {}",
+                r.state, r.waits_for_boundary, r.checkpoint_id, r.note
+            );
+        }
+        ["task", "resume", ..] => {
+            let sid = parse_id(opt("--session").ok_or(USAGE)?)?;
+            let task_id = parse_id(opt("--task").ok_or(USAGE)?)?;
+            let lease = join_lease(&mut client, &sid).await?;
+            let ack = client
+                .command(envelope_fenced(
+                    "ResumeTask",
+                    ResumeTask {
+                        task_id: Some(task_id.clone()),
+                        endpoint: opt("--endpoint").unwrap_or_default().to_owned(),
+                        model: opt("--model").unwrap_or_default().to_owned(),
+                        ..Default::default()
+                    }
+                    .encode_to_vec(),
+                    Some(lease),
+                ))
+                .await
+                .map_err(|e| e.to_string())?;
+            let r: TaskResumeResult = Client::result(&ack).map_err(|e| e.to_string())?;
+            println!(
+                "resumed={} endpoint={} model={}",
+                r.resumed, r.endpoint, r.model
+            );
+            if words.contains(&"--wait") {
+                wait_until_idle(&mut client, &task_id).await?;
+            }
+        }
         ["task", "status", ..] => {
             let task_id = parse_id(opt("--task").ok_or(USAGE)?)?;
             let ack = client
@@ -1890,6 +1941,9 @@ async fn run_command(ready: &ReadyLine, rest: Vec<String>) -> Result<(), String>
                         goal_text,
                         carry,
                         worktree_dir: opt("--worktree").unwrap_or("").to_owned(),
+                        turn_ordinal: opt("--turn").and_then(|t| t.parse().ok()).unwrap_or(0),
+                        checkpoint_name: opt("--name").unwrap_or("").to_owned(),
+                        ..Default::default()
                     }
                     .encode_to_vec(),
                     Some(lease),
@@ -1928,6 +1982,9 @@ async fn run_command(ready: &ReadyLine, rest: Vec<String>) -> Result<(), String>
                     PreviewRewind {
                         task_id: Some(task_id.clone()),
                         checkpoint_id: checkpoint_id.clone(),
+                        name: opt("--name").unwrap_or("").to_owned(),
+                        turn_ordinal: opt("--turn").and_then(|t| t.parse().ok()).unwrap_or(0),
+                        ..Default::default()
                     }
                     .encode_to_vec(),
                 ))
@@ -1961,7 +2018,12 @@ async fn run_command(ready: &ReadyLine, rest: Vec<String>) -> Result<(), String>
                         "RestoreCheckpoint",
                         RestoreCheckpoint {
                             task_id: Some(task_id),
-                            checkpoint_id,
+                            // The preview named the checkpoint it resolved.
+                            checkpoint_id: pv.checkpoint_id.clone(),
+                            keep_paths: opt("--keep")
+                                .map(|k| k.split(',').map(str::to_owned).collect())
+                                .unwrap_or_default(),
+                            redo: words.contains(&"--redo"),
                             expected: pv
                                 .entries
                                 .iter()
@@ -1970,6 +2032,7 @@ async fn run_command(ready: &ReadyLine, rest: Vec<String>) -> Result<(), String>
                                     content_hash: e.current_hash.clone(),
                                 })
                                 .collect(),
+                            ..Default::default()
                         }
                         .encode_to_vec(),
                         Some(lease),
@@ -1986,6 +2049,12 @@ async fn run_command(ready: &ReadyLine, rest: Vec<String>) -> Result<(), String>
                         r.workspace_revision_after,
                         r.event_offset
                     );
+                    if !r.pre_restore_checkpoint_id.is_empty() {
+                        println!(
+                            "  undo with: task rewind --task <id> --checkpoint {} --redo --apply --session <id>",
+                            r.pre_restore_checkpoint_id
+                        );
+                    }
                 } else {
                     return Err(format!("restore refused: {} {}", r.refusal, r.detail));
                 }

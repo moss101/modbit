@@ -7,6 +7,7 @@ syntax = "proto3";
 package modbit.v1;
 
 import "google/protobuf/timestamp.proto";
+import "modbit/v1/checkpoints.proto";
 import "modbit/v1/domain.proto";
 import "modbit/v1/envelope.proto";
 import "modbit/v1/negotiation.proto";
@@ -1759,6 +1760,7 @@ message CreateCheckpoint {
   Id task_id = 1;
   string kind = 2;                 // "" = the engine decides (baseline first, then deltas); BASELINE | DELTA
   string reason = 3;               // why (requested | before_completion | before_revert)
+  string name = 160;               // REQ-PX-102: label the new checkpoint (unique per task; NAME_TAKEN)
 }
 
 message CheckpointView {
@@ -1766,7 +1768,7 @@ message CheckpointView {
   uint32 epoch = 2;
   string kind = 3;                 // BASELINE | DELTA
   string base_checkpoint_id = 4;
-  string status = 5;               // STARTED | CURRENT | SUPERSEDED | REJECTED
+  string status = 5;               // STARTED | CURRENT | SUPERSEDED | REJECTED | COLLECTED
   uint64 workspace_revision = 6;
   string manifest_ref = 7;         // object hash of the manifest once committed
   string integrity_hash = 8;
@@ -1778,6 +1780,12 @@ message CheckpointView {
   string reason = 14;
   int64 created_at_ms = 15;
   int64 committed_at_ms = 16;      // 0 while started
+  // REQ-PX-061 / REQ-PX-102, block 160-179.
+  string name = 160;               // the user's label, "" when none
+  Id turn_id = 161;                // the turn whose boundary this is; absent when not a turn's
+  uint32 turn_ordinal = 162;       // that turn's ordinal in its run (1-based); 0 when not a turn's
+  repeated string retention = 163; // why the collector keeps it: NAMED | FORK_PARENT | LATEST | PRE_RESTORE | RESTORE_TARGET | CHAIN
+  CaptureCost cost = 164;          // what the capture cost
 }
 
 message CheckpointCreated {
@@ -1803,6 +1811,15 @@ message RestoreCheckpoint {
   // last saw (from a RewindPreview). A path whose current content differs
   // refuses the whole restore (HASH_MISMATCH) before anything is written.
   repeated FileHash expected = 3;
+  // REQ-PX-061 / REQ-PX-102, block 160-179. The target is named by exactly
+  // one of checkpoint_id, name, turn_id or turn_ordinal (none = the current
+  // checkpoint).
+  string name = 160;               // restore the checkpoint carrying this label
+  uint32 turn_ordinal = 161;       // restore the checkpoint of the latest turn with this ordinal
+  Id turn_id = 162;                // restore the checkpoint of this turn
+  bool redo = 163;                 // checkpoint_id is a pre-restore checkpoint: undo that restore (REDO_SUPERSEDED when work moved on since)
+  uint32 expected_current_epoch = 164; // refused as STALE_EPOCH when the task's current epoch differs; 0 = unchecked
+  repeated string keep_paths = 165;    // the user's choice for edited files: these paths keep their current content
 }
 
 message FileHash {
@@ -1822,6 +1839,11 @@ message CheckpointRestoreResult {
   string refusal = 9;              // OBJECT_MISMATCH | BROKEN_LINK | NO_BASELINE | HASH_MISMATCH | ...
   string detail = 10;
   uint32 preconditions_checked = 11;
+  // REQ-PX-061, block 160-179.
+  string pre_restore_checkpoint_id = 160; // the checkpoint of the state before this restore; restoring it is the redo
+  bool replayed = 161;                    // this command id already restored; nothing was written again
+  repeated string kept_paths = 162;       // paths left as they were by the caller's choice
+  bool redo = 163;
 }
 
 // ---- Routing session state and epochs (REQ-EPR-009; docs/27 §7.6, §16) ----
@@ -2142,6 +2164,12 @@ message ForkTask {
   string goal_text = 3;            // "" = the source's goal
   repeated string carry = 4;       // PLAN | DECISIONS | EVIDENCE | CONTEXT; empty = all four
   string worktree_dir = 5;         // "" = <profile>/worktrees/<new task id>
+  // REQ-PX-061 / REQ-PX-102, block 160-179. The fork point is named by at
+  // most one of checkpoint_id, turn_id, turn_ordinal or checkpoint_name; a
+  // named fork point forks a running source too (the chain is immutable).
+  Id turn_id = 160;                // fork at the end of this turn
+  uint32 turn_ordinal = 161;       // fork at the end of the latest turn with this ordinal
+  string checkpoint_name = 162;    // fork at the checkpoint carrying this label
 }
 
 message TaskForked {
@@ -2160,6 +2188,8 @@ message TaskForked {
   uint32 calls_dropped = 13;
   uint32 files_materialized = 14;
   uint64 offset = 15;
+  Id turn_id = 160;                // the turn forked at, when the fork point was a turn
+  uint32 turn_ordinal = 161;
 }
 
 // What a restore to a checkpoint would do, without doing it: no event, no
@@ -2167,6 +2197,9 @@ message TaskForked {
 message PreviewRewind {
   Id task_id = 1;
   string checkpoint_id = 2;        // "" = the current checkpoint
+  string name = 160;               // REQ-PX-102: or the checkpoint carrying this label
+  uint32 turn_ordinal = 161;       // REQ-PX-061: or the latest turn with this ordinal
+  Id turn_id = 162;                // or this turn
 }
 
 message RewindEntryView {
@@ -2201,6 +2234,8 @@ message RestoreView {
   uint32 files_written = 4;
   uint32 files_reverted = 5;
   uint32 preconditions_checked = 6;
+  string pre_restore_checkpoint_id = 160;
+  bool redo = 161;
 }
 
 message TaskRunView {

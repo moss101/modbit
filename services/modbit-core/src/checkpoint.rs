@@ -5,7 +5,34 @@
 //! current checkpoint, and restore a validated chain — every object read
 //! back and hash-checked before a byte is written.
 
-use std::collections::{BTreeMap, HashMap};
+//!
+//! REQ-PX-061 / REQ-PX-102 (docs/62, docs/65) extend the same owner: a delta
+//! checkpoint at every turn boundary of every profile with a bounded capture
+//! cost (see "Capture cost" below), a restore that records a pre-restore
+//! checkpoint first so it is exactly reversible (redo), an intent journal
+//! that rolls a restore a dead Core left half-written back to that
+//! checkpoint, names, and the ledger the turn-addressed fork and the
+//! retention collector (`checkpoint_gc`) read.
+//!
+//! # Capture cost
+//!
+//! A capture reads the repository's status (git's own stat cache: cost
+//! proportional to the files git must re-stat, not to their size) and then,
+//! for each dirty path, the file. A path whose size and mtime are the ones
+//! of an earlier capture, and that was not racy when it was hashed (the rule
+//! git and the FIX-06 snapshot share: a file modified within two seconds of
+//! the moment it was hashed is always read again), is not read: its hash is
+//! taken from the cache. A turn that changed nothing therefore costs one
+//! `git status`, one `stat` and one object existence check per dirty path,
+//! writes no content blob, and stores a delta manifest that lists nothing.
+//! The work is bounded: a worktree with more than [`MAX_DIRTY_FILES`] dirty
+//! paths, or more than [`MAX_CAPTURE_BYTES`] of content to read, is refused
+//! (`OVER_BOUNDS`) and the turn records why instead of half a checkpoint. The
+//! cost of every commit is on its `CheckpointCommitted` event.
+
+use std::collections::{BTreeMap, BTreeSet, HashMap, HashSet};
+use std::path::PathBuf;
+use std::sync::{Arc, Mutex as StdMutex, OnceLock};
 
 use modbit_checkpoint::{
     CaptureRequest, ChainError, CheckpointKind, CheckpointManifest, RuntimeCursor, StaleCheckpoint,
@@ -14,7 +41,7 @@ use modbit_checkpoint::{
 use modbit_domain::event::{Actor, AggregateType};
 use modbit_domain::task::{Task, TaskEvent};
 use modbit_domain::{CheckpointId, Timestamp};
-use modbit_event_store::{EventStore, ObjectStore};
+use modbit_event_store::{CommandRecord, EventStore, ObjectStore};
 use modbit_protocol::v1 as wire;
 use modbit_workspace::{ChangeOp, ChangeOpKind, WritePrecondition, content_hash};
 
@@ -25,6 +52,200 @@ use crate::tools::{append_file_events, file_changed_events, read_workspace_file}
 /// Deltas between baselines (docs/19: "periodic full baseline +
 /// intermediate deltas").
 const MAX_DELTAS: usize = 8;
+
+/// A capture of a worktree with more dirty paths than this is refused.
+pub(crate) const MAX_DIRTY_FILES: usize = 20_000;
+/// A capture that would read more content than this is refused.
+pub(crate) const MAX_CAPTURE_BYTES: u64 = 256 * 1024 * 1024;
+
+/// A file modified within this long of the moment its hash was taken is
+/// "racy" (the same rule as `modbit_workspace::snapshot`): a rewrite that
+/// keeps its size and mtime cannot be excluded, so it is always read again.
+const RACY_NS: u128 = 2_000_000_000;
+
+/// What one capture cost.
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
+pub(crate) struct CaptureStats {
+    /// Wall-clock milliseconds.
+    pub capture_ms: u64,
+    /// Dirty files read and hashed.
+    pub hashed_files: u32,
+    /// Dirty files whose hash came from an earlier capture.
+    pub cache_hits: u32,
+    /// New content blobs written.
+    pub blobs_written: u32,
+    /// Bytes those blobs hold.
+    pub bytes_written: u64,
+}
+
+impl CaptureStats {
+    /// The wire view.
+    pub(crate) fn wire(self) -> wire::CaptureCost {
+        wire::CaptureCost {
+            capture_ms: self.capture_ms,
+            hashed_files: self.hashed_files,
+            cache_hits: self.cache_hits,
+            blobs_written: self.blobs_written,
+            bytes_written: self.bytes_written,
+        }
+    }
+}
+
+struct CacheEntry {
+    size: u64,
+    mtime_ns: u128,
+    hash: String,
+    taken_ns: u128,
+}
+
+/// path -> what the last capture learned, per canonical worktree root. A
+/// pure cache: it can only skip the read of a file that provably has the
+/// content it had, and a hash is used only while its blob still exists.
+type RootCache = HashMap<String, CacheEntry>;
+
+fn hash_caches() -> &'static StdMutex<HashMap<PathBuf, RootCache>> {
+    static CACHES: OnceLock<StdMutex<HashMap<PathBuf, RootCache>>> = OnceLock::new();
+    CACHES.get_or_init(Default::default)
+}
+
+fn now_ns() -> u128 {
+    std::time::SystemTime::now()
+        .duration_since(std::time::UNIX_EPOCH)
+        .map_or(0, |d| d.as_nanos())
+}
+
+// ---- the gate: captures, restores and the collector --------------------
+
+/// Why the collector or a restore may not start now.
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub(crate) struct GateRefused {
+    /// `GC_LEASE_HELD` | `RESTORE_IN_FLIGHT` | `GC_IN_FLIGHT`.
+    pub code: &'static str,
+    /// Detail.
+    pub detail: String,
+}
+
+/// Who holds the collector's lease.
+#[derive(Clone, Debug)]
+pub(crate) struct GcLease {
+    /// Owner.
+    pub owner: String,
+    /// Why it runs.
+    pub reason: String,
+    /// Since when.
+    pub since: Timestamp,
+}
+
+#[derive(Default)]
+struct GateState {
+    restores: usize,
+    gc: Option<GcLease>,
+}
+
+/// Coordinates the three things that must not overlap on one profile's
+/// checkpoint store: captures (many, concurrent), restores (counted), and the
+/// retention collector (one, exclusive of both).
+#[derive(Default)]
+pub(crate) struct Gate {
+    /// Captures hold the read side from the first blob to the commit; the
+    /// collector's sweep holds the write side, so a blob a capture is about
+    /// to name is never deleted under it.
+    pub(crate) capture: tokio::sync::RwLock<()>,
+    state: StdMutex<GateState>,
+}
+
+/// A restore in flight; dropping it ends it.
+pub(crate) struct RestoreGuard(Arc<Gate>);
+
+impl Drop for RestoreGuard {
+    fn drop(&mut self) {
+        if let Ok(mut s) = self.0.state.lock() {
+            s.restores = s.restores.saturating_sub(1);
+        }
+    }
+}
+
+/// The collector's lease; dropping it releases it.
+pub(crate) struct GcGuard(Arc<Gate>);
+
+impl Drop for GcGuard {
+    fn drop(&mut self) {
+        if let Ok(mut s) = self.0.state.lock() {
+            s.gc = None;
+        }
+    }
+}
+
+impl Gate {
+    /// A restore begins; refused while the collector holds its lease.
+    pub(crate) fn begin_restore(self: &Arc<Self>) -> Result<RestoreGuard, GateRefused> {
+        let mut s = self.state.lock().expect("gate");
+        if let Some(l) = &s.gc {
+            return Err(GateRefused {
+                code: "GC_IN_FLIGHT",
+                detail: format!(
+                    "the checkpoint collector ({}: {}) is running; restore once it ends",
+                    l.owner, l.reason
+                ),
+            });
+        }
+        s.restores += 1;
+        Ok(RestoreGuard(Arc::clone(self)))
+    }
+
+    /// The collector takes its lease; refused while one is held or a restore
+    /// is in flight.
+    pub(crate) fn begin_gc(
+        self: &Arc<Self>,
+        owner: &str,
+        reason: &str,
+    ) -> Result<GcGuard, GateRefused> {
+        let mut s = self.state.lock().expect("gate");
+        if let Some(l) = &s.gc {
+            return Err(GateRefused {
+                code: "GC_LEASE_HELD",
+                detail: format!(
+                    "the collector's lease is held by {} ({}) since {}",
+                    l.owner, l.reason, l.since.0
+                ),
+            });
+        }
+        if s.restores > 0 {
+            return Err(GateRefused {
+                code: "RESTORE_IN_FLIGHT",
+                detail: format!(
+                    "{} restore(s) are in flight; a collection never runs under one",
+                    s.restores
+                ),
+            });
+        }
+        s.gc = Some(GcLease {
+            owner: owner.to_owned(),
+            reason: reason.to_owned(),
+            since: Timestamp::now(),
+        });
+        Ok(GcGuard(Arc::clone(self)))
+    }
+}
+
+/// The gate of this Core's profile (one Core per profile directory).
+pub(crate) fn gate(core: &Core) -> Arc<Gate> {
+    static GATES: OnceLock<StdMutex<HashMap<PathBuf, Arc<Gate>>>> = OnceLock::new();
+    let mut m = GATES.get_or_init(Default::default).lock().expect("gates");
+    Arc::clone(m.entry(core.data_dir.clone()).or_default())
+}
+
+/// Failure injection for the proofs of REQ-PX-061/102: abort the process at
+/// a named point, as a `SIGKILL` there would. `MODBIT_FAULT_CHECKPOINT` names
+/// the point (`MID_CAPTURE`, `AFTER_PRE_RESTORE`, `AFTER_RESTORE_JOURNAL`,
+/// `MID_RESTORE_WRITE`, `AFTER_GC_COLLECT`, `MID_GC_SWEEP`); unset in
+/// production.
+pub(crate) fn fault_point(point: &str) {
+    if std::env::var("MODBIT_FAULT_CHECKPOINT").is_ok_and(|v| v == point) {
+        eprintln!("modbit-core: fault injection: aborting at {point}");
+        std::process::abort();
+    }
+}
 
 /// Object reads for `modbit_checkpoint::validate`.
 pub(crate) struct Objects(pub(crate) ObjectStore);
@@ -56,14 +277,81 @@ fn dirty_state(
     objects: &ObjectStore,
     ws: &modbit_workspace::WorkspaceService,
     root: &std::path::Path,
-) -> anyhow::Result<(BTreeMap<String, String>, Option<String>)> {
+) -> anyhow::Result<(BTreeMap<String, String>, Option<String>, CaptureStats)> {
     let repo = modbit_git::Repo::open(root)?;
     let head = repo.head().ok();
+    let entries = repo.status()?;
+    if entries.len() > MAX_DIRTY_FILES {
+        anyhow::bail!(
+            "OVER_BOUNDS: the worktree has {} dirty paths; a checkpoint is bounded at {MAX_DIRTY_FILES}",
+            entries.len()
+        );
+    }
+    let mut stats = CaptureStats::default();
+    let mut cache: RootCache = hash_caches()
+        .lock()
+        .ok()
+        .and_then(|mut m| m.remove(root))
+        .unwrap_or_default();
     let mut out = BTreeMap::new();
-    for e in repo.status()? {
+    let mut read_bytes = 0u64;
+    for e in entries {
+        // A regular file with a known size and mtime may come from the
+        // cache; anything else (a symlink, a directory, an unreadable path)
+        // takes the ordinary read.
+        let meta = ws
+            .resolve(&e.path)
+            .ok()
+            .and_then(|r| std::fs::symlink_metadata(&r.absolute).ok())
+            .filter(std::fs::Metadata::is_file);
+        let stamp = meta.as_ref().and_then(|m| {
+            let mtime = m
+                .modified()
+                .ok()?
+                .duration_since(std::time::UNIX_EPOCH)
+                .ok()?
+                .as_nanos();
+            Some((m.len(), mtime))
+        });
+        if let Some((size, mtime)) = stamp
+            && let Some(c) = cache.get(&e.path)
+            && c.size == size
+            && c.mtime_ns == mtime
+            && c.mtime_ns.saturating_add(RACY_NS) < c.taken_ns
+            && objects.contains(&c.hash)
+        {
+            out.insert(e.path.clone(), c.hash.clone());
+            stats.cache_hits += 1;
+            continue;
+        }
         match read_workspace_file(ws, &e.path) {
             Some(bytes) => {
-                out.insert(e.path.clone(), objects.put(&bytes)?);
+                read_bytes += bytes.len() as u64;
+                if read_bytes > MAX_CAPTURE_BYTES {
+                    anyhow::bail!(
+                        "OVER_BOUNDS: the dirty files exceed {} MiB; a checkpoint is bounded",
+                        MAX_CAPTURE_BYTES / (1024 * 1024)
+                    );
+                }
+                let hash = modbit_event_store::objects::sha256_hex(&bytes);
+                if !objects.contains(&hash) {
+                    objects.put(&bytes)?;
+                    stats.blobs_written += 1;
+                    stats.bytes_written += bytes.len() as u64;
+                }
+                stats.hashed_files += 1;
+                if let Some((size, mtime)) = stamp {
+                    cache.insert(
+                        e.path.clone(),
+                        CacheEntry {
+                            size,
+                            mtime_ns: mtime,
+                            hash: hash.clone(),
+                            taken_ns: now_ns(),
+                        },
+                    );
+                }
+                out.insert(e.path.clone(), hash);
             }
             None if e.code != "??" => {
                 out.insert(e.path.clone(), modbit_checkpoint::DELETED.to_owned());
@@ -71,7 +359,13 @@ fn dirty_state(
             None => {}
         }
     }
-    Ok((out, head))
+    // Only paths that are dirty now stay remembered: the cache is bounded by
+    // the dirty set, never by the history of the task.
+    cache.retain(|p, _| out.contains_key(p));
+    if let Ok(mut m) = hash_caches().lock() {
+        m.insert(root.to_path_buf(), cache);
+    }
+    Ok((out, head, stats))
 }
 
 /// M8.9 (docs/21 "Sandbox recovery"): the dirty state of a cloud task's
@@ -86,7 +380,7 @@ async fn dirty_state_sandbox(
     sandbox: &dyn modbit_sandbox::port::SandboxPort,
     task_id: &str,
     seed_root: &std::path::Path,
-) -> anyhow::Result<(BTreeMap<String, String>, Option<String>)> {
+) -> anyhow::Result<(BTreeMap<String, String>, Option<String>, CaptureStats)> {
     const MAX_FILES: usize = 20_000;
     const MAX_BYTES: u64 = 256 * 1024 * 1024;
     let repo = modbit_git::Repo::open(seed_root)?;
@@ -130,6 +424,7 @@ async fn dirty_state_sandbox(
         }
     }
     let mut out = BTreeMap::new();
+    let mut stats = CaptureStats::default();
     let mut bytes_read = 0u64;
     for entry in &snap.entries {
         if seed.get(&entry.path).is_some_and(|h| *h == entry.sha256) {
@@ -157,7 +452,14 @@ async fn dirty_state_sandbox(
                 entry.path
             );
         }
-        out.insert(entry.path.clone(), objects.put(&f.content)?);
+        let hash = modbit_event_store::objects::sha256_hex(&f.content);
+        if !objects.contains(&hash) {
+            objects.put(&f.content)?;
+            stats.blobs_written += 1;
+            stats.bytes_written += f.content.len() as u64;
+        }
+        stats.hashed_files += 1;
+        out.insert(entry.path.clone(), hash);
     }
     let present: std::collections::HashSet<&str> =
         snap.entries.iter().map(|e| e.path.as_str()).collect();
@@ -166,7 +468,7 @@ async fn dirty_state_sandbox(
             out.insert(path.clone(), modbit_checkpoint::DELETED.to_owned());
         }
     }
-    Ok((out, head))
+    Ok((out, head, stats))
 }
 
 /// The manifests of a task's committed checkpoints, oldest first.
@@ -184,6 +486,42 @@ pub(crate) fn manifests(store: &EventStore, task: &Task) -> Vec<CheckpointManife
             serde_json::from_slice::<CheckpointManifest>(&bytes).ok()
         })
         .collect()
+}
+
+/// The manifests of the chain that ends at `target`, oldest first: the
+/// baseline it descends from and every delta between, read by walking the
+/// rows' `base_checkpoint_id` links — only the chain's own manifests are
+/// read, so the cost of a capture is bounded by [`MAX_DELTAS`], not by how
+/// many checkpoints the task has accumulated. `None` when a link or a
+/// manifest object is missing.
+pub(crate) fn chain_manifests(
+    store: &EventStore,
+    rows: &[modbit_event_store::projections::CheckpointRow],
+    target: &str,
+) -> Option<Vec<CheckpointManifest>> {
+    let by_id: HashMap<&str, &modbit_event_store::projections::CheckpointRow> = rows
+        .iter()
+        .filter(|r| matches!(r.status.as_str(), "CURRENT" | "SUPERSEDED"))
+        .map(|r| (r.checkpoint_id.as_str(), r))
+        .collect();
+    let mut out = Vec::new();
+    let mut seen = HashSet::new();
+    let mut cursor = Some(target.to_owned());
+    while let Some(id) = cursor {
+        if !seen.insert(id.clone()) {
+            return None;
+        }
+        let row = by_id.get(id.as_str())?;
+        let bytes = store
+            .objects()
+            .get(row.manifest_object_hash.as_deref()?)
+            .ok()?;
+        let m: CheckpointManifest = serde_json::from_slice(&bytes).ok()?;
+        cursor = m.base_checkpoint_id.map(|b| b.to_string());
+        out.push(m);
+    }
+    out.reverse();
+    Some(out)
 }
 
 /// The current checkpoint's manifest, when any.
@@ -208,6 +546,13 @@ pub(crate) struct Captured {
     pub committed: Result<(), StaleCheckpoint>,
 }
 
+/// What a capture is for, beyond the worktree it records.
+#[derive(Clone, Debug, Default)]
+pub(crate) struct CaptureMeta {
+    /// The turn whose boundary this is, with its ordinal in its run.
+    pub turn: Option<(modbit_domain::TurnId, u32)>,
+}
+
 /// Take a checkpoint of the task's worktree and runtime cursor: claim the
 /// next epoch on the log, capture, then commit — or record the refusal when
 /// a newer epoch became current in between.
@@ -219,26 +564,41 @@ pub(crate) async fn capture(
     kind: Option<CheckpointKind>,
     reason: &str,
 ) -> anyhow::Result<Captured> {
+    capture_with(core, task, lt, actor, kind, reason, CaptureMeta::default()).await
+}
+
+/// [`capture`], with the turn it is the boundary of (REQ-PX-061).
+pub(crate) async fn capture_with(
+    core: &Core,
+    task: &Task,
+    lt: Lineage,
+    actor: &Actor,
+    kind: Option<CheckpointKind>,
+    reason: &str,
+    meta: CaptureMeta,
+) -> anyhow::Result<Captured> {
+    let started = std::time::Instant::now();
     let root = task
         .workspace_root
         .as_deref()
         .ok_or_else(|| anyhow::anyhow!("task has no workspace root"))?;
+    // The collector's sweep never runs between this capture's first blob and
+    // its commit.
+    let g = gate(core);
+    let _capturing = g.capture.read().await;
     let (ws, canonical) = core.tools.workspace(root).await?;
     // 1. claim the epoch: the next after every started or committed one.
     let (epoch, base, base_state, since_baseline) = {
         let store = core.store.lock().await;
         let rows = store.checkpoints(&task.task_id).unwrap_or_default();
         let epoch = rows.iter().map(|r| r.epoch).max().unwrap_or(0) + 1;
-        let all = manifests(&store, task);
-        let cur = current(&store, task);
-        let since_baseline = cur
+        let cur_row = rows.iter().find(|r| r.status == "CURRENT");
+        let chain = cur_row.and_then(|r| chain_manifests(&store, &rows, &r.checkpoint_id));
+        let since_baseline = chain.as_ref().map_or(0, Vec::len);
+        let cur = chain.as_ref().and_then(|c| c.last().cloned());
+        let base_state = chain
             .as_ref()
-            .and_then(|c| chain_to(&all, c.checkpoint_id).ok())
-            .map_or(0, |chain| chain.len());
-        let base_state = cur
-            .as_ref()
-            .and_then(|c| chain_to(&all, c.checkpoint_id).ok())
-            .and_then(|chain| materialize(&chain).ok())
+            .and_then(|c| materialize(c).ok())
             .map(|m| m.files);
         (epoch, cur, base_state, since_baseline)
     };
@@ -288,18 +648,19 @@ pub(crate) async fn capture(
         .await
         .get(&task.task_id)
         .cloned();
-    let (dirty, git_head, workspace_revision, worktree_id) = {
+    let (dirty, git_head, workspace_revision, worktree_id, mut cost) = {
         let ws = ws.lock().await;
         let objects = core.store.lock().await.objects().clone();
-        let (dirty, head) = match &sandbox {
+        let (dirty, head, cost) = match &sandbox {
             Some(h) => {
                 dirty_state_sandbox(&objects, &**h, &task.task_id.to_string(), &canonical).await?
             }
             None => dirty_state(&objects, &ws, &canonical)?,
         };
         let rev = ws.revision();
-        (dirty, head, rev.number, rev.worktree_id.clone())
+        (dirty, head, rev.number, rev.worktree_id.clone(), cost)
     };
+    fault_point("MID_CAPTURE");
     let (runtime, index_generation) = {
         let store = core.store.lock().await;
         let compaction_epoch = store
@@ -350,6 +711,7 @@ pub(crate) async fn capture(
     if let Some(d) = commit_delay_for(epoch) {
         tokio::time::sleep(d).await;
     }
+    cost.capture_ms = u64::try_from(started.elapsed().as_millis()).unwrap_or(u64::MAX);
     // 3. commit, fenced twice: by the rule here and by the projection.
     let committed = {
         let mut store = core.store.lock().await;
@@ -362,6 +724,10 @@ pub(crate) async fn capture(
             .max();
         match accept_commit(&manifest, current_epoch) {
             Ok(()) => {
+                let (turn_id, turn_ordinal) = meta
+                    .turn
+                    .map(|(t, o)| (t.to_string(), o))
+                    .unwrap_or_default();
                 let result = append(
                     &mut store,
                     core,
@@ -383,6 +749,13 @@ pub(crate) async fn capture(
                             removed: u32::try_from(manifest.removed.len()).unwrap_or(u32::MAX),
                             event_offset: manifest.runtime.event_offset,
                             index_generation: manifest.index_generation,
+                            turn_id,
+                            turn_ordinal,
+                            capture_ms: cost.capture_ms,
+                            hashed_files: cost.hashed_files,
+                            cache_hits: cost.cache_hits,
+                            blobs_written: cost.blobs_written,
+                            bytes_written: cost.bytes_written,
                         },
                         actor.clone(),
                     )],
@@ -433,6 +806,473 @@ pub(crate) async fn capture(
     })
 }
 
+// ---- the ledger -----------------------------------------------------------
+
+/// One committed checkpoint as the log records it.
+#[derive(Clone, Debug)]
+pub(crate) struct Commit {
+    /// The checkpoint.
+    pub checkpoint_id: String,
+    /// The turn whose boundary it is (UUID text), empty when not a turn's.
+    pub turn_id: String,
+    /// That turn's ordinal in its run; 0 when not a turn's.
+    pub turn_ordinal: u32,
+    /// Log offset of the commit.
+    pub offset: u64,
+    /// What the capture cost.
+    pub cost: CaptureStats,
+}
+
+/// Where a restore stands.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub(crate) enum RestoreState {
+    /// Journalled, neither finished nor rolled back: a Core died inside it,
+    /// or it is running now.
+    InDoubt,
+    /// Finished; the offset of `CheckpointRestored`.
+    Done(u64),
+    /// Resolved by restoring the pre-restore checkpoint.
+    RolledBack,
+}
+
+/// One restore as the log records it.
+#[derive(Clone, Debug)]
+pub(crate) struct RestoreRec {
+    /// The `RestoreCheckpoint` command (UUID text).
+    pub command_id: String,
+    /// The pre-restore checkpoint, empty for a restore that changed nothing.
+    pub pre_restore: String,
+    /// The checkpoint restored to.
+    pub target: String,
+    /// It was a redo.
+    pub redo: bool,
+    /// Where it stands.
+    pub state: RestoreState,
+}
+
+/// What a task's own log says about its checkpoints beyond the projection:
+/// which turn each belongs to, the names, what was collected, the restores.
+/// Derived by reading only the checkpoint event types of the task's
+/// aggregate.
+#[derive(Clone, Debug, Default)]
+pub(crate) struct Ledger {
+    /// Commits, oldest first.
+    pub commits: Vec<Commit>,
+    /// Checkpoint id -> name.
+    pub names: BTreeMap<String, String>,
+    /// Checkpoint ids taken out of the restorable set.
+    pub collected: BTreeSet<String>,
+    /// Restores, oldest first.
+    pub restores: Vec<RestoreRec>,
+}
+
+const LEDGER_TYPES: &[&str] = &[
+    "CheckpointCommitted",
+    "CheckpointNamed",
+    "CheckpointCollected",
+    "CheckpointRestoreStarted",
+    "CheckpointRestored",
+    "CheckpointRestoreRolledBack",
+];
+
+/// Read the ledger of a task.
+pub(crate) fn ledger(store: &EventStore, task: &Task) -> Ledger {
+    let mut l = Ledger::default();
+    let events = store
+        .read_aggregate_of_types(task.task_id.as_bytes(), LEDGER_TYPES, 0)
+        .unwrap_or_default();
+    for e in events {
+        let Ok(p) = store.payload(&e.envelope) else {
+            continue;
+        };
+        let s = |k: &str| p[k].as_str().unwrap_or_default().to_owned();
+        match e.envelope.event_type.as_str() {
+            "CheckpointCommitted" => l.commits.push(Commit {
+                checkpoint_id: s("checkpoint_id"),
+                turn_id: s("turn_id"),
+                turn_ordinal: p["turn_ordinal"].as_u64().unwrap_or(0) as u32,
+                offset: e.offset,
+                cost: CaptureStats {
+                    capture_ms: p["capture_ms"].as_u64().unwrap_or(0),
+                    hashed_files: p["hashed_files"].as_u64().unwrap_or(0) as u32,
+                    cache_hits: p["cache_hits"].as_u64().unwrap_or(0) as u32,
+                    blobs_written: p["blobs_written"].as_u64().unwrap_or(0) as u32,
+                    bytes_written: p["bytes_written"].as_u64().unwrap_or(0),
+                },
+            }),
+            "CheckpointNamed" => {
+                // One name per checkpoint, the latest wins; a name moves
+                // only if its previous holder is renamed.
+                l.names.insert(s("checkpoint_id"), s("name"));
+            }
+            "CheckpointCollected" => {
+                if let Some(ids) = p["checkpoint_ids"].as_array() {
+                    l.collected
+                        .extend(ids.iter().filter_map(|i| i.as_str().map(str::to_owned)));
+                }
+            }
+            "CheckpointRestoreStarted" => l.restores.push(RestoreRec {
+                command_id: s("command_id"),
+                pre_restore: s("pre_restore_checkpoint_id"),
+                target: s("target_checkpoint_id"),
+                redo: false,
+                state: RestoreState::InDoubt,
+            }),
+            "CheckpointRestored" => {
+                let command_id = s("command_id");
+                let open = l
+                    .restores
+                    .iter_mut()
+                    .rev()
+                    .find(|r| r.command_id == command_id && r.state == RestoreState::InDoubt);
+                match open {
+                    Some(r) if !command_id.is_empty() => {
+                        r.state = RestoreState::Done(e.offset);
+                        r.redo = p["redo"].as_bool().unwrap_or(false);
+                    }
+                    // A restore that changed nothing journals nothing first.
+                    _ => l.restores.push(RestoreRec {
+                        command_id,
+                        pre_restore: s("pre_restore_checkpoint_id"),
+                        target: s("checkpoint_id"),
+                        redo: p["redo"].as_bool().unwrap_or(false),
+                        state: RestoreState::Done(e.offset),
+                    }),
+                }
+            }
+            "CheckpointRestoreRolledBack" => {
+                let command_id = s("command_id");
+                if let Some(r) = l
+                    .restores
+                    .iter_mut()
+                    .rev()
+                    .find(|r| r.command_id == command_id && r.state == RestoreState::InDoubt)
+                {
+                    r.state = RestoreState::RolledBack;
+                }
+            }
+            _ => {}
+        }
+    }
+    l
+}
+
+/// The checkpoints other tasks of the session were forked from: ids of
+/// `task`'s checkpoints named by a `TaskForked` event (REQ-EV-0077).
+pub(crate) fn fork_parents(store: &EventStore, task: &Task) -> BTreeSet<String> {
+    let mut out = BTreeSet::new();
+    for e in store
+        .read_session_of_types(&task.session_id, &["TaskForked"], 0)
+        .unwrap_or_default()
+    {
+        if let Ok(p) = store.payload(&e.envelope)
+            && p["from_task_id"].as_str() == Some(task.task_id.to_string().as_str())
+            && let Some(c) = p["from_checkpoint_id"].as_str()
+        {
+            out.insert(c.to_owned());
+        }
+    }
+    out
+}
+
+/// How a caller names the checkpoint it means.
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub(crate) enum TargetSpec {
+    /// The task's current checkpoint.
+    Current,
+    /// By id.
+    Id(CheckpointId),
+    /// By the user's label.
+    Name(String),
+    /// By the ordinal of the turn whose boundary it is (the latest turn with
+    /// that ordinal, runs being separate numberings).
+    TurnOrdinal(u32),
+    /// By the turn.
+    Turn(modbit_domain::TurnId),
+}
+
+/// Parse the fields a request names a checkpoint with: at most one.
+pub(crate) fn target_spec(
+    checkpoint_id: &str,
+    name: &str,
+    turn_ordinal: u32,
+    turn_id: Option<&wire::Id>,
+) -> Result<TargetSpec, String> {
+    let turn = turn_id.filter(|i| !i.value.is_empty());
+    let named = [
+        !checkpoint_id.is_empty(),
+        !name.is_empty(),
+        turn_ordinal != 0,
+        turn.is_some(),
+    ]
+    .into_iter()
+    .filter(|b| *b)
+    .count();
+    if named > 1 {
+        return Err(
+            "name the checkpoint by at most one of checkpoint_id, name, turn_id and turn_ordinal"
+                .into(),
+        );
+    }
+    if !checkpoint_id.is_empty() {
+        return CheckpointId::parse(checkpoint_id)
+            .map(TargetSpec::Id)
+            .map_err(|_| "checkpoint_id is not an id".to_owned());
+    }
+    if !name.is_empty() {
+        return Ok(TargetSpec::Name(name.to_owned()));
+    }
+    if turn_ordinal != 0 {
+        return Ok(TargetSpec::TurnOrdinal(turn_ordinal));
+    }
+    if let Some(t) = turn {
+        let bytes: [u8; 16] = t
+            .value
+            .as_slice()
+            .try_into()
+            .map_err(|_| "turn_id must be 16 bytes".to_owned())?;
+        return Ok(TargetSpec::Turn(modbit_domain::TurnId::from_bytes(bytes)));
+    }
+    Ok(TargetSpec::Current)
+}
+
+/// Resolve a [`TargetSpec`] to a restorable checkpoint of the task (`None`
+/// is the current one). A checkpoint the collector removed is refused with
+/// the typed `COLLECTED`; a turn that left none, `NO_CHECKPOINT_FOR_TURN`.
+pub(crate) fn resolve_target(
+    store: &EventStore,
+    task: &Task,
+    spec: &TargetSpec,
+) -> Result<Option<CheckpointId>, RestoreRefused> {
+    let refuse = |code: &'static str, detail: String| Err(RestoreRefused { code, detail });
+    let rows = store.checkpoints(&task.task_id).unwrap_or_default();
+    let restorable = |id: &str| {
+        rows.iter()
+            .any(|r| r.checkpoint_id == id && matches!(r.status.as_str(), "CURRENT" | "SUPERSEDED"))
+    };
+    let collected = |id: &str| {
+        rows.iter()
+            .any(|r| r.checkpoint_id == id && r.status == "COLLECTED")
+    };
+    let parse = |id: &str| {
+        CheckpointId::parse(id)
+            .map(Some)
+            .map_err(|_| RestoreRefused {
+                code: "BAD_CHECKPOINT",
+                detail: format!("`{id}` is not a checkpoint id"),
+            })
+    };
+    match spec {
+        TargetSpec::Current => Ok(None),
+        TargetSpec::Id(id) => {
+            if collected(&id.to_string()) {
+                return refuse(
+                    "COLLECTED",
+                    format!(
+                        "checkpoint {id} was removed by the retention collector; it can no longer be restored or forked from"
+                    ),
+                );
+            }
+            Ok(Some(*id))
+        }
+        TargetSpec::Name(n) => {
+            let l = ledger(store, task);
+            match l.names.iter().find(|(_, name)| *name == n) {
+                Some((id, _)) if restorable(id) => parse(id),
+                Some((id, _)) => refuse(
+                    "COLLECTED",
+                    format!("the checkpoint named `{n}` ({id}) is no longer restorable"),
+                ),
+                None => refuse(
+                    "UNKNOWN_NAME",
+                    format!("no checkpoint of this task is named `{n}`"),
+                ),
+            }
+        }
+        TargetSpec::TurnOrdinal(_) | TargetSpec::Turn(_) => {
+            let l = ledger(store, task);
+            let matching: Vec<&Commit> = l
+                .commits
+                .iter()
+                .filter(|c| match spec {
+                    TargetSpec::TurnOrdinal(o) => c.turn_ordinal == *o && !c.turn_id.is_empty(),
+                    TargetSpec::Turn(t) => c.turn_id == t.to_string(),
+                    _ => false,
+                })
+                .collect();
+            // The latest commit for the turn that is still restorable.
+            match matching
+                .iter()
+                .rev()
+                .find(|c| restorable(&c.checkpoint_id))
+            {
+                Some(c) => parse(&c.checkpoint_id),
+                None if !matching.is_empty() => refuse(
+                    "COLLECTED",
+                    "the checkpoint of that turn was removed by the retention collector".into(),
+                ),
+                None => refuse(
+                    "NO_CHECKPOINT_FOR_TURN",
+                    match spec {
+                        TargetSpec::TurnOrdinal(o) => format!(
+                            "no turn-boundary checkpoint was recorded for a turn with ordinal {o} (a turn that ran no sandbox tool, or whose capture was skipped, leaves none; fork at a neighbouring turn)"
+                        ),
+                        _ => "no turn-boundary checkpoint was recorded for that turn (a turn that ran no sandbox tool, or whose capture was skipped, leaves none; fork at a neighbouring turn)".into(),
+                    },
+                ),
+            }
+        }
+    }
+}
+
+/// The turn a checkpoint is the boundary of, when it is one.
+pub(crate) fn turn_of<'a>(ledger: &'a Ledger, checkpoint_id: &str) -> Option<&'a Commit> {
+    ledger
+        .commits
+        .iter()
+        .rev()
+        .find(|c| c.checkpoint_id == checkpoint_id && !c.turn_id.is_empty())
+}
+
+// ---- names ----------------------------------------------------------------
+
+/// Why a name was refused.
+pub(crate) const MAX_NAME: usize = 64;
+
+/// Validate a checkpoint label.
+pub(crate) fn valid_name(name: &str) -> Result<(), String> {
+    let t = name.trim();
+    if t.is_empty() || t != name {
+        return Err(
+            "a checkpoint name is 1..64 characters with no leading or trailing space".into(),
+        );
+    }
+    if name.chars().count() > MAX_NAME || name.chars().any(char::is_control) {
+        return Err(format!(
+            "a checkpoint name is at most {MAX_NAME} characters with no control character"
+        ));
+    }
+    Ok(())
+}
+
+/// What naming did.
+pub(crate) struct Named {
+    /// The checkpoint named.
+    pub checkpoint_id: CheckpointId,
+    /// The log offset.
+    pub offset: u64,
+    /// The name was already on it (a no-op), or the command id was replayed.
+    pub replayed: bool,
+}
+
+/// Label a checkpoint (REQ-PX-102): unique within the task, one per
+/// checkpoint, idempotent. `command` makes a retry of the same command a
+/// replay.
+pub(crate) fn name_checkpoint(
+    core: &Core,
+    store: &mut EventStore,
+    task: &Task,
+    actor: &Actor,
+    checkpoint_id: Option<CheckpointId>,
+    name: &str,
+    command: Option<CommandRecord>,
+) -> Result<Named, RestoreRefused> {
+    let refuse = |code: &'static str, detail: String| RestoreRefused { code, detail };
+    valid_name(name).map_err(|d| refuse("BAD_NAME", d))?;
+    let rows = store.checkpoints(&task.task_id).unwrap_or_default();
+    let id = match checkpoint_id {
+        Some(id) => id,
+        None => rows
+            .iter()
+            .find(|r| r.status == "CURRENT")
+            .and_then(|r| CheckpointId::parse(&r.checkpoint_id).ok())
+            .ok_or_else(|| {
+                refuse(
+                    "NO_CHECKPOINT",
+                    "the task has no committed checkpoint".into(),
+                )
+            })?,
+    };
+    let row = rows.iter().find(|r| r.checkpoint_id == id.to_string());
+    match row.map(|r| r.status.as_str()) {
+        Some("CURRENT" | "SUPERSEDED") => {}
+        Some("COLLECTED") => {
+            return Err(refuse(
+                "COLLECTED",
+                format!("checkpoint {id} was removed by the retention collector"),
+            ));
+        }
+        _ => {
+            return Err(refuse(
+                "UNKNOWN_CHECKPOINT",
+                format!("the task has no committed checkpoint {id}"),
+            ));
+        }
+    }
+    let l = ledger(store, task);
+    if let Some((other, _)) = l
+        .names
+        .iter()
+        .find(|(cid, n)| *n == name && **cid != id.to_string())
+    {
+        return Err(refuse(
+            "NAME_TAKEN",
+            format!("`{name}` already names checkpoint {other} of this task"),
+        ));
+    }
+    let event = typed(
+        "CheckpointNamed",
+        &TaskEvent::CheckpointNamed {
+            checkpoint_id: id.to_string(),
+            name: name.to_owned(),
+        },
+        actor.clone(),
+    );
+    if l.names.get(&id.to_string()).is_some_and(|n| n == name) {
+        // Already carried: nothing to record.
+        return Ok(Named {
+            checkpoint_id: id,
+            offset: store.last_offset().unwrap_or(0),
+            replayed: true,
+        });
+    }
+    let req = modbit_event_store::AppendRequest {
+        tenant_id: core.tenant_id,
+        session_id: task.session_id,
+        task_id: Some(task.task_id),
+        run_id: None,
+        turn_id: None,
+        step_id: None,
+        aggregate_type: AggregateType::Task,
+        aggregate_id: *task.task_id.as_bytes(),
+        expected_sequence: None,
+        events: vec![event],
+    };
+    let outcome = match command {
+        Some(cmd) => store.execute_command(cmd, req),
+        None => store
+            .append(req)
+            .map(modbit_event_store::CommandOutcome::Applied),
+    };
+    match outcome {
+        Ok(modbit_event_store::CommandOutcome::Applied(evs)) => {
+            let offset = evs.last().map_or(0, |e| e.offset);
+            core.last_offset.send_replace(offset);
+            Ok(Named {
+                checkpoint_id: id,
+                offset,
+                replayed: false,
+            })
+        }
+        Ok(modbit_event_store::CommandOutcome::Replayed(evs)) => Ok(Named {
+            checkpoint_id: id,
+            offset: evs.last().map_or(0, |e| e.offset),
+            replayed: true,
+        }),
+        Err(e) => Err(refuse("STORE", e.to_string())),
+    }
+}
+
 /// Why a restore did not happen.
 #[derive(Debug)]
 pub(crate) struct RestoreRefused {
@@ -460,6 +1300,15 @@ pub(crate) struct Restored {
     pub event_offset: u64,
     /// Caller preconditions checked.
     pub preconditions_checked: u32,
+    /// The checkpoint of the state before the restore; restoring it is the
+    /// redo. `None` when the restore changed nothing.
+    pub pre_restore_checkpoint_id: Option<CheckpointId>,
+    /// The command id had already restored; nothing was written again.
+    pub replayed: bool,
+    /// Paths left as they were by the caller's choice.
+    pub kept_paths: Vec<String>,
+    /// It was a redo.
+    pub redo: bool,
 }
 
 /// A checkpoint's files are the worktree's *dirty state relative to the HEAD
@@ -516,39 +1365,165 @@ pub(crate) fn head_drift(
     })
 }
 
-/// Restore the worktree to a checkpoint: resolve its chain from the log,
-/// read back and hash-check every object it names, and only then write —
-/// files the checkpoint has from their objects, files it does not have back
-/// to HEAD (tracked) or away (untracked) — in one workspace transaction.
-pub(crate) async fn restore(
+/// What a restore is asked to do beyond naming its target.
+#[derive(Default)]
+pub(crate) struct RestoreOptions {
+    /// The caller's optimistic preconditions (REQ-EV-0123): path and the
+    /// content hash it last saw.
+    pub expected: Vec<(String, String)>,
+    /// The `RestoreCheckpoint` command: a replay of it answers with what it
+    /// did and writes nothing; its id journals the restore.
+    pub command: Option<CommandRecord>,
+    /// The target is a pre-restore checkpoint: undo that restore.
+    pub redo: bool,
+    /// The user's choice for files they edited: these paths keep their
+    /// current content.
+    pub keep_paths: Vec<String>,
+    /// Refuse when the task's current epoch is not this one (0 = unchecked).
+    pub expected_epoch: u32,
+    /// A rollback of an in-doubt restore: no new pre-restore checkpoint, no
+    /// preconditions, no choice — put the recorded state back.
+    pub rollback: bool,
+}
+
+fn refused<T>(
+    code: &'static str,
+    detail: impl Into<String>,
+) -> anyhow::Result<Result<T, RestoreRefused>> {
+    Ok(Err(RestoreRefused {
+        code,
+        detail: detail.into(),
+    }))
+}
+
+/// [`restore`] with the options of REQ-PX-061: exactly reversible (a
+/// pre-restore checkpoint is committed, and its id returned, before the
+/// first byte changes), journalled (so a Core that dies inside it is rolled
+/// back at its next start), idempotent per command, fenced by epoch.
+pub(crate) async fn restore_with(
     core: &Core,
     task: &Task,
     lt: Lineage,
     actor: &Actor,
     target: Option<CheckpointId>,
-    expected: &[(String, String)],
+    opts: RestoreOptions,
 ) -> anyhow::Result<Result<Restored, RestoreRefused>> {
     let root = task
         .workspace_root
         .as_deref()
         .ok_or_else(|| anyhow::anyhow!("task has no workspace root"))?;
-    let (ws, canonical) = core.tools.workspace(root).await?;
+    // A retry of the same command answers with what it did.
+    if let Some(cmd) = &opts.command {
+        let store = core.store.lock().await;
+        match store.prior_command(cmd) {
+            Ok(Some(modbit_event_store::CommandOutcome::Replayed(evs)))
+            | Ok(Some(modbit_event_store::CommandOutcome::Applied(evs))) => {
+                if let Some(e) = evs
+                    .iter()
+                    .find(|e| e.envelope.event_type == "CheckpointRestored")
+                    && let Ok(p) = store.payload(&e.envelope)
+                {
+                    return Ok(Ok(restored_from_event(&p, true)));
+                }
+            }
+            Ok(None) => {}
+            Err(modbit_event_store::Error::IdempotencyConflict { .. }) => {
+                return refused(
+                    "IDEMPOTENCY_CONFLICT",
+                    "this command id was used for a different request",
+                );
+            }
+            Err(e) => return Err(anyhow::anyhow!(e)),
+        }
+    }
+    let g = gate(core);
+    let _restoring = match g.begin_restore() {
+        Ok(guard) => guard,
+        Err(r) => return refused(r.code, r.detail),
+    };
+    let (ws_arc, canonical) = core.tools.workspace(root).await?;
     let (chain, objects) = {
         let store = core.store.lock().await;
-        let all = manifests(&store, task);
-        let target = match target.or_else(|| current(&store, task).map(|c| c.checkpoint_id)) {
-            Some(t) => t,
-            None => {
-                return Ok(Err(RestoreRefused {
-                    code: "NO_CHECKPOINT",
-                    detail: "the task has no committed checkpoint".into(),
-                }));
-            }
-        };
-        match chain_to(&all, target) {
-            Ok(c) => (c, store.objects().clone()),
-            Err(e) => return Ok(Err(chain_refusal(e))),
+        let rows = store.checkpoints(&task.task_id).unwrap_or_default();
+        // The epoch fence: a caller that last saw another current epoch is
+        // acting on a stale picture of the task.
+        let current_epoch = rows
+            .iter()
+            .find(|r| r.status == "CURRENT")
+            .map_or(0, |r| r.epoch);
+        if opts.expected_epoch != 0 && opts.expected_epoch != current_epoch {
+            return refused(
+                "STALE_EPOCH",
+                format!(
+                    "the caller saw checkpoint epoch {}, the task is at epoch {current_epoch}; list the checkpoints again",
+                    opts.expected_epoch
+                ),
+            );
         }
+        let target = match target.or_else(|| {
+            rows.iter()
+                .find(|r| r.status == "CURRENT")
+                .and_then(|r| CheckpointId::parse(&r.checkpoint_id).ok())
+        }) {
+            Some(t) => t,
+            None => return refused("NO_CHECKPOINT", "the task has no committed checkpoint"),
+        };
+        if rows
+            .iter()
+            .any(|r| r.checkpoint_id == target.to_string() && r.status == "COLLECTED")
+        {
+            return refused(
+                "COLLECTED",
+                format!(
+                    "checkpoint {target} was removed by the retention collector; it can no longer be restored"
+                ),
+            );
+        }
+        let l = ledger(&store, task);
+        if opts.redo {
+            // REQ-PX-061: a redo undoes one restore, and only while nothing
+            // happened after it.
+            let Some(rec) = l
+                .restores
+                .iter()
+                .rev()
+                .find(|r| r.pre_restore == target.to_string() && !r.pre_restore.is_empty())
+            else {
+                return refused(
+                    "NOT_A_PRE_RESTORE",
+                    format!(
+                        "checkpoint {target} is not the pre-restore checkpoint of any restore of this task"
+                    ),
+                );
+            };
+            let RestoreState::Done(done_at) = rec.state else {
+                return refused(
+                    "NOT_A_PRE_RESTORE",
+                    format!(
+                        "the restore that recorded checkpoint {target} did not finish; nothing to redo"
+                    ),
+                );
+            };
+            if let Some(later) = l.commits.iter().find(|c| c.offset > done_at) {
+                return refused(
+                    "REDO_SUPERSEDED",
+                    format!(
+                        "checkpoint {} was committed after that restore; the work has moved on and a redo would discard it",
+                        later.checkpoint_id
+                    ),
+                );
+            }
+        }
+        // The chain from the rows: only the checkpoints it names are read.
+        let Some(chain) = chain_manifests(&store, &rows, &target.to_string()) else {
+            // Say why the way the whole-store walk always has.
+            let all = manifests(&store, task);
+            return match chain_to(&all, target) {
+                Err(e) => Ok(Err(chain_refusal(e))),
+                Ok(_) => refused("BROKEN_LINK", "a manifest of the chain could not be read"),
+            };
+        };
+        (chain, store.objects().clone())
     };
     let state = match materialize(&chain) {
         Ok(s) => s,
@@ -565,11 +1540,11 @@ pub(crate) async fn restore(
     if let Some(refused) = head_drift(&repo, state.git_head.as_deref(), state.checkpoint_id) {
         return Ok(Err(refused));
     }
-    let mut ws = ws.lock().await;
+    let mut ws = ws_arc.lock().await;
     // REQ-EV-0123: the caller's optimistic preconditions — the content it
     // last saw at each path (a preview) — are checked before anything is
     // planned; one mismatch refuses the whole restore.
-    for (path, hash) in expected {
+    for (path, hash) in &opts.expected {
         let now = read_workspace_file(&ws, path)
             .map(|b| content_hash(&b))
             .unwrap_or_default();
@@ -592,6 +1567,8 @@ pub(crate) async fn restore(
             }));
         }
     }
+    let keep: BTreeSet<&str> = opts.keep_paths.iter().map(String::as_str).collect();
+    let mut kept: Vec<String> = Vec::new();
     let mut ops: Vec<ChangeOp> = Vec::new();
     let mut pre_bytes: HashMap<String, Option<Vec<u8>>> = HashMap::new();
     let mut reverted = 0u32;
@@ -606,6 +1583,10 @@ pub(crate) async fn restore(
     // Paths dirty now that the checkpoint does not have: back to HEAD, or gone.
     for e in repo.status()? {
         if state.files.contains_key(&e.path) {
+            continue;
+        }
+        if keep.contains(e.path.as_str()) {
+            kept.push(e.path.clone());
             continue;
         }
         let current = read_workspace_file(&ws, &e.path);
@@ -637,6 +1618,10 @@ pub(crate) async fn restore(
     // Paths the checkpoint has as deleted: gone.
     for (path, hash) in &state.files {
         if hash == modbit_checkpoint::DELETED {
+            if keep.contains(path.as_str()) {
+                kept.push(path.clone());
+                continue;
+            }
             let current = read_workspace_file(&ws, path);
             if current.is_some() {
                 pre_bytes.insert(path.clone(), current.clone());
@@ -657,6 +1642,10 @@ pub(crate) async fn restore(
         {
             continue;
         }
+        if keep.contains(path.as_str()) {
+            kept.push(path.clone());
+            continue;
+        }
         pre_bytes.insert(path.clone(), current.clone());
         let kind = if current.is_some() {
             ChangeOpKind::ReplaceExact(content.clone())
@@ -670,12 +1659,105 @@ pub(crate) async fn restore(
         });
         written += 1;
     }
+    kept.sort();
+    kept.dedup();
+    let command_text = opts
+        .command
+        .as_ref()
+        .map(|c| c.command_id.to_string())
+        .unwrap_or_else(|| CheckpointId::new().to_string());
+    // REQ-PX-061: the state about to be replaced is committed as a
+    // checkpoint first, so the restore is exactly reversible. A restore that
+    // changes nothing has nothing to reverse.
+    let mut pre_restore: Option<CheckpointId> = None;
+    if !ops.is_empty() && !opts.rollback {
+        // The capture takes the workspace lock itself; the plan above does
+        // not need it while the state is recorded.
+        drop(ws);
+        let captured = capture(core, task, lt, actor, None, "pre_restore").await;
+        ws = ws_arc.lock().await;
+        match captured {
+            Ok(c) if c.committed.is_ok() => pre_restore = Some(c.manifest.checkpoint_id),
+            Ok(_) => {
+                return refused(
+                    "PRE_RESTORE_FAILED",
+                    "the state before the restore could not be recorded (a newer checkpoint epoch won the race); nothing was changed",
+                );
+            }
+            Err(e) => {
+                return refused(
+                    "PRE_RESTORE_FAILED",
+                    format!(
+                        "the state before the restore could not be recorded: {e}; nothing was changed"
+                    ),
+                );
+            }
+        }
+        fault_point("AFTER_PRE_RESTORE");
+        // The journal: from here until `CheckpointRestored`, a Core that
+        // dies is found by its next start and rolled back.
+        {
+            let mut store = core.store.lock().await;
+            let _ = append(
+                &mut store,
+                core,
+                lt,
+                AggregateType::Task,
+                *task.task_id.as_bytes(),
+                vec![typed(
+                    "CheckpointRestoreStarted",
+                    &TaskEvent::CheckpointRestoreStarted {
+                        command_id: command_text.clone(),
+                        pre_restore_checkpoint_id: pre_restore
+                            .map(|c| c.to_string())
+                            .unwrap_or_default(),
+                        target_checkpoint_id: state.checkpoint_id.to_string(),
+                    },
+                    actor.clone(),
+                )],
+            );
+        }
+        fault_point("AFTER_RESTORE_JOURNAL");
+    }
     let pre_revision = ws.revision().number;
     if !ops.is_empty() {
+        // Failure injection (REQ-PX-061): half the transaction lands, then
+        // the process dies — the mixture the journal exists to resolve.
+        if std::env::var("MODBIT_FAULT_CHECKPOINT").is_ok_and(|v| v == "MID_RESTORE_WRITE")
+            && ops.len() > 1
+        {
+            let half = ops.len() / 2;
+            let _ = ws.apply_transaction(&ops[..half]);
+            fault_point("MID_RESTORE_WRITE");
+        }
         let changes = match ws.apply_transaction(&ops) {
             Ok(c) => c,
             Err(e) => {
                 let text = e.to_string();
+                // The transaction rolled itself back: the worktree is what
+                // it was, and the journal says so.
+                if !opts.rollback {
+                    let mut store = core.store.lock().await;
+                    let _ = append(
+                        &mut store,
+                        core,
+                        lt,
+                        AggregateType::Task,
+                        *task.task_id.as_bytes(),
+                        vec![typed(
+                            "CheckpointRestoreRolledBack",
+                            &TaskEvent::CheckpointRestoreRolledBack {
+                                command_id: command_text.clone(),
+                                pre_restore_checkpoint_id: pre_restore
+                                    .map(|c| c.to_string())
+                                    .unwrap_or_default(),
+                                target_checkpoint_id: state.checkpoint_id.to_string(),
+                                reason: format!("RESTORE_REFUSED: {text}"),
+                            },
+                            actor.clone(),
+                        )],
+                    );
+                }
                 if text.contains("precondition failed") {
                     return Ok(Err(RestoreRefused {
                         code: "HASH_MISMATCH",
@@ -709,40 +1791,208 @@ pub(crate) async fn restore(
     }
     let after = ws.revision().number;
     drop(ws);
+    // The pre-restore checkpoint became the newest; "the current checkpoint"
+    // must go on naming the state the worktree is in, so a restore leaves a
+    // checkpoint of the state it wrote (a delta, and empty when the restore
+    // changed nothing the base did not have). It is committed before the
+    // restore is recorded, so it is not "work after the restore" to a redo.
+    if !ops.is_empty()
+        && let Err(e) = capture(core, task, lt, actor, None, "post_restore").await
     {
-        let mut store = core.store.lock().await;
-        let _ = append(
-            &mut store,
-            core,
-            lt,
-            AggregateType::Task,
-            *task.task_id.as_bytes(),
-            vec![typed(
-                "CheckpointRestored",
-                &TaskEvent::CheckpointRestored {
-                    checkpoint_id: state.checkpoint_id.to_string(),
-                    epoch: state.epoch,
-                    chain: state.chain.iter().map(ToString::to_string).collect(),
-                    files_written: written,
-                    files_reverted: reverted,
-                    workspace_revision_after: after,
-                    event_offset: state.runtime.event_offset,
-                    preconditions_checked: expected.len() as u32,
-                },
-                actor.clone(),
-            )],
-        );
+        eprintln!("modbit-core: the checkpoint after a restore could not be taken: {e}");
     }
-    Ok(Ok(Restored {
+    let restored = Restored {
         checkpoint_id: state.checkpoint_id,
         epoch: state.epoch,
-        chain: state.chain,
+        chain: state.chain.clone(),
         files_written: written,
         files_reverted: reverted,
         workspace_revision_after: after,
         event_offset: state.runtime.event_offset,
-        preconditions_checked: expected.len() as u32,
-    }))
+        preconditions_checked: opts.expected.len() as u32,
+        pre_restore_checkpoint_id: pre_restore,
+        replayed: false,
+        kept_paths: kept,
+        redo: opts.redo,
+    };
+    if opts.rollback {
+        return Ok(Ok(restored));
+    }
+    {
+        let mut store = core.store.lock().await;
+        let event = typed(
+            "CheckpointRestored",
+            &TaskEvent::CheckpointRestored {
+                checkpoint_id: state.checkpoint_id.to_string(),
+                epoch: state.epoch,
+                chain: state.chain.iter().map(ToString::to_string).collect(),
+                files_written: written,
+                files_reverted: reverted,
+                workspace_revision_after: after,
+                event_offset: state.runtime.event_offset,
+                preconditions_checked: opts.expected.len() as u32,
+                pre_restore_checkpoint_id: pre_restore.map(|c| c.to_string()).unwrap_or_default(),
+                command_id: command_text,
+                redo: opts.redo,
+            },
+            actor.clone(),
+        );
+        let req = modbit_event_store::AppendRequest {
+            tenant_id: core.tenant_id,
+            session_id: task.session_id,
+            task_id: Some(task.task_id),
+            run_id: None,
+            turn_id: None,
+            step_id: None,
+            aggregate_type: AggregateType::Task,
+            aggregate_id: *task.task_id.as_bytes(),
+            expected_sequence: None,
+            events: vec![event],
+        };
+        let outcome = match opts.command {
+            Some(cmd) => store.execute_command(cmd, req),
+            None => store
+                .append(req)
+                .map(modbit_event_store::CommandOutcome::Applied),
+        };
+        match outcome {
+            Ok(modbit_event_store::CommandOutcome::Applied(evs)) => {
+                if let Some(last) = evs.last() {
+                    core.last_offset.send_replace(last.offset);
+                }
+            }
+            Ok(modbit_event_store::CommandOutcome::Replayed(_)) => {}
+            Err(e) => eprintln!("modbit-core: CheckpointRestored was not recorded: {e}"),
+        }
+    }
+    Ok(Ok(restored))
+}
+
+/// The result a replayed restore returns: what its `CheckpointRestored`
+/// event says.
+fn restored_from_event(p: &serde_json::Value, replayed: bool) -> Restored {
+    let id = |k: &str| {
+        p[k].as_str()
+            .filter(|s| !s.is_empty())
+            .and_then(|s| CheckpointId::parse(s).ok())
+    };
+    Restored {
+        checkpoint_id: id("checkpoint_id").unwrap_or_else(CheckpointId::new),
+        epoch: p["epoch"].as_u64().unwrap_or(0) as u32,
+        chain: p["chain"]
+            .as_array()
+            .map(|a| {
+                a.iter()
+                    .filter_map(|c| c.as_str().and_then(|s| CheckpointId::parse(s).ok()))
+                    .collect()
+            })
+            .unwrap_or_default(),
+        files_written: p["files_written"].as_u64().unwrap_or(0) as u32,
+        files_reverted: p["files_reverted"].as_u64().unwrap_or(0) as u32,
+        workspace_revision_after: p["workspace_revision_after"].as_u64().unwrap_or(0),
+        event_offset: p["event_offset"].as_u64().unwrap_or(0),
+        preconditions_checked: p["preconditions_checked"].as_u64().unwrap_or(0) as u32,
+        pre_restore_checkpoint_id: id("pre_restore_checkpoint_id"),
+        replayed,
+        kept_paths: Vec::new(),
+        redo: p["redo"].as_bool().unwrap_or(false),
+    }
+}
+
+/// At start (REQ-PX-061): every restore a dead Core left in doubt — its
+/// journal opened, never closed — is rolled back to the pre-restore
+/// checkpoint it recorded first, so the worktree is exactly what it was
+/// before the restore began, never a mixture. The rollback is itself
+/// recorded. A rollback that cannot be made (the repository moved, an
+/// object is gone) is reported and tried again at the next start.
+pub(crate) async fn recover_in_doubt_restores(core: &Core) -> usize {
+    let tasks: Vec<Task> = {
+        let store = core.store.lock().await;
+        // Every task that has any checkpoint.
+        let mut ids: BTreeSet<[u8; 16]> = BTreeSet::new();
+        for (t, _) in store.all_live_checkpoints().unwrap_or_default() {
+            ids.insert(*t.as_bytes());
+        }
+        ids.into_iter()
+            .filter_map(|b| {
+                store
+                    .task(&modbit_domain::TaskId::from_bytes(b))
+                    .ok()
+                    .flatten()
+            })
+            .collect()
+    };
+    let actor = Actor::Core("recovery".into());
+    let mut rolled_back = 0;
+    for task in tasks {
+        let doubtful: Vec<RestoreRec> = {
+            let store = core.store.lock().await;
+            ledger(&store, &task)
+                .restores
+                .into_iter()
+                .filter(|r| r.state == RestoreState::InDoubt)
+                .collect()
+        };
+        for rec in doubtful.into_iter().rev() {
+            let lt = Lineage::task(core.tenant_id, task.session_id, task.task_id);
+            let outcome = match CheckpointId::parse(&rec.pre_restore) {
+                Ok(pre) => {
+                    restore_with(
+                        core,
+                        &task,
+                        lt,
+                        &actor,
+                        Some(pre),
+                        RestoreOptions {
+                            rollback: true,
+                            ..Default::default()
+                        },
+                    )
+                    .await
+                }
+                Err(_) => Ok(Err(RestoreRefused {
+                    code: "NO_PRE_RESTORE",
+                    detail: "the journal names no pre-restore checkpoint".into(),
+                })),
+            };
+            match outcome {
+                Ok(Ok(_)) => {
+                    let mut store = core.store.lock().await;
+                    let _ = append(
+                        &mut store,
+                        core,
+                        lt,
+                        AggregateType::Task,
+                        *task.task_id.as_bytes(),
+                        vec![typed(
+                            "CheckpointRestoreRolledBack",
+                            &TaskEvent::CheckpointRestoreRolledBack {
+                                command_id: rec.command_id.clone(),
+                                pre_restore_checkpoint_id: rec.pre_restore.clone(),
+                                target_checkpoint_id: rec.target.clone(),
+                                reason: "CORE_RESTARTED_MID_RESTORE".into(),
+                            },
+                            actor.clone(),
+                        )],
+                    );
+                    rolled_back += 1;
+                    eprintln!(
+                        "modbit-core: task {}: a restore to {} was interrupted; rolled back to the pre-restore checkpoint {}",
+                        task.task_id, rec.target, rec.pre_restore
+                    );
+                }
+                Ok(Err(r)) => eprintln!(
+                    "modbit-core: task {}: an interrupted restore could not be rolled back ({}: {}); it is tried again at the next start",
+                    task.task_id, r.code, r.detail
+                ),
+                Err(e) => eprintln!(
+                    "modbit-core: task {}: an interrupted restore could not be rolled back: {e}",
+                    task.task_id
+                ),
+            }
+        }
+    }
+    rolled_back
 }
 
 pub(crate) fn chain_refusal(e: ChainError) -> RestoreRefused {
@@ -777,9 +2027,86 @@ pub(crate) fn kind_of(label: &str) -> Result<Option<CheckpointKind>, String> {
     }
 }
 
-/// Wire view of a checkpoint row.
-pub(crate) fn view(r: &modbit_event_store::projections::CheckpointRow) -> wire::CheckpointView {
-    let git_head = r
+/// Why each checkpoint of a task cannot be collected, whatever the policy
+/// (REQ-PX-102): a name, a fork taken from it, being the latest, being the
+/// state before a restore (a redo needs it), being the target of a restore in
+/// doubt, and — transitively — being a link of the chain of any of those. The
+/// age and count floors of a policy are added by the collector.
+pub(crate) fn semantic_protections(
+    rows: &[modbit_event_store::projections::CheckpointRow],
+    ledger: &Ledger,
+    fork_parents: &BTreeSet<String>,
+) -> BTreeMap<String, Vec<&'static str>> {
+    let live: Vec<&modbit_event_store::projections::CheckpointRow> = rows
+        .iter()
+        .filter(|r| matches!(r.status.as_str(), "CURRENT" | "SUPERSEDED"))
+        .collect();
+    let mut out: BTreeMap<String, Vec<&'static str>> = BTreeMap::new();
+    fn add(out: &mut BTreeMap<String, Vec<&'static str>>, id: &str, why: &'static str) {
+        let e = out.entry(id.to_owned()).or_default();
+        if !e.contains(&why) {
+            e.push(why);
+        }
+    }
+    for r in &live {
+        if r.status == "CURRENT" {
+            add(&mut out, &r.checkpoint_id, "LATEST");
+        }
+        if r.reason.starts_with("pre_restore") {
+            add(&mut out, &r.checkpoint_id, "PRE_RESTORE");
+        }
+        if ledger.names.contains_key(&r.checkpoint_id) {
+            add(&mut out, &r.checkpoint_id, "NAMED");
+        }
+        if fork_parents.contains(&r.checkpoint_id) {
+            add(&mut out, &r.checkpoint_id, "FORK_PARENT");
+        }
+    }
+    for rec in ledger
+        .restores
+        .iter()
+        .filter(|r| r.state == RestoreState::InDoubt)
+    {
+        add(&mut out, &rec.target, "RESTORE_TARGET");
+        if !rec.pre_restore.is_empty() {
+            add(&mut out, &rec.pre_restore, "RESTORE_TARGET");
+        }
+    }
+    // A kept checkpoint keeps its whole chain: a delta is nothing without
+    // the baseline and the deltas it is relative to.
+    let by_id: HashMap<&str, &modbit_event_store::projections::CheckpointRow> = live
+        .iter()
+        .map(|r| (r.checkpoint_id.as_str(), *r))
+        .collect();
+    let roots: Vec<String> = out.keys().cloned().collect();
+    for root in roots {
+        let mut cursor = by_id
+            .get(root.as_str())
+            .and_then(|r| r.base_checkpoint_id.clone());
+        let mut guard = 0;
+        while let Some(id) = cursor {
+            guard += 1;
+            if guard > 10_000 {
+                break;
+            }
+            add(&mut out, &id, "CHAIN");
+            cursor = by_id
+                .get(id.as_str())
+                .and_then(|r| r.base_checkpoint_id.clone());
+        }
+    }
+    out
+}
+
+/// Wire view of a checkpoint row, with what the task's log adds: its label,
+/// the turn whose boundary it is, what a capture of it cost, and why the
+/// collector keeps it.
+pub(crate) fn view_with(
+    r: &modbit_event_store::projections::CheckpointRow,
+    ledger: &Ledger,
+    retention: &BTreeMap<String, Vec<&'static str>>,
+) -> wire::CheckpointView {
+    let head = r
         .git_state_json
         .as_deref()
         .and_then(|j| serde_json::from_str::<serde_json::Value>(j).ok())
@@ -791,6 +2118,12 @@ pub(crate) fn view(r: &modbit_event_store::projections::CheckpointRow) -> wire::
         .and_then(|s| s.strip_prefix("offset:"))
         .and_then(|s| s.parse().ok())
         .unwrap_or(0);
+    let turn = turn_of(ledger, &r.checkpoint_id);
+    let commit = ledger
+        .commits
+        .iter()
+        .rev()
+        .find(|c| c.checkpoint_id == r.checkpoint_id);
     wire::CheckpointView {
         checkpoint_id: r.checkpoint_id.clone(),
         epoch: r.epoch,
@@ -800,7 +2133,7 @@ pub(crate) fn view(r: &modbit_event_store::projections::CheckpointRow) -> wire::
         workspace_revision: r.workspace_revision,
         manifest_ref: r.manifest_object_hash.clone().unwrap_or_default(),
         integrity_hash: r.integrity_hash.clone().unwrap_or_default(),
-        git_head,
+        git_head: head,
         files: r.files,
         removed: r.removed,
         event_offset,
@@ -808,6 +2141,22 @@ pub(crate) fn view(r: &modbit_event_store::projections::CheckpointRow) -> wire::
         reason: r.reason.clone(),
         created_at_ms: r.created_at.0,
         committed_at_ms: r.committed_at.map_or(0, |t| t.0),
+        name: ledger
+            .names
+            .get(&r.checkpoint_id)
+            .cloned()
+            .unwrap_or_default(),
+        turn_id: turn
+            .and_then(|c| modbit_domain::TurnId::parse(&c.turn_id).ok())
+            .map(|t| wire::Id {
+                value: t.as_bytes().to_vec(),
+            }),
+        turn_ordinal: turn.map_or(0, |c| c.turn_ordinal),
+        retention: retention
+            .get(&r.checkpoint_id)
+            .map(|v| v.iter().map(|s| (*s).to_owned()).collect())
+            .unwrap_or_default(),
+        cost: commit.map(|c| c.cost.wire()),
     }
 }
 
@@ -815,9 +2164,56 @@ pub(crate) fn view(r: &modbit_event_store::projections::CheckpointRow) -> wire::
 pub(crate) fn list(store: &EventStore, task: &Task) -> wire::CheckpointList {
     let rows = store.checkpoints(&task.task_id).unwrap_or_default();
     let current = rows.iter().find(|r| r.status == "CURRENT");
+    let l = ledger(store, task);
+    let retention = semantic_protections(&rows, &l, &fork_parents(store, task));
     wire::CheckpointList {
         current_checkpoint_id: current.map(|r| r.checkpoint_id.clone()).unwrap_or_default(),
         current_epoch: current.map_or(0, |r| r.epoch),
-        checkpoints: rows.iter().map(view).collect(),
+        checkpoints: rows.iter().map(|r| view_with(r, &l, &retention)).collect(),
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    /// REQ-PX-102: a collection never runs under a restore, never beside
+    /// another collection, and a restore never starts under a collection.
+    #[test]
+    fn the_gate_keeps_the_collector_and_restores_apart() {
+        let g = Arc::new(Gate::default());
+        let restore = g.begin_restore().expect("a restore may start");
+        let refused = g.begin_gc("a", "x").err().expect("not under a restore");
+        assert_eq!(refused.code, "RESTORE_IN_FLIGHT");
+        drop(restore);
+        let lease = g.begin_gc("a", "x").expect("the lease is free again");
+        assert_eq!(g.begin_gc("b", "y").err().unwrap().code, "GC_LEASE_HELD");
+        assert_eq!(g.begin_restore().err().unwrap().code, "GC_IN_FLIGHT");
+        drop(lease);
+        assert!(g.begin_restore().is_ok());
+    }
+
+    /// A name is 1..64 characters, no control characters, no edge space.
+    #[test]
+    fn names_are_validated() {
+        assert!(valid_name("before the refactor").is_ok());
+        assert!(valid_name("").is_err());
+        assert!(valid_name(" x").is_err());
+        assert!(valid_name("a\nb").is_err());
+        assert!(valid_name(&"x".repeat(65)).is_err());
+        assert!(valid_name(&"x".repeat(64)).is_ok());
+    }
+
+    /// The target of a restore is named by at most one field.
+    #[test]
+    fn a_target_is_named_one_way() {
+        assert_eq!(target_spec("", "", 0, None), Ok(TargetSpec::Current));
+        assert_eq!(
+            target_spec("", "keep", 0, None),
+            Ok(TargetSpec::Name("keep".into()))
+        );
+        assert_eq!(target_spec("", "", 3, None), Ok(TargetSpec::TurnOrdinal(3)));
+        assert!(target_spec("", "keep", 3, None).is_err());
+        assert!(target_spec("not-an-id", "", 0, None).is_err());
     }
 }

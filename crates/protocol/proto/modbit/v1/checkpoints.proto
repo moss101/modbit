@@ -1,0 +1,119 @@
+// Pause and resume, per-turn checkpoints, named checkpoints and retention
+// (REQ-PX-101, REQ-PX-061, REQ-PX-102; docs/62, docs/65, docs/19). New
+// messages of the checkpoint ledger live here; the fields they add to the
+// existing checkpoint messages of surface.proto use the block 160-179.
+syntax = "proto3";
+
+package modbit.v1;
+
+import "modbit/v1/domain.proto";
+
+// ---- PauseTask / ResumeTask (REQ-PX-101) ----
+
+// Park the task's run at its next turn boundary. A tool call or a model
+// stream in flight is never abandoned: the run finishes the turn and stops
+// before the next one, with its run, worktree and latest checkpoint held.
+// Idempotent per command id; fenced by the session lease.
+message PauseTask {
+  Id task_id = 1;
+  string reason = 2;               // why, recorded on the log; may be empty
+  uint32 wait_ms = 3;              // 0 = answer at once; else wait up to this long (<= 30000) for the boundary
+}
+
+message TaskPauseResult {
+  Id task_id = 1;
+  string state = 2;                // PAUSED | PAUSING | ALREADY_PAUSED
+  bool waits_for_boundary = 3;     // true while a turn is still in flight: the park lands when it ends
+  string note = 4;                 // what the pause is waiting for, in words
+  string checkpoint_id = 5;        // the checkpoint held (the latest committed one), "" when none
+  uint64 offset = 6;               // the log offset of the pause request
+}
+
+// Resume a paused task: the same run, a fresh run ticket, under the lease
+// generation the command presents. An omitted endpoint or model is the one
+// the run was routed to.
+message ResumeTask {
+  Id task_id = 1;
+  string endpoint = 2;
+  string model = 3;
+  uint32 max_turns = 4;
+  uint32 max_tool_calls = 5;
+  uint32 max_no_progress_turns = 6;
+}
+
+message TaskResumeResult {
+  Id task_id = 1;
+  Id run_id = 2;
+  bool resumed = 3;                // the run continued, not a fresh attempt
+  string endpoint = 4;
+  string model = 5;
+  uint64 offset = 6;
+}
+
+// ---- Named checkpoints and retention (REQ-PX-102) ----
+
+// Label a checkpoint. A name is unique within the task (NAME_TAKEN); a
+// checkpoint holds at most one name; naming the same checkpoint with the
+// same name again is a no-op.
+message NameCheckpoint {
+  Id task_id = 1;
+  string checkpoint_id = 2;        // "" = the task's latest committed checkpoint
+  string name = 3;                 // 1..64 characters, no control characters
+}
+
+message CheckpointNamed {
+  Id task_id = 1;
+  string checkpoint_id = 2;
+  string name = 3;
+  uint64 offset = 4;
+  bool replayed = 5;
+}
+
+// The retention policy a collector run applies to a finished task. A zero
+// field takes the default.
+message CheckpointRetentionPolicy {
+  uint32 keep_recent = 1;          // newest checkpoints kept regardless (default 10)
+  int64 min_age_ms = 2;            // a checkpoint younger than this is kept (default 7 days)
+  uint64 max_bytes = 3;            // 0 = no size bound; else the oldest unprotected are thinned until the task's blobs fit
+}
+
+// Thin the checkpoints of a finished task by policy, then delete the content
+// blobs no surviving checkpoint names. Runs under a lease (one collector at
+// a time), is refused while a restore is in flight, and is idempotent.
+message RunCheckpointGc {
+  Id session_id = 1;               // the lease's session
+  Id task_id = 2;                  // "" = every task of the session
+  string reason = 3;               // recorded with the lease owner
+  CheckpointRetentionPolicy policy = 4;
+  bool dry_run = 5;                // decide and report; remove nothing
+}
+
+message CheckpointKept {
+  string checkpoint_id = 1;
+  string why = 2;                  // LIVE | NAMED | FORK_PARENT | LATEST | PRE_RESTORE | RESTORE_TARGET | CHAIN | RECENT | YOUNG
+}
+
+message CheckpointGcReport {
+  string gc_id = 1;
+  string owner = 2;
+  uint32 scanned = 3;              // checkpoints looked at
+  uint32 removed = 4;              // checkpoints taken out of the restorable set
+  uint32 blobs_removed = 5;
+  uint64 bytes_freed = 6;
+  uint32 blobs_retained = 7;       // blobs a surviving checkpoint (of any task) still names
+  repeated string removed_ids = 8;
+  repeated CheckpointKept kept = 9;
+  bool dry_run = 10;
+  uint32 tasks = 11;               // tasks the run covered
+  uint64 offset = 12;
+}
+
+// What one capture cost (the bound of REQ-PX-061: a turn that changed
+// nothing reads nothing and writes nothing but its manifest).
+message CaptureCost {
+  uint64 capture_ms = 1;
+  uint32 hashed_files = 2;         // dirty files read and hashed
+  uint32 cache_hits = 3;           // dirty files known from an earlier capture, never read
+  uint32 blobs_written = 4;        // new content blobs
+  uint64 bytes_written = 5;
+}

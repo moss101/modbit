@@ -759,9 +759,20 @@ async fn qual_m8_2_a_worker_claims_the_lease_runs_the_task_relays_commands_mirro
         (r["status"] != "PENDING").then_some(r)
     })
     .await;
-    assert_eq!(
-        (paused["status"].as_str(), paused["code"].as_str()),
-        (Some("REJECTED"), Some("PAUSE_UNSUPPORTED")),
+    // REQ-PX-101: the worker no longer refuses `:pause`; it runs the Core's
+    // PauseTask, and the Core answers for the task's state — accepted when a
+    // run is executing, a typed refusal (never PAUSE_UNSUPPORTED) when it is not.
+    assert_ne!(
+        paused["code"].as_str(),
+        Some("PAUSE_UNSUPPORTED"),
+        "{paused}"
+    );
+    assert!(
+        paused["status"] == "ACCEPTED"
+            || matches!(
+                paused["code"].as_str(),
+                Some("NOT_PAUSABLE" | "TASK_TERMINAL")
+            ),
         "{paused}"
     );
     // A second task created while held is relayed: the worker creates and runs it.
