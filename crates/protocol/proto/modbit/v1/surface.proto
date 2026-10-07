@@ -12,6 +12,7 @@ import "modbit/v1/context_knowledge.proto";
 import "modbit/v1/domain.proto";
 import "modbit/v1/envelope.proto";
 import "modbit/v1/negotiation.proto";
+import "modbit/v1/security_runtime.proto";
 import "modbit/v1/context_rules.proto";
 import "modbit/v1/terminal.proto";
 import "modbit/v1/tasking.proto";
@@ -561,6 +562,10 @@ message ContextInspectorView {
   // Engineering memory the prompt envelope injected on the last compiled turn
   // (PX-113): the ids and provenance of every entry, what was left out and why.
   MemoryInjectionView memory = 200;
+  // The listening services of the task's terminals the Core observed and has
+  // not seen end (REQ-PX-132), so the context breakdown shows what the agent
+  // would otherwise have to rediscover.
+  repeated ProcessServiceView process_services = 320;
 }
 
 message CompactionRequestView {

@@ -1489,7 +1489,8 @@ async fn run_process(ctx: &InvokeContext, args: &Value, request_id: &str) -> Too
                 | Event::SandboxProbed(_)
                 | Event::Resized(_)
                 | Event::Lease(_)
-                | Event::StdinWritten(_),
+                | Event::StdinWritten(_)
+                | Event::Listeners(_),
             )) => {}
             Ok(None) => {
                 return ToolOutcome {
@@ -2232,7 +2233,8 @@ tool!(
                     | Event::SandboxProbed(_)
                     | Event::Resized(_)
                     | Event::Lease(_)
-                    | Event::StdinWritten(_),
+                    | Event::StdinWritten(_)
+                    | Event::Listeners(_),
                 )) => {}
                 Ok(None) => break,
                 Err(modbit_terminal::Error::Exec { code, message, .. }) => {

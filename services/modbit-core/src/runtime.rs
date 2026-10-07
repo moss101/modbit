@@ -8401,8 +8401,38 @@ async fn handle_complete(
     }
 }
 
+/// One tool call, and — REQ-PX-132 — whatever the Core has observed about the
+/// listening services of the task's terminals since the model was last told,
+/// appended to the result as labelled data. The model never has to call a
+/// tool to learn that its dev server is up, on which port, or that it died.
 #[allow(clippy::too_many_arguments)]
 async fn execute_tool(
+    core: &Core,
+    task: &Task,
+    lt: Lineage,
+    actor: &Actor,
+    state: &mut HarnessState,
+    call_id: &str,
+    name: &str,
+    args: &str,
+    cancel: &CancellationToken,
+    resume: Option<ToolCallId>,
+    projected: &[String],
+) -> TranscriptEntry {
+    let mut entry = execute_tool_call(
+        core, task, lt, actor, state, call_id, name, args, cancel, resume, projected,
+    )
+    .await;
+    if let TranscriptEntry::ToolResult { text, .. } = &mut entry
+        && let Some(notice) = core.tools.process_services.take_notice(task.task_id)
+    {
+        text.push_str(&notice);
+    }
+    entry
+}
+
+#[allow(clippy::too_many_arguments)]
+async fn execute_tool_call(
     core: &Core,
     task: &Task,
     lt: Lineage,

@@ -2199,6 +2199,38 @@ pub enum TaskEvent {
         /// Tools the new generation withholds, by name.
         withheld_tools: Vec<String>,
     },
+    /// `ProcessServiceObserved` (REQ-PX-132, docs/21): the Core found, or lost,
+    /// or re-judged a listening service in the process tree of one of the
+    /// task's terminals. Recorded on a change of state only, never per probe.
+    /// Observation changes no policy: a detected server is a fact the agent
+    /// and the person are told, not a permission. No state change.
+    ProcessServiceObserved {
+        /// The terminal (broker session) whose process tree holds the socket.
+        handle_id: String,
+        /// The listening port.
+        port: u32,
+        /// The bound address.
+        address: String,
+        /// The listening process.
+        pid: u32,
+        /// Its command line: redacted and bounded.
+        command: String,
+        /// `dev_server` | `service`.
+        kind: String,
+        /// `STARTING` | `READY` | `UNHEALTHY` | `GONE`.
+        state: String,
+        /// The state it left (empty for the first observation).
+        previous: String,
+        /// The HTTP status the probe got; 0 = no HTTP answer.
+        http_status: u32,
+        /// How long the probe took.
+        probe_ms: u64,
+        /// Why the service is in this state.
+        detail: String,
+        /// True when the Core observed a service it had already recorded
+        /// before it restarted.
+        reobserved: bool,
+    },
     /// `CapabilitySnapshotRecorded` (REQ-PX-131, docs/23 "Policy
     /// generations"): at a model-round boundary the Core froze the round's
     /// capability view — the projected tools, the policy generation, the
@@ -2589,6 +2621,7 @@ impl TaskEvent {
             Self::ReviewCommentsIngested { .. } => "ReviewCommentsIngested",
             Self::PolicyGenerationChanged { .. } => "PolicyGenerationChanged",
             Self::CapabilitySnapshotRecorded { .. } => "CapabilitySnapshotRecorded",
+            Self::ProcessServiceObserved { .. } => "ProcessServiceObserved",
             Self::RequestOutcomeRecorded { .. } => "RequestOutcomeRecorded",
             Self::HooksResolved { .. } => "HooksResolved",
             Self::HookInvoked { .. } => "HookInvoked",
@@ -2791,6 +2824,10 @@ impl Task {
             | TaskEvent::CheckpointGcStarted { .. }
             | TaskEvent::CheckpointCollected { .. }
             | TaskEvent::CheckpointGcCompleted { .. } => None,
+            // A service the task's terminal started is lost when the task
+            // ends (its terminals are killed): the record says so whatever
+            // state the task is in (REQ-PX-132).
+            TaskEvent::ProcessServiceObserved { .. } => None,
             // A sandbox is given back after the task ended (M8.5), and one
             // may be lost at any time: the records of the substrate's
             // lifecycle land whatever the task's state. So do the request's

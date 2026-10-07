@@ -15,8 +15,9 @@ use modbit_protocol::local::{Endpoint, ReadyLine, encode_hex};
 use modbit_protocol::v1::exec_frame::Body;
 use modbit_protocol::v1::{
     AcquireTerminalLease, Attach, Cancel, ExecError, ExecFrame, ExecRequest, ExecStarted, HelloAck,
-    ListSessions, OutputChunk, ProcessExited, ReleaseTerminalLease, SessionInfo, SessionList,
-    StdinWritten, TerminalAck, TerminalLeaseState, TerminalResize, TerminalResized, WriteStdin,
+    ListServices, ListSessions, OutputChunk, ProcessExited, ReleaseTerminalLease, SessionInfo,
+    SessionList, SessionListener, SessionListeners, StdinWritten, TerminalAck, TerminalLeaseState,
+    TerminalResize, TerminalResized, WriteStdin,
 };
 use serde::{Deserialize, Serialize};
 use subtle::ConstantTimeEq;
@@ -124,6 +125,11 @@ struct Session {
     lease: std::sync::Mutex<Option<InputLease>>,
     /// The broker's replay window per session, for the registry.
     replay_window_bytes: u64,
+    /// The process the session started (0 until it has one, and for a
+    /// session recovered from a previous broker, whose process is not ours):
+    /// the root of the tree whose listening sockets `ListServices` reports
+    /// (PX-132).
+    pid: AtomicU32,
 }
 
 /// What survives a broker restart beside the output log (M4.5).
@@ -509,6 +515,7 @@ fn load_sessions(data_dir: &Path, object_dir: &Path, limits: &Limits) -> Vec<Arc
             cols: AtomicU32::new(meta.cols),
             lease: std::sync::Mutex::new(None),
             replay_window_bytes: limits.replay_window_bytes,
+            pid: AtomicU32::new(0),
         });
         out.push(session);
     }
@@ -1231,6 +1238,41 @@ async fn serve(broker: Arc<Broker>, mut stream: BoxedStream) -> Result<()> {
                     })
                     .await;
             }
+            // PX-132: the listening sockets of the process trees of the
+            // running sessions the requester may see, and only theirs.
+            Some(Body::ListServices(ListServices { requester })) => {
+                let running: Vec<(String, u32)> = {
+                    let sessions = broker.sessions.lock().await;
+                    sessions
+                        .values()
+                        .filter(|s| s.permits(&requester) && s.running.load(Ordering::SeqCst))
+                        .map(|s| (s.id.clone(), s.pid.load(Ordering::SeqCst)))
+                        .filter(|(_, pid)| *pid != 0)
+                        .collect()
+                };
+                let scan = tokio::task::spawn_blocking(move || scan_services(&running))
+                    .await
+                    .unwrap_or_else(|e| Err(format!("scan task: {e}")));
+                let frame = match scan {
+                    Ok((listeners, scanned)) => SessionListeners {
+                        listeners,
+                        scanned_at_ms: now_ms(),
+                        scanned_sessions: scanned,
+                        scan_error: String::new(),
+                    },
+                    Err(e) => SessionListeners {
+                        listeners: vec![],
+                        scanned_at_ms: now_ms(),
+                        scanned_sessions: 0,
+                        scan_error: e,
+                    },
+                };
+                let _ = tx
+                    .send(ExecFrame {
+                        body: Some(Body::ServiceListeners(frame)),
+                    })
+                    .await;
+            }
             other => {
                 let _ = tx
                     .send(err_frame("", "UNEXPECTED_FRAME", format!("{other:?}")))
@@ -1248,6 +1290,61 @@ async fn serve(broker: Arc<Broker>, mut stream: BoxedStream) -> Result<()> {
     drop(tx);
     let _ = writer_task.await;
     Ok(())
+}
+
+/// The listening sockets of the process trees of `running` sessions
+/// (`(session id, root pid)`). The trees come from one process-table
+/// snapshot; the sockets asked for are those of the tree's pids only, so a
+/// listener of any other process is never seen, let alone attributed.
+fn scan_services(
+    running: &[(String, u32)],
+) -> std::result::Result<(Vec<SessionListener>, u32), String> {
+    if running.is_empty() {
+        return Ok((Vec::new(), 0));
+    }
+    let table = crate::listeners::process_table()?;
+    let command_of: HashMap<u32, &str> =
+        table.iter().map(|p| (p.pid, p.command.as_str())).collect();
+    let mut owner_of: HashMap<u32, &str> = HashMap::new();
+    let mut all = std::collections::HashSet::new();
+    for (id, root) in running {
+        for pid in crate::listeners::tree(&table, *root) {
+            // A process belongs to the first tree that claims it (trees do
+            // not overlap unless a session's group was joined by another).
+            if owner_of.insert(pid, id.as_str()).is_none() {
+                all.insert(pid);
+            }
+        }
+    }
+    let found = crate::listeners::listeners(&all)?;
+    let mut out: Vec<SessionListener> = found
+        .into_iter()
+        .filter_map(|l| {
+            let session_id = (*owner_of.get(&l.pid)?).to_owned();
+            let command = command_of.get(&l.pid).copied().unwrap_or_default();
+            Some(SessionListener {
+                session_id,
+                pid: l.pid,
+                port: u32::from(l.port),
+                address: l.address,
+                command: crate::listeners::bounded(command),
+                process_name: command
+                    .split_whitespace()
+                    .next()
+                    .and_then(|c| c.rsplit(['/', '\\']).next())
+                    .unwrap_or_default()
+                    .to_owned(),
+            })
+        })
+        .collect();
+    out.sort_by(|a, b| {
+        (a.session_id.as_str(), a.port, a.pid).cmp(&(b.session_id.as_str(), b.port, b.pid))
+    });
+    out.dedup_by(|a, b| {
+        a.session_id == b.session_id && a.port == b.port && a.pid == b.pid && a.address == b.address
+    });
+    let scanned = u32::try_from(running.len()).unwrap_or(u32::MAX);
+    Ok((out, scanned))
 }
 
 async fn kill(s: &Arc<Session>) {
@@ -1550,6 +1647,7 @@ impl Broker {
             }),
             lease: std::sync::Mutex::new(None),
             replay_window_bytes: self.limits.replay_window_bytes,
+            pid: AtomicU32::new(0),
         });
         session.write_meta().await;
         self.sessions
@@ -1628,6 +1726,7 @@ impl Broker {
         let mut child = cmd
             .spawn()
             .with_context(|| format!("spawning {:?}", req.argv))?;
+        s.pid.store(child.id().unwrap_or(0), Ordering::SeqCst);
         let stdout = child.stdout.take();
         let stderr = child.stderr.take();
         if let Some(stdin) = child.stdin.take() {
@@ -1775,6 +1874,8 @@ impl Broker {
             .spawn_command(cmd)
             .map_err(|e| anyhow::anyhow!("spawn pty: {e}"))?;
         drop(pair.slave);
+        s.pid
+            .store(child.process_id().unwrap_or(0), Ordering::SeqCst);
         let mut reader = pair
             .master
             .try_clone_reader()

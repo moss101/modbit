@@ -42,3 +42,58 @@ message CapabilitySnapshotList {
   bool valid = 3;                  // hashes recompute, epochs are monotonic and gapless
   string detail = 4;
 }
+
+// ---------------------------------------------------------------- PX-132
+
+// Broker side (ExecFrame.list_services / service_listeners): the listening
+// sockets of the process trees of the sessions the requester may see. Only
+// the processes of a session's own tree are reported, never an unrelated
+// listener of the machine.
+message ListServices {
+  string requester = 1;            // as ListSessions.requester
+}
+
+message SessionListener {
+  string session_id = 1;
+  uint32 pid = 2;                  // the listening process
+  uint32 port = 3;
+  string address = 4;              // the bound address: 127.0.0.1, ::1, 0.0.0.0, ::, ...
+  string command = 5;              // its command line, bounded; may carry anything the command line carries
+  string process_name = 6;
+}
+
+message SessionListeners {
+  repeated SessionListener listeners = 1;
+  int64 scanned_at_ms = 2;
+  uint32 scanned_sessions = 3;     // running sessions whose trees were scanned
+  string scan_error = 4;           // "" = the scan completed
+}
+
+// Core side: the services a task's terminals started, as the Core observed
+// them (ProcessServiceObserved on the task's log).
+message ListProcessServices {
+  Id task_id = 1;                  // absent = every task
+  bool include_gone = 2;
+}
+
+message ProcessServiceView {
+  Id task_id = 1;
+  string session_id = 2;           // the terminal that owns the process
+  uint32 port = 3;
+  string address = 4;
+  uint32 pid = 5;
+  string command = 6;              // redacted, bounded
+  string kind = 7;                 // dev_server | service
+  string state = 8;                // STARTING | READY | UNHEALTHY | GONE
+  int32 http_status = 9;           // 0 = no HTTP answer
+  int64 first_seen_ms = 10;
+  int64 state_since_ms = 11;
+  int64 last_probe_ms = 12;
+  uint64 probe_latency_ms = 13;
+  string detail = 14;              // why it is in this state
+}
+
+message ProcessServiceList {
+  repeated ProcessServiceView services = 1;
+  int64 scanned_at_ms = 2;
+}
