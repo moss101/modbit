@@ -58,7 +58,116 @@ use modbit_protocol::v1::{
     TaskSelectionRecorded, TaskStatus, ToolInvoked, ToolList, TrustRepository, UndoPlanView,
     UndoToolCall, UnsupportedLanguageAllowed, UpdatePullRequest,
 };
+// PX-051 / PX-053 / PX-100 (tasking.proto): task mode and execution preference.
+use modbit_protocol::v1::{
+    ExecutionPreference, ExecutionPreferenceSet, GetTaskPosture, ObjectiveProfile,
+    SetExecutionPreference, SetTaskMode, TaskMode, TaskModeChanged, TaskPostureView,
+};
 use prost::Message;
+
+/// The wire value of a mode name. The CLI maps a name to the typed value and
+/// decides nothing else: a name it does not know is sent as a value no mode
+/// has, so the Core is the one that refuses it, with its typed error.
+fn mode_value(name: &str) -> i32 {
+    match name.to_ascii_uppercase().as_str() {
+        "AGENT" => TaskMode::Agent as i32,
+        "PLAN" => TaskMode::Plan as i32,
+        "DEBUG" => TaskMode::Debug as i32,
+        "MULTITASK" => TaskMode::Multitask as i32,
+        "ASK" => TaskMode::Ask as i32,
+        _ => 99,
+    }
+}
+
+fn mode_label(value: i32) -> &'static str {
+    TaskMode::try_from(value).map_or("UNKNOWN", |m| match m {
+        TaskMode::Unspecified => "UNSPECIFIED",
+        TaskMode::Agent => "AGENT",
+        TaskMode::Plan => "PLAN",
+        TaskMode::Debug => "DEBUG",
+        TaskMode::Multitask => "MULTITASK",
+        TaskMode::Ask => "ASK",
+    })
+}
+
+fn objective_value(name: &str) -> i32 {
+    match name.to_ascii_uppercase().as_str() {
+        "COST" => ObjectiveProfile::Cost as i32,
+        "BALANCE" => ObjectiveProfile::Balance as i32,
+        "INTELLIGENCE" => ObjectiveProfile::Intelligence as i32,
+        _ => 99,
+    }
+}
+
+fn objective_label(value: i32) -> &'static str {
+    ObjectiveProfile::try_from(value).map_or("UNKNOWN", |o| match o {
+        ObjectiveProfile::Unspecified => "",
+        ObjectiveProfile::Cost => "COST",
+        ObjectiveProfile::Balance => "BALANCE",
+        ObjectiveProfile::Intelligence => "INTELLIGENCE",
+    })
+}
+
+/// The execution preference the `--objective`, `--effort` and `--tier` flags
+/// (and `--pin <endpoint>/<model>`, `--clear-pin` where a command takes
+/// them) name; `None` when none is given.
+fn preference_flags(words: &[&str], pins: bool) -> Option<ExecutionPreference> {
+    let opt = |flag: &str| {
+        words
+            .iter()
+            .position(|w| *w == flag)
+            .and_then(|i| words.get(i + 1).copied())
+    };
+    let mut p = ExecutionPreference {
+        objective: opt("--objective").map_or(0, objective_value),
+        effort: opt("--effort").unwrap_or_default().to_owned(),
+        service_tier: opt("--tier").unwrap_or_default().to_owned(),
+        ..Default::default()
+    };
+    if pins {
+        if let Some(pin) = opt("--pin") {
+            let (e, m) = pin.split_once('/').unwrap_or((pin, ""));
+            p.pin_endpoint = e.to_owned();
+            p.pin_model = m.to_owned();
+        }
+        p.clear_pin = words.contains(&"--clear-pin");
+    }
+    (p != ExecutionPreference::default()).then_some(p)
+}
+
+fn print_posture(p: &TaskPostureView) {
+    let pref = p.preference.clone().unwrap_or_default();
+    let routing = p.routing.clone().unwrap_or_default();
+    let posture = p.posture.clone().unwrap_or_default();
+    println!(
+        "posture mode={} in_force={} writes={} subagents={} reproduction_first={} effect_ceiling={}",
+        mode_label(p.mode),
+        mode_label(p.mode_in_force),
+        posture.writes,
+        posture.subagents,
+        posture.reproduction_first,
+        posture.effect_ceiling
+    );
+    println!(
+        "preference objective={} effort={} tier={} pin={} offset={} applied_offset={} effort_applied={} tier_applied={}",
+        objective_label(pref.objective),
+        pref.effort,
+        pref.service_tier,
+        if pref.pin_model.is_empty() {
+            String::new()
+        } else {
+            format!("{}/{}", pref.pin_endpoint, pref.pin_model)
+        },
+        pref.offset,
+        pref.applied_offset,
+        pref.effort_applied,
+        pref.service_tier_applied
+    );
+    println!(
+        "routing outcome={} reason={} floor={} {}",
+        routing.outcome, routing.reason_code, routing.floor_mode, routing.detail
+    );
+}
 
 /// Process exit code (docs: apps/cli/README.md). Set by task-state commands.
 static EXIT_CODE: std::sync::atomic::AtomicU8 = std::sync::atomic::AtomicU8::new(0);
@@ -74,7 +183,7 @@ fn exit_for_state(state: &str) -> u8 {
     }
 }
 
-const USAGE: &str = "usage: modbit-cli --data-dir <dir> (session create | session show --session <id> | task create --session <id> [--workspace <dir>] [--command-id <hex>] <goal> | task from-issue --session <id> [--workspace <dir>] [--command-id <hex>] <issue-url> | events tail --session <id> [--after N] [--count N] [--json] | task attach --session <id> --task <id> <file> | question list --task <id> | question answer --session <id> --task <id> --question <id> [--option <id>] [--endpoint <name>] [--model <id>] [--wait] [text] | tool list [--task <id>] | tool invoke --session <id> --task <id> [--call <id>] <tool> <arguments-json> | approval list --session <id> | approval resolve --session <id> --approval <id> [--intent <hash>] (approve|deny) [reason] | stop --session <id> [reason] | receipts [--task <id>] | lease list --task <id> | task run --session <id> --task <id> [--endpoint <name>] [--model <id>] [--max-turns N] [--max-tool-calls N] [--max-no-progress-turns N] [--skill <name>]... [--wait] | task cancel --session <id> --task <id> | task status --task <id> | review show --task <id> | review decide --session <id> --task <id> (accept|return) [--reject path#index ...] [note] | change undo --session <id> --task <id> --call <id> [--apply] | context show <task-id> | task fork --session <id> --task <id> [--checkpoint <id>] [--carry PLAN,DECISIONS,EVIDENCE,CONTEXT] [--worktree <dir>] [goal] | task rewind --task <id> [--checkpoint <id>] [--apply --session <id>] | session route --session <id> | session tree --session <id> | task assurance --task <id> | task economics --task <id> | task work --task <id> | task agents --task <id> | capacity show | attention list --session <id> | plan show --task <id> | plan revise --session <id> --task <id> [--plan-json <file>] [note] | task patch --session <id> --task <id> --path <p> --revision <n> [--file-revision <sha>] (--old <text> | --old-file <f>) (--new <text> | --new-file <f>) | baseline publish --session <id> [--revision <rev>] | task allow-language --session <id> --task <id> --language <l> [--reason r] | task attach-context --session <id> --task <id> --source <s> [--title t] <file> | task select --session <id> --task <id> [--path p]... [--lines a:b] [--symbol s] [--hunk path#index]... [--source review|editor|cli] | agent install <file> [--from claude] [--replace] | agent list | skill install <dir> [--expect-hash <hex>] [--replace] | skill remove <name> | skill revoke <name> [--hash <content-hash>] | skill list | language list | model list | model probe --endpoint <name> --model <id> [--tools] <prompt> | task steer --session <id> --task <id> [--mode STEER|COLLECT|FOLLOW_UP] [--input-id <hex>] <text> | workspace trust --session <id> [--scope <s>] <root> | provider configure --provider <openai|anthropic> [--base-url <url>] [--clear] | recovery show | pr (open | update) --session <id> --task <id> --revision <n> [--base <ref>] [--title <t>] [--remote <name>] | starter list [--workspace <dir>] | doctor --session <id> | trace --session <id> [--task <id>] | export diagnostics --session <id> [--task <id>] [--include-content] --out <file> | diagnostics verify <file> | export handoff --session <id> --task <id> --out <dir> | usage reconcile --task <id> --invoice <file> [--tolerance-bp N] | dashboard --session <id> | platform)";
+const USAGE: &str = "usage: modbit-cli --data-dir <dir> (session create | session show --session <id> | task create --session <id> [--workspace <dir>] [--command-id <hex>] [--mode agent|plan|debug|multitask|ask] [--profile <execution-profile>] [--objective cost|balance|intelligence] [--effort low|medium|high] [--tier <name>] <goal> | task mode --session <id> --task <id> <mode> | task preference --session <id> --task <id> [--objective o] [--effort e] [--tier t] [--pin <endpoint>/<model> | --clear-pin] | task posture --task <id> | task from-issue --session <id> [--workspace <dir>] [--command-id <hex>] <issue-url> | events tail --session <id> [--after N] [--count N] [--json] | task attach --session <id> --task <id> <file> | question list --task <id> | question answer --session <id> --task <id> --question <id> [--option <id>] [--endpoint <name>] [--model <id>] [--wait] [text] | tool list [--task <id>] | tool invoke --session <id> --task <id> [--call <id>] <tool> <arguments-json> | approval list --session <id> | approval resolve --session <id> --approval <id> [--intent <hash>] (approve|deny) [reason] | stop --session <id> [reason] | receipts [--task <id>] | lease list --task <id> | task run --session <id> --task <id> [--endpoint <name>] [--model <id>] [--max-turns N] [--max-tool-calls N] [--max-no-progress-turns N] [--skill <name>]... [--mode <mode>] [--objective o] [--effort e] [--tier t] [--wait] | task cancel --session <id> --task <id> | task status --task <id> | review show --task <id> | review decide --session <id> --task <id> (accept|return) [--reject path#index ...] [note] | change undo --session <id> --task <id> --call <id> [--apply] | context show <task-id> | task fork --session <id> --task <id> [--checkpoint <id>] [--carry PLAN,DECISIONS,EVIDENCE,CONTEXT] [--worktree <dir>] [goal] | task rewind --task <id> [--checkpoint <id>] [--apply --session <id>] | session route --session <id> | session tree --session <id> | task assurance --task <id> | task economics --task <id> | task work --task <id> | task agents --task <id> | capacity show | attention list --session <id> | plan show --task <id> | plan revise --session <id> --task <id> [--plan-json <file>] [note] | task patch --session <id> --task <id> --path <p> --revision <n> [--file-revision <sha>] (--old <text> | --old-file <f>) (--new <text> | --new-file <f>) | baseline publish --session <id> [--revision <rev>] | task allow-language --session <id> --task <id> --language <l> [--reason r] | task attach-context --session <id> --task <id> --source <s> [--title t] <file> | task select --session <id> --task <id> [--path p]... [--lines a:b] [--symbol s] [--hunk path#index]... [--source review|editor|cli] | agent install <file> [--from claude] [--replace] | agent list | skill install <dir> [--expect-hash <hex>] [--replace] | skill remove <name> | skill revoke <name> [--hash <content-hash>] | skill list | language list | model list | model probe --endpoint <name> --model <id> [--tools] <prompt> | task steer --session <id> --task <id> [--mode STEER|COLLECT|FOLLOW_UP] [--input-id <hex>] <text> | workspace trust --session <id> [--scope <s>] <root> | provider configure --provider <openai|anthropic> [--base-url <url>] [--clear] | recovery show | pr (open | update) --session <id> --task <id> --revision <n> [--base <ref>] [--title <t>] [--remote <name>] | starter list [--workspace <dir>] | doctor --session <id> | trace --session <id> [--task <id>] | export diagnostics --session <id> [--task <id>] [--include-content] --out <file> | diagnostics verify <file> | export handoff --session <id> --task <id> --out <dir> | usage reconcile --task <id> --invoice <file> [--tolerance-bp N] | dashboard --session <id> | platform)";
 
 fn parse_id(hex: &str) -> Result<Id, String> {
     let bytes = decode_hex(hex)
@@ -507,7 +616,17 @@ async fn run_command(ready: &ReadyLine, rest: Vec<String>) -> Result<(), String>
             for w in words.iter().skip(2) {
                 if skip {
                     skip = false;
-                } else if *w == "--session" || *w == "--workspace" || *w == "--command-id" {
+                } else if matches!(
+                    *w,
+                    "--session"
+                        | "--workspace"
+                        | "--command-id"
+                        | "--mode"
+                        | "--profile"
+                        | "--objective"
+                        | "--effort"
+                        | "--tier"
+                ) {
                     skip = true;
                 } else {
                     goal_words.push(*w);
@@ -524,7 +643,11 @@ async fn run_command(ready: &ReadyLine, rest: Vec<String>) -> Result<(), String>
                     session_id: Some(sid),
                     goal_text: goal,
                     workspace_id: None,
-                    execution_profile: String::new(),
+                    // PX-100: the user's profile and mode, named; the Core
+                    // derives the posture and refuses what it does not know.
+                    execution_profile: opt("--profile").unwrap_or_default().to_owned(),
+                    mode: opt("--mode").map_or(0, mode_value),
+                    preference: preference_flags(&words, false),
                     origin: "cli".into(),
                     workspace_root,
                     issue_url: String::new(),
@@ -569,6 +692,7 @@ async fn run_command(ready: &ReadyLine, rest: Vec<String>) -> Result<(), String>
                     workspace_root,
                     issue_url: url,
                     issue_json: String::new(),
+                    ..Default::default()
                 }
                 .encode_to_vec(),
                 Some(lease),
@@ -887,6 +1011,31 @@ async fn run_command(ready: &ReadyLine, rest: Vec<String>) -> Result<(), String>
                 .filter(|w| w[0] == "--skill")
                 .map(|w| w[1].to_owned())
                 .collect();
+            // PX-100: `--mode` on a run is the same typed command as
+            // `task mode`, sent first; the objective, effort and tier ride
+            // on the start itself.
+            if let Some(mode) = opt("--mode") {
+                let ack = client
+                    .command(envelope_fenced(
+                        "SetTaskMode",
+                        SetTaskMode {
+                            task_id: Some(task_id.clone()),
+                            mode: mode_value(mode),
+                            reason: "task run --mode".into(),
+                        }
+                        .encode_to_vec(),
+                        Some(lease),
+                    ))
+                    .await
+                    .map_err(|e| e.to_string())?;
+                let r: TaskModeChanged = Client::result(&ack).map_err(|e| e.to_string())?;
+                println!(
+                    "mode {} previous={} effective={}",
+                    mode_label(r.mode),
+                    mode_label(r.previous_mode),
+                    r.effective
+                );
+            }
             start_task(
                 &mut client,
                 &task_id,
@@ -895,11 +1044,94 @@ async fn run_command(ready: &ReadyLine, rest: Vec<String>) -> Result<(), String>
                 opt("--model").unwrap_or_default(),
                 skills,
                 budgets,
+                preference_flags(&words, false),
             )
             .await?;
             if words.contains(&"--wait") {
                 wait_until_idle(&mut client, &task_id).await?;
             }
+        }
+        // PX-051 / PX-100: the task's mode, as the typed command the desktop
+        // sends. The Core derives the posture; this names the mode only.
+        ["task", "mode", ..] => {
+            let sid = parse_id(opt("--session").ok_or(USAGE)?)?;
+            let task_id = parse_id(opt("--task").ok_or(USAGE)?)?;
+            let mode = positionals(&words, 2).first().copied().ok_or(USAGE)?;
+            let lease = join_lease(&mut client, &sid).await?;
+            let ack = client
+                .command(envelope_fenced(
+                    "SetTaskMode",
+                    SetTaskMode {
+                        task_id: Some(task_id),
+                        mode: mode_value(mode),
+                        reason: "cli".into(),
+                    }
+                    .encode_to_vec(),
+                    Some(lease),
+                ))
+                .await
+                .map_err(|e| e.to_string())?;
+            let r: TaskModeChanged = Client::result(&ack).map_err(|e| e.to_string())?;
+            println!(
+                "mode {} previous={} effective={} accepted_plan_version={} offset={}",
+                mode_label(r.mode),
+                mode_label(r.previous_mode),
+                r.effective,
+                r.accepted_plan_version,
+                r.offset
+            );
+        }
+        // PX-053 / PX-100: SetExecutionPreference.
+        ["task", "preference", ..] => {
+            let sid = parse_id(opt("--session").ok_or(USAGE)?)?;
+            let task_id = parse_id(opt("--task").ok_or(USAGE)?)?;
+            let preference = preference_flags(&words, true).ok_or(USAGE)?;
+            let lease = join_lease(&mut client, &sid).await?;
+            let ack = client
+                .command(envelope_fenced(
+                    "SetExecutionPreference",
+                    SetExecutionPreference {
+                        task_id: Some(task_id),
+                        preference: Some(preference),
+                    }
+                    .encode_to_vec(),
+                    Some(lease),
+                ))
+                .await
+                .map_err(|e| e.to_string())?;
+            let r: ExecutionPreferenceSet = Client::result(&ack).map_err(|e| e.to_string())?;
+            let v = r.preference.unwrap_or_default();
+            let routing = r.routing.unwrap_or_default();
+            println!(
+                "preference objective={} effort={} tier={} pin={} effective={} offset={} routing={} reason={}",
+                objective_label(v.objective),
+                v.effort,
+                v.service_tier,
+                if v.pin_model.is_empty() {
+                    String::new()
+                } else {
+                    format!("{}/{}", v.pin_endpoint, v.pin_model)
+                },
+                r.effective,
+                r.offset,
+                routing.outcome,
+                routing.reason_code
+            );
+        }
+        ["task", "posture", ..] => {
+            let task_id = parse_id(opt("--task").ok_or(USAGE)?)?;
+            let ack = client
+                .command(envelope(
+                    "GetTaskPosture",
+                    GetTaskPosture {
+                        task_id: Some(task_id),
+                    }
+                    .encode_to_vec(),
+                ))
+                .await
+                .map_err(|e| e.to_string())?;
+            let p: TaskPostureView = Client::result(&ack).map_err(|e| e.to_string())?;
+            print_posture(&p);
         }
         ["task", "attach", ..] => {
             let sid = parse_id(opt("--session").ok_or(USAGE)?)?;
@@ -997,6 +1229,7 @@ async fn run_command(ready: &ReadyLine, rest: Vec<String>) -> Result<(), String>
                 opt("--model").unwrap_or_default(),
                 vec![],
                 (0, 0, 0),
+                None,
             )
             .await?;
             if words.contains(&"--wait") {
@@ -2880,6 +3113,7 @@ fn positionals<'a>(words: &[&'a str], skip: usize) -> Vec<&'a str> {
 }
 
 /// The CLI becomes the session's single mutation owner for this invocation.
+#[allow(clippy::too_many_arguments)]
 async fn start_task(
     client: &mut Client,
     task_id: &Id,
@@ -2890,6 +3124,9 @@ async fn start_task(
     // `(max_turns, max_tool_calls, max_no_progress_turns)`; 0 = the Core's
     // default.
     budgets: (u32, u32, u32),
+    // PX-100: the objective, effort and service tier (never a pin: that is
+    // `endpoint` and `model`).
+    preference: Option<ExecutionPreference>,
 ) -> Result<(), String> {
     let (max_turns, max_tool_calls, max_no_progress_turns) = budgets;
     let ack = client
@@ -2903,6 +3140,7 @@ async fn start_task(
                 max_tool_calls,
                 max_no_progress_turns,
                 skills,
+                preference,
             }
             .encode_to_vec(),
             Some(lease),
