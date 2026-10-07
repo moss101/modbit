@@ -449,6 +449,15 @@ type Seen = std::sync::Arc<std::sync::Mutex<Vec<serde_json::Value>>>;
 /// A scripted OpenAI-compatible model: the reply is chosen by how many tool
 /// results the conversation already holds, and every request body is kept.
 async fn scripted_model(script: Vec<serde_json::Value>) -> (String, Seen) {
+    scripted_model_held(script, None).await
+}
+
+/// The same server, with the reply to the request that holds `at` tool
+/// results held back for `wait` (a turn still streaming when a pause lands).
+async fn scripted_model_held(
+    script: Vec<serde_json::Value>,
+    hold: Option<(usize, Duration)>,
+) -> (String, Seen) {
     use tokio::io::{AsyncReadExt, AsyncWriteExt};
     let listener = tokio::net::TcpListener::bind("127.0.0.1:0").await.unwrap();
     let port = listener.local_addr().unwrap().port();
@@ -499,6 +508,11 @@ async fn scripted_model(script: Vec<serde_json::Value>) -> (String, Seen) {
                     .map(|m| m.iter().filter(|x| x["role"] == "tool").count())
                     .unwrap_or(0);
                 seen.lock().unwrap().push(body);
+                if let Some((at, wait)) = hold
+                    && at == results
+                {
+                    tokio::time::sleep(wait).await;
+                }
                 let reply = script
                     .get(results)
                     .cloned()
@@ -2319,4 +2333,237 @@ async fn px_110_impact_reaches_verification_as_advice_and_never_narrows_the_chec
             && observation.contains("checks: 0 failing / 1 total"),
         "{observation}"
     );
+}
+
+// ------------------------------------------- Wave 1 integration (PX-101 x PX-111 x PX-113)
+
+/// A paused task's engineering memory and persisted indexes survive a real
+/// `SIGKILL` of the Core: the pause parks the run at a turn boundary after the
+/// task has used the index and had memory injected; the killed Core's
+/// successor finds the memory on the log and in the store (no event invented
+/// or lost), finds the five indexes loaded from the persisted store (builds
+/// zero), and the resumed run's next request carries the same memory by id
+/// while the Inspector still lists it. Resuming rebuilds nothing.
+#[tokio::test]
+#[allow(clippy::too_many_lines)]
+async fn wave1_a_paused_task_keeps_its_memory_and_indexes_across_a_killed_core() {
+    use modbit_protocol::v1::{GetTaskStatus, PauseTask, ResumeTask, TaskStatus};
+    let (_repo, root) = fixture_repo("rust-cli");
+    // An instruction file the Inspector must list (in force or not, with why).
+    std::fs::write(
+        std::path::Path::new(&root).join("AGENTS.md"),
+        "Prefer small functions.\n",
+    )
+    .unwrap();
+    for args in [
+        vec!["add", "-A"],
+        vec![
+            "-c",
+            "user.name=t",
+            "-c",
+            "user.email=t@e",
+            "commit",
+            "-q",
+            "-m",
+            "rules",
+        ],
+    ] {
+        assert!(
+            Command::new("git")
+                .arg("-C")
+                .arg(&root)
+                .args(&args)
+                .status()
+                .unwrap()
+                .success()
+        );
+    }
+    let data = tempfile::tempdir().unwrap();
+    let script = vec![
+        json!({"calls": [{"name": "plan.update", "args": {"outcome": "o", "expected_files": ["notes.txt"]}}]}),
+        json!({"calls": [{"name": "search.exact", "args": {"query": "render_all"}}]}),
+        json!({"calls": [{"name": "change.apply", "args": {"path": "notes.txt", "op": "replace", "content": "n\n"}}]}),
+        json!({"calls": [{"name": "task.complete", "args": {"summary": "done", "self_review": {"findings": []}}}]}),
+    ];
+    // The reply to the third request is held, so the pause lands while that
+    // turn is streaming; the turn after it would finish the task.
+    let (base, seen) = scripted_model_held(script, Some((2, Duration::from_millis(1500)))).await;
+    let env = model_env(&base);
+    let mut core = CoreProcess::spawn(data.path(), &env);
+    let mut s = Seat::open(&core).await;
+    let session = s.session.clone();
+    let t = s.task(&root, "use render_all").await;
+    let convention = "render modules are formatted with tabs, never spaces";
+    let memory_id = s
+        .curate(&t, "user", "convention", "indentation", convention)
+        .await;
+    let ack =
+        s.c.command(envelope(
+            fresh_id(),
+            "StartTask",
+            StartTask {
+                task_id: Some(t.clone()),
+                endpoint: String::new(),
+                model: "gpt-5-mini".into(),
+                max_turns: 20,
+                max_tool_calls: 0,
+                max_no_progress_turns: 10,
+                ..Default::default()
+            }
+            .encode_to_vec(),
+            s.g,
+        ))
+        .await
+        .unwrap();
+    let _: TaskRunStarted = Client::result(&ack).unwrap();
+    let deadline = std::time::Instant::now() + Duration::from_secs(60);
+    while seen.lock().unwrap().len() < 3 {
+        assert!(
+            std::time::Instant::now() < deadline,
+            "the run never reached its third request"
+        );
+        tokio::time::sleep(Duration::from_millis(20)).await;
+    }
+    let ack =
+        s.c.command(envelope(
+            fresh_id(),
+            "PauseTask",
+            PauseTask {
+                task_id: Some(t.clone()),
+                reason: "lunch".into(),
+                wait_ms: 20_000,
+            }
+            .encode_to_vec(),
+            s.g,
+        ))
+        .await
+        .unwrap();
+    assert_eq!(ack.status, CommandStatus::Accepted as i32, "{ack:?}");
+    async fn status(s: &mut Seat, t: &Id) -> TaskStatus {
+        let ack =
+            s.c.command(envelope(
+                fresh_id(),
+                "GetTaskStatus",
+                GetTaskStatus {
+                    task_id: Some(t.clone()),
+                }
+                .encode_to_vec(),
+                None,
+            ))
+            .await
+            .unwrap();
+        Client::result(&ack).unwrap()
+    }
+    let deadline = std::time::Instant::now() + Duration::from_secs(60);
+    loop {
+        let st = status(&mut s, &t).await;
+        if st.wait_reason == "Paused" && !st.loop_alive {
+            break;
+        }
+        assert!(std::time::Instant::now() < deadline, "never parked: {st:?}");
+        tokio::time::sleep(Duration::from_millis(50)).await;
+    }
+    // What the pause holds: the index was used and persisted, the memory
+    // reached every request so far, the log has its two memory events.
+    let cold = s.index_status(&t).await;
+    assert_eq!(cold.builds, 5, "{cold:?}");
+    assert!(
+        cold.persisted_generation >= 1 && cold.persisted_bytes > 0,
+        "{cold:?}"
+    );
+    for b in seen.lock().unwrap().iter() {
+        let text = request_text(b);
+        assert!(
+            text.contains(convention) && text.contains(&memory_id[..12]),
+            "{text}"
+        );
+    }
+    let events_before = memory_events(data.path());
+    assert_eq!(
+        events_before
+            .iter()
+            .map(|(t, _)| t.as_str())
+            .collect::<Vec<_>>(),
+        ["MemoryProposed", "MemoryPromoted"]
+    );
+    let requests_before = seen.lock().unwrap().len();
+    // The real kill, then a Core on the same data directory.
+    drop(s);
+    core.kill();
+    let core2 = CoreProcess::spawn(data.path(), &env);
+    let mut s = Seat::rejoin(&core2, session).await;
+    let after = status(&mut s, &t).await;
+    assert_eq!(
+        (after.state.as_str(), after.wait_reason.as_str()),
+        ("Waiting", "Paused"),
+        "{after:?}"
+    );
+    assert!(!after.loop_alive, "{after:?}");
+    assert_eq!(
+        memory_events(data.path()),
+        events_before,
+        "no event lost or invented"
+    );
+    let listed = s.list(&t, |_| {}).await;
+    let item = listed
+        .items
+        .iter()
+        .find(|i| i.id == memory_id)
+        .unwrap_or_else(|| panic!("the memory did not survive: {listed:?}"));
+    assert_eq!(item.status, "curated");
+    // The indexes come from the persisted store, not from a rebuild.
+    let warm = s.index_status(&t).await;
+    assert_eq!(warm.builds, 0, "{warm:?}");
+    assert_eq!(warm.loads, 5, "{warm:?}");
+    assert!(
+        warm.rebuild_reasons.is_empty(),
+        "{:?}",
+        warm.rebuild_reasons
+    );
+    // Resume: the same run finishes, its next request still carries the
+    // memory with its id, the Inspector lists it, and nothing was rebuilt.
+    let ack =
+        s.c.command(envelope(
+            fresh_id(),
+            "ResumeTask",
+            ResumeTask {
+                task_id: Some(t.clone()),
+                ..Default::default()
+            }
+            .encode_to_vec(),
+            s.g,
+        ))
+        .await
+        .unwrap();
+    assert_eq!(ack.status, CommandStatus::Accepted as i32, "{ack:?}");
+    s.wait_state(&t, "ReadyForReview", 90).await;
+    let bodies = seen.lock().unwrap().clone();
+    assert!(
+        bodies.len() > requests_before,
+        "the resumed run asked the model again"
+    );
+    for b in &bodies[requests_before..] {
+        let text = request_text(b);
+        assert!(
+            text.contains(convention) && text.contains(&memory_id[..12]),
+            "the resumed request lost the memory: {text}"
+        );
+    }
+    let view = s.inspector(&t).await;
+    let m = view
+        .memory
+        .clone()
+        .expect("the inspector has a memory view after the resume");
+    assert!(m.entries.iter().any(|e| e.memory_id == memory_id), "{m:?}");
+    // The same view still carries the other branches' blocks (instruction
+    // layers 180, the goal-seeded pre-turn step 181, the compaction
+    // thresholds 183) next to the memory (200), and its pack is the
+    // task's own.
+    assert!(!view.instructions.is_empty(), "{view:?}");
+    assert!(view.pre_turn_pack.is_some(), "{view:?}");
+    assert!(view.compaction_thresholds.is_some(), "{view:?}");
+    assert!(view.token_budget > 0, "{view:?}");
+    let done = s.index_status(&t).await;
+    assert_eq!(done.builds, 0, "resuming rebuilt nothing: {done:?}");
+    assert_eq!(memory_events(data.path()), events_before);
 }
