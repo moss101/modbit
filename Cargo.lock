@@ -2368,9 +2368,11 @@ dependencies = [
 name = "modbit-git"
 version = "0.0.0"
 dependencies = [
+ "hex",
  "modbit-domain",
  "serde",
  "serde_json",
+ "sha2 0.11.0",
  "tempfile",
  "thiserror 2.0.20",
 ]

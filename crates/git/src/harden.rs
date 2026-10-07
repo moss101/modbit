@@ -25,9 +25,32 @@
 //!   is placed on a command line, and redacts URL credentials from the text of
 //!   any error.
 //!
-//! Remaining gap, by design and documented: a repository-local
-//! `core.sshCommand` or `credential.helper` still runs on network commands
-//! (push, ls-remote). Those are protected effects behind an approval.
+//! PX-067 closes what FIX-01 documented as open:
+//!
+//! * `safe.bareRepository=explicit`: a bare repository embedded in a working
+//!   tree (a planted `evil.git/`) is never entered by discovery, so its
+//!   `config` and `hooks` are never read for a command run in or under it;
+//! * a repository-scoped `core.sshCommand`, `core.gitProxy`,
+//!   `credential.helper` (and every `credential.<url>.helper`),
+//!   `diff.external`, `gpg.*.program`, `core.pager`, `core.editor`,
+//!   `sequence.editor`, `core.alternateRefsCommand` and
+//!   `uploadpack.packObjectsHook` is blanked exactly as a filter is: read
+//!   from the repository's own configuration (an `include.path` or
+//!   `includeIf` file of the repository has the repository's scope, so it is
+//!   covered), never from the user's global file, so a user's own ssh
+//!   command and credential helper keep working. A blanked `sshCommand`
+//!   fails the network command closed instead of running the repository's;
+//! * attributes files: `core.attributesFile` is neutral and the attribute
+//!   *names* a repository's `.gitattributes` / `info/attributes` chooses
+//!   (`filter=`, `diff=`, `merge=`) only ever resolve to drivers, and every
+//!   repository-scoped driver program is blanked above. An attribute that
+//!   names a driver the user's own configuration defines (git-lfs) stays;
+//! * `safe.directory` is never widened: a repository owned by somebody else
+//!   is refused with a typed [`crate::Error::UnsafeRepository`], because
+//!   trusting it is the user's decision, not a side effect of an agent's call;
+//! * [`neutralized`] reports what a repository asked git to run and was
+//!   refused, so the Core can put a security event on the task (FIX-01
+//!   neutralised silently).
 
 use std::path::Path;
 use std::process::Command;
@@ -123,46 +146,86 @@ fn fixed_config(n: &Neutral) -> Vec<String> {
         "merge.verifySignatures=false".into(),
         "protocol.ext.allow=never".into(),
         "color.ui=false".into(),
+        // A bare repository found by discovery (one planted inside a working
+        // tree) is entered only when it is named; its config and hooks are
+        // never consulted for a command run in or under it.
+        "safe.bareRepository=explicit".into(),
     ]
 }
 
-/// Config keys of a program-running driver, from the repository's own
+/// What a repository-scoped configuration key asks git to run, if anything:
+/// the kind of program and the `-c` overrides that blank it.
+fn program_kind(key: &str) -> Option<(&'static str, Vec<String>)> {
+    // Section and variable are lower-cased by `--name-only`; the subsection
+    // (a driver's or a URL's name) keeps its case and may itself contain dots.
+    let (section, rest) = key.split_once('.')?;
+    let (name, var) = match rest.rsplit_once('.') {
+        Some((n, v)) => (Some(n), v),
+        None => (None, rest),
+    };
+    let blank = || -> String {
+        match name {
+            Some(n) => format!("{section}.{n}.{var}="),
+            None => format!("{section}.{var}="),
+        }
+    };
+    Some(match (section, name, var) {
+        ("filter", Some(n), "clean" | "smudge" | "process") => (
+            "FILTER",
+            // A blank command is "no filter"; `required` would otherwise
+            // turn the missing filter into an error.
+            vec![format!("filter.{n}.required=false"), blank()],
+        ),
+        ("merge", Some(_), "driver") => ("MERGE_DRIVER", vec![blank()]),
+        ("diff", Some(_), "textconv") => ("TEXTCONV", vec![blank()]),
+        ("diff", Some(_), "command") | ("diff", None, "external") => {
+            ("EXTERNAL_DIFF", vec![blank()])
+        }
+        ("core", None, "sshcommand") => ("SSH_COMMAND", vec![blank()]),
+        ("core", None, "gitproxy") => ("GIT_PROXY", vec![blank()]),
+        ("core", None, "pager") | ("pager", _, _) => ("PAGER", vec![blank()]),
+        ("core", None, "editor") | ("sequence", None, "editor") => ("EDITOR", vec![blank()]),
+        ("core", None, "alternaterefscommand") => ("ALTERNATE_REFS", vec![blank()]),
+        ("uploadpack", None, "packobjectshook") => ("PACK_OBJECTS_HOOK", vec![blank()]),
+        // An empty value resets every helper configured before it.
+        ("credential", _, "helper") => ("CREDENTIAL_HELPER", vec![blank()]),
+        ("gpg", _, "program") => ("SIGNING_PROGRAM", vec![blank()]),
+        ("core", None, "fsmonitor") => ("FSMONITOR", vec![]),
+        ("core", None, "hookspath") => ("HOOKS_PATH", vec![]),
+        _ => return None,
+    })
+}
+
+/// Config keys of a program-running setting, from the repository's own
 /// configuration, as the `-c` overrides that blank them.
 fn driver_overrides(keys: &[String]) -> Vec<String> {
     let mut out = Vec::new();
     for key in keys {
-        // Section and variable are lower-cased by `--name-only`; the subsection
-        // (the driver's name) keeps its case, and may itself contain dots.
-        let Some((section, rest)) = key.split_once('.') else {
-            continue;
-        };
-        let Some((name, var)) = rest.rsplit_once('.') else {
-            continue;
-        };
-        let blank = match (section, var) {
-            ("filter", "clean" | "smudge" | "process") => {
-                // A blank command is "no filter"; `required` would otherwise
-                // turn the missing filter into an error.
-                out.push(format!("filter.{name}.required=false"));
-                true
+        if let Some((_, overrides)) = program_kind(key) {
+            for o in overrides {
+                if !out.contains(&o) {
+                    out.push(o);
+                }
             }
-            ("merge", "driver") | ("diff", "textconv" | "command") => true,
-            _ => false,
-        };
-        if blank {
-            out.push(format!("{section}.{name}.{var}="));
         }
     }
     out
 }
 
+/// Subcommands that talk to a remote: the repository's `core.sshCommand`,
+/// `core.gitProxy` and `credential.helper` would run for them.
+fn is_network(sub: &str) -> bool {
+    matches!(sub, "push" | "ls-remote" | "fetch" | "pull" | "clone")
+}
+
 /// A `git -C <dir>` command with every defence applied. `args` are only
-/// inspected to decide whether the repository's drivers must be neutralized;
+/// inspected to decide whether the repository's programs must be neutralized;
 /// the caller adds them with `.args(args)`.
 pub(crate) fn command(dir: &Path, args: &[&str]) -> Result<Command> {
     let n = neutral()?;
     let mut cfg = fixed_config(n);
-    if !is_plumbing(subcommand(args)) {
+    let sub = subcommand(args);
+    if !is_plumbing(sub) || is_network(sub) {
         cfg.extend(driver_overrides(&repo_scoped_keys(dir)?));
     }
     Ok(build(dir, &cfg))
@@ -195,11 +258,12 @@ fn build(dir: &Path, cfg: &[String]) -> Command {
     c
 }
 
-/// The names of the configuration keys that do not come from the user's own
-/// global or system files: the repository (local, worktree), `-c`/environment
-/// and anything of unknown origin. Read with a command that cannot run a
-/// repository program.
-fn repo_scoped_keys(dir: &Path) -> Result<Vec<String>> {
+/// The `(scope, key)` pairs of the configuration that do not come from the
+/// user's own global or system files: the repository (local, worktree),
+/// `-c`/environment and anything of unknown origin. Read with a command that
+/// cannot run a repository program. A file the repository `include`s has the
+/// repository's scope.
+fn repo_scoped(dir: &Path) -> Result<Vec<(String, String)>> {
     let n = neutral()?;
     let mut cmd = build(dir, &fixed_config(n));
     let args = ["config", "--list", "--show-scope", "--name-only", "--null"];
@@ -214,11 +278,100 @@ fn repo_scoped_keys(dir: &Path) -> Result<Vec<String>> {
     let mut tokens = text.split('\0').filter(|t| !t.is_empty());
     let mut keys = Vec::new();
     while let (Some(scope), Some(key)) = (tokens.next(), tokens.next()) {
-        if !matches!(scope, "global" | "system") {
-            keys.push(key.to_owned());
+        // `command` scope is this runner's own `-c` flags (and the process
+        // environment's `GIT_CONFIG_*`): not something a repository supplied.
+        if !matches!(scope, "global" | "system" | "command") {
+            keys.push((scope.to_owned(), key.to_owned()));
         }
     }
     Ok(keys)
+}
+
+fn repo_scoped_keys(dir: &Path) -> Result<Vec<String>> {
+    Ok(repo_scoped(dir)?.into_iter().map(|(_, k)| k).collect())
+}
+
+/// One program a repository asked git to run that the hardened runner refused.
+#[derive(Debug, Clone, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
+pub struct Neutralized {
+    /// `HOOK`, `HOOKS_PATH`, `FSMONITOR`, `FILTER`, `MERGE_DRIVER`,
+    /// `TEXTCONV`, `EXTERNAL_DIFF`, `SSH_COMMAND`, `GIT_PROXY`, `PAGER`,
+    /// `EDITOR`, `ALTERNATE_REFS`, `PACK_OBJECTS_HOOK`, `CREDENTIAL_HELPER`
+    /// or `SIGNING_PROGRAM`.
+    pub kind: String,
+    /// The configuration key, or the hook's file name.
+    pub name: String,
+    /// Where it was found: the configuration scope (`local`, `worktree`,
+    /// `command`) or `hooks`.
+    pub scope: String,
+}
+
+/// Everything in `dir`'s repository that would have run a program on Modbit's
+/// behalf and was neutralised, sorted and de-duplicated. Reading it runs no
+/// repository program.
+pub(crate) fn neutralized(dir: &Path) -> Result<Vec<Neutralized>> {
+    let mut out: Vec<Neutralized> = Vec::new();
+    for (scope, key) in repo_scoped(dir)? {
+        if let Some((kind, _)) = program_kind(&key) {
+            out.push(Neutralized {
+                kind: kind.to_owned(),
+                name: key,
+                scope,
+            });
+        }
+    }
+    // The hooks directory the repository would have used (a hook is any
+    // executable that is not a `.sample`).
+    let n = neutral()?;
+    let mut cmd = build(dir, &fixed_config(n));
+    // (`--git-path hooks` would answer with the neutral `core.hooksPath` this
+    // runner sets; the repository's own hooks live in the common git dir.)
+    cmd.args(["rev-parse", "--git-common-dir"]);
+    if let Ok(o) = cmd.output()
+        && o.status.success()
+    {
+        let rel = String::from_utf8_lossy(&o.stdout).trim().to_owned();
+        let hooks = {
+            let p = Path::new(&rel);
+            if p.is_absolute() {
+                p.join("hooks")
+            } else {
+                dir.join(p).join("hooks")
+            }
+        };
+        if let Ok(rd) = std::fs::read_dir(&hooks) {
+            for e in rd.flatten() {
+                let name = e.file_name().to_string_lossy().into_owned();
+                if name.ends_with(".sample") || !e.path().is_file() {
+                    continue;
+                }
+                #[cfg(unix)]
+                let runnable = {
+                    use std::os::unix::fs::PermissionsExt;
+                    e.metadata()
+                        .is_ok_and(|m| m.permissions().mode() & 0o111 != 0)
+                };
+                #[cfg(not(unix))]
+                let runnable = true;
+                if runnable {
+                    out.push(Neutralized {
+                        kind: "HOOK".into(),
+                        name,
+                        scope: "hooks".into(),
+                    });
+                }
+            }
+        }
+    }
+    out.sort_by(|a, b| (&a.kind, &a.name, &a.scope).cmp(&(&b.kind, &b.name, &b.scope)));
+    out.dedup();
+    Ok(out)
+}
+
+/// Whether git's stderr says it refused the repository for its ownership.
+#[must_use]
+pub(crate) fn is_dubious_ownership(stderr: &str) -> bool {
+    stderr.contains("dubious ownership")
 }
 
 /// Replace the `user[:password]@` part of every `scheme://` URL in `text` with
