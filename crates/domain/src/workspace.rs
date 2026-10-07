@@ -55,6 +55,13 @@ pub enum WorkspaceEvent {
         /// field existed.
         #[serde(default)]
         provenance: String,
+        /// Lines the unified diff adds (0 for a binary file and for events
+        /// written before the field existed).
+        #[serde(default)]
+        lines_added: u32,
+        /// Lines the unified diff removes.
+        #[serde(default)]
+        lines_removed: u32,
     },
     /// Files a verification stage created inside the workspace (docs/64 §4):
     /// bytecode caches, reporter files, build output. They are not the

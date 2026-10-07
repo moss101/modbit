@@ -2683,7 +2683,7 @@ pub(crate) fn file_changed_events(
         let put = |b: &Option<Vec<u8>>| b.as_ref().and_then(|b| objects.put(b).ok());
         let before_ref = put(&before);
         let after_ref = put(&after);
-        let diff_ref = match (
+        let diff_text = match (
             before.as_deref().map(std::str::from_utf8),
             after.as_deref().map(std::str::from_utf8),
         ) {
@@ -2691,8 +2691,9 @@ pub(crate) fn file_changed_events(
             (Some(Ok(o)), None) => Some(unified_diff(&c.path, o, "")),
             (None, Some(Ok(n))) => Some(unified_diff(&c.path, "", n)),
             _ => None,
-        }
-        .and_then(|d| objects.put(d.as_bytes()).ok());
+        };
+        let (lines_added, lines_removed) = diff_text.as_deref().map_or((0, 0), diff_line_counts);
+        let diff_ref = diff_text.and_then(|d| objects.put(d.as_bytes()).ok());
         events.push(typed(
             "FileChanged",
             &WorkspaceEvent::FileChanged {
@@ -2710,12 +2711,38 @@ pub(crate) fn file_changed_events(
                 language: state_of(&c.path).language.clone(),
                 unsupported_language: state_of(&c.path).needs_opt_in,
                 provenance: provenance.to_owned(),
+                lines_added,
+                lines_removed,
             },
             Actor::Core("tool-host".into()),
         ));
         previous = c.workspace_revision.number;
     }
     events
+}
+
+/// Lines a unified diff adds and removes (its headers do not count).
+pub(crate) fn diff_line_counts(diff: &str) -> (u32, u32) {
+    let (mut added, mut removed) = (0u32, 0u32);
+    let mut lines = diff.lines().peekable();
+    // The two header lines (`--- a/path`, `+++ b/path`) are not changes; a
+    // removed line that itself starts with `--` is, so only the headers go.
+    for _ in 0..2 {
+        if lines
+            .peek()
+            .is_some_and(|l| l.starts_with("---") || l.starts_with("+++"))
+        {
+            lines.next();
+        }
+    }
+    for line in lines {
+        if line.starts_with('+') {
+            added = added.saturating_add(1);
+        } else if line.starts_with('-') {
+            removed = removed.saturating_add(1);
+        }
+    }
+    (added, removed)
 }
 
 /// What the product may claim about a path's language (PX-029, docs/76): the

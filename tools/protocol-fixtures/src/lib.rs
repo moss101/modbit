@@ -61,6 +61,142 @@ pub fn fixture_dir(side: &str) -> PathBuf {
 
 /// Every sample, in a stable order.
 pub fn samples() -> Vec<Sample> {
+    let ts_row = |ordinal: u32,
+                  row_id: &str,
+                  kind: TranscriptRowKind,
+                  text: &str,
+                  children: Vec<TranscriptRow>| TranscriptRow {
+        ordinal,
+        row_id: row_id.into(),
+        kind: kind as i32,
+        offset: 50 + u64::from(ordinal),
+        last_offset: 60 + u64::from(ordinal),
+        at: Some(prost_types::Timestamp {
+            seconds: 1_700_000_000 + i64::from(ordinal),
+            nanos: 0,
+        }),
+        turn_id: "turn-1".into(),
+        hints: Some(RowHints {
+            renderable: true,
+            groupable: kind == TranscriptRowKind::ToolCard,
+            has_reasoning: false,
+            duration_ms: 250,
+            short_text: text.into(),
+            lines_added: 0,
+            lines_removed: 0,
+            status: "COMPLETE".into(),
+        }),
+        text: text.into(),
+        text_truncated: false,
+        text_ref: String::new(),
+        children,
+        facts: None,
+    };
+    let transcript_page = TranscriptPage {
+        task_id: id(0x21),
+        density: TranscriptDensity::Balanced as i32,
+        rows: vec![
+            ts_row(
+                1,
+                "unread",
+                TranscriptRowKind::UnreadDivider,
+                "2 new",
+                vec![],
+            ),
+            ts_row(
+                2,
+                "group:explore:tool:a",
+                TranscriptRowKind::WorkGroup,
+                "Explored 2 items",
+                vec![
+                    ts_row(
+                        1,
+                        "tool:a",
+                        TranscriptRowKind::ToolCard,
+                        "fs.read a.txt",
+                        vec![],
+                    ),
+                    ts_row(
+                        2,
+                        "tool:b",
+                        TranscriptRowKind::ToolCard,
+                        "fs.read b.txt",
+                        vec![],
+                    ),
+                ],
+            ),
+        ],
+        total_rows: 2,
+        next_after_row: 0,
+        has_more: false,
+        as_of_offset: 90,
+        last_offset: 90,
+        task_state: "Running".into(),
+        read_offset: 40,
+        events_read: 12,
+    };
+    let row_json = |ordinal: u32,
+                    row_id: &str,
+                    kind: &str,
+                    text: &str,
+                    group: bool,
+                    children: Vec<Value>| {
+        json!({
+            "ordinal": ordinal, "rowId": row_id, "kind": kind,
+            "offset": (50 + u64::from(ordinal)).to_string(),
+            "lastOffset": (60 + u64::from(ordinal)).to_string(),
+            "at": {"seconds": (1_700_000_000 + i64::from(ordinal)).to_string(), "nanos": 0},
+            "turnId": "turn-1",
+            "hints": {
+                "renderable": true, "groupable": kind == "TRANSCRIPT_ROW_KIND_TOOL_CARD" && !group,
+                "hasReasoning": false, "durationMs": "250", "shortText": text,
+                "linesAdded": 0, "linesRemoved": 0, "status": "COMPLETE"
+            },
+            "text": text, "textTruncated": false, "textRef": "", "children": children,
+            "user": null, "stream": null, "tool": null, "approval": null,
+            "group": null, "footer": null, "tail": null, "boundary": null
+        })
+    };
+    let agent_headers = AgentHeaders {
+        session_id: id(0x10),
+        headers: vec![AgentHeader {
+            task_id: id(0x21),
+            session_id: id(0x10),
+            workspace_root: "/repo".into(),
+            title: "make the check pass".into(),
+            subtitle: "repo".into(),
+            created_at: Some(prost_types::Timestamp {
+                seconds: 1_700_000_000,
+                nanos: 0,
+            }),
+            updated_at: Some(prost_types::Timestamp {
+                seconds: 1_700_000_100,
+                nanos: 500_000_000,
+            }),
+            status_class: AgentStatusClass::ReadyForReviewUnseen as i32,
+            status_label: "Ready for review".into(),
+            unread: true,
+            pending_approval: false,
+            pending_plan: false,
+            context_percent: 37,
+            files_changed: 2,
+            lines_added: 14,
+            lines_removed: 3,
+            last_checkpoint_at: None,
+            subagent: false,
+            archived: false,
+            execution_location: "local".into(),
+            origin: "cli".into(),
+            task_state: "ReadyForReview".into(),
+            last_offset: 90,
+            read_offset: 40,
+            attention_items: 0,
+        }],
+        last_offset: 90,
+        events_read: 0,
+        objects_read: 0,
+    };
+
     let command = CommandEnvelope {
         command_id: id(0x11),
         tenant_id: id(0x22),
@@ -519,6 +655,49 @@ pub fn samples() -> Vec<Sample> {
                 }]
             }),
             decode: reencode::<SessionTreeView>,
+        },
+        Sample {
+            name: "transcript_page",
+            type_name: "modbit.v1.TranscriptPage",
+            bytes: transcript_page.encode_to_vec(),
+            expected: json!({
+                "taskId": idhex(0x21),
+                "density": "TRANSCRIPT_DENSITY_BALANCED",
+                "rows": [
+                    row_json(1, "unread", "TRANSCRIPT_ROW_KIND_UNREAD_DIVIDER", "2 new", false, vec![]),
+                    row_json(2, "group:explore:tool:a", "TRANSCRIPT_ROW_KIND_WORK_GROUP", "Explored 2 items", true, vec![
+                        row_json(1, "tool:a", "TRANSCRIPT_ROW_KIND_TOOL_CARD", "fs.read a.txt", false, vec![]),
+                        row_json(2, "tool:b", "TRANSCRIPT_ROW_KIND_TOOL_CARD", "fs.read b.txt", false, vec![]),
+                    ]),
+                ],
+                "totalRows": 2, "nextAfterRow": 0, "hasMore": false,
+                "asOfOffset": "90", "lastOffset": "90", "taskState": "Running",
+                "readOffset": "40", "eventsRead": "12"
+            }),
+            decode: reencode::<TranscriptPage>,
+        },
+        Sample {
+            name: "agent_headers",
+            type_name: "modbit.v1.AgentHeaders",
+            bytes: agent_headers.encode_to_vec(),
+            expected: json!({
+                "sessionId": idhex(0x10),
+                "headers": [{
+                    "taskId": idhex(0x21), "sessionId": idhex(0x10),
+                    "workspaceRoot": "/repo", "title": "make the check pass", "subtitle": "repo",
+                    "createdAt": {"seconds": "1700000000", "nanos": 0},
+                    "updatedAt": {"seconds": "1700000100", "nanos": 500000000},
+                    "statusClass": "AGENT_STATUS_CLASS_READY_FOR_REVIEW_UNSEEN",
+                    "statusLabel": "Ready for review", "unread": true, "pendingApproval": false,
+                    "pendingPlan": false, "contextPercent": 37, "filesChanged": 2,
+                    "linesAdded": 14, "linesRemoved": 3, "lastCheckpointAt": null,
+                    "subagent": false, "archived": false, "executionLocation": "local",
+                    "origin": "cli", "taskState": "ReadyForReview", "lastOffset": "90",
+                    "readOffset": "40", "attentionItems": 0
+                }],
+                "lastOffset": "90", "eventsRead": "0", "objectsRead": "0"
+            }),
+            decode: reencode::<AgentHeaders>,
         },
         Sample {
             name: "hello",
