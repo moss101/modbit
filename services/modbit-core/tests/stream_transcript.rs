@@ -209,6 +209,7 @@ async fn create_task(c: &mut Client, session: &Id, lease: u64, goal: &str, root:
                 workspace_root: root.into(),
                 issue_url: String::new(),
                 issue_json: String::new(),
+                ..Default::default()
             }
             .encode_to_vec(),
             Some(lease),
@@ -235,6 +236,7 @@ async fn start_task(c: &mut Client, task: &Id, lease: u64) -> TaskRunStarted {
                 max_tool_calls: 0,
                 max_no_progress_turns: 1,
                 skills: vec![],
+                ..Default::default()
             }
             .encode_to_vec(),
             Some(lease),
@@ -1252,6 +1254,7 @@ async fn start_with(c: &mut Client, task: &Id, lease: u64, no_progress: u32) {
                 max_tool_calls: 0,
                 max_no_progress_turns: no_progress,
                 skills: vec![],
+                ..Default::default()
             }
             .encode_to_vec(),
             Some(lease),

@@ -41,6 +41,8 @@ pub struct KernelGate {
     pub lease: Option<modbit_domain::lease::CapabilityLease>,
     /// Task execution profile.
     pub execution_profile: String,
+    /// The task's mode posture in force (PX-051).
+    pub mode: modbit_domain::mode::TaskMode,
     /// Session emergency stop is active.
     pub emergency_stopped: bool,
     /// Resolved configuration the task runs under.
@@ -67,6 +69,7 @@ impl KernelGate {
                 effect_class: modbit_domain::toolcall::EffectClass::ReversibleWrite,
                 required_capabilities: &required,
                 execution_profile: &self.execution_profile,
+                mode: self.mode,
                 lease: self.lease.as_ref(),
                 // A configured check names no resource the host can resolve.
                 targets: &[],

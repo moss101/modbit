@@ -337,6 +337,40 @@ pub fn samples() -> Vec<Sample> {
             thresholds_version: "none".into(),
             target_met: false,
         }),
+        preference: None,
+        preference_routing: None,
+    };
+    // PX-051 / PX-053: a task's posture. Carries a 64-bit offset past 2^53 and
+    // enums by name, so both languages agree on them.
+    let posture = TaskPostureView {
+        task_id: id(0x31),
+        mode: TaskMode::Plan as i32,
+        mode_offset: 9_007_199_254_740_993,
+        mode_in_force: TaskMode::Agent as i32,
+        posture: Some(ModePostureView {
+            effect_ceiling: "READONLY".into(),
+            allowed_capabilities: vec!["fs.read".into(), "git.read".into()],
+            subagents: false,
+            reproduction_first: false,
+            writes: false,
+        }),
+        preference: Some(ExecutionPreferenceView {
+            objective: ObjectiveProfile::Cost as i32,
+            effort: "high".into(),
+            service_tier: "flex".into(),
+            pin_endpoint: "openai".into(),
+            pin_model: "gpt-5-mini".into(),
+            offset: 41,
+            applied_offset: 0,
+            effort_applied: String::new(),
+            service_tier_applied: String::new(),
+        }),
+        routing: Some(RoutingOutcomeView {
+            outcome: "DIRECT".into(),
+            reason_code: "NO_ACTIVE_REGISTRY".into(),
+            detail: "no signed registry is active".into(),
+            floor_mode: String::new(),
+        }),
     };
     let session_tree = SessionTreeView {
         session_id: id(0x10),
@@ -627,9 +661,35 @@ pub fn samples() -> Vec<Sample> {
                     }],
                     "feasibility": "QUALITY_FLOOR_UNKNOWN", "qualityLcbBp": 0,
                     "statsVersion": "none", "thresholdsVersion": "none", "targetMet": false
-                }
+                },
+                "preference": null, "preferenceRouting": null
             }),
             decode: reencode::<RoutingPlanView>,
+        },
+        Sample {
+            name: "task_posture_view",
+            type_name: "modbit.v1.TaskPostureView",
+            bytes: posture.encode_to_vec(),
+            expected: json!({
+                "taskId": idhex(0x31), "mode": "TASK_MODE_PLAN",
+                "modeOffset": "9007199254740993", "modeInForce": "TASK_MODE_AGENT",
+                "posture": {
+                    "effectCeiling": "READONLY",
+                    "allowedCapabilities": ["fs.read", "git.read"],
+                    "subagents": false, "reproductionFirst": false, "writes": false
+                },
+                "preference": {
+                    "objective": "OBJECTIVE_PROFILE_COST", "effort": "high",
+                    "serviceTier": "flex", "pinEndpoint": "openai", "pinModel": "gpt-5-mini",
+                    "offset": "41", "appliedOffset": "0", "effortApplied": "",
+                    "serviceTierApplied": ""
+                },
+                "routing": {
+                    "outcome": "DIRECT", "reasonCode": "NO_ACTIVE_REGISTRY",
+                    "detail": "no signed registry is active", "floorMode": ""
+                }
+            }),
+            decode: reencode::<TaskPostureView>,
         },
         Sample {
             name: "protocol_state_view",

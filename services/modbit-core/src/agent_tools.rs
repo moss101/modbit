@@ -313,6 +313,26 @@ pub(crate) async fn handle_spawn(
             failure_code: Some("NESTING_DISABLED".into()),
         };
     }
+    // PX-051: a read-only mode admits no child, which could write.
+    let task_mode = core
+        .tools
+        .tasking
+        .in_force_now(task.task_id)
+        .unwrap_or_default();
+    if !task_mode.posture().subagents {
+        return Handled {
+            entry: entry(
+                call_id,
+                SPAWN_TOOL,
+                format!(
+                    "status: REFUSED\nerror_code: MODE_POSTURE\nerror: the task is in {} mode, which admits no subagent; the user changes the mode, the agent does not",
+                    task_mode.name()
+                ),
+                false,
+            ),
+            failure_code: Some("MODE_POSTURE".into()),
+        };
+    }
     let mode = match v["mode"].as_str().unwrap_or("BACKGROUND") {
         "FOREGROUND" => SpawnMode::Foreground,
         _ => SpawnMode::Background,

@@ -11,6 +11,7 @@ import type { GenEnum, GenFile, GenMessage } from "@bufbuild/protobuf/codegenv2"
 import type { Message } from "@bufbuild/protobuf";
 import type { Hello, HelloAck } from "./negotiation_pb.js";
 import type { Id } from "./domain_pb.js";
+import type { ExecutionPreference, ExecutionPreferenceView, RoutingOutcomeView, TaskMode, TaskPostureView } from "./tasking_pb.js";
 import type { Timestamp } from "@bufbuild/protobuf/wkt";
 import type { CommandEnvelope, EventEnvelope } from "./envelope_pb.js";
 import type { TerminalFrame } from "./terminal_pb.js";
@@ -139,6 +140,21 @@ export declare type CreateTask = Message<"modbit.v1.CreateTask"> & {
    * @generated from field: string issue_json = 8;
    */
   issueJson: string;
+
+  /**
+   * PX-051 (tasking.proto): the task's mode; UNSPECIFIED = AGENT. The Core
+   * derives the posture; a client sends the mode and nothing else.
+   *
+   * @generated from field: modbit.v1.TaskMode mode = 140;
+   */
+  mode: TaskMode;
+
+  /**
+   * PX-053: the user's execution preference at creation (recorded on the task).
+   *
+   * @generated from field: modbit.v1.ExecutionPreference preference = 141;
+   */
+  preference?: ExecutionPreference | undefined;
 };
 
 /**
@@ -322,6 +338,13 @@ export declare type TaskView = Message<"modbit.v1.TaskView"> & {
    * @generated from field: string workspace_root = 8;
    */
   workspaceRoot: string;
+
+  /**
+   * PX-051: the mode the user last set (AGENT when never set)
+   *
+   * @generated from field: modbit.v1.TaskMode mode = 140;
+   */
+  mode: TaskMode;
 };
 
 /**
@@ -4066,6 +4089,15 @@ export declare type StartTask = Message<"modbit.v1.StartTask"> & {
    * @generated from field: repeated string skills = 7;
    */
   skills: string[];
+
+  /**
+   * PX-100 (tasking.proto): objective, reasoning effort and service tier for
+   * this task from the start; recorded as the task's execution preference. A
+   * manual pin is `endpoint` and `model` above, so `pin_*` here is refused.
+   *
+   * @generated from field: modbit.v1.ExecutionPreference preference = 140;
+   */
+  preference?: ExecutionPreference | undefined;
 };
 
 /**
@@ -4253,6 +4285,14 @@ export declare type TaskStatus = Message<"modbit.v1.TaskStatus"> & {
    * @generated from field: string user_explanation = 14;
    */
   userExplanation: string;
+
+  /**
+   * PX-051 / PX-053: the task's mode, the posture in force and its execution
+   * preference (tasking.proto).
+   *
+   * @generated from field: modbit.v1.TaskPostureView posture = 140;
+   */
+  posture?: TaskPostureView | undefined;
 };
 
 /**
@@ -4943,6 +4983,19 @@ export declare type RoutingPlanView = Message<"modbit.v1.RoutingPlanView"> & {
    * @generated from field: modbit.v1.RoutingAdmissionView admission = 15;
    */
   admission?: RoutingAdmissionView | undefined;
+
+  /**
+   * PX-053: the user's execution preference and what routing did with it;
+   * with no signed registry the outcome is DIRECT with a typed reason.
+   *
+   * @generated from field: modbit.v1.ExecutionPreferenceView preference = 140;
+   */
+  preference?: ExecutionPreferenceView | undefined;
+
+  /**
+   * @generated from field: modbit.v1.RoutingOutcomeView preference_routing = 141;
+   */
+  preferenceRouting?: RoutingOutcomeView | undefined;
 };
 
 /**
@@ -12575,6 +12628,13 @@ export declare type EffectivePolicyView = Message<"modbit.v1.EffectivePolicyView
    * @generated from field: repeated string rejected_widenings = 5;
    */
   rejectedWidenings: string[];
+
+  /**
+   * PX-051 / PX-053: the mode posture and the preference in force
+   *
+   * @generated from field: modbit.v1.TaskPostureView posture = 140;
+   */
+  posture?: TaskPostureView | undefined;
 };
 
 /**

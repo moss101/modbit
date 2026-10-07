@@ -1265,7 +1265,7 @@ fn route_new_run(
 /// clears the switch cost opens a new transaction — compiled, admitted
 /// under the next routing epoch, its initial slot activated — on this run,
 /// and the loop continues on it. Every decision is on the log.
-async fn reroute_at_boundary(
+pub(crate) async fn reroute_at_boundary(
     core: &Core,
     task: &Task,
     run_id: RunId,
@@ -2354,8 +2354,24 @@ fn projection(
         &core.data_dir,
         task.workspace_root.as_deref(),
     ));
+    // PX-051: the mode posture in force narrows what is offered, and the
+    // kernel refuses what is named anyway.
+    let posture = core
+        .tools
+        .tasking
+        .in_force_now(task.task_id)
+        .unwrap_or_default()
+        .posture();
     for s in visible {
         if !capsule_tools.is_empty() && !capsule_tools.iter().any(|t| t == &s.name) {
+            continue;
+        }
+        if let Some(why) = posture.refusal(s.effect_class, &s.required_capabilities) {
+            state.withheld_tools.push(harness::WithheldTool {
+                name: s.name.clone(),
+                reason: "MODE_POSTURE".into(),
+                how: format!("{why}; the user changes the task's mode, the agent does not"),
+            });
             continue;
         }
         if let Some(c) = s.required_capabilities.iter().find(|c| denied.contains(*c)) {
@@ -2444,7 +2460,7 @@ fn projection(
     // nothing either and answers with `review.report` (REQ-EPR-007).
     if crate::critique::is_review(task) {
         tools.push(crate::critique::projection());
-    } else if state.capsule.is_none() {
+    } else if state.capsule.is_none() && posture.subagents {
         tools.extend(crate::agent_tools::projections());
     }
     tools.push(ToolProjection {
@@ -2780,6 +2796,11 @@ async fn run_loop(
         .await
         .denied
         .map(|(code, reason)| format!("{code}: {reason}"));
+    // PX-051: the mode posture the kernel enforces is the one this loop
+    // adopts at its round boundaries; when the loop ends it goes back to what
+    // the user last set.
+    let _posture = crate::tasking::guard(&core, task.task_id);
+    let mut edge = crate::tasking::Edge::new(&task);
     let end = 'outer: loop {
         if cancel.is_cancelled() {
             break LoopEnd::Cancelled;
@@ -2882,6 +2903,13 @@ async fn run_loop(
                 }
             }
         }
+        // PX-051 / PX-053: the round boundary adopts the task's latest mode
+        // (the posture the kernel enforces from here, and the projection
+        // below follows) and reads its latest execution preference.
+        crate::tasking::at_boundary(
+            &core, &task, run_id, &mut cfg, &mut edge, &mut state, lt, &actor,
+        )
+        .await;
         // REQ-EV-0042: the hooks follow the configuration and the session's
         // extensions from round to round; a fail-closed hook that failed
         // after a step stops the run here.
@@ -3314,8 +3342,12 @@ async fn run_loop(
                 let task_attachments = attachments.hydrated_parts(&core, vision, &mut bridge).await;
                 // The routed model's own output budget, timeout, effort and
                 // tier (audit G), not one constant for every model.
-                let limits =
-                    crate::model_registry::dispatch_limits(&core, &cfg.endpoint, &cfg.model);
+                let limits = edge.overlay(
+                    &core,
+                    &cfg.endpoint,
+                    &cfg.model,
+                    crate::model_registry::dispatch_limits(&core, &cfg.endpoint, &cfg.model),
+                );
                 let compiled =
                     modbit_prompt_compiler::compile(modbit_prompt_compiler::PromptInput {
                         goal: task.goal_text.clone(),
@@ -3456,7 +3488,12 @@ async fn run_loop(
                 }
                 // ModelInvoke step.
                 let invoke_step = RunStepId::new();
-                let route_json = serde_json::json!({"endpoint": cfg.endpoint, "model": cfg.model, "cache_key": request.cache_key, "reasoning_effort": limits.reasoning_effort, "service_tier": limits.service_tier, "max_output_tokens": limits.max_output_tokens, "timeout_ms": limits.timeout_ms});
+                let mut route_json = serde_json::json!({"endpoint": cfg.endpoint, "model": cfg.model, "cache_key": request.cache_key, "reasoning_effort": limits.reasoning_effort, "service_tier": limits.service_tier, "max_output_tokens": limits.max_output_tokens, "timeout_ms": limits.timeout_ms});
+                // PX-053: the dispatch names the preference event it ran under.
+                if edge.preference_offset_applied != 0 {
+                    route_json["preference_offset"] =
+                        serde_json::json!(edge.preference_offset_applied);
+                }
                 {
                     let mut store = core.store.lock().await;
                     let _ = append(
@@ -8249,6 +8286,11 @@ async fn run_verification_stage(
                     .ok()
                     .and_then(|l| l.into_iter().next()),
                 execution_profile: task.execution_profile.clone(),
+                mode: core
+                    .tools
+                    .tasking
+                    .mode_in_force(&store, task.task_id)
+                    .unwrap_or(modbit_domain::mode::TaskMode::Ask),
                 emergency_stopped: store
                     .session(&task.session_id)
                     .ok()

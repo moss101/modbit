@@ -548,6 +548,24 @@ pub(crate) async fn fork(
             actor.clone(),
         ));
     }
+    // PX-051: a fork never widens what its source was held to: it is made in
+    // the mode the source was in (a subagent has its own goal and posture).
+    if req.subagent.is_none()
+        && let Ok(f) = core.tools.tasking.facts(&store, source.task_id)
+        && f.mode != modbit_domain::mode::TaskMode::Agent
+    {
+        events.push(typed(
+            "TaskModeSet",
+            &TaskEvent::TaskModeSet {
+                mode: f.mode,
+                previous: None,
+                source: "fork".into(),
+                reason: format!("the mode of task {}", source.task_id),
+                accepted_plan_version: 0,
+            },
+            actor.clone(),
+        ));
+    }
     let stored = store.append(AppendRequest {
         tenant_id: core.tenant_id,
         session_id: source.session_id,

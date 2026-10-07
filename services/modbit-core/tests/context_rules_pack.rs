@@ -222,6 +222,7 @@ impl Surface {
                     workspace_root: root.into(),
                     issue_url: String::new(),
                     issue_json: String::new(),
+                    ..Default::default()
                 }
                 .encode_to_vec(),
                 self.lease,
@@ -249,6 +250,7 @@ impl Surface {
                     max_tool_calls: 0,
                     max_no_progress_turns: 8,
                     skills: vec![],
+                    ..Default::default()
                 }
                 .encode_to_vec(),
                 self.lease,
@@ -2278,6 +2280,7 @@ async fn px_109_thresholds_follow_the_models_context_window() {
                         max_tool_calls: 0,
                         max_no_progress_turns: 8,
                         skills: vec![],
+                        ..Default::default()
                     }
                     .encode_to_vec(),
                     l.surface.lease,

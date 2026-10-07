@@ -140,6 +140,7 @@ async fn create_task(c: &mut Client, session: &Id, g: u64, root: &str, tag: u8) 
                     workspace_root: root.into(),
                     issue_url: String::new(),
                     issue_json: String::new(),
+                    ..Default::default()
                 }
                 .encode_to_vec(),
             ),

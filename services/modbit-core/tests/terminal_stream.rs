@@ -175,6 +175,7 @@ mod unix {
                         workspace_root: root.into(),
                         issue_url: String::new(),
                         issue_json: String::new(),
+                        ..Default::default()
                     }
                     .encode_to_vec(),
                 ),

@@ -210,6 +210,7 @@ async fn create_task(
                 workspace_root: String::new(),
                 issue_url: String::new(),
                 issue_json: String::new(),
+                ..Default::default()
             }
             .encode_to_vec(),
             lease_for(&session),
@@ -729,6 +730,7 @@ async fn qual_ev_0054_0273_session_lease_fences_out_stale_writers_across_restart
                 workspace_root: String::new(),
                 issue_url: String::new(),
                 issue_json: String::new(),
+                ..Default::default()
             }
             .encode_to_vec(),
             Some(1),
@@ -753,6 +755,7 @@ async fn qual_ev_0054_0273_session_lease_fences_out_stale_writers_across_restart
                 workspace_root: String::new(),
                 issue_url: String::new(),
                 issue_json: String::new(),
+                ..Default::default()
             }
             .encode_to_vec(),
         ))
@@ -780,6 +783,7 @@ async fn qual_ev_0054_0273_session_lease_fences_out_stale_writers_across_restart
                 workspace_root: String::new(),
                 issue_url: String::new(),
                 issue_json: String::new(),
+                ..Default::default()
             }
             .encode_to_vec(),
             Some(1),
@@ -1114,6 +1118,7 @@ async fn m2_4_invoke_tool_runs_direct_tools_through_registry_policy_and_event_lo
                 workspace_root: root.clone(),
                 issue_url: String::new(),
                 issue_json: String::new(),
+                ..Default::default()
             }
             .encode_to_vec(),
             lease_for(&session),
@@ -1407,6 +1412,7 @@ async fn m2_5_capability_kernel_gates_destructive_tools_behind_intent_bound_appr
                     workspace_root: root.into(),
                     issue_url: String::new(),
                     issue_json: String::new(),
+                    ..Default::default()
                 }
                 .encode_to_vec(),
                 g,
@@ -3023,6 +3029,7 @@ async fn m2_7_one_agent_runtime_drives_a_coding_task_to_ready_for_review() {
                 workspace_root: root.clone(),
                 issue_url: String::new(),
                 issue_json: String::new(),
+                ..Default::default()
             }
             .encode_to_vec(),
             g,
@@ -3046,6 +3053,7 @@ async fn m2_7_one_agent_runtime_drives_a_coding_task_to_ready_for_review() {
                 max_tool_calls: 0,
                 max_no_progress_turns: 0,
                 skills: vec![],
+                ..Default::default()
             }
             .encode_to_vec(),
         ))
@@ -3064,6 +3072,7 @@ async fn m2_7_one_agent_runtime_drives_a_coding_task_to_ready_for_review() {
                 max_tool_calls: 0,
                 max_no_progress_turns: 0,
                 skills: vec![],
+                ..Default::default()
             }
             .encode_to_vec(),
             g,
@@ -3250,6 +3259,7 @@ async fn m2_7_harness_refuses_unplanned_writes_exhausts_budgets_and_resumes_afte
                 workspace_root: root.clone(),
                 issue_url: String::new(),
                 issue_json: String::new(),
+                ..Default::default()
             }
             .encode_to_vec(),
             g,
@@ -3282,6 +3292,7 @@ async fn m2_7_harness_refuses_unplanned_writes_exhausts_budgets_and_resumes_afte
                 max_tool_calls: 0,
                 max_no_progress_turns: 0,
                 skills: vec![],
+                ..Default::default()
             }
             .encode_to_vec(),
             g,
@@ -3330,6 +3341,7 @@ async fn m2_7_harness_refuses_unplanned_writes_exhausts_budgets_and_resumes_afte
                 max_tool_calls: 0,
                 max_no_progress_turns: 10,
                 skills: vec![],
+                ..Default::default()
             }
             .encode_to_vec(),
             g,
@@ -3381,6 +3393,7 @@ async fn m2_7_harness_refuses_unplanned_writes_exhausts_budgets_and_resumes_afte
                 max_tool_calls: 0,
                 max_no_progress_turns: 10,
                 skills: vec![],
+                ..Default::default()
             }
             .encode_to_vec(),
             g2,
@@ -3488,6 +3501,7 @@ async fn m2_7_steering_and_cancellation_apply_at_safe_boundaries() {
                 workspace_root: root,
                 issue_url: String::new(),
                 issue_json: String::new(),
+                ..Default::default()
             }
             .encode_to_vec(),
             g,
@@ -3527,6 +3541,7 @@ async fn m2_7_steering_and_cancellation_apply_at_safe_boundaries() {
                 max_tool_calls: 0,
                 max_no_progress_turns: 5,
                 skills: vec![],
+                ..Default::default()
             }
             .encode_to_vec(),
             g,
@@ -3707,6 +3722,7 @@ async fn m2_8_verification_engine_gates_completion_on_real_cargo_fixture() {
                 workspace_root: root.clone(),
                 issue_url: String::new(),
                 issue_json: String::new(),
+                ..Default::default()
             }
             .encode_to_vec(),
             g,
@@ -3729,6 +3745,7 @@ async fn m2_8_verification_engine_gates_completion_on_real_cargo_fixture() {
                 max_tool_calls: 0,
                 max_no_progress_turns: 5,
                 skills: vec![],
+                ..Default::default()
             }
             .encode_to_vec(),
             g,
@@ -4035,6 +4052,7 @@ async fn m2_9_review_surface_applies_per_hunk_decisions_and_commits() {
                 workspace_root: root.clone(),
                 issue_url: String::new(),
                 issue_json: String::new(),
+                ..Default::default()
             }
             .encode_to_vec(),
             g,
@@ -4078,6 +4096,7 @@ async fn m2_9_review_surface_applies_per_hunk_decisions_and_commits() {
                 max_tool_calls: 0,
                 max_no_progress_turns: 3,
                 skills: vec![],
+                ..Default::default()
             }
             .encode_to_vec(),
             g,
@@ -4332,6 +4351,7 @@ async fn m2_9_review_surface_applies_per_hunk_decisions_and_commits() {
                 workspace_root: root.clone(),
                 issue_url: String::new(),
                 issue_json: String::new(),
+                ..Default::default()
             }
             .encode_to_vec(),
             g,
@@ -4354,6 +4374,7 @@ async fn m2_9_review_surface_applies_per_hunk_decisions_and_commits() {
                 max_tool_calls: 0,
                 max_no_progress_turns: 3,
                 skills: vec![],
+                ..Default::default()
             }
             .encode_to_vec(),
             g,
@@ -4398,6 +4419,7 @@ async fn m2_9_review_surface_applies_per_hunk_decisions_and_commits() {
                 max_tool_calls: 0,
                 max_no_progress_turns: 3,
                 skills: vec![],
+                ..Default::default()
             }
             .encode_to_vec(),
             g,
@@ -4491,6 +4513,7 @@ async fn m2_10_media_reads_carry_digests_not_bytes_and_survive_restart() {
                 workspace_root: root,
                 issue_url: String::new(),
                 issue_json: String::new(),
+                ..Default::default()
             }
             .encode_to_vec(),
             g,
@@ -4678,6 +4701,7 @@ async fn qual_ev_0194_approvals_are_canonical_and_never_resolved_by_the_model() 
                 workspace_root: root.clone(),
                 issue_url: String::new(),
                 issue_json: String::new(),
+                ..Default::default()
             }
             .encode_to_vec(),
             g,
@@ -4965,6 +4989,7 @@ async fn qual_ev_0106_every_write_lands_a_revision_bound_file_changed_event_matc
                 workspace_root: root.clone(),
                 issue_url: String::new(),
                 issue_json: String::new(),
+                ..Default::default()
             }
             .encode_to_vec(),
             g,
@@ -5109,6 +5134,7 @@ async fn qual_ev_0064_0065_typed_undo_restores_inverse_actions_and_a_user_edit_b
                 workspace_root: root.clone(),
                 issue_url: String::new(),
                 issue_json: String::new(),
+                ..Default::default()
             }
             .encode_to_vec(),
             g,
@@ -5331,6 +5357,7 @@ async fn create_task_with_profile_id(
                 workspace_root: root.into(),
                 issue_url: String::new(),
                 issue_json: String::new(),
+                ..Default::default()
             }
             .encode_to_vec(),
             g,
@@ -5387,6 +5414,7 @@ async fn create_task_with_goal(
                 workspace_root: root.into(),
                 issue_url: String::new(),
                 issue_json: String::new(),
+                ..Default::default()
             }
             .encode_to_vec(),
             g,
@@ -5478,6 +5506,7 @@ async fn qual_ev_0096_0116_0133_0044_0031_tool_surface_is_compiled_from_support_
                 max_tool_calls: 0,
                 max_no_progress_turns: 0,
                 skills: vec![],
+                ..Default::default()
             }
             .encode_to_vec(),
             g,
@@ -5887,6 +5916,7 @@ async fn qual_ev_0191_steering_policy_interrupts_replaces_coalesces_and_orders()
                 max_tool_calls: 0,
                 max_no_progress_turns: 0,
                 skills: vec![],
+                ..Default::default()
             }
             .encode_to_vec(),
             g,
@@ -6013,6 +6043,7 @@ async fn qual_ev_0222_px_014_typed_question_suspends_the_run_and_the_answer_resu
         max_tool_calls: 0,
         max_no_progress_turns: 0,
         skills: vec![],
+        ..Default::default()
     }
     .encode_to_vec();
     let ack = c
@@ -6221,6 +6252,7 @@ async fn qual_ev_0222_px_014_typed_question_suspends_the_run_and_the_answer_resu
                 max_tool_calls: 0,
                 max_no_progress_turns: 0,
                 skills: vec![],
+                ..Default::default()
             }
             .encode_to_vec(),
             g2,
@@ -6268,6 +6300,7 @@ async fn qual_ev_0222_px_014_typed_question_suspends_the_run_and_the_answer_resu
                 max_tool_calls: 0,
                 max_no_progress_turns: 0,
                 skills: vec![],
+                ..Default::default()
             }
             .encode_to_vec(),
             g3,
@@ -6528,6 +6561,7 @@ async fn ver_05_an_ingested_attachment_reaches_the_model_as_an_image_part_of_the
                     max_tool_calls: 0,
                     max_no_progress_turns: 4,
                     skills: vec![],
+                    ..Default::default()
                 }
                 .encode_to_vec(),
                 g,
@@ -6628,6 +6662,7 @@ async fn fix_13_the_inspector_reports_the_cached_tokens_the_provider_reported() 
                 max_tool_calls: 0,
                 max_no_progress_turns: 4,
                 skills: vec![],
+                ..Default::default()
             }
             .encode_to_vec(),
             g,
@@ -6742,6 +6777,7 @@ async fn fix_14_the_loop_dispatches_with_the_catalog_entrys_budget_timeout_effor
                     max_tool_calls: 0,
                     max_no_progress_turns: 4,
                     skills: vec![],
+                    ..Default::default()
                 }
                 .encode_to_vec(),
                 g,
@@ -8286,6 +8322,7 @@ async fn qual_ev_0134_deferred_tool_search_activates_without_authorizing_and_hyd
                 max_tool_calls: 0,
                 max_no_progress_turns: 5,
                 skills: vec![],
+                ..Default::default()
             }
             .encode_to_vec(),
             g,
@@ -8590,6 +8627,7 @@ async fn qual_px_016_change_strategy_tests_first_one_concern_per_transaction_and
                 workspace_root: root.clone(),
                 issue_url: String::new(),
                 issue_json: String::new(),
+                ..Default::default()
             }
             .encode_to_vec(),
             g,
@@ -8612,6 +8650,7 @@ async fn qual_px_016_change_strategy_tests_first_one_concern_per_transaction_and
                 max_tool_calls: 0,
                 max_no_progress_turns: 5,
                 skills: vec![],
+                ..Default::default()
             }
             .encode_to_vec(),
             g,
@@ -8847,6 +8886,7 @@ async fn qual_px_018_repair_attempts_are_recorded_bounded_reverted_when_worsened
                 workspace_root: root.clone(),
                 issue_url: String::new(),
                 issue_json: String::new(),
+                ..Default::default()
             }
             .encode_to_vec(),
             g,
@@ -8869,6 +8909,7 @@ async fn qual_px_018_repair_attempts_are_recorded_bounded_reverted_when_worsened
                 max_tool_calls: 0,
                 max_no_progress_turns: 5,
                 skills: vec![],
+                ..Default::default()
             }
             .encode_to_vec(),
             g,
@@ -9068,6 +9109,7 @@ async fn qual_px_015_retrieval_before_edit_is_enforced_and_a_stale_record_is_ref
                 workspace_root: root.clone(),
                 issue_url: String::new(),
                 issue_json: String::new(),
+                ..Default::default()
             }
             .encode_to_vec(),
             g,
@@ -9090,6 +9132,7 @@ async fn qual_px_015_retrieval_before_edit_is_enforced_and_a_stale_record_is_ref
                 max_tool_calls: 0,
                 max_no_progress_turns: 5,
                 skills: vec![],
+                ..Default::default()
             }
             .encode_to_vec(),
             g,
@@ -9142,6 +9185,7 @@ async fn qual_px_015_retrieval_before_edit_is_enforced_and_a_stale_record_is_ref
                 max_tool_calls: 0,
                 max_no_progress_turns: 5,
                 skills: vec![],
+                ..Default::default()
             }
             .encode_to_vec(),
             g2,
@@ -9295,6 +9339,7 @@ async fn qual_px_038_scope_expansion_is_bounded_asks_a_typed_question_and_fails_
                 workspace_root: root.clone(),
                 issue_url: String::new(),
                 issue_json: String::new(),
+                ..Default::default()
             }
             .encode_to_vec(),
             g,
@@ -9313,6 +9358,7 @@ async fn qual_px_038_scope_expansion_is_bounded_asks_a_typed_question_and_fails_
         max_tool_calls: 0,
         max_no_progress_turns: 5,
         skills: vec![],
+        ..Default::default()
     }
     .encode_to_vec();
     let ack = c
@@ -9482,6 +9528,7 @@ async fn qual_px_038_scope_expansion_is_bounded_asks_a_typed_question_and_fails_
                 workspace_root: root2.clone(),
                 issue_url: String::new(),
                 issue_json: String::new(),
+                ..Default::default()
             }
             .encode_to_vec(),
             g2,
@@ -9504,6 +9551,7 @@ async fn qual_px_038_scope_expansion_is_bounded_asks_a_typed_question_and_fails_
                 max_tool_calls: 0,
                 max_no_progress_turns: 5,
                 skills: vec![],
+                ..Default::default()
             }
             .encode_to_vec(),
             g2,
@@ -9575,6 +9623,7 @@ async fn px_038_run(
                 max_tool_calls: 0,
                 max_no_progress_turns: 5,
                 skills: vec![],
+                ..Default::default()
             }
             .encode_to_vec(),
             g,
@@ -9742,6 +9791,7 @@ async fn px_038_only_the_users_answer_to_the_scope_question_decides_the_expansio
                 workspace_root: root.clone(),
                 issue_url: String::new(),
                 issue_json: String::new(),
+                ..Default::default()
             }
             .encode_to_vec(),
             g,
@@ -9945,6 +9995,7 @@ async fn px_038_a_recorded_scope_answer_decides_only_its_own_expansion() {
                 workspace_root: root.clone(),
                 issue_url: String::new(),
                 issue_json: String::new(),
+                ..Default::default()
             }
             .encode_to_vec(),
             g,
@@ -10066,6 +10117,7 @@ async fn px_038_only_a_scope_decision_the_core_recorded_opens_a_path() {
             max_tool_calls: 0,
             max_no_progress_turns: 5,
             skills: vec![],
+            ..Default::default()
         }
         .encode_to_vec()
     }
@@ -10217,6 +10269,7 @@ async fn px_038_only_a_scope_decision_the_core_recorded_opens_a_path() {
                 workspace_root: root.clone(),
                 issue_url: String::new(),
                 issue_json: String::new(),
+                ..Default::default()
             }
             .encode_to_vec(),
             g,
@@ -10441,6 +10494,7 @@ async fn m9_5_emergency_stop_cancels_the_check_in_flight_ends_the_run_and_outliv
                 max_tool_calls: 0,
                 max_no_progress_turns: 0,
                 skills: vec![],
+                ..Default::default()
             }
             .encode_to_vec(),
             g,
@@ -10561,6 +10615,7 @@ async fn m9_5_emergency_stop_cancels_the_check_in_flight_ends_the_run_and_outliv
                 max_tool_calls: 0,
                 max_no_progress_turns: 0,
                 skills: vec![],
+                ..Default::default()
             }
             .encode_to_vec(),
             g,
@@ -10637,6 +10692,7 @@ async fn residue_of_a_check_the_agent_runs_is_recorded_not_attributed() {
                 workspace_root: root.clone(),
                 issue_url: String::new(),
                 issue_json: String::new(),
+                ..Default::default()
             }
             .encode_to_vec(),
             g,
@@ -10659,6 +10715,7 @@ async fn residue_of_a_check_the_agent_runs_is_recorded_not_attributed() {
                 max_tool_calls: 0,
                 max_no_progress_turns: 0,
                 skills: vec![],
+                ..Default::default()
             }
             .encode_to_vec(),
             g,
@@ -10751,6 +10808,7 @@ async fn qual_px_039_reproduction_first_is_enforced_and_no_progress_turns_escala
                 workspace_root: root.clone(),
                 issue_url: String::new(),
                 issue_json: String::new(),
+                ..Default::default()
             }
             .encode_to_vec(),
             g,
@@ -10774,6 +10832,7 @@ async fn qual_px_039_reproduction_first_is_enforced_and_no_progress_turns_escala
                 // 0 keeps the policy's own bound (3), not a second copy.
                 max_no_progress_turns: 0,
                 skills: vec![],
+                ..Default::default()
             }
             .encode_to_vec(),
             g,
@@ -10858,6 +10917,7 @@ async fn qual_px_039_reproduction_first_is_enforced_and_no_progress_turns_escala
                 max_tool_calls: 0,
                 max_no_progress_turns: 0,
                 skills: vec![],
+                ..Default::default()
             }
             .encode_to_vec(),
             g2,
@@ -11054,6 +11114,7 @@ async fn qual_ev_0169_context_pack_reaches_the_prompt_with_provenance_or_not_at_
                 max_tool_calls: 0,
                 max_no_progress_turns: 5,
                 skills: vec![],
+                ..Default::default()
             }
             .encode_to_vec(),
             g,
@@ -11168,6 +11229,7 @@ async fn qual_px_040_harness_contracts_bound_observations_page_results_and_fail_
                 max_tool_calls: 0,
                 max_no_progress_turns: 5,
                 skills: vec![],
+                ..Default::default()
             }
             .encode_to_vec(),
             g,
@@ -11374,6 +11436,7 @@ async fn qual_ev_0035_0131_0175_context_inspector_matches_the_prompt_envelope() 
                 max_tool_calls: 0,
                 max_no_progress_turns: 5,
                 skills: vec![],
+                ..Default::default()
             }
             .encode_to_vec(),
             g,
@@ -11524,6 +11587,7 @@ async fn qual_ev_0056_0092_0130_compaction_epoch_preserves_facts_survives_restar
                 max_tool_calls: 0,
                 max_no_progress_turns: 5,
                 skills: vec![],
+                ..Default::default()
             }
             .encode_to_vec(),
             g,
@@ -11896,6 +11960,7 @@ async fn ver_04_a_compaction_cut_never_leaves_an_orphan_tool_result_across_resta
         max_tool_calls: 0,
         max_no_progress_turns: 0,
         skills: vec![],
+        ..Default::default()
     }
     .encode_to_vec();
     let _ = c
@@ -12082,6 +12147,7 @@ async fn qual_ev_0188_a_media_tool_result_reaches_the_model_as_a_split_follow_up
                 max_tool_calls: 0,
                 max_no_progress_turns: 4,
                 skills: vec![],
+                ..Default::default()
             }
             .encode_to_vec(),
             g,
@@ -12184,6 +12250,7 @@ async fn qual_ev_0173_task_economics_report_quality_and_cost_from_the_log() {
                 max_tool_calls: 0,
                 max_no_progress_turns: 4,
                 skills: vec![],
+                ..Default::default()
             }
             .encode_to_vec(),
             g,
@@ -12350,6 +12417,7 @@ async fn qual_ev_0141_0160_a_selection_steers_retrieval_is_visible_and_grants_no
                 max_tool_calls: 0,
                 max_no_progress_turns: 4,
                 skills: vec![],
+                ..Default::default()
             }
             .encode_to_vec(),
             g,
@@ -12511,6 +12579,7 @@ async fn qual_ev_0174_a_read_only_specialist_builds_the_pack_and_cannot_mutate()
                 max_tool_calls: 0,
                 max_no_progress_turns: 5,
                 skills: vec![],
+                ..Default::default()
             }
             .encode_to_vec(),
             g,
@@ -12703,6 +12772,7 @@ async fn qual_ev_0060_0203_the_repository_map_flags_stale_claims_and_never_enter
                 max_tool_calls: 0,
                 max_no_progress_turns: 5,
                 skills: vec![],
+                ..Default::default()
             }
             .encode_to_vec(),
             g,
@@ -12877,6 +12947,7 @@ async fn qual_ev_0161_an_attached_ticket_is_labelled_context_and_cannot_grant_a_
                 max_tool_calls: 0,
                 max_no_progress_turns: 4,
                 skills: vec![],
+                ..Default::default()
             }
             .encode_to_vec(),
             g,
@@ -13379,6 +13450,7 @@ async fn qual_px_027_language_tier_suites_run_on_real_fixtures_and_a_tier_is_onl
                     max_tool_calls: 0,
                     max_no_progress_turns: 3,
                     skills: vec![],
+                    ..Default::default()
                 }
                 .encode_to_vec(),
                 g,
@@ -13713,6 +13785,7 @@ async fn qual_px_029_an_unsupported_language_degrades_explicitly_and_edits_need_
                 max_tool_calls: 0,
                 max_no_progress_turns: 6,
                 skills: vec![],
+                ..Default::default()
             }
             .encode_to_vec(),
             g,
@@ -13961,6 +14034,7 @@ async fn qual_ev_0250_0252_0274_paired_context_economics_benchmark_publishes_sav
                         max_tool_calls: 0,
                         max_no_progress_turns: 6,
                         skills: vec![],
+                        ..Default::default()
                     }
                     .encode_to_vec(),
                     g,
@@ -14231,6 +14305,7 @@ async fn qual_epr_000_the_direct_path_is_instrumented_and_published_as_a_fixed_r
                 max_tool_calls: 0,
                 max_no_progress_turns: 6,
                 skills: vec![],
+                ..Default::default()
             }
             .encode_to_vec(),
             g,
@@ -14289,6 +14364,7 @@ async fn qual_epr_000_the_direct_path_is_instrumented_and_published_as_a_fixed_r
                 max_tool_calls: 0,
                 max_no_progress_turns: 4,
                 skills: vec![],
+                ..Default::default()
             }
             .encode_to_vec(),
             g,
@@ -14459,6 +14535,7 @@ async fn qual_epr_001_the_routing_state_of_a_run_is_durable_versioned_and_redact
                 max_tool_calls: 0,
                 max_no_progress_turns: 6,
                 skills: vec![],
+                ..Default::default()
             }
             .encode_to_vec(),
             g,
@@ -14587,6 +14664,7 @@ async fn qual_epr_001_the_routing_state_of_a_run_is_durable_versioned_and_redact
                 max_tool_calls: 0,
                 max_no_progress_turns: 6,
                 skills: vec![],
+                ..Default::default()
             }
             .encode_to_vec(),
             g,
@@ -14666,6 +14744,7 @@ async fn qual_epr_014_a_conditional_plan_is_admitted_whole_and_its_activation_is
                 max_tool_calls: 0,
                 max_no_progress_turns: 6,
                 skills: vec![],
+                ..Default::default()
             }
             .encode_to_vec(),
             g,
@@ -15097,6 +15176,7 @@ async fn qual_epr_002_a_signed_registry_activates_at_runtime_and_a_revocation_st
                 max_tool_calls: 0,
                 max_no_progress_turns: 6,
                 skills: vec![],
+                ..Default::default()
             }
             .encode_to_vec(),
             g,
@@ -15148,6 +15228,7 @@ async fn qual_epr_002_a_signed_registry_activates_at_runtime_and_a_revocation_st
                 max_tool_calls: 0,
                 max_no_progress_turns: 6,
                 skills: vec![],
+                ..Default::default()
             }
             .encode_to_vec(),
             g2,
@@ -15224,6 +15305,7 @@ async fn qual_epr_002_a_signed_registry_activates_at_runtime_and_a_revocation_st
                 max_tool_calls: 0,
                 max_no_progress_turns: 6,
                 skills: vec![],
+                ..Default::default()
             }
             .encode_to_vec(),
             g2,
@@ -15297,6 +15379,7 @@ async fn qual_epr_015_statistics_are_materialized_from_attributable_outcomes_and
                 max_tool_calls: 0,
                 max_no_progress_turns: 6,
                 skills: vec![],
+                ..Default::default()
             }
             .encode_to_vec(),
             g,
@@ -15468,6 +15551,7 @@ async fn qual_epr_003_the_profiler_records_intrinsic_demand_in_shadow_and_claims
                 max_tool_calls: 0,
                 max_no_progress_turns: 6,
                 skills: vec![],
+                ..Default::default()
             }
             .encode_to_vec(),
             g,
@@ -15654,6 +15738,7 @@ async fn qual_epr_016_feasibility_is_measured_at_admission_under_pinned_versions
                     max_tool_calls: 0,
                     max_no_progress_turns: 6,
                     skills: vec![],
+                    ..Default::default()
                 }
                 .encode_to_vec(),
                 g,
@@ -15984,6 +16069,7 @@ async fn qual_epr_004_the_compiler_runs_through_core_and_identical_inputs_give_i
                 max_tool_calls: 0,
                 max_no_progress_turns: 6,
                 skills: vec![],
+                ..Default::default()
             }
             .encode_to_vec(),
             g,
@@ -16318,6 +16404,7 @@ async fn qual_epr_005_new_runs_go_through_the_compiled_initial_leg_and_keep_the_
                     max_tool_calls: 0,
                     max_no_progress_turns: 6,
                     skills: vec![],
+                    ..Default::default()
                 }
                 .encode_to_vec(),
                 g,
@@ -16593,6 +16680,7 @@ async fn qual_epr_005_new_runs_go_through_the_compiled_initial_leg_and_keep_the_
                 max_tool_calls: 0,
                 max_no_progress_turns: 6,
                 skills: vec![],
+                ..Default::default()
             }
             .encode_to_vec(),
             g,
@@ -16645,6 +16733,7 @@ async fn qual_epr_005_new_runs_go_through_the_compiled_initial_leg_and_keep_the_
                 max_tool_calls: 0,
                 max_no_progress_turns: 6,
                 skills: vec![],
+                ..Default::default()
             }
             .encode_to_vec(),
             g,
@@ -16849,6 +16938,7 @@ async fn qual_px_022_provider_setup_and_repository_trust_are_enforced_by_the_cor
                 workspace_root: root.clone(),
                 issue_url: String::new(),
                 issue_json: String::new(),
+                ..Default::default()
             }
             .encode_to_vec(),
             g,
@@ -16867,6 +16957,7 @@ async fn qual_px_022_provider_setup_and_repository_trust_are_enforced_by_the_cor
         max_tool_calls: 0,
         max_no_progress_turns: 4,
         skills: vec![],
+        ..Default::default()
     };
     trust_repository(&mut c, &session, g, &root, 0xE3).await;
     let err = c
@@ -17067,6 +17158,7 @@ async fn qual_px_022_provider_setup_and_repository_trust_are_enforced_by_the_cor
                 workspace_root: other_root.clone(),
                 issue_url: String::new(),
                 issue_json: String::new(),
+                ..Default::default()
             }
             .encode_to_vec(),
             g,
@@ -17282,6 +17374,7 @@ async fn qual_ev_0055_e2e_004_core_crash_during_approval_restores_the_same_appro
         max_tool_calls: 0,
         max_no_progress_turns: 0,
         skills: vec![],
+        ..Default::default()
     }
     .encode_to_vec();
     let ack = c
@@ -17545,6 +17638,7 @@ async fn qual_ev_0055_e2e_005_core_crash_after_dispatch_reconciles_the_unknown_o
         max_tool_calls: 0,
         max_no_progress_turns: 0,
         skills: vec![],
+        ..Default::default()
     }
     .encode_to_vec();
     let ack = c
@@ -17740,6 +17834,7 @@ async fn compaction_scenario(
                 max_tool_calls: 0,
                 max_no_progress_turns: 8,
                 skills: vec![],
+                ..Default::default()
             }
             .encode_to_vec(),
             g,
@@ -18291,6 +18386,7 @@ async fn qual_ev_0012_0013_e2e_007_checkpoint_epochs_are_fenced_and_restore_vali
                 max_tool_calls: 0,
                 max_no_progress_turns: 0,
                 skills: vec![],
+                ..Default::default()
             }
             .encode_to_vec(),
             g3,
@@ -18362,6 +18458,7 @@ async fn qual_m4_4_a_stale_execution_owner_is_fenced_out_and_the_new_owner_resum
                 max_tool_calls: 0,
                 max_no_progress_turns: 0,
                 skills: vec![],
+                ..Default::default()
             }
             .encode_to_vec(),
             g,
@@ -18809,6 +18906,7 @@ async fn kill_point_round(boundary: &str) -> KillRound {
         max_tool_calls: 0,
         max_no_progress_turns: 0,
         skills: vec![],
+        ..Default::default()
     }
     .encode_to_vec();
     // The start itself may be the boundary: a rejected ack means the Core died.
@@ -19080,6 +19178,7 @@ async fn qual_m4_6_e2e_005_a_protected_effect_of_unknown_outcome_is_held_for_the
         max_tool_calls: 0,
         max_no_progress_turns: 0,
         skills: vec![],
+        ..Default::default()
     }
     .encode_to_vec();
     let ack = c
@@ -19337,6 +19436,7 @@ async fn qual_ev_0073_fault_injection_never_reports_a_generic_success() {
         max_tool_calls: 0,
         max_no_progress_turns: 0,
         skills: vec![],
+        ..Default::default()
     };
     let ack = c
         .command(envelope_fenced(
@@ -19448,6 +19548,7 @@ async fn qual_ev_0073_fault_injection_never_reports_a_generic_success() {
         max_tool_calls: 0,
         max_no_progress_turns: 0,
         skills: vec![],
+        ..Default::default()
     };
     let ack = c2
         .command(envelope_fenced(
@@ -19690,6 +19791,7 @@ async fn qual_ev_0242_restart_loses_no_durable_truth_while_live_control_resets()
                 max_tool_calls: 0,
                 max_no_progress_turns: 0,
                 skills: vec![],
+                ..Default::default()
             }
             .encode_to_vec(),
             g,
@@ -19998,6 +20100,7 @@ async fn qual_ev_0077_0122_a_fork_carries_decisions_and_evidence_but_no_stale_pe
                 max_tool_calls: 0,
                 max_no_progress_turns: 0,
                 skills: vec![],
+                ..Default::default()
             }
             .encode_to_vec(),
             g,
@@ -20320,6 +20423,7 @@ async fn qual_ev_0123_rewind_preview_is_non_mutating_and_revert_honours_optimist
                 max_tool_calls: 0,
                 max_no_progress_turns: 0,
                 skills: vec![],
+                ..Default::default()
             }
             .encode_to_vec(),
             g,
@@ -20535,6 +20639,7 @@ async fn epr_008_di_9_refuses_a_nested_deploy_write_without_a_typed_question() {
             max_tool_calls: 0,
             max_no_progress_turns: 5,
             skills: vec![],
+            ..Default::default()
         }
         .encode_to_vec(),
         g,
@@ -20648,6 +20753,7 @@ async fn di_9_task(
                 workspace_root: root.into(),
                 issue_url: String::new(),
                 issue_json: String::new(),
+                ..Default::default()
             }
             .encode_to_vec(),
             g,
@@ -20680,6 +20786,7 @@ async fn di_9_run(
                 max_tool_calls: 0,
                 max_no_progress_turns: 5,
                 skills: vec![],
+                ..Default::default()
             }
             .encode_to_vec(),
             g,
@@ -21081,6 +21188,7 @@ async fn epr_008_di_9_an_unanswered_or_agent_answered_question_unlocks_nothing()
         max_tool_calls: 0,
         max_no_progress_turns: 5,
         skills: vec![],
+        ..Default::default()
     }
     .encode_to_vec();
     let err = c
@@ -21376,6 +21484,7 @@ async fn qual_epr_008_factual_risk_stays_strict_despite_passing_tests_and_stops_
                 max_tool_calls: 0,
                 max_no_progress_turns: 0,
                 skills: vec![],
+                ..Default::default()
             }
             .encode_to_vec(),
             g,
@@ -21497,6 +21606,7 @@ async fn qual_epr_008_factual_risk_stays_strict_despite_passing_tests_and_stops_
             max_tool_calls: 0,
             max_no_progress_turns: 2,
             skills: vec![],
+            ..Default::default()
         }
         .encode_to_vec(),
         g2,
@@ -21586,6 +21696,7 @@ async fn qual_epr_008_a_dotenv_file_a_process_rewrites_is_a_secret_and_stops_an_
             max_tool_calls: 0,
             max_no_progress_turns: 2,
             skills: vec![],
+            ..Default::default()
         }
         .encode_to_vec(),
         g,
@@ -21674,6 +21785,7 @@ async fn fix_10_the_stderr_of_a_failing_command_is_in_the_next_provider_request(
             max_tool_calls: 0,
             max_no_progress_turns: 2,
             skills: vec![],
+            ..Default::default()
         }
         .encode_to_vec(),
         g,
@@ -21758,6 +21870,7 @@ async fn qual_epr_017_acceptance_is_evidence_at_the_revision_and_never_erases_a_
                 max_tool_calls: 0,
                 max_no_progress_turns: 2,
                 skills: vec![],
+                ..Default::default()
             }
             .encode_to_vec(),
             g,
@@ -22244,6 +22357,7 @@ async fn qual_epr_009_routes_reevaluate_at_boundaries_on_cache_economics_and_sur
                 max_tool_calls: 0,
                 max_no_progress_turns: 8,
                 skills: vec![],
+                ..Default::default()
             }
             .encode_to_vec(),
             g,
@@ -22535,6 +22649,7 @@ async fn qual_m5_1_projection_follows_the_plan_and_refuses_crafted_calls() {
                 max_tool_calls: 0,
                 max_no_progress_turns: 6,
                 skills: vec![],
+                ..Default::default()
             }
             .encode_to_vec(),
             g,
@@ -22884,6 +22999,7 @@ async fn qual_m5_e2e_012_a_program_composes_governed_tools_in_the_isolate() {
                 max_tool_calls: 0,
                 max_no_progress_turns: 6,
                 skills: vec![],
+                ..Default::default()
             }
             .encode_to_vec(),
             g,
@@ -23216,6 +23332,7 @@ async fn qual_m5_5_signed_skills_are_selected_compiled_and_recorded_and_unsigned
                 max_tool_calls: 0,
                 max_no_progress_turns: 3,
                 skills: vec!["draft-style".into(), "no-such-skill".into()],
+                ..Default::default()
             }
             .encode_to_vec(),
             g,
@@ -23401,6 +23518,7 @@ async fn qual_m5_6_direct_and_procedural_modes_yield_the_same_effects_at_differe
                         max_tool_calls: 0,
                         max_no_progress_turns: 6,
                         skills: vec![],
+                        ..Default::default()
                     }
                     .encode_to_vec(),
                     g,
@@ -23610,6 +23728,7 @@ async fn qual_ev_0061_0214_a_skill_cannot_widen_task_authority_and_a_non_invocab
                 workspace_root: root.clone(),
                 issue_url: String::new(),
                 issue_json: String::new(),
+                ..Default::default()
             }
             .encode_to_vec(),
             g,
@@ -23632,6 +23751,7 @@ async fn qual_ev_0061_0214_a_skill_cannot_widen_task_authority_and_a_non_invocab
                 max_tool_calls: 0,
                 max_no_progress_turns: 3,
                 skills: vec![],
+                ..Default::default()
             }
             .encode_to_vec(),
             g,
@@ -23874,6 +23994,7 @@ async fn run_skill_task(
                 max_tool_calls: 0,
                 max_no_progress_turns: 6,
                 skills: vec![],
+                ..Default::default()
             }
             .encode_to_vec(),
             g,
@@ -24025,6 +24146,7 @@ async fn wsk_e2e_005_010_a_promoted_skill_reaches_the_model_without_the_wiki_and
                 max_tool_calls: 0,
                 max_no_progress_turns: 4,
                 skills: vec![],
+                ..Default::default()
             }
             .encode_to_vec(),
             g,
@@ -24068,6 +24190,7 @@ async fn wsk_e2e_005_010_a_promoted_skill_reaches_the_model_without_the_wiki_and
                 max_tool_calls: 0,
                 max_no_progress_turns: 4,
                 skills: vec![],
+                ..Default::default()
             }
             .encode_to_vec(),
             g2,
@@ -24200,6 +24323,7 @@ async fn qual_ev_0059_0129_scoped_rules_activate_lazily_and_conflicts_name_the_w
                 max_tool_calls: 0,
                 max_no_progress_turns: 4,
                 skills: vec![],
+                ..Default::default()
             }
             .encode_to_vec(),
             g,
@@ -24401,6 +24525,7 @@ async fn qual_ev_0184_0185_a_text_only_model_is_told_the_modality_and_a_bridge_d
         max_tool_calls: 0,
         max_no_progress_turns: 4,
         skills: vec![],
+        ..Default::default()
     };
     let ack = c
         .command(envelope_fenced(
@@ -24636,6 +24761,7 @@ async fn qual_ev_0186_a_notebook_edit_targets_one_cell_by_id_and_keeps_the_rest(
                 max_tool_calls: 0,
                 max_no_progress_turns: 4,
                 skills: vec![],
+                ..Default::default()
             }
             .encode_to_vec(),
             g,
@@ -24810,6 +24936,7 @@ async fn qual_ev_0223_a_region_read_sends_the_crop_and_the_bomb_stays_bounded() 
                 max_tool_calls: 0,
                 max_no_progress_turns: 4,
                 skills: vec![],
+                ..Default::default()
             }
             .encode_to_vec(),
             g,
@@ -25061,6 +25188,7 @@ async fn qual_epr_006_a_quality_rejection_continues_the_run_on_the_prevalidated_
                 max_tool_calls: 0,
                 max_no_progress_turns: 2,
                 skills: vec![],
+                ..Default::default()
             }
             .encode_to_vec(),
             g,
@@ -25531,6 +25659,7 @@ async fn m6_1_work_graph_and_primary_agent_survive_compaction_and_restart_unchan
                 max_tool_calls: 0,
                 max_no_progress_turns: 5,
                 skills: vec![],
+                ..Default::default()
             }
             .encode_to_vec(),
             g,
@@ -25767,6 +25896,7 @@ async fn m6_2_capacity_tickets_gate_runs_all_or_nothing_and_lapse_at_expiry() {
                 max_tool_calls: 0,
                 max_no_progress_turns: 3,
                 skills: vec![],
+                ..Default::default()
             }
             .encode_to_vec(),
             g,
@@ -25882,6 +26012,7 @@ async fn m6_2_capacity_tickets_gate_runs_all_or_nothing_and_lapse_at_expiry() {
                 max_tool_calls: 0,
                 max_no_progress_turns: 3,
                 skills: vec![],
+                ..Default::default()
             }
             .encode_to_vec(),
             g,
@@ -26032,6 +26163,7 @@ async fn m6_7_a_background_child_survives_a_core_restart_and_hands_its_result_ba
                 max_tool_calls: 0,
                 max_no_progress_turns: 4,
                 skills: vec![],
+                ..Default::default()
             }
             .encode_to_vec(),
             g,
@@ -26317,6 +26449,7 @@ async fn qual_ev_0046_a_background_child_reaching_a_protected_effect_moves_its_p
                 max_tool_calls: 0,
                 max_no_progress_turns: 4,
                 skills: vec![],
+                ..Default::default()
             }
             .encode_to_vec(),
             g,
@@ -26457,6 +26590,7 @@ async fn qual_ev_0127_a_killed_client_leaves_the_worker_running_and_a_new_client
                 max_tool_calls: 0,
                 max_no_progress_turns: 3,
                 skills: vec![],
+                ..Default::default()
             }
             .encode_to_vec(),
             g,
@@ -26585,6 +26719,7 @@ async fn qual_ev_0008_0180_scheduling_follows_the_work_graph_and_attention_moves
                 max_tool_calls: 0,
                 max_no_progress_turns: 4,
                 skills: vec![],
+                ..Default::default()
             }
             .encode_to_vec(),
             g,
@@ -26792,6 +26927,7 @@ async fn qual_ev_0049_a_parked_child_survives_a_restart_and_resumes_from_the_sam
                 max_tool_calls: 0,
                 max_no_progress_turns: 5,
                 skills: vec![],
+                ..Default::default()
             }
             .encode_to_vec(),
             g,
@@ -27056,6 +27192,7 @@ async fn qual_ev_0050_0179_a_follow_up_continues_a_finished_child_as_a_new_attem
                 max_tool_calls: 0,
                 max_no_progress_turns: 5,
                 skills: vec![],
+                ..Default::default()
             }
             .encode_to_vec(),
             g,
@@ -27358,6 +27495,7 @@ async fn qual_ev_0151_0275_attention_items_are_derived_from_canonical_state_and_
                 max_tool_calls: 0,
                 max_no_progress_turns: np,
                 skills: vec![],
+                ..Default::default()
             }
             .encode_to_vec(),
             g,
@@ -27721,6 +27859,7 @@ async fn qual_ev_0043_a_headless_client_lacks_ui_only_capabilities_while_the_tas
                 max_tool_calls: 0,
                 max_no_progress_turns: 3,
                 skills: vec![],
+                ..Default::default()
             }
             .encode_to_vec(),
             g,
@@ -27763,6 +27902,7 @@ async fn qual_ev_0043_a_headless_client_lacks_ui_only_capabilities_while_the_tas
                 max_tool_calls: 0,
                 max_no_progress_turns: 3,
                 skills: vec![],
+                ..Default::default()
             }
             .encode_to_vec(),
             g,
@@ -27933,6 +28073,7 @@ async fn qual_ev_0115_0182_0241_agent_profiles_compile_into_capsules_and_only_na
                 max_tool_calls: 0,
                 max_no_progress_turns: 4,
                 skills: vec![],
+                ..Default::default()
             }
             .encode_to_vec(),
             g,
@@ -28115,6 +28256,7 @@ async fn qual_ev_0117_plan_mode_has_no_write_and_its_plan_goes_to_review() {
                 max_tool_calls: 0,
                 max_no_progress_turns: 4,
                 skills: vec![],
+                ..Default::default()
             }
             .encode_to_vec(),
             g,
@@ -28239,6 +28381,7 @@ async fn qual_ev_0118_a_reviewed_plan_version_is_the_one_the_resumed_run_execute
         max_tool_calls: 0,
         max_no_progress_turns: 4,
         skills: vec![],
+        ..Default::default()
     }
     .encode_to_vec();
     let _: TaskRunStarted = Client::result(
@@ -28938,6 +29081,7 @@ async fn qual_epr_007_the_reviewer_slot_activates_on_the_gate_validates_findings
         max_tool_calls: 0,
         max_no_progress_turns: 4,
         skills: vec![],
+        ..Default::default()
     }
     .encode_to_vec();
     let _: TaskRunStarted = Client::result(
@@ -29343,6 +29487,7 @@ async fn m6_3_subagents_are_admitted_transactionally_and_hand_typed_results_back
                 max_tool_calls: 0,
                 max_no_progress_turns: 4,
                 skills: vec![],
+                ..Default::default()
             }
             .encode_to_vec(),
             g,
@@ -29760,6 +29905,7 @@ async fn m6_3_subagents_are_admitted_transactionally_and_hand_typed_results_back
                 max_tool_calls: 0,
                 max_no_progress_turns: 4,
                 skills: vec![],
+                ..Default::default()
             }
             .encode_to_vec(),
             g2,
@@ -29865,6 +30011,7 @@ async fn m6_3_subagents_are_admitted_transactionally_and_hand_typed_results_back
                 max_tool_calls: 0,
                 max_no_progress_turns: 4,
                 skills: vec![],
+                ..Default::default()
             }
             .encode_to_vec(),
             g3,
@@ -30363,6 +30510,7 @@ async fn qual_px_004_external_diagnostics_are_provenance_bound_context_and_never
         max_tool_calls: 0,
         max_no_progress_turns: 4,
         skills: vec![],
+        ..Default::default()
     }
     .encode_to_vec();
     let _: TaskRunStarted = Client::result(
@@ -31014,6 +31162,7 @@ async fn qual_px_007_a_reviewed_result_opens_and_updates_a_pull_request_as_appro
         max_tool_calls: 0,
         max_no_progress_turns: 4,
         skills: vec![],
+        ..Default::default()
     }
     .encode_to_vec();
     let _: TaskRunStarted = Client::result(
@@ -31207,6 +31356,7 @@ async fn qual_px_007_a_reviewed_result_opens_and_updates_a_pull_request_as_appro
         max_tool_calls: 0,
         max_no_progress_turns: 4,
         skills: vec![],
+        ..Default::default()
     }
     .encode_to_vec();
     let _: TaskRunStarted = Client::result(
@@ -31340,6 +31490,7 @@ async fn qual_px_010_a_task_from_a_forge_issue_carries_the_issue_as_untrusted_co
                 workspace_root: root.clone(),
                 issue_url: url.to_owned(),
                 issue_json: String::new(),
+                ..Default::default()
             }
             .encode_to_vec(),
             g,
@@ -31467,6 +31618,7 @@ async fn qual_px_010_a_task_from_a_forge_issue_carries_the_issue_as_untrusted_co
         max_tool_calls: 0,
         max_no_progress_turns: 4,
         skills: vec![],
+        ..Default::default()
     }
     .encode_to_vec();
     let _: TaskRunStarted = Client::result(
@@ -31684,6 +31836,7 @@ async fn qual_m7_1_a_browser_session_is_hosted_by_the_desktop_and_driven_through
                 max_tool_calls: 0,
                 max_no_progress_turns: 0,
                 skills: vec![],
+                ..Default::default()
             }
             .encode_to_vec(),
             g,
@@ -31963,6 +32116,7 @@ async fn qual_m7_2_entities_carry_stable_references_and_a_changed_element_resolv
                 // this run reads it three times on purpose.
                 max_no_progress_turns: 4,
                 skills: vec![],
+                ..Default::default()
             }
             .encode_to_vec(),
             g,
@@ -32190,6 +32344,7 @@ async fn qual_m7_3_page_reads_after_the_first_are_bounded_deltas_between_fingerp
                 // Five reads in a row are not progress (docs/28 §5); this run reads on purpose.
                 max_no_progress_turns: 8,
                 skills: vec![],
+                ..Default::default()
             }
             .encode_to_vec(),
             g,
@@ -32489,6 +32644,7 @@ async fn qual_m7_4_actions_run_by_reference_under_the_effect_they_carry_and_chec
                 max_tool_calls: 0,
                 max_no_progress_turns: 6,
                 skills: vec![],
+                ..Default::default()
             }
             .encode_to_vec(),
             g,
@@ -32790,6 +32946,7 @@ async fn qual_m7_5_a_visual_region_is_captured_targeted_and_clicked_by_a_point_w
                 max_tool_calls: 0,
                 max_no_progress_turns: 6,
                 skills: vec![],
+                ..Default::default()
             }
             .encode_to_vec(),
             g,
@@ -33320,6 +33477,7 @@ async fn qual_m7_7_hostile_page_and_readme_are_data_the_key_never_leaves_and_the
                 max_tool_calls: 0,
                 max_no_progress_turns: 8,
                 skills: vec![],
+                ..Default::default()
             }
             .encode_to_vec(),
             g,
@@ -33661,6 +33819,7 @@ async fn qual_m7_8_a_credential_is_filled_by_handle_into_its_bound_origin_only_a
                 max_tool_calls: 0,
                 max_no_progress_turns: 8,
                 skills: vec![],
+                ..Default::default()
             }
             .encode_to_vec(),
             g,
@@ -34713,6 +34872,7 @@ async fn qual_ev_0086_a_visual_fallback_without_a_verified_postcondition_blocks_
                 max_tool_calls: 0,
                 max_no_progress_turns: 8,
                 skills: vec![],
+                ..Default::default()
             }
             .encode_to_vec(),
             g,
@@ -34868,6 +35028,7 @@ async fn qual_ev_0082_0234_0277_0282_an_accessible_form_needs_no_pixels_and_a_ca
                 max_tool_calls: 0,
                 max_no_progress_turns: 8,
                 skills: vec![],
+                ..Default::default()
             }
             .encode_to_vec(),
             g,
@@ -35023,6 +35184,7 @@ async fn start_run(
                 max_tool_calls: 0,
                 max_no_progress_turns: 0,
                 skills: vec![],
+                ..Default::default()
             }
             .encode_to_vec(),
             g,
@@ -35486,6 +35648,7 @@ async fn qual_ev_0162_memory_is_proposed_read_and_promoted_under_governance_no_t
                 max_tool_calls: 0,
                 max_no_progress_turns: 10,
                 skills: vec![],
+                ..Default::default()
             }
             .encode_to_vec(),
             g,
@@ -35601,6 +35764,7 @@ async fn qual_ev_0162_memory_is_proposed_read_and_promoted_under_governance_no_t
                 max_tool_calls: 0,
                 max_no_progress_turns: 10,
                 skills: vec![],
+                ..Default::default()
             }
             .encode_to_vec(),
             g2,
@@ -35775,6 +35939,7 @@ async fn qual_ev_0270_the_protected_effect_receipt_chain_detects_tamper_delete_a
                 workspace_root: root.clone(),
                 issue_url: String::new(),
                 issue_json: String::new(),
+                ..Default::default()
             }
             .encode_to_vec(),
             g,
@@ -36206,6 +36371,7 @@ async fn qual_ev_0104_0193_a_real_mcp_server_lists_calls_and_cancels_while_two_s
                     workspace_root: root.into(),
                     issue_url: String::new(),
                     issue_json: String::new(),
+                    ..Default::default()
                 }
                 .encode_to_vec(),
                 g,
@@ -36863,6 +37029,7 @@ async fn qual_ev_0128_layered_mcp_configuration_resolves_deterministically_and_a
                     workspace_root: root.into(),
                     issue_url: String::new(),
                     issue_json: String::new(),
+                    ..Default::default()
                 }
                 .encode_to_vec(),
                 g,
@@ -37104,6 +37271,7 @@ async fn qual_ev_0187_an_mcp_image_result_reaches_a_vision_capable_model_through
                 max_tool_calls: 0,
                 max_no_progress_turns: 6,
                 skills: vec![],
+                ..Default::default()
             }
             .encode_to_vec(),
             g,
@@ -38032,6 +38200,7 @@ fn start_task(t: &Id, id: u8, g: Option<u64>) -> CommandEnvelope {
             max_tool_calls: 0,
             max_no_progress_turns: 2,
             skills: vec![],
+            ..Default::default()
         }
         .encode_to_vec(),
         g,
@@ -38918,6 +39087,7 @@ async fn qual_px_009_ci_results_are_evidence_with_provenance_and_never_a_verific
                 max_tool_calls: 0,
                 max_no_progress_turns: 2,
                 skills: vec![],
+                ..Default::default()
             }
             .encode_to_vec(),
             g,
@@ -39264,6 +39434,7 @@ async fn qual_px_008_allowed_review_comments_steer_as_untrusted_input_and_grant_
                 max_tool_calls: 0,
                 max_no_progress_turns: 4,
                 skills: vec![],
+                ..Default::default()
             }
             .encode_to_vec(),
             g,
@@ -39583,6 +39754,7 @@ async fn qual_ev_0066_an_external_effect_is_never_undoable_and_its_compensation_
                 max_tool_calls: 0,
                 max_no_progress_turns: 4,
                 skills: vec![],
+                ..Default::default()
             }
             .encode_to_vec(),
             g,
@@ -39900,6 +40072,7 @@ async fn qual_ev_0041_a_tightened_policy_applies_from_the_next_round_and_the_cal
                 max_tool_calls: 0,
                 max_no_progress_turns: 4,
                 skills: vec![],
+                ..Default::default()
             }
             .encode_to_vec(),
             g,
@@ -40507,6 +40680,7 @@ async fn qual_ev_0029_hard_filters_decide_first_and_the_decision_replays() {
                 max_tool_calls: 0,
                 max_no_progress_turns: 6,
                 skills: vec![],
+                ..Default::default()
             }
             .encode_to_vec(),
             g,
@@ -41167,6 +41341,7 @@ async fn qual_ev_0042_a_slow_or_failing_hook_follows_its_fail_policy_and_cannot_
                 max_tool_calls: 0,
                 max_no_progress_turns: 4,
                 skills: vec![],
+                ..Default::default()
             }
             .encode_to_vec(),
             g,
@@ -42162,6 +42337,7 @@ async fn qual_ev_0138_an_extension_crash_or_timeout_cannot_bypass_the_core_or_co
                 max_tool_calls: 0,
                 max_no_progress_turns: 6,
                 skills: vec![],
+                ..Default::default()
             }
             .encode_to_vec(),
             g,
@@ -42249,6 +42425,7 @@ async fn qual_ev_0138_an_extension_crash_or_timeout_cannot_bypass_the_core_or_co
                 max_tool_calls: 0,
                 max_no_progress_turns: 4,
                 skills: vec![],
+                ..Default::default()
             }
             .encode_to_vec(),
             g,
@@ -42500,6 +42677,7 @@ async fn qual_ev_0183_a_compatibility_fixture_imports_with_every_item_labelled_a
                 max_tool_calls: 0,
                 max_no_progress_turns: 4,
                 skills: vec![],
+                ..Default::default()
             }
             .encode_to_vec(),
             g,
@@ -43124,6 +43302,7 @@ async fn qual_ev_0017_a_secret_bearing_internal_error_is_redacted_for_the_person
                 max_tool_calls: 0,
                 max_no_progress_turns: 3,
                 skills: vec![],
+                ..Default::default()
             }
             .encode_to_vec(),
             g,
@@ -43390,6 +43569,7 @@ async fn qual_ev_0142_the_diagnostics_export_replays_evidence_metadata_and_holds
                     workspace_root: root.into(),
                     issue_url: String::new(),
                     issue_json: String::new(),
+                    ..Default::default()
                 }
                 .encode_to_vec(),
                 g,
@@ -43414,6 +43594,7 @@ async fn qual_ev_0142_the_diagnostics_export_replays_evidence_metadata_and_holds
                     max_tool_calls: 0,
                     max_no_progress_turns: 3,
                     skills: vec![],
+                    ..Default::default()
                 }
                 .encode_to_vec(),
                 g,
@@ -43891,6 +44072,7 @@ async fn m10_1_the_dashboard_is_the_sessions_ledger_ladder_and_log_aggregated() 
                 max_tool_calls: 0,
                 max_no_progress_turns: 3,
                 skills: vec![],
+                ..Default::default()
             }
             .encode_to_vec(),
             g,
@@ -43913,6 +44095,7 @@ async fn m10_1_the_dashboard_is_the_sessions_ledger_ladder_and_log_aggregated() 
                 max_tool_calls: 0,
                 max_no_progress_turns: 3,
                 skills: vec![],
+                ..Default::default()
             }
             .encode_to_vec(),
             g,
@@ -44254,6 +44437,7 @@ async fn qual_epr_012_a_policy_is_searched_canaried_and_promoted_only_on_its_evi
                 max_tool_calls: 0,
                 max_no_progress_turns: 6,
                 skills: vec![],
+                ..Default::default()
             }
             .encode_to_vec(),
         )
@@ -45197,6 +45381,7 @@ async fn qual_epr_013_statistics_are_keyed_on_qualified_skill_combinations_and_p
                         workspace_root: root.into(),
                         issue_url: String::new(),
                         issue_json: String::new(),
+                        ..Default::default()
                     }
                     .encode_to_vec(),
                     g,
@@ -45220,6 +45405,7 @@ async fn qual_epr_013_statistics_are_keyed_on_qualified_skill_combinations_and_p
                 max_tool_calls: 0,
                 max_no_progress_turns: 2,
                 skills: skills.iter().map(|s| (*s).to_owned()).collect(),
+                ..Default::default()
             }
             .encode_to_vec(),
         )
@@ -45880,6 +46066,7 @@ async fn fix_05_a_corrupt_configuration_file_refuses_the_task_start_and_names_th
                 max_tool_calls: 0,
                 max_no_progress_turns: 5,
                 skills: vec![],
+                ..Default::default()
             }
             .encode_to_vec(),
             g,
@@ -46021,6 +46208,7 @@ async fn fix_05_a_configuration_file_that_breaks_mid_run_stops_the_run_at_the_ne
                     max_tool_calls: 0,
                     max_no_progress_turns: 5,
                     skills: vec![],
+                    ..Default::default()
                 }
                 .encode_to_vec(),
                 g,
@@ -46388,6 +46576,7 @@ async fn fix_08_core_killed_between_dispatch_and_result_leaves_an_authorization_
         max_tool_calls: 0,
         max_no_progress_turns: 0,
         skills: vec![],
+        ..Default::default()
     }
     .encode_to_vec();
     let ack = c
@@ -46564,6 +46753,7 @@ async fn fix_12_a_pack_excerpt_is_dropped_from_the_prompt_after_its_file_is_edit
                 max_tool_calls: 0,
                 max_no_progress_turns: 4,
                 skills: vec![],
+                ..Default::default()
             }
             .encode_to_vec(),
             g,
@@ -46655,6 +46845,7 @@ async fn fix_12_a_pack_for_a_question_names_the_region_and_survives_a_core_resta
                 max_tool_calls: 0,
                 max_no_progress_turns: 4,
                 skills: vec![],
+                ..Default::default()
             }
             .encode_to_vec(),
             g,
@@ -46821,6 +47012,7 @@ async fn fix16_start(c: &mut Client, task: &Id, id: u8, g: Option<u64>) {
                 max_tool_calls: 0,
                 max_no_progress_turns: 6,
                 skills: vec![],
+                ..Default::default()
             }
             .encode_to_vec(),
             g,

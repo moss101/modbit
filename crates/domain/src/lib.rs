@@ -21,6 +21,7 @@ pub mod failure;
 pub mod ids;
 pub mod lease;
 pub mod media;
+pub mod mode;
 pub mod routing;
 pub mod run;
 pub mod session;

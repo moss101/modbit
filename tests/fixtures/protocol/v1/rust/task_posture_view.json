@@ -1,0 +1,36 @@
+{
+  "expected": {
+    "mode": "TASK_MODE_PLAN",
+    "modeInForce": "TASK_MODE_AGENT",
+    "modeOffset": "9007199254740993",
+    "posture": {
+      "allowedCapabilities": [
+        "fs.read",
+        "git.read"
+      ],
+      "effectCeiling": "READONLY",
+      "reproductionFirst": false,
+      "subagents": false,
+      "writes": false
+    },
+    "preference": {
+      "appliedOffset": "0",
+      "effort": "high",
+      "effortApplied": "",
+      "objective": "OBJECTIVE_PROFILE_COST",
+      "offset": "41",
+      "pinEndpoint": "openai",
+      "pinModel": "gpt-5-mini",
+      "serviceTier": "flex",
+      "serviceTierApplied": ""
+    },
+    "routing": {
+      "detail": "no signed registry is active",
+      "floorMode": "",
+      "outcome": "DIRECT",
+      "reasonCode": "NO_ACTIVE_REGISTRY"
+    },
+    "taskId": "31313131313131313131313131313131"
+  },
+  "type": "modbit.v1.TaskPostureView"
+}

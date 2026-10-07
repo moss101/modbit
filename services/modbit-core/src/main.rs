@@ -67,6 +67,7 @@ mod spawn;
 mod statistics;
 mod stream;
 mod subagent;
+mod tasking;
 mod terminal_stream;
 mod tools;
 mod transcript;
