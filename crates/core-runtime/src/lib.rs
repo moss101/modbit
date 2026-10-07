@@ -17,6 +17,7 @@
 #![forbid(unsafe_code)]
 
 pub mod admission;
+pub mod budget;
 pub mod capacity;
 pub mod conflict;
 pub mod diagnostics;

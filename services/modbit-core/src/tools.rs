@@ -903,6 +903,24 @@ impl ToolHost {
             .configurations
             .try_for_task(task_id, &self.data_dir, root_text.as_deref())
             .map_err(|e| anyhow::anyhow!("{}: {e}", crate::config::ConfigError::CODE))?;
+        // REQ-PX-116: a lease that does not cover the worktree's root reads
+        // only part of it; searches are narrowed to that part.
+        let read_selectors: Vec<String> = match (&lease, &workspace_root) {
+            (Some(l), Some(root)) => {
+                let sels: Vec<String> = l
+                    .resources
+                    .iter()
+                    .filter(|r| r.starts_with("fs.read:"))
+                    .cloned()
+                    .collect();
+                let covers_root = sels.iter().any(|s| {
+                    modbit_policy::kernel::ResourceSelector::parse(s)
+                        .is_some_and(|sel| sel.covers(root.trim_end_matches(['/', '\\'])))
+                });
+                if covers_root { vec![] } else { sels }
+            }
+            _ => vec![],
+        };
         let port = KernelPort {
             kernel: CapabilityKernel::default(),
             lease,
@@ -939,6 +957,8 @@ impl ToolHost {
                 session_id,
                 task_id,
                 workspace: Arc::clone(ws),
+                read_selectors: read_selectors.clone(),
+                scope_root: workspace_root.clone().unwrap_or_default(),
             })),
             _ => None,
         };
@@ -1147,6 +1167,23 @@ impl ToolHost {
                 })
             }),
             secrets_in_custody,
+            // REQ-PX-105: `skill.load` reads the registry as the files on
+            // disk say now, under the owner's trust decisions. Built only
+            // for the call that needs it.
+            skills: (tool_name == "skill.load").then(|| {
+                Arc::new(crate::skills::SkillsPort {
+                    data_dir: self.data_dir.clone(),
+                    workspace_root: workspace_root.clone(),
+                    extension_dirs: self
+                        .hooks
+                        .loaded_now(session_id)
+                        .iter()
+                        .filter(|e| e.active())
+                        .map(|e| std::path::PathBuf::from(&e.path).join("skills"))
+                        .filter(|p| p.is_dir())
+                        .collect(),
+                }) as Arc<dyn modbit_tools::pipeline::SkillPort>
+            }),
             // M9.1 (REQ-EV-0162): the governed engineering-memory port over
             // the Core's durable store and the task's scope chain. The user
             // scope and the author come from the actor; the repository scope
@@ -2789,6 +2826,11 @@ struct IndexPort {
     session_id: SessionId,
     task_id: TaskId,
     workspace: Arc<Mutex<WorkspaceService>>,
+    /// The `fs.read` selectors of a lease that reads less than the whole
+    /// worktree (a child with a `read_scope`); empty = unrestricted.
+    read_selectors: Vec<String>,
+    /// The root those selectors are spelled from.
+    scope_root: String,
 }
 
 /// Diagnostic linkage (docs/18): the failing checks of the task's
@@ -3015,8 +3057,52 @@ fn symbol_spans(symbols: &modbit_retrieval::SymbolIndex, path: &str) -> Vec<(Str
     symbols.chunk_spans(path, modbit_retrieval::semantic::MAX_CHUNK_BYTES)
 }
 
+/// Drop from `v` every element of an array that is an object naming a
+/// `path` the selectors do not cover (REQ-PX-116): a child whose lease reads
+/// only part of the worktree is not shown the rest by a search.
+fn scope_results(v: &mut serde_json::Value, root: &str, selectors: &[String]) {
+    let inside = |path: &str| {
+        let resource = format!(
+            "{}/{}",
+            root.trim_end_matches('/'),
+            path.trim_start_matches("./")
+        );
+        selectors.iter().any(|s| {
+            modbit_policy::kernel::ResourceSelector::parse(s)
+                .is_some_and(|sel| sel.covers(&resource))
+        })
+    };
+    match v {
+        serde_json::Value::Array(items) => {
+            items.retain(|e| e.get("path").and_then(|p| p.as_str()).is_none_or(&inside));
+            for e in items.iter_mut() {
+                scope_results(e, root, selectors);
+            }
+        }
+        serde_json::Value::Object(map) => {
+            for e in map.values_mut() {
+                scope_results(e, root, selectors);
+            }
+        }
+        _ => {}
+    }
+}
+
 impl modbit_tools::SearchPort for IndexPort {
     fn search(
+        &self,
+        req: &modbit_tools::SearchRequest,
+    ) -> std::result::Result<serde_json::Value, (String, String)> {
+        let mut out = self.search_unscoped(req)?;
+        if !self.read_selectors.is_empty() {
+            scope_results(&mut out, &self.scope_root, &self.read_selectors);
+        }
+        Ok(out)
+    }
+}
+
+impl IndexPort {
+    fn search_unscoped(
         &self,
         req: &modbit_tools::SearchRequest,
     ) -> std::result::Result<serde_json::Value, (String, String)> {

@@ -90,7 +90,7 @@ const MAX_CONTEXT_DOCUMENT_BYTES: usize = 256 * 1024;
 
 /// Fencing (docs/13, docs/33): a mutating command must present the session's
 /// current lease generation in `expected_generation`.
-async fn require_lease(
+pub(crate) async fn require_lease(
     core: &Core,
     cid: &Option<wire::Id>,
     env: &CommandEnvelope,
@@ -652,6 +652,10 @@ async fn serve_connection(core: Arc<Core>, mut stream: BoxedStream) -> Result<()
                     "ListQuestions",
                     "RespondToQuestion",
                     "IngestAttachment",
+                    "SetTaskBudgets",
+                    "ListSkills",
+                    "TrustSkill",
+                    "UntrustSkill",
                 ]
                 .map(String::from)
                 .to_vec(),
@@ -1036,7 +1040,7 @@ async fn serve_frames(
     }
 }
 
-fn id16(id: &wire::Id) -> Option<[u8; 16]> {
+pub(crate) fn id16(id: &wire::Id) -> Option<[u8; 16]> {
     id.value.as_slice().try_into().ok()
 }
 
@@ -1173,6 +1177,12 @@ fn required_client_capability(env: &CommandEnvelope) -> Option<&'static str> {
             "repository.trust"
         }
         "RunExtensionCommand" => "task.author",
+        // REQ-PX-116: a task's limits are the author's; REQ-PX-105: letting
+        // a skill reach the model is trusting content a person did not
+        // write to steer the agent — the same class of decision as trusting
+        // the repository.
+        "SetTaskBudgets" => "task.author",
+        "TrustSkill" | "UntrustSkill" => "repository.trust",
         "ImportAgentConfig" => "repository.trust",
         "ConfigureSandboxGateway" => "sandbox.configure",
         "ExportHandoff" => "task.author",
@@ -1513,7 +1523,11 @@ async fn attach_browser_host(
     )
 }
 
-fn reject(command_id: Option<wire::Id>, code: &str, message: impl Into<String>) -> CommandAck {
+pub(crate) fn reject(
+    command_id: Option<wire::Id>,
+    code: &str,
+    message: impl Into<String>,
+) -> CommandAck {
     CommandAck {
         command_id,
         status: CommandStatus::Rejected as i32,
@@ -1523,7 +1537,7 @@ fn reject(command_id: Option<wire::Id>, code: &str, message: impl Into<String>) 
     }
 }
 
-fn accept(command_id: Option<wire::Id>, replayed: bool, result: Vec<u8>) -> CommandAck {
+pub(crate) fn accept(command_id: Option<wire::Id>, replayed: bool, result: Vec<u8>) -> CommandAck {
     CommandAck {
         command_id,
         status: if replayed {
@@ -5044,6 +5058,12 @@ async fn handle_command(core: &Arc<Core>, env: CommandEnvelope) -> CommandAck {
                 Err((code, detail)) => reject(cid, &code, detail),
             }
         }
+        "SetTaskBudgets" => {
+            crate::budgets::set(core, cid, &env, record("SetTaskBudgets"), actor).await
+        }
+        "ListSkills" | "TrustSkill" | "UntrustSkill" => {
+            crate::skills::handle(core, cid, &env, actor).await
+        }
         "ListHooks" => {
             let Ok(p) = wire::ListHooks::decode(env.payload.as_slice()) else {
                 return reject(cid, "BAD_PAYLOAD", "ListHooks");
@@ -6654,7 +6674,7 @@ fn typed<E: serde::Serialize>(event_type: &str, e: &E, actor: Actor) -> NewEvent
     ev
 }
 
-fn split(outcome: CommandOutcome) -> (Vec<StoredEvent>, bool) {
+pub(crate) fn split(outcome: CommandOutcome) -> (Vec<StoredEvent>, bool) {
     match outcome {
         CommandOutcome::Applied(e) => (e, false),
         CommandOutcome::Replayed(e) => (e, true),

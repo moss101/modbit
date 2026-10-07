@@ -3270,6 +3270,55 @@ export declare type TaskEconomicsView = Message<"modbit.v1.TaskEconomicsView"> &
    * @generated from field: repeated modbit.v1.RunUsageView runs = 32;
    */
   runs: RunUsageView[];
+
+  /**
+   * REQ-PX-116 (field block 240-259): the children's spend counts with the parent's.
+   *
+   * spend of the task's children (their own priced calls)
+   *
+   * @generated from field: uint64 children_cost_minor = 240;
+   */
+  childrenCostMinor: bigint;
+
+  /**
+   * @generated from field: uint32 children_model_calls = 241;
+   */
+  childrenModelCalls: number;
+
+  /**
+   * cost_minor + children_cost_minor
+   *
+   * @generated from field: uint64 subtree_cost_minor = 242;
+   */
+  subtreeCostMinor: bigint;
+
+  /**
+   * child calls whose cost is unknown (never counted as zero)
+   *
+   * @generated from field: uint32 children_unmetered_calls = 243;
+   */
+  childrenUnmeteredCalls: number;
+
+  /**
+   * the task's cap, 0 = none
+   *
+   * @generated from field: uint64 cost_cap_minor = 244;
+   */
+  costCapMinor: bigint;
+
+  /**
+   * held for live children at this moment
+   *
+   * @generated from field: uint64 cost_reserved_minor = 245;
+   */
+  costReservedMinor: bigint;
+
+  /**
+   * cap - own - children committed; 0 when there is no cap
+   *
+   * @generated from field: uint64 cost_remaining_minor = 246;
+   */
+  costRemainingMinor: bigint;
 };
 
 /**

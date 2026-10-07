@@ -10,6 +10,7 @@ publish.workspace = true
 [dependencies]
 modbit-domain.workspace = true
 ed25519-dalek.workspace = true
+globset.workspace = true
 hex.workspace = true
 serde.workspace = true
 serde_json.workspace = true
@@ -17,6 +18,7 @@ sha2.workspace = true
 thiserror.workspace = true
 
 [dev-dependencies]
+proptest.workspace = true
 tempfile.workspace = true
 
 [lints]

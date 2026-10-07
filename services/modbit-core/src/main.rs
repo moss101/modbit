@@ -19,6 +19,7 @@ mod baseline;
 mod branch;
 mod browser;
 mod browser_cloud;
+mod budgets;
 mod capacity;
 mod checkpoint;
 mod ci_evidence;

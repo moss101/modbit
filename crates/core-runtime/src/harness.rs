@@ -15,6 +15,26 @@ pub struct Budgets {
     pub max_tool_calls: u32,
     /// Consecutive turns without progress.
     pub max_consecutive_no_progress_turns: u32,
+    /// Cost cap in the active model registry's minor units (REQ-PX-116);
+    /// `None` = uncapped. Counts the task's own priced calls and what its
+    /// children hold.
+    #[serde(default)]
+    pub max_cost_minor: Option<u64>,
+    /// Wall-clock cap in milliseconds across the task's runs (REQ-PX-116);
+    /// `None` = no deadline. A child's is its parent's remaining time.
+    #[serde(default)]
+    pub max_wall_ms: Option<u64>,
+    /// Children the task may have alive at once; 0 = no delegation.
+    #[serde(default = "default_max_children")]
+    pub max_children: u32,
+}
+
+/// Live children a parent may have at once by default: what the Core's
+/// capacity pool admits beside the parent's own run.
+pub const DEFAULT_MAX_CHILDREN: u32 = 3;
+
+fn default_max_children() -> u32 {
+    DEFAULT_MAX_CHILDREN
 }
 
 impl Default for Budgets {
@@ -25,6 +45,22 @@ impl Default for Budgets {
             // The no-progress bound is the repair policy's, not a second copy.
             max_consecutive_no_progress_turns: RepairPolicy::default()
                 .max_consecutive_no_progress_turns,
+            max_cost_minor: None,
+            max_wall_ms: None,
+            max_children: DEFAULT_MAX_CHILDREN,
+        }
+    }
+}
+
+impl Budgets {
+    /// The caps as the hierarchical arithmetic sees them (`budget`).
+    #[must_use]
+    pub fn caps(&self) -> crate::budget::Caps {
+        crate::budget::Caps {
+            turns: u64::from(self.max_turns),
+            tool_calls: u64::from(self.max_tool_calls),
+            cost_minor: self.max_cost_minor,
+            wall_ms: self.max_wall_ms,
         }
     }
 }
@@ -62,6 +98,31 @@ pub struct HarnessState {
     pub turns: u32,
     /// Tool calls used.
     pub tool_calls: u32,
+    /// Cost of the task's own model calls so far, minor units
+    /// (REQ-PX-116): priced at each call's own binding in the active
+    /// registry, from the canonical usage events.
+    #[serde(default)]
+    pub cost_minor: u64,
+    /// Model calls whose cost cannot be stated (the provider reported no
+    /// usage, or no registry prices the binding). Under a cost cap they
+    /// stop the run: spend control that cannot see the spend is not control.
+    #[serde(default)]
+    pub cost_unmetered_calls: u32,
+    /// Wall clock the task has used across its runs, milliseconds.
+    #[serde(default)]
+    pub wall_ms: u64,
+    /// What the task's children hold against it (REQ-PX-116): reserved
+    /// turns, tool calls and cost of the live ones, the spend of the rest.
+    #[serde(default)]
+    pub children_held: crate::budget::Held,
+    /// Children alive now.
+    #[serde(default)]
+    pub live_children: u32,
+    /// Whether the model has a skill to load this round (REQ-PX-105):
+    /// `skill.load` is projected only then. Set each round from the files
+    /// on disk; never part of the state the model reads.
+    #[serde(skip)]
+    pub skills_loadable: bool,
     /// Current plan.
     pub plan: Option<Plan>,
     /// Original write set (frozen by the first plan).
@@ -650,6 +711,7 @@ pub const CORE_TOOLS: &[&str] = &[
     "search.retrieve",
     "search.exact",
     "context.pack",
+    "skill.load",
 ];
 /// Namespaces that are always core.
 pub const CORE_NAMESPACES: &[&str] = &["fs", "change"];
@@ -700,11 +762,44 @@ pub const WRITE_TOOLS: &[&str] = &[
 impl HarnessState {
     /// Check a turn may start; `Err` names the exhausted budget.
     pub fn check_turn_budget(&self) -> Result<(), Exhausted> {
-        if self.turns >= self.budgets.max_turns {
+        // Turns the children hold count against the parent (REQ-PX-116).
+        let turns = u64::from(self.turns).saturating_add(self.children_held.turns);
+        if turns >= u64::from(self.budgets.max_turns) {
             return Err(Exhausted {
                 budget: "max_turns".into(),
                 limit: u64::from(self.budgets.max_turns),
-                used: u64::from(self.turns),
+                used: turns,
+            });
+        }
+        // The round boundary is where cost and wall clock are judged, on
+        // every path (a direct run included): the spend of the round that
+        // just ended is on the log by now.
+        if let Some(cap) = self.budgets.max_cost_minor {
+            if self.cost_unmetered_calls > 0 {
+                return Err(Exhausted {
+                    budget: "cost_unmetered".into(),
+                    limit: 0,
+                    used: u64::from(self.cost_unmetered_calls),
+                });
+            }
+            let used = self
+                .cost_minor
+                .saturating_add(self.children_held.cost_minor);
+            if used >= cap {
+                return Err(Exhausted {
+                    budget: "max_cost_minor".into(),
+                    limit: cap,
+                    used,
+                });
+            }
+        }
+        if let Some(cap) = self.budgets.max_wall_ms
+            && self.wall_ms >= cap
+        {
+            return Err(Exhausted {
+                budget: "max_wall_ms".into(),
+                limit: cap,
+                used: self.wall_ms,
             });
         }
         if self.no_progress_turns >= self.budgets.max_consecutive_no_progress_turns {
@@ -719,11 +814,12 @@ impl HarnessState {
 
     /// Check a tool call may run.
     pub fn check_tool_budget(&self) -> Result<(), Exhausted> {
-        if self.tool_calls >= self.budgets.max_tool_calls {
+        let calls = u64::from(self.tool_calls).saturating_add(self.children_held.tool_calls);
+        if calls >= u64::from(self.budgets.max_tool_calls) {
             return Err(Exhausted {
                 budget: "max_tool_calls".into(),
                 limit: u64::from(self.budgets.max_tool_calls),
-                used: u64::from(self.tool_calls),
+                used: calls,
             });
         }
         Ok(())

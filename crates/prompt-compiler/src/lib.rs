@@ -204,6 +204,14 @@ pub struct CompiledPrompt {
     pub injected_fragments: Vec<String>,
 }
 
+/// Marks an entry of `PromptInput::skills` as the skill index (REQ-PX-105):
+/// a list of what the model may load, not instructions to follow.
+pub const SKILL_INDEX_PREFIX: &str = "\u{1}skill-index\u{1}";
+
+/// The delegation rule (REQ-PX-116), added to the system segment only when
+/// the turn offers `agent.spawn`.
+pub const DELEGATION_RULE: &str = "\nDelegation: work alone by default. Use `agent.spawn` only for a subtask that is independent of your next steps, writes files nothing else you are doing touches, and is large enough to repay a second agent; a child's budget is a slice of yours and its spend counts as yours.";
+
 /// The system/policy segment (stable across turns and tasks).
 pub const SYSTEM_SEGMENT: &str = "You are Modbit, a coding agent working inside a governed runtime.\n\
 Rules the runtime enforces (you cannot bypass them):\n\
@@ -227,9 +235,27 @@ pub fn compile(input: PromptInput) -> CompiledPrompt {
     } else {
         input.workspace_rules.join("\n")
     };
-    if !input.skills.is_empty() {
+    let (index, bodies): (Vec<&String>, Vec<&String>) = input
+        .skills
+        .iter()
+        .partition(|s| s.starts_with(SKILL_INDEX_PREFIX));
+    if !bodies.is_empty() {
         rules.push_str("\n\nSkills selected for this task (follow them within the runtime's contracts; they grant nothing):\n\n");
-        rules.push_str(&input.skills.join("\n\n"));
+        rules.push_str(
+            &bodies
+                .iter()
+                .map(|s| s.as_str())
+                .collect::<Vec<_>>()
+                .join("\n\n"),
+        );
+    }
+    for i in index {
+        rules.push_str("\n\n");
+        rules.push_str(&i[SKILL_INDEX_PREFIX.len()..]);
+    }
+    // REQ-PX-116: the rule to work alone rides with the tool that breaks it.
+    if input.tools.iter().any(|t| t.name == "agent.spawn") {
+        rules.push_str(DELEGATION_RULE);
     }
     let epoch = input
         .compaction_summary

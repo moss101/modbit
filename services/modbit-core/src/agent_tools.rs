@@ -47,7 +47,7 @@ pub(crate) fn projections() -> Vec<modbit_providers::ToolProjection> {
     vec![
         modbit_providers::ToolProjection {
             name: SPAWN_TOOL.into(),
-            description: "Delegate one bounded subtask to a child agent in its own worktree. Admitted as one transaction (capacity, write-set overlap, worktree, least-privilege lease, node, work ownership) or refused at the failing step; nothing partial. idempotency_key: a retry reattaches. write_scope: the only paths it may write. mode BACKGROUND runs detached (collect with agent.wait); FOREGROUND waits here; a child your own pending work depends on runs FOREGROUND regardless (scheduling BLOCKING).".into(),
+            description: "Delegate one bounded subtask to a child agent in its own worktree. Work alone unless the subtask is separable: independent of your next steps, disjoint in what it writes, and large enough to pay for a second agent; do the rest yourself. Admitted as one transaction (capacity, write-set overlap, worktree, least-privilege lease, node, work ownership, a slice of your own budget) or refused at the failing step; nothing partial. A child's budget (turns, tool calls, max_cost_minor, max_wall_ms) is clamped to what you have left and reserved against you: its spend is yours, and what it does not use comes back when it stops. read_scope: the only paths it may read (its write_scope is readable too); outside it a read is refused. idempotency_key: a retry reattaches. write_scope: the only paths it may write. mode BACKGROUND runs detached (collect with agent.wait); FOREGROUND waits here; a child your own pending work depends on runs FOREGROUND regardless (scheduling BLOCKING).".into(),
             input_schema: serde_json::json!({"type":"object","properties":{
                 "idempotency_key":{"type":"string","minLength":1},
                 "objective":{"type":"string","minLength":1},
@@ -59,6 +59,8 @@ pub(crate) fn projections() -> Vec<modbit_providers::ToolProjection> {
                 "verification":{"type":"string"},
                 "max_turns":{"type":"integer","minimum":1},
                 "max_tool_calls":{"type":"integer","minimum":0},
+                "max_cost_minor":{"type":"integer","minimum":0},
+                "max_wall_ms":{"type":"integer","minimum":0},
                 "work_node":{"type":"string"},
                 "mode":{"type":"string","enum":["BACKGROUND","FOREGROUND"]},
                 "profile":{"type":"string"}
@@ -325,6 +327,13 @@ pub(crate) async fn handle_spawn(
         spec,
         mode,
         idempotency_key: key.clone(),
+        parent_budgets: state.budgets,
+        parent_own: modbit_core_runtime::budget::Held {
+            turns: u64::from(state.turns),
+            tool_calls: u64::from(state.tool_calls),
+            cost_minor: state.cost_minor,
+            wall_ms: state.wall_ms,
+        },
     };
     match crate::spawn::spawn(core, req, actor).await {
         Ok(s) => {
@@ -333,7 +342,7 @@ pub(crate) async fn handle_spawn(
             // on runs in the foreground.
             let mode = s.mode;
             let mut text = format!(
-                "status: SUCCESS\nagent_id: {}\nchild_task_id: {}\nworktree: {}\nbranch: {}\nwork_node: {}\ncapsule_ref: {}\nticket_id: {}\nreattached: {}\nmode: {:?}\nscheduling: {}{}",
+                "status: SUCCESS\nagent_id: {}\nchild_task_id: {}\nworktree: {}\nbranch: {}\nwork_node: {}\ncapsule_ref: {}\nticket_id: {}\nreattached: {}\nmode: {:?}\nscheduling: {}{}{}",
                 s.agent_id,
                 s.child_task_id,
                 s.worktree,
@@ -344,6 +353,11 @@ pub(crate) async fn handle_spawn(
                 s.reattached,
                 mode,
                 s.scheduling,
+                if s.budget.is_empty() {
+                    String::new()
+                } else {
+                    format!("\nbudget: {}", s.budget)
+                },
                 if s.profile.is_empty() {
                     String::new()
                 } else {

@@ -1057,6 +1057,37 @@ pub enum TaskEvent {
         /// The tools the profile asked for that were dropped, with why.
         #[serde(default)]
         narrowed_tools: Vec<String>,
+        /// REQ-PX-116: what the admission reserved against the parent — the
+        /// child's budget after it was clamped to the parent's remainder.
+        /// Written in the same append as the node and the work ownership,
+        /// so a reservation exists exactly when the child does.
+        #[serde(default)]
+        reserved_turns: u32,
+        /// Tool calls reserved.
+        #[serde(default)]
+        reserved_tool_calls: u32,
+        /// Cost reserved, minor units (0 = the parent had no cost cap).
+        #[serde(default)]
+        reserved_cost_minor: u64,
+        /// Wall clock the child may use, milliseconds (0 = no deadline).
+        #[serde(default)]
+        reserved_wall_ms: u64,
+        /// What the clamp changed, in words (`max_turns 20 -> 7`).
+        #[serde(default)]
+        clamped: Vec<String>,
+    },
+    /// `TaskBudgetsSet` (REQ-PX-116): the cost, wall-clock and delegation
+    /// limits of the task. They bind every later run of it. No state
+    /// change.
+    TaskBudgetsSet {
+        /// Cost cap in minor units; 0 = none.
+        max_cost_minor: u64,
+        /// Wall-clock cap across the task's runs, milliseconds; 0 = none.
+        max_wall_ms: u64,
+        /// Live children at once; 0 = the default.
+        max_children: u32,
+        /// No `agent.spawn` for this task.
+        forbid_spawn: bool,
     },
     /// `SubagentAdmissionRefused`: an admission step failed and everything
     /// taken before it was returned; nothing started (REQ-EV-0267). No
@@ -1302,6 +1333,25 @@ pub enum TaskEvent {
         output_tokens: u64,
         /// Why no description came back, when it did not.
         error: Option<String>,
+    },
+    /// `SkillIndexRecorded` (REQ-PX-105): the skill index the model was told
+    /// of changed — the skills it may load, in the form each took under the
+    /// aggregate budget. Recorded when it differs from the last. No state
+    /// change.
+    SkillIndexRecorded {
+        /// Skills in the index, in order, with the form each took
+        /// (`name:FULL|SHORT|NAME_ONLY|OMITTED`).
+        entries: Vec<String>,
+        /// Skills dropped for want of budget.
+        omitted: u32,
+        /// Tokens the index takes.
+        tokens: u32,
+        /// The aggregate budget of the skill segment.
+        budget_tokens: u32,
+        /// Tokens the injected bodies of selected skills take.
+        body_tokens: u32,
+        /// Hash of the index text.
+        index_hash: String,
     },
     /// `SkillRejected`: a skill named for the task was not used, with why.
     /// No state change.
@@ -2130,11 +2180,13 @@ impl TaskEvent {
             Self::ProgramEnded { .. } => "ProgramEnded",
             Self::SkillSelected { .. } => "SkillSelected",
             Self::SkillRejected { .. } => "SkillRejected",
+            Self::SkillIndexRecorded { .. } => "SkillIndexRecorded",
             Self::RulesSelected { .. } => "RulesSelected",
             Self::AgentNodeCreated { .. } => "AgentNodeCreated",
             Self::AgentNodeTransitioned { .. } => "AgentNodeTransitioned",
             Self::AgentBindingChanged { .. } => "AgentBindingChanged",
             Self::SubagentAdmitted { .. } => "SubagentAdmitted",
+            Self::TaskBudgetsSet { .. } => "TaskBudgetsSet",
             Self::SubagentAdmissionRefused { .. } => "SubagentAdmissionRefused",
             Self::SubagentCapsuleBound { .. } => "SubagentCapsuleBound",
             Self::SubagentResultRecorded { .. } => "SubagentResultRecorded",
@@ -2306,6 +2358,7 @@ impl Task {
             | TaskEvent::ProgramEnded { .. }
             | TaskEvent::SkillSelected { .. }
             | TaskEvent::SkillRejected { .. }
+            | TaskEvent::SkillIndexRecorded { .. }
             | TaskEvent::RulesSelected { .. }
             | TaskEvent::MediaBridged { .. }
             | TaskEvent::CapacityTicketGranted { .. }
@@ -2316,6 +2369,7 @@ impl Task {
             | TaskEvent::AgentBindingChanged { .. }
             | TaskEvent::WorkNodesChanged { .. }
             | TaskEvent::SubagentAdmitted { .. }
+            | TaskEvent::TaskBudgetsSet { .. }
             | TaskEvent::SubagentAdmissionRefused { .. }
             | TaskEvent::SubagentCapsuleBound { .. }
             | TaskEvent::SubagentResultRecorded { .. }

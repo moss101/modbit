@@ -62,6 +62,10 @@ pub(crate) struct ForkRequest {
 pub(crate) struct SubagentFork {
     /// Paths (relative to the worktree) the child may write; empty = all.
     pub write_scope: Vec<String>,
+    /// Paths (relative to the worktree) the child may read; empty = all.
+    /// Its lease's `fs.read` selectors are narrowed to these and to its
+    /// write scope, so the Kernel refuses a read outside them (REQ-PX-116).
+    pub read_scope: Vec<String>,
     /// The highest effect class the child's lease allows.
     pub effect_ceiling_cap: Option<modbit_domain::toolcall::EffectClass>,
 }
@@ -580,6 +584,15 @@ pub(crate) async fn fork(
                 let p = p.trim_end_matches("/**").trim_end_matches("/*");
                 resources.push(format!("fs.write:{worktree}/{p}/**"));
                 resources.push(format!("fs.write:{worktree}/{p}"));
+            }
+        }
+        if !sub.read_scope.is_empty() {
+            resources.retain(|r| !r.starts_with("fs.read:"));
+            for p in sub.read_scope.iter().chain(sub.write_scope.iter()) {
+                let p = p.trim().trim_start_matches("./").trim_end_matches('/');
+                let p = p.trim_end_matches("/**").trim_end_matches("/*");
+                resources.push(format!("fs.read:{worktree}/{p}/**"));
+                resources.push(format!("fs.read:{worktree}/{p}"));
             }
         }
         if let Some(cap) = sub.effect_ceiling_cap

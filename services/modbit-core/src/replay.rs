@@ -463,6 +463,7 @@ pub(crate) async fn start(
             max_turns: 20,
             max_tool_calls: 80,
             max_consecutive_no_progress_turns: 4,
+            ..modbit_core_runtime::Budgets::default()
         },
         pinned: true,
         plan_id: String::new(),
