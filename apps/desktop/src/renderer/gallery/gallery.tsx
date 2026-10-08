@@ -15,9 +15,16 @@ import { ShellFrame } from "../shell/shell-frame.tsx";
 import { StatusRow } from "../shell/status-row.tsx";
 import { TopBar } from "../shell/top-bar.tsx";
 import { DEFAULT_UI_PREFS, type UiPrefs } from "../shell/prefs.ts";
+import { AgentListView } from "../agents/agent-list-view.tsx";
+import { DEFAULT_LIST_PREFS } from "../agents/prefs.ts";
+import { RowView, type RowContext } from "../conversation/rows.tsx";
+import { TailStatus } from "../conversation/conversation.tsx";
+import { AGENT_HEADER_FIXTURES, CONVERSATION_ROW_FIXTURES, GALLERY_NOW } from "./workspace-fixtures.ts";
 import { APPROVAL_FIXTURE, EMPTY_FIXTURE, ERROR_FIXTURE, FIXTURE_ROWS, GENERATING_FIXTURE, OFFLINE_FIXTURE, type GalleryState } from "./fixtures.ts";
 
 const WIDTHS = [1280, 900, 600] as const;
+
+const FIXTURE_CTX: RowContext = { sessionId: null, card: undefined, live: new Map(), approvals: [], openGroups: new Set(), onToggleGroup: () => {}, codeOpen: false, onCodeOpen: () => {}, onResume: () => {}, onCopyTurn: () => {}, highlightRowId: null, latestUserRowId: null };
 
 function applyTheme(theme: ThemePreference): void {
   const root = document.documentElement;
@@ -165,6 +172,48 @@ export function Gallery() {
             <StatusDot status="warn" label="Offline" showLabel /> <strong>{OFFLINE_FIXTURE.title}</strong>
           </p>
           <p>{OFFLINE_FIXTURE.detail}</p>
+        </div>
+      </section>
+
+      <section aria-labelledby="g-agents" data-testid="gallery-agent-list">
+        <h2 id="g-agents">Agent list</h2>
+        <p className="meta">One row of every status class the Core serves: glyph and words, an unread dot, an attention dot, a pin. Fixtures only.</p>
+        <div className="gallery-shell-box" style={{ width: 300, height: 520 }}>
+          <AgentListView
+            headers={AGENT_HEADER_FIXTURES}
+            loaded
+            error={null}
+            selectedId="fixture-task-5"
+            pins={["fixture-task-7"]}
+            grouping="status"
+            filters={{ ...DEFAULT_LIST_PREFS.filters, showArchived: true }}
+            subtitleFields={DEFAULT_LIST_PREFS.subtitle}
+            collapsed={new Set()}
+            nowMs={GALLERY_NOW}
+            query=""
+            search={{ state: "idle", results: null, error: null }}
+            note={null}
+            onQuery={() => {}}
+            onSelect={(id) => note(`agent list: open ${id}`)}
+            onPin={(id) => note(`agent list: pin ${id}`)}
+            onUnpin={(id) => note(`agent list: unpin ${id}`)}
+            onArchive={(id) => note(`agent list: archive ${id}`)}
+            onToggleSection={() => {}}
+            onGrouping={() => {}}
+            onFilters={() => {}}
+            onSubtitleFields={() => {}}
+          />
+        </div>
+      </section>
+
+      <section aria-labelledby="g-conversation" data-testid="gallery-conversation">
+        <h2 id="g-conversation">Conversation rows</h2>
+        <p className="meta">A user message, a folded work group with a failed step, a finished answer with a collapsed code block, a streaming answer, a stopped one, an unread divider, an approval and a failed turn footer.</p>
+        <div className="gallery-card" style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+          {CONVERSATION_ROW_FIXTURES.map((r) => (
+            <RowView key={r.rowId} row={r} ctx={FIXTURE_CTX} />
+          ))}
+          <TailStatus phase="RUNNING" label="Running a command: cargo test" detail="" lastActivityMs={Date.now()} />
         </div>
       </section>
 
