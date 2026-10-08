@@ -690,7 +690,7 @@ async fn qual_px_041_a_streamed_answer_arrives_as_bounded_deltas_before_its_comp
     let half = chunks.len() / 2;
     let base = streaming_model(vec![Step {
         chunks: chunks.clone(),
-        gap_ms: 12,
+        gap_ms: 0,
         pause: Some((half, gate.clone())),
         ..Step::default()
     }])
@@ -829,7 +829,7 @@ async fn qual_px_041_a_provider_that_drops_mid_stream_aborts_the_stream_and_neve
     let (_, chunks) = four_hundred_words();
     let base = streaming_model(vec![Step {
         chunks: chunks[..30].to_vec(),
-        gap_ms: 5,
+        gap_ms: 0,
         end: End::Drop,
         ..Step::default()
     }])
@@ -868,7 +868,7 @@ async fn qual_px_041_a_cancelled_turn_ends_its_stream_as_a_user_interrupt() {
     let (_, chunks) = four_hundred_words();
     let base = streaming_model(vec![Step {
         chunks: chunks[..20].to_vec(),
-        gap_ms: 5,
+        gap_ms: 0,
         end: End::Hang,
         ..Step::default()
     }])
@@ -1025,7 +1025,7 @@ async fn qual_px_041_a_core_killed_mid_stream_leaves_an_aborted_stream_after_res
     let gate = Gate::new();
     let base = streaming_model(vec![Step {
         chunks: chunks[..25].to_vec(),
-        gap_ms: 5,
+        gap_ms: 0,
         end: End::Hang,
         pause: Some((12, gate.clone())),
         ..Step::default()
@@ -1840,7 +1840,7 @@ async fn qual_px_042_a_partial_message_is_never_presented_as_final_text() {
     let (_, chunks) = four_hundred_words();
     let base = streaming_model(vec![Step {
         chunks: chunks[..20].to_vec(),
-        gap_ms: 5,
+        gap_ms: 0,
         end: End::Hang,
         ..Step::default()
     }])

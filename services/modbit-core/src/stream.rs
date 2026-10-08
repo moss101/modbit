@@ -86,10 +86,19 @@ impl Lane {
     }
 
     fn deadline(&self) -> Option<Instant> {
+        self.deadline_from(Instant::now())
+    }
+
+    /// When the next delta is due, judged at `now`. A delta that is due
+    /// "immediately" is due AT `now`, never at a clock reading taken a moment
+    /// later: [`Sink::flush`] compares the deadline with the instant it read
+    /// first, so a deadline stamped by a second clock read lay in the future
+    /// on a clock with fine resolution and the first delta of a quiet stream
+    /// was never published.
+    fn deadline_from(&self, now: Instant) -> Option<Instant> {
         if self.pending.is_empty() || self.closed || self.broken {
             return None;
         }
-        let now = Instant::now();
         // A burst past the bound goes out at once (the held-back tail never
         // makes this spin: it is far smaller than the margin).
         if self.pending.len() >= MAX_DELTA_BYTES + modbit_secrets::redact::TAIL_WINDOW {
@@ -168,7 +177,7 @@ impl Sink {
     pub(crate) async fn flush(&mut self, core: &Core) {
         let now = Instant::now();
         for lane in lanes(&mut self.text, &mut self.reasoning) {
-            if lane.deadline().is_some_and(|d| d <= now) {
+            if lane.deadline_from(now).is_some_and(|d| d <= now) {
                 publish(
                     &self.lineage,
                     &self.actor,
@@ -450,4 +459,28 @@ pub(crate) fn close_after_restart(store: &mut EventStore, tenant: TenantId) -> u
         }
     }
     closed
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    /// The first delta of a stream is due the moment text is pending, when
+    /// judged at the instant the flush took, however fine the clock is.
+    #[test]
+    fn the_first_delta_is_due_at_the_instant_the_flush_judges() {
+        let mut lane = Lane::new(StreamKind::Text);
+        assert_eq!(lane.deadline_from(Instant::now()), None);
+        lane.pending.push_str("word0 word1 ");
+        let now = Instant::now();
+        std::thread::sleep(Duration::from_millis(2));
+        let due = lane.deadline_from(now).expect("text is waiting");
+        assert!(due <= now, "due {due:?} is in the future of {now:?}");
+        // After a flush the next one waits out the interval, never longer.
+        lane.last_flush = Some(now);
+        assert_eq!(
+            lane.deadline_from(now + Duration::from_millis(1)),
+            Some(now + Duration::from_millis(MIN_DELTA_INTERVAL_MS))
+        );
+    }
 }
