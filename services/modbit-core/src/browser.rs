@@ -123,8 +123,11 @@ impl SessionRecord {
             self.known.insert(e.reference.clone(), e.clone());
         }
         let fp = modbit_browser::compiler::state_fingerprint(&page);
-        self.history.retain(|(f, _)| *f != fp);
-        self.history.push_back((fp, page.clone()));
+        // A page with the same content keeps its first entry (and the state
+        // version it was read at): a delta from it says where it started.
+        if !self.history.iter().any(|(f, _)| *f == fp) {
+            self.history.push_back((fp, page.clone()));
+        }
         while self.history.len() > HISTORY {
             self.history.pop_front();
         }

@@ -420,7 +420,14 @@ test("PX-073: the page's permissions are denied and named, signing out wipes the
             continue;
           }
           if (st.isDirectory()) walk(p);
-          else if (st.size < 20_000_000 && readFileSync(p).includes(MARK)) found = true;
+          else if (st.size < 20_000_000) {
+            // Windows keeps some profile files locked while the session lives: a file that cannot be read now is read at the next poll.
+            try {
+              if (readFileSync(p).includes(MARK)) found = true;
+            } catch (e) {
+              if (!["EBUSY", "EPERM", "EACCES", "ENOENT"].includes((e as NodeJS.ErrnoException).code ?? "")) throw e;
+            }
+          }
         }
       };
       walk(dir);

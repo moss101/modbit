@@ -404,6 +404,8 @@ export class BrowserHost {
         const cbs = h.certCallbacks.splice(0);
         if (d === "trust") this.trusts.add(h.workspace, info);
         for (const cb of cbs) cb(d === "trust");
+        // A rejection must not be carried by a connection or a cached verdict: the next load asks again.
+        if (d !== "trust") void electronSession.fromPartition(h.partition).closeAllConnections();
         if (h.certHold === hold) h.certHold = null;
         this.log.push({ browserSessionId: h.browserSessionId, kind: d === "trust" ? "certificate-trusted" : "certificate-rejected", ok: d === "trust", code: `${d} ${hostPort}`, generation: h.leaseGeneration, atMs: Date.now() });
         this.notify("browser:state", { browserSessionId: h.browserSessionId, ...this.state(h), certPending: null, certDecision: d });
@@ -903,6 +905,9 @@ export class BrowserHost {
         case "capture":
           return this.capture(h, req.clip, req.fit ?? null);
         case "act":
+          // An input into a frame is routed to it by hit-testing the composited surface, and a view that is
+          // off the window composites nothing on Linux and Windows: it is parked beside the window for the action.
+          if (req.frame) return this.parked(h, () => this.act(h, req.backend_dom_node_id, req.action, req.value ?? "", req.key ?? "", req.at ?? null, req.credential_handle ?? null, req.frame ?? null));
           return this.act(h, req.backend_dom_node_id, req.action, req.value ?? "", req.key ?? "", req.at ?? null, req.credential_handle ?? null, req.frame ?? null);
         case "scroll":
           return this.scroll(h, req.backend_dom_node_id ?? null, req.frame ?? null, req.mode, req.dx ?? 0, req.dy ?? 0);
@@ -963,12 +968,18 @@ export class BrowserHost {
     const certWaiting = new Promise<"cert">((res) => {
       h.onCertHold = () => res("cert");
     });
+    let failedLoad: { code: number; desc: string } | null = null;
+    const onFail = (_e: unknown, code: number, desc: string, _url: string, isMain: boolean) => {
+      if (isMain && code !== -3) failedLoad = { code, desc };
+    };
+    wc.on("did-fail-load", onFail);
     const loading = wc.loadURL(url).then(
       () => "loaded" as const,
       (e: Error) => e,
     );
     const first = await Promise.race([loading, certWaiting]);
     h.onCertHold = null;
+    wc.removeListener("did-fail-load", onFail);
     if (first === "cert") {
       void loading.catch(() => {});
       const info = h.certHold?.info;
@@ -983,6 +994,11 @@ export class BrowserHost {
       const until = Date.now() + 8_000;
       while (wc.isLoading() && Date.now() < until) await sleep(50);
       if (!wc.isLoading() && wc.getURL().startsWith(u.origin)) return { kind: "state", state: this.state(h) };
+    }
+    if (first === "loaded" && failedLoad !== null) {
+      const f = failedLoad as { code: number; desc: string };
+      if (f.code <= -200 && f.code > -300) return { kind: "error", code: "CERTIFICATE_REJECTED", message: `the certificate of ${u.host} was not accepted (${f.desc}); the person decides` };
+      return { kind: "error", code: "NAVIGATION_FAILED", message: `${f.desc} (${f.code}) loading ${u.host}` };
     }
     if (first !== "loaded") {
       const rejected = h.certHold && h.certHold.isSettled ? "CERTIFICATE_REJECTED" : null;
@@ -1195,6 +1211,21 @@ export class BrowserHost {
       );
     }
     return { kind: "snapshot", state: this.state(h), nodes, truncated, frames: frames.map((f) => ({ key: f.key, origin: f.origin, url: f.url, name: f.name, parent: f.parent, oopif: f.oopif })), change_seq: changeSeq };
+  }
+
+  /** Run `fn` with the view in the window (beside it, out of sight) when it is not shown. */
+  private async parked<T>(h: HostedSession, fn: () => Promise<T>): Promise<T> {
+    const win = this.window();
+    if (h.shown || !win) return fn();
+    const width = win.getContentSize()[0] ?? 1024;
+    win.contentView.addChildView(h.view);
+    try {
+      h.view.setBounds({ ...h.lastBounds, x: width + 64 });
+      await sleep(100);
+      return await fn();
+    } finally {
+      win.contentView.removeChildView(h.view);
+    }
   }
 
   private async capture(h: HostedSession, clip: Clip | null, fit: [number, number] | null): Promise<unknown> {

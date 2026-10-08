@@ -1391,6 +1391,35 @@ async fn act(ctx: &InvokeContext, args: Value) -> ToolOutcome {
     let after = match compiled_page(&port, session, MAX_SNAPSHOT_NODES).await {
         Ok(p) => p,
         Err(o) => {
+            // The input was delivered and the page cannot be read: its process
+            // died, restarted or stopped answering. Nobody knows what the input
+            // did, so the session is latched (a slow host or a dying view reports
+            // this in different words on different platforms).
+            if matches!(
+                o.error_code.as_deref(),
+                Some(
+                    "CDP"
+                        | "VIEW_RESTARTING"
+                        | "BROWSER_TIMEOUT"
+                        | "BROWSER_HOST_GONE"
+                        | "OUTCOME_UNKNOWN"
+                )
+            ) {
+                let why = format!(
+                    "the page could not be read after the input: {}",
+                    o.error_code.as_deref().unwrap_or_default()
+                );
+                return latch_unknown(
+                    ctx,
+                    &port,
+                    session,
+                    "browser.act",
+                    &action,
+                    &reference,
+                    &why,
+                )
+                .await;
+            }
             // The action happened; a page we cannot read now is an unknown
             // outcome for the postcondition, not a failure of the action.
             let mut o = o;
