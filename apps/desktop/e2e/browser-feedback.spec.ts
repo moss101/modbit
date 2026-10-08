@@ -123,7 +123,7 @@ test("console, network, viewport, scroll and wait read a real page; secrets are 
     expect((await eventsOf(page, "BrowserOutcomeReconciled")).length).toBe(1);
     expect((await eventsOf(page, "EffectReceiptAppended")).some((e) => e.receipt?.status === "UNKNOWN_OUTCOME")).toBe(true);
     const log = await page.evaluate(() => window.modbit.browserLog());
-    expect(log.some((l) => l.kind === "act" && l.code === "OUTCOME_UNKNOWN")).toBe(true);
+    expect(log.some((l) => l.kind === "act" && l.code === "OUTCOME_UNKNOWN"), JSON.stringify(log.slice(-14).map((l) => `${l.kind}:${l.ok}:${l.code}:${l.detail ?? ""}`))).toBe(true);
     expect(bsid).toMatch(/^[0-9a-f]{32}$/);
     await closeApp(app);
   } finally {

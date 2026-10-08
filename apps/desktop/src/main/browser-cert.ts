@@ -95,6 +95,8 @@ export type CertDecision = "trust" | "reject" | "timeout";
 /** A request held for a decision: it settles once - trusted, rejected, or rejected by the clock. */
 export class CertHold {
   readonly info: CertInfo;
+  /** When the hold began (ms epoch). */
+  readonly atMs = Date.now();
   readonly settled: Promise<CertDecision>;
   private resolve!: (d: CertDecision) => void;
   private done = false;

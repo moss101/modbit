@@ -662,7 +662,15 @@ export class BrowserHost {
       this.reclaim(h);
       over -= 1;
     }
+    // What could not be reclaimed yet (a view still loading its first page) is looked at again: the cap is a promise, not a hope.
+    if (over > 0 && this.capRetry === null) {
+      this.capRetry = setTimeout(() => {
+        this.capRetry = null;
+        this.enforceHiddenCap();
+      }, 250);
+    }
   }
+  private capRetry: ReturnType<typeof setTimeout> | null = null;
 
   private reclaim(h: HostedSession): void {
     const wc = h.view.webContents;
@@ -995,6 +1003,14 @@ export class BrowserHost {
       while (wc.isLoading() && Date.now() < until) await sleep(50);
       if (!wc.isLoading() && wc.getURL().startsWith(u.origin)) return { kind: "state", state: this.state(h) };
     }
+    if (first === "loaded") {
+      const until = Date.now() + 4_000;
+      while (wc.isLoading() && failedLoad === null && !(h.certHold && !h.certHold.isSettled) && Date.now() < until) await sleep(50);
+    }
+    if (first === "loaded" && h.certHold && !h.certHold.isSettled && h.certHold.atMs >= started) {
+      const info = h.certHold.info;
+      return { kind: "error", code: "CERTIFICATE_PENDING", message: `the certificate of ${info.hostPort} is not trusted (${info.error}); issuer ${info.issuer}, subject ${info.subject}, fingerprint ${info.fingerprint}: the person decides in the Browser panel` };
+    }
     if (first === "loaded" && failedLoad !== null) {
       const f = failedLoad as { code: number; desc: string };
       if (f.code <= -200 && f.code > -300) return { kind: "error", code: "CERTIFICATE_REJECTED", message: `the certificate of ${u.host} was not accepted (${f.desc}); the person decides` };
@@ -1213,6 +1229,17 @@ export class BrowserHost {
     return { kind: "snapshot", state: this.state(h), nodes, truncated, frames: frames.map((f) => ({ key: f.key, origin: f.origin, url: f.url, name: f.name, parent: f.parent, oopif: f.oopif })), change_seq: changeSeq };
   }
 
+  /** Whether the page's process still answers (a crash is found by asking, not by the platform's timing of its event). */
+  private async alive(h: HostedSession): Promise<boolean> {
+    try {
+      const probe = this.send(h, "Runtime.evaluate", { expression: "1", returnByValue: true });
+      const r = await Promise.race([probe, sleep(2_000).then(() => null)]);
+      return r !== null;
+    } catch {
+      return false;
+    }
+  }
+
   /** Run `fn` with the view in the window (beside it, out of sight) when it is not shown. */
   private async parked<T>(h: HostedSession, fn: () => Promise<T>): Promise<T> {
     const win = this.window();
@@ -1419,7 +1446,7 @@ export class BrowserHost {
       const out = await this.perform(h, call, action, value, key, at, credentialHandle, backendNodeId, settle, sessionId, rec, st);
       // IMP-EV-0081 / PX-121: the page's process died while the input was in
       // flight - whatever came back, nobody knows what the input did.
-      if (st.dispatched && (h.goneCount !== goneBefore || wc.isCrashed())) return { kind: "error", code: "OUTCOME_UNKNOWN", message: `the page's process failed during the ${action}; the input may have been delivered` };
+      if (st.dispatched && (h.goneCount !== goneBefore || wc.isCrashed() || !(await this.alive(h)))) return { kind: "error", code: "OUTCOME_UNKNOWN", message: `the page's process failed during the ${action}; the input may have been delivered` };
       // PX-120: the action led the page to a destination the policy refuses.
       const refused = this.mainFrameRefusal(h, started);
       if (refused && (out as { kind?: string }).kind === "acted") return { kind: "error", code: "TARGET_NOT_ALLOWED", message: `${refused.reason} (${describeClass(refused.class)}); the action led the page to a destination the policy refuses` };

@@ -316,7 +316,8 @@ test("PX-073: a certificate error waits for the person - Reject fails the reques
     g[0]!.open();
     // Asked again: pending again (a rejection is not remembered).
     await toolResults(model, 3, 60_000);
-    expect(model.toolTexts[2]).toContain("CERTIFICATE_PENDING");
+    const certDump = async () => JSON.stringify({ described: await ui.evaluate((id) => window.modbit.describeBrowser(id), bsid), log: (await ui.evaluate(() => window.modbit.browserLog())).slice(-10).map((l) => `${l.kind}:${l.code}:${l.detail ?? ""}`) });
+    expect(model.toolTexts[2], await certDump()).toContain("CERTIFICATE_PENDING");
     await expect(ui.getByTestId("browser-cert")).toBeVisible({ timeout: 15_000 });
     await ui.getByTestId("browser-cert-trust").click();
     await expect(ui.getByTestId("browser-cert-trusts").locator("li")).toHaveCount(1, { timeout: 15_000 });
@@ -487,9 +488,11 @@ test("PX-073: a task lists and selects only the views it owns; hidden views are 
     const C = await mk(3);
     const state = async (b: string) => (await ui.evaluate((id) => window.modbit.describeBrowser(id), b))!.reclaimed;
     // A was used last at its selection above, B is held, C is new: with two hidden allowed and three open, the least recently used that may be reclaimed is A.
-    expect(await state(A.bsid)).toBe(true);
-    expect(await state(B.bsid)).toBe(false);
-    expect(await state(C.bsid)).toBe(false);
+    // The cap is enforced as soon as a view can be reclaimed (one still loading its first page waits a moment): wait on the state.
+    const dump = async () => JSON.stringify({ views: await Promise.all([A, B, C].map(async (v) => ({ id: v.bsid.slice(0, 6), d: await ui.evaluate((id) => window.modbit.describeBrowser(id), v.bsid) }))), log: (await ui.evaluate(() => window.modbit.browserLog())).map((l) => `${l.kind}:${l.code}`) });
+    await expect.poll(() => state(A.bsid), { timeout: 15_000, message: await dump() }).toBe(true);
+    expect(await state(B.bsid), await dump()).toBe(false);
+    expect(await state(C.bsid), await dump()).toBe(false);
     // The reclaimed view is the owner's still, and the agent's first request of it states the reset.
     await ui.evaluate(([s, r]) => window.modbit.trustRepository(s!, r!), [sessionId, repo]);
     await ui.evaluate(([s, t]) => window.modbit.startTask(s!, t!), [sessionId, A.taskId]);
