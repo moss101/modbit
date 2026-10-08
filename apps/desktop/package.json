@@ -21,8 +21,10 @@
   },
   "dependencies": {
     "@bufbuild/protobuf": "2.14.1",
+    "@modbit/design-tokens": "workspace:*",
     "@modbit/ide-adapter-core": "workspace:*",
     "@modbit/surface-protocol": "workspace:*",
+    "@modbit/ui": "workspace:*",
     "react": "19.2.8",
     "react-dom": "19.2.8"
   },

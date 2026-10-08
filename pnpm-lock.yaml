@@ -29,12 +29,18 @@ importers:
       '@bufbuild/protobuf':
         specifier: 2.14.1
         version: 2.14.1
+      '@modbit/design-tokens':
+        specifier: workspace:*
+        version: link:../../packages/design-tokens
       '@modbit/ide-adapter-core':
         specifier: workspace:*
         version: link:../../packages/ide-adapter-core
       '@modbit/surface-protocol':
         specifier: workspace:*
         version: link:../../packages/surface-protocol
+      '@modbit/ui':
+        specifier: workspace:*
+        version: link:../../packages/ui
       react:
         specifier: 19.2.8
         version: 19.2.8
@@ -88,7 +94,24 @@ importers:
         specifier: 7.0.2
         version: 7.0.2
 
-  packages/ui: {}
+  packages/ui:
+    dependencies:
+      '@modbit/design-tokens':
+        specifier: workspace:*
+        version: link:../design-tokens
+      react:
+        specifier: 19.2.8
+        version: 19.2.8
+      react-dom:
+        specifier: 19.2.8
+        version: 19.2.8(react@19.2.8)
+    devDependencies:
+      '@types/react':
+        specifier: 19.2.18
+        version: 19.2.18
+      '@types/react-dom':
+        specifier: 19.2.7
+        version: 19.2.7(@types/react@19.2.18)
 
   packages/vscode-adapter:
     dependencies:
