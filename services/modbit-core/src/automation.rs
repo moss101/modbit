@@ -366,8 +366,9 @@ pub(crate) fn payload_document(
 /// The lease of an automation's run: the profile's default lease narrowed to
 /// the operations, resources and effect ceiling the owner approved. It can
 /// only remove authority: an operation the profile does not hold is dropped,
-/// the ceiling is the lower of the two, and a requested resource must lie
-/// inside the workspace.
+/// the ceiling is the lower of the two, and a requested resource is a path
+/// glob *relative to the workspace the run is bound to* (or, for network
+/// access, a host) that can never leave it.
 pub(crate) fn narrow_lease(
     defaults: (Vec<String>, Vec<String>, EffectClass),
     root: Option<&str>,
@@ -401,19 +402,30 @@ pub(crate) fn narrow_lease(
         }
         for r in asked {
             let pattern = &r[prefix.len()..];
-            let inside_root = root.is_some_and(|root| {
-                let root = root.replace('\\', "/");
-                let root = root.trim_end_matches('/');
-                let p = pattern.replace('\\', "/");
-                p.starts_with(&format!("{root}/")) && !p.split('/').any(|s| s == "..")
-            });
-            let pathless = matches!(op.as_str(), "network.egress");
-            if !(inside_root || pathless && !pattern.contains("..") && !pattern.contains('/')) {
+            if op == "network.egress" {
+                if pattern.is_empty() || pattern.contains("..") || pattern.contains('/') {
+                    return Err(format!("`{r}` is not a host"));
+                }
+                out.push(r.clone());
+                continue;
+            }
+            let root = root.ok_or_else(|| format!("`{r}` needs a workspace to be relative to"))?;
+            let rel = pattern.replace('\\', "/");
+            let escapes = rel.is_empty()
+                || rel.starts_with('/')
+                || rel.contains(':')
+                || rel.split('/').any(|s| s == "..");
+            if escapes {
                 return Err(format!(
                     "`{r}` is not inside the workspace the run is bound to"
                 ));
             }
-            out.push(r.clone());
+            let root = root.replace('\\', "/");
+            out.push(format!(
+                "{op}:{}/{}",
+                root.trim_end_matches('/'),
+                rel.trim_start_matches("./")
+            ));
         }
     }
     Ok((out, ops, ceiling))
@@ -437,12 +449,7 @@ struct Ceiling {
     effect: String,
 }
 
-fn ceiling_of(
-    d: &Definition,
-    enabled: Option<&modbit_automation::registry::Enabled>,
-    root: &str,
-    test: bool,
-) -> Ceiling {
+fn ceiling_of(enabled: Option<&modbit_automation::registry::Enabled>, test: bool) -> Ceiling {
     const READ_FLOOR: &[&str] = &["fs.read", "git.read", "memory.query", "external.list"];
     let read_only = test || enabled.is_none_or(|e| e.effects == Effects::ReadOnly);
     if read_only {
@@ -458,15 +465,12 @@ fn ceiling_of(
     let e = enabled.expect("write ceiling needs an approval");
     let mut ops: Vec<String> = READ_FLOOR.iter().map(|s| (*s).to_owned()).collect();
     ops.extend(e.capabilities.iter().cloned());
+    // Path resources are relative to the run's own workspace (the isolated
+    // checkout the Core makes for it); the Core joins the root when it grants them.
     let mut resources = Vec::new();
-    let root_norm = root.replace('\\', "/");
-    let root_norm = root_norm.trim_end_matches('/');
     if e.capabilities.iter().any(|c| c == "fs.write") {
         for p in &e.paths {
-            resources.push(format!(
-                "fs.write:{root_norm}/{}",
-                p.trim_start_matches("./")
-            ));
+            resources.push(format!("fs.write:{}", p.trim_start_matches("./")));
         }
     }
     if e.capabilities.iter().any(|c| c == "network.egress") {
@@ -474,7 +478,6 @@ fn ceiling_of(
             resources.push(format!("network.egress:{h}:443"));
         }
     }
-    let _ = d;
     Ceiling {
         profile: modbit_policy::kernel::PROFILE_LOCAL_TRUSTED,
         operations: ops,
@@ -722,6 +725,31 @@ async fn fire(core: &Arc<Core>, req: FireRequest) -> Result<Fired, Refusal> {
                 }
             }
         };
+        // A repository definition's file must still be the approved bytes
+        // before anything fires; if not, it is disabled and nothing runs.
+        if !req.test
+            && let Err(why) = verify_source(
+                version,
+                st.enabled.as_ref().and_then(|e| e.source_sha256.as_deref()),
+            )
+        {
+            let detail = why.clone();
+            if let Some(agg) = parse_hex16(&req.automation_id) {
+                let _ = append(
+                    core,
+                    &mut reg,
+                    agg,
+                    vec![AutomationEvent::AutomationDisabled {
+                        automation_id: req.automation_id.clone(),
+                        reason: "SOURCE_CHANGED".into(),
+                        detail,
+                        at_ms: now,
+                    }],
+                )
+                .await;
+            }
+            return Err(refuse("SOURCE_CHANGED", why));
+        }
         let d = &version.definition;
         let trigger = d
             .trigger(&req.trigger_id)
@@ -1158,7 +1186,7 @@ async fn dispatch_inner(
                 });
             }
         }
-        let c = ceiling_of(d, st.enabled.as_ref(), &root, run.firing.test);
+        let c = ceiling_of(st.enabled.as_ref(), run.firing.test);
         let is_git = std::path::Path::new(&root).join(".git").exists();
         let mut goal = d.prompt.clone();
         if let Some(inputs) = run.firing.inputs.as_object()
