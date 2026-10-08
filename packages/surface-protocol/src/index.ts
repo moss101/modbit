@@ -19,6 +19,7 @@ export * from "./gen/modbit/v1/terminal_pb.js";
 export * from "./gen/modbit/v1/tasking_pb.js";
 export * from "./gen/modbit/v1/checkpoints_pb.js";
 export * from "./gen/modbit/v1/context_knowledge_pb.js";
+export * from "./gen/modbit/v1/worktrees_pb.js";
 
 /** The protocol version this build speaks (mirrors `modbit_protocol::PROTOCOL_VERSION`). */
 export const PROTOCOL_VERSION = { major: 1, minor: 0 } as const;

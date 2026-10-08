@@ -771,6 +771,69 @@ pub fn samples() -> Vec<Sample> {
             decode: reencode::<AttachTerminal>,
         },
         Sample {
+            // PX-066 (worktrees.proto): the person's apply-back choice.
+            name: "apply_worktree",
+            type_name: "modbit.v1.ApplyWorktree",
+            bytes: ApplyWorktree {
+                task_id: id(0x31),
+                expected_candidate_revision: 18_446_744_073_709_551_615,
+                option: "OVERWRITE".into(),
+                confirm_paths: vec!["a.txt".into(), "src/b ü.rs".into()],
+                remember: false,
+                expected_plan_digest: "ab".repeat(32),
+            }
+            .encode_to_vec(),
+            expected: json!({
+                "taskId": idhex(0x31), "expectedCandidateRevision": "18446744073709551615",
+                "option": "OVERWRITE", "confirmPaths": ["a.txt", "src/b ü.rs"],
+                "remember": false, "expectedPlanDigest": "ab".repeat(32)
+            }),
+            decode: reencode::<ApplyWorktree>,
+        },
+        Sample {
+            // PX-065 (worktrees.proto): one row of the worktree list.
+            name: "worktree_view",
+            type_name: "modbit.v1.WorktreeView",
+            bytes: WorktreeView {
+                worktree_id: "01a1183e-0000-7000-8000-000000000001".into(),
+                task_id: id(0x32),
+                kind: "TASK".into(),
+                path: "/profile/worktrees/x".into(),
+                origin_root: "/work/repo".into(),
+                branch: "modbit/task-x".into(),
+                base_revision: "ab".repeat(20),
+                state: "ACTIVE".into(),
+                disposition: "APPLIED".into(),
+                dirty: true,
+                unapplied: false,
+                changed_files: 4,
+                bytes: 9_007_199_254_740_993,
+                created_at_ms: 1_757_289_600_123,
+                last_activity_ms: 1_757_289_700_000,
+                task_running: false,
+                orphan: false,
+                protected: true,
+                removable: false,
+                removable_reason: "younger than the protection window".into(),
+                setup_status: "PASSED".into(),
+                setup_detail: String::new(),
+                neutralized: vec!["HOOK".into(), "FILTER".into()],
+            }
+            .encode_to_vec(),
+            expected: json!({
+                "worktreeId": "01a1183e-0000-7000-8000-000000000001", "taskId": idhex(0x32),
+                "kind": "TASK", "path": "/profile/worktrees/x", "originRoot": "/work/repo",
+                "branch": "modbit/task-x", "baseRevision": "ab".repeat(20), "state": "ACTIVE",
+                "disposition": "APPLIED", "dirty": true, "unapplied": false, "changedFiles": 4,
+                "bytes": "9007199254740993", "createdAtMs": "1757289600123",
+                "lastActivityMs": "1757289700000", "taskRunning": false, "orphan": false,
+                "protected": true, "removable": false,
+                "removableReason": "younger than the protection window",
+                "setupStatus": "PASSED", "setupDetail": "", "neutralized": ["HOOK", "FILTER"]
+            }),
+            decode: reencode::<WorktreeView>,
+        },
+        Sample {
             name: "output_ref_read_response",
             type_name: "modbit.v1.OutputRefReadResponse",
             bytes: read.encode_to_vec(),
