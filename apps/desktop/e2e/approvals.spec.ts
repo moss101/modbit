@@ -162,19 +162,20 @@ test("PX-058: three pending approvals form a deck, oldest first, each decided on
     await page.getByTestId("approval-run").click();
     await expect.poll(() => remotes(repos[2]!), { timeout: 90_000 }).toEqual(["r3"]);
     expect(remotes(repos[1]!)).toEqual([]);
-    // Skip is a typed denial, not a tool failure, and the agent went on: the skipped call is DENIED and the task took another turn after it.
+    // Skip is a typed user decision: the approval is DENIED by the user, the call ends with the typed code APPROVAL_DENIED, and the agent went on to another turn.
     await expect
       .poll(
         () =>
           page.evaluate(async (t) => {
             const rows = (await window.modbit.transcript(t, { density: "DETAILED" })).rows;
-            const denied = rows.filter((r) => r.kind === "TOOL_CARD" && r.hints.status === "DENIED").length;
+            const denied = rows.filter((r) => r.kind === "APPROVAL_CARD" && r.hints.status === "DENIED" && r.facts.type === "approval" && r.facts.resolver.startsWith("user:")).length;
+            const typed = rows.filter((r) => r.kind === "TOOL_CARD" && r.facts.type === "tool" && r.facts.failureCode === "APPROVAL_DENIED").length;
             const footers = rows.filter((r) => r.kind === "TURN_FOOTER").length;
-            return { denied, moreTurns: footers >= 2 };
+            return { denied, typed, moreTurns: footers >= 2 };
           }, ids[1]!),
         { timeout: 90_000 },
       )
-      .toEqual({ denied: 1, moreTurns: true });
+      .toEqual({ denied: 1, typed: 1, moreTurns: true });
   } finally {
     await closeApp(app);
     model.server.close();
