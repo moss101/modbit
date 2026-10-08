@@ -22,15 +22,45 @@ pub fn guest_bin() -> PathBuf {
     })
 }
 
-/// The `modbit-cli` binary next to the test executables.
+/// The `modbit-cli` binary next to the test executables. The hosted cloud job
+/// builds only core, execd and guest, so a missing CLI is built here, once per
+/// test process, into the target directory the test executable lives in.
+/// `MODBIT_CLI_BIN` overrides the path (and is never built).
 pub fn cli_bin() -> PathBuf {
+    if let Ok(p) = std::env::var("MODBIT_CLI_BIN") {
+        return PathBuf::from(p);
+    }
     let exe = std::env::current_exe().expect("test exe");
     let dir = exe.parent().and_then(|p| p.parent()).expect("target/debug");
-    dir.join(if cfg!(windows) {
+    let bin = dir.join(if cfg!(windows) {
         "modbit-cli.exe"
     } else {
         "modbit-cli"
-    })
+    });
+    static BUILT: std::sync::OnceLock<()> = std::sync::OnceLock::new();
+    BUILT.get_or_init(|| {
+        if bin.exists() {
+            return;
+        }
+        let target = dir.parent().expect("target dir");
+        let cargo = std::env::var("CARGO").unwrap_or_else(|_| "cargo".into());
+        let out = std::process::Command::new(cargo)
+            .args(["build", "--locked", "-p", "modbit-cli", "--target-dir"])
+            .arg(target)
+            .output()
+            .expect("run cargo to build modbit-cli");
+        assert!(
+            out.status.success(),
+            "building modbit-cli on demand failed (set MODBIT_CLI_BIN to a prebuilt binary):\n{}",
+            String::from_utf8_lossy(&out.stderr)
+        );
+        assert!(
+            bin.exists(),
+            "modbit-cli not at {} after build",
+            bin.display()
+        );
+    });
+    bin
 }
 
 /// A Sandbox Gateway on the reference backend (the same guest as a child
