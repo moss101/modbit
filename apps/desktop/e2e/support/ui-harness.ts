@@ -38,7 +38,7 @@ export interface LaunchOptions {
 export async function launch(dataDir: string, opts: LaunchOptions = {}): Promise<{ app: ElectronApplication; page: Page }> {
   const app = await electron.launch({
     args: [join(appDir, opts.outDir ?? "dist", "main", "main.cjs")],
-    env: { ...process.env, MODBIT_DATA_DIR: dataDir, MODBIT_CORE_BIN: coreBin, OPENAI_API_KEY: "", ANTHROPIC_API_KEY: "", MODBIT_SUPPRESS_OS_NOTIFICATIONS: "1", ...opts.env },
+    env: { ...process.env, MODBIT_DATA_DIR: dataDir, MODBIT_CORE_BIN: coreBin, OPENAI_API_KEY: "", ANTHROPIC_API_KEY: "", MODBIT_SUPPRESS_OS_NOTIFICATIONS: "1", MODBIT_QUIT_PROMPT: "off", ...opts.env },
   });
   const page = await app.firstWindow();
   app.process().stderr?.on("data", (d: Buffer) => process.stderr.write(`[electron] ${d}`));
@@ -58,6 +58,16 @@ export async function accessible(page: Page, what: string, selector?: string): P
     return r.violations.map((v) => `${v.id} (${v.impact}): ${v.help} — ${v.nodes.map((n) => n.target.join(" ")).slice(0, 3).join("; ")}`);
   }, selector ?? null);
   expect(violations, `${what}: ${violations.join("\n")}`).toEqual([]);
+}
+
+/**
+ * Lifts the window's 900 x 600 minimum (REQ-PX-049) from the test process, for the one spec that exercises the
+ * renderer's single-pane layout below it. The product keeps the minimum; this only lets that layout be measured.
+ */
+export async function liftMinimumSize(app: ElectronApplication): Promise<void> {
+  await app.evaluate(({ BrowserWindow }) => {
+    BrowserWindow.getAllWindows()[0]!.setMinimumSize(0, 0);
+  });
 }
 
 /** Sets the window's content size from the main process (the real window, not an emulation). */

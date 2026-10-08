@@ -1,11 +1,9 @@
 /**
  * Which typed apps a task can show in the apps panel (AFW-A01, AFW-I01). The
- * panel is hidden until a task has an artifact. Today a task has artifacts
- * only where the Core already produced something to look at: a diff to review
- * (the task reached review, or completed) and a live browser session. The
- * Terminal, Files and Evidence apps are declared so the registry, the
- * shortcuts and the per-task tab memory are complete, and are filled by
- * PX-048; until then they have no artifacts and say so.
+ * panel is hidden until a task has an artifact. A task that has not started has
+ * none. Once it has run it has a change set (the Core serves it in every task
+ * state), a workspace to browse and evidence to read; a terminal appears when
+ * the Core lists one for the task, and a browser when its session is open.
  */
 import type { AppKind } from "./prefs.ts";
 
@@ -17,14 +15,22 @@ export interface TaskLike {
 export interface ArtifactContext {
   /** The task whose browser session is open, if any. */
   browsingTaskId: string | null;
+  /** The tasks the Core lists at least one terminal for. */
+  terminalTaskIds?: ReadonlySet<string> | undefined;
 }
+
+/** States before the task has a workspace to show. */
+const NOT_STARTED = new Set(["Created", "Queued"]);
 
 /** The apps with something to show for this task, in tab order. */
 export function artifactsOf(task: TaskLike | undefined, ctx: ArtifactContext): AppKind[] {
   if (!task) return [];
+  const started = !NOT_STARTED.has(task.state);
   const out: AppKind[] = [];
-  if (task.state === "ReadyForReview" || task.state === "Completed") out.push("changes");
+  if (started) out.push("changes");
+  if (ctx.terminalTaskIds?.has(task.taskId)) out.push("terminal");
   if (ctx.browsingTaskId === task.taskId) out.push("browser");
+  if (started) out.push("files", "evidence");
   return out;
 }
 
@@ -37,10 +43,3 @@ export function panelTaskFor(tasks: readonly (TaskLike & { createdAtMs: number }
 }
 
 export const APP_LABEL: Record<AppKind, string> = { changes: "Changes", terminal: "Terminal", browser: "Browser", files: "Files", evidence: "Evidence" };
-
-/** What an app without a producer says (honest placeholder; PX-048 replaces it). */
-export const APP_PENDING: Partial<Record<AppKind, string>> = {
-  terminal: "The terminal app arrives with PX-048; no terminal stream is wired to this panel yet.",
-  files: "The read-only files app arrives with PX-048.",
-  evidence: "The evidence app arrives with PX-048.",
-};

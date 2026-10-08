@@ -13,6 +13,8 @@ import { THEME_LABEL, THEME_PREFERENCES, type ThemePreference } from "@modbit/de
 import type { AppState } from "../state/use-app.ts";
 import { FleetView } from "../fleet/fleet-view.tsx";
 import { AgentRegion } from "./agent-region.tsx";
+import { useTerminals } from "../apps/use-terminals.ts";
+import { recoverySummary } from "../../main/lifecycle.ts";
 import { AppsPanel } from "./apps-panel.tsx";
 import { artifactsOf, panelTaskFor } from "./artifacts.ts";
 import { shellRegistry, type ShellActions } from "./commands.ts";
@@ -24,6 +26,17 @@ import { StatusRow } from "./status-row.tsx";
 import { TopBar } from "./top-bar.tsx";
 
 const LOCATION = "Local, trusted workspace";
+
+/** A value that follows `value` at most once per `ms` (a task emits events in bursts; the apps read the Core once per beat). */
+function useThrottled<T>(value: T, ms: number): T {
+  const [out, setOut] = useState(value);
+  useEffect(() => {
+    if (Object.is(out, value)) return;
+    const t = setTimeout(() => setOut(value), ms);
+    return () => clearTimeout(t);
+  }, [value, out, ms]);
+  return out;
+}
 
 function applyTheme(theme: ThemePreference): void {
   const root = document.documentElement;
@@ -52,7 +65,12 @@ export function Shell({ app }: { app: AppState }) {
   }, [notice]);
 
   // The task whose artifacts the apps panel shows, and that task's remembered panel state (AFW-A09).
-  const artifactCtx = useMemo(() => ({ browsingTaskId: browsing?.taskId ?? null }), [browsing?.taskId]);
+  const anyRunning = useMemo(() => tasks.some((t) => t.state === "Running"), [tasks]);
+  const { byTask: terminalsByTask, refresh: refreshTerminals } = useTerminals(model.sessionId !== null, anyRunning, model.cursor);
+  const terminalTaskIds = useMemo(() => new Set(terminalsByTask.keys()), [terminalsByTask]);
+  const artifactCtx = useMemo(() => ({ browsingTaskId: browsing?.taskId ?? null, terminalTaskIds }), [browsing?.taskId, terminalTaskIds]);
+  // The terminal each task's panel shows (a view choice; the Core owns the terminals).
+  const [terminalPick, setTerminalPick] = useState<Record<string, string>>({});
   const panelTaskId = useMemo(() => panelTaskFor(tasks, reviewing ?? browsing?.taskId ?? selectedTaskId, artifactCtx), [tasks, reviewing, browsing?.taskId, selectedTaskId, artifactCtx]);
   const panelTask = panelTaskId ? model.tasks.get(panelTaskId) : undefined;
   const artifacts = useMemo(() => artifactsOf(panelTask, artifactCtx), [panelTask, artifactCtx]);
@@ -85,7 +103,7 @@ export function Shell({ app }: { app: AppState }) {
 
   const appAvailability = (kind: AppKind): true | string => {
     if (!panelTaskId) return "No task has an artifact to show yet";
-    if ((kind === "changes" || kind === "browser") && !artifacts.includes(kind)) return `The task has no ${kind === "changes" ? "change set" : "browser session"} to show yet`;
+    if (!artifacts.includes(kind)) return { changes: "The task has no change set to show yet", terminal: "The task has no terminal", browser: "The task has no browser session to show yet", files: "The task has not started, so it has no workspace to browse", evidence: "The task has not started, so it has no evidence yet" }[kind];
     return true;
   };
 
@@ -200,7 +218,20 @@ export function Shell({ app }: { app: AppState }) {
 
   const overlayTitle = reviewing ? model.tasks.get(reviewing)?.goalText : browsing ? model.tasks.get(browsing.taskId)?.goalText : undefined;
   const title = dashboardOpen ? "Dashboard" : (overlayTitle ?? "Fleet");
+  const panelRefreshKey = useThrottled(`${panelTask?.state ?? ""}:${panelTask?.lastOffset ?? ""}`, 1200);
   const panelUnavailable = panelTaskId === null ? "no task has an artifact yet" : null;
+  // REQ-PX-049: what the Core recovered at start, as counts of its own task states, shown once its snapshot and attention list are in.
+  const [recoveryNote, setRecoveryNote] = useState<{ boot: string; text: string } | null>(null);
+  useEffect(() => {
+    if (!app.recovery || app.screen !== "populated" || !app.attentionLoaded) return;
+    if (recoveryNote?.boot === app.recovery.bootGeneration) return;
+    const recovered = Number(app.recovery.tasks);
+    if (recovered === 0) return;
+    const resumed = tasks.filter((t) => t.state === "Running").length;
+    setRecoveryNote({ boot: app.recovery.bootGeneration, text: recoverySummary({ recovered, resumed, needAttention: cols.needsAttention.length }) });
+    // The counts are taken once per boot, when the first complete picture exists.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [app.recovery, app.screen, app.attentionLoaded]);
   const coreLabel = core.state === "connected" ? `Core connected (pid ${core.pid})` : core.state === "restarting" ? "Core restarting…" : core.state === "failed" ? "Core failed" : "Core starting…";
   const coreStatus = core.state === "connected" ? "ok" : core.state === "failed" ? "danger" : "warn";
 
@@ -213,9 +244,17 @@ export function Shell({ app }: { app: AppState }) {
         panel={
           panelTaskId && panelTask ? (
             <AppsPanel
+              sessionId={model.sessionId ?? ""}
               taskId={panelTaskId}
               taskTitle={panelTask.goalText}
+              taskState={panelTask.state}
               artifacts={artifacts}
+              refreshKey={panelRefreshKey}
+              terminals={terminalsByTask.get(panelTaskId) ?? []}
+              selectedTerminalId={terminalPick[panelTaskId] ?? null}
+              onSelectTerminal={(id) => setTerminalPick((m) => ({ ...m, [panelTaskId]: id }))}
+              onTerminalsChanged={refreshTerminals}
+              announce={setNotice}
               tab={panelState.tab}
               onTab={(tab) => setPanelState(panelTaskId, { ...panelState, tab })}
               onOpenReview={() => setReviewing(panelTaskId)}
@@ -258,9 +297,16 @@ export function Shell({ app }: { app: AppState }) {
             platform={platform}
             location={LOCATION}
             extra={
-              <span className="meta" role="status" aria-live="polite" data-testid="shell-notice">
-                {notice}
-              </span>
+              <>
+                {recoveryNote && (
+                  <span className="meta" data-testid="recovery-summary">
+                    Recovered at start: {recoveryNote.text}
+                  </span>
+                )}
+                <span className="meta" role="status" aria-live="polite" data-testid="shell-notice">
+                  {notice}
+                </span>
+              </>
             }
           />
         }

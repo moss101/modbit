@@ -12,7 +12,7 @@ import { expect, test } from "@playwright/test";
 import { mkdtempSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { accessible, box, closeApp, focusedTestId, launch, makeRepo, MOD, scriptedModel, setContentSize } from "./support/ui-harness.ts";
+import { accessible, box, closeApp, focusedTestId, launch, liftMinimumSize, makeRepo, MOD, scriptedModel, setContentSize } from "./support/ui-harness.ts";
 
 const near = (actual: number, expected: number, tol: number, what: string) => expect(Math.abs(actual - expected), `${what}: ${actual} vs ${expected}`).toBeLessThanOrEqual(tol);
 
@@ -78,6 +78,8 @@ test("PX-045: below a 448 centre the shell is single-pane with the 40 px rail; t
   const dataDir = mkdtempSync(join(tmpdir(), "modbit-e2e-shell-rail-"));
   const { app, page } = await launch(dataDir);
   try {
+    // The window cannot be made this small (PX-049 keeps 900 x 600); the layout below that width is still the renderer's to get right.
+    await liftMinimumSize(app);
     await setContentSize(app, page, 600, 700);
     await expect(page.getByTestId("agent-rail")).toBeVisible();
     await expect(page.getByTestId("shell")).toHaveAttribute("data-single-pane", "true");
@@ -324,7 +326,7 @@ test("PX-045: the apps panel appears for a task with an artifact, within the geo
     expect(narrowed).toBeLessThan(panel.width);
     expect(narrowed).toBeGreaterThanOrEqual(384);
     await page.getByTestId("tab-terminal").click();
-    await expect(page.getByTestId("app-terminal-pending")).toContainText("PX-048");
+    await expect(page.getByTestId("app-terminal-empty")).toContainText("no terminal");
     const stored = await page.evaluate(() => JSON.parse(localStorage.getItem("modbit.ui.v1")!));
     expect(Object.keys(stored.panelByTask)).toHaveLength(1);
     expect(Object.values(stored.panelByTask)[0]).toMatchObject({ open: true, tab: "terminal" });

@@ -1,62 +1,72 @@
-import { Button, Tabs, type TabDef } from "@modbit/ui";
-import { APP_LABEL, APP_PENDING } from "./artifacts.ts";
+import { Tabs, type TabDef } from "@modbit/ui";
+import type { TerminalViewJson } from "../../preload/preload.ts";
+import { BrowserApp } from "../apps/browser-app.tsx";
+import { ChangesApp } from "../apps/changes-app.tsx";
+import { EvidenceApp } from "../apps/evidence-app.tsx";
+import { FilesApp } from "../apps/files-app.tsx";
+import { TerminalApp } from "../apps/terminal-app.tsx";
+import { APP_LABEL } from "./artifacts.ts";
 import { APP_KINDS, type AppKind } from "./prefs.ts";
 
 export interface AppsPanelProps {
+  sessionId: string;
   taskId: string;
   taskTitle: string;
+  taskState: string;
   artifacts: readonly AppKind[];
   tab: AppKind;
   onTab: (tab: AppKind) => void;
+  /** Changes whenever the task moves (its last event offset): the apps read the Core again. */
+  refreshKey: string;
+  terminals: readonly TerminalViewJson[];
+  selectedTerminalId: string | null;
+  onSelectTerminal: (terminalId: string) => void;
+  onTerminalsChanged: () => void;
+  announce: (text: string) => void;
   onOpenReview: () => void;
   onOpenBrowser: () => void;
 }
 
 /**
- * The typed apps-panel host (AFW-A01, AFW-I01): a tab per app kind with the
- * task's state remembered per task. Changes and Browser lead into the existing
- * Review and Browser screens; Terminal, Files and Evidence are the extension
- * points PX-048 fills, and say so instead of showing anything made up.
+ * The typed apps-panel host (AFW-A01, AFW-I01, REQ-PX-048): a tab per app kind
+ * with the tab and the terminal remembered per task. Every app is a view over
+ * typed Core reads through the preload bridge; none holds task state, and an
+ * app with nothing to show says so.
  */
-export function AppsPanel({ taskId, taskTitle, artifacts, tab, onTab, onOpenReview, onOpenBrowser }: AppsPanelProps) {
-  const tabs: TabDef[] = APP_KINDS.map((k) => ({ id: k, label: APP_LABEL[k] }));
+export function AppsPanel(p: AppsPanelProps) {
+  const tabs: TabDef[] = APP_KINDS.map((k) => ({ id: k, label: APP_LABEL[k], ...(k === "terminal" && p.terminals.length > 0 ? { badge: String(p.terminals.length) } : {}) }));
   return (
-    <div className="apps-panel" data-testid="apps-panel" data-task-id={taskId}>
-      <p className="meta apps-panel-task" title={taskTitle}>
-        {taskTitle}
+    <div className="apps-panel" data-testid="apps-panel" data-task-id={p.taskId}>
+      <p className="meta apps-panel-task" title={p.taskTitle}>
+        {p.taskTitle}
       </p>
-      <Tabs label="Apps" tabs={tabs} selected={tab} onSelect={(id) => onTab(id as AppKind)} idPrefix="apps" testId="apps-tabs">
-        {tab === "changes" &&
-          (artifacts.includes("changes") ? (
-            <div data-testid="app-changes">
-              <p>This task has a change set ready to review.</p>
-              <Button variant="primary" data-testid="panel-open-review" onClick={onOpenReview}>
-                Open review
-              </Button>
-            </div>
+      <Tabs label="Apps" tabs={tabs} selected={p.tab} onSelect={(id) => p.onTab(id as AppKind)} idPrefix="apps" testId="apps-tabs">
+        {p.tab === "changes" &&
+          (p.artifacts.includes("changes") ? (
+            <ChangesApp taskId={p.taskId} taskState={p.taskState} refreshKey={p.refreshKey} onOpenReview={p.onOpenReview} />
           ) : (
             <p className="meta" data-testid="app-changes-empty">
               This task has no change set to show yet.
             </p>
           ))}
-        {tab === "browser" &&
-          (artifacts.includes("browser") ? (
-            <div data-testid="app-browser">
-              <p>This task has a browser session.</p>
-              <Button variant="primary" data-testid="panel-open-browser" onClick={onOpenBrowser}>
-                Open browser
-              </Button>
-            </div>
+        {p.tab === "terminal" && <TerminalApp sessionId={p.sessionId} taskId={p.taskId} terminals={p.terminals} selectedId={p.selectedTerminalId} onSelect={p.onSelectTerminal} onChanged={p.onTerminalsChanged} announce={p.announce} />}
+        {p.tab === "browser" && <BrowserApp taskId={p.taskId} onOpenBrowser={p.onOpenBrowser} />}
+        {p.tab === "files" &&
+          (p.artifacts.includes("files") ? (
+            <FilesApp taskId={p.taskId} refreshKey={p.refreshKey} />
           ) : (
-            <p className="meta" data-testid="app-browser-empty">
-              This task has no browser session yet.
+            <p className="meta" data-testid="app-files-empty">
+              The task has not started, so there is no workspace to browse yet.
             </p>
           ))}
-        {tab !== "changes" && tab !== "browser" && (
-          <p className="meta" data-testid={`app-${tab}-pending`}>
-            {APP_PENDING[tab]}
-          </p>
-        )}
+        {p.tab === "evidence" &&
+          (p.artifacts.includes("evidence") ? (
+            <EvidenceApp taskId={p.taskId} refreshKey={p.refreshKey} />
+          ) : (
+            <p className="meta" data-testid="app-evidence-empty">
+              The task has not started, so there is no evidence yet.
+            </p>
+          ))}
       </Tabs>
     </div>
   );
