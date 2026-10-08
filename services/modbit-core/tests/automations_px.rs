@@ -27,10 +27,10 @@ use modbit_protocol::client::{Client, ClientError};
 use modbit_protocol::v1::{
     AckAutomationAttention, ApprovalList, AutomationDetail, AutomationFireReport, AutomationList,
     AutomationRunList, AutomationRunStarted, AutomationRunView, AutomationValidation,
-    AutomationView, CreateAutomation, CreateTask, DisableAutomation, EnableAutomation,
-    FireAutomationEvent, Id, KillAutomation, KillReport, ListApprovals, ListAutomationRuns,
-    ListAutomations, LoadRepositoryAutomations, PauseAutomation, RepositoryAutomations,
-    RunAutomation, TaskCreated, UpdateAutomation, ValidateAutomation,
+    AutomationView, CreateAutomation, CreateTask, EnableAutomation, FireAutomationEvent, Id,
+    KillAutomation, KillReport, ListApprovals, ListAutomationRuns, ListAutomations,
+    LoadRepositoryAutomations, PauseAutomation, RepositoryAutomations, RunAutomation, TaskCreated,
+    UpdateAutomation, ValidateAutomation,
 };
 use prost::Message;
 use px_common::*;
@@ -67,22 +67,6 @@ async fn cmd_g<R: Message + Default>(
     }
 }
 
-async fn cmd_id<R: Message + Default>(
-    c: &mut Client,
-    id: Id,
-    command_type: &str,
-    msg: impl Message,
-) -> Result<(R, i32), (String, String)> {
-    match c
-        .command(envelope(id, command_type, msg.encode_to_vec()))
-        .await
-    {
-        Ok(ack) => Ok((Client::result(&ack).unwrap(), ack.status)),
-        Err(ClientError::Rejected { code, message }) => Err((code, message)),
-        Err(e) => panic!("{command_type}: {e}"),
-    }
-}
-
 // ---- the fixture ----
 
 fn now_ms() -> i64 {
@@ -95,25 +79,23 @@ fn now_ms() -> i64 {
 struct Fx {
     core: CoreProcess,
     c: Client,
-    session: Id,
-    g: Option<u64>,
-    repo: tempfile::TempDir,
+    /// Keeps the repository on disk for the test's life.
+    _repo: tempfile::TempDir,
     root: String,
     data: tempfile::TempDir,
     clock: PathBuf,
     seen: Seen,
     base: String,
-    env: Vec<(String, String)>,
 }
 
-fn set_clock(path: &PathBuf, ms: i64) {
+fn set_clock(path: &std::path::Path, ms: i64) {
     std::fs::write(path, ms.to_string()).unwrap();
 }
 
 fn spawn_core(
     data: &std::path::Path,
     base: &str,
-    clock: &PathBuf,
+    clock: &std::path::Path,
     extra: &[(&str, &str)],
 ) -> (CoreProcess, Vec<(String, String)>) {
     let mut env = model_env(base);
@@ -138,22 +120,19 @@ async fn fx(script: Vec<Value>, files: &[(&str, &str)], extra: &[(&str, &str)]) 
     let (base, seen) = scripted_model(script, vec![]).await;
     let clock = data.path().join("clock.txt");
     set_clock(&clock, now_ms());
-    let (core, env) = spawn_core(data.path(), &base, &clock, extra);
+    let (core, _) = spawn_core(data.path(), &base, &clock, extra);
     let mut c = core.client().await;
     let (session, g) = session_with_lease(&mut c, 0x31).await;
     trust(&mut c, &session, g, &root).await;
     Fx {
         core,
         c,
-        session,
-        g,
-        repo,
+        _repo: repo,
         root,
         data,
         clock,
         seen,
         base,
-        env,
     }
 }
 

@@ -1148,7 +1148,6 @@ async fn dispatch_inner(
 
     // The task may already exist (a dispatch a dead Core began).
     let existing = core.store.lock().await.task(&task_id).ok().flatten();
-    let lease_gen;
     if existing.is_none() {
         let ack = internal(
             core,
@@ -1179,7 +1178,7 @@ async fn dispatch_inner(
     if rejected(&ack) {
         return Err(refuse("SESSION_REFUSED", ack.error_message));
     }
-    lease_gen = core
+    let lease_gen = core
         .store
         .lock()
         .await
@@ -2339,7 +2338,7 @@ async fn create(core: &Arc<Core>, env: &wire::CommandEnvelope, command_id: [u8; 
     let ev = AutomationEvent::AutomationDefined {
         automation_id: id.clone(),
         version: 1,
-        definition: d,
+        definition: Box::new(d),
         definition_hash: hash,
         source: Source::Local,
         workspace_root: root,
@@ -2390,7 +2389,7 @@ async fn update(core: &Arc<Core>, env: &wire::CommandEnvelope, command_id: [u8; 
         automation_id: p.automation_id.clone(),
         version: cur.version + 1,
         definition_hash: d.hash(),
-        definition: d,
+        definition: Box::new(d),
         source: Source::Local,
         workspace_root: cur.workspace_root.clone(),
         created_by: user_label(core),
@@ -2521,7 +2520,7 @@ async fn load_repository(
         let ev = AutomationEvent::AutomationDefined {
             automation_id: id.clone(),
             version,
-            definition: d,
+            definition: Box::new(d),
             definition_hash: hash,
             source: Source::Repository {
                 root: root.clone(),

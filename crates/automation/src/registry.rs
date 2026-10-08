@@ -122,7 +122,7 @@ pub enum AutomationEvent {
         /// Version, from 1.
         version: u32,
         /// The definition.
-        definition: Definition,
+        definition: Box<Definition>,
         /// Its canonical hash.
         definition_hash: String,
         /// Where it came from.
@@ -447,7 +447,7 @@ impl Registry {
                 }
                 st.versions.push(Version {
                     version: *version,
-                    definition: definition.clone(),
+                    definition: (**definition).clone(),
                     hash: definition_hash.clone(),
                     source: source.clone(),
                     workspace_root: workspace_root.clone(),
@@ -752,7 +752,7 @@ mod tests {
             automation_id: "a1".into(),
             version,
             definition_hash: d.hash(),
-            definition: d,
+            definition: Box::new(d),
             source: Source::Local,
             workspace_root: "/w".into(),
             created_by: "user:x".into(),
