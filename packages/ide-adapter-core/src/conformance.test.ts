@@ -36,6 +36,8 @@ const CLIENTS = [
     allow: [
       { file: "src/main/main.ts", specifier: "node:fs", why: "profile-local desktop state (the session id) under the app's own data dir; never a workspace file" },
       { file: "src/main/credentials.ts", specifier: "node:fs", why: "M7.8: the credential broker's ciphertext records (safeStorage) under the app's own data dir; never a workspace file" },
+      { file: "src/main/browser-cert.ts", specifier: "node:fs", why: "PX-073: the person's certificate trusts, a JSON file under the app's own data dir; never a workspace file" },
+      { file: "src/main/browser-policy.ts", specifier: "node:fs", why: "PX-120: the browser target allow-list the person edits, a JSON file under the app's own data dir; never a workspace file" },
     ],
   },
   { root: join(repoRoot, "packages", "vscode-adapter"), allow: [] },
