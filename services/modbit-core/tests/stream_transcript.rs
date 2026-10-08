@@ -537,6 +537,11 @@ async fn streaming_model(steps: Vec<Step>) -> String {
             let Ok((mut sock, _)) = listener.accept().await else {
                 return;
             };
+            // A real SSE server does not Nagle-delay its frames; small
+            // writes held for a delayed ACK (40 ms on Linux, 200 ms on
+            // Windows) would pace a 3 MiB stream in 64-byte chunks at
+            // minutes, not seconds.
+            let _ = sock.set_nodelay(true);
             let steps = Arc::clone(&steps);
             let n = served.fetch_add(1, std::sync::atomic::Ordering::SeqCst);
             tokio::spawn(async move {
@@ -669,6 +674,12 @@ fn env_for<'a>(base: &'a str, key: &'a str) -> [(&'a str, &'a str); 3] {
         ("ANTHROPIC_API_KEY", ""),
     ]
 }
+
+/// How long the megabyte-scale stream tests wait for a debug build on a slow,
+/// shared CI disk (tens of thousands of chunks, hundreds of appended events);
+/// a stream that is not finished by then is reported as such, not as a
+/// missing record.
+const LONG_STREAM_SECS: u64 = 300;
 
 const SETTLE: Duration = Duration::from_millis(400);
 
@@ -1105,7 +1116,8 @@ async fn qual_px_041_a_very_long_stream_is_bounded_in_events_and_in_memory_and_a
     let (session, lease) = create_session(&mut c).await;
     let task = create_task(&mut c, &session, lease, "write a lot", &root).await;
     let _ = start_task(&mut c, &task, lease).await;
-    let _ = wait_idle(&mut c, &task, 120).await;
+    let st = wait_idle(&mut c, &task, LONG_STREAM_SECS).await;
+    assert!(!st.loop_alive, "the stream did not finish in time: {st:?}");
     tokio::time::sleep(SETTLE).await;
     let all = replay(&core, &session, 0).await;
     let deltas = of_kind(&all, "AssistantTextDelta");
@@ -1151,7 +1163,11 @@ async fn qual_px_041_a_very_long_stream_is_bounded_in_events_and_in_memory_and_a
     let (session, lease) = create_session(&mut c).await;
     let task = create_task(&mut c, &session, lease, "write far too much", &root).await;
     let _ = start_task(&mut c, &task, lease).await;
-    let _ = wait_idle(&mut c, &task, 120).await;
+    let st = wait_idle(&mut c, &task, LONG_STREAM_SECS).await;
+    assert!(
+        !st.loop_alive,
+        "the runaway was not stopped in time: {st:?}"
+    );
     tokio::time::sleep(SETTLE).await;
     let all = replay(&core, &session, 0).await;
     assert!(of_kind(&all, "AssistantMessageCompleted").is_empty());

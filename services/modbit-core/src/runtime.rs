@@ -2766,6 +2766,28 @@ impl QueuedInput {
     }
 }
 
+/// Whether a STEER input was queued for the task after `after_offset`, and
+/// the offset read up to (the next look starts there).
+async fn steer_input_after(core: &Core, task: &Task, after_offset: u64) -> (bool, u64) {
+    let store = core.store.lock().await;
+    let events = store
+        .read_session(&task.session_id, after_offset, usize::MAX)
+        .unwrap_or_default();
+    let mut last = after_offset;
+    let mut steer = false;
+    for ev in &events {
+        last = last.max(ev.offset);
+        if ev.envelope.task_id == Some(task.task_id) && ev.envelope.event_type == "TaskInputQueued"
+        {
+            let p = store.payload(&ev.envelope).unwrap_or_default();
+            let mode = serde_json::from_value::<InputMode>(p["mode"].clone())
+                .unwrap_or(InputMode::FollowUp);
+            steer |= p["text"].as_str().is_some() && matches!(mode, InputMode::Steer);
+        }
+    }
+    (steer, last)
+}
+
 async fn pending_inputs(core: &Core, task: &Task, after_offset: u64) -> Vec<QueuedInput> {
     let store = core.store.lock().await;
     let events = store
@@ -3956,6 +3978,7 @@ async fn run_loop(
                 // A STEER queued while the model streams interrupts the stream
                 // (REQ-EV-0191 interrupt-and-replace); the log offset watch wakes us.
                 let mut offset_rx = core.last_offset.subscribe();
+                let mut steer_scanned = seen_offset;
                 let mut interrupted = false;
                 loop {
                     let delta_due = sink.deadline();
@@ -4020,10 +4043,13 @@ async fn run_loop(
                             if changed.is_err() {
                                 continue;
                             }
-                            let steer_pending = pending_inputs(&core, &task, seen_offset)
-                                .await
-                                .iter()
-                                .any(|i| matches!(i.mode, InputMode::Steer));
+                            // Only what was appended since the last look: a long
+                            // stream appends hundreds of deltas, and re-reading
+                            // them all on every append is quadratic (and holds
+                            // the store lock the delta appends need).
+                            let (steer_pending, upto) =
+                                steer_input_after(&core, &task, steer_scanned).await;
+                            steer_scanned = upto;
                             if steer_pending {
                                 interrupted = true;
                                 stream_cancel.cancel();
