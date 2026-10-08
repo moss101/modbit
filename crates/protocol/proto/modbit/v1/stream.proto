@@ -241,6 +241,9 @@ message AgentHeader {
   uint64 last_offset = 23;
   uint64 read_offset = 24;
   uint32 attention_items = 25;
+  // The project holding the task (PX-063, projects.proto); absent when none.
+  // The field block 420-439 is this file's for additions to existing messages.
+  Id project_id = 420;
 }
 
 message AgentHeaders {

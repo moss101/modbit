@@ -51,6 +51,71 @@ pub struct MemoryRow {
     pub doc: String,
 }
 
+/// One row of the `projects` projection (PX-063).
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct ProjectRow {
+    /// Identity.
+    pub project_id: modbit_domain::ProjectId,
+    /// Display name.
+    pub name: String,
+    /// A palette role.
+    pub color: String,
+    /// An icon name.
+    pub icon: String,
+    /// The workspace root it is bound to.
+    pub workspace_root: String,
+    /// Whether it is archived.
+    pub archived: bool,
+    /// Created (ms).
+    pub created_at_ms: i64,
+    /// Last change (ms).
+    pub updated_at_ms: i64,
+    /// Offset of the event that created it.
+    pub created_offset: u64,
+    /// Offset of the latest event that changed it.
+    pub last_offset: u64,
+}
+
+/// One row of the `project_members` projection: a task and the project that
+/// holds it.
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct ProjectMemberRow {
+    /// The task.
+    pub task_id: TaskId,
+    /// The project that holds it.
+    pub project_id: modbit_domain::ProjectId,
+    /// When it joined (ms).
+    pub added_at_ms: i64,
+    /// Offset of the event that added it.
+    pub added_offset: u64,
+}
+
+const PROJECT_COLUMNS: &str = "project_id, name, color, icon, workspace_root, archived, created_at_ms, updated_at_ms, created_offset, last_offset";
+
+fn project_row_from(r: &rusqlite::Row<'_>) -> rusqlite::Result<ProjectRow> {
+    Ok(ProjectRow {
+        project_id: modbit_domain::ProjectId::from_bytes(blob16(r.get::<_, Vec<u8>>(0)?)?),
+        name: r.get(1)?,
+        color: r.get(2)?,
+        icon: r.get(3)?,
+        workspace_root: r.get(4)?,
+        archived: r.get::<_, i64>(5)? != 0,
+        created_at_ms: r.get(6)?,
+        updated_at_ms: r.get(7)?,
+        created_offset: u64::try_from(r.get::<_, i64>(8)?).unwrap_or_default(),
+        last_offset: u64::try_from(r.get::<_, i64>(9)?).unwrap_or_default(),
+    })
+}
+
+fn member_row_from(r: &rusqlite::Row<'_>) -> rusqlite::Result<ProjectMemberRow> {
+    Ok(ProjectMemberRow {
+        task_id: TaskId::from_bytes(blob16(r.get::<_, Vec<u8>>(0)?)?),
+        project_id: modbit_domain::ProjectId::from_bytes(blob16(r.get::<_, Vec<u8>>(1)?)?),
+        added_at_ms: r.get(2)?,
+        added_offset: u64::try_from(r.get::<_, i64>(3)?).unwrap_or_default(),
+    })
+}
+
 /// The aggregate id of a memory item: the first sixteen bytes of the SHA-256
 /// of its id (item ids are 64-character content hashes; the aggregate key is
 /// a fixed sixteen bytes).
@@ -1293,6 +1358,69 @@ impl EventStore {
             [],
         )?;
         Ok(imported)
+    }
+
+    // ---- projects (PX-063) ----------------------------------------------
+    //
+    // Read-only: `projects` and `project_members` are projections of the
+    // `Project` aggregate's events and change only when `projections::apply`
+    // folds one.
+
+    /// Every project, newest first, archived ones included.
+    pub fn projects(&self) -> Result<Vec<ProjectRow>> {
+        let mut stmt = self.conn.prepare_cached(&format!(
+            "SELECT {PROJECT_COLUMNS} FROM projects ORDER BY created_offset DESC"
+        ))?;
+        let rows = stmt
+            .query_map([], project_row_from)?
+            .collect::<std::result::Result<Vec<_>, _>>()?;
+        Ok(rows)
+    }
+
+    /// One project.
+    pub fn project(&self, id: &modbit_domain::ProjectId) -> Result<Option<ProjectRow>> {
+        self.conn
+            .query_row(
+                &format!("SELECT {PROJECT_COLUMNS} FROM projects WHERE project_id = ?1"),
+                params![id.as_bytes().as_slice()],
+                project_row_from,
+            )
+            .optional()
+            .map_err(Into::into)
+    }
+
+    /// The tasks a project holds, oldest member first.
+    pub fn project_members(&self, id: &modbit_domain::ProjectId) -> Result<Vec<ProjectMemberRow>> {
+        let mut stmt = self.conn.prepare_cached(
+            "SELECT task_id, project_id, added_at_ms, added_offset FROM project_members WHERE project_id = ?1 ORDER BY added_offset ASC, task_id ASC",
+        )?;
+        let rows = stmt
+            .query_map(params![id.as_bytes().as_slice()], member_row_from)?
+            .collect::<std::result::Result<Vec<_>, _>>()?;
+        Ok(rows)
+    }
+
+    /// The project holding a task, if any.
+    pub fn project_of_task(&self, task: &TaskId) -> Result<Option<ProjectMemberRow>> {
+        self.conn
+            .query_row(
+                "SELECT task_id, project_id, added_at_ms, added_offset FROM project_members WHERE task_id = ?1",
+                params![task.as_bytes().as_slice()],
+                member_row_from,
+            )
+            .optional()
+            .map_err(Into::into)
+    }
+
+    /// Every membership, for the headers of a session's tasks.
+    pub fn project_memberships(&self) -> Result<Vec<ProjectMemberRow>> {
+        let mut stmt = self.conn.prepare_cached(
+            "SELECT task_id, project_id, added_at_ms, added_offset FROM project_members ORDER BY added_offset ASC",
+        )?;
+        let rows = stmt
+            .query_map([], member_row_from)?
+            .collect::<std::result::Result<Vec<_>, _>>()?;
+        Ok(rows)
     }
 
     /// Load a run-step projection.

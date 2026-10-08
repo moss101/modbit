@@ -1357,6 +1357,9 @@ pub fn apply(tx: &Transaction<'_>, ev: &StoredEvent, objects: &crate::ObjectStor
         // `removed` when the item leaves the store); the projection is the
         // plain replay of those rows in log order.
         AggregateType::Memory => project_memory(tx, &payload)?,
+        // PX-063: a project's events fold into `projects` and
+        // `project_members`; the fold is the whole definition of both.
+        AggregateType::Project => project_project(tx, ev, &payload)?,
         // Aggregates whose projections belong to later milestones (checkpoints).
         _ => {}
     }
@@ -1393,6 +1396,134 @@ fn project_memory(tx: &Transaction<'_>, payload: &serde_json::Value) -> Result<(
             row.doc,
         ],
     )?;
+    Ok(())
+}
+
+/// Apply one `Project` event to `projects` and `project_members`.
+fn project_project(
+    tx: &Transaction<'_>,
+    ev: &StoredEvent,
+    payload: &serde_json::Value,
+) -> Result<()> {
+    use modbit_domain::project::ProjectEvent;
+    let event: ProjectEvent = serde_json::from_value(payload.clone())?;
+    let at = ev.envelope.occurred_at.millis();
+    let offset = ev.offset as i64;
+    let pid = |p: &modbit_domain::ProjectId| p.as_bytes().to_vec();
+    let bad = |detail: String| Error::Projection {
+        offset: ev.offset,
+        detail,
+    };
+    let touched = |n: usize, what: &str| {
+        if n == 0 {
+            Err(bad(format!("{what} names a project that does not exist")))
+        } else {
+            Ok(())
+        }
+    };
+    match event {
+        ProjectEvent::ProjectCreated {
+            project_id,
+            name,
+            color,
+            icon,
+            workspace_root,
+        } => {
+            tx.execute(
+                "INSERT INTO projects (project_id, name, name_key, color, icon, workspace_root, archived, created_at_ms, updated_at_ms, created_offset, last_offset) \
+                 VALUES (?1, ?2, ?3, ?4, ?5, ?6, 0, ?7, ?7, ?8, ?8)",
+                params![
+                    pid(&project_id),
+                    name,
+                    modbit_domain::project::name_key(&name),
+                    color,
+                    icon,
+                    workspace_root,
+                    at,
+                    offset
+                ],
+            )?;
+        }
+        ProjectEvent::ProjectRenamed {
+            project_id,
+            name,
+            color,
+            icon,
+        } => {
+            let n = tx.execute(
+                "UPDATE projects SET name = ?2, name_key = ?3, color = ?4, icon = ?5, updated_at_ms = ?6, last_offset = ?7 WHERE project_id = ?1",
+                params![
+                    pid(&project_id),
+                    name,
+                    modbit_domain::project::name_key(&name),
+                    color,
+                    icon,
+                    at,
+                    offset
+                ],
+            )?;
+            touched(n, "ProjectRenamed")?;
+        }
+        ProjectEvent::ProjectArchived { project_id } => {
+            let n = tx.execute(
+                "UPDATE projects SET archived = 1, updated_at_ms = ?2, last_offset = ?3 WHERE project_id = ?1",
+                params![pid(&project_id), at, offset],
+            )?;
+            touched(n, "ProjectArchived")?;
+        }
+        ProjectEvent::ProjectUnarchived { project_id } => {
+            let n = tx.execute(
+                "UPDATE projects SET archived = 0, updated_at_ms = ?2, last_offset = ?3 WHERE project_id = ?1",
+                params![pid(&project_id), at, offset],
+            )?;
+            touched(n, "ProjectUnarchived")?;
+        }
+        ProjectEvent::ProjectMemberAdded {
+            project_id,
+            task_id,
+        } => {
+            let n = tx.execute(
+                "UPDATE projects SET updated_at_ms = ?2, last_offset = ?3 WHERE project_id = ?1",
+                params![pid(&project_id), at, offset],
+            )?;
+            touched(n, "ProjectMemberAdded")?;
+            // The task id is the map's key: a second project cannot hold it.
+            let held: Option<Vec<u8>> = tx
+                .query_row(
+                    "SELECT project_id FROM project_members WHERE task_id = ?1",
+                    params![task_id.as_bytes().as_slice()],
+                    |r| r.get(0),
+                )
+                .optional()?;
+            match held {
+                Some(other) if other != pid(&project_id) => {
+                    return Err(bad(
+                        "ProjectMemberAdded names a task another project holds".to_owned()
+                    ));
+                }
+                Some(_) => {}
+                None => {
+                    tx.execute(
+                        "INSERT INTO project_members (task_id, project_id, added_at_ms, added_offset) VALUES (?1, ?2, ?3, ?4)",
+                        params![task_id.as_bytes().as_slice(), pid(&project_id), at, offset],
+                    )?;
+                }
+            }
+        }
+        ProjectEvent::ProjectMemberRemoved {
+            project_id,
+            task_id,
+        } => {
+            tx.execute(
+                "UPDATE projects SET updated_at_ms = ?2, last_offset = ?3 WHERE project_id = ?1",
+                params![pid(&project_id), at, offset],
+            )?;
+            tx.execute(
+                "DELETE FROM project_members WHERE task_id = ?1 AND project_id = ?2",
+                params![task_id.as_bytes().as_slice(), pid(&project_id)],
+            )?;
+        }
+    }
     Ok(())
 }
 
@@ -2434,6 +2565,8 @@ pub fn load_flaky_checks(
 /// Truncate the projection tables and replay every event from offset 0.
 pub fn rebuild(tx: &Transaction<'_>, objects: &crate::ObjectStore) -> Result<u64> {
     for t in [
+        "project_members",
+        "projects",
         "memory_items",
         "checkpoints",
         "compaction_epochs",

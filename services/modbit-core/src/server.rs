@@ -799,6 +799,13 @@ async fn serve_connection(core: Arc<Core>, mut stream: BoxedStream) -> Result<()
                     "ApplyWorktree",
                     "UndoApply",
                     "DiscardWorktree",
+                    "CreateProject",
+                    "RenameProject",
+                    "ArchiveProject",
+                    "AddProjectMember",
+                    "RemoveProjectMember",
+                    "ListProjects",
+                    "GetProject",
                 ]
                 .map(String::from)
                 .to_vec(),
@@ -1351,6 +1358,11 @@ fn required_client_capability(env: &CommandEnvelope) -> Option<&'static str> {
         // an archive are the person's own curation of a session.
         "GetTranscript" | "GetAgentHeaders" | "SearchConversations" => "events.subscribe",
         "MarkRead" | "ArchiveTask" => "session.control",
+        // PX-063: a project is the person's own grouping of their tasks; the
+        // reads are reads of the log.
+        "CreateProject" | "RenameProject" | "ArchiveProject" | "AddProjectMember"
+        | "RemoveProjectMember" => "session.control",
+        "ListProjects" | "GetProject" => "events.subscribe",
         "DecideReview" => "review.decide",
         // Steering a task from its pull request's comments is steering it.
         "ApplyUserPatch" | "SubmitExternalDiagnostics" | "IngestReviewComments" => "task.author",
@@ -6209,6 +6221,15 @@ pub(crate) async fn handle_command(core: &Arc<Core>, env: CommandEnvelope) -> Co
             )
         }
         "ListModelVariants" => crate::composer::list_variants(core, cid, &env.payload).await,
+        "CreateProject"
+        | "RenameProject"
+        | "ArchiveProject"
+        | "AddProjectMember"
+        | "RemoveProjectMember"
+        | "ListProjects"
+        | "GetProject" => {
+            crate::projects::handle(core, &env, record(&env.command_type), actor).await
+        }
         "ProbeModel" => {
             let Ok(p) = wire::ProbeModel::decode(env.payload.as_slice()) else {
                 return reject(cid, "BAD_PAYLOAD", "ProbeModel");

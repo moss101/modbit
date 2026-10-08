@@ -28,6 +28,7 @@ export * from "./gen/modbit/v1/security_runtime_pb.js";
 export * from "./gen/modbit/v1/worktrees_pb.js";
 export * from "./gen/modbit/v1/browser_runtime_pb.js";
 export * from "./gen/modbit/v1/composer_pb.js";
+export * from "./gen/modbit/v1/projects_pb.js";
 
 /** The protocol version this build speaks (mirrors `modbit_protocol::PROTOCOL_VERSION`). */
 export const PROTOCOL_VERSION = { major: 1, minor: 0 } as const;

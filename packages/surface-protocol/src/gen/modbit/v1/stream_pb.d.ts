@@ -922,6 +922,14 @@ export declare type AgentHeader = Message<"modbit.v1.AgentHeader"> & {
    * @generated from field: uint32 attention_items = 25;
    */
   attentionItems: number;
+
+  /**
+   * The project holding the task (PX-063, projects.proto); absent when none.
+   * The field block 420-439 is this file's for additions to existing messages.
+   *
+   * @generated from field: modbit.v1.Id project_id = 420;
+   */
+  projectId?: Id | undefined;
 };
 
 /**

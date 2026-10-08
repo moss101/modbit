@@ -1315,6 +1315,7 @@ pub(crate) fn headers(
         .filter(|a| a.state == ApprovalState::Requested)
         .map(|a| a.task_id)
         .collect();
+    let projects = crate::projects::memberships(store);
     let mut out: Vec<wire::AgentHeader> = Vec::new();
     for t in tasks {
         let Some(d) = digests.get(&t.task_id) else {
@@ -1385,6 +1386,9 @@ pub(crate) fn headers(
             last_offset: d.last_offset,
             read_offset: d.read_offset,
             attention_items: attention_items as u32,
+            project_id: projects
+                .get(&t.task_id)
+                .map(|p| crate::server::wire_id(p.as_bytes())),
         });
     }
     out.sort_by(|a, b| {
