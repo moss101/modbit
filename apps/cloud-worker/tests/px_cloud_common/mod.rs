@@ -5,6 +5,10 @@
 //! Kept apart from `cloud_worker.rs` so the two never conflict.
 #![allow(dead_code)]
 
+mod gateway;
+#[allow(unused_imports)]
+pub use gateway::*;
+
 use std::path::{Path, PathBuf};
 use std::sync::{Arc, Mutex};
 use std::time::{Duration, Instant};
@@ -87,7 +91,7 @@ pub fn repo(dir: &Path) -> String {
     std::fs::create_dir_all(dir.join(".modbit")).unwrap();
     std::fs::write(
         dir.join(".modbit/verification.json"),
-        r#"{"commands": [{"id": "fixture-noop", "argv": ["git", "--version"]}]}"#,
+        r#"{"commands": [{"id": "fixture-noop", "argv": ["/bin/sh", "-c", "exit 0"]}]}"#,
     )
     .unwrap();
     git(dir, &["init", "-q", "-b", "main"]);
@@ -132,11 +136,15 @@ pub async fn scripted_model(script: Vec<Value>) -> (String, Arc<Mutex<Vec<Value>
     let seen: Arc<Mutex<Vec<Value>>> = Default::default();
     let seen2 = seen.clone();
     let script = Arc::new(script);
+    // A conversation that arrives with prior turns (a handoff's continuation)
+    // starts the script at its first request.
+    let base: Arc<Mutex<Option<usize>>> = Default::default();
     let app = Router::new().route(
         "/v1/chat/completions",
         post(move |axum::Json(body): axum::Json<Value>| {
             let script = Arc::clone(&script);
             let seen = seen2.clone();
+            let base = Arc::clone(&base);
             async move {
                 let results = body["messages"].as_array().map_or(0, |m| {
                     m.iter()
@@ -144,6 +152,8 @@ pub async fn scripted_model(script: Vec<Value>) -> (String, Arc<Mutex<Vec<Value>
                         .count()
                 });
                 seen.lock().unwrap().push(body.clone());
+                let offset = *base.lock().unwrap().get_or_insert(results);
+                let results = results.saturating_sub(offset);
                 let step = script.get(results).cloned().unwrap_or(json!({}));
                 let mut out = String::new();
                 let calls = step["calls"].as_array().cloned().unwrap_or_default();

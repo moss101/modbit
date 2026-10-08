@@ -84,6 +84,28 @@
    }
   },
   {
+   "id": "identity.oidc",
+   "crates": ["modbit-cloud-api"],
+   "boundary": "real-service",
+   "counterparty": "an OpenID Connect provider (discovery, JWKS, authorization and token endpoints): the in-process development provider of tests/support/dev_idp.rs, which signs Ed25519 ID tokens, in this repository's suites. A production provider (Entra, Okta, Google) has not been run against it, and those sign RS256, which the API does not verify",
+   "levels": {
+    "integration": [
+     "apps/cloud-api/tests/px_129_identity.rs::qual_px_129_oidc_with_pkce_signs_provisioned_principals_in_and_every_forgery_is_refused"
+    ]
+   }
+  },
+  {
+   "id": "cloud.api-client",
+   "crates": ["modbit-cli"],
+   "boundary": "in-tree",
+   "counterparty": "the Cloud API (apps/cloud-api) over HTTP: sign-in, object upload, handoff admission, event cursor replay, approvals, the policy bundle",
+   "levels": {
+    "integration": [
+     "apps/cloud-worker/tests/px_128_cloud_client.rs::qual_px_128_the_cli_hands_a_local_task_to_the_cloud_after_a_confirmation_and_watches_and_answers_its_approval"
+    ]
+   }
+  },
+  {
    "id": "cloud.object-store",
    "crates": ["modbit-event-store"],
    "boundary": "real-service",

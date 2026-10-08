@@ -468,6 +468,10 @@ fn qual_px_000_headless_cli_task_lifecycle() {
     let (code, _, err) = cli.run(&["task", "run", "--session", &sid, "--task", &tid2]);
     assert_eq!(code, 1, "a rejected command is 1: {err}");
     // 7. Thin client: no provider, filesystem-service, Git or policy crate in the CLI's dependencies.
+    // (`reqwest` was on this list. PX-128 deliberately admits it: the CLI is
+    // the Cloud API's first-party client (`cloud` verbs, docs/79), one HTTP
+    // client for that API and the OIDC loopback sign-in. It never calls a
+    // provider or a forge; the crates listed here stay forbidden.)
     let manifest =
         std::fs::read_to_string(Path::new(env!("CARGO_MANIFEST_DIR")).join("Cargo.toml")).unwrap();
     for forbidden in [
@@ -476,7 +480,6 @@ fn qual_px_000_headless_cli_task_lifecycle() {
         "modbit-git",
         "modbit-policy",
         "modbit-tools",
-        "reqwest",
     ] {
         assert!(
             !manifest.contains(forbidden),

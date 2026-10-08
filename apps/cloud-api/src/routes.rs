@@ -816,6 +816,22 @@ async fn approval_action(
             .await?;
         return Err(ApiError::not_found(format!("approval {aid}")));
     };
+    // A decision on an approval already decided is refused here, whoever
+    // holds the session (PX-128: the second client's answer, from the CLI or
+    // the desktop, is "already decided", not a second application).
+    if !matches!(
+        approval.state,
+        modbit_domain::approval::ApprovalState::Requested
+    ) {
+        return Err(ApiError::new(
+            StatusCode::CONFLICT,
+            "APPROVAL_NOT_OPEN",
+            format!(
+                "approval {aid} is {:?}: it was decided already",
+                approval.state
+            ),
+        ));
+    }
     if let Some(r) = relay_if_held(
         &state,
         &p,
