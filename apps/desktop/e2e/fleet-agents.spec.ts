@@ -90,9 +90,13 @@ test("fleet: a delegating parent shows its phase, agents and the nested child; t
   git(repo, "add", "-A");
   git(repo, "-c", "user.name=t", "-c", "user.email=t@e", "commit", "-q", "-m", "base");
   const parent: Reply[] = [
-    { calls: [{ name: "plan.update", args: { outcome: "module a exists", expected_files: ["README.md"], steps: [{ id: "a", title: "module a" }] } }] },
+    { calls: [{ name: "plan.update", args: { outcome: "module a exists", expected_files: ["README.md"], steps: [{ id: "a", title: "module a" }], protected_effects: ["git.merge"] } }] },
     { calls: [{ name: "agent.spawn", args: { idempotency_key: "child-a", objective: "create src/a/a.txt containing alpha", write_scope: ["src/a/"], work_node: "a", max_turns: 6 } }] },
     { calls: [{ name: "agent.wait", args: { idempotency_key: "child-a", timeout_ms: 60000 } }] },
+    // A parent cannot complete beside a child with unintegrated changes
+    // (PX-119): this fixture discards the child's work, which the person
+    // approves on the card.
+    { calls: [{ name: "git.merge.abort", args: { child: "child-a", discard: true, reason: "the fixture does not integrate" } }] },
     { calls: [{ name: "task.complete", args: { summary: "delegated and collected", self_review: { findings: [] } } }] },
   ];
   const child: Reply[] = [
@@ -121,8 +125,17 @@ test("fleet: a delegating parent shows its phase, agents and the nested child; t
     await expect(card.getByTestId("task-evidence")).toContainText(/delegated child-a|child completed: created src\/a\/a\.txt/);
     // The child is never a top-level card, in any column.
     await expect(page.getByTestId("task-card")).toHaveCount(1);
-    // The child ends: its result is the parent's latest evidence, the
-    // agent counts settle, and the parent reaches Ready for Review.
+    // The child ends; the parent asks to discard its work, a protected
+    // effect the person approves on the card (PX-119).
+    // The finished child's review may have taken the screen: back to the board.
+    await expect(async () => {
+      const back = page.getByRole("button", { name: "Back to fleet" });
+      if (await back.isVisible()) await back.click();
+      await expect(card.getByTestId("task-approve")).toBeVisible({ timeout: 2_000 });
+    }).toPass({ timeout: 90_000 });
+    await card.getByTestId("task-approve").click();
+    // The child's result is the parent's latest evidence, the agent counts
+    // settle, and the parent reaches Ready for Review.
     await expect(page.getByTestId("column-readyForReview").getByTestId("task-card")).toHaveCount(1, { timeout: 90_000 });
     // The latest evidence: the child's completion, or the acceptance gate
     // the run evaluated right after it (run events reach the card, PX-023).

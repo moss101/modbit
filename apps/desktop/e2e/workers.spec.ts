@@ -120,6 +120,8 @@ async function launch(dataDir: string, extraEnv: Record<string, string>): Promis
 const BRIDGE_ALLOW_LIST = [
   // PX-073 / PX-120 (browser hardening): policy, view ownership, certificate trust, sign-out.
   "browserPolicy", "setBrowserPolicy", "listBrowserViews", "selectBrowserView", "browserRefusals", "decideBrowserCertificate", "browserCertificateTrusts", "clearBrowserCertificateTrusts", "clearBrowserData",
+  // PX-127 (forge evidence): CI results and pull-request comments ingested by the Core, on the person's command.
+  "ingestCiResults", "ingestReviewComments",
   "addCredential", "applyUserPatch", "attachFile", "attention", "browserLog", "browserSession", "cancelTask", "closeBrowser", "codeView", "contextInspector", "coreStatus", "createSession", "createTask", "dashboard", "debugCoreInfo", "debugIpcRefusals", "debugRendererLog", "decideReview", "deliverNotification", "describeBrowser", "emergencyStop", "hideBrowser", "languages", "listCredentials", "localState", "notificationLog", "onBrowserState", "onCoreStatus", "onEvent", "onRecovery", "openBrowser", "openPullRequest", "probeBrowser", "providerStatus", "removeCredential", "resolveApproval", "respondToQuestion", "reviewBundle", "sessionSnapshot", "setBrowserControl", "setTaskSelection", "setupProvider", "showBrowser", "starterTasks", "startTask", "steerTask", "subscribe", "taskEconomics", "taskStatus", "trustRepository", "typeAsPerson",
 ];
 
