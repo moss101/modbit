@@ -11,5 +11,6 @@
  */
 export * from "./client.ts";
 export * from "./control.ts";
+export * from "./automations.ts";
 export * from "./supervisor.ts";
 export * from "./conformance.ts";

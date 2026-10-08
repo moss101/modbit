@@ -30,6 +30,7 @@ export interface ShellActions {
   /** Opens the apps panel on `kind`; false (with a reason) when the task has no artifact for it. */
   showApp(kind: AppKind): true | string;
   openDashboard(): void;
+  openAutomations(): void;
   goBack(): void;
   setTheme(theme: ThemePreference): void;
   zoom(delta: 1 | -1 | 0): void;
@@ -67,6 +68,7 @@ export function shellCommandDefs(): Def[] {
     { id: "list.toggle", title: "Toggle agent list", group: "General", keywords: ["sidebar", "rail"], run: (a) => a.toggleAgentList() },
     { id: "settings.open", title: "Settings", group: "General", keys: ["mod+comma"], keywords: ["preferences", "provider"], run: (a) => a.openSettings() },
     { id: "help.shortcuts", title: "Keyboard shortcuts", group: "General", keys: ["ctrl+shift+slash"], keywords: ["help", "keys"], run: (a) => a.toggleHelp() },
+    { id: "view.automations", title: "Open automations", group: "General", keys: ["mod+shift+a"], keywords: ["schedule", "trigger", "cron", "webhook", "unattended"], run: (a) => a.openAutomations() },
     { id: "view.dashboard", title: "Open dashboard", group: "General", keywords: ["telemetry", "cost"], run: (a) => a.openDashboard() },
     { id: "nav.back", title: "Back to the fleet", group: "General", keywords: ["close", "return"], enabled: (a) => (a.canGoBack() ? true : "Already on the fleet"), run: (a) => a.goBack() },
     { id: "zoom.in", title: "Zoom in", group: "View", keys: ["mod+plus"], enabled: (a) => a.zoomAvailability(), run: (a) => a.zoom(1) },

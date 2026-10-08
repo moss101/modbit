@@ -19,6 +19,7 @@ import { AgentRegion } from "./agent-region.tsx";
 import { useTerminals } from "../apps/use-terminals.ts";
 import { recoverySummary } from "../../main/lifecycle.ts";
 import { AppsPanel } from "./apps-panel.tsx";
+import { Automations } from "../automations/automations.tsx";
 import { artifactsOf, panelTaskFor } from "./artifacts.ts";
 import { shellRegistry, type ShellActions } from "./commands.ts";
 import { CommandPalette, type PaletteItem } from "./palette.tsx";
@@ -55,6 +56,10 @@ export function Shell({ app }: { app: AppState }) {
   const setPrefs = useCallback((update: (p: UiPrefs) => UiPrefs) => setPrefsState(update), []);
   const [paletteOpen, setPaletteOpen] = useState(false);
   const [notice, setNotice] = useState("");
+  // REQ-PX-086: the Automations surface fills the centre region while it is open.
+  const [automationsOpen, setAutomationsOpen] = useState(false);
+  // AUT-E03: a task an automation created lives in the run's own session; its session id is the Core's (ListAutomationRuns by task).
+  const [runSessions, setRunSessions] = useState<Record<string, string>>({});
   // PX-046/047: the conversation open in the centre region (null = the Fleet board). `rowId` is a search hit to scroll to.
   const [conversation, setConversation] = useState<{ taskId: string; rowId: string | null } | null>(null);
   useEscapeLayers();
@@ -93,15 +98,16 @@ export function Shell({ app }: { app: AppState }) {
 
   const toFleet = useCallback(
     (then: () => void) => {
-      const overlay = reviewing !== null || browsing !== null || conversation !== null;
+      const overlay = reviewing !== null || browsing !== null || conversation !== null || automationsOpen;
       setReviewing(null);
       setBrowsing(null);
       setConversation(null);
+      setAutomationsOpen(false);
       // The fleet is re-shown on the next render; act on it after that.
       if (overlay) setTimeout(then, 0);
       else then();
     },
-    [reviewing, browsing, conversation, setReviewing, setBrowsing],
+    [reviewing, browsing, conversation, automationsOpen, setReviewing, setBrowsing],
   );
   /** Opens a task's conversation (or, with null, the Fleet board). */
   const openConversation = useCallback(
@@ -109,6 +115,7 @@ export function Shell({ app }: { app: AppState }) {
       setReviewing(null);
       setBrowsing(null);
       setDashboardOpen(false);
+      setAutomationsOpen(false);
       if (taskId === null) {
         setConversation(null);
         return;
@@ -118,6 +125,21 @@ export function Shell({ app }: { app: AppState }) {
     },
     [setReviewing, setBrowsing, setDashboardOpen, setSelectedTaskId],
   );
+  const openedTaskId = conversation?.taskId ?? null;
+  useEffect(() => {
+    if (!openedTaskId || model.tasks.has(openedTaskId) || runSessions[openedTaskId] !== undefined || core.state !== "connected") return;
+    let live = true;
+    window.modbit
+      .automationRuns({ taskId: openedTaskId, limit: 1 })
+      .then((r) => {
+        const sid = r[0]?.sessionId;
+        if (live && sid) setRunSessions((m) => ({ ...m, [openedTaskId]: sid }));
+      })
+      .catch(() => undefined);
+    return () => {
+      live = false;
+    };
+  }, [openedTaskId, model.tasks, runSessions, core.state]);
   const focusTestId = (id: string) => {
     const el = document.querySelector<HTMLElement>(`[data-testid="${id}"]`);
     el?.scrollIntoView({ block: "center" });
@@ -149,16 +171,18 @@ export function Shell({ app }: { app: AppState }) {
       return ok;
     },
     openDashboard: () => setDashboardOpen(true),
+    openAutomations: () => setAutomationsOpen(true),
     goBack: () => {
       // Back leaves the conversation for the Fleet board once nothing else is open over it.
-      if (conversation && !reviewing && !browsing && !dashboardOpen) setConversation(null);
+      if (automationsOpen) setAutomationsOpen(false);
+      else if (conversation && !reviewing && !browsing && !dashboardOpen) setConversation(null);
       else void runFleetCommand("back");
     },
     setTheme: (theme) => setPrefs((p) => ({ ...p, theme })),
     zoom: (delta) => setPrefs((p) => ({ ...p, zoom: delta === 0 ? 1 : clampZoom(p.zoom + delta * ZOOM_STEP) })),
     zoomAvailability: () => (browsing ? "Zoom is unavailable while the browser view is open" : true),
     appAvailability,
-    canGoBack: () => reviewing !== null || browsing !== null || dashboardOpen || conversation !== null,
+    canGoBack: () => reviewing !== null || browsing !== null || dashboardOpen || conversation !== null || automationsOpen,
   };
   const actionsRef = useRef(actions);
   actionsRef.current = actions;
@@ -244,7 +268,7 @@ export function Shell({ app }: { app: AppState }) {
   }, [prefs.theme, runCommand, browsing]);
 
   const overlayTitle = reviewing ? model.tasks.get(reviewing)?.goalText : browsing ? model.tasks.get(browsing.taskId)?.goalText : conversation ? model.tasks.get(conversation.taskId)?.goalText : undefined;
-  const title = dashboardOpen ? "Dashboard" : (overlayTitle ?? "Fleet");
+  const title = automationsOpen ? "Automations" : dashboardOpen ? "Dashboard" : (overlayTitle ?? "Fleet");
   const panelRefreshKey = useThrottled(`${panelTask?.state ?? ""}:${panelTask?.lastOffset ?? ""}`, 1200);
   const panelUnavailable = panelTaskId === null ? "no task has an artifact yet" : null;
   // REQ-PX-049: what the Core recovered at start, as counts of its own task states, shown once its snapshot and attention list are in.
@@ -314,6 +338,9 @@ export function Shell({ app }: { app: AppState }) {
             dashboardOpen={dashboardOpen}
             dashboardDisabled={!model.sessionId}
             onToggleDashboard={() => setDashboardOpen((o) => !o)}
+            automationsOpen={automationsOpen}
+            automationsDisabled={core.state !== "connected"}
+            onToggleAutomations={() => setAutomationsOpen((o) => !o)}
             panelOpen={panelOpen}
             panelUnavailable={panelUnavailable}
             onTogglePanel={() => actions.togglePanel()}
@@ -342,10 +369,17 @@ export function Shell({ app }: { app: AppState }) {
           />
         }
       >
-        {conversation && !reviewing && !browsing && !dashboardOpen ? (
+        {automationsOpen ? (
+          <div className="conv-wrap" data-testid="automations-region">
+            <StatusRegion app={app} />
+            <div className="autos-scroll">
+              <Automations connected={core.state === "connected"} onOpenTask={(id) => openConversation(id)} onClose={() => setAutomationsOpen(false)} />
+            </div>
+          </div>
+        ) : conversation && !reviewing && !browsing && !dashboardOpen ? (
           <div className="conv-wrap">
             <StatusRegion app={app} />
-            <Conversation key={conversation.taskId} taskId={conversation.taskId} sessionId={model.sessionId} connected={core.state === "connected"} card={model.tasks.get(conversation.taskId)} title={model.tasks.get(conversation.taskId)?.goalText ?? "Task"} focusRowId={conversation.rowId} onResume={(id) => void startTask(id)} onNewTask={() => actions.focusNewTask()} onOpenTerminal={(tid, termId) => { setTerminalPick((m) => ({ ...m, [tid]: termId })); setPanelState(tid, { open: true, tab: "terminal" }); }} onOpenTask={(id) => openConversation(id)} titleOf={(id) => model.tasks.get(id)?.goalText ?? "another task"} />
+            <Conversation key={conversation.taskId} taskId={conversation.taskId} sessionId={model.tasks.has(conversation.taskId) ? model.sessionId : (runSessions[conversation.taskId] ?? model.sessionId)} connected={core.state === "connected"} card={model.tasks.get(conversation.taskId)} title={model.tasks.get(conversation.taskId)?.goalText ?? "Task"} focusRowId={conversation.rowId} onResume={(id) => void startTask(id)} onNewTask={() => actions.focusNewTask()} onOpenTerminal={(tid, termId) => { setTerminalPick((m) => ({ ...m, [tid]: termId })); setPanelState(tid, { open: true, tab: "terminal" }); }} onOpenTask={(id) => openConversation(id)} titleOf={(id) => model.tasks.get(id)?.goalText ?? "another task"} />
           </div>
         ) : (
           <FleetView app={app} />

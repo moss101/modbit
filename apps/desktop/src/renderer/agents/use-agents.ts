@@ -18,6 +18,11 @@ interface WireEventLike {
   taskId?: string | null;
 }
 
+/** What would change a row of an automation's task: its set, its state and its last movement. */
+function signatureOf(headers: readonly AgentHeaderView[]): string {
+  return headers.map((h) => `${h.taskId}:${h.statusClass}:${h.lastOffset}:${h.unread}:${h.pendingApproval}`).sort().join("|");
+}
+
 export interface AgentsState {
   headers: AgentHeaderView[];
   loaded: boolean;
@@ -41,6 +46,9 @@ export function useAgents(sessionId: string | null, includeArchived: boolean, co
   const key = useRef({ sessionId, includeArchived });
   key.current = { sessionId, includeArchived };
   const alive = useRef(true);
+  // The tasks automations created live in the runs' own sessions, which emit no event to this window: a light beat asks main
+  // for their headers and the list is re-read only when something about them changed.
+  const automationSignature = useRef("");
   useEffect(() => {
     alive.current = true;
     return () => {
@@ -58,9 +66,14 @@ export function useAgents(sessionId: string | null, includeArchived: boolean, co
     inFlight.current = true;
     try {
       const v = await window.modbit.agentHeaders(sid, inc);
+      // AUT-E03: the tasks automations created live in the runs' own sessions; the Core's headers for them are merged in.
+      const fromAutomations = await window.modbit.automationTaskHeaders().catch((): AgentHeaderView[] => []);
+      const known = new Set(v.headers.map((h) => h.taskId));
+      const merged = [...v.headers, ...fromAutomations.filter((h) => !known.has(h.taskId) && (inc || !h.archived))];
+      automationSignature.current = signatureOf(fromAutomations);
       // The answer is for the session and filter that asked; a stale one is dropped.
       if (alive.current && key.current.sessionId === sid && key.current.includeArchived === inc) {
-        setHeaders(v.headers);
+        setHeaders(merged);
         setLoaded(true);
         setError(null);
         setRefreshedAt(Date.now());
@@ -102,6 +115,19 @@ export function useAgents(sessionId: string | null, includeArchived: boolean, co
       timer.current = null;
     };
   }, [refresh]);
+
+  useEffect(() => {
+    if (!sessionId || !connected) return;
+    const t = setInterval(() => {
+      window.modbit
+        .automationTaskHeaders()
+        .then((h) => {
+          if (signatureOf(h) !== automationSignature.current) void run();
+        })
+        .catch(() => undefined);
+    }, 2500);
+    return () => clearInterval(t);
+  }, [sessionId, connected, run]);
 
   const markRead = useCallback(
     async (taskId: string, upToOffset?: string) => {
