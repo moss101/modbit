@@ -499,6 +499,13 @@ async fn qual_px_063_records_membership_and_each_guard_with_its_typed_reason() {
         .unwrap();
     assert_eq!(ids(listed_alpha), ids(&got));
     let headers = fx.headers().await;
+    // A task in a worktree of its own is listed under the checkout it came from.
+    let iso = headers
+        .headers
+        .iter()
+        .find(|h| h.task_id.as_ref() == Some(&isolated))
+        .unwrap();
+    assert_eq!(Path::new(&iso.workspace_root), Path::new(&ra));
     let in_alpha: Vec<Vec<u8>> = {
         let mut v: Vec<_> = headers
             .headers

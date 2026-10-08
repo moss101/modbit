@@ -93,7 +93,8 @@ export function useAgents(sessionId: string | null, includeArchived: boolean, co
   useEffect(() => {
     const off = window.modbit.onEvent((raw) => {
       const e = raw as WireEventLike;
-      if (!e.taskId || (e.eventType && IGNORED_EVENT_TYPES.has(e.eventType))) return;
+      // A project event carries no task, but it moves the project id a header shows (PX-063).
+      if ((!e.taskId && e.aggregateType !== "project") || (e.eventType && IGNORED_EVENT_TYPES.has(e.eventType))) return;
       refresh();
     });
     return () => {

@@ -2,7 +2,7 @@ import { StateLine } from "../shell/state-line.tsx";
 import type { AppState } from "../state/use-app.ts";
 
 export function Composer({ app }: { app: AppState }) {
-  const { core, goal, setGoal, issueUrl, setIssueUrl, workspaceRoot, setWorkspaceRoot, submitting, provider, trusted, submit, composer } = app;
+  const { core, goal, setGoal, issueUrl, setIssueUrl, workspaceRoot, setWorkspaceRoot, isolate, setIsolate, submitting, provider, trusted, submit, composer } = app;
   return (
     <form className="composer" onSubmit={submit} aria-label="New Task">
       <h2 style={{ margin: 0, fontSize: 14 }}>New Task</h2>
@@ -12,6 +12,10 @@ export function Composer({ app }: { app: AppState }) {
       <input id="issue-url" data-testid="issue-url" value={issueUrl} onChange={(e) => setIssueUrl(e.target.value)} placeholder="https://github.com/owner/repo/issues/123" disabled={core.state !== "connected"} />
       <label htmlFor="workspace" className="meta">Workspace root (a local Git checkout; empty for a Work space)</label>
       <input id="workspace" data-testid="workspace" value={workspaceRoot} onChange={(e) => setWorkspaceRoot(e.target.value)} placeholder="/path/to/repo" disabled={core.state !== "connected"} />
+      <label className="meta" htmlFor="isolate" style={{ display: "flex", gap: 6, alignItems: "center" }}>
+        <input id="isolate" type="checkbox" data-testid="isolate" checked={isolate} onChange={(e) => setIsolate(e.target.checked)} disabled={core.state !== "connected" || workspaceRoot.trim() === ""} />
+        Work in its own worktree (your checkout stays untouched until you apply the result)
+      </label>
       <div className="meta">Execution: local_trusted · Origin: desktop · Running here trusts this repository, scoped to it, if it is not trusted yet.</div>
       {provider !== null && !provider.configured && (
         <div className="meta" role="status" data-testid="composer-no-provider">

@@ -124,6 +124,8 @@ const BRIDGE_ALLOW_LIST = [
   "ingestCiResults", "ingestReviewComments",
   // PX-046 / PX-047 (agent list and conversation): the Core's header, transcript and search projections, and its read and archive commands.
   "agentHeaders", "transcript", "openStreams", "pendingApprovals", "searchConversations", "markRead", "archiveTask",
+  // REQ-PX-063 / 064 / 068 (projects, worktrees, apply-back). Added on purpose; each is a typed request main validates (project-ipc.ts).
+  "listProjects", "getProject", "createProject", "renameProject", "archiveProject", "addProjectMember", "removeProjectMember", "listWorktrees", "removeWorktree", "runWorktreeCleanup", "applyWorktree", "undoApply", "discardWorktree",
   // REQ-PX-048 (the apps panel): the terminal stream, the read-only Files app and the effect receipts. Added on purpose; each is a typed request main validates.
   "terminalList", "terminalAttach", "terminalAck", "terminalDetach", "terminalInput", "terminalResize", "terminalWrite", "terminalKill", "onTerminalFrame", "listWorkspaceDir", "readWorkspaceFile", "effectReceipts",
   // REQ-PX-054..056 (the composer): mode, preference, queue, interrupt, send behaviour, slash inventory, model variants and the side question. Added on purpose; each is one typed Core command or read that main validates (composer-ipc.ts).

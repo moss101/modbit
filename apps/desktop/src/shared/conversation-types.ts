@@ -43,6 +43,8 @@ export interface AgentHeaderView {
   lastOffset: string;
   readOffset: string;
   attentionItems: number;
+  /** The project the Core's membership map puts the task in (PX-063); "" when none. */
+  projectId?: string;
 }
 
 export interface AgentHeadersView {

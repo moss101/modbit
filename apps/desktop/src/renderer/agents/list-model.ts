@@ -9,6 +9,7 @@
  */
 import type { Status } from "@modbit/ui";
 import { STATUS_CLASSES, type AgentHeaderView, type StatusClass } from "../../shared/conversation-types.ts";
+import type { ProjectInfo } from "../../shared/project-types.ts";
 
 /** How each class is shown: its own glyph (via the status primitive) and always its words. */
 export const CLASS_META: Record<StatusClass, { status: Status; short: string }> = {
@@ -51,15 +52,20 @@ export const ORIGIN_FILTERS = [
 ] as const;
 export type OriginFilter = (typeof ORIGIN_FILTERS)[number]["id"];
 
+/** The project chip for tasks that are in no project. */
+export const NO_PROJECT = "none";
+
 export interface Filters {
   states: StateFilter[];
   locations: LocationFilter[];
   origins: OriginFilter[];
+  /** Project ids (the Core's), or NO_PROJECT: the chips of the stored query (AFW-B06, PX-064). */
+  projects: string[];
   /** Archived conversations are listed only when asked for. */
   showArchived: boolean;
 }
 
-export const NO_FILTERS: Filters = { states: [], locations: [], origins: [], showArchived: false };
+export const NO_FILTERS: Filters = { states: [], locations: [], origins: [], projects: [], showArchived: false };
 
 const DONE_CLASSES: readonly StatusClass[] = ["COMPLETED", "READY_FOR_REVIEW_UNSEEN", "READY_FOR_REVIEW_SEEN"];
 
@@ -86,11 +92,13 @@ export function passes(h: AgentHeaderView, f: Filters): boolean {
   if (f.states.length > 0 && !f.states.some((s) => matchesState(h, s))) return false;
   if (f.locations.length > 0 && !f.locations.includes((h.executionLocation || "local") as LocationFilter)) return false;
   if (f.origins.length > 0 && !f.origins.includes(h.origin as OriginFilter)) return false;
+  // The project a header is in is the Core's map (AgentHeader.projectId); a chip names a project or "no project".
+  if (f.projects.length > 0 && !f.projects.some((id) => (id === NO_PROJECT ? !h.projectId : h.projectId === id))) return false;
   return true;
 }
 
 export function filterCount(f: Filters): number {
-  return f.states.length + f.locations.length + f.origins.length + (f.showArchived ? 1 : 0);
+  return f.states.length + f.locations.length + f.origins.length + f.projects.length + (f.showArchived ? 1 : 0);
 }
 
 // ----------------------------------------------------------------- grouping
@@ -101,8 +109,17 @@ export const GROUPINGS = [
   { id: "status", label: "Status" },
   { id: "location", label: "Execution location" },
   { id: "time", label: "Time" },
+  { id: "project", label: "Project" },
 ] as const;
 export type Grouping = (typeof GROUPINGS)[number]["id"];
+
+/** How rows are ordered inside a section (a part of a stored view). */
+export const SORTS = [
+  { id: "recent", label: "Newest activity" },
+  { id: "status", label: "Status" },
+  { id: "title", label: "Title" },
+] as const;
+export type SortKey = (typeof SORTS)[number]["id"];
 
 export interface Section {
   key: string;
@@ -138,12 +155,36 @@ export function baseName(p: string): string {
   return parts[parts.length - 1] ?? "";
 }
 
+/** Rows inside a section in a stored view's order; the id breaks ties so the order is total. */
+export function byOrder(sort: SortKey): (a: AgentHeaderView, b: AgentHeaderView) => number {
+  switch (sort) {
+    case "status":
+      return (a, b) => classRank(a.statusClass) - classRank(b.statusClass) || byRecent(a, b);
+    case "title":
+      return (a, b) => (a.title || "").localeCompare(b.title || "") || byRecent(a, b);
+    default:
+      return byRecent;
+  }
+}
+
+export interface GroupOptions {
+  /** The Core's projects (for the Project grouping and for hiding the tasks the Projects group shows). */
+  projects?: readonly ProjectInfo[] | undefined;
+  sort?: SortKey | undefined;
+}
+
+/** The ids of the projects a list can show: live ones, and archived ones only when archived items are asked for. */
+export function visibleProjects(projects: readonly ProjectInfo[], showArchived: boolean): ProjectInfo[] {
+  return projects.filter((p) => showArchived || !p.archived);
+}
+
 /** Splits headers into sections for a grouping; pinned headers (in pin order) form the first section. */
-export function groupHeaders(headers: readonly AgentHeaderView[], grouping: Grouping, pins: readonly string[], nowMs: number): Section[] {
+export function groupHeaders(headers: readonly AgentHeaderView[], grouping: Grouping, pins: readonly string[], nowMs: number, opts: GroupOptions = {}): Section[] {
   const byId = new Map(headers.map((h) => [h.taskId, h]));
   const pinnedRows = pins.map((id) => byId.get(id)).filter((h): h is AgentHeaderView => h !== undefined);
   const pinnedIds = new Set(pinnedRows.map((h) => h.taskId));
-  const rest = headers.filter((h) => !pinnedIds.has(h.taskId)).sort(byRecent);
+  const rest = headers.filter((h) => !pinnedIds.has(h.taskId)).sort(byOrder(opts.sort ?? "recent"));
+  const projectName = new Map((opts.projects ?? []).map((p) => [p.projectId, p]));
   const sections: Section[] = [];
   if (pinnedRows.length > 0) sections.push({ key: "pinned", label: "Pinned", rows: pinnedRows, pinned: true });
 
@@ -175,8 +216,24 @@ export function groupHeaders(headers: readonly AgentHeaderView[], grouping: Grou
         put(b, BUCKET_LABEL[b], BUCKET_ORDER.indexOf(b), h);
         break;
       }
+      case "project": {
+        // The Core's membership map; a task whose project the list cannot show (archived, hidden) is shown as in no project.
+        const p = h.projectId ? projectName.get(h.projectId) : undefined;
+        if (p) put(p.projectId, p.name, 1 + [...projectName.keys()].indexOf(p.projectId), h);
+        else put("none", "No project", 0, h);
+        break;
+      }
     }
   });
+  if (grouping === "project") {
+    // Projects first (in the Core's order, newest first), the tasks of no project last.
+    const none = bucketed.get("none");
+    if (none) none.order = 10_000;
+  }
+  if (grouping === "project") {
+    // A project with no task passing the filters is still a section (count 0): it is a place a task can be added to.
+    for (const [i, p] of [...projectName.values()].entries()) if (!bucketed.has(p.projectId)) bucketed.set(p.projectId, { label: p.name, order: 1 + i, rows: [] });
+  }
   const ordered = [...bucketed.entries()].sort((a, b) => a[1].order - b[1].order);
   // Two repositories with one folder name get their paths in the label so the sections are distinguishable.
   if (grouping === "repository") {
@@ -209,7 +266,15 @@ export const unpin = (pins: readonly string[], taskId: string): string[] => pins
 export const SECTION_HEIGHT = 28;
 export const ROW_HEIGHT = 56;
 
-export type ListItem = { kind: "section"; key: string; label: string; count: number; collapsed: boolean; pinned: boolean } | { kind: "row"; key: string; header: AgentHeaderView; sectionKey: string };
+export type ListItem =
+  | { kind: "section"; key: string; label: string; count: number; collapsed: boolean; pinned: boolean }
+  | { kind: "row"; key: string; header: AgentHeaderView; sectionKey: string }
+  /** The Projects group's heading (PX-064): separate from the repositories. */
+  | { kind: "projects-head"; key: string; label: string; count: number; collapsed: boolean }
+  /** A project parent: its facts are the Core's record and rollup; `shown` is how many of its tasks pass the filters. */
+  | { kind: "project"; key: string; project: ProjectInfo; shown: number; collapsed: boolean }
+  /** The "New project" row that closes the Projects group. */
+  | { kind: "new-project"; key: string };
 
 /** The flat, ordered items of the list: a section header, then its rows unless the section is collapsed. */
 export function flatten(sections: readonly Section[], collapsed: ReadonlySet<string>): ListItem[] {
@@ -227,7 +292,23 @@ export interface Layout {
   total: number;
 }
 
-export const heightOf = (item: ListItem): number => (item.kind === "section" ? SECTION_HEIGHT : ROW_HEIGHT);
+/** Height of a project parent row and of the "New project" row. */
+export const PROJECT_HEIGHT = 40;
+export const NEW_PROJECT_HEIGHT = 32;
+
+export const heightOf = (item: ListItem): number => {
+  switch (item.kind) {
+    case "section":
+    case "projects-head":
+      return SECTION_HEIGHT;
+    case "project":
+      return PROJECT_HEIGHT;
+    case "new-project":
+      return NEW_PROJECT_HEIGHT;
+    default:
+      return ROW_HEIGHT;
+  }
+};
 
 export function layoutOf(items: readonly ListItem[]): Layout {
   const offsets = new Array<number>(items.length);
@@ -308,3 +389,107 @@ export function subtitleOf(h: AgentHeaderView, fields: readonly SubtitleField[])
 export function rowLabel(h: AgentHeaderView, pinned: boolean): string {
   return [h.title || "Untitled task", h.statusLabel || CLASS_META[h.statusClass].short, h.unread ? "unread" : "", h.pendingApproval ? "waiting on your approval" : "", pinned ? "pinned" : ""].filter(Boolean).join(", ");
 }
+
+// -------------------------------------------------------- the projects group
+
+export interface ItemsInput {
+  /** The headers that pass the filters. */
+  headers: readonly AgentHeaderView[];
+  /** The Core's projects (ListProjects), archived ones included; the list decides which to show. */
+  projects: readonly ProjectInfo[];
+  grouping: Grouping;
+  pins: readonly string[];
+  collapsed: ReadonlySet<string>;
+  nowMs: number;
+  sort: SortKey;
+  showArchived: boolean;
+}
+
+/** The section key of the Projects group and of one project (collapsed state persists per grouping). */
+export const PROJECTS_KEY = "projects";
+export const projectKey = (projectId: string): string => `project:${projectId}`;
+
+/**
+ * The flat items of the list. With a project to show, the Projects group sits
+ * after the pinned tasks and before the repositories: each project is an
+ * expandable parent showing the tasks the Core's membership map puts in it, and
+ * those tasks do not appear a second time below. A project the list does not
+ * show (archived and not asked for) is not a parent, and its tasks are listed
+ * where they would be otherwise: archiving a project hides the grouping, never
+ * the work. Under the Project grouping the projects are the sections.
+ */
+export function listItems(i: ItemsInput): ListItem[] {
+  const shown = visibleProjects(i.projects, i.showArchived);
+  if (i.grouping === "project") return flatten(groupHeaders(i.headers, "project", i.pins, i.nowMs, { projects: shown, sort: i.sort }), i.collapsed);
+  const shownIds = new Set(shown.map((p) => p.projectId));
+  const pinned = new Set(i.pins);
+  const inShownProject = (h: AgentHeaderView) => h.projectId !== undefined && h.projectId !== "" && shownIds.has(h.projectId) && !pinned.has(h.taskId);
+  const members = i.headers.filter(inShownProject);
+  const sections = groupHeaders(i.headers.filter((h) => !inShownProject(h)), i.grouping, i.pins, i.nowMs, { sort: i.sort });
+  const out: ListItem[] = [];
+  const first = sections[0];
+  if (first?.pinned) out.push(...flatten([sections.shift()!], i.collapsed));
+  if (shown.length > 0) {
+    const groupCollapsed = i.collapsed.has(PROJECTS_KEY);
+    out.push({ kind: "projects-head", key: `s:${PROJECTS_KEY}`, label: "Projects", count: shown.length, collapsed: groupCollapsed });
+    if (!groupCollapsed) {
+      for (const p of shown) {
+        const rows = members.filter((h) => h.projectId === p.projectId).sort(byOrder(i.sort));
+        const pc = i.collapsed.has(projectKey(p.projectId));
+        out.push({ kind: "project", key: `p:${p.projectId}`, project: p, shown: rows.length, collapsed: pc });
+        if (!pc) for (const h of rows) out.push({ kind: "row", key: `r:${projectKey(p.projectId)}:${h.taskId}`, header: h, sectionKey: projectKey(p.projectId) });
+      }
+      out.push({ kind: "new-project", key: "np" });
+    }
+  }
+  out.push(...flatten(sections, i.collapsed));
+  return out;
+}
+
+// ------------------------------------------------------------ stored views
+
+/**
+ * A stored view is a saved query: the grouping, the filter chips and the
+ * sort of the list (AFW-B06). It is a per-viewer preference kept in the
+ * renderer's own storage like the other list preferences: a convenience that
+ * decides nothing about a task, never authoritative, and it names projects by
+ * the Core's ids (a view whose project is gone simply matches nothing for that
+ * chip).
+ */
+export interface StoredView {
+  id: string;
+  name: string;
+  grouping: Grouping;
+  filters: Filters;
+  sort: SortKey;
+}
+
+export const MAX_VIEWS = 20;
+export const MAX_VIEW_NAME = 40;
+
+const sameSet = (a: readonly string[], b: readonly string[]): boolean => a.length === b.length && a.every((x) => b.includes(x));
+
+export function sameFilters(a: Filters, b: Filters): boolean {
+  return sameSet(a.states, b.states) && sameSet(a.locations, b.locations) && sameSet(a.origins, b.origins) && sameSet(a.projects, b.projects) && a.showArchived === b.showArchived;
+}
+
+/** Whether the list is showing exactly what a view stores. */
+export function viewMatches(v: StoredView, now: { grouping: Grouping; filters: Filters; sort: SortKey }): boolean {
+  return v.grouping === now.grouping && v.sort === now.sort && sameFilters(v.filters, now.filters);
+}
+
+export type SaveViewResult = { ok: true; views: StoredView[]; view: StoredView } | { ok: false; message: string };
+
+/** Saves the current query under a name: names are unique (any case) and bounded; saving a name again replaces that view. */
+export function saveView(views: readonly StoredView[], name: string, now: { grouping: Grouping; filters: Filters; sort: SortKey }, newId: () => string): SaveViewResult {
+  const trimmed = name.trim();
+  if (trimmed.length === 0) return { ok: false, message: "A view needs a name." };
+  if (trimmed.length > MAX_VIEW_NAME) return { ok: false, message: `A view name has at most ${MAX_VIEW_NAME} characters.` };
+  const key = trimmed.toLowerCase();
+  const existing = views.find((v) => v.name.toLowerCase() === key);
+  if (!existing && views.length >= MAX_VIEWS) return { ok: false, message: `You can keep up to ${MAX_VIEWS} views. Delete one to save another.` };
+  const view: StoredView = { id: existing?.id ?? newId(), name: existing?.name ?? trimmed, grouping: now.grouping, filters: { ...now.filters, states: [...now.filters.states], locations: [...now.filters.locations], origins: [...now.filters.origins], projects: [...now.filters.projects] }, sort: now.sort };
+  return { ok: true, views: existing ? views.map((v) => (v.id === existing.id ? view : v)) : [...views, view], view };
+}
+
+export const deleteView = (views: readonly StoredView[], id: string): StoredView[] => views.filter((v) => v.id !== id);
