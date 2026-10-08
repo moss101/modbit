@@ -60,7 +60,7 @@ export function EvidenceApp({ taskId, refreshKey }: { taskId: string; refreshKey
       </div>
 
       <section aria-labelledby="ev-receipts" data-testid="evidence-receipts">
-        <h3 id="ev-receipts">Effect receipts</h3>
+        <h2 id="ev-receipts">Effect receipts</h2>
         {data.receiptsError ? (
           <p className="meta" role="status">{`Receipts could not be read: ${data.receiptsError}`}</p>
         ) : receipts && receipts.receipts.length > 0 ? (
@@ -85,7 +85,7 @@ export function EvidenceApp({ taskId, refreshKey }: { taskId: string; refreshKey
       </section>
 
       <section aria-labelledby="ev-checks" data-testid="evidence-checks">
-        <h3 id="ev-checks">Checks and CI</h3>
+        <h2 id="ev-checks">Checks and CI</h2>
         {data.bundleError ? (
           <p className="meta" role="status">{`The checks could not be read: ${data.bundleError}`}</p>
         ) : bundle ? (
@@ -120,7 +120,7 @@ export function EvidenceApp({ taskId, refreshKey }: { taskId: string; refreshKey
       </section>
 
       <section aria-labelledby="ev-context" data-testid="evidence-context">
-        <h3 id="ev-context">Context</h3>
+        <h2 id="ev-context">Context</h2>
         {data.inspectorNote ? (
           <p className="meta" role="status">{`The context could not be read: ${data.inspectorNote}`}</p>
         ) : acc ? (
