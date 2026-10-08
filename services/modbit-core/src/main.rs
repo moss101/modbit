@@ -63,6 +63,7 @@ mod review_comments;
 mod review_env;
 mod routing;
 mod rules;
+mod run_control;
 mod runtime;
 mod sandboxes;
 mod server;

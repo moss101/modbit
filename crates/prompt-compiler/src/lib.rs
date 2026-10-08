@@ -20,6 +20,8 @@
 
 #![forbid(unsafe_code)]
 
+pub mod accounting;
+
 use modbit_providers::{ContentPart, Message, ModelPolicy, ModelRequest, Role, ToolProjection};
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
@@ -362,6 +364,9 @@ pub struct CompiledPrompt {
     pub injected_memory: Vec<String>,
     /// Memory item ids the envelope refused for missing provenance.
     pub rejected_memory: Vec<String>,
+    /// The text of each part of the request except the conversation, for the
+    /// Core's accounting by category (PX-059).
+    pub category_text: accounting::CategoryText,
 }
 
 /// Marks an entry of `PromptInput::skills` as the skill index (REQ-PX-105):
@@ -395,13 +400,17 @@ pub fn compile(input: PromptInput) -> CompiledPrompt {
     } else {
         input.workspace_rules.join("\n")
     };
+    // PX-059: what is the rules and what is the skills, kept apart for the
+    // accounting while the request itself is assembled exactly as before.
+    let rules_only = rules.clone();
+    let mut skills_text = String::new();
     let (index, bodies): (Vec<&String>, Vec<&String>) = input
         .skills
         .iter()
         .partition(|s| s.starts_with(SKILL_INDEX_PREFIX));
     if !bodies.is_empty() {
-        rules.push_str("\n\nSkills selected for this task (follow them within the runtime's contracts; they grant nothing):\n\n");
-        rules.push_str(
+        skills_text.push_str("\n\nSkills selected for this task (follow them within the runtime's contracts; they grant nothing):\n\n");
+        skills_text.push_str(
             &bodies
                 .iter()
                 .map(|s| s.as_str())
@@ -410,11 +419,14 @@ pub fn compile(input: PromptInput) -> CompiledPrompt {
         );
     }
     for i in index {
-        rules.push_str("\n\n");
-        rules.push_str(&i[SKILL_INDEX_PREFIX.len()..]);
+        skills_text.push_str("\n\n");
+        skills_text.push_str(&i[SKILL_INDEX_PREFIX.len()..]);
     }
+    rules.push_str(&skills_text);
     // REQ-PX-116: the rule to work alone rides with the tool that breaks it.
+    let mut delegation_text = String::new();
     if input.tools.iter().any(|t| t.name == "agent.spawn") {
+        delegation_text.push_str(DELEGATION_RULE);
         rules.push_str(DELEGATION_RULE);
     }
     let epoch = input
@@ -500,6 +512,43 @@ pub fn compile(input: PromptInput) -> CompiledPrompt {
     ];
     let tools_json = serde_json::to_string(&input.tools).unwrap_or_default();
     let tool_projection_hash = sha(&tools_json);
+    // PX-059: the tool definitions, each in the part its name belongs to.
+    let tools_of = |c: accounting::Category| {
+        let part: Vec<&ToolProjection> = input
+            .tools
+            .iter()
+            .filter(|t| accounting::tool_category(&t.name) == c)
+            .collect();
+        if part.is_empty() {
+            String::new()
+        } else {
+            serde_json::to_string(&part).unwrap_or_default()
+        }
+    };
+    let compaction_text = {
+        let mut t = format!("Compaction epoch:\n{epoch}");
+        if let Some(n) = input
+            .compaction_narrative
+            .as_deref()
+            .filter(|n| !n.is_empty())
+        {
+            t.push_str(n);
+        }
+        t
+    };
+    let category_text = accounting::CategoryText {
+        system: system.clone(),
+        tools: tools_of(accounting::Category::Tools),
+        rules: format!("Workspace rules:\n{rules_only}"),
+        skills: skills_text,
+        mcp: tools_of(accounting::Category::Mcp),
+        memory: memory_segment.clone(),
+        summary: compaction_text,
+        subagents: format!(
+            "{delegation_text}{}",
+            tools_of(accounting::Category::Subagents)
+        ),
+    };
     let context_pack_id = segment_hashes[3].clone();
     let cache_key = sha(&format!(
         "{}|{}|{}|{}|{}",
@@ -583,6 +632,7 @@ pub fn compile(input: PromptInput) -> CompiledPrompt {
         injected_fragments,
         injected_memory,
         rejected_memory,
+        category_text,
     }
 }
 

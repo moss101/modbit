@@ -76,6 +76,9 @@ impl KernelGate {
                 approval: None,
                 intent_hash: &intent_hash,
                 config: Some(&self.config),
+                // A configured check is the repository's own, decided by the
+                // kernel and the person; no run mode approves it.
+                run: None,
                 emergency_stopped: self.emergency_stopped,
                 now: modbit_domain::Timestamp::now(),
             });
