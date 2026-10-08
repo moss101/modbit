@@ -915,7 +915,17 @@ pub(crate) async fn spawn(
         let recheck: std::result::Result<(), String> = {
             let holds: Vec<ChildHold> = child_holds_in(&store, core, parent)
                 .into_iter()
-                .map(|(_, _, h)| h)
+                // What a running child has spent past its reservation since
+                // the slice was cut is that child's own overrun, charged to
+                // the parent at its next round boundary; it is not another
+                // admission and must not refuse this one. Reservations are
+                // what two admissions compete for.
+                .map(|(_, _, mut h)| {
+                    if h.live {
+                        h.spent = modbit_core_runtime::budget::Held::default();
+                    }
+                    h
+                })
                 .collect();
             let rem = budget::remaining_for_children(
                 &req.parent_budgets.caps(),
