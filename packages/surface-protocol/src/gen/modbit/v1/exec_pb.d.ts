@@ -12,6 +12,7 @@ import type { Message } from "@bufbuild/protobuf";
 import type { Id } from "./domain_pb.js";
 import type { ClientHello } from "./surface_pb.js";
 import type { HelloAck } from "./negotiation_pb.js";
+import type { ListServices, SessionListeners } from "./security_runtime_pb.js";
 
 /**
  * Describes the file modbit/v1/exec.proto.
@@ -986,6 +987,20 @@ export declare type ExecFrame = Message<"modbit.v1.ExecFrame"> & {
      */
     value: StdinWritten;
     case: "stdinWritten";
+  } | {
+    /**
+     * PX-132 (field block 320-339).
+     *
+     * @generated from field: modbit.v1.ListServices list_services = 320;
+     */
+    value: ListServices;
+    case: "listServices";
+  } | {
+    /**
+     * @generated from field: modbit.v1.SessionListeners service_listeners = 321;
+     */
+    value: SessionListeners;
+    case: "serviceListeners";
   } | { case: undefined; value?: undefined };
 };
 
