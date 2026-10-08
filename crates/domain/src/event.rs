@@ -42,6 +42,11 @@ pub enum AggregateType {
     /// A person's curation of a task's conversation (PX-042): read markers
     /// and archive.
     Conversation,
+    /// One engineering-memory item's life (PX-113): proposed, promoted,
+    /// edited, superseded, forgotten. The aggregate id is the first sixteen
+    /// bytes of the item's content-addressed id; the `memory_items` table is
+    /// a projection of these events and rebuilds from them.
+    Memory,
 }
 
 impl AggregateType {
@@ -62,6 +67,7 @@ impl AggregateType {
             Self::Workspace => "workspace",
             Self::AssistantStream => "assistant_stream",
             Self::Conversation => "conversation",
+            Self::Memory => "memory",
         }
     }
 
@@ -82,6 +88,7 @@ impl AggregateType {
             "workspace" => Self::Workspace,
             "assistant_stream" => Self::AssistantStream,
             "conversation" => Self::Conversation,
+            "memory" => Self::Memory,
             _ => return None,
         })
     }

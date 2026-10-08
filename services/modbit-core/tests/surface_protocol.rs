@@ -13872,6 +13872,137 @@ async fn qual_px_116_a_child_reads_only_its_read_scope_and_carries_the_parents_s
     drop(repo);
 }
 
+/// QUAL-PX-116 x PX-110/111 (Wave 1 integration) on the real Core: a child
+/// with a `read_scope` is shown nothing outside it by any retrieval answer
+/// the persisted indexes give — the trigram-indexed exact and regex search
+/// (the plan says `indexed`, so the prefilter really ran), the evidence graph
+/// (imports), the symbol graph (callers) and the impact selection (dependents
+/// and their edge paths) — and no request the child's model receives, the
+/// goal-seeded pre-turn pack included, carries a byte of the files outside it.
+#[tokio::test]
+#[allow(clippy::too_many_lines)]
+async fn qual_px_116_a_scoped_child_sees_nothing_outside_its_scope_through_the_indexed_graph_and_impact_paths()
+ {
+    use serde_json::json;
+    let mut files: Vec<(String, String)> = vec![
+        ("README.md".into(), "# split\n".into()),
+        ("src/a/x.txt".into(), "needle alpha\n".into()),
+        (
+            "src/a/main.ts".into(),
+            "import { keyOf } from \"../secret/key\";\nexport function runMain() { return keyOf(); }\n".into(),
+        ),
+        (
+            "src/secret/key.ts".into(),
+            "export function keyOf() { return \"SECRET-KEY-VALUE\"; }\n".into(),
+        ),
+        (
+            "src/secret/use.ts".into(),
+            "import { runMain } from \"../a/main\";\nexport function useIt() { return runMain(); }\n".into(),
+        ),
+        (
+            "src/secret/notes.txt".into(),
+            "needle SECRET-KEY-VALUE in the vault\n".into(),
+        ),
+    ];
+    // Enough other files that the trigram prefilter, not a scan, answers.
+    for n in 0..40 {
+        files.push((format!("src/filler/f{n}.txt"), format!("filler line {n}\n")));
+    }
+    let refs: Vec<(&str, &str)> = files
+        .iter()
+        .map(|(p, c)| (p.as_str(), c.as_str()))
+        .collect();
+    let (repo, root) = plain_repo(&refs);
+    let parent = vec![
+        json!({"calls": [{"name": "plan.update", "args": {"outcome": "scoped child", "expected_files": ["README.md"]}}]}),
+        json!({"calls": [{"name": "agent.spawn", "args": {"idempotency_key": "k1", "objective": "create src/a/y.txt from the needle notes", "read_scope": ["src/a/"], "write_scope": ["src/a/"]}}]}),
+        json!({"calls": [{"name": "agent.wait", "args": {"idempotency_key": "k1", "timeout_ms": 60000}}]}),
+        json!({"calls": [{"name": "task.complete", "args": {"summary": "collected", "self_review": {"findings": []}}}]}),
+    ];
+    // The script is indexed by the tool results the conversation holds: the
+    // plan (1 result), then three searches and a write in one turn (4), then
+    // the graphs, the impact and a write (4 more), then the end. A write in
+    // each turn keeps the run making progress.
+    let write = |f: &str| json!({"name": "change.apply", "args": {"path": format!("src/a/{f}.txt"), "op": "replace", "content": "y\n"}});
+    let mut child = vec![json!({"text": "unused"}); 9];
+    child[0] = json!({"calls": [{"name": "plan.update", "args": {"outcome": "y exists", "expected_files": ["src/a/y.txt", "src/a/z.txt"]}}]});
+    child[1] = json!({"calls": [
+        {"name": "search.exact", "args": {"query": "needle"}},
+        {"name": "search.regex", "args": {"query": "needle [A-Za-z]+"}},
+        write("y"),
+    ]});
+    child[4] = json!({"calls": [
+        {"name": "search.graph", "args": {"path": "src/a/main.ts", "relation": "imports"}},
+        {"name": "search.graph", "args": {"symbol": "runMain", "relation": "callers"}},
+        {"name": "search.impact", "args": {"paths": ["src/a/main.ts"]}},
+        write("z"),
+    ]});
+    child[8] = json!({"calls": [{"name": "task.complete", "args": {"summary": "done", "self_review": {"findings": []}}}]});
+    let (base, seen) = scripted_models(
+        parent,
+        vec![("needle:Task goal: create src/a/y.txt", child)],
+        None,
+    )
+    .await;
+    let dir = tempfile::tempdir().unwrap();
+    let env = [
+        ("MODBIT_OPENAI_BASE_URL", base.as_str()),
+        ("OPENAI_API_KEY", ""),
+        ("ANTHROPIC_API_KEY", ""),
+        ("MODBIT_CAPACITY", "model=4,provider=8"),
+    ];
+    let core = CoreProcess::spawn_with_env(dir.path(), &env);
+    let mut c = core.client().await;
+    let (session, _) = create_session(&mut c, id16(0x51)).await;
+    let g = lease_for(&session);
+    let task =
+        create_task_with_goal(&mut c, &session, g, &root, 0x52, "PARENT-SCOPE delegate").await;
+    px_run(&mut c, &task, g, 0x53, 40).await;
+    let st = wait_for_state(&mut c, &task, "ReadyForReview", 120).await;
+    let bodies = seen.lock().unwrap().clone();
+    let child_bodies: Vec<&serde_json::Value> = bodies
+        .iter()
+        .filter(|b| b.to_string().contains("Task goal: create src/a/y.txt"))
+        .collect();
+    assert_eq!(
+        st.state,
+        "ReadyForReview",
+        "{st:?}\nthe child saw: {:#?}",
+        child_bodies.last().map(|b| px_tool_results(b))
+    );
+    assert!(child_bodies.len() >= 4, "the child ran its script");
+    // Nothing the child's model was ever sent holds the secret: not a tool
+    // result, not the goal-seeded pack, not the carried references.
+    for b in &child_bodies {
+        let text = b.to_string();
+        assert!(
+            !text.contains("SECRET-KEY-VALUE") && !text.contains("src/secret"),
+            "a request to the child carried a file outside its read scope"
+        );
+    }
+    let results = px_tool_results(child_bodies.last().unwrap());
+    let find = |needle: &str| {
+        results
+            .iter()
+            .find(|t| t.contains(needle))
+            .unwrap_or_else(|| panic!("no result with {needle}: {results:#?}"))
+            .clone()
+    };
+    // The indexed searches answered through the trigram prefilter, and the
+    // in-scope hit is there.
+    let exact = find("\"hits\"");
+    assert!(exact.contains("src/a/x.txt"), "{exact}");
+    assert!(exact.contains("\"indexed\""), "the prefilter ran: {exact}");
+    // The graph, the symbol graph and the impact selection answered too.
+    let graph = find("\"imports\"");
+    assert!(graph.contains("src/a/main.ts"), "{graph}");
+    let symbol_graph = find("\"symbol_graph\"");
+    assert!(symbol_graph.contains("runMain"), "{symbol_graph}");
+    let impact = find("\"selection\"");
+    assert!(impact.contains("src/a/main.ts"), "{impact}");
+    drop(repo);
+}
+
 /// QUAL-PX-116 (failure injection) on the real Core. A fault between the
 /// worktree and the budget reservation refuses the spawn and gives back
 /// everything taken — no child, no reservation. A real process kill between
@@ -37425,6 +37556,7 @@ async fn memory_list(c: &mut Client, task: &Id, id: u8) -> modbit_protocol::v1::
             "ListMemory",
             ListMemory {
                 task_id: Some(task.clone()),
+                ..Default::default()
             }
             .encode_to_vec(),
             None,
@@ -48116,7 +48248,11 @@ async fn fix_05_a_configuration_file_that_breaks_mid_run_stops_the_run_at_the_ne
     );
     // The model was asked once (the held request); the broken policy
     // stopped the run before a second round.
-    assert_eq!(seen.lock().unwrap().len(), 1, "{:#?}", seen.lock().unwrap());
+    // (The requests are read once: a failing assertion that locked the
+    // mutex a second time while the first guard was alive hung the suite
+    // instead of reporting.)
+    let asked = seen.lock().unwrap().clone();
+    assert_eq!(asked.len(), 1, "{asked:#?}");
 }
 
 /// FIX-04 regression guard: the barrier against an agent's write into

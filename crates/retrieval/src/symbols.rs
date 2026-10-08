@@ -209,6 +209,11 @@ impl SymbolIndex {
         out
     }
 
+    /// Every indexed file with its symbols, in path order.
+    pub fn files(&self) -> impl Iterator<Item = (&String, &[Symbol])> {
+        self.by_path.iter().map(|(p, s)| (p, s.as_slice()))
+    }
+
     /// Total symbols.
     #[must_use]
     pub fn len(&self) -> usize {
@@ -286,16 +291,61 @@ impl SymbolIndex {
         revision: u64,
     ) {
         self.by_path.remove(path);
-        let Some(language) = language else { return };
+        let symbols = extract_symbols(path, text, language, hash, revision);
+        if !symbols.is_empty() {
+            self.by_path.insert(path.to_owned(), symbols);
+        }
+    }
+
+    /// An index from per-file symbols already extracted (PX-111: the
+    /// persisted records, validated by content hash, skip the parse).
+    #[must_use]
+    pub fn from_parts(revision: u64, by_path: BTreeMap<String, Vec<Symbol>>) -> Self {
+        Self {
+            revision,
+            by_path: by_path.into_iter().filter(|(_, v)| !v.is_empty()).collect(),
+        }
+    }
+
+    /// Replace one file's symbols with ones already extracted; empty removes.
+    pub fn set_file(&mut self, path: &str, symbols: Vec<Symbol>) {
+        if symbols.is_empty() {
+            self.by_path.remove(path);
+        } else {
+            self.by_path.insert(path.to_owned(), symbols);
+        }
+    }
+
+    /// Move the index to `revision` after a set of [`Self::set_file`] calls.
+    pub fn set_revision(&mut self, revision: u64) {
+        self.revision = revision;
+    }
+}
+
+/// The definitions of one file with the real tree-sitter grammar of its
+/// language (none for an unsupported one), bound to its content hash and the
+/// revision: the pure function the index and its persisted records share.
+#[must_use]
+pub fn extract_symbols(
+    path: &str,
+    text: &str,
+    language: Option<&str>,
+    hash: &str,
+    revision: u64,
+) -> Vec<Symbol> {
+    {
+        let Some(language) = language else {
+            return vec![];
+        };
         let Some(lang) = grammar(language, path) else {
-            return;
+            return vec![];
         };
         let mut parser = Parser::new();
         if parser.set_language(&lang).is_err() {
-            return;
+            return vec![];
         }
         let Some(tree) = parser.parse(text, None) else {
-            return;
+            return vec![];
         };
         let mut symbols = Vec::new();
         let mut stack: Vec<(Node, Option<String>)> = vec![(tree.root_node(), None)];
@@ -350,8 +400,6 @@ impl SymbolIndex {
             }
         }
         symbols.sort_by_key(|s| s.span.0);
-        if !symbols.is_empty() {
-            self.by_path.insert(path.to_owned(), symbols);
-        }
+        symbols
     }
 }

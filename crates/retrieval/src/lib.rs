@@ -17,16 +17,24 @@ pub mod bench;
 pub mod graph;
 pub mod impact;
 pub mod index;
+pub mod indexset;
 pub mod knowledge;
 pub mod lexical;
+pub mod persist;
 pub mod planner;
+pub mod refs;
 pub mod semantic;
 pub mod symbols;
+pub mod trigram;
 
 pub use graph::{CommitRecord, EvidenceGraph, GraphQuery, GraphView};
-pub use impact::{ImpactSelection, ImpactedTest, precision_recall, select_impacted};
-pub use index::{Hit, IndexError, IndexStats, PathHit, RepositoryIndex, SearchOptions};
+pub use impact::{
+    ImpactSelection, ImpactStep, ImpactedFile, ImpactedTest, precision_recall, select_impacted,
+    select_impacted_with_refs,
+};
+pub use index::{Hit, IndexError, IndexStats, PathHit, RepositoryIndex, SearchOptions, SearchPlan};
 pub use lexical::{ChangedDoc, LexicalHit, LexicalIndex};
 pub use planner::{FusedHit, Level, MethodEvidence, PlanRequest, PlanResult, Sources};
+pub use refs::{Confidence, Edge, EdgeKind, FileFacts, RefGraph, SymbolEdges};
 pub use semantic::{Chunk, Embedder, FileSource, HashingEmbedder, SemanticHit, SemanticIndex};
 pub use symbols::{ChangedSymbols, Symbol, SymbolIndex, SymbolQuery};

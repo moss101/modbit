@@ -8,6 +8,7 @@ package modbit.v1;
 
 import "google/protobuf/timestamp.proto";
 import "modbit/v1/checkpoints.proto";
+import "modbit/v1/context_knowledge.proto";
 import "modbit/v1/domain.proto";
 import "modbit/v1/envelope.proto";
 import "modbit/v1/negotiation.proto";
@@ -555,6 +556,9 @@ message ContextInspectorView {
   repeated CompactionSummaryView compaction_summaries = 182;
   // What the compaction trigger derives from.
   CompactionThresholdView compaction_thresholds = 183;
+  // Engineering memory the prompt envelope injected on the last compiled turn
+  // (PX-113): the ids and provenance of every entry, what was left out and why.
+  MemoryInjectionView memory = 200;
 }
 
 message CompactionRequestView {
@@ -2783,6 +2787,13 @@ message MemoryItemView {
 // silently (QUAL-EV-0162).
 message ListMemory {
   Id task_id = 1;
+  // PX-113 (fields 200-219 are this area's): filters, and the history of one
+  // item (`memory show`).
+  repeated string statuses = 200;         // proposed | curated | superseded | expired; empty = all
+  repeated string scope_kinds = 201;      // run | session | user | agent_profile | repository | space | organization; empty = all
+  string text = 202;                      // case-insensitive substring of topic or content
+  string memory_id = 203;                 // only this item (an unambiguous id prefix of at least 8 characters works)
+  bool include_history = 204;             // with memory_id: the item's events from the log
 }
 
 message MemoryList {
@@ -2790,6 +2801,7 @@ message MemoryList {
   repeated MemoryItemView items = 2;      // every status, in the task's scopes
   repeated string scopes = 3;             // the scope keys read
   repeated MemoryConflict conflicts = 4;  // curated items on one topic, none superseding
+  repeated MemoryEventView history = 200; // PX-113: the events of the one item asked for
 }
 
 message MemoryConflict {

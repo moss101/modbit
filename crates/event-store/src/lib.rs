@@ -40,6 +40,7 @@ pub use objects::ObjectStore;
 pub use store::{
     AppendRequest, CommandOutcome, CommandRecord, EventStore, EvidenceHit, EvidenceScope,
     MemoryRow, NewEvent, PayloadFilter, ReceiptSealer, RecoveryOutcome, StoredEvent,
+    memory_aggregate_id,
 };
 
 /// Errors from the store.

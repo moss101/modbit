@@ -1,0 +1,233 @@
+// Context knowledge: engineering memory in the prompt and on the log
+// (PX-113), the code graph's symbol edges and impact (PX-110) and the
+// persisted index store (PX-111). Additive messages only: the memory commands
+// that already exist (ListMemory, PromoteMemory, ForgetMemory) keep their
+// shape and gain fields 200-219 in surface.proto; everything new lives here
+// so the owners of other areas never conflict on it.
+syntax = "proto3";
+
+package modbit.v1;
+
+import "modbit/v1/domain.proto";
+
+// ---- Engineering memory (PX-113; docs/19 "Engineering Memory") ----
+
+// Propose a memory item as a person (source defaults to user_stated). It
+// lands as a proposal on the log; promotion is the separate governed step.
+// A repository-scoped proposal binds to the repository's current revision.
+message ProposeMemory {
+  Id task_id = 1;                // the acting session's task (scope chain, revision, lease)
+  string scope = 2;              // run|session|user|agent|repository|space|organization; "" = session
+  string record_type = 3;        // decision|convention|fact|procedure|failure_pattern|dependency_knowledge|user_preference
+  string topic = 4;
+  string content = 5;
+  float confidence = 6;          // 0 = the default for the source
+  int64 ttl_ms = 7;              // 0 = no time to live
+  bool sensitive = 8;
+  string source = 9;             // "" = user_stated
+}
+
+message MemoryProposed {
+  string memory_id = 1;
+  string status = 2;             // proposed | curated | superseded (when the same item already existed)
+  string scope = 3;              // the scope key the item belongs to
+  bool existed = 4;              // the same content was already recorded: nothing was appended
+  uint64 offset = 5;
+}
+
+// Edit a proposal or a curated item. A change of topic or content is a new
+// item that supersedes the edited one (ids are content-addressed); a change
+// of confidence or time to live alone replaces the item in place. A curated
+// item must still pass the promotion rules after the edit.
+message EditMemory {
+  Id task_id = 1;
+  string memory_id = 2;
+  optional string topic = 3;
+  optional string content = 4;
+  optional float confidence = 5;
+  optional int64 ttl_ms = 6;
+  bool clear_ttl = 7;
+  optional bool sensitive = 8;
+}
+
+message MemoryEdited {
+  string memory_id = 1;          // the item that was edited
+  string new_memory_id = 2;      // the item that now holds the edit (same id for an in-place edit)
+  string outcome = 3;            // edited | refused | unknown
+  string refusal_code = 4;       // NOT_EDITABLE | EMPTY | a promotion refusal code
+  string refusal_detail = 5;
+  string status = 6;             // status of the new item
+  repeated string retired = 7;   // ids retired by the edit
+  uint64 offset = 8;
+}
+
+// One memory event from the log, for `memory show`.
+message MemoryEventView {
+  uint64 offset = 1;
+  string event_type = 2;         // MemoryProposed | MemoryPromoted | MemoryEdited | MemorySuperseded | MemoryForgotten | MemoryImported
+  string actor = 3;
+  int64 occurred_at_ms = 4;
+  string session_id = 5;
+  string detail = 6;
+}
+
+// What the prompt envelope did with memory on the last compiled turn, for the
+// Context Inspector.
+message MemoryInjectionView {
+  string pack_id = 1;
+  uint32 token_budget = 2;
+  uint32 token_used = 3;
+  uint32 omitted_count = 4;      // selected but did not fit the budget
+  repeated MemoryInjectedEntry entries = 5;
+  repeated MemoryExclusionView excluded = 6;   // in scope but left out, and why
+  repeated string rejected_ids = 7;            // refused by the envelope (no provenance)
+  string compiler_version = 8;
+}
+
+message MemoryInjectedEntry {
+  string memory_id = 1;
+  string scope = 2;
+  string record_type = 3;
+  string topic = 4;
+  string source = 5;
+  string author = 6;
+  float confidence = 7;
+  bool validated = 8;
+  uint32 token_cost = 9;
+  repeated string reasons = 10;
+  repeated string conflicts_with = 11;
+  bool clipped = 12;
+  int64 created_at_ms = 13;
+  int64 expires_at_ms = 14;      // 0 = none
+  string last_validation_revision = 15;
+}
+
+message MemoryExclusionView {
+  string memory_id = 1;
+  string reason = 2;             // sensitive | stale_revision | shadowed_by:<id> | irrelevant | injection_suspected:<shape>
+}
+
+// ---- Code graph (PX-110; docs/18 L2/L3) ----
+
+// Symbol-level edges: who references, calls, implements or is implemented by
+// a symbol, each edge with a confidence class and the revision it holds at.
+message GetSymbolEdges {
+  Id task_id = 1;                // names the workspace
+  string symbol = 2;
+  string path = 3;               // narrows the definition when the name is ambiguous
+  string relation = 4;           // references | callers | callees | implementors | implemented_by | all
+  uint32 max = 5;                // 0 = 100
+}
+
+message SymbolDefinitionView {
+  string path = 1;
+  string name = 2;
+  string kind = 3;
+  string container = 4;
+  uint32 line_start = 5;
+  uint32 line_end = 6;
+}
+
+message SymbolEdgeView {
+  string kind = 1;               // reference | call | implements
+  string from_path = 2;
+  uint32 from_line = 3;
+  string from_symbol = 4;        // the enclosing definition, when there is one
+  string to_path = 5;
+  string to_symbol = 6;
+  string confidence = 7;         // resolved | ambiguous | unresolved
+  uint64 revision = 8;
+}
+
+message SymbolEdges {
+  string symbol = 1;
+  repeated SymbolDefinitionView definitions = 2;
+  repeated SymbolEdgeView edges = 3;
+  uint64 revision = 4;
+  bool partial = 5;              // an expansion cap or a bound was hit
+  string partial_reason = 6;
+}
+
+// What a change could break: the non-test dependents, ranked with the edge
+// path and confidence that put each there, and the tests that cover them.
+message GetImpact {
+  Id task_id = 1;                // names the workspace
+  repeated string paths = 2;     // changed paths; empty = the worktree's changed files
+  uint32 depth = 3;              // 0 = 2, at most 3
+  uint32 max = 4;                // 0 = 50
+}
+
+message ImpactEdgeStep {
+  string from = 1;
+  string to = 2;
+  string kind = 3;               // import | reference | call | implements | test_link | cochange
+  string confidence = 4;         // resolved | ambiguous | unresolved
+  string symbol = 5;
+  uint32 line = 6;
+}
+
+message ImpactedFile {
+  string path = 1;
+  double rank = 2;
+  uint32 distance = 3;
+  string confidence = 4;         // the weakest class on the best edge path
+  repeated ImpactEdgeStep edge_path = 5;
+  repeated string reasons = 6;
+  repeated string tests = 7;     // tests that cover this dependent
+}
+
+message ImpactedTestView {
+  string path = 1;
+  repeated string reasons = 2;
+  uint32 distance = 3;
+  repeated string covers = 4;    // the changed or dependent files it covers
+}
+
+message ImpactResult {
+  repeated string changed = 1;
+  repeated ImpactedFile dependents = 2;
+  repeated ImpactedTestView tests = 3;
+  uint64 revision = 4;
+  bool partial = 5;
+  string partial_reason = 6;
+  repeated string symbols = 7;
+  string limitation = 8;
+  uint32 ambiguous_edges = 9;
+  uint32 unresolved_edges = 10;
+}
+
+// ---- Persisted index store (PX-111; docs/18 "Index freshness") ----
+
+message GetIndexStatus {
+  Id task_id = 1;                // names the workspace
+}
+
+message IndexComponentView {
+  string name = 1;               // exact | lexical | symbols | graph | trigram | semantic
+  string state = 2;              // loaded | built | rebuilt | refreshed
+  uint64 files = 3;
+  uint64 persisted_bytes = 4;
+  uint64 load_ms = 5;
+  uint64 build_ms = 6;
+  string reason = 7;             // why it was rebuilt instead of loaded ("" when it was loaded)
+}
+
+message IndexStatusView {
+  string workspace_root = 1;
+  string store_dir = 2;
+  uint64 workspace_revision = 3;
+  uint64 builds = 4;             // full builds of any component since this Core started
+  uint64 loads = 5;              // components loaded from the persisted store
+  uint64 refreshes = 6;          // incremental refreshes
+  uint64 last_refresh_ms = 7;
+  uint64 last_refresh_files = 8;
+  repeated IndexComponentView components = 9;
+  repeated string rebuild_reasons = 10;   // corrupt | version | missing | stale, with detail
+  uint64 persisted_bytes = 11;
+  uint64 persisted_generation = 12;
+  uint64 first_ready_ms = 13;    // from the first index request to every component usable
+  uint64 searches_indexed = 14;  // exact/regex searches answered through the trigram prefilter
+  uint64 searches_scanned = 15;  // exact/regex searches that scanned every file
+  uint64 recomputed_files = 16;  // files whose stored record did not match their bytes and were derived again at open
+  repeated string recomputed_sample = 17;
+}

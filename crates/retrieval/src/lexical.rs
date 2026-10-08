@@ -20,6 +20,7 @@
 use std::collections::BTreeMap;
 
 use serde::{Deserialize, Serialize};
+use sha2::{Digest, Sha256};
 use tantivy::collector::TopDocs;
 use tantivy::query::{BooleanQuery, BoostQuery, Occur, Query, QueryParser, TermQuery};
 use tantivy::schema::{Field, IndexRecordOption, STORED, STRING, Schema, TEXT, Value};
@@ -56,6 +57,23 @@ pub const STOPWORDS: &[&str] = &[
     "there", "these", "this", "those", "to", "us", "was", "we", "were", "what", "when", "where",
     "which", "who", "whom", "whose", "why", "will", "with", "would", "you", "your",
 ];
+
+fn lexical_schema() -> Schema {
+    let mut sb = Schema::builder();
+    sb.add_text_field("path", STRING | STORED);
+    sb.add_text_field("text", TEXT);
+    sb.add_text_field("language", STRING | STORED);
+    sb.add_u64_field("start_line", STORED);
+    sb.add_u64_field("end_line", STORED);
+    sb.add_u64_field("start_byte", STORED);
+    sb.add_u64_field("end_byte", STORED);
+    sb.add_u64_field("chunks", STORED);
+    // `file` (one record per path: hash and revision) or `chunk`.
+    sb.add_text_field("kind", STRING);
+    sb.add_text_field("hash", STORED);
+    sb.add_u64_field("rev", STORED);
+    sb.build()
+}
 
 /// One chunk of a file: a line window with its byte span.
 #[derive(Clone, Debug, PartialEq, Eq)]
@@ -142,8 +160,12 @@ pub struct LexicalIndex {
     start_byte: Field,
     end_byte: Field,
     chunks: Field,
+    kind: Field,
+    hash: Field,
+    rev: Field,
     revision: u64,
     docs: BTreeMap<String, u64>,
+    doc_hashes: BTreeMap<String, String>,
 }
 
 impl std::fmt::Debug for LexicalIndex {
@@ -205,19 +227,84 @@ impl LexicalIndex {
         files: impl Iterator<Item = (&'a str, &'a str, Option<&'a str>)>,
         revision: u64,
     ) -> tantivy::Result<Self> {
-        let mut sb = Schema::builder();
-        let path = sb.add_text_field("path", STRING | STORED);
-        let text = sb.add_text_field("text", TEXT);
-        let language = sb.add_text_field("language", STRING | STORED);
-        let start_line = sb.add_u64_field("start_line", STORED);
-        let end_line = sb.add_u64_field("end_line", STORED);
-        let start_byte = sb.add_u64_field("start_byte", STORED);
-        let end_byte = sb.add_u64_field("end_byte", STORED);
-        let chunks = sb.add_u64_field("chunks", STORED);
-        let index = Index::create_in_ram(sb.build());
-        let writer: IndexWriter = index.writer(15_000_000)?;
+        Self::populate(Index::create_in_ram(lexical_schema()), files, revision)
+    }
+
+    /// [`Self::build`] into a directory, so the index persists (PX-111). The
+    /// directory must not hold an index.
+    pub fn build_in_dir<'a>(
+        dir: &std::path::Path,
+        files: impl Iterator<Item = (&'a str, &'a str, Option<&'a str>)>,
+        revision: u64,
+    ) -> tantivy::Result<Self> {
+        std::fs::create_dir_all(dir)?;
+        Self::populate(
+            Index::create_in_dir(dir, lexical_schema())?,
+            files,
+            revision,
+        )
+    }
+
+    /// Open a persisted index. Every file Tantivy wrote is checked against
+    /// its own checksum first: an index that fails it, or whose schema is not
+    /// this build's, is an error and the caller rebuilds (an index is never
+    /// trusted after damage). What the index holds is read back from the
+    /// index itself — a per-file record of path, content hash and revision
+    /// written in the same commit as the file's chunks — so it can never
+    /// disagree with its own contents, however the process that wrote it died.
+    pub fn open_in_dir(dir: &std::path::Path, revision: u64) -> tantivy::Result<Self> {
+        let index = Index::open_in_dir(dir)?;
+        let damaged = index.validate_checksum()?;
+        if !damaged.is_empty() {
+            let mut names: Vec<String> = damaged.iter().map(|p| p.display().to_string()).collect();
+            names.sort();
+            return Err(tantivy::TantivyError::InternalError(format!(
+                "checksum mismatch in {}",
+                names.join(", ")
+            )));
+        }
+        let mut lx = Self::from_index(index, revision)?;
+        lx.load_file_records()?;
+        Ok(lx)
+    }
+
+    fn populate<'a>(
+        index: Index,
+        files: impl Iterator<Item = (&'a str, &'a str, Option<&'a str>)>,
+        revision: u64,
+    ) -> tantivy::Result<Self> {
+        let mut lx = Self::from_index(index, revision)?;
+        for (p, t, l) in files {
+            lx.add(p, t, l, revision)?;
+        }
+        lx.writer.commit()?;
+        lx.reader.reload()?;
+        Ok(lx)
+    }
+
+    fn from_index(index: Index, revision: u64) -> tantivy::Result<Self> {
+        let schema = index.schema();
+        let field = |name: &str| schema.get_field(name);
+        let (path, text, language) = (field("path")?, field("text")?, field("language")?);
+        let (start_line, end_line) = (field("start_line")?, field("end_line")?);
+        let (start_byte, end_byte) = (field("start_byte")?, field("end_byte")?);
+        let (chunks, kind, hash, rev) = (
+            field("chunks")?,
+            field("kind")?,
+            field("hash")?,
+            field("rev")?,
+        );
+        let writer: IndexWriter = index.writer_with_num_threads(1, 15_000_000)?;
+        // The default policy treats every segment under ten thousand
+        // documents as one layer, so after a few one-file refreshes it merges
+        // them into the big first segment: a rewrite of the whole index in the
+        // middle of an edit. A low floor keeps the small segments of
+        // refreshes merging among themselves and leaves the big one alone.
+        let mut policy = tantivy::merge_policy::LogMergePolicy::default();
+        policy.set_min_layer_size(256);
+        writer.set_merge_policy(Box::new(policy));
         let reader = index.reader()?;
-        let mut lx = Self {
+        Ok(Self {
             index,
             writer,
             reader,
@@ -229,15 +316,48 @@ impl LexicalIndex {
             start_byte,
             end_byte,
             chunks,
+            kind,
+            hash,
+            rev,
             revision,
             docs: BTreeMap::new(),
-        };
-        for (p, t, l) in files {
-            lx.add(p, t, l, revision)?;
+            doc_hashes: BTreeMap::new(),
+        })
+    }
+
+    fn load_file_records(&mut self) -> tantivy::Result<()> {
+        let searcher = self.reader.searcher();
+        let q = TermQuery::new(
+            Term::from_field_text(self.kind, "file"),
+            IndexRecordOption::Basic,
+        );
+        let addrs = searcher.search(&q, &tantivy::collector::DocSetCollector)?;
+        for a in addrs {
+            let doc: TantivyDocument = searcher.doc(a)?;
+            let path = doc
+                .get_first(self.path)
+                .and_then(|v| v.as_str())
+                .unwrap_or_default()
+                .to_owned();
+            let hash = doc
+                .get_first(self.hash)
+                .and_then(|v| v.as_str())
+                .unwrap_or_default()
+                .to_owned();
+            let rev = doc
+                .get_first(self.rev)
+                .and_then(|v| v.as_u64())
+                .unwrap_or(0);
+            self.docs.insert(path.clone(), rev);
+            self.doc_hashes.insert(path, hash);
         }
-        lx.writer.commit()?;
-        lx.reader.reload()?;
-        Ok(lx)
+        Ok(())
+    }
+
+    /// The content hash each indexed file was indexed at.
+    #[must_use]
+    pub fn doc_hashes(&self) -> &BTreeMap<String, String> {
+        &self.doc_hashes
     }
 
     /// Index revision.
@@ -262,11 +382,21 @@ impl LexicalIndex {
         // Every chunk of the path shares the path term, so one delete clears
         // all of them.
         self.writer.delete_term(Term::from_field_text(self.path, p));
+        let hash = hex::encode(Sha256::digest(t.as_bytes()));
+        // The file's own record, committed with its chunks.
+        let mut file_doc = TantivyDocument::default();
+        file_doc.add_text(self.path, p);
+        file_doc.add_text(self.kind, "file");
+        file_doc.add_text(self.hash, &hash);
+        file_doc.add_u64(self.rev, revision);
+        file_doc.add_text(self.language, l.unwrap_or(""));
+        self.writer.add_document(file_doc)?;
         let chunks = line_chunks(t);
         let count = chunks.len() as u64;
         for c in chunks {
             let mut doc = TantivyDocument::default();
             doc.add_text(self.path, p);
+            doc.add_text(self.kind, "chunk");
             doc.add_text(self.text, c.text);
             doc.add_text(self.language, l.unwrap_or(""));
             doc.add_u64(self.start_line, u64::from(c.lines.0));
@@ -277,6 +407,7 @@ impl LexicalIndex {
             self.writer.add_document(doc)?;
         }
         self.docs.insert(p.to_owned(), revision);
+        self.doc_hashes.insert(p.to_owned(), hash);
         Ok(())
     }
 
@@ -288,6 +419,7 @@ impl LexicalIndex {
                 None => {
                     self.writer.delete_term(Term::from_field_text(self.path, p));
                     self.docs.remove(p);
+                    self.doc_hashes.remove(p);
                 }
             }
         }
