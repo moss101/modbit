@@ -312,8 +312,6 @@ struct Ev {
     sequence: u64,
     /// The event's own payload (the envelope's inline payload).
     payload: serde_json::Value,
-    /// When the client received it.
-    received: Instant,
     /// When the Core recorded it, in milliseconds.
     recorded_ms: i64,
     aggregate_id: Vec<u8>,
@@ -329,7 +327,6 @@ fn ev_of(e: modbit_protocol::v1::StoredEventFrame) -> Ev {
         kind: ev.event_type,
         sequence: ev.sequence,
         payload: p["payload"].clone(),
-        received: Instant::now(),
         recorded_ms: at.seconds * 1000 + i64::from(at.nanos) / 1_000_000,
         aggregate_id: ev.aggregate_id.map(|i| i.value).unwrap_or_default(),
     }
@@ -391,6 +388,29 @@ async fn replay(core: &CoreProcess, session: &Id, after: u64) -> Vec<Ev> {
     out
 }
 
+/// Poll the log (by cursor replay) until `done` holds for the events so far;
+/// a generous bound makes a stuck stream fail with what the log did hold.
+async fn wait_for_events(
+    core: &CoreProcess,
+    session: &Id,
+    what: &str,
+    done: impl Fn(&[Ev]) -> bool,
+) -> Vec<Ev> {
+    let deadline = Instant::now() + Duration::from_secs(120);
+    loop {
+        let seen = replay(core, session, 0).await;
+        if done(&seen) {
+            return seen;
+        }
+        assert!(
+            Instant::now() < deadline,
+            "{what}: {:?}",
+            seen.iter().map(|e| e.kind.as_str()).collect::<Vec<_>>()
+        );
+        tokio::time::sleep(Duration::from_millis(50)).await;
+    }
+}
+
 fn of_kind<'a>(events: &'a [Ev], kind: &str) -> Vec<&'a Ev> {
     events.iter().filter(|e| e.kind == kind).collect()
 }
@@ -421,6 +441,64 @@ enum End {
     Drop,
 }
 
+/// How long a held scripted stream waits for its gate before it gives up and
+/// drops the connection (so a hung test fails clearly instead of hanging).
+const GATE_TIMEOUT: Duration = Duration::from_secs(120);
+
+/// A latch the test controls: the scripted server stops after a number of
+/// chunks and waits here until the test releases it. This replaces pacing by
+/// sleeps — the test observes the Core's log while the stream is genuinely held
+/// open mid-message, with certainty rather than by racing a timer.
+#[derive(Clone, Debug)]
+struct Gate {
+    open: Arc<tokio::sync::watch::Sender<bool>>,
+    held: Arc<std::sync::atomic::AtomicBool>,
+}
+
+impl Gate {
+    fn new() -> Self {
+        Gate {
+            open: Arc::new(tokio::sync::watch::channel(false).0),
+            held: Arc::new(std::sync::atomic::AtomicBool::new(false)),
+        }
+    }
+
+    /// Let the held stream continue.
+    fn release(&self) {
+        self.open.send_replace(true);
+    }
+
+    fn is_released(&self) -> bool {
+        *self.open.borrow()
+    }
+
+    /// The server has sent its chunks up to the gate and is waiting on it.
+    fn is_held(&self) -> bool {
+        self.held.load(std::sync::atomic::Ordering::SeqCst)
+    }
+
+    /// Wait (bounded) until the server is held at the gate.
+    async fn reached(&self) {
+        let deadline = Instant::now() + GATE_TIMEOUT;
+        while !self.is_held() {
+            assert!(
+                Instant::now() < deadline,
+                "the scripted stream never reached its gate"
+            );
+            tokio::time::sleep(Duration::from_millis(10)).await;
+        }
+    }
+
+    /// Server side: mark held, wait for release. False when it timed out.
+    async fn hold(&self) -> bool {
+        self.held.store(true, std::sync::atomic::Ordering::SeqCst);
+        let mut rx = self.open.subscribe();
+        tokio::time::timeout(GATE_TIMEOUT, rx.wait_for(|v| *v))
+            .await
+            .is_ok()
+    }
+}
+
 /// One scripted model response.
 #[derive(Clone, Debug, Default)]
 struct Step {
@@ -429,6 +507,8 @@ struct Step {
     gap_ms: u64,
     calls: Vec<(String, serde_json::Value)>,
     end: End,
+    /// After this many chunks have been written, wait on the gate.
+    pause: Option<(usize, Gate)>,
 }
 
 impl Step {
@@ -511,7 +591,13 @@ async fn streaming_model(steps: Vec<Step>) -> String {
                         .await;
                     let _ = sock.flush().await;
                 }
-                for c in &step.chunks {
+                for (i, c) in step.chunks.iter().enumerate() {
+                    if let Some((at, gate)) = &step.pause
+                        && *at == i
+                        && !gate.hold().await
+                    {
+                        return;
+                    }
                     if sock
                         .write_all(&write(delta(serde_json::json!({"content": c}))))
                         .await
@@ -523,6 +609,12 @@ async fn streaming_model(steps: Vec<Step>) -> String {
                     if step.gap_ms > 0 {
                         tokio::time::sleep(Duration::from_millis(step.gap_ms)).await;
                     }
+                }
+                if let Some((at, gate)) = &step.pause
+                    && *at >= step.chunks.len()
+                    && !gate.hold().await
+                {
+                    return;
                 }
                 match step.end {
                     End::Hang => {
@@ -591,7 +683,18 @@ const SETTLE: Duration = Duration::from_millis(400);
 async fn qual_px_041_a_streamed_answer_arrives_as_bounded_deltas_before_its_completion_and_replays_by_cursor()
  {
     let (full, chunks) = four_hundred_words();
-    let base = streaming_model(vec![Step::text(chunks.clone(), 12)]).await;
+    // The model stops half way and waits for the test: the deltas of the first
+    // half must be durably in the log while the rest of the answer does not
+    // yet exist anywhere.
+    let gate = Gate::new();
+    let half = chunks.len() / 2;
+    let base = streaming_model(vec![Step {
+        chunks: chunks.clone(),
+        gap_ms: 12,
+        pause: Some((half, gate.clone())),
+        ..Step::default()
+    }])
+    .await;
     let (_repo, root) = repo();
     let dir = tempfile::tempdir().unwrap();
     let core = CoreProcess::spawn_with_env(dir.path(), &env_for(&base, ""));
@@ -600,6 +703,25 @@ async fn qual_px_041_a_streamed_answer_arrives_as_bounded_deltas_before_its_comp
     let task = create_task(&mut c, &session, lease, "answer at length", &root).await;
     let live = collect_live(&core, &session, 0);
     let _ = start_task(&mut c, &task, lease).await;
+    gate.reached().await;
+    let mid = wait_for_events(&core, &session, "no delta while the stream was held", |e| {
+        !of_kind(e, "AssistantTextDelta").is_empty()
+    })
+    .await;
+    assert!(gate.is_held() && !gate.is_released());
+    assert!(
+        of_kind(&mid, "AssistantMessageCompleted").is_empty()
+            && of_kind(&mid, "AssistantMessageAborted").is_empty(),
+        "the stream is still open while the model is held"
+    );
+    let held_text = stream_text(&of_kind(&mid, "AssistantTextDelta"));
+    assert!(!held_text.is_empty());
+    assert!(
+        full.starts_with(&held_text) && held_text.len() < full.len(),
+        "only the first half of the answer exists while the model is held"
+    );
+    let held_last = of_kind(&mid, "AssistantTextDelta").last().unwrap().offset;
+    gate.release();
     let st = wait_idle(&mut c, &task, 60).await;
     assert!(!st.loop_alive, "{st:?}");
     tokio::time::sleep(SETTLE).await;
@@ -641,16 +763,24 @@ async fn qual_px_041_a_streamed_answer_arrives_as_bounded_deltas_before_its_comp
         "{} deltas in {span_ms} ms",
         deltas.len()
     );
-    // Deltas were visible to the client before the completion existed.
+    // Deltas were in the log, and visible to the client, before the rest of
+    // the answer and the completion existed: the ones seen while the model
+    // was held all precede the completion in the log.
     let first_delta = deltas[0];
-    assert!(
-        first_delta.received + Duration::from_millis(150) < done[0].received,
-        "the first delta arrived {:?} before the completion",
-        done[0]
-            .received
-            .saturating_duration_since(first_delta.received)
+    assert_eq!(
+        first_delta.offset,
+        of_kind(&mid, "AssistantTextDelta")[0].offset
     );
+    assert!(held_last < done[0].offset);
     assert!(first_delta.offset < done[0].offset);
+    assert!(
+        deltas.iter().all(|d| d.offset < done[0].offset),
+        "every delta precedes the completion"
+    );
+    assert!(
+        deltas.last().unwrap().offset > held_last,
+        "the second half arrived as deltas after the hold"
+    );
     // The concatenation is the completed message.
     let text = stream_text(&deltas);
     assert_eq!(text, full);
@@ -750,15 +880,12 @@ async fn qual_px_041_a_cancelled_turn_ends_its_stream_as_a_user_interrupt() {
     let (session, lease) = create_session(&mut c).await;
     let task = create_task(&mut c, &session, lease, "answer at length", &root).await;
     let _ = start_task(&mut c, &task, lease).await;
-    // Wait until text is flowing, then cancel mid-stream.
-    let deadline = Instant::now() + Duration::from_secs(120);
-    loop {
-        let seen = replay(&core, &session, 0).await;
-        if !of_kind(&seen, "AssistantTextDelta").is_empty() {
-            break;
-        }
-        assert!(Instant::now() < deadline, "no delta arrived");
-    }
+    // Wait until text is in the log; the model then holds the connection
+    // open for good, so the cancel certainly lands mid-stream.
+    let _ = wait_for_events(&core, &session, "no delta arrived", |e| {
+        !of_kind(e, "AssistantTextDelta").is_empty()
+    })
+    .await;
     c.command(envelope_fenced(
         fresh_id(),
         "CancelTask",
@@ -890,10 +1017,17 @@ fn walk(root: &std::path::Path) -> Vec<std::path::PathBuf> {
 #[tokio::test]
 async fn qual_px_041_a_core_killed_mid_stream_leaves_an_aborted_stream_after_restart() {
     let (_, chunks) = four_hundred_words();
+    // Two phases: the first deltas are in the log while the model is held at
+    // the gate; once released the rest follows and the model then holds the
+    // connection open for good. Two separate flushes are certain (the second
+    // text only exists after the first was observed), and the Core is killed
+    // while the stream is genuinely open.
+    let gate = Gate::new();
     let base = streaming_model(vec![Step {
         chunks: chunks[..25].to_vec(),
         gap_ms: 5,
         end: End::Hang,
+        pause: Some((12, gate.clone())),
         ..Step::default()
     }])
     .await;
@@ -904,14 +1038,16 @@ async fn qual_px_041_a_core_killed_mid_stream_leaves_an_aborted_stream_after_res
     let (session, lease) = create_session(&mut c).await;
     let task = create_task(&mut c, &session, lease, "answer at length", &root).await;
     let _ = start_task(&mut c, &task, lease).await;
-    let deadline = Instant::now() + Duration::from_secs(120);
-    let before = loop {
-        let seen = replay(&core, &session, 0).await;
-        if of_kind(&seen, "AssistantTextDelta").len() >= 2 {
-            break seen;
-        }
-        assert!(Instant::now() < deadline, "no deltas arrived");
-    };
+    gate.reached().await;
+    let _ = wait_for_events(&core, &session, "no delta while the stream was held", |e| {
+        !of_kind(e, "AssistantTextDelta").is_empty()
+    })
+    .await;
+    gate.release();
+    let before = wait_for_events(&core, &session, "no second delta arrived", |e| {
+        of_kind(e, "AssistantTextDelta").len() >= 2
+    })
+    .await;
     assert!(
         of_kind(&before, "AssistantMessageAborted").is_empty()
             && of_kind(&before, "AssistantMessageCompleted").is_empty(),
