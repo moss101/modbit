@@ -342,7 +342,7 @@ export function Shell({ app }: { app: AppState }) {
         {conversation && !reviewing && !browsing && !dashboardOpen ? (
           <div className="conv-wrap">
             <StatusRegion app={app} />
-            <Conversation key={conversation.taskId} taskId={conversation.taskId} sessionId={model.sessionId} connected={core.state === "connected"} card={model.tasks.get(conversation.taskId)} title={model.tasks.get(conversation.taskId)?.goalText ?? "Task"} focusRowId={conversation.rowId} onResume={(id) => void startTask(id)} onNewTask={() => actions.focusNewTask()} />
+            <Conversation key={conversation.taskId} taskId={conversation.taskId} sessionId={model.sessionId} connected={core.state === "connected"} card={model.tasks.get(conversation.taskId)} title={model.tasks.get(conversation.taskId)?.goalText ?? "Task"} focusRowId={conversation.rowId} onResume={(id) => void startTask(id)} onNewTask={() => actions.focusNewTask()} onOpenTerminal={(tid, termId) => { setTerminalPick((m) => ({ ...m, [tid]: termId })); setPanelState(tid, { open: true, tab: "terminal" }); }} />
           </div>
         ) : (
           <FleetView app={app} />

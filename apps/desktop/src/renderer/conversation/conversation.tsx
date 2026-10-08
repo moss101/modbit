@@ -4,8 +4,8 @@
  * a tail-status line with the stall ladder, pinned-to-bottom scrolling with an
  * "N new messages" pill, three Core-projected densities, folded work groups
  * that never hide something the person must act on, and the failure the Core
- * typed. The composer is PX-054's; only the minimal controls that already work
- * (steer, resume, new task, the inline approval and question cards) live here.
+ * typed. The composer below it is PX-054..056's (composer/composer.tsx); the
+ * inline approval and question cards live here.
  * Nothing in this file holds authority: every effect is a typed preload call.
  */
 import { memo, useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
@@ -16,6 +16,7 @@ import { INITIAL_FOLLOW, identityOf, messageIds, onDismiss, onJumpToBottom, onMe
 import { RowView, type RowContext } from "./rows.tsx";
 import { loadConversationPrefs, saveConversationPrefs, type ConversationPrefs } from "./prefs.ts";
 import { useConversation } from "./use-conversation.ts";
+import { Composer } from "../composer/composer.tsx";
 
 export interface ConversationProps {
   taskId: string;
@@ -27,6 +28,8 @@ export interface ConversationProps {
   focusRowId: string | null;
   onResume: (taskId: string) => void;
   onNewTask: () => void;
+  /** Opens one of the task's terminals in the apps panel (the background-terminals tray). */
+  onOpenTerminal?: ((taskId: string, terminalId: string) => void) | undefined;
 }
 
 const DENSITY_LABEL: Record<Density, string> = { COMPACT: "Compact", BALANCED: "Balanced", DETAILED: "Detailed" };
@@ -48,7 +51,7 @@ function collectTurnText(rows: readonly TranscriptRowView[], turnId: string, out
 }
 
 export function Conversation(props: ConversationProps) {
-  const { taskId, sessionId, connected, card, title, focusRowId, onResume, onNewTask } = props;
+  const { taskId, sessionId, connected, card, title, focusRowId, onResume, onNewTask, onOpenTerminal } = props;
   const [prefs, setPrefs] = useState<ConversationPrefs>(loadConversationPrefs);
   useEffect(() => saveConversationPrefs(prefs), [prefs]);
   const conv = useConversation(taskId, sessionId, prefs.density, connected);
@@ -258,7 +261,7 @@ export function Conversation(props: ConversationProps) {
       <p className="mb-sr-only" role="status" aria-live="polite" data-testid="conv-live">
         {copied}
       </p>
-      <ComposerRegion taskId={taskId} sessionId={sessionId} card={card} approvalPending={conv.approvals.length > 0} onResume={onResume} onNewTask={onNewTask} />
+      <Composer taskId={taskId} sessionId={sessionId} connected={connected} card={card} approvalPending={conv.approvals.length > 0} lastUserText={lastUserText} hasMessages={conv.rows.length > 0} onResume={onResume} onNewTask={onNewTask} onOpenTerminal={onOpenTerminal} />
     </section>
   );
 }
@@ -350,49 +353,5 @@ export function FailureBlock({ taskId, card, onResume, promptText }: { taskId: s
         )}
       </div>
     </div>
-  );
-}
-
-/** The composer's place. PX-054 owns the composer; until it lands only what already works is here: steer, resume and new task. */
-function ComposerRegion({ taskId, sessionId, card, approvalPending, onResume, onNewTask }: { taskId: string; sessionId: string | null; card: TaskCard | undefined; approvalPending: boolean; onResume: (taskId: string) => void; onNewTask: () => void }) {
-  const [steer, setSteer] = useState("");
-  const [note, setNote] = useState<string | null>(null);
-  const active = card && (card.state === "Running" || card.state === "Waiting" || card.state === "Queued");
-  // A wait on an approval the Core no longer lists (it was decided while the run was suspended, by a restart) is resumed like any other wait.
-  const startable = card && (card.state === "Queued" || (card.state === "Waiting" && card.waitReason !== "Capacity" && !(card.waitReason === "Approval" && approvalPending)));
-  const send = async () => {
-    if (!sessionId || !steer.trim()) return;
-    try {
-      const r = await window.modbit.steerTask(sessionId, taskId, steer.trim());
-      setNote(`steered at offset ${r.offset}`);
-      setSteer("");
-    } catch (e) {
-      setNote(`refused: ${(e as Error).message}`);
-    }
-  };
-  return (
-    <section className="conv-composer" aria-label="Composer" data-testid="composer-region">
-      <p className="meta" data-testid="composer-placeholder">
-        The composer (modes, attachments, model choice, slash commands, queued messages) is PX-054's and arrives with it. Until then these controls work as they do on the Fleet board.
-      </p>
-      <div className="decision">
-        {active && (
-          <input data-testid="conv-steer" aria-label="Steer this task" value={steer} onChange={(e) => setSteer(e.target.value)} onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); void send(); } }} placeholder="steer this task, Enter sends" />
-        )}
-        {startable && (
-          <Button size="sm" variant="primary" onClick={() => onResume(taskId)} data-testid="conv-start">
-            {card?.state === "Waiting" ? "Resume" : "Start"}
-          </Button>
-        )}
-        <Button size="sm" onClick={onNewTask} data-testid="conv-new-task">
-          New task
-        </Button>
-        {note && (
-          <span className="meta" role="status" data-testid="conv-steer-note">
-            {note}
-          </span>
-        )}
-      </div>
-    </section>
   );
 }
