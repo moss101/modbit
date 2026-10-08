@@ -10,5 +10,6 @@
  * or policy code of its own.
  */
 export * from "./client.ts";
+export * from "./control.ts";
 export * from "./supervisor.ts";
 export * from "./conformance.ts";

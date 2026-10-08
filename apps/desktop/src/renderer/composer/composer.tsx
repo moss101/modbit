@@ -15,7 +15,7 @@
  * sent without the person pressing send.
  */
 import { useCallback, useEffect, useId, useLayoutEffect, useMemo, useRef, useState } from "react";
-import { Button, IconButton, Menu, useLayer, type MenuItem } from "@modbit/ui";
+import { Button, IconButton, Menu, trays, useLayer, type MenuItem } from "@modbit/ui";
 import type { AttachmentResult, TaskModeId } from "../../shared/composer-types.ts";
 import { MAX_ATTACHMENTS_PER_MESSAGE, MAX_ATTACHMENT_BYTES } from "../../shared/attachments.ts";
 import type { TaskCard } from "../model.ts";
@@ -23,6 +23,7 @@ import {
   applyTrigger,
   blockedTray,
   coreError,
+  EDUCATION,
   educationDue,
   enterAction,
   filePaths,
@@ -32,6 +33,7 @@ import {
   liveMentions,
   loadStore,
   MODE_CYCLE,
+  queueHeader,
   MODE_DEFS,
   mentionText,
   modeStatus,
@@ -73,6 +75,9 @@ export interface ComposerProps {
   onOpenTerminal?: ((taskId: string, terminalId: string) => void) | undefined;
 }
 
+const TRAY_QUEUE = "composer-queue";
+const TRAY_EDU = "composer-education";
+const TRAY_POLICY = "composer-policy";
 const newId = (): string => `c${Date.now().toString(36)}${Math.random().toString(36).slice(2, 10)}`;
 const isMac = (): boolean => typeof navigator !== "undefined" && /mac/i.test(navigator.platform);
 const storage = (): Storage | null => {
@@ -448,6 +453,76 @@ export function Composer(props: ComposerProps) {
   }
   const modeItems: MenuItem[] = MODE_CYCLE.map((m) => ({ id: m.toLowerCase(), label: MODE_DEFS[m].label, radio: true, checked: shownMode === m, onSelect: () => applyMode(m) }));
 
+  // The queue, the first-use education and a blocked model go through the one tray host (AFW-H01) so exactly one tray owns the scoped keys at a time.
+  // Precedence is the store's priority: approvals (100) > the Core offline (80) > blocked or budget trays (60) > education (25) > the queue (20).
+  const trayQueue = (
+    <QueueTray
+      rows={rows}
+      behavior={core.behavior}
+      runAlive={queue?.runAlive ?? false}
+      busy={busy}
+      onLeave={() => area.current?.focus()}
+      onSendNow={(id) => {
+        if (!sessionId) return;
+        setBusy(true);
+        window.modbit
+          .composerSendNow(sessionId, taskId, id, `now-${id}`)
+          .catch((e) => setError(coreError(e).message))
+          .finally(() => {
+            setBusy(false);
+            refreshSoon();
+          });
+      }}
+      onEdit={async (id, change) => {
+        if (!sessionId) return false;
+        try {
+          await window.modbit.composerEditQueued(sessionId, taskId, id, change);
+          refreshSoon();
+          return true;
+        } catch (e) {
+          setError(coreError(e).message);
+          return false;
+        }
+      }}
+      onDelete={(id) => {
+        if (!sessionId) return;
+        window.modbit
+          .composerRemoveQueued(sessionId, taskId, id)
+          .catch((e) => setError(coreError(e).message))
+          .finally(refreshSoon);
+      }}
+      onMove={(id, dir) => {
+        if (!sessionId) return;
+        const t = reorderTarget(rows, id, dir);
+        if (!t) return;
+        window.modbit
+          .composerReorderQueued(sessionId, taskId, t.inputId, t.before)
+          .catch((e) => setError(coreError(e).message))
+          .finally(refreshSoon);
+      }}
+      onClear={() => {
+        if (!sessionId) return;
+        void Promise.all(rows.map((r) => window.modbit.composerRemoveQueued(sessionId, taskId, r.inputId)))
+          .catch((e) => setError(coreError(e).message))
+          .finally(refreshSoon);
+      }}
+    />
+  );
+  useEffect(() => {
+    if (rows.length > 0) trays.present({ id: TRAY_QUEUE, tone: "info", title: `Queued messages: ${queueHeader(rows.length)}`, priority: 20, dismissible: false, body: trayQueue });
+    else trays.dismiss(TRAY_QUEUE);
+    if (education) trays.present({ id: TRAY_EDU, tone: "info", title: EDUCATION.title, priority: 25, dismissible: false, body: <EducationTray onKeep={() => { persist({ ...storeRef.current, educationAck: true }); setEducation(false); }} onSettings={() => { persist({ ...storeRef.current, educationAck: true }); setEducation(false); setBehaviorOpen(true); }} /> });
+    else trays.dismiss(TRAY_EDU);
+    if (policy) trays.present({ id: TRAY_POLICY, tone: "error", title: `${policy.model} is not available`, priority: 60, dismissible: false, body: <PolicyTray model={policy.model} code={policy.code} reason={policy.reason} note={policyNote} onAuto={() => void switchToAuto()} onCopy={() => void navigator.clipboard.writeText(policy.reason).then(() => setPolicyNote("Copied.")).catch(() => setPolicyNote("Copying is unavailable here."))} onDismiss={() => setPolicy(null)} /> });
+    else trays.dismiss(TRAY_POLICY);
+  });
+  useEffect(
+    () => () => {
+      for (const id of [TRAY_QUEUE, TRAY_EDU, TRAY_POLICY]) trays.dismiss(id);
+    },
+    [],
+  );
+
   if (ended) {
     return (
       <section className="conv-composer cmp" aria-label="Composer" data-testid="composer-region" data-state="ended">
@@ -479,9 +554,7 @@ export function Composer(props: ComposerProps) {
       }}
     >
       <div className="cmp-dock" data-testid="composer-dock">
-        {policy && <PolicyTray model={policy.model} code={policy.code} reason={policy.reason} note={policyNote} onAuto={() => void switchToAuto()} onCopy={() => void navigator.clipboard.writeText(policy.reason).then(() => setPolicyNote("Copied.")).catch(() => setPolicyNote("Copying is unavailable here."))} onDismiss={() => setPolicy(null)} />}
-        {!policy && stopped && <StoppedTray text={stopped.text} canContinue={startable} onEdit={() => { setTextAndCaret(stopped.text, stopped.text.length); setStopped(null); }} onContinue={() => { setStopped(null); onResume(taskId); }} onDismiss={() => setStopped(null)} />}
-        {!policy && !stopped && education && <EducationTray onKeep={() => { persist({ ...storeRef.current, educationAck: true }); setEducation(false); }} onSettings={() => { persist({ ...storeRef.current, educationAck: true }); setEducation(false); setBehaviorOpen(true); }} />}
+        {stopped && <StoppedTray text={stopped.text} canContinue={startable} onEdit={() => { setTextAndCaret(stopped.text, stopped.text.length); setStopped(null); }} onContinue={() => { setStopped(null); onResume(taskId); }} onDismiss={() => setStopped(null)} />}
         {behaviorOpen && core.behavior && (
           <SendBehaviorPanel
             behavior={core.behavior}
@@ -513,57 +586,6 @@ export function Composer(props: ComposerProps) {
             }}
           />
         )}
-        <QueueTray
-          rows={rows}
-          behavior={core.behavior}
-          runAlive={queue?.runAlive ?? false}
-          busy={busy}
-          onLeave={() => area.current?.focus()}
-          onSendNow={(id) => {
-            if (!sessionId) return;
-            setBusy(true);
-            window.modbit
-              .composerSendNow(sessionId, taskId, id, `now-${id}`)
-              .catch((e) => setError(coreError(e).message))
-              .finally(() => {
-                setBusy(false);
-                refreshSoon();
-              });
-          }}
-          onEdit={async (id, change) => {
-            if (!sessionId) return false;
-            try {
-              await window.modbit.composerEditQueued(sessionId, taskId, id, change);
-              refreshSoon();
-              return true;
-            } catch (e) {
-              setError(coreError(e).message);
-              return false;
-            }
-          }}
-          onDelete={(id) => {
-            if (!sessionId) return;
-            window.modbit
-              .composerRemoveQueued(sessionId, taskId, id)
-              .catch((e) => setError(coreError(e).message))
-              .finally(refreshSoon);
-          }}
-          onMove={(id, dir) => {
-            if (!sessionId) return;
-            const t = reorderTarget(rows, id, dir);
-            if (!t) return;
-            window.modbit
-              .composerReorderQueued(sessionId, taskId, t.inputId, t.before)
-              .catch((e) => setError(coreError(e).message))
-              .finally(refreshSoon);
-          }}
-          onClear={() => {
-            if (!sessionId) return;
-            void Promise.all(rows.map((r) => window.modbit.composerRemoveQueued(sessionId, taskId, r.inputId)))
-              .catch((e) => setError(coreError(e).message))
-              .finally(refreshSoon);
-          }}
-        />
         {terminalsOpen && running_terminals.length > 0 && (
           <TerminalsTray
             terminals={running_terminals}

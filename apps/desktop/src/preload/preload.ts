@@ -6,6 +6,7 @@ import { contextBridge, ipcRenderer, webUtils } from "electron";
 import type { AgentHeadersView, ConversationSearchView, OpenStreamView, PendingApprovalView, SearchOptions, TranscriptOptions, TranscriptPageView } from "../shared/conversation-types.ts";
 import type { TerminalFrameJson, TerminalViewJson } from "../main/terminal-host.ts";
 import type { AttachmentResult, InterruptView, ModeChangedView, ModelCatalogView, PostureView, PreferencePatch, PreferenceSetView, QueuedChangeView, QueueView, SendBehaviorState, SideAnswerView, SlashInventoryView, TaskModeId, InputModeId } from "../shared/composer-types.ts";
+import type { AccountingInfo, AddRuleInput, AllowRuleInfo, CheckpointListInfo, CheckpointTargetInput, DockApprovalView, ForkOutcome, RestoreOutcome, RewindPreviewInfo, RunModeInfo, TaskBudgetsInfo } from "../shared/control-types.ts";
 
 export type { TerminalFrameJson, TerminalViewJson };
 
@@ -277,6 +278,25 @@ export interface ModbitBridge {
   listWorkspaceDir(taskId: string, path: string): Promise<{ path: string; workspaceRevision: string; truncated: boolean; entries: WorkspaceEntry[] }>;
   readWorkspaceFile(taskId: string, path: string): Promise<{ path: string; status: string; size: string; text: string; fileRevision: string; workspaceRevision: string; language: string }>;
   effectReceipts(taskId: string): Promise<{ chainValid: boolean; detail: string; receipts: ReceiptView[] }>;
+  /** REQ-PX-058: the protected effects waiting for a decision (oldest first), each with the Core's typed reason and the exact intent; with a task id, that task's only. */
+  dockApprovals(sessionId: string, taskId?: string): Promise<DockApprovalView[]>;
+  /** REQ-PX-058 / 057: make a durable argv-prefix rule through the Core, then approve this one effect, named by the hash the card showed; the rule is not made if the effect is no longer the one shown. */
+  allowAlways(sessionId: string, approvalId: string, intentHash: string, rule: AddRuleInput): Promise<{ rule: AllowRuleInfo; approvalId: string; status: string; offset: string }>;
+  /** REQ-PX-057: the run mode in force, the always-ask classes and the warning a move to a higher mode must acknowledge. */
+  runMode(taskId: string): Promise<RunModeInfo>;
+  setRunMode(sessionId: string, taskId: string, mode: string, acknowledgeRisk: boolean): Promise<RunModeInfo>;
+  allowRules(taskId: string, includeInactive?: boolean): Promise<AllowRuleInfo[]>;
+  addAllowRule(sessionId: string, taskId: string, rule: AddRuleInput): Promise<AllowRuleInfo>;
+  revokeAllowRule(sessionId: string, taskId: string, ruleId: string, reason?: string): Promise<{ ruleId: string; offset: string }>;
+  /** REQ-PX-060: the Core's breakdown of the last request by category, the model's window and the budgets beside them. */
+  contextAccounting(taskId: string): Promise<AccountingInfo>;
+  /** REQ-PX-116 / 060: raise (or set) the task's cost and wall-clock limits; counts are decimal strings, 0 = none. */
+  setTaskBudgets(sessionId: string, taskId: string, budgets: { maxCostMinor?: string; maxWallMs?: string }): Promise<TaskBudgetsInfo>;
+  /** REQ-PX-062: the task's checkpoints, a preview of what restoring one would change, the restore itself (reversible), and a fork from a turn. */
+  checkpoints(taskId: string): Promise<CheckpointListInfo>;
+  previewRestore(taskId: string, target: CheckpointTargetInput): Promise<RewindPreviewInfo>;
+  restoreCheckpoint(sessionId: string, taskId: string, target: CheckpointTargetInput, options?: { expected?: { path: string; contentHash: string }[]; keepPaths?: string[]; redo?: boolean; expectedCurrentEpoch?: number; commandId?: string }): Promise<RestoreOutcome>;
+  forkFromTurn(sessionId: string, taskId: string, target: CheckpointTargetInput, goal?: string, commandId?: string): Promise<ForkOutcome>;
   /** M10.1: the session's telemetry, cost and SLO dashboard. */
   dashboard(sessionId: string): Promise<DashboardSummary>;
   /** PX-023: the typed task status (REQ-EV-0073) a snapshot does not carry. */
@@ -411,6 +431,19 @@ const bridge: ModbitBridge = {
   listWorkspaceDir: (taskId, path) => ipcRenderer.invoke("files:list", taskId, path),
   readWorkspaceFile: (taskId, path) => ipcRenderer.invoke("files:read", taskId, path),
   effectReceipts: (taskId) => ipcRenderer.invoke("evidence:receipts", taskId),
+  dockApprovals: (sessionId, taskId) => ipcRenderer.invoke("approvals:dock", sessionId, taskId ?? ""),
+  allowAlways: (sessionId, approvalId, intentHash, rule) => ipcRenderer.invoke("approval:allowAlways", sessionId, approvalId, intentHash, rule),
+  runMode: (taskId) => ipcRenderer.invoke("runmode:get", taskId),
+  setRunMode: (sessionId, taskId, mode, acknowledgeRisk) => ipcRenderer.invoke("runmode:set", sessionId, taskId, mode, acknowledgeRisk),
+  allowRules: (taskId, includeInactive) => ipcRenderer.invoke("rules:list", taskId, includeInactive ?? false),
+  addAllowRule: (sessionId, taskId, rule) => ipcRenderer.invoke("rules:add", sessionId, taskId, rule),
+  revokeAllowRule: (sessionId, taskId, ruleId, reason) => ipcRenderer.invoke("rules:revoke", sessionId, taskId, ruleId, reason ?? ""),
+  contextAccounting: (taskId) => ipcRenderer.invoke("accounting:get", taskId),
+  setTaskBudgets: (sessionId, taskId, budgets) => ipcRenderer.invoke("budgets:set", sessionId, taskId, budgets),
+  checkpoints: (taskId) => ipcRenderer.invoke("checkpoints:list", taskId),
+  previewRestore: (taskId, target) => ipcRenderer.invoke("checkpoints:preview", taskId, target),
+  restoreCheckpoint: (sessionId, taskId, target, options) => ipcRenderer.invoke("checkpoints:restore", sessionId, taskId, target, options ?? {}),
+  forkFromTurn: (sessionId, taskId, target, goal, commandId) => ipcRenderer.invoke("checkpoints:fork", sessionId, taskId, target, goal ?? "", commandId ?? ""),
   dashboard: (sessionId: string) => ipcRenderer.invoke("dashboard:get", sessionId),
   taskStatus: (taskId: string) => ipcRenderer.invoke("task:status", taskId),
   attention: (sessionId: string) => ipcRenderer.invoke("attention:list", sessionId),
