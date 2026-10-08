@@ -10,7 +10,7 @@ import { expect, test, type Page } from "@playwright/test";
 import { existsSync, mkdtempSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { accessible, closeApp, launch, makeRepo, setContentSize } from "./support/ui-harness.ts";
+import { accessible, closeApp, launch, makeRepo, MOD, setContentSize } from "./support/ui-harness.ts";
 import { streamingModel } from "./support/stream-model.ts";
 import { Gate } from "./support/stream-model.ts";
 import { openConversation, routedModel, sessionOf, sha256File, startAndOpen, type ModelPart } from "./support/conversation-harness.ts";
@@ -244,9 +244,11 @@ test("PX-062: Restore checkpoint on a message makes it editable in place; editin
     const taskId = await startAndOpen(page, "write the files", repo);
     await reached.opened;
     // A second message, said while the run is on its way: the agent takes it into the next turn.
-    await page.getByTestId("conv-steer").fill(STEER);
-    await page.getByTestId("conv-steer").press("Enter");
-    await expect(page.getByTestId("conv-steer-note")).toContainText("steered");
+    // Wave 4 (deliberate change to this test): the steer box is the composer now; plain Enter queues behind the run, the primary-modifier Enter steers (AFW-E05).
+    // The composer has no "steered" note; the send is taken when the box clears, and the transcript assertions below prove the message arrived once.
+    await page.getByTestId("composer-input").fill(STEER);
+    await page.getByTestId("composer-input").press(`${MOD}+Enter`);
+    await expect(page.getByTestId("composer-input")).toHaveValue("");
     release.open();
     await expect(page.getByTestId("conv-question")).toBeVisible({ timeout: 120_000 });
     await expect.poll(() => snap(repo).c, { timeout: 60_000 }).not.toBeNull();

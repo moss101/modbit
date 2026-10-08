@@ -201,8 +201,9 @@ test("PX-058: an effect that cannot be undone asks twice, and a key typed into a
     await expect(page.getByTestId("approval-always")).toHaveCount(0);
     await expect(page.getByTestId("approval-always-why")).toContainText("always asks");
     // Typing a message and pressing Enter decides nothing: the steer box keeps the key.
-    await page.getByTestId("conv-steer").fill("hold on");
-    await page.getByTestId("conv-steer").press("Enter");
+    // Wave 4 (deliberate change): the message box is the composer now; Enter there queues the message and must still decide nothing.
+    await page.getByTestId("composer-input").fill("hold on");
+    await page.getByTestId("composer-input").press("Enter");
     await expect(card).toBeVisible();
     expect(existsSync(join(repo, "junk.txt"))).toBe(true);
     // Enter from a neutral place opens the second step; nothing is deleted yet; Escape steps back; the effect is still pending.

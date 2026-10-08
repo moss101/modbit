@@ -6,6 +6,8 @@
  * markup, and the colours below only reinforce them.
  */
 export const controlsCss = `
+/* The one tray host sits directly above the composer in the conversation; a tall approval deck scrolls inside it instead of squeezing the transcript out. */
+.conv > .mb-tray-host { flex: none; max-height: 45%; overflow-y: auto; padding-top: var(--mb-space-1); }
 .appr { display: flex; flex-direction: column; gap: var(--mb-space-2); outline: none; }
 .appr:focus-visible { outline: 2px solid var(--mb-color-accent); outline-offset: 2px; border-radius: var(--mb-radius-3); }
 .appr-deckbar { display: flex; align-items: center; gap: var(--mb-space-2); font-size: var(--mb-type-caption-size); color: var(--mb-color-text-muted); }

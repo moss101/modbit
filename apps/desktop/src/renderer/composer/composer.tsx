@@ -76,7 +76,6 @@ export interface ComposerProps {
 }
 
 const TRAY_QUEUE = "composer-queue";
-const TRAY_EDU = "composer-education";
 const TRAY_POLICY = "composer-policy";
 const newId = (): string => `c${Date.now().toString(36)}${Math.random().toString(36).slice(2, 10)}`;
 const isMac = (): boolean => typeof navigator !== "undefined" && /mac/i.test(navigator.platform);
@@ -454,7 +453,8 @@ export function Composer(props: ComposerProps) {
   const modeItems: MenuItem[] = MODE_CYCLE.map((m) => ({ id: m.toLowerCase(), label: MODE_DEFS[m].label, radio: true, checked: shownMode === m, onSelect: () => applyMode(m) }));
 
   // The queue, the first-use education and a blocked model go through the one tray host (AFW-H01) so exactly one tray owns the scoped keys at a time.
-  // Precedence is the store's priority: approvals (100) > the Core offline (80) > blocked or budget trays (60) > education (25) > the queue (20).
+  // Precedence is the store's priority: approvals (100) > the Core offline (80) > blocked or budget trays (60) > the queue with its first-use education (20).
+  // The education is part of the queue's tray, not a tray of its own: the two are one message to the person and one owner of the keys.
   const trayQueue = (
     <QueueTray
       rows={rows}
@@ -509,16 +509,27 @@ export function Composer(props: ComposerProps) {
     />
   );
   useEffect(() => {
-    if (rows.length > 0) trays.present({ id: TRAY_QUEUE, tone: "info", title: `Queued messages: ${queueHeader(rows.length)}`, priority: 20, dismissible: false, body: trayQueue });
+    if (rows.length > 0 || education)
+      trays.present({
+        id: TRAY_QUEUE,
+        tone: "info",
+        title: rows.length > 0 ? `Queued messages: ${queueHeader(rows.length)}` : EDUCATION.title,
+        priority: 20,
+        dismissible: false,
+        body: (
+          <>
+            {education && <EducationTray onKeep={() => { persist({ ...storeRef.current, educationAck: true }); setEducation(false); }} onSettings={() => { persist({ ...storeRef.current, educationAck: true }); setEducation(false); setBehaviorOpen(true); }} />}
+            {trayQueue}
+          </>
+        ),
+      });
     else trays.dismiss(TRAY_QUEUE);
-    if (education) trays.present({ id: TRAY_EDU, tone: "info", title: EDUCATION.title, priority: 25, dismissible: false, body: <EducationTray onKeep={() => { persist({ ...storeRef.current, educationAck: true }); setEducation(false); }} onSettings={() => { persist({ ...storeRef.current, educationAck: true }); setEducation(false); setBehaviorOpen(true); }} /> });
-    else trays.dismiss(TRAY_EDU);
     if (policy) trays.present({ id: TRAY_POLICY, tone: "error", title: `${policy.model} is not available`, priority: 60, dismissible: false, body: <PolicyTray model={policy.model} code={policy.code} reason={policy.reason} note={policyNote} onAuto={() => void switchToAuto()} onCopy={() => void navigator.clipboard.writeText(policy.reason).then(() => setPolicyNote("Copied.")).catch(() => setPolicyNote("Copying is unavailable here."))} onDismiss={() => setPolicy(null)} /> });
     else trays.dismiss(TRAY_POLICY);
   });
   useEffect(
     () => () => {
-      for (const id of [TRAY_QUEUE, TRAY_EDU, TRAY_POLICY]) trays.dismiss(id);
+      for (const id of [TRAY_QUEUE, TRAY_POLICY]) trays.dismiss(id);
     },
     [],
   );
