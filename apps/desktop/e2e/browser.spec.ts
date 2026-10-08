@@ -135,7 +135,7 @@ async function closeApp(app: ElectronApplication): Promise<void> {
 }
 
 async function launch(dataDir: string, extraEnv: Record<string, string>): Promise<{ app: ElectronApplication; page: Page }> {
-  const app = await electron.launch({ args: [join(appDir, "dist", "main", "main.cjs")], env: { ...process.env, MODBIT_DATA_DIR: dataDir, MODBIT_CORE_BIN: coreBin, OPENAI_API_KEY: "", ANTHROPIC_API_KEY: "", MODBIT_SUPPRESS_OS_NOTIFICATIONS: "1", ...extraEnv } });
+  const app = await electron.launch({ args: [join(appDir, "dist", "main", "main.cjs")], env: { ...process.env, MODBIT_DATA_DIR: dataDir, MODBIT_CORE_BIN: coreBin, OPENAI_API_KEY: "", ANTHROPIC_API_KEY: "", MODBIT_SUPPRESS_OS_NOTIFICATIONS: "1", MODBIT_BROWSER_ALLOW_TARGETS: "127.0.0.1", ...extraEnv } });
   const page = await app.firstWindow();
   app.process().stderr?.on("data", (d: Buffer) => process.stderr.write(`[electron] ${d}`));
   await expect(page.getByTestId("core-status")).toContainText("Core connected", { timeout: 60_000 });
