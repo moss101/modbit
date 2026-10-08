@@ -169,6 +169,65 @@ fn lease_for(session: &Id) -> Option<u64> {
     LEASE.with(|l| l.borrow().get(&session.value).copied())
 }
 
+/// The person at the keyboard for a run whose parent integrates its children
+/// (PX-119): approves every approval the session asks for, until dropped.
+/// A parent cannot complete beside a child with unmerged changes; discarding
+/// one is a protected effect, so these runs need an approver.
+async fn spawn_approver(core: &CoreProcess, session: &Id) -> tokio::task::JoinHandle<()> {
+    use modbit_protocol::v1::{ApprovalList, ListApprovals, ResolveApproval};
+    let mut c = core.client().await;
+    let session = session.clone();
+    tokio::spawn(async move {
+        let g = lease_for(&session);
+        let mut done: std::collections::HashSet<Vec<u8>> = Default::default();
+        loop {
+            let ack = c
+                .command(envelope(
+                    Id {
+                        value: (0..16).map(|_| rand::random::<u8>()).collect(),
+                    },
+                    "ListApprovals",
+                    ListApprovals {
+                        session_id: Some(session.clone()),
+                    }
+                    .encode_to_vec(),
+                ))
+                .await;
+            let Ok(ack) = ack else { return };
+            let list: ApprovalList = Client::result(&ack).unwrap();
+            let g = lease_for(&session).or(g);
+            // Only the integration of children: a protected effect of anything
+            // else in a test stays pending for the test to see.
+            for a in list.approvals.iter().filter(|a| {
+                a.status == "REQUESTED"
+                    && (a.tool_name.starts_with("git.merge.")
+                        || a.tool_name.starts_with("git.apply."))
+            }) {
+                let id = a.approval_id.clone().unwrap();
+                if done.insert(id.value.clone()) {
+                    let _ = c
+                        .command(envelope_fenced(
+                            Id {
+                                value: (0..16).map(|_| rand::random::<u8>()).collect(),
+                            },
+                            "ResolveApproval",
+                            ResolveApproval {
+                                approval_id: Some(id),
+                                approve: true,
+                                reason: "integration".into(),
+                                intent_hash: String::new(),
+                            }
+                            .encode_to_vec(),
+                            g,
+                        ))
+                        .await;
+                }
+            }
+            tokio::time::sleep(Duration::from_millis(150)).await;
+        }
+    })
+}
+
 async fn acquire_lease(c: &mut Client, command_id: Id, session: Id, owner: &str) -> u64 {
     use modbit_protocol::v1::{AcquireSessionLease, SessionLeaseAcquired};
     let ack = c
@@ -13154,7 +13213,7 @@ async fn qual_px_116_child_cost_budgets_are_clamped_reserved_exhaust_typed_and_r
     ]);
     let cap: u64 = 2_000;
     let parent = vec![
-        json!({"calls": [{"name": "plan.update", "args": {"outcome": "three modules", "expected_files": ["README.md"]}}]}),
+        json!({"calls": [{"name": "plan.update", "args": {"outcome": "three modules", "expected_files": ["README.md"], "protected_effects": ["git.merge"]}}]}),
         json!({"calls": [{"name": "agent.spawn", "args": {"idempotency_key": "k1", "objective": "create src/a/a.txt", "write_scope": ["src/a/"], "max_cost_minor": 800}}]}),
         json!({"calls": [{"name": "agent.spawn", "args": {"idempotency_key": "k2", "objective": "create src/b/b.txt", "write_scope": ["src/b/"], "max_cost_minor": 40}}]}),
         json!({"calls": [{"name": "agent.spawn", "args": {"idempotency_key": "k3", "objective": "create src/c/c.txt", "write_scope": ["src/c/"], "max_cost_minor": 1800}}]}),
@@ -13162,6 +13221,9 @@ async fn qual_px_116_child_cost_budgets_are_clamped_reserved_exhaust_typed_and_r
         json!({"calls": [{"name": "agent.wait", "args": {"idempotency_key": "k2", "timeout_ms": 60000}}]}),
         json!({"calls": [{"name": "agent.wait", "args": {"idempotency_key": "k3", "timeout_ms": 60000}}]}),
         json!({"calls": [{"name": "agent.cancel", "args": {"idempotency_key": "k2"}}]}),
+        json!({"calls": [{"name": "git.merge.abort", "args": {"child": "k1", "discard": true, "reason": "integration of the fixture"}}]}),
+        json!({"calls": [{"name": "git.merge.abort", "args": {"child": "k2", "discard": true, "reason": "integration of the fixture"}}]}),
+        json!({"calls": [{"name": "git.merge.abort", "args": {"child": "k3", "discard": true, "reason": "integration of the fixture"}}]}),
         json!({"calls": [{"name": "task.complete", "args": {"summary": "collected", "self_review": {"findings": []}}}]}),
     ];
     let (base, _seen) = scripted_models(
@@ -13196,6 +13258,7 @@ async fn qual_px_116_child_cost_budgets_are_clamped_reserved_exhaust_typed_and_r
     activate_registry(&mut c, &signed).await;
     let (session, _) = create_session(&mut c, id16(0xF1)).await;
     let g = lease_for(&session);
+    let _approver = spawn_approver(&core, &session).await;
     let task = create_task_with_goal(
         &mut c,
         &session,
@@ -13367,10 +13430,11 @@ async fn qual_px_116_max_children_refuses_the_extra_spawn_and_a_task_can_forbid_
         ("src/b/.keep", ""),
     ]);
     let parent = vec![
-        json!({"calls": [{"name": "plan.update", "args": {"outcome": "two modules", "expected_files": ["README.md"]}}]}),
+        json!({"calls": [{"name": "plan.update", "args": {"outcome": "two modules", "expected_files": ["README.md"], "protected_effects": ["git.merge"]}}]}),
         json!({"calls": [{"name": "agent.spawn", "args": {"idempotency_key": "k1", "objective": "create src/a/a.txt", "write_scope": ["src/a/"]}}]}),
         json!({"calls": [{"name": "agent.spawn", "args": {"idempotency_key": "k2", "objective": "create src/b/b.txt", "write_scope": ["src/b/"]}}]}),
         json!({"calls": [{"name": "agent.wait", "args": {"idempotency_key": "k1", "timeout_ms": 60000}}]}),
+        json!({"calls": [{"name": "git.merge.abort", "args": {"child": "k1", "discard": true, "reason": "integration of the fixture"}}]}),
         json!({"calls": [{"name": "task.complete", "args": {"summary": "collected", "self_review": {"findings": []}}}]}),
     ];
     let (base, seen) = scripted_model_reactive(
@@ -13397,6 +13461,7 @@ async fn qual_px_116_max_children_refuses_the_extra_spawn_and_a_task_can_forbid_
     let mut c = core.client().await;
     let (session, _) = create_session(&mut c, id16(0x51)).await;
     let g = lease_for(&session);
+    let _approver = spawn_approver(&core, &session).await;
 
     // ---- max_children: the second spawn meets a live child ------------------
     let task = create_task_with_goal(&mut c, &session, g, &root, 0x52, "PARENT-ONE delegate").await;
@@ -13598,12 +13663,14 @@ async fn qual_px_116_a_child_that_exhausts_its_wall_clock_ends_typed_and_its_res
     let cap: u64 = 2_000;
     let parent_wall: u64 = 600_000;
     let parent = vec![
-        json!({"calls": [{"name": "plan.update", "args": {"outcome": "two modules", "expected_files": ["README.md"]}}]}),
+        json!({"calls": [{"name": "plan.update", "args": {"outcome": "two modules", "expected_files": ["README.md"], "protected_effects": ["git.merge"]}}]}),
         json!({"calls": [{"name": "agent.spawn", "args": {"idempotency_key": "k1", "objective": "create src/a/slow.txt", "write_scope": ["src/a/"], "max_cost_minor": 800, "max_wall_ms": 500}}]}),
         json!({"calls": [{"name": "agent.wait", "args": {"idempotency_key": "k1", "timeout_ms": 60000}}]}),
         json!({"calls": [{"name": "agent.spawn", "args": {"idempotency_key": "k2", "objective": "create src/b/b.txt", "write_scope": ["src/b/"], "max_cost_minor": 100000, "max_wall_ms": 99999999}}]}),
         json!({"calls": [{"name": "agent.wait", "args": {"idempotency_key": "k2", "timeout_ms": 60000}}]}),
         json!({"calls": [{"name": "agent.cancel", "args": {"idempotency_key": "k1"}}]}),
+        json!({"calls": [{"name": "git.merge.abort", "args": {"child": "k1", "discard": true, "reason": "integration of the fixture"}}]}),
+        json!({"calls": [{"name": "git.merge.abort", "args": {"child": "k2", "discard": true, "reason": "integration of the fixture"}}]}),
         json!({"calls": [{"name": "task.complete", "args": {"summary": "collected", "self_review": {"findings": []}}}]}),
     ];
     // k1 has many turns to take, each one slow: its half-second of wall
@@ -13640,6 +13707,7 @@ async fn qual_px_116_a_child_that_exhausts_its_wall_clock_ends_typed_and_its_res
     activate_registry(&mut c, &signed).await;
     let (session, _) = create_session(&mut c, id16(0x71)).await;
     let g = lease_for(&session);
+    let _approver = spawn_approver(&core, &session).await;
     let task =
         create_task_with_goal(&mut c, &session, g, &root, 0x72, "PARENT-WALL delegate").await;
     px_set_budgets(&mut c, &task, g, 0x73, (cap, parent_wall, 0, false)).await;
@@ -13736,11 +13804,12 @@ async fn qual_px_116_a_child_reads_only_its_read_scope_and_carries_the_parents_s
         ("src/secret/key.txt", "needle SECRET-KEY-VALUE\n"),
     ]);
     let parent = vec![
-        json!({"calls": [{"name": "plan.update", "args": {"outcome": "scoped child", "expected_files": ["README.md"]}}]}),
+        json!({"calls": [{"name": "plan.update", "args": {"outcome": "scoped child", "expected_files": ["README.md"], "protected_effects": ["git.merge"]}}]}),
         json!({"calls": [{"name": "fs.read", "args": {"path": "src/a/x.txt"}}]}),
         json!({"calls": [{"name": "fs.read", "args": {"path": "src/secret/key.txt"}}]}),
         json!({"calls": [{"name": "agent.spawn", "args": {"idempotency_key": "k1", "objective": "create src/a/y.txt", "read_scope": ["src/a/"], "write_scope": ["src/a/"]}}]}),
         json!({"calls": [{"name": "agent.wait", "args": {"idempotency_key": "k1", "timeout_ms": 60000}}]}),
+        json!({"calls": [{"name": "git.merge.abort", "args": {"child": "k1", "discard": true, "reason": "integration of the fixture"}}]}),
         json!({"calls": [{"name": "task.complete", "args": {"summary": "collected", "self_review": {"findings": []}}}]}),
     ];
     let child = vec![
@@ -13768,6 +13837,7 @@ async fn qual_px_116_a_child_reads_only_its_read_scope_and_carries_the_parents_s
     let mut c = core.client().await;
     let (session, _) = create_session(&mut c, id16(0x41)).await;
     let g = lease_for(&session);
+    let _approver = spawn_approver(&core, &session).await;
     let task =
         create_task_with_goal(&mut c, &session, g, &root, 0x42, "PARENT-SCOPE delegate").await;
     px_run(&mut c, &task, g, 0x43, 40).await;
@@ -13914,9 +13984,10 @@ async fn qual_px_116_a_scoped_child_sees_nothing_outside_its_scope_through_the_i
         .collect();
     let (repo, root) = plain_repo(&refs);
     let parent = vec![
-        json!({"calls": [{"name": "plan.update", "args": {"outcome": "scoped child", "expected_files": ["README.md"]}}]}),
+        json!({"calls": [{"name": "plan.update", "args": {"outcome": "scoped child", "expected_files": ["README.md"], "protected_effects": ["git.merge"]}}]}),
         json!({"calls": [{"name": "agent.spawn", "args": {"idempotency_key": "k1", "objective": "create src/a/y.txt from the needle notes", "read_scope": ["src/a/"], "write_scope": ["src/a/"]}}]}),
         json!({"calls": [{"name": "agent.wait", "args": {"idempotency_key": "k1", "timeout_ms": 60000}}]}),
+        json!({"calls": [{"name": "git.merge.abort", "args": {"child": "k1", "discard": true, "reason": "integration of the fixture"}}]}),
         json!({"calls": [{"name": "task.complete", "args": {"summary": "collected", "self_review": {"findings": []}}}]}),
     ];
     // The script is indexed by the tool results the conversation holds: the
@@ -13955,6 +14026,7 @@ async fn qual_px_116_a_scoped_child_sees_nothing_outside_its_scope_through_the_i
     let mut c = core.client().await;
     let (session, _) = create_session(&mut c, id16(0x51)).await;
     let g = lease_for(&session);
+    let _approver = spawn_approver(&core, &session).await;
     let task =
         create_task_with_goal(&mut c, &session, g, &root, 0x52, "PARENT-SCOPE delegate").await;
     px_run(&mut c, &task, g, 0x53, 40).await;
@@ -14024,9 +14096,10 @@ async fn qual_px_116_a_fault_before_the_reservation_leaves_neither_and_a_kill_af
     );
     let (repo, root) = plain_repo(&[("README.md", "# split\n"), ("src/a/.keep", "")]);
     let parent = vec![
-        json!({"calls": [{"name": "plan.update", "args": {"outcome": "one module", "expected_files": ["README.md"]}}]}),
+        json!({"calls": [{"name": "plan.update", "args": {"outcome": "one module", "expected_files": ["README.md"], "protected_effects": ["git.merge"]}}]}),
         json!({"calls": [{"name": "agent.spawn", "args": {"idempotency_key": "k1", "objective": "create src/a/a.txt", "write_scope": ["src/a/"], "max_cost_minor": 800}}]}),
         json!({"calls": [{"name": "agent.wait", "args": {"idempotency_key": "k1", "timeout_ms": 60000}}]}),
+        json!({"calls": [{"name": "git.merge.abort", "args": {"child": "k1", "discard": true, "reason": "integration of the fixture"}}]}),
         json!({"calls": [{"name": "task.complete", "args": {"summary": "collected", "self_review": {"findings": []}}}]}),
     ];
     let (base, _seen) = scripted_models(
@@ -14068,6 +14141,7 @@ async fn qual_px_116_a_fault_before_the_reservation_leaves_neither_and_a_kill_af
     activate_registry(&mut c, &signed).await;
     let (session, _) = create_session(&mut c, id16(0x31)).await;
     let g = lease_for(&session);
+    let _approver = spawn_approver(&core, &session).await;
     let t1 = create_task_with_goal(&mut c, &session, g, &root, 0x32, "PARENT-FAULT delegate").await;
     px_set_budgets(&mut c, &t1, g, 0x33, (cap, 0, 0, false)).await;
     px_run(&mut c, &t1, g, 0x34, 40).await;
@@ -14170,6 +14244,7 @@ async fn qual_px_116_a_fault_before_the_reservation_leaves_neither_and_a_kill_af
     // Reconciliation: the parent resumes; the admitted child that never ran
     // starts from its reservation (both), and finishes.
     let g3 = Some(acquire_lease(&mut c, id16(0x3C), session.clone(), "test").await);
+    let _approver2 = spawn_approver(&core, &session).await;
     px_run(&mut c, &t2, g3, 0x3A, 40).await;
     let st = wait_for_state(&mut c, &t2, "ReadyForReview", 120).await;
     assert_eq!(st.state, "ReadyForReview", "{st:?}");
@@ -24698,7 +24773,7 @@ async fn qual_m5_1_projection_follows_the_plan_and_refuses_crafted_calls() {
         assert!(
             plan_desc.contains("DECLARE_WRITES -> change.apply, change.batch")
                 && plan_desc.contains(
-                    "DECLARE_PROTECTED_EFFECT -> forge.pr.create, forge.pr.update, git.worktree.close"
+                    "DECLARE_PROTECTED_EFFECT -> forge.pr.create, forge.pr.update, git.apply.undo, git.apply.worktree, git.merge.commit, git.merge.prepare, git.worktree.close"
                 ),
             "{plan_desc}"
         );
@@ -24730,7 +24805,7 @@ async fn qual_m5_1_projection_follows_the_plan_and_refuses_crafted_calls() {
         let plan_desc = description(b, "plan.update");
         assert!(
             plan_desc.contains(
-                "DECLARE_PROTECTED_EFFECT -> forge.pr.create, forge.pr.update, git.worktree.close"
+                "DECLARE_PROTECTED_EFFECT -> forge.pr.create, forge.pr.update, git.apply.undo, git.apply.worktree, git.merge.commit, git.merge.prepare, git.worktree.close"
             ) && !plan_desc.contains("DECLARE_WRITES"),
             "{plan_desc}"
         );
@@ -24747,7 +24822,7 @@ async fn qual_m5_1_projection_follows_the_plan_and_refuses_crafted_calls() {
     );
     let final_plan_desc = description(&bodies[5], "plan.update");
     assert!(
-        final_plan_desc.contains("DECLARE_PROTECTED_EFFECT -> forge.pr.create, forge.pr.update.")
+        final_plan_desc.contains("DECLARE_PROTECTED_EFFECT -> forge.pr.create, forge.pr.update, git.apply.undo, git.apply.worktree, git.merge.commit, git.merge.prepare.")
             && !final_plan_desc.contains("git.worktree.close")
             && !final_plan_desc.contains("DECLARE_WRITES"),
         "{final_plan_desc}"
@@ -24818,6 +24893,10 @@ async fn qual_m5_1_projection_follows_the_plan_and_refuses_crafted_calls() {
         [
             "forge.pr.create:DECLARE_PROTECTED_EFFECT",
             "forge.pr.update:DECLARE_PROTECTED_EFFECT",
+            "git.apply.undo:DECLARE_PROTECTED_EFFECT",
+            "git.apply.worktree:DECLARE_PROTECTED_EFFECT",
+            "git.merge.commit:DECLARE_PROTECTED_EFFECT",
+            "git.merge.prepare:DECLARE_PROTECTED_EFFECT",
             "git.worktree.close:DECLARE_PROTECTED_EFFECT"
         ],
         "{files_declared:#?}"
@@ -24830,7 +24909,11 @@ async fn qual_m5_1_projection_follows_the_plan_and_refuses_crafted_calls() {
         strings(&all_declared["withheld"]),
         [
             "forge.pr.create:DECLARE_PROTECTED_EFFECT",
-            "forge.pr.update:DECLARE_PROTECTED_EFFECT"
+            "forge.pr.update:DECLARE_PROTECTED_EFFECT",
+            "git.apply.undo:DECLARE_PROTECTED_EFFECT",
+            "git.apply.worktree:DECLARE_PROTECTED_EFFECT",
+            "git.merge.commit:DECLARE_PROTECTED_EFFECT",
+            "git.merge.prepare:DECLARE_PROTECTED_EFFECT"
         ],
         "{all_declared:#?}"
     );
@@ -28093,9 +28176,10 @@ async fn m6_7_a_background_child_survives_a_core_restart_and_hands_its_result_ba
     use serde_json::json;
     let (_repo, root) = plain_repo(&[("README.md", "# durable\n"), ("src/a/.keep", "")]);
     let parent = vec![
-        json!({"calls": [{"name": "plan.update", "args": {"outcome": "module a exists", "expected_files": ["README.md"], "steps": [{"id": "a", "title": "module a"}]}}]}),
+        json!({"calls": [{"name": "plan.update", "args": {"outcome": "module a exists", "expected_files": ["README.md"], "protected_effects": ["git.merge"], "steps": [{"id": "a", "title": "module a"}]}}]}),
         json!({"calls": [{"name": "agent.spawn", "args": {"idempotency_key": "child-a", "objective": "create src/a/a.txt containing alpha", "write_scope": ["src/a/"], "work_node": "a", "max_turns": 6}}]}),
         json!({"calls": [{"name": "agent.wait", "args": {"idempotency_key": "child-a", "timeout_ms": 60000}}]}),
+        json!({"calls": [{"name": "git.merge.abort", "args": {"child": "child-a", "discard": true, "reason": "integration of the fixture"}}]}),
         json!({"calls": [{"name": "task.complete", "args": {"summary": "delegated and collected", "self_review": {"findings": []}}}]}),
     ];
     // The child's second request is held open: the Core dies mid-stream.
@@ -28156,6 +28240,7 @@ async fn m6_7_a_background_child_survives_a_core_restart_and_hands_its_result_ba
     let mut c = core.client().await;
     let (session, _) = create_session(&mut c, id16(0xB1)).await;
     let g = lease_for(&session);
+    let _approver = spawn_approver(&core, &session).await;
     let task = create_task_with_goal(&mut c, &session, g, &root, 0xB2, "delegate module a").await;
     let _: TaskRunStarted =
         Client::result(&c.command(start(&task, 0xB3, g)).await.unwrap()).unwrap();
@@ -28223,6 +28308,7 @@ async fn m6_7_a_background_child_survives_a_core_restart_and_hands_its_result_ba
     core.kill();
     // Restart: both suspend at their boundaries; the nodes wait; nothing runs.
     let core2 = CoreProcess::spawn_with_env(dir.path(), &env);
+    let _approver2 = spawn_approver(&core2, &session).await;
     let mut c2 = core2.client().await;
     let st = wait_task(&mut c2, &task, 5).await;
     assert_eq!(
@@ -28390,9 +28476,10 @@ async fn qual_ev_0046_a_background_child_reaching_a_protected_effect_moves_its_p
     use serde_json::json;
     let (_repo, root) = plain_repo(&[("README.md", "# ceiling\n"), ("src/a/.keep", "")]);
     let parent = vec![
-        json!({"calls": [{"name": "plan.update", "args": {"outcome": "module a exists", "expected_files": ["README.md"], "steps": [{"id": "a", "title": "module a"}]}}]}),
+        json!({"calls": [{"name": "plan.update", "args": {"outcome": "module a exists", "expected_files": ["README.md"], "protected_effects": ["git.merge"], "steps": [{"id": "a", "title": "module a"}]}}]}),
         json!({"calls": [{"name": "agent.spawn", "args": {"idempotency_key": "child-a", "objective": "create src/a/a.txt containing alpha", "write_scope": ["src/a/"], "work_node": "a", "max_turns": 8}}]}),
         json!({"calls": [{"name": "agent.wait", "args": {"idempotency_key": "child-a", "timeout_ms": 60000}}]}),
+        json!({"calls": [{"name": "git.merge.abort", "args": {"child": "child-a", "discard": true, "reason": "integration of the fixture"}}]}),
         json!({"calls": [{"name": "task.complete", "args": {"summary": "delegated and collected", "self_review": {"findings": []}}}]}),
     ];
     let child_a = vec![
@@ -28419,6 +28506,7 @@ async fn qual_ev_0046_a_background_child_reaching_a_protected_effect_moves_its_p
     let mut c = core.client().await;
     let (session, _) = create_session(&mut c, id16(0xC1)).await;
     let g = lease_for(&session);
+    let _approver = spawn_approver(&core, &session).await;
     let task = create_task_with_goal(&mut c, &session, g, &root, 0xC2, "delegate module a").await;
     let ack = c
         .command(envelope_fenced(
@@ -28499,8 +28587,13 @@ async fn qual_ev_0046_a_background_child_reaching_a_protected_effect_moves_its_p
             && p["failure_code"] == "PROTECTED_EFFECT_REFUSED"),
         "{child_evs:#?}"
     );
+    // (The parent's own discard of the finished child asks the person; the
+    // refused call of the child asked for nothing.)
     assert!(
-        approvals_of(&mut c, &session).await.is_empty(),
+        approvals_of(&mut c, &session)
+            .await
+            .iter()
+            .all(|a| a.tool_name == "git.merge.abort"),
         "no approval of its own"
     );
     let bodies = seen.lock().unwrap().clone();
@@ -28642,13 +28735,15 @@ async fn qual_ev_0008_0180_scheduling_follows_the_work_graph_and_attention_moves
     ]);
     let parent = vec![
         // b (the parent's own) depends on a: a child owning a blocks the parent.
-        json!({"calls": [{"name": "plan.update", "args": {"outcome": "modules a and c exist, b documents a", "expected_files": ["README.md"], "steps": [
+        json!({"calls": [{"name": "plan.update", "args": {"outcome": "modules a and c exist, b documents a", "expected_files": ["README.md"], "protected_effects": ["git.merge"], "steps": [
             {"id": "a", "title": "module a"}, {"id": "b", "title": "document a", "depends_on": ["a"]}, {"id": "c", "title": "module c"}]}}]}),
         json!({"calls": [{"name": "agent.spawn", "args": {"idempotency_key": "child-a", "objective": "create src/a/a.txt containing alpha", "write_scope": ["src/a/"], "work_node": "a", "max_turns": 6, "mode": "BACKGROUND"}}]}),
         json!({"calls": [{"name": "agent.spawn", "args": {"idempotency_key": "child-c", "objective": "create src/c/c.txt containing gamma", "write_scope": ["src/c/"], "work_node": "c", "max_turns": 6, "mode": "BACKGROUND"}}]}),
         json!({"calls": [{"name": "agent.attend", "args": {"idempotency_key": "child-c", "mode": "FOREGROUND"}}]}),
         json!({"calls": [{"name": "agent.attend", "args": {"idempotency_key": "child-c", "mode": "BACKGROUND"}}]}),
         json!({"calls": [{"name": "agent.wait", "args": {"idempotency_key": "child-c", "timeout_ms": 60000}}]}),
+        json!({"calls": [{"name": "git.merge.abort", "args": {"child": "child-a", "discard": true, "reason": "integration of the fixture"}}]}),
+        json!({"calls": [{"name": "git.merge.abort", "args": {"child": "child-c", "discard": true, "reason": "integration of the fixture"}}]}),
         json!({"calls": [{"name": "task.complete", "args": {"summary": "delegated and collected", "self_review": {"findings": []}}}]}),
     ];
     let child_a = vec![
@@ -28689,6 +28784,7 @@ async fn qual_ev_0008_0180_scheduling_follows_the_work_graph_and_attention_moves
     let mut c = core.client().await;
     let (session, _) = create_session(&mut c, id16(0xE1)).await;
     let g = lease_for(&session);
+    let _approver = spawn_approver(&core, &session).await;
     let task = create_task_with_goal(&mut c, &session, g, &root, 0xE2, "delegate a and c").await;
     let ack = c
         .command(envelope_fenced(
@@ -28849,7 +28945,7 @@ async fn qual_ev_0049_a_parked_child_survives_a_restart_and_resumes_from_the_sam
     use serde_json::json;
     let (_repo, root) = plain_repo(&[("README.md", "# park\n"), ("src/c/.keep", "")]);
     let parent = vec![
-        json!({"calls": [{"name": "plan.update", "args": {"outcome": "module c exists", "expected_files": ["README.md"], "steps": [{"id": "c", "title": "module c"}]}}]}),
+        json!({"calls": [{"name": "plan.update", "args": {"outcome": "module c exists", "expected_files": ["README.md"], "protected_effects": ["git.merge"], "steps": [{"id": "c", "title": "module c"}]}}]}),
         json!({"calls": [{"name": "agent.spawn", "args": {"idempotency_key": "child-c", "objective": "create src/c/c.txt containing gamma", "write_scope": ["src/c/"], "work_node": "c", "max_turns": 8}}]}),
         json!({"calls": [{"name": "agent.park", "args": {"idempotency_key": "child-c", "reason": "the user is intervening on module c"}}]}),
         json!({"calls": [{"name": "agent.wait", "args": {"idempotency_key": "child-c", "timeout_ms": 30000}}]}),
@@ -28857,6 +28953,7 @@ async fn qual_ev_0049_a_parked_child_survives_a_restart_and_resumes_from_the_sam
         // resumed parent asks again and resumes the child.
         json!({"stall": true, "then": {"calls": [{"name": "agent.resume", "args": {"idempotency_key": "child-c"}}]}}),
         json!({"calls": [{"name": "agent.wait", "args": {"idempotency_key": "child-c", "timeout_ms": 60000}}]}),
+        json!({"calls": [{"name": "git.merge.abort", "args": {"child": "child-c", "discard": true, "reason": "integration of the fixture"}}]}),
         json!({"calls": [{"name": "task.complete", "args": {"summary": "delegated, parked, resumed and collected", "self_review": {"findings": []}}}]}),
     ];
     let child_c = vec![
@@ -28924,6 +29021,7 @@ async fn qual_ev_0049_a_parked_child_survives_a_restart_and_resumes_from_the_sam
     let mut c = core.client().await;
     let (session, _) = create_session(&mut c, id16(0xF1)).await;
     let g = lease_for(&session);
+    let _approver = spawn_approver(&core, &session).await;
     let task = create_task_with_goal(&mut c, &session, g, &root, 0xF2, "delegate module c").await;
     let _: TaskRunStarted =
         Client::result(&c.command(start(&task, 0xF3, g)).await.unwrap()).unwrap();
@@ -28994,6 +29092,7 @@ async fn qual_ev_0049_a_parked_child_survives_a_restart_and_resumes_from_the_sam
     core.kill();
     // Restart: the parent suspends and waits; the parked child stays parked.
     let core2 = CoreProcess::spawn_with_env(dir.path(), &env);
+    let _approver2 = spawn_approver(&core2, &session).await;
     let mut c2 = core2.client().await;
     let st = wait_task(&mut c2, &task, 5).await;
     assert_eq!(
@@ -29120,12 +29219,13 @@ async fn qual_ev_0050_0179_a_follow_up_continues_a_finished_child_as_a_new_attem
     use serde_json::json;
     let (_repo, root) = plain_repo(&[("README.md", "# research me\n"), ("src/a/.keep", "")]);
     let parent = vec![
-        json!({"calls": [{"name": "plan.update", "args": {"outcome": "module a researched and built", "expected_files": ["README.md"], "steps": [{"id": "a", "title": "module a"}]}}]}),
+        json!({"calls": [{"name": "plan.update", "args": {"outcome": "module a researched and built", "expected_files": ["README.md"], "protected_effects": ["git.merge"], "steps": [{"id": "a", "title": "module a"}]}}]}),
         json!({"calls": [{"name": "agent.spawn", "args": {"idempotency_key": "child-a", "objective": "research README.md and report what it says", "write_scope": ["src/a/"], "work_node": "a", "max_turns": 10}}]}),
         json!({"calls": [{"name": "agent.wait", "args": {"idempotency_key": "child-a", "timeout_ms": 60000}}]}),
         // The Core dies here; the resumed parent asks again and follows up.
         json!({"stall": true, "then": {"calls": [{"name": "agent.steer", "args": {"idempotency_key": "child-a", "message": "good; now create src/a/a.txt containing alpha"}}]}}),
         json!({"calls": [{"name": "agent.wait", "args": {"idempotency_key": "child-a", "timeout_ms": 60000}}]}),
+        json!({"calls": [{"name": "git.merge.abort", "args": {"child": "child-a", "discard": true, "reason": "integration of the fixture"}}]}),
         json!({"calls": [{"name": "task.complete", "args": {"summary": "researched, followed up and collected", "self_review": {"findings": []}}}]}),
     ];
     // One script, one log: attempt 2 continues where the transcript left
@@ -29191,6 +29291,7 @@ async fn qual_ev_0050_0179_a_follow_up_continues_a_finished_child_as_a_new_attem
     let mut c = core.client().await;
     let (session, _) = create_session(&mut c, id16(0x91)).await;
     let g = lease_for(&session);
+    let _approver = spawn_approver(&core, &session).await;
     let task = create_task_with_goal(
         &mut c,
         &session,
@@ -29263,6 +29364,7 @@ async fn qual_ev_0050_0179_a_follow_up_continues_a_finished_child_as_a_new_attem
     core.kill();
     // The parent restarts; the finished child is untouched by it.
     let core2 = CoreProcess::spawn_with_env(dir.path(), &env);
+    let _approver2 = spawn_approver(&core2, &session).await;
     let mut c2 = core2.client().await;
     let st = wait_task(&mut c2, &task, 5).await;
     assert_eq!(
@@ -31382,7 +31484,7 @@ async fn m6_3_subagents_are_admitted_transactionally_and_hand_typed_results_back
     ]);
     let parent_goal = "PARENT-GOAL-MARKER: delegate two disjoint modules";
     let parent = vec![
-        json!({"calls": [{"name": "plan.update", "args": {"outcome": "two modules exist", "expected_files": ["README.md"], "steps": [
+        json!({"calls": [{"name": "plan.update", "args": {"outcome": "two modules exist", "expected_files": ["README.md"], "protected_effects": ["git.merge"], "steps": [
             {"id": "a", "title": "module a"}, {"id": "b", "title": "module b"}]}}]}),
         json!({"calls": [{"name": "agent.spawn", "args": {"idempotency_key": "child-a", "objective": "create src/a/a.txt containing alpha", "write_scope": ["src/a/"], "work_node": "a", "verification": "the file exists", "max_turns": 6}}]}),
         // Overlaps child-a's scope while child-a is live (spawned the turn
@@ -31399,6 +31501,8 @@ async fn m6_3_subagents_are_admitted_transactionally_and_hand_typed_results_back
         json!({"calls": [{"name": "agent.wait", "args": {"idempotency_key": "child-a", "timeout_ms": 60000}}]}),
         json!({"calls": [{"name": "agent.wait", "args": {"idempotency_key": "child-b", "timeout_ms": 60000}}]}),
         json!({"calls": [{"name": "agent.wait", "args": {"idempotency_key": "child-e", "timeout_ms": 60000}}]}),
+        json!({"calls": [{"name": "git.merge.abort", "args": {"child": "child-a", "discard": true, "reason": "integration of the fixture"}}]}),
+        json!({"calls": [{"name": "git.merge.abort", "args": {"child": "child-b", "discard": true, "reason": "integration of the fixture"}}]}),
         json!({"calls": [{"name": "task.complete", "args": {"summary": "delegated and collected", "self_review": {"findings": []}}}]}),
     ];
     // The explorer reads, then tries to write (a file its own plan names,
@@ -31464,6 +31568,7 @@ async fn m6_3_subagents_are_admitted_transactionally_and_hand_typed_results_back
     let (session, _) = create_session(&mut c, id16(0xA1)).await;
     let g = lease_for(&session);
     let task = create_task_with_goal(&mut c, &session, g, &root, 0xA2, parent_goal).await;
+    let _approver = spawn_approver(&core, &session).await;
     let start = |t: &Id, id: u8| {
         envelope_fenced(
             id16(id),
@@ -31486,7 +31591,28 @@ async fn m6_3_subagents_are_admitted_transactionally_and_hand_typed_results_back
     };
     let _: TaskRunStarted = Client::result(&c.command(start(&task, 0xA3)).await.unwrap()).unwrap();
     let st = wait_for_state(&mut c, &task, "ReadyForReview", 180).await;
-    assert_eq!(st.state, "ReadyForReview", "{st:?}");
+    assert_eq!(
+        st.state,
+        "ReadyForReview",
+        "{st:?} {:#?}",
+        seen.lock()
+            .unwrap()
+            .iter()
+            .filter(|b| !b.to_string().contains("Task goal: "))
+            .map(|b| b["messages"]
+                .as_array()
+                .unwrap()
+                .iter()
+                .filter(|m| m["role"] == "tool")
+                .map(|m| m["content"]
+                    .as_str()
+                    .unwrap_or("")
+                    .chars()
+                    .take(300)
+                    .collect::<String>())
+                .collect::<Vec<_>>())
+            .max_by_key(|v| v.len())
+    );
     let evs = task_events(&core, &session, &task).await;
     let of = |evs: &[(String, String, serde_json::Value)], t: &str| -> Vec<serde_json::Value> {
         evs.iter()

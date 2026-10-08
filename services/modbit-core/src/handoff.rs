@@ -72,12 +72,7 @@ pub(crate) fn hashes_in_bytes(bytes: &[u8], out: &mut BTreeSet<String>) {
 }
 
 fn git(root: &Path, args: &[&str]) -> Option<String> {
-    let out = std::process::Command::new("git")
-        .arg("-C")
-        .arg(root)
-        .args(args)
-        .output()
-        .ok()?;
+    let out = modbit_git::output(root, args).ok()?;
     out.status
         .success()
         .then(|| String::from_utf8_lossy(&out.stdout).trim().to_owned())
@@ -222,13 +217,15 @@ pub async fn export(
     let bundle_path = out_dir.join("repo.bundle");
     let has_repo = git(Path::new(&root), &["rev-parse", "--is-inside-work-tree"]).is_some();
     if has_repo {
-        let ok = std::process::Command::new("git")
-            .arg("-C")
-            .arg(&root)
-            .args(["bundle", "create"])
-            .arg(&bundle_path)
-            .arg("--all")
-            .output()
+        let bundle_args = ["bundle", "create"];
+        let ok = modbit_git::command(Path::new(&root), &bundle_args)
+            .and_then(|mut c| {
+                c.args(bundle_args)
+                    .arg(&bundle_path)
+                    .arg("--all")
+                    .output()
+                    .map_err(modbit_git::Error::Spawn)
+            })
             .map(|o| o.status.success())
             .unwrap_or(false);
         if !ok {

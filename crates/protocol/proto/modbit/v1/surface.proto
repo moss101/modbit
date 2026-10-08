@@ -17,6 +17,7 @@ import "modbit/v1/context_rules.proto";
 import "modbit/v1/terminal.proto";
 import "modbit/v1/tasking.proto";
 import "modbit/v1/run_control.proto";
+import "modbit/v1/worktrees.proto";
 
 // Authentication sent with Hello: the boot-scoped secret the client obtained
 // from the Core it spawned (docs/30). Never logged, never persisted.
@@ -59,6 +60,13 @@ message CreateTask {
   TaskMode mode = 140;
   // PX-053: the user's execution preference at creation (recorded on the task).
   ExecutionPreference preference = 141;
+  // PX-118 (worktrees.proto, field block 280-299): where the task's effects
+  // land. WORKTREE: the Core makes the task's own worktree before the first
+  // turn and binds the run's root, path policy, shell directory, index view
+  // and checkpoints to it; a worktree that cannot be made refuses the
+  // creation with a typed reason (never a silent fallback to the checkout).
+  // UNSPECIFIED = the Core's recorded default.
+  TaskIsolation isolation = 280;
 }
 
 message GetSessionSnapshot {
@@ -109,6 +117,8 @@ message TaskView {
   Id parent_task_id = 7;           // the parent of a subagent's task (M6.3); absent otherwise
   string workspace_root = 8;       // the task's workspace root (M8.2: a worker starts the task there); empty when none
   TaskMode mode = 140;             // PX-051: the mode the user last set (AGENT when never set)
+  TaskIsolation isolation = 280;   // PX-118: NONE | WORKTREE (UNSPECIFIED for a task of an older Core)
+  string origin_root = 281;        // PX-118: for a worktree task, the checkout its worktree was made from
 }
 
 message SessionSnapshot {

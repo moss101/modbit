@@ -22,6 +22,7 @@ pub mod direct;
 pub mod extensions;
 pub mod external;
 pub mod forge;
+pub mod gitstate;
 pub mod hooks;
 pub mod media;
 pub mod notebook;
@@ -30,6 +31,7 @@ pub mod policy;
 pub mod registry;
 pub mod shell_class;
 
+pub use gitstate::GitStatePort;
 pub use modbit_domain::toolcall::EffectClass;
 pub use pipeline::{
     ArtifactSource, DispatchJournal, DispatchRecord, InvokeContext, JournalFuture, LanguageRequest,

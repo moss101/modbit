@@ -16,12 +16,16 @@
 
 use std::path::{Path, PathBuf};
 
+pub mod apply;
 pub mod diff;
 mod harden;
 pub use diff::{FileDiff, Hunk, apply_selected, parse_unified};
 pub use harden::{
-    redact_url_credentials, validate_branch_syntax, validate_remote, validate_revision,
+    Neutralized, redact_url_credentials, validate_branch_syntax, validate_remote, validate_revision,
 };
+
+/// The id of git's empty tree: the "base" of a repository with no commit.
+pub const EMPTY_TREE: &str = "4b825dc642cb6eb9a060e54bf8d69288fbee4904";
 
 use serde::{Deserialize, Serialize};
 
@@ -55,6 +59,26 @@ pub enum Error {
     /// The path is not inside a Git repository.
     #[error("`{0}` is not a git repository")]
     NotARepository(String),
+    /// Git refused the repository because somebody else owns it
+    /// (`safe.directory`). Modbit never widens `safe.directory`: trusting a
+    /// repository another user owns is the user's decision, made with their
+    /// own `git config --global --add safe.directory`.
+    #[error(
+        "`{0}` is owned by another user, so git refuses it (safe.directory); \
+         Modbit does not override that: mark it safe yourself if you trust it"
+    )]
+    UnsafeRepository(String),
+    /// The branch is already checked out in another worktree.
+    #[error("branch `{branch}` is already checked out at `{path}`")]
+    BranchInUse {
+        /// The branch.
+        branch: String,
+        /// Where it is checked out.
+        path: String,
+    },
+    /// The repository has no commit, which the operation needs.
+    #[error("the repository has no commit yet")]
+    EmptyRepository,
     /// Output could not be parsed.
     #[error("unexpected git output: {0}")]
     Parse(String),
@@ -89,13 +113,36 @@ fn run_bytes(dir: &Path, args: &[&str], envs: &[(&str, &str)]) -> Result<Vec<u8>
     }
     let out = cmd.output().map_err(Error::Spawn)?;
     if !out.status.success() {
+        let stderr = String::from_utf8_lossy(&out.stderr);
+        if harden::is_dubious_ownership(&stderr) {
+            return Err(Error::UnsafeRepository(dir.display().to_string()));
+        }
         return Err(Error::Git {
             args: args.iter().map(|s| redact_url_credentials(s)).collect(),
             code: out.status.code(),
-            stderr: redact_url_credentials(String::from_utf8_lossy(&out.stderr).trim()),
+            stderr: redact_url_credentials(stderr.trim()),
         });
     }
     Ok(out.stdout)
+}
+
+/// A hardened `git -C <dir>` process, not yet started: the one way code
+/// outside this crate may build a Git process (PX-067; the architecture lint
+/// refuses a Git spawn anywhere else). `args` are inspected only to decide
+/// which of the repository's programs must be neutralised for this
+/// subcommand; the caller adds them with `.args(args)` and any further
+/// arguments or stdio.
+pub fn command(dir: &Path, args: &[&str]) -> Result<std::process::Command> {
+    harden::command(dir, args)
+}
+
+/// Run `git -C <dir> <args>` hardened and return its raw output (status,
+/// stdout, stderr). An unsuccessful exit is the caller's to read, as with
+/// [`std::process::Command::output`].
+pub fn output(dir: &Path, args: &[&str]) -> Result<std::process::Output> {
+    let mut cmd = harden::command(dir, args)?;
+    cmd.args(args);
+    cmd.output().map_err(Error::Spawn)
 }
 
 /// Run git in `dir`; returns stdout.
@@ -201,6 +248,38 @@ pub struct MergeTransaction {
     pub result: Option<String>,
 }
 
+/// The evidence of one conflicted path (PX-119): the three sides and the
+/// worktree file as it stands.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct ConflictEvidence {
+    /// Root-relative path.
+    pub path: String,
+    /// The merge base's text (`None`: absent there, or binary).
+    pub base: Option<String>,
+    /// Our side's text.
+    pub ours: Option<String>,
+    /// The incoming side's text.
+    pub theirs: Option<String>,
+    /// The worktree file now (with markers while unresolved).
+    pub current: String,
+    /// The worktree file still carries a conflict marker line.
+    pub has_markers: bool,
+}
+
+/// UTF-8 text of `bytes`, cut at `cap` bytes on a character boundary.
+fn bounded_text(bytes: &[u8], cap: usize) -> String {
+    let mut s = String::from_utf8_lossy(bytes).into_owned();
+    if s.len() > cap {
+        let mut cut = cap;
+        while !s.is_char_boundary(cut) {
+            cut -= 1;
+        }
+        s.truncate(cut);
+        s.push_str("\n[truncated]\n");
+    }
+    s
+}
+
 /// A dirty-state snapshot (REQ-EV-0022).
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct Snapshot {
@@ -221,8 +300,10 @@ pub struct Snapshot {
 impl Repo {
     /// Open the repository containing `dir`.
     pub fn open(dir: &Path) -> Result<Self> {
-        let top = run(dir, &["rev-parse", "--show-toplevel"])
-            .map_err(|_| Error::NotARepository(dir.display().to_string()))?;
+        let top = run(dir, &["rev-parse", "--show-toplevel"]).map_err(|e| match e {
+            Error::UnsafeRepository(p) => Error::UnsafeRepository(p),
+            _ => Error::NotARepository(dir.display().to_string()),
+        })?;
         Ok(Self {
             dir: PathBuf::from(top.trim()),
         })
@@ -360,6 +441,8 @@ impl Repo {
     }
 
     /// Add a worktree at `path` checked out on `branch` (which must exist).
+    /// A branch that is already checked out in another worktree is the typed
+    /// [`Error::BranchInUse`], naming where.
     pub fn worktree_add(&self, path: &Path, branch: &str) -> Result<Repo> {
         self.resolve(branch)?;
         run(
@@ -372,8 +455,154 @@ impl Repo {
                 &git_path(path)?,
                 branch,
             ],
-        )?;
+        )
+        .map_err(|e| in_use(e, branch))?;
         Repo::open(path)
+    }
+
+    /// Add a worktree at `path` on a new orphan branch `branch` with nothing
+    /// checked out: the worktree of a repository that has no commit yet (its
+    /// "base" is [`EMPTY_TREE`]).
+    pub fn worktree_add_orphan(&self, path: &Path, branch: &str) -> Result<Repo> {
+        check_branch_name(&self.dir, branch)?;
+        run(
+            &self.dir,
+            &[
+                "worktree",
+                "add",
+                "-q",
+                "--orphan",
+                "-b",
+                branch,
+                "--end-of-options",
+                &git_path(path)?,
+            ],
+        )
+        .map_err(|e| in_use(e, branch))?;
+        Repo::open(path)
+    }
+
+    /// Forget worktree records whose directory is gone (`git worktree
+    /// prune`), so a path or branch a deleted worktree held is free again.
+    pub fn worktree_prune(&self) -> Result<()> {
+        run(&self.dir, &["worktree", "prune"]).map(|_| ())
+    }
+
+    /// Delete a branch that is not checked out (forced: the caller decided the
+    /// branch's work is applied, merged or discarded).
+    pub fn branch_delete(&self, branch: &str) -> Result<()> {
+        check_branch_name(&self.dir, branch)?;
+        run(&self.dir, &["branch", "-D", "--end-of-options", branch]).map(|_| ())
+    }
+
+    /// For a linked worktree, the main working tree it was added from
+    /// (`None` for the main working tree itself, or a bare layout).
+    #[must_use]
+    pub fn common_checkout(&self) -> Option<PathBuf> {
+        let out = run(
+            &self.dir,
+            &["rev-parse", "--path-format=absolute", "--git-common-dir"],
+        )
+        .ok()?;
+        let common = PathBuf::from(out.trim());
+        if common.file_name()? != ".git" {
+            return None;
+        }
+        let main = common.parent()?.to_path_buf();
+        let same = |a: &Path, b: &Path| match (a.canonicalize(), b.canonicalize()) {
+            (Ok(a), Ok(b)) => a == b,
+            _ => a == b,
+        };
+        (!same(&main, &self.dir)).then_some(main)
+    }
+
+    /// Whether `HEAD` names no commit yet (a repository or orphan branch with
+    /// no history).
+    #[must_use]
+    pub fn is_unborn(&self) -> bool {
+        run(&self.dir, &["rev-parse", "--verify", "-q", "HEAD"]).is_err()
+    }
+
+    /// Everything this repository's configuration and hooks asked git to run
+    /// that the hardened runner refuses (hooks, fsmonitor, filters, drivers,
+    /// ssh commands, credential helpers…). Reading it runs none of them.
+    pub fn neutralized(&self) -> Result<Vec<Neutralized>> {
+        harden::neutralized(&self.dir)
+    }
+
+    /// Whether `ancestor` is reachable from `descendant`.
+    pub fn is_ancestor(&self, ancestor: &str, descendant: &str) -> Result<bool> {
+        validate_revision(ancestor)?;
+        validate_revision(descendant)?;
+        match run(
+            &self.dir,
+            &[
+                "merge-base",
+                "--is-ancestor",
+                "--end-of-options",
+                ancestor,
+                descendant,
+            ],
+        ) {
+            Ok(_) => Ok(true),
+            Err(Error::Git { code: Some(1), .. }) => Ok(false),
+            Err(e) => Err(e),
+        }
+    }
+
+    /// Commits reachable from `head` and not from `base`.
+    pub fn commits_between(&self, base: &str, head: &str) -> Result<u64> {
+        validate_revision(base)?;
+        validate_revision(head)?;
+        let range = format!("{base}..{head}");
+        run(
+            &self.dir,
+            &["rev-list", "--count", "--end-of-options", &range],
+        )?
+        .trim()
+        .parse()
+        .map_err(|_| Error::Parse("rev-list count".into()))
+    }
+
+    /// The tree object a revision names.
+    pub fn tree_of(&self, revision: &str) -> Result<String> {
+        self.resolve(&format!("{revision}^{{tree}}"))
+    }
+
+    /// A merge is in progress in this worktree (`MERGE_HEAD` exists).
+    #[must_use]
+    pub fn merge_in_progress(&self) -> bool {
+        run(&self.dir, &["rev-parse", "--verify", "-q", "MERGE_HEAD"]).is_ok()
+    }
+
+    /// The per-file evidence of a conflicted path: what the merge base, this
+    /// side ("ours") and the other side ("theirs") hold, and what the
+    /// worktree file says now (conflict markers included). Texts are bounded.
+    pub fn conflict_evidence(&self, path: &str) -> Result<ConflictEvidence> {
+        const CAP: usize = 64 * 1024;
+        let stage = |n: u8| -> Option<String> {
+            run_bytes(
+                &self.dir,
+                &["show", "--no-textconv", &format!(":{n}:{path}")],
+                &[],
+            )
+            .ok()
+            .map(|b| bounded_text(&b, CAP))
+        };
+        let current = std::fs::read(self.dir.join(path))
+            .map(|b| bounded_text(&b, CAP))
+            .unwrap_or_default();
+        let markers = current.lines().any(|l| {
+            l.starts_with("<<<<<<<") || l.starts_with(">>>>>>>") || l.starts_with("=======")
+        });
+        Ok(ConflictEvidence {
+            path: path.to_owned(),
+            base: stage(1),
+            ours: stage(2),
+            theirs: stage(3),
+            current,
+            has_markers: markers,
+        })
     }
 
     /// Remove a worktree (forced: the task owns it).
@@ -560,22 +789,7 @@ impl Repo {
                 &source_sha,
             ],
         );
-        let conflicts: Vec<String> = run_bytes(
-            &self.dir,
-            &[
-                "diff",
-                "--no-ext-diff",
-                "--no-textconv",
-                "--name-only",
-                "-z",
-                "--diff-filter=U",
-            ],
-            &[],
-        )?
-        .split(|b| *b == 0)
-        .filter(|p| !p.is_empty())
-        .map(|p| String::from_utf8_lossy(p).into_owned())
-        .collect();
+        let conflicts = self.unmerged_paths()?;
         let state = if !conflicts.is_empty() {
             MergeState::Conflicted
         } else if result.is_ok() {
@@ -595,6 +809,27 @@ impl Repo {
             state,
             result: None,
         })
+    }
+
+    /// The paths the index still holds as unmerged (conflicted, not yet
+    /// marked resolved).
+    pub fn unmerged_paths(&self) -> Result<Vec<String>> {
+        Ok(run_bytes(
+            &self.dir,
+            &[
+                "diff",
+                "--no-ext-diff",
+                "--no-textconv",
+                "--name-only",
+                "-z",
+                "--diff-filter=U",
+            ],
+            &[],
+        )?
+        .split(|b| *b == 0)
+        .filter(|p| !p.is_empty())
+        .map(|p| String::from_utf8_lossy(p).into_owned())
+        .collect())
     }
 
     /// Mark a conflicted path resolved (the caller wrote the resolution to the file).
@@ -669,51 +904,69 @@ impl Repo {
         Ok(())
     }
 
+    /// The tree object of the worktree's whole state: `HEAD` plus every
+    /// tracked change and every untracked, non-ignored file, built in a
+    /// temporary index (a fresh one per call). No commit, no ref; `HEAD`, the
+    /// index and the worktree are untouched. Two calls on an unchanged
+    /// worktree answer the same tree.
+    pub fn dirty_tree(&self) -> Result<String> {
+        static N: std::sync::atomic::AtomicU64 = std::sync::atomic::AtomicU64::new(0);
+        let unborn = self.is_unborn();
+        let git_dir = run(&self.dir, &["rev-parse", "--git-dir"])?
+            .trim()
+            .to_owned();
+        let name = format!(
+            "modbit-snapshot-index-{}-{}",
+            std::process::id(),
+            N.fetch_add(1, std::sync::atomic::Ordering::Relaxed)
+        );
+        let tmp_index = if Path::new(&git_dir).is_absolute() {
+            PathBuf::from(&git_dir).join(name)
+        } else {
+            self.dir.join(&git_dir).join(name)
+        }
+        .to_string_lossy()
+        .into_owned();
+        let with_index = |args: &[&str]| -> Result<String> {
+            run_bytes(&self.dir, args, &[("GIT_INDEX_FILE", &tmp_index)])
+                .map(|b| String::from_utf8_lossy(&b).into_owned())
+        };
+        let built = (|| -> Result<String> {
+            if !unborn {
+                with_index(&["read-tree", "HEAD"])?;
+            }
+            with_index(&["add", "-A", "."])?;
+            Ok(with_index(&["write-tree"])?.trim().to_owned())
+        })();
+        let _ = std::fs::remove_file(&tmp_index);
+        built
+    }
+
     /// Capture the dirty worktree (tracked changes and untracked files) as a
     /// commit under `refs/modbit/snapshots/<id>` using a temporary index;
     /// HEAD, the index and the worktree are untouched.
     pub fn snapshot_dirty(&self, id: &str) -> Result<Snapshot> {
         harden::plain_token("snapshot id", id)?;
-        let parent = self.head()?;
+        // A repository with no commit yet (an orphan worktree) snapshots on
+        // the empty tree and has no parent.
+        let unborn = self.is_unborn();
+        let parent = if unborn { String::new() } else { self.head()? };
         let paths: Vec<String> = self.status()?.into_iter().map(|e| e.path).collect();
-        let git_dir = run(&self.dir, &["rev-parse", "--git-dir"])?
-            .trim()
-            .to_owned();
-        let tmp_index = if Path::new(&git_dir).is_absolute() {
-            PathBuf::from(&git_dir).join(format!("modbit-snapshot-index-{}", std::process::id()))
-        } else {
-            self.dir
-                .join(&git_dir)
-                .join(format!("modbit-snapshot-index-{}", std::process::id()))
+        let tree = self.dirty_tree()?;
+        let message = format!("modbit snapshot {id}");
+        let mut args = vec![
+            "-c",
+            "user.name=Modbit",
+            "-c",
+            "user.email=modbit@localhost",
+            "commit-tree",
+            tree.as_str(),
+        ];
+        if !unborn {
+            args.extend(["-p", parent.as_str()]);
         }
-        .to_string_lossy()
-        .into_owned();
-        let _ = &tmp_index;
-        let with_index = |args: &[&str]| -> Result<String> {
-            run_bytes(&self.dir, args, &[("GIT_INDEX_FILE", &tmp_index)])
-                .map(|b| String::from_utf8_lossy(&b).into_owned())
-        };
-        with_index(&["read-tree", "HEAD"])?;
-        with_index(&["add", "-A", "."])?;
-        let tree = with_index(&["write-tree"])?.trim().to_owned();
-        let _ = std::fs::remove_file(&tmp_index);
-        let commit = run(
-            &self.dir,
-            &[
-                "-c",
-                "user.name=Modbit",
-                "-c",
-                "user.email=modbit@localhost",
-                "commit-tree",
-                &tree,
-                "-p",
-                &parent,
-                "-m",
-                &format!("modbit snapshot {id}"),
-            ],
-        )?
-        .trim()
-        .to_owned();
+        args.extend(["-m", message.as_str()]);
+        let commit = run(&self.dir, &args)?.trim().to_owned();
         let reference = format!("refs/modbit/snapshots/{id}");
         run(&self.dir, &["update-ref", &reference, &commit])?;
         Ok(Snapshot {
@@ -846,6 +1099,26 @@ impl Repo {
             &[],
         )
     }
+}
+
+/// Turn git's "branch is already checked out" failure into the typed error.
+fn in_use(e: Error, branch: &str) -> Error {
+    if let Error::Git { stderr, .. } = &e {
+        for marker in [
+            "is already checked out at '",
+            "is already used by worktree at '",
+        ] {
+            if let Some(i) = stderr.find(marker) {
+                let rest = &stderr[i + marker.len()..];
+                let path = rest.split('\'').next().unwrap_or_default();
+                return Error::BranchInUse {
+                    branch: branch.to_owned(),
+                    path: path.to_owned(),
+                };
+            }
+        }
+    }
+    e
 }
 
 /// `name` is a valid branch name (git's own `check-ref-format` rules) and not

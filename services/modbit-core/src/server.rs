@@ -69,6 +69,8 @@ pub struct Core {
     /// The conversation search index (REQ-PX-042): derived from the log,
     /// bounded, rebuilt on demand.
     pub(crate) conversation_index: crate::conversation_search::Index,
+    /// The worktree cleanup lease and schedule (PX-065).
+    pub(crate) worktrees: crate::worktree_cleanup::Manager,
 }
 
 impl Core {
@@ -262,6 +264,7 @@ pub async fn run_as(
             .context("capacity")?,
         browser,
         conversation_index: crate::conversation_search::Index::from_env(),
+        worktrees: Default::default(),
     });
     // PX-057: a RUN_EVERYTHING recorded before this point belongs to a
     // process that is gone and is not in force.
@@ -286,6 +289,22 @@ pub async fn run_as(
     // the pre-restore checkpoint it recorded first, before any client can
     // look at the worktree.
     crate::checkpoint::recover_in_doubt_restores(&core).await;
+    // PX-066 / PX-119: an apply-back a dead Core left half done is rolled back
+    // to its pre-apply checkpoint; a merge it left half done is resumed or
+    // aborted to a whole tree. Both before any client can look at a checkout.
+    let rolled_back = crate::apply_back::recover(&core).await;
+    if rolled_back > 0 {
+        eprintln!(
+            "modbit-core: rolled back {rolled_back} apply-back(s) the last Core left unfinished"
+        );
+    }
+    let merges = crate::merge_tx::recover(&core).await;
+    if merges > 0 {
+        eprintln!("modbit-core: reconciled {merges} merge transaction(s) the last Core left open");
+    }
+    // PX-065: the cleanup schedule (every 6 h; a catch-up 30 s after start
+    // when the last completed run is overdue).
+    crate::worktree_cleanup::start_schedule(&core);
     // EPR-012: the last activated registry generation, verified again.
     crate::model_registry::restore(&core).await;
     // REQ-PX-132: the observer of the listening services of the tasks'
@@ -772,6 +791,11 @@ async fn serve_connection(core: Arc<Core>, mut stream: BoxedStream) -> Result<()
                     "GetComponentHealth",
                     "GetCredentialBroker",
                     "RevokeCredential",
+                    "ListWorktrees",
+                    "RunWorktreeCleanup",
+                    "ApplyWorktree",
+                    "UndoApply",
+                    "DiscardWorktree",
                 ]
                 .map(String::from)
                 .to_vec(),
@@ -1386,6 +1410,13 @@ fn required_client_capability(env: &CommandEnvelope) -> Option<&'static str> {
         "RebindTaskWorkspace" | "ImportObjects" => "session.mirror",
         "TrustRepository" => "repository.trust",
         "EmergencyStop" => "session.control",
+        // PX-065 / PX-066: the worktree list is a read of the log's registry;
+        // a cleanup removes workspace data under a policy (a session-level
+        // decision); applying a task's result to the checkout, undoing that
+        // and discarding a result are the person's review decisions.
+        "ListWorktrees" => "events.subscribe",
+        "RunWorktreeCleanup" => "session.control",
+        "ApplyWorktree" | "UndoApply" | "DiscardWorktree" => "review.decide",
         // Removing recovery data under a policy is a session-level decision.
         "RunCheckpointGc" => "session.control",
         "AttachBrowserHost"
@@ -1958,10 +1989,61 @@ pub(crate) async fn handle_command(core: &Arc<Core>, env: CommandEnvelope) -> Co
                 .map(WorkspaceId::from_bytes)
                 .unwrap_or_else(WorkspaceId::new);
             let task_id = TaskId::from_bytes(command_id);
+            // PX-118: where the task's effects land. With worktree isolation
+            // the Core makes the task's own worktree now, before anything is
+            // recorded, and the task is created *in* it: its root, path
+            // policy, shell directory, index view and checkpoints all follow
+            // `workspace_root`. A worktree that cannot be made refuses the
+            // creation with a typed reason; there is no silent fallback to the
+            // user's checkout.
+            let isolate = match wire::TaskIsolation::try_from(p.isolation)
+                .unwrap_or(wire::TaskIsolation::Unspecified)
+            {
+                wire::TaskIsolation::Worktree => true,
+                wire::TaskIsolation::None => false,
+                wire::TaskIsolation::Unspecified => std::env::var("MODBIT_DEFAULT_ISOLATION")
+                    .is_ok_and(|v| v.eq_ignore_ascii_case("worktree")),
+            };
+            let mut provisioned: Option<crate::worktrees::Provisioned> = None;
+            let mut effective_root = p.workspace_root.clone();
+            if isolate {
+                let replay = {
+                    let st = core.store.lock().await;
+                    match st.session(&session_id) {
+                        Ok(Some(_)) => {}
+                        Ok(None) => return reject(cid, "UNKNOWN_SESSION", session_id.to_string()),
+                        Err(e) => return reject(cid, error_code(&e), e.to_string()),
+                    }
+                    st.prior_command(&record("CreateTask"))
+                        .ok()
+                        .flatten()
+                        .is_some()
+                };
+                if !replay {
+                    let (data_dir, root) = (core.data_dir.clone(), p.workspace_root.clone());
+                    let made = tokio::task::spawn_blocking(move || {
+                        crate::worktrees::provision(&data_dir, task_id, &root, "TASK")
+                    })
+                    .await;
+                    match made {
+                        Ok(Ok(pv)) => {
+                            effective_root = pv.path.clone();
+                            provisioned = Some(pv);
+                        }
+                        Ok(Err((code, why))) => return reject(cid, &code, why),
+                        Err(e) => return reject(cid, "ISOLATION_WORKTREE_FAILED", e.to_string()),
+                    }
+                }
+            }
             let mut store = core.store.lock().await;
             match store.session(&session_id) {
                 Ok(Some(_)) => {}
-                Ok(None) => return reject(cid, "UNKNOWN_SESSION", session_id.to_string()),
+                Ok(None) => {
+                    if let Some(pv) = &provisioned {
+                        crate::worktrees::unprovision(&p.workspace_root, pv);
+                    }
+                    return reject(cid, "UNKNOWN_SESSION", session_id.to_string());
+                }
                 Err(e) => return reject(cid, error_code(&e), e.to_string()),
             }
             // The issue as an attached document (REQ-EV-0161) and the record
@@ -2006,12 +2088,15 @@ pub(crate) async fn handle_command(core: &Arc<Core>, env: CommandEnvelope) -> Co
                         session_id,
                         goal_text: goal_text.clone(),
                         workspace_id,
-                        workspace_root: if p.workspace_root.is_empty() {
+                        workspace_root: if effective_root.is_empty() {
                             None
                         } else {
-                            Some(p.workspace_root.clone())
+                            Some(effective_root.clone())
                         },
-                        base_revision: None,
+                        base_revision: provisioned
+                            .as_ref()
+                            .map(|pv| pv.base_revision.clone())
+                            .filter(|b| !b.is_empty()),
                         execution_profile: if p.execution_profile.is_empty() {
                             "local_trusted".into()
                         } else {
@@ -2043,12 +2128,54 @@ pub(crate) async fn handle_command(core: &Arc<Core>, env: CommandEnvelope) -> Co
             } else {
                 p.execution_profile.clone()
             };
-            let root = if p.workspace_root.is_empty() {
+            let root = if effective_root.is_empty() {
                 None
             } else {
-                Some(p.workspace_root.clone())
+                Some(effective_root.clone())
             };
-            match store.execute_command(record("CreateTask"), req) {
+            let created = match &provisioned {
+                Some(pv) => store.execute_command_all(
+                    record("CreateTask"),
+                    vec![
+                        req,
+                        AppendRequest {
+                            tenant_id: core.tenant_id,
+                            session_id,
+                            task_id: Some(task_id),
+                            run_id: None,
+                            turn_id: None,
+                            step_id: None,
+                            aggregate_type: AggregateType::Workspace,
+                            aggregate_id: crate::worktrees::aggregate_id(&pv.worktree_id),
+                            expected_sequence: None,
+                            events: vec![pv.event.clone()],
+                        },
+                    ],
+                ),
+                None => store.execute_command(record("CreateTask"), req),
+            };
+            if created.is_err()
+                && let Some(pv) = &provisioned
+            {
+                crate::worktrees::unprovision(&p.workspace_root, pv);
+            }
+            if provisioned.is_some() && created.is_ok() {
+                // What the checkout asked Git to run and was refused is said on
+                // the task's log (once the store is free again).
+                let (store2, tenant, origin) = (
+                    Arc::clone(&core.store),
+                    core.tenant_id,
+                    p.workspace_root.clone(),
+                );
+                let actor2 = actor.clone();
+                tokio::spawn(async move {
+                    crate::worktrees::record_neutralized(
+                        &store2, tenant, session_id, task_id, &origin, &actor2,
+                    )
+                    .await;
+                });
+            }
+            match created {
                 Ok(outcome) => {
                     let (events, replayed) = split(outcome);
                     let mut offset = events.last().map(|e| e.offset).unwrap_or(0);
@@ -2246,6 +2373,22 @@ pub(crate) async fn handle_command(core: &Arc<Core>, env: CommandEnvelope) -> Co
                     parents.insert(*child.as_bytes(), parent);
                 }
             }
+            // PX-118: a task that works in its own worktree names the checkout
+            // that worktree was made from.
+            let mut worktree_of: std::collections::HashMap<[u8; 16], String> =
+                std::collections::HashMap::new();
+            for ev in &events {
+                if ev.envelope.event_type == crate::worktrees::PROVISIONED
+                    && let Some(t) = ev.envelope.task_id
+                    && let Ok(p) = store.payload(&ev.envelope)
+                    && p["kind"] == "TASK"
+                {
+                    worktree_of.insert(
+                        *t.as_bytes(),
+                        p["origin_root"].as_str().unwrap_or_default().to_owned(),
+                    );
+                }
+            }
             let mut tasks = Vec::new();
             let mut seen = std::collections::BTreeSet::new();
             for ev in &events {
@@ -2272,6 +2415,15 @@ pub(crate) async fn handle_command(core: &Arc<Core>, env: CommandEnvelope) -> Co
                                 .map(|p| wire_id(p.as_bytes())),
                             workspace_root: t.workspace_root.clone().unwrap_or_default(),
                             mode: crate::tasking::mode_for(core, &store, t.task_id),
+                            isolation: if worktree_of.contains_key(t.task_id.as_bytes()) {
+                                wire::TaskIsolation::Worktree
+                            } else {
+                                wire::TaskIsolation::None
+                            } as i32,
+                            origin_root: worktree_of
+                                .get(t.task_id.as_bytes())
+                                .cloned()
+                                .unwrap_or_default(),
                         });
                     }
                 }
@@ -3963,6 +4115,78 @@ pub(crate) async fn handle_command(core: &Arc<Core>, env: CommandEnvelope) -> Co
                     .encode_to_vec(),
                 ),
                 Err(r) => reject(cid, r.code, r.detail),
+            }
+        }
+        // ---- PX-065 / PX-066 worktrees ----
+        "ListWorktrees" => {
+            let Ok(p) = wire::ListWorktrees::decode(env.payload.as_slice()) else {
+                return reject(cid, "BAD_PAYLOAD", "ListWorktrees");
+            };
+            accept(
+                cid,
+                false,
+                crate::worktrees::list(core, &p).await.encode_to_vec(),
+            )
+        }
+        "RunWorktreeCleanup" => {
+            let Ok(p) = wire::RunWorktreeCleanup::decode(env.payload.as_slice()) else {
+                return reject(cid, "BAD_PAYLOAD", "RunWorktreeCleanup");
+            };
+            match crate::worktree_cleanup::command(core, &p, &actor).await {
+                Ok(report) => accept(cid, false, report.encode_to_vec()),
+                Err((code, msg)) => reject(cid, &code, msg),
+            }
+        }
+        "ApplyWorktree" => {
+            let Ok(p) = wire::ApplyWorktree::decode(env.payload.as_slice()) else {
+                return reject(cid, "BAD_PAYLOAD", "ApplyWorktree");
+            };
+            let session_id = match crate::worktrees::session_of_task(core, p.task_id.as_ref()).await
+            {
+                Ok(s) => s,
+                Err((code, msg)) => return reject(cid, &code, msg),
+            };
+            if let Err(ack) = require_lease(core, &cid, &env, &session_id).await {
+                return ack;
+            }
+            match crate::apply_back::apply_command(core, &p, &actor, env.expected_generation).await
+            {
+                Ok(ack) => accept(cid, false, ack.encode_to_vec()),
+                Err((code, msg)) => reject(cid, &code, msg),
+            }
+        }
+        "UndoApply" => {
+            let Ok(p) = wire::UndoApply::decode(env.payload.as_slice()) else {
+                return reject(cid, "BAD_PAYLOAD", "UndoApply");
+            };
+            let session_id = match crate::worktrees::session_of_task(core, p.task_id.as_ref()).await
+            {
+                Ok(s) => s,
+                Err((code, msg)) => return reject(cid, &code, msg),
+            };
+            if let Err(ack) = require_lease(core, &cid, &env, &session_id).await {
+                return ack;
+            }
+            match crate::apply_back::undo_command(core, &p, &actor, env.expected_generation).await {
+                Ok(ack) => accept(cid, false, ack.encode_to_vec()),
+                Err((code, msg)) => reject(cid, &code, msg),
+            }
+        }
+        "DiscardWorktree" => {
+            let Ok(p) = wire::DiscardWorktree::decode(env.payload.as_slice()) else {
+                return reject(cid, "BAD_PAYLOAD", "DiscardWorktree");
+            };
+            let session_id = match crate::worktrees::session_of_task(core, p.task_id.as_ref()).await
+            {
+                Ok(s) => s,
+                Err((code, msg)) => return reject(cid, &code, msg),
+            };
+            if let Err(ack) = require_lease(core, &cid, &env, &session_id).await {
+                return ack;
+            }
+            match crate::worktrees::discard(core, &p, &actor).await {
+                Ok(r) => accept(cid, false, r.encode_to_vec()),
+                Err((code, msg)) => reject(cid, &code, msg),
             }
         }
         "RunCheckpointGc" => {
@@ -6006,6 +6230,24 @@ pub(crate) async fn handle_command(core: &Arc<Core>, env: CommandEnvelope) -> Co
                         "`{root}` has not been trusted in this session; trust it (TrustRepository) before starting a task there"
                     ),
                 );
+            }
+            // PX-067: whatever the task's repository asks Git to run — a hook,
+            // an fsmonitor command, a filter, an ssh command — and the hardened
+            // runner refuses is said once on the task's log, not silently.
+            if let Some(root) = task.workspace_root.clone() {
+                let (store2, tenant, session, tid) = (
+                    Arc::clone(&core.store),
+                    core.tenant_id,
+                    task.session_id,
+                    task_id,
+                );
+                let actor2 = actor.clone();
+                tokio::spawn(async move {
+                    crate::worktrees::record_neutralized(
+                        &store2, tenant, session, tid, &root, &actor2,
+                    )
+                    .await;
+                });
             }
             let lease_generation = env.expected_generation.unwrap_or(0);
             // A task materialized from the cloud log (M8.2: created by the

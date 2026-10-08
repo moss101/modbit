@@ -213,12 +213,7 @@ pub struct MemoryCtx {
 /// The git HEAD of `root`, if it is a repository with a commit.
 pub async fn git_head(root: String) -> Option<String> {
     tokio::task::spawn_blocking(move || {
-        let out = std::process::Command::new("git")
-            .arg("-C")
-            .arg(&root)
-            .args(["rev-parse", "HEAD"])
-            .output()
-            .ok()?;
+        let out = modbit_git::output(std::path::Path::new(&root), &["rev-parse", "HEAD"]).ok()?;
         if !out.status.success() {
             return None;
         }

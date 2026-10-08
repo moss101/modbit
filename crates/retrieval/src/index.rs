@@ -604,11 +604,7 @@ pub fn language_of(path: &str) -> Option<String> {
 
 /// The indexable file set: git-aware in a repository, a filtered walk elsewhere.
 fn list_files(root: &Path) -> Result<Vec<String>, IndexError> {
-    let git = std::process::Command::new("git")
-        .arg("-C")
-        .arg(root)
-        .args(["ls-files", "-z", "-co", "--exclude-standard"])
-        .output();
+    let git = modbit_git::output(root, &["ls-files", "-z", "-co", "--exclude-standard"]);
     if let Ok(o) = git
         && o.status.success()
     {

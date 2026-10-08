@@ -12,6 +12,7 @@ import type { Message } from "@bufbuild/protobuf";
 import type { Hello, HelloAck } from "./negotiation_pb.js";
 import type { Id } from "./domain_pb.js";
 import type { ExecutionPreference, ExecutionPreferenceView, RoutingOutcomeView, TaskMode, TaskPostureView } from "./tasking_pb.js";
+import type { TaskIsolation } from "./worktrees_pb.js";
 import type { Timestamp } from "@bufbuild/protobuf/wkt";
 import type { CommandEnvelope, EventEnvelope } from "./envelope_pb.js";
 import type { TerminalFrame } from "./terminal_pb.js";
@@ -159,6 +160,18 @@ export declare type CreateTask = Message<"modbit.v1.CreateTask"> & {
    * @generated from field: modbit.v1.ExecutionPreference preference = 141;
    */
   preference?: ExecutionPreference | undefined;
+
+  /**
+   * PX-118 (worktrees.proto, field block 280-299): where the task's effects
+   * land. WORKTREE: the Core makes the task's own worktree before the first
+   * turn and binds the run's root, path policy, shell directory, index view
+   * and checkpoints to it; a worktree that cannot be made refuses the
+   * creation with a typed reason (never a silent fallback to the checkout).
+   * UNSPECIFIED = the Core's recorded default.
+   *
+   * @generated from field: modbit.v1.TaskIsolation isolation = 280;
+   */
+  isolation: TaskIsolation;
 };
 
 /**
@@ -349,6 +362,20 @@ export declare type TaskView = Message<"modbit.v1.TaskView"> & {
    * @generated from field: modbit.v1.TaskMode mode = 140;
    */
   mode: TaskMode;
+
+  /**
+   * PX-118: NONE | WORKTREE (UNSPECIFIED for a task of an older Core)
+   *
+   * @generated from field: modbit.v1.TaskIsolation isolation = 280;
+   */
+  isolation: TaskIsolation;
+
+  /**
+   * PX-118: for a worktree task, the checkout its worktree was made from
+   *
+   * @generated from field: string origin_root = 281;
+   */
+  originRoot: string;
 };
 
 /**

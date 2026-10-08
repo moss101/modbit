@@ -62,6 +62,8 @@ jobs:
         run: cargo test --workspace --locked
       - name: Architecture dependency lint (docs/12, docs/81)
         run: cargo run --locked -p architecture-lint -- --manifest-path Cargo.toml --rules tools/architecture-lint/rules.toml
+      - name: Git spawn lint — a Git process is built only by the hardened runner (PX-067, docs/65 AFW-J09)
+        run: cargo run --locked -p architecture-lint -- spawns --repo . --rules tools/architecture-lint/rules.toml
       - name: Module registration lint — owner, canonical single-owner systems, capability requirement ids (M0.4, docs/45, docs/81)
         shell: bash
         run: |

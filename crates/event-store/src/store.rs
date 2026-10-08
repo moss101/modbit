@@ -1458,6 +1458,28 @@ impl EventStore {
         rows.map(|r| r.map_err(Error::from)).collect()
     }
 
+    /// Every event of every session with `offset > after_offset` whose type is
+    /// one of `types`, ascending: the ledgers that span sessions (the worktree
+    /// registry of PX-065 and the merge transactions of PX-119) fold their own
+    /// event types from the start, not the whole log, and must not stop at a
+    /// page boundary.
+    pub fn read_all_of_types_to_end(
+        &self,
+        types: &[&str],
+        after_offset: u64,
+    ) -> Result<Vec<StoredEvent>> {
+        let mut out = Vec::new();
+        let mut cursor = after_offset;
+        loop {
+            let page = self.read_all_of_types(types, cursor, 1000)?;
+            let Some(last) = page.last() else {
+                return Ok(out);
+            };
+            cursor = last.offset;
+            out.extend(page);
+        }
+    }
+
     /// Events of every session with `offset > after_offset` whose type is one
     /// of `types`, ascending by offset, up to `limit`. The policy records that
     /// outlive their task (run modes and allowlist rules, PX-057) are folded
