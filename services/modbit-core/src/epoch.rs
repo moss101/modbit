@@ -186,10 +186,26 @@ pub(crate) fn freeze_round(
         &core.data_dir,
         task.workspace_root.as_deref(),
     );
-    let config_ref = store
-        .objects()
-        .put(&serde_json::to_vec(&*config).map_err(|e| e.to_string())?)
-        .map_err(|e| e.to_string())?;
+    // The resolved configuration is kept so an interrupted round can be
+    // finished under it. A configuration that carries a credential in the
+    // Core's custody (a server definition whose environment names one) is not
+    // written down at all: nothing persisted may hold a held secret, and such
+    // a round simply re-resolves on resume.
+    let config_json = serde_json::to_vec(&*config).map_err(|e| e.to_string())?;
+    let config_ref = if core
+        .tools
+        .redactor()
+        .error_text(&String::from_utf8_lossy(&config_json))
+        .as_bytes()
+        == config_json.as_slice()
+    {
+        store
+            .objects()
+            .put(&config_json)
+            .map_err(|e| e.to_string())?
+    } else {
+        String::new()
+    };
     let lease = store
         .leases_for_task(&task.task_id)
         .map_err(|e| e.to_string())?
@@ -250,6 +266,9 @@ pub(crate) fn freeze_round(
 /// caller then resolves the configuration afresh, as a new round would.
 pub(crate) fn resume_round(core: &Core, store: &EventStore, task: TaskId) -> Option<Frozen> {
     let frozen = core.tools.epochs.latest(store, task)?;
+    if frozen.snapshot.config_ref.is_empty() {
+        return None;
+    }
     let bytes = store.objects().get(&frozen.snapshot.config_ref).ok()?;
     let config: ResolvedConfig = serde_json::from_slice(&bytes).ok()?;
     if modbit_policy::config::generation(&config) != frozen.snapshot.config_generation {
