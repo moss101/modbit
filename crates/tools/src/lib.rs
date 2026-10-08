@@ -17,7 +17,12 @@
 
 #![forbid(unsafe_code)]
 
+#[allow(clippy::result_large_err)]
 pub mod browser;
+#[allow(clippy::result_large_err)]
+mod browser_feedback;
+#[allow(clippy::result_large_err)]
+mod browser_forms;
 pub mod direct;
 pub mod extensions;
 pub mod external;

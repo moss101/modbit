@@ -605,7 +605,7 @@ impl CloudHost {
             HostRequest::State => Ok(HostResponse::State {
                 state: self.state(&cdp, session).await?,
             }),
-            HostRequest::Snapshot { max_nodes } => {
+            HostRequest::Snapshot { max_nodes, .. } => {
                 if self.dialog().await.is_some() {
                     return Err((
                         "MODAL_BLOCKING".into(),
@@ -617,9 +617,11 @@ impl CloudHost {
                     state: self.state(&cdp, session).await?,
                     nodes,
                     truncated,
+                    frames: Vec::new(),
+                    change_seq: 0,
                 })
             }
-            HostRequest::Capture { clip } => {
+            HostRequest::Capture { clip, .. } => {
                 let mut params = json!({"format": "png", "fromSurface": true});
                 if let Some(c) = clip {
                     params["clip"] = json!({"x": c.x, "y": c.y, "width": c.width.max(1), "height": c.height.max(1), "scale": 1});
@@ -636,6 +638,8 @@ impl CloudHost {
                     state: self.state(&cdp, session).await?,
                     png_base64: png,
                     clip,
+                    width: 0,
+                    height: 0,
                 })
             }
             HostRequest::Act {
@@ -645,6 +649,7 @@ impl CloudHost {
                 key,
                 at,
                 credential_handle,
+                ..
             } => {
                 if self.dialog().await.is_some() {
                     return Err((
@@ -664,6 +669,18 @@ impl CloudHost {
                 )
                 .await
             }
+            // PX-121, PX-122: the feedback primitives, the observer and the
+            // frames are the desktop host's; the cloud browser answers them
+            // plainly rather than inventing an answer (its egress is the
+            // gateway's allowlist, and it has no observer yet).
+            HostRequest::Scroll { .. }
+            | HostRequest::Console { .. }
+            | HostRequest::Network { .. }
+            | HostRequest::Activity => Err((
+                "UNSUPPORTED".into(),
+                "the cloud browser does not serve scroll, console, network or activity reads yet"
+                    .into(),
+            )),
             HostRequest::Isolation => {
                 let r = cdp
                     .call(
@@ -761,6 +778,7 @@ impl CloudHost {
                     backend_dom_node_id: n["backendDOMNodeId"].as_i64(),
                     bounds: None,
                     disabled,
+                    ..Default::default()
                 }
             })
             .collect();

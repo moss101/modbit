@@ -150,6 +150,11 @@ import {
   AttachBrowserHostSchema,
   BrowserHostAttachedSchema,
   BrowserHostResponseSchema,
+  BrowserHostNoticeSchema,
+  BrowserHostNoticedSchema,
+  GetBrowserRuntimeSchema,
+  BrowserRuntimeViewSchema,
+  type BrowserRuntimeView,
   BrowserHostRespondedSchema,
   GetBrowserSessionSchema,
   BrowserSessionViewSchema,
@@ -912,6 +917,23 @@ export class CoreClient {
   async respondBrowserHost(requestId: string, response: unknown): Promise<{ delivered: boolean }> {
     const ack = await this.command("BrowserHostResponse", toBinary(BrowserHostResponseSchema, create(BrowserHostResponseSchema, { requestId, responseJson: JSON.stringify(response) })));
     return { delivered: fromBinary(BrowserHostRespondedSchema, ack.result).delivered };
+  }
+
+  /**
+   * PX-122: tell the Core the page changed on its own (the host's mutation
+   * observer, already folded into one bounded notice). The Core reads the
+   * page again and journals the delta; nothing is acted on.
+   */
+  async browserHostNotice(browserSessionId: string, notice: { change_seq: number; kind: string; added?: number; removed?: number; attributes?: number; text?: number; focus?: boolean; frame?: string | null; coalesced?: number }): Promise<{ accepted: boolean; changeSeq: bigint; notices: bigint }> {
+    const ack = await this.command("BrowserHostNotice", toBinary(BrowserHostNoticeSchema, create(BrowserHostNoticeSchema, { browserSessionId: { value: unhex(browserSessionId) }, noticeJson: JSON.stringify(notice) })));
+    const r = fromBinary(BrowserHostNoticedSchema, ack.result);
+    return { accepted: r.accepted, changeSeq: r.changeSeq, notices: r.notices };
+  }
+
+  /** PX-121, PX-122: the runtime state of a browser session (the unknown-outcome latch, the page kind, the observer's counters, the known-state map). */
+  async browserRuntime(browserSessionId: string, taskId?: string): Promise<BrowserRuntimeView> {
+    const ack = await this.command("GetBrowserRuntime", toBinary(GetBrowserRuntimeSchema, create(GetBrowserRuntimeSchema, { browserSessionId: { value: unhex(browserSessionId) }, ...(taskId ? { taskId: { value: unhex(taskId) } } : {}) })));
+    return fromBinary(BrowserRuntimeViewSchema, ack.result);
   }
 
   async browserSession(browserSessionId: string, taskId?: string): Promise<BrowserSessionView> {

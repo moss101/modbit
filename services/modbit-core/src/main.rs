@@ -21,6 +21,7 @@ mod baseline;
 mod branch;
 mod browser;
 mod browser_cloud;
+mod browser_observer;
 mod budgets;
 mod capacity;
 mod checkpoint;

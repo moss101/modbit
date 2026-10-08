@@ -735,6 +735,78 @@
       "test": "qual_m7_5_a_visual_region_is_captured_targeted_and_clicked_by_a_point_with_the_fallback_on_record"
     },
     {
+          "tool": "browser.console",
+          "family": "browser",
+          "source_behaviors": [
+                "Playwright page.on('console')",
+                "Claude in Chrome read_console_messages"
+          ],
+          "owner": "Browser Runtime (host bridge, docs/22)",
+          "effect": "ReadOnly",
+          "capabilities": [
+                "browser.control"
+          ],
+          "test": "qual_px_121_an_unknown_outcome_latches_the_session_until_a_fresh_observation_and_every_refusal_carries_its_escalation"
+    },
+    {
+          "tool": "browser.network",
+          "family": "browser",
+          "source_behaviors": [
+                "Playwright page.on('request')",
+                "Claude in Chrome read_network_requests"
+          ],
+          "owner": "Browser Runtime (host bridge, docs/22)",
+          "effect": "ReadOnly",
+          "capabilities": [
+                "browser.control"
+          ],
+          "test": "qual_px_121_an_unknown_outcome_latches_the_session_until_a_fresh_observation_and_every_refusal_carries_its_escalation"
+    },
+    {
+          "tool": "browser.scroll",
+          "family": "browser",
+          "source_behaviors": [
+                "Playwright locator.scrollIntoViewIfNeeded / mouse.wheel",
+                "Claude in Chrome computer scroll"
+          ],
+          "owner": "Browser Runtime (host bridge, docs/22)",
+          "effect": "ReversibleWrite",
+          "capabilities": [
+                "browser.control"
+          ],
+          "test": "qual_px_121_an_unknown_outcome_latches_the_session_until_a_fresh_observation_and_every_refusal_carries_its_escalation",
+          "effect_note": "an agent input like browser.act: refused under the person's control, halted by an emergency stop, latched when its outcome is unknown"
+    },
+    {
+          "tool": "browser.wait",
+          "family": "browser",
+          "source_behaviors": [
+                "Playwright page.waitForSelector / waitForLoadState",
+                "Claude in Chrome wait"
+          ],
+          "owner": "Browser Runtime (host bridge, docs/22)",
+          "effect": "ReadOnly",
+          "capabilities": [
+                "browser.control"
+          ],
+          "test": "qual_px_121_an_unknown_outcome_latches_the_session_until_a_fresh_observation_and_every_refusal_carries_its_escalation"
+    },
+    {
+          "tool": "browser.fill_form",
+          "family": "browser",
+          "source_behaviors": [
+                "Playwright locator.fill sequence + click",
+                "1Password / browser password managers: fill by handle"
+          ],
+          "owner": "Browser Runtime (host bridge, docs/22) + Semantic Browser Compiler (forms, postconditions)",
+          "effect": "ReversibleWrite",
+          "capabilities": [
+                "browser.control"
+          ],
+          "test": "qual_px_121_an_unknown_outcome_latches_the_session_until_a_fresh_observation_and_every_refusal_carries_its_escalation",
+          "effect_note": "per call (Tool::effect_of): the class of the submit control when submitting, ExternalSideEffect when a credential is filled; a secret field takes a credential handle only"
+    },
+    {
       "tool": "memory.query",
       "family": "memory",
       "source_behaviors": [

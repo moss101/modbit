@@ -64,6 +64,18 @@ impl CoreProcess {
         .unwrap()
     }
 
+    /// A client of another kind (a desktop hosts a browser view).
+    pub async fn client_of_kind(&self, kind: ClientKind) -> Client {
+        Client::connect(
+            &self.ready.endpoint,
+            &decode_hex(&self.ready.boot_secret_hex).unwrap(),
+            kind,
+            "test",
+        )
+        .await
+        .unwrap()
+    }
+
     pub fn kill(&mut self) {
         let _ = self.child.kill();
         let _ = self.child.wait();

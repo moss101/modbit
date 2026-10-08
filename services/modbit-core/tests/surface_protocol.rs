@@ -36717,11 +36717,13 @@ async fn qual_ev_0089_every_failure_code_of_the_taxonomy_is_emitted_with_its_rec
     ] {
         assert!(codes.contains(&c), "{codes:?}");
     }
-    // FIX-19: the occlusion hint recommends only what the model can do —
-    // there is no scroll action, so it must not tell it to scroll.
+    // FIX-19, restored by PX-121: the occlusion hint recommends only what the
+    // model can do. The scroll tool exists now, so it names it - and names
+    // the form it takes - and no longer says there is no scroll action.
     let occluded = &seen.iter().find(|(c, _)| c == "TARGET_OCCLUDED").unwrap().1;
     assert!(
-        occluded.contains("there is no scroll action") && !occluded.contains("or scroll"),
+        occluded.contains("browser.scroll {ref, mode: into_view}")
+            && !occluded.contains("there is no scroll action"),
         "{occluded}"
     );
     assert!(
