@@ -1085,12 +1085,17 @@ async fn qual_px_117_a_subagent_stop_hook_sees_a_real_childs_result_and_cannot_c
             };
         }
         match results {
-            0 => plan(),
+            0 => {
+                json!({"calls": [{"name": "plan.update", "args": {"outcome": "keep notes", "expected_files": ["notes.md"], "protected_effects": ["git.merge"]}}]})
+            }
             1 => {
                 json!({"calls": [{"name": "agent.spawn", "args": {"idempotency_key": "kid", "objective": "write the child file", "write_scope": ["child/"]}}]})
             }
             2 => {
                 json!({"calls": [{"name": "agent.wait", "args": {"idempotency_key": "kid", "timeout_ms": 60000}}]})
+            }
+            3 => {
+                json!({"calls": [{"name": "git.merge.abort", "args": {"child": "kid", "discard": true, "reason": "integration of the fixture"}}]})
             }
             _ => complete(),
         }
@@ -1118,6 +1123,7 @@ async fn qual_px_117_a_subagent_stop_hook_sees_a_real_childs_result_and_cannot_c
     let core = CoreProcess::spawn_with_env(dir.path(), &env_refs);
     let mut c = core.client().await;
     let (session, g) = session_with_lease(&mut c, 0x30).await;
+    let _approver = spawn_approver(&core, &session, g).await;
     let task = create_task(
         &mut c,
         &session,

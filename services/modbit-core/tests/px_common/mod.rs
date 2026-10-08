@@ -490,3 +490,59 @@ pub fn model_env(base: &str) -> Vec<(String, String)> {
         ("ANTHROPIC_API_KEY".into(), String::new()),
     ]
 }
+
+/// The person at the keyboard for a run whose parent integrates its children
+/// (PX-119): approves every `git.merge.*` / `git.apply.*` approval the session
+/// asks for, until the handle is dropped or aborted. A parent cannot complete
+/// beside a child with unmerged changes, and discarding one is a protected
+/// effect, so a run that spawns children needs an approver.
+pub async fn spawn_approver(
+    core: &CoreProcess,
+    session: &Id,
+    generation: Option<u64>,
+) -> tokio::task::JoinHandle<()> {
+    use modbit_protocol::v1::{ApprovalList, ListApprovals, ResolveApproval};
+    let mut c = core.client().await;
+    let session = session.clone();
+    tokio::spawn(async move {
+        let mut done: std::collections::HashSet<Vec<u8>> = Default::default();
+        loop {
+            let ack = c
+                .command(envelope(
+                    rand_id(),
+                    "ListApprovals",
+                    ListApprovals {
+                        session_id: Some(session.clone()),
+                    }
+                    .encode_to_vec(),
+                ))
+                .await;
+            let Ok(ack) = ack else { return };
+            let list: ApprovalList = Client::result(&ack).unwrap();
+            for a in list.approvals.iter().filter(|a| {
+                a.status == "REQUESTED"
+                    && (a.tool_name.starts_with("git.merge.")
+                        || a.tool_name.starts_with("git.apply."))
+            }) {
+                let id = a.approval_id.clone().unwrap();
+                if done.insert(id.value.clone()) {
+                    let _ = c
+                        .command(envelope_fenced(
+                            rand_id(),
+                            "ResolveApproval",
+                            ResolveApproval {
+                                approval_id: Some(id),
+                                approve: true,
+                                reason: "integration".into(),
+                                intent_hash: String::new(),
+                            }
+                            .encode_to_vec(),
+                            generation,
+                        ))
+                        .await;
+                }
+            }
+            tokio::time::sleep(Duration::from_millis(150)).await;
+        }
+    })
+}

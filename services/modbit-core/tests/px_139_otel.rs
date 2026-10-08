@@ -308,6 +308,13 @@ fn plan() -> Value {
     json!({"calls": [{"name": "plan.update", "args": {"outcome": "note", "expected_files": ["notes.md"]}}]})
 }
 
+/// A plan that declares the integration of children (PX-119): the parent
+/// discards what its children made through `git.merge.abort`, a protected
+/// effect the plan must name.
+fn plan_with_merge() -> Value {
+    json!({"calls": [{"name": "plan.update", "args": {"outcome": "note", "expected_files": ["notes.md"], "protected_effects": ["git.merge"]}}]})
+}
+
 fn complete() -> Value {
     json!({"calls": [{"name": "task.complete", "args": {"summary": "done", "self_review": {"findings": []}}}]})
 }
@@ -414,12 +421,14 @@ async fn qual_px_139_a_parent_with_two_children_exports_one_trace_with_the_accou
         ("src/b/.keep", ""),
     ]);
     let parent = vec![
-        plan(),
+        plan_with_merge(),
         json!({"calls": [{"name": "agent.spawn", "args": {"idempotency_key": "k1", "objective": "create src/a/a.txt", "write_scope": ["src/a/"]}}]}),
         json!({"calls": [{"name": "agent.spawn", "args": {"idempotency_key": "k2", "objective": "create src/b/b.txt", "write_scope": ["src/b/"]}}]}),
         json!({"calls": [{"name": "agent.wait", "args": {"idempotency_key": "k1", "timeout_ms": 60000}}]}),
         json!({"calls": [{"name": "agent.wait", "args": {"idempotency_key": "k2", "timeout_ms": 60000}}]}),
         json!({"calls": [{"name": "fs.read", "args": {"path": "notes.md"}}]}),
+        json!({"calls": [{"name": "git.merge.abort", "args": {"child": "k1", "discard": true, "reason": "integration of the fixture"}}]}),
+        json!({"calls": [{"name": "git.merge.abort", "args": {"child": "k2", "discard": true, "reason": "integration of the fixture"}}]}),
         complete(),
     ];
     let (a, b) = (
@@ -457,6 +466,7 @@ async fn qual_px_139_a_parent_with_two_children_exports_one_trace_with_the_accou
     let mut c = core.client().await;
     activate_registry(&mut c, &signed).await;
     let (session, g) = session_with_lease(&mut c, 0x31).await;
+    let _approver = spawn_approver(&core, &session, g).await;
     let task = create_task(
         &mut c,
         &session,

@@ -86,19 +86,18 @@ const SCAN_MAX_FILE_BYTES: u64 = 1024 * 1024;
 /// ignored), relative to `root`: from Git where there is a repository, else
 /// a bounded walk.
 fn carried_files(root: &Path) -> Vec<std::path::PathBuf> {
-    let from_git = std::process::Command::new("git")
-        .arg("-C")
-        .arg(root)
-        .args([
+    let from_git = modbit_git::output(
+        root,
+        &[
             "ls-files",
             "-z",
             "--cached",
             "--others",
             "--exclude-standard",
-        ])
-        .output()
-        .ok()
-        .filter(|o| o.status.success());
+        ],
+    )
+    .ok()
+    .filter(|o| o.status.success());
     if let Some(o) = from_git {
         return o
             .stdout

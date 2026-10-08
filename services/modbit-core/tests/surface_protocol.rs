@@ -13221,9 +13221,18 @@ async fn qual_px_116_child_cost_budgets_are_clamped_reserved_exhaust_typed_and_r
         json!({"calls": [{"name": "agent.wait", "args": {"idempotency_key": "k2", "timeout_ms": 60000}}]}),
         json!({"calls": [{"name": "agent.wait", "args": {"idempotency_key": "k3", "timeout_ms": 60000}}]}),
         json!({"calls": [{"name": "agent.cancel", "args": {"idempotency_key": "k2"}}]}),
-        json!({"calls": [{"name": "git.merge.abort", "args": {"child": "k1", "discard": true, "reason": "integration of the fixture"}}]}),
-        json!({"calls": [{"name": "git.merge.abort", "args": {"child": "k2", "discard": true, "reason": "integration of the fixture"}}]}),
-        json!({"calls": [{"name": "git.merge.abort", "args": {"child": "k3", "discard": true, "reason": "integration of the fixture"}}]}),
+        // The three discards ride one turn: the parent's own spend counts
+        // against the cap this test asserts, and a turn is what costs. The
+        // script is indexed by the tool results the conversation holds, so
+        // the turn's three results move the next reply to index 11: the
+        // completion stands at the two skipped places as well.
+        json!({"calls": [
+            {"name": "git.merge.abort", "args": {"child": "k1", "discard": true, "reason": "integration of the fixture"}},
+            {"name": "git.merge.abort", "args": {"child": "k2", "discard": true, "reason": "integration of the fixture"}},
+            {"name": "git.merge.abort", "args": {"child": "k3", "discard": true, "reason": "integration of the fixture"}}
+        ]}),
+        json!({"calls": [{"name": "task.complete", "args": {"summary": "collected", "self_review": {"findings": []}}}]}),
+        json!({"calls": [{"name": "task.complete", "args": {"summary": "collected", "self_review": {"findings": []}}}]}),
         json!({"calls": [{"name": "task.complete", "args": {"summary": "collected", "self_review": {"findings": []}}}]}),
     ];
     let (base, _seen) = scripted_models(
@@ -24773,7 +24782,7 @@ async fn qual_m5_1_projection_follows_the_plan_and_refuses_crafted_calls() {
         assert!(
             plan_desc.contains("DECLARE_WRITES -> change.apply, change.batch")
                 && plan_desc.contains(
-                    "DECLARE_PROTECTED_EFFECT -> forge.pr.create, forge.pr.update, git.apply.undo, git.apply.worktree, git.merge.commit, git.merge.prepare, git.worktree.close"
+                    "DECLARE_PROTECTED_EFFECT -> forge.issue.comment, forge.pr.comment, forge.pr.create, forge.pr.update, git.apply.undo, git.apply.worktree, git.merge.commit, git.merge.prepare, git.worktree.close"
                 ),
             "{plan_desc}"
         );
@@ -24805,7 +24814,7 @@ async fn qual_m5_1_projection_follows_the_plan_and_refuses_crafted_calls() {
         let plan_desc = description(b, "plan.update");
         assert!(
             plan_desc.contains(
-                "DECLARE_PROTECTED_EFFECT -> forge.pr.create, forge.pr.update, git.apply.undo, git.apply.worktree, git.merge.commit, git.merge.prepare, git.worktree.close"
+                "DECLARE_PROTECTED_EFFECT -> forge.issue.comment, forge.pr.comment, forge.pr.create, forge.pr.update, git.apply.undo, git.apply.worktree, git.merge.commit, git.merge.prepare, git.worktree.close"
             ) && !plan_desc.contains("DECLARE_WRITES"),
             "{plan_desc}"
         );
@@ -24822,7 +24831,7 @@ async fn qual_m5_1_projection_follows_the_plan_and_refuses_crafted_calls() {
     );
     let final_plan_desc = description(&bodies[5], "plan.update");
     assert!(
-        final_plan_desc.contains("DECLARE_PROTECTED_EFFECT -> forge.pr.create, forge.pr.update, git.apply.undo, git.apply.worktree, git.merge.commit, git.merge.prepare.")
+        final_plan_desc.contains("DECLARE_PROTECTED_EFFECT -> forge.issue.comment, forge.pr.comment, forge.pr.create, forge.pr.update, git.apply.undo, git.apply.worktree, git.merge.commit, git.merge.prepare.")
             && !final_plan_desc.contains("git.worktree.close")
             && !final_plan_desc.contains("DECLARE_WRITES"),
         "{final_plan_desc}"
@@ -24891,6 +24900,8 @@ async fn qual_m5_1_projection_follows_the_plan_and_refuses_crafted_calls() {
     assert_eq!(
         strings(&files_declared["withheld"]),
         [
+            "forge.issue.comment:DECLARE_PROTECTED_EFFECT",
+            "forge.pr.comment:DECLARE_PROTECTED_EFFECT",
             "forge.pr.create:DECLARE_PROTECTED_EFFECT",
             "forge.pr.update:DECLARE_PROTECTED_EFFECT",
             "git.apply.undo:DECLARE_PROTECTED_EFFECT",
@@ -24908,6 +24919,8 @@ async fn qual_m5_1_projection_follows_the_plan_and_refuses_crafted_calls() {
     assert_eq!(
         strings(&all_declared["withheld"]),
         [
+            "forge.issue.comment:DECLARE_PROTECTED_EFFECT",
+            "forge.pr.comment:DECLARE_PROTECTED_EFFECT",
             "forge.pr.create:DECLARE_PROTECTED_EFFECT",
             "forge.pr.update:DECLARE_PROTECTED_EFFECT",
             "git.apply.undo:DECLARE_PROTECTED_EFFECT",
