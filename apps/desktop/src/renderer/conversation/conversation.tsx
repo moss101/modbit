@@ -16,6 +16,9 @@ import { INITIAL_FOLLOW, identityOf, messageIds, onDismiss, onJumpToBottom, onMe
 import { RowView, type RowContext } from "./rows.tsx";
 import { loadConversationPrefs, saveConversationPrefs, type ConversationPrefs } from "./prefs.ts";
 import { useConversation } from "./use-conversation.ts";
+import { ApprovalDock } from "../approvals/approval-dock.tsx";
+import { RunModeControl } from "../approvals/run-mode.tsx";
+import { useCheckpointSurface } from "./use-checkpoint-surface.tsx";
 
 export interface ConversationProps {
   taskId: string;
@@ -27,6 +30,10 @@ export interface ConversationProps {
   focusRowId: string | null;
   onResume: (taskId: string) => void;
   onNewTask: () => void;
+  /** Open another task's conversation (a fork opens its child). */
+  onOpenTask?: ((taskId: string) => void) | undefined;
+  /** A task's name for the approvals of other agents shown above this composer. */
+  titleOf?: ((taskId: string) => string) | undefined;
 }
 
 const DENSITY_LABEL: Record<Density, string> = { COMPACT: "Compact", BALANCED: "Balanced", DETAILED: "Detailed" };
@@ -48,7 +55,7 @@ function collectTurnText(rows: readonly TranscriptRowView[], turnId: string, out
 }
 
 export function Conversation(props: ConversationProps) {
-  const { taskId, sessionId, connected, card, title, focusRowId, onResume, onNewTask } = props;
+  const { taskId, sessionId, connected, card, title, focusRowId, onResume, onNewTask, onOpenTask, titleOf } = props;
   const [prefs, setPrefs] = useState<ConversationPrefs>(loadConversationPrefs);
   useEffect(() => saveConversationPrefs(prefs), [prefs]);
   const conv = useConversation(taskId, sessionId, prefs.density, connected);
@@ -58,6 +65,9 @@ export function Conversation(props: ConversationProps) {
   const [copied, setCopied] = useState("");
   const scroller = useRef<HTMLDivElement>(null);
   const seen = useRef<Set<string> | null>(null);
+  // REQ-PX-057 / 062: the run-mode dialog (also opened from an approval card) and the checkpoint surface.
+  const [modeOpen, setModeOpen] = useState(false);
+  const ckpt = useCheckpointSurface({ taskId, sessionId, connected, card, onResume, onOpenTask });
 
   const body = useMemo(() => withDivider(withLiveOnly(conv.rows, conv.live), conv.dividerOffset, (n) => `${n} new`), [conv.rows, conv.live, conv.dividerOffset]);
   const latestUser = useMemo(() => [...body].reverse().find((r) => r.kind === "USER_MESSAGE")?.rowId ?? null, [body]);
@@ -162,8 +172,8 @@ export function Conversation(props: ConversationProps) {
   );
 
   const ctx = useMemo<RowContext>(
-    () => ({ sessionId, card, live: conv.live, approvals: conv.approvals, openGroups, onToggleGroup: toggleGroup, codeOpen: prefs.codeOpen, onCodeOpen: (open) => setPrefs((p) => ({ ...p, codeOpen: open })), onResume, onCopyTurn: copyTurn, highlightRowId: highlight, latestUserRowId: latestUser }),
-    [sessionId, card, conv.live, conv.approvals, openGroups, toggleGroup, prefs.codeOpen, onResume, copyTurn, highlight, latestUser],
+    () => ({ sessionId, card, live: conv.live, approvals: conv.approvals, openGroups, onToggleGroup: toggleGroup, codeOpen: prefs.codeOpen, onCodeOpen: (open) => setPrefs((p) => ({ ...p, codeOpen: open })), onResume, onCopyTurn: copyTurn, highlightRowId: highlight, latestUserRowId: latestUser, checkpoints: ckpt.context }),
+    [sessionId, card, conv.live, conv.approvals, openGroups, toggleGroup, prefs.codeOpen, onResume, copyTurn, highlight, latestUser, ckpt.context],
   );
 
   const jumpUser = (dir: 1 | -1) => {
@@ -201,6 +211,8 @@ export function Conversation(props: ConversationProps) {
           {card ? `${card.state}${card.waitReason ? `, waiting on ${card.waitReason}` : ""}` : conv.taskState}
         </span>
         <span className="conv-spacer" />
+        {ckpt.head}
+        <RunModeControl sessionId={sessionId} taskId={taskId} connected={connected} open={modeOpen} onOpenChange={setModeOpen} />
         <label className="conv-density">
           <span className="meta">Density</span>
           <select value={prefs.density} onChange={(e) => setPrefs((p) => ({ ...p, density: e.target.value as Density }))} data-testid="conv-density" aria-label="Conversation density">
@@ -258,6 +270,9 @@ export function Conversation(props: ConversationProps) {
       <p className="mb-sr-only" role="status" aria-live="polite" data-testid="conv-live">
         {copied}
       </p>
+      {ckpt.bar}
+      <ApprovalDock sessionId={sessionId} taskId={taskId} connected={connected} onChangeMode={() => setModeOpen(true)} titleOf={titleOf ?? ((id) => id.slice(0, 8))} onOpenTask={onOpenTask ?? (() => {})} />
+      {ckpt.overlay}
       <ComposerRegion taskId={taskId} sessionId={sessionId} card={card} approvalPending={conv.approvals.length > 0} onResume={onResume} onNewTask={onNewTask} />
     </section>
   );

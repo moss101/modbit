@@ -14,6 +14,7 @@ import { BrowserHost } from "./browser.js";
 import { CredentialStore } from "./credentials.js";
 import { platformState } from "./platform.js";
 import { observeStreamEvent, registerConversationHandlers } from "./conversation-ipc.js";
+import { registerControlHandlers } from "./control-ipc.js";
 import { optionalWindow, requireBool, requireCursor, requireDimension, requireHandle, requireKeystrokes, requireWorkspacePath } from "./apps-args.js";
 import { noWork, quitPrompt, runShutdown, WINDOW_DEFAULT, WINDOW_MIN, type ActiveWork, type ShutdownStep } from "./lifecycle.js";
 import { TerminalHost } from "./terminal-host.js";
@@ -771,15 +772,18 @@ handle("onboarding:starters", async (_e: IpcMainInvokeEvent, workspaceRoot: unkn
   return requireClient().listStarterTasks(resolve(root));
 });
 // PX-046 / PX-047: the agent list and the conversation, over the Core's header, transcript and search projections.
-registerConversationHandlers({
-  handle: (channel, fn) => handle(channel, (_e, ...args) => fn(...args)),
+const conversationRegistrar = {
+  handle: (channel: string, fn: (...args: unknown[]) => unknown) => handle(channel, (_e, ...args) => fn(...args)),
   client: requireClient,
   sessionId: requireSessionId,
   taskId: requireTaskId,
-  lease: async (c, sid) => {
+  lease: async (c: CoreClient, sid: string) => {
     if (c.leaseGeneration(sid) === undefined) await c.joinSessionLease(sid, `desktop ${app.getVersion()}`);
   },
-});
+};
+registerConversationHandlers(conversationRegistrar);
+// REQ-PX-057 / 058 / 060 / 062: the approval stack, run modes and allowlist rules, the context ring's accounting and the checkpoint surface.
+registerControlHandlers(conversationRegistrar);
 // REQ-PX-048 (the apps panel): the Terminal, Files and Evidence apps. Every
 // call validates its arguments here and goes to the Core through the one
 // client; the renderer gets views, never a socket, a path outside the

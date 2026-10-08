@@ -26,6 +26,8 @@ import { clampZoom, loadUiPrefs, saveUiPrefs, ZOOM_STEP, type AppKind, type Pane
 import { ShellFrame } from "./shell-frame.tsx";
 import { ShortcutHelp } from "./shortcut-help.tsx";
 import { StatusRow } from "./status-row.tsx";
+import { ContextRing } from "../context/ring.tsx";
+import { TrayDirector } from "../context/tray-director.tsx";
 import { TopBar } from "./top-bar.tsx";
 
 const LOCATION = "Local, trusted workspace";
@@ -326,6 +328,7 @@ export function Shell({ app }: { app: AppState }) {
             location={LOCATION}
             extra={
               <>
+                {conversation && <ContextRing key={conversation.taskId} taskId={conversation.taskId} connected={core.state === "connected"} />}
                 {recoveryNote && (
                   <span className="meta" data-testid="recovery-summary">
                     Recovered at start: {recoveryNote.text}
@@ -342,12 +345,13 @@ export function Shell({ app }: { app: AppState }) {
         {conversation && !reviewing && !browsing && !dashboardOpen ? (
           <div className="conv-wrap">
             <StatusRegion app={app} />
-            <Conversation key={conversation.taskId} taskId={conversation.taskId} sessionId={model.sessionId} connected={core.state === "connected"} card={model.tasks.get(conversation.taskId)} title={model.tasks.get(conversation.taskId)?.goalText ?? "Task"} focusRowId={conversation.rowId} onResume={(id) => void startTask(id)} onNewTask={() => actions.focusNewTask()} />
+            <Conversation key={conversation.taskId} taskId={conversation.taskId} sessionId={model.sessionId} connected={core.state === "connected"} card={model.tasks.get(conversation.taskId)} title={model.tasks.get(conversation.taskId)?.goalText ?? "Task"} focusRowId={conversation.rowId} onResume={(id) => void startTask(id)} onNewTask={() => actions.focusNewTask()} onOpenTask={(id) => openConversation(id)} titleOf={(id) => model.tasks.get(id)?.goalText ?? "another task"} />
           </div>
         ) : (
           <FleetView app={app} />
         )}
       </ShellFrame>
+      <TrayDirector core={{ state: core.state, reason: core.state === "restarting" || core.state === "failed" ? core.reason : "" }} sessionId={model.sessionId} taskId={conversation?.taskId ?? null} card={conversation ? model.tasks.get(conversation.taskId) : undefined} onResume={(id) => void startTask(id)} />
       <CommandPalette open={paletteOpen} items={paletteItems} onClose={() => setPaletteOpen(false)} announce={setNotice} />
       <ShortcutHelp open={helpOpen} onClose={() => setHelpOpen(false)} registry={shellRegistry} />
     </>

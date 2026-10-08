@@ -19,6 +19,7 @@ import { AgentListView } from "../agents/agent-list-view.tsx";
 import { DEFAULT_LIST_PREFS } from "../agents/prefs.ts";
 import { RowView, type RowContext } from "../conversation/rows.tsx";
 import { TailStatus } from "../conversation/conversation.tsx";
+import { ControlsGallery } from "./controls-gallery.tsx";
 import { AGENT_HEADER_FIXTURES, CONVERSATION_ROW_FIXTURES, GALLERY_NOW } from "./workspace-fixtures.ts";
 import { APPROVAL_FIXTURE, EMPTY_FIXTURE, ERROR_FIXTURE, FIXTURE_ROWS, GENERATING_FIXTURE, OFFLINE_FIXTURE, type GalleryState } from "./fixtures.ts";
 
@@ -216,6 +217,8 @@ export function Gallery() {
           <TailStatus phase="RUNNING" label="Running a command: cargo test" detail="" lastActivityMs={Date.now()} />
         </div>
       </section>
+
+      <ControlsGallery note={note} />
 
       <section aria-labelledby="g-primitives" data-testid="gallery-primitives">
         <h2 id="g-primitives">Primitives</h2>
