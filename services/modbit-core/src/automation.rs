@@ -1025,13 +1025,34 @@ fn first_manual_trigger(d: &Definition) -> Option<&Trigger> {
 /// id derives from the firing's key, so a second call (after a crash, or a
 /// racing tick) creates nothing new.
 async fn dispatch(core: &Arc<Core>, key: &str, payload: Option<(String, String)>) {
-    {
-        let mut inflight = core
+    // One dispatch of a key at a time. A caller that finds another one in
+    // flight (the tick finishing what a command just recorded) waits for it
+    // and then reads the outcome, instead of racing it.
+    let mut waited = 0;
+    loop {
+        let inserted = core
             .automation
             .inflight
             .lock()
-            .unwrap_or_else(|e| e.into_inner());
-        if !inflight.insert(key.to_owned()) {
+            .unwrap_or_else(|e| e.into_inner())
+            .insert(key.to_owned());
+        if inserted {
+            break;
+        }
+        waited += 1;
+        if waited > 1200 {
+            return;
+        }
+        tokio::time::sleep(std::time::Duration::from_millis(25)).await;
+        let finished = !core
+            .automation
+            .registry
+            .lock()
+            .await
+            .runs
+            .get(key)
+            .is_some_and(|r| matches!(r.status, RunStatus::Pending | RunStatus::Queued));
+        if finished {
             return;
         }
     }
@@ -1047,7 +1068,15 @@ async fn dispatch(core: &Arc<Core>, key: &str, payload: Option<(String, String)>
         if code.starts_with("TRANSIENT") {
             return;
         }
-        finish(core, key, RunStatus::Failed, &code, &why, None).await;
+        // A run held back by a switch or by a change of the definition did
+        // not fail: it never started, and it does not count against the
+        // five-failure rule.
+        let status = if matches!(code.as_str(), "PAUSED" | "DEFINITION_CHANGED") {
+            RunStatus::Cancelled
+        } else {
+            RunStatus::Failed
+        };
+        finish(core, key, status, &code, &why, None).await;
     }
 }
 
@@ -1642,7 +1671,9 @@ async fn monitor_runs(core: &Arc<Core>, now: i64) {
     let promote: Vec<String> = {
         let reg = core.automation.registry.lock().await;
         reg.defs
-            .keys()
+            .iter()
+            .filter(|(_, st)| !st.paused && !reg.global_paused)
+            .map(|(id, _)| id)
             .filter(|id| reg.active_runs(id).is_empty())
             .filter_map(|id| {
                 reg.queued_runs(id)
@@ -1669,11 +1700,19 @@ async fn stop_reason(core: &Arc<Core>, task: &Task) -> (String, String) {
         .and_then(|a| a["reason"].as_str())
         .unwrap_or_default()
         .to_owned();
-    let code = if text.contains("BUDGET_EXHAUSTED") {
+    let diag = attention
+        .as_ref()
+        .and_then(|a| a["diagnostic"]["code"].as_str())
+        .unwrap_or_default()
+        .to_owned();
+    let code = if text.contains("BUDGET_EXHAUSTED")
+        || (text.contains("budget") && text.contains("exhausted"))
+        || diag == "BUDGET_EXHAUSTED"
+    {
         "BUDGET_EXHAUSTED"
-    } else if text.contains("without progress") || text.contains("NO_PROGRESS") {
+    } else if diag == "NO_PROGRESS" || text.contains("without progress") {
         "NO_PROGRESS"
-    } else if text.contains("provider") {
+    } else if text.contains("provider") || diag.contains("PROVIDER") {
         "PROVIDER_FAILED"
     } else {
         "TASK_STOPPED"
@@ -2811,6 +2850,10 @@ async fn kill(core: &Arc<Core>, env: &wire::CommandEnvelope, command_id: [u8; 16
     };
     let mut cancelled = 0u32;
     let mut dropped = 0u32;
+    // Anything not yet started is dropped first, so no queued run can be
+    // promoted into the slot a stopped run frees.
+    let mut live = live;
+    live.sort_by_key(|r| r.status == RunStatus::Running);
     for run in live {
         let key = run.firing.dispatch_key.clone();
         match run.status {
