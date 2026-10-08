@@ -516,8 +516,12 @@ impl Fx {
 
     async fn run_to_review(&mut self) {
         self.start().await;
+        // The state is committed before the run loop has finished winding
+        // down, so the loop ending is waited for, not asserted at that instant.
         let st = self
-            .until("ReadyForReview", 120, |s| s.state == "ReadyForReview")
+            .until("ReadyForReview and the loop ended", 120, |s| {
+                s.state == "ReadyForReview" && !s.loop_alive
+            })
             .await;
         assert!(!st.loop_alive);
     }

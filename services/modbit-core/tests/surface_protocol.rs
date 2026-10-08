@@ -13673,7 +13673,7 @@ async fn qual_px_116_a_child_that_exhausts_its_wall_clock_ends_typed_and_its_res
     let parent_wall: u64 = 600_000;
     let parent = vec![
         json!({"calls": [{"name": "plan.update", "args": {"outcome": "two modules", "expected_files": ["README.md"], "protected_effects": ["git.merge"]}}]}),
-        json!({"calls": [{"name": "agent.spawn", "args": {"idempotency_key": "k1", "objective": "create src/a/slow.txt", "write_scope": ["src/a/"], "max_cost_minor": 800, "max_wall_ms": 500}}]}),
+        json!({"calls": [{"name": "agent.spawn", "args": {"idempotency_key": "k1", "objective": "create src/a/slow.txt", "write_scope": ["src/a/"], "max_cost_minor": 800, "max_wall_ms": 1500}}]}),
         json!({"calls": [{"name": "agent.wait", "args": {"idempotency_key": "k1", "timeout_ms": 60000}}]}),
         json!({"calls": [{"name": "agent.spawn", "args": {"idempotency_key": "k2", "objective": "create src/b/b.txt", "write_scope": ["src/b/"], "max_cost_minor": 100000, "max_wall_ms": 99999999}}]}),
         json!({"calls": [{"name": "agent.wait", "args": {"idempotency_key": "k2", "timeout_ms": 60000}}]}),
@@ -13700,7 +13700,10 @@ async fn qual_px_116_a_child_that_exhausts_its_wall_clock_ends_typed_and_its_res
                 px_child_script("src/b", "b.txt"),
             ),
         ],
-        Some((usize::MAX, Duration::from_millis(400))),
+        // Rounds one and two answer at once; the third request is held
+        // for longer than the whole cap, so the cap has certainly passed
+        // at the next boundary and never before round one completed.
+        Some((2, Duration::from_millis(3000))),
     )
     .await;
     let dir = tempfile::tempdir().unwrap();
@@ -13730,7 +13733,7 @@ async fn qual_px_116_a_child_that_exhausts_its_wall_clock_ends_typed_and_its_res
         .map(|(_, _, p)| p.clone())
         .collect();
     assert_eq!(admitted.len(), 2, "{admitted:#?}");
-    assert_eq!(admitted[0]["reserved_wall_ms"], 500);
+    assert_eq!(admitted[0]["reserved_wall_ms"], 1500);
     // k1 ran out of wall clock, typed, with its partial evidence on its log.
     let k1 = task_events(&core, &session, &px_child_id(&admitted[0])).await;
     let stop = k1
@@ -13739,8 +13742,8 @@ async fn qual_px_116_a_child_that_exhausts_its_wall_clock_ends_typed_and_its_res
         .map(|(_, _, p)| p.clone())
         .expect("k1 exhausted a budget");
     assert_eq!(stop["budget"], "max_wall_ms", "{stop:?}");
-    assert_eq!(stop["limit"], 500);
-    assert!(stop["used"].as_u64().unwrap() >= 500);
+    assert_eq!(stop["limit"], 1500);
+    assert!(stop["used"].as_u64().unwrap() >= 1500);
     assert!(
         k1.iter().any(|(_, t, _)| t == "PlanRecorded"),
         "partial work is on its log: {:?}",

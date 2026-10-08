@@ -133,11 +133,15 @@ impl Connection {
                 s.lost = Some("the host shut the server down".into());
             }
         }
-        self.close.cancel();
+        // The request is queued before the input is closed: a server that
+        // exits the instant its input ends must still find the shutdown it
+        // was given, or the exit would be mistaken for an unexpected death.
         let (done, rx) = oneshot::channel();
         if self.ctl.send(ShutdownRequest { grace, done }).is_err() {
+            self.close.cancel();
             return ShutdownOutcome::AlreadyGone;
         }
+        self.close.cancel();
         tokio::time::timeout(grace + std::time::Duration::from_secs(10), rx)
             .await
             .ok()
@@ -865,7 +869,14 @@ fn spawn_child_owner(
 ) {
     tokio::spawn(async move {
         let request = tokio::select! {
-            _ = child.wait() => return,
+            _ = child.wait() => {
+                // Exited: if a host shutdown was waiting, this is its
+                // graceful end; otherwise it died on its own.
+                while let Ok(req) = ctl.try_recv() {
+                    let _ = req.done.send(ShutdownOutcome::Graceful);
+                }
+                return;
+            }
             r = ctl.recv() => r,
         };
         let (grace, done) = match request {
