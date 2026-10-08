@@ -1,0 +1,29 @@
+{
+  "expected": {
+    "acknowledged": false,
+    "automationId": "abababababababababababababababab",
+    "catchUp": true,
+    "costMinor": "12",
+    "detail": "no one answered",
+    "dispatchKey": "efefefefefefefefefefefefefefefefefefefefefefefefefefefefefefefef",
+    "dispatchedMs": "1757300000100",
+    "eventId": "nightly@1757300000000",
+    "findings": 1,
+    "finishedMs": "1757386400000",
+    "firedMs": "1757300000000",
+    "missed": "4",
+    "name": "drift",
+    "outputsJson": "{\"task_state\":\"Cancelled\"}",
+    "principal": "user:x",
+    "reason": "APPROVAL_EXPIRED",
+    "sessionId": "42424242424242424242424242424242",
+    "slotMs": "1757300000000",
+    "status": "cancelled",
+    "taskId": "41414141414141414141414141414141",
+    "test": false,
+    "triggerId": "nightly",
+    "triggerKind": "schedule",
+    "version": 3
+  },
+  "type": "modbit.v1.AutomationRunView"
+}
