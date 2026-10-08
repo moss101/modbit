@@ -12,8 +12,9 @@ use modbit_protocol::client::{Client, ClientError};
 use modbit_protocol::v1::{
     AddProjectMember, AgentHeaders, AgentStatusClass, ApprovalResolvedAck, ArchiveProject,
     CancelTask, CommandStatus, CreateProject, CreateTask, GetAgentHeaders, GetProject, Id,
-    InvokeTool, ListProjects, ProjectChanged, ProjectList, ProjectView, RemoveProjectMember,
-    RenameProject, ResolveApproval, SessionLeaseAcquired, TaskCreated, TaskIsolation, ToolInvoked,
+    InvokeTool, ListProjects, ListWorktrees, ProjectChanged, ProjectList, ProjectView,
+    RemoveProjectMember, RemoveWorktree, RenameProject, ResolveApproval, SessionLeaseAcquired,
+    TaskCreated, TaskIsolation, ToolInvoked, WorktreeList, WorktreeRemoval,
 };
 use prost::Message;
 use px_common::{
@@ -878,5 +879,168 @@ async fn qual_px_063_the_rollup_counts_by_class_and_surfaces_attention_from_the_
     let r = check(&view, &headers);
     assert_eq!(r.pending_approvals, 0, "{r:?}");
     assert_eq!(r.attention_items, base.attention_items, "{r:?}");
+    fx.core.kill();
+}
+
+// ===========================================================================
+// PX-068: removing one worktree by the rule the cleanup applies
+// ===========================================================================
+
+impl Fx {
+    async fn isolated_task(&mut self, i: usize, n: u8, cancel: bool) -> Id {
+        let root = self.root(i);
+        let ack = self
+            .c
+            .command(envelope_fenced(
+                id16(n),
+                "CreateTask",
+                CreateTask {
+                    session_id: Some(self.session.clone()),
+                    goal_text: "isolated".into(),
+                    execution_profile: "local_trusted".into(),
+                    origin: "cli".into(),
+                    workspace_root: root,
+                    isolation: TaskIsolation::Worktree as i32,
+                    ..Default::default()
+                }
+                .encode_to_vec(),
+                self.g,
+            ))
+            .await
+            .unwrap();
+        let t = Client::result::<TaskCreated>(&ack)
+            .unwrap()
+            .task_id
+            .unwrap();
+        if cancel {
+            let _: (modbit_protocol::v1::TaskCancelRequested, bool) = self
+                .call(
+                    rand_id(),
+                    "CancelTask",
+                    CancelTask {
+                        task_id: Some(t.clone()),
+                    }
+                    .encode_to_vec(),
+                    true,
+                )
+                .await
+                .unwrap();
+        }
+        t
+    }
+
+    async fn worktrees(&mut self) -> WorktreeList {
+        let (r, _) = self
+            .call(
+                rand_id(),
+                "ListWorktrees",
+                ListWorktrees::default().encode_to_vec(),
+                false,
+            )
+            .await
+            .unwrap();
+        r
+    }
+
+    async fn remove_worktree(
+        &mut self,
+        id: &str,
+        dry_run: bool,
+        fenced: bool,
+    ) -> Result<WorktreeRemoval, Reject> {
+        let msg = RemoveWorktree {
+            session_id: Some(self.session.clone()),
+            worktree_id: id.into(),
+            dry_run,
+        };
+        self.call(rand_id(), "RemoveWorktree", msg.encode_to_vec(), fenced)
+            .await
+            .map(|(r, _)| r)
+    }
+}
+
+#[tokio::test]
+async fn qual_px_068_remove_one_worktree_only_when_the_cleanup_rule_allows_it() {
+    let mut fx = Fx::new(1, &[("MODBIT_WORKTREE_PROTECT_MS", "1")]).await;
+    let clean = fx.isolated_task(0, 0x20, true).await;
+    let dirty = fx.isolated_task(0, 0x30, true).await;
+    let open = fx.isolated_task(0, 0x40, false).await;
+    let l = fx.worktrees().await;
+    assert_eq!(l.worktrees.len(), 3);
+    let of = |l: &WorktreeList, t: &Id| {
+        l.worktrees
+            .iter()
+            .find(|w| w.task_id.as_ref() == Some(t))
+            .unwrap()
+            .clone()
+    };
+    let (w_clean, w_dirty, w_open) = (of(&l, &clean), of(&l, &dirty), of(&l, &open));
+    // Edit the dirty one on disk, as the agent would have.
+    std::fs::write(Path::new(&w_dirty.path).join("work.txt"), "unfinished\n").unwrap();
+    std::thread::sleep(std::time::Duration::from_millis(20)); // past the 1 ms protection window
+
+    // Refused with the typed reason, and nothing touched.
+    let r = fx.remove_worktree(&w_open.worktree_id, false, true).await;
+    let (code, why) = r.unwrap_err();
+    assert_eq!(code, "TASK_RUNNING", "{why}");
+    assert!(why.contains("task has not ended"), "{why}");
+    assert!(Path::new(&w_open.path).exists());
+    let (code, why) = fx
+        .remove_worktree(&w_dirty.worktree_id, false, true)
+        .await
+        .unwrap_err();
+    assert_eq!(code, "WORKTREE_NEEDS_DECISION", "{why}");
+    assert!(why.contains("dirty"), "{why}");
+    assert!(why.contains("apply, merge or discard"), "{why}");
+    assert_eq!(
+        std::fs::read_to_string(Path::new(&w_dirty.path).join("work.txt")).unwrap(),
+        "unfinished\n"
+    );
+    let (code, _) = fx
+        .remove_worktree("no-such-worktree", false, true)
+        .await
+        .unwrap_err();
+    assert_eq!(code, "UNKNOWN_WORKTREE");
+
+    // A dry run says what would be lost and removes nothing, with no lease.
+    let p = fx
+        .remove_worktree(&w_clean.worktree_id, true, false)
+        .await
+        .unwrap();
+    assert!(p.dry_run && !p.removed);
+    assert!(
+        p.loses.iter().any(|l| l.contains(&w_clean.path)),
+        "{:?}",
+        p.loses
+    );
+    assert!(Path::new(&w_clean.path).exists());
+    // The real removal needs the lease ...
+    let (code, _) = fx
+        .remove_worktree(&w_clean.worktree_id, false, false)
+        .await
+        .unwrap_err();
+    assert_eq!(code, "LEASE_REQUIRED");
+    assert!(Path::new(&w_clean.path).exists());
+    // ... and then removes exactly that directory and records it.
+    let done = fx
+        .remove_worktree(&w_clean.worktree_id, false, true)
+        .await
+        .unwrap();
+    assert!(done.removed && done.offset > 0, "{done:?}");
+    assert!(!Path::new(&w_clean.path).exists());
+    assert!(Path::new(&w_dirty.path).exists() && Path::new(&w_open.path).exists());
+    let after = fx.worktrees().await;
+    assert!(
+        after
+            .worktrees
+            .iter()
+            .all(|w| w.worktree_id != w_clean.worktree_id)
+    );
+    // Asking again names it unknown: it is gone, not repeated.
+    let (code, _) = fx
+        .remove_worktree(&w_clean.worktree_id, false, true)
+        .await
+        .unwrap_err();
+    assert_eq!(code, "UNKNOWN_WORKTREE");
     fx.core.kill();
 }

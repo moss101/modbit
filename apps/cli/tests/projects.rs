@@ -12,7 +12,11 @@ fn core_bin() -> PathBuf {
     } else {
         "modbit-core"
     });
-    assert!(core.exists(), "{} (build modbit-core first)", core.display());
+    assert!(
+        core.exists(),
+        "{} (build modbit-core first)",
+        core.display()
+    );
     core
 }
 
@@ -56,7 +60,15 @@ fn qual_px_063_the_project_verbs_drive_the_core_and_show_its_typed_refusals() {
     let (ok, out, all) = cli(
         &data_dir,
         &core,
-        &["task", "create", "--session", &sid, "--workspace", &ws, "a goal"],
+        &[
+            "task",
+            "create",
+            "--session",
+            &sid,
+            "--workspace",
+            &ws,
+            "a goal",
+        ],
     );
     assert!(ok, "{all}");
     let tid = out.trim().strip_prefix("task ").unwrap().to_owned();
@@ -65,7 +77,21 @@ fn qual_px_063_the_project_verbs_drive_the_core_and_show_its_typed_refusals() {
     let (ok, out, all) = cli(
         &data_dir,
         &core,
-        &["project", "create", "--session", &sid, "--workspace", &ws, "--color", "warn", "--icon", "rocket", "--json", "Release", "2"],
+        &[
+            "project",
+            "create",
+            "--session",
+            &sid,
+            "--workspace",
+            &ws,
+            "--color",
+            "warn",
+            "--icon",
+            "rocket",
+            "--json",
+            "Release",
+            "2",
+        ],
     );
     assert!(ok, "{all}");
     let created = json(&out);
@@ -81,7 +107,16 @@ fn qual_px_063_the_project_verbs_drive_the_core_and_show_its_typed_refusals() {
     let (ok, _, all) = cli(
         &data_dir,
         &core,
-        &["project", "add", "--session", &sid, "--project", &pid, "--task", &tid],
+        &[
+            "project",
+            "add",
+            "--session",
+            &sid,
+            "--project",
+            &pid,
+            "--task",
+            &tid,
+        ],
     );
     assert!(!ok, "{all}");
     assert!(all.contains("TASK_IS_DRAFT"), "{all}");
@@ -89,12 +124,26 @@ fn qual_px_063_the_project_verbs_drive_the_core_and_show_its_typed_refusals() {
     assert_eq!(json(&out)["members"].as_array().unwrap().len(), 0);
 
     // Stopped, the task is no draft and joins; the rollup counts it.
-    let (ok, _, all) = cli(&data_dir, &core, &["task", "cancel", "--session", &sid, "--task", &tid]);
+    let (ok, _, all) = cli(
+        &data_dir,
+        &core,
+        &["task", "cancel", "--session", &sid, "--task", &tid],
+    );
     assert!(ok, "{all}");
     let (ok, out, all) = cli(
         &data_dir,
         &core,
-        &["project", "add", "--session", &sid, "--project", &pid, "--task", &tid, "--json"],
+        &[
+            "project",
+            "add",
+            "--session",
+            &sid,
+            "--project",
+            &pid,
+            "--task",
+            &tid,
+            "--json",
+        ],
     );
     assert!(ok, "{all}");
     let v = json(&out);
@@ -102,22 +151,67 @@ fn qual_px_063_the_project_verbs_drive_the_core_and_show_its_typed_refusals() {
     assert_eq!(v["members"][0]["task_id"], tid.as_str());
 
     // Archive leaves the task alone and hides the project from the default list.
-    let (ok, _, all) = cli(&data_dir, &core, &["project", "archive", "--session", &sid, "--project", &pid]);
+    let (ok, _, all) = cli(
+        &data_dir,
+        &core,
+        &["project", "archive", "--session", &sid, "--project", &pid],
+    );
     assert!(ok, "{all}");
     let (_, out, _) = cli(&data_dir, &core, &["project", "list", "--json"]);
     assert_eq!(json(&out)["projects"].as_array().unwrap().len(), 0);
-    let (_, out, _) = cli(&data_dir, &core, &["project", "list", "--archived", "--json"]);
+    let (_, out, _) = cli(
+        &data_dir,
+        &core,
+        &["project", "list", "--archived", "--json"],
+    );
     let listed = json(&out);
     assert_eq!(listed["projects"][0]["archived"], true);
-    assert_eq!(listed["projects"][0]["members"].as_array().unwrap().len(), 1);
-    let (ok, _, all) = cli(&data_dir, &core, &["project", "rename", "--session", &sid, "--project", &pid, "Nope"]);
+    assert_eq!(
+        listed["projects"][0]["members"].as_array().unwrap().len(),
+        1
+    );
+    let (ok, _, all) = cli(
+        &data_dir,
+        &core,
+        &[
+            "project",
+            "rename",
+            "--session",
+            &sid,
+            "--project",
+            &pid,
+            "Nope",
+        ],
+    );
     assert!(!ok && all.contains("PROJECT_ARCHIVED"), "{all}");
-    let (ok, _, all) = cli(&data_dir, &core, &["project", "archive", "--session", &sid, "--project", &pid, "--undo"]);
+    let (ok, _, all) = cli(
+        &data_dir,
+        &core,
+        &[
+            "project",
+            "archive",
+            "--session",
+            &sid,
+            "--project",
+            &pid,
+            "--undo",
+        ],
+    );
     assert!(ok, "{all}");
     let (ok, out, all) = cli(
         &data_dir,
         &core,
-        &["project", "remove", "--session", &sid, "--project", &pid, "--task", &tid, "--json"],
+        &[
+            "project",
+            "remove",
+            "--session",
+            &sid,
+            "--project",
+            &pid,
+            "--task",
+            &tid,
+            "--json",
+        ],
     );
     assert!(ok, "{all}");
     assert_eq!(json(&out)["rollup"]["members"], 0);

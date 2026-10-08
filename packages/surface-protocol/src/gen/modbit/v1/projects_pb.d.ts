@@ -592,3 +592,111 @@ export declare type ProjectChanged = Message<"modbit.v1.ProjectChanged"> & {
  */
 export declare const ProjectChangedSchema: GenMessage<ProjectChanged>;
 
+/**
+ * ---- Removing one worktree (PX-068; docs/65 AFW-J07) ----
+ *
+ * The cleanup removes worktrees by retention caps. A person who looks at the
+ * worktree list and decides one is not needed asks for that one by id; the
+ * Core applies the same eligibility rule the cleanup does, under the same
+ * single lease, and a worktree that is not eligible is refused with a typed
+ * reason and left alone: TASK_RUNNING (its task has not ended),
+ * WORKTREE_PROTECTED (younger than the protection window),
+ * WORKTREE_NEEDS_DECISION (dirty or unapplied: apply, merge or discard it
+ * first), WORKTREE_NOT_REMOVABLE (any other reason, named), UNKNOWN_WORKTREE,
+ * CLEANUP_LEASE_HELD.
+ *
+ * @generated from message modbit.v1.RemoveWorktree
+ */
+export declare type RemoveWorktree = Message<"modbit.v1.RemoveWorktree"> & {
+  /**
+   * the acting session; its lease fences the command
+   *
+   * @generated from field: modbit.v1.Id session_id = 1;
+   */
+  sessionId?: Id | undefined;
+
+  /**
+   * @generated from field: string worktree_id = 2;
+   */
+  worktreeId: string;
+
+  /**
+   * decide and say what would be lost; remove nothing
+   *
+   * @generated from field: bool dry_run = 3;
+   */
+  dryRun: boolean;
+};
+
+/**
+ * Describes the message modbit.v1.RemoveWorktree.
+ * Use `create(RemoveWorktreeSchema)` to create a new message.
+ */
+export declare const RemoveWorktreeSchema: GenMessage<RemoveWorktree>;
+
+/**
+ * @generated from message modbit.v1.WorktreeRemoval
+ */
+export declare type WorktreeRemoval = Message<"modbit.v1.WorktreeRemoval"> & {
+  /**
+   * @generated from field: string worktree_id = 1;
+   */
+  worktreeId: string;
+
+  /**
+   * false for a dry run
+   *
+   * @generated from field: bool removed = 2;
+   */
+  removed: boolean;
+
+  /**
+   * @generated from field: bool dry_run = 3;
+   */
+  dryRun: boolean;
+
+  /**
+   * @generated from field: string branch = 4;
+   */
+  branch: string;
+
+  /**
+   * @generated from field: string path = 5;
+   */
+  path: string;
+
+  /**
+   * bytes the removal frees (or freed)
+   *
+   * @generated from field: uint64 bytes = 6;
+   */
+  bytes: bigint;
+
+  /**
+   * why it is removable, in the Core's words
+   *
+   * @generated from field: string reason = 7;
+   */
+  reason: string;
+
+  /**
+   * what the removal takes with it, one line each
+   *
+   * @generated from field: repeated string loses = 8;
+   */
+  loses: string[];
+
+  /**
+   * where the removal was recorded; 0 for a dry run or an orphan
+   *
+   * @generated from field: uint64 offset = 9;
+   */
+  offset: bigint;
+};
+
+/**
+ * Describes the message modbit.v1.WorktreeRemoval.
+ * Use `create(WorktreeRemovalSchema)` to create a new message.
+ */
+export declare const WorktreeRemovalSchema: GenMessage<WorktreeRemoval>;
+

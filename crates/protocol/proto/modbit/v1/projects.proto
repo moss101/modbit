@@ -156,3 +156,32 @@ message ProjectChanged {
   ProjectView project = 1;
   uint64 offset = 2;
 }
+
+// ---- Removing one worktree (PX-068; docs/65 AFW-J07) ----
+//
+// The cleanup removes worktrees by retention caps. A person who looks at the
+// worktree list and decides one is not needed asks for that one by id; the
+// Core applies the same eligibility rule the cleanup does, under the same
+// single lease, and a worktree that is not eligible is refused with a typed
+// reason and left alone: TASK_RUNNING (its task has not ended),
+// WORKTREE_PROTECTED (younger than the protection window),
+// WORKTREE_NEEDS_DECISION (dirty or unapplied: apply, merge or discard it
+// first), WORKTREE_NOT_REMOVABLE (any other reason, named), UNKNOWN_WORKTREE,
+// CLEANUP_LEASE_HELD.
+message RemoveWorktree {
+  Id session_id = 1;              // the acting session; its lease fences the command
+  string worktree_id = 2;
+  bool dry_run = 3;               // decide and say what would be lost; remove nothing
+}
+
+message WorktreeRemoval {
+  string worktree_id = 1;
+  bool removed = 2;               // false for a dry run
+  bool dry_run = 3;
+  string branch = 4;
+  string path = 5;
+  uint64 bytes = 6;               // bytes the removal frees (or freed)
+  string reason = 7;              // why it is removable, in the Core's words
+  repeated string loses = 8;      // what the removal takes with it, one line each
+  uint64 offset = 9;              // where the removal was recorded; 0 for a dry run or an orphan
+}

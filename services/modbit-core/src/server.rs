@@ -806,6 +806,7 @@ async fn serve_connection(core: Arc<Core>, mut stream: BoxedStream) -> Result<()
                     "RemoveProjectMember",
                     "ListProjects",
                     "GetProject",
+                    "RemoveWorktree",
                 ]
                 .map(String::from)
                 .to_vec(),
@@ -1435,7 +1436,7 @@ fn required_client_capability(env: &CommandEnvelope) -> Option<&'static str> {
         // decision); applying a task's result to the checkout, undoing that
         // and discarding a result are the person's review decisions.
         "ListWorktrees" => "events.subscribe",
-        "RunWorktreeCleanup" => "session.control",
+        "RunWorktreeCleanup" | "RemoveWorktree" => "session.control",
         "ApplyWorktree" | "UndoApply" | "DiscardWorktree" => "review.decide",
         // Removing recovery data under a policy is a session-level decision.
         "RunCheckpointGc" => "session.control",
@@ -4169,6 +4170,29 @@ pub(crate) async fn handle_command(core: &Arc<Core>, env: CommandEnvelope) -> Co
             };
             match crate::worktree_cleanup::command(core, &p, &actor).await {
                 Ok(report) => accept(cid, false, report.encode_to_vec()),
+                Err((code, msg)) => reject(cid, &code, msg),
+            }
+        }
+        "RemoveWorktree" => {
+            let Ok(p) = wire::RemoveWorktree::decode(env.payload.as_slice()) else {
+                return reject(cid, "BAD_PAYLOAD", "RemoveWorktree");
+            };
+            let Some(session_id) = p
+                .session_id
+                .as_ref()
+                .and_then(id16)
+                .map(SessionId::from_bytes)
+            else {
+                return reject(cid, "BAD_PAYLOAD", "session_id required");
+            };
+            // A dry run removes nothing and needs no lease.
+            if !p.dry_run
+                && let Err(ack) = require_lease(core, &cid, &env, &session_id).await
+            {
+                return ack;
+            }
+            match crate::worktree_cleanup::remove_command(core, &p, &actor).await {
+                Ok(r) => accept(cid, false, r.encode_to_vec()),
                 Err((code, msg)) => reject(cid, &code, msg),
             }
         }

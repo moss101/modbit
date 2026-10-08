@@ -28,6 +28,7 @@ use std::sync::atomic::{AtomicI64, Ordering};
 
 use modbit_domain::Timestamp;
 use modbit_domain::event::Actor;
+use modbit_domain::state::StateMachine;
 use modbit_git::Repo;
 use modbit_protocol::v1 as wire;
 use serde::{Deserialize, Serialize};
@@ -653,4 +654,144 @@ pub(crate) async fn command(
             ),
         )),
     }
+}
+
+/// `RemoveWorktree` (PX-068): remove the one worktree a person chose, by the
+/// rule the cleanup applies and under the same single lease. The Core decides
+/// again right now whether it is removable; a worktree that is not is refused
+/// with a typed reason and left exactly as it is. With `dry_run` nothing is
+/// removed and the answer says what a removal would take with it.
+pub(crate) async fn remove_command(
+    core: &Arc<Core>,
+    p: &wire::RemoveWorktree,
+    actor: &Actor,
+) -> Result<wire::WorktreeRemoval, (String, String)> {
+    let refuse = |code: &str, msg: String| (code.to_owned(), msg);
+    let id = p.worktree_id.trim();
+    if id.is_empty() {
+        return Err(refuse("BAD_PAYLOAD", "worktree_id required".into()));
+    }
+    let owner = format!("core-{}:{actor:?}", core.recovery().boot_generation);
+    let _guard = core
+        .worktrees
+        .try_lease(&owner, "remove one worktree")
+        .map_err(|h| {
+            refuse(
+                "CLEANUP_LEASE_HELD",
+                format!(
+                    "a worktree cleanup is already running: held by {} for `{}`",
+                    h.owner, h.reason
+                ),
+            )
+        })?;
+    let policy = Policy::resolve(None);
+    let entries = worktrees::entries(core, &policy, now_ms()).await;
+    let id_of = |e: &Entry| {
+        e.rec
+            .as_ref()
+            .map_or_else(|| worktrees::plain_path(&e.path), |r| r.worktree_id.clone())
+    };
+    let Some(e) = entries.iter().find(|e| id_of(e) == id) else {
+        return Err(refuse(
+            "UNKNOWN_WORKTREE",
+            format!("`{id}` is not a worktree this Core manages"),
+        ));
+    };
+    let el = &e.eligibility;
+    let branch = e
+        .rec
+        .as_ref()
+        .map_or_else(String::new, |r| r.branch.clone());
+    let path = worktrees::plain_path(&e.path);
+    let gone = !e.info.exists;
+    if !el.removable && !gone {
+        let code = if e.task.as_ref().is_some_and(|t| !t.state.is_terminal()) || e.live {
+            "TASK_RUNNING"
+        } else if el.protected {
+            "WORKTREE_PROTECTED"
+        } else if el.needs_decision {
+            "WORKTREE_NEEDS_DECISION"
+        } else {
+            "WORKTREE_NOT_REMOVABLE"
+        };
+        let hint = if el.needs_decision {
+            "; apply, merge or discard its result first"
+        } else {
+            ""
+        };
+        return Err(refuse(code, format!("{}{hint}", el.reason)));
+    }
+    let mut loses = Vec::new();
+    if gone {
+        loses.push(
+            "nothing on disk: its directory is already gone; the record is closed".to_owned(),
+        );
+    } else {
+        loses.push(format!(
+            "the worktree directory {path} ({} bytes)",
+            e.info.bytes
+        ));
+        if branch.starts_with("modbit/") {
+            loses.push(format!(
+                "the branch {branch}, which belonged to the worktree"
+            ));
+        }
+        if let Some(d) = e.rec.as_ref().and_then(|r| r.disposition.as_ref()) {
+            loses.push(format!(
+                "nothing of the result: it was {} and has not changed since",
+                d.kind.to_lowercase()
+            ));
+        } else {
+            loses.push(
+                "nothing of the result: the worktree holds nothing beyond its base".to_owned(),
+            );
+        }
+    }
+    let mut out = wire::WorktreeRemoval {
+        worktree_id: id.to_owned(),
+        removed: false,
+        dry_run: p.dry_run,
+        branch,
+        path,
+        bytes: if gone { 0 } else { e.info.bytes },
+        reason: el.reason.clone(),
+        loses,
+        offset: 0,
+    };
+    if p.dry_run {
+        return Ok(out);
+    }
+    let freed = if gone {
+        0
+    } else {
+        let data_dir = core.data_dir.clone();
+        let entry = e.clone();
+        tokio::task::spawn_blocking(move || remove_one(&data_dir, &entry))
+            .await
+            .unwrap_or_else(|er| Err(er.to_string()))
+            .map_err(|why| refuse("WORKTREE_REMOVE_FAILED", format!("{id}: {why}")))?
+    };
+    out.removed = true;
+    out.bytes = freed;
+    if let (Some(r), Some(task)) = (&e.rec, &e.task) {
+        let mut store = core.store.lock().await;
+        let offset = worktrees::append_events(
+            &mut store,
+            core.tenant_id,
+            task.session_id,
+            task.task_id,
+            worktrees::aggregate_id(&r.worktree_id),
+            vec![worktrees::removed_event(
+                &r.worktree_id,
+                &format!("removed by request: {}", el.reason),
+                freed,
+                &owner,
+                &Actor::Core(format!("worktree-remove:{owner}")),
+            )],
+        )
+        .map_err(|why| refuse("STORE", why))?;
+        core.last_offset.send_replace(offset);
+        out.offset = offset;
+    }
+    Ok(out)
 }
