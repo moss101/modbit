@@ -15,6 +15,7 @@ import "modbit/v1/negotiation.proto";
 import "modbit/v1/context_rules.proto";
 import "modbit/v1/terminal.proto";
 import "modbit/v1/tasking.proto";
+import "modbit/v1/run_control.proto";
 
 // Authentication sent with Hello: the boot-scoped secret the client obtained
 // from the Core it spawned (docs/30). Never logged, never persisted.
@@ -559,6 +560,10 @@ message ContextInspectorView {
   // Engineering memory the prompt envelope injected on the last compiled turn
   // (PX-113): the ids and provenance of every entry, what was left out and why.
   MemoryInjectionView memory = 200;
+  // Fields 340-359 are the in-run control and context accounting block
+  // (REQ-PX-050, 057, 059); the messages are in run_control.proto.
+  // The Core's breakdown of the last compiled request by category.
+  ContextAccountingView accounting = 340;
 }
 
 message CompactionRequestView {

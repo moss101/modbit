@@ -17,6 +17,7 @@ import type { CommandEnvelope, EventEnvelope } from "./envelope_pb.js";
 import type { TerminalFrame } from "./terminal_pb.js";
 import type { CompactionSummaryView, CompactionThresholdView, InstructionLayerView, PreTurnPackView } from "./context_rules_pb.js";
 import type { MemoryEventView, MemoryInjectionView } from "./context_knowledge_pb.js";
+import type { ContextAccountingView } from "./run_control_pb.js";
 import type { CaptureCost } from "./checkpoints_pb.js";
 
 /**
@@ -2257,6 +2258,15 @@ export declare type ContextInspectorView = Message<"modbit.v1.ContextInspectorVi
    * @generated from field: modbit.v1.MemoryInjectionView memory = 200;
    */
   memory?: MemoryInjectionView | undefined;
+
+  /**
+   * Fields 340-359 are the in-run control and context accounting block
+   * (REQ-PX-050, 057, 059); the messages are in run_control.proto.
+   * The Core's breakdown of the last compiled request by category.
+   *
+   * @generated from field: modbit.v1.ContextAccountingView accounting = 340;
+   */
+  accounting?: ContextAccountingView | undefined;
 };
 
 /**

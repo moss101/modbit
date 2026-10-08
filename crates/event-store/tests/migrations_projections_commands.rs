@@ -298,6 +298,7 @@ fn projections_follow_the_reducers_in_the_append_transaction_and_after_rebuild()
                         text: "ok".into(),
                         provenance: String::new(),
                         untrusted: false,
+                        input_ids: vec![],
                     },
                 ),
                 typed("TaskCompleted", &TaskEvent::TaskCompleted),

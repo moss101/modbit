@@ -103,6 +103,12 @@ struct Running {
     /// A park with no request is the parent's (`agent.park`); one with a
     /// request ends the run `Waiting(Paused)` and records `TaskPaused`.
     pause: std::sync::Mutex<Option<PauseRequest>>,
+    /// PX-050: the cancellation of the model round in flight — a child of
+    /// `cancel`, so the task's own cancel reaches it too. A typed interrupt
+    /// (`Runtime::interrupt`) fires this one and nothing else: the model
+    /// stream and the tool call of the round stop, the run does not end. The
+    /// loop installs a fresh one at the top of each round.
+    round: std::sync::Mutex<CancellationToken>,
 }
 
 /// A person's request to park a run at its next turn boundary (REQ-PX-101).
@@ -453,6 +459,7 @@ impl Runtime {
                             tasks.insert(
                                 task.task_id,
                                 Running {
+                                    round: std::sync::Mutex::new(cancel.child_token()),
                                     cancel: cancel.clone(),
                                     park: park.clone(),
                                     pause: Default::default(),
@@ -529,6 +536,7 @@ impl Runtime {
         tasks.insert(
             task.task_id,
             Running {
+                round: std::sync::Mutex::new(cancel.child_token()),
                 cancel: cancel.clone(),
                 park: park.clone(),
                 pause: Default::default(),
@@ -586,6 +594,29 @@ impl Runtime {
         match self.tasks.lock().await.get(task_id) {
             Some(r) => {
                 r.cancel.cancel();
+                true
+            }
+            None => false,
+        }
+    }
+
+    /// PX-050: a fresh cancellation for the round the loop is about to run,
+    /// installed where an interrupt will find it. `None` when no loop is alive.
+    pub(crate) async fn new_round(&self, task_id: &TaskId) -> Option<CancellationToken> {
+        let tasks = self.tasks.lock().await;
+        let r = tasks.get(task_id)?;
+        let fresh = r.cancel.child_token();
+        *r.round.lock().unwrap_or_else(|e| e.into_inner()) = fresh.clone();
+        Some(fresh)
+    }
+
+    /// PX-050: stop what the round in flight is doing — the model stream and
+    /// the tool call — without ending the run. The loop notices at its next
+    /// safe point and records what it cut. `false` when no loop is alive.
+    pub(crate) async fn interrupt(&self, task_id: &TaskId) -> bool {
+        match self.tasks.lock().await.get(task_id) {
+            Some(r) => {
+                r.round.lock().unwrap_or_else(|e| e.into_inner()).cancel();
                 true
             }
             None => false,
@@ -1660,14 +1691,16 @@ pub(crate) async fn rebuild(
     let mut transcript: Vec<Message> = Vec::new();
     let mut last_offset = 0;
     let mut pending_steps: HashMap<[u8; 16], StepType> = HashMap::new();
-    let mut queued: Vec<QueuedInput> = Vec::new();
+    // PX-050: the task's input queue, folded as the events go by, so a
+    // steering input that was applied is in the rebuilt transcript where the
+    // model last saw it.
+    let mut queue = modbit_core_runtime::input_queue::InputQueue::new();
     // docs/28 §3: the questions asked while a scope expansion waited, until
     // the user answers one.
     let mut scope_questions: std::collections::HashSet<String> = std::collections::HashSet::new();
     let mut questions: std::collections::HashMap<String, String> = std::collections::HashMap::new();
     // docs/64 DI-9: the questions that named protected paths, until answered.
     let mut protected_questions: HashMap<String, Vec<String>> = HashMap::new();
-    let mut applied = 0usize;
     // REQ-PX-116: what the task has spent, from its own log — priced at
     // each call's own binding in the active registry — and the wall clock
     // its runs have used (first to last event of each run).
@@ -1859,7 +1892,50 @@ pub(crate) async fn rebuild(
             }
             "TaskSteered" => {
                 state.steers += 1;
-                applied += 1;
+                // The text the loop put in front of the model at this point.
+                // A record from before inputs were named by id consumed the
+                // oldest input and was a steer.
+                let label = payload["input_ids"]
+                    .as_array()
+                    .and_then(|a| a.first())
+                    .and_then(|id| id.as_str())
+                    .and_then(|id| queue.get(id))
+                    .map_or("STEER", |i| {
+                        if i.sent_now {
+                            "SEND_NOW"
+                        } else {
+                            match i.mode {
+                                InputMode::Steer => "STEER",
+                                InputMode::Collect => "COLLECT",
+                                InputMode::FollowUp => "FOLLOW_UP",
+                            }
+                        }
+                    });
+                transcript.push(Message::text(
+                    Role::User,
+                    QueuedInput {
+                        text: payload["text"].as_str().unwrap_or_default().to_owned(),
+                        provenance: payload["provenance"]
+                            .as_str()
+                            .unwrap_or_default()
+                            .to_owned(),
+                        untrusted: payload["untrusted"].as_bool().unwrap_or(false),
+                    }
+                    .line(label),
+                ));
+                if let Ok(t) = serde_json::from_value::<TaskEvent>(payload.clone()) {
+                    queue.apply(ev.offset, &t);
+                }
+            }
+            "TaskInputQueued"
+            | "TaskInputEdited"
+            | "TaskInputRemoved"
+            | "TaskInputReordered"
+            | "TaskInterruptRequested"
+            | "TaskInterruptApplied" => {
+                if let Ok(t) = serde_json::from_value::<TaskEvent>(payload.clone()) {
+                    queue.apply(ev.offset, &t);
+                }
             }
             // REQ-PX-043: the notice the model was shown of a background end.
             "BackgroundWakeDelivered" => {
@@ -1910,13 +1986,6 @@ pub(crate) async fn rebuild(
                     if !justified && !state.open_flags.contains(&f) {
                         state.open_flags.push(f);
                     }
-                }
-            }
-            "TaskInputQueued" => {
-                let mode = serde_json::from_value::<InputMode>(payload["mode"].clone())
-                    .unwrap_or(InputMode::FollowUp);
-                if let Some(t) = payload["text"].as_str() {
-                    queued.push(QueuedInput::of(t, mode, &payload));
                 }
             }
             "UserQuestionAsked" => {
@@ -2135,8 +2204,8 @@ pub(crate) async fn rebuild(
     state.cost_minor = spent.cost_minor;
     state.cost_unmetered_calls = spent.unmetered_calls;
     state.wall_ms = spent.wall_ms;
-    let pending = queued.into_iter().skip(applied).collect();
-    (transcript, state, last_offset, pending)
+    // The queue is the log's, read at each boundary; nothing is carried here.
+    (transcript, state, last_offset, Vec::new())
 }
 
 /// The calls of the transcript's last assistant message that have no result
@@ -2741,34 +2810,27 @@ fn projection(
     assembled
 }
 
-/// Pending steering inputs after `after_offset` (STEER / FOLLOW_UP / COLLECT).
 /// One queued input with where it came from (PX-008: a forge review
 /// comment is untrusted data, fenced as such in the transcript).
 #[derive(Clone, Debug)]
 pub(crate) struct QueuedInput {
     text: String,
-    mode: InputMode,
     provenance: String,
     untrusted: bool,
 }
 
 impl QueuedInput {
-    fn of(text: &str, mode: InputMode, payload: &serde_json::Value) -> Self {
+    fn from_item(item: &modbit_core_runtime::input_queue::QueueItem) -> Self {
         Self {
-            text: text.to_owned(),
-            mode,
-            provenance: payload["provenance"]
-                .as_str()
-                .unwrap_or_default()
-                .to_owned(),
-            untrusted: payload["untrusted"].as_bool().unwrap_or(false),
+            text: item.text.clone(),
+            provenance: item.provenance.clone(),
+            untrusted: item.untrusted,
         }
     }
 
-    fn person(text: String, mode: InputMode) -> Self {
+    fn person(text: String) -> Self {
         Self {
             text,
-            mode,
             provenance: String::new(),
             untrusted: false,
         }
@@ -2792,25 +2854,6 @@ impl QueuedInput {
             format!("[{label}] {}", self.text)
         }
     }
-}
-
-async fn pending_inputs(core: &Core, task: &Task, after_offset: u64) -> Vec<QueuedInput> {
-    let store = core.store.lock().await;
-    let events = store
-        .read_session(&task.session_id, after_offset, usize::MAX)
-        .unwrap_or_default();
-    let mut out = Vec::new();
-    for ev in events.iter().filter(|e| {
-        e.envelope.task_id == Some(task.task_id) && e.envelope.event_type == "TaskInputQueued"
-    }) {
-        let p = store.payload(&ev.envelope).unwrap_or_default();
-        let mode =
-            serde_json::from_value::<InputMode>(p["mode"].clone()).unwrap_or(InputMode::FollowUp);
-        if let Some(t) = p["text"].as_str() {
-            out.push(QueuedInput::of(t, mode, &p));
-        }
-    }
-    out
 }
 
 /// PX-114: the task's projection mode and schema-bytes budget as a person
@@ -2845,6 +2888,89 @@ async fn projection_config_after(
     (last, mode, bytes)
 }
 
+/// What a round that the person interrupted left behind (PX-050): whether a
+/// model stream was cut, the calls the broker cancelled, and the calls whose
+/// outcome is unknown. Kept until the next boundary records it.
+#[derive(Default)]
+struct RoundCut {
+    stream_aborted: bool,
+    cancelled_calls: Vec<String>,
+    unknown_calls: Vec<String>,
+}
+
+/// Record the interrupts the log holds that the loop has not yet applied
+/// (`TaskInterruptApplied`), with what the interrupted round cut. Returns the
+/// reason the run holds instead of starting a turn when an effect's outcome is
+/// unknown: the new turn does not begin until it is reconciled.
+async fn record_interrupts(
+    core: &Core,
+    task: &Task,
+    lt: Lineage,
+    actor: &Actor,
+    recovered: bool,
+    cut: &mut RoundCut,
+) -> Option<String> {
+    let mut store = core.store.lock().await;
+    let queue = crate::run_control::queue_of(&store, task.task_id).ok()?;
+    let unapplied = queue.unapplied_interrupts();
+    if unapplied.is_empty() {
+        *cut = RoundCut::default();
+        return None;
+    }
+    let held = !recovered && !cut.unknown_calls.is_empty();
+    let outcome = if recovered {
+        "RECOVERED"
+    } else if held {
+        "UNKNOWN_OUTCOME"
+    } else if cut.stream_aborted {
+        "STREAM_ABORTED"
+    } else if !cut.cancelled_calls.is_empty() {
+        "TOOL_CANCELLED"
+    } else {
+        "IDLE"
+    };
+    let events: Vec<NewEvent> = unapplied
+        .iter()
+        .map(|r| {
+            let next = if held {
+                "HOLD"
+            } else if r.kind == "STOP" && !recovered {
+                "PAUSE"
+            } else {
+                "DISPATCH"
+            };
+            typed(
+                "TaskInterruptApplied",
+                &TaskEvent::TaskInterruptApplied {
+                    interrupt_id: r.interrupt_id.clone(),
+                    outcome: outcome.into(),
+                    stream_aborted: cut.stream_aborted,
+                    cancelled_calls: cut.cancelled_calls.clone(),
+                    unknown_outcome_calls: cut.unknown_calls.clone(),
+                    next: next.into(),
+                },
+                actor.clone(),
+            )
+        })
+        .collect();
+    let _ = append(
+        &mut store,
+        core,
+        lt,
+        AggregateType::Task,
+        *task.task_id.as_bytes(),
+        events,
+    );
+    let reason = held.then(|| {
+        format!(
+            "the person interrupted the turn and the outcome of {} is unknown; reconcile it (ReconcileToolCall) and resume the task — the input the person sent is kept and starts the next turn then",
+            cut.unknown_calls.join(", ")
+        )
+    });
+    *cut = RoundCut::default();
+    reason
+}
+
 #[allow(clippy::too_many_arguments)]
 async fn run_loop(
     core: Arc<Core>,
@@ -2860,8 +2986,7 @@ async fn run_loop(
     // generation the run executes under (docs/13 "Fencing and epochs"; M4.4).
     let lt = Lineage::run(core.tenant_id, task.session_id, task.task_id, run_id)
         .fenced(cfg.lease_generation);
-    let (mut transcript, mut state, mut seen_offset, mut carried) =
-        rebuild(&core, &task, cfg.budgets).await;
+    let (mut transcript, mut state, mut seen_offset, _) = rebuild(&core, &task, cfg.budgets).await;
     // REQ-EPR-008: the protected surfaces the run's write gate honours come
     // from the assurance policy this task is judged under.
     state.protected_paths = Some({
@@ -3058,7 +3183,42 @@ async fn run_loop(
     // the user last set.
     let _posture = crate::tasking::guard(&core, task.task_id);
     let mut edge = crate::tasking::Edge::new(&task);
+    // PX-050: what the round that was interrupted cut, until the boundary
+    // records it; and whether this is the loop's first boundary (an interrupt
+    // a dead Core left unapplied is recorded as recovered, not acted on).
+    let mut cut = RoundCut::default();
+    let mut first_boundary = true;
+    // PX-059: what the provider counted for the last request, so the model is
+    // told how much of its window it has used where the harness already
+    // reports budgets.
+    let mut last_context_tokens: u64 = 0;
     let end = 'outer: loop {
+        // PX-050 (docs/65 AFW-E06, AFW-E07): the interrupts asked for since the
+        // last boundary are recorded with what they stopped — before the next
+        // turn can start, and before anything else at this boundary reads the
+        // queue. An effect whose outcome is unknown holds the new turn back.
+        if let Some(reason) = record_interrupts(
+            &core,
+            &task,
+            lt,
+            &actor,
+            std::mem::replace(&mut first_boundary, false),
+            &mut cut,
+        )
+        .await
+        {
+            break LoopEnd::NeedsAttention {
+                code: "INTERRUPT_UNRECONCILED",
+                reason,
+            };
+        }
+        // The round's own cancellation: a typed interrupt fires this and not
+        // the run's.
+        let round_int = core
+            .runtime
+            .new_round(&task.task_id)
+            .await
+            .unwrap_or_else(|| cancel.child_token());
         if cancel.is_cancelled() {
             break LoopEnd::Cancelled;
         }
@@ -3373,71 +3533,108 @@ async fn run_loop(
         if !state.exec_only {
             projected_names.extend(deferred_visible.iter().cloned());
         }
-        // Steering at a safe boundary (docs/14 contract 9): inputs queued
-        // before this boundary (including before the loop started).
-        let mut inputs = std::mem::take(&mut carried);
-        inputs.extend(pending_inputs(&core, &task, seen_offset).await);
-        // SteeringPolicy (REQ-EV-0191): STEER = interrupt-and-replace (applied
-        // in order, and an in-flight model stream is cut when one arrives);
-        // COLLECT = coalesced into one message after the current turn;
-        // FOLLOW_UP = ordered separate turns (one per boundary, the rest carried).
-        let mut apply: Vec<(QueuedInput, &str)> = Vec::new();
-        let mut collects: Vec<String> = Vec::new();
-        let mut follow_ups: Vec<QueuedInput> = Vec::new();
-        for input in inputs {
-            match input.mode {
-                InputMode::Steer => apply.push((input, "STEER")),
-                // An untrusted input is never merged into the person's
-                // collected text: it keeps its own fence.
-                InputMode::Collect if input.untrusted => apply.push((input, "COLLECT")),
-                InputMode::Collect => collects.push(input.text),
-                InputMode::FollowUp => follow_ups.push(input),
+        // Steering at a safe boundary (docs/14 contract 9; PX-050): the queue as
+        // the log says it, with every edit, deletion and reorder in it, and what
+        // the person sent now first. SteeringPolicy (REQ-EV-0191): STEER =
+        // interrupt-and-replace (applied in order, and an in-flight model stream
+        // is cut when one arrives); COLLECT = coalesced into one message after
+        // the current turn; FOLLOW_UP = ordered separate turns (one per boundary).
+        // The queue is read and the dispatch recorded under one hold of the
+        // store, so a command can never change an input between the two.
+        let dispatch: Vec<(QueuedInput, &str)> = {
+            let mut store = core.store.lock().await;
+            let queue = crate::run_control::queue_of(&store, task.task_id).unwrap_or_default();
+            let pending = queue.pending();
+            let mut apply: Vec<(QueuedInput, &str, Vec<String>)> = Vec::new();
+            for item in pending.iter().filter(|i| i.sent_now) {
+                apply.push((
+                    QueuedInput::from_item(item),
+                    "SEND_NOW",
+                    vec![item.input_id.clone()],
+                ));
             }
-        }
-        if !collects.is_empty() {
-            apply.push((
-                QueuedInput::person(collects.join("\n"), InputMode::Collect),
-                "COLLECT",
-            ));
-        }
-        let mut follow_ups = follow_ups.into_iter();
-        if let Some(first) = follow_ups.next() {
-            apply.push((first, "FOLLOW_UP"));
-        }
-        carried.extend(follow_ups);
-        for (input, label) in apply {
+            let mut collects: Vec<&modbit_core_runtime::input_queue::QueueItem> = Vec::new();
+            let mut follow_up: Option<&modbit_core_runtime::input_queue::QueueItem> = None;
+            for item in pending.iter().filter(|i| !i.sent_now) {
+                match item.mode {
+                    InputMode::Steer => apply.push((
+                        QueuedInput::from_item(item),
+                        "STEER",
+                        vec![item.input_id.clone()],
+                    )),
+                    // An untrusted input is never merged into the person's
+                    // collected text: it keeps its own fence.
+                    InputMode::Collect if item.untrusted => apply.push((
+                        QueuedInput::from_item(item),
+                        "COLLECT",
+                        vec![item.input_id.clone()],
+                    )),
+                    InputMode::Collect => collects.push(item),
+                    InputMode::FollowUp => {
+                        follow_up.get_or_insert(item);
+                    }
+                }
+            }
+            if !collects.is_empty() {
+                apply.push((
+                    QueuedInput::person(
+                        collects
+                            .iter()
+                            .map(|i| i.text.as_str())
+                            .collect::<Vec<_>>()
+                            .join("\n"),
+                    ),
+                    "COLLECT",
+                    collects.iter().map(|i| i.input_id.clone()).collect(),
+                ));
+            }
+            // What the person sent now is the turn this boundary starts: the
+            // next follow-up is the next turn's.
+            let sent_now_applied = apply.iter().any(|(_, label, _)| *label == "SEND_NOW");
+            if let Some(item) = follow_up.filter(|_| !sent_now_applied) {
+                apply.push((
+                    QueuedInput::from_item(item),
+                    "FOLLOW_UP",
+                    vec![item.input_id.clone()],
+                ));
+            }
+            if !apply.is_empty() {
+                let events: Vec<NewEvent> = apply
+                    .iter()
+                    .map(|(input, _, ids)| {
+                        typed(
+                            "TaskSteered",
+                            &TaskEvent::TaskSteered {
+                                text: input.text.clone(),
+                                provenance: input.provenance.clone(),
+                                untrusted: input.untrusted,
+                                input_ids: ids.clone(),
+                            },
+                            actor.clone(),
+                        )
+                    })
+                    .collect();
+                let off = append(
+                    &mut store,
+                    &core,
+                    lt,
+                    AggregateType::Task,
+                    *task.task_id.as_bytes(),
+                    events,
+                )
+                .unwrap_or(0);
+                seen_offset = seen_offset.max(off);
+            }
+            apply.into_iter().map(|(i, l, _)| (i, l)).collect()
+        };
+        for (input, label) in dispatch {
             // A person's steering input replaces the goal: the pre-turn pack
             // is seeded again from it.
             if label == "STEER" && !input.untrusted {
                 preturn.goal_changed(input.text.clone());
             }
             transcript.push(Message::text(Role::User, input.line(label)));
-            let QueuedInput {
-                text,
-                provenance,
-                untrusted,
-                ..
-            } = input;
             state.steers += 1;
-            let mut store = core.store.lock().await;
-            let off = append(
-                &mut store,
-                &core,
-                lt,
-                AggregateType::Task,
-                *task.task_id.as_bytes(),
-                vec![typed(
-                    "TaskSteered",
-                    &TaskEvent::TaskSteered {
-                        text,
-                        provenance,
-                        untrusted,
-                    },
-                    actor.clone(),
-                )],
-            )
-            .unwrap_or(0);
-            seen_offset = seen_offset.max(off);
         }
         // REQ-PX-043: a background terminal of this task that ended since the
         // last boundary (it ran out, or a person stopped it) is told to the
@@ -3626,6 +3823,19 @@ async fn run_loop(
                 if !state.work_graph.nodes.is_empty() {
                     harness_json["work"] = serde_json::json!(state.work_graph.summary());
                 }
+                // PX-059: how much of the routed model's window the last
+                // request used, by the provider's own count and the window the
+                // registry or the endpoint names. Absent while either is unknown.
+                {
+                    let (window, _) = crate::inspector::window_of(&core, &cfg.endpoint, &cfg.model);
+                    if window > 0 && last_context_tokens > 0 {
+                        harness_json["context"] = serde_json::json!({
+                            "window_tokens": window,
+                            "last_request_tokens": last_context_tokens,
+                            "used_percent": last_context_tokens.saturating_mul(100) / window,
+                        });
+                    }
+                }
                 // REQ-EV-0141 / 0160: the model is told what the user is looking at.
                 // A selection is context, not authority: the write gate is unchanged.
                 let selection = crate::tools::selection_of(&core.store, task.task_id).await;
@@ -3760,6 +3970,21 @@ async fn run_loop(
                 // estimate, and the compaction trigger counts the transcript
                 // against the window less this overhead.
                 let request_estimate = estimate_request_tokens(&request);
+                // PX-059: what each part of this request is estimated to cost,
+                // kept with the compile step; the provider's own count joins
+                // it when the turn's usage arrives.
+                let accounting = crate::inspector::compile_record(
+                    &core,
+                    &crate::inspector::CompiledRequest {
+                        endpoint: &cfg.endpoint,
+                        model: &cfg.model,
+                        ordinal,
+                        text: &compiled.category_text,
+                        tools: &request.tool_projection,
+                        injected_memory: &compiled.injected_memory,
+                        request_estimate,
+                    },
+                );
                 overhead_tokens = calibration.apply(
                     request_estimate.saturating_sub(
                         transcript
@@ -3772,7 +3997,7 @@ async fn run_loop(
                     let store = core.store.lock().await;
                     store
                 .objects()
-                .put(serde_json::json!({"harness_state": harness_json, "segment_hashes": compiled.segment_hashes, "tool_projection_hash": compiled.tool_projection_hash, "injected_fragments": compiled.injected_fragments, "rejected_fragments": compiled.rejected_fragments, "memory": prompt_memory.record(), "injected_memory": compiled.injected_memory, "rejected_memory": compiled.rejected_memory}).to_string().as_bytes())
+                .put(serde_json::json!({"accounting": accounting, "harness_state": harness_json, "segment_hashes": compiled.segment_hashes, "tool_projection_hash": compiled.tool_projection_hash, "injected_fragments": compiled.injected_fragments, "rejected_fragments": compiled.rejected_fragments, "memory": prompt_memory.record(), "injected_memory": compiled.injected_memory, "rejected_memory": compiled.rejected_memory}).to_string().as_bytes())
                 .ok()
                 };
                 let ctx_step = RunStepId::new();
@@ -4023,6 +4248,9 @@ async fn run_loop(
                 // (REQ-EV-0191 interrupt-and-replace); the log offset watch wakes us.
                 let mut offset_rx = core.last_offset.subscribe();
                 let mut interrupted = false;
+                // PX-050: the person's typed interrupt, as distinct from a
+                // steering input that replaces the response.
+                let mut user_interrupt = false;
                 loop {
                     let delta_due = sink.deadline();
                     tokio::select! {
@@ -4082,14 +4310,33 @@ async fn run_loop(
                                 _ => {}
                             }
                         }
+                        () = round_int.cancelled() => {
+                            stream_cancel.cancel();
+                            // The task's own cancel reaches the round too, and
+                            // ends the stream as it always did; only the
+                            // person's interrupt is a typed one.
+                            if !cancel.is_cancelled() {
+                                interrupted = true;
+                                user_interrupt = true;
+                            }
+                            break;
+                        }
                         changed = offset_rx.changed() => {
                             if changed.is_err() {
                                 continue;
                             }
-                            let steer_pending = pending_inputs(&core, &task, seen_offset)
-                                .await
-                                .iter()
-                                .any(|i| matches!(i.mode, InputMode::Steer));
+                            let steer_pending = {
+                                let st = core.store.lock().await;
+                                crate::run_control::queue_of(&st, task.task_id)
+                                    .map(|q| {
+                                        // A send-now has its own typed
+                                        // interrupt (the round token below).
+                                        q.pending()
+                                            .iter()
+                                            .any(|i| matches!(i.mode, InputMode::Steer) && !i.sent_now)
+                                    })
+                                    .unwrap_or(false)
+                            };
                             if steer_pending {
                                 interrupted = true;
                                 stream_cancel.cancel();
@@ -4100,10 +4347,33 @@ async fn run_loop(
                 }
                 if usage_reported {
                     calibration.observe(request_estimate, usage.input_tokens);
+                    last_context_tokens = usage.input_tokens;
                 }
                 // A stream that did not finish is closed as aborted, with the
                 // reason typed; partial text is never a message (PX-041).
-                if interrupted {
+                if interrupted && user_interrupt {
+                    // PX-050: the person's interrupt is its own typed outcome.
+                    let kind = {
+                        let st = core.store.lock().await;
+                        crate::run_control::queue_of(&st, task.task_id)
+                            .ok()
+                            .and_then(|q| q.unapplied_interrupts().first().map(|r| r.kind.clone()))
+                            .unwrap_or_default()
+                    };
+                    let (code, why) = if kind == "STOP" {
+                        ("USER_STOP", "the person stopped the turn")
+                    } else {
+                        ("USER_SEND_NOW", "the person sent a queued message now")
+                    };
+                    sink.abort(
+                        &core,
+                        modbit_domain::stream::AbortSource::UserInterrupt,
+                        code,
+                        why,
+                    )
+                    .await;
+                    cut.stream_aborted = true;
+                } else if interrupted {
                     sink.abort(
                         &core,
                         modbit_domain::stream::AbortSource::UserInterrupt,
@@ -4531,6 +4801,10 @@ async fn run_loop(
             if cancel.is_cancelled() {
                 break;
             }
+            // PX-050: once the person has interrupted the turn no further
+            // call starts; each one that had not is answered as such, so the
+            // model's calls all have results and nothing ran.
+            let interrupted_now = round_int.is_cancelled();
             // No action under a superseded lease (M4.4); the dispatch journal
             // is fenced as well, so nothing runs even if this check is raced.
             if let Some((current, owner)) = lease_lost(&core, &task, cfg.lease_generation).await {
@@ -4584,6 +4858,20 @@ async fn run_loop(
                 None
             };
             let (entry, step_type, failure_code) = match name.as_str() {
+                _ if interrupted_now => (
+                    TranscriptEntry::ToolResult {
+                        call_id: call_id.clone(),
+                        name: name.clone(),
+                        text: "status: INTERRUPTED\nerror_code: USER_INTERRUPT\nerror: the person interrupted this turn before the call started; nothing was executed. Ask again only if it is still wanted".to_owned(),
+                        failure_signature: None,
+                        clears: vec![],
+                        wrote: None,
+                        progress: false,
+                        media: vec![],
+                    },
+                    StepType::ToolCall,
+                    Some("INTERRUPTED".to_owned()),
+                ),
                 // PX-114: a harness tool this turn's request did not offer
                 // (`exec_only` defers delegation, repair, retrieval and
                 // verification; the budget can drop them) is refused like a
@@ -5417,7 +5705,7 @@ async fn run_loop(
                                 &call_id,
                                 &name,
                                 &arguments_json,
-                                &cancel,
+                                &round_int,
                                 crate::protocol::resumed_call(
                                     &resume_state,
                                     run_id,
@@ -5428,6 +5716,19 @@ async fn run_loop(
                                 &projected_names,
                             )
                             .await;
+                            // PX-050: a call the person's interrupt stopped
+                            // is recorded with how it ended.
+                            if round_int.is_cancelled()
+                                && !cancel.is_cancelled()
+                                && let TranscriptEntry::ToolResult { text, .. } = &entry
+                            {
+                                if text.contains("UNKNOWN_OUTCOME") || text.contains("UNKNOWNOUTCOME")
+                                {
+                                    cut.unknown_calls.push(call_id.clone());
+                                } else if text.contains("status: CANCELLED") {
+                                    cut.cancelled_calls.push(call_id.clone());
+                                }
+                            }
                             if let (Some(before), Some(root)) =
                                 (untracked_before, task.workspace_root.as_deref())
                             {

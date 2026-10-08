@@ -222,6 +222,7 @@ pub async fn run_as(
     let endpoint = Endpoint::for_dir(&data_dir, &nonce).context("choosing local endpoint")?;
     let (tx, _) = watch::channel(start);
     let boot_generation = recovery.boot_generation;
+    let boot_head = start;
     let browser = Arc::new(crate::browser::BrowserSessions::default());
     let gateway = modbit_providers::ProviderGateway::new(modbit_providers::endpoints_from_env())
         .with_policy(modbit_providers::OrgModelPolicy::from_env());
@@ -258,6 +259,9 @@ pub async fn run_as(
         browser,
         conversation_index: crate::conversation_search::Index::from_env(),
     });
+    // PX-057: a RUN_EVERYTHING recorded before this point belongs to a
+    // process that is gone and is not in force.
+    core.tools.run_policies.mark_boot(boot_head);
     // REQ-EV-0017, docs/23 "Secrets": every payload the Core appends passes
     // the one redactor before it is hashed and persisted — a value in its
     // custody never reaches the log, and error text loses every credential
@@ -739,6 +743,20 @@ async fn serve_connection(core: Arc<Core>, mut stream: BoxedStream) -> Result<()
                     "GetImpact",
                     "GetSymbolEdges",
                     "GetIndexStatus",
+                    "ListQueuedInputs",
+                    "SetSendBehavior",
+                    "GetSendBehavior",
+                    "EditQueuedInput",
+                    "RemoveQueuedInput",
+                    "ReorderQueuedInput",
+                    "SendQueuedInputNow",
+                    "InterruptTask",
+                    "SetRunMode",
+                    "GetRunMode",
+                    "AddAllowRule",
+                    "RevokeAllowRule",
+                    "ListAllowRules",
+                    "GetContextAccounting",
                 ]
                 .map(String::from)
                 .to_vec(),
@@ -1295,6 +1313,17 @@ fn required_client_capability(env: &CommandEnvelope) -> Option<&'static str> {
             "review.decide"
         }
         "ResolveApproval" => "approval.resolve",
+        // PX-057: who approves protected effects, and the durable rules that
+        // stand for an approval, are approvals' own class of decision.
+        "SetRunMode" | "AddAllowRule" | "RevokeAllowRule" => "approval.resolve",
+        "SetSendBehavior" => "task.author",
+        // PX-050: the queue is the author's; reading it is reading the log.
+        "EditQueuedInput" | "RemoveQueuedInput" | "ReorderQueuedInput" | "SendQueuedInputNow"
+        | "InterruptTask" => "task.author",
+        "ListQueuedInputs" | "GetSendBehavior" | "GetRunMode" | "ListAllowRules"
+        | "GetContextAccounting" => {
+            "events.subscribe"
+        }
         "RespondToQuestion" | "AskSideQuestion" => "question.answer",
         // A late invoice changes what a request is said to have cost: the
         // same class of decision as configuring the provider (REQ-EPR-010).
@@ -2318,6 +2347,33 @@ pub(crate) async fn handle_command(core: &Arc<Core>, env: CommandEnvelope) -> Co
         "SetTaskMode" | "SetExecutionPreference" | "GetTaskPosture" => {
             crate::tasking::handle(core, &env).await
         }
+        // PX-050 / PX-057: the input queue, the typed interrupt, the run mode
+        // and the durable allowlist rules.
+        "ListQueuedInputs" | "EditQueuedInput" | "RemoveQueuedInput" | "ReorderQueuedInput"
+        | "SendQueuedInputNow" | "InterruptTask" | "SetSendBehavior" | "GetSendBehavior"
+        | "SetRunMode" | "GetRunMode" | "AddAllowRule" | "RevokeAllowRule" | "ListAllowRules" => {
+            crate::run_control::handle(core, &env).await
+        }
+        "GetContextAccounting" => {
+            let Ok(p) = wire::GetContextAccounting::decode(env.payload.as_slice()) else {
+                return reject(cid, "BAD_PAYLOAD", "GetContextAccounting");
+            };
+            let Some(task_id) = p.task_id.as_ref().and_then(id16).map(TaskId::from_bytes) else {
+                return reject(cid, "BAD_PAYLOAD", "task_id required");
+            };
+            match core.store.lock().await.task(&task_id) {
+                Ok(Some(_)) => {}
+                Ok(None) => return reject(cid, "UNKNOWN_TASK", task_id.to_string()),
+                Err(e) => return reject(cid, error_code(&e), e.to_string()),
+            }
+            accept(
+                cid,
+                false,
+                crate::inspector::accounting(core, task_id)
+                    .await
+                    .encode_to_vec(),
+            )
+        }
         "QueueInput" => {
             let Ok(p) = wire::QueueInput::decode(env.payload.as_slice()) else {
                 return reject(cid, "BAD_PAYLOAD", "QueueInput");
@@ -2325,10 +2381,21 @@ pub(crate) async fn handle_command(core: &Arc<Core>, env: CommandEnvelope) -> Co
             let Some(task_id) = p.task_id.as_ref().and_then(id16).map(TaskId::from_bytes) else {
                 return reject(cid, "BAD_PAYLOAD", "task_id required");
             };
+            // PX-050 (docs/65 AFW-E05): DEFAULT is the person's plain Enter; the
+            // Core applies the task's send-behavior setting, a client only
+            // chooses it.
+            let mut stop_and_send = false;
             let mode = match p.mode.as_str() {
                 "STEER" => InputMode::Steer,
                 "COLLECT" => InputMode::Collect,
                 "FOLLOW_UP" => InputMode::FollowUp,
+                "DEFAULT" => match crate::run_control::resolve_default(core, task_id).await {
+                    Ok((mode, stop)) => {
+                        stop_and_send = stop;
+                        mode
+                    }
+                    Err(e) => return reject(cid, "STORE_ERROR", e),
+                },
                 other => {
                     return reject(cid, "BAD_PAYLOAD", format!("unknown input mode `{other}`"));
                 }
@@ -2379,6 +2446,13 @@ pub(crate) async fn handle_command(core: &Arc<Core>, env: CommandEnvelope) -> Co
                         .unwrap_or((0, 0));
                     if !replayed {
                         core.last_offset.send_replace(offset);
+                    }
+                    drop(store);
+                    if stop_and_send && !replayed && core.runtime.is_running(&task_id).await {
+                        let task = core.store.lock().await.task(&task_id);
+                        if let Ok(Some(task)) = task {
+                            crate::run_control::request_send_now(core, &task, &p.input_id).await;
+                        }
                     }
                     accept(
                         cid,

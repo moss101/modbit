@@ -184,6 +184,38 @@ fn fold(store: &EventStore, task: &Task, until: u64) -> Result<Folded, Refusal> 
     // The turn that is open at this point of the log: events that carry no
     // turn of their own (a recorded plan) belong to it.
     let mut open_turn: Option<String> = None;
+    // PX-050: an input the person deleted while it was queued was never said,
+    // and one they edited was said as edited: the conversation shows what the
+    // model was given, not what was typed first.
+    let mut deleted: std::collections::HashSet<String> = std::collections::HashSet::new();
+    let mut edited: HashMap<String, (String, Option<String>)> = HashMap::new();
+    for e in &log {
+        match e.envelope.event_type.as_str() {
+            "TaskInputRemoved" => {
+                if let Some(id) = store
+                    .payload(&e.envelope)
+                    .ok()
+                    .and_then(|p| p["input_id"].as_str().map(str::to_owned))
+                {
+                    deleted.insert(id);
+                }
+            }
+            "TaskInputEdited" => {
+                if let Ok(p) = store.payload(&e.envelope)
+                    && let Some(id) = p["input_id"].as_str()
+                {
+                    let slot = edited.entry(id.to_owned()).or_default();
+                    if let Some(t) = p["text"].as_str().filter(|t| !t.is_empty()) {
+                        slot.0 = t.to_owned();
+                    }
+                    if let Some(m) = p["mode"].as_str() {
+                        slot.1 = Some(m.to_uppercase());
+                    }
+                }
+            }
+            _ => {}
+        }
+    }
     for e in &log {
         let env = &e.envelope;
         let p = store.payload(env).unwrap_or_default();
@@ -234,7 +266,16 @@ fn fold(store: &EventStore, task: &Task, until: u64) -> Result<Folded, Refusal> 
             }
             "TaskInputQueued" => {
                 let input = p["input_id"].as_str().unwrap_or_default();
-                let (text, cut) = bounded(p["text"].as_str().unwrap_or_default(), TEXT_MAX);
+                if deleted.contains(input) {
+                    continue;
+                }
+                let edit = edited.get(input);
+                let (text, cut) = bounded(
+                    edit.map(|e| e.0.as_str())
+                        .filter(|t| !t.is_empty())
+                        .unwrap_or_else(|| p["text"].as_str().unwrap_or_default()),
+                    TEXT_MAX,
+                );
                 let mut r = row(
                     format!("user:in:{input}"),
                     wire::TranscriptRowKind::UserMessage,
@@ -246,7 +287,9 @@ fn fold(store: &EventStore, task: &Task, until: u64) -> Result<Folded, Refusal> 
                 r.facts = Some(Facts::User(wire::UserFacts {
                     input_id: input.into(),
                     source: "queued_input".into(),
-                    mode: p["mode"].as_str().unwrap_or_default().to_uppercase(),
+                    mode: edit
+                        .and_then(|e| e.1.clone())
+                        .unwrap_or_else(|| p["mode"].as_str().unwrap_or_default().to_uppercase()),
                     provenance: p["provenance"].as_str().unwrap_or_default().into(),
                     untrusted: p["untrusted"].as_bool().unwrap_or(false),
                 }));

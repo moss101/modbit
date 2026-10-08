@@ -308,6 +308,13 @@ pub enum TaskEvent {
         /// an instruction from the person (PX-008).
         #[serde(default)]
         untrusted: bool,
+        /// The queued inputs this dispatch consumed (PX-050): the queue
+        /// projection marks exactly these dispatched. A COLLECT dispatch
+        /// names every input it coalesced. Empty on a record written before
+        /// the queue was managed: such a record consumed the oldest queued
+        /// input, as it always did.
+        #[serde(default)]
+        input_ids: Vec<String>,
     },
     /// `TaskNeedsAttention`: attention flag; no state change.
     TaskNeedsAttention {
@@ -382,6 +389,132 @@ pub enum TaskEvent {
         /// fenced as such, and it grants nothing.
         #[serde(default)]
         untrusted: bool,
+    },
+    /// `TaskInputEdited` (PX-050, docs/65 AFW-E02): the person changed a
+    /// queued input before it was dispatched. Only what the record carries
+    /// changes; a dispatched or deleted input is never edited. No state change.
+    TaskInputEdited {
+        /// The queued input.
+        input_id: String,
+        /// The new text (empty = unchanged).
+        #[serde(default)]
+        text: String,
+        /// The new dispatch mode, when it changed.
+        #[serde(default)]
+        mode: Option<InputMode>,
+        /// The per-item model selection the person recorded for the input
+        /// (empty = unchanged). Recorded and shown; the router's pin policy
+        /// (PX-053) decides whether a dispatch honours it.
+        #[serde(default)]
+        model: String,
+    },
+    /// `TaskInputRemoved` (PX-050): the person deleted a queued input; it is
+    /// never dispatched. No state change.
+    TaskInputRemoved {
+        /// The queued input.
+        input_id: String,
+        /// The person's note (log text; never an instruction).
+        #[serde(default)]
+        reason: String,
+    },
+    /// `TaskInputReordered` (PX-050): a queued input moved before another
+    /// queued input (or to the end). Only queued inputs move. No state change.
+    TaskInputReordered {
+        /// The input that moved.
+        input_id: String,
+        /// The queued input it now precedes; empty = the end of the queue.
+        #[serde(default)]
+        before_input_id: String,
+    },
+    /// `SendBehaviorSet` (PX-050, docs/65 AFW-E05): what plain Enter does while
+    /// a turn runs, and what Send now does. The Core applies it when an input
+    /// arrives with no mode of its own; a client only chooses it. No state
+    /// change.
+    SendBehaviorSet {
+        /// `QUEUE` | `COLLECT` | `STEER` | `STOP_AND_SEND` (empty = unchanged).
+        #[serde(default)]
+        while_running: String,
+        /// `INTERRUPT` | `STEER` (empty = unchanged).
+        #[serde(default)]
+        send_now: String,
+    },
+    /// `TaskInterruptRequested` (PX-050, docs/65 AFW-E06/E07): the person
+    /// asked the run to stop what it is doing at the next safe point. `SEND_NOW`
+    /// promotes the named queued input to run next as a typed
+    /// interrupt-and-replace; `STOP` ends the turn and pauses the run. The
+    /// record is the command's idempotency: one `interrupt_id` interrupts once.
+    /// No state change.
+    TaskInterruptRequested {
+        /// The interrupt's id (the command's own).
+        interrupt_id: String,
+        /// `SEND_NOW` | `STOP`.
+        kind: String,
+        /// The queued input a `SEND_NOW` promotes (empty for `STOP`).
+        #[serde(default)]
+        input_id: String,
+        /// The person's note (log text; never an instruction).
+        #[serde(default)]
+        reason: String,
+    },
+    /// `TaskInterruptApplied` (PX-050): the run reached the safe point an
+    /// interrupt asked for and records what was in flight and how it ended.
+    /// A user interrupt is a different typed outcome from a runtime or
+    /// transport abort. No state change.
+    TaskInterruptApplied {
+        /// The interrupt.
+        interrupt_id: String,
+        /// `STREAM_ABORTED` | `TOOL_CANCELLED` | `IDLE` | `UNKNOWN_OUTCOME`.
+        outcome: String,
+        /// Whether a model stream was cut (it ended aborted with source
+        /// `USER_INTERRUPT`, its partial text kept and marked partial).
+        stream_aborted: bool,
+        /// Tool calls in flight that were cancelled through the broker.
+        #[serde(default)]
+        cancelled_calls: Vec<String>,
+        /// Tool calls whose outcome is unknown after the interrupt: the new
+        /// turn does not start until they are reconciled.
+        #[serde(default)]
+        unknown_outcome_calls: Vec<String>,
+        /// What the run does next: `DISPATCH` (the promoted input starts the
+        /// next turn), `PAUSE` (a stop parked the run) or `HOLD` (the next
+        /// turn waits for reconciliation).
+        next: String,
+    },
+    /// `RunModeSet` (PX-057, docs/65 AFW-F06/F07): the person set who
+    /// approves protected effects for the task. A mode that approves more
+    /// carries the person's recorded acknowledgement of the risk.
+    /// `RUN_EVERYTHING` is per Core process: after a restart the mode in force
+    /// is the last durable one. No state change.
+    RunModeSet {
+        /// The mode.
+        mode: crate::runmode::RunMode,
+        /// The mode it replaced.
+        #[serde(default)]
+        previous: Option<crate::runmode::RunMode>,
+        /// The person acknowledged the risk (prompt injection, exfiltration)
+        /// of a mode that approves more.
+        #[serde(default)]
+        acknowledged: bool,
+        /// The warning text the person acknowledged (log text).
+        #[serde(default)]
+        warning: String,
+    },
+    /// `AllowRuleAdded` (PX-057, docs/65 AFW-F10): a durable allowlist rule.
+    /// A policy record, created by a person through the Core. No state change.
+    AllowRuleAdded {
+        /// The rule.
+        rule: crate::runmode::AllowRule,
+    },
+    /// `AllowRuleRevoked` (PX-057): the rule stops applying. No state change.
+    AllowRuleRevoked {
+        /// The rule.
+        rule_id: String,
+        /// Who revoked it (`user:<id>`).
+        #[serde(default)]
+        revoked_by: String,
+        /// The person's note (log text; never an instruction).
+        #[serde(default)]
+        reason: String,
     },
     /// `TaskModeSet` (PX-051, docs/65 AFW-D03): the user set the task's mode.
     /// The latest one is the task's mode; the posture it selects is enforced
@@ -2538,6 +2671,15 @@ impl TaskEvent {
             Self::TaskCancelRequested { .. } => "TaskCancelRequested",
             Self::TaskNeedsAttention { .. } => "TaskNeedsAttention",
             Self::TaskInputQueued { .. } => "TaskInputQueued",
+            Self::SendBehaviorSet { .. } => "SendBehaviorSet",
+            Self::TaskInputEdited { .. } => "TaskInputEdited",
+            Self::TaskInputRemoved { .. } => "TaskInputRemoved",
+            Self::TaskInputReordered { .. } => "TaskInputReordered",
+            Self::TaskInterruptRequested { .. } => "TaskInterruptRequested",
+            Self::TaskInterruptApplied { .. } => "TaskInterruptApplied",
+            Self::RunModeSet { .. } => "RunModeSet",
+            Self::AllowRuleAdded { .. } => "AllowRuleAdded",
+            Self::AllowRuleRevoked { .. } => "AllowRuleRevoked",
             Self::UserQuestionAsked { .. } => "UserQuestionAsked",
             Self::UserQuestionAnswered { .. } => "UserQuestionAnswered",
             Self::AttachmentIngested { .. } => "AttachmentIngested",
@@ -2739,6 +2881,12 @@ impl Task {
             TaskEvent::TaskSteered { .. }
             | TaskEvent::TaskNeedsAttention { .. }
             | TaskEvent::TaskInputQueued { .. }
+            | TaskEvent::SendBehaviorSet { .. }
+            | TaskEvent::TaskInputEdited { .. }
+            | TaskEvent::TaskInputRemoved { .. }
+            | TaskEvent::TaskInputReordered { .. }
+            | TaskEvent::TaskInterruptRequested { .. }
+            | TaskEvent::TaskInterruptApplied { .. }
             | TaskEvent::UserQuestionAsked { .. }
             | TaskEvent::UserQuestionAnswered { .. }
             | TaskEvent::AttachmentIngested { .. }
@@ -2851,6 +2999,12 @@ impl Task {
             | TaskEvent::BackgroundProcessEnded { .. }
             | TaskEvent::BackgroundWakeDelivered { .. }
             | TaskEvent::PausedCapacityReleased { .. } => None,
+            // A policy record (PX-057): the run mode and the allowlist rules
+            // are the person's, and a rule is revoked whatever state the task
+            // that holds its record is in.
+            TaskEvent::RunModeSet { .. }
+            | TaskEvent::AllowRuleAdded { .. }
+            | TaskEvent::AllowRuleRevoked { .. } => None,
             // A sandbox is given back after the task ended (M8.5), and one
             // may be lost at any time: the records of the substrate's
             // lifecycle land whatever the task's state. So do the request's
@@ -3021,6 +3175,7 @@ mod tests {
                     text: "x".into(),
                     provenance: String::new(),
                     untrusted: false,
+                    input_ids: vec![],
                 },
                 Timestamp(4),
             )

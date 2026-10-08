@@ -39,7 +39,7 @@ pub use pipeline::{
 pub use policy::{
     CapabilityPort, PathTarget, PolicyDecision, PolicyRequest, ProfilePolicy, path_targets,
 };
-pub use registry::{Idempotency, Tool, ToolOutcome, ToolRegistry, ToolSpec};
+pub use registry::{CallFacts, Idempotency, Tool, ToolOutcome, ToolRegistry, ToolSpec};
 
 /// Errors.
 #[derive(Debug, thiserror::Error)]

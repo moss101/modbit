@@ -459,6 +459,8 @@ pub struct ToolHost {
     /// Each task's mode and execution preference, folded from its log, and
     /// the mode posture the kernel enforces on it (PX-051, PX-053).
     pub tasking: crate::tasking::Tasking,
+    /// The run modes and allowlist rules, folded from the log (PX-057).
+    pub run_policies: crate::run_control::RunPolicies,
 }
 
 /// The Sandbox Gateway a Cloud Core Worker's Core reaches (M8.5).
@@ -572,6 +574,7 @@ impl ToolHost {
             browserless: std::sync::Mutex::new(std::collections::HashSet::new()),
             environments: crate::environment::Environments::default(),
             tasking: crate::tasking::Tasking::default(),
+            run_policies: crate::run_control::RunPolicies::default(),
         })
     }
 
@@ -800,6 +803,7 @@ impl ToolHost {
                             approval: None,
                             intent_hash: "",
                             config: None,
+                            run: None,
                             emergency_stopped: false,
                             now: modbit_domain::Timestamp::now(),
                         }),
@@ -927,7 +931,21 @@ impl ToolHost {
                 .map_err(|e| anyhow::anyhow!("MODE_UNREADABLE: {e}"))?
         };
         let lease_ref = lease.clone();
+        // PX-057: who approves protected effects for the task, and the
+        // durable rules in force. An unreadable log is a refusal, never a
+        // guess at the narrower mode.
+        let run = {
+            let st = store.lock().await;
+            crate::run_control::context_for(
+                &self.run_policies,
+                &st,
+                task_id,
+                workspace_root.as_deref(),
+            )
+            .map_err(|e| anyhow::anyhow!("RUN_POLICY_UNREADABLE: {e}"))?
+        };
         let port = KernelPort {
+            run,
             mode,
             kernel: CapabilityKernel::default(),
             lease,
@@ -2204,6 +2222,8 @@ struct KernelPort {
     /// round boundary adopted, so a call already in flight keeps the posture
     /// it was decided under.
     mode: modbit_domain::mode::TaskMode,
+    /// The run mode in force and the durable rules (PX-057).
+    run: crate::run_control::RunContext,
 }
 
 /// The absolute resources a call's workspace paths name, in the lease's
@@ -2278,7 +2298,34 @@ impl CapabilityPort for KernelPort {
                 approval_required: false,
             };
         }
+        // PX-057: the call as the run mode sees it. The always-ask classes
+        // come from what the host resolved, never from the model's account.
+        let run = modbit_policy::RunPolicy {
+            mode: self.run.mode,
+            task_id: self.run.task_id.clone(),
+            repo_root: self.run.repo_root.clone(),
+            rules: self.run.rules.clone(),
+            argv: req.command.clone(),
+            ask_classes: modbit_policy::runmode::ask_classes(
+                req.effect_class,
+                &req.required_capabilities,
+                req.outside_workspace_write,
+                req.protected_path,
+                &req.declared_escalation,
+            ),
+            contained: matches!(
+                req.execution_profile.as_str(),
+                modbit_policy::kernel::PROFILE_CLOUD_ISOLATED
+                    | modbit_policy::kernel::PROFILE_REVIEW_ISOLATED
+            ) && req.effect_class
+                != modbit_domain::toolcall::EffectClass::ExternalSideEffect
+                && !req
+                    .required_capabilities
+                    .iter()
+                    .any(|c| c == "network.egress" || c == "external.call"),
+        };
         let d = self.kernel.decide(&KernelRequest {
+            run: Some(&run),
             tool_name: &req.tool_name,
             effect_class: req.effect_class,
             required_capabilities: &req.required_capabilities,

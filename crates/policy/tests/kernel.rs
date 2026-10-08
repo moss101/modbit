@@ -51,6 +51,7 @@ fn req<'a>(
         approval: None,
         intent_hash: "h1",
         config: None,
+        run: None,
         emergency_stopped: false,
         now: Timestamp(10),
     }

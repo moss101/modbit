@@ -1,0 +1,53 @@
+{
+  "expected": {
+    "available": true,
+    "budgets": {
+      "forbidSpawn": false,
+      "heldByChildrenMinor": "100",
+      "liveChildren": 1,
+      "maxChildren": 3,
+      "maxCostMinor": "5000",
+      "maxWallMs": "9007199254740993",
+      "spentMinor": "1234",
+      "wallMsUsed": "42"
+    },
+    "categories": [
+      {
+        "category": "SYSTEM",
+        "estimatedTokens": "6000000000000000",
+        "shareBp": 6661,
+        "sources": [
+          "system segment"
+        ],
+        "tokens": "6000000000000001"
+      },
+      {
+        "category": "CONVERSATION",
+        "estimatedTokens": "3007199254740000",
+        "shareBp": 3338,
+        "sources": [],
+        "tokens": "3007199254740992"
+      }
+    ],
+    "compactionEpoch": 1,
+    "compactionSummaries": 1,
+    "declaredErrorBp": 2500,
+    "endpoint": "openai",
+    "estimatedTotal": "9007199254740000",
+    "estimatorErrorBp": 12,
+    "instructionLayersInForce": 2,
+    "memoryItemsInjected": 1,
+    "model": "gpt-5-mini",
+    "offset": "9007199254741001",
+    "providerReportedInput": "9007199254740993",
+    "roundingRule": "LARGEST_REMAINDER",
+    "totalSource": "PROVIDER_REPORTED",
+    "totalTokens": "9007199254740993",
+    "turnId": "01a09072-1262-70f2-b103-63d3e8f0feda",
+    "turnOrdinal": 4,
+    "usedBp": 4504,
+    "windowSource": "REGISTRY",
+    "windowTokens": "200000"
+  },
+  "type": "modbit.v1.ContextAccountingView"
+}

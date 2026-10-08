@@ -21,6 +21,20 @@ pub enum Idempotency {
     NonIdempotent,
 }
 
+/// What the host resolved about one call for the task's run mode (PX-057):
+/// facts from the tool's own classifier and path handling, never from the
+/// model's description of what it intends.
+#[derive(Clone, Debug, Default, PartialEq, Eq)]
+pub struct CallFacts {
+    /// The argv of a command-shaped call (`shell.exec`, `shell.start`,
+    /// `test.run`); `None` for everything else, which no rule can cover.
+    pub argv: Option<Vec<String>>,
+    /// The call knowingly writes outside the workspace.
+    pub outside_workspace_write: bool,
+    /// The call knowingly writes repository or tool configuration.
+    pub protected_path: bool,
+}
+
 /// Immutable tool metadata.
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
 pub struct ToolSpec {
@@ -143,6 +157,14 @@ pub trait Tool: Send + Sync {
     fn effect_in_profile(&self, args: &Value, profile: &str) -> EffectClass {
         let _ = profile;
         self.effect_of(args)
+    }
+
+    /// What the host knows about this call that the run mode needs
+    /// (PX-057): the argv, and whether the tool's own classifier found a write
+    /// outside the workspace or to configuration. Empty by default.
+    fn call_facts(&self, args: &Value, profile: &str) -> CallFacts {
+        let _ = (args, profile);
+        CallFacts::default()
     }
 
     /// Why [`Tool::effect_in_profile`] raised the class above the registered

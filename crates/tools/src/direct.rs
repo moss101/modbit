@@ -10,7 +10,9 @@ use serde_json::{Value, json};
 use sha2::{Digest, Sha256};
 
 use crate::pipeline::InvokeContext;
-use crate::registry::{BoxFuture, Idempotency, Tool, ToolOutcome, ToolRegistry, ToolSpec};
+use crate::registry::{
+    BoxFuture, CallFacts, Idempotency, Tool, ToolOutcome, ToolRegistry, ToolSpec,
+};
 use crate::shell_class::classify_args as classify_shell_args;
 use crate::shell_class::classify_input as classify_shell_input;
 use crate::{EffectClass, Result};
@@ -161,6 +163,14 @@ macro_rules! tool {
             }
             fn effect_reason(&self, args: &Value, profile: &str) -> Option<String> {
                 $classify(args).reason_in(profile)
+            }
+            fn call_facts(&self, args: &Value, _profile: &str) -> CallFacts {
+                let effect = $classify(args);
+                CallFacts {
+                    argv: crate::shell_class::rule_argv(args),
+                    outside_workspace_write: effect.outside_workspace,
+                    protected_path: effect.protected_path,
+                }
             }
             fn invoke<'a>(
                 &'a self,
@@ -2788,7 +2798,7 @@ async fn exec_request(
     })
 }
 
-const SHELL_SCHEMA: &str = r#"{"type":"object","properties":{"argv":{"type":"array","items":{"type":"string"},"minItems":1},"cwd":{"type":"string"},"env":{"type":"object","additionalProperties":{"type":"string"}},"inherit_env":{"type":"boolean"},"timeout_ms":{"type":"integer","minimum":1},"pty":{"type":"boolean"},"stdin":{"type":"string"},"request_id":{"type":"string"}},"required":["argv"],"additionalProperties":false}"#;
+const SHELL_SCHEMA: &str = r#"{"type":"object","properties":{"argv":{"type":"array","items":{"type":"string"},"minItems":1},"cwd":{"type":"string"},"env":{"type":"object","additionalProperties":{"type":"string"}},"inherit_env":{"type":"boolean"},"timeout_ms":{"type":"integer","minimum":1},"pty":{"type":"boolean"},"stdin":{"type":"string"},"request_id":{"type":"string"},"escalation":{"type":"string","enum":["none","network","all"]}},"required":["argv"],"additionalProperties":false}"#;
 
 fn request_id(ctx: &InvokeContext, args: &Value, prefix: &str) -> String {
     args.get("request_id")
