@@ -693,7 +693,16 @@ impl ToolRuntime {
             Some(k) => k.as_ref(),
             None => self.policy.as_ref(),
         };
+        let facts = tool.call_facts(&args, &ctx.execution_profile);
         let decision = port.decide(&PolicyRequest {
+            command: facts.argv,
+            outside_workspace_write: facts.outside_workspace_write,
+            protected_path: facts.protected_path,
+            declared_escalation: args
+                .get("escalation")
+                .and_then(Value::as_str)
+                .unwrap_or_default()
+                .to_owned(),
             tool_name: spec.name.clone(),
             effect_class,
             required_capabilities: spec.required_capabilities.clone(),

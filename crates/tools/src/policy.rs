@@ -32,6 +32,16 @@ pub struct PolicyRequest {
     /// capability that reaches it. The host joins them to the task root and
     /// the kernel checks them against the lease's resource selectors.
     pub paths: Vec<PathTarget>,
+    /// The argv of a command-shaped call, for the run mode's rules (PX-057);
+    /// `None` for a call that is not a command.
+    pub command: Option<Vec<String>>,
+    /// The tool's classifier found a write outside the workspace.
+    pub outside_workspace_write: bool,
+    /// The tool's classifier found a write to configuration.
+    pub protected_path: bool,
+    /// The escalation the call declares it needs: `none` | `network` | `all`
+    /// (empty = not declared). A typed field, not a reading of the command.
+    pub declared_escalation: String,
 }
 
 /// A workspace-relative path a call names, and the capability reaching it.

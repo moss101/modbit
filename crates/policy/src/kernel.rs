@@ -23,6 +23,11 @@
 //!    it (`Approval::consumed_at`), so the same approval never authorizes a
 //!    second dispatch — that asks again.
 //!
+//! 7. the task's run mode (PX-057, [`crate::runmode`]) is consulted only here,
+//!    at the one question left — may this effect run without asking a person —
+//!    and only when no approval bound to the call exists. It cannot widen
+//!    anything above, and the always-ask classes ask in every mode.
+//!
 //! The kernel never sees argument text: only the tool's registered effect
 //! class, its required capability ids and the intent hash reach it.
 
@@ -243,6 +248,9 @@ pub struct KernelRequest<'a> {
     pub intent_hash: &'a str,
     /// Resolved admin/project/user configuration, if any.
     pub config: Option<&'a ResolvedConfig>,
+    /// The task's run mode and the durable rules in force (PX-057), with the
+    /// facts the host resolved about this call; `None` is the `ASK` mode.
+    pub run: Option<&'a crate::runmode::RunPolicy>,
     /// Session emergency stop active.
     pub emergency_stopped: bool,
     /// Now.
@@ -532,6 +540,31 @@ impl CapabilityKernel {
                 ),
             );
         }
+        // 7. the run mode: who approves inside the envelope.
+        let run_decision = req.run.map(|r| r.decide(req.now.0));
+        let run_ask_code = match &run_decision {
+            Some(crate::runmode::RunDecision::Ask { code }) => Some(code.clone()),
+            _ => None,
+        };
+        let run_approves = match &run_decision {
+            Some(crate::runmode::RunDecision::Approve { rule }) => Some(rule.clone()),
+            _ => None,
+        };
+        let ask_extra = |scope: &mut serde_json::Value| {
+            if let Some(run) = req.run {
+                scope["run_mode"] = serde_json::json!(run.mode.name());
+                scope["ask_classes"] =
+                    serde_json::json!(run.ask_classes.iter().map(|c| c.name()).collect::<Vec<_>>());
+                scope["contained"] = serde_json::json!(run.contained);
+            }
+            if let Some(code) = &run_ask_code {
+                scope["ask_reason"] = serde_json::json!(code);
+            }
+        };
+        let reason = match &run_ask_code {
+            Some(code) => format!("{reason} ({code})"),
+            None => reason,
+        };
         match req.approval {
             Some(a) if a.authorizes(req.intent_hash, req.now) => KernelDecision::Allow {
                 rule: format!("approval:{}", a.approval_id),
@@ -542,13 +575,14 @@ impl CapabilityKernel {
                 format!("approval {} was denied", a.approval_id),
             ),
             // Spent: it authorized one execution and that dispatch has
-            // happened. The same intent is asked again, never run again.
-            Some(a) if a.is_consumed() => KernelDecision::ApprovalRequired {
-                reason: format!(
-                    "approval {} was already used by a dispatch of this call; an approval authorizes one execution, so it must be asked again",
-                    a.approval_id
-                ),
-                scope_json: serde_json::json!({
+            // happened. The same intent is asked again, never run again —
+            // unless the run mode itself approves it.
+            Some(a) if a.is_consumed() && run_approves.is_some() => KernelDecision::Allow {
+                rule: run_approves.unwrap_or_default(),
+                approval_id: None,
+            },
+            Some(a) if a.is_consumed() => {
+                let mut scope = serde_json::json!({
                     "tool": req.tool_name,
                     "effect_class": req.effect_class,
                     "capabilities": req.required_capabilities,
@@ -556,9 +590,16 @@ impl CapabilityKernel {
                     "lease_id": lease.lease_id.to_string(),
                     "intent_hash": req.intent_hash,
                     "supersedes_approval": a.approval_id.to_string(),
-                })
-                .to_string(),
-            },
+                });
+                ask_extra(&mut scope);
+                KernelDecision::ApprovalRequired {
+                    reason: format!(
+                        "approval {} was already used by a dispatch of this call; an approval authorizes one execution, so it must be asked again",
+                        a.approval_id
+                    ),
+                    scope_json: scope.to_string(),
+                }
+            }
             Some(a) if a.state == modbit_domain::approval::ApprovalState::Approved => deny(
                 "APPROVAL_MISMATCH",
                 format!(
@@ -566,18 +607,25 @@ impl CapabilityKernel {
                     a.approval_id
                 ),
             ),
-            _ => KernelDecision::ApprovalRequired {
-                reason,
-                scope_json: serde_json::json!({
+            None if run_approves.is_some() => KernelDecision::Allow {
+                rule: run_approves.unwrap_or_default(),
+                approval_id: None,
+            },
+            _ => {
+                let mut scope = serde_json::json!({
                     "tool": req.tool_name,
                     "effect_class": req.effect_class,
                     "capabilities": req.required_capabilities,
                     "execution_profile": req.execution_profile,
                     "lease_id": lease.lease_id.to_string(),
                     "intent_hash": req.intent_hash,
-                })
-                .to_string(),
-            },
+                });
+                ask_extra(&mut scope);
+                KernelDecision::ApprovalRequired {
+                    reason,
+                    scope_json: scope.to_string(),
+                }
+            }
         }
     }
 }
