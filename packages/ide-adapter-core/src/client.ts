@@ -208,6 +208,30 @@ import {
   type StoredEventFrame,
   type SurfaceFrame,
 } from "@modbit/surface-protocol";
+import {
+  AskSideQuestionSchema,
+  EditQueuedInputSchema,
+  GetSendBehaviorSchema,
+  InterruptAcceptedSchema,
+  InterruptTaskSchema,
+  ListModelVariantsSchema,
+  ListQueuedInputsSchema,
+  ModelVariantListSchema,
+  QueuedInputChangedSchema,
+  QueuedInputListSchema,
+  RemoveQueuedInputSchema,
+  ReorderQueuedInputSchema,
+  SendBehaviorViewSchema,
+  SendQueuedInputNowSchema,
+  SetSendBehaviorSchema,
+  SideAnswerSchema,
+  type InterruptAccepted,
+  type ModelVariantList,
+  type QueuedInputChanged,
+  type QueuedInputList,
+  type SendBehaviorView,
+  type SideAnswer,
+} from "@modbit/surface-protocol";
 import { randomBytes } from "node:crypto";
 
 export const MAX_FRAME_BYTES = 4 * 1024 * 1024;
@@ -234,6 +258,8 @@ export interface TaskOptions extends Omit<PreferenceOptions, "pin" | "clearPin">
 export interface StartOptions extends Omit<PreferenceOptions, "pin" | "clearPin"> {
   endpoint?: string;
   model?: string;
+  /** Skills the person named explicitly (the slash menu); the Core still decides whether each may reach the model. */
+  skills?: string[];
 }
 
 /** The wire preference of options that name any, `undefined` when none does. */
@@ -754,6 +780,7 @@ export class CoreClient {
         taskId: { value: unhex(taskId) },
         endpoint: options.endpoint ?? "",
         model: options.model ?? "",
+        skills: options.skills ?? [],
         ...preferenceField(options),
       }),
     );
@@ -941,11 +968,78 @@ export class CoreClient {
   }
 
   /** Steer, collect for, or follow up a task (REQ-EV-0191): durable input the loop applies at its next boundary. */
-  async queueInput(sessionId: string, taskId: string, text: string, mode: "STEER" | "COLLECT" | "FOLLOW_UP" = "STEER", inputId = hex(freshId())): Promise<{ sequence: bigint; offset: bigint }> {
+  async queueInput(sessionId: string, taskId: string, text: string, mode: "STEER" | "COLLECT" | "FOLLOW_UP" | "DEFAULT" = "STEER", inputId = hex(freshId())): Promise<{ sequence: bigint; offset: bigint }> {
     const payload = toBinary(QueueInputSchema, create(QueueInputSchema, { taskId: { value: unhex(taskId) }, inputId, mode, text }));
     const ack = await this.command("QueueInput", payload, undefined, this.leases.get(sessionId));
     const r = fromBinary(InputQueuedSchema, ack.result);
     return { sequence: r.sequence, offset: r.offset };
+  }
+
+  // ---- PX-050 / PX-054..056: the composer's typed reads and commands ----
+
+  /** The task's queue in dispatch order, with whether a loop is draining it. */
+  async listQueuedInputs(taskId: string, includeSettled = false): Promise<QueuedInputList> {
+    const ack = await this.command("ListQueuedInputs", toBinary(ListQueuedInputsSchema, create(ListQueuedInputsSchema, { taskId: { value: unhex(taskId) }, includeSettled })));
+    return fromBinary(QueuedInputListSchema, ack.result);
+  }
+
+  /** Change a queued input's text, mode or model before it is dispatched; an empty field keeps what is recorded. */
+  async editQueuedInput(sessionId: string, taskId: string, inputId: string, change: { text?: string; mode?: string; model?: string }): Promise<QueuedInputChanged> {
+    const payload = toBinary(EditQueuedInputSchema, create(EditQueuedInputSchema, { taskId: { value: unhex(taskId) }, inputId, text: change.text ?? "", mode: change.mode ?? "", model: change.model ?? "" }));
+    const ack = await this.command("EditQueuedInput", payload, undefined, this.leases.get(sessionId));
+    return fromBinary(QueuedInputChangedSchema, ack.result);
+  }
+
+  async removeQueuedInput(sessionId: string, taskId: string, inputId: string, reason = ""): Promise<QueuedInputChanged> {
+    const payload = toBinary(RemoveQueuedInputSchema, create(RemoveQueuedInputSchema, { taskId: { value: unhex(taskId) }, inputId, reason }));
+    const ack = await this.command("RemoveQueuedInput", payload, undefined, this.leases.get(sessionId));
+    return fromBinary(QueuedInputChangedSchema, ack.result);
+  }
+
+  /** Move a queued input before another; an empty `beforeInputId` moves it to the end. */
+  async reorderQueuedInput(sessionId: string, taskId: string, inputId: string, beforeInputId = ""): Promise<QueuedInputChanged> {
+    const payload = toBinary(ReorderQueuedInputSchema, create(ReorderQueuedInputSchema, { taskId: { value: unhex(taskId) }, inputId, beforeInputId }));
+    const ack = await this.command("ReorderQueuedInput", payload, undefined, this.leases.get(sessionId));
+    return fromBinary(QueuedInputChangedSchema, ack.result);
+  }
+
+  /** Send one queued input now: a typed interrupt-and-replace. The same `interruptId` interrupts once. */
+  async sendQueuedInputNow(sessionId: string, taskId: string, inputId: string, interruptId = "", reason = ""): Promise<InterruptAccepted> {
+    const payload = toBinary(SendQueuedInputNowSchema, create(SendQueuedInputNowSchema, { taskId: { value: unhex(taskId) }, inputId, interruptId, reason }));
+    const ack = await this.command("SendQueuedInputNow", payload, undefined, this.leases.get(sessionId));
+    return fromBinary(InterruptAcceptedSchema, ack.result);
+  }
+
+  /** Stop: end the current turn at the next safe point and pause the run. Nothing is dispatched. */
+  async interruptTask(sessionId: string, taskId: string, interruptId = "", reason = ""): Promise<InterruptAccepted> {
+    const payload = toBinary(InterruptTaskSchema, create(InterruptTaskSchema, { taskId: { value: unhex(taskId) }, interruptId, reason }));
+    const ack = await this.command("InterruptTask", payload, undefined, this.leases.get(sessionId));
+    return fromBinary(InterruptAcceptedSchema, ack.result);
+  }
+
+  /** What plain Enter does while a turn runs and what Send now does, in the Core's words. An empty field keeps what is recorded. */
+  async setSendBehavior(sessionId: string, taskId: string, whileRunning = "", sendNow = ""): Promise<SendBehaviorView> {
+    const payload = toBinary(SetSendBehaviorSchema, create(SetSendBehaviorSchema, { taskId: { value: unhex(taskId) }, whileRunning, sendNow }));
+    const ack = await this.command("SetSendBehavior", payload, undefined, this.leases.get(sessionId));
+    return fromBinary(SendBehaviorViewSchema, ack.result);
+  }
+
+  async sendBehavior(taskId: string): Promise<SendBehaviorView> {
+    const ack = await this.command("GetSendBehavior", toBinary(GetSendBehaviorSchema, create(GetSendBehaviorSchema, { taskId: { value: unhex(taskId) } })));
+    return fromBinary(SendBehaviorViewSchema, ack.result);
+  }
+
+  /** An ephemeral question answered from a bounded snapshot of the task; it touches neither the task's state nor its log. */
+  async askSideQuestion(taskId: string, text: string): Promise<SideAnswer> {
+    const ack = await this.command("AskSideQuestion", toBinary(AskSideQuestionSchema, create(AskSideQuestionSchema, { taskId: { value: unhex(taskId) }, text })));
+    return fromBinary(SideAnswerSchema, ack.result);
+  }
+
+  /** The variants each model offers and whether it may be pinned (PX-056); the picker lists them and computes nothing. */
+  async listModelVariants(taskId?: string): Promise<ModelVariantList> {
+    const payload = toBinary(ListModelVariantsSchema, create(ListModelVariantsSchema, taskId ? { taskId: { value: unhex(taskId) } } : {}));
+    const ack = await this.command("ListModelVariants", payload);
+    return fromBinary(ModelVariantListSchema, ack.result);
   }
 
   // ---- M7.1 browser session and host bridge (docs/22) ----

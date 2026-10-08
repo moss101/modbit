@@ -2,9 +2,10 @@
  * Preload bridge (docs/32): exposes only the SurfaceProtocol functions the
  * renderer needs, over Electron's validated IPC. No Node, no fs, no shell.
  */
-import { contextBridge, ipcRenderer } from "electron";
+import { contextBridge, ipcRenderer, webUtils } from "electron";
 import type { AgentHeadersView, ConversationSearchView, OpenStreamView, PendingApprovalView, SearchOptions, TranscriptOptions, TranscriptPageView } from "../shared/conversation-types.ts";
 import type { TerminalFrameJson, TerminalViewJson } from "../main/terminal-host.ts";
+import type { AttachmentResult, InterruptView, ModeChangedView, ModelCatalogView, PostureView, PreferencePatch, PreferenceSetView, QueuedChangeView, QueueView, SendBehaviorState, SideAnswerView, SlashInventoryView, TaskModeId, InputModeId } from "../shared/composer-types.ts";
 
 export type { TerminalFrameJson, TerminalViewJson };
 
@@ -289,8 +290,27 @@ export interface ModbitBridge {
   createSession(): Promise<string>;
   sessionSnapshot(sessionId: string): Promise<unknown>;
   createTask(sessionId: string, goal: string, commandIdHex: string, workspaceRoot?: string, issueUrl?: string): Promise<{ taskId: string; offset: bigint; replayed: boolean; goalText: string }>;
-  startTask(sessionId: string, taskId: string): Promise<{ runId: string; resumed: boolean; endpoint: string; model: string }>;
-  attachFile(sessionId: string, taskId: string, filePath: string): Promise<{ attachmentId: string; kind: string; mime: string; contentRef: string; offset: string; replayed: boolean }>;
+  /** `skills` are the names the person chose in the slash menu; the Core decides whether each may reach the model. */
+  startTask(sessionId: string, taskId: string, options?: { skills?: string[] }): Promise<{ runId: string; resumed: boolean; endpoint: string; model: string }>;
+  /** REQ-PX-054: attach a file the person chose, dropped or pasted. The preload resolves a chosen File's path itself; main decides the type from the bytes and the Core ingests it. A string path is the Fleet board's earlier contract, kept for it and now type-checked by main like any other. */
+  attachFile(sessionId: string, taskId: string, file: File | string): Promise<AttachmentResult>;
+  // REQ-PX-054..056: the composer. Each is one typed Core command or read; the renderer decides nothing a command decides.
+  composerPosture(taskId: string): Promise<PostureView>;
+  composerSetMode(sessionId: string, taskId: string, mode: TaskModeId): Promise<ModeChangedView>;
+  composerSetPreference(sessionId: string, taskId: string, patch: PreferencePatch): Promise<PreferenceSetView>;
+  composerVariants(taskId?: string): Promise<ModelCatalogView>;
+  composerSlash(taskId?: string): Promise<SlashInventoryView>;
+  composerQueue(taskId: string): Promise<QueueView>;
+  /** `mode` DEFAULT is plain Enter: the Core applies the task's send behaviour. `inputId` is client-stable; a retry replays. */
+  composerQueueInput(sessionId: string, taskId: string, text: string, mode: InputModeId, inputId: string): Promise<{ inputId: string; sequence: string; offset: string }>;
+  composerEditQueued(sessionId: string, taskId: string, inputId: string, change: { text?: string; mode?: string }): Promise<QueuedChangeView>;
+  composerRemoveQueued(sessionId: string, taskId: string, inputId: string): Promise<QueuedChangeView>;
+  composerReorderQueued(sessionId: string, taskId: string, inputId: string, beforeInputId?: string): Promise<QueuedChangeView>;
+  composerSendNow(sessionId: string, taskId: string, inputId: string, interruptId?: string): Promise<InterruptView>;
+  composerInterrupt(sessionId: string, taskId: string, interruptId?: string): Promise<InterruptView>;
+  composerSendBehavior(taskId: string): Promise<SendBehaviorState>;
+  composerSetSendBehavior(sessionId: string, taskId: string, whileRunning: string, sendNow: string): Promise<SendBehaviorState>;
+  composerSideQuestion(taskId: string, text: string): Promise<SideAnswerView>;
   reviewBundle(taskId: string): Promise<ReviewBundleView>;
   codeView(taskId: string, path: string, expectedFileRevision?: string): Promise<CodeView>;
   decideReview(sessionId: string, taskId: string, decision: "ACCEPT" | "RETURN", rejected: { path: string; index: number }[], note: string, expectedWorkspaceRevision: string): Promise<{ taskState: string; commit: string; reverted: string[]; workspaceRevision: string }>;
@@ -398,8 +418,34 @@ const bridge: ModbitBridge = {
   createSession: () => ipcRenderer.invoke("session:create"),
   sessionSnapshot: (sessionId) => ipcRenderer.invoke("session:snapshot", sessionId),
   createTask: (sessionId, goal, commandIdHex, workspaceRoot, issueUrl) => ipcRenderer.invoke("task:create", sessionId, goal, commandIdHex, workspaceRoot ?? "", issueUrl ?? ""),
-  startTask: (sessionId, taskId) => ipcRenderer.invoke("task:start", sessionId, taskId),
-  attachFile: (sessionId, taskId, filePath) => ipcRenderer.invoke("task:attach", sessionId, taskId, filePath),
+  startTask: (sessionId, taskId, options) => ipcRenderer.invoke("task:start", sessionId, taskId, options ?? {}),
+  attachFile: async (sessionId, taskId, file) => {
+    // A File the person chose or dropped has a path the preload can resolve; a pasted image has none, and its bytes go instead.
+    if (typeof file === "string") return ipcRenderer.invoke("composer:attachPath", sessionId, taskId, file, "");
+    let path = "";
+    try {
+      path = webUtils.getPathForFile(file);
+    } catch {
+      path = "";
+    }
+    if (path) return ipcRenderer.invoke("composer:attachPath", sessionId, taskId, path, file.type);
+    return ipcRenderer.invoke("composer:attachBytes", sessionId, taskId, file.name, new Uint8Array(await file.arrayBuffer()), file.type);
+  },
+  composerPosture: (taskId) => ipcRenderer.invoke("composer:posture", taskId),
+  composerSetMode: (sessionId, taskId, mode) => ipcRenderer.invoke("composer:setMode", sessionId, taskId, mode),
+  composerSetPreference: (sessionId, taskId, patch) => ipcRenderer.invoke("composer:setPreference", sessionId, taskId, patch),
+  composerVariants: (taskId) => ipcRenderer.invoke("composer:variants", taskId ?? ""),
+  composerSlash: (taskId) => ipcRenderer.invoke("composer:slash", taskId ?? ""),
+  composerQueue: (taskId) => ipcRenderer.invoke("composer:queue", taskId),
+  composerQueueInput: (sessionId, taskId, text, mode, inputId) => ipcRenderer.invoke("composer:queueInput", sessionId, taskId, text, mode, inputId),
+  composerEditQueued: (sessionId, taskId, inputId, change) => ipcRenderer.invoke("composer:editQueued", sessionId, taskId, inputId, change),
+  composerRemoveQueued: (sessionId, taskId, inputId) => ipcRenderer.invoke("composer:removeQueued", sessionId, taskId, inputId),
+  composerReorderQueued: (sessionId, taskId, inputId, beforeInputId) => ipcRenderer.invoke("composer:reorderQueued", sessionId, taskId, inputId, beforeInputId ?? ""),
+  composerSendNow: (sessionId, taskId, inputId, interruptId) => ipcRenderer.invoke("composer:sendNow", sessionId, taskId, inputId, interruptId ?? ""),
+  composerInterrupt: (sessionId, taskId, interruptId) => ipcRenderer.invoke("composer:interrupt", sessionId, taskId, interruptId ?? ""),
+  composerSendBehavior: (taskId) => ipcRenderer.invoke("composer:sendBehavior", taskId),
+  composerSetSendBehavior: (sessionId, taskId, whileRunning, sendNow) => ipcRenderer.invoke("composer:setSendBehavior", sessionId, taskId, whileRunning, sendNow),
+  composerSideQuestion: (taskId, text) => ipcRenderer.invoke("composer:sideQuestion", taskId, text),
   reviewBundle: (taskId) => ipcRenderer.invoke("review:bundle", taskId),
   codeView: (taskId, path, expectedFileRevision) => ipcRenderer.invoke("review:codeView", taskId, path, expectedFileRevision ?? ""),
   decideReview: (sessionId, taskId, decision, rejected, note, expectedWorkspaceRevision) => ipcRenderer.invoke("review:decide", sessionId, taskId, decision, rejected, note, expectedWorkspaceRevision),
