@@ -40,6 +40,7 @@ fn input(turn: usize) -> PromptInput {
         workspace_rules: vec!["Use cargo fmt.".into()],
         skills: vec![],
         compaction_summary: None,
+        compaction_narrative: None,
         harness_state: json!({
             "turns": turn,
             "tool_calls": turn,
@@ -47,6 +48,8 @@ fn input(turn: usize) -> PromptInput {
             "baseline_checks": (0..turn * 5).map(|n| (format!("check_{n}"), "PASS")).collect::<Vec<_>>(),
         }),
         transcript,
+        surface_note: String::new(),
+        hook_context: vec![],
         tools: vec![
             ToolProjection {
                 name: "fs.read".into(),

@@ -87,6 +87,12 @@ pub struct Client {
     /// M8.8: frames of a browser view this connection watches that arrived
     /// while another frame was awaited; `next_browser_frame` drains them first.
     browser_frames: std::collections::VecDeque<crate::v1::BrowserViewFrame>,
+    /// PX-043: frames of a terminal stream this connection attached to that
+    /// arrived while another frame was awaited; `next_terminal_frame` drains
+    /// them first. The Core sends at most the attach's window beyond what
+    /// this client acknowledged, so a client that acknowledges what it has
+    /// consumed holds a bounded number of them.
+    terminal_frames: std::collections::VecDeque<crate::v1::TerminalFrame>,
 }
 
 impl std::fmt::Debug for Client {
@@ -133,6 +139,7 @@ impl Client {
                     capabilities: ack.client_capabilities,
                     browser_requests: std::collections::VecDeque::new(),
                     browser_frames: std::collections::VecDeque::new(),
+                    terminal_frames: std::collections::VecDeque::new(),
                 })
             }
             Some(SurfaceFrame {
@@ -190,6 +197,10 @@ impl Client {
                 Some(SurfaceFrame {
                     body: Some(Body::BrowserFrame(f)),
                 }) => self.push_frame(f),
+                // PX-043: a frame of a terminal stream may interleave.
+                Some(SurfaceFrame {
+                    body: Some(Body::TerminalFrame(f)),
+                }) => self.terminal_frames.push_back(f),
                 None => return Err(ClientError::Refused("connection closed".into())),
                 Some(other) => return Err(ClientError::Unexpected(format!("{other:?}"))),
             }
@@ -230,6 +241,47 @@ impl Client {
                     body: Some(Body::BrowserRequest(r)),
                 }) => self.browser_requests.push_back(r),
                 Some(SurfaceFrame {
+                    body: Some(Body::TerminalFrame(f)),
+                }) => self.terminal_frames.push_back(f),
+                Some(SurfaceFrame {
+                    body: Some(Body::Event(_) | Body::CommandAck(_)),
+                }) => continue,
+                Some(other) => return Err(ClientError::Unexpected(format!("{other:?}"))),
+            }
+        }
+    }
+
+    /// PX-043: the next frame of a terminal stream this connection attached
+    /// to (`AttachTerminal`); `None` when the Core closes. Acknowledge what
+    /// has been consumed with `AckTerminal`, or the stream pauses at its
+    /// window and ends SLOW_CONSUMER.
+    pub async fn next_terminal_frame(
+        &mut self,
+    ) -> Result<Option<crate::v1::TerminalFrame>, ClientError> {
+        if let Some(f) = self.terminal_frames.pop_front() {
+            return Ok(Some(f));
+        }
+        loop {
+            match read_frame(&mut self.stream).await? {
+                Some(SurfaceFrame {
+                    body: Some(Body::TerminalFrame(f)),
+                }) => return Ok(Some(f)),
+                Some(SurfaceFrame {
+                    body: Some(Body::Error(e)),
+                }) => {
+                    return Err(ClientError::Protocol {
+                        code: e.code,
+                        message: e.message,
+                    });
+                }
+                None => return Ok(None),
+                Some(SurfaceFrame {
+                    body: Some(Body::BrowserRequest(r)),
+                }) => self.browser_requests.push_back(r),
+                Some(SurfaceFrame {
+                    body: Some(Body::BrowserFrame(f)),
+                }) => self.push_frame(f),
+                Some(SurfaceFrame {
                     body: Some(Body::Event(_) | Body::CommandAck(_)),
                 }) => continue,
                 Some(other) => return Err(ClientError::Unexpected(format!("{other:?}"))),
@@ -265,6 +317,9 @@ impl Client {
                 Some(SurfaceFrame {
                     body: Some(Body::BrowserFrame(f)),
                 }) => self.push_frame(f),
+                Some(SurfaceFrame {
+                    body: Some(Body::TerminalFrame(f)),
+                }) => self.terminal_frames.push_back(f),
                 Some(other) => return Err(ClientError::Unexpected(format!("{other:?}"))),
             }
         }
@@ -314,6 +369,9 @@ impl Client {
                 Some(SurfaceFrame {
                     body: Some(Body::BrowserFrame(f)),
                 }) => self.push_frame(f),
+                Some(SurfaceFrame {
+                    body: Some(Body::TerminalFrame(f)),
+                }) => self.terminal_frames.push_back(f),
                 Some(other) => return Err(ClientError::Unexpected(format!("{other:?}"))),
             }
         }

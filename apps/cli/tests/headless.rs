@@ -1366,6 +1366,7 @@ async fn drive_desktop(endpoint: &Endpoint, secret: &[u8], repo: &str) -> Canoni
                 workspace_root: repo.into(),
                 issue_url: String::new(),
                 issue_json: String::new(),
+                ..Default::default()
             }
             .encode_to_vec(),
             g,
@@ -1491,6 +1492,7 @@ async fn start_desktop_run(c: &mut Client, task_id: &Id, generation: Option<u64>
                 max_tool_calls: 0,
                 max_no_progress_turns: 0,
                 skills: vec![],
+                ..Default::default()
             }
             .encode_to_vec(),
             generation,
@@ -1717,4 +1719,148 @@ fn imp_ev_0142_doctor_trace_export_verify_and_handoff_through_the_cli() {
     assert_eq!(code, 0, "{out}{err}");
     assert!(out.starts_with("handoff bundle="), "{out}");
     assert!(bundle.join("manifest.json").exists(), "{out}");
+}
+
+/// QUAL-PX-105 / QUAL-PX-052 / QUAL-PX-116 through the real CLI against a real
+/// Core it spawns: `skill inventory` lists a user skill with its hash and
+/// untrusted state; `skill trust name@hash` refuses a hash that is not the
+/// skill's and, given the right one, records a trust decision the next
+/// inventory shows; one edited byte makes it untrusted again; `skill untrust`
+/// withdraws it; `task budget` records a task's cost, wall-clock and
+/// delegation limits.
+#[test]
+fn qual_px_105_052_116_skill_trust_inventory_and_task_budget_through_the_cli() {
+    let core = core_bin();
+    let tmp = tempfile::tempdir().unwrap();
+    let data_dir = tmp.path().join("profile");
+    let skill = data_dir.join("skills").join("cli-skill");
+    std::fs::create_dir_all(&skill).unwrap();
+    let write = |body: &str| {
+        std::fs::write(
+            skill.join("SKILL.md"),
+            format!("---\nname: cli-skill\nversion: 1.0.0\ndescription: a skill written for the CLI test\n---\n{body}\n"),
+        )
+        .unwrap();
+        modbit_skills::load_package(&skill).unwrap().content_hash
+    };
+    let hash = write("Do the thing carefully.");
+    let cli = Cli {
+        data_dir: data_dir.clone(),
+        core,
+        env: vec![
+            ("OPENAI_API_KEY".into(), String::new()),
+            ("ANTHROPIC_API_KEY".into(), String::new()),
+            // No System scope on this machine for the test.
+            (
+                "MODBIT_SYSTEM_SKILLS".into(),
+                tmp.path().join("no-system").to_string_lossy().into_owned(),
+            ),
+        ],
+    };
+    let (code, out, err) = cli.run(&["skill", "inventory"]);
+    assert_eq!(code, 0, "{err}");
+    let line = out
+        .lines()
+        .find(|l| l.starts_with("skill cli-skill"))
+        .unwrap();
+    assert!(
+        line.contains("scope=USER")
+            && line.contains("trust=UNTRUSTED")
+            && line.contains("enabled=false"),
+        "{line}"
+    );
+    assert!(line.contains(&format!("content_hash={hash}")), "{line}");
+    // The wrong hash, and a name with no hash, are refused.
+    let (code, _, err) = cli.run(&["skill", "trust", &format!("cli-skill@{}", "0".repeat(64))]);
+    assert_ne!(code, 0);
+    assert!(
+        err.contains("HASH_MISMATCH") && err.contains(&hash),
+        "{err}"
+    );
+    let (code, _, err) = cli.run(&["skill", "trust", "cli-skill"]);
+    assert_ne!(code, 0);
+    assert!(
+        err.contains("usage: skill trust <name>@<content-hash>"),
+        "{err}"
+    );
+    // The right one records the owner's decision.
+    let (code, out, err) = cli.run(&["skill", "trust", &format!("cli-skill@{hash}")]);
+    assert_eq!(code, 0, "{err}");
+    assert!(out.contains("trust=TRUSTED_BY_OWNER"), "{out}");
+    let decided = std::fs::read_to_string(data_dir.join("skills").join("trusted.json")).unwrap();
+    assert!(
+        decided.contains(&hash) && decided.contains("cli-skill"),
+        "{decided}"
+    );
+    let (_, out, _) = cli.run(&["skill", "inventory"]);
+    let line = out
+        .lines()
+        .find(|l| l.starts_with("skill cli-skill"))
+        .unwrap();
+    assert!(
+        line.contains("trust=TRUSTED_BY_OWNER") && line.contains("enabled=true"),
+        "{line}"
+    );
+    // One byte changed: untrusted again, and the inventory says why.
+    let new_hash = write("Do the thing carefully!");
+    assert_ne!(new_hash, hash);
+    let (_, out, _) = cli.run(&["skill", "inventory"]);
+    let line = out
+        .lines()
+        .find(|l| l.starts_with("skill cli-skill"))
+        .unwrap();
+    assert!(
+        line.contains("trust=CHANGED_SINCE_TRUSTED") && line.contains("enabled=false"),
+        "{line}"
+    );
+    assert!(
+        line.contains(&format!("skill trust cli-skill@{new_hash}")),
+        "{line}"
+    );
+    // Withdrawn trust stays withdrawn.
+    let (code, _, err) = cli.run(&["skill", "trust", &format!("cli-skill@{new_hash}")]);
+    assert_eq!(code, 0, "{err}");
+    let (code, out, err) = cli.run(&["skill", "untrust", "cli-skill"]);
+    assert_eq!(code, 0, "{err}");
+    assert!(out.contains("trust=UNTRUSTED"), "{out}");
+    // A task's budgets.
+    let (code, out, err) = cli.run(&["session", "create"]);
+    assert_eq!(code, 0, "{err}");
+    let sid = out.trim().strip_prefix("session ").unwrap().to_owned();
+    let (code, out, err) = cli.run(&["task", "create", "--session", &sid, "tidy up"]);
+    assert_eq!(code, 0, "{err}");
+    let tid = out.trim().strip_prefix("task ").unwrap().to_owned();
+    let (code, out, err) = cli.run(&[
+        "task",
+        "budget",
+        "--session",
+        &sid,
+        "--task",
+        &tid,
+        "--max-cost-minor",
+        "500",
+        "--max-wall-ms",
+        "60000",
+        "--max-children",
+        "1",
+    ]);
+    assert_eq!(code, 0, "{err}");
+    assert!(
+        out.contains("max_cost_minor=500")
+            && out.contains("max_wall_ms=60000")
+            && out.contains("max_children=1")
+            && out.contains("forbid_spawn=false"),
+        "{out}"
+    );
+    let (code, out, err) = cli.run(&[
+        "task",
+        "budget",
+        "--session",
+        &sid,
+        "--task",
+        &tid,
+        "--forbid-spawn",
+    ]);
+    assert_eq!(code, 0, "{err}");
+    assert!(out.contains("forbid_spawn=true"), "{out}");
 }

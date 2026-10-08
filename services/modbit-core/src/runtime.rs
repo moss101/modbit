@@ -96,6 +96,24 @@ struct Running {
     /// REQ-EV-0049: park at the next safe boundary — durable, resumable,
     /// distinct from cancel.
     park: CancellationToken,
+    /// The budgets the loop was started under (REQ-PX-116): what a child it
+    /// brings back is regranted against.
+    budgets: Budgets,
+    /// REQ-PX-101: who asked for the park, when a person did (`PauseTask`).
+    /// A park with no request is the parent's (`agent.park`); one with a
+    /// request ends the run `Waiting(Paused)` and records `TaskPaused`.
+    pause: std::sync::Mutex<Option<PauseRequest>>,
+}
+
+/// A person's request to park a run at its next turn boundary (REQ-PX-101).
+#[derive(Clone, Debug)]
+pub(crate) struct PauseRequest {
+    /// Why, in the requester's words.
+    pub reason: String,
+    /// Who asked.
+    pub actor: Actor,
+    /// The `PauseTask` command (UUID text).
+    pub command_id: String,
 }
 
 /// Runtime state on the Core.
@@ -428,6 +446,8 @@ impl Runtime {
                                 Running {
                                     cancel: cancel.clone(),
                                     park: park.clone(),
+                                    pause: Default::default(),
+                                    budgets: cfg.budgets,
                                 },
                             );
                             let core2 = Arc::clone(core);
@@ -502,6 +522,8 @@ impl Runtime {
             Running {
                 cancel: cancel.clone(),
                 park: park.clone(),
+                pause: Default::default(),
+                budgets: cfg.budgets,
             },
         );
         let core2 = Arc::clone(core);
@@ -535,6 +557,11 @@ impl Runtime {
         Ok((run_id, resumed))
     }
 
+    /// The budgets a live loop was started under (REQ-PX-116).
+    pub async fn budgets_of(&self, task_id: &TaskId) -> Option<Budgets> {
+        self.tasks.lock().await.get(task_id).map(|r| r.budgets)
+    }
+
     /// The live loop's cancellation token, for work that must stop with it
     /// (a verification command the broker is running, M9.5).
     pub async fn cancel_token(&self, task_id: &TaskId) -> Option<CancellationToken> {
@@ -566,6 +593,33 @@ impl Runtime {
             }
             None => false,
         }
+    }
+
+    /// REQ-PX-101: a person asks the run to park at its next turn boundary.
+    /// The request is recorded on the live loop before the park is raised, so
+    /// the loop that stops knows it was asked, by whom. A tool call or a model
+    /// stream in flight is never abandoned: the park is read where the loop
+    /// reads it, at the top of the next turn. `false` when no loop is alive.
+    pub(crate) async fn pause(&self, task_id: &TaskId, request: PauseRequest) -> bool {
+        match self.tasks.lock().await.get(task_id) {
+            Some(r) => {
+                if let Ok(mut p) = r.pause.lock() {
+                    p.get_or_insert(request);
+                }
+                r.park.cancel();
+                true
+            }
+            None => false,
+        }
+    }
+
+    /// The pause request of a loop that is ending, if a person made one.
+    pub(crate) async fn take_pause(&self, task_id: &TaskId) -> Option<PauseRequest> {
+        self.tasks
+            .lock()
+            .await
+            .get(task_id)
+            .and_then(|r| r.pause.lock().ok().and_then(|mut p| p.take()))
     }
 
     /// Whether the loop for a task is alive.
@@ -1265,7 +1319,7 @@ fn route_new_run(
 /// clears the switch cost opens a new transaction — compiled, admitted
 /// under the next routing epoch, its initial slot activated — on this run,
 /// and the loop continues on it. Every decision is on the log.
-async fn reroute_at_boundary(
+pub(crate) async fn reroute_at_boundary(
     core: &Core,
     task: &Task,
     run_id: RunId,
@@ -1605,14 +1659,39 @@ pub(crate) async fn rebuild(
     // docs/64 DI-9: the questions that named protected paths, until answered.
     let mut protected_questions: HashMap<String, Vec<String>> = HashMap::new();
     let mut applied = 0usize;
+    // REQ-PX-116: what the task has spent, from its own log — priced at
+    // each call's own binding in the active registry — and the wall clock
+    // its runs have used (first to last event of each run).
+    let registry = core.gateway.registry();
+    let mut spend = crate::usage::SpendScan::new(registry.as_ref());
     for ev in events
         .iter()
         .filter(|e| e.envelope.task_id == Some(task.task_id))
     {
         last_offset = ev.offset;
         let payload = store.payload(&ev.envelope).unwrap_or_default();
+        spend.observe(&ev.envelope, &payload);
         match ev.envelope.event_type.as_str() {
             "TurnPrepared" => state.turns += 1,
+            "TaskBudgetsSet" => {
+                // The task's own limits (REQ-PX-116). A subagent's are its
+                // capsule's and nothing else's.
+                if task.origin != modbit_domain::task::TaskOrigin::Subagent {
+                    state.budgets.max_cost_minor =
+                        payload["max_cost_minor"].as_u64().filter(|c| *c > 0);
+                    state.budgets.max_wall_ms = payload["max_wall_ms"].as_u64().filter(|c| *c > 0);
+                    state.budgets.max_children = if payload["forbid_spawn"].as_bool() == Some(true)
+                    {
+                        0
+                    } else {
+                        payload["max_children"]
+                            .as_u64()
+                            .filter(|c| *c > 0)
+                            .and_then(|c| u32::try_from(c).ok())
+                            .unwrap_or(harness::DEFAULT_MAX_CHILDREN)
+                    };
+                }
+            }
             "TaskForked" => {
                 // The capsule names what the fork inherited; the model reads
                 // it in harness_state instead of re-deciding.
@@ -1750,6 +1829,13 @@ pub(crate) async fn rebuild(
                         "objective": c.spec.objective,
                         "write_scope": c.spec.write_scope,
                         "read_scope": c.spec.read_scope,
+                        "private_context_refs": c.private_context_refs,
+                        "budget": {
+                            "max_turns": c.max_turns,
+                            "max_tool_calls": c.max_tool_calls,
+                            "max_cost_minor": c.max_cost_minor,
+                            "max_wall_ms": c.max_wall_ms,
+                        },
                         "verification": c.spec.verification,
                         "expected_artifacts": c.spec.expected_artifacts,
                         "branch": c.branch,
@@ -2030,6 +2116,10 @@ pub(crate) async fn rebuild(
     // M6.1: the WorkGraph is a projection of the same log (docs/31
     // `work_nodes`); compaction never touched it (REQ-EV-0052).
     state.work_graph.nodes = store.work_nodes(&task.task_id).unwrap_or_default();
+    let spent = spend.finish();
+    state.cost_minor = spent.cost_minor;
+    state.cost_unmetered_calls = spent.unmetered_calls;
+    state.wall_ms = spent.wall_ms;
     let pending = queued.into_iter().skip(applied).collect();
     (transcript, state, last_offset, pending)
 }
@@ -2315,7 +2405,12 @@ fn projection(
     task: &Task,
     lease: Option<&modbit_domain::lease::CapabilityLease>,
     state: &mut HarnessState,
-) -> Vec<ToolProjection> {
+    settings: &crate::tool_projection::Settings,
+    facts: crate::tool_projection::Facts,
+) -> crate::tool_projection::Assembled {
+    let exec_only = settings.mode == modbit_core_runtime::projection::ProjectionMode::ExecOnly
+        && !crate::critique::is_review(task);
+    let mut registry_names: std::collections::BTreeSet<String> = std::collections::BTreeSet::new();
     let visible = core
         .tools
         .visible_specs_for(&task.task_id, Some(&task.execution_profile), lease);
@@ -2354,8 +2449,29 @@ fn projection(
         &core.data_dir,
         task.workspace_root.as_deref(),
     ));
+    // PX-051: the mode posture in force narrows what is offered, and the
+    // kernel refuses what is named anyway.
+    let posture = core
+        .tools
+        .tasking
+        .in_force_now(task.task_id)
+        .unwrap_or_default()
+        .posture();
     for s in visible {
         if !capsule_tools.is_empty() && !capsule_tools.iter().any(|t| t == &s.name) {
+            continue;
+        }
+        if let Some(why) = posture.refusal(s.effect_class, &s.required_capabilities) {
+            state.withheld_tools.push(harness::WithheldTool {
+                name: s.name.clone(),
+                reason: "MODE_POSTURE".into(),
+                how: format!("{why}; the user changes the task's mode, the agent does not"),
+            });
+            continue;
+        }
+        // REQ-PX-116: `skill.load` is offered only while a skill is loadable
+        // (trusted, enabled, selected) for this task.
+        if s.name == "skill.load" && !state.skills_loadable {
             continue;
         }
         if let Some(c) = s.required_capabilities.iter().find(|c| denied.contains(*c)) {
@@ -2377,6 +2493,7 @@ fn projection(
             deferred.push((harness::toolset_of(&s.name).to_owned(), s.name.clone()));
             continue;
         }
+        registry_names.insert(s.name.clone());
         tools.push(ToolProjection {
             name: s.name,
             description: format!("{} [effect: {:?}]", s.description, s.effect_class),
@@ -2391,17 +2508,45 @@ fn projection(
             _ => by_set.push((set, vec![name])),
         }
     }
-    let catalog = by_set
+    let mut catalog = by_set
         .iter()
         .map(|(set, names)| format!("{set}: {}", names.join(", ")))
         .collect::<Vec<_>>()
         .join("; ");
+    // A registry that grows must not grow every request: past the bound the
+    // catalog names each toolset and how many tools it holds, and a search
+    // finds the rest.
+    if catalog.len() > crate::tool_projection::MAX_CATALOG_BYTES {
+        catalog = by_set
+            .iter()
+            .map(|(set, names)| format!("{set} ({} tools)", names.len()))
+            .collect::<Vec<_>>()
+            .join("; ");
+    }
+    if exec_only {
+        let harness = crate::tool_projection::harness_deferred_catalog()
+            .iter()
+            .map(|(n, d, _)| format!("{n} ({d})"))
+            .collect::<Vec<_>>()
+            .join("; ");
+        if !catalog.is_empty() {
+            catalog.push_str("; ");
+        }
+        catalog.push_str(&format!("harness: {harness}"));
+    }
     tools.push(ToolProjection {
         name: TOOL_SEARCH.into(),
-        description: format!(
-            "Search the deferred tool catalog by words in a tool's name, toolset or purpose and activate the matches: they are projected with their schemas from the next turn on. Discovery never authorizes — a tool the task's profile or lease denies is not discoverable and stays refused at invocation. Deferred toolsets: {}",
-            if catalog.is_empty() { "none".to_owned() } else { catalog }
-        ),
+        description: if exec_only {
+            format!(
+                "Search the deferred tool catalog by words in a tool's name, toolset or purpose. A host tool found is bound for your programs as `tools.<name>` and its schema is returned here; a harness tool found (delegation, repair, retrieval, verification) is offered as a tool for the next turn. Discovery never authorizes — a tool the task's profile or lease denies is not discoverable and stays refused at invocation. Deferred: {}",
+                if catalog.is_empty() { "none".to_owned() } else { catalog }
+            )
+        } else {
+            format!(
+                "Search the deferred tool catalog by words in a tool's name, toolset or purpose and activate the matches: they are projected with their schemas from the next turn on. Discovery never authorizes — a tool the task's profile or lease denies is not discoverable and stays refused at invocation. Deferred toolsets: {}",
+                if catalog.is_empty() { "none".to_owned() } else { catalog }
+            )
+        },
         input_schema: serde_json::json!({"type":"object","properties":{"query":{"type":"string"},"activate":{"type":"array","items":{"type":"string"}}},"additionalProperties":false}),
     });
     tools.push(ToolProjection {
@@ -2444,7 +2589,13 @@ fn projection(
     // nothing either and answers with `review.report` (REQ-EPR-007).
     if crate::critique::is_review(task) {
         tools.push(crate::critique::projection());
-    } else if state.capsule.is_none() {
+    } else if state.capsule.is_none()
+        && posture.subagents
+        && state.budgets.max_children > 0
+        && crate::spawn::spawn_allowed(core, task)
+    {
+        // REQ-PX-116: delegation is offered only where the task and the
+        // configuration in force allow it.
         tools.extend(crate::agent_tools::projections());
     }
     tools.push(ToolProjection {
@@ -2488,14 +2639,30 @@ fn projection(
             )
         })
         .collect();
+    let bindings_text = if exec_only {
+        "the tools listed below".to_owned()
+    } else if program_bindings.is_empty() {
+        "none".to_owned()
+    } else {
+        program_bindings.join(", ")
+    };
+    // The contract text is mode-neutral; `assemble` adds the mode's tail
+    // (direct: when to prefer a direct call; exec_only: the tools a
+    // program reaches, as signatures).
+    let exec_lean = format!(
+        "Run a JavaScript program (async function body: `await` and `return` work) in an isolated runtime with no filesystem, network, process or module access of its own. Its only way out is `await tools.<name>(args)` for the tools below, each an ordinary governed tool call with its own policy decision, approval and receipt; a refused call throws an Error with `code`. `return` the result (JSON); `console.log` for notes. Compose what belongs together in one program. Budgets: cpu_time_ms (default 5000, max {}), memory_bytes, max_tool_calls, max_output_bytes; `declared_effects` narrows the bindings. Returns the outcome, or a handle for proc.wait when still running after {} ms. A tool not listed is found with `tool.search`, which returns its schema and binds it.",
+        crate::procedural::MAX_CPU_TIME_MS,
+        crate::procedural::EXEC_INLINE_GRACE_MS
+    );
+    let exec_base = format!(
+        "Run a JavaScript program (the body of an async function: `await` and `return` work) in an isolated runtime with no filesystem, network, process or module access of its own. Its only way out is `await tools.<toolset>.<name>(args)` for the tools projected this turn ({}; a deferred tool in scope may be called by name too), each an ordinary governed tool call with its own policy decision, approval and receipt; a refused call throws an Error carrying `code`. `console.log` for notes; `return` the result (JSON). `declared_effects` narrows the bindings to the named tools or toolsets. Budgets: cpu_time_ms (default 5000, max {}), memory_bytes, max_tool_calls (bounded by the task's remaining tool budget), max_output_bytes. Returns the outcome, or a handle for proc.wait when the program is still running after {} ms (for instance awaiting an approval).",
+        bindings_text,
+        crate::procedural::MAX_CPU_TIME_MS,
+        crate::procedural::EXEC_INLINE_GRACE_MS
+    );
     tools.push(ToolProjection {
         name: crate::procedural::EXEC_TOOL.into(),
-        description: format!(
-            "Run a JavaScript program (the body of an async function: `await` and `return` work) in an isolated runtime with no filesystem, network, process or module access of its own. Its only way out is `await tools.<toolset>.<name>(args)` for the tools projected this turn ({}; a deferred tool in scope may be called by name too), each an ordinary governed tool call with its own policy decision, approval and receipt; a refused call throws an Error carrying `code`. `console.log` for notes; `return` the result (JSON). `declared_effects` narrows the bindings to the named tools or toolsets. Budgets: cpu_time_ms (default 5000, max {}), memory_bytes, max_tool_calls (bounded by the task's remaining tool budget), max_output_bytes. Returns the outcome, or a handle for proc.wait when the program is still running after {} ms (for instance awaiting an approval). Use it to compose several tool calls in one turn; use direct calls when one call is enough.",
-            if program_bindings.is_empty() { "none".to_owned() } else { program_bindings.join(", ") },
-            crate::procedural::MAX_CPU_TIME_MS,
-            crate::procedural::EXEC_INLINE_GRACE_MS
-        ),
+        description: exec_base.clone(),
         input_schema: serde_json::json!({"type":"object","properties":{"program":{"type":"string","minLength":1},"declared_effects":{"type":"array","items":{"type":"string"}},"budget":{"type":"object","properties":{"cpu_time_ms":{"type":"integer","minimum":1},"memory_bytes":{"type":"integer","minimum":1},"max_tool_calls":{"type":"integer","minimum":1},"max_output_bytes":{"type":"integer","minimum":1}},"additionalProperties":false}},"required":["program"],"additionalProperties":false}),
     });
     tools.push(ToolProjection {
@@ -2511,8 +2678,39 @@ fn projection(
         description: "Run the derived verification plan as a TARGETED stage (build, tests) and get normalized failing checks first; the COMPLETION run happens on task.complete.".into(),
         input_schema: serde_json::json!({"type":"object","properties":{"reason":{"type":"string"}},"additionalProperties":false}),
     });
-    tools.sort_by(|a, b| a.name.cmp(&b.name));
-    tools
+    // PX-114: the mode decides what the request shows, the budget what it
+    // may cost. A tool left out of the request is left out of the fence too
+    // (a call to it is refused, `TOOL_NOT_PROJECTED`); the registry tools
+    // `exec_only` hides stay bindable by a program.
+    let assembled = crate::tool_projection::assemble(
+        settings,
+        tools,
+        &registry_names,
+        &exec_base,
+        &exec_lean,
+        " Use it to compose several tool calls in one turn; use direct calls when one call is enough.",
+        &state.activated_tools,
+        facts,
+        crate::critique::is_review(task),
+    );
+    for name in &assembled.hidden {
+        state.withheld_tools.push(harness::WithheldTool {
+            name: name.clone(),
+            reason: "DEFERRED".into(),
+            how: "deferred in this mode; find it with tool.search and it is offered while the task needs it".into(),
+        });
+    }
+    for name in &assembled.outcome.dropped {
+        state.withheld_tools.push(harness::WithheldTool {
+            name: name.name.clone(),
+            reason: "OVER_BUDGET".into(),
+            how: format!(
+                "the request's tool-schema budget ({} bytes) is full and this is among the lowest-priority tools; a person raises max_projection_bytes",
+                settings.max_bytes
+            ),
+        });
+    }
+    assembled
 }
 
 /// Pending steering inputs after `after_offset` (STEER / FOLLOW_UP / COLLECT).
@@ -2568,6 +2766,28 @@ impl QueuedInput {
     }
 }
 
+/// Whether a STEER input was queued for the task after `after_offset`, and
+/// the offset read up to (the next look starts there).
+async fn steer_input_after(core: &Core, task: &Task, after_offset: u64) -> (bool, u64) {
+    let store = core.store.lock().await;
+    let events = store
+        .read_session(&task.session_id, after_offset, usize::MAX)
+        .unwrap_or_default();
+    let mut last = after_offset;
+    let mut steer = false;
+    for ev in &events {
+        last = last.max(ev.offset);
+        if ev.envelope.task_id == Some(task.task_id) && ev.envelope.event_type == "TaskInputQueued"
+        {
+            let p = store.payload(&ev.envelope).unwrap_or_default();
+            let mode = serde_json::from_value::<InputMode>(p["mode"].clone())
+                .unwrap_or(InputMode::FollowUp);
+            steer |= p["text"].as_str().is_some() && matches!(mode, InputMode::Steer);
+        }
+    }
+    (steer, last)
+}
+
 async fn pending_inputs(core: &Core, task: &Task, after_offset: u64) -> Vec<QueuedInput> {
     let store = core.store.lock().await;
     let events = store
@@ -2585,6 +2805,38 @@ async fn pending_inputs(core: &Core, task: &Task, after_offset: u64) -> Vec<Queu
         }
     }
     out
+}
+
+/// PX-114: the task's projection mode and schema-bytes budget as a person
+/// last set them (`ToolProjectionConfigured`) after `after_offset`, with the
+/// offset read up to. The newest setting wins; an empty mode or a zero
+/// budget leaves the earlier one in force.
+async fn projection_config_after(
+    core: &Core,
+    task: &Task,
+    after_offset: u64,
+) -> (u64, Option<String>, Option<u64>) {
+    let store = core.store.lock().await;
+    let events = store
+        .read_session(&task.session_id, after_offset, usize::MAX)
+        .unwrap_or_default();
+    let mut last = after_offset;
+    let (mut mode, mut bytes) = (None, None);
+    for ev in &events {
+        last = last.max(ev.offset);
+        if ev.envelope.task_id == Some(task.task_id)
+            && ev.envelope.event_type == "ToolProjectionConfigured"
+        {
+            let p = store.payload(&ev.envelope).unwrap_or_default();
+            if let Some(m) = p["mode"].as_str().filter(|m| !m.is_empty()) {
+                mode = Some(m.to_owned());
+            }
+            if let Some(b) = p["max_projection_bytes"].as_u64().filter(|b| *b > 0) {
+                bytes = Some(b);
+            }
+        }
+    }
+    (last, mode, bytes)
 }
 
 #[allow(clippy::too_many_arguments)]
@@ -2619,6 +2871,15 @@ async fn run_loop(
     // docs/28 §5 (PX-039): a goal that reports a failure must reproduce it
     // before a fix transaction.
     state.goal_reports_failure = harness::goal_reports_failure(&task.goal_text);
+    // REQ-PX-116: the wall clock the task's earlier runs used, and this
+    // run's own clock from here.
+    let wall_prior = {
+        let st = core.store.lock().await;
+        state
+            .wall_ms
+            .saturating_sub(crate::usage::run_span_ms(&st, &task.session_id, run_id))
+    };
+    let run_clock = std::time::Instant::now();
     // Protocol state (docs/19 layer 2, M4.1): the calls the model asked for
     // that never finished are re-entered by their recorded ids, at the exact
     // boundary the run stopped at; the model is not asked again.
@@ -2682,6 +2943,9 @@ async fn run_loop(
     }
     let mut tools: Vec<ToolProjection>;
     let mut projected_names: Vec<String>;
+    // PX-114: what a program may bind (the whole projection, shown or not).
+    let mut program_names: Vec<String>;
+    let mut projection_cfg_offset: u64 = 0;
     // The programs of this run (docs/16 "Procedural Tool Runtime", M5.4).
     let mut programs = crate::procedural::Programs::default();
     // Skills (docs/16 "Skills", M5.5): discovered, selected and compiled
@@ -2689,15 +2953,15 @@ async fn run_loop(
     // kernel — what a skill may use at most; the node's turn-by-turn
     // projection stays the harness's); their instructions are a stable
     // prompt segment, their selection is on the log.
-    let skill_instructions: Vec<String> = {
-        let surface: Vec<String> = core
-            .tools
-            .visible_specs_for(&task.task_id, Some(&task.execution_profile), lease.as_ref())
-            .into_iter()
-            .map(|s| s.name)
-            .collect();
-        crate::skills::select_for_run(&core, &task, lt, &actor, &cfg.skills, &surface).await
-    };
+    let skill_surface: Vec<String> = core
+        .tools
+        .visible_specs_for(&task.task_id, Some(&task.execution_profile), lease.as_ref())
+        .into_iter()
+        .map(|s| s.name)
+        .collect();
+    // REQ-PX-105: re-read every round, so trust, revocation and edits apply
+    // to the next request.
+    let mut run_skills = crate::skills::RunSkills::new(cfg.skills.clone());
     // Rules (REQ-EV-0059/0105/0129): loaded once, selected every turn from
     // the paths the task has made active, recorded when the selection
     // changes.
@@ -2710,6 +2974,16 @@ async fn run_loop(
         None => false,
     };
     let mut rules = crate::rules::RunRules::load(&core, &task, repository_trusted);
+    // REQ-PX-108: the goal-seeded pre-turn pack. A resumed run finds its
+    // first-turn pack on the log and does not make another.
+    let mut preturn = crate::preturn::PreTurn::load(&core, &task).await;
+    // REQ-PX-109: the provider-reported correction to the token estimate, the
+    // prompt that is not transcript, and the hysteresis floor the trigger
+    // waits to exceed after an epoch.
+    let mut calibration = modbit_compaction::Calibration::default();
+    let mut overhead_tokens: u32 = 0;
+    let mut rearm_floor: u32 = 0;
+    let mut summarizer_usage: Vec<crate::compaction_model::SummarizerUsage> = Vec::new();
     // The vision bridge for a text-only routed model (REQ-EV-0184/0185):
     // one description per media digest per run, recorded on the task.
     let mut bridge = crate::media_bridge::BridgeSession::new(
@@ -2734,15 +3008,18 @@ async fn run_loop(
     // REQ-EV-0042/0240: the hooks in force as the run starts — recorded with
     // the declarations refused — and the run's `before_run` hooks, which may
     // stop it before its first round.
-    let (mut hooks, refused_hooks) = crate::hooks::scope(
-        &core,
-        &task,
-        Some(run_id),
-        None,
-        Some(cfg.lease_generation),
-        &actor,
-    )
-    .await;
+    let (mut hooks, refused_hooks) = {
+        let (h, refused) = crate::hooks::scope(
+            &core,
+            &task,
+            Some(run_id),
+            None,
+            Some(cfg.lease_generation),
+            &actor,
+        )
+        .await;
+        (h.bound(&cfg.endpoint, &cfg.model), refused)
+    };
     if !hooks.registrations.is_empty() || !refused_hooks.is_empty() {
         let mut store = core.store.lock().await;
         let _ = append(
@@ -2770,6 +3047,11 @@ async fn run_loop(
         .await
         .denied
         .map(|(code, reason)| format!("{code}: {reason}"));
+    // PX-051: the mode posture the kernel enforces is the one this loop
+    // adopts at its round boundaries; when the loop ends it goes back to what
+    // the user last set.
+    let _posture = crate::tasking::guard(&core, task.task_id);
+    let mut edge = crate::tasking::Edge::new(&task);
     let end = 'outer: loop {
         if cancel.is_cancelled() {
             break LoopEnd::Cancelled;
@@ -2872,6 +3154,13 @@ async fn run_loop(
                 }
             }
         }
+        // PX-051 / PX-053: the round boundary adopts the task's latest mode
+        // (the posture the kernel enforces from here, and the projection
+        // below follows) and reads its latest execution preference.
+        crate::tasking::at_boundary(
+            &core, &task, run_id, &mut cfg, &mut edge, &mut state, lt, &actor,
+        )
+        .await;
         // REQ-EV-0042: the hooks follow the configuration and the session's
         // extensions from round to round; a fail-closed hook that failed
         // after a step stops the run here.
@@ -2884,7 +3173,8 @@ async fn run_loop(
             &actor,
         )
         .await
-        .0;
+        .0
+        .bound(&cfg.endpoint, &cfg.model);
         if let Some((code, reason)) = core.tools.hooks.take_halt(task.task_id) {
             break 'outer LoopEnd::NeedsAttention {
                 code: if code == "HOOK_DENIED" {
@@ -2897,7 +3187,64 @@ async fn run_loop(
         }
         // The projection follows the harness state: deferred tools activated
         // by `tool.search` appear with their schemas from this turn on.
-        tools = projection(&core, &task, lease.as_ref(), &mut state);
+        // PX-114: how the surface is shown (mode) and what it may cost
+        // (budget) follow the task, the routed model and the Core. A
+        // setting a person made since the last round applies now.
+        {
+            let (off, mode, bytes) =
+                projection_config_after(&core, &task, projection_cfg_offset).await;
+            projection_cfg_offset = off;
+            if mode.is_some() {
+                state.projection_mode = mode;
+            }
+            if bytes.is_some() {
+                state.projection_max_bytes = bytes;
+            }
+        }
+        let proj_settings = crate::tool_projection::settings_for(
+            &core,
+            &task,
+            &cfg.endpoint,
+            &cfg.model,
+            &(
+                state
+                    .projection_mode
+                    .as_deref()
+                    .and_then(modbit_core_runtime::projection::ProjectionMode::parse),
+                state
+                    .projection_max_bytes
+                    .and_then(|b| usize::try_from(b).ok()),
+            ),
+        );
+        state.exec_only = proj_settings.mode
+            == modbit_core_runtime::projection::ProjectionMode::ExecOnly
+            && !crate::critique::is_review(&task);
+        // REQ-PX-105: trust, revocation and edits apply to this request, and
+        // `skills_loadable` is current before the projection reads it.
+        let skill_instructions: Vec<String> = run_skills
+            .turn(&core, &task, lt, &actor, &mut state, &skill_surface)
+            .await;
+        let proj_facts = crate::tool_projection::facts_for(&core, &task, &mut state).await;
+        let assembled = projection(
+            &core,
+            &task,
+            lease.as_ref(),
+            &mut state,
+            &proj_settings,
+            proj_facts,
+        );
+        if assembled.outcome.over_budget {
+            break 'outer LoopEnd::NeedsAttention {
+                code: "PROJECTION_OVER_BUDGET",
+                reason: format!(
+                    "the tools a run cannot do without cost {} bytes against a schema budget of {} bytes; a person raises max_projection_bytes (SetTaskToolProjection) or the model's schema_bytes",
+                    assembled.outcome.projected_bytes, proj_settings.max_bytes
+                ),
+            };
+        }
+        let proj_outcome = assembled.outcome;
+        program_names = assembled.program_names;
+        tools = assembled.tools;
         // The names offered this turn: a call outside them is refused at the
         // pipeline (M5.1), whatever the model wrote.
         projected_names = tools.iter().map(|t| t.name.clone()).collect();
@@ -3012,7 +3359,12 @@ async fn run_loop(
                 .map(|s| s.name)
                 .collect()
         };
-        projected_names.extend(deferred_visible.iter().cloned());
+        // `exec_only` fences direct calls at what the request showed; a
+        // program still reaches the deferred tools in scope by name.
+        program_names.extend(deferred_visible.iter().cloned());
+        if !state.exec_only {
+            projected_names.extend(deferred_visible.iter().cloned());
+        }
         // Steering at a safe boundary (docs/14 contract 9): inputs queued
         // before this boundary (including before the loop started).
         let mut inputs = std::mem::take(&mut carried);
@@ -3046,6 +3398,11 @@ async fn run_loop(
         }
         carried.extend(follow_ups);
         for (input, label) in apply {
+            // A person's steering input replaces the goal: the pre-turn pack
+            // is seeded again from it.
+            if label == "STEER" && !input.untrusted {
+                preturn.goal_changed(input.text.clone());
+            }
             transcript.push(Message::text(Role::User, input.line(label)));
             let QueuedInput {
                 text,
@@ -3073,6 +3430,14 @@ async fn run_loop(
             )
             .unwrap_or(0);
             seen_offset = seen_offset.max(off);
+        }
+        // REQ-PX-116: the round boundary is where the whole tree's spend is
+        // judged — the wall clock the runs have used, and what the task's
+        // children hold against it (the log's, so a restart sees the same).
+        state.wall_ms = wall_prior
+            .saturating_add(u64::try_from(run_clock.elapsed().as_millis()).unwrap_or(u64::MAX));
+        if state.capsule.is_none() {
+            crate::spawn::refresh_children_held(&core, &task, &mut state).await;
         }
         if let Err(x) = state.check_turn_budget() {
             break LoopEnd::BudgetExhausted(x);
@@ -3189,6 +3554,16 @@ async fn run_loop(
                     &mut transcript,
                     &mut epoch,
                     &mut compaction_worker,
+                    &mut CompactionCtx {
+                        endpoint: &cfg.endpoint,
+                        model: &cfg.model,
+                        state: &state,
+                        cancel: &cancel,
+                        overhead: overhead_tokens,
+                        calibration,
+                        rearm_floor: &mut rearm_floor,
+                        usage: &mut summarizer_usage,
+                    },
                 )
                 .await;
                 // REQ-EPR-009: a compaction epoch is a re-evaluation boundary
@@ -3199,7 +3574,24 @@ async fn run_loop(
                 // same run, and nothing else changes topology.
                 if epoch.as_ref().map(|m| m.epoch) != epoch_before {
                     reroute_at_boundary(&core, &task, run_id, &mut cfg, "COMPACTION", &actor).await;
+                    preturn.compaction_opened();
                 }
+                // REQ-PX-108: before the first model turn (and after a goal
+                // change or an epoch) the Core seeds the retrieval planner with
+                // the goal and compiles a bounded pack; the prompt below carries
+                // the ledger's latest pack with its provenance. A failure is a
+                // typed record, never a blocked run.
+                preturn
+                    .step(
+                        &core,
+                        &task,
+                        lt,
+                        &actor,
+                        core.gateway
+                            .capability(&cfg.endpoint, &cfg.model)
+                            .map(|c| c.context_tokens),
+                    )
+                    .await;
                 // ContextCompile step.
                 // REQ-EV-0188: media reaches the model only when the routed model
                 // accepts that input; otherwise the result text stands on its own.
@@ -3272,8 +3664,12 @@ async fn run_loop(
                 let task_attachments = attachments.hydrated_parts(&core, vision, &mut bridge).await;
                 // The routed model's own output budget, timeout, effort and
                 // tier (audit G), not one constant for every model.
-                let limits =
-                    crate::model_registry::dispatch_limits(&core, &cfg.endpoint, &cfg.model);
+                let limits = edge.overlay(
+                    &core,
+                    &cfg.endpoint,
+                    &cfg.model,
+                    crate::model_registry::dispatch_limits(&core, &cfg.endpoint, &cfg.model),
+                );
                 let compiled =
                     modbit_prompt_compiler::compile(modbit_prompt_compiler::PromptInput {
                         goal: task.goal_text.clone(),
@@ -3283,6 +3679,10 @@ async fn run_loop(
                         workspace_rules: rules.select(&core, &task, lt, &actor, &state).await,
                         skills: skill_instructions.clone(),
                         compaction_summary: epoch.as_ref().map(|m| m.projection.clone()),
+                        compaction_narrative: epoch
+                            .as_ref()
+                            .map(|m| m.narrative.clone())
+                            .filter(|n| !n.is_empty()),
                         harness_state: harness_json.clone(),
                         transcript: {
                             // The bytes enter the request, never the log or the ledger.
@@ -3292,6 +3692,14 @@ async fn run_loop(
                         },
                         context: context_fragments,
                         tools: tools.clone(),
+                        surface_note: if state.exec_only {
+                            crate::tool_projection::EXEC_ONLY_NOTE.to_owned()
+                        } else {
+                            String::new()
+                        },
+                        // PX-117: context hooks returned since the last
+                        // request, scanned and labelled by the Core.
+                        hook_context: core.tools.hooks.take_context(task.task_id),
                         model_policy: ModelPolicy {
                             endpoint: cfg.endpoint.clone(),
                             model: cfg.model.clone(),
@@ -3303,6 +3711,19 @@ async fn run_loop(
                     });
                 let mut request = compiled.request;
                 request.request_id = format!("{}:{}", task.task_id, ordinal);
+                // What the request is estimated to cost, and how much of it is
+                // not transcript: the provider's own count calibrates the
+                // estimate, and the compaction trigger counts the transcript
+                // against the window less this overhead.
+                let request_estimate = estimate_request_tokens(&request);
+                overhead_tokens = calibration.apply(
+                    request_estimate.saturating_sub(
+                        transcript
+                            .iter()
+                            .map(|m| modbit_compaction::estimate_tokens_v2(&message_text(m)))
+                            .sum(),
+                    ),
+                );
                 let pack_ref = {
                     let store = core.store.lock().await;
                     store
@@ -3368,6 +3789,15 @@ async fn run_loop(
                                         .map(|w| format!("{}:{}", w.name, w.reason))
                                         .collect(),
                                     leg_role: "solver".into(),
+                                    mode: proj_settings.mode.as_str().to_owned(),
+                                    projected_bytes: proj_outcome.projected_bytes as u64,
+                                    requested_bytes: proj_outcome.requested_bytes as u64,
+                                    max_projection_bytes: proj_settings.max_bytes as u64,
+                                    dropped: proj_outcome
+                                        .dropped
+                                        .iter()
+                                        .map(|d| d.name.clone())
+                                        .collect(),
                                 },
                                 actor.clone(),
                             ),
@@ -3376,7 +3806,7 @@ async fn run_loop(
                 }
                 // REQ-EV-0042: the round's `before_model` hooks may stop it
                 // before the provider is asked.
-                if let Some((code, reason)) = hooks
+                let before_model = hooks
                     .fire(
                         modbit_tools::hooks::HookPoint::BeforeModel,
                         None,
@@ -3387,17 +3817,27 @@ async fn run_loop(
                             "tools": tools.iter().map(|t| t.name.clone()).collect::<Vec<_>>(),
                         }),
                     )
-                    .await
-                    .denied
-                {
+                    .await;
+                if let Some((code, reason)) = before_model.denied {
                     break 'outer LoopEnd::NeedsAttention {
                         code: "HOOK_DENIED",
                         reason: format!("{code}: {reason}"),
                     };
                 }
+                // PX-117: context a `before_model` hook just returned joins
+                // this very request, as labelled data in its volatile tail.
+                modbit_prompt_compiler::append_hook_context(
+                    &mut request,
+                    &core.tools.hooks.take_context(task.task_id),
+                );
                 // ModelInvoke step.
                 let invoke_step = RunStepId::new();
-                let route_json = serde_json::json!({"endpoint": cfg.endpoint, "model": cfg.model, "cache_key": request.cache_key, "reasoning_effort": limits.reasoning_effort, "service_tier": limits.service_tier, "max_output_tokens": limits.max_output_tokens, "timeout_ms": limits.timeout_ms});
+                let mut route_json = serde_json::json!({"endpoint": cfg.endpoint, "model": cfg.model, "cache_key": request.cache_key, "reasoning_effort": limits.reasoning_effort, "service_tier": limits.service_tier, "max_output_tokens": limits.max_output_tokens, "timeout_ms": limits.timeout_ms});
+                // PX-053: the dispatch names the preference event it ran under.
+                if edge.preference_offset_applied != 0 {
+                    route_json["preference_offset"] =
+                        serde_json::json!(edge.preference_offset_applied);
+                }
                 {
                     let mut store = core.store.lock().await;
                     let _ = append(
@@ -3438,6 +3878,9 @@ async fn run_loop(
                         )],
                     );
                 }
+                // The summarizer calls of this boundary are priced on this turn
+                // now that it is streaming.
+                flush_summarizer_usage(&core, lturn, turn_id, &actor, &mut summarizer_usage).await;
                 let needs = Requirements {
                     tools: true,
                     ..Default::default()
@@ -3527,12 +3970,27 @@ async fn run_loop(
                 let mut usage_reported = false;
                 let mut error: Option<(String, String)> = None;
                 let mut events = stream.events;
+                // PX-041: what the model streams reaches every client while it
+                // streams — coalesced, redacted, closed by a completion or an
+                // abort record (crate::stream).
+                let mut sink =
+                    crate::stream::Sink::new(lturn, actor.clone(), run_id, turn_id, invoke_step);
                 // A STEER queued while the model streams interrupts the stream
                 // (REQ-EV-0191 interrupt-and-replace); the log offset watch wakes us.
                 let mut offset_rx = core.last_offset.subscribe();
+                let mut steer_scanned = seen_offset;
                 let mut interrupted = false;
                 loop {
+                    let delta_due = sink.deadline();
                     tokio::select! {
+                        _ = async {
+                            match delta_due {
+                                Some(at) => tokio::time::sleep_until(at).await,
+                                None => std::future::pending().await,
+                            }
+                        } => {
+                            sink.flush(&core).await;
+                        }
                         ev = events.recv() => {
                             let Some(ev) = ev else { break };
                             // IMP-EV-0023: the run's first model output.
@@ -3553,7 +4011,20 @@ async fn run_loop(
                                 .await;
                             }
                             match ev {
-                                ModelEvent::MessageDelta { text: t } => text.push_str(&t),
+                                ModelEvent::MessageDelta { text: t } => {
+                                    text.push_str(&t);
+                                    if let Err(code) = sink.text(&t) {
+                                        // A response past the stream bound is a
+                                        // runaway: stop the provider and fail
+                                        // the invocation.
+                                        stream_cancel.cancel();
+                                        error = Some((code.to_owned(), "the model's response exceeded the stream bound".to_owned()));
+                                        break;
+                                    }
+                                }
+                                ModelEvent::ReasoningDelta { text: t } => {
+                                    let _ = sink.reasoning(&t);
+                                }
                                 ModelEvent::ToolCallComplete {
                                     call_id,
                                     name,
@@ -3572,10 +4043,13 @@ async fn run_loop(
                             if changed.is_err() {
                                 continue;
                             }
-                            let steer_pending = pending_inputs(&core, &task, seen_offset)
-                                .await
-                                .iter()
-                                .any(|i| matches!(i.mode, InputMode::Steer));
+                            // Only what was appended since the last look: a long
+                            // stream appends hundreds of deltas, and re-reading
+                            // them all on every append is quadratic (and holds
+                            // the store lock the delta appends need).
+                            let (steer_pending, upto) =
+                                steer_input_after(&core, &task, steer_scanned).await;
+                            steer_scanned = upto;
                             if steer_pending {
                                 interrupted = true;
                                 stream_cancel.cancel();
@@ -3583,6 +4057,41 @@ async fn run_loop(
                             }
                         }
                     }
+                }
+                if usage_reported {
+                    calibration.observe(request_estimate, usage.input_tokens);
+                }
+                // A stream that did not finish is closed as aborted, with the
+                // reason typed; partial text is never a message (PX-041).
+                if interrupted {
+                    sink.abort(
+                        &core,
+                        modbit_domain::stream::AbortSource::UserInterrupt,
+                        "STEER_INTERRUPT",
+                        "a steering input replaced the response",
+                    )
+                    .await;
+                } else if cancel.is_cancelled() {
+                    sink.abort(
+                        &core,
+                        modbit_domain::stream::AbortSource::UserInterrupt,
+                        "CANCELLED",
+                        "the task was cancelled while the response streamed",
+                    )
+                    .await;
+                } else if let Some((code, message)) = &error {
+                    let source = if code == crate::stream::TOO_LARGE {
+                        modbit_domain::stream::AbortSource::Runtime
+                    } else {
+                        modbit_domain::stream::AbortSource::Provider
+                    };
+                    sink.abort(
+                        &core,
+                        source,
+                        code,
+                        &core.tools.redactor().error_text(message),
+                    )
+                    .await;
                 }
                 if interrupted {
                     let mut store = core.store.lock().await;
@@ -3820,11 +4329,26 @@ async fn run_loop(
                 // The response of a superseded owner is not applied (M4.4).
                 if let Some((current, owner)) = lease_lost(&core, &task, cfg.lease_generation).await
                 {
+                    sink.abort(
+                        &core,
+                        modbit_domain::stream::AbortSource::Runtime,
+                        "FENCED",
+                        "the session lease moved to another owner while the response streamed",
+                    )
+                    .await;
                     break 'outer LoopEnd::Fenced {
                         current_generation: current,
                         owner,
                     };
                 }
+                // PX-041: the stream closes with its completion record, whose
+                // text is what the model said after redaction; that is also
+                // what the transcript persists.
+                let text = match sink.complete(&core).await {
+                    Some(done) => done.text,
+                    None if text.is_empty() => text,
+                    None => core.tools.redactor().error_text(&text),
+                };
                 // Persist the assistant message before any action (docs/14 contract 1).
                 let assistant = TranscriptEntry::Assistant {
                     text: text.clone(),
@@ -3842,6 +4366,21 @@ async fn run_loop(
                         .ok()
                 };
                 apply_entry(&mut transcript, &mut state, assistant);
+                // REQ-PX-116: what this completed request cost, priced as
+                // the ledger prices it, counts against the task's cap now —
+                // the next round boundary sees it.
+                match crate::usage::call_cost(
+                    core.gateway.registry().as_ref(),
+                    &route_record,
+                    &usage,
+                    usage_reported,
+                ) {
+                    crate::usage::CallCost::Priced(m) => {
+                        state.cost_minor = state.cost_minor.saturating_add(m);
+                    }
+                    crate::usage::CallCost::Unmetered => state.cost_unmetered_calls += 1,
+                    crate::usage::CallCost::NoRequest => {}
+                }
                 {
                     let mut store = core.store.lock().await;
                     let _ = append(
@@ -3964,7 +4503,10 @@ async fn run_loop(
             // A direct call to a deferred-but-visible tool activates it
             // (REQ-EV-0134: discovery by use; authority still sits with the
             // kernel at dispatch).
-            if deferred_visible.contains(&name) && !state.activated_tools.contains(&name) {
+            if !state.exec_only
+                && deferred_visible.contains(&name)
+                && !state.activated_tools.contains(&name)
+            {
                 state.activated_tools.push(name.clone());
                 let mut store = core.store.lock().await;
                 let _ = append(
@@ -4002,6 +4544,31 @@ async fn run_loop(
                 None
             };
             let (entry, step_type, failure_code) = match name.as_str() {
+                // PX-114: a harness tool this turn's request did not offer
+                // (`exec_only` defers delegation, repair, retrieval and
+                // verification; the budget can drop them) is refused like a
+                // registry tool outside the projection. Not offering a tool
+                // is not what protects the run; refusing a crafted call is.
+                _ if crate::tool_projection::is_gated_harness_tool(&name)
+                    && !projected_names.contains(&name) =>
+                {
+                    (
+                        TranscriptEntry::ToolResult {
+                            call_id: call_id.clone(),
+                            name: name.clone(),
+                            text: format!(
+                                "status: REFUSED\nerror_code: TOOL_NOT_PROJECTED\nerror: `{name}` is not in this turn's tool projection; find it with tool.search and call it once it is offered"
+                            ),
+                            failure_signature: None,
+                            clears: vec![],
+                            wrote: None,
+                            progress: false,
+                            media: vec![],
+                        },
+                        StepType::ToolCall,
+                        Some("TOOL_NOT_PROJECTED".to_owned()),
+                    )
+                }
                 _ if protected.is_some() => (
                     protected.take().expect("checked by the guard"),
                     StepType::ToolCall,
@@ -4210,7 +4777,7 @@ async fn run_loop(
                                 serde_json::from_value(v["declared_effects"].clone()).ok()
                             })
                             .unwrap_or_default();
-                    let may_write = crate::procedural::bindings_for(&projected_names, &declared)
+                    let may_write = crate::procedural::bindings_for(&program_names, &declared)
                         .iter()
                         .any(|b| WRITE_TOOLS.contains(&b.as_str()));
                     if may_write && state.plan.is_some() && !state.baseline_recorded {
@@ -4233,7 +4800,7 @@ async fn run_loop(
                         &actor,
                         &mut state,
                         &mut programs,
-                        &projected_names,
+                        &program_names,
                         &call_id,
                         &arguments_json,
                         &cancel,
@@ -4396,16 +4963,52 @@ async fn run_loop(
                     (entry, StepType::SelfReview, Some("PROGRAM_RUNNING".into()))
                 }
                 COMPLETE_TOOL => {
-                    let (entry, ok) = handle_complete(
-                        &core,
-                        &task,
-                        lturn,
-                        &actor,
-                        &mut state,
-                        &call_id,
-                        &arguments_json,
-                    )
-                    .await;
+                    // PX-117: a `task_complete` hook may refuse the
+                    // proposal before it is weighed (never accept it: the
+                    // harness and the acceptance gate decide that).
+                    let proposal: serde_json::Value =
+                        serde_json::from_str(&arguments_json).unwrap_or_default();
+                    let hook_refusal = hooks
+                        .fire(
+                            modbit_tools::hooks::HookPoint::TaskComplete,
+                            None,
+                            serde_json::json!({
+                                "summary": proposal["summary"].as_str().unwrap_or_default().chars().take(1000).collect::<String>(),
+                                "findings": proposal["self_review"]["findings"].as_array().map_or(0, Vec::len),
+                                "verification": proposal["self_review"]["verification"],
+                                "plan_version": state.plan.as_ref().map_or(0, |p| p.version),
+                            }),
+                        )
+                        .await
+                        .denied;
+                    let (entry, ok) = if let Some((code, reason)) = hook_refusal {
+                        (
+                            TranscriptEntry::ToolResult {
+                                call_id: call_id.clone(),
+                                name: name.clone(),
+                                text: format!(
+                                    "status: REFUSED\nerror_code: {code}\nerror: {reason}\ncompletion was not accepted; address what the hook names and propose completion again"
+                                ),
+                                failure_signature: None,
+                                clears: vec![],
+                                wrote: None,
+                                progress: false,
+                                media: vec![],
+                            },
+                            false,
+                        )
+                    } else {
+                        handle_complete(
+                            &core,
+                            &task,
+                            lturn,
+                            &actor,
+                            &mut state,
+                            &call_id,
+                            &arguments_json,
+                        )
+                        .await
+                    };
                     completed = ok;
                     (
                         entry,
@@ -5049,19 +5652,64 @@ async fn run_loop(
                 evs,
             );
         }
-        // M8.9: a cloud task's worktree lives in its sandbox; a checkpoint at
-        // every turn that ran a tool is what a fresh sandbox is restored
-        // from when this one is lost (docs/21 "Sandbox recovery").
-        if task.execution_profile == modbit_policy::kernel::PROFILE_CLOUD_ISOLATED
-            && ran_sandboxed_tool
-            && !completed
-            && let Err(e) =
-                crate::checkpoint::capture(&core, &task, lturn, &actor, None, "turn_boundary").await
-        {
-            eprintln!(
-                "modbit-core: task {}: the turn-boundary checkpoint failed: {e}",
-                task.task_id
-            );
+        // REQ-PX-061: a delta checkpoint at every turn boundary, in every
+        // profile — what a fork or a rewind "at turn N" is made from, and
+        // (M8.9, docs/21 "Sandbox recovery") what a fresh sandbox is restored
+        // from when a cloud task's is lost. Cheap when nothing changed (see
+        // `checkpoint`'s "Capture cost"); a worktree beyond the bounds, or
+        // one that is not a repository, records why it left none. A cloud
+        // task's worktree changes only through its sandbox tools, so only a
+        // turn that ran one is captured (the listing and the guest reads are
+        // the cost there).
+        let sandboxed = task.execution_profile == modbit_policy::kernel::PROFILE_CLOUD_ISOLATED;
+        let disposable = matches!(
+            task.origin,
+            modbit_domain::task::TaskOrigin::Review | modbit_domain::task::TaskOrigin::Replay
+        );
+        if task.workspace_root.is_some() && !disposable && (!sandboxed || ran_sandboxed_tool) {
+            let meta = crate::checkpoint::CaptureMeta {
+                turn: Some((turn_id, ordinal)),
+            };
+            if let Err(e) = crate::checkpoint::capture_with(
+                &core,
+                &task,
+                lturn,
+                &actor,
+                None,
+                "turn_boundary",
+                meta,
+            )
+            .await
+            {
+                let text = e.to_string();
+                eprintln!(
+                    "modbit-core: task {}: the turn-boundary checkpoint failed: {text}",
+                    task.task_id
+                );
+                let code = if text.starts_with("OVER_BOUNDS") {
+                    "OVER_BOUNDS"
+                } else {
+                    "CAPTURE_FAILED"
+                };
+                let mut store = core.store.lock().await;
+                let _ = append(
+                    &mut store,
+                    &core,
+                    lturn,
+                    AggregateType::Task,
+                    *task.task_id.as_bytes(),
+                    vec![typed(
+                        "CheckpointSkipped",
+                        &TaskEvent::CheckpointSkipped {
+                            turn_id: turn_id.to_string(),
+                            turn_ordinal: ordinal,
+                            code: code.into(),
+                            detail: text,
+                        },
+                        actor.clone(),
+                    )],
+                );
+            }
         }
         if completed {
             break LoopEnd::ReadyForReview;
@@ -5146,6 +5794,12 @@ async fn run_loop(
         } else {
             vec![]
         };
+    // REQ-PX-101: a park a person asked for (`PauseTask`) ends the run paused.
+    let pause_request = if matches!(end, LoopEnd::Parked) {
+        core.runtime.take_pause(&task.task_id).await
+    } else {
+        None
+    };
     let mut store = core.store.lock().await;
     // M6.1: where the primary agent stands once this run is over.
     let agent_end: (modbit_domain::agent::AgentStatus, String) = match &end {
@@ -5169,9 +5823,12 @@ async fn run_loop(
             modbit_domain::agent::AgentStatus::Waiting,
             format!("needs attention: {code}"),
         ),
-        LoopEnd::BudgetExhausted(_) => (
+        LoopEnd::BudgetExhausted(x) => (
             modbit_domain::agent::AgentStatus::Waiting,
-            "budget exhausted".into(),
+            format!(
+                "budget exhausted: {} {}/{} (BUDGET_EXHAUSTED)",
+                x.budget, x.used, x.limit
+            ),
         ),
         LoopEnd::NoProgress(n) => (
             modbit_domain::agent::AgentStatus::Waiting,
@@ -5187,7 +5844,11 @@ async fn run_loop(
         ),
         LoopEnd::Parked => (
             modbit_domain::agent::AgentStatus::Parked,
-            "parked by the parent (agent.park); resumable".into(),
+            if pause_request.is_some() {
+                "paused by the user at a turn boundary; resumable".into()
+            } else {
+                "parked by the parent (agent.park); resumable".into()
+            },
         ),
     };
     let fenced_end = matches!(end, LoopEnd::Fenced { .. });
@@ -5671,7 +6332,41 @@ async fn run_loop(
         LoopEnd::Parked => {
             // Suspended like a restart would leave it, by choice: the run
             // and its state stay for the resume; no attention is raised —
-            // parking is the parent's decision, not a fault.
+            // parking is the parent's decision (or a person's `PauseTask`),
+            // not a fault. A person's pause is typed: `Waiting(Paused)` and
+            // a `TaskPaused` record of who asked, why, and which checkpoint
+            // the pause holds (REQ-PX-101), in the same transaction as the
+            // run's suspension, so a Core that dies after it finds a paused
+            // task, never a running or a failed one.
+            let mut task_events = vec![typed(
+                "TaskWaiting",
+                &TaskEvent::TaskWaiting {
+                    reason: if pause_request.is_some() {
+                        WaitReason::Paused
+                    } else {
+                        WaitReason::External
+                    },
+                },
+                actor.clone(),
+            )];
+            if let Some(req) = &pause_request {
+                task_events.push(typed(
+                    "TaskPaused",
+                    &TaskEvent::TaskPaused {
+                        reason: req.reason.clone(),
+                        paused_by: format!("{:?}", req.actor),
+                        command_id: req.command_id.clone(),
+                        checkpoint_id: crate::checkpoint::current(&store, &task)
+                            .map(|c| c.checkpoint_id.to_string())
+                            .unwrap_or_default(),
+                        boundary: "TURN_BOUNDARY".into(),
+                        max_turns: state.budgets.max_turns,
+                        max_tool_calls: state.budgets.max_tool_calls,
+                        max_no_progress_turns: state.budgets.max_consecutive_no_progress_turns,
+                    },
+                    req.actor.clone(),
+                ));
+            }
             let _ = append_batch(
                 &mut store,
                 &core,
@@ -5686,17 +6381,7 @@ async fn run_loop(
                             actor.clone(),
                         )],
                     ),
-                    (
-                        AggregateType::Task,
-                        *task.task_id.as_bytes(),
-                        vec![typed(
-                            "TaskWaiting",
-                            &TaskEvent::TaskWaiting {
-                                reason: WaitReason::External,
-                            },
-                            actor.clone(),
-                        )],
-                    ),
+                    (AggregateType::Task, *task.task_id.as_bytes(), task_events),
                 ],
             );
         }
@@ -5766,6 +6451,21 @@ async fn run_loop(
                 serde_json::json!({
                     "status": format!("{:?}", agent_end.0),
                     "detail": agent_end.1,
+                }),
+            )
+            .await;
+    }
+    // PX-117: the person is told how the run ended. A notification hook
+    // observes; it cannot change the end.
+    if hooks.has(modbit_tools::hooks::HookPoint::Notification) {
+        let _ = hooks
+            .fire(
+                modbit_tools::hooks::HookPoint::Notification,
+                None,
+                serde_json::json!({
+                    "kind": format!("{:?}", agent_end.0),
+                    "detail": agent_end.1.chars().take(500).collect::<String>(),
+                    "task_goal": task.goal_text.chars().take(200).collect::<String>(),
                 }),
             )
             .await;
@@ -5895,7 +6595,7 @@ struct CompactionWorker {
     /// point the fault was staging. Nothing holds a result in production.
     released: Arc<std::sync::atomic::AtomicBool>,
     /// The worker.
-    handle: tokio::task::JoinHandle<modbit_compaction::CompactionManifest>,
+    handle: tokio::task::JoinHandle<crate::compaction_model::Built>,
 }
 
 /// Where a compaction may cut the transcript (FIX-07, audit C): the kept tail
@@ -6083,6 +6783,20 @@ async fn compaction_core_facts(core: &Core, task: &Task) -> Vec<modbit_compactio
     out
 }
 
+/// Estimated tokens of a whole request: its messages and the tool schemas it
+/// projects, in the units of `estimate_tokens_v2`.
+fn estimate_request_tokens(request: &modbit_providers::ModelRequest) -> u32 {
+    let messages: u32 = request
+        .messages
+        .iter()
+        .map(|m| modbit_compaction::estimate_tokens_v2(&message_text(m)))
+        .sum();
+    let tools = modbit_compaction::estimate_tokens_v2(
+        &serde_json::to_string(&request.tool_projection).unwrap_or_default(),
+    );
+    messages.saturating_add(tools)
+}
+
 /// Estimated tokens of the model-visible transcript.
 fn transcript_tokens(transcript: &[Message]) -> u32 {
     transcript
@@ -6176,6 +6890,14 @@ async fn install_epoch(
                         branch_generation: manifest.branch_generation,
                         mode: mode.to_owned(),
                         source_digest: manifest.source_digest.clone(),
+                        summary_source: manifest.summary_source.clone(),
+                        summarizer: manifest.summarizer.clone(),
+                        fallback_reason: manifest.fallback_reason.clone(),
+                        transcript_ref: manifest
+                            .transcript_refs
+                            .last()
+                            .cloned()
+                            .unwrap_or_default(),
                     },
                     actor.clone(),
                 ),
@@ -6188,6 +6910,8 @@ async fn install_epoch(
                         manifest_ref: manifest_ref.clone(),
                         manifest_hash: manifest.manifest_hash.clone(),
                         mode: mode.to_owned(),
+                        summary_source: manifest.summary_source.clone(),
+                        fallback_reason: manifest.fallback_reason.clone(),
                     },
                     actor.clone(),
                 ),
@@ -6286,33 +7010,138 @@ async fn close_abandoned_compactions(core: &Core, task: &Task, lt: Lineage, acto
     }
 }
 
+/// What one compaction boundary needs besides the transcript (REQ-PX-109).
+struct CompactionCtx<'a> {
+    /// The routed model: the thresholds follow its window and the summarizer
+    /// may be the run's own model.
+    endpoint: &'a str,
+    model: &'a str,
+    /// The task's own state: the paths its plan and write set name, which a
+    /// summary may cite.
+    state: &'a HarnessState,
+    /// The run's cancellation: a summarizer call dies with the run.
+    cancel: &'a CancellationToken,
+    /// Tokens the rest of the prompt took in the last request, in
+    /// calibrated estimator units.
+    overhead: u32,
+    /// The provider-reported correction to the token estimate.
+    calibration: modbit_compaction::Calibration,
+    /// The transcript size the next compaction waits to exceed (hysteresis).
+    rearm_floor: &'a mut u32,
+    /// What summarizer calls cost, until the turn can take it.
+    usage: &'a mut Vec<crate::compaction_model::SummarizerUsage>,
+}
+
+/// The transcript's size in the units the trigger counts: the calibrated
+/// estimator for a model-aware trigger, the original bytes over four for the
+/// override and the fallback.
+fn measured_tokens(
+    transcript: &[Message],
+    th: &crate::compaction_model::Thresholds,
+    calibration: &modbit_compaction::Calibration,
+) -> u32 {
+    if th.model_aware() {
+        calibration.apply(
+            transcript
+                .iter()
+                .map(|m| modbit_compaction::estimate_tokens_v2(&message_text(m)))
+                .sum(),
+        )
+    } else {
+        transcript_tokens(transcript)
+    }
+}
+
+/// Put what the summarizer calls of a boundary cost on the turn they belong
+/// to: their tokens are the task's tokens, under the role that spent them. A
+/// turn takes usage once its model invocation has started, so the cost waits
+/// in `pending` until then.
+async fn flush_summarizer_usage(
+    core: &Core,
+    lturn: Lineage,
+    turn_id: TurnId,
+    actor: &Actor,
+    pending: &mut Vec<crate::compaction_model::SummarizerUsage>,
+) {
+    if pending.is_empty() {
+        return;
+    }
+    let mut store = core.store.lock().await;
+    for u in pending.drain(..) {
+        let _ = append(
+            &mut store,
+            core,
+            lturn,
+            AggregateType::Turn,
+            *turn_id.as_bytes(),
+            vec![typed(
+                "ModelUsageRecorded",
+                &TurnEvent::ModelUsageRecorded {
+                    input_tokens: u.usage.input_tokens,
+                    output_tokens: u.usage.output_tokens,
+                    cached_input_tokens: u.usage.cached_input_tokens,
+                    reported: u.reported,
+                    route: serde_json::json!({
+                        "endpoint": u.endpoint,
+                        "model": u.model,
+                        "role": "compaction-summarizer",
+                    }),
+                },
+                actor.clone(),
+            )],
+        );
+    }
+}
+
+/// The paths the task's own state names: what a summary may cite as a file
+/// besides what the transcript shows.
+fn state_paths(state: &HarnessState) -> Vec<String> {
+    let mut paths: Vec<String> = state.original_write_set.clone();
+    paths.extend(state.out_of_plan_files.iter().cloned());
+    if let Some(plan) = &state.plan {
+        paths.extend(plan.expected_files.iter().cloned());
+    }
+    paths.sort();
+    paths.dedup();
+    paths
+}
+
 /// One turn boundary of the compaction protocol (docs/19 "Compaction
-/// epochs", M4.2):
+/// epochs", M4.2; REQ-PX-109):
 ///
 /// 1. a finished worker's result installs only if the session branch, the
 ///    prefix it summarised and the epoch order are still current — otherwise
 ///    it is refused and the refusal is logged;
-/// 2. under hard pressure (the transcript is over the budget) a bounded
-///    synchronous compaction runs now, whatever the worker is doing; its
-///    result, when it returns, is stale and refused;
+/// 2. under hard pressure (the transcript is over the budget the routed model
+///    gives it) a bounded synchronous compaction runs now, whatever the
+///    worker is doing; its result, when it returns, is stale and refused;
 /// 3. under soft pressure with no worker in flight, a worker starts on a
 ///    snapshot of the prefix and the request is logged first.
+///
+/// Both compactions build the epoch the same way: the extractive baseline,
+/// then a validated model summary on top when policy names a summarizer, the
+/// baseline standing whenever the model path fails
+/// (`compaction_model::build`).
 #[allow(clippy::too_many_arguments)]
 async fn compaction_step(
-    core: &Core,
+    core: &Arc<Core>,
     task: &Task,
     lt: Lineage,
     actor: &Actor,
     transcript: &mut Vec<Message>,
     epoch: &mut Option<modbit_compaction::CompactionManifest>,
     worker: &mut Option<CompactionWorker>,
+    ctx: &mut CompactionCtx<'_>,
 ) {
-    let budget = compaction_budget();
+    let th = crate::compaction_model::thresholds(core, ctx.endpoint, ctx.model, ctx.overhead);
+    let budget = th.hard;
     // 1. harvest
     if worker.as_ref().is_some_and(|w| w.handle.is_finished()) {
         let w = worker.take().expect("checked");
         match w.handle.await {
-            Ok(manifest) => {
+            Ok(built) => {
+                ctx.usage.extend(built.usage);
+                let manifest = built.manifest;
                 let (_, _, branch_now) = compaction_coordinates(core, task).await;
                 let digest_now =
                     modbit_compaction::source_digest(&compaction_source(transcript, w.cut));
@@ -6328,6 +7157,8 @@ async fn compaction_step(
                             "ASYNC",
                         )
                         .await;
+                        *ctx.rearm_floor =
+                            th.rearm_floor(measured_tokens(transcript, &th, &ctx.calibration));
                     }
                     Err(rejected) => {
                         reject_compaction(
@@ -6361,16 +7192,23 @@ async fn compaction_step(
             }
         }
     }
-    let tokens = transcript_tokens(transcript);
+    let tokens = measured_tokens(transcript, &th, &ctx.calibration);
     let Some(cut) = compaction_cut(transcript) else {
         return;
     };
     let next_epoch = epoch.as_ref().map_or(1, |m| m.epoch + 1);
+    // Hysteresis: a model-aware trigger that has just compacted waits for the
+    // transcript to grow past where the epoch left it.
+    let armed = tokens > *ctx.rearm_floor;
+    let hard = armed && tokens > budget;
+    let soft_over = if th.model_aware() {
+        tokens > th.soft
+    } else {
+        tokens * COMPACTION_SOFT_DENOMINATOR > budget * COMPACTION_SOFT_NUMERATOR
+    };
+    let soft = armed && worker.is_none() && soft_over;
     // REQ-EV-0042: a compaction about to start is a step `before_compaction`
     // hooks may stop; the transcript then stays as it is this round.
-    let hard = tokens > budget;
-    let soft = worker.is_none()
-        && tokens * COMPACTION_SOFT_DENOMINATOR > budget * COMPACTION_SOFT_NUMERATOR;
     if hard || soft {
         let (hooks, _) =
             crate::hooks::scope(core, task, lt.run_id(), None, lt.lease(), actor).await;
@@ -6392,59 +7230,71 @@ async fn compaction_step(
             return;
         }
     }
+    if !hard && !soft {
+        return;
+    }
+    let mode = if hard { "SYNC_FALLBACK" } else { "ASYNC" };
+    let id = modbit_domain::RunStepId::new().to_string();
+    let source = compaction_source(transcript, cut);
+    let (generation, head, branch) = compaction_coordinates(core, task).await;
+    {
+        let mut store = core.store.lock().await;
+        let _ = append(
+            &mut store,
+            core,
+            lt,
+            AggregateType::Task,
+            *task.task_id.as_bytes(),
+            vec![typed(
+                "CompactionStarted",
+                &TaskEvent::CompactionStarted {
+                    compaction_id: id.clone(),
+                    epoch: next_epoch,
+                    previous_epoch: epoch.as_ref().map(|m| m.epoch),
+                    branch_generation: branch,
+                    source_head_offset: head,
+                    source_entries: u32::try_from(source.len()).unwrap_or(u32::MAX),
+                    source_digest: modbit_compaction::source_digest(&source),
+                    compiler_version: modbit_prompt_compiler::COMPILER_VERSION.to_owned(),
+                    target_tokens: budget / 4,
+                    mode: mode.into(),
+                    window_tokens: th.window,
+                    budget_tokens: budget,
+                    budget_source: th.source.label().to_owned(),
+                },
+                actor.clone(),
+            )],
+        );
+    }
+    // The request is on the log: the head the manifest must match is the
+    // one after it.
+    let (generation, head) = {
+        let store = core.store.lock().await;
+        let g = store
+            .task(&task.task_id)
+            .ok()
+            .flatten()
+            .map_or(generation, |t| t.generation);
+        (g, store.last_offset().unwrap_or(head))
+    };
+    let ladder = crate::compaction_model::Ladder {
+        entries: source,
+        previous: epoch.clone(),
+        task_generation: generation,
+        source_head_offset: head,
+        branch_generation: branch,
+        target_tokens: budget / 4,
+        core_facts: compaction_core_facts(core, task).await,
+        known_paths: state_paths(ctx.state),
+        summarizer: crate::compaction_model::resolve(core, task, ctx.endpoint, ctx.model),
+    };
     if hard {
-        // 2. hard pressure: bounded synchronous compaction, now.
-        let id = modbit_domain::RunStepId::new().to_string();
-        let source = compaction_source(transcript, cut);
-        let (generation, head, branch) = compaction_coordinates(core, task).await;
-        {
-            let mut store = core.store.lock().await;
-            let _ = append(
-                &mut store,
-                core,
-                lt,
-                AggregateType::Task,
-                *task.task_id.as_bytes(),
-                vec![typed(
-                    "CompactionStarted",
-                    &TaskEvent::CompactionStarted {
-                        compaction_id: id.clone(),
-                        epoch: next_epoch,
-                        previous_epoch: epoch.as_ref().map(|m| m.epoch),
-                        branch_generation: branch,
-                        source_head_offset: head,
-                        source_entries: u32::try_from(source.len()).unwrap_or(u32::MAX),
-                        source_digest: modbit_compaction::source_digest(&source),
-                        compiler_version: modbit_prompt_compiler::COMPILER_VERSION.to_owned(),
-                        target_tokens: budget / 4,
-                        mode: "SYNC_FALLBACK".into(),
-                    },
-                    actor.clone(),
-                )],
-            );
-        }
-        // The request is on the log: the head the manifest must match is the
-        // one after it.
-        let (generation, head) = {
-            let store = core.store.lock().await;
-            let g = store
-                .task(&task.task_id)
-                .ok()
-                .flatten()
-                .map_or(generation, |t| t.generation);
-            (g, store.last_offset().unwrap_or(head))
-        };
-        let core_facts = compaction_core_facts(core, task).await;
-        let manifest = modbit_compaction::compact(&modbit_compaction::CompactionRequest {
-            entries: &source,
-            previous: epoch.as_ref(),
-            task_generation: generation,
-            source_head_offset: head,
-            branch_generation: branch,
-            compiler_version: modbit_prompt_compiler::COMPILER_VERSION,
-            target_tokens: budget / 4,
-            core_facts: &core_facts,
-        });
+        // 2. hard pressure: bounded synchronous compaction, now. The model
+        // call inside it is bounded by the summarizer's own timeout, and its
+        // failure is the extractive epoch, not a failed compaction.
+        let built = crate::compaction_model::build(core, task, ladder, ctx.cancel).await;
+        ctx.usage.extend(built.usage);
+        let manifest = built.manifest;
         // docs/19: the result installs only while its source is still current.
         let (generation_now, head_now, _) = compaction_coordinates(core, task).await;
         match modbit_compaction::accept(
@@ -6467,6 +7317,8 @@ async fn compaction_step(
                     "SYNC_FALLBACK",
                 )
                 .await;
+                *ctx.rearm_floor =
+                    th.rearm_floor(measured_tokens(transcript, &th, &ctx.calibration));
                 // The prefix a worker in flight is summarising has just been
                 // replaced under it. Nothing changes for it here — its result
                 // is judged by `accept_async` at the next boundary either way
@@ -6494,75 +7346,33 @@ async fn compaction_step(
         }
         return;
     }
-    if worker.is_none() && tokens * COMPACTION_SOFT_DENOMINATOR > budget * COMPACTION_SOFT_NUMERATOR
-    {
-        // 3. soft pressure: a worker starts on a snapshot; the request is
-        // logged before the worker exists.
-        let id = modbit_domain::RunStepId::new().to_string();
-        let source = compaction_source(transcript, cut);
-        let (generation, head, branch) = compaction_coordinates(core, task).await;
-        let digest = modbit_compaction::source_digest(&source);
-        {
-            let mut store = core.store.lock().await;
-            let _ = append(
-                &mut store,
-                core,
-                lt,
-                AggregateType::Task,
-                *task.task_id.as_bytes(),
-                vec![typed(
-                    "CompactionStarted",
-                    &TaskEvent::CompactionStarted {
-                        compaction_id: id.clone(),
-                        epoch: next_epoch,
-                        previous_epoch: epoch.as_ref().map(|m| m.epoch),
-                        branch_generation: branch,
-                        source_head_offset: head,
-                        source_entries: u32::try_from(source.len()).unwrap_or(u32::MAX),
-                        source_digest: digest,
-                        compiler_version: modbit_prompt_compiler::COMPILER_VERSION.to_owned(),
-                        target_tokens: budget / 4,
-                        mode: "ASYNC".into(),
-                    },
-                    actor.clone(),
-                )],
-            );
-        }
-        let previous = epoch.clone();
-        let core_facts = compaction_core_facts(core, task).await;
-        let hold = compaction_worker_hold();
-        let released = Arc::new(std::sync::atomic::AtomicBool::new(false));
-        let held_until = Arc::clone(&released);
-        let handle = tokio::task::spawn_blocking(move || {
-            // docs/54 fault 10, tests only: hold the result until an epoch
-            // installs without it, so it returns to a history that moved on.
-            if let Some(bound) = hold {
-                let deadline = std::time::Instant::now() + bound;
-                while !held_until.load(std::sync::atomic::Ordering::Acquire)
-                    && std::time::Instant::now() < deadline
-                {
-                    std::thread::sleep(std::time::Duration::from_millis(1));
-                }
+    // 3. soft pressure: a worker starts on a snapshot; the request is
+    // logged before the worker exists.
+    let hold = compaction_worker_hold();
+    let released = Arc::new(std::sync::atomic::AtomicBool::new(false));
+    let held_until = Arc::clone(&released);
+    let (worker_core, worker_task, worker_cancel) =
+        (Arc::clone(core), task.clone(), ctx.cancel.child_token());
+    let handle = tokio::spawn(async move {
+        // docs/54 fault 10, tests only: hold the result until an epoch
+        // installs without it, so it returns to a history that moved on.
+        if let Some(bound) = hold {
+            let deadline = std::time::Instant::now() + bound;
+            while !held_until.load(std::sync::atomic::Ordering::Acquire)
+                && std::time::Instant::now() < deadline
+            {
+                tokio::time::sleep(std::time::Duration::from_millis(1)).await;
             }
-            modbit_compaction::compact(&modbit_compaction::CompactionRequest {
-                entries: &source,
-                previous: previous.as_ref(),
-                task_generation: generation,
-                source_head_offset: head,
-                branch_generation: branch,
-                compiler_version: modbit_prompt_compiler::COMPILER_VERSION,
-                target_tokens: budget / 4,
-                core_facts: &core_facts,
-            })
-        });
-        *worker = Some(CompactionWorker {
-            id,
-            epoch: next_epoch,
-            cut,
-            released,
-            handle,
-        });
-    }
+        }
+        crate::compaction_model::build(&worker_core, &worker_task, ladder, &worker_cancel).await
+    });
+    *worker = Some(CompactionWorker {
+        id,
+        epoch: next_epoch,
+        cut,
+        released,
+        handle,
+    });
 }
 
 /// The text of a message, for the token estimate and the compaction source.
@@ -7046,6 +7856,17 @@ async fn handle_tool_search(
         })
         .unwrap_or_default();
     let words: Vec<&str> = query.split_whitespace().collect();
+    // PX-114: in `exec_only` the harness tools that are deferred (delegation,
+    // repair, retrieval, verification) are found here too. Finding one never
+    // authorizes it; it is offered, and the Core fences its use at the call.
+    let mut harness_found: Vec<&'static str> = Vec::new();
+    if state.exec_only {
+        for (name, _, keywords) in crate::tool_projection::harness_deferred_catalog() {
+            if crate::tool_projection::harness_matches(name, keywords, &words, &explicit) {
+                harness_found.push(name);
+            }
+        }
+    }
     let visible = core
         .tools
         .visible_specs_for(&task.task_id, Some(&task.execution_profile), lease);
@@ -7075,6 +7896,15 @@ async fn handle_tool_search(
             activated.push(s.name.clone());
         }
     }
+    for name in &harness_found {
+        if *name == "agent.*" {
+            // Delegation is offered for the next round only.
+            state.delegation_offered = true;
+        } else if !state.activated_tools.iter().any(|t| t == name) {
+            state.activated_tools.push((*name).to_owned());
+            activated.push((*name).to_owned());
+        }
+    }
     if !activated.is_empty() {
         let mut store = core.store.lock().await;
         let _ = append(
@@ -7094,7 +7924,7 @@ async fn handle_tool_search(
         );
     }
     let mut text = String::from("status: SUCCESS\n");
-    if matched.is_empty() {
+    if matched.is_empty() && harness_found.is_empty() {
         text.push_str("no deferred tool matches the query within this task's profile and lease; discovery cannot widen what the task may use\n");
     } else {
         for s in &matched {
@@ -7106,10 +7936,29 @@ async fn handle_tool_search(
                 s.required_capabilities.join(","),
                 s.description
             ));
+            if state.exec_only {
+                // The schema the model needs to call it from a program,
+                // returned once, on demand.
+                text.push_str(&format!(
+                    "  call it from a program: {}\n  schema: {}\n",
+                    modbit_core_runtime::projection::compact_signature(&s.name, &s.input_schema),
+                    s.input_schema
+                ));
+            }
+        }
+        for name in &harness_found {
+            text.push_str(&format!(
+                "- {name} [toolset: harness]: offered as a tool from the next turn{}\n",
+                if *name == "agent.*" {
+                    " (and while a child is running)"
+                } else {
+                    ""
+                }
+            ));
         }
         text.push_str(&format!(
             "activated for the next turns: {}\nactivation does not authorize: the Capability Kernel decides every invocation\n",
-            if activated.is_empty() { "(already active)".to_owned() } else { activated.join(", ") }
+            if activated.is_empty() && harness_found.is_empty() { "(already active)".to_owned() } else { activated.iter().cloned().chain(harness_found.iter().map(|s| (*s).to_owned())).collect::<Vec<_>>().join(", ") }
         ));
     }
     TranscriptEntry::ToolResult {
@@ -8000,6 +8849,11 @@ async fn run_verification_stage(
                     .ok()
                     .and_then(|l| l.into_iter().next()),
                 execution_profile: task.execution_profile.clone(),
+                mode: core
+                    .tools
+                    .tasking
+                    .mode_in_force(&store, task.task_id)
+                    .unwrap_or(modbit_domain::mode::TaskMode::Ask),
                 emergency_stopped: store
                     .session(&task.session_id)
                     .ok()

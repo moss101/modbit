@@ -53,6 +53,8 @@
     "pathLabel": "DIRECT",
     "planId": "direct:11111111111111111111111111111111",
     "planRef": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+    "preference": null,
+    "preferenceRouting": null,
     "routingEpoch": "0",
     "scale": 2,
     "schemaVersion": 2,

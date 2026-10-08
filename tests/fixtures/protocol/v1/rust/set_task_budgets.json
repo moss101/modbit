@@ -1,0 +1,10 @@
+{
+  "expected": {
+    "forbidSpawn": false,
+    "maxChildren": 2,
+    "maxCostMinor": "5000",
+    "maxWallMs": "9007199254740993",
+    "taskId": "31313131313131313131313131313131"
+  },
+  "type": "modbit.v1.SetTaskBudgets"
+}

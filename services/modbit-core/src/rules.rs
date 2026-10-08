@@ -4,6 +4,17 @@
 //! read, retrieved, written or planned — and recorded on the task whenever
 //! the selection changes, with every activation's reason, every conflict's
 //! winner and source, and what expired or did not parse.
+//!
+//! REQ-PX-107: the repository's own `AGENTS.md` and `CLAUDE.md` are a native
+//! layer of the same selection (`modbit_prompt_compiler::instructions`):
+//! read afresh every turn so an edit shows up in the next request and in its
+//! recorded hash, in a trusted repository only. An untrusted repository's
+//! files are listed as not loaded, with the reason, and nothing from them
+//! reaches the prompt. The text is project instruction data: it goes into
+//! the prompt's rules segment with its provenance, is run past the injection
+//! scanner (a finding is a security record, not a policy decision) and
+//! changes nothing the Capability Kernel decides — no tool is projected, no
+//! approval is given, no permission is granted on its say-so.
 
 use std::sync::Arc;
 
@@ -19,6 +30,9 @@ use crate::server::Core;
 /// asks the Core to put in the model's prompt, as its hooks are code it asks
 /// the Core to run, so they are in force only once the session trusts it.
 const UNTRUSTED: &str = "a repository's rules are instructions it asks the Core to give the model: they are in force only once the session trusts the repository (TrustRepository)";
+
+/// The same wait for the repository's own instruction files.
+const UNTRUSTED_INSTRUCTIONS: &str = "not loaded: a repository's AGENTS.md / CLAUDE.md are instructions it asks the Core to give the model: they are in force only once the session trusts the repository (TrustRepository)";
 
 /// The layers a run reads rules from, project first (it wins). The
 /// project's are read only when the repository is `trusted` (FIX-04).
@@ -72,6 +86,12 @@ pub async fn active_paths(core: &Core, task: &Task, state: &HarnessState) -> Vec
 pub struct RunRules {
     set: RuleSet,
     last: Option<RulesSelection>,
+    /// The workspace whose `AGENTS.md` / `CLAUDE.md` are read every turn:
+    /// set only for a trusted repository.
+    instructions_root: Option<std::path::PathBuf>,
+    /// Instruction files whose scanner findings are already on the log, as
+    /// `source@hash`: one security record per version of a file per run.
+    reported: std::collections::BTreeSet<String>,
 }
 
 impl RunRules {
@@ -93,8 +113,24 @@ impl RunRules {
                 set.invalid
                     .push((dir.display().to_string(), UNTRUSTED.into()));
             }
+            // The repository's own instruction files wait for trust the same
+            // way: named, never read into the prompt.
+            for source in modbit_prompt_compiler::instructions::present(std::path::Path::new(root))
+            {
+                set.invalid.push((source, UNTRUSTED_INSTRUCTIONS.into()));
+            }
         }
-        Self { set, last: None }
+        let instructions_root = task
+            .workspace_root
+            .as_ref()
+            .filter(|_| trusted)
+            .map(std::path::PathBuf::from);
+        Self {
+            set,
+            last: None,
+            instructions_root,
+            reported: std::collections::BTreeSet::new(),
+        }
     }
 
     /// Select for this turn and record the selection when it changed;
@@ -107,15 +143,66 @@ impl RunRules {
         actor: &Actor,
         state: &HarnessState,
     ) -> Vec<String> {
-        if self.set.rules.is_empty() && self.set.invalid.is_empty() {
+        if self.set.rules.is_empty()
+            && self.set.invalid.is_empty()
+            && self.instructions_root.is_none()
+        {
             return vec![];
         }
         let paths = active_paths(core, task, state).await;
-        let selection = self
-            .set
-            .select(&paths, modbit_domain::Timestamp::now().millis());
+        // The layers this turn: the rules loaded at the start, and the
+        // repository's instruction files as they are on disk now.
+        let mut set = self.set.clone();
+        let mut findings: Vec<(String, String, Vec<modbit_browser::injection::Finding>)> =
+            Vec::new();
+        if let Some(root) = &self.instructions_root {
+            let mut found = modbit_prompt_compiler::instructions::discover(root, &paths);
+            for rule in &mut found.rules {
+                let seen = modbit_browser::injection::scan(&rule.body);
+                rule.findings = seen.iter().map(|f| f.shape.clone()).collect();
+                if !seen.is_empty() {
+                    findings.push((rule.source.clone(), rule.hash.clone(), seen));
+                }
+            }
+            // Just below the project's `.modbit/rules`, above extensions and
+            // the user's own.
+            set.insert_layer(1, found.rules);
+            set.invalid.extend(found.not_loaded);
+        }
+        let selection = set.select(&paths, modbit_domain::Timestamp::now().millis());
+        // A finding is evidence, once per version of a file (the scanner
+        // names shapes; the kernel, not the scanner, decides).
+        findings.retain(|(source, hash, _)| self.reported.insert(format!("{source}@{hash}")));
+        if findings.is_empty() && self.last.as_ref() == Some(&selection) {
+            return set.texts(&selection);
+        }
+        let mut store = core.store.lock().await;
+        for (source, hash, seen) in findings {
+            let _ = append(
+                &mut store,
+                core,
+                lineage,
+                AggregateType::Task,
+                *task.task_id.as_bytes(),
+                vec![typed(
+                    "SecurityEventRecorded",
+                    &TaskEvent::SecurityEventRecorded {
+                        kind: "PROMPT_INJECTION_SUSPECTED".into(),
+                        tool_name: "rules".into(),
+                        tool_call_id: String::new(),
+                        patterns: seen.iter().map(|f| f.shape.clone()).collect(),
+                        detail: format!(
+                            "{source} sha256:{}: {}",
+                            &hash[..hash.len().min(12)],
+                            seen.first().map(|f| f.excerpt.as_str()).unwrap_or_default()
+                        ),
+                        action: "MARKED".into(),
+                    },
+                    actor.clone(),
+                )],
+            );
+        }
         if self.last.as_ref() != Some(&selection) {
-            let mut store = core.store.lock().await;
             let _ = append(
                 &mut store,
                 core,
@@ -146,12 +233,18 @@ impl RunRules {
                             .iter()
                             .map(|(src, why)| format!("{src}: {why}"))
                             .collect(),
+                        not_loaded: selection
+                            .invalid
+                            .iter()
+                            .map(|(src, why)| serde_json::json!({"source": src, "reason": why}))
+                            .collect(),
                     },
                     actor.clone(),
                 )],
             );
             self.last = Some(selection.clone());
         }
-        self.set.texts(&selection)
+        drop(store);
+        set.texts(&selection)
     }
 }

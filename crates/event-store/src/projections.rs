@@ -288,6 +288,7 @@ fn project_checkpoint(
             removed,
             event_offset,
             index_generation,
+            ..
         } => {
             let newest: Option<i64> = tx
                 .query_row(
@@ -360,6 +361,17 @@ fn project_checkpoint(
                 ],
             )?;
         }
+        // REQ-PX-102: collected checkpoints leave the restorable set. The row
+        // stays (the log is the history, a restore of it answers COLLECTED);
+        // its manifest no longer joins any chain.
+        TaskEvent::CheckpointCollected { checkpoint_ids, .. } => {
+            for id in checkpoint_ids {
+                tx.execute(
+                    "UPDATE checkpoints SET status = 'COLLECTED' WHERE task_id = ?1 AND checkpoint_id = ?2 AND status = 'SUPERSEDED'",
+                    params![task.task_id.as_bytes().as_slice(), id],
+                )?;
+            }
+        }
         TaskEvent::CheckpointRestored { .. } => {}
         _ => {}
     }
@@ -387,7 +399,7 @@ pub struct CheckpointRow {
     pub runtime_state_ref: Option<String>,
     /// Index generation.
     pub index_generation: u64,
-    /// `STARTED` | `CURRENT` | `SUPERSEDED` | `REJECTED`.
+    /// `STARTED` | `CURRENT` | `SUPERSEDED` | `REJECTED` | `COLLECTED`.
     pub status: String,
     /// Integrity hash once committed.
     pub integrity_hash: Option<String>,
@@ -429,6 +441,65 @@ pub fn load_checkpoints(tx: &rusqlite::Connection, task: &TaskId) -> Result<Vec<
         })
     })?;
     Ok(rows.collect::<std::result::Result<Vec<_>, _>>()?)
+}
+
+/// Every committed, not collected checkpoint of every task (the retention
+/// collector's view of what still names a content blob, REQ-PX-102).
+pub fn load_all_live_checkpoints(
+    tx: &rusqlite::Connection,
+) -> Result<Vec<(TaskId, CheckpointRow)>> {
+    let mut stmt = tx.prepare(
+        "SELECT task_id, checkpoint_id, epoch, kind, base_checkpoint_id, workspace_revision, manifest_object_hash, git_state_json, runtime_state_ref, index_generation, status, integrity_hash, reason, files, removed, created_at, committed_at FROM checkpoints WHERE status IN ('CURRENT', 'SUPERSEDED') ORDER BY task_id, epoch",
+    )?;
+    let rows = stmt.query_map([], |r| {
+        let task: Vec<u8> = r.get(0)?;
+        Ok((
+            task,
+            CheckpointRow {
+                checkpoint_id: r.get(1)?,
+                epoch: u32::try_from(r.get::<_, i64>(2)?).unwrap_or(u32::MAX),
+                kind: r.get(3)?,
+                base_checkpoint_id: r.get(4)?,
+                workspace_revision: r.get::<_, i64>(5)? as u64,
+                manifest_object_hash: r.get(6)?,
+                git_state_json: r.get(7)?,
+                runtime_state_ref: r.get(8)?,
+                index_generation: r.get::<_, i64>(9)? as u64,
+                status: r.get(10)?,
+                integrity_hash: r.get(11)?,
+                reason: r.get(12)?,
+                files: u32::try_from(r.get::<_, i64>(13)?).unwrap_or(u32::MAX),
+                removed: u32::try_from(r.get::<_, i64>(14)?).unwrap_or(u32::MAX),
+                created_at: Timestamp(r.get(15)?),
+                committed_at: r.get::<_, Option<i64>>(16)?.map(Timestamp),
+            },
+        ))
+    })?;
+    let mut out = Vec::new();
+    for row in rows {
+        let (task, cp) = row?;
+        out.push((TaskId::from_bytes(blob16(task)?), cp));
+    }
+    Ok(out)
+}
+
+/// The tasks of a session, oldest first.
+pub fn load_tasks_for_session(
+    tx: &rusqlite::Connection,
+    session: &modbit_domain::SessionId,
+) -> Result<Vec<Task>> {
+    let mut stmt =
+        tx.prepare("SELECT task_id FROM tasks WHERE session_id = ?1 ORDER BY created_at")?;
+    let ids: Vec<Vec<u8>> = stmt
+        .query_map(params![session.as_bytes().as_slice()], |r| r.get(0))?
+        .collect::<std::result::Result<Vec<_>, _>>()?;
+    let mut out = Vec::new();
+    for id in ids {
+        if let Some(t) = load_task(tx, &TaskId::from_bytes(blob16(id)?))? {
+            out.push(t);
+        }
+    }
+    Ok(out)
 }
 
 /// docs/31 `agent_nodes` / `work_nodes` (M6.1): the AgentGraph and the
@@ -1253,6 +1324,25 @@ pub fn apply(tx: &Transaction<'_>, ev: &StoredEvent, objects: &crate::ObjectStor
                 ],
             )?;
             materialize_protocol_state(tx, session, l.task_id, at, ProtocolDelta::Rows)?;
+        }
+        // PX-041: an assistant stream has no row of its own; the store
+        // refuses what a stream may not hold (a delta out of sequence, over
+        // the bound, or after the record that closed the stream).
+        AggregateType::AssistantStream => {
+            let event: modbit_domain::stream::StreamEvent = serde_json::from_value(payload)?;
+            let sequence = ev.envelope.sequence;
+            let previous: Option<String> = if sequence > 1 {
+                tx.query_row(
+                    "SELECT event_type FROM events WHERE aggregate_id = ?1 AND sequence = ?2",
+                    params![id.as_slice(), (sequence - 1) as i64],
+                    |r| r.get(0),
+                )
+                .optional()?
+            } else {
+                None
+            };
+            modbit_domain::stream::check_next(id, sequence, previous.as_deref(), &event)
+                .map_err(|detail| Error::Projection { offset, detail })?;
         }
         // Aggregates whose projections belong to later milestones (checkpoints).
         _ => {}

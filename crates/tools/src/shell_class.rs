@@ -117,6 +117,84 @@ pub fn classify_args(args: &Value) -> ShellEffect {
     acc.finish()
 }
 
+/// Whether a typed line is only an answer to a prompt (`y`, `no`, `3`, a bare
+/// Enter) rather than something a shell would run.
+fn is_prompt_answer(line: &str) -> bool {
+    let t = line.trim();
+    t.is_empty()
+        || matches!(
+            t.to_ascii_lowercase().as_str(),
+            "y" | "yes" | "n" | "no" | "q" | "a"
+        )
+        || t.chars().all(|c| c.is_ascii_digit())
+}
+
+/// Classify what a `shell.input` call types into a terminal (PX-099).
+///
+/// Typing into a shell is running commands in it: stdin to an interactive
+/// shell must not be a way round the classification `shell.exec` gets. The
+/// decision (docs/21, docs/62 PX-099): **the typed text is classified as the
+/// shell script it would be if the session's program is a shell** — the same
+/// parser, tables and rules as `shell.exec -c <text>`, every command in it,
+/// raised to `ProtectedWrite` under `local_trusted` when something in it
+/// cannot be resolved — **and, because the classifier cannot see which
+/// program reads the text, it is also scanned as inline interpreter code**
+/// (what a REPL would run). The class is never below the registered
+/// `ReversibleWrite` floor. Plain answers to a prompt (`y`, `no`, `3`, Enter)
+/// and key presses (`ctrl-c`, `ctrl-d`) are not commands; a line that is one
+/// bare word nothing resolves (a name typed at a `read`) is an answer too,
+/// while a word the tables know to be dangerous still raises the class and a
+/// word with arguments (`some-tool --flag`) is unclassified like any
+/// unknown program. What this cannot
+/// see is a program that interprets the text in a way no marker names; that
+/// is bounded the way `shell.exec` of an interpreter is: by the owner check
+/// (the task's own session only), the person's input lease and, under
+/// `review_isolated`, the sandbox the process runs in.
+#[must_use]
+pub fn classify_input(args: &Value) -> ShellEffect {
+    let mut acc = Acc::new();
+    let text = args.get("text").and_then(Value::as_str).unwrap_or_default();
+    let mut script: Vec<&str> = Vec::new();
+    for line in text.lines().filter(|l| !is_prompt_answer(l)) {
+        if is_bare_word(line) {
+            // One word and nothing else: it runs only as a program with no
+            // arguments, and one the tables know to be dangerous (`reboot`,
+            // `shutdown`) still raises the class. A word nothing resolves is
+            // an answer to a prompt (a name, a choice) as often as a command
+            // and cannot do more than a program run with no arguments, so it
+            // is not held for an approval the way `some-tool --flag` is.
+            let mut word = Acc::new();
+            classify_string(line, 0, &mut word);
+            acc.class = acc.class.max(word.class);
+            acc.inline = acc.inline.max(word.inline);
+            for why in word
+                .reasons
+                .into_iter()
+                .filter(|w| !w.starts_with("unclassified"))
+            {
+                acc.note(why);
+            }
+        } else {
+            script.push(line);
+        }
+    }
+    if !script.is_empty() {
+        let script = script.join("\n");
+        classify_string(&script, 0, &mut acc);
+        scan_inline_code(&script, &mut acc);
+    }
+    acc.finish()
+}
+
+/// A line that is a single plain word.
+fn is_bare_word(line: &str) -> bool {
+    let t = line.trim();
+    !t.is_empty()
+        && t.chars()
+            .all(|c| c.is_ascii_alphanumeric() || matches!(c, '_' | '.' | '@' | ':' | '-'))
+        && !t.starts_with('-')
+}
+
 /// Classify one argv (tests and callers that have no JSON arguments).
 #[must_use]
 pub fn classify_argv(argv: &[String], stdin: Option<&str>) -> ShellEffect {
@@ -2974,6 +3052,62 @@ mod tests {
             "argv": ["cargo", "test"], "env": {"RUST_LOG": "debug"}
         }));
         assert_eq!(e.class, ReversibleWrite);
+    }
+
+    #[test]
+    fn typed_input_is_classified_as_the_shell_text_it_would_run() {
+        let typed =
+            |text: &str| classify_input(&serde_json::json!({"session_id": "s", "text": text}));
+        // Answers to prompts and key presses are not commands.
+        for plain in ["", "y", "No", "42", "yes\n3\n"] {
+            let e = typed(plain);
+            assert_eq!(
+                e.class_in("local_trusted"),
+                ReversibleWrite,
+                "{plain:?}: {:?}",
+                e.reasons
+            );
+            assert!(!e.unclassified, "{plain:?}");
+        }
+        // What `shell.exec` would raise, typing raises the same, in any line.
+        let push = typed("echo ok\ngit push --force origin main\n");
+        assert_eq!(
+            push.class,
+            classify_argv(&argv(&["git", "push", "--force"]), None).class
+        );
+        assert!(push.class > ReversibleWrite, "{:?}", push.reasons);
+        assert!(typed("rm -rf build").class > ReversibleWrite);
+        assert_eq!(typed("sudo reboot").class, ProtectedWrite);
+        assert!(typed("curl -X POST https://x.test -d @f").class > ReversibleWrite);
+        // A command nothing can resolve needs an approval where one can be asked.
+        let unknown = typed("some-unknown-program --flag");
+        assert!(unknown.unclassified);
+        assert_eq!(unknown.class_in("local_trusted"), ProtectedWrite);
+        assert_eq!(unknown.class_in("local_autonomous"), ReversibleWrite);
+        // A bare word is an answer unless the tables know it as dangerous.
+        let name = typed("ada");
+        assert!(!name.unclassified, "{:?}", name.reasons);
+        assert_eq!(name.class_in("local_trusted"), ReversibleWrite);
+        assert!(typed("reboot").class > ReversibleWrite);
+        assert!(typed("ada --flag").unclassified);
+        // Typed into a REPL, what the interpreter would run is scanned too.
+        let repl = typed("import shutil; shutil.rmtree('x')");
+        assert_eq!(
+            repl.class_in("local_trusted"),
+            Destructive,
+            "{:?}",
+            repl.reasons
+        );
+        // A variable in command position is unresolvable, never safe.
+        assert!(typed("$CMD now").unclassified);
+        // A plain read stays a plain write.
+        let ls = typed("ls -la\ngit status");
+        assert_eq!(
+            ls.class_in("local_trusted"),
+            ReversibleWrite,
+            "{:?}",
+            ls.reasons
+        );
     }
 
     #[test]

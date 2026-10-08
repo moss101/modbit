@@ -178,6 +178,15 @@ pub struct SubtaskSpec {
     /// Tool calls it may make.
     #[serde(default)]
     pub max_tool_calls: u32,
+    /// Cost it may spend, in the active registry's minor units (REQ-PX-116);
+    /// 0 = a fair share of what its parent has left. Clamped to the
+    /// parent's remainder and reserved against it at admission.
+    #[serde(default)]
+    pub max_cost_minor: u64,
+    /// Wall clock it may use, milliseconds (REQ-PX-116); 0 = what its
+    /// parent has left. Never past the parent's own deadline.
+    #[serde(default)]
+    pub max_wall_ms: u64,
     /// The work node it will own; `None` = one is created from the objective.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub work_node: Option<WorkNodeId>,
@@ -225,6 +234,13 @@ pub struct AgentExecutionCapsule {
     pub max_turns: u32,
     /// Tool calls it may make.
     pub max_tool_calls: u32,
+    /// Cost it may spend, minor units; 0 = the parent had no cost cap
+    /// (REQ-PX-116). What was reserved against the parent at admission.
+    #[serde(default)]
+    pub max_cost_minor: u64,
+    /// Wall clock it may use, milliseconds; 0 = the parent had no deadline.
+    #[serde(default)]
+    pub max_wall_ms: u64,
     /// The effect ceiling of its lease (`READ_ONLY` | `WRITE` | …), never
     /// above the parent's (REQ-EV-0046).
     pub effect_ceiling: String,

@@ -1,3 +1,4 @@
+#![recursion_limit = "256"]
 //! Shared sample messages for the Rust <-> TypeScript protocol round trip.
 //!
 //! Each sample is one message with deterministic contents, its canonical
@@ -61,6 +62,183 @@ pub fn fixture_dir(side: &str) -> PathBuf {
 
 /// Every sample, in a stable order.
 pub fn samples() -> Vec<Sample> {
+    let ts_row = |ordinal: u32,
+                  row_id: &str,
+                  kind: TranscriptRowKind,
+                  text: &str,
+                  children: Vec<TranscriptRow>| TranscriptRow {
+        ordinal,
+        row_id: row_id.into(),
+        kind: kind as i32,
+        offset: 50 + u64::from(ordinal),
+        last_offset: 60 + u64::from(ordinal),
+        at: Some(prost_types::Timestamp {
+            seconds: 1_700_000_000 + i64::from(ordinal),
+            nanos: 0,
+        }),
+        turn_id: "turn-1".into(),
+        hints: Some(RowHints {
+            renderable: true,
+            groupable: kind == TranscriptRowKind::ToolCard,
+            has_reasoning: false,
+            duration_ms: 250,
+            short_text: text.into(),
+            lines_added: 0,
+            lines_removed: 0,
+            status: "COMPLETE".into(),
+        }),
+        text: text.into(),
+        text_truncated: false,
+        text_ref: String::new(),
+        children,
+        facts: None,
+    };
+    let transcript_page = TranscriptPage {
+        task_id: id(0x21),
+        density: TranscriptDensity::Balanced as i32,
+        rows: vec![
+            ts_row(
+                1,
+                "unread",
+                TranscriptRowKind::UnreadDivider,
+                "2 new",
+                vec![],
+            ),
+            ts_row(
+                2,
+                "group:explore:tool:a",
+                TranscriptRowKind::WorkGroup,
+                "Explored 2 items",
+                vec![
+                    ts_row(
+                        1,
+                        "tool:a",
+                        TranscriptRowKind::ToolCard,
+                        "fs.read a.txt",
+                        vec![],
+                    ),
+                    ts_row(
+                        2,
+                        "tool:b",
+                        TranscriptRowKind::ToolCard,
+                        "fs.read b.txt",
+                        vec![],
+                    ),
+                ],
+            ),
+        ],
+        total_rows: 2,
+        next_after_row: 0,
+        has_more: false,
+        as_of_offset: 90,
+        last_offset: 90,
+        task_state: "Running".into(),
+        read_offset: 40,
+        events_read: 12,
+    };
+    let row_json = |ordinal: u32,
+                    row_id: &str,
+                    kind: &str,
+                    text: &str,
+                    group: bool,
+                    children: Vec<Value>| {
+        json!({
+            "ordinal": ordinal, "rowId": row_id, "kind": kind,
+            "offset": (50 + u64::from(ordinal)).to_string(),
+            "lastOffset": (60 + u64::from(ordinal)).to_string(),
+            "at": {"seconds": (1_700_000_000 + i64::from(ordinal)).to_string(), "nanos": 0},
+            "turnId": "turn-1",
+            "hints": {
+                "renderable": true, "groupable": kind == "TRANSCRIPT_ROW_KIND_TOOL_CARD" && !group,
+                "hasReasoning": false, "durationMs": "250", "shortText": text,
+                "linesAdded": 0, "linesRemoved": 0, "status": "COMPLETE"
+            },
+            "text": text, "textTruncated": false, "textRef": "", "children": children,
+            "user": null, "stream": null, "tool": null, "approval": null,
+            "group": null, "footer": null, "tail": null, "boundary": null
+        })
+    };
+    let agent_headers = AgentHeaders {
+        session_id: id(0x10),
+        headers: vec![AgentHeader {
+            task_id: id(0x21),
+            session_id: id(0x10),
+            workspace_root: "/repo".into(),
+            title: "make the check pass".into(),
+            subtitle: "repo".into(),
+            created_at: Some(prost_types::Timestamp {
+                seconds: 1_700_000_000,
+                nanos: 0,
+            }),
+            updated_at: Some(prost_types::Timestamp {
+                seconds: 1_700_000_100,
+                nanos: 500_000_000,
+            }),
+            status_class: AgentStatusClass::ReadyForReviewUnseen as i32,
+            status_label: "Ready for review".into(),
+            unread: true,
+            pending_approval: false,
+            pending_plan: false,
+            context_percent: 37,
+            files_changed: 2,
+            lines_added: 14,
+            lines_removed: 3,
+            last_checkpoint_at: None,
+            subagent: false,
+            archived: false,
+            execution_location: "local".into(),
+            origin: "cli".into(),
+            task_state: "ReadyForReview".into(),
+            last_offset: 90,
+            read_offset: 40,
+            attention_items: 0,
+        }],
+        last_offset: 90,
+        events_read: 0,
+        objects_read: 0,
+    };
+
+    let skill_list = SkillList {
+        skills: vec![SkillView {
+            name: "release-notes".into(),
+            version: "1.2.0".into(),
+            description: "write release notes from merged changes".into(),
+            scope: "USER".into(),
+            content_hash: "e".repeat(64),
+            trust: "TRUSTED_BY_OWNER".into(),
+            trust_detail: String::new(),
+            enabled: true,
+            invocation: "BOTH".into(),
+            paths: vec!["docs/**".into()],
+            paths_active: true,
+            index_tokens: 14,
+            indexed: true,
+            index_form: "FULL".into(),
+            selected: false,
+            source: "/profile/skills/release-notes".into(),
+            provenance_source: String::new(),
+            provenance_author: "me".into(),
+            provenance_license: "MIT".into(),
+            required_tools: vec!["fs.read".into()],
+            lifecycle: "ENABLED".into(),
+        }],
+        rejected: vec![SkillRefusalView {
+            source: "/profile/skills/broken".into(),
+            code: "MALFORMED_MANIFEST".into(),
+            reason: "no front matter".into(),
+        }],
+        index_budget_tokens: 2000,
+        index_used_tokens: 14,
+        index_omitted: 0,
+        system_root: "/etc/modbit/skills".into(),
+    };
+    let budgets = SetTaskBudgets {
+        task_id: id(0x31),
+        max_cost_minor: 5000,
+        max_wall_ms: 9_007_199_254_740_993, // > 2^53
+        max_children: 2,
+        forbid_spawn: false,
+    };
     let command = CommandEnvelope {
         command_id: id(0x11),
         tenant_id: id(0x22),
@@ -201,6 +379,40 @@ pub fn samples() -> Vec<Sample> {
             thresholds_version: "none".into(),
             target_met: false,
         }),
+        preference: None,
+        preference_routing: None,
+    };
+    // PX-051 / PX-053: a task's posture. Carries a 64-bit offset past 2^53 and
+    // enums by name, so both languages agree on them.
+    let posture = TaskPostureView {
+        task_id: id(0x31),
+        mode: TaskMode::Plan as i32,
+        mode_offset: 9_007_199_254_740_993,
+        mode_in_force: TaskMode::Agent as i32,
+        posture: Some(ModePostureView {
+            effect_ceiling: "READONLY".into(),
+            allowed_capabilities: vec!["fs.read".into(), "git.read".into()],
+            subagents: false,
+            reproduction_first: false,
+            writes: false,
+        }),
+        preference: Some(ExecutionPreferenceView {
+            objective: ObjectiveProfile::Cost as i32,
+            effort: "high".into(),
+            service_tier: "flex".into(),
+            pin_endpoint: "openai".into(),
+            pin_model: "gpt-5-mini".into(),
+            offset: 41,
+            applied_offset: 0,
+            effort_applied: String::new(),
+            service_tier_applied: String::new(),
+        }),
+        routing: Some(RoutingOutcomeView {
+            outcome: "DIRECT".into(),
+            reason_code: "NO_ACTIVE_REGISTRY".into(),
+            detail: "no signed registry is active".into(),
+            floor_mode: String::new(),
+        }),
     };
     let session_tree = SessionTreeView {
         session_id: id(0x10),
@@ -239,6 +451,17 @@ pub fn samples() -> Vec<Sample> {
                     reason: "before the fork".into(),
                     created_at_ms: 1_700_000_000_000,
                     committed_at_ms: 1_700_000_000_500,
+                    name: "before the refactor".into(),
+                    turn_id: id(0x14),
+                    turn_ordinal: 2,
+                    retention: vec!["NAMED".into(), "FORK_PARENT".into()],
+                    cost: Some(CaptureCost {
+                        capture_ms: 12,
+                        hashed_files: 1,
+                        cache_hits: 40,
+                        blobs_written: 1,
+                        bytes_written: 9_007_199_254_740_993, // > 2^53: 64-bit in TypeScript
+                    }),
                 }],
                 restores: vec![RestoreView {
                     checkpoint_id: "01a09072-1262-70f2-b103-63d3e8f0feda".into(),
@@ -247,6 +470,8 @@ pub fn samples() -> Vec<Sample> {
                     files_written: 1,
                     files_reverted: 1,
                     preconditions_checked: 2,
+                    pre_restore_checkpoint_id: "01a09072-1262-70f2-b103-63d3e8f0fedb".into(),
+                    redo: false,
                 }],
             },
             SessionTreeNode {
@@ -383,6 +608,64 @@ pub fn samples() -> Vec<Sample> {
             decode: reencode::<ToolCallResult>,
         },
         Sample {
+            // PX-043: the registry row a client lists (terminal.proto).
+            name: "terminal_view",
+            type_name: "modbit.v1.TerminalView",
+            bytes: TerminalView {
+                session_id: "5e55f00d".into(),
+                task_id: id(0x77),
+                owner: "agent".into(),
+                argv: vec!["sh".into(), "-c".into(), "sleep 30".into()],
+                title: "sh -c sleep 30".into(),
+                state: "EXITED".into(),
+                exit_code: Some(-1),
+                started_at_ms: 1_757_289_600_123,
+                elapsed_ms: 30_001,
+                bytes_so_far: 9_007_199_254_740_993,
+                oldest_cursor: 4_194_288,
+                replay_window_bytes: 67_108_864,
+                pty: true,
+                rows: 40,
+                cols: 120,
+                input_lease_holder: "user:3-ab12cd".into(),
+                output_ref: "ab".repeat(32),
+                cwd: "/work".into(),
+                timed_out: false,
+            }
+            .encode_to_vec(),
+            expected: json!({
+                "sessionId": "5e55f00d", "taskId": idhex(0x77), "owner": "agent",
+                "argv": ["sh", "-c", "sleep 30"], "title": "sh -c sleep 30",
+                "state": "EXITED", "exitCode": -1, "startedAtMs": "1757289600123",
+                "elapsedMs": "30001", "bytesSoFar": "9007199254740993",
+                "oldestCursor": "4194288", "replayWindowBytes": "67108864",
+                "pty": true, "rows": 40, "cols": 120,
+                "inputLeaseHolder": "user:3-ab12cd", "outputRef": "ab".repeat(32),
+                "cwd": "/work", "timedOut": false
+            }),
+            decode: reencode::<TerminalView>,
+        },
+        Sample {
+            // PX-043: attaching from a cursor, with an acknowledgement window.
+            name: "attach_terminal",
+            type_name: "modbit.v1.AttachTerminal",
+            bytes: AttachTerminal {
+                task_id: id(0x77),
+                session_id: "5e55f00d".into(),
+                after_cursor: 18_446_744_073_709_551_615,
+                window_bytes: 262_144,
+                take_input_lease: true,
+                steal_input_lease: false,
+            }
+            .encode_to_vec(),
+            expected: json!({
+                "taskId": idhex(0x77), "sessionId": "5e55f00d",
+                "afterCursor": "18446744073709551615", "windowBytes": "262144",
+                "takeInputLease": true, "stealInputLease": false
+            }),
+            decode: reencode::<AttachTerminal>,
+        },
+        Sample {
             name: "output_ref_read_response",
             type_name: "modbit.v1.OutputRefReadResponse",
             bytes: read.encode_to_vec(),
@@ -433,9 +716,35 @@ pub fn samples() -> Vec<Sample> {
                     }],
                     "feasibility": "QUALITY_FLOOR_UNKNOWN", "qualityLcbBp": 0,
                     "statsVersion": "none", "thresholdsVersion": "none", "targetMet": false
-                }
+                },
+                "preference": null, "preferenceRouting": null
             }),
             decode: reencode::<RoutingPlanView>,
+        },
+        Sample {
+            name: "task_posture_view",
+            type_name: "modbit.v1.TaskPostureView",
+            bytes: posture.encode_to_vec(),
+            expected: json!({
+                "taskId": idhex(0x31), "mode": "TASK_MODE_PLAN",
+                "modeOffset": "9007199254740993", "modeInForce": "TASK_MODE_AGENT",
+                "posture": {
+                    "effectCeiling": "READONLY",
+                    "allowedCapabilities": ["fs.read", "git.read"],
+                    "subagents": false, "reproductionFirst": false, "writes": false
+                },
+                "preference": {
+                    "objective": "OBJECTIVE_PROFILE_COST", "effort": "high",
+                    "serviceTier": "flex", "pinEndpoint": "openai", "pinModel": "gpt-5-mini",
+                    "offset": "41", "appliedOffset": "0", "effortApplied": "",
+                    "serviceTierApplied": ""
+                },
+                "routing": {
+                    "outcome": "DIRECT", "reasonCode": "NO_ACTIVE_REGISTRY",
+                    "detail": "no signed registry is active", "floorMode": ""
+                }
+            }),
+            decode: reencode::<TaskPostureView>,
         },
         Sample {
             name: "protocol_state_view",
@@ -495,12 +804,20 @@ pub fn samples() -> Vec<Sample> {
                             "integrityHash": "b".repeat(64), "gitHead": "c".repeat(40),
                             "files": 1, "removed": 0, "eventOffset": "120",
                             "indexGeneration": "2", "reason": "before the fork",
-                            "createdAtMs": "1700000000000", "committedAtMs": "1700000000500"
+                            "createdAtMs": "1700000000000", "committedAtMs": "1700000000500",
+                            "name": "before the refactor", "turnId": idhex(0x14), "turnOrdinal": 2,
+                            "retention": ["NAMED", "FORK_PARENT"],
+                            "cost": {
+                                "captureMs": "12", "hashedFiles": 1, "cacheHits": 40,
+                                "blobsWritten": 1, "bytesWritten": "9007199254740993"
+                            }
                         }],
                         "restores": [{
                             "checkpointId": "01a09072-1262-70f2-b103-63d3e8f0feda", "epoch": 1,
                             "offset": "140", "filesWritten": 1, "filesReverted": 1,
-                            "preconditionsChecked": 2
+                            "preconditionsChecked": 2,
+                            "preRestoreCheckpointId": "01a09072-1262-70f2-b103-63d3e8f0fedb",
+                            "redo": false
                         }]
                     },
                     {
@@ -519,6 +836,81 @@ pub fn samples() -> Vec<Sample> {
                 }]
             }),
             decode: reencode::<SessionTreeView>,
+        },
+        Sample {
+            name: "transcript_page",
+            type_name: "modbit.v1.TranscriptPage",
+            bytes: transcript_page.encode_to_vec(),
+            expected: json!({
+                "taskId": idhex(0x21),
+                "density": "TRANSCRIPT_DENSITY_BALANCED",
+                "rows": [
+                    row_json(1, "unread", "TRANSCRIPT_ROW_KIND_UNREAD_DIVIDER", "2 new", false, vec![]),
+                    row_json(2, "group:explore:tool:a", "TRANSCRIPT_ROW_KIND_WORK_GROUP", "Explored 2 items", true, vec![
+                        row_json(1, "tool:a", "TRANSCRIPT_ROW_KIND_TOOL_CARD", "fs.read a.txt", false, vec![]),
+                        row_json(2, "tool:b", "TRANSCRIPT_ROW_KIND_TOOL_CARD", "fs.read b.txt", false, vec![]),
+                    ]),
+                ],
+                "totalRows": 2, "nextAfterRow": 0, "hasMore": false,
+                "asOfOffset": "90", "lastOffset": "90", "taskState": "Running",
+                "readOffset": "40", "eventsRead": "12"
+            }),
+            decode: reencode::<TranscriptPage>,
+        },
+        Sample {
+            name: "agent_headers",
+            type_name: "modbit.v1.AgentHeaders",
+            bytes: agent_headers.encode_to_vec(),
+            expected: json!({
+                "sessionId": idhex(0x10),
+                "headers": [{
+                    "taskId": idhex(0x21), "sessionId": idhex(0x10),
+                    "workspaceRoot": "/repo", "title": "make the check pass", "subtitle": "repo",
+                    "createdAt": {"seconds": "1700000000", "nanos": 0},
+                    "updatedAt": {"seconds": "1700000100", "nanos": 500000000},
+                    "statusClass": "AGENT_STATUS_CLASS_READY_FOR_REVIEW_UNSEEN",
+                    "statusLabel": "Ready for review", "unread": true, "pendingApproval": false,
+                    "pendingPlan": false, "contextPercent": 37, "filesChanged": 2,
+                    "linesAdded": 14, "linesRemoved": 3, "lastCheckpointAt": null,
+                    "subagent": false, "archived": false, "executionLocation": "local",
+                    "origin": "cli", "taskState": "ReadyForReview", "lastOffset": "90",
+                    "readOffset": "40", "attentionItems": 0
+                }],
+                "lastOffset": "90", "eventsRead": "0", "objectsRead": "0"
+            }),
+            decode: reencode::<AgentHeaders>,
+        },
+        Sample {
+            name: "skill_list",
+            type_name: "modbit.v1.SkillList",
+            bytes: skill_list.encode_to_vec(),
+            expected: json!({
+                "skills": [{
+                    "name": "release-notes", "version": "1.2.0",
+                    "description": "write release notes from merged changes",
+                    "scope": "USER", "contentHash": "e".repeat(64),
+                    "trust": "TRUSTED_BY_OWNER", "trustDetail": "", "enabled": true,
+                    "invocation": "BOTH", "paths": ["docs/**"], "pathsActive": true,
+                    "indexTokens": 14, "indexed": true, "indexForm": "FULL",
+                    "selected": false, "source": "/profile/skills/release-notes",
+                    "provenanceSource": "", "provenanceAuthor": "me", "provenanceLicense": "MIT",
+                    "requiredTools": ["fs.read"], "lifecycle": "ENABLED"
+                }],
+                "rejected": [{"source": "/profile/skills/broken", "code": "MALFORMED_MANIFEST", "reason": "no front matter"}],
+                "indexBudgetTokens": 2000, "indexUsedTokens": 14, "indexOmitted": 0,
+                "systemRoot": "/etc/modbit/skills"
+            }),
+            decode: reencode::<SkillList>,
+        },
+        Sample {
+            name: "set_task_budgets",
+            type_name: "modbit.v1.SetTaskBudgets",
+            bytes: budgets.encode_to_vec(),
+            expected: json!({
+                "taskId": idhex(0x31), "maxCostMinor": "5000",
+                "maxWallMs": "9007199254740993", "maxChildren": 2, "forbidSpawn": false
+            }),
+            decode: reencode::<SetTaskBudgets>,
         },
         Sample {
             name: "hello",

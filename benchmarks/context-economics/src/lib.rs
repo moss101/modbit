@@ -14,6 +14,9 @@
 
 use serde::{Deserialize, Serialize};
 
+pub mod projection_trial;
+pub mod suite;
+
 /// One run of one task under one configuration.
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
 pub struct Trial {

@@ -47,7 +47,7 @@ pub(crate) fn projections() -> Vec<modbit_providers::ToolProjection> {
     vec![
         modbit_providers::ToolProjection {
             name: SPAWN_TOOL.into(),
-            description: "Delegate one bounded subtask to a child agent in its own worktree. Admitted as one transaction (capacity, write-set overlap, worktree, least-privilege lease, node, work ownership) or refused at the failing step; nothing partial. idempotency_key: a retry reattaches. write_scope: the only paths it may write. mode BACKGROUND runs detached (collect with agent.wait); FOREGROUND waits here; a child your own pending work depends on runs FOREGROUND regardless (scheduling BLOCKING).".into(),
+            description: "Delegate one bounded subtask to a child agent in its own worktree. Work alone unless the subtask is separable: independent of your next steps, disjoint in what it writes, and large enough to pay for a second agent; do the rest yourself. Admitted as one transaction (capacity, write-set overlap, worktree, least-privilege lease, node, work ownership, a slice of your own budget) or refused at the failing step; nothing partial. A child's budget (turns, tool calls, max_cost_minor, max_wall_ms) is clamped to what you have left and reserved against you: its spend is yours, and what it does not use comes back when it stops. read_scope: the only paths it may read (its write_scope is readable too); outside it a read is refused. idempotency_key: a retry reattaches. write_scope: the only paths it may write. mode BACKGROUND runs detached (collect with agent.wait); FOREGROUND waits here; a child your own pending work depends on runs FOREGROUND regardless (scheduling BLOCKING).".into(),
             input_schema: serde_json::json!({"type":"object","properties":{
                 "idempotency_key":{"type":"string","minLength":1},
                 "objective":{"type":"string","minLength":1},
@@ -59,6 +59,8 @@ pub(crate) fn projections() -> Vec<modbit_providers::ToolProjection> {
                 "verification":{"type":"string"},
                 "max_turns":{"type":"integer","minimum":1},
                 "max_tool_calls":{"type":"integer","minimum":0},
+                "max_cost_minor":{"type":"integer","minimum":0},
+                "max_wall_ms":{"type":"integer","minimum":0},
                 "work_node":{"type":"string"},
                 "mode":{"type":"string","enum":["BACKGROUND","FOREGROUND"]},
                 "profile":{"type":"string"}
@@ -313,6 +315,56 @@ pub(crate) async fn handle_spawn(
             failure_code: Some("NESTING_DISABLED".into()),
         };
     }
+    // PX-051: a read-only mode admits no child, which could write.
+    let task_mode = core
+        .tools
+        .tasking
+        .in_force_now(task.task_id)
+        .unwrap_or_default();
+    if !task_mode.posture().subagents {
+        return Handled {
+            entry: entry(
+                call_id,
+                SPAWN_TOOL,
+                format!(
+                    "status: REFUSED\nerror_code: MODE_POSTURE\nerror: the task is in {} mode, which admits no subagent; the user changes the mode, the agent does not",
+                    task_mode.name()
+                ),
+                false,
+            ),
+            failure_code: Some("MODE_POSTURE".into()),
+        };
+    }
+    // PX-117: before a child is admitted, `subagent_start` hooks may refuse
+    // it (they cannot admit one: admission is the Core's transaction).
+    let (hooks, _) =
+        crate::hooks::scope(core, task, Some(run_id), None, Some(generation), actor).await;
+    if let Some((code, reason)) = hooks
+        .fire(
+            modbit_tools::hooks::HookPoint::SubagentStart,
+            None,
+            serde_json::json!({
+                "idempotency_key": key,
+                "objective": spec.objective.chars().take(500).collect::<String>(),
+                "write_scope": spec.write_scope,
+                "mode": v["mode"].as_str().unwrap_or("BACKGROUND"),
+            }),
+        )
+        .await
+        .denied
+    {
+        return Handled {
+            entry: entry(
+                call_id,
+                SPAWN_TOOL,
+                format!(
+                    "status: REFUSED\nerror_code: {code}\nerror: {reason}\nnothing was admitted"
+                ),
+                false,
+            ),
+            failure_code: Some(code),
+        };
+    }
     let mode = match v["mode"].as_str().unwrap_or("BACKGROUND") {
         "FOREGROUND" => SpawnMode::Foreground,
         _ => SpawnMode::Background,
@@ -325,6 +377,13 @@ pub(crate) async fn handle_spawn(
         spec,
         mode,
         idempotency_key: key.clone(),
+        parent_budgets: state.budgets,
+        parent_own: modbit_core_runtime::budget::Held {
+            turns: u64::from(state.turns),
+            tool_calls: u64::from(state.tool_calls),
+            cost_minor: state.cost_minor,
+            wall_ms: state.wall_ms,
+        },
     };
     match crate::spawn::spawn(core, req, actor).await {
         Ok(s) => {
@@ -333,7 +392,7 @@ pub(crate) async fn handle_spawn(
             // on runs in the foreground.
             let mode = s.mode;
             let mut text = format!(
-                "status: SUCCESS\nagent_id: {}\nchild_task_id: {}\nworktree: {}\nbranch: {}\nwork_node: {}\ncapsule_ref: {}\nticket_id: {}\nreattached: {}\nmode: {:?}\nscheduling: {}{}",
+                "status: SUCCESS\nagent_id: {}\nchild_task_id: {}\nworktree: {}\nbranch: {}\nwork_node: {}\ncapsule_ref: {}\nticket_id: {}\nreattached: {}\nmode: {:?}\nscheduling: {}{}{}",
                 s.agent_id,
                 s.child_task_id,
                 s.worktree,
@@ -344,6 +403,11 @@ pub(crate) async fn handle_spawn(
                 s.reattached,
                 mode,
                 s.scheduling,
+                if s.budget.is_empty() {
+                    String::new()
+                } else {
+                    format!("\nbudget: {}", s.budget)
+                },
                 if s.profile.is_empty() {
                     String::new()
                 } else {
@@ -562,6 +626,30 @@ pub(crate) async fn handle_wait(
     };
     let text = wait_for(core, task, agent_id, timeout_ms).await;
     let done = text.starts_with("status: SUCCESS");
+    // PX-117: the parent collected a child's result: `subagent_stop` hooks
+    // observe it (the envelope itself stays untrusted data).
+    if done {
+        let (hooks, _) = crate::hooks::scope(
+            core,
+            task,
+            None,
+            None,
+            None,
+            &Actor::Agent(format!("solver:{}", task.task_id)),
+        )
+        .await;
+        let _ = hooks
+            .fire(
+                modbit_tools::hooks::HookPoint::SubagentStop,
+                None,
+                serde_json::json!({
+                    "agent_id": agent_id.to_string(),
+                    "status": "SUCCESS",
+                    "result_bytes": text.len(),
+                }),
+            )
+            .await;
+    }
     Handled {
         entry: entry(
             call_id,

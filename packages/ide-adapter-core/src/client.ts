@@ -14,6 +14,27 @@
 import { connect, type Socket } from "node:net";
 import { create, fromBinary, toBinary, type MessageInitShape } from "@bufbuild/protobuf";
 import {
+  AckTerminalSchema,
+  AttachTerminalSchema,
+  DetachTerminalSchema,
+  ListTerminalsSchema,
+  ResizeTerminalSchema,
+  SetTerminalInputSchema,
+  TerminalAckedSchema,
+  TerminalAttachedSchema,
+  TerminalDetachedSchema,
+  TerminalInputSetSchema,
+  TerminalListSchema,
+  TerminalResizeDoneSchema,
+  TerminalWrittenSchema,
+  WriteTerminalSchema,
+  type TerminalAttached,
+  type TerminalDetached,
+  type TerminalFrame,
+  type TerminalInputSet,
+  type TerminalList,
+  type TerminalResizeDone,
+  type TerminalWritten,
   AcquireSessionLeaseSchema,
   DiagnosticsExportedSchema,
   DiagnosticsVerifiedSchema,
@@ -57,6 +78,19 @@ import {
   GetContextInspectorSchema,
   GetAttentionSchema,
   AttentionViewSchema,
+  GetTranscriptSchema,
+  TranscriptPageSchema,
+  type TranscriptPage,
+  TranscriptDensity,
+  GetAgentHeadersSchema,
+  AgentHeadersSchema,
+  type AgentHeaders,
+  MarkReadSchema,
+  ReadMarkedSchema,
+  type ReadMarked,
+  ArchiveTaskSchema,
+  TaskArchivedSchema,
+  type TaskArchived,
   type AttentionView,
   GetSessionSnapshotSchema,
   LanguageListSchema,
@@ -120,6 +154,17 @@ import {
   ForgetBrowserCredentialSchema,
   BrowserCredentialForgottenSchema,
   BrowserControlChangedSchema,
+  SetTaskModeSchema,
+  TaskModeChangedSchema,
+  SetExecutionPreferenceSchema,
+  ExecutionPreferenceSetSchema,
+  GetTaskPostureSchema,
+  TaskPostureViewSchema,
+  type TaskMode,
+  type ObjectiveProfile,
+  type TaskModeChanged,
+  type ExecutionPreferenceSet,
+  type TaskPostureView,
   type BrowserHostRequest,
   type BrowserSessionView,
   type TaskEconomicsView,
@@ -137,6 +182,42 @@ import {
 import { randomBytes } from "node:crypto";
 
 export const MAX_FRAME_BYTES = 4 * 1024 * 1024;
+
+/** The user's execution preference (PX-053), as a patch: what is unset keeps what the Core recorded. */
+export interface PreferenceOptions {
+  objective?: ObjectiveProfile;
+  /** `low` | `medium` | `high` | `default` */
+  effort?: string;
+  /** A service-tier name, or `default`. */
+  serviceTier?: string;
+  /** A manual pin; the Core refuses one the organization policy forbids. */
+  pin?: { endpoint: string; model: string };
+  clearPin?: boolean;
+}
+
+/** Options of a task's creation (PX-051, PX-100): its profile, mode and preference. The client names them; the Core derives and enforces the posture. */
+export interface TaskOptions extends Omit<PreferenceOptions, "pin" | "clearPin"> {
+  executionProfile?: string;
+  mode?: TaskMode;
+}
+
+/** Options of a start (PX-100): the objective, effort and tier, and a manual pin as the endpoint and model. */
+export interface StartOptions extends Omit<PreferenceOptions, "pin" | "clearPin"> {
+  endpoint?: string;
+  model?: string;
+}
+
+/** The wire preference of options that name any, `undefined` when none does. */
+function preferenceInit(o: Omit<PreferenceOptions, "pin" | "clearPin">): { objective: ObjectiveProfile; effort: string; serviceTier: string } | undefined {
+  if (o.objective === undefined && !o.effort && !o.serviceTier) return undefined;
+  return { objective: o.objective ?? 0, effort: o.effort ?? "", serviceTier: o.serviceTier ?? "" };
+}
+
+/** The `preference` field of a message init: present only when options name one. */
+function preferenceField(o: Omit<PreferenceOptions, "pin" | "clearPin">): { preference: { objective: ObjectiveProfile; effort: string; serviceTier: string } } | Record<string, never> {
+  const p = preferenceInit(o);
+  return p ? { preference: p } : {};
+}
 export const PROTOCOL_VERSION = { major: 1, minor: 0 };
 
 export interface ReadyLine {
@@ -226,6 +307,13 @@ export class CoreClient {
    * error by the client itself so the Core never waits on it.
    */
   onBrowserRequest: ((r: BrowserHostRequest) => void) | null = null;
+  /**
+   * PX-043: a slice of a terminal stream this connection attached to
+   * (`attachTerminal`). The Core sends at most the attach's window beyond what
+   * `ackTerminal` acknowledged, so a handler that acknowledges what it has
+   * consumed never holds more than the window.
+   */
+  onTerminalFrame: ((f: TerminalFrame) => void) | null = null;
   onClose: ((reason: string) => void) | null = null;
 
   private constructor(kind: ClientKind) {
@@ -302,6 +390,9 @@ export class CoreClient {
         else void this.respondBrowserHost(r.requestId, { kind: "error", code: "NO_HOST", message: "this client hosts no browser" }).catch(() => {});
         return;
       }
+      case "terminalFrame":
+        this.onTerminalFrame?.(f.body.value);
+        return;
       case "error":
         this.fail(`${f.body.value.code}: ${f.body.value.message}`);
         return;
@@ -369,8 +460,23 @@ export class CoreClient {
   }
 
   /** Create a task; with `issueUrl` (PX-010) the origin is `forge_issue` and the Core reads the issue first — an unreadable one is refused and no task exists. */
-  async createTask(sessionId: string, goalText: string, commandId?: Uint8Array, workspaceRoot = "", issueUrl?: string): Promise<{ taskId: string; offset: bigint; replayed: boolean; goalText: string }> {
-    const payload = toBinary(CreateTaskSchema, create(CreateTaskSchema, { sessionId: { value: unhex(sessionId) }, goalText, executionProfile: "local_trusted", origin: issueUrl ? "forge_issue" : this.origin, workspaceRoot, issueUrl: issueUrl ?? "" }));
+  async createTask(sessionId: string, goalText: string, commandId?: Uint8Array, workspaceRoot = "", issueUrl?: string, options: TaskOptions = {}): Promise<{ taskId: string; offset: bigint; replayed: boolean; goalText: string }> {
+    const preference = preferenceInit(options);
+    const payload = toBinary(
+      CreateTaskSchema,
+      create(CreateTaskSchema, {
+        sessionId: { value: unhex(sessionId) },
+        goalText,
+        // PX-100: the caller's profile and mode, named; the Core derives the
+        // posture. `local_trusted` is the default profile as it always was.
+        executionProfile: options.executionProfile ?? "local_trusted",
+        mode: options.mode ?? 0,
+        ...(preference ? { preference } : {}),
+        origin: issueUrl ? "forge_issue" : this.origin,
+        workspaceRoot,
+        issueUrl: issueUrl ?? "",
+      }),
+    );
     const ack = await this.command("CreateTask", payload, commandId, this.leases.get(sessionId));
     const r = fromBinary(TaskCreatedSchema, ack.result);
     return { taskId: hex(r.taskId?.value ?? new Uint8Array()), offset: r.offset, replayed: ack.status === CommandStatus.REPLAYED, goalText: r.goalText };
@@ -386,6 +492,53 @@ export class CoreClient {
   async attention(sessionId: string): Promise<AttentionView> {
     const ack = await this.command("GetAttention", toBinary(GetAttentionSchema, create(GetAttentionSchema, { sessionId: { value: unhex(sessionId) } })));
     return fromBinary(AttentionViewSchema, ack.result);
+  }
+
+  /** PX-042: one page of a task's conversation, projected by the Core from the
+   *  log. `afterRow` is the cursor (the previous page's `nextAfterRow`); pass the
+   *  first page's `asOfOffset` back as `asOfOffset` so every page sees one log.
+   *  Assistant text still streaming arrives as `assistant_stream` events on the
+   *  subscription; a row of phase COMPLETED is the finished message. */
+  async getTranscript(
+    taskId: string,
+    opts: { density?: TranscriptDensity; afterRow?: number; limit?: number; asOfOffset?: bigint } = {},
+  ): Promise<TranscriptPage> {
+    const payload = toBinary(
+      GetTranscriptSchema,
+      create(GetTranscriptSchema, {
+        taskId: { value: unhex(taskId) },
+        density: opts.density ?? TranscriptDensity.COMPACT,
+        afterRow: opts.afterRow ?? 0,
+        limit: opts.limit ?? 0,
+        asOfOffset: opts.asOfOffset ?? 0n,
+      }),
+    );
+    const ack = await this.command("GetTranscript", payload);
+    return fromBinary(TranscriptPageSchema, ack.result);
+  }
+
+  /** PX-042: the header of every task of a session; the status class is the Core's. */
+  async getAgentHeaders(sessionId: string, includeArchived = false): Promise<AgentHeaders> {
+    const payload = toBinary(
+      GetAgentHeadersSchema,
+      create(GetAgentHeadersSchema, { sessionId: { value: unhex(sessionId) }, includeArchived }),
+    );
+    const ack = await this.command("GetAgentHeaders", payload);
+    return fromBinary(AgentHeadersSchema, ack.result);
+  }
+
+  /** PX-042: the person has seen the task's conversation up to `upToOffset` (0 = all of it). Idempotent by `commandId`. */
+  async markRead(sessionId: string, taskId: string, upToOffset = 0n, commandId?: Uint8Array): Promise<ReadMarked> {
+    const payload = toBinary(MarkReadSchema, create(MarkReadSchema, { taskId: { value: unhex(taskId) }, upToOffset }));
+    const ack = await this.command("MarkRead", payload, commandId, this.leases.get(sessionId));
+    return fromBinary(ReadMarkedSchema, ack.result);
+  }
+
+  /** PX-042: archive (or, with `archived = false`, undo archiving) a task's conversation. A running task is refused with TASK_RUNNING. */
+  async archiveTask(sessionId: string, taskId: string, archived = true, commandId?: Uint8Array): Promise<TaskArchived> {
+    const payload = toBinary(ArchiveTaskSchema, create(ArchiveTaskSchema, { taskId: { value: unhex(taskId) }, archived }));
+    const ack = await this.command("ArchiveTask", payload, commandId, this.leases.get(sessionId));
+    return fromBinary(TaskArchivedSchema, ack.result);
   }
 
   async contextInspector(taskId: string): Promise<ContextInspectorView> {
@@ -542,11 +695,63 @@ export class CoreClient {
     return { stacks: r.stacks, tasks: r.tasks.map((t) => ({ id: t.id, title: t.title, goalText: t.goalText, stack: t.stack })) };
   }
 
-  async startTask(sessionId: string, taskId: string): Promise<{ runId: string; resumed: boolean; endpoint: string; model: string }> {
-    const payload = toBinary(StartTaskSchema, create(StartTaskSchema, { taskId: { value: unhex(taskId) } }));
+  /** Start a run; `options` carries the objective, effort and service tier (PX-100) and a manual pin as `endpoint` and `model`. */
+  async startTask(sessionId: string, taskId: string, options: StartOptions = {}): Promise<{ runId: string; resumed: boolean; endpoint: string; model: string }> {
+    const payload = toBinary(
+      StartTaskSchema,
+      create(StartTaskSchema, {
+        taskId: { value: unhex(taskId) },
+        endpoint: options.endpoint ?? "",
+        model: options.model ?? "",
+        ...preferenceField(options),
+      }),
+    );
     const ack = await this.command("StartTask", payload, undefined, this.leases.get(sessionId));
     const r = fromBinary(TaskRunStartedSchema, ack.result);
     return { runId: hex(r.runId?.value ?? new Uint8Array()), resumed: r.resumed, endpoint: r.endpoint, model: r.model };
+  }
+
+  /**
+   * PX-051: change the task's mode. The client names the mode and nothing
+   * else; the Core derives the posture, enforces it at the Capability Kernel
+   * from the run's next round boundary, and refuses an unknown mode, a task
+   * that has ended and a stale lease with typed errors (a `RejectedError` here).
+   */
+  async setTaskMode(sessionId: string, taskId: string, mode: TaskMode, reason = ""): Promise<TaskModeChanged> {
+    const payload = toBinary(SetTaskModeSchema, create(SetTaskModeSchema, { taskId: { value: unhex(taskId) }, mode, reason }));
+    const ack = await this.command("SetTaskMode", payload, undefined, this.leases.get(sessionId));
+    return fromBinary(TaskModeChangedSchema, ack.result);
+  }
+
+  /**
+   * PX-053: record the task's execution preference (objective, effort,
+   * service tier, or a manual pin where the policy allows it) as a patch.
+   * The answer says when the router reads it and what routing did with it —
+   * with no signed registry, DIRECT and the typed reason.
+   */
+  async setExecutionPreference(sessionId: string, taskId: string, preference: PreferenceOptions): Promise<ExecutionPreferenceSet> {
+    const payload = toBinary(
+      SetExecutionPreferenceSchema,
+      create(SetExecutionPreferenceSchema, {
+        taskId: { value: unhex(taskId) },
+        preference: {
+          objective: preference.objective ?? 0,
+          effort: preference.effort ?? "",
+          serviceTier: preference.serviceTier ?? "",
+          pinEndpoint: preference.pin?.endpoint ?? "",
+          pinModel: preference.pin?.model ?? "",
+          clearPin: preference.clearPin ?? false,
+        },
+      }),
+    );
+    const ack = await this.command("SetExecutionPreference", payload, undefined, this.leases.get(sessionId));
+    return fromBinary(ExecutionPreferenceSetSchema, ack.result);
+  }
+
+  /** The task's mode, the posture in force, its preference and what routing did with it. */
+  async taskPosture(taskId: string): Promise<TaskPostureView> {
+    const ack = await this.command("GetTaskPosture", toBinary(GetTaskPostureSchema, create(GetTaskPostureSchema, { taskId: { value: unhex(taskId) } })));
+    return fromBinary(TaskPostureViewSchema, ack.result);
   }
 
   /** REQ-EV-0190: normalize a channel attachment through the Core's media pipeline (bytes stay in the Core by digest). */
@@ -733,6 +938,61 @@ export class CoreClient {
   async taskStatus(taskId: string): Promise<TaskStatus> {
     const ack = await this.command("GetTaskStatus", toBinary(GetTaskStatusSchema, create(GetTaskStatusSchema, { taskId: { value: unhex(taskId) } })));
     return fromBinary(TaskStatusSchema, ack.result);
+  }
+
+  // ---- PX-043 / PX-099 terminal stream and registry (docs/21) ----
+
+  /** The background terminals of every task (or one): owner, state, start, running timer, replay window. The same for every client. */
+  async listTerminals(taskId?: string): Promise<TerminalList> {
+    const payload = toBinary(ListTerminalsSchema, create(ListTerminalsSchema, taskId ? { taskId: { value: unhex(taskId) } } : {}));
+    const ack = await this.command("ListTerminals", payload);
+    return fromBinary(TerminalListSchema, ack.result);
+  }
+
+  /**
+   * Attach to a terminal from a cursor: frames follow on `onTerminalFrame`.
+   * Rejections are typed: SESSION_NOT_OWNED, CURSOR_EXPIRED (message names
+   * oldest_cursor), CURSOR_BEYOND_HEAD, LEASE_HELD. With `takeInputLease` the
+   * person holds the terminal's input lease (the agent's shell.input is then
+   * refused INPUT_LEASED); that needs the session lease.
+   */
+  async attachTerminal(sessionId: string, taskId: string, terminalId: string, afterCursor: bigint, opts: { windowBytes?: bigint; takeInputLease?: boolean; stealInputLease?: boolean } = {}): Promise<TerminalAttached> {
+    const payload = toBinary(
+      AttachTerminalSchema,
+      create(AttachTerminalSchema, { taskId: { value: unhex(taskId) }, sessionId: terminalId, afterCursor, windowBytes: opts.windowBytes ?? 0n, takeInputLease: opts.takeInputLease ?? false, stealInputLease: opts.stealInputLease ?? false }),
+    );
+    const ack = await this.command("AttachTerminal", payload, undefined, opts.takeInputLease ? this.leases.get(sessionId) : undefined);
+    return fromBinary(TerminalAttachedSchema, ack.result);
+  }
+
+  /** Tell the Core the output up to `cursor` was consumed; it may send that much more. */
+  async ackTerminal(attachId: string, cursor: bigint): Promise<bigint> {
+    const ack = await this.command("AckTerminal", toBinary(AckTerminalSchema, create(AckTerminalSchema, { attachId, cursor })));
+    return fromBinary(TerminalAckedSchema, ack.result).ackedCursor;
+  }
+
+  /** End the attachment (the process is untouched); returns the cursor to resume from. */
+  async detachTerminal(attachId: string): Promise<TerminalDetached> {
+    const ack = await this.command("DetachTerminal", toBinary(DetachTerminalSchema, create(DetachTerminalSchema, { attachId })));
+    return fromBinary(TerminalDetachedSchema, ack.result);
+  }
+
+  /** Take or give back the input lease of an attachment. Requires the session lease. */
+  async setTerminalInput(sessionId: string, attachId: string, hold: boolean, steal = false): Promise<TerminalInputSet> {
+    const ack = await this.command("SetTerminalInput", toBinary(SetTerminalInputSchema, create(SetTerminalInputSchema, { attachId, hold, steal })), undefined, this.leases.get(sessionId));
+    return fromBinary(TerminalInputSetSchema, ack.result);
+  }
+
+  /** Resize the terminal to the viewer's size. Requires the session lease. */
+  async resizeTerminal(sessionId: string, attachId: string, rows: number, cols: number): Promise<TerminalResizeDone> {
+    const ack = await this.command("ResizeTerminal", toBinary(ResizeTerminalSchema, create(ResizeTerminalSchema, { attachId, rows, cols })), undefined, this.leases.get(sessionId));
+    return fromBinary(TerminalResizeDoneSchema, ack.result);
+  }
+
+  /** A person's keystrokes (at most 64 KiB), accepted only while the attachment holds the input lease (LEASE_REQUIRED otherwise). Requires the session lease. */
+  async writeTerminal(sessionId: string, attachId: string, data: Uint8Array): Promise<TerminalWritten> {
+    const ack = await this.command("WriteTerminal", toBinary(WriteTerminalSchema, create(WriteTerminalSchema, { attachId, data })), undefined, this.leases.get(sessionId));
+    return fromBinary(TerminalWrittenSchema, ack.result);
   }
 
   subscribe(sessionId: string, afterOffset: bigint): void {

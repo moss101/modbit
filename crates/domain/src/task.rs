@@ -27,6 +27,10 @@ pub enum WaitReason {
     External,
     /// Waiting on a model provider.
     Provider,
+    /// Paused by a person at a turn boundary (REQ-PX-101, `PauseTask`): the
+    /// run is suspended with its worktree and checkpoint held, and nothing
+    /// resumes it but a `ResumeTask`. Not a fault: no attention is raised.
+    Paused,
 }
 
 /// Where a task came from (docs/30 `origin` on `CreateTask`).
@@ -256,6 +260,33 @@ pub enum TaskEvent {
         /// Who asked.
         requested_by: String,
     },
+    /// `TaskPaused` (REQ-PX-101): the run parked at a turn boundary because
+    /// a person asked (`PauseTask`). Recorded with `TaskWaiting { Paused }`
+    /// in one transaction; the typed record of why, who and where. No state
+    /// change of its own.
+    TaskPaused {
+        /// Why, in the requester's words (may be empty).
+        reason: String,
+        /// Who asked (`Actor` label).
+        paused_by: String,
+        /// The `PauseTask` command that asked (UUID text).
+        command_id: String,
+        /// The checkpoint the pause holds (the latest committed one), when
+        /// the task has any.
+        checkpoint_id: String,
+        /// Where the run stopped: `TURN_BOUNDARY`.
+        boundary: String,
+        /// The run's budgets, so the resume continues under them unless the
+        /// resumer names others.
+        #[serde(default)]
+        max_turns: u32,
+        /// Tool-call budget.
+        #[serde(default)]
+        max_tool_calls: u32,
+        /// Consecutive turns without progress allowed.
+        #[serde(default)]
+        max_no_progress_turns: u32,
+    },
     /// `TaskCancelRequested` (M8.1, docs/30 `:cancel`): the person asked
     /// the execution owner to cancel at its next safe boundary; no state
     /// change (`TaskCancelled` follows from the owner).
@@ -351,6 +382,76 @@ pub enum TaskEvent {
         /// fenced as such, and it grants nothing.
         #[serde(default)]
         untrusted: bool,
+    },
+    /// `TaskModeSet` (PX-051, docs/65 AFW-D03): the user set the task's mode.
+    /// The latest one is the task's mode; the posture it selects is enforced
+    /// from the next round boundary (`TaskPostureApplied`). No state change.
+    TaskModeSet {
+        /// The mode.
+        mode: crate::mode::TaskMode,
+        /// The mode it replaced (`None` at creation).
+        #[serde(default)]
+        previous: Option<crate::mode::TaskMode>,
+        /// `create` | `user`.
+        source: String,
+        /// The user's note (log text; never an instruction).
+        #[serde(default)]
+        reason: String,
+        /// Leaving PLAN: the plan version the user accepted (0 = none).
+        #[serde(default)]
+        accepted_plan_version: u32,
+    },
+    /// `TaskPostureApplied` (PX-051): the run's round boundary adopted a mode;
+    /// from here the Capability Kernel enforces that mode's posture. A call in
+    /// flight keeps the posture it was decided under. No state change.
+    TaskPostureApplied {
+        /// The mode now in force.
+        mode: crate::mode::TaskMode,
+        /// The mode that was in force (`None` at run start).
+        #[serde(default)]
+        previous: Option<crate::mode::TaskMode>,
+        /// `RUN_START` | `ROUND`.
+        boundary: String,
+        /// The `TaskModeSet` event offset this mode came from (0 = default).
+        mode_offset: u64,
+    },
+    /// `ExecutionPreferenceSet` (PX-053, docs/65 AFW-D13): the user recorded an
+    /// execution preference for the task. The router reads it at the next
+    /// boundary (`ExecutionPreferenceApplied`). No state change.
+    ExecutionPreferenceSet {
+        /// The whole preference after this patch.
+        preference: crate::mode::ExecutionPreference,
+        /// What the command carried.
+        patch: crate::mode::ExecutionPreference,
+        /// `create` | `start_task` | `user`.
+        source: String,
+    },
+    /// `ExecutionPreferenceApplied` (PX-053): routing read the recorded
+    /// preference at a boundary, and what it did. With no signed registry the
+    /// outcome is `DIRECT` with a typed reason. No state change.
+    ExecutionPreferenceApplied {
+        /// The preference read.
+        preference: crate::mode::ExecutionPreference,
+        /// The `ExecutionPreferenceSet` event offset it came from.
+        preference_offset: u64,
+        /// `RUN_START` | `ROUND`.
+        boundary: String,
+        /// `DIRECT` | `ROUTED` | `PINNED`.
+        outcome: String,
+        /// Typed reason (`NO_ACTIVE_REGISTRY`, `FLOOR_APPLIED`, `FLOOR_UNDEFINED`, `MANUAL_PIN`).
+        reason_code: String,
+        /// Detail.
+        #[serde(default)]
+        detail: String,
+        /// The registry floor row the objective selected, when one compiled.
+        #[serde(default)]
+        floor_mode: String,
+        /// The effort a dispatch carries (`None` = the catalog's own, or the model exposes none).
+        #[serde(default)]
+        effort_applied: Option<String>,
+        /// The service tier a dispatch carries.
+        #[serde(default)]
+        service_tier_applied: Option<String>,
     },
     /// `PlanRecorded` (docs/28 PX-014): the plan artifact before the first write; no state change.
     PlanRecorded {
@@ -901,6 +1002,17 @@ pub enum TaskEvent {
         /// Tool names activated.
         tools: Vec<String>,
     },
+    /// `ToolProjectionConfigured` (PX-114): the task's tool projection mode
+    /// and schema-bytes budget were set, by a person's command. It changes
+    /// what the model is shown from the next round on, never what it may do
+    /// (the Capability Kernel decides every call). No state change.
+    ToolProjectionConfigured {
+        /// `direct` or `exec_only`; empty keeps the model's or the Core's.
+        mode: String,
+        /// The most bytes of tool schemas one request may carry; 0 keeps
+        /// the model's or the Core's budget.
+        max_projection_bytes: u64,
+    },
     /// `ProgramStarted` (docs/16 "Procedural Tool Runtime", M5.4): a
     /// `proc.exec` program began in the isolate with the bindings and budget
     /// named; every binding call is its own tool call on the log. No state
@@ -983,6 +1095,11 @@ pub enum TaskEvent {
         conflicts: Vec<serde_json::Value>,
         /// Invalid files as `source: why`.
         invalid: Vec<String>,
+        /// The files that exist and are not in force, as `{source, reason}`
+        /// (REQ-PX-107: an untrusted repository's AGENTS.md, a link out of
+        /// the repository, a file past the cap).
+        #[serde(default)]
+        not_loaded: Vec<serde_json::Value>,
     },
     /// `AgentNodeCreated` (M6.1, docs/13 "Agent node", docs/14
     /// "AgentGraph"): a logical agent joined the task's AgentGraph — the
@@ -1057,6 +1174,37 @@ pub enum TaskEvent {
         /// The tools the profile asked for that were dropped, with why.
         #[serde(default)]
         narrowed_tools: Vec<String>,
+        /// REQ-PX-116: what the admission reserved against the parent — the
+        /// child's budget after it was clamped to the parent's remainder.
+        /// Written in the same append as the node and the work ownership,
+        /// so a reservation exists exactly when the child does.
+        #[serde(default)]
+        reserved_turns: u32,
+        /// Tool calls reserved.
+        #[serde(default)]
+        reserved_tool_calls: u32,
+        /// Cost reserved, minor units (0 = the parent had no cost cap).
+        #[serde(default)]
+        reserved_cost_minor: u64,
+        /// Wall clock the child may use, milliseconds (0 = no deadline).
+        #[serde(default)]
+        reserved_wall_ms: u64,
+        /// What the clamp changed, in words (`max_turns 20 -> 7`).
+        #[serde(default)]
+        clamped: Vec<String>,
+    },
+    /// `TaskBudgetsSet` (REQ-PX-116): the cost, wall-clock and delegation
+    /// limits of the task. They bind every later run of it. No state
+    /// change.
+    TaskBudgetsSet {
+        /// Cost cap in minor units; 0 = none.
+        max_cost_minor: u64,
+        /// Wall-clock cap across the task's runs, milliseconds; 0 = none.
+        max_wall_ms: u64,
+        /// Live children at once; 0 = the default.
+        max_children: u32,
+        /// No `agent.spawn` for this task.
+        forbid_spawn: bool,
     },
     /// `SubagentAdmissionRefused`: an admission step failed and everything
     /// taken before it was returned; nothing started (REQ-EV-0267). No
@@ -1303,6 +1451,25 @@ pub enum TaskEvent {
         /// Why no description came back, when it did not.
         error: Option<String>,
     },
+    /// `SkillIndexRecorded` (REQ-PX-105): the skill index the model was told
+    /// of changed — the skills it may load, in the form each took under the
+    /// aggregate budget. Recorded when it differs from the last. No state
+    /// change.
+    SkillIndexRecorded {
+        /// Skills in the index, in order, with the form each took
+        /// (`name:FULL|SHORT|NAME_ONLY|OMITTED`).
+        entries: Vec<String>,
+        /// Skills dropped for want of budget.
+        omitted: u32,
+        /// Tokens the index takes.
+        tokens: u32,
+        /// The aggregate budget of the skill segment.
+        budget_tokens: u32,
+        /// Tokens the injected bodies of selected skills take.
+        body_tokens: u32,
+        /// Hash of the index text.
+        index_hash: String,
+    },
     /// `SkillRejected`: a skill named for the task was not used, with why.
     /// No state change.
     SkillRejected {
@@ -1344,6 +1511,22 @@ pub enum TaskEvent {
         /// sha256 of the source entries the epoch summarised.
         #[serde(default)]
         source_digest: String,
+        /// `MODEL` (a summary a model wrote and the Core validated) or
+        /// `EXTRACTIVE`; empty on a record from before REQ-PX-109, which
+        /// was always extractive.
+        #[serde(default)]
+        summary_source: String,
+        /// `endpoint/model` of the summarizer, when a model wrote it.
+        #[serde(default)]
+        summarizer: String,
+        /// Why the summary is extractive when the model path was meant or
+        /// tried (`SUMMARIZER_TIMEOUT`, `SUMMARY_INVALID`, ...).
+        #[serde(default)]
+        fallback_reason: String,
+        /// Object hash of the pre-compaction transcript this epoch replaced:
+        /// `artifact.range` reads the exact text back.
+        #[serde(default)]
+        transcript_ref: String,
     },
     /// `CompactionStarted` (docs/19 "Compaction epochs", docs/30
     /// "Durability", M4.2): a compaction was started, asynchronously by a
@@ -1370,6 +1553,16 @@ pub enum TaskEvent {
         target_tokens: u32,
         /// `ASYNC` | `SYNC_FALLBACK`.
         mode: String,
+        /// The routed model's context window the trigger derived from
+        /// (0 = unknown to the catalog).
+        #[serde(default)]
+        window_tokens: u32,
+        /// The transcript budget in force when this compaction started.
+        #[serde(default)]
+        budget_tokens: u32,
+        /// `MODEL_WINDOW` | `ENV_OVERRIDE` | `FALLBACK`.
+        #[serde(default)]
+        budget_source: String,
     },
     /// `CompactionCommitted` (docs/30 "Durability", M4.2): the durability
     /// record of an installed epoch, beside the model-facing
@@ -1387,6 +1580,13 @@ pub enum TaskEvent {
         manifest_hash: String,
         /// `ASYNC` | `SYNC_FALLBACK`.
         mode: String,
+        /// `MODEL` | `EXTRACTIVE` (REQ-PX-109).
+        #[serde(default)]
+        summary_source: String,
+        /// Why the summary is extractive when the model path was meant or
+        /// tried.
+        #[serde(default)]
+        fallback_reason: String,
     },
     /// `CompactionRejectedStale` (docs/19: a result is accepted only while
     /// its source is still current; docs/30 "Durability"; docs/54 fault 10):
@@ -1533,6 +1733,24 @@ pub enum TaskEvent {
         entries: u32,
         /// Signature-only stubs packed.
         stubs: u32,
+        /// What started the pack (REQ-PX-108): empty for a `context.pack`
+        /// call; `TASK_START` | `GOAL_CHANGE` | `COMPACTION` for the Core's
+        /// own pre-turn step.
+        #[serde(default)]
+        trigger: String,
+        /// `PACKED` (also what an older record without one means) |
+        /// `EMPTY` | `DEGRADED`.
+        #[serde(default)]
+        status: String,
+        /// The typed reason of an `EMPTY` or `DEGRADED` pre-turn pack.
+        #[serde(default)]
+        reason: String,
+        /// The token budget the pack was compiled under.
+        #[serde(default)]
+        token_budget: u32,
+        /// sha256 of the text the planner was seeded with.
+        #[serde(default)]
+        seed_digest: String,
     },
     /// `RepairAttemptRecorded` (docs/28 §5, PX-018): recorded before the
     /// attempt's change and verification run; no state change.
@@ -1671,6 +1889,29 @@ pub enum TaskEvent {
         event_offset: u64,
         /// Retrieval index generation captured.
         index_generation: u64,
+        /// The turn whose boundary this checkpoint is (UUID text); empty
+        /// for a checkpoint not taken at a turn boundary (REQ-PX-061).
+        #[serde(default)]
+        turn_id: String,
+        /// That turn's ordinal in its run (1-based); 0 when not a turn's.
+        #[serde(default)]
+        turn_ordinal: u32,
+        /// What the capture cost: wall-clock milliseconds.
+        #[serde(default)]
+        capture_ms: u64,
+        /// Dirty files the capture read and hashed.
+        #[serde(default)]
+        hashed_files: u32,
+        /// Dirty files whose content was known from an earlier capture
+        /// (size and mtime unchanged, not racy) and never read.
+        #[serde(default)]
+        cache_hits: u32,
+        /// Content blobs the capture wrote (new content only).
+        #[serde(default)]
+        blobs_written: u32,
+        /// Bytes those blobs hold.
+        #[serde(default)]
+        bytes_written: u64,
     },
     /// `CheckpointRejectedStale` (docs/19: a stale epoch can never overwrite
     /// newer checkpoint state; docs/54 fault 9). No state change.
@@ -1707,6 +1948,108 @@ pub enum TaskEvent {
         /// the caller last saw.
         #[serde(default)]
         preconditions_checked: u32,
+        /// The checkpoint recorded just before the restore changed anything:
+        /// restoring it is the exact inverse ("redo", REQ-PX-061). Empty for
+        /// a restore recorded before that existed.
+        #[serde(default)]
+        pre_restore_checkpoint_id: String,
+        /// The `RestoreCheckpoint` command (UUID text); a replay of it
+        /// returns this record and writes nothing.
+        #[serde(default)]
+        command_id: String,
+        /// This restore was a redo of an earlier one.
+        #[serde(default)]
+        redo: bool,
+    },
+    /// `CheckpointRestoreStarted` (REQ-PX-061): the intent journal of a
+    /// restore. Written after the pre-restore checkpoint is committed and
+    /// before the first byte of the worktree changes, so a Core that dies
+    /// between the two finds an in-doubt restore and rolls it back to the
+    /// pre-restore checkpoint. No state change.
+    CheckpointRestoreStarted {
+        /// The `RestoreCheckpoint` command (UUID text).
+        command_id: String,
+        /// The pre-restore checkpoint (UUID text).
+        pre_restore_checkpoint_id: String,
+        /// The checkpoint being restored to (UUID text).
+        target_checkpoint_id: String,
+    },
+    /// `CheckpointRestoreRolledBack` (REQ-PX-061): an in-doubt restore was
+    /// resolved by restoring the pre-restore checkpoint; the worktree is
+    /// exactly what it was before the restore began. No state change.
+    CheckpointRestoreRolledBack {
+        /// The `RestoreCheckpoint` command (UUID text).
+        command_id: String,
+        /// The checkpoint that was restored to restore the old state.
+        pre_restore_checkpoint_id: String,
+        /// The target the abandoned restore was aiming at.
+        target_checkpoint_id: String,
+        /// Why (`CORE_RESTARTED_MID_RESTORE`).
+        reason: String,
+    },
+    /// `CheckpointNamed` (REQ-PX-102): a person labelled a checkpoint. The
+    /// name is unique within the task. No state change.
+    CheckpointNamed {
+        /// The checkpoint (UUID text).
+        checkpoint_id: String,
+        /// The label.
+        name: String,
+    },
+    /// `CheckpointSkipped` (REQ-PX-061): a turn boundary left no checkpoint,
+    /// and why — the worktree was beyond the capture bounds, or is not a
+    /// repository. A fork at that turn is refused with the same reason. No
+    /// state change.
+    CheckpointSkipped {
+        /// The turn (UUID text).
+        turn_id: String,
+        /// The turn's ordinal in its run.
+        turn_ordinal: u32,
+        /// Stable code: `OVER_BOUNDS` | `CAPTURE_FAILED`.
+        code: String,
+        /// Detail.
+        detail: String,
+    },
+    /// `CheckpointGcStarted` (REQ-PX-102): the retention collector took its
+    /// lease on this task and decided what to remove. The intent half of a
+    /// two-phase effect. No state change.
+    CheckpointGcStarted {
+        /// The run of the collector (UUID text).
+        gc_id: String,
+        /// Who holds the lease.
+        owner: String,
+        /// Why it runs.
+        reason: String,
+        /// The policy in force, as JSON.
+        policy_json: String,
+        /// Checkpoints it will remove (UUID text).
+        candidates: Vec<String>,
+        /// Checkpoints kept, each with why: `<id>:<NAMED|FORK_PARENT|LATEST|PRE_RESTORE|RESTORE_TARGET|CHAIN|RECENT|LIVE>`.
+        kept: Vec<String>,
+    },
+    /// `CheckpointCollected` (REQ-PX-102): these checkpoints are removed
+    /// from the task's restorable set, atomically, before any blob goes.
+    /// No state change.
+    CheckpointCollected {
+        /// The collector run (UUID text).
+        gc_id: String,
+        /// The checkpoints removed (UUID text).
+        checkpoint_ids: Vec<String>,
+    },
+    /// `CheckpointGcCompleted` (REQ-PX-102): what a collector run did. The
+    /// result half of the effect. No state change.
+    CheckpointGcCompleted {
+        /// The collector run (UUID text).
+        gc_id: String,
+        /// Checkpoints looked at.
+        scanned: u32,
+        /// Checkpoints removed.
+        removed: u32,
+        /// Content blobs deleted.
+        blobs_removed: u32,
+        /// Bytes those blobs held.
+        bytes_freed: u64,
+        /// Blobs left because a surviving checkpoint (of any task) names them.
+        blobs_retained: u32,
     },
     /// `TerminalCreated` (docs/30 "Workspace/execution", docs/19 protocol
     /// state "terminal session ID + last acknowledged output cursor"; M4.5):
@@ -1751,6 +2094,26 @@ pub enum TaskEvent {
         cancelled: bool,
         /// Timed out.
         timed_out: bool,
+    },
+    /// `TerminalControlRecorded` (PX-043, PX-099): what a person did to a
+    /// terminal beyond reading it — resized it, took or gave back its input
+    /// lease, typed into it. The typed bytes are never recorded, only how
+    /// many. No state change.
+    TerminalControlRecorded {
+        /// Handle.
+        handle_id: String,
+        /// `RESIZED` | `INPUT_LEASE_TAKEN` | `INPUT_LEASE_RELEASED` |
+        /// `INPUT_WRITTEN`.
+        kind: String,
+        /// Who held the lease (`user:<client>`), for the lease kinds and
+        /// input; empty for a resize.
+        holder: String,
+        /// The size, for a resize.
+        rows: u32,
+        /// The size, for a resize.
+        cols: u32,
+        /// The input's length, for `INPUT_WRITTEN`.
+        bytes: u64,
     },
     /// `ProtocolStateResumed` (docs/19 layer 2, REQ-EV-0055): a restarted
     /// Core reconstructed the task's protocol state and continued the run
@@ -2001,6 +2364,22 @@ pub enum TaskEvent {
         arguments_hash: Option<String>,
         /// Object holding the rewritten arguments, when a rewrite was used.
         arguments_ref: Option<String>,
+        /// PX-117: what became of the context the handler offered: empty
+        /// when none, `INJECTED`, or `DROPPED:<REASON>`.
+        #[serde(default)]
+        context_status: String,
+        /// PX-117: bytes of context offered.
+        #[serde(default)]
+        context_bytes: u64,
+        /// PX-117: `endpoint/model` a prompt hook ran on.
+        #[serde(default)]
+        model: Option<String>,
+        /// PX-117: prompt tokens a prompt hook spent.
+        #[serde(default)]
+        input_tokens: u64,
+        /// PX-117: completion tokens a prompt hook spent.
+        #[serde(default)]
+        output_tokens: u64,
     },
 }
 
@@ -2085,12 +2464,17 @@ impl TaskEvent {
             Self::TaskSteered { .. } => "TaskSteered",
             Self::TaskPauseRequested { .. } => "TaskPauseRequested",
             Self::TaskResumeRequested { .. } => "TaskResumeRequested",
+            Self::TaskPaused { .. } => "TaskPaused",
             Self::TaskCancelRequested { .. } => "TaskCancelRequested",
             Self::TaskNeedsAttention { .. } => "TaskNeedsAttention",
             Self::TaskInputQueued { .. } => "TaskInputQueued",
             Self::UserQuestionAsked { .. } => "UserQuestionAsked",
             Self::UserQuestionAnswered { .. } => "UserQuestionAnswered",
             Self::AttachmentIngested { .. } => "AttachmentIngested",
+            Self::TaskModeSet { .. } => "TaskModeSet",
+            Self::TaskPostureApplied { .. } => "TaskPostureApplied",
+            Self::ExecutionPreferenceSet { .. } => "ExecutionPreferenceSet",
+            Self::ExecutionPreferenceApplied { .. } => "ExecutionPreferenceApplied",
             Self::PlanRecorded { .. } => "PlanRecorded",
             Self::PlanRevised { .. } => "PlanRevised",
             Self::PlanAnnotated { .. } => "PlanAnnotated",
@@ -2126,15 +2510,18 @@ impl TaskEvent {
             Self::SelectionRecorded { .. } => "SelectionRecorded",
             Self::SelfReviewRecorded { .. } => "SelfReviewRecorded",
             Self::ToolsActivated { .. } => "ToolsActivated",
+            Self::ToolProjectionConfigured { .. } => "ToolProjectionConfigured",
             Self::ProgramStarted { .. } => "ProgramStarted",
             Self::ProgramEnded { .. } => "ProgramEnded",
             Self::SkillSelected { .. } => "SkillSelected",
             Self::SkillRejected { .. } => "SkillRejected",
+            Self::SkillIndexRecorded { .. } => "SkillIndexRecorded",
             Self::RulesSelected { .. } => "RulesSelected",
             Self::AgentNodeCreated { .. } => "AgentNodeCreated",
             Self::AgentNodeTransitioned { .. } => "AgentNodeTransitioned",
             Self::AgentBindingChanged { .. } => "AgentBindingChanged",
             Self::SubagentAdmitted { .. } => "SubagentAdmitted",
+            Self::TaskBudgetsSet { .. } => "TaskBudgetsSet",
             Self::SubagentAdmissionRefused { .. } => "SubagentAdmissionRefused",
             Self::SubagentCapsuleBound { .. } => "SubagentCapsuleBound",
             Self::SubagentResultRecorded { .. } => "SubagentResultRecorded",
@@ -2168,9 +2555,17 @@ impl TaskEvent {
             Self::CheckpointCommitted { .. } => "CheckpointCommitted",
             Self::CheckpointRejectedStale { .. } => "CheckpointRejectedStale",
             Self::CheckpointRestored { .. } => "CheckpointRestored",
+            Self::CheckpointRestoreStarted { .. } => "CheckpointRestoreStarted",
+            Self::CheckpointRestoreRolledBack { .. } => "CheckpointRestoreRolledBack",
+            Self::CheckpointNamed { .. } => "CheckpointNamed",
+            Self::CheckpointSkipped { .. } => "CheckpointSkipped",
+            Self::CheckpointGcStarted { .. } => "CheckpointGcStarted",
+            Self::CheckpointCollected { .. } => "CheckpointCollected",
+            Self::CheckpointGcCompleted { .. } => "CheckpointGcCompleted",
             Self::TerminalCreated { .. } => "TerminalCreated",
             Self::TerminalOutputAdvanced { .. } => "TerminalOutputAdvanced",
             Self::ProcessExited { .. } => "ProcessExited",
+            Self::TerminalControlRecorded { .. } => "TerminalControlRecorded",
             Self::ProtocolStateResumed { .. } => "ProtocolStateResumed",
             Self::ToolCallReconciled { .. } => "ToolCallReconciled",
             Self::UsageReconciled { .. } => "UsageReconciled",
@@ -2274,6 +2669,10 @@ impl Task {
             | TaskEvent::UserQuestionAsked { .. }
             | TaskEvent::UserQuestionAnswered { .. }
             | TaskEvent::AttachmentIngested { .. }
+            | TaskEvent::TaskModeSet { .. }
+            | TaskEvent::TaskPostureApplied { .. }
+            | TaskEvent::ExecutionPreferenceSet { .. }
+            | TaskEvent::ExecutionPreferenceApplied { .. }
             | TaskEvent::PlanRecorded { .. }
             | TaskEvent::PlanRevised { .. }
             | TaskEvent::PlanAnnotated { .. }
@@ -2295,6 +2694,7 @@ impl Task {
             | TaskEvent::SloStageRecorded { .. }
             | TaskEvent::TaskPauseRequested { .. }
             | TaskEvent::TaskResumeRequested { .. }
+            | TaskEvent::TaskPaused { .. }
             | TaskEvent::TaskCancelRequested { .. }
             | TaskEvent::BrowserCredentialFilled { .. }
             | TaskEvent::SandboxLeaseAcquired { .. }
@@ -2302,10 +2702,12 @@ impl Task {
             | TaskEvent::TaskHandoffAdmitted { .. }
             | TaskEvent::SelfReviewRecorded { .. }
             | TaskEvent::ToolsActivated { .. }
+            | TaskEvent::ToolProjectionConfigured { .. }
             | TaskEvent::ProgramStarted { .. }
             | TaskEvent::ProgramEnded { .. }
             | TaskEvent::SkillSelected { .. }
             | TaskEvent::SkillRejected { .. }
+            | TaskEvent::SkillIndexRecorded { .. }
             | TaskEvent::RulesSelected { .. }
             | TaskEvent::MediaBridged { .. }
             | TaskEvent::CapacityTicketGranted { .. }
@@ -2316,6 +2718,7 @@ impl Task {
             | TaskEvent::AgentBindingChanged { .. }
             | TaskEvent::WorkNodesChanged { .. }
             | TaskEvent::SubagentAdmitted { .. }
+            | TaskEvent::TaskBudgetsSet { .. }
             | TaskEvent::SubagentAdmissionRefused { .. }
             | TaskEvent::SubagentCapsuleBound { .. }
             | TaskEvent::SubagentResultRecorded { .. }
@@ -2343,14 +2746,11 @@ impl Task {
             | TaskEvent::HarnessBudgetExhausted { .. }
             | TaskEvent::NoProgressDetected { .. }
             | TaskEvent::ReviewDecisionRecorded { .. }
-            | TaskEvent::CheckpointStarted { .. }
-            | TaskEvent::CheckpointCommitted { .. }
-            | TaskEvent::CheckpointRejectedStale { .. }
-            | TaskEvent::CheckpointRestored { .. }
             | TaskEvent::TaskForked { .. }
             | TaskEvent::TerminalCreated { .. }
             | TaskEvent::TerminalOutputAdvanced { .. }
             | TaskEvent::ProcessExited { .. }
+            | TaskEvent::TerminalControlRecorded { .. }
             | TaskEvent::ProtocolStateResumed { .. }
             | TaskEvent::ToolCallReconciled { .. }
             | TaskEvent::PolicyGenerationChanged { .. } => {
@@ -2359,6 +2759,20 @@ impl Task {
                 }
                 None
             }
+            // The checkpoint ledger (REQ-PX-061/102): a finished task is
+            // exactly the one whose checkpoints are restored, forked from,
+            // named and collected, so these records land in any state.
+            TaskEvent::CheckpointStarted { .. }
+            | TaskEvent::CheckpointCommitted { .. }
+            | TaskEvent::CheckpointRejectedStale { .. }
+            | TaskEvent::CheckpointRestored { .. }
+            | TaskEvent::CheckpointRestoreStarted { .. }
+            | TaskEvent::CheckpointRestoreRolledBack { .. }
+            | TaskEvent::CheckpointNamed { .. }
+            | TaskEvent::CheckpointSkipped { .. }
+            | TaskEvent::CheckpointGcStarted { .. }
+            | TaskEvent::CheckpointCollected { .. }
+            | TaskEvent::CheckpointGcCompleted { .. } => None,
             // A sandbox is given back after the task ended (M8.5), and one
             // may be lost at any time: the records of the substrate's
             // lifecycle land whatever the task's state. So do the request's

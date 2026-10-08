@@ -28,6 +28,8 @@
 //!   modbit-cli --data-dir <dir> recovery show
 //!   modbit-cli --data-dir <dir> pr (open | update) --session <hex-id> --task <hex-id> --revision <n> [--base <ref>] [--title <t>] [--remote <name>]
 //!   modbit-cli --data-dir <dir> starter list [--workspace <dir>]
+//!   modbit-cli --data-dir <dir> terminal list [--task <hex-id>]
+//!   modbit-cli --data-dir <dir> terminal attach --task <hex-id> --terminal <id> [--from <cursor>] [--window <bytes>]
 //!
 //! M1.3 mode: each invocation spawns a Core for the data directory, runs one
 //! command, and exits; the Core exits with the CLI. Attaching to a long-running
@@ -39,8 +41,8 @@ use std::process::{Command, ExitCode, Stdio};
 use modbit_protocol::client::Client;
 use modbit_protocol::local::{ReadyLine, decode_hex, encode_hex};
 use modbit_protocol::v1::{
-    AcquireSessionLease, AllowUnsupportedLanguage, ApprovalList, ApprovalResolvedAck,
-    AttachContextDocument, AttachmentIngested, CancelTask, CapabilityLeaseList,
+    AckTerminal, AcquireSessionLease, AllowUnsupportedLanguage, ApprovalList, ApprovalResolvedAck,
+    AttachContextDocument, AttachTerminal, AttachmentIngested, CancelTask, CapabilityLeaseList,
     CheckpointRestoreResult, ClientKind, CommandEnvelope, ConfigureProvider,
     ContextDocumentAttached, ContextInspectorView, CreateSession, CreateTask, DecideReview,
     EffectReceiptList, EmergencyStop, EmergencyStopped, FileHash, ForkTask, GetAgentGraph,
@@ -49,16 +51,130 @@ use modbit_protocol::v1::{
     GetTaskEconomics, GetTaskStatus, GetWorkGraph, HunkRef, Id, IngestAttachment, InputQueued,
     InvokeTool, LanguageList, ListApprovals, ListLanguages, ListModels, ListQuestions,
     ListStarterTasks, ListTools, ModelList, ModelProbed, OpenPullRequest, OutcomeBaselinePublished,
-    PreviewRewind, ProbeModel, ProviderConfigured, PublishOutcomeBaseline, PullRequestAck,
-    QuestionList, QuestionResponded, QueueInput, RecoveryReport, RepositoryTrusted,
-    ResolveApproval, RespondToQuestion, RestoreCheckpoint, ReviewBundle, ReviewDecided,
+    PauseTask, PreviewRewind, ProbeModel, ProviderConfigured, PublishOutcomeBaseline,
+    PullRequestAck, QuestionList, QuestionResponded, QueueInput, RecoveryReport, RepositoryTrusted,
+    ResolveApproval, RespondToQuestion, RestoreCheckpoint, ResumeTask, ReviewBundle, ReviewDecided,
     RewindPreview, RoutingSessionStateView, SessionCreated, SessionLeaseAcquired, SessionSnapshot,
     SessionTreeView, SetTaskSelection, StartTask, StarterTaskList, TaskAssuranceView,
-    TaskCancelRequested, TaskCreated, TaskEconomicsView, TaskForked, TaskRunStarted,
-    TaskSelectionRecorded, TaskStatus, ToolInvoked, ToolList, TrustRepository, UndoPlanView,
-    UndoToolCall, UnsupportedLanguageAllowed, UpdatePullRequest,
+    TaskCancelRequested, TaskCreated, TaskEconomicsView, TaskForked, TaskPauseResult,
+    TaskResumeResult, TaskRunStarted, TaskSelectionRecorded, TaskStatus, ToolInvoked, ToolList,
+    TrustRepository, UndoPlanView, UndoToolCall, UnsupportedLanguageAllowed, UpdatePullRequest,
+};
+use modbit_protocol::v1::{
+    AgentHeaders, GetAgentHeaders, GetTranscript, TranscriptDensity, TranscriptPage, TranscriptRow,
+    TranscriptRowKind,
+};
+use modbit_protocol::v1::{ListTerminals, TerminalAttached, TerminalList, terminal_frame};
+// PX-051 / PX-053 / PX-100 (tasking.proto): task mode and execution preference.
+use modbit_protocol::v1::{
+    ExecutionPreference, ExecutionPreferenceSet, GetTaskPosture, ObjectiveProfile,
+    SetExecutionPreference, SetTaskMode, TaskMode, TaskModeChanged, TaskPostureView,
 };
 use prost::Message;
+
+/// The wire value of a mode name. The CLI maps a name to the typed value and
+/// decides nothing else: a name it does not know is sent as a value no mode
+/// has, so the Core is the one that refuses it, with its typed error.
+fn mode_value(name: &str) -> i32 {
+    match name.to_ascii_uppercase().as_str() {
+        "AGENT" => TaskMode::Agent as i32,
+        "PLAN" => TaskMode::Plan as i32,
+        "DEBUG" => TaskMode::Debug as i32,
+        "MULTITASK" => TaskMode::Multitask as i32,
+        "ASK" => TaskMode::Ask as i32,
+        _ => 99,
+    }
+}
+
+fn mode_label(value: i32) -> &'static str {
+    TaskMode::try_from(value).map_or("UNKNOWN", |m| match m {
+        TaskMode::Unspecified => "UNSPECIFIED",
+        TaskMode::Agent => "AGENT",
+        TaskMode::Plan => "PLAN",
+        TaskMode::Debug => "DEBUG",
+        TaskMode::Multitask => "MULTITASK",
+        TaskMode::Ask => "ASK",
+    })
+}
+
+fn objective_value(name: &str) -> i32 {
+    match name.to_ascii_uppercase().as_str() {
+        "COST" => ObjectiveProfile::Cost as i32,
+        "BALANCE" => ObjectiveProfile::Balance as i32,
+        "INTELLIGENCE" => ObjectiveProfile::Intelligence as i32,
+        _ => 99,
+    }
+}
+
+fn objective_label(value: i32) -> &'static str {
+    ObjectiveProfile::try_from(value).map_or("UNKNOWN", |o| match o {
+        ObjectiveProfile::Unspecified => "",
+        ObjectiveProfile::Cost => "COST",
+        ObjectiveProfile::Balance => "BALANCE",
+        ObjectiveProfile::Intelligence => "INTELLIGENCE",
+    })
+}
+
+/// The execution preference the `--objective`, `--effort` and `--tier` flags
+/// (and `--pin <endpoint>/<model>`, `--clear-pin` where a command takes
+/// them) name; `None` when none is given.
+fn preference_flags(words: &[&str], pins: bool) -> Option<ExecutionPreference> {
+    let opt = |flag: &str| {
+        words
+            .iter()
+            .position(|w| *w == flag)
+            .and_then(|i| words.get(i + 1).copied())
+    };
+    let mut p = ExecutionPreference {
+        objective: opt("--objective").map_or(0, objective_value),
+        effort: opt("--effort").unwrap_or_default().to_owned(),
+        service_tier: opt("--tier").unwrap_or_default().to_owned(),
+        ..Default::default()
+    };
+    if pins {
+        if let Some(pin) = opt("--pin") {
+            let (e, m) = pin.split_once('/').unwrap_or((pin, ""));
+            p.pin_endpoint = e.to_owned();
+            p.pin_model = m.to_owned();
+        }
+        p.clear_pin = words.contains(&"--clear-pin");
+    }
+    (p != ExecutionPreference::default()).then_some(p)
+}
+
+fn print_posture(p: &TaskPostureView) {
+    let pref = p.preference.clone().unwrap_or_default();
+    let routing = p.routing.clone().unwrap_or_default();
+    let posture = p.posture.clone().unwrap_or_default();
+    println!(
+        "posture mode={} in_force={} writes={} subagents={} reproduction_first={} effect_ceiling={}",
+        mode_label(p.mode),
+        mode_label(p.mode_in_force),
+        posture.writes,
+        posture.subagents,
+        posture.reproduction_first,
+        posture.effect_ceiling
+    );
+    println!(
+        "preference objective={} effort={} tier={} pin={} offset={} applied_offset={} effort_applied={} tier_applied={}",
+        objective_label(pref.objective),
+        pref.effort,
+        pref.service_tier,
+        if pref.pin_model.is_empty() {
+            String::new()
+        } else {
+            format!("{}/{}", pref.pin_endpoint, pref.pin_model)
+        },
+        pref.offset,
+        pref.applied_offset,
+        pref.effort_applied,
+        pref.service_tier_applied
+    );
+    println!(
+        "routing outcome={} reason={} floor={} {}",
+        routing.outcome, routing.reason_code, routing.floor_mode, routing.detail
+    );
+}
 
 /// Process exit code (docs: apps/cli/README.md). Set by task-state commands.
 static EXIT_CODE: std::sync::atomic::AtomicU8 = std::sync::atomic::AtomicU8::new(0);
@@ -74,7 +190,7 @@ fn exit_for_state(state: &str) -> u8 {
     }
 }
 
-const USAGE: &str = "usage: modbit-cli --data-dir <dir> (session create | session show --session <id> | task create --session <id> [--workspace <dir>] [--command-id <hex>] <goal> | task from-issue --session <id> [--workspace <dir>] [--command-id <hex>] <issue-url> | events tail --session <id> [--after N] [--count N] [--json] | task attach --session <id> --task <id> <file> | question list --task <id> | question answer --session <id> --task <id> --question <id> [--option <id>] [--endpoint <name>] [--model <id>] [--wait] [text] | tool list [--task <id>] | tool invoke --session <id> --task <id> [--call <id>] <tool> <arguments-json> | approval list --session <id> | approval resolve --session <id> --approval <id> [--intent <hash>] (approve|deny) [reason] | stop --session <id> [reason] | receipts [--task <id>] | lease list --task <id> | task run --session <id> --task <id> [--endpoint <name>] [--model <id>] [--max-turns N] [--max-tool-calls N] [--max-no-progress-turns N] [--skill <name>]... [--wait] | task cancel --session <id> --task <id> | task status --task <id> | review show --task <id> | review decide --session <id> --task <id> (accept|return) [--reject path#index ...] [note] | change undo --session <id> --task <id> --call <id> [--apply] | context show <task-id> | task fork --session <id> --task <id> [--checkpoint <id>] [--carry PLAN,DECISIONS,EVIDENCE,CONTEXT] [--worktree <dir>] [goal] | task rewind --task <id> [--checkpoint <id>] [--apply --session <id>] | session route --session <id> | session tree --session <id> | task assurance --task <id> | task economics --task <id> | task work --task <id> | task agents --task <id> | capacity show | attention list --session <id> | plan show --task <id> | plan revise --session <id> --task <id> [--plan-json <file>] [note] | task patch --session <id> --task <id> --path <p> --revision <n> [--file-revision <sha>] (--old <text> | --old-file <f>) (--new <text> | --new-file <f>) | baseline publish --session <id> [--revision <rev>] | task allow-language --session <id> --task <id> --language <l> [--reason r] | task attach-context --session <id> --task <id> --source <s> [--title t] <file> | task select --session <id> --task <id> [--path p]... [--lines a:b] [--symbol s] [--hunk path#index]... [--source review|editor|cli] | agent install <file> [--from claude] [--replace] | agent list | skill install <dir> [--expect-hash <hex>] [--replace] | skill remove <name> | skill revoke <name> [--hash <content-hash>] | skill list | language list | model list | model probe --endpoint <name> --model <id> [--tools] <prompt> | task steer --session <id> --task <id> [--mode STEER|COLLECT|FOLLOW_UP] [--input-id <hex>] <text> | workspace trust --session <id> [--scope <s>] <root> | provider configure --provider <openai|anthropic> [--base-url <url>] [--clear] | recovery show | pr (open | update) --session <id> --task <id> --revision <n> [--base <ref>] [--title <t>] [--remote <name>] | starter list [--workspace <dir>] | doctor --session <id> | trace --session <id> [--task <id>] | export diagnostics --session <id> [--task <id>] [--include-content] --out <file> | diagnostics verify <file> | export handoff --session <id> --task <id> --out <dir> | usage reconcile --task <id> --invoice <file> [--tolerance-bp N] | dashboard --session <id> | platform)";
+const USAGE: &str = "usage: modbit-cli --data-dir <dir> (session create | session show --session <id> | task create --session <id> [--workspace <dir>] [--command-id <hex>] [--mode agent|plan|debug|multitask|ask] [--profile <execution-profile>] [--objective cost|balance|intelligence] [--effort low|medium|high] [--tier <name>] <goal> | task mode --session <id> --task <id> <mode> | task preference --session <id> --task <id> [--objective o] [--effort e] [--tier t] [--pin <endpoint>/<model> | --clear-pin] | task posture --task <id> | task from-issue --session <id> [--workspace <dir>] [--command-id <hex>] <issue-url> | events tail --session <id> [--after N] [--count N] [--json] | task attach --session <id> --task <id> <file> | question list --task <id> | question answer --session <id> --task <id> --question <id> [--option <id>] [--endpoint <name>] [--model <id>] [--wait] [text] | tool list [--task <id>] | tool invoke --session <id> --task <id> [--call <id>] <tool> <arguments-json> | approval list --session <id> | approval resolve --session <id> --approval <id> [--intent <hash>] (approve|deny) [reason] | stop --session <id> [reason] | receipts [--task <id>] | lease list --task <id> | task run --session <id> --task <id> [--endpoint <name>] [--model <id>] [--max-turns N] [--max-tool-calls N] [--max-no-progress-turns N] [--skill <name>]... [--mode <mode>] [--objective o] [--effort e] [--tier t] [--wait] | task cancel --session <id> --task <id> | task pause --session <id> --task <id> [--wait-ms N] [reason] | task resume --session <id> --task <id> [--endpoint <name>] [--model <id>] [--wait] | task status --task <id> | task transcript --task <id> [--density compact|balanced|detailed] | task headers --session <id> [--archived] | review show --task <id> | review decide --session <id> --task <id> (accept|return) [--reject path#index ...] [note] | change undo --session <id> --task <id> --call <id> [--apply] | context show <task-id> | task fork --session <id> --task <id> [--checkpoint <id> | --turn <ordinal> | --name <label>] [--carry PLAN,DECISIONS,EVIDENCE,CONTEXT] [--worktree <dir>] [goal] | task rewind --task <id> [--checkpoint <id> | --turn <ordinal> | --name <label>] [--redo] [--keep <paths>] [--apply --session <id>] | session route --session <id> | session tree --session <id> | task assurance --task <id> | task economics --task <id> | task work --task <id> | task agents --task <id> | capacity show | attention list --session <id> | plan show --task <id> | plan revise --session <id> --task <id> [--plan-json <file>] [note] | task patch --session <id> --task <id> --path <p> --revision <n> [--file-revision <sha>] (--old <text> | --old-file <f>) (--new <text> | --new-file <f>) | baseline publish --session <id> [--revision <rev>] | task allow-language --session <id> --task <id> --language <l> [--reason r] | task attach-context --session <id> --task <id> --source <s> [--title t] <file> | task select --session <id> --task <id> [--path p]... [--lines a:b] [--symbol s] [--hunk path#index]... [--source review|editor|cli] | agent install <file> [--from claude] [--replace] | agent list | skill install <dir> [--expect-hash <hex>] [--replace] | skill remove <name> | skill revoke <name> [--hash <content-hash>] | skill list | skill inventory [--task <id>] | skill trust <name>@<content-hash> [--task <id>] | skill untrust <name>[@<content-hash>] | task budget --session <id> --task <id> [--max-cost-minor N] [--max-wall-ms N] [--max-children N] [--forbid-spawn] | language list | model list | model probe --endpoint <name> --model <id> [--tools] <prompt> | task steer --session <id> --task <id> [--mode STEER|COLLECT|FOLLOW_UP] [--input-id <hex>] <text> | workspace trust --session <id> [--scope <s>] <root> | provider configure --provider <openai|anthropic> [--base-url <url>] [--clear] | recovery show | pr (open | update) --session <id> --task <id> --revision <n> [--base <ref>] [--title <t>] [--remote <name>] | starter list [--workspace <dir>] | doctor --session <id> | trace --session <id> [--task <id>] | export diagnostics --session <id> [--task <id>] [--include-content] --out <file> | diagnostics verify <file> | export handoff --session <id> --task <id> --out <dir> | usage reconcile --task <id> --invoice <file> [--tolerance-bp N] | dashboard --session <id> | terminal list [--task <id>] | terminal attach --task <id> --terminal <id> [--from N] [--window N] | platform)";
 
 fn parse_id(hex: &str) -> Result<Id, String> {
     let bytes = decode_hex(hex)
@@ -86,6 +202,27 @@ fn parse_id(hex: &str) -> Result<Id, String> {
 fn fresh_id() -> Id {
     Id {
         value: (0..16).map(|_| rand::random::<u8>()).collect(),
+    }
+}
+
+/// One transcript row, indented under its group.
+fn print_transcript_row(r: &TranscriptRow, depth: usize) {
+    let kind = TranscriptRowKind::try_from(r.kind)
+        .map(|k| format!("{k:?}"))
+        .unwrap_or_default();
+    let status = r
+        .hints
+        .as_ref()
+        .map(|h| h.status.as_str())
+        .unwrap_or_default();
+    println!(
+        "{}{:>3} {kind} {status} {}",
+        "  ".repeat(depth),
+        r.ordinal,
+        r.text.replace('\n', " ")
+    );
+    for c in &r.children {
+        print_transcript_row(c, depth + 1);
     }
 }
 
@@ -209,7 +346,14 @@ async fn run(args: Vec<String>) -> Result<(), String> {
     // Skill packages live in the profile (`<data-dir>/skills`), installed
     // and removed by the client with no Core in the loop (REQ-EV-0181);
     // what a run does with them is the Core's, from the registry it reads.
-    if rest.first().map(String::as_str) == Some("skill") {
+    // Trust decisions, the inventory and a task's budgets are the Core's
+    // (REQ-PX-052/105/116): the registry it reads, the trust it enforces.
+    if rest.first().map(String::as_str) == Some("skill")
+        && !matches!(
+            rest.get(1).map(String::as_str),
+            Some("trust" | "untrust" | "inventory")
+        )
+    {
         return skill_command(&data_dir, &rest);
     }
     let (child, ready) = attach_or_spawn(&data_dir).await?;
@@ -366,9 +510,10 @@ fn skill_command(data_dir: &str, rest: &[String]) -> Result<(), String> {
             // for development), so the listing says what a run would use.
             let policy = modbit_skills::SkillPolicy {
                 enable_signed: true,
-                enable_incubator: std::env::var("MODBIT_SKILLS_ENABLE_INCUBATOR")
-                    .map(|v| v == "1" || v.eq_ignore_ascii_case("true"))
-                    .unwrap_or(false),
+                enable_incubator: cfg!(debug_assertions)
+                    && std::env::var("MODBIT_SKILLS_ENABLE_INCUBATOR")
+                        .map(|v| v == "1" || v.eq_ignore_ascii_case("true"))
+                        .unwrap_or(false),
             };
             let registry = modbit_skills::SkillRegistry::discover(&[root], &trusted, &policy);
             for s in &registry.skills {
@@ -507,7 +652,17 @@ async fn run_command(ready: &ReadyLine, rest: Vec<String>) -> Result<(), String>
             for w in words.iter().skip(2) {
                 if skip {
                     skip = false;
-                } else if *w == "--session" || *w == "--workspace" || *w == "--command-id" {
+                } else if matches!(
+                    *w,
+                    "--session"
+                        | "--workspace"
+                        | "--command-id"
+                        | "--mode"
+                        | "--profile"
+                        | "--objective"
+                        | "--effort"
+                        | "--tier"
+                ) {
                     skip = true;
                 } else {
                     goal_words.push(*w);
@@ -524,7 +679,11 @@ async fn run_command(ready: &ReadyLine, rest: Vec<String>) -> Result<(), String>
                     session_id: Some(sid),
                     goal_text: goal,
                     workspace_id: None,
-                    execution_profile: String::new(),
+                    // PX-100: the user's profile and mode, named; the Core
+                    // derives the posture and refuses what it does not know.
+                    execution_profile: opt("--profile").unwrap_or_default().to_owned(),
+                    mode: opt("--mode").map_or(0, mode_value),
+                    preference: preference_flags(&words, false),
                     origin: "cli".into(),
                     workspace_root,
                     issue_url: String::new(),
@@ -569,6 +728,7 @@ async fn run_command(ready: &ReadyLine, rest: Vec<String>) -> Result<(), String>
                     workspace_root,
                     issue_url: url,
                     issue_json: String::new(),
+                    ..Default::default()
                 }
                 .encode_to_vec(),
                 Some(lease),
@@ -860,9 +1020,107 @@ async fn run_command(ready: &ReadyLine, rest: Vec<String>) -> Result<(), String>
                 );
             }
         }
+        ["skill", "trust", spec, ..] => {
+            // `<name>@<hash>`: the owner names the exact content reviewed.
+            let (name, hash) = spec.split_once('@').ok_or(
+                "usage: skill trust <name>@<content-hash> (the hash `skill inventory` shows; a skill is trusted by the bytes you reviewed)",
+            )?;
+            let task_id = opt("--task").map(parse_id).transpose()?;
+            let ack = client
+                .command(envelope(
+                    "TrustSkill",
+                    modbit_protocol::v1::TrustSkill {
+                        name: name.to_owned(),
+                        content_hash: hash.to_owned(),
+                        task_id,
+                    }
+                    .encode_to_vec(),
+                ))
+                .await
+                .map_err(|e| e.to_string())?;
+            let v: modbit_protocol::v1::SkillTrustResult =
+                Client::result(&ack).map_err(|e| e.to_string())?;
+            println!(
+                "skill {} content_hash={} trust={} records={}",
+                v.name, v.content_hash, v.trust, v.records
+            );
+        }
+        ["skill", "untrust", spec, ..] => {
+            let (name, hash) = spec.split_once('@').unwrap_or((spec, ""));
+            let ack = client
+                .command(envelope(
+                    "UntrustSkill",
+                    modbit_protocol::v1::UntrustSkill {
+                        name: name.to_owned(),
+                        content_hash: hash.to_owned(),
+                    }
+                    .encode_to_vec(),
+                ))
+                .await
+                .map_err(|e| e.to_string())?;
+            let v: modbit_protocol::v1::SkillTrustResult =
+                Client::result(&ack).map_err(|e| e.to_string())?;
+            println!("skill {} trust={}", v.name, v.trust);
+        }
+        ["skill", "inventory", ..] => {
+            let task_id = opt("--task").map(parse_id).transpose()?;
+            let ack = client
+                .command(envelope(
+                    "ListSkills",
+                    modbit_protocol::v1::ListSkills { task_id }.encode_to_vec(),
+                ))
+                .await
+                .map_err(|e| e.to_string())?;
+            let v: modbit_protocol::v1::SkillList =
+                Client::result(&ack).map_err(|e| e.to_string())?;
+            for s in &v.skills {
+                println!(
+                    "skill {} {} scope={} trust={} enabled={} invocation={} index={} selected={} content_hash={}{}",
+                    s.name,
+                    s.version,
+                    s.scope,
+                    s.trust,
+                    s.enabled,
+                    s.invocation,
+                    s.index_form,
+                    s.selected,
+                    s.content_hash,
+                    if s.trust_detail.is_empty() {
+                        String::new()
+                    } else {
+                        format!(" note={:?}", s.trust_detail)
+                    }
+                );
+            }
+            for r in &v.rejected {
+                println!("rejected {} {}: {}", r.source, r.code, r.reason);
+            }
+            println!(
+                "budget {} tokens, {} used, {} omitted; system scope {}",
+                v.index_budget_tokens, v.index_used_tokens, v.index_omitted, v.system_root
+            );
+        }
+        ["task", "budget", ..] => {
+            let sid = parse_id(opt("--session").ok_or(USAGE)?)?;
+            let task_id = parse_id(opt("--task").ok_or(USAGE)?)?;
+            let lease = join_lease(&mut client, &sid).await?;
+            set_budgets(&mut client, &task_id, lease, &words).await?;
+        }
         ["task", "run", ..] => {
             let sid = parse_id(opt("--session").ok_or(USAGE)?)?;
             let task_id = parse_id(opt("--task").ok_or(USAGE)?)?;
+            if [
+                "--max-cost-minor",
+                "--max-wall-ms",
+                "--max-children",
+                "--forbid-spawn",
+            ]
+            .iter()
+            .any(|f| words.contains(f))
+            {
+                let lease = join_lease(&mut client, &sid).await?;
+                set_budgets(&mut client, &task_id, lease, &words).await?;
+            }
             let max_turns: u32 = opt("--max-turns")
                 .map(|v| v.parse().map_err(|_| USAGE))
                 .transpose()?
@@ -887,6 +1145,31 @@ async fn run_command(ready: &ReadyLine, rest: Vec<String>) -> Result<(), String>
                 .filter(|w| w[0] == "--skill")
                 .map(|w| w[1].to_owned())
                 .collect();
+            // PX-100: `--mode` on a run is the same typed command as
+            // `task mode`, sent first; the objective, effort and tier ride
+            // on the start itself.
+            if let Some(mode) = opt("--mode") {
+                let ack = client
+                    .command(envelope_fenced(
+                        "SetTaskMode",
+                        SetTaskMode {
+                            task_id: Some(task_id.clone()),
+                            mode: mode_value(mode),
+                            reason: "task run --mode".into(),
+                        }
+                        .encode_to_vec(),
+                        Some(lease),
+                    ))
+                    .await
+                    .map_err(|e| e.to_string())?;
+                let r: TaskModeChanged = Client::result(&ack).map_err(|e| e.to_string())?;
+                println!(
+                    "mode {} previous={} effective={}",
+                    mode_label(r.mode),
+                    mode_label(r.previous_mode),
+                    r.effective
+                );
+            }
             start_task(
                 &mut client,
                 &task_id,
@@ -895,11 +1178,94 @@ async fn run_command(ready: &ReadyLine, rest: Vec<String>) -> Result<(), String>
                 opt("--model").unwrap_or_default(),
                 skills,
                 budgets,
+                preference_flags(&words, false),
             )
             .await?;
             if words.contains(&"--wait") {
                 wait_until_idle(&mut client, &task_id).await?;
             }
+        }
+        // PX-051 / PX-100: the task's mode, as the typed command the desktop
+        // sends. The Core derives the posture; this names the mode only.
+        ["task", "mode", ..] => {
+            let sid = parse_id(opt("--session").ok_or(USAGE)?)?;
+            let task_id = parse_id(opt("--task").ok_or(USAGE)?)?;
+            let mode = positionals(&words, 2).first().copied().ok_or(USAGE)?;
+            let lease = join_lease(&mut client, &sid).await?;
+            let ack = client
+                .command(envelope_fenced(
+                    "SetTaskMode",
+                    SetTaskMode {
+                        task_id: Some(task_id),
+                        mode: mode_value(mode),
+                        reason: "cli".into(),
+                    }
+                    .encode_to_vec(),
+                    Some(lease),
+                ))
+                .await
+                .map_err(|e| e.to_string())?;
+            let r: TaskModeChanged = Client::result(&ack).map_err(|e| e.to_string())?;
+            println!(
+                "mode {} previous={} effective={} accepted_plan_version={} offset={}",
+                mode_label(r.mode),
+                mode_label(r.previous_mode),
+                r.effective,
+                r.accepted_plan_version,
+                r.offset
+            );
+        }
+        // PX-053 / PX-100: SetExecutionPreference.
+        ["task", "preference", ..] => {
+            let sid = parse_id(opt("--session").ok_or(USAGE)?)?;
+            let task_id = parse_id(opt("--task").ok_or(USAGE)?)?;
+            let preference = preference_flags(&words, true).ok_or(USAGE)?;
+            let lease = join_lease(&mut client, &sid).await?;
+            let ack = client
+                .command(envelope_fenced(
+                    "SetExecutionPreference",
+                    SetExecutionPreference {
+                        task_id: Some(task_id),
+                        preference: Some(preference),
+                    }
+                    .encode_to_vec(),
+                    Some(lease),
+                ))
+                .await
+                .map_err(|e| e.to_string())?;
+            let r: ExecutionPreferenceSet = Client::result(&ack).map_err(|e| e.to_string())?;
+            let v = r.preference.unwrap_or_default();
+            let routing = r.routing.unwrap_or_default();
+            println!(
+                "preference objective={} effort={} tier={} pin={} effective={} offset={} routing={} reason={}",
+                objective_label(v.objective),
+                v.effort,
+                v.service_tier,
+                if v.pin_model.is_empty() {
+                    String::new()
+                } else {
+                    format!("{}/{}", v.pin_endpoint, v.pin_model)
+                },
+                r.effective,
+                r.offset,
+                routing.outcome,
+                routing.reason_code
+            );
+        }
+        ["task", "posture", ..] => {
+            let task_id = parse_id(opt("--task").ok_or(USAGE)?)?;
+            let ack = client
+                .command(envelope(
+                    "GetTaskPosture",
+                    GetTaskPosture {
+                        task_id: Some(task_id),
+                    }
+                    .encode_to_vec(),
+                ))
+                .await
+                .map_err(|e| e.to_string())?;
+            let p: TaskPostureView = Client::result(&ack).map_err(|e| e.to_string())?;
+            print_posture(&p);
         }
         ["task", "attach", ..] => {
             let sid = parse_id(opt("--session").ok_or(USAGE)?)?;
@@ -997,10 +1363,125 @@ async fn run_command(ready: &ReadyLine, rest: Vec<String>) -> Result<(), String>
                 opt("--model").unwrap_or_default(),
                 vec![],
                 (0, 0, 0),
+                None,
             )
             .await?;
             if words.contains(&"--wait") {
                 wait_until_idle(&mut client, &task_id).await?;
+            }
+        }
+        // PX-043: the background terminals of every task, as every client sees them.
+        ["terminal", "list", ..] => {
+            let task = opt("--task").map(parse_id).transpose()?;
+            let ack = client
+                .command(envelope(
+                    "ListTerminals",
+                    ListTerminals { task_id: task }.encode_to_vec(),
+                ))
+                .await
+                .map_err(|e| e.to_string())?;
+            let l: TerminalList = Client::result(&ack).map_err(|e| e.to_string())?;
+            for t in l.terminals {
+                println!(
+                    "terminal {} task={} owner={} state={} exit={} elapsed_ms={} bytes={} oldest_cursor={} lease={} title={:?}",
+                    t.session_id,
+                    t.task_id.map(|i| encode_hex(&i.value)).unwrap_or_default(),
+                    t.owner,
+                    t.state,
+                    t.exit_code.map(|c| c.to_string()).unwrap_or_default(),
+                    t.elapsed_ms,
+                    t.bytes_so_far,
+                    t.oldest_cursor,
+                    t.input_lease_holder,
+                    t.title
+                );
+            }
+        }
+        // PX-043: read a terminal from a cursor (read-only), acknowledging as
+        // it goes; the cursor to resume from is printed when the stream ends.
+        ["terminal", "attach", ..] => {
+            let task = parse_id(opt("--task").ok_or(USAGE)?)?;
+            let terminal = opt("--terminal").ok_or(USAGE)?.to_owned();
+            let from: u64 = opt("--from")
+                .map(|v| v.parse().map_err(|_| format!("`{v}` is not a cursor")))
+                .transpose()?
+                .unwrap_or(0);
+            let window: u64 = opt("--window")
+                .map(|v| v.parse().map_err(|_| format!("`{v}` is not a size")))
+                .transpose()?
+                .unwrap_or(0);
+            let ack = client
+                .command(envelope(
+                    "AttachTerminal",
+                    AttachTerminal {
+                        task_id: Some(task),
+                        session_id: terminal,
+                        after_cursor: from,
+                        window_bytes: window,
+                        take_input_lease: false,
+                        steal_input_lease: false,
+                    }
+                    .encode_to_vec(),
+                ))
+                .await
+                .map_err(|e| e.to_string())?;
+            let attached: TerminalAttached = Client::result(&ack).map_err(|e| e.to_string())?;
+            let mut cursor = from;
+            let mut acked = from;
+            let step = (attached.window_bytes / 2).max(1);
+            let mut out = std::io::stdout();
+            loop {
+                let Some(frame) = client
+                    .next_terminal_frame()
+                    .await
+                    .map_err(|e| e.to_string())?
+                else {
+                    eprintln!("terminal: connection closed; resume with --from {cursor}");
+                    break;
+                };
+                match frame.body {
+                    Some(terminal_frame::Body::Output(o)) => {
+                        use std::io::Write;
+                        let _ = out.write_all(&o.data);
+                        let _ = out.flush();
+                        cursor = o.cursor + o.data.len() as u64;
+                        if cursor - acked >= step {
+                            client
+                                .command(envelope(
+                                    "AckTerminal",
+                                    AckTerminal {
+                                        attach_id: attached.attach_id.clone(),
+                                        cursor,
+                                    }
+                                    .encode_to_vec(),
+                                ))
+                                .await
+                                .map_err(|e| e.to_string())?;
+                            acked = cursor;
+                        }
+                    }
+                    Some(terminal_frame::Body::Exited(x)) => {
+                        eprintln!(
+                            "terminal: exited code={:?} total_bytes={} output_ref={}",
+                            x.exit_code, x.total_bytes, x.output_ref
+                        );
+                        break;
+                    }
+                    Some(terminal_frame::Body::Ended(e)) => {
+                        eprintln!(
+                            "terminal: {} ({}); resume with --from {}",
+                            e.reason,
+                            e.message,
+                            if e.reason == "SLOW_CONSUMER" {
+                                e.resume_cursor
+                            } else {
+                                cursor
+                            }
+                        );
+                        break;
+                    }
+                    Some(terminal_frame::Body::Lease(_)) | None => {}
+                }
             }
         }
         ["task", "cancel", ..] => {
@@ -1020,6 +1501,57 @@ async fn run_command(ready: &ReadyLine, rest: Vec<String>) -> Result<(), String>
                 .map_err(|e| e.to_string())?;
             let r: TaskCancelRequested = Client::result(&ack).map_err(|e| e.to_string())?;
             println!("cancel was_running={}", r.was_running);
+        }
+        // REQ-PX-101: park a running task at its next turn boundary; resume it.
+        ["task", "pause", ..] => {
+            let sid = parse_id(opt("--session").ok_or(USAGE)?)?;
+            let task_id = parse_id(opt("--task").ok_or(USAGE)?)?;
+            let lease = join_lease(&mut client, &sid).await?;
+            let ack = client
+                .command(envelope_fenced(
+                    "PauseTask",
+                    PauseTask {
+                        task_id: Some(task_id),
+                        reason: positionals(&words, 2).join(" "),
+                        wait_ms: opt("--wait-ms").and_then(|t| t.parse().ok()).unwrap_or(0),
+                    }
+                    .encode_to_vec(),
+                    Some(lease),
+                ))
+                .await
+                .map_err(|e| e.to_string())?;
+            let r: TaskPauseResult = Client::result(&ack).map_err(|e| e.to_string())?;
+            println!(
+                "pause state={} waits_for_boundary={} checkpoint={}\n  {}",
+                r.state, r.waits_for_boundary, r.checkpoint_id, r.note
+            );
+        }
+        ["task", "resume", ..] => {
+            let sid = parse_id(opt("--session").ok_or(USAGE)?)?;
+            let task_id = parse_id(opt("--task").ok_or(USAGE)?)?;
+            let lease = join_lease(&mut client, &sid).await?;
+            let ack = client
+                .command(envelope_fenced(
+                    "ResumeTask",
+                    ResumeTask {
+                        task_id: Some(task_id.clone()),
+                        endpoint: opt("--endpoint").unwrap_or_default().to_owned(),
+                        model: opt("--model").unwrap_or_default().to_owned(),
+                        ..Default::default()
+                    }
+                    .encode_to_vec(),
+                    Some(lease),
+                ))
+                .await
+                .map_err(|e| e.to_string())?;
+            let r: TaskResumeResult = Client::result(&ack).map_err(|e| e.to_string())?;
+            println!(
+                "resumed={} endpoint={} model={}",
+                r.resumed, r.endpoint, r.model
+            );
+            if words.contains(&"--wait") {
+                wait_until_idle(&mut client, &task_id).await?;
+            }
         }
         ["task", "status", ..] => {
             let task_id = parse_id(opt("--task").ok_or(USAGE)?)?;
@@ -1515,6 +2047,9 @@ async fn run_command(ready: &ReadyLine, rest: Vec<String>) -> Result<(), String>
                         goal_text,
                         carry,
                         worktree_dir: opt("--worktree").unwrap_or("").to_owned(),
+                        turn_ordinal: opt("--turn").and_then(|t| t.parse().ok()).unwrap_or(0),
+                        checkpoint_name: opt("--name").unwrap_or("").to_owned(),
+                        ..Default::default()
                     }
                     .encode_to_vec(),
                     Some(lease),
@@ -1553,6 +2088,9 @@ async fn run_command(ready: &ReadyLine, rest: Vec<String>) -> Result<(), String>
                     PreviewRewind {
                         task_id: Some(task_id.clone()),
                         checkpoint_id: checkpoint_id.clone(),
+                        name: opt("--name").unwrap_or("").to_owned(),
+                        turn_ordinal: opt("--turn").and_then(|t| t.parse().ok()).unwrap_or(0),
+                        ..Default::default()
                     }
                     .encode_to_vec(),
                 ))
@@ -1586,7 +2124,12 @@ async fn run_command(ready: &ReadyLine, rest: Vec<String>) -> Result<(), String>
                         "RestoreCheckpoint",
                         RestoreCheckpoint {
                             task_id: Some(task_id),
-                            checkpoint_id,
+                            // The preview named the checkpoint it resolved.
+                            checkpoint_id: pv.checkpoint_id.clone(),
+                            keep_paths: opt("--keep")
+                                .map(|k| k.split(',').map(str::to_owned).collect())
+                                .unwrap_or_default(),
+                            redo: words.contains(&"--redo"),
                             expected: pv
                                 .entries
                                 .iter()
@@ -1595,6 +2138,7 @@ async fn run_command(ready: &ReadyLine, rest: Vec<String>) -> Result<(), String>
                                     content_hash: e.current_hash.clone(),
                                 })
                                 .collect(),
+                            ..Default::default()
                         }
                         .encode_to_vec(),
                         Some(lease),
@@ -1611,6 +2155,12 @@ async fn run_command(ready: &ReadyLine, rest: Vec<String>) -> Result<(), String>
                         r.workspace_revision_after,
                         r.event_offset
                     );
+                    if !r.pre_restore_checkpoint_id.is_empty() {
+                        println!(
+                            "  undo with: task rewind --task <id> --checkpoint {} --redo --apply --session <id>",
+                            r.pre_restore_checkpoint_id
+                        );
+                    }
                 } else {
                     return Err(format!("restore refused: {} {}", r.refusal, r.detail));
                 }
@@ -1670,6 +2220,72 @@ async fn run_command(ready: &ReadyLine, rest: Vec<String>) -> Result<(), String>
                     d.switch_cost_minor,
                     d.offset,
                     d.reason
+                );
+            }
+        }
+        ["task", "transcript", ..] => {
+            // PX-042: the conversation as the Core projects it from the log,
+            // every page of it.
+            let task_id = parse_id(opt("--task").ok_or(USAGE)?)?;
+            let density = match opt("--density").unwrap_or("compact") {
+                "compact" => TranscriptDensity::Compact,
+                "balanced" => TranscriptDensity::Balanced,
+                "detailed" => TranscriptDensity::Detailed,
+                _ => return Err(USAGE.into()),
+            };
+            let mut after = 0u32;
+            let mut pin = 0u64;
+            loop {
+                let ack = client
+                    .command(envelope(
+                        "GetTranscript",
+                        GetTranscript {
+                            task_id: Some(task_id.clone()),
+                            density: density as i32,
+                            after_row: after,
+                            limit: 200,
+                            as_of_offset: pin,
+                        }
+                        .encode_to_vec(),
+                    ))
+                    .await
+                    .map_err(|e| e.to_string())?;
+                let page: TranscriptPage = Client::result(&ack).map_err(|e| e.to_string())?;
+                pin = page.as_of_offset;
+                for r in &page.rows {
+                    print_transcript_row(r, 0);
+                }
+                if !page.has_more {
+                    break;
+                }
+                after = page.next_after_row;
+            }
+        }
+        ["task", "headers", "--session", sid, ..] => {
+            let ack = client
+                .command(envelope(
+                    "GetAgentHeaders",
+                    GetAgentHeaders {
+                        session_id: Some(parse_id(sid)?),
+                        include_archived: words.contains(&"--archived"),
+                    }
+                    .encode_to_vec(),
+                ))
+                .await
+                .map_err(|e| e.to_string())?;
+            let h: AgentHeaders = Client::result(&ack).map_err(|e| e.to_string())?;
+            for a in &h.headers {
+                println!(
+                    "{} {:<18} {}{} files={} +{} -{} ctx={}% {}",
+                    &encode_hex(&a.task_id.clone().unwrap_or_default().value)[..8],
+                    a.status_label,
+                    if a.unread { "* " } else { "" },
+                    a.title,
+                    a.files_changed,
+                    a.lines_added,
+                    a.lines_removed,
+                    a.context_percent,
+                    a.subtitle
                 );
             }
         }
@@ -2880,6 +3496,7 @@ fn positionals<'a>(words: &[&'a str], skip: usize) -> Vec<&'a str> {
 }
 
 /// The CLI becomes the session's single mutation owner for this invocation.
+#[allow(clippy::too_many_arguments)]
 async fn start_task(
     client: &mut Client,
     task_id: &Id,
@@ -2890,6 +3507,9 @@ async fn start_task(
     // `(max_turns, max_tool_calls, max_no_progress_turns)`; 0 = the Core's
     // default.
     budgets: (u32, u32, u32),
+    // PX-100: the objective, effort and service tier (never a pin: that is
+    // `endpoint` and `model`).
+    preference: Option<ExecutionPreference>,
 ) -> Result<(), String> {
     let (max_turns, max_tool_calls, max_no_progress_turns) = budgets;
     let ack = client
@@ -2903,6 +3523,7 @@ async fn start_task(
                 max_tool_calls,
                 max_no_progress_turns,
                 skills,
+                preference,
             }
             .encode_to_vec(),
             Some(lease),
@@ -2978,6 +3599,48 @@ async fn export_diagnostics(
         .await
         .map_err(|e| e.to_string())?;
     Client::result(&ack).map_err(|e| e.to_string())
+}
+
+/// `SetTaskBudgets` from the flags `task budget` and `task run` take
+/// (REQ-PX-116): cost and wall clock caps, live children, no delegation.
+async fn set_budgets(
+    client: &mut Client,
+    task_id: &Id,
+    lease: u64,
+    words: &[&str],
+) -> Result<(), String> {
+    let num = |flag: &str| -> Result<u64, String> {
+        words
+            .iter()
+            .position(|w| *w == flag)
+            .and_then(|i| words.get(i + 1))
+            .map(|v| v.parse::<u64>().map_err(|_| USAGE.to_owned()))
+            .transpose()
+            .map(|v| v.unwrap_or(0))
+    };
+    let ack = client
+        .command(envelope_fenced(
+            "SetTaskBudgets",
+            modbit_protocol::v1::SetTaskBudgets {
+                task_id: Some(task_id.clone()),
+                max_cost_minor: num("--max-cost-minor")?,
+                max_wall_ms: num("--max-wall-ms")?,
+                max_children: u32::try_from(num("--max-children")?)
+                    .map_err(|_| USAGE.to_owned())?,
+                forbid_spawn: words.contains(&"--forbid-spawn"),
+            }
+            .encode_to_vec(),
+            Some(lease),
+        ))
+        .await
+        .map_err(|e| e.to_string())?;
+    let v: modbit_protocol::v1::TaskBudgetsView =
+        Client::result(&ack).map_err(|e| e.to_string())?;
+    println!(
+        "budgets max_cost_minor={} max_wall_ms={} max_children={} forbid_spawn={}",
+        v.max_cost_minor, v.max_wall_ms, v.max_children, v.forbid_spawn
+    );
+    Ok(())
 }
 
 async fn join_lease(client: &mut Client, sid: &Id) -> Result<u64, String> {

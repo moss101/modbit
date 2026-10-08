@@ -1,0 +1,44 @@
+{
+  "expected": {
+    "eventsRead": "0",
+    "headers": [
+      {
+        "archived": false,
+        "attentionItems": 0,
+        "contextPercent": 37,
+        "createdAt": {
+          "nanos": 0,
+          "seconds": "1700000000"
+        },
+        "executionLocation": "local",
+        "filesChanged": 2,
+        "lastCheckpointAt": null,
+        "lastOffset": "90",
+        "linesAdded": 14,
+        "linesRemoved": 3,
+        "origin": "cli",
+        "pendingApproval": false,
+        "pendingPlan": false,
+        "readOffset": "40",
+        "sessionId": "10101010101010101010101010101010",
+        "statusClass": "AGENT_STATUS_CLASS_READY_FOR_REVIEW_UNSEEN",
+        "statusLabel": "Ready for review",
+        "subagent": false,
+        "subtitle": "repo",
+        "taskId": "21212121212121212121212121212121",
+        "taskState": "ReadyForReview",
+        "title": "make the check pass",
+        "unread": true,
+        "updatedAt": {
+          "nanos": 500000000,
+          "seconds": "1700000100"
+        },
+        "workspaceRoot": "/repo"
+      }
+    ],
+    "lastOffset": "90",
+    "objectsRead": "0",
+    "sessionId": "10101010101010101010101010101010"
+  },
+  "type": "modbit.v1.AgentHeaders"
+}

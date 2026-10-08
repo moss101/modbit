@@ -90,7 +90,7 @@ const MAX_CONTEXT_DOCUMENT_BYTES: usize = 256 * 1024;
 
 /// Fencing (docs/13, docs/33): a mutating command must present the session's
 /// current lease generation in `expected_generation`.
-async fn require_lease(
+pub(crate) async fn require_lease(
     core: &Core,
     cid: &Option<wire::Id>,
     env: &CommandEnvelope,
@@ -173,6 +173,12 @@ pub async fn run_as(
             suspended.len()
         );
     }
+    // PX-041: a message that was streaming when the last Core died is closed
+    // as aborted by recovery; nothing resumes mid-token.
+    let aborted = crate::stream::close_after_restart(&mut store, tenant_id);
+    if aborted > 0 {
+        eprintln!("modbit-core: closed {aborted} open assistant stream(s) as aborted by recovery");
+    }
     let start = store.last_offset()?;
     let boot_secret: Vec<u8> = (0..32).map(|_| rand::random::<u8>()).collect();
     let nonce = encode_hex(&(0..6).map(|_| rand::random::<u8>()).collect::<Vec<_>>());
@@ -230,6 +236,10 @@ pub async fn run_as(
                 }
             }));
     }
+    // REQ-PX-061: a restore a dead Core left half-written is rolled back to
+    // the pre-restore checkpoint it recorded first, before any client can
+    // look at the worktree.
+    crate::checkpoint::recover_in_doubt_restores(&core).await;
     // EPR-012: the last activated registry generation, verified again.
     crate::model_registry::restore(&core).await;
     let _ = std::fs::remove_file(data_dir.join("core.ready"));
@@ -630,12 +640,17 @@ async fn serve_connection(core: Arc<Core>, mut stream: BoxedStream) -> Result<()
                     "ReconcileInvoice",
                     "GetEffectivePolicy",
                     "SetTaskSelection",
+                    "SetTaskToolProjection",
                     "AttachContextDocument",
                     "AllowUnsupportedLanguage",
                     "PublishOutcomeBaseline",
                     "ProbeModel",
                     "StartTask",
                     "CancelTask",
+                    "PauseTask",
+                    "ResumeTask",
+                    "NameCheckpoint",
+                    "RunCheckpointGc",
                     "GetTaskStatus",
                     "GetReviewBundle",
                     "GetCodeView",
@@ -652,6 +667,13 @@ async fn serve_connection(core: Arc<Core>, mut stream: BoxedStream) -> Result<()
                     "ListQuestions",
                     "RespondToQuestion",
                     "IngestAttachment",
+                    "SetTaskMode",
+                    "SetExecutionPreference",
+                    "GetTaskPosture",
+                    "SetTaskBudgets",
+                    "ListSkills",
+                    "TrustSkill",
+                    "UntrustSkill",
                 ]
                 .map(String::from)
                 .to_vec(),
@@ -673,9 +695,28 @@ async fn serve_connection(core: Arc<Core>, mut stream: BoxedStream) -> Result<()
     let mut host_rx: Option<tokio::sync::mpsc::Receiver<wire::BrowserHostRequest>> = None;
     // M8.8: the browser views this connection watches — frames arrive here.
     let mut views = Views::default();
+    // PX-043: the terminals this connection attached to — their frames
+    // arrive here, and end with the connection.
+    let mut terms = crate::terminal_stream::Terminals::new(connection);
+    // The client's frames are read by a task of their own, so a frame that
+    // arrives in pieces is never torn by another arm of the loop winning the
+    // `select!` (a half-read frame cannot be resumed): terminal output makes
+    // that arm busy all the time.
+    let (mut reader, mut writer) = tokio::io::split(stream);
+    let (frames_tx, mut frames) = tokio::sync::mpsc::channel(16);
+    let reader_task = tokio::spawn(async move {
+        loop {
+            let frame = read_frame(&mut reader).await;
+            let last = !matches!(frame, Ok(Some(_)));
+            if frames_tx.send(frame).await.is_err() || last {
+                break;
+            }
+        }
+    });
     let outcome = serve_frames(
         &core,
-        &mut stream,
+        &mut writer,
+        &mut frames,
         &capabilities,
         client_kind,
         &mut subscription,
@@ -683,8 +724,11 @@ async fn serve_connection(core: Arc<Core>, mut stream: BoxedStream) -> Result<()
         connection,
         &mut host_rx,
         &mut views,
+        &mut terms,
     )
     .await;
+    reader_task.abort();
+    terms.detach_all();
     core.browser.connection_closed(connection).await;
     views.unwatch_all(&core).await;
     outcome
@@ -861,7 +905,8 @@ static CONNECTIONS: std::sync::atomic::AtomicU64 = std::sync::atomic::AtomicU64:
 #[allow(clippy::too_many_arguments)]
 async fn serve_frames(
     core: &Arc<Core>,
-    stream: &mut BoxedStream,
+    stream: &mut tokio::io::WriteHalf<BoxedStream>,
+    frames: &mut tokio::sync::mpsc::Receiver<Result<Option<SurfaceFrame>, FrameError>>,
     capabilities: &[&str],
     client_kind: i32,
     subscription: &mut Option<(SessionId, u64)>,
@@ -869,6 +914,7 @@ async fn serve_frames(
     connection: u64,
     host_rx: &mut Option<tokio::sync::mpsc::Receiver<wire::BrowserHostRequest>>,
     views: &mut Views,
+    terms: &mut crate::terminal_stream::Terminals,
 ) -> Result<()> {
     loop {
         // Drain any events the subscriber has not seen yet, in bounded batches.
@@ -895,16 +941,23 @@ async fn serve_frames(
             }
         }
         let frame = tokio::select! {
-            f = read_frame(stream) => match f {
-                Ok(Some(f)) => Some(f),
-                Ok(None) => return Ok(()),
-                Err(e @ (FrameError::TooLarge { .. } | FrameError::Malformed(_) | FrameError::EmptyBody)) => {
+            f = frames.recv() => match f {
+                Some(Ok(Some(f))) => Some(f),
+                Some(Ok(None)) | None => return Ok(()),
+                Some(Err(e @ (FrameError::TooLarge { .. } | FrameError::Malformed(_) | FrameError::EmptyBody))) => {
                     let code = if matches!(e, FrameError::TooLarge { .. }) { "FRAME_TOO_LARGE" } else { "MALFORMED_FRAME" };
                     let _ = write_frame(stream, &error_frame(code, e.to_string())).await;
                     return Ok(());
                 }
-                Err(e) => return Err(e.into()),
+                Some(Err(e)) => return Err(e.into()),
             },
+            // PX-043: a slice of a terminal stream this connection attached to.
+            f = terms.rx.recv() => {
+                if let Some(f) = f {
+                    write_frame(stream, &SurfaceFrame { body: Some(Body::TerminalFrame(f)) }).await?;
+                }
+                None
+            }
             changed = rx.changed(), if subscription.is_some() => {
                 if changed.is_err() { return Ok(()); }
                 None
@@ -974,6 +1027,28 @@ async fn serve_frames(
                     _ if env.command_type == "UnwatchBrowserView" => {
                         unwatch_browser_view(core, env, views).await
                     }
+                    // PX-043 / PX-099: the terminal registry and stream.
+                    _ if env.command_type == "ListTerminals" => {
+                        crate::terminal_stream::list_terminals(core, env).await
+                    }
+                    _ if env.command_type == "AttachTerminal" => {
+                        crate::terminal_stream::attach_terminal(core, env, terms).await
+                    }
+                    _ if env.command_type == "AckTerminal" => {
+                        crate::terminal_stream::ack_terminal(env, terms).await
+                    }
+                    _ if env.command_type == "DetachTerminal" => {
+                        crate::terminal_stream::detach_terminal(core, env, terms).await
+                    }
+                    _ if env.command_type == "SetTerminalInput" => {
+                        crate::terminal_stream::set_terminal_input(core, env, terms).await
+                    }
+                    _ if env.command_type == "ResizeTerminal" => {
+                        crate::terminal_stream::resize_terminal(core, env, terms).await
+                    }
+                    _ if env.command_type == "WriteTerminal" => {
+                        crate::terminal_stream::write_terminal(core, env, terms).await
+                    }
                     _ => handle_command(core, env).await,
                 };
                 // REQ-EV-0017: a rejection is error text on its way to a
@@ -1036,7 +1111,7 @@ async fn serve_frames(
     }
 }
 
-fn id16(id: &wire::Id) -> Option<[u8; 16]> {
+pub(crate) fn id16(id: &wire::Id) -> Option<[u8; 16]> {
     id.value.as_slice().try_into().ok()
 }
 
@@ -1138,6 +1213,10 @@ fn required_client_capability(env: &CommandEnvelope) -> Option<&'static str> {
             }
         }
         "GetCodeView" => "ui.code_view",
+        // The conversation read model is a read of the log; a read marker and
+        // an archive are the person's own curation of a session.
+        "GetTranscript" | "GetAgentHeaders" => "events.subscribe",
+        "MarkRead" | "ArchiveTask" => "session.control",
         "DecideReview" => "review.decide",
         // Steering a task from its pull request's comments is steering it.
         "ApplyUserPatch" | "SubmitExternalDiagnostics" | "IngestReviewComments" => "task.author",
@@ -1173,6 +1252,12 @@ fn required_client_capability(env: &CommandEnvelope) -> Option<&'static str> {
             "repository.trust"
         }
         "RunExtensionCommand" => "task.author",
+        // REQ-PX-116: a task's limits are the author's; REQ-PX-105: letting
+        // a skill reach the model is trusting content a person did not
+        // write to steer the agent — the same class of decision as trusting
+        // the repository.
+        "SetTaskBudgets" => "task.author",
+        "TrustSkill" | "UntrustSkill" => "repository.trust",
         "ImportAgentConfig" => "repository.trust",
         "ConfigureSandboxGateway" => "sandbox.configure",
         "ExportHandoff" => "task.author",
@@ -1185,6 +1270,8 @@ fn required_client_capability(env: &CommandEnvelope) -> Option<&'static str> {
         "RebindTaskWorkspace" | "ImportObjects" => "session.mirror",
         "TrustRepository" => "repository.trust",
         "EmergencyStop" => "session.control",
+        // Removing recovery data under a policy is a session-level decision.
+        "RunCheckpointGc" => "session.control",
         "AttachBrowserHost"
         | "BrowserHostResponse"
         | "RegisterBrowserCredential"
@@ -1192,17 +1279,38 @@ fn required_client_capability(env: &CommandEnvelope) -> Option<&'static str> {
         "OpenBrowserSession" | "CloseBrowserSession" => "task.author",
         "SetBrowserControl" => "session.control",
         "WatchBrowserView" | "UnwatchBrowserView" => "events.subscribe",
+        // PX-043: reading a terminal is reading the log's tail; typing into
+        // one, taking its lease and resizing it act on a process.
+        "ListTerminals" | "AckTerminal" | "DetachTerminal" => "events.subscribe",
+        "AttachTerminal" => {
+            if wire::AttachTerminal::decode(env.payload.as_slice())
+                .is_ok_and(|p| p.take_input_lease)
+            {
+                "session.control"
+            } else {
+                "events.subscribe"
+            }
+        }
+        "SetTerminalInput" | "ResizeTerminal" | "WriteTerminal" => "session.control",
         "BrowserViewInput" => "session.control",
         "ImportMirroredEvents" | "ReadMirrorEvents" => "session.mirror",
         "IngestAttachment" | "AttachContextDocument" => "attachments.ingest",
         "CreateSession"
         | "CreateTask"
         | "StartTask"
+        | "SetTaskToolProjection"
         | "CancelTask"
+        | "PauseTask"
+        | "ResumeTask"
+        | "NameCheckpoint"
         | "QueueInput"
         | "AcquireSessionLease"
         | "InvokeTool"
         | "UndoToolCall"
+        // The mode and the preference are the author's to set (PX-051,
+        // PX-053): a client that may start a task may say how it runs.
+        | "SetTaskMode"
+        | "SetExecutionPreference"
         | "ForkTask"
         | "RewindTask"
         | "AdmitRoutingPlan"
@@ -1513,7 +1621,11 @@ async fn attach_browser_host(
     )
 }
 
-fn reject(command_id: Option<wire::Id>, code: &str, message: impl Into<String>) -> CommandAck {
+pub(crate) fn reject(
+    command_id: Option<wire::Id>,
+    code: &str,
+    message: impl Into<String>,
+) -> CommandAck {
     CommandAck {
         command_id,
         status: CommandStatus::Rejected as i32,
@@ -1523,7 +1635,7 @@ fn reject(command_id: Option<wire::Id>, code: &str, message: impl Into<String>) 
     }
 }
 
-fn accept(command_id: Option<wire::Id>, replayed: bool, result: Vec<u8>) -> CommandAck {
+pub(crate) fn accept(command_id: Option<wire::Id>, replayed: bool, result: Vec<u8>) -> CommandAck {
     CommandAck {
         command_id,
         status: if replayed {
@@ -1537,7 +1649,7 @@ fn accept(command_id: Option<wire::Id>, replayed: bool, result: Vec<u8>) -> Comm
     }
 }
 
-async fn handle_command(core: &Arc<Core>, env: CommandEnvelope) -> CommandAck {
+pub(crate) async fn handle_command(core: &Arc<Core>, env: CommandEnvelope) -> CommandAck {
     let cid = env.command_id.clone();
     let Some(command_id) = env.command_id.as_ref().and_then(id16) else {
         return reject(cid, "BAD_COMMAND_ID", "command_id must be 16 bytes");
@@ -1638,6 +1750,42 @@ async fn handle_command(core: &Arc<Core>, env: CommandEnvelope) -> CommandAck {
             {
                 return reject(cid, "BAD_PAYLOAD", "goal_text required");
             }
+            // PX-051 / PX-053: the mode and the preference the task is
+            // created with are validated before anything is written; the
+            // events join the task's creation batch.
+            if !p.execution_profile.is_empty()
+                && !core
+                    .tools
+                    .envelope()
+                    .profile_ceilings
+                    .contains_key(&p.execution_profile)
+            {
+                return reject(
+                    cid,
+                    "UNKNOWN_PROFILE",
+                    format!(
+                        "`{}` is not an execution profile this Core serves ({})",
+                        p.execution_profile,
+                        core.tools
+                            .envelope()
+                            .profile_ceilings
+                            .keys()
+                            .cloned()
+                            .collect::<Vec<_>>()
+                            .join(", ")
+                    ),
+                );
+            }
+            let tasking_events = match crate::tasking::creation_events(
+                p.mode,
+                p.preference.as_ref(),
+                false,
+                "create",
+                &actor,
+            ) {
+                Ok(e) => e,
+                Err((code, why)) => return reject(cid, &code, why),
+            };
             if let Err(ack) = require_lease(core, &cid, &env, &session_id).await {
                 return ack;
             }
@@ -1784,6 +1932,7 @@ async fn handle_command(core: &Arc<Core>, env: CommandEnvelope) -> CommandAck {
                 typed("TaskQueued", &TaskEvent::TaskQueued, actor.clone()),
             ];
             events.extend(intake_events);
+            events.extend(tasking_events);
             let req = AppendRequest {
                 tenant_id: core.tenant_id,
                 session_id,
@@ -2029,6 +2178,7 @@ async fn handle_command(core: &Arc<Core>, env: CommandEnvelope) -> CommandAck {
                                 .get(t.task_id.as_bytes())
                                 .map(|p| wire_id(p.as_bytes())),
                             workspace_root: t.workspace_root.clone().unwrap_or_default(),
+                            mode: crate::tasking::mode_for(core, &store, t.task_id),
                         });
                     }
                 }
@@ -2117,6 +2267,10 @@ async fn handle_command(core: &Arc<Core>, env: CommandEnvelope) -> CommandAck {
                 }
                 Err(e) => reject(cid, error_code(&e), e.to_string()),
             }
+        }
+        // PX-051 / PX-053: the task's mode and execution preference.
+        "SetTaskMode" | "SetExecutionPreference" | "GetTaskPosture" => {
+            crate::tasking::handle(core, &env).await
         }
         "QueueInput" => {
             let Ok(p) = wire::QueueInput::decode(env.payload.as_slice()) else {
@@ -2499,6 +2653,79 @@ async fn handle_command(core: &Arc<Core>, env: CommandEnvelope) -> CommandAck {
                         cid,
                         replayed,
                         wire::TaskSelectionRecorded { offset }.encode_to_vec(),
+                    )
+                }
+                Err(e) => reject(cid, error_code(&e), e.to_string()),
+            }
+        }
+        // PX-114: how a task's tool surface is shown and what it may cost.
+        // A person's choice; the Kernel still decides every call.
+        "SetTaskToolProjection" => {
+            let Ok(p) = wire::SetTaskToolProjection::decode(env.payload.as_slice()) else {
+                return reject(cid, "BAD_PAYLOAD", "SetTaskToolProjection");
+            };
+            let Some(task_id) = p.task_id.as_ref().and_then(id16).map(TaskId::from_bytes) else {
+                return reject(cid, "BAD_PAYLOAD", "task_id required");
+            };
+            if !p.mode.is_empty()
+                && modbit_core_runtime::projection::ProjectionMode::parse(&p.mode).is_none()
+            {
+                return reject(
+                    cid,
+                    "BAD_PAYLOAD",
+                    format!("unknown projection mode `{}` (direct, exec_only)", p.mode),
+                );
+            }
+            if p.mode.is_empty() && p.max_projection_bytes == 0 {
+                return reject(cid, "BAD_PAYLOAD", "a mode or a budget is required");
+            }
+            let session_id = {
+                let store = core.store.lock().await;
+                match store.task(&task_id) {
+                    Ok(Some(t)) => t.session_id,
+                    Ok(None) => return reject(cid, "UNKNOWN_TASK", task_id.to_string()),
+                    Err(e) => return reject(cid, error_code(&e), e.to_string()),
+                }
+            };
+            if let Err(ack) = require_lease(core, &cid, &env, &session_id).await {
+                return ack;
+            }
+            let req = AppendRequest {
+                tenant_id: core.tenant_id,
+                session_id,
+                task_id: Some(task_id),
+                run_id: None,
+                turn_id: None,
+                step_id: None,
+                aggregate_type: AggregateType::Task,
+                aggregate_id: *task_id.as_bytes(),
+                expected_sequence: None,
+                events: vec![typed(
+                    "ToolProjectionConfigured",
+                    &TaskEvent::ToolProjectionConfigured {
+                        mode: p.mode.clone(),
+                        max_projection_bytes: p.max_projection_bytes,
+                    },
+                    actor,
+                )],
+            };
+            let mut store = core.store.lock().await;
+            match store.execute_command(record("SetTaskToolProjection"), req) {
+                Ok(outcome) => {
+                    let (events, replayed) = split(outcome);
+                    let offset = events.last().map_or(0, |e| e.offset);
+                    if !replayed {
+                        core.last_offset.send_replace(offset);
+                    }
+                    accept(
+                        cid,
+                        replayed,
+                        wire::TaskToolProjectionSet {
+                            offset,
+                            mode: p.mode,
+                            max_projection_bytes: p.max_projection_bytes,
+                        }
+                        .encode_to_vec(),
                     )
                 }
                 Err(e) => reject(cid, error_code(&e), e.to_string()),
@@ -3343,19 +3570,55 @@ async fn handle_command(core: &Arc<Core>, env: CommandEnvelope) -> CommandAck {
             } else {
                 p.reason.clone()
             };
+            // REQ-PX-102: a label is checked before anything is captured, so a
+            // refused name leaves no checkpoint behind.
+            if !p.name.is_empty() {
+                if let Err(d) = crate::checkpoint::valid_name(&p.name) {
+                    return reject(cid, "BAD_NAME", d);
+                }
+                let store = core.store.lock().await;
+                if crate::checkpoint::ledger(&store, &task)
+                    .names
+                    .values()
+                    .any(|n| *n == p.name)
+                {
+                    return reject(
+                        cid,
+                        "NAME_TAKEN",
+                        format!("`{}` already names a checkpoint of this task", p.name),
+                    );
+                }
+            }
             let lt = crate::runtime::Lineage::task(core.tenant_id, task.session_id, task_id);
             match crate::checkpoint::capture(core, &task, lt, &actor, kind, &reason).await {
                 Ok(c) => {
+                    if c.committed.is_ok() && !p.name.is_empty() {
+                        let mut store = core.store.lock().await;
+                        if let Err(r) = crate::checkpoint::name_checkpoint(
+                            core,
+                            &mut store,
+                            &task,
+                            &actor,
+                            Some(c.manifest.checkpoint_id),
+                            &p.name,
+                            None,
+                        ) {
+                            return reject(cid, r.code, r.detail);
+                        }
+                    }
                     let offset = core.store.lock().await.last_offset().unwrap_or(0);
                     core.last_offset.send_replace(offset);
-                    let row = core
-                        .store
-                        .lock()
-                        .await
-                        .checkpoints(&task_id)
-                        .unwrap_or_default()
-                        .into_iter()
-                        .find(|r| r.checkpoint_id == c.manifest.checkpoint_id.to_string());
+                    let (row, ledger) = {
+                        let store = core.store.lock().await;
+                        (
+                            store
+                                .checkpoints(&task_id)
+                                .unwrap_or_default()
+                                .into_iter()
+                                .find(|r| r.checkpoint_id == c.manifest.checkpoint_id.to_string()),
+                            crate::checkpoint::ledger(&store, &task),
+                        )
+                    };
                     let (committed, refusal) = match &c.committed {
                         Ok(()) => (true, String::new()),
                         Err(modbit_checkpoint::StaleCheckpoint::NotNewer { .. }) => {
@@ -3369,7 +3632,9 @@ async fn handle_command(core: &Arc<Core>, env: CommandEnvelope) -> CommandAck {
                         cid,
                         false,
                         wire::CheckpointCreated {
-                            checkpoint: row.as_ref().map(crate::checkpoint::view),
+                            checkpoint: row.as_ref().map(|r| {
+                                crate::checkpoint::view_with(r, &ledger, &Default::default())
+                            }),
                             committed,
                             refusal,
                         }
@@ -3405,13 +3670,14 @@ async fn handle_command(core: &Arc<Core>, env: CommandEnvelope) -> CommandAck {
             let Some(task_id) = p.task_id.as_ref().and_then(id16).map(TaskId::from_bytes) else {
                 return reject(cid, "BAD_PAYLOAD", "task_id required");
             };
-            let target = if p.checkpoint_id.is_empty() {
-                None
-            } else {
-                match modbit_domain::CheckpointId::parse(&p.checkpoint_id) {
-                    Ok(id) => Some(id),
-                    Err(_) => return reject(cid, "BAD_PAYLOAD", "checkpoint_id is not an id"),
-                }
+            let spec = match crate::checkpoint::target_spec(
+                &p.checkpoint_id,
+                &p.name,
+                p.turn_ordinal,
+                p.turn_id.as_ref(),
+            ) {
+                Ok(s) => s,
+                Err(e) => return reject(cid, "BAD_PAYLOAD", e),
             };
             let task = {
                 let store = core.store.lock().await;
@@ -3428,25 +3694,51 @@ async fn handle_command(core: &Arc<Core>, env: CommandEnvelope) -> CommandAck {
                 return reject(
                     cid,
                     "TASK_RUNNING",
-                    "the agent loop is executing; cancel or wait before restoring",
+                    "the agent loop is executing; cancel, pause or wait before restoring",
                 );
             }
             if let Err(ack) = require_lease(core, &cid, &env, &task.session_id).await {
                 return ack;
             }
+            let target = {
+                let store = core.store.lock().await;
+                match crate::checkpoint::resolve_target(&store, &task, &spec) {
+                    Ok(t) => t,
+                    Err(refused) => {
+                        return accept(
+                            cid,
+                            false,
+                            wire::CheckpointRestoreResult {
+                                restored: false,
+                                refusal: refused.code.to_owned(),
+                                detail: refused.detail,
+                                ..Default::default()
+                            }
+                            .encode_to_vec(),
+                        );
+                    }
+                }
+            };
             let lt = crate::runtime::Lineage::task(core.tenant_id, task.session_id, task_id);
-            let expected: Vec<(String, String)> = p
-                .expected
-                .iter()
-                .map(|f| (f.path.clone(), f.content_hash.clone()))
-                .collect();
-            match crate::checkpoint::restore(core, &task, lt, &actor, target, &expected).await {
+            let opts = crate::checkpoint::RestoreOptions {
+                expected: p
+                    .expected
+                    .iter()
+                    .map(|f| (f.path.clone(), f.content_hash.clone()))
+                    .collect(),
+                command: Some(record("RestoreCheckpoint")),
+                redo: p.redo,
+                keep_paths: p.keep_paths.clone(),
+                expected_epoch: p.expected_current_epoch,
+                rollback: false,
+            };
+            match crate::checkpoint::restore_with(core, &task, lt, &actor, target, opts).await {
                 Ok(Ok(r)) => {
                     let offset = core.store.lock().await.last_offset().unwrap_or(0);
                     core.last_offset.send_replace(offset);
                     accept(
                         cid,
-                        false,
+                        r.replayed,
                         wire::CheckpointRestoreResult {
                             restored: true,
                             checkpoint_id: r.checkpoint_id.to_string(),
@@ -3459,6 +3751,13 @@ async fn handle_command(core: &Arc<Core>, env: CommandEnvelope) -> CommandAck {
                             refusal: String::new(),
                             detail: String::new(),
                             preconditions_checked: r.preconditions_checked,
+                            pre_restore_checkpoint_id: r
+                                .pre_restore_checkpoint_id
+                                .map(|c| c.to_string())
+                                .unwrap_or_default(),
+                            replayed: r.replayed,
+                            kept_paths: r.kept_paths,
+                            redo: r.redo,
                         }
                         .encode_to_vec(),
                     )
@@ -3476,6 +3775,63 @@ async fn handle_command(core: &Arc<Core>, env: CommandEnvelope) -> CommandAck {
                 ),
                 Err(e) => reject(cid, "CHECKPOINT", e.to_string()),
             }
+        }
+        // ---- REQ-PX-101 / REQ-PX-102: pause, resume, names, retention ----
+        "PauseTask" => crate::pause::pause_task(core, &env, record("PauseTask")).await,
+        "ResumeTask" => crate::pause::resume_task(core, &env, record("ResumeTask")).await,
+        "NameCheckpoint" => {
+            let Ok(p) = wire::NameCheckpoint::decode(env.payload.as_slice()) else {
+                return reject(cid, "BAD_PAYLOAD", "NameCheckpoint");
+            };
+            let Some(task_id) = p.task_id.as_ref().and_then(id16).map(TaskId::from_bytes) else {
+                return reject(cid, "BAD_PAYLOAD", "task_id required");
+            };
+            let checkpoint = if p.checkpoint_id.is_empty() {
+                None
+            } else {
+                match modbit_domain::CheckpointId::parse(&p.checkpoint_id) {
+                    Ok(id) => Some(id),
+                    Err(_) => return reject(cid, "BAD_PAYLOAD", "checkpoint_id is not an id"),
+                }
+            };
+            let task = match core.store.lock().await.task(&task_id) {
+                Ok(Some(t)) => t,
+                Ok(None) => return reject(cid, "UNKNOWN_TASK", task_id.to_string()),
+                Err(e) => return reject(cid, error_code(&e), e.to_string()),
+            };
+            if let Err(ack) = require_lease(core, &cid, &env, &task.session_id).await {
+                return ack;
+            }
+            let mut store = core.store.lock().await;
+            match crate::checkpoint::name_checkpoint(
+                core,
+                &mut store,
+                &task,
+                &actor,
+                checkpoint,
+                &p.name,
+                Some(record("NameCheckpoint")),
+            ) {
+                Ok(n) => accept(
+                    cid,
+                    n.replayed,
+                    wire::CheckpointNamed {
+                        task_id: Some(wire_id(task_id.as_bytes())),
+                        checkpoint_id: n.checkpoint_id.to_string(),
+                        name: p.name.clone(),
+                        offset: n.offset,
+                        replayed: n.replayed,
+                    }
+                    .encode_to_vec(),
+                ),
+                Err(r) => reject(cid, r.code, r.detail),
+            }
+        }
+        "RunCheckpointGc" => {
+            let Ok(p) = wire::RunCheckpointGc::decode(env.payload.as_slice()) else {
+                return reject(cid, "BAD_PAYLOAD", "RunCheckpointGc");
+            };
+            crate::checkpoint_gc::run_command(core, &env, p, &actor).await
         }
         "GetRoutingSessionState" => {
             let Ok(p) = wire::GetRoutingSessionState::decode(env.payload.as_slice()) else {
@@ -3540,13 +3896,14 @@ async fn handle_command(core: &Arc<Core>, env: CommandEnvelope) -> CommandAck {
             let Some(task_id) = p.task_id.as_ref().and_then(id16).map(TaskId::from_bytes) else {
                 return reject(cid, "BAD_PAYLOAD", "task_id required");
             };
-            let target = if p.checkpoint_id.is_empty() {
-                None
-            } else {
-                match modbit_domain::CheckpointId::parse(&p.checkpoint_id) {
-                    Ok(id) => Some(id),
-                    Err(_) => return reject(cid, "BAD_PAYLOAD", "checkpoint_id is not an id"),
-                }
+            let spec = match crate::checkpoint::target_spec(
+                &p.checkpoint_id,
+                &p.name,
+                p.turn_ordinal,
+                p.turn_id.as_ref(),
+            ) {
+                Ok(s) => s,
+                Err(e) => return reject(cid, "BAD_PAYLOAD", e),
             };
             let task = {
                 let store = core.store.lock().await;
@@ -3559,6 +3916,24 @@ async fn handle_command(core: &Arc<Core>, env: CommandEnvelope) -> CommandAck {
             if task.workspace_root.is_none() {
                 return reject(cid, "NO_WORKSPACE", "the task has no workspace root");
             }
+            let target = {
+                let store = core.store.lock().await;
+                match crate::checkpoint::resolve_target(&store, &task, &spec) {
+                    Ok(t) => t,
+                    Err(refused) => {
+                        return accept(
+                            cid,
+                            false,
+                            wire::RewindPreview {
+                                refusal: refused.code.to_owned(),
+                                detail: refused.detail,
+                                ..Default::default()
+                            }
+                            .encode_to_vec(),
+                        );
+                    }
+                }
+            };
             // A preview is a read: no lease, no event, no write.
             match crate::branch::preview_rewind(core, &task, target).await {
                 Ok(Ok(pv)) => {
@@ -3620,14 +3995,16 @@ async fn handle_command(core: &Arc<Core>, env: CommandEnvelope) -> CommandAck {
             let Some(task_id) = p.task_id.as_ref().and_then(id16).map(TaskId::from_bytes) else {
                 return reject(cid, "BAD_PAYLOAD", "task_id required");
             };
-            let checkpoint = if p.checkpoint_id.is_empty() {
-                None
-            } else {
-                match modbit_domain::CheckpointId::parse(&p.checkpoint_id) {
-                    Ok(id) => Some(id),
-                    Err(_) => return reject(cid, "BAD_PAYLOAD", "checkpoint_id is not an id"),
-                }
+            let spec = match crate::checkpoint::target_spec(
+                &p.checkpoint_id,
+                &p.checkpoint_name,
+                p.turn_ordinal,
+                p.turn_id.as_ref(),
+            ) {
+                Ok(s) => s,
+                Err(e) => return reject(cid, "BAD_PAYLOAD", e),
             };
+            let named_fork_point = spec != crate::checkpoint::TargetSpec::Current;
             let mut carry = Vec::new();
             for c in &p.carry {
                 match modbit_checkpoint::Carry::parse(c) {
@@ -3656,16 +4033,32 @@ async fn handle_command(core: &Arc<Core>, env: CommandEnvelope) -> CommandAck {
             if source.workspace_root.is_none() {
                 return reject(cid, "NO_WORKSPACE", "the source task has no workspace root");
             }
-            if core.runtime.is_running(&task_id).await {
+            // A named fork point (a turn, a label, a checkpoint) is an
+            // immutable chain: the fork reads nothing the running source is
+            // changing, so it may be taken while the source runs (REQ-PX-061).
+            // "The current checkpoint" of a running source is still moving.
+            if !named_fork_point && core.runtime.is_running(&task_id).await {
                 return reject(
                     cid,
                     "TASK_RUNNING",
-                    "the source's agent loop is executing; fork from a checkpoint once it stops",
+                    "the source's agent loop is executing; fork from a named checkpoint or turn, or once it stops",
                 );
             }
             if let Err(ack) = require_lease(core, &cid, &env, &source.session_id).await {
                 return ack;
             }
+            let (checkpoint, turn) = {
+                let store = core.store.lock().await;
+                match crate::checkpoint::resolve_target(&store, &source, &spec) {
+                    Ok(t) => {
+                        let l = crate::checkpoint::ledger(&store, &source);
+                        let turn =
+                            t.and_then(|c| crate::checkpoint::turn_of(&l, &c.to_string()).cloned());
+                        (t, turn)
+                    }
+                    Err(refused) => return reject(cid, refused.code, refused.detail),
+                }
+            };
             let new_task_id = TaskId::from_bytes(command_id);
             {
                 let store = core.store.lock().await;
@@ -3721,11 +4114,199 @@ async fn handle_command(core: &Arc<Core>, env: CommandEnvelope) -> CommandAck {
                         calls_dropped: f.calls_dropped,
                         files_materialized: f.files_materialized,
                         offset: f.offset,
+                        turn_id: turn
+                            .as_ref()
+                            .and_then(|t| modbit_domain::TurnId::parse(&t.turn_id).ok())
+                            .map(|t| wire_id(t.as_bytes())),
+                        turn_ordinal: turn.as_ref().map_or(0, |t| t.turn_ordinal),
                     }
                     .encode_to_vec(),
                 ),
                 Ok(Err(refused)) => reject(cid, refused.code, refused.detail),
                 Err(e) => reject(cid, "FORK", e.to_string()),
+            }
+        }
+        "GetTranscript" => {
+            let Ok(p) = wire::GetTranscript::decode(env.payload.as_slice()) else {
+                return reject(cid, "BAD_PAYLOAD", "GetTranscript");
+            };
+            let Some(task_id) = p.task_id.as_ref().and_then(id16).map(TaskId::from_bytes) else {
+                return reject(cid, "BAD_PAYLOAD", "task_id required");
+            };
+            let store = core.store.lock().await;
+            let task = match store.task(&task_id) {
+                Ok(Some(t)) => t,
+                Ok(None) => return reject(cid, "UNKNOWN_TASK", task_id.to_string()),
+                Err(e) => return reject(cid, error_code(&e), e.to_string()),
+            };
+            // A conversation is read inside its own session: a command that
+            // names another session is refused, not answered.
+            if let Some(named) = env.session_id.as_ref().and_then(id16)
+                && named != *task.session_id.as_bytes()
+            {
+                return reject(cid, "WRONG_SESSION", "the task belongs to another session");
+            }
+            let density = wire::TranscriptDensity::try_from(p.density)
+                .unwrap_or(wire::TranscriptDensity::Unspecified);
+            match crate::transcript::page(
+                &store,
+                &task,
+                &crate::transcript::PageRequest {
+                    density,
+                    after_row: p.after_row,
+                    limit: p.limit,
+                    as_of_offset: p.as_of_offset,
+                },
+            ) {
+                Ok(page) => accept(cid, false, page.encode_to_vec()),
+                Err((code, message)) => reject(cid, code, message),
+            }
+        }
+        "GetAgentHeaders" => {
+            let Ok(p) = wire::GetAgentHeaders::decode(env.payload.as_slice()) else {
+                return reject(cid, "BAD_PAYLOAD", "GetAgentHeaders");
+            };
+            let Some(session_id) = p
+                .session_id
+                .as_ref()
+                .and_then(id16)
+                .map(SessionId::from_bytes)
+            else {
+                return reject(cid, "BAD_PAYLOAD", "session_id required");
+            };
+            let store = core.store.lock().await;
+            match store.session(&session_id) {
+                Ok(Some(_)) => {}
+                Ok(None) => return reject(cid, "UNKNOWN_SESSION", session_id.to_string()),
+                Err(e) => return reject(cid, error_code(&e), e.to_string()),
+            }
+            match crate::transcript::headers(core, &store, session_id, p.include_archived) {
+                Ok(h) => accept(cid, false, h.encode_to_vec()),
+                Err((code, message)) => reject(cid, code, message),
+            }
+        }
+        "MarkRead" | "ArchiveTask" => {
+            let (task_id, up_to, archive) = if env.command_type == "MarkRead" {
+                let Ok(p) = wire::MarkRead::decode(env.payload.as_slice()) else {
+                    return reject(cid, "BAD_PAYLOAD", "MarkRead");
+                };
+                (p.task_id, p.up_to_offset, None)
+            } else {
+                let Ok(p) = wire::ArchiveTask::decode(env.payload.as_slice()) else {
+                    return reject(cid, "BAD_PAYLOAD", "ArchiveTask");
+                };
+                (p.task_id, 0, Some(p.archived))
+            };
+            let Some(task_id) = task_id.as_ref().and_then(id16).map(TaskId::from_bytes) else {
+                return reject(cid, "BAD_PAYLOAD", "task_id required");
+            };
+            let task = {
+                let store = core.store.lock().await;
+                match store.task(&task_id) {
+                    Ok(Some(t)) => t,
+                    Ok(None) => return reject(cid, "UNKNOWN_TASK", task_id.to_string()),
+                    Err(e) => return reject(cid, error_code(&e), e.to_string()),
+                }
+            };
+            if let Err(ack) = require_lease(core, &cid, &env, &task.session_id).await {
+                return ack;
+            }
+            let mut store = core.store.lock().await;
+            // A retried command answers with what it did the first time, whatever
+            // the conversation looks like now.
+            match store.prior_command(&record(&env.command_type)) {
+                Ok(Some(CommandOutcome::Replayed(events) | CommandOutcome::Applied(events))) => {
+                    return accept(cid, true, conversation_result(&store, &events, task_id));
+                }
+                Ok(None) => {}
+                Err(e) => return reject(cid, error_code(&e), e.to_string()),
+            }
+            let digest = match store.task_digests(&task.session_id) {
+                Ok(d) => d.into_iter().find(|d| d.task_id == task_id),
+                Err(e) => return reject(cid, error_code(&e), e.to_string()),
+            };
+            let (read_offset, archived) =
+                digest.map_or((0, false), |d| (d.read_offset, d.archived));
+            let tip = store.last_offset().unwrap_or(0);
+            let event = match archive {
+                None => {
+                    if up_to > tip {
+                        return reject(
+                            cid,
+                            "INVALID_CURSOR",
+                            format!("up_to_offset {up_to} is beyond the log at {tip}"),
+                        );
+                    }
+                    let to = if up_to == 0 { tip } else { up_to };
+                    if to <= read_offset {
+                        // Already read that far: nothing to record.
+                        return accept(
+                            cid,
+                            false,
+                            wire::ReadMarked {
+                                task_id: Some(wire_id(task_id.as_bytes())),
+                                read_offset,
+                                offset: 0,
+                            }
+                            .encode_to_vec(),
+                        );
+                    }
+                    modbit_domain::conversation::ConversationEvent::ConversationRead {
+                        up_to_offset: to,
+                    }
+                }
+                Some(want) => {
+                    if want == archived {
+                        return accept(
+                            cid,
+                            false,
+                            wire::TaskArchived {
+                                task_id: Some(wire_id(task_id.as_bytes())),
+                                archived,
+                                offset: 0,
+                            }
+                            .encode_to_vec(),
+                        );
+                    }
+                    // Archiving a running task would stop it silently; the
+                    // client cancels it first, as its own recorded event.
+                    if want && task.state == modbit_domain::task::TaskState::Running {
+                        return reject(
+                            cid,
+                            "TASK_RUNNING",
+                            "cancel the running task before archiving it",
+                        );
+                    }
+                    if want {
+                        modbit_domain::conversation::ConversationEvent::ConversationArchived
+                    } else {
+                        modbit_domain::conversation::ConversationEvent::ConversationUnarchived
+                    }
+                }
+            };
+            let req = AppendRequest {
+                tenant_id: core.tenant_id,
+                session_id: task.session_id,
+                task_id: Some(task_id),
+                run_id: None,
+                turn_id: None,
+                step_id: None,
+                aggregate_type: AggregateType::Conversation,
+                aggregate_id: modbit_domain::conversation::aggregate_id(task_id),
+                expected_sequence: None,
+                events: vec![typed(event.event_type(), &event, actor)],
+            };
+            match store.execute_command(record(&env.command_type), req) {
+                Ok(outcome) => {
+                    let (events, replayed) = split(outcome);
+                    let offset = events.last().map(|e| e.offset).unwrap_or(0);
+                    if !replayed {
+                        core.last_offset.send_replace(offset);
+                    }
+                    let result = conversation_result(&store, &events, task_id);
+                    accept(cid, replayed, result)
+                }
+                Err(e) => reject(cid, error_code(&e), e.to_string()),
             }
         }
         "GetSessionTree" => {
@@ -3900,7 +4481,9 @@ async fn handle_command(core: &Arc<Core>, env: CommandEnvelope) -> CommandAck {
             let Some(task_id) = p.task_id.as_ref().and_then(id16).map(TaskId::from_bytes) else {
                 return reject(cid, "BAD_PAYLOAD", "task_id required");
             };
-            let view = crate::routing::view(core, task_id).await;
+            let mut view = crate::routing::view(core, task_id).await;
+            // PX-053: what the user asked for, and what routing did with it.
+            crate::tasking::annotate_routing(core, task_id, &mut view).await;
             accept(cid, false, view.encode_to_vec())
         }
         // REQ-EV-0040/0041: the configuration a task is decided under.
@@ -3949,6 +4532,7 @@ async fn handle_command(core: &Arc<Core>, env: CommandEnvelope) -> CommandAck {
                     })
                     .collect(),
                 rejected_widenings: cfg.rejected_widenings.clone(),
+                posture: crate::tasking::posture_for(core, &*core.store.lock().await, &task),
             };
             accept(cid, false, view.encode_to_vec())
         }
@@ -5044,6 +5628,12 @@ async fn handle_command(core: &Arc<Core>, env: CommandEnvelope) -> CommandAck {
                 Err((code, detail)) => reject(cid, &code, detail),
             }
         }
+        "SetTaskBudgets" => {
+            crate::budgets::set(core, cid, &env, record("SetTaskBudgets"), actor).await
+        }
+        "ListSkills" | "TrustSkill" | "UntrustSkill" => {
+            crate::skills::handle(core, cid, &env, actor).await
+        }
         "ListHooks" => {
             let Ok(p) = wire::ListHooks::decode(env.payload.as_slice()) else {
                 return reject(cid, "BAD_PAYLOAD", "ListHooks");
@@ -5211,7 +5801,7 @@ async fn handle_command(core: &Arc<Core>, env: CommandEnvelope) -> CommandAck {
             )
         }
         "StartTask" => {
-            let Ok(p) = wire::StartTask::decode(env.payload.as_slice()) else {
+            let Ok(mut p) = wire::StartTask::decode(env.payload.as_slice()) else {
                 return reject(cid, "BAD_PAYLOAD", "StartTask");
             };
             let Some(task_id) = p.task_id.as_ref().and_then(id16).map(TaskId::from_bytes) else {
@@ -5369,6 +5959,20 @@ async fn handle_command(core: &Arc<Core>, env: CommandEnvelope) -> CommandAck {
                         return reject(cid, "BROWSER_HOST", why);
                     }
                 }
+            }
+            // PX-053 / PX-100: the objective, effort and tier this start
+            // carries are validated and recorded on the task before the run
+            // routes, so the router's first compile reads them. A manual pin
+            // the user recorded earlier is the model of a start that names
+            // none; it is then a pin like any other (never switched away from,
+            // never past the policy).
+            match crate::tasking::on_start(core, &task, p.preference.as_ref(), &actor).await {
+                Ok(Some((e, m))) if p.model.is_empty() && p.endpoint.is_empty() => {
+                    p.endpoint = e;
+                    p.model = m;
+                }
+                Ok(_) => {}
+                Err((code, why)) => return reject(cid, &code, why),
             }
             // Model policy: request → environment defaults → first registered.
             let endpoints = core.gateway.endpoints();
@@ -6222,6 +6826,8 @@ async fn handle_command(core: &Arc<Core>, env: CommandEnvelope) -> CommandAck {
                     evidence_refs,
                     diagnostic_features,
                     user_explanation,
+                    // PX-051 / PX-053: the mode in force and the preference.
+                    posture: crate::tasking::posture_for(core, &store, &task),
                 }
                 .encode_to_vec(),
             )
@@ -6644,7 +7250,7 @@ fn receipt_view(r: &modbit_domain::toolcall::EffectReceipt) -> wire::EffectRecei
     }
 }
 
-fn typed<E: serde::Serialize>(event_type: &str, e: &E, actor: Actor) -> NewEvent {
+pub(crate) fn typed<E: serde::Serialize>(event_type: &str, e: &E, actor: Actor) -> NewEvent {
     let mut ev = NewEvent::new(
         event_type,
         serde_json::to_value(e).expect("serializable domain event"),
@@ -6654,7 +7260,32 @@ fn typed<E: serde::Serialize>(event_type: &str, e: &E, actor: Actor) -> NewEvent
     ev
 }
 
-fn split(outcome: CommandOutcome) -> (Vec<StoredEvent>, bool) {
+/// What a `MarkRead` or `ArchiveTask` answered, read back from the event it
+/// appended, so a replay answers exactly as the first run did.
+fn conversation_result(store: &EventStore, events: &[StoredEvent], task_id: TaskId) -> Vec<u8> {
+    let offset = events.last().map_or(0, |e| e.offset);
+    let payload = events
+        .last()
+        .and_then(|e| store.payload(&e.envelope).ok())
+        .unwrap_or_default();
+    let task = Some(wire_id(task_id.as_bytes()));
+    match events.last().map(|e| e.envelope.event_type.as_str()) {
+        Some(modbit_domain::conversation::READ) => wire::ReadMarked {
+            task_id: task,
+            read_offset: payload["up_to_offset"].as_u64().unwrap_or(0),
+            offset,
+        }
+        .encode_to_vec(),
+        other => wire::TaskArchived {
+            task_id: task,
+            archived: other == Some(modbit_domain::conversation::ARCHIVED),
+            offset,
+        }
+        .encode_to_vec(),
+    }
+}
+
+pub(crate) fn split(outcome: CommandOutcome) -> (Vec<StoredEvent>, bool) {
     match outcome {
         CommandOutcome::Applied(e) => (e, false),
         CommandOutcome::Replayed(e) => (e, true),

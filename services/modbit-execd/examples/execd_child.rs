@@ -88,6 +88,31 @@ fn main() {
                 }
             }
         }
+        // PX-099: a child that reports the size of the terminal it runs on,
+        // as the kernel tells it (`stty size` reads the tty it inherits): at
+        // start, then on every input line `size`; `quit` ends it. Unix only
+        // (the test that uses it is gated, with the reason).
+        "stty-size" => {
+            let report = |out: &mut std::io::StdoutLock<'_>| {
+                let text = std::process::Command::new("stty")
+                    .arg("size")
+                    .stdin(std::process::Stdio::inherit())
+                    .output()
+                    .map(|o| String::from_utf8_lossy(&o.stdout).trim().to_owned())
+                    .unwrap_or_else(|e| format!("stty failed: {e}"));
+                writeln!(out, "size={text}").unwrap();
+                out.flush().unwrap();
+            };
+            report(&mut out);
+            let stdin = std::io::stdin();
+            for line in stdin.lock().lines() {
+                match line.unwrap().trim() {
+                    "size" => report(&mut out),
+                    "quit" => break,
+                    _ => {}
+                }
+            }
+        }
         other => {
             eprintln!("unknown role {other}");
             std::process::exit(2);

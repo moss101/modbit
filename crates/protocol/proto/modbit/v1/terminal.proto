@@ -1,0 +1,177 @@
+// The terminal stream and the background-terminal registry, as clients see
+// them (PX-043, PX-099; docs/21 "Durable modbit-execd", docs/65 AFW-I03/I04).
+// Commands travel as CommandEnvelope payloads named by `command_type`; the
+// stream arrives as `SurfaceFrame.terminal_frame` on the connection that
+// attached. The broker's own frames (ack, resize, lease) live in exec.proto.
+syntax = "proto3";
+
+package modbit.v1;
+
+import "modbit/v1/domain.proto";
+
+// One terminal the broker holds, as the registry lists it.
+message TerminalView {
+  string session_id = 1;            // the durable handle
+  Id task_id = 2;                   // the owning task; absent for a host-owned terminal
+  string owner = 3;                 // agent | host
+  repeated string argv = 4;
+  string title = 5;                 // the command, for a tray row
+  string state = 6;                 // RUNNING | EXITED | KILLED | LOST
+  optional int32 exit_code = 7;
+  int64 started_at_ms = 8;
+  uint64 elapsed_ms = 9;            // the running timer: now - started while running, the run's duration after
+  uint64 bytes_so_far = 10;         // the output head: the cursor a live attach reaches
+  uint64 oldest_cursor = 11;        // the oldest cursor still replayable
+  uint64 replay_window_bytes = 12;  // the replay-window policy: bytes of output kept replayable
+  bool pty = 13;
+  uint32 rows = 14;
+  uint32 cols = 15;
+  string input_lease_holder = 16;   // "" = no person holds the input lease
+  string output_ref = 17;           // the sealed output, once the process ended
+  string cwd = 18;
+  bool timed_out = 19;
+}
+
+// List the background terminals of every task (or one). Readable by every
+// client; the owner is shown, never hidden.
+message ListTerminals {
+  Id task_id = 1;                   // absent = every task
+}
+
+message TerminalList {
+  repeated TerminalView terminals = 1;
+  int64 now_ms = 2;                 // the Core's clock the elapsed timers were computed at
+  uint64 default_window_bytes = 3;  // the acknowledgement window an attach gets by default
+  uint64 stall_ms = 4;              // how long a full window waits for an ack
+}
+
+// Attach to a terminal from a cursor. The task must own the session
+// (SESSION_NOT_OWNED otherwise). Output follows as `terminal_frame`s, at most
+// `window_bytes` beyond the last AckTerminal; a cursor older than the replay
+// window is CURSOR_EXPIRED (message: oldest_cursor=<n>), one beyond the head
+// CURSOR_BEYOND_HEAD (message: head=<n>). With `take_input_lease` the person
+// takes the terminal's input lease (the agent's shell.input is refused
+// INPUT_LEASED while it is held); that needs the session lease like any
+// mutating command.
+message AttachTerminal {
+  Id task_id = 1;
+  string session_id = 2;
+  uint64 after_cursor = 3;
+  uint64 window_bytes = 4;          // 0 = the default; clamped to 4 KiB..4 MiB
+  bool take_input_lease = 5;
+  bool steal_input_lease = 6;       // take it from another person's attachment
+}
+
+message TerminalAttached {
+  string attach_id = 1;
+  TerminalView terminal = 2;
+  uint64 after_cursor = 3;
+  uint64 window_bytes = 4;          // the window in force
+  uint64 stall_ms = 5;
+  bool input_lease_held = 6;
+}
+
+// The client has consumed the output up to `cursor` (the cursor after its
+// last byte) and the Core may send that much more.
+message AckTerminal {
+  string attach_id = 1;
+  uint64 cursor = 2;
+}
+
+message TerminalAcked {
+  uint64 acked_cursor = 1;
+}
+
+message DetachTerminal {
+  string attach_id = 1;
+}
+
+message TerminalDetached {
+  bool was_attached = 1;
+  uint64 acked_cursor = 2;          // where to resume from
+}
+
+// Take or give back the input lease of an attachment already made.
+message SetTerminalInput {
+  string attach_id = 1;
+  bool hold = 2;
+  bool steal = 3;
+}
+
+message TerminalInputSet {
+  bool held = 1;
+  string holder = 2;
+  uint64 offset = 3;                // the journal offset of the recorded change
+}
+
+// Change the terminal's size to the viewer's. Recorded on the task.
+message ResizeTerminal {
+  string attach_id = 1;
+  uint32 rows = 2;
+  uint32 cols = 3;
+}
+
+message TerminalResizeDone {
+  uint32 rows = 1;
+  uint32 cols = 2;
+  uint64 offset = 3;
+}
+
+// A person's keystrokes, accepted only while the attachment holds the input
+// lease (LEASE_REQUIRED otherwise); at most 64 KiB. The bytes are never
+// journaled: the task's log records that input was written and how much.
+message WriteTerminal {
+  string attach_id = 1;
+  bytes data = 2;
+}
+
+message TerminalWritten {
+  uint64 bytes = 1;
+  uint64 cursor = 2;                // the output head when the bytes were written
+  uint64 offset = 3;
+}
+
+// One slice of a terminal stream.
+message TerminalOutput {
+  uint64 cursor = 1;                // the byte offset of data[0] in the session's output
+  string stream = 2;                // stdout | stderr | pty
+  bytes data = 3;
+}
+
+message TerminalExit {
+  optional int32 exit_code = 1;
+  optional int32 signal = 2;
+  uint64 duration_ms = 3;
+  string output_ref = 4;
+  uint64 total_bytes = 5;
+  bool timed_out = 6;
+  bool cancelled = 7;
+  uint64 retained_from = 8;
+}
+
+// The attachment ended without the process ending. `reason`: CURSOR_EXPIRED
+// (oldest_cursor says where the window starts), SLOW_CONSUMER (the client
+// did not acknowledge in time: resume from resume_cursor), STALE_GENERATION,
+// BROKER_LOST, BROKER_ERROR.
+message TerminalEnded {
+  string reason = 1;
+  string message = 2;
+  uint64 oldest_cursor = 3;
+  uint64 resume_cursor = 4;
+}
+
+message TerminalLeaseChanged {
+  bool held = 1;
+  string holder = 2;
+}
+
+message TerminalFrame {
+  string attach_id = 1;
+  string session_id = 2;
+  oneof body {
+    TerminalOutput output = 3;
+    TerminalExit exited = 4;
+    TerminalEnded ended = 5;
+    TerminalLeaseChanged lease = 6;
+  }
+}

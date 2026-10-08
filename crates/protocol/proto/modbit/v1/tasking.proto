@@ -1,0 +1,135 @@
+// Task mode and execution preference (PX-051, PX-053, PX-100; docs/65
+// AFW-D03, AFW-D05, AFW-D13, AFW-D14; docs/30 `SetExecutionPreference`).
+//
+// A task carries a typed mode. The Core derives the capability posture from
+// it and the Capability Kernel enforces it: a posture can only narrow what the
+// task's execution profile already allows. A client sends the mode name and
+// nothing else; there is no message here with which a client states, grants
+// or widens a posture.
+//
+// An execution preference is the user's intent about how a task is run: an
+// objective profile (what the router optimises), a reasoning effort, a service
+// tier and, where the policy allows it, a manual model pin. It is recorded on
+// the task as an event. The router reads it at the next boundary; nothing in
+// this file changes how routing, quality floors, gates or statistics work.
+//
+// Field numbers 140-159 of the existing messages that gain a field here
+// (CreateTask, StartTask, TaskStatus, TaskView, RoutingPlanView,
+// EffectivePolicyView) are reserved for this area.
+syntax = "proto3";
+
+package modbit.v1;
+
+import "modbit/v1/domain.proto";
+
+// The task's mode (docs/65 AFW-D03). UNSPECIFIED is never stored: at creation
+// it means AGENT; in `SetTaskMode` it is refused.
+enum TaskMode {
+  TASK_MODE_UNSPECIFIED = 0;
+  TASK_MODE_AGENT = 1;      // the default; no narrowing beyond the profile
+  TASK_MODE_PLAN = 2;       // reads and a plan only; writes nothing until the plan is accepted
+  TASK_MODE_DEBUG = 3;      // reproduction before a fix is mandatory (PX-039)
+  TASK_MODE_MULTITASK = 4;  // subagent admission with capacity tickets
+  TASK_MODE_ASK = 5;        // read-only: no write and no execution effect
+}
+
+// What the router optimises (docs/27 `objective_mode`, docs/38). UNSPECIFIED in
+// a patch keeps the recorded value.
+enum ObjectiveProfile {
+  OBJECTIVE_PROFILE_UNSPECIFIED = 0;
+  OBJECTIVE_PROFILE_COST = 1;
+  OBJECTIVE_PROFILE_BALANCE = 2;
+  OBJECTIVE_PROFILE_INTELLIGENCE = 3;
+}
+
+// The user's execution preference. As a command payload it is a patch: an
+// unset field keeps what is recorded; `effort` and `service_tier` accept
+// "default" to return to the catalog entry's own value.
+message ExecutionPreference {
+  ObjectiveProfile objective = 1;
+  string effort = 2;            // low | medium | high | default
+  string service_tier = 3;      // a tier name (letters, digits, underscore) | default
+  string pin_endpoint = 4;      // a manual model pin: both or neither
+  string pin_model = 5;
+  bool clear_pin = 6;           // drop a recorded pin
+}
+
+// What the router did, or will do, with the preference. With no signed
+// registry active the outcome is DIRECT and the reason says so.
+message RoutingOutcomeView {
+  string outcome = 1;           // DIRECT | ROUTED | PINNED | NOT_YET_EVALUATED
+  string reason_code = 2;       // NO_ACTIVE_REGISTRY | FLOOR_APPLIED | FLOOR_UNDEFINED | MANUAL_PIN | ...
+  string detail = 3;
+  string floor_mode = 4;        // the registry floor row the objective selected, when a registry compiled
+}
+
+// The preference as recorded, with the event that recorded it and the one at
+// which routing last applied it.
+message ExecutionPreferenceView {
+  ObjectiveProfile objective = 1;
+  string effort = 2;
+  string service_tier = 3;
+  string pin_endpoint = 4;
+  string pin_model = 5;
+  uint64 offset = 6;            // the ExecutionPreferenceSet event (0 = none recorded)
+  uint64 applied_offset = 7;    // the preference event routing has applied (0 = none yet)
+  string effort_applied = 8;    // what the last dispatch carried
+  string service_tier_applied = 9;
+}
+
+// ---- SetTaskMode ----
+
+message SetTaskMode {
+  Id task_id = 1;
+  TaskMode mode = 2;
+  string reason = 3;            // for the log; never read as an instruction
+}
+
+message TaskModeChanged {
+  Id task_id = 1;
+  TaskMode mode = 2;
+  TaskMode previous_mode = 3;
+  string effective = 4;         // IMMEDIATE (no run in flight) | NEXT_ROUND_BOUNDARY
+  uint64 offset = 5;
+  uint32 accepted_plan_version = 6; // leaving PLAN: the plan version the user accepted (0 = none)
+}
+
+// ---- SetExecutionPreference ----
+
+message SetExecutionPreference {
+  Id task_id = 1;
+  ExecutionPreference preference = 2;
+}
+
+message ExecutionPreferenceSet {
+  Id task_id = 1;
+  ExecutionPreferenceView preference = 2;
+  uint64 offset = 3;
+  string effective = 4;         // IMMEDIATE | NEXT_ROUND_BOUNDARY | NEXT_RUN (a pin)
+  RoutingOutcomeView routing = 5;
+}
+
+// ---- GetTaskPosture ----
+
+message GetTaskPosture {
+  Id task_id = 1;
+}
+
+// The posture the Core derived from a mode.
+message ModePostureView {
+  string effect_ceiling = 1;                 // READ_ONLY | none (the profile's own ceiling)
+  repeated string allowed_capabilities = 2;  // empty = the profile's own
+  bool subagents = 3;                        // whether agent.spawn is admitted
+  bool reproduction_first = 4;               // a fix needs a reproduction (PX-039)
+  bool writes = 5;                           // whether any write or execution effect can be admitted
+}
+
+message TaskPostureView {
+  Id task_id = 1;
+  TaskMode mode = 2;                // the latest the user set
+  uint64 mode_offset = 3;           // the event that set it
+  TaskMode mode_in_force = 4;       // the posture the kernel enforces right now; differs from `mode` until the next round boundary
+  ModePostureView posture = 5;      // of mode_in_force
+  ExecutionPreferenceView preference = 6;
+  RoutingOutcomeView routing = 7;
+}

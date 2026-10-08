@@ -1,0 +1,109 @@
+// Skills a user can use, and budgets that cover a task's whole tree
+// (REQ-PX-052, REQ-PX-105, REQ-PX-116; docs/62, docs/79 ADC-A08, ADC-C03).
+//
+// Additive: new messages only. The fields this wave adds to existing
+// messages (StartTask, TaskEconomicsView in surface.proto) use the field
+// block 240-259.
+syntax = "proto3";
+
+package modbit.v1;
+
+import "modbit/v1/domain.proto";
+
+// `ListSkills` (read): the skill inventory a client shows in its slash menu
+// and a Customize view. Without a task it lists the profile and the system
+// scope; with one it adds the task's project and extension skills and says
+// which the run selects. It returns no skill body and no secret.
+message ListSkills {
+  Id task_id = 1;                  // optional: the task whose project/extension skills are listed
+}
+
+message SkillView {
+  string name = 1;
+  string version = 2;
+  string description = 3;
+  // SYSTEM | PROJECT | EXTENSION | USER (precedence order: the first scope
+  // that carries a name wins it; SYSTEM cannot be shadowed).
+  string scope = 4;
+  string content_hash = 5;         // sha256 over every file of the package
+  // SYSTEM | SIGNED | TRUSTED_BY_OWNER | DEV_FLAG | UNTRUSTED |
+  // CHANGED_SINCE_TRUSTED | REVOKED | FORBIDDEN — the state that decides
+  // whether the skill can reach a model.
+  string trust = 6;
+  string trust_detail = 7;         // why, in a sentence
+  bool enabled = 8;                // trust allows it to reach a model
+  // BOTH | USER_ONLY (from the skill's `model_invocable` metadata)
+  string invocation = 9;
+  repeated string paths = 10;      // path globs that gate its activation; empty = always
+  bool paths_active = 11;          // a matching path is active for the task (true when ungated)
+  uint32 index_tokens = 12;        // what its index line costs in the prompt budget
+  bool indexed = 13;               // its line is in the model's skill index for this task
+  string index_form = 14;          // FULL | SHORT | NAME_ONLY | OMITTED | NOT_INDEXED
+  bool selected = 15;              // the run injects its body (explicit or trigger)
+  string source = 16;              // directory it was loaded from
+  string provenance_source = 17;
+  string provenance_author = 18;
+  string provenance_license = 19;
+  repeated string required_tools = 20;
+  string lifecycle = 21;           // INCUBATOR | EVALUATED | SIGNED | ENABLED
+}
+
+message SkillRefusalView {
+  string source = 1;               // the directory or name
+  string code = 2;
+  string reason = 3;
+}
+
+message SkillList {
+  repeated SkillView skills = 1;   // scope order, then name
+  repeated SkillRefusalView rejected = 2;  // packages that could not be loaded
+  uint32 index_budget_tokens = 3;  // the aggregate budget of the skill segment
+  uint32 index_used_tokens = 4;
+  uint32 index_omitted = 5;        // skills dropped from the index for want of budget
+  string system_root = 6;          // where the System scope is read from
+}
+
+// `TrustSkill`: the owner's content-hash-bound decision that a skill may
+// reach a model. Held per profile; a changed file is untrusted again. A
+// skill's own text never enables it, and neither does an environment flag.
+message TrustSkill {
+  string name = 1;
+  string content_hash = 2;         // required: the hash the owner reviewed
+  Id task_id = 3;                  // optional: names the workspace whose project skills are in view
+}
+
+message UntrustSkill {
+  string name = 1;
+  string content_hash = 2;         // empty = every hash of the name
+}
+
+message SkillTrustResult {
+  string name = 1;
+  string content_hash = 2;
+  string trust = 3;                // the state after the decision
+  uint32 records = 4;              // trust records held for the name
+}
+
+// ---- REQ-PX-116: budgets that cover a task's whole tree ----
+
+// `SetTaskBudgets`: the cost, wall-clock and delegation limits of a task,
+// recorded on its log (they survive a restart and bind every later run).
+// Each limit only ever applies as stated: the turn and tool-call limits
+// stay on StartTask. A limit of 0 is "none" for cost and wall clock and
+// "the default" for max_children. Children draw on the parent's remainder:
+// a child's budget is clamped to it and reserved against it at admission.
+message SetTaskBudgets {
+  Id task_id = 1;
+  uint64 max_cost_minor = 2;       // in the active model registry's minor units
+  uint64 max_wall_ms = 3;          // across the task's runs
+  uint32 max_children = 4;         // live children at once
+  bool forbid_spawn = 5;           // no agent.spawn for this task
+}
+
+message TaskBudgetsView {
+  uint64 max_cost_minor = 1;
+  uint64 max_wall_ms = 2;
+  uint32 max_children = 3;
+  bool forbid_spawn = 4;
+  uint64 offset = 5;               // the log offset of the decision
+}

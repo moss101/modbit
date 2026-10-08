@@ -89,6 +89,7 @@ fn fixture() -> Fixture {
         secrets_in_custody: vec![],
         environment: None,
         memory: None,
+        skills: None,
         external: None,
         cancel: None,
         hooks: None,

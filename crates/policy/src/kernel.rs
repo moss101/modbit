@@ -11,7 +11,9 @@
 //!    [`ResourceTarget`]s, and a selector that cannot be read fails closed;
 //! 3. the [`PolicyEnvelope`] (admin/device authority) denies capabilities and
 //!    caps the effect class per execution profile; nothing downstream widens it
-//!    (REQ-EV-0091, REQ-EV-0093, REQ-EV-0045);
+//!    (REQ-EV-0091, REQ-EV-0093, REQ-EV-0045). The task's mode posture
+//!    (PX-051) follows the envelope: a mode can only narrow it (an effect
+//!    ceiling, an allowed-capability set), never widen it;
 //! 4. the lease's own effect ceiling;
 //! 5. the resolved configuration's per-capability permission (`DENY` denies,
 //!    `ASK` escalates);
@@ -29,6 +31,7 @@ use std::collections::{BTreeMap, BTreeSet};
 use modbit_domain::Timestamp;
 use modbit_domain::approval::Approval;
 use modbit_domain::lease::CapabilityLease;
+use modbit_domain::mode::TaskMode;
 use modbit_domain::toolcall::EffectClass;
 use serde::{Deserialize, Serialize};
 
@@ -223,6 +226,9 @@ pub struct KernelRequest<'a> {
     pub required_capabilities: &'a [String],
     /// Task execution profile.
     pub execution_profile: &'a str,
+    /// The task's mode, as the run's round boundary adopted it (PX-051): its
+    /// posture narrows the profile's envelope and never widens it.
+    pub mode: TaskMode,
     /// Lease presented, if any.
     pub lease: Option<&'a CapabilityLease>,
     /// Resources the call touches, resolved by the host (never argument
@@ -287,6 +293,26 @@ impl CapabilityKernel {
     #[must_use]
     pub fn envelope(&self) -> &PolicyEnvelope {
         &self.envelope
+    }
+
+    /// The denial a task's mode posture gives a call, when it gives one
+    /// (PX-051). Public so the host can refuse a call the mode forbids before
+    /// anything else judges it, with the same typed code the kernel gives.
+    #[must_use]
+    pub fn posture_denial(
+        mode: TaskMode,
+        effect_class: EffectClass,
+        required_capabilities: &[String],
+    ) -> Option<KernelDecision> {
+        mode.posture()
+            .refusal(effect_class, required_capabilities)
+            .map(|why| KernelDecision::Deny {
+                code: "MODE_POSTURE".into(),
+                reason: format!(
+                    "the task is in {} mode: {why}; the user changes the mode, the agent does not",
+                    mode.name()
+                ),
+            })
     }
 
     /// Decide. See the module documentation for the order.
@@ -422,6 +448,11 @@ impl CapabilityKernel {
                     req.effect_class, req.execution_profile, ceiling
                 ),
             );
+        }
+        // 3b. the mode posture: a further narrowing, never a widening.
+        if let Some(d) = Self::posture_denial(req.mode, req.effect_class, req.required_capabilities)
+        {
+            return d;
         }
         // 4. lease ceiling.
         if req.effect_class > lease.effect_ceiling {

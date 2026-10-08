@@ -17,10 +17,12 @@
 #![forbid(unsafe_code)]
 
 pub mod admission;
+pub mod budget;
 pub mod capacity;
 pub mod conflict;
 pub mod diagnostics;
 pub mod harness;
+pub mod projection;
 
 pub use admission::{Activation, Admission, Refused, RunLedger, admit_activation, admit_plan};
 pub use capacity::{CapacityPool, CapacityRefused, ResourceVector, Shortfall, Ticket};
