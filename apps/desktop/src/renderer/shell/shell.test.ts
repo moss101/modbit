@@ -97,20 +97,26 @@ test("zoom moves in 8% steps inside its clamp", () => {
   assert.equal(clampZoom(0.1), 0.68);
 });
 
-test("AFW-A01: the apps panel exists only for a task with an artifact", () => {
+test("AFW-A01, REQ-PX-048: the apps panel exists only for a task with an artifact; a started task has its change set in every state", () => {
   const ctx = { browsingTaskId: null };
-  assert.deepEqual(artifactsOf({ taskId: "a", state: "Running" }, ctx), []);
-  assert.deepEqual(artifactsOf({ taskId: "a", state: "ReadyForReview" }, ctx), ["changes"]);
-  assert.deepEqual(artifactsOf({ taskId: "a", state: "Completed" }, { browsingTaskId: "a" }), ["changes", "browser"]);
+  // PX-048 changed this on purpose: the change set, workspace and evidence exist from the moment a task has run, not only at review.
+  assert.deepEqual(artifactsOf({ taskId: "a", state: "Queued" }, ctx), []);
+  assert.deepEqual(artifactsOf({ taskId: "a", state: "Created" }, ctx), []);
+  assert.deepEqual(artifactsOf({ taskId: "a", state: "Running" }, ctx), ["changes", "files", "evidence"]);
+  assert.deepEqual(artifactsOf({ taskId: "a", state: "ReadyForReview" }, ctx), ["changes", "files", "evidence"]);
+  assert.deepEqual(artifactsOf({ taskId: "a", state: "Completed" }, { browsingTaskId: "a" }), ["changes", "browser", "files", "evidence"]);
+  assert.deepEqual(artifactsOf({ taskId: "a", state: "Running" }, { browsingTaskId: null, terminalTaskIds: new Set(["a"]) }), ["changes", "terminal", "files", "evidence"]);
+  assert.deepEqual(artifactsOf({ taskId: "a", state: "Running" }, { browsingTaskId: null, terminalTaskIds: new Set(["b"]) }), ["changes", "files", "evidence"], "another task's terminal is not this task's artifact");
   assert.deepEqual(artifactsOf(undefined, ctx), []);
   const tasks = [
     { taskId: "old", state: "Completed", createdAtMs: 1 },
     { taskId: "new", state: "ReadyForReview", createdAtMs: 5 },
-    { taskId: "run", state: "Running", createdAtMs: 9 },
+    { taskId: "queued", state: "Queued", createdAtMs: 9 },
   ];
-  assert.equal(panelTaskFor(tasks, "run", ctx), "new", "a selected task with nothing to show yields to the latest one that has something");
+  assert.equal(panelTaskFor(tasks, "queued", ctx), "new", "a selected task with nothing to show yields to the latest one that has something");
   assert.equal(panelTaskFor(tasks, "old", ctx), "old");
-  assert.equal(panelTaskFor([{ taskId: "run", state: "Running", createdAtMs: 9 }], "run", ctx), null);
+  assert.equal(panelTaskFor([{ taskId: "queued", state: "Queued", createdAtMs: 9 }], "queued", ctx), null);
+  assert.equal(panelTaskFor([{ taskId: "run", state: "Running", createdAtMs: 9 }], "run", ctx), "run");
 });
 
 test("AFW-A16: every default chord of the spec is bound to its command, and none collides", () => {
