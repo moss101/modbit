@@ -171,7 +171,7 @@ export function Composer(props: ComposerProps) {
   useLayer(menuOpen, "composer-menu", false, () => setDismissed(triggerKey));
 
   // ---- helpers
-  const refreshSoon = core.refresh;
+  const refreshSoon = core.refreshNow;
   // The caret is placed once the new text is in the box and before the next keystroke can land (a frame later would put it back where it was).
   const pendingCaret = useRef<number | null>(null);
   const setTextAndCaret = (next: string, at: number) => {

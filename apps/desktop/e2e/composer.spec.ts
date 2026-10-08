@@ -13,6 +13,9 @@ import { accessible, appDir, box, closeApp, launch, makeRepo, MOD, setContentSiz
 import { coreQueue, createTask, Gate, openConversation, sequencedModel, startAndOpen, typeAndPress, userMessages } from "./support/composer-harness.ts";
 import { ECHO_LOOP, nodeTerminal } from "./support/apps-harness.ts";
 
+/** Lets the frame that follows a state change render, so a transition it starts is one `accessible` waits for (a colour mid-transition is not a colour). */
+const settled = (page: import("@playwright/test").Page) => page.evaluate(() => new Promise<void>((r) => requestAnimationFrame(() => requestAnimationFrame(() => r()))));
+
 const FIRST = "The first answer begins here and keeps going, ";
 const SECOND = "then it ends.";
 
@@ -622,6 +625,7 @@ test("PX-055: the background-terminals tray lists a live terminal with its timer
     await page.getByTestId("side-ask").click();
     await expect(page.getByTestId("side-answer")).toHaveText("The side answer is forty-two.", { timeout: 60_000 });
     expect(await userMessages(page, taskId)).toEqual(before);
+    await settled(page);
     await accessible(page, "a side answer");
     await page.getByTestId("side-close").click();
 
