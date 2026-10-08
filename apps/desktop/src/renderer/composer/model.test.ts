@@ -58,7 +58,8 @@ test("a mode the Core has not acknowledged is unconfirmed, never active; a mode 
 
 test("placeholders are context specific and the suggestion chip of the active mode is hidden", () => {
   assert.match(placeholderFor({ mode: "AGENT", state: "Queued", running: false, hasMessages: false }), /Describe what you want done/);
-  assert.match(placeholderFor({ mode: "AGENT", state: "ReadyForReview", running: false, hasMessages: true }), /Follow up/);
+  assert.match(placeholderFor({ mode: "AGENT", state: "Waiting", running: false, hasMessages: true }), /Follow up/);
+  assert.match(placeholderFor({ mode: "AGENT", state: "ReadyForReview", running: false, hasMessages: true }), /Waiting for your review/);
   assert.match(placeholderFor({ mode: "ASK", state: "Queued", running: false, hasMessages: true }), /question/);
   assert.match(placeholderFor({ mode: "PLAN", state: "Running", running: true, hasMessages: true }), /queues it/);
   assert.deepEqual(suggestionsFor("AGENT").map((s) => s.mode), ["PLAN", "MULTITASK"]);

@@ -379,7 +379,12 @@ export function Composer(props: ComposerProps) {
       applyMode(nextMode(shownMode));
       return;
     }
-    if (e.altKey && !e.ctrlKey && !e.metaKey && (e.key === "ArrowUp" || e.key === "ArrowDown")) {
+    // Alt+Up and Alt+Down always walk the history. Plain Up does too in an empty box or while a recalled prompt is showing, and plain Down while one is: a draft being written keeps its arrows.
+    const ta = e.currentTarget;
+    const onFirstLine = !ta.value.slice(0, ta.selectionStart).includes("\n");
+    const onLastLine = !ta.value.slice(ta.selectionEnd).includes("\n");
+    const plainEdge = !e.altKey && !e.ctrlKey && !e.metaKey && !e.shiftKey && !menuOpen && ((e.key === "ArrowUp" && onFirstLine && (ta.value === "" || history.index !== -1)) || (e.key === "ArrowDown" && onLastLine && history.index !== -1));
+    if ((e.altKey && !e.ctrlKey && !e.metaKey && (e.key === "ArrowUp" || e.key === "ArrowDown")) || plainEdge) {
       e.preventDefault();
       e.stopPropagation();
       const list = store.history[taskId] ?? [];
@@ -525,10 +530,10 @@ export function Composer(props: ComposerProps) {
                 refreshSoon();
               });
           }}
-          onEdit={async (id, t) => {
+          onEdit={async (id, change) => {
             if (!sessionId) return false;
             try {
-              await window.modbit.composerEditQueued(sessionId, taskId, id, { text: t });
+              await window.modbit.composerEditQueued(sessionId, taskId, id, change);
               refreshSoon();
               return true;
             } catch (e) {
@@ -650,6 +655,7 @@ export function Composer(props: ComposerProps) {
               aria-activedescendant={menuOpen && optionCount > 0 ? `${listId}-o${activeIdx}` : undefined}
               placeholder={placeholder}
               rows={Math.min(8, Math.max(1, text.split("\n").length))}
+              maxLength={20_000}
               value={text}
               disabled={!sessionId || !connected}
               onChange={(e) => {

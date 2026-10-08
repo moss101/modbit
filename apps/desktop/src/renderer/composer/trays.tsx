@@ -20,7 +20,7 @@ export interface QueueTrayProps {
   runAlive: boolean;
   busy: boolean;
   onSendNow: (id: string) => void;
-  onEdit: (id: string, text: string) => Promise<boolean>;
+  onEdit: (id: string, change: { text: string; mode: string }) => Promise<boolean>;
   onDelete: (id: string) => void;
   onMove: (id: string, dir: "up" | "down") => void;
   onClear: () => void;
@@ -33,15 +33,17 @@ export function QueueTray(p: QueueTrayProps) {
   const [collapsed, setCollapsed] = useState(false);
   const [editing, setEditing] = useState<string | null>(null);
   const [draft, setDraft] = useState("");
+  const [editMode, setEditMode] = useState("FOLLOW_UP");
   const list = useRef<HTMLUListElement>(null);
   const send = sendNowLabel(p.behavior);
   const focusRow = (i: number) => list.current?.querySelectorAll<HTMLElement>('[data-testid="queue-row-main"]')[i]?.focus();
   const startEdit = (r: QueueRow) => {
     setEditing(r.inputId);
     setDraft(r.text);
+    setEditMode(r.mode);
   };
   const save = async (id: string) => {
-    if (await p.onEdit(id, draft)) setEditing(null);
+    if (await p.onEdit(id, { text: draft, mode: editMode })) setEditing(null);
   };
   if (p.rows.length === 0) return null;
   return (
@@ -82,6 +84,11 @@ export function QueueTray(p: QueueTrayProps) {
                     data-testid="queue-edit-input"
                     rows={2}
                   />
+                  <select aria-label={`How queued message ${r.position} runs`} value={editMode} onChange={(e) => setEditMode(e.target.value)} data-testid="queue-edit-mode">
+                    <option value="FOLLOW_UP">Queue: its own turn</option>
+                    <option value="COLLECT">Collect: joined with others</option>
+                    <option value="STEER">Steer: at the next safe point</option>
+                  </select>
                   <Button size="sm" variant="primary" disabled={p.busy || draft.trim() === ""} onClick={() => void save(r.inputId)} data-testid="queue-edit-save">
                     Save
                   </Button>

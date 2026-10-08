@@ -11,17 +11,17 @@ export const composerCss = `
 .cmp-dock:empty { display: none; }
 .cmp-chips { display: flex; flex-wrap: wrap; gap: var(--mb-space-1_5); align-items: center; }
 .cmp-chips:empty { display: none; }
-.cmp-box { position: relative; border: 1px solid var(--mb-color-border-control); border-radius: 17px; background: var(--mb-color-raised); padding: var(--mb-space-1_5) var(--mb-space-2); display: flex; flex-direction: column; gap: var(--mb-space-1); }
+.cmp-box { position: relative; border: 1px solid var(--mb-color-border-control); border-radius: 17px; background: var(--mb-color-raised); padding: 4px var(--mb-space-2); display: flex; flex-direction: column; gap: var(--mb-space-1); }
 .cmp-box:focus-within { border-color: var(--mb-color-focus); }
 .cmp-box[data-tint="ask"] { border-color: var(--mb-color-mode-ask); }
 .cmp-box[data-tint="plan"] { border-color: var(--mb-color-mode-plan); }
 .cmp-box[data-tint="debug"] { border-color: var(--mb-color-mode-debug); }
 .cmp-box[data-tint="multitask"] { border-color: var(--mb-color-mode-multitask); }
 .cmp-box[data-mode-status="unconfirmed"] { border-style: dashed; }
-.cmp-row { display: flex; align-items: flex-end; gap: var(--mb-space-1_5); min-width: 0; }
+.cmp-row { display: flex; align-items: center; gap: var(--mb-space-1_5); min-width: 0; }
 .cmp-row > * { flex: none; }
 .cmp-input { position: relative; flex: 1 1 0; min-width: 0; }
-.cmp-textarea { display: block; width: 100%; box-sizing: border-box; min-height: 0; max-height: 40vh; resize: none; border: 0; border-radius: var(--mb-radius-3); background: transparent; color: var(--mb-color-text); padding: 9px 6px; line-height: 1.35; }
+.cmp-textarea { display: block; width: 100%; box-sizing: border-box; min-height: 0; max-height: 40vh; resize: none; border: 0; border-radius: var(--mb-radius-3); background: transparent; color: var(--mb-color-text); padding: 6px 6px; line-height: 1.35; }
 .cmp-textarea::placeholder { color: var(--mb-color-text-muted); opacity: 1; }
 .mb-btn.cmp-plus { width: var(--mb-control-md); padding: 0; border-radius: var(--mb-radius-full); border-color: var(--mb-color-border-control); font-size: 18px; }
 .cmp-chip, .cmp-seg { font: inherit; font-size: var(--mb-type-chrome-size); line-height: var(--mb-type-chrome-line); display: inline-flex; align-items: center; gap: var(--mb-space-1); min-height: var(--mb-control-sm); padding: 0 var(--mb-space-2); border-radius: var(--mb-radius-full); border: 1px solid var(--mb-color-border-control); background: var(--mb-color-raised); color: var(--mb-color-text); cursor: pointer; }

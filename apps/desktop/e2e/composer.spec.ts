@@ -9,7 +9,7 @@ import { expect, test } from "@playwright/test";
 import { existsSync, mkdtempSync, readFileSync, writeFileSync, mkdirSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join, resolve } from "node:path";
-import { accessible, appDir, closeApp, launch, makeRepo, MOD, setContentSize } from "./support/ui-harness.ts";
+import { accessible, appDir, box, closeApp, launch, makeRepo, MOD, setContentSize } from "./support/ui-harness.ts";
 import { coreQueue, createTask, Gate, openConversation, sequencedModel, startAndOpen, typeAndPress, userMessages } from "./support/composer-harness.ts";
 import { ECHO_LOOP, nodeTerminal } from "./support/apps-harness.ts";
 
@@ -54,6 +54,7 @@ test("PX-055: messages sent during a turn queue in the Core, can be edited, reor
     // Edit in place (row 2), reorder (row 3 up), delete (row 1): each is a Core command and the tray follows the Core.
     await page.getByTestId("queue-row").nth(1).getByTestId("queue-edit").click();
     await page.getByTestId("queue-edit-input").fill("third message (edited)");
+    await expect(page.getByTestId("queue-edit-mode")).toHaveValue("FOLLOW_UP");
     await page.getByTestId("queue-edit-save").click();
     await expect(page.getByTestId("queue-line").nth(1)).toHaveText("third message (edited)");
     expect((await coreQueue(page, taskId))[1]).toMatchObject({ text: "third message (edited)", edited: true });
@@ -209,6 +210,11 @@ test("PX-054: Shift+Tab walks the modes with the right chip and placeholder, the
     const input = page.getByTestId("composer-input");
     const corePosture = () => page.evaluate((t) => window.modbit.composerPosture(t).then((p) => p.mode), taskId);
     await expect(page.getByTestId("mode-chip")).toHaveCount(0);
+    // AFW-A07 at 1280 x 800: the in-conversation composer is a single-line pill about 42 pt high (within 8 percent) and never wider than the 840 pt cap.
+    const geometry = await box(page, "composer");
+    expect(geometry.width).toBeLessThanOrEqual(840.5);
+    expect(geometry.width).toBeGreaterThan(560);
+    expect(Math.abs(geometry.height - 42) / 42).toBeLessThanOrEqual(0.08);
     const placeholders = new Set<string>([(await input.getAttribute("placeholder")) ?? ""]);
     await input.focus();
     // Plan, Debug, Multitask, Ask, then back to the default; each is acknowledged by the Core before it is drawn as active.
@@ -534,6 +540,12 @@ test("PX-054: the @ menu lists the Core's sources and a protected path cannot be
     await typeAndPress(page, "message one", "Enter");
     await typeAndPress(page, "message two", "Enter");
     await expect(page.getByTestId("queue-header")).toHaveText("2 queued");
+    // Each item keeps its own mode: the second is switched to collect, and the Core and the row say so.
+    await page.getByTestId("queue-row").nth(1).getByTestId("queue-edit").click();
+    await page.getByTestId("queue-edit-mode").selectOption("COLLECT");
+    await page.getByTestId("queue-edit-save").click();
+    await expect(page.getByTestId("queue-mode").nth(1)).toContainText("Collected");
+    expect((await coreQueue(page, taskId)).map((q) => q.mode)).toEqual(["FOLLOW_UP", "COLLECT"]);
     await input.fill("work in progress");
     await input.press("Alt+ArrowUp");
     await expect(input).toHaveValue("message two");
@@ -543,6 +555,17 @@ test("PX-054: the @ menu lists the Core's sources and a protected path cannot be
     await expect(input).toHaveValue("message two");
     await input.press("Alt+ArrowDown");
     await expect(input).toHaveValue("work in progress");
+    // Plain Up in an empty box (the caret at its start) and plain Down back out do the same.
+    await input.fill("");
+    await input.press("ArrowUp");
+    await expect(input).toHaveValue("message two");
+    await input.press("ArrowUp");
+    await expect(input).toHaveValue("message one");
+    await input.press("ArrowDown");
+    await expect(input).toHaveValue("message two");
+    await input.press("ArrowDown");
+    await expect(input).toHaveValue("");
+    await input.fill("work in progress");
 
     // The draft and its chip survive leaving the conversation and a renderer reload, and nothing was sent by either.
     await input.fill("look at @no");

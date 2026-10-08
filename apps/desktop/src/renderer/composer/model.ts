@@ -361,6 +361,8 @@ export interface QueueRow {
   inputId: string;
   position: number;
   text: string;
+  /** STEER | COLLECT | FOLLOW_UP: how the item will be dispatched. */
+  mode: string;
   /** One truncated line for the row. */
   line: string;
   /** What the item will do when it is dispatched, in words that state the consequence. */
@@ -386,7 +388,7 @@ export function queueRows(items: readonly QueuedInputItem[]): QueueRow[] {
   const queued = items.filter((i) => i.state === "QUEUED").sort((a, b) => a.position - b.position);
   return queued.map((i, k) => {
     const flat = i.text.replace(/\s+/g, " ").trim();
-    return { inputId: i.inputId, position: i.position, text: i.text, line: flat.length > ROW_CHARS ? `${flat.slice(0, ROW_CHARS - 1)}…` : flat, modeLabel: MODE_WORDS[i.mode] ?? i.mode.toLowerCase(), edited: i.edited, untrusted: i.untrusted, canMoveUp: k > 0, canMoveDown: k < queued.length - 1 };
+    return { inputId: i.inputId, position: i.position, text: i.text, mode: i.mode, line: flat.length > ROW_CHARS ? `${flat.slice(0, ROW_CHARS - 1)}…` : flat, modeLabel: MODE_WORDS[i.mode] ?? i.mode.toLowerCase(), edited: i.edited, untrusted: i.untrusted, canMoveUp: k > 0, canMoveDown: k < queued.length - 1 };
   });
 }
 
