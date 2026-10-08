@@ -32,7 +32,7 @@ use crate::AppState;
 use crate::routes::{ApiError, ApiResult, Caller, caller, parse_id};
 
 /// Whether the bearer is the platform administrator's secret.
-fn admin_actor(state: &AppState, headers: &HeaderMap) -> ApiResult<&'static str> {
+pub(crate) fn admin_actor(state: &AppState, headers: &HeaderMap) -> ApiResult<&'static str> {
     let Some(want) = state.extras.admin_secret_hash.as_ref() else {
         return Err(ApiError::new(
             StatusCode::SERVICE_UNAVAILABLE,
@@ -247,7 +247,7 @@ pub(crate) async fn admin_audit(
 }
 
 /// A tenant administrator's caller, or a refusal.
-async fn require_tenant_admin(
+pub(crate) async fn require_tenant_admin(
     state: &AppState,
     ext: &axum::Extension<Caller>,
 ) -> ApiResult<modbit_event_store::cloud::Principal> {
