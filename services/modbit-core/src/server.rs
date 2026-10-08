@@ -688,6 +688,7 @@ async fn serve_connection(core: Arc<Core>, mut stream: BoxedStream) -> Result<()
                     "GetEffectReceipts",
                     "GetCapabilityLeases",
                     "ListModels",
+                    "ListModelVariants",
                     "ListLanguages",
                     "GetContextInspector",
                     "GetRoutingPlan",
@@ -6207,6 +6208,7 @@ pub(crate) async fn handle_command(core: &Arc<Core>, env: CommandEnvelope) -> Co
                 wire::ModelList { models, health }.encode_to_vec(),
             )
         }
+        "ListModelVariants" => crate::composer::list_variants(core, cid, &env.payload).await,
         "ProbeModel" => {
             let Ok(p) = wire::ProbeModel::decode(env.payload.as_slice()) else {
                 return reject(cid, "BAD_PAYLOAD", "ProbeModel");
