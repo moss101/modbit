@@ -1104,6 +1104,9 @@ pub fn samples() -> Vec<Sample> {
                 outputs_json: "{\"task_state\":\"Cancelled\"}".into(),
                 acknowledged: false,
                 slot_ms: 1_757_300_000_000,
+                gate_decision: "SKIP".into(),
+                gate_detail: "nothing changed".into(),
+                gate_task_id: idhex(0x43),
             }
             .encode_to_vec(),
             expected: json!({
@@ -1115,7 +1118,8 @@ pub fn samples() -> Vec<Sample> {
                 "dispatchedMs": "1757300000100", "finishedMs": "1757386400000", "costMinor": "12",
                 "test": false, "catchUp": true, "missed": "4", "findings": 1,
                 "outputsJson": "{\"task_state\":\"Cancelled\"}", "acknowledged": false,
-                "slotMs": "1757300000000"
+                "slotMs": "1757300000000", "gateDecision": "SKIP",
+                "gateDetail": "nothing changed", "gateTaskId": idhex(0x43)
             }),
             decode: reencode::<AutomationRunView>,
         },

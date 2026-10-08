@@ -115,9 +115,14 @@ fn spawn_core(
 
 /// A Core with a trusted repository, a scripted model and a controlled clock.
 async fn fx(script: Vec<Value>, files: &[(&str, &str)], extra: &[(&str, &str)]) -> Fx {
+    fx_with(scripted_model(script, vec![]).await, files, extra).await
+}
+
+/// As [`fx`], with a model stand-in the caller built.
+async fn fx_with(model: (String, Seen), files: &[(&str, &str)], extra: &[(&str, &str)]) -> Fx {
     let data = tempfile::tempdir().unwrap();
     let (repo, root) = plain_repo(files);
-    let (base, seen) = scripted_model(script, vec![]).await;
+    let (base, seen) = model;
     let clock = data.path().join("clock.txt");
     set_clock(&clock, now_ms());
     let (core, _) = spawn_core(data.path(), &base, &clock, extra);
@@ -1841,6 +1846,256 @@ async fn px_084_budgets_stop_a_runaway_and_five_failures_disable_the_definition(
     let again = enable_exact(&mut f.c, &after).await.unwrap();
     assert_eq!(again.state, "ENABLED");
     assert_eq!(again.consecutive_failures, 0);
+}
+
+fn git_in(dir: &str, args: &[&str]) -> String {
+    let out = std::process::Command::new("git")
+        .arg("-C")
+        .arg(dir)
+        .args(["-c", "user.name=t", "-c", "user.email=t@e"])
+        .args(args)
+        .output()
+        .unwrap();
+    assert!(
+        out.status.success(),
+        "git {args:?}: {}",
+        String::from_utf8_lossy(&out.stderr)
+    );
+    String::from_utf8_lossy(&out.stdout).trim().to_owned()
+}
+
+/// The shipped reference definition (AUT-C03) is real: from the Core's own
+/// template list, enabled by hash, it finds that the remote's default branch
+/// moved ahead, and nothing it does can change the tree.
+#[tokio::test(flavor = "multi_thread")]
+async fn px_084_the_reference_definition_reports_drift_and_can_never_change_the_tree() {
+    let script = vec![
+        call("git.status", json!({})),
+        call("git.diff", json!({"base": "main", "target": "origin/main"})),
+        plan_update(&[], &[]),
+        // A write is refused whatever the model is made to attempt.
+        call(
+            "change.apply",
+            json!({"path": "remote.txt", "op": "create", "content": "x\n"}),
+        ),
+        call(
+            "shell.exec",
+            json!({"argv": ["git", "merge", "origin/main"]}),
+        ),
+        complete(),
+    ];
+    let mut f = fx(script, &[("README.md", "x")], &[]).await;
+    // origin/main is one commit ahead of the local main.
+    let remote = tempfile::tempdir().unwrap();
+    let remote_path = remote.path().to_str().unwrap().to_owned();
+    git_in(&remote_path, &["init", "-q", "--bare"]);
+    git_in(&f.root, &["remote", "add", "origin", &remote_path]);
+    git_in(&f.root, &["push", "-q", "origin", "main"]);
+    std::fs::write(std::path::Path::new(&f.root).join("remote.txt"), "ahead\n").unwrap();
+    git_in(&f.root, &["add", "-A"]);
+    git_in(&f.root, &["commit", "-q", "-m", "ahead on the remote"]);
+    git_in(&f.root, &["push", "-q", "origin", "main"]);
+    git_in(&f.root, &["reset", "-q", "--hard", "HEAD~1"]);
+    let head_before = git_in(&f.root, &["rev-parse", "HEAD"]);
+    assert!(!std::path::Path::new(&f.root).join("remote.txt").exists());
+
+    let t: modbit_protocol::v1::AutomationTemplateList = cmd(
+        &mut f.c,
+        "ListAutomationTemplates",
+        modbit_protocol::v1::ListAutomationTemplates {},
+    )
+    .await
+    .unwrap();
+    let tpl = t
+        .templates
+        .iter()
+        .find(|t| t.template_id == "default-branch-drift")
+        .expect("the reference definition ships");
+    assert_eq!(tpl.effects, "read_only");
+    let v = create(&mut f.c, &tpl.definition_json, &f.root)
+        .await
+        .unwrap();
+    assert!(!v.needs_listed_approval && v.capabilities.is_empty());
+    enable_exact(&mut f.c, &v).await.unwrap();
+    run_now(&mut f.c, &v.automation_id).await.unwrap();
+    let r = wait_runs(&mut f.c, &v.automation_id, 60, "the drift report", |r| {
+        done(r) == 1
+    })
+    .await;
+    assert_eq!(
+        r[0].status,
+        "succeeded",
+        "{:?}\n{}",
+        r[0],
+        dump(&f.core, &r[0]).await
+    );
+    // The diff the model read names the file the remote has and the local does not.
+    let saw_drift = seen_bodies(&f).iter().any(|b| {
+        b["messages"].as_array().is_some_and(|m| {
+            m.iter().any(|x| {
+                x["role"] == "tool"
+                    && x["content"]
+                        .as_str()
+                        .is_some_and(|c| c.contains("remote.txt"))
+            })
+        })
+    });
+    assert!(saw_drift, "the report read the remote's change");
+    // Nothing was written or merged: the write and the merge were refused.
+    let ev = session_events(&f.core, &r[0]).await;
+    let proposed: Vec<String> = ev
+        .iter()
+        .filter(|e| e["event_type"] == "ToolCallProposed")
+        .filter_map(|e| {
+            e["payload"]["payload"]["tool_name"]
+                .as_str()
+                .map(str::to_owned)
+        })
+        .collect();
+    assert!(
+        proposed
+            .iter()
+            .all(|t| t != "change.apply" && t != "shell.exec"),
+        "no write or shell call reached the kernel: {proposed:?}"
+    );
+    let root = ev
+        .iter()
+        .find(|e| e["event_type"] == "TaskCreated")
+        .and_then(|e| {
+            e["payload"]["payload"]["workspace_root"]
+                .as_str()
+                .map(str::to_owned)
+        })
+        .unwrap();
+    for dir in [root.as_str(), f.root.as_str()] {
+        assert_eq!(
+            git_in(dir, &["status", "--porcelain"]),
+            "",
+            "{dir} is clean"
+        );
+        assert!(!std::path::Path::new(dir).join("remote.txt").exists());
+    }
+    assert_eq!(git_in(&f.root, &["rev-parse", "HEAD"]), head_before);
+    assert_eq!(git_in(&f.root, &["rev-parse", "main"]), head_before);
+}
+
+/// The model stand-in of a gate test: the gate task (recognised by the
+/// protocol text the Core gives it) answers with the decision the test sets;
+/// every other task runs the reference script.
+fn gate_model(decision: std::sync::Arc<std::sync::Mutex<String>>) -> Reply {
+    std::sync::Arc::new(move |body: &Value, results: usize| {
+        let is_gate = body["messages"].as_array().is_some_and(|m| {
+            m.iter().any(|x| {
+                x["content"]
+                    .as_str()
+                    .is_some_and(|c| c.contains("You are the gate of an automation"))
+            })
+        });
+        if is_gate {
+            match results {
+                0 => plan_update(&[], &[]),
+                _ => call(
+                    "task.complete",
+                    json!({"summary": format!("{}\nbecause of what I read", decision.lock().unwrap()),
+                           "self_review": {"findings": [{"text": "read-only", "resolved": true}], "verification": []}}),
+                ),
+            }
+        } else {
+            finish_script()
+                .get(results)
+                .cloned()
+                .unwrap_or_else(|| json!({"text": "done"}))
+        }
+    })
+}
+
+/// A gate (AUT-C02) decides whether the rest of the run happens: a skip ends
+/// the run having spent only the gate's own task; a run starts the main task;
+/// an answer that is neither skips (fail closed).
+#[tokio::test(flavor = "multi_thread")]
+async fn px_083_a_gate_decides_whether_the_rest_of_the_run_happens() {
+    let decision = std::sync::Arc::new(std::sync::Mutex::new(String::new()));
+    let model = scripted_model_fn(gate_model(std::sync::Arc::clone(&decision))).await;
+    let mut f = fx_with(model, &[("README.md", "x")], &[]).await;
+    let v = create(
+        &mut f.c,
+        &def(
+            "gated",
+            manual(),
+            json!({"gate": {"prompt": "Decide whether anything changed since the last report.", "max_turns": 4}}),
+        ),
+        &f.root,
+    )
+    .await
+    .unwrap();
+    enable_exact(&mut f.c, &v).await.unwrap();
+    let go = |id: &'static str| RunAutomation {
+        automation_id: v.automation_id.clone(),
+        event_id: id.into(),
+        ..Default::default()
+    };
+    // SKIP: the run is recorded as skipped with the gate's reason; the main
+    // task never exists.
+    *decision.lock().unwrap() = "GATE: SKIP nothing changed since the last report".into();
+    let _: AutomationRunStarted = cmd(&mut f.c, "RunAutomation", go("g1")).await.unwrap();
+    let r = wait_runs(&mut f.c, &v.automation_id, 60, "the gate to skip", |r| {
+        r.iter()
+            .any(|x| x.event_id == "g1" && x.status == "skipped")
+    })
+    .await;
+    let g1 = r.iter().find(|x| x.event_id == "g1").unwrap();
+    assert_eq!(g1.reason, "GATE");
+    assert_eq!(g1.gate_decision, "SKIP");
+    assert!(
+        g1.gate_detail.contains("nothing changed"),
+        "{}",
+        g1.gate_detail
+    );
+    assert!(
+        g1.task_id.is_empty(),
+        "the main task was never made: {g1:?}"
+    );
+    assert!(!g1.gate_task_id.is_empty());
+    let main_requests = seen_bodies(&f)
+        .iter()
+        .filter(|b| {
+            !b["messages"].as_array().unwrap().iter().any(|m| {
+                m["content"]
+                    .as_str()
+                    .is_some_and(|c| c.contains("You are the gate of an automation"))
+            })
+        })
+        .count();
+    assert_eq!(
+        main_requests, 0,
+        "no request of the main task reached the model"
+    );
+    // RUN: the main task follows and the run succeeds.
+    *decision.lock().unwrap() = "GATE: RUN".into();
+    let _: AutomationRunStarted = cmd(&mut f.c, "RunAutomation", go("g2")).await.unwrap();
+    let r = wait_runs(&mut f.c, &v.automation_id, 60, "the gated run", |r| {
+        r.iter()
+            .any(|x| x.event_id == "g2" && x.status == "succeeded")
+    })
+    .await;
+    let g2 = r.iter().find(|x| x.event_id == "g2").unwrap();
+    assert_eq!(g2.gate_decision, "RUN");
+    assert!(!g2.task_id.is_empty() && !g2.gate_task_id.is_empty());
+    assert_ne!(g2.task_id, g2.gate_task_id);
+    // Neither: the run skips.
+    *decision.lock().unwrap() = "maybe, who can say".into();
+    let _: AutomationRunStarted = cmd(&mut f.c, "RunAutomation", go("g3")).await.unwrap();
+    let r = wait_runs(&mut f.c, &v.automation_id, 60, "the unclear gate", |r| {
+        r.iter()
+            .any(|x| x.event_id == "g3" && x.status == "skipped")
+    })
+    .await;
+    let g3 = r.iter().find(|x| x.event_id == "g3").unwrap();
+    assert_eq!(
+        (g3.gate_decision.as_str(), g3.reason.as_str()),
+        ("UNCLEAR", "GATE")
+    );
+    assert!(g3.task_id.is_empty());
 }
 
 // ---- end of tests ----

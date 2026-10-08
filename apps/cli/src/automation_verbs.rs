@@ -9,7 +9,8 @@
 //! automation list     [--json]
 //! automation show     <id> [--json]
 //! automation validate <file>
-//! automation create   --workspace <dir> [--command-id <hex>] <file>
+//! automation templates [--json]
+//! automation create   --workspace <dir> [--command-id <hex>] (<file> | --template <id>)
 //! automation update   <id> <file>
 //! automation load     --workspace <dir>
 //! automation enable   <id> --version N --hash <sha256> (--as-shown | [--effects e]
@@ -28,11 +29,11 @@
 use modbit_protocol::client::Client;
 use modbit_protocol::v1::{
     AckAutomationAttention, AutomationDetail, AutomationFireReport, AutomationList,
-    AutomationRunList, AutomationRunStarted, AutomationRunView, AutomationValidation,
-    AutomationView, CreateAutomation, DisableAutomation, EnableAutomation, FireAutomationEvent,
-    GetAutomation, KillAutomation, KillReport, ListAutomationRuns, ListAutomations,
-    LoadRepositoryAutomations, PauseAutomation, RepositoryAutomations, RunAutomation,
-    UpdateAutomation, ValidateAutomation,
+    AutomationRunList, AutomationRunStarted, AutomationRunView, AutomationTemplateList,
+    AutomationValidation, AutomationView, CreateAutomation, DisableAutomation, EnableAutomation,
+    FireAutomationEvent, GetAutomation, KillAutomation, KillReport, ListAutomationRuns,
+    ListAutomationTemplates, ListAutomations, LoadRepositoryAutomations, PauseAutomation,
+    RepositoryAutomations, RunAutomation, UpdateAutomation, ValidateAutomation,
 };
 use prost::Message;
 use serde_json::json;
@@ -50,6 +51,7 @@ struct Args {
     paths: Vec<String>,
     hosts: Vec<String>,
     as_shown: bool,
+    template: Option<String>,
     trigger: Option<String>,
     inputs: Vec<String>,
     event_id: Option<String>,
@@ -89,6 +91,7 @@ fn parse(words: &[&str]) -> Result<Args, String> {
             "--path" => a.paths.push(value(&mut it, w)?),
             "--host" => a.hosts.push(value(&mut it, w)?),
             "--as-shown" => a.as_shown = true,
+            "--template" => a.template = Some(value(&mut it, w)?),
             "--trigger" => a.trigger = Some(value(&mut it, w)?),
             "--input" => a.inputs.push(value(&mut it, w)?),
             "--event-id" => a.event_id = Some(value(&mut it, w)?),
@@ -323,12 +326,62 @@ pub async fn run(client: &mut Client, words: &[&str]) -> Result<(), String> {
                 return Err("the definition is not valid".into());
             }
         }
+        "templates" => {
+            let l: AutomationTemplateList = send(
+                client,
+                "ListAutomationTemplates",
+                ListAutomationTemplates {},
+                None,
+            )
+            .await?;
+            if a.json {
+                println!(
+                    "{}",
+                    serde_json::Value::Array(
+                        l.templates
+                            .iter()
+                            .map(|t| json!({
+                                "template_id": t.template_id, "name": t.name,
+                                "description": t.description, "effects": t.effects,
+                                "definition": serde_json::from_str::<serde_json::Value>(&t.definition_json).unwrap_or_default(),
+                            }))
+                            .collect()
+                    )
+                );
+                return Ok(());
+            }
+            for t in &l.templates {
+                println!(
+                    "template {} effects={} {}",
+                    t.template_id, t.effects, t.description
+                );
+            }
+        }
         "create" => {
+            let definition_json = match &a.template {
+                Some(want) => {
+                    let l: AutomationTemplateList = send(
+                        client,
+                        "ListAutomationTemplates",
+                        ListAutomationTemplates {},
+                        None,
+                    )
+                    .await?;
+                    l.templates
+                        .into_iter()
+                        .find(|t| &t.template_id == want)
+                        .map(|t| t.definition_json)
+                        .ok_or_else(|| {
+                            format!("no template `{want}` (see `automation templates`)")
+                        })?
+                }
+                None => read(&id()?)?,
+            };
             let v: AutomationView = send(
                 client,
                 "CreateAutomation",
                 CreateAutomation {
-                    definition_json: read(&id()?)?,
+                    definition_json,
                     workspace_root: a.workspace.clone().ok_or(USAGE)?,
                 },
                 a.command_id.as_deref(),

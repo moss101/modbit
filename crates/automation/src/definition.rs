@@ -460,6 +460,24 @@ impl Default for Budget {
     }
 }
 
+/// An optional first step (AUT-C02): a cheap, read-only evaluation whose
+/// typed answer decides whether the rest of the run happens. The gate runs as
+/// its own read-only task; its last message must begin `GATE: RUN` or
+/// `GATE: SKIP <reason>`, and anything else skips (fail closed).
+#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct Gate {
+    /// What to decide. Data: it is the gate task's goal text.
+    pub prompt: String,
+    /// The gate's own turn limit (1-8).
+    #[serde(default = "default_gate_turns")]
+    pub max_turns: u32,
+}
+
+fn default_gate_turns() -> u32 {
+    4
+}
+
 /// The definition document.
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
@@ -500,6 +518,9 @@ pub struct Definition {
     /// Rate and daily budget.
     #[serde(default)]
     pub budget: Budget,
+    /// The optional gate step.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub gate: Option<Gate>,
 }
 
 impl Definition {
@@ -1001,6 +1022,14 @@ pub fn validate(d: &Definition) -> Vec<Issue> {
             "BAD_NAME",
             "a-z, 0-9 and `-`, starting with a letter",
         ));
+    }
+    if let Some(g) = &d.gate {
+        if g.prompt.trim().is_empty() || g.prompt.len() > 4096 {
+            out.push(issue("/gate/prompt", "BAD_PROMPT", "1-4096 bytes of text"));
+        }
+        if !(1..=8).contains(&g.max_turns) {
+            out.push(issue("/gate/max_turns", "BAD_BOUND", "1-8"));
+        }
     }
     // Concurrency, missed, limits, budget.
     if !(1..=10).contains(&d.concurrency.queue_max) {

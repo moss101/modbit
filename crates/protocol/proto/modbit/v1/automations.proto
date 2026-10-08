@@ -126,6 +126,10 @@ message AutomationRunView {
   string outputs_json = 22;
   bool acknowledged = 23;
   int64 slot_ms = 24;
+  // AUT-C02: the gate step, when the definition has one.
+  string gate_decision = 25;       // RUN | SKIP | UNCLEAR ("" while it runs or when there is no gate)
+  string gate_detail = 26;
+  string gate_task_id = 27;        // hex
 }
 
 // Something a person must look at.
@@ -150,6 +154,21 @@ message AutomationList {
   repeated AutomationAttention attention = 3;
   int64 now_ms = 4;                // the time source's reading
   string clock = 5;                // WALL | MONOTONIC_SAFE | CONTROLLED
+}
+
+// The definitions Modbit ships (AUT-C03): real data to copy, not prose.
+message ListAutomationTemplates {}
+
+message AutomationTemplate {
+  string template_id = 1;
+  string name = 2;
+  string description = 3;
+  string definition_json = 4;
+  string effects = 5;
+}
+
+message AutomationTemplateList {
+  repeated AutomationTemplate templates = 1;
 }
 
 message GetAutomation {

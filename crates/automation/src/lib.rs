@@ -15,6 +15,7 @@ pub mod definition;
 pub mod filter;
 pub mod registry;
 pub mod schedule;
+pub mod templates;
 pub mod webhook;
 
 pub use definition::{

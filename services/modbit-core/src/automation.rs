@@ -66,6 +66,7 @@ pub(crate) fn is_command(command_type: &str) -> bool {
             | "GetAutomation"
             | "ListAutomationRuns"
             | "ValidateAutomation"
+            | "ListAutomationTemplates"
             | "CreateAutomation"
             | "UpdateAutomation"
             | "LoadRepositoryAutomations"
@@ -527,6 +528,18 @@ pub(crate) async fn start(core: &Arc<Core>) {
     });
 }
 
+/// The task a running run is waiting on: its gate until the gate has
+/// answered, then its main task.
+fn live_task_of(run: &Run) -> Option<TaskId> {
+    let in_gate = run.gate.is_none() && run.gate_task_id.is_some();
+    let id = if in_gate {
+        run.gate_task_id.as_deref()
+    } else {
+        run.task_id.as_deref()
+    };
+    id.and_then(parse_hex16).map(TaskId::from_bytes)
+}
+
 async fn settle_after_restart(core: &Arc<Core>) {
     let running: Vec<Run> = {
         let reg = core.automation.registry.lock().await;
@@ -537,12 +550,7 @@ async fn settle_after_restart(core: &Arc<Core>) {
             .collect()
     };
     for run in running {
-        let Some(task_id) = run
-            .task_id
-            .as_deref()
-            .and_then(parse_hex16)
-            .map(TaskId::from_bytes)
-        else {
+        let Some(task_id) = live_task_of(&run) else {
             continue;
         };
         let task = core.store.lock().await.task(&task_id).ok().flatten();
@@ -959,6 +967,7 @@ async fn fire(core: &Arc<Core>, req: FireRequest) -> Result<Fired, Refusal> {
         if let Some(t) = run
             .task_id
             .as_deref()
+            .or(run.gate_task_id.as_deref())
             .and_then(parse_hex16)
             .map(TaskId::from_bytes)
         {
@@ -1090,7 +1099,7 @@ async fn dispatch_inner(
         let Some(run) = reg.runs.get(key).cloned() else {
             return Ok(());
         };
-        if run.status.is_terminal() || run.status == RunStatus::Running {
+        if run.status.is_terminal() || (run.status == RunStatus::Running && run.task_id.is_some()) {
             return Ok(());
         }
         let Some(st) = reg.defs.get(&run.firing.automation_id).cloned() else {
@@ -1141,8 +1150,141 @@ async fn dispatch_inner(
     }
     let principal = run.firing.principal.clone();
     let actor = host_actor(aid, &principal);
-    let session_bytes = derive16(key, "session");
-    let task_bytes = derive16(key, "task");
+    // AUT-C02: a definition with a gate runs it first, as a read-only task of
+    // its own. The tick settles the gate; only a `RUN` answer comes back here
+    // to start the main task, and a `SKIP` ends the run having spent only the
+    // gate's own budget.
+    if let Some(gate) = &d.gate {
+        match &run.gate {
+            None => {
+                if run.gate_task_id.is_none() {
+                    let goal = format!(
+                        "{}\n\nYou are the gate of an automation: decide whether the rest of the run should happen. Work read-only. Finish with task.complete whose summary begins, on its first line, with exactly `GATE: RUN` or `GATE: SKIP <one-line reason>`. Anything else is treated as a skip.",
+                        gate.prompt
+                    );
+                    let stage = Stage {
+                        tag: "gate",
+                        goal,
+                        ceiling: ceiling_of(None, true),
+                        isolate: false,
+                        max_turns: gate.max_turns,
+                        max_tool_calls: 20,
+                        max_cost_minor: 0,
+                        max_wall_ms: 5 * 60_000,
+                    };
+                    let (task_bytes, session_bytes) =
+                        launch_stage(core, &actor, key, &run, &version, &stage, payload).await?;
+                    let mut reg = core.automation.registry.lock().await;
+                    if let Some(aggregate) = parse_hex16(aid) {
+                        append(
+                            core,
+                            &mut reg,
+                            aggregate,
+                            vec![AutomationEvent::AutomationGateStarted {
+                                dispatch_key: key.to_owned(),
+                                task_id: hex16(&task_bytes),
+                                session_id: hex16(&session_bytes),
+                                at_ms: core.automation.clock.now_ms(),
+                            }],
+                        )
+                        .await?;
+                    }
+                }
+                return Ok(());
+            }
+            Some((decision, _)) if decision != "RUN" => return Ok(()),
+            Some(_) => {}
+        }
+    }
+    let mut goal = d.prompt.clone();
+    if let Some(inputs) = run.firing.inputs.as_object()
+        && !inputs.is_empty()
+    {
+        goal.push_str("\n\nInputs (typed values):\n");
+        for (k, v) in inputs {
+            goal.push_str(&format!("- {k}: {v}\n"));
+        }
+    }
+    if run.firing.test {
+        goal.push_str(
+            "\n\nThis is a TEST RUN of the automation. Work read-only; every effect beyond reading is denied and will be reported as what would have been asked.",
+        );
+    }
+    let stage = Stage {
+        tag: "",
+        goal,
+        ceiling: ceiling_of(st.enabled.as_ref(), run.firing.test),
+        isolate: true,
+        max_turns: d.limits.max_turns,
+        max_tool_calls: d.limits.max_tool_calls,
+        max_cost_minor: d.limits.max_cost_minor.unwrap_or(0),
+        max_wall_ms: u64::from(d.limits.deadline_minutes) * 60_000,
+    };
+    let (task_bytes, session_bytes) =
+        launch_stage(core, &actor, key, &run, &version, &stage, payload).await?;
+    let mut reg = core.automation.registry.lock().await;
+    if reg
+        .runs
+        .get(key)
+        .is_some_and(|r| !r.status.is_terminal() && r.task_id.is_none())
+        && let Some(aggregate) = parse_hex16(aid)
+    {
+        append(
+            core,
+            &mut reg,
+            aggregate,
+            vec![AutomationEvent::AutomationDispatched {
+                dispatch_key: key.to_owned(),
+                task_id: hex16(&task_bytes),
+                session_id: hex16(&session_bytes),
+                at_ms: core.automation.clock.now_ms(),
+            }],
+        )
+        .await?;
+    }
+    Ok(())
+}
+
+/// One task of a run: its goal, its ceiling and its limits.
+struct Stage {
+    /// `""` for the run's main task, `gate` for its gate.
+    tag: &'static str,
+    goal: String,
+    ceiling: Ceiling,
+    /// Work in an isolated worktree of a Git workspace.
+    isolate: bool,
+    max_turns: u32,
+    max_tool_calls: u32,
+    max_cost_minor: u64,
+    max_wall_ms: u64,
+}
+
+/// An id derived from the firing's key and the stage, so every step of a
+/// stage is idempotent. The main task's ids carry no tag.
+fn stage_id(key: &str, tag: &str, what: &str) -> [u8; 16] {
+    if tag.is_empty() {
+        derive16(key, what)
+    } else {
+        derive16(key, &format!("{tag}-{what}"))
+    }
+}
+
+/// Make a stage's session, task and budgets, and start it. Every command id
+/// derives from the key, so a Core that dies part way through, or a racing
+/// tick, creates nothing twice. Returns the task's and the session's ids.
+async fn launch_stage(
+    core: &Arc<Core>,
+    actor: &Actor,
+    key: &str,
+    run: &Run,
+    version: &Version,
+    stage: &Stage,
+    payload: Option<(String, String)>,
+) -> Result<([u8; 16], [u8; 16]), Refusal> {
+    let aid = &run.firing.automation_id;
+    let root = version.workspace_root.clone();
+    let session_bytes = stage_id(key, stage.tag, "session");
+    let task_bytes = stage_id(key, stage.tag, "task");
     let task_id = TaskId::from_bytes(task_bytes);
     let session_id = SessionId::from_bytes(session_bytes);
 
@@ -1151,7 +1293,7 @@ async fn dispatch_inner(
     if existing.is_none() {
         let ack = internal(
             core,
-            &actor,
+            actor,
             "CreateSession",
             session_bytes,
             wire::CreateSession { space_id: None }.encode_to_vec(),
@@ -1164,9 +1306,9 @@ async fn dispatch_inner(
     }
     let ack = internal(
         core,
-        &actor,
+        actor,
         "AcquireSessionLease",
-        derive16(key, "lease"),
+        stage_id(key, stage.tag, "lease"),
         wire::AcquireSessionLease {
             session_id: Some(wire_id(&session_bytes)),
             owner: format!("automation:{aid}"),
@@ -1188,8 +1330,9 @@ async fn dispatch_inner(
         .map(|s| s.lease_generation);
 
     if existing.is_none() {
-        // The person already trusted this repository (checked above); the
-        // run's session carries that trust, as TrustRepository would record.
+        // The person already trusted this repository (checked by the caller);
+        // the stage's session carries that trust, as TrustRepository would
+        // record it.
         {
             let mut store = core.store.lock().await;
             if !crate::onboarding::is_trusted(&store, session_id, &root) {
@@ -1214,36 +1357,22 @@ async fn dispatch_inner(
                 });
             }
         }
-        let c = ceiling_of(st.enabled.as_ref(), run.firing.test);
+        let c = &stage.ceiling;
         let is_git = std::path::Path::new(&root).join(".git").exists();
-        let mut goal = d.prompt.clone();
-        if let Some(inputs) = run.firing.inputs.as_object()
-            && !inputs.is_empty()
-        {
-            goal.push_str("\n\nInputs (typed values):\n");
-            for (k, v) in inputs {
-                goal.push_str(&format!("- {k}: {v}\n"));
-            }
-        }
-        if run.firing.test {
-            goal.push_str(
-                "\n\nThis is a TEST RUN of the automation. Work read-only; every effect beyond reading is denied and will be reported as what would have been asked.",
-            );
-        }
         let (label, text) = payload.unwrap_or_default();
         let ack = internal(
             core,
-            &actor,
+            actor,
             "CreateTask",
             task_bytes,
             wire::CreateTask {
                 session_id: Some(wire_id(&session_bytes)),
-                goal_text: goal,
+                goal_text: stage.goal.clone(),
                 workspace_id: None,
                 execution_profile: c.profile.into(),
                 origin: "automation".into(),
                 workspace_root: root.clone(),
-                isolation: if is_git {
+                isolation: if is_git && stage.isolate {
                     wire::TaskIsolation::Worktree as i32
                 } else {
                     wire::TaskIsolation::None as i32
@@ -1252,8 +1381,12 @@ async fn dispatch_inner(
                 automation_version: version.version,
                 automation_event_id: run.firing.event_id.clone(),
                 automation_dispatch_key: key.to_owned(),
-                automation_principal: principal.clone(),
-                automation_trigger: run.firing.trigger_id.clone(),
+                automation_principal: run.firing.principal.clone(),
+                automation_trigger: if stage.tag.is_empty() {
+                    run.firing.trigger_id.clone()
+                } else {
+                    format!("{}:{}", run.firing.trigger_id, stage.tag)
+                },
                 automation_trigger_kind: run.firing.trigger_kind.clone(),
                 automation_definition_hash: version.hash.clone(),
                 automation_test: run.firing.test,
@@ -1280,18 +1413,20 @@ async fn dispatch_inner(
             ));
         }
     }
-    core.automation.crash_point("after_create");
+    if stage.tag.is_empty() {
+        core.automation.crash_point("after_create");
+    }
 
-    // PX-116: the run's own limits, on its log before it starts.
+    // PX-116: the stage's own limits, on its log before it starts.
     let ack = internal(
         core,
-        &actor,
+        actor,
         "SetTaskBudgets",
-        derive16(key, "budgets"),
+        stage_id(key, stage.tag, "budgets"),
         wire::SetTaskBudgets {
             task_id: Some(wire_id(&task_bytes)),
-            max_cost_minor: d.limits.max_cost_minor.unwrap_or(0),
-            max_wall_ms: u64::from(d.limits.deadline_minutes) * 60_000,
+            max_cost_minor: stage.max_cost_minor,
+            max_wall_ms: stage.max_wall_ms,
             max_children: 0,
             forbid_spawn: true,
         }
@@ -1313,13 +1448,13 @@ async fn dispatch_inner(
     if startable {
         let ack = internal(
             core,
-            &actor,
+            actor,
             "StartTask",
-            derive16(key, "start"),
+            stage_id(key, stage.tag, "start"),
             wire::StartTask {
                 task_id: Some(wire_id(&task_bytes)),
-                max_turns: d.limits.max_turns,
-                max_tool_calls: d.limits.max_tool_calls,
+                max_turns: stage.max_turns,
+                max_tool_calls: stage.max_tool_calls,
                 max_no_progress_turns: 6,
                 ..Default::default()
             }
@@ -1339,27 +1474,7 @@ async fn dispatch_inner(
             return Err((code, ack.error_message));
         }
     }
-    let mut reg = core.automation.registry.lock().await;
-    if reg
-        .runs
-        .get(key)
-        .is_some_and(|r| !r.status.is_terminal() && r.status != RunStatus::Running)
-        && let Some(aggregate) = parse_hex16(aid)
-    {
-        append(
-            core,
-            &mut reg,
-            aggregate,
-            vec![AutomationEvent::AutomationDispatched {
-                dispatch_key: key.to_owned(),
-                task_id: hex16(&task_bytes),
-                session_id: hex16(&session_bytes),
-                at_ms: core.automation.clock.now_ms(),
-            }],
-        )
-        .await?;
-    }
-    Ok(())
+    Ok((task_bytes, session_bytes))
 }
 
 /// A person has trusted `root` in some session (AUT-C01).
@@ -1448,6 +1563,22 @@ async fn finish(
     detail: &str,
     outputs: Option<serde_json::Value>,
 ) {
+    // What the run cost, priced from the log as the task's economics are.
+    let task_of_run = {
+        let reg = core.automation.registry.lock().await;
+        reg.runs
+            .get(key)
+            .filter(|r| !r.status.is_terminal())
+            .and_then(|r| r.task_id.as_deref().and_then(parse_hex16))
+    };
+    let cost_minor = match task_of_run {
+        Some(t) => {
+            let e = crate::economics::view(core, TaskId::from_bytes(t)).await;
+            // Cents, when the catalog priced every call; otherwise not claimed.
+            (e.pricing_known == 1 && e.cost_usd > 0.0).then(|| (e.cost_usd * 100.0).round() as u64)
+        }
+        None => None,
+    };
     let mut reg = core.automation.registry.lock().await;
     let Some(run) = reg.runs.get(key) else { return };
     if run.status.is_terminal() {
@@ -1467,7 +1598,7 @@ async fn finish(
             status,
             reason: reason.to_owned(),
             detail: detail.to_owned(),
-            cost_minor: None,
+            cost_minor,
             outputs: outputs.unwrap_or(serde_json::Value::Null),
             at_ms: now,
         }],
@@ -1549,13 +1680,16 @@ async fn monitor_runs(core: &Arc<Core>, now: i64) {
             .collect()
     };
     for (run, def) in running {
-        let Some(task_id) = run
-            .task_id
-            .as_deref()
-            .and_then(parse_hex16)
-            .map(TaskId::from_bytes)
-        else {
+        let Some(task_id) = live_task_of(&run) else {
             continue;
+        };
+        let in_gate = run.gate.is_none() && run.gate_task_id.is_some();
+        let typed_reason = |r: &str| {
+            if in_gate {
+                format!("GATE_{r}")
+            } else {
+                r.to_owned()
+            }
         };
         let (task, approvals) = {
             let store = core.store.lock().await;
@@ -1596,6 +1730,9 @@ async fn monitor_runs(core: &Arc<Core>, now: i64) {
             .flatten()
             .unwrap_or(task);
         match task.state {
+            TaskState::Completed | TaskState::ReadyForReview if !alive && in_gate => {
+                settle_gate(core, &run, &task).await;
+            }
             TaskState::Completed | TaskState::ReadyForReview if !alive => {
                 let outputs = outputs_of(core, &task, run.firing.test).await;
                 finish(
@@ -1618,7 +1755,7 @@ async fn monitor_runs(core: &Arc<Core>, now: i64) {
                     core,
                     &key,
                     RunStatus::Failed,
-                    &code,
+                    &typed_reason(&code),
                     "the task failed",
                     Some(outputs),
                 )
@@ -1641,7 +1778,15 @@ async fn monitor_runs(core: &Arc<Core>, now: i64) {
                 } else {
                     ("CANCELLED", "the task was cancelled")
                 };
-                finish(core, &key, RunStatus::Cancelled, reason, detail, None).await;
+                finish(
+                    core,
+                    &key,
+                    RunStatus::Cancelled,
+                    &typed_reason(reason),
+                    detail,
+                    None,
+                )
+                .await;
             }
             TaskState::Waiting(WaitReason::Paused) => {}
             TaskState::Waiting(WaitReason::Approval) if alive => {}
@@ -1661,7 +1806,15 @@ async fn monitor_runs(core: &Arc<Core>, now: i64) {
                 // not wait for a person; it ends typed.
                 let (reason, detail) = stop_reason(core, &task).await;
                 cancel_task(core, &task).await;
-                finish(core, &key, RunStatus::Failed, &reason, &detail, None).await;
+                finish(
+                    core,
+                    &key,
+                    RunStatus::Failed,
+                    &typed_reason(&reason),
+                    &detail,
+                    None,
+                )
+                .await;
             }
             _ => {}
         }
@@ -1684,6 +1837,108 @@ async fn monitor_runs(core: &Arc<Core>, now: i64) {
     for key in promote {
         dispatch(core, &key, None).await;
     }
+}
+
+/// The gate task finished: read its typed answer (AUT-C02), record it, and
+/// either start the main task or end the run having spent only the gate.
+async fn settle_gate(core: &Arc<Core>, run: &Run, gate_task: &Task) {
+    let key = run.firing.dispatch_key.clone();
+    let (decision, detail) = gate_answer(core, gate_task).await;
+    {
+        let mut reg = core.automation.registry.lock().await;
+        let Some(aggregate) = parse_hex16(&run.firing.automation_id) else {
+            return;
+        };
+        if append(
+            core,
+            &mut reg,
+            aggregate,
+            vec![AutomationEvent::AutomationGateDecided {
+                dispatch_key: key.clone(),
+                decision: decision.clone(),
+                detail: detail.clone(),
+                at_ms: core.automation.clock.now_ms(),
+            }],
+        )
+        .await
+        .is_err()
+        {
+            return;
+        }
+    }
+    if decision == "RUN" {
+        dispatch(core, &key, None).await;
+    } else {
+        let outputs =
+            serde_json::json!({"gate": decision, "gate_task": gate_task.task_id.to_string()});
+        finish(
+            core,
+            &key,
+            RunStatus::Skipped,
+            "GATE",
+            &if detail.is_empty() {
+                format!("the gate said {decision}")
+            } else {
+                format!("the gate said {decision}: {detail}")
+            },
+            Some(outputs),
+        )
+        .await;
+    }
+}
+
+/// The gate's answer: the first line of its completion summary that begins
+/// `GATE:`. `RUN` runs; `SKIP <reason>` skips; anything else is `UNCLEAR`,
+/// which skips (fail closed).
+async fn gate_answer(core: &Arc<Core>, task: &Task) -> (String, String) {
+    let store = core.store.lock().await;
+    let summary = store
+        .read_aggregate_of_types(task.task_id.as_bytes(), &["SelfReviewRecorded"], 0)
+        .unwrap_or_default()
+        .iter()
+        .rev()
+        .find_map(|e| {
+            let p = store.payload(&e.envelope).ok()?;
+            let bytes = store.objects().get(p["review_ref"].as_str()?).ok()?;
+            let v: serde_json::Value = serde_json::from_slice(&bytes).ok()?;
+            v["summary"].as_str().map(str::to_owned)
+        })
+        .unwrap_or_default();
+    parse_gate(&summary)
+}
+
+fn parse_gate(summary: &str) -> (String, String) {
+    for line in summary.lines() {
+        let line = line.trim().trim_start_matches(['*', '`', '>', ' ']);
+        let Some(rest) = line
+            .get(..5)
+            .filter(|h| h.eq_ignore_ascii_case("gate:"))
+            .map(|_| line[5..].trim())
+        else {
+            continue;
+        };
+        let rest = rest.trim_matches(['*', '`']).trim();
+        let word: String = rest
+            .chars()
+            .take_while(|c| c.is_ascii_alphabetic())
+            .collect::<String>()
+            .to_ascii_uppercase();
+        let tail = rest[word.len()..]
+            .trim_start_matches([':', '-', ' '])
+            .trim();
+        return match word.as_str() {
+            "RUN" => ("RUN".into(), tail.chars().take(300).collect()),
+            "SKIP" => ("SKIP".into(), tail.chars().take(300).collect()),
+            _ => (
+                "UNCLEAR".into(),
+                format!(
+                    "`{}` is not RUN or SKIP",
+                    rest.chars().take(80).collect::<String>()
+                ),
+            ),
+        };
+    }
+    ("UNCLEAR".into(), "the gate gave no `GATE:` line".into())
 }
 
 async fn stop_reason(core: &Arc<Core>, task: &Task) -> (String, String) {
@@ -1851,7 +2106,12 @@ async fn dispatch_waiting(core: &Arc<Core>, _now: i64) {
         let reg = core.automation.registry.lock().await;
         reg.runs
             .values()
-            .filter(|r| r.status == RunStatus::Pending)
+            .filter(|r| {
+                r.status == RunStatus::Pending
+                    || (r.status == RunStatus::Running
+                        && r.task_id.is_none()
+                        && r.gate.as_ref().is_some_and(|(d, _)| d == "RUN"))
+            })
             .map(|r| r.firing.dispatch_key.clone())
             .collect()
     };
@@ -1873,6 +2133,7 @@ pub(crate) async fn handle(core: &Arc<Core>, env: wire::CommandEnvelope) -> wire
         "GetAutomation" => get(core, &env).await,
         "ListAutomationRuns" => runs(core, &env).await,
         "ValidateAutomation" => validate(core, &env).await,
+        "ListAutomationTemplates" => templates(),
         "CreateAutomation" => create(core, &env, command_id).await,
         "UpdateAutomation" => update(core, &env, command_id).await,
         "LoadRepositoryAutomations" => load_repository(core, &env, command_id).await,
@@ -2092,6 +2353,9 @@ fn run_view(reg: &Registry, r: &Run) -> wire::AutomationRunView {
         },
         acknowledged: r.acknowledged,
         slot_ms: r.firing.slot_ms.unwrap_or(0),
+        gate_decision: r.gate.as_ref().map(|g| g.0.clone()).unwrap_or_default(),
+        gate_detail: r.gate.as_ref().map(|g| g.1.clone()).unwrap_or_default(),
+        gate_task_id: r.gate_task_id.clone().unwrap_or_default(),
     }
 }
 
@@ -2301,6 +2565,27 @@ async fn validate(core: &Arc<Core>, env: &wire::CommandEnvelope) -> Done {
         },
     };
     Ok((false, r.encode_to_vec()))
+}
+
+/// The definitions Modbit ships.
+fn templates() -> Done {
+    let templates = modbit_automation::templates::TEMPLATES
+        .iter()
+        .filter_map(|t| {
+            let d = parse_and_validate(t.json).ok()?;
+            Some(wire::AutomationTemplate {
+                template_id: t.id.to_owned(),
+                name: d.name.clone(),
+                description: d.description.clone(),
+                definition_json: t.json.to_owned(),
+                effects: d.profile.effects.label().into(),
+            })
+        })
+        .collect();
+    Ok((
+        false,
+        wire::AutomationTemplateList { templates }.encode_to_vec(),
+    ))
 }
 
 fn canonical_root(root: &str) -> Result<String, Refusal> {
@@ -2878,7 +3163,8 @@ async fn kill(core: &Arc<Core>, env: &wire::CommandEnvelope, command_id: [u8; 16
                     None,
                 )
                 .await;
-                if let Some(sid) = run.session_id.as_deref().and_then(parse_hex16) {
+                let live_session = run.session_id.clone().or(run.gate_session_id.clone());
+                if let Some(sid) = live_session.as_deref().and_then(parse_hex16) {
                     let actor = host_actor(&run.firing.automation_id, &run.firing.principal);
                     let lease_gen = core
                         .store
@@ -2902,7 +3188,8 @@ async fn kill(core: &Arc<Core>, env: &wire::CommandEnvelope, command_id: [u8; 16
                     )
                     .await;
                 }
-                if let Some(t) = run.task_id.as_deref().and_then(parse_hex16) {
+                let live_task = run.task_id.clone().or(run.gate_task_id.clone());
+                if let Some(t) = live_task.as_deref().and_then(parse_hex16) {
                     let task = core
                         .store
                         .lock()

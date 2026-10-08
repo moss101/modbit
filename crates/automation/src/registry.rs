@@ -219,6 +219,28 @@ pub enum AutomationEvent {
         /// In words.
         detail: String,
     },
+    /// The gate step of a run became a read-only task of its own.
+    AutomationGateStarted {
+        /// The key.
+        dispatch_key: String,
+        /// The gate's task.
+        task_id: String,
+        /// The gate's session.
+        session_id: String,
+        /// When.
+        at_ms: i64,
+    },
+    /// The gate answered: `RUN`, `SKIP` or `UNCLEAR` (which skips).
+    AutomationGateDecided {
+        /// The key.
+        dispatch_key: String,
+        /// The decision.
+        decision: String,
+        /// The reason the gate gave, or why the answer was not accepted.
+        detail: String,
+        /// When.
+        at_ms: i64,
+    },
     /// A run ended.
     AutomationRunFinished {
         /// The key.
@@ -277,6 +299,8 @@ pub const EVENT_TYPES: &[&str] = &[
     "AutomationPauseSet",
     "AutomationFired",
     "AutomationDispatched",
+    "AutomationGateStarted",
+    "AutomationGateDecided",
     "AutomationRunSkipped",
     "AutomationRunFinished",
     "AutomationSlotsSkipped",
@@ -294,6 +318,8 @@ impl AutomationEvent {
             Self::AutomationPauseSet { .. } => "AutomationPauseSet",
             Self::AutomationFired { .. } => "AutomationFired",
             Self::AutomationDispatched { .. } => "AutomationDispatched",
+            Self::AutomationGateStarted { .. } => "AutomationGateStarted",
+            Self::AutomationGateDecided { .. } => "AutomationGateDecided",
             Self::AutomationRunSkipped { .. } => "AutomationRunSkipped",
             Self::AutomationRunFinished { .. } => "AutomationRunFinished",
             Self::AutomationSlotsSkipped { .. } => "AutomationSlotsSkipped",
@@ -411,6 +437,12 @@ pub struct Run {
     pub acknowledged: bool,
     /// Arrival order, for queues.
     pub seq: u64,
+    /// The gate step's task, when the definition has a gate.
+    pub gate_task_id: Option<String>,
+    /// The gate's session.
+    pub gate_session_id: Option<String>,
+    /// The gate's decision (`RUN`, `SKIP`, `UNCLEAR`) and its reason.
+    pub gate: Option<(String, String)>,
 }
 
 /// The folded ledger.
@@ -570,6 +602,33 @@ impl Registry {
                     r.dispatched_ms = Some(*at_ms);
                 }
             }
+            AutomationEvent::AutomationGateStarted {
+                dispatch_key,
+                task_id,
+                session_id,
+                at_ms,
+            } => {
+                if let Some(r) = self.runs.get_mut(dispatch_key)
+                    && !r.status.is_terminal()
+                {
+                    r.status = RunStatus::Running;
+                    r.gate_task_id = Some(task_id.clone());
+                    r.gate_session_id = Some(session_id.clone());
+                    r.dispatched_ms.get_or_insert(*at_ms);
+                }
+            }
+            AutomationEvent::AutomationGateDecided {
+                dispatch_key,
+                decision,
+                detail,
+                ..
+            } => {
+                if let Some(r) = self.runs.get_mut(dispatch_key)
+                    && r.gate.is_none()
+                {
+                    r.gate = Some((decision.clone(), detail.clone()));
+                }
+            }
             AutomationEvent::AutomationRunFinished {
                 dispatch_key,
                 status,
@@ -670,6 +729,9 @@ impl Registry {
                 outputs: serde_json::Value::Null,
                 acknowledged: false,
                 seq: self.next_seq,
+                gate_task_id: None,
+                gate_session_id: None,
+                gate: None,
             },
         );
     }

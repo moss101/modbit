@@ -552,6 +552,27 @@ export declare type AutomationRunView = Message<"modbit.v1.AutomationRunView"> &
    * @generated from field: int64 slot_ms = 24;
    */
   slotMs: bigint;
+
+  /**
+   * AUT-C02: the gate step, when the definition has one.
+   *
+   * RUN | SKIP | UNCLEAR ("" while it runs or when there is no gate)
+   *
+   * @generated from field: string gate_decision = 25;
+   */
+  gateDecision: string;
+
+  /**
+   * @generated from field: string gate_detail = 26;
+   */
+  gateDetail: string;
+
+  /**
+   * hex
+   *
+   * @generated from field: string gate_task_id = 27;
+   */
+  gateTaskId: string;
 };
 
 /**
@@ -668,6 +689,72 @@ export declare type AutomationList = Message<"modbit.v1.AutomationList"> & {
  * Use `create(AutomationListSchema)` to create a new message.
  */
 export declare const AutomationListSchema: GenMessage<AutomationList>;
+
+/**
+ * The definitions Modbit ships (AUT-C03): real data to copy, not prose.
+ *
+ * @generated from message modbit.v1.ListAutomationTemplates
+ */
+export declare type ListAutomationTemplates = Message<"modbit.v1.ListAutomationTemplates"> & {
+};
+
+/**
+ * Describes the message modbit.v1.ListAutomationTemplates.
+ * Use `create(ListAutomationTemplatesSchema)` to create a new message.
+ */
+export declare const ListAutomationTemplatesSchema: GenMessage<ListAutomationTemplates>;
+
+/**
+ * @generated from message modbit.v1.AutomationTemplate
+ */
+export declare type AutomationTemplate = Message<"modbit.v1.AutomationTemplate"> & {
+  /**
+   * @generated from field: string template_id = 1;
+   */
+  templateId: string;
+
+  /**
+   * @generated from field: string name = 2;
+   */
+  name: string;
+
+  /**
+   * @generated from field: string description = 3;
+   */
+  description: string;
+
+  /**
+   * @generated from field: string definition_json = 4;
+   */
+  definitionJson: string;
+
+  /**
+   * @generated from field: string effects = 5;
+   */
+  effects: string;
+};
+
+/**
+ * Describes the message modbit.v1.AutomationTemplate.
+ * Use `create(AutomationTemplateSchema)` to create a new message.
+ */
+export declare const AutomationTemplateSchema: GenMessage<AutomationTemplate>;
+
+/**
+ * @generated from message modbit.v1.AutomationTemplateList
+ */
+export declare type AutomationTemplateList = Message<"modbit.v1.AutomationTemplateList"> & {
+  /**
+   * @generated from field: repeated modbit.v1.AutomationTemplate templates = 1;
+   */
+  templates: AutomationTemplate[];
+};
+
+/**
+ * Describes the message modbit.v1.AutomationTemplateList.
+ * Use `create(AutomationTemplateListSchema)` to create a new message.
+ */
+export declare const AutomationTemplateListSchema: GenMessage<AutomationTemplateList>;
 
 /**
  * @generated from message modbit.v1.GetAutomation

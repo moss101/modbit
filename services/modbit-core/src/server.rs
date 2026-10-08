@@ -1426,9 +1426,11 @@ fn required_client_capability(env: &CommandEnvelope) -> Option<&'static str> {
         // to a definition, its approval, the kill switches and a manual run
         // is a person's act, held by the clients that act for one. A verified
         // trigger delivery is the cloud relay's.
-        "ListAutomations" | "GetAutomation" | "ListAutomationRuns" | "ValidateAutomation" => {
-            "events.subscribe"
-        }
+        "ListAutomations"
+        | "GetAutomation"
+        | "ListAutomationRuns"
+        | "ValidateAutomation"
+        | "ListAutomationTemplates" => "events.subscribe",
         "CreateAutomation"
         | "UpdateAutomation"
         | "LoadRepositoryAutomations"
@@ -1834,7 +1836,9 @@ pub(crate) fn accept(command_id: Option<wire::Id>, replayed: bool, result: Vec<u
 }
 
 pub(crate) async fn handle_command(core: &Arc<Core>, env: CommandEnvelope) -> CommandAck {
-    handle_command_as(core, env, None).await
+    // The dispatcher's future is large; it lives on the heap so the callers
+    // that nest it (resume starts a task through it) keep a shallow stack.
+    Box::pin(handle_command_as(core, env, None)).await
 }
 
 /// Run a command as `host`: the Core's own automation host acting for a
