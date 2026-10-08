@@ -14,7 +14,7 @@
  * answers are shown as they come. A draft is a local convenience: it is never
  * sent without the person pressing send.
  */
-import { useCallback, useEffect, useId, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useId, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { Button, IconButton, Menu, useLayer, type MenuItem } from "@modbit/ui";
 import type { AttachmentResult, TaskModeId } from "../../shared/composer-types.ts";
 import { MAX_ATTACHMENTS_PER_MESSAGE, MAX_ATTACHMENT_BYTES } from "../../shared/attachments.ts";
@@ -27,6 +27,7 @@ import {
   enterAction,
   filePaths,
   HISTORY_START,
+  isModelRefusal,
   isPolicyRefusal,
   liveMentions,
   loadStore,
@@ -122,9 +123,11 @@ export function Composer(props: ComposerProps) {
   const [announce, setAnnounce] = useState("");
   const area = useRef<HTMLTextAreaElement>(null);
   const fileInput = useRef<HTMLInputElement>(null);
-  const inputIdRef = useRef<string>(newId());
+  // One id per message text: a retry of the same send replays in the Core; edited text is a different message.
+  const inputIdRef = useRef<{ id: string; text: string }>({ id: newId(), text: "" });
   const sending = useRef(false);
   const lastSent = useRef<string>("");
+  const lastSentId = useRef<string>("");
   const modeChain = useRef<Promise<void>>(Promise.resolve());
   const listId = useId();
 
@@ -134,7 +137,7 @@ export function Composer(props: ComposerProps) {
   const state = card?.state ?? "";
   const running = state === "Running" || queue?.runAlive === true;
   const ended = state === "Completed" || state === "Failed" || state === "Cancelled";
-  const startable = !ended && !running && (state === "Created" || state === "Queued" || state === "ReadyForReview" || (state === "Waiting" && card?.waitReason !== "Capacity" && !(card?.waitReason === "Approval" && approvalPending)));
+  const startable = !ended && !running && (state === "Created" || state === "Queued" || (state === "Waiting" && card?.waitReason !== "Capacity" && !(card?.waitReason === "Approval" && approvalPending)));
   const coreMode: TaskModeId = posture?.mode ?? "AGENT";
   const shownMode: TaskModeId = requestedMode ?? coreMode;
   const status = modeStatus(requestedMode, posture);
@@ -169,17 +172,21 @@ export function Composer(props: ComposerProps) {
 
   // ---- helpers
   const refreshSoon = core.refresh;
+  // The caret is placed once the new text is in the box and before the next keystroke can land (a frame later would put it back where it was).
+  const pendingCaret = useRef<number | null>(null);
   const setTextAndCaret = (next: string, at: number) => {
+    pendingCaret.current = at;
     setText(next);
     setCaret(at);
-    requestAnimationFrame(() => {
-      const ta = area.current;
-      if (ta) {
-        ta.focus();
-        ta.setSelectionRange(at, at);
-      }
-    });
   };
+  useLayoutEffect(() => {
+    const at = pendingCaret.current;
+    const ta = area.current;
+    if (at === null || !ta || ta.value.length < at) return;
+    pendingCaret.current = null;
+    ta.focus();
+    ta.setSelectionRange(at, at);
+  });
   const live = useMemo(() => liveMentions(text, mentions), [text, mentions]);
 
   const chooseMention = (o: MentionOption) => {
@@ -224,6 +231,7 @@ export function Composer(props: ComposerProps) {
   // ---- sending
   const clearAfterSend = (sent: string) => {
     lastSent.current = sent;
+    lastSentId.current = inputIdRef.current.id;
     persist(withDraft(withHistory(storeRef.current, taskId, sent), taskId, null));
     setText("");
     setMentions([]);
@@ -233,7 +241,7 @@ export function Composer(props: ComposerProps) {
     setHistory(HISTORY_START);
     setCaret(0);
     setStopped(null);
-    inputIdRef.current = newId();
+    inputIdRef.current = { id: newId(), text: "" };
   };
   const send = async (alternate: boolean) => {
     const body = text.trim();
@@ -250,7 +258,8 @@ export function Composer(props: ComposerProps) {
     try {
       const paths = filePaths(live);
       if (paths.length > 0) await window.modbit.setTaskSelection(sessionId, taskId, { paths, reviewHunks: [], source: "desktop" });
-      await window.modbit.composerQueueInput(sessionId, taskId, body, plan.mode, inputIdRef.current);
+      if (inputIdRef.current.text !== body) inputIdRef.current = { id: newId(), text: body };
+      await window.modbit.composerQueueInput(sessionId, taskId, body, plan.mode, inputIdRef.current.id);
       if (plan.start) await window.modbit.startTask(sessionId, taskId, skill ? { skills: [skill] } : {});
       clearAfterSend(body);
       if (educationDue(storeRef.current, plan.queues)) setEducation(true);
@@ -402,8 +411,13 @@ export function Composer(props: ComposerProps) {
   // A model-refusal at run time (the policy blocks the model the task runs) is a failed turn: the words are restored and the tray names the cause.
   const diag = card?.diagnostic;
   useEffect(() => {
-    if (!diag || !isPolicyRefusal(diag.code) || policy) return;
-    if (lastSent.current && text === "") setText(lastSent.current);
+    if (!diag || !isModelRefusal(diag.code) || policy) return;
+    if (lastSent.current && text === "") {
+      setText(lastSent.current);
+      // The failed turn never took the message: it is back in the box, so it is not also left waiting in the queue.
+      if (sessionId && queue?.items.some((i) => i.inputId === lastSentId.current && i.state === "QUEUED")) void window.modbit.composerRemoveQueued(sessionId, taskId, lastSentId.current).then(refreshSoon, refreshSoon);
+      lastSent.current = "";
+    }
     setPolicy({ model: posture?.preference.pinModel || "The model this task runs", code: diag.code, reason: diag.detail || diag.userAction });
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [diag?.code, diag?.detail]);
@@ -570,7 +584,7 @@ export function Composer(props: ComposerProps) {
         <TerminalsChip count={running_terminals.length} open={terminalsOpen} onToggle={() => setTerminalsOpen((o) => !o)} />
         {startable && (
           <Button size="sm" variant="primary" onClick={() => onResume(taskId)} data-testid="conv-start">
-            {state === "Waiting" || state === "ReadyForReview" ? "Resume" : "Start"}
+            {state === "Waiting" ? "Resume" : "Start"}
           </Button>
         )}
         <Button size="sm" onClick={onNewTask} data-testid="conv-new-task">
@@ -609,11 +623,13 @@ export function Composer(props: ComposerProps) {
           </div>
         )}
         {attachNotes.length > 0 && (
-          <ul className="cmp-notes" role="alert" data-testid="attach-notes">
-            {attachNotes.map((n) => (
-              <li key={n}>{n}</li>
-            ))}
-          </ul>
+          <div role="alert" data-testid="attach-notes">
+            <ul className="cmp-notes">
+              {attachNotes.map((n) => (
+                <li key={n}>{n}</li>
+              ))}
+            </ul>
+          </div>
         )}
         <div className="cmp-row">
           <Menu label="Add to the message" placement="up" triggerTestId="add-context" triggerClassName="cmp-plus" trigger={<span aria-hidden="true">+</span>} items={addItems} />

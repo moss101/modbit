@@ -157,7 +157,7 @@ export function SlashMenuView({ id, items, dividerAt, active, onActive, onChoose
         </p>
       )}
       {current && (
-        <aside className="cmp-detail" data-testid="slash-detail" aria-label="Details of the highlighted entry">
+        <div className="cmp-detail" data-testid="slash-detail">
           <strong>/{current.entry.displayName}</strong>
           <p className="meta">{`${current.entry.kind.toLowerCase()} · ${scopeLabel(current.entry.scope)} · ${current.entry.trust.toLowerCase().replace(/_/g, " ")}`}</p>
           {current.entry.description && <p data-testid="slash-description">{current.entry.description}</p>}
@@ -166,7 +166,7 @@ export function SlashMenuView({ id, items, dividerAt, active, onActive, onChoose
               {current.disabledReason}
             </p>
           )}
-        </aside>
+        </div>
       )}
     </div>
   );

@@ -69,6 +69,7 @@ export interface PlaceholderContext {
 /** Context-specific placeholders in Modbit's own words (AFW-D01). */
 export function placeholderFor(ctx: PlaceholderContext): string {
   if (ctx.running) return "Add to this task: Enter queues it for after this turn";
+  if (ctx.state === "ReadyForReview") return "Waiting for your review. A message here is queued for when the task runs again";
   if (ctx.mode !== "AGENT") return MODE_DEFS[ctx.mode].placeholder;
   return ctx.hasMessages ? "Follow up on this task" : "Describe what you want done";
 }
@@ -531,3 +532,5 @@ export function coreError(e: unknown): { code: string; message: string } {
 /** Codes that mean the policy or the registry refuses a model (AFW-H02). */
 export const POLICY_CODES: readonly string[] = ["POLICY_BLOCKED", "MODEL_NOT_ALLOWED", "NO_PROVIDER", "UNKNOWN_MODEL", "NO_CREDENTIAL"];
 export const isPolicyRefusal = (code: string): boolean => POLICY_CODES.includes(code);
+/** A run that failed because the Core would not route to the model (ROUTE_REFUSED, with the Core's own detail), or a policy code. */
+export const isModelRefusal = (code: string): boolean => isPolicyRefusal(code) || code === "ROUTE_REFUSED";

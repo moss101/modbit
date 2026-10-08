@@ -99,4 +99,6 @@ export const composerCss = `
 .cmp-fieldset { border: 0; margin: var(--mb-space-1) 0; padding: 0; }
 .cmp-radio { display: flex; align-items: center; gap: var(--mb-space-2); min-height: 26px; }
 .cmp-stopped-text { overflow-wrap: anywhere; }
+.cmp-gallery .cmp-menu, .cmp-gallery .cmp-picker { position: static; }
+.cmp-gallery h3 { margin: var(--mb-space-4) 0 var(--mb-space-1); font-size: var(--mb-type-chrome-size); }
 `;

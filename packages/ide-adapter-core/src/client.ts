@@ -968,9 +968,10 @@ export class CoreClient {
   }
 
   /** Steer, collect for, or follow up a task (REQ-EV-0191): durable input the loop applies at its next boundary. */
-  async queueInput(sessionId: string, taskId: string, text: string, mode: "STEER" | "COLLECT" | "FOLLOW_UP" | "DEFAULT" = "STEER", inputId = hex(freshId())): Promise<{ sequence: bigint; offset: bigint }> {
+  async queueInput(sessionId: string, taskId: string, text: string, mode: "STEER" | "COLLECT" | "FOLLOW_UP" | "DEFAULT" = "STEER", inputId = hex(freshId()), commandId?: Uint8Array): Promise<{ sequence: bigint; offset: bigint }> {
     const payload = toBinary(QueueInputSchema, create(QueueInputSchema, { taskId: { value: unhex(taskId) }, inputId, mode, text }));
-    const ack = await this.command("QueueInput", payload, undefined, this.leases.get(sessionId));
+    // A caller that keeps the command id (derived from the input id) makes a retry replay instead of writing the record twice.
+    const ack = await this.command("QueueInput", payload, commandId, this.leases.get(sessionId));
     const r = fromBinary(InputQueuedSchema, ack.result);
     return { sequence: r.sequence, offset: r.offset };
   }

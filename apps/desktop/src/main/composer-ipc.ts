@@ -9,6 +9,7 @@
  * the queue's order, the posture a mode derives, whether a model may be pinned
  * and what a side question answers are the Core's.
  */
+import { createHash } from "node:crypto";
 import type { ExecutionPreferenceView, RoutingOutcomeView, SlashEntry } from "@modbit/surface-protocol";
 import { ObjectiveProfile, TaskMode } from "@modbit/surface-protocol";
 import { checkAttachment, labelOf, MAX_ATTACHMENT_BYTES } from "../shared/attachments.ts";
@@ -89,7 +90,7 @@ export function requirePreferencePatch(v: unknown): PreferencePatch {
 
 const routingOf = (r: RoutingOutcomeView | undefined) => ({ outcome: r?.outcome ?? "", reasonCode: r?.reasonCode ?? "", detail: r?.detail ?? "", floorMode: r?.floorMode ?? "" });
 const preferenceOf = (p: ExecutionPreferenceView | undefined): PostureView["preference"] => ({
-  objective: p ? (ObjectiveProfile[p.objective] ?? "") : "",
+  objective: p && p.objective !== ObjectiveProfile.UNSPECIFIED ? (ObjectiveProfile[p.objective] ?? "") : "",
   effort: p?.effort ?? "",
   serviceTier: p?.serviceTier ?? "",
   pinEndpoint: p?.pinEndpoint ?? "",
@@ -194,7 +195,9 @@ export function registerComposerHandlers(r: ComposerRegistrar): void {
     const id = requireInputId(inputId);
     const c = r.client();
     await r.lease(c, sid);
-    const v = await c.queueInput(sid, tid, t, m, id);
+    // The command id is a function of the task and the input id: the same send retried (after a crash, a reload) replays and is one record.
+    const commandId = new Uint8Array(createHash("sha256").update(`composer.queue:${tid}:${id}`).digest().subarray(0, 16));
+    const v = await c.queueInput(sid, tid, t, m, id, commandId);
     return { inputId: id, sequence: v.sequence.toString(), offset: v.offset.toString() };
   });
   const changed = (v: { inputId: string; state: string; position: number; offset: bigint }): QueuedChangeView => ({ inputId: v.inputId, state: v.state, position: v.position, offset: v.offset.toString() });
