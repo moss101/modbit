@@ -120,6 +120,8 @@ fn is_plumbing(sub: &str) -> bool {
             | "remote"
             | "commit-tree"
             | "push"
+            | "ls-files"
+            | "bundle"
     )
 }
 

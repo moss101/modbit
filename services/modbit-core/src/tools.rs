@@ -1122,6 +1122,30 @@ impl ToolHost {
                 .get(tool_name)
                 .map(|t| t.spec().reversibility()),
         });
+        // PX-119 / PX-066: the merge and apply-back tools keep their state on
+        // the log through this port, built for the one call that needs it.
+        let git_state: Option<Arc<dyn modbit_tools::GitStatePort>> = (tool_name
+            .starts_with("git.merge.")
+            || tool_name.starts_with("git.apply.")
+            || tool_name.starts_with("git.worktree."))
+        .then(|| {
+            Arc::new(crate::git_state::CoreGitState {
+                store: Arc::clone(store),
+                tenant: tenant_id,
+                session: session_id,
+                task: task_id,
+                actor: actor.clone(),
+                root: root.clone(),
+                exec: self.execd.as_ref().map(|e| e.target.clone()),
+                profile: execution_profile.to_owned(),
+                lease: lease_ref.clone(),
+                mode,
+                emergency: emergency_stopped,
+                config: Arc::clone(&task_config),
+                verification_json: self.configurations.verification_json(task_id),
+                cancel: cancel.clone(),
+            }) as Arc<dyn modbit_tools::GitStatePort>
+        });
         let ctx = InvokeContext {
             task_id,
             execution_profile: execution_profile.to_owned(),
@@ -1271,6 +1295,7 @@ impl ToolHost {
             ) as Arc<dyn modbit_mcp::McpPort>),
             cancel: cancel.clone(),
             hooks: None,
+            git_state,
         };
         // REQ-EV-0042/0139: the task's hooks before and after the call — its
         // pinned configuration's and its session's extensions'.

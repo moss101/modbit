@@ -691,6 +691,13 @@ async fn run_command(ready: &ReadyLine, rest: Vec<String>) -> Result<(), String>
                     workspace_root,
                     issue_url: String::new(),
                     issue_json: String::new(),
+                    // PX-118: `--isolation worktree` runs the task in its own
+                    // worktree; the checkout is untouched until ApplyWorktree.
+                    isolation: match opt("--isolation") {
+                        Some("worktree") => 2,
+                        Some("none") => 1,
+                        _ => 0,
+                    },
                 }
                 .encode_to_vec(),
                 Some(lease),

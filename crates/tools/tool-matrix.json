@@ -146,6 +146,71 @@
       "test": "m2_5_capability_kernel_gates_destructive_tools_behind_intent_bound_approvals"
     },
     {
+      "tool": "git.merge.prepare",
+      "family": "task",
+      "source_behaviors": [
+        "git merge --no-commit"
+      ],
+      "owner": "Worktree Manager",
+      "effect": "ProtectedWrite",
+      "capabilities": [
+        "git.merge"
+      ],
+      "test": "px_119_two_branches_conflict_the_resolution_is_verified_and_every_merge_has_a_receipt"
+    },
+    {
+      "tool": "git.merge.commit",
+      "family": "task",
+      "source_behaviors": [
+        "git commit (merge)"
+      ],
+      "owner": "Worktree Manager",
+      "effect": "ProtectedWrite",
+      "capabilities": [
+        "git.merge"
+      ],
+      "test": "px_119_two_branches_conflict_the_resolution_is_verified_and_every_merge_has_a_receipt"
+    },
+    {
+      "tool": "git.merge.abort",
+      "family": "task",
+      "source_behaviors": [
+        "git merge --abort"
+      ],
+      "owner": "Worktree Manager",
+      "effect": "ReversibleWrite",
+      "capabilities": [
+        "git.merge"
+      ],
+      "test": "px_119_two_branches_conflict_the_resolution_is_verified_and_every_merge_has_a_receipt"
+    },
+    {
+      "tool": "git.apply.worktree",
+      "family": "task",
+      "source_behaviors": [
+        "apply a worktree's result to the checkout"
+      ],
+      "owner": "Worktree Manager",
+      "effect": "ProtectedWrite",
+      "capabilities": [
+        "git.apply"
+      ],
+      "test": "px_066_apply_is_a_protected_effect_bound_to_its_intent_and_undo_is_exact"
+    },
+    {
+      "tool": "git.apply.undo",
+      "family": "task",
+      "source_behaviors": [
+        "restore the pre-apply checkpoint"
+      ],
+      "owner": "Worktree Manager",
+      "effect": "ProtectedWrite",
+      "capabilities": [
+        "git.apply"
+      ],
+      "test": "px_066_apply_is_a_protected_effect_bound_to_its_intent_and_undo_is_exact"
+    },
+    {
       "tool": "shell.exec",
       "family": "shell",
       "source_behaviors": [

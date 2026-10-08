@@ -797,6 +797,17 @@ tool!(
         }
         match repo.worktree_add(&path, &branch) {
             Ok(wt) => {
+                // The host's registry learns of it, so the lifecycle (the
+                // cleanup, the retention caps) covers it too (PX-065).
+                if let Some(gs) = &ctx.git_state {
+                    let _ = gs
+                        .call(
+                            "worktree.created",
+                            ctx.tool_call_id,
+                            &json!({"path": wt.dir(), "branch": branch, "head": wt.head().ok()}),
+                        )
+                        .await;
+                }
                 ToolOutcome::ok(json!({"branch": branch, "path": wt.dir(), "head": wt.head().ok()}))
             }
             Err(e) => git_err(e),
@@ -841,7 +852,14 @@ tool!(
             );
         }
         match repo.worktree_remove(&path) {
-            Ok(()) => ToolOutcome::ok(json!({"removed": path})),
+            Ok(()) => {
+                if let Some(gs) = &ctx.git_state {
+                    let _ = gs
+                        .call("worktree.closed", ctx.tool_call_id, &json!({"path": path}))
+                        .await;
+                }
+                ToolOutcome::ok(json!({"removed": path}))
+            }
             Err(e) => git_err(e),
         }
     }
@@ -2979,5 +2997,6 @@ pub fn register_direct(registry: &mut ToolRegistry) -> Result<()> {
     ] {
         registry.register(t)?;
     }
+    crate::gitstate::register(registry)?;
     Ok(())
 }

@@ -2918,6 +2918,10 @@ async fn run_loop(
     // EPR-011: the repository the request started from, pinned once.
     if !resumed {
         crate::replay::capture(&core, &task, lt, &actor).await;
+        // PX-065: a worktree made for this task runs the repository's setup
+        // commands (trusted repositories only) before the first turn; a
+        // failure is on the log and does not stop the task.
+        crate::worktrees::run_setup(&core, &task, lt, &actor).await;
     }
     let mut tools: Vec<ToolProjection>;
     let mut projected_names: Vec<String>;
@@ -8238,8 +8242,9 @@ async fn handle_complete(
     // FIX-16: a parent is not done while a child it spawned is not over —
     // its work would be abandoned mid-flight or merged by nobody. The model
     // is told each child by name and status, and what it can do about it.
-    // (No integration state exists yet to settle a finished child against:
-    // a child is settled when it is terminal.)
+    // PX-119: and a child that is over and produced changes is settled only
+    // once its work is integrated — merged into the parent through
+    // `git.merge.*`, or dropped by a recorded decision.
     if precheck.is_ok() {
         let unsettled = crate::spawn::unsettled_children(core, &task.task_id).await;
         if !unsettled.is_empty() {
@@ -8254,6 +8259,28 @@ async fn handle_complete(
                     })
                     .collect(),
             });
+        } else {
+            let open = crate::spawn::unintegrated_children(core, &task.task_id).await;
+            if !open.is_empty() {
+                precheck = Err(HarnessRefusal::CompletionBlocked {
+                    reasons: open
+                        .iter()
+                        .map(|c| {
+                            format!(
+                                "CHILDREN_NOT_INTEGRATED: child `{}` ({}, task {}) ended {} with changes on `{}` ({} file(s) beyond its base) that are neither merged nor discarded; merge them (git.merge.prepare with child `{}`, then git.merge.commit) or drop them (git.merge.abort with child `{}` and discard: true) before completing",
+                                c.key,
+                                c.agent_id,
+                                c.child_task_id,
+                                c.status,
+                                c.branch,
+                                c.changed_files,
+                                c.key,
+                                c.key
+                            )
+                        })
+                        .collect(),
+                });
+            }
         }
     }
     let verdict = if precheck.is_ok() {

@@ -649,8 +649,9 @@ pub fn plan(
         Some(b) if !b.is_empty() => checkout.tree_of(b)?,
         _ => EMPTY_TREE.to_owned(),
     };
-    let candidate_commit = checkout.resolve(&format!("{candidate}^{{commit}}"))?;
-    let candidate_tree = checkout.tree_of(&candidate_commit)?;
+    // The candidate is a commit (a snapshot) or a tree: either names its tree.
+    let candidate_tree = checkout.tree_of(candidate)?;
+    let candidate_commit = candidate.to_owned();
     let checkout_head = if checkout.is_unborn() {
         None
     } else {

@@ -126,6 +126,25 @@ fn run_bytes(dir: &Path, args: &[&str], envs: &[(&str, &str)]) -> Result<Vec<u8>
     Ok(out.stdout)
 }
 
+/// A hardened `git -C <dir>` process, not yet started: the one way code
+/// outside this crate may build a Git process (PX-067; the architecture lint
+/// refuses a Git spawn anywhere else). `args` are inspected only to decide
+/// which of the repository's programs must be neutralised for this
+/// subcommand; the caller adds them with `.args(args)` and any further
+/// arguments or stdio.
+pub fn command(dir: &Path, args: &[&str]) -> Result<std::process::Command> {
+    harden::command(dir, args)
+}
+
+/// Run `git -C <dir> <args>` hardened and return its raw output (status,
+/// stdout, stderr). An unsuccessful exit is the caller's to read, as with
+/// [`std::process::Command::output`].
+pub fn output(dir: &Path, args: &[&str]) -> Result<std::process::Output> {
+    let mut cmd = harden::command(dir, args)?;
+    cmd.args(args);
+    cmd.output().map_err(Error::Spawn)
+}
+
 /// Run git in `dir`; returns stdout.
 fn run(dir: &Path, args: &[&str]) -> Result<String> {
     run_bytes(dir, args, &[]).map(|b| String::from_utf8_lossy(&b).into_owned())
@@ -476,6 +495,27 @@ impl Repo {
         run(&self.dir, &["branch", "-D", "--end-of-options", branch]).map(|_| ())
     }
 
+    /// For a linked worktree, the main working tree it was added from
+    /// (`None` for the main working tree itself, or a bare layout).
+    #[must_use]
+    pub fn common_checkout(&self) -> Option<PathBuf> {
+        let out = run(
+            &self.dir,
+            &["rev-parse", "--path-format=absolute", "--git-common-dir"],
+        )
+        .ok()?;
+        let common = PathBuf::from(out.trim());
+        if common.file_name()? != ".git" {
+            return None;
+        }
+        let main = common.parent()?.to_path_buf();
+        let same = |a: &Path, b: &Path| match (a.canonicalize(), b.canonicalize()) {
+            (Ok(a), Ok(b)) => a == b,
+            _ => a == b,
+        };
+        (!same(&main, &self.dir)).then_some(main)
+    }
+
     /// Whether `HEAD` names no commit yet (a repository or orphan branch with
     /// no history).
     #[must_use]
@@ -749,22 +789,7 @@ impl Repo {
                 &source_sha,
             ],
         );
-        let conflicts: Vec<String> = run_bytes(
-            &self.dir,
-            &[
-                "diff",
-                "--no-ext-diff",
-                "--no-textconv",
-                "--name-only",
-                "-z",
-                "--diff-filter=U",
-            ],
-            &[],
-        )?
-        .split(|b| *b == 0)
-        .filter(|p| !p.is_empty())
-        .map(|p| String::from_utf8_lossy(p).into_owned())
-        .collect();
+        let conflicts = self.unmerged_paths()?;
         let state = if !conflicts.is_empty() {
             MergeState::Conflicted
         } else if result.is_ok() {
@@ -784,6 +809,27 @@ impl Repo {
             state,
             result: None,
         })
+    }
+
+    /// The paths the index still holds as unmerged (conflicted, not yet
+    /// marked resolved).
+    pub fn unmerged_paths(&self) -> Result<Vec<String>> {
+        Ok(run_bytes(
+            &self.dir,
+            &[
+                "diff",
+                "--no-ext-diff",
+                "--no-textconv",
+                "--name-only",
+                "-z",
+                "--diff-filter=U",
+            ],
+            &[],
+        )?
+        .split(|b| *b == 0)
+        .filter(|p| !p.is_empty())
+        .map(|p| String::from_utf8_lossy(p).into_owned())
+        .collect())
     }
 
     /// Mark a conflicted path resolved (the caller wrote the resolution to the file).
@@ -858,6 +904,44 @@ impl Repo {
         Ok(())
     }
 
+    /// The tree object of the worktree's whole state: `HEAD` plus every
+    /// tracked change and every untracked, non-ignored file, built in a
+    /// temporary index (a fresh one per call). No commit, no ref; `HEAD`, the
+    /// index and the worktree are untouched. Two calls on an unchanged
+    /// worktree answer the same tree.
+    pub fn dirty_tree(&self) -> Result<String> {
+        static N: std::sync::atomic::AtomicU64 = std::sync::atomic::AtomicU64::new(0);
+        let unborn = self.is_unborn();
+        let git_dir = run(&self.dir, &["rev-parse", "--git-dir"])?
+            .trim()
+            .to_owned();
+        let name = format!(
+            "modbit-snapshot-index-{}-{}",
+            std::process::id(),
+            N.fetch_add(1, std::sync::atomic::Ordering::Relaxed)
+        );
+        let tmp_index = if Path::new(&git_dir).is_absolute() {
+            PathBuf::from(&git_dir).join(name)
+        } else {
+            self.dir.join(&git_dir).join(name)
+        }
+        .to_string_lossy()
+        .into_owned();
+        let with_index = |args: &[&str]| -> Result<String> {
+            run_bytes(&self.dir, args, &[("GIT_INDEX_FILE", &tmp_index)])
+                .map(|b| String::from_utf8_lossy(&b).into_owned())
+        };
+        let built = (|| -> Result<String> {
+            if !unborn {
+                with_index(&["read-tree", "HEAD"])?;
+            }
+            with_index(&["add", "-A", "."])?;
+            Ok(with_index(&["write-tree"])?.trim().to_owned())
+        })();
+        let _ = std::fs::remove_file(&tmp_index);
+        built
+    }
+
     /// Capture the dirty worktree (tracked changes and untracked files) as a
     /// commit under `refs/modbit/snapshots/<id>` using a temporary index;
     /// HEAD, the index and the worktree are untouched.
@@ -868,29 +952,7 @@ impl Repo {
         let unborn = self.is_unborn();
         let parent = if unborn { String::new() } else { self.head()? };
         let paths: Vec<String> = self.status()?.into_iter().map(|e| e.path).collect();
-        let git_dir = run(&self.dir, &["rev-parse", "--git-dir"])?
-            .trim()
-            .to_owned();
-        let tmp_index = if Path::new(&git_dir).is_absolute() {
-            PathBuf::from(&git_dir).join(format!("modbit-snapshot-index-{}", std::process::id()))
-        } else {
-            self.dir
-                .join(&git_dir)
-                .join(format!("modbit-snapshot-index-{}", std::process::id()))
-        }
-        .to_string_lossy()
-        .into_owned();
-        let _ = &tmp_index;
-        let with_index = |args: &[&str]| -> Result<String> {
-            run_bytes(&self.dir, args, &[("GIT_INDEX_FILE", &tmp_index)])
-                .map(|b| String::from_utf8_lossy(&b).into_owned())
-        };
-        if !unborn {
-            with_index(&["read-tree", "HEAD"])?;
-        }
-        with_index(&["add", "-A", "."])?;
-        let tree = with_index(&["write-tree"])?.trim().to_owned();
-        let _ = std::fs::remove_file(&tmp_index);
+        let tree = self.dirty_tree()?;
         let message = format!("modbit snapshot {id}");
         let mut args = vec![
             "-c",

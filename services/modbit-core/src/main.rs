@@ -13,6 +13,7 @@ mod accounting;
 mod agent_profiles;
 mod agent_tools;
 mod agents;
+mod apply_back;
 mod assurance;
 mod attention;
 mod baseline;
@@ -37,6 +38,7 @@ mod extensions;
 mod external_diagnostics;
 mod forge;
 mod gate;
+mod git_state;
 mod handoff;
 mod hooks;
 mod index_host;
@@ -47,6 +49,7 @@ mod mcp;
 mod media_bridge;
 mod memory;
 mod memory_commands;
+mod merge_tx;
 mod model_registry;
 mod onboarding;
 mod pause;
@@ -82,6 +85,8 @@ mod undo;
 mod usage;
 mod user_patch;
 mod verify;
+mod worktree_cleanup;
+mod worktrees;
 
 fn usage() -> &'static str {
     "usage: modbit-core --data-dir <dir> [--tether-stdin] [--idle-exit-secs N] [--tenant-id <uuid>]"

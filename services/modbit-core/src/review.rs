@@ -96,11 +96,7 @@ fn candidate(
     if !untracked.is_empty() {
         let mut args = vec!["add", "-N", "--"];
         args.extend(untracked.iter().copied());
-        let _ = std::process::Command::new("git")
-            .arg("-C")
-            .arg(&root)
-            .args(&args)
-            .output();
+        let _ = modbit_git::output(std::path::Path::new(&root), &args);
     }
     let diff = repo
         .diff_worktree()

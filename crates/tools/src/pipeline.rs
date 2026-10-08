@@ -243,6 +243,11 @@ pub struct InvokeContext {
     /// The Hook Bus (REQ-EV-0042/0139): the task's typed hooks before and
     /// after the call. `None` = no hooks are in force.
     pub hooks: Option<Arc<dyn crate::hooks::HookPort>>,
+    /// The Core's merge and apply-back state (PX-119, PX-066): the merge
+    /// transaction, the pre-apply checkpoint and the worktree registry that
+    /// `git.merge.*` and `git.worktree.apply` / `undo` keep on the event log.
+    /// `None` = the host keeps none, and those tools refuse.
+    pub git_state: Option<Arc<dyn crate::gitstate::GitStatePort>>,
 }
 
 /// What a pinned environment revision gives a process.
