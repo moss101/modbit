@@ -1299,8 +1299,28 @@ function Dashboard({ sessionId, onClose }: { sessionId: string; onClose: () => v
 }
 
 function Browser({ browsing, card, sessionId, onReopen, onClose }: { browsing: { taskId: string; browserSessionId: string | null; error: string | null }; card: TaskCard | null; sessionId: string | null; onReopen: () => void; onClose: () => void }) {
-  const [host, setHost] = useState<{ attached: boolean; shown: boolean; url: string; title: string; stateVersion: number; leaseGeneration: number; controller: "AGENT" | "USER"; stopped?: string | null; humanInputAt?: number } | null>(null);
+  const [host, setHost] = useState<{ attached: boolean; shown: boolean; url: string; title: string; stateVersion: number; leaseGeneration: number; controller: "AGENT" | "USER"; stopped?: string | null; humanInputAt?: number; reclaimed?: boolean; certPending?: { id: string; hostPort: string; error: string; issuer: string; subject: string; validStart: number; validExpiry: number; fingerprint: string } | null; refusals?: number } | null>(null);
   const [controlBusy, setControlBusy] = useState(false);
+  // PX-073: the certificates the person trusted (per workspace), and the last note about the view (reset, cleared).
+  const [trusts, setTrusts] = useState<{ workspace: string; hostPort: string; fingerprint: string; issuer: string }[]>([]);
+  const [viewNote, setViewNote] = useState<string | null>(null);
+  const loadTrusts = () => void window.modbit.browserCertificateTrusts().then(setTrusts).catch(() => {});
+  const decideCert = async (decision: "trust" | "reject") => {
+    const pending = host?.certPending;
+    if (!bsid || !pending) return;
+    await window.modbit.decideBrowserCertificate(bsid, pending.id, decision);
+    loadTrusts();
+  };
+  const clearData = async () => {
+    if (!bsid) return;
+    const r = await window.modbit.clearBrowserData(bsid);
+    setViewNote(`signed out of the sites this session visited: cookies, storage, service workers and caches cleared (${r.cleared.length} session)`);
+  };
+  const clearTrusts = async () => {
+    const n = await window.modbit.clearBrowserCertificateTrusts();
+    setViewNote(`${n} trusted certificate(s) forgotten`);
+    loadTrusts();
+  };
   const [stopped, setStopped] = useState<string | null>(null);
   // IMP-EV-0085: the emergency stop — the host's input halts at once, the
   // Core blocks every new effect; the reason is on the log.
@@ -1355,11 +1375,14 @@ function Browser({ browsing, card, sessionId, onReopen, onClose }: { browsing: {
       if (taskId) void window.modbit.browserSession(bsid, taskId).then(setCore).catch(() => {});
     };
     refresh();
+    loadTrusts();
     void window.modbit.probeBrowser(bsid).then((p) => setProbe(p ? { node_reachable: p.node_reachable, partition: p.partition, sandboxed: p.sandboxed, context_isolated: p.context_isolated } : null)).catch(() => {});
     const off = window.modbit.onBrowserState((raw) => {
-      const s = raw as { browserSessionId: string; gone?: string };
+      const s = raw as { browserSessionId: string; gone?: string; reset?: string | null; certDecision?: string };
       if (s.browserSessionId !== bsid) return;
       if (s.gone) setGone(s.gone);
+      if (s.reset) setViewNote(s.reset);
+      if (s.certDecision) loadTrusts();
       refresh();
     });
     return () => {
@@ -1413,6 +1436,42 @@ function Browser({ browsing, card, sessionId, onReopen, onClose }: { browsing: {
           </button>
         </div>
       )}
+      {host?.certPending && (
+        <div className="actions" role="alertdialog" aria-label="Certificate not trusted" data-testid="browser-cert" data-host-port={host.certPending.hostPort}>
+          <strong>{host.certPending.hostPort} presented a certificate this machine does not trust ({host.certPending.error}).</strong>
+          <span className="meta" data-testid="browser-cert-details">
+            issuer {host.certPending.issuer} · subject {host.certPending.subject} · valid {new Date(host.certPending.validStart * 1000).toISOString().slice(0, 10)} to {new Date(host.certPending.validExpiry * 1000).toISOString().slice(0, 10)} · fingerprint {host.certPending.fingerprint}
+          </span>
+          <span className="meta">the request waits up to 60 seconds for your decision; no decision is a rejection</span>
+          <button type="button" data-testid="browser-cert-reject" onClick={() => void decideCert("reject")}>
+            Reject
+          </button>
+          <button type="button" data-testid="browser-cert-trust" onClick={() => void decideCert("trust")}>
+            Trust this certificate
+          </button>
+        </div>
+      )}
+      <div className="actions" data-testid="browser-data">
+        <button type="button" data-testid="browser-clear-data" onClick={() => void clearData()} disabled={!bsid}>
+          Sign out of sites (clear browser data)
+        </button>
+        <button type="button" data-testid="browser-cert-clear" onClick={() => void clearTrusts()} disabled={trusts.length === 0}>
+          Forget trusted certificates ({trusts.length})
+        </button>
+        <ul data-testid="browser-cert-trusts" className="meta">
+          {trusts.map((t) => (
+            <li key={`${t.workspace}|${t.hostPort}`} data-host-port={t.hostPort}>
+              {t.hostPort} · {t.issuer} · {t.fingerprint}
+            </li>
+          ))}
+        </ul>
+        {(viewNote || host?.reclaimed) && (
+          <span className="meta" role="status" data-testid="browser-view-note">
+            {host?.reclaimed ? "this view was reclaimed to free memory; it reloads when it is used again. " : ""}
+            {viewNote ?? ""}
+          </span>
+        )}
+      </div>
       <div className="meta" data-testid="browser-page">
         {"url: "}
         <span data-testid="browser-url">{host?.url ?? ""}</span>
