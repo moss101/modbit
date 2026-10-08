@@ -207,6 +207,41 @@ pub fn router(state: Arc<AppState>) -> Router {
             "/v1/forge/repositories",
             post(crate::forge::map_repository).get(crate::forge::list_repositories),
         )
+        // PX-085: automations — definitions, enable approvals, webhook
+        // endpoints, run history, pause and kill switches.
+        .route(
+            "/v1/automations",
+            post(crate::automations::create).get(crate::automations::list),
+        )
+        .route(
+            "/v1/automations/validate",
+            post(crate::automations::validate),
+        )
+        .route("/v1/automations/audit", get(crate::automations::audit))
+        .route(
+            "/v1/automations/pause",
+            post(crate::automations::tenant_pause),
+        )
+        .route(
+            "/v1/automations/kill",
+            post(crate::automations::tenant_kill),
+        )
+        .route(
+            "/v1/automations/{automation_ref}",
+            get(crate::automations::get).post(crate::automations::action),
+        )
+        .route(
+            "/v1/automations/{automation_id}/runs",
+            get(crate::automations::runs),
+        )
+        .route(
+            "/v1/automations/{automation_id}/endpoints",
+            post(crate::automations::create_endpoint).get(crate::automations::list_endpoints),
+        )
+        .route(
+            "/v1/automation-endpoints/{endpoint_action}",
+            post(crate::automations::endpoint_action),
+        )
         .route("/v1/stream", get(crate::stream::stream))
         // M8.8: the person's view of a cloud browser, through the worker's link.
         .route(
@@ -245,6 +280,18 @@ pub fn router(state: Arc<AppState>) -> Router {
             "/v1/admin/audit",
             axum::routing::get(crate::provisioning::admin_audit),
         )
+        // PX-085: the platform administrator's automation switches and audit.
+        .route(
+            "/v1/admin/automations/pause",
+            post(crate::automations::global_pause),
+        )
+        .route(
+            "/v1/admin/automations/audit",
+            get(crate::automations::admin_audit),
+        )
+        // PX-085: a signed generic webhook (the signature under the endpoint's
+        // derived secret is the authentication; the endpoint decides the tenant).
+        .route("/v1/hooks/{endpoint}", post(crate::automations::hook))
         // M8.8: a worker's outbound link (worker bearer token, not a principal's).
         .route("/v1/workers/link", get(crate::browser_view::worker_link))
         // PX-011: the GitHub App's deliveries (signed under the app's secret, not a bearer).

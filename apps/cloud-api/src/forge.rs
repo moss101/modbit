@@ -335,6 +335,19 @@ pub(crate) async fn github_webhook(
         ));
     }
     let action = payload["action"].as_str().unwrap_or_default().to_owned();
+    // PX-085: the verified, mapped delivery is also matched against the
+    // tenant's enabled automations' event triggers (the generalised `takes`
+    // table); what the forge intake below answers is unchanged.
+    crate::automations::forge_event(
+        &state,
+        tenant,
+        &repository,
+        &delivery,
+        &event,
+        &action,
+        &payload,
+    )
+    .await;
     // PX-126: a check result or a pull-request comment is not a task; it is
     // a notice that the owning task should read the forge again.
     if let Some(r) = ingestion_delivery(

@@ -14,6 +14,7 @@
 
 #![forbid(unsafe_code)]
 
+mod automation;
 pub mod core_process;
 mod handoff;
 mod link;
@@ -25,6 +26,8 @@ use std::sync::Arc;
 use std::time::Duration;
 
 use modbit_event_store::cloud::{CloudStore, CloudStoreConfig};
+
+pub use automation::automation_tick;
 
 /// Worker configuration.
 #[derive(Clone, Debug)]
@@ -390,6 +393,15 @@ async fn run_loop(
         // Alive, as far as the control plane knows.
         if let Err(e) = store.worker_seen(&cfg.worker_id).await {
             eprintln!("modbit-cloud-worker[{}]: seen: {e}", cfg.worker_id);
+        }
+        // PX-085: the cloud time source is this loop, against the database clock.
+        match store.automation_now_ms().await {
+            Ok(now) => {
+                if let Err(e) = automation::automation_tick(&store, now).await {
+                    eprintln!("modbit-cloud-worker[{}]: automations: {e}", cfg.worker_id);
+                }
+            }
+            Err(e) => eprintln!("modbit-cloud-worker[{}]: clock: {e}", cfg.worker_id),
         }
         if hosted.len() < cfg.capacity {
             // Never a session a host here is still winding down (its Core

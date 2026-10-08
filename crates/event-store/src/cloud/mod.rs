@@ -12,6 +12,7 @@
 //! envelope, sequence and integrity-hash chain as the local store, so a
 //! session mirrored from a local Core verifies here exactly as it does there.
 
+pub mod automation;
 pub mod schema;
 
 use std::collections::HashMap;
