@@ -767,7 +767,7 @@ handle("debug:rendererLog", () => rendererLog.slice());
 const rendererLog: { reason: string; exitCode: number; reloaded: boolean; atMs: number }[] = [];
 function createWindow(bounds?: Electron.Rectangle): void {
   const w = new BrowserWindow({
-    ...(bounds ?? { width: 1200, height: 800 }),
+    ...(bounds ?? { width: 1280, height: 800 }),
     show: true,
     webPreferences: {
       preload: join(__dirname, "..", "preload", "preload.cjs"),

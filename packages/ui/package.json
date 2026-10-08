@@ -5,7 +5,9 @@
   "description": "reusable React primitives, layer/key-scope/tray/command registries and component styles for the desktop renderer (REQ-PX-044)",
   "type": "module",
   "exports": {
-    ".": "./src/index.ts"
+    ".": "./src/index.ts",
+    "./logic": "./src/logic.ts",
+    "./styles": "./src/styles.ts"
   },
   "scripts": {
     "typecheck": "tsc -p tsconfig.json",

@@ -1,6 +1,6 @@
 import { useEffect, useRef, type RefObject } from "react";
 import { layers } from "./layers.ts";
-import { keyScopes, type KeyScope } from "./keys.ts";
+import { isMacPlatform, keyScopes, type KeyScope } from "./keys.ts";
 
 /** Keeps `onClose` current without re-registering the layer on every render. */
 function useLatest<T>(value: T): RefObject<T> {
@@ -96,4 +96,24 @@ export function useOutsidePress(ref: RefObject<HTMLElement | null>, active: bool
     document.addEventListener("pointerdown", onDown, true);
     return () => document.removeEventListener("pointerdown", onDown, true);
   }, [active, ref, also, latest]);
+}
+
+/**
+ * The window-level key dispatcher (capture phase): the innermost scope with a
+ * binding for the key runs it and consumes the key, so nothing below the scope
+ * (the page's own handlers, the single-letter shortcuts) also acts. Install
+ * once at the root, after `useEscapeLayers`.
+ */
+export function useKeyDispatch(): void {
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if (e.defaultPrevented) return;
+      if (keyScopes.dispatch(e, isMacPlatform())) {
+        e.preventDefault();
+        e.stopImmediatePropagation();
+      }
+    };
+    window.addEventListener("keydown", onKey, true);
+    return () => window.removeEventListener("keydown", onKey, true);
+  }, []);
 }
