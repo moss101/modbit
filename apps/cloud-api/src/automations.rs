@@ -94,6 +94,24 @@ pub fn controls_of(d: &Definition) -> RunControls {
     }
 }
 
+/// [`controls_of`], refused when the execution profile it derives is not on
+/// the cloud allow-list (AUT-D07): a definition never names a profile.
+fn checked_controls(d: &Definition) -> ApiResult<RunControls> {
+    let c = controls_of(d);
+    if CLOUD_PROFILES.contains(&c.profile.as_str()) {
+        Ok(c)
+    } else {
+        Err(ApiError::new(
+            StatusCode::UNPROCESSABLE_ENTITY,
+            "PROFILE_NOT_ALLOWED",
+            format!(
+                "`{}` is not an execution profile cloud automations may run under",
+                c.profile
+            ),
+        ))
+    }
+}
+
 fn sorted(v: &[String]) -> Vec<String> {
     let mut v = v.to_vec();
     v.sort();
@@ -250,8 +268,7 @@ pub(crate) async fn create(
     if !repository.is_empty() && !repository.contains('/') {
         return Err(ApiError::bad("repository is owner/name"));
     }
-    let controls = controls_of(&d);
-    debug_assert!(CLOUD_PROFILES.contains(&controls.profile.as_str()));
+    let controls = checked_controls(&d)?;
     let Some(rec) = state
         .store
         .create_automation(
@@ -478,7 +495,7 @@ pub(crate) async fn action(
                     p.principal_id,
                     &d.canonical(),
                     &d.hash(),
-                    &controls_of(&d),
+                    &checked_controls(&d)?,
                 )
                 .await?
                 .ok_or_else(|| ApiError::not_found(format!("automation {id}")))?;

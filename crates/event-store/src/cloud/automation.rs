@@ -455,6 +455,12 @@ fn endpoint_row(r: &tokio_postgres::Row) -> EndpointRecord {
     }
 }
 
+/// Whether the store refused because a row with the same key was committed
+/// by a racing writer (SQLSTATE 23505).
+fn is_unique_violation(e: &CloudError) -> bool {
+    matches!(e, CloudError::Postgres(pg) if pg.code() == Some(&tokio_postgres::error::SqlState::UNIQUE_VIOLATION))
+}
+
 fn derive16(key: &str, what: &str) -> [u8; 16] {
     let d = Sha256::digest(format!("modbit-automation-1:{what}:{key}").as_bytes());
     let mut b = [0u8; 16];
@@ -1082,7 +1088,7 @@ impl CloudStore {
             let client = self.pool.get().await?;
             client
                 .query_opt(
-                    "SELECT f.tenant_id, f.automation_id, f.version, f.trigger_id, f.trigger_kind, f.event_id, f.status, f.payload, f.payload_label, f.definition_hash, f.task_id, f.session_id, a.name, a.workspace_root, a.service_principal_id, a.paused, v.controls FROM automation_firings f JOIN automations a ON a.automation_id = f.automation_id JOIN automation_versions v ON v.automation_id = f.automation_id AND v.version = f.version WHERE f.dispatch_key = $1",
+                    "SELECT f.tenant_id, f.automation_id, f.version, f.trigger_id, f.trigger_kind, f.event_id, f.status, f.payload, f.payload_label, f.definition_hash, f.task_id, f.session_id, a.name, a.workspace_root, a.service_principal_id, a.paused, v.controls, a.enabled_version, a.enabled_hash FROM automation_firings f JOIN automations a ON a.automation_id = f.automation_id JOIN automation_versions v ON v.automation_id = f.automation_id AND v.version = f.version WHERE f.dispatch_key = $1",
                     &[&dispatch_key],
                 )
                 .await?
@@ -1106,6 +1112,8 @@ impl CloudStore {
         let principal_id: uuid::Uuid = r.get(14);
         let paused: bool = r.get(15);
         let controls: RunControls = serde_json::from_value(r.get(16))?;
+        let still_enabled = r.get::<_, Option<i32>>(17) == Some(version)
+            && r.get::<_, Option<String>>(18).as_deref() == Some(def_hash.as_str());
         if state == status::RUNNING
             && let (Some(t), Some(s)) = (
                 r.get::<_, Option<uuid::Uuid>>(10),
@@ -1129,6 +1137,13 @@ impl CloudStore {
             tx.commit().await?;
             if let Some(s) = switch {
                 Some(("PAUSED", s.to_owned()))
+            } else if !still_enabled {
+                // Edited or disabled since it was recorded (a queued firing
+                // can wait): an unapproved definition never starts a task.
+                Some((
+                    "NOT_ENABLED",
+                    "the definition is no longer enabled at this version".to_owned(),
+                ))
             } else if paused {
                 Some(("PAUSED", "the definition is paused".to_owned()))
             } else if self.principal(tenant, principal_id).await?.is_none() {
@@ -1200,6 +1215,8 @@ impl CloudStore {
             .await
         {
             Ok(_) | Err(CloudError::SequenceConflict { .. }) => {}
+            // A racing dispatcher committed the same rows first.
+            Err(e) if is_unique_violation(&e) => {}
             Err(e) => return Err(e),
         }
         // 2. The canonical task, exactly as the forge intake makes one.
@@ -1281,6 +1298,8 @@ impl CloudStore {
             .await
         {
             Ok(_) | Err(CloudError::SequenceConflict { .. }) => {}
+            // A racing dispatcher committed the same rows first.
+            Err(e) if is_unique_violation(&e) => {}
             Err(e) => return Err(e),
         }
         self.mark_ready(tenant, session_id).await?;
