@@ -147,8 +147,11 @@ export function timeBucket(atMs: number, nowMs: number): TimeBucket {
   return "older";
 }
 
+/** The repository a task belongs to: the checkout a worktree task was made from, else its workspace root. */
+export const repositoryOf = (h: AgentHeaderView): string => h.checkoutRoot || h.workspaceRoot;
+
 function repoLabel(h: AgentHeaderView): string {
-  return h.subtitle || baseName(h.workspaceRoot) || "No repository";
+  return (h.checkoutRoot ? baseName(h.checkoutRoot) : h.subtitle) || baseName(h.workspaceRoot) || "No repository";
 }
 export function baseName(p: string): string {
   const parts = p.split(/[\\/]+/).filter(Boolean);
@@ -199,11 +202,11 @@ export function groupHeaders(headers: readonly AgentHeaderView[], grouping: Grou
       case "repository": {
         const label = repoLabel(h);
         // Same-named folders of different parents stay apart; the order is that of first (most recent) appearance.
-        put(h.workspaceRoot || "none", label, i, h);
+        put(repositoryOf(h) || "none", label, i, h);
         break;
       }
       case "workspace":
-        put(h.workspaceRoot || "none", h.workspaceRoot || "No workspace", i, h);
+        put(repositoryOf(h) || "none", repositoryOf(h) || "No workspace", i, h);
         break;
       case "status":
         put(h.statusClass, CLASS_META[h.statusClass].short, classRank(h.statusClass), h);
@@ -378,7 +381,8 @@ export type SubtitleField = (typeof SUBTITLE_FIELDS)[number]["id"];
 
 export function subtitleOf(h: AgentHeaderView, fields: readonly SubtitleField[]): string {
   const parts: string[] = [];
-  if (fields.includes("repository") && h.subtitle) parts.push(h.subtitle);
+  const repo = h.checkoutRoot ? baseName(h.checkoutRoot) : h.subtitle;
+  if (fields.includes("repository") && repo) parts.push(repo);
   if (fields.includes("location") && h.executionLocation === "cloud") parts.push("cloud");
   if (fields.includes("changes") && h.filesChanged > 0) parts.push(`${h.filesChanged} ${h.filesChanged === 1 ? "file" : "files"} +${h.linesAdded} −${h.linesRemoved}`);
   if (fields.includes("origin") && h.origin && h.origin !== "desktop") parts.push(h.origin.replace(/_/g, " "));

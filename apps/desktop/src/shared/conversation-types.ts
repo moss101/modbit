@@ -45,6 +45,8 @@ export interface AgentHeaderView {
   attentionItems: number;
   /** The project the Core's membership map puts the task in (PX-063); "" when none. */
   projectId?: string;
+  /** The checkout a task in a worktree of its own came from (PX-118); "" or absent when the task works in its workspace root itself. */
+  checkoutRoot?: string;
 }
 
 export interface AgentHeadersView {

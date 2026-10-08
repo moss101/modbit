@@ -120,7 +120,7 @@ export function workspaceChoices(headers: readonly AgentHeaderView[], projects: 
     }
   };
   if (preferred) add(preferred);
-  for (const h of headers) if (!h.subagent) add(h.workspaceRoot);
+  for (const h of headers) if (!h.subagent) add(h.checkoutRoot || h.workspaceRoot);
   for (const p of projects) add(p.workspaceRoot);
   return out;
 }

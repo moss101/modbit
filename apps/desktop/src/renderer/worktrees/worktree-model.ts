@@ -8,7 +8,7 @@
  */
 import type { WorktreeInfo } from "../../shared/project-types.ts";
 
-export type StateId = "running" | "dirty" | "unapplied" | "retained" | "removable" | "orphan" | "missing";
+export type StateId = "running" | "review" | "dirty" | "unapplied" | "retained" | "removable" | "orphan" | "missing";
 
 export interface StateBadge {
   id: StateId;
@@ -26,14 +26,18 @@ const baseName = (p: string): string => p.split(/[\\/]+/).filter(Boolean).pop() 
  * whose directory is gone. A worktree with none of those is `removable` when
  * the Core says so, else `retained` (the Core keeps it: young, or undecided).
  */
-export function worktreeStates(w: WorktreeInfo): StateBadge[] {
+export function worktreeStates(w: WorktreeInfo, taskState?: string): StateBadge[] {
   if (w.state === "MISSING") return [{ id: "missing", label: "Missing", detail: "its directory is gone from the disk", tone: "danger" }];
   const out: StateBadge[] = [];
-  if (w.taskRunning) out.push({ id: "running", label: "Running", detail: "its task has not ended", tone: "info" });
+  // The Core counts a task that has not ended as running; one waiting for the person's review is said as such.
+  if (w.taskRunning && taskState === "ReadyForReview") out.push({ id: "review", label: "In review", detail: "its task is waiting for your review; the worktree is kept until the task ends", tone: "info" });
+  else if (w.taskRunning) out.push({ id: "running", label: "Running", detail: "its task has not ended", tone: "info" });
   if (w.dirty) out.push({ id: "dirty", label: "Dirty", detail: `${w.changedFiles} changed ${w.changedFiles === 1 ? "file" : "files"} not committed`, tone: "warn" });
   if (w.unapplied) out.push({ id: "unapplied", label: "Unapplied", detail: "it holds a result that was not applied, merged or discarded", tone: "warn" });
   if (w.orphan) out.push({ id: "orphan", label: "Orphan", detail: "no task of this Core owns it", tone: "warn" });
-  if (out.length === 0) out.push(w.removable ? { id: "removable", label: "Removable", detail: w.removableReason, tone: "ok" } : { id: "retained", label: "Retained", detail: w.removableReason, tone: "info" });
+  // The Core's verdict is always said: removable beside a dirty tree whose result was discarded, retained when nothing else explains why it stays.
+  if (w.removable) out.push({ id: "removable", label: "Removable", detail: w.removableReason, tone: "ok" });
+  else if (out.length === 0) out.push({ id: "retained", label: "Retained", detail: w.removableReason, tone: "info" });
   return out;
 }
 
@@ -83,7 +87,7 @@ export function groupByRepository(ws: readonly WorktreeInfo[]): RepoGroup[] {
 
 /** What the person can do next after a typed refusal of a removal; the Core's own sentence is shown beside it. */
 export const REMOVAL_ADVICE: Record<string, string> = {
-  TASK_RUNNING: "Wait for the task to end, or stop it, before removing its worktree.",
+  TASK_RUNNING: "Wait for the task to end, or stop it (or decide its review), before removing its worktree.",
   WORKTREE_PROTECTED: "A new worktree is kept for a short while; try again later.",
   WORKTREE_NEEDS_DECISION: "Apply its result to your checkout, or discard it, and then it can be removed.",
   WORKTREE_NOT_REMOVABLE: "The Core keeps this worktree for the reason above.",

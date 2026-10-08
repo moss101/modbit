@@ -925,11 +925,20 @@ export declare type AgentHeader = Message<"modbit.v1.AgentHeader"> & {
 
   /**
    * The project holding the task (PX-063, projects.proto); absent when none.
-   * The field block 420-439 is this file's for additions to existing messages.
+   * Field numbers 420-439 are the block PX-063 uses for additions to existing messages.
    *
    * @generated from field: modbit.v1.Id project_id = 420;
    */
   projectId?: Id | undefined;
+
+  /**
+   * The checkout a task in a worktree of its own was made from; "" for a task
+   * that works in its workspace root itself. `workspace_root` stays the root
+   * the task really works in.
+   *
+   * @generated from field: string checkout_root = 421;
+   */
+  checkoutRoot: string;
 };
 
 /**

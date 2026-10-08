@@ -114,6 +114,7 @@ function headerView(h: AgentHeader) {
     readOffset: h.readOffset.toString(),
     attentionItems: h.attentionItems,
     projectId: hexOf(h.projectId?.value),
+    checkoutRoot: h.checkoutRoot,
   };
 }
 

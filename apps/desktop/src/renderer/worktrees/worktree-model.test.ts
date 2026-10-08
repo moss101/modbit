@@ -16,6 +16,11 @@ test("a worktree's states come from the Core's own flags, in one place", () => {
   assert.deepEqual(worktreeStates(w({ removable: true, removableReason: "its result was applied" })).map((s) => [s.id, s.detail]), [["removable", "its result was applied"]]);
   assert.deepEqual(worktreeStates(w({ removable: false, removableReason: "younger than the protection window", protected: true })).map((s) => [s.id, s.detail]), [["retained", "younger than the protection window"]]);
   assert.deepEqual(worktreeStates(w({ state: "MISSING", dirty: true })).map((s) => s.id), ["missing"]);
+  // A discarded result leaves a dirty tree the Core calls removable: both are said.
+  assert.deepEqual(worktreeStates(w({ dirty: true, removable: true, removableReason: "its result was discarded" })).map((s) => s.id), ["dirty", "removable"]);
+  // A task waiting for the person's review is said so; the Core's flag (not ended) is unchanged.
+  assert.deepEqual(worktreeStates(w({ taskRunning: true, dirty: true, unapplied: true }), "ReadyForReview").map((s) => s.id), ["review", "dirty", "unapplied"]);
+  assert.deepEqual(worktreeStates(w({ taskRunning: true }), "Running").map((s) => s.id), ["running"]);
   // Words always accompany the state: no state is colour alone.
   for (const s of worktreeStates(w({ taskRunning: true, dirty: true }))) assert.ok(s.label.length > 0);
 });

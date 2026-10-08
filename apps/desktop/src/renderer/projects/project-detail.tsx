@@ -5,7 +5,7 @@
  * archive and its undo, and taking a task out. Counts are never summed here
  * and a pull request or CI line appears only when the log holds it.
  */
-import { useState } from "react";
+import { useId, useState } from "react";
 import { Badge, Button, StatusDot } from "@modbit/ui";
 import type { ProjectInfo } from "../../shared/project-types.ts";
 import { CLASS_META } from "../agents/list-model.ts";
@@ -27,6 +27,7 @@ export interface ProjectDetailProps {
 export function ProjectDetail({ project, loaded, sessionId, projects, onOpenTask, announce }: ProjectDetailProps) {
   const [renaming, setRenaming] = useState(false);
   const [note, setNote] = useState<string | null>(null);
+  const titleId = useId();
   if (!project) {
     return (
       <section className="proj-page" aria-label="Project" data-testid="project-page" data-state={loaded ? "missing" : "loading"}>
@@ -49,10 +50,10 @@ export function ProjectDetail({ project, loaded, sessionId, projects, onOpenTask
     }
   };
   return (
-    <section className="proj-page" aria-labelledby="proj-title" data-testid="project-page" data-project-id={project.projectId} data-archived={project.archived} data-state="ready">
+    <section className="proj-page" aria-labelledby={titleId} data-testid="project-page" data-project-id={project.projectId} data-archived={project.archived} data-state="ready">
       <header className="proj-head">
         <ProjectGlyph icon={project.icon} color={project.color} size={24} />
-        <h2 id="proj-title" className="proj-title" data-testid="project-title">
+        <h2 id={titleId} className="proj-title" data-testid="project-title">
           {project.name}
         </h2>
         {project.archived && <Badge tone="warn">Archived</Badge>}
@@ -82,7 +83,7 @@ export function ProjectDetail({ project, loaded, sessionId, projects, onOpenTask
           {note}
         </p>
       )}
-      <section className="proj-rollup" aria-label="Rollup" data-testid="project-rollup">
+      <section className="proj-rollup" aria-label={`Rollup of ${project.name}`} data-testid="project-rollup">
         <p data-testid="project-rollup-words">{rollupWords(r)}</p>
         <ul className="proj-counts" aria-label="Tasks by status">
           {r.byStatus.map((s) => (
@@ -113,7 +114,7 @@ export function ProjectDetail({ project, loaded, sessionId, projects, onOpenTask
           </div>
         </dl>
       </section>
-      <section aria-label="Tasks" data-testid="project-members">
+      <section aria-label={`Tasks of ${project.name}`} data-testid="project-members">
         <h3 className="proj-h2">Tasks</h3>
         {project.members.length === 0 ? (
           <p className="meta empty" data-testid="project-empty">

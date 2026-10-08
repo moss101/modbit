@@ -242,8 +242,12 @@ message AgentHeader {
   uint64 read_offset = 24;
   uint32 attention_items = 25;
   // The project holding the task (PX-063, projects.proto); absent when none.
-  // The field block 420-439 is this file's for additions to existing messages.
+  // Field numbers 420-439 are the block PX-063 uses for additions to existing messages.
   Id project_id = 420;
+  // The checkout a task in a worktree of its own was made from; "" for a task
+  // that works in its workspace root itself. `workspace_root` stays the root
+  // the task really works in.
+  string checkout_root = 421;
 }
 
 message AgentHeaders {

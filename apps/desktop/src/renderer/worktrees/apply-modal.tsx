@@ -135,7 +135,7 @@ export function ApplyModal({ worktree, flow, sessionId, titleOf, onClose, onChan
   );
 }
 
-function ApproveStep({ step, worktree, onDecide }: { step: Extract<Step, { kind: "approve" }>; worktree: WorktreeInfo; onDecide: (ok: boolean) => void }) {
+export function ApproveStep({ step, worktree, onDecide }: { step: Extract<Step, { kind: "approve" }>; worktree: WorktreeInfo; onDecide: (ok: boolean) => void }) {
   const deny = useRef<HTMLButtonElement>(null);
   useEffect(() => deny.current?.focus(), []);
   const a = step.ack;
@@ -181,7 +181,7 @@ function ApproveStep({ step, worktree, onDecide }: { step: Extract<Step, { kind:
   );
 }
 
-function ConflictStep({ step, onChoose, onCancel }: { step: Extract<Step, { kind: "conflict" }>; onChoose: (r: ApplyInputArgs) => void; onCancel: () => void }) {
+export function ConflictStep({ step, onChoose, onCancel }: { step: Extract<Step, { kind: "conflict" }>; onChoose: (r: ApplyInputArgs) => void; onCancel: () => void }) {
   const c: ApplyConflictInfo = step.conflict;
   const options = optionsOf(c);
   const [chosen, setChosen] = useState<string>(DEFAULT_OPTION);
@@ -293,7 +293,7 @@ function ConflictStep({ step, onChoose, onCancel }: { step: Extract<Step, { kind
   );
 }
 
-function DoneStep({ step, onUndo, onReapply }: { step: Extract<Step, { kind: "done" }>; onUndo: () => void; onReapply: () => void }) {
+export function DoneStep({ step, onUndo, onReapply }: { step: Extract<Step, { kind: "done" }>; onUndo: () => void; onReapply: () => void }) {
   const a = step.ack;
   return (
     <div role="status" data-testid="apply-done" data-status={a.status}>

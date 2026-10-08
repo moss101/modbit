@@ -1316,14 +1316,15 @@ pub(crate) fn headers(
         .map(|a| a.task_id)
         .collect();
     let projects = crate::projects::memberships(store);
-    // A task that works in a worktree of its own is listed under the checkout
-    // the worktree was made from: that is the repository the person knows.
+    // A task that works in a worktree of its own names the checkout the
+    // worktree was made from (`checkout_root`): the repository the person
+    // knows. Its `workspace_root` stays the root it really works in.
     let worktrees = crate::worktrees::registry_of_session(store, &session);
-    let checkout_of = |root: &str| -> String {
+    let checkout_of = |root: &str| -> Option<String> {
         worktrees
             .iter()
             .find(|r| !r.removed && crate::worktrees::same_path(&r.path, root))
-            .map_or_else(|| root.to_owned(), |r| r.origin_root.clone())
+            .map(|r| r.origin_root.clone())
     };
     let mut out: Vec<wire::AgentHeader> = Vec::new();
     for t in tasks {
@@ -1354,16 +1355,12 @@ pub(crate) fn headers(
         out.push(wire::AgentHeader {
             task_id: Some(crate::server::wire_id(t.task_id.as_bytes())),
             session_id: Some(crate::server::wire_id(t.session_id.as_bytes())),
-            workspace_root: t
-                .workspace_root
-                .as_deref()
-                .map(checkout_of)
-                .unwrap_or_default(),
+            workspace_root: t.workspace_root.clone().unwrap_or_default(),
             title: title_of(&t),
             subtitle: t
                 .workspace_root
                 .as_deref()
-                .map(|r| subtitle_of(&checkout_of(r)))
+                .map(subtitle_of)
                 .unwrap_or_default(),
             created_at: ts(t.created_at.millis()),
             updated_at: ts(d.last_at.millis()),
@@ -1402,6 +1399,11 @@ pub(crate) fn headers(
             project_id: projects
                 .get(&t.task_id)
                 .map(|p| crate::server::wire_id(p.as_bytes())),
+            checkout_root: t
+                .workspace_root
+                .as_deref()
+                .and_then(checkout_of)
+                .unwrap_or_default(),
         });
     }
     out.sort_by(|a, b| {

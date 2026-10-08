@@ -13,7 +13,56 @@ import type { WorktreeInfo, WorktreeRemovalInfo } from "../../shared/project-typ
 import { parseRefusal, type Refusal } from "../projects/project-model.ts";
 import { REMOVAL_ADVICE, sizeWords } from "./worktree-model.ts";
 
-type RemoveState = { phase: "checking" } | { phase: "refused"; refusal: Refusal } | { phase: "confirm"; preview: WorktreeRemovalInfo } | { phase: "removing"; preview: WorktreeRemovalInfo } | { phase: "failed"; preview: WorktreeRemovalInfo; refusal: Refusal };
+export type RemoveState = { phase: "checking" } | { phase: "refused"; refusal: Refusal } | { phase: "confirm"; preview: WorktreeRemovalInfo } | { phase: "removing"; preview: WorktreeRemovalInfo } | { phase: "failed"; preview: WorktreeRemovalInfo; refusal: Refusal };
+
+/** The dialog's content for a state: the Core's typed refusal explained with nothing to override, or what the removal takes with it and the button that confirms. */
+export function RemoveBody({ worktree, owner, state, cancelRef, onCancel, onConfirm }: { worktree: WorktreeInfo; owner: string; state: RemoveState; cancelRef?: React.RefObject<HTMLButtonElement | null>; onCancel: () => void; onConfirm: (preview: WorktreeRemovalInfo) => void }) {
+  return (
+    <div className="wt-dialog" data-phase={state.phase}>
+      <p className="meta" data-testid="worktree-remove-subject">
+        {owner ? `${owner} · ` : ""}
+        {worktree.branch || worktree.worktreeId} · {worktree.path}
+      </p>
+      {state.phase === "checking" && (
+        <p role="status" data-testid="worktree-remove-checking">
+          Asking the Core whether this worktree can be removed…
+        </p>
+      )}
+      {(state.phase === "refused" || state.phase === "failed") && (
+        <div role="alert" data-testid="worktree-remove-refusal" data-code={state.refusal.code}>
+          <p>
+            <strong data-testid="worktree-remove-code">{state.refusal.code || "REFUSED"}</strong>
+          </p>
+          <p data-testid="worktree-remove-reason">{state.refusal.detail}</p>
+          {REMOVAL_ADVICE[state.refusal.code] && <p className="meta">{REMOVAL_ADVICE[state.refusal.code]}</p>}
+          <p className="meta">Nothing was removed.</p>
+        </div>
+      )}
+      {(state.phase === "confirm" || state.phase === "removing" || state.phase === "failed") && (
+        <>
+          <p data-testid="worktree-remove-why">Removable: {state.preview.reason}.</p>
+          <p>Removing it takes with it:</p>
+          <ul data-testid="worktree-remove-loses">
+            {state.preview.loses.map((l) => (
+              <li key={l}>{l}</li>
+            ))}
+          </ul>
+          <p className="meta">Frees {sizeWords(state.preview.bytes)}.</p>
+        </>
+      )}
+      <div className="dialog-actions">
+        <Button ref={cancelRef} onClick={onCancel} data-testid="worktree-remove-cancel">
+          {state.phase === "refused" || state.phase === "failed" ? "Close" : "Keep it"}
+        </Button>
+        {(state.phase === "confirm" || state.phase === "removing") && (
+          <Button variant="danger" disabled={state.phase === "removing"} onClick={() => onConfirm(state.preview)} data-testid="worktree-remove-confirm">
+            Remove worktree
+          </Button>
+        )}
+      </div>
+    </div>
+  );
+}
 
 export interface RemoveDialogProps {
   worktree: WorktreeInfo | null;
@@ -54,51 +103,7 @@ export function RemoveWorktreeDialog({ worktree, sessionId, titleOf, onClose, on
   const owner = worktree?.taskId ? titleOf(worktree.taskId) : "";
   return (
     <Dialog open={worktree !== null} title={state.phase === "refused" || state.phase === "failed" ? "This worktree cannot be removed" : "Remove worktree"} role={state.phase === "confirm" ? "alertdialog" : "dialog"} onClose={onClose} testId="worktree-remove-dialog" initialFocus={cancel}>
-      {worktree && (
-        <div className="wt-dialog" data-phase={state.phase}>
-          <p className="meta" data-testid="worktree-remove-subject">
-            {owner ? `${owner} · ` : ""}
-            {worktree.branch || worktree.worktreeId} · {worktree.path}
-          </p>
-          {state.phase === "checking" && (
-            <p role="status" data-testid="worktree-remove-checking">
-              Asking the Core whether this worktree can be removed…
-            </p>
-          )}
-          {(state.phase === "refused" || state.phase === "failed") && (
-            <div role="alert" data-testid="worktree-remove-refusal" data-code={state.refusal.code}>
-              <p>
-                <strong data-testid="worktree-remove-code">{state.refusal.code || "REFUSED"}</strong>
-              </p>
-              <p data-testid="worktree-remove-reason">{state.refusal.detail}</p>
-              {REMOVAL_ADVICE[state.refusal.code] && <p className="meta">{REMOVAL_ADVICE[state.refusal.code]}</p>}
-              <p className="meta">Nothing was removed.</p>
-            </div>
-          )}
-          {(state.phase === "confirm" || state.phase === "removing" || state.phase === "failed") && (
-            <>
-              <p data-testid="worktree-remove-why">Removable: {state.preview.reason}.</p>
-              <p>Removing it takes with it:</p>
-              <ul data-testid="worktree-remove-loses">
-                {state.preview.loses.map((l) => (
-                  <li key={l}>{l}</li>
-                ))}
-              </ul>
-              <p className="meta">Frees {sizeWords(state.preview.bytes)}.</p>
-            </>
-          )}
-          <div className="dialog-actions">
-            <Button ref={cancel} onClick={onClose} data-testid="worktree-remove-cancel">
-              {state.phase === "refused" || state.phase === "failed" ? "Close" : "Keep it"}
-            </Button>
-            {(state.phase === "confirm" || state.phase === "removing") && (
-              <Button variant="danger" disabled={state.phase === "removing"} onClick={() => void remove(state.preview)} data-testid="worktree-remove-confirm">
-                Remove worktree
-              </Button>
-            )}
-          </div>
-        </div>
-      )}
+      {worktree && <RemoveBody worktree={worktree} owner={owner} state={state} cancelRef={cancel} onCancel={onClose} onConfirm={(preview) => void remove(preview)} />}
     </Dialog>
   );
 }

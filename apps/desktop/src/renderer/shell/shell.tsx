@@ -396,7 +396,7 @@ export function Shell({ app }: { app: AppState }) {
         {projectPage && !reviewing && !browsing && !dashboardOpen ? (
           <ProjectDetail project={openedProject ?? null} loaded={projects.loaded} sessionId={model.sessionId} projects={projects} onOpenTask={(id) => openConversation(id)} announce={setNotice} />
         ) : worktreesOpen && !reviewing && !browsing && !dashboardOpen ? (
-          <WorktreesPanel state={worktrees} sessionId={model.sessionId} titleOf={(id) => model.tasks.get(id)?.goalText ?? "another task"} nowMs={nowMs} onOpenTask={(id) => openConversation(id)} announce={setNotice} />
+          <WorktreesPanel state={worktrees} sessionId={model.sessionId} titleOf={(id) => model.tasks.get(id)?.goalText ?? "another task"} taskStateOf={(id) => model.tasks.get(id)?.state} nowMs={nowMs} onOpenTask={(id) => openConversation(id)} announce={setNotice} />
         ) : conversation && !reviewing && !browsing && !dashboardOpen ? (
           <div className="conv-wrap">
             <StatusRegion app={app} />

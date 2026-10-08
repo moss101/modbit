@@ -499,13 +499,23 @@ async fn qual_px_063_records_membership_and_each_guard_with_its_typed_reason() {
         .unwrap();
     assert_eq!(ids(listed_alpha), ids(&got));
     let headers = fx.headers().await;
-    // A task in a worktree of its own is listed under the checkout it came from.
+    // A task in a worktree of its own names the checkout it came from, and works in a root of its own.
     let iso = headers
         .headers
         .iter()
         .find(|h| h.task_id.as_ref() == Some(&isolated))
         .unwrap();
-    assert_eq!(Path::new(&iso.workspace_root), Path::new(&ra));
+    assert_eq!(Path::new(&iso.checkout_root), Path::new(&ra));
+    assert_ne!(Path::new(&iso.workspace_root), Path::new(&ra));
+    let plain = headers
+        .headers
+        .iter()
+        .find(|h| h.task_id.as_ref() == Some(&a[0]))
+        .unwrap();
+    assert_eq!(
+        plain.checkout_root, "",
+        "a task in its own root names no other checkout"
+    );
     let in_alpha: Vec<Vec<u8>> = {
         let mut v: Vec<_> = headers
             .headers
@@ -790,6 +800,27 @@ async fn qual_px_063_a_replayed_command_applies_once_and_a_kill_converges_to_one
             .count(),
         3
     );
+
+    // The tables are projections of the log: empty them and drop how far they
+    // were read, and the Core's startup rebuilds exactly the same records and
+    // map from the `Project` events alone.
+    let want = fx.list(true).await;
+    fx.core.kill();
+    {
+        let conn = rusqlite::Connection::open(fx.dir.path().join("core/core.db")).unwrap();
+        conn.execute_batch(
+            "DELETE FROM project_members; DELETE FROM projects; UPDATE projection_state SET last_offset = 0;",
+        )
+        .unwrap();
+    }
+    fx.restart(&[]).await;
+    let rebuilt = fx.list(true).await;
+    assert_eq!(rebuilt.projects.len(), 1);
+    assert_eq!(
+        rebuilt.projects, want.projects,
+        "the rebuild from the log is the same projection"
+    );
+    assert_eq!(ids(&fx.get(&p1).await), sorted(&[&t1, &t2, &t3]));
     fx.core.kill();
 }
 

@@ -12,7 +12,7 @@
 import { expect, test, type Locator, type Page } from "@playwright/test";
 import { mkdtempSync } from "node:fs";
 import { tmpdir } from "node:os";
-import { join } from "node:path";
+import { basename, join } from "node:path";
 import { accessible, closeApp, launch, makeRepo, setContentSize } from "./support/ui-harness.ts";
 import { streamingModel } from "./support/stream-model.ts";
 
@@ -112,7 +112,7 @@ test("PX-063/064: a project is created, filled by menu, drag and keyboard, refus
     const core0 = (await coreProjects(page)).projects;
     expect(core0).toHaveLength(1);
     expect(core0[0]!.name).toBe("Release");
-    expect(core0[0]!.workspaceRoot.endsWith(repoA.split("/").pop()!)).toBe(true);
+    expect(core0[0]!.workspaceRoot.endsWith(basename(repoA))).toBe(true);
     // The Projects group is separate from the repositories and has its New Project row.
     await expect(projectRow(page, pid)).toBeVisible();
     await expect(page.locator('[data-testid="agents-section"][data-section="projects"]')).toBeVisible();

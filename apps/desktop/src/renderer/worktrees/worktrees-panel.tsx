@@ -9,7 +9,7 @@
  */
 import { useMemo, useState } from "react";
 import { Badge, Button } from "@modbit/ui";
-import type { WorktreeInfo } from "../../shared/project-types.ts";
+import type { CleanupReportInfo, WorktreeInfo } from "../../shared/project-types.ts";
 import { parseRefusal } from "../projects/project-model.ts";
 import { ApplyModal } from "./apply-modal.tsx";
 import { DiscardWorktreeDialog, RemoveWorktreeDialog } from "./remove-dialog.tsx";
@@ -20,18 +20,22 @@ export interface WorktreesPanelProps {
   state: WorktreesState;
   sessionId: string | null;
   titleOf: (taskId: string) => string;
+  /** The task's state as the Fleet model holds it (Running, ReadyForReview, ...); only used to choose words and to hold back an apply the Core would refuse. */
+  taskStateOf: (taskId: string) => string | undefined;
   nowMs: number;
   onOpenTask: (taskId: string) => void;
   announce: (message: string) => void;
 }
 
-export function WorktreesPanel({ state, sessionId, titleOf, nowMs, onOpenTask, announce }: WorktreesPanelProps) {
+export function WorktreesPanel({ state, sessionId, titleOf, taskStateOf, nowMs, onOpenTask, announce }: WorktreesPanelProps) {
   const { list, loaded, error } = state;
   const [removing, setRemoving] = useState<WorktreeInfo | null>(null);
   const [discarding, setDiscarding] = useState<WorktreeInfo | null>(null);
   const [applying, setApplying] = useState<{ worktree: WorktreeInfo; flow: "apply" | "undo" } | null>(null);
   const [busy, setBusy] = useState(false);
   const [note, setNote] = useState<string | null>(null);
+  // What this window just asked the Core to do (a preview is not kept by the Core, so only the answer to the request shows it).
+  const [ran, setRan] = useState<CleanupReportInfo | null>(null);
   const groups = useMemo(() => groupByRepository(list?.worktrees ?? []), [list?.worktrees]);
 
   const runCleanup = async (dryRun: boolean) => {
@@ -40,6 +44,7 @@ export function WorktreesPanel({ state, sessionId, titleOf, nowMs, onOpenTask, a
     setNote(null);
     try {
       const r = await window.modbit.runWorktreeCleanup(sessionId, { dryRun });
+      setRan(r);
       announce(reportWords(r));
       await state.refresh();
     } catch (e) {
@@ -61,7 +66,7 @@ export function WorktreesPanel({ state, sessionId, titleOf, nowMs, onOpenTask, a
     );
   }
   const policy = list?.policy;
-  const last = list?.lastCleanup;
+  const last = ran ?? list?.lastCleanup;
   return (
     <section className="wt-page" aria-labelledby="wt-title" data-testid="worktrees-page" data-state="ready">
       <header className="wt-head">
@@ -108,7 +113,7 @@ export function WorktreesPanel({ state, sessionId, titleOf, nowMs, onOpenTask, a
       )}
       {last && (
         <p className="meta" data-testid="worktrees-report" data-status={last.status}>
-          Last cleanup: {reportWords(last)}
+          {ran ? "Cleanup" : "Last cleanup"}: {reportWords(last)}
           {last.errors.length > 0 ? ` · ${last.errors.length} ${last.errors.length === 1 ? "error" : "errors"}: ${last.errors.join("; ")}` : ""}
         </p>
       )}
@@ -124,11 +129,14 @@ export function WorktreesPanel({ state, sessionId, titleOf, nowMs, onOpenTask, a
             </h3>
             <ul className="wt-list">
               {g.items.map((w) => {
-                const states = worktreeStates(w);
+                const taskState = w.taskId ? taskStateOf(w.taskId) : undefined;
+                const states = worktreeStates(w, taskState);
                 const owner = w.taskId ? titleOf(w.taskId) : "";
-                const canApply = w.taskId !== "" && w.unapplied && !w.taskRunning && w.state === "ACTIVE";
+                // A task that is still working holds its worktree; one waiting for review or over does not. The Core refuses an apply or a discard of a live run with its typed code.
+                const working = w.taskRunning && taskState !== "ReadyForReview";
+                const canApply = w.taskId !== "" && w.unapplied && !working && w.state === "ACTIVE";
                 const canUndo = w.taskId !== "" && w.disposition === "APPLIED";
-                const canDiscard = w.taskId !== "" && w.unapplied && !w.taskRunning && w.state === "ACTIVE";
+                const canDiscard = canApply;
                 return (
                   <li key={w.worktreeId} className="wt-row" data-testid="worktree-row" data-worktree-id={w.worktreeId} data-task-id={w.taskId} data-states={states.map((s) => s.id).join(" ")} data-removable={w.removable} data-running={w.taskRunning}>
                     <div className="wt-main">
