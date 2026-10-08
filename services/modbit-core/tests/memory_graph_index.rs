@@ -2092,7 +2092,9 @@ async fn px_111_sigkill_during_repeated_refreshes_never_leaves_an_unusable_index
             })
         };
         for n in 0..40 {
-            let marker = format!("marker_round{round}_write{n}");
+            // Fixed width and a terminator: `write1` must not be a substring
+            // of `write10`, which a faster writer reaches.
+            let marker = format!("marker_round{round}_write{n:06}_end");
             let path = format!("notes_{round}_{n}.txt");
             let r = tokio::time::timeout(
                 Duration::from_secs(10),
