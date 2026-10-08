@@ -698,6 +698,10 @@ pub enum TaskEvent {
         /// the region's box and the reason for the fallback.
         #[serde(default, skip_serializing_if = "Option::is_none")]
         visual_fallback: Option<serde_json::Value>,
+        /// The compiled page after the action, as an object reference
+        /// (PX-122): what a restart restores the known-state map from.
+        #[serde(default, skip_serializing_if = "String::is_empty")]
+        page_ref: String,
     },
     /// `BrowserRegionCaptured` (M7.5, docs/22 rung 4 and "V2 media
     /// interaction"): the agent fell back to vision on one region of the
@@ -725,6 +729,71 @@ pub enum TaskEvent {
         state_version: u64,
         /// The page's fingerprint at capture.
         fingerprint: String,
+    },
+    /// `BrowserPageChanged` (PX-122): the page changed on its own — the
+    /// host's mutation observer reported it and the Core read the page
+    /// again without a model call. The delta stream of the page as it moved,
+    /// by fingerprint, with counts; no state change.
+    BrowserPageChanged {
+        /// The session.
+        browser_session_id: String,
+        /// The observer's change counter this read covers.
+        change_seq: u64,
+        /// Fingerprint of the page the Core held before.
+        from_fingerprint: String,
+        /// Fingerprint of the page now.
+        to_fingerprint: String,
+        /// The host's state version.
+        state_version: u64,
+        /// Entities added.
+        added: u64,
+        /// Entities removed.
+        removed: u64,
+        /// Entities whose value or state changed.
+        changed: u64,
+        /// Text lines added.
+        text_added: u64,
+        /// Text lines removed.
+        text_removed: u64,
+        /// Mutations the host folded into the notices behind this read.
+        #[serde(default)]
+        coalesced: u64,
+        /// Milliseconds from the host's first notice to this record.
+        #[serde(default)]
+        latency_ms: u64,
+        /// URL (untrusted).
+        url: String,
+        /// The compiled page, as an object reference (what a restart restores).
+        #[serde(default)]
+        page_ref: String,
+    },
+    /// `BrowserOutcomeUnknown` (PX-121): an agent input to the session may
+    /// have happened and nothing says whether it did (the host timed out or
+    /// died after dispatch). The session is latched until a fresh
+    /// observation reconciles it. No state change.
+    BrowserOutcomeUnknown {
+        /// The session.
+        browser_session_id: String,
+        /// The tool call whose outcome is unknown.
+        tool_call_id: String,
+        /// The tool.
+        tool: String,
+        /// The action.
+        action: String,
+        /// The entity acted on.
+        reference: String,
+        /// What was observed.
+        reason: String,
+    },
+    /// `BrowserOutcomeReconciled` (PX-121): a fresh observation lifted the
+    /// latch an unknown outcome set. No state change.
+    BrowserOutcomeReconciled {
+        /// The session.
+        browser_session_id: String,
+        /// The observing tool call.
+        tool_call_id: String,
+        /// The tool call whose outcome had been unknown.
+        was_tool_call_id: String,
     },
     /// `BrowserCredentialFilled` (M7.8, docs/22 "Credentials"): a credential
     /// the person bound to an origin was filled by handle into a field of a
@@ -978,6 +1047,11 @@ pub enum TaskEvent {
         changed: u64,
         /// URL (untrusted).
         url: String,
+        /// The compiled page as an object reference (PX-122): the known-state
+        /// map a restarted Core restores, so the same element keeps its
+        /// reference and a delta against this fingerprint still works.
+        #[serde(default, skip_serializing_if = "String::is_empty")]
+        page_ref: String,
     },
     /// `PlanRevised` with a scope delta; no state change.
     PlanRevised {
@@ -2492,6 +2566,9 @@ impl TaskEvent {
             Self::BrowserPageObserved { .. } => "BrowserPageObserved",
             Self::BrowserActionPerformed { .. } => "BrowserActionPerformed",
             Self::BrowserRegionCaptured { .. } => "BrowserRegionCaptured",
+            Self::BrowserPageChanged { .. } => "BrowserPageChanged",
+            Self::BrowserOutcomeUnknown { .. } => "BrowserOutcomeUnknown",
+            Self::BrowserOutcomeReconciled { .. } => "BrowserOutcomeReconciled",
             Self::SecurityEventRecorded { .. } => "SecurityEventRecorded",
             Self::SloStageRecorded { .. } => "SloStageRecorded",
             Self::BrowserCredentialFilled { .. } => "BrowserCredentialFilled",
@@ -2690,6 +2767,9 @@ impl Task {
             | TaskEvent::BrowserPageObserved { .. }
             | TaskEvent::BrowserActionPerformed { .. }
             | TaskEvent::BrowserRegionCaptured { .. }
+            | TaskEvent::BrowserPageChanged { .. }
+            | TaskEvent::BrowserOutcomeUnknown { .. }
+            | TaskEvent::BrowserOutcomeReconciled { .. }
             | TaskEvent::SecurityEventRecorded { .. }
             | TaskEvent::SloStageRecorded { .. }
             | TaskEvent::TaskPauseRequested { .. }

@@ -8627,6 +8627,7 @@ async fn execute_tool(
                 || name == "fs.read"
                 || name == "browser.navigate"
                 || name == "browser.act"
+                || name == "browser.fill_form"
                 || name.starts_with("lsp.")
                 || name.starts_with("git.worktree"));
         return TranscriptEntry::ToolResult {

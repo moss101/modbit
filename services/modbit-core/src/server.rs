@@ -1071,10 +1071,15 @@ async fn serve_frames(
                     // M7.1: attaching a host binds this connection's writer to
                     // the session, so it is handled here, not in handle_command.
                     _ if env.command_type == "AttachBrowserHost" => {
-                        let (tx, new_rx) = tokio::sync::mpsc::channel(32);
+                        // One queue per connection, however many sessions it hosts (PX-073: a
+                        // desktop hosts one view per task): the first attach installs the
+                        // queue's receiving end, later ones share its sending end.
+                        let (tx, new_rx) = core.browser.host_channel(connection).await;
                         let ack = attach_browser_host(core, env, tx, connection).await;
-                        if ack.status == wire::CommandStatus::Accepted as i32 {
-                            *host_rx = Some(new_rx);
+                        if ack.status == wire::CommandStatus::Accepted as i32
+                            && let Some(rx) = new_rx
+                        {
+                            *host_rx = Some(rx);
                         }
                         ack
                     }
@@ -1332,6 +1337,7 @@ fn required_client_capability(env: &CommandEnvelope) -> Option<&'static str> {
         "RunCheckpointGc" => "session.control",
         "AttachBrowserHost"
         | "BrowserHostResponse"
+        | "BrowserHostNotice"
         | "RegisterBrowserCredential"
         | "ForgetBrowserCredential" => "browser.host",
         "OpenBrowserSession" | "CloseBrowserSession" => "task.author",
@@ -1523,7 +1529,21 @@ async fn browser_session_record(
         (task, crate::browser::task_events(&store, task_id))
     };
     match crate::browser::from_events(bsid, task_id, task.session_id, &events) {
-        Some(rec) => {
+        Some(mut rec) => {
+            // PX-122: the last page the Core persisted restores the
+            // known-state map and the delta history, so the same element
+            // keeps its reference and a fingerprint the model holds still
+            // answers with a delta.
+            let page = match rec.page_ref.clone() {
+                Some(r) => {
+                    let store = core.store.lock().await;
+                    crate::browser_observer::load_page(&store, &r)
+                }
+                None => None,
+            };
+            if let Some(page) = page {
+                rec.hold(page);
+            }
             core.browser.restore(bsid, rec.clone()).await;
             Ok(rec)
         }
@@ -6182,6 +6202,58 @@ pub(crate) async fn handle_command(core: &Arc<Core>, env: CommandEnvelope) -> Co
                 cid,
                 false,
                 wire::BrowserHostResponded { delivered }.encode_to_vec(),
+            )
+        }
+        // PX-122: the host's mutation observer says the page changed; the
+        // Core reads it again and journals the delta (no model call).
+        "BrowserHostNotice" => {
+            let Ok(p) = wire::BrowserHostNotice::decode(env.payload.as_slice()) else {
+                return reject(cid, "BAD_PAYLOAD", "BrowserHostNotice");
+            };
+            let Some(bsid) = p
+                .browser_session_id
+                .as_ref()
+                .and_then(id16)
+                .map(modbit_browser::BrowserSessionId::from_bytes)
+            else {
+                return reject(cid, "BAD_PAYLOAD", "browser_session_id required");
+            };
+            let notice: modbit_browser::PageNotice = match serde_json::from_str(&p.notice_json) {
+                Ok(n) => n,
+                Err(e) => return reject(cid, "BAD_PAYLOAD", format!("notice_json: {e}")),
+            };
+            let stats = crate::browser_observer::accept_notice(core, bsid, notice).await;
+            accept(
+                cid,
+                false,
+                wire::BrowserHostNoticed {
+                    accepted: stats.is_some(),
+                    change_seq: stats.as_ref().map_or(0, |s| s.change_seq),
+                    notices: stats.as_ref().map_or(0, |s| s.notices),
+                }
+                .encode_to_vec(),
+            )
+        }
+        "GetBrowserRuntime" => {
+            let Ok(p) = wire::GetBrowserRuntime::decode(env.payload.as_slice()) else {
+                return reject(cid, "BAD_PAYLOAD", "GetBrowserRuntime");
+            };
+            let Some(bsid) = p
+                .browser_session_id
+                .as_ref()
+                .and_then(id16)
+                .map(modbit_browser::BrowserSessionId::from_bytes)
+            else {
+                return reject(cid, "BAD_PAYLOAD", "browser_session_id required");
+            };
+            let rec = match browser_session_record(core, bsid, p.task_id.as_ref()).await {
+                Ok(r) => r,
+                Err(ack) => return ack(cid),
+            };
+            accept(
+                cid,
+                false,
+                crate::browser::runtime_view(bsid, &rec).encode_to_vec(),
             )
         }
         "RegisterBrowserCredential" => {

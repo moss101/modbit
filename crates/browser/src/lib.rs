@@ -15,7 +15,10 @@
 //! Dependency direction is enforced by `tools/architecture-lint`.
 
 pub mod compiler;
+pub mod feedback;
 pub mod injection;
+pub mod refusal;
+pub mod semantic;
 
 use std::fmt;
 use std::future::Future;
@@ -129,11 +132,22 @@ pub enum HostRequest {
     Snapshot {
         /// At most this many nodes (the host truncates and says so).
         max_nodes: u32,
+        /// The Core reads the page on its own account (it compiles after the
+        /// host's change notices): the host does not count it as a request
+        /// the agent made (PX-122).
+        #[serde(default, skip_serializing_if = "std::ops::Not::not")]
+        observer: bool,
     },
-    /// A PNG of a region (targeted; a full page only as diagnostic evidence).
+    /// A PNG of a region, or of the viewport (PX-121): the viewport as
+    /// diagnostic evidence a coding agent reads to see what its page
+    /// rendered, bounded by `fit`.
     Capture {
         /// Region in CSS pixels; `None` = the viewport.
         clip: Option<Clip>,
+        /// The image is scaled down to fit this width and height (aspect
+        /// kept, never enlarged); `None` = as captured.
+        #[serde(default, skip_serializing_if = "Option::is_none")]
+        fit: Option<(u32, u32)>,
     },
     /// Act on one element the compiler resolved at this version (M7.4):
     /// the host targets the DOM node, performs the action as a person
@@ -159,7 +173,52 @@ pub enum HostRequest {
         /// value never crosses this protocol in either direction.
         #[serde(default, skip_serializing_if = "Option::is_none")]
         credential_handle: Option<String>,
+        /// The frame the element is in (PX-122); `None` = the top frame.
+        #[serde(default, skip_serializing_if = "Option::is_none")]
+        frame: Option<String>,
     },
+    /// Scroll (PX-121): an element into view, the page or the nearest
+    /// scrollable ancestor of an element by an amount, or to an edge. An
+    /// agent input like `Act`: refused while the person holds control, and
+    /// halted by an emergency stop.
+    Scroll {
+        /// The element to bring into view or to scroll within; `None` = the page.
+        #[serde(default, skip_serializing_if = "Option::is_none")]
+        backend_dom_node_id: Option<i64>,
+        /// The frame of the element.
+        #[serde(default, skip_serializing_if = "Option::is_none")]
+        frame: Option<String>,
+        /// `into_view` | `by` | `to_top` | `to_bottom`.
+        mode: String,
+        /// Horizontal CSS pixels for `by`.
+        #[serde(default)]
+        dx: i32,
+        /// Vertical CSS pixels for `by`.
+        #[serde(default)]
+        dy: i32,
+    },
+    /// The page's console messages after `since`, newest last (PX-121).
+    Console {
+        /// Return entries with a larger sequence number.
+        #[serde(default)]
+        since: u64,
+        /// At most this many.
+        limit: u32,
+    },
+    /// The page's network requests after `since` (PX-121).
+    Network {
+        /// Return entries with a larger sequence number.
+        #[serde(default)]
+        since: u64,
+        /// At most this many.
+        limit: u32,
+        /// Only requests that failed or were refused.
+        #[serde(default)]
+        failed_only: bool,
+    },
+    /// How busy the page is: requests in flight, quiet time, the observer's
+    /// change counter (what `wait` for network idle reads).
+    Activity,
     /// Whether the session's document can reach Node or Electron
     /// privileges (must be false; a host answers from the page itself).
     Isolation,
@@ -226,6 +285,12 @@ pub enum HostResponse {
         nodes: Vec<compiler::RawAxNode>,
         /// Whether `max_nodes` cut the tree.
         truncated: bool,
+        /// The frames the tree spans (PX-122); empty = the top frame only.
+        #[serde(default)]
+        frames: Vec<compiler::FrameInfo>,
+        /// The observer's change counter when the tree was read.
+        #[serde(default)]
+        change_seq: u64,
     },
     /// Capture.
     Capture {
@@ -235,6 +300,61 @@ pub enum HostResponse {
         png_base64: String,
         /// The region captured.
         clip: Option<Clip>,
+        /// Width of the image in pixels (0 = the host did not say).
+        #[serde(default)]
+        width: u32,
+        /// Height of the image in pixels.
+        #[serde(default)]
+        height: u32,
+    },
+    /// The outcome of a `Scroll`.
+    Scrolled {
+        /// The page after.
+        state: PageState,
+        /// Scroll offset after, CSS pixels.
+        x: i64,
+        /// Vertical offset after.
+        y: i64,
+        /// The most it can scroll horizontally.
+        max_x: i64,
+        /// The most it can scroll vertically.
+        max_y: i64,
+        /// Whether anything moved.
+        moved: bool,
+        /// What scrolled: `page` or a description of the container.
+        container: String,
+    },
+    /// Console messages (PX-121; already redacted by the host, redacted
+    /// again by the Core).
+    Console {
+        /// The entries after `since`.
+        entries: Vec<feedback::ConsoleEntry>,
+        /// The sequence number to resume from.
+        next_seq: u64,
+        /// Entries that left the ring buffer before they were read.
+        #[serde(default)]
+        dropped: u64,
+    },
+    /// Network requests (PX-121).
+    Network {
+        /// The entries after `since`.
+        entries: Vec<feedback::NetworkEntry>,
+        /// The sequence number to resume from.
+        next_seq: u64,
+        /// Entries that left the ring buffer before they were read.
+        #[serde(default)]
+        dropped: u64,
+    },
+    /// How busy the page is.
+    Activity {
+        /// Requests started and not finished.
+        inflight: u32,
+        /// Milliseconds since the last request started or finished.
+        quiet_ms: u64,
+        /// The observer's change counter.
+        change_seq: u64,
+        /// The document is still loading.
+        loading: bool,
     },
     /// The outcome of an `Act`.
     Acted {
@@ -355,6 +475,68 @@ pub trait BrowserPort: Send + Sync {
         session: BrowserSessionId,
     ) -> BoxFuture<'a, Option<compiler::PageEntities>>;
 
+    /// The page the model last received for `session` (by a snapshot or an
+    /// action result): what an implicit delta starts from. A compile the
+    /// model never saw (an inspection, a change the host reported) does not
+    /// move it (PX-122).
+    fn delivered_page<'a>(
+        &'a self,
+        session: BrowserSessionId,
+    ) -> BoxFuture<'a, Option<compiler::PageEntities>> {
+        self.last_page(session)
+    }
+
+    /// Record that the model now holds the page at `fingerprint`.
+    fn note_delivered<'a>(
+        &'a self,
+        session: BrowserSessionId,
+        fingerprint: &'a str,
+    ) -> BoxFuture<'a, ()> {
+        let _ = (session, fingerprint);
+        Box::pin(async {})
+    }
+
+    /// A recently compiled page by its content fingerprint (PX-122): what
+    /// `since_fingerprint` starts from. `None` = never held, or too old.
+    fn page_by_fingerprint<'a>(
+        &'a self,
+        session: BrowserSessionId,
+        fingerprint: &'a str,
+    ) -> BoxFuture<'a, Option<compiler::PageEntities>> {
+        let _ = (session, fingerprint);
+        Box::pin(async { None })
+    }
+
+    /// The session's unknown-outcome latch (PX-121), when set.
+    fn latch<'a>(&'a self, session: BrowserSessionId) -> BoxFuture<'a, Option<UnknownLatch>> {
+        let _ = session;
+        Box::pin(async { None })
+    }
+
+    /// Latch the session: an action may have happened and nothing says
+    /// what; every further agent input is refused until a fresh observation
+    /// reconciles it (PX-121).
+    fn set_latch<'a>(
+        &'a self,
+        session: BrowserSessionId,
+        latch: UnknownLatch,
+    ) -> BoxFuture<'a, ()> {
+        let _ = (session, latch);
+        Box::pin(async {})
+    }
+
+    /// A fresh observation reconciles the latch; returns it when one was set.
+    fn clear_latch<'a>(&'a self, session: BrowserSessionId) -> BoxFuture<'a, Option<UnknownLatch>> {
+        let _ = session;
+        Box::pin(async { None })
+    }
+
+    /// The change notices the host reported for `session` (PX-122).
+    fn notice_stats<'a>(&'a self, session: BrowserSessionId) -> BoxFuture<'a, NoticeStats> {
+        let _ = session;
+        Box::pin(async { NoticeStats::default() })
+    }
+
     /// The credential registered under `handle` (M7.8), if any.
     fn credential<'a>(&'a self, handle: &'a str) -> BoxFuture<'a, Option<CredentialHandle>> {
         let _ = handle;
@@ -425,6 +607,73 @@ pub struct KnownTransition {
     pub verified: Option<bool>,
     /// How many times this transition was observed.
     pub times: u32,
+}
+
+/// An agent input whose outcome nobody knows (PX-121): the host timed out,
+/// vanished or died after the input may have been dispatched. The session is
+/// latched: nothing is retried, and no further agent input runs, until a
+/// fresh observation reconciles it.
+#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
+pub struct UnknownLatch {
+    /// The tool that issued the input (`browser.act`, `browser.navigate`, …).
+    pub tool: String,
+    /// The action (`click`, `fill`, `navigate`, …).
+    pub action: String,
+    /// The entity acted on, when there was one.
+    #[serde(default)]
+    pub reference: String,
+    /// What was observed (`BROWSER_TIMEOUT`, `OUTCOME_UNKNOWN`: …).
+    pub reason: String,
+    /// The tool call, when the caller knew it.
+    #[serde(default)]
+    pub tool_call_id: String,
+    /// When (ms since the epoch).
+    #[serde(default)]
+    pub at_ms: u64,
+}
+
+/// What a host reported about the page changing on its own (PX-122).
+#[derive(Clone, Debug, Default, PartialEq, Eq, Serialize, Deserialize)]
+pub struct NoticeStats {
+    /// The latest observer change counter the host reported.
+    pub change_seq: u64,
+    /// Notices received (after the host's own coalescing).
+    pub notices: u64,
+    /// Changes the Core has compiled and journaled up to this counter.
+    pub compiled_seq: u64,
+    /// The fingerprint of the page the Core last compiled because of a notice.
+    #[serde(default)]
+    pub last_fingerprint: String,
+}
+
+/// One bounded change notice from the host's mutation observer (PX-122).
+#[derive(Clone, Debug, Default, PartialEq, Eq, Serialize, Deserialize)]
+pub struct PageNotice {
+    /// The observer's change counter after this notice.
+    pub change_seq: u64,
+    /// `mutation` | `navigation` | `focus` | `load`.
+    pub kind: String,
+    /// Nodes added since the previous notice.
+    #[serde(default)]
+    pub added: u32,
+    /// Nodes removed.
+    #[serde(default)]
+    pub removed: u32,
+    /// Attribute changes.
+    #[serde(default)]
+    pub attributes: u32,
+    /// Text changes.
+    #[serde(default)]
+    pub text: u32,
+    /// The focused element changed.
+    #[serde(default)]
+    pub focus: bool,
+    /// The frame it happened in (`None` = the top frame).
+    #[serde(default)]
+    pub frame: Option<String>,
+    /// Mutations the host folded into this notice.
+    #[serde(default)]
+    pub coalesced: u32,
 }
 
 /// The origin (`scheme://host[:port]`, lower-case) of an http(s) URL.
@@ -531,7 +780,10 @@ mod tests {
 
     #[test]
     fn requests_and_responses_round_trip_as_tagged_json() {
-        let r = HostRequest::Snapshot { max_nodes: 200 };
+        let r = HostRequest::Snapshot {
+            max_nodes: 200,
+            observer: false,
+        };
         let j = serde_json::to_value(&r).unwrap();
         assert_eq!(j["kind"], "snapshot");
         assert_eq!(serde_json::from_value::<HostRequest>(j).unwrap(), r);

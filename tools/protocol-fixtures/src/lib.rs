@@ -656,6 +656,24 @@ pub fn samples() -> Vec<Sample> {
         recomputed_files: 1,
         recomputed_sample: vec!["src/util.rs".into()],
     };
+    let runtime = BrowserRuntimeView {
+        browser_session_id: id(0x61),
+        latch: "browser.act click: BROWSER_TIMEOUT".into(),
+        latch_tool_call_id: "01a08f33-0d97-7d40-b299-f8a7bc5cda60".into(),
+        page_kind: "login".into(),
+        change_seq: 9_007_199_254_740_993,
+        notices: 12,
+        compiled_seq: 11,
+        known_entities: 7,
+        history: 3,
+        last_fingerprint: "e".repeat(64),
+        delivered_fingerprint: "f".repeat(64),
+    };
+    let noticed = BrowserHostNoticed {
+        accepted: true,
+        change_seq: 12,
+        notices: 4,
+    };
     let hello = Hello {
         protocol_version: Some(modbit_protocol::PROTOCOL_VERSION),
         client_kind: ClientKind::Cli as i32,
@@ -1099,6 +1117,29 @@ pub fn samples() -> Vec<Sample> {
                 "recomputedFiles": "1", "recomputedSample": ["src/util.rs"]
             }),
             decode: reencode::<IndexStatusView>,
+        },
+        // PX-121, PX-122: the browser runtime's state a client reads.
+        Sample {
+            name: "browser_runtime_view",
+            type_name: "modbit.v1.BrowserRuntimeView",
+            bytes: runtime.encode_to_vec(),
+            expected: json!({
+                "browserSessionId": idhex(0x61),
+                "latch": "browser.act click: BROWSER_TIMEOUT",
+                "latchToolCallId": "01a08f33-0d97-7d40-b299-f8a7bc5cda60",
+                "pageKind": "login", "changeSeq": "9007199254740993", "notices": "12",
+                "compiledSeq": "11", "knownEntities": 7, "history": 3,
+                "lastFingerprint": "e".repeat(64), "deliveredFingerprint": "f".repeat(64)
+            }),
+            decode: reencode::<BrowserRuntimeView>,
+        },
+        // PX-122: the acknowledgement of a host's change notice.
+        Sample {
+            name: "browser_host_noticed",
+            type_name: "modbit.v1.BrowserHostNoticed",
+            bytes: noticed.encode_to_vec(),
+            expected: json!({"accepted": true, "changeSeq": "12", "notices": "4"}),
+            decode: reencode::<BrowserHostNoticed>,
         },
     ]
 }

@@ -479,6 +479,21 @@ pub struct SandboxGatewayCustody {
 }
 
 impl ToolHost {
+    /// The last page compiled for `session`, as an object the log can point
+    /// at (PX-122): what a restarted Core restores the known-state map from.
+    /// Empty when nothing was compiled or the object could not be written.
+    async fn persisted_page_ref(
+        &self,
+        store: &Arc<Mutex<EventStore>>,
+        session: modbit_browser::BrowserSessionId,
+    ) -> String {
+        let Some(page) = self.browser.last_page(session).await else {
+            return String::new();
+        };
+        let guard = store.lock().await;
+        crate::browser_observer::persist_page(&guard, &page).unwrap_or_default()
+    }
+
     /// How many background command sessions the broker has running (FIX-17).
     /// The broker stops its processes once no Core returns within its orphan
     /// grace, so a Core that exits while one runs kills it: an idle-exiting
@@ -1788,8 +1803,15 @@ impl ToolHost {
                     other => (format!("{other:?}"), None),
                 };
                 approval_id = used_approval;
-                // Protected/external/destructive effects get a receipt in the chain.
-                if effect_class >= modbit_domain::toolcall::EffectClass::ProtectedWrite {
+                // Protected/external/destructive effects get a receipt in the
+                // chain - and so does a browser input whose outcome is unknown,
+                // whatever its class (PX-121): the receipt says UNKNOWN, so no
+                // reader takes the input for one that did not happen.
+                let browser_unknown = tool_name.starts_with("browser.")
+                    && result.status == ToolStatus::UnknownOutcome;
+                if effect_class >= modbit_domain::toolcall::EffectClass::ProtectedWrite
+                    || browser_unknown
+                {
                     let effect_id = modbit_domain::EffectId::new();
                     result.effect_receipt_ids.push(effect_id.to_string());
                     receipt = Some(EffectReceipt {
@@ -1803,7 +1825,11 @@ impl ToolHost {
                         approval_id: used_approval,
                         execution_target: execution_target(root.as_deref()),
                         evidence_ref: None,
-                        status: format!("{:?}", result.status).to_uppercase(),
+                        status: if browser_unknown {
+                            "UNKNOWN_OUTCOME".to_owned()
+                        } else {
+                            format!("{:?}", result.status).to_uppercase()
+                        },
                         occurred_at: now,
                         // REQ-EV-0066: how far this effect can be taken back,
                         // from the tool's own declaration; never optimistic.
@@ -1917,12 +1943,13 @@ impl ToolHost {
         // M7.4: an action on the page is on the log as the transition it
         // caused, by fingerprints, with its postcondition (REQ-EV-0280) —
         // when it ran (a refused or stale action is the call's outcome only).
-        if tool_name == "browser.act"
-            && matches!(
-                result.status,
-                ToolStatus::Success | ToolStatus::ApplicationFailure
-            )
-            && result.structured_output.get("fingerprint_before").is_some()
+        if matches!(
+            tool_name,
+            "browser.act" | "browser.scroll" | "browser.fill_form"
+        ) && matches!(
+            result.status,
+            ToolStatus::Success | ToolStatus::ApplicationFailure
+        ) && result.structured_output.get("fingerprint_before").is_some()
             && let Some(session) = self.browser.session_for(task_id).await
         {
             let o = &result.structured_output;
@@ -1931,6 +1958,7 @@ impl ToolHost {
                 .lease(session)
                 .await
                 .map_or(0, |l| l.generation);
+            let page_ref = self.persisted_page_ref(store, session).await;
             retrieval_events.push(typed_task_event(
                 "BrowserActionPerformed",
                 &modbit_domain::task::TaskEvent::BrowserActionPerformed {
@@ -1958,6 +1986,7 @@ impl ToolHost {
                     postcondition_held: o["postcondition"]["held"].as_bool(),
                     lease_generation,
                     visual_fallback: o.get("visual_fallback").filter(|v| !v.is_null()).cloned(),
+                    page_ref: page_ref.clone(),
                 },
                 &actor,
             ));
@@ -2035,6 +2064,71 @@ impl ToolHost {
                     removed: count("removed"),
                     changed: count("changed"),
                     url: o["url"].as_str().unwrap_or_default().to_owned(),
+                    page_ref: self.persisted_page_ref(store, session).await,
+                },
+                &actor,
+            ));
+        }
+        // PX-121: an input of unknown outcome latches the session; a fresh
+        // observation lifts it. Both are on the task's log, so a restarted
+        // Core still refuses what the live one refused.
+        if tool_name.starts_with("browser.")
+            && result.status == ToolStatus::UnknownOutcome
+            && let Some(session) = self.browser.session_for(task_id).await
+        {
+            let o = &result.structured_output;
+            retrieval_events.push(typed_task_event(
+                "BrowserOutcomeUnknown",
+                &modbit_domain::task::TaskEvent::BrowserOutcomeUnknown {
+                    browser_session_id: session.to_string(),
+                    tool_call_id: tool_call_id.to_string(),
+                    tool: tool_name.to_owned(),
+                    action: o["action"].as_str().unwrap_or_default().to_owned(),
+                    reference: o["ref"].as_str().unwrap_or_default().to_owned(),
+                    reason: o["reason"].as_str().unwrap_or_default().to_owned(),
+                },
+                &actor,
+            ));
+        }
+        if tool_name.starts_with("browser.")
+            && let Some(was) = result.structured_output["reconciled"]["was_latched_by"].as_object()
+            && let Some(session) = self.browser.session_for(task_id).await
+        {
+            retrieval_events.push(typed_task_event(
+                "BrowserOutcomeReconciled",
+                &modbit_domain::task::TaskEvent::BrowserOutcomeReconciled {
+                    browser_session_id: session.to_string(),
+                    tool_call_id: tool_call_id.to_string(),
+                    was_tool_call_id: was
+                        .get("tool_call_id")
+                        .and_then(|v| v.as_str())
+                        .unwrap_or_default()
+                        .to_owned(),
+                },
+                &actor,
+            ));
+        }
+        // PX-120 / PX-073: a destination or a page the policy refused is
+        // security evidence on the task, not only a failed call.
+        if matches!(
+            result.error_code.as_deref(),
+            Some("TARGET_NOT_ALLOWED" | "ORIGIN_NOT_ALLOWED" | "FILE_ORIGIN")
+        ) {
+            retrieval_events.push(typed_task_event(
+                "SecurityEventRecorded",
+                &modbit_domain::task::TaskEvent::SecurityEventRecorded {
+                    kind: "BROWSER_TARGET_REFUSED".into(),
+                    tool_name: tool_name.to_owned(),
+                    tool_call_id: tool_call_id.to_string(),
+                    patterns: vec![result.error_code.clone().unwrap_or_default()],
+                    detail: result
+                        .error_message
+                        .clone()
+                        .unwrap_or_default()
+                        .chars()
+                        .take(300)
+                        .collect(),
+                    action: "REFUSED".into(),
                 },
                 &actor,
             ));

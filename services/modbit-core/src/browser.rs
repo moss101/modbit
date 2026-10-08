@@ -12,13 +12,13 @@
 //! record survives (a host can attach again to the same partition) and a
 //! Core restart rebuilds it from the task's events.
 
-use std::collections::HashMap;
+use std::collections::{HashMap, VecDeque};
 use std::sync::Arc;
 use std::time::Duration;
 
 use modbit_browser::{
-    BoxFuture, BrowserPort, BrowserSessionId, ControlLease, HostRequest, HostResponse, PageState,
-    PortError,
+    BoxFuture, BrowserPort, BrowserSessionId, ControlLease, HostRequest, HostResponse, NoticeStats,
+    PageState, PortError, UnknownLatch,
 };
 use modbit_domain::ids::{SessionId, TaskId};
 use modbit_protocol::v1 as wire;
@@ -57,6 +57,79 @@ pub(crate) struct SessionRecord {
     /// Transitions observed in this session (IMP-EV-0280; bounded), keyed
     /// by the fingerprint before, the reference and the action.
     pub transitions: Vec<modbit_browser::KnownTransition>,
+    /// The pages compiled recently, newest last, by content fingerprint
+    /// (PX-122): what `since_fingerprint` starts from. Bounded.
+    pub history: VecDeque<(String, modbit_browser::compiler::PageEntities)>,
+    /// The fingerprint of the page the model last received (PX-122): what an
+    /// implicit delta starts from. A compile the model never saw (an
+    /// inspection, a change the observer reported) does not move it.
+    pub delivered: Option<String>,
+    /// An agent input of unknown outcome (PX-121): every further input is
+    /// refused until a fresh observation reconciles it.
+    pub latch: Option<UnknownLatch>,
+    /// What the host's change notices amounted to (PX-122).
+    pub notices: NoticeStats,
+    /// A compile for a notice is running (PX-122).
+    pub compiling: bool,
+    /// A notice arrived while one was running.
+    pub dirty: bool,
+    /// Mutations the host folded into the notices not yet compiled.
+    pub coalesced: u32,
+    /// When the oldest notice not yet compiled arrived.
+    pub first_pending: Option<std::time::Instant>,
+    /// The object reference of the last page the Core persisted (PX-122):
+    /// what a restart restores the known-state map from.
+    pub page_ref: Option<String>,
+}
+
+/// Pages kept for `since_fingerprint`.
+const HISTORY: usize = 12;
+/// Entities a session remembers at most.
+const KNOWN_MAX: usize = 4000;
+
+impl SessionRecord {
+    /// A fresh record.
+    fn new(task_id: TaskId, session_id: SessionId, partition: String) -> Self {
+        Self {
+            task_id,
+            session_id,
+            partition,
+            lease: ControlLease::initial(),
+            host: None,
+            state: PageState::default(),
+            closed: false,
+            known: HashMap::new(),
+            last_page: None,
+            transitions: Vec::new(),
+            history: VecDeque::new(),
+            delivered: None,
+            latch: None,
+            notices: NoticeStats::default(),
+            compiling: false,
+            dirty: false,
+            coalesced: 0,
+            first_pending: None,
+            page_ref: None,
+        }
+    }
+
+    /// Hold `page` as compiled: the known-state map learns its entities, the
+    /// bounded history keeps it by fingerprint.
+    pub(crate) fn hold(&mut self, page: modbit_browser::compiler::PageEntities) {
+        if self.known.len() > KNOWN_MAX {
+            self.known.clear();
+        }
+        for e in &page.entities {
+            self.known.insert(e.reference.clone(), e.clone());
+        }
+        let fp = modbit_browser::compiler::state_fingerprint(&page);
+        self.history.retain(|(f, _)| *f != fp);
+        self.history.push_back((fp, page.clone()));
+        while self.history.len() > HISTORY {
+            self.history.pop_front();
+        }
+        self.last_page = Some(page);
+    }
 }
 
 /// Why a host could not attach.
@@ -79,9 +152,32 @@ pub struct BrowserSessions {
     /// "Credentials"): handle, label, origin, account name — never a value.
     /// Memory only; a host registers them again when it reconnects.
     credentials: Mutex<HashMap<String, modbit_browser::CredentialHandle>>,
+    /// The request queue of each connection that hosts sessions: one per
+    /// connection, shared by every session it hosts.
+    host_queues: std::sync::Mutex<HashMap<u64, mpsc::Sender<wire::BrowserHostRequest>>>,
 }
 
 impl BrowserSessions {
+    /// The sending end of the request queue of `connection`, and - for the
+    /// first host on the connection - the receiving end its writer drains.
+    pub(crate) async fn host_channel(
+        &self,
+        connection: u64,
+    ) -> (
+        mpsc::Sender<wire::BrowserHostRequest>,
+        Option<mpsc::Receiver<wire::BrowserHostRequest>>,
+    ) {
+        let mut q = self.host_queues.lock().unwrap_or_else(|e| e.into_inner());
+        if let Some(tx) = q.get(&connection)
+            && !tx.is_closed()
+        {
+            return (tx.clone(), None);
+        }
+        let (tx, rx) = mpsc::channel(32);
+        q.insert(connection, tx.clone());
+        (tx, Some(rx))
+    }
+
     /// Register (or replace) a credential handle (M7.8).
     pub(crate) async fn register_credential(&self, c: modbit_browser::CredentialHandle) {
         self.credentials.lock().await.insert(c.handle.clone(), c);
@@ -97,7 +193,9 @@ impl BrowserSessions {
 fn deadline(req: &HostRequest) -> Duration {
     match req {
         HostRequest::Navigate { .. } => Duration::from_secs(40),
-        HostRequest::Capture { .. } => Duration::from_secs(20),
+        HostRequest::Capture { .. } | HostRequest::Snapshot { .. } | HostRequest::Scroll { .. } => {
+            Duration::from_secs(20)
+        }
         _ => Duration::from_secs(15),
     }
 }
@@ -116,20 +214,89 @@ impl BrowserSessions {
         task_id: TaskId,
         session_id: SessionId,
     ) -> SessionRecord {
-        let rec = SessionRecord {
-            task_id,
-            session_id,
-            partition: Self::partition_for(id),
-            lease: ControlLease::initial(),
-            host: None,
-            state: PageState::default(),
-            closed: false,
-            known: HashMap::new(),
-            last_page: None,
-            transitions: Vec::new(),
-        };
+        let rec = SessionRecord::new(task_id, session_id, Self::partition_for(id));
         self.sessions.lock().await.insert(id, rec.clone());
         rec
+    }
+
+    /// A host's change notice (PX-122): counted; the second value says
+    /// whether a read must be started (none is running).
+    pub(crate) async fn note_notice(
+        &self,
+        id: BrowserSessionId,
+        n: &modbit_browser::PageNotice,
+    ) -> Option<(NoticeStats, bool)> {
+        let mut s = self.sessions.lock().await;
+        let rec = s.get_mut(&id)?;
+        if rec.closed {
+            return None;
+        }
+        rec.notices.change_seq = rec.notices.change_seq.max(n.change_seq);
+        rec.notices.notices += 1;
+        rec.coalesced = rec.coalesced.saturating_add(n.coalesced.max(1));
+        rec.first_pending
+            .get_or_insert_with(std::time::Instant::now);
+        rec.dirty = true;
+        let spawn = !rec.compiling;
+        if spawn {
+            rec.compiling = true;
+        }
+        Some((rec.notices.clone(), spawn))
+    }
+
+    /// The observer starts a read: the counter it covers and when the oldest
+    /// notice behind it arrived. `None` ends the observer (no session, no host).
+    pub(crate) async fn begin_read(
+        &self,
+        id: BrowserSessionId,
+    ) -> Option<(u64, Option<std::time::Instant>)> {
+        let mut s = self.sessions.lock().await;
+        let rec = s.get_mut(&id)?;
+        if rec.closed || rec.host.is_none() {
+            rec.compiling = false;
+            return None;
+        }
+        rec.dirty = false;
+        Some((rec.notices.change_seq, rec.first_pending.take()))
+    }
+
+    /// Mutations folded into the notices a read covers.
+    pub(crate) async fn take_coalesced(&self, id: BrowserSessionId) -> u32 {
+        self.sessions
+            .lock()
+            .await
+            .get_mut(&id)
+            .map_or(0, |r| std::mem::take(&mut r.coalesced))
+    }
+
+    /// The observer finished a read; `true` when notices arrived meanwhile.
+    pub(crate) async fn finish_read(&self, id: BrowserSessionId, seq: u64, compiled: bool) -> bool {
+        let mut s = self.sessions.lock().await;
+        let Some(rec) = s.get_mut(&id) else {
+            return false;
+        };
+        if compiled {
+            rec.notices.compiled_seq = rec.notices.compiled_seq.max(seq);
+            if let Some(p) = &rec.last_page {
+                rec.notices.last_fingerprint = modbit_browser::compiler::state_fingerprint(p);
+            }
+        }
+        if rec.dirty && !rec.closed && rec.host.is_some() {
+            true
+        } else {
+            rec.compiling = false;
+            false
+        }
+    }
+
+    /// The page the Core last persisted for the session.
+    pub(crate) async fn note_persisted(&self, id: BrowserSessionId, page_ref: String) {
+        if page_ref.is_empty() {
+            return;
+        }
+        if let Some(rec) = self.sessions.lock().await.get_mut(&id) {
+            rec.page_ref = Some(page_ref);
+        }
     }
 
     pub(crate) async fn get(&self, id: BrowserSessionId) -> Option<SessionRecord> {
@@ -202,6 +369,10 @@ impl BrowserSessions {
     /// The connection `connection` closed: its hosts are gone and every
     /// request they owed fails now (`HOST_GONE`), not at the deadline.
     pub(crate) async fn connection_closed(&self, connection: u64) {
+        self.host_queues
+            .lock()
+            .unwrap_or_else(|e| e.into_inner())
+            .remove(&connection);
         let gone: Vec<BrowserSessionId> = {
             let mut s = self.sessions.lock().await;
             let mut gone = Vec::new();
@@ -289,7 +460,7 @@ impl BrowserSessions {
             // one decided under an earlier generation is refused as stale.
             let agent_input = matches!(
                 request,
-                HostRequest::Navigate { .. } | HostRequest::Act { .. }
+                HostRequest::Navigate { .. } | HostRequest::Act { .. } | HostRequest::Scroll { .. }
             );
             let stamp = observed.unwrap_or(lease.generation);
             if agent_input {
@@ -345,8 +516,10 @@ impl BrowserSessions {
                 request_json: serde_json::to_string(&request).unwrap_or_default(),
             };
             if link.tx.send(frame).await.is_err() {
+                // Nothing was sent: the host was already gone, and no input
+                // reached it (PX-121: not an unknown outcome).
                 self.pending.lock().await.remove(&request_id);
-                return Err(PortError::HostGone);
+                return Err(PortError::NoHost);
             }
             match tokio::time::timeout(deadline(&request), rx).await {
                 Ok(Ok(resp)) => {
@@ -412,13 +585,7 @@ impl BrowserPort for BrowserSessions {
     ) -> BoxFuture<'a, ()> {
         Box::pin(async move {
             if let Some(rec) = self.sessions.lock().await.get_mut(&session) {
-                if rec.known.len() > 4000 {
-                    rec.known.clear();
-                }
-                for e in &page.entities {
-                    rec.known.insert(e.reference.clone(), e.clone());
-                }
-                rec.last_page = Some(page);
+                rec.hold(page);
             }
         })
     }
@@ -433,6 +600,81 @@ impl BrowserPort for BrowserSessions {
                 .await
                 .get(&session)
                 .and_then(|r| r.last_page.clone())
+        })
+    }
+
+    fn delivered_page<'a>(
+        &'a self,
+        session: BrowserSessionId,
+    ) -> BoxFuture<'a, Option<modbit_browser::compiler::PageEntities>> {
+        Box::pin(async move {
+            let s = self.sessions.lock().await;
+            let rec = s.get(&session)?;
+            let fp = rec.delivered.as_ref()?;
+            rec.history
+                .iter()
+                .find(|(f, _)| f == fp)
+                .map(|(_, p)| p.clone())
+        })
+    }
+
+    fn note_delivered<'a>(
+        &'a self,
+        session: BrowserSessionId,
+        fingerprint: &'a str,
+    ) -> BoxFuture<'a, ()> {
+        Box::pin(async move {
+            if let Some(rec) = self.sessions.lock().await.get_mut(&session) {
+                rec.delivered = Some(fingerprint.to_owned());
+            }
+        })
+    }
+
+    fn page_by_fingerprint<'a>(
+        &'a self,
+        session: BrowserSessionId,
+        fingerprint: &'a str,
+    ) -> BoxFuture<'a, Option<modbit_browser::compiler::PageEntities>> {
+        Box::pin(async move {
+            self.sessions
+                .lock()
+                .await
+                .get(&session)?
+                .history
+                .iter()
+                .find(|(f, _)| f == fingerprint)
+                .map(|(_, p)| p.clone())
+        })
+    }
+
+    fn latch<'a>(&'a self, session: BrowserSessionId) -> BoxFuture<'a, Option<UnknownLatch>> {
+        Box::pin(async move { self.sessions.lock().await.get(&session)?.latch.clone() })
+    }
+
+    fn set_latch<'a>(
+        &'a self,
+        session: BrowserSessionId,
+        latch: UnknownLatch,
+    ) -> BoxFuture<'a, ()> {
+        Box::pin(async move {
+            if let Some(rec) = self.sessions.lock().await.get_mut(&session) {
+                rec.latch = Some(latch);
+            }
+        })
+    }
+
+    fn clear_latch<'a>(&'a self, session: BrowserSessionId) -> BoxFuture<'a, Option<UnknownLatch>> {
+        Box::pin(async move { self.sessions.lock().await.get_mut(&session)?.latch.take() })
+    }
+
+    fn notice_stats<'a>(&'a self, session: BrowserSessionId) -> BoxFuture<'a, NoticeStats> {
+        Box::pin(async move {
+            self.sessions
+                .lock()
+                .await
+                .get(&session)
+                .map(|r| r.notices.clone())
+                .unwrap_or_default()
         })
     }
 
@@ -552,6 +794,49 @@ pub(crate) fn view(id: BrowserSessionId, rec: &SessionRecord) -> wire::BrowserSe
     }
 }
 
+/// The runtime state of a session a client reads (PX-121, PX-122).
+pub(crate) fn runtime_view(
+    id: BrowserSessionId,
+    rec: &SessionRecord,
+) -> modbit_protocol::v1::BrowserRuntimeView {
+    modbit_protocol::v1::BrowserRuntimeView {
+        browser_session_id: Some(wire::Id {
+            value: id.as_bytes().to_vec(),
+        }),
+        latch: rec
+            .latch
+            .as_ref()
+            .map(|l| format!("{} {}: {}", l.tool, l.action, l.reason))
+            .unwrap_or_default(),
+        latch_tool_call_id: rec
+            .latch
+            .as_ref()
+            .map(|l| l.tool_call_id.clone())
+            .unwrap_or_default(),
+        page_kind: rec
+            .last_page
+            .as_ref()
+            .map(|p| {
+                modbit_browser::semantic::classify_page(p)
+                    .kind
+                    .label()
+                    .to_owned()
+            })
+            .unwrap_or_default(),
+        change_seq: rec.notices.change_seq,
+        notices: rec.notices.notices,
+        compiled_seq: rec.notices.compiled_seq,
+        known_entities: rec.known.len() as u32,
+        history: rec.history.len() as u32,
+        last_fingerprint: rec
+            .last_page
+            .as_ref()
+            .map(modbit_browser::compiler::state_fingerprint)
+            .unwrap_or_default(),
+        delivered_fingerprint: rec.delivered.clone().unwrap_or_default(),
+    }
+}
+
 /// Rebuild a session record from the task's events (after a Core restart).
 pub(crate) fn from_events(
     id: BrowserSessionId,
@@ -567,18 +852,50 @@ pub(crate) fn from_events(
         }
         match e["__type"].as_str().unwrap_or_default() {
             "BrowserSessionOpened" => {
-                rec = Some(SessionRecord {
+                rec = Some(SessionRecord::new(
                     task_id,
                     session_id,
-                    partition: e["partition"].as_str().unwrap_or_default().to_owned(),
-                    lease: ControlLease::initial(),
-                    host: None,
-                    state: PageState::default(),
-                    closed: false,
-                    known: HashMap::new(),
-                    last_page: None,
-                    transitions: Vec::new(),
-                });
+                    e["partition"].as_str().unwrap_or_default().to_owned(),
+                ));
+            }
+            // PX-122: the last page the Core persisted - what the known-state
+            // map and the delta history are restored from - and the page the
+            // model last received.
+            "BrowserPageObserved" => {
+                if let Some(r) = rec.as_mut() {
+                    if let Some(p) = e["page_ref"].as_str().filter(|p| !p.is_empty()) {
+                        r.page_ref = Some(p.to_owned());
+                    }
+                    if let Some(f) = e["state_fingerprint"].as_str().filter(|f| !f.is_empty()) {
+                        r.delivered = Some(f.to_owned());
+                    }
+                }
+            }
+            "BrowserPageChanged" => {
+                if let Some(r) = rec.as_mut()
+                    && let Some(p) = e["page_ref"].as_str().filter(|p| !p.is_empty())
+                {
+                    r.page_ref = Some(p.to_owned());
+                }
+            }
+            // PX-121: an input of unknown outcome latches the session until
+            // a fresh observation reconciles it - across a restart too.
+            "BrowserOutcomeUnknown" => {
+                if let Some(r) = rec.as_mut() {
+                    r.latch = Some(UnknownLatch {
+                        tool: e["tool"].as_str().unwrap_or_default().to_owned(),
+                        action: e["action"].as_str().unwrap_or_default().to_owned(),
+                        reference: e["reference"].as_str().unwrap_or_default().to_owned(),
+                        reason: e["reason"].as_str().unwrap_or_default().to_owned(),
+                        tool_call_id: e["tool_call_id"].as_str().unwrap_or_default().to_owned(),
+                        at_ms: 0,
+                    });
+                }
+            }
+            "BrowserOutcomeReconciled" => {
+                if let Some(r) = rec.as_mut() {
+                    r.latch = None;
+                }
             }
             // IMP-EV-0280: transitions the session observed are rebuilt from
             // the log too — evidence survives a restart; a changed page will
@@ -592,6 +909,10 @@ pub(crate) fn from_events(
                     && !from.is_empty()
                     && !to.is_empty()
                 {
+                    r.delivered = Some(to.to_owned());
+                    if let Some(p) = e["page_ref"].as_str().filter(|p| !p.is_empty()) {
+                        r.page_ref = Some(p.to_owned());
+                    }
                     r.transitions.push(modbit_browser::KnownTransition {
                         from_fingerprint: from.to_owned(),
                         reference: e["reference"].as_str().unwrap_or_default().to_owned(),
@@ -714,6 +1035,7 @@ mod tests {
             key: String::new(),
             at: None,
             credential_handle: None,
+            frame: None,
         }
     }
 

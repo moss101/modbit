@@ -48,6 +48,82 @@ pub struct RawAxNode {
     /// Whether the element is disabled / read-only, when the host says.
     #[serde(default)]
     pub disabled: bool,
+    /// The frame the node is in (PX-122): `None` = the top frame, otherwise
+    /// the key of a [`FrameInfo`] the snapshot lists.
+    #[serde(default)]
+    pub frame: Option<String>,
+    /// `checked` of a check box, radio or switch: `true` | `false` | `mixed`.
+    #[serde(default)]
+    pub checked: Option<String>,
+    /// `expanded` of a disclosure, menu or combo box.
+    #[serde(default)]
+    pub expanded: Option<bool>,
+    /// The field must be filled before the form submits.
+    #[serde(default)]
+    pub required: bool,
+    /// The field holds a value the page marked invalid.
+    #[serde(default)]
+    pub invalid: bool,
+    /// `selected` of an option or tab.
+    #[serde(default)]
+    pub selected: Option<bool>,
+    /// A modal region (a dialog that holds the rest of the page inert).
+    #[serde(default)]
+    pub modal: bool,
+    /// Where a link goes, made absolute by the host (untrusted).
+    #[serde(default)]
+    pub href: Option<String>,
+    /// The `type` of an input or button.
+    #[serde(default)]
+    pub input_type: Option<String>,
+    /// A stable DOM attribute that identifies the element (PX-122):
+    /// `id:<v>`, `testid:<v>` or `name:<v>` — preferred to role and name in
+    /// the reference when it is unique on the page.
+    #[serde(default)]
+    pub dom_ident: Option<String>,
+    /// The `autocomplete` token of a field (`current-password`, `cc-number`, …).
+    #[serde(default)]
+    pub autocomplete: Option<String>,
+    /// The `<form>` the element belongs to, or is (PX-123): `id:<id>`,
+    /// `name:<name>` or `idx:<n>` (the nth form of its frame). A control
+    /// groups with the others of its form by this key, whether or not the
+    /// form has an accessible name.
+    #[serde(default)]
+    pub form_key: Option<String>,
+    /// Where that form submits to, made absolute by the host.
+    #[serde(default)]
+    pub form_action: Option<String>,
+    /// `get` | `post`.
+    #[serde(default)]
+    pub form_method: Option<String>,
+    /// For a button: whether activating it submits its form.
+    #[serde(default)]
+    pub submit: Option<bool>,
+    /// The placeholder of a field (untrusted).
+    #[serde(default)]
+    pub placeholder: Option<String>,
+}
+
+/// One frame of the page the host traversed (PX-122).
+#[derive(Clone, Debug, Default, PartialEq, Eq, Serialize, Deserialize)]
+pub struct FrameInfo {
+    /// The key nodes name (`f1`, `f2`, …); stable within one snapshot.
+    pub key: String,
+    /// The frame's origin (`scheme://host[:port]`, lower-case; empty when opaque).
+    #[serde(default)]
+    pub origin: String,
+    /// Its URL (untrusted).
+    #[serde(default)]
+    pub url: String,
+    /// The `name` attribute of the iframe element, when it has one.
+    #[serde(default)]
+    pub name: String,
+    /// The frame that contains it; `None` = the top frame.
+    #[serde(default)]
+    pub parent: Option<String>,
+    /// Whether the frame lives in another process (a cross-origin frame).
+    #[serde(default)]
+    pub oopif: bool,
 }
 
 /// What kind of thing an entity is to the agent.
@@ -91,6 +167,94 @@ pub struct Entity {
     /// never part of the reference).
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub backend_dom_node_id: Option<i64>,
+    /// The frame it is in (PX-122); `None` = the top frame.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub frame: Option<String>,
+    /// That frame's origin, when it is not the page's own.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub frame_origin: Option<String>,
+    /// Where a link goes (untrusted).
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub href: Option<String>,
+    /// The `type` of an input or button.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub input_type: Option<String>,
+    /// `true` | `false` | `mixed`.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub checked: Option<String>,
+    /// Disclosure state.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub expanded: Option<bool>,
+    /// The field must be filled.
+    #[serde(default, skip_serializing_if = "std::ops::Not::not")]
+    pub required: bool,
+    /// The page marked the value invalid.
+    #[serde(default, skip_serializing_if = "std::ops::Not::not")]
+    pub invalid: bool,
+    /// Option or tab selected.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub selected: Option<bool>,
+    /// The stable DOM attribute the reference was derived from, when one was
+    /// (`id:email`); carried so a persisted entity keeps explaining itself.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub dom_ident: Option<String>,
+    /// The field's `autocomplete` token.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub autocomplete: Option<String>,
+    /// The field's placeholder (untrusted).
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub placeholder: Option<String>,
+    /// The origin the action leads to: a link's target, or the form a submit
+    /// control sends its data to (PX-123 risk classification).
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub dest_origin: Option<String>,
+    /// The destination is not this page's origin (or leaves the browser:
+    /// `mailto:`, `tel:`, `javascript:`).
+    #[serde(default, skip_serializing_if = "std::ops::Not::not")]
+    pub cross_origin: bool,
+    /// Activating it sends its form's data.
+    #[serde(default, skip_serializing_if = "std::ops::Not::not")]
+    pub submits: bool,
+    /// It sits inside a dialog or modal.
+    #[serde(default, skip_serializing_if = "std::ops::Not::not")]
+    pub in_dialog: bool,
+    /// The form it belongs to (the host's key for the `<form>` element).
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub form: Option<String>,
+}
+
+impl Default for Entity {
+    fn default() -> Self {
+        Self {
+            reference: String::new(),
+            kind: EntityKind::Action,
+            role: String::new(),
+            name: String::new(),
+            value: String::new(),
+            path: Vec::new(),
+            ordinal: 0,
+            bounds: None,
+            disabled: false,
+            backend_dom_node_id: None,
+            frame: None,
+            frame_origin: None,
+            href: None,
+            input_type: None,
+            checked: None,
+            expanded: None,
+            required: false,
+            invalid: false,
+            selected: None,
+            dom_ident: None,
+            autocomplete: None,
+            placeholder: None,
+            dest_origin: None,
+            cross_origin: false,
+            submits: false,
+            in_dialog: false,
+            form: None,
+        }
+    }
 }
 
 /// A region of the page the accessibility tree says nothing usable about
@@ -136,6 +300,31 @@ pub struct PageEntities {
     pub entity_hash: String,
     /// Whether the host truncated the tree.
     pub truncated: bool,
+    /// The frames the tree covers (PX-122); empty = the top frame only.
+    #[serde(default)]
+    pub frames: Vec<FrameInfo>,
+    /// The `<form>` elements the controls belong to (PX-123).
+    #[serde(default)]
+    pub forms: Vec<FormMeta>,
+}
+
+/// What the page says about one `<form>` element (untrusted).
+#[derive(Clone, Debug, Default, PartialEq, Eq, Serialize, Deserialize)]
+pub struct FormMeta {
+    /// The host's key (`id:login`, `idx:0`).
+    pub key: String,
+    /// Its accessible name, when it has one.
+    #[serde(default)]
+    pub name: String,
+    /// Where it submits, absolute.
+    #[serde(default)]
+    pub action: Option<String>,
+    /// `get` | `post`.
+    #[serde(default)]
+    pub method: Option<String>,
+    /// The frame it is in.
+    #[serde(default)]
+    pub frame: Option<String>,
 }
 
 const ACTION_ROLES: &[&str] = &[
@@ -175,6 +364,7 @@ const LANDMARK_ROLES: &[&str] = &[
     "list",
     "menu",
     "tablist",
+    "iframe",
 ];
 /// Roles whose content the tree cannot express: a canvas always; an image
 /// or figure only when it carries no accessible name.
@@ -245,6 +435,25 @@ pub fn reference_of(role: &str, name: &str, path: &[String], ordinal: u32) -> St
     hex::encode(h.finalize())[..12].to_owned()
 }
 
+/// The reference of an element a stable DOM attribute identifies (PX-122):
+/// role, the frame it lives in and the attribute — never the accessible name
+/// or the position, which change with copy, layout and look-alikes.
+#[must_use]
+pub fn reference_of_ident(role: &str, frame: &str, ident: &str) -> String {
+    let mut h = Sha256::new();
+    h.update(b"ident");
+    h.update([0]);
+    h.update(role.to_ascii_lowercase().as_bytes());
+    h.update([0]);
+    h.update(frame.as_bytes());
+    h.update([0]);
+    h.update(ident.as_bytes());
+    hex::encode(h.finalize())[..12].to_owned()
+}
+
+/// Entities a sub-frame may take of the page's budget at most.
+const FRAME_ENTITY_RESERVE: usize = 40;
+
 /// Compile the host's tree into entities. `max_entities` bounds the output
 /// (the model never receives a whole page's tree — docs/22).
 #[must_use]
@@ -254,9 +463,35 @@ pub fn compile(
     truncated: bool,
     max_entities: usize,
 ) -> PageEntities {
+    compile_with_frames(state, nodes, &[], truncated, max_entities)
+}
+
+/// [`compile`] for a tree that spans frames (PX-122): each node names its
+/// frame, each frame its origin; an entity carries both, and the reference
+/// of a frame's entity is scoped to the frame it lives in.
+#[must_use]
+pub fn compile_with_frames(
+    state: &PageState,
+    nodes: &[RawAxNode],
+    frames: &[FrameInfo],
+    truncated: bool,
+    max_entities: usize,
+) -> PageEntities {
     // Landmark path per node: walk parents through the landmark nodes.
     let by_id: std::collections::HashMap<&str, &RawAxNode> =
         nodes.iter().map(|n| (n.id.as_str(), n)).collect();
+    let page_origin = crate::origin_of(&state.url).unwrap_or_default();
+    let frame_by_key: std::collections::HashMap<&str, &FrameInfo> =
+        frames.iter().map(|f| (f.key.as_str(), f)).collect();
+    // A frame's identity for a reference: its origin and name (the key is an
+    // enumeration order the page does not own).
+    let frame_scope = |n: &RawAxNode| -> String {
+        n.frame
+            .as_deref()
+            .and_then(|k| frame_by_key.get(k))
+            .map(|f| format!("{}|{}", f.origin, f.name))
+            .unwrap_or_default()
+    };
     let path_of = |n: &RawAxNode| -> Vec<String> {
         let mut path = Vec::new();
         let mut cur = n.parent.as_deref();
@@ -279,11 +514,49 @@ pub fn compile(
         path.reverse();
         path
     };
+    // The nearest ancestor satisfying `f` (a form, a dialog).
+    let ancestor = |n: &RawAxNode, f: &dyn Fn(&RawAxNode) -> bool| -> Option<RawAxNode> {
+        let mut cur = n.parent.as_deref();
+        let mut guard = 0;
+        while let Some(p) = cur {
+            guard += 1;
+            if guard > 128 {
+                return None;
+            }
+            let pn = by_id.get(p)?;
+            if f(pn) {
+                return Some((*pn).clone());
+            }
+            cur = pn.parent.as_deref();
+        }
+        None
+    };
+    // A DOM attribute identifies an element only when it is unique among the
+    // elements of its role in its frame.
+    let mut ident_count: std::collections::HashMap<(String, String, String), u32> =
+        std::collections::HashMap::new();
+    for n in nodes.iter().filter(|n| !n.ignored) {
+        if let Some(id) = &n.dom_ident {
+            *ident_count
+                .entry((n.role.to_ascii_lowercase(), frame_scope(n), id.clone()))
+                .or_insert(0) += 1;
+        }
+    }
     let mut seen: std::collections::HashMap<(String, String, Vec<String>), u32> =
         std::collections::HashMap::new();
-    let mut entities = Vec::new();
+    let mut entities: Vec<Entity> = Vec::new();
+    let mut frame_entities = 0usize;
     let mut visual_regions = Vec::new();
     let mut text = Vec::new();
+    // A frame's share of the bound is reserved, so a long page cannot starve
+    // the frames it embeds.
+    let has_frames = nodes.iter().any(|n| n.frame.is_some());
+    let frame_cap = if has_frames {
+        FRAME_ENTITY_RESERVE.min(max_entities / 4)
+    } else {
+        0
+    };
+    let main_cap = max_entities.saturating_sub(frame_cap);
     for n in nodes.iter().filter(|n| !n.ignored) {
         let role_l = n.role.to_ascii_lowercase();
         if let Some(reason) = visual_reason(&n.role, &n.name) {
@@ -313,9 +586,63 @@ pub fn compile(
             let path = path_of(n);
             let key = (role_l.clone(), name.clone(), path.clone());
             let ordinal = *seen.entry(key).and_modify(|c| *c += 1).or_insert(0);
-            if entities.len() < max_entities {
+            let in_frame = n.frame.is_some();
+            let room = if in_frame {
+                frame_entities
+                    < frame_cap.max(max_entities.saturating_sub(entities.len() - frame_entities))
+                    && entities.len() < max_entities
+            } else {
+                entities.len() - frame_entities < main_cap
+            };
+            if room {
+                let scope = frame_scope(n);
+                let ident = n.dom_ident.as_ref().filter(|id| {
+                    ident_count
+                        .get(&(role_l.clone(), scope.clone(), (*id).clone()))
+                        .copied()
+                        == Some(1)
+                });
+                let reference = match ident {
+                    Some(id) => reference_of_ident(&role_l, &scope, id),
+                    None => reference_of(&role_l, &name, &path, ordinal),
+                };
+                let frame = n.frame.clone();
+                let frame_origin = frame
+                    .as_deref()
+                    .and_then(|k| frame_by_key.get(k))
+                    .map(|f| f.origin.clone())
+                    .filter(|o| *o != page_origin);
+                // The destination an activation leads to.
+                let in_dialog = n.modal
+                    || ancestor(n, &|a| {
+                        a.role.eq_ignore_ascii_case("dialog")
+                            || a.role.eq_ignore_ascii_case("alertdialog")
+                    })
+                    .is_some();
+                let is_button = role_l == "button";
+                let submits = is_button
+                    && match n.submit {
+                        Some(s) => s,
+                        None => {
+                            (n.form_key.is_some() || path.iter().any(|p| p.starts_with("form:")))
+                                && n.input_type.as_deref() != Some("button")
+                        }
+                    };
+                let (dest_origin, cross_origin) = if role_l == "link" {
+                    destination(n.href.as_deref(), &page_origin)
+                } else if submits {
+                    match n.form_action.as_deref() {
+                        Some(a) => destination(Some(a), &page_origin),
+                        None => (Some(page_origin.clone()).filter(|o| !o.is_empty()), false),
+                    }
+                } else {
+                    (None, false)
+                };
+                if in_frame {
+                    frame_entities += 1;
+                }
                 entities.push(Entity {
-                    reference: reference_of(&role_l, &name, &path, ordinal),
+                    reference,
                     kind,
                     role: role_l.clone(),
                     name,
@@ -325,6 +652,23 @@ pub fn compile(
                     bounds: n.bounds,
                     disabled: n.disabled,
                     backend_dom_node_id: n.backend_dom_node_id,
+                    frame,
+                    frame_origin,
+                    href: n.href.as_ref().map(|h| norm(h, 300)),
+                    input_type: n.input_type.clone(),
+                    checked: n.checked.clone(),
+                    expanded: n.expanded,
+                    required: n.required,
+                    invalid: n.invalid,
+                    selected: n.selected,
+                    dom_ident: ident.cloned(),
+                    autocomplete: n.autocomplete.clone(),
+                    placeholder: n.placeholder.as_ref().map(|p| norm(p, 80)),
+                    dest_origin,
+                    cross_origin,
+                    submits,
+                    in_dialog,
+                    form: n.form_key.clone(),
                 });
             }
         }
@@ -353,6 +697,30 @@ pub fn compile(
         h.update(e.reference.as_bytes());
         h.update([0]);
     }
+    // The forms the controls belong to.
+    let mut forms: Vec<FormMeta> = Vec::new();
+    for n in nodes.iter().filter(|n| !n.ignored) {
+        let Some(key) = &n.form_key else { continue };
+        let frame = n.frame.clone();
+        let named = n.role.eq_ignore_ascii_case("form");
+        if let Some(f) = forms.iter_mut().find(|f| &f.key == key && f.frame == frame) {
+            if named && f.name.is_empty() {
+                f.name = norm(&n.name, 60);
+            }
+        } else if forms.len() < 32 {
+            forms.push(FormMeta {
+                key: key.clone(),
+                name: if named {
+                    norm(&n.name, 60)
+                } else {
+                    String::new()
+                },
+                action: n.form_action.clone(),
+                method: n.form_method.clone(),
+                frame,
+            });
+        }
+    }
     PageEntities {
         state: state.clone(),
         entity_hash: hex::encode(h.finalize()),
@@ -360,6 +728,38 @@ pub fn compile(
         visual_regions,
         text,
         truncated,
+        frames: frames.to_vec(),
+        forms,
+    }
+}
+
+/// Where an activation leads and whether that is beyond the page's origin:
+/// a same-page fragment stays; another http(s) origin leaves; a scheme the
+/// browser hands to something else (`mailto:`, `tel:`, `javascript:`) leaves.
+fn destination(target: Option<&str>, page_origin: &str) -> (Option<String>, bool) {
+    let Some(t) = target.map(str::trim).filter(|t| !t.is_empty()) else {
+        return (None, false);
+    };
+    if t.starts_with('#') {
+        return (
+            Some(page_origin.to_owned()).filter(|o| !o.is_empty()),
+            false,
+        );
+    }
+    // A relative reference stays on the page's origin.
+    let scheme_end = t.find([':', '/', '?', '#']);
+    if scheme_end.is_none_or(|i| !t[i..].starts_with(':')) {
+        return (
+            Some(page_origin.to_owned()).filter(|o| !o.is_empty()),
+            false,
+        );
+    }
+    match crate::origin_of(t) {
+        Some(o) => {
+            let cross = !page_origin.is_empty() && o != page_origin;
+            (Some(o), cross)
+        }
+        None => (None, true),
     }
 }
 
@@ -558,6 +958,17 @@ pub fn state_fingerprint(page: &PageEntities) -> String {
         h.update([1]);
         h.update(e.value.as_bytes());
         h.update([if e.disabled { 1 } else { 0 }]);
+        // A toggle, a disclosure, a selection and a validity mark are
+        // state a person sees change.
+        if e.checked.is_some() || e.expanded.is_some() || e.selected.is_some() || e.invalid {
+            h.update([2]);
+            h.update(e.checked.as_deref().unwrap_or("-").as_bytes());
+            h.update([
+                e.expanded.map_or(2, u8::from),
+                e.selected.map_or(2, u8::from),
+            ]);
+            h.update([u8::from(e.invalid)]);
+        }
     }
     hex::encode(h.finalize())
 }
@@ -579,6 +990,18 @@ pub struct EntityChange {
     /// Disabled before → after, when it changed.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub disabled: Option<(bool, bool)>,
+    /// `checked` after, when it changed.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub checked: Option<String>,
+    /// `expanded` after, when it changed.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub expanded: Option<bool>,
+    /// `selected` after, when it changed.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub selected: Option<bool>,
+    /// `invalid` after, when it changed.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub invalid: Option<bool>,
 }
 
 /// The bounded semantic delta between two compiled pages (M7.3, docs/22:
@@ -663,7 +1086,13 @@ pub fn diff(prev: &PageEntities, next: &PageEntities) -> PageDelta {
         .iter()
         .filter_map(|e| {
             let b = before.get(e.reference.as_str())?;
-            if b.value == e.value && b.disabled == e.disabled {
+            if b.value == e.value
+                && b.disabled == e.disabled
+                && b.checked == e.checked
+                && b.expanded == e.expanded
+                && b.selected == e.selected
+                && b.invalid == e.invalid
+            {
                 return None;
             }
             Some(EntityChange {
@@ -673,6 +1102,18 @@ pub fn diff(prev: &PageEntities, next: &PageEntities) -> PageDelta {
                 value_before: b.value.clone(),
                 value_after: e.value.clone(),
                 disabled: (b.disabled != e.disabled).then_some((b.disabled, e.disabled)),
+                checked: (b.checked != e.checked).then(|| e.checked.clone().unwrap_or_default()),
+                expanded: if b.expanded != e.expanded {
+                    e.expanded
+                } else {
+                    None
+                },
+                selected: if b.selected != e.selected {
+                    e.selected
+                } else {
+                    None
+                },
+                invalid: (b.invalid != e.invalid).then_some(e.invalid),
             })
         })
         .collect();
@@ -718,6 +1159,18 @@ pub fn apply(prev: &PageEntities, delta: &PageDelta) -> PageEntities {
             if let Some((_, after)) = c.disabled {
                 e.disabled = after;
             }
+            if let Some(v) = &c.checked {
+                e.checked = Some(v.clone()).filter(|v| !v.is_empty());
+            }
+            if c.expanded.is_some() {
+                e.expanded = c.expanded;
+            }
+            if c.selected.is_some() {
+                e.selected = c.selected;
+            }
+            if let Some(v) = c.invalid {
+                e.invalid = v;
+            }
         }
     }
     entities.extend(delta.added.iter().cloned());
@@ -748,6 +1201,8 @@ pub fn apply(prev: &PageEntities, delta: &PageDelta) -> PageEntities {
         visual_regions: prev.visual_regions.clone(),
         text,
         truncated: prev.truncated,
+        frames: prev.frames.clone(),
+        forms: prev.forms.clone(),
     }
 }
 
@@ -844,18 +1299,23 @@ mod delta_tests {
     }
 }
 
-/// What acting on an entity means to the world (M7.4; the first cut of
-/// the semantic UI risk classification, IMP-EV-0088): filling a field or
-/// toggling a box changes the page; activating an action that submits,
-/// pays, sends, deletes, agrees or signs in reaches beyond it — a protected
-/// external effect the kernel binds to an approval.
-#[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize)]
+/// What acting on an entity means to the world (M7.4; IMP-EV-0088, PX-123):
+/// filling a field or toggling a box changes the page; activating an action
+/// that submits, pays, sends, agrees or signs in — or that leaves the
+/// page's origin — reaches beyond it, a protected external effect the kernel
+/// binds to an approval; an action that destroys something (a delete, a
+/// confirmation in a destructive dialog) is the strictest class.
+#[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord, Serialize, Deserialize)]
 #[serde(rename_all = "SCREAMING_SNAKE_CASE")]
 pub enum ActionRisk {
     /// Changes the page only (a field, a toggle, a tab, an in-page link).
     PageOnly,
-    /// May change the world outside the page: a submission or a consequential action.
+    /// May change the world outside the page: a submission, a consequential
+    /// action, or a move to another origin.
     Protected,
+    /// Destroys or revokes something: a delete, a wipe, the confirming
+    /// button of a destructive dialog.
+    Destructive,
 }
 
 /// Words in an action's name that mean it reaches beyond the page.
@@ -898,11 +1358,70 @@ pub const PROTECTED_WORDS: &[&str] = &[
     "apply",
 ];
 
+/// Words that mean an action destroys or revokes something.
+pub const DESTRUCTIVE_WORDS: &[&str] = &[
+    "delete",
+    "erase",
+    "destroy",
+    "wipe",
+    "purge",
+    "terminate",
+    "deactivate",
+    "revoke",
+    "close account",
+    "cancel subscription",
+    "cancel my",
+    "remove account",
+    "factory reset",
+];
+
+/// Words of a dialog button that dismisses it without doing the dialog's
+/// work.
+const DISMISS_WORDS: &[&str] = &[
+    "cancel",
+    "close",
+    "dismiss",
+    "no thanks",
+    "not now",
+    "keep",
+    "back",
+    "never mind",
+    "\u{d7}",
+    "x",
+    "no",
+];
+
+fn has_word(haystack: &str, words: &[&str]) -> bool {
+    words.iter().any(|w| haystack.contains(w))
+}
+
+/// Whether a button dismisses its dialog (it says so and nothing more).
+#[must_use]
+pub fn is_dismiss_control(name: &str) -> bool {
+    let n = name.trim().to_ascii_lowercase();
+    DISMISS_WORDS.iter().any(|w| {
+        n == *w
+            || n.starts_with(&format!("{w} "))
+            || n.starts_with(&format!("{w},"))
+            || n.ends_with(&format!(" {w}"))
+    }) && !has_word(&n, DESTRUCTIVE_WORDS)
+}
+
+/// The dialog an entity sits in, by the name of the dialog landmark.
+fn dialog_name(entity: &Entity) -> Option<String> {
+    entity
+        .path
+        .iter()
+        .rev()
+        .find(|p| p.starts_with("dialog:") || p.starts_with("alertdialog:"))
+        .map(|p| p.to_ascii_lowercase())
+}
+
 /// The risk of `action` on `entity`.
 #[must_use]
 pub fn classify_action(entity: &Entity, action: &str, key: &str) -> ActionRisk {
     let name = entity.name.to_ascii_lowercase();
-    let in_form = entity.path.iter().any(|p| p.starts_with("form:"));
+    let in_form = entity.form.is_some() || entity.path.iter().any(|p| p.starts_with("form:"));
     match action {
         "fill" | "select" | "check" | "uncheck" => ActionRisk::PageOnly,
         // IMP-EV-0088: a credential entering a page is risk by its data,
@@ -934,9 +1453,41 @@ pub fn classify_action(entity: &Entity, action: &str, key: &str) -> ActionRisk {
                     ActionRisk::Protected
                 };
             }
-            if entity.kind == EntityKind::Action
-                && (PROTECTED_WORDS.iter().any(|w| name.contains(w))
-                    || (entity.role == "button" && in_form))
+            if entity.kind != EntityKind::Action {
+                return ActionRisk::PageOnly;
+            }
+            // PX-123: a button in a dialog is judged by the dialog it
+            // answers as well as by its own words. The confirming button of
+            // a dialog about deleting something destroys it whatever the
+            // button says ("OK", "Yes", "Confirm"); the dismissing one does not.
+            if entity.in_dialog || dialog_name(entity).is_some() {
+                let dialog = dialog_name(entity).unwrap_or_default();
+                let destructive_dialog = has_word(&dialog, DESTRUCTIVE_WORDS);
+                if has_word(&name, DESTRUCTIVE_WORDS) {
+                    return ActionRisk::Destructive;
+                }
+                if destructive_dialog && !is_dismiss_control(&entity.name) {
+                    return ActionRisk::Destructive;
+                }
+                if is_dismiss_control(&entity.name)
+                    && !name.contains("cancel")
+                    && !entity.submits
+                    && !entity.cross_origin
+                {
+                    return ActionRisk::PageOnly;
+                }
+            }
+            if has_word(&name, DESTRUCTIVE_WORDS) {
+                return ActionRisk::Destructive;
+            }
+            // PX-123: the destination counts. A link or a submission that
+            // leaves the page's origin is a move the person should see.
+            if entity.cross_origin {
+                return ActionRisk::Protected;
+            }
+            if has_word(&name, PROTECTED_WORDS)
+                || entity.submits
+                || (entity.role == "button" && in_form)
             {
                 ActionRisk::Protected
             } else {
@@ -956,12 +1507,8 @@ mod risk_tests {
             kind,
             role: role.into(),
             name: name.into(),
-            value: String::new(),
             path: path.iter().map(|p| (*p).to_owned()).collect(),
-            ordinal: 0,
-            bounds: None,
-            disabled: false,
-            backend_dom_node_id: None,
+            ..Default::default()
         }
     }
 
@@ -1088,5 +1635,76 @@ mod visual_tests {
             p.visual_regions[0].reference, again.visual_regions[0].reference,
             "a visual region's reference is stable"
         );
+    }
+}
+
+#[cfg(test)]
+mod destination_risk_tests {
+    use super::*;
+
+    fn link(href: &str, page: &str) -> Entity {
+        let (dest, cross) = destination(Some(href), page);
+        Entity {
+            kind: EntityKind::Action,
+            role: "link".into(),
+            name: "Open".into(),
+            path: vec!["main:".into()],
+            href: Some(href.into()),
+            dest_origin: dest,
+            cross_origin: cross,
+            ..Default::default()
+        }
+    }
+
+    #[test]
+    fn a_move_to_another_origin_and_a_destructive_dialog_button_are_judged_stricter_than_the_control_alone()
+     {
+        let page = "https://app.test";
+        assert_eq!(
+            classify_action(&link("/docs", page), "click", ""),
+            ActionRisk::PageOnly
+        );
+        assert_eq!(
+            classify_action(&link("#top", page), "click", ""),
+            ActionRisk::PageOnly
+        );
+        for away in [
+            "https://elsewhere.test/x",
+            "mailto:a@b.test",
+            "javascript:go()",
+        ] {
+            assert_eq!(
+                classify_action(&link(away, page), "click", ""),
+                ActionRisk::Protected,
+                "{away}"
+            );
+        }
+        let button = |name: &str| Entity {
+            kind: EntityKind::Action,
+            role: "button".into(),
+            name: name.into(),
+            path: vec!["main:".into(), "dialog:Delete project?".into()],
+            in_dialog: true,
+            ..Default::default()
+        };
+        // The confirming button of a destructive dialog, whatever it says.
+        assert_eq!(
+            classify_action(&button("OK"), "click", ""),
+            ActionRisk::Destructive
+        );
+        assert_eq!(
+            classify_action(&button("Delete"), "click", ""),
+            ActionRisk::Destructive
+        );
+        assert_eq!(
+            classify_action(&button("Close"), "click", ""),
+            ActionRisk::PageOnly
+        );
+        // Never looser than before.
+        assert_eq!(
+            classify_action(&button("Cancel"), "click", ""),
+            ActionRisk::Protected
+        );
+        assert!(ActionRisk::Destructive > ActionRisk::Protected);
     }
 }
