@@ -140,6 +140,34 @@ pub struct Principal {
     pub label: String,
 }
 
+/// A principal as provisioning sees it (PX-129).
+#[derive(Clone, Debug, PartialEq, Eq, serde::Serialize)]
+pub struct PrincipalRecord {
+    /// Id.
+    pub principal_id: uuid::Uuid,
+    /// Tenant.
+    pub tenant_id: TenantId,
+    /// `user` | `worker` | `service`.
+    pub kind: String,
+    /// Label.
+    pub label: String,
+    /// `member` | `admin`.
+    pub role: String,
+    /// Refused at its next call.
+    pub disabled: bool,
+}
+
+fn principal_record_row(r: &tokio_postgres::Row) -> PrincipalRecord {
+    PrincipalRecord {
+        principal_id: r.get(0),
+        tenant_id: TenantId::from_bytes(*r.get::<_, uuid::Uuid>(1).as_bytes()),
+        kind: r.get(2),
+        label: r.get(3),
+        role: r.get(4),
+        disabled: r.get::<_, Option<i64>>(5).is_some(),
+    }
+}
+
 /// What an append produced.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct Appended {
@@ -487,6 +515,356 @@ impl CloudStore {
             kind: r.get(2),
             label: r.get(3),
         }))
+    }
+
+    // ---- provisioning and identity (PX-129) -------------------------------
+
+    /// Create a principal with a role and, optionally, the OIDC identity
+    /// (`issuer`, `subject`) that signs in as it. The secret is returned once.
+    pub async fn create_principal_with(
+        &self,
+        tenant: TenantId,
+        kind: &str,
+        label: &str,
+        role: &str,
+        identity: Option<(&str, &str)>,
+    ) -> Result<(Principal, String)> {
+        let secret_bytes: [u8; 32] = rand::random();
+        let secret = format!("mbs_{}", hex::encode(secret_bytes));
+        let id = uuid::Uuid::now_v7();
+        let mut client = self.pool.get().await?;
+        let tx = client.transaction().await?;
+        let now = now_ms();
+        tx.execute(
+            "INSERT INTO principals (principal_id, tenant_id, kind, label, secret_hash, created_at_ms, role) VALUES ($1, $2, $3, $4, $5, $6, $7)",
+            &[&id, &tenant_uuid(tenant), &kind, &label, &sha256_hex(secret.as_bytes()), &now, &role],
+        )
+        .await?;
+        if let Some((issuer, subject)) = identity {
+            tx.execute(
+                "INSERT INTO principal_identities (issuer, subject, tenant_id, principal_id, created_at_ms) VALUES ($1, $2, $3, $4, $5)",
+                &[&issuer, &subject, &tenant_uuid(tenant), &id, &now],
+            )
+            .await?;
+        }
+        tx.commit().await?;
+        Ok((
+            Principal {
+                principal_id: id,
+                tenant_id: tenant,
+                kind: kind.to_owned(),
+                label: label.to_owned(),
+            },
+            secret,
+        ))
+    }
+
+    /// A principal with its role and whether it is disabled, within its tenant.
+    pub async fn principal_record(
+        &self,
+        tenant: TenantId,
+        id: uuid::Uuid,
+    ) -> Result<Option<PrincipalRecord>> {
+        let client = self.pool.get().await?;
+        let row = client
+            .query_opt(
+                "SELECT principal_id, tenant_id, kind, label, role, revoked_at_ms FROM principals WHERE principal_id = $1 AND tenant_id = $2",
+                &[&id, &tenant_uuid(tenant)],
+            )
+            .await?;
+        Ok(row.as_ref().map(principal_record_row))
+    }
+
+    /// A tenant's principals, oldest first.
+    pub async fn principal_records(&self, tenant: TenantId) -> Result<Vec<PrincipalRecord>> {
+        let client = self.pool.get().await?;
+        let rows = client
+            .query(
+                "SELECT principal_id, tenant_id, kind, label, role, revoked_at_ms FROM principals WHERE tenant_id = $1 ORDER BY created_at_ms ASC",
+                &[&tenant_uuid(tenant)],
+            )
+            .await?;
+        Ok(rows.iter().map(principal_record_row).collect())
+    }
+
+    /// Disable (or enable) a principal: a disabled one is refused at its
+    /// next call, its refresh tokens revoked, its secret useless. `false`
+    /// when the principal is not in the tenant.
+    pub async fn set_principal_disabled(
+        &self,
+        tenant: TenantId,
+        id: uuid::Uuid,
+        disabled: bool,
+    ) -> Result<bool> {
+        let mut client = self.pool.get().await?;
+        let tx = client.transaction().await?;
+        let now = now_ms();
+        let n = if disabled {
+            tx.execute(
+                "UPDATE principals SET revoked_at_ms = $3 WHERE principal_id = $1 AND tenant_id = $2 AND revoked_at_ms IS NULL",
+                &[&id, &tenant_uuid(tenant), &now],
+            )
+            .await?;
+            tx.execute(
+                "UPDATE refresh_tokens SET revoked_at_ms = $2 WHERE principal_id = $1 AND revoked_at_ms IS NULL",
+                &[&id, &now],
+            )
+            .await?;
+            1
+        } else {
+            tx.execute(
+                "UPDATE principals SET revoked_at_ms = NULL WHERE principal_id = $1 AND tenant_id = $2",
+                &[&id, &tenant_uuid(tenant)],
+            )
+            .await?
+        };
+        let exists = tx
+            .query_opt(
+                "SELECT 1 FROM principals WHERE principal_id = $1 AND tenant_id = $2",
+                &[&id, &tenant_uuid(tenant)],
+            )
+            .await?
+            .is_some();
+        tx.commit().await?;
+        Ok(n > 0 && exists)
+    }
+
+    /// Set a principal's role (`member` | `admin`).
+    pub async fn set_principal_role(
+        &self,
+        tenant: TenantId,
+        id: uuid::Uuid,
+        role: &str,
+    ) -> Result<bool> {
+        let client = self.pool.get().await?;
+        let n = client
+            .execute(
+                "UPDATE principals SET role = $3 WHERE principal_id = $1 AND tenant_id = $2",
+                &[&id, &tenant_uuid(tenant), &role],
+            )
+            .await?;
+        Ok(n == 1)
+    }
+
+    /// The principal an OIDC identity signs in as, disabled or not.
+    pub async fn principal_for_identity(
+        &self,
+        issuer: &str,
+        subject: &str,
+    ) -> Result<Option<PrincipalRecord>> {
+        let client = self.pool.get().await?;
+        let row = client
+            .query_opt(
+                "SELECT p.principal_id, p.tenant_id, p.kind, p.label, p.role, p.revoked_at_ms FROM principal_identities i JOIN principals p ON p.principal_id = i.principal_id WHERE i.issuer = $1 AND i.subject = $2",
+                &[&issuer, &subject],
+            )
+            .await?;
+        Ok(row.as_ref().map(principal_record_row))
+    }
+
+    /// Record a provisioning action (who did what to what); never a secret.
+    pub async fn audit_provisioning(
+        &self,
+        actor: &str,
+        tenant: Option<TenantId>,
+        action: &str,
+        target: &str,
+        detail: serde_json::Value,
+    ) -> Result<()> {
+        let client = self.pool.get().await?;
+        client
+            .execute(
+                "INSERT INTO provisioning_audit (at_ms, actor, tenant_id, action, target, detail) VALUES ($1, $2, $3, $4, $5, $6)",
+                &[&now_ms(), &actor, &tenant.map(tenant_uuid), &action, &target, &detail],
+            )
+            .await?;
+        Ok(())
+    }
+
+    /// The provisioning audit of a tenant (or of all, `None`), oldest first.
+    pub async fn provisioning_audit(
+        &self,
+        tenant: Option<TenantId>,
+    ) -> Result<Vec<serde_json::Value>> {
+        let client = self.pool.get().await?;
+        let rows = match tenant {
+            Some(t) => {
+                client
+                    .query(
+                        "SELECT at_ms, actor, action, target, detail FROM provisioning_audit WHERE tenant_id = $1 ORDER BY audit_id ASC",
+                        &[&tenant_uuid(t)],
+                    )
+                    .await?
+            }
+            None => {
+                client
+                    .query(
+                        "SELECT at_ms, actor, action, target, detail FROM provisioning_audit ORDER BY audit_id ASC",
+                        &[],
+                    )
+                    .await?
+            }
+        };
+        Ok(rows
+            .iter()
+            .map(|r| {
+                serde_json::json!({
+                    "at_ms": r.get::<_, i64>(0), "actor": r.get::<_, String>(1),
+                    "action": r.get::<_, String>(2), "target": r.get::<_, String>(3),
+                    "detail": r.get::<_, serde_json::Value>(4),
+                })
+            })
+            .collect())
+    }
+
+    /// Begin an OIDC login: only the state's hash is kept.
+    pub async fn create_oidc_login(
+        &self,
+        state_hash: &str,
+        nonce: &str,
+        code_challenge: &str,
+        redirect_uri: &str,
+        ttl_ms: i64,
+    ) -> Result<()> {
+        let client = self.pool.get().await?;
+        let now = now_ms();
+        client
+            .execute(
+                "INSERT INTO oidc_logins (state_hash, nonce, code_challenge, redirect_uri, created_at_ms, expires_at_ms) VALUES ($1, $2, $3, $4, $5, $6)",
+                &[&state_hash, &nonce, &code_challenge, &redirect_uri, &now, &(now + ttl_ms)],
+            )
+            .await?;
+        Ok(())
+    }
+
+    /// Consume an OIDC login once: `(nonce, code_challenge, redirect_uri)`
+    /// when the state is known, unexpired and unused; `None` otherwise (a
+    /// replay finds it consumed).
+    pub async fn consume_oidc_login(
+        &self,
+        state_hash: &str,
+    ) -> Result<Option<(String, String, String)>> {
+        let client = self.pool.get().await?;
+        let now = now_ms();
+        let row = client
+            .query_opt(
+                "UPDATE oidc_logins SET consumed_at_ms = $2 WHERE state_hash = $1 AND consumed_at_ms IS NULL AND expires_at_ms > $2 RETURNING nonce, code_challenge, redirect_uri",
+                &[&state_hash, &now],
+            )
+            .await?;
+        Ok(row.map(|r| (r.get(0), r.get(1), r.get(2))))
+    }
+
+    /// Register (or replace) an organisation signing key for a tenant: the
+    /// Ed25519 public key as lowercase hex.
+    pub async fn put_org_key(
+        &self,
+        tenant: TenantId,
+        key_id: &str,
+        public_key_hex: &str,
+    ) -> Result<()> {
+        let client = self.pool.get().await?;
+        client
+            .execute(
+                "INSERT INTO org_keys (tenant_id, key_id, public_key, created_at_ms) VALUES ($1, $2, $3, $4) ON CONFLICT (tenant_id, key_id) DO UPDATE SET public_key = EXCLUDED.public_key, revoked_at_ms = NULL",
+                &[&tenant_uuid(tenant), &key_id, &public_key_hex, &now_ms()],
+            )
+            .await?;
+        Ok(())
+    }
+
+    /// Revoke an organisation key (bundles it signed stay verifiable only
+    /// until a newer one replaces them; no new bundle verifies under it).
+    pub async fn revoke_org_key(&self, tenant: TenantId, key_id: &str) -> Result<bool> {
+        let client = self.pool.get().await?;
+        let n = client
+            .execute(
+                "UPDATE org_keys SET revoked_at_ms = $3 WHERE tenant_id = $1 AND key_id = $2 AND revoked_at_ms IS NULL",
+                &[&tenant_uuid(tenant), &key_id, &now_ms()],
+            )
+            .await?;
+        Ok(n == 1)
+    }
+
+    /// A tenant's unrevoked organisation keys: `(key_id, public key)`.
+    pub async fn org_keys(&self, tenant: TenantId) -> Result<Vec<(String, [u8; 32])>> {
+        let client = self.pool.get().await?;
+        let rows = client
+            .query(
+                "SELECT key_id, public_key FROM org_keys WHERE tenant_id = $1 AND revoked_at_ms IS NULL ORDER BY key_id",
+                &[&tenant_uuid(tenant)],
+            )
+            .await?;
+        Ok(rows
+            .into_iter()
+            .filter_map(|r| {
+                let id: String = r.get(0);
+                let bytes = hex::decode(r.get::<_, String>(1)).ok()?;
+                Some((id, <[u8; 32]>::try_from(bytes.as_slice()).ok()?))
+            })
+            .collect())
+    }
+
+    /// Store a verified bundle as the tenant's generation `generation`,
+    /// only when it is greater than every one stored (`Ok(false)`: not
+    /// greater — the caller verified against a floor that has since moved).
+    pub async fn publish_policy_bundle(
+        &self,
+        tenant: TenantId,
+        generation: u64,
+        key_id: &str,
+        signed: &serde_json::Value,
+        published_by: uuid::Uuid,
+    ) -> Result<bool> {
+        let mut client = self.pool.get().await?;
+        let tx = client.transaction().await?;
+        // Serialise publishers of one tenant.
+        tx.execute(
+            "SELECT 1 FROM tenants WHERE tenant_id = $1 FOR UPDATE",
+            &[&tenant_uuid(tenant)],
+        )
+        .await?;
+        let current: i64 = tx
+            .query_one(
+                "SELECT COALESCE(MAX(generation), 0) FROM policy_bundles WHERE tenant_id = $1",
+                &[&tenant_uuid(tenant)],
+            )
+            .await?
+            .get(0);
+        if (generation as i64) <= current {
+            tx.commit().await?;
+            return Ok(false);
+        }
+        tx.execute(
+            "INSERT INTO policy_bundles (tenant_id, generation, key_id, signed, published_by, published_at_ms) VALUES ($1, $2, $3, $4, $5, $6)",
+            &[&tenant_uuid(tenant), &(generation as i64), &key_id, signed, &published_by, &now_ms()],
+        )
+        .await?;
+        tx.commit().await?;
+        Ok(true)
+    }
+
+    /// The tenant's newest published bundle: `(generation, signed)`.
+    pub async fn current_policy_bundle(
+        &self,
+        tenant: TenantId,
+    ) -> Result<Option<(u64, serde_json::Value)>> {
+        let client = self.pool.get().await?;
+        let row = client
+            .query_opt(
+                "SELECT generation, signed FROM policy_bundles WHERE tenant_id = $1 ORDER BY generation DESC LIMIT 1",
+                &[&tenant_uuid(tenant)],
+            )
+            .await?;
+        Ok(row.map(|r| (r.get::<_, i64>(0) as u64, r.get(1))))
+    }
+
+    /// The newest generation published for the tenant (0: none).
+    pub async fn policy_generation(&self, tenant: TenantId) -> Result<u64> {
+        Ok(self
+            .current_policy_bundle(tenant)
+            .await?
+            .map_or(0, |(g, _)| g))
     }
 
     /// Issue a refresh token (returned once; stored hashed).
@@ -1237,6 +1615,66 @@ impl CloudStore {
             )
             .await?;
         Ok(rows.iter().map(forge_repository_row).collect())
+    }
+
+    /// The task (and its session) that opened the pull request `number` —
+    /// or the one on branch `head` when no number is given — of
+    /// `owner/repo`, within the tenant (PX-126). Read from the log's
+    /// `ForgePullRequestOpened` records, newest first; another tenant's
+    /// tasks are never seen.
+    pub async fn task_for_pull_request(
+        &self,
+        tenant: TenantId,
+        repository: &str,
+        number: Option<u64>,
+        head: Option<&str>,
+    ) -> Result<Option<(TaskId, SessionId)>> {
+        let Some((owner, repo)) = repository.split_once('/') else {
+            return Ok(None);
+        };
+        let client = self.pool.get().await?;
+        let rows = client
+            .query(
+                "SELECT task_id, session_id FROM events WHERE tenant_id = $1 AND event_type = 'ForgePullRequestOpened' AND task_id IS NOT NULL AND lower(payload->>'owner') = $2 AND lower(payload->>'repo') = $3 AND (($4::bigint IS NOT NULL AND (payload->>'number')::bigint = $4) OR ($4::bigint IS NULL AND $5::text IS NOT NULL AND payload->>'head' = $5)) ORDER BY event_offset DESC LIMIT 1",
+                &[
+                    &tenant_uuid(tenant),
+                    &owner.to_ascii_lowercase(),
+                    &repo.to_ascii_lowercase(),
+                    &number.map(|n| n as i64),
+                    &head,
+                ],
+            )
+            .await?;
+        Ok(rows.first().map(|r| {
+            (
+                TaskId::from_bytes(*r.get::<_, uuid::Uuid>(0).as_bytes()),
+                SessionId::from_bytes(*r.get::<_, uuid::Uuid>(1).as_bytes()),
+            )
+        }))
+    }
+
+    /// The tenant whose task opened the pull request `number` of
+    /// `owner/repo`, whoever it is (PX-126: to tell a pull request nobody's
+    /// task opened from one a mapping names the wrong tenant for). Never
+    /// returned to a caller; the API only compares it with the mapped tenant.
+    pub async fn pull_request_owner_tenant(
+        &self,
+        repository: &str,
+        number: u64,
+    ) -> Result<Option<TenantId>> {
+        let Some((owner, repo)) = repository.split_once('/') else {
+            return Ok(None);
+        };
+        let client = self.pool.get().await?;
+        let rows = client
+            .query(
+                "SELECT tenant_id FROM events WHERE event_type = 'ForgePullRequestOpened' AND lower(payload->>'owner') = $1 AND lower(payload->>'repo') = $2 AND (payload->>'number')::bigint = $3 ORDER BY event_offset DESC LIMIT 1",
+                &[&owner.to_ascii_lowercase(), &repo.to_ascii_lowercase(), &(number as i64)],
+            )
+            .await?;
+        Ok(rows
+            .first()
+            .map(|r| TenantId::from_bytes(*r.get::<_, uuid::Uuid>(0).as_bytes())))
     }
 
     /// Claim a webhook delivery: `Ok(None)` when it is new (recorded

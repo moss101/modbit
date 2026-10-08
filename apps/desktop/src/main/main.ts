@@ -457,7 +457,28 @@ handle("review:bundle", async (_e: IpcMainInvokeEvent, taskId: unknown) => {
     invariantFindings: b.invariantFindings,
     receipts: b.receipts,
     evidenceLinks: b.evidenceLinks,
+    ciEvidence: b.ciEvidence.map((c) => ({ name: c.name, runId: c.runId.toString(), status: c.status, conclusion: c.conclusion, url: c.url, completedAt: c.completedAt, logRef: c.logRef, logTruncated: c.logTruncated, commit: c.commit, provenance: c.provenance })),
+    ciRejected: b.ciRejected.map((c) => ({ name: c.name, headSha: c.headSha, reason: c.reason })),
+    reviewComments: b.reviewComments.map((t) => ({ commentId: t.commentId.toString(), kind: t.kind, author: t.author, url: t.url, path: t.path, line: t.line.toString(), body: t.body, trust: t.trust, disposition: t.disposition, reason: t.reason, inputId: t.inputId, answered: t.answered, reportedBack: t.reportedBack, createdAt: t.createdAt })),
   };
+});
+// PX-127: the Core reads the forge (its token, the task's lease) and records
+// what it read; this process makes no forge call.
+handle("review:ingestCi", async (_e: IpcMainInvokeEvent, sessionId: unknown, taskId: unknown) => {
+  const sid = requireSessionId(sessionId);
+  const tid = requireTaskId(taskId);
+  const c = requireClient();
+  if (c.leaseGeneration(sid) === undefined) await c.joinSessionLease(sid, `desktop ${app.getVersion()}`);
+  const r = await c.ingestCiResults(sid, tid);
+  return { commit: r.commit, checks: r.checks.length, refused: r.rejected.length, evidenceClass: r.evidenceClass, offset: r.offset.toString() };
+});
+handle("review:ingestComments", async (_e: IpcMainInvokeEvent, sessionId: unknown, taskId: unknown) => {
+  const sid = requireSessionId(sessionId);
+  const tid = requireTaskId(taskId);
+  const c = requireClient();
+  if (c.leaseGeneration(sid) === undefined) await c.joinSessionLease(sid, `desktop ${app.getVersion()}`);
+  const r = await c.ingestReviewComments(sid, tid);
+  return { steered: r.steered.length, ignored: r.ignored.length, alreadyTaken: r.alreadyTaken, offset: r.offset.toString() };
 });
 handle("review:codeView", async (_e: IpcMainInvokeEvent, taskId: unknown, path: unknown, expectedFileRevision: unknown) => {
   const v = await requireClient().getCodeView(requireTaskId(taskId), requireRelativePath(path), typeof expectedFileRevision === "string" ? expectedFileRevision : "");

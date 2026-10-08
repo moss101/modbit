@@ -46,7 +46,7 @@ capabilities = [
   { id = "tools.registry", requirements = ["REQ-EV-0079", "REQ-EV-0217"] },
   { id = "tools.pipeline", requirements = ["REQ-EV-0239", "REQ-EV-0080"] },
   { id = "tools.output_ref", requirements = ["REQ-EV-0269"] },
-  { id = "tools.forge", requirements = ["REQ-PX-006"] },
+  { id = "tools.forge", requirements = ["REQ-PX-006", "REQ-PX-125"] },
   { id = "tools.browser", requirements = ["REQ-EV-0276", "REQ-EV-0284"] },
   { id = "tools.hooks", requirements = ["REQ-EV-0042", "REQ-EV-0139", "REQ-EV-0240"] },
   { id = "tools.extensions", requirements = ["REQ-EV-0138", "REQ-EV-0225"] },

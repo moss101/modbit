@@ -114,7 +114,7 @@ impl ForgeLedger for LogLedger {
             for e in &events {
                 if !matches!(
                     e.envelope.event_type.as_str(),
-                    "ForgePullRequestOpened" | "ForgePullRequestUpdated"
+                    "ForgePullRequestOpened" | "ForgePullRequestUpdated" | "ForgeCommentPosted"
                 ) {
                     continue;
                 }
@@ -143,6 +143,21 @@ impl ForgeLedger for LogLedger {
                         head: value["head"]["ref"].as_str().unwrap_or_default().to_owned(),
                         head_sha: value["head"]["sha"].as_str().unwrap_or_default().to_owned(),
                         base: value["base"]["ref"].as_str().unwrap_or_default().to_owned(),
+                        result: value.clone(),
+                    },
+                ),
+                "forge.issue.comment" | "forge.pr.comment" => (
+                    "ForgeCommentPosted",
+                    TaskEvent::ForgeCommentPosted {
+                        idempotency_key: key.to_owned(),
+                        tool: tool.to_owned(),
+                        owner: value["owner"].as_str().unwrap_or_default().to_owned(),
+                        repo: value["repo"].as_str().unwrap_or_default().to_owned(),
+                        number: value["number"].as_u64().unwrap_or(0),
+                        comment_id: value["comment_id"].as_u64().unwrap_or(0),
+                        url: value["url"].as_str().unwrap_or_default().to_owned(),
+                        body_sha256: value["body_sha256"].as_str().unwrap_or_default().to_owned(),
+                        redactions: value["redactions"].as_u64().unwrap_or(0),
                         result: value.clone(),
                     },
                 ),

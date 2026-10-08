@@ -26,9 +26,10 @@ uuid.workspace = true
 rand.workspace = true
 futures-util.workspace = true
 anyhow.workspace = true
+ed25519-dalek.workspace = true
+reqwest.workspace = true
 
 [dev-dependencies]
-reqwest.workspace = true
 tokio-tungstenite = "0.26"
 
 [lints]

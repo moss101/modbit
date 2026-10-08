@@ -141,6 +141,12 @@ import {
   UpdatePullRequestSchema,
   PullRequestAckSchema,
   type PullRequestAck,
+  IngestCiResultsSchema,
+  CiResultsIngestedSchema,
+  type CiResultsIngested,
+  IngestReviewCommentsSchema,
+  ReviewCommentsIngestedViewSchema,
+  type ReviewCommentsIngestedView,
   RespondToQuestionSchema,
   QuestionRespondedSchema,
   CancelTaskSchema,
@@ -849,6 +855,25 @@ export class CoreClient {
     const payload = opts.update ? toBinary(UpdatePullRequestSchema, create(UpdatePullRequestSchema, fields)) : toBinary(OpenPullRequestSchema, create(OpenPullRequestSchema, fields));
     const ack = await this.command(opts.update ? "UpdatePullRequest" : "OpenPullRequest", payload, undefined, this.leases.get(sessionId));
     return fromBinary(PullRequestAckSchema, ack.result);
+  }
+
+  /**
+   * PX-127: ask the Core to read the forge's check runs for the commit its
+   * pull request carries and record them as evidence with provenance `ci`
+   * (never a verification result). The client makes no forge call: the
+   * Core reads with its own token under the task's lease.
+   */
+  async ingestCiResults(sessionId: string, taskId: string): Promise<CiResultsIngested> {
+    const payload = toBinary(IngestCiResultsSchema, create(IngestCiResultsSchema, { taskId: { value: unhex(taskId) } }));
+    const ack = await this.command("IngestCiResults", payload, undefined, this.leases.get(sessionId));
+    return fromBinary(CiResultsIngestedSchema, ack.result);
+  }
+
+  /** PX-127: ask the Core to read the pull request's comments; allowed authors' comments addressed to Modbit become untrusted steering. */
+  async ingestReviewComments(sessionId: string, taskId: string): Promise<ReviewCommentsIngestedView> {
+    const payload = toBinary(IngestReviewCommentsSchema, create(IngestReviewCommentsSchema, { taskId: { value: unhex(taskId) } }));
+    const ack = await this.command("IngestReviewComments", payload, undefined, this.leases.get(sessionId));
+    return fromBinary(ReviewCommentsIngestedViewSchema, ack.result);
   }
 
   async taskAssurance(taskId: string): Promise<TaskAssuranceView> {

@@ -17,6 +17,7 @@
 pub mod core_process;
 mod handoff;
 mod link;
+mod policy;
 mod session;
 
 use std::path::PathBuf;

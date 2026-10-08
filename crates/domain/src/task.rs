@@ -716,6 +716,32 @@ pub enum TaskEvent {
         /// The adapter's result as returned.
         result: serde_json::Value,
     },
+    /// `ForgeCommentPosted` (PX-125): a status or progress comment the
+    /// adapter posted on an issue or pull request under an idempotency key —
+    /// the record a retry of the same key answers from. The body is not on
+    /// the log, only its digest. No state change.
+    ForgeCommentPosted {
+        /// The key the post named.
+        idempotency_key: String,
+        /// `forge.issue.comment` | `forge.pr.comment`.
+        tool: String,
+        /// Repository owner.
+        owner: String,
+        /// Repository.
+        repo: String,
+        /// Issue or pull request number.
+        number: u64,
+        /// The forge's id for the comment.
+        comment_id: u64,
+        /// Web URL of the comment.
+        url: String,
+        /// sha256 of the body as sent (after redaction).
+        body_sha256: String,
+        /// Credentials replaced in the body before it was sent.
+        redactions: u64,
+        /// The adapter's result as returned.
+        result: serde_json::Value,
+    },
     /// `TaskCreatedFromIssue` (PX-010, docs/29): the task was made from a
     /// forge issue the Core read at creation; its text is the attached
     /// context document beside this event (untrusted). No state change.
@@ -2735,6 +2761,16 @@ pub struct ReviewCommentRecord {
     pub input_id: String,
     /// `DISALLOWED_AUTHOR` | `NOT_ADDRESSED` | `EMPTY`, when ignored.
     pub reason: String,
+    /// The file a line comment is on (PX-127; empty on the conversation and
+    /// on records made before it).
+    #[serde(default)]
+    pub path: String,
+    /// The line a line comment is on (0 when none).
+    #[serde(default)]
+    pub line: u64,
+    /// The forge's timestamp of the comment (PX-127).
+    #[serde(default)]
+    pub created_at: String,
 }
 
 /// One check run recorded as CI evidence (PX-009).
@@ -2817,6 +2853,7 @@ impl TaskEvent {
             Self::ExternalDiagnosticsRejected { .. } => "ExternalDiagnosticsRejected",
             Self::ForgePullRequestOpened { .. } => "ForgePullRequestOpened",
             Self::ForgePullRequestUpdated { .. } => "ForgePullRequestUpdated",
+            Self::ForgeCommentPosted { .. } => "ForgeCommentPosted",
             Self::TaskCreatedFromIssue { .. } => "TaskCreatedFromIssue",
             Self::BrowserSessionOpened { .. } => "BrowserSessionOpened",
             Self::BrowserHostAttached { .. } => "BrowserHostAttached",
@@ -3029,6 +3066,7 @@ impl Task {
             | TaskEvent::ExternalDiagnosticsRejected { .. }
             | TaskEvent::ForgePullRequestOpened { .. }
             | TaskEvent::ForgePullRequestUpdated { .. }
+            | TaskEvent::ForgeCommentPosted { .. }
             | TaskEvent::TaskCreatedFromIssue { .. }
             | TaskEvent::BrowserSessionOpened { .. }
             | TaskEvent::BrowserHostAttached { .. }

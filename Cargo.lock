@@ -2129,6 +2129,7 @@ dependencies = [
 name = "modbit-cli"
 version = "0.0.0"
 dependencies = [
+ "base64",
  "ed25519-dalek",
  "hex",
  "modbit-domain",
@@ -2136,7 +2137,9 @@ dependencies = [
  "modbit-skills",
  "prost",
  "rand 0.10.2",
+ "reqwest",
  "serde_json",
+ "sha2 0.11.0",
  "tempfile",
  "tokio",
  "windows-sys 0.61.2",
@@ -2149,6 +2152,7 @@ dependencies = [
  "anyhow",
  "axum",
  "base64",
+ "ed25519-dalek",
  "futures-util",
  "hex",
  "hmac",
@@ -2175,6 +2179,7 @@ dependencies = [
  "anyhow",
  "axum",
  "base64",
+ "ed25519-dalek",
  "futures-util",
  "hex",
  "hmac",
@@ -2304,6 +2309,7 @@ dependencies = [
 name = "modbit-domain"
 version = "0.0.0"
 dependencies = [
+ "ed25519-dalek",
  "hex",
  "serde",
  "serde_json",

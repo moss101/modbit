@@ -71,13 +71,38 @@
     ],
     "integration": [
      "services/modbit-core/tests/surface_protocol.rs::qual_px_006_the_forge_adapter_reads_and_writes_github_behind_leases_effects_receipts_and_idempotency_keys",
-     "services/modbit-core/tests/surface_protocol.rs::qual_px_010_a_task_from_a_forge_issue_carries_the_issue_as_untrusted_context_and_runs_the_ordinary_loop"
+     "services/modbit-core/tests/surface_protocol.rs::qual_px_010_a_task_from_a_forge_issue_carries_the_issue_as_untrusted_context_and_runs_the_ordinary_loop",
+     "services/modbit-core/tests/px_125_forge.rs::qual_px_125_the_forge_adapter_reads_a_pull_request_and_its_diff_and_posts_approved_redacted_comments",
+     "apps/cli/tests/px_127_forge.rs::qual_px_127_issue_to_pull_request_to_ci_and_review_comments_in_the_cli_with_provenance_and_nothing_accepted_by_ci",
+     "apps/cloud-worker/tests/px_126_ingestion.rs::qual_px_126_a_signed_check_or_comment_delivery_makes_the_owning_cores_ingestion_record_ci_evidence_and_untrusted_steering"
     ],
     "external": []
    },
    "deferred": {
     "decision": "DR-M6-002",
     "needs": "MODBIT_GITHUB_TOKEN and a dedicated test repository named by MODBIT_GITHUB_TEST_REPO as repository secrets (docs/77 §5 item 2)"
+   }
+  },
+  {
+   "id": "identity.oidc",
+   "crates": ["modbit-cloud-api"],
+   "boundary": "real-service",
+   "counterparty": "an OpenID Connect provider (discovery, JWKS, authorization and token endpoints): the in-process development provider of tests/support/dev_idp.rs, which signs Ed25519 ID tokens, in this repository's suites. A production provider (Entra, Okta, Google) has not been run against it, and those sign RS256, which the API does not verify",
+   "levels": {
+    "integration": [
+     "apps/cloud-api/tests/px_129_identity.rs::qual_px_129_oidc_with_pkce_signs_provisioned_principals_in_and_every_forgery_is_refused"
+    ]
+   }
+  },
+  {
+   "id": "cloud.api-client",
+   "crates": ["modbit-cli"],
+   "boundary": "in-tree",
+   "counterparty": "the Cloud API (apps/cloud-api) over HTTP: sign-in, object upload, handoff admission, event cursor replay, approvals, the policy bundle",
+   "levels": {
+    "integration": [
+     "apps/cloud-worker/tests/px_128_cloud_client.rs::qual_px_128_the_cli_hands_a_local_task_to_the_cloud_after_a_confirmation_and_watches_and_answers_its_approval"
+    ]
    }
   },
   {

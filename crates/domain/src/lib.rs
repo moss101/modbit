@@ -23,6 +23,7 @@ pub mod ids;
 pub mod lease;
 pub mod media;
 pub mod mode;
+pub mod policy_bundle;
 pub mod routing;
 pub mod run;
 pub mod runmode;
