@@ -86,6 +86,14 @@ pub enum HookPoint {
     BeforeChange,
     /// After a workspace change.
     AfterChange,
+    /// The last stop before a ChangeTransaction commits (REQ-PX-117): the
+    /// call is judged and allowed, its arguments validated, and the workspace
+    /// is about to apply the ordered operations. The payload is the plan
+    /// (`before_change_commit.v1`: tool, workspace revision, and per
+    /// operation its path, kind, new size and hash, edit count and
+    /// preconditions); a hook may refuse the commit and can neither rewrite
+    /// it nor add to it.
+    BeforeChangeCommit,
     /// Before a verification stage runs its checks.
     BeforeVerification,
     /// After a verification stage.
@@ -111,7 +119,7 @@ pub enum HookPoint {
 
 impl HookPoint {
     /// Every point, in lifecycle order.
-    pub const ALL: [Self; 17] = [
+    pub const ALL: [Self; 18] = [
         Self::BeforeRun,
         Self::AfterRun,
         Self::BeforeModel,
@@ -120,6 +128,7 @@ impl HookPoint {
         Self::AfterTool,
         Self::BeforeChange,
         Self::AfterChange,
+        Self::BeforeChangeCommit,
         Self::BeforeVerification,
         Self::AfterVerification,
         Self::BeforeCompaction,
@@ -143,6 +152,7 @@ impl HookPoint {
             Self::AfterTool => "after_tool",
             Self::BeforeChange => "before_change",
             Self::AfterChange => "after_change",
+            Self::BeforeChangeCommit => "before_change_commit",
             Self::BeforeVerification => "before_verification",
             Self::AfterVerification => "after_verification",
             Self::BeforeCompaction => "before_compaction",
@@ -172,6 +182,7 @@ impl HookPoint {
                 | Self::BeforeModel
                 | Self::BeforeTool
                 | Self::BeforeChange
+                | Self::BeforeChangeCommit
                 | Self::BeforeVerification
                 | Self::BeforeCompaction
                 | Self::PermissionRequest
@@ -186,7 +197,11 @@ impl HookPoint {
     pub fn is_tool_point(self) -> bool {
         matches!(
             self,
-            Self::BeforeTool | Self::AfterTool | Self::BeforeChange | Self::AfterChange
+            Self::BeforeTool
+                | Self::AfterTool
+                | Self::BeforeChange
+                | Self::AfterChange
+                | Self::BeforeChangeCommit
         )
     }
 
@@ -1161,11 +1176,11 @@ mod tests {
 
     #[test]
     fn every_point_has_a_label_a_versioned_payload_schema_and_a_typed_round_trip() {
-        assert_eq!(HookPoint::ALL.len(), 17);
+        assert_eq!(HookPoint::ALL.len(), 18);
         let mut labels: Vec<&str> = HookPoint::ALL.iter().map(|p| p.label()).collect();
         labels.sort_unstable();
         labels.dedup();
-        assert_eq!(labels.len(), 17, "labels are unique");
+        assert_eq!(labels.len(), 18, "labels are unique");
         for p in HookPoint::ALL {
             assert_eq!(p.payload_schema(), format!("{}.v1", p.label()));
             let json = serde_json::to_string(&p).unwrap();
@@ -1180,6 +1195,7 @@ mod tests {
             HookPoint::PermissionRequest,
             HookPoint::TaskComplete,
             HookPoint::SubagentStart,
+            HookPoint::BeforeChangeCommit,
         ] {
             assert!(before.is_before() && !before.may_mutate());
         }

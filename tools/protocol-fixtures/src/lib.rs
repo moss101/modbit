@@ -231,6 +231,40 @@ pub fn samples() -> Vec<Sample> {
         index_used_tokens: 14,
         index_omitted: 0,
         system_root: "/etc/modbit/skills".into(),
+        // REQ-PX-052: the slash menu's union (field block 260-279).
+        slash: vec![
+            SlashEntry {
+                kind: "SKILL".into(),
+                id: "core-guide".into(),
+                display_name: "core-guide".into(),
+                description: "how the product works".into(),
+                scope: "SYSTEM".into(),
+                trust: "SYSTEM".into(),
+                trust_detail: String::new(),
+                enabled: true,
+                invocation: "BOTH".into(),
+                built_in: true,
+                content_hash: "ab".repeat(32),
+                provenance_source: "system".into(),
+                source: "/etc/modbit/skills/core-guide".into(),
+            },
+            SlashEntry {
+                kind: "COMMAND".into(),
+                id: "kit/tidy".into(),
+                display_name: "kit/tidy".into(),
+                description: "tidy up a file".into(),
+                scope: "EXTENSION".into(),
+                trust: "VERIFIED:acme".into(),
+                trust_detail: String::new(),
+                enabled: true,
+                invocation: "USER_ONLY".into(),
+                built_in: false,
+                content_hash: "cd".repeat(32),
+                provenance_source: "extension:kit@1.2.0".into(),
+                source: "/ext/kit".into(),
+            },
+        ],
+        slash_divider_at: 1,
     };
     let budgets = SetTaskBudgets {
         task_id: id(0x31),
@@ -1003,7 +1037,24 @@ pub fn samples() -> Vec<Sample> {
                 }],
                 "rejected": [{"source": "/profile/skills/broken", "code": "MALFORMED_MANIFEST", "reason": "no front matter"}],
                 "indexBudgetTokens": 2000, "indexUsedTokens": 14, "indexOmitted": 0,
-                "systemRoot": "/etc/modbit/skills"
+                "systemRoot": "/etc/modbit/skills",
+                "slash": [
+                    {
+                        "kind": "SKILL", "id": "core-guide", "displayName": "core-guide",
+                        "description": "how the product works", "scope": "SYSTEM", "trust": "SYSTEM",
+                        "trustDetail": "", "enabled": true, "invocation": "BOTH", "builtIn": true,
+                        "contentHash": "ab".repeat(32), "provenanceSource": "system",
+                        "source": "/etc/modbit/skills/core-guide"
+                    },
+                    {
+                        "kind": "COMMAND", "id": "kit/tidy", "displayName": "kit/tidy",
+                        "description": "tidy up a file", "scope": "EXTENSION", "trust": "VERIFIED:acme",
+                        "trustDetail": "", "enabled": true, "invocation": "USER_ONLY", "builtIn": false,
+                        "contentHash": "cd".repeat(32), "provenanceSource": "extension:kit@1.2.0",
+                        "source": "/ext/kit"
+                    }
+                ],
+                "slashDividerAt": 1
             }),
             decode: reencode::<SkillList>,
         },
@@ -1099,6 +1150,129 @@ pub fn samples() -> Vec<Sample> {
                 "recomputedFiles": "1", "recomputedSample": ["src/util.rs"]
             }),
             decode: reencode::<IndexStatusView>,
+        },
+        // PX-042: a search over one session's conversations.
+        Sample {
+            name: "search_conversations",
+            type_name: "modbit.v1.SearchConversations",
+            bytes: SearchConversations {
+                session_id: id(0x31),
+                query: "\"file must say\" valid".into(),
+                limit: 20,
+                max_snippets: 3,
+                include_archived: true,
+                task_id: id(0x32),
+            }
+            .encode_to_vec(),
+            expected: json!({
+                "sessionId": idhex(0x31), "query": "\"file must say\" valid", "limit": 20,
+                "maxSnippets": 3, "includeArchived": true, "taskId": idhex(0x32)
+            }),
+            decode: reencode::<SearchConversations>,
+        },
+        Sample {
+            name: "conversation_search_results",
+            type_name: "modbit.v1.ConversationSearchResults",
+            bytes: ConversationSearchResults {
+                session_id: id(0x31),
+                query: "file must say \"file must\"".into(),
+                hits: vec![ConversationHit {
+                    task_id: id(0x32),
+                    title: "Reject negative quantities.".into(),
+                    status_class: AgentStatusClass::ReadyForReviewUnseen as i32,
+                    status_label: "Ready for review".into(),
+                    archived: false,
+                    title_matched: false,
+                    matched_rows: 2,
+                    score: 6,
+                    last_offset: 9_007_199_254_740_993,
+                    snippets: vec![ConversationSnippet {
+                        row_id: "msg:0123".into(),
+                        kind: TranscriptRowKind::AssistantMessage as i32,
+                        source: SnippetSource::Assistant as i32,
+                        offset: 411,
+                        turn_id: "turn-3".into(),
+                        text: "The check failed; the file must say validated.".into(),
+                        cut_before: false,
+                        cut_after: true,
+                        matches: vec![MatchRange { start: 24, end: 37 }],
+                        score: 1,
+                    }],
+                }],
+                total_hits: 1,
+                has_more: false,
+                tasks_considered: 4,
+                tasks_rebuilt: 2,
+                rows_indexed: 13,
+                index_bytes: 9_007_199_254_740_993,
+                index_budget_bytes: 33_554_432,
+                tasks_truncated: 1,
+                index_digest: "ab".repeat(32),
+                as_of_offset: 777,
+            }
+            .encode_to_vec(),
+            expected: json!({
+                "sessionId": idhex(0x31), "query": "file must say \"file must\"",
+                "hits": [{
+                    "taskId": idhex(0x32), "title": "Reject negative quantities.",
+                    "statusClass": "AGENT_STATUS_CLASS_READY_FOR_REVIEW_UNSEEN",
+                    "statusLabel": "Ready for review", "archived": false, "titleMatched": false,
+                    "matchedRows": 2, "score": 6, "lastOffset": "9007199254740993",
+                    "snippets": [{
+                        "rowId": "msg:0123", "kind": "TRANSCRIPT_ROW_KIND_ASSISTANT_MESSAGE",
+                        "source": "SNIPPET_SOURCE_ASSISTANT", "offset": "411", "turnId": "turn-3",
+                        "text": "The check failed; the file must say validated.",
+                        "cutBefore": false, "cutAfter": true,
+                        "matches": [{"start": 24, "end": 37}], "score": 1
+                    }]
+                }],
+                "totalHits": 1, "hasMore": false, "tasksConsidered": 4, "tasksRebuilt": 2,
+                "rowsIndexed": 13, "indexBytes": "9007199254740993", "indexBudgetBytes": "33554432",
+                "tasksTruncated": 1, "indexDigest": "ab".repeat(32), "asOfOffset": "777"
+            }),
+            decode: reencode::<ConversationSearchResults>,
+        },
+        // PX-043: stopping a task's background terminal.
+        Sample {
+            name: "kill_terminal",
+            type_name: "modbit.v1.KillTerminal",
+            bytes: KillTerminal {
+                task_id: id(0x41),
+                session_id: "0123456789abcdef".into(),
+                reason: "the dev server is wedged".into(),
+            }
+            .encode_to_vec(),
+            expected: json!({
+                "taskId": idhex(0x41), "sessionId": "0123456789abcdef",
+                "reason": "the dev server is wedged"
+            }),
+            decode: reencode::<KillTerminal>,
+        },
+        Sample {
+            name: "terminal_killed",
+            type_name: "modbit.v1.TerminalKilled",
+            bytes: TerminalKilled {
+                task_id: id(0x41),
+                session_id: "0123456789abcdef".into(),
+                outcome: "KILLED".into(),
+                exit_code: None,
+                signal: Some(9),
+                output_ref: "cd".repeat(32),
+                total_bytes: 9_007_199_254_740_993,
+                ended_by: "user:b1b1b1b1".into(),
+                reason: "the dev server is wedged".into(),
+                decision: "allow: local_trusted:reversiblewrite".into(),
+                offset: 412,
+            }
+            .encode_to_vec(),
+            expected: json!({
+                "taskId": idhex(0x41), "sessionId": "0123456789abcdef", "outcome": "KILLED",
+                "exitCode": null, "signal": 9, "outputRef": "cd".repeat(32),
+                "totalBytes": "9007199254740993", "endedBy": "user:b1b1b1b1",
+                "reason": "the dev server is wedged",
+                "decision": "allow: local_trusted:reversiblewrite", "offset": "412"
+            }),
+            decode: reencode::<TerminalKilled>,
         },
     ]
 }

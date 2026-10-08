@@ -696,6 +696,15 @@ impl modbit_tools::hooks::HookPort for HookScope {
                 "effect_class": effect_class,
                 "arguments": arguments,
             });
+            // `before_change_commit.v1`: what is handed over is the plan of
+            // the transaction, not the model's arguments.
+            if point == HookPoint::BeforeChangeCommit {
+                payload = serde_json::json!({
+                    "tool": tool,
+                    "effect_class": effect_class,
+                    "transaction": arguments,
+                });
+            }
             if point == HookPoint::PermissionRequest {
                 payload["permission"] = serde_json::json!("approval_required");
             }

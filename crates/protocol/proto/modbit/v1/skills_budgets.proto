@@ -9,6 +9,7 @@ syntax = "proto3";
 package modbit.v1;
 
 import "modbit/v1/domain.proto";
+import "modbit/v1/slash_inventory.proto";
 
 // `ListSkills` (read): the skill inventory a client shows in its slash menu
 // and a Customize view. Without a task it lists the profile and the system
@@ -61,6 +62,13 @@ message SkillList {
   uint32 index_used_tokens = 4;
   uint32 index_omitted = 5;        // skills dropped from the index for want of budget
   string system_root = 6;          // where the System scope is read from
+  // REQ-PX-052 (field block 260-279): the slash menu's typed union of skills,
+  // extension commands and subagent profiles, in menu order — built-in
+  // entries first, then the others alphabetically. `slash_divider_at` is the
+  // index of the first entry after the divider (0 = no divider: there is no
+  // built-in entry, or nothing but built-in entries).
+  repeated SlashEntry slash = 260;
+  uint32 slash_divider_at = 261;
 }
 
 // `TrustSkill`: the owner's content-hash-bound decision that a skill may

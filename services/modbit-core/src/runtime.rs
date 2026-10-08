@@ -371,13 +371,22 @@ impl Runtime {
                         }
                     };
                     if cfg.ticket_id.is_empty() {
-                        cfg.ticket_id = Self::take_run_ticket(
-                            &mut store,
-                            core,
-                            &task,
-                            &actor,
-                            lease_generation,
-                        )?;
+                        // REQ-PX-101: a paused task keeps its ticket until
+                        // the idle bound; resumed before it, the same ticket
+                        // continues. Past it the ticket is gone and the
+                        // resume goes through admission, which may refuse it
+                        // `CAPACITY_EXHAUSTED` (the task stays paused).
+                        cfg.ticket_id =
+                            match core.capacity.reuse_hold(&task.task_id, lease_generation) {
+                                Some(ticket) => ticket,
+                                None => Self::take_run_ticket(
+                                    &mut store,
+                                    core,
+                                    &task,
+                                    &actor,
+                                    lease_generation,
+                                )?,
+                            };
                     }
                     let run = match (run, fresh) {
                         (Some(r), _) => r,
@@ -1852,6 +1861,12 @@ pub(crate) async fn rebuild(
                 state.steers += 1;
                 applied += 1;
             }
+            // REQ-PX-043: the notice the model was shown of a background end.
+            "BackgroundWakeDelivered" => {
+                if let Some(t) = payload["notice"].as_str().filter(|t| !t.is_empty()) {
+                    transcript.push(Message::text(Role::User, t.to_owned()));
+                }
+            }
             "VerificationBaselineRecorded" => {
                 state.baseline_recorded = true;
                 state.verification_plan_ref = payload["plan_ref"].as_str().map(str::to_owned);
@@ -2398,6 +2413,11 @@ fn apply_entry(transcript: &mut Vec<Message>, state: &mut HarnessState, entry: T
     }
 }
 
+/// The terminal tools that act on a shell the task already owns.
+fn is_live_shell_tool(name: &str) -> bool {
+    matches!(name, "shell.input" | "shell.attach")
+}
+
 /// Tool projection for the task (docs/16): registry tools runnable under the
 /// profile plus the harness tools.
 fn projection(
@@ -2474,6 +2494,14 @@ fn projection(
         if s.name == "skill.load" && !state.skills_loadable {
             continue;
         }
+        // REQ-PX-099: a shell is addressable only by the task that started
+        // it, so `shell.input` and `shell.attach` are offered exactly while
+        // the task owns a live one — the model is told of the terminal in the
+        // tool's own result, and the tool disappears with the process.
+        let live_only = is_live_shell_tool(&s.name);
+        if live_only && !facts.live_shell {
+            continue;
+        }
         if let Some(c) = s.required_capabilities.iter().find(|c| denied.contains(*c)) {
             state.withheld_tools.push(harness::WithheldTool {
                 name: s.name.clone(),
@@ -2489,7 +2517,7 @@ fn projection(
             state.withheld_tools.push(w);
             continue;
         }
-        if harness::is_deferred(&s.name) && !state.activated_tools.contains(&s.name) {
+        if harness::is_deferred(&s.name) && !live_only && !state.activated_tools.contains(&s.name) {
             deferred.push((harness::toolset_of(&s.name).to_owned(), s.name.clone()));
             continue;
         }
@@ -3327,7 +3355,9 @@ async fn run_loop(
             host_specs
                 .into_iter()
                 .filter(|s| {
-                    harness::is_deferred(&s.name) && !state.activated_tools.contains(&s.name)
+                    harness::is_deferred(&s.name)
+                        && !state.activated_tools.contains(&s.name)
+                        && !is_live_shell_tool(&s.name)
                 })
                 .filter(|s| !s.required_capabilities.iter().any(|c| denied.contains(c)))
                 .filter(|s| {
@@ -3408,6 +3438,18 @@ async fn run_loop(
             )
             .unwrap_or(0);
             seen_offset = seen_offset.max(off);
+        }
+        // REQ-PX-043: a background terminal of this task that ended since the
+        // last boundary (it ran out, or a person stopped it) is told to the
+        // model once, as a labelled Core notice read from the typed
+        // `BackgroundProcessEnded` record — never as an input, never as a
+        // message from the person. The delivery is on the log, so a resumed
+        // run does not tell it again; an end the run observed through its own
+        // terminal tool is only closed.
+        for note in
+            crate::background_process::deliver_wakes(&core, &task, lt, &actor, Some(run_id)).await
+        {
+            transcript.push(Message::text(Role::User, note));
         }
         // REQ-PX-116: the round boundary is where the whole tree's spend is
         // judged — the wall clock the runs have used, and what the task's
@@ -6420,15 +6462,24 @@ async fn run_loop(
             &actor,
         );
     }
-    // M6.2: the run's capacity returns to the pool with the run.
-    core.capacity.release(
-        &mut store,
-        &core,
-        &task,
-        lt.unfenced(),
-        &actor,
-        &cfg.ticket_id,
-    );
+    // M6.2: the run's capacity returns to the pool with the run — except a
+    // run a person paused (REQ-PX-101): the task keeps its ticket, renewed,
+    // until the idle bound, so a pause is cheap to resume and does not hand
+    // its capacity to someone else the moment it is taken.
+    if pause_request.is_some() && !cfg.ticket_id.is_empty() {
+        core.capacity
+            .hold(task.task_id, &cfg.ticket_id, cfg.lease_generation);
+        crate::capacity::spawn_hold_reaper(Arc::clone(&core), task.clone(), cfg.ticket_id.clone());
+    } else {
+        core.capacity.release(
+            &mut store,
+            &core,
+            &task,
+            lt.unfenced(),
+            &actor,
+            &cfg.ticket_id,
+        );
+    }
     drop(store);
     if settle_children {
         crate::spawn::cancel_children(
@@ -7868,9 +7919,13 @@ async fn handle_tool_search(
     let visible = core
         .tools
         .visible_specs_for(&task.task_id, Some(&task.execution_profile), lease);
+    // `shell.input` and `shell.attach` exist for the model only while its task
+    // owns a live shell (REQ-PX-099); a search cannot find them otherwise.
+    let live_shell = crate::background_process::owns_live_shell(core, task).await;
     let mut matched: Vec<&modbit_tools::ToolSpec> = visible
         .iter()
         .filter(|s| harness::is_deferred(&s.name))
+        .filter(|s| live_shell || !is_live_shell_tool(&s.name))
         .filter(|s| {
             explicit.contains(&s.name)
                 || (!words.is_empty() && {

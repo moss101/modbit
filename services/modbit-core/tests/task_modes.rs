@@ -1024,6 +1024,115 @@ async fn px_051_a_plan_mode_run_offers_no_write_refuses_one_asked_for_and_accept
     assert_eq!(set.last().unwrap()["accepted_plan_version"], 1, "{set:#?}");
 }
 
+/// PX-042 `pending_plan` is the Core's plan gate and nothing else: a task in
+/// PLAN mode that has recorded a plan is waiting for the person to accept it
+/// (leaving PLAN is the acceptance); a plan recorded outside PLAN mode is the
+/// model's own plan-before-write step and holds nothing; a PLAN task with no
+/// plan yet has nothing to accept; acceptance clears it, and so does the end
+/// of the task. The flag comes from the log, so it survives a SIGKILL.
+#[tokio::test]
+async fn px_042_pending_plan_is_true_exactly_while_a_plan_mode_task_holds_a_plan_nobody_accepted() {
+    let (_repo, root) = repo(&[("a.txt", "a\n")]);
+    let script = vec![
+        json!({"calls": [{"name": "fs.read", "args": {"path": "a.txt"}}]}),
+        json!({"calls": [{"name": "plan.update", "args": {"outcome": "nothing to change", "expected_files": ["a.txt"]}}]}),
+        json!({"calls": [{"name": "task.complete", "args": {"summary": "planned", "self_review": {"findings": []}}}]}),
+    ];
+    let model = scripted(script, None).await;
+    let dir = tempfile::tempdir().unwrap();
+    let mut core = CoreProcess::spawn(dir.path(), &env_for(&model.base, &[]));
+    let mut c = core.client().await;
+    let (session, g) = create_session(&mut c, 0x10).await;
+    async fn pending(c: &mut Client, id: u8, session: &Id, task: &Id) -> bool {
+        let h: modbit_protocol::v1::AgentHeaders = send(
+            c,
+            id,
+            "GetAgentHeaders",
+            modbit_protocol::v1::GetAgentHeaders {
+                session_id: Some(session.clone()),
+                include_archived: true,
+            },
+            None,
+        )
+        .await
+        .unwrap();
+        h.headers
+            .iter()
+            .find(|x| x.task_id.as_ref() == Some(task))
+            .expect("a header for the task")
+            .pending_plan
+    }
+    // A PLAN task that has not planned yet: nothing to accept.
+    let plan_task = create_task(
+        &mut c,
+        g,
+        &session,
+        0x11,
+        &root,
+        "plan it",
+        TaskMode::Plan as i32,
+        "",
+        None,
+    )
+    .await
+    .unwrap();
+    assert!(!pending(&mut c, 0x12, &session, &plan_task).await);
+    start(&mut c, g, 0x13, &plan_task, "gpt-5-mini", None)
+        .await
+        .unwrap();
+    let st = wait_loop_end(&mut c, 0x14, &plan_task, 90).await;
+    assert_eq!(st.state, "ReadyForReview", "{st:?}");
+    assert!(
+        pending(&mut c, 0x15, &session, &plan_task).await,
+        "a plan recorded in PLAN mode awaits the person"
+    );
+    // The same plan recorded by an AGENT-mode task holds nothing.
+    let agent_task = create_task(
+        &mut c,
+        g,
+        &session,
+        0x16,
+        &root,
+        "just do it",
+        TaskMode::Agent as i32,
+        "",
+        None,
+    )
+    .await
+    .unwrap();
+    start(&mut c, g, 0x17, &agent_task, "gpt-5-mini", None)
+        .await
+        .unwrap();
+    let st = wait_loop_end(&mut c, 0x18, &agent_task, 90).await;
+    assert_eq!(st.state, "ReadyForReview", "{st:?}");
+    let evs = task_events(&core, &session, &agent_task).await;
+    assert!(!of(&evs, "PlanRecorded").is_empty(), "the agent did plan");
+    assert!(!pending(&mut c, 0x19, &session, &agent_task).await);
+    // It is the log's fact: a killed Core answers the same.
+    drop(c);
+    core.kill();
+    let core = CoreProcess::spawn(dir.path(), &env_for(&model.base, &[]));
+    let mut c = core.client().await;
+    let g = acquire_lease(&mut c, 0x30, &session).await;
+    assert!(pending(&mut c, 0x31, &session, &plan_task).await);
+    assert!(!pending(&mut c, 0x32, &session, &agent_task).await);
+    // Acceptance is leaving PLAN: the flag clears with the event that names
+    // the accepted version.
+    let accepted = set_mode(&mut c, g, 0x33, &plan_task, TaskMode::Agent)
+        .await
+        .unwrap();
+    assert_eq!(accepted.accepted_plan_version, 1, "{accepted:?}");
+    assert!(!pending(&mut c, 0x34, &session, &plan_task).await);
+    // And back into PLAN with the plan still on the log: pending again.
+    set_mode(&mut c, g, 0x35, &plan_task, TaskMode::Plan)
+        .await
+        .unwrap();
+    assert!(pending(&mut c, 0x36, &session, &plan_task).await);
+    // A task that ended no longer waits for a decision.
+    cancel(&mut c, g, 0x37, &plan_task).await;
+    assert!(!pending(&mut c, 0x38, &session, &plan_task).await);
+}
+
 /// A mode changed while a model call is in flight does not touch that round:
 /// the write it asks for is decided under the posture the round began with
 /// and lands; the next round boundary adopts the new mode (on the log, after

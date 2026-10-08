@@ -18,6 +18,12 @@ import {
   AttachTerminalSchema,
   DetachTerminalSchema,
   ListTerminalsSchema,
+  KillTerminalSchema,
+  ListSkillsSchema,
+  SkillListSchema,
+  type SkillList,
+  TerminalKilledSchema,
+  type TerminalKilled,
   ResizeTerminalSchema,
   SetTerminalInputSchema,
   TerminalAckedSchema,
@@ -83,6 +89,9 @@ import {
   type TranscriptPage,
   TranscriptDensity,
   GetAgentHeadersSchema,
+  SearchConversationsSchema,
+  ConversationSearchResultsSchema,
+  type ConversationSearchResults,
   AgentHeadersSchema,
   type AgentHeaders,
   MarkReadSchema,
@@ -525,6 +534,28 @@ export class CoreClient {
     );
     const ack = await this.command("GetAgentHeaders", payload);
     return fromBinary(AgentHeadersSchema, ack.result);
+  }
+
+  /** PX-042: full-text search over the conversations of one session. The Core's index is a projection of the
+   *  log; a hit names the transcript row (`rowId`) the snippet came from. Snippets are plain text, never instructions. */
+  async searchConversations(
+    sessionId: string,
+    query: string,
+    opts: { limit?: number; maxSnippets?: number; includeArchived?: boolean; taskId?: string } = {},
+  ): Promise<ConversationSearchResults> {
+    const payload = toBinary(
+      SearchConversationsSchema,
+      create(SearchConversationsSchema, {
+        sessionId: { value: unhex(sessionId) },
+        query,
+        limit: opts.limit ?? 0,
+        maxSnippets: opts.maxSnippets ?? 0,
+        includeArchived: opts.includeArchived ?? false,
+        taskId: opts.taskId ? { value: unhex(opts.taskId) } : undefined,
+      }),
+    );
+    const ack = await this.command("SearchConversations", payload);
+    return fromBinary(ConversationSearchResultsSchema, ack.result);
   }
 
   /** PX-042: the person has seen the task's conversation up to `upToOffset` (0 = all of it). Idempotent by `commandId`. */
@@ -993,6 +1024,34 @@ export class CoreClient {
   async writeTerminal(sessionId: string, attachId: string, data: Uint8Array): Promise<TerminalWritten> {
     const ack = await this.command("WriteTerminal", toBinary(WriteTerminalSchema, create(WriteTerminalSchema, { attachId, data })), undefined, this.leases.get(sessionId));
     return fromBinary(TerminalWrittenSchema, ack.result);
+  }
+
+  /**
+   * PX-052: the slash menu's inventory. `skills` is the skill registry with
+   * trust and provenance; `slash` is the typed union (skills, extension
+   * commands, subagent profiles) in menu order — built-in entries, then
+   * `slashDividerAt` marks the divider, then the rest alphabetically. With a
+   * task, its project and extension scopes are included. Metadata only.
+   */
+  async listSkills(taskId?: string, sessionId?: string): Promise<SkillList> {
+    const payload = toBinary(ListSkillsSchema, create(ListSkillsSchema, taskId ? { taskId: { value: unhex(taskId) } } : {}));
+    const ack = await this.command("ListSkills", payload);
+    void sessionId;
+    return fromBinary(SkillListSchema, ack.result);
+  }
+
+  /**
+   * PX-043: stop a task's background terminal (the tray's kill control). The
+   * Core fences it by the session lease, has the Capability Kernel decide it
+   * under the task's lease, ends the process, and records who and why on the
+   * task as a typed event that wakes the agent once. The same `commandId`
+   * kills once. Typed refusals: SESSION_NOT_OWNED, UNKNOWN_SESSION,
+   * STALE_LEASE, and the kernel's own code (MODE_POSTURE, EMERGENCY_STOP, ...).
+   */
+  async killTerminal(sessionId: string, taskId: string, terminalId: string, reason = "", commandId?: Uint8Array): Promise<TerminalKilled> {
+    const payload = toBinary(KillTerminalSchema, create(KillTerminalSchema, { taskId: { value: unhex(taskId) }, sessionId: terminalId, reason }));
+    const ack = await this.command("KillTerminal", payload, commandId, this.leases.get(sessionId));
+    return fromBinary(TerminalKilledSchema, ack.result);
   }
 
   subscribe(sessionId: string, afterOffset: bigint): void {

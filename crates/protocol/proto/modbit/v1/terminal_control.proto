@@ -1,0 +1,50 @@
+// KillTerminal (REQ-PX-043; docs/65 AFW-E08): a client stops a task's
+// background terminal.
+//
+// The kill is a command like any other that acts on a process: it is fenced by
+// the session lease, decided by the Capability Kernel under the task's lease
+// (the same decision the agent's own `shell.cancel` would get), and the process
+// is ended through the broker's cancellation. What it leaves on the task's log
+// is a typed `BackgroundProcessEnded` event — who, why, how it ended — that the
+// runtime reads at its next round boundary to tell the agent, once. It is never
+// a message from the person and never an input.
+//
+// Additive: new messages only; the command travels as a CommandEnvelope
+// payload named by `command_type` ("KillTerminal").
+syntax = "proto3";
+
+package modbit.v1;
+
+import "modbit/v1/domain.proto";
+
+// Stop a background terminal. The task named must own the terminal
+// (SESSION_NOT_OWNED otherwise); a terminal of another session of the Core's
+// is refused the same way and nothing is signalled.
+message KillTerminal {
+  Id task_id = 1;
+  string session_id = 2;       // the terminal's durable handle
+  // Why, in the person's words: recorded on the log as text, shown to the
+  // agent as quoted data, at most 256 characters.
+  string reason = 3;
+}
+
+message TerminalKilled {
+  Id task_id = 1;
+  string session_id = 2;
+  // KILLED: this command ended the process. ALREADY_ENDED: it had ended
+  // before the command ran (nothing was signalled, nothing more was
+  // recorded when its end was already on the log).
+  string outcome = 3;
+  optional int32 exit_code = 4;
+  optional int32 signal = 5;
+  string output_ref = 6;       // the sealed output, once the process ended
+  uint64 total_bytes = 7;
+  string ended_by = 8;         // user:<id> for a kill; empty when it ended by itself
+  string reason = 9;
+  // The kernel's decision the kill was made under (rule, or the approval the
+  // person's own command stands for).
+  string decision = 10;
+  // The log offset of the BackgroundProcessEnded record (0 when an earlier
+  // record already stood).
+  uint64 offset = 11;
+}

@@ -488,6 +488,16 @@ tool!(
         let path = s(&args, "path");
         let pre = precondition(&args);
         let mut ws = ws.lock().await;
+        if let Some(refused) = before_commit(
+            ctx,
+            "change.apply",
+            &ws,
+            vec![commit_op(&path, &s(&args, "op"), &args)],
+        )
+        .await
+        {
+            return refused;
+        }
         let r = match s(&args, "op").as_str() {
             "create" => ws.create(&path, s(&args, "content").as_bytes(), pre),
             "replace" => ws.atomic_replace(&path, s(&args, "content").as_bytes(), pre),
@@ -561,6 +571,60 @@ tool!(
     }
 );
 
+/// REQ-PX-117: the last stop before a ChangeTransaction commits. The hooks
+/// registered at `before_change_commit` are shown the plan of the transaction
+/// (`before_change_commit.v1`) and may refuse it; a refusal leaves the
+/// workspace exactly as it was and the call is recorded as failed with the
+/// hook's code. A hook can neither rewrite the transaction nor add an
+/// operation to it: the plan is read-only to them. `None` = proceed.
+async fn before_commit(
+    ctx: &InvokeContext,
+    tool: &str,
+    ws: &modbit_workspace::WorkspaceService,
+    ops: Vec<Value>,
+) -> Option<ToolOutcome> {
+    let hooks = ctx.hooks.as_ref()?;
+    let paths: Vec<Value> = ops.iter().map(|o| o["path"].clone()).collect();
+    let transaction = json!({
+        "tool": tool,
+        "workspace_revision": ws.revision().number,
+        "ops": ops,
+        "paths": paths,
+    });
+    let effect = hooks
+        .before(
+            crate::hooks::HookPoint::BeforeChangeCommit,
+            tool,
+            ctx.effect_class.unwrap_or(EffectClass::ReversibleWrite),
+            &transaction,
+        )
+        .await;
+    effect
+        .denied
+        .map(|(code, reason)| ToolOutcome::fail(&code, reason))
+}
+
+/// One operation as the commit hook sees it: path, kind, the size and hash of
+/// what a whole-content operation writes, how many edits an edit carries, and
+/// the preconditions the call stated.
+fn commit_op(path: &str, op: &str, args: &Value) -> Value {
+    use sha2::Digest;
+    let content = args.get("content").and_then(Value::as_str);
+    json!({
+        "path": path,
+        "op": op,
+        "content_bytes": content.map(str::len),
+        "content_sha256": content.map(|c| hex::encode(sha2::Sha256::digest(c.as_bytes()))),
+        "edits": args
+            .get("text_edits")
+            .or_else(|| args.get("edits"))
+            .and_then(Value::as_array)
+            .map(Vec::len),
+        "expected_content_hash": args.get("expected_content_hash"),
+        "expected_workspace_revision": args.get("expected_workspace_revision"),
+    })
+}
+
 fn text_edits(args: &Value) -> Vec<TextEdit> {
     args.get("text_edits")
         .and_then(Value::as_array)
@@ -616,6 +680,18 @@ tool!(
             });
         }
         let mut ws = ws.lock().await;
+        let plan: Vec<Value> = args
+            .get("ops")
+            .and_then(Value::as_array)
+            .map(|a| {
+                a.iter()
+                    .map(|o| commit_op(&s(o, "path"), &s(o, "op"), o))
+                    .collect()
+            })
+            .unwrap_or_default();
+        if let Some(refused) = before_commit(ctx, "change.batch", &ws, plan).await {
+            return refused;
+        }
         match ws.apply_transaction(&ops) {
             Ok(changes) => {
                 let rev = changes.last().map(|c| c.workspace_revision.number);

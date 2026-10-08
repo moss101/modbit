@@ -1409,6 +1409,22 @@ pub enum TaskEvent {
         /// `RELEASED` | `LAPSED`.
         reason: String,
     },
+    /// `PausedCapacityReleased` (REQ-PX-101): a paused task kept its run's
+    /// capacity ticket for the configured idle bound and gave it back when the
+    /// bound passed. A resume after this re-enters through admission and may be
+    /// refused `CAPACITY_EXHAUSTED`. No state change.
+    PausedCapacityReleased {
+        /// Ticket id.
+        ticket_id: String,
+        /// Holder.
+        holder: String,
+        /// How long the pause held it, ms.
+        held_ms: u64,
+        /// The idle bound in force, ms.
+        idle_bound_ms: u64,
+        /// `IDLE_BOUND` | `RESUMED_STALE` (a hold found lapsed at a resume).
+        reason: String,
+    },
     /// `CapacityDenied`: the pool could not cover the request; nothing was
     /// reserved and nothing started. No state change.
     CapacityDenied {
@@ -2115,6 +2131,60 @@ pub enum TaskEvent {
         /// The input's length, for `INPUT_WRITTEN`.
         bytes: u64,
     },
+    /// `BackgroundProcessEnded` (REQ-PX-043, docs/65 AFW-E08): a background
+    /// terminal of this task ended — it ran out, or a client killed it
+    /// (`KillTerminal`) — and the Core recorded how, and by whom. This is the
+    /// typed wake-up of the agent: the runtime reads it from the log at its
+    /// next round boundary and tells the model once
+    /// ([`TaskEvent::BackgroundWakeDelivered`]); it is not an input and not a
+    /// message from anyone. Lands in any task state. No state change.
+    BackgroundProcessEnded {
+        /// Handle (the broker's session id).
+        handle_id: String,
+        /// `EXITED` | `KILLED` | `LOST`.
+        how: String,
+        /// Exit code, when known.
+        exit_code: Option<i32>,
+        /// Signal, when known.
+        signal: Option<i32>,
+        /// Content-addressed full output, once sealed.
+        output_ref: String,
+        /// Total output bytes.
+        total_bytes: u64,
+        /// Whether the broker's deadline ended it.
+        timed_out: bool,
+        /// Who ended it: `user:<id>` for a `KillTerminal`, `core` for an
+        /// exit the watcher observed.
+        ended_by: String,
+        /// The killer's stated reason (log text, never an instruction).
+        reason: String,
+        /// Where the fact came from: `KILL_COMMAND` | `WATCHER`.
+        source: String,
+        /// The Capability Kernel's decision a kill was made under (the rule
+        /// that allowed it, or `user-command: <why>` when the person's own
+        /// command stood in for the approval the policy asked for).
+        #[serde(default)]
+        decision: String,
+    },
+    /// `BackgroundWakeDelivered` (REQ-PX-043): the run was told, at a round
+    /// boundary, that a background terminal ended — once. When the run had
+    /// already observed the end through one of its own terminal tools
+    /// (`observed_by_agent`), nothing is added to the conversation and the
+    /// record only closes the wake. No state change.
+    BackgroundWakeDelivered {
+        /// Handle.
+        handle_id: String,
+        /// Log offset of the `BackgroundProcessEnded` this answers.
+        ended_offset: u64,
+        /// The run had seen the exit itself (`ProcessExited`).
+        observed_by_agent: bool,
+        /// The run it was delivered to.
+        run_id: Option<RunId>,
+        /// The words the model was shown (empty when `observed_by_agent`).
+        /// Kept so a rebuilt transcript is the one the model last saw.
+        #[serde(default)]
+        notice: String,
+    },
     /// `ProtocolStateResumed` (docs/19 layer 2, REQ-EV-0055): a restarted
     /// Core reconstructed the task's protocol state and continued the run
     /// from the boundary it names; the outstanding calls are re-entered by
@@ -2566,6 +2636,9 @@ impl TaskEvent {
             Self::TerminalOutputAdvanced { .. } => "TerminalOutputAdvanced",
             Self::ProcessExited { .. } => "ProcessExited",
             Self::TerminalControlRecorded { .. } => "TerminalControlRecorded",
+            Self::BackgroundProcessEnded { .. } => "BackgroundProcessEnded",
+            Self::BackgroundWakeDelivered { .. } => "BackgroundWakeDelivered",
+            Self::PausedCapacityReleased { .. } => "PausedCapacityReleased",
             Self::ProtocolStateResumed { .. } => "ProtocolStateResumed",
             Self::ToolCallReconciled { .. } => "ToolCallReconciled",
             Self::UsageReconciled { .. } => "UsageReconciled",
@@ -2772,7 +2845,12 @@ impl Task {
             | TaskEvent::CheckpointSkipped { .. }
             | TaskEvent::CheckpointGcStarted { .. }
             | TaskEvent::CheckpointCollected { .. }
-            | TaskEvent::CheckpointGcCompleted { .. } => None,
+            | TaskEvent::CheckpointGcCompleted { .. }
+            // A background process ends, and a paused task's held capacity
+            // lapses, whatever state the task is in by then.
+            | TaskEvent::BackgroundProcessEnded { .. }
+            | TaskEvent::BackgroundWakeDelivered { .. }
+            | TaskEvent::PausedCapacityReleased { .. } => None,
             // A sandbox is given back after the task ended (M8.5), and one
             // may be lost at any time: the records of the substrate's
             // lifecycle land whatever the task's state. So do the request's

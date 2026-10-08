@@ -1,0 +1,8 @@
+{
+  "expected": {
+    "reason": "the dev server is wedged",
+    "sessionId": "0123456789abcdef",
+    "taskId": "41414141414141414141414141414141"
+  },
+  "type": "modbit.v1.KillTerminal"
+}

@@ -1,0 +1,107 @@
+// SearchConversations (REQ-PX-042; docs/65 AFW-B10): full-text search over the
+// conversations of one session, served from a Core-side index.
+//
+// The index is a projection of the canonical event log — the transcript rows
+// of docs/65 AFW-C01 (`stream.proto`) tokenised — rebuilt from the log
+// whenever it is missing or behind, held in memory under a byte bound and
+// stored nowhere, so a restarted Core answers the same query with the same
+// hits. What a row says (a model's text, a tool's output, a repository's
+// words) is indexed and returned as data: a snippet is a plain-text excerpt
+// with the id of the row it came from, never an instruction, and a search
+// reads the log and writes nothing.
+//
+// Additive: new messages only; commands travel as CommandEnvelope payloads
+// named by `command_type` ("SearchConversations").
+syntax = "proto3";
+
+package modbit.v1;
+
+import "modbit/v1/domain.proto";
+import "modbit/v1/stream.proto";
+
+// Search the conversations (headers and bodies) of one session. A
+// conversation of another session is never searched: `session_id` is the
+// scope, a `task_id` that belongs to another session is WRONG_SESSION, and an
+// envelope that names a different session is WRONG_SESSION too.
+message SearchConversations {
+  Id session_id = 1;
+  // Terms are matched as whole words, case-insensitively, all of them in the
+  // same row (the last term also matches as a prefix). A run of words in
+  // double quotes must appear as that exact phrase. At most 16 terms and 256
+  // characters; an empty query (no searchable term) is BAD_PAYLOAD.
+  string query = 2;
+  // Conversations per page; 0 = 20, capped at 100.
+  uint32 limit = 3;
+  // Snippets returned per conversation; 0 = 3, capped at 10.
+  uint32 max_snippets = 4;
+  bool include_archived = 5;
+  // Restrict the search to one conversation of the session.
+  Id task_id = 6;
+}
+
+// Where a snippet's row came from. Every source is data.
+enum SnippetSource {
+  SNIPPET_SOURCE_UNSPECIFIED = 0;
+  SNIPPET_SOURCE_USER = 1;        // a person's message, queued input or answer
+  SNIPPET_SOURCE_ASSISTANT = 2;   // a model's completed message
+  SNIPPET_SOURCE_TOOL = 3;        // a tool call and its result text
+  SNIPPET_SOURCE_APPROVAL = 4;    // an approval or question card
+}
+
+// One excerpt of one transcript row that matched.
+message ConversationSnippet {
+  // The transcript row's stable id (`GetTranscript` serves the same ids in
+  // every density): the client scrolls to it.
+  string row_id = 1;
+  TranscriptRowKind kind = 2;
+  SnippetSource source = 3;
+  uint64 offset = 4;          // log offset of the event that opened the row
+  string turn_id = 5;
+  // Plain text, at most ~240 characters around the first match, cut on
+  // character boundaries, control characters replaced by spaces.
+  string text = 6;
+  bool cut_before = 7;        // text begins mid-row
+  bool cut_after = 8;         // text ends mid-row
+  // Byte ranges of `text` that matched, ascending and non-overlapping.
+  repeated MatchRange matches = 9;
+  uint32 score = 10;          // matched-term occurrences in the whole row
+}
+
+message MatchRange {
+  uint32 start = 1;
+  uint32 end = 2;
+}
+
+// A conversation with at least one match.
+message ConversationHit {
+  Id task_id = 1;
+  string title = 2;
+  AgentStatusClass status_class = 3;
+  string status_label = 4;
+  bool archived = 5;
+  bool title_matched = 6;     // the header (title) matched
+  uint32 matched_rows = 7;    // rows of the body that matched (snippets are capped)
+  uint32 score = 8;
+  uint64 last_offset = 9;     // the conversation's latest event
+  repeated ConversationSnippet snippets = 10;  // best first, at most max_snippets
+}
+
+message ConversationSearchResults {
+  Id session_id = 1;
+  string query = 2;           // as the Core read it (normalised terms joined by spaces)
+  repeated ConversationHit hits = 3;  // best score first, then most recent
+  uint32 total_hits = 4;      // conversations that matched, before the page limit
+  bool has_more = 5;
+  // What the index did for this search (for the clients and the tests that
+  // check it is a projection of the log and bounded):
+  uint32 tasks_considered = 6;   // conversations of the session in scope
+  uint32 tasks_rebuilt = 7;      // indexed from the log during this search
+  uint32 rows_indexed = 8;       // rows held in the index now, for this session
+  uint64 index_bytes = 9;        // bytes the index holds now, all sessions
+  uint64 index_budget_bytes = 10;
+  uint32 tasks_truncated = 11;   // conversations whose index stopped at its per-task bound
+  // Digest of what the session's index holds: equal after a restart and a
+  // rebuild from the same log.
+  string index_digest = 12;
+  uint64 as_of_offset = 13;   // the log's tip when this was served
+}

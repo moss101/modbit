@@ -66,6 +66,9 @@ pub struct Core {
     pub(crate) capacity: crate::capacity::Capacity,
     /// Browser sessions and their hosts (M7.1, docs/22).
     pub(crate) browser: Arc<crate::browser::BrowserSessions>,
+    /// The conversation search index (REQ-PX-042): derived from the log,
+    /// bounded, rebuilt on demand.
+    pub(crate) conversation_index: crate::conversation_search::Index,
 }
 
 impl Core {
@@ -253,6 +256,7 @@ pub async fn run_as(
             .map_err(|e| anyhow::anyhow!("{e}"))
             .context("capacity")?,
         browser,
+        conversation_index: crate::conversation_search::Index::from_env(),
     });
     // REQ-EV-0017, docs/23 "Secrets": every payload the Core appends passes
     // the one redactor before it is hashed and persisted — a value in its
@@ -313,6 +317,9 @@ pub async fn run_as(
     std::io::stdout().flush().ok();
     let ready_path = data_dir.join("core.ready");
     write_owner_only(&ready_path, format!("{ready_line}\n").as_bytes());
+    // PX-043: background processes that end are recorded on their task's log
+    // by the Core noticing, so the agent can be told once.
+    crate::background_process::spawn_watcher(Arc::clone(&core));
     let shutdown = shutdown_signal();
     tokio::pin!(shutdown);
     // Idle exit (headless clients): a Core spawned by a CLI stays up for later
@@ -1107,6 +1114,10 @@ async fn serve_frames(
                     _ if env.command_type == "WriteTerminal" => {
                         crate::terminal_stream::write_terminal(core, env, terms).await
                     }
+                    // PX-043: stopping a task's background terminal.
+                    _ if env.command_type == "KillTerminal" => {
+                        crate::background_process::kill_terminal(core, env).await
+                    }
                     _ => handle_command(core, env).await,
                 };
                 // REQ-EV-0017: a rejection is error text on its way to a
@@ -1273,7 +1284,7 @@ fn required_client_capability(env: &CommandEnvelope) -> Option<&'static str> {
         "GetCodeView" => "ui.code_view",
         // The conversation read model is a read of the log; a read marker and
         // an archive are the person's own curation of a session.
-        "GetTranscript" | "GetAgentHeaders" => "events.subscribe",
+        "GetTranscript" | "GetAgentHeaders" | "SearchConversations" => "events.subscribe",
         "MarkRead" | "ArchiveTask" => "session.control",
         "DecideReview" => "review.decide",
         // Steering a task from its pull request's comments is steering it.
@@ -1349,7 +1360,9 @@ fn required_client_capability(env: &CommandEnvelope) -> Option<&'static str> {
                 "events.subscribe"
             }
         }
-        "SetTerminalInput" | "ResizeTerminal" | "WriteTerminal" => "session.control",
+        "SetTerminalInput" | "ResizeTerminal" | "WriteTerminal" | "KillTerminal" => {
+            "session.control"
+        }
         "BrowserViewInput" => "session.control",
         "ImportMirroredEvents" | "ReadMirrorEvents" => "session.mirror",
         "IngestAttachment" | "AttachContextDocument" => "attachments.ingest",
@@ -4195,6 +4208,21 @@ pub(crate) async fn handle_command(core: &Arc<Core>, env: CommandEnvelope) -> Co
                 Err((code, message)) => reject(cid, code, message),
             }
         }
+        "SearchConversations" => {
+            let Ok(p) = wire::SearchConversations::decode(env.payload.as_slice()) else {
+                return reject(cid, "BAD_PAYLOAD", "SearchConversations");
+            };
+            match crate::conversation_search::search(
+                core,
+                &p,
+                env.session_id.as_ref().and_then(id16),
+            )
+            .await
+            {
+                Ok(r) => accept(cid, false, r.encode_to_vec()),
+                Err((code, message)) => reject(cid, code, message),
+            }
+        }
         "GetAgentHeaders" => {
             let Ok(p) = wire::GetAgentHeaders::decode(env.payload.as_slice()) else {
                 return reject(cid, "BAD_PAYLOAD", "GetAgentHeaders");
@@ -6766,6 +6794,14 @@ pub(crate) async fn handle_command(core: &Arc<Core>, env: CommandEnvelope) -> Co
                 {
                     return reject(cid, error_code(&e), e.to_string());
                 }
+                // A paused task's ticket goes back with the task (REQ-PX-101).
+                core.capacity.drop_hold(
+                    &mut store,
+                    core,
+                    &task,
+                    crate::runtime::Lineage::task(core.tenant_id, task.session_id, task.task_id),
+                    &actor,
+                );
             }
             // FIX-16: cancelling a parent cancels the children it still has
             // alive (a cancellation domain, not a flag on one task).
