@@ -407,9 +407,13 @@ fn register_providers(core: &Core, ext: &LoadedExtension) -> Vec<String> {
         let name = p.endpoint(&ext.manifest.name);
         let credential = match &p.credential {
             None => modbit_providers::SecretHandle::None,
-            Some(handle) => match core.tools.mcp.credential(handle) {
-                Some(v) => modbit_providers::SecretHandle::Inline(v),
-                None => {
+            Some(handle) => match core.tools.mcp.has_credential(handle) {
+                // The endpoint uses the credential the person configured
+                // by handle; the value is not copied out of the broker.
+                true => modbit_providers::SecretHandle::Credential(
+                    crate::mcp::McpHub::credential_id(handle),
+                ),
+                false => {
                     out.push(format!(
                         "{name}: not registered: the credential `{handle}` is not in this Core's custody"
                     ));

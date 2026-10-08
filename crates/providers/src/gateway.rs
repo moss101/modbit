@@ -331,6 +331,39 @@ pub struct ProviderGateway {
     /// provider answers a rate limit with `Retry-After`, honoured by every
     /// request to that endpoint, not only the one that was told.
     cooldown: Arc<Mutex<BTreeMap<String, Instant>>>,
+    /// The credential broker (REQ-PX-130): every endpoint's credential is
+    /// registered with it, and the gateway obtains the key for each request
+    /// through it — scoped to the task that makes the request, to the
+    /// endpoint, to the purpose — so a revoked or rotated credential applies
+    /// to the very next request.
+    broker: Arc<modbit_secrets::CredentialBroker>,
+}
+
+/// The broker's identity of an endpoint's credential.
+#[must_use]
+pub fn credential_id(endpoint: &str) -> modbit_secrets::CredentialId {
+    modbit_secrets::CredentialId::new(modbit_secrets::Kind::Provider, endpoint)
+}
+
+/// Register `ep`'s credential with `broker` (a rotation when it already is).
+fn register_credential(broker: &modbit_secrets::CredentialBroker, ep: &Endpoint) {
+    broker.register(modbit_secrets::Registration {
+        id: credential_id(&ep.name),
+        kind: modbit_secrets::Kind::Provider,
+        source: ep.credential.clone(),
+        audience: format!("provider:{}", ep.name),
+    });
+}
+
+/// The principal a request speaks for: its task (the request id is
+/// `<task id>:<ordinal>`), else the Core itself.
+fn principal_of(request_id: &str) -> String {
+    match request_id.split_once(':') {
+        Some((task, rest)) if task.len() == 36 && rest.chars().all(|c| c.is_ascii_digit()) => {
+            format!("task:{task}")
+        }
+        _ => "core".to_owned(),
+    }
 }
 
 /// Organization model policy (REQ-EV-0031): block or require providers,
@@ -423,11 +456,16 @@ impl ProviderGateway {
     /// Build over a set of endpoints.
     #[must_use]
     pub fn new(endpoints: Vec<Endpoint>) -> Self {
+        let broker = Arc::new(modbit_secrets::CredentialBroker::new());
+        for e in &endpoints {
+            register_credential(&broker, e);
+        }
         let map = endpoints
             .into_iter()
             .map(|e| (e.name.clone(), e))
             .collect::<BTreeMap<_, _>>();
         Self {
+            broker,
             endpoints: Arc::new(Mutex::new(map)),
             health: Arc::new(Mutex::new(BTreeMap::new())),
             policy: Arc::new(OrgModelPolicy::default()),
@@ -439,6 +477,35 @@ impl ProviderGateway {
             canary: Arc::new(Mutex::new(None)),
             slots: Arc::new(Mutex::new(BTreeMap::new())),
             cooldown: Arc::new(Mutex::new(BTreeMap::new())),
+        }
+    }
+
+    /// Use `broker` as the credential broker (the Core shares one across
+    /// everything that holds a credential): every endpoint's credential is
+    /// registered with it.
+    #[must_use]
+    pub fn with_broker(mut self, broker: Arc<modbit_secrets::CredentialBroker>) -> Self {
+        for e in self.endpoints.lock().expect("endpoints").values() {
+            register_credential(&broker, e);
+        }
+        self.broker = broker;
+        self
+    }
+
+    /// The credential broker.
+    #[must_use]
+    pub fn broker(&self) -> &Arc<modbit_secrets::CredentialBroker> {
+        &self.broker
+    }
+
+    /// Whether the endpoint has a credential it can use now (or needs none).
+    #[must_use]
+    pub fn credential_configured(&self, endpoint: &str) -> bool {
+        let eps = self.endpoints.lock().expect("endpoints");
+        match eps.get(endpoint) {
+            Some(ep) if matches!(ep.credential, SecretHandle::None) => false,
+            Some(_) => self.broker.configured(&credential_id(endpoint)),
+            None => false,
         }
     }
 
@@ -508,6 +575,8 @@ impl ProviderGateway {
     /// setup hands the Core a credential it holds in memory only; nothing is
     /// written to the log, the object store or any file by this call).
     pub fn configure_endpoint(&self, endpoint: Endpoint) {
+        // A rotation when the endpoint was configured before.
+        register_credential(&self.broker, &endpoint);
         self.endpoints
             .lock()
             .expect("endpoints")
@@ -517,6 +586,7 @@ impl ProviderGateway {
     /// Forget an endpoint, credential included. What provider setup could not
     /// confirm is not left registered.
     pub fn remove_endpoint(&self, name: &str) -> bool {
+        self.broker.forget(&credential_id(name));
         self.endpoints
             .lock()
             .expect("endpoints")
@@ -809,7 +879,9 @@ impl ProviderGateway {
         if req.model_policy.reasoning_effort.is_some() && !cap.reasoning {
             return Err(mismatch("reasoning"));
         }
-        if !matches!(ep.credential, SecretHandle::None) && ep.credential.resolve().is_none() {
+        if !matches!(ep.credential, SecretHandle::None)
+            && !self.broker.usable(&credential_id(&ep.name))
+        {
             return Err(RouteError::MissingCredential(ep.name.clone()));
         }
         let record = RouteRecord {
@@ -1015,11 +1087,36 @@ impl ProviderGateway {
         };
         // REQ-EV-0017: everything this attempt reports is error text, and
         // this endpoint's own key is the value most likely to come back in it.
-        let redactor = modbit_secrets::Redactor::new(ep.credential.resolve());
-        if let Some(key) = ep.credential.resolve() {
+        let redactor = self.broker.redactor();
+        if !matches!(ep.credential, SecretHandle::None) {
+            // The key is obtained for this request, for this task, for this
+            // endpoint: a revoked, expired or rotated credential is decided
+            // here, on the very next request.
+            let key = match self.broker.acquire(
+                &credential_id(&ep.name),
+                &modbit_secrets::Use {
+                    principal: principal_of(&req.request_id),
+                    audience: format!("provider:{}", ep.name),
+                    purpose: "model.request".into(),
+                    nonce: None,
+                },
+            ) {
+                Ok(k) => k,
+                Err(refusal) => {
+                    return Attempt::Failed {
+                        code: refusal.code().into(),
+                        message: format!(
+                            "the credential for endpoint `{}` was refused by the credential broker",
+                            ep.name
+                        ),
+                    };
+                }
+            };
             rb = match (ep.kind, ep.auth) {
-                (ProviderKind::Anthropic, AuthScheme::Native) => rb.header("x-api-key", key),
-                _ => rb.bearer_auth(key),
+                (ProviderKind::Anthropic, AuthScheme::Native) => {
+                    rb.header("x-api-key", key.expose())
+                }
+                _ => rb.bearer_auth(key.expose()),
             };
         }
         // Gateway-specific fields fill in beside the canonical body; a

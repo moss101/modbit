@@ -219,9 +219,13 @@ pub async fn run_as(
     let endpoint = Endpoint::for_dir(&data_dir, &nonce).context("choosing local endpoint")?;
     let (tx, _) = watch::channel(start);
     let boot_generation = recovery.boot_generation;
-    let browser = Arc::new(crate::browser::BrowserSessions::default());
     let gateway = modbit_providers::ProviderGateway::new(modbit_providers::endpoints_from_env())
         .with_policy(modbit_providers::OrgModelPolicy::from_env());
+    // REQ-PX-130: one broker for every credential this Core holds; the
+    // browser registry registers its handles with it.
+    let browser = Arc::new(crate::browser::BrowserSessions::with_broker(Arc::clone(
+        gateway.broker(),
+    )));
     let core = Arc::new(Core {
         store: Arc::new(Mutex::new(store)),
         last_offset: tx,
@@ -741,6 +745,8 @@ async fn serve_connection(core: Arc<Core>, mut stream: BoxedStream) -> Result<()
                     "GetCapabilitySnapshots",
                     "ListProcessServices",
                     "GetComponentHealth",
+                    "GetCredentialBroker",
+                    "RevokeCredential",
                 ]
                 .map(String::from)
                 .to_vec(),
@@ -1324,6 +1330,9 @@ fn required_client_capability(env: &CommandEnvelope) -> Option<&'static str> {
         // write to steer the agent — the same class of decision as trusting
         // the repository.
         "SetTaskBudgets" => "task.author",
+        // Seeing what credentials exist and cutting one off are the
+        // provider-configuration class of decision.
+        "GetCredentialBroker" | "RevokeCredential" => "provider.configure",
         "TrustSkill" | "UntrustSkill" => "repository.trust",
         "ImportAgentConfig" => "repository.trust",
         "ConfigureSandboxGateway" => "sandbox.configure",
@@ -5134,16 +5143,15 @@ pub(crate) async fn handle_command(core: &Arc<Core>, env: CommandEnvelope) -> Co
                     "api_base_url must be https (or a loopback test host)",
                 );
             }
-            let cfg = modbit_tools::forge::ForgeConfig {
-                kind: "github".into(),
+            let cfg = core.tools.forge.configure(
                 api_base,
-                web_host: if p.web_host.trim().is_empty() {
+                if p.web_host.trim().is_empty() {
                     "github.com".to_owned()
                 } else {
                     p.web_host.trim().to_owned()
                 },
-                token: (!p.token.trim().is_empty()).then(|| p.token.trim().to_owned()),
-            };
+                (!p.token.trim().is_empty()).then(|| p.token.trim().to_owned()),
+            );
             let egress = cfg.egress_target();
             let view = wire::ForgeConfigured {
                 forge: cfg.kind.clone(),
@@ -5152,7 +5160,6 @@ pub(crate) async fn handle_command(core: &Arc<Core>, env: CommandEnvelope) -> Co
                 token_held: cfg.token.is_some(),
                 egress,
             };
-            core.tools.forge.set(cfg);
             accept(cid, false, view.encode_to_vec())
         }
         // M9.4 (REQ-EV-0224): a client proposes an external tool server on
@@ -5794,7 +5801,7 @@ pub(crate) async fn handle_command(core: &Arc<Core>, env: CommandEnvelope) -> Co
             for ep in gw.endpoints() {
                 let credential_available =
                     matches!(ep.credential, modbit_providers::SecretHandle::None)
-                        || ep.credential.resolve().is_some();
+                        || gw.credential_configured(&ep.name);
                 for m in &ep.models {
                     models.push(wire::ModelCapabilityView {
                         endpoint: ep.name.clone(),
@@ -6617,6 +6624,9 @@ pub(crate) async fn handle_command(core: &Arc<Core>, env: CommandEnvelope) -> Co
         "ListProcessServices" => crate::process_services::list(core, env).await,
         // REQ-PX-139: component health with the age of each observation.
         "GetComponentHealth" => crate::telemetry::component_health(core, env).await,
+        // REQ-PX-130: what the credential broker holds and every use of it.
+        "GetCredentialBroker" => crate::credentials::view(core, env),
+        "RevokeCredential" => crate::credentials::revoke(core, env),
         "GetIndexStatus" => {
             let Ok(p) = wire::GetIndexStatus::decode(env.payload.as_slice()) else {
                 return reject(cid, "BAD_PAYLOAD", "GetIndexStatus");

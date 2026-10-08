@@ -135,3 +135,70 @@ message ComponentHealthList {
   int64 now_ms = 2;
   TelemetryExportView export = 3;
 }
+
+// ---------------------------------------------------------------- PX-130
+
+// The credential broker: what it holds, who may use it, and every use. No
+// message here carries a credential value.
+message GetCredentialBroker {
+  uint32 audit_limit = 1;          // 0 = 50, at most 500
+}
+
+message CredentialView {
+  string id = 1;                   // <kind>:<name>
+  string kind = 2;                 // provider | mcp | browser | forge | cloud | webhook | telemetry
+  string audience = 3;
+  uint64 generation = 4;           // bumped by every rotation
+  bool revoked = 5;
+  bool configured = 6;             // its source has a value now
+  bool delegated = 7;              // the value lives in another process
+  uint64 uses = 8;
+  uint64 refusals = 9;
+  int64 last_used_ms = 10;
+  int64 registered_at_ms = 11;
+}
+
+message GrantView {
+  string id = 1;
+  string credential = 2;
+  string principal = 3;
+  string audience = 4;
+  string purpose = 5;
+  int64 expires_at_ms = 6;
+  uint32 max_uses = 7;             // 0 = unlimited within the TTL
+  uint32 uses = 8;
+  bool revoked = 9;
+  bool expired = 10;
+}
+
+message CredentialAuditView {
+  int64 at_ms = 1;
+  string action = 2;
+  string credential = 3;
+  string grant = 4;
+  string principal = 5;
+  string audience = 6;
+  string purpose = 7;
+  string outcome = 8;              // OK or the refusal code
+}
+
+message CredentialBrokerView {
+  repeated CredentialView credentials = 1;
+  repeated GrantView grants = 2;
+  repeated CredentialAuditView audit = 3;
+  uint64 issued = 4;
+  uint64 used = 5;
+  map<string, uint64> refused = 6; // by refusal code
+}
+
+// Revoke by credential, by grant or by principal (exactly one).
+message RevokeCredential {
+  string credential_id = 1;
+  string grant_id = 2;
+  string principal = 3;
+  string reason = 4;
+}
+
+message CredentialRevoked {
+  uint32 revoked = 1;
+}

@@ -954,7 +954,10 @@ async fn qual_px_139_after_a_restart_health_reports_the_previous_state_with_its_
     // The file is rewritten when a component changes and at least every 30 s,
     // so the persisted observation can be older than the last one this run
     // made, never newer.
-    assert!(prev.observed_at_ms <= before.observed_at_ms, "{prev:?} {before:?}");
+    assert!(
+        prev.observed_at_ms <= before.observed_at_ms,
+        "{prev:?} {before:?}"
+    );
     assert!(before.observed_at_ms - prev.observed_at_ms <= 31_000);
     // A component this run does observe is fresh.
     let telemetry = h.components.iter().find(|c| c.name == "telemetry").unwrap();

@@ -846,14 +846,42 @@ pub(crate) fn spawn(core: Arc<Core>) {
             None => s.to_owned(),
         })
     };
-    let header_vars = settings.headers.clone();
+    // The exporter's headers are credentials like any other: registered with
+    // the broker (their source is the environment variable the configuration
+    // names, never a value of the configuration) and obtained from it at
+    // each send, so a rotation or a revocation applies to the next request.
+    let audience = format!("otlp:{host}");
+    let mut header_ids: Vec<(String, modbit_secrets::CredentialId)> = Vec::new();
+    for (name, var) in &settings.headers {
+        let id = modbit_secrets::CredentialId::new(
+            modbit_secrets::Kind::Telemetry,
+            &name.to_ascii_lowercase(),
+        );
+        core.tools.broker().register(modbit_secrets::Registration {
+            id: id.clone(),
+            kind: modbit_secrets::Kind::Telemetry,
+            source: modbit_secrets::SecretHandle::Env(var.clone()),
+            audience: "otlp:*".into(),
+        });
+        header_ids.push((name.clone(), id));
+    }
+    let header_broker = Arc::clone(core.tools.broker());
     let headers: Headers = Arc::new(move || {
-        header_vars
+        header_ids
             .iter()
-            .filter_map(|(name, var)| {
-                // The value is read when it is sent and held nowhere.
-                let v = std::env::var(var).ok().filter(|v| !v.is_empty())?;
-                Some((name.clone(), v))
+            .filter_map(|(name, id)| {
+                let secret = header_broker
+                    .acquire(
+                        id,
+                        &modbit_secrets::Use {
+                            principal: "core".into(),
+                            audience: audience.clone(),
+                            purpose: "telemetry.export".into(),
+                            nonce: None,
+                        },
+                    )
+                    .ok()?;
+                Some((name.clone(), secret.expose().to_owned()))
             })
             .collect()
     });

@@ -27,6 +27,7 @@ mod ci_evidence;
 mod compaction_model;
 mod compensation;
 mod config;
+mod credentials;
 mod critique;
 mod dashboard;
 mod doctor;

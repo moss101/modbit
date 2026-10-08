@@ -539,7 +539,10 @@ impl ToolHost {
         let external_reads = Arc::new(modbit_mcp::ReadDeclarations::new());
         modbit_tools::external::register_external(&mut registry, Arc::clone(&external_reads))
             .map_err(|e| anyhow::anyhow!("{e}"))?;
-        let mcp = Arc::new(crate::mcp::McpHub::from_env(external_reads));
+        let mcp = Arc::new(crate::mcp::McpHub::from_env(
+            external_reads,
+            Arc::clone(gateway.broker()),
+        ));
         let runtime = ToolRuntime::new(registry, Arc::new(ProfilePolicy));
         let execd = match spawn_execd(data_dir, replay_generation) {
             Ok(e) => Some(e),
@@ -568,7 +571,7 @@ impl ToolHost {
             diag_baselines: Mutex::new(HashMap::new()),
             language_servers: Arc::new(std::sync::Mutex::new(HashMap::new())),
             state_dir: data_dir.join("workspaces"),
-            forge: crate::forge::ForgeCustody::from_env(),
+            forge: crate::forge::ForgeCustody::from_env(Arc::clone(gateway.broker())),
             mcp,
             configurations: crate::config::Configurations::default(),
             epochs: crate::epoch::Epochs::default(),
@@ -586,29 +589,25 @@ impl ToolHost {
         })
     }
 
-    /// The one redactor over everything this Core holds (REQ-EV-0017).
-    pub(crate) fn redactor(&self) -> modbit_secrets::Redactor {
-        modbit_secrets::Redactor::new(self.secrets_in_custody())
+    /// The credential broker every credential this Core holds lives in
+    /// (REQ-PX-130): provider keys, the forge token, external servers'
+    /// credentials, the credentials a browser host fills, an exporter's
+    /// headers.
+    pub(crate) fn broker(&self) -> &Arc<modbit_secrets::CredentialBroker> {
+        self.gateway.broker()
     }
 
-    /// Every credential this Core holds (M7.7, docs/22 "Prompt-injection
-    /// isolation"): the provider keys the gateway can present and the forge
-    /// token. Memory only; the pipeline compares, never records.
-    fn secrets_in_custody(&self) -> Vec<String> {
-        let mut out: Vec<String> = self
-            .gateway
-            .endpoints()
-            .iter()
-            .filter_map(|e| e.credential.resolve())
-            .collect();
-        if let Some(t) = self.forge.get().and_then(|f| f.token.clone()) {
-            out.push(t);
-        }
-        // M9.4: an external server's credential is in this Core's custody
-        // too, so an argument carrying its value is refused like any other.
-        out.extend(self.mcp.secrets_in_custody());
-        out.retain(|s| s.len() >= 8);
-        out
+    /// The one redactor over everything this Core holds (REQ-EV-0017).
+    pub(crate) fn redactor(&self) -> modbit_secrets::Redactor {
+        self.broker().redactor()
+    }
+
+    /// Every credential this Core holds, for the one thing that must compare
+    /// text with them (M7.7, docs/22 "Prompt-injection isolation"): the
+    /// screen that refuses a tool call whose arguments carry one. The values
+    /// are compared and never recorded.
+    pub(crate) fn secrets_in_custody(&self) -> Vec<String> {
+        self.broker().custody_for_screening()
     }
 
     pub(crate) async fn workspace(

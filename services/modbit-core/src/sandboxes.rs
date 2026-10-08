@@ -91,8 +91,14 @@ pub async fn ensure_for_task(
                 capability: "network.egress".into(),
             });
         }
+        // The token comes from the credential broker for this task and this
+        // purpose; a revoked or absent token means no credential is granted.
         if ops.iter().any(|o| o == "secret.use")
-            && let Some(token) = &forge.token
+            && let Some(token) = forge
+                .token
+                .as_ref()
+                .map(|t| t.for_principal(&format!("task:{}", task.task_id)))
+            && let Ok(secret) = token.acquire_for(&forge.kind, "sandbox.credential")
         {
             credentials.push((
                 modbit_sandbox::policy::CredentialGrant {
@@ -109,7 +115,7 @@ pub async fn ensure_for_task(
                     expires_at_ms: modbit_domain::Timestamp::now().0
                         + crate::sandboxes::CREDENTIAL_TTL_MS,
                 },
-                token.clone(),
+                secret.expose().to_owned(),
             ));
         }
     }
@@ -185,14 +191,29 @@ pub async fn ensure_for_task(
                 if !core.tools.sandboxes.lock().await.contains_key(&task_id) {
                     return;
                 }
-                let Some(token) = core.tools.forge.get().and_then(|f| f.token.clone()) else {
+                let Some(forge) = core.tools.forge.get() else {
+                    return;
+                };
+                let Some(token) = forge
+                    .token
+                    .as_ref()
+                    .map(|t| t.for_principal(&format!("task:{task_id}")))
+                else {
                     // The Core no longer holds the secret: nothing to renew,
                     // and the sandbox's handle expires on its own.
                     return;
                 };
+                // Each renewal is a use of the broker's credential: a
+                // revocation stops the renewal and the handle then expires.
+                let Ok(secret) = token.acquire_for(&forge.kind, "sandbox.credential") else {
+                    return;
+                };
                 let until = modbit_domain::Timestamp::now().0 + CREDENTIAL_TTL_MS;
                 for handle in &handles {
-                    if let Err(e) = sandbox.renew_credential(handle, &token, until).await {
+                    if let Err(e) = sandbox
+                        .renew_credential(handle, secret.expose(), until)
+                        .await
+                    {
                         eprintln!(
                             "modbit-core: renewing the sandbox credential `{handle}` failed: {e}"
                         );

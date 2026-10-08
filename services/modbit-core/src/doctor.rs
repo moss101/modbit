@@ -252,7 +252,7 @@ pub(crate) async fn export(
             d::ProviderHealth {
                 host: host_of(&ep.base_url),
                 kind: format!("{:?}", ep.kind),
-                credential_configured: ep.credential.resolve().is_some(),
+                credential_configured: core.gateway.credential_configured(&ep.name),
                 models: ep.models.iter().map(|m| m.model.clone()).collect(),
                 requests: h.requests,
                 successes: h.successes,

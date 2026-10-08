@@ -13,43 +13,79 @@ use modbit_domain::event::{Actor, AggregateType};
 use modbit_domain::task::TaskEvent;
 use modbit_domain::{SessionId, TaskId, TenantId};
 use modbit_event_store::{AppendRequest, EventStore};
-use modbit_tools::forge::{ForgeConfig, ForgeLedger};
+use modbit_tools::forge::{ForgeConfig, ForgeLedger, ForgeToken};
 use modbit_tools::registry::BoxFuture;
 use serde_json::Value;
 
 use crate::runtime::typed;
 
-/// The configuration in force, replaced whole by `ConfigureForge`.
-#[derive(Default)]
+/// The broker's identity of the forge token.
+pub(crate) fn token_id() -> modbit_secrets::CredentialId {
+    modbit_secrets::CredentialId::new(modbit_secrets::Kind::Forge, "github")
+}
+
+/// The configuration in force, replaced whole by `ConfigureForge`. The token
+/// is not here: it is in the credential broker (REQ-PX-130), and the
+/// configuration refers to it.
 pub struct ForgeCustody {
     current: Mutex<Option<Arc<ForgeConfig>>>,
+    broker: Arc<modbit_secrets::CredentialBroker>,
 }
 
 impl ForgeCustody {
     /// From the environment at boot.
-    pub fn from_env() -> Self {
+    pub fn from_env(broker: Arc<modbit_secrets::CredentialBroker>) -> Self {
         let token = std::env::var("MODBIT_GITHUB_TOKEN")
             .ok()
             .filter(|t| !t.trim().is_empty());
         let api_base = std::env::var("MODBIT_GITHUB_API_BASE_URL").ok();
-        let custody = Self::default();
+        let custody = Self {
+            current: Mutex::new(None),
+            broker,
+        };
         if token.is_some() || api_base.is_some() {
-            custody.set(ForgeConfig {
-                kind: "github".into(),
-                api_base: api_base.unwrap_or_else(|| "https://api.github.com".into()),
-                web_host: std::env::var("MODBIT_GITHUB_WEB_HOST")
+            custody.configure(
+                api_base.unwrap_or_else(|| "https://api.github.com".into()),
+                std::env::var("MODBIT_GITHUB_WEB_HOST")
                     .ok()
                     .filter(|h| !h.is_empty())
                     .unwrap_or_else(|| "github.com".into()),
                 token,
-            });
+            );
         }
         custody
     }
 
-    /// Replace the configuration.
-    pub fn set(&self, cfg: ForgeConfig) {
-        *self.current.lock().expect("forge custody") = Some(Arc::new(cfg));
+    /// Replace the configuration. The token, when given, is registered with
+    /// the broker (a rotation when one was there); none clears it.
+    pub fn configure(
+        &self,
+        api_base: String,
+        web_host: String,
+        token: Option<String>,
+    ) -> Arc<ForgeConfig> {
+        match token {
+            Some(t) => self.broker.register(modbit_secrets::Registration {
+                id: token_id(),
+                kind: modbit_secrets::Kind::Forge,
+                source: modbit_secrets::SecretHandle::Inline(t),
+                audience: "forge:*".into(),
+            }),
+            None => {
+                self.broker.forget(&token_id());
+            }
+        }
+        let cfg = Arc::new(ForgeConfig {
+            kind: "github".into(),
+            api_base,
+            web_host,
+            token: self
+                .broker
+                .configured(&token_id())
+                .then(|| ForgeToken::new(Arc::clone(&self.broker), token_id())),
+        });
+        *self.current.lock().expect("forge custody") = Some(Arc::clone(&cfg));
+        cfg
     }
 
     /// The configuration in force.
