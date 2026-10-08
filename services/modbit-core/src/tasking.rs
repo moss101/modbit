@@ -383,6 +383,24 @@ fn check_pin(core: &Core, task: &Task, pin: &(String, String)) -> Result<(), Ref
             format!("`{endpoint}` serves no model `{model}`"),
         ));
     }
+    // The organisation's block rule is the gateway's own check at dispatch;
+    // a pin it would refuse there is refused here with the same rule named,
+    // so the person learns it before any token (PX-056, AFW-H02).
+    if let Some(ep) = core
+        .gateway
+        .endpoints()
+        .iter()
+        .find(|e| &e.name == endpoint)
+        && let Some(rule) = core
+            .gateway
+            .policy()
+            .blocking_rule(endpoint, ep.kind, model)
+    {
+        return Err(refuse(
+            "POLICY_BLOCKED",
+            format!("{endpoint}/{model} is blocked by the organisation model policy ({rule})"),
+        ));
+    }
     match crate::routing::refused_by_model_policy(
         crate::routing::model_policy(core, task).as_deref(),
         [(endpoint.clone(), model.clone())],

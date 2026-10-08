@@ -9,7 +9,7 @@ import { expect, test, type Page } from "@playwright/test";
 import { existsSync, mkdirSync, mkdtempSync, realpathSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { accessible, closeApp, git, launch, makeRepo, setContentSize } from "./support/ui-harness.ts";
+import { accessible, closeApp, git, launch, makeRepo, MOD, setContentSize } from "./support/ui-harness.ts";
 import { Gate, streamingModel } from "./support/stream-model.ts";
 
 const FIRST = "The streamed answer begins here and keeps going for a while, ";
@@ -162,8 +162,10 @@ test("PX-047: scrolling up freezes follow, the pill counts later messages, the j
     await scroll.evaluate((e) => (e.scrollTop = 0));
     await expect(scroll).toHaveAttribute("data-pinned", "false");
     await expect(page.getByTestId("conv-pill")).toHaveCount(0);
-    await page.getByTestId("conv-steer").fill("please keep it short");
-    await page.getByTestId("conv-steer").press("Enter");
+    // PX-054/055 (deliberate change to this test): plain Enter in the composer now queues behind the running turn (AFW-E01);
+    // the primary-modifier Enter is the steer (AFW-D11, AFW-E05), which is what this scenario exercises.
+    await page.getByTestId("composer-input").fill("please keep it short");
+    await page.getByTestId("composer-input").press(`${MOD}+Enter`);
     // The steer is one message; the interrupted turn may start another: the pill counts them, once each.
     await expect(page.getByTestId("conv-pill")).toHaveText(/^[1-9]\d* new messages?$/, { timeout: 30_000 });
     expect(await scroll.evaluate((e) => e.scrollTop)).toBeLessThan(40);

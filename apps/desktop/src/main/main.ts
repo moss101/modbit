@@ -5,8 +5,8 @@
  * preload bridge. The renderer gets durable ids and Core events; it never gets
  * the socket, the secret, Node, or the filesystem.
  */
-import { app, BrowserWindow, dialog, ipcMain, Notification, safeStorage, session, type IpcMainInvokeEvent } from "electron";
-import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
+import { app, BrowserWindow, dialog, ipcMain, nativeImage, Notification, safeStorage, session, type IpcMainInvokeEvent } from "electron";
+import { existsSync, mkdirSync, readFileSync, statSync, writeFileSync } from "node:fs";
 import { join, resolve } from "node:path";
 import { CoreSupervisor, freshId, type CoreClient, type CoreStatus } from "@modbit/ide-adapter-core";
 import { serializeEvent, type WireEvent } from "./events.js";
@@ -14,6 +14,7 @@ import { BrowserHost } from "./browser.js";
 import { CredentialStore } from "./credentials.js";
 import { platformState } from "./platform.js";
 import { observeStreamEvent, registerConversationHandlers } from "./conversation-ipc.js";
+import { registerComposerHandlers, requireSkillNames } from "./composer-ipc.js";
 import { optionalWindow, requireBool, requireCursor, requireDimension, requireHandle, requireKeystrokes, requireWorkspacePath } from "./apps-args.js";
 import { noWork, quitPrompt, runShutdown, WINDOW_DEFAULT, WINDOW_MIN, type ActiveWork, type ShutdownStep } from "./lifecycle.js";
 import { TerminalHost } from "./terminal-host.js";
@@ -427,12 +428,14 @@ handle("task:create", async (_e: IpcMainInvokeEvent, sessionId: unknown, goal: u
   if (c.leaseGeneration(sid) === undefined) await c.joinSessionLease(sid, `desktop ${app.getVersion()}`);
   return c.createTask(sid, g, cid, root, issue);
 });
-handle("task:start", async (_e: IpcMainInvokeEvent, sessionId: unknown, taskId: unknown) => {
+handle("task:start", async (_e: IpcMainInvokeEvent, sessionId: unknown, taskId: unknown, options: unknown) => {
   const sid = requireSessionId(sessionId);
   const tid = requireTaskId(taskId);
+  // PX-054: skills the person named in the slash menu; the Core still decides whether each may reach the model.
+  const skills = requireSkillNames((options as { skills?: unknown } | null | undefined)?.skills);
   const c = requireClient();
   if (c.leaseGeneration(sid) === undefined) await c.joinSessionLease(sid, `desktop ${app.getVersion()}`);
-  return c.startTask(sid, tid);
+  return c.startTask(sid, tid, skills.length > 0 ? { skills } : {});
 });
 // PX-024: cancel and steer the focused task from the keyboard. Cancel is
 // confirmed in the renderer before it reaches here; steering queues one
@@ -453,21 +456,10 @@ handle("task:steer", async (_e: IpcMainInvokeEvent, sessionId: unknown, taskId: 
   const r = await c.queueInput(sid, tid, text, "STEER");
   return { sequence: r.sequence.toString(), offset: r.offset.toString() };
 });
-// REQ-EV-0190: attach a local file to a task. Main reads the bytes (bounded)
-// and the Core normalizes them; the renderer never sees a filesystem.
-const MAX_ATTACHMENT_BYTES = 3 * 1024 * 1024;
-handle("task:attach", async (_e: IpcMainInvokeEvent, sessionId: unknown, taskId: unknown, filePath: unknown) => {
-  const sid = requireSessionId(sessionId);
-  const tid = requireTaskId(taskId);
-  if (typeof filePath !== "string" || filePath.length === 0 || filePath.length > 4096) throw new Error("BAD_ARGUMENT: file path required");
-  const abs = resolve(filePath);
-  if (!existsSync(abs)) throw new Error("BAD_ARGUMENT: file does not exist");
-  const data = readFileSync(abs);
-  if (data.byteLength === 0 || data.byteLength > MAX_ATTACHMENT_BYTES) throw new Error(`BAD_ARGUMENT: attachment must be 1..${MAX_ATTACHMENT_BYTES} bytes`);
-  const c = requireClient();
-  if (c.leaseGeneration(sid) === undefined) await c.joinSessionLease(sid, `desktop ${app.getVersion()}`);
-  return c.ingestAttachment(sid, tid, abs.split(/[\\/]/).pop() ?? "attachment", new Uint8Array(data));
-});
+// REQ-EV-0190, REQ-PX-054: attaching a file is `composer:attachPath` and
+// `composer:attachBytes` (composer-ipc.ts): main reads a chosen file (bounded),
+// decides its type from its bytes, and the Core normalizes it; the renderer
+// never sees a filesystem and the preload resolves a File's path itself.
 // Review surface (docs/20): immutable, revision-bound payloads from the Core.
 handle("review:bundle", async (_e: IpcMainInvokeEvent, taskId: unknown) => {
   const b = await requireClient().getReviewBundle(requireTaskId(taskId));
@@ -778,6 +770,34 @@ registerConversationHandlers({
   taskId: requireTaskId,
   lease: async (c, sid) => {
     if (c.leaseGeneration(sid) === undefined) await c.joinSessionLease(sid, `desktop ${app.getVersion()}`);
+  },
+});
+// REQ-PX-054..056: the composer's mode, preference, queue, interrupt, slash, model and attachment commands.
+registerComposerHandlers({
+  handle: (channel, fn) => handle(channel, (_e, ...args) => fn(...args)),
+  client: requireClient,
+  sessionId: requireSessionId,
+  taskId: requireTaskId,
+  lease: async (c, sid) => {
+    if (c.leaseGeneration(sid) === undefined) await c.joinSessionLease(sid, `desktop ${app.getVersion()}`);
+  },
+  thumbnail: (bytes) => {
+    try {
+      const img = nativeImage.createFromBuffer(Buffer.from(bytes));
+      if (img.isEmpty()) return null;
+      const { width } = img.getSize();
+      return (width > 96 ? img.resize({ width: 96, quality: "good" }) : img).toDataURL();
+    } catch {
+      return null;
+    }
+  },
+  readFile: (path, maxBytes) => {
+    const abs = resolve(path);
+    const st = statSync(abs, { throwIfNoEntry: false });
+    if (!st) throw new Error("BAD_ARGUMENT: file does not exist");
+    if (!st.isFile()) throw new Error("ATTACHMENT_REFUSED: only a file can be attached, not a folder");
+    if (st.size > maxBytes) throw new Error(`ATTACHMENT_REFUSED: The file is larger than ${Math.round(maxBytes / (1024 * 1024))} MB, the most one attachment may be.`);
+    return { name: abs.split(/[\\/]/).pop() ?? "attachment", bytes: new Uint8Array(readFileSync(abs)) };
   },
 });
 // REQ-PX-048 (the apps panel): the Terminal, Files and Evidence apps. Every
