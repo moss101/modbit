@@ -294,3 +294,32 @@ test("PX-044/045: the shell geometry in the gallery frame: 1280 with the panel, 
     await closeApp(app);
   }
 });
+
+test("PX-046/047: the agent list shows every status class with a glyph and words, and the conversation rows (streaming, stopped, approval, failure) pass axe in light, dark and high contrast", async () => {
+  const { app, page } = await launchGallery();
+  try {
+    const list = page.getByTestId("gallery-agent-list");
+    const classes = await list.getByTestId("agent-row").evaluateAll((els) => els.map((e) => e.getAttribute("data-class")));
+    expect(new Set(classes).size).toBe(9);
+    for (const row of await list.getByTestId("agent-row").all()) {
+      expect(await row.locator(".mb-dot-glyph svg").count()).toBe(1);
+      expect((await row.getByTestId("agent-status").textContent())!.trim().length).toBeGreaterThan(0);
+    }
+    await expect(list.getByTestId("agent-unread-dot")).toHaveCount(1);
+    await expect(list.getByTestId("agent-attention-dot")).toHaveCount(1);
+    const conv = page.getByTestId("gallery-conversation");
+    await expect(conv.getByTestId("conv-streaming")).toBeVisible();
+    await expect(conv.getByTestId("conv-aborted")).toContainText("not a finished answer");
+    await expect(conv.getByTestId("conv-approval")).toContainText("Needs you");
+    await expect(conv.getByTestId("conv-group")).toHaveAttribute("data-forced", "true");
+    await expect(conv.getByTestId("conv-footer")).toContainText("Turn failed");
+    for (const theme of THEMES) {
+      await page.getByTestId(`theme-${theme}`).click();
+      await expect(page.locator("html")).toHaveAttribute("data-theme", theme);
+      await accessible(page, `agent list in ${theme}`, '[data-testid="gallery-agent-list"]');
+      await accessible(page, `conversation rows in ${theme}`, '[data-testid="gallery-conversation"]');
+    }
+  } finally {
+    await closeApp(app);
+  }
+});

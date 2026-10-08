@@ -13,6 +13,7 @@ import { serializeEvent, type WireEvent } from "./events.js";
 import { BrowserHost } from "./browser.js";
 import { CredentialStore } from "./credentials.js";
 import { platformState } from "./platform.js";
+import { observeStreamEvent, registerConversationHandlers } from "./conversation-ipc.js";
 
 const dataDir = process.env.MODBIT_DATA_DIR ?? join(app.getPath("userData"), "modbit");
 // A profile named by MODBIT_DATA_DIR is a whole profile: the renderer's
@@ -109,6 +110,7 @@ const supervisor = new CoreSupervisor(
     client(c: CoreClient) {
       c.onEvent = (e) => {
         const ev = serializeEvent(e);
+        observeStreamEvent(ev);
         if (subscription) subscription.cursor = BigInt(ev.offset);
         // IMP-EV-0085: an emergency stop anyone raised on the session halts
         // the browser host's input at once, independent of the Core's loop.
@@ -740,6 +742,16 @@ handle("onboarding:starters", async (_e: IpcMainInvokeEvent, workspaceRoot: unkn
   const root = optionalWorkspaceRoot(workspaceRoot);
   if (!root) throw new Error("BAD_ARGUMENT: workspace root required");
   return requireClient().listStarterTasks(resolve(root));
+});
+// PX-046 / PX-047: the agent list and the conversation, over the Core's header, transcript and search projections.
+registerConversationHandlers({
+  handle: (channel, fn) => handle(channel, (_e, ...args) => fn(...args)),
+  client: requireClient,
+  sessionId: requireSessionId,
+  taskId: requireTaskId,
+  lease: async (c, sid) => {
+    if (c.leaseGeneration(sid) === undefined) await c.joinSessionLease(sid, `desktop ${app.getVersion()}`);
+  },
 });
 handle("events:subscribe", (_e: IpcMainInvokeEvent, sessionId: unknown, afterOffset: unknown) => {
   const sid = requireSessionId(sessionId);

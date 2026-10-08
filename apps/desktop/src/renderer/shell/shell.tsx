@@ -11,7 +11,10 @@ import { TrayHost, useEscapeLayers, useKeyDispatch, useKeyScope, type MenuItem }
 import type { KeyScope } from "@modbit/ui/logic";
 import { THEME_LABEL, THEME_PREFERENCES, type ThemePreference } from "@modbit/design-tokens";
 import type { AppState } from "../state/use-app.ts";
+import { AgentList } from "../agents/agent-list.tsx";
+import { Conversation } from "../conversation/conversation.tsx";
 import { FleetView } from "../fleet/fleet-view.tsx";
+import { StatusRegion } from "../fleet/status-region.tsx";
 import { AgentRegion } from "./agent-region.tsx";
 import { AppsPanel } from "./apps-panel.tsx";
 import { artifactsOf, panelTaskFor } from "./artifacts.ts";
@@ -32,11 +35,13 @@ function applyTheme(theme: ThemePreference): void {
 }
 
 export function Shell({ app }: { app: AppState }) {
-  const { core, platform, model, tasks, cols, reviewing, browsing, dashboardOpen, setDashboardOpen, setReviewing, setBrowsing, openBrowser, selectedTaskId, setSelectedTaskId, helpOpen, setHelpOpen, runFleetCommand, confirm } = app;
+  const { core, platform, model, tasks, cols, reviewing, browsing, dashboardOpen, setDashboardOpen, setReviewing, setBrowsing, openBrowser, selectedTaskId, setSelectedTaskId, helpOpen, setHelpOpen, runFleetCommand, confirm, startTask } = app;
   const [prefs, setPrefsState] = useState<UiPrefs>(loadUiPrefs);
   const setPrefs = useCallback((update: (p: UiPrefs) => UiPrefs) => setPrefsState(update), []);
   const [paletteOpen, setPaletteOpen] = useState(false);
   const [notice, setNotice] = useState("");
+  // PX-046/047: the conversation open in the centre region (null = the Fleet board). `rowId` is a search hit to scroll to.
+  const [conversation, setConversation] = useState<{ taskId: string; rowId: string | null } | null>(null);
   useEscapeLayers();
   useKeyDispatch();
 
@@ -68,14 +73,30 @@ export function Shell({ app }: { app: AppState }) {
 
   const toFleet = useCallback(
     (then: () => void) => {
-      const overlay = reviewing !== null || browsing !== null;
+      const overlay = reviewing !== null || browsing !== null || conversation !== null;
       setReviewing(null);
       setBrowsing(null);
+      setConversation(null);
       // The fleet is re-shown on the next render; act on it after that.
       if (overlay) setTimeout(then, 0);
       else then();
     },
-    [reviewing, browsing, setReviewing, setBrowsing],
+    [reviewing, browsing, conversation, setReviewing, setBrowsing],
+  );
+  /** Opens a task's conversation (or, with null, the Fleet board). */
+  const openConversation = useCallback(
+    (taskId: string | null, rowId?: string) => {
+      setReviewing(null);
+      setBrowsing(null);
+      setDashboardOpen(false);
+      if (taskId === null) {
+        setConversation(null);
+        return;
+      }
+      setSelectedTaskId(taskId);
+      setConversation({ taskId, rowId: rowId ?? null });
+    },
+    [setReviewing, setBrowsing, setDashboardOpen, setSelectedTaskId],
   );
   const focusTestId = (id: string) => {
     const el = document.querySelector<HTMLElement>(`[data-testid="${id}"]`);
@@ -108,12 +129,16 @@ export function Shell({ app }: { app: AppState }) {
       return ok;
     },
     openDashboard: () => setDashboardOpen(true),
-    goBack: () => void runFleetCommand("back"),
+    goBack: () => {
+      // Back leaves the conversation for the Fleet board once nothing else is open over it.
+      if (conversation && !reviewing && !browsing && !dashboardOpen) setConversation(null);
+      else void runFleetCommand("back");
+    },
     setTheme: (theme) => setPrefs((p) => ({ ...p, theme })),
     zoom: (delta) => setPrefs((p) => ({ ...p, zoom: delta === 0 ? 1 : clampZoom(p.zoom + delta * ZOOM_STEP) })),
     zoomAvailability: () => (browsing ? "Zoom is unavailable while the browser view is open" : true),
     appAvailability,
-    canGoBack: () => reviewing !== null || browsing !== null || dashboardOpen,
+    canGoBack: () => reviewing !== null || browsing !== null || dashboardOpen || conversation !== null,
   };
   const actionsRef = useRef(actions);
   actionsRef.current = actions;
@@ -198,7 +223,7 @@ export function Shell({ app }: { app: AppState }) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [prefs.theme, runCommand, browsing]);
 
-  const overlayTitle = reviewing ? model.tasks.get(reviewing)?.goalText : browsing ? model.tasks.get(browsing.taskId)?.goalText : undefined;
+  const overlayTitle = reviewing ? model.tasks.get(reviewing)?.goalText : browsing ? model.tasks.get(browsing.taskId)?.goalText : conversation ? model.tasks.get(conversation.taskId)?.goalText : undefined;
   const title = dashboardOpen ? "Dashboard" : (overlayTitle ?? "Fleet");
   const panelUnavailable = panelTaskId === null ? "no task has an artifact yet" : null;
   const coreLabel = core.state === "connected" ? `Core connected (pid ${core.pid})` : core.state === "restarting" ? "Core restarting…" : core.state === "failed" ? "Core failed" : "Core starting…";
@@ -231,6 +256,9 @@ export function Shell({ app }: { app: AppState }) {
             attentionCount={cols.needsAttention.length}
             onNewTask={() => actions.focusNewTask()}
             onExpand={() => actions.toggleAgentList()}
+            fleetActive={conversation === null}
+            onShowFleet={() => toFleet(() => {})}
+            list={rail ? undefined : <AgentList sessionId={model.sessionId} connected={core.state === "connected"} selectedTaskId={conversation?.taskId ?? null} onSelect={openConversation} />}
           />
         )}
         topBar={
@@ -265,7 +293,14 @@ export function Shell({ app }: { app: AppState }) {
           />
         }
       >
-        <FleetView app={app} />
+        {conversation && !reviewing && !browsing && !dashboardOpen ? (
+          <div className="conv-wrap">
+            <StatusRegion app={app} />
+            <Conversation key={conversation.taskId} taskId={conversation.taskId} sessionId={model.sessionId} connected={core.state === "connected"} card={model.tasks.get(conversation.taskId)} title={model.tasks.get(conversation.taskId)?.goalText ?? "Task"} focusRowId={conversation.rowId} onResume={(id) => void startTask(id)} onNewTask={() => actions.focusNewTask()} />
+          </div>
+        ) : (
+          <FleetView app={app} />
+        )}
       </ShellFrame>
       <CommandPalette open={paletteOpen} items={paletteItems} onClose={() => setPaletteOpen(false)} announce={setNotice} />
       <ShortcutHelp open={helpOpen} onClose={() => setHelpOpen(false)} registry={shellRegistry} />

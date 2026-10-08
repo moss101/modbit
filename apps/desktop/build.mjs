@@ -21,7 +21,8 @@ mkdirSync(join(out, "renderer"), { recursive: true });
 const { tokensCss } = await import("../../packages/design-tokens/src/css.ts");
 const { uiCss } = await import("../../packages/ui/src/styles.ts");
 const { legacyCss, shellCss } = await import("./src/renderer/styles.ts");
-writeFileSync(join(out, "renderer", "app.css"), [tokensCss(), uiCss, legacyCss, shellCss].join("\n"));
+const { workspaceCss } = await import("./src/renderer/workspace-css.ts");
+writeFileSync(join(out, "renderer", "app.css"), [tokensCss(), uiCss, legacyCss, shellCss, workspaceCss].join("\n"));
 
 const common = { bundle: true, sourcemap: true, logLevel: "warning", target: "es2024" };
 await build({ ...common, entryPoints: ["src/main/main.ts"], outfile: join(out, "main/main.cjs"), platform: "node", format: "cjs", external: ["electron"] });

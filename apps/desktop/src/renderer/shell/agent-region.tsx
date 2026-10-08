@@ -1,4 +1,5 @@
-import { IconButton } from "@modbit/ui";
+import type { ReactNode } from "react";
+import { Button, IconButton } from "@modbit/ui";
 import { IconPlus, IconSidebar } from "./icons.tsx";
 
 export interface AgentRegionProps {
@@ -9,16 +10,19 @@ export interface AgentRegionProps {
   attentionCount: number;
   onNewTask: () => void;
   onExpand: () => void;
+  /** The agent list (PX-046): the region's typed extension point. Absent, the region says only what the fleet model knows. */
+  list?: ReactNode | undefined;
+  /** The Fleet board is the view in the centre (it stays reachable as its own view). */
+  fleetActive?: boolean | undefined;
+  onShowFleet?: (() => void) | undefined;
 }
 
 /**
- * The agent list region (AFW-A01, AFW-A05). The list itself (status classes,
- * unread, pins, filters, grouping, search) is PX-046 and is not built here:
- * this region is the typed extension point for it and says so, and states only
- * counts the Core's fleet model already has. Below a 448 px centre it is a
+ * The agent list region (AFW-A01, AFW-A05): the brand and the two ways in (a
+ * new task, the Fleet board), then the list. Below a 448 px centre it is a
  * 40 px rail.
  */
-export function AgentRegion({ rail, canExpand, taskCount, attentionCount, onNewTask, onExpand }: AgentRegionProps) {
+export function AgentRegion({ rail, canExpand, taskCount, attentionCount, onNewTask, onExpand, list, fleetActive, onShowFleet }: AgentRegionProps) {
   if (rail) {
     return (
       <div className="agent-rail" data-testid="agent-rail">
@@ -33,14 +37,21 @@ export function AgentRegion({ rail, canExpand, taskCount, attentionCount, onNewT
         <span className="brand" data-testid="brand">
           Modbit
         </span>
+        {onShowFleet && (
+          <Button size="sm" className="agent-fleet" aria-pressed={fleetActive === true} onClick={onShowFleet} data-testid="agents-fleet">
+            Fleet board
+          </Button>
+        )}
         <IconButton label="New task" icon={<IconPlus />} onClick={onNewTask} data-testid="agents-new-task" />
       </div>
-      <p className="meta" data-testid="agents-summary">
+      <p className="meta agent-region-meta" data-testid="agents-summary">
         {taskCount} {taskCount === 1 ? "task" : "tasks"}, {attentionCount} need{attentionCount === 1 ? "s" : ""} attention.
       </p>
-      <p className="meta empty" data-testid="agents-placeholder">
-        The agent list (status classes, unread, pins, filters, grouping) arrives with PX-046. Until then the Fleet board in the centre shows every task.
-      </p>
+      {list ?? (
+        <p className="meta empty agent-region-meta" data-testid="agents-placeholder">
+          The agent list is not connected in this view.
+        </p>
+      )}
     </div>
   );
 }
