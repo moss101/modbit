@@ -1284,7 +1284,7 @@ fn required_client_capability(env: &CommandEnvelope) -> Option<&'static str> {
         "GetCodeView" => "ui.code_view",
         // The conversation read model is a read of the log; a read marker and
         // an archive are the person's own curation of a session.
-        "GetTranscript" | "GetAgentHeaders" => "events.subscribe",
+        "GetTranscript" | "GetAgentHeaders" | "SearchConversations" => "events.subscribe",
         "MarkRead" | "ArchiveTask" => "session.control",
         "DecideReview" => "review.decide",
         // Steering a task from its pull request's comments is steering it.
