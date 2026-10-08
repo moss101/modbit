@@ -239,6 +239,119 @@ pub fn samples() -> Vec<Sample> {
         max_children: 2,
         forbid_spawn: false,
     };
+    // PX-050 / PX-057 / PX-059: the in-run control messages. 64-bit counters
+    // and offsets past 2^53 so both languages agree on them.
+    let queue = QueuedInputList {
+        task_id: id(0x31),
+        items: vec![
+            QueuedInputView {
+                input_id: "a".into(),
+                position: 1,
+                mode: "FOLLOW_UP".into(),
+                text: "message A".into(),
+                state: "QUEUED".into(),
+                model: String::new(),
+                edited: true,
+                sent_now: false,
+                provenance: String::new(),
+                untrusted: false,
+                queued_offset: 9_007_199_254_740_993,
+                changed_offset: 9_007_199_254_740_995,
+            },
+            QueuedInputView {
+                input_id: "forge-comment-7".into(),
+                position: 0,
+                mode: "STEER".into(),
+                text: "please rename".into(),
+                state: "DISPATCHED".into(),
+                model: "gpt-5-mini".into(),
+                edited: false,
+                sent_now: true,
+                provenance: "forge_review_comment".into(),
+                untrusted: true,
+                queued_offset: 12,
+                changed_offset: 14,
+            },
+        ],
+        queued: 1,
+        run_alive: true,
+        offset: 9_007_199_254_740_999,
+    };
+    let rules = AllowRuleList {
+        rules: vec![AllowRuleView {
+            rule_id: "r-1".into(),
+            pattern: vec!["cargo".into(), "test".into()],
+            scope: "REPO".into(),
+            scope_key: "/repo".into(),
+            created_by: "user:b1".into(),
+            created_at_ms: 1_700_000_000_123,
+            expires_at_ms: 9_007_199_254_740_993,
+            covers_always_ask: false,
+            state: "ACTIVE".into(),
+            revoked_by: String::new(),
+            origin_task: "t-1".into(),
+            offset: 77,
+        }],
+    };
+    let run_mode = RunModeView {
+        task_id: id(0x31),
+        mode: "ALLOWLIST".into(),
+        acknowledged: true,
+        always_ask: vec!["NETWORK".into(), "SECRET".into()],
+        modes: vec!["ASK".into(), "ALLOWLIST".into()],
+        warning: "a mode that approves more".into(),
+        session_only: false,
+        offset: 9_007_199_254_740_993,
+        rules_in_force: 2,
+    };
+    let accounting = ContextAccountingView {
+        available: true,
+        total_tokens: 9_007_199_254_740_993,
+        total_source: "PROVIDER_REPORTED".into(),
+        estimated_total: 9_007_199_254_740_000,
+        provider_reported_input: 9_007_199_254_740_993,
+        estimator_error_bp: 12,
+        declared_error_bp: 2500,
+        rounding_rule: "LARGEST_REMAINDER".into(),
+        window_tokens: 200_000,
+        window_source: "REGISTRY".into(),
+        used_bp: 4504,
+        categories: vec![
+            ContextCategoryView {
+                category: "SYSTEM".into(),
+                tokens: 6_000_000_000_000_001,
+                estimated_tokens: 6_000_000_000_000_000,
+                share_bp: 6661,
+                sources: vec!["system segment".into()],
+            },
+            ContextCategoryView {
+                category: "CONVERSATION".into(),
+                tokens: 3_007_199_254_740_992,
+                estimated_tokens: 3_007_199_254_740_000,
+                share_bp: 3338,
+                sources: vec![],
+            },
+        ],
+        endpoint: "openai".into(),
+        model: "gpt-5-mini".into(),
+        turn_id: "01a09072-1262-70f2-b103-63d3e8f0feda".into(),
+        turn_ordinal: 4,
+        offset: 9_007_199_254_741_001,
+        instruction_layers_in_force: 2,
+        memory_items_injected: 1,
+        compaction_epoch: 1,
+        compaction_summaries: 1,
+        budgets: Some(BudgetAccountingView {
+            max_cost_minor: 5000,
+            spent_minor: 1234,
+            held_by_children_minor: 100,
+            max_wall_ms: 9_007_199_254_740_993,
+            wall_ms_used: 42,
+            max_children: 3,
+            live_children: 1,
+            forbid_spawn: false,
+        }),
+    };
     let command = CommandEnvelope {
         command_id: id(0x11),
         tenant_id: id(0x22),
@@ -1006,6 +1119,90 @@ pub fn samples() -> Vec<Sample> {
                 "systemRoot": "/etc/modbit/skills"
             }),
             decode: reencode::<SkillList>,
+        },
+        Sample {
+            name: "queued_input_list",
+            type_name: "modbit.v1.QueuedInputList",
+            bytes: queue.encode_to_vec(),
+            expected: json!({
+                "taskId": idhex(0x31), "queued": 1, "runAlive": true,
+                "offset": "9007199254740999",
+                "items": [
+                    {
+                        "inputId": "a", "position": 1, "mode": "FOLLOW_UP", "text": "message A",
+                        "state": "QUEUED", "model": "", "edited": true, "sentNow": false,
+                        "provenance": "", "untrusted": false,
+                        "queuedOffset": "9007199254740993", "changedOffset": "9007199254740995"
+                    },
+                    {
+                        "inputId": "forge-comment-7", "position": 0, "mode": "STEER",
+                        "text": "please rename", "state": "DISPATCHED", "model": "gpt-5-mini",
+                        "edited": false, "sentNow": true, "provenance": "forge_review_comment",
+                        "untrusted": true, "queuedOffset": "12", "changedOffset": "14"
+                    }
+                ]
+            }),
+            decode: reencode::<QueuedInputList>,
+        },
+        Sample {
+            name: "allow_rule_list",
+            type_name: "modbit.v1.AllowRuleList",
+            bytes: rules.encode_to_vec(),
+            expected: json!({
+                "rules": [{
+                    "ruleId": "r-1", "pattern": ["cargo", "test"], "scope": "REPO",
+                    "scopeKey": "/repo", "createdBy": "user:b1",
+                    "createdAtMs": "1700000000123", "expiresAtMs": "9007199254740993",
+                    "coversAlwaysAsk": false, "state": "ACTIVE", "revokedBy": "",
+                    "originTask": "t-1", "offset": "77"
+                }]
+            }),
+            decode: reencode::<AllowRuleList>,
+        },
+        Sample {
+            name: "run_mode_view",
+            type_name: "modbit.v1.RunModeView",
+            bytes: run_mode.encode_to_vec(),
+            expected: json!({
+                "taskId": idhex(0x31), "mode": "ALLOWLIST", "acknowledged": true,
+                "alwaysAsk": ["NETWORK", "SECRET"], "modes": ["ASK", "ALLOWLIST"],
+                "warning": "a mode that approves more", "sessionOnly": false,
+                "offset": "9007199254740993", "rulesInForce": 2
+            }),
+            decode: reencode::<RunModeView>,
+        },
+        Sample {
+            name: "context_accounting_view",
+            type_name: "modbit.v1.ContextAccountingView",
+            bytes: accounting.encode_to_vec(),
+            expected: json!({
+                "available": true, "totalTokens": "9007199254740993",
+                "totalSource": "PROVIDER_REPORTED", "estimatedTotal": "9007199254740000",
+                "providerReportedInput": "9007199254740993", "estimatorErrorBp": 12,
+                "declaredErrorBp": 2500, "roundingRule": "LARGEST_REMAINDER",
+                "windowTokens": "200000", "windowSource": "REGISTRY", "usedBp": 4504,
+                "categories": [
+                    {
+                        "category": "SYSTEM", "tokens": "6000000000000001",
+                        "estimatedTokens": "6000000000000000", "shareBp": 6661,
+                        "sources": ["system segment"]
+                    },
+                    {
+                        "category": "CONVERSATION", "tokens": "3007199254740992",
+                        "estimatedTokens": "3007199254740000", "shareBp": 3338, "sources": []
+                    }
+                ],
+                "endpoint": "openai", "model": "gpt-5-mini",
+                "turnId": "01a09072-1262-70f2-b103-63d3e8f0feda", "turnOrdinal": 4,
+                "offset": "9007199254741001", "instructionLayersInForce": 2,
+                "memoryItemsInjected": 1, "compactionEpoch": 1, "compactionSummaries": 1,
+                "budgets": {
+                    "maxCostMinor": "5000", "spentMinor": "1234", "heldByChildrenMinor": "100",
+                    "maxWallMs": "9007199254740993", "wallMsUsed": "42", "maxChildren": 3,
+                    "liveChildren": 1, "forbidSpawn": false
+                }
+            }),
+            decode: reencode::<ContextAccountingView>,
         },
         Sample {
             name: "set_task_budgets",

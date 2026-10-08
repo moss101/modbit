@@ -2550,6 +2550,7 @@ mod tests {
                         text: "x".repeat(70 * 1024),
                         provenance: String::new(),
                         untrusted: false,
+                        input_ids: vec![],
                     },
                     Actor::User(modbit_domain::UserId::new()),
                 )],

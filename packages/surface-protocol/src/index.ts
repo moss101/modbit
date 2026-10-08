@@ -17,6 +17,7 @@ export * from "./gen/modbit/v1/surface_pb.js";
 export * from "./gen/modbit/v1/stream_pb.js";
 export * from "./gen/modbit/v1/terminal_pb.js";
 export * from "./gen/modbit/v1/tasking_pb.js";
+export * from "./gen/modbit/v1/run_control_pb.js";
 export * from "./gen/modbit/v1/checkpoints_pb.js";
 export * from "./gen/modbit/v1/context_knowledge_pb.js";
 

@@ -24,6 +24,7 @@ pub mod media;
 pub mod mode;
 pub mod routing;
 pub mod run;
+pub mod runmode;
 pub mod session;
 pub mod state;
 pub mod step;

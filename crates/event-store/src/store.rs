@@ -1458,6 +1458,37 @@ impl EventStore {
         rows.map(|r| r.map_err(Error::from)).collect()
     }
 
+    /// Events of every session with `offset > after_offset` whose type is one
+    /// of `types`, ascending by offset, up to `limit`. The policy records that
+    /// outlive their task (run modes and allowlist rules, PX-057) are folded
+    /// from exactly these types, from a cursor, so a refresh reads only what
+    /// is new.
+    pub fn read_all_of_types(
+        &self,
+        types: &[&str],
+        after_offset: u64,
+        limit: usize,
+    ) -> Result<Vec<StoredEvent>> {
+        if types.is_empty() {
+            return Ok(Vec::new());
+        }
+        let marks = vec!["?"; types.len()].join(",");
+        let sql = format!(
+            "SELECT {COLUMNS} FROM events WHERE offset > ? AND event_type IN ({marks}) ORDER BY offset ASC LIMIT ?"
+        );
+        let mut stmt = self.conn.prepare(&sql)?;
+        let mut args: Vec<rusqlite::types::Value> =
+            vec![rusqlite::types::Value::Integer(after_offset as i64)];
+        args.extend(
+            types
+                .iter()
+                .map(|t| rusqlite::types::Value::Text((*t).to_owned())),
+        );
+        args.push(rusqlite::types::Value::Integer(limit as i64));
+        let rows = stmt.query_map(rusqlite::params_from_iter(args), row_to_event)?;
+        self.counted(rows.map(|r| r.map_err(Error::from)).collect())
+    }
+
     /// Up to `limit` events of every session with `offset > after_offset`,
     /// ascending (a whole-log pass: the collector's reachability mark).
     pub fn read_all_after(&self, after_offset: u64, limit: usize) -> Result<Vec<StoredEvent>> {
