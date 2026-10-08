@@ -9,6 +9,7 @@ publish.workspace = true
 
 [dependencies]
 modbit-domain.workspace = true
+modbit-git.workspace = true
 modbit-protocol.workspace = true
 modbit-event-store = { workspace = true, features = ["cloud"] }
 modbit-sandbox = { workspace = true, features = ["client"] }
