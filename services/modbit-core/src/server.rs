@@ -223,9 +223,13 @@ pub async fn run_as(
     let (tx, _) = watch::channel(start);
     let boot_generation = recovery.boot_generation;
     let boot_head = start;
-    let browser = Arc::new(crate::browser::BrowserSessions::default());
     let gateway = modbit_providers::ProviderGateway::new(modbit_providers::endpoints_from_env())
         .with_policy(modbit_providers::OrgModelPolicy::from_env());
+    // REQ-PX-130: one broker for every credential this Core holds; the
+    // browser registry registers its handles with it.
+    let browser = Arc::new(crate::browser::BrowserSessions::with_broker(Arc::clone(
+        gateway.broker(),
+    )));
     let core = Arc::new(Core {
         store: Arc::new(Mutex::new(store)),
         last_offset: tx,
@@ -284,6 +288,12 @@ pub async fn run_as(
     crate::checkpoint::recover_in_doubt_restores(&core).await;
     // EPR-012: the last activated registry generation, verified again.
     crate::model_registry::restore(&core).await;
+    // REQ-PX-132: the observer of the listening services of the tasks'
+    // terminals runs for the life of the Core.
+    crate::process_services::spawn(Arc::clone(&core));
+    // REQ-PX-139: component health, persisted; and the OpenTelemetry export
+    // when (and only when) the Core is configured to export.
+    crate::telemetry::spawn(Arc::clone(&core));
     // PX-111: the indexes of the workspaces unfinished tasks work in open from
     // the persisted store in the background, so the first query after a
     // restart finds them loaded (and a corrupt or stale store is found and
@@ -757,6 +767,11 @@ async fn serve_connection(core: Arc<Core>, mut stream: BoxedStream) -> Result<()
                     "RevokeAllowRule",
                     "ListAllowRules",
                     "GetContextAccounting",
+                    "GetCapabilitySnapshots",
+                    "ListProcessServices",
+                    "GetComponentHealth",
+                    "GetCredentialBroker",
+                    "RevokeCredential",
                 ]
                 .map(String::from)
                 .to_vec(),
@@ -1355,6 +1370,9 @@ fn required_client_capability(env: &CommandEnvelope) -> Option<&'static str> {
         // write to steer the agent — the same class of decision as trusting
         // the repository.
         "SetTaskBudgets" => "task.author",
+        // Seeing what credentials exist and cutting one off are the
+        // provider-configuration class of decision.
+        "GetCredentialBroker" | "RevokeCredential" => "provider.configure",
         "TrustSkill" | "UntrustSkill" => "repository.trust",
         "ImportAgentConfig" => "repository.trust",
         "ConfigureSandboxGateway" => "sandbox.configure",
@@ -4539,7 +4557,7 @@ pub(crate) async fn handle_command(core: &Arc<Core>, env: CommandEnvelope) -> Co
                 Ok(r) => r,
                 Err(e) => return reject(cid, error_code(&e), e.to_string()),
             };
-            let verified = modbit_policy::ledger::verify_chain(&all);
+            let verified = crate::epoch::verify_chain(&store, &all);
             let receipts: Vec<_> = all
                 .iter()
                 .filter(|r| task.is_none_or(|t| r.task_id == t))
@@ -5227,16 +5245,15 @@ pub(crate) async fn handle_command(core: &Arc<Core>, env: CommandEnvelope) -> Co
                     "api_base_url must be https (or a loopback test host)",
                 );
             }
-            let cfg = modbit_tools::forge::ForgeConfig {
-                kind: "github".into(),
+            let cfg = core.tools.forge.configure(
                 api_base,
-                web_host: if p.web_host.trim().is_empty() {
+                if p.web_host.trim().is_empty() {
                     "github.com".to_owned()
                 } else {
                     p.web_host.trim().to_owned()
                 },
-                token: (!p.token.trim().is_empty()).then(|| p.token.trim().to_owned()),
-            };
+                (!p.token.trim().is_empty()).then(|| p.token.trim().to_owned()),
+            );
             let egress = cfg.egress_target();
             let view = wire::ForgeConfigured {
                 forge: cfg.kind.clone(),
@@ -5245,7 +5262,6 @@ pub(crate) async fn handle_command(core: &Arc<Core>, env: CommandEnvelope) -> Co
                 token_held: cfg.token.is_some(),
                 egress,
             };
-            core.tools.forge.set(cfg);
             accept(cid, false, view.encode_to_vec())
         }
         // M9.4 (REQ-EV-0224): a client proposes an external tool server on
@@ -5887,7 +5903,7 @@ pub(crate) async fn handle_command(core: &Arc<Core>, env: CommandEnvelope) -> Co
             for ep in gw.endpoints() {
                 let credential_available =
                     matches!(ep.credential, modbit_providers::SecretHandle::None)
-                        || ep.credential.resolve().is_some();
+                        || gw.credential_configured(&ep.name);
                 for m in &ep.models {
                     models.push(wire::ModelCapabilityView {
                         endpoint: ep.name.clone(),
@@ -6692,6 +6708,27 @@ pub(crate) async fn handle_command(core: &Arc<Core>, env: CommandEnvelope) -> Co
                 Err((code, msg)) => reject(cid, &code, msg),
             }
         }
+        // REQ-PX-131: the capability snapshots a task's rounds were frozen with.
+        "GetCapabilitySnapshots" => {
+            let Ok(p) = wire::GetCapabilitySnapshots::decode(env.payload.as_slice()) else {
+                return reject(cid, "BAD_PAYLOAD", "GetCapabilitySnapshots");
+            };
+            let Some(task_id) = p.task_id.as_ref().and_then(id16).map(TaskId::from_bytes) else {
+                return reject(cid, "BAD_PAYLOAD", "task_id required");
+            };
+            let store = core.store.lock().await;
+            match crate::epoch::view(core, &store, task_id, p.after_epoch) {
+                Ok(v) => accept(cid, false, v.encode_to_vec()),
+                Err(e) => reject(cid, "SNAPSHOTS_UNREADABLE", e),
+            }
+        }
+        // REQ-PX-132: the services the task's terminals started.
+        "ListProcessServices" => crate::process_services::list(core, env).await,
+        // REQ-PX-139: component health with the age of each observation.
+        "GetComponentHealth" => crate::telemetry::component_health(core, env).await,
+        // REQ-PX-130: what the credential broker holds and every use of it.
+        "GetCredentialBroker" => crate::credentials::view(core, env),
+        "RevokeCredential" => crate::credentials::revoke(core, env),
         "GetIndexStatus" => {
             let Ok(p) = wire::GetIndexStatus::decode(env.payload.as_slice()) else {
                 return reject(cid, "BAD_PAYLOAD", "GetIndexStatus");
@@ -7396,6 +7433,12 @@ fn receipt_view(r: &modbit_domain::toolcall::EffectReceipt) -> wire::EffectRecei
             .map(|x| x.label().to_owned())
             .unwrap_or_default(),
         compensates: r.compensates.map(|e| wire_id(e.as_bytes())),
+        authorization_epoch: r.authorization.as_ref().map_or(0, |a| a.epoch),
+        capability_snapshot_hash: r
+            .authorization
+            .as_ref()
+            .map(|a| a.snapshot_hash.clone())
+            .unwrap_or_default(),
     }
 }
 

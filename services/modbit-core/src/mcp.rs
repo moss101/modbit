@@ -27,9 +27,10 @@
 //! did not happen.
 //!
 //! **Credentials.** A server's credential is a handle name; the value lives
-//! in this hub's memory only, is placed into the child's environment at
-//! spawn and appears nowhere else — not in the configuration, not in a log,
-//! not in a listing, not in an argument and not in a result.
+//! in the credential broker (REQ-PX-130), is obtained from it for the spawn
+//! — scoped to the server it is for — placed into the child's environment
+//! and appears nowhere else: not in the configuration, not in a log, not in a
+//! listing, not in an argument and not in a result.
 
 use std::collections::{BTreeMap, BTreeSet};
 use std::process::Stdio;
@@ -308,7 +309,8 @@ pub struct McpHub {
     limits: Limits,
     timeout: std::time::Duration,
     reads: Arc<modbit_mcp::ReadDeclarations>,
-    credentials: std::sync::Mutex<BTreeMap<String, String>>,
+    /// The credential broker the servers' credentials live in.
+    broker: Arc<modbit_secrets::CredentialBroker>,
     pool: Mutex<BTreeMap<PoolKey, Arc<Pooled>>>,
     /// Unused longer than this, a server is stopped (PX-115).
     idle_ttl: std::time::Duration,
@@ -394,7 +396,10 @@ impl McpHub {
     /// `MODBIT_MCP_CALL_TIMEOUT_MS`, and the credentials handed to the Core
     /// at boot as `MODBIT_MCP_CREDENTIAL_<HANDLE>` — taken into memory here
     /// and never written anywhere else.
-    pub fn from_env(reads: Arc<modbit_mcp::ReadDeclarations>) -> Self {
+    pub fn from_env(
+        reads: Arc<modbit_mcp::ReadDeclarations>,
+        broker: Arc<modbit_secrets::CredentialBroker>,
+    ) -> Self {
         let env_ms = |key: &str, default: u64| -> std::time::Duration {
             std::time::Duration::from_millis(
                 std::env::var(key)
@@ -423,7 +428,7 @@ impl McpHub {
                     .unwrap_or(DEFAULT_CALL_TIMEOUT_MS),
             ),
             reads,
-            credentials: std::sync::Mutex::new(BTreeMap::new()),
+            broker,
             pool: Mutex::new(BTreeMap::new()),
         };
         for (key, value) in std::env::vars() {
@@ -448,54 +453,33 @@ impl McpHub {
         Ok(())
     }
 
-    /// Put a credential value in this Core's custody under `handle`. Held in
-    /// memory only: never journaled, logged, written to any file, echoed in
-    /// a view or returned to a client.
+    /// The broker's identity of a server credential handle.
+    pub(crate) fn credential_id(handle: &str) -> modbit_secrets::CredentialId {
+        modbit_secrets::CredentialId::new(modbit_secrets::Kind::Mcp, &credential_key(handle))
+    }
+
+    /// Put a credential value in the broker under `handle` (a rotation when
+    /// it is already there). Held in memory only: never journaled, logged,
+    /// written to any file, echoed in a view or returned to a client.
     pub fn set_credential(&self, handle: &str, value: String) {
-        self.credentials
-            .lock()
-            .unwrap_or_else(|e| e.into_inner())
-            .insert(credential_key(handle), value);
+        self.broker.register(modbit_secrets::Registration {
+            id: Self::credential_id(handle),
+            kind: modbit_secrets::Kind::Mcp,
+            source: modbit_secrets::SecretHandle::Inline(value),
+            audience: "mcp:*".into(),
+        });
     }
 
-    /// The credential held for `handle`, for an owner in the Core that
-    /// hands it to its own transport (an extension's model provider,
-    /// REQ-EV-0138). Never for a view, a log or a client.
-    pub(crate) fn credential(&self, handle: &str) -> Option<String> {
-        self.credentials
-            .lock()
-            .unwrap_or_else(|e| e.into_inner())
-            .get(&credential_key(handle))
-            .cloned()
-    }
-
-    /// Whether this Core holds a credential for `handle`.
+    /// Whether the broker holds a usable credential for `handle`.
     pub fn has_credential(&self, handle: &str) -> bool {
-        self.credentials
-            .lock()
-            .unwrap_or_else(|e| e.into_inner())
-            .contains_key(&credential_key(handle))
+        self.broker.configured(&Self::credential_id(handle))
     }
 
     /// Forget a credential. A server that needs it stops being reachable at
     /// its next start; a transport already running keeps what it was given
     /// until it is replaced.
     pub fn clear_credential(&self, handle: &str) {
-        self.credentials
-            .lock()
-            .unwrap_or_else(|e| e.into_inner())
-            .remove(&credential_key(handle));
-    }
-
-    /// The credential values in custody — what the pipeline refuses to let
-    /// through tool arguments (M9.3).
-    pub fn secrets_in_custody(&self) -> Vec<String> {
-        self.credentials
-            .lock()
-            .unwrap_or_else(|e| e.into_inner())
-            .values()
-            .cloned()
-            .collect()
+        self.broker.forget(&Self::credential_id(handle));
     }
 
     /// Stop every pooled transport of the server called `name`. A person
@@ -706,22 +690,30 @@ impl McpHub {
             .stderr(Stdio::null())
             .kill_on_drop(true);
         if let Some(handle) = &cfg.credential {
-            let value = self
-                .credentials
-                .lock()
-                .unwrap_or_else(|e| e.into_inner())
-                .get(&credential_key(handle))
-                .cloned();
-            let Some(value) = value else {
-                return Err(PortError::clean(
-                    "EXTERNAL_CREDENTIAL_UNAVAILABLE",
-                    format!(
-                        "`{}` needs the credential `{handle}`, which is not in this Core's custody",
-                        cfg.name
-                    ),
-                ));
-            };
-            command.env(DEFAULT_CREDENTIAL_ENV, value);
+            // The credential for this server, from the broker: scoped to the
+            // server it is started for, counted, and refused if revoked.
+            let secret = self
+                .broker
+                .acquire(
+                    &Self::credential_id(handle),
+                    &modbit_secrets::Use {
+                        principal: "core".into(),
+                        audience: format!("mcp:{}", cfg.name),
+                        purpose: "mcp.spawn".into(),
+                        nonce: None,
+                    },
+                )
+                .map_err(|refusal| {
+                    PortError::clean(
+                        "EXTERNAL_CREDENTIAL_UNAVAILABLE",
+                        format!(
+                            "`{}` needs the credential `{handle}`, which the credential broker does not give it ({})",
+                            cfg.name,
+                            refusal.code()
+                        ),
+                    )
+                })?;
+            command.env(DEFAULT_CREDENTIAL_ENV, secret.expose());
         }
         let mut child = command.spawn().map_err(|e| {
             PortError::clean(

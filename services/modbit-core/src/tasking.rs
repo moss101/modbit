@@ -1014,6 +1014,9 @@ pub(crate) struct Edge {
     service_tier: Option<String>,
     /// The preference offset the dispatch's route record names.
     pub preference_offset_applied: u64,
+    /// The mode a resumed run decides its interrupted round under (the one
+    /// the round was frozen with, REQ-PX-131); taken at the first boundary.
+    frozen_mode: Option<Mode>,
 }
 
 impl Edge {
@@ -1029,7 +1032,15 @@ impl Edge {
             effort: None,
             service_tier: None,
             preference_offset_applied: 0,
+            frozen_mode: None,
         }
+    }
+
+    /// The run resumes inside a round it froze before the Core stopped: the
+    /// mode of that round stands for it, and the user's latest mode applies
+    /// at the next boundary (REQ-PX-131).
+    pub(crate) fn freeze_mode(&mut self, mode: Mode) {
+        self.frozen_mode = Some(mode);
     }
 
     /// The limits a dispatch of `endpoint/model` carries: the catalog's own,
@@ -1099,9 +1110,13 @@ pub(crate) async fn at_boundary(
         }
     }
     // ---- the mode ----
-    if edge.mode != Some(facts.mode) {
-        let silent_default = edge.mode.is_none() && facts.mode_offset == 0;
-        core.tools.tasking.adopt(task.task_id, facts.mode);
+    let (adopted, adopted_offset) = match edge.frozen_mode.take() {
+        Some(frozen) if frozen != facts.mode => (frozen, 0),
+        _ => (facts.mode, facts.mode_offset),
+    };
+    if edge.mode != Some(adopted) {
+        let silent_default = edge.mode.is_none() && adopted_offset == 0;
+        core.tools.tasking.adopt(task.task_id, adopted);
         if !silent_default {
             let mut store = core.store.lock().await;
             let _ = append(
@@ -1113,21 +1128,21 @@ pub(crate) async fn at_boundary(
                 vec![typed(
                     "TaskPostureApplied",
                     &TaskEvent::TaskPostureApplied {
-                        mode: facts.mode,
+                        mode: adopted,
                         previous: edge.mode,
                         boundary: boundary.into(),
-                        mode_offset: facts.mode_offset,
+                        mode_offset: adopted_offset,
                     },
                     actor.clone(),
                 )],
             );
         }
-        edge.mode = Some(facts.mode);
+        edge.mode = Some(adopted);
     }
     // PX-039: a fix needs its failure reproduced first. DEBUG makes that
     // mandatory whatever the goal says; the goal's own rule still holds.
     state.goal_reports_failure =
-        edge.reproduction_from_goal || facts.mode.posture().reproduction_first;
+        edge.reproduction_from_goal || adopted.posture().reproduction_first;
     // ---- the preference ----
     if facts.preference_offset > edge.preference_offset {
         apply_preference(core, task, run_id, cfg, edge, &facts, boundary, lt, actor).await;

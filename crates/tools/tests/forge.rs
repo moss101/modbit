@@ -85,11 +85,20 @@ async fn github() -> (String, Arc<Mutex<Vec<(String, Vec<(String, String)>)>>>) 
 }
 
 fn config(api_base: &str) -> ForgeConfig {
+    // The token is in the credential broker; the config only refers to it.
+    let broker = std::sync::Arc::new(modbit_secrets::CredentialBroker::new());
+    let id = modbit_secrets::CredentialId::new(modbit_secrets::Kind::Forge, "github");
+    broker.register(modbit_secrets::Registration {
+        id: id.clone(),
+        kind: modbit_secrets::Kind::Forge,
+        source: modbit_secrets::SecretHandle::Inline(TOKEN.into()),
+        audience: "forge:*".into(),
+    });
     ForgeConfig {
         kind: "github".into(),
         api_base: api_base.into(),
         web_host: "github.test".into(),
-        token: Some(TOKEN.into()),
+        token: Some(modbit_tools::forge::ForgeToken::new(broker, id)),
     }
 }
 

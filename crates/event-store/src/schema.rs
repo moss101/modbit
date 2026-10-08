@@ -623,6 +623,15 @@ ALTER TABLE effect_receipts ADD COLUMN reversibility TEXT;
 ALTER TABLE effect_receipts ADD COLUMN compensates BLOB;
 "#;
 
+/// Version 18 (REQ-PX-131): a receipt names the authority epoch it was decided
+/// under and the digest of that epoch's frozen capability snapshot. Both are
+/// nullable: a receipt written before epochs carries neither and keeps its
+/// hash.
+pub const V18_RECEIPT_AUTHORIZATION_EPOCH: &str = r#"
+ALTER TABLE effect_receipts ADD COLUMN authorization_epoch INTEGER;
+ALTER TABLE effect_receipts ADD COLUMN capability_snapshot_hash TEXT;
+"#;
+
 /// All migrations in order. Never edit an entry once shipped; append a new one.
 pub const MIGRATIONS: &[Migration] = &[
     Migration {
@@ -725,6 +734,12 @@ pub const MIGRATIONS: &[Migration] = &[
         version: 17,
         name: "receipt_reversibility",
         up: V17_RECEIPT_REVERSIBILITY,
+        rollback: "Additive nullable derivable columns. Rollback = ignore them; a rebuild derives them from the receipts on the log, whose hashes cover them; no event is touched.",
+    },
+    Migration {
+        version: 18,
+        name: "receipt_authorization_epoch",
+        up: V18_RECEIPT_AUTHORIZATION_EPOCH,
         rollback: "Additive nullable derivable columns. Rollback = ignore them; a rebuild derives them from the receipts on the log, whose hashes cover them; no event is touched.",
     },
 ];

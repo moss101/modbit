@@ -2402,6 +2402,54 @@ pub enum TaskEvent {
         /// Tools the new generation withholds, by name.
         withheld_tools: Vec<String>,
     },
+    /// `ProcessServiceObserved` (REQ-PX-132, docs/21): the Core found, or lost,
+    /// or re-judged a listening service in the process tree of one of the
+    /// task's terminals. Recorded on a change of state only, never per probe.
+    /// Observation changes no policy: a detected server is a fact the agent
+    /// and the person are told, not a permission. No state change.
+    ProcessServiceObserved {
+        /// The terminal (broker session) whose process tree holds the socket.
+        handle_id: String,
+        /// The listening port.
+        port: u32,
+        /// The bound address.
+        address: String,
+        /// The listening process.
+        pid: u32,
+        /// Its command line: redacted and bounded.
+        command: String,
+        /// `dev_server` | `service`.
+        kind: String,
+        /// `STARTING` | `READY` | `UNHEALTHY` | `GONE`.
+        state: String,
+        /// The state it left (empty for the first observation).
+        previous: String,
+        /// The HTTP status the probe got; 0 = no HTTP answer.
+        http_status: u32,
+        /// How long the probe took.
+        probe_ms: u64,
+        /// Why the service is in this state.
+        detail: String,
+        /// True when the Core observed a service it had already recorded
+        /// before it restarted.
+        reobserved: bool,
+    },
+    /// `CapabilitySnapshotRecorded` (REQ-PX-131, docs/23 "Policy
+    /// generations"): at a model-round boundary the Core froze the round's
+    /// capability view — the projected tools, the policy generation, the
+    /// lease and the mode posture — under the next `AuthorizationEpoch`.
+    /// Every kernel decision and receipt of the round carries the epoch and
+    /// is decided against this snapshot; a policy change, a revoked skill or
+    /// a mode switch made during the round takes effect at the next one. A
+    /// restarted Core finds the snapshot here and decides the rest of an
+    /// interrupted round under it. No state change.
+    CapabilitySnapshotRecorded {
+        /// The frozen view.
+        snapshot: crate::epoch::CapabilitySnapshot,
+        /// SHA-256 (hex) of the canonical snapshot; what the round's
+        /// decisions and receipts name.
+        snapshot_hash: String,
+    },
     /// `ReviewCommentsIngested` (PX-008, docs/29 "Review-comment
     /// steering"): the task's pull-request comments read from the forge —
     /// those from an identity the organization allows and addressed to
@@ -2787,6 +2835,8 @@ impl TaskEvent {
             Self::CiEvidenceRecorded { .. } => "CiEvidenceRecorded",
             Self::ReviewCommentsIngested { .. } => "ReviewCommentsIngested",
             Self::PolicyGenerationChanged { .. } => "PolicyGenerationChanged",
+            Self::CapabilitySnapshotRecorded { .. } => "CapabilitySnapshotRecorded",
+            Self::ProcessServiceObserved { .. } => "ProcessServiceObserved",
             Self::RequestOutcomeRecorded { .. } => "RequestOutcomeRecorded",
             Self::HooksResolved { .. } => "HooksResolved",
             Self::HookInvoked { .. } => "HookInvoked",
@@ -2974,7 +3024,8 @@ impl Task {
             | TaskEvent::TerminalControlRecorded { .. }
             | TaskEvent::ProtocolStateResumed { .. }
             | TaskEvent::ToolCallReconciled { .. }
-            | TaskEvent::PolicyGenerationChanged { .. } => {
+            | TaskEvent::PolicyGenerationChanged { .. }
+            | TaskEvent::CapabilitySnapshotRecorded { .. } => {
                 if self.state.is_terminal() {
                     return Err(invalid(&self.state, event.event_type()));
                 }
@@ -3005,6 +3056,10 @@ impl Task {
             TaskEvent::RunModeSet { .. }
             | TaskEvent::AllowRuleAdded { .. }
             | TaskEvent::AllowRuleRevoked { .. } => None,
+            // A service the task's terminal started is lost when the task
+            // ends (its terminals are killed): the record says so whatever
+            // state the task is in (REQ-PX-132).
+            TaskEvent::ProcessServiceObserved { .. } => None,
             // A sandbox is given back after the task ended (M8.5), and one
             // may be lost at any time: the records of the substrate's
             // lifecycle land whatever the task's state. So do the request's

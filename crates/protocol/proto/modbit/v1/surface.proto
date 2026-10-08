@@ -12,6 +12,7 @@ import "modbit/v1/context_knowledge.proto";
 import "modbit/v1/domain.proto";
 import "modbit/v1/envelope.proto";
 import "modbit/v1/negotiation.proto";
+import "modbit/v1/security_runtime.proto";
 import "modbit/v1/context_rules.proto";
 import "modbit/v1/terminal.proto";
 import "modbit/v1/tasking.proto";
@@ -335,6 +336,8 @@ message EffectReceiptView {
   string receipt_hash = 13;
   string reversibility = 14;       // REVERSIBLE | PARTIALLY_REVERSIBLE | COMPENSATABLE | IRREVERSIBLE; "" before REQ-EV-0066
   Id compensates = 15;             // the effect this one compensates, when it is a compensation
+  uint64 authorization_epoch = 320;       // REQ-PX-131: the model round's epoch the effect was decided under; 0 before epochs
+  string capability_snapshot_hash = 321;  // the digest of that epoch's frozen capability snapshot
 }
 
 message EffectReceiptList {
@@ -564,6 +567,10 @@ message ContextInspectorView {
   // (REQ-PX-050, 057, 059); the messages are in run_control.proto.
   // The Core's breakdown of the last compiled request by category.
   ContextAccountingView accounting = 340;
+  // The listening services of the task's terminals the Core observed and has
+  // not seen end (REQ-PX-132), so the context breakdown shows what the agent
+  // would otherwise have to rediscover.
+  repeated ProcessServiceView process_services = 320;
 }
 
 message CompactionRequestView {

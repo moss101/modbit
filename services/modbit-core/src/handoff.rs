@@ -260,7 +260,11 @@ pub async fn export(
         .flat_map(|l| l.operations)
         .collect();
     if (lease_ops.iter().any(|o| o == "secret.use") || capabilities.contains("secret.use"))
-        && core.tools.forge.get().is_some_and(|f| f.token.is_some())
+        && core.tools.forge.get().is_some_and(|f| {
+            f.token
+                .as_ref()
+                .is_some_and(modbit_tools::forge::ForgeToken::present)
+        })
     {
         secret_handles.insert("forge-token".to_owned());
     }

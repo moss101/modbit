@@ -431,6 +431,14 @@ pub struct ToolHost {
     /// The admin/project/user configuration resolved and pinned per task
     /// (REQ-EV-0039, REQ-EV-0128).
     pub configurations: crate::config::Configurations,
+    /// The frozen capability view of each task's newest model round
+    /// (REQ-PX-131): the epoch every decision and receipt is stamped with.
+    pub(crate) epochs: crate::epoch::Epochs,
+    /// The listening services of the tasks' terminals, as the Core observed
+    /// them (REQ-PX-132).
+    pub(crate) process_services: crate::process_services::ProcessServices,
+    /// Component health and the optional OpenTelemetry export (REQ-PX-139).
+    pub(crate) telemetry: crate::telemetry::Telemetry,
     /// The Hook Bus (REQ-EV-0042/0139/0240): loaded extensions per session
     /// and the runs a fail-closed after-hook stopped.
     pub hooks: Arc<crate::hooks::HookBus>,
@@ -533,7 +541,10 @@ impl ToolHost {
         let external_reads = Arc::new(modbit_mcp::ReadDeclarations::new());
         modbit_tools::external::register_external(&mut registry, Arc::clone(&external_reads))
             .map_err(|e| anyhow::anyhow!("{e}"))?;
-        let mcp = Arc::new(crate::mcp::McpHub::from_env(external_reads));
+        let mcp = Arc::new(crate::mcp::McpHub::from_env(
+            external_reads,
+            Arc::clone(gateway.broker()),
+        ));
         let runtime = ToolRuntime::new(registry, Arc::new(ProfilePolicy));
         let execd = match spawn_execd(data_dir, replay_generation) {
             Ok(e) => Some(e),
@@ -562,9 +573,12 @@ impl ToolHost {
             diag_baselines: Mutex::new(HashMap::new()),
             language_servers: Arc::new(std::sync::Mutex::new(HashMap::new())),
             state_dir: data_dir.join("workspaces"),
-            forge: crate::forge::ForgeCustody::from_env(),
+            forge: crate::forge::ForgeCustody::from_env(Arc::clone(gateway.broker())),
             mcp,
             configurations: crate::config::Configurations::default(),
+            epochs: crate::epoch::Epochs::default(),
+            process_services: crate::process_services::ProcessServices::default(),
+            telemetry: crate::telemetry::Telemetry::new(data_dir),
             hooks: Arc::new(crate::hooks::HookBus::default()),
             data_dir: data_dir.to_path_buf(),
             browser,
@@ -578,29 +592,25 @@ impl ToolHost {
         })
     }
 
-    /// The one redactor over everything this Core holds (REQ-EV-0017).
-    pub(crate) fn redactor(&self) -> modbit_secrets::Redactor {
-        modbit_secrets::Redactor::new(self.secrets_in_custody())
+    /// The credential broker every credential this Core holds lives in
+    /// (REQ-PX-130): provider keys, the forge token, external servers'
+    /// credentials, the credentials a browser host fills, an exporter's
+    /// headers.
+    pub(crate) fn broker(&self) -> &Arc<modbit_secrets::CredentialBroker> {
+        self.gateway.broker()
     }
 
-    /// Every credential this Core holds (M7.7, docs/22 "Prompt-injection
-    /// isolation"): the provider keys the gateway can present and the forge
-    /// token. Memory only; the pipeline compares, never records.
-    fn secrets_in_custody(&self) -> Vec<String> {
-        let mut out: Vec<String> = self
-            .gateway
-            .endpoints()
-            .iter()
-            .filter_map(|e| e.credential.resolve())
-            .collect();
-        if let Some(t) = self.forge.get().and_then(|f| f.token.clone()) {
-            out.push(t);
-        }
-        // M9.4: an external server's credential is in this Core's custody
-        // too, so an argument carrying its value is refused like any other.
-        out.extend(self.mcp.secrets_in_custody());
-        out.retain(|s| s.len() >= 8);
-        out
+    /// The one redactor over everything this Core holds (REQ-EV-0017).
+    pub(crate) fn redactor(&self) -> modbit_secrets::Redactor {
+        self.broker().redactor()
+    }
+
+    /// Every credential this Core holds, for the one thing that must compare
+    /// text with them (M7.7, docs/22 "Prompt-injection isolation"): the
+    /// screen that refuses a tool call whose arguments carry one. The values
+    /// are compared and never recorded.
+    pub(crate) fn secrets_in_custody(&self) -> Vec<String> {
+        self.broker().custody_for_screening()
     }
 
     pub(crate) async fn workspace(
@@ -944,6 +954,14 @@ impl ToolHost {
             )
             .map_err(|e| anyhow::anyhow!("RUN_POLICY_UNREADABLE: {e}"))?
         };
+        // REQ-PX-131: the epoch of the model round this call is decided in
+        // (or, outside a round, of the last one): it stamps the decision and
+        // every receipt of the call. The configuration, the mode and the
+        // projection the kernel reads below are the ones that round froze.
+        let authorization = {
+            let st = store.lock().await;
+            self.epochs.current(&st, task_id)
+        };
         let port = KernelPort {
             run,
             mode,
@@ -1139,6 +1157,7 @@ impl ToolHost {
                 .registry()
                 .get(tool_name)
                 .map(|t| t.spec().reversibility()),
+            authorization: authorization.clone(),
         });
         let ctx = InvokeContext {
             task_id,
@@ -1779,6 +1798,7 @@ impl ToolHost {
                         allowed: false,
                         decision,
                         approval_required: false,
+                        authorization: authorization.clone(),
                     },
                     actor.clone(),
                 ));
@@ -1830,6 +1850,7 @@ impl ToolHost {
                             |t| t.spec().reversibility(),
                         )),
                         compensates,
+                        authorization: authorization.clone(),
                         receipt_hash: String::new(),
                     });
                 }
@@ -2381,6 +2402,8 @@ struct DispatchLog {
     compensates: Option<modbit_domain::EffectId>,
     /// The tool's own reversibility declaration, when it is registered.
     reversibility: Option<modbit_domain::toolcall::Reversibility>,
+    /// The authority epoch the dispatch is decided under (REQ-PX-131).
+    authorization: Option<modbit_domain::epoch::AuthorizationStamp>,
 }
 
 /// Where a call's effect runs, as a receipt records it.
@@ -2413,6 +2436,7 @@ impl modbit_tools::DispatchJournal for DispatchLog {
                     allowed: true,
                     decision,
                     approval_required: false,
+                    authorization: self.authorization.clone(),
                 },
                 self.actor.clone(),
             ));
@@ -2457,6 +2481,7 @@ impl modbit_tools::DispatchJournal for DispatchLog {
                                 )
                             })),
                             compensates: self.compensates,
+                            authorization: self.authorization.clone(),
                             receipt_hash: String::new(),
                         },
                     },

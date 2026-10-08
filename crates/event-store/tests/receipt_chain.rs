@@ -90,6 +90,7 @@ fn try_dispatch(
                 allowed: true,
                 decision: "allow".into(),
                 approval_required: false,
+                authorization: None,
             },
         ),
         typed("ToolCallDispatched", &ToolCallEvent::ToolCallDispatched),
@@ -115,6 +116,7 @@ fn receipt(task: TaskId, call: ToolCallId, prev: Option<String>) -> EffectReceip
         occurred_at: Timestamp(1),
         reversibility: None,
         compensates: None,
+        authorization: None,
         receipt_hash: String::new(),
     })
 }

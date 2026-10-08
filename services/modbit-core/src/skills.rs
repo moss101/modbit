@@ -427,6 +427,9 @@ pub struct RunSkills {
     explicit: Vec<String>,
     last_selection: Option<String>,
     last_index: Option<String>,
+    /// The skills the latest round selected, as `name@content_hash`
+    /// (REQ-PX-131: what the round's capability snapshot names).
+    selected: Vec<String>,
 }
 
 impl RunSkills {
@@ -437,7 +440,14 @@ impl RunSkills {
             explicit,
             last_selection: None,
             last_index: None,
+            selected: Vec::new(),
         }
+    }
+
+    /// The skills the latest round selected, as `name@content_hash`.
+    #[must_use]
+    pub fn selected(&self) -> &[String] {
+        &self.selected
     }
 
     /// The prompt texts for this round — the selected skills' bodies, then
@@ -464,11 +474,18 @@ impl RunSkills {
             && self.explicit.is_empty()
         {
             state.skills_loadable = false;
+            self.selected.clear();
             return vec![];
         }
         let active = crate::rules::active_paths(core, task, state).await;
         let c = choose_with(w, task, &self.explicit, &active, true);
         let p = plan(&c, &active, projection, budget_tokens());
+        self.selected = c
+            .selected
+            .iter()
+            .filter(|(s, _)| !p.demoted.contains(&s.name))
+            .map(|(s, _)| format!("{}@{}", s.name, s.content_hash))
+            .collect();
         state.skills_loadable = p.loadable > 0;
         let key = lock_key(&c, &p);
         let index_hash = hex::encode(<sha2::Sha256 as sha2::Digest>::digest(

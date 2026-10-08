@@ -23,6 +23,8 @@ pub(crate) async fn view(core: &Core, task_id: TaskId) -> wire::ContextInspector
         // PX-113: the memory the envelope injected, with ids and provenance.
         v.memory = memory.as_ref().map(memory_view);
     }
+    // REQ-PX-132: the services the task's terminals are running.
+    v.process_services = core.tools.process_services.live_views(task_id);
     // What the user has selected (REQ-EV-0141 / 0160): the same selection
     // retrieval prefers, so a client can see why an entry is in the pack.
     let selection = crate::tools::selection_of(&core.store, task_id).await;

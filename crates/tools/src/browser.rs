@@ -818,6 +818,14 @@ async fn act(ctx: &InvokeContext, args: Value) -> ToolOutcome {
                 ),
             );
         }
+        // REQ-PX-130: the credential broker decides whether this task may
+        // have the host fill this credential into this origin now.
+        if let Err((code, message)) = port
+            .authorize_credential(&c.handle, &page_origin, &format!("task:{}", ctx.task_id))
+            .await
+        {
+            return ToolOutcome::fail(&code, message);
+        }
         Some(c.handle)
     } else {
         None

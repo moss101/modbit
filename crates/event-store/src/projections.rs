@@ -1915,8 +1915,8 @@ fn insert_receipt(tx: &rusqlite::Connection, r: &EffectReceipt) -> Result<()> {
         |row| row.get(0),
     )?;
     tx.execute(
-        "INSERT OR IGNORE INTO effect_receipts (effect_id, seq, previous_receipt_hash, task_id, turn_id, step_id, tool_call_id, capability_lease_id, intent_hash, policy_decision, approval_id, execution_target, evidence_ref, status, occurred_at, receipt_hash, reversibility, compensates)
-         VALUES (?1, ?2, ?3, ?4, NULL, NULL, ?5, ?6, ?7, ?8, ?9, ?10, ?11, ?12, ?13, ?14, ?15, ?16)",
+        "INSERT OR IGNORE INTO effect_receipts (effect_id, seq, previous_receipt_hash, task_id, turn_id, step_id, tool_call_id, capability_lease_id, intent_hash, policy_decision, approval_id, execution_target, evidence_ref, status, occurred_at, receipt_hash, reversibility, compensates, authorization_epoch, capability_snapshot_hash)
+         VALUES (?1, ?2, ?3, ?4, NULL, NULL, ?5, ?6, ?7, ?8, ?9, ?10, ?11, ?12, ?13, ?14, ?15, ?16, ?17, ?18)",
         params![
             r.effect_id.as_bytes().as_slice(),
             seq,
@@ -1934,6 +1934,10 @@ fn insert_receipt(tx: &rusqlite::Connection, r: &EffectReceipt) -> Result<()> {
             &r.receipt_hash,
             r.reversibility.map(|x| x.label()),
             r.compensates.map(|e| e.as_bytes().to_vec()),
+            r.authorization
+                .as_ref()
+                .map(|a| i64::try_from(a.epoch).unwrap_or(i64::MAX)),
+            r.authorization.as_ref().map(|a| a.snapshot_hash.clone()),
         ],
     )?;
     Ok(())
@@ -1973,10 +1977,20 @@ fn receipt_from_row(r: &rusqlite::Row<'_>) -> rusqlite::Result<EffectReceipt> {
             .map(blob16)
             .transpose()?
             .map(modbit_domain::EffectId::from_bytes),
+        authorization: match (
+            r.get::<_, Option<i64>>(15)?,
+            r.get::<_, Option<String>>(16)?,
+        ) {
+            (Some(epoch), Some(snapshot_hash)) => Some(modbit_domain::epoch::AuthorizationStamp {
+                epoch: u64::try_from(epoch).unwrap_or(0),
+                snapshot_hash,
+            }),
+            _ => None,
+        },
     })
 }
 
-const RECEIPT_COLS: &str = "effect_id, previous_receipt_hash, task_id, tool_call_id, capability_lease_id, intent_hash, policy_decision, approval_id, execution_target, evidence_ref, status, occurred_at, receipt_hash, reversibility, compensates";
+const RECEIPT_COLS: &str = "effect_id, previous_receipt_hash, task_id, tool_call_id, capability_lease_id, intent_hash, policy_decision, approval_id, execution_target, evidence_ref, status, occurred_at, receipt_hash, reversibility, compensates, authorization_epoch, capability_snapshot_hash";
 
 /// The hash of the newest receipt in the chain, if any.
 pub fn last_receipt_hash(tx: &rusqlite::Connection) -> Result<Option<String>> {

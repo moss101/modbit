@@ -367,6 +367,22 @@ pub trait BrowserPort: Send + Sync {
         Box::pin(async { Vec::new() })
     }
 
+    /// Whether the credential broker lets `principal` have the host fill
+    /// `handle` into a page at `origin` now (REQ-PX-130): the use is checked
+    /// against the credential's audience, counted and audited, and refused
+    /// if the credential was revoked. The value stays with the host. A port
+    /// with no broker allows it, as it always did; `Err((code, message))`
+    /// is the broker's refusal.
+    fn authorize_credential<'a>(
+        &'a self,
+        handle: &'a str,
+        origin: &'a str,
+        principal: &'a str,
+    ) -> BoxFuture<'a, Result<(), (String, String)>> {
+        let _ = (handle, origin, principal);
+        Box::pin(async { Ok(()) })
+    }
+
     /// Record a transition the session observed (IMP-EV-0280).
     fn remember_transition<'a>(
         &'a self,

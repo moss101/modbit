@@ -18,6 +18,7 @@ import type { TerminalFrame } from "./terminal_pb.js";
 import type { CompactionSummaryView, CompactionThresholdView, InstructionLayerView, PreTurnPackView } from "./context_rules_pb.js";
 import type { MemoryEventView, MemoryInjectionView } from "./context_knowledge_pb.js";
 import type { ContextAccountingView } from "./run_control_pb.js";
+import type { ProcessServiceView } from "./security_runtime_pb.js";
 import type { CaptureCost } from "./checkpoints_pb.js";
 
 /**
@@ -1298,6 +1299,20 @@ export declare type EffectReceiptView = Message<"modbit.v1.EffectReceiptView"> &
    * @generated from field: modbit.v1.Id compensates = 15;
    */
   compensates?: Id | undefined;
+
+  /**
+   * REQ-PX-131: the model round's epoch the effect was decided under; 0 before epochs
+   *
+   * @generated from field: uint64 authorization_epoch = 320;
+   */
+  authorizationEpoch: bigint;
+
+  /**
+   * the digest of that epoch's frozen capability snapshot
+   *
+   * @generated from field: string capability_snapshot_hash = 321;
+   */
+  capabilitySnapshotHash: string;
 };
 
 /**
@@ -2267,6 +2282,15 @@ export declare type ContextInspectorView = Message<"modbit.v1.ContextInspectorVi
    * @generated from field: modbit.v1.ContextAccountingView accounting = 340;
    */
   accounting?: ContextAccountingView | undefined;
+
+  /**
+   * The listening services of the task's terminals the Core observed and has
+   * not seen end (REQ-PX-132), so the context breakdown shows what the agent
+   * would otherwise have to rediscover.
+   *
+   * @generated from field: repeated modbit.v1.ProcessServiceView process_services = 320;
+   */
+  processServices: ProcessServiceView[];
 };
 
 /**

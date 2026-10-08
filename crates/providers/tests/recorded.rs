@@ -246,7 +246,17 @@ async fn live_recorded_tool_round_trip_on_each_configured_wire() {
             },
             "exchanges": exchanges,
         });
-        let held: Vec<String> = ep.credential.resolve().into_iter().collect();
+        // The key the recording must not contain, as the broker holds it.
+        let held: Vec<String> = {
+            let broker = modbit_secrets::CredentialBroker::new();
+            broker.register(modbit_secrets::Registration {
+                id: modbit_providers::gateway::credential_id(&ep.name),
+                kind: modbit_secrets::Kind::Provider,
+                source: ep.credential.clone(),
+                audience: format!("provider:{}", ep.name),
+            });
+            broker.custody_for_screening()
+        };
         let findings = safety_findings(&fixture, &held);
         assert!(
             findings.is_empty(),

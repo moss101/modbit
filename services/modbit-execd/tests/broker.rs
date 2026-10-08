@@ -129,7 +129,8 @@ async fn run_to_exit(
             | Event::SandboxProbed(_)
             | Event::Resized(_)
             | Event::Lease(_)
-            | Event::StdinWritten(_) => {}
+            | Event::StdinWritten(_)
+            | Event::Listeners(_) => {}
         }
     }
 }
@@ -221,7 +222,8 @@ async fn qual_ev_0019_0269_ten_megabytes_stream_in_bounded_chunks_and_output_ref
             | Event::SandboxProbed(_)
             | Event::Resized(_)
             | Event::Lease(_)
-            | Event::StdinWritten(_) => {}
+            | Event::StdinWritten(_)
+            | Event::Listeners(_) => {}
         }
     };
     assert_eq!(total, 10 * 1024 * 1024);

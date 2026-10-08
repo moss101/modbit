@@ -79,16 +79,42 @@ pub struct BrowserSessions {
     /// "Credentials"): handle, label, origin, account name — never a value.
     /// Memory only; a host registers them again when it reconnects.
     credentials: Mutex<HashMap<String, modbit_browser::CredentialHandle>>,
+    /// The credential broker (REQ-PX-130): each handle is registered with it
+    /// as a credential whose value lives in the host, bound to its origin;
+    /// every fill is a use the broker checks, counts and audits.
+    broker: Arc<modbit_secrets::CredentialBroker>,
+}
+
+/// The broker's identity of a browser credential handle.
+fn broker_id(handle: &str) -> modbit_secrets::CredentialId {
+    modbit_secrets::CredentialId::new(modbit_secrets::Kind::Browser, handle)
 }
 
 impl BrowserSessions {
+    /// A registry whose credentials live in `broker`.
+    #[must_use]
+    pub fn with_broker(broker: Arc<modbit_secrets::CredentialBroker>) -> Self {
+        Self {
+            broker,
+            ..Self::default()
+        }
+    }
+
     /// Register (or replace) a credential handle (M7.8).
     pub(crate) async fn register_credential(&self, c: modbit_browser::CredentialHandle) {
+        self.broker.register(modbit_secrets::Registration {
+            id: broker_id(&c.handle),
+            kind: modbit_secrets::Kind::Browser,
+            // The value is the host's: this process never has it.
+            source: modbit_secrets::SecretHandle::None,
+            audience: c.origin.clone(),
+        });
         self.credentials.lock().await.insert(c.handle.clone(), c);
     }
 
     /// Forget a credential handle (M7.8).
     pub(crate) async fn forget_credential(&self, handle: &str) -> bool {
+        self.broker.forget(&broker_id(handle));
         self.credentials.lock().await.remove(handle).is_some()
     }
 }
@@ -488,6 +514,35 @@ impl BrowserPort for BrowserSessions {
         handle: &'a str,
     ) -> BoxFuture<'a, Option<modbit_browser::CredentialHandle>> {
         Box::pin(async move { self.credentials.lock().await.get(handle).cloned() })
+    }
+
+    fn authorize_credential<'a>(
+        &'a self,
+        handle: &'a str,
+        origin: &'a str,
+        principal: &'a str,
+    ) -> BoxFuture<'a, Result<(), (String, String)>> {
+        Box::pin(async move {
+            self.broker
+                .acquire_authorization(
+                    &broker_id(handle),
+                    &modbit_secrets::Use {
+                        principal: principal.to_owned(),
+                        audience: origin.to_owned(),
+                        purpose: "browser.fill".into(),
+                        nonce: None,
+                    },
+                )
+                .map_err(|r| {
+                    (
+                        r.code().to_owned(),
+                        format!(
+                            "the credential broker refused `{handle}` for this page ({}): nothing was filled",
+                            r.code()
+                        ),
+                    )
+                })
+        })
     }
 
     fn credentials_for<'a>(

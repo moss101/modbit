@@ -803,7 +803,7 @@ pub(crate) async fn scope(
     ));
     (
         HookScope {
-            secrets: Arc::new(core.tools.mcp.secrets_in_custody()),
+            secrets: Arc::new(core.tools.secrets_in_custody()),
             prompter: Some(prompter),
             store: Arc::clone(&core.store),
             bus: Arc::clone(&core.tools.hooks),

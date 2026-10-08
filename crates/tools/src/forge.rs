@@ -34,8 +34,95 @@ pub struct ForgeConfig {
     pub api_base: String,
     /// Web host issue and pull-request URLs name, e.g. `github.com`.
     pub web_host: String,
-    /// The token in the host's custody; `None` = reads only if the forge allows them.
-    pub token: Option<String>,
+    /// The token in the host's custody, reached through the credential
+    /// broker; `None` = reads only if the forge allows them.
+    pub token: Option<ForgeToken>,
+}
+
+/// The forge token as a consumer holds it: not a value but a reference to the
+/// credential the broker holds (REQ-PX-130). Each API call obtains the token
+/// for itself — for the task that makes it, for this forge — so a revoked or
+/// rotated token applies to the very next call.
+#[derive(Clone)]
+pub struct ForgeToken {
+    broker: Arc<modbit_secrets::CredentialBroker>,
+    id: modbit_secrets::CredentialId,
+    principal: String,
+}
+
+impl std::fmt::Debug for ForgeToken {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "ForgeToken({})", self.id)
+    }
+}
+
+impl ForgeToken {
+    /// The token registered under `id` in `broker`, used as the Core.
+    #[must_use]
+    pub fn new(
+        broker: Arc<modbit_secrets::CredentialBroker>,
+        id: modbit_secrets::CredentialId,
+    ) -> Self {
+        Self {
+            broker,
+            id,
+            principal: "core".into(),
+        }
+    }
+
+    /// The same token, used on behalf of `principal` (`task:<id>`).
+    #[must_use]
+    pub fn for_principal(&self, principal: &str) -> Self {
+        Self {
+            principal: principal.to_owned(),
+            ..self.clone()
+        }
+    }
+
+    /// Whether the broker can supply the token now (registered, not revoked,
+    /// its source has a value).
+    #[must_use]
+    pub fn present(&self) -> bool {
+        self.broker.usable(&self.id)
+    }
+
+    /// The token for one call, or the broker's refusal.
+    ///
+    /// # Errors
+    /// The broker refused the use.
+    pub fn acquire(
+        &self,
+        kind: &str,
+    ) -> std::result::Result<modbit_secrets::Secret, modbit_secrets::Refusal> {
+        self.acquire_for(kind, "forge.api")
+    }
+
+    /// The token for one use with a stated purpose (`sandbox.credential` for
+    /// the credential a cloud sandbox's gateway holds on the task's behalf).
+    ///
+    /// # Errors
+    /// The broker refused the use.
+    pub fn acquire_for(
+        &self,
+        kind: &str,
+        purpose: &str,
+    ) -> std::result::Result<modbit_secrets::Secret, modbit_secrets::Refusal> {
+        self.broker.acquire(
+            &self.id,
+            &modbit_secrets::Use {
+                principal: self.principal.clone(),
+                audience: format!("forge:{kind}"),
+                purpose: purpose.to_owned(),
+                nonce: None,
+            },
+        )
+    }
+
+    /// The one redactor over what the broker holds.
+    #[must_use]
+    pub fn redactor(&self) -> modbit_secrets::Redactor {
+        self.broker.redactor()
+    }
 }
 
 impl ForgeConfig {
@@ -218,11 +305,11 @@ fn locate(
 }
 
 /// The forge, the token check, and the lease's egress: what every call does first.
-fn gate<'a>(
-    ctx: &'a InvokeContext,
+fn gate(
+    ctx: &InvokeContext,
     args: &Value,
     needs_token: bool,
-) -> std::result::Result<&'a ForgeConfig, Refused> {
+) -> std::result::Result<ForgeConfig, Refused> {
     if let Some(at) = token_in_arguments(args) {
         return Err(Box::new(ToolOutcome::fail(
             "TOKEN_IN_ARGUMENTS",
@@ -237,12 +324,18 @@ fn gate<'a>(
             "no forge is configured for this Core (MODBIT_GITHUB_TOKEN or ConfigureForge)",
         )));
     };
-    if needs_token && cfg.token.is_none() {
+    if needs_token && !cfg.token.as_ref().is_some_and(ForgeToken::present) {
         return Err(Box::new(ToolOutcome::fail(
             "NO_FORGE_TOKEN",
             "the forge has no token in the Core's custody; a write needs one",
         )));
     }
+    // The call speaks for the task that makes it.
+    let mut cfg = cfg.clone();
+    cfg.token = cfg
+        .token
+        .as_ref()
+        .map(|t| t.for_principal(&format!("task:{}", ctx.task_id)));
     Ok(cfg)
 }
 
@@ -267,7 +360,14 @@ async fn call(
         .header("User-Agent", "modbit-forge/1")
         .header("X-GitHub-Api-Version", "2022-11-28");
     if let Some(t) = &cfg.token {
-        req = req.header("Authorization", format!("Bearer {t}"));
+        // The token is obtained for this call and used only here.
+        let secret = t.acquire(&cfg.kind).map_err(|r| {
+            Box::new(ToolOutcome::fail(
+                r.code(),
+                format!("the credential broker refused the forge token: {r}"),
+            ))
+        })?;
+        req = req.header("Authorization", format!("Bearer {}", secret.expose()));
     }
     if let Some(b) = body {
         req = req.json(&b);
@@ -286,7 +386,7 @@ async fn call(
     let mut value: Value = serde_json::from_str(&text).unwrap_or_else(|_| json!({"raw": text}));
     // A forge that repeats the token (an error echoing the header, an issue
     // someone pasted it into) never hands it on (REQ-EV-0017).
-    modbit_secrets::Redactor::new(cfg.token.clone()).data_json(&mut value);
+    token_redactor(cfg).data_json(&mut value);
     Ok((status, value))
 }
 
@@ -305,7 +405,15 @@ fn chain(e: &dyn std::error::Error) -> String {
 
 /// The token never appears in an error, whatever the transport said.
 fn redact(cfg: &ForgeConfig, text: &str) -> String {
-    modbit_secrets::Redactor::new(cfg.token.clone()).error_text(text)
+    token_redactor(cfg).error_text(text)
+}
+
+/// What the forge's text is cleaned with: everything the broker holds.
+fn token_redactor(cfg: &ForgeConfig) -> modbit_secrets::Redactor {
+    cfg.token.as_ref().map_or_else(
+        || modbit_secrets::Redactor::new(Vec::<String>::new()),
+        ForgeToken::redactor,
+    )
 }
 
 fn forge_error(status: u16, body: &Value) -> ToolOutcome {
@@ -429,10 +537,11 @@ tool!(
         Idempotency::Idempotent
     ),
     |ctx, args| {
-        let cfg = match gate(ctx, &args, false) {
+        let cfg_owned = match gate(ctx, &args, false) {
             Ok(c) => c,
             Err(o) => return *o,
         };
+        let cfg = &cfg_owned;
         let (owner, repo, number) = match locate(cfg, &args, "issues") {
             Ok(x) => x,
             Err(o) => return *o,
@@ -471,10 +580,11 @@ tool!(
         "forge.pr.update",
     ),
     |ctx, args| {
-        let cfg = match gate(ctx, &args, true) {
+        let cfg_owned = match gate(ctx, &args, true) {
             Ok(c) => c,
             Err(o) => return *o,
         };
+        let cfg = &cfg_owned;
         let (owner, repo, _) = match locate(cfg, &args, "pull") {
             Ok(x) => x,
             Err(o) => return *o,
@@ -555,10 +665,11 @@ tool!(
         Idempotency::NonIdempotent
     ),
     |ctx, args| {
-        let cfg = match gate(ctx, &args, true) {
+        let cfg_owned = match gate(ctx, &args, true) {
             Ok(c) => c,
             Err(o) => return *o,
         };
+        let cfg = &cfg_owned;
         let (owner, repo, number) = match locate(cfg, &args, "pull") {
             Ok(x) => x,
             Err(o) => return *o,
@@ -619,10 +730,11 @@ tool!(
         Idempotency::Idempotent
     ),
     |ctx, args| {
-        let cfg = match gate(ctx, &args, false) {
+        let cfg_owned = match gate(ctx, &args, false) {
             Ok(c) => c,
             Err(o) => return *o,
         };
+        let cfg = &cfg_owned;
         let (owner, repo, number) = match locate(cfg, &args, "pull") {
             Ok(x) => x,
             Err(o) => return *o,
@@ -677,10 +789,11 @@ tool!(
         Idempotency::Idempotent
     ),
     |ctx, args| {
-        let cfg = match gate(ctx, &args, false) {
+        let cfg_owned = match gate(ctx, &args, false) {
             Ok(c) => c,
             Err(o) => return *o,
         };
+        let cfg = &cfg_owned;
         let (owner, repo, _) = match locate(cfg, &args, "commit") {
             Ok(x) => x,
             Err(o) => return *o,
