@@ -885,7 +885,10 @@ async fn px_062_a_restore_removes_new_files_the_index_holds_and_redo_gives_them_
         })
         .await
         .unwrap();
-    assert!(again.restored, "the preview's own hashes are accepted: {again:?}");
+    assert!(
+        again.restored,
+        "the preview's own hashes are accepted: {again:?}"
+    );
     assert_eq!(tree(&fx.root), after_tweak);
 }
 
