@@ -754,7 +754,18 @@ pub(crate) async fn preview_rewind(
     }
     let ws = ws.lock().await;
     let now = worktree_now(&repo, &ws)?;
-    let entries = plan_rewind(&state, &now.current, &now.tracked);
+    // A path the checkpoint holds and the worktree has clean (it is at HEAD's content) is not in the dirty set, but
+    // its content is not "absent": a client that sends the hash it saw as its precondition would otherwise be
+    // refused as a stale preview by a restore that is exactly what it showed.
+    let mut current = now.current.clone();
+    for path in state.files.keys() {
+        if !current.contains_key(path)
+            && let Some(bytes) = read_workspace_file(&ws, path)
+        {
+            current.insert(path.clone(), Some(content_hash(&bytes)));
+        }
+    }
+    let entries = plan_rewind(&state, &current, &now.tracked);
     Ok(Ok(Preview {
         checkpoint_id: state.checkpoint_id,
         epoch: state.epoch,
