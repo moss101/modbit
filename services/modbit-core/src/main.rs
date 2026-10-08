@@ -16,6 +16,7 @@ mod agents;
 mod apply_back;
 mod assurance;
 mod attention;
+mod automation;
 mod background_process;
 mod baseline;
 mod branch;

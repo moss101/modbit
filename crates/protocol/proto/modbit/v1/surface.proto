@@ -68,6 +68,28 @@ message CreateTask {
   // creation with a typed reason (never a silent fallback to the checkout).
   // UNSPECIFIED = the Core's recorded default.
   TaskIsolation isolation = 280;
+  // PX-083 / PX-084 (automations.proto, field block 400-419): set only by the
+  // Core's own automation host when a trigger fires (origin `automation`);
+  // any client that sends one is refused with AUTOMATION_FIELDS_RESERVED.
+  string automation_id = 400;
+  uint32 automation_version = 401;
+  string automation_event_id = 402;       // the delivery id or schedule slot id
+  string automation_dispatch_key = 403;   // sha256(definition | version | event id)
+  string automation_principal = 404;      // user:<id> | service:<id>; recorded on the task
+  string automation_trigger = 405;        // trigger id and kind
+  // The run's ceiling: the profile's default lease narrowed to these. The
+  // task's lease is the intersection with the profile's own, never wider.
+  repeated string lease_operations = 406;
+  repeated string lease_resources = 407;
+  string lease_effect_ceiling = 408;
+  // The trigger payload: untrusted external content attached to the task as a
+  // labelled context document, never instruction (AUT-D04).
+  string trigger_payload = 409;
+  string trigger_payload_label = 410;    // forge_pr | forge_comment | webhook
+  uint32 payload_findings = 411;         // instruction-shaped passages the Core found in it
+  bool automation_test = 412;            // a dry-run: read-only, protected effects denied
+  string automation_definition_hash = 413;  // the hash the owner's enable approval named
+  string automation_trigger_kind = 414;     // schedule | manual | event | webhook
 }
 
 message GetSessionSnapshot {

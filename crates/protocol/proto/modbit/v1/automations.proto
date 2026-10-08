@@ -1,0 +1,305 @@
+// Automations (REQ-PX-082..086; docs/68, DR-PX-2026-10-03-010).
+//
+// An automation is a versioned definition that makes the Core create an
+// ordinary task when a trigger fires. These messages manage definitions, the
+// owner's enable approval, the kill switches and the run history, and carry a
+// trigger event in. A trigger never produces anything but `CreateTask` and
+// `StartTask` for a principal under a ceiling (the Core issues those itself);
+// a model can never call any of these commands.
+//
+// The fields this file adds to existing messages use the block 400-419:
+// `CreateTask.automation_*` and `CreateTask.lease_*`. They are honoured only
+// when the Core's own automation host creates the task; from any client they
+// are refused with AUTOMATION_FIELDS_RESERVED.
+syntax = "proto3";
+
+package modbit.v1;
+
+// One problem found in a definition, where, and why.
+message AutomationIssue {
+  string path = 1;                 // /triggers/0/cron, or a file for a repository load
+  string code = 2;                 // UNKNOWN_FIELD | UNKNOWN_TRIGGER | BAD_CRON | BELOW_FLOOR | BAD_REGEX | ...
+  string message = 3;
+}
+
+// A trigger as a person reads it, with the next time it is due.
+message AutomationTriggerView {
+  string id = 1;
+  string kind = 2;                 // schedule | manual | event | webhook
+  string summary = 3;              // "0 3 * * *" | "every 60 min" | "forge pull_request" | ...
+  int64 next_due_ms = 4;           // schedule triggers of an enabled definition; 0 otherwise
+}
+
+// The enable approval in force.
+message AutomationEnableView {
+  uint32 version = 1;
+  string definition_hash = 2;
+  string effects = 3;              // read_only | reversible_write | protected_write | external_side_effect
+  repeated string capabilities = 4;
+  repeated string paths = 5;
+  repeated string hosts = 6;
+  string approver = 7;
+  int64 approved_ms = 8;
+  string repo_revision = 9;
+  string source_sha256 = 10;
+}
+
+message AutomationView {
+  string automation_id = 1;
+  string name = 2;
+  string description = 3;
+  uint32 current_version = 4;
+  string definition_hash = 5;      // of the current version
+  // DISABLED (never approved or disabled) | NEEDS_APPROVAL (edited, or a
+  // repository definition) | ENABLED | PAUSED | AUTO_DISABLED.
+  string state = 6;
+  string disabled_reason = 7;
+  string disabled_detail = 8;
+  bool paused = 9;
+  AutomationEnableView enabled = 10;
+  string source_kind = 11;         // local | repository
+  string source_path = 12;
+  string workspace_root = 13;
+  string principal = 14;           // creator | service:<id>
+  repeated AutomationTriggerView triggers = 15;
+  string effects = 16;
+  repeated string capabilities = 17;
+  repeated string paths = 18;
+  repeated string hosts = 19;
+  uint32 consecutive_failures = 20;
+  int64 last_run_ms = 21;
+  string last_run_status = 22;
+  string definition_json = 23;     // the current version, canonical
+  bool needs_listed_approval = 24; // the profile reaches beyond read-only: the approval lists it
+  bool content_changed = 25;       // a repository definition whose file no longer matches the approved bytes
+  uint32 queued = 26;
+  uint32 active = 27;
+  uint64 limit_deadline_minutes = 28;
+  uint64 limit_max_cost_minor = 29;
+  uint64 limit_approval_wait_minutes = 30;
+}
+
+message AutomationVersionView {
+  uint32 version = 1;
+  string definition_hash = 2;
+  string definition_json = 3;
+  string source_kind = 4;
+  string source_path = 5;
+  string source_revision = 6;
+  int64 created_ms = 7;
+  string created_by = 8;
+  bool approved = 9;               // the enable approval in force names this version
+}
+
+message AutomationDetail {
+  AutomationView view = 1;
+  repeated AutomationVersionView versions = 2;
+}
+
+// One run record: a firing and what became of it.
+message AutomationRunView {
+  string dispatch_key = 1;
+  string automation_id = 2;
+  string name = 3;
+  uint32 version = 4;
+  string trigger_id = 5;
+  string trigger_kind = 6;
+  string event_id = 7;
+  // pending | queued | running | succeeded | failed | skipped | cancelled
+  string status = 8;
+  // For a skip, a failure or a cancellation: DUPLICATE | PAUSED | BUDGET |
+  // GATE | CONCURRENCY | MISSED | APPROVAL_EXPIRED | POLICY | FILTER |
+  // KILLED | REPLACED | BUDGET_EXHAUSTED | DEADLINE | TASK_FAILED | ...
+  string reason = 9;
+  string detail = 10;
+  string task_id = 11;             // hex
+  string session_id = 12;          // hex
+  string principal = 13;
+  int64 fired_ms = 14;
+  int64 dispatched_ms = 15;
+  int64 finished_ms = 16;
+  uint64 cost_minor = 17;
+  bool test = 18;
+  bool catch_up = 19;
+  uint64 missed = 20;
+  uint32 findings = 21;            // instruction-shaped passages found in the payload
+  string outputs_json = 22;
+  bool acknowledged = 23;
+  int64 slot_ms = 24;
+}
+
+// Something a person must look at.
+message AutomationAttention {
+  string kind = 1;                 // RUN_FAILED | PARKED_APPROVAL | APPROVAL_EXPIRED | AUTO_DISABLED | SOURCE_CHANGED | SKIPPED_BUDGET
+  string automation_id = 2;
+  string name = 3;
+  string dispatch_key = 4;
+  string task_id = 5;
+  string reason = 6;
+  string action = 7;               // the command that clears it
+  int64 at_ms = 8;
+}
+
+// ---- Reads ----
+
+message ListAutomations {}
+
+message AutomationList {
+  repeated AutomationView automations = 1;
+  bool global_paused = 2;
+  repeated AutomationAttention attention = 3;
+  int64 now_ms = 4;                // the time source's reading
+  string clock = 5;                // WALL | MONOTONIC_SAFE | CONTROLLED
+}
+
+message GetAutomation {
+  string automation_id = 1;
+}
+
+message ListAutomationRuns {
+  string automation_id = 1;        // empty = every definition
+  string task_id = 2;              // hex; narrows to the run of one task
+  uint32 limit = 3;                // default 100, at most 500
+}
+
+message AutomationRunList {
+  repeated AutomationRunView runs = 1;
+}
+
+// Check a definition document without saving it: the live validation of the
+// editor. Nothing is executed or stored.
+message ValidateAutomation {
+  string definition_json = 1;
+}
+
+message AutomationValidation {
+  bool ok = 1;
+  repeated AutomationIssue issues = 2;
+  string name = 3;
+  string definition_hash = 4;
+  string canonical_json = 5;
+  string effects = 6;
+  repeated string capabilities = 7;
+  repeated string paths = 8;
+  repeated string hosts = 9;
+  bool needs_listed_approval = 10;
+  repeated AutomationTriggerView triggers = 11;  // with the next due time of each schedule
+}
+
+// ---- Definitions ----
+
+message CreateAutomation {
+  string definition_json = 1;
+  string workspace_root = 2;       // the workspace the runs act in; must exist
+}
+
+message UpdateAutomation {
+  string automation_id = 1;
+  string definition_json = 2;      // becomes the next version; disabled until approved
+}
+
+// Read `.modbit/automations/*.json` of a workspace as DATA. Each file becomes
+// a version that is disabled; nothing is enabled by reading it, and a file
+// whose bytes changed since it was approved disables the definition.
+message LoadRepositoryAutomations {
+  string workspace_root = 1;
+}
+
+message RepositoryAutomations {
+  repeated AutomationView loaded = 1;
+  repeated AutomationIssue problems = 2;   // path = the file
+}
+
+// The owner's explicit enable approval. It names the exact version and hash
+// and, for a profile beyond read-only, lists exactly the capabilities, paths
+// and hosts being approved; any difference is refused.
+message EnableAutomation {
+  string automation_id = 1;
+  uint32 version = 2;
+  string definition_hash = 3;
+  string effects = 4;
+  repeated string capabilities = 5;
+  repeated string paths = 6;
+  repeated string hosts = 7;
+}
+
+message DisableAutomation {
+  string automation_id = 1;
+  string note = 2;
+}
+
+// ---- Kill switches ----
+
+// Pause (or resume) one definition, or all of them when automation_id is empty.
+message PauseAutomation {
+  string automation_id = 1;
+  bool paused = 2;
+  string note = 3;
+}
+
+// Stop everything: pause the switch, drop queued firings and cancel running
+// automation tasks (and put their sessions under an emergency stop).
+message KillAutomation {
+  string automation_id = 1;        // empty = all automations
+  string note = 2;
+}
+
+message KillReport {
+  uint32 cancelled_runs = 1;
+  uint32 dropped_queued = 2;
+  bool paused = 3;
+}
+
+// ---- Runs ----
+
+// Start a run by hand (a manual trigger), or test it. A test run simulates a
+// trigger payload through the definition's filters and runs in a dry-run
+// posture: read-only, every protected effect denied and listed as what would
+// have been asked.
+message RunAutomation {
+  string automation_id = 1;
+  string trigger_id = 2;           // empty = the first manual trigger
+  string inputs_json = 3;          // typed inputs; unknown inputs are refused
+  bool test = 4;
+  string payload_json = 5;         // for a test of an event or webhook trigger
+  string source = 6;               // event source for that payload (forge | webhook)
+  string event = 7;                // the event name
+  string event_id = 8;             // idempotency key; empty = fresh
+}
+
+message AutomationRunStarted {
+  string dispatch_key = 1;
+  string status = 2;
+  string reason = 3;
+  string detail = 4;
+  string task_id = 5;
+  bool would_skip_by_filter = 6;   // a test: the filters would have skipped this payload
+}
+
+// A trigger event delivered to the Core (the forge adapter, the Cloud Worker
+// relaying a verified webhook). Matched against every enabled definition's
+// event and webhook triggers; each match fires through the idempotent
+// dispatch. The payload is untrusted data.
+message FireAutomationEvent {
+  string source = 1;               // forge | webhook
+  string event = 2;
+  string delivery_id = 3;
+  string payload_json = 4;
+}
+
+message AutomationFired {
+  string automation_id = 1;
+  string trigger_id = 2;
+  string dispatch_key = 3;
+  string status = 4;
+  string reason = 5;
+}
+
+message AutomationFireReport {
+  repeated AutomationFired fired = 1;
+  uint32 matched = 2;
+}
+
+message AckAutomationAttention {
+  string dispatch_key = 1;
+}

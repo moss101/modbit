@@ -71,6 +71,10 @@ pub struct Core {
     pub(crate) conversation_index: crate::conversation_search::Index,
     /// The worktree cleanup lease and schedule (PX-065).
     pub(crate) worktrees: crate::worktree_cleanup::Manager,
+    /// The automation ledger, its time source and its dispatch state
+    /// (PX-082..084): definitions as data, evaluated by the one tick that
+    /// asks this Core to create ordinary tasks.
+    pub(crate) automation: crate::automation::Host,
 }
 
 impl Core {
@@ -265,6 +269,7 @@ pub async fn run_as(
         browser,
         conversation_index: crate::conversation_search::Index::from_env(),
         worktrees: Default::default(),
+        automation: crate::automation::Host::from_env(),
     });
     // PX-057: a RUN_EVERYTHING recorded before this point belongs to a
     // process that is gone and is not in force.
@@ -305,6 +310,10 @@ pub async fn run_as(
     // PX-065: the cleanup schedule (every 6 h; a catch-up 30 s after start
     // when the last completed run is overdue).
     crate::worktree_cleanup::start_schedule(&core);
+    // PX-082..084: the automation ledger is rebuilt from the log and the one
+    // tick that evaluates triggers starts; a firing recorded but not
+    // dispatched when the last Core died is finished here, once.
+    crate::automation::start(&core).await;
     // EPR-012: the last activated registry generation, verified again.
     crate::model_registry::restore(&core).await;
     // REQ-PX-132: the observer of the listening services of the tasks'
@@ -1183,6 +1192,10 @@ async fn serve_frames(
                     _ if env.command_type == "KillTerminal" => {
                         crate::background_process::kill_terminal(core, env).await
                     }
+                    // PX-082..086: the automation ledger and its kill switches.
+                    _ if crate::automation::is_command(&env.command_type) => {
+                        crate::automation::handle(core, env).await
+                    }
                     _ => handle_command(core, env).await,
                 };
                 // REQ-EV-0017: a rejection is error text on its way to a
@@ -1271,6 +1284,9 @@ fn client_capabilities(kind: i32) -> Vec<&'static str> {
             "repository.trust",
             "ui.selection",
             "ui.code_view",
+            // PX-082..086: defining, approving, pausing and running automations.
+            "automation.manage",
+            "automation.dispatch",
             // M7.1: only the desktop hosts a browser (a sandboxed
             // WebContentsView in Electron main); a headless client cannot.
             "browser.host",
@@ -1297,6 +1313,8 @@ fn client_capabilities(kind: i32) -> Vec<&'static str> {
             "attachments.ingest",
             "provider.configure",
             "repository.trust",
+            "automation.manage",
+            "automation.dispatch",
         ],
         // M8.2: the Cloud Core Worker acts for the cloud's principals on its
         // local Core — it authors and controls tasks, decides approvals and
@@ -1315,6 +1333,8 @@ fn client_capabilities(kind: i32) -> Vec<&'static str> {
             "repository.trust",
             "session.mirror",
             "sandbox.configure",
+            // A verified trigger delivery relayed from the Cloud API.
+            "automation.dispatch",
         ],
         ClientKind::SandboxGuest | ClientKind::Unspecified => vec!["events.subscribe"],
     }
@@ -1402,6 +1422,23 @@ fn required_client_capability(env: &CommandEnvelope) -> Option<&'static str> {
         // write to steer the agent — the same class of decision as trusting
         // the repository.
         "SetTaskBudgets" => "task.author",
+        // PX-082..086: reading the ledger is reading the log; every change
+        // to a definition, its approval, the kill switches and a manual run
+        // is a person's act, held by the clients that act for one. A verified
+        // trigger delivery is the cloud relay's.
+        "ListAutomations" | "GetAutomation" | "ListAutomationRuns" | "ValidateAutomation" => {
+            "events.subscribe"
+        }
+        "CreateAutomation"
+        | "UpdateAutomation"
+        | "LoadRepositoryAutomations"
+        | "EnableAutomation"
+        | "DisableAutomation"
+        | "PauseAutomation"
+        | "KillAutomation"
+        | "RunAutomation"
+        | "AckAutomationAttention" => "automation.manage",
+        "FireAutomationEvent" => "automation.dispatch",
         // Seeing what credentials exist and cutting one off are the
         // provider-configuration class of decision.
         "GetCredentialBroker" | "RevokeCredential" => "provider.configure",
@@ -1797,6 +1834,18 @@ pub(crate) fn accept(command_id: Option<wire::Id>, replayed: bool, result: Vec<u
 }
 
 pub(crate) async fn handle_command(core: &Arc<Core>, env: CommandEnvelope) -> CommandAck {
+    handle_command_as(core, env, None).await
+}
+
+/// Run a command as `host`: the Core's own automation host acting for a
+/// principal (PX-083). `None` is a client's command, made as the local user.
+/// Only the host's commands may create a task with origin `automation` or
+/// carry the `automation_*` / `lease_*` fields of `CreateTask`.
+pub(crate) async fn handle_command_as(
+    core: &Arc<Core>,
+    env: CommandEnvelope,
+    host: Option<Actor>,
+) -> CommandAck {
     let cid = env.command_id.clone();
     let Some(command_id) = env.command_id.as_ref().and_then(id16) else {
         return reject(cid, "BAD_COMMAND_ID", "command_id must be 16 bytes");
@@ -1817,7 +1866,8 @@ pub(crate) async fn handle_command(core: &Arc<Core>, env: CommandEnvelope) -> Co
         command_type: command_type.to_owned(),
         request_hash: request_hash.clone(),
     };
-    let actor = Actor::User(core.user_id);
+    let from_host = host.is_some();
+    let actor = host.unwrap_or(Actor::User(core.user_id));
     match env.command_type.as_str() {
         "CreateSession" => {
             let Ok(p) = wire::CreateSession::decode(env.payload.as_slice()) else {
@@ -1884,12 +1934,40 @@ pub(crate) async fn handle_command(core: &Arc<Core>, env: CommandEnvelope) -> Co
             else {
                 return reject(cid, "BAD_PAYLOAD", "session_id required");
             };
+            // PX-083: a trigger's run is created by the Core's own automation
+            // host and by nothing else; a client (and so a model) cannot name
+            // the origin, the provenance or a narrowed lease.
+            if !from_host
+                && (p.origin == "automation"
+                    || !p.automation_id.is_empty()
+                    || p.automation_version != 0
+                    || !p.automation_event_id.is_empty()
+                    || !p.automation_dispatch_key.is_empty()
+                    || !p.automation_principal.is_empty()
+                    || !p.automation_trigger.is_empty()
+                    || !p.automation_trigger_kind.is_empty()
+                    || !p.automation_definition_hash.is_empty()
+                    || !p.lease_operations.is_empty()
+                    || !p.lease_resources.is_empty()
+                    || !p.lease_effect_ceiling.is_empty()
+                    || !p.trigger_payload.is_empty()
+                    || !p.trigger_payload_label.is_empty()
+                    || p.payload_findings != 0
+                    || p.automation_test)
+            {
+                return reject(
+                    cid,
+                    "AUTOMATION_FIELDS_RESERVED",
+                    "origin `automation` and the automation and lease fields of CreateTask belong to the Core's automation host; a trigger creates its own tasks",
+                );
+            }
             let origin = match p.origin.as_str() {
                 "desktop" => TaskOrigin::Desktop,
                 "cli" => TaskOrigin::Cli,
                 "ide_adapter" => TaskOrigin::IdeAdapter,
                 "forge_issue" => TaskOrigin::ForgeIssue,
                 "forge_webhook" => TaskOrigin::ForgeWebhook,
+                "automation" => TaskOrigin::Automation,
                 other => return reject(cid, "BAD_PAYLOAD", format!("unknown origin `{other}`")),
             };
             if p.goal_text.trim().is_empty()
@@ -2104,6 +2182,59 @@ pub(crate) async fn handle_command(core: &Arc<Core>, env: CommandEnvelope) -> Co
                     actor.clone(),
                 ));
             }
+            // PX-083 / PX-084: the run's provenance, and the trigger payload as
+            // a labelled, untrusted context document beside the goal — data
+            // the loop reads, never instruction and never policy (AUT-D04).
+            if origin == TaskOrigin::Automation {
+                intake_events.push(typed(
+                    "TaskTriggeredByAutomation",
+                    &TaskEvent::TaskTriggeredByAutomation {
+                        automation_id: p.automation_id.clone(),
+                        version: p.automation_version,
+                        trigger_id: p.automation_trigger.clone(),
+                        trigger_kind: p.automation_trigger_kind.clone(),
+                        event_id: p.automation_event_id.clone(),
+                        dispatch_key: p.automation_dispatch_key.clone(),
+                        principal: p.automation_principal.clone(),
+                        definition_hash: p.automation_definition_hash.clone(),
+                        test: p.automation_test,
+                    },
+                    actor.clone(),
+                ));
+                if !p.trigger_payload.is_empty() {
+                    use sha2::Digest;
+                    let text = crate::automation::payload_document(
+                        &p.trigger_payload_label,
+                        &p.automation_event_id,
+                        &p.trigger_payload,
+                        p.payload_findings,
+                    );
+                    let content_ref = match store.objects().put(text.as_bytes()) {
+                        Ok(r) => r,
+                        Err(e) => return reject(cid, "OBJECT_STORE", e.to_string()),
+                    };
+                    intake_events.push(typed(
+                        "ContextDocumentAttached",
+                        &TaskEvent::ContextDocumentAttached {
+                            document_id: hex::encode(sha2::Sha256::digest(text.as_bytes())),
+                            source: format!(
+                                "{}:{}",
+                                if p.trigger_payload_label.is_empty() {
+                                    "webhook"
+                                } else {
+                                    &p.trigger_payload_label
+                                },
+                                p.automation_event_id
+                            ),
+                            title: "Trigger payload (untrusted data)".into(),
+                            content_ref,
+                            byte_length: text.len() as u64,
+                            trust: "UNTRUSTED_EXTERNAL_CONTENT".into(),
+                        },
+                        actor.clone(),
+                    ));
+                }
+            }
             let mut events = vec![
                 typed(
                     "TaskCreated",
@@ -2207,6 +2338,23 @@ pub(crate) async fn handle_command(core: &Arc<Core>, env: CommandEnvelope) -> Co
                         // present it; the tool name alone is never authority.
                         let (resources, operations, effect_ceiling) =
                             modbit_policy::default_lease_for_profile(&profile, root.as_deref());
+                        // PX-084: an automation's run holds the profile's lease
+                        // narrowed to its principal's ceiling, never wider.
+                        let (resources, operations, effect_ceiling) =
+                            if from_host && !p.lease_operations.is_empty() {
+                                match crate::automation::narrow_lease(
+                                    (resources, operations, effect_ceiling),
+                                    root.as_deref(),
+                                    &p.lease_operations,
+                                    &p.lease_resources,
+                                    &p.lease_effect_ceiling,
+                                ) {
+                                    Ok(l) => l,
+                                    Err(why) => return reject(cid, "AUTOMATION_LEASE", why),
+                                }
+                            } else {
+                                (resources, operations, effect_ceiling)
+                            };
                         let lease_id = modbit_domain::CapabilityLeaseId::new();
                         let grant = AppendRequest {
                             tenant_id: core.tenant_id,

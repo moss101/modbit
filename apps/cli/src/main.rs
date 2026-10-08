@@ -716,6 +716,7 @@ async fn run_command(ready: &ReadyLine, rest: Vec<String>) -> Result<(), String>
                         Some("none") => 1,
                         _ => 0,
                     },
+                    ..Default::default()
                 }
                 .encode_to_vec(),
                 Some(lease),

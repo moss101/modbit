@@ -59,6 +59,11 @@ pub enum TaskOrigin {
     /// docs/38 "CounterfactualReplay"): the request's snapshot in a scratch
     /// repository, an alternative validated plan, the replay-only ceiling.
     Replay,
+    /// Created by an automation trigger (PX-083, docs/68): an unattended run
+    /// for a stable principal under a ceiling. Only the Core's own
+    /// automation host creates one; its provenance (definition, version,
+    /// event id) is the `TaskTriggeredByAutomation` event beside creation.
+    Automation,
 }
 
 /// Typed input dispatch mode (MOD-INPUT-001, docs/14): concurrency semantics
@@ -757,6 +762,30 @@ pub enum TaskEvent {
         provenance: String,
         /// sha256 of the attached text (the `ContextDocumentAttached` document id).
         document_id: String,
+    },
+    /// `TaskTriggeredByAutomation` (PX-083, docs/68 AUT-C01): the task is the
+    /// run of an automation firing. Names the definition, its version, the
+    /// event that fired it and the principal whose ceiling it runs under. No
+    /// state change.
+    TaskTriggeredByAutomation {
+        /// The definition.
+        automation_id: String,
+        /// Its version when it fired.
+        version: u32,
+        /// The trigger that fired.
+        trigger_id: String,
+        /// `schedule`, `manual`, `event` or `webhook`.
+        trigger_kind: String,
+        /// The delivery id or schedule slot id.
+        event_id: String,
+        /// `sha256(definition | version | event id)`.
+        dispatch_key: String,
+        /// `user:<id>` or `service:<id>`.
+        principal: String,
+        /// The definition's hash the enable approval named.
+        definition_hash: String,
+        /// A dry-run: read-only, every protected effect denied.
+        test: bool,
     },
     /// `BrowserSessionOpened` (M7.1, docs/22): the task has a browser
     /// session — one live Chromium session a host holds for it, in its own
@@ -2855,6 +2884,7 @@ impl TaskEvent {
             Self::ForgePullRequestUpdated { .. } => "ForgePullRequestUpdated",
             Self::ForgeCommentPosted { .. } => "ForgeCommentPosted",
             Self::TaskCreatedFromIssue { .. } => "TaskCreatedFromIssue",
+            Self::TaskTriggeredByAutomation { .. } => "TaskTriggeredByAutomation",
             Self::BrowserSessionOpened { .. } => "BrowserSessionOpened",
             Self::BrowserHostAttached { .. } => "BrowserHostAttached",
             Self::BrowserNavigated { .. } => "BrowserNavigated",
@@ -3068,6 +3098,7 @@ impl Task {
             | TaskEvent::ForgePullRequestUpdated { .. }
             | TaskEvent::ForgeCommentPosted { .. }
             | TaskEvent::TaskCreatedFromIssue { .. }
+            | TaskEvent::TaskTriggeredByAutomation { .. }
             | TaskEvent::BrowserSessionOpened { .. }
             | TaskEvent::BrowserHostAttached { .. }
             | TaskEvent::BrowserNavigated { .. }

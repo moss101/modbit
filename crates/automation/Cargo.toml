@@ -1,0 +1,28 @@
+[package]
+name = "modbit-automation"
+description = "Modbit automation: definitions, validation, schedules, trigger filters and webhook verification (data and pure functions; the Core runs nothing from here)"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+publish.workspace = true
+
+[dependencies]
+serde.workspace = true
+serde_json.workspace = true
+sha2.workspace = true
+hex.workspace = true
+regex.workspace = true
+hmac.workspace = true
+subtle.workspace = true
+
+[lints]
+workspace = true
+
+# Module registration parsed by `architecture-lint modules` (M0.4, docs/45, docs/81).
+# The automation owner holds definitions only (DR-PX-2026-10-03-010): the
+# Scheduler, policy kernel, approval aggregate and effect ledger keep theirs.
+[package.metadata.modbit]
+owner = "automation"
+canonical = []
+capabilities = []

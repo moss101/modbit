@@ -8,6 +8,7 @@ resolver = "3"
 exclude = ["tests/fixtures/repos/rust-cli"]
 members = [
     "crates/domain",
+    "crates/automation",
     "crates/protocol",
     "crates/core-runtime",
     "crates/event-store",
@@ -65,6 +66,7 @@ publish = false
 similar = "2.7"
 # intra-workspace
 modbit-domain = { path = "crates/domain" }
+modbit-automation = { path = "crates/automation" }
 modbit-cloud-api = { path = "apps/cloud-api" }
 modbit-protocol = { path = "crates/protocol" }
 modbit-core-runtime = { path = "crates/core-runtime" }
