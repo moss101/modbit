@@ -2053,6 +2053,7 @@ name = "modbit-bench-gate-calibration"
 version = "0.0.0"
 dependencies = [
  "hex",
+ "modbit-bench-context-economics",
  "modbit-policy",
  "modbit-verification",
  "serde",
