@@ -221,12 +221,16 @@ fn main() -> ExitCode {
             let mut stdin = std::io::stdin();
             while matches!(stdin.read(&mut sink), Ok(n) if n > 0) {}
             t("stdin closed");
-            // The client's pipes are gone with it: a write to a dead stderr is an error that
-            // `eprintln!` turns into a panic, and a panic here would leave the Core running.
+            // Windows: the client's pipes are gone with it, and `eprintln!` panics on a dead stderr, which
+            // would end this thread without the exit. (Unix keeps `eprintln!`: there the orphaned Core is
+            // reclaimed by the next Core, `orphaned_tethered_core`.)
+            #[cfg(windows)]
             let _ = writeln!(
                 std::io::stderr(),
                 "modbit-core: supervising client closed its pipe; exiting"
             );
+            #[cfg(not(windows))]
+            eprintln!("modbit-core: supervising client closed its pipe; exiting");
             std::process::exit(0);
         });
         // Second tether, independent of pipes: when the supervising parent
@@ -238,10 +242,7 @@ fn main() -> ExitCode {
                 loop {
                     std::thread::sleep(std::time::Duration::from_millis(500));
                     if std::os::unix::process::parent_id() != parent {
-                        let _ = writeln!(
-                            std::io::stderr(),
-                            "modbit-core: supervising parent is gone; exiting"
-                        );
+                        eprintln!("modbit-core: supervising parent is gone; exiting");
                         std::process::exit(0);
                     }
                 }

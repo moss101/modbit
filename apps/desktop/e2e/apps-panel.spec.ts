@@ -133,7 +133,10 @@ test("Terminal: owners and states are listed, an exited terminal shows its code,
 
   // The exited terminal replays its output and states how it ended.
   await pickTerminal(exited.terminalId);
-  await expect(screen()).toContainText("finished");
+  await expect(screen()).toContainText("finished").catch(async (e: Error) => {
+    const log = await readTerminal(page, { sessionId, taskId, terminalId: exited.terminalId, after: "0", windowBytes: 65536 });
+    throw new Error(`${e.message}\nthe Core's replay of the exited terminal: ${JSON.stringify(new TextDecoder().decode(Uint8Array.from(log.bytes)))}`);
+  });
   await expect(page.getByTestId("terminal-exit")).toContainText("Exited with code 3");
   await accessible(page, "terminal app, an exited terminal", '[data-testid="region-apps"]');
 

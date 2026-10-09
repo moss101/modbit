@@ -1948,27 +1948,6 @@ impl Broker {
             // its output reaches end-of-file. On Windows the pseudo-console
             // stays open while any end of it — the stdin writer included —
             // is held, and the reader would wait forever (PX-030 found it).
-            // A pseudo-console hands the child's last writes on asynchronously: closing it the
-            // moment the child exits can drop them (a terminal that printed one line and exited
-            // showed a blank screen). Wait, bounded, until the output stops growing.
-            #[cfg(windows)]
-            {
-                let mut seen = s.data_bytes.load(Ordering::SeqCst);
-                let mut quiet = 0u32;
-                for _ in 0..40 {
-                    tokio::time::sleep(Duration::from_millis(50)).await;
-                    let now = s.data_bytes.load(Ordering::SeqCst);
-                    if now == seen {
-                        quiet += 1;
-                        if quiet >= 4 {
-                            break;
-                        }
-                    } else {
-                        seen = now;
-                        quiet = 0;
-                    }
-                }
-            }
             *s.stdin.lock().await = Stdin::Closed;
             drop(s.pty_master.lock().expect("pty master").take());
             // Output written after the exit is drained if it arrives at

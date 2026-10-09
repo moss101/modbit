@@ -156,8 +156,19 @@ test("PX-049: a restart after a quit with a task running shows the Core's recove
     expect(await page.getByTestId("recovery-summary").count(), "a first start has nothing to recover").toBe(0);
 
     // Stop the app the way a crash would: the Core dies with the task running, nothing was asked.
-    app.process().kill("SIGKILL");
-    await new Promise<void>((r) => (app.process().exitCode !== null || app.process().signalCode !== null ? r() : app.process().once("exit", () => r())));
+    // The app's main process is the one to kill. `app.process()` is the process Playwright launched, and on Windows the
+    // application's real main process is a child of it: killing the launcher alone leaves the app and its Core running.
+    const mainPid = await app.evaluate(() => process.pid);
+    const launcherPid = app.process().pid;
+    process.kill(mainPid, "SIGKILL");
+    for (let i = 0; i < 100; i++) {
+      try { process.kill(mainPid, 0); } catch { break; }
+      await new Promise((r) => setTimeout(r, 100));
+    }
+    if (process.platform === "win32" && launcherPid !== undefined && launcherPid !== mainPid) {
+      // The launcher outlives its child and holds the worker's pipes; the Core is not below it any more (its parent, the main process, is gone).
+      try { execFileSync("taskkill", ["/PID", String(launcherPid), "/T", "/F"], { stdio: "ignore" }); } catch { /* already gone */ }
+    }
     hold.open();
     if (process.platform === "win32") {
       await new Promise((r) => setTimeout(r, 3000));
