@@ -6,6 +6,7 @@
 //!
 //! Usage: `modbit-core --data-dir <dir>`
 
+use std::io::Write;
 use std::path::PathBuf;
 use std::process::ExitCode;
 
@@ -97,6 +98,67 @@ mod workspace_files;
 mod worktree_cleanup;
 mod worktrees;
 
+/// Waiting for the supervising parent process to end (Windows). The stdin tether covers a client
+/// that closes its pipe; this covers one that is killed without the pipe reaching this process.
+#[cfg(windows)]
+mod parent_exit {
+    use windows_sys::Win32::Foundation::{CloseHandle, HANDLE, INVALID_HANDLE_VALUE};
+    use windows_sys::Win32::System::Diagnostics::ToolHelp::{
+        CreateToolhelp32Snapshot, PROCESSENTRY32W, Process32FirstW, Process32NextW,
+        TH32CS_SNAPPROCESS,
+    };
+    use windows_sys::Win32::System::Threading::{
+        INFINITE, OpenProcess, PROCESS_SYNCHRONIZE, WaitForSingleObject,
+    };
+
+    /// The pid of this process's parent, from a process snapshot.
+    #[allow(unsafe_code)]
+    fn parent_pid() -> Option<u32> {
+        let me = std::process::id();
+        // SAFETY: the snapshot handle is owned here and closed before returning; the entry is a
+        // plain struct whose `dwSize` is set as the API requires, and only read after a success.
+        unsafe {
+            let snap: HANDLE = CreateToolhelp32Snapshot(TH32CS_SNAPPROCESS, 0);
+            if snap == INVALID_HANDLE_VALUE {
+                return None;
+            }
+            let mut entry: PROCESSENTRY32W = std::mem::zeroed();
+            entry.dwSize = std::mem::size_of::<PROCESSENTRY32W>() as u32;
+            let mut found = None;
+            let mut ok = Process32FirstW(snap, &mut entry);
+            while ok != 0 {
+                if entry.th32ProcessID == me {
+                    found = Some(entry.th32ParentProcessID);
+                    break;
+                }
+                ok = Process32NextW(snap, &mut entry);
+            }
+            CloseHandle(snap);
+            found
+        }
+    }
+
+    /// Blocks until the parent process ends; false when there is no parent to watch (it is
+    /// already gone, or it cannot be opened), so the caller must not treat that as an exit.
+    #[allow(unsafe_code)]
+    pub fn wait() -> bool {
+        let Some(parent) = parent_pid().filter(|p| *p != 0) else {
+            return false;
+        };
+        // SAFETY: OpenProcess returns an owned handle or null; WaitForSingleObject only waits on
+        // it, and it is closed afterwards.
+        unsafe {
+            let h = OpenProcess(PROCESS_SYNCHRONIZE, 0, parent);
+            if h.is_null() {
+                return false;
+            }
+            let r = WaitForSingleObject(h, INFINITE);
+            CloseHandle(h);
+            r == 0
+        }
+    }
+}
+
 fn usage() -> &'static str {
     "usage: modbit-core --data-dir <dir> [--tether-stdin] [--idle-exit-secs N] [--tenant-id <uuid>]"
 }
@@ -145,7 +207,12 @@ fn main() -> ExitCode {
             let mut sink = [0u8; 64];
             let mut stdin = std::io::stdin();
             while matches!(stdin.read(&mut sink), Ok(n) if n > 0) {}
-            eprintln!("modbit-core: supervising client closed its pipe; exiting");
+            // The client's pipes are gone with it: a write to a dead stderr is an error that
+            // `eprintln!` turns into a panic, and a panic here would leave the Core running.
+            let _ = writeln!(
+                std::io::stderr(),
+                "modbit-core: supervising client closed its pipe; exiting"
+            );
             std::process::exit(0);
         });
         // Second tether, independent of pipes: when the supervising parent
@@ -157,12 +224,28 @@ fn main() -> ExitCode {
                 loop {
                     std::thread::sleep(std::time::Duration::from_millis(500));
                     if std::os::unix::process::parent_id() != parent {
-                        eprintln!("modbit-core: supervising parent is gone; exiting");
+                        let _ = writeln!(
+                            std::io::stderr(),
+                            "modbit-core: supervising parent is gone; exiting"
+                        );
                         std::process::exit(0);
                     }
                 }
             });
         }
+        // Windows: a killed client does not always close the pipe this Core reads (a killed Electron
+        // main left its Core, and the profile lock, behind), so the Core also waits on the parent
+        // process itself.
+        #[cfg(windows)]
+        std::thread::spawn(|| {
+            if parent_exit::wait() {
+                let _ = writeln!(
+                    std::io::stderr(),
+                    "modbit-core: supervising parent is gone; exiting"
+                );
+                std::process::exit(0);
+            }
+        });
     }
     let rt = match tokio::runtime::Builder::new_multi_thread()
         .enable_all()
