@@ -148,6 +148,10 @@ test("Wave 4: compose with an @ chip and an attachment, queue-edit-send-now, dec
     await expect.poll(() => remotes(repo), { timeout: 90_000 }).toContain("origin1");
     await expect(page.locator(`[data-testid="conv-approval-decision"][data-approval-id="${id1}"]`)).toHaveCount(0, { timeout: 30_000 });
     // A second decision for the same approval (here a Deny, from the stale surface) is the Core's idempotent report of the first: it changes nothing and no effect or receipt is added.
+    // The remote appears when the effect runs; its result receipt is written after it (FIX-08), so count only once that receipt is on the log.
+    await expect
+      .poll(async () => (await page.evaluate((t) => window.modbit.effectReceipts(t), taskId)).receipts.filter((r) => r.policyDecision === `approval:${approvalKey(id1)}` && r.status === "SUCCESS").length, { timeout: 30_000 })
+      .toBe(1);
     const receiptsBefore = (await page.evaluate((t) => window.modbit.effectReceipts(t), taskId)).receipts.length;
     const again = await page.evaluate(([s, a, h]) => window.modbit.resolveApproval(s!, a!, false, "again", h!).then((r) => r.status, (e: Error) => e.message), [sid, id1, hash1]);
     expect(again, "the Core reports the existing resolution").toMatch(/^(APPROVED|GRANTED|RESOLVED|EXECUTED|CONSUMED)/);
