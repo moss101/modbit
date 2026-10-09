@@ -214,10 +214,14 @@ export function PolicyTray({ model, code, reason, onAuto, onCopy, onDismiss, not
   return (
     <section className="cmp-tray cmp-attn" data-tone="error" role="alert" aria-label="Model not available" data-testid="policy-tray" data-code={code}>
       <strong data-testid="policy-title">{model} is not available to you</strong>
-      <p data-testid="policy-reason">{reason}</p>
-      <p className="meta">
-        Cause: <span data-testid="policy-code">{code.toLowerCase().replace(/_/g, " ")}</span>. Your message is still in the box and has not been sent.
-      </p>
+      {/* The one policy entry (REQ-PX-060): the Core's words, the cause, and that nothing was sent. */}
+      <div data-testid="tray-policy-text">
+        <p data-testid="policy-reason">{reason}</p>
+        <p className="meta">
+          Cause: <span data-testid="policy-code">{code.toLowerCase().replace(/_/g, " ")}</span>. Your message is still in the box and has not been sent.
+        </p>
+        <p className="meta">Your prompt is kept; nothing was sent to a model.</p>
+      </div>
       <div className="cmp-actions">
         <Button size="sm" variant="primary" onClick={onAuto} data-testid="policy-auto">
           Switch to Auto

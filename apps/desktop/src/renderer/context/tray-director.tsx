@@ -50,7 +50,7 @@ export function TrayDirector({ core, sessionId, taskId, card, onResume }: TrayDi
   }, [taskId, waiting, card?.diagnostic, card?.state, card?.waitReason, core.state]);
 
   const diagnostic: Diag | null = !taskId ? null : card?.diagnostic ? { code: card.diagnostic.code, detail: card.diagnostic.detail, userAction: card.diagnostic.userAction } : status && status.taskId === taskId && waiting ? status.diag : null;
-  const specs = trayPlan({ coreState: core.state, everConnected, coreReason: core.reason, diagnostic, taskId });
+  const specs = trayPlan({ coreState: core.state, everConnected, coreReason: core.reason, diagnostic, taskId }).filter((s): s is PresentedSpec => s.kind !== "policy");
   const presented = useRef<Set<string>>(new Set());
   const specKey = specs.map((s) => `${s.id}:${s.title}:${s.text}`).join("|");
 
@@ -75,31 +75,15 @@ export function TrayDirector({ core, sessionId, taskId, card, onResume }: TrayDi
   return null;
 }
 
-function trayFor(s: TraySpec, ctx: { sessionId: string | null; onResume: (taskId: string) => void; dismiss: () => void }) {
+/** The policy-blocked entry is the composer's (composer/trays.tsx PolicyTray, one TrayHost entry at priority 60), so this director never presents it. */
+type PresentedSpec = Exclude<TraySpec, { kind: "policy" }>;
+
+function trayFor(s: PresentedSpec, ctx:{ sessionId: string | null; onResume: (taskId: string) => void; dismiss: () => void }) {
   switch (s.kind) {
     case "offline":
       return { id: s.id, tone: "warn" as const, title: s.title, priority: 80, dismissible: false, body: <p data-testid="tray-offline-text">{s.text}</p> };
     case "budget":
       return { id: s.id, tone: "warn" as const, title: s.title, priority: 60, dismissible: true, body: <BudgetTray spec={s} sessionId={ctx.sessionId} onResume={ctx.onResume} onDone={ctx.dismiss} /> };
-    case "policy":
-      return {
-        id: s.id,
-        tone: "error" as const,
-        title: s.title,
-        priority: 60,
-        dismissible: true,
-        body: (
-          <div data-testid="tray-policy-text">
-            <p>{s.text}</p>
-            {s.userAction && (
-              <p>
-                <strong>What you can do:</strong> {s.userAction}
-              </p>
-            )}
-            <p className="meta">The reason comes from the Core. Your prompt is kept; nothing was sent to a model.</p>
-          </div>
-        ),
-      };
   }
 }
 
