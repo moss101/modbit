@@ -187,9 +187,21 @@ impl IndexStore {
         self.dir.join("lexical")
     }
 
-    /// Remove everything of this workspace's directory (a discarded index).
+    /// Remove everything of this workspace's lexical directory (a discarded
+    /// index). Best effort: on Windows a file another handle of this process
+    /// still holds cannot be deleted yet, so the removal is retried for a
+    /// short while; whatever is left is overwritten or refused by the caller,
+    /// which then falls back to an in-memory index rather than failing.
     pub fn discard_lexical(&self) {
-        let _ = std::fs::remove_dir_all(self.lexical_dir());
+        let dir = self.lexical_dir();
+        for attempt in 0..10 {
+            if std::fs::remove_dir_all(&dir).is_ok() || !dir.exists() {
+                return;
+            }
+            if attempt < 9 {
+                std::thread::sleep(std::time::Duration::from_millis(30));
+            }
+        }
     }
 
     /// Bytes on disk under this workspace's directory.

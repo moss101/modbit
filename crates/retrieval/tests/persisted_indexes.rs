@@ -182,6 +182,35 @@ fn the_exact_index_opens_alone_and_the_rest_completes_to_the_same_set() {
     );
 }
 
+/// A persisted lexical index that cannot be opened, refreshed or rebuilt in
+/// place (here: a plain file sits where its directory should be; on Windows
+/// the same happens when a file the index maps cannot be replaced) does not
+/// refuse the open: the lexical index is built in memory from the same texts,
+/// the reason is recorded, and the answers are the same.
+#[test]
+fn an_unusable_lexical_directory_falls_back_to_memory_and_says_why() {
+    let c = corpus();
+    let cold = c.open(1, true);
+    let want = answers(&cold);
+    c.checkpoint(&cold, 1);
+    drop(cold);
+    let store = c.store();
+    let dir = store.lexical_dir();
+    std::fs::remove_dir_all(&dir).unwrap();
+    std::fs::write(&dir, b"not a directory").unwrap();
+    let warm = c.open(1, true);
+    assert_eq!(state_of(&warm, "lexical"), "rebuilt", "{:?}", warm.status);
+    assert!(
+        warm.status
+            .rebuild_reasons
+            .iter()
+            .any(|r| r.starts_with("lexical: on-disk index unavailable")),
+        "{:?}",
+        warm.status.rebuild_reasons
+    );
+    assert_same(&answers(&warm), &want, "the in-memory lexical index");
+}
+
 fn answers(set: &IndexSet) -> serde_json::Value {
     let mut symbols: BTreeMap<String, serde_json::Value> = BTreeMap::new();
     let mut edges: BTreeMap<String, serde_json::Value> = BTreeMap::new();

@@ -384,48 +384,64 @@ impl IndexSet {
             Some(s) => {
                 let dir = s.lexical_dir();
                 let opened = if dir.join("meta.json").exists() {
-                    LexicalIndex::open_in_dir(&dir, revision).map_err(|e| lexical_err(&e))
+                    LexicalIndex::open_in_dir(&dir, revision)
+                        .map_err(|e| format!("lexical: {}", lexical_err(&e)))
                 } else {
                     Err("lexical: not in the store".to_owned())
                 };
-                match opened {
-                    Ok(mut lx) => {
-                        let have = lx.doc_hashes().clone();
-                        let mut changed: Vec<ChangedDoc> = Vec::new();
-                        for (p, t, l) in exact.texts() {
-                            let hash = exact.file(p).map(|f| f.content_hash.as_str());
-                            if have.get(p).map(String::as_str) != hash {
-                                changed.push((
-                                    p.to_owned(),
-                                    Some((t.to_owned(), l.map(str::to_owned))),
-                                ));
-                            }
+                // The persisted index is a cache of the files: any failure to
+                // open, bring up to date or rebuild it on disk (on Windows a
+                // file the index still maps cannot be replaced or deleted,
+                // and that is an error, not a reason to refuse the open)
+                // falls back to an in-memory index built from the same
+                // texts, with the reason recorded.
+                let attempt = || -> Result<(LexicalIndex, &'static str), String> {
+                    let mut lx = opened?;
+                    let have = lx.doc_hashes().clone();
+                    let mut changed: Vec<ChangedDoc> = Vec::new();
+                    for (p, t, l) in exact.texts() {
+                        let hash = exact.file(p).map(|f| f.content_hash.as_str());
+                        if have.get(p).map(String::as_str) != hash {
+                            changed
+                                .push((p.to_owned(), Some((t.to_owned(), l.map(str::to_owned)))));
                         }
-                        for p in have.keys() {
-                            if exact.entry_text(p).is_none() {
-                                changed.push((p.clone(), None));
-                            }
-                        }
-                        lx.refresh(&changed, revision).map_err(|e| lexical_io(&e))?;
-                        (lx, "loaded", String::new())
                     }
+                    for p in have.keys() {
+                        if exact.entry_text(p).is_none() {
+                            changed.push((p.clone(), None));
+                        }
+                    }
+                    lx.refresh(&changed, revision)
+                        .map_err(|e| format!("lexical: refresh: {e}"))?;
+                    Ok((lx, "loaded"))
+                };
+                match attempt() {
+                    Ok((lx, state)) => (lx, state, String::new()),
                     Err(e) => {
                         let first_lexical = !dir.exists();
                         if !first_lexical {
-                            status.rebuild_reasons.push(format!("lexical: {e}"));
+                            status.rebuild_reasons.push(e.clone());
                         }
+                        // Every handle on the old index is dropped by now
+                        // (`attempt` owned it); discard retries a sharing
+                        // violation itself.
                         s.discard_lexical();
-                        let lx = LexicalIndex::build_in_dir(&dir, docs(), revision)
-                            .map_err(|e| lexical_io(&e))?;
-                        (
-                            lx,
-                            if first_lexical { "built" } else { "rebuilt" },
-                            if first_lexical {
-                                why_not("lexical")
-                            } else {
-                                format!("lexical: {e}")
-                            },
-                        )
+                        let reason = if first_lexical {
+                            why_not("lexical")
+                        } else {
+                            e.clone()
+                        };
+                        match LexicalIndex::build_in_dir(&dir, docs(), revision) {
+                            Ok(lx) => (lx, if first_lexical { "built" } else { "rebuilt" }, reason),
+                            Err(disk) => {
+                                status.rebuild_reasons.push(format!(
+                                    "lexical: on-disk index unavailable ({disk}); served from memory"
+                                ));
+                                let lx = LexicalIndex::build(docs(), revision)
+                                    .map_err(|e| lexical_io(&e))?;
+                                (lx, "rebuilt", reason)
+                            }
+                        }
                     }
                 }
             }
