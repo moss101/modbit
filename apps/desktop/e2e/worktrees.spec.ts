@@ -377,3 +377,44 @@ test("PX-068: the main process rejects invalid worktree arguments before the Cor
     await closeApp(app);
   }
 });
+
+test("PX-068: a scheduled cleanup that finds a preview holding the lease is recorded and shown as Skipped, never as completed, and the preview itself is not kept as a run", async () => {
+  test.setTimeout(150_000);
+  const repo = repoWithFiles();
+  const dataDir = mkdtempSync(join(tmpdir(), "modbit-e2e-wtskip-"));
+  const { app, page } = await launch(dataDir, {
+    env: {
+      // The preview holds the lease for 14 s; the schedule's catch-up fires 9 s after the Core starts.
+      MODBIT_FAULT_WORKTREE_CLEANUP_HOLD_MS: "14000",
+      MODBIT_WORKTREE_CLEANUP_CATCHUP_MS: "9000",
+      MODBIT_WORKTREE_CLEANUP_INTERVAL_MS: "3600000",
+    },
+  });
+  try {
+    await page.getByTestId("goal").fill("Skip");
+    await page.getByTestId("workspace").fill(repo);
+    await page.getByTestId("run").click();
+    await expect(page.getByTestId("task-card").filter({ hasText: "Skip" })).toBeVisible();
+    await openWorktrees(page);
+    const dryRun = page.getByTestId("worktrees-dry-run");
+    await expect(dryRun).toBeEnabled();
+    // The schedule is the Core's: its next time is read, not assumed, and the preview must start before it.
+    const listed = await page.evaluate(() => window.modbit.listWorktrees({}));
+    expect(listed.nextCleanupAtMs - Date.now(), "the page was up before the scheduled attempt").toBeGreaterThan(1500);
+    await dryRun.click();
+    // The preview ends with its own answer (the Core keeps no record of a preview).
+    await expect(page.getByTestId("worktrees-report")).toHaveAttribute("data-status", "DRY_RUN", { timeout: 60_000 });
+    expect(Date.now(), "the preview held the lease past the scheduled attempt").toBeGreaterThan(listed.nextCleanupAtMs);
+    // Read again from the Core: the scheduled attempt found the lease held and was recorded as skipped.
+    await page.reload();
+    await expect(page.getByTestId("agents-worktrees")).toBeVisible({ timeout: 60_000 });
+    await openWorktrees(page);
+    await expect(page.getByTestId("worktrees-report")).toHaveAttribute("data-status", "SKIPPED", { timeout: 30_000 });
+    await expect(page.getByTestId("worktrees-report")).toContainText("Skipped:");
+    await expect(page.getByTestId("worktrees-report")).not.toContainText("Completed");
+    const after = await page.evaluate(() => window.modbit.listWorktrees({}));
+    expect(after.lastCompletedAtMs, "a skipped run is never a completed one").toBe(0);
+  } finally {
+    await closeApp(app);
+  }
+});
