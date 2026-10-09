@@ -16,6 +16,7 @@ import { platformState } from "./platform.js";
 import { observeStreamEvent, registerConversationHandlers } from "./conversation-ipc.js";
 import { registerComposerHandlers, requireSkillNames } from "./composer-ipc.js";
 import { registerControlHandlers } from "./control-ipc.js";
+import { registerAutomationHandlers } from "./automation-ipc.js";
 import { optionalWindow, requireBool, requireCursor, requireDimension, requireHandle, requireKeystrokes, requireWorkspacePath } from "./apps-args.js";
 import { noWork, quitPrompt, runShutdown, WINDOW_DEFAULT, WINDOW_MIN, type ActiveWork, type ShutdownStep } from "./lifecycle.js";
 import { TerminalHost } from "./terminal-host.js";
@@ -804,6 +805,8 @@ registerComposerHandlers({
 });
 // REQ-PX-057 / 058 / 060 / 062: the approval stack, run modes and allowlist rules, the context ring's accounting and the checkpoint surface.
 registerControlHandlers(conversationRegistrar);
+// REQ-PX-086: the automations surface (definitions, the enable approval, test and manual runs, history, pause and kill).
+registerAutomationHandlers(conversationRegistrar);
 // REQ-PX-048 (the apps panel): the Terminal, Files and Evidence apps. Every
 // call validates its arguments here and goes to the Core through the one
 // client; the renderer gets views, never a socket, a path outside the

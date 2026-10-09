@@ -312,7 +312,14 @@ function ItemView({ item, top, p, pinned, selected, tabStop }: { item: ListItem;
           <StatusDot status={meta.status} label={words} />
         </span>
         <span className="agents-text">
-          <span className="agents-title">{h.title || "Untitled task"}</span>
+          <span className="agents-title">
+            {h.origin === "automation" && (
+              <span className="agents-origin" data-testid="agent-origin-badge" data-origin="automation">
+                Automation
+              </span>
+            )}
+            {h.title || "Untitled task"}
+          </span>
           <span className="agents-sub">
             <span className="agents-status" data-testid="agent-status">
               {words}
