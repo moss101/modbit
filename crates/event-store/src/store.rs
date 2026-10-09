@@ -842,6 +842,16 @@ impl EventStore {
         Ok(CommandOutcome::Applied(events))
     }
 
+    /// Whether `projects` and `project_members` are exactly the fold of the
+    /// log's `Project` events. Nothing is changed (the check runs in a
+    /// transaction that is dropped).
+    pub fn project_tables_agree_with_log(&mut self) -> Result<bool> {
+        let tx = self
+            .conn
+            .transaction_with_behavior(TransactionBehavior::Immediate)?;
+        crate::projections::project_tables_agree_with_log(&tx, &self.objects)
+    }
+
     /// Rebuild every projection row from the event log (idempotent).
     pub fn rebuild_projections(&mut self) -> Result<u64> {
         let tx = self
@@ -881,6 +891,14 @@ impl EventStore {
         let mut projections_rebuilt = false;
         if projection_offset != last_offset {
             notes.push(format!("projection cursor {projection_offset} lagged the log at {last_offset}; rebuilt from the log"));
+            self.rebuild_projections()?;
+            projections_rebuilt = true;
+        }
+        if !projections_rebuilt && !self.project_tables_agree_with_log()? {
+            // The membership map is a projection of the log and never its
+            // authority (PX-063): a map that disagrees is rebuilt from the
+            // log and the disagreement is reported, not trusted.
+            notes.push("project records or membership disagreed with the Project events of the log; rebuilt from the log".to_owned());
             self.rebuild_projections()?;
             projections_rebuilt = true;
         }

@@ -1399,6 +1399,49 @@ fn project_memory(tx: &Transaction<'_>, payload: &serde_json::Value) -> Result<(
     Ok(())
 }
 
+/// The project records and the membership map as rows, in a fixed order.
+type ProjectRows = (
+    Vec<(Vec<u8>, String, String, i64, i64)>,
+    Vec<(Vec<u8>, Vec<u8>, i64)>,
+);
+
+fn read_project_rows(tx: &Transaction<'_>) -> Result<ProjectRows> {
+    let projects = tx
+        .prepare(
+            "SELECT project_id, name, workspace_root, archived, last_offset FROM projects ORDER BY project_id",
+        )?
+        .query_map([], |r| {
+            Ok((r.get(0)?, r.get(1)?, r.get(2)?, r.get(3)?, r.get(4)?))
+        })?
+        .collect::<std::result::Result<Vec<_>, _>>()?;
+    let members = tx
+        .prepare("SELECT task_id, project_id, added_offset FROM project_members ORDER BY task_id")?
+        .query_map([], |r| Ok((r.get(0)?, r.get(1)?, r.get(2)?)))?
+        .collect::<std::result::Result<Vec<_>, _>>()?;
+    Ok((projects, members))
+}
+
+/// Whether `projects` and `project_members` are exactly the fold of the
+/// `Project` events of the log (the invariant of PX-063: the membership map is
+/// a projection and never the authority). The check replays the events into
+/// the tables inside `tx` and compares; the caller drops `tx` to leave the
+/// tables as they were.
+pub fn project_tables_agree_with_log(
+    tx: &Transaction<'_>,
+    objects: &crate::ObjectStore,
+) -> Result<bool> {
+    let before = read_project_rows(tx)?;
+    tx.execute("DELETE FROM project_members", [])?;
+    tx.execute("DELETE FROM projects", [])?;
+    for ev in &crate::store::read_all_from(tx, 0)? {
+        if ev.envelope.aggregate_type == AggregateType::Project {
+            let payload = payload_json(tx, ev, objects)?;
+            project_project(tx, ev, &payload)?;
+        }
+    }
+    Ok(read_project_rows(tx)? == before)
+}
+
 /// Apply one `Project` event to `projects` and `project_members`.
 fn project_project(
     tx: &Transaction<'_>,

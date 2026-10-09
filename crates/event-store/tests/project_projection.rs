@@ -218,3 +218,69 @@ fn an_event_for_a_project_the_log_never_created_is_refused() {
     assert!(err.contains("does not exist"), "{err}");
     assert!(store.projects().unwrap().is_empty());
 }
+
+#[test]
+fn a_membership_map_that_disagrees_with_the_log_is_found_at_recovery_and_rebuilt_from_the_log() {
+    let dir = tempfile::tempdir().unwrap();
+    let (a, b) = (ProjectId::new(), ProjectId::new());
+    let (member, stranger) = (TaskId::new(), TaskId::new());
+    let want = {
+        let mut store = EventStore::open(dir.path()).unwrap();
+        let s = SessionId::new();
+        append(&mut store, s, &created(a, "A", "/w"), a).unwrap();
+        append(&mut store, s, &created(b, "B", "/w"), b).unwrap();
+        append(
+            &mut store,
+            s,
+            &ProjectEvent::ProjectMemberAdded {
+                project_id: a,
+                task_id: member,
+            },
+            a,
+        )
+        .unwrap();
+        assert!(store.project_tables_agree_with_log().unwrap());
+        // The check changes nothing.
+        let first = snapshot(&store);
+        assert!(store.project_tables_agree_with_log().unwrap());
+        assert_eq!(snapshot(&store), first);
+        // An untouched store recovers with no complaint.
+        let out = store.recover_on_start().unwrap();
+        assert!(!out.projections_rebuilt, "{:?}", out.notes);
+        first
+    };
+    // Something outside the log changes the map and leaves the cursor alone:
+    // a task the log never added, and a moved member.
+    {
+        let conn = rusqlite::Connection::open(dir.path().join("core.db")).unwrap();
+        conn.execute(
+            "INSERT INTO project_members (task_id, project_id, added_at_ms, added_offset) VALUES (?1, ?2, 1, 1)",
+            rusqlite::params![stranger.as_bytes().as_slice(), b.as_bytes().as_slice()],
+        )
+        .unwrap();
+        conn.execute(
+            "UPDATE project_members SET project_id = ?1 WHERE task_id = ?2",
+            rusqlite::params![b.as_bytes().as_slice(), member.as_bytes().as_slice()],
+        )
+        .unwrap();
+    }
+    let mut store = EventStore::open(dir.path()).unwrap();
+    assert!(
+        !store.project_tables_agree_with_log().unwrap(),
+        "the invariant fails on a map the log never recorded"
+    );
+    let out = store.recover_on_start().unwrap();
+    assert!(out.projections_rebuilt, "{:?}", out.notes);
+    assert!(
+        out.notes.iter().any(|n| n.contains("disagreed")),
+        "the disagreement is reported: {:?}",
+        out.notes
+    );
+    assert_eq!(
+        snapshot(&store),
+        want,
+        "what the log says, and nothing else"
+    );
+    assert!(store.project_of_task(&stranger).unwrap().is_none());
+    assert!(store.project_tables_agree_with_log().unwrap());
+}

@@ -45,7 +45,12 @@ impl Fx {
     /// A Core with the scripted model, a session with its lease and `n` repositories.
     async fn new(repos: usize, extra: &[(&str, &str)]) -> Self {
         let (base, _seen) = scripted_model(complete_script(), vec![]).await;
-        let mut env = model_env(&base);
+        Self::with_model(&base, repos, extra).await
+    }
+
+    /// The same, with a model stand-in the caller built.
+    async fn with_model(base: &str, repos: usize, extra: &[(&str, &str)]) -> Self {
+        let mut env = model_env(base);
         env.push((
             "MODBIT_WORKTREE_CLEANUP_CATCHUP_MS".into(),
             "3600000".into(),
@@ -1080,5 +1085,124 @@ async fn qual_px_068_remove_one_worktree_only_when_the_cleanup_rule_allows_it() 
         .await
         .unwrap_err();
     assert_eq!(code, "UNKNOWN_WORKTREE");
+    fx.core.kill();
+}
+
+/// A task a subagent runs is another task's work, not the person's own: a
+/// real parent spawns a real child through the Core, and the Core refuses to
+/// put that child in a project, by its typed reason, with nothing recorded.
+#[tokio::test]
+async fn qual_px_063_a_subagent_task_is_refused_membership_over_the_real_socket() {
+    let parent = vec![
+        json!({"calls": [{"name": "plan.update", "args": {"outcome": "a report on README.md", "expected_files": ["README.md"], "steps": [{"id": "e", "title": "explore"}]}}]}),
+        json!({"calls": [{"name": "agent.spawn", "args": {"idempotency_key": "child-e", "objective": "explore README.md and report", "write_scope": ["docs/"], "required_tools": ["fs.read", "fs.list", "search.exact"], "max_turns": 6}}]}),
+        json!({"calls": [{"name": "agent.wait", "args": {"idempotency_key": "child-e", "timeout_ms": 60000}}]}),
+        json!({"calls": [{"name": "task.complete", "args": {"summary": "collected", "self_review": {"findings": []}}}]}),
+    ];
+    let child = vec![
+        json!({"calls": [{"name": "plan.update", "args": {"outcome": "a report", "expected_files": ["docs/notes.md"]}}]}),
+        json!({"calls": [{"name": "fs.read", "args": {"path": "a.txt"}}]}),
+        json!({"calls": [{"name": "task.complete", "args": {"summary": "a.txt says alpha", "self_review": {"findings": []}}}]}),
+    ];
+    let (base, _seen) = px_common::scripted_model_fn(std::sync::Arc::new(move |body, results| {
+        let is_child = body["messages"].as_array().is_some_and(|m| {
+            m.iter().any(|x| {
+                x["content"]
+                    .as_str()
+                    .is_some_and(|c| c.contains("Task goal: explore README.md"))
+            })
+        });
+        let script = if is_child { &child } else { &parent };
+        script
+            .get(results)
+            .cloned()
+            .unwrap_or_else(|| json!({"text": "I have nothing further to do."}))
+    }))
+    .await;
+    let mut fx = Fx::with_model(&base, 1, &[("MODBIT_CAPACITY", "model=4,provider=8")]).await;
+    let ra = fx.root(0);
+    let top = create_task(
+        &mut fx.c,
+        &fx.session,
+        fx.g,
+        &ra,
+        0x20,
+        "local_trusted",
+        "delegate a report",
+    )
+    .await;
+    start_task(&mut fx.c, &top, fx.g, 0x21, "gpt-5-mini").await;
+    let st = wait_task(&mut fx.c, &top, 180).await;
+    assert!(!st.loop_alive, "{st:?}");
+    let p = fx.create_project("Delegation", &ra).await.unwrap();
+    let kids: Vec<Id> = fx
+        .headers()
+        .await
+        .headers
+        .iter()
+        .filter(|h| h.subagent)
+        .filter_map(|h| h.task_id.clone())
+        .collect();
+    assert_eq!(kids.len(), 1, "one real child task exists");
+    assert_eq!(
+        code(fx.add(&p, &kids[0]).await),
+        "TASK_NOT_TOP_LEVEL",
+        "a subagent's task cannot join a project"
+    );
+    assert!(fx.get(&p).await.members.is_empty(), "nothing recorded");
+    // The parent is a top-level task and joins.
+    fx.add(&p, &top).await.unwrap();
+    assert_eq!(ids(&fx.get(&p).await), sorted(&[&top]));
+    // The header of the child carries no project.
+    let hs = fx.headers().await;
+    let child_h = hs.headers.iter().find(|h| h.subagent).unwrap();
+    assert!(child_h.project_id.is_none());
+    fx.core.kill();
+}
+
+/// A membership the log never recorded is not a fact: a map changed behind
+/// the Core's back (cursor untouched) is found at the next start, rebuilt from
+/// the log, and neither the list nor the headers show what the log never said.
+#[tokio::test]
+async fn qual_px_063_a_membership_the_log_never_recorded_is_not_shown_after_recovery() {
+    let mut fx = Fx::new(1, &[]).await;
+    let ra = fx.root(0);
+    let t1 = fx.finished_task(0, 0x20).await;
+    let t2 = fx.finished_task(0, 0x30).await;
+    let p = fx.create_project("Truth", &ra).await.unwrap();
+    fx.add(&p, &t1).await.unwrap();
+    let want = fx.list(true).await;
+    fx.core.kill();
+    {
+        let conn = rusqlite::Connection::open(fx.dir.path().join("core/core.db")).unwrap();
+        // The cursor is left alone; only the map changes.
+        conn.execute(
+            "INSERT INTO project_members (task_id, project_id, added_at_ms, added_offset) VALUES (?1, ?2, 1, 1)",
+            rusqlite::params![t2.value.as_slice(), p.project_id.as_ref().unwrap().value.as_slice()],
+        )
+        .unwrap();
+        conn.execute(
+            "DELETE FROM project_members WHERE task_id = ?1",
+            rusqlite::params![t1.value.as_slice()],
+        )
+        .unwrap();
+    }
+    fx.restart(&[]).await;
+    let got = fx.list(true).await;
+    assert_eq!(got.projects, want.projects, "the list is the log's");
+    assert_eq!(ids(&fx.get(&p).await), sorted(&[&t1]));
+    let headers = fx.headers().await;
+    let of = |t: &Id| {
+        headers
+            .headers
+            .iter()
+            .find(|h| h.task_id.as_ref() == Some(t))
+            .unwrap()
+    };
+    assert_eq!(of(&t1).project_id, p.project_id);
+    assert!(
+        of(&t2).project_id.is_none(),
+        "an unrecorded membership is not shown"
+    );
     fx.core.kill();
 }
