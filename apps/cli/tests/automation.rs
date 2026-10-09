@@ -463,10 +463,7 @@ fn automation_verbs_reproduce_every_desktop_operation_on_a_real_run() {
     let real = rows.iter().find(|x| x["event_id"] == "real-1").unwrap();
     assert_eq!(real["reason"], "TASK_COMPLETED", "{real}");
     assert_eq!(real["test"], false);
-    assert_eq!(
-        real["principal"].as_str().unwrap().starts_with("user:"),
-        true
-    );
+    assert!(real["principal"].as_str().unwrap().starts_with("user:"));
     // The same history by task.
     let task = real["task_id"].as_str().unwrap().to_owned();
     let by_task = cli.ok(&["automation", "history", "--task", &task]);
