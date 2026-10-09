@@ -2088,10 +2088,12 @@ dependencies = [
 name = "modbit-bench-retrieval"
 version = "0.0.0"
 dependencies = [
+ "hex",
  "modbit-bench-context-economics",
  "modbit-retrieval",
  "serde",
  "serde_json",
+ "sha2 0.11.0",
  "tempfile",
 ]
 
