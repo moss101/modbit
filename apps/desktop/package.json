@@ -21,16 +21,20 @@
   },
   "dependencies": {
     "@bufbuild/protobuf": "2.14.1",
+    "@modbit/design-tokens": "workspace:*",
     "@modbit/ide-adapter-core": "workspace:*",
     "@modbit/surface-protocol": "workspace:*",
+    "@modbit/ui": "workspace:*",
+    "@xterm/addon-fit": "0.10.0",
+    "@xterm/xterm": "5.5.0",
     "react": "19.2.8",
     "react-dom": "19.2.8"
   },
   "devDependencies": {
-    "axe-core": "4.10.3",
     "@playwright/test": "1.63.0",
     "@types/react": "19.2.18",
     "@types/react-dom": "19.2.7",
+    "axe-core": "4.10.3",
     "electron": "44.3.0",
     "esbuild": "0.28.2"
   },

@@ -31,7 +31,7 @@ fn typed<E: serde::Serialize>(event_type: &str, e: &E, actor: Actor) -> NewEvent
     ev
 }
 
-fn language_for(path: &str) -> &'static str {
+pub(crate) fn language_for(path: &str) -> &'static str {
     match path.rsplit('.').next().unwrap_or_default() {
         "rs" => "rust",
         "ts" | "tsx" => "typescript",
