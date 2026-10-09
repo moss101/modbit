@@ -145,7 +145,7 @@ test("PX-049: a restart after a quit with a task running shows the Core's recove
   ];
   const { server, url } = await steppedModel(script);
   const dataDir = mkdtempSync(join(tmpdir(), "modbit-e2e-recovery-"));
-  let { app, page } = await launch(dataDir, { env: { MODBIT_OPENAI_BASE_URL: url, MODBIT_QUIT_PROMPT: "", MODBIT_TETHER_TRACE: "1" } });
+  let { app, page } = await launch(dataDir, { env: { MODBIT_OPENAI_BASE_URL: url, MODBIT_QUIT_PROMPT: "" } });
   try {
     await page.getByTestId("goal").fill("Edit the notes");
     await page.getByTestId("workspace").fill(repo);
@@ -170,14 +170,6 @@ test("PX-049: a restart after a quit with a task running shows the Core's recove
       try { execFileSync("taskkill", ["/PID", String(launcherPid), "/T", "/F"], { stdio: "ignore" }); } catch { /* already gone */ }
     }
     hold.open();
-    if (process.platform === "win32") {
-      await new Promise((r) => setTimeout(r, 3000));
-      for (const f of [["tasklist", "/FI", "IMAGENAME eq modbit-core.exe"], ["tasklist", "/FI", "IMAGENAME eq modbit-execd.exe"]]) {
-        try { console.error("[diag]", execFileSync(f[0]!, f.slice(1), { encoding: "utf8" })); } catch (e) { console.error("[diag] tasklist failed", e); }
-      }
-      try { console.error("[diag] processes", execFileSync("powershell", ["-NoProfile", "-Command", "Get-CimInstance Win32_Process | Where-Object { $_.Name -match 'electron|modbit|node' } | Select-Object ProcessId,ParentProcessId,Name | Format-Table -AutoSize | Out-String -Width 200"], { encoding: "utf8" })); } catch (e) { console.error("[diag] ps failed", e); }
-      console.error("[diag] tether trace:", existsSync(join(dataDir, "tether-trace.log")) ? readFileSync(join(dataDir, "tether-trace.log"), "utf8") : "(none)");
-    }
 
     ({ app, page } = await launch(dataDir, { env: { MODBIT_OPENAI_BASE_URL: url, MODBIT_QUIT_PROMPT: "" } }));
     await expect(page.getByTestId("task-card")).toHaveCount(1, { timeout: 30_000 });

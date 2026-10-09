@@ -96,8 +96,7 @@ export const SIZE_REPORTER = "const p = () => process.stdout.write('SIZE ' + pro
 /** About 400 KiB of numbered 1 KiB lines, then stays alive. */
 export const BIG_OUTPUT = "const l = 'x'.repeat(1019) + '\\n'; for (let i = 0; i < 400; i++) process.stdout.write(String(i).padStart(4, '0') + l); setInterval(() => {}, 1000)";
 /** Prints a line and exits with code 3. */
-// The exit waits a moment: a Windows pseudo-console can lose the last output of a process that exits at once.
-export const EXIT_THREE = "console.log('finished'); setTimeout(() => process.exit(3), 500)";
+export const EXIT_THREE = "console.log('finished'); process.exit(3)";
 
 /**
  * In the renderer: attach to a terminal over the bridge and read its output up to the head it had when asked,
