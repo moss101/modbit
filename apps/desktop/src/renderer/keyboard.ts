@@ -62,6 +62,8 @@ export function commandFor(e: KeyLike, ctx: KeyContext): Command | null {
     switch (e.key.toLowerCase()) {
       case "n":
         return "newTask";
+      case "k":
+        return "search";
       case "/":
         return "help";
       default:
@@ -137,7 +139,7 @@ export function isActivatable(el: Element | null): boolean {
 /** The reference card of the shortcuts, for the help panel and the docs. */
 export const SHORTCUTS: { keys: string; command: Command; what: string }[] = [
   { keys: "⌘/Ctrl+N", command: "newTask", what: "new task (focus the goal)" },
-  { keys: "/", command: "search", what: "search: type-ahead filter of the fleet (⌘/Ctrl+K opens the command palette, which finds tasks too)" },
+  { keys: "/ or ⌘/Ctrl+K", command: "search", what: "search: type-ahead filter of the fleet" },
   { keys: "a", command: "jumpAttention", what: "jump to the attention list" },
   { keys: "r", command: "jumpRunning", what: "jump to the running column" },
   { keys: "y", command: "approve", what: "approve the focused card's effect (Enter confirms an irreversible one)" },

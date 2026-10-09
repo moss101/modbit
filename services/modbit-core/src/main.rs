@@ -93,7 +93,6 @@ mod undo;
 mod usage;
 mod user_patch;
 mod verify;
-mod workspace_files;
 mod worktree_cleanup;
 mod worktrees;
 

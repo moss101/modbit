@@ -29,24 +29,12 @@ importers:
       '@bufbuild/protobuf':
         specifier: 2.14.1
         version: 2.14.1
-      '@modbit/design-tokens':
-        specifier: workspace:*
-        version: link:../../packages/design-tokens
       '@modbit/ide-adapter-core':
         specifier: workspace:*
         version: link:../../packages/ide-adapter-core
       '@modbit/surface-protocol':
         specifier: workspace:*
         version: link:../../packages/surface-protocol
-      '@modbit/ui':
-        specifier: workspace:*
-        version: link:../../packages/ui
-      '@xterm/addon-fit':
-        specifier: 0.10.0
-        version: 0.10.0(@xterm/xterm@5.5.0)
-      '@xterm/xterm':
-        specifier: 5.5.0
-        version: 5.5.0
       react:
         specifier: 19.2.8
         version: 19.2.8
@@ -100,24 +88,7 @@ importers:
         specifier: 7.0.2
         version: 7.0.2
 
-  packages/ui:
-    dependencies:
-      '@modbit/design-tokens':
-        specifier: workspace:*
-        version: link:../design-tokens
-      react:
-        specifier: 19.2.8
-        version: 19.2.8
-      react-dom:
-        specifier: 19.2.8
-        version: 19.2.8(react@19.2.8)
-    devDependencies:
-      '@types/react':
-        specifier: 19.2.18
-        version: 19.2.18
-      '@types/react-dom':
-        specifier: 19.2.7
-        version: 19.2.7(@types/react@19.2.18)
+  packages/ui: {}
 
   packages/vscode-adapter:
     dependencies:
@@ -678,14 +649,6 @@ packages:
   '@vscode/test-electron@2.5.2':
     resolution: {integrity: sha512-8ukpxv4wYe0iWMRQU18jhzJOHkeGKbnw7xWRX3Zw1WJA4cEKbHcmmLPdPrPtL6rhDcrlCZN+xKRpv09n4gRHYg==}
     engines: {node: '>=16'}
-
-  '@xterm/addon-fit@0.10.0':
-    resolution: {integrity: sha512-UFYkDm4HUahf2lnEyHvio51TNGiLK66mqP2JoATy7hRZeXaGMRDr00JiSF7m63vR5WKATF605yEggJKsw0JpMQ==}
-    peerDependencies:
-      '@xterm/xterm': ^5.0.0
-
-  '@xterm/xterm@5.5.0':
-    resolution: {integrity: sha512-hqJHYaQb5OptNunnyAnkHyM8aCjZ1MEIDTQu1iIbbTD/xops91NB5yq1ZK/dC2JDbVWtF23zUtl9JE2NqwT87A==}
 
   agent-base@7.1.4:
     resolution: {integrity: sha512-MnA+YT8fwfJPgBx3m60MNqakm30XOkyIoH1y6huTQvC0PwZG7ki8NacLBcrPbNoo8vEZy7Jpuk7+jMO+CUovTQ==}
@@ -1774,12 +1737,6 @@ snapshots:
       semver: 7.8.5
     transitivePeerDependencies:
       - supports-color
-
-  '@xterm/addon-fit@0.10.0(@xterm/xterm@5.5.0)':
-    dependencies:
-      '@xterm/xterm': 5.5.0
-
-  '@xterm/xterm@5.5.0': {}
 
   agent-base@7.1.4: {}
 
