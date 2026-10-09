@@ -21,11 +21,8 @@ export const MOD = process.platform === "darwin" ? "Meta" : "Control";
 // axe-core's own bundle, evaluated in the renderer (the page's CSP forbids injected script tags).
 const axeSource = readFileSync(createRequire(import.meta.url).resolve("axe-core/axe.min.js"), "utf8");
 
-export async function closeApp(app: ElectronApplication): Promise<void> {
-  const proc = app.process();
-  await Promise.race([app.close(), new Promise<void>((r) => setTimeout(r, 15_000))]);
-  if (proc.exitCode === null) proc.kill("SIGKILL");
-}
+// One close path for every spec (close-app.ts): a plain kill leaves Windows helpers holding the worker's pipes.
+export { closeApp } from "./close-app.ts";
 
 export interface LaunchOptions {
   /** The build directory under apps/desktop (default "dist"). */
