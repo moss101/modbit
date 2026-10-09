@@ -1,0 +1,11 @@
+{
+  "id": "rust-quantity-correct-b",
+  "class": "correct",
+  "flavor": "b",
+  "leg": "initial",
+  "write_set": [
+    "src/lib.rs",
+    "tests/quantity_boundaries.rs"
+  ],
+  "declared": "correct"
+}

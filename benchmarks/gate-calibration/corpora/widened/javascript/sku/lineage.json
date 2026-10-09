@@ -1,0 +1,23 @@
+{
+  "lineage": "holdout/javascript-shop/sku",
+  "goal": "`normalizeSku` must trim a SKU, drop its dashes, upper-case it, reject an empty result and reject a result longer than 12 characters. The visible test `acceptance sku is normalised` fails; make it pass and fix the behaviour, without weakening or removing any test.",
+  "acceptance": [
+    "acceptance sku is normalised"
+  ],
+  "seed": [
+    "src/shop.mjs"
+  ],
+  "oracle": {
+    "files": [
+      [
+        "test/oracle_spec.mjs",
+        "javascript/oracle_spec.mjs"
+      ]
+    ],
+    "argv": [
+      "node",
+      "--test",
+      "test/oracle_spec.mjs"
+    ]
+  }
+}

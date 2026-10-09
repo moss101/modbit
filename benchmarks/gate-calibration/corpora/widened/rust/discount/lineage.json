@@ -1,0 +1,26 @@
+{
+  "lineage": "holdout/rust-shop/discount",
+  "goal": "`bulk_discount` must give a 10 % discount (integer division) on orders of 10 000 cents or more and no discount below that. The visible test `acceptance_bulk_discount` fails; make it pass and fix the behaviour, without weakening or removing any test.",
+  "acceptance": [
+    "acceptance_bulk_discount"
+  ],
+  "seed": [
+    "src/lib.rs"
+  ],
+  "oracle": {
+    "files": [
+      [
+        "tests/oracle_spec.rs",
+        "rust/oracle_spec.rs"
+      ]
+    ],
+    "argv": [
+      "cargo",
+      "test",
+      "--quiet",
+      "--offline",
+      "--test",
+      "oracle_spec"
+    ]
+  }
+}

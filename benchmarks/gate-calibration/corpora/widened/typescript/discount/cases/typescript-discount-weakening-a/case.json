@@ -1,0 +1,11 @@
+{
+  "id": "typescript-discount-weakening-a",
+  "class": "weakening",
+  "flavor": "a",
+  "leg": "initial",
+  "write_set": [
+    "src/shop.ts",
+    "test/sku.test.ts"
+  ],
+  "declared": "incorrect"
+}

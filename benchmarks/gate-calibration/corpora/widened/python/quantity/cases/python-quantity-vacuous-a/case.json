@@ -1,0 +1,10 @@
+{
+  "id": "python-quantity-vacuous-a",
+  "class": "vacuous",
+  "flavor": "a",
+  "leg": "initial",
+  "write_set": [
+    "test_quantity.py"
+  ],
+  "declared": "incorrect"
+}

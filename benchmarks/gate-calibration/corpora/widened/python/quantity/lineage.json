@@ -1,0 +1,27 @@
+{
+  "lineage": "holdout/python-shop/quantity",
+  "goal": "`check_quantity` must accept an order quantity only from 1 to 100 inclusive and reject every other quantity. The visible test `test_acceptance_quantity_upper_bound` fails; make it pass and fix the behaviour, without weakening or removing any test.",
+  "acceptance": [
+    "test_acceptance_quantity_upper_bound"
+  ],
+  "seed": [
+    "shop.py"
+  ],
+  "oracle": {
+    "files": [
+      [
+        "test_oracle_spec.py",
+        "python/test_oracle_spec.py"
+      ]
+    ],
+    "argv": [
+      "python3",
+      "-m",
+      "pytest",
+      "-q",
+      "-p",
+      "no:cacheprovider",
+      "test_oracle_spec.py"
+    ]
+  }
+}

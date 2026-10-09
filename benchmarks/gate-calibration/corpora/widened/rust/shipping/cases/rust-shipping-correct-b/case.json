@@ -1,0 +1,11 @@
+{
+  "id": "rust-shipping-correct-b",
+  "class": "correct",
+  "flavor": "b",
+  "leg": "initial",
+  "write_set": [
+    "src/lib.rs",
+    "tests/shipping_boundaries.rs"
+  ],
+  "declared": "correct"
+}

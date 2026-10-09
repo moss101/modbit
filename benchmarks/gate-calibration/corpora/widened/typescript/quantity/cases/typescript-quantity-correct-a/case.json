@@ -1,0 +1,11 @@
+{
+  "id": "typescript-quantity-correct-a",
+  "class": "correct",
+  "flavor": "a",
+  "leg": "initial",
+  "write_set": [
+    "src/shop.ts",
+    "test/quantity.test.ts"
+  ],
+  "declared": "correct"
+}

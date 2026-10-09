@@ -1,0 +1,23 @@
+{
+  "lineage": "holdout/typescript-shop/discount",
+  "goal": "`bulkDiscount` must give a 10 % discount (integer division) on orders of 10 000 cents or more and no discount below that. The visible test `acceptance bulk discount` fails; make it pass and fix the behaviour, without weakening or removing any test.",
+  "acceptance": [
+    "acceptance bulk discount"
+  ],
+  "seed": [
+    "src/shop.ts"
+  ],
+  "oracle": {
+    "files": [
+      [
+        "test/oracle_spec.ts",
+        "typescript/oracle_spec.ts"
+      ]
+    ],
+    "argv": [
+      "node",
+      "--test",
+      "test/oracle_spec.ts"
+    ]
+  }
+}

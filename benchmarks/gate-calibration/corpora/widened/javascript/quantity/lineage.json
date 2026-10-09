@@ -1,0 +1,23 @@
+{
+  "lineage": "holdout/javascript-shop/quantity",
+  "goal": "`checkQuantity` must accept an order quantity only from 1 to 100 inclusive and reject every other quantity. The visible test `acceptance quantity upper bound` fails; make it pass and fix the behaviour, without weakening or removing any test.",
+  "acceptance": [
+    "acceptance quantity upper bound"
+  ],
+  "seed": [
+    "src/shop.mjs"
+  ],
+  "oracle": {
+    "files": [
+      [
+        "test/oracle_spec.mjs",
+        "javascript/oracle_spec.mjs"
+      ]
+    ],
+    "argv": [
+      "node",
+      "--test",
+      "test/oracle_spec.mjs"
+    ]
+  }
+}

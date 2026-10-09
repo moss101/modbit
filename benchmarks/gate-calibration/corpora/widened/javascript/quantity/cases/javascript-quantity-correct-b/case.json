@@ -1,0 +1,11 @@
+{
+  "id": "javascript-quantity-correct-b",
+  "class": "correct",
+  "flavor": "b",
+  "leg": "initial",
+  "write_set": [
+    "src/shop.mjs",
+    "test/quantity_boundaries.test.mjs"
+  ],
+  "declared": "correct"
+}

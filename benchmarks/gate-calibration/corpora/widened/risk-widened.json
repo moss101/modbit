@@ -1,0 +1,1861 @@
+{
+ "version": "risk-widened-1",
+ "cases": [
+  {
+   "id": "risk-rust-auth-session",
+   "language": "rust",
+   "lineage": "holdout/risk/rust/auth-session",
+   "facts": {
+    "candidate_revision": 1,
+    "changed": [
+     {
+      "path": "src/auth/session.rs",
+      "change": "MODIFIED",
+      "lines_added": 4,
+      "lines_removed": 1
+     },
+     {
+      "path": "tests/auth_session.rs",
+      "change": "CREATED",
+      "lines_added": 20,
+      "lines_removed": 0
+     }
+    ],
+    "plan_write_set": [
+     "src/auth/session.rs",
+     "tests/auth_session.rs"
+    ],
+    "requested_effects": [],
+    "advisory": {}
+   },
+   "oracle": {
+    "review_required": true,
+    "human_required": true,
+    "critical_surface": true
+   }
+  },
+  {
+   "id": "risk-rust-root-auth",
+   "language": "rust",
+   "lineage": "holdout/risk/rust/root-auth",
+   "facts": {
+    "candidate_revision": 1,
+    "changed": [
+     {
+      "path": "auth/login.rs",
+      "change": "MODIFIED",
+      "lines_added": 4,
+      "lines_removed": 1
+     },
+     {
+      "path": "tests/login.rs",
+      "change": "CREATED",
+      "lines_added": 12,
+      "lines_removed": 0
+     }
+    ],
+    "plan_write_set": [
+     "auth/login.rs",
+     "tests/login.rs"
+    ],
+    "requested_effects": [],
+    "advisory": {}
+   },
+   "oracle": {
+    "review_required": true,
+    "human_required": true,
+    "critical_surface": true
+   }
+  },
+  {
+   "id": "risk-rust-release-workflow",
+   "language": "rust",
+   "lineage": "holdout/risk/rust/release-workflow",
+   "facts": {
+    "candidate_revision": 1,
+    "changed": [
+     {
+      "path": ".github/workflows/release.yml",
+      "change": "MODIFIED",
+      "lines_added": 6,
+      "lines_removed": 2
+     }
+    ],
+    "plan_write_set": [
+     ".github/workflows/release.yml"
+    ],
+    "requested_effects": [],
+    "advisory": {}
+   },
+   "oracle": {
+    "review_required": true,
+    "human_required": false,
+    "critical_surface": false
+   }
+  },
+  {
+   "id": "risk-rust-env-production",
+   "language": "rust",
+   "lineage": "holdout/risk/rust/env-production",
+   "facts": {
+    "candidate_revision": 1,
+    "changed": [
+     {
+      "path": "config/.env.production",
+      "change": "MODIFIED",
+      "lines_added": 1,
+      "lines_removed": 1
+     }
+    ],
+    "plan_write_set": [
+     "config/.env.production"
+    ],
+    "requested_effects": [],
+    "advisory": {}
+   },
+   "oracle": {
+    "review_required": true,
+    "human_required": true,
+    "critical_surface": true
+   }
+  },
+  {
+   "id": "risk-rust-migration-index",
+   "language": "rust",
+   "lineage": "holdout/risk/rust/migration-index",
+   "facts": {
+    "candidate_revision": 1,
+    "changed": [
+     {
+      "path": "db/migrations/0007_add_index.sql",
+      "change": "CREATED",
+      "lines_added": 8,
+      "lines_removed": 0
+     }
+    ],
+    "plan_write_set": [
+     "db/migrations/0007_add_index.sql"
+    ],
+    "requested_effects": [],
+    "advisory": {}
+   },
+   "oracle": {
+    "review_required": true,
+    "human_required": false,
+    "critical_surface": false
+   }
+  },
+  {
+   "id": "risk-rust-readme-typo",
+   "language": "rust",
+   "lineage": "holdout/risk/rust/readme-typo",
+   "facts": {
+    "candidate_revision": 1,
+    "changed": [
+     {
+      "path": "README.md",
+      "change": "MODIFIED",
+      "lines_added": 1,
+      "lines_removed": 1
+     }
+    ],
+    "plan_write_set": [
+     "README.md"
+    ],
+    "requested_effects": [],
+    "advisory": {}
+   },
+   "oracle": {
+    "review_required": false,
+    "human_required": false,
+    "critical_surface": false
+   }
+  },
+  {
+   "id": "risk-rust-lib-with-test",
+   "language": "rust",
+   "lineage": "holdout/risk/rust/lib-with-test",
+   "facts": {
+    "candidate_revision": 1,
+    "changed": [
+     {
+      "path": "src/shop.rs",
+      "change": "MODIFIED",
+      "lines_added": 6,
+      "lines_removed": 2
+     },
+     {
+      "path": "tests/shop.rs",
+      "change": "MODIFIED",
+      "lines_added": 10,
+      "lines_removed": 0
+     }
+    ],
+    "plan_write_set": [
+     "src/shop.rs",
+     "tests/shop.rs"
+    ],
+    "requested_effects": [],
+    "advisory": {}
+   },
+   "oracle": {
+    "review_required": false,
+    "human_required": false,
+    "critical_surface": false
+   }
+  },
+  {
+   "id": "risk-rust-lib-no-test",
+   "language": "rust",
+   "lineage": "holdout/risk/rust/lib-no-test",
+   "facts": {
+    "candidate_revision": 1,
+    "changed": [
+     {
+      "path": "src/shop.rs",
+      "change": "MODIFIED",
+      "lines_added": 3,
+      "lines_removed": 1
+     }
+    ],
+    "plan_write_set": [
+     "src/shop.rs"
+    ],
+    "requested_effects": [],
+    "advisory": {}
+   },
+   "oracle": {
+    "review_required": false,
+    "human_required": false,
+    "critical_surface": false
+   }
+  },
+  {
+   "id": "risk-rust-dependency-bump",
+   "language": "rust",
+   "lineage": "holdout/risk/rust/dependency-bump",
+   "facts": {
+    "candidate_revision": 1,
+    "changed": [
+     {
+      "path": "Cargo.toml",
+      "change": "MODIFIED",
+      "lines_added": 1,
+      "lines_removed": 1
+     }
+    ],
+    "plan_write_set": [
+     "Cargo.toml"
+    ],
+    "requested_effects": [],
+    "advisory": {}
+   },
+   "oracle": {
+    "review_required": true,
+    "human_required": false,
+    "critical_surface": false
+   }
+  },
+  {
+   "id": "risk-rust-lockfile-edit",
+   "language": "rust",
+   "lineage": "holdout/risk/rust/lockfile-edit",
+   "facts": {
+    "candidate_revision": 1,
+    "changed": [
+     {
+      "path": "Cargo.lock",
+      "change": "MODIFIED",
+      "lines_added": 12,
+      "lines_removed": 12
+     }
+    ],
+    "plan_write_set": [
+     "Cargo.lock"
+    ],
+    "requested_effects": [],
+    "advisory": {}
+   },
+   "oracle": {
+    "review_required": true,
+    "human_required": false,
+    "critical_surface": false
+   }
+  },
+  {
+   "id": "risk-rust-payments-charge",
+   "language": "rust",
+   "lineage": "holdout/risk/rust/payments-charge",
+   "facts": {
+    "candidate_revision": 1,
+    "changed": [
+     {
+      "path": "src/payments/charge.rs",
+      "change": "MODIFIED",
+      "lines_added": 18,
+      "lines_removed": 6
+     },
+     {
+      "path": "tests/charge.rs",
+      "change": "MODIFIED",
+      "lines_added": 15,
+      "lines_removed": 0
+     }
+    ],
+    "plan_write_set": [
+     "src/payments/charge.rs",
+     "tests/charge.rs"
+    ],
+    "requested_effects": [],
+    "advisory": {}
+   },
+   "oracle": {
+    "review_required": true,
+    "human_required": false,
+    "critical_surface": false
+   }
+  },
+  {
+   "id": "risk-rust-rbac-roles",
+   "language": "rust",
+   "lineage": "holdout/risk/rust/rbac-roles",
+   "facts": {
+    "candidate_revision": 1,
+    "changed": [
+     {
+      "path": "src/permissions/rbac.rs",
+      "change": "MODIFIED",
+      "lines_added": 15,
+      "lines_removed": 4
+     },
+     {
+      "path": "tests/rbac.rs",
+      "change": "MODIFIED",
+      "lines_added": 9,
+      "lines_removed": 0
+     }
+    ],
+    "plan_write_set": [
+     "src/permissions/rbac.rs",
+     "tests/rbac.rs"
+    ],
+    "requested_effects": [],
+    "advisory": {}
+   },
+   "oracle": {
+    "review_required": true,
+    "human_required": true,
+    "critical_surface": true
+   }
+  },
+  {
+   "id": "risk-rust-deploy-prod",
+   "language": "rust",
+   "lineage": "holdout/risk/rust/deploy-prod",
+   "facts": {
+    "candidate_revision": 1,
+    "changed": [
+     {
+      "path": "deploy/prod.yaml",
+      "change": "MODIFIED",
+      "lines_added": 2,
+      "lines_removed": 2
+     }
+    ],
+    "plan_write_set": [
+     "deploy/prod.yaml"
+    ],
+    "requested_effects": [],
+    "advisory": {}
+   },
+   "oracle": {
+    "review_required": true,
+    "human_required": true,
+    "critical_surface": true
+   }
+  },
+  {
+   "id": "risk-rust-tests-only",
+   "language": "rust",
+   "lineage": "holdout/risk/rust/tests-only",
+   "facts": {
+    "candidate_revision": 1,
+    "changed": [
+     {
+      "path": "tests/quantity.rs",
+      "change": "MODIFIED",
+      "lines_added": 12,
+      "lines_removed": 0
+     }
+    ],
+    "plan_write_set": [
+     "tests/quantity.rs"
+    ],
+    "requested_effects": [],
+    "advisory": {}
+   },
+   "oracle": {
+    "review_required": false,
+    "human_required": false,
+    "critical_surface": false
+   }
+  },
+  {
+   "id": "risk-rust-private-key",
+   "language": "rust",
+   "lineage": "holdout/risk/rust/private-key",
+   "facts": {
+    "candidate_revision": 1,
+    "changed": [
+     {
+      "path": "keys/deploy_id.pem",
+      "change": "CREATED",
+      "lines_added": 30,
+      "lines_removed": 0
+     }
+    ],
+    "plan_write_set": [
+     "keys/deploy_id.pem"
+    ],
+    "requested_effects": [],
+    "advisory": {}
+   },
+   "oracle": {
+    "review_required": true,
+    "human_required": true,
+    "critical_surface": true
+   }
+  },
+  {
+   "id": "risk-rust-out-of-plan",
+   "language": "rust",
+   "lineage": "holdout/risk/rust/out-of-plan",
+   "facts": {
+    "candidate_revision": 1,
+    "changed": [
+     {
+      "path": "src/shop.rs",
+      "change": "MODIFIED",
+      "lines_added": 4,
+      "lines_removed": 1
+     },
+     {
+      "path": "src/unrelated.rs",
+      "change": "MODIFIED",
+      "lines_added": 30,
+      "lines_removed": 0
+     },
+     {
+      "path": "tests/shop.rs",
+      "change": "MODIFIED",
+      "lines_added": 5,
+      "lines_removed": 0
+     }
+    ],
+    "plan_write_set": [
+     "src/shop.rs",
+     "tests/shop.rs"
+    ],
+    "requested_effects": [],
+    "advisory": {}
+   },
+   "oracle": {
+    "review_required": true,
+    "human_required": false,
+    "critical_surface": false
+   }
+  },
+  {
+   "id": "risk-python-auth-session",
+   "language": "python",
+   "lineage": "holdout/risk/python/auth-session",
+   "facts": {
+    "candidate_revision": 1,
+    "changed": [
+     {
+      "path": "src/auth/session.py",
+      "change": "MODIFIED",
+      "lines_added": 4,
+      "lines_removed": 1
+     },
+     {
+      "path": "tests/test_auth_session.py",
+      "change": "CREATED",
+      "lines_added": 20,
+      "lines_removed": 0
+     }
+    ],
+    "plan_write_set": [
+     "src/auth/session.py",
+     "tests/test_auth_session.py"
+    ],
+    "requested_effects": [],
+    "advisory": {}
+   },
+   "oracle": {
+    "review_required": true,
+    "human_required": true,
+    "critical_surface": true
+   }
+  },
+  {
+   "id": "risk-python-root-auth",
+   "language": "python",
+   "lineage": "holdout/risk/python/root-auth",
+   "facts": {
+    "candidate_revision": 1,
+    "changed": [
+     {
+      "path": "auth/login.py",
+      "change": "MODIFIED",
+      "lines_added": 4,
+      "lines_removed": 1
+     },
+     {
+      "path": "tests/test_login.py",
+      "change": "CREATED",
+      "lines_added": 12,
+      "lines_removed": 0
+     }
+    ],
+    "plan_write_set": [
+     "auth/login.py",
+     "tests/test_login.py"
+    ],
+    "requested_effects": [],
+    "advisory": {}
+   },
+   "oracle": {
+    "review_required": true,
+    "human_required": true,
+    "critical_surface": true
+   }
+  },
+  {
+   "id": "risk-python-release-workflow",
+   "language": "python",
+   "lineage": "holdout/risk/python/release-workflow",
+   "facts": {
+    "candidate_revision": 1,
+    "changed": [
+     {
+      "path": ".github/workflows/release.yml",
+      "change": "MODIFIED",
+      "lines_added": 6,
+      "lines_removed": 2
+     }
+    ],
+    "plan_write_set": [
+     ".github/workflows/release.yml"
+    ],
+    "requested_effects": [],
+    "advisory": {}
+   },
+   "oracle": {
+    "review_required": true,
+    "human_required": false,
+    "critical_surface": false
+   }
+  },
+  {
+   "id": "risk-python-env-production",
+   "language": "python",
+   "lineage": "holdout/risk/python/env-production",
+   "facts": {
+    "candidate_revision": 1,
+    "changed": [
+     {
+      "path": "config/.env.production",
+      "change": "MODIFIED",
+      "lines_added": 1,
+      "lines_removed": 1
+     }
+    ],
+    "plan_write_set": [
+     "config/.env.production"
+    ],
+    "requested_effects": [],
+    "advisory": {}
+   },
+   "oracle": {
+    "review_required": true,
+    "human_required": true,
+    "critical_surface": true
+   }
+  },
+  {
+   "id": "risk-python-migration-index",
+   "language": "python",
+   "lineage": "holdout/risk/python/migration-index",
+   "facts": {
+    "candidate_revision": 1,
+    "changed": [
+     {
+      "path": "db/migrations/0007_add_index.sql",
+      "change": "CREATED",
+      "lines_added": 8,
+      "lines_removed": 0
+     }
+    ],
+    "plan_write_set": [
+     "db/migrations/0007_add_index.sql"
+    ],
+    "requested_effects": [],
+    "advisory": {}
+   },
+   "oracle": {
+    "review_required": true,
+    "human_required": false,
+    "critical_surface": false
+   }
+  },
+  {
+   "id": "risk-python-readme-typo",
+   "language": "python",
+   "lineage": "holdout/risk/python/readme-typo",
+   "facts": {
+    "candidate_revision": 1,
+    "changed": [
+     {
+      "path": "README.md",
+      "change": "MODIFIED",
+      "lines_added": 1,
+      "lines_removed": 1
+     }
+    ],
+    "plan_write_set": [
+     "README.md"
+    ],
+    "requested_effects": [],
+    "advisory": {}
+   },
+   "oracle": {
+    "review_required": false,
+    "human_required": false,
+    "critical_surface": false
+   }
+  },
+  {
+   "id": "risk-python-lib-with-test",
+   "language": "python",
+   "lineage": "holdout/risk/python/lib-with-test",
+   "facts": {
+    "candidate_revision": 1,
+    "changed": [
+     {
+      "path": "src/shop.py",
+      "change": "MODIFIED",
+      "lines_added": 6,
+      "lines_removed": 2
+     },
+     {
+      "path": "tests/test_shop.py",
+      "change": "MODIFIED",
+      "lines_added": 10,
+      "lines_removed": 0
+     }
+    ],
+    "plan_write_set": [
+     "src/shop.py",
+     "tests/test_shop.py"
+    ],
+    "requested_effects": [],
+    "advisory": {}
+   },
+   "oracle": {
+    "review_required": false,
+    "human_required": false,
+    "critical_surface": false
+   }
+  },
+  {
+   "id": "risk-python-lib-no-test",
+   "language": "python",
+   "lineage": "holdout/risk/python/lib-no-test",
+   "facts": {
+    "candidate_revision": 1,
+    "changed": [
+     {
+      "path": "src/shop.py",
+      "change": "MODIFIED",
+      "lines_added": 3,
+      "lines_removed": 1
+     }
+    ],
+    "plan_write_set": [
+     "src/shop.py"
+    ],
+    "requested_effects": [],
+    "advisory": {}
+   },
+   "oracle": {
+    "review_required": false,
+    "human_required": false,
+    "critical_surface": false
+   }
+  },
+  {
+   "id": "risk-python-dependency-bump",
+   "language": "python",
+   "lineage": "holdout/risk/python/dependency-bump",
+   "facts": {
+    "candidate_revision": 1,
+    "changed": [
+     {
+      "path": "requirements.txt",
+      "change": "MODIFIED",
+      "lines_added": 1,
+      "lines_removed": 1
+     }
+    ],
+    "plan_write_set": [
+     "requirements.txt"
+    ],
+    "requested_effects": [],
+    "advisory": {}
+   },
+   "oracle": {
+    "review_required": true,
+    "human_required": false,
+    "critical_surface": false
+   }
+  },
+  {
+   "id": "risk-python-lockfile-edit",
+   "language": "python",
+   "lineage": "holdout/risk/python/lockfile-edit",
+   "facts": {
+    "candidate_revision": 1,
+    "changed": [
+     {
+      "path": "poetry.lock",
+      "change": "MODIFIED",
+      "lines_added": 12,
+      "lines_removed": 12
+     }
+    ],
+    "plan_write_set": [
+     "poetry.lock"
+    ],
+    "requested_effects": [],
+    "advisory": {}
+   },
+   "oracle": {
+    "review_required": true,
+    "human_required": false,
+    "critical_surface": false
+   }
+  },
+  {
+   "id": "risk-python-payments-charge",
+   "language": "python",
+   "lineage": "holdout/risk/python/payments-charge",
+   "facts": {
+    "candidate_revision": 1,
+    "changed": [
+     {
+      "path": "src/payments/charge.py",
+      "change": "MODIFIED",
+      "lines_added": 18,
+      "lines_removed": 6
+     },
+     {
+      "path": "tests/test_charge.py",
+      "change": "MODIFIED",
+      "lines_added": 15,
+      "lines_removed": 0
+     }
+    ],
+    "plan_write_set": [
+     "src/payments/charge.py",
+     "tests/test_charge.py"
+    ],
+    "requested_effects": [],
+    "advisory": {}
+   },
+   "oracle": {
+    "review_required": true,
+    "human_required": false,
+    "critical_surface": false
+   }
+  },
+  {
+   "id": "risk-python-rbac-roles",
+   "language": "python",
+   "lineage": "holdout/risk/python/rbac-roles",
+   "facts": {
+    "candidate_revision": 1,
+    "changed": [
+     {
+      "path": "src/permissions/rbac.py",
+      "change": "MODIFIED",
+      "lines_added": 15,
+      "lines_removed": 4
+     },
+     {
+      "path": "tests/test_rbac.py",
+      "change": "MODIFIED",
+      "lines_added": 9,
+      "lines_removed": 0
+     }
+    ],
+    "plan_write_set": [
+     "src/permissions/rbac.py",
+     "tests/test_rbac.py"
+    ],
+    "requested_effects": [],
+    "advisory": {}
+   },
+   "oracle": {
+    "review_required": true,
+    "human_required": true,
+    "critical_surface": true
+   }
+  },
+  {
+   "id": "risk-python-deploy-prod",
+   "language": "python",
+   "lineage": "holdout/risk/python/deploy-prod",
+   "facts": {
+    "candidate_revision": 1,
+    "changed": [
+     {
+      "path": "deploy/prod.yaml",
+      "change": "MODIFIED",
+      "lines_added": 2,
+      "lines_removed": 2
+     }
+    ],
+    "plan_write_set": [
+     "deploy/prod.yaml"
+    ],
+    "requested_effects": [],
+    "advisory": {}
+   },
+   "oracle": {
+    "review_required": true,
+    "human_required": true,
+    "critical_surface": true
+   }
+  },
+  {
+   "id": "risk-python-tests-only",
+   "language": "python",
+   "lineage": "holdout/risk/python/tests-only",
+   "facts": {
+    "candidate_revision": 1,
+    "changed": [
+     {
+      "path": "tests/test_quantity.py",
+      "change": "MODIFIED",
+      "lines_added": 12,
+      "lines_removed": 0
+     }
+    ],
+    "plan_write_set": [
+     "tests/test_quantity.py"
+    ],
+    "requested_effects": [],
+    "advisory": {}
+   },
+   "oracle": {
+    "review_required": false,
+    "human_required": false,
+    "critical_surface": false
+   }
+  },
+  {
+   "id": "risk-python-private-key",
+   "language": "python",
+   "lineage": "holdout/risk/python/private-key",
+   "facts": {
+    "candidate_revision": 1,
+    "changed": [
+     {
+      "path": "keys/deploy_id.pem",
+      "change": "CREATED",
+      "lines_added": 30,
+      "lines_removed": 0
+     }
+    ],
+    "plan_write_set": [
+     "keys/deploy_id.pem"
+    ],
+    "requested_effects": [],
+    "advisory": {}
+   },
+   "oracle": {
+    "review_required": true,
+    "human_required": true,
+    "critical_surface": true
+   }
+  },
+  {
+   "id": "risk-python-out-of-plan",
+   "language": "python",
+   "lineage": "holdout/risk/python/out-of-plan",
+   "facts": {
+    "candidate_revision": 1,
+    "changed": [
+     {
+      "path": "src/shop.py",
+      "change": "MODIFIED",
+      "lines_added": 4,
+      "lines_removed": 1
+     },
+     {
+      "path": "src/unrelated.py",
+      "change": "MODIFIED",
+      "lines_added": 30,
+      "lines_removed": 0
+     },
+     {
+      "path": "tests/test_shop.py",
+      "change": "MODIFIED",
+      "lines_added": 5,
+      "lines_removed": 0
+     }
+    ],
+    "plan_write_set": [
+     "src/shop.py",
+     "tests/test_shop.py"
+    ],
+    "requested_effects": [],
+    "advisory": {}
+   },
+   "oracle": {
+    "review_required": true,
+    "human_required": false,
+    "critical_surface": false
+   }
+  },
+  {
+   "id": "risk-javascript-auth-session",
+   "language": "javascript",
+   "lineage": "holdout/risk/javascript/auth-session",
+   "facts": {
+    "candidate_revision": 1,
+    "changed": [
+     {
+      "path": "src/auth/session.js",
+      "change": "MODIFIED",
+      "lines_added": 4,
+      "lines_removed": 1
+     },
+     {
+      "path": "test/auth_session.test.js",
+      "change": "CREATED",
+      "lines_added": 20,
+      "lines_removed": 0
+     }
+    ],
+    "plan_write_set": [
+     "src/auth/session.js",
+     "test/auth_session.test.js"
+    ],
+    "requested_effects": [],
+    "advisory": {}
+   },
+   "oracle": {
+    "review_required": true,
+    "human_required": true,
+    "critical_surface": true
+   }
+  },
+  {
+   "id": "risk-javascript-root-auth",
+   "language": "javascript",
+   "lineage": "holdout/risk/javascript/root-auth",
+   "facts": {
+    "candidate_revision": 1,
+    "changed": [
+     {
+      "path": "auth/login.js",
+      "change": "MODIFIED",
+      "lines_added": 4,
+      "lines_removed": 1
+     },
+     {
+      "path": "test/login.test.js",
+      "change": "CREATED",
+      "lines_added": 12,
+      "lines_removed": 0
+     }
+    ],
+    "plan_write_set": [
+     "auth/login.js",
+     "test/login.test.js"
+    ],
+    "requested_effects": [],
+    "advisory": {}
+   },
+   "oracle": {
+    "review_required": true,
+    "human_required": true,
+    "critical_surface": true
+   }
+  },
+  {
+   "id": "risk-javascript-release-workflow",
+   "language": "javascript",
+   "lineage": "holdout/risk/javascript/release-workflow",
+   "facts": {
+    "candidate_revision": 1,
+    "changed": [
+     {
+      "path": ".github/workflows/release.yml",
+      "change": "MODIFIED",
+      "lines_added": 6,
+      "lines_removed": 2
+     }
+    ],
+    "plan_write_set": [
+     ".github/workflows/release.yml"
+    ],
+    "requested_effects": [],
+    "advisory": {}
+   },
+   "oracle": {
+    "review_required": true,
+    "human_required": false,
+    "critical_surface": false
+   }
+  },
+  {
+   "id": "risk-javascript-env-production",
+   "language": "javascript",
+   "lineage": "holdout/risk/javascript/env-production",
+   "facts": {
+    "candidate_revision": 1,
+    "changed": [
+     {
+      "path": "config/.env.production",
+      "change": "MODIFIED",
+      "lines_added": 1,
+      "lines_removed": 1
+     }
+    ],
+    "plan_write_set": [
+     "config/.env.production"
+    ],
+    "requested_effects": [],
+    "advisory": {}
+   },
+   "oracle": {
+    "review_required": true,
+    "human_required": true,
+    "critical_surface": true
+   }
+  },
+  {
+   "id": "risk-javascript-migration-index",
+   "language": "javascript",
+   "lineage": "holdout/risk/javascript/migration-index",
+   "facts": {
+    "candidate_revision": 1,
+    "changed": [
+     {
+      "path": "db/migrations/0007_add_index.sql",
+      "change": "CREATED",
+      "lines_added": 8,
+      "lines_removed": 0
+     }
+    ],
+    "plan_write_set": [
+     "db/migrations/0007_add_index.sql"
+    ],
+    "requested_effects": [],
+    "advisory": {}
+   },
+   "oracle": {
+    "review_required": true,
+    "human_required": false,
+    "critical_surface": false
+   }
+  },
+  {
+   "id": "risk-javascript-readme-typo",
+   "language": "javascript",
+   "lineage": "holdout/risk/javascript/readme-typo",
+   "facts": {
+    "candidate_revision": 1,
+    "changed": [
+     {
+      "path": "README.md",
+      "change": "MODIFIED",
+      "lines_added": 1,
+      "lines_removed": 1
+     }
+    ],
+    "plan_write_set": [
+     "README.md"
+    ],
+    "requested_effects": [],
+    "advisory": {}
+   },
+   "oracle": {
+    "review_required": false,
+    "human_required": false,
+    "critical_surface": false
+   }
+  },
+  {
+   "id": "risk-javascript-lib-with-test",
+   "language": "javascript",
+   "lineage": "holdout/risk/javascript/lib-with-test",
+   "facts": {
+    "candidate_revision": 1,
+    "changed": [
+     {
+      "path": "src/shop.js",
+      "change": "MODIFIED",
+      "lines_added": 6,
+      "lines_removed": 2
+     },
+     {
+      "path": "test/shop.test.js",
+      "change": "MODIFIED",
+      "lines_added": 10,
+      "lines_removed": 0
+     }
+    ],
+    "plan_write_set": [
+     "src/shop.js",
+     "test/shop.test.js"
+    ],
+    "requested_effects": [],
+    "advisory": {}
+   },
+   "oracle": {
+    "review_required": false,
+    "human_required": false,
+    "critical_surface": false
+   }
+  },
+  {
+   "id": "risk-javascript-lib-no-test",
+   "language": "javascript",
+   "lineage": "holdout/risk/javascript/lib-no-test",
+   "facts": {
+    "candidate_revision": 1,
+    "changed": [
+     {
+      "path": "src/shop.js",
+      "change": "MODIFIED",
+      "lines_added": 3,
+      "lines_removed": 1
+     }
+    ],
+    "plan_write_set": [
+     "src/shop.js"
+    ],
+    "requested_effects": [],
+    "advisory": {}
+   },
+   "oracle": {
+    "review_required": false,
+    "human_required": false,
+    "critical_surface": false
+   }
+  },
+  {
+   "id": "risk-javascript-dependency-bump",
+   "language": "javascript",
+   "lineage": "holdout/risk/javascript/dependency-bump",
+   "facts": {
+    "candidate_revision": 1,
+    "changed": [
+     {
+      "path": "package.json",
+      "change": "MODIFIED",
+      "lines_added": 1,
+      "lines_removed": 1
+     }
+    ],
+    "plan_write_set": [
+     "package.json"
+    ],
+    "requested_effects": [],
+    "advisory": {}
+   },
+   "oracle": {
+    "review_required": true,
+    "human_required": false,
+    "critical_surface": false
+   }
+  },
+  {
+   "id": "risk-javascript-lockfile-edit",
+   "language": "javascript",
+   "lineage": "holdout/risk/javascript/lockfile-edit",
+   "facts": {
+    "candidate_revision": 1,
+    "changed": [
+     {
+      "path": "package-lock.json",
+      "change": "MODIFIED",
+      "lines_added": 12,
+      "lines_removed": 12
+     }
+    ],
+    "plan_write_set": [
+     "package-lock.json"
+    ],
+    "requested_effects": [],
+    "advisory": {}
+   },
+   "oracle": {
+    "review_required": true,
+    "human_required": false,
+    "critical_surface": false
+   }
+  },
+  {
+   "id": "risk-javascript-payments-charge",
+   "language": "javascript",
+   "lineage": "holdout/risk/javascript/payments-charge",
+   "facts": {
+    "candidate_revision": 1,
+    "changed": [
+     {
+      "path": "src/payments/charge.js",
+      "change": "MODIFIED",
+      "lines_added": 18,
+      "lines_removed": 6
+     },
+     {
+      "path": "test/charge.test.js",
+      "change": "MODIFIED",
+      "lines_added": 15,
+      "lines_removed": 0
+     }
+    ],
+    "plan_write_set": [
+     "src/payments/charge.js",
+     "test/charge.test.js"
+    ],
+    "requested_effects": [],
+    "advisory": {}
+   },
+   "oracle": {
+    "review_required": true,
+    "human_required": false,
+    "critical_surface": false
+   }
+  },
+  {
+   "id": "risk-javascript-rbac-roles",
+   "language": "javascript",
+   "lineage": "holdout/risk/javascript/rbac-roles",
+   "facts": {
+    "candidate_revision": 1,
+    "changed": [
+     {
+      "path": "src/permissions/rbac.js",
+      "change": "MODIFIED",
+      "lines_added": 15,
+      "lines_removed": 4
+     },
+     {
+      "path": "test/rbac.test.js",
+      "change": "MODIFIED",
+      "lines_added": 9,
+      "lines_removed": 0
+     }
+    ],
+    "plan_write_set": [
+     "src/permissions/rbac.js",
+     "test/rbac.test.js"
+    ],
+    "requested_effects": [],
+    "advisory": {}
+   },
+   "oracle": {
+    "review_required": true,
+    "human_required": true,
+    "critical_surface": true
+   }
+  },
+  {
+   "id": "risk-javascript-deploy-prod",
+   "language": "javascript",
+   "lineage": "holdout/risk/javascript/deploy-prod",
+   "facts": {
+    "candidate_revision": 1,
+    "changed": [
+     {
+      "path": "deploy/prod.yaml",
+      "change": "MODIFIED",
+      "lines_added": 2,
+      "lines_removed": 2
+     }
+    ],
+    "plan_write_set": [
+     "deploy/prod.yaml"
+    ],
+    "requested_effects": [],
+    "advisory": {}
+   },
+   "oracle": {
+    "review_required": true,
+    "human_required": true,
+    "critical_surface": true
+   }
+  },
+  {
+   "id": "risk-javascript-tests-only",
+   "language": "javascript",
+   "lineage": "holdout/risk/javascript/tests-only",
+   "facts": {
+    "candidate_revision": 1,
+    "changed": [
+     {
+      "path": "test/quantity.test.js",
+      "change": "MODIFIED",
+      "lines_added": 12,
+      "lines_removed": 0
+     }
+    ],
+    "plan_write_set": [
+     "test/quantity.test.js"
+    ],
+    "requested_effects": [],
+    "advisory": {}
+   },
+   "oracle": {
+    "review_required": false,
+    "human_required": false,
+    "critical_surface": false
+   }
+  },
+  {
+   "id": "risk-javascript-private-key",
+   "language": "javascript",
+   "lineage": "holdout/risk/javascript/private-key",
+   "facts": {
+    "candidate_revision": 1,
+    "changed": [
+     {
+      "path": "keys/deploy_id.pem",
+      "change": "CREATED",
+      "lines_added": 30,
+      "lines_removed": 0
+     }
+    ],
+    "plan_write_set": [
+     "keys/deploy_id.pem"
+    ],
+    "requested_effects": [],
+    "advisory": {}
+   },
+   "oracle": {
+    "review_required": true,
+    "human_required": true,
+    "critical_surface": true
+   }
+  },
+  {
+   "id": "risk-javascript-out-of-plan",
+   "language": "javascript",
+   "lineage": "holdout/risk/javascript/out-of-plan",
+   "facts": {
+    "candidate_revision": 1,
+    "changed": [
+     {
+      "path": "src/shop.js",
+      "change": "MODIFIED",
+      "lines_added": 4,
+      "lines_removed": 1
+     },
+     {
+      "path": "src/unrelated.js",
+      "change": "MODIFIED",
+      "lines_added": 30,
+      "lines_removed": 0
+     },
+     {
+      "path": "test/shop.test.js",
+      "change": "MODIFIED",
+      "lines_added": 5,
+      "lines_removed": 0
+     }
+    ],
+    "plan_write_set": [
+     "src/shop.js",
+     "test/shop.test.js"
+    ],
+    "requested_effects": [],
+    "advisory": {}
+   },
+   "oracle": {
+    "review_required": true,
+    "human_required": false,
+    "critical_surface": false
+   }
+  },
+  {
+   "id": "risk-typescript-auth-session",
+   "language": "typescript",
+   "lineage": "holdout/risk/typescript/auth-session",
+   "facts": {
+    "candidate_revision": 1,
+    "changed": [
+     {
+      "path": "src/auth/session.ts",
+      "change": "MODIFIED",
+      "lines_added": 4,
+      "lines_removed": 1
+     },
+     {
+      "path": "test/auth_session.test.ts",
+      "change": "CREATED",
+      "lines_added": 20,
+      "lines_removed": 0
+     }
+    ],
+    "plan_write_set": [
+     "src/auth/session.ts",
+     "test/auth_session.test.ts"
+    ],
+    "requested_effects": [],
+    "advisory": {}
+   },
+   "oracle": {
+    "review_required": true,
+    "human_required": true,
+    "critical_surface": true
+   }
+  },
+  {
+   "id": "risk-typescript-root-auth",
+   "language": "typescript",
+   "lineage": "holdout/risk/typescript/root-auth",
+   "facts": {
+    "candidate_revision": 1,
+    "changed": [
+     {
+      "path": "auth/login.ts",
+      "change": "MODIFIED",
+      "lines_added": 4,
+      "lines_removed": 1
+     },
+     {
+      "path": "test/login.test.ts",
+      "change": "CREATED",
+      "lines_added": 12,
+      "lines_removed": 0
+     }
+    ],
+    "plan_write_set": [
+     "auth/login.ts",
+     "test/login.test.ts"
+    ],
+    "requested_effects": [],
+    "advisory": {}
+   },
+   "oracle": {
+    "review_required": true,
+    "human_required": true,
+    "critical_surface": true
+   }
+  },
+  {
+   "id": "risk-typescript-release-workflow",
+   "language": "typescript",
+   "lineage": "holdout/risk/typescript/release-workflow",
+   "facts": {
+    "candidate_revision": 1,
+    "changed": [
+     {
+      "path": ".github/workflows/release.yml",
+      "change": "MODIFIED",
+      "lines_added": 6,
+      "lines_removed": 2
+     }
+    ],
+    "plan_write_set": [
+     ".github/workflows/release.yml"
+    ],
+    "requested_effects": [],
+    "advisory": {}
+   },
+   "oracle": {
+    "review_required": true,
+    "human_required": false,
+    "critical_surface": false
+   }
+  },
+  {
+   "id": "risk-typescript-env-production",
+   "language": "typescript",
+   "lineage": "holdout/risk/typescript/env-production",
+   "facts": {
+    "candidate_revision": 1,
+    "changed": [
+     {
+      "path": "config/.env.production",
+      "change": "MODIFIED",
+      "lines_added": 1,
+      "lines_removed": 1
+     }
+    ],
+    "plan_write_set": [
+     "config/.env.production"
+    ],
+    "requested_effects": [],
+    "advisory": {}
+   },
+   "oracle": {
+    "review_required": true,
+    "human_required": true,
+    "critical_surface": true
+   }
+  },
+  {
+   "id": "risk-typescript-migration-index",
+   "language": "typescript",
+   "lineage": "holdout/risk/typescript/migration-index",
+   "facts": {
+    "candidate_revision": 1,
+    "changed": [
+     {
+      "path": "db/migrations/0007_add_index.sql",
+      "change": "CREATED",
+      "lines_added": 8,
+      "lines_removed": 0
+     }
+    ],
+    "plan_write_set": [
+     "db/migrations/0007_add_index.sql"
+    ],
+    "requested_effects": [],
+    "advisory": {}
+   },
+   "oracle": {
+    "review_required": true,
+    "human_required": false,
+    "critical_surface": false
+   }
+  },
+  {
+   "id": "risk-typescript-readme-typo",
+   "language": "typescript",
+   "lineage": "holdout/risk/typescript/readme-typo",
+   "facts": {
+    "candidate_revision": 1,
+    "changed": [
+     {
+      "path": "README.md",
+      "change": "MODIFIED",
+      "lines_added": 1,
+      "lines_removed": 1
+     }
+    ],
+    "plan_write_set": [
+     "README.md"
+    ],
+    "requested_effects": [],
+    "advisory": {}
+   },
+   "oracle": {
+    "review_required": false,
+    "human_required": false,
+    "critical_surface": false
+   }
+  },
+  {
+   "id": "risk-typescript-lib-with-test",
+   "language": "typescript",
+   "lineage": "holdout/risk/typescript/lib-with-test",
+   "facts": {
+    "candidate_revision": 1,
+    "changed": [
+     {
+      "path": "src/shop.ts",
+      "change": "MODIFIED",
+      "lines_added": 6,
+      "lines_removed": 2
+     },
+     {
+      "path": "test/shop.test.ts",
+      "change": "MODIFIED",
+      "lines_added": 10,
+      "lines_removed": 0
+     }
+    ],
+    "plan_write_set": [
+     "src/shop.ts",
+     "test/shop.test.ts"
+    ],
+    "requested_effects": [],
+    "advisory": {}
+   },
+   "oracle": {
+    "review_required": false,
+    "human_required": false,
+    "critical_surface": false
+   }
+  },
+  {
+   "id": "risk-typescript-lib-no-test",
+   "language": "typescript",
+   "lineage": "holdout/risk/typescript/lib-no-test",
+   "facts": {
+    "candidate_revision": 1,
+    "changed": [
+     {
+      "path": "src/shop.ts",
+      "change": "MODIFIED",
+      "lines_added": 3,
+      "lines_removed": 1
+     }
+    ],
+    "plan_write_set": [
+     "src/shop.ts"
+    ],
+    "requested_effects": [],
+    "advisory": {}
+   },
+   "oracle": {
+    "review_required": false,
+    "human_required": false,
+    "critical_surface": false
+   }
+  },
+  {
+   "id": "risk-typescript-dependency-bump",
+   "language": "typescript",
+   "lineage": "holdout/risk/typescript/dependency-bump",
+   "facts": {
+    "candidate_revision": 1,
+    "changed": [
+     {
+      "path": "package.json",
+      "change": "MODIFIED",
+      "lines_added": 1,
+      "lines_removed": 1
+     }
+    ],
+    "plan_write_set": [
+     "package.json"
+    ],
+    "requested_effects": [],
+    "advisory": {}
+   },
+   "oracle": {
+    "review_required": true,
+    "human_required": false,
+    "critical_surface": false
+   }
+  },
+  {
+   "id": "risk-typescript-lockfile-edit",
+   "language": "typescript",
+   "lineage": "holdout/risk/typescript/lockfile-edit",
+   "facts": {
+    "candidate_revision": 1,
+    "changed": [
+     {
+      "path": "package-lock.json",
+      "change": "MODIFIED",
+      "lines_added": 12,
+      "lines_removed": 12
+     }
+    ],
+    "plan_write_set": [
+     "package-lock.json"
+    ],
+    "requested_effects": [],
+    "advisory": {}
+   },
+   "oracle": {
+    "review_required": true,
+    "human_required": false,
+    "critical_surface": false
+   }
+  },
+  {
+   "id": "risk-typescript-payments-charge",
+   "language": "typescript",
+   "lineage": "holdout/risk/typescript/payments-charge",
+   "facts": {
+    "candidate_revision": 1,
+    "changed": [
+     {
+      "path": "src/payments/charge.ts",
+      "change": "MODIFIED",
+      "lines_added": 18,
+      "lines_removed": 6
+     },
+     {
+      "path": "test/charge.test.ts",
+      "change": "MODIFIED",
+      "lines_added": 15,
+      "lines_removed": 0
+     }
+    ],
+    "plan_write_set": [
+     "src/payments/charge.ts",
+     "test/charge.test.ts"
+    ],
+    "requested_effects": [],
+    "advisory": {}
+   },
+   "oracle": {
+    "review_required": true,
+    "human_required": false,
+    "critical_surface": false
+   }
+  },
+  {
+   "id": "risk-typescript-rbac-roles",
+   "language": "typescript",
+   "lineage": "holdout/risk/typescript/rbac-roles",
+   "facts": {
+    "candidate_revision": 1,
+    "changed": [
+     {
+      "path": "src/permissions/rbac.ts",
+      "change": "MODIFIED",
+      "lines_added": 15,
+      "lines_removed": 4
+     },
+     {
+      "path": "test/rbac.test.ts",
+      "change": "MODIFIED",
+      "lines_added": 9,
+      "lines_removed": 0
+     }
+    ],
+    "plan_write_set": [
+     "src/permissions/rbac.ts",
+     "test/rbac.test.ts"
+    ],
+    "requested_effects": [],
+    "advisory": {}
+   },
+   "oracle": {
+    "review_required": true,
+    "human_required": true,
+    "critical_surface": true
+   }
+  },
+  {
+   "id": "risk-typescript-deploy-prod",
+   "language": "typescript",
+   "lineage": "holdout/risk/typescript/deploy-prod",
+   "facts": {
+    "candidate_revision": 1,
+    "changed": [
+     {
+      "path": "deploy/prod.yaml",
+      "change": "MODIFIED",
+      "lines_added": 2,
+      "lines_removed": 2
+     }
+    ],
+    "plan_write_set": [
+     "deploy/prod.yaml"
+    ],
+    "requested_effects": [],
+    "advisory": {}
+   },
+   "oracle": {
+    "review_required": true,
+    "human_required": true,
+    "critical_surface": true
+   }
+  },
+  {
+   "id": "risk-typescript-tests-only",
+   "language": "typescript",
+   "lineage": "holdout/risk/typescript/tests-only",
+   "facts": {
+    "candidate_revision": 1,
+    "changed": [
+     {
+      "path": "test/quantity.test.ts",
+      "change": "MODIFIED",
+      "lines_added": 12,
+      "lines_removed": 0
+     }
+    ],
+    "plan_write_set": [
+     "test/quantity.test.ts"
+    ],
+    "requested_effects": [],
+    "advisory": {}
+   },
+   "oracle": {
+    "review_required": false,
+    "human_required": false,
+    "critical_surface": false
+   }
+  },
+  {
+   "id": "risk-typescript-private-key",
+   "language": "typescript",
+   "lineage": "holdout/risk/typescript/private-key",
+   "facts": {
+    "candidate_revision": 1,
+    "changed": [
+     {
+      "path": "keys/deploy_id.pem",
+      "change": "CREATED",
+      "lines_added": 30,
+      "lines_removed": 0
+     }
+    ],
+    "plan_write_set": [
+     "keys/deploy_id.pem"
+    ],
+    "requested_effects": [],
+    "advisory": {}
+   },
+   "oracle": {
+    "review_required": true,
+    "human_required": true,
+    "critical_surface": true
+   }
+  },
+  {
+   "id": "risk-typescript-out-of-plan",
+   "language": "typescript",
+   "lineage": "holdout/risk/typescript/out-of-plan",
+   "facts": {
+    "candidate_revision": 1,
+    "changed": [
+     {
+      "path": "src/shop.ts",
+      "change": "MODIFIED",
+      "lines_added": 4,
+      "lines_removed": 1
+     },
+     {
+      "path": "src/unrelated.ts",
+      "change": "MODIFIED",
+      "lines_added": 30,
+      "lines_removed": 0
+     },
+     {
+      "path": "test/shop.test.ts",
+      "change": "MODIFIED",
+      "lines_added": 5,
+      "lines_removed": 0
+     }
+    ],
+    "plan_write_set": [
+     "src/shop.ts",
+     "test/shop.test.ts"
+    ],
+    "requested_effects": [],
+    "advisory": {}
+   },
+   "oracle": {
+    "review_required": true,
+    "human_required": false,
+    "critical_surface": false
+   }
+  }
+ ]
+}

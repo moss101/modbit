@@ -1,0 +1,11 @@
+{
+  "id": "python-shipping-weakening-b",
+  "class": "weakening",
+  "flavor": "b",
+  "leg": "initial",
+  "write_set": [
+    "shop.py",
+    "test_quantity.py"
+  ],
+  "declared": "incorrect"
+}

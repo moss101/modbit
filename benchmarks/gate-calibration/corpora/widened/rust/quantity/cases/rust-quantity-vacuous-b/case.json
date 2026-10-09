@@ -1,0 +1,11 @@
+{
+  "id": "rust-quantity-vacuous-b",
+  "class": "vacuous",
+  "flavor": "b",
+  "leg": "initial",
+  "write_set": [
+    "src/lib.rs",
+    "tests/quantity.rs"
+  ],
+  "declared": "incorrect"
+}

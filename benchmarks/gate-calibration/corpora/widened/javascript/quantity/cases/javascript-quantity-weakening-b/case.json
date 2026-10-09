@@ -1,0 +1,11 @@
+{
+  "id": "javascript-quantity-weakening-b",
+  "class": "weakening",
+  "flavor": "b",
+  "leg": "initial",
+  "write_set": [
+    "src/shop.mjs",
+    "test/discount.test.mjs"
+  ],
+  "declared": "incorrect"
+}
