@@ -10,6 +10,9 @@ publish.workspace = true
 [dependencies]
 serde.workspace = true
 serde_json.workspace = true
+modbit-compaction.workspace = true
+sha2.workspace = true
+hex.workspace = true
 tempfile.workspace = true
 
 [lints]

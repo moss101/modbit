@@ -335,7 +335,7 @@ pub struct MeanCi {
     pub ci95: (f64, f64),
 }
 
-fn mean_ci(values: &[f64]) -> MeanCi {
+pub(crate) fn mean_ci(values: &[f64]) -> MeanCi {
     MeanCi {
         mean: mean(values),
         ci95: bootstrap_ci95(values),

@@ -2040,8 +2040,11 @@ dependencies = [
 name = "modbit-bench-context-economics"
 version = "0.0.0"
 dependencies = [
+ "hex",
+ "modbit-compaction",
  "serde",
  "serde_json",
+ "sha2 0.11.0",
  "tempfile",
 ]
 
