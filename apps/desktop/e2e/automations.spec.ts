@@ -205,6 +205,17 @@ test("PX-086: the editor shows the Core's typed issues with path and code, will 
     await expect(page.getByTestId("enable-error")).toHaveAttribute("data-code", "REPOSITORY_UNTRUSTED");
     await expect(row(page, "elsewhere")).toHaveAttribute("data-state", "NEEDS_APPROVAL");
     await page.getByTestId("enable-cancel").click();
+
+    // A definition that can act but states no cost limit cannot be enabled; the dialog shows the Core's typed reason.
+    const uncapped = await create(page, doc("uncapped", MANUAL, { profile: { effects: "reversible_write", capabilities: ["fs.write"], paths: ["reports/**"] } }), repo);
+    await expect(row(page, "uncapped")).toHaveAttribute("data-automation-id", uncapped.automationId);
+    await select(page, "uncapped");
+    await page.getByTestId("detail-enable").click();
+    await page.getByTestId("enable-ack").check();
+    await page.getByTestId("enable-confirm").click();
+    await expect(page.getByTestId("enable-error")).toHaveAttribute("data-code", "BUDGET_REQUIRED");
+    await expect(row(page, "uncapped")).toHaveAttribute("data-state", "NEEDS_APPROVAL");
+    await page.getByTestId("enable-cancel").click();
     await accessible(page, "the automation list and detail");
   } finally {
     await closeApp(app);
@@ -269,15 +280,15 @@ test("PX-086: a repository definition is data until its exact bytes are approved
     await expect(row(page, "nightly-check").getByTestId("row-content-changed")).toBeVisible();
     await accessible(page, "a repository definition whose file changed");
 
-    // The next run notices before anything starts: it is refused, the approval is withdrawn and SOURCE_CHANGED is raised.
+    // The next run notices before anything starts: the Core refuses it with SOURCE_CHANGED (the person sees the typed refusal at once),
+    // the approval is withdrawn and the attention item is raised. No run begins, so no run record and no task exist (the Core's own
+    // contract, proven in services/modbit-core/tests/automations_px.rs).
     await page.getByTestId("detail-run").click();
-    await expect(page.getByTestId("automations-notice")).toContainText("failed");
+    await expect(page.getByTestId("automations-notice")).toContainText("SOURCE_CHANGED");
     await expect(row(page, "nightly-check")).toHaveAttribute("data-state", "NEEDS_APPROVAL");
     const attention = page.locator('[data-testid="automation-attention"][data-kind="SOURCE_CHANGED"]');
     await expect(attention).toBeVisible();
-    await expect(page.getByTestId("run-row")).toHaveCount(1);
-    await expect(page.getByTestId("run-row")).toHaveAttribute("data-status", "failed");
-    await expect(page.getByTestId("run-row")).not.toHaveAttribute("data-task-id", /[0-9a-f]{32}/);
+    await expect(page.getByTestId("run-row")).toHaveCount(0);
     // Approving the bytes that were read is refused: they are no longer the bytes on disk.
     await page.getByTestId("detail-enable").click();
     await page.getByTestId("enable-confirm").click();
