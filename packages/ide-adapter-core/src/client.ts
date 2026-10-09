@@ -471,9 +471,10 @@ export class CoreClient {
   /** Session lease generations this client holds (docs/13 fencing). */
   private leases = new Map<string, bigint>();
 
-  command(commandType: string, payload: Uint8Array, commandId: Uint8Array = freshId(), expectedGeneration?: bigint): Promise<CommandAck> {
+  command(commandType: string, payload: Uint8Array, commandId: Uint8Array = freshId(), expectedGeneration?: bigint, sessionId?: string): Promise<CommandAck> {
     if (this.closed) return Promise.reject(new ProtocolError("DISCONNECTED", "client closed"));
-    const envelope = create(CommandEnvelopeSchema, { commandId: { value: commandId }, commandType, schemaVersion: 1, payload, ...(expectedGeneration !== undefined ? { expectedGeneration } : {}) });
+    // `sessionId` names the session the caller acts in: the Core refuses a command on a task of another session (WRONG_SESSION).
+    const envelope = create(CommandEnvelopeSchema, { commandId: { value: commandId }, commandType, schemaVersion: 1, payload, ...(expectedGeneration !== undefined ? { expectedGeneration } : {}), ...(sessionId ? { sessionId: { value: unhex(sessionId) } } : {}) });
     return new Promise((resolve, reject) => {
       this.pending.push({ resolve, reject });
       this.socket.write(encodeFrame({ body: { case: "command", value: envelope } }));
@@ -797,7 +798,7 @@ export class CoreClient {
    */
   async setTaskMode(sessionId: string, taskId: string, mode: TaskMode, reason = ""): Promise<TaskModeChanged> {
     const payload = toBinary(SetTaskModeSchema, create(SetTaskModeSchema, { taskId: { value: unhex(taskId) }, mode, reason }));
-    const ack = await this.command("SetTaskMode", payload, undefined, this.leases.get(sessionId));
+    const ack = await this.command("SetTaskMode", payload, undefined, this.leases.get(sessionId), sessionId);
     return fromBinary(TaskModeChangedSchema, ack.result);
   }
 
@@ -822,7 +823,7 @@ export class CoreClient {
         },
       }),
     );
-    const ack = await this.command("SetExecutionPreference", payload, undefined, this.leases.get(sessionId));
+    const ack = await this.command("SetExecutionPreference", payload, undefined, this.leases.get(sessionId), sessionId);
     return fromBinary(ExecutionPreferenceSetSchema, ack.result);
   }
 

@@ -466,6 +466,23 @@ pub(crate) async fn handle(core: &Arc<Core>, env: &wire::CommandEnvelope) -> wir
 }
 
 /// The task a command names, refused when it is unknown or over.
+/// A command that names its session (`CommandEnvelope.session_id`) acts only on that session's tasks: a task of another session
+/// is refused `WRONG_SESSION` before its pin, its lease or its log is looked at. A command that names no session keeps the
+/// lease check against the task's own session.
+fn wrong_session(
+    cid: &Option<wire::Id>,
+    env: &wire::CommandEnvelope,
+    task: &Task,
+) -> Option<wire::CommandAck> {
+    let named = env.session_id.as_ref().and_then(id16)?;
+    (named != *task.session_id.as_bytes()).then(|| {
+        reject(
+            cid.clone(),
+            refuse("WRONG_SESSION", "the task belongs to another session"),
+        )
+    })
+}
+
 async fn open_task(core: &Core, task_id: TaskId) -> Result<Task, Refusal> {
     let store = core.store.lock().await;
     match store.task(&task_id) {
@@ -501,6 +518,9 @@ async fn set_mode(
         Ok(t) => t,
         Err(r) => return reject(cid, r),
     };
+    if let Some(ack) = wrong_session(&cid, env, &task) {
+        return ack;
+    }
     if let Err(ack) = crate::server::require_lease(core, &cid, env, &task.session_id).await {
         return ack;
     }
@@ -603,6 +623,9 @@ async fn set_preference(
         Ok(t) => t,
         Err(r) => return reject(cid, r),
     };
+    if let Some(ack) = wrong_session(&cid, env, &task) {
+        return ack;
+    }
     if let Some(Some(pin)) = &patch.pin
         && let Err(r) = check_pin(core, &task, pin)
     {

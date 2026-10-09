@@ -1973,3 +1973,85 @@ async fn px_053_with_a_signed_registry_the_router_reads_the_objective_and_says_w
         }
     }
 }
+
+/// QUAL-PX-056: a command that names a session other than the task's is refused `WRONG_SESSION`, even with a lease generation
+/// that happens to equal the owning session's, and nothing on the task changes; the owning session is accepted.
+#[tokio::test]
+async fn px_056_a_pin_or_mode_named_from_another_session_is_refused_and_changes_nothing() {
+    let (_repo, root) = repo(&[("a.txt", "a\n")]);
+    let model = scripted(vec![], None).await;
+    let dir = tempfile::tempdir().unwrap();
+    let core = CoreProcess::spawn(
+        dir.path(),
+        &env_for(&model.base, &[("MODBIT_OPENAI_MODELS", "gpt-a=1/2")]),
+    );
+    let mut c = core.client().await;
+    let (session_a, ga) = create_session(&mut c, 0x10).await;
+    let (session_b, gb) = create_session(&mut c, 0x20).await;
+    assert_eq!(
+        ga, gb,
+        "the generations coincide, which is what the old check could not tell apart"
+    );
+    let task = create_task(&mut c, ga, &session_a, 0x11, &root, "look", 0, "", None)
+        .await
+        .unwrap();
+    let from = |session: &Id, id: u8, ty: &str, payload: Vec<u8>| {
+        let mut e = envelope(id16(id), ty, payload, gb);
+        e.session_id = Some(session.clone());
+        e
+    };
+    let pin = ExecutionPreference {
+        pin_endpoint: "openai".into(),
+        pin_model: "gpt-a".into(),
+        ..Default::default()
+    };
+    let pref_payload = SetExecutionPreference {
+        task_id: Some(task.clone()),
+        preference: Some(pin),
+    }
+    .encode_to_vec();
+    let refused = c
+        .command(from(
+            &session_b,
+            0x30,
+            "SetExecutionPreference",
+            pref_payload.clone(),
+        ))
+        .await;
+    assert!(
+        matches!(&refused, Err(ClientError::Rejected { code, .. }) if code == "WRONG_SESSION"),
+        "{refused:?}"
+    );
+    let mode_payload = SetTaskMode {
+        task_id: Some(task.clone()),
+        mode: TaskMode::Plan as i32,
+        reason: "test".into(),
+    }
+    .encode_to_vec();
+    let refused = c
+        .command(from(&session_b, 0x31, "SetTaskMode", mode_payload))
+        .await;
+    assert!(
+        matches!(&refused, Err(ClientError::Rejected { code, .. }) if code == "WRONG_SESSION"),
+        "{refused:?}"
+    );
+    let p = posture(&mut c, 0x32, &task).await;
+    assert_eq!(
+        p.preference.unwrap().pin_model,
+        "",
+        "the pin was not recorded"
+    );
+    assert_eq!(p.mode, TaskMode::Agent as i32, "the mode did not change");
+    // The owning session is accepted.
+    let ok = c
+        .command(from(
+            &session_a,
+            0x33,
+            "SetExecutionPreference",
+            pref_payload,
+        ))
+        .await;
+    assert!(ok.is_ok(), "{ok:?}");
+    let p = posture(&mut c, 0x34, &task).await;
+    assert_eq!(p.preference.unwrap().pin_model, "gpt-a");
+}
