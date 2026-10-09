@@ -67,6 +67,23 @@ export function gate(): { wait: Promise<void>; open: () => void } {
   return { wait, open };
 }
 
+/**
+ * Waits until the task has `count` terminals. When it never does, the failure carries what the page shows
+ * (the conversation holds the Core's tool results and any pending approval), so a terminal that was
+ * refused or failed to spawn says why instead of only that the count stayed at zero.
+ */
+export async function expectTerminals(page: Page, taskId: string, count: number): Promise<void> {
+  const deadline = Date.now() + 60_000;
+  let seen = 0;
+  while (Date.now() < deadline) {
+    seen = await page.evaluate((t) => window.modbit.terminalList(t).then((l) => l.terminals.length), taskId);
+    if (seen === count) return;
+    await new Promise((r) => setTimeout(r, 250));
+  }
+  const shown = (await page.locator("body").innerText().catch(() => "")).replace(/\s+/g, " ").slice(0, 3000);
+  throw new Error(`the task has ${seen} terminals, expected ${count}; the page shows: ${shown}`);
+}
+
 /** `node -e <script>` as a `shell.start` call on a PTY, using the runner's own Node. */
 export function nodeTerminal(script: string): { name: string; args: unknown } {
   return { name: "shell.start", args: { argv: [process.execPath, "-e", script], inherit_env: true, pty: true, timeout_ms: 600_000 } };

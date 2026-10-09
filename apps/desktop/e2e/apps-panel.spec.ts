@@ -15,7 +15,7 @@ import type { Server } from "node:http";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { createHash } from "node:crypto";
-import { BIG_OUTPUT, ECHO_LOOP, EXIT_THREE, SIZE_REPORTER, gate, handlesIn, nodeTerminal, readTerminal, steppedModel, toolResults, type Step } from "./support/apps-harness.ts";
+import { BIG_OUTPUT, ECHO_LOOP, EXIT_THREE, expectTerminals, SIZE_REPORTER, gate, handlesIn, nodeTerminal, readTerminal, steppedModel, toolResults, type Step } from "./support/apps-harness.ts";
 import { accessible, closeApp, git, launch, makeRepo, MOD, setContentSize } from "./support/ui-harness.ts";
 
 test.describe.configure({ mode: "serial" });
@@ -99,7 +99,7 @@ test("the panel is absent until the task runs; then Changes shows the live diff 
   await card.getByTestId("task-start").click();
   await expect(card.getByTestId("task-state")).toHaveText("Running", { timeout: 60_000 });
   // Four terminals appear as the script starts them; the task is held at the gate.
-  await expect.poll(async () => (await listTerminals()).length, { timeout: 60_000 }).toBe(4);
+  await expectTerminals(page, taskId, 4);
   await card.focus();
   await page.keyboard.press(`${MOD}+e`);
   await expect(page.getByTestId("region-apps")).toBeVisible();

@@ -34,11 +34,14 @@ test("PX-049: the window opens at 1280 x 800 and cannot be made smaller than 900
     const got = await app.evaluate(({ BrowserWindow, screen }) => {
       const w = BrowserWindow.getAllWindows()[0]!;
       const initial = w.getSize();
+      // The frame (border and shadow on Windows, none on macOS and Linux) is constant: the window size less the content size.
+      const initialContent = w.getContentSize();
+      const frame: [number, number] = [initial[0]! - initialContent[0]!, initial[1]! - initialContent[1]!];
       const workArea = screen.getDisplayMatching(w.getBounds()).workAreaSize;
       w.setSize(300, 200);
       const clamped = w.getSize();
       w.setContentSize(100, 100);
-      return { minimum: w.getMinimumSize(), initial, workArea, clamped, content: w.getContentSize() };
+      return { minimum: w.getMinimumSize(), initial, workArea, clamped, content: w.getContentSize(), frame };
     });
     expect(got.minimum).toEqual([900, 600]);
     // 1280 x 800, unless the screen's work area is smaller (a CI runner's
@@ -49,8 +52,10 @@ test("PX-049: the window opens at 1280 x 800 and cannot be made smaller than 900
     ]);
     expect(got.clamped[0]).toBeGreaterThanOrEqual(900);
     expect(got.clamped[1]).toBeGreaterThanOrEqual(600);
-    expect(got.content[0], "a content size below the minimum is clamped too").toBeGreaterThanOrEqual(900);
-    expect(got.content[1]).toBeGreaterThanOrEqual(560);
+    // The 900 x 600 minimum applies to the window including its frame (on Windows the content area is ~16 px
+    // narrower), so the exact bound on the content is the minimum less the frame.
+    expect(got.content[0], `a content size below the minimum is clamped too (frame ${got.frame[0]} x ${got.frame[1]})`).toBeGreaterThanOrEqual(900 - got.frame[0]);
+    expect(got.content[1]).toBeGreaterThanOrEqual(600 - got.frame[1]);
   } finally {
     await closeApp(app);
   }
