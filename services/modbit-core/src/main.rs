@@ -113,7 +113,7 @@ mod parent_exit {
 
     /// The pid of this process's parent, from a process snapshot.
     #[allow(unsafe_code)]
-    fn parent_pid() -> Option<u32> {
+    pub fn parent_pid() -> Option<u32> {
         let me = std::process::id();
         // SAFETY: the snapshot handle is owned here and closed before returning; the entry is a
         // plain struct whose `dwSize` is set as the API requires, and only read after a success.
@@ -252,7 +252,10 @@ fn main() -> ExitCode {
         // process itself.
         #[cfg(windows)]
         std::thread::spawn(move || {
-            trace("parent wait begins");
+            trace(&format!(
+                "parent wait begins; parent pid {:?}",
+                parent_exit::parent_pid()
+            ));
             let gone = parent_exit::wait();
             trace(&format!("parent wait returned {gone}"));
             if gone {
