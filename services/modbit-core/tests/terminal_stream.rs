@@ -1308,6 +1308,26 @@ mod unix {
             "the lease ended with the dead Core's connection"
         );
         let g2 = acquire_lease(&mut c2, &session, "test-2").await;
+        // Reattach at the stored cursor: the rest of the stream, exactly.
+        let a2 = attach(&mut c2, g2, &task, &sid, stored, 16 * 1024, false, false)
+            .await
+            .unwrap();
+        let mut rest_cursor = stored;
+        let mut rest = Vec::new();
+        // Read to the end of what the command prints before anything is
+        // typed: the terminal echoes typed text into the stream wherever the
+        // output has got to, and how far that is depends on the pace.
+        let last = n.to_string();
+        let stop = consume_every(
+            &mut c2,
+            &a2.attach_id,
+            &mut rest_cursor,
+            &mut rest,
+            Some(4096),
+            |b| has(&b[b.len().saturating_sub(24)..], &last),
+        )
+        .await;
+        assert!(matches!(stop, Stop::Satisfied), "{stop:?}");
         // The agent types again at once: nobody holds the lease any more.
         let r = invoke(
             &mut c2,
@@ -1318,12 +1338,6 @@ mod unix {
         )
         .await;
         assert_eq!(r.status, "SUCCESS", "{r:?}");
-        // Reattach at the stored cursor: the rest of the stream, exactly.
-        let a2 = attach(&mut c2, g2, &task, &sid, stored, 16 * 1024, false, false)
-            .await
-            .unwrap();
-        let mut rest_cursor = stored;
-        let mut rest = Vec::new();
         let stop = consume_every(
             &mut c2,
             &a2.attach_id,
@@ -1338,10 +1352,15 @@ mod unix {
         all.extend(rest);
         let printed = seq_lf(n);
         let seen = without_cr(&all);
+        let at = seen.iter().zip(&printed).position(|(a, b)| a != b);
         assert!(
             seen.starts_with(&printed),
-            "the stream across the Core's death is the output, once and in order (read {} bytes)",
-            all.len()
+            "the stream across the Core's death is the output, once and in order: read {} bytes ({} without CR), expected prefix {}, first difference at {at:?}, around {:02x?} vs {:02x?}",
+            all.len(),
+            seen.len(),
+            printed.len(),
+            at.map(|i| &seen[i.saturating_sub(16)..(i + 16).min(seen.len())]),
+            at.map(|i| &printed[i.saturating_sub(16)..(i + 16).min(printed.len())]),
         );
         // The bytes themselves are the broker's, with nothing missing or doubled.
         assert!(all == broker_log(dir.path(), &sid, all.len()).await);
