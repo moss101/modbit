@@ -882,7 +882,9 @@ export class BrowserHost {
     const answer = async (): Promise<unknown> => {
       if (!h || (this.gone(h) && !h.reclaimed)) return { kind: "error", code: "NO_SUCH_SESSION", message: `this host holds no view for ${bsid}` };
       if (h.reclaimed && req.kind !== "state" && req.kind !== "close") await this.revive(h);
-      h.lastUsedAt = this.touchSeq();
+      // Recency counts use, not observation: a read of the view's state, or the Core
+      // reading a page on its own account, must not make an idle view look fresh (PX-073).
+      if (req.kind !== "state" && !background) h.lastUsedAt = this.touchSeq();
       // IMP-EV-0083: the view answering is exactly the one attached — the
       // same web contents, alive; a page's title or URL never stands in for it.
       if (this.gone(h) || h.view.webContents.id !== h.webContentsId) return { kind: "error", code: "WINDOW_UNVERIFIABLE", message: `the session's view is not the web contents attached (${h.webContentsId})` };
