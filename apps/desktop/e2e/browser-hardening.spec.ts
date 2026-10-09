@@ -474,9 +474,11 @@ test("PX-073: a task lists and selects only the views it owns; hidden views are 
       const b = await ui.evaluate(([s, tid]) => window.modbit.openBrowser(s!, tid!), [sessionId, t.taskId]);
       return { taskId: t.taskId, bsid: b.browserSessionId };
     };
+    const settled = async (b: string) => expect.poll(async () => (await ui.evaluate((id) => window.modbit.describeBrowser(id), b))?.attached, { timeout: 15_000 }).toBe(true);
     const A = await mk(1);
-    await sleep(30);
+    await settled(A.bsid);
     const B = await mk(2);
+    await settled(B.bsid);
     // A task lists and selects only its own views.
     expect((await ui.evaluate((t) => window.modbit.listBrowserViews(t), A.taskId)).map((v) => v.browserSessionId)).toEqual([A.bsid]);
     expect(await ui.evaluate(([t, b]) => window.modbit.selectBrowserView(t!, b!), [A.taskId, B.bsid])).toBeNull();
@@ -484,8 +486,9 @@ test("PX-073: a task lists and selects only the views it owns; hidden views are 
     expect((await ui.evaluate(([t, b]) => window.modbit.selectBrowserView(t!, b!), [A.taskId, A.bsid]))?.browserSessionId).toBe(A.bsid);
     // The person holds B: it is not reclaimable.
     await ui.evaluate((b) => window.modbit.setBrowserControl(b, "USER"), B.bsid);
-    await sleep(30);
+    await expect.poll(async () => (await ui.evaluate((id) => window.modbit.describeBrowser(id), B.bsid))?.controller, { timeout: 15_000 }).toBe("USER");
     const C = await mk(3);
+    await settled(C.bsid);
     const state = async (b: string) => (await ui.evaluate((id) => window.modbit.describeBrowser(id), b))!.reclaimed;
     // A was used last at its selection above, B is held, C is new: with two hidden allowed and three open, the least recently used that may be reclaimed is A.
     // The cap is enforced as soon as a view can be reclaimed (one still loading its first page waits a moment): wait on the state.

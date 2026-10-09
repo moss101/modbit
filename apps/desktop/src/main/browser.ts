@@ -259,7 +259,7 @@ export class BrowserHost {
       children: new Map(),
       frames: new Map(),
       goneCount: 0,
-      lastUsedAt: Date.now(),
+      lastUsedAt: this.touchSeq(),
       reclaimed: null,
       pendingReset: null,
       certHold: null,
@@ -616,7 +616,7 @@ export class BrowserHost {
       return true;
     }
     if (this.gone(h)) return false;
-    h.lastUsedAt = Date.now();
+    h.lastUsedAt = this.touchSeq();
     if (!h.shown) {
       win.contentView.addChildView(h.view);
       h.shown = true;
@@ -641,7 +641,7 @@ export class BrowserHost {
     if (!h || !win || !h.shown) return;
     win.contentView.removeChildView(h.view);
     h.shown = false;
-    h.lastUsedAt = Date.now();
+    h.lastUsedAt = this.touchSeq();
     this.enforceHiddenCap();
   }
 
@@ -656,7 +656,7 @@ export class BrowserHost {
     const hidden = [...this.sessions.values()].filter((h) => !h.shown && !h.reclaimed && !this.gone(h));
     let over = hidden.length - cap;
     if (over <= 0) return;
-    const candidates = hidden.filter((h) => h.controller !== "USER" && !h.view.webContents.isLoading() && !(h.certHold && !h.certHold.isSettled)).sort((a, b) => a.lastUsedAt - b.lastUsedAt);
+    const candidates = hidden.filter((h) => h.controller !== "USER" && !this.loadingPage(h) && !(h.certHold && !h.certHold.isSettled)).sort((a, b) => a.lastUsedAt - b.lastUsedAt);
     for (const h of candidates) {
       if (over <= 0) break;
       this.reclaim(h);
@@ -671,6 +671,18 @@ export class BrowserHost {
     }
   }
   private capRetry: ReturnType<typeof setTimeout> | null = null;
+  private useCounter = 0;
+  /** The next recency stamp: strictly increasing, so the least recently used view is never a tie. */
+  private touchSeq(): number {
+    this.useCounter += 1;
+    return this.useCounter;
+  }
+
+  /** A real page is being loaded (a view idle on its blank start page is not "loading" for the cap, whatever the platform reports). */
+  private loadingPage(h: HostedSession): boolean {
+    const wc = h.view.webContents;
+    return wc.isLoading() && /^https?:/i.test(wc.getURL());
+  }
 
   private reclaim(h: HostedSession): void {
     const wc = h.view.webContents;
@@ -699,7 +711,7 @@ export class BrowserHost {
     h.shown = false;
     h.reclaimed = null;
     h.cdpReady = false;
-    h.lastUsedAt = Date.now();
+    h.lastUsedAt = this.touchSeq();
     this.harden(h);
     await view.webContents.loadURL("about:blank").catch(() => {});
     let loaded = "about:blank";
@@ -713,7 +725,7 @@ export class BrowserHost {
   }
 
   /** What this host holds (for the renderer and the E2E). */
-  describe(browserSessionId: string, taskId?: string): { browserSessionId: string; taskId: string; partition: string; attached: boolean; shown: boolean; url: string; title: string; stateVersion: number; leaseGeneration: number; controller: "AGENT" | "USER"; webContentsId: number; osProcessId: number; humanInputAt: number; stopped: string | null; reclaimed: boolean; certPending: CertInfo | null; changeSeq: number; refusals: number } | null {
+  describe(browserSessionId: string, taskId?: string): { browserSessionId: string; taskId: string; partition: string; attached: boolean; shown: boolean; url: string; title: string; stateVersion: number; leaseGeneration: number; controller: "AGENT" | "USER"; webContentsId: number; osProcessId: number; humanInputAt: number; stopped: string | null; reclaimed: boolean; certPending: CertInfo | null; changeSeq: number; refusals: number; useSeq: number } | null {
     const h = this.sessions.get(browserSessionId);
     if (!h) return null;
     // A task sees only the views it owns (PX-073).
@@ -721,7 +733,7 @@ export class BrowserHost {
     const destroyed = this.gone(h);
     if (destroyed && !h.reclaimed) return null;
     const s = this.state(h);
-    return { browserSessionId: h.browserSessionId, taskId: h.taskId, partition: h.partition, attached: h.attached, shown: h.shown, url: s.url, title: s.title, stateVersion: h.stateVersion, leaseGeneration: h.leaseGeneration, controller: h.controller, webContentsId: h.webContentsId, osProcessId: destroyed ? 0 : h.view.webContents.getOSProcessId(), humanInputAt: h.humanInputAt, stopped: this.stops.reason(h.sessionId), reclaimed: h.reclaimed !== null, certPending: h.certHold && !h.certHold.isSettled ? h.certHold.info : null, changeSeq: h.batcher.changeSeq, refusals: h.refusals.length };
+    return { browserSessionId: h.browserSessionId, taskId: h.taskId, partition: h.partition, attached: h.attached, shown: h.shown, url: s.url, title: s.title, stateVersion: h.stateVersion, leaseGeneration: h.leaseGeneration, controller: h.controller, webContentsId: h.webContentsId, osProcessId: destroyed ? 0 : h.view.webContents.getOSProcessId(), humanInputAt: h.humanInputAt, stopped: this.stops.reason(h.sessionId), reclaimed: h.reclaimed !== null, certPending: h.certHold && !h.certHold.isSettled ? h.certHold.info : null, changeSeq: h.batcher.changeSeq, refusals: h.refusals.length, useSeq: h.lastUsedAt };
   }
 
   /** The views a task owns, and nobody else's (PX-073). */
@@ -735,7 +747,7 @@ export class BrowserHost {
   selectView(taskId: string, browserSessionId: string): ReturnType<BrowserHost["describe"]> {
     const h = this.sessions.get(browserSessionId);
     if (!h || h.taskId !== taskId) return null;
-    h.lastUsedAt = Date.now();
+    h.lastUsedAt = this.touchSeq();
     return this.describe(browserSessionId, taskId);
   }
 
@@ -870,7 +882,7 @@ export class BrowserHost {
     const answer = async (): Promise<unknown> => {
       if (!h || (this.gone(h) && !h.reclaimed)) return { kind: "error", code: "NO_SUCH_SESSION", message: `this host holds no view for ${bsid}` };
       if (h.reclaimed && req.kind !== "state" && req.kind !== "close") await this.revive(h);
-      h.lastUsedAt = Date.now();
+      h.lastUsedAt = this.touchSeq();
       // IMP-EV-0083: the view answering is exactly the one attached — the
       // same web contents, alive; a page's title or URL never stands in for it.
       if (this.gone(h) || h.view.webContents.id !== h.webContentsId) return { kind: "error", code: "WINDOW_UNVERIFIABLE", message: `the session's view is not the web contents attached (${h.webContentsId})` };

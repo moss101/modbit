@@ -213,6 +213,7 @@ export interface BrowserViewDescription {
   certPending: { id: string; hostPort: string; url: string; error: string; issuer: string; subject: string; validStart: number; validExpiry: number; fingerprint: string } | null;
   changeSeq: number;
   refusals: number;
+  useSeq: number;
 }
 
 export interface ModbitBridge {
