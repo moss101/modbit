@@ -88,7 +88,7 @@ export function requirePreferencePatch(v: unknown): PreferencePatch {
   return out;
 }
 
-const routingOf = (r: RoutingOutcomeView | undefined) => ({ outcome: r?.outcome ?? "", reasonCode: r?.reasonCode ?? "", detail: r?.detail ?? "", floorMode: r?.floorMode ?? "" });
+const routingOf = (r: RoutingOutcomeView | undefined) => ({ outcome: r?.outcome ?? "", reasonCode: r?.reasonCode ?? "", detail: r?.detail ?? "", floorMode: r?.floorMode ?? "", registryGeneration: r?.registryGeneration ?? "" });
 const preferenceOf = (p: ExecutionPreferenceView | undefined): PostureView["preference"] => ({
   objective: p && p.objective !== ObjectiveProfile.UNSPECIFIED ? (ObjectiveProfile[p.objective] ?? "") : "",
   effort: p?.effort ?? "",

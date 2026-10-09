@@ -54,7 +54,7 @@ const POSTURE: PostureView = {
   subagents: false,
   reproductionFirst: false,
   preference: { objective: "BALANCE", effort: "", serviceTier: "", pinEndpoint: "", pinModel: "", offset: "0", appliedOffset: "0", effortApplied: "", serviceTierApplied: "" },
-  routing: { outcome: "DIRECT", reasonCode: "NO_ACTIVE_REGISTRY", detail: "", floorMode: "" },
+  routing: { outcome: "DIRECT", reasonCode: "NO_ACTIVE_REGISTRY", detail: "", floorMode: "", registryGeneration: "" },
 };
 
 const CATALOG: ModelCatalogView = {

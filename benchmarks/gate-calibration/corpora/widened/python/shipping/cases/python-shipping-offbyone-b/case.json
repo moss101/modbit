@@ -1,0 +1,10 @@
+{
+  "id": "python-shipping-offbyone-b",
+  "class": "offbyone",
+  "flavor": "b",
+  "leg": "initial",
+  "write_set": [
+    "shop.py"
+  ],
+  "declared": "incorrect"
+}

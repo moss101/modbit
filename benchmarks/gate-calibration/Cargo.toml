@@ -11,8 +11,17 @@ publish.workspace = true
 name = "gate-calibration"
 path = "src/bin/gate_calibration.rs"
 
+[[bin]]
+name = "gate-calibration-widened"
+path = "src/bin/gate_calibration_widened.rs"
+
+[[bin]]
+name = "gate-calibration-live"
+path = "src/bin/gate_calibration_live.rs"
+
 [dependencies]
 hex.workspace = true
+modbit-bench-context-economics.workspace = true
 modbit-policy.workspace = true
 modbit-verification.workspace = true
 serde.workspace = true
@@ -31,5 +40,5 @@ workspace = true
 owner = "eval-bench"
 canonical = []
 capabilities = [
-  { id = "gates.calibrate", requirements = ["REQ-EPR-019"] },
+  { id = "gates.calibrate", requirements = ["REQ-EPR-019", "REQ-PX-135"] },
 ]

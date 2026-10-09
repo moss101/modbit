@@ -1,0 +1,10 @@
+{
+  "id": "rust-shipping-vacuous-a",
+  "class": "vacuous",
+  "flavor": "a",
+  "leg": "initial",
+  "write_set": [
+    "tests/shipping.rs"
+  ],
+  "declared": "incorrect"
+}

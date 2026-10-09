@@ -317,12 +317,24 @@ pub fn wilson(k: usize, n: usize) -> Proportion {
     let denom = 1.0 + z * z / n_f;
     let centre = (p + z * z / (2.0 * n_f)) / denom;
     let half = z * ((p * (1.0 - p) + z * z / (4.0 * n_f)) / n_f).sqrt() / denom;
+    // The interval's analytic endpoints at the boundaries are exactly 0 and 1
+    // (centre + half = 1 when k = n, centre - half = 0 when k = 0). The float
+    // form of that identity can land a ulp inside 1 or 0, so the boundary is
+    // returned exactly instead of being compared with a tolerance later.
     Proportion {
         k,
         n,
         p,
-        lo: (centre - half).max(0.0),
-        hi: (centre + half).min(1.0),
+        lo: if k == 0 {
+            0.0
+        } else {
+            (centre - half).max(0.0)
+        },
+        hi: if k == n {
+            1.0
+        } else {
+            (centre + half).min(1.0)
+        },
     }
 }
 
@@ -335,7 +347,7 @@ pub struct MeanCi {
     pub ci95: (f64, f64),
 }
 
-fn mean_ci(values: &[f64]) -> MeanCi {
+pub(crate) fn mean_ci(values: &[f64]) -> MeanCi {
     MeanCi {
         mean: mean(values),
         ci95: bootstrap_ci95(values),

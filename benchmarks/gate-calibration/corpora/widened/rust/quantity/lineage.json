@@ -1,0 +1,26 @@
+{
+  "lineage": "holdout/rust-shop/quantity",
+  "goal": "`check_quantity` must accept an order quantity only from 1 to 100 inclusive and reject every other quantity. The visible test `acceptance_quantity_upper_bound` fails; make it pass and fix the behaviour, without weakening or removing any test.",
+  "acceptance": [
+    "acceptance_quantity_upper_bound"
+  ],
+  "seed": [
+    "src/lib.rs"
+  ],
+  "oracle": {
+    "files": [
+      [
+        "tests/oracle_spec.rs",
+        "rust/oracle_spec.rs"
+      ]
+    ],
+    "argv": [
+      "cargo",
+      "test",
+      "--quiet",
+      "--offline",
+      "--test",
+      "oracle_spec"
+    ]
+  }
+}

@@ -1,0 +1,10 @@
+{
+  "id": "typescript-discount-overfit-b",
+  "class": "overfit",
+  "flavor": "b",
+  "leg": "initial",
+  "write_set": [
+    "src/shop.ts"
+  ],
+  "declared": "incorrect"
+}

@@ -1,0 +1,11 @@
+{
+  "id": "typescript-quantity-vacuous-b",
+  "class": "vacuous",
+  "flavor": "b",
+  "leg": "initial",
+  "write_set": [
+    "src/shop.ts",
+    "test/quantity.test.ts"
+  ],
+  "declared": "incorrect"
+}

@@ -1,0 +1,11 @@
+{
+  "id": "rust-quantity-correct-a",
+  "class": "correct",
+  "flavor": "a",
+  "leg": "initial",
+  "write_set": [
+    "src/lib.rs",
+    "tests/quantity.rs"
+  ],
+  "declared": "correct"
+}

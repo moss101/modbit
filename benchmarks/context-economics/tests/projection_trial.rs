@@ -75,6 +75,16 @@ fn wilson_intervals_bracket_the_proportion_and_stay_in_range() {
     );
     let all = wilson(30, 30);
     assert!(all.hi <= 1.0 && all.lo > 0.85, "{all:?}");
+    // The boundary endpoints are exact, so a proportion at 0 or 1 is inside
+    // its own interval without any tolerance.
+    assert_eq!(all.hi, 1.0);
+    assert_eq!(wilson(0, 30).lo, 0.0);
+    for n in [1usize, 2, 7, 24, 192, 240] {
+        assert_eq!(wilson(n, n).hi, 1.0, "n={n}");
+        assert_eq!(wilson(0, n).lo, 0.0, "n={n}");
+        let p = wilson(n, n);
+        assert!(p.lo <= p.p && p.p <= p.hi, "{p:?}");
+    }
     assert!(wilson(0, 0).p.is_nan());
 }
 

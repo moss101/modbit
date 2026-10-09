@@ -1,0 +1,11 @@
+{
+  "id": "typescript-sku-weakening-b",
+  "class": "weakening",
+  "flavor": "b",
+  "leg": "initial",
+  "write_set": [
+    "src/shop.ts",
+    "test/shipping.test.ts"
+  ],
+  "declared": "incorrect"
+}

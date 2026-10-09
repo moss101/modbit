@@ -1,0 +1,11 @@
+{
+  "id": "python-discount-correct-b",
+  "class": "correct",
+  "flavor": "b",
+  "leg": "initial",
+  "write_set": [
+    "shop.py",
+    "test_discount_boundaries.py"
+  ],
+  "declared": "correct"
+}

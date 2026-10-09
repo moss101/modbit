@@ -1,0 +1,26 @@
+{
+  "lineage": "holdout/rust-shop/shipping",
+  "goal": "`shipping_cents` must charge 500 cents up to and including 500 g, 900 cents up to and including 2000 g and 1500 cents above that. The visible test `acceptance_heavy_parcels` fails; make it pass and fix the behaviour, without weakening or removing any test.",
+  "acceptance": [
+    "acceptance_heavy_parcels"
+  ],
+  "seed": [
+    "src/lib.rs"
+  ],
+  "oracle": {
+    "files": [
+      [
+        "tests/oracle_spec.rs",
+        "rust/oracle_spec.rs"
+      ]
+    ],
+    "argv": [
+      "cargo",
+      "test",
+      "--quiet",
+      "--offline",
+      "--test",
+      "oracle_spec"
+    ]
+  }
+}
