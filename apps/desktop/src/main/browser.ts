@@ -880,6 +880,9 @@ export class BrowserHost {
     // The Core reading the page on its own account (after a change notice) is not a request the agent made.
     const background = req.kind === "snapshot" && req.observer === true;
     const answer = async (): Promise<unknown> => {
+      // Diagnostic: every request answered while a reset is pending is logged with its kind and origin,
+      // so a failure dump shows which request received the reset note (or consumed it).
+      if (h && h.pendingReset !== null) this.log.push({ browserSessionId: h.browserSessionId, kind: "request-while-reset-pending", ok: true, code: `${req.kind}${(req as { observer?: boolean }).observer === true ? ":observer" : ""}${background ? ":background" : ""}`, generation: h.leaseGeneration, atMs: Date.now() });
       if (!h || (this.gone(h) && !h.reclaimed)) return { kind: "error", code: "NO_SUCH_SESSION", message: `this host holds no view for ${bsid}` };
       if (h.reclaimed && req.kind !== "state" && req.kind !== "close") await this.revive(h);
       // Recency counts use, not observation: a read of the view's state, or the Core
