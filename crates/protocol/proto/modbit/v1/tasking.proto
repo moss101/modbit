@@ -61,6 +61,9 @@ message RoutingOutcomeView {
   string reason_code = 2;       // NO_ACTIVE_REGISTRY | FLOOR_APPLIED | FLOOR_UNDEFINED | MANUAL_PIN | ...
   string detail = 3;
   string floor_mode = 4;        // the registry floor row the objective selected, when a registry compiled
+  // REQ-PX-134: the generation of the signed registry active for this task
+  // when the view is read; empty with no active registry. A typed read only.
+  string registry_generation = 440;
 }
 
 // The preference as recorded, with the event that recorded it and the one at

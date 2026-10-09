@@ -842,6 +842,7 @@ fn routing_projection(
             reason_code: "NO_ACTIVE_REGISTRY".into(),
             detail: NO_REGISTRY_DETAIL.into(),
             floor_mode: String::new(),
+            registry_generation: String::new(),
         },
         Some(registry) => {
             let (floor, choice) = floor_for(&registry, preference.objective);
@@ -853,6 +854,7 @@ fn routing_projection(
                     floor.map(|f| f.mode.as_str()).unwrap_or("none")
                 ),
                 floor_mode: floor.map(|f| f.mode.clone()).unwrap_or_default(),
+                registry_generation: registry.generation().to_owned(),
             }
         }
     }
@@ -892,6 +894,11 @@ fn build_posture(core: &Core, task: &Task, facts: &Facts, in_force: Mode) -> wir
             reason_code: a.reason_code.clone(),
             detail: a.detail.clone(),
             floor_mode: a.floor_mode.clone(),
+            // What is active now, so a registry activated or rolled back
+            // since the last dispatch is what the picker states.
+            registry_generation: crate::model_registry::for_task(core, task)
+                .map(|r| r.generation().to_owned())
+                .unwrap_or_default(),
         },
         None => routing_projection(core, task, &facts.preference),
     };
@@ -960,6 +967,9 @@ pub(crate) async fn annotate_routing(
             reason_code: a.reason_code.clone(),
             detail: a.detail.clone(),
             floor_mode: a.floor_mode.clone(),
+            registry_generation: crate::model_registry::for_task(core, &task)
+                .map(|r| r.generation().to_owned())
+                .unwrap_or_default(),
         },
         None => routing_projection(core, &task, &facts.preference),
     });
