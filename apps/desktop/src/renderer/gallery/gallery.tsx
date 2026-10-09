@@ -22,6 +22,7 @@ import { TailStatus } from "../conversation/conversation.tsx";
 import { ComposerGallery } from "../composer/composer-gallery.tsx";
 import { ControlsGallery } from "./controls-gallery.tsx";
 import { AutomationsGallery } from "./automations-gallery.tsx";
+import { ProjectsGallery } from "./projects-gallery.tsx";
 import { AGENT_HEADER_FIXTURES, CONVERSATION_ROW_FIXTURES, GALLERY_NOW } from "./workspace-fixtures.ts";
 import { APPROVAL_FIXTURE, EMPTY_FIXTURE, ERROR_FIXTURE, FIXTURE_ROWS, GENERATING_FIXTURE, OFFLINE_FIXTURE, type GalleryState } from "./fixtures.ts";
 
@@ -223,6 +224,7 @@ export function Gallery() {
       <ComposerGallery note={note} />
       <ControlsGallery note={note} />
       <AutomationsGallery note={note} />
+      <ProjectsGallery />
 
       <section aria-labelledby="g-primitives" data-testid="gallery-primitives">
         <h2 id="g-primitives">Primitives</h2>

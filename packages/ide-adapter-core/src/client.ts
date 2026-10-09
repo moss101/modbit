@@ -42,6 +42,7 @@ import {
   type TerminalResizeDone,
   type TerminalWritten,
   AcquireSessionLeaseSchema,
+  TaskIsolation,
   DiagnosticsExportedSchema,
   DiagnosticsVerifiedSchema,
   ExportDiagnosticsSchema,
@@ -252,6 +253,8 @@ export interface PreferenceOptions {
 export interface TaskOptions extends Omit<PreferenceOptions, "pin" | "clearPin"> {
   executionProfile?: string;
   mode?: TaskMode;
+  /** PX-118: WORKTREE makes the task work in a worktree the Core manages; the checkout is untouched until an apply. */
+  isolation?: "NONE" | "WORKTREE";
 }
 
 /** Options of a start (PX-100): the objective, effort and tier, and a manual pin as the endpoint and model. */
@@ -526,6 +529,7 @@ export class CoreClient {
         // posture. `local_trusted` is the default profile as it always was.
         executionProfile: options.executionProfile ?? "local_trusted",
         mode: options.mode ?? 0,
+        isolation: options.isolation === "WORKTREE" ? TaskIsolation.WORKTREE : TaskIsolation.UNSPECIFIED,
         ...(preference ? { preference } : {}),
         origin: issueUrl ? "forge_issue" : this.origin,
         workspaceRoot,

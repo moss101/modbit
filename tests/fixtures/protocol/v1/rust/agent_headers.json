@@ -5,6 +5,7 @@
       {
         "archived": false,
         "attentionItems": 0,
+        "checkoutRoot": "/repo",
         "contextPercent": 37,
         "createdAt": {
           "nanos": 0,
@@ -19,6 +20,7 @@
         "origin": "cli",
         "pendingApproval": false,
         "pendingPlan": false,
+        "projectId": "63636363636363636363636363636363",
         "readOffset": "40",
         "sessionId": "10101010101010101010101010101010",
         "statusClass": "AGENT_STATUS_CLASS_READY_FOR_REVIEW_UNSEEN",

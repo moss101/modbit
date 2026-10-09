@@ -192,6 +192,8 @@ pub fn samples() -> Vec<Sample> {
             last_offset: 90,
             read_offset: 40,
             attention_items: 0,
+            project_id: id(0x63),
+            checkout_root: "/repo".into(),
         }],
         last_offset: 90,
         events_read: 0,
@@ -1410,7 +1412,7 @@ pub fn samples() -> Vec<Sample> {
                     "linesAdded": 14, "linesRemoved": 3, "lastCheckpointAt": null,
                     "subagent": false, "archived": false, "executionLocation": "local",
                     "origin": "cli", "taskState": "ReadyForReview", "lastOffset": "90",
-                    "readOffset": "40", "attentionItems": 0
+                    "readOffset": "40", "attentionItems": 0, "projectId": idhex(0x63), "checkoutRoot": "/repo"
                 }],
                 "lastOffset": "90", "eventsRead": "0", "objectsRead": "0"
             }),
@@ -1870,6 +1872,96 @@ pub fn samples() -> Vec<Sample> {
                 "defaultObjective": "BALANCE"
             }),
             decode: reencode::<ModelVariantList>,
+        },
+        // PX-063 (projects.proto): a project with a member, its rollup and a pull request with CI.
+        Sample {
+            name: "project_changed",
+            type_name: "modbit.v1.ProjectChanged",
+            bytes: ProjectChanged {
+                project: Some(ProjectView {
+                    project_id: id(0x63),
+                    name: "Release 2".into(),
+                    color: "warn".into(),
+                    icon: "rocket".into(),
+                    workspace_root: "/work/repo".into(),
+                    archived: false,
+                    created_at_ms: 1_700_000_000_000,
+                    updated_at_ms: 1_700_000_100_000,
+                    created_offset: 7,
+                    last_offset: 19,
+                    rollup: Some(ProjectRollup {
+                        members: 1,
+                        by_status: vec![ProjectStatusCount {
+                            status_class: AgentStatusClass::NeedsAttention as i32,
+                            label: "Needs attention".into(),
+                            count: 1,
+                        }],
+                        attention_tasks: 1,
+                        attention_items: 2,
+                        pending_approvals: 1,
+                        unread: 1,
+                        pull_requests: 1,
+                        ci_passing: 0,
+                        ci_failing: 1,
+                        ci_pending: 0,
+                    }),
+                    members: vec![ProjectMemberView {
+                        task_id: id(0x64),
+                        session_id: id(0x65),
+                        title: "Fix the thing".into(),
+                        status_class: AgentStatusClass::NeedsAttention as i32,
+                        status_label: "Needs attention".into(),
+                        unread: true,
+                        pending_approval: true,
+                        attention_items: 2,
+                        task_state: "Waiting".into(),
+                        archived: false,
+                        added_at_ms: 1_700_000_050_000,
+                        updated_at_ms: 1_700_000_090_000,
+                        pull_request: Some(ProjectPullRequestView {
+                            number: 42,
+                            url: "https://example.test/o/r/pull/42".into(),
+                            head: "task/x".into(),
+                            state: "open".into(),
+                            has_ci: true,
+                            checks_passed: 2,
+                            checks_failed: 1,
+                            checks_pending: 0,
+                        }),
+                    }],
+                }),
+                offset: 19,
+            }
+            .encode_to_vec(),
+            expected: json!({
+                "project": {
+                    "projectId": idhex(0x63),
+                    "name": "Release 2", "color": "warn", "icon": "rocket",
+                    "workspaceRoot": "/work/repo", "archived": false,
+                    "createdAtMs": "1700000000000", "updatedAtMs": "1700000100000",
+                    "createdOffset": "7", "lastOffset": "19",
+                    "rollup": {
+                        "members": 1,
+                        "byStatus": [{ "statusClass": "AGENT_STATUS_CLASS_NEEDS_ATTENTION", "label": "Needs attention", "count": 1 }],
+                        "attentionTasks": 1, "attentionItems": 2, "pendingApprovals": 1, "unread": 1,
+                        "pullRequests": 1, "ciPassing": 0, "ciFailing": 1, "ciPending": 0
+                    },
+                    "members": [{
+                        "taskId": idhex(0x64), "sessionId": idhex(0x65),
+                        "title": "Fix the thing",
+                        "statusClass": "AGENT_STATUS_CLASS_NEEDS_ATTENTION", "statusLabel": "Needs attention",
+                        "unread": true, "pendingApproval": true, "attentionItems": 2,
+                        "taskState": "Waiting", "archived": false,
+                        "addedAtMs": "1700000050000", "updatedAtMs": "1700000090000",
+                        "pullRequest": {
+                            "number": "42", "url": "https://example.test/o/r/pull/42", "head": "task/x",
+                            "state": "open", "hasCi": true, "checksPassed": 2, "checksFailed": 1, "checksPending": 0
+                        }
+                    }]
+                },
+                "offset": "19"
+            }),
+            decode: reencode::<ProjectChanged>,
         },
     ]
 }

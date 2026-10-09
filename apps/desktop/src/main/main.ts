@@ -15,6 +15,7 @@ import { CredentialStore } from "./credentials.js";
 import { platformState } from "./platform.js";
 import { observeStreamEvent, registerConversationHandlers } from "./conversation-ipc.js";
 import { registerComposerHandlers, requireSkillNames } from "./composer-ipc.js";
+import { registerProjectHandlers } from "./project-ipc.js";
 import { registerControlHandlers } from "./control-ipc.js";
 import { registerAutomationHandlers } from "./automation-ipc.js";
 import { optionalWindow, requireBool, requireCursor, requireDimension, requireHandle, requireKeystrokes, requireWorkspacePath } from "./apps-args.js";
@@ -417,8 +418,11 @@ handle("session:snapshot", async (_e: IpcMainInvokeEvent, sessionId: unknown) =>
     tasks: s.tasks.map((t) => ({ taskId: Buffer.from(t.taskId?.value ?? []).toString("hex"), goalText: t.goalText, state: t.state, generation: Number(t.generation), createdAtMs: Number(t.createdAt?.seconds ?? 0n) * 1000, origin: t.origin, parentTaskId: t.parentTaskId ? Buffer.from(t.parentTaskId.value).toString("hex") : null })),
   };
 });
-handle("task:create", async (_e: IpcMainInvokeEvent, sessionId: unknown, goal: unknown, commandIdHex: unknown, workspaceRoot: unknown, issueUrl: unknown) => {
+handle("task:create", async (_e: IpcMainInvokeEvent, sessionId: unknown, goal: unknown, commandIdHex: unknown, workspaceRoot: unknown, issueUrl: unknown, options: unknown) => {
   const sid = requireSessionId(sessionId);
+  // PX-118: the one creation option the Fleet form offers; the Core decides what isolation means.
+  const isolation = (options as { isolation?: unknown } | null | undefined)?.isolation;
+  if (isolation !== undefined && isolation !== "NONE" && isolation !== "WORKTREE") throw new Error("BAD_ARGUMENT: isolation must be NONE or WORKTREE");
   // PX-010: from an issue, the goal may be empty (the Core names the task after it).
   const issue = typeof issueUrl === "string" && issueUrl.trim().length > 0 ? issueUrl.trim() : undefined;
   if (issue !== undefined && (issue.length > 2_000 || !/^https:\/\/[^\s/]+\/[^\s/]+\/[^\s/]+\/issues\/\d+$/.test(issue))) throw new Error("BAD_ARGUMENT: issue URL must be https://<host>/<owner>/<repo>/issues/<number>");
@@ -428,7 +432,7 @@ handle("task:create", async (_e: IpcMainInvokeEvent, sessionId: unknown, goal: u
   const cid = typeof commandIdHex === "string" && HEX32.test(commandIdHex) ? new Uint8Array(Buffer.from(commandIdHex, "hex")) : freshId();
   const c = requireClient();
   if (c.leaseGeneration(sid) === undefined) await c.joinSessionLease(sid, `desktop ${app.getVersion()}`);
-  return c.createTask(sid, g, cid, root, issue);
+  return c.createTask(sid, g, cid, root, issue, isolation === "WORKTREE" ? { isolation } : {});
 });
 handle("task:start", async (_e: IpcMainInvokeEvent, sessionId: unknown, taskId: unknown, options: unknown) => {
   const sid = requireSessionId(sessionId);
@@ -775,6 +779,8 @@ const conversationRegistrar = {
   },
 };
 registerConversationHandlers(conversationRegistrar);
+// REQ-PX-063 / 064 / 068: projects and the worktree surface (list, removal, cleanup, apply-back).
+registerProjectHandlers(conversationRegistrar);
 // REQ-PX-054..056: the composer's mode, preference, queue, interrupt, slash, model and attachment commands.
 registerComposerHandlers({
   handle: (channel, fn) => handle(channel, (_e, ...args) => fn(...args)),

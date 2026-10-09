@@ -808,6 +808,14 @@ async fn serve_connection(core: Arc<Core>, mut stream: BoxedStream) -> Result<()
                     "ApplyWorktree",
                     "UndoApply",
                     "DiscardWorktree",
+                    "CreateProject",
+                    "RenameProject",
+                    "ArchiveProject",
+                    "AddProjectMember",
+                    "RemoveProjectMember",
+                    "ListProjects",
+                    "GetProject",
+                    "RemoveWorktree",
                 ]
                 .map(String::from)
                 .to_vec(),
@@ -1371,6 +1379,11 @@ fn required_client_capability(env: &CommandEnvelope) -> Option<&'static str> {
         // an archive are the person's own curation of a session.
         "GetTranscript" | "GetAgentHeaders" | "SearchConversations" => "events.subscribe",
         "MarkRead" | "ArchiveTask" => "session.control",
+        // PX-063: a project is the person's own grouping of their tasks; the
+        // reads are reads of the log.
+        "CreateProject" | "RenameProject" | "ArchiveProject" | "AddProjectMember"
+        | "RemoveProjectMember" => "session.control",
+        "ListProjects" | "GetProject" => "events.subscribe",
         "DecideReview" => "review.decide",
         // Steering a task from its pull request's comments is steering it.
         "ApplyUserPatch" | "SubmitExternalDiagnostics" | "IngestReviewComments" => "task.author",
@@ -1462,7 +1475,7 @@ fn required_client_capability(env: &CommandEnvelope) -> Option<&'static str> {
         // decision); applying a task's result to the checkout, undoing that
         // and discarding a result are the person's review decisions.
         "ListWorktrees" => "events.subscribe",
-        "RunWorktreeCleanup" => "session.control",
+        "RunWorktreeCleanup" | "RemoveWorktree" => "session.control",
         "ApplyWorktree" | "UndoApply" | "DiscardWorktree" => "review.decide",
         // Removing recovery data under a policy is a session-level decision.
         "RunCheckpointGc" => "session.control",
@@ -4312,6 +4325,29 @@ pub(crate) async fn handle_command_as(
                 Err((code, msg)) => reject(cid, &code, msg),
             }
         }
+        "RemoveWorktree" => {
+            let Ok(p) = wire::RemoveWorktree::decode(env.payload.as_slice()) else {
+                return reject(cid, "BAD_PAYLOAD", "RemoveWorktree");
+            };
+            let Some(session_id) = p
+                .session_id
+                .as_ref()
+                .and_then(id16)
+                .map(SessionId::from_bytes)
+            else {
+                return reject(cid, "BAD_PAYLOAD", "session_id required");
+            };
+            // A dry run removes nothing and needs no lease.
+            if !p.dry_run
+                && let Err(ack) = require_lease(core, &cid, &env, &session_id).await
+            {
+                return ack;
+            }
+            match crate::worktree_cleanup::remove_command(core, &p, &actor).await {
+                Ok(r) => accept(cid, false, r.encode_to_vec()),
+                Err((code, msg)) => reject(cid, &code, msg),
+            }
+        }
         "ApplyWorktree" => {
             let Ok(p) = wire::ApplyWorktree::decode(env.payload.as_slice()) else {
                 return reject(cid, "BAD_PAYLOAD", "ApplyWorktree");
@@ -6361,6 +6397,15 @@ pub(crate) async fn handle_command_as(
             )
         }
         "ListModelVariants" => crate::composer::list_variants(core, cid, &env.payload).await,
+        "CreateProject"
+        | "RenameProject"
+        | "ArchiveProject"
+        | "AddProjectMember"
+        | "RemoveProjectMember"
+        | "ListProjects"
+        | "GetProject" => {
+            crate::projects::handle(core, &env, record(&env.command_type), actor).await
+        }
         "ProbeModel" => {
             let Ok(p) = wire::ProbeModel::decode(env.payload.as_slice()) else {
                 return reject(cid, "BAD_PAYLOAD", "ProbeModel");

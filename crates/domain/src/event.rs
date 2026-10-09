@@ -52,6 +52,10 @@ pub enum AggregateType {
     /// outcomes. The Core folds them into the automation registry; the
     /// aggregate id is the definition's id (the global switch has its own).
     Automation,
+    /// A project's life (PX-063): created, renamed, archived, and the tasks
+    /// that joined or left it. The `projects` and `project_members` tables
+    /// are projections of these events and rebuild from them.
+    Project,
 }
 
 impl AggregateType {
@@ -74,6 +78,7 @@ impl AggregateType {
             Self::Conversation => "conversation",
             Self::Memory => "memory",
             Self::Automation => "automation",
+            Self::Project => "project",
         }
     }
 
@@ -96,6 +101,7 @@ impl AggregateType {
             "conversation" => Self::Conversation,
             "memory" => Self::Memory,
             "automation" => Self::Automation,
+            "project" => Self::Project,
             _ => return None,
         })
     }

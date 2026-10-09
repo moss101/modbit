@@ -65,6 +65,7 @@ mod preturn;
 mod probe;
 mod procedural;
 mod process_services;
+mod projects;
 mod promotion;
 mod protocol;
 mod pull_request;
