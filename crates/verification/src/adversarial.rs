@@ -1105,7 +1105,12 @@ pub async fn boundary_check(
             ],
         };
     }
-    let mut findings = Vec::new();
+    // Per changed line: how many mutants were made and which survived. A line
+    // is a finding only when every mutant of it survived, i.e. no test
+    // exercises the boundary at all; a boundary some test does reach (a
+    // mutant killed) is pinned on at least one side, which is what a fix
+    // that adds a test for the case it fixes looks like.
+    let mut tally: BTreeMap<(String, usize), (usize, Vec<String>)> = BTreeMap::new();
     let mut originals: BTreeMap<String, String> = BTreeMap::new();
     for (tick, m) in (1u64..).zip(&mutants) {
         let path = scratch.join(&m.path);
@@ -1137,13 +1142,23 @@ pub async fn boundary_check(
         if restored.is_err() {
             return skip(format!("could not restore {}", m.path));
         }
+        let e = tally.entry((m.path.clone(), m.line)).or_default();
+        e.0 += 1;
         if green {
-            findings.push(format!(
-                "{}:{}: mutant {} survived every check; no test pins this boundary",
-                m.path, m.line, m.description
-            ));
+            e.1.push(m.description.clone());
         }
     }
+    let findings = tally
+        .into_iter()
+        .filter(|(_, (total, survivors))| survivors.len() == *total)
+        .flat_map(|((path, line), (_, survivors))| {
+            survivors.into_iter().map(move |d| {
+                format!(
+                    "{path}:{line}: mutant {d} survived every check; no test reaches this boundary"
+                )
+            })
+        })
+        .collect();
     GeneratedCheck::from_findings(Class::BoundaryNotPinned, findings)
 }
 
