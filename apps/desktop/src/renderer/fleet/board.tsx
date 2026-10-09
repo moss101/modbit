@@ -25,7 +25,7 @@ export function Board({ app }: { app: AppState }) {
       )}
       {screen === "loading" && <p className="meta" data-testid="fleet-loading">Loading fleet from the Core…</p>}
       {screen === "empty" && <p className="empty" data-testid="fleet-empty">No tasks yet. Create one on the left.</p>}
-      <div className="fleet" data-testid="fleet" data-screen={screen}>
+      <div className="fleet" role="region" aria-label="Fleet board" tabIndex={0} data-testid="fleet" data-screen={screen}>
         {COLUMNS.map((c) => (
           <section className="column" key={c.key} aria-label={`${c.title}, ${cols[c.key].length} task(s)`} data-testid={`column-${c.key}`} tabIndex={-1}>
             <h2>

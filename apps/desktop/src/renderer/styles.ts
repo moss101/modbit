@@ -28,8 +28,9 @@ textarea { min-height: 120px; font: inherit; padding: 8px; border: 1px solid var
 button { font: inherit; padding: 8px 12px; border-radius: 6px; border: 1px solid var(--mb-color-accent); background: var(--mb-color-accent); color: var(--mb-color-text-on-accent); cursor: pointer; }
 button:hover:not(:disabled) { background: var(--mb-color-accent-hover); border-color: var(--mb-color-accent-hover); }
 button:disabled { opacity: 0.5; cursor: default; }
-.fleet { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 16px; }
-section.column { background: var(--card); border: 1px solid var(--line); border-radius: 8px; padding: 12px; min-height: 120px; }
+/* Each column is never narrower than a card's controls (the Browser button is ~80 px): the board scrolls sideways rather than letting one column's controls spill under its neighbour (E2E: a sibling column intercepted the button). */
+.fleet { display: grid; grid-template-columns: repeat(3, minmax(200px, 1fr)); gap: 16px; overflow-x: auto; min-width: 0; }
+section.column { background: var(--card); border: 1px solid var(--line); border-radius: 8px; padding: 12px; min-height: 120px; min-width: 0; position: relative; }
 section.column h2 { font-size: 13px; text-transform: uppercase; letter-spacing: 0.04em; color: var(--muted); margin: 0 0 8px; }
 article.card { border: 1px solid var(--line); border-radius: 6px; padding: 10px; margin-bottom: 8px; }
 article.card:focus { outline: 2px solid var(--accent); }
