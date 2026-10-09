@@ -5,6 +5,7 @@
       {
         "archived": false,
         "attentionItems": 0,
+        "checkoutRoot": "/repo",
         "contextPercent": 37,
         "createdAt": {
           "nanos": 0,

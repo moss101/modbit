@@ -193,6 +193,7 @@ pub fn samples() -> Vec<Sample> {
             read_offset: 40,
             attention_items: 0,
             project_id: id(0x63),
+            checkout_root: "/repo".into(),
         }],
         last_offset: 90,
         events_read: 0,
@@ -1208,7 +1209,7 @@ pub fn samples() -> Vec<Sample> {
                     "linesAdded": 14, "linesRemoved": 3, "lastCheckpointAt": null,
                     "subagent": false, "archived": false, "executionLocation": "local",
                     "origin": "cli", "taskState": "ReadyForReview", "lastOffset": "90",
-                    "readOffset": "40", "attentionItems": 0, "projectId": idhex(0x63)
+                    "readOffset": "40", "attentionItems": 0, "projectId": idhex(0x63), "checkoutRoot": "/repo"
                 }],
                 "lastOffset": "90", "eventsRead": "0", "objectsRead": "0"
             }),
