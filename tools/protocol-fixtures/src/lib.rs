@@ -559,6 +559,7 @@ pub fn samples() -> Vec<Sample> {
             reason_code: "NO_ACTIVE_REGISTRY".into(),
             detail: "no signed registry is active".into(),
             floor_mode: String::new(),
+            registry_generation: "reg-px134".into(),
         }),
     };
     let session_tree = SessionTreeView {
@@ -1074,7 +1075,8 @@ pub fn samples() -> Vec<Sample> {
                 },
                 "routing": {
                     "outcome": "DIRECT", "reasonCode": "NO_ACTIVE_REGISTRY",
-                    "detail": "no signed registry is active", "floorMode": ""
+                    "detail": "no signed registry is active", "floorMode": "",
+                    "registryGeneration": "reg-px134"
                 }
             }),
             decode: reencode::<TaskPostureView>,

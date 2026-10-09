@@ -28,7 +28,8 @@
       "detail": "no signed registry is active",
       "floorMode": "",
       "outcome": "DIRECT",
-      "reasonCode": "NO_ACTIVE_REGISTRY"
+      "reasonCode": "NO_ACTIVE_REGISTRY",
+      "registryGeneration": "reg-px134"
     },
     "taskId": "31313131313131313131313131313131"
   },
