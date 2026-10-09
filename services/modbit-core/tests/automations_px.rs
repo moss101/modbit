@@ -156,6 +156,110 @@ async fn trust(c: &mut Client, session: &Id, g: Option<u64>, root: &str) {
     .unwrap();
 }
 
+// ---- a priced model, for a definition that states a cost limit ----
+
+/// A run with a cost limit is only metered when the model has a price. The
+/// repository's way to price the scripted model is a signed registry; without
+/// one a run that states a limit fails closed (`cost_unmetered`), which is
+/// the behaviour under test in `px_084_without_a_price_a_cost_limit_stops_the_run`.
+const PRICING_KEY: [u8; 32] = [82u8; 32];
+
+fn pricing_env() -> (String, String) {
+    let key = ed25519_dalek::SigningKey::from_bytes(&PRICING_KEY);
+    (
+        "MODBIT_REGISTRY_KEYS".into(),
+        format!("ops:{}", hex::encode(key.verifying_key().to_bytes())),
+    )
+}
+
+async fn activate_pricing(c: &mut Client) {
+    use ed25519_dalek::Signer;
+    use modbit_providers::registry::{
+        Economics, Governance, Latency, QualityFloor, REGISTRY_SCHEMA_VERSION, RegistryDocument,
+        RegistryEntry, SignedRegistry,
+    };
+    let key = ed25519_dalek::SigningKey::from_bytes(&PRICING_KEY);
+    let now = now_ms();
+    let entry = RegistryEntry {
+        endpoint: "openai".into(),
+        provider: "openai".into(),
+        family: "gpt-5".into(),
+        model: "gpt-5-mini".into(),
+        roles: vec!["solver".into(), "reviewer".into()],
+        input_modalities: vec!["text".into()],
+        context_tokens: 400_000,
+        max_output_tokens: 64_000,
+        tools: true,
+        vision: false,
+        reasoning: true,
+        structured_output: true,
+        economics: Economics {
+            input_per_mtok_minor: 25,
+            output_per_mtok_minor: 200,
+            currency: "USD".into(),
+            scale: 2,
+            cached_input_per_mtok_minor: None,
+            cache_write_per_mtok_minor: None,
+            cache_ttl_ms: None,
+        },
+        latency: Latency {
+            p50_ms: 900,
+            p95_ms: 4_200,
+        },
+        governance: Governance {
+            data_residency: "us".into(),
+            retains_prompts: false,
+            allowed_profiles: vec![],
+        },
+        revoked: false,
+        fallbacks: vec![],
+    };
+    let doc = RegistryDocument {
+        promotion: None,
+        schema_version: REGISTRY_SCHEMA_VERSION,
+        registry_generation: "registry-px082".into(),
+        stats_version: "stats-1".into(),
+        issued_at_ms: now - 60_000,
+        expires_at_ms: now + 7 * 86_400_000,
+        quality_floors: vec![QualityFloor {
+            mode: "auto".into(),
+            min_quality: 0.0,
+            max_cost_minor: 5_000,
+            currency: "USD".into(),
+            scale: 2,
+        }],
+        entries: vec![entry],
+    };
+    let json = serde_json::to_string(&doc).unwrap();
+    let signed = serde_json::to_string(&SignedRegistry {
+        key_id: "ops".into(),
+        signature_hex: hex::encode(key.sign(json.as_bytes()).to_bytes()),
+        document_json: json,
+    })
+    .unwrap();
+    let r: modbit_protocol::v1::ModelRegistryView = cmd(
+        c,
+        "ActivateModelRegistry",
+        modbit_protocol::v1::ActivateModelRegistry {
+            signed_json: signed,
+            expected_generation: String::new(),
+        },
+    )
+    .await
+    .unwrap();
+    assert!(r.active, "{r:?}");
+}
+
+/// As [`fx`], with the scripted model priced.
+async fn fx_priced(script: Vec<Value>, files: &[(&str, &str)], extra: &[(&str, &str)]) -> Fx {
+    let (k, v) = pricing_env();
+    let mut env: Vec<(&str, &str)> = vec![(k.as_str(), v.as_str())];
+    env.extend_from_slice(extra);
+    let mut f = fx(script, files, &env).await;
+    activate_pricing(&mut f.c).await;
+    f
+}
+
 fn def(name: &str, triggers: Value, extra: Value) -> String {
     let mut v = json!({
         "schema": "modbit.automation/1",
@@ -256,7 +360,12 @@ async fn wait_runs(
             Instant::now() < deadline,
             "timed out waiting for {what}; runs: {:?}",
             r.iter()
-                .map(|x| (x.status.clone(), x.reason.clone(), x.event_id.clone()))
+                .map(|x| (
+                    x.status.clone(),
+                    x.reason.clone(),
+                    x.event_id.clone(),
+                    x.detail.clone()
+                ))
                 .collect::<Vec<_>>()
         );
         tokio::time::sleep(Duration::from_millis(100)).await;
@@ -1186,7 +1295,7 @@ async fn px_084_an_unattended_run_is_held_to_its_ceiling_by_the_kernel() {
         ),
         complete(),
     ];
-    let mut f = fx(script, &[("README.md", "x")], &[]).await;
+    let mut f = fx_priced(script, &[("README.md", "x")], &[]).await;
     let v = create(
         &mut f.c,
         &def(
@@ -1318,7 +1427,7 @@ async fn px_084_a_parked_approval_expires_into_a_typed_cancellation_and_is_never
         call("shell.exec", json!({"argv": ["unlisted-tool", "--do-it"]})),
         complete(),
     ];
-    let mut f = fx(script, &[("README.md", "x")], &[]).await;
+    let mut f = fx_priced(script, &[("README.md", "x")], &[]).await;
     let t0 = now_ms();
     set_clock(&f.clock, t0);
     let v = create(
@@ -2480,4 +2589,772 @@ async fn px_082_a_model_that_calls_for_the_ledger_changes_nothing() {
     };
     assert_eq!(names(&before), names(&after));
     assert_eq!(after.automations.len(), 1, "nothing was planted");
+}
+
+// ---- PX-083: admission limits, a Core killed in the middle of a run, one clock ----
+
+/// The hourly rate and the daily budget stop admission with the typed skip
+/// and an attention item; a skipped run spends nothing (no task, no model
+/// request); the limits are windows, so the next hour and the next UTC day
+/// admit again; and the Core-wide limit holds across definitions.
+#[tokio::test(flavor = "multi_thread")]
+async fn px_083_the_rate_limit_and_the_daily_budget_stop_admission_with_a_typed_skip_and_attention()
+{
+    let mut f = fx_priced(
+        finish_script(),
+        &[("README.md", "x")],
+        &[("MODBIT_AUTOMATION_GLOBAL_RUNS_PER_HOUR", "5")],
+    )
+    .await;
+    let day = 24 * 60 * MIN;
+    // The Core's clock never moves back, so the test's time starts at 03:00
+    // UTC tomorrow: the hours below stay inside one UTC day.
+    let day0 = (now_ms() / day + 1) * day;
+    let t0 = day0 + 3 * 60 * MIN;
+    set_clock(&f.clock, t0);
+
+    // Hourly rate: two runs an hour.
+    let hourly = create(
+        &mut f.c,
+        &def(
+            "hourly",
+            manual(),
+            json!({"budget": {"max_runs_per_hour": 2}}),
+        ),
+        &f.root,
+    )
+    .await
+    .unwrap();
+    enable_exact(&mut f.c, &hourly).await.unwrap();
+    let fire = |id: &str, event: &str| RunAutomation {
+        automation_id: id.into(),
+        event_id: event.into(),
+        ..Default::default()
+    };
+    for e in ["h1", "h2"] {
+        let r: AutomationRunStarted =
+            cmd(&mut f.c, "RunAutomation", fire(&hourly.automation_id, e))
+                .await
+                .unwrap();
+        assert_eq!(r.status, "running", "{e}: {r:?}");
+        wait_runs(
+            &mut f.c,
+            &hourly.automation_id,
+            60,
+            "an admitted run",
+            |r| r.iter().any(|x| x.event_id == e && x.status == "succeeded"),
+        )
+        .await;
+    }
+    let model_requests = seen_bodies(&f).len();
+    let third: AutomationRunStarted =
+        cmd(&mut f.c, "RunAutomation", fire(&hourly.automation_id, "h3"))
+            .await
+            .unwrap();
+    assert_eq!(
+        (third.status.as_str(), third.reason.as_str()),
+        ("skipped", "BUDGET"),
+        "{third:?}"
+    );
+    assert!(
+        third.detail.contains("2 runs in the last hour"),
+        "{third:?}"
+    );
+    assert!(third.task_id.is_empty(), "a skipped run has no task");
+    assert_eq!(
+        seen_bodies(&f).len(),
+        model_requests,
+        "and spends no model request"
+    );
+    let l = list(&mut f.c).await;
+    let item = l
+        .attention
+        .iter()
+        .find(|a| a.kind == "SKIPPED_BUDGET")
+        .unwrap_or_else(|| panic!("{:?}", l.attention));
+    assert_eq!(item.automation_id, hourly.automation_id);
+    assert!(item.reason.contains("BUDGET"), "{item:?}");
+    // The window slides: an hour later the definition is admitted again.
+    set_clock(&f.clock, t0 + 61 * MIN);
+    let again: AutomationRunStarted =
+        cmd(&mut f.c, "RunAutomation", fire(&hourly.automation_id, "h4"))
+            .await
+            .unwrap();
+    assert_eq!(again.status, "running", "{again:?}");
+    wait_runs(
+        &mut f.c,
+        &hourly.automation_id,
+        60,
+        "the run after the window",
+        |r| {
+            r.iter()
+                .any(|x| x.event_id == "h4" && x.status == "succeeded")
+        },
+    )
+    .await;
+
+    // Daily budget: each run reserves its cost limit; 2500 holds two of 1000.
+    let daily = create(
+        &mut f.c,
+        &def(
+            "daily",
+            manual(),
+            json!({"limits": {"max_cost_minor": 1000}, "budget": {"daily_budget_minor": 2500}}),
+        ),
+        &f.root,
+    )
+    .await
+    .unwrap();
+    enable_exact(&mut f.c, &daily).await.unwrap();
+    let t1 = t0 + 2 * 60 * MIN;
+    set_clock(&f.clock, t1);
+    for e in ["d1", "d2"] {
+        let r: AutomationRunStarted = cmd(&mut f.c, "RunAutomation", fire(&daily.automation_id, e))
+            .await
+            .unwrap();
+        assert_eq!(r.status, "running", "{e}: {r:?}");
+        wait_runs(&mut f.c, &daily.automation_id, 60, "a budgeted run", |r| {
+            r.iter().any(|x| x.event_id == e && x.status == "succeeded")
+        })
+        .await;
+    }
+    let over: AutomationRunStarted =
+        cmd(&mut f.c, "RunAutomation", fire(&daily.automation_id, "d3"))
+            .await
+            .unwrap();
+    assert_eq!(
+        (over.status.as_str(), over.reason.as_str()),
+        ("skipped", "BUDGET"),
+        "{over:?}"
+    );
+    assert!(over.detail.contains("daily budget of 2500"), "{over:?}");
+    // The next UTC day starts a new budget.
+    set_clock(&f.clock, day0 + day + 4 * 60 * MIN);
+    let next: AutomationRunStarted =
+        cmd(&mut f.c, "RunAutomation", fire(&daily.automation_id, "d4"))
+            .await
+            .unwrap();
+    assert_eq!(next.status, "running", "{next:?}");
+    wait_runs(
+        &mut f.c,
+        &daily.automation_id,
+        60,
+        "the next day's run",
+        |r| {
+            r.iter()
+                .any(|x| x.event_id == "d4" && x.status == "succeeded")
+        },
+    )
+    .await;
+
+    // The Core-wide limit (5 an hour here) holds across definitions: the
+    // clock is back inside one hour of a burst.
+    let base = day0 + 40 * day + 5 * 60 * MIN;
+    set_clock(&f.clock, base);
+    let a = create(&mut f.c, &def("wide-a", manual(), json!({})), &f.root)
+        .await
+        .unwrap();
+    let b = create(&mut f.c, &def("wide-b", manual(), json!({})), &f.root)
+        .await
+        .unwrap();
+    enable_exact(&mut f.c, &a).await.unwrap();
+    enable_exact(&mut f.c, &b).await.unwrap();
+    let mut statuses = Vec::new();
+    for (i, id) in [&a, &b, &a, &b, &a, &b].iter().enumerate() {
+        let r: AutomationRunStarted = cmd(
+            &mut f.c,
+            "RunAutomation",
+            fire(&id.automation_id, &format!("w{i}")),
+        )
+        .await
+        .unwrap();
+        statuses.push((r.status, r.reason));
+        // Let the admitted ones finish so the next is not held by concurrency.
+        if i < 5 {
+            let want = format!("w{i}");
+            wait_runs(&mut f.c, &id.automation_id, 60, "a wide run", |r| {
+                r.iter().any(|x| {
+                    x.event_id == want && (x.status == "succeeded" || x.status == "skipped")
+                })
+            })
+            .await;
+        }
+    }
+    let admitted = statuses.iter().filter(|(s, _)| s == "running").count();
+    assert_eq!(admitted, 5, "{statuses:?}");
+    assert_eq!(
+        statuses.last().map(|(s, r)| (s.as_str(), r.as_str())),
+        Some(("skipped", "BUDGET")),
+        "{statuses:?}"
+    );
+}
+
+/// The Core is killed (SIGKILL) while an unattended run is in the middle of
+/// its work. The next Core reconciles through the existing recovery path: the
+/// run record shows exactly one outcome, typed, the run is not resumed or
+/// repeated, and the delivery is still a duplicate.
+#[tokio::test(flavor = "multi_thread")]
+async fn px_083_a_core_killed_in_the_middle_of_a_run_reconciles_to_one_typed_outcome() {
+    let mut f = fx(slow_script(20_000), &[("README.md", "x")], &[]).await;
+    let v = create(&mut f.c, &def("midrun", manual(), json!({})), &f.root)
+        .await
+        .unwrap();
+    enable_exact(&mut f.c, &v).await.unwrap();
+    let started: AutomationRunStarted = cmd(
+        &mut f.c,
+        "RunAutomation",
+        RunAutomation {
+            automation_id: v.automation_id.clone(),
+            event_id: "mid-1".into(),
+            ..Default::default()
+        },
+    )
+    .await
+    .unwrap();
+    assert_eq!(started.status, "running");
+    // The agent is genuinely mid-run: its first model request is in flight.
+    let deadline = Instant::now() + Duration::from_secs(30);
+    while seen_bodies(&f).is_empty() {
+        assert!(Instant::now() < deadline, "the run never asked the model");
+        tokio::time::sleep(Duration::from_millis(50)).await;
+    }
+    let before = runs(&mut f.c, &v.automation_id).await;
+    assert_eq!(before.len(), 1);
+    assert_eq!(before[0].status, "running");
+    let task_hex = before[0].task_id.clone();
+    let session_hex = before[0].session_id.clone();
+    f.core.kill();
+
+    let (core2, _) = spawn_core(f.data.path(), &f.base, &f.clock, &[]);
+    let mut c2 = core2.client().await;
+    let r = wait_runs(&mut c2, &v.automation_id, 60, "the reconciled run", |r| {
+        done(r) == 1
+    })
+    .await;
+    assert_eq!(r.len(), 1, "one run record, not two");
+    assert_eq!(r[0].status, "cancelled", "{:?}", r[0]);
+    assert_eq!(r[0].reason, "CORE_RESTARTED", "{:?}", r[0]);
+    assert_eq!(r[0].task_id, task_hex);
+    // The task is ended through the ordinary path and is not running again.
+    let task = Id {
+        value: hex::decode(&task_hex).unwrap(),
+    };
+    let deadline = Instant::now() + Duration::from_secs(30);
+    let state = loop {
+        let st: modbit_protocol::v1::TaskStatus = cmd(
+            &mut c2,
+            "GetTaskStatus",
+            modbit_protocol::v1::GetTaskStatus {
+                task_id: Some(task.clone()),
+            },
+        )
+        .await
+        .unwrap();
+        if st.state == "Cancelled" || Instant::now() >= deadline {
+            break st.state;
+        }
+        tokio::time::sleep(Duration::from_millis(100)).await;
+    };
+    assert_eq!(state, "Cancelled");
+    let requests = seen_bodies(&f).len();
+    tokio::time::sleep(Duration::from_secs(2)).await;
+    assert_eq!(seen_bodies(&f).len(), requests, "the run was not resumed");
+    let ev = replay(
+        &core2,
+        &Id {
+            value: hex::decode(&session_hex).unwrap(),
+        },
+    )
+    .await;
+    assert_eq!(
+        ev.iter()
+            .filter(|e| e["event_type"] == "TaskCreated")
+            .count(),
+        1,
+        "one task"
+    );
+    // The same delivery is a duplicate; there is still exactly one run.
+    let again: AutomationRunStarted = cmd(
+        &mut c2,
+        "RunAutomation",
+        RunAutomation {
+            automation_id: v.automation_id.clone(),
+            event_id: "mid-1".into(),
+            ..Default::default()
+        },
+    )
+    .await
+    .unwrap();
+    assert_eq!(again.reason, "DUPLICATE");
+    let all = runs(&mut c2, &v.automation_id).await;
+    assert_eq!(
+        all.iter().filter(|x| x.status != "skipped").count(),
+        1,
+        "still one run that did anything: {all:?}"
+    );
+    assert!(
+        all.iter()
+            .filter(|x| x.status == "skipped")
+            .all(|x| x.reason == "DUPLICATE"),
+        "{all:?}"
+    );
+    let l = list(&mut c2).await;
+    assert!(
+        l.attention
+            .iter()
+            .all(|a| a.task_id != task_hex || a.kind != "PARKED_APPROVAL"),
+        "{:?}",
+        l.attention
+    );
+    f.core = core2;
+}
+
+fn workspace_root() -> PathBuf {
+    let here = PathBuf::from(env!("CARGO_MANIFEST_DIR"));
+    here.parent().unwrap().parent().unwrap().to_path_buf()
+}
+
+fn rust_sources(dir: &std::path::Path, out: &mut Vec<PathBuf>) {
+    let Ok(rd) = std::fs::read_dir(dir) else {
+        return;
+    };
+    for e in rd.flatten() {
+        let p = e.path();
+        let name = e.file_name().to_string_lossy().into_owned();
+        if p.is_dir() {
+            if !matches!(
+                name.as_str(),
+                "target" | "tests" | "node_modules" | "benches"
+            ) {
+                rust_sources(&p, out);
+            }
+        } else if name.ends_with(".rs") {
+            out.push(p);
+        }
+    }
+}
+
+/// QUAL-PX-083 negative: a second scheduler loop or timer thread fails. The
+/// tree has exactly one place per host that reads a schedule, and the Core's
+/// has exactly one timer task (the tick); the cloud's evaluator spawns none
+/// (it is a pass of the worker's existing claim loop).
+#[test]
+fn px_083_each_host_has_one_trigger_clock_and_no_second_scheduler_loop() {
+    let root = workspace_root();
+    let mut files = Vec::new();
+    for top in ["apps", "crates", "services", "tools"] {
+        rust_sources(&root.join(top), &mut files);
+    }
+    let mut readers: Vec<String> = files
+        .iter()
+        .filter(|p| {
+            std::fs::read_to_string(p).is_ok_and(|t| {
+                t.contains("modbit_automation::schedule")
+                    || t.contains("schedule::{")
+                    || t.contains("Spec::of(")
+                    || t.contains("schedule::plan")
+            })
+        })
+        .map(|p| {
+            p.strip_prefix(&root)
+                .unwrap()
+                .to_string_lossy()
+                .replace('\\', "/")
+        })
+        .collect();
+    readers.sort();
+    assert_eq!(
+        readers,
+        [
+            "apps/cloud-api/src/automations.rs",
+            "apps/cloud-worker/src/automation.rs",
+            "services/modbit-core/src/automation.rs",
+        ],
+        "a new reader of schedules is a second clock: add it here only with a Decision Record"
+    );
+    let count = |rel: &str, needle: &str| {
+        std::fs::read_to_string(root.join(rel))
+            .unwrap()
+            .matches(needle)
+            .count()
+    };
+    let spawns = |rel: &str| {
+        count(rel, "tokio::spawn(") + count(rel, "thread::spawn(") + count(rel, "thread::Builder")
+    };
+    assert_eq!(
+        spawns("services/modbit-core/src/automation.rs"),
+        1,
+        "the Core's one tick"
+    );
+    assert_eq!(spawns("apps/cloud-worker/src/automation.rs"), 0);
+    assert_eq!(spawns("apps/cloud-api/src/automations.rs"), 0);
+    assert_eq!(spawns("crates/automation/src/schedule.rs"), 0);
+}
+
+// ---- PX-084 completion: stated limits, approving later, rules and tools ----
+
+/// Without a price for the model a stated cost limit cannot be proven kept, so
+/// the run stops, typed, rather than spending unmeasured.
+#[tokio::test(flavor = "multi_thread")]
+async fn px_084_without_a_price_a_cost_limit_stops_the_run_instead_of_spending_unmeasured() {
+    let mut f = fx(finish_script(), &[("README.md", "x")], &[]).await;
+    let v = create(
+        &mut f.c,
+        &def(
+            "capped",
+            manual(),
+            json!({"limits": {"max_cost_minor": 100}}),
+        ),
+        &f.root,
+    )
+    .await
+    .unwrap();
+    enable_exact(&mut f.c, &v).await.unwrap();
+    run_now(&mut f.c, &v.automation_id).await.unwrap();
+    let r = wait_runs(&mut f.c, &v.automation_id, 60, "the capped run", |r| {
+        done(r) == 1
+    })
+    .await;
+    assert_eq!(r[0].status, "failed", "{:?}", r[0]);
+    assert_eq!(r[0].reason, "BUDGET_EXHAUSTED");
+    assert!(r[0].detail.contains("cost_unmetered"), "{}", r[0].detail);
+}
+
+/// The first approvable effect parks in Needs Attention; a person approves it
+/// later, from the person's own client; the run continues and the effect
+/// happens exactly once, attributed to that person and not to the agent.
+#[tokio::test(flavor = "multi_thread")]
+async fn px_084_a_parked_approval_the_person_grants_later_lets_the_run_continue_exactly_once() {
+    let script = vec![
+        call("fs.read", json!({"path": "README.md"})),
+        plan_update(&[], &["shell.exec"]),
+        call("shell.exec", json!({"argv": ["groups"]})),
+        complete(),
+    ];
+    let mut f = fx_priced(script, &[("README.md", "x")], &[]).await;
+    let t0 = now_ms();
+    set_clock(&f.clock, t0);
+    let v = create(
+        &mut f.c,
+        &def(
+            "later",
+            manual(),
+            json!({
+                "profile": {"effects": "protected_write", "capabilities": ["shell.exec"]},
+                "limits": {"approval_wait_minutes": 60, "max_cost_minor": 500}
+            }),
+        ),
+        &f.root,
+    )
+    .await
+    .unwrap();
+    enable_exact(&mut f.c, &v).await.unwrap();
+    run_now(&mut f.c, &v.automation_id).await.unwrap();
+    let (run, approval) = await_requested(&mut f, &v.automation_id).await;
+    assert_eq!(approval.tool_name, "shell.exec");
+    // It is addressed to the principal in Needs Attention with the exact
+    // intent; time passes (inside the wait) and nothing approves it.
+    let l = list(&mut f.c).await;
+    let item = l
+        .attention
+        .iter()
+        .find(|a| a.kind == "PARKED_APPROVAL" && a.task_id == run.task_id)
+        .unwrap_or_else(|| panic!("{:?}", l.attention));
+    assert_eq!(item.action, "ResolveApproval");
+    set_clock(&f.clock, t0 + 30 * MIN);
+    tokio::time::sleep(Duration::from_millis(700)).await;
+    assert_eq!(run_approvals(&f.core, &run).await[0].status, "REQUESTED");
+    assert_eq!(
+        runs(&mut f.c, &v.automation_id).await[0].status,
+        "running",
+        "still waiting for a person"
+    );
+
+    // The person opens the run's session, as the desktop does (adopting the
+    // session's lease), and approves the exact intent they saw.
+    let mut person = f
+        .core
+        .client_of_kind(modbit_protocol::v1::ClientKind::Desktop)
+        .await;
+    let sid = Id {
+        value: hex::decode(&run.session_id).unwrap(),
+    };
+    let snap: modbit_protocol::v1::SessionSnapshot = cmd(
+        &mut person,
+        "GetSessionSnapshot",
+        modbit_protocol::v1::GetSessionSnapshot {
+            session_id: Some(sid.clone()),
+        },
+    )
+    .await
+    .unwrap();
+    assert!(snap.lease_generation > 0);
+    // A decision that names another intent decides nothing.
+    let wrong: Result<modbit_protocol::v1::ApprovalResolvedAck, _> = cmd_g(
+        &mut person,
+        "ResolveApproval",
+        modbit_protocol::v1::ResolveApproval {
+            approval_id: approval.approval_id.clone(),
+            approve: true,
+            reason: "wrong intent".into(),
+            intent_hash: "0".repeat(64),
+        },
+        Some(snap.lease_generation),
+    )
+    .await;
+    assert_eq!(wrong.unwrap_err().0, "INTENT_MISMATCH");
+    assert_eq!(run_approvals(&f.core, &run).await[0].status, "REQUESTED");
+    let ack: modbit_protocol::v1::ApprovalResolvedAck = cmd_g(
+        &mut person,
+        "ResolveApproval",
+        modbit_protocol::v1::ResolveApproval {
+            approval_id: approval.approval_id.clone(),
+            approve: true,
+            reason: "looked at it".into(),
+            intent_hash: approval.intent_hash.clone(),
+        },
+        Some(snap.lease_generation),
+    )
+    .await
+    .unwrap();
+    assert_eq!(ack.status, "APPROVED");
+
+    let r = wait_runs(&mut f.c, &v.automation_id, 60, "the continued run", |r| {
+        done(r) == 1
+    })
+    .await;
+    assert_eq!(
+        r[0].status,
+        "succeeded",
+        "{:?}\n{}",
+        r[0],
+        dump(&f.core, &r[0]).await
+    );
+    let ev = session_events(&f.core, &r[0]).await;
+    let call_id = ev
+        .iter()
+        .find(|e| {
+            e["event_type"] == "ToolCallProposed"
+                && e["payload"]["payload"]["tool_name"] == "shell.exec"
+        })
+        .map(|e| e["aggregate_id"].clone())
+        .unwrap();
+    let count = |ty: &str| {
+        ev.iter()
+            .filter(|e| e["event_type"] == ty && e["aggregate_id"] == call_id)
+            .count()
+    };
+    assert_eq!(count("ToolCallProposed"), 1);
+    assert_eq!(
+        count("ToolCallDispatched"),
+        1,
+        "the effect ran exactly once"
+    );
+    let approvals = run_approvals(&f.core, &r[0]).await;
+    assert_eq!(approvals.len(), 1);
+    assert_eq!(approvals[0].status, "APPROVED");
+    assert!(
+        approvals[0].resolver.starts_with("user:"),
+        "decided by the person, not the agent: {}",
+        approvals[0].resolver
+    );
+    // Time passing after the decision cancels nothing.
+    set_clock(&f.clock, t0 + 3 * 60 * MIN);
+    tokio::time::sleep(Duration::from_millis(700)).await;
+    let after = runs(&mut f.c, &v.automation_id).await;
+    assert_eq!((after[0].status.as_str(), after.len()), ("succeeded", 1));
+    let l = list(&mut f.c).await;
+    assert!(
+        l.attention.iter().all(|a| a.kind != "APPROVAL_EXPIRED"),
+        "{:?}",
+        l.attention
+    );
+}
+
+/// Waits for a run of `id` to be parked on a REQUESTED approval.
+async fn await_requested(
+    f: &mut Fx,
+    id: &str,
+) -> (AutomationRunView, modbit_protocol::v1::ApprovalView) {
+    let deadline = Instant::now() + Duration::from_secs(60);
+    loop {
+        let r = runs(&mut f.c, id).await;
+        if let Some(run) = r.first() {
+            let a = run_approvals(&f.core, run).await;
+            if let Some(a) = a.into_iter().find(|a| a.status == "REQUESTED") {
+                return (run.clone(), a);
+            }
+        }
+        assert!(
+            Instant::now() < deadline,
+            "no approval was requested: {r:?}"
+        );
+        tokio::time::sleep(Duration::from_millis(100)).await;
+    }
+}
+
+/// What a person built for their own tasks does not reach an automation's:
+/// their mode, their durable rule for this very command, a computer-control
+/// tool, and every tool that approves, trusts or administers. The run parks
+/// regardless, and its lease holds neither secrets, browser nor computer.
+#[tokio::test(flavor = "multi_thread")]
+async fn px_084_a_persons_rules_and_modes_computer_tools_and_approving_tools_do_not_reach_a_run() {
+    let script = vec![
+        call("computer.click", json!({"x": 10, "y": 10})),
+        call("approval.resolve", json!({"approve": true})),
+        call("fs.read", json!({"path": "README.md"})),
+        plan_update(&[], &["shell.exec"]),
+        call("shell.exec", json!({"argv": ["groups"]})),
+        complete(),
+    ];
+    let mut f = fx_priced(script, &[("README.md", "x")], &[]).await;
+    // The person's own task: allowlist mode and a USER rule for this command.
+    let (s, g) = session_with_lease(&mut f.c, 0x71).await;
+    let mine = create_task(
+        &mut f.c,
+        &s,
+        g,
+        &f.root,
+        0x72,
+        "local_trusted",
+        "my own work",
+    )
+    .await;
+    let mode: modbit_protocol::v1::RunModeView = cmd_g(
+        &mut f.c,
+        "SetRunMode",
+        modbit_protocol::v1::SetRunMode {
+            task_id: Some(mine.clone()),
+            mode: "ALLOWLIST".into(),
+            acknowledge_risk: true,
+        },
+        g,
+    )
+    .await
+    .unwrap();
+    assert_eq!(mode.mode, "ALLOWLIST");
+    let rule: modbit_protocol::v1::AllowRuleView = cmd_g(
+        &mut f.c,
+        "AddAllowRule",
+        modbit_protocol::v1::AddAllowRule {
+            task_id: Some(mine.clone()),
+            rule_id: "groups-for-me".into(),
+            pattern: vec!["groups".into()],
+            scope: "USER".into(),
+            expires_at_ms: 0,
+            covers_always_ask: false,
+        },
+        g,
+    )
+    .await
+    .unwrap();
+    assert_eq!(rule.state, "ACTIVE");
+
+    let v = create(
+        &mut f.c,
+        &def(
+            "rule-proof",
+            manual(),
+            json!({
+                "profile": {"effects": "protected_write", "capabilities": ["shell.exec"]},
+                "limits": {"approval_wait_minutes": 60, "max_cost_minor": 500}
+            }),
+        ),
+        &f.root,
+    )
+    .await
+    .unwrap();
+    enable_exact(&mut f.c, &v).await.unwrap();
+    run_now(&mut f.c, &v.automation_id).await.unwrap();
+    let (run, approval) = await_requested(&mut f, &v.automation_id).await;
+    assert_eq!(
+        approval.tool_name, "shell.exec",
+        "the rule did not approve it"
+    );
+    let ev = session_events(&f.core, &run).await;
+    for name in ["computer.click", "approval.resolve", "shell.exec"] {
+        assert!(
+            !ev.iter().any(|e| e["event_type"] == "ToolCallDispatched"
+                && e["payload"]["payload"]["tool_name"] == name),
+            "{name} was dispatched in an unattended run"
+        );
+    }
+    // The surface and the lease of the run.
+    let tools: modbit_protocol::v1::ToolList = cmd(
+        &mut f.c,
+        "ListTools",
+        modbit_protocol::v1::ListTools {
+            task_id: Some(Id {
+                value: hex::decode(&run.task_id).unwrap(),
+            }),
+        },
+    )
+    .await
+    .unwrap();
+    let names: Vec<String> = tools.tools.into_iter().map(|t| t.name).collect();
+    for n in &names {
+        let l = n.to_lowercase();
+        assert!(
+            !l.contains("computer")
+                && !l.contains("approval")
+                && !l.contains("automation")
+                && !l.contains("trust")
+                && !l.contains("secret"),
+            "a run is offered `{n}`: {names:?}"
+        );
+    }
+    let lease = ev
+        .iter()
+        .find(|e| e["event_type"] == "CapabilityLeaseGranted")
+        .unwrap();
+    let ops: Vec<String> = lease["payload"]["payload"]["operations"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .filter_map(|x| x.as_str().map(str::to_owned))
+        .collect();
+    for banned in [
+        "secret.use",
+        "browser.control",
+        "network.egress",
+        "git.merge",
+    ] {
+        assert!(!ops.iter().any(|o| o == banned), "{banned} in {ops:?}");
+    }
+    assert!(
+        ops.iter().all(|o| !o.starts_with("computer")),
+        "no computer operation: {ops:?}"
+    );
+    // Neither the person's mode nor rule was touched by the run.
+    let rules: modbit_protocol::v1::AllowRuleList = cmd(
+        &mut f.c,
+        "ListAllowRules",
+        modbit_protocol::v1::ListAllowRules {
+            task_id: Some(mine),
+            include_inactive: false,
+        },
+    )
+    .await
+    .unwrap();
+    assert_eq!(rules.rules.len(), 1);
+    assert_eq!(rules.rules[0].rule_id, "groups-for-me");
+    // And a rule cannot be made for the run itself.
+    let for_run: Result<modbit_protocol::v1::AllowRuleView, _> = cmd_g(
+        &mut f.c,
+        "AddAllowRule",
+        modbit_protocol::v1::AddAllowRule {
+            task_id: Some(Id {
+                value: hex::decode(&run.task_id).unwrap(),
+            }),
+            rule_id: "for-the-run".into(),
+            pattern: vec!["groups".into()],
+            scope: "TASK".into(),
+            expires_at_ms: 0,
+            covers_always_ask: false,
+        },
+        g,
+    )
+    .await;
+    assert_eq!(for_run.unwrap_err().0, "RULE_NOT_ALLOWED");
+    assert_eq!(run_approvals(&f.core, &run).await[0].status, "REQUESTED");
 }
