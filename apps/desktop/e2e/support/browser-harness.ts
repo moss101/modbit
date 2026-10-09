@@ -63,11 +63,8 @@ export function fixtureRepo(): string {
   return repo;
 }
 
-export async function closeApp(app: ElectronApplication): Promise<void> {
-  const proc = app.process();
-  await Promise.race([app.close(), new Promise<void>((r) => setTimeout(r, 15_000))]);
-  if (proc.exitCode === null) proc.kill("SIGKILL");
-}
+// One close path for every spec (close-app.ts): a plain kill leaves Windows helpers holding the worker's pipes.
+export { closeApp } from "./close-app.ts";
 
 /** The real app against a real Core. By default the policy names nothing local: a spec that serves its fixtures on loopback names them. */
 export async function launch(dataDir: string, extraEnv: Record<string, string>): Promise<{ app: ElectronApplication; page: Page }> {

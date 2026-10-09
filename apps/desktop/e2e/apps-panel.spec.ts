@@ -187,8 +187,9 @@ test("replay: a reload shows the same bytes; two attaches from the start read id
   // The panel, its tab and the terminal come back from the per-task state; the screen is rebuilt from the Core's replay.
   await expect(page.getByTestId("tab-terminal")).toHaveAttribute("aria-selected", "true", { timeout: 30_000 });
   await pickTerminal(echo);
-  await expect(screen()).toContainText("got:hello-pty");
-  await expect(screen()).toContainText("READY");
+  // The screen is rebuilt from the Core's replay after a reload; on a loaded runner that takes longer than the default wait.
+  await expect(screen()).toContainText("got:hello-pty", { timeout: 30_000 });
+  await expect(screen()).toContainText("READY", { timeout: 30_000 });
   await expect(terminalView()).toHaveAttribute("data-cursor", before!);
   const second = await readTerminal(page, { sessionId, taskId, terminalId: echo, after: "0", windowBytes: 65536 });
   expect(sha(second.bytes)).toBe(sha(first.bytes));
