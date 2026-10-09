@@ -15,6 +15,9 @@ import { Gate, streamingModel } from "./support/stream-model.ts";
 const FIRST = "The streamed answer begins here and keeps going for a while, ";
 const SECOND = "then it finishes with this closing sentence.";
 const FULL = FIRST + SECOND;
+/** The answer ends the run as a real agent does: a plan (the completion gate needs one), then the completion tool. A text-only answer keeps the loop asking for turns (no progress). */
+const PLAN = { call: { name: "plan.update", args: { outcome: "answer the question", expected_files: [], protected_effects: [] } } };
+const DONE = { call: { name: "task.complete", args: { summary: "answered", self_review: { findings: [] } } } };
 
 /** Creates a task from the Fleet composer, starts it and opens its conversation from the agent list. */
 async function startAndOpen(page: Page, goal: string, repo: string): Promise<string> {
@@ -40,7 +43,7 @@ async function openConversation(page: Page, taskId: string): Promise<void> {
 test("PX-047: a streamed answer appears incrementally, is never shown as final while open, only grows, and is final when the stream completes", async () => {
   const repo = makeRepo(mkdtempSync(join(tmpdir(), "modbit-conv-repo-")));
   const gate = new Gate();
-  const model = await streamingModel([{ parts: [FIRST, { wait: gate }, SECOND] }]);
+  const model = await streamingModel([{ parts: [FIRST, { wait: gate }, SECOND, PLAN] }, { parts: [DONE] }]);
   const dataDir = mkdtempSync(join(tmpdir(), "modbit-e2e-conv-stream-"));
   const { app, page } = await launch(dataDir, { env: { MODBIT_OPENAI_BASE_URL: model.url } });
   try {
@@ -82,7 +85,7 @@ test("PX-047: a streamed answer appears incrementally, is never shown as final w
 test("PX-047: a reload in the middle of a stream resumes it: the partial text comes back and the rest follows", async () => {
   const repo = makeRepo(mkdtempSync(join(tmpdir(), "modbit-conv-repo-")));
   const gate = new Gate();
-  const model = await streamingModel([{ parts: [FIRST, { wait: gate }, SECOND] }]);
+  const model = await streamingModel([{ parts: [FIRST, { wait: gate }, SECOND, PLAN] }, { parts: [DONE] }]);
   const dataDir = mkdtempSync(join(tmpdir(), "modbit-e2e-conv-reload-"));
   const { app, page } = await launch(dataDir, { env: { MODBIT_OPENAI_BASE_URL: model.url } });
   try {
@@ -110,7 +113,7 @@ test("PX-047: a reload in the middle of a stream resumes it: the partial text co
 test("PX-047: killing the Core mid-stream shows the response as stopped, with its cause, never as an answer", async () => {
   const repo = makeRepo(mkdtempSync(join(tmpdir(), "modbit-conv-repo-")));
   const gate = new Gate();
-  const model = await streamingModel([{ parts: [FIRST, { wait: gate }, SECOND] }]);
+  const model = await streamingModel([{ parts: [FIRST, { wait: gate }, SECOND, PLAN] }, { parts: [DONE] }]);
   const dataDir = mkdtempSync(join(tmpdir(), "modbit-e2e-conv-kill-"));
   const { app, page } = await launch(dataDir, { env: { MODBIT_OPENAI_BASE_URL: model.url } });
   try {
