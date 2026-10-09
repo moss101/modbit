@@ -1106,6 +1106,14 @@ async fn set_run_mode(
             "a task that runs unattended cannot ask a person, so who approves its effects is not a choice",
         ));
     }
+    // PX-084: an automation's run is unattended by construction. Its effects
+    // that need an approval park and expire; no run mode makes them go.
+    if task.origin == TaskOrigin::Automation {
+        return Err(refuse(
+            "UNATTENDED_AUTOMATION",
+            "an automation's run takes its principal's ceiling and asks for every protected effect; a run mode cannot widen it",
+        ));
+    }
     require_lease(core, &env.command_id, env, &task.session_id)
         .await
         .map_err(|ack| (ack.error_code, ack.error_message))?;
@@ -1204,6 +1212,7 @@ async fn add_rule(
     // is not made for a task that cannot ask, nor from a background agent.
     if task.execution_profile == modbit_policy::kernel::PROFILE_LOCAL_AUTONOMOUS
         || task.origin == TaskOrigin::Subagent
+        || task.origin == TaskOrigin::Automation
     {
         return Err(refuse(
             "RULE_NOT_ALLOWED",

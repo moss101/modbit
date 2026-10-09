@@ -3,9 +3,10 @@
  * renderer needs, over Electron's validated IPC. No Node, no fs, no shell.
  */
 import { contextBridge, ipcRenderer, webUtils } from "electron";
-import type { AgentHeadersView, ConversationSearchView, OpenStreamView, PendingApprovalView, SearchOptions, TranscriptOptions, TranscriptPageView } from "../shared/conversation-types.ts";
+import type { AgentHeaderView, AgentHeadersView, ConversationSearchView, OpenStreamView, PendingApprovalView, SearchOptions, TranscriptOptions, TranscriptPageView } from "../shared/conversation-types.ts";
 import type { TerminalFrameJson, TerminalViewJson } from "../main/terminal-host.ts";
 import type { AttachmentResult, InterruptView, ModeChangedView, ModelCatalogView, PostureView, PreferencePatch, PreferenceSetView, QueuedChangeView, QueueView, SendBehaviorState, SideAnswerView, SlashInventoryView, TaskModeId, InputModeId } from "../shared/composer-types.ts";
+import type { AutoDetail, AutoEnableInput, AutoKillReport, AutoList, AutoRepoLoad, AutoRun, AutoRunInput, AutoRunStarted, AutoValidation, AutoView } from "../shared/automation-types.ts";
 import type { AccountingInfo, AddRuleInput, AllowRuleInfo, CheckpointListInfo, CheckpointTargetInput, DockApprovalView, ForkOutcome, RestoreOutcome, RewindPreviewInfo, RunModeInfo, TaskBudgetsInfo } from "../shared/control-types.ts";
 
 export type { TerminalFrameJson, TerminalViewJson };
@@ -298,6 +299,24 @@ export interface ModbitBridge {
   previewRestore(taskId: string, target: CheckpointTargetInput): Promise<RewindPreviewInfo>;
   restoreCheckpoint(sessionId: string, taskId: string, target: CheckpointTargetInput, options?: { expected?: { path: string; contentHash: string }[]; keepPaths?: string[]; redo?: boolean; expectedCurrentEpoch?: number; commandId?: string }): Promise<RestoreOutcome>;
   forkFromTurn(sessionId: string, taskId: string, target: CheckpointTargetInput, goal?: string, commandId?: string): Promise<ForkOutcome>;
+  /** REQ-PX-086: the automations surface. Every call is the Core's own command; a refusal arrives as `CODE: message`. */
+  automations(): Promise<AutoList>;
+  automation(automationId: string): Promise<AutoDetail>;
+  automationRuns(options?: { automationId?: string; taskId?: string; limit?: number }): Promise<AutoRun[]>;
+  /** The editor's live validation: the Core's parser and validator; nothing is stored. */
+  validateAutomation(definitionJson: string): Promise<AutoValidation>;
+  createAutomation(definitionJson: string, workspaceRoot: string, commandId?: string): Promise<AutoView>;
+  updateAutomation(automationId: string, definitionJson: string, commandId?: string): Promise<AutoView>;
+  loadRepositoryAutomations(workspaceRoot: string): Promise<AutoRepoLoad>;
+  /** The owner's approval: names exactly the version, hash and lists the dialog showed. */
+  enableAutomation(approval: AutoEnableInput, commandId?: string): Promise<AutoView>;
+  disableAutomation(automationId: string, note?: string): Promise<AutoView>;
+  pauseAutomation(automationId: string, paused: boolean, note?: string): Promise<{ view: AutoView | null; list: AutoList | null }>;
+  killAutomation(automationId: string, note?: string): Promise<AutoKillReport>;
+  runAutomation(request: AutoRunInput, commandId?: string): Promise<AutoRunStarted>;
+  ackAutomationAttention(dispatchKey: string): Promise<{ acknowledged: boolean }>;
+  /** AUT-E03: the headers of tasks automations created (each run is its own session). */
+  automationTaskHeaders(): Promise<AgentHeaderView[]>;
   /** M10.1: the session's telemetry, cost and SLO dashboard. */
   dashboard(sessionId: string): Promise<DashboardSummary>;
   /** PX-023: the typed task status (REQ-EV-0073) a snapshot does not carry. */
@@ -441,6 +460,20 @@ const bridge: ModbitBridge = {
   revokeAllowRule: (sessionId, taskId, ruleId, reason) => ipcRenderer.invoke("rules:revoke", sessionId, taskId, ruleId, reason ?? ""),
   contextAccounting: (taskId) => ipcRenderer.invoke("accounting:get", taskId),
   setTaskBudgets: (sessionId, taskId, budgets) => ipcRenderer.invoke("budgets:set", sessionId, taskId, budgets),
+  automations: () => ipcRenderer.invoke("automations:list"),
+  automation: (id) => ipcRenderer.invoke("automations:get", id),
+  automationRuns: (options) => ipcRenderer.invoke("automations:runs", options ?? {}),
+  validateAutomation: (json) => ipcRenderer.invoke("automations:validate", json),
+  createAutomation: (json, root, commandId) => ipcRenderer.invoke("automations:create", json, root, commandId ?? ""),
+  updateAutomation: (id, json, commandId) => ipcRenderer.invoke("automations:update", id, json, commandId ?? ""),
+  loadRepositoryAutomations: (root) => ipcRenderer.invoke("automations:loadRepository", root),
+  enableAutomation: (approval, commandId) => ipcRenderer.invoke("automations:enable", approval, commandId ?? ""),
+  disableAutomation: (id, note) => ipcRenderer.invoke("automations:disable", id, note ?? ""),
+  pauseAutomation: (id, paused, note) => ipcRenderer.invoke("automations:pause", id, paused, note ?? ""),
+  killAutomation: (id, note) => ipcRenderer.invoke("automations:kill", id, note ?? ""),
+  runAutomation: (request, commandId) => ipcRenderer.invoke("automations:run", request, commandId ?? ""),
+  ackAutomationAttention: (dispatchKey) => ipcRenderer.invoke("automations:ack", dispatchKey),
+  automationTaskHeaders: () => ipcRenderer.invoke("automations:taskHeaders"),
   checkpoints: (taskId) => ipcRenderer.invoke("checkpoints:list", taskId),
   previewRestore: (taskId, target) => ipcRenderer.invoke("checkpoints:preview", taskId, target),
   restoreCheckpoint: (sessionId, taskId, target, options) => ipcRenderer.invoke("checkpoints:restore", sessionId, taskId, target, options ?? {}),

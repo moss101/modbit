@@ -40,6 +40,7 @@ export const workspaceCss = `
 .agents-glyph { flex: none; display: inline-flex; }
 .agents-text { flex: 1 1 0; min-width: 0; display: flex; flex-direction: column; }
 .agents-title { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: var(--mb-type-chrome-size); }
+.agents-origin { display: inline-block; margin-right: var(--mb-space-1); padding: 0 var(--mb-space-1); font-size: var(--mb-type-caption-size); font-weight: 600; border: 1px solid var(--mb-color-border-control); border-radius: var(--mb-radius-full); color: var(--mb-color-text); background: var(--mb-color-sunken); vertical-align: baseline; }
 .agents-row[data-unread="true"] .agents-title { font-weight: 700; }
 .agents-sub { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: var(--mb-type-caption-size); color: var(--mb-color-text-muted); }
 .agents-status { font-weight: 600; }

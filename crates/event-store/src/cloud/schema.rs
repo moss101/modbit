@@ -9,7 +9,7 @@
 //! refuses write mode).
 
 /// The schema version this build writes.
-pub const CLOUD_SCHEMA_VERSION: i32 = 7;
+pub const CLOUD_SCHEMA_VERSION: i32 = 8;
 
 /// Ordered migrations `(version, name, sql)`.
 pub const MIGRATIONS: &[(i32, &str, &str)] = &[
@@ -286,6 +286,128 @@ CREATE TABLE IF NOT EXISTS policy_bundles (
   published_at_ms BIGINT NOT NULL,
   PRIMARY KEY (tenant_id, generation)
 );
+",
+    ),
+    (
+        8,
+        "cloud-v8: automations — tenant-scoped definitions and versions, hash-bound enable approvals, pauses, per-endpoint webhook secrets by derivation, the replay nonce table, idempotent firings and run history, the refused-delivery audit, the schedule cursor and the clock offset (PX-085)",
+        r"
+CREATE TABLE IF NOT EXISTS automations (
+  automation_id UUID PRIMARY KEY,
+  tenant_id UUID NOT NULL REFERENCES tenants(tenant_id),
+  name TEXT NOT NULL,
+  workspace_root TEXT NOT NULL DEFAULT '',
+  repository TEXT NOT NULL DEFAULT '',
+  service_principal_id UUID NOT NULL,
+  current_version INTEGER NOT NULL,
+  paused BOOLEAN NOT NULL DEFAULT FALSE,
+  enabled_version INTEGER,
+  enabled_hash TEXT,
+  enabled_by UUID,
+  enabled_at_ms BIGINT,
+  enabled_effects TEXT,
+  enabled_capabilities TEXT[] NOT NULL DEFAULT '{}',
+  enabled_paths TEXT[] NOT NULL DEFAULT '{}',
+  enabled_hosts TEXT[] NOT NULL DEFAULT '{}',
+  created_by UUID,
+  created_at_ms BIGINT NOT NULL,
+  updated_at_ms BIGINT NOT NULL,
+  UNIQUE (tenant_id, name)
+);
+CREATE INDEX IF NOT EXISTS automations_tenant ON automations(tenant_id, created_at_ms);
+CREATE TABLE IF NOT EXISTS automation_versions (
+  automation_id UUID NOT NULL REFERENCES automations(automation_id),
+  version INTEGER NOT NULL,
+  tenant_id UUID NOT NULL,
+  definition_json TEXT NOT NULL,
+  definition_hash TEXT NOT NULL,
+  controls JSONB NOT NULL,
+  created_by UUID,
+  created_at_ms BIGINT NOT NULL,
+  PRIMARY KEY (automation_id, version)
+);
+CREATE TABLE IF NOT EXISTS automation_switches (
+  scope TEXT PRIMARY KEY,
+  paused BOOLEAN NOT NULL,
+  note TEXT NOT NULL DEFAULT '',
+  by_actor TEXT NOT NULL DEFAULT '',
+  at_ms BIGINT NOT NULL
+);
+CREATE TABLE IF NOT EXISTS automation_endpoints (
+  endpoint_id TEXT PRIMARY KEY,
+  tenant_id UUID NOT NULL REFERENCES tenants(tenant_id),
+  automation_id UUID NOT NULL REFERENCES automations(automation_id),
+  trigger_id TEXT NOT NULL,
+  rotation INTEGER NOT NULL DEFAULT 0,
+  created_by UUID,
+  created_at_ms BIGINT NOT NULL,
+  revoked_at_ms BIGINT
+);
+CREATE INDEX IF NOT EXISTS automation_endpoints_tenant ON automation_endpoints(tenant_id, automation_id);
+CREATE TABLE IF NOT EXISTS automation_nonces (
+  endpoint_id TEXT NOT NULL,
+  nonce TEXT NOT NULL,
+  signed_at_s BIGINT NOT NULL,
+  received_at_ms BIGINT NOT NULL,
+  PRIMARY KEY (endpoint_id, nonce)
+);
+CREATE INDEX IF NOT EXISTS automation_nonces_age ON automation_nonces(received_at_ms);
+CREATE TABLE IF NOT EXISTS automation_firings (
+  dispatch_key TEXT PRIMARY KEY,
+  tenant_id UUID NOT NULL REFERENCES tenants(tenant_id),
+  automation_id UUID NOT NULL REFERENCES automations(automation_id),
+  version INTEGER NOT NULL,
+  trigger_id TEXT NOT NULL,
+  trigger_kind TEXT NOT NULL,
+  event_id TEXT NOT NULL,
+  source TEXT NOT NULL,
+  status TEXT NOT NULL,
+  reason TEXT NOT NULL DEFAULT '',
+  detail TEXT NOT NULL DEFAULT '',
+  task_id UUID,
+  session_id UUID,
+  principal_id UUID,
+  definition_hash TEXT NOT NULL,
+  fired_ms BIGINT NOT NULL,
+  admitted_ms BIGINT,
+  dispatched_ms BIGINT,
+  slot_ms BIGINT,
+  catch_up BOOLEAN NOT NULL DEFAULT FALSE,
+  missed BIGINT NOT NULL DEFAULT 0,
+  payload TEXT NOT NULL DEFAULT '',
+  payload_label TEXT NOT NULL DEFAULT '',
+  budgets JSONB NOT NULL DEFAULT '{}'
+);
+CREATE INDEX IF NOT EXISTS automation_firings_automation ON automation_firings(tenant_id, automation_id, fired_ms);
+CREATE INDEX IF NOT EXISTS automation_firings_task ON automation_firings(task_id);
+CREATE INDEX IF NOT EXISTS automation_firings_open ON automation_firings(status) WHERE status IN ('PENDING', 'QUEUED');
+CREATE TABLE IF NOT EXISTS automation_audit (
+  audit_id BIGSERIAL PRIMARY KEY,
+  at_ms BIGINT NOT NULL,
+  tenant_id UUID,
+  endpoint_id TEXT,
+  automation_id UUID,
+  code TEXT NOT NULL,
+  delivery_id TEXT NOT NULL DEFAULT '',
+  detail TEXT NOT NULL DEFAULT ''
+);
+CREATE INDEX IF NOT EXISTS automation_audit_tenant ON automation_audit(tenant_id, audit_id);
+CREATE TABLE IF NOT EXISTS automation_schedule (
+  automation_id UUID NOT NULL REFERENCES automations(automation_id),
+  trigger_id TEXT NOT NULL,
+  tenant_id UUID NOT NULL,
+  version INTEGER NOT NULL,
+  anchor_ms BIGINT NOT NULL,
+  cursor_ms BIGINT NOT NULL,
+  next_due_ms BIGINT,
+  PRIMARY KEY (automation_id, trigger_id)
+);
+CREATE INDEX IF NOT EXISTS automation_schedule_due ON automation_schedule(next_due_ms) WHERE next_due_ms IS NOT NULL;
+CREATE TABLE IF NOT EXISTS automation_clock (
+  id INTEGER PRIMARY KEY CHECK (id = 1),
+  offset_ms BIGINT NOT NULL DEFAULT 0
+);
+INSERT INTO automation_clock (id, offset_ms) VALUES (1, 0) ON CONFLICT (id) DO NOTHING;
 ",
     ),
 ];

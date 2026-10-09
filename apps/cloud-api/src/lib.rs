@@ -16,6 +16,7 @@
 #![forbid(unsafe_code)]
 
 pub mod auth;
+mod automations;
 mod browser_view;
 mod forge;
 pub mod oidc;
@@ -75,6 +76,11 @@ pub struct Extras {
     /// PX-129: the identity provider the API signs people in through
     /// (`None`: the OIDC routes answer `OIDC_DISABLED`).
     pub oidc: Option<OidcConfig>,
+    /// PX-085: the server master key per-endpoint webhook secrets derive
+    /// from (`HMAC(master, endpoint id || rotation)`); never stored in the
+    /// database. `None`: no endpoint can be created and `/v1/hooks` answers
+    /// `WEBHOOK_DISABLED` (fail closed).
+    pub webhook_master_key: Option<Vec<u8>>,
 }
 
 impl std::fmt::Debug for Extras {
@@ -83,6 +89,7 @@ impl std::fmt::Debug for Extras {
             .field("webhook_max_age_ms", &self.webhook_max_age_ms)
             .field("admin", &self.admin_secret_hash.is_some())
             .field("oidc", &self.oidc)
+            .field("webhook_master_key", &self.webhook_master_key.is_some())
             .finish_non_exhaustive()
     }
 }
@@ -94,6 +101,7 @@ impl Default for Extras {
             webhook_skew_ms: 5 * 60 * 1000,
             admin_secret_hash: None,
             oidc: None,
+            webhook_master_key: None,
         }
     }
 }
@@ -107,7 +115,16 @@ impl Extras {
         self
     }
 
-    /// From the environment (`MODBIT_CLOUD_WEBHOOK_MAX_AGE_SECS`,
+    /// PX-085: the master key per-endpoint webhook secrets derive from
+    /// (32 bytes or more).
+    #[must_use]
+    pub fn with_webhook_master_key(mut self, key: &[u8]) -> Self {
+        self.webhook_master_key = Some(key.to_vec());
+        self
+    }
+
+    /// From the environment (`MODBIT_CLOUD_WEBHOOK_MASTER_KEY_HEX`,
+    /// `MODBIT_CLOUD_WEBHOOK_MAX_AGE_SECS`,
     /// `MODBIT_CLOUD_ADMIN_SECRET`, `MODBIT_CLOUD_OIDC_*`).
     #[must_use]
     pub fn from_env() -> Self {
@@ -118,6 +135,16 @@ impl Extras {
             e = e.with_admin_secret(&secret);
         }
         e.oidc = OidcConfig::from_env();
+        if let Ok(h) = std::env::var("MODBIT_CLOUD_WEBHOOK_MASTER_KEY_HEX")
+            && !h.is_empty()
+        {
+            match hex::decode(&h) {
+                Ok(k) if k.len() >= 32 => e.webhook_master_key = Some(k),
+                _ => eprintln!(
+                    "modbit-cloud-api: MODBIT_CLOUD_WEBHOOK_MASTER_KEY_HEX must be 32 or more bytes of hex; automation webhooks stay off"
+                ),
+            }
+        }
         if let Some(secs) = std::env::var("MODBIT_CLOUD_WEBHOOK_MAX_AGE_SECS")
             .ok()
             .and_then(|v| v.parse::<i64>().ok())

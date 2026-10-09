@@ -1,0 +1,22 @@
+{
+  "expected": {
+    "canonicalJson": "",
+    "capabilities": [],
+    "definitionHash": "",
+    "effects": "read_only",
+    "hosts": [],
+    "issues": [
+      {
+        "code": "BELOW_FLOOR",
+        "message": "the floor is one run per 5 minutes",
+        "path": "/triggers/0/cron"
+      }
+    ],
+    "name": "drift",
+    "needsListedApproval": false,
+    "ok": false,
+    "paths": [],
+    "triggers": []
+  },
+  "type": "modbit.v1.AutomationValidation"
+}

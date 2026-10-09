@@ -173,6 +173,109 @@ export declare type CreateTask = Message<"modbit.v1.CreateTask"> & {
    * @generated from field: modbit.v1.TaskIsolation isolation = 280;
    */
   isolation: TaskIsolation;
+
+  /**
+   * PX-083 / PX-084 (automations.proto, field block 400-419): set only by the
+   * Core's own automation host when a trigger fires (origin `automation`);
+   * any client that sends one is refused with AUTOMATION_FIELDS_RESERVED.
+   *
+   * @generated from field: string automation_id = 400;
+   */
+  automationId: string;
+
+  /**
+   * @generated from field: uint32 automation_version = 401;
+   */
+  automationVersion: number;
+
+  /**
+   * the delivery id or schedule slot id
+   *
+   * @generated from field: string automation_event_id = 402;
+   */
+  automationEventId: string;
+
+  /**
+   * sha256(definition | version | event id)
+   *
+   * @generated from field: string automation_dispatch_key = 403;
+   */
+  automationDispatchKey: string;
+
+  /**
+   * user:<id> | service:<id>; recorded on the task
+   *
+   * @generated from field: string automation_principal = 404;
+   */
+  automationPrincipal: string;
+
+  /**
+   * trigger id and kind
+   *
+   * @generated from field: string automation_trigger = 405;
+   */
+  automationTrigger: string;
+
+  /**
+   * The run's ceiling: the profile's default lease narrowed to these. The
+   * task's lease is the intersection with the profile's own, never wider.
+   *
+   * @generated from field: repeated string lease_operations = 406;
+   */
+  leaseOperations: string[];
+
+  /**
+   * @generated from field: repeated string lease_resources = 407;
+   */
+  leaseResources: string[];
+
+  /**
+   * @generated from field: string lease_effect_ceiling = 408;
+   */
+  leaseEffectCeiling: string;
+
+  /**
+   * The trigger payload: untrusted external content attached to the task as a
+   * labelled context document, never instruction (AUT-D04).
+   *
+   * @generated from field: string trigger_payload = 409;
+   */
+  triggerPayload: string;
+
+  /**
+   * forge_pr | forge_comment | webhook
+   *
+   * @generated from field: string trigger_payload_label = 410;
+   */
+  triggerPayloadLabel: string;
+
+  /**
+   * instruction-shaped passages the Core found in it
+   *
+   * @generated from field: uint32 payload_findings = 411;
+   */
+  payloadFindings: number;
+
+  /**
+   * a dry-run: read-only, protected effects denied
+   *
+   * @generated from field: bool automation_test = 412;
+   */
+  automationTest: boolean;
+
+  /**
+   * the hash the owner's enable approval named
+   *
+   * @generated from field: string automation_definition_hash = 413;
+   */
+  automationDefinitionHash: string;
+
+  /**
+   * schedule | manual | event | webhook
+   *
+   * @generated from field: string automation_trigger_kind = 414;
+   */
+  automationTriggerKind: string;
 };
 
 /**

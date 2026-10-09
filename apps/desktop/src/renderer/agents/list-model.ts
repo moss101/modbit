@@ -48,6 +48,7 @@ export const ORIGIN_FILTERS = [
   { id: "ide", label: "IDE" },
   { id: "forge_issue", label: "Forge issue" },
   { id: "forge_webhook", label: "Forge webhook" },
+  { id: "automation", label: "Automation" },
 ] as const;
 export type OriginFilter = (typeof ORIGIN_FILTERS)[number]["id"];
 
@@ -306,5 +307,5 @@ export function subtitleOf(h: AgentHeaderView, fields: readonly SubtitleField[])
 
 /** Accessible name of a row: title, status words, unread, attention. */
 export function rowLabel(h: AgentHeaderView, pinned: boolean): string {
-  return [h.title || "Untitled task", h.statusLabel || CLASS_META[h.statusClass].short, h.unread ? "unread" : "", h.pendingApproval ? "waiting on your approval" : "", pinned ? "pinned" : ""].filter(Boolean).join(", ");
+  return [h.title || "Untitled task", h.statusLabel || CLASS_META[h.statusClass].short, h.origin === "automation" ? "started by an automation" : "", h.unread ? "unread" : "", h.pendingApproval ? "waiting on your approval" : "", pinned ? "pinned" : ""].filter(Boolean).join(", ");
 }

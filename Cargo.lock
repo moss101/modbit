@@ -2024,6 +2024,20 @@ dependencies = [
 ]
 
 [[package]]
+name = "modbit-automation"
+version = "0.0.0"
+dependencies = [
+ "hex",
+ "hmac",
+ "modbit-secrets",
+ "regex",
+ "serde",
+ "serde_json",
+ "sha2 0.11.0",
+ "subtle",
+]
+
+[[package]]
 name = "modbit-bench-agent-engineering"
 version = "0.0.0"
 dependencies = [
@@ -2156,6 +2170,7 @@ dependencies = [
  "futures-util",
  "hex",
  "hmac",
+ "modbit-automation",
  "modbit-domain",
  "modbit-event-store",
  "modbit-protocol",
@@ -2167,6 +2182,7 @@ dependencies = [
  "serde_json",
  "sha2 0.11.0",
  "tokio",
+ "tokio-postgres",
  "tokio-tungstenite 0.26.2",
  "tower-http",
  "uuid",
@@ -2183,6 +2199,7 @@ dependencies = [
  "futures-util",
  "hex",
  "hmac",
+ "modbit-automation",
  "modbit-cloud-api",
  "modbit-domain",
  "modbit-event-store",
@@ -2235,6 +2252,7 @@ dependencies = [
  "globset",
  "hex",
  "libc",
+ "modbit-automation",
  "modbit-bench-context-economics",
  "modbit-bench-gate-calibration",
  "modbit-bench-outcome-statistics",
