@@ -500,9 +500,7 @@ test("PX-073: a task lists and selects only the views it owns; hidden views are 
     await ui.evaluate(([s, r]) => window.modbit.trustRepository(s!, r!), [sessionId, repo]);
     await ui.evaluate(([s, t]) => window.modbit.startTask(s!, t!), [sessionId, A.taskId]);
     await toolResults(model, 3, 90_000);
-    // Diagnostic on failure: the host's log shows which request answered while the reset note was pending.
-    const hostLog = JSON.stringify((await ui.evaluate(() => window.modbit.browserLog())).map((l) => `${l.kind}:${l.code}`));
-    expect(model.toolTexts[1], hostLog).toContain("VIEW_RESET");
+    expect(model.toolTexts[1]).toContain("VIEW_RESET");
     expect(model.toolTexts[1]).toContain("reclaimed");
     expect(model.toolTexts[1]).toContain('"escalation":"re_observe"');
     expect(model.toolTexts[2]).toContain("status: SUCCESS");

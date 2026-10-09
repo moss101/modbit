@@ -5,7 +5,7 @@
  * preload bridge. The renderer gets durable ids and Core events; it never gets
  * the socket, the secret, Node, or the filesystem.
  */
-import { app, BrowserWindow, dialog, ipcMain, Notification, safeStorage, session, type IpcMainInvokeEvent } from "electron";
+import { app, BrowserWindow, ipcMain, Notification, safeStorage, session, type IpcMainInvokeEvent } from "electron";
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { join, resolve } from "node:path";
 import { CoreSupervisor, freshId, type CoreClient, type CoreStatus } from "@modbit/ide-adapter-core";
@@ -13,10 +13,6 @@ import { serializeEvent, type WireEvent } from "./events.js";
 import { BrowserHost } from "./browser.js";
 import { CredentialStore } from "./credentials.js";
 import { platformState } from "./platform.js";
-import { observeStreamEvent, registerConversationHandlers } from "./conversation-ipc.js";
-import { optionalWindow, requireBool, requireCursor, requireDimension, requireHandle, requireKeystrokes, requireWorkspacePath } from "./apps-args.js";
-import { noWork, quitPrompt, runShutdown, WINDOW_DEFAULT, WINDOW_MIN, type ActiveWork, type ShutdownStep } from "./lifecycle.js";
-import { TerminalHost } from "./terminal-host.js";
 
 const dataDir = process.env.MODBIT_DATA_DIR ?? join(app.getPath("userData"), "modbit");
 // A profile named by MODBIT_DATA_DIR is a whole profile: the renderer's
@@ -111,12 +107,8 @@ const supervisor = new CoreSupervisor(
       send("core:status", s);
     },
     client(c: CoreClient) {
-      // REQ-PX-048: a new connection starts with no terminal attachments; the renderer reattaches from its cursors.
-      terminalHost.connectionLost();
-      c.onTerminalFrame = (f) => terminalHost.onFrame(f);
       c.onEvent = (e) => {
         const ev = serializeEvent(e);
-        observeStreamEvent(ev);
         if (subscription) subscription.cursor = BigInt(ev.offset);
         // IMP-EV-0085: an emergency stop anyone raised on the session halts
         // the browser host's input at once, independent of the Core's loop.
@@ -179,15 +171,6 @@ const browserHost = new BrowserHost(
   (handle, pageOrigin) => credentials.secretFor(handle, pageOrigin),
   { dataDir, env: process.env },
   () => credentials.secretValues(),
-);
-/** The session lease the mutating terminal calls need: taken over for this desktop when the connection has none yet. */
-async function ensureSessionLease(c: CoreClient, sessionId: string): Promise<void> {
-  if (c.leaseGeneration(sessionId) === undefined) await c.joinSessionLease(sessionId, `desktop ${app.getVersion()}`);
-}
-const terminalHost = new TerminalHost(
-  () => requireClient(),
-  ensureSessionLease,
-  (frame) => send("terminal:frame", frame),
 );
 function requireClient(): CoreClient {
   const c = supervisor.current();
@@ -353,18 +336,6 @@ handle("context:inspector", async (_e: IpcMainInvokeEvent, taskId: unknown) => {
     manifestRef: v.manifestRef,
     prefixCacheHits: v.prefixCacheHits,
     prefixCacheMisses: v.prefixCacheMisses,
-    // REQ-PX-059: the Core's breakdown of the last compiled request, by category.
-    accounting: v.accounting?.available
-      ? {
-          totalTokens: v.accounting.totalTokens.toString(),
-          totalSource: v.accounting.totalSource,
-          windowTokens: v.accounting.windowTokens.toString(),
-          windowSource: v.accounting.windowSource,
-          usedBp: v.accounting.usedBp,
-          model: v.accounting.model,
-          categories: v.accounting.categories.map((c) => ({ category: c.category, tokens: c.tokens.toString(), shareBp: c.shareBp })),
-        }
-      : null,
     entries: v.entries.map((e) => ({
       entryId: e.entryId,
       sourceRef: e.sourceRef,
@@ -770,57 +741,6 @@ handle("onboarding:starters", async (_e: IpcMainInvokeEvent, workspaceRoot: unkn
   if (!root) throw new Error("BAD_ARGUMENT: workspace root required");
   return requireClient().listStarterTasks(resolve(root));
 });
-// PX-046 / PX-047: the agent list and the conversation, over the Core's header, transcript and search projections.
-registerConversationHandlers({
-  handle: (channel, fn) => handle(channel, (_e, ...args) => fn(...args)),
-  client: requireClient,
-  sessionId: requireSessionId,
-  taskId: requireTaskId,
-  lease: async (c, sid) => {
-    if (c.leaseGeneration(sid) === undefined) await c.joinSessionLease(sid, `desktop ${app.getVersion()}`);
-  },
-});
-// REQ-PX-048 (the apps panel): the Terminal, Files and Evidence apps. Every
-// call validates its arguments here and goes to the Core through the one
-// client; the renderer gets views, never a socket, a path outside the
-// workspace or a buffer it owns.
-handle("terminal:list", (_e: IpcMainInvokeEvent, taskId: unknown) => terminalHost.list(taskId === undefined || taskId === null || taskId === "" ? undefined : requireTaskId(taskId)));
-handle("terminal:attach", (_e: IpcMainInvokeEvent, sessionId: unknown, taskId: unknown, terminalId: unknown, afterCursor: unknown, opts: unknown) => {
-  const o = (opts ?? {}) as { windowBytes?: unknown; takeInputLease?: unknown; stealInputLease?: unknown };
-  return terminalHost.attach(requireSessionId(sessionId), requireTaskId(taskId), requireHandle(terminalId, "terminal id"), requireCursor(afterCursor), {
-    windowBytes: optionalWindow(o.windowBytes),
-    takeInputLease: o.takeInputLease === undefined ? false : requireBool(o.takeInputLease, "takeInputLease"),
-    stealInputLease: o.stealInputLease === undefined ? false : requireBool(o.stealInputLease, "stealInputLease"),
-  });
-});
-handle("terminal:ack", (_e: IpcMainInvokeEvent, attachId: unknown, cursor: unknown) => terminalHost.ack(requireHandle(attachId, "attach id"), requireCursor(cursor)));
-handle("terminal:detach", (_e: IpcMainInvokeEvent, attachId: unknown) => terminalHost.detach(requireHandle(attachId, "attach id")));
-handle("terminal:input", (_e: IpcMainInvokeEvent, attachId: unknown, hold: unknown, steal: unknown) => terminalHost.input(requireHandle(attachId, "attach id"), requireBool(hold, "hold"), steal === undefined ? false : requireBool(steal, "steal")));
-handle("terminal:resize", (_e: IpcMainInvokeEvent, attachId: unknown, rows: unknown, cols: unknown) => terminalHost.resize(requireHandle(attachId, "attach id"), requireDimension(rows, "rows"), requireDimension(cols, "cols")));
-handle("terminal:write", (_e: IpcMainInvokeEvent, attachId: unknown, data: unknown) => terminalHost.write(requireHandle(attachId, "attach id"), requireKeystrokes(data)));
-handle("terminal:kill", (_e: IpcMainInvokeEvent, sessionId: unknown, taskId: unknown, terminalId: unknown) => terminalHost.kill(requireSessionId(sessionId), requireTaskId(taskId), requireHandle(terminalId, "terminal id")));
-handle("files:list", async (_e: IpcMainInvokeEvent, taskId: unknown, path: unknown) => {
-  const l = await requireClient().listWorkspaceDir(requireTaskId(taskId), requireWorkspacePath(path ?? "", true));
-  return {
-    path: l.path,
-    workspaceRevision: l.workspaceRevision.toString(),
-    truncated: l.truncated,
-    entries: l.entries.map((x) => ({ path: x.path, name: x.name, kind: x.kind, size: x.size.toString(), protected: x.protected })),
-  };
-});
-handle("files:read", async (_e: IpcMainInvokeEvent, taskId: unknown, path: unknown) => {
-  const v = await requireClient().readWorkspaceFile(requireTaskId(taskId), requireWorkspacePath(path, false));
-  return { path: v.path, status: v.status, size: v.size.toString(), text: v.text, fileRevision: v.fileRevision, workspaceRevision: v.workspaceRevision.toString(), language: v.language };
-});
-handle("evidence:receipts", async (_e: IpcMainInvokeEvent, taskId: unknown) => {
-  const l = await requireClient().effectReceipts(requireTaskId(taskId));
-  const hex = (id: { value: Uint8Array } | undefined) => (id ? Buffer.from(id.value).toString("hex") : "");
-  return {
-    chainValid: l.chainValid,
-    detail: l.detail,
-    receipts: l.receipts.map((r) => ({ effectId: hex(r.effectId), toolCallId: hex(r.toolCallId), intentHash: r.intentHash, policyDecision: r.policyDecision, executionTarget: r.executionTarget, evidenceRef: r.evidenceRef, status: r.status, occurredAtMs: Number(r.occurredAtMs), receiptHash: r.receiptHash, reversibility: r.reversibility })),
-  };
-});
 handle("events:subscribe", (_e: IpcMainInvokeEvent, sessionId: unknown, afterOffset: unknown) => {
   const sid = requireSessionId(sessionId);
   const after = typeof afterOffset === "string" && /^\d+$/.test(afterOffset) ? BigInt(afterOffset) : 0n;
@@ -847,10 +767,7 @@ handle("debug:rendererLog", () => rendererLog.slice());
 const rendererLog: { reason: string; exitCode: number; reloaded: boolean; atMs: number }[] = [];
 function createWindow(bounds?: Electron.Rectangle): void {
   const w = new BrowserWindow({
-    ...(bounds ?? WINDOW_DEFAULT),
-    // REQ-PX-049 / AFW-A02: the window never gets smaller than the shell's layout can use.
-    minWidth: WINDOW_MIN.width,
-    minHeight: WINDOW_MIN.height,
+    ...(bounds ?? { width: 1200, height: 800 }),
     show: true,
     webPreferences: {
       preload: join(__dirname, "..", "preload", "preload.cjs"),
@@ -861,14 +778,6 @@ function createWindow(bounds?: Electron.Rectangle): void {
     },
   });
   win = w;
-  // REQ-PX-049: closing the window asks first when work is running (the same question as quitting).
-  w.on("close", (e) => {
-    if (quitConfirmed || win !== w) return;
-    e.preventDefault();
-    void requestQuit();
-  });
-  // REQ-PX-048: a window that loads again (a reload, a crash's replacement) holds none of the old terminal attachments.
-  w.webContents.on("did-start-loading", () => void terminalHost.detachAll());
   w.webContents.on("will-navigate", (e) => e.preventDefault());
   w.webContents.setWindowOpenHandler(() => ({ action: "deny" }));
   w.webContents.on("render-process-gone", (_e, details) => {
@@ -897,78 +806,10 @@ app.whenReady().then(async () => {
 app.on("window-all-closed", () => {
   app.quit();
 });
-
-// REQ-PX-049 quit protection. Quitting stops the Core (the desktop supervises
-// it with a parent tether), so with tasks or background terminals running the
-// person is asked first, and the question says exactly what quitting does
-// (lifecycle.ts). `MODBIT_QUIT_PROMPT=off` is the automation switch: a harness
-// that closes the app mid-run answers the question once, for every run.
-let quitConfirmed = false;
-let quitPrompting = false;
-let shutdownStarted = false;
-
-async function activeWork(): Promise<ActiveWork> {
-  const c = supervisor.current();
-  if (!c) return { runningTasks: 0, runningTerminals: 0 };
-  const sid = loadLocalState().sessionId;
-  const within = <T,>(p: Promise<T>, fallback: T): Promise<T> => Promise.race([p.catch(() => fallback), new Promise<T>((r) => setTimeout(() => r(fallback), 2000))]);
-  const [runningTasks, runningTerminals] = await Promise.all([
-    sid ? within(c.getSessionSnapshot(sid).then((s) => s.tasks.filter((t) => t.state === "Running").length), 0) : Promise.resolve(0),
-    within(c.listTerminals().then((l) => l.terminals.filter((t) => t.state === "RUNNING").length), 0),
-  ]);
-  return { runningTasks, runningTerminals };
-}
-
-async function requestQuit(): Promise<void> {
-  if (quitConfirmed) {
-    app.quit();
-    return;
-  }
-  if (quitPrompting) return;
-  quitPrompting = true;
-  try {
-    const work = process.env.MODBIT_QUIT_PROMPT === "off" ? { runningTasks: 0, runningTerminals: 0 } : await activeWork();
-    if (!noWork(work)) {
-      const p = quitPrompt(work);
-      const options = { type: "warning" as const, message: p.message, detail: p.detail, buttons: [...p.buttons], defaultId: 0, cancelId: 0, noLink: true };
-      const r = win && !win.isDestroyed() ? await dialog.showMessageBox(win, options) : await dialog.showMessageBox(options);
-      if (r.response !== 1) return;
-    }
-    quitConfirmed = true;
-    app.quit();
-  } finally {
-    quitPrompting = false;
-  }
-}
-
-// Shutdown never waits on anything past a short deadline: a step that fails or
-// hangs is reported (stderr and the profile's shutdown log) and the quit goes on.
-const SHUTDOWN_DEADLINE_MS = 2000;
-app.on("before-quit", (e) => {
-  if (!quitConfirmed) {
-    e.preventDefault();
-    void requestQuit();
-    return;
-  }
-  if (shutdownStarted) return;
-  shutdownStarted = true;
-  e.preventDefault();
-  // Quitting (window close, Cmd+Q, or a harness closing the app) must stop the
-  // Core child and the socket, or the main process lingers.
-  const steps: ShutdownStep[] = [
-    { name: "browser-views", run: () => browserHost.closeAll() },
-    { name: "core", run: () => supervisor.stop() },
-  ];
-  void runShutdown(steps, SHUTDOWN_DEADLINE_MS).then((report) => {
-    if (report.failed.length > 0 || report.timedOut.length > 0) {
-      process.stderr.write(`modbit: shutdown did not finish cleanly: ${JSON.stringify(report)}\n`);
-      try {
-        writeFileSync(join(dataDir, "shutdown-log.json"), JSON.stringify({ atMs: Date.now(), ...report }));
-      } catch {
-        // the log is a courtesy; the quit goes on
-      }
-    }
-    app.quit();
-  });
+// Quitting (window close, Cmd+Q, or a harness closing the app) must stop the
+// Core child and the socket, or the main process lingers.
+app.on("before-quit", () => {
+  browserHost.closeAll();
+  supervisor.stop();
 });
 export type { WireEvent };

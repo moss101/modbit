@@ -52,15 +52,6 @@ import {
   IngestAttachmentSchema,
   ClientKind,
   CodeViewModelSchema,
-  GetEffectReceiptsSchema,
-  EffectReceiptListSchema,
-  type EffectReceiptList,
-  ListWorkspaceDirSchema,
-  WorkspaceDirListingSchema,
-  ReadWorkspaceFileSchema,
-  WorkspaceFileViewSchema,
-  type WorkspaceDirListing,
-  type WorkspaceFileView,
   CommandAckSchema,
   CommandEnvelopeSchema,
   CommandStatus,
@@ -821,24 +812,6 @@ export class CoreClient {
   async getCodeView(taskId: string, path: string, expectedFileRevision = ""): Promise<CodeViewModel> {
     const ack = await this.command("GetCodeView", toBinary(GetCodeViewSchema, create(GetCodeViewSchema, { taskId: { value: unhex(taskId) }, path, expectedFileRevision })));
     return fromBinary(CodeViewModelSchema, ack.result);
-  }
-
-  /** REQ-PX-048: a directory of the task's workspace, read through the path policy (refused: OUTSIDE_ROOT, PROTECTED, NOT_FOUND). */
-  async listWorkspaceDir(taskId: string, path = ""): Promise<WorkspaceDirListing> {
-    const ack = await this.command("ListWorkspaceDir", toBinary(ListWorkspaceDirSchema, create(ListWorkspaceDirSchema, { taskId: { value: unhex(taskId) }, path })));
-    return fromBinary(WorkspaceDirListingSchema, ack.result);
-  }
-
-  /** REQ-PX-048: one file of the task's workspace; binary and oversized files come back with a typed status and no content. */
-  async readWorkspaceFile(taskId: string, path: string): Promise<WorkspaceFileView> {
-    const ack = await this.command("ReadWorkspaceFile", toBinary(ReadWorkspaceFileSchema, create(ReadWorkspaceFileSchema, { taskId: { value: unhex(taskId) }, path })));
-    return fromBinary(WorkspaceFileViewSchema, ack.result);
-  }
-
-  /** The effect receipts of one task (with the whole chain's validity). */
-  async effectReceipts(taskId: string): Promise<EffectReceiptList> {
-    const ack = await this.command("GetEffectReceipts", toBinary(GetEffectReceiptsSchema, create(GetEffectReceiptsSchema, { taskId: { value: unhex(taskId) } })));
-    return fromBinary(EffectReceiptListSchema, ack.result);
   }
 
   async decideReview(sessionId: string, taskId: string, decision: "ACCEPT" | "RETURN", rejected: { path: string; index: number }[], note: string, expectedWorkspaceRevision: bigint): Promise<ReviewDecided> {

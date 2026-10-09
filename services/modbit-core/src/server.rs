@@ -744,8 +744,6 @@ async fn serve_connection(core: Arc<Core>, mut stream: BoxedStream) -> Result<()
                     "GetTaskStatus",
                     "GetReviewBundle",
                     "GetCodeView",
-                    "ListWorkspaceDir",
-                    "ReadWorkspaceFile",
                     "DecideReview",
                     "ApplyUserPatch",
                     "SubmitExternalDiagnostics",
@@ -1345,7 +1343,7 @@ fn required_client_capability(env: &CommandEnvelope) -> Option<&'static str> {
                 "ui.selection"
             }
         }
-        "GetCodeView" | "ListWorkspaceDir" | "ReadWorkspaceFile" => "ui.code_view",
+        "GetCodeView" => "ui.code_view",
         // The conversation read model is a read of the log; a read marker and
         // an archive are the person's own curation of a session.
         "GetTranscript" | "GetAgentHeaders" | "SearchConversations" => "events.subscribe",
@@ -7372,8 +7370,6 @@ pub(crate) async fn handle_command(core: &Arc<Core>, env: CommandEnvelope) -> Co
                 Err((code, msg)) => reject(cid, &code, msg),
             }
         }
-        "ListWorkspaceDir" => crate::workspace_files::list(core, env).await,
-        "ReadWorkspaceFile" => crate::workspace_files::read(core, env).await,
         "DecideReview" => {
             let Ok(p) = wire::DecideReview::decode(env.payload.as_slice()) else {
                 return reject(cid, "BAD_PAYLOAD", "DecideReview");
