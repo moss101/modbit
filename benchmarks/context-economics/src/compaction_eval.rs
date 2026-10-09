@@ -34,6 +34,10 @@ use sha2::{Digest, Sha256};
 
 use crate::projection_trial::{MeanCi, Proportion, mean_ci, wilson};
 
+/// Disclosed with every report. The fixture was revised after seeing results,
+/// so its numbers are post-hoc; the first run's numbers are recorded here.
+pub const POST_HOC_NOTE: &str = "POST-HOC. The fixture was revised twice after seeing results, so these numbers are not a pre-registered measurement. FirstRun (before any result was seen): uncompacted 140/192 (52 probes its reader could not match), extractive 96/192, structured 127/192, lossy 120/192; some of its runs had 29 entries, below the 30 specified. Revised1 (after the first run): uncompacted 192/192, extractive 96/192, structured 127/192, lossy 120/192. Revised2 (after the second run; this report): uncompacted 240/240, extractive 96/240, structured 169/240, lossy 120/240. Each revision is reproduced by the test the_recorded_numbers_of_each_revision_reproduce.";
+
 /// The marker a report carries for what a live provider would have measured.
 pub const LIVE_MARKER: &str = "LIVE: NOT RUN - task success after compaction (does the same model, with the compacted context, still complete the task) needs a configured provider and is not measured here";
 
@@ -52,9 +56,34 @@ pub struct Probe {
     pub entry: usize,
 }
 
+/// Which revision of the fixture generator produced a run.
+///
+/// The fixture was revised after seeing results, so every revision stays in
+/// the code and its recorded numbers are reproduced by a test
+/// (`the_recorded_numbers_of_each_revision_reproduce`). Nothing here is a
+/// pre-registered fixture: the revisions are post-hoc, and the report says so.
+#[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord, Serialize, Deserialize)]
+pub enum Revision {
+    /// The generator as first written, before any result had been seen. Its
+    /// reader could not match the words of several questions (uncompacted
+    /// answered 140 of 192), and some runs had 29 entries, below the 30 the
+    /// fixture is specified to have.
+    FirstRun,
+    /// Post-hoc, after the first run: component names the reader can match,
+    /// question wording that shares content words with its answer, and the
+    /// failure text the summary reads back.
+    Revised1,
+    /// Post-hoc, after the second run: 12 to 17 steps (30 to 50 entries), and a
+    /// recent-decision and a recent-file probe. This is the fixture the tests
+    /// use by default.
+    Revised2,
+}
+
 /// One long fixture run: an event log and the questions it supports.
 #[derive(Clone, Debug)]
 pub struct LongRun {
+    /// The generator revision that produced it.
+    pub revision: Revision,
     /// Id.
     pub id: String,
     /// The model-visible log, oldest first.
@@ -118,18 +147,33 @@ const DIRS: [&str; 6] = [
     "db/archive/",
 ];
 
-/// `count` long fixture runs, each 30 to 50 entries, deterministic.
+/// `count` long fixture runs at the current revision, deterministic.
 #[must_use]
 pub fn long_runs(count: usize) -> Vec<LongRun> {
-    (0..count).map(long_run).collect()
+    long_runs_at(count, Revision::Revised2)
 }
 
-fn long_run(index: usize) -> LongRun {
+/// `count` long fixture runs at a given revision, deterministic.
+#[must_use]
+pub fn long_runs_at(count: usize, revision: Revision) -> Vec<LongRun> {
+    (0..count).map(|i| long_run(i, revision)).collect()
+}
+
+fn long_run(index: usize, revision: Revision) -> LongRun {
     let mut rng = Rng(0xC0FF_EE00 + index as u64);
     let id = format!("long-{index:02}");
     let forbidden = rng.pick(&DIRS);
-    let kept_fn = format!("{}{}mod", rng.pick(&NOUNS), index);
-    let steps = 12 + index % 6;
+    let noun = rng.pick(&NOUNS);
+    let kept_fn = if revision == Revision::FirstRun {
+        format!("{noun}_{index}")
+    } else {
+        format!("{noun}{index}mod")
+    };
+    let steps = if revision >= Revision::Revised2 {
+        12 + index % 6
+    } else {
+        10 + index % 6
+    };
     let mut entries: Vec<SourceEntry> = Vec::new();
     let mut probes: Vec<Probe> = Vec::new();
     let mut push = |role: &str, name: &str, text: String, sig: Option<String>| -> usize {
@@ -159,10 +203,15 @@ fn long_run(index: usize) -> LongRun {
         ),
         None,
     );
+    let directory_question = if revision == Revision::FirstRun {
+        format!("Which directory must not be touched while refactoring {kept_fn}?")
+    } else {
+        format!("Which directory should I not touch while I refactor {kept_fn}?")
+    };
     probe(
         &mut probes,
         "user",
-        format!("Which directory should I not touch while I refactor {kept_fn}?"),
+        directory_question,
         vec![forbidden.to_owned()],
         at,
     );
@@ -192,7 +241,7 @@ fn long_run(index: usize) -> LongRun {
         if s == steps / 2 {
             mid_decision = Some((a, component.clone(), reason.clone()));
         }
-        if s == steps - 2 {
+        if s == steps - 2 && revision >= Revision::Revised2 {
             recent_decision = Some((a, component.clone(), reason.clone()));
         }
         let body: String = (0..6)
@@ -208,16 +257,21 @@ fn long_run(index: usize) -> LongRun {
         if s == 3 {
             mid_file = Some((r, file.clone()));
         }
-        if s == steps - 2 {
+        if s == steps - 2 && revision >= Revision::Revised2 {
             recent_file = Some((r, file.clone()));
         }
         if s % 3 == 1 {
             let test = format!("tests/{component}.rs::handles_{}", rng.next() % 9000);
+            let failed_line = if revision == Revision::FirstRun {
+                test.clone()
+            } else {
+                format!("failed test {test}")
+            };
             let t = push(
                 "tool",
                 "test.run",
                 format!(
-                    "status: FAILED\nfailed test {test}: left {} right {}\n1 failed; {} passed",
+                    "status: FAILED\n{failed_line}: left {} right {}\n1 failed; {} passed",
                     rng.next() % 90,
                     rng.next() % 90,
                     3 + s
@@ -336,6 +390,7 @@ fn long_run(index: usize) -> LongRun {
         n,
     );
     LongRun {
+        revision,
         id,
         entries,
         probes,
@@ -603,6 +658,11 @@ pub struct ArmResult {
 /// The report.
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
 pub struct CompactionReport {
+    /// The generator revision the runs came from (`Revision`, debug form).
+    pub fixture: String,
+    /// The post-hoc disclosure: the fixture was revised after results, and
+    /// the numbers of every revision, the first run's included.
+    pub post_hoc: String,
     /// Long runs.
     pub runs: usize,
     /// Probes across the runs.
@@ -710,6 +770,11 @@ pub fn evaluate(runs: &[LongRun]) -> CompactionReport {
     }
     let probes = runs.iter().map(|r| r.probes.len()).sum();
     let mut report = CompactionReport {
+        fixture: format!(
+            "{:?}",
+            runs.first().map_or(Revision::Revised2, |r| r.revision)
+        ),
+        post_hoc: POST_HOC_NOTE.into(),
         runs: runs.len(),
         probes,
         arms,

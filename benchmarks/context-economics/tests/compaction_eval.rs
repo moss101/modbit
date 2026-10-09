@@ -3,9 +3,20 @@
 //! reader sees only what an arm retains, and the metric can fail.
 
 use modbit_bench_context_economics::compaction_eval::{
-    Arm, LIVE_MARKER, Probe, answers_from, context_for, evaluate, invalid_probes, long_runs,
-    validate_report,
+    Arm, LIVE_MARKER, POST_HOC_NOTE, Probe, Revision, answers_from, context_for, evaluate,
+    invalid_probes, long_runs, long_runs_at, validate_report,
 };
+
+/// The answered counts each revision recorded when it was run, in `Arm::ALL`
+/// order (uncompacted, extractive, structured, lossy) over 24 runs. Post-hoc:
+/// these are the numbers the revisions produced, kept so a change to the
+/// generator or the reader shows up as a failing test rather than a silent
+/// shift of the report.
+const RECORDED: [(Revision, usize, [usize; 4]); 3] = [
+    (Revision::FirstRun, 192, [140, 96, 127, 120]),
+    (Revision::Revised1, 192, [192, 96, 127, 120]),
+    (Revision::Revised2, 240, [240, 96, 169, 120]),
+];
 
 fn arm(
     r: &modbit_bench_context_economics::compaction_eval::CompactionReport,
@@ -42,6 +53,10 @@ fn the_metric_reaches_its_bound_and_can_fail_a_lossy_summarizer() {
     let runs = long_runs(24);
     let report = evaluate(&runs);
     validate_report(&report).unwrap();
+    // The report labels its fixture as post-hoc and carries the first run's
+    // numbers with it.
+    assert_eq!(report.fixture, "Revised2");
+    assert_eq!(report.post_hoc, POST_HOC_NOTE);
     let text = serde_json::to_string_pretty(&report).unwrap();
     eprintln!("{text}");
     // `MODBIT_BENCH_RESULTS_DIR` retains the report (the committed copy was
@@ -149,8 +164,34 @@ fn a_tampered_report_does_not_validate() {
         .unwrap();
     lossy.dropped.pop();
     assert!(validate_report(&hidden).unwrap_err().contains("hides"));
-    report.arms[2].answered.k += 0; // content unchanged: digest reproduces
     validate_report(&report).unwrap();
     report.runs += 1;
     assert!(validate_report(&report).unwrap_err().contains("digest"));
+}
+
+#[test]
+fn the_recorded_numbers_of_each_revision_reproduce() {
+    for (revision, probes, answered) in RECORDED {
+        let report = evaluate(&long_runs_at(24, revision));
+        assert_eq!(report.fixture, format!("{revision:?}"));
+        assert_eq!(report.probes, probes, "{revision:?}");
+        let got: Vec<usize> = report.arms.iter().map(|a| a.answered.k).collect();
+        assert_eq!(got, answered.to_vec(), "{revision:?}");
+    }
+    // The first run's failure is itself a result: its reader could not match
+    // 52 probes of the whole log, and some runs were below 30 entries.
+    let first = evaluate(&long_runs_at(24, Revision::FirstRun));
+    let unc = arm(&first, Arm::Uncompacted);
+    assert_eq!(unc.dropped.len(), 52);
+    assert_eq!(
+        &unc.dropped[..3],
+        ["long-00/4", "long-00/5", "long-01/4"].map(String::from)
+    );
+    let shortest = long_runs_at(24, Revision::FirstRun)
+        .iter()
+        .map(|r| r.entries.len())
+        .min()
+        .unwrap();
+    assert_eq!(shortest, 29);
+    assert!(POST_HOC_NOTE.contains("140/192") && POST_HOC_NOTE.contains("240/240"));
 }

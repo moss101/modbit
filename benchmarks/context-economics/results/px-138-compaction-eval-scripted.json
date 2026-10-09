@@ -1,4 +1,6 @@
 {
+  "fixture": "Revised2",
+  "post_hoc": "POST-HOC. The fixture was revised twice after seeing results, so these numbers are not a pre-registered measurement. FirstRun (before any result was seen): uncompacted 140/192 (52 probes its reader could not match), extractive 96/192, structured 127/192, lossy 120/192; some of its runs had 29 entries, below the 30 specified. Revised1 (after the first run): uncompacted 192/192, extractive 96/192, structured 127/192, lossy 120/192. Revised2 (after the second run; this report): uncompacted 240/240, extractive 96/240, structured 169/240, lossy 120/240. Each revision is reproduced by the test the_recorded_numbers_of_each_revision_reproduce.",
   "runs": 24,
   "probes": 240,
   "arms": [
@@ -624,5 +626,5 @@
   "live": "LIVE: NOT RUN - task success after compaction (does the same model, with the compacted context, still complete the task) needs a configured provider and is not measured here",
   "oracle": "Questions and answers are recorded by the fixture generator beside each event log, before any arm runs; every answer is checked to be present in the event log at the entry the generator named. Nothing is derived from a compaction manifest or a summary.",
   "method": "24 deterministic long runs of 30 to 50 entries, each compacted once as a whole; the reader is a scripted passage-retrieval stand-in that answers from the retained context only, so recall here is a property of what the context retains, not of a model's reasoning. The structured arm's summary is written by a scripted summarizer that must pass the product's own validation; the lossy arm is a test double that drops files, failures and decisions and exists to show the metric can fail. Intervals: Wilson for proportions, deterministic bootstrap for token means. The runs are synthetic: nothing here says how a live model behaves or how real sessions compact.",
-  "digest": "e17e03367ad08b680fa2bb300165f170641fd6577d604f47e39d429eebdca236"
+  "digest": "1182f9f0ed96c7af70d9266c8f9342901998a42fe340de3ed1d242267b09f13e"
 }

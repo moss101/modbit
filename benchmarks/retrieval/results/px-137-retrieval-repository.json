@@ -6,14 +6,14 @@
       "bytes": 11940931,
       "cases": 64,
       "cold_index": {
-        "exact_ms": 4587.8357080000005,
-        "lexical_ms": 2065.5425,
-        "symbols_ms": 3902.297625,
-        "semantic_ms": 4963.899458,
-        "graph_ms": 3842.148416,
-        "total_ms": 19361.724333000002
+        "exact_ms": 4041.7006669999996,
+        "lexical_ms": 1874.686208,
+        "symbols_ms": 3592.4550000000004,
+        "semantic_ms": 4439.245917,
+        "graph_ms": 3456.839333,
+        "total_ms": 17404.927792
       },
-      "incremental_ms": 55.042667,
+      "incremental_ms": 47.40225,
       "columns": [
         {
           "name": "ABaseline",
@@ -107,8 +107,8 @@
               }
             ]
           ],
-          "mean_latency_ms": 0.6084460468749999,
-          "median_latency_ms": 0.0229795,
+          "mean_latency_ms": 0.5441263125,
+          "median_latency_ms": 0.012458,
           "mean_steps": 0.09375,
           "mean_tokens_top5": 8137.359375
         },
@@ -204,8 +204,8 @@
               }
             ]
           ],
-          "mean_latency_ms": 3.8986555468749993,
-          "median_latency_ms": 2.6703954999999997,
+          "mean_latency_ms": 3.376111921875,
+          "median_latency_ms": 2.2305,
           "mean_steps": 2.140625,
           "mean_tokens_top5": 156913.65625
         },
@@ -301,8 +301,8 @@
               }
             ]
           ],
-          "mean_latency_ms": 3.7387871093750014,
-          "median_latency_ms": 2.474542,
+          "mean_latency_ms": 3.22817178125,
+          "median_latency_ms": 2.0757084999999997,
           "mean_steps": 2.140625,
           "mean_tokens_top5": 156913.65625
         },
@@ -398,8 +398,8 @@
               }
             ]
           ],
-          "mean_latency_ms": 2.2249954374999996,
-          "median_latency_ms": 2.19225,
+          "mean_latency_ms": 1.9032154687499996,
+          "median_latency_ms": 1.7665005,
           "mean_steps": 1.0,
           "mean_tokens_top5": 254254.4375
         },
@@ -495,8 +495,8 @@
               }
             ]
           ],
-          "mean_latency_ms": 0.22880989062499998,
-          "median_latency_ms": 0.21825,
+          "mean_latency_ms": 0.14203446875,
+          "median_latency_ms": 0.13737549999999998,
           "mean_steps": 1.0,
           "mean_tokens_top5": 148046.78125
         },
@@ -592,8 +592,8 @@
               }
             ]
           ],
-          "mean_latency_ms": 81.402793578125,
-          "median_latency_ms": 84.6952085,
+          "mean_latency_ms": 58.5536855625,
+          "median_latency_ms": 60.924770499999994,
           "mean_steps": 4.640625,
           "mean_tokens_top5": 564489.921875
         },

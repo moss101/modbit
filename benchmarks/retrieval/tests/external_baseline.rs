@@ -233,7 +233,7 @@ fn check_corpus(c: &CorpusReport, min_cases: usize) {
     assert!(
         rg.recall
             .iter()
-            .all(|(_, p)| p.n > 0 && p.lo <= p.p + 1e-9 && p.p <= p.hi + 1e-9)
+            .all(|(_, p)| p.n > 0 && p.lo <= p.p && p.p <= p.hi)
     );
     // Every planner profile is present with intervals and a latency.
     for name in [
@@ -258,7 +258,7 @@ fn check_corpus(c: &CorpusReport, min_cases: usize) {
     for col in c.columns.iter().filter(|x| x.status == Status::Ran) {
         let r10 = col.recall.iter().find(|(k, _)| *k == 10).unwrap().1.p;
         assert!(
-            col.recall_at_budget.iter().all(|(_, p)| p.p <= r10 + 1e-9),
+            col.recall_at_budget.iter().all(|(_, p)| p.p <= r10),
             "{}",
             col.name
         );
@@ -285,7 +285,7 @@ fn planner_profiles_against_ripgrep_on_a_few_thousand_synthetic_files() {
     let cases = synthetic::write_repo(dir.path(), 3_000).unwrap();
     commit_all(dir.path());
     let report = evaluate_corpus(dir.path(), "synthetic-3000", &cases).unwrap();
-    assert!(report.files >= 2_900, "{} files", report.files);
+    assert!(report.files >= 3_000, "{} files", report.files);
     print_corpus(&report);
     check_corpus(&report, 50);
     // Rerunning the scoring on the same rankings reproduces the digest: the

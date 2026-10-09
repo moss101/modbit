@@ -16,6 +16,14 @@ use std::path::Path;
 use modbit_retrieval::bench::Case;
 
 /// (slug, area, three keywords, opening doc sentence, developer question).
+///
+/// `area` becomes a directory. It must not be a name the exact index skips by
+/// policy (`SKIPPED_DIRS` in `modbit_retrieval::index`: `dist`, `vendor`,
+/// `build`, ...): a label under such a directory can never be retrieved by a
+/// planner profile, which is what an earlier run of this table did to three
+/// labels (`dist`), and the planner was scored on files it was not allowed to
+/// index. The `external_baseline` test asserts that the indexed file count is at
+/// least the number written, so a skipped directory fails the run.
 const FEATURES: [(&str, &str, [&str; 3], &str, &str); 60] = [
     (
         "retry_backoff",
@@ -166,21 +174,21 @@ const FEATURES: [(&str, &str, [&str; 3], &str, &str); 60] = [
     ),
     (
         "vector_clock",
-        "dist",
+        "cluster",
         ["vector", "clock", "happens"],
         "Vector clock that decides happens-before between replicas.",
         "decide happens-before between replicas with a vector clock",
     ),
     (
         "raft_election",
-        "dist",
+        "cluster",
         ["raft", "election", "term"],
         "Raft leader election that bumps the term on timeout.",
         "raft leader election and the term bump on timeout",
     ),
     (
         "consistent_hash",
-        "dist",
+        "cluster",
         ["consistent", "vnode", "rebalance"],
         "Consistent hashing with virtual nodes and minimal rebalance.",
         "rebalance keys with consistent hashing and virtual nodes",
