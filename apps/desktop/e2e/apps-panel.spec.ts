@@ -190,6 +190,21 @@ test("replay: a reload shows the same bytes; two attaches from the start read id
   // The screen is rebuilt from the Core's replay after a reload; on a loaded runner that takes longer than the default wait.
   await expect(screen()).toContainText("got:hello-pty", { timeout: 30_000 });
   await expect(screen()).toContainText("READY", { timeout: 30_000 });
+  if (process.platform === "win32") {
+    // A Windows pseudo-console repaints its screen when the viewer attaches at a size (the reload's resize), so the
+    // log grows by that repaint (160 bytes on the runner) after the first read. The exact claims are the ones the log
+    // itself makes: the view stands at the Core's head, and everything read before is still the log's first bytes.
+    await expect
+      .poll(async () => {
+        const head = (await listTerminals()).find((t) => t.terminalId === echo)!.bytesSoFar;
+        return (await terminalView().getAttribute("data-cursor")) === head;
+      }, { timeout: 30_000 })
+      .toBe(true);
+    const second = await readTerminal(page, { sessionId, taskId, terminalId: echo, after: "0", windowBytes: 65536 });
+    expect(sha(second.bytes.slice(0, first.bytes.length))).toBe(sha(first.bytes));
+    expect(second.bytes.length).toBeGreaterThanOrEqual(first.bytes.length);
+    return;
+  }
   await expect(terminalView()).toHaveAttribute("data-cursor", before!);
   const second = await readTerminal(page, { sessionId, taskId, terminalId: echo, after: "0", windowBytes: 65536 });
   expect(sha(second.bytes)).toBe(sha(first.bytes));

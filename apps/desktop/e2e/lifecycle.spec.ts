@@ -6,6 +6,7 @@
  * question says quitting does, and the recovery counts a restart shows.
  */
 import { expect, test, type ElectronApplication } from "@playwright/test";
+import { execFileSync } from "node:child_process";
 import { existsSync, mkdtempSync, readFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
@@ -144,7 +145,7 @@ test("PX-049: a restart after a quit with a task running shows the Core's recove
   ];
   const { server, url } = await steppedModel(script);
   const dataDir = mkdtempSync(join(tmpdir(), "modbit-e2e-recovery-"));
-  let { app, page } = await launch(dataDir, { env: { MODBIT_OPENAI_BASE_URL: url, MODBIT_QUIT_PROMPT: "" } });
+  let { app, page } = await launch(dataDir, { env: { MODBIT_OPENAI_BASE_URL: url, MODBIT_QUIT_PROMPT: "", MODBIT_TETHER_TRACE: "1" } });
   try {
     await page.getByTestId("goal").fill("Edit the notes");
     await page.getByTestId("workspace").fill(repo);
@@ -157,7 +158,15 @@ test("PX-049: a restart after a quit with a task running shows the Core's recove
     // Stop the app the way a crash would: the Core dies with the task running, nothing was asked.
     app.process().kill("SIGKILL");
     await new Promise<void>((r) => (app.process().exitCode !== null || app.process().signalCode !== null ? r() : app.process().once("exit", () => r())));
-    hold.open();
+    // The model's reply stays held until the end of the test: a reply let go now could reach a Core that has not yet
+    // noticed its client is gone and finish the task before the restart, leaving nothing to recover.
+    if (process.platform === "win32") {
+      await new Promise((r) => setTimeout(r, 3000));
+      for (const f of [["tasklist", "/FI", "IMAGENAME eq modbit-core.exe"], ["tasklist", "/FI", "IMAGENAME eq modbit-execd.exe"]]) {
+        try { console.error("[diag]", execFileSync(f[0]!, f.slice(1), { encoding: "utf8" })); } catch (e) { console.error("[diag] tasklist failed", e); }
+      }
+      console.error("[diag] tether trace:", existsSync(join(dataDir, "tether-trace.log")) ? readFileSync(join(dataDir, "tether-trace.log"), "utf8") : "(none)");
+    }
 
     ({ app, page } = await launch(dataDir, { env: { MODBIT_OPENAI_BASE_URL: url, MODBIT_QUIT_PROMPT: "" } }));
     await expect(page.getByTestId("task-card")).toHaveCount(1, { timeout: 30_000 });

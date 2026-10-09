@@ -202,11 +202,25 @@ fn main() -> ExitCode {
     // our stdin; EOF means the client is gone and this Core must not outlive
     // it, or its singleton lock would refuse the client's next Core.
     if tether_stdin {
-        std::thread::spawn(|| {
+        let trace_dir = data_dir.clone();
+        let trace = move |what: &str| {
+            if std::env::var_os("MODBIT_TETHER_TRACE").is_some()
+                && let Ok(mut f) = std::fs::OpenOptions::new()
+                    .create(true)
+                    .append(true)
+                    .open(trace_dir.join("tether-trace.log"))
+            {
+                let _ = writeln!(f, "pid {} {what}", std::process::id());
+            }
+        };
+        trace("tether armed");
+        let t = trace.clone();
+        std::thread::spawn(move || {
             use std::io::Read;
             let mut sink = [0u8; 64];
             let mut stdin = std::io::stdin();
             while matches!(stdin.read(&mut sink), Ok(n) if n > 0) {}
+            t("stdin closed");
             // The client's pipes are gone with it: a write to a dead stderr is an error that
             // `eprintln!` turns into a panic, and a panic here would leave the Core running.
             let _ = writeln!(
@@ -237,8 +251,11 @@ fn main() -> ExitCode {
         // main left its Core, and the profile lock, behind), so the Core also waits on the parent
         // process itself.
         #[cfg(windows)]
-        std::thread::spawn(|| {
-            if parent_exit::wait() {
+        std::thread::spawn(move || {
+            trace("parent wait begins");
+            let gone = parent_exit::wait();
+            trace(&format!("parent wait returned {gone}"));
+            if gone {
                 let _ = writeln!(
                     std::io::stderr(),
                     "modbit-core: supervising parent is gone; exiting"
