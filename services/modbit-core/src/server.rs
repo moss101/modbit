@@ -101,6 +101,17 @@ pub(crate) async fn require_lease(
     env: &CommandEnvelope,
     session_id: &SessionId,
 ) -> Result<(), CommandAck> {
+    // A command that names the session it acts in acts only on that session's tasks: the lease generation below is the owning
+    // session's, and two sessions can hold the same number, so it cannot tell the caller's session from another.
+    if let Some(named) = env.session_id.as_ref().and_then(id16)
+        && named != *session_id.as_bytes()
+    {
+        return Err(reject(
+            cid.clone(),
+            "WRONG_SESSION",
+            "the task belongs to another session",
+        ));
+    }
     let store = core.store.lock().await;
     let session = match store.session(session_id) {
         Ok(Some(s)) => s,
