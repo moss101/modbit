@@ -69,19 +69,19 @@ export async function getRunMode(c: CoreClient, taskId: string): Promise<RunMode
 
 export async function setRunMode(c: CoreClient, sessionId: string, taskId: string, mode: string, acknowledgeRisk: boolean): Promise<RunModeView> {
   const payload = toBinary(SetRunModeSchema, create(SetRunModeSchema, { taskId: id(taskId), mode, acknowledgeRisk }));
-  const ack = await c.command("SetRunMode", payload, undefined, lease(c, sessionId));
+  const ack = await c.command("SetRunMode", payload, undefined, lease(c, sessionId), sessionId);
   return fromBinary(RunModeViewSchema, ack.result);
 }
 
 export async function addAllowRule(c: CoreClient, sessionId: string, taskId: string, rule: { pattern: string[]; scope: string; expiresAtMs: number; coversAlwaysAsk: boolean }): Promise<AllowRuleView> {
   const payload = toBinary(AddAllowRuleSchema, create(AddAllowRuleSchema, { taskId: id(taskId), pattern: rule.pattern, scope: rule.scope, expiresAtMs: BigInt(rule.expiresAtMs), coversAlwaysAsk: rule.coversAlwaysAsk }));
-  const ack = await c.command("AddAllowRule", payload, undefined, lease(c, sessionId));
+  const ack = await c.command("AddAllowRule", payload, undefined, lease(c, sessionId), sessionId);
   return fromBinary(AllowRuleViewSchema, ack.result);
 }
 
 export async function revokeAllowRule(c: CoreClient, sessionId: string, taskId: string, ruleId: string, reason: string): Promise<AllowRuleRevoked> {
   const payload = toBinary(RevokeAllowRuleSchema, create(RevokeAllowRuleSchema, { taskId: id(taskId), ruleId, reason }));
-  const ack = await c.command("RevokeAllowRule", payload, undefined, lease(c, sessionId));
+  const ack = await c.command("RevokeAllowRule", payload, undefined, lease(c, sessionId), sessionId);
   return fromBinary(AllowRuleRevokedSchema, ack.result);
 }
 
@@ -98,7 +98,7 @@ export async function getContextAccounting(c: CoreClient, taskId: string): Promi
 /** REQ-PX-116: the cost, wall-clock and delegation limits of a task (0 = none for cost and wall clock). */
 export async function setTaskBudgets(c: CoreClient, sessionId: string, taskId: string, b: { maxCostMinor: bigint; maxWallMs: bigint; maxChildren: number; forbidSpawn: boolean }): Promise<TaskBudgetsView> {
   const payload = toBinary(SetTaskBudgetsSchema, create(SetTaskBudgetsSchema, { taskId: id(taskId), maxCostMinor: b.maxCostMinor, maxWallMs: b.maxWallMs, maxChildren: b.maxChildren, forbidSpawn: b.forbidSpawn }));
-  const ack = await c.command("SetTaskBudgets", payload, undefined, lease(c, sessionId));
+  const ack = await c.command("SetTaskBudgets", payload, undefined, lease(c, sessionId), sessionId);
   return fromBinary(TaskBudgetsViewSchema, ack.result);
 }
 
@@ -144,7 +144,7 @@ export async function restoreCheckpoint(
       expectedCurrentEpoch: o.expectedCurrentEpoch,
     }),
   );
-  const ack = await c.command("RestoreCheckpoint", payload, commandId, lease(c, sessionId));
+  const ack = await c.command("RestoreCheckpoint", payload, commandId, lease(c, sessionId), sessionId);
   return fromBinary(CheckpointRestoreResultSchema, ack.result);
 }
 
@@ -153,13 +153,13 @@ export async function forkTask(c: CoreClient, sessionId: string, taskId: string,
     ForkTaskSchema,
     create(ForkTaskSchema, { taskId: id(taskId), checkpointId: t.checkpointId ?? "", goalText: t.goalText ?? "", carry: [], worktreeDir: "", turnOrdinal: t.turnOrdinal ?? 0, checkpointName: t.checkpointName ?? "", ...(t.turnId ? { turnId: id(t.turnId) } : {}) }),
   );
-  const ack = await c.command("ForkTask", payload, commandId, lease(c, sessionId));
+  const ack = await c.command("ForkTask", payload, commandId, lease(c, sessionId), sessionId);
   return fromBinary(TaskForkedSchema, ack.result);
 }
 
 export async function nameCheckpoint(c: CoreClient, sessionId: string, taskId: string, checkpointId: string, name: string): Promise<CheckpointNamed> {
   const payload = toBinary(NameCheckpointSchema, create(NameCheckpointSchema, { taskId: id(taskId), checkpointId, name }));
-  const ack = await c.command("NameCheckpoint", payload, undefined, lease(c, sessionId));
+  const ack = await c.command("NameCheckpoint", payload, undefined, lease(c, sessionId), sessionId);
   return fromBinary(CheckpointNamedSchema, ack.result);
 }
 

@@ -56,27 +56,27 @@ export async function getProject(c: CoreClient, projectId: string): Promise<Proj
 
 export async function createProject(c: CoreClient, sessionId: string, p: { name: string; color?: string; icon?: string; workspaceRoot: string }, commandId?: Uint8Array): Promise<ProjectChanged> {
   const payload = toBinary(CreateProjectSchema, create(CreateProjectSchema, { sessionId: id(sessionId), name: p.name, color: p.color ?? "", icon: p.icon ?? "", workspaceRoot: p.workspaceRoot }));
-  return fromBinary(ProjectChangedSchema, (await c.command("CreateProject", payload, commandId, lease(c, sessionId))).result);
+  return fromBinary(ProjectChangedSchema, (await c.command("CreateProject", payload, commandId, lease(c, sessionId), sessionId)).result);
 }
 
 export async function renameProject(c: CoreClient, sessionId: string, projectId: string, p: { name?: string; color?: string; icon?: string }, commandId?: Uint8Array): Promise<ProjectChanged> {
   const payload = toBinary(RenameProjectSchema, create(RenameProjectSchema, { sessionId: id(sessionId), projectId: id(projectId), name: p.name ?? "", color: p.color ?? "", icon: p.icon ?? "" }));
-  return fromBinary(ProjectChangedSchema, (await c.command("RenameProject", payload, commandId, lease(c, sessionId))).result);
+  return fromBinary(ProjectChangedSchema, (await c.command("RenameProject", payload, commandId, lease(c, sessionId), sessionId)).result);
 }
 
 export async function archiveProject(c: CoreClient, sessionId: string, projectId: string, archived: boolean, commandId?: Uint8Array): Promise<ProjectChanged> {
   const payload = toBinary(ArchiveProjectSchema, create(ArchiveProjectSchema, { sessionId: id(sessionId), projectId: id(projectId), archived }));
-  return fromBinary(ProjectChangedSchema, (await c.command("ArchiveProject", payload, commandId, lease(c, sessionId))).result);
+  return fromBinary(ProjectChangedSchema, (await c.command("ArchiveProject", payload, commandId, lease(c, sessionId), sessionId)).result);
 }
 
 export async function addProjectMember(c: CoreClient, sessionId: string, projectId: string, taskId: string, commandId?: Uint8Array): Promise<ProjectChanged> {
   const payload = toBinary(AddProjectMemberSchema, create(AddProjectMemberSchema, { sessionId: id(sessionId), projectId: id(projectId), taskId: id(taskId) }));
-  return fromBinary(ProjectChangedSchema, (await c.command("AddProjectMember", payload, commandId, lease(c, sessionId))).result);
+  return fromBinary(ProjectChangedSchema, (await c.command("AddProjectMember", payload, commandId, lease(c, sessionId), sessionId)).result);
 }
 
 export async function removeProjectMember(c: CoreClient, sessionId: string, projectId: string, taskId: string, commandId?: Uint8Array): Promise<ProjectChanged> {
   const payload = toBinary(RemoveProjectMemberSchema, create(RemoveProjectMemberSchema, { sessionId: id(sessionId), projectId: id(projectId), taskId: id(taskId) }));
-  return fromBinary(ProjectChangedSchema, (await c.command("RemoveProjectMember", payload, commandId, lease(c, sessionId))).result);
+  return fromBinary(ProjectChangedSchema, (await c.command("RemoveProjectMember", payload, commandId, lease(c, sessionId), sessionId)).result);
 }
 
 // ----------------------------------------------------------------- worktrees
@@ -89,12 +89,12 @@ export async function listWorktrees(c: CoreClient, opts: { sessionId?: string; t
 /** Remove the one worktree the person chose; with `dryRun` the Core says what would be lost and removes nothing. */
 export async function removeWorktree(c: CoreClient, sessionId: string, worktreeId: string, dryRun: boolean, commandId?: Uint8Array): Promise<WorktreeRemoval> {
   const payload = toBinary(RemoveWorktreeSchema, create(RemoveWorktreeSchema, { sessionId: id(sessionId), worktreeId, dryRun }));
-  return fromBinary(WorktreeRemovalSchema, (await c.command("RemoveWorktree", payload, commandId, dryRun ? undefined : lease(c, sessionId))).result);
+  return fromBinary(WorktreeRemovalSchema, (await c.command("RemoveWorktree", payload, commandId, dryRun ? undefined : lease(c, sessionId), sessionId)).result);
 }
 
 export async function runWorktreeCleanup(c: CoreClient, sessionId: string, opts: { reason?: string; dryRun?: boolean } = {}): Promise<WorktreeCleanupReport> {
   const payload = toBinary(RunWorktreeCleanupSchema, create(RunWorktreeCleanupSchema, { reason: opts.reason ?? "requested from the desktop", dryRun: opts.dryRun ?? false }));
-  return fromBinary(WorktreeCleanupReportSchema, (await c.command("RunWorktreeCleanup", payload, undefined, lease(c, sessionId))).result);
+  return fromBinary(WorktreeCleanupReportSchema, (await c.command("RunWorktreeCleanup", payload, undefined, lease(c, sessionId), sessionId)).result);
 }
 
 export interface ApplyInput {
@@ -111,15 +111,15 @@ export async function applyWorktree(c: CoreClient, sessionId: string, taskId: st
     ApplyWorktreeSchema,
     create(ApplyWorktreeSchema, { taskId: id(taskId), option: a.option ?? "", confirmPaths: a.confirmPaths ?? [], remember: a.remember ?? false, expectedCandidateRevision: a.expectedCandidateRevision ?? 0n, expectedPlanDigest: a.expectedPlanDigest ?? "" }),
   );
-  return fromBinary(WorktreeApplyAckSchema, (await c.command("ApplyWorktree", payload, undefined, lease(c, sessionId))).result);
+  return fromBinary(WorktreeApplyAckSchema, (await c.command("ApplyWorktree", payload, undefined, lease(c, sessionId), sessionId)).result);
 }
 
 export async function undoApply(c: CoreClient, sessionId: string, taskId: string, applyId = ""): Promise<WorktreeApplyAck> {
   const payload = toBinary(UndoApplySchema, create(UndoApplySchema, { taskId: id(taskId), applyId }));
-  return fromBinary(WorktreeApplyAckSchema, (await c.command("UndoApply", payload, undefined, lease(c, sessionId))).result);
+  return fromBinary(WorktreeApplyAckSchema, (await c.command("UndoApply", payload, undefined, lease(c, sessionId), sessionId)).result);
 }
 
 export async function discardWorktree(c: CoreClient, sessionId: string, taskId: string, reason: string, confirm: string): Promise<WorktreeDiscarded> {
   const payload = toBinary(DiscardWorktreeSchema, create(DiscardWorktreeSchema, { taskId: id(taskId), reason, confirm }));
-  return fromBinary(WorktreeDiscardedSchema, (await c.command("DiscardWorktree", payload, undefined, lease(c, sessionId))).result);
+  return fromBinary(WorktreeDiscardedSchema, (await c.command("DiscardWorktree", payload, undefined, lease(c, sessionId), sessionId)).result);
 }
