@@ -96,6 +96,8 @@ export interface HostedSession {
   reclaimed: { url: string; atMs: number } | null;
   /** The next request answers `VIEW_RESET` once, saying what was lost. */
   pendingReset: string | null;
+  /** A revive in flight: a request that arrives meanwhile waits for the reset note to be set (PX-073). */
+  reviving: Promise<void> | null;
   /** A certificate error waiting for the person. */
   certHold: CertHold | null;
   certCallbacks: ((trusted: boolean) => void)[];
@@ -262,6 +264,7 @@ export class BrowserHost {
       lastUsedAt: this.touchSeq(),
       reclaimed: null,
       pendingReset: null,
+      reviving: null,
       certHold: null,
       certCallbacks: [],
       onCertHold: null,
@@ -703,6 +706,15 @@ export class BrowserHost {
 
   /** Bring a reclaimed view back: a new view in the same partition at the URL it had; the loss is stated on the next request. */
   private async revive(h: HostedSession): Promise<void> {
+    if (h.reviving) return h.reviving;
+    if (!h.reclaimed) return;
+    h.reviving = this.reviveNow(h).finally(() => {
+      h.reviving = null;
+    });
+    return h.reviving;
+  }
+
+  private async reviveNow(h: HostedSession): Promise<void> {
     const was = h.reclaimed;
     if (!was) return;
     const view = this.makeView(h.partition);
@@ -885,6 +897,8 @@ export class BrowserHost {
       if (h && h.pendingReset !== null) this.log.push({ browserSessionId: h.browserSessionId, kind: "request-while-reset-pending", ok: true, code: `${req.kind}${(req as { observer?: boolean }).observer === true ? ":observer" : ""}${background ? ":background" : ""}`, generation: h.leaseGeneration, atMs: Date.now() });
       if (!h || (this.gone(h) && !h.reclaimed)) return { kind: "error", code: "NO_SUCH_SESSION", message: `this host holds no view for ${bsid}` };
       if (h.reclaimed && req.kind !== "state" && req.kind !== "close") await this.revive(h);
+      // A revive started by another request (the panel's show) may still be loading: its reset note is not set until it is done.
+      if (h.reviving) await h.reviving;
       // Recency counts use, not observation: a read of the view's state, or the Core
       // reading a page on its own account, must not make an idle view look fresh (PX-073).
       if (req.kind !== "state" && !background) h.lastUsedAt = this.touchSeq();
