@@ -3358,3 +3358,145 @@ async fn px_084_a_persons_rules_and_modes_computer_tools_and_approving_tools_do_
     assert_eq!(for_run.unwrap_err().0, "RULE_NOT_ALLOWED");
     assert_eq!(run_approvals(&f.core, &run).await[0].status, "REQUESTED");
 }
+
+// ---- PX-086 on the Core: the dry-run posture ----
+
+/// A test run of a write-capable definition is a dry run: read-only, nothing
+/// the model tries is dispatched, nothing changes in the checkout or the run's
+/// worktree, no effect receipt exists, and the report says it was a dry run.
+/// It needs no approval, and it does not make the definition runnable.
+#[tokio::test(flavor = "multi_thread")]
+async fn px_086_a_test_run_of_a_write_capable_definition_changes_nothing_and_leaves_no_receipt() {
+    let script = vec![
+        call(
+            "change.apply",
+            json!({"path": "probe.txt", "op": "create", "content": "probe\n"}),
+        ),
+        call("shell.exec", json!({"argv": ["groups"]})),
+        call("fs.read", json!({"path": "README.md"})),
+        plan_update(&[], &[]),
+        complete(),
+    ];
+    let mut f = fx_priced(script, &[("README.md", "x")], &[]).await;
+    let v = create(
+        &mut f.c,
+        &def(
+            "dry",
+            manual(),
+            json!({"profile": {"effects": "protected_write", "capabilities": ["fs.write", "shell.exec"], "paths": ["out/**"]},
+                   "limits": {"max_cost_minor": 100}}),
+        ),
+        &f.root,
+    )
+    .await
+    .unwrap();
+    assert_eq!(v.state, "NEEDS_APPROVAL");
+    let started: AutomationRunStarted = cmd(
+        &mut f.c,
+        "RunAutomation",
+        RunAutomation {
+            automation_id: v.automation_id.clone(),
+            test: true,
+            event_id: "dry-1".into(),
+            ..Default::default()
+        },
+    )
+    .await
+    .unwrap();
+    assert_eq!(started.status, "running", "{started:?}");
+    let r = wait_runs(&mut f.c, &v.automation_id, 60, "the dry run", |r| {
+        done(r) == 1
+    })
+    .await;
+    assert!(r[0].test, "{:?}", r[0]);
+    assert_eq!(
+        r[0].status,
+        "succeeded",
+        "{:?}\n{}",
+        r[0],
+        dump(&f.core, &r[0]).await
+    );
+    let outputs: Value = serde_json::from_str(&r[0].outputs_json).unwrap();
+    assert_eq!(outputs["dry_run"], true, "{outputs}");
+    let ev = session_events(&f.core, &r[0]).await;
+    for name in ["change.apply", "shell.exec"] {
+        assert!(
+            !ev.iter().any(|e| e["event_type"] == "ToolCallDispatched"
+                && e["payload"]["payload"]["tool_name"] == name),
+            "{name} ran in a dry run"
+        );
+    }
+    let lease = ev
+        .iter()
+        .find(|e| e["event_type"] == "CapabilityLeaseGranted")
+        .unwrap();
+    assert_eq!(lease["payload"]["payload"]["effect_ceiling"], "READ_ONLY");
+    assert_eq!(lease["payload"]["payload"]["execution_profile"], "plan");
+    let task_root = ev
+        .iter()
+        .find(|e| e["event_type"] == "TaskCreated")
+        .and_then(|e| {
+            e["payload"]["payload"]["workspace_root"]
+                .as_str()
+                .map(str::to_owned)
+        })
+        .unwrap();
+    for root in [task_root.as_str(), f.root.as_str()] {
+        assert!(
+            !std::path::Path::new(root).join("probe.txt").exists(),
+            "probe.txt exists in {root}"
+        );
+    }
+    let receipts: modbit_protocol::v1::EffectReceiptList = cmd(
+        &mut f.c,
+        "GetEffectReceipts",
+        modbit_protocol::v1::GetEffectReceipts {
+            task_id: Some(Id {
+                value: hex::decode(&r[0].task_id).unwrap(),
+            }),
+        },
+    )
+    .await
+    .unwrap();
+    assert!(receipts.receipts.is_empty(), "{:?}", receipts.receipts);
+    // A dry run is not an approval, and does not make the definition runnable.
+    assert_eq!(
+        view(&mut f.c, &v.automation_id).await.state,
+        "NEEDS_APPROVAL"
+    );
+    assert_eq!(
+        run_now(&mut f.c, &v.automation_id).await.unwrap_err().0,
+        "NOT_ENABLED"
+    );
+    // A payload that the trigger's filters would skip is said so, and nothing runs.
+    let ev_def = create(
+        &mut f.c,
+        &def(
+            "filtered",
+            json!([{"kind": "event", "id": "pr", "source": "forge", "event": "pull_request",
+                    "filters": {"branches": ["main"]}}]),
+            json!({}),
+        ),
+        &f.root,
+    )
+    .await
+    .unwrap();
+    let would: AutomationRunStarted = cmd(
+        &mut f.c,
+        "RunAutomation",
+        RunAutomation {
+            automation_id: ev_def.automation_id.clone(),
+            trigger_id: "pr".into(),
+            test: true,
+            payload_json: json!({"action": "opened", "branch": "dev"}).to_string(),
+            source: "forge".into(),
+            event: "pull_request".into(),
+            ..Default::default()
+        },
+    )
+    .await
+    .unwrap();
+    assert!(would.would_skip_by_filter, "{would:?}");
+    assert_eq!(would.status, "skipped");
+    assert!(runs(&mut f.c, &ev_def.automation_id).await.is_empty());
+}

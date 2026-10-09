@@ -681,7 +681,6 @@ async fn qual_px_085_an_unapproved_or_edited_definition_does_not_fire_and_the_ap
     // A write profile needs the exact lists: a bare approval is refused.
     let write = webhook_def("writer", |d| {
         d["profile"] = json!({"effects": "reversible_write", "capabilities": ["fs.write"], "paths": ["reports/**"]});
-        d["limits"] = json!({"max_cost_minor": 500});
     });
     let (st, created) = api
         .post(&a, "/v1/automations", json!({"definition": write}))
@@ -1307,4 +1306,87 @@ async fn qual_px_085_the_automation_clock_is_the_database_clock_and_the_offset_n
             "without the test variable the offset is ignored: {b} vs {real}"
         );
     }
+}
+
+#[tokio::test]
+async fn qual_px_085_a_definition_that_can_act_needs_a_cost_limit_and_a_secret_value_is_refused_at_save()
+ {
+    let Some(api) = Api::start(true).await else {
+        return;
+    };
+    let (_t, a) = api.tenant("px085-budget-secret").await;
+    // A write profile without a stated cost limit is saved and refused at the
+    // approval with the typed code; with a limit the same approval succeeds.
+    let mut def = webhook_def("acts", |d| {
+        d["profile"] = json!({"effects": "reversible_write", "capabilities": ["fs.write"], "paths": ["reports/**"]});
+        d["limits"]
+            .as_object_mut()
+            .unwrap()
+            .remove("max_cost_minor");
+    });
+    let (st, created) = api
+        .post(&a, "/v1/automations", json!({"definition": def.clone()}))
+        .await;
+    assert_eq!(st, 201, "{created}");
+    let id = created["automation_id"].as_str().unwrap().to_owned();
+    let listed = json!({"version": 1, "definition_hash": created["definition_hash"], "effects": "reversible_write",
+                        "capabilities": ["fs.write"], "paths": ["reports/**"], "hosts": []});
+    let (st, r) = api
+        .post(&a, &format!("/v1/automations/{id}:enable"), listed)
+        .await;
+    assert_eq!(
+        (st, r["code"].as_str()),
+        (409, Some("BUDGET_REQUIRED")),
+        "{r}"
+    );
+    let (_, shown) = api.get(&a, &format!("/v1/automations/{id}")).await;
+    assert_ne!(shown["state"], "ENABLED", "{shown}");
+    def["limits"]["max_cost_minor"] = json!(300);
+    let (st, v2) = api
+        .post(
+            &a,
+            &format!("/v1/automations/{id}:update"),
+            json!({"definition": def}),
+        )
+        .await;
+    assert_eq!(st, 200, "{v2}");
+    let (st, r) = api
+        .post(
+            &a,
+            &format!("/v1/automations/{id}:enable"),
+            json!({"version": v2["current_version"], "definition_hash": v2["definition_hash"], "effects": "reversible_write",
+                   "capabilities": ["fs.write"], "paths": ["reports/**"], "hosts": []}),
+        )
+        .await;
+    assert_eq!(st, 200, "{r}");
+
+    // A secret value in any text is refused at save, without repeating it,
+    // and is in no row the service wrote.
+    let key = "sk-proj-Zq81LmNx0Rv2Tg7YpHd5Ws9B";
+    let leaky = webhook_def("leaky", |d| {
+        d["prompt"] = json!(format!("Call the service with {key} and report."));
+    });
+    let (st, r) = api
+        .post(&a, "/v1/automations", json!({"definition": leaky.clone()}))
+        .await;
+    assert_eq!(
+        (st, r["code"].as_str()),
+        (422, Some("DEFINITION_INVALID")),
+        "{r}"
+    );
+    let text = r.to_string();
+    assert!(text.contains("SECRET_IN_DEFINITION"), "{r}");
+    assert!(!text.contains(key), "the refusal repeats the value: {r}");
+    let (_, v) = api
+        .post(&a, "/v1/automations/validate", json!({"definition": leaky}))
+        .await;
+    assert_eq!(v["ok"], false);
+    assert!(!v.to_string().contains(key));
+    let any = api
+        .sql(&format!(
+            "SELECT count(*) FROM (SELECT row_to_json(t)::text AS j FROM automations t UNION ALL SELECT row_to_json(t)::text FROM automation_versions t UNION ALL SELECT row_to_json(t)::text FROM automation_audit t UNION ALL SELECT row_to_json(t)::text FROM events t) x WHERE j LIKE '%{key}%'"
+        ))
+        .await[0]
+        .get::<_, i64>(0);
+    assert_eq!(any, 0);
 }
