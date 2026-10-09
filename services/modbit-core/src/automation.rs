@@ -2929,6 +2929,11 @@ async fn enable(core: &Arc<Core>, env: &wire::CommandEnvelope, command_id: [u8; 
             ),
         ));
     }
+    // AUT-D03: enabling validates the budget. A definition that can act
+    // states the most one run may cost.
+    if let Some(i) = d.enable_issues().into_iter().next() {
+        return Err(refuse(&i.code, format!("{}: {}", i.path, i.message)));
+    }
     // A trigger that runs without a person cannot be missing an input.
     for t in &d.triggers {
         if !matches!(t, Trigger::Manual { .. })

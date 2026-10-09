@@ -114,7 +114,7 @@ test("PX-086: the editor shows the Core's typed issues with path and code, will 
     await expect(tick).toContainText("UTC");
 
     // A write-capable definition: the validation says the approval will list what it reaches.
-    const writer = doc("report-writer", MANUAL, { profile: { effects: "reversible_write", capabilities: ["fs.write"], paths: ["reports/**"] } });
+    const writer = doc("report-writer", MANUAL, { profile: { effects: "reversible_write", capabilities: ["fs.write"], paths: ["reports/**"] }, limits: { max_cost_minor: 500 } });
     await edit(page, writer, "valid");
     await expect(page.getByTestId("validation-lists")).toContainText("fs.write");
     const validatedHash = (await page.getByTestId("validation-hash").textContent())!;
@@ -148,7 +148,7 @@ test("PX-086: the editor shows the Core's typed issues with path and code, will 
     // A stale approval is refused: the person is looking at version 1 when version 2 is saved elsewhere.
     await page.getByTestId("detail-enable").click();
     await expect(page.getByTestId("enable-version")).toHaveText("1");
-    const v2 = await page.evaluate(([i, j]) => window.modbit.updateAutomation(i!, j!), [id, doc("report-writer", MANUAL, { description: "now described", profile: { effects: "reversible_write", capabilities: ["fs.write"], paths: ["reports/**"] } })]);
+    const v2 = await page.evaluate(([i, j]) => window.modbit.updateAutomation(i!, j!), [id, doc("report-writer", MANUAL, { description: "now described", profile: { effects: "reversible_write", capabilities: ["fs.write"], paths: ["reports/**"] }, limits: { max_cost_minor: 500 } })]);
     expect(v2.currentVersion).toBe(2);
     await page.getByTestId("enable-ack").check();
     await expect(page.getByTestId("enable-confirm")).toBeEnabled();

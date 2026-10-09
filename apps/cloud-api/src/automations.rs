@@ -598,6 +598,14 @@ async fn enable(
             ),
         ));
     }
+    // AUT-D03: enabling validates the budget (the same rule as the Core's).
+    if let Some(i) = d.enable_issues().into_iter().next() {
+        return Err(ApiError::new(
+            StatusCode::CONFLICT,
+            "BUDGET_REQUIRED",
+            format!("{}: {}", i.path, i.message),
+        ));
+    }
     // A trigger that runs without a person cannot be missing an input.
     if d.triggers
         .iter()

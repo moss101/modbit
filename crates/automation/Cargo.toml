@@ -15,6 +15,7 @@ hex.workspace = true
 regex.workspace = true
 hmac.workspace = true
 subtle.workspace = true
+modbit-secrets.workspace = true
 
 [lints]
 workspace = true

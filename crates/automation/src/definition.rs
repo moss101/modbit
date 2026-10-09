@@ -551,6 +551,25 @@ impl Definition {
     pub fn needs_listed_approval(&self) -> bool {
         !self.profile.is_read_only()
     }
+
+    /// What stops this definition being *enabled* even though it may be
+    /// saved (AUT-D03: enabling validates the budget). A definition that can
+    /// write, run commands or reach the network spends money and acts
+    /// unattended, so it must state the most one run may cost; a draft
+    /// without that limit is saved and refused at the approval, with the
+    /// typed code `BUDGET_REQUIRED`.
+    #[must_use]
+    pub fn enable_issues(&self) -> Vec<Issue> {
+        let mut out = Vec::new();
+        if !self.profile.is_read_only() && self.limits.max_cost_minor.is_none() {
+            out.push(issue(
+                "/limits/max_cost_minor",
+                "BUDGET_REQUIRED",
+                "a definition that can write, run commands or reach the network states the most one run may cost (limits.max_cost_minor, 1-100000 minor units) before it can be enabled",
+            ));
+        }
+        out
+    }
 }
 
 /// sha256 as lowercase hex.
@@ -616,6 +635,33 @@ pub fn parse_and_validate(text: &str) -> Result<Definition, Vec<Issue>> {
         Ok(d)
     } else {
         Err(issues)
+    }
+}
+
+fn find_secret_shapes(path: &str, v: &serde_json::Value, out: &mut Vec<Issue>) {
+    match v {
+        serde_json::Value::String(text) => {
+            if let Some(what) = modbit_secrets::redact::shape_of(text) {
+                out.push(issue(
+                    if path.is_empty() { "/" } else { path },
+                    "SECRET_IN_DEFINITION",
+                    format!(
+                        "this text carries {what}; a definition holds no secret value, so use a credential handle the broker resolves for the principal at run time"
+                    ),
+                ));
+            }
+        }
+        serde_json::Value::Array(items) => {
+            for (i, x) in items.iter().enumerate() {
+                find_secret_shapes(&format!("{path}/{i}"), x, out);
+            }
+        }
+        serde_json::Value::Object(map) => {
+            for (k, x) in map {
+                find_secret_shapes(&format!("{path}/{k}"), x, out);
+            }
+        }
+        _ => {}
     }
 }
 
@@ -730,6 +776,14 @@ fn check_filters(path: &str, f: &Filters, out: &mut Vec<Issue>) {
 #[must_use]
 pub fn validate(d: &Definition) -> Vec<Issue> {
     let mut out = Vec::new();
+    // AUT-D06: a definition holds no secret value; credentials are broker
+    // handles resolved at run time for the principal. The shapes are the
+    // Core's own redaction vocabulary, so what the Core would redact from a
+    // log it also refuses to store in a definition. The issue names where
+    // and what kind, never the value.
+    if let Ok(doc) = serde_json::to_value(d) {
+        find_secret_shapes("", &doc, &mut out);
+    }
     if d.schema != SCHEMA {
         out.push(issue(
             "/schema",
@@ -1262,6 +1316,88 @@ mod tests {
         });
         let d = parse_and_validate(&v.to_string()).unwrap();
         assert!(d.needs_listed_approval());
+    }
+
+    #[test]
+    fn a_secret_value_in_any_text_of_a_definition_is_refused_without_echoing_it() {
+        let key = "sk-live-0123456789abcdefghij";
+        for (field, doc) in [
+            ("/prompt", {
+                let mut v: serde_json::Value = serde_json::from_str(&minimal()).unwrap();
+                v["prompt"] = serde_json::json!(format!("call the api with {key}"));
+                v
+            }),
+            ("/description", {
+                let mut v: serde_json::Value = serde_json::from_str(&minimal()).unwrap();
+                v["description"] = serde_json::json!("token ghp_abcdefghijklmnopqrstuvwxyz0123");
+                v
+            }),
+            ("/inputs/0/default", {
+                let mut v: serde_json::Value = serde_json::from_str(&minimal()).unwrap();
+                v["inputs"] = serde_json::json!([
+                    {"name": "k", "type": "string", "default": "Bearer abcdefghijklmnopqrstuvwxyz"}
+                ]);
+                v
+            }),
+        ] {
+            let issues = parse_and_validate(&doc.to_string()).unwrap_err();
+            let hit = issues
+                .iter()
+                .find(|i| i.code == "SECRET_IN_DEFINITION")
+                .unwrap_or_else(|| panic!("{field}: {issues:?}"));
+            assert_eq!(hit.path, field);
+            assert!(
+                !hit.message.contains("0123456789abcdefghij")
+                    && !hit.message.contains("abcdefghijklmnopqrstuvwxyz"),
+                "the refusal never repeats the value: {}",
+                hit.message
+            );
+        }
+        // A broker handle is not a secret.
+        let mut v: serde_json::Value = serde_json::from_str(&minimal()).unwrap();
+        v["prompt"] = serde_json::json!("use the credential handle `forge-token` for the forge");
+        assert!(parse_and_validate(&v.to_string()).is_ok());
+    }
+
+    #[test]
+    fn a_definition_that_can_act_needs_a_cost_limit_before_it_can_be_enabled() {
+        let reader = parse_and_validate(&minimal()).unwrap();
+        assert!(reader.enable_issues().is_empty(), "read-only needs none");
+        let mut v: serde_json::Value = serde_json::from_str(&minimal()).unwrap();
+        v["profile"] = serde_json::json!({
+            "effects": "reversible_write", "capabilities": ["fs.write"], "paths": ["reports/**"]
+        });
+        let writer = parse_and_validate(&v.to_string()).unwrap();
+        let issues = writer.enable_issues();
+        assert_eq!(issues.len(), 1);
+        assert_eq!(issues[0].code, "BUDGET_REQUIRED");
+        v["limits"] = serde_json::json!({"max_cost_minor": 500});
+        assert!(
+            parse_and_validate(&v.to_string())
+                .unwrap()
+                .enable_issues()
+                .is_empty()
+        );
+    }
+
+    #[test]
+    fn expressions_that_need_backtracking_are_refused_and_the_rest_cannot_blow_up() {
+        // Backreferences and look-around are what make matching exponential;
+        // the linear-time engine does not compile them, so save refuses them.
+        for bad in [r"(a+)\1", "(?=a)b", "(?<!a)b", r"^(\w+)\s\1$"] {
+            assert!(compile_regex(bad).is_err(), "{bad}");
+        }
+        // The classic catastrophic shape is harmless here: a megabyte of
+        // hostile text matches in linear time.
+        let re = compile_regex("^(a+)+$").unwrap();
+        let hostile = format!("{}!", "a".repeat(1_000_000));
+        let started = std::time::Instant::now();
+        assert!(!re.is_match(&hostile));
+        assert!(
+            started.elapsed() < std::time::Duration::from_secs(5),
+            "{:?}",
+            started.elapsed()
+        );
     }
 
     #[test]

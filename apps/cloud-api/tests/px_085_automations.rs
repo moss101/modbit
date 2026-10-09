@@ -681,6 +681,7 @@ async fn qual_px_085_an_unapproved_or_edited_definition_does_not_fire_and_the_ap
     // A write profile needs the exact lists: a bare approval is refused.
     let write = webhook_def("writer", |d| {
         d["profile"] = json!({"effects": "reversible_write", "capabilities": ["fs.write"], "paths": ["reports/**"]});
+        d["limits"] = json!({"max_cost_minor": 500});
     });
     let (st, created) = api
         .post(&a, "/v1/automations", json!({"definition": write}))
