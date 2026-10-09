@@ -31482,6 +31482,50 @@ async fn qual_epr_007_the_reviewer_slot_activates_on_the_gate_validates_findings
         .unwrap();
     let v: RoutingPlanView = Client::result(&ack).unwrap();
     assert_eq!(v.path_label, "CRITIQUE", "{v:?}");
+
+    // 5. REQ-PX-133: each review is one Reviewer sample under the family the
+    //    registry names for the reviewer's binding, with the reviewer leg's
+    //    own priced cost; the first review raised an unsupported finding
+    //    (not a success), the second was clean.
+    let (_, rec) = request_outcome(&mut c, &task).await;
+    let reviews = rec["legs"]["reviews"].as_array().unwrap();
+    assert_eq!(reviews.len(), 2, "{rec:#}");
+    let reviewer_legs: Vec<&serde_json::Value> = rec["executed_path"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .filter(|l| l["role"] == "reviewer")
+        .collect();
+    assert_eq!(reviewer_legs.len(), 2, "{rec:#}");
+    let all_priced = reviewer_legs
+        .iter()
+        .all(|l| l["unpriced_attempts"] == 0 && l["held_minor"] == 0);
+    let leg_total: u64 = reviewer_legs
+        .iter()
+        .map(|l| l["cost_minor"].as_u64().unwrap())
+        .sum();
+    let expected_successes = reviews
+        .iter()
+        .filter(|r| r["unsupported_findings"] == 0)
+        .count() as u32;
+    assert_eq!(expected_successes, 1, "{reviews:#?}");
+    let (sv, by_key) = materialize_stats(&mut c, &session, g, 0x75, "stats-px133-critique").await;
+    let agg = by_key
+        .get("reviewer|gpt-5")
+        .unwrap_or_else(|| panic!("{by_key:#?}"));
+    assert_eq!(
+        (agg.samples, agg.successes),
+        (2, expected_successes),
+        "{agg:?}"
+    );
+    assert_eq!(
+        sv.samples, 2,
+        "no solver or escalation sample from a critique: {sv:?}"
+    );
+    assert_eq!(agg.cost_known, all_priced, "{agg:?}\n{rec:#}");
+    if all_priced {
+        assert_eq!(agg.mean_cost_minor, leg_total / 2, "{agg:?}");
+    }
 }
 
 #[tokio::test]
@@ -40337,6 +40381,42 @@ async fn activate_registry(c: &mut Client, signed: &str) {
     assert!(r.active, "{r:?}");
 }
 
+/// Materialize outcome statistics for a session under a version and index
+/// the aggregates by key id (REQ-PX-133).
+async fn materialize_stats(
+    c: &mut Client,
+    session: &Id,
+    g: Option<u64>,
+    id: u8,
+    version: &str,
+) -> (
+    modbit_protocol::v1::OutcomeStatisticsView,
+    std::collections::HashMap<String, modbit_protocol::v1::StatAggregateView>,
+) {
+    use modbit_protocol::v1::{MaterializeOutcomeStatistics, OutcomeStatisticsView};
+    let ack = c
+        .command(envelope_fenced(
+            id16(id),
+            "MaterializeOutcomeStatistics",
+            MaterializeOutcomeStatistics {
+                session_id: Some(session.clone()),
+                stats_version: version.to_owned(),
+            }
+            .encode_to_vec(),
+            g,
+        ))
+        .await
+        .unwrap();
+    let v: OutcomeStatisticsView = Client::result(&ack).unwrap();
+    assert!(v.materialized, "{v:?}");
+    let by_key = v
+        .aggregates
+        .iter()
+        .map(|a| (a.key_id.clone(), a.clone()))
+        .collect();
+    (v, by_key)
+}
+
 fn start_task(t: &Id, id: u8, g: Option<u64>) -> CommandEnvelope {
     use modbit_protocol::v1::StartTask;
     envelope_fenced(
@@ -40856,11 +40936,54 @@ async fn qual_epr_010_the_request_record_reconciles_to_provider_usage_and_keeps_
         "the decision's record is on the log"
     );
 
+    // 3b. REQ-PX-133: the cascade's legs are Outcome Statistics samples
+    //     under the keys the plan compiler reads, and the numbers are the
+    //     accounting record's. The escalation is one observation of
+    //     gpt-5-mini -> gpt-5 that succeeded, costed at the continuation
+    //     leg's own priced attempts; the failed first leg is not credited to
+    //     it (the Solver key is the baseline's, so absent here).
+    let esc_key = "escalation|gpt-5-mini|gpt-5|acceptance|workspace|configured";
+    let continuation_leg = r3["executed_path"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .find(|l| l["role"] == "solver" && l["trigger"] == "QUALITY_REJECTED")
+        .unwrap()
+        .clone();
+    let leg_cost = continuation_leg["cost_minor"].as_u64().unwrap();
+    assert_eq!(continuation_leg["unpriced_attempts"], 0);
+    assert_eq!(continuation_leg["held_minor"], 0);
+    let attempt_sum: u64 = continuation_leg["attempts"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .map(|a| a["cost_minor"].as_u64().unwrap())
+        .sum();
+    assert_eq!(leg_cost, attempt_sum, "the leg is its attempts");
+    let (sv, by_key) = materialize_stats(&mut c, &session, g, 0x77, "stats-px133").await;
+    assert_eq!(sv.samples, 1, "{sv:?}");
+    let agg = by_key.get(esc_key).unwrap_or_else(|| panic!("{by_key:#?}"));
+    assert_eq!((agg.samples, agg.successes), (1, 1), "{agg:?}");
+    assert!(agg.cost_known && agg.unknown_cost_samples == 0, "{agg:?}");
+    assert_eq!(agg.mean_cost_minor, leg_cost, "{agg:?}");
+    assert!(agg.low_confidence, "one observation is a prior: {agg:?}");
+    assert_eq!(by_key.len(), 1, "no Solver credit for the failed first leg");
+    // The same outcome observed again is the same sample.
+    let (sv2, by_key2) = materialize_stats(&mut c, &session, g, 0x78, "stats-px133-again").await;
+    assert_eq!(sv2.samples, 1, "{sv2:?}");
+    assert_eq!(by_key2.get(esc_key), Some(agg));
+
     // 4. The record is the log's: a restarted Core rebuilds it.
     drop(c);
     core.kill();
     let core = CoreProcess::spawn_with_env(dir.path(), &env);
     let mut c = core.client().await;
+    let (sv3, by_key3) = materialize_stats(&mut c, &session, g, 0x79, "stats-px133-restart").await;
+    assert_eq!(
+        (sv3.samples, by_key3.get(esc_key)),
+        (1, Some(agg)),
+        "a duplicate emission after restart adds nothing"
+    );
     let (v4, r4) = request_outcome(&mut c, &task).await;
     for f in [
         "executed_path",
