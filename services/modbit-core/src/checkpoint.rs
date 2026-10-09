@@ -1612,6 +1612,16 @@ pub(crate) async fn restore_with(
                 pre: pre_for(&current),
             });
             reverted += 1;
+        } else if current.is_some() {
+            // A path the index holds but HEAD does not (a staged addition, as the snapshot leaves new
+            // files): there is nothing at HEAD to go back to, so back to HEAD is gone. The preview names
+            // it REVERT_TO_HEAD; leaving it in place would make the restore a no-op for it.
+            ops.push(ChangeOp {
+                path: e.path.clone(),
+                kind: ChangeOpKind::Delete,
+                pre: pre_for(&current),
+            });
+            reverted += 1;
         }
     }
     let mut written = 0u32;
