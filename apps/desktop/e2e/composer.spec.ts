@@ -46,7 +46,10 @@ test("PX-055: messages sent during a turn queue in the Core, can be edited, reor
     await page.getByTestId("education-keep").click();
     await expect(page.getByTestId("education-tray")).toHaveCount(0);
 
+    // Each send completes (queued by the Core, box cleared) before the next message is typed.
     await typeAndPress(page, "third message", "Enter");
+    await expect(page.getByTestId("queue-header")).toHaveText("2 queued");
+    await expect(page.getByTestId("composer-input")).toHaveValue("");
     await typeAndPress(page, "fourth message", "Enter");
     await expect(page.getByTestId("queue-header")).toHaveText("3 queued");
     // The tray shows the Core's durable queue, in the Core's order.
@@ -406,6 +409,8 @@ test("PX-056: the picker lists the Core's variants, records the objective and a 
     await expect(page.locator('[data-row-id="openai/gpt-5-mini#medium"]')).toHaveAttribute("data-blocked", "true");
     await expect(page.locator('[data-row-id="openai/gpt-5#high"]')).toContainText("costs more");
     await accessible(page, "the model picker");
+    // No billing or upgrade control exists in the picker (QUAL-PX-056 negative).
+    expect(await page.getByTestId("model-picker").innerText()).not.toMatch(/upgrade|billing|subscribe|buy credits|pricing/i);
     // Search narrows the list.
     await page.getByTestId("model-search").fill("4.1-mini");
     await expect(page.getByTestId("model-row")).toHaveCount(1);

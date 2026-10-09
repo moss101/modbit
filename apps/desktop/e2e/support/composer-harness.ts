@@ -118,4 +118,6 @@ export async function typeAndPress(page: Page, text: string, key: string): Promi
   const box = page.getByTestId("composer-input");
   await box.fill(text);
   await box.press(key);
+  // A send is complete when the composer has handed the words to the Core and cleared the box; the next message is typed after that.
+  if (key === "Enter") await expect(box).toHaveValue("", { timeout: 15_000 });
 }

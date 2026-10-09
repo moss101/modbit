@@ -178,7 +178,11 @@ test("PX-047: scrolling up freezes follow, the pill counts later messages, the j
     await expect(page.getByTestId("conv-pill")).toHaveCount(0);
     expect(await scroll.evaluate((e) => e.scrollHeight - e.scrollTop - e.clientHeight)).toBeLessThan(40);
     // The scroll-to-latest button returns to the tail too.
-    await scroll.evaluate((e) => (e.scrollTop = 0));
+    // A late message re-pins a view that is still at the tail: the person scrolls again until the view lets go.
+    await expect(async () => {
+      await scroll.evaluate((e) => (e.scrollTop = 0));
+      await expect(scroll).toHaveAttribute("data-pinned", "false", { timeout: 1_000 });
+    }).toPass({ timeout: 15_000 });
     await expect(page.getByTestId("conv-to-bottom")).toBeVisible();
     await page.getByTestId("conv-to-bottom").click();
     await expect(scroll).toHaveAttribute("data-pinned", "true");
