@@ -537,7 +537,7 @@ export class CoreClient {
         issueUrl: issueUrl ?? "",
       }),
     );
-    const ack = await this.command("CreateTask", payload, commandId, this.leases.get(sessionId));
+    const ack = await this.command("CreateTask", payload, commandId, this.leases.get(sessionId), sessionId);
     const r = fromBinary(TaskCreatedSchema, ack.result);
     return { taskId: hex(r.taskId?.value ?? new Uint8Array()), offset: r.offset, replayed: ack.status === CommandStatus.REPLAYED, goalText: r.goalText };
   }
@@ -612,14 +612,14 @@ export class CoreClient {
   /** PX-042: the person has seen the task's conversation up to `upToOffset` (0 = all of it). Idempotent by `commandId`. */
   async markRead(sessionId: string, taskId: string, upToOffset = 0n, commandId?: Uint8Array): Promise<ReadMarked> {
     const payload = toBinary(MarkReadSchema, create(MarkReadSchema, { taskId: { value: unhex(taskId) }, upToOffset }));
-    const ack = await this.command("MarkRead", payload, commandId, this.leases.get(sessionId));
+    const ack = await this.command("MarkRead", payload, commandId, this.leases.get(sessionId), sessionId);
     return fromBinary(ReadMarkedSchema, ack.result);
   }
 
   /** PX-042: archive (or, with `archived = false`, undo archiving) a task's conversation. A running task is refused with TASK_RUNNING. */
   async archiveTask(sessionId: string, taskId: string, archived = true, commandId?: Uint8Array): Promise<TaskArchived> {
     const payload = toBinary(ArchiveTaskSchema, create(ArchiveTaskSchema, { taskId: { value: unhex(taskId) }, archived }));
-    const ack = await this.command("ArchiveTask", payload, commandId, this.leases.get(sessionId));
+    const ack = await this.command("ArchiveTask", payload, commandId, this.leases.get(sessionId), sessionId);
     return fromBinary(TaskArchivedSchema, ack.result);
   }
 
@@ -640,7 +640,7 @@ export class CoreClient {
       SetTaskSelectionSchema,
       create(SetTaskSelectionSchema, { taskId: { value: unhex(taskId) }, ...sel }),
     );
-    const ack = await this.command("SetTaskSelection", payload, undefined, this.leases.get(sessionId));
+    const ack = await this.command("SetTaskSelection", payload, undefined, this.leases.get(sessionId), sessionId);
     const r = fromBinary(TaskSelectionRecordedSchema, ack.result);
     return { offset: r.offset.toString() };
   }
@@ -756,7 +756,7 @@ export class CoreClient {
   /** M8.7's handoff bundle for a task: the task parks; the bundle holds no secret value. */
   async exportHandoff(sessionId: string, taskId: string, outDir: string): Promise<{ bundleDir: string; manifestHash: string; parts: string[] }> {
     const payload = toBinary(ExportHandoffSchema, create(ExportHandoffSchema, { taskId: { value: unhex(taskId) }, outDir }));
-    const ack = await this.command("ExportHandoff", payload, undefined, this.leases.get(sessionId));
+    const ack = await this.command("ExportHandoff", payload, undefined, this.leases.get(sessionId), sessionId);
     const r = fromBinary(HandoffExportedSchema, ack.result);
     return { bundleDir: r.bundleDir, manifestHash: r.manifestHash, parts: r.parts };
   }
@@ -764,7 +764,7 @@ export class CoreClient {
   /** Explicit, scoped repository trust (docs/39 step 3). */
   async trustRepository(sessionId: string, workspaceRoot: string): Promise<{ offset: string }> {
     const payload = toBinary(TrustRepositorySchema, create(TrustRepositorySchema, { sessionId: { value: unhex(sessionId) }, workspaceRoot, scope: "repository" }));
-    const ack = await this.command("TrustRepository", payload, undefined, this.leases.get(sessionId));
+    const ack = await this.command("TrustRepository", payload, undefined, this.leases.get(sessionId), sessionId);
     const r = fromBinary(RepositoryTrustedSchema, ack.result);
     return { offset: r.offset.toString() };
   }
@@ -789,7 +789,7 @@ export class CoreClient {
         ...preferenceField(options),
       }),
     );
-    const ack = await this.command("StartTask", payload, undefined, this.leases.get(sessionId));
+    const ack = await this.command("StartTask", payload, undefined, this.leases.get(sessionId), sessionId);
     const r = fromBinary(TaskRunStartedSchema, ack.result);
     return { runId: hex(r.runId?.value ?? new Uint8Array()), resumed: r.resumed, endpoint: r.endpoint, model: r.model };
   }
@@ -840,7 +840,7 @@ export class CoreClient {
   /** REQ-EV-0190: normalize a channel attachment through the Core's media pipeline (bytes stay in the Core by digest). */
   async ingestAttachment(sessionId: string, taskId: string, filename: string, data: Uint8Array): Promise<{ attachmentId: string; kind: string; mime: string; contentRef: string; offset: string; replayed: boolean }> {
     const payload = toBinary(IngestAttachmentSchema, create(IngestAttachmentSchema, { taskId: { value: unhex(taskId) }, filename, channel: "desktop", data }));
-    const ack = await this.command("IngestAttachment", payload, undefined, this.leases.get(sessionId));
+    const ack = await this.command("IngestAttachment", payload, undefined, this.leases.get(sessionId), sessionId);
     const r = fromBinary(AttachmentIngestedSchema, ack.result);
     return { attachmentId: r.attachmentId, kind: r.kind, mime: r.mime, contentRef: r.contentRef, offset: r.offset.toString(), replayed: r.replayed };
   }
@@ -875,14 +875,14 @@ export class CoreClient {
 
   async decideReview(sessionId: string, taskId: string, decision: "ACCEPT" | "RETURN", rejected: { path: string; index: number }[], note: string, expectedWorkspaceRevision: bigint): Promise<ReviewDecided> {
     const payload = toBinary(DecideReviewSchema, create(DecideReviewSchema, { taskId: { value: unhex(taskId) }, decision, rejected: rejected.map((r) => ({ path: r.path, index: r.index })), note, expectedWorkspaceRevision }));
-    const ack = await this.command("DecideReview", payload, undefined, this.leases.get(sessionId));
+    const ack = await this.command("DecideReview", payload, undefined, this.leases.get(sessionId), sessionId);
     return fromBinary(ReviewDecidedSchema, ack.result);
   }
 
   /** PX-005: a one-hunk direct edit through the Core's ChangeTransaction; the renderer keeps no buffer. */
   async applyUserPatch(sessionId: string, taskId: string, p: { path: string; old: string; new: string; expectedWorkspaceRevision: bigint; expectedFileRevision: string }): Promise<UserPatchAppliedAck> {
     const payload = toBinary(ApplyUserPatchSchema, create(ApplyUserPatchSchema, { taskId: { value: unhex(taskId) }, path: p.path, old: p.old, new: p.new, expectedWorkspaceRevision: p.expectedWorkspaceRevision, expectedFileRevision: p.expectedFileRevision, source: "review" }));
-    const ack = await this.command("ApplyUserPatch", payload, undefined, this.leases.get(sessionId));
+    const ack = await this.command("ApplyUserPatch", payload, undefined, this.leases.get(sessionId), sessionId);
     return fromBinary(UserPatchAppliedAckSchema, ack.result);
   }
 
@@ -898,7 +898,7 @@ export class CoreClient {
    */
   async resolveApproval(sessionId: string, approvalId: string, approve: boolean, reason: string, intentHash: string, commandId?: Uint8Array): Promise<ApprovalResolvedAck> {
     const payload = toBinary(ResolveApprovalSchema, create(ResolveApprovalSchema, { approvalId: { value: unhex(approvalId) }, approve, reason, intentHash }));
-    const ack = await this.command("ResolveApproval", payload, commandId, this.leases.get(sessionId));
+    const ack = await this.command("ResolveApproval", payload, commandId, this.leases.get(sessionId), sessionId);
     return fromBinary(ApprovalResolvedAckSchema, ack.result);
   }
 
@@ -912,7 +912,7 @@ export class CoreClient {
   async openPullRequest(sessionId: string, taskId: string, expectedCandidateRevision: bigint, opts: { base?: string; title?: string; remote?: string; update?: boolean } = {}): Promise<PullRequestAck> {
     const fields = { taskId: { value: unhex(taskId) }, expectedCandidateRevision, base: opts.base ?? "", title: opts.title ?? "", remote: opts.remote ?? "" };
     const payload = opts.update ? toBinary(UpdatePullRequestSchema, create(UpdatePullRequestSchema, fields)) : toBinary(OpenPullRequestSchema, create(OpenPullRequestSchema, fields));
-    const ack = await this.command(opts.update ? "UpdatePullRequest" : "OpenPullRequest", payload, undefined, this.leases.get(sessionId));
+    const ack = await this.command(opts.update ? "UpdatePullRequest" : "OpenPullRequest", payload, undefined, this.leases.get(sessionId), sessionId);
     return fromBinary(PullRequestAckSchema, ack.result);
   }
 
@@ -924,14 +924,14 @@ export class CoreClient {
    */
   async ingestCiResults(sessionId: string, taskId: string): Promise<CiResultsIngested> {
     const payload = toBinary(IngestCiResultsSchema, create(IngestCiResultsSchema, { taskId: { value: unhex(taskId) } }));
-    const ack = await this.command("IngestCiResults", payload, undefined, this.leases.get(sessionId));
+    const ack = await this.command("IngestCiResults", payload, undefined, this.leases.get(sessionId), sessionId);
     return fromBinary(CiResultsIngestedSchema, ack.result);
   }
 
   /** PX-127: ask the Core to read the pull request's comments; allowed authors' comments addressed to Modbit become untrusted steering. */
   async ingestReviewComments(sessionId: string, taskId: string): Promise<ReviewCommentsIngestedView> {
     const payload = toBinary(IngestReviewCommentsSchema, create(IngestReviewCommentsSchema, { taskId: { value: unhex(taskId) } }));
-    const ack = await this.command("IngestReviewComments", payload, undefined, this.leases.get(sessionId));
+    const ack = await this.command("IngestReviewComments", payload, undefined, this.leases.get(sessionId), sessionId);
     return fromBinary(ReviewCommentsIngestedViewSchema, ack.result);
   }
 
@@ -968,7 +968,7 @@ export class CoreClient {
         diagnostics: batch.diagnostics.map((d) => ({ path: d.path, lineStart: d.lineStart, charStart: d.charStart, lineEnd: d.lineEnd, charEnd: d.charEnd, severity: d.severity, code: d.code ?? "", message: d.message, fileRevision: d.fileRevision })),
       }),
     );
-    const ack = await this.command("SubmitExternalDiagnostics", payload, commandId, this.leases.get(sessionId));
+    const ack = await this.command("SubmitExternalDiagnostics", payload, commandId, this.leases.get(sessionId), sessionId);
     return fromBinary(ExternalDiagnosticsAckSchema, ack.result);
   }
 
@@ -976,7 +976,7 @@ export class CoreClient {
   async queueInput(sessionId: string, taskId: string, text: string, mode: "STEER" | "COLLECT" | "FOLLOW_UP" | "DEFAULT" = "STEER", inputId = hex(freshId()), commandId?: Uint8Array): Promise<{ sequence: bigint; offset: bigint }> {
     const payload = toBinary(QueueInputSchema, create(QueueInputSchema, { taskId: { value: unhex(taskId) }, inputId, mode, text }));
     // A caller that keeps the command id (derived from the input id) makes a retry replay instead of writing the record twice.
-    const ack = await this.command("QueueInput", payload, commandId, this.leases.get(sessionId));
+    const ack = await this.command("QueueInput", payload, commandId, this.leases.get(sessionId), sessionId);
     const r = fromBinary(InputQueuedSchema, ack.result);
     return { sequence: r.sequence, offset: r.offset };
   }
@@ -992,41 +992,41 @@ export class CoreClient {
   /** Change a queued input's text, mode or model before it is dispatched; an empty field keeps what is recorded. */
   async editQueuedInput(sessionId: string, taskId: string, inputId: string, change: { text?: string; mode?: string; model?: string }): Promise<QueuedInputChanged> {
     const payload = toBinary(EditQueuedInputSchema, create(EditQueuedInputSchema, { taskId: { value: unhex(taskId) }, inputId, text: change.text ?? "", mode: change.mode ?? "", model: change.model ?? "" }));
-    const ack = await this.command("EditQueuedInput", payload, undefined, this.leases.get(sessionId));
+    const ack = await this.command("EditQueuedInput", payload, undefined, this.leases.get(sessionId), sessionId);
     return fromBinary(QueuedInputChangedSchema, ack.result);
   }
 
   async removeQueuedInput(sessionId: string, taskId: string, inputId: string, reason = ""): Promise<QueuedInputChanged> {
     const payload = toBinary(RemoveQueuedInputSchema, create(RemoveQueuedInputSchema, { taskId: { value: unhex(taskId) }, inputId, reason }));
-    const ack = await this.command("RemoveQueuedInput", payload, undefined, this.leases.get(sessionId));
+    const ack = await this.command("RemoveQueuedInput", payload, undefined, this.leases.get(sessionId), sessionId);
     return fromBinary(QueuedInputChangedSchema, ack.result);
   }
 
   /** Move a queued input before another; an empty `beforeInputId` moves it to the end. */
   async reorderQueuedInput(sessionId: string, taskId: string, inputId: string, beforeInputId = ""): Promise<QueuedInputChanged> {
     const payload = toBinary(ReorderQueuedInputSchema, create(ReorderQueuedInputSchema, { taskId: { value: unhex(taskId) }, inputId, beforeInputId }));
-    const ack = await this.command("ReorderQueuedInput", payload, undefined, this.leases.get(sessionId));
+    const ack = await this.command("ReorderQueuedInput", payload, undefined, this.leases.get(sessionId), sessionId);
     return fromBinary(QueuedInputChangedSchema, ack.result);
   }
 
   /** Send one queued input now: a typed interrupt-and-replace. The same `interruptId` interrupts once. */
   async sendQueuedInputNow(sessionId: string, taskId: string, inputId: string, interruptId = "", reason = ""): Promise<InterruptAccepted> {
     const payload = toBinary(SendQueuedInputNowSchema, create(SendQueuedInputNowSchema, { taskId: { value: unhex(taskId) }, inputId, interruptId, reason }));
-    const ack = await this.command("SendQueuedInputNow", payload, undefined, this.leases.get(sessionId));
+    const ack = await this.command("SendQueuedInputNow", payload, undefined, this.leases.get(sessionId), sessionId);
     return fromBinary(InterruptAcceptedSchema, ack.result);
   }
 
   /** Stop: end the current turn at the next safe point and pause the run. Nothing is dispatched. */
   async interruptTask(sessionId: string, taskId: string, interruptId = "", reason = ""): Promise<InterruptAccepted> {
     const payload = toBinary(InterruptTaskSchema, create(InterruptTaskSchema, { taskId: { value: unhex(taskId) }, interruptId, reason }));
-    const ack = await this.command("InterruptTask", payload, undefined, this.leases.get(sessionId));
+    const ack = await this.command("InterruptTask", payload, undefined, this.leases.get(sessionId), sessionId);
     return fromBinary(InterruptAcceptedSchema, ack.result);
   }
 
   /** What plain Enter does while a turn runs and what Send now does, in the Core's words. An empty field keeps what is recorded. */
   async setSendBehavior(sessionId: string, taskId: string, whileRunning = "", sendNow = ""): Promise<SendBehaviorView> {
     const payload = toBinary(SetSendBehaviorSchema, create(SetSendBehaviorSchema, { taskId: { value: unhex(taskId) }, whileRunning, sendNow }));
-    const ack = await this.command("SetSendBehavior", payload, undefined, this.leases.get(sessionId));
+    const ack = await this.command("SetSendBehavior", payload, undefined, this.leases.get(sessionId), sessionId);
     return fromBinary(SendBehaviorViewSchema, ack.result);
   }
 
@@ -1052,7 +1052,7 @@ export class CoreClient {
 
   /** Open a browser session for a task (its control lease starts with the agent). Requires the session lease. */
   async openBrowserSession(sessionId: string, taskId: string): Promise<{ browserSessionId: string; partition: string; controller: string; leaseGeneration: bigint; offset: bigint }> {
-    const ack = await this.command("OpenBrowserSession", toBinary(OpenBrowserSessionSchema, create(OpenBrowserSessionSchema, { taskId: { value: unhex(taskId) } })), undefined, this.leases.get(sessionId));
+    const ack = await this.command("OpenBrowserSession", toBinary(OpenBrowserSessionSchema, create(OpenBrowserSessionSchema, { taskId: { value: unhex(taskId) } })), undefined, this.leases.get(sessionId), sessionId);
     const r = fromBinary(BrowserSessionOpenedSchema, ack.result);
     return { browserSessionId: hex(r.browserSessionId?.value ?? new Uint8Array()), partition: r.partition, controller: r.controller, leaseGeneration: r.leaseGeneration, offset: r.offset };
   }
@@ -1095,7 +1095,7 @@ export class CoreClient {
 
   /** M7.6: hand control of the session to the person (`USER`) or back to the agent (`AGENT`); the lease generation moves on every hand-over. */
   async setBrowserControl(sessionId: string, browserSessionId: string, taskId: string, controller: "AGENT" | "USER"): Promise<{ controller: string; leaseGeneration: bigint; changed: boolean; offset: bigint }> {
-    const ack = await this.command("SetBrowserControl", toBinary(SetBrowserControlSchema, create(SetBrowserControlSchema, { browserSessionId: { value: unhex(browserSessionId) }, controller, taskId: { value: unhex(taskId) } })), undefined, this.leases.get(sessionId));
+    const ack = await this.command("SetBrowserControl", toBinary(SetBrowserControlSchema, create(SetBrowserControlSchema, { browserSessionId: { value: unhex(browserSessionId) }, controller, taskId: { value: unhex(taskId) } })), undefined, this.leases.get(sessionId), sessionId);
     const r = fromBinary(BrowserControlChangedSchema, ack.result);
     return { controller: r.controller, leaseGeneration: r.leaseGeneration, changed: r.changed, offset: r.offset };
   }
@@ -1115,27 +1115,27 @@ export class CoreClient {
   }
 
   async closeBrowserSession(sessionId: string, browserSessionId: string): Promise<{ offset: bigint }> {
-    const ack = await this.command("CloseBrowserSession", toBinary(CloseBrowserSessionSchema, create(CloseBrowserSessionSchema, { browserSessionId: { value: unhex(browserSessionId) } })), undefined, this.leases.get(sessionId));
+    const ack = await this.command("CloseBrowserSession", toBinary(CloseBrowserSessionSchema, create(CloseBrowserSessionSchema, { browserSessionId: { value: unhex(browserSessionId) } })), undefined, this.leases.get(sessionId), sessionId);
     return { offset: fromBinary(BrowserSessionClosedSchema, ack.result).offset };
   }
 
   /** IMP-EV-0085 (session.control): block every new effect in the session and revoke its leases; the reason is on the log. */
   async emergencyStop(sessionId: string, reason: string): Promise<{ leasesRevoked: number; offset: bigint }> {
-    const ack = await this.command("EmergencyStop", toBinary(EmergencyStopSchema, create(EmergencyStopSchema, { sessionId: { value: unhex(sessionId) }, reason })), undefined, this.leases.get(sessionId));
+    const ack = await this.command("EmergencyStop", toBinary(EmergencyStopSchema, create(EmergencyStopSchema, { sessionId: { value: unhex(sessionId) }, reason })), undefined, this.leases.get(sessionId), sessionId);
     const r = fromBinary(EmergencyStoppedSchema, ack.result);
     return { leasesRevoked: r.leasesRevoked, offset: r.offset };
   }
 
   /** Cancel a task: the run stops at its next safe boundary; the task's events record it. Requires the session lease. */
   async cancelTask(sessionId: string, taskId: string): Promise<{ wasRunning: boolean }> {
-    const ack = await this.command("CancelTask", toBinary(CancelTaskSchema, create(CancelTaskSchema, { taskId: { value: unhex(taskId) } })), undefined, this.leases.get(sessionId));
+    const ack = await this.command("CancelTask", toBinary(CancelTaskSchema, create(CancelTaskSchema, { taskId: { value: unhex(taskId) } })), undefined, this.leases.get(sessionId), sessionId);
     return { wasRunning: fromBinary(TaskCancelRequestedSchema, ack.result).wasRunning };
   }
 
   /** REQ-EV-0222: answer the agent's typed question; the run resumes with StartTask. */
   async respondToQuestion(sessionId: string, taskId: string, questionId: string, optionId: string, text: string): Promise<{ questionId: string; alreadyAnswered: boolean }> {
     const payload = toBinary(RespondToQuestionSchema, create(RespondToQuestionSchema, { taskId: { value: unhex(taskId) }, questionId, optionId, text }));
-    const ack = await this.command("RespondToQuestion", payload, undefined, this.leases.get(sessionId));
+    const ack = await this.command("RespondToQuestion", payload, undefined, this.leases.get(sessionId), sessionId);
     const r = fromBinary(QuestionRespondedSchema, ack.result);
     return { questionId: r.questionId, alreadyAnswered: r.alreadyAnswered };
   }
@@ -1184,19 +1184,19 @@ export class CoreClient {
 
   /** Take or give back the input lease of an attachment. Requires the session lease. */
   async setTerminalInput(sessionId: string, attachId: string, hold: boolean, steal = false): Promise<TerminalInputSet> {
-    const ack = await this.command("SetTerminalInput", toBinary(SetTerminalInputSchema, create(SetTerminalInputSchema, { attachId, hold, steal })), undefined, this.leases.get(sessionId));
+    const ack = await this.command("SetTerminalInput", toBinary(SetTerminalInputSchema, create(SetTerminalInputSchema, { attachId, hold, steal })), undefined, this.leases.get(sessionId), sessionId);
     return fromBinary(TerminalInputSetSchema, ack.result);
   }
 
   /** Resize the terminal to the viewer's size. Requires the session lease. */
   async resizeTerminal(sessionId: string, attachId: string, rows: number, cols: number): Promise<TerminalResizeDone> {
-    const ack = await this.command("ResizeTerminal", toBinary(ResizeTerminalSchema, create(ResizeTerminalSchema, { attachId, rows, cols })), undefined, this.leases.get(sessionId));
+    const ack = await this.command("ResizeTerminal", toBinary(ResizeTerminalSchema, create(ResizeTerminalSchema, { attachId, rows, cols })), undefined, this.leases.get(sessionId), sessionId);
     return fromBinary(TerminalResizeDoneSchema, ack.result);
   }
 
   /** A person's keystrokes (at most 64 KiB), accepted only while the attachment holds the input lease (LEASE_REQUIRED otherwise). Requires the session lease. */
   async writeTerminal(sessionId: string, attachId: string, data: Uint8Array): Promise<TerminalWritten> {
-    const ack = await this.command("WriteTerminal", toBinary(WriteTerminalSchema, create(WriteTerminalSchema, { attachId, data })), undefined, this.leases.get(sessionId));
+    const ack = await this.command("WriteTerminal", toBinary(WriteTerminalSchema, create(WriteTerminalSchema, { attachId, data })), undefined, this.leases.get(sessionId), sessionId);
     return fromBinary(TerminalWrittenSchema, ack.result);
   }
 
@@ -1224,7 +1224,7 @@ export class CoreClient {
    */
   async killTerminal(sessionId: string, taskId: string, terminalId: string, reason = "", commandId?: Uint8Array): Promise<TerminalKilled> {
     const payload = toBinary(KillTerminalSchema, create(KillTerminalSchema, { taskId: { value: unhex(taskId) }, sessionId: terminalId, reason }));
-    const ack = await this.command("KillTerminal", payload, commandId, this.leases.get(sessionId));
+    const ack = await this.command("KillTerminal", payload, commandId, this.leases.get(sessionId), sessionId);
     return fromBinary(TerminalKilledSchema, ack.result);
   }
 
