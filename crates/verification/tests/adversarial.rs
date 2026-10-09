@@ -144,6 +144,21 @@ async fn a_boundary_the_tests_pin_survives_no_mutant_and_one_they_do_not_is_foun
     );
     assert_eq!(c.to_evidence().status, "FAIL");
 
+    // A test that reaches the boundary on one side only (101 must throw)
+    // kills one of its mutants: the boundary is exercised, not a finding.
+    let one_side = tree(&TEST_LOOSE.replace("f(500)", "f(101)"), SRC);
+    let c = boundary_check(
+        &Local,
+        &cmd(),
+        one_side.path(),
+        &scratch.path().join("m"),
+        &[],
+        &changed(),
+        &opts,
+    )
+    .await;
+    assert_eq!(c.status, Status::Pass, "{c:?}");
+
     // A candidate whose own checks are red cannot be told from its mutants.
     let red = tree(&TEST_LOOSE.replace("f(10), 10", "f(10), 11"), SRC);
     let c = boundary_check(
