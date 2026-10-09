@@ -210,9 +210,15 @@ test("PX-086: the editor shows the Core's typed issues with path and code, will 
     const uncapped = await create(page, doc("uncapped", MANUAL, { profile: { effects: "reversible_write", capabilities: ["fs.write"], paths: ["reports/**"] } }), repo);
     await expect(row(page, "uncapped")).toHaveAttribute("data-automation-id", uncapped.automationId);
     await select(page, "uncapped");
-    await page.getByTestId("detail-enable").click();
-    await page.getByTestId("enable-ack").check();
-    await page.getByTestId("enable-confirm").click();
+    // Keyboard only: open the dialog, read-and-acknowledge, and confirm without the pointer.
+    await page.getByTestId("detail-enable").focus();
+    await page.keyboard.press("Enter");
+    await expect(page.getByTestId("enable-dialog")).toBeVisible();
+    await page.getByTestId("enable-ack").focus();
+    await page.keyboard.press("Space");
+    await expect(page.getByTestId("enable-confirm")).toBeEnabled();
+    await page.getByTestId("enable-confirm").focus();
+    await page.keyboard.press("Enter");
     await expect(page.getByTestId("enable-error")).toHaveAttribute("data-code", "BUDGET_REQUIRED");
     await expect(row(page, "uncapped")).toHaveAttribute("data-state", "NEEDS_APPROVAL");
     await page.getByTestId("enable-cancel").click();
