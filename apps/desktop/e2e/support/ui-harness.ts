@@ -62,9 +62,14 @@ export async function accessible(page: Page, what: string, selector?: string): P
  * renderer's single-pane layout below it. The product keeps the minimum; this only lets that layout be measured.
  */
 export async function liftMinimumSize(app: ElectronApplication): Promise<void> {
-  await app.evaluate(({ BrowserWindow }) => {
-    BrowserWindow.getAllWindows()[0]!.setMinimumSize(0, 0);
+  // 1 x 1, not 0 x 0: Electron reads 0 x 0 as "no constraint" and on macOS and
+  // Windows leaves the window's existing native minimum in place.
+  const minimum = await app.evaluate(({ BrowserWindow }) => {
+    const w = BrowserWindow.getAllWindows()[0]!;
+    w.setMinimumSize(1, 1);
+    return w.getMinimumSize();
   });
+  expect(minimum, "the window's minimum size was lifted").toEqual([1, 1]);
 }
 
 /** Sets the window's content size from the main process (the real window, not an emulation). */

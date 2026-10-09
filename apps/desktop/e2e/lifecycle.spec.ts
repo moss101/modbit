@@ -31,16 +31,22 @@ test("PX-049: the window opens at 1280 x 800 and cannot be made smaller than 900
   const dataDir = mkdtempSync(join(tmpdir(), "modbit-e2e-minsize-"));
   const { app } = await launch(dataDir);
   try {
-    const got = await app.evaluate(({ BrowserWindow }) => {
+    const got = await app.evaluate(({ BrowserWindow, screen }) => {
       const w = BrowserWindow.getAllWindows()[0]!;
       const initial = w.getSize();
+      const workArea = screen.getDisplayMatching(w.getBounds()).workAreaSize;
       w.setSize(300, 200);
       const clamped = w.getSize();
       w.setContentSize(100, 100);
-      return { minimum: w.getMinimumSize(), initial, clamped, content: w.getContentSize() };
+      return { minimum: w.getMinimumSize(), initial, workArea, clamped, content: w.getContentSize() };
     });
     expect(got.minimum).toEqual([900, 600]);
-    expect(got.initial).toEqual([1280, 800]);
+    // 1280 x 800, unless the screen's work area is smaller (a CI runner's
+    // 1024 x 768 display): the OS fits the window to it, and nothing else may.
+    expect(got.initial, `work area ${got.workArea.width} x ${got.workArea.height}`).toEqual([
+      Math.min(1280, got.workArea.width),
+      Math.min(800, got.workArea.height),
+    ]);
     expect(got.clamped[0]).toBeGreaterThanOrEqual(900);
     expect(got.clamped[1]).toBeGreaterThanOrEqual(600);
     expect(got.content[0], "a content size below the minimum is clamped too").toBeGreaterThanOrEqual(900);
