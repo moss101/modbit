@@ -2183,7 +2183,6 @@ async fn px_056_every_task_scoped_command_refuses_a_caller_from_another_session(
             "CancelTask",
             w::CancelTask {
                 task_id: t.clone(),
-                ..Default::default()
             }
             .encode_to_vec(),
         ),
