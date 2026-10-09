@@ -540,7 +540,10 @@ test("PX-054: the @ menu lists the Core's sources and a protected path cannot be
     await input.fill("");
 
     // History: two queued messages are the history; Alt+Up walks back through them and Alt+Down returns to the unsent text.
+    // Each send completes (the Core queued it and the box cleared) before the next message is typed.
     await typeAndPress(page, "message one", "Enter");
+    await expect(page.getByTestId("queue-header")).toHaveText("1 queued");
+    await expect(input).toHaveValue("");
     await typeAndPress(page, "message two", "Enter");
     await expect(page.getByTestId("queue-header")).toHaveText("2 queued");
     // Each item keeps its own mode: the second is switched to collect, and the Core and the row say so.

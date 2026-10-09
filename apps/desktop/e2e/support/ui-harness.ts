@@ -45,8 +45,15 @@ export async function launch(dataDir: string, opts: LaunchOptions = {}): Promise
 
 /** The accessibility suite (axe-core, WCAG 2.x A/AA and best practices) on the document or one subtree: no violation of any impact. */
 export async function accessible(page: Page, what: string, selector?: string): Promise<void> {
-  // A colour mid-transition is not a colour: let any CSS transition finish before measuring.
-  await page.evaluate(() => Promise.all(document.getAnimations().filter((a) => a instanceof CSSTransition).map((a) => a.finished.catch(() => undefined))));
+  // A colour mid-transition (or mid-fade) is not a colour: let every finite CSS transition and animation finish before measuring.
+  await page.evaluate(() =>
+    Promise.all(
+      document
+        .getAnimations()
+        .filter((a) => a instanceof CSSTransition || (a instanceof CSSAnimation && Number.isFinite(a.effect?.getComputedTiming().endTime as number)))
+        .map((a) => a.finished.catch(() => undefined)),
+    ),
+  );
   await page.evaluate(axeSource);
   const violations = await page.evaluate(async (sel) => {
     const axe = (window as unknown as { axe: { run: (ctx: Element | Document, opts: unknown) => Promise<{ violations: { id: string; impact: string; help: string; nodes: { target: string[] }[] }[] }> } }).axe;

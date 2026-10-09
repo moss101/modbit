@@ -236,6 +236,14 @@ export function Composer(props: ComposerProps) {
   const clearAfterSend = (sent: string) => {
     lastSent.current = sent;
     lastSentId.current = inputIdRef.current.id;
+    // Words typed while the send was in flight belong to the next message: keep them, clear only what was sent.
+    if ((area.current?.value ?? sent).trim() !== sent) {
+      persist(withHistory(storeRef.current, taskId, sent));
+      setHistory(HISTORY_START);
+      setStopped(null);
+      inputIdRef.current = { id: newId(), text: "" };
+      return;
+    }
     persist(withDraft(withHistory(storeRef.current, taskId, sent), taskId, null));
     setText("");
     setMentions([]);
