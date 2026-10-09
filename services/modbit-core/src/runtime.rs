@@ -9713,6 +9713,55 @@ async fn run_verification_stage(
             // What stays pending after a run — an independent review, a
             // human decision — still goes to the user's review carrying the
             // obligation.
+            // PX-135: the generated adversarial checks (test weakening, vacuous
+            // pass, overfit literal, unpinned boundary) are evidence of this
+            // COMPLETION run. They ride the run's own record as `adversarial`
+            // checks, so the one Acceptance Gate weighs them like any other
+            // check: a FAIL rejects, an UNKNOWN cannot accept. A candidate
+            // that changes nothing has nothing to derive them from.
+            let mut adversarial_findings: Vec<String> = Vec::new();
+            if !files.is_empty() {
+                let scratch = std::env::temp_dir().join(format!("modbit-adversarial-{run_id}"));
+                let generated = crate::verify::adversarial_checks(
+                    &runner,
+                    &plan,
+                    std::path::Path::new(&root),
+                    &scratch,
+                    &env,
+                    &files,
+                )
+                .await;
+                let _ = std::fs::remove_dir_all(&scratch);
+                let findings_ref = {
+                    let store = core.store.lock().await;
+                    store
+                        .objects()
+                        .put(&serde_json::to_vec(&generated).unwrap_or_default())
+                        .unwrap_or_default()
+                };
+                for ev in events
+                    .iter_mut()
+                    .filter(|e| e.event_type == "VerificationRunRecorded")
+                {
+                    if let Some(checks) = ev.payload["checks"].as_array_mut() {
+                        checks.extend(generated.iter().map(|g| {
+                            serde_json::to_value(crate::verify::adversarial_summary(g))
+                                .unwrap_or_default()
+                        }));
+                    }
+                    if let Some(refs) = ev.payload["report_refs"].as_array_mut() {
+                        refs.push(serde_json::Value::String(findings_ref.clone()));
+                    }
+                }
+                for g in &generated {
+                    use modbit_verification::adversarial::Status;
+                    if matches!(g.status, Status::Fail | Status::Unknown) {
+                        for f in &g.findings {
+                            adversarial_findings.push(format!("{}: {f}", g.class.check_id()));
+                        }
+                    }
+                }
+            }
             let mut gate_blockers: Vec<String>;
             {
                 let (policy, _) = crate::assurance::policy_for(
@@ -9766,6 +9815,12 @@ async fn run_verification_stage(
                     state.open_failures.push(format!("completion:{b}"));
                     text.push_str(&format!("blocked: {b}\n"));
                 }
+                for f in &adversarial_findings {
+                    state
+                        .open_failures
+                        .push(format!("completion:adversarial {f}"));
+                    text.push_str(&format!("blocked: adversarial check {f}\n"));
+                }
                 state.acceptance = Some(serde_json::json!({
                     "verdict": gate.verdict.label(),
                     "candidate_revision": gate.candidate_revision,
@@ -9781,6 +9836,7 @@ async fn run_verification_stage(
             ok = !attribution.blocks_acceptance
                 && !deny
                 && gate_blockers.is_empty()
+                && adversarial_findings.is_empty()
                 && state.open_flags.is_empty()
                 && (unverified_ok
                     || matches!(

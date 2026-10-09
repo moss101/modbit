@@ -87,6 +87,9 @@ pub enum Status {
     /// The check could not be made meaningful (the candidate's own suite is
     /// not green, so a mutant could not be told from the existing failure).
     Skip,
+    /// The check could not run (the copy, a write or a restore failed): the
+    /// gate takes this as an outcome it could not establish, never a pass.
+    Unknown,
 }
 
 /// One derived check and what it found.
@@ -111,6 +114,7 @@ impl GeneratedCheck {
                 Status::Pass => "PASS",
                 Status::Fail => "FAIL",
                 Status::Skip => "SKIP",
+                Status::Unknown => "UNKNOWN",
             }
             .to_owned(),
         }
@@ -509,7 +513,10 @@ fn weakening(files: &[ChangedFile], declared: &[String]) -> Vec<String> {
         let old = fns_by_name(lang, f.old.as_deref());
         let new = fns_by_name(lang, f.new.as_deref());
         for (name, o) in &old {
-            if declared.iter().any(|d| name.contains(d.as_str())) {
+            if declared
+                .iter()
+                .any(|d| name.contains(d.as_str()) || d.contains(name.as_str()))
+            {
                 continue;
             }
             let Some(n) = new.get(name) else {
@@ -1078,7 +1085,7 @@ pub async fn boundary_check(
     }
     let skip = |why: String| GeneratedCheck {
         class: Class::BoundaryNotPinned,
-        status: Status::Skip,
+        status: Status::Unknown,
         findings: vec![why],
     };
     let _ = std::fs::remove_dir_all(scratch);
@@ -1090,9 +1097,13 @@ pub async fn boundary_check(
     env.push(("PYTHONDONTWRITEBYTECODE".into(), "1".into()));
     remove_pycache(scratch);
     if !suite_green(runner, commands, scratch, &env, opts.timeout_ms).await {
-        return skip(
-            "the candidate's own checks are not green; mutants cannot be told apart".into(),
-        );
+        return GeneratedCheck {
+            class: Class::BoundaryNotPinned,
+            status: Status::Skip,
+            findings: vec![
+                "the candidate's own checks are not green; mutants cannot be told apart".into(),
+            ],
+        };
     }
     let mut findings = Vec::new();
     let mut originals: BTreeMap<String, String> = BTreeMap::new();
