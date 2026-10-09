@@ -2129,6 +2129,7 @@ dependencies = [
 name = "modbit-cli"
 version = "0.0.0"
 dependencies = [
+ "base64",
  "ed25519-dalek",
  "hex",
  "modbit-domain",
@@ -2136,7 +2137,9 @@ dependencies = [
  "modbit-skills",
  "prost",
  "rand 0.10.2",
+ "reqwest",
  "serde_json",
+ "sha2 0.11.0",
  "tempfile",
  "tokio",
  "windows-sys 0.61.2",
@@ -2149,6 +2152,7 @@ dependencies = [
  "anyhow",
  "axum",
  "base64",
+ "ed25519-dalek",
  "futures-util",
  "hex",
  "hmac",
@@ -2175,12 +2179,14 @@ dependencies = [
  "anyhow",
  "axum",
  "base64",
+ "ed25519-dalek",
  "futures-util",
  "hex",
  "hmac",
  "modbit-cloud-api",
  "modbit-domain",
  "modbit-event-store",
+ "modbit-git",
  "modbit-observability",
  "modbit-protocol",
  "modbit-sandbox",
@@ -2303,6 +2309,7 @@ dependencies = [
 name = "modbit-domain"
 version = "0.0.0"
 dependencies = [
+ "ed25519-dalek",
  "hex",
  "serde",
  "serde_json",
@@ -2368,9 +2375,11 @@ dependencies = [
 name = "modbit-git"
 version = "0.0.0"
 dependencies = [
+ "hex",
  "modbit-domain",
  "serde",
  "serde_json",
+ "sha2 0.11.0",
  "tempfile",
  "thiserror 2.0.20",
 ]
@@ -2430,9 +2439,12 @@ version = "0.0.0"
 dependencies = [
  "hex",
  "modbit-domain",
+ "reqwest",
  "serde",
  "serde_json",
  "sha2 0.11.0",
+ "tempfile",
+ "tokio",
 ]
 
 [[package]]
@@ -2528,6 +2540,7 @@ dependencies = [
  "hex",
  "memchr",
  "modbit-domain",
+ "modbit-git",
  "regex",
  "serde",
  "serde_json",
@@ -2597,8 +2610,11 @@ dependencies = [
 name = "modbit-secrets"
 version = "0.0.0"
 dependencies = [
+ "hex",
  "modbit-domain",
+ "rand 0.10.2",
  "regex",
+ "serde",
  "serde_json",
 ]
 
@@ -2681,6 +2697,7 @@ dependencies = [
  "globset",
  "hex",
  "modbit-domain",
+ "modbit-git",
  "proptest",
  "serde",
  "serde_json",

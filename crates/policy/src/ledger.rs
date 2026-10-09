@@ -95,7 +95,7 @@ pub fn verify_chain(chain: &[EffectReceipt]) -> Result<(), String> {
     Ok(())
 }
 
-fn canonical_json(v: &serde_json::Value) -> String {
+pub(crate) fn canonical_json(v: &serde_json::Value) -> String {
     fn sort(v: &serde_json::Value) -> serde_json::Value {
         match v {
             serde_json::Value::Object(m) => serde_json::Value::Object(
@@ -131,6 +131,7 @@ mod tests {
             occurred_at: Timestamp(1),
             reversibility: None,
             compensates: None,
+            authorization: None,
             receipt_hash: String::new(),
         })
     }

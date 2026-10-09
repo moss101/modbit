@@ -9,7 +9,7 @@
 //! refuses write mode).
 
 /// The schema version this build writes.
-pub const CLOUD_SCHEMA_VERSION: i32 = 6;
+pub const CLOUD_SCHEMA_VERSION: i32 = 7;
 
 /// Ordered migrations `(version, name, sql)`.
 pub const MIGRATIONS: &[(i32, &str, &str)] = &[
@@ -233,6 +233,58 @@ CREATE TABLE IF NOT EXISTS webhook_deliveries (
   task_id UUID,
   received_at_ms BIGINT NOT NULL,
   PRIMARY KEY (provider, delivery_id)
+);
+",
+    ),
+    (
+        7,
+        "cloud-v7: identity and policy — roles, OIDC identities and logins, the provisioning audit, organisation keys, signed policy bundles (PX-129)",
+        r"
+ALTER TABLE principals ADD COLUMN IF NOT EXISTS role TEXT NOT NULL DEFAULT 'member';
+CREATE TABLE IF NOT EXISTS principal_identities (
+  issuer TEXT NOT NULL,
+  subject TEXT NOT NULL,
+  tenant_id UUID NOT NULL REFERENCES tenants(tenant_id),
+  principal_id UUID NOT NULL REFERENCES principals(principal_id),
+  created_at_ms BIGINT NOT NULL,
+  PRIMARY KEY (issuer, subject)
+);
+CREATE INDEX IF NOT EXISTS principal_identities_principal ON principal_identities(principal_id);
+CREATE TABLE IF NOT EXISTS oidc_logins (
+  state_hash TEXT PRIMARY KEY,
+  nonce TEXT NOT NULL,
+  code_challenge TEXT NOT NULL,
+  redirect_uri TEXT NOT NULL,
+  created_at_ms BIGINT NOT NULL,
+  expires_at_ms BIGINT NOT NULL,
+  consumed_at_ms BIGINT
+);
+CREATE TABLE IF NOT EXISTS provisioning_audit (
+  audit_id BIGSERIAL PRIMARY KEY,
+  at_ms BIGINT NOT NULL,
+  actor TEXT NOT NULL,
+  tenant_id UUID,
+  action TEXT NOT NULL,
+  target TEXT NOT NULL,
+  detail JSONB NOT NULL
+);
+CREATE INDEX IF NOT EXISTS provisioning_audit_tenant ON provisioning_audit(tenant_id, audit_id);
+CREATE TABLE IF NOT EXISTS org_keys (
+  tenant_id UUID NOT NULL REFERENCES tenants(tenant_id),
+  key_id TEXT NOT NULL,
+  public_key TEXT NOT NULL,
+  created_at_ms BIGINT NOT NULL,
+  revoked_at_ms BIGINT,
+  PRIMARY KEY (tenant_id, key_id)
+);
+CREATE TABLE IF NOT EXISTS policy_bundles (
+  tenant_id UUID NOT NULL REFERENCES tenants(tenant_id),
+  generation BIGINT NOT NULL,
+  key_id TEXT NOT NULL,
+  signed JSONB NOT NULL,
+  published_by UUID,
+  published_at_ms BIGINT NOT NULL,
+  PRIMARY KEY (tenant_id, generation)
 );
 ",
     ),

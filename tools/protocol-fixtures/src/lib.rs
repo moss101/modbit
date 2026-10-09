@@ -231,6 +231,40 @@ pub fn samples() -> Vec<Sample> {
         index_used_tokens: 14,
         index_omitted: 0,
         system_root: "/etc/modbit/skills".into(),
+        // REQ-PX-052: the slash menu's union (field block 260-279).
+        slash: vec![
+            SlashEntry {
+                kind: "SKILL".into(),
+                id: "core-guide".into(),
+                display_name: "core-guide".into(),
+                description: "how the product works".into(),
+                scope: "SYSTEM".into(),
+                trust: "SYSTEM".into(),
+                trust_detail: String::new(),
+                enabled: true,
+                invocation: "BOTH".into(),
+                built_in: true,
+                content_hash: "ab".repeat(32),
+                provenance_source: "system".into(),
+                source: "/etc/modbit/skills/core-guide".into(),
+            },
+            SlashEntry {
+                kind: "COMMAND".into(),
+                id: "kit/tidy".into(),
+                display_name: "kit/tidy".into(),
+                description: "tidy up a file".into(),
+                scope: "EXTENSION".into(),
+                trust: "VERIFIED:acme".into(),
+                trust_detail: String::new(),
+                enabled: true,
+                invocation: "USER_ONLY".into(),
+                built_in: false,
+                content_hash: "cd".repeat(32),
+                provenance_source: "extension:kit@1.2.0".into(),
+                source: "/ext/kit".into(),
+            },
+        ],
+        slash_divider_at: 1,
     };
     let budgets = SetTaskBudgets {
         task_id: id(0x31),
@@ -238,6 +272,119 @@ pub fn samples() -> Vec<Sample> {
         max_wall_ms: 9_007_199_254_740_993, // > 2^53
         max_children: 2,
         forbid_spawn: false,
+    };
+    // PX-050 / PX-057 / PX-059: the in-run control messages. 64-bit counters
+    // and offsets past 2^53 so both languages agree on them.
+    let queue = QueuedInputList {
+        task_id: id(0x31),
+        items: vec![
+            QueuedInputView {
+                input_id: "a".into(),
+                position: 1,
+                mode: "FOLLOW_UP".into(),
+                text: "message A".into(),
+                state: "QUEUED".into(),
+                model: String::new(),
+                edited: true,
+                sent_now: false,
+                provenance: String::new(),
+                untrusted: false,
+                queued_offset: 9_007_199_254_740_993,
+                changed_offset: 9_007_199_254_740_995,
+            },
+            QueuedInputView {
+                input_id: "forge-comment-7".into(),
+                position: 0,
+                mode: "STEER".into(),
+                text: "please rename".into(),
+                state: "DISPATCHED".into(),
+                model: "gpt-5-mini".into(),
+                edited: false,
+                sent_now: true,
+                provenance: "forge_review_comment".into(),
+                untrusted: true,
+                queued_offset: 12,
+                changed_offset: 14,
+            },
+        ],
+        queued: 1,
+        run_alive: true,
+        offset: 9_007_199_254_740_999,
+    };
+    let rules = AllowRuleList {
+        rules: vec![AllowRuleView {
+            rule_id: "r-1".into(),
+            pattern: vec!["cargo".into(), "test".into()],
+            scope: "REPO".into(),
+            scope_key: "/repo".into(),
+            created_by: "user:b1".into(),
+            created_at_ms: 1_700_000_000_123,
+            expires_at_ms: 9_007_199_254_740_993,
+            covers_always_ask: false,
+            state: "ACTIVE".into(),
+            revoked_by: String::new(),
+            origin_task: "t-1".into(),
+            offset: 77,
+        }],
+    };
+    let run_mode = RunModeView {
+        task_id: id(0x31),
+        mode: "ALLOWLIST".into(),
+        acknowledged: true,
+        always_ask: vec!["NETWORK".into(), "SECRET".into()],
+        modes: vec!["ASK".into(), "ALLOWLIST".into()],
+        warning: "a mode that approves more".into(),
+        session_only: false,
+        offset: 9_007_199_254_740_993,
+        rules_in_force: 2,
+    };
+    let accounting = ContextAccountingView {
+        available: true,
+        total_tokens: 9_007_199_254_740_993,
+        total_source: "PROVIDER_REPORTED".into(),
+        estimated_total: 9_007_199_254_740_000,
+        provider_reported_input: 9_007_199_254_740_993,
+        estimator_error_bp: 12,
+        declared_error_bp: 2500,
+        rounding_rule: "LARGEST_REMAINDER".into(),
+        window_tokens: 200_000,
+        window_source: "REGISTRY".into(),
+        used_bp: 4504,
+        categories: vec![
+            ContextCategoryView {
+                category: "SYSTEM".into(),
+                tokens: 6_000_000_000_000_001,
+                estimated_tokens: 6_000_000_000_000_000,
+                share_bp: 6661,
+                sources: vec!["system segment".into()],
+            },
+            ContextCategoryView {
+                category: "CONVERSATION".into(),
+                tokens: 3_007_199_254_740_992,
+                estimated_tokens: 3_007_199_254_740_000,
+                share_bp: 3338,
+                sources: vec![],
+            },
+        ],
+        endpoint: "openai".into(),
+        model: "gpt-5-mini".into(),
+        turn_id: "01a09072-1262-70f2-b103-63d3e8f0feda".into(),
+        turn_ordinal: 4,
+        offset: 9_007_199_254_741_001,
+        instruction_layers_in_force: 2,
+        memory_items_injected: 1,
+        compaction_epoch: 1,
+        compaction_summaries: 1,
+        budgets: Some(BudgetAccountingView {
+            max_cost_minor: 5000,
+            spent_minor: 1234,
+            held_by_children_minor: 100,
+            max_wall_ms: 9_007_199_254_740_993,
+            wall_ms_used: 42,
+            max_children: 3,
+            live_children: 1,
+            forbid_spawn: false,
+        }),
     };
     let command = CommandEnvelope {
         command_id: id(0x11),
@@ -551,6 +698,129 @@ pub fn samples() -> Vec<Sample> {
             tool_call_id: "01a08f33-0d97-7d40-b299-f8a7bc5cda60".into(),
         }],
     };
+    let memory_injection = MemoryInjectionView {
+        pack_id: "c".repeat(64),
+        token_budget: 800,
+        token_used: 211,
+        omitted_count: 3,
+        entries: vec![MemoryInjectedEntry {
+            memory_id: "a".repeat(64),
+            scope: "agent_profile:primary".into(),
+            record_type: "convention".into(),
+            topic: "indentation".into(),
+            source: "user_stated".into(),
+            author: "user:b1b1b1b1b1b1b1b1b1b1b1b1b1b1b1b1".into(),
+            confidence: 0.9,
+            validated: true,
+            token_cost: 42,
+            reasons: vec!["relevant: topic".into(), "scope:agent_profile".into()],
+            conflicts_with: vec![],
+            clipped: false,
+            created_at_ms: 1_757_289_600_000,
+            expires_at_ms: 0,
+            last_validation_revision: String::new(),
+        }],
+        excluded: vec![
+            MemoryExclusionView {
+                memory_id: "b".repeat(64),
+                reason: format!("shadowed_by:{}", "a".repeat(64)),
+            },
+            MemoryExclusionView {
+                memory_id: "d".repeat(64),
+                reason: "sensitive".into(),
+            },
+        ],
+        rejected_ids: vec![],
+        compiler_version: "memory-pack-v1".into(),
+    };
+    let impact = ImpactResult {
+        changed: vec!["src/util.rs".into()],
+        dependents: vec![ImpactedFile {
+            path: "src/render.rs".into(),
+            rank: 1.02,
+            distance: 1,
+            confidence: "resolved".into(),
+            edge_path: vec![ImpactEdgeStep {
+                from: "src/render.rs".into(),
+                to: "src/util.rs".into(),
+                kind: "call".into(),
+                confidence: "resolved".into(),
+                symbol: "pad".into(),
+                line: 5,
+            }],
+            reasons: vec!["call".into()],
+            tests: vec!["tests/render_test.rs".into()],
+        }],
+        tests: vec![ImpactedTestView {
+            path: "tests/render_test.rs".into(),
+            reasons: vec!["covers_dependent".into()],
+            distance: 2,
+            covers: vec!["src/render.rs".into()],
+        }],
+        revision: 9_007_199_254_740_993,
+        partial: true,
+        partial_reason: "more than 1 dependents; the list is cut at 1".into(),
+        symbols: vec!["pad".into()],
+        limitation: "heuristic".into(),
+        ambiguous_edges: 2,
+        unresolved_edges: 311,
+    };
+    let index_status = IndexStatusView {
+        workspace_root: "/repo".into(),
+        store_dir: "/profile/indexes/0123456789abcdef".into(),
+        workspace_revision: 4,
+        builds: 0,
+        loads: 5,
+        refreshes: 2,
+        last_refresh_ms: 7,
+        last_refresh_files: 1,
+        components: vec![
+            IndexComponentView {
+                name: "symbols".into(),
+                state: "loaded".into(),
+                files: 256,
+                persisted_bytes: 0,
+                load_ms: 9,
+                build_ms: 0,
+                reason: String::new(),
+            },
+            IndexComponentView {
+                name: "lexical".into(),
+                state: "rebuilt".into(),
+                files: 256,
+                persisted_bytes: 0,
+                load_ms: 0,
+                build_ms: 410,
+                reason: "lexical: checksum mismatch in 0.idx".into(),
+            },
+        ],
+        rebuild_reasons: vec!["lexical: checksum mismatch in 0.idx".into()],
+        persisted_bytes: 9_007_199_254_740_993,
+        persisted_generation: 3,
+        first_ready_ms: 120,
+        searches_indexed: 11,
+        searches_scanned: 4,
+        recomputed_files: 1,
+        recomputed_sample: vec!["src/util.rs".into()],
+    };
+    let runtime = BrowserRuntimeView {
+        browser_session_id: id(0x61),
+        latch: "browser.act click: BROWSER_TIMEOUT".into(),
+        latch_tool_call_id: "01a08f33-0d97-7d40-b299-f8a7bc5cda60".into(),
+        page_kind: "login".into(),
+        change_seq: 9_007_199_254_740_993,
+        notices: 12,
+        compiled_seq: 11,
+        known_entities: 7,
+        history: 3,
+        last_fingerprint: "e".repeat(64),
+        delivered_fingerprint: "f".repeat(64),
+    };
+    let noticed = BrowserHostNoticed {
+        accepted: true,
+        change_seq: 12,
+        notices: 4,
+    };
     let hello = Hello {
         protocol_version: Some(modbit_protocol::PROTOCOL_VERSION),
         client_kind: ClientKind::Cli as i32,
@@ -664,6 +934,69 @@ pub fn samples() -> Vec<Sample> {
                 "takeInputLease": true, "stealInputLease": false
             }),
             decode: reencode::<AttachTerminal>,
+        },
+        Sample {
+            // PX-066 (worktrees.proto): the person's apply-back choice.
+            name: "apply_worktree",
+            type_name: "modbit.v1.ApplyWorktree",
+            bytes: ApplyWorktree {
+                task_id: id(0x31),
+                expected_candidate_revision: 18_446_744_073_709_551_615,
+                option: "OVERWRITE".into(),
+                confirm_paths: vec!["a.txt".into(), "src/b ü.rs".into()],
+                remember: false,
+                expected_plan_digest: "ab".repeat(32),
+            }
+            .encode_to_vec(),
+            expected: json!({
+                "taskId": idhex(0x31), "expectedCandidateRevision": "18446744073709551615",
+                "option": "OVERWRITE", "confirmPaths": ["a.txt", "src/b ü.rs"],
+                "remember": false, "expectedPlanDigest": "ab".repeat(32)
+            }),
+            decode: reencode::<ApplyWorktree>,
+        },
+        Sample {
+            // PX-065 (worktrees.proto): one row of the worktree list.
+            name: "worktree_view",
+            type_name: "modbit.v1.WorktreeView",
+            bytes: WorktreeView {
+                worktree_id: "01a1183e-0000-7000-8000-000000000001".into(),
+                task_id: id(0x32),
+                kind: "TASK".into(),
+                path: "/profile/worktrees/x".into(),
+                origin_root: "/work/repo".into(),
+                branch: "modbit/task-x".into(),
+                base_revision: "ab".repeat(20),
+                state: "ACTIVE".into(),
+                disposition: "APPLIED".into(),
+                dirty: true,
+                unapplied: false,
+                changed_files: 4,
+                bytes: 9_007_199_254_740_993,
+                created_at_ms: 1_757_289_600_123,
+                last_activity_ms: 1_757_289_700_000,
+                task_running: false,
+                orphan: false,
+                protected: true,
+                removable: false,
+                removable_reason: "younger than the protection window".into(),
+                setup_status: "PASSED".into(),
+                setup_detail: String::new(),
+                neutralized: vec!["HOOK".into(), "FILTER".into()],
+            }
+            .encode_to_vec(),
+            expected: json!({
+                "worktreeId": "01a1183e-0000-7000-8000-000000000001", "taskId": idhex(0x32),
+                "kind": "TASK", "path": "/profile/worktrees/x", "originRoot": "/work/repo",
+                "branch": "modbit/task-x", "baseRevision": "ab".repeat(20), "state": "ACTIVE",
+                "disposition": "APPLIED", "dirty": true, "unapplied": false, "changedFiles": 4,
+                "bytes": "9007199254740993", "createdAtMs": "1757289600123",
+                "lastActivityMs": "1757289700000", "taskRunning": false, "orphan": false,
+                "protected": true, "removable": false,
+                "removableReason": "younger than the protection window",
+                "setupStatus": "PASSED", "setupDetail": "", "neutralized": ["HOOK", "FILTER"]
+            }),
+            decode: reencode::<WorktreeView>,
         },
         Sample {
             name: "output_ref_read_response",
@@ -898,9 +1231,110 @@ pub fn samples() -> Vec<Sample> {
                 }],
                 "rejected": [{"source": "/profile/skills/broken", "code": "MALFORMED_MANIFEST", "reason": "no front matter"}],
                 "indexBudgetTokens": 2000, "indexUsedTokens": 14, "indexOmitted": 0,
-                "systemRoot": "/etc/modbit/skills"
+                "systemRoot": "/etc/modbit/skills",
+                "slash": [
+                    {
+                        "kind": "SKILL", "id": "core-guide", "displayName": "core-guide",
+                        "description": "how the product works", "scope": "SYSTEM", "trust": "SYSTEM",
+                        "trustDetail": "", "enabled": true, "invocation": "BOTH", "builtIn": true,
+                        "contentHash": "ab".repeat(32), "provenanceSource": "system",
+                        "source": "/etc/modbit/skills/core-guide"
+                    },
+                    {
+                        "kind": "COMMAND", "id": "kit/tidy", "displayName": "kit/tidy",
+                        "description": "tidy up a file", "scope": "EXTENSION", "trust": "VERIFIED:acme",
+                        "trustDetail": "", "enabled": true, "invocation": "USER_ONLY", "builtIn": false,
+                        "contentHash": "cd".repeat(32), "provenanceSource": "extension:kit@1.2.0",
+                        "source": "/ext/kit"
+                    }
+                ],
+                "slashDividerAt": 1
             }),
             decode: reencode::<SkillList>,
+        },
+        Sample {
+            name: "queued_input_list",
+            type_name: "modbit.v1.QueuedInputList",
+            bytes: queue.encode_to_vec(),
+            expected: json!({
+                "taskId": idhex(0x31), "queued": 1, "runAlive": true,
+                "offset": "9007199254740999",
+                "items": [
+                    {
+                        "inputId": "a", "position": 1, "mode": "FOLLOW_UP", "text": "message A",
+                        "state": "QUEUED", "model": "", "edited": true, "sentNow": false,
+                        "provenance": "", "untrusted": false,
+                        "queuedOffset": "9007199254740993", "changedOffset": "9007199254740995"
+                    },
+                    {
+                        "inputId": "forge-comment-7", "position": 0, "mode": "STEER",
+                        "text": "please rename", "state": "DISPATCHED", "model": "gpt-5-mini",
+                        "edited": false, "sentNow": true, "provenance": "forge_review_comment",
+                        "untrusted": true, "queuedOffset": "12", "changedOffset": "14"
+                    }
+                ]
+            }),
+            decode: reencode::<QueuedInputList>,
+        },
+        Sample {
+            name: "allow_rule_list",
+            type_name: "modbit.v1.AllowRuleList",
+            bytes: rules.encode_to_vec(),
+            expected: json!({
+                "rules": [{
+                    "ruleId": "r-1", "pattern": ["cargo", "test"], "scope": "REPO",
+                    "scopeKey": "/repo", "createdBy": "user:b1",
+                    "createdAtMs": "1700000000123", "expiresAtMs": "9007199254740993",
+                    "coversAlwaysAsk": false, "state": "ACTIVE", "revokedBy": "",
+                    "originTask": "t-1", "offset": "77"
+                }]
+            }),
+            decode: reencode::<AllowRuleList>,
+        },
+        Sample {
+            name: "run_mode_view",
+            type_name: "modbit.v1.RunModeView",
+            bytes: run_mode.encode_to_vec(),
+            expected: json!({
+                "taskId": idhex(0x31), "mode": "ALLOWLIST", "acknowledged": true,
+                "alwaysAsk": ["NETWORK", "SECRET"], "modes": ["ASK", "ALLOWLIST"],
+                "warning": "a mode that approves more", "sessionOnly": false,
+                "offset": "9007199254740993", "rulesInForce": 2
+            }),
+            decode: reencode::<RunModeView>,
+        },
+        Sample {
+            name: "context_accounting_view",
+            type_name: "modbit.v1.ContextAccountingView",
+            bytes: accounting.encode_to_vec(),
+            expected: json!({
+                "available": true, "totalTokens": "9007199254740993",
+                "totalSource": "PROVIDER_REPORTED", "estimatedTotal": "9007199254740000",
+                "providerReportedInput": "9007199254740993", "estimatorErrorBp": 12,
+                "declaredErrorBp": 2500, "roundingRule": "LARGEST_REMAINDER",
+                "windowTokens": "200000", "windowSource": "REGISTRY", "usedBp": 4504,
+                "categories": [
+                    {
+                        "category": "SYSTEM", "tokens": "6000000000000001",
+                        "estimatedTokens": "6000000000000000", "shareBp": 6661,
+                        "sources": ["system segment"]
+                    },
+                    {
+                        "category": "CONVERSATION", "tokens": "3007199254740992",
+                        "estimatedTokens": "3007199254740000", "shareBp": 3338, "sources": []
+                    }
+                ],
+                "endpoint": "openai", "model": "gpt-5-mini",
+                "turnId": "01a09072-1262-70f2-b103-63d3e8f0feda", "turnOrdinal": 4,
+                "offset": "9007199254741001", "instructionLayersInForce": 2,
+                "memoryItemsInjected": 1, "compactionEpoch": 1, "compactionSummaries": 1,
+                "budgets": {
+                    "maxCostMinor": "5000", "spentMinor": "1234", "heldByChildrenMinor": "100",
+                    "maxWallMs": "9007199254740993", "wallMsUsed": "42", "maxChildren": 3,
+                    "liveChildren": 1, "forbidSpawn": false
+                }
+            }),
+            decode: reencode::<ContextAccountingView>,
         },
         Sample {
             name: "set_task_budgets",
@@ -921,6 +1355,262 @@ pub fn samples() -> Vec<Sample> {
                 "clientBuild": "0.0.0", "supportedCommandTypes": ["CreateSession", "CreateTask"]
             }),
             decode: reencode::<Hello>,
+        },
+        // PX-113: what the prompt envelope injected, as the Inspector shows it.
+        Sample {
+            name: "memory_injection_view",
+            type_name: "modbit.v1.MemoryInjectionView",
+            bytes: memory_injection.encode_to_vec(),
+            expected: json!({
+                "packId": "c".repeat(64), "tokenBudget": 800, "tokenUsed": 211, "omittedCount": 3,
+                "entries": [{
+                    "memoryId": "a".repeat(64), "scope": "agent_profile:primary",
+                    "recordType": "convention", "topic": "indentation",
+                    "source": "user_stated", "author": "user:b1b1b1b1b1b1b1b1b1b1b1b1b1b1b1b1",
+                    "confidence": 0.9f32 as f64, "validated": true, "tokenCost": 42,
+                    "reasons": ["relevant: topic", "scope:agent_profile"],
+                    "conflictsWith": [], "clipped": false,
+                    "createdAtMs": "1757289600000", "expiresAtMs": "0",
+                    "lastValidationRevision": ""
+                }],
+                "excluded": [
+                    {"memoryId": "b".repeat(64), "reason": format!("shadowed_by:{}", "a".repeat(64))},
+                    {"memoryId": "d".repeat(64), "reason": "sensitive"}
+                ],
+                "rejectedIds": [], "compilerVersion": "memory-pack-v1"
+            }),
+            decode: reencode::<MemoryInjectionView>,
+        },
+        // PX-110: what a change could break, with the edge path and confidence.
+        Sample {
+            name: "impact_result",
+            type_name: "modbit.v1.ImpactResult",
+            bytes: impact.encode_to_vec(),
+            expected: json!({
+                "changed": ["src/util.rs"],
+                "dependents": [{
+                    "path": "src/render.rs", "rank": 1.02, "distance": 1, "confidence": "resolved",
+                    "edgePath": [{
+                        "from": "src/render.rs", "to": "src/util.rs", "kind": "call",
+                        "confidence": "resolved", "symbol": "pad", "line": 5
+                    }],
+                    "reasons": ["call"], "tests": ["tests/render_test.rs"]
+                }],
+                "tests": [{
+                    "path": "tests/render_test.rs", "reasons": ["covers_dependent"],
+                    "distance": 2, "covers": ["src/render.rs"]
+                }],
+                "revision": "9007199254740993", "partial": true,
+                "partialReason": "more than 1 dependents; the list is cut at 1",
+                "symbols": ["pad"], "limitation": "heuristic",
+                "ambiguousEdges": 2, "unresolvedEdges": 311
+            }),
+            decode: reencode::<ImpactResult>,
+        },
+        // PX-111: how a workspace's indexes came to be.
+        Sample {
+            name: "index_status_view",
+            type_name: "modbit.v1.IndexStatusView",
+            bytes: index_status.encode_to_vec(),
+            expected: json!({
+                "workspaceRoot": "/repo", "storeDir": "/profile/indexes/0123456789abcdef",
+                "workspaceRevision": "4", "builds": "0", "loads": "5", "refreshes": "2",
+                "lastRefreshMs": "7", "lastRefreshFiles": "1",
+                "components": [
+                    {"name": "symbols", "state": "loaded", "files": "256", "persistedBytes": "0",
+                     "loadMs": "9", "buildMs": "0", "reason": ""},
+                    {"name": "lexical", "state": "rebuilt", "files": "256", "persistedBytes": "0",
+                     "loadMs": "0", "buildMs": "410", "reason": "lexical: checksum mismatch in 0.idx"}
+                ],
+                "rebuildReasons": ["lexical: checksum mismatch in 0.idx"],
+                "persistedBytes": "9007199254740993", "persistedGeneration": "3",
+                "firstReadyMs": "120", "searchesIndexed": "11", "searchesScanned": "4",
+                "recomputedFiles": "1", "recomputedSample": ["src/util.rs"]
+            }),
+            decode: reencode::<IndexStatusView>,
+        },
+        // PX-042: a search over one session's conversations.
+        Sample {
+            name: "search_conversations",
+            type_name: "modbit.v1.SearchConversations",
+            bytes: SearchConversations {
+                session_id: id(0x31),
+                query: "\"file must say\" valid".into(),
+                limit: 20,
+                max_snippets: 3,
+                include_archived: true,
+                task_id: id(0x32),
+            }
+            .encode_to_vec(),
+            expected: json!({
+                "sessionId": idhex(0x31), "query": "\"file must say\" valid", "limit": 20,
+                "maxSnippets": 3, "includeArchived": true, "taskId": idhex(0x32)
+            }),
+            decode: reencode::<SearchConversations>,
+        },
+        Sample {
+            name: "conversation_search_results",
+            type_name: "modbit.v1.ConversationSearchResults",
+            bytes: ConversationSearchResults {
+                session_id: id(0x31),
+                query: "file must say \"file must\"".into(),
+                hits: vec![ConversationHit {
+                    task_id: id(0x32),
+                    title: "Reject negative quantities.".into(),
+                    status_class: AgentStatusClass::ReadyForReviewUnseen as i32,
+                    status_label: "Ready for review".into(),
+                    archived: false,
+                    title_matched: false,
+                    matched_rows: 2,
+                    score: 6,
+                    last_offset: 9_007_199_254_740_993,
+                    snippets: vec![ConversationSnippet {
+                        row_id: "msg:0123".into(),
+                        kind: TranscriptRowKind::AssistantMessage as i32,
+                        source: SnippetSource::Assistant as i32,
+                        offset: 411,
+                        turn_id: "turn-3".into(),
+                        text: "The check failed; the file must say validated.".into(),
+                        cut_before: false,
+                        cut_after: true,
+                        matches: vec![MatchRange { start: 24, end: 37 }],
+                        score: 1,
+                    }],
+                }],
+                total_hits: 1,
+                has_more: false,
+                tasks_considered: 4,
+                tasks_rebuilt: 2,
+                rows_indexed: 13,
+                index_bytes: 9_007_199_254_740_993,
+                index_budget_bytes: 33_554_432,
+                tasks_truncated: 1,
+                index_digest: "ab".repeat(32),
+                as_of_offset: 777,
+            }
+            .encode_to_vec(),
+            expected: json!({
+                "sessionId": idhex(0x31), "query": "file must say \"file must\"",
+                "hits": [{
+                    "taskId": idhex(0x32), "title": "Reject negative quantities.",
+                    "statusClass": "AGENT_STATUS_CLASS_READY_FOR_REVIEW_UNSEEN",
+                    "statusLabel": "Ready for review", "archived": false, "titleMatched": false,
+                    "matchedRows": 2, "score": 6, "lastOffset": "9007199254740993",
+                    "snippets": [{
+                        "rowId": "msg:0123", "kind": "TRANSCRIPT_ROW_KIND_ASSISTANT_MESSAGE",
+                        "source": "SNIPPET_SOURCE_ASSISTANT", "offset": "411", "turnId": "turn-3",
+                        "text": "The check failed; the file must say validated.",
+                        "cutBefore": false, "cutAfter": true,
+                        "matches": [{"start": 24, "end": 37}], "score": 1
+                    }]
+                }],
+                "totalHits": 1, "hasMore": false, "tasksConsidered": 4, "tasksRebuilt": 2,
+                "rowsIndexed": 13, "indexBytes": "9007199254740993", "indexBudgetBytes": "33554432",
+                "tasksTruncated": 1, "indexDigest": "ab".repeat(32), "asOfOffset": "777"
+            }),
+            decode: reencode::<ConversationSearchResults>,
+        },
+        // PX-043: stopping a task's background terminal.
+        Sample {
+            name: "kill_terminal",
+            type_name: "modbit.v1.KillTerminal",
+            bytes: KillTerminal {
+                task_id: id(0x41),
+                session_id: "0123456789abcdef".into(),
+                reason: "the dev server is wedged".into(),
+            }
+            .encode_to_vec(),
+            expected: json!({
+                "taskId": idhex(0x41), "sessionId": "0123456789abcdef",
+                "reason": "the dev server is wedged"
+            }),
+            decode: reencode::<KillTerminal>,
+        },
+        Sample {
+            name: "terminal_killed",
+            type_name: "modbit.v1.TerminalKilled",
+            bytes: TerminalKilled {
+                task_id: id(0x41),
+                session_id: "0123456789abcdef".into(),
+                outcome: "KILLED".into(),
+                exit_code: None,
+                signal: Some(9),
+                output_ref: "cd".repeat(32),
+                total_bytes: 9_007_199_254_740_993,
+                ended_by: "user:b1b1b1b1".into(),
+                reason: "the dev server is wedged".into(),
+                decision: "allow: local_trusted:reversiblewrite".into(),
+                offset: 412,
+            }
+            .encode_to_vec(),
+            expected: json!({
+                "taskId": idhex(0x41), "sessionId": "0123456789abcdef", "outcome": "KILLED",
+                "exitCode": null, "signal": 9, "outputRef": "cd".repeat(32),
+                "totalBytes": "9007199254740993", "endedBy": "user:b1b1b1b1",
+                "reason": "the dev server is wedged",
+                "decision": "allow: local_trusted:reversiblewrite", "offset": "412"
+            }),
+            decode: reencode::<TerminalKilled>,
+        },
+        // PX-121, PX-122: the browser runtime's state a client reads.
+        Sample {
+            name: "browser_runtime_view",
+            type_name: "modbit.v1.BrowserRuntimeView",
+            bytes: runtime.encode_to_vec(),
+            expected: json!({
+                "browserSessionId": idhex(0x61),
+                "latch": "browser.act click: BROWSER_TIMEOUT",
+                "latchToolCallId": "01a08f33-0d97-7d40-b299-f8a7bc5cda60",
+                "pageKind": "login", "changeSeq": "9007199254740993", "notices": "12",
+                "compiledSeq": "11", "knownEntities": 7, "history": 3,
+                "lastFingerprint": "e".repeat(64), "deliveredFingerprint": "f".repeat(64)
+            }),
+            decode: reencode::<BrowserRuntimeView>,
+        },
+        // PX-122: the acknowledgement of a host's change notice.
+        Sample {
+            name: "browser_host_noticed",
+            type_name: "modbit.v1.BrowserHostNoticed",
+            bytes: noticed.encode_to_vec(),
+            expected: json!({"accepted": true, "changeSeq": "12", "notices": "4"}),
+            decode: reencode::<BrowserHostNoticed>,
+        },
+        // PX-127: a pull-request comment as Review shows it: untrusted text,
+        // what became of it, whether the agent has answered.
+        Sample {
+            name: "review_comment_thread_view",
+            type_name: "modbit.v1.ReviewCommentThreadView",
+            bytes: ReviewCommentThreadView {
+                comment_id: 9_007_199_254_740_993,
+                kind: "review".into(),
+                author: "reviewer".into(),
+                url: "https://github.test/o/r/pull/3#discussion_r11".into(),
+                path: "src/app.ts".into(),
+                line: 2,
+                body: "@modbit please guard negatives".into(),
+                trust: "UNTRUSTED_EXTERNAL_CONTENT".into(),
+                disposition: "STEERED".into(),
+                reason: String::new(),
+                input_id: "forge-comment-11".into(),
+                provenance: "forge_review_comment".into(),
+                ingested_offset: 4096,
+                answered: true,
+                reported_back: false,
+                created_at: "2026-10-07T20:20:26Z".into(),
+            }
+            .encode_to_vec(),
+            expected: json!({
+                "commentId": "9007199254740993", "kind": "review", "author": "reviewer",
+                "url": "https://github.test/o/r/pull/3#discussion_r11",
+                "path": "src/app.ts", "line": "2",
+                "body": "@modbit please guard negatives",
+                "trust": "UNTRUSTED_EXTERNAL_CONTENT", "disposition": "STEERED",
+                "reason": "", "inputId": "forge-comment-11",
+                "provenance": "forge_review_comment", "ingestedOffset": "4096",
+                "answered": true, "reportedBack": false,
+                "createdAt": "2026-10-07T20:20:26Z"
+            }),
+            decode: reencode::<ReviewCommentThreadView>,
         },
     ]
 }

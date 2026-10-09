@@ -67,6 +67,7 @@ fn chain_of(fs: &[Fields]) -> Vec<EffectReceipt> {
             occurred_at: Timestamp(f.at),
             reversibility: None,
             compensates: None,
+            authorization: None,
             receipt_hash: String::new(),
         });
         prev = Some(r.receipt_hash.clone());

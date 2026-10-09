@@ -18,6 +18,7 @@ import { createServer, type Server } from "node:http";
 import { tmpdir } from "node:os";
 import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
+import { closeApp } from "./support/close-app.ts";
 
 const appDir = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 const coreBin = process.env.MODBIT_CORE_BIN ?? resolve(appDir, "..", "..", "target", "debug", process.platform === "win32" ? "modbit-core.exe" : "modbit-core");
@@ -102,14 +103,9 @@ async function readyForReview(page: Page, model: { toolTexts: string[] }): Promi
   }
 }
 
-async function closeApp(app: ElectronApplication): Promise<void> {
-  const proc = app.process();
-  await Promise.race([app.close(), new Promise<void>((r) => setTimeout(r, 15_000))]);
-  if (proc.exitCode === null) proc.kill("SIGKILL");
-}
 
 async function launch(dataDir: string, extraEnv: Record<string, string>): Promise<{ app: ElectronApplication; page: Page }> {
-  const app = await electron.launch({ args: [join(appDir, "dist", "main", "main.cjs")], env: { ...process.env, MODBIT_DATA_DIR: dataDir, MODBIT_CORE_BIN: coreBin, OPENAI_API_KEY: "", ANTHROPIC_API_KEY: "", MODBIT_SUPPRESS_OS_NOTIFICATIONS: "1", ...extraEnv } });
+  const app = await electron.launch({ args: [join(appDir, "dist", "main", "main.cjs")], env: { ...process.env, MODBIT_DATA_DIR: dataDir, MODBIT_CORE_BIN: coreBin, OPENAI_API_KEY: "", ANTHROPIC_API_KEY: "", MODBIT_SUPPRESS_OS_NOTIFICATIONS: "1", MODBIT_BROWSER_ALLOW_TARGETS: "127.0.0.1", ...extraEnv } });
   const page = await app.firstWindow();
   app.process().stderr?.on("data", (d: Buffer) => process.stderr.write(`[electron] ${d}`));
   await expect(page.getByTestId("core-status")).toContainText("Core connected", { timeout: 60_000 });
@@ -118,6 +114,10 @@ async function launch(dataDir: string, extraEnv: Record<string, string>): Promis
 
 /** The bridge as the renderer sees it: typed requests by name, nothing generic. */
 const BRIDGE_ALLOW_LIST = [
+  // PX-073 / PX-120 (browser hardening): policy, view ownership, certificate trust, sign-out.
+  "browserPolicy", "setBrowserPolicy", "listBrowserViews", "selectBrowserView", "browserRefusals", "decideBrowserCertificate", "browserCertificateTrusts", "clearBrowserCertificateTrusts", "clearBrowserData",
+  // PX-127 (forge evidence): CI results and pull-request comments ingested by the Core, on the person's command.
+  "ingestCiResults", "ingestReviewComments",
   "addCredential", "applyUserPatch", "attachFile", "attention", "browserLog", "browserSession", "cancelTask", "closeBrowser", "codeView", "contextInspector", "coreStatus", "createSession", "createTask", "dashboard", "debugCoreInfo", "debugIpcRefusals", "debugRendererLog", "decideReview", "deliverNotification", "describeBrowser", "emergencyStop", "hideBrowser", "languages", "listCredentials", "localState", "notificationLog", "onBrowserState", "onCoreStatus", "onEvent", "onRecovery", "openBrowser", "openPullRequest", "probeBrowser", "providerStatus", "removeCredential", "resolveApproval", "respondToQuestion", "reviewBundle", "sessionSnapshot", "setBrowserControl", "setTaskSelection", "setupProvider", "showBrowser", "starterTasks", "startTask", "steerTask", "subscribe", "taskEconomics", "taskStatus", "trustRepository", "typeAsPerson",
 ];
 

@@ -394,8 +394,18 @@ pub struct ToolHost {
     pub(crate) lexical: Mutex<HashMap<PathBuf, Arc<Mutex<modbit_retrieval::LexicalIndex>>>>,
     /// Symbol indexes per canonical workspace root (M3.3).
     pub(crate) symbols: Mutex<HashMap<PathBuf, Arc<Mutex<modbit_retrieval::SymbolIndex>>>>,
-    /// Semantic chunk indexes per canonical workspace root (M3.5).
-    pub(crate) semantic: Mutex<HashMap<PathBuf, Arc<Mutex<modbit_retrieval::SemanticIndex>>>>,
+    /// Semantic chunk index slots per canonical workspace root (M3.5): empty
+    /// until a query that needs the embeddings builds them.
+    pub(crate) semantic:
+        Mutex<HashMap<PathBuf, Arc<Mutex<Option<modbit_retrieval::SemanticIndex>>>>>,
+    /// Reference, call and implementor graphs per canonical workspace root (PX-110).
+    pub(crate) refs: Mutex<HashMap<PathBuf, Arc<Mutex<modbit_retrieval::RefGraph>>>>,
+    /// How each workspace's indexes came to be and what searches did (PX-111).
+    pub(crate) index_states: Mutex<HashMap<PathBuf, Arc<crate::index_host::IndexState>>>,
+    /// Serializes opening a workspace's indexes.
+    pub(crate) loading: Mutex<()>,
+    /// Workspaces whose exact index is open and whose derived indexes are not.
+    pub(crate) pending_opens: Mutex<HashMap<PathBuf, crate::index_host::PendingOpen>>,
     /// Evidence graphs per canonical workspace root (M3.6).
     pub(crate) graphs: Mutex<HashMap<PathBuf, Arc<Mutex<modbit_retrieval::EvidenceGraph>>>>,
     /// The repository knowledge map per canonical workspace root, kept as a
@@ -421,11 +431,19 @@ pub struct ToolHost {
     /// The admin/project/user configuration resolved and pinned per task
     /// (REQ-EV-0039, REQ-EV-0128).
     pub configurations: crate::config::Configurations,
+    /// The frozen capability view of each task's newest model round
+    /// (REQ-PX-131): the epoch every decision and receipt is stamped with.
+    pub(crate) epochs: crate::epoch::Epochs,
+    /// The listening services of the tasks' terminals, as the Core observed
+    /// them (REQ-PX-132).
+    pub(crate) process_services: crate::process_services::ProcessServices,
+    /// Component health and the optional OpenTelemetry export (REQ-PX-139).
+    pub(crate) telemetry: crate::telemetry::Telemetry,
     /// The Hook Bus (REQ-EV-0042/0139/0240): loaded extensions per session
     /// and the runs a fail-closed after-hook stopped.
     pub hooks: Arc<crate::hooks::HookBus>,
     /// Where this Core's own configuration and profile live.
-    data_dir: std::path::PathBuf,
+    pub(crate) data_dir: std::path::PathBuf,
     /// The browser sessions `browser.*` reach through their hosts (M7.1).
     pub browser: Arc<dyn modbit_browser::BrowserPort>,
     /// The provider gateway, for the credentials in its custody (M7.7):
@@ -449,6 +467,8 @@ pub struct ToolHost {
     /// Each task's mode and execution preference, folded from its log, and
     /// the mode posture the kernel enforces on it (PX-051, PX-053).
     pub tasking: crate::tasking::Tasking,
+    /// The run modes and allowlist rules, folded from the log (PX-057).
+    pub run_policies: crate::run_control::RunPolicies,
 }
 
 /// The Sandbox Gateway a Cloud Core Worker's Core reaches (M8.5).
@@ -469,6 +489,21 @@ pub struct SandboxGatewayCustody {
 }
 
 impl ToolHost {
+    /// The last page compiled for `session`, as an object the log can point
+    /// at (PX-122): what a restarted Core restores the known-state map from.
+    /// Empty when nothing was compiled or the object could not be written.
+    async fn persisted_page_ref(
+        &self,
+        store: &Arc<Mutex<EventStore>>,
+        session: modbit_browser::BrowserSessionId,
+    ) -> String {
+        let Some(page) = self.browser.last_page(session).await else {
+            return String::new();
+        };
+        let guard = store.lock().await;
+        crate::browser_observer::persist_page(&guard, &page).unwrap_or_default()
+    }
+
     /// How many background command sessions the broker has running (FIX-17).
     /// The broker stops its processes once no Core returns within its orphan
     /// grace, so a Core that exits while one runs kills it: an idle-exiting
@@ -521,7 +556,10 @@ impl ToolHost {
         let external_reads = Arc::new(modbit_mcp::ReadDeclarations::new());
         modbit_tools::external::register_external(&mut registry, Arc::clone(&external_reads))
             .map_err(|e| anyhow::anyhow!("{e}"))?;
-        let mcp = Arc::new(crate::mcp::McpHub::from_env(external_reads));
+        let mcp = Arc::new(crate::mcp::McpHub::from_env(
+            external_reads,
+            Arc::clone(gateway.broker()),
+        ));
         let runtime = ToolRuntime::new(registry, Arc::new(ProfilePolicy));
         let execd = match spawn_execd(data_dir, replay_generation) {
             Ok(e) => Some(e),
@@ -540,15 +578,22 @@ impl ToolHost {
             lexical: Mutex::new(HashMap::new()),
             symbols: Mutex::new(HashMap::new()),
             semantic: Mutex::new(HashMap::new()),
+            refs: Mutex::new(HashMap::new()),
+            index_states: Mutex::new(HashMap::new()),
+            loading: Mutex::new(()),
+            pending_opens: Mutex::new(HashMap::new()),
             graphs: Mutex::new(HashMap::new()),
             knowledge: Mutex::new(HashMap::new()),
             ledgers: Mutex::new(HashMap::new()),
             diag_baselines: Mutex::new(HashMap::new()),
             language_servers: Arc::new(std::sync::Mutex::new(HashMap::new())),
             state_dir: data_dir.join("workspaces"),
-            forge: crate::forge::ForgeCustody::from_env(),
+            forge: crate::forge::ForgeCustody::from_env(Arc::clone(gateway.broker())),
             mcp,
             configurations: crate::config::Configurations::default(),
+            epochs: crate::epoch::Epochs::default(),
+            process_services: crate::process_services::ProcessServices::default(),
+            telemetry: crate::telemetry::Telemetry::new(data_dir),
             hooks: Arc::new(crate::hooks::HookBus::default()),
             data_dir: data_dir.to_path_buf(),
             browser,
@@ -558,32 +603,29 @@ impl ToolHost {
             browserless: std::sync::Mutex::new(std::collections::HashSet::new()),
             environments: crate::environment::Environments::default(),
             tasking: crate::tasking::Tasking::default(),
+            run_policies: crate::run_control::RunPolicies::default(),
         })
+    }
+
+    /// The credential broker every credential this Core holds lives in
+    /// (REQ-PX-130): provider keys, the forge token, external servers'
+    /// credentials, the credentials a browser host fills, an exporter's
+    /// headers.
+    pub(crate) fn broker(&self) -> &Arc<modbit_secrets::CredentialBroker> {
+        self.gateway.broker()
     }
 
     /// The one redactor over everything this Core holds (REQ-EV-0017).
     pub(crate) fn redactor(&self) -> modbit_secrets::Redactor {
-        modbit_secrets::Redactor::new(self.secrets_in_custody())
+        self.broker().redactor()
     }
 
-    /// Every credential this Core holds (M7.7, docs/22 "Prompt-injection
-    /// isolation"): the provider keys the gateway can present and the forge
-    /// token. Memory only; the pipeline compares, never records.
-    fn secrets_in_custody(&self) -> Vec<String> {
-        let mut out: Vec<String> = self
-            .gateway
-            .endpoints()
-            .iter()
-            .filter_map(|e| e.credential.resolve())
-            .collect();
-        if let Some(t) = self.forge.get().and_then(|f| f.token.clone()) {
-            out.push(t);
-        }
-        // M9.4: an external server's credential is in this Core's custody
-        // too, so an argument carrying its value is refused like any other.
-        out.extend(self.mcp.secrets_in_custody());
-        out.retain(|s| s.len() >= 8);
-        out
+    /// Every credential this Core holds, for the one thing that must compare
+    /// text with them (M7.7, docs/22 "Prompt-injection isolation"): the
+    /// screen that refuses a tool call whose arguments carry one. The values
+    /// are compared and never recorded.
+    pub(crate) fn secrets_in_custody(&self) -> Vec<String> {
+        self.broker().custody_for_screening()
     }
 
     pub(crate) async fn workspace(
@@ -616,89 +658,47 @@ impl ToolHost {
         CapabilityKernel::default().envelope().clone()
     }
 
-    /// The retrieval index of a workspace root, built at first use (M3.1).
+    /// The retrieval index of a workspace root: opened from the persisted
+    /// store at first use (M3.1, PX-111).
     pub(crate) async fn index(
         &self,
         canonical: &Path,
     ) -> Result<Arc<Mutex<modbit_retrieval::RepositoryIndex>>> {
-        let mut map = self.indexes.lock().await;
-        if let Some(i) = map.get(canonical) {
-            return Ok(Arc::clone(i));
-        }
-        let (ws, _) = self.workspace(&canonical.to_string_lossy()).await?;
-        let revision = ws.lock().await.revision().number;
-        let idx = Arc::new(Mutex::new(
-            modbit_retrieval::RepositoryIndex::build(canonical, revision)
-                .map_err(|e| anyhow::anyhow!("{e}"))?,
-        ));
-        map.insert(canonical.to_path_buf(), Arc::clone(&idx));
-        Ok(idx)
+        self.ensure_exact(canonical).await?;
+        self.indexes
+            .lock()
+            .await
+            .get(canonical)
+            .cloned()
+            .context("the exact index")
     }
 
-    /// The BM25 index of a workspace root, built from the exact index at first use (M3.2).
+    /// The BM25 index of a workspace root (M3.2).
     pub(crate) async fn lexical(
         &self,
         canonical: &Path,
     ) -> Result<Arc<Mutex<modbit_retrieval::LexicalIndex>>> {
-        let mut map = self.lexical.lock().await;
-        if let Some(i) = map.get(canonical) {
-            return Ok(Arc::clone(i));
-        }
-        let index = self.index(canonical).await?;
-        let index = index.lock().await;
-        let lx = modbit_retrieval::LexicalIndex::build(index.texts(), index.revision())
-            .map_err(|e| anyhow::anyhow!("{e}"))?;
-        let lx = Arc::new(Mutex::new(lx));
-        map.insert(canonical.to_path_buf(), Arc::clone(&lx));
-        Ok(lx)
+        self.ensure_loaded(canonical).await?;
+        self.lexical
+            .lock()
+            .await
+            .get(canonical)
+            .cloned()
+            .context("the lexical index")
     }
 
-    /// The symbol index of a workspace root, built from the exact index at first use (M3.3).
+    /// The symbol index of a workspace root (M3.3).
     pub(crate) async fn symbols(
         &self,
         canonical: &Path,
     ) -> Result<Arc<Mutex<modbit_retrieval::SymbolIndex>>> {
-        let mut map = self.symbols.lock().await;
-        if let Some(i) = map.get(canonical) {
-            return Ok(Arc::clone(i));
-        }
-        let index = self.index(canonical).await?;
-        let index = index.lock().await;
-        let sx = Arc::new(Mutex::new(modbit_retrieval::SymbolIndex::build(
-            index.texts_with_hash(),
-            index.revision(),
-        )));
-        map.insert(canonical.to_path_buf(), Arc::clone(&sx));
-        Ok(sx)
-    }
-
-    /// The semantic chunk index of a workspace root, built from the exact and
-    /// symbol indexes with the hashing embedder at first use (M3.5).
-    pub(crate) async fn semantic(
-        &self,
-        canonical: &Path,
-    ) -> Result<Arc<Mutex<modbit_retrieval::SemanticIndex>>> {
-        let mut map = self.semantic.lock().await;
-        if let Some(i) = map.get(canonical) {
-            return Ok(Arc::clone(i));
-        }
-        let index = self.index(canonical).await?;
-        let symbols = self.symbols(canonical).await?;
-        let index = index.lock().await;
-        let symbols = symbols.lock().await;
-        let files: Vec<modbit_retrieval::FileSource> = index
-            .texts()
-            .map(|(p, t, _)| (p, t, symbol_spans(&symbols, p)))
-            .collect();
-        let sem = modbit_retrieval::SemanticIndex::build(
-            Box::new(modbit_retrieval::HashingEmbedder::default()),
-            files.into_iter(),
-            index.revision(),
-        )
-        .map_err(|e| anyhow::anyhow!("{e}"))?;
-        let sem = Arc::new(Mutex::new(sem));
-        map.insert(canonical.to_path_buf(), Arc::clone(&sem));
-        Ok(sem)
+        self.ensure_loaded(canonical).await?;
+        self.symbols
+            .lock()
+            .await
+            .get(canonical)
+            .cloned()
+            .context("the symbol index")
     }
 
     /// The Context Ledger of a task (M3.8). The first access in a process
@@ -745,27 +745,19 @@ impl ToolHost {
         })
     }
 
-    /// The evidence graph of a workspace root, built from the exact index, the
-    /// recent Git history and the worktree diff at first use (M3.6).
+    /// The evidence graph of a workspace root (M3.6): its import edges come
+    /// from the persisted records, its history and worktree diff from Git.
     pub(crate) async fn graph(
         &self,
         canonical: &Path,
     ) -> Result<Arc<Mutex<modbit_retrieval::EvidenceGraph>>> {
-        let mut map = self.graphs.lock().await;
-        if let Some(g) = map.get(canonical) {
-            return Ok(Arc::clone(g));
-        }
-        let index = self.index(canonical).await?;
-        let index = index.lock().await;
-        let g = modbit_retrieval::EvidenceGraph::build(
-            index.texts(),
-            recent_commits(canonical),
-            worktree_changed_lines(canonical),
-            index.revision(),
-        );
-        let g = Arc::new(Mutex::new(g));
-        map.insert(canonical.to_path_buf(), Arc::clone(&g));
-        Ok(g)
+        self.ensure_loaded(canonical).await?;
+        self.graphs
+            .lock()
+            .await
+            .get(canonical)
+            .cloned()
+            .context("the evidence graph")
     }
 
     /// The cached knowledge map slot of a workspace root.
@@ -836,6 +828,7 @@ impl ToolHost {
                             approval: None,
                             intent_hash: "",
                             config: None,
+                            run: None,
                             emergency_stopped: false,
                             now: modbit_domain::Timestamp::now(),
                         }),
@@ -866,8 +859,10 @@ impl ToolHost {
             index: self.index(r).await?,
             lexical: self.lexical(r).await?,
             symbols: self.symbols(r).await?,
-            semantic: self.semantic(r).await?,
+            semantic: self.semantic_slot(r).await?,
             graph: self.graph(r).await?,
+            refs: self.refs(r).await?,
+            state: self.index_state(r).await?,
             knowledge: self.knowledge(r).await,
             evidence: task_evidence(store, task_id).await,
             external: {
@@ -961,7 +956,29 @@ impl ToolHost {
                 .map_err(|e| anyhow::anyhow!("MODE_UNREADABLE: {e}"))?
         };
         let lease_ref = lease.clone();
+        // PX-057: who approves protected effects for the task, and the
+        // durable rules in force. An unreadable log is a refusal, never a
+        // guess at the narrower mode.
+        let run = {
+            let st = store.lock().await;
+            crate::run_control::context_for(
+                &self.run_policies,
+                &st,
+                task_id,
+                workspace_root.as_deref(),
+            )
+            .map_err(|e| anyhow::anyhow!("RUN_POLICY_UNREADABLE: {e}"))?
+        };
+        // REQ-PX-131: the epoch of the model round this call is decided in
+        // (or, outside a round, of the last one): it stamps the decision and
+        // every receipt of the call. The configuration, the mode and the
+        // projection the kernel reads below are the ones that round froze.
+        let authorization = {
+            let st = store.lock().await;
+            self.epochs.current(&st, task_id)
+        };
         let port = KernelPort {
+            run,
             mode,
             kernel: CapabilityKernel::default(),
             lease,
@@ -1155,6 +1172,31 @@ impl ToolHost {
                 .registry()
                 .get(tool_name)
                 .map(|t| t.spec().reversibility()),
+            authorization: authorization.clone(),
+        });
+        // PX-119 / PX-066: the merge and apply-back tools keep their state on
+        // the log through this port, built for the one call that needs it.
+        let git_state: Option<Arc<dyn modbit_tools::GitStatePort>> = (tool_name
+            .starts_with("git.merge.")
+            || tool_name.starts_with("git.apply.")
+            || tool_name.starts_with("git.worktree."))
+        .then(|| {
+            Arc::new(crate::git_state::CoreGitState {
+                store: Arc::clone(store),
+                tenant: tenant_id,
+                session: session_id,
+                task: task_id,
+                actor: actor.clone(),
+                root: root.clone(),
+                exec: self.execd.as_ref().map(|e| e.target.clone()),
+                profile: execution_profile.to_owned(),
+                lease: lease_ref.clone(),
+                mode,
+                emergency: emergency_stopped,
+                config: Arc::clone(&task_config),
+                verification_json: self.configurations.verification_json(task_id),
+                cancel: cancel.clone(),
+            }) as Arc<dyn modbit_tools::GitStatePort>
         });
         let ctx = InvokeContext {
             task_id,
@@ -1217,25 +1259,38 @@ impl ToolHost {
             // scope and the author come from the actor; the repository scope
             // is the canonical workspace root.
             memory: {
-                let (author, user) = match &actor {
-                    Actor::User(id) => (format!("user:{id}"), id.to_string()),
-                    Actor::Agent(a) => (format!("agent:{a}"), String::new()),
-                    Actor::Core(c) => (format!("core:{c}"), String::new()),
-                    Actor::External(e) => (format!("external:{e}"), String::new()),
+                // PX-113: the chain is the task's own — the session's user
+                // and space, the task's repository and agent profile — not
+                // the acting actor's, so an agent's `scope: user` binds to
+                // the person it works for. Every mutation is an event on
+                // this session's log.
+                let run_label = run_id.map(|r| r.to_string());
+                let chain = {
+                    let st = store.lock().await;
+                    match st.task(&task_id) {
+                        Ok(Some(t)) => {
+                            crate::memory::chain_in(&st, tenant_id, &t, run_label.as_deref())
+                        }
+                        _ => crate::memory::ScopeChain::for_task(
+                            tenant_id,
+                            session_id,
+                            run_label.as_deref(),
+                            "",
+                            workspace_root.as_deref(),
+                            None,
+                            None,
+                        ),
+                    }
                 };
-                let chain = crate::memory::ScopeChain::for_task(
-                    tenant_id,
-                    session_id,
-                    run_id.map(|r| r.to_string()).as_deref(),
-                    &user,
-                    root.as_ref()
-                        .map(|p| p.to_string_lossy().into_owned())
-                        .as_deref(),
-                );
                 Some(Arc::new(crate::memory::CoreMemory::new(
                     Arc::clone(store),
                     chain,
-                    author,
+                    crate::memory::MemoryCtx {
+                        tenant: tenant_id,
+                        session: session_id,
+                        task: Some(task_id),
+                        actor: actor.clone(),
+                    },
                     root.as_ref().map(|p| p.to_string_lossy().into_owned()),
                 ))
                     as Arc<dyn modbit_tools::pipeline::MemoryPort>)
@@ -1292,6 +1347,7 @@ impl ToolHost {
             ) as Arc<dyn modbit_mcp::McpPort>),
             cancel: cancel.clone(),
             hooks: None,
+            git_state,
         };
         // REQ-EV-0042/0139: the task's hooks before and after the call — its
         // pinned configuration's and its session's extensions'.
@@ -1673,93 +1729,12 @@ impl ToolHost {
         {
             let changes = workspace_changes(&result.structured_output);
             let ws = ws.lock().await;
-            // Index freshness (docs/18): the changed paths re-enter the index at the new revision.
-            if let Ok(index) = self.index(root).await {
-                let paths: Vec<String> = changes.iter().map(|c| c.path.clone()).collect();
-                let rev = ws.revision().number;
-                let mut index = index.lock().await;
-                index.refresh(&paths, rev);
-                if let Ok(lexical) = self.lexical(root).await {
-                    let changed: Vec<modbit_retrieval::ChangedDoc> = paths
-                        .iter()
-                        .map(|p| {
-                            let t = index
-                                .texts()
-                                .find(|(path, _, _)| *path == p.as_str())
-                                .map(|(_, t, l)| (t.to_owned(), l.map(str::to_owned)));
-                            (p.clone(), t)
-                        })
-                        .collect();
-                    if let Err(e) = lexical.lock().await.refresh(&changed, rev) {
-                        eprintln!("modbit-core: lexical index refresh failed: {e}");
-                    }
-                }
-                if let Ok(symbols) = self.symbols(root).await {
-                    let changed: Vec<modbit_retrieval::ChangedSymbols> = paths
-                        .iter()
-                        .map(|p| {
-                            let t = index
-                                .texts_with_hash()
-                                .find(|(path, _, _, _)| *path == p.as_str())
-                                .map(|(_, t, l, h)| {
-                                    (t.to_owned(), l.map(str::to_owned), h.to_owned())
-                                });
-                            (p.clone(), t)
-                        })
-                        .collect();
-                    symbols.lock().await.refresh(&changed, rev);
-                }
-                if let (Ok(semantic), Ok(symbols)) =
-                    (self.semantic(root).await, self.symbols(root).await)
-                {
-                    // docs/18: embedding is queued for changed chunks, then flushed here.
-                    let symbols = symbols.lock().await;
-                    let mut sem = semantic.lock().await;
-                    sem.mark_changed(&paths);
-                    let changed: Vec<ChangedChunkSource> = paths
-                        .iter()
-                        .map(|p| {
-                            let t = index
-                                .texts()
-                                .find(|(path, _, _)| *path == p.as_str())
-                                .map(|(_, t, _)| (t.to_owned(), symbol_spans(&symbols, p)));
-                            (p.clone(), t)
-                        })
-                        .collect();
-                    if let Ok(graph) = self.graph(root).await {
-                        // docs/18: import edges of the changed paths and the worktree's
-                        // changed lines re-enter the graph at the new revision.
-                        let changed: Vec<modbit_retrieval::ChangedDoc> = paths
-                            .iter()
-                            .map(|p| {
-                                let t = index
-                                    .texts()
-                                    .find(|(path, _, _)| *path == p.as_str())
-                                    .map(|(_, t, l)| (t.to_owned(), l.map(str::to_owned)));
-                                (p.clone(), t)
-                            })
-                            .collect();
-                        graph.lock().await.refresh(
-                            changed.iter().map(|(p, c)| {
-                                (
-                                    p.as_str(),
-                                    c.as_ref().map(|(t, l)| (t.as_str(), l.as_deref())),
-                                )
-                            }),
-                            worktree_changed_lines(root),
-                            None,
-                            rev,
-                        );
-                    }
-                    if let Err(e) = sem.flush(
-                        changed.iter().map(|(p, c)| {
-                            (p.as_str(), c.as_ref().map(|(t, s)| (t.as_str(), s.clone())))
-                        }),
-                        rev,
-                    ) {
-                        eprintln!("modbit-core: semantic index refresh failed: {e}");
-                    }
-                }
+            // Index freshness (docs/18, PX-111): the changed paths re-enter
+            // every index at the new revision, each parsed once.
+            let paths: Vec<String> = changes.iter().map(|c| c.path.clone()).collect();
+            let rev = ws.revision().number;
+            if let Err(e) = self.refresh_workspace(root, &paths, rev).await {
+                eprintln!("modbit-core: index refresh failed: {e:#}");
             }
             let objects = store.lock().await.objects().clone();
             file_events = file_changed_events(
@@ -1863,6 +1838,7 @@ impl ToolHost {
                         allowed: false,
                         decision,
                         approval_required: false,
+                        authorization: authorization.clone(),
                     },
                     actor.clone(),
                 ));
@@ -1890,8 +1866,15 @@ impl ToolHost {
                     other => (format!("{other:?}"), None),
                 };
                 approval_id = used_approval;
-                // Protected/external/destructive effects get a receipt in the chain.
-                if effect_class >= modbit_domain::toolcall::EffectClass::ProtectedWrite {
+                // Protected/external/destructive effects get a receipt in the
+                // chain - and so does a browser input whose outcome is unknown,
+                // whatever its class (PX-121): the receipt says UNKNOWN, so no
+                // reader takes the input for one that did not happen.
+                let browser_unknown = tool_name.starts_with("browser.")
+                    && result.status == ToolStatus::UnknownOutcome;
+                if effect_class >= modbit_domain::toolcall::EffectClass::ProtectedWrite
+                    || browser_unknown
+                {
                     let effect_id = modbit_domain::EffectId::new();
                     result.effect_receipt_ids.push(effect_id.to_string());
                     receipt = Some(EffectReceipt {
@@ -1905,7 +1888,11 @@ impl ToolHost {
                         approval_id: used_approval,
                         execution_target: execution_target(root.as_deref()),
                         evidence_ref: None,
-                        status: format!("{:?}", result.status).to_uppercase(),
+                        status: if browser_unknown {
+                            "UNKNOWN_OUTCOME".to_owned()
+                        } else {
+                            format!("{:?}", result.status).to_uppercase()
+                        },
                         occurred_at: now,
                         // REQ-EV-0066: how far this effect can be taken back,
                         // from the tool's own declaration; never optimistic.
@@ -1914,6 +1901,7 @@ impl ToolHost {
                             |t| t.spec().reversibility(),
                         )),
                         compensates,
+                        authorization: authorization.clone(),
                         receipt_hash: String::new(),
                     });
                 }
@@ -2019,12 +2007,13 @@ impl ToolHost {
         // M7.4: an action on the page is on the log as the transition it
         // caused, by fingerprints, with its postcondition (REQ-EV-0280) —
         // when it ran (a refused or stale action is the call's outcome only).
-        if tool_name == "browser.act"
-            && matches!(
-                result.status,
-                ToolStatus::Success | ToolStatus::ApplicationFailure
-            )
-            && result.structured_output.get("fingerprint_before").is_some()
+        if matches!(
+            tool_name,
+            "browser.act" | "browser.scroll" | "browser.fill_form"
+        ) && matches!(
+            result.status,
+            ToolStatus::Success | ToolStatus::ApplicationFailure
+        ) && result.structured_output.get("fingerprint_before").is_some()
             && let Some(session) = self.browser.session_for(task_id).await
         {
             let o = &result.structured_output;
@@ -2033,6 +2022,7 @@ impl ToolHost {
                 .lease(session)
                 .await
                 .map_or(0, |l| l.generation);
+            let page_ref = self.persisted_page_ref(store, session).await;
             retrieval_events.push(typed_task_event(
                 "BrowserActionPerformed",
                 &modbit_domain::task::TaskEvent::BrowserActionPerformed {
@@ -2060,6 +2050,7 @@ impl ToolHost {
                     postcondition_held: o["postcondition"]["held"].as_bool(),
                     lease_generation,
                     visual_fallback: o.get("visual_fallback").filter(|v| !v.is_null()).cloned(),
+                    page_ref: page_ref.clone(),
                 },
                 &actor,
             ));
@@ -2137,6 +2128,71 @@ impl ToolHost {
                     removed: count("removed"),
                     changed: count("changed"),
                     url: o["url"].as_str().unwrap_or_default().to_owned(),
+                    page_ref: self.persisted_page_ref(store, session).await,
+                },
+                &actor,
+            ));
+        }
+        // PX-121: an input of unknown outcome latches the session; a fresh
+        // observation lifts it. Both are on the task's log, so a restarted
+        // Core still refuses what the live one refused.
+        if tool_name.starts_with("browser.")
+            && result.status == ToolStatus::UnknownOutcome
+            && let Some(session) = self.browser.session_for(task_id).await
+        {
+            let o = &result.structured_output;
+            retrieval_events.push(typed_task_event(
+                "BrowserOutcomeUnknown",
+                &modbit_domain::task::TaskEvent::BrowserOutcomeUnknown {
+                    browser_session_id: session.to_string(),
+                    tool_call_id: tool_call_id.to_string(),
+                    tool: tool_name.to_owned(),
+                    action: o["action"].as_str().unwrap_or_default().to_owned(),
+                    reference: o["ref"].as_str().unwrap_or_default().to_owned(),
+                    reason: o["reason"].as_str().unwrap_or_default().to_owned(),
+                },
+                &actor,
+            ));
+        }
+        if tool_name.starts_with("browser.")
+            && let Some(was) = result.structured_output["reconciled"]["was_latched_by"].as_object()
+            && let Some(session) = self.browser.session_for(task_id).await
+        {
+            retrieval_events.push(typed_task_event(
+                "BrowserOutcomeReconciled",
+                &modbit_domain::task::TaskEvent::BrowserOutcomeReconciled {
+                    browser_session_id: session.to_string(),
+                    tool_call_id: tool_call_id.to_string(),
+                    was_tool_call_id: was
+                        .get("tool_call_id")
+                        .and_then(|v| v.as_str())
+                        .unwrap_or_default()
+                        .to_owned(),
+                },
+                &actor,
+            ));
+        }
+        // PX-120 / PX-073: a destination or a page the policy refused is
+        // security evidence on the task, not only a failed call.
+        if matches!(
+            result.error_code.as_deref(),
+            Some("TARGET_NOT_ALLOWED" | "ORIGIN_NOT_ALLOWED" | "FILE_ORIGIN")
+        ) {
+            retrieval_events.push(typed_task_event(
+                "SecurityEventRecorded",
+                &modbit_domain::task::TaskEvent::SecurityEventRecorded {
+                    kind: "BROWSER_TARGET_REFUSED".into(),
+                    tool_name: tool_name.to_owned(),
+                    tool_call_id: tool_call_id.to_string(),
+                    patterns: vec![result.error_code.clone().unwrap_or_default()],
+                    detail: result
+                        .error_message
+                        .clone()
+                        .unwrap_or_default()
+                        .chars()
+                        .take(300)
+                        .collect(),
+                    action: "REFUSED".into(),
                 },
                 &actor,
             ));
@@ -2306,6 +2362,8 @@ struct KernelPort {
     /// round boundary adopted, so a call already in flight keeps the posture
     /// it was decided under.
     mode: modbit_domain::mode::TaskMode,
+    /// The run mode in force and the durable rules (PX-057).
+    run: crate::run_control::RunContext,
 }
 
 /// The absolute resources a call's workspace paths name, in the lease's
@@ -2380,7 +2438,34 @@ impl CapabilityPort for KernelPort {
                 approval_required: false,
             };
         }
+        // PX-057: the call as the run mode sees it. The always-ask classes
+        // come from what the host resolved, never from the model's account.
+        let run = modbit_policy::RunPolicy {
+            mode: self.run.mode,
+            task_id: self.run.task_id.clone(),
+            repo_root: self.run.repo_root.clone(),
+            rules: self.run.rules.clone(),
+            argv: req.command.clone(),
+            ask_classes: modbit_policy::runmode::ask_classes(
+                req.effect_class,
+                &req.required_capabilities,
+                req.outside_workspace_write,
+                req.protected_path,
+                &req.declared_escalation,
+            ),
+            contained: matches!(
+                req.execution_profile.as_str(),
+                modbit_policy::kernel::PROFILE_CLOUD_ISOLATED
+                    | modbit_policy::kernel::PROFILE_REVIEW_ISOLATED
+            ) && req.effect_class
+                != modbit_domain::toolcall::EffectClass::ExternalSideEffect
+                && !req
+                    .required_capabilities
+                    .iter()
+                    .any(|c| c == "network.egress" || c == "external.call"),
+        };
         let d = self.kernel.decide(&KernelRequest {
+            run: Some(&run),
             tool_name: &req.tool_name,
             effect_class: req.effect_class,
             required_capabilities: &req.required_capabilities,
@@ -2436,6 +2521,8 @@ struct DispatchLog {
     compensates: Option<modbit_domain::EffectId>,
     /// The tool's own reversibility declaration, when it is registered.
     reversibility: Option<modbit_domain::toolcall::Reversibility>,
+    /// The authority epoch the dispatch is decided under (REQ-PX-131).
+    authorization: Option<modbit_domain::epoch::AuthorizationStamp>,
 }
 
 /// Where a call's effect runs, as a receipt records it.
@@ -2468,6 +2555,7 @@ impl modbit_tools::DispatchJournal for DispatchLog {
                     allowed: true,
                     decision,
                     approval_required: false,
+                    authorization: self.authorization.clone(),
                 },
                 self.actor.clone(),
             ));
@@ -2512,6 +2600,7 @@ impl modbit_tools::DispatchJournal for DispatchLog {
                                 )
                             })),
                             compensates: self.compensates,
+                            authorization: self.authorization.clone(),
                             receipt_hash: String::new(),
                         },
                     },
@@ -2898,8 +2987,12 @@ struct IndexPort {
     index: Arc<Mutex<modbit_retrieval::RepositoryIndex>>,
     lexical: Arc<Mutex<modbit_retrieval::LexicalIndex>>,
     symbols: Arc<Mutex<modbit_retrieval::SymbolIndex>>,
-    semantic: Arc<Mutex<modbit_retrieval::SemanticIndex>>,
+    semantic: Arc<Mutex<Option<modbit_retrieval::SemanticIndex>>>,
     graph: Arc<Mutex<modbit_retrieval::EvidenceGraph>>,
+    /// Reference, call and implementor edges (PX-110).
+    refs: Arc<Mutex<modbit_retrieval::RefGraph>>,
+    /// Lifecycle and counters of this workspace's indexes (PX-111).
+    state: Arc<crate::index_host::IndexState>,
     knowledge: Arc<Mutex<Option<modbit_retrieval::knowledge::KnowledgeArtifact>>>,
     /// Verification checks of the task's runs as (check id, status).
     evidence: Vec<(String, String)>,
@@ -2975,7 +3068,7 @@ fn excerpt(text: &str, lines: Option<(u32, u32)>) -> (String, Option<(u32, u32)>
 }
 
 /// Recent commits of a root through the real git (empty outside a repository).
-fn recent_commits(root: &Path) -> Vec<modbit_retrieval::CommitRecord> {
+pub(crate) fn recent_commits(root: &Path) -> Vec<modbit_retrieval::CommitRecord> {
     modbit_git::Repo::open(root)
         .and_then(|r| r.log_recent(200))
         .map(|v| {
@@ -2993,7 +3086,7 @@ fn recent_commits(root: &Path) -> Vec<modbit_retrieval::CommitRecord> {
 }
 
 /// Changed line ranges of the worktree versus HEAD (empty outside a repository).
-fn worktree_changed_lines(root: &Path) -> modbit_retrieval::graph::ChangedLines {
+pub(crate) fn worktree_changed_lines(root: &Path) -> modbit_retrieval::graph::ChangedLines {
     modbit_git::Repo::open(root)
         .and_then(|r| r.diff_worktree())
         .map(|d| modbit_retrieval::graph::changed_lines_from_unified(&d.unified))
@@ -3141,11 +3234,11 @@ pub async fn attached_documents(
     out
 }
 
-/// A changed path with its new text and symbol spans (`None` = removed).
-type ChangedChunkSource = (String, Option<(String, Vec<(String, u64, u64)>)>);
-
 /// Symbol byte spans of a path as chunk boundaries (`name`, start, end).
-fn symbol_spans(symbols: &modbit_retrieval::SymbolIndex, path: &str) -> Vec<(String, u64, u64)> {
+pub(crate) fn symbol_spans(
+    symbols: &modbit_retrieval::SymbolIndex,
+    path: &str,
+) -> Vec<(String, u64, u64)> {
     // A definition too large for one chunk (a big `impl`, a class) is
     // embedded member by member, not by its first 4 KiB (FIX-12, N9).
     symbols.chunk_spans(path, modbit_retrieval::semantic::MAX_CHUNK_BYTES)
@@ -3172,35 +3265,121 @@ fn read_selectors_of(lease: Option<&CapabilityLease>, workspace_root: Option<&st
     if covers_root { vec![] } else { sels }
 }
 
-/// Drop from `v` every element of an array that is an object naming a
-/// `path` the selectors do not cover (REQ-PX-116): a child whose lease reads
-/// only part of the worktree is not shown the rest by a search.
-fn scope_results(v: &mut serde_json::Value, root: &str, selectors: &[String]) {
-    let inside = |path: &str| {
-        let resource = format!(
-            "{}/{}",
-            root.trim_end_matches('/'),
-            path.trim_start_matches("./")
-        );
-        selectors.iter().any(|s| {
-            modbit_policy::kernel::ResourceSelector::parse(s)
-                .is_some_and(|sel| sel.covers(&resource))
+/// Whether a root-relative path lies inside the `fs.read` selectors of a
+/// lease that reads less than the worktree (REQ-PX-116).
+fn in_read_scope(root: &str, selectors: &[String], path: &str) -> bool {
+    let resource = format!(
+        "{}/{}",
+        root.trim_end_matches('/'),
+        path.trim_start_matches("./")
+    );
+    selectors.iter().any(|s| {
+        modbit_policy::kernel::ResourceSelector::parse(s).is_some_and(|sel| sel.covers(&resource))
+    })
+}
+
+/// Keys whose string value names a workspace path in a search answer.
+const PATH_KEYS: &[&str] = &["path", "from_path", "to_path"];
+/// Keys whose array holds bare path strings.
+const PATH_LIST_KEYS: &[&str] = &["covers", "tests", "changed", "paths", "stale_paths"];
+/// Keys whose array holds `[path, count]` pairs (the evidence graph).
+const PATH_PAIR_KEYS: &[&str] = &["imports", "importers", "cochange"];
+
+/// Whether an answer object names a path the selectors do not cover: one of
+/// its own path keys, or a step of the edge path that put it in an impact
+/// result (a dependent reached only through a file the child may not read
+/// would show that file's place in the graph).
+fn names_outside(
+    obj: &serde_json::Map<String, serde_json::Value>,
+    inside: &dyn Fn(&str) -> bool,
+) -> bool {
+    let named_outside = |o: &serde_json::Map<String, serde_json::Value>, keys: &[&str]| {
+        keys.iter().any(|k| {
+            o.get(*k)
+                .and_then(|p| p.as_str())
+                .is_some_and(|p| !inside(p))
         })
     };
+    if named_outside(obj, PATH_KEYS) {
+        return true;
+    }
+    obj.get("edge_path")
+        .and_then(|e| e.as_array())
+        .is_some_and(|steps| {
+            steps.iter().any(|st| {
+                st.as_object()
+                    .is_some_and(|o| named_outside(o, &["from", "to"]))
+            })
+        })
+}
+
+/// Drop from `v` everything that names a path the selectors do not cover
+/// (REQ-PX-116): an object in an array with a path key outside them, a bare
+/// path in a path list, a `[path, n]` pair, an impact dependent whose edge
+/// path runs through such a file. A child whose lease reads only part of the
+/// worktree is not shown the rest by a search, indexed or scanned, a graph
+/// query or an impact selection.
+fn scope_results(v: &mut serde_json::Value, root: &str, selectors: &[String]) {
+    let inside = |path: &str| in_read_scope(root, selectors, path);
+    scope_value(v, "", &inside);
+}
+
+fn scope_value(v: &mut serde_json::Value, key: &str, inside: &dyn Fn(&str) -> bool) {
     match v {
         serde_json::Value::Array(items) => {
-            items.retain(|e| e.get("path").and_then(|p| p.as_str()).is_none_or(&inside));
+            items.retain(|e| match e {
+                serde_json::Value::Object(o) => !names_outside(o, inside),
+                serde_json::Value::String(p) if PATH_LIST_KEYS.contains(&key) => inside(p),
+                serde_json::Value::Array(pair) if PATH_PAIR_KEYS.contains(&key) => {
+                    pair.first().and_then(|p| p.as_str()).is_none_or(inside)
+                }
+                _ => true,
+            });
             for e in items.iter_mut() {
-                scope_results(e, root, selectors);
+                scope_value(e, key, inside);
             }
         }
         serde_json::Value::Object(map) => {
-            for e in map.values_mut() {
-                scope_results(e, root, selectors);
+            for (k, e) in map.iter_mut() {
+                scope_value(e, k, inside);
             }
         }
         _ => {}
     }
+}
+
+impl IndexPort {
+    /// Count how an exact or regex search was answered.
+    fn count_search(&self, plan: &modbit_retrieval::SearchPlan) {
+        use std::sync::atomic::Ordering;
+        if plan.path == "indexed" {
+            self.state.searches_indexed.fetch_add(1, Ordering::Relaxed);
+        } else {
+            self.state.searches_scanned.fetch_add(1, Ordering::Relaxed);
+        }
+    }
+}
+
+/// The semantic index, built from the exact and symbol indexes on the first
+/// query that needs the embeddings (the other searches never pay for them).
+fn ensure_semantic<'a>(
+    slot: &'a mut Option<modbit_retrieval::SemanticIndex>,
+    idx: &modbit_retrieval::RepositoryIndex,
+    symbols: &modbit_retrieval::SymbolIndex,
+    revision: u64,
+) -> std::result::Result<&'a modbit_retrieval::SemanticIndex, String> {
+    if slot.is_none() {
+        let files: Vec<modbit_retrieval::FileSource> = idx
+            .texts()
+            .map(|(p, t, _)| (p, t, symbol_spans(symbols, p)))
+            .collect();
+        *slot = Some(modbit_retrieval::SemanticIndex::build(
+            Box::new(modbit_retrieval::HashingEmbedder::default()),
+            files.into_iter(),
+            revision,
+        )?);
+    }
+    slot.as_ref().ok_or_else(|| "semantic index".to_owned())
 }
 
 impl modbit_tools::SearchPort for IndexPort {
@@ -3250,21 +3429,31 @@ impl IndexPort {
                 "the index is being refreshed".to_owned(),
             )
         })?;
+        let mut graph_guard = self.graph.try_lock().map_err(|_| {
+            (
+                "INDEX_BUSY".to_owned(),
+                "the graph is being refreshed".to_owned(),
+            )
+        })?;
+        let mut refs_guard = self.refs.try_lock().map_err(|_| {
+            (
+                "INDEX_BUSY".to_owned(),
+                "the reference graph is being refreshed".to_owned(),
+            )
+        })?;
         if ws_rev > idx.revision() {
-            // Freshness (docs/18): a write without a recorded changed set is not possible
-            // through the tools, but an external edit may have moved the revision.
-            idx.rebuild(ws_rev)
-                .map_err(|e| ("INDEX_REBUILD".to_owned(), e.to_string()))?;
-            *lexical = modbit_retrieval::LexicalIndex::build(idx.texts(), ws_rev)
-                .map_err(|e| ("INDEX_REBUILD".to_owned(), e.to_string()))?;
-            *symbols = modbit_retrieval::SymbolIndex::build(idx.texts_with_hash(), ws_rev);
-            let files: Vec<modbit_retrieval::FileSource> = idx
-                .texts()
-                .map(|(p, t, _)| (p, t, symbol_spans(&symbols, p)))
-                .collect();
-            *semantic = modbit_retrieval::SemanticIndex::build(
-                Box::new(modbit_retrieval::HashingEmbedder::default()),
-                files.into_iter(),
+            // Freshness (docs/18): a write without a recorded changed set is
+            // not possible through the tools, but an external edit may have
+            // moved the revision. The files are diffed against the index by
+            // content hash and only what changed is parsed again (PX-111).
+            crate::index_host::refresh_with_guards(
+                &mut idx,
+                &mut lexical,
+                &mut symbols,
+                &mut refs_guard,
+                &mut graph_guard,
+                &mut semantic,
+                None,
                 ws_rev,
             )
             .map_err(|e| ("INDEX_REBUILD".to_owned(), e))?;
@@ -3277,10 +3466,18 @@ impl IndexPort {
         };
         let stats = idx.stats();
         let body = match req.kind.as_str() {
-            "exact" => serde_json::json!({"hits": idx.search_exact(&req.query, &opts)}),
-            "regex" => serde_json::json!({"hits": idx
-                .search_regex(&req.query, &opts)
-                .map_err(|e| ("BAD_REGEX".to_owned(), e.to_string()))?}),
+            "exact" => {
+                let (hits, plan) = idx.search_exact_with(&req.query, &opts, req.use_index);
+                self.count_search(&plan);
+                serde_json::json!({"hits": hits, "search_plan": plan})
+            }
+            "regex" => {
+                let (hits, plan) = idx
+                    .search_regex_with(&req.query, &opts, req.use_index)
+                    .map_err(|e| ("BAD_REGEX".to_owned(), e.to_string()))?;
+                self.count_search(&plan);
+                serde_json::json!({"hits": hits, "search_plan": plan})
+            }
             "lexical" => serde_json::json!({"hits": lexical
                 .search(&req.query, req.max_hits)
                 .map_err(|e| ("BAD_QUERY".to_owned(), e.to_string()))?}),
@@ -3328,6 +3525,8 @@ impl IndexPort {
                 serde_json::json!({"symbols": kept, "text_only": degraded})
             }
             "semantic" => {
+                let semantic = ensure_semantic(&mut semantic, &idx, &symbols, ws_rev)
+                    .map_err(|e| ("INDEX_REBUILD".to_owned(), e))?;
                 let hits = semantic
                     .search(&req.query, req.max_hits)
                     .map_err(|e| ("BAD_QUERY".to_owned(), e))?;
@@ -3341,33 +3540,22 @@ impl IndexPort {
             "retrieve" => {
                 let args: serde_json::Value = serde_json::from_str(&req.query)
                     .map_err(|e| ("BAD_QUERY".to_owned(), e.to_string()))?;
-                let mut graph = self.graph.try_lock().map_err(|_| {
-                    (
-                        "INDEX_BUSY".to_owned(),
-                        "the graph is being refreshed".to_owned(),
-                    )
-                })?;
-                if ws_rev > graph.revision() {
-                    *graph = modbit_retrieval::EvidenceGraph::build(
-                        idx.texts(),
-                        recent_commits(idx.root()),
-                        worktree_changed_lines(idx.root()),
-                        ws_rev,
-                    );
-                }
+                let graph = &mut *graph_guard;
                 let diagnostics = failing_check_locations(&self.evidence, &symbols);
                 let external: Vec<(String, u32)> = self
                     .external
                     .iter()
                     .map(|l| (l.path.clone(), l.line))
                     .collect();
+                let semantic_ref = ensure_semantic(&mut semantic, &idx, &symbols, ws_rev)
+                    .map_err(|e| ("INDEX_REBUILD".to_owned(), e))?;
                 let plan = modbit_retrieval::planner::retrieve(
                     &modbit_retrieval::Sources {
                         index: &idx,
                         lexical: &lexical,
                         symbols: &symbols,
-                        semantic: &semantic,
-                        graph: &graph,
+                        semantic: semantic_ref,
+                        graph,
                     },
                     &modbit_retrieval::PlanRequest {
                         query: args["query"].as_str().unwrap_or_default().to_owned(),
@@ -3404,20 +3592,7 @@ impl IndexPort {
                 })?;
                 let built_now = refresh || cached.is_none();
                 if built_now {
-                    let mut graph = self.graph.try_lock().map_err(|_| {
-                        (
-                            "INDEX_BUSY".to_owned(),
-                            "the graph is being refreshed".to_owned(),
-                        )
-                    })?;
-                    if ws_rev > graph.revision() {
-                        *graph = modbit_retrieval::EvidenceGraph::build(
-                            idx.texts(),
-                            recent_commits(idx.root()),
-                            worktree_changed_lines(idx.root()),
-                            ws_rev,
-                        );
-                    }
+                    let graph = &mut *graph_guard;
                     let paths: Vec<String> = hashes.keys().cloned().collect();
                     let facts: Vec<modbit_retrieval::knowledge::FileFacts<'_>> = paths
                         .iter()
@@ -3539,33 +3714,22 @@ impl IndexPort {
                         required.push(p.clone());
                     }
                 }
-                let mut graph = self.graph.try_lock().map_err(|_| {
-                    (
-                        "INDEX_BUSY".to_owned(),
-                        "the graph is being refreshed".to_owned(),
-                    )
-                })?;
-                if ws_rev > graph.revision() {
-                    *graph = modbit_retrieval::EvidenceGraph::build(
-                        idx.texts(),
-                        recent_commits(idx.root()),
-                        worktree_changed_lines(idx.root()),
-                        ws_rev,
-                    );
-                }
+                let graph = &mut *graph_guard;
                 let diagnostics = failing_check_locations(&self.evidence, &symbols);
                 let external: Vec<(String, u32)> = self
                     .external
                     .iter()
                     .map(|l| (l.path.clone(), l.line))
                     .collect();
+                let semantic_ref = ensure_semantic(&mut semantic, &idx, &symbols, ws_rev)
+                    .map_err(|e| ("INDEX_REBUILD".to_owned(), e))?;
                 let plan = modbit_retrieval::planner::retrieve(
                     &modbit_retrieval::Sources {
                         index: &idx,
                         lexical: &lexical,
                         symbols: &symbols,
-                        semantic: &semantic,
-                        graph: &graph,
+                        semantic: semantic_ref,
+                        graph,
                     },
                     &modbit_retrieval::PlanRequest {
                         query: query.clone(),
@@ -3758,6 +3922,16 @@ impl IndexPort {
                         source_ref: String::new(),
                     });
                 }
+                // REQ-PX-116: a child that reads part of the worktree is packed
+                // only from that part. The pack is also what the ledger keeps
+                // and what the next prompt carries, so the cut is made here,
+                // before anything is recorded, not on the answer afterwards.
+                if !self.read_selectors.is_empty() {
+                    cands.retain(|c| {
+                        !c.source_ref.is_empty()
+                            || in_read_scope(&self.scope_root, &self.read_selectors, &c.path)
+                    });
+                }
                 let fingerprint = format!("{}|{}", query, plan.ended_at as u8);
                 let pack = modbit_context::pack(&cands, budget, ws_rev, &fingerprint);
                 let pack_ref = self
@@ -3794,24 +3968,12 @@ impl IndexPort {
                     })
                     .unwrap_or_default();
                 let depth = u32::try_from(args["depth"].as_u64().unwrap_or(2)).unwrap_or(2);
-                let mut graph = self.graph.try_lock().map_err(|_| {
-                    (
-                        "INDEX_BUSY".to_owned(),
-                        "the graph is being refreshed".to_owned(),
-                    )
-                })?;
-                if ws_rev > graph.revision() {
-                    *graph = modbit_retrieval::EvidenceGraph::build(
-                        idx.texts(),
-                        recent_commits(idx.root()),
-                        worktree_changed_lines(idx.root()),
-                        ws_rev,
-                    );
-                }
-                let selection = modbit_retrieval::select_impacted(
+                let graph = &mut *graph_guard;
+                let selection = modbit_retrieval::select_impacted_with_refs(
                     &idx,
                     &symbols,
-                    &graph,
+                    graph,
+                    &refs_guard,
                     &paths,
                     depth,
                     req.max_hits,
@@ -3823,20 +3985,7 @@ impl IndexPort {
                 let path = parts.next().unwrap_or_default().to_owned();
                 let relation = parts.next().unwrap_or("all").to_owned();
                 let depth: u32 = parts.next().and_then(|d| d.parse().ok()).unwrap_or(1);
-                let mut graph = self.graph.try_lock().map_err(|_| {
-                    (
-                        "INDEX_BUSY".to_owned(),
-                        "the graph is being refreshed".to_owned(),
-                    )
-                })?;
-                if ws_rev > graph.revision() {
-                    *graph = modbit_retrieval::EvidenceGraph::build(
-                        idx.texts(),
-                        recent_commits(idx.root()),
-                        worktree_changed_lines(idx.root()),
-                        ws_rev,
-                    );
-                }
+                let graph = &mut *graph_guard;
                 // Runtime evidence (docs/18): a verification check whose id names a
                 // test symbol of this path is attributed to the path.
                 let names: Vec<&str> = symbols
@@ -3864,6 +4013,17 @@ impl IndexPort {
                     max: req.max_hits,
                 });
                 serde_json::json!({"graph": view})
+            }
+            "symbol_graph" => {
+                let args: serde_json::Value = serde_json::from_str(&req.query)
+                    .map_err(|e| ("BAD_QUERY".to_owned(), e.to_string()))?;
+                let symbol = args["symbol"].as_str().unwrap_or_default();
+                let path = args["path"].as_str().filter(|p| !p.is_empty());
+                let relation = args["relation"].as_str().unwrap_or("all");
+                if symbol.is_empty() {
+                    return Err(("BAD_QUERY".to_owned(), "symbol is required".to_owned()));
+                }
+                serde_json::json!({"symbol_graph": refs_guard.symbol_edges(symbol, path, relation, req.max_hits)})
             }
             "paths" => serde_json::json!({"paths": idx
                 .find_paths(&req.query, req.max_hits)

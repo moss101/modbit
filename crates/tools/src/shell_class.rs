@@ -58,6 +58,14 @@ pub struct ShellEffect {
     pub inline_class: EffectClass,
     /// Part of the command could not be resolved or recognized.
     pub unclassified: bool,
+    /// The command knowingly writes outside the workspace (a path that
+    /// climbs out, a system location, a home-directory dotfile, a device, or
+    /// a system-administration program). PX-057: an always-ask class.
+    pub outside_workspace: bool,
+    /// The command knowingly writes repository or tool configuration (git
+    /// configuration, or a setting that names programs git runs). PX-057: an
+    /// always-ask class.
+    pub protected_path: bool,
     /// Why the class was raised (and what was not understood), short.
     pub reasons: Vec<String>,
 }
@@ -115,6 +123,28 @@ pub fn classify_args(args: &Value) -> ShellEffect {
     }
     classify_cmd(&argv, false, stdin, 0, &mut acc);
     acc.finish()
+}
+
+/// The argv a durable run-mode rule may cover for one command-shaped call
+/// (PX-057, docs/65 AFW-F10): the call's argv, and nothing at all when the
+/// call overrides the environment. A rule is a literal argv prefix; what the
+/// environment changes (`PATH`, a wrapper, a loader) changes what the same argv
+/// runs, so such a call is not covered by a rule and asks.
+#[must_use]
+pub fn rule_argv(args: &Value) -> Option<Vec<String>> {
+    if args
+        .get("env")
+        .and_then(Value::as_object)
+        .is_some_and(|e| !e.is_empty())
+    {
+        return None;
+    }
+    args.get("argv").and_then(Value::as_array).map(|a| {
+        a.iter()
+            .filter_map(Value::as_str)
+            .map(str::to_owned)
+            .collect()
+    })
 }
 
 /// Whether a typed line is only an answer to a prompt (`y`, `no`, `3`, a bare
@@ -207,6 +237,8 @@ struct Acc {
     class: EffectClass,
     inline: EffectClass,
     unknown: bool,
+    outside_workspace: bool,
+    protected_path: bool,
     reasons: Vec<String>,
 }
 
@@ -216,6 +248,8 @@ impl Acc {
             class: EffectClass::ReversibleWrite,
             inline: EffectClass::ReversibleWrite,
             unknown: false,
+            outside_workspace: false,
+            protected_path: false,
             reasons: vec![],
         }
     }
@@ -246,6 +280,8 @@ impl Acc {
             class: self.class,
             inline_class: self.inline,
             unclassified: self.unknown,
+            outside_workspace: self.outside_workspace,
+            protected_path: self.protected_path,
             reasons: self.reasons,
         }
     }
@@ -1102,6 +1138,7 @@ fn check_write_paths(prog: &str, args: &[String], acc: &mut Acc) {
     };
     for t in targets {
         if let Some(why) = write_path_risk(t) {
+            acc.outside_workspace = true;
             acc.raise(
                 EffectClass::ProtectedWrite,
                 format!("`{prog}` writes {why} (`{t}`)"),
@@ -1325,6 +1362,7 @@ fn classify_cmd(argv: &[String], dyn_args: bool, stdin: Option<&str>, depth: usi
         return;
     }
     if SYSTEM.contains(&prog) {
+        acc.outside_workspace = true;
         acc.raise(
             EffectClass::ProtectedWrite,
             format!("`{prog}` changes system state outside the workspace"),
@@ -1830,6 +1868,7 @@ fn classify_git(args: &[String], dyn_args: bool, depth: usize, acc: &mut Acc) {
                         "ssh.",
                     ];
                     if RISKY.iter().any(|p| key.starts_with(p)) {
+                        acc.protected_path = true;
                         acc.raise(
                             EffectClass::ProtectedWrite,
                             format!("`git -c {key}` can make git run arbitrary programs"),
@@ -1993,6 +2032,7 @@ fn classify_git(args: &[String], dyn_args: bool, depth: usize, acc: &mut Acc) {
             } else if has(&["-u", "--set-upstream-to", "--unset-upstream"])
                 || has_prefix("--set-upstream-to")
             {
+                acc.protected_path = true;
                 acc.raise(
                     EffectClass::ProtectedWrite,
                     "`git branch -u` writes the repository configuration",
@@ -2064,6 +2104,7 @@ fn classify_git(args: &[String], dyn_args: bool, depth: usize, acc: &mut Acc) {
                 "--name-only",
             ]);
             if !read || has(&["--global", "--system"]) {
+                acc.protected_path = true;
                 acc.raise(
                     EffectClass::ProtectedWrite,
                     "`git config` writes configuration, which can name programs git runs",
@@ -2198,6 +2239,7 @@ fn classify_string(src: &str, depth: usize, acc: &mut Acc) {
         if dynamic {
             acc.unknown("a redirection to a path built from a variable");
         } else if let Some(why) = write_path_risk(&target) {
+            acc.outside_workspace = true;
             acc.raise(
                 EffectClass::ProtectedWrite,
                 format!("a redirection writes {why} (`{target}`)"),
@@ -3108,6 +3150,51 @@ mod tests {
             "{:?}",
             ls.reasons
         );
+    }
+
+    /// PX-057: what a run-mode rule may cover, and the typed facts the
+    /// always-ask classes are built from.
+    #[test]
+    fn a_rule_covers_an_argv_but_not_one_that_overrides_the_environment() {
+        let plain = serde_json::json!({"argv": ["cargo", "test"]});
+        assert_eq!(rule_argv(&plain), Some(argv(&["cargo", "test"])));
+        let empty_env = serde_json::json!({"argv": ["cargo", "test"], "env": {}});
+        assert_eq!(rule_argv(&empty_env), Some(argv(&["cargo", "test"])));
+        let env =
+            serde_json::json!({"argv": ["cargo", "test"], "env": {"RUSTC_WRAPPER": "/tmp/x"}});
+        assert_eq!(
+            rule_argv(&env),
+            None,
+            "a changed environment is not the rule's command"
+        );
+        assert_eq!(rule_argv(&serde_json::json!({"stdin": "ls"})), None);
+    }
+
+    #[test]
+    fn the_classifier_names_writes_outside_the_workspace_and_to_configuration() {
+        for a in [
+            &["touch", "../x"][..],
+            &["tee", "/etc/hosts"],
+            &["cp", "a", "/usr/local/bin/a"],
+        ] {
+            let e = classify_argv(&argv(a), None);
+            assert!(e.outside_workspace, "{a:?}: {:?}", e.reasons);
+            assert!(!e.protected_path, "{a:?}");
+        }
+        let e = sh("echo hi > ../escape.txt");
+        assert!(e.outside_workspace, "{:?}", e.reasons);
+        for a in [
+            &["git", "config", "user.name", "x"][..],
+            &["git", "config", "--global", "core.editor", "vi"],
+        ] {
+            let e = classify_argv(&argv(a), None);
+            assert!(e.protected_path, "{a:?}: {:?}", e.reasons);
+        }
+        // Ordinary work names neither.
+        for a in [&["ls", "-la"][..], &["git", "status"], &["cargo", "test"]] {
+            let e = classify_argv(&argv(a), None);
+            assert!(!e.outside_workspace && !e.protected_path, "{a:?}");
+        }
     }
 
     #[test]

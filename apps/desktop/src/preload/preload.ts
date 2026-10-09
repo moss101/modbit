@@ -33,6 +33,11 @@ export interface ReviewBundleView {
   invariantFindings: string[];
   receipts: number;
   evidenceLinks: string[];
+  /** PX-127: the forge's CI runs for the pushed commit — external evidence with provenance `ci`, never a verification result. */
+  ciEvidence: { name: string; runId: string; status: string; conclusion: string; url: string; completedAt: string; logRef: string; logTruncated: boolean; commit: string; provenance: string }[];
+  ciRejected: { name: string; headSha: string; reason: string }[];
+  /** PX-127: the pull request's comments the task has seen — untrusted text, what became of each. */
+  reviewComments: { commentId: string; kind: string; author: string; url: string; path: string; line: string; body: string; trust: string; disposition: string; reason: string; inputId: string; answered: boolean; reportedBack: boolean; createdAt: string }[];
 }
 export interface TaskStatusView {
   state: string;
@@ -188,6 +193,29 @@ export interface AttentionItem {
   sinceOffset: string;
 }
 
+/** What the host says of one browser view (PX-073 adds the reclaim, the certificate wait and the observer's counter). */
+export interface BrowserViewDescription {
+  browserSessionId: string;
+  taskId: string;
+  partition: string;
+  attached: boolean;
+  shown: boolean;
+  url: string;
+  title: string;
+  stateVersion: number;
+  leaseGeneration: number;
+  controller: "AGENT" | "USER";
+  stopped: string | null;
+  humanInputAt: number;
+  webContentsId: number;
+  osProcessId: number;
+  reclaimed: boolean;
+  certPending: { id: string; hostPort: string; url: string; error: string; issuer: string; subject: string; validStart: number; validExpiry: number; fingerprint: string } | null;
+  changeSeq: number;
+  refusals: number;
+  useSeq: number;
+}
+
 export interface ModbitBridge {
   coreStatus(): Promise<unknown>;
   localState(): Promise<{ sessionId?: string; platform?: { os: string; arch: string; state: string; statement: string } }>;
@@ -216,6 +244,10 @@ export interface ModbitBridge {
   applyUserPatch(sessionId: string, taskId: string, patch: { path: string; old: string; new: string; expectedWorkspaceRevision: string; expectedFileRevision: string }): Promise<{ workspaceRevision: string; previousRevision: string; fileRevision: string; beforeHash: string; matchTier: string; offset: string; replayed: boolean }>;
   /** PX-007: open or update the task's pull request from the accepted candidate; APPROVAL_PENDING first, then OPENED/UPDATED or DENIED. */
   openPullRequest(sessionId: string, taskId: string, expectedCandidateRevision: string, update: boolean): Promise<PullRequestAckView>;
+  /** PX-127: the Core reads the forge's check runs for the task's pull request and records them as `ci` evidence. */
+  ingestCiResults(sessionId: string, taskId: string): Promise<{ commit: string; checks: number; refused: number; evidenceClass: string; offset: string }>;
+  /** PX-127: the Core reads the pull request's comments; allowed authors' comments addressed to Modbit steer as untrusted input. */
+  ingestReviewComments(sessionId: string, taskId: string): Promise<{ steered: number; ignored: number; alreadyTaken: number; offset: string }>;
   /** PX-001: decide a protected effect, naming the intent hash shown. */
   resolveApproval(sessionId: string, approvalId: string, approve: boolean, reason: string, intentHash: string): Promise<{ approvalId: string; status: string; offset: string }>;
   /** PX-024: cancel the task (confirmed in the renderer) and steer it with one line of input. */
@@ -228,7 +260,21 @@ export interface ModbitBridge {
   showBrowser(browserSessionId: string, bounds: { x: number; y: number; width: number; height: number }): Promise<boolean>;
   hideBrowser(browserSessionId: string): Promise<void>;
   closeBrowser(browserSessionId: string): Promise<void>;
-  describeBrowser(browserSessionId: string): Promise<{ browserSessionId: string; taskId: string; partition: string; attached: boolean; shown: boolean; url: string; title: string; stateVersion: number; leaseGeneration: number; controller: "AGENT" | "USER"; stopped: string | null; humanInputAt: number } | null>;
+  describeBrowser(browserSessionId: string, taskId?: string): Promise<BrowserViewDescription | null>;
+  /** PX-073: the views a task owns, and nobody else's. */
+  listBrowserViews(taskId: string): Promise<{ browserSessionId: string; url: string; shown: boolean; reclaimed: boolean }[]>;
+  selectBrowserView(taskId: string, browserSessionId: string): Promise<BrowserViewDescription | null>;
+  /** PX-073 / PX-120: the person's browser policy (local destinations and origins the sessions may use). */
+  browserPolicy(): Promise<{ version: number; allowTargets: string[]; allowOrigins: string[] }>;
+  setBrowserPolicy(next: { allowTargets?: string[]; allowOrigins?: string[] }): Promise<{ version: number; allowTargets: string[]; allowOrigins: string[] }>;
+  /** PX-120: destinations the target policy refused in a session. */
+  browserRefusals(browserSessionId: string): Promise<{ atMs: number; host: string; address: string; class: string; reason: string; document: boolean; main: boolean; url: string }[]>;
+  /** PX-073: decide a held certificate error; trusts are remembered per workspace and can be listed and cleared. */
+  decideBrowserCertificate(browserSessionId: string, id: string, decision: "trust" | "reject"): Promise<boolean>;
+  browserCertificateTrusts(): Promise<{ workspace: string; hostPort: string; fingerprint: string; issuer: string; subject: string; validExpiry: number; trustedAtMs: number }[]>;
+  clearBrowserCertificateTrusts(): Promise<number>;
+  /** PX-073: sign out of the sites a session visited (cookies, storage, service workers, caches). */
+  clearBrowserData(browserSessionId?: string): Promise<{ cleared: string[] }>;
   /** M7.6: take (USER) or return (AGENT) control of the session; the lease generation moves on every hand-over. */
   setBrowserControl(browserSessionId: string, controller: "AGENT" | "USER"): Promise<{ controller: string; leaseGeneration: number; changed: boolean }>;
   typeAsPerson(browserSessionId: string, text: string): Promise<boolean>;
@@ -239,7 +285,7 @@ export interface ModbitBridge {
   addCredential(label: string, origin: string, username: string, secret: string): Promise<CredentialHandle>;
   listCredentials(): Promise<CredentialHandle[]>;
   removeCredential(handle: string): Promise<{ removed: boolean }>;
-  browserLog(): Promise<{ browserSessionId: string; kind: string; ok: boolean; code: string; generation: number; atMs: number }[]>;
+  browserLog(): Promise<{ browserSessionId: string; kind: string; ok: boolean; code: string; generation: number; atMs: number; detail?: string }[]>;
   /** The isolation report asked of the hosted page itself (Node, require, Electron: none reachable). */
   probeBrowser(browserSessionId: string): Promise<{ kind: string; node_reachable: boolean; partition: string; sandboxed: boolean; context_isolated: boolean } | null>;
   onBrowserState(cb: (s: unknown) => void): () => void;
@@ -282,6 +328,8 @@ const bridge: ModbitBridge = {
   decideReview: (sessionId, taskId, decision, rejected, note, expectedWorkspaceRevision) => ipcRenderer.invoke("review:decide", sessionId, taskId, decision, rejected, note, expectedWorkspaceRevision),
   applyUserPatch: (sessionId, taskId, patch) => ipcRenderer.invoke("review:patch", sessionId, taskId, patch),
   openPullRequest: (sessionId, taskId, expectedCandidateRevision, update) => ipcRenderer.invoke("review:pullRequest", sessionId, taskId, expectedCandidateRevision, update),
+  ingestCiResults: (sessionId, taskId) => ipcRenderer.invoke("review:ingestCi", sessionId, taskId),
+  ingestReviewComments: (sessionId, taskId) => ipcRenderer.invoke("review:ingestComments", sessionId, taskId),
   resolveApproval: (sessionId, approvalId, approve, reason, intentHash) => ipcRenderer.invoke("approval:resolve", sessionId, approvalId, approve, reason, intentHash),
   respondToQuestion: (sessionId, taskId, questionId, optionId, text) => ipcRenderer.invoke("question:respond", sessionId, taskId, questionId, optionId, text),
   cancelTask: (sessionId, taskId) => ipcRenderer.invoke("task:cancel", sessionId, taskId),
@@ -290,7 +338,16 @@ const bridge: ModbitBridge = {
   showBrowser: (browserSessionId, bounds) => ipcRenderer.invoke("browser:show", browserSessionId, bounds),
   hideBrowser: (browserSessionId) => ipcRenderer.invoke("browser:hide", browserSessionId),
   closeBrowser: (browserSessionId) => ipcRenderer.invoke("browser:close", browserSessionId),
-  describeBrowser: (browserSessionId) => ipcRenderer.invoke("browser:describe", browserSessionId),
+  describeBrowser: (browserSessionId, taskId) => ipcRenderer.invoke("browser:describe", browserSessionId, taskId),
+  listBrowserViews: (taskId) => ipcRenderer.invoke("browser:list", taskId),
+  selectBrowserView: (taskId, browserSessionId) => ipcRenderer.invoke("browser:select", taskId, browserSessionId),
+  browserPolicy: () => ipcRenderer.invoke("browser:policy"),
+  setBrowserPolicy: (next) => ipcRenderer.invoke("browser:setPolicy", next),
+  browserRefusals: (browserSessionId) => ipcRenderer.invoke("browser:refusals", browserSessionId),
+  decideBrowserCertificate: (browserSessionId, id, decision) => ipcRenderer.invoke("browser:certDecide", browserSessionId, id, decision),
+  browserCertificateTrusts: () => ipcRenderer.invoke("browser:certTrusts"),
+  clearBrowserCertificateTrusts: () => ipcRenderer.invoke("browser:certClear"),
+  clearBrowserData: (browserSessionId) => ipcRenderer.invoke("browser:clearData", browserSessionId),
   browserSession: (browserSessionId, taskId) => ipcRenderer.invoke("browser:session", browserSessionId, taskId),
   browserLog: () => ipcRenderer.invoke("browser:log"),
   probeBrowser: (browserSessionId) => ipcRenderer.invoke("browser:probe", browserSessionId),

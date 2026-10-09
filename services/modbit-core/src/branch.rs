@@ -583,6 +583,35 @@ pub(crate) async fn fork(
         events,
     })?;
     let mut offset = stored.last().map(|e| e.offset).unwrap_or(0);
+    // PX-065: the worktree is in the registry, so the lifecycle — its
+    // result's disposition, the integration gate, the cleanup — knows it.
+    {
+        let kind = if req.subagent.is_some() {
+            "SUBAGENT"
+        } else {
+            "FORK"
+        };
+        let id = req.new_task_id.to_string();
+        let last = crate::worktrees::append_events(
+            &mut store,
+            core.tenant_id,
+            source.session_id,
+            req.new_task_id,
+            crate::worktrees::aggregate_id(&id),
+            vec![crate::worktrees::provisioned_event(
+                kind,
+                &id,
+                req.new_task_id,
+                &worktree,
+                &crate::worktrees::plain_path(Path::new(root)),
+                &branch,
+                &base,
+                actor,
+            )],
+        )
+        .map_err(|e| anyhow::anyhow!("worktree registry: {e}"))?;
+        offset = offset.max(last);
+    }
     // Capability Kernel (docs/23): the fork's own default lease on its own root.
     let (mut resources, mut operations, mut effect_ceiling) =
         modbit_policy::default_lease_for_profile(
@@ -593,8 +622,8 @@ pub(crate) async fn fork(
         // M6.3: least privilege for a child — writes only inside its write
         // scope, no worktrees of its own, never a higher effect class than
         // its parent allows (REQ-EV-0046 / 0048).
-        operations.retain(|o| o != "git.worktree");
-        resources.retain(|r| !r.starts_with("git.worktree:"));
+        operations.retain(|o| o != "git.worktree" && o != "git.merge" && o != "git.apply");
+        resources.retain(|r| !r.starts_with("git.worktree:") && !r.starts_with("git.merge:"));
         if !sub.write_scope.is_empty() {
             resources.retain(|r| !r.starts_with("fs.write:"));
             for p in &sub.write_scope {

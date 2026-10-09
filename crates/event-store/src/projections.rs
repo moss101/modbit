@@ -916,7 +916,16 @@ pub fn apply(tx: &Transaction<'_>, ev: &StoredEvent, objects: &crate::ObjectStor
                         running: *running,
                     },
                 )),
+                // A background process the Core saw end (or a client killed)
+                // moves the handle's cursor to exited exactly as the run's own
+                // observation of the exit does (REQ-PX-043).
                 TaskEvent::ProcessExited {
+                    handle_id,
+                    output_ref,
+                    exit_code,
+                    ..
+                }
+                | TaskEvent::BackgroundProcessEnded {
                     handle_id,
                     output_ref,
                     exit_code,
@@ -1344,12 +1353,45 @@ pub fn apply(tx: &Transaction<'_>, ev: &StoredEvent, objects: &crate::ObjectStor
             modbit_domain::stream::check_next(id, sequence, previous.as_deref(), &event)
                 .map_err(|detail| Error::Projection { offset, detail })?;
         }
+        // PX-113: a memory event carries the row its item has after it (and
+        // `removed` when the item leaves the store); the projection is the
+        // plain replay of those rows in log order.
+        AggregateType::Memory => project_memory(tx, &payload)?,
         // Aggregates whose projections belong to later milestones (checkpoints).
         _ => {}
     }
     tx.execute(
         "INSERT OR REPLACE INTO projection_state (name, last_offset) VALUES (?1, ?2)",
         params![PROJECTION_NAME, offset as i64],
+    )?;
+    Ok(())
+}
+
+/// Apply one `Memory` event: upsert the row it carries, or delete the item
+/// when it says `removed` (a forgotten item leaves the store; the log keeps
+/// the fact that it was forgotten).
+fn project_memory(tx: &Transaction<'_>, payload: &serde_json::Value) -> Result<()> {
+    if payload["removed"].as_bool() == Some(true) {
+        let id = payload["memory_id"].as_str().unwrap_or_default();
+        tx.execute("DELETE FROM memory_items WHERE id = ?1", params![id])?;
+        return Ok(());
+    }
+    let row: crate::MemoryRow = serde_json::from_value(payload["row"].clone())?;
+    tx.execute(
+        "INSERT OR REPLACE INTO memory_items (id, scope_key, record_type, topic, status, sensitivity, created_at_ms, expires_at_ms, updated_at_ms, doc) \
+         VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10)",
+        params![
+            row.id,
+            row.scope_key,
+            row.record_type,
+            row.topic,
+            row.status,
+            row.sensitivity,
+            row.created_at_ms,
+            row.expires_at_ms,
+            row.updated_at_ms,
+            row.doc,
+        ],
     )?;
     Ok(())
 }
@@ -1873,8 +1915,8 @@ fn insert_receipt(tx: &rusqlite::Connection, r: &EffectReceipt) -> Result<()> {
         |row| row.get(0),
     )?;
     tx.execute(
-        "INSERT OR IGNORE INTO effect_receipts (effect_id, seq, previous_receipt_hash, task_id, turn_id, step_id, tool_call_id, capability_lease_id, intent_hash, policy_decision, approval_id, execution_target, evidence_ref, status, occurred_at, receipt_hash, reversibility, compensates)
-         VALUES (?1, ?2, ?3, ?4, NULL, NULL, ?5, ?6, ?7, ?8, ?9, ?10, ?11, ?12, ?13, ?14, ?15, ?16)",
+        "INSERT OR IGNORE INTO effect_receipts (effect_id, seq, previous_receipt_hash, task_id, turn_id, step_id, tool_call_id, capability_lease_id, intent_hash, policy_decision, approval_id, execution_target, evidence_ref, status, occurred_at, receipt_hash, reversibility, compensates, authorization_epoch, capability_snapshot_hash)
+         VALUES (?1, ?2, ?3, ?4, NULL, NULL, ?5, ?6, ?7, ?8, ?9, ?10, ?11, ?12, ?13, ?14, ?15, ?16, ?17, ?18)",
         params![
             r.effect_id.as_bytes().as_slice(),
             seq,
@@ -1892,6 +1934,10 @@ fn insert_receipt(tx: &rusqlite::Connection, r: &EffectReceipt) -> Result<()> {
             &r.receipt_hash,
             r.reversibility.map(|x| x.label()),
             r.compensates.map(|e| e.as_bytes().to_vec()),
+            r.authorization
+                .as_ref()
+                .map(|a| i64::try_from(a.epoch).unwrap_or(i64::MAX)),
+            r.authorization.as_ref().map(|a| a.snapshot_hash.clone()),
         ],
     )?;
     Ok(())
@@ -1931,10 +1977,20 @@ fn receipt_from_row(r: &rusqlite::Row<'_>) -> rusqlite::Result<EffectReceipt> {
             .map(blob16)
             .transpose()?
             .map(modbit_domain::EffectId::from_bytes),
+        authorization: match (
+            r.get::<_, Option<i64>>(15)?,
+            r.get::<_, Option<String>>(16)?,
+        ) {
+            (Some(epoch), Some(snapshot_hash)) => Some(modbit_domain::epoch::AuthorizationStamp {
+                epoch: u64::try_from(epoch).unwrap_or(0),
+                snapshot_hash,
+            }),
+            _ => None,
+        },
     })
 }
 
-const RECEIPT_COLS: &str = "effect_id, previous_receipt_hash, task_id, tool_call_id, capability_lease_id, intent_hash, policy_decision, approval_id, execution_target, evidence_ref, status, occurred_at, receipt_hash, reversibility, compensates";
+const RECEIPT_COLS: &str = "effect_id, previous_receipt_hash, task_id, tool_call_id, capability_lease_id, intent_hash, policy_decision, approval_id, execution_target, evidence_ref, status, occurred_at, receipt_hash, reversibility, compensates, authorization_epoch, capability_snapshot_hash";
 
 /// The hash of the newest receipt in the chain, if any.
 pub fn last_receipt_hash(tx: &rusqlite::Connection) -> Result<Option<String>> {
@@ -2378,6 +2434,7 @@ pub fn load_flaky_checks(
 /// Truncate the projection tables and replay every event from offset 0.
 pub fn rebuild(tx: &Transaction<'_>, objects: &crate::ObjectStore) -> Result<u64> {
     for t in [
+        "memory_items",
         "checkpoints",
         "compaction_epochs",
         "protocol_state",

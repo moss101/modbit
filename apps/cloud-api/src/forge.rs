@@ -335,6 +335,24 @@ pub(crate) async fn github_webhook(
         ));
     }
     let action = payload["action"].as_str().unwrap_or_default().to_owned();
+    // PX-126: a check result or a pull-request comment is not a task; it is
+    // a notice that the owning task should read the forge again.
+    if let Some(r) = ingestion_delivery(
+        &state,
+        &Delivery {
+            id: &delivery,
+            event: &event,
+            action: &action,
+            audit_resource: &audit_resource,
+        },
+        &payload,
+        &mapping,
+        &repository,
+    )
+    .await?
+    {
+        return Ok(r);
+    }
     let takes = event == "issues"
         && ((mapping.intake_label.is_empty() && action == "opened")
             || (!mapping.intake_label.is_empty()
@@ -498,9 +516,303 @@ pub(crate) async fn github_webhook(
     Ok((StatusCode::CREATED, Json(out)).into_response())
 }
 
+/// A delivery being decided.
+struct Delivery<'a> {
+    id: &'a str,
+    event: &'a str,
+    action: &'a str,
+    audit_resource: &'a str,
+}
+
+/// What an ingestion event asks of the owning task's Core.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+enum Ingest {
+    /// Read the commit's check runs (`IngestCiResults`).
+    Ci,
+    /// Read the pull request's comments (`IngestReviewComments`).
+    ReviewComments,
+}
+
+impl Ingest {
+    fn command(self) -> &'static str {
+        match self {
+            Self::Ci => "Ingest:ci",
+            Self::ReviewComments => "Ingest:review_comments",
+        }
+    }
+}
+
+/// The pull request an event is about and when it happened.
+struct Subject {
+    kind: Ingest,
+    number: Option<u64>,
+    head_branch: Option<String>,
+    at_ms: Option<i64>,
+    /// The event was made by a bot (the app's own comments are not input).
+    by_bot: bool,
+}
+
+/// `YYYY-MM-DDTHH:MM:SSZ` (GitHub's timestamp form) as milliseconds since
+/// the epoch.
+fn parse_iso_ms(text: &str) -> Option<i64> {
+    let t = text.trim();
+    let (date, time) = t.split_once('T')?;
+    let time = time.strip_suffix('Z')?;
+    let mut d = date.split('-');
+    let (y, m, day): (i64, i64, i64) = (
+        d.next()?.parse().ok()?,
+        d.next()?.parse().ok()?,
+        d.next()?.parse().ok()?,
+    );
+    let time = time.split('.').next()?;
+    let mut hms = time.split(':');
+    let (h, mi, s): (i64, i64, i64) = (
+        hms.next()?.parse().ok()?,
+        hms.next()?.parse().ok()?,
+        hms.next()?.parse().ok()?,
+    );
+    if !(1..=12).contains(&m) || !(1..=31).contains(&day) || h > 23 || mi > 59 || s > 60 {
+        return None;
+    }
+    // days from civil (Howard Hinnant)
+    let y = if m <= 2 { y - 1 } else { y };
+    let era = y.div_euclid(400);
+    let yoe = y.rem_euclid(400);
+    let doy = (153 * (if m > 2 { m - 3 } else { m + 9 }) + 2) / 5 + day - 1;
+    let doe = yoe * 365 + yoe / 4 - yoe / 100 + doy;
+    let days = era * 146_097 + doe - 719_468;
+    Some(((days * 24 + h) * 60 + mi) * 60_000 + s * 1000)
+}
+
+/// The pull request and the moment of an event this endpoint turns into an
+/// ingestion; `None` for every other event (and for actions that are not a
+/// completed check or a created comment).
+fn subject_of(event: &str, action: &str, p: &Value) -> Option<Subject> {
+    let first_pr = |v: &Value| v["pull_requests"][0]["number"].as_u64();
+    let by_bot = p["sender"]["type"] == "Bot";
+    match (event, action) {
+        ("check_suite", "completed") => Some(Subject {
+            kind: Ingest::Ci,
+            number: first_pr(&p["check_suite"]),
+            head_branch: p["check_suite"]["head_branch"].as_str().map(str::to_owned),
+            at_ms: p["check_suite"]["updated_at"]
+                .as_str()
+                .and_then(parse_iso_ms),
+            by_bot: false,
+        }),
+        ("check_run", "completed") => Some(Subject {
+            kind: Ingest::Ci,
+            number: first_pr(&p["check_run"]),
+            head_branch: p["check_run"]["check_suite"]["head_branch"]
+                .as_str()
+                .map(str::to_owned),
+            at_ms: p["check_run"]["completed_at"]
+                .as_str()
+                .and_then(parse_iso_ms),
+            by_bot: false,
+        }),
+        ("issue_comment", "created") if p["issue"]["pull_request"].is_object() => Some(Subject {
+            kind: Ingest::ReviewComments,
+            number: p["issue"]["number"].as_u64(),
+            head_branch: None,
+            at_ms: p["comment"]["created_at"].as_str().and_then(parse_iso_ms),
+            by_bot,
+        }),
+        ("pull_request_review_comment", "created") => Some(Subject {
+            kind: Ingest::ReviewComments,
+            number: p["pull_request"]["number"].as_u64(),
+            head_branch: None,
+            at_ms: p["comment"]["created_at"].as_str().and_then(parse_iso_ms),
+            by_bot,
+        }),
+        _ => None,
+    }
+}
+
+/// PX-126 (docs/24 "Forge webhook intake"): a signed `check_suite`,
+/// `check_run`, `issue_comment` or `pull_request_review_comment` delivery
+/// reaches the Core that owns the pull request's task as a command —
+/// `Ingest:ci` or `Ingest:review_comments`, run there as `IngestCiResults`
+/// or `IngestReviewComments`. The delivery's body is never evidence: the
+/// Core reads the forge itself, with its own token, and records what it
+/// read with provenance. Signature, installation, delivery-id replay and
+/// the repository's mapping are checked before this runs; here the event's
+/// age, the owning task (in the mapped tenant only) and the durable queue.
+async fn ingestion_delivery(
+    state: &Arc<AppState>,
+    d: &Delivery<'_>,
+    payload: &Value,
+    mapping: &modbit_event_store::cloud::ForgeRepository,
+    repository: &str,
+) -> ApiResult<Option<Response>> {
+    let Some(subject) = subject_of(d.event, d.action, payload) else {
+        return Ok(None);
+    };
+    let tenant = mapping.tenant_id;
+    let finish = |outcome: String, task: Option<TaskId>| {
+        let state = Arc::clone(state);
+        let id = d.id.to_owned();
+        async move {
+            state
+                .store
+                .finish_webhook_delivery(PROVIDER, &id, Some(tenant), &outcome, task)
+                .await
+        }
+    };
+    // 1. The event's own time: an old capture replayed under a fresh
+    //    delivery id is refused, and so is one from the future.
+    let now = modbit_domain::Timestamp::now().millis();
+    if let Some(at) = subject.at_ms
+        && (now - at > state.extras.webhook_max_age_ms || at - now > state.extras.webhook_skew_ms)
+    {
+        finish("stale".into(), None).await?;
+        state
+            .store
+            .record_denial(
+                Some(tenant),
+                None,
+                d.audit_resource,
+                &format!("event time {at} is outside the accepted window"),
+            )
+            .await?;
+        return Ok(Some(refused(
+            StatusCode::BAD_REQUEST,
+            "WEBHOOK_STALE",
+            "the event's time is outside the accepted window",
+            Value::Null,
+        )));
+    }
+    if subject.by_bot {
+        let outcome = format!("ignored:{}.bot", d.event);
+        finish(outcome.clone(), None).await?;
+        return Ok(Some(
+            (
+                StatusCode::ACCEPTED,
+                Json(json!({"code": "IGNORED", "delivery_id": d.id, "outcome": outcome})),
+            )
+                .into_response(),
+        ));
+    }
+    // 2. The task that owns the pull request, in the mapped tenant.
+    let found = state
+        .store
+        .task_for_pull_request(
+            tenant,
+            repository,
+            subject.number,
+            subject.head_branch.as_deref(),
+        )
+        .await?;
+    let Some((task_id, session_id)) = found else {
+        // A pull request another tenant's task opened is a mapping that
+        // names the wrong tenant: refused and audited, and nothing of the
+        // other tenant is named. One nobody's task opened is an ordinary
+        // human pull request on a mapped repository.
+        let elsewhere = match subject.number {
+            Some(n) => state.store.pull_request_owner_tenant(repository, n).await?,
+            None => None,
+        };
+        if elsewhere.is_some_and(|t| t != tenant) {
+            finish("wrong_tenant".into(), None).await?;
+            state
+                .store
+                .record_denial(
+                    Some(tenant),
+                    None,
+                    d.audit_resource,
+                    "the pull request belongs to a task of another tenant",
+                )
+                .await?;
+            return Ok(Some(refused(
+                StatusCode::NOT_FOUND,
+                "PULL_REQUEST_UNKNOWN",
+                "no task of this tenant owns that pull request",
+                Value::Null,
+            )));
+        }
+        finish("ignored:no_task".into(), None).await?;
+        return Ok(Some(
+            (
+                StatusCode::ACCEPTED,
+                Json(json!({"code": "IGNORED", "delivery_id": d.id, "outcome": "ignored:no_task"})),
+            )
+                .into_response(),
+        ));
+    };
+    // 3. The command is named by the delivery, so a delivery is at most one
+    //    ingestion; it is queued durably (the log's owner may be down or
+    //    between workers) and the session is made ready for one.
+    let cid = command_id_of(d.id);
+    let queued = state
+        .store
+        .enqueue_command(
+            tenant,
+            session_id,
+            cid,
+            subject.kind.command(),
+            json!({"task_id": task_id.to_string(), "delivery_id": d.id, "event": d.event, "action": d.action, "repository": repository}),
+        )
+        .await?;
+    let held = state.store.held_by(tenant, session_id).await?;
+    if held.is_none() {
+        state.store.mark_ready(tenant, session_id).await?;
+    }
+    finish(
+        format!(
+            "{}:{}",
+            if held.is_some() { "relayed" } else { "queued" },
+            subject.kind.command()
+        ),
+        Some(task_id),
+    )
+    .await?;
+    Ok(Some(
+        (
+            StatusCode::ACCEPTED,
+            Json(json!({
+                "code": "INGESTION_QUEUED", "command_id": cid.to_string(), "newly_queued": queued,
+                "task_id": task_id.to_string(), "kind": subject.kind.command(),
+                "relayed_to": held.map(|(w, g)| json!({"worker_id": w, "generation": g})),
+            })),
+        )
+            .into_response(),
+    ))
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn github_timestamps_parse_to_epoch_milliseconds() {
+        assert_eq!(parse_iso_ms("1970-01-01T00:00:00Z"), Some(0));
+        assert_eq!(
+            parse_iso_ms("2026-10-07T20:20:26Z"),
+            Some(1_791_404_426_000)
+        );
+        assert_eq!(parse_iso_ms("2000-02-29T23:59:59Z"), Some(951_868_799_000));
+        assert_eq!(parse_iso_ms("not a time"), None);
+        assert_eq!(parse_iso_ms("2026-13-01T00:00:00Z"), None);
+    }
+
+    #[test]
+    fn only_completed_checks_and_created_pull_request_comments_are_ingestion_events() {
+        let pr = json!({"check_suite": {"head_branch": "b", "pull_requests": [{"number": 9}], "updated_at": "2026-10-07T20:20:26Z"}});
+        let s = subject_of("check_suite", "completed", &pr).unwrap();
+        assert_eq!((s.kind, s.number), (Ingest::Ci, Some(9)));
+        assert!(subject_of("check_suite", "requested", &pr).is_none());
+        let issue =
+            json!({"issue": {"number": 4}, "comment": {"created_at": "2026-10-07T20:20:26Z"}});
+        assert!(
+            subject_of("issue_comment", "created", &issue).is_none(),
+            "a comment on a plain issue is not a pull-request comment"
+        );
+        let on_pr = json!({"issue": {"number": 4, "pull_request": {"url": "x"}}, "comment": {}, "sender": {"type": "Bot"}});
+        let s = subject_of("issue_comment", "created", &on_pr).unwrap();
+        assert!(s.by_bot && s.kind == Ingest::ReviewComments && s.number == Some(4));
+        assert!(subject_of("issue_comment", "edited", &on_pr).is_none());
+        assert!(subject_of("pull_request", "opened", &on_pr).is_none());
+    }
 
     #[test]
     fn a_delivery_verifies_only_under_its_secret_and_exact_body() {

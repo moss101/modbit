@@ -191,4 +191,106 @@ mod unix {
         assert!(!ok);
         assert!(err.contains("CURSOR_BEYOND_HEAD"), "{err}");
     }
+
+    /// PX-043: `terminal kill` stops the process through the real Core and
+    /// broker in one invocation; a later invocation sees it KILLED, and a
+    /// second kill of the same terminal answers ALREADY_ENDED.
+    #[test]
+    fn px_043_the_cli_kills_a_terminal_in_a_later_invocation() {
+        let (_ws, root) = workspace();
+        let data = tempfile::tempdir().unwrap();
+        let (ok, out, err) = cli(data.path(), &["session", "create"]);
+        assert!(ok, "{err}");
+        let sid = out.trim().strip_prefix("session ").unwrap().to_owned();
+        let (ok, out, err) = cli(
+            data.path(),
+            &[
+                "task",
+                "create",
+                "--session",
+                &sid,
+                "--workspace",
+                &root,
+                "stop",
+                "a",
+                "shell",
+            ],
+        );
+        assert!(ok, "{err}");
+        let task = out.split_whitespace().nth(1).unwrap().to_owned();
+        let (ok, out, err) = cli(
+            data.path(),
+            &[
+                "tool",
+                "invoke",
+                "--session",
+                &sid,
+                "--task",
+                &task,
+                "shell.start",
+                r#"{"argv":["sh","-c","exec sleep 300"],"inherit_env":true,"pty":true}"#,
+            ],
+        );
+        assert!(ok, "{out}{err}");
+        let (ok, out, err) = cli(data.path(), &["terminal", "list", "--task", &task]);
+        assert!(ok, "{err}");
+        let terminal = out
+            .lines()
+            .find(|l| l.starts_with("terminal ") && l.contains("state=RUNNING"))
+            .and_then(|l| l.split_whitespace().nth(1))
+            .unwrap_or_else(|| panic!("no running terminal: {out}{err}"))
+            .to_owned();
+        let (ok, out, err) = cli(
+            data.path(),
+            &[
+                "terminal",
+                "kill",
+                "--session",
+                &sid,
+                "--task",
+                &task,
+                "--terminal",
+                &terminal,
+                "wedged",
+                "dev",
+                "server",
+            ],
+        );
+        assert!(ok, "{out}{err}");
+        assert!(out.contains("KILLED") && out.contains("by=user:"), "{out}");
+        let (ok, out, err) = cli(data.path(), &["terminal", "list", "--task", &task]);
+        assert!(ok, "{err}");
+        assert!(out.contains("state=KILLED"), "{out}");
+        let (ok, out, err) = cli(
+            data.path(),
+            &[
+                "terminal",
+                "kill",
+                "--session",
+                &sid,
+                "--task",
+                &task,
+                "--terminal",
+                &terminal,
+            ],
+        );
+        assert!(ok, "{out}{err}");
+        assert!(out.contains("ALREADY_ENDED"), "{out}");
+        // Another task's id cannot stop it (a typed refusal).
+        let (ok, _, err) = cli(
+            data.path(),
+            &[
+                "terminal",
+                "kill",
+                "--session",
+                &sid,
+                "--task",
+                &"00".repeat(16),
+                "--terminal",
+                &terminal,
+            ],
+        );
+        assert!(!ok);
+        assert!(err.contains("UNKNOWN_TASK"), "{err}");
+    }
 }

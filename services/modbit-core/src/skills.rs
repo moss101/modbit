@@ -427,6 +427,9 @@ pub struct RunSkills {
     explicit: Vec<String>,
     last_selection: Option<String>,
     last_index: Option<String>,
+    /// The skills the latest round selected, as `name@content_hash`
+    /// (REQ-PX-131: what the round's capability snapshot names).
+    selected: Vec<String>,
 }
 
 impl RunSkills {
@@ -437,7 +440,14 @@ impl RunSkills {
             explicit,
             last_selection: None,
             last_index: None,
+            selected: Vec::new(),
         }
+    }
+
+    /// The skills the latest round selected, as `name@content_hash`.
+    #[must_use]
+    pub fn selected(&self) -> &[String] {
+        &self.selected
     }
 
     /// The prompt texts for this round — the selected skills' bodies, then
@@ -464,11 +474,18 @@ impl RunSkills {
             && self.explicit.is_empty()
         {
             state.skills_loadable = false;
+            self.selected.clear();
             return vec![];
         }
         let active = crate::rules::active_paths(core, task, state).await;
         let c = choose_with(w, task, &self.explicit, &active, true);
         let p = plan(&c, &active, projection, budget_tokens());
+        self.selected = c
+            .selected
+            .iter()
+            .filter(|(s, _)| !p.demoted.contains(&s.name))
+            .map(|(s, _)| format!("{}@{}", s.name, s.content_hash))
+            .collect();
         state.skills_loadable = p.loadable > 0;
         let key = lock_key(&c, &p);
         let index_hash = hex::encode(<sha2::Sha256 as sha2::Digest>::digest(
@@ -770,6 +787,143 @@ fn view_of(
     }
 }
 
+/// The slash menu's typed union (REQ-PX-052, docs/65 AFW-D08) over the
+/// registries that exist today: the skills just listed, the commands of the
+/// task's session's loaded extensions (a quarantined extension's are listed
+/// with their state and `enabled = false`), and the subagent profiles of the
+/// project, the active extensions and the operator. Metadata only. Order:
+/// built-in entries (System-scope skills) first, then everything else
+/// alphabetically by what the menu shows (kind and id break ties); the
+/// divider falls between them. Returns the entries, the index of the first
+/// entry after the divider (0 = no divider) and the profile files that could
+/// not be read.
+async fn slash_inventory(
+    core: &Core,
+    task: Option<&Task>,
+    skills: &[wire::SkillView],
+) -> (Vec<wire::SlashEntry>, u32, Vec<wire::SkillRefusalView>) {
+    use sha2::Digest;
+    let mut entries: Vec<wire::SlashEntry> = skills
+        .iter()
+        .map(|v| wire::SlashEntry {
+            kind: "SKILL".into(),
+            id: v.name.clone(),
+            display_name: v.name.clone(),
+            description: v.description.clone(),
+            scope: v.scope.clone(),
+            trust: v.trust.clone(),
+            trust_detail: v.trust_detail.clone(),
+            enabled: v.enabled,
+            invocation: v.invocation.clone(),
+            built_in: v.scope == "SYSTEM",
+            content_hash: v.content_hash.clone(),
+            provenance_source: v.provenance_source.clone(),
+            source: v.source.clone(),
+        })
+        .collect();
+    // Commands: the session's extensions, as `run_command` sees them.
+    if let Some(t) = task {
+        let loaded = {
+            let store = core.store.lock().await;
+            core.tools.hooks.extensions_of(&store, t.session_id)
+        };
+        for ext in loaded {
+            for c in &ext.manifest.commands {
+                let id = format!("{}/{}", ext.manifest.name, c.name);
+                entries.push(wire::SlashEntry {
+                    kind: "COMMAND".into(),
+                    display_name: id.clone(),
+                    id,
+                    description: c.description.clone(),
+                    scope: "EXTENSION".into(),
+                    trust: match &ext.quarantine {
+                        Some(_) => "QUARANTINED".into(),
+                        None => ext.signature.clone(),
+                    },
+                    trust_detail: ext.quarantine.clone().unwrap_or_default(),
+                    enabled: ext.active(),
+                    invocation: "USER_ONLY".into(),
+                    built_in: false,
+                    content_hash: ext.digest.clone(),
+                    provenance_source: format!(
+                        "extension:{}@{}",
+                        ext.manifest.name, ext.manifest.version
+                    ),
+                    source: ext.path.clone(),
+                });
+            }
+        }
+    }
+    // Subagent profiles: the roots a spawn reads, in its order (the first
+    // root that has a name wins it).
+    let mut roots: Vec<(std::path::PathBuf, &str)> = Vec::new();
+    if let Some(t) = task {
+        if let Some(root) = &t.workspace_root {
+            roots.push((
+                std::path::PathBuf::from(root)
+                    .join(".modbit")
+                    .join("agents"),
+                "PROJECT",
+            ));
+        }
+        for d in crate::extensions::active_dirs(core, t.session_id, "agents") {
+            roots.push((d, "EXTENSION"));
+        }
+    }
+    roots.push((core.data_dir.join("agents"), "USER"));
+    let dirs: Vec<std::path::PathBuf> = roots.iter().map(|(d, _)| d.clone()).collect();
+    let (profiles, bad) = modbit_domain::agent_profile::list(&dirs);
+    for (p, path) in profiles {
+        let scope = roots
+            .iter()
+            .find(|(d, _)| path.parent() == Some(d.as_path()))
+            .map_or("USER", |(_, s)| *s);
+        entries.push(wire::SlashEntry {
+            kind: "SUBAGENT".into(),
+            id: p.name.clone(),
+            display_name: p.name.clone(),
+            description: p.description.clone(),
+            scope: scope.into(),
+            trust: "PROFILE".into(),
+            trust_detail: "a profile only ever narrows a child's tools; it grants nothing".into(),
+            enabled: true,
+            invocation: "MODEL_ONLY".into(),
+            built_in: false,
+            content_hash: std::fs::read(&path)
+                .map(|b| hex::encode(sha2::Sha256::digest(b)))
+                .unwrap_or_default(),
+            provenance_source: p.source.clone(),
+            source: path.display().to_string(),
+        });
+    }
+    let rejected = bad
+        .into_iter()
+        .map(|(path, e)| wire::SkillRefusalView {
+            source: path.display().to_string(),
+            code: "INVALID_PROFILE".into(),
+            reason: e.to_string(),
+        })
+        .collect();
+    entries.sort_by(|a, b| {
+        b.built_in
+            .cmp(&a.built_in)
+            .then_with(|| {
+                a.display_name
+                    .to_lowercase()
+                    .cmp(&b.display_name.to_lowercase())
+            })
+            .then_with(|| a.kind.cmp(&b.kind))
+            .then_with(|| a.id.cmp(&b.id))
+    });
+    let built_in = entries.iter().take_while(|e| e.built_in).count();
+    let divider = if built_in > 0 && built_in < entries.len() {
+        u32::try_from(built_in).unwrap_or(u32::MAX)
+    } else {
+        0
+    };
+    (entries, divider, rejected)
+}
+
 /// `ListSkills`, `TrustSkill`, `UntrustSkill` (REQ-PX-052, REQ-PX-105).
 pub(crate) async fn handle(
     core: &Core,
@@ -810,6 +964,13 @@ pub(crate) async fn handle(
                 Ok(t) => t,
                 Err((code, detail)) => return reject(cid, &code, detail),
             };
+            // An inventory is a task's own: a command that names another
+            // session than the task's is refused, not answered (QUAL-PX-052).
+            if let (Some(t), Some(named)) = (&task, env.session_id.as_ref().and_then(id16))
+                && named != *t.session_id.as_bytes()
+            {
+                return reject(cid, "WRONG_SESSION", "the task belongs to another session");
+            }
             let active = match &task {
                 Some(t) => ledger_paths(core, t).await,
                 None => vec![],
@@ -854,7 +1015,7 @@ pub(crate) async fn handle(
             let (used, omitted) = plan_view.as_ref().map_or((0, 0), |p| {
                 (p.index.tokens + p.body_tokens, p.index.omitted)
             });
-            let rejected = w
+            let rejected: Vec<wire::SkillRefusalView> = w
                 .registry
                 .rejected
                 .iter()
@@ -876,6 +1037,10 @@ pub(crate) async fn handle(
                         }),
                 )
                 .collect();
+            let (slash, slash_divider_at, bad_profiles) =
+                slash_inventory(core, task.as_ref(), &skills).await;
+            let mut rejected = rejected;
+            rejected.extend(bad_profiles);
             accept(
                 cid,
                 false,
@@ -886,6 +1051,8 @@ pub(crate) async fn handle(
                     index_used_tokens: used,
                     index_omitted: omitted,
                     system_root: system_root().display().to_string(),
+                    slash,
+                    slash_divider_at,
                 }
                 .encode_to_vec(),
             )

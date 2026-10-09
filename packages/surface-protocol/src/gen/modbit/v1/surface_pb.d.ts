@@ -12,10 +12,15 @@ import type { Message } from "@bufbuild/protobuf";
 import type { Hello, HelloAck } from "./negotiation_pb.js";
 import type { Id } from "./domain_pb.js";
 import type { ExecutionPreference, ExecutionPreferenceView, RoutingOutcomeView, TaskMode, TaskPostureView } from "./tasking_pb.js";
+import type { TaskIsolation } from "./worktrees_pb.js";
 import type { Timestamp } from "@bufbuild/protobuf/wkt";
 import type { CommandEnvelope, EventEnvelope } from "./envelope_pb.js";
 import type { TerminalFrame } from "./terminal_pb.js";
 import type { CompactionSummaryView, CompactionThresholdView, InstructionLayerView, PreTurnPackView } from "./context_rules_pb.js";
+import type { MemoryEventView, MemoryInjectionView } from "./context_knowledge_pb.js";
+import type { ContextAccountingView } from "./run_control_pb.js";
+import type { ProcessServiceView } from "./security_runtime_pb.js";
+import type { ReviewCommentThreadView } from "./forge_cloud_pb.js";
 import type { CaptureCost } from "./checkpoints_pb.js";
 
 /**
@@ -156,6 +161,18 @@ export declare type CreateTask = Message<"modbit.v1.CreateTask"> & {
    * @generated from field: modbit.v1.ExecutionPreference preference = 141;
    */
   preference?: ExecutionPreference | undefined;
+
+  /**
+   * PX-118 (worktrees.proto, field block 280-299): where the task's effects
+   * land. WORKTREE: the Core makes the task's own worktree before the first
+   * turn and binds the run's root, path policy, shell directory, index view
+   * and checkpoints to it; a worktree that cannot be made refuses the
+   * creation with a typed reason (never a silent fallback to the checkout).
+   * UNSPECIFIED = the Core's recorded default.
+   *
+   * @generated from field: modbit.v1.TaskIsolation isolation = 280;
+   */
+  isolation: TaskIsolation;
 };
 
 /**
@@ -346,6 +363,20 @@ export declare type TaskView = Message<"modbit.v1.TaskView"> & {
    * @generated from field: modbit.v1.TaskMode mode = 140;
    */
   mode: TaskMode;
+
+  /**
+   * PX-118: NONE | WORKTREE (UNSPECIFIED for a task of an older Core)
+   *
+   * @generated from field: modbit.v1.TaskIsolation isolation = 280;
+   */
+  isolation: TaskIsolation;
+
+  /**
+   * PX-118: for a worktree task, the checkout its worktree was made from
+   *
+   * @generated from field: string origin_root = 281;
+   */
+  originRoot: string;
 };
 
 /**
@@ -1296,6 +1327,20 @@ export declare type EffectReceiptView = Message<"modbit.v1.EffectReceiptView"> &
    * @generated from field: modbit.v1.Id compensates = 15;
    */
   compensates?: Id | undefined;
+
+  /**
+   * REQ-PX-131: the model round's epoch the effect was decided under; 0 before epochs
+   *
+   * @generated from field: uint64 authorization_epoch = 320;
+   */
+  authorizationEpoch: bigint;
+
+  /**
+   * the digest of that epoch's frozen capability snapshot
+   *
+   * @generated from field: string capability_snapshot_hash = 321;
+   */
+  capabilitySnapshotHash: string;
 };
 
 /**
@@ -2248,6 +2293,32 @@ export declare type ContextInspectorView = Message<"modbit.v1.ContextInspectorVi
    * @generated from field: modbit.v1.CompactionThresholdView compaction_thresholds = 183;
    */
   compactionThresholds?: CompactionThresholdView | undefined;
+
+  /**
+   * Engineering memory the prompt envelope injected on the last compiled turn
+   * (PX-113): the ids and provenance of every entry, what was left out and why.
+   *
+   * @generated from field: modbit.v1.MemoryInjectionView memory = 200;
+   */
+  memory?: MemoryInjectionView | undefined;
+
+  /**
+   * Fields 340-359 are the in-run control and context accounting block
+   * (REQ-PX-050, 057, 059); the messages are in run_control.proto.
+   * The Core's breakdown of the last compiled request by category.
+   *
+   * @generated from field: modbit.v1.ContextAccountingView accounting = 340;
+   */
+  accounting?: ContextAccountingView | undefined;
+
+  /**
+   * The listening services of the task's terminals the Core observed and has
+   * not seen end (REQ-PX-132), so the context breakdown shows what the agent
+   * would otherwise have to rediscover.
+   *
+   * @generated from field: repeated modbit.v1.ProcessServiceView process_services = 320;
+   */
+  processServices: ProcessServiceView[];
 };
 
 /**
@@ -4601,6 +4672,19 @@ export declare type ReviewBundle = Message<"modbit.v1.ReviewBundle"> & {
    * @generated from field: repeated modbit.v1.CiCheckView ci_evidence = 15;
    */
   ciEvidence: CiCheckView[];
+
+  /**
+   * PX-127 (forge_cloud.proto): the pull request's comments the task has
+   * seen, untrusted, with what became of each; and the CI runs refused.
+   *
+   * @generated from field: repeated modbit.v1.ReviewCommentThreadView review_comments = 360;
+   */
+  reviewComments: ReviewCommentThreadView[];
+
+  /**
+   * @generated from field: repeated modbit.v1.CiRejectedView ci_rejected = 361;
+   */
+  ciRejected: CiRejectedView[];
 };
 
 /**
@@ -11893,6 +11977,44 @@ export declare type ListMemory = Message<"modbit.v1.ListMemory"> & {
    * @generated from field: modbit.v1.Id task_id = 1;
    */
   taskId?: Id | undefined;
+
+  /**
+   * PX-113 (fields 200-219 are this area's): filters, and the history of one
+   * item (`memory show`).
+   *
+   * proposed | curated | superseded | expired; empty = all
+   *
+   * @generated from field: repeated string statuses = 200;
+   */
+  statuses: string[];
+
+  /**
+   * run | session | user | agent_profile | repository | space | organization; empty = all
+   *
+   * @generated from field: repeated string scope_kinds = 201;
+   */
+  scopeKinds: string[];
+
+  /**
+   * case-insensitive substring of topic or content
+   *
+   * @generated from field: string text = 202;
+   */
+  text: string;
+
+  /**
+   * only this item (an unambiguous id prefix of at least 8 characters works)
+   *
+   * @generated from field: string memory_id = 203;
+   */
+  memoryId: string;
+
+  /**
+   * with memory_id: the item's events from the log
+   *
+   * @generated from field: bool include_history = 204;
+   */
+  includeHistory: boolean;
 };
 
 /**
@@ -11930,6 +12052,13 @@ export declare type MemoryList = Message<"modbit.v1.MemoryList"> & {
    * @generated from field: repeated modbit.v1.MemoryConflict conflicts = 4;
    */
   conflicts: MemoryConflict[];
+
+  /**
+   * PX-113: the events of the one item asked for
+   *
+   * @generated from field: repeated modbit.v1.MemoryEventView history = 200;
+   */
+  history: MemoryEventView[];
 };
 
 /**

@@ -1308,6 +1308,26 @@ mod unix {
             "the lease ended with the dead Core's connection"
         );
         let g2 = acquire_lease(&mut c2, &session, "test-2").await;
+        // Reattach at the stored cursor: the rest of the stream, exactly.
+        let a2 = attach(&mut c2, g2, &task, &sid, stored, 16 * 1024, false, false)
+            .await
+            .unwrap();
+        let mut rest_cursor = stored;
+        let mut rest = Vec::new();
+        // Read to the end of what the command prints before anything is
+        // typed: the terminal echoes typed text into the stream wherever the
+        // output has got to, and how far that is depends on the pace.
+        let last = n.to_string();
+        let stop = consume_every(
+            &mut c2,
+            &a2.attach_id,
+            &mut rest_cursor,
+            &mut rest,
+            Some(4096),
+            |b| has(&b[b.len().saturating_sub(24)..], &last),
+        )
+        .await;
+        assert!(matches!(stop, Stop::Satisfied), "{stop:?}");
         // The agent types again at once: nobody holds the lease any more.
         let r = invoke(
             &mut c2,
@@ -1318,12 +1338,6 @@ mod unix {
         )
         .await;
         assert_eq!(r.status, "SUCCESS", "{r:?}");
-        // Reattach at the stored cursor: the rest of the stream, exactly.
-        let a2 = attach(&mut c2, g2, &task, &sid, stored, 16 * 1024, false, false)
-            .await
-            .unwrap();
-        let mut rest_cursor = stored;
-        let mut rest = Vec::new();
         let stop = consume_every(
             &mut c2,
             &a2.attach_id,
@@ -1338,10 +1352,15 @@ mod unix {
         all.extend(rest);
         let printed = seq_lf(n);
         let seen = without_cr(&all);
+        let at = seen.iter().zip(&printed).position(|(a, b)| a != b);
         assert!(
             seen.starts_with(&printed),
-            "the stream across the Core's death is the output, once and in order (read {} bytes)",
-            all.len()
+            "the stream across the Core's death is the output, once and in order: read {} bytes ({} without CR), expected prefix {}, first difference at {at:?}, around {:02x?} vs {:02x?}",
+            all.len(),
+            seen.len(),
+            printed.len(),
+            at.map(|i| &seen[i.saturating_sub(16)..(i + 16).min(seen.len())]),
+            at.map(|i| &printed[i.saturating_sub(16)..(i + 16).min(printed.len())]),
         );
         // The bytes themselves are the broker's, with nothing missing or doubled.
         assert!(all == broker_log(dir.path(), &sid, all.len()).await);
@@ -1487,5 +1506,286 @@ mod unix {
         )
         .await;
         assert_eq!(r.status, "SUCCESS", "{r:?}");
+    }
+
+    // ------------------------------------------------------- KillTerminal
+
+    async fn kill_with(
+        c: &mut Client,
+        generation: u64,
+        task: &Id,
+        session_id: &str,
+        reason: &str,
+        command_id: Id,
+    ) -> Result<
+        (
+            modbit_protocol::v1::CommandAck,
+            modbit_protocol::v1::TerminalKilled,
+        ),
+        ClientError,
+    > {
+        let ack = c
+            .command(fenced(
+                envelope(
+                    command_id,
+                    "KillTerminal",
+                    modbit_protocol::v1::KillTerminal {
+                        task_id: Some(task.clone()),
+                        session_id: session_id.into(),
+                        reason: reason.into(),
+                    }
+                    .encode_to_vec(),
+                ),
+                generation,
+            ))
+            .await?;
+        let view = Client::result(&ack).unwrap();
+        Ok((ack, view))
+    }
+
+    async fn set_mode(c: &mut Client, g: u64, task: &Id, mode: modbit_protocol::v1::TaskMode) {
+        c.command(fenced(
+            envelope(
+                fresh(),
+                "SetTaskMode",
+                modbit_protocol::v1::SetTaskMode {
+                    task_id: Some(task.clone()),
+                    mode: mode as i32,
+                    reason: "test".into(),
+                }
+                .encode_to_vec(),
+            ),
+            g,
+        ))
+        .await
+        .unwrap();
+    }
+
+    fn alive(pid: u32) -> bool {
+        Command::new("kill")
+            .args(["-0", &pid.to_string()])
+            .stderr(Stdio::null())
+            .status()
+            .is_ok_and(|s| s.success())
+    }
+
+    async fn events_of(core: &CoreProcess, session: &Id, task: &Id, kind: &str) -> Vec<Value> {
+        task_events(core, session, task)
+            .await
+            .into_iter()
+            .filter(|(t, _)| t == kind)
+            .map(|(_, p)| p)
+            .collect()
+    }
+
+    /// PX-043 `KillTerminal` (QUAL-PX-043): a client stops a task's
+    /// background terminal. The real process on the real PTY dies; the kill
+    /// is recorded on the task once, with who, why and how it ended, and the
+    /// transcript carries a Stopped row; the Capability Kernel decides it
+    /// (a task in ASK mode, a stale lease and a task that does not own the
+    /// terminal are each refused with a typed code and signal nothing); a
+    /// retry of the same command id kills once and records once, and a
+    /// second command on the dead terminal is answered ALREADY_ENDED.
+    #[tokio::test]
+    async fn px_043_kill_terminal_ends_the_process_records_who_and_why_and_acts_once() {
+        let (_repo, root) = workspace();
+        let dir = tempfile::tempdir().unwrap();
+        let pidfile = dir.path().join("pid");
+        let core = CoreProcess::spawn(dir.path(), &[]);
+        let mut c = core.client().await;
+        let (session, g) = create_session(&mut c, 0x10).await;
+        let task = create_task(&mut c, &session, g, &root).await;
+        let stranger = create_task(&mut c, &session, g, &root).await;
+        let sid = start_shell(
+            &mut c,
+            &task,
+            g,
+            &format!("echo $$ > '{}'; exec sleep 600", pidfile.display()),
+        )
+        .await;
+        let pid = loop {
+            if let Some(p) = std::fs::read_to_string(&pidfile)
+                .ok()
+                .and_then(|t| t.trim().parse::<u32>().ok())
+            {
+                break p;
+            }
+            tokio::time::sleep(Duration::from_millis(50)).await;
+        };
+        assert!(alive(pid));
+
+        // Refused, and nothing was signalled.
+        let r = kill_with(&mut c, g, &stranger, &sid, "not mine", fresh()).await;
+        assert_eq!(rejected(r).0, "SESSION_NOT_OWNED");
+        let r = kill_with(&mut c, g, &task, "no-such-terminal", "x", fresh()).await;
+        assert_eq!(rejected(r).0, "UNKNOWN_SESSION");
+        let r = kill_with(&mut c, g + 99, &task, &sid, "stale", fresh()).await;
+        assert_eq!(rejected(r).0, "STALE_LEASE");
+        set_mode(&mut c, g, &task, modbit_protocol::v1::TaskMode::Ask).await;
+        let r = kill_with(&mut c, g, &task, &sid, "ask mode", fresh()).await;
+        assert_eq!(rejected(r).0, "MODE_POSTURE");
+        set_mode(&mut c, g, &task, modbit_protocol::v1::TaskMode::Agent).await;
+        assert!(alive(pid), "every refusal left the process alone");
+        assert!(
+            events_of(&core, &session, &task, "BackgroundProcessEnded")
+                .await
+                .is_empty()
+        );
+
+        // The kill.
+        let command = fresh();
+        let (ack, killed) = kill_with(
+            &mut c,
+            g,
+            &task,
+            &sid,
+            "the dev server is wedged",
+            command.clone(),
+        )
+        .await
+        .unwrap();
+        assert_eq!(
+            ack.status,
+            modbit_protocol::v1::CommandStatus::Accepted as i32
+        );
+        assert_eq!(killed.outcome, "KILLED", "{killed:?}");
+        assert!(killed.ended_by.starts_with("user:"), "{killed:?}");
+        assert_eq!(killed.reason, "the dev server is wedged");
+        assert!(
+            killed.decision.starts_with("allow:") || killed.decision.starts_with("user-command:"),
+            "{killed:?}"
+        );
+        assert_eq!(killed.output_ref.len(), 64);
+        assert!(killed.offset > 0);
+        // The real process is gone, and the registry says KILLED.
+        let mut gone = false;
+        for _ in 0..100 {
+            if !alive(pid) {
+                gone = true;
+                break;
+            }
+            tokio::time::sleep(Duration::from_millis(50)).await;
+        }
+        assert!(gone, "the process {pid} is still alive");
+        let listed = list_terminals(&mut c, Some(&task)).await;
+        let t = listed
+            .terminals
+            .iter()
+            .find(|t| t.session_id == sid)
+            .unwrap();
+        assert_eq!(t.state, "KILLED", "{t:?}");
+
+        // One typed record, with who and why.
+        let ended = events_of(&core, &session, &task, "BackgroundProcessEnded").await;
+        assert_eq!(ended.len(), 1, "{ended:#?}");
+        let e = &ended[0];
+        assert_eq!(e["handle_id"], sid.as_str());
+        assert_eq!(e["how"], "KILLED");
+        assert_eq!(e["source"], "KILL_COMMAND");
+        assert_eq!(e["reason"], "the dev server is wedged");
+        assert!(e["ended_by"].as_str().unwrap().starts_with("user:"));
+        assert_eq!(e["output_ref"], killed.output_ref.as_str());
+
+        // The same command again: answered from the record, one kill, one record.
+        let (ack, again) = kill_with(&mut c, g, &task, &sid, "the dev server is wedged", command)
+            .await
+            .unwrap();
+        assert_eq!(
+            ack.status,
+            modbit_protocol::v1::CommandStatus::Replayed as i32
+        );
+        assert_eq!(again.offset, killed.offset);
+        assert_eq!(again.outcome, "KILLED");
+        // A different command on the dead terminal adds nothing.
+        let (_, late) = kill_with(&mut c, g, &task, &sid, "again", fresh())
+            .await
+            .unwrap();
+        assert_eq!(late.outcome, "ALREADY_ENDED", "{late:?}");
+        assert_eq!(late.offset, 0);
+        assert_eq!(
+            events_of(&core, &session, &task, "BackgroundProcessEnded")
+                .await
+                .len(),
+            1
+        );
+
+        // The transcript records it as Stopped, as a row of its own.
+        let ack = c
+            .command(envelope(
+                fresh(),
+                "GetTranscript",
+                modbit_protocol::v1::GetTranscript {
+                    task_id: Some(task.clone()),
+                    density: modbit_protocol::v1::TranscriptDensity::Detailed as i32,
+                    after_row: 0,
+                    limit: 500,
+                    as_of_offset: 0,
+                }
+                .encode_to_vec(),
+            ))
+            .await
+            .unwrap();
+        let page: modbit_protocol::v1::TranscriptPage = Client::result(&ack).unwrap();
+        let row = page
+            .rows
+            .iter()
+            .find(|r| r.row_id == format!("terminal:{sid}"))
+            .unwrap_or_else(|| panic!("no Stopped row: {:#?}", page.rows));
+        assert_eq!(row.hints.as_ref().unwrap().status, "STOPPED");
+        assert!(
+            row.text.contains("the dev server is wedged"),
+            "{}",
+            row.text
+        );
+        assert!(row.text.contains("by user:"), "{}", row.text);
+    }
+
+    /// PX-043: a background process that ends on its own is recorded by the
+    /// Core once, with no killer; a client's kill of it afterwards changes
+    /// nothing (ALREADY_ENDED) and an end the agent saw itself is not
+    /// recorded as a surprise to it (the agent's own `ProcessExited` stands).
+    #[tokio::test]
+    async fn px_043_a_process_that_ends_by_itself_is_recorded_once_without_a_killer() {
+        let (_repo, root) = workspace();
+        let dir = tempfile::tempdir().unwrap();
+        let core = CoreProcess::spawn(dir.path(), &[("MODBIT_BACKGROUND_WATCH_MS", "100")]);
+        let mut c = core.client().await;
+        let (session, g) = create_session(&mut c, 0x10).await;
+        let task = create_task(&mut c, &session, g, &root).await;
+        let sid = start_shell(&mut c, &task, g, "sleep 1; echo finished; exit 3").await;
+        let mut ended = Vec::new();
+        for _ in 0..80 {
+            ended = events_of(&core, &session, &task, "BackgroundProcessEnded").await;
+            if !ended.is_empty() {
+                break;
+            }
+            tokio::time::sleep(Duration::from_millis(100)).await;
+        }
+        assert_eq!(ended.len(), 1, "{ended:#?}");
+        assert_eq!(ended[0]["handle_id"], sid.as_str());
+        assert_eq!(ended[0]["how"], "EXITED");
+        assert_eq!(ended[0]["exit_code"], 3);
+        assert_eq!(ended[0]["source"], "WATCHER");
+        assert_eq!(ended[0]["ended_by"], "");
+        // Still one a while later.
+        tokio::time::sleep(Duration::from_millis(600)).await;
+        assert_eq!(
+            events_of(&core, &session, &task, "BackgroundProcessEnded")
+                .await
+                .len(),
+            1
+        );
+        let (_, late) = kill_with(&mut c, g, &task, &sid, "too late", fresh())
+            .await
+            .unwrap();
+        assert_eq!(late.outcome, "ALREADY_ENDED");
+        assert_eq!(late.exit_code, Some(3));
+        assert_eq!(late.ended_by, "");
+        assert_eq!(
+            events_of(&core, &session, &task, "BackgroundProcessEnded")
+                .await
+                .len(),
+            1
+        );
     }
 }

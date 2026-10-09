@@ -72,15 +72,91 @@ pub(crate) fn hashes_in_bytes(bytes: &[u8], out: &mut BTreeSet<String>) {
 }
 
 fn git(root: &Path, args: &[&str]) -> Option<String> {
-    let out = std::process::Command::new("git")
-        .arg("-C")
-        .arg(root)
-        .args(args)
-        .output()
-        .ok()?;
+    let out = modbit_git::output(root, args).ok()?;
     out.status
         .success()
         .then(|| String::from_utf8_lossy(&out.stdout).trim().to_owned())
+}
+
+/// The most files, and the most bytes of one file, the pre-flight scan reads.
+const SCAN_MAX_FILES: usize = 20_000;
+const SCAN_MAX_FILE_BYTES: u64 = 1024 * 1024;
+
+/// The files a handoff would carry (the tracked and the untracked, not the
+/// ignored), relative to `root`: from Git where there is a repository, else
+/// a bounded walk.
+fn carried_files(root: &Path) -> Vec<std::path::PathBuf> {
+    let from_git = modbit_git::output(
+        root,
+        &[
+            "ls-files",
+            "-z",
+            "--cached",
+            "--others",
+            "--exclude-standard",
+        ],
+    )
+    .ok()
+    .filter(|o| o.status.success());
+    if let Some(o) = from_git {
+        return o
+            .stdout
+            .split(|b| *b == 0)
+            .filter(|p| !p.is_empty())
+            .take(SCAN_MAX_FILES)
+            .map(|p| std::path::PathBuf::from(String::from_utf8_lossy(p).into_owned()))
+            .collect();
+    }
+    let mut out = Vec::new();
+    let mut stack = vec![root.to_path_buf()];
+    while let Some(dir) = stack.pop() {
+        let Ok(read) = std::fs::read_dir(&dir) else {
+            continue;
+        };
+        for e in read.flatten() {
+            let path = e.path();
+            if path.file_name().is_some_and(|n| n == ".git") {
+                continue;
+            }
+            match e.file_type() {
+                Ok(t) if t.is_dir() => stack.push(path),
+                Ok(t) if t.is_file() && out.len() < SCAN_MAX_FILES => {
+                    if let Ok(rel) = path.strip_prefix(root) {
+                        out.push(rel.to_path_buf());
+                    }
+                }
+                _ => {}
+            }
+        }
+    }
+    out
+}
+
+/// A credential-shaped value in a file the handoff would carry:
+/// `(path, what it looks like)` — never the value. A handoff carries the
+/// work, not a secret (docs/21): the working tree is read before anything
+/// is parked or written. (Committed history inside `repo.bundle` is not
+/// read; a secret committed there crosses.)
+fn secret_in_workspace(root: &Path) -> Option<(String, &'static str)> {
+    for rel in carried_files(root) {
+        let path = root.join(&rel);
+        let Ok(meta) = std::fs::metadata(&path) else {
+            continue;
+        };
+        if !meta.is_file() || meta.len() > SCAN_MAX_FILE_BYTES {
+            continue;
+        }
+        let Ok(bytes) = std::fs::read(&path) else {
+            continue;
+        };
+        if bytes.contains(&0) {
+            continue;
+        }
+        if let Some(what) = modbit_secrets::shape_of(&String::from_utf8_lossy(&bytes)) {
+            return Some((rel.to_string_lossy().replace('\\', "/"), what));
+        }
+    }
+    None
 }
 
 /// Export `task_id` into `out_dir`.
@@ -101,6 +177,16 @@ pub async fn export(
             "a handoff carries a workspace; this task has none".into(),
         ));
     };
+    // 0. No secret value crosses: the working tree is read first, before
+    // the run is parked or a byte is written.
+    if let Some((path, what)) = secret_in_workspace(Path::new(&root)) {
+        return Err((
+            "HANDOFF_SECRET_FOUND".into(),
+            format!(
+                "`{path}` carries {what}; a handoff carries the work, never a secret value — remove it from the workspace and try again. Nothing was exported."
+            ),
+        ));
+    }
     // 1. Park the run at its next boundary; wait for the loop to end.
     if core.runtime.park(&task_id).await {
         let deadline = Instant::now() + Duration::from_secs(120);
@@ -209,6 +295,29 @@ pub async fn export(
         events_file.push_str(&l.to_string());
         events_file.push('\n');
     }
+    // The log and every object it reaches are read for a credential too (the
+    // Cloud API refuses a log that carries one; the refusal belongs here,
+    // before anything is written or uploaded).
+    if let Some(what) = modbit_secrets::shape_of(&events_file) {
+        return Err((
+            "HANDOFF_SECRET_FOUND".into(),
+            format!("the session's log carries {what}; nothing was exported"),
+        ));
+    }
+    for (h, bytes) in &objects {
+        if bytes.len() as u64 <= SCAN_MAX_FILE_BYTES * 4
+            && !bytes.contains(&0)
+            && let Some(what) = modbit_secrets::shape_of(&String::from_utf8_lossy(bytes))
+        {
+            return Err((
+                "HANDOFF_SECRET_FOUND".into(),
+                format!(
+                    "object {} carries {what}; nothing was exported",
+                    h.chars().take(12).collect::<String>()
+                ),
+            ));
+        }
+    }
     std::fs::write(out_dir.join("events.jsonl"), &events_file)
         .map_err(|e| ("IO".into(), e.to_string()))?;
     let mut object_hashes = Vec::new();
@@ -222,13 +331,15 @@ pub async fn export(
     let bundle_path = out_dir.join("repo.bundle");
     let has_repo = git(Path::new(&root), &["rev-parse", "--is-inside-work-tree"]).is_some();
     if has_repo {
-        let ok = std::process::Command::new("git")
-            .arg("-C")
-            .arg(&root)
-            .args(["bundle", "create"])
-            .arg(&bundle_path)
-            .arg("--all")
-            .output()
+        let bundle_args = ["bundle", "create"];
+        let ok = modbit_git::command(Path::new(&root), &bundle_args)
+            .and_then(|mut c| {
+                c.args(bundle_args)
+                    .arg(&bundle_path)
+                    .arg("--all")
+                    .output()
+                    .map_err(modbit_git::Error::Spawn)
+            })
             .map(|o| o.status.success())
             .unwrap_or(false);
         if !ok {
@@ -260,7 +371,11 @@ pub async fn export(
         .flat_map(|l| l.operations)
         .collect();
     if (lease_ops.iter().any(|o| o == "secret.use") || capabilities.contains("secret.use"))
-        && core.tools.forge.get().is_some_and(|f| f.token.is_some())
+        && core.tools.forge.get().is_some_and(|f| {
+            f.token
+                .as_ref()
+                .is_some_and(modbit_tools::forge::ForgeToken::present)
+        })
     {
         secret_handles.insert("forge-token".to_owned());
     }

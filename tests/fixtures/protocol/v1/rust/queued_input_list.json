@@ -1,0 +1,39 @@
+{
+  "expected": {
+    "items": [
+      {
+        "changedOffset": "9007199254740995",
+        "edited": true,
+        "inputId": "a",
+        "mode": "FOLLOW_UP",
+        "model": "",
+        "position": 1,
+        "provenance": "",
+        "queuedOffset": "9007199254740993",
+        "sentNow": false,
+        "state": "QUEUED",
+        "text": "message A",
+        "untrusted": false
+      },
+      {
+        "changedOffset": "14",
+        "edited": false,
+        "inputId": "forge-comment-7",
+        "mode": "STEER",
+        "model": "gpt-5-mini",
+        "position": 0,
+        "provenance": "forge_review_comment",
+        "queuedOffset": "12",
+        "sentNow": true,
+        "state": "DISPATCHED",
+        "text": "please rename",
+        "untrusted": true
+      }
+    ],
+    "offset": "9007199254740999",
+    "queued": 1,
+    "runAlive": true,
+    "taskId": "31313131313131313131313131313131"
+  },
+  "type": "modbit.v1.QueuedInputList"
+}

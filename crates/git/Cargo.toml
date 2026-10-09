@@ -8,8 +8,10 @@ license.workspace = true
 publish.workspace = true
 
 [dependencies]
+hex.workspace = true
 modbit-domain.workspace = true
 serde.workspace = true
+sha2.workspace = true
 serde_json.workspace = true
 thiserror.workspace = true
 
@@ -27,4 +29,6 @@ capabilities = [
   { id = "git.worktree", requirements = ["REQ-EV-0125", "REQ-EV-0124"] },
   { id = "git.merge_transaction", requirements = ["REQ-EV-0067"] },
   { id = "git.snapshot", requirements = ["REQ-EV-0022"] },
+  { id = "git.hardening", requirements = ["REQ-PX-067"] },
+  { id = "git.apply_back", requirements = ["REQ-PX-066"] },
 ]

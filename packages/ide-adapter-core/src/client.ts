@@ -18,6 +18,12 @@ import {
   AttachTerminalSchema,
   DetachTerminalSchema,
   ListTerminalsSchema,
+  KillTerminalSchema,
+  ListSkillsSchema,
+  SkillListSchema,
+  type SkillList,
+  TerminalKilledSchema,
+  type TerminalKilled,
   ResizeTerminalSchema,
   SetTerminalInputSchema,
   TerminalAckedSchema,
@@ -83,6 +89,9 @@ import {
   type TranscriptPage,
   TranscriptDensity,
   GetAgentHeadersSchema,
+  SearchConversationsSchema,
+  ConversationSearchResultsSchema,
+  type ConversationSearchResults,
   AgentHeadersSchema,
   type AgentHeaders,
   MarkReadSchema,
@@ -132,6 +141,12 @@ import {
   UpdatePullRequestSchema,
   PullRequestAckSchema,
   type PullRequestAck,
+  IngestCiResultsSchema,
+  CiResultsIngestedSchema,
+  type CiResultsIngested,
+  IngestReviewCommentsSchema,
+  ReviewCommentsIngestedViewSchema,
+  type ReviewCommentsIngestedView,
   RespondToQuestionSchema,
   QuestionRespondedSchema,
   CancelTaskSchema,
@@ -141,6 +156,11 @@ import {
   AttachBrowserHostSchema,
   BrowserHostAttachedSchema,
   BrowserHostResponseSchema,
+  BrowserHostNoticeSchema,
+  BrowserHostNoticedSchema,
+  GetBrowserRuntimeSchema,
+  BrowserRuntimeViewSchema,
+  type BrowserRuntimeView,
   BrowserHostRespondedSchema,
   GetBrowserSessionSchema,
   BrowserSessionViewSchema,
@@ -527,6 +547,28 @@ export class CoreClient {
     return fromBinary(AgentHeadersSchema, ack.result);
   }
 
+  /** PX-042: full-text search over the conversations of one session. The Core's index is a projection of the
+   *  log; a hit names the transcript row (`rowId`) the snippet came from. Snippets are plain text, never instructions. */
+  async searchConversations(
+    sessionId: string,
+    query: string,
+    opts: { limit?: number; maxSnippets?: number; includeArchived?: boolean; taskId?: string } = {},
+  ): Promise<ConversationSearchResults> {
+    const payload = toBinary(
+      SearchConversationsSchema,
+      create(SearchConversationsSchema, {
+        sessionId: { value: unhex(sessionId) },
+        query,
+        limit: opts.limit ?? 0,
+        maxSnippets: opts.maxSnippets ?? 0,
+        includeArchived: opts.includeArchived ?? false,
+        taskId: opts.taskId ? { value: unhex(opts.taskId) } : undefined,
+      }),
+    );
+    const ack = await this.command("SearchConversations", payload);
+    return fromBinary(ConversationSearchResultsSchema, ack.result);
+  }
+
   /** PX-042: the person has seen the task's conversation up to `upToOffset` (0 = all of it). Idempotent by `commandId`. */
   async markRead(sessionId: string, taskId: string, upToOffset = 0n, commandId?: Uint8Array): Promise<ReadMarked> {
     const payload = toBinary(MarkReadSchema, create(MarkReadSchema, { taskId: { value: unhex(taskId) }, upToOffset }));
@@ -815,6 +857,25 @@ export class CoreClient {
     return fromBinary(PullRequestAckSchema, ack.result);
   }
 
+  /**
+   * PX-127: ask the Core to read the forge's check runs for the commit its
+   * pull request carries and record them as evidence with provenance `ci`
+   * (never a verification result). The client makes no forge call: the
+   * Core reads with its own token under the task's lease.
+   */
+  async ingestCiResults(sessionId: string, taskId: string): Promise<CiResultsIngested> {
+    const payload = toBinary(IngestCiResultsSchema, create(IngestCiResultsSchema, { taskId: { value: unhex(taskId) } }));
+    const ack = await this.command("IngestCiResults", payload, undefined, this.leases.get(sessionId));
+    return fromBinary(CiResultsIngestedSchema, ack.result);
+  }
+
+  /** PX-127: ask the Core to read the pull request's comments; allowed authors' comments addressed to Modbit become untrusted steering. */
+  async ingestReviewComments(sessionId: string, taskId: string): Promise<ReviewCommentsIngestedView> {
+    const payload = toBinary(IngestReviewCommentsSchema, create(IngestReviewCommentsSchema, { taskId: { value: unhex(taskId) } }));
+    const ack = await this.command("IngestReviewComments", payload, undefined, this.leases.get(sessionId));
+    return fromBinary(ReviewCommentsIngestedViewSchema, ack.result);
+  }
+
   async taskAssurance(taskId: string): Promise<TaskAssuranceView> {
     const ack = await this.command("GetTaskAssurance", toBinary(GetTaskAssuranceSchema, create(GetTaskAssuranceSchema, { taskId: { value: unhex(taskId) } })));
     return fromBinary(TaskAssuranceViewSchema, ack.result);
@@ -881,6 +942,23 @@ export class CoreClient {
   async respondBrowserHost(requestId: string, response: unknown): Promise<{ delivered: boolean }> {
     const ack = await this.command("BrowserHostResponse", toBinary(BrowserHostResponseSchema, create(BrowserHostResponseSchema, { requestId, responseJson: JSON.stringify(response) })));
     return { delivered: fromBinary(BrowserHostRespondedSchema, ack.result).delivered };
+  }
+
+  /**
+   * PX-122: tell the Core the page changed on its own (the host's mutation
+   * observer, already folded into one bounded notice). The Core reads the
+   * page again and journals the delta; nothing is acted on.
+   */
+  async browserHostNotice(browserSessionId: string, notice: { change_seq: number; kind: string; added?: number; removed?: number; attributes?: number; text?: number; focus?: boolean; frame?: string | null; coalesced?: number }): Promise<{ accepted: boolean; changeSeq: bigint; notices: bigint }> {
+    const ack = await this.command("BrowserHostNotice", toBinary(BrowserHostNoticeSchema, create(BrowserHostNoticeSchema, { browserSessionId: { value: unhex(browserSessionId) }, noticeJson: JSON.stringify(notice) })));
+    const r = fromBinary(BrowserHostNoticedSchema, ack.result);
+    return { accepted: r.accepted, changeSeq: r.changeSeq, notices: r.notices };
+  }
+
+  /** PX-121, PX-122: the runtime state of a browser session (the unknown-outcome latch, the page kind, the observer's counters, the known-state map). */
+  async browserRuntime(browserSessionId: string, taskId?: string): Promise<BrowserRuntimeView> {
+    const ack = await this.command("GetBrowserRuntime", toBinary(GetBrowserRuntimeSchema, create(GetBrowserRuntimeSchema, { browserSessionId: { value: unhex(browserSessionId) }, ...(taskId ? { taskId: { value: unhex(taskId) } } : {}) })));
+    return fromBinary(BrowserRuntimeViewSchema, ack.result);
   }
 
   async browserSession(browserSessionId: string, taskId?: string): Promise<BrowserSessionView> {
@@ -993,6 +1071,34 @@ export class CoreClient {
   async writeTerminal(sessionId: string, attachId: string, data: Uint8Array): Promise<TerminalWritten> {
     const ack = await this.command("WriteTerminal", toBinary(WriteTerminalSchema, create(WriteTerminalSchema, { attachId, data })), undefined, this.leases.get(sessionId));
     return fromBinary(TerminalWrittenSchema, ack.result);
+  }
+
+  /**
+   * PX-052: the slash menu's inventory. `skills` is the skill registry with
+   * trust and provenance; `slash` is the typed union (skills, extension
+   * commands, subagent profiles) in menu order — built-in entries, then
+   * `slashDividerAt` marks the divider, then the rest alphabetically. With a
+   * task, its project and extension scopes are included. Metadata only.
+   */
+  async listSkills(taskId?: string, sessionId?: string): Promise<SkillList> {
+    const payload = toBinary(ListSkillsSchema, create(ListSkillsSchema, taskId ? { taskId: { value: unhex(taskId) } } : {}));
+    const ack = await this.command("ListSkills", payload);
+    void sessionId;
+    return fromBinary(SkillListSchema, ack.result);
+  }
+
+  /**
+   * PX-043: stop a task's background terminal (the tray's kill control). The
+   * Core fences it by the session lease, has the Capability Kernel decide it
+   * under the task's lease, ends the process, and records who and why on the
+   * task as a typed event that wakes the agent once. The same `commandId`
+   * kills once. Typed refusals: SESSION_NOT_OWNED, UNKNOWN_SESSION,
+   * STALE_LEASE, and the kernel's own code (MODE_POSTURE, EMERGENCY_STOP, ...).
+   */
+  async killTerminal(sessionId: string, taskId: string, terminalId: string, reason = "", commandId?: Uint8Array): Promise<TerminalKilled> {
+    const payload = toBinary(KillTerminalSchema, create(KillTerminalSchema, { taskId: { value: unhex(taskId) }, sessionId: terminalId, reason }));
+    const ack = await this.command("KillTerminal", payload, commandId, this.leases.get(sessionId));
+    return fromBinary(TerminalKilledSchema, ack.result);
   }
 
   subscribe(sessionId: string, afterOffset: bigint): void {

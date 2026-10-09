@@ -96,11 +96,7 @@ fn candidate(
     if !untracked.is_empty() {
         let mut args = vec!["add", "-N", "--"];
         args.extend(untracked.iter().copied());
-        let _ = std::process::Command::new("git")
-            .arg("-C")
-            .arg(&root)
-            .args(&args)
-            .output();
+        let _ = modbit_git::output(std::path::Path::new(&root), &args);
     }
     let diff = repo
         .diff_worktree()
@@ -258,6 +254,9 @@ pub async fn bundle(
     }
     // PX-009: CI results for the pushed commit, as external evidence.
     let ci_evidence = crate::ci_evidence::views(&store, task.task_id);
+    let ci_rejected = crate::ci_evidence::rejected_views(&store, task.task_id);
+    // PX-127: the pull request's comments the task has seen, untrusted.
+    let review_comments = crate::review_comments::threads(&store, task.task_id);
     for c in &ci_evidence {
         if !c.log_ref.is_empty() {
             evidence_links.push(format!("ci_log:{}", c.log_ref));
@@ -301,6 +300,8 @@ pub async fn bundle(
         receipts,
         evidence_links,
         ci_evidence,
+        review_comments,
+        ci_rejected,
     })
 }
 

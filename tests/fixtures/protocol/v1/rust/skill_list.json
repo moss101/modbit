@@ -39,6 +39,39 @@
         "version": "1.2.0"
       }
     ],
+    "slash": [
+      {
+        "builtIn": true,
+        "contentHash": "abababababababababababababababababababababababababababababababab",
+        "description": "how the product works",
+        "displayName": "core-guide",
+        "enabled": true,
+        "id": "core-guide",
+        "invocation": "BOTH",
+        "kind": "SKILL",
+        "provenanceSource": "system",
+        "scope": "SYSTEM",
+        "source": "/etc/modbit/skills/core-guide",
+        "trust": "SYSTEM",
+        "trustDetail": ""
+      },
+      {
+        "builtIn": false,
+        "contentHash": "cdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcd",
+        "description": "tidy up a file",
+        "displayName": "kit/tidy",
+        "enabled": true,
+        "id": "kit/tidy",
+        "invocation": "USER_ONLY",
+        "kind": "COMMAND",
+        "provenanceSource": "extension:kit@1.2.0",
+        "scope": "EXTENSION",
+        "source": "/ext/kit",
+        "trust": "VERIFIED:acme",
+        "trustDetail": ""
+      }
+    ],
+    "slashDividerAt": 1,
     "systemRoot": "/etc/modbit/skills"
   },
   "type": "modbit.v1.SkillList"

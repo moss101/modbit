@@ -21,6 +21,7 @@
 use std::collections::HashMap;
 
 use modbit_domain::approval::ApprovalState;
+use modbit_domain::state::StateMachine;
 use modbit_domain::task::{Task, TaskOrigin, TaskState, WaitReason};
 use modbit_domain::{SessionId, StreamId};
 use modbit_event_store::EventStore;
@@ -157,6 +158,16 @@ fn hints(r: &mut wire::TranscriptRow) -> &mut wire::RowHints {
     r.hints.get_or_insert_with(Default::default)
 }
 
+/// The density-independent rows of a task's conversation at the log's tip:
+/// what the full-text index of `conversation_search` indexes, so a search
+/// hit names a row `GetTranscript` serves under the same id.
+pub(crate) fn atoms(store: &EventStore, task: &Task) -> Result<Vec<wire::TranscriptRow>, Refusal> {
+    let tip = store
+        .last_offset()
+        .map_err(|e| ("STORE_ERROR", e.to_string()))?;
+    Ok(fold(store, task, tip)?.atoms)
+}
+
 fn fold(store: &EventStore, task: &Task, until: u64) -> Result<Folded, Refusal> {
     let log = store
         .read_task_log(&task.session_id, &task.task_id, until)
@@ -173,6 +184,38 @@ fn fold(store: &EventStore, task: &Task, until: u64) -> Result<Folded, Refusal> 
     // The turn that is open at this point of the log: events that carry no
     // turn of their own (a recorded plan) belong to it.
     let mut open_turn: Option<String> = None;
+    // PX-050: an input the person deleted while it was queued was never said,
+    // and one they edited was said as edited: the conversation shows what the
+    // model was given, not what was typed first.
+    let mut deleted: std::collections::HashSet<String> = std::collections::HashSet::new();
+    let mut edited: HashMap<String, (String, Option<String>)> = HashMap::new();
+    for e in &log {
+        match e.envelope.event_type.as_str() {
+            "TaskInputRemoved" => {
+                if let Some(id) = store
+                    .payload(&e.envelope)
+                    .ok()
+                    .and_then(|p| p["input_id"].as_str().map(str::to_owned))
+                {
+                    deleted.insert(id);
+                }
+            }
+            "TaskInputEdited" => {
+                if let Ok(p) = store.payload(&e.envelope)
+                    && let Some(id) = p["input_id"].as_str()
+                {
+                    let slot = edited.entry(id.to_owned()).or_default();
+                    if let Some(t) = p["text"].as_str().filter(|t| !t.is_empty()) {
+                        slot.0 = t.to_owned();
+                    }
+                    if let Some(m) = p["mode"].as_str() {
+                        slot.1 = Some(m.to_uppercase());
+                    }
+                }
+            }
+            _ => {}
+        }
+    }
     for e in &log {
         let env = &e.envelope;
         let p = store.payload(env).unwrap_or_default();
@@ -223,7 +266,16 @@ fn fold(store: &EventStore, task: &Task, until: u64) -> Result<Folded, Refusal> 
             }
             "TaskInputQueued" => {
                 let input = p["input_id"].as_str().unwrap_or_default();
-                let (text, cut) = bounded(p["text"].as_str().unwrap_or_default(), TEXT_MAX);
+                if deleted.contains(input) {
+                    continue;
+                }
+                let edit = edited.get(input);
+                let (text, cut) = bounded(
+                    edit.map(|e| e.0.as_str())
+                        .filter(|t| !t.is_empty())
+                        .unwrap_or_else(|| p["text"].as_str().unwrap_or_default()),
+                    TEXT_MAX,
+                );
                 let mut r = row(
                     format!("user:in:{input}"),
                     wire::TranscriptRowKind::UserMessage,
@@ -235,7 +287,9 @@ fn fold(store: &EventStore, task: &Task, until: u64) -> Result<Folded, Refusal> 
                 r.facts = Some(Facts::User(wire::UserFacts {
                     input_id: input.into(),
                     source: "queued_input".into(),
-                    mode: p["mode"].as_str().unwrap_or_default().to_uppercase(),
+                    mode: edit
+                        .and_then(|e| e.1.clone())
+                        .unwrap_or_else(|| p["mode"].as_str().unwrap_or_default().to_uppercase()),
                     provenance: p["provenance"].as_str().unwrap_or_default().into(),
                     untrusted: p["untrusted"].as_bool().unwrap_or(false),
                 }));
@@ -509,6 +563,52 @@ fn fold(store: &EventStore, task: &Task, until: u64) -> Result<Folded, Refusal> 
                         a.resolver = p["resolver"].as_str().unwrap_or_default().into();
                     }
                 }
+            }
+            // ---- a background terminal ended (REQ-PX-043): the end the Core
+            // recorded, who ended it and why. A kill is `STOPPED`; it is a
+            // row of its own, never a message in the conversation.
+            "BackgroundProcessEnded" => {
+                let handle = p["handle_id"].as_str().unwrap_or_default().to_owned();
+                let how = p["how"].as_str().unwrap_or("EXITED");
+                let status = match how {
+                    "KILLED" => "STOPPED",
+                    "LOST" => "LOST",
+                    _ => "EXITED",
+                };
+                let by = p["ended_by"].as_str().unwrap_or_default();
+                let reason = p["reason"].as_str().unwrap_or_default();
+                let mut r = row(
+                    format!("terminal:{handle}"),
+                    wire::TranscriptRowKind::ToolCard,
+                    e,
+                    turn.clone().or_else(|| open_turn.clone()),
+                );
+                hints(&mut r).status = status.into();
+                hints(&mut r).short_text = format!(
+                    "terminal {} {}{}",
+                    &handle[..handle.len().min(8)],
+                    status.to_lowercase(),
+                    if by.is_empty() {
+                        String::new()
+                    } else {
+                        format!(" by {by}")
+                    }
+                );
+                r.text = if reason.is_empty() {
+                    hints(&mut r).short_text.clone()
+                } else {
+                    format!("{}: {}", hints(&mut r).short_text, bounded(reason, 256).0)
+                };
+                r.facts = Some(Facts::Tool(wire::ToolFacts {
+                    tool_call_id: String::new(),
+                    tool_name: "shell.background".into(),
+                    tool_class: "SHELL".into(),
+                    effect_class: String::new(),
+                    state: status.into(),
+                    result_ref: p["output_ref"].as_str().unwrap_or_default().into(),
+                    ..Default::default()
+                }));
+                atoms.push(r);
             }
             // ---- turns
             "TurnPrepared" => {
@@ -1173,6 +1273,11 @@ pub(crate) fn status_class(i: &StatusInputs) -> (wire::AgentStatusClass, &'stati
     (C::Archived, "Archived")
 }
 
+/// The title of a conversation: the first line of its goal, bounded.
+pub(crate) fn title_of(t: &Task) -> String {
+    bounded(t.goal_text.lines().next().unwrap_or_default().trim(), 120).0
+}
+
 fn subtitle_of(root: &str) -> String {
     std::path::Path::new(root)
         .file_name()
@@ -1240,7 +1345,7 @@ pub(crate) fn headers(
             task_id: Some(crate::server::wire_id(t.task_id.as_bytes())),
             session_id: Some(crate::server::wire_id(t.session_id.as_bytes())),
             workspace_root: t.workspace_root.clone().unwrap_or_default(),
-            title: bounded(t.goal_text.lines().next().unwrap_or_default().trim(), 120).0,
+            title: title_of(&t),
             subtitle: t
                 .workspace_root
                 .as_deref()
@@ -1252,9 +1357,16 @@ pub(crate) fn headers(
             status_label: label.into(),
             unread: d.visible_offset > d.read_offset,
             pending_approval: pending.contains(&t.task_id),
-            // No plan-approval gate exists in the Core yet: a plan is recorded
-            // and may be annotated, never held for a decision.
-            pending_plan: false,
+            // Plan mode is the Core's plan gate (docs/65 AFW-D05): the task
+            // records a plan and writes nothing until the person accepts it,
+            // and acceptance is leaving PLAN (`SetTaskMode`, which carries
+            // the plan version accepted). So a plan is pending exactly while
+            // the task is in PLAN mode, has a plan version on its log and has
+            // not ended; outside PLAN mode a recorded plan is the model's
+            // own plan-before-write step and nothing holds it for a decision.
+            pending_plan: !t.state.is_terminal()
+                && d.mode.as_deref() == Some("PLAN")
+                && d.plan_versions > 0,
             context_percent,
             files_changed: d.files_changed,
             lines_added: d.lines_added,

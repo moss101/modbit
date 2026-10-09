@@ -63,6 +63,8 @@ pub enum Event {
     Lease(TerminalLeaseState),
     /// PX-099: a stdin write that asked for an answer was applied.
     StdinWritten(StdinWritten),
+    /// PX-132: the listening sockets of the sessions' process trees.
+    Listeners(modbit_protocol::v1::SessionListeners),
 }
 
 /// How a windowed attachment is set up (PX-099).
@@ -154,6 +156,7 @@ fn event_of(frame: ExecFrame) -> Option<Result<Event>> {
         Some(Body::Resized(r)) => Ok(Event::Resized(r)),
         Some(Body::LeaseState(l)) => Ok(Event::Lease(l)),
         Some(Body::StdinWritten(w)) => Ok(Event::StdinWritten(w)),
+        Some(Body::ServiceListeners(l)) => Ok(Event::Listeners(l)),
         Some(Body::Error(e)) => Err(Error::Exec {
             code: e.code,
             message: e.message,
@@ -316,6 +319,15 @@ impl ExecClient {
     /// List sessions.
     pub async fn list(&mut self) -> Result<()> {
         self.send(Body::List(modbit_protocol::v1::ListSessions {
+            requester: self.principal.clone(),
+        }))
+        .await
+    }
+
+    /// PX-132: ask for the listening sockets of the process trees of the
+    /// running sessions this connection may see.
+    pub async fn list_services(&mut self) -> Result<()> {
+        self.send(Body::ListServices(modbit_protocol::v1::ListServices {
             requester: self.principal.clone(),
         }))
         .await

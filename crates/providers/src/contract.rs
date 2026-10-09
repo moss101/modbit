@@ -27,38 +27,10 @@ impl ProviderKind {
     }
 }
 
-/// A credential the gateway can present. The raw value is resolved only at
-/// request time and is never printed (docs/15 "Credentials").
-#[derive(Clone, Serialize, Deserialize, PartialEq, Eq)]
-pub enum SecretHandle {
-    /// Read from the named environment variable of the Core process.
-    Env(String),
-    /// Held in memory by the Core (OS keychain integration hands it in).
-    Inline(String),
-    /// No credential (local, unauthenticated endpoints).
-    None,
-}
-
-impl SecretHandle {
-    /// Resolve the raw value.
-    pub fn resolve(&self) -> Option<String> {
-        match self {
-            Self::Env(name) => std::env::var(name).ok().filter(|v| !v.is_empty()),
-            Self::Inline(v) => Some(v.clone()),
-            Self::None => None,
-        }
-    }
-}
-
-impl fmt::Debug for SecretHandle {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        match self {
-            Self::Env(name) => write!(f, "SecretHandle::Env({name})"),
-            Self::Inline(_) => write!(f, "SecretHandle::Inline(<redacted>)"),
-            Self::None => write!(f, "SecretHandle::None"),
-        }
-    }
-}
+/// Where a credential's value lives: the one handle type, owned by the
+/// credential broker (`modbit-secrets`, REQ-PX-130). The gateway registers it
+/// with the broker and obtains the value for each request through it.
+pub use modbit_secrets::SecretHandle;
 
 /// Message role.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize)]

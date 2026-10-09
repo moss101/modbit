@@ -146,6 +146,71 @@
       "test": "m2_5_capability_kernel_gates_destructive_tools_behind_intent_bound_approvals"
     },
     {
+      "tool": "git.merge.prepare",
+      "family": "task",
+      "source_behaviors": [
+        "git merge --no-commit"
+      ],
+      "owner": "Worktree Manager",
+      "effect": "ProtectedWrite",
+      "capabilities": [
+        "git.merge"
+      ],
+      "test": "px_119_two_branches_conflict_the_resolution_is_verified_and_every_merge_has_a_receipt"
+    },
+    {
+      "tool": "git.merge.commit",
+      "family": "task",
+      "source_behaviors": [
+        "git commit (merge)"
+      ],
+      "owner": "Worktree Manager",
+      "effect": "ProtectedWrite",
+      "capabilities": [
+        "git.merge"
+      ],
+      "test": "px_119_two_branches_conflict_the_resolution_is_verified_and_every_merge_has_a_receipt"
+    },
+    {
+      "tool": "git.merge.abort",
+      "family": "task",
+      "source_behaviors": [
+        "git merge --abort"
+      ],
+      "owner": "Worktree Manager",
+      "effect": "ReversibleWrite",
+      "capabilities": [
+        "git.merge"
+      ],
+      "test": "px_119_two_branches_conflict_the_resolution_is_verified_and_every_merge_has_a_receipt"
+    },
+    {
+      "tool": "git.apply.worktree",
+      "family": "task",
+      "source_behaviors": [
+        "apply a worktree's result to the checkout"
+      ],
+      "owner": "Worktree Manager",
+      "effect": "ProtectedWrite",
+      "capabilities": [
+        "git.apply"
+      ],
+      "test": "px_066_apply_is_a_protected_effect_bound_to_its_intent_and_undo_is_exact"
+    },
+    {
+      "tool": "git.apply.undo",
+      "family": "task",
+      "source_behaviors": [
+        "restore the pre-apply checkpoint"
+      ],
+      "owner": "Worktree Manager",
+      "effect": "ProtectedWrite",
+      "capabilities": [
+        "git.apply"
+      ],
+      "test": "px_066_apply_is_a_protected_effect_bound_to_its_intent_and_undo_is_exact"
+    },
+    {
       "tool": "shell.exec",
       "family": "shell",
       "source_behaviors": [
@@ -594,6 +659,64 @@
       "test": "qual_px_006_the_forge_adapter_reads_and_writes_github_behind_leases_effects_receipts_and_idempotency_keys"
     },
     {
+      "tool": "forge.pr.read",
+      "family": "forge",
+      "source_behaviors": [
+        "gh pr view",
+        "GitHub get a pull request (MCP github server)"
+      ],
+      "owner": "External Tool Hub (forge adapter)",
+      "effect": "ReadOnly",
+      "capabilities": [
+        "network.egress"
+      ],
+      "test": "qual_px_125_the_forge_adapter_reads_a_pull_request_and_its_diff_and_posts_approved_redacted_comments"
+    },
+    {
+      "tool": "forge.pr.diff",
+      "family": "forge",
+      "source_behaviors": [
+        "gh pr diff",
+        "GitHub list pull request files (MCP github server)"
+      ],
+      "owner": "External Tool Hub (forge adapter)",
+      "effect": "ReadOnly",
+      "capabilities": [
+        "network.egress"
+      ],
+      "test": "qual_px_125_the_forge_adapter_reads_a_pull_request_and_its_diff_and_posts_approved_redacted_comments"
+    },
+    {
+      "tool": "forge.issue.comment",
+      "family": "forge",
+      "source_behaviors": [
+        "gh issue comment",
+        "GitHub add issue comment (MCP github server)"
+      ],
+      "owner": "External Tool Hub (forge adapter)",
+      "effect": "ExternalSideEffect",
+      "capabilities": [
+        "network.egress",
+        "secret.use"
+      ],
+      "test": "qual_px_125_the_forge_adapter_reads_a_pull_request_and_its_diff_and_posts_approved_redacted_comments"
+    },
+    {
+      "tool": "forge.pr.comment",
+      "family": "forge",
+      "source_behaviors": [
+        "gh pr comment",
+        "GitHub add pull request comment (MCP github server)"
+      ],
+      "owner": "External Tool Hub (forge adapter)",
+      "effect": "ExternalSideEffect",
+      "capabilities": [
+        "network.egress",
+        "secret.use"
+      ],
+      "test": "qual_px_125_the_forge_adapter_reads_a_pull_request_and_its_diff_and_posts_approved_redacted_comments"
+    },
+    {
       "tool": "browser.navigate",
       "family": "browser",
       "source_behaviors": [
@@ -668,6 +791,78 @@
         "browser.control"
       ],
       "test": "qual_m7_5_a_visual_region_is_captured_targeted_and_clicked_by_a_point_with_the_fallback_on_record"
+    },
+    {
+          "tool": "browser.console",
+          "family": "browser",
+          "source_behaviors": [
+                "Playwright page.on('console')",
+                "Claude in Chrome read_console_messages"
+          ],
+          "owner": "Browser Runtime (host bridge, docs/22)",
+          "effect": "ReadOnly",
+          "capabilities": [
+                "browser.control"
+          ],
+          "test": "qual_px_121_an_unknown_outcome_latches_the_session_until_a_fresh_observation_and_every_refusal_carries_its_escalation"
+    },
+    {
+          "tool": "browser.network",
+          "family": "browser",
+          "source_behaviors": [
+                "Playwright page.on('request')",
+                "Claude in Chrome read_network_requests"
+          ],
+          "owner": "Browser Runtime (host bridge, docs/22)",
+          "effect": "ReadOnly",
+          "capabilities": [
+                "browser.control"
+          ],
+          "test": "qual_px_121_an_unknown_outcome_latches_the_session_until_a_fresh_observation_and_every_refusal_carries_its_escalation"
+    },
+    {
+          "tool": "browser.scroll",
+          "family": "browser",
+          "source_behaviors": [
+                "Playwright locator.scrollIntoViewIfNeeded / mouse.wheel",
+                "Claude in Chrome computer scroll"
+          ],
+          "owner": "Browser Runtime (host bridge, docs/22)",
+          "effect": "ReversibleWrite",
+          "capabilities": [
+                "browser.control"
+          ],
+          "test": "qual_px_121_an_unknown_outcome_latches_the_session_until_a_fresh_observation_and_every_refusal_carries_its_escalation",
+          "effect_note": "an agent input like browser.act: refused under the person's control, halted by an emergency stop, latched when its outcome is unknown"
+    },
+    {
+          "tool": "browser.wait",
+          "family": "browser",
+          "source_behaviors": [
+                "Playwright page.waitForSelector / waitForLoadState",
+                "Claude in Chrome wait"
+          ],
+          "owner": "Browser Runtime (host bridge, docs/22)",
+          "effect": "ReadOnly",
+          "capabilities": [
+                "browser.control"
+          ],
+          "test": "qual_px_121_an_unknown_outcome_latches_the_session_until_a_fresh_observation_and_every_refusal_carries_its_escalation"
+    },
+    {
+          "tool": "browser.fill_form",
+          "family": "browser",
+          "source_behaviors": [
+                "Playwright locator.fill sequence + click",
+                "1Password / browser password managers: fill by handle"
+          ],
+          "owner": "Browser Runtime (host bridge, docs/22) + Semantic Browser Compiler (forms, postconditions)",
+          "effect": "ReversibleWrite",
+          "capabilities": [
+                "browser.control"
+          ],
+          "test": "qual_px_121_an_unknown_outcome_latches_the_session_until_a_fresh_observation_and_every_refusal_carries_its_escalation",
+          "effect_note": "per call (Tool::effect_of): the class of the submit control when submitting, ExternalSideEffect when a credential is filled; a secret field takes a credential handle only"
     },
     {
       "tool": "memory.query",

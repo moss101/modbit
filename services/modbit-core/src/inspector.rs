@@ -16,11 +16,15 @@ pub(crate) async fn view(core: &Core, task_id: TaskId) -> wire::ContextInspector
     let ledger = ledger.lock().await;
     let mut v = wire::ContextInspectorView::default();
     // What the last compiled turn injected and refused (the prompt envelope).
-    if let Some((pack_id, injected, rejected)) = last_compiled(core, task_id).await {
+    if let Some((pack_id, injected, rejected, memory)) = last_compiled(core, task_id).await {
         v.context_pack_id = pack_id;
         v.injected_refs = injected;
         v.rejected_refs = rejected;
+        // PX-113: the memory the envelope injected, with ids and provenance.
+        v.memory = memory.as_ref().map(memory_view);
     }
+    // REQ-PX-132: the services the task's terminals are running.
+    v.process_services = core.tools.process_services.live_views(task_id);
     // What the user has selected (REQ-EV-0141 / 0160): the same selection
     // retrieval prefers, so a client can see why an entry is in the pack.
     let selection = crate::tools::selection_of(&core.store, task_id).await;
@@ -81,6 +85,8 @@ pub(crate) async fn view(core: &Core, task_id: TaskId) -> wire::ContextInspector
     v.reported_input_tokens = economy.reported_input_tokens;
     v.reported_cached_input_tokens = economy.reported_cached_input_tokens;
     v.reported_invocations = economy.reported_invocations;
+    // REQ-PX-059: the same breakdown `GetContextAccounting` serves.
+    v.accounting = Some(accounting(core, task_id).await);
     let Some(pack) = ledger.last_pack.as_ref() else {
         return v;
     };
@@ -242,10 +248,75 @@ async fn epochs_and_cache(core: &Core, task_id: TaskId) -> Economy {
     out
 }
 
-/// The last ContextCompile step's record: (context pack id, injected, rejected).
+/// The memory record of a ContextCompile step as the Inspector shows it
+/// (PX-113): ids and provenance only, never the memory text.
+fn memory_view(m: &serde_json::Value) -> wire::MemoryInjectionView {
+    let text = |v: &serde_json::Value, k: &str| v[k].as_str().unwrap_or_default().to_owned();
+    let strings = |v: &serde_json::Value, k: &str| -> Vec<String> {
+        v[k].as_array()
+            .map(|a| {
+                a.iter()
+                    .filter_map(|x| x.as_str().map(str::to_owned))
+                    .collect()
+            })
+            .unwrap_or_default()
+    };
+    let count = |v: &serde_json::Value, k: &str| {
+        u32::try_from(v[k].as_u64().unwrap_or(0)).unwrap_or(u32::MAX)
+    };
+    wire::MemoryInjectionView {
+        pack_id: text(m, "pack_id"),
+        token_budget: count(m, "token_budget"),
+        token_used: count(m, "token_used"),
+        omitted_count: count(m, "omitted_count"),
+        entries: m["entries"]
+            .as_array()
+            .map(|a| {
+                a.iter()
+                    .map(|e| wire::MemoryInjectedEntry {
+                        memory_id: text(e, "memory_id"),
+                        scope: text(e, "scope"),
+                        record_type: text(e, "record_type"),
+                        topic: text(e, "topic"),
+                        source: text(e, "source"),
+                        author: text(e, "author"),
+                        confidence: e["confidence"].as_f64().unwrap_or(0.0) as f32,
+                        validated: e["validated"].as_bool().unwrap_or(false),
+                        token_cost: count(e, "token_cost"),
+                        reasons: strings(e, "reasons"),
+                        conflicts_with: strings(e, "conflicts_with"),
+                        clipped: e["clipped"].as_bool().unwrap_or(false),
+                        created_at_ms: e["created_at_ms"].as_i64().unwrap_or(0),
+                        expires_at_ms: e["expires_at_ms"].as_i64().unwrap_or(0),
+                        last_validation_revision: text(e, "last_validation_revision"),
+                    })
+                    .collect()
+            })
+            .unwrap_or_default(),
+        excluded: m["excluded"]
+            .as_array()
+            .map(|a| {
+                a.iter()
+                    .map(|e| wire::MemoryExclusionView {
+                        memory_id: text(e, "memory_id"),
+                        reason: text(e, "reason"),
+                    })
+                    .collect()
+            })
+            .unwrap_or_default(),
+        rejected_ids: strings(m, "rejected_ids"),
+        compiler_version: text(m, "compiler_version"),
+    }
+}
+
+/// What a ContextCompile step recorded: (context pack id, injected refs,
+/// rejected refs, the memory record).
+type Compiled = (String, Vec<String>, Vec<String>, Option<serde_json::Value>);
+
+/// The last ContextCompile step's record.
 /// The step events live on their own RunStep aggregates, so the session log is
 /// the place that has them all in order.
-async fn last_compiled(core: &Core, task_id: TaskId) -> Option<(String, Vec<String>, Vec<String>)> {
+async fn last_compiled(core: &Core, task_id: TaskId) -> Option<Compiled> {
     let store = core.store.lock().await;
     let task = store.task(&task_id).ok()??;
     let events = store.read_session(&task.session_id, 0, 200_000).ok()?;
@@ -276,6 +347,10 @@ async fn last_compiled(core: &Core, task_id: TaskId) -> Option<(String, Vec<Stri
                     })
                     .unwrap_or_default()
             };
+            let memory = v.get("memory").cloned().map(|mut m| {
+                m["rejected_ids"] = serde_json::json!(strings("rejected_memory"));
+                m
+            });
             found = Some((
                 v["segment_hashes"][3]
                     .as_str()
@@ -283,6 +358,7 @@ async fn last_compiled(core: &Core, task_id: TaskId) -> Option<(String, Vec<Stri
                     .to_owned(),
                 strings("injected_fragments"),
                 strings("rejected_fragments"),
+                memory,
             ));
         }
     }
@@ -429,4 +505,321 @@ fn instruction_views(p: &serde_json::Value) -> Vec<wire::InstructionLayerView> {
         });
     }
     out
+}
+
+// ---- REQ-PX-059: accounting by category ----
+
+/// The bound the estimator declares against a provider's own count of the same
+/// request, in basis points. The estimator is a deterministic text heuristic
+/// (`tokens-v2`); the provider's count is authoritative whenever it reports
+/// one, and the view always shows the error it observed beside this bound.
+pub(crate) const DECLARED_ESTIMATOR_ERROR_BP: u32 = 2500;
+
+/// How wide the model's window is, and where that is known from: the signed
+/// registry's binding, else the endpoint's own catalog, else not at all. Never
+/// a constant.
+pub(crate) fn window_of(core: &Core, endpoint: &str, model: &str) -> (u64, &'static str) {
+    if let Some(e) = core
+        .gateway
+        .registry()
+        .and_then(|r| r.entry(endpoint, model).map(|e| e.context_tokens))
+        .filter(|w| *w > 0)
+    {
+        return (u64::from(e), "REGISTRY");
+    }
+    match core
+        .gateway
+        .capability(endpoint, model)
+        .map(|c| c.context_tokens)
+        .filter(|w| *w > 0)
+    {
+        Some(w) => (u64::from(w), "ENDPOINT"),
+        None => (0, "UNKNOWN"),
+    }
+}
+
+/// What the loop knows of the request it just compiled.
+pub(crate) struct CompiledRequest<'a> {
+    pub endpoint: &'a str,
+    pub model: &'a str,
+    pub ordinal: u32,
+    pub text: &'a modbit_prompt_compiler::accounting::CategoryText,
+    pub tools: &'a [modbit_providers::ToolProjection],
+    pub injected_memory: &'a [String],
+    pub request_estimate: u32,
+}
+
+/// What a ContextCompile step keeps for the accounting: the estimator's count
+/// of each part of the request it just compiled, the model's window, and the
+/// names the parts are made of. The provider's own count arrives later with
+/// the turn's usage; the view joins them.
+pub(crate) fn compile_record(core: &Core, r: &CompiledRequest<'_>) -> serde_json::Value {
+    use modbit_prompt_compiler::accounting::{Category, tool_category};
+    let CompiledRequest {
+        endpoint,
+        model,
+        ordinal,
+        text,
+        tools,
+        injected_memory,
+        request_estimate,
+    } = *r;
+    let est = |t: &str| u64::from(modbit_compaction::estimate_tokens_v2(t));
+    let mut counts = [0u64; 9];
+    for (i, c) in Category::ALL.iter().enumerate().take(8) {
+        counts[i] = est(text.of(*c));
+    }
+    // The conversation is the rest of the request: its goal, its transcript
+    // and the run state. Defined as the remainder so the parts add up to the
+    // estimator's count of the whole request.
+    let others: u64 = counts[..8].iter().sum();
+    counts[8] = u64::from(request_estimate).saturating_sub(others);
+    let mut estimates = serde_json::Map::new();
+    for (i, c) in Category::ALL.iter().enumerate() {
+        estimates.insert(c.name().to_owned(), serde_json::json!(counts[i]));
+    }
+    let names = |cat: Category| -> Vec<String> {
+        tools
+            .iter()
+            .filter(|t| tool_category(&t.name) == cat)
+            .map(|t| t.name.clone())
+            .collect()
+    };
+    let (window, window_source) = window_of(core, endpoint, model);
+    serde_json::json!({
+        "estimates": estimates,
+        "request_estimate": request_estimate,
+        "endpoint": endpoint,
+        "model": model,
+        "window": window,
+        "window_source": window_source,
+        "ordinal": ordinal,
+        "tools": names(Category::Tools),
+        "mcp": names(Category::Mcp),
+        "subagent_tools": names(Category::Subagents),
+        "memory": injected_memory,
+    })
+}
+
+/// What the log says about the last compiled request.
+struct LastAccounting {
+    record: serde_json::Value,
+    turn_id: Option<[u8; 16]>,
+    offset: u64,
+    /// The provider's count of that request, when it reported one.
+    reported_input: Option<u64>,
+    skills: Vec<String>,
+    children: Vec<String>,
+}
+
+async fn last_accounting(core: &Core, task_id: TaskId) -> Option<LastAccounting> {
+    let store = core.store.lock().await;
+    let task = store.task(&task_id).ok()??;
+    let events = store.read_session(&task.session_id, 0, 200_000).ok()?;
+    let mut last: Option<LastAccounting> = None;
+    let mut usage: std::collections::HashMap<[u8; 16], u64> = std::collections::HashMap::new();
+    let mut skills: Vec<String> = Vec::new();
+    let mut children: Vec<String> = Vec::new();
+    for e in &events {
+        if e.envelope.task_id != Some(task_id) {
+            continue;
+        }
+        match e.envelope.event_type.as_str() {
+            "StepSucceeded" => {
+                let Ok(payload) = store.payload(&e.envelope) else {
+                    continue;
+                };
+                let Some(r) = payload["output_ref"].as_str() else {
+                    continue;
+                };
+                let Ok(bytes) = store.objects().get(r) else {
+                    continue;
+                };
+                let Ok(v) = serde_json::from_slice::<serde_json::Value>(&bytes) else {
+                    continue;
+                };
+                if let Some(acc) = v.get("accounting") {
+                    last = Some(LastAccounting {
+                        record: acc.clone(),
+                        turn_id: e.envelope.turn_id.map(|t| *t.as_bytes()),
+                        offset: e.offset,
+                        reported_input: None,
+                        skills: Vec::new(),
+                        children: Vec::new(),
+                    });
+                }
+            }
+            "ModelUsageRecorded" => {
+                let Ok(p) = store.payload(&e.envelope) else {
+                    continue;
+                };
+                if p["reported"].as_bool().unwrap_or(false)
+                    && let Some(t) = e.envelope.turn_id
+                {
+                    usage.insert(*t.as_bytes(), p["input_tokens"].as_u64().unwrap_or(0));
+                }
+            }
+            "SkillSelected" => {
+                if let Ok(p) = store.payload(&e.envelope)
+                    && let Some(n) = p["name"].as_str()
+                    && !skills.iter().any(|s| s == n)
+                {
+                    skills.push(n.to_owned());
+                }
+            }
+            "SubagentAdmitted" => {
+                if let Ok(p) = store.payload(&e.envelope)
+                    && let Some(c) = p["child_task_id"].as_str()
+                {
+                    children.push(c.to_owned());
+                }
+            }
+            _ => {}
+        }
+    }
+    let mut last = last?;
+    last.reported_input = last
+        .turn_id
+        .and_then(|t| usage.get(&t).copied())
+        .filter(|n| *n > 0);
+    last.skills = skills;
+    last.children = children;
+    Some(last)
+}
+
+/// The Core's breakdown of the last compiled request (REQ-PX-059).
+pub(crate) async fn accounting(core: &Core, task_id: TaskId) -> wire::ContextAccountingView {
+    use modbit_prompt_compiler::accounting::{Category, ROUNDING_RULE, apportion};
+    let log = task_context_log(core, task_id).await;
+    let loaded_layers: Vec<String> = log
+        .instructions
+        .iter()
+        .filter(|i| i.loaded)
+        .map(|i| format!("{}:{}", i.layer, i.source))
+        .collect();
+    let mut v = wire::ContextAccountingView {
+        rounding_rule: ROUNDING_RULE.into(),
+        declared_error_bp: DECLARED_ESTIMATOR_ERROR_BP,
+        instruction_layers_in_force: u32::try_from(loaded_layers.len()).unwrap_or(u32::MAX),
+        compaction_epoch: log
+            .summaries
+            .iter()
+            .map(|s| s.epoch)
+            .max()
+            .unwrap_or_default(),
+        compaction_summaries: u32::try_from(log.summaries.len()).unwrap_or(u32::MAX),
+        budgets: Some(budget_view(core, task_id).await),
+        ..Default::default()
+    };
+    let Some(last) = last_accounting(core, task_id).await else {
+        return v;
+    };
+    let rec = &last.record;
+    let mut estimates = [0u64; 9];
+    for (i, c) in Category::ALL.iter().enumerate() {
+        estimates[i] = rec["estimates"][c.name()].as_u64().unwrap_or(0);
+    }
+    let estimated_total: u64 = estimates.iter().sum();
+    // The provider counted the request when it said so; the estimator's own
+    // count stands otherwise, and says it is one.
+    let (total, source) = match last.reported_input {
+        Some(n) => (n, "PROVIDER_REPORTED"),
+        None => (estimated_total, "ESTIMATED"),
+    };
+    let tokens = apportion(&estimates, total);
+    let strings = |k: &str| -> Vec<String> {
+        rec[k]
+            .as_array()
+            .map(|a| {
+                a.iter()
+                    .filter_map(|x| x.as_str().map(str::to_owned))
+                    .collect()
+            })
+            .unwrap_or_default()
+    };
+    let sources = |c: Category| -> Vec<String> {
+        match c {
+            Category::System => vec!["system segment".into()],
+            Category::Tools => strings("tools"),
+            Category::Rules => loaded_layers.clone(),
+            Category::Skills => last.skills.clone(),
+            Category::Mcp => strings("mcp"),
+            Category::Memory => strings("memory"),
+            Category::Summary => log
+                .summaries
+                .iter()
+                .map(|s| format!("epoch {}", s.epoch))
+                .collect(),
+            Category::Subagents => {
+                let mut s = strings("subagent_tools");
+                s.extend(last.children.iter().map(|c| format!("child {c}")));
+                s
+            }
+            Category::Conversation => vec!["goal, transcript, run state".into()],
+        }
+    };
+    v.available = true;
+    v.total_tokens = total;
+    v.total_source = source.into();
+    v.estimated_total = estimated_total;
+    v.provider_reported_input = last.reported_input.unwrap_or(0);
+    v.estimator_error_bp = last.reported_input.map_or(0, |r| {
+        u32::try_from(estimated_total.abs_diff(r).saturating_mul(10_000) / r.max(1))
+            .unwrap_or(u32::MAX)
+    });
+    v.window_tokens = rec["window"].as_u64().unwrap_or(0);
+    v.window_source = rec["window_source"]
+        .as_str()
+        .unwrap_or("UNKNOWN")
+        .to_owned();
+    v.used_bp = total
+        .saturating_mul(10_000)
+        .checked_div(v.window_tokens)
+        .map_or(0, |bp| u32::try_from(bp).unwrap_or(u32::MAX));
+    v.endpoint = rec["endpoint"].as_str().unwrap_or_default().to_owned();
+    v.model = rec["model"].as_str().unwrap_or_default().to_owned();
+    v.turn_id = last
+        .turn_id
+        .map(|t| modbit_domain::TurnId::from_bytes(t).to_string())
+        .unwrap_or_default();
+    v.turn_ordinal = u32::try_from(rec["ordinal"].as_u64().unwrap_or(0)).unwrap_or(0);
+    v.offset = last.offset;
+    v.memory_items_injected = u32::try_from(strings("memory").len()).unwrap_or(u32::MAX);
+    v.categories = Category::ALL
+        .iter()
+        .enumerate()
+        .map(|(i, c)| wire::ContextCategoryView {
+            category: c.name().into(),
+            tokens: tokens[i],
+            estimated_tokens: estimates[i],
+            share_bp: tokens[i]
+                .saturating_mul(10_000)
+                .checked_div(total)
+                .map_or(0, |bp| u32::try_from(bp).unwrap_or(u32::MAX)),
+            sources: sources(*c),
+        })
+        .collect();
+    v
+}
+
+/// The budgets of REQ-PX-116 as the accounting reports them beside the
+/// context numbers: from the task's own log, the way its loop reads them.
+async fn budget_view(core: &Core, task_id: TaskId) -> wire::BudgetAccountingView {
+    let task = core.store.lock().await.task(&task_id).ok().flatten();
+    let Some(task) = task else {
+        return wire::BudgetAccountingView::default();
+    };
+    let (_, mut state, _, _) =
+        crate::runtime::rebuild(core, &task, modbit_core_runtime::Budgets::default()).await;
+    crate::spawn::refresh_children_held(core, &task, &mut state).await;
+    wire::BudgetAccountingView {
+        max_cost_minor: state.budgets.max_cost_minor.unwrap_or(0),
+        spent_minor: state.cost_minor,
+        held_by_children_minor: state.children_held.cost_minor,
+        max_wall_ms: state.budgets.max_wall_ms.unwrap_or(0),
+        wall_ms_used: state.wall_ms,
+        max_children: state.budgets.max_children,
+        live_children: state.live_children,
+        forbid_spawn: state.budgets.max_children == 0,
+    }
 }

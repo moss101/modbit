@@ -9,6 +9,7 @@ publish.workspace = true
 
 [dependencies]
 modbit-domain.workspace = true
+modbit-git.workspace = true
 modbit-protocol.workspace = true
 modbit-event-store = { workspace = true, features = ["cloud"] }
 modbit-sandbox = { workspace = true, features = ["client"] }
@@ -24,6 +25,7 @@ futures-util.workspace = true
 base64.workspace = true
 
 [dev-dependencies]
+ed25519-dalek.workspace = true
 modbit-cloud-api.workspace = true
 modbit-observability.workspace = true
 modbit-sandbox-gateway.workspace = true

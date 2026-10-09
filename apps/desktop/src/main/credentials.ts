@@ -99,6 +99,21 @@ export class CredentialStore {
     return this.list().find((c) => c.handle === handle) ?? null;
   }
 
+  /** Every secret value in custody - for the host to scrub from what a page logs (PX-121); never returned to a renderer or the Core. */
+  secretValues(): string[] {
+    const out = [...this.memoryOnly.values()];
+    if (this.crypto.available()) {
+      for (const r of this.load()) {
+        try {
+          out.push(this.crypto.decrypt(r.secretCiphertext));
+        } catch {
+          // an undecryptable record holds nothing to scrub
+        }
+      }
+    }
+    return out;
+  }
+
   /** The secret, for the host's fill only — and only when the page's origin
    *  is the bound one. Null when unknown, undecryptable or unbound. */
   secretFor(handle: string, pageOrigin: string): string | null {

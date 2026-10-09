@@ -174,6 +174,9 @@ pub(crate) struct Facts {
     pub delegation_offered: bool,
     /// A failed verification is open: a change needs a repair attempt first.
     pub repair_open: bool,
+    /// The task owns a terminal that is running now: `shell.input` and
+    /// `shell.attach` are offered (REQ-PX-099).
+    pub live_shell: bool,
 }
 
 /// The facts of this round, from the log and the harness state. The
@@ -196,6 +199,7 @@ pub(crate) async fn facts_for(
         delegating,
         delegation_offered: std::mem::take(&mut state.delegation_offered),
         repair_open: !state.open_verify_signatures().is_empty() || state.pending_attempt.is_some(),
+        live_shell: crate::background_process::owns_live_shell(core, task).await,
     }
 }
 

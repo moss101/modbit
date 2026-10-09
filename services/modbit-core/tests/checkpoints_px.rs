@@ -1915,3 +1915,532 @@ async fn px_101_only_a_running_task_pauses() {
     assert_eq!(code_of(pause(&mut fx, None, 0).await), "NOT_PAUSABLE");
     assert_eq!(code_of(resume(&mut fx, None, None).await), "NOT_PAUSED");
 }
+
+// ----------------------------------------------------------------------------
+// REQ-PX-101: a paused task holds its capacity ticket until the idle bound.
+// ----------------------------------------------------------------------------
+
+/// A plan, `n` files one per turn with every model reply held for `ms`, then
+/// the completion: a run long enough to pause in the middle of.
+fn slow_files_script(n: usize, ms: u64) -> Vec<Value> {
+    let names: Vec<String> = (1..=n).map(|i| format!("f{i}.txt")).collect();
+    let mut s = vec![
+        json!({"calls": [{"name": "plan.update", "args": {"outcome": "write the files", "expected_files": names}}]}),
+    ];
+    for (i, name) in names.iter().enumerate() {
+        s.push(json!({"delay_ms": ms, "calls": [{"name": "change.apply", "args": {"path": name, "op": "create", "content": format!("file {}\n", i + 1)}}]}));
+    }
+    s.push(json!({"calls": [{"name": "task.complete", "args": {"summary": "done", "self_review": {"findings": []}}}]}));
+    s
+}
+
+async fn capacity_view(fx: &mut Fx) -> modbit_protocol::v1::CapacityView {
+    ok(
+        &mut fx.c,
+        "GetCapacity",
+        modbit_protocol::v1::GetCapacity {},
+        None,
+    )
+    .await
+}
+
+fn ticket_of(v: &modbit_protocol::v1::CapacityView, task: &Id) -> Option<String> {
+    let holder = format!("run:{}", uuid_text(task));
+    v.tickets
+        .iter()
+        .find(|t| t.holder == holder)
+        .map(|t| t.ticket_id.clone())
+}
+
+fn uuid_text(id: &Id) -> String {
+    let h = hex::encode(&id.value);
+    format!(
+        "{}-{}-{}-{}-{}",
+        &h[..8],
+        &h[8..12],
+        &h[12..16],
+        &h[16..20],
+        &h[20..]
+    )
+}
+
+/// A second task of the fixture's session on its own repository.
+async fn second_task(fx: &mut Fx) -> (Id, tempfile::TempDir) {
+    let (repo2, root2) = repo(&[("a.txt", "a\n")]);
+    let task = ok::<_, TaskCreated>(
+        &mut fx.c,
+        "CreateTask",
+        CreateTask {
+            session_id: Some(fx.session.clone()),
+            goal_text: "write the files too".into(),
+            workspace_id: None,
+            execution_profile: "local_trusted".into(),
+            origin: "cli".into(),
+            workspace_root: root2,
+            issue_url: String::new(),
+            issue_json: String::new(),
+            ..Default::default()
+        },
+        Some(fx.g),
+    )
+    .await
+    .task_id
+    .unwrap();
+    (task, repo2)
+}
+
+async fn start_other(fx: &mut Fx, task: &Id) -> Result<(TaskRunStarted, bool), ClientError> {
+    let g = fx.g;
+    send(
+        &mut fx.c,
+        None,
+        "StartTask",
+        StartTask {
+            task_id: Some(task.clone()),
+            endpoint: "openai".into(),
+            model: "gpt-5".into(),
+            max_turns: 0,
+            max_tool_calls: 0,
+            max_no_progress_turns: 20,
+            skills: vec![],
+            ..Default::default()
+        },
+        Some(g),
+    )
+    .await
+}
+
+async fn status_of(fx: &mut Fx, task: &Id) -> TaskStatus {
+    ok(
+        &mut fx.c,
+        "GetTaskStatus",
+        GetTaskStatus {
+            task_id: Some(task.clone()),
+        },
+        None,
+    )
+    .await
+}
+
+/// Pause the fixture's task mid-run: wait for a model request to be in flight
+/// (`requests` seen so far), pause, wait for the park.
+async fn pause_in_flight(
+    fx: &mut Fx,
+    seen: &std::sync::Arc<std::sync::Mutex<Vec<Value>>>,
+    at_least: usize,
+) {
+    let deadline = std::time::Instant::now() + Duration::from_secs(60);
+    while seen.lock().unwrap().len() < at_least {
+        assert!(
+            std::time::Instant::now() < deadline,
+            "the run did not get that far"
+        );
+        tokio::time::sleep(Duration::from_millis(10)).await;
+    }
+    pause(fx, None, 20_000).await.unwrap();
+    fx.until("the park", 30, |s| {
+        s.wait_reason == "Paused" && !s.loop_alive
+    })
+    .await;
+}
+
+/// QUAL-PX-101 (capacity): a pause keeps the run's capacity ticket while the
+/// task is paused — nobody else can take the one model slot — and a resume
+/// inside the idle bound continues on the very same ticket. Past a short test
+/// bound the ticket goes back with a typed record, another task starts on it,
+/// and the paused task's resume goes through admission again: refused with
+/// CAPACITY_EXHAUSTED while the other task holds the slot (the task stays
+/// paused, nothing changes), accepted once it is free, and it completes.
+#[tokio::test]
+#[allow(clippy::too_many_lines)]
+async fn px_101_a_pause_holds_its_capacity_until_the_idle_bound_then_resume_is_admitted_again() {
+    let (mut fx, seen) = Fx::new(
+        slow_files_script(6, 700),
+        &[("a.txt", "a\n")],
+        &[
+            ("MODBIT_CAPACITY", "model=1,provider=8"),
+            ("MODBIT_PAUSE_IDLE_BOUND_MS", "2500"),
+        ],
+    )
+    .await;
+    let (other, _other_repo) = second_task(&mut fx).await;
+    let a = fx.task.clone();
+    fx.start().await;
+    pause_in_flight(&mut fx, &seen, 3).await;
+
+    // Paused: the ticket is still the task's, and the pool is full.
+    let view = capacity_view(&mut fx).await;
+    let held_ticket = ticket_of(&view, &a).expect("the paused task still holds its ticket");
+    assert_eq!(
+        view.available.as_ref().unwrap().model_concurrency,
+        0,
+        "{view:?}"
+    );
+    // Nobody else can start on it.
+    let refused = start_other(&mut fx, &other).await;
+    assert_eq!(code_of(refused), "CAPACITY_EXHAUSTED");
+    assert_eq!(status_of(&mut fx, &other).await.state, "Queued");
+
+    // A resume inside the bound continues on the very same ticket: no new grant.
+    let (r, _) = resume(&mut fx, None, None).await.unwrap();
+    assert!(r.resumed, "{r:?}");
+    let view = capacity_view(&mut fx).await;
+    assert_eq!(ticket_of(&view, &a).as_deref(), Some(held_ticket.as_str()));
+    let grants = fx.events(&["CapacityTicketGranted"]).await;
+    assert_eq!(grants.len(), 1, "one ticket for the whole run: {grants:#?}");
+
+    // Paused again, and left past the bound.
+    let before = seen.lock().unwrap().len();
+    pause_in_flight(&mut fx, &seen, before + 1).await;
+    let paused_at = std::time::Instant::now();
+    let deadline = std::time::Instant::now() + Duration::from_secs(30);
+    loop {
+        let view = capacity_view(&mut fx).await;
+        if ticket_of(&view, &a).is_none() {
+            break;
+        }
+        assert!(
+            std::time::Instant::now() < deadline,
+            "the ticket was never given back"
+        );
+        tokio::time::sleep(Duration::from_millis(100)).await;
+    }
+    assert!(
+        paused_at.elapsed() >= Duration::from_millis(1500),
+        "given back only at the bound, not at the pause"
+    );
+    let released = fx.events(&["PausedCapacityReleased"]).await;
+    assert_eq!(released.len(), 1, "{released:#?}");
+    let rec = &released[0].1;
+    assert_eq!(rec["reason"], "IDLE_BOUND");
+    assert_eq!(rec["idle_bound_ms"], 2500);
+    assert!(rec["held_ms"].as_u64().unwrap() >= 2500, "{rec}");
+    // The task is still paused, not failed, and its checkpoint is intact.
+    let st = status_of(&mut fx, &a).await;
+    assert_eq!(
+        (st.state.as_str(), st.wait_reason.as_str()),
+        ("Waiting", "Paused")
+    );
+    assert_eq!(st.failure_class, "");
+
+    // Another task starts on the freed slot ...
+    let (b_run, _) = start_other(&mut fx, &other)
+        .await
+        .expect("the freed slot admits it");
+    assert!(b_run.run_id.is_some());
+    // ... and while it holds the slot the paused task's resume is refused,
+    // typed, and changes nothing.
+    let refused = resume(&mut fx, None, None).await;
+    assert_eq!(code_of(refused), "CAPACITY_EXHAUSTED");
+    let st = status_of(&mut fx, &a).await;
+    assert_eq!(
+        (st.state.as_str(), st.wait_reason.as_str(), st.loop_alive),
+        ("Waiting", "Paused", false),
+        "a refused resume leaves the task paused"
+    );
+    // The other task finishes; its ticket goes back; the resume is admitted.
+    let deadline = std::time::Instant::now() + Duration::from_secs(60);
+    while status_of(&mut fx, &other).await.loop_alive {
+        assert!(std::time::Instant::now() < deadline);
+        tokio::time::sleep(Duration::from_millis(100)).await;
+    }
+    let (r, _) = resume(&mut fx, None, None).await.unwrap();
+    assert!(r.resumed, "{r:?}");
+    fx.until("ReadyForReview", 90, |s| s.state == "ReadyForReview")
+        .await;
+    for i in 1..=6 {
+        assert!(std::path::Path::new(&format!("{}/f{i}.txt", fx.root)).exists());
+    }
+    // Two admissions: the original, and the re-admission after the bound.
+    assert_eq!(fx.events(&["CapacityTicketGranted"]).await.len(), 2);
+    // Nothing is left held once everything has ended.
+    let view = capacity_view(&mut fx).await;
+    assert!(view.tickets.is_empty(), "{view:?}");
+}
+
+/// QUAL-PX-101 (capacity): cancelling a paused task gives its ticket back at
+/// once; and a Core killed while the task is paused loses nothing durable —
+/// the restarted Core has an empty pool, the task is still paused, and its
+/// resume is admitted afresh.
+#[tokio::test]
+async fn px_101_cancelling_a_paused_task_frees_its_slot_and_a_killed_core_resumes_by_admission() {
+    let (mut fx, seen) = Fx::new(
+        slow_files_script(4, 600),
+        &[("a.txt", "a\n")],
+        &[("MODBIT_CAPACITY", "model=1,provider=8")],
+    )
+    .await;
+    let (other, _other_repo) = second_task(&mut fx).await;
+    let a = fx.task.clone();
+    fx.start().await;
+    pause_in_flight(&mut fx, &seen, 3).await;
+    assert!(ticket_of(&capacity_view(&mut fx).await, &a).is_some());
+    // A cancel returns the slot immediately (the default bound is minutes).
+    let g = fx.g;
+    let _: (modbit_protocol::v1::TaskCancelRequested, bool) = send(
+        &mut fx.c,
+        None,
+        "CancelTask",
+        CancelTask {
+            task_id: Some(a.clone()),
+        },
+        Some(g),
+    )
+    .await
+    .unwrap();
+    assert!(ticket_of(&capacity_view(&mut fx).await, &a).is_none());
+    let (b_run, _) = start_other(&mut fx, &other)
+        .await
+        .expect("the slot is free");
+    assert!(b_run.run_id.is_some());
+    let deadline = std::time::Instant::now() + Duration::from_secs(60);
+    while status_of(&mut fx, &other).await.loop_alive {
+        assert!(std::time::Instant::now() < deadline);
+        tokio::time::sleep(Duration::from_millis(100)).await;
+    }
+
+    // A second fixture: a pause, then the Core killed while it holds the ticket.
+    let (mut fx2, seen2) = Fx::new(
+        slow_files_script(4, 600),
+        &[("a.txt", "a\n")],
+        &[("MODBIT_CAPACITY", "model=1,provider=8")],
+    )
+    .await;
+    fx2.start().await;
+    pause_in_flight(&mut fx2, &seen2, 3).await;
+    let t2 = fx2.task.clone();
+    assert!(ticket_of(&capacity_view(&mut fx2).await, &t2).is_some());
+    fx2.restart(&[("MODBIT_CAPACITY", "model=1,provider=8")])
+        .await;
+    let view = capacity_view(&mut fx2).await;
+    assert!(
+        view.tickets.is_empty(),
+        "the pool is the new Core's: {view:?}"
+    );
+    let st = fx2.status().await;
+    assert_eq!(
+        (st.state.as_str(), st.wait_reason.as_str()),
+        ("Waiting", "Paused"),
+        "{st:?}"
+    );
+    let (r, _) = resume(&mut fx2, None, None).await.unwrap();
+    assert!(r.resumed, "{r:?}");
+    fx2.until("ReadyForReview", 90, |s| s.state == "ReadyForReview")
+        .await;
+    assert!(capacity_view(&mut fx2).await.tickets.is_empty());
+}
+
+// ----------------------------------------------------------------------------
+// REQ-PX-102: the `max_bytes` bound of the collector.
+// ----------------------------------------------------------------------------
+
+async fn gc_policy(
+    fx: &mut Fx,
+    policy: modbit_protocol::v1::CheckpointRetentionPolicy,
+    dry_run: bool,
+) -> Result<(CheckpointGcReport, bool), ClientError> {
+    let (task, session, g) = (fx.task.clone(), fx.session.clone(), fx.g);
+    send(
+        &mut fx.c,
+        None,
+        "RunCheckpointGc",
+        RunCheckpointGc {
+            session_id: Some(session),
+            task_id: Some(task),
+            reason: "bytes".into(),
+            policy: Some(policy),
+            dry_run,
+        },
+        Some(g),
+    )
+    .await
+}
+
+fn bounded(max_bytes: u64) -> modbit_protocol::v1::CheckpointRetentionPolicy {
+    // Floors that would keep every checkpoint of a young task, so that
+    // anything removed is removed by the byte bound alone.
+    modbit_protocol::v1::CheckpointRetentionPolicy {
+        keep_recent: 1000,
+        min_age_ms: 24 * 60 * 60 * 1000,
+        max_bytes,
+    }
+}
+
+/// QUAL-PX-102 (the byte bound, real Core, real object store): with
+/// `max_bytes` set, the collector keeps the newest checkpoints that fit the
+/// bound and removes the rest — the age and count floors give way to it —
+/// while a labelled checkpoint, the fork parent and the latest, each with the
+/// chain it needs, never do. The bound is applied when asked and is not
+/// sticky; a larger bound removes nothing; tighter bounds free more, and each
+/// run's report equals the change on the filesystem; a dry run says what the
+/// real run does; every survivor restores what it recorded and a collected
+/// checkpoint answers COLLECTED; a repeat run changes nothing.
+#[tokio::test]
+#[allow(clippy::too_many_lines)]
+async fn px_102_the_byte_bound_keeps_the_newest_that_fit_and_never_the_referenced_one_it_must_keep()
+{
+    let mut fx = many_checkpoints(20).await;
+    let l = fx.checkpoints().await;
+    let hand: Vec<_> = l
+        .checkpoints
+        .iter()
+        .filter(|c| c.reason.starts_with("hand "))
+        .cloned()
+        .collect();
+    assert_eq!(hand.len(), 20);
+    // A label on an old checkpoint, and a fork taken from another.
+    name(&mut fx, &hand[5].checkpoint_id, "keep me")
+        .await
+        .unwrap();
+    let forked: TaskForked = ok(
+        &mut fx.c,
+        "ForkTask",
+        ForkTask {
+            task_id: Some(fx.task.clone()),
+            checkpoint_id: hand[2].checkpoint_id.clone(),
+            ..Default::default()
+        },
+        Some(fx.g),
+    )
+    .await;
+    let latest = fx.checkpoints().await.current_checkpoint_id;
+
+    // The floors alone keep a young task whole ...
+    let (floors_only, _) = gc_policy(&mut fx, bounded(0), true).await.unwrap();
+    assert_eq!(floors_only.removed, 0, "{floors_only:?}");
+    // ... and a bound larger than everything removes nothing either.
+    let (roomy, _) = gc_policy(&mut fx, bounded(1 << 30), true).await.unwrap();
+    assert_eq!(roomy.removed, 0, "{roomy:?}");
+    // A tight bound makes the floors give way: it removes what they kept.
+    let (dry, _) = gc_policy(&mut fx, bounded(14_000), true).await.unwrap();
+    assert!(dry.dry_run && dry.removed > 0, "{dry:?}");
+    let (objects_0, bytes_0) = object_files(&fx.data);
+    assert_eq!(
+        object_files(&fx.data),
+        (objects_0, bytes_0),
+        "a dry run frees nothing"
+    );
+
+    // Tighter and tighter bounds, for real: each frees more, each report is
+    // the change on the filesystem, the protected ones stay.
+    let mut previous = (objects_0, bytes_0);
+    let mut removed_total = 0u32;
+    let mut freed_total = 0u64;
+    let mut runs = 0usize;
+    for bound in [14_000u64, 10_000, 8_000, 7_000] {
+        let (report, _) = gc_policy(&mut fx, bounded(bound), false).await.unwrap();
+        if bound == 14_000 {
+            assert_eq!(
+                report.removed_ids, dry.removed_ids,
+                "the dry run said what the run did"
+            );
+        }
+        assert!(report.removed > 0, "bound {bound}: {report:?}");
+        // Content is freed only when no survivor names it, so a run may
+        // remove checkpoints and free nothing yet; the first one does free.
+        if bound == 14_000 {
+            assert!(
+                report.blobs_removed > 0 && report.bytes_freed > 0,
+                "{report:?}"
+            );
+        }
+        freed_total += report.bytes_freed;
+        let now = object_files(&fx.data);
+        assert_eq!(
+            (previous.0 - now.0) as u32,
+            report.blobs_removed,
+            "bound {bound}: the report's counts equal the change on the filesystem"
+        );
+        assert_eq!(previous.1 - now.1, report.bytes_freed, "bound {bound}");
+        previous = now;
+        removed_total += report.removed;
+        runs += 1;
+        let after = fx.checkpoints().await;
+        let alive = |id: &str| {
+            after.checkpoints.iter().any(|c| {
+                c.checkpoint_id == id && matches!(c.status.as_str(), "CURRENT" | "SUPERSEDED")
+            })
+        };
+        for must in [
+            latest.clone(),
+            hand[5].checkpoint_id.clone(),
+            hand[2].checkpoint_id.clone(),
+        ] {
+            assert!(alive(&must), "bound {bound}: {must} must survive");
+        }
+    }
+    assert!(
+        removed_total >= 20,
+        "the tightest bound left only the protected: {removed_total}"
+    );
+    assert!(
+        freed_total > 0 && previous.1 < bytes_0,
+        "the bound freed space"
+    );
+    // A repeat run at the tightest bound has nothing left to do and leaves no record.
+    let (again, _) = gc_policy(&mut fx, bounded(1), false).await.unwrap();
+    assert_eq!(
+        (again.removed, again.blobs_removed, again.bytes_freed),
+        (0, 0, 0),
+        "{again:?}"
+    );
+    assert_eq!(
+        fx.events(&["CheckpointGcCompleted"]).await.len(),
+        runs,
+        "one record per run that did something"
+    );
+
+    // Survivors restore what they recorded (their chains survived with them).
+    let after = fx.checkpoints().await;
+    let survivors: Vec<_> = after
+        .checkpoints
+        .iter()
+        .filter(|c| matches!(c.status.as_str(), "CURRENT" | "SUPERSEDED"))
+        .cloned()
+        .collect();
+    assert!(survivors.len() < 12, "{} survived", survivors.len());
+    for (k, label) in [(5usize, "keep me")] {
+        let (r, _) = fx
+            .restore(RestoreCheckpoint {
+                name: label.into(),
+                ..Default::default()
+            })
+            .await
+            .unwrap();
+        assert!(r.restored, "{label}: {r:?}");
+        assert_eq!(
+            std::fs::read_to_string(format!("{}/hand.txt", fx.root)).unwrap(),
+            format!("hand-written version {k}\n").repeat(40)
+        );
+    }
+    let (r, _) = fx
+        .restore(RestoreCheckpoint {
+            checkpoint_id: hand[2].checkpoint_id.clone(),
+            ..Default::default()
+        })
+        .await
+        .unwrap();
+    assert!(r.restored, "the fork parent restores: {r:?}");
+    assert_eq!(
+        std::fs::read_to_string(format!("{}/hand.txt", fx.root)).unwrap(),
+        "hand-written version 2\n".repeat(40)
+    );
+    assert!(std::path::Path::new(&forked.worktree).exists());
+    // A checkpoint the bound removed is refused, typed.
+    let gone = after
+        .checkpoints
+        .iter()
+        .find(|c| c.status == "COLLECTED")
+        .expect("the bound collected checkpoints")
+        .checkpoint_id
+        .clone();
+    let refused = fx
+        .restore(RestoreCheckpoint {
+            checkpoint_id: gone,
+            ..Default::default()
+        })
+        .await
+        .unwrap()
+        .0;
+    assert_eq!(refused.refusal, "COLLECTED", "{refused:?}");
+}

@@ -48,6 +48,10 @@ pub struct SearchRequest {
     pub path_glob: Option<String>,
     /// Total hit ceiling.
     pub max_hits: usize,
+    /// Let an exact or regex search use the index's trigram prefilter
+    /// (PX-111). `false` forces the full scan, for comparison; the hits are
+    /// the same either way.
+    pub use_index: bool,
 }
 
 /// Port to the host's retrieval index; results are JSON the tool bounds.
@@ -239,6 +243,11 @@ pub struct InvokeContext {
     /// The Hook Bus (REQ-EV-0042/0139): the task's typed hooks before and
     /// after the call. `None` = no hooks are in force.
     pub hooks: Option<Arc<dyn crate::hooks::HookPort>>,
+    /// The Core's merge and apply-back state (PX-119, PX-066): the merge
+    /// transaction, the pre-apply checkpoint and the worktree registry that
+    /// `git.merge.*` and `git.worktree.apply` / `undo` keep on the event log.
+    /// `None` = the host keeps none, and those tools refuse.
+    pub git_state: Option<Arc<dyn crate::gitstate::GitStatePort>>,
 }
 
 /// What a pinned environment revision gives a process.
@@ -689,7 +698,16 @@ impl ToolRuntime {
             Some(k) => k.as_ref(),
             None => self.policy.as_ref(),
         };
+        let facts = tool.call_facts(&args, &ctx.execution_profile);
         let decision = port.decide(&PolicyRequest {
+            command: facts.argv,
+            outside_workspace_write: facts.outside_workspace_write,
+            protected_path: facts.protected_path,
+            declared_escalation: args
+                .get("escalation")
+                .and_then(Value::as_str)
+                .unwrap_or_default()
+                .to_owned(),
             tool_name: spec.name.clone(),
             effect_class,
             required_capabilities: spec.required_capabilities.clone(),

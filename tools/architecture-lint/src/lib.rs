@@ -88,6 +88,9 @@ pub struct Rules {
     /// Canonical single-owner systems (docs/81).
     #[serde(default)]
     pub canonical: Vec<CanonicalSystem>,
+    /// Programs that may be spawned only from listed source paths (PX-067).
+    #[serde(default)]
+    pub spawns: Vec<spawns::SpawnRule>,
 }
 
 impl Rules {
@@ -300,6 +303,7 @@ pub fn check(graph: &Graph, rules: &Rules) -> Vec<Violation> {
 
 pub mod locked;
 pub mod modules;
+pub mod spawns;
 
 #[cfg(test)]
 mod tests {

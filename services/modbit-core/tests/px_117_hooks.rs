@@ -823,3 +823,401 @@ async fn qual_px_117_a_project_hook_at_a_new_point_does_not_run_in_an_untrusted_
         "trusted, the hook runs"
     );
 }
+
+/// The new `before_change_commit` point (REQ-PX-117): the last stop before a
+/// ChangeTransaction commits. The handler is sent the plan of the transaction
+/// under a versioned schema (tool, workspace revision, and per operation its
+/// path, kind, size, hash and preconditions); a refusal leaves the workspace
+/// exactly as it was — for a single change and for a whole batch; a hook that
+/// tries to rewrite the transaction is ignored and the commit lands as
+/// asked; a handler that fails or times out refuses the commit (fail closed)
+/// unless it declared `fail_policy: open`; and every invocation is journaled.
+#[tokio::test(flavor = "multi_thread")]
+async fn qual_px_117_a_commit_hook_sees_the_plan_may_refuse_and_can_never_rewrite_or_widen() {
+    use sha2::Digest;
+    let mut fx = fixture(model(vec![])).await;
+    let log = fx.scripts.path().join("commit.jsonl");
+    let gate = script(
+        fx.scripts.path(),
+        "gate.sh",
+        "input=$(cat)\ncase \"$input\" in\n  *blocked.md*) printf '{\"decision\":\"deny\",\"reason\":\"blocked.md is frozen\"}' ;;\nesac\n",
+    );
+    let widen = script(
+        fx.scripts.path(),
+        "widen.sh",
+        "cat >/dev/null\nprintf '{\"decision\":\"mutate\",\"arguments\":{\"path\":\"widened.md\",\"op\":\"create\",\"content\":\"widened\"}}'\n",
+    );
+    admin_hooks(
+        fx.dir.path(),
+        &[
+            json!({"name": "plan-log", "point": "before_change_commit", "command": recorder(fx.scripts.path(), "rec.sh", &log, "")}),
+            json!({"name": "widen", "point": "before_change_commit", "mode": "intercept", "command": widen}),
+            json!({"name": "gate", "point": "before_change_commit", "mode": "intercept", "command": gate}),
+        ],
+        json!({}),
+    );
+    let task = fx.task().await;
+    let root = std::path::PathBuf::from(&fx.root);
+
+    // A change that is allowed lands exactly as asked; the rewrite is ignored.
+    let r = fx
+        .call(
+            &task,
+            "change.apply",
+            json!({"path": "ok.md", "op": "create", "content": "fine\n"}),
+        )
+        .await;
+    assert_eq!(r.status, "SUCCESS", "{r:?}");
+    assert_eq!(
+        std::fs::read_to_string(root.join("ok.md")).unwrap(),
+        "fine\n"
+    );
+    assert!(
+        !root.join("widened.md").exists(),
+        "a hook cannot rewrite or add to the transaction"
+    );
+    // The handler was sent the plan, versioned, with the hash of what is written.
+    let sent = logged(&log);
+    let first = sent
+        .iter()
+        .find(|s| s["point"] == "before_change_commit")
+        .expect("the commit point fired");
+    assert_eq!(first["hooks_version"], "hooks-1");
+    assert_eq!(first["payload_schema"], "before_change_commit.v1");
+    assert_eq!(first["task_id"], uuid_of(&task));
+    assert_eq!(first["tool"], "change.apply");
+    let tx = &first["payload"]["transaction"];
+    assert_eq!(tx["tool"], "change.apply");
+    assert!(tx["workspace_revision"].as_u64().is_some(), "{tx}");
+    assert_eq!(tx["paths"], json!(["ok.md"]));
+    assert_eq!(tx["ops"][0]["path"], "ok.md");
+    assert_eq!(tx["ops"][0]["op"], "create");
+    assert_eq!(tx["ops"][0]["content_bytes"], 5);
+    assert_eq!(
+        tx["ops"][0]["content_sha256"],
+        hex::encode(sha2::Sha256::digest(b"fine\n"))
+    );
+
+    // A refusal leaves the workspace as it was.
+    let r = fx
+        .call(
+            &task,
+            "change.apply",
+            json!({"path": "blocked.md", "op": "create", "content": "nope\n"}),
+        )
+        .await;
+    assert_eq!(r.error_code, "HOOK_DENIED", "{r:?}");
+    assert!(r.error_message.contains("blocked.md is frozen"), "{r:?}");
+    assert!(!root.join("blocked.md").exists());
+    // A batch is one transaction: one refused path stops all of it.
+    let r = fx
+        .call(
+            &task,
+            "change.batch",
+            json!({"ops": [
+                {"path": "second.md", "op": "create", "content": "2\n"},
+                {"path": "blocked.md", "op": "create", "content": "3\n"},
+            ]}),
+        )
+        .await;
+    assert_eq!(r.error_code, "HOOK_DENIED", "{r:?}");
+    assert!(
+        !root.join("second.md").exists(),
+        "nothing of the batch landed"
+    );
+    let batch = logged(&log)
+        .into_iter()
+        .rfind(|s| s["tool"] == "change.batch")
+        .expect("the batch's plan was sent");
+    assert_eq!(
+        batch["payload"]["transaction"]["paths"],
+        json!(["second.md", "blocked.md"])
+    );
+    // And a batch without the frozen path commits whole.
+    let r = fx
+        .call(
+            &task,
+            "change.batch",
+            json!({"ops": [
+                {"path": "a1.md", "op": "create", "content": "1\n"},
+                {"path": "a2.md", "op": "create", "content": "2\n"},
+            ]}),
+        )
+        .await;
+    assert_eq!(r.status, "SUCCESS", "{r:?}");
+    assert!(root.join("a1.md").exists() && root.join("a2.md").exists());
+    assert!(!root.join("widened.md").exists());
+
+    // Every invocation is journaled, with the rewrite recorded as ignored.
+    let evs = fx.events().await;
+    let invoked = hook_events(&evs, &task);
+    let at_commit: Vec<&Value> = invoked
+        .iter()
+        .filter(|h| h["point"] == "before_change_commit")
+        .collect();
+    assert!(
+        at_commit.len() >= 9,
+        "three hooks, three changes: {at_commit:#?}"
+    );
+    assert!(
+        at_commit
+            .iter()
+            .any(|h| h["hook"].as_str().unwrap().contains("widen")
+                && h["applied"] == false
+                && h["outcome"] != "MUTATED"),
+        "{at_commit:#?}"
+    );
+    assert!(
+        at_commit
+            .iter()
+            .any(|h| h["hook"].as_str().unwrap().contains("gate") && h["outcome"] == "DENIED"),
+        "{at_commit:#?}"
+    );
+    assert!(
+        !evs.iter().any(|e| e["event_type"] == "FileChanged"
+            && e["payload"]["payload"]["path"]
+                .as_str()
+                .is_some_and(|p| p == "blocked.md" || p == "widened.md")),
+        "no change was recorded for a refused or rewritten path"
+    );
+
+    // A handler that times out refuses the commit; one declared open does not.
+    let slow = script(fx.scripts.path(), "slow.sh", "sleep 5\n");
+    admin_hooks(
+        fx.dir.path(),
+        &[
+            json!({"name": "slowpoke", "point": "before_change_commit", "mode": "intercept", "command": slow.clone(), "timeout_ms": 300}),
+        ],
+        json!({}),
+    );
+    let t2 = fx.task().await;
+    let r = fx
+        .call(
+            &t2,
+            "change.apply",
+            json!({"path": "closed.md", "op": "create", "content": "x\n"}),
+        )
+        .await;
+    assert_eq!(r.error_code, "HOOK_TIMEOUT", "{r:?}");
+    assert!(!root.join("closed.md").exists());
+    admin_hooks(
+        fx.dir.path(),
+        &[
+            json!({"name": "slowpoke", "point": "before_change_commit", "mode": "intercept", "command": slow, "timeout_ms": 300, "fail_policy": "open"}),
+        ],
+        json!({}),
+    );
+    let t3 = fx.task().await;
+    let r = fx
+        .call(
+            &t3,
+            "change.apply",
+            json!({"path": "open.md", "op": "create", "content": "x\n"}),
+        )
+        .await;
+    assert_eq!(r.status, "SUCCESS", "{r:?}");
+    assert!(root.join("open.md").exists());
+}
+
+/// A model's own change goes through the same last stop: the hook sees the
+/// plan of the model's `change.apply` and its refusal comes back to the model
+/// as the tool's result, with nothing written.
+#[tokio::test(flavor = "multi_thread")]
+async fn qual_px_117_a_commit_hook_refuses_a_models_change_and_the_model_is_told() {
+    let script_steps = vec![
+        json!({"calls": [{"name": "plan.update", "args": {"outcome": "note", "expected_files": ["blocked.md"]}}]}),
+        json!({"calls": [{"name": "change.apply", "args": {"path": "blocked.md", "op": "create", "content": "nope\n"}}]}),
+        json!({"calls": [{"name": "task.complete", "args": {"summary": "gave up", "self_review": {"findings": []}}}]}),
+    ];
+    let mut fx = fixture(model(script_steps)).await;
+    let gate = script(
+        fx.scripts.path(),
+        "gate.sh",
+        "cat >/dev/null\nprintf '{\"decision\":\"deny\",\"reason\":\"frozen by the release manager\"}'\n",
+    );
+    admin_hooks(
+        fx.dir.path(),
+        &[
+            json!({"name": "freeze", "point": "before_change_commit", "mode": "intercept", "command": gate, "tools": ["change.*"]}),
+        ],
+        json!({}),
+    );
+    let (_task, _state) = fx.run_task().await;
+    assert!(!std::path::Path::new(&fx.root).join("blocked.md").exists());
+    let bodies = fx.seen.lock().unwrap().clone();
+    let results: Vec<String> = bodies.last().unwrap()["messages"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .filter(|m| m["role"] == "tool")
+        .map(|m| m["content"].as_str().unwrap_or_default().to_owned())
+        .collect();
+    assert!(
+        results
+            .iter()
+            .any(|r| r.contains("HOOK_DENIED") && r.contains("frozen by the release manager")),
+        "{results:#?}"
+    );
+}
+
+/// `subagent_stop` with a REAL child (REQ-PX-117): the parent spawns a child
+/// task that runs in its own worktree on the same scripted model, collects its
+/// result with `agent.wait`, and the hook process is sent the typed payload —
+/// the child's id (the same one the admission recorded), its status and the
+/// size of the envelope. The hook only observes: its answer changes neither
+/// the result the parent reads nor the child's record.
+#[tokio::test(flavor = "multi_thread")]
+async fn qual_px_117_a_subagent_stop_hook_sees_a_real_childs_result_and_cannot_change_it() {
+    let reply: Reply = Arc::new(|body, results| {
+        let text = body["messages"].to_string();
+        // The child's own conversation carries its task goal as a goal line.
+        if text.contains("Task goal: write the child file") {
+            return match results {
+                0 => {
+                    json!({"calls": [{"name": "plan.update", "args": {"outcome": "the file exists", "expected_files": ["child/c.txt"]}}]})
+                }
+                1 => {
+                    json!({"calls": [{"name": "change.apply", "args": {"path": "child/c.txt", "op": "create", "content": "from the child\n"}}]})
+                }
+                _ => {
+                    json!({"calls": [{"name": "task.complete", "args": {"summary": "child done", "self_review": {"findings": []}}}]})
+                }
+            };
+        }
+        match results {
+            0 => {
+                json!({"calls": [{"name": "plan.update", "args": {"outcome": "keep notes", "expected_files": ["notes.md"], "protected_effects": ["git.merge"]}}]})
+            }
+            1 => {
+                json!({"calls": [{"name": "agent.spawn", "args": {"idempotency_key": "kid", "objective": "write the child file", "write_scope": ["child/"]}}]})
+            }
+            2 => {
+                json!({"calls": [{"name": "agent.wait", "args": {"idempotency_key": "kid", "timeout_ms": 60000}}]})
+            }
+            3 => {
+                json!({"calls": [{"name": "git.merge.abort", "args": {"child": "kid", "discard": true, "reason": "integration of the fixture"}}]})
+            }
+            _ => complete(),
+        }
+    });
+    let (repo, root) = plain_repo(&[("notes.md", "notes\n"), ("child/.keep", "")]);
+    let (base, seen) = scripted_model_fn(reply).await;
+    let dir = tempfile::tempdir().unwrap();
+    let scripts = tempfile::tempdir().unwrap();
+    let log = scripts.path().join("stop.jsonl");
+    // A hook that answers "deny" at an after-point has no power to take the
+    // result back.
+    let stop = recorder(
+        scripts.path(),
+        "stop.sh",
+        &log,
+        "{\"decision\":\"deny\",\"reason\":\"I would rather not have a child\"}",
+    );
+    admin_hooks(
+        dir.path(),
+        &[json!({"name": "child-watch", "point": "subagent_stop", "command": stop})],
+        json!({}),
+    );
+    let env = model_env(&base);
+    let env_refs: Vec<(&str, &str)> = env.iter().map(|(k, v)| (k.as_str(), v.as_str())).collect();
+    let core = CoreProcess::spawn_with_env(dir.path(), &env_refs);
+    let mut c = core.client().await;
+    let (session, g) = session_with_lease(&mut c, 0x30).await;
+    let _approver = spawn_approver(&core, &session, g).await;
+    let task = create_task(
+        &mut c,
+        &session,
+        g,
+        &root,
+        0x41,
+        "local_trusted",
+        "keep notes",
+    )
+    .await;
+    // A child's turn budget is a share of its parent's: give the parent room.
+    c.command(envelope_fenced(
+        id16(0x42),
+        "StartTask",
+        modbit_protocol::v1::StartTask {
+            task_id: Some(task.clone()),
+            endpoint: String::new(),
+            model: "gpt-5-mini".into(),
+            max_turns: 40,
+            max_tool_calls: 0,
+            max_no_progress_turns: 6,
+            skills: vec![],
+            ..Default::default()
+        }
+        .encode_to_vec(),
+        g,
+    ))
+    .await
+    .unwrap();
+    let st = wait_task(&mut c, &task, 180).await;
+    assert_eq!(st.state, "ReadyForReview", "{st:?}");
+
+    let evs = replay(&core, &session).await;
+    let admitted: Vec<&Value> = evs
+        .iter()
+        .filter(|e| e["event_type"] == "SubagentAdmitted")
+        .collect();
+    assert_eq!(admitted.len(), 1, "one real child was admitted");
+    let child_id = admitted[0]["payload"]["payload"]["agent_id"]
+        .as_str()
+        .unwrap()
+        .to_owned();
+    assert!(
+        evs.iter()
+            .any(|e| e["event_type"] == "SubagentResultRecorded"),
+        "the child ran to a result"
+    );
+    // The hook was sent exactly one typed, versioned stop.
+    let sent: Vec<Value> = logged(&log)
+        .into_iter()
+        .filter(|s| s["point"] == "subagent_stop")
+        .collect();
+    assert_eq!(sent.len(), 1, "{sent:#?}");
+    let stop = &sent[0];
+    assert_eq!(stop["hooks_version"], "hooks-1");
+    assert_eq!(stop["payload_schema"], "subagent_stop.v1");
+    assert_eq!(stop["task_id"], uuid_of(&task));
+    assert_eq!(stop["payload"]["agent_id"], child_id);
+    assert_eq!(stop["payload"]["status"], "SUCCESS");
+    assert!(stop["payload"]["result_bytes"].as_u64().unwrap() > 0);
+    // Its answer took nothing back: the parent read the child's result and
+    // finished, and the invocation is on the log as an observation.
+    let bodies = seen.lock().unwrap().clone();
+    let parent_last = bodies
+        .iter()
+        .rev()
+        .find(|b| {
+            !b["messages"]
+                .to_string()
+                .contains("Task goal: write the child file")
+        })
+        .unwrap();
+    let waited: Vec<String> = parent_last["messages"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .filter(|m| m["role"] == "tool")
+        .map(|m| m["content"].as_str().unwrap_or_default().to_owned())
+        .collect();
+    assert!(
+        waited.iter().any(|r| r.starts_with("status: SUCCESS")),
+        "{waited:#?}"
+    );
+    let recorded: Vec<Value> = hook_events(&evs, &task)
+        .into_iter()
+        .filter(|h| h["point"] == "subagent_stop")
+        .collect();
+    assert_eq!(recorded.len(), 1, "{recorded:#?}");
+    assert_eq!(recorded[0]["applied"], false);
+    // A hook cannot intercept after the step.
+    let err = modbit_tools::hooks::HookSpec::parse(
+        r#"{"name":"late","point":"subagent_stop","mode":"intercept","command":["true"]}"#,
+    )
+    .unwrap_err();
+    assert!(err.contains("only a hook before a step"), "{err}");
+    drop(repo);
+}

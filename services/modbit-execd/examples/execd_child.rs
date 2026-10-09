@@ -113,6 +113,36 @@ fn main() {
                 }
             }
         }
+        // PX-132: a real listening server in a process of its own. It binds
+        // `MODBIT_EXECD_TEST_BIND` (default 127.0.0.1) on an ephemeral port,
+        // prints `listening <port>`, and answers every connection with an
+        // HTTP response whose status is `MODBIT_EXECD_TEST_STATUS` (default
+        // 200) until it is killed.
+        "listen" => {
+            let bind = std::env::var("MODBIT_EXECD_TEST_BIND").unwrap_or("127.0.0.1".into());
+            let status: u16 = std::env::var("MODBIT_EXECD_TEST_STATUS")
+                .ok()
+                .and_then(|v| v.parse().ok())
+                .unwrap_or(200);
+            let listener = std::net::TcpListener::bind((bind.as_str(), 0)).unwrap();
+            let port = listener.local_addr().unwrap().port();
+            writeln!(out, "listening {port}").unwrap();
+            out.flush().unwrap();
+            drop(out);
+            for stream in listener.incoming().flatten() {
+                use std::io::Read;
+                let mut stream = stream;
+                let mut buf = [0u8; 1024];
+                let _ = stream.set_read_timeout(Some(Duration::from_millis(500)));
+                let _ = stream.read(&mut buf);
+                let body = "ok";
+                let _ = write!(
+                    stream,
+                    "HTTP/1.1 {status} X\r\ncontent-length: {}\r\nconnection: close\r\n\r\n{body}",
+                    body.len()
+                );
+            }
+        }
         other => {
             eprintln!("unknown role {other}");
             std::process::exit(2);

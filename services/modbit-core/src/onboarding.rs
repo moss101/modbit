@@ -83,8 +83,20 @@ pub(crate) fn configure_provider(
     })
 }
 
-/// Whether a session has trusted a root, read from the log.
+/// Whether a session has trusted a root, read from the log. A worktree the
+/// Core made for a task (PX-118) has the trust of the checkout it was made
+/// from: trusting a repository is trusting what Modbit checks out of it.
 pub(crate) fn is_trusted(
+    store: &modbit_event_store::EventStore,
+    session_id: SessionId,
+    workspace_root: &str,
+) -> bool {
+    trusted_root(store, session_id, workspace_root)
+        || crate::worktrees::origin_of(store, session_id, workspace_root)
+            .is_some_and(|origin| trusted_root(store, session_id, &origin))
+}
+
+fn trusted_root(
     store: &modbit_event_store::EventStore,
     session_id: SessionId,
     workspace_root: &str,

@@ -7,12 +7,13 @@
 //! nothing — no run, no worktree, no lease — was created. Subagent
 //! admission (M6.3) takes its tickets through the same door.
 
-use std::sync::Mutex;
+use std::collections::HashMap;
+use std::sync::{Arc, Mutex};
 
 use modbit_core_runtime::capacity::{CapacityPool, CapacityRefused, ResourceVector, Ticket};
-use modbit_domain::Timestamp;
 use modbit_domain::event::{Actor, AggregateType};
 use modbit_domain::task::{Task, TaskEvent};
+use modbit_domain::{TaskId, Timestamp};
 use modbit_event_store::EventStore;
 use modbit_protocol::v1 as wire;
 
@@ -24,6 +25,24 @@ pub(crate) struct Capacity {
     pool: Mutex<CapacityPool>,
     /// How long a ticket lives without renewal, ms.
     pub ttl_ms: i64,
+    /// How long a paused task keeps its run's ticket before giving it back
+    /// (`MODBIT_PAUSE_IDLE_BOUND_MS`, REQ-PX-101), ms.
+    idle_bound_ms: i64,
+    /// The tickets paused tasks hold.
+    holds: Mutex<HashMap<TaskId, Hold>>,
+}
+
+/// A paused task's hold on the ticket its run took (REQ-PX-101): the
+/// capacity stays the task's, renewed, until it is resumed (the same ticket
+/// continues), cancelled, or has been paused for the idle bound (given back
+/// with a typed record; a later resume re-enters admission).
+#[derive(Clone, Debug)]
+pub(crate) struct Hold {
+    pub ticket_id: String,
+    /// The lease generation the ticket was granted under.
+    pub generation: u64,
+    /// When the pause began, ms.
+    pub since_ms: i64,
 }
 
 /// `MODBIT_CAPACITY` (`model=4,terminal=8,sandbox=2,browser=2,memory_mib=8192,provider=8`)
@@ -49,9 +68,16 @@ pub(crate) fn from_env() -> Result<Capacity, String> {
         .and_then(|v| v.parse::<i64>().ok())
         .filter(|v| *v > 0)
         .unwrap_or(120_000);
+    let idle_bound_ms = std::env::var("MODBIT_PAUSE_IDLE_BOUND_MS")
+        .ok()
+        .and_then(|v| v.parse::<i64>().ok())
+        .filter(|v| *v > 0)
+        .unwrap_or(15 * 60 * 1000);
     Ok(Capacity {
         pool: Mutex::new(CapacityPool::new(limits)),
         ttl_ms,
+        idle_bound_ms,
+        holds: Mutex::new(HashMap::new()),
     })
 }
 
@@ -191,6 +217,78 @@ impl Capacity {
         }
     }
 
+    /// The idle bound a pause holds its ticket for, ms.
+    pub(crate) fn idle_bound_ms(&self) -> i64 {
+        self.idle_bound_ms
+    }
+
+    /// A run that a person paused keeps its ticket: record the hold, and let
+    /// [`spawn_hold_reaper`] keep it alive and give it back at the bound.
+    pub(crate) fn hold(&self, task: TaskId, ticket_id: &str, generation: u64) {
+        self.holds.lock().expect("holds").insert(
+            task,
+            Hold {
+                ticket_id: ticket_id.to_owned(),
+                generation,
+                since_ms: Timestamp::now().0,
+            },
+        );
+    }
+
+    /// The task's hold, if it has one.
+    pub(crate) fn hold_of(&self, task: &TaskId) -> Option<Hold> {
+        self.holds.lock().expect("holds").get(task).cloned()
+    }
+
+    /// Resume: the ticket the pause kept, renewed under the resumer's lease
+    /// generation and handed back to the run — or `None` when the pause no
+    /// longer holds one (given back at the bound, lapsed), so the resume goes
+    /// through admission like any start. Taking the hold ends it.
+    pub(crate) fn reuse_hold(&self, task: &TaskId, generation: u64) -> Option<String> {
+        let hold = self.holds.lock().expect("holds").remove(task)?;
+        let now = Timestamp::now().0;
+        let mut pool = self.pool.lock().expect("capacity pool");
+        let _ = pool.expire(now);
+        match pool.renew(&hold.ticket_id, now + self.ttl_ms, generation) {
+            Ok(_) => Some(hold.ticket_id),
+            Err(_) => {
+                // A ticket that cannot be renewed is not ours to keep.
+                pool.release(&hold.ticket_id);
+                None
+            }
+        }
+    }
+
+    /// Remove the hold only when it is still `ticket_id`'s; `true` when this
+    /// call ended it (so exactly one of resume, cancel and the reaper gives
+    /// the ticket back).
+    fn end_hold(&self, task: &TaskId, ticket_id: &str) -> bool {
+        let mut holds = self.holds.lock().expect("holds");
+        if holds.get(task).is_some_and(|h| h.ticket_id == ticket_id) {
+            holds.remove(task);
+            true
+        } else {
+            false
+        }
+    }
+
+    /// A paused task is cancelled: the ticket it kept goes back to the pool.
+    pub(crate) fn drop_hold(
+        &self,
+        store: &mut EventStore,
+        core: &Core,
+        task: &Task,
+        lt: Lineage,
+        actor: &Actor,
+    ) {
+        let Some(hold) = self.hold_of(&task.task_id) else {
+            return;
+        };
+        if self.end_hold(&task.task_id, &hold.ticket_id) {
+            self.release(store, core, task, lt, actor, &hold.ticket_id);
+        }
+    }
+
     /// The pool as a client sees it.
     pub(crate) fn view(&self) -> wire::CapacityView {
         let now = Timestamp::now().0;
@@ -223,4 +321,66 @@ impl Capacity {
                 .collect(),
         }
     }
+}
+
+/// Keep a paused task's ticket alive until the idle bound, then give it back
+/// with one typed record (`PausedCapacityReleased`). Ends quietly when the hold
+/// is resumed, cancelled or gone first.
+pub(crate) fn spawn_hold_reaper(core: Arc<Core>, task: Task, ticket_id: String) {
+    tokio::spawn(async move {
+        let renew_every = (core.capacity.ttl_ms / 3).max(50);
+        loop {
+            let Some(hold) = core.capacity.hold_of(&task.task_id) else {
+                return;
+            };
+            if hold.ticket_id != ticket_id {
+                return;
+            }
+            let bound = core.capacity.idle_bound_ms();
+            let held = Timestamp::now().0 - hold.since_ms;
+            if held >= bound {
+                if core.capacity.end_hold(&task.task_id, &ticket_id) {
+                    let released = core
+                        .capacity
+                        .pool
+                        .lock()
+                        .expect("capacity pool")
+                        .release(&ticket_id);
+                    if let Some(t) = released {
+                        let mut store = core.store.lock().await;
+                        let _ = append(
+                            &mut store,
+                            &core,
+                            Lineage::task(core.tenant_id, task.session_id, task.task_id),
+                            AggregateType::Task,
+                            *task.task_id.as_bytes(),
+                            vec![typed(
+                                "PausedCapacityReleased",
+                                &TaskEvent::PausedCapacityReleased {
+                                    ticket_id: t.ticket_id,
+                                    holder: t.holder,
+                                    held_ms: u64::try_from(held).unwrap_or(0),
+                                    idle_bound_ms: u64::try_from(bound).unwrap_or(0),
+                                    reason: "IDLE_BOUND".into(),
+                                },
+                                Actor::Core("capacity".into()),
+                            )],
+                        );
+                    }
+                }
+                return;
+            }
+            tokio::time::sleep(std::time::Duration::from_millis(
+                u64::try_from((bound - held).min(renew_every)).unwrap_or(50),
+            ))
+            .await;
+            // Keep the ticket alive for the pause: it is the task's until the
+            // bound. One that can no longer be renewed has lapsed (or been
+            // taken back); there is nothing left to hold.
+            if core.capacity.renew(&ticket_id, hold.generation).is_err() {
+                core.capacity.end_hold(&task.task_id, &ticket_id);
+                return;
+            }
+        }
+    });
 }

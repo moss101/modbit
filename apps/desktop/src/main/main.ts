@@ -169,6 +169,8 @@ const browserHost = new BrowserHost(
   () => supervisor.current(),
   (channel, payload) => send(channel, payload),
   (handle, pageOrigin) => credentials.secretFor(handle, pageOrigin),
+  { dataDir, env: process.env },
+  () => credentials.secretValues(),
 );
 function requireClient(): CoreClient {
   const c = supervisor.current();
@@ -455,7 +457,28 @@ handle("review:bundle", async (_e: IpcMainInvokeEvent, taskId: unknown) => {
     invariantFindings: b.invariantFindings,
     receipts: b.receipts,
     evidenceLinks: b.evidenceLinks,
+    ciEvidence: b.ciEvidence.map((c) => ({ name: c.name, runId: c.runId.toString(), status: c.status, conclusion: c.conclusion, url: c.url, completedAt: c.completedAt, logRef: c.logRef, logTruncated: c.logTruncated, commit: c.commit, provenance: c.provenance })),
+    ciRejected: b.ciRejected.map((c) => ({ name: c.name, headSha: c.headSha, reason: c.reason })),
+    reviewComments: b.reviewComments.map((t) => ({ commentId: t.commentId.toString(), kind: t.kind, author: t.author, url: t.url, path: t.path, line: t.line.toString(), body: t.body, trust: t.trust, disposition: t.disposition, reason: t.reason, inputId: t.inputId, answered: t.answered, reportedBack: t.reportedBack, createdAt: t.createdAt })),
   };
+});
+// PX-127: the Core reads the forge (its token, the task's lease) and records
+// what it read; this process makes no forge call.
+handle("review:ingestCi", async (_e: IpcMainInvokeEvent, sessionId: unknown, taskId: unknown) => {
+  const sid = requireSessionId(sessionId);
+  const tid = requireTaskId(taskId);
+  const c = requireClient();
+  if (c.leaseGeneration(sid) === undefined) await c.joinSessionLease(sid, `desktop ${app.getVersion()}`);
+  const r = await c.ingestCiResults(sid, tid);
+  return { commit: r.commit, checks: r.checks.length, refused: r.rejected.length, evidenceClass: r.evidenceClass, offset: r.offset.toString() };
+});
+handle("review:ingestComments", async (_e: IpcMainInvokeEvent, sessionId: unknown, taskId: unknown) => {
+  const sid = requireSessionId(sessionId);
+  const tid = requireTaskId(taskId);
+  const c = requireClient();
+  if (c.leaseGeneration(sid) === undefined) await c.joinSessionLease(sid, `desktop ${app.getVersion()}`);
+  const r = await c.ingestReviewComments(sid, tid);
+  return { steered: r.steered.length, ignored: r.ignored.length, alreadyTaken: r.alreadyTaken, offset: r.offset.toString() };
 });
 handle("review:codeView", async (_e: IpcMainInvokeEvent, taskId: unknown, path: unknown, expectedFileRevision: unknown) => {
   const v = await requireClient().getCodeView(requireTaskId(taskId), requireRelativePath(path), typeof expectedFileRevision === "string" ? expectedFileRevision : "");
@@ -561,9 +584,11 @@ handle("browser:close", async (_e: IpcMainInvokeEvent, browserSessionId: unknown
   if (typeof browserSessionId !== "string" || !HEX32.test(browserSessionId)) throw new Error("BAD_ARGUMENT: browserSessionId");
   await browserHost.close(browserSessionId);
 });
-handle("browser:describe", (_e: IpcMainInvokeEvent, browserSessionId: unknown) => {
+handle("browser:describe", (_e: IpcMainInvokeEvent, browserSessionId: unknown, taskId: unknown) => {
   if (typeof browserSessionId !== "string" || !HEX32.test(browserSessionId)) throw new Error("BAD_ARGUMENT: browserSessionId");
-  return browserHost.describe(browserSessionId);
+  // A task asks only for the views it owns (PX-073); the shell's own panel names none.
+  if (taskId !== undefined && taskId !== null && (typeof taskId !== "string" || !HEX32.test(taskId))) throw new Error("BAD_ARGUMENT: taskId");
+  return browserHost.describe(browserSessionId, typeof taskId === "string" ? taskId : undefined);
 });
 handle("browser:session", async (_e: IpcMainInvokeEvent, browserSessionId: unknown, taskId: unknown) => {
   if (typeof browserSessionId !== "string" || !HEX32.test(browserSessionId)) throw new Error("BAD_ARGUMENT: browserSessionId");
@@ -572,6 +597,39 @@ handle("browser:session", async (_e: IpcMainInvokeEvent, browserSessionId: unkno
   return { browserSessionId, taskId: tid, partition: v.partition, controller: v.controller, leaseGeneration: v.leaseGeneration.toString(), hostAttached: v.hostAttached, hostKind: v.hostKind, url: v.url, title: v.title, stateVersion: v.stateVersion.toString(), fingerprint: v.fingerprint, closed: v.closed };
 });
 handle("browser:log", () => browserHost.log.slice());
+// PX-073: a task lists and selects only the views it owns.
+handle("browser:list", (_e: IpcMainInvokeEvent, taskId: unknown) => browserHost.listViews(requireTaskId(taskId)));
+handle("browser:select", (_e: IpcMainInvokeEvent, taskId: unknown, browserSessionId: unknown) => {
+  if (typeof browserSessionId !== "string" || !HEX32.test(browserSessionId)) throw new Error("BAD_ARGUMENT: browserSessionId");
+  return browserHost.selectView(requireTaskId(taskId), browserSessionId);
+});
+// PX-073 / PX-120: the person's browser policy - which local destinations and
+// which origins the sessions may use. Only this shell sets it; the Core and
+// the model have no way to (the host takes no policy from a request).
+handle("browser:policy", () => browserHost.getPolicy());
+handle("browser:setPolicy", (_e: IpcMainInvokeEvent, next: unknown) => {
+  const o = (next && typeof next === "object" ? next : {}) as { allowTargets?: unknown; allowOrigins?: unknown };
+  const list = (v: unknown): string[] | undefined => (Array.isArray(v) && v.length <= 200 && v.every((x) => typeof x === "string" && x.length <= 200) ? (v as string[]) : undefined);
+  return browserHost.setPolicy({ ...(list(o.allowTargets) ? { allowTargets: list(o.allowTargets)! } : {}), ...(list(o.allowOrigins) ? { allowOrigins: list(o.allowOrigins)! } : {}) });
+});
+handle("browser:refusals", (_e: IpcMainInvokeEvent, browserSessionId: unknown) => {
+  if (typeof browserSessionId !== "string" || !HEX32.test(browserSessionId)) throw new Error("BAD_ARGUMENT: browserSessionId");
+  return browserHost.refusals(browserSessionId);
+});
+// PX-073: a certificate error waits for the person (Reject or Trust, remembered per workspace, listable and clearable).
+handle("browser:certDecide", (_e: IpcMainInvokeEvent, browserSessionId: unknown, id: unknown, decision: unknown) => {
+  if (typeof browserSessionId !== "string" || !HEX32.test(browserSessionId)) throw new Error("BAD_ARGUMENT: browserSessionId");
+  if (typeof id !== "string" || id.length > 64) throw new Error("BAD_ARGUMENT: id");
+  if (decision !== "trust" && decision !== "reject") throw new Error("BAD_ARGUMENT: decision must be trust or reject");
+  return browserHost.certDecide(browserSessionId, id, decision);
+});
+handle("browser:certTrusts", () => browserHost.certTrusts());
+handle("browser:certClear", () => browserHost.certClear());
+// PX-073: sign out of the sites a session visited (or every session): cookies, storage, service workers and caches.
+handle("browser:clearData", async (_e: IpcMainInvokeEvent, browserSessionId: unknown) => {
+  if (browserSessionId !== undefined && browserSessionId !== null && (typeof browserSessionId !== "string" || !HEX32.test(browserSessionId))) throw new Error("BAD_ARGUMENT: browserSessionId");
+  return browserHost.clearData(typeof browserSessionId === "string" ? browserSessionId : undefined);
+});
 // IMP-EV-0085: the person's emergency stop — the host fences its input
 // first (no model loop in the way), then the Core blocks every new effect.
 handle("browser:emergencyStop", async (_e: IpcMainInvokeEvent, sessionId: unknown, reason: unknown) => {

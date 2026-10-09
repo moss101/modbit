@@ -143,7 +143,7 @@ fn random_id() -> String {
 }
 
 /// The task a session's owner string names, when it is a task's.
-fn owner_task(owner: &str) -> Option<TaskId> {
+pub(crate) fn owner_task(owner: &str) -> Option<TaskId> {
     owner
         .strip_prefix("task:")
         .and_then(|t| TaskId::parse(t).ok())
@@ -196,7 +196,7 @@ fn view_of(core: &Core, info: &modbit_terminal::SessionInfo, now: i64) -> wire::
 
 /// The broker, as a connection speaking for the host (the Core speaks for
 /// the person; ownership is checked here against what the broker reports).
-async fn broker(core: &Core) -> Result<(ExecClient, u64), (&'static str, String)> {
+pub(crate) async fn broker(core: &Core) -> Result<(ExecClient, u64), (&'static str, String)> {
     let Some(execd) = &core.tools.execd else {
         return Err((
             "NO_BROKER",
@@ -211,7 +211,7 @@ async fn broker(core: &Core) -> Result<(ExecClient, u64), (&'static str, String)
 }
 
 /// The broker's sessions.
-async fn sessions_of(
+pub(crate) async fn sessions_of(
     client: &mut ExecClient,
 ) -> Result<Vec<modbit_terminal::SessionInfo>, (&'static str, String)> {
     client

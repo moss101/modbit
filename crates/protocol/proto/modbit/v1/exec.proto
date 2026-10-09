@@ -8,6 +8,7 @@ package modbit.v1;
 
 import "modbit/v1/domain.proto";
 import "modbit/v1/negotiation.proto";
+import "modbit/v1/security_runtime.proto";
 import "modbit/v1/surface.proto";
 
 message ExecRequest {
@@ -242,5 +243,8 @@ message ExecFrame {
     ReleaseTerminalLease release_lease = 124;
     TerminalLeaseState lease_state = 125;
     StdinWritten stdin_written = 126;
+    // PX-132 (field block 320-339).
+    ListServices list_services = 320;
+    SessionListeners service_listeners = 321;
   }
 }

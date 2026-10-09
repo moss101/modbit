@@ -1663,15 +1663,36 @@ async fn rollback_fork(
     f: &crate::branch::Forked,
     rolled_back: &mut Vec<String>,
 ) {
+    let mut removed = false;
     if let Some(root) = parent.workspace_root.as_deref()
         && let Ok(repo) = modbit_git::Repo::open(std::path::Path::new(root))
     {
         match repo.worktree_remove(std::path::Path::new(&f.worktree)) {
-            Ok(()) => rolled_back.push(format!("worktree {} removed", f.worktree)),
+            Ok(()) => {
+                removed = true;
+                rolled_back.push(format!("worktree {} removed", f.worktree));
+            }
             Err(e) => rolled_back.push(format!("worktree {} NOT removed: {e}", f.worktree)),
         }
     }
     let mut store = core.store.lock().await;
+    if removed {
+        let id = f.task_id.to_string();
+        let _ = crate::worktrees::append_events(
+            &mut store,
+            core.tenant_id,
+            parent.session_id,
+            f.task_id,
+            crate::worktrees::aggregate_id(&id),
+            vec![crate::worktrees::removed_event(
+                &id,
+                "the child's admission was refused",
+                0,
+                "spawn",
+                actor,
+            )],
+        );
+    }
     let _ = append(
         &mut store,
         core,
@@ -1748,6 +1769,82 @@ pub(crate) async fn unsettled_children(core: &Core, parent: &TaskId) -> Vec<Unse
             status: n.status,
         })
         .collect()
+}
+
+/// A child that ended with changes its parent has neither merged nor
+/// discarded (PX-119).
+#[derive(Clone, Debug)]
+pub(crate) struct UnintegratedChild {
+    pub agent_id: AgentId,
+    pub key: String,
+    pub status: String,
+    pub child_task_id: TaskId,
+    pub branch: String,
+    /// How many files its worktree holds beyond its base (0 when only commits).
+    pub changed_files: u32,
+}
+
+/// The children `parent` spawned that are over (terminal) and produced
+/// changes that are neither merged into the parent nor explicitly discarded
+/// by a recorded decision (PX-119). A child with no worktree on the log, one
+/// whose worktree holds nothing beyond its base, and one whose result has a
+/// disposition (`MERGED`, `DISCARDED`, `APPLIED`, `EXPORTED`) are integrated.
+/// The question is asked of Git and of the log, never of the child's say-so.
+pub(crate) async fn unintegrated_children(core: &Core, parent: &TaskId) -> Vec<UnintegratedChild> {
+    let (nodes, records) = {
+        let store = core.store.lock().await;
+        let Some(task) = store.task(parent).ok().flatten() else {
+            return vec![];
+        };
+        let nodes: Vec<_> = store
+            .agent_nodes(parent)
+            .unwrap_or_default()
+            .into_iter()
+            .filter(|n| n.kind == "SUBAGENT")
+            .filter(|n| matches!(n.status.as_str(), "COMPLETED" | "FAILED" | "CANCELLED"))
+            .map(|n| {
+                let child = n
+                    .child_task_id
+                    .or_else(|| latest_admission(&store, &task, n.agent_id).map(|a| a.0));
+                (n, child)
+            })
+            .collect();
+        (
+            nodes,
+            crate::worktrees::registry_of_session(&store, &task.session_id),
+        )
+    };
+    let mut out = Vec::new();
+    for (node, child) in nodes {
+        let Some(child) = child else { continue };
+        let Some(rec) = records
+            .iter()
+            .find(|r| r.task_id == Some(child) && r.kind == "SUBAGENT" && !r.removed)
+        else {
+            continue;
+        };
+        if rec.disposition.is_some() {
+            continue;
+        }
+        let (path, base) = (rec.path.clone(), rec.base_revision.clone());
+        let info = tokio::task::spawn_blocking(move || {
+            crate::worktrees::inspect(std::path::Path::new(&path), Some(&base))
+        })
+        .await
+        .unwrap_or_default();
+        // A worktree that cannot be inspected is not assumed empty.
+        if info.has_changes || (info.exists && info.error.is_some()) {
+            out.push(UnintegratedChild {
+                agent_id: node.agent_id,
+                key: node.idempotency_key.clone(),
+                status: node.status.clone(),
+                child_task_id: child,
+                branch: rec.branch.clone(),
+                changed_files: info.changed_files,
+            });
+        }
+    }
+    out
 }
 
 /// Cancel every child `parent` still has alive, and theirs in turn (FIX-16:

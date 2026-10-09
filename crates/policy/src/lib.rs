@@ -10,8 +10,10 @@
 
 pub mod assurance;
 pub mod config;
+pub mod epoch;
 pub mod kernel;
 pub mod ledger;
+pub mod runmode;
 
 pub use assurance::{
     Advisory, AssuranceLayer, AssuranceLevel, AssurancePolicy, CandidateFacts, ChangeKind,
@@ -23,3 +25,4 @@ pub use kernel::{
     CapabilityKernel, KernelDecision, KernelRequest, PolicyEnvelope, ResourceSelector,
     ResourceTarget, default_lease_for_profile,
 };
+pub use runmode::{RuleRefusal, RunDecision, RunPolicy};

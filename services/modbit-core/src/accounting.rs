@@ -374,6 +374,44 @@ pub(crate) struct Cost {
     pub tools: ToolCost,
     /// First to last event of the request, milliseconds.
     pub wall_clock_ms: u64,
+    /// REQ-PX-139: what the request's subagents (and theirs) cost, each
+    /// counted once as its own subtree — the same priced attempts, from the
+    /// same log, that each child's own record holds.
+    #[serde(default)]
+    pub children_minor: u64,
+    /// `total_minor + children_minor`: the cost of the request and
+    /// everything it delegated.
+    #[serde(default)]
+    pub subtree_minor: u64,
+    /// Whether the request's cost *and* every child's is fully priced.
+    #[serde(default)]
+    pub subtree_complete: bool,
+    /// The children, one row each.
+    #[serde(default)]
+    pub children: Vec<ChildCost>,
+}
+
+/// One child's cost as the parent's record rolls it up (REQ-PX-139).
+#[derive(Clone, Debug, Default, PartialEq, Serialize, Deserialize)]
+pub(crate) struct ChildCost {
+    /// The child task.
+    pub task_id: String,
+    /// The agent node.
+    pub agent_id: String,
+    /// The child's own cost record total.
+    pub total_minor: u64,
+    /// The child's own cost and its children's.
+    pub subtree_minor: u64,
+    /// Held for attempts of unknown usage.
+    pub held_unknown_minor: u64,
+    /// Input tokens of the child's own legs.
+    pub input_tokens: u64,
+    /// Cached subset.
+    pub cached_input_tokens: u64,
+    /// Output tokens.
+    pub output_tokens: u64,
+    /// Whether the child's subtree is fully priced.
+    pub complete: bool,
 }
 
 /// Deterministic verification cost.
@@ -1900,7 +1938,71 @@ pub(crate) fn derive(
         missing.push(format!("unavailable: {u}"));
     }
     rec.missing_signals = missing;
+    rollup_children(store, tenant, task_id, &mut rec, 0);
     Some(rec)
+}
+
+/// Deepest chain of delegation the rollup follows.
+const ROLLUP_DEPTH: u32 = 6;
+
+/// REQ-PX-139: add what the request's subagents cost to its record. A child
+/// is read through the same `derive` that yields its own record, so the
+/// parent's number is the sum of numbers that already exist, never a second
+/// computation; a child's own children are inside its subtree and counted
+/// once.
+fn rollup_children(
+    store: &EventStore,
+    tenant: TenantId,
+    task_id: TaskId,
+    rec: &mut OutcomeRecord,
+    depth: u32,
+) {
+    rec.cost.children.clear();
+    rec.cost.children_minor = 0;
+    let own_complete = rec.cost.complete;
+    let mut all_complete = own_complete;
+    if depth < ROLLUP_DEPTH
+        && let Ok(Some(task)) = store.task(&task_id)
+    {
+        let mut seen: HashSet<TaskId> = HashSet::new();
+        for n in store
+            .agent_nodes(&task_id)
+            .unwrap_or_default()
+            .into_iter()
+            .filter(|n| n.kind == "SUBAGENT")
+        {
+            let Some(child) = n
+                .child_task_id
+                .or_else(|| crate::spawn::latest_admission(store, &task, n.agent_id).map(|a| a.0))
+            else {
+                continue;
+            };
+            if child == task_id || !seen.insert(child) {
+                continue;
+            }
+            let Some(mut c) = derive(store, tenant, child, None) else {
+                continue;
+            };
+            if depth + 1 >= ROLLUP_DEPTH {
+                c.cost.children.clear();
+            }
+            all_complete &= c.cost.subtree_complete;
+            rec.cost.children_minor += c.cost.subtree_minor;
+            rec.cost.children.push(ChildCost {
+                task_id: child.to_string(),
+                agent_id: n.agent_id.to_string(),
+                total_minor: c.cost.total_minor,
+                subtree_minor: c.cost.subtree_minor,
+                held_unknown_minor: c.cost.held_unknown_minor,
+                input_tokens: c.cost.input_tokens,
+                cached_input_tokens: c.cost.cached_input_tokens,
+                output_tokens: c.cost.output_tokens,
+                complete: c.cost.subtree_complete,
+            });
+        }
+    }
+    rec.cost.subtree_minor = rec.cost.total_minor + rec.cost.children_minor;
+    rec.cost.subtree_complete = all_complete;
 }
 
 /// The slot in force on a run at an offset: its latest activation before
@@ -2550,6 +2652,7 @@ mod tests {
                         text: "x".repeat(70 * 1024),
                         provenance: String::new(),
                         untrusted: false,
+                        input_ids: vec![],
                     },
                     Actor::User(modbit_domain::UserId::new()),
                 )],

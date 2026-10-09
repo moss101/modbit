@@ -93,6 +93,7 @@ fn fixture() -> Fixture {
         external: None,
         cancel: None,
         hooks: None,
+        git_state: None,
     };
     let mut registry = ToolRegistry::new();
     modbit_tools::direct::register_direct(&mut registry).unwrap();

@@ -308,6 +308,13 @@ pub enum TaskEvent {
         /// an instruction from the person (PX-008).
         #[serde(default)]
         untrusted: bool,
+        /// The queued inputs this dispatch consumed (PX-050): the queue
+        /// projection marks exactly these dispatched. A COLLECT dispatch
+        /// names every input it coalesced. Empty on a record written before
+        /// the queue was managed: such a record consumed the oldest queued
+        /// input, as it always did.
+        #[serde(default)]
+        input_ids: Vec<String>,
     },
     /// `TaskNeedsAttention`: attention flag; no state change.
     TaskNeedsAttention {
@@ -382,6 +389,132 @@ pub enum TaskEvent {
         /// fenced as such, and it grants nothing.
         #[serde(default)]
         untrusted: bool,
+    },
+    /// `TaskInputEdited` (PX-050, docs/65 AFW-E02): the person changed a
+    /// queued input before it was dispatched. Only what the record carries
+    /// changes; a dispatched or deleted input is never edited. No state change.
+    TaskInputEdited {
+        /// The queued input.
+        input_id: String,
+        /// The new text (empty = unchanged).
+        #[serde(default)]
+        text: String,
+        /// The new dispatch mode, when it changed.
+        #[serde(default)]
+        mode: Option<InputMode>,
+        /// The per-item model selection the person recorded for the input
+        /// (empty = unchanged). Recorded and shown; the router's pin policy
+        /// (PX-053) decides whether a dispatch honours it.
+        #[serde(default)]
+        model: String,
+    },
+    /// `TaskInputRemoved` (PX-050): the person deleted a queued input; it is
+    /// never dispatched. No state change.
+    TaskInputRemoved {
+        /// The queued input.
+        input_id: String,
+        /// The person's note (log text; never an instruction).
+        #[serde(default)]
+        reason: String,
+    },
+    /// `TaskInputReordered` (PX-050): a queued input moved before another
+    /// queued input (or to the end). Only queued inputs move. No state change.
+    TaskInputReordered {
+        /// The input that moved.
+        input_id: String,
+        /// The queued input it now precedes; empty = the end of the queue.
+        #[serde(default)]
+        before_input_id: String,
+    },
+    /// `SendBehaviorSet` (PX-050, docs/65 AFW-E05): what plain Enter does while
+    /// a turn runs, and what Send now does. The Core applies it when an input
+    /// arrives with no mode of its own; a client only chooses it. No state
+    /// change.
+    SendBehaviorSet {
+        /// `QUEUE` | `COLLECT` | `STEER` | `STOP_AND_SEND` (empty = unchanged).
+        #[serde(default)]
+        while_running: String,
+        /// `INTERRUPT` | `STEER` (empty = unchanged).
+        #[serde(default)]
+        send_now: String,
+    },
+    /// `TaskInterruptRequested` (PX-050, docs/65 AFW-E06/E07): the person
+    /// asked the run to stop what it is doing at the next safe point. `SEND_NOW`
+    /// promotes the named queued input to run next as a typed
+    /// interrupt-and-replace; `STOP` ends the turn and pauses the run. The
+    /// record is the command's idempotency: one `interrupt_id` interrupts once.
+    /// No state change.
+    TaskInterruptRequested {
+        /// The interrupt's id (the command's own).
+        interrupt_id: String,
+        /// `SEND_NOW` | `STOP`.
+        kind: String,
+        /// The queued input a `SEND_NOW` promotes (empty for `STOP`).
+        #[serde(default)]
+        input_id: String,
+        /// The person's note (log text; never an instruction).
+        #[serde(default)]
+        reason: String,
+    },
+    /// `TaskInterruptApplied` (PX-050): the run reached the safe point an
+    /// interrupt asked for and records what was in flight and how it ended.
+    /// A user interrupt is a different typed outcome from a runtime or
+    /// transport abort. No state change.
+    TaskInterruptApplied {
+        /// The interrupt.
+        interrupt_id: String,
+        /// `STREAM_ABORTED` | `TOOL_CANCELLED` | `IDLE` | `UNKNOWN_OUTCOME`.
+        outcome: String,
+        /// Whether a model stream was cut (it ended aborted with source
+        /// `USER_INTERRUPT`, its partial text kept and marked partial).
+        stream_aborted: bool,
+        /// Tool calls in flight that were cancelled through the broker.
+        #[serde(default)]
+        cancelled_calls: Vec<String>,
+        /// Tool calls whose outcome is unknown after the interrupt: the new
+        /// turn does not start until they are reconciled.
+        #[serde(default)]
+        unknown_outcome_calls: Vec<String>,
+        /// What the run does next: `DISPATCH` (the promoted input starts the
+        /// next turn), `PAUSE` (a stop parked the run) or `HOLD` (the next
+        /// turn waits for reconciliation).
+        next: String,
+    },
+    /// `RunModeSet` (PX-057, docs/65 AFW-F06/F07): the person set who
+    /// approves protected effects for the task. A mode that approves more
+    /// carries the person's recorded acknowledgement of the risk.
+    /// `RUN_EVERYTHING` is per Core process: after a restart the mode in force
+    /// is the last durable one. No state change.
+    RunModeSet {
+        /// The mode.
+        mode: crate::runmode::RunMode,
+        /// The mode it replaced.
+        #[serde(default)]
+        previous: Option<crate::runmode::RunMode>,
+        /// The person acknowledged the risk (prompt injection, exfiltration)
+        /// of a mode that approves more.
+        #[serde(default)]
+        acknowledged: bool,
+        /// The warning text the person acknowledged (log text).
+        #[serde(default)]
+        warning: String,
+    },
+    /// `AllowRuleAdded` (PX-057, docs/65 AFW-F10): a durable allowlist rule.
+    /// A policy record, created by a person through the Core. No state change.
+    AllowRuleAdded {
+        /// The rule.
+        rule: crate::runmode::AllowRule,
+    },
+    /// `AllowRuleRevoked` (PX-057): the rule stops applying. No state change.
+    AllowRuleRevoked {
+        /// The rule.
+        rule_id: String,
+        /// Who revoked it (`user:<id>`).
+        #[serde(default)]
+        revoked_by: String,
+        /// The person's note (log text; never an instruction).
+        #[serde(default)]
+        reason: String,
     },
     /// `TaskModeSet` (PX-051, docs/65 AFW-D03): the user set the task's mode.
     /// The latest one is the task's mode; the posture it selects is enforced
@@ -583,6 +716,32 @@ pub enum TaskEvent {
         /// The adapter's result as returned.
         result: serde_json::Value,
     },
+    /// `ForgeCommentPosted` (PX-125): a status or progress comment the
+    /// adapter posted on an issue or pull request under an idempotency key —
+    /// the record a retry of the same key answers from. The body is not on
+    /// the log, only its digest. No state change.
+    ForgeCommentPosted {
+        /// The key the post named.
+        idempotency_key: String,
+        /// `forge.issue.comment` | `forge.pr.comment`.
+        tool: String,
+        /// Repository owner.
+        owner: String,
+        /// Repository.
+        repo: String,
+        /// Issue or pull request number.
+        number: u64,
+        /// The forge's id for the comment.
+        comment_id: u64,
+        /// Web URL of the comment.
+        url: String,
+        /// sha256 of the body as sent (after redaction).
+        body_sha256: String,
+        /// Credentials replaced in the body before it was sent.
+        redactions: u64,
+        /// The adapter's result as returned.
+        result: serde_json::Value,
+    },
     /// `TaskCreatedFromIssue` (PX-010, docs/29): the task was made from a
     /// forge issue the Core read at creation; its text is the attached
     /// context document beside this event (untrusted). No state change.
@@ -698,6 +857,10 @@ pub enum TaskEvent {
         /// the region's box and the reason for the fallback.
         #[serde(default, skip_serializing_if = "Option::is_none")]
         visual_fallback: Option<serde_json::Value>,
+        /// The compiled page after the action, as an object reference
+        /// (PX-122): what a restart restores the known-state map from.
+        #[serde(default, skip_serializing_if = "String::is_empty")]
+        page_ref: String,
     },
     /// `BrowserRegionCaptured` (M7.5, docs/22 rung 4 and "V2 media
     /// interaction"): the agent fell back to vision on one region of the
@@ -725,6 +888,71 @@ pub enum TaskEvent {
         state_version: u64,
         /// The page's fingerprint at capture.
         fingerprint: String,
+    },
+    /// `BrowserPageChanged` (PX-122): the page changed on its own — the
+    /// host's mutation observer reported it and the Core read the page
+    /// again without a model call. The delta stream of the page as it moved,
+    /// by fingerprint, with counts; no state change.
+    BrowserPageChanged {
+        /// The session.
+        browser_session_id: String,
+        /// The observer's change counter this read covers.
+        change_seq: u64,
+        /// Fingerprint of the page the Core held before.
+        from_fingerprint: String,
+        /// Fingerprint of the page now.
+        to_fingerprint: String,
+        /// The host's state version.
+        state_version: u64,
+        /// Entities added.
+        added: u64,
+        /// Entities removed.
+        removed: u64,
+        /// Entities whose value or state changed.
+        changed: u64,
+        /// Text lines added.
+        text_added: u64,
+        /// Text lines removed.
+        text_removed: u64,
+        /// Mutations the host folded into the notices behind this read.
+        #[serde(default)]
+        coalesced: u64,
+        /// Milliseconds from the host's first notice to this record.
+        #[serde(default)]
+        latency_ms: u64,
+        /// URL (untrusted).
+        url: String,
+        /// The compiled page, as an object reference (what a restart restores).
+        #[serde(default)]
+        page_ref: String,
+    },
+    /// `BrowserOutcomeUnknown` (PX-121): an agent input to the session may
+    /// have happened and nothing says whether it did (the host timed out or
+    /// died after dispatch). The session is latched until a fresh
+    /// observation reconciles it. No state change.
+    BrowserOutcomeUnknown {
+        /// The session.
+        browser_session_id: String,
+        /// The tool call whose outcome is unknown.
+        tool_call_id: String,
+        /// The tool.
+        tool: String,
+        /// The action.
+        action: String,
+        /// The entity acted on.
+        reference: String,
+        /// What was observed.
+        reason: String,
+    },
+    /// `BrowserOutcomeReconciled` (PX-121): a fresh observation lifted the
+    /// latch an unknown outcome set. No state change.
+    BrowserOutcomeReconciled {
+        /// The session.
+        browser_session_id: String,
+        /// The observing tool call.
+        tool_call_id: String,
+        /// The tool call whose outcome had been unknown.
+        was_tool_call_id: String,
     },
     /// `BrowserCredentialFilled` (M7.8, docs/22 "Credentials"): a credential
     /// the person bound to an origin was filled by handle into a field of a
@@ -978,6 +1206,11 @@ pub enum TaskEvent {
         changed: u64,
         /// URL (untrusted).
         url: String,
+        /// The compiled page as an object reference (PX-122): the known-state
+        /// map a restarted Core restores, so the same element keeps its
+        /// reference and a delta against this fingerprint still works.
+        #[serde(default, skip_serializing_if = "String::is_empty")]
+        page_ref: String,
     },
     /// `PlanRevised` with a scope delta; no state change.
     PlanRevised {
@@ -1407,6 +1640,22 @@ pub enum TaskEvent {
         /// Holder.
         holder: String,
         /// `RELEASED` | `LAPSED`.
+        reason: String,
+    },
+    /// `PausedCapacityReleased` (REQ-PX-101): a paused task kept its run's
+    /// capacity ticket for the configured idle bound and gave it back when the
+    /// bound passed. A resume after this re-enters through admission and may be
+    /// refused `CAPACITY_EXHAUSTED`. No state change.
+    PausedCapacityReleased {
+        /// Ticket id.
+        ticket_id: String,
+        /// Holder.
+        holder: String,
+        /// How long the pause held it, ms.
+        held_ms: u64,
+        /// The idle bound in force, ms.
+        idle_bound_ms: u64,
+        /// `IDLE_BOUND` | `RESUMED_STALE` (a hold found lapsed at a resume).
         reason: String,
     },
     /// `CapacityDenied`: the pool could not cover the request; nothing was
@@ -2115,6 +2364,60 @@ pub enum TaskEvent {
         /// The input's length, for `INPUT_WRITTEN`.
         bytes: u64,
     },
+    /// `BackgroundProcessEnded` (REQ-PX-043, docs/65 AFW-E08): a background
+    /// terminal of this task ended — it ran out, or a client killed it
+    /// (`KillTerminal`) — and the Core recorded how, and by whom. This is the
+    /// typed wake-up of the agent: the runtime reads it from the log at its
+    /// next round boundary and tells the model once
+    /// ([`TaskEvent::BackgroundWakeDelivered`]); it is not an input and not a
+    /// message from anyone. Lands in any task state. No state change.
+    BackgroundProcessEnded {
+        /// Handle (the broker's session id).
+        handle_id: String,
+        /// `EXITED` | `KILLED` | `LOST`.
+        how: String,
+        /// Exit code, when known.
+        exit_code: Option<i32>,
+        /// Signal, when known.
+        signal: Option<i32>,
+        /// Content-addressed full output, once sealed.
+        output_ref: String,
+        /// Total output bytes.
+        total_bytes: u64,
+        /// Whether the broker's deadline ended it.
+        timed_out: bool,
+        /// Who ended it: `user:<id>` for a `KillTerminal`, `core` for an
+        /// exit the watcher observed.
+        ended_by: String,
+        /// The killer's stated reason (log text, never an instruction).
+        reason: String,
+        /// Where the fact came from: `KILL_COMMAND` | `WATCHER`.
+        source: String,
+        /// The Capability Kernel's decision a kill was made under (the rule
+        /// that allowed it, or `user-command: <why>` when the person's own
+        /// command stood in for the approval the policy asked for).
+        #[serde(default)]
+        decision: String,
+    },
+    /// `BackgroundWakeDelivered` (REQ-PX-043): the run was told, at a round
+    /// boundary, that a background terminal ended — once. When the run had
+    /// already observed the end through one of its own terminal tools
+    /// (`observed_by_agent`), nothing is added to the conversation and the
+    /// record only closes the wake. No state change.
+    BackgroundWakeDelivered {
+        /// Handle.
+        handle_id: String,
+        /// Log offset of the `BackgroundProcessEnded` this answers.
+        ended_offset: u64,
+        /// The run had seen the exit itself (`ProcessExited`).
+        observed_by_agent: bool,
+        /// The run it was delivered to.
+        run_id: Option<RunId>,
+        /// The words the model was shown (empty when `observed_by_agent`).
+        /// Kept so a rebuilt transcript is the one the model last saw.
+        #[serde(default)]
+        notice: String,
+    },
     /// `ProtocolStateResumed` (docs/19 layer 2, REQ-EV-0055): a restarted
     /// Core reconstructed the task's protocol state and continued the run
     /// from the boundary it names; the outstanding calls are re-entered by
@@ -2198,6 +2501,54 @@ pub enum TaskEvent {
         loosened: Vec<String>,
         /// Tools the new generation withholds, by name.
         withheld_tools: Vec<String>,
+    },
+    /// `ProcessServiceObserved` (REQ-PX-132, docs/21): the Core found, or lost,
+    /// or re-judged a listening service in the process tree of one of the
+    /// task's terminals. Recorded on a change of state only, never per probe.
+    /// Observation changes no policy: a detected server is a fact the agent
+    /// and the person are told, not a permission. No state change.
+    ProcessServiceObserved {
+        /// The terminal (broker session) whose process tree holds the socket.
+        handle_id: String,
+        /// The listening port.
+        port: u32,
+        /// The bound address.
+        address: String,
+        /// The listening process.
+        pid: u32,
+        /// Its command line: redacted and bounded.
+        command: String,
+        /// `dev_server` | `service`.
+        kind: String,
+        /// `STARTING` | `READY` | `UNHEALTHY` | `GONE`.
+        state: String,
+        /// The state it left (empty for the first observation).
+        previous: String,
+        /// The HTTP status the probe got; 0 = no HTTP answer.
+        http_status: u32,
+        /// How long the probe took.
+        probe_ms: u64,
+        /// Why the service is in this state.
+        detail: String,
+        /// True when the Core observed a service it had already recorded
+        /// before it restarted.
+        reobserved: bool,
+    },
+    /// `CapabilitySnapshotRecorded` (REQ-PX-131, docs/23 "Policy
+    /// generations"): at a model-round boundary the Core froze the round's
+    /// capability view — the projected tools, the policy generation, the
+    /// lease and the mode posture — under the next `AuthorizationEpoch`.
+    /// Every kernel decision and receipt of the round carries the epoch and
+    /// is decided against this snapshot; a policy change, a revoked skill or
+    /// a mode switch made during the round takes effect at the next one. A
+    /// restarted Core finds the snapshot here and decides the rest of an
+    /// interrupted round under it. No state change.
+    CapabilitySnapshotRecorded {
+        /// The frozen view.
+        snapshot: crate::epoch::CapabilitySnapshot,
+        /// SHA-256 (hex) of the canonical snapshot; what the round's
+        /// decisions and receipts name.
+        snapshot_hash: String,
     },
     /// `ReviewCommentsIngested` (PX-008, docs/29 "Review-comment
     /// steering"): the task's pull-request comments read from the forge —
@@ -2410,6 +2761,16 @@ pub struct ReviewCommentRecord {
     pub input_id: String,
     /// `DISALLOWED_AUTHOR` | `NOT_ADDRESSED` | `EMPTY`, when ignored.
     pub reason: String,
+    /// The file a line comment is on (PX-127; empty on the conversation and
+    /// on records made before it).
+    #[serde(default)]
+    pub path: String,
+    /// The line a line comment is on (0 when none).
+    #[serde(default)]
+    pub line: u64,
+    /// The forge's timestamp of the comment (PX-127).
+    #[serde(default)]
+    pub created_at: String,
 }
 
 /// One check run recorded as CI evidence (PX-009).
@@ -2468,6 +2829,15 @@ impl TaskEvent {
             Self::TaskCancelRequested { .. } => "TaskCancelRequested",
             Self::TaskNeedsAttention { .. } => "TaskNeedsAttention",
             Self::TaskInputQueued { .. } => "TaskInputQueued",
+            Self::SendBehaviorSet { .. } => "SendBehaviorSet",
+            Self::TaskInputEdited { .. } => "TaskInputEdited",
+            Self::TaskInputRemoved { .. } => "TaskInputRemoved",
+            Self::TaskInputReordered { .. } => "TaskInputReordered",
+            Self::TaskInterruptRequested { .. } => "TaskInterruptRequested",
+            Self::TaskInterruptApplied { .. } => "TaskInterruptApplied",
+            Self::RunModeSet { .. } => "RunModeSet",
+            Self::AllowRuleAdded { .. } => "AllowRuleAdded",
+            Self::AllowRuleRevoked { .. } => "AllowRuleRevoked",
             Self::UserQuestionAsked { .. } => "UserQuestionAsked",
             Self::UserQuestionAnswered { .. } => "UserQuestionAnswered",
             Self::AttachmentIngested { .. } => "AttachmentIngested",
@@ -2483,6 +2853,7 @@ impl TaskEvent {
             Self::ExternalDiagnosticsRejected { .. } => "ExternalDiagnosticsRejected",
             Self::ForgePullRequestOpened { .. } => "ForgePullRequestOpened",
             Self::ForgePullRequestUpdated { .. } => "ForgePullRequestUpdated",
+            Self::ForgeCommentPosted { .. } => "ForgeCommentPosted",
             Self::TaskCreatedFromIssue { .. } => "TaskCreatedFromIssue",
             Self::BrowserSessionOpened { .. } => "BrowserSessionOpened",
             Self::BrowserHostAttached { .. } => "BrowserHostAttached",
@@ -2492,6 +2863,9 @@ impl TaskEvent {
             Self::BrowserPageObserved { .. } => "BrowserPageObserved",
             Self::BrowserActionPerformed { .. } => "BrowserActionPerformed",
             Self::BrowserRegionCaptured { .. } => "BrowserRegionCaptured",
+            Self::BrowserPageChanged { .. } => "BrowserPageChanged",
+            Self::BrowserOutcomeUnknown { .. } => "BrowserOutcomeUnknown",
+            Self::BrowserOutcomeReconciled { .. } => "BrowserOutcomeReconciled",
             Self::SecurityEventRecorded { .. } => "SecurityEventRecorded",
             Self::SloStageRecorded { .. } => "SloStageRecorded",
             Self::BrowserCredentialFilled { .. } => "BrowserCredentialFilled",
@@ -2566,12 +2940,17 @@ impl TaskEvent {
             Self::TerminalOutputAdvanced { .. } => "TerminalOutputAdvanced",
             Self::ProcessExited { .. } => "ProcessExited",
             Self::TerminalControlRecorded { .. } => "TerminalControlRecorded",
+            Self::BackgroundProcessEnded { .. } => "BackgroundProcessEnded",
+            Self::BackgroundWakeDelivered { .. } => "BackgroundWakeDelivered",
+            Self::PausedCapacityReleased { .. } => "PausedCapacityReleased",
             Self::ProtocolStateResumed { .. } => "ProtocolStateResumed",
             Self::ToolCallReconciled { .. } => "ToolCallReconciled",
             Self::UsageReconciled { .. } => "UsageReconciled",
             Self::CiEvidenceRecorded { .. } => "CiEvidenceRecorded",
             Self::ReviewCommentsIngested { .. } => "ReviewCommentsIngested",
             Self::PolicyGenerationChanged { .. } => "PolicyGenerationChanged",
+            Self::CapabilitySnapshotRecorded { .. } => "CapabilitySnapshotRecorded",
+            Self::ProcessServiceObserved { .. } => "ProcessServiceObserved",
             Self::RequestOutcomeRecorded { .. } => "RequestOutcomeRecorded",
             Self::HooksResolved { .. } => "HooksResolved",
             Self::HookInvoked { .. } => "HookInvoked",
@@ -2666,6 +3045,12 @@ impl Task {
             TaskEvent::TaskSteered { .. }
             | TaskEvent::TaskNeedsAttention { .. }
             | TaskEvent::TaskInputQueued { .. }
+            | TaskEvent::SendBehaviorSet { .. }
+            | TaskEvent::TaskInputEdited { .. }
+            | TaskEvent::TaskInputRemoved { .. }
+            | TaskEvent::TaskInputReordered { .. }
+            | TaskEvent::TaskInterruptRequested { .. }
+            | TaskEvent::TaskInterruptApplied { .. }
             | TaskEvent::UserQuestionAsked { .. }
             | TaskEvent::UserQuestionAnswered { .. }
             | TaskEvent::AttachmentIngested { .. }
@@ -2681,6 +3066,7 @@ impl Task {
             | TaskEvent::ExternalDiagnosticsRejected { .. }
             | TaskEvent::ForgePullRequestOpened { .. }
             | TaskEvent::ForgePullRequestUpdated { .. }
+            | TaskEvent::ForgeCommentPosted { .. }
             | TaskEvent::TaskCreatedFromIssue { .. }
             | TaskEvent::BrowserSessionOpened { .. }
             | TaskEvent::BrowserHostAttached { .. }
@@ -2690,6 +3076,9 @@ impl Task {
             | TaskEvent::BrowserPageObserved { .. }
             | TaskEvent::BrowserActionPerformed { .. }
             | TaskEvent::BrowserRegionCaptured { .. }
+            | TaskEvent::BrowserPageChanged { .. }
+            | TaskEvent::BrowserOutcomeUnknown { .. }
+            | TaskEvent::BrowserOutcomeReconciled { .. }
             | TaskEvent::SecurityEventRecorded { .. }
             | TaskEvent::SloStageRecorded { .. }
             | TaskEvent::TaskPauseRequested { .. }
@@ -2753,7 +3142,8 @@ impl Task {
             | TaskEvent::TerminalControlRecorded { .. }
             | TaskEvent::ProtocolStateResumed { .. }
             | TaskEvent::ToolCallReconciled { .. }
-            | TaskEvent::PolicyGenerationChanged { .. } => {
+            | TaskEvent::PolicyGenerationChanged { .. }
+            | TaskEvent::CapabilitySnapshotRecorded { .. } => {
                 if self.state.is_terminal() {
                     return Err(invalid(&self.state, event.event_type()));
                 }
@@ -2772,7 +3162,22 @@ impl Task {
             | TaskEvent::CheckpointSkipped { .. }
             | TaskEvent::CheckpointGcStarted { .. }
             | TaskEvent::CheckpointCollected { .. }
-            | TaskEvent::CheckpointGcCompleted { .. } => None,
+            | TaskEvent::CheckpointGcCompleted { .. }
+            // A background process ends, and a paused task's held capacity
+            // lapses, whatever state the task is in by then.
+            | TaskEvent::BackgroundProcessEnded { .. }
+            | TaskEvent::BackgroundWakeDelivered { .. }
+            | TaskEvent::PausedCapacityReleased { .. } => None,
+            // A policy record (PX-057): the run mode and the allowlist rules
+            // are the person's, and a rule is revoked whatever state the task
+            // that holds its record is in.
+            TaskEvent::RunModeSet { .. }
+            | TaskEvent::AllowRuleAdded { .. }
+            | TaskEvent::AllowRuleRevoked { .. } => None,
+            // A service the task's terminal started is lost when the task
+            // ends (its terminals are killed): the record says so whatever
+            // state the task is in (REQ-PX-132).
+            TaskEvent::ProcessServiceObserved { .. } => None,
             // A sandbox is given back after the task ended (M8.5), and one
             // may be lost at any time: the records of the substrate's
             // lifecycle land whatever the task's state. So do the request's
@@ -2943,6 +3348,7 @@ mod tests {
                     text: "x".into(),
                     provenance: String::new(),
                     untrusted: false,
+                    input_ids: vec![],
                 },
                 Timestamp(4),
             )

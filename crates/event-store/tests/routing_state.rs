@@ -460,7 +460,13 @@ fn make_pre_routing(dir: &std::path::Path) {
             .unwrap();
     }
     // V17 (REQ-EV-0066) added the receipt's reversibility and compensation.
-    for c in ["reversibility", "compensates"] {
+    // V18 (REQ-PX-131) added the receipt's authorization epoch.
+    for c in [
+        "reversibility",
+        "compensates",
+        "authorization_epoch",
+        "capability_snapshot_hash",
+    ] {
         conn.execute(&format!("ALTER TABLE effect_receipts DROP COLUMN {c}"), [])
             .unwrap();
     }
@@ -491,10 +497,10 @@ fn a_database_from_before_the_routing_tables_upgrades_and_derives_them() {
 
     make_pre_routing(dir.path());
     let (store, report) = EventStore::open_with_report(dir.path()).unwrap();
-    assert_eq!((report.from_version, report.to_version), (6, 17));
+    assert_eq!((report.from_version, report.to_version), (6, 18));
     assert_eq!(
         report.applied,
-        vec![7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17]
+        vec![7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18]
     );
     assert_eq!(
         store.last_offset().unwrap(),
@@ -571,7 +577,7 @@ fn a_crash_during_the_routing_migration_leaves_a_recoverable_database() {
     let (store, report) = EventStore::open_with_report(dir.path()).unwrap();
     assert_eq!(
         (report.from_version, report.to_version),
-        (6, 17),
+        (6, 18),
         "the killed migration committed nothing"
     );
     assert_eq!(
