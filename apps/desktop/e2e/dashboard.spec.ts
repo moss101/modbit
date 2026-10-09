@@ -14,6 +14,7 @@ import { createServer, type Server } from "node:http";
 import { tmpdir } from "node:os";
 import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
+import { closeApp } from "./support/close-app.ts";
 
 const appDir = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 const coreBin = process.env.MODBIT_CORE_BIN ?? resolve(appDir, "..", "..", "target", "debug", process.platform === "win32" ? "modbit-core.exe" : "modbit-core");
@@ -62,11 +63,6 @@ async function launch(dataDir: string, extraEnv: Record<string, string>): Promis
   return { app, page };
 }
 
-async function closeApp(app: ElectronApplication): Promise<void> {
-  const proc = app.process();
-  await Promise.race([app.close(), new Promise<void>((r) => setTimeout(r, 15_000))]);
-  if (proc.exitCode === null) proc.kill("SIGKILL");
-}
 
 /** `key=value` from the CLI line starting with `prefix`. */
 function field(stdout: string, prefix: string, key: string): string {

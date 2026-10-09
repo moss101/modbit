@@ -14,6 +14,7 @@ import { createServer, type Server } from "node:http";
 import { tmpdir } from "node:os";
 import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
+import { closeApp } from "./support/close-app.ts";
 
 const appDir = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 const coreBin = process.env.MODBIT_CORE_BIN ?? resolve(appDir, "..", "..", "target", "debug", process.platform === "win32" ? "modbit-core.exe" : "modbit-core");
@@ -53,11 +54,6 @@ function scriptedModels(main: Reply[], byNeedle: [string, Reply[]][]): Promise<{
 /** Close the app; a hosted macOS runner once hung the second instance's
  *  shutdown past the test budget, so the close is bounded and the process
  *  killed when it does not exit. */
-async function closeApp(app: ElectronApplication): Promise<void> {
-  const proc = app.process();
-  await Promise.race([app.close(), new Promise<void>((r) => setTimeout(r, 20_000))]);
-  if (proc.exitCode === null && !proc.killed) proc.kill("SIGKILL");
-}
 
 function git(cwd: string, ...args: string[]): string {
   return execFileSync("git", ["-C", cwd, ...args], { encoding: "utf8" });
