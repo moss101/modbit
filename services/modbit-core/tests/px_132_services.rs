@@ -217,7 +217,29 @@ async fn qual_px_132_three_dev_servers_are_reported_ready_and_the_agent_is_told_
     steps.push(settle(&files));
     steps.push(read_notes());
     steps.push(complete());
-    let (base, seen) = scripted_model(steps, vec![]).await;
+    // The request that carries the settle step's result is held until the
+    // test has seen every server READY on the Core, so the agent's next tool
+    // result is taken after the Core has probed them rather than on a timer.
+    let hold_at = steps.len() - 2;
+    let gate = std::sync::Arc::new((std::sync::Mutex::new(false), std::sync::Condvar::new()));
+    let (base, seen) = {
+        let script = steps.clone();
+        let gate = std::sync::Arc::clone(&gate);
+        scripted_model_fn(std::sync::Arc::new(move |_body, results| {
+            if results == hold_at {
+                let (open, cv) = &*gate;
+                let guard = open.lock().unwrap();
+                let _ = cv
+                    .wait_timeout_while(guard, Duration::from_secs(120), |o| !*o)
+                    .unwrap();
+            }
+            script
+                .get(results)
+                .cloned()
+                .unwrap_or_else(|| json!({"text": "I have nothing further to do."}))
+        }))
+        .await
+    };
     let dir = tempfile::tempdir().unwrap();
     let core = spawn(dir.path(), &base);
     let mut c = core.client().await;
@@ -233,16 +255,43 @@ async fn qual_px_132_three_dev_servers_are_reported_ready_and_the_agent_is_told_
     )
     .await;
     start_task(&mut c, &task, g, 0x33, "gpt-5-mini").await;
-    run_to_end(&mut c, &task, 180).await;
 
-    let port_of = |f: &str| -> u32 {
-        std::fs::read_to_string(repo.path().join(f))
-            .unwrap_or_else(|e| panic!("{f}: {e}"))
-            .trim()
-            .parse()
-            .unwrap()
+    // Every server has written its port file; then the Core must report each
+    // one READY before the agent is released to read its tool result.
+    let deadline = std::time::Instant::now() + Duration::from_secs(60);
+    let expected: Vec<(&str, u32)> = loop {
+        let got: Option<Vec<(&str, u32)>> = files
+            .iter()
+            .map(|f| {
+                std::fs::read_to_string(repo.path().join(f))
+                    .ok()
+                    .and_then(|s| s.trim().parse().ok())
+                    .map(|p| (*f, p))
+            })
+            .collect();
+        if let Some(v) = got {
+            break v;
+        }
+        assert!(
+            std::time::Instant::now() < deadline,
+            "a server never wrote its port file"
+        );
+        tokio::time::sleep(Duration::from_millis(150)).await;
     };
-    let expected: Vec<(&str, u32)> = files.iter().map(|f| (*f, port_of(f))).collect();
+    wait_services(&mut c, &task, 60, false, |l| {
+        expected.iter().all(|(_, p)| {
+            l.services
+                .iter()
+                .any(|s| s.port == *p && s.state == "READY")
+        })
+    })
+    .await;
+    {
+        let (open, cv) = &*gate;
+        *open.lock().unwrap() = true;
+        cv.notify_all();
+    }
+    run_to_end(&mut c, &task, 180).await;
     let list = wait_services(&mut c, &task, 30, false, |l| {
         expected.iter().all(|(_, p)| {
             l.services
