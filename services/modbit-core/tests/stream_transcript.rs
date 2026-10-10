@@ -2196,6 +2196,25 @@ async fn qual_px_042_headers_for_two_hundred_tasks_carry_core_decided_classes_an
         assert!(Instant::now() < deadline);
         tokio::time::sleep(Duration::from_millis(50)).await;
     }
+    // Running is the state before the model's first word. The stream appends
+    // its start and its delta to the log after that, from a task of its own,
+    // so a header read straight after Running can race that append. Wait on
+    // the log itself for the delta, after which the hanging model has nothing
+    // more to write and the log is at rest.
+    let _ = wait_for_events(
+        &core,
+        &session,
+        "the running task's stream never reached the log",
+        |e| {
+            e.iter().any(|x| {
+                x.kind == "AssistantTextDelta"
+                    && x.payload["text"]
+                        .as_str()
+                        .is_some_and(|t| t.contains("Working on it."))
+            })
+        },
+    )
+    .await;
     // One more draft, archived: the last class of the precedence.
     let archived = create_task(&mut c, &session, lease, "put away", "").await;
     c.command(envelope_fenced(
