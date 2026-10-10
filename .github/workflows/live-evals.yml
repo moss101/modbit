@@ -182,6 +182,56 @@ jobs:
           CAP: ${{ needs.plan.outputs.px135 }}
         run: python3 .github/scripts/live_evals_check.py live-evals/px135 px135 "$CAP"
 
+  px137:
+    name: PX-137 retrieval benchmark (live same-model agent, baseline and treatment)
+    needs: plan
+    if: ${{ inputs.which == 'px137' || inputs.which == 'all' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 180
+    steps:
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
+      - name: Install pinned Rust toolchain (rust-toolchain.toml)
+        run: rustup show
+      - uses: Swatinem/rust-cache@6323deb102c322ba6fcbdcafc7e3dddab59af2b6 # v2
+      - name: Install ripgrep (the external baseline; a run without it fails, it is never skipped)
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y -qq ripgrep
+          rg --version
+      - name: Build the harness (release: the 100 MB cold index is measured here)
+        run: cargo build --release --locked -p modbit-bench-retrieval --bin retrieval-live
+      - name: Run the pinned cases for both profiles on the same model (the credential is required)
+        env:
+          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+          MODBIT_OPENAI_BASE_URL: ${{ vars.MODBIT_OPENAI_BASE_URL }}
+          MODBIT_OPENAI_MODELS: ${{ vars.MODBIT_OPENAI_MODELS }}
+          MODBIT_OPENAI_AUTH: ${{ vars.MODBIT_OPENAI_AUTH }}
+          MODBIT_OPENAI_EXTRA_BODY: ${{ vars.MODBIT_OPENAI_EXTRA_BODY }}
+          MODBIT_LIVE: "1"
+          MODBIT_LIVE_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+          MODBIT_LIVE_BASE_URL: ${{ vars.MODBIT_OPENAI_BASE_URL }}
+          MODBIT_LIVE_MODEL: ${{ vars.MODBIT_LIVE_MODEL }}
+          CAP: ${{ needs.plan.outputs.px137 }}
+        run: |
+          if [ -z "$OPENAI_API_KEY" ]; then
+            echo "::error::no OPENAI_API_KEY secret: a live proof cannot pass without the real credential; nothing was run"
+            exit 1
+          fi
+          mkdir -p live-evals/px137
+          target/release/retrieval-live --out-dir live-evals/px137 --max-cost-usd "$CAP" --work-dir "$RUNNER_TEMP/px137" 2>&1 | tee live-evals/px137/run.log
+      - name: Retain the result bundle
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: live-evals-px137
+          path: live-evals/px137
+          if-no-files-found: error
+      - name: Every required measurement is present and the cap held
+        if: always()
+        env:
+          CAP: ${{ needs.plan.outputs.px137 }}
+        run: python3 .github/scripts/live_evals_check.py live-evals/px137 px137 "$CAP"
+
   px136:
     name: PX-136 paired DIRECT / CASCADE / CRITIQUE (live)
     needs: plan

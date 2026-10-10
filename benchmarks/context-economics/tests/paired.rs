@@ -409,7 +409,12 @@ fn the_paired_binary_refuses_without_a_live_provider_and_writes_nothing() {
         .env_remove("MODBIT_LIVE_MAX_COST_USD")
         .output()
         .unwrap();
-    assert_eq!(run.status.code(), Some(2), "{}", String::from_utf8_lossy(&run.stderr));
+    assert_eq!(
+        run.status.code(),
+        Some(2),
+        "{}",
+        String::from_utf8_lossy(&run.stderr)
+    );
     assert!(String::from_utf8_lossy(&run.stderr).contains("--max-cost-usd"));
     assert!(!out.exists());
 }
