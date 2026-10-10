@@ -312,6 +312,10 @@ pub fn plain_repo(files: &[(&str, &str)]) -> (tempfile::TempDir, String) {
     (repo, root)
 }
 
+#[path = "../../../../tests/support/program_wait.rs"]
+mod program_wait;
+pub use program_wait::{program_wait_reply, script_steps_done};
+
 pub type Seen = std::sync::Arc<std::sync::Mutex<Vec<serde_json::Value>>>;
 
 static SCRIPTED_REQUESTS: std::sync::atomic::AtomicU64 = std::sync::atomic::AtomicU64::new(0);
@@ -322,10 +326,20 @@ const RESPONSE_HEAD: &str = "HTTP/1.1 200 OK\r\ncontent-type: text/event-stream\
 /// carries `n` tool results (the repository's standard model stand-in);
 /// `rules` answer by a needle in the last tool result instead. Every request
 /// body is recorded. This is not a live provider.
+///
+/// A script that runs a program with `proc.exec` and never names `proc.wait`
+/// is answered the way a model answers a program that outlived `proc.exec`'s
+/// 2 s inline grace (docs/16: a slow runner's): it waits for the handle, and
+/// the wait is not a step of the script (see [`program_wait_reply`] and
+/// [`script_steps_done`]).
 pub async fn scripted_model(
     script: Vec<serde_json::Value>,
     rules: Vec<(String, serde_json::Value)>,
 ) -> (String, Seen) {
+    let waits_itself = script
+        .iter()
+        .flat_map(|s| s["calls"].as_array().into_iter().flatten())
+        .any(|c| c["name"] == "proc.wait");
     scripted_model_fn(std::sync::Arc::new(move |body, results| {
         let last_tool_text = body["messages"]
             .as_array()
@@ -337,9 +351,21 @@ pub async fn scripted_model(
             .iter()
             .find(|(needle, _)| last_tool_text.contains(needle.as_str()))
             .map(|(_, r)| r.clone())
+            .or_else(|| {
+                if waits_itself {
+                    None
+                } else {
+                    program_wait_reply(body)
+                }
+            })
             .unwrap_or_else(|| {
+                let step = if waits_itself {
+                    results
+                } else {
+                    script_steps_done(body)
+                };
                 script
-                    .get(results)
+                    .get(step)
                     .cloned()
                     .unwrap_or_else(|| serde_json::json!({"text": "I have nothing further to do."}))
             })

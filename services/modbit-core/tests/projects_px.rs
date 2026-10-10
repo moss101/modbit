@@ -1206,3 +1206,654 @@ async fn qual_px_063_a_membership_the_log_never_recorded_is_not_shown_after_reco
     );
     fx.core.kill();
 }
+
+// ===========================================================================
+// PX-063 / PX-068: no multi-step operation is ever observable half done
+// ===========================================================================
+//
+// The reading of QUAL-PX-063 these tests prove (docs/62 PX-063 scope: "a Core
+// killed between phases is reconciled at startup to either the old or the new
+// membership, never a mixture"): a project command is one transaction that
+// carries the guard-checked event, its projection rows and its command
+// record. Its two phases are therefore "not committed" and "committed", and
+// the Core killed anywhere inside the command leaves exactly one of them on
+// disk, *before* any recovery pass runs. What a client sees of the operation
+// that was cut off is the typed replay of its retry (`replayed`), once.
+//
+// The kill points, for every command:
+//   before-append  the guards passed, nothing written (`MODBIT_FAULT_PROJECT`)
+//   in-transaction the event, its projection rows and the command record are
+//                  written and not committed (`MODBIT_FAULT_KILL_BEFORE_EVENT`,
+//                  the event store's own hook)
+//   after-append   committed, the answer not sent (`MODBIT_FAULT_PROJECT`)
+
+use std::collections::BTreeMap;
+
+/// What the projection tables hold, or what the `Project` events of the log
+/// fold to (the two are compared on the database file of a Core that is not
+/// running).
+#[derive(Clone, Debug, Default, PartialEq, Eq)]
+struct ProjectState {
+    /// Project id to (name, archived).
+    projects: BTreeMap<String, (String, bool)>,
+    /// Task id to the one project that holds it.
+    members: BTreeMap<String, String>,
+}
+
+fn uuid_text(bytes: &[u8]) -> String {
+    let h = hex::encode(bytes);
+    format!(
+        "{}-{}-{}-{}-{}",
+        &h[0..8],
+        &h[8..12],
+        &h[12..16],
+        &h[16..20],
+        &h[20..32]
+    )
+}
+
+/// The state the log says: the `Project` events folded in order.
+fn log_fold(db: &Path) -> ProjectState {
+    let conn = rusqlite::Connection::open(db).unwrap();
+    let mut stmt = conn
+        .prepare(
+            "SELECT payload_inline FROM events WHERE aggregate_type = 'project' ORDER BY offset",
+        )
+        .unwrap();
+    let rows: Vec<String> = stmt
+        .query_map([], |r| r.get::<_, String>(0))
+        .unwrap()
+        .map(Result::unwrap)
+        .collect();
+    let mut st = ProjectState::default();
+    for text in rows {
+        let v: serde_json::Value = serde_json::from_str(&text).unwrap();
+        let project = v["project_id"].as_str().unwrap_or_default().to_owned();
+        match v["event_type"].as_str().unwrap() {
+            "ProjectCreated" | "ProjectRenamed" => {
+                let archived = st.projects.get(&project).is_some_and(|p| p.1);
+                st.projects
+                    .insert(project, (v["name"].as_str().unwrap().to_owned(), archived));
+            }
+            "ProjectArchived" => st.projects.get_mut(&project).unwrap().1 = true,
+            "ProjectUnarchived" => st.projects.get_mut(&project).unwrap().1 = false,
+            "ProjectMemberAdded" => {
+                st.members
+                    .insert(v["task_id"].as_str().unwrap().to_owned(), project);
+            }
+            "ProjectMemberRemoved" => {
+                st.members.remove(v["task_id"].as_str().unwrap());
+            }
+            other => panic!("unexpected Project event {other}"),
+        }
+    }
+    st
+}
+
+/// The state the tables say.
+fn tables(db: &Path) -> ProjectState {
+    let conn = rusqlite::Connection::open(db).unwrap();
+    let mut st = ProjectState::default();
+    let mut stmt = conn
+        .prepare("SELECT project_id, name, archived FROM projects")
+        .unwrap();
+    for row in stmt
+        .query_map([], |r| {
+            Ok((
+                r.get::<_, Vec<u8>>(0)?,
+                r.get::<_, String>(1)?,
+                r.get::<_, i64>(2)?,
+            ))
+        })
+        .unwrap()
+    {
+        let (id, name, archived) = row.unwrap();
+        st.projects.insert(uuid_text(&id), (name, archived != 0));
+    }
+    let mut stmt = conn
+        .prepare("SELECT task_id, project_id FROM project_members")
+        .unwrap();
+    for row in stmt
+        .query_map([], |r| {
+            Ok((r.get::<_, Vec<u8>>(0)?, r.get::<_, Vec<u8>>(1)?))
+        })
+        .unwrap()
+    {
+        let (task, project) = row.unwrap();
+        st.members.insert(uuid_text(&task), uuid_text(&project));
+    }
+    st
+}
+
+/// Whether the database holds a command record for `id`.
+fn command_recorded(db: &Path, id: &Id) -> bool {
+    let conn = rusqlite::Connection::open(db).unwrap();
+    conn.query_row(
+        "SELECT count(*) FROM commands WHERE command_id = ?1",
+        rusqlite::params![id.value.as_slice()],
+        |r| r.get::<_, i64>(0),
+    )
+    .unwrap()
+        > 0
+}
+
+impl Fx {
+    fn db(&self) -> std::path::PathBuf {
+        self.dir.path().join("core/core.db")
+    }
+
+    /// Send `kind` and require that the Core dies before it answers.
+    async fn die_on(&mut self, id: Id, kind: &str, payload: Vec<u8>) {
+        let r = self
+            .c
+            .command(envelope_fenced(id, kind, payload, self.g))
+            .await;
+        assert!(
+            r.is_err(),
+            "{kind}: the Core was to die before it answered: {r:?}"
+        );
+        self.core.kill();
+    }
+
+    /// The database as a killed Core left it: tables and log must agree
+    /// already, with no recovery having run.
+    fn on_disk(&self) -> ProjectState {
+        let (t, l) = (tables(&self.db()), log_fold(&self.db()));
+        assert_eq!(
+            t, l,
+            "the tables are the log's fold the instant the Core dies"
+        );
+        // A task is in at most one project by the key of the map; the fold
+        // agrees, so no task is ever in two.
+        t
+    }
+}
+
+/// What a command must have changed: true when `(before, after)` is right.
+type Effect = Box<dyn Fn(&ProjectState, &ProjectState) -> bool>;
+
+/// One command of the sweep.
+struct Step {
+    name: &'static str,
+    kind: &'static str,
+    /// The event type the command appends (for the in-transaction kill).
+    event: &'static str,
+    command_id: Id,
+    payload: Vec<u8>,
+    /// What the command must have changed, given the state before it.
+    effect: Effect,
+}
+
+#[tokio::test]
+async fn qual_px_063_a_core_killed_at_every_step_of_every_project_command_leaves_the_old_or_the_new_state_never_a_mixture()
+ {
+    let mut fx = Fx::new(1, &[]).await;
+    let root = fx.root(0);
+    let t1 = fx.finished_task(0, 0x20).await;
+    let t2 = fx.finished_task(0, 0x30).await;
+    fx.core.kill();
+    let session = fx.session.clone();
+    let pid = rand_id();
+    let key = |i: &Id| uuid_text(&i.value);
+    let (p, t1k, t2k) = (key(&pid), key(&t1), key(&t2));
+    let step = |name, kind, event, command_id: Id, payload: Vec<u8>, effect| Step {
+        name,
+        kind,
+        event,
+        command_id,
+        payload,
+        effect,
+    };
+    let steps: Vec<Step> = vec![
+        step(
+            "create the project",
+            "CreateProject",
+            "ProjectCreated",
+            pid.clone(),
+            CreateProject {
+                session_id: Some(session.clone()),
+                name: "Alpha".into(),
+                color: String::new(),
+                icon: String::new(),
+                workspace_root: root.clone(),
+            }
+            .encode_to_vec(),
+            Box::new({
+                let p = p.clone();
+                move |b, a| {
+                    b.projects.is_empty()
+                        && a.projects.get(&p).map(|x| x.0.as_str()) == Some("Alpha")
+                }
+            }),
+        ),
+        step(
+            "add the first task",
+            "AddProjectMember",
+            "ProjectMemberAdded",
+            rand_id(),
+            AddProjectMember {
+                session_id: Some(session.clone()),
+                project_id: Some(pid.clone()),
+                task_id: Some(t1.clone()),
+            }
+            .encode_to_vec(),
+            Box::new({
+                let (p, t1k) = (p.clone(), t1k.clone());
+                move |b, a| !b.members.contains_key(&t1k) && a.members.get(&t1k) == Some(&p)
+            }),
+        ),
+        step(
+            "add the second task",
+            "AddProjectMember",
+            "ProjectMemberAdded",
+            rand_id(),
+            AddProjectMember {
+                session_id: Some(session.clone()),
+                project_id: Some(pid.clone()),
+                task_id: Some(t2.clone()),
+            }
+            .encode_to_vec(),
+            Box::new({
+                let (p, t1k, t2k) = (p.clone(), t1k.clone(), t2k.clone());
+                move |b, a| {
+                    b.members.get(&t1k) == Some(&p)
+                        && !b.members.contains_key(&t2k)
+                        && a.members.get(&t2k) == Some(&p)
+                        && a.members.get(&t1k) == Some(&p)
+                }
+            }),
+        ),
+        step(
+            "rename it",
+            "RenameProject",
+            "ProjectRenamed",
+            rand_id(),
+            RenameProject {
+                session_id: Some(session.clone()),
+                project_id: Some(pid.clone()),
+                name: "Alpha two".into(),
+                color: String::new(),
+                icon: String::new(),
+            }
+            .encode_to_vec(),
+            Box::new({
+                let p = p.clone();
+                move |b, a| {
+                    b.projects[&p].0 == "Alpha"
+                        && a.projects[&p].0 == "Alpha two"
+                        && a.members == b.members
+                }
+            }),
+        ),
+        step(
+            "remove the first task",
+            "RemoveProjectMember",
+            "ProjectMemberRemoved",
+            rand_id(),
+            RemoveProjectMember {
+                session_id: Some(session.clone()),
+                project_id: Some(pid.clone()),
+                task_id: Some(t1.clone()),
+            }
+            .encode_to_vec(),
+            Box::new({
+                let (t1k, t2k) = (t1k.clone(), t2k.clone());
+                move |b, a| {
+                    b.members.contains_key(&t1k)
+                        && !a.members.contains_key(&t1k)
+                        && a.members.contains_key(&t2k)
+                }
+            }),
+        ),
+        step(
+            "archive the project (its tasks are untouched)",
+            "ArchiveProject",
+            "ProjectArchived",
+            rand_id(),
+            ArchiveProject {
+                session_id: Some(session.clone()),
+                project_id: Some(pid.clone()),
+                archived: true,
+            }
+            .encode_to_vec(),
+            Box::new({
+                let p = p.clone();
+                move |b, a| !b.projects[&p].1 && a.projects[&p].1 && a.members == b.members
+            }),
+        ),
+        step(
+            "restore it",
+            "ArchiveProject",
+            "ProjectUnarchived",
+            rand_id(),
+            ArchiveProject {
+                session_id: Some(session.clone()),
+                project_id: Some(pid.clone()),
+                archived: false,
+            }
+            .encode_to_vec(),
+            Box::new({
+                let p = p.clone();
+                move |b, a| b.projects[&p].1 && !a.projects[&p].1 && a.members == b.members
+            }),
+        ),
+    ];
+
+    let mut before = fx.on_disk();
+    assert_eq!(before, ProjectState::default());
+    for s in &steps {
+        // 1. Before the append: the guards passed, nothing was written.
+        fx.restart(&[("MODBIT_FAULT_PROJECT", "before-append")])
+            .await;
+        fx.die_on(s.command_id.clone(), s.kind, s.payload.clone())
+            .await;
+        assert_eq!(fx.on_disk(), before, "{}: killed before the append", s.name);
+        assert!(!command_recorded(&fx.db(), &s.command_id), "{}", s.name);
+
+        // 2. Inside the transaction: the event, the projection rows and the
+        // command record are written and not committed. None survives.
+        let spec = format!("{}:1", s.event);
+        fx.restart(&[("MODBIT_FAULT_KILL_BEFORE_EVENT", spec.as_str())])
+            .await;
+        fx.die_on(s.command_id.clone(), s.kind, s.payload.clone())
+            .await;
+        assert_eq!(
+            fx.on_disk(),
+            before,
+            "{}: killed inside the transaction, nothing of it survives",
+            s.name
+        );
+        assert!(!command_recorded(&fx.db(), &s.command_id), "{}", s.name);
+
+        // 3. After the commit, before the answer: the whole of it survives.
+        fx.restart(&[("MODBIT_FAULT_PROJECT", "after-append")])
+            .await;
+        fx.die_on(s.command_id.clone(), s.kind, s.payload.clone())
+            .await;
+        let after = fx.on_disk();
+        assert!(
+            (s.effect)(&before, &after),
+            "{}: the committed command is whole: {before:?} -> {after:?}",
+            s.name
+        );
+        assert!(command_recorded(&fx.db(), &s.command_id), "{}", s.name);
+
+        // 4. The client's retry: reported once as a replay; the state is the
+        // new one and a further retry changes nothing.
+        fx.restart(&[]).await;
+        let (_, replayed): (ProjectChanged, bool) = fx
+            .call(s.command_id.clone(), s.kind, s.payload.clone(), true)
+            .await
+            .unwrap();
+        assert!(
+            replayed,
+            "{}: the retry replays the committed command",
+            s.name
+        );
+        let (_, again): (ProjectChanged, bool) = fx
+            .call(s.command_id.clone(), s.kind, s.payload.clone(), true)
+            .await
+            .unwrap();
+        assert!(again);
+        fx.core.kill();
+        assert_eq!(fx.on_disk(), after, "{}: replaying changes nothing", s.name);
+        before = after;
+    }
+
+    // Recovery over the final state finds nothing to repair: the tables the
+    // Core reads at start are the log's fold, and the list says so.
+    fx.restart(&[]).await;
+    let list = fx.list(true).await;
+    assert_eq!(list.projects.len(), 1);
+    assert_eq!(list.projects[0].name, "Alpha two");
+    assert_eq!(ids(&fx.get(&list.projects[0]).await), sorted(&[&t2]));
+    fx.core.kill();
+    assert_eq!(fx.on_disk(), before);
+}
+
+/// Moving a task from one project to another is two commands (leave, then
+/// join): a Core killed between them, or inside either, leaves the task in
+/// the first project, in none, or in the second - never in both and never
+/// half joined - and the client's retries converge on the second.
+#[tokio::test]
+async fn qual_px_063_a_move_between_projects_killed_between_and_inside_its_steps_never_puts_a_task_in_two_projects()
+ {
+    let mut fx = Fx::new(1, &[]).await;
+    let root = fx.root(0);
+    let t = fx.finished_task(0, 0x20).await;
+    let a = fx.create_project("Left", &root).await.unwrap();
+    let b = fx.create_project("Right", &root).await.unwrap();
+    fx.add(&a, &t).await.unwrap();
+    // The guard: joining the second while in the first is refused, by code.
+    assert_eq!(code(fx.add(&b, &t).await), "IN_ANOTHER_PROJECT");
+    let (ak, bk, tk) = (
+        uuid_text(&a.project_id.as_ref().unwrap().value),
+        uuid_text(&b.project_id.as_ref().unwrap().value),
+        uuid_text(&t.value),
+    );
+    fx.core.kill();
+    assert_eq!(fx.on_disk().members.get(&tk), Some(&ak));
+
+    let leave_id = rand_id();
+    let leave = RemoveProjectMember {
+        session_id: Some(fx.session.clone()),
+        project_id: a.project_id.clone(),
+        task_id: Some(t.clone()),
+    }
+    .encode_to_vec();
+    let join_id = rand_id();
+    let join = AddProjectMember {
+        session_id: Some(fx.session.clone()),
+        project_id: b.project_id.clone(),
+        task_id: Some(t.clone()),
+    }
+    .encode_to_vec();
+
+    // The leave, cut inside its transaction: still in the first project.
+    fx.restart(&[("MODBIT_FAULT_KILL_BEFORE_EVENT", "ProjectMemberRemoved:1")])
+        .await;
+    fx.die_on(leave_id.clone(), "RemoveProjectMember", leave.clone())
+        .await;
+    assert_eq!(fx.on_disk().members.get(&tk), Some(&ak));
+
+    // The leave commits and the answer is lost: in no project.
+    fx.restart(&[("MODBIT_FAULT_PROJECT", "after-append")])
+        .await;
+    fx.die_on(leave_id.clone(), "RemoveProjectMember", leave.clone())
+        .await;
+    assert_eq!(
+        fx.on_disk().members.get(&tk),
+        None,
+        "left, and not yet joined"
+    );
+
+    // The join, cut inside its transaction: still in none.
+    fx.restart(&[("MODBIT_FAULT_KILL_BEFORE_EVENT", "ProjectMemberAdded:1")])
+        .await;
+    fx.die_on(join_id.clone(), "AddProjectMember", join.clone())
+        .await;
+    assert_eq!(
+        fx.on_disk().members.get(&tk),
+        None,
+        "a join cut inside its transaction leaves the task in no project"
+    );
+
+    // The client retries both with their own command ids: the leave replays,
+    // the join applies once.
+    fx.restart(&[]).await;
+    let (_, replayed): (ProjectChanged, bool) = fx
+        .call(leave_id.clone(), "RemoveProjectMember", leave.clone(), true)
+        .await
+        .unwrap();
+    assert!(replayed);
+    let (_, replayed): (ProjectChanged, bool) = fx
+        .call(join_id.clone(), "AddProjectMember", join.clone(), true)
+        .await
+        .unwrap();
+    assert!(!replayed);
+    assert_eq!(ids(&fx.get(&a).await), Vec::<Vec<u8>>::new());
+    assert_eq!(ids(&fx.get(&b).await), sorted(&[&t]));
+    fx.core.kill();
+    assert_eq!(fx.on_disk().members.get(&tk), Some(&bk));
+    let adds: usize = log_events(&fx.db(), "ProjectMemberAdded", &tk);
+    assert_eq!(adds, 2, "joined the first project once and the second once");
+}
+
+/// How many `Project` events of `kind` name `task` in the log.
+fn log_events(db: &Path, kind: &str, task: &str) -> usize {
+    let conn = rusqlite::Connection::open(db).unwrap();
+    let mut stmt = conn
+        .prepare("SELECT payload_inline FROM events WHERE aggregate_type = 'project' AND event_type = ?1")
+        .unwrap();
+    stmt.query_map([kind], |r| r.get::<_, String>(0))
+        .unwrap()
+        .map(Result::unwrap)
+        .filter(|t| {
+            serde_json::from_str::<serde_json::Value>(t).unwrap()["task_id"].as_str() == Some(task)
+        })
+        .count()
+}
+
+/// Creating a project and adding several tasks to it, killed inside the
+/// third add: the project holds exactly the adds that committed, the client's
+/// retry of the whole batch under the same command ids replays those and
+/// applies the rest once each.
+#[tokio::test]
+async fn qual_px_063_a_batch_of_adds_killed_in_the_middle_commits_a_prefix_and_its_retry_completes_it_once()
+ {
+    let mut fx = Fx::new(1, &[]).await;
+    let root = fx.root(0);
+    let tasks = [
+        fx.finished_task(0, 0x20).await,
+        fx.finished_task(0, 0x30).await,
+        fx.finished_task(0, 0x40).await,
+        fx.finished_task(0, 0x50).await,
+    ];
+    let create_id = rand_id();
+    let (p, _) = fx
+        .create_project_as(create_id.clone(), "Batch", "", "", &root)
+        .await
+        .unwrap();
+    let adds: Vec<(Id, Vec<u8>)> = tasks
+        .iter()
+        .map(|t| {
+            (
+                rand_id(),
+                AddProjectMember {
+                    session_id: Some(fx.session.clone()),
+                    project_id: p.project_id.clone(),
+                    task_id: Some(t.clone()),
+                }
+                .encode_to_vec(),
+            )
+        })
+        .collect();
+    // Two adds commit; the third is cut inside its transaction.
+    for (id, payload) in adds.iter().take(2) {
+        let _: (ProjectChanged, bool) = fx
+            .call(id.clone(), "AddProjectMember", payload.clone(), true)
+            .await
+            .unwrap();
+    }
+    fx.restart(&[("MODBIT_FAULT_KILL_BEFORE_EVENT", "ProjectMemberAdded:1")])
+        .await;
+    fx.die_on(adds[2].0.clone(), "AddProjectMember", adds[2].1.clone())
+        .await;
+    let st = fx.on_disk();
+    assert_eq!(
+        st.members.len(),
+        2,
+        "exactly the adds that committed: {st:?}"
+    );
+    assert!(!command_recorded(&fx.db(), &adds[2].0));
+
+    // The client replays the whole sequence, creation included.
+    fx.restart(&[]).await;
+    let (_, replayed) = fx
+        .create_project_as(create_id, "Batch", "", "", &root)
+        .await
+        .unwrap();
+    assert!(replayed, "the creation is not done twice");
+    let mut flags = Vec::new();
+    for (id, payload) in &adds {
+        let (_, replayed): (ProjectChanged, bool) = fx
+            .call(id.clone(), "AddProjectMember", payload.clone(), true)
+            .await
+            .unwrap();
+        flags.push(replayed);
+    }
+    assert_eq!(flags, vec![true, true, false, false]);
+    let refs: Vec<&Id> = tasks.iter().collect();
+    assert_eq!(ids(&fx.get(&p).await), sorted(&refs));
+    fx.core.kill();
+    let st = fx.on_disk();
+    assert_eq!(st.members.len(), 4);
+    for t in &tasks {
+        assert_eq!(
+            log_events(&fx.db(), "ProjectMemberAdded", &uuid_text(&t.value)),
+            1,
+            "each task joined once"
+        );
+    }
+}
+
+/// Removing the worktree of a task that is in a project is two steps (the
+/// directory goes, then the removal is recorded): a Core killed between them
+/// keeps the task in its project, the retry records the removal once, and the
+/// membership is the same before, between and after.
+#[tokio::test]
+async fn qual_px_068_a_worktree_removal_killed_between_the_directory_and_its_record_leaves_the_project_link_and_converges()
+ {
+    let mut fx = Fx::new(1, &[("MODBIT_WORKTREE_PROTECT_MS", "1")]).await;
+    let root = fx.root(0);
+    let task = fx.isolated_task(0, 0x20, true).await;
+    let p = fx.create_project("Trees", &root).await.unwrap();
+    let joined = fx.add(&p, &task).await;
+    assert!(joined.is_ok(), "{joined:?}");
+    let w = fx.worktrees().await.worktrees[0].clone();
+    assert!(Path::new(&w.path).exists());
+    std::thread::sleep(std::time::Duration::from_millis(20));
+    let tk = uuid_text(&task.value);
+    let pk = uuid_text(&p.project_id.as_ref().unwrap().value);
+    fx.core.kill();
+    assert_eq!(fx.on_disk().members.get(&tk), Some(&pk));
+
+    // Cut after the directory is removed and before the removal is committed.
+    fx.restart(&[
+        ("MODBIT_WORKTREE_PROTECT_MS", "1"),
+        ("MODBIT_FAULT_KILL_BEFORE_EVENT", "WorktreeRemoved:1"),
+    ])
+    .await;
+    let msg = RemoveWorktree {
+        session_id: Some(fx.session.clone()),
+        worktree_id: w.worktree_id.clone(),
+        dry_run: false,
+    }
+    .encode_to_vec();
+    let cid = rand_id();
+    fx.die_on(cid.clone(), "RemoveWorktree", msg.clone()).await;
+    assert!(!Path::new(&w.path).exists(), "the directory went");
+    assert_eq!(
+        fx.on_disk().members.get(&tk),
+        Some(&pk),
+        "the task stays in its project"
+    );
+
+    // Recovery and the retry: the removal is recorded once; the task is
+    // still a member and the worktree list no longer offers the worktree.
+    fx.restart(&[("MODBIT_WORKTREE_PROTECT_MS", "1")]).await;
+    assert_eq!(ids(&fx.get(&p).await), sorted(&[&task]));
+    let done = fx.remove_worktree(&w.worktree_id, false, true).await;
+    let done = done.unwrap();
+    assert!(done.removed, "{done:?}");
+    assert_eq!(ids(&fx.get(&p).await), sorted(&[&task]));
+    assert!(
+        fx.worktrees()
+            .await
+            .worktrees
+            .iter()
+            .all(|x| x.worktree_id != w.worktree_id)
+    );
+    fx.core.kill();
+    assert_eq!(fx.on_disk().members.get(&tk), Some(&pk));
+}

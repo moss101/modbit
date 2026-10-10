@@ -168,6 +168,7 @@ impl StoreAudit {
                         &r.destination,
                         r.allowed,
                         &r.capability,
+                        &r.reason,
                         &r.detail,
                         r.at_ms,
                     )

@@ -276,6 +276,75 @@ async fn qual_px_114_exec_only_shows_the_small_surface_and_programs_do_the_work_
 /// The same task in `direct` and `exec_only`: schema bytes per request are
 /// measured from the requests the model server received and recorded. The
 /// scripted provider is a stand-in; the bytes are what the Core really sent.
+/// A program that outlives `proc.exec`'s inline grace (a slow runner's
+/// accident; `MODBIT_EXEC_INLINE_GRACE_MS=1` makes it a certainty) is handed
+/// back as a handle, the model waits for it, and the conversation the provider
+/// is sent stays valid: every tool call the model made has exactly one result
+/// under its own id (the exec's the handle, the wait's the outcome), and the
+/// run completes on the program's outcome.
+#[tokio::test]
+async fn qual_px_114_a_program_that_outlives_the_inline_grace_is_waited_for_and_every_call_has_one_result()
+ {
+    let r = run(
+        exec_script(),
+        vec![],
+        Some(MODEL_EXEC),
+        None,
+        &[("MODBIT_EXEC_INLINE_GRACE_MS", "1")],
+    )
+    .await;
+    assert_eq!(r.state, "ReadyForReview", "{} / {}", r.state, r.attention);
+    assert_eq!(r.b_txt, "alpha\nbeta\n");
+    let messages = r.bodies.last().unwrap()["messages"].as_array().unwrap();
+    let calls: Vec<(String, String)> = messages
+        .iter()
+        .filter(|m| m["role"] == "assistant")
+        .flat_map(|m| m["tool_calls"].as_array().into_iter().flatten())
+        .map(|c| {
+            (
+                c["id"].as_str().unwrap().to_owned(),
+                c["function"]["name"].as_str().unwrap().to_owned(),
+            )
+        })
+        .collect();
+    let results: Vec<(String, String)> = messages
+        .iter()
+        .filter(|m| m["role"] == "tool")
+        .map(|m| {
+            (
+                m["tool_call_id"].as_str().unwrap().to_owned(),
+                m["content"].as_str().unwrap_or_default().to_owned(),
+            )
+        })
+        .collect();
+    for (id, name) in &calls {
+        assert_eq!(
+            results.iter().filter(|(rid, _)| rid == id).count(),
+            1,
+            "`{name}` ({id}) has exactly one result: {results:#?}"
+        );
+    }
+    assert_eq!(
+        results.len(),
+        calls.len(),
+        "no result without a call: {results:#?}"
+    );
+    let result_of = |name: &str| {
+        let (id, _) = calls.iter().find(|(_, n)| n == name).unwrap();
+        results.iter().find(|(rid, _)| rid == id).unwrap().1.clone()
+    };
+    assert!(
+        result_of("proc.exec").starts_with("status: RUNNING\nhandle: "),
+        "{}",
+        result_of("proc.exec")
+    );
+    assert!(
+        result_of("proc.wait").starts_with("status: COMPLETED\nhandle: "),
+        "{}",
+        result_of("proc.wait")
+    );
+}
+
 #[tokio::test]
 async fn qual_px_114_schema_bytes_per_request_are_measured_in_each_mode() {
     let direct = run(direct_script(), vec![], None, None, &[]).await;

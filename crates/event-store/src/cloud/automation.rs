@@ -249,6 +249,12 @@ pub struct RunRecord {
     pub missed: i64,
     /// The limits the run carries.
     pub budgets: serde_json::Value,
+    /// What the egress gateway refused the run's sandbox (PX-085, AUT-D07):
+    /// `[{destination, reason, detail, at_ms}]` read from the gateway's
+    /// durable audit, `reason` being a typed code (`ORG_ALLOW_LIST` when the
+    /// organisation's allow-list named no such destination, `NO_EGRESS_RULE`
+    /// when no rule did). Empty for a run that was refused nothing.
+    pub egress_denials: serde_json::Value,
 }
 
 /// A schedule trigger to track once a version is enabled.
@@ -1088,7 +1094,7 @@ impl CloudStore {
             let client = self.pool.get().await?;
             client
                 .query_opt(
-                    "SELECT f.tenant_id, f.automation_id, f.version, f.trigger_id, f.trigger_kind, f.event_id, f.status, f.payload, f.payload_label, f.definition_hash, f.task_id, f.session_id, a.name, a.workspace_root, a.service_principal_id, a.paused, v.controls, a.enabled_version, a.enabled_hash FROM automation_firings f JOIN automations a ON a.automation_id = f.automation_id JOIN automation_versions v ON v.automation_id = f.automation_id AND v.version = f.version WHERE f.dispatch_key = $1",
+                    "SELECT f.tenant_id, f.automation_id, f.version, f.trigger_id, f.trigger_kind, f.event_id, f.status, f.payload, f.payload_label, f.definition_hash, f.task_id, f.session_id, a.name, a.workspace_root, a.service_principal_id, a.paused, v.controls, a.enabled_version, a.enabled_hash, a.enabled_hosts FROM automation_firings f JOIN automations a ON a.automation_id = f.automation_id JOIN automation_versions v ON v.automation_id = f.automation_id AND v.version = f.version WHERE f.dispatch_key = $1",
                     &[&dispatch_key],
                 )
                 .await?
@@ -1114,6 +1120,13 @@ impl CloudStore {
         let controls: RunControls = serde_json::from_value(r.get(16))?;
         let still_enabled = r.get::<_, Option<i32>>(17) == Some(version)
             && r.get::<_, Option<String>>(18).as_deref() == Some(def_hash.as_str());
+        // The hosts the owner's approval listed, for the version that is still
+        // enabled: the task's sandbox is given egress to them and no others.
+        let approved_hosts: Vec<String> = if still_enabled {
+            r.get::<_, Option<Vec<String>>>(19).unwrap_or_default()
+        } else {
+            vec![]
+        };
         if state == status::RUNNING
             && let (Some(t), Some(s)) = (
                 r.get::<_, Option<uuid::Uuid>>(10),
@@ -1250,6 +1263,7 @@ impl CloudStore {
                     principal: format!("service:{principal_id}"),
                     definition_hash: def_hash,
                     test: false,
+                    approved_hosts: approved_hosts.clone(),
                 },
                 service.clone(),
             )?,
@@ -1384,7 +1398,7 @@ impl CloudStore {
         let client = self.pool.get().await?;
         let rows = client
             .query(
-                "SELECT f.dispatch_key, f.automation_id, f.version, f.trigger_id, f.trigger_kind, f.event_id, CASE WHEN f.status = 'RUNNING' AND t.state IN ('READY_FOR_REVIEW', 'COMPLETED') THEN 'SUCCEEDED' WHEN f.status = 'RUNNING' AND t.state = 'FAILED' THEN 'FAILED' WHEN f.status = 'RUNNING' AND t.state = 'CANCELLED' THEN 'CANCELLED' ELSE f.status END, f.reason, f.detail, f.task_id, f.session_id, f.principal_id, f.fired_ms, f.slot_ms, f.catch_up, f.missed, f.budgets FROM automation_firings f LEFT JOIN tasks t ON t.task_id = f.task_id WHERE f.tenant_id = $1 AND ($2::uuid IS NULL OR f.automation_id = $2) ORDER BY f.fired_ms DESC, f.dispatch_key ASC LIMIT $3",
+                "SELECT f.dispatch_key, f.automation_id, f.version, f.trigger_id, f.trigger_kind, f.event_id, CASE WHEN f.status = 'RUNNING' AND t.state IN ('READY_FOR_REVIEW', 'COMPLETED') THEN 'SUCCEEDED' WHEN f.status = 'RUNNING' AND t.state = 'FAILED' THEN 'FAILED' WHEN f.status = 'RUNNING' AND t.state = 'CANCELLED' THEN 'CANCELLED' ELSE f.status END, f.reason, f.detail, f.task_id, f.session_id, f.principal_id, f.fired_ms, f.slot_ms, f.catch_up, f.missed, f.budgets, (SELECT COALESCE(json_agg(json_build_object('destination', e.destination, 'reason', e.reason, 'detail', e.detail, 'at_ms', e.at_ms) ORDER BY e.egress_id), '[]'::json) FROM sandbox_egress e JOIN sandboxes sb ON sb.sandbox_id = e.sandbox_id WHERE sb.tenant_id = f.tenant_id AND sb.task_id = f.task_id AND e.allowed = FALSE) FROM automation_firings f LEFT JOIN tasks t ON t.task_id = f.task_id WHERE f.tenant_id = $1 AND ($2::uuid IS NULL OR f.automation_id = $2) ORDER BY f.fired_ms DESC, f.dispatch_key ASC LIMIT $3",
                 &[&tenant_uuid(tenant), &automation, &limit],
             )
             .await?;
@@ -1411,6 +1425,7 @@ impl CloudStore {
                 catch_up: r.get(14),
                 missed: r.get(15),
                 budgets: r.get(16),
+                egress_denials: r.get(17),
             })
             .collect())
     }
