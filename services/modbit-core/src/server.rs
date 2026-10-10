@@ -101,6 +101,17 @@ pub(crate) async fn require_lease(
     env: &CommandEnvelope,
     session_id: &SessionId,
 ) -> Result<(), CommandAck> {
+    // A command that names the session it acts in acts only on that session's tasks: the lease generation below is the owning
+    // session's, and two sessions can hold the same number, so it cannot tell the caller's session from another.
+    if let Some(named) = env.session_id.as_ref().and_then(id16)
+        && named != *session_id.as_bytes()
+    {
+        return Err(reject(
+            cid.clone(),
+            "WRONG_SESSION",
+            "the task belongs to another session",
+        ));
+    }
     let store = core.store.lock().await;
     let session = match store.session(session_id) {
         Ok(Some(s)) => s,
@@ -688,6 +699,7 @@ async fn serve_connection(core: Arc<Core>, mut stream: BoxedStream) -> Result<()
                     "GetEffectReceipts",
                     "GetCapabilityLeases",
                     "ListModels",
+                    "ListModelVariants",
                     "ListLanguages",
                     "GetContextInspector",
                     "GetRoutingPlan",
@@ -6207,6 +6219,7 @@ pub(crate) async fn handle_command(core: &Arc<Core>, env: CommandEnvelope) -> Co
                 wire::ModelList { models, health }.encode_to_vec(),
             )
         }
+        "ListModelVariants" => crate::composer::list_variants(core, cid, &env.payload).await,
         "ProbeModel" => {
             let Ok(p) = wire::ProbeModel::decode(env.payload.as_slice()) else {
                 return reject(cid, "BAD_PAYLOAD", "ProbeModel");

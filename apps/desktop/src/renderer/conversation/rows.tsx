@@ -14,6 +14,7 @@ import type { PendingApprovalView, TranscriptRowView } from "../../shared/conver
 import type { TaskCard } from "../model.ts";
 import { needsEyes, presentAssistant, streamKey, type LiveStreams, type MessageState, type PresentedRow } from "./model.ts";
 import { sameBlock, splitBlocks, type Block } from "./blocks.ts";
+import { EditBox, MessageActions, TurnMarker, type CheckpointContext } from "./checkpoint-controls.tsx";
 
 export interface RowContext {
   sessionId: string | null;
@@ -30,6 +31,8 @@ export interface RowContext {
   highlightRowId: string | null;
   /** The latest user message of the conversation stays pinned as a sticky card while its turn is on screen (AFW-C07). */
   latestUserRowId: string | null;
+  /** REQ-PX-062: the checkpoint surface (restore, edit in place, fork); absent where the rows are drawn without a task (the gallery). */
+  checkpoints?: CheckpointContext | undefined;
 }
 
 export function formatDuration(ms: number): string {
@@ -148,12 +151,13 @@ function UserRow({ row, ctx }: { row: TranscriptRowView; ctx: RowContext }) {
   const sticky = ctx.latestUserRowId === row.rowId;
   return (
     <article className="conv-row conv-user" data-testid="conv-user" data-row-id={row.rowId} data-kind="USER_MESSAGE" data-sticky={sticky} data-highlight={ctx.highlightRowId === row.rowId} aria-label="Your message">
-      <p className="conv-user-text">{row.text}</p>
+      {ctx.checkpoints?.editingRowId === row.rowId ? <EditBox row={row} cp={ctx.checkpoints} /> : <p className="conv-user-text">{row.text}</p>}
       <p className="meta">
         {f?.source === "answer" ? "Your answer" : f?.source === "queued_input" ? `Queued ${f.mode ? f.mode.toLowerCase() : "input"}` : "Task"}
         {f?.untrusted ? ` · from ${f.provenance.replace(/_/g, " ") || "outside"} (untrusted text)` : ""}
         {row.atMs ? ` · ${clock(row.atMs)}` : ""}
       </p>
+      {ctx.checkpoints && ctx.checkpoints.editingRowId !== row.rowId && <MessageActions row={row} cp={ctx.checkpoints} />}
     </article>
   );
 }
@@ -349,6 +353,7 @@ function FooterRow({ row, ctx }: { row: TranscriptRowView; ctx: RowContext }) {
       <Button size="sm" variant="ghost" onClick={() => ctx.onCopyTurn(f.turnId)} data-testid="conv-copy-turn">
         Copy answer
       </Button>
+      {ctx.checkpoints && <TurnMarker turnId={f.turnId} cp={ctx.checkpoints} />}
     </div>
   );
 }
@@ -407,5 +412,6 @@ export const RowView = memo(RowInner, (a, b) => {
     if (x.live.get(k) !== y.live.get(k)) return false;
   }
   if (a.row.kind === "APPROVAL_CARD" || a.row.kind === "WORK_GROUP") return x.card === y.card && x.approvals === y.approvals;
+  if (a.row.kind === "USER_MESSAGE" || a.row.kind === "TURN_FOOTER") return x.checkpoints === y.checkpoints;
   return true;
 });

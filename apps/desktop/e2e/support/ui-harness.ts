@@ -47,13 +47,12 @@ export async function launch(dataDir: string, opts: LaunchOptions = {}): Promise
 
 /** The accessibility suite (axe-core, WCAG 2.x A/AA and best practices) on the document or one subtree: no violation of any impact. */
 export async function accessible(page: Page, what: string, selector?: string): Promise<void> {
-  // A colour mid-transition is not a colour: let any CSS transition, and any animation that ends (the streamed words' fade from dim to
-  // full, which axe measured at its dim start on a slow runner), finish before measuring. Animations that never end (a blinking cursor) are left running.
+  // A colour mid-transition (or mid-fade) is not a colour: let every finite CSS transition and animation finish before measuring.
   await page.evaluate(() =>
     Promise.all(
       document
         .getAnimations()
-        .filter((a) => a instanceof CSSTransition || (a instanceof CSSAnimation && a.effect?.getComputedTiming().iterations !== Infinity))
+        .filter((a) => a instanceof CSSTransition || (a instanceof CSSAnimation && Number.isFinite(a.effect?.getComputedTiming().endTime as number)))
         .map((a) => a.finished.catch(() => undefined)),
     ),
   );

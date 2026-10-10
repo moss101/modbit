@@ -1612,5 +1612,61 @@ pub fn samples() -> Vec<Sample> {
             }),
             decode: reencode::<ReviewCommentThreadView>,
         },
+        // PX-056 (composer.proto): the model picker's variants and the typed block code.
+        Sample {
+            name: "model_variant_list",
+            type_name: "modbit.v1.ModelVariantList",
+            bytes: ModelVariantList {
+                models: vec![ModelVariantsEntry {
+                    endpoint: "openai".into(),
+                    model: "gpt-5-mini".into(),
+                    provider: "openai".into(),
+                    reasoning: true,
+                    vision: true,
+                    context_tokens: 400_000,
+                    default_effort: "medium".into(),
+                    default_service_tier: String::new(),
+                    variants: vec![
+                        ModelVariantView {
+                            effort: "medium".into(),
+                            service_tier: String::new(),
+                            label: "Medium effort".into(),
+                            is_default: true,
+                            raises_cost: false,
+                        },
+                        ModelVariantView {
+                            effort: "high".into(),
+                            service_tier: "priority".into(),
+                            label: "High effort".into(),
+                            is_default: false,
+                            raises_cost: true,
+                        },
+                    ],
+                    credential_available: true,
+                    blocked_by_policy: "block=openai/gpt-5-mini".into(),
+                    pin_refusal_code: "POLICY_BLOCKED".into(),
+                    pin_allowed: false,
+                }],
+                objectives: vec!["COST".into(), "BALANCE".into(), "INTELLIGENCE".into()],
+                default_objective: "BALANCE".into(),
+            }
+            .encode_to_vec(),
+            expected: json!({
+                "models": [{
+                    "endpoint": "openai", "model": "gpt-5-mini", "provider": "openai",
+                    "reasoning": true, "vision": true, "contextTokens": 400000,
+                    "defaultEffort": "medium", "defaultServiceTier": "",
+                    "variants": [
+                        { "effort": "medium", "serviceTier": "", "label": "Medium effort", "isDefault": true, "raisesCost": false },
+                        { "effort": "high", "serviceTier": "priority", "label": "High effort", "isDefault": false, "raisesCost": true }
+                    ],
+                    "credentialAvailable": true, "blockedByPolicy": "block=openai/gpt-5-mini",
+                    "pinRefusalCode": "POLICY_BLOCKED", "pinAllowed": false
+                }],
+                "objectives": ["COST", "BALANCE", "INTELLIGENCE"],
+                "defaultObjective": "BALANCE"
+            }),
+            decode: reencode::<ModelVariantList>,
+        },
     ]
 }

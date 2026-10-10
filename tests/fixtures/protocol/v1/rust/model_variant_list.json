@@ -1,0 +1,43 @@
+{
+  "expected": {
+    "defaultObjective": "BALANCE",
+    "models": [
+      {
+        "blockedByPolicy": "block=openai/gpt-5-mini",
+        "contextTokens": 400000,
+        "credentialAvailable": true,
+        "defaultEffort": "medium",
+        "defaultServiceTier": "",
+        "endpoint": "openai",
+        "model": "gpt-5-mini",
+        "pinAllowed": false,
+        "pinRefusalCode": "POLICY_BLOCKED",
+        "provider": "openai",
+        "reasoning": true,
+        "variants": [
+          {
+            "effort": "medium",
+            "isDefault": true,
+            "label": "Medium effort",
+            "raisesCost": false,
+            "serviceTier": ""
+          },
+          {
+            "effort": "high",
+            "isDefault": false,
+            "label": "High effort",
+            "raisesCost": true,
+            "serviceTier": "priority"
+          }
+        ],
+        "vision": true
+      }
+    ],
+    "objectives": [
+      "COST",
+      "BALANCE",
+      "INTELLIGENCE"
+    ]
+  },
+  "type": "modbit.v1.ModelVariantList"
+}

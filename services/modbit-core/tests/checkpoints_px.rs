@@ -778,6 +778,124 @@ async fn px_061_every_turn_leaves_a_checkpoint_and_a_restore_is_exactly_reversib
     assert!(kept.kept_paths.contains(&"f1.txt".to_owned()), "{kept:?}");
 }
 
+/// QUAL-PX-062 (found by the desktop's real-boundary suite): a person who opens
+/// the review leaves the agent's new files staged in the index (a path the index
+/// holds and HEAD does not). The preview names them REVERT_TO_HEAD, so the
+/// restore must remove them too: it used to skip them, report success and leave
+/// every file in place. Restore to an earlier turn, then redo, byte for byte.
+#[tokio::test]
+async fn px_062_a_restore_removes_new_files_the_index_holds_and_redo_gives_them_back() {
+    let (mut fx, _seen) = Fx::new(files_script(3, None), &[("a.txt", "a\n")], &[]).await;
+    fx.run_to_review().await;
+    let at_end = tree(&fx.root);
+    assert!(at_end.contains_key("f3.txt"), "{at_end:?}");
+    assert!(
+        Command::new("git")
+            .arg("-C")
+            .arg(&fx.root)
+            .args(["add", "-A"])
+            .status()
+            .unwrap()
+            .success()
+    );
+    let mut at_turn3 = at_end.clone();
+    at_turn3.remove("f3.txt");
+    // Turn 1 plans; turn 3 has created f2 and not f3.
+    let (r, _) = fx
+        .restore(RestoreCheckpoint {
+            turn_ordinal: 3,
+            ..Default::default()
+        })
+        .await
+        .unwrap();
+    assert!(r.restored, "{r:?}");
+    assert_eq!(r.files_reverted, 1, "the staged new file is removed: {r:?}");
+    assert_eq!(tree(&fx.root), at_turn3);
+    let (redo, _) = fx
+        .restore(RestoreCheckpoint {
+            checkpoint_id: r.pre_restore_checkpoint_id.clone(),
+            redo: true,
+            ..Default::default()
+        })
+        .await
+        .unwrap();
+    assert!(redo.restored, "{redo:?}");
+    assert_eq!(tree(&fx.root), at_end, "redo gives the removed file back");
+
+    // A preview reports the hash a path has now, also for a clean tracked path the checkpoint holds
+    // changed: a client sends that hash as its precondition, and an exact restore must not refuse it.
+    std::fs::write(fx.root.clone() + "/a.txt", "tweaked\n").unwrap();
+    let (kept, _): (modbit_protocol::v1::CheckpointCreated, bool) = send(
+        &mut fx.c,
+        None,
+        "CreateCheckpoint",
+        modbit_protocol::v1::CreateCheckpoint {
+            task_id: Some(fx.task.clone()),
+            reason: "requested".into(),
+            ..Default::default()
+        },
+        Some(fx.g),
+    )
+    .await
+    .unwrap();
+    let with_tweak = kept.checkpoint.unwrap().checkpoint_id;
+    let after_tweak = tree(&fx.root);
+    let (back, _) = fx
+        .restore(RestoreCheckpoint {
+            turn_ordinal: 3,
+            ..Default::default()
+        })
+        .await
+        .unwrap();
+    assert!(back.restored, "{back:?}");
+    assert_eq!(
+        std::fs::read_to_string(fx.root.clone() + "/a.txt").unwrap(),
+        "a\n",
+        "a.txt is back at HEAD's content (clean)"
+    );
+    let (pv, _): (modbit_protocol::v1::RewindPreview, bool) = send(
+        &mut fx.c,
+        None,
+        "PreviewRewind",
+        modbit_protocol::v1::PreviewRewind {
+            task_id: Some(fx.task.clone()),
+            checkpoint_id: with_tweak.clone(),
+            ..Default::default()
+        },
+        None,
+    )
+    .await
+    .unwrap();
+    let entry = pv.entries.iter().find(|e| e.path == "a.txt").unwrap();
+    assert_eq!(entry.action, "WRITE", "{pv:?}");
+    assert!(
+        !entry.current_hash.is_empty(),
+        "a clean tracked file has a hash now: {entry:?}"
+    );
+    let expected: Vec<modbit_protocol::v1::FileHash> = pv
+        .entries
+        .iter()
+        .filter(|e| e.action != "UNCHANGED")
+        .map(|e| modbit_protocol::v1::FileHash {
+            path: e.path.clone(),
+            content_hash: e.current_hash.clone(),
+        })
+        .collect();
+    let (again, _) = fx
+        .restore(RestoreCheckpoint {
+            checkpoint_id: with_tweak,
+            expected,
+            ..Default::default()
+        })
+        .await
+        .unwrap();
+    assert!(
+        again.restored,
+        "the preview's own hashes are accepted: {again:?}"
+    );
+    assert_eq!(tree(&fx.root), after_tweak);
+}
+
 /// QUAL-PX-061 / PX-102 fork: a fork at turn N has that turn's file contents
 /// and the parent is untouched; the fork may be taken by turn id, by ordinal
 /// or by label; a fork at a turn that left no checkpoint is refused typed.

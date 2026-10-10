@@ -1,8 +1,14 @@
-import { useState } from "react";
+import { useState, useSyncExternalStore } from "react";
 import type { TaskCard } from "../model.ts";
 import { StateLine } from "../shell/state-line.tsx";
 import type { ScreenState as DerivedScreenState } from "../screens.ts";
 
+const DECISION_NOTES = new Map<string, string>();
+const NOTE_LISTENERS = new Set<() => void>();
+const subscribeNotes = (l: () => void) => {
+  NOTE_LISTENERS.add(l);
+  return () => void NOTE_LISTENERS.delete(l);
+};
 const PHASE_LABEL: Record<TaskCard["phase"], string> = {
   drafting: "drafting",
   verifying: "verifying",
@@ -36,7 +42,13 @@ export function Card({ card, children, state, sessionId, onFocus, onStart, onRev
   // refuses any other), the answer names the question; both are the
   // Core's records, not the renderer's.
   const [deciding, setDeciding] = useState(false);
-  const [decisionNote, setDecisionNote] = useState<string | null>(null);
+  // The note outlives the card's mount: a decided task moves between board columns, which remounts its card, and the answer must still be shown.
+  const decisionNote = useSyncExternalStore(subscribeNotes, () => DECISION_NOTES.get(card.taskId) ?? null);
+  const setDecisionNote = (n: string | null) => {
+    if (n === null) DECISION_NOTES.delete(card.taskId);
+    else DECISION_NOTES.set(card.taskId, n);
+    for (const l of NOTE_LISTENERS) l();
+  };
   const [answer, setAnswer] = useState("");
   const decide = async (approve: boolean) => {
     if (!sessionId || !card.approval || deciding) return;

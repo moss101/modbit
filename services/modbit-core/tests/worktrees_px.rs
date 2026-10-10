@@ -3078,3 +3078,121 @@ async fn px_065_a_scheduled_run_fires_on_its_interval() {
     let r = seen.expect("the scheduled run fired");
     assert_eq!(r.reason, "scheduled");
 }
+
+// ---- a live worktree is never recorded as removed ----
+
+/// The `WorktreeRemoved` events of a session, as payloads.
+async fn removals(fx: &Fx) -> Vec<serde_json::Value> {
+    events_of(&fx.events().await, "WorktreeRemoved")
+}
+
+/// A running task whose worktree directory cannot be found is not recorded as
+/// removed: the cleanup leaves it for a later scan and says why. Once the task
+/// has ended, the same scan records it, once.
+#[tokio::test]
+async fn px_065_a_missing_directory_under_a_running_task_is_not_recorded_as_removed() {
+    let (model, _seen) = px_common::scripted_model_fn(std::sync::Arc::new(
+        |_, _| serde_json::json!({"delay_ms": 600_000, "text": "late"}),
+    ))
+    .await;
+    let mut envs: Vec<(String, String)> = model_env(&model);
+    envs.push(("MODBIT_WORKTREE_PROTECT_MS".into(), "1".into()));
+    let env: Vec<(&str, &str)> = envs.iter().map(|(k, v)| (k.as_str(), v.as_str())).collect();
+    let mut fx = Fx::new(&[("README.md", "# live\n")], &env).await;
+    let t = fx.isolated(0x61).await;
+    start_task(&mut fx.c, &t, fx.g, 0x62, "gpt-5-mini").await;
+    let mut running = false;
+    for _ in 0..100 {
+        let l = fx.list().await;
+        if l.worktrees
+            .iter()
+            .any(|w| w.task_id.as_ref() == Some(&t) && w.task_running)
+        {
+            running = true;
+            break;
+        }
+        tokio::time::sleep(Duration::from_millis(50)).await;
+    }
+    assert!(running, "the task is running");
+
+    // A scan while the worktree is present and the task is running: nothing.
+    let wt = fx.worktree_dir(&t);
+    assert!(wt.exists());
+    let r = fx.cleanup(None, false).await.unwrap();
+    assert_eq!(r.removed, 0, "{r:?}");
+    assert!(wt.exists(), "a live worktree is still there");
+    assert!(removals(&fx).await.is_empty());
+
+    // The directory cannot be found while the task runs: the scan must not
+    // write it off.
+    let parked = fx.data().join("parked-wt");
+    std::fs::rename(&wt, &parked).unwrap();
+    let r = fx.cleanup(None, false).await.unwrap();
+    assert!(
+        r.kept.iter().any(|k| k.why.contains("task has not ended")),
+        "{r:?}"
+    );
+    assert!(
+        removals(&fx).await.is_empty(),
+        "no removal is recorded for a running task: {:?}",
+        removals(&fx).await
+    );
+
+    // The task ends; the next scan records the removal exactly once.
+    fx.cancel(&t).await;
+    fx.cleanup(None, false).await.unwrap();
+    fx.cleanup(None, false).await.unwrap();
+    let rem = removals(&fx).await;
+    assert_eq!(rem.len(), 1, "{rem:?}");
+    assert_eq!(rem[0]["reason"], "its directory was gone");
+}
+
+/// A worktree the model made and closed with the governed Git tools is
+/// recorded as removed by the close itself, whichever way its path is spelled
+/// (forward slashes, a verbatim prefix, a short name), so a later scan has
+/// nothing left to write off.
+#[tokio::test]
+async fn px_065_a_tool_closed_worktree_is_recorded_by_the_close_not_by_a_later_scan() {
+    let mut fx = Fx::new(&[("README.md", "# tool\n")], &[]).await;
+    let root = fx.root.clone();
+    let t = fx
+        .create(0x63, &root, TaskIsolation::None, "local_trusted")
+        .await
+        .unwrap();
+    let wt = modbit_tools::direct::worktree_root(Path::new(&root))
+        .unwrap()
+        .join("scratch");
+    let given = wt.to_string_lossy().replace('\\', "/");
+    let made = fx
+        .invoke(
+            &t,
+            0x64,
+            "git.worktree.create",
+            serde_json::json!({"branch": "t/scratch", "path": given}),
+        )
+        .await;
+    assert_eq!(made.status, "SUCCESS", "{made:?}");
+    assert!(wt.exists());
+    // A scan while it is open removes nothing and records nothing.
+    let r = fx.cleanup(None, false).await.unwrap();
+    assert_eq!(r.removed, 0, "{r:?}");
+    assert!(wt.exists());
+    assert!(removals(&fx).await.is_empty());
+
+    let closed = fx
+        .invoke_approved(
+            &t,
+            0x65,
+            "git.worktree.close",
+            serde_json::json!({"path": given}),
+        )
+        .await;
+    assert_eq!(closed.status, "SUCCESS", "{closed:?}");
+    assert!(!wt.exists());
+    let rem = removals(&fx).await;
+    assert_eq!(rem.len(), 1, "the close recorded the removal: {rem:?}");
+    assert_eq!(rem[0]["reason"], "closed with git.worktree.close");
+    // A scan afterwards adds nothing.
+    fx.cleanup(None, false).await.unwrap();
+    assert_eq!(removals(&fx).await.len(), 1);
+}
