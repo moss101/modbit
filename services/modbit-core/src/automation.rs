@@ -733,31 +733,6 @@ async fn fire(core: &Arc<Core>, req: FireRequest) -> Result<Fired, Refusal> {
                 }
             }
         };
-        // A repository definition's file must still be the approved bytes
-        // before anything fires; if not, it is disabled and nothing runs.
-        if !req.test
-            && let Err(why) = verify_source(
-                version,
-                st.enabled.as_ref().and_then(|e| e.source_sha256.as_deref()),
-            )
-        {
-            let detail = why.clone();
-            if let Some(agg) = parse_hex16(&req.automation_id) {
-                let _ = append(
-                    core,
-                    &mut reg,
-                    agg,
-                    vec![AutomationEvent::AutomationDisabled {
-                        automation_id: req.automation_id.clone(),
-                        reason: "SOURCE_CHANGED".into(),
-                        detail,
-                        at_ms: now,
-                    }],
-                )
-                .await;
-            }
-            return Err(refuse("SOURCE_CHANGED", why));
-        }
         let d = &version.definition;
         let trigger = d
             .trigger(&req.trigger_id)
@@ -816,6 +791,40 @@ async fn fire(core: &Arc<Core>, req: FireRequest) -> Result<Fired, Refusal> {
                 reason: "DUPLICATE".into(),
                 detail: "this event id already produced a run; nothing was created".into(),
             });
+        }
+        // A repository definition's file must still be the approved bytes
+        // before anything fires; if not, it is disabled and nothing runs.
+        // AUT-E01: the firing is refused, not dropped. It leaves a run record
+        // (skipped, typed SOURCE_CHANGED) in the definition's history before
+        // the typed refusal goes back, so a person who pressed Run sees a row
+        // for it and a schedule that fired into a changed file is not silent.
+        // Nothing is dispatched: no task, no worktree.
+        if !req.test
+            && let Err(why) = verify_source(
+                version,
+                st.enabled.as_ref().and_then(|e| e.source_sha256.as_deref()),
+            )
+        {
+            let _ = append(
+                core,
+                &mut reg,
+                aggregate,
+                vec![
+                    AutomationEvent::AutomationRunSkipped {
+                        firing: firing(key.clone()),
+                        reason: "SOURCE_CHANGED".into(),
+                        detail: why.clone(),
+                    },
+                    AutomationEvent::AutomationDisabled {
+                        automation_id: req.automation_id.clone(),
+                        reason: "SOURCE_CHANGED".into(),
+                        detail: why.clone(),
+                        at_ms: now,
+                    },
+                ],
+            )
+            .await;
+            return Err(refuse("SOURCE_CHANGED", why));
         }
         let inputs = resolve_inputs(d, &req.inputs).map_err(|issues| {
             refuse(

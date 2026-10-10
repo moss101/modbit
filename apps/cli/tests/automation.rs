@@ -668,3 +668,113 @@ fn shipped_template(cli: &Cli) -> String {
         .map(|x| x["definition"].to_string())
         .unwrap()
 }
+
+/// AUT-E01 ("failures are counted and never dropped"): a manual run refused
+/// because the repository file no longer holds the approved bytes leaves a
+/// run record, listed by `automation history` with the Core's typed reason,
+/// and dispatches nothing: no task, no session, no cost.
+#[test]
+fn a_manual_run_refused_for_changed_repository_bytes_is_in_the_history_and_started_nothing() {
+    let cli_exe = PathBuf::from(env!("CARGO_BIN_EXE_modbit-cli"));
+    let core = cli_exe.parent().unwrap().join(if cfg!(windows) {
+        "modbit-core.exe"
+    } else {
+        "modbit-core"
+    });
+    assert!(
+        core.exists(),
+        "{} (build modbit-core first)",
+        core.display()
+    );
+    let tmp = tempfile::tempdir().unwrap();
+    let data_dir = tmp.path().join("profile");
+    std::fs::create_dir_all(&data_dir).unwrap();
+    let repo = tmp.path().join("repo");
+    std::fs::create_dir_all(repo.join(".modbit/automations")).unwrap();
+    std::fs::write(repo.join("a.txt"), "a\n").unwrap();
+    let definition = repo.join(".modbit/automations/by-hand.json");
+    std::fs::write(
+        &definition,
+        r#"{"schema":"modbit.automation/1","name":"by-hand","prompt":"Look at the change.",
+            "triggers":[{"kind":"manual","id":"now"}]}"#,
+    )
+    .unwrap();
+    git(&repo, &["init", "-q", "-b", "main"]);
+    git(&repo, &["add", "-A"]);
+    git(
+        &repo,
+        &[
+            "-c",
+            "user.name=t",
+            "-c",
+            "user.email=t@e",
+            "commit",
+            "-q",
+            "-m",
+            "base",
+        ],
+    );
+    let root = repo
+        .canonicalize()
+        .unwrap()
+        .to_string_lossy()
+        .trim_start_matches(r"\\?\")
+        .to_owned();
+    let cli = Cli {
+        data_dir,
+        core,
+        env: vec![],
+    };
+    let out = cli.ok(&["session", "create"]);
+    let sid = out.trim().strip_prefix("session ").unwrap().to_owned();
+    cli.ok(&["workspace", "trust", "--session", &sid, &root]);
+    let out = cli.ok(&["automation", "load", "--workspace", &root]);
+    let id = out
+        .lines()
+        .next()
+        .unwrap()
+        .split_whitespace()
+        .nth(1)
+        .unwrap()
+        .to_owned();
+    let hash = out
+        .lines()
+        .find_map(|l| l.trim().strip_prefix("hash "))
+        .unwrap()
+        .trim()
+        .to_owned();
+    let out = cli.ok(&[
+        "automation",
+        "enable",
+        &id,
+        "--version",
+        "1",
+        "--hash",
+        &hash,
+        "--as-shown",
+    ]);
+    assert!(out.contains("state=ENABLED"), "{out}");
+    let before: serde_json::Value =
+        serde_json::from_str(cli.ok(&["automation", "history", &id, "--json"]).trim()).unwrap();
+    assert!(before.as_array().unwrap().is_empty());
+
+    // One byte changes on disk; the run is refused with the typed code ...
+    let mut text = std::fs::read_to_string(&definition).unwrap();
+    text.push('\n');
+    std::fs::write(&definition, text).unwrap();
+    let err = cli.fails(&["automation", "run", &id, "--event-id", "by-hand-1"]);
+    assert!(err.contains("SOURCE_CHANGED"), "{err}");
+
+    // ... and the refusal is a row in the history, not nothing.
+    let hist: serde_json::Value =
+        serde_json::from_str(cli.ok(&["automation", "history", &id, "--json"]).trim()).unwrap();
+    let rows = hist.as_array().unwrap();
+    assert_eq!(rows.len(), 1, "{hist}");
+    assert_eq!(rows[0]["status"], "skipped", "{hist}");
+    assert_eq!(rows[0]["reason"], "SOURCE_CHANGED", "{hist}");
+    assert_eq!(rows[0]["task_id"], "", "nothing was dispatched: {hist}");
+    assert_eq!(rows[0]["session_id"], "", "{hist}");
+    assert_eq!(rows[0]["cost_minor"], 0, "{hist}");
+    let text = cli.ok(&["automation", "history", &id]);
+    assert!(text.contains("SOURCE_CHANGED"), "{text}");
+}

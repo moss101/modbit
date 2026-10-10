@@ -1195,10 +1195,32 @@ async fn px_082_a_repository_definition_stays_disabled_until_its_hash_is_approve
     let after = view(&mut f.c, &v.automation_id).await;
     assert_eq!(after.state, "NEEDS_APPROVAL");
     assert_eq!(after.disabled_reason, "SOURCE_CHANGED");
-    assert!(
-        runs(&mut f.c, &v.automation_id).await.is_empty(),
-        "nothing ran"
+    // AUT-E01 (changed on purpose, Wave 6): this test used to assert that a
+    // refused manual run left no history at all. The spec says a failure is
+    // never dropped, so the refused firing leaves ONE run record, skipped with
+    // the typed reason SOURCE_CHANGED, and still dispatches nothing: no task,
+    // no session, no cost.
+    let history = runs(&mut f.c, &v.automation_id).await;
+    assert_eq!(
+        history.len(),
+        1,
+        "one record of the refused run: {history:?}"
     );
+    assert_eq!(history[0].status, "skipped");
+    assert_eq!(history[0].reason, "SOURCE_CHANGED");
+    assert!(
+        history[0]
+            .detail
+            .contains("changed since an owner approved"),
+        "{}",
+        history[0].detail
+    );
+    assert!(
+        history[0].task_id.is_empty() && history[0].session_id.is_empty(),
+        "nothing ran: {:?}",
+        history[0]
+    );
+    assert_eq!(history[0].cost_minor, 0);
     let l = list(&mut f.c).await;
     assert!(
         l.attention.iter().any(|a| a.kind == "SOURCE_CHANGED"),
