@@ -63,6 +63,8 @@ export const workspaceCss = `
 
 .shell-content:has(> .conv-wrap) { overflow: hidden; }
 .conv-wrap { height: 100%; min-height: 0; display: flex; flex-direction: column; }
+/* The status region (banners, the welcome card) never takes the surface from the content below it: on a short window it scrolls inside its own share instead of overlapping the controls under it. */
+.conv-wrap > [role="region"][aria-label="Status and notifications"] { flex: 0 0 auto; max-height: 45%; overflow-y: auto; }
 .conv { flex: 1 1 0; min-height: 0; display: flex; flex-direction: column; }
 .conv-head { flex: none; display: flex; align-items: center; gap: var(--mb-space-2); padding: var(--mb-space-1) var(--mb-space-4); border-bottom: 1px solid var(--mb-color-border); font-size: var(--mb-type-chrome-size); }
 .conv-spacer { flex: 1 1 0; }

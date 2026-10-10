@@ -48,6 +48,31 @@ async function makeTask(page: Page, goal: string, repo: string, stop: boolean): 
 const coreProjects = (page: Page) => page.evaluate(() => window.modbit.listProjects({ includeArchived: true }));
 const membersOf = async (page: Page, projectId: string) => (await coreProjects(page)).projects.find((p) => p.projectId === projectId)!.members.map((m) => m.taskId).sort();
 
+/**
+ * Every task the list holds, however short the window is. The list windows its rows (only those in
+ * the viewport plus an overscan are in the document), and a CI display can be smaller than the
+ * window asked for, so a count of the rendered rows says nothing about the list. This scrolls the
+ * list top to bottom and collects the distinct tasks that were in the document at each stop.
+ */
+async function listedTaskIds(page: Page): Promise<string[]> {
+  return page.evaluate(async () => {
+    const scroller = document.querySelector<HTMLElement>('[data-testid="agents-scroll"]')!;
+    const seen = new Set<string>();
+    const collect = () => document.querySelectorAll('[data-testid="agent-row"]').forEach((r) => seen.add(r.getAttribute("data-agent-id")!));
+    const step = Math.max(1, scroller.clientHeight - 40);
+    scroller.scrollTop = 0;
+    for (let top = 0; ; top += step) {
+      scroller.scrollTop = top;
+      await new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(r)));
+      collect();
+      if (top + scroller.clientHeight >= scroller.scrollHeight) break;
+    }
+    scroller.scrollTop = 0;
+    await new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(r)));
+    return [...seen];
+  });
+}
+
 async function dragOnto(page: Page, source: Locator, target: Locator): Promise<void> {
   const dt = await page.evaluateHandle(() => new DataTransfer());
   await source.dispatchEvent("dragstart", { dataTransfer: dt });
@@ -217,7 +242,7 @@ test("PX-063/064: a project is created, filled by menu, drag and keyboard, refus
     await expect(page.getByTestId("view-save-dialog")).toHaveCount(0);
     await page.getByTestId("filters-clear").click();
     await page.getByTestId("agents-grouping").selectOption("status");
-    await expect(page.getByTestId("agent-row")).toHaveCount(5);
+    await expect.poll(async () => (await listedTaskIds(page)).sort()).toEqual([a1, a2, a3, b1, draft].sort());
     await page.getByTestId("agents-views").click();
     await page.getByRole("menuitemradio", { name: "Release by title" }).click();
     await expect(page.getByTestId("agents-grouping")).toHaveValue("project");
