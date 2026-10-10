@@ -20,11 +20,26 @@ const complete: ModelPart = { call: { name: "task.complete", args: { summary: "d
 const newRepo = () => makeRepo(mkdtempSync(join(tmpdir(), "modbit-ctx-repo-")));
 
 /** The numbers the open breakdown shows: its categories and its total, as the Core counted them. */
-async function breakdown(page: Page): Promise<{ total: bigint; sum: bigint; rows: number; sums: string | null }> {
-  const tray = page.getByTestId("context-tray");
-  const total = BigInt((await tray.getAttribute("data-total")) ?? "0");
-  const tokens = await page.getByTestId("context-category").evaluateAll((els) => els.map((e) => e.getAttribute("data-tokens") ?? "0"));
-  return { total, sum: tokens.reduce((s, t) => s + BigInt(t), 0n), rows: tokens.length, sums: await tray.getAttribute("data-sums") };
+async function breakdown(page: Page): Promise<{ total: bigint; sum: bigint; rows: number; sums: string | null; detail: string }> {
+  // One synchronous pass over the DOM: the total and the categories must come from the same render. Read apart, a refresh
+  // of the tray between the two calls pairs a total with another snapshot's categories (CI, Windows: sum 7861 against total 7747).
+  const snap = await page.evaluate(() => {
+    const tray = document.querySelector('[data-testid="context-tray"]');
+    const cats = [...document.querySelectorAll('[data-testid="context-category"]')];
+    return {
+      total: tray?.getAttribute("data-total") ?? "0",
+      sums: tray?.getAttribute("data-sums") ?? null,
+      cats: cats.map((e) => `${e.textContent?.trim().replace(/\s+/g, " ").slice(0, 40)}=${e.getAttribute("data-tokens") ?? "0"}`),
+    };
+  });
+  const tokens = snap.cats.map((c) => c.slice(c.lastIndexOf("=") + 1));
+  return {
+    total: BigInt(snap.total),
+    sum: tokens.reduce((s, t) => s + BigInt(t), 0n),
+    rows: tokens.length,
+    sums: snap.sums,
+    detail: `total ${snap.total}, core says sums=${snap.sums}: ${snap.cats.join("; ")}`,
+  };
 }
 
 test("PX-060: the ring shows the Core's usage; its tray lists the nine categories that sum to the total; it updates after a turn; the usage summary and the budget caps appear as set", async () => {
@@ -67,7 +82,7 @@ test("PX-060: the ring shows the Core's usage; its tray lists the nine categorie
     await expect(page.getByTestId("context-tray")).toBeVisible();
     const first = await breakdown(page);
     expect(first.rows, "the Core's nine categories").toBe(9);
-    expect(first.sum, "the categories sum to the total").toBe(first.total);
+    expect(first.sum, `the categories sum to the total: ${first.detail}`).toBe(first.total);
     expect(first.sums).toBe("true");
     expect(first.total).toBeGreaterThan(0n);
     await expect(page.getByTestId("context-source")).toContainText("estimate");
@@ -93,7 +108,7 @@ test("PX-060: the ring shows the Core's usage; its tray lists the nine categorie
     await expect(page.getByTestId("context-ring-text")).toHaveText("85%");
     const second = await breakdown(page);
     expect(second.total).toBe(340_000n);
-    expect(second.sum).toBe(second.total);
+    expect(second.sum, second.detail).toBe(second.total);
     expect(second.rows).toBe(9);
     expect(second.total).not.toBe(first.total);
     await expect(page.getByTestId("context-source")).toContainText("provider reported");
