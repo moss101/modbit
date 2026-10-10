@@ -62,6 +62,8 @@ export const workspaceCss = `
 .agents-snippet mark { background: var(--mb-color-warn-tint); color: var(--mb-color-text); border-radius: var(--mb-radius-1); outline: 1px solid var(--mb-color-warn); }
 
 .shell-content:has(> .conv-wrap) { overflow: hidden; }
+/* The recovery, context and economics banners scroll within a capped band: stacked unbounded they squeeze the message list to a few pixels after a Core restart. */
+.conv-banners { flex: none; max-height: 22%; overflow-y: auto; }
 .conv-wrap { height: 100%; min-height: 0; display: flex; flex-direction: column; }
 /* The status region (banners, the welcome card) never takes the surface from the content below it: on a short window it scrolls inside its own share instead of overlapping the controls under it. */
 .conv-wrap > [role="region"][aria-label="Status and notifications"] { flex: 0 0 auto; max-height: 45%; overflow-y: auto; }

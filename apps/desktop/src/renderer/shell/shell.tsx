@@ -439,7 +439,9 @@ export function Shell({ app }: { app: AppState }) {
           <WorktreesPanel state={worktrees} sessionId={model.sessionId} titleOf={(id) => model.tasks.get(id)?.goalText ?? "another task"} taskStateOf={(id) => model.tasks.get(id)?.state} nowMs={nowMs} onOpenTask={(id) => openConversation(id)} announce={setNotice} />
         ) : conversation && !reviewing && !browsing && !dashboardOpen ? (
           <div className="conv-wrap">
-            <StatusRegion app={app} />
+            <div className="conv-banners" data-testid="conv-banners" role="region" aria-label="Task status" tabIndex={0}>
+              <StatusRegion app={app} />
+            </div>
             <Conversation key={conversation.taskId} taskId={conversation.taskId} sessionId={model.tasks.has(conversation.taskId) ? model.sessionId : (runSessions[conversation.taskId] ?? model.sessionId)} connected={core.state === "connected"} card={model.tasks.get(conversation.taskId)} title={model.tasks.get(conversation.taskId)?.goalText ?? "Task"} focusRowId={conversation.rowId} onResume={(id) => void startTask(id)} onNewTask={() => actions.focusNewTask()} onOpenTerminal={(tid, termId) => { setTerminalPick((m) => ({ ...m, [tid]: termId })); setPanelState(tid, { open: true, tab: "terminal" }); }} onOpenTask={(id) => openConversation(id)} titleOf={(id) => model.tasks.get(id)?.goalText ?? "another task"} />
           </div>
         ) : (

@@ -272,6 +272,16 @@ fn remove_one(data_dir: &Path, e: &Entry) -> Result<u64, String> {
     Ok(bytes)
 }
 
+/// Whether a missing directory must not be recorded as a removal yet: its
+/// task is still running, is live on the runtime, or is not on this log.
+pub(crate) fn directory_gone_is_premature(e: &Entry) -> bool {
+    e.rec.is_some()
+        && (e.live
+            || e.task
+                .as_ref()
+                .is_none_or(|t| !modbit_domain::state::StateMachine::is_terminal(t.state)))
+}
+
 /// Run one cleanup. `Err(holder)`: the lease is held, nothing was done.
 pub(crate) async fn run(core: &Arc<Core>, req: Request) -> Result<Report, Holder> {
     let _guard = core.worktrees.try_lease(&req.owner, &req.reason)?;
@@ -315,6 +325,17 @@ pub(crate) async fn run(core: &Arc<Core>, req: Request) -> Result<Report, Holder
     };
     // A record whose directory is gone: the log says so.
     for e in entries.iter().filter(|e| !e.info.exists) {
+        // A running task's worktree is never recorded as removed: a missing
+        // directory under a live task is the task's business (it may be
+        // between steps), and a later scan decides once the task has ended.
+        if directory_gone_is_premature(e) {
+            report.kept.push((
+                id_of(e),
+                "its directory was not found, but its task has not ended; left for a later scan"
+                    .into(),
+            ));
+            continue;
+        }
         if let Some(r) = &e.rec
             && !req.dry_run
             && let Some(task) = e.task.as_ref()

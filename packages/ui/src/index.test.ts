@@ -125,6 +125,9 @@ test("AFW-H01: one active tray; a higher priority keeps the slot; dismissing han
   assert.equal(store.getSnapshot().trays.length, 3);
   store.activate("error");
   assert.equal(store.active()?.id, "error", "the person can bring one forward");
+  store.present({ id: "approval", tone: "attention", title: "Approve? (refreshed)", priority: 10, dismissible: false });
+  assert.equal(store.active()?.id, "error", "refreshing a tray that is already shown does not take back the slot the person chose");
+  assert.equal(store.getSnapshot().trays.find((t) => t.id === "approval")?.title, "Approve? (refreshed)");
   store.dismiss("error");
   assert.equal(store.active()?.id, "approval", "dismissing hands the slot to the best remaining tray");
   store.dismiss("approval");

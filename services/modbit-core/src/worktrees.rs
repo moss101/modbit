@@ -97,14 +97,34 @@ pub(crate) fn plain_path(p: &Path) -> String {
     p.to_string_lossy().trim_start_matches(r"\\?\").to_owned()
 }
 
+/// A path in the one form Modbit compares: the longest existing ancestor
+/// canonicalised (so `C:/x` and `C:\x`, a short 8.3 name and a verbatim `\\?\`
+/// form all agree) with the not-yet-existing (or already removed) tail
+/// appended. A path that is gone still resolves the same as when it existed.
+pub(crate) fn resolve_path(p: &Path) -> PathBuf {
+    let mut tail: Vec<std::ffi::OsString> = Vec::new();
+    let mut cur = p.to_path_buf();
+    loop {
+        if let Ok(c) = cur.canonicalize() {
+            let mut out = PathBuf::from(plain_path(&c));
+            out.extend(tail.iter().rev());
+            return out;
+        }
+        match (cur.file_name().map(ToOwned::to_owned), cur.parent()) {
+            (Some(name), Some(parent)) if !parent.as_os_str().is_empty() => {
+                tail.push(name);
+                cur = parent.to_path_buf();
+            }
+            _ => {
+                return PathBuf::from(plain_path(p));
+            }
+        }
+    }
+}
+
+/// Whether two recorded paths name the same place, compared as `Path`s.
 pub(crate) fn same_path(a: &str, b: &str) -> bool {
-    let canon = |s: &str| {
-        Path::new(s)
-            .canonicalize()
-            .map(|p| plain_path(&p))
-            .unwrap_or_else(|_| s.trim_start_matches(r"\\?\").to_owned())
-    };
-    canon(a) == canon(b)
+    resolve_path(Path::new(a)) == resolve_path(Path::new(b))
 }
 
 /// A new event with its time.
@@ -1540,4 +1560,51 @@ pub(crate) async fn discard(
         disposition: "DISCARDED".into(),
         offset,
     })
+}
+
+#[cfg(test)]
+mod path_tests {
+    use super::*;
+
+    #[test]
+    fn a_removed_directory_resolves_as_it_did_while_it_existed() {
+        let dir = tempfile::tempdir().unwrap();
+        let wt = dir.path().join("a").join("wt");
+        std::fs::create_dir_all(&wt).unwrap();
+        let before = resolve_path(&wt);
+        std::fs::remove_dir_all(&wt).unwrap();
+        assert_eq!(resolve_path(&wt), before);
+        assert!(same_path(&wt.to_string_lossy(), &plain_path(&before)));
+        // Another directory is another place.
+        assert!(!same_path(
+            &wt.to_string_lossy(),
+            &dir.path().join("a").join("other").to_string_lossy()
+        ));
+    }
+
+    #[test]
+    fn a_dotted_path_resolves_to_the_place_it_names() {
+        let dir = tempfile::tempdir().unwrap();
+        std::fs::create_dir_all(dir.path().join("a")).unwrap();
+        let dotted = dir.path().join("a").join("..").join("a").join("gone");
+        assert!(same_path(
+            &dotted.to_string_lossy(),
+            &dir.path().join("a").join("gone").to_string_lossy()
+        ));
+    }
+
+    #[cfg(windows)]
+    #[test]
+    fn windows_spellings_of_one_directory_agree() {
+        let dir = tempfile::tempdir().unwrap();
+        let wt = dir.path().join("wt");
+        std::fs::create_dir_all(&wt).unwrap();
+        let plain = plain_path(&wt.canonicalize().unwrap());
+        let forward = plain.replace('\\', "/");
+        let verbatim = format!(r"\\?\{plain}");
+        std::fs::remove_dir_all(&wt).unwrap();
+        assert!(same_path(&plain, &forward));
+        assert!(same_path(&plain, &verbatim));
+        assert!(same_path(&forward, &verbatim));
+    }
 }
