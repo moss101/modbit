@@ -1,21 +1,31 @@
-//! A small non-streaming client for an OpenAI-compatible chat endpoint, for
-//! the live evaluations that talk to the model themselves (PX-137's tool
-//! loop, PX-138's recall questions). It is configured exactly as the Core is:
-//! `OPENAI_API_KEY`, `MODBIT_OPENAI_BASE_URL`, `MODBIT_OPENAI_MODELS` (the
-//! priced catalog), `MODBIT_OPENAI_AUTH` and `MODBIT_OPENAI_EXTRA_BODY`, and
-//! it builds the request URL the way the product's gateway does.
+//! A small chat client for the live evaluations that talk to the model
+//! themselves (PX-137's tool loop, PX-138's recall questions). It is the
+//! product's own provider gateway run in-process (`modbit_providers`): the
+//! endpoint, its priced catalog, its auth scheme and its extra request body
+//! are read from `OPENAI_API_KEY`, `MODBIT_OPENAI_BASE_URL`,
+//! `MODBIT_OPENAI_MODELS`, `MODBIT_OPENAI_AUTH` and `MODBIT_OPENAI_EXTRA_BODY`
+//! by the same parser the Core uses, and the request goes through the same
+//! OpenAI adapter, so what is measured is the wire the product speaks. The
+//! one addition is `temperature: 0`, sent as an endpoint extra-body field
+//! unless the operator's own extra body already sets one.
 //!
 //! The reply carries the usage the gateway returned, which is the only thing
-//! the [`crate::spend::SpendMeter`] is charged from. The key is held in a
-//! field that is never formatted: not in `Debug`, not in an error.
+//! the [`crate::spend::SpendMeter`] is charged from. The key is held by the
+//! gateway's credential broker and never formatted: not in `Debug`, not in an
+//! error.
 
-use std::time::{Duration, Instant};
+use std::time::Instant;
 
-use modbit_providers::{ProviderKind, wire_url};
+use modbit_providers::{
+    ContentPart, Message, ModelEvent, ModelPolicy, ModelRequest, ProviderGateway, Requirements,
+    Role, ToolProjection, endpoints_from,
+};
+use modbit_secrets::SecretHandle;
 use serde::{Deserialize, Serialize};
-use serde_json::{Value, json};
+use serde_json::Value;
+use tokio_util::sync::CancellationToken;
 
-use crate::spend::{Price, SpendMeter, price_from_catalog};
+use crate::spend::{Price, SpendMeter};
 
 /// A tool call the model asked for.
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
@@ -45,22 +55,18 @@ pub struct Reply {
     pub usage_known: bool,
     /// Why the model stopped.
     pub finish_reason: String,
-    /// Wall time of the successful attempt, milliseconds.
+    /// Wall time of the call, milliseconds.
     pub latency_ms: u64,
     /// The model id the gateway says answered.
     pub model_answered: String,
-    /// The gateway's request id header, when it sent one.
+    /// The gateway's request id, when it sent one.
     pub request_id: String,
 }
 
 /// A configured endpoint.
 #[derive(Clone)]
 pub struct Chat {
-    http: reqwest::Client,
-    url: String,
-    key: String,
-    bearer: bool,
-    extra_body: serde_json::Map<String, Value>,
+    gateway: ProviderGateway,
     /// The model every request names.
     pub model: String,
     /// Its list price.
@@ -83,7 +89,7 @@ impl std::fmt::Debug for Chat {
 pub enum ChatError {
     /// The spend cap would be exceeded.
     Cap(crate::spend::CapReached),
-    /// The call failed (after its retries).
+    /// The call failed (after the gateway's own retries).
     Failed(String),
 }
 
@@ -97,6 +103,83 @@ impl std::fmt::Display for ChatError {
 }
 
 impl std::error::Error for ChatError {}
+
+fn text_of(m: &Value) -> String {
+    match &m["content"] {
+        Value::String(s) => s.clone(),
+        Value::Array(parts) => parts
+            .iter()
+            .filter_map(|p| p["text"].as_str())
+            .collect::<Vec<_>>()
+            .join(""),
+        _ => String::new(),
+    }
+}
+
+/// OpenAI-style chat messages as the gateway's normalized messages.
+fn to_messages(messages: &[Value]) -> Vec<Message> {
+    messages
+        .iter()
+        .map(|m| match m["role"].as_str().unwrap_or("user") {
+            "system" => Message::text(Role::System, text_of(m)),
+            "assistant" => {
+                let mut parts = Vec::new();
+                let text = text_of(m);
+                if !text.is_empty() {
+                    parts.push(ContentPart::Text { text });
+                }
+                for c in m["tool_calls"].as_array().into_iter().flatten() {
+                    parts.push(ContentPart::ToolCall {
+                        call_id: c["id"].as_str().unwrap_or_default().to_owned(),
+                        name: c["function"]["name"]
+                            .as_str()
+                            .unwrap_or_default()
+                            .to_owned(),
+                        arguments_json: c["function"]["arguments"]
+                            .as_str()
+                            .unwrap_or("{}")
+                            .to_owned(),
+                    });
+                }
+                Message {
+                    role: Role::Assistant,
+                    parts,
+                }
+            }
+            "tool" => Message {
+                role: Role::Tool,
+                parts: vec![ContentPart::ToolResult {
+                    call_id: m["tool_call_id"].as_str().unwrap_or_default().to_owned(),
+                    content: text_of(m),
+                    is_error: false,
+                }],
+            },
+            _ => Message::text(Role::User, text_of(m)),
+        })
+        .collect()
+}
+
+fn to_tools(tools: &[Value]) -> Vec<ToolProjection> {
+    tools
+        .iter()
+        .map(|t| {
+            let f = if t["function"].is_object() {
+                &t["function"]
+            } else {
+                t
+            };
+            ToolProjection {
+                name: f["name"].as_str().unwrap_or_default().to_owned(),
+                description: f["description"].as_str().unwrap_or_default().to_owned(),
+                input_schema: if f["parameters"].is_object() {
+                    f["parameters"].clone()
+                } else {
+                    serde_json::json!({"type": "object", "properties": {}})
+                },
+            }
+        })
+        .collect()
+}
 
 impl Chat {
     /// Configure from a lookup (the process environment in production).
@@ -114,39 +197,41 @@ impl Chat {
         };
         let key = present("OPENAI_API_KEY")
             .ok_or("OPENAI_API_KEY is not set: a live run needs a real credential")?;
-        let base_url = present("MODBIT_OPENAI_BASE_URL")
-            .unwrap_or_else(|| "https://api.openai.com".to_owned());
-        let models = present("MODBIT_OPENAI_MODELS").ok_or(
+        present("MODBIT_OPENAI_MODELS").ok_or(
             "MODBIT_OPENAI_MODELS is not set: the harness prices a call from the catalog and an unknown price is not free",
         )?;
-        let price = price_from_catalog(&models, model)?;
-        let bearer = match present("MODBIT_OPENAI_AUTH").as_deref() {
-            None | Some("native" | "bearer") => true,
-            Some(other) => {
-                return Err(format!(
-                    "MODBIT_OPENAI_AUTH: `{other}` is not native or bearer"
-                ));
-            }
-        };
-        let extra_body = match present("MODBIT_OPENAI_EXTRA_BODY") {
-            None => serde_json::Map::new(),
-            Some(text) => match serde_json::from_str::<Value>(&text) {
-                Ok(Value::Object(m)) => m,
-                _ => return Err("MODBIT_OPENAI_EXTRA_BODY: expected a JSON object".into()),
-            },
-        };
-        let http = reqwest::Client::builder()
-            .timeout(Duration::from_secs(180))
-            .build()
-            .map_err(|e| e.to_string())?;
+        // The product's own parser, over this lookup; the key is handed to the
+        // gateway's broker directly rather than read from the process
+        // environment.
+        let mut endpoints = endpoints_from(|n| lookup(n));
+        let mut ep = endpoints
+            .drain(..)
+            .find(|e| e.name == "openai")
+            .ok_or("the openai endpoint is not configured (see the message above)")?;
+        let cap = ep
+            .models
+            .iter()
+            .find(|m| m.model == model)
+            .cloned()
+            .ok_or_else(|| {
+                format!(
+                    "the catalog does not list {model}: an unknown price is not free, so no cost can be charged"
+                )
+            })?;
+        ep.credential = SecretHandle::Inline(key);
+        ep.extra_body
+            .entry("temperature".to_owned())
+            .or_insert_with(|| serde_json::json!(0));
+        // The gateway's own retries cover a rate limit or a transient error.
+        ep.max_retries = ep.max_retries.max(3);
+        let base_url = ep.base_url.clone();
         Ok(Self {
-            http,
-            url: wire_url(ProviderKind::OpenAi, &base_url),
-            key,
-            bearer,
-            extra_body,
+            gateway: ProviderGateway::new(vec![ep]),
             model: model.to_owned(),
-            price,
+            price: Price {
+                input_per_mtok_usd: cap.input_price_per_mtok,
+                output_per_mtok_usd: cap.output_price_per_mtok,
+            },
             base_url,
         })
     }
@@ -164,7 +249,7 @@ impl Chat {
     /// own usage is charged to the meter.
     ///
     /// # Errors
-    /// The cap, or a failure after three attempts.
+    /// The cap, or a failure after the gateway's retries.
     pub async fn complete(
         &self,
         meter: &SpendMeter,
@@ -174,129 +259,98 @@ impl Chat {
         max_tokens: u32,
     ) -> Result<Reply, ChatError> {
         meter.admit(reserve_usd).map_err(ChatError::Cap)?;
-        let mut body = json!({
-            "model": self.model,
-            "messages": messages,
-            "max_tokens": max_tokens,
-            "stream": false,
-            "temperature": 0.0,
-        });
-        if !tools.is_empty() {
-            body["tools"] = Value::Array(tools.to_vec());
-        }
-        for (k, v) in &self.extra_body {
-            if body.get(k).is_none() {
-                body[k] = v.clone();
+        let request = ModelRequest {
+            request_id: format!("live-eval:{}", rand::random::<u64>()),
+            model_policy: ModelPolicy {
+                endpoint: "openai".into(),
+                model: self.model.clone(),
+                reasoning_effort: None,
+                service_tier: None,
+            },
+            messages: to_messages(messages),
+            tool_projection: to_tools(tools),
+            response_format: None,
+            cache_key: None,
+            cache_breakpoints: vec![],
+            max_output_tokens: max_tokens,
+            timeout_ms: 240_000,
+            policy_tags: vec![],
+        };
+        let needs = Requirements {
+            tools: !tools.is_empty(),
+            ..Requirements::default()
+        };
+        let started = Instant::now();
+        let mut stream = self
+            .gateway
+            .stream(request, &needs, CancellationToken::new())
+            .map_err(|e| ChatError::Failed(format!("{e:?}")))?;
+        let mut text = String::new();
+        let mut calls: Vec<ToolCall> = Vec::new();
+        let (mut usage, mut finish) = (None, String::new());
+        let mut failure: Option<String> = None;
+        while let Some(ev) = stream.events.recv().await {
+            match ev {
+                ModelEvent::MessageDelta { text: t } => text.push_str(&t),
+                ModelEvent::ToolCallComplete {
+                    call_id,
+                    name,
+                    arguments_json,
+                } => calls.push(ToolCall {
+                    id: call_id,
+                    name,
+                    arguments: arguments_json,
+                }),
+                ModelEvent::Usage { usage: u } => usage = Some(u),
+                ModelEvent::Completed { stop_reason } => finish = stop_reason,
+                ModelEvent::Error {
+                    code,
+                    message,
+                    retryable: _,
+                } => failure = Some(format!("{code}: {message}")),
+                _ => {}
             }
         }
-        let mut last = String::new();
-        for attempt in 0..3u32 {
-            if attempt > 0 {
-                tokio::time::sleep(Duration::from_millis(1_500 * u64::from(attempt))).await;
-            }
-            let started = Instant::now();
-            let mut req = self.http.post(&self.url).json(&body);
-            req = if self.bearer {
-                req.bearer_auth(&self.key)
-            } else {
-                req.header("x-api-key", &self.key)
-            };
-            let resp = match req.send().await {
-                Ok(r) => r,
-                Err(e) => {
-                    last = format!("transport: {}", e.without_url());
-                    continue;
-                }
-            };
-            let status = resp.status();
-            let request_id = resp
-                .headers()
-                .get("x-request-id")
-                .and_then(|v| v.to_str().ok())
-                .unwrap_or_default()
-                .to_owned();
-            let text = resp.text().await.unwrap_or_default();
-            if status.as_u16() == 429 || status.is_server_error() {
-                last = format!("HTTP {status}: {}", snippet(&text));
-                continue;
-            }
-            if !status.is_success() {
-                // Charged nothing: the gateway rejected the request.
-                return Err(ChatError::Failed(format!(
-                    "HTTP {status}: {}",
-                    snippet(&text)
-                )));
-            }
-            let v: Value = serde_json::from_str(&text)
-                .map_err(|e| ChatError::Failed(format!("reply is not JSON: {e}")))?;
-            let reply = parse_reply(
-                &v,
-                request_id,
-                u64::try_from(started.elapsed().as_millis()).unwrap_or(u64::MAX),
-            );
-            if reply.usage_known {
-                meter.charge(self.price, reply.input_tokens, reply.output_tokens);
-            } else {
-                meter.charge_unknown();
-            }
-            return Ok(reply);
+        let route = stream.route.lock().map(|r| r.clone()).ok();
+        // Whatever usage the gateway did report is charged, even for a call
+        // that then failed: the provider billed it.
+        if let Some(u) = &usage {
+            meter.charge(self.price, u.input_tokens, u.output_tokens);
         }
-        Err(ChatError::Failed(last))
-    }
-}
-
-fn snippet(text: &str) -> String {
-    text.chars().take(300).collect()
-}
-
-/// A chat-completions reply, parsed.
-#[must_use]
-pub fn parse_reply(v: &Value, request_id: String, latency_ms: u64) -> Reply {
-    let choice = &v["choices"][0];
-    let message = &choice["message"];
-    let usage = &v["usage"];
-    let tool_calls = message["tool_calls"]
-        .as_array()
-        .map(|calls| {
-            calls
-                .iter()
-                .map(|c| ToolCall {
-                    id: c["id"].as_str().unwrap_or_default().to_owned(),
-                    name: c["function"]["name"]
-                        .as_str()
-                        .unwrap_or_default()
-                        .to_owned(),
-                    arguments: c["function"]["arguments"]
-                        .as_str()
-                        .unwrap_or("{}")
-                        .to_owned(),
-                })
-                .collect()
+        if let Some(why) = failure {
+            // A call the gateway failed carries no usage unless it reported
+            // some; nothing else is invented for it.
+            return Err(ChatError::Failed(why));
+        }
+        if usage.is_none() {
+            meter.charge_unknown();
+        }
+        let u = usage.clone().unwrap_or_default();
+        Ok(Reply {
+            text,
+            tool_calls: calls,
+            input_tokens: u.input_tokens,
+            output_tokens: u.output_tokens,
+            cached_input_tokens: u.cached_input_tokens,
+            usage_known: usage.is_some(),
+            finish_reason: finish,
+            latency_ms: u64::try_from(started.elapsed().as_millis()).unwrap_or(u64::MAX),
+            model_answered: route
+                .as_ref()
+                .and_then(|r| r.resolved_model.clone())
+                .unwrap_or_default(),
+            request_id: route
+                .and_then(|r| r.provider_request_id)
+                .unwrap_or_default(),
         })
-        .unwrap_or_default();
-    Reply {
-        text: message["content"].as_str().unwrap_or_default().to_owned(),
-        tool_calls,
-        input_tokens: usage["prompt_tokens"].as_u64().unwrap_or(0),
-        output_tokens: usage["completion_tokens"].as_u64().unwrap_or(0),
-        cached_input_tokens: usage["prompt_tokens_details"]["cached_tokens"]
-            .as_u64()
-            .unwrap_or(0),
-        usage_known: usage["prompt_tokens"].is_u64() && usage["completion_tokens"].is_u64(),
-        finish_reason: choice["finish_reason"]
-            .as_str()
-            .unwrap_or_default()
-            .to_owned(),
-        latency_ms,
-        model_answered: v["model"].as_str().unwrap_or_default().to_owned(),
-        request_id,
     }
 }
 
 /// A scripted OpenAI-compatible chat server for the offline tests of the
 /// live harnesses: one reply per request, computed from the request body,
-/// with a usage block. It is a stand-in for the model and says so: a harness
-/// that runs against it has not been run live.
+/// streamed the way the wire does (server-sent events, the usage in the last
+/// chunk). It is a stand-in for the model and says so: a harness that runs
+/// against it has not been run live.
 pub mod scripted {
     use std::sync::{Arc, Mutex};
 
@@ -368,34 +422,51 @@ pub mod scripted {
                         serde_json::from_slice(&buf[head_end..head_end + len]).unwrap_or_default();
                     let r = reply(&body);
                     seen.lock().unwrap().push(body);
-                    let (status, payload) = if let Some((code, text)) = r.status {
-                        (code, text)
+                    if let Some((code, text)) = r.status {
+                        let head = format!(
+                            "HTTP/1.1 {code} X\r\ncontent-type: application/json\r\ncontent-length: {}\r\nconnection: close\r\n\r\n",
+                            text.len()
+                        );
+                        let _ = sock.write_all(head.as_bytes()).await;
+                        let _ = sock.write_all(text.as_bytes()).await;
+                        let _ = sock.shutdown().await;
+                        return;
+                    }
+                    let mut frames: Vec<String> = Vec::new();
+                    if !r.text.is_empty() {
+                        frames.push(
+                            json!({"id":"c","model":"scripted-model","choices":[{"index":0,
+                                "delta":{"content": r.text},"finish_reason":null}]})
+                            .to_string(),
+                        );
+                    }
+                    for (i, (name, args)) in r.calls.iter().enumerate() {
+                        frames.push(
+                            json!({"id":"c","model":"scripted-model","choices":[{"index":0,
+                                "delta":{"tool_calls":[{"index":i,"id":format!("call_{i}"),"type":"function",
+                                    "function":{"name":name,"arguments":args.to_string()}}]},
+                                "finish_reason":null}]})
+                            .to_string(),
+                        );
+                    }
+                    let finish = if r.calls.is_empty() {
+                        "stop"
                     } else {
-                        let calls: Vec<Value> = r
-                            .calls
-                            .iter()
-                            .enumerate()
-                            .map(|(i, (name, args))| {
-                                json!({"id": format!("call_{i}"), "type": "function",
-                                    "function": {"name": name, "arguments": args.to_string()}})
-                            })
-                            .collect();
-                        let mut message = json!({"role": "assistant", "content": r.text});
-                        if !calls.is_empty() {
-                            message["tool_calls"] = Value::Array(calls);
-                        }
-                        let mut v = json!({"id": "scripted", "model": "scripted-model",
-                            "choices": [{"index": 0, "message": message,
-                                "finish_reason": if r.calls.is_empty() { "stop" } else { "tool_calls" }}]});
-                        if let Some((i, o)) = r.usage {
-                            v["usage"] = json!({"prompt_tokens": i, "completion_tokens": o});
-                        }
-                        (200, v.to_string())
+                        "tool_calls"
                     };
-                    let head = format!(
-                        "HTTP/1.1 {status} X\r\ncontent-type: application/json\r\ncontent-length: {}\r\nconnection: close\r\n\r\n",
-                        payload.len()
-                    );
+                    let mut last = json!({"id":"c","model":"scripted-model","choices":[{"index":0,
+                        "delta":{},"finish_reason":finish}]});
+                    if let Some((i, o)) = r.usage {
+                        last["usage"] = json!({"prompt_tokens": i, "completion_tokens": o,
+                            "prompt_tokens_details": {"cached_tokens": 0}});
+                    }
+                    frames.push(last.to_string());
+                    let mut payload = String::new();
+                    for f in frames {
+                        payload.push_str(&format!("data: {f}\n\n"));
+                    }
+                    payload.push_str("data: [DONE]\n\n");
+                    let head = "HTTP/1.1 200 OK\r\ncontent-type: text/event-stream\r\nx-request-id: req_scripted\r\nconnection: close\r\n\r\n";
                     let _ = sock.write_all(head.as_bytes()).await;
                     let _ = sock.write_all(payload.as_bytes()).await;
                     let _ = sock.shutdown().await;

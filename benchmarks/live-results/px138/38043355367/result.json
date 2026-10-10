@@ -1,0 +1,1020 @@
+{
+  "exchanges": 192,
+  "failures": [],
+  "report": {
+    "arms": [
+      {
+        "arm": "uncompacted",
+        "by_kind": [
+          [
+            "assistant_decision",
+            57,
+            72
+          ],
+          [
+            "next_step",
+            24,
+            24
+          ],
+          [
+            "tool_result",
+            96,
+            96
+          ],
+          [
+            "user",
+            28,
+            48
+          ]
+        ],
+        "context_tokens": {
+          "ci95": [
+            1965.9166666666667,
+            2160.75
+          ],
+          "mean": 2059.9583333333335
+        },
+        "cost_usd_per_run": {
+          "ci95": [
+            0.0014021374999999999,
+            0.0016957145833333338
+          ],
+          "mean": 0.0015348416666666664
+        },
+        "cost_usd_total": 0.03683619999999999,
+        "dropped": [
+          "long-00/1",
+          "long-01/1",
+          "long-02/1",
+          "long-02/2",
+          "long-02/3",
+          "long-02/4",
+          "long-03/1",
+          "long-03/2",
+          "long-03/3",
+          "long-03/4",
+          "long-04/1",
+          "long-05/1",
+          "long-05/2",
+          "long-05/3",
+          "long-05/4",
+          "long-06/1",
+          "long-07/1",
+          "long-08/1",
+          "long-09/1",
+          "long-09/2",
+          "long-09/3",
+          "long-09/4",
+          "long-10/1",
+          "long-11/1",
+          "long-16/1",
+          "long-17/1",
+          "long-18/1",
+          "long-19/1",
+          "long-20/1",
+          "long-20/2",
+          "long-20/3",
+          "long-20/4",
+          "long-21/1",
+          "long-22/1",
+          "long-23/1"
+        ],
+        "input_tokens": {
+          "ci95": [
+            5127.5,
+            5587.833333333333
+          ],
+          "mean": 5351.166666666667
+        },
+        "input_tokens_saved": {
+          "ci95": [
+            0.0,
+            0.0
+          ],
+          "mean": 0.0
+        },
+        "output_tokens": {
+          "ci95": [
+            1210.9166666666667,
+            1788.4166666666667
+          ],
+          "mean": 1464.3333333333333
+        },
+        "recall": {
+          "hi": 0.8932367730272589,
+          "k": 205,
+          "lo": 0.8039371300311199,
+          "n": 240,
+          "p": 0.8541666666666666
+        },
+        "recall_vs_uncompacted": {
+          "ci95": [
+            0.0,
+            0.0
+          ],
+          "mean": 0.0
+        },
+        "refused": [],
+        "runs": 24,
+        "saved_fraction": {
+          "ci95": [
+            0.0,
+            0.0
+          ],
+          "mean": 0.0
+        },
+        "task": {
+          "hi": 1.0,
+          "k": 24,
+          "lo": 0.8620194241710247,
+          "n": 24,
+          "p": 1.0
+        },
+        "task_constraint": {
+          "hi": 1.0,
+          "k": 24,
+          "lo": 0.8620194241710247,
+          "n": 24,
+          "p": 1.0
+        },
+        "task_forbidden": {
+          "hi": 1.0,
+          "k": 24,
+          "lo": 0.8620194241710247,
+          "n": 24,
+          "p": 1.0
+        },
+        "task_next_step": {
+          "hi": 1.0,
+          "k": 24,
+          "lo": 0.8620194241710247,
+          "n": 24,
+          "p": 1.0
+        },
+        "task_unparsed": 0,
+        "task_vs_uncompacted": {
+          "ci95": [
+            0.0,
+            0.0
+          ],
+          "mean": 0.0
+        },
+        "tokens_saved": {
+          "ci95": [
+            0.0,
+            0.0
+          ],
+          "mean": 0.0
+        },
+        "unknown": 0,
+        "unparsed": 0
+      },
+      {
+        "arm": "extractive",
+        "by_kind": [
+          [
+            "assistant_decision",
+            0,
+            72
+          ],
+          [
+            "next_step",
+            0,
+            24
+          ],
+          [
+            "tool_result",
+            48,
+            96
+          ],
+          [
+            "user",
+            28,
+            48
+          ]
+        ],
+        "context_tokens": {
+          "ci95": [
+            202.95833333333334,
+            215.33333333333334
+          ],
+          "mean": 208.875
+        },
+        "cost_usd_per_run": {
+          "ci95": [
+            0.000900475,
+            0.0011398583333333333
+          ],
+          "mean": 0.0010158499999999998
+        },
+        "cost_usd_total": 0.024380399999999997,
+        "dropped": [
+          "long-00/1",
+          "long-00/2",
+          "long-00/3",
+          "long-00/4",
+          "long-00/5",
+          "long-00/8",
+          "long-00/9",
+          "long-01/1",
+          "long-01/2",
+          "long-01/3",
+          "long-01/4",
+          "long-01/5",
+          "long-01/8",
+          "long-01/9",
+          "long-02/1",
+          "long-02/2",
+          "long-02/3",
+          "long-02/4",
+          "long-02/5",
+          "long-02/8",
+          "long-02/9",
+          "long-03/1",
+          "long-03/2",
+          "long-03/3",
+          "long-03/4",
+          "long-03/5",
+          "long-03/8",
+          "long-03/9",
+          "long-04/1",
+          "long-04/2",
+          "long-04/3",
+          "long-04/4",
+          "long-04/5",
+          "long-04/8",
+          "long-04/9",
+          "long-05/1",
+          "long-05/2",
+          "long-05/3",
+          "long-05/4",
+          "long-05/5",
+          "long-05/8",
+          "long-05/9",
+          "long-06/1",
+          "long-06/2",
+          "long-06/3",
+          "long-06/4",
+          "long-06/5",
+          "long-06/8",
+          "long-06/9",
+          "long-07/1",
+          "long-07/2",
+          "long-07/3",
+          "long-07/4",
+          "long-07/5",
+          "long-07/8",
+          "long-07/9",
+          "long-08/1",
+          "long-08/2",
+          "long-08/3",
+          "long-08/4",
+          "long-08/5",
+          "long-08/8",
+          "long-08/9",
+          "long-09/2",
+          "long-09/3",
+          "long-09/4",
+          "long-09/5",
+          "long-09/8",
+          "long-09/9",
+          "long-10/1",
+          "long-10/2",
+          "long-10/3",
+          "long-10/4",
+          "long-10/5",
+          "long-10/8",
+          "long-10/9",
+          "long-11/1",
+          "long-11/2",
+          "long-11/3",
+          "long-11/4",
+          "long-11/5",
+          "long-11/8",
+          "long-11/9",
+          "long-12/1",
+          "long-12/2",
+          "long-12/3",
+          "long-12/4",
+          "long-12/5",
+          "long-12/8",
+          "long-12/9",
+          "long-13/2",
+          "long-13/3",
+          "long-13/4",
+          "long-13/5",
+          "long-13/8",
+          "long-13/9",
+          "long-14/1",
+          "long-14/2",
+          "long-14/3",
+          "long-14/4",
+          "long-14/5",
+          "long-14/8",
+          "long-14/9",
+          "long-15/1",
+          "long-15/2",
+          "long-15/3",
+          "long-15/4",
+          "long-15/5",
+          "long-15/8",
+          "long-15/9",
+          "long-16/1",
+          "long-16/2",
+          "long-16/3",
+          "long-16/4",
+          "long-16/5",
+          "long-16/8",
+          "long-16/9",
+          "long-17/1",
+          "long-17/2",
+          "long-17/3",
+          "long-17/4",
+          "long-17/5",
+          "long-17/8",
+          "long-17/9",
+          "long-18/2",
+          "long-18/3",
+          "long-18/4",
+          "long-18/5",
+          "long-18/8",
+          "long-18/9",
+          "long-19/1",
+          "long-19/2",
+          "long-19/3",
+          "long-19/4",
+          "long-19/5",
+          "long-19/8",
+          "long-19/9",
+          "long-20/1",
+          "long-20/2",
+          "long-20/3",
+          "long-20/4",
+          "long-20/5",
+          "long-20/8",
+          "long-20/9",
+          "long-21/1",
+          "long-21/2",
+          "long-21/3",
+          "long-21/4",
+          "long-21/5",
+          "long-21/8",
+          "long-21/9",
+          "long-22/2",
+          "long-22/3",
+          "long-22/4",
+          "long-22/5",
+          "long-22/8",
+          "long-22/9",
+          "long-23/1",
+          "long-23/2",
+          "long-23/3",
+          "long-23/4",
+          "long-23/5",
+          "long-23/8",
+          "long-23/9"
+        ],
+        "input_tokens": {
+          "ci95": [
+            813.3333333333334,
+            840.2916666666666
+          ],
+          "mean": 826.0833333333334
+        },
+        "input_tokens_saved": {
+          "ci95": [
+            4313.25,
+            4750.666666666667
+          ],
+          "mean": 4525.083333333333
+        },
+        "output_tokens": {
+          "ci95": [
+            1552.1666666666667,
+            2033.625
+          ],
+          "mean": 1783.875
+        },
+        "recall": {
+          "hi": 0.37801385527762904,
+          "k": 76,
+          "lo": 0.2610961243156806,
+          "n": 240,
+          "p": 0.31666666666666665
+        },
+        "recall_vs_uncompacted": {
+          "ci95": [
+            -0.5874999999999999,
+            -0.4750000000000001
+          ],
+          "mean": -0.5375
+        },
+        "refused": [],
+        "runs": 24,
+        "saved_fraction": {
+          "ci95": [
+            0.895704264183541,
+            0.9003139901761673
+          ],
+          "mean": 0.8980039403187875
+        },
+        "task": {
+          "hi": 0.13798057582897535,
+          "k": 0,
+          "lo": 0.0,
+          "n": 24,
+          "p": 0.0
+        },
+        "task_constraint": {
+          "hi": 1.0,
+          "k": 24,
+          "lo": 0.8620194241710247,
+          "n": 24,
+          "p": 1.0
+        },
+        "task_forbidden": {
+          "hi": 1.0,
+          "k": 24,
+          "lo": 0.8620194241710247,
+          "n": 24,
+          "p": 1.0
+        },
+        "task_next_step": {
+          "hi": 0.13798057582897535,
+          "k": 0,
+          "lo": 0.0,
+          "n": 24,
+          "p": 0.0
+        },
+        "task_unparsed": 0,
+        "task_vs_uncompacted": {
+          "ci95": [
+            -1.0,
+            -1.0
+          ],
+          "mean": -1.0
+        },
+        "tokens_saved": {
+          "ci95": [
+            1762.75,
+            1945.5416666666667
+          ],
+          "mean": 1851.0833333333333
+        },
+        "unknown": 128,
+        "unparsed": 0
+      },
+      {
+        "arm": "structured",
+        "by_kind": [
+          [
+            "assistant_decision",
+            21,
+            72
+          ],
+          [
+            "next_step",
+            24,
+            24
+          ],
+          [
+            "tool_result",
+            72,
+            96
+          ],
+          [
+            "user",
+            34,
+            48
+          ]
+        ],
+        "context_tokens": {
+          "ci95": [
+            609.75,
+            623.4166666666666
+          ],
+          "mean": 616.2083333333334
+        },
+        "cost_usd_per_run": {
+          "ci95": [
+            0.0007869229166666667,
+            0.0009223437500000001
+          ],
+          "mean": 0.0008492666666666667
+        },
+        "cost_usd_total": 0.020382400000000002,
+        "dropped": [
+          "long-00/2",
+          "long-00/3",
+          "long-00/8",
+          "long-01/2",
+          "long-01/3",
+          "long-01/8",
+          "long-02/2",
+          "long-02/3",
+          "long-02/8",
+          "long-03/2",
+          "long-03/3",
+          "long-03/8",
+          "long-04/2",
+          "long-04/3",
+          "long-04/8",
+          "long-05/2",
+          "long-05/3",
+          "long-05/8",
+          "long-06/1",
+          "long-06/2",
+          "long-06/3",
+          "long-06/8",
+          "long-07/1",
+          "long-07/2",
+          "long-07/3",
+          "long-07/8",
+          "long-08/1",
+          "long-08/2",
+          "long-08/3",
+          "long-08/8",
+          "long-09/1",
+          "long-09/2",
+          "long-09/3",
+          "long-09/8",
+          "long-10/1",
+          "long-10/2",
+          "long-10/3",
+          "long-10/8",
+          "long-11/2",
+          "long-11/3",
+          "long-11/4",
+          "long-11/8",
+          "long-12/1",
+          "long-12/2",
+          "long-12/3",
+          "long-12/8",
+          "long-13/1",
+          "long-13/2",
+          "long-13/3",
+          "long-13/8",
+          "long-14/1",
+          "long-14/2",
+          "long-14/3",
+          "long-14/8",
+          "long-15/1",
+          "long-15/2",
+          "long-15/3",
+          "long-15/8",
+          "long-16/1",
+          "long-16/2",
+          "long-16/3",
+          "long-16/8",
+          "long-17/1",
+          "long-17/2",
+          "long-17/3",
+          "long-17/8",
+          "long-18/2",
+          "long-18/3",
+          "long-18/8",
+          "long-19/2",
+          "long-19/3",
+          "long-19/8",
+          "long-20/1",
+          "long-20/2",
+          "long-20/3",
+          "long-20/4",
+          "long-20/8",
+          "long-21/1",
+          "long-21/2",
+          "long-21/3",
+          "long-21/4",
+          "long-21/8",
+          "long-22/1",
+          "long-22/2",
+          "long-22/3",
+          "long-22/8",
+          "long-23/2",
+          "long-23/3",
+          "long-23/8"
+        ],
+        "input_tokens": {
+          "ci95": [
+            1550.2083333333333,
+            1578.0
+          ],
+          "mean": 1563.5833333333333
+        },
+        "input_tokens_saved": {
+          "ci95": [
+            3576.25,
+            4013.5833333333335
+          ],
+          "mean": 3787.5833333333335
+        },
+        "output_tokens": {
+          "ci95": [
+            1103.25,
+            1378.0
+          ],
+          "mean": 1229.4583333333333
+        },
+        "recall": {
+          "hi": 0.6877940158951146,
+          "k": 151,
+          "lo": 0.5664694075732353,
+          "n": 240,
+          "p": 0.6291666666666667
+        },
+        "recall_vs_uncompacted": {
+          "ci95": [
+            -0.2833333333333334,
+            -0.15833333333333335
+          ],
+          "mean": -0.225
+        },
+        "refused": [],
+        "runs": 24,
+        "saved_fraction": {
+          "ci95": [
+            0.6861282708784916,
+            0.7093322815299802
+          ],
+          "mean": 0.6975426090145395
+        },
+        "task": {
+          "hi": 1.0,
+          "k": 24,
+          "lo": 0.8620194241710247,
+          "n": 24,
+          "p": 1.0
+        },
+        "task_constraint": {
+          "hi": 1.0,
+          "k": 24,
+          "lo": 0.8620194241710247,
+          "n": 24,
+          "p": 1.0
+        },
+        "task_forbidden": {
+          "hi": 1.0,
+          "k": 24,
+          "lo": 0.8620194241710247,
+          "n": 24,
+          "p": 1.0
+        },
+        "task_next_step": {
+          "hi": 1.0,
+          "k": 24,
+          "lo": 0.8620194241710247,
+          "n": 24,
+          "p": 1.0
+        },
+        "task_unparsed": 0,
+        "task_vs_uncompacted": {
+          "ci95": [
+            0.0,
+            0.0
+          ],
+          "mean": 0.0
+        },
+        "tokens_saved": {
+          "ci95": [
+            1355.9583333333333,
+            1538.1666666666667
+          ],
+          "mean": 1443.75
+        },
+        "unknown": 72,
+        "unparsed": 0
+      },
+      {
+        "arm": "lossy",
+        "by_kind": [
+          [
+            "assistant_decision",
+            0,
+            72
+          ],
+          [
+            "next_step",
+            24,
+            24
+          ],
+          [
+            "tool_result",
+            46,
+            96
+          ],
+          [
+            "user",
+            27,
+            48
+          ]
+        ],
+        "context_tokens": {
+          "ci95": [
+            389.9166666666667,
+            402.5
+          ],
+          "mean": 395.9583333333333
+        },
+        "cost_usd_per_run": {
+          "ci95": [
+            0.0007354437499999998,
+            0.0008357895833333334
+          ],
+          "mean": 0.000782675
+        },
+        "cost_usd_total": 0.0187842,
+        "dropped": [
+          "long-00/1",
+          "long-00/2",
+          "long-00/3",
+          "long-00/4",
+          "long-00/5",
+          "long-00/8",
+          "long-01/1",
+          "long-01/2",
+          "long-01/3",
+          "long-01/4",
+          "long-01/5",
+          "long-01/8",
+          "long-02/1",
+          "long-02/2",
+          "long-02/3",
+          "long-02/4",
+          "long-02/5",
+          "long-02/8",
+          "long-03/1",
+          "long-03/2",
+          "long-03/3",
+          "long-03/4",
+          "long-03/5",
+          "long-03/8",
+          "long-04/1",
+          "long-04/2",
+          "long-04/3",
+          "long-04/4",
+          "long-04/5",
+          "long-04/8",
+          "long-05/1",
+          "long-05/2",
+          "long-05/3",
+          "long-05/4",
+          "long-05/5",
+          "long-05/8",
+          "long-06/1",
+          "long-06/2",
+          "long-06/3",
+          "long-06/4",
+          "long-06/5",
+          "long-06/8",
+          "long-07/1",
+          "long-07/2",
+          "long-07/3",
+          "long-07/4",
+          "long-07/5",
+          "long-07/8",
+          "long-08/1",
+          "long-08/2",
+          "long-08/3",
+          "long-08/4",
+          "long-08/5",
+          "long-08/8",
+          "long-09/1",
+          "long-09/2",
+          "long-09/3",
+          "long-09/4",
+          "long-09/5",
+          "long-09/8",
+          "long-10/1",
+          "long-10/2",
+          "long-10/3",
+          "long-10/4",
+          "long-10/5",
+          "long-10/8",
+          "long-11/2",
+          "long-11/3",
+          "long-11/4",
+          "long-11/5",
+          "long-11/8",
+          "long-12/1",
+          "long-12/2",
+          "long-12/3",
+          "long-12/4",
+          "long-12/5",
+          "long-12/8",
+          "long-13/2",
+          "long-13/3",
+          "long-13/4",
+          "long-13/5",
+          "long-13/8",
+          "long-14/1",
+          "long-14/2",
+          "long-14/3",
+          "long-14/4",
+          "long-14/5",
+          "long-14/8",
+          "long-15/1",
+          "long-15/2",
+          "long-15/3",
+          "long-15/4",
+          "long-15/5",
+          "long-15/8",
+          "long-16/1",
+          "long-16/2",
+          "long-16/3",
+          "long-16/4",
+          "long-16/5",
+          "long-16/8",
+          "long-17/1",
+          "long-17/2",
+          "long-17/3",
+          "long-17/4",
+          "long-17/5",
+          "long-17/8",
+          "long-18/1",
+          "long-18/2",
+          "long-18/3",
+          "long-18/4",
+          "long-18/5",
+          "long-18/8",
+          "long-19/1",
+          "long-19/2",
+          "long-19/3",
+          "long-19/4",
+          "long-19/5",
+          "long-19/8",
+          "long-20/1",
+          "long-20/2",
+          "long-20/3",
+          "long-20/4",
+          "long-20/5",
+          "long-20/8",
+          "long-21/1",
+          "long-21/2",
+          "long-21/3",
+          "long-21/4",
+          "long-21/5",
+          "long-21/6",
+          "long-21/7",
+          "long-21/8",
+          "long-22/2",
+          "long-22/3",
+          "long-22/4",
+          "long-22/5",
+          "long-22/8",
+          "long-23/1",
+          "long-23/2",
+          "long-23/3",
+          "long-23/4",
+          "long-23/5",
+          "long-23/8"
+        ],
+        "input_tokens": {
+          "ci95": [
+            1122.0416666666667,
+            1149.1666666666667
+          ],
+          "mean": 1134.9166666666667
+        },
+        "input_tokens_saved": {
+          "ci95": [
+            4004.1666666666665,
+            4441.916666666667
+          ],
+          "mean": 4216.25
+        },
+        "output_tokens": {
+          "ci95": [
+            1131.625,
+            1330.7083333333333
+          ],
+          "mean": 1224.875
+        },
+        "recall": {
+          "hi": 0.4672898819243045,
+          "k": 97,
+          "lo": 0.3440630619540164,
+          "n": 240,
+          "p": 0.4041666666666667
+        },
+        "recall_vs_uncompacted": {
+          "ci95": [
+            -0.5041666666666667,
+            -0.3916666666666666
+          ],
+          "mean": -0.44999999999999996
+        },
+        "refused": [],
+        "runs": 24,
+        "saved_fraction": {
+          "ci95": [
+            0.7994984888310214,
+            0.8125962702820811
+          ],
+          "mean": 0.8059091365837254
+        },
+        "task": {
+          "hi": 1.0,
+          "k": 24,
+          "lo": 0.8620194241710247,
+          "n": 24,
+          "p": 1.0
+        },
+        "task_constraint": {
+          "hi": 1.0,
+          "k": 24,
+          "lo": 0.8620194241710247,
+          "n": 24,
+          "p": 1.0
+        },
+        "task_forbidden": {
+          "hi": 1.0,
+          "k": 24,
+          "lo": 0.8620194241710247,
+          "n": 24,
+          "p": 1.0
+        },
+        "task_next_step": {
+          "hi": 1.0,
+          "k": 24,
+          "lo": 0.8620194241710247,
+          "n": 24,
+          "p": 1.0
+        },
+        "task_unparsed": 0,
+        "task_vs_uncompacted": {
+          "ci95": [
+            0.0,
+            0.0
+          ],
+          "mean": 0.0
+        },
+        "tokens_saved": {
+          "ci95": [
+            1576.0416666666667,
+            1758.2916666666667
+          ],
+          "mean": 1664.0
+        },
+        "unknown": 120,
+        "unparsed": 0
+      }
+    ],
+    "base_url": "https://api.z.ai/api/coding/paas/v4",
+    "digest": "4bc7ea3d561b41ddc004abcc7d29e7f53a1e0f16b2fb48807fcec99aaf919d1c",
+    "exchanges_sha256": "bc45cece8d94a4508973ba3eb13fd02dfe2e582a9dead55c3ecbea722048be3e",
+    "lossy_vs_structured": {
+      "intervals_separated": true,
+      "lossy": {
+        "hi": 0.4672898819243045,
+        "k": 97,
+        "lo": 0.3440630619540164,
+        "n": 240,
+        "p": 0.4041666666666667
+      },
+      "lossy_below_structured": true,
+      "paired_difference": {
+        "ci95": [
+          0.1958333333333333,
+          0.2541666666666666
+        ],
+        "mean": 0.22499999999999995
+      },
+      "statement": "Lossy double recall 97/240 = 0.404 [0.344, 0.467] against structured 151/240 = 0.629 [0.566, 0.688]: lossy scored below structured on the point estimate and the intervals do not overlap; structured minus lossy per run 0.225 [0.196, 0.254].",
+      "structured": {
+        "hi": 0.6877940158951146,
+        "k": 151,
+        "lo": 0.5664694075732353,
+        "n": 240,
+        "p": 0.6291666666666667
+      }
+    },
+    "method": "24 synthetic long runs of 30 to 50 entries, each compacted once as a whole by the product's compaction code (extractive epoch; structured summary written by a scripted summarizer and validated by the product's validate; a lossy test double that drops files, failures and decisions). The same model (glm-5.3-flash) is called through the OpenAI-compatible gateway directly, NOT through the Core process, with a fixed system prompt and temperature 0, once per (run, arm) for the recall questions (all of a run's questions in one request, one scored answer line per question; the model is told to answer only from the context and to say unknown otherwise) and once per (run, arm) for the continuation plan. The continuation task is a plan scored by log-derived criteria, not a repository-level code task. Intervals: Wilson for proportions, deterministic bootstrap for means and paired differences. Cost is the gateway-reported usage at the list price. Tokens saved are reported both as the estimated retained-context tokens and as the gateway-reported input tokens of the two requests.",
+    "model": "glm-5.3-flash",
+    "not_measured": "Not measured: repository-level task completion by an agent running through the Core; behaviour of real sessions (the runs are synthetic); other models; a larger-window uncompacted arm differing from the full log; sampling variance at temperature above 0.",
+    "oracle": "Questions, answers and continuation criteria are recorded by the fixture generator beside each event log before any arm runs, and each answer is checked to be present in the event log. Nothing is derived from a compaction manifest or from any summary under test. Recall: every answer string must appear in the model's answer line for that question. Task: the plan must name the step the log said was next, name the forbidden directory without proposing to edit it, and state the later user constraint (component and timeout in ms).",
+    "oracle_sha256": "2122b65804cf840343dcf6f1f1531237e5c9b29a3a409a99887f73b2aff96819",
+    "planned_runs": 24,
+    "post_hoc": "POST-HOC. The fixture was revised twice after seeing results, so these numbers are not a pre-registered measurement. FirstRun (before any result was seen): uncompacted 140/192 (52 probes its reader could not match), extractive 96/192, structured 127/192, lossy 120/192; some of its runs had 29 entries, below the 30 specified. Revised1 (after the first run): uncompacted 192/192, extractive 96/192, structured 127/192, lossy 120/192. Revised2 (after the second run; this report): uncompacted 240/240, extractive 96/240, structured 169/240, lossy 120/240. Each revision is reproduced by the test the_recorded_numbers_of_each_revision_reproduce.",
+    "price": {
+      "input_per_mtok_usd": 0.15,
+      "output_per_mtok_usd": 0.5
+    },
+    "probes": 240,
+    "row": "px138",
+    "runs_scored": 24
+  },
+  "status": {
+    "complete": true,
+    "missing": [],
+    "row": "px138",
+    "spend": {
+      "calls": 192,
+      "cap_usd": 1.0,
+      "input_tokens": 213018,
+      "output_tokens": 136861,
+      "spent_usd": 0.10038319999999996,
+      "stopped_by_cap": false,
+      "unknown_usage_calls": 0
+    }
+  }
+}

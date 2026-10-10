@@ -24,7 +24,8 @@ modbit-domain.workspace = true
 prost.workspace = true
 rand.workspace = true
 ed25519-dalek.workspace = true
-reqwest.workspace = true
+modbit-secrets.workspace = true
+tokio-util.workspace = true
 tokio.workspace = true
 
 [[bin]]
