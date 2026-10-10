@@ -382,3 +382,34 @@ fn live_mode_is_refused_without_every_part_of_it() {
     // An unpriced model is refused: an unknown price is not free.
     assert!(live_bindings(&env(&full), Some("other"), "anthropic", None).is_err());
 }
+
+#[test]
+fn the_paired_binary_refuses_without_a_live_provider_and_writes_nothing() {
+    let dir = tempfile::tempdir().unwrap();
+    let out = dir.path().join("bundle");
+    let run = std::process::Command::new(env!("CARGO_BIN_EXE_paired-trial"))
+        .args(["--row", "px136", "--max-cost-usd", "5", "--out-dir"])
+        .arg(&out)
+        .env_remove("MODBIT_LIVE")
+        .output()
+        .unwrap();
+    assert_eq!(run.status.code(), Some(2));
+    assert!(String::from_utf8_lossy(&run.stderr).contains("LIVE: NOT RUN"));
+    assert!(!out.exists(), "a refused run records nothing");
+    // Asked for, with a key, but no cap: still nothing.
+    let run = std::process::Command::new(env!("CARGO_BIN_EXE_paired-trial"))
+        .args(["--row", "px136", "--out-dir"])
+        .arg(&out)
+        .env("MODBIT_LIVE", "1")
+        .env("MODBIT_LIVE_MODEL", "glm")
+        .env("OPENAI_API_KEY", "sk-live-0123456789abcdef0123456789")
+        .env("ANTHROPIC_API_KEY", "sk-live-0123456789abcdef0123456789")
+        .env("MODBIT_OPENAI_MODELS", "glm=0.15/0.50")
+        .env("MODBIT_ANTHROPIC_MODELS", "glm=0.15/0.50")
+        .env_remove("MODBIT_LIVE_MAX_COST_USD")
+        .output()
+        .unwrap();
+    assert_eq!(run.status.code(), Some(2), "{}", String::from_utf8_lossy(&run.stderr));
+    assert!(String::from_utf8_lossy(&run.stderr).contains("--max-cost-usd"));
+    assert!(!out.exists());
+}

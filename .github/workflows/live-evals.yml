@@ -1,0 +1,244 @@
+# Live halves of the eval-bench rows (PX-133, PX-135, PX-136, PX-137, PX-138;
+# docs/62, docs/79): the harnesses that were proven offline against scripted
+# providers are run here against the real provider gateway, under a HARD SPEND
+# CAP, and their result bundles are retained.
+#
+# - A skipped or partial live run is not a pass (like live-providers): a missing
+#   secret fails the job, a harness that stops on the spend cap writes a partial
+#   result and fails, and every row's `status.json` must say `complete: true`
+#   for the job to be green.
+# - The cap is charged from the usage the gateway returns, never from an
+#   estimate; each harness checks it before every call (or every trial) and
+#   stops with a partial, honestly reported result instead of exceeding it.
+#   `max_cost_usd` is for the whole dispatch: with `which=all` it is split
+#   between the rows by the weights in the `plan` job.
+# - The gateway is whatever the repository variables name (DR-M9-002): the
+#   OpenAI-compatible family at MODBIT_OPENAI_BASE_URL and the
+#   Anthropic-compatible family at MODBIT_ANTHROPIC_BASE_URL, each with its own
+#   priced catalog. A gateway model is recorded as such in every report; it is
+#   not a first-party provider.
+#
+# Secrets (never printed, used only through `secrets.*` in the steps that call
+# a harness): OPENAI_API_KEY, ANTHROPIC_API_KEY.
+# Artifacts: `live-evals-<row>` per row (`live-evals-all` collects them when
+# `which=all`), each holding result.json, status.json, summary.md and the
+# retained raw data (event logs, transcripts, exchanges) the digest reproduces
+# from.
+name: live-evals
+
+on:
+  workflow_dispatch:
+    inputs:
+      which:
+        description: "Which row to run"
+        required: true
+        default: "all"
+        type: choice
+        options:
+          - px133
+          - px135
+          - px136
+          - px137
+          - px138
+          - all
+      max_cost_usd:
+        description: "Hard spend cap in USD for this dispatch (split between the rows when which=all)"
+        required: true
+        default: "10"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: live-evals-${{ inputs.which }}
+  cancel-in-progress: false
+
+jobs:
+  plan:
+    name: split the spend cap
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    outputs:
+      px133: ${{ steps.caps.outputs.px133 }}
+      px135: ${{ steps.caps.outputs.px135 }}
+      px136: ${{ steps.caps.outputs.px136 }}
+      px137: ${{ steps.caps.outputs.px137 }}
+      px138: ${{ steps.caps.outputs.px138 }}
+    steps:
+      - id: caps
+        env:
+          WHICH: ${{ inputs.which }}
+          CAP: ${{ inputs.max_cost_usd }}
+        run: |
+          python3 - <<'PY' >> "$GITHUB_OUTPUT"
+          import os, sys
+          which, cap = os.environ["WHICH"], os.environ["CAP"]
+          try:
+              cap = float(cap)
+          except ValueError:
+              sys.exit("max_cost_usd must be a number of dollars")
+          if not cap > 0 or cap > 25:
+              sys.exit("max_cost_usd must be in (0, 25]: the live evaluations may not spend more than 25 USD")
+          weights = {"px136": 0.45, "px137": 0.20, "px135": 0.12, "px133": 0.13, "px138": 0.10}
+          for row, w in weights.items():
+              share = cap * w if which == "all" else (cap if which == row else 0.0)
+              print(f"{row}={share:.4f}")
+          PY
+
+  px138:
+    name: PX-138 compaction (live recall and continuation)
+    needs: plan
+    if: ${{ inputs.which == 'px138' || inputs.which == 'all' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 120
+    steps:
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
+      - name: Install pinned Rust toolchain (rust-toolchain.toml)
+        run: rustup show
+      - uses: Swatinem/rust-cache@6323deb102c322ba6fcbdcafc7e3dddab59af2b6 # v2
+      - name: Build the harness
+        run: cargo build --locked -p modbit-bench-context-economics --bin compaction-eval-live
+      - name: Run the live measurement (the credential is required)
+        env:
+          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+          MODBIT_OPENAI_BASE_URL: ${{ vars.MODBIT_OPENAI_BASE_URL }}
+          MODBIT_OPENAI_MODELS: ${{ vars.MODBIT_OPENAI_MODELS }}
+          MODBIT_OPENAI_AUTH: ${{ vars.MODBIT_OPENAI_AUTH }}
+          MODBIT_OPENAI_EXTRA_BODY: ${{ vars.MODBIT_OPENAI_EXTRA_BODY }}
+          MODBIT_LIVE: "1"
+          MODBIT_LIVE_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+          MODBIT_LIVE_BASE_URL: ${{ vars.MODBIT_OPENAI_BASE_URL }}
+          MODBIT_LIVE_MODEL: ${{ vars.MODBIT_LIVE_MODEL }}
+          CAP: ${{ needs.plan.outputs.px138 }}
+        run: |
+          if [ -z "$OPENAI_API_KEY" ]; then
+            echo "::error::no OPENAI_API_KEY secret: a live proof cannot pass without the real credential; nothing was run"
+            exit 1
+          fi
+          mkdir -p live-evals/px138
+          target/debug/compaction-eval-live --out-dir live-evals/px138 --max-cost-usd "$CAP" --runs 24 2>&1 | tee live-evals/px138/run.log
+      - name: Retain the result bundle
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: live-evals-px138
+          path: live-evals/px138
+          if-no-files-found: error
+      - name: Every required measurement is present and the cap held
+        if: always()
+        env:
+          CAP: ${{ needs.plan.outputs.px138 }}
+        run: python3 .github/scripts/live_evals_check.py live-evals/px138 px138 "$CAP"
+
+  px136:
+    name: PX-136 paired DIRECT / CASCADE / CRITIQUE (live)
+    needs: plan
+    if: ${{ inputs.which == 'px136' || inputs.which == 'all' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 355
+    steps:
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
+      - name: Install pinned Rust toolchain (rust-toolchain.toml)
+        run: rustup show
+      - uses: Swatinem/rust-cache@6323deb102c322ba6fcbdcafc7e3dddab59af2b6 # v2
+      - name: Build the product and the harness
+        run: cargo build --locked -p modbit-core -p modbit-cli -p modbit-execd -p modbit-bench-context-economics
+      - name: Run the paired benchmark through the real product (both credentials are required)
+        env:
+          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+          MODBIT_OPENAI_BASE_URL: ${{ vars.MODBIT_OPENAI_BASE_URL }}
+          MODBIT_OPENAI_MODELS: ${{ vars.MODBIT_OPENAI_MODELS }}
+          MODBIT_OPENAI_AUTH: ${{ vars.MODBIT_OPENAI_AUTH }}
+          MODBIT_OPENAI_EXTRA_BODY: ${{ vars.MODBIT_OPENAI_EXTRA_BODY }}
+          MODBIT_ANTHROPIC_BASE_URL: ${{ vars.MODBIT_ANTHROPIC_BASE_URL }}
+          MODBIT_ANTHROPIC_MODELS: ${{ vars.MODBIT_ANTHROPIC_MODELS }}
+          MODBIT_ANTHROPIC_AUTH: ${{ vars.MODBIT_ANTHROPIC_AUTH }}
+          MODBIT_ANTHROPIC_EXTRA_BODY: ${{ vars.MODBIT_ANTHROPIC_EXTRA_BODY }}
+          MODBIT_LIVE: "1"
+          MODBIT_LIVE_MODEL: ${{ vars.MODBIT_LIVE_MODEL }}
+          CAP: ${{ needs.plan.outputs.px136 }}
+        run: |
+          if [ -z "$OPENAI_API_KEY" ] || [ -z "$ANTHROPIC_API_KEY" ]; then
+            echo "::error::both OPENAI_API_KEY and ANTHROPIC_API_KEY are required: the registry binds one model on each family; nothing was run"
+            exit 1
+          fi
+          mkdir -p live-evals/px136
+          target/debug/paired-trial --row px136 --out-dir live-evals/px136 --max-cost-usd "$CAP" --parallel 3 2>&1 | tee live-evals/px136/run.log
+      - name: Retain the result bundle
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: live-evals-px136
+          path: live-evals/px136
+          if-no-files-found: error
+      - name: Every required measurement is present and the cap held
+        if: always()
+        env:
+          CAP: ${{ needs.plan.outputs.px136 }}
+        run: python3 .github/scripts/live_evals_check.py live-evals/px136 px136 "$CAP"
+
+  px133:
+    name: PX-133 escalation and reviewer leg samples (live)
+    needs: plan
+    if: ${{ inputs.which == 'px133' || inputs.which == 'all' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 300
+    steps:
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
+      - name: Install pinned Rust toolchain (rust-toolchain.toml)
+        run: rustup show
+      - uses: Swatinem/rust-cache@6323deb102c322ba6fcbdcafc7e3dddab59af2b6 # v2
+      - name: Build the product and the harness
+        run: cargo build --locked -p modbit-core -p modbit-cli -p modbit-execd -p modbit-bench-context-economics
+      - name: Run the cascade and critique arms and read the outcome statistics (both credentials are required)
+        env:
+          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+          MODBIT_OPENAI_BASE_URL: ${{ vars.MODBIT_OPENAI_BASE_URL }}
+          MODBIT_OPENAI_MODELS: ${{ vars.MODBIT_OPENAI_MODELS }}
+          MODBIT_OPENAI_AUTH: ${{ vars.MODBIT_OPENAI_AUTH }}
+          MODBIT_OPENAI_EXTRA_BODY: ${{ vars.MODBIT_OPENAI_EXTRA_BODY }}
+          MODBIT_ANTHROPIC_BASE_URL: ${{ vars.MODBIT_ANTHROPIC_BASE_URL }}
+          MODBIT_ANTHROPIC_MODELS: ${{ vars.MODBIT_ANTHROPIC_MODELS }}
+          MODBIT_ANTHROPIC_AUTH: ${{ vars.MODBIT_ANTHROPIC_AUTH }}
+          MODBIT_ANTHROPIC_EXTRA_BODY: ${{ vars.MODBIT_ANTHROPIC_EXTRA_BODY }}
+          MODBIT_LIVE: "1"
+          MODBIT_LIVE_MODEL: ${{ vars.MODBIT_LIVE_MODEL }}
+          CAP: ${{ needs.plan.outputs.px133 }}
+        run: |
+          if [ -z "$OPENAI_API_KEY" ] || [ -z "$ANTHROPIC_API_KEY" ]; then
+            echo "::error::both OPENAI_API_KEY and ANTHROPIC_API_KEY are required; nothing was run"
+            exit 1
+          fi
+          mkdir -p live-evals/px133
+          target/debug/paired-trial --row px133 --out-dir live-evals/px133 --max-cost-usd "$CAP" --parallel 3 2>&1 | tee live-evals/px133/run.log
+      - name: Retain the result bundle
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: live-evals-px133
+          path: live-evals/px133
+          if-no-files-found: error
+      - name: Every required measurement is present and the cap held
+        if: always()
+        env:
+          CAP: ${{ needs.plan.outputs.px133 }}
+        run: python3 .github/scripts/live_evals_check.py live-evals/px133 px133 "$CAP"
+
+  collect:
+    name: collect the bundles of an all-rows dispatch
+    needs: [px133, px135, px136, px137, px138]
+    if: ${{ always() && inputs.which == 'all' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4.3.0
+        with:
+          pattern: live-evals-px*
+          path: live-evals
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: live-evals-all
+          path: live-evals
+          if-no-files-found: error
