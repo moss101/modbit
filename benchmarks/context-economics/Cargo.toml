@@ -27,6 +27,10 @@ ed25519-dalek.workspace = true
 reqwest.workspace = true
 tokio.workspace = true
 
+[[bin]]
+name = "compaction-eval-live"
+path = "src/bin/compaction_eval_live.rs"
+
 [lints]
 workspace = true
 

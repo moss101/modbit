@@ -16,6 +16,7 @@ use serde::{Deserialize, Serialize};
 
 pub mod chat;
 pub mod compaction_eval;
+pub mod compaction_live;
 pub mod core_link;
 pub mod live;
 pub mod paired;
