@@ -50,7 +50,24 @@ impl Cli {
 
     fn ok(&self, args: &[&str]) -> String {
         let (code, out, err) = self.run(args);
-        assert_eq!(code, 0, "{args:?}: {out}{err}");
+        let core_log = if code == 0 {
+            String::new()
+        } else {
+            std::fs::read_to_string(self.data_dir.join("core.log")).unwrap_or_default()
+        };
+        assert_eq!(
+            code,
+            0,
+            "{args:?}: {out}{err}\ncore.log (tail): {}",
+            core_log
+                .chars()
+                .rev()
+                .take(4000)
+                .collect::<Vec<_>>()
+                .into_iter()
+                .rev()
+                .collect::<String>()
+        );
         out
     }
 

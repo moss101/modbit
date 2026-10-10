@@ -195,7 +195,12 @@ test("replay: a reload shows the same bytes; two attaches from the start read id
   await expect(page.getByTestId("tab-terminal")).toHaveAttribute("aria-selected", "true", { timeout: 30_000 });
   await pickTerminal(echo);
   // The screen is rebuilt from the Core's replay after a reload; on a loaded runner that takes longer than the default wait.
-  await expect(screen()).toContainText("got:hello-pty", { timeout: 30_000 });
+  await expect(screen()).toContainText("got:hello-pty", { timeout: 30_000 }).catch(async (e: Error) => {
+    const log = await readTerminal(page, { sessionId, taskId, terminalId: echo, after: "0", windowBytes: 65536 });
+    const rows = await terminalView().evaluate((el) => [...el.querySelectorAll(".xterm-rows > div")].map((r) => r.textContent ?? "").filter((t) => t.trim() !== ""));
+    const listed = (await listTerminals()).find((t) => t.terminalId === echo);
+    throw new Error(`${e.message}\nthe Core's replay: ${JSON.stringify(new TextDecoder().decode(Uint8Array.from(log.bytes)))}\nthe screen's rows: ${JSON.stringify(rows)}\nthe listed terminal: ${JSON.stringify({ rows: listed?.rows, cols: listed?.cols, bytesSoFar: listed?.bytesSoFar })}`);
+  });
   await expect(screen()).toContainText("READY", { timeout: 30_000 });
   if (process.platform === "win32") {
     // A Windows pseudo-console repaints its screen when the viewer attaches at a size (the reload's resize), so the
