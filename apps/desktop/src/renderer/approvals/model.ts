@@ -153,6 +153,7 @@ export function cardKey(k: KeyFacts): CardKey | null {
 export function refusalWords(message: string): string {
   const m = message.replace(/^Error invoking remote method '[^']*': (Error: )?/, "");
   if (/INTENT_MISMATCH/.test(m)) return "The Core refused: the effect is no longer the one this card showed. Nothing was decided; the card now shows what is asked.";
+  if (/APPROVAL_EXPIRED/.test(m)) return "That approval expired before it was answered, so it can no longer be approved. The effect did not run; the agent was told and asks again if it still needs it.";
   if (/STALE_APPROVAL/.test(m)) return "That effect is no longer waiting for a decision.";
   return `The Core refused: ${m.replace(/^BAD_ARGUMENT: /, "")}`;
 }

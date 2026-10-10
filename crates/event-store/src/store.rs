@@ -1017,6 +1017,11 @@ impl EventStore {
         crate::projections::load_approvals_for_session(&self.conn, id)
     }
 
+    /// Every approval still waiting for a decision, oldest first.
+    pub fn requested_approvals(&self) -> Result<Vec<modbit_domain::approval::Approval>> {
+        crate::projections::load_requested_approvals(&self.conn)
+    }
+
     /// The checkpoints of a task (docs/31 `checkpoints`), by epoch.
     pub fn checkpoints(&self, task: &TaskId) -> Result<Vec<crate::projections::CheckpointRow>> {
         crate::projections::load_checkpoints(&self.conn, task)

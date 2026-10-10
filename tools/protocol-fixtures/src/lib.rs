@@ -1965,5 +1965,87 @@ pub fn samples() -> Vec<Sample> {
             }),
             decode: reencode::<ProjectChanged>,
         },
+        // PX-055 (mode_proposals.proto): a pending proposal in a list, and an accepted one with the mode change it caused.
+        Sample {
+            name: "mode_proposal_list",
+            type_name: "modbit.v1.ModeProposalList",
+            bytes: ModeProposalList {
+                task_id: id(0x71),
+                proposals: vec![ModeProposalView {
+                    proposal_id: "mp-call00".into(),
+                    task_id: id(0x71),
+                    from_mode: TaskMode::Plan as i32,
+                    to_mode: TaskMode::Agent as i32,
+                    reason: "the plan is ready".into(),
+                    status: "PENDING".into(),
+                    outcome_reason: String::new(),
+                    proposed_at_ms: 1_700_000_000_000,
+                    expires_at_ms: 1_700_000_015_000,
+                    decided_at_ms: 0,
+                    proposed_offset: 40,
+                    decided_offset: 0,
+                }],
+                now_ms: 1_700_000_004_000,
+                offset: 41,
+            }
+            .encode_to_vec(),
+            expected: json!({
+                "taskId": idhex(0x71),
+                "proposals": [{
+                    "proposalId": "mp-call00", "taskId": idhex(0x71),
+                    "fromMode": "TASK_MODE_PLAN", "toMode": "TASK_MODE_AGENT",
+                    "reason": "the plan is ready", "status": "PENDING", "outcomeReason": "",
+                    "proposedAtMs": "1700000000000", "expiresAtMs": "1700000015000", "decidedAtMs": "0",
+                    "proposedOffset": "40", "decidedOffset": "0"
+                }],
+                "nowMs": "1700000004000", "offset": "41"
+            }),
+            decode: reencode::<ModeProposalList>,
+        },
+        Sample {
+            name: "mode_proposal_decided",
+            type_name: "modbit.v1.ModeProposalDecided",
+            bytes: ModeProposalDecided {
+                proposal: Some(ModeProposalView {
+                    proposal_id: "mp-call00".into(),
+                    task_id: id(0x71),
+                    from_mode: TaskMode::Plan as i32,
+                    to_mode: TaskMode::Agent as i32,
+                    reason: "the plan is ready".into(),
+                    status: "ACCEPTED".into(),
+                    outcome_reason: "ACCEPTED_BY_USER".into(),
+                    proposed_at_ms: 1_700_000_000_000,
+                    expires_at_ms: 1_700_000_015_000,
+                    decided_at_ms: 1_700_000_006_000,
+                    proposed_offset: 40,
+                    decided_offset: 43,
+                }),
+                mode_change: Some(TaskModeChanged {
+                    task_id: id(0x71),
+                    mode: TaskMode::Agent as i32,
+                    previous_mode: TaskMode::Plan as i32,
+                    effective: "NEXT_ROUND_BOUNDARY".into(),
+                    offset: 42,
+                    accepted_plan_version: 2,
+                }),
+                offset: 43,
+            }
+            .encode_to_vec(),
+            expected: json!({
+                "proposal": {
+                    "proposalId": "mp-call00", "taskId": idhex(0x71),
+                    "fromMode": "TASK_MODE_PLAN", "toMode": "TASK_MODE_AGENT",
+                    "reason": "the plan is ready", "status": "ACCEPTED", "outcomeReason": "ACCEPTED_BY_USER",
+                    "proposedAtMs": "1700000000000", "expiresAtMs": "1700000015000", "decidedAtMs": "1700000006000",
+                    "proposedOffset": "40", "decidedOffset": "43"
+                },
+                "modeChange": {
+                    "taskId": idhex(0x71), "mode": "TASK_MODE_AGENT", "previousMode": "TASK_MODE_PLAN",
+                    "effective": "NEXT_ROUND_BOUNDARY", "offset": "42", "acceptedPlanVersion": 2
+                },
+                "offset": "43"
+            }),
+            decode: reencode::<ModeProposalDecided>,
+        },
     ]
 }

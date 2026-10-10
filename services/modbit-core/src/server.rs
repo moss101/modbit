@@ -75,6 +75,8 @@ pub struct Core {
     /// (PX-082..084): definitions as data, evaluated by the one tick that
     /// asks this Core to create ordinary tasks.
     pub(crate) automation: crate::automation::Host,
+    /// PX-055: the mode-switch proposals awaiting an answer.
+    pub(crate) mode_proposals: crate::mode_proposals::Host,
 }
 
 impl Core {
@@ -281,6 +283,7 @@ pub async fn run_as(
         conversation_index: crate::conversation_search::Index::from_env(),
         worktrees: Default::default(),
         automation: crate::automation::Host::from_env(),
+        mode_proposals: Default::default(),
     });
     // PX-057: a RUN_EVERYTHING recorded before this point belongs to a
     // process that is gone and is not in force.
@@ -325,6 +328,12 @@ pub async fn run_as(
     // tick that evaluates triggers starts; a firing recorded but not
     // dispatched when the last Core died is finished here, once.
     crate::automation::start(&core).await;
+    // REQ-PX-058: an approval the last Core left pending past its expiry is
+    // expired before any client can look; the sweep then runs for the life of
+    // this Core. PX-055: a mode-switch proposal the last Core left pending is
+    // resolved (skipped) the same way, and the 15 s expiry runs from here.
+    crate::approval_expiry::start(&core).await;
+    crate::mode_proposals::start(&core).await;
     // EPR-012: the last activated registry generation, verified again.
     crate::model_registry::restore(&core).await;
     // REQ-PX-132: the observer of the listening services of the tasks'
@@ -783,6 +792,8 @@ async fn serve_connection(core: Arc<Core>, mut stream: BoxedStream) -> Result<()
                     "SetTaskMode",
                     "SetExecutionPreference",
                     "GetTaskPosture",
+                    "ListModeProposals",
+                    "DecideModeProposal",
                     "SetTaskBudgets",
                     "ListSkills",
                     "TrustSkill",
@@ -1404,6 +1415,10 @@ fn required_client_capability(env: &CommandEnvelope) -> Option<&'static str> {
             "review.decide"
         }
         "ResolveApproval" => "approval.resolve",
+        // PX-055: the person's answer to the agent's mode proposal is the
+        // author's (it is how SetTaskMode is gated); reading is a read.
+        "DecideModeProposal" => "task.author",
+        "ListModeProposals" => "events.subscribe",
         // PX-057: who approves protected effects, and the durable rules that
         // stand for an approval, are approvals' own class of decision.
         "SetRunMode" | "AddAllowRule" | "RevokeAllowRule" => "approval.resolve",
@@ -2716,6 +2731,10 @@ pub(crate) async fn handle_command_as(
         "SetTaskMode" | "SetExecutionPreference" | "GetTaskPosture" => {
             crate::tasking::handle(core, &env).await
         }
+        // PX-055: the agent's proposals to change the mode, and the answers.
+        "ListModeProposals" | "DecideModeProposal" => {
+            crate::mode_proposals::handle(core, &env).await
+        }
         // PX-050 / PX-057: the input queue, the typed interrupt, the run mode
         // and the durable allowlist rules.
         "ListQueuedInputs" | "EditQueuedInput" | "RemoveQueuedInput" | "ReorderQueuedInput"
@@ -3433,6 +3452,9 @@ pub(crate) async fn handle_command_as(
             else {
                 return reject(cid, "BAD_PAYLOAD", "session_id required");
             };
+            // REQ-PX-058: a pending approval past its expiry is closed before
+            // it is listed, so a client never sees a due approval as open.
+            crate::approval_expiry::sweep(core).await;
             let store = core.store.lock().await;
             match store.approvals_for_session(&session_id) {
                 Ok(list) => accept(
@@ -3458,6 +3480,20 @@ pub(crate) async fn handle_command_as(
             else {
                 return reject(cid, "BAD_PAYLOAD", "approval_id required");
             };
+            // REQ-PX-058: an approval past its expiry is closed by the Core
+            // first, whatever the sweep's timing, so the decision below sees
+            // `EXPIRED` and nothing can approve it late.
+            let due = core
+                .store
+                .lock()
+                .await
+                .approval(&approval_id)
+                .ok()
+                .flatten()
+                .filter(|a| crate::approval_expiry::is_due(a, Timestamp::now()));
+            if let Some(a) = due {
+                crate::approval_expiry::expire(core, &a).await;
+            }
             let (approval, task) = {
                 let store = core.store.lock().await;
                 let approval = match store.approval(&approval_id) {
@@ -3486,6 +3522,13 @@ pub(crate) async fn handle_command_as(
                         approval.intent_hash, p.intent_hash
                     ),
                 );
+            }
+            // REQ-PX-058 (AFW-F02, AFW-F09): an approval that expired can no
+            // longer be approved. The refusal is typed like a stale hash; the
+            // agent was already told the effect did not run, and it asks again
+            // (a new approval) if it still needs the effect.
+            if approval.state == modbit_domain::approval::ApprovalState::Expired && p.approve {
+                return reject(cid, "APPROVAL_EXPIRED", expired_words(&approval));
             }
             if approval.state != modbit_domain::approval::ApprovalState::Requested {
                 return accept(
@@ -3522,7 +3565,17 @@ pub(crate) async fn handle_command_as(
             };
             let mut offset = match store.append(resolved) {
                 Ok(ev) => ev.last().map(|e| e.offset).unwrap_or(0),
-                Err(e) => return reject(cid, error_code(&e), e.to_string()),
+                Err(e) => {
+                    // The expiry sweep may have closed it between the read and
+                    // the write; the generation check refused the late decision.
+                    if let Ok(Some(now)) = store.approval(&approval_id)
+                        && now.state == modbit_domain::approval::ApprovalState::Expired
+                        && p.approve
+                    {
+                        return reject(cid, "APPROVAL_EXPIRED", expired_words(&now));
+                    }
+                    return reject(cid, error_code(&e), e.to_string());
+                }
             };
             if !p.approve
                 && let Ok(Some(call)) = store.tool_call(&approval.tool_call_id)
@@ -7943,6 +7996,17 @@ fn protocol_state_view(state: &modbit_protocol_state::ProtocolState) -> wire::Pr
             })
             .collect(),
     }
+}
+
+/// The refusal text for a decision on an approval that expired.
+fn expired_words(a: &modbit_domain::approval::Approval) -> String {
+    format!(
+        "the approval for `{}` expired{} without a decision and can no longer be approved; the effect did not run and the agent was told so; if it is still needed the agent asks again",
+        a.tool_name,
+        a.expires_at
+            .map(|e| format!(" at {}", e.millis()))
+            .unwrap_or_default()
+    )
 }
 
 fn approval_view(a: &modbit_domain::approval::Approval) -> wire::ApprovalView {

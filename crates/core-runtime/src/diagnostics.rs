@@ -225,6 +225,20 @@ pub fn classify(source: &FailureSource<'_>) -> FailureDiagnostic {
                             f,
                             msg,
                         )
+                    } else if code_s == "APPROVAL_EXPIRED" {
+                        // REQ-PX-058: the person did not answer in time. Nothing
+                        // was approved and the effect did not happen; asking
+                        // again is the agent's call, and a new approval.
+                        diag(
+                            FailureClass::Approval,
+                            "APPROVAL_EXPIRED",
+                            true,
+                            "ask again only if the effect is still needed; a new approval is requested",
+                            "the effect did not happen; the run continues without it",
+                            ev,
+                            f,
+                            msg,
+                        )
                     } else if code_s == "APPROVAL_DENIED" {
                         diag(
                             FailureClass::Approval,

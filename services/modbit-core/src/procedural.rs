@@ -128,6 +128,7 @@ fn is_harness_tool(name: &str) -> bool {
                 | harness::COMPLETE_TOOL
                 | harness::VERIFY_TOOL
                 | harness::ASK_TOOL
+                | crate::mode_proposals::TOOL
                 | harness::REPAIR_TOOL
                 | harness::TOOL_SEARCH
                 | harness::CONTEXT_TOOL
@@ -413,9 +414,26 @@ async fn serve(
                 .tool_call(&tool_call_id)
                 .unwrap_or(None);
             if call.is_some_and(|c| c.state == ToolCallState::Failed) {
-                return Err(HostError {
-                    code: "APPROVAL_DENIED".into(),
-                    message: "the user denied this effect".into(),
+                let expired = core
+                    .store
+                    .lock()
+                    .await
+                    .approval_for_call(&tool_call_id)
+                    .ok()
+                    .flatten()
+                    .is_some_and(|a| a.state == modbit_domain::approval::ApprovalState::Expired);
+                return Err(if expired {
+                    HostError {
+                        code: "APPROVAL_EXPIRED".into(),
+                        message:
+                            "the approval expired before anyone answered; the effect did not run"
+                                .into(),
+                    }
+                } else {
+                    HostError {
+                        code: "APPROVAL_DENIED".into(),
+                        message: "the user denied this effect".into(),
+                    }
                 });
             }
             continue;

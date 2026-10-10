@@ -539,6 +539,39 @@ pub enum TaskEvent {
         #[serde(default)]
         accepted_plan_version: u32,
     },
+    /// `ModeSwitchProposed` (PX-055, docs/65 AFW-D06): the agent asked the
+    /// person to move the task to another mode. A proposal is data: it changes
+    /// no mode and grants nothing; only the person's acceptance does, through
+    /// `TaskModeSet`. It expires to skipped, never to accepted. No state change.
+    ModeSwitchProposed {
+        /// The proposal's id (`mp-` and the proposing call's id).
+        proposal_id: String,
+        /// The tool call that proposed it.
+        call_id: String,
+        /// The mode the task was in when it was proposed.
+        from: crate::mode::TaskMode,
+        /// The mode proposed.
+        to: crate::mode::TaskMode,
+        /// The agent's words (log text; untrusted, never an instruction).
+        #[serde(default)]
+        reason: String,
+        /// When it expires unanswered (milliseconds since the epoch).
+        expires_at_ms: i64,
+    },
+    /// `ModeSwitchDecided` (PX-055): the proposal ended. `ACCEPTED` is
+    /// recorded with the `TaskModeSet` that applied it, in one transaction;
+    /// `DECLINED` and `SKIPPED` leave the mode as it was. No state change.
+    ModeSwitchDecided {
+        /// The proposal.
+        proposal_id: String,
+        /// `ACCEPTED` | `DECLINED` | `SKIPPED`.
+        outcome: String,
+        /// `ACCEPTED_BY_USER` | `DECLINED_BY_USER` | `UNANSWERED_15S` |
+        /// `CORE_RESTARTED` | `TASK_ENDED` | `MODE_CHANGED`.
+        reason_code: String,
+        /// Who decided: `user:<id>` or `core`.
+        resolver: String,
+    },
     /// `TaskPostureApplied` (PX-051): the run's round boundary adopted a mode;
     /// from here the Capability Kernel enforces that mode's posture. A call in
     /// flight keeps the posture it was decided under. No state change.
@@ -2871,6 +2904,8 @@ impl TaskEvent {
             Self::UserQuestionAnswered { .. } => "UserQuestionAnswered",
             Self::AttachmentIngested { .. } => "AttachmentIngested",
             Self::TaskModeSet { .. } => "TaskModeSet",
+            Self::ModeSwitchProposed { .. } => "ModeSwitchProposed",
+            Self::ModeSwitchDecided { .. } => "ModeSwitchDecided",
             Self::TaskPostureApplied { .. } => "TaskPostureApplied",
             Self::ExecutionPreferenceSet { .. } => "ExecutionPreferenceSet",
             Self::ExecutionPreferenceApplied { .. } => "ExecutionPreferenceApplied",
@@ -3086,6 +3121,8 @@ impl Task {
             | TaskEvent::AttachmentIngested { .. }
             | TaskEvent::TaskModeSet { .. }
             | TaskEvent::TaskPostureApplied { .. }
+            | TaskEvent::ModeSwitchProposed { .. }
+            | TaskEvent::ModeSwitchDecided { .. }
             | TaskEvent::ExecutionPreferenceSet { .. }
             | TaskEvent::ExecutionPreferenceApplied { .. }
             | TaskEvent::PlanRecorded { .. }

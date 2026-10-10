@@ -60,6 +60,48 @@ export interface DockApprovalView {
   intent: ApprovalIntentView;
 }
 
+/** An approval the Core closed as expired: nobody answered before its recorded expiry, so it can no longer be approved and the effect did not run (REQ-PX-058). */
+export interface ExpiredApprovalView {
+  approvalId: string;
+  taskId: string;
+  toolName: string;
+  effectClass: string;
+  intentHash: string;
+  /** The expiry the Core recorded, epoch ms. */
+  expiresAtMs: number;
+}
+
+export const PROPOSAL_STATUSES = ["PENDING", "ACCEPTED", "DECLINED", "SKIPPED"] as const;
+export type ProposalStatus = (typeof PROPOSAL_STATUSES)[number];
+
+/** The agent's request to move the task to another mode (REQ-PX-055). It is data until the person accepts it; the words in `reason` are the agent's and are untrusted. */
+export interface ModeProposalInfo {
+  proposalId: string;
+  taskId: string;
+  fromMode: string;
+  toMode: string;
+  reason: string;
+  status: ProposalStatus;
+  /** Why it ended: ACCEPTED_BY_USER | DECLINED_BY_USER | UNANSWERED_15S | CORE_RESTARTED | TASK_ENDED | MODE_CHANGED; empty while pending. */
+  outcomeReason: string;
+  proposedAtMs: number;
+  expiresAtMs: number;
+  decidedAtMs: number;
+}
+
+export interface ModeProposalListInfo {
+  taskId: string;
+  proposals: ModeProposalInfo[];
+  /** The Core's clock when it answered (epoch ms): the time left is read against it, not against this machine's. */
+  nowMs: number;
+}
+
+export interface ModeProposalDecisionInfo {
+  proposal: ModeProposalInfo;
+  /** On accept, the mode the Core moved the task to and when it applies. */
+  modeChange: { mode: string; previousMode: string; effective: string } | null;
+}
+
 export interface RunModeInfo {
   taskId: string;
   mode: string;

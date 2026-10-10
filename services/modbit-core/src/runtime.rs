@@ -2540,12 +2540,12 @@ fn projection(
     ));
     // PX-051: the mode posture in force narrows what is offered, and the
     // kernel refuses what is named anyway.
-    let posture = core
+    let mode_in_force = core
         .tools
         .tasking
         .in_force_now(task.task_id)
-        .unwrap_or_default()
-        .posture();
+        .unwrap_or_default();
+    let posture = mode_in_force.posture();
     for s in visible {
         if !capsule_tools.is_empty() && !capsule_tools.iter().any(|t| t == &s.name) {
             continue;
@@ -2695,6 +2695,15 @@ fn projection(
         // configuration in force allow it.
         tools.extend(crate::agent_tools::projections());
     }
+    // PX-055: the agent may ask the person to change the mode; offered to an
+    // interactive primary agent in a constrained mode, where a switch is the
+    // natural request. It changes nothing by itself.
+    if !crate::critique::is_review(task)
+        && state.capsule.is_none()
+        && crate::mode_proposals::offered(task, mode_in_force)
+    {
+        tools.push(crate::mode_proposals::projection());
+    }
     tools.push(ToolProjection {
         name: PLAN_TOOL.into(),
         description: format!(
@@ -2725,6 +2734,7 @@ fn projection(
                     | CONTEXT_TOOL
                     | ASK_TOOL
                     | PLAN_TOOL
+                    | crate::mode_proposals::TOOL
                     | crate::agent_tools::SPAWN_TOOL
                     | crate::agent_tools::WAIT_TOOL
                     | crate::agent_tools::RESULT_TOOL
@@ -4968,6 +4978,46 @@ async fn run_loop(
                     StepType::ToolCall,
                     Some("PROTECTED_EFFECT_REFUSED".to_owned()),
                 ),
+                // PX-055: a proposal to change the mode. Refused when this
+                // turn did not offer it; otherwise recorded as data and the
+                // run goes on in the mode it has.
+                crate::mode_proposals::TOOL if !projected_names.contains(&name) => (
+                    TranscriptEntry::ToolResult {
+                        call_id: call_id.clone(),
+                        name: name.clone(),
+                        text: format!(
+                            "status: REFUSED\nerror_code: TOOL_NOT_PROJECTED\nerror: `{name}` is not offered to this task"
+                        ),
+                        failure_signature: None,
+                        clears: vec![],
+                        wrote: None,
+                        progress: false,
+                        media: vec![],
+                    },
+                    StepType::ToolCall,
+                    Some("TOOL_NOT_PROJECTED".to_owned()),
+                ),
+                crate::mode_proposals::TOOL => {
+                    let (entry, ok) = crate::mode_proposals::handle_tool(
+                        &core,
+                        &task,
+                        lt,
+                        &actor,
+                        &call_id,
+                        &arguments_json,
+                    )
+                    .await;
+                    progress = true;
+                    (
+                        entry,
+                        StepType::Plan,
+                        if ok {
+                            None
+                        } else {
+                            Some("INVALID_MODE_PROPOSAL".to_owned())
+                        },
+                    )
+                }
                 PLAN_TOOL => {
                     let (entry, ok) = handle_plan(
                         &core,
@@ -8939,6 +8989,7 @@ async fn execute_tool_call(
                 );
             }
             // Wait for the resolver at a safe boundary; the same tool_call_id re-enters.
+            let approval_expired: bool;
             loop {
                 if cancel.is_cancelled() {
                     let diagnostic =
@@ -8969,7 +9020,10 @@ async fn execute_tool_call(
                     .await
                     .approval_for_call(&tool_call_id)
                     .unwrap_or(None);
-                if a.is_some_and(|a| a.state != modbit_domain::approval::ApprovalState::Requested) {
+                if let Some(a) = a
+                    && a.state != modbit_domain::approval::ApprovalState::Requested
+                {
+                    approval_expired = a.state == modbit_domain::approval::ApprovalState::Expired;
                     break;
                 }
             }
@@ -8990,6 +9044,37 @@ async fn execute_tool_call(
                 .await
                 .tool_call(&tool_call_id)
                 .unwrap_or(None);
+            if call
+                .as_ref()
+                .is_some_and(|c| c.state == ToolCallState::Failed)
+                && approval_expired
+            {
+                // REQ-PX-058: nobody answered before the approval's expiry. The
+                // Core closed it; the effect did not run and nothing was approved.
+                let diagnostic =
+                    modbit_core_runtime::classify(&modbit_core_runtime::FailureSource::Tool {
+                        tool: name,
+                        status: "POLICY_DENIED",
+                        code: Some("APPROVAL_EXPIRED"),
+                        message: Some("the approval expired before anyone answered"),
+                        result_ref: "",
+                        timed_out: false,
+                        cancelled: false,
+                    });
+                return TranscriptEntry::ToolResult {
+                    call_id: call_id.into(),
+                    name: name.into(),
+                    text: format!(
+                        "status: POLICY_DENIED\nerror_code: APPROVAL_EXPIRED\nerror: the approval expired before anyone answered; the effect did not run and nothing was approved\n{}",
+                        diagnostic.render()
+                    ),
+                    failure_signature: None,
+                    clears: vec![],
+                    wrote: None,
+                    progress: false,
+                    media: vec![],
+                };
+            }
             if call.is_some_and(|c| c.state == ToolCallState::Failed) {
                 let diagnostic =
                     modbit_core_runtime::classify(&modbit_core_runtime::FailureSource::Tool {

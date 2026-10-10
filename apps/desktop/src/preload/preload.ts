@@ -8,7 +8,7 @@ import type { TerminalFrameJson, TerminalViewJson } from "../main/terminal-host.
 import type { AttachmentResult, InterruptView, ModeChangedView, ModelCatalogView, PostureView, PreferencePatch, PreferenceSetView, QueuedChangeView, QueueView, SendBehaviorState, SideAnswerView, SlashInventoryView, TaskModeId, InputModeId } from "../shared/composer-types.ts";
 import type { AutoDetail, AutoEnableInput, AutoKillReport, AutoList, AutoRepoLoad, AutoRun, AutoRunInput, AutoRunStarted, AutoValidation, AutoView } from "../shared/automation-types.ts";
 import type { ApplyAckInfo, ApplyInputArgs, CleanupReportInfo, ProjectChangedInfo, ProjectInput, ProjectListInfo, ProjectPatch, WorktreeListInfo, WorktreeRemovalInfo } from "../shared/project-types.ts";
-import type { AccountingInfo, AddRuleInput, AllowRuleInfo, CheckpointListInfo, CheckpointTargetInput, DockApprovalView, ForkOutcome, RestoreOutcome, RewindPreviewInfo, RunModeInfo, TaskBudgetsInfo } from "../shared/control-types.ts";
+import type { AccountingInfo, AddRuleInput, AllowRuleInfo, CheckpointListInfo, CheckpointTargetInput, DockApprovalView, ExpiredApprovalView, ForkOutcome, ModeProposalDecisionInfo, ModeProposalListInfo, RestoreOutcome, RewindPreviewInfo, RunModeInfo, TaskBudgetsInfo } from "../shared/control-types.ts";
 
 export type { TerminalFrameJson, TerminalViewJson };
 
@@ -300,6 +300,12 @@ export interface ModbitBridge {
   effectReceipts(taskId: string): Promise<{ chainValid: boolean; detail: string; receipts: ReceiptView[] }>;
   /** REQ-PX-058: the protected effects waiting for a decision (oldest first), each with the Core's typed reason and the exact intent; with a task id, that task's only. */
   dockApprovals(sessionId: string, taskId?: string): Promise<DockApprovalView[]>;
+  /** REQ-PX-058: the task's approvals the Core closed as expired (nobody answered before the recorded expiry). They can no longer be approved. */
+  expiredApprovals(sessionId: string, taskId: string): Promise<ExpiredApprovalView[]>;
+  /** REQ-PX-055: the agent's requests to change the task's mode, with the Core's clock. Data until the person answers. */
+  modeProposals(taskId: string): Promise<ModeProposalListInfo>;
+  /** REQ-PX-055: the person's answer; accepting moves the mode through the Core's one mode path. */
+  decideModeProposal(sessionId: string, taskId: string, proposalId: string, accept: boolean): Promise<ModeProposalDecisionInfo>;
   /** REQ-PX-058 / 057: make a durable argv-prefix rule through the Core, then approve this one effect, named by the hash the card showed; the rule is not made if the effect is no longer the one shown. */
   allowAlways(sessionId: string, approvalId: string, intentHash: string, rule: AddRuleInput): Promise<{ rule: AllowRuleInfo; approvalId: string; status: string; offset: string }>;
   /** REQ-PX-057: the run mode in force, the always-ask classes and the warning a move to a higher mode must acknowledge. */
@@ -483,6 +489,9 @@ const bridge: ModbitBridge = {
   readWorkspaceFile: (taskId, path) => ipcRenderer.invoke("files:read", taskId, path),
   effectReceipts: (taskId) => ipcRenderer.invoke("evidence:receipts", taskId),
   dockApprovals: (sessionId, taskId) => ipcRenderer.invoke("approvals:dock", sessionId, taskId ?? ""),
+  expiredApprovals: (sessionId, taskId) => ipcRenderer.invoke("approvals:expired", sessionId, taskId),
+  modeProposals: (taskId) => ipcRenderer.invoke("modeproposals:list", taskId),
+  decideModeProposal: (sessionId, taskId, proposalId, accept) => ipcRenderer.invoke("modeproposals:decide", sessionId, taskId, proposalId, accept),
   allowAlways: (sessionId, approvalId, intentHash, rule) => ipcRenderer.invoke("approval:allowAlways", sessionId, approvalId, intentHash, rule),
   runMode: (taskId) => ipcRenderer.invoke("runmode:get", taskId),
   setRunMode: (sessionId, taskId, mode, acknowledgeRisk) => ipcRenderer.invoke("runmode:set", sessionId, taskId, mode, acknowledgeRisk),
