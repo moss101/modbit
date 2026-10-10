@@ -323,7 +323,9 @@ message SetValueAction { string element_id = 1; string value = 2; }        // se
 message ClickAction { Point at = 1; string button = 2; uint32 count = 3; } // canvas coordinates
 message MoveAction { Point to = 1; }
 message DragAction { Point from = 1; Point to = 2; }
-message TypeAction { string text = 1; }                                    // typed to the verified focus
+// Typed to the verified focus. `text` never carries a control character; a
+// following key is the separate `then` ("enter" | "tab" | "" for none).
+message TypeAction { string text = 1; string then = 2; }
 message KeyAction { repeated string keys = 1; }                            // "cmd+a", "tab"
 message ScrollAction { Point at = 1; double dx = 2; double dy = 3; string element_id = 4; }
 

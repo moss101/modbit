@@ -19,6 +19,8 @@
 mod act;
 mod observe;
 mod supervise;
+#[cfg(test)]
+mod tests;
 
 use std::collections::{BTreeMap, HashMap};
 use std::sync::atomic::{AtomicBool, AtomicU64, Ordering};
@@ -73,7 +75,7 @@ impl Default for RuntimeConfig {
         Self {
             grant_ttl: Duration::from_secs(15 * 60),
             grant_call_cap: DEFAULT_GRANT_CALL_CAP,
-            idle_ttl: Duration::from_secs(180),
+            idle_ttl: Duration::from_secs(600),
             observe_deadline: Duration::from_secs(20),
             action_deadline: Duration::from_secs(15),
             human_cooldown: Duration::from_secs(2),

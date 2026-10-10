@@ -133,24 +133,19 @@ async fn main() {
     let state = Arc::new(Mutex::new(rpc::State::new(desktop)));
     rpc::spawn_lease_watchdog(Arc::clone(&state));
 
-    loop {
-        match read_message::<_, wire::ActuatorFrame>(&mut stdin).await {
-            Ok(Some(frame)) => {
-                if let Some(wire::actuator_frame::Body::Request(req)) = frame.body {
-                    let st = Arc::clone(&state);
-                    let tx = tx.clone();
-                    tokio::spawn(async move {
-                        let resp = rpc::handle(&st, &tx, req).await;
-                        let _ = tx
-                            .send(wire::ActuatorFrame {
-                                body: Some(wire::actuator_frame::Body::Response(resp)),
-                            })
-                            .await;
-                    });
-                }
-            }
-            // The Core is gone: stop injecting and leave (CUC-D05).
-            _ => break,
+    // The Core is gone when the stream ends: stop injecting and leave (CUC-D05).
+    while let Ok(Some(frame)) = read_message::<_, wire::ActuatorFrame>(&mut stdin).await {
+        if let Some(wire::actuator_frame::Body::Request(req)) = frame.body {
+            let st = Arc::clone(&state);
+            let tx = tx.clone();
+            tokio::spawn(async move {
+                let resp = rpc::handle(&st, &tx, req).await;
+                let _ = tx
+                    .send(wire::ActuatorFrame {
+                        body: Some(wire::actuator_frame::Body::Response(resp)),
+                    })
+                    .await;
+            });
         }
     }
     // Handlers may still be stalled on purpose; the process ends now.

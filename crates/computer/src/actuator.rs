@@ -512,7 +512,7 @@ mod tests {
 
     #[tokio::test]
     async fn a_welcome_that_proves_the_token_is_accepted_and_calls_are_matched_by_id() {
-        let (r, w) = fake(pong, |t| token_proof(t), PROTOCOL_MAJOR, 77).await;
+        let (r, w) = fake(pong, token_proof, PROTOCOL_MAJOR, 77).await;
         let token = vec![7u8; 32];
         // The fake derives its proof from the token the hello carried, which is
         // the one the Core generated, so use the real path.
@@ -540,14 +540,14 @@ mod tests {
             .unwrap();
         assert!(matches!(e, LaunchError::Handshake(m) if m.contains("token")));
 
-        let (r, w) = fake(pong, |t| token_proof(t), PROTOCOL_MAJOR, 5).await;
+        let (r, w) = fake(pong, token_proof, PROTOCOL_MAJOR, 5).await;
         let e = ProcessActuator::establish(r, w, &token, Some(6), Duration::from_secs(2))
             .await
             .err()
             .unwrap();
         assert!(matches!(e, LaunchError::Handshake(m) if m.contains("launched")));
 
-        let (r, w) = fake(pong, |t| token_proof(t), PROTOCOL_MAJOR + 1, 5).await;
+        let (r, w) = fake(pong, token_proof, PROTOCOL_MAJOR + 1, 5).await;
         let e = ProcessActuator::establish(r, w, &token, Some(5), Duration::from_secs(2))
             .await
             .err()
@@ -557,7 +557,7 @@ mod tests {
 
     #[tokio::test]
     async fn a_silent_actuator_times_out_after_the_write_and_a_dead_one_is_not_delivered() {
-        let (r, w) = fake(|_| None, |t| token_proof(t), PROTOCOL_MAJOR, 9).await;
+        let (r, w) = fake(|_| None, token_proof, PROTOCOL_MAJOR, 9).await;
         let a = ProcessActuator::establish(r, w, &[3u8; 32], Some(9), Duration::from_secs(2))
             .await
             .unwrap();

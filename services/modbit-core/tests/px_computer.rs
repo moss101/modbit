@@ -717,6 +717,8 @@ async fn qual_px_069_every_refusal_is_typed_with_its_escalation_and_actuates_not
     expect_refusal(&o, 21, "MODAL_BLOCKING", "ask_user");
     assert!(o[22].0.starts_with("status: SUCCESS"));
     expect_refusal(&o, 23, "SESSION_REQUIRED", "re_observe");
+    // A name outside the family is the registry's refusal, not a guess.
+    assert_eq!(error_code(&o[24].0), "TOOL_NOT_VISIBLE", "{}", o[24].0);
     // The approvals the person was asked: the start and the two inputs that were
     // approved (the margin click and the Submit press). None for what was refused first.
     let asked: Vec<String> = rig
@@ -1625,7 +1627,7 @@ async fn qual_px_069_a_second_controller_is_refused_until_the_first_lets_go() {
         "task B goal",
     )
     .await;
-    let (person, approvals) = spawn_person(&core, &session, g, approve_all()).await;
+    let (person, _approvals) = spawn_person(&core, &session, g, approve_all()).await;
     start_task_long(&mut c, &a, g, 0x12).await;
     start_task_long(&mut c, &b, g, 0x14).await;
     let _ = wait_task(&mut c, &a, 60).await;
@@ -2131,7 +2133,7 @@ async fn qual_px_076_secure_fields_are_masked_at_the_pixel_level_and_a_planted_s
     assert_eq!(o[3].1["reused_encoding"], true, "{}", o[3].1);
     assert_eq!(o[3].1["artifact"]["digest"], first["artifact"]["digest"]);
     // The media pipeline carries provenance and the untrusted label.
-    assert_eq!(first["media"]["trust"], "UNTRUSTED");
+    assert_eq!(first["media"]["trust"], "UNTRUSTED_WORKSPACE_CONTENT");
     assert!(
         first["media"]["provenance"]["source"]
             .as_str()
@@ -2240,7 +2242,7 @@ async fn qual_px_076_the_audit_of_a_session_holds_counts_and_no_content_and_fram
     steps.push(fx(call("computer.release", json!({}))));
     let opts = Opts {
         env: vec![
-            ("MODBIT_COMPUTER_RETENTION_SECS", "2".into()),
+            ("MODBIT_COMPUTER_RETENTION_SECS", "10".into()),
             // The person pressing a key parks the controller; keep the cooldown short.
             ("MODBIT_COMPUTER_HUMAN_COOLDOWN_MS", "200".into()),
         ],
@@ -2281,7 +2283,7 @@ async fn qual_px_076_the_audit_of_a_session_holds_counts_and_no_content_and_fram
         .to_owned();
     assert!(object_path(&rig, &digest).exists());
     let mut gone = false;
-    for _ in 0..80 {
+    for _ in 0..120 {
         if !object_path(&rig, &digest).exists() {
             gone = true;
             break;

@@ -974,24 +974,20 @@ async fn perform(
                 if e.secure {
                     return Err(err("ACTION_UNSAFE", "the focused field is secure", nd));
                 }
-                let (text, enter, tab) = (
-                    a.text.trim_end_matches(['\n', '\t']).to_owned(),
-                    a.text.ends_with('\n'),
-                    a.text.ends_with('\t'),
-                );
-                if !text.is_empty() {
+                if !a.text.is_empty() {
                     ops.push((
                         format!("{wid}/{}/type", e.id),
                         vec![Op::Append {
                             target: e.id.clone(),
-                            text,
+                            text: a.text.clone(),
                         }],
                     ));
                 }
-                if enter && let Some(b) = e.behaviors.get("enter") {
+                if a.then == "enter"
+                    && let Some(b) = e.behaviors.get("enter")
+                {
                     ops.push((format!("{wid}/{}/enter", e.id), b.clone()));
                 }
-                let _ = tab;
             }
             Some(Action::Key(a)) => {
                 modality = "raw";

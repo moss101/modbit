@@ -33,7 +33,7 @@ pub fn fit(source_w: u32, source_h: u32) -> Letterbox {
 
 impl Letterbox {
     /// The source point of a canvas point (relative to the source origin).
-    pub fn to_source(&self, x: f64, y: f64) -> Option<(f64, f64)> {
+    pub fn to_source(self, x: f64, y: f64) -> Option<(f64, f64)> {
         let sx = (x - self.offset_x) / self.scale;
         let sy = (y - self.offset_y) / self.scale;
         (sx >= 0.0 && sy >= 0.0 && sx <= f64::from(self.source_w) && sy <= f64::from(self.source_h))

@@ -438,12 +438,8 @@ impl ComputerRuntime {
                     })
                 }
                 Act::Type { text, then } => wire::perform_request::Action::Type(wire::TypeAction {
-                    // The separate key rides after the text as its own chord.
-                    text: match then.as_deref() {
-                        Some("enter") => format!("{text}\n"),
-                        Some("tab") => format!("{text}\t"),
-                        _ => text.clone(),
-                    },
+                    text: text.clone(),
+                    then: then.clone().unwrap_or_default(),
                 }),
                 Act::Key { keys, .. } => {
                     wire::perform_request::Action::Key(wire::KeyAction { keys: keys.clone() })

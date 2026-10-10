@@ -1,0 +1,8 @@
+{
+  "expected": {
+    "code": "TARGET_STALE",
+    "delivery": "DELIVERY_NOT_DELIVERED",
+    "message": "the window moved"
+  },
+  "type": "modbit.v1.ActuatorError"
+}

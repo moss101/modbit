@@ -602,7 +602,12 @@ pub(crate) async fn spawn(
             return Err(r);
         }
         let store = core.store.lock().await;
-        if req.spec.write_scope.is_empty() && !live_children.is_empty() {
+        // A computer-use child writes nothing (read, search, non-GUI shell and
+        // computer.* only), so it has no scope to overlap.
+        if req.spec.write_scope.is_empty()
+            && !live_children.is_empty()
+            && profile_name != crate::agent_profiles::COMPUTER_USE
+        {
             let r = refuse(
                 "WRITE_CONFLICT",
                 "a builder with an unbounded write scope cannot run beside admitted workers; name its write_scope".into(),

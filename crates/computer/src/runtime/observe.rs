@@ -465,6 +465,7 @@ impl ComputerRuntime {
     }
 
     /// The intent an approval of a start binds.
+    #[allow(clippy::too_many_arguments)]
     pub(super) async fn prepare_start(
         &self,
         ctx: &CallCtx,
@@ -930,6 +931,7 @@ impl ComputerRuntime {
 
     /// Capture, verify, mask, encode and remember one frame. The caller
     /// holds the session's gate.
+    #[allow(clippy::too_many_arguments)]
     pub(super) async fn capture_inner(
         &self,
         ctx: &CallCtx,
@@ -962,7 +964,7 @@ impl ComputerRuntime {
         };
         // One scaler: the frame must be the canvas and its fit must be the
         // scaler's (CUC-B02, PX-076).
-        let lb = cap.letterbox.clone().unwrap_or_default();
+        let lb = cap.letterbox.unwrap_or_default();
         let letterbox = Letterbox {
             source_width: lb.source_width,
             source_height: lb.source_height,
