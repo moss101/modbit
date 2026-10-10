@@ -146,6 +146,18 @@ fn main() -> ExitCode {
             let mut sink = [0u8; 64];
             let mut stdin = std::io::stdin();
             while matches!(stdin.read(&mut sink), Ok(n) if n > 0) {}
+            // Windows: the client's pipes are gone with it, and `eprintln!` panics on a dead stderr, which
+            // would end this thread without the exit. (Unix keeps `eprintln!`: there the orphaned Core is
+            // reclaimed by the next Core as a crashed one, `orphaned_tethered_core`.)
+            #[cfg(windows)]
+            {
+                use std::io::Write;
+                let _ = writeln!(
+                    std::io::stderr(),
+                    "modbit-core: supervising client closed its pipe; exiting"
+                );
+            }
+            #[cfg(not(windows))]
             eprintln!("modbit-core: supervising client closed its pipe; exiting");
             std::process::exit(0);
         });

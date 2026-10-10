@@ -6,6 +6,7 @@
  * question says quitting does, and the recovery counts a restart shows.
  */
 import { expect, test, type ElectronApplication } from "@playwright/test";
+import { execFileSync } from "node:child_process";
 import { existsSync, mkdtempSync, readFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
@@ -34,11 +35,14 @@ test("PX-049: the window opens at 1280 x 800 and cannot be made smaller than 900
     const got = await app.evaluate(({ BrowserWindow, screen }) => {
       const w = BrowserWindow.getAllWindows()[0]!;
       const initial = w.getSize();
+      // The frame (border and shadow on Windows, none on macOS and Linux) is constant: the window size less the content size.
+      const initialContent = w.getContentSize();
+      const frame: [number, number] = [initial[0]! - initialContent[0]!, initial[1]! - initialContent[1]!];
       const workArea = screen.getDisplayMatching(w.getBounds()).workAreaSize;
       w.setSize(300, 200);
       const clamped = w.getSize();
       w.setContentSize(100, 100);
-      return { minimum: w.getMinimumSize(), initial, workArea, clamped, content: w.getContentSize() };
+      return { minimum: w.getMinimumSize(), initial, workArea, clamped, content: w.getContentSize(), frame };
     });
     expect(got.minimum).toEqual([900, 600]);
     // 1280 x 800, unless the screen's work area is smaller (a CI runner's
@@ -49,8 +53,10 @@ test("PX-049: the window opens at 1280 x 800 and cannot be made smaller than 900
     ]);
     expect(got.clamped[0]).toBeGreaterThanOrEqual(900);
     expect(got.clamped[1]).toBeGreaterThanOrEqual(600);
-    expect(got.content[0], "a content size below the minimum is clamped too").toBeGreaterThanOrEqual(900);
-    expect(got.content[1]).toBeGreaterThanOrEqual(560);
+    // The 900 x 600 minimum applies to the window including its frame (on Windows the content area is ~16 px
+    // narrower), so the exact bound on the content is the minimum less the frame.
+    expect(got.content[0], `a content size below the minimum is clamped too (frame ${got.frame[0]} x ${got.frame[1]})`).toBeGreaterThanOrEqual(900 - got.frame[0]);
+    expect(got.content[1]).toBeGreaterThanOrEqual(600 - got.frame[1]);
   } finally {
     await closeApp(app);
   }
@@ -150,8 +156,19 @@ test("PX-049: a restart after a quit with a task running shows the Core's recove
     expect(await page.getByTestId("recovery-summary").count(), "a first start has nothing to recover").toBe(0);
 
     // Stop the app the way a crash would: the Core dies with the task running, nothing was asked.
-    app.process().kill("SIGKILL");
-    await new Promise<void>((r) => (app.process().exitCode !== null || app.process().signalCode !== null ? r() : app.process().once("exit", () => r())));
+    // The app's main process is the one to kill. `app.process()` is the process Playwright launched, and on Windows the
+    // application's real main process is a child of it: killing the launcher alone leaves the app and its Core running.
+    const mainPid = await app.evaluate(() => process.pid);
+    const launcherPid = app.process().pid;
+    process.kill(mainPid, "SIGKILL");
+    for (let i = 0; i < 100; i++) {
+      try { process.kill(mainPid, 0); } catch { break; }
+      await new Promise((r) => setTimeout(r, 100));
+    }
+    if (process.platform === "win32" && launcherPid !== undefined && launcherPid !== mainPid) {
+      // The launcher outlives its child and holds the worker's pipes; the Core is not below it any more (its parent, the main process, is gone).
+      try { execFileSync("taskkill", ["/PID", String(launcherPid), "/T", "/F"], { stdio: "ignore" }); } catch { /* already gone */ }
+    }
     hold.open();
 
     ({ app, page } = await launch(dataDir, { env: { MODBIT_OPENAI_BASE_URL: url, MODBIT_QUIT_PROMPT: "" } }));

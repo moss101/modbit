@@ -51,7 +51,8 @@ test("PX-047: a streamed answer appears incrementally, is never shown as final w
     await setContentSize(app, page, 1280, 800);
     await startAndOpen(page, "Explain the streaming", repo);
     // The first piece is on screen while the stream is open: partial, marked as streaming, with a tail status naming the work.
-    const msg = page.getByTestId("conv-assistant");
+    // The streamed answer is the transcript's first assistant message; later turns add more once it completes.
+    const msg = page.getByTestId("conv-assistant").first();
     await expect(msg).toHaveAttribute("data-message-state", "streaming", { timeout: 60_000 });
     await expect(page.getByTestId("conv-text")).toContainText("The streamed answer begins here");
     expect(await page.getByTestId("conv-text").innerText()).not.toContain("closing sentence");
@@ -71,10 +72,12 @@ test("PX-047: a streamed answer appears incrementally, is never shown as final w
     await accessible(page, "a conversation mid-stream");
     gate.open();
     await expect(msg).toHaveAttribute("data-message-state", "complete", { timeout: 60_000 });
-    await expect(page.getByTestId("conv-text")).toContainText("then it finishes with this closing sentence.");
+    await expect(msg.getByTestId("conv-text")).toContainText("then it finishes with this closing sentence.");
     const lengths = await page.evaluate(() => (window as unknown as { __lengths: number[] }).__lengths);
     for (let i = 1; i < lengths.length; i++) expect(lengths[i]!, `length at change ${i}`).toBeGreaterThanOrEqual(lengths[i - 1]!);
-    expect((await page.getByTestId("conv-text").innerText()).replace(/\s+/g, " ").trim()).toBe(FULL.trim());
+    // The streamed answer is the transcript's first assistant message. Once it is complete the task goes on to later turns (the scripted
+    // model has one step), whose messages join the transcript within milliseconds: read this message's text, not "the" text on screen.
+    expect((await page.getByTestId("conv-assistant").first().getByTestId("conv-text").innerText()).replace(/\s+/g, " ").trim()).toBe(FULL.trim());
     await expect(page.getByTestId("conv-streaming")).toHaveCount(0);
   } finally {
     gate.open();
@@ -104,8 +107,10 @@ test("PX-047: a reload in the middle of a stream resumes it: the partial text co
     await expect(page.getByTestId("conv-text")).toContainText("The streamed answer begins here");
     expect(await page.getByTestId("conv-text").innerText()).not.toContain("closing sentence");
     gate.open();
-    await expect(page.getByTestId("conv-assistant")).toHaveAttribute("data-message-state", "complete", { timeout: 60_000 });
-    expect((await page.getByTestId("conv-text").innerText()).replace(/\s+/g, " ").trim()).toBe(FULL.trim());
+    await expect(page.getByTestId("conv-assistant").first()).toHaveAttribute("data-message-state", "complete", { timeout: 60_000 });
+    // The streamed answer is the transcript's first assistant message. Once it is complete the task goes on to later turns (the scripted
+    // model has one step), whose messages join the transcript within milliseconds: read this message's text, not "the" text on screen.
+    expect((await page.getByTestId("conv-assistant").first().getByTestId("conv-text").innerText()).replace(/\s+/g, " ").trim()).toBe(FULL.trim());
   } finally {
     gate.open();
     finish.open();

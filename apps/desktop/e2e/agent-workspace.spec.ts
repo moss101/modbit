@@ -11,7 +11,7 @@ import { expect, test, type ElectronApplication } from "@playwright/test";
 import { mkdtempSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { ECHO_LOOP, gate, nodeTerminal, steppedModel, type Step } from "./support/apps-harness.ts";
+import { ECHO_LOOP, expectTerminals, gate, nodeTerminal, steppedModel, type Step } from "./support/apps-harness.ts";
 import { accessible, closeApp, launch, makeRepo, setContentSize } from "./support/ui-harness.ts";
 
 async function recordDialog(app: ElectronApplication, answer: number): Promise<void> {
@@ -74,7 +74,7 @@ test("the agent list, the conversation and the apps panel work together on one r
     await expect(conversation.getByTestId("conv-tail")).toBeVisible();
 
     // The same selection drives the apps panel: it appears once there is an artifact, for this task, with the conversation still in the centre.
-    await expect.poll(async () => (await page.evaluate((t) => window.modbit.terminalList(t).then((l) => l.terminals.length), taskId)), { timeout: 60_000 }).toBe(1);
+    await expectTerminals(page, taskId, 1);
     await page.getByTestId("toggle-apps-panel").click();
     const panel = page.getByTestId("region-apps");
     await expect(panel).toBeVisible();

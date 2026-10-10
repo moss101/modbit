@@ -15,7 +15,7 @@ import type { Server } from "node:http";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { createHash } from "node:crypto";
-import { BIG_OUTPUT, ECHO_LOOP, EXIT_THREE, SIZE_REPORTER, gate, handlesIn, nodeTerminal, readTerminal, steppedModel, toolResults, type Step } from "./support/apps-harness.ts";
+import { BIG_OUTPUT, ECHO_LOOP, EXIT_THREE, expectTerminals, SIZE_REPORTER, gate, handlesIn, nodeTerminal, readTerminal, steppedModel, toolResults, type Step } from "./support/apps-harness.ts";
 import { accessible, closeApp, git, launch, makeRepo, MOD, setContentSize } from "./support/ui-harness.ts";
 
 test.describe.configure({ mode: "serial" });
@@ -99,7 +99,7 @@ test("the panel is absent until the task runs; then Changes shows the live diff 
   await card.getByTestId("task-start").click();
   await expect(card.getByTestId("task-state")).toHaveText("Running", { timeout: 60_000 });
   // Four terminals appear as the script starts them; the task is held at the gate.
-  await expect.poll(async () => (await listTerminals()).length, { timeout: 60_000 }).toBe(4);
+  await expectTerminals(page, taskId, 4);
   await card.focus();
   await page.keyboard.press(`${MOD}+e`);
   await expect(page.getByTestId("region-apps")).toBeVisible();
@@ -123,7 +123,7 @@ test("Terminal: owners and states are listed, an exited terminal shows its code,
   // The four start in one turn, so tell them apart by their command, not by start time.
   const byCommand = (needle: string) => all.find((t) => t.title.includes(needle) || t.cwd.includes(needle))!;
   const echo = byCommand("READY");
-  const size = byCommand("process.stdout.columns");
+  const size = byCommand("getWindowSize");
   const big = byCommand("repeat(1019)");
   const exited = byCommand("process.exit(3)");
   expect([echo, size, big, exited].every((t) => t !== undefined), JSON.stringify(all.map((t) => t.title))).toBe(true);
@@ -133,7 +133,14 @@ test("Terminal: owners and states are listed, an exited terminal shows its code,
 
   // The exited terminal replays its output and states how it ended.
   await pickTerminal(exited.terminalId);
-  await expect(screen()).toContainText("finished");
+  // The replay of a 111-byte terminal can take longer than the default 5s to reach the screen on the loaded Windows runner (the failure
+  // diagnostics showed the line on screen moments after the timeout); the assertion is unchanged.
+  await expect(screen()).toContainText("finished", { timeout: 30_000 }).catch(async (e: Error) => {
+    const log = await readTerminal(page, { sessionId, taskId, terminalId: exited.terminalId, after: "0", windowBytes: 65536 });
+    const view = await terminalView().evaluate((el) => ({ phase: el.getAttribute("data-phase"), cursor: el.getAttribute("data-cursor"), bytes: el.getAttribute("data-bytes"), rows: el.querySelectorAll(".xterm-rows > div").length, text: el.querySelector(".xterm-rows")?.textContent?.replace(/\s+/g, " ") ?? null }));
+    const row = (await listTerminals()).find((t) => t.terminalId === exited.terminalId);
+    throw new Error(`${e.message}\nthe Core's replay of the exited terminal: ${JSON.stringify(new TextDecoder().decode(Uint8Array.from(log.bytes)))}\nthe view: ${JSON.stringify(view)}\nthe listed terminal: ${JSON.stringify(row)}`);
+  });
   await expect(page.getByTestId("terminal-exit")).toContainText("Exited with code 3");
   await accessible(page, "terminal app, an exited terminal", '[data-testid="region-apps"]');
 
@@ -188,8 +195,28 @@ test("replay: a reload shows the same bytes; two attaches from the start read id
   await expect(page.getByTestId("tab-terminal")).toHaveAttribute("aria-selected", "true", { timeout: 30_000 });
   await pickTerminal(echo);
   // The screen is rebuilt from the Core's replay after a reload; on a loaded runner that takes longer than the default wait.
-  await expect(screen()).toContainText("got:hello-pty", { timeout: 30_000 });
+  await expect(screen()).toContainText("got:hello-pty", { timeout: 30_000 }).catch(async (e: Error) => {
+    const log = await readTerminal(page, { sessionId, taskId, terminalId: echo, after: "0", windowBytes: 65536 });
+    const rows = await terminalView().evaluate((el) => [...el.querySelectorAll(".xterm-rows > div")].map((r) => r.textContent ?? "").filter((t) => t.trim() !== ""));
+    const listed = (await listTerminals()).find((t) => t.terminalId === echo);
+    throw new Error(`${e.message}\nthe Core's replay: ${JSON.stringify(new TextDecoder().decode(Uint8Array.from(log.bytes)))}\nthe screen's rows: ${JSON.stringify(rows)}\nthe listed terminal: ${JSON.stringify({ rows: listed?.rows, cols: listed?.cols, bytesSoFar: listed?.bytesSoFar })}`);
+  });
   await expect(screen()).toContainText("READY", { timeout: 30_000 });
+  if (process.platform === "win32") {
+    // A Windows pseudo-console repaints its screen when the viewer attaches at a size (the reload's resize), so the
+    // log grows by that repaint (160 bytes on the runner) after the first read. The exact claims are the ones the log
+    // itself makes: the view stands at the Core's head, and everything read before is still the log's first bytes.
+    await expect
+      .poll(async () => {
+        const head = (await listTerminals()).find((t) => t.terminalId === echo)!.bytesSoFar;
+        return (await terminalView().getAttribute("data-cursor")) === head;
+      }, { timeout: 30_000 })
+      .toBe(true);
+    const second = await readTerminal(page, { sessionId, taskId, terminalId: echo, after: "0", windowBytes: 65536 });
+    expect(sha(second.bytes.slice(0, first.bytes.length))).toBe(sha(first.bytes));
+    expect(second.bytes.length).toBeGreaterThanOrEqual(first.bytes.length);
+    return;
+  }
   await expect(terminalView()).toHaveAttribute("data-cursor", before!);
   const second = await readTerminal(page, { sessionId, taskId, terminalId: echo, after: "0", windowBytes: 65536 });
   expect(sha(second.bytes)).toBe(sha(first.bytes));
