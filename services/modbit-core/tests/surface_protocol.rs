@@ -48493,7 +48493,18 @@ async fn fix_05_a_configuration_file_that_breaks_mid_run_stops_the_run_at_the_ne
             .unwrap();
         let _: TaskRunStarted = Client::result(&ack).unwrap();
     }
-    tokio::time::sleep(Duration::from_millis(800)).await;
+    // Break the file only once the first model request is in the stub's hands
+    // (it records the request before it holds it): a fixed pause broke the
+    // file before a slow start (a loaded Windows runner) had sent that
+    // request, so the run stopped before it asked the model at all.
+    let first_request = std::time::Instant::now() + Duration::from_secs(120);
+    while seen.lock().unwrap().is_empty() {
+        assert!(
+            std::time::Instant::now() < first_request,
+            "the first model request never arrived"
+        );
+        tokio::time::sleep(Duration::from_millis(25)).await;
+    }
     std::fs::write(&admin, r#"{"permissions": {"change.apply": "AS"#).unwrap();
     let st = wait_task(&mut c, &task, 120).await;
     let evs = task_events(&core, &session, &task).await;

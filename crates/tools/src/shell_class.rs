@@ -1151,8 +1151,10 @@ fn check_write_paths(prog: &str, args: &[String], acc: &mut Acc) {
 // one command
 // ---------------------------------------------------------------------------
 
+/// The last path component, split on `/` and on `\` (a Windows argv[0] such as
+/// `C:\hostedtoolcache\node.exe` names `node`, exactly as `/usr/bin/node` does).
 fn basename(p: &str) -> &str {
-    p.rsplit('/').next().unwrap_or(p)
+    p.rsplit(['/', '\\']).next().unwrap_or(p)
 }
 
 /// The args before a `--` separator.
@@ -1193,7 +1195,7 @@ fn classify_cmd(argv: &[String], dyn_args: bool, stdin: Option<&str>, depth: usi
         return;
     };
     let rest = &argv[1..];
-    let qualified = first.contains('/');
+    let qualified = first.contains(['/', '\\']);
     let mut prog = basename(first).to_ascii_lowercase();
     if let Some(p) = prog.strip_suffix(".exe") {
         prog = p.to_owned();
@@ -1411,8 +1413,13 @@ fn classify_cmd(argv: &[String], dyn_args: bool, stdin: Option<&str>, depth: usi
     }
     // Not a program of the tables.
     if qualified {
-        let is_relative =
-            !first.starts_with('/') && !first.starts_with("../") && !first.starts_with('~');
+        let windows_absolute = first.starts_with('\\')
+            || first.starts_with("..\\")
+            || first.as_bytes().get(1) == Some(&b':');
+        let is_relative = !first.starts_with('/')
+            && !first.starts_with("../")
+            && !first.starts_with('~')
+            && !windows_absolute;
         if is_relative {
             // `./scripts/test.sh`: project code, like an interpreter on a script.
             return;
@@ -2703,6 +2710,23 @@ mod tests {
 
     fn argv(a: &[&str]) -> Vec<String> {
         a.iter().map(|s| (*s).to_owned()).collect()
+    }
+
+    /// A Windows argv[0] is an absolute path with backslashes; it names the same program the
+    /// POSIX path does, and an unknown Windows-absolute program is never read as project code.
+    #[test]
+    fn a_windows_program_path_is_classified_by_its_basename() {
+        let node = classify_argv(
+            &argv(&[
+                r"C:\hostedtoolcache\windows\node\20.0.0\x64\node.exe",
+                "-e",
+                "1",
+            ]),
+            None,
+        );
+        assert!(!node.unclassified, "{:?}", node.reasons);
+        let unknown = classify_argv(&argv(&[r"C:\tools\mystery.exe"]), None);
+        assert!(unknown.unclassified);
     }
 
     fn sh(script: &str) -> ShellEffect {
