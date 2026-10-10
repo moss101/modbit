@@ -37,6 +37,18 @@ pub const WAIT_TOOL: &str = "proc.wait";
 
 /// How long `proc.exec` waits for a program before handing back a handle.
 pub const EXEC_INLINE_GRACE_MS: u64 = 2_000;
+/// How long `proc.exec` waits for a program before handing back a handle: the
+/// contract's [`EXEC_INLINE_GRACE_MS`], or less when
+/// `MODBIT_EXEC_INLINE_GRACE_MS` says so (unset in production; a value above
+/// the contract's is ignored). It lets a test make the handle path a certainty
+/// instead of a slow runner's accident.
+fn inline_grace_ms() -> u64 {
+    std::env::var("MODBIT_EXEC_INLINE_GRACE_MS")
+        .ok()
+        .and_then(|v| v.trim().parse::<u64>().ok())
+        .map_or(EXEC_INLINE_GRACE_MS, |ms| ms.min(EXEC_INLINE_GRACE_MS))
+}
+
 /// The longest a single `proc.wait` blocks.
 pub const WAIT_CEILING_MS: u64 = 60_000;
 
@@ -607,8 +619,9 @@ pub(crate) async fn handle_exec(
         bindings,
         started: std::time::Instant::now(),
     };
+    let grace_ms = inline_grace_ms();
     match tokio::time::timeout(
-        std::time::Duration::from_millis(EXEC_INLINE_GRACE_MS),
+        std::time::Duration::from_millis(grace_ms),
         &mut running.join,
     )
     .await
@@ -616,13 +629,13 @@ pub(crate) async fn handle_exec(
         Ok(joined) => {
             let outcome = joined.unwrap_or_else(|_| failed_outcome("the program task ended early"));
             finalize(
-                core, task, lineage, actor, state, programs, call_id, EXEC_TOOL, outcome,
+                core, task, lineage, actor, state, programs, call_id, call_id, EXEC_TOOL, outcome,
             )
             .await
         }
         Err(_) => {
             let text = format!(
-                "status: RUNNING\nhandle: {call_id}\nbindings: {}\nnote: the program is still running after {EXEC_INLINE_GRACE_MS} ms; call proc.wait with this handle (it may be awaiting an approval)",
+                "status: RUNNING\nhandle: {call_id}\nbindings: {}\nnote: the program is still running after {grace_ms} ms; call proc.wait with this handle (it may be awaiting an approval)",
                 running.bindings.join(", ")
             );
             programs.running.insert(call_id.to_owned(), running);
@@ -697,6 +710,7 @@ pub(crate) async fn handle_wait(
                 actor,
                 state,
                 programs,
+                call_id,
                 &args.handle,
                 WAIT_TOOL,
                 outcome,
@@ -770,6 +784,7 @@ async fn finalize(
     actor: &Actor,
     state: &mut HarnessState,
     programs: &mut Programs,
+    call_id: &str,
     handle: &str,
     tool: &str,
     outcome: modbit_procedural_runtime::Outcome,
@@ -848,7 +863,12 @@ async fn finalize(
         Status::BudgetExhausted { .. } => Some("PROGRAM_BUDGET_EXHAUSTED".to_owned()),
         Status::Cancelled => Some("PROGRAM_CANCELLED".to_owned()),
     };
-    let mut entry = outcome_entry(handle, tool, handle, &outcome, outcome_ref.as_deref());
+    // The result answers the call the model made: `proc.exec`'s own id when
+    // the program ended inside the grace, the `proc.wait` call's id when the
+    // model waited for the handle. (Answering a wait under the exec's id left
+    // the wait call with no result and the exec call with two, which a
+    // provider refuses and a scripted model counts twice.)
+    let mut entry = outcome_entry(call_id, tool, handle, &outcome, outcome_ref.as_deref());
     if let crate::runtime::TranscriptEntry::ToolResult {
         failure_signature: fs,
         clears: cl,

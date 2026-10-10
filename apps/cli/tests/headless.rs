@@ -23,6 +23,10 @@ use modbit_protocol::v1::{
 };
 use prost::Message;
 
+#[path = "../../../tests/support/program_wait.rs"]
+mod program_wait;
+use program_wait::{program_wait_reply, script_steps_done};
+
 /// Command ids only have to be unique within this test binary.
 static NEXT_COMMAND: AtomicU64 = AtomicU64::new(1);
 
@@ -132,7 +136,16 @@ impl Cli {
 
 /// A scripted OpenAI-compatible model over real HTTP (one reply per number of
 /// tool results seen so far).
+///
+/// A script that runs a program with `proc.exec` and never names `proc.wait`
+/// is answered the way a model answers a program that outlived the 2 s inline
+/// grace (a slow runner's, docs/16): it waits for the handle, and the wait is
+/// not a step of the script.
 fn scripted_model(script: Vec<serde_json::Value>) -> String {
+    let waits_itself = script
+        .iter()
+        .flat_map(|s| s["calls"].as_array().into_iter().flatten())
+        .any(|c| c["name"] == "proc.wait");
     let listener = std::net::TcpListener::bind("127.0.0.1:0").unwrap();
     let port = listener.local_addr().unwrap().port();
     std::thread::spawn(move || {
@@ -175,10 +188,21 @@ fn scripted_model(script: Vec<serde_json::Value>) -> String {
                     .as_array()
                     .map(|m| m.iter().filter(|x| x["role"] == "tool").count())
                     .unwrap_or(0);
-                let reply = script
-                    .get(results)
-                    .cloned()
-                    .unwrap_or_else(|| serde_json::json!({"text": "nothing further"}));
+                let reply = if waits_itself {
+                    None
+                } else {
+                    program_wait_reply(&body)
+                }
+                .or_else(|| {
+                    script
+                        .get(if waits_itself {
+                            results
+                        } else {
+                            script_steps_done(&body)
+                        })
+                        .cloned()
+                })
+                .unwrap_or_else(|| serde_json::json!({"text": "nothing further"}));
                 let mut frames: Vec<String> = Vec::new();
                 if let Some(t) = reply["text"].as_str() {
                     frames.push(serde_json::json!({"id":"c","model":"scripted","choices":[{"index":0,"delta":{"content":t},"finish_reason":null}]}).to_string());
@@ -652,6 +676,20 @@ fn qual_ev_0111_0268_context_show_reports_compaction_epochs_and_the_cached_prefi
 #[test]
 fn qual_ev_0181_0210_an_extension_skill_installs_lists_runs_its_procedure_and_survives_removal_and_reload()
  {
+    extension_skill_flow(None);
+}
+
+/// The same flow when the procedure outlives `proc.exec`'s inline grace (which
+/// a slow runner does by accident, and `MODBIT_EXEC_INLINE_GRACE_MS=1` makes a
+/// certainty): `proc.exec` answers with a handle, the model waits for it, and
+/// the task completes on the program's outcome - no step of the script is
+/// lost to the wait.
+#[test]
+fn qual_ev_0181_a_procedure_that_outlives_the_inline_grace_is_waited_for_and_the_task_completes() {
+    extension_skill_flow(Some("1"));
+}
+
+fn extension_skill_flow(grace_ms: Option<&str>) {
     let core = core_bin();
     let tmp = tempfile::tempdir().unwrap();
     let data_dir = tmp.path().join("profile");
@@ -719,7 +757,10 @@ fn qual_ev_0181_0210_an_extension_skill_installs_lists_runs_its_procedure_and_su
             ("OPENAI_API_KEY".into(), String::new()),
             ("ANTHROPIC_API_KEY".into(), String::new()),
             ("MODBIT_SKILL_KEYS".into(), format!("ext-1:{key_hex}")),
-        ],
+        ]
+        .into_iter()
+        .chain(grace_ms.map(|ms| ("MODBIT_EXEC_INLINE_GRACE_MS".to_owned(), ms.to_owned())))
+        .collect(),
     };
     // A wrong hash is refused; the right one installs with provenance.
     let (code, out, err) = cli.run(&[
@@ -858,6 +899,23 @@ fn qual_ev_0181_0210_an_extension_skill_installs_lists_runs_its_procedure_and_su
         .find(|l| l["event_type"] == "ProgramEnded")
         .unwrap();
     assert_eq!(ended["payload"]["status"], "COMPLETED");
+    // A procedure run is one step per `proc.exec` and per `proc.wait`: when the
+    // grace is forced to nothing the model must have waited for the handle
+    // (two steps); when it is not, it did not have to - and on a slow runner
+    // it may have: either way the task above reached review on the program's
+    // outcome.
+    let procedure_steps = lines
+        .iter()
+        .filter(|l| {
+            l["event_type"] == "StepScheduled"
+                && l["payload"]["step_type"]["kind"] == "PROCEDURE_RUN"
+        })
+        .count();
+    if grace_ms.is_some() {
+        assert!(procedure_steps >= 2, "the handle was waited for: {out}");
+    } else {
+        assert!(procedure_steps >= 1, "{out}");
+    }
     // Removal: gone from the list; a new run selects nothing.
     let (code, out, err) = cli.run(&["skill", "remove", "notes-counter"]);
     assert_eq!(code, 0, "{out}{err}");
