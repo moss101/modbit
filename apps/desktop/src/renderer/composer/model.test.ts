@@ -23,6 +23,7 @@ import {
   planSend,
   queueRows,
   reorderTarget,
+  routingLine,
   runningTerminals,
   saveStore,
   sendNowLabel,
@@ -234,7 +235,7 @@ const posture = (over: Partial<PostureView["preference"]> = {}, routing: Partial
   subagents: false,
   reproductionFirst: false,
   preference: { objective: "BALANCE", effort: "", serviceTier: "", pinEndpoint: "", pinModel: "", offset: "0", appliedOffset: "0", effortApplied: "", serviceTierApplied: "", ...over },
-  routing: { outcome: "DIRECT", reasonCode: "NO_ACTIVE_REGISTRY", detail: "", floorMode: "", ...routing },
+  routing: { outcome: "DIRECT", reasonCode: "NO_ACTIVE_REGISTRY", detail: "", floorMode: "", registryGeneration: "", ...routing },
 });
 
 const catalog: ModelCatalogView = {
@@ -256,6 +257,16 @@ test("the model chip says Auto with the objective until a pin is recorded, and r
   assert.deepEqual(modelChip(posture({ objective: "COST" }), catalog).variant, "Cost");
   assert.deepEqual(modelChip(posture({ pinEndpoint: "openai", pinModel: "gpt-5", effort: "high" }), catalog), { name: "gpt-5", variant: "high effort", routing: "direct: no active registry" });
   assert.equal(modelChip(null, null).name, "Model");
+});
+
+test("the routing line becomes `routed registry <id>` only when a registry is active and routing reads it (REQ-PX-134)", () => {
+  assert.equal(routingLine(posture().routing), "direct: no active registry");
+  assert.equal(routingLine(posture({}, { outcome: "NOT_YET_EVALUATED", reasonCode: "FLOOR_APPLIED", registryGeneration: "reg-2026-10" }).routing), "routed registry reg-2026-10");
+  assert.equal(routingLine(posture({}, { outcome: "ROUTED", reasonCode: "FLOOR_APPLIED", registryGeneration: "reg-2026-10" }).routing), "routed registry reg-2026-10");
+  // A pin is never routed away from, and a registry activated after the last dispatch does not rewrite it.
+  assert.equal(routingLine(posture({}, { outcome: "PINNED", reasonCode: "MANUAL_PIN", registryGeneration: "reg-2026-10" }).routing), "pinned: manual pin");
+  assert.equal(routingLine(posture({}, { outcome: "DIRECT", reasonCode: "NO_ACTIVE_REGISTRY", registryGeneration: "reg-2026-10" }).routing), "direct: no active registry");
+  assert.equal(modelChip(posture({}, { outcome: "ROUTED", reasonCode: "FLOOR_APPLIED", registryGeneration: "reg-1" }), catalog).routing, "routed registry reg-1");
 });
 
 test("the picker lists one row per variant, marks the current pin, and shows a blocked model with the Core's typed reason", () => {

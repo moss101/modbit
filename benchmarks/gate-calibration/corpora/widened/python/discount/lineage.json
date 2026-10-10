@@ -1,0 +1,27 @@
+{
+  "lineage": "holdout/python-shop/discount",
+  "goal": "`bulk_discount` must give a 10 % discount (integer division) on orders of 10 000 cents or more and no discount below that. The visible test `test_acceptance_bulk_discount` fails; make it pass and fix the behaviour, without weakening or removing any test.",
+  "acceptance": [
+    "test_acceptance_bulk_discount"
+  ],
+  "seed": [
+    "shop.py"
+  ],
+  "oracle": {
+    "files": [
+      [
+        "test_oracle_spec.py",
+        "python/test_oracle_spec.py"
+      ]
+    ],
+    "argv": [
+      "python3",
+      "-m",
+      "pytest",
+      "-q",
+      "-p",
+      "no:cacheprovider",
+      "test_oracle_spec.py"
+    ]
+  }
+}

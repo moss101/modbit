@@ -115,6 +115,14 @@ export declare type RoutingOutcomeView = Message<"modbit.v1.RoutingOutcomeView">
    * @generated from field: string floor_mode = 4;
    */
   floorMode: string;
+
+  /**
+   * REQ-PX-134: the generation of the signed registry active for this task
+   * when the view is read; empty with no active registry. A typed read only.
+   *
+   * @generated from field: string registry_generation = 440;
+   */
+  registryGeneration: string;
 };
 
 /**

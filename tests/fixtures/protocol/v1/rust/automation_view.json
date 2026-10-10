@@ -1,0 +1,61 @@
+{
+  "expected": {
+    "active": 1,
+    "automationId": "abababababababababababababababab",
+    "capabilities": [
+      "fs.write"
+    ],
+    "consecutiveFailures": 2,
+    "contentChanged": false,
+    "currentVersion": 3,
+    "definitionHash": "cdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcd",
+    "definitionJson": "{}",
+    "description": "Report the drift of the default branch.",
+    "disabledDetail": "",
+    "disabledReason": "",
+    "effects": "reversible_write",
+    "enabled": {
+      "approvedMs": "1757289600123",
+      "approver": "user:x",
+      "capabilities": [
+        "fs.write"
+      ],
+      "definitionHash": "cdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcd",
+      "effects": "reversible_write",
+      "hosts": [],
+      "paths": [
+        "reports/**"
+      ],
+      "repoRevision": "",
+      "sourceSha256": "",
+      "version": 3
+    },
+    "hosts": [],
+    "lastRunMs": "1757289700000",
+    "lastRunStatus": "failed",
+    "limitApprovalWaitMinutes": "1440",
+    "limitDeadlineMinutes": "30",
+    "limitMaxCostMinor": "9007199254740993",
+    "name": "drift",
+    "needsListedApproval": true,
+    "paths": [
+      "reports/**"
+    ],
+    "paused": false,
+    "principal": "service:ci-bot",
+    "queued": 1,
+    "sourceKind": "repository",
+    "sourcePath": ".modbit/automations/drift.json",
+    "state": "ENABLED",
+    "triggers": [
+      {
+        "id": "nightly",
+        "kind": "schedule",
+        "nextDueMs": "1757300000000",
+        "summary": "cron 0 3 * * * (UTC)"
+      }
+    ],
+    "workspaceRoot": "/work/repo"
+  },
+  "type": "modbit.v1.AutomationView"
+}

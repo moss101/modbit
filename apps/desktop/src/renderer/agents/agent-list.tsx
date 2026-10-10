@@ -10,9 +10,13 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Button, Dialog, trays } from "@modbit/ui";
 import type { ConversationSearchView } from "../../shared/conversation-types.ts";
 import { AgentListView } from "./agent-list-view.tsx";
-import { flatten, groupHeaders, nearestSibling, passes, pin as pinTask, unpin as unpinTask, visibleTaskIds, type Filters, type Grouping, type SubtitleField } from "./list-model.ts";
+import { deleteView, listItems, nearestSibling, passes, pin as pinTask, saveView, unpin as unpinTask, visibleTaskIds, type Filters, type Grouping, type SortKey, type StoredView, type SubtitleField } from "./list-model.ts";
 import { loadListPrefs, saveListPrefs, type ListPrefs } from "./prefs.ts";
 import { useAgents } from "./use-agents.ts";
+import { NewProjectDialog, RenameProjectDialog, SaveViewDialog } from "../projects/project-dialogs.tsx";
+import { archiveProject as archiveProjectWithUndo } from "../projects/archive-project.ts";
+import { newViewId, refusalSentence, workspaceChoices } from "../projects/project-model.ts";
+import type { ProjectsState } from "../projects/use-projects.ts";
 
 /** The undo stays at least this long (AFW-B08: not less than 8 s). */
 export const UNDO_MS = 12_000;
@@ -26,9 +30,16 @@ export interface AgentListProps {
   onSelect: (taskId: string | null, rowId?: string) => void;
   /** Tells the shell the list's current numbers (for the summary line and the palette). */
   onHeaders?: ((n: { total: number; attention: number }) => void) | undefined;
+  /** The Core's projects (PX-063), read once by the shell and shared with the project page. */
+  projects?: ProjectsState | undefined;
+  selectedProjectId?: string | null | undefined;
+  /** Opens a project's page in the centre region. */
+  onOpenProject?: ((projectId: string) => void) | undefined;
+  /** A project left the list (archived or renamed away): the page showing it is told. */
+  onProjectArchived?: ((projectId: string, archived: boolean) => void) | undefined;
 }
 
-export function AgentList({ sessionId, connected, selectedTaskId, onSelect, onHeaders }: AgentListProps) {
+export function AgentList({ sessionId, connected, selectedTaskId, onSelect, onHeaders, projects, selectedProjectId = null, onOpenProject, onProjectArchived }: AgentListProps) {
   const [prefs, setPrefs] = useState<ListPrefs>(loadListPrefs);
   const update = useCallback((f: (p: ListPrefs) => ListPrefs) => setPrefs((p) => f(p)), []);
   useEffect(() => saveListPrefs(prefs), [prefs]);
@@ -37,6 +48,9 @@ export function AgentList({ sessionId, connected, selectedTaskId, onSelect, onHe
   const [query, setQuery] = useState("");
   const [search, setSearch] = useState<{ state: "idle" | "searching" | "done" | "error"; results: ConversationSearchView | null; error: string | null }>({ state: "idle", results: null, error: null });
   const [confirmStop, setConfirmStop] = useState<{ taskId: string; title: string } | null>(null);
+  const [newProject, setNewProject] = useState(false);
+  const [renaming, setRenaming] = useState<string | null>(null);
+  const [savingView, setSavingView] = useState(false);
   const [focusRequest, setFocusRequest] = useState<{ taskId: string; n: number } | null>(null);
   const [nowMs, setNowMs] = useState(() => Date.now());
   const undoTimers = useRef(new Map<string, ReturnType<typeof setTimeout>>());
@@ -87,8 +101,8 @@ export function AgentList({ sessionId, connected, selectedTaskId, onSelect, onHe
   /** The rows as the person sees them, for the sibling an archive hands the selection to. */
   const order = useCallback(() => {
     const visible = agents.headers.filter((h) => passes(h, prefs.filters));
-    return visibleTaskIds(flatten(groupHeaders(visible, prefs.grouping, prefs.pins, Date.now()), collapsed));
-  }, [agents.headers, prefs.filters, prefs.grouping, prefs.pins, collapsed]);
+    return visibleTaskIds(listItems({ headers: visible, projects: projects?.projects ?? [], grouping: prefs.grouping, pins: prefs.pins, collapsed, nowMs: Date.now(), sort: prefs.sort, showArchived: prefs.filters.showArchived }));
+  }, [agents.headers, projects?.projects, prefs.filters, prefs.grouping, prefs.pins, prefs.sort, collapsed]);
 
   const dismissUndo = useCallback((taskId: string) => {
     const id = `archive:${taskId}`;
@@ -160,6 +174,66 @@ export function AgentList({ sessionId, connected, selectedTaskId, onSelect, onHe
     [agents.headers, doArchive],
   );
 
+  // ---- projects (PX-063/064): every change is a Core command; the list shows what the Core's next read says.
+  const projectName = (id: string) => projects?.projects.find((x) => x.projectId === id)?.name ?? "the project";
+  const addToProject = useCallback(
+    async (taskId: string, projectId: string) => {
+      if (!sessionId || !projects) return;
+      const title = agents.headers.find((h) => h.taskId === taskId)?.title || "the task";
+      try {
+        await projects.addMember(sessionId, projectId, taskId);
+        setNote(null);
+        agents.refresh();
+      } catch (e) {
+        // The Core's typed refusal, as it said it; nothing on the list changed.
+        setNote(refusalSentence(`Could not add “${title}” to “${projectName(projectId)}”`, e));
+      }
+    },
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [sessionId, projects, agents],
+  );
+  const removeFromProject = useCallback(
+    async (taskId: string, projectId: string) => {
+      if (!sessionId || !projects) return;
+      const title = agents.headers.find((h) => h.taskId === taskId)?.title || "the task";
+      try {
+        await projects.removeMember(sessionId, projectId, taskId);
+        setNote(null);
+        agents.refresh();
+      } catch (e) {
+        setNote(refusalSentence(`Could not remove “${title}” from “${projectName(projectId)}”`, e));
+      }
+    },
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [sessionId, projects, agents],
+  );
+  const archiveProject = useCallback(
+    async (projectId: string, archived: boolean) => {
+      if (!sessionId || !projects) return;
+      await archiveProjectWithUndo(projects, sessionId, projectId, projectName(projectId), archived, {
+        onError: setNote,
+        onChanged: (id, a) => {
+          onProjectArchived?.(id, a);
+          agents.refresh();
+        },
+      });
+    },
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [sessionId, projects, agents, onProjectArchived],
+  );
+  const renamingProject = renaming ? (projects?.projects.find((x) => x.projectId === renaming) ?? null) : null;
+  const workspaces = useMemo(() => workspaceChoices(agents.headers, projects?.projects ?? [], agents.headers.find((h) => h.taskId === selectedTaskId)?.workspaceRoot), [agents.headers, projects?.projects, selectedTaskId]);
+
+  // ---- stored views: a per-viewer saved query (grouping, chips, sort).
+  const applyView = useCallback((v: StoredView) => update((p) => ({ ...p, grouping: v.grouping, filters: { ...v.filters }, sort: v.sort })), [update]);
+  const onSaveView = (name: string): string | null => {
+    const r = saveView(prefs.views, name, { grouping: prefs.grouping, filters: prefs.filters, sort: prefs.sort }, newViewId);
+    if (!r.ok) return r.message;
+    update((p) => ({ ...p, views: r.views }));
+    setSavingView(false);
+    return null;
+  };
+
   const onPin = (taskId: string) => {
     const r = pinTask(prefs.pins, taskId);
     setNote(r.message);
@@ -192,7 +266,50 @@ export function AgentList({ sessionId, connected, selectedTaskId, onSelect, onHe
         onGrouping={(g: Grouping) => update((p) => ({ ...p, grouping: g }))}
         onFilters={(f: Filters) => update((p) => ({ ...p, filters: f }))}
         onSubtitleFields={(s: SubtitleField[]) => update((p) => ({ ...p, subtitle: s }))}
+        sort={prefs.sort}
+        onSort={(s: SortKey) => update((p) => ({ ...p, sort: s }))}
+        viewActions={{ views: prefs.views, onApply: applyView, onSaveRequest: () => setSavingView(true), onDelete: (id) => update((p) => ({ ...p, views: deleteView(p.views, id) })) }}
+        projects={projects?.projects}
+        projectActions={
+          projects
+            ? {
+                selectedId: selectedProjectId,
+                onNew: () => setNewProject(true),
+                onOpen: (id) => onOpenProject?.(id),
+                onRename: (id) => setRenaming(id),
+                onArchive: (id) => void archiveProject(id, true),
+                onRestore: (id) => void archiveProject(id, false),
+                onAdd: (t, p) => void addToProject(t, p),
+                onRemove: (t, p) => void removeFromProject(t, p),
+              }
+            : undefined
+        }
       />
+      {projects && (
+        <>
+          <NewProjectDialog
+            open={newProject}
+            workspaces={workspaces}
+            onClose={() => setNewProject(false)}
+            onCreate={async (input) => {
+              if (!sessionId) throw new Error("NO_SESSION: there is no session to make the project in");
+              const r = await projects.create(sessionId, input);
+              setNewProject(false);
+              onOpenProject?.(r.project.projectId);
+            }}
+          />
+          <RenameProjectDialog
+            project={renamingProject}
+            onClose={() => setRenaming(null)}
+            onRename={async (patch) => {
+              if (!sessionId || !renaming) return;
+              await projects.rename(sessionId, renaming, patch);
+              setRenaming(null);
+            }}
+          />
+        </>
+      )}
+      <SaveViewDialog open={savingView} onSave={onSaveView} onClose={() => setSavingView(false)} />
       <Dialog open={confirmStop !== null} title="Archive a running task?" role="alertdialog" onClose={() => setConfirmStop(null)} testId="archive-confirm">
         <p>
           “{confirmStop?.title}” is still running. Archiving it stops the run first, as a recorded cancellation. You can restore the conversation afterwards, but the run does not restart.

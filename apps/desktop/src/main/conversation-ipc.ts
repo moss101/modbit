@@ -16,7 +16,7 @@ import { DENSITIES, STATUS_CLASSES, type PendingApprovalView, type OpenStreamVie
 const hexOf = (b: Uint8Array | undefined): string => Buffer.from(b ?? []).toString("hex");
 const msOf = (t: { seconds: bigint; nanos: number } | undefined): number => (t ? Number(t.seconds) * 1000 + Math.floor(t.nanos / 1_000_000) : 0);
 
-function statusClassOf(c: AgentStatusClass): StatusClass {
+export function statusClassOf(c: AgentStatusClass): StatusClass {
   const name = AgentStatusClass[c];
   // The enum's names are the Core's: an unknown value is shown as the lowest class, never invented.
   return (STATUS_CLASSES as readonly string[]).includes(name ?? "") ? (name as StatusClass) : "ARCHIVED";
@@ -113,6 +113,8 @@ function headerView(h: AgentHeader) {
     lastOffset: h.lastOffset.toString(),
     readOffset: h.readOffset.toString(),
     attentionItems: h.attentionItems,
+    projectId: hexOf(h.projectId?.value),
+    checkoutRoot: h.checkoutRoot,
   };
 }
 

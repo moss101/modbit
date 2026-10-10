@@ -1,0 +1,10 @@
+{
+  "id": "python-discount-vacuous-a",
+  "class": "vacuous",
+  "flavor": "a",
+  "leg": "initial",
+  "write_set": [
+    "test_discount.py"
+  ],
+  "declared": "incorrect"
+}

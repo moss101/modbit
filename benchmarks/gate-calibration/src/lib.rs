@@ -23,6 +23,9 @@
 //! threshold profile: no profile, too few samples or an unsafe gate fails
 //! it, whatever the router saves.
 
+pub mod live;
+pub mod widened;
+
 use std::collections::{BTreeMap, BTreeSet};
 use std::path::{Path, PathBuf};
 use std::process::Command;
@@ -110,6 +113,11 @@ pub struct AcceptanceCase {
     /// The label the corpus declares (`correct` | `incorrect`); the oracle
     /// must agree.
     pub declared: String,
+    /// The defect the lineage seeds into the fixture before BASELINE (PX-135:
+    /// one healthy fixture, one seeded defect per lineage). Empty for the
+    /// fixtures that carry their defects themselves.
+    #[serde(default)]
+    pub seed: Vec<FileOp>,
 }
 
 /// The acceptance corpus.
@@ -433,7 +441,6 @@ fn label<T: Serialize>(v: &T) -> String {
 /// # Errors
 /// The case could not be run, or its declared label disagrees with its
 /// oracle.
-#[allow(clippy::too_many_lines)]
 pub async fn run_acceptance_case(
     case: &AcceptanceCase,
     repo_root: &Path,
@@ -441,6 +448,121 @@ pub async fn run_acceptance_case(
     work: &Path,
     policy: &AssurancePolicy,
 ) -> Result<AcceptanceOutcome, Refusal> {
+    Ok(run_case(case, repo_root, corpora, work, policy, None)
+        .await?
+        .outcome)
+}
+
+/// What the generated adversarial checks (PX-135) add to a run.
+#[derive(Clone, Debug, Default)]
+pub struct AdversarialConfig {
+    /// Strings that must appear in nothing the gate or the checks read
+    /// (oracle canaries, file names, label keys).
+    pub needles: Vec<String>,
+    /// MUTATION TEST ONLY: copy the hidden oracle into the tree before the
+    /// gate runs, so the leak search has something to find. Never set in a
+    /// measurement.
+    pub expose_oracle_to_gate: bool,
+}
+
+/// One case, run once, judged by the gate as it was and as it is now.
+#[derive(Clone, Debug)]
+pub struct CaseRun {
+    /// The unchanged gate's outcome (the PX-135 "previous gate").
+    pub outcome: AcceptanceOutcome,
+    /// The same evidence plus the generated checks, through the same gate.
+    pub widened: Option<WidenedGate>,
+}
+
+/// The widened gate's view of one case.
+#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
+pub struct WidenedGate {
+    /// Verdict.
+    pub verdict: String,
+    /// Reject reasons.
+    pub reject_reasons: Vec<String>,
+    /// Missing evidence.
+    pub missing_evidence: Vec<String>,
+    /// sha256 of the gate result.
+    pub gate_result_digest: String,
+    /// The generated checks and their findings.
+    pub generated: Vec<modbit_verification::adversarial::GeneratedCheck>,
+    /// Needles found in what the gate and the checks read (empty when the
+    /// oracle is hidden as it must be).
+    pub leaks: Vec<String>,
+}
+
+fn apply_ops(tree: &Path, ops: &[FileOp]) -> std::io::Result<()> {
+    for op in ops {
+        match op {
+            FileOp::Write { path, content } => {
+                let p = tree.join(path);
+                if let Some(parent) = p.parent() {
+                    std::fs::create_dir_all(parent)?;
+                }
+                std::fs::write(&p, content)?;
+            }
+            FileOp::Delete { path } => {
+                let _ = std::fs::remove_file(tree.join(path));
+            }
+        }
+    }
+    Ok(())
+}
+
+fn text_files(root: &Path) -> Vec<(String, String)> {
+    fn walk(dir: &Path, root: &Path, out: &mut Vec<(String, String)>) {
+        let Ok(rd) = std::fs::read_dir(dir) else {
+            return;
+        };
+        let mut entries: Vec<PathBuf> = rd.flatten().map(|e| e.path()).collect();
+        entries.sort();
+        for p in entries {
+            let name = p.file_name().and_then(|n| n.to_str()).unwrap_or("");
+            if p.is_dir() {
+                if !matches!(name, "target" | "node_modules" | ".git" | "__pycache__") {
+                    walk(&p, root, out);
+                }
+            } else if let Ok(t) = std::fs::read_to_string(&p) {
+                let rel = p.strip_prefix(root).unwrap_or(&p);
+                out.push((rel.to_string_lossy().replace('\\', "/"), t));
+            }
+        }
+    }
+    let mut out = Vec::new();
+    walk(root, root, &mut out);
+    out
+}
+
+/// Where each needle appears in `haystack` (`source: needle`), sorted.
+#[must_use]
+pub fn find_leaks(haystack: &[(String, String)], needles: &[String]) -> Vec<String> {
+    let mut hits = BTreeSet::new();
+    for (source, text) in haystack {
+        for n in needles.iter().filter(|n| !n.is_empty()) {
+            if text.contains(n.as_str()) {
+                hits.insert(format!("{source}: {n}"));
+            }
+        }
+    }
+    hits.into_iter().collect()
+}
+
+/// [`run_acceptance_case`], and with `adv` the generated checks through the
+/// same unchanged gate on the same completion run.
+///
+/// # Errors
+/// The case could not be run, or its declared label disagrees with its
+/// oracle.
+#[allow(clippy::too_many_lines)]
+pub async fn run_case(
+    case: &AcceptanceCase,
+    repo_root: &Path,
+    corpora: &Path,
+    work: &Path,
+    policy: &AssurancePolicy,
+    adv: Option<&AdversarialConfig>,
+) -> Result<CaseRun, Refusal> {
     let fail = |detail: String| Refusal::CaseFailed {
         case: case.id.clone(),
         detail,
@@ -452,6 +574,8 @@ pub async fn run_acceptance_case(
     let fixture = repo_root.join("tests/fixtures/repos").join(&case.fixture);
     copy_tree(&fixture, &base).map_err(|e| fail(format!("fixture: {e}")))?;
     copy_tree(&fixture, &tree).map_err(|e| fail(format!("fixture: {e}")))?;
+    apply_ops(&base, &case.seed).map_err(|e| fail(format!("seed: {e}")))?;
+    apply_ops(&tree, &case.seed).map_err(|e| fail(format!("seed: {e}")))?;
     let target = work.join("cargo-target");
     let env: Vec<(String, String)> = vec![
         (
@@ -463,10 +587,20 @@ pub async fn run_acceptance_case(
             target.to_string_lossy().into_owned(),
         ),
         ("CARGO_TERM_COLOR".into(), "never".into()),
+        // The candidate's own build is what is measured, not this repository's
+        // lint policy: CI exports `RUSTFLAGS=-D warnings`, which turns the
+        // `unreachable code` warning of a vacuous candidate into a build
+        // failure and so makes the previous gate reject what it accepts here.
+        ("RUSTFLAGS".into(), String::new()),
+        // The baseline and the candidate run in one tree within the same
+        // second; a `.pyc` written by the first and keyed on (mtime in
+        // seconds, size) can be reused by the second when an edit keeps the
+        // size, so the candidate's tests would run the baseline's bytes.
+        ("PYTHONDONTWRITEBYTECODE".into(), "1".into()),
     ];
     let own: Vec<String> = env.iter().map(|(k, _)| k.clone()).collect();
     let env: Vec<(String, String)> = std::env::vars()
-        .filter(|(k, _)| !own.contains(k))
+        .filter(|(k, _)| !own.contains(k) && k != "CARGO_ENCODED_RUSTFLAGS")
         .chain(env)
         .collect();
     let plan = modbit_verification::plan::derive(
@@ -491,20 +625,7 @@ pub async fn run_acceptance_case(
             &[],
         )
         .await;
-    for op in &case.candidate {
-        match op {
-            FileOp::Write { path, content } => {
-                let p = tree.join(path);
-                if let Some(parent) = p.parent() {
-                    std::fs::create_dir_all(parent).map_err(|e| fail(e.to_string()))?;
-                }
-                std::fs::write(&p, content).map_err(|e| fail(e.to_string()))?;
-            }
-            FileOp::Delete { path } => {
-                let _ = std::fs::remove_file(tree.join(path));
-            }
-        }
-    }
+    apply_ops(&tree, &case.candidate).map_err(|e| fail(e.to_string()))?;
     let (completion, _) = engine
         .run_stage(
             &plan,
@@ -595,6 +716,79 @@ pub async fn run_acceptance_case(
         reviews: vec![],
     };
     let result = modbit_verification::evaluate_gate(&input);
+    let widened = if let Some(adv) = adv {
+        if adv.expose_oracle_to_gate {
+            for (path, from) in &case.oracle.files {
+                let p = tree.join(path);
+                if let Some(parent) = p.parent() {
+                    let _ = std::fs::create_dir_all(parent);
+                }
+                let _ = std::fs::copy(corpora.join("oracles").join(from), &p);
+            }
+        }
+        let mut generated = modbit_verification::adversarial::static_checks(&tree, &files, &[]);
+        let commands: Vec<Vec<String>> = plan
+            .commands
+            .iter()
+            .filter(|c| c.mandatory && (c.id.starts_with("suite:") || c.is_repo_defined()))
+            .map(|c| c.argv.clone())
+            .collect();
+        generated.push(
+            modbit_verification::adversarial::boundary_check(
+                &ProcessRunner,
+                &commands,
+                &tree,
+                &dir.join("mutants"),
+                &env,
+                &files,
+                &modbit_verification::adversarial::MutationOptions::default(),
+            )
+            .await,
+        );
+        let mut widened_input = input.clone();
+        if let Some(v) = widened_input.verification.as_mut() {
+            v.checks.extend(generated.iter().map(|g| g.to_evidence()));
+        }
+        let widened_result = modbit_verification::evaluate_gate(&widened_input);
+        // Everything the gate and the generated checks read or were handed:
+        // the gate input, the changed files, the tree and the retained raw
+        // output of the verification runs.
+        let mut haystack: Vec<(String, String)> = vec![(
+            "gate-input".into(),
+            serde_json::to_string(&widened_input).unwrap_or_default(),
+        )];
+        haystack.extend(files.iter().map(|f| {
+            (
+                format!("candidate:{}", f.path),
+                f.new.clone().unwrap_or_default(),
+            )
+        }));
+        haystack.extend(
+            text_files(&tree)
+                .into_iter()
+                .map(|(p, t)| (format!("tree:{p}"), t)),
+        );
+        if let Ok(v) = sink.0.lock() {
+            haystack.extend(v.iter().enumerate().map(|(i, b)| {
+                (
+                    format!("retained-output:{i}"),
+                    String::from_utf8_lossy(b).into_owned(),
+                )
+            }));
+        }
+        Some(WidenedGate {
+            verdict: widened_result.verdict.label().to_owned(),
+            reject_reasons: widened_result.reject_reasons.clone(),
+            missing_evidence: widened_result.missing_evidence.clone(),
+            gate_result_digest: sha256_hex(
+                &serde_json::to_vec(&widened_result).unwrap_or_default(),
+            ),
+            generated,
+            leaks: find_leaks(&haystack, &adv.needles),
+        })
+    } else {
+        None
+    };
     // The oracle: hidden tests on a copy of the candidate tree.
     let oracle = dir.join("oracle");
     copy_tree(&tree, &oracle).map_err(|e| fail(format!("oracle copy: {e}")))?;
@@ -618,23 +812,28 @@ pub async fn run_acceptance_case(
     } else {
         "incorrect"
     };
-    if case.declared != observed {
+    // An empty label says the oracle labels the case (a candidate a live
+    // model produced has no declared label to check).
+    if !case.declared.is_empty() && case.declared != observed {
         return Err(Refusal::Mislabeled {
             case: case.id.clone(),
             declared: case.declared.clone(),
             observed: observed.into(),
         });
     }
-    Ok(AcceptanceOutcome {
-        id: case.id.clone(),
-        lineage: case.lineage.clone(),
-        leg: case.leg.clone(),
-        verdict: result.verdict.label().to_owned(),
-        oracle_correct,
-        missing_evidence: result.missing_evidence.clone(),
-        reject_reasons: result.reject_reasons.clone(),
-        risk_level: label(&risk.level),
-        gate_result_digest: sha256_hex(&serde_json::to_vec(&result).unwrap_or_default()),
+    Ok(CaseRun {
+        outcome: AcceptanceOutcome {
+            id: case.id.clone(),
+            lineage: case.lineage.clone(),
+            leg: case.leg.clone(),
+            verdict: result.verdict.label().to_owned(),
+            oracle_correct,
+            missing_evidence: result.missing_evidence.clone(),
+            reject_reasons: result.reject_reasons.clone(),
+            risk_level: label(&risk.level),
+            gate_result_digest: sha256_hex(&serde_json::to_vec(&result).unwrap_or_default()),
+        },
+        widened,
     })
 }
 

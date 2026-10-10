@@ -90,7 +90,7 @@ const MANIFESTS: &[&str] = &[
     "requirements.txt",
     "go.mod",
 ];
-const TEST_MARKERS: &[&str] = &[
+pub(crate) const TEST_MARKERS: &[&str] = &[
     "#[ignore",
     ".skip(",
     ".only(",
@@ -125,7 +125,7 @@ const SECRET_MARKERS: &[&str] = &[
     "AIza",
 ];
 
-fn is_test_path(p: &str) -> bool {
+pub(crate) fn is_test_path(p: &str) -> bool {
     let lower = p.to_ascii_lowercase();
     lower.contains("/tests/")
         || lower.starts_with("tests/")

@@ -159,6 +159,9 @@ jobs:
           MODBIT_GUEST_CHROMIUM: /usr/bin/google-chrome
           # The image's guests have a browser (M8.8; IMP-EV-0072: what the gateway declares).
           MODBIT_GUEST_FEATURES: browser
+          # PX-085: the cloud time source honours its clock-offset table only
+          # under this variable, so the worker loop's schedule test can move time.
+          MODBIT_CLOUD_AUTOMATION_TEST_CLOCK: "1"
         shell: bash
         run: |
           set -o pipefail

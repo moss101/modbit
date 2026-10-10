@@ -1,0 +1,11 @@
+{
+  "id": "javascript-quantity-correct-a",
+  "class": "correct",
+  "flavor": "a",
+  "leg": "initial",
+  "write_set": [
+    "src/shop.mjs",
+    "test/quantity.test.mjs"
+  ],
+  "declared": "correct"
+}

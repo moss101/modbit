@@ -1,0 +1,11 @@
+{
+  "id": "typescript-sku-correct-b",
+  "class": "correct",
+  "flavor": "b",
+  "leg": "initial",
+  "write_set": [
+    "src/shop.ts",
+    "test/sku_boundaries.test.ts"
+  ],
+  "declared": "correct"
+}

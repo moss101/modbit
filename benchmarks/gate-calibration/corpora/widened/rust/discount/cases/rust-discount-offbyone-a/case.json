@@ -1,0 +1,10 @@
+{
+  "id": "rust-discount-offbyone-a",
+  "class": "offbyone",
+  "flavor": "a",
+  "leg": "initial",
+  "write_set": [
+    "src/lib.rs"
+  ],
+  "declared": "incorrect"
+}

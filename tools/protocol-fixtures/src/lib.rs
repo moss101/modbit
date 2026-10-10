@@ -192,6 +192,8 @@ pub fn samples() -> Vec<Sample> {
             last_offset: 90,
             read_offset: 40,
             attention_items: 0,
+            project_id: id(0x63),
+            checkout_root: "/repo".into(),
         }],
         last_offset: 90,
         events_read: 0,
@@ -559,6 +561,7 @@ pub fn samples() -> Vec<Sample> {
             reason_code: "NO_ACTIVE_REGISTRY".into(),
             detail: "no signed registry is active".into(),
             floor_mode: String::new(),
+            registry_generation: "reg-px134".into(),
         }),
     };
     let session_tree = SessionTreeView {
@@ -999,6 +1002,209 @@ pub fn samples() -> Vec<Sample> {
             decode: reencode::<WorktreeView>,
         },
         Sample {
+            // PX-082 (automations.proto): one definition as the list shows it.
+            name: "automation_view",
+            type_name: "modbit.v1.AutomationView",
+            bytes: AutomationView {
+                automation_id: "ab".repeat(16),
+                name: "drift".into(),
+                description: "Report the drift of the default branch.".into(),
+                current_version: 3,
+                definition_hash: "cd".repeat(32),
+                state: "ENABLED".into(),
+                disabled_reason: String::new(),
+                disabled_detail: String::new(),
+                paused: false,
+                enabled: Some(AutomationEnableView {
+                    version: 3,
+                    definition_hash: "cd".repeat(32),
+                    effects: "reversible_write".into(),
+                    capabilities: vec!["fs.write".into()],
+                    paths: vec!["reports/**".into()],
+                    hosts: vec![],
+                    approver: "user:x".into(),
+                    approved_ms: 1_757_289_600_123,
+                    repo_revision: String::new(),
+                    source_sha256: String::new(),
+                }),
+                source_kind: "repository".into(),
+                source_path: ".modbit/automations/drift.json".into(),
+                workspace_root: "/work/repo".into(),
+                principal: "service:ci-bot".into(),
+                triggers: vec![AutomationTriggerView {
+                    id: "nightly".into(),
+                    kind: "schedule".into(),
+                    summary: "cron 0 3 * * * (UTC)".into(),
+                    next_due_ms: 1_757_300_000_000,
+                }],
+                effects: "reversible_write".into(),
+                capabilities: vec!["fs.write".into()],
+                paths: vec!["reports/**".into()],
+                hosts: vec![],
+                consecutive_failures: 2,
+                last_run_ms: 1_757_289_700_000,
+                last_run_status: "failed".into(),
+                definition_json: "{}".into(),
+                needs_listed_approval: true,
+                content_changed: false,
+                queued: 1,
+                active: 1,
+                limit_deadline_minutes: 30,
+                limit_max_cost_minor: 9_007_199_254_740_993,
+                limit_approval_wait_minutes: 1440,
+            }
+            .encode_to_vec(),
+            expected: json!({
+                "automationId": "ab".repeat(16), "name": "drift",
+                "description": "Report the drift of the default branch.", "currentVersion": 3,
+                "definitionHash": "cd".repeat(32), "state": "ENABLED", "disabledReason": "",
+                "disabledDetail": "", "paused": false,
+                "enabled": {
+                    "version": 3, "definitionHash": "cd".repeat(32), "effects": "reversible_write",
+                    "capabilities": ["fs.write"], "paths": ["reports/**"], "hosts": [],
+                    "approver": "user:x", "approvedMs": "1757289600123", "repoRevision": "",
+                    "sourceSha256": ""
+                },
+                "sourceKind": "repository", "sourcePath": ".modbit/automations/drift.json",
+                "workspaceRoot": "/work/repo", "principal": "service:ci-bot",
+                "triggers": [{"id": "nightly", "kind": "schedule",
+                    "summary": "cron 0 3 * * * (UTC)", "nextDueMs": "1757300000000"}],
+                "effects": "reversible_write", "capabilities": ["fs.write"],
+                "paths": ["reports/**"], "hosts": [], "consecutiveFailures": 2,
+                "lastRunMs": "1757289700000", "lastRunStatus": "failed", "definitionJson": "{}",
+                "needsListedApproval": true, "contentChanged": false, "queued": 1, "active": 1,
+                "limitDeadlineMinutes": "30", "limitMaxCostMinor": "9007199254740993",
+                "limitApprovalWaitMinutes": "1440"
+            }),
+            decode: reencode::<AutomationView>,
+        },
+        Sample {
+            // PX-083 (automations.proto): one row of the run history.
+            name: "automation_run_view",
+            type_name: "modbit.v1.AutomationRunView",
+            bytes: AutomationRunView {
+                dispatch_key: "ef".repeat(32),
+                automation_id: "ab".repeat(16),
+                name: "drift".into(),
+                version: 3,
+                trigger_id: "nightly".into(),
+                trigger_kind: "schedule".into(),
+                event_id: "nightly@1757300000000".into(),
+                status: "cancelled".into(),
+                reason: "APPROVAL_EXPIRED".into(),
+                detail: "no one answered".into(),
+                task_id: idhex(0x41),
+                session_id: idhex(0x42),
+                principal: "user:x".into(),
+                fired_ms: 1_757_300_000_000,
+                dispatched_ms: 1_757_300_000_100,
+                finished_ms: 1_757_386_400_000,
+                cost_minor: 12,
+                test: false,
+                catch_up: true,
+                missed: 4,
+                findings: 1,
+                outputs_json: "{\"task_state\":\"Cancelled\"}".into(),
+                acknowledged: false,
+                slot_ms: 1_757_300_000_000,
+                gate_decision: "SKIP".into(),
+                gate_detail: "nothing changed".into(),
+                gate_task_id: idhex(0x43),
+            }
+            .encode_to_vec(),
+            expected: json!({
+                "dispatchKey": "ef".repeat(32), "automationId": "ab".repeat(16), "name": "drift",
+                "version": 3, "triggerId": "nightly", "triggerKind": "schedule",
+                "eventId": "nightly@1757300000000", "status": "cancelled",
+                "reason": "APPROVAL_EXPIRED", "detail": "no one answered", "taskId": idhex(0x41),
+                "sessionId": idhex(0x42), "principal": "user:x", "firedMs": "1757300000000",
+                "dispatchedMs": "1757300000100", "finishedMs": "1757386400000", "costMinor": "12",
+                "test": false, "catchUp": true, "missed": "4", "findings": 1,
+                "outputsJson": "{\"task_state\":\"Cancelled\"}", "acknowledged": false,
+                "slotMs": "1757300000000", "gateDecision": "SKIP",
+                "gateDetail": "nothing changed", "gateTaskId": idhex(0x43)
+            }),
+            decode: reencode::<AutomationRunView>,
+        },
+        Sample {
+            // PX-082: the live validation the editor shows.
+            name: "automation_validation",
+            type_name: "modbit.v1.AutomationValidation",
+            bytes: AutomationValidation {
+                ok: false,
+                issues: vec![AutomationIssue {
+                    path: "/triggers/0/cron".into(),
+                    code: "BELOW_FLOOR".into(),
+                    message: "the floor is one run per 5 minutes".into(),
+                }],
+                name: "drift".into(),
+                definition_hash: String::new(),
+                canonical_json: String::new(),
+                effects: "read_only".into(),
+                capabilities: vec![],
+                paths: vec![],
+                hosts: vec![],
+                needs_listed_approval: false,
+                triggers: vec![],
+            }
+            .encode_to_vec(),
+            expected: json!({
+                "ok": false,
+                "issues": [{"path": "/triggers/0/cron", "code": "BELOW_FLOOR",
+                    "message": "the floor is one run per 5 minutes"}],
+                "name": "drift", "definitionHash": "", "canonicalJson": "",
+                "effects": "read_only", "capabilities": [], "paths": [], "hosts": [],
+                "needsListedApproval": false, "triggers": []
+            }),
+            decode: reencode::<AutomationValidation>,
+        },
+        Sample {
+            // PX-083 / PX-084: the fields only the Core's automation host sets.
+            name: "create_task_automation_host",
+            type_name: "modbit.v1.CreateTask",
+            bytes: CreateTask {
+                session_id: id(0x11),
+                goal_text: "Report the drift.".into(),
+                workspace_id: None,
+                execution_profile: "plan".into(),
+                origin: "automation".into(),
+                workspace_root: "/work/repo".into(),
+                automation_id: "ab".repeat(16),
+                automation_version: 3,
+                automation_event_id: "nightly@1757300000000".into(),
+                automation_dispatch_key: "ef".repeat(32),
+                automation_principal: "service:ci-bot".into(),
+                automation_trigger: "nightly".into(),
+                lease_operations: vec!["fs.read".into(), "git.read".into()],
+                lease_resources: vec!["fs.write:/work/repo/reports/**".into()],
+                lease_effect_ceiling: "READ_ONLY".into(),
+                trigger_payload: "{\"action\":\"opened\"}".into(),
+                trigger_payload_label: "forge_pr".into(),
+                payload_findings: 2,
+                automation_test: true,
+                automation_definition_hash: "cd".repeat(32),
+                automation_trigger_kind: "event".into(),
+                ..Default::default()
+            }
+            .encode_to_vec(),
+            expected: json!({
+                "sessionId": idhex(0x11), "goalText": "Report the drift.",
+                "workspaceId": null, "preference": null,
+                "executionProfile": "plan", "origin": "automation",
+                "workspaceRoot": "/work/repo", "issueUrl": "", "issueJson": "",
+                "mode": "TASK_MODE_UNSPECIFIED", "isolation": "TASK_ISOLATION_UNSPECIFIED",
+                "automationId": "ab".repeat(16), "automationVersion": 3,
+                "automationEventId": "nightly@1757300000000",
+                "automationDispatchKey": "ef".repeat(32), "automationPrincipal": "service:ci-bot",
+                "automationTrigger": "nightly", "leaseOperations": ["fs.read", "git.read"],
+                "leaseResources": ["fs.write:/work/repo/reports/**"],
+                "leaseEffectCeiling": "READ_ONLY", "triggerPayload": "{\"action\":\"opened\"}",
+                "triggerPayloadLabel": "forge_pr", "payloadFindings": 2, "automationTest": true,
+                "automationDefinitionHash": "cd".repeat(32), "automationTriggerKind": "event"
+            }),
+            decode: reencode::<CreateTask>,
+        },
+        Sample {
             name: "output_ref_read_response",
             type_name: "modbit.v1.OutputRefReadResponse",
             bytes: read.encode_to_vec(),
@@ -1074,7 +1280,8 @@ pub fn samples() -> Vec<Sample> {
                 },
                 "routing": {
                     "outcome": "DIRECT", "reasonCode": "NO_ACTIVE_REGISTRY",
-                    "detail": "no signed registry is active", "floorMode": ""
+                    "detail": "no signed registry is active", "floorMode": "",
+                    "registryGeneration": "reg-px134"
                 }
             }),
             decode: reencode::<TaskPostureView>,
@@ -1207,7 +1414,7 @@ pub fn samples() -> Vec<Sample> {
                     "linesAdded": 14, "linesRemoved": 3, "lastCheckpointAt": null,
                     "subagent": false, "archived": false, "executionLocation": "local",
                     "origin": "cli", "taskState": "ReadyForReview", "lastOffset": "90",
-                    "readOffset": "40", "attentionItems": 0
+                    "readOffset": "40", "attentionItems": 0, "projectId": idhex(0x63), "checkoutRoot": "/repo"
                 }],
                 "lastOffset": "90", "eventsRead": "0", "objectsRead": "0"
             }),
@@ -1667,6 +1874,96 @@ pub fn samples() -> Vec<Sample> {
                 "defaultObjective": "BALANCE"
             }),
             decode: reencode::<ModelVariantList>,
+        },
+        // PX-063 (projects.proto): a project with a member, its rollup and a pull request with CI.
+        Sample {
+            name: "project_changed",
+            type_name: "modbit.v1.ProjectChanged",
+            bytes: ProjectChanged {
+                project: Some(ProjectView {
+                    project_id: id(0x63),
+                    name: "Release 2".into(),
+                    color: "warn".into(),
+                    icon: "rocket".into(),
+                    workspace_root: "/work/repo".into(),
+                    archived: false,
+                    created_at_ms: 1_700_000_000_000,
+                    updated_at_ms: 1_700_000_100_000,
+                    created_offset: 7,
+                    last_offset: 19,
+                    rollup: Some(ProjectRollup {
+                        members: 1,
+                        by_status: vec![ProjectStatusCount {
+                            status_class: AgentStatusClass::NeedsAttention as i32,
+                            label: "Needs attention".into(),
+                            count: 1,
+                        }],
+                        attention_tasks: 1,
+                        attention_items: 2,
+                        pending_approvals: 1,
+                        unread: 1,
+                        pull_requests: 1,
+                        ci_passing: 0,
+                        ci_failing: 1,
+                        ci_pending: 0,
+                    }),
+                    members: vec![ProjectMemberView {
+                        task_id: id(0x64),
+                        session_id: id(0x65),
+                        title: "Fix the thing".into(),
+                        status_class: AgentStatusClass::NeedsAttention as i32,
+                        status_label: "Needs attention".into(),
+                        unread: true,
+                        pending_approval: true,
+                        attention_items: 2,
+                        task_state: "Waiting".into(),
+                        archived: false,
+                        added_at_ms: 1_700_000_050_000,
+                        updated_at_ms: 1_700_000_090_000,
+                        pull_request: Some(ProjectPullRequestView {
+                            number: 42,
+                            url: "https://example.test/o/r/pull/42".into(),
+                            head: "task/x".into(),
+                            state: "open".into(),
+                            has_ci: true,
+                            checks_passed: 2,
+                            checks_failed: 1,
+                            checks_pending: 0,
+                        }),
+                    }],
+                }),
+                offset: 19,
+            }
+            .encode_to_vec(),
+            expected: json!({
+                "project": {
+                    "projectId": idhex(0x63),
+                    "name": "Release 2", "color": "warn", "icon": "rocket",
+                    "workspaceRoot": "/work/repo", "archived": false,
+                    "createdAtMs": "1700000000000", "updatedAtMs": "1700000100000",
+                    "createdOffset": "7", "lastOffset": "19",
+                    "rollup": {
+                        "members": 1,
+                        "byStatus": [{ "statusClass": "AGENT_STATUS_CLASS_NEEDS_ATTENTION", "label": "Needs attention", "count": 1 }],
+                        "attentionTasks": 1, "attentionItems": 2, "pendingApprovals": 1, "unread": 1,
+                        "pullRequests": 1, "ciPassing": 0, "ciFailing": 1, "ciPending": 0
+                    },
+                    "members": [{
+                        "taskId": idhex(0x64), "sessionId": idhex(0x65),
+                        "title": "Fix the thing",
+                        "statusClass": "AGENT_STATUS_CLASS_NEEDS_ATTENTION", "statusLabel": "Needs attention",
+                        "unread": true, "pendingApproval": true, "attentionItems": 2,
+                        "taskState": "Waiting", "archived": false,
+                        "addedAtMs": "1700000050000", "updatedAtMs": "1700000090000",
+                        "pullRequest": {
+                            "number": "42", "url": "https://example.test/o/r/pull/42", "head": "task/x",
+                            "state": "open", "hasCi": true, "checksPassed": 2, "checksFailed": 1, "checksPending": 0
+                        }
+                    }]
+                },
+                "offset": "19"
+            }),
+            decode: reencode::<ProjectChanged>,
         },
     ]
 }

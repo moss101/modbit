@@ -11,6 +11,7 @@ publish.workspace = true
 globset.workspace = true
 anyhow.workspace = true
 modbit-domain.workspace = true
+modbit-automation.workspace = true
 modbit-prompt-compiler.workspace = true
 modbit-core-runtime.workspace = true
 modbit-event-store.workspace = true

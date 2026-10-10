@@ -11,7 +11,7 @@
 import { useEffect, useId, useMemo, useRef, useState } from "react";
 import { Badge, useLayer, useOutsidePress } from "@modbit/ui";
 import { OBJECTIVES, type ModelCatalogView, type ObjectiveId, type PostureView } from "../../shared/composer-types.ts";
-import { modelChip, pickerRows, type PickerRow } from "./model.ts";
+import { modelChip, pickerRows, routingLine, type PickerRow } from "./model.ts";
 
 export interface PickerChoice {
   /** Auto with an objective (a pin is cleared), or a pin of a model variant. */
@@ -86,7 +86,7 @@ export function ModelPicker({ posture, catalog, catalogError, disabled, onChoose
               ))}
             </div>
             <p className="meta" data-testid="routing-note">
-              {posture?.routing.outcome === "DIRECT" ? `Routing is direct${posture.routing.reasonCode ? `: ${posture.routing.reasonCode.toLowerCase().replace(/_/g, " ")}` : ""}. The profile is recorded, and the task runs the model it started with.` : posture?.routing.outcome ? `Routing: ${posture.routing.outcome.toLowerCase()}${posture.routing.floorMode ? `, quality floor ${posture.routing.floorMode}` : ""}.` : "The router has not evaluated this task yet."}
+              {posture?.routing.outcome === "DIRECT" ? `Routing is direct${posture.routing.reasonCode ? `: ${posture.routing.reasonCode.toLowerCase().replace(/_/g, " ")}` : ""}. The profile is recorded, and the task runs the model it started with.` : posture?.routing.outcome ? `Routing: ${routingLine(posture.routing)}${posture.routing.floorMode ? `, quality floor ${posture.routing.floorMode}` : ""}.` : "The router has not evaluated this task yet."}
             </p>
           </div>
           <hr className="cmp-sep" />

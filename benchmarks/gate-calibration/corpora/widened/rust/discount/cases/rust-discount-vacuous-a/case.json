@@ -1,0 +1,10 @@
+{
+  "id": "rust-discount-vacuous-a",
+  "class": "vacuous",
+  "flavor": "a",
+  "leg": "initial",
+  "write_set": [
+    "tests/discount.rs"
+  ],
+  "declared": "incorrect"
+}

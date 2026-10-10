@@ -467,11 +467,23 @@ export interface ModelChip {
   routing: string;
 }
 
+/**
+ * The honest routing line (REQ-PX-134): `direct: <reason>` with no registry,
+ * and `routed registry <id>` once a signed registry is active and the router
+ * reads it. A registry active now does not rewrite what the last dispatch
+ * did, so only a ROUTED or not-yet-evaluated outcome names the registry.
+ */
+export function routingLine(r: PostureView["routing"]): string {
+  if (!r.outcome) return "";
+  if (r.registryGeneration && (r.outcome === "ROUTED" || r.outcome === "NOT_YET_EVALUATED")) return `routed registry ${r.registryGeneration}`;
+  return `${r.outcome.toLowerCase()}${r.reasonCode ? `: ${r.reasonCode.toLowerCase().replace(/_/g, " ")}` : ""}`;
+}
+
 export function modelChip(posture: PostureView | null, catalog: ModelCatalogView | null): ModelChip {
   if (!posture) return { name: "Model", variant: "", routing: "" };
   const p = posture.preference;
   const r = posture.routing;
-  const routing = r.outcome ? `${r.outcome.toLowerCase()}${r.reasonCode ? `: ${r.reasonCode.toLowerCase().replace(/_/g, " ")}` : ""}` : "";
+  const routing = routingLine(r);
   if (p.pinModel) {
     const m = findModel(catalog, p.pinEndpoint, p.pinModel);
     const eff = p.effort || m?.defaultEffort || "";

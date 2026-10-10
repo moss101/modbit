@@ -1,0 +1,23 @@
+{
+  "lineage": "holdout/typescript-shop/shipping",
+  "goal": "`shippingCents` must charge 500 cents up to and including 500 g, 900 cents up to and including 2000 g and 1500 cents above that. The visible test `acceptance heavy parcels` fails; make it pass and fix the behaviour, without weakening or removing any test.",
+  "acceptance": [
+    "acceptance heavy parcels"
+  ],
+  "seed": [
+    "src/shop.ts"
+  ],
+  "oracle": {
+    "files": [
+      [
+        "test/oracle_spec.ts",
+        "typescript/oracle_spec.ts"
+      ]
+    ],
+    "argv": [
+      "node",
+      "--test",
+      "test/oracle_spec.ts"
+    ]
+  }
+}

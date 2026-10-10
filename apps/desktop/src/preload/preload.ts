@@ -3,9 +3,11 @@
  * renderer needs, over Electron's validated IPC. No Node, no fs, no shell.
  */
 import { contextBridge, ipcRenderer, webUtils } from "electron";
-import type { AgentHeadersView, ConversationSearchView, OpenStreamView, PendingApprovalView, SearchOptions, TranscriptOptions, TranscriptPageView } from "../shared/conversation-types.ts";
+import type { AgentHeaderView, AgentHeadersView, ConversationSearchView, OpenStreamView, PendingApprovalView, SearchOptions, TranscriptOptions, TranscriptPageView } from "../shared/conversation-types.ts";
 import type { TerminalFrameJson, TerminalViewJson } from "../main/terminal-host.ts";
 import type { AttachmentResult, InterruptView, ModeChangedView, ModelCatalogView, PostureView, PreferencePatch, PreferenceSetView, QueuedChangeView, QueueView, SendBehaviorState, SideAnswerView, SlashInventoryView, TaskModeId, InputModeId } from "../shared/composer-types.ts";
+import type { AutoDetail, AutoEnableInput, AutoKillReport, AutoList, AutoRepoLoad, AutoRun, AutoRunInput, AutoRunStarted, AutoValidation, AutoView } from "../shared/automation-types.ts";
+import type { ApplyAckInfo, ApplyInputArgs, CleanupReportInfo, ProjectChangedInfo, ProjectInput, ProjectListInfo, ProjectPatch, WorktreeListInfo, WorktreeRemovalInfo } from "../shared/project-types.ts";
 import type { AccountingInfo, AddRuleInput, AllowRuleInfo, CheckpointListInfo, CheckpointTargetInput, DockApprovalView, ForkOutcome, RestoreOutcome, RewindPreviewInfo, RunModeInfo, TaskBudgetsInfo } from "../shared/control-types.ts";
 
 export type { TerminalFrameJson, TerminalViewJson };
@@ -259,6 +261,23 @@ export interface ModbitBridge {
   markRead(sessionId: string, taskId: string, upToOffset?: string): Promise<{ taskId: string; readOffset: string; offset: string }>;
   /** PX-046: archive a task's conversation, or undo it with archived = false; the Core refuses a running task. */
   archiveTask(sessionId: string, taskId: string, archived: boolean): Promise<{ taskId: string; archived: boolean; offset: string }>;
+  // REQ-PX-063 / 064 (projects): the Core's records and membership map. Each mutation names the acting session and may carry a 32-hex command id so a retry acts once; a refusal is the Core's typed code.
+  listProjects(options?: { workspaceRoot?: string; includeArchived?: boolean }): Promise<ProjectListInfo>;
+  getProject(projectId: string): Promise<ProjectChangedInfo>;
+  createProject(sessionId: string, input: ProjectInput, commandId?: string): Promise<ProjectChangedInfo>;
+  renameProject(sessionId: string, projectId: string, patch: ProjectPatch, commandId?: string): Promise<ProjectChangedInfo>;
+  archiveProject(sessionId: string, projectId: string, archived: boolean, commandId?: string): Promise<ProjectChangedInfo>;
+  addProjectMember(sessionId: string, projectId: string, taskId: string, commandId?: string): Promise<ProjectChangedInfo>;
+  removeProjectMember(sessionId: string, projectId: string, taskId: string, commandId?: string): Promise<ProjectChangedInfo>;
+  // REQ-PX-068 (worktrees): the Core's worktree list and its decisions. Nothing is decided in the renderer; main runs no Git.
+  listWorktrees(options?: { sessionId?: string; taskId?: string }): Promise<WorktreeListInfo>;
+  /** Remove one worktree by the cleanup's rule; `dryRun` asks the Core what the removal would take with it. A worktree that is not eligible is refused with a typed code. */
+  removeWorktree(sessionId: string, worktreeId: string, dryRun: boolean, commandId?: string): Promise<WorktreeRemovalInfo>;
+  runWorktreeCleanup(sessionId: string, options?: { dryRun?: boolean }): Promise<CleanupReportInfo>;
+  /** Classify (no option) or apply the task's worktree to its checkout; the Core answers with the plan, a conflict view, an approval to resolve, or the result. */
+  applyWorktree(sessionId: string, taskId: string, input?: ApplyInputArgs): Promise<ApplyAckInfo>;
+  undoApply(sessionId: string, taskId: string, applyId?: string): Promise<ApplyAckInfo>;
+  discardWorktree(sessionId: string, taskId: string, reason: string, confirm: string): Promise<{ worktreeId: string; disposition: string; offset: string }>;
   coreStatus(): Promise<unknown>;
   localState(): Promise<{ sessionId?: string; platform?: { os: string; arch: string; state: string; statement: string } }>;
   languages(): Promise<{ language: string; tier: string; label: string; fixture: string; proven: string[]; provisional: string[]; notClaimed: string[]; note: string }[]>;
@@ -298,6 +317,24 @@ export interface ModbitBridge {
   previewRestore(taskId: string, target: CheckpointTargetInput): Promise<RewindPreviewInfo>;
   restoreCheckpoint(sessionId: string, taskId: string, target: CheckpointTargetInput, options?: { expected?: { path: string; contentHash: string }[]; keepPaths?: string[]; redo?: boolean; expectedCurrentEpoch?: number; commandId?: string }): Promise<RestoreOutcome>;
   forkFromTurn(sessionId: string, taskId: string, target: CheckpointTargetInput, goal?: string, commandId?: string): Promise<ForkOutcome>;
+  /** REQ-PX-086: the automations surface. Every call is the Core's own command; a refusal arrives as `CODE: message`. */
+  automations(): Promise<AutoList>;
+  automation(automationId: string): Promise<AutoDetail>;
+  automationRuns(options?: { automationId?: string; taskId?: string; limit?: number }): Promise<AutoRun[]>;
+  /** The editor's live validation: the Core's parser and validator; nothing is stored. */
+  validateAutomation(definitionJson: string): Promise<AutoValidation>;
+  createAutomation(definitionJson: string, workspaceRoot: string, commandId?: string): Promise<AutoView>;
+  updateAutomation(automationId: string, definitionJson: string, commandId?: string): Promise<AutoView>;
+  loadRepositoryAutomations(workspaceRoot: string): Promise<AutoRepoLoad>;
+  /** The owner's approval: names exactly the version, hash and lists the dialog showed. */
+  enableAutomation(approval: AutoEnableInput, commandId?: string): Promise<AutoView>;
+  disableAutomation(automationId: string, note?: string): Promise<AutoView>;
+  pauseAutomation(automationId: string, paused: boolean, note?: string): Promise<{ view: AutoView | null; list: AutoList | null }>;
+  killAutomation(automationId: string, note?: string): Promise<AutoKillReport>;
+  runAutomation(request: AutoRunInput, commandId?: string): Promise<AutoRunStarted>;
+  ackAutomationAttention(dispatchKey: string): Promise<{ acknowledged: boolean }>;
+  /** AUT-E03: the headers of tasks automations created (each run is its own session). */
+  automationTaskHeaders(): Promise<AgentHeaderView[]>;
   /** M10.1: the session's telemetry, cost and SLO dashboard. */
   dashboard(sessionId: string): Promise<DashboardSummary>;
   /** PX-023: the typed task status (REQ-EV-0073) a snapshot does not carry. */
@@ -310,7 +347,7 @@ export interface ModbitBridge {
   ): Promise<{ offset: string }>;
   createSession(): Promise<string>;
   sessionSnapshot(sessionId: string): Promise<unknown>;
-  createTask(sessionId: string, goal: string, commandIdHex: string, workspaceRoot?: string, issueUrl?: string): Promise<{ taskId: string; offset: bigint; replayed: boolean; goalText: string }>;
+  createTask(sessionId: string, goal: string, commandIdHex: string, workspaceRoot?: string, issueUrl?: string, options?: { isolation?: "NONE" | "WORKTREE" }): Promise<{ taskId: string; offset: bigint; replayed: boolean; goalText: string }>;
   /** `skills` are the names the person chose in the slash menu; the Core decides whether each may reach the model. */
   startTask(sessionId: string, taskId: string, options?: { skills?: string[] }): Promise<{ runId: string; resumed: boolean; endpoint: string; model: string }>;
   /** REQ-PX-054: attach a file the person chose, dropped or pasted. The preload resolves a chosen File's path itself; main decides the type from the bytes and the Core ingests it. A string path is the Fleet board's earlier contract, kept for it and now type-checked by main like any other. */
@@ -411,6 +448,19 @@ const bridge: ModbitBridge = {
   searchConversations: (sessionId, query, options) => ipcRenderer.invoke("conversation:search", sessionId, query, options ?? {}),
   markRead: (sessionId, taskId, upToOffset) => ipcRenderer.invoke("conversation:markRead", sessionId, taskId, upToOffset ?? ""),
   archiveTask: (sessionId, taskId, archived) => ipcRenderer.invoke("conversation:archive", sessionId, taskId, archived),
+  listProjects: (options) => ipcRenderer.invoke("projects:list", options ?? {}),
+  getProject: (projectId) => ipcRenderer.invoke("projects:get", projectId),
+  createProject: (sessionId, input, commandId) => ipcRenderer.invoke("projects:create", sessionId, input, commandId ?? ""),
+  renameProject: (sessionId, projectId, patch, commandId) => ipcRenderer.invoke("projects:rename", sessionId, projectId, patch, commandId ?? ""),
+  archiveProject: (sessionId, projectId, archived, commandId) => ipcRenderer.invoke("projects:archive", sessionId, projectId, archived, commandId ?? ""),
+  addProjectMember: (sessionId, projectId, taskId, commandId) => ipcRenderer.invoke("projects:addMember", sessionId, projectId, taskId, commandId ?? ""),
+  removeProjectMember: (sessionId, projectId, taskId, commandId) => ipcRenderer.invoke("projects:removeMember", sessionId, projectId, taskId, commandId ?? ""),
+  listWorktrees: (options) => ipcRenderer.invoke("worktrees:list", options ?? {}),
+  removeWorktree: (sessionId, worktreeId, dryRun, commandId) => ipcRenderer.invoke("worktrees:remove", sessionId, worktreeId, dryRun, commandId ?? ""),
+  runWorktreeCleanup: (sessionId, options) => ipcRenderer.invoke("worktrees:cleanup", sessionId, options ?? {}),
+  applyWorktree: (sessionId, taskId, input) => ipcRenderer.invoke("worktrees:apply", sessionId, taskId, input ?? {}),
+  undoApply: (sessionId, taskId, applyId) => ipcRenderer.invoke("worktrees:undo", sessionId, taskId, applyId ?? ""),
+  discardWorktree: (sessionId, taskId, reason, confirm) => ipcRenderer.invoke("worktrees:discard", sessionId, taskId, reason, confirm),
   coreStatus: () => ipcRenderer.invoke("core:status"),
   localState: () => ipcRenderer.invoke("core:localState"),
   languages: () => ipcRenderer.invoke("languages:list"),
@@ -441,6 +491,20 @@ const bridge: ModbitBridge = {
   revokeAllowRule: (sessionId, taskId, ruleId, reason) => ipcRenderer.invoke("rules:revoke", sessionId, taskId, ruleId, reason ?? ""),
   contextAccounting: (taskId) => ipcRenderer.invoke("accounting:get", taskId),
   setTaskBudgets: (sessionId, taskId, budgets) => ipcRenderer.invoke("budgets:set", sessionId, taskId, budgets),
+  automations: () => ipcRenderer.invoke("automations:list"),
+  automation: (id) => ipcRenderer.invoke("automations:get", id),
+  automationRuns: (options) => ipcRenderer.invoke("automations:runs", options ?? {}),
+  validateAutomation: (json) => ipcRenderer.invoke("automations:validate", json),
+  createAutomation: (json, root, commandId) => ipcRenderer.invoke("automations:create", json, root, commandId ?? ""),
+  updateAutomation: (id, json, commandId) => ipcRenderer.invoke("automations:update", id, json, commandId ?? ""),
+  loadRepositoryAutomations: (root) => ipcRenderer.invoke("automations:loadRepository", root),
+  enableAutomation: (approval, commandId) => ipcRenderer.invoke("automations:enable", approval, commandId ?? ""),
+  disableAutomation: (id, note) => ipcRenderer.invoke("automations:disable", id, note ?? ""),
+  pauseAutomation: (id, paused, note) => ipcRenderer.invoke("automations:pause", id, paused, note ?? ""),
+  killAutomation: (id, note) => ipcRenderer.invoke("automations:kill", id, note ?? ""),
+  runAutomation: (request, commandId) => ipcRenderer.invoke("automations:run", request, commandId ?? ""),
+  ackAutomationAttention: (dispatchKey) => ipcRenderer.invoke("automations:ack", dispatchKey),
+  automationTaskHeaders: () => ipcRenderer.invoke("automations:taskHeaders"),
   checkpoints: (taskId) => ipcRenderer.invoke("checkpoints:list", taskId),
   previewRestore: (taskId, target) => ipcRenderer.invoke("checkpoints:preview", taskId, target),
   restoreCheckpoint: (sessionId, taskId, target, options) => ipcRenderer.invoke("checkpoints:restore", sessionId, taskId, target, options ?? {}),
@@ -451,7 +515,7 @@ const bridge: ModbitBridge = {
   setTaskSelection: (sessionId: string, taskId: string, selection: unknown) => ipcRenderer.invoke("task:select", sessionId, taskId, selection),
   createSession: () => ipcRenderer.invoke("session:create"),
   sessionSnapshot: (sessionId) => ipcRenderer.invoke("session:snapshot", sessionId),
-  createTask: (sessionId, goal, commandIdHex, workspaceRoot, issueUrl) => ipcRenderer.invoke("task:create", sessionId, goal, commandIdHex, workspaceRoot ?? "", issueUrl ?? ""),
+  createTask: (sessionId, goal, commandIdHex, workspaceRoot, issueUrl, options) => ipcRenderer.invoke("task:create", sessionId, goal, commandIdHex, workspaceRoot ?? "", issueUrl ?? "", options ?? {}),
   startTask: (sessionId, taskId, options) => ipcRenderer.invoke("task:start", sessionId, taskId, options ?? {}),
   attachFile: async (sessionId, taskId, file) => {
     // A File the person chose or dropped has a path the preload can resolve; a pasted image has none, and its bytes go instead.

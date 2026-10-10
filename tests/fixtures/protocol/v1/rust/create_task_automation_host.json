@@ -1,0 +1,36 @@
+{
+  "expected": {
+    "automationDefinitionHash": "cdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcd",
+    "automationDispatchKey": "efefefefefefefefefefefefefefefefefefefefefefefefefefefefefefefef",
+    "automationEventId": "nightly@1757300000000",
+    "automationId": "abababababababababababababababab",
+    "automationPrincipal": "service:ci-bot",
+    "automationTest": true,
+    "automationTrigger": "nightly",
+    "automationTriggerKind": "event",
+    "automationVersion": 3,
+    "executionProfile": "plan",
+    "goalText": "Report the drift.",
+    "isolation": "TASK_ISOLATION_UNSPECIFIED",
+    "issueJson": "",
+    "issueUrl": "",
+    "leaseEffectCeiling": "READ_ONLY",
+    "leaseOperations": [
+      "fs.read",
+      "git.read"
+    ],
+    "leaseResources": [
+      "fs.write:/work/repo/reports/**"
+    ],
+    "mode": "TASK_MODE_UNSPECIFIED",
+    "origin": "automation",
+    "payloadFindings": 2,
+    "preference": null,
+    "sessionId": "11111111111111111111111111111111",
+    "triggerPayload": "{\"action\":\"opened\"}",
+    "triggerPayloadLabel": "forge_pr",
+    "workspaceId": null,
+    "workspaceRoot": "/work/repo"
+  },
+  "type": "modbit.v1.CreateTask"
+}

@@ -14,6 +14,8 @@
 
 use serde::{Deserialize, Serialize};
 
+pub mod compaction_eval;
+pub mod live;
 pub mod projection_trial;
 pub mod suite;
 

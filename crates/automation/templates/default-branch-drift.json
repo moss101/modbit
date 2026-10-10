@@ -1,0 +1,32 @@
+{
+  "schema": "modbit.automation/1",
+  "name": "default-branch-drift",
+  "description": "Report whether the default branch on the remote has moved ahead of the local one. Read-only: it uses the repository's own tracking refs, fetches nothing and can never change the tree.",
+  "prompt": "Report whether the remote's default branch has moved ahead of the local default branch of this repository. Use only the read-only git tools: call git.status for the current branch and head, then git.diff with base set to the local default branch and target set to its remote-tracking ref (origin/<default-branch>) to see what differs. Do not fetch, merge, pull, checkout or write any file. Finish with task.complete and a summary that says one of: up to date, behind by the listed files, or cannot tell (and why).",
+  "inputs": [
+    {
+      "name": "default_branch",
+      "type": "string",
+      "required": false,
+      "default": "main",
+      "max_len": 100,
+      "description": "The name of the default branch to compare."
+    }
+  ],
+  "outputs": [
+    {
+      "name": "report",
+      "type": "string",
+      "description": "Whether the default branch has moved ahead, and the files that differ."
+    }
+  ],
+  "triggers": [
+    { "kind": "manual", "id": "now" },
+    { "kind": "schedule", "id": "weekday-morning", "cron": "30 8 * * 1-5" }
+  ],
+  "profile": { "effects": "read_only" },
+  "principal": { "kind": "creator" },
+  "concurrency": { "policy": "skip" },
+  "missed": { "policy": "skip" },
+  "limits": { "deadline_minutes": 10, "max_turns": 12, "max_tool_calls": 40, "approval_wait_minutes": 60 }
+}

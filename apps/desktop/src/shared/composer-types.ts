@@ -39,7 +39,7 @@ export interface PostureView {
     effortApplied: string;
     serviceTierApplied: string;
   };
-  routing: { outcome: string; reasonCode: string; detail: string; floorMode: string };
+  routing: { outcome: string; reasonCode: string; detail: string; floorMode: string; registryGeneration: string };
 }
 
 export interface ModeChangedView {
@@ -61,7 +61,7 @@ export interface PreferencePatch {
 export interface PreferenceSetView {
   effective: string;
   offset: string;
-  routing: { outcome: string; reasonCode: string; detail: string; floorMode: string };
+  routing: { outcome: string; reasonCode: string; detail: string; floorMode: string; registryGeneration: string };
   preference: PostureView["preference"];
 }
 

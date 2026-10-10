@@ -1,0 +1,11 @@
+{
+  "id": "typescript-shipping-correct-a",
+  "class": "correct",
+  "flavor": "a",
+  "leg": "initial",
+  "write_set": [
+    "src/shop.ts",
+    "test/shipping.test.ts"
+  ],
+  "declared": "correct"
+}

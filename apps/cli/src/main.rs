@@ -32,6 +32,7 @@
 //!   modbit-cli --data-dir <dir> terminal attach --task <hex-id> --terminal <id> [--from <cursor>] [--window <bytes>]
 //!   modbit-cli --data-dir <dir> memory (list | show | propose | promote | edit | forget) ...   (see `memory_verbs`)
 //!   modbit-cli --data-dir <dir> (queue | run-mode | allow) ... | context accounting <task-id>   (see `run_control_verbs`)
+//!   modbit-cli --data-dir <dir> project (list | show | create | rename | archive | add | remove) ...   (see `project_verbs`)
 //!
 //! M1.3 mode: each invocation spawns a Core for the data directory, runs one
 //! command, and exits; the Core exits with the CLI. Attaching to a long-running
@@ -40,9 +41,12 @@
 use std::io::{BufRead, BufReader};
 use std::process::{Command, ExitCode, Stdio};
 
+mod automation_verbs;
 mod cloud;
 mod forge_verbs;
 mod memory_verbs;
+mod project_verbs;
+mod registry_verbs;
 mod run_control_verbs;
 
 use modbit_protocol::client::Client;
@@ -182,8 +186,16 @@ fn print_posture(p: &TaskPostureView) {
         pref.service_tier_applied
     );
     println!(
-        "routing outcome={} reason={} floor={} {}",
-        routing.outcome, routing.reason_code, routing.floor_mode, routing.detail
+        "routing outcome={} reason={} floor={} registry={} {}",
+        routing.outcome,
+        routing.reason_code,
+        routing.floor_mode,
+        if routing.registry_generation.is_empty() {
+            "-"
+        } else {
+            &routing.registry_generation
+        },
+        routing.detail
     );
 }
 
@@ -201,7 +213,7 @@ fn exit_for_state(state: &str) -> u8 {
     }
 }
 
-const USAGE: &str = "usage: modbit-cli --data-dir <dir> (session create | session show --session <id> | task create --session <id> [--workspace <dir>] [--command-id <hex>] [--mode agent|plan|debug|multitask|ask] [--profile <execution-profile>] [--objective cost|balance|intelligence] [--effort low|medium|high] [--tier <name>] <goal> | task mode --session <id> --task <id> <mode> | task preference --session <id> --task <id> [--objective o] [--effort e] [--tier t] [--pin <endpoint>/<model> | --clear-pin] | task posture --task <id> | task from-issue --session <id> [--workspace <dir>] [--command-id <hex>] <issue-url> | events tail --session <id> [--after N] [--count N] [--json] | task attach --session <id> --task <id> <file> | question list --task <id> | question answer --session <id> --task <id> --question <id> [--option <id>] [--endpoint <name>] [--model <id>] [--wait] [text] | tool list [--task <id>] | tool invoke --session <id> --task <id> [--call <id>] <tool> <arguments-json> | approval list --session <id> | approval resolve --session <id> --approval <id> [--intent <hash>] (approve|deny) [reason] | stop --session <id> [reason] | receipts [--task <id>] | lease list --task <id> | task run --session <id> --task <id> [--endpoint <name>] [--model <id>] [--max-turns N] [--max-tool-calls N] [--max-no-progress-turns N] [--skill <name>]... [--mode <mode>] [--objective o] [--effort e] [--tier t] [--wait] | task cancel --session <id> --task <id> | task pause --session <id> --task <id> [--wait-ms N] [reason] | task resume --session <id> --task <id> [--endpoint <name>] [--model <id>] [--wait] | task status --task <id> | task transcript --task <id> [--density compact|balanced|detailed] | task headers --session <id> [--archived] | task search --session <id> [--archived] [--limit N] [--task <id>] <query> | review show --task <id> | review decide --session <id> --task <id> (accept|return) [--reject path#index ...] [note] | change undo --session <id> --task <id> --call <id> [--apply] | context show <task-id> | task fork --session <id> --task <id> [--checkpoint <id> | --turn <ordinal> | --name <label>] [--carry PLAN,DECISIONS,EVIDENCE,CONTEXT] [--worktree <dir>] [goal] | task rewind --task <id> [--checkpoint <id> | --turn <ordinal> | --name <label>] [--redo] [--keep <paths>] [--apply --session <id>] | session route --session <id> | session tree --session <id> | task assurance --task <id> | task economics --task <id> | task work --task <id> | task agents --task <id> | capacity show | attention list --session <id> | plan show --task <id> | plan revise --session <id> --task <id> [--plan-json <file>] [note] | task patch --session <id> --task <id> --path <p> --revision <n> [--file-revision <sha>] (--old <text> | --old-file <f>) (--new <text> | --new-file <f>) | baseline publish --session <id> [--revision <rev>] | task allow-language --session <id> --task <id> --language <l> [--reason r] | task attach-context --session <id> --task <id> --source <s> [--title t] <file> | task select --session <id> --task <id> [--path p]... [--lines a:b] [--symbol s] [--hunk path#index]... [--source review|editor|cli] | agent install <file> [--from claude] [--replace] | agent list | skill install <dir> [--expect-hash <hex>] [--replace] | skill remove <name> | skill revoke <name> [--hash <content-hash>] | skill list | skill inventory [--task <id>] | skill menu [--task <id>] | skill trust <name>@<content-hash> [--task <id>] | skill untrust <name>[@<content-hash>] | task budget --session <id> --task <id> [--max-cost-minor N] [--max-wall-ms N] [--max-children N] [--forbid-spawn] | language list | model list | model probe --endpoint <name> --model <id> [--tools] <prompt> | task steer --session <id> --task <id> [--mode STEER|COLLECT|FOLLOW_UP] [--input-id <hex>] <text> | workspace trust --session <id> [--scope <s>] <root> | provider configure --provider <openai|anthropic> [--base-url <url>] [--clear] | recovery show | pr (open | update) --session <id> --task <id> --revision <n> [--base <ref>] [--title <t>] [--remote <name>] | starter list [--workspace <dir>] | doctor --session <id> | trace --session <id> [--task <id>] | export diagnostics --session <id> [--task <id>] [--include-content] --out <file> | diagnostics verify <file> | export handoff --session <id> --task <id> --out <dir> | usage reconcile --task <id> --invoice <file> [--tolerance-bp N] | dashboard --session <id> | ci ingest --session <id> --task <id> | comments ingest --session <id> --task <id> | task evidence --task <id> | cloud (login | logout | status | handoff | list | watch | approvals | approve | policy ...; `cloud` alone prints its usage) | memory list --task <id> [--status s]... [--scope kind]... [--text t] [--json] | memory show --task <id> <memory-id> | memory propose --session <id> --task <id> [--scope s] --type t --topic x [--confidence f] [--ttl-ms n] [--sensitive] <content> | memory promote --session <id> --task <id> <memory-id> | memory edit --session <id> --task <id> <memory-id> [--topic t] [--content c] [--confidence f] [--ttl-ms n | --clear-ttl] | memory forget --session <id> --task <id> [--supersede] <memory-id> | terminal list [--task <id>] | terminal attach --task <id> --terminal <id> [--from N] [--window N] | terminal kill --session <id> --task <id> --terminal <id> [reason] | queue list --task <id> [--all] | queue edit|remove|move|send-now|stop --session <id> --task <id> [--input <id>] ... | run-mode get --task <id> | run-mode set --session <id> --task <id> [--ack] <mode> | allow add --session <id> --task <id> [--scope TASK|REPO|USER] [--expires-in-ms N] [--covers-always-ask] -- <argv-prefix>... | allow list [--task <id>] [--all] | allow revoke --session <id> --task <id> --rule <id> | context accounting <task-id> | platform)";
+const USAGE: &str = "usage: modbit-cli --data-dir <dir> (session create | session show --session <id> | task create --session <id> [--workspace <dir>] [--command-id <hex>] [--mode agent|plan|debug|multitask|ask] [--profile <execution-profile>] [--objective cost|balance|intelligence] [--effort low|medium|high] [--tier <name>] <goal> | task mode --session <id> --task <id> <mode> | task preference --session <id> --task <id> [--objective o] [--effort e] [--tier t] [--pin <endpoint>/<model> | --clear-pin] | task posture --task <id> | task from-issue --session <id> [--workspace <dir>] [--command-id <hex>] <issue-url> | events tail --session <id> [--after N] [--count N] [--json] | task attach --session <id> --task <id> <file> | question list --task <id> | question answer --session <id> --task <id> --question <id> [--option <id>] [--endpoint <name>] [--model <id>] [--wait] [text] | tool list [--task <id>] | tool invoke --session <id> --task <id> [--call <id>] <tool> <arguments-json> | approval list --session <id> | approval resolve --session <id> --approval <id> [--intent <hash>] (approve|deny) [reason] | stop --session <id> [reason] | receipts [--task <id>] | lease list --task <id> | task run --session <id> --task <id> [--endpoint <name>] [--model <id>] [--max-turns N] [--max-tool-calls N] [--max-no-progress-turns N] [--skill <name>]... [--mode <mode>] [--objective o] [--effort e] [--tier t] [--wait] | task cancel --session <id> --task <id> | task pause --session <id> --task <id> [--wait-ms N] [reason] | task resume --session <id> --task <id> [--endpoint <name>] [--model <id>] [--wait] | task status --task <id> | task transcript --task <id> [--density compact|balanced|detailed] | task headers --session <id> [--archived] | task search --session <id> [--archived] [--limit N] [--task <id>] <query> | review show --task <id> | review decide --session <id> --task <id> (accept|return) [--reject path#index ...] [note] | change undo --session <id> --task <id> --call <id> [--apply] | context show <task-id> | task fork --session <id> --task <id> [--checkpoint <id> | --turn <ordinal> | --name <label>] [--carry PLAN,DECISIONS,EVIDENCE,CONTEXT] [--worktree <dir>] [goal] | task rewind --task <id> [--checkpoint <id> | --turn <ordinal> | --name <label>] [--redo] [--keep <paths>] [--apply --session <id>] | session route --session <id> | session tree --session <id> | task assurance --task <id> | task economics --task <id> | task work --task <id> | task agents --task <id> | capacity show | attention list --session <id> | plan show --task <id> | plan revise --session <id> --task <id> [--plan-json <file>] [note] | task patch --session <id> --task <id> --path <p> --revision <n> [--file-revision <sha>] (--old <text> | --old-file <f>) (--new <text> | --new-file <f>) | baseline publish --session <id> [--revision <rev>] | task allow-language --session <id> --task <id> --language <l> [--reason r] | task attach-context --session <id> --task <id> --source <s> [--title t] <file> | task select --session <id> --task <id> [--path p]... [--lines a:b] [--symbol s] [--hunk path#index]... [--source review|editor|cli] | agent install <file> [--from claude] [--replace] | agent list | skill install <dir> [--expect-hash <hex>] [--replace] | skill remove <name> | skill revoke <name> [--hash <content-hash>] | skill list | skill inventory [--task <id>] | skill menu [--task <id>] | skill trust <name>@<content-hash> [--task <id>] | skill untrust <name>[@<content-hash>] | task budget --session <id> --task <id> [--max-cost-minor N] [--max-wall-ms N] [--max-children N] [--forbid-spawn] | language list | model list | model probe --endpoint <name> --model <id> [--tools] <prompt> | task steer --session <id> --task <id> [--mode STEER|COLLECT|FOLLOW_UP] [--input-id <hex>] <text> | workspace trust --session <id> [--scope <s>] <root> | provider configure --provider <openai|anthropic> [--base-url <url>] [--clear] | recovery show | pr (open | update) --session <id> --task <id> --revision <n> [--base <ref>] [--title <t>] [--remote <name>] | starter list [--workspace <dir>] | doctor --session <id> | trace --session <id> [--task <id>] | export diagnostics --session <id> [--task <id>] [--include-content] --out <file> | diagnostics verify <file> | export handoff --session <id> --task <id> --out <dir> | usage reconcile --task <id> --invoice <file> [--tolerance-bp N] | dashboard --session <id> | ci ingest --session <id> --task <id> | comments ingest --session <id> --task <id> | task evidence --task <id> | cloud (login | logout | status | handoff | list | watch | approvals | approve | policy ...; `cloud` alone prints its usage) | memory list --task <id> [--status s]... [--scope kind]... [--text t] [--json] | memory show --task <id> <memory-id> | memory propose --session <id> --task <id> [--scope s] --type t --topic x [--confidence f] [--ttl-ms n] [--sensitive] <content> | memory promote --session <id> --task <id> <memory-id> | memory edit --session <id> --task <id> <memory-id> [--topic t] [--content c] [--confidence f] [--ttl-ms n | --clear-ttl] | memory forget --session <id> --task <id> [--supersede] <memory-id> | terminal list [--task <id>] | terminal attach --task <id> --terminal <id> [--from N] [--window N] | terminal kill --session <id> --task <id> --terminal <id> [reason] | queue list --task <id> [--all] | queue edit|remove|move|send-now|stop --session <id> --task <id> [--input <id>] ... | run-mode get --task <id> | run-mode set --session <id> --task <id> [--ack] <mode> | allow add --session <id> --task <id> [--scope TASK|REPO|USER] [--expires-in-ms N] [--covers-always-ask] -- <argv-prefix>... | allow list [--task <id>] [--all] | allow revoke --session <id> --task <id> --rule <id> | context accounting <task-id> | automation (list [--json] | show <id> [--json] | validate <file> | templates [--json] | create --workspace <dir> [--command-id <hex>] (<file> | --template <id>) | update <id> <file> | load --workspace <dir> | enable <id> --version N --hash <sha256> (--as-shown | [--effects e] [--capability c]... [--path p]... [--host h]...) | disable <id> [note] | run <id> [--trigger t] [--input k=v]... [--event-id id] [--test] [--payload-file f --source forge|webhook --event name] | history [<id>] [--task <hex>] [--limit N] [--json] | pause|kill (<id>|all) [note] | resume (<id>|all) | ack <dispatch-key> | fire --source forge|webhook --event name --delivery <id> <payload-file>) | project list [--workspace <dir>] [--archived] [--json] | project show <project-id> [--json] | project create --session <id> --workspace <dir> [--color c] [--icon i] <name> | project rename --session <id> --project <id> [--color c] [--icon i] [<name>] | project archive --session <id> --project <id> [--undo] | project add|remove --session <id> --project <id> --task <id> | registry keygen --out <key-file> [--key-id id] (DEV KEY ONLY) | registry sign --key <key-file> --key-id <id> --doc <document.json> [--out f] | registry verify <signed.json> (--trusted <id:hex> | --pubkey <hex>) | registry revoke --key <key-file> --key-id <id> --doc <document.json> --generation <g> --binding <endpoint/model>... [--out f] | registry activate <signed.json> [--expected-generation g] | registry rollback --expected-generation <g> | registry status | platform)";
 
 fn parse_id(hex: &str) -> Result<Id, String> {
     let bytes = decode_hex(hex)
@@ -358,6 +370,14 @@ async fn run(args: Vec<String>) -> Result<(), String> {
     if rest.first().map(String::as_str) == Some("cloud") {
         let words: Vec<&str> = rest.iter().map(String::as_str).collect();
         return cloud::run(data_dir.as_deref(), &words).await;
+    }
+    // REQ-PX-134: key generation, signing, verifying and revoking produce and
+    // check signed bytes with no Core in the loop.
+    {
+        let words: Vec<&str> = rest.iter().map(String::as_str).collect();
+        if registry_verbs::is_offline(&words) {
+            return registry_verbs::offline(&words);
+        }
     }
     let data_dir = data_dir.ok_or(USAGE)?;
     // Skill packages live in the profile (`<data-dir>/skills`), installed
@@ -716,6 +736,7 @@ async fn run_command(ready: &ReadyLine, rest: Vec<String>) -> Result<(), String>
                         Some("none") => 1,
                         _ => 0,
                     },
+                    ..Default::default()
                 }
                 .encode_to_vec(),
                 Some(lease),
@@ -1838,9 +1859,15 @@ async fn run_command(ready: &ReadyLine, rest: Vec<String>) -> Result<(), String>
         }
         // PX-113: engineering memory, over the same commands the desktop calls.
         ["memory", rest @ ..] => memory_verbs::run(&mut client, rest).await?,
+        // PX-063: projects, over the same commands the desktop calls.
+        ["project", rest @ ..] => project_verbs::run(&mut client, rest).await?,
+        // PX-134: the signed Model Registry (activate, rollback, status).
+        ["registry", ..] => registry_verbs::run(&mut client, &words).await?,
         // PX-050 / PX-057 / PX-059: the queue, the typed interrupt, run modes,
         // durable allowlist rules and context accounting.
         ["queue", rest @ ..] => run_control_verbs::queue(&mut client, rest).await?,
+        // PX-082..086: automations, over the same commands the desktop calls.
+        ["automation", rest @ ..] => automation_verbs::run(&mut client, rest).await?,
         ["run-mode", rest @ ..] => run_control_verbs::run_mode(&mut client, rest).await?,
         ["allow", rest @ ..] => run_control_verbs::allow(&mut client, rest).await?,
         ["context", "accounting", task] => run_control_verbs::accounting(&mut client, task).await?,
