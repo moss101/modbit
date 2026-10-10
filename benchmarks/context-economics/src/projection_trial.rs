@@ -316,6 +316,18 @@ pub fn run_trial(cfg: &RunConfig, arm: Arm, task: &TrialTask, repeat: u32) -> Ru
                 Some("ToolCallSucceeded" | "ToolCallFailed") => {
                     calls.insert(v["payload"]["tool_call_id"].to_string());
                 }
+                // How long a program ran: `proc.exec` hands back a handle after
+                // 2 s, which a scripted model must then wait on. With
+                // `MODBIT_TRIAL_TRACE` set the figure is printed for every run.
+                Some("ProgramEnded") if std::env::var_os("MODBIT_TRIAL_TRACE").is_some() => {
+                    eprintln!(
+                        "PX114_PROGRAM_ENDED arm={} task={} repeat={repeat} elapsed_ms={} tool_calls={}",
+                        arm.label(),
+                        task.id,
+                        v["payload"]["elapsed_ms"],
+                        v["payload"]["tool_calls"],
+                    );
+                }
                 _ => {}
             }
         }

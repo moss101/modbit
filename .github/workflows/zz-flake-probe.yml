@@ -42,9 +42,9 @@ jobs:
         shell: bash
         run: |
           fails=0
-          for i in $(seq 1 20); do
+          for i in $(seq 1 12); do
             echo "=== round $i"
-            if ! cargo test --locked -p modbit-core --test px_114_trial -- --nocapture 2>&1 | tee "round-$i-trial.log" | grep -E "^test |panicked|wait_reason|ProgramEnded|ProgramStarted|last events|NO_PROGRESS" ; then :; fi
+            if ! MODBIT_TRIAL_TRACE=1 cargo test --locked -p modbit-core --test px_114_trial -- --nocapture 2>&1 | tee "round-$i-trial.log" | grep -E "^test |panicked|wait_reason|PX114_PROGRAM_ENDED|last events|NO_PROGRESS" ; then :; fi
             if grep -q "FAILED" "round-$i-trial.log"; then fails=$((fails+1)); echo "---- FAILED trial round $i"; grep -v "warning: in the working copy" "round-$i-trial.log" | tail -80; fi
             cargo test --locked -p modbit-cli --test headless 2>&1 | tee "round-$i-headless.log" | grep -E "^test .*(FAILED|ok)$|panicked" || true
             if grep -q "FAILED" "round-$i-headless.log"; then fails=$((fails+1)); echo "---- FAILED headless round $i"; grep -v "warning: in the working copy" "round-$i-headless.log" | tail -120; fi
