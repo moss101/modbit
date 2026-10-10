@@ -44,11 +44,12 @@ import { file_modbit_v1_forge_cloud } from "./gen/modbit/v1/forge_cloud_pb.js";
 import { file_modbit_v1_composer } from "./gen/modbit/v1/composer_pb.js";
 import { file_modbit_v1_automations } from "./gen/modbit/v1/automations_pb.js";
 import { file_modbit_v1_projects } from "./gen/modbit/v1/projects_pb.js";
+import { file_modbit_v1_computer } from "./gen/modbit/v1/computer_pb.js";
 
 const here = dirname(fileURLToPath(import.meta.url));
 const fixtures = join(here, "../../../tests/fixtures/protocol/v1");
 const messagesByType = new Map<string, DescMessage>(
-  [file_modbit_v1_domain, file_modbit_v1_envelope, file_modbit_v1_tool, file_modbit_v1_output_ref, file_modbit_v1_negotiation, file_modbit_v1_surface, file_modbit_v1_stream, file_modbit_v1_terminal, file_modbit_v1_tasking, file_modbit_v1_checkpoints, file_modbit_v1_skills_budgets, file_modbit_v1_context_knowledge, file_modbit_v1_conversation_search, file_modbit_v1_terminal_control, file_modbit_v1_slash_inventory, file_modbit_v1_run_control, file_modbit_v1_security_runtime, file_modbit_v1_worktrees, file_modbit_v1_browser_runtime, file_modbit_v1_forge_cloud, file_modbit_v1_composer, file_modbit_v1_automations, file_modbit_v1_projects]
+  [file_modbit_v1_domain, file_modbit_v1_envelope, file_modbit_v1_tool, file_modbit_v1_output_ref, file_modbit_v1_negotiation, file_modbit_v1_surface, file_modbit_v1_stream, file_modbit_v1_terminal, file_modbit_v1_tasking, file_modbit_v1_checkpoints, file_modbit_v1_skills_budgets, file_modbit_v1_context_knowledge, file_modbit_v1_conversation_search, file_modbit_v1_terminal_control, file_modbit_v1_slash_inventory, file_modbit_v1_run_control, file_modbit_v1_security_runtime, file_modbit_v1_worktrees, file_modbit_v1_browser_runtime, file_modbit_v1_forge_cloud, file_modbit_v1_composer, file_modbit_v1_automations, file_modbit_v1_projects, file_modbit_v1_computer]
     .flatMap((f) => f.messages)
     .map((m) => [m.typeName, m]),
 );

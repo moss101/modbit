@@ -1,0 +1,32 @@
+{
+  "expected": {
+    "changes": [
+      {
+        "after": "submitted",
+        "before": "idle",
+        "elementId": "n5",
+        "kind": "value"
+      }
+    ],
+    "delivery": "DELIVERY_DELIVERED",
+    "modality": "ax",
+    "modalityReason": "the element offers press",
+    "structureChanged": true,
+    "treeDigest": "eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee",
+    "window": {
+      "bounds": {
+        "height": 600,
+        "width": 800,
+        "x": 100,
+        "y": 100
+      },
+      "focused": true,
+      "minimized": false,
+      "modal": true,
+      "title": "Order form",
+      "version": "4",
+      "windowId": "w1"
+    }
+  },
+  "type": "modbit.v1.PerformResponse"
+}

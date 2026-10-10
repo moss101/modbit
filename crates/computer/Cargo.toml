@@ -1,0 +1,42 @@
+[package]
+name = "modbit-computer"
+description = "Modbit computer runtime: native application control through a separate actuator process"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+publish.workspace = true
+
+[dependencies]
+modbit-browser.workspace = true
+modbit-domain.workspace = true
+modbit-protocol.workspace = true
+hex.workspace = true
+png = "0.18"
+rand.workspace = true
+regex.workspace = true
+serde.workspace = true
+serde_json.workspace = true
+sha2.workspace = true
+thiserror.workspace = true
+tokio.workspace = true
+tokio-util.workspace = true
+
+[dev-dependencies]
+tempfile.workspace = true
+
+[lints]
+workspace = true
+
+# Module registration parsed by `architecture-lint modules` (M0.4, docs/45, docs/81).
+# The Computer Runtime is the Browser and Computer Runtime owner's (docs/17,
+# docs/66, DR-PX-2026-10-03-008): a crate registered under the `browser`
+# subsystem that claims no canonical system of its own (the pattern of
+# DR-M9-001), so `browser-runtime` stays claimed once, by `modbit-browser`.
+[package.metadata.modbit]
+owner = "browser"
+canonical = []
+capabilities = [
+  { id = "computer.runtime", requirements = ["REQ-PX-069", "REQ-EV-0083", "REQ-EV-0089"] },
+  { id = "computer.artifacts", requirements = ["REQ-PX-076", "REQ-EV-0090"] },
+]

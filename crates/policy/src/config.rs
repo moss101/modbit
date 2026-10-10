@@ -67,6 +67,11 @@ pub struct Layer {
     /// Allowed model labels.
     #[serde(default)]
     pub models_allow: Option<BTreeSet<String>>,
+    /// Applications computer control may drive, by bundle identifier or a
+    /// `prefix*` pattern (PX-070, CUC-C04). Same intersection law as the
+    /// other allow-lists: a lower layer can narrow, never add.
+    #[serde(default)]
+    pub computer_apps_allow: Option<BTreeSet<String>>,
     /// MCP servers this layer adds.
     #[serde(default)]
     pub mcp_servers: BTreeMap<String, String>,
@@ -170,6 +175,8 @@ pub struct ResolvedConfig {
     pub network_allow: Option<Resolved<BTreeSet<String>>>,
     /// Allowed models (`None` = unrestricted).
     pub models_allow: Option<Resolved<BTreeSet<String>>>,
+    /// Applications computer control may drive (`None` = unrestricted).
+    pub computer_apps_allow: Option<Resolved<BTreeSet<String>>>,
     /// MCP servers by name.
     pub mcp_servers: BTreeMap<String, Resolved<String>>,
     /// Hooks in effective order.
@@ -277,6 +284,11 @@ pub fn resolve(layers: &BTreeMap<Authority, Layer>) -> ResolvedConfig {
         for (field, mine, target) in [
             ("network", &layer.network_allow, &mut out.network_allow),
             ("models", &layer.models_allow, &mut out.models_allow),
+            (
+                "computer applications",
+                &layer.computer_apps_allow,
+                &mut out.computer_apps_allow,
+            ),
         ] {
             let Some(set) = mine else { continue };
             match target {

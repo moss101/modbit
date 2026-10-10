@@ -1862,6 +1862,9 @@ pub(crate) async fn rebuild(
                     >(&bytes)
                 {
                     state.write_scope = c.spec.write_scope.clone();
+                    if c.profile == crate::agent_profiles::COMPUTER_USE {
+                        core.tools.computer.mark_child(task.task_id);
+                    }
                     state.capsule = Some(serde_json::json!({
                         "agent_id": c.agent_id.to_string(),
                         "parent_task_id": c.parent_task_id.to_string(),
@@ -6153,6 +6156,21 @@ async fn run_loop(
                 }
             }
         }
+        // PX-075 (CUC-D06): a computer-use child that failed four times in a
+        // row, or went three turns without a new observation or action,
+        // stops and reports what it observed, what blocked it and the best
+        // next step.
+        if state
+            .capsule
+            .as_ref()
+            .is_some_and(|c| c["profile"].as_str() == Some(crate::agent_profiles::COMPUTER_USE))
+            && let Some(report) = core.tools.computer.turn_boundary(task.task_id)
+        {
+            break 'outer LoopEnd::NeedsAttention {
+                code: "COMPUTER_USE_STALLED",
+                reason: report.to_string(),
+            };
+        }
         seen_offset = core
             .store
             .lock()
@@ -6185,6 +6203,12 @@ async fn run_loop(
     // A program still running when the loop ends is ended with it: it stops
     // at its next interrupt poll or binding call.
     programs.cancel_all();
+    // PX-069: a control session and its observation grant end with the turn
+    // (CUC-C02); the machine is given back whatever way the run ended.
+    core.tools
+        .computer
+        .end_run(&core, task.task_id, &run_id.to_string(), "RUN_ENDED")
+        .await;
     let end = match lease_lost(&core, &task, cfg.lease_generation).await {
         Some((current, owner)) if !matches!(end, LoopEnd::Fenced { .. }) => LoopEnd::Fenced {
             current_generation: current,
@@ -9055,6 +9079,16 @@ async fn execute_tool_call(
                 });
             obs.text.push_str(&diagnostic.render());
         }
+        // PX-075: the stall rules of a computer-use child watch its calls.
+        if name.starts_with("computer.") {
+            core.tools.computer.note_tool(
+                task.task_id,
+                r.status == ToolStatus::Success,
+                &r.structured_output,
+                r.error_code.as_deref(),
+                r.error_message.as_deref(),
+            );
+        }
         let sig_prefix = format!("{name}:");
         let clears: Vec<String> = if is_check && !check_failed {
             state
@@ -9103,6 +9137,21 @@ async fn execute_tool_call(
                 || name == "browser.navigate"
                 || name == "browser.act"
                 || name == "browser.fill_form"
+                // PX-069: an input to the application, or a session opened for
+                // one, advances the work; looking at it does not.
+                || matches!(
+                    name,
+                    "computer.start"
+                        | "computer.start_screen"
+                        | "computer.press"
+                        | "computer.set_value"
+                        | "computer.click"
+                        | "computer.move"
+                        | "computer.drag"
+                        | "computer.type"
+                        | "computer.key"
+                        | "computer.scroll"
+                )
                 || name.starts_with("lsp.")
                 || name.starts_with("git.worktree"));
         return TranscriptEntry::ToolResult {

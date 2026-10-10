@@ -38,6 +38,7 @@ members = [
     "crates/diagnostics",
     "crates/terminal",
     "crates/browser",
+    "crates/computer",
     "crates/sandbox",
     "crates/verification",
     "crates/secrets",
@@ -46,6 +47,7 @@ members = [
     "apps/cloud-worker",
     "apps/sandbox-gateway",
     "apps/cli",
+    "services/modbit-actuator-fixture",
     "services/modbit-execd",
     "services/modbit-guest",
     "services/modbit-core",
@@ -97,6 +99,7 @@ modbit-git = { path = "crates/git" }
 modbit-diagnostics = { path = "crates/diagnostics" }
 modbit-terminal = { path = "crates/terminal" }
 modbit-browser = { path = "crates/browser" }
+modbit-computer = { path = "crates/computer" }
 modbit-sandbox = { path = "crates/sandbox" }
 modbit-verification = { path = "crates/verification" }
 modbit-secrets = { path = "crates/secrets" }
