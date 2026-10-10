@@ -34,7 +34,9 @@ export interface LaunchOptions {
 
 export async function launch(dataDir: string, opts: LaunchOptions = {}): Promise<{ app: ElectronApplication; page: Page }> {
   const app = await electron.launch({
-    args: [join(appDir, opts.outDir ?? "dist", "main", "main.cjs")],
+    // A window the OS reports as covered gets no animation frames, and xterm.js paints its rows in one: on a Windows runner's desktop the
+    // terminal's text reached the DOM only when something woke the page (seconds late). The run must not depend on the runner's window stacking.
+    args: ["--disable-features=CalculateNativeWinOcclusion", "--disable-backgrounding-occluded-windows", "--disable-renderer-backgrounding", join(appDir, opts.outDir ?? "dist", "main", "main.cjs")],
     env: { ...process.env, MODBIT_DATA_DIR: dataDir, MODBIT_CORE_BIN: coreBin, OPENAI_API_KEY: "", ANTHROPIC_API_KEY: "", MODBIT_SUPPRESS_OS_NOTIFICATIONS: "1", MODBIT_QUIT_PROMPT: "off", ...opts.env },
   });
   const page = await app.firstWindow();
