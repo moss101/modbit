@@ -1,190 +1,384 @@
-//! The paired statistics of the context economics benchmark (REQ-EV-0250):
-//! what pairing means, what the interval says, and what an unpaired trial
-//! contributes (nothing).
-use modbit_bench_context_economics::{
-    Metric, SeenPrompt, Trial, metric_of, normalized_tool_calls, paired_report, prompt_parity,
+//! The report logic of the paired trial (PX-136 / PX-133): synthetic runs, no
+//! Core. The real-Core runs against a scripted provider are
+//! `services/modbit-core/tests/px_136_paired.rs`.
+
+use std::collections::BTreeMap;
+use std::path::PathBuf;
+use std::time::Duration;
+
+use modbit_bench_context_economics::paired::{
+    Accounting, Arm, Binding, GateObservation, PairedConfig, PairedRun, Requirements, StatSample,
+    build_registry, builtin_taskset, cascade_plan, live_bindings, load_taskset, missing, reconcile,
+    report, rescore, tasks_digest,
 };
+use modbit_bench_context_economics::spend::Price;
+use modbit_bench_context_economics::suite::builtin_suite;
 
-fn trial(variant: &str, task: &str, repeat: u32, tokens: u64, tools: u32, ms: u64) -> Trial {
-    Trial {
-        variant: variant.into(),
+fn binding(endpoint: &str) -> Binding {
+    Binding {
+        endpoint: endpoint.into(),
+        model: "m".into(),
+        price: Price {
+            input_per_mtok_usd: 1.0,
+            output_per_mtok_usd: 2.0,
+        },
+    }
+}
+
+fn cfg() -> PairedConfig {
+    PairedConfig {
+        cli: PathBuf::new(),
+        core: PathBuf::new(),
+        work: PathBuf::new(),
+        opener: binding("openai"),
+        second: binding("anthropic"),
+        env: vec![],
+        max_turns: 10,
+        trial_timeout: Duration::from_secs(1),
+        parallel: 1,
+        repeats: 1,
+        live: true,
+        question_answer: String::new(),
+    }
+}
+
+fn run(task: &str, arm: Arm, ok: bool, cost: f64) -> PairedRun {
+    let accounted = (cost / 1e-4).round() as u64;
+    PairedRun {
         task: task.into(),
-        repeat,
-        input_tokens: tokens,
-        output_tokens: tokens / 10,
-        cached_input_tokens: 0,
-        tool_calls: tools,
-        normalized_tool_calls: tools.saturating_sub(1),
-        model_calls: tools + 1,
-        agent_ms: ms,
-        cold_ms: ms + 500,
-        verified: true,
-        tool_schema_bytes: 0,
+        arm,
+        repeat: 0,
+        session_id: "s".into(),
+        task_id: "t".into(),
+        run_id: format!("run-{task}-{}", arm.label()),
+        state: "ReadyForReview".into(),
+        core_verified: ok,
+        oracle_pass: ok,
+        check_untouched: true,
+        verified_success: ok,
+        wall_ms: 10_000,
+        cost_usd: Some(cost),
+        calls_without_usage: 0,
+        unpriced_usage: 0,
+        model_calls: 3,
+        input_tokens: 1000,
+        output_tokens: 100,
+        answered_by: BTreeMap::new(),
+        escalated: false,
+        escalation_attempted: false,
+        reviewed: false,
+        review_verdicts: vec![],
+        revisions: 0,
+        gates: vec![GateObservation {
+            leg: "final".into(),
+            verdict: if ok { "ACCEPT" } else { "REJECT" }.into(),
+            oracle_pass: ok,
+        }],
+        needed_person: !ok,
+        interactions: 0,
+        accounting: Some(Accounting {
+            total_minor: accounted,
+            unknown_minor: 0,
+            currency: "USD".into(),
+            scale: 4,
+            path_label: "DIRECT".into(),
+            final_outcome: if ok { "pass" } else { "partial" }.into(),
+        }),
+        stats: vec![],
+        stats_version: "none".into(),
+        stats_digest: String::new(),
+        events_sha256: String::new(),
+        events_file: String::new(),
+        timed_out: false,
+        error: None,
     }
 }
 
-#[test]
-fn a_paired_report_measures_the_difference_and_says_what_it_cannot() {
-    let mut trials = Vec::new();
-    for (i, (b, t)) in [
-        (1000, 700),
-        (1200, 800),
-        (900, 650),
-        (1100, 780),
-        (1000, 690),
-    ]
-    .into_iter()
-    .enumerate()
-    {
-        let r = u32::try_from(i).unwrap();
-        trials.push(trial("baseline", "fix-totals", r, b, 8, 4000));
-        trials.push(trial("treatment", "fix-totals", r, t, 5, 3600));
+fn req(tasks: usize, esc: u32, rev: u32) -> Requirements {
+    Requirements {
+        tasks,
+        repeats: 1,
+        min_escalation_samples: esc,
+        min_reviewer_samples: rev,
+        min_tasks: 30,
     }
-    let report = paired_report(
-        &trials,
-        "the context machinery",
-        &["model", "task", "environment"],
-        "a deterministic local model; the numbers measure the product, not model behaviour",
-    );
-    assert_eq!((report.pairs, report.tasks.len()), (5, 1));
-    assert!(report.unpaired.is_empty());
-    let tokens = metric_of(&report, Metric::InputTokens).unwrap();
-    assert_eq!(tokens.pairs, 5);
-    assert!(tokens.mean_delta < 0.0, "{tokens:?}");
+}
+
+fn registry() -> modbit_bench_context_economics::paired::RegistryBundle {
+    build_registry(&binding("openai"), &binding("anthropic"), [7u8; 32])
+}
+
+fn full(tasks: usize) -> Vec<PairedRun> {
+    let mut v = Vec::new();
+    for i in 0..tasks {
+        let t = format!("t{i}");
+        // The cascade fixes what direct missed on every fifth task and costs more.
+        let direct_ok = i % 5 != 0;
+        v.push(run(&t, Arm::Direct, direct_ok, 0.010));
+        let mut c = run(
+            &t,
+            Arm::Cascade,
+            true,
+            if direct_ok { 0.010 } else { 0.020 },
+        );
+        c.escalated = !direct_ok;
+        c.escalation_attempted = !direct_ok;
+        v.push(c);
+        let mut k = run(&t, Arm::Critique, direct_ok, 0.016);
+        k.reviewed = true;
+        v.push(k);
+    }
+    v
+}
+
+#[test]
+fn the_report_counts_every_arm_and_every_failed_run_with_intervals() {
+    let runs = full(30);
+    let reg = registry();
+    let rep = report(&runs, &builtin_taskset(), &cfg(), &reg);
+    assert_eq!(rep.arms.len(), 3);
+    for a in &rep.arms {
+        assert_eq!(a.runs, 30);
+        assert_eq!(a.verified_success.n, 30);
+        assert!(
+            a.verified_success.lo <= a.verified_success.p
+                && a.verified_success.p <= a.verified_success.hi
+        );
+        assert_eq!(a.failed_runs.len(), 30 - a.verified_success.k);
+    }
+    let direct = &rep.arms[0];
+    assert_eq!(direct.verified_success.k, 24, "6 of 30 direct runs failed");
+    assert_eq!(direct.failed_runs.len(), 6);
+    let cascade = rep.arms.iter().find(|a| a.arm == Arm::Cascade).unwrap();
+    assert_eq!(cascade.verified_success.k, 30);
+    assert_eq!(cascade.escalation_rate.k, 6);
+    assert!(cascade.cost_usd.mean > direct.cost_usd.mean);
+    // Paired: cascade is better on quality and costs more, or says so.
+    let c = rep
+        .comparisons
+        .iter()
+        .find(|c| c.arm == Arm::Cascade)
+        .unwrap();
+    assert_eq!(c.pairs, 30);
+    assert_eq!(c.quality, "BETTER", "{c:?}");
+    assert_eq!(c.cost, "MORE", "{c:?}");
+    // Critique: the same success as direct, dearer.
+    let k = rep
+        .comparisons
+        .iter()
+        .find(|c| c.arm == Arm::Critique)
+        .unwrap();
+    assert_eq!(k.quality, "NO_DIFFERENCE_DETECTED");
+    assert_eq!(k.cost, "MORE");
+    // A complete run has nothing missing; the digest reproduces.
+    let m = missing(&rep, &runs, &Arm::ALL, &req(30, 0, 0));
+    assert!(m.is_empty(), "{m:?}");
+    let again = rescore(&runs, &builtin_taskset(), &cfg(), &reg, &rep.digest).unwrap();
+    assert_eq!(again.digest, rep.digest);
+    assert!(rep.verdict.contains("the default route stays DIRECT"));
+}
+
+#[test]
+fn a_run_that_drops_a_legs_cost_does_not_reconcile_and_the_run_is_incomplete() {
+    let mut runs = full(30);
+    // The mutation: a failed leg's cost is left out of the run's cost.
+    let k = runs.iter_mut().find(|r| r.arm == Arm::Critique).unwrap();
+    assert!(reconcile(k).is_none());
+    k.cost_usd = Some(k.cost_usd.unwrap() * 0.5);
+    let why = reconcile(k).expect("a halved cost cannot reconcile");
+    assert!(why.contains("does not reconcile"), "{why}");
+    let rep = report(&runs, &builtin_taskset(), &cfg(), &registry());
+    let m = missing(&rep, &runs, &Arm::ALL, &req(30, 0, 0));
+    assert!(m.iter().any(|x| x.contains("does not reconcile")), "{m:?}");
+}
+
+#[test]
+fn a_missing_arm_run_a_short_task_set_and_a_failed_trial_are_each_named() {
+    let mut runs = full(30);
+    runs.retain(|r| !(r.arm == Arm::Critique && r.task == "t3"));
+    runs[0].error = Some("the Core did not start".into());
+    let rep = report(&runs, &builtin_taskset(), &cfg(), &registry());
+    let m = missing(&rep, &runs, &Arm::ALL, &req(30, 0, 0));
     assert!(
-        tokens.ci95.1 < 0.0,
-        "the whole interval is a saving: {tokens:?}"
+        m.iter()
+            .any(|x| x.contains("arm critique has 29 of 30 runs")),
+        "{m:?}"
     );
-    assert!(tokens.significant, "{tokens:?}");
     assert!(
-        tokens.relative.unwrap() < -0.2,
-        "a saving of more than a fifth: {tokens:?}"
+        m.iter().any(|x| x.contains("no valid measurement")),
+        "{m:?}"
     );
-    assert_eq!(tokens.baseline_median, 1000.0);
-    assert_eq!(tokens.treatment_median, 700.0);
-    // Every metric is reported, including the two times.
-    for m in [
-        Metric::InputTokens,
-        Metric::ToolCalls,
-        Metric::AgentMs,
-        Metric::ColdMs,
-    ] {
-        assert!(metric_of(&report, m).is_some(), "{m:?}");
-    }
-    assert_eq!(report.verified, (5, 5));
-    assert!(report.method.contains("not model behaviour"), "{report:?}");
-}
-
-#[test]
-fn a_difference_that_is_not_there_is_not_claimed() {
-    let mut trials = Vec::new();
-    for (i, (b, t)) in [(1000, 1010), (1000, 990), (1000, 1005), (1000, 995)]
-        .into_iter()
-        .enumerate()
-    {
-        let r = u32::try_from(i).unwrap();
-        trials.push(trial("baseline", "noop", r, b, 5, 1000));
-        trials.push(trial("treatment", "noop", r, t, 5, 1000));
-    }
-    let report = paired_report(&trials, "nothing", &["everything"], "same everything");
-    let tokens = metric_of(&report, Metric::InputTokens).unwrap();
-    assert!(!tokens.significant, "{tokens:?}");
-    assert!(tokens.ci95.0 < 0.0 && tokens.ci95.1 > 0.0, "{tokens:?}");
-    let tools = metric_of(&report, Metric::ToolCalls).unwrap();
-    assert_eq!((tools.mean_delta, tools.median_delta), (0.0, 0.0));
-}
-
-#[test]
-fn an_unpaired_trial_says_nothing_about_a_difference() {
-    let trials = vec![
-        trial("baseline", "a", 0, 1000, 8, 4000),
-        trial("treatment", "a", 0, 700, 5, 3600),
-        // No partner for either of these.
-        trial("treatment", "b", 0, 100, 1, 100),
-        trial("baseline", "c", 3, 5000, 40, 40000),
-    ];
-    let report = paired_report(&trials, "x", &["y"], "z");
-    assert_eq!(report.pairs, 1);
-    assert_eq!(report.tasks, vec!["a".to_owned()]);
+    let few = missing(&rep, &runs, &Arm::ALL, &req(12, 0, 0));
+    assert!(few.iter().any(|x| x.contains("at least 30")), "{few:?}");
+    // The arm stays in the report with its failed run counted, not dropped.
     assert_eq!(
-        report.unpaired,
-        vec!["baseline c #3".to_owned(), "treatment b #0".to_owned()]
-    );
-    // One pair cannot carry an interval, and the report does not invent one.
-    let tokens = metric_of(&report, Metric::InputTokens).unwrap();
-    assert!(tokens.ci95.0.is_nan() && !tokens.significant, "{tokens:?}");
-    assert_eq!(tokens.mean_delta, -300.0);
-}
-
-/// REQ-EV-0251: protocol calls are not work, a batch is its operations, and
-/// a read, a search, a pack or a shell command are one unit each whatever
-/// they are named — so counts compare across variants with different tools.
-#[test]
-fn tool_calls_are_normalized_across_tool_families() {
-    let baseline = vec![
-        ("plan.update".to_owned(), 1),
-        ("fs.read".to_owned(), 1),
-        ("fs.read".to_owned(), 1),
-        ("fs.read".to_owned(), 1),
-        ("search.exact".to_owned(), 1),
-        ("change.batch".to_owned(), 3),
-        ("task.complete".to_owned(), 1),
-    ];
-    let treatment = vec![
-        ("plan.update".to_owned(), 1),
-        ("context.pack".to_owned(), 1),
-        ("change.apply".to_owned(), 1),
-        ("change.apply".to_owned(), 1),
-        ("change.apply".to_owned(), 1),
-        ("task.complete".to_owned(), 1),
-    ];
-    // Baseline: three reads, one search, three batched edits = 7; the plan
-    // and the completion handshake are not counted.
-    assert_eq!(normalized_tool_calls(&baseline), 7);
-    // Treatment: one pack and three edits = 4, the same work in fewer calls.
-    assert_eq!(normalized_tool_calls(&treatment), 4);
-    // The raw counts would have told a different story (7 vs 6): the batch
-    // hides work and the protocol calls pad both sides.
-    assert_eq!((baseline.len(), treatment.len()), (7, 6));
-    assert_eq!(normalized_tool_calls(&[]), 0);
-    assert_eq!(normalized_tool_calls(&[("change.batch".to_owned(), 0)]), 1);
-}
-
-/// REQ-EV-0253: the variants must be asked the same thing. Only the
-/// capability profile may differ, and a prompt that steers the agent toward
-/// the machinery under test invalidates the comparison.
-#[test]
-fn a_benchmark_is_unbiased_only_when_its_prompts_are_identical_and_force_nothing() {
-    let prompt = |tools: &[&str]| SeenPrompt {
-        system: "You are working in a repository. Use the tools you have.".into(),
-        request: "find where totals are computed".into(),
-        tools: tools.iter().map(|t| (*t).to_owned()).collect(),
-    };
-    let same = prompt_parity(
-        &prompt(&["fs.read", "search.exact"]),
-        &prompt(&["fs.read", "search.exact", "context.pack"]),
-    );
-    assert!(same.identical_system && same.identical_request);
-    assert_eq!(same.capability_difference, vec!["context.pack".to_owned()]);
-    assert!(same.forcing_instructions.is_empty());
-    assert!(same.unbiased, "{same:?}");
-    // A treatment prompt that tells the agent what to use is steering.
-    let mut steered = prompt(&["fs.read", "context.pack"]);
-    steered
-        .system
-        .push_str(" You must use the context.pack tool before reading anything.");
-    let biased = prompt_parity(&prompt(&["fs.read"]), &steered);
-    assert!(!biased.identical_system);
-    assert!(
-        biased
-            .forcing_instructions
+        rep.arms
             .iter()
-            .any(|f| f.starts_with("treatment:")),
-        "{biased:?}"
+            .find(|a| a.arm == Arm::Direct)
+            .unwrap()
+            .errored,
+        1
     );
-    assert!(!biased.unbiased);
-    // A different request is a different task, not a variant of the same one.
-    let mut other = prompt(&["fs.read"]);
-    other.request = "find where discounts are applied".into();
-    assert!(!prompt_parity(&prompt(&["fs.read"]), &other).unbiased);
+}
+
+#[test]
+fn required_leg_samples_must_exist_and_be_priced() {
+    let mut runs = full(30);
+    let rep = report(&runs, &builtin_taskset(), &cfg(), &registry());
+    let m = missing(&rep, &runs, &Arm::ALL, &req(30, 1, 1));
+    assert!(
+        m.iter().any(|x| x.contains("0 escalation samples")),
+        "{m:?}"
+    );
+    assert!(m.iter().any(|x| x.contains("0 reviewer samples")), "{m:?}");
+    // An escalation sample with unreported cost is not a priced sample.
+    for r in runs.iter_mut().filter(|r| r.escalated) {
+        r.stats = vec![StatSample {
+            key: "escalation|m|m|acceptance|workspace|configured".into(),
+            samples: 1,
+            successes: 1,
+            cost_known: false,
+            unknown_cost_samples: 1,
+            mean_cost_minor: 0,
+        }];
+    }
+    for r in runs.iter_mut().filter(|r| r.reviewed) {
+        r.stats = vec![StatSample {
+            key: "reviewer|m".into(),
+            samples: 1,
+            successes: 1,
+            cost_known: true,
+            unknown_cost_samples: 0,
+            mean_cost_minor: 40,
+        }];
+    }
+    let rep = report(&runs, &builtin_taskset(), &cfg(), &registry());
+    let m = missing(&rep, &runs, &Arm::ALL, &req(30, 1, 1));
+    assert!(
+        m.iter()
+            .any(|x| x.contains("escalation sample has no priced cost")),
+        "{m:?}"
+    );
+    assert!(!m.iter().any(|x| x.contains("reviewer")), "{m:?}");
+}
+
+#[test]
+fn gate_errors_are_counted_against_the_independent_check_with_intervals() {
+    let mut runs = full(30);
+    // A false accept: the gate said ACCEPT, the independent check failed.
+    runs[0].gates[0] = GateObservation {
+        leg: "final".into(),
+        verdict: "ACCEPT".into(),
+        oracle_pass: false,
+    };
+    // A false reject: the gate said REJECT on a candidate that passes.
+    runs[3].gates[0] = GateObservation {
+        leg: "final".into(),
+        verdict: "REJECT".into(),
+        oracle_pass: true,
+    };
+    let rep = report(&runs, &builtin_taskset(), &cfg(), &registry());
+    let g = &rep.gate["all"];
+    assert_eq!(g.observations, 90);
+    assert_eq!(g.false_accept.k, 1);
+    assert_eq!(g.false_reject.k, 1);
+    assert!(g.false_accept.hi > g.false_accept.p && g.false_accept.lo <= g.false_accept.p);
+    assert_eq!(g.false_accept.n, g.bad_candidates);
+    assert_eq!(g.false_reject.n, g.good_candidates);
+}
+
+#[test]
+fn the_pin_must_match_the_suite_and_the_cascade_plan_is_the_compiled_plan_plus_a_stronger_slot() {
+    let suite = builtin_suite();
+    let dir = tempfile::tempdir().unwrap();
+    let pin = builtin_taskset();
+    let file = dir.path().join("taskset.json");
+    std::fs::write(&file, serde_json::to_string(&pin).unwrap()).unwrap();
+    let (loaded, tasks) = load_taskset(&file, &suite, 30).unwrap();
+    assert_eq!((loaded.tasks.len(), tasks.len()), (30, 30));
+    assert_eq!(pin.digest, tasks_digest(&tasks));
+    // Too few, a changed digest and an unknown task are each refused.
+    assert!(load_taskset(&file, &suite, 31).is_err());
+    let mut bad = pin.clone();
+    bad.digest = "0".repeat(64);
+    std::fs::write(&file, serde_json::to_string(&bad).unwrap()).unwrap();
+    assert!(
+        load_taskset(&file, &suite, 1)
+            .unwrap_err()
+            .contains("digest")
+    );
+    let mut unknown = pin.clone();
+    unknown.tasks[0] = "no-such-task".into();
+    std::fs::write(&file, serde_json::to_string(&unknown).unwrap()).unwrap();
+    assert!(
+        load_taskset(&file, &suite, 1)
+            .unwrap_err()
+            .contains("does not have")
+    );
+    // The committed pin is this suite.
+    let committed: modbit_bench_context_economics::paired::TaskSet = serde_json::from_str(
+        &std::fs::read_to_string(
+            PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("paired/taskset.json"),
+        )
+        .unwrap(),
+    )
+    .unwrap();
+    assert_eq!(committed, pin);
+    // A cascade plan is refused when the compiled plan is not a plan.
+    assert!(cascade_plan(&serde_json::json!({"nope": 1}), &binding("anthropic"), 1).is_err());
+}
+
+#[test]
+fn live_mode_is_refused_without_every_part_of_it() {
+    let env = |pairs: &[(&str, &str)]| {
+        let m: BTreeMap<String, String> = pairs
+            .iter()
+            .map(|(k, v)| ((*k).to_owned(), (*v).to_owned()))
+            .collect();
+        move |k: &str| m.get(k).cloned()
+    };
+    let key = "sk-live-0123456789abcdef0123456789";
+    let full: Vec<(&str, &str)> = vec![
+        ("MODBIT_LIVE", "1"),
+        ("MODBIT_LIVE_MODEL", "glm"),
+        ("OPENAI_API_KEY", key),
+        ("ANTHROPIC_API_KEY", key),
+        ("MODBIT_OPENAI_BASE_URL", "https://gw.example.com/v4"),
+        (
+            "MODBIT_ANTHROPIC_BASE_URL",
+            "https://gw.example.com/anthropic",
+        ),
+        ("MODBIT_OPENAI_MODELS", "glm=0.15/0.50"),
+        ("MODBIT_ANTHROPIC_MODELS", "glm=0.15/0.50"),
+    ];
+    let (o, s, e) = live_bindings(&env(&full), None, "anthropic", None).unwrap();
+    assert_eq!(
+        (o.label().as_str(), s.label().as_str()),
+        ("openai/glm", "anthropic/glm")
+    );
+    assert!(e.contains_key("MODBIT_OPENAI_MODELS") && !format!("{e:?}").contains(key));
+    let without = |name: &str| -> Vec<(&str, &str)> {
+        full.iter().filter(|(k, _)| *k != name).copied().collect()
+    };
+    for missing_var in [
+        "MODBIT_LIVE",
+        "OPENAI_API_KEY",
+        "ANTHROPIC_API_KEY",
+        "MODBIT_OPENAI_MODELS",
+        "MODBIT_LIVE_MODEL",
+    ] {
+        let err = live_bindings(&env(&without(missing_var)), None, "anthropic", None).unwrap_err();
+        assert!(err.starts_with("LIVE: NOT RUN"), "{missing_var}: {err}");
+        assert!(!err.contains(key));
+    }
+    let mut loop_back = full.clone();
+    loop_back.retain(|(k, _)| *k != "MODBIT_OPENAI_BASE_URL");
+    loop_back.push(("MODBIT_OPENAI_BASE_URL", "http://127.0.0.1:9/v4"));
+    assert!(live_bindings(&env(&loop_back), None, "anthropic", None).is_err());
+    let mut placeholder = full.clone();
+    placeholder.retain(|(k, _)| *k != "OPENAI_API_KEY");
+    placeholder.push(("OPENAI_API_KEY", "dummy-key-dummy-key"));
+    assert!(live_bindings(&env(&placeholder), None, "anthropic", None).is_err());
+    // An unpriced model is refused: an unknown price is not free.
+    assert!(live_bindings(&env(&full), Some("other"), "anthropic", None).is_err());
 }

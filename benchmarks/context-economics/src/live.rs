@@ -90,7 +90,7 @@ impl std::fmt::Debug for LiveConfig {
     }
 }
 
-fn is_placeholder(key: &str) -> bool {
+pub(crate) fn is_placeholder(key: &str) -> bool {
     let k = key.trim().to_ascii_lowercase();
     k.len() < 12
         || [
@@ -108,7 +108,7 @@ fn is_placeholder(key: &str) -> bool {
         .any(|p| k.contains(p))
 }
 
-fn is_loopback(url: &str) -> bool {
+pub(crate) fn is_loopback(url: &str) -> bool {
     let rest = url.split("://").nth(1).unwrap_or(url);
     let host = rest
         .split(['/', '?'])

@@ -2054,9 +2054,14 @@ dependencies = [
 name = "modbit-bench-context-economics"
 version = "0.0.0"
 dependencies = [
+ "ed25519-dalek",
  "hex",
  "modbit-compaction",
+ "modbit-domain",
+ "modbit-protocol",
  "modbit-providers",
+ "prost",
+ "rand 0.10.2",
  "reqwest",
  "serde",
  "serde_json",

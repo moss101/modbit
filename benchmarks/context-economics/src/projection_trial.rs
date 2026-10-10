@@ -343,6 +343,17 @@ pub fn run_matrix(cfg: &RunConfig, tasks: &[TrialTask], repeats: u32) -> Vec<Run
     out
 }
 
+/// A float that JSON wrote as `null` because it was NaN (no sample) reads back
+/// as NaN, so a retained report can be read again and re-scored.
+pub(crate) fn nan_if_null<'de, D: serde::Deserializer<'de>>(d: D) -> Result<f64, D::Error> {
+    Ok(Option::<f64>::deserialize(d)?.unwrap_or(f64::NAN))
+}
+
+fn pair_nan_if_null<'de, D: serde::Deserializer<'de>>(d: D) -> Result<(f64, f64), D::Error> {
+    let (a, b) = <(Option<f64>, Option<f64>)>::deserialize(d)?;
+    Ok((a.unwrap_or(f64::NAN), b.unwrap_or(f64::NAN)))
+}
+
 /// A proportion with its 95% Wilson interval.
 #[derive(Clone, Copy, Debug, PartialEq, Serialize, Deserialize)]
 pub struct Proportion {
@@ -351,10 +362,13 @@ pub struct Proportion {
     /// Trials.
     pub n: usize,
     /// k / n.
+    #[serde(deserialize_with = "nan_if_null")]
     pub p: f64,
     /// Lower bound.
+    #[serde(deserialize_with = "nan_if_null")]
     pub lo: f64,
     /// Upper bound.
+    #[serde(deserialize_with = "nan_if_null")]
     pub hi: f64,
 }
 
@@ -401,8 +415,10 @@ pub fn wilson(k: usize, n: usize) -> Proportion {
 #[derive(Clone, Copy, Debug, PartialEq, Serialize, Deserialize)]
 pub struct MeanCi {
     /// Mean.
+    #[serde(deserialize_with = "nan_if_null")]
     pub mean: f64,
     /// 95% interval (NaN under two samples).
+    #[serde(deserialize_with = "pair_nan_if_null")]
     pub ci95: (f64, f64),
 }
 
