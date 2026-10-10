@@ -412,6 +412,22 @@ pub struct Padded {
     pub padding_files: usize,
 }
 
+/// Directories the exact index skips (mirrors `modbit_retrieval::index`).
+const NOT_INDEXED_DIRS: [&str; 12] = [
+    ".git",
+    "node_modules",
+    "target",
+    "dist",
+    "build",
+    ".venv",
+    "venv",
+    "__pycache__",
+    ".next",
+    ".cache",
+    "vendor",
+    ".modbit",
+];
+
 const WORDS: [&str; 48] = [
     "buffer", "matcher", "pattern", "stream", "cursor", "window", "offset", "digest", "filter",
     "record", "region", "scanner", "token", "parser", "walker", "sorter", "reader", "writer",
@@ -461,7 +477,7 @@ pub fn build_padded(checkout: &Path, dest: &Path, target_bytes: u64) -> Result<P
         std::fs::remove_dir_all(dest).map_err(|e| format!("clearing {}: {e}", dest.display()))?;
     }
     std::fs::create_dir_all(dest).map_err(|e| e.to_string())?;
-    let (mut bytes, mut files) = (0u64, 0usize);
+    let (mut bytes, mut files, mut unsearchable) = (0u64, 0usize, 0u64);
     for rel in tracked_files(checkout)? {
         let from = rel
             .split('/')
@@ -473,6 +489,19 @@ pub fn build_padded(checkout: &Path, dest: &Path, target_bytes: u64) -> Result<P
         if let Ok(n) = std::fs::copy(&from, &to) {
             bytes += n;
             files += 1;
+            // What the exact index will not count as searchable (binary or
+            // oversized files, skipped directories), so the target is met in
+            // indexed bytes and not merely in bytes on disk.
+            let skipped = rel
+                .split('/')
+                .any(|seg| NOT_INDEXED_DIRS.contains(&seg) || seg.starts_with(".modbit"));
+            let searchable = !skipped
+                && n <= 2 * 1024 * 1024
+                && std::fs::read(&to)
+                    .is_ok_and(|b| !b.contains(&0) && std::str::from_utf8(&b).is_ok());
+            if !searchable {
+                unsearchable += n;
+            }
         }
     }
     let mut padding = Padded {
@@ -482,7 +511,9 @@ pub fn build_padded(checkout: &Path, dest: &Path, target_bytes: u64) -> Result<P
         padding_files: 0,
     };
     let mut i = 0u64;
-    while padding.checkout_bytes + padding.padding_bytes < target_bytes {
+    // A 1% margin keeps the indexed size at or above the target.
+    let goal = target_bytes + unsearchable + target_bytes / 100;
+    while padding.checkout_bytes + padding.padding_bytes < goal {
         let dir = dest.join("padding").join(format!("p{:04}", i / 200));
         std::fs::create_dir_all(&dir).map_err(|e| e.to_string())?;
         let text = pad_text(i);

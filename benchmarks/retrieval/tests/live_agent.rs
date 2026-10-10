@@ -999,6 +999,10 @@ fn full_cli_run_against_a_scripted_model() {
     let mut env = live_env();
     env.retain(|(k, _)| *k != "MODBIT_LIVE_BASE_URL");
     env.push(("MODBIT_LIVE_BASE_URL", &base));
+    let rg_bin = std::env::var("MODBIT_RG_BIN").unwrap_or_default();
+    if !rg_bin.is_empty() {
+        env.push(("MODBIT_RG_BIN", &rg_bin));
+    }
     let r = cli(
         &env,
         &[
@@ -1022,4 +1026,33 @@ fn full_cli_run_against_a_scripted_model() {
             >= 100 * 1024 * 1024
     );
     assert!(rescore(&out).unwrap().reproduced);
+}
+
+/// Index-time probe at a chosen corpus size over a local checkout:
+/// `MODBIT_PROBE_CHECKOUT=<dir> MODBIT_PROBE_MB=20 cargo test -p
+/// modbit-bench-retrieval --test live_agent --release -- --ignored
+/// --nocapture index_scale_probe`.
+#[test]
+#[ignore = "manual: sizes the index measurement before a live run"]
+fn index_scale_probe() {
+    let (Some(dir), Some(mb)) = (
+        std::env::var_os("MODBIT_PROBE_CHECKOUT"),
+        std::env::var("MODBIT_PROBE_MB")
+            .ok()
+            .and_then(|v| v.parse::<u64>().ok()),
+    ) else {
+        eprintln!("set MODBIT_PROBE_CHECKOUT and MODBIT_PROBE_MB");
+        return;
+    };
+    let f = CaseFile::parse(DEFAULT_CASES).unwrap();
+    let work = tempfile::tempdir().unwrap();
+    let t = std::time::Instant::now();
+    let ix = modbit_bench_retrieval::live_run::measure_index(
+        Path::new(&dir),
+        work.path(),
+        mb * 1024 * 1024,
+        &f.cases[0],
+    )
+    .unwrap();
+    eprintln!("PROBE {mb} MB: {:#?} total {:?}", ix, t.elapsed());
 }
