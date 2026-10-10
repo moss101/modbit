@@ -587,10 +587,15 @@ pub async fn run_case(
             target.to_string_lossy().into_owned(),
         ),
         ("CARGO_TERM_COLOR".into(), "never".into()),
+        // The candidate's own build is what is measured, not this repository's
+        // lint policy: CI exports `RUSTFLAGS=-D warnings`, which turns the
+        // `unreachable code` warning of a vacuous candidate into a build
+        // failure and so makes the previous gate reject what it accepts here.
+        ("RUSTFLAGS".into(), String::new()),
     ];
     let own: Vec<String> = env.iter().map(|(k, _)| k.clone()).collect();
     let env: Vec<(String, String)> = std::env::vars()
-        .filter(|(k, _)| !own.contains(k))
+        .filter(|(k, _)| !own.contains(k) && k != "CARGO_ENCODED_RUSTFLAGS")
         .chain(env)
         .collect();
     let plan = modbit_verification::plan::derive(
