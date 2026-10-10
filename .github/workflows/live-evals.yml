@@ -193,12 +193,12 @@ jobs:
       - name: Install pinned Rust toolchain (rust-toolchain.toml)
         run: rustup show
       - uses: Swatinem/rust-cache@6323deb102c322ba6fcbdcafc7e3dddab59af2b6 # v2
-      - name: Install ripgrep (the external baseline; a run without it fails, it is never skipped)
+      - name: Install ripgrep, the external baseline (a run without it fails and is never skipped)
         run: |
           sudo apt-get update -qq
           sudo apt-get install -y -qq ripgrep
           rg --version
-      - name: Build the harness (release: the 100 MB cold index is measured here)
+      - name: Build the harness in release mode (the 100 MB cold index is measured here)
         run: cargo build --release --locked -p modbit-bench-retrieval --bin retrieval-live
       - name: Run the pinned cases for both profiles on the same model (the credential is required)
         env:
