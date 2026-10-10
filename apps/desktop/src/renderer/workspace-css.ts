@@ -86,8 +86,9 @@ export const workspaceCss = `
 .conv-assistant { content-visibility: visible; }
 .conv-text { line-height: 1.55; }
 .conv-para { margin: 0 0 var(--mb-space-2); white-space: pre-wrap; overflow-wrap: anywhere; }
-.conv-fresh { animation: conv-fade var(--mb-motion-slow, 300ms) ease-out both; }
-@keyframes conv-fade { from { opacity: 0.35; } to { opacity: 1; } }
+.conv-fresh { text-decoration: underline 1px transparent; text-underline-offset: 2px; animation: conv-fade var(--mb-motion-slow, 300ms) ease-out both; }
+/* New text is marked by a fading underline, never by fading the glyphs: text at partial opacity is below AA contrast for as long as it fades (WCAG 1.4.3). */
+@keyframes conv-fade { from { text-decoration-color: var(--mb-color-accent-text); } to { text-decoration-color: transparent; } }
 .conv-state { margin: 0 0 var(--mb-space-0_5); }
 .conv-code { margin: 0 0 var(--mb-space-2); border: 1px solid var(--mb-color-border); border-radius: var(--mb-radius-3); background: var(--mb-color-sunken); }
 .conv-code summary { cursor: pointer; padding: var(--mb-space-1) var(--mb-space-2); font-size: var(--mb-type-caption-size); color: var(--mb-color-text-muted); }

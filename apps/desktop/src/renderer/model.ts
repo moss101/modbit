@@ -531,7 +531,11 @@ export function childrenOf(m: Model, taskId: string): TaskCard[] {
  *  `nextAction` has no say. */
 export function columnOf(c: TaskCard, attention?: ReadonlySet<string>): FleetColumn {
   const live = c.state === "Waiting" || c.state === "Running" || c.state === "Queued";
-  if (attention ? live && attention.has(c.taskId) : c.nextAction && (c.state === "Waiting" || c.state === "Running")) return "needsAttention";
+  // A decision the person is being asked for (an approval or a question, both from the task's own events) is attention at once: the
+  // Core's view lists the same item, but it arrives a moment later, and a card that moves column then is re-mounted under the
+  // pointer - a click on Approve in that moment is lost.
+  const asked = live && (c.approval !== null || c.question !== null);
+  if (asked || (attention ? live && attention.has(c.taskId) : c.nextAction && (c.state === "Waiting" || c.state === "Running"))) return "needsAttention";
   switch (c.state) {
     case "ReadyForReview":
       return "readyForReview";
