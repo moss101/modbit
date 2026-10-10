@@ -140,6 +140,58 @@ fn num(text: &str, key: &str) -> u64 {
     field(text, key).and_then(|v| v.parse().ok()).unwrap_or(0)
 }
 
+/// The Core's account of a run that ended without completing: every gate
+/// evaluation and every check that did not pass (with its error class, so a
+/// generated `ADVERSARIAL_*` check is named), and the last events.
+fn why_not_done(cfg: &RunConfig, arm: Arm, data_dir: &Path, session: &str) -> String {
+    let Ok(events) = cli(
+        cfg,
+        arm,
+        data_dir,
+        &[
+            "events",
+            "tail",
+            "--session",
+            session,
+            "--count",
+            "100000",
+            "--json",
+        ],
+    ) else {
+        return "(the event log could not be read)".into();
+    };
+    let mut lines = Vec::new();
+    let mut tail: Vec<String> = Vec::new();
+    for line in events.lines() {
+        let Ok(v) = serde_json::from_str::<serde_json::Value>(line) else {
+            continue;
+        };
+        let kind = v["event_type"].as_str().unwrap_or("?");
+        tail.push(kind.to_owned());
+        match kind {
+            "AcceptanceGateEvaluated" => lines.push(format!("{kind}: {}", v["payload"])),
+            "VerificationRunRecorded" => {
+                let bad: Vec<String> = v["payload"]["checks"]
+                    .as_array()
+                    .into_iter()
+                    .flatten()
+                    .filter(|c| {
+                        c["status"]
+                            .as_str()
+                            .is_some_and(|s| s != "PASS" && s != "SKIP")
+                    })
+                    .map(|c| c.to_string())
+                    .collect();
+                lines.push(format!("{kind}: non-passing checks {bad:?}"));
+            }
+            _ => {}
+        }
+    }
+    let n = tail.len().saturating_sub(25);
+    lines.push(format!("last events: {:?}", &tail[n..]));
+    lines.join("\n")
+}
+
 /// Run one task under one arm, through a real Core.
 #[must_use]
 pub fn run_trial(cfg: &RunConfig, arm: Arm, task: &TrialTask, repeat: u32) -> RunRecord {
@@ -194,7 +246,7 @@ pub fn run_trial(cfg: &RunConfig, arm: Arm, task: &TrialTask, repeat: u32) -> Ru
         )?;
         let tid = word_after(&created, "task").ok_or("no task id")?.to_owned();
         let turns = cfg.max_turns.to_string();
-        cli(
+        if let Err(e) = cli(
             cfg,
             arm,
             data.path(),
@@ -211,7 +263,14 @@ pub fn run_trial(cfg: &RunConfig, arm: Arm, task: &TrialTask, repeat: u32) -> Ru
                 &turns,
                 "--wait",
             ],
-        )?;
+        ) {
+            // A run that did not end cleanly is reported with the Core's own
+            // account of why: the gate verdicts and every non-passing check.
+            return Err(format!(
+                "{e}\n{}",
+                why_not_done(cfg, arm, data.path(), &session)
+            ));
+        }
         rec.trial.agent_ms = u64::try_from(started.elapsed().as_millis()).unwrap_or(u64::MAX);
         let status = cli(cfg, arm, data.path(), &["task", "status", "--task", &tid])?;
         rec.state = field(&status, "state").unwrap_or("unknown").to_owned();
