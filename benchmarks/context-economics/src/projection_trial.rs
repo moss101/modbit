@@ -167,7 +167,11 @@ fn why_not_done(cfg: &RunConfig, arm: Arm, data_dir: &Path, session: &str) -> St
             continue;
         };
         let kind = v["event_type"].as_str().unwrap_or("?");
-        tail.push(kind.to_owned());
+        // The type and the start of its payload: a program that ran long, an
+        // attention class that suspended the run or an approval that was
+        // asked is named, not just counted.
+        let snippet: String = v["payload"].to_string().chars().take(200).collect();
+        tail.push(format!("{kind} {snippet}"));
         match kind {
             "AcceptanceGateEvaluated" => lines.push(format!("{kind}: {}", v["payload"])),
             "VerificationRunRecorded" => {
@@ -188,7 +192,7 @@ fn why_not_done(cfg: &RunConfig, arm: Arm, data_dir: &Path, session: &str) -> St
         }
     }
     let n = tail.len().saturating_sub(25);
-    lines.push(format!("last events: {:?}", &tail[n..]));
+    lines.push(format!("last events:\n  {}", tail[n..].join("\n  ")));
     lines.join("\n")
 }
 

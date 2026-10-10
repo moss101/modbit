@@ -94,6 +94,40 @@ impl Cli {
             String::from_utf8_lossy(&out.stderr).to_string(),
         )
     }
+
+    /// Why a run did not end where the test expected: the tail of the
+    /// session's log (type and the start of each payload, so an approval, a
+    /// question, a program's elapsed time or the attention class that
+    /// suspended the run is named), then the task's status. Only evaluated
+    /// when an assertion has already failed.
+    fn diagnose(&self, session: &str) -> String {
+        let (_, events, _) = self.run(&[
+            "events",
+            "tail",
+            "--session",
+            session,
+            "--count",
+            "100000",
+            "--json",
+        ]);
+        let rows: Vec<(String, String)> = events
+            .lines()
+            .filter_map(|l| serde_json::from_str::<serde_json::Value>(l).ok())
+            .map(|v| {
+                let payload = v["payload"].to_string();
+                let cut: String = payload.chars().take(240).collect();
+                (v["event_type"].as_str().unwrap_or("?").to_owned(), cut)
+            })
+            .collect();
+        let from = rows.len().saturating_sub(25);
+        let mut out = format!("last {} of {} events:\n", rows.len() - from, rows.len());
+        for (kind, payload) in &rows[from..] {
+            out.push_str(&format!("  {kind} {payload}\n"));
+        }
+        let (_, attention, _) = self.run(&["attention", "list", "--session", session]);
+        out.push_str(&format!("attention:\n{attention}"));
+        out
+    }
 }
 
 /// A scripted OpenAI-compatible model over real HTTP (one reply per number of
@@ -372,7 +406,7 @@ fn qual_px_000_headless_cli_task_lifecycle() {
         "gpt-5",
         "--wait",
     ]);
-    assert_eq!(code, 0, "{out}{err}");
+    assert_eq!(code, 0, "{out}{err}\n{}", cli.diagnose(&sid));
     assert!(out.contains("state=ReadyForReview"), "{out}");
     assert!(
         approver.join().unwrap(),
@@ -773,7 +807,7 @@ fn qual_ev_0181_0210_an_extension_skill_installs_lists_runs_its_procedure_and_su
         "gpt-5",
         "--wait",
     ]);
-    assert_eq!(code, 0, "{out}{err}");
+    assert_eq!(code, 0, "{out}{err}\n{}", cli.diagnose(&sid));
     assert!(out.contains("state=ReadyForReview"), "{out}");
     let (code, out, _) = cli.run(&[
         "events",
@@ -1088,7 +1122,7 @@ fn qual_ev_0126_an_identical_task_runs_the_same_through_the_desktop_client_and_t
         "gpt-5",
         "--wait",
     ]);
-    assert_eq!(code, 0, "{out}{err}");
+    assert_eq!(code, 0, "{out}{err}\n{}", cli.diagnose(&sid_cli));
     assert!(
         approver.join().unwrap(),
         "the protected effect was approved from another shell"
@@ -1654,7 +1688,7 @@ fn imp_ev_0142_doctor_trace_export_verify_and_handoff_through_the_cli() {
         "gpt-5",
         "--wait",
     ]);
-    assert_eq!(code, 0, "{out}{err}");
+    assert_eq!(code, 0, "{out}{err}\n{}", cli.diagnose(&sid));
 
     let (code, out, err) = cli.run(&["doctor", "--session", &sid]);
     assert_eq!(code, 0, "{out}{err}");
