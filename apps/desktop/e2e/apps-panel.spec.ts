@@ -135,7 +135,9 @@ test("Terminal: owners and states are listed, an exited terminal shows its code,
   await pickTerminal(exited.terminalId);
   await expect(screen()).toContainText("finished").catch(async (e: Error) => {
     const log = await readTerminal(page, { sessionId, taskId, terminalId: exited.terminalId, after: "0", windowBytes: 65536 });
-    throw new Error(`${e.message}\nthe Core's replay of the exited terminal: ${JSON.stringify(new TextDecoder().decode(Uint8Array.from(log.bytes)))}`);
+    const view = await terminalView().evaluate((el) => ({ phase: el.getAttribute("data-phase"), cursor: el.getAttribute("data-cursor"), bytes: el.getAttribute("data-bytes"), rows: el.querySelectorAll(".xterm-rows > div").length, text: el.querySelector(".xterm-rows")?.textContent?.replace(/\s+/g, " ") ?? null }));
+    const row = (await listTerminals()).find((t) => t.terminalId === exited.terminalId);
+    throw new Error(`${e.message}\nthe Core's replay of the exited terminal: ${JSON.stringify(new TextDecoder().decode(Uint8Array.from(log.bytes)))}\nthe view: ${JSON.stringify(view)}\nthe listed terminal: ${JSON.stringify(row)}`);
   });
   await expect(page.getByTestId("terminal-exit")).toContainText("Exited with code 3");
   await accessible(page, "terminal app, an exited terminal", '[data-testid="region-apps"]');
