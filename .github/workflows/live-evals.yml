@@ -130,6 +130,58 @@ jobs:
           CAP: ${{ needs.plan.outputs.px138 }}
         run: python3 .github/scripts/live_evals_check.py live-evals/px138 px138 "$CAP"
 
+  px135:
+    name: PX-135 widened gate calibration (live candidates through the real Core)
+    needs: plan
+    if: ${{ inputs.which == 'px135' || inputs.which == 'all' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 240
+    steps:
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
+      - name: Install pinned Rust toolchain (rust-toolchain.toml)
+        run: rustup show
+      - uses: Swatinem/rust-cache@6323deb102c322ba6fcbdcafc7e3dddab59af2b6 # v2
+      - uses: actions/setup-node@a0853c24544627f65ddf259abe73b1d18a591444 # v5
+        with:
+          node-version-file: .node-version
+      - name: Install pytest (the py-shop fixture's runner)
+        run: python3 -m pip install --quiet --user pytest==8.4.2 || python3 -m pip install --quiet --break-system-packages pytest==8.4.2
+      - name: Build the product and the harness
+        run: cargo build --locked -p modbit-core -p modbit-cli -p modbit-execd -p modbit-bench-gate-calibration
+      - name: Produce live candidates through the real Core and score them (the credential is required)
+        env:
+          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+          MODBIT_OPENAI_BASE_URL: ${{ vars.MODBIT_OPENAI_BASE_URL }}
+          MODBIT_OPENAI_MODELS: ${{ vars.MODBIT_OPENAI_MODELS }}
+          MODBIT_OPENAI_AUTH: ${{ vars.MODBIT_OPENAI_AUTH }}
+          MODBIT_OPENAI_EXTRA_BODY: ${{ vars.MODBIT_OPENAI_EXTRA_BODY }}
+          MODBIT_LIVE: "1"
+          MODBIT_LIVE_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+          MODBIT_LIVE_BASE_URL: ${{ vars.MODBIT_OPENAI_BASE_URL }}
+          MODBIT_LIVE_MODEL: ${{ vars.MODBIT_LIVE_MODEL }}
+          MODBIT_LIVE_CLI: target/debug/modbit-cli
+          MODBIT_LIVE_CORE: target/debug/modbit-core
+          CAP: ${{ needs.plan.outputs.px135 }}
+        run: |
+          if [ -z "$OPENAI_API_KEY" ]; then
+            echo "::error::no OPENAI_API_KEY secret: a live proof cannot pass without the real credential; nothing was run"
+            exit 1
+          fi
+          mkdir -p live-evals/px135
+          target/debug/gate-calibration-live --out-dir live-evals/px135 --max-cost-usd "$CAP" --repeats 2 2>&1 | tee live-evals/px135/run.log
+      - name: Retain the result bundle
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: live-evals-px135
+          path: live-evals/px135
+          if-no-files-found: error
+      - name: Every required measurement is present and the cap held
+        if: always()
+        env:
+          CAP: ${{ needs.plan.outputs.px135 }}
+        run: python3 .github/scripts/live_evals_check.py live-evals/px135 px135 "$CAP"
+
   px136:
     name: PX-136 paired DIRECT / CASCADE / CRITIQUE (live)
     needs: plan
