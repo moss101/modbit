@@ -2024,6 +2024,19 @@ dependencies = [
 ]
 
 [[package]]
+name = "modbit-actuator-fixture"
+version = "0.0.0"
+dependencies = [
+ "hex",
+ "modbit-protocol",
+ "png",
+ "serde",
+ "serde_json",
+ "sha2 0.11.0",
+ "tokio",
+]
+
+[[package]]
 name = "modbit-automation"
 version = "0.0.0"
 dependencies = [
@@ -2238,6 +2251,26 @@ dependencies = [
 ]
 
 [[package]]
+name = "modbit-computer"
+version = "0.0.0"
+dependencies = [
+ "hex",
+ "modbit-browser",
+ "modbit-domain",
+ "modbit-protocol",
+ "png",
+ "rand 0.10.2",
+ "regex",
+ "serde",
+ "serde_json",
+ "sha2 0.11.0",
+ "tempfile",
+ "thiserror 2.0.20",
+ "tokio",
+ "tokio-util",
+]
+
+[[package]]
 name = "modbit-context"
 version = "0.0.0"
 dependencies = [
@@ -2266,6 +2299,7 @@ dependencies = [
  "modbit-browser",
  "modbit-checkpoint",
  "modbit-compaction",
+ "modbit-computer",
  "modbit-context",
  "modbit-core-runtime",
  "modbit-diagnostics",
@@ -2679,6 +2713,7 @@ dependencies = [
  "jsonschema",
  "lopdf",
  "modbit-browser",
+ "modbit-computer",
  "modbit-domain",
  "modbit-git",
  "modbit-mcp",

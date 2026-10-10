@@ -194,6 +194,12 @@ pub struct SubtaskSpec {
     /// (REQ-EV-0115): its tools, model, default scope, budgets and context.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub profile: Option<String>,
+    /// What the parent observed that makes the environment fit for the
+    /// child to start in (PX-075, CUC-A05): the application is built and
+    /// running, the check passed. The `computer-use` profile is refused
+    /// without it; it is the parent's recorded word, in the child's context.
+    #[serde(default, skip_serializing_if = "String::is_empty")]
+    pub environment_healthy: String,
 }
 
 /// How a child is scheduled with respect to the parent's attention
@@ -293,6 +299,11 @@ pub struct SubagentResult {
     pub worktree: String,
     /// The child's final candidate revision.
     pub candidate_revision: u64,
+    /// The report of a `computer-use` child (PX-075): the final state it
+    /// observed, the actions it took by kind, the evidence it kept and - when
+    /// it stopped - what it observed, what blocked it and the best next step.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub computer: Option<serde_json::Value>,
 }
 
 /// Whether two write scopes overlap: a path prefix or glob of one covers

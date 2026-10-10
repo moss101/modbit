@@ -31,6 +31,7 @@ mod ci_evidence;
 mod compaction_model;
 mod compensation;
 mod composer;
+mod computer;
 mod config;
 mod conversation_search;
 mod credentials;

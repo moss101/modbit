@@ -325,6 +325,11 @@ pub async fn run_as(
     // tick that evaluates triggers starts; a firing recorded but not
     // dispatched when the last Core died is finished here, once.
     crate::automation::start(&core).await;
+    // PX-069: what a dead Core left of native control is closed on the
+    // record, then the configured actuator is attached - or the tools stay
+    // absent (fail closed) - and the pump that records the runtime starts.
+    core.tools.computer.recover(&core).await;
+    core.tools.computer.start(&core).await;
     // EPR-012: the last activated registry generation, verified again.
     crate::model_registry::restore(&core).await;
     // REQ-PX-132: the observer of the listening services of the tasks'
@@ -1407,6 +1412,10 @@ fn required_client_capability(env: &CommandEnvelope) -> Option<&'static str> {
         // PX-057: who approves protected effects, and the durable rules that
         // stand for an approval, are approvals' own class of decision.
         "SetRunMode" | "AddAllowRule" | "RevokeAllowRule" => "approval.resolve",
+        // PX-069: the runtime's state is a read of the log; resolving a latch
+        // and the on-screen Stop are the person's control of the machine.
+        "GetComputerRuntime" => "events.subscribe",
+        "ResolveComputerLatch" | "ComputerStop" => "session.control",
         "SetSendBehavior" => "task.author",
         // PX-050: the queue is the author's; reading it is reading the log.
         "EditQueuedInput" | "RemoveQueuedInput" | "ReorderQueuedInput" | "SendQueuedInputNow"
@@ -2723,6 +2732,11 @@ pub(crate) async fn handle_command_as(
         | "SetRunMode" | "GetRunMode" | "AddAllowRule" | "RevokeAllowRule" | "ListAllowRules" => {
             crate::run_control::handle(core, &env).await
         }
+        // PX-069: native computer control - the runtime's state, the person
+        // resolving an unknown-outcome latch, and the on-screen Stop.
+        "GetComputerRuntime" | "ResolveComputerLatch" | "ComputerStop" => {
+            crate::computer::handle(core, &env).await
+        }
         "GetContextAccounting" => {
             let Ok(p) = wire::GetContextAccounting::decode(env.payload.as_slice()) else {
                 return reject(cid, "BAD_PAYLOAD", "GetContextAccounting");
@@ -3672,8 +3686,20 @@ pub(crate) async fn handle_command_as(
                     cancelled += 1;
                 }
             }
+            // PX-069 (CUC-D05): the stop is host-owned and does not wait for
+            // the model loop - the actuator stops injecting and the session's
+            // control sessions close, sticky for their runs.
+            let controls = core
+                .tools
+                .computer
+                .runtime
+                .emergency_stop(session_id, &reason)
+                .await;
+            if controls > 0 {
+                core.tools.computer.flush(&core.store, core.tenant_id).await;
+            }
             eprintln!(
-                "modbit-core: emergency stop on session {session_id}: {revoked} lease(s) revoked, {cancelled} live run(s) cancelled ({reason})"
+                "modbit-core: emergency stop on session {session_id}: {revoked} lease(s) revoked, {cancelled} live run(s) cancelled, {controls} control session(s) stopped ({reason})"
             );
             accept(
                 cid,

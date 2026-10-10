@@ -17,6 +17,7 @@ lopdf = { version = "0.44", default-features = false }
 modbit-domain.workspace = true
 modbit-git.workspace = true
 modbit-browser.workspace = true
+modbit-computer.workspace = true
 modbit-mcp.workspace = true
 modbit-sandbox.workspace = true
 modbit-protocol.workspace = true
@@ -48,6 +49,7 @@ capabilities = [
   { id = "tools.output_ref", requirements = ["REQ-EV-0269"] },
   { id = "tools.forge", requirements = ["REQ-PX-006", "REQ-PX-125"] },
   { id = "tools.browser", requirements = ["REQ-EV-0276", "REQ-EV-0284"] },
+  { id = "tools.computer", requirements = ["REQ-PX-069", "REQ-PX-070", "REQ-PX-076"] },
   { id = "tools.hooks", requirements = ["REQ-EV-0042", "REQ-EV-0139", "REQ-EV-0240"] },
   { id = "tools.extensions", requirements = ["REQ-EV-0138", "REQ-EV-0225"] },
 ]

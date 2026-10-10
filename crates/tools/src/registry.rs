@@ -167,6 +167,23 @@ pub trait Tool: Send + Sync {
         CallFacts::default()
     }
 
+    /// Everything that can be decided about a call before a person is asked
+    /// (PX-069, PX-070): the refusals a call would get anyway, so no approval
+    /// is offered for what cannot be done, and - for a tool whose approval
+    /// must be exact - the facts the approval binds beyond the arguments
+    /// (the identity of the application acted on, the window, the element).
+    /// The pipeline folds a returned binding into the call's intent hash, so
+    /// any change in those facts invalidates the approval. `Err` is the
+    /// refusal; `Ok(None)` (the default) binds nothing.
+    fn prepare<'a>(
+        &'a self,
+        ctx: &'a InvokeContext,
+        args: &'a Value,
+    ) -> BoxFuture<'a, std::result::Result<Option<Value>, ToolOutcome>> {
+        let _ = (ctx, args);
+        Box::pin(async { Ok(None) })
+    }
+
     /// Why [`Tool::effect_in_profile`] raised the class above the registered
     /// one, for the approval and the evidence record. `None` when it did not.
     fn effect_reason(&self, args: &Value, profile: &str) -> Option<String> {

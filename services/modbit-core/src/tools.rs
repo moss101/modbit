@@ -446,6 +446,9 @@ pub struct ToolHost {
     pub(crate) data_dir: std::path::PathBuf,
     /// The browser sessions `browser.*` reach through their hosts (M7.1).
     pub browser: Arc<dyn modbit_browser::BrowserPort>,
+    /// Native computer control (PX-069): the runtime, the attached actuator
+    /// and the host that records what it does on the log.
+    pub computer: Arc<crate::computer::ComputerHost>,
     /// The provider gateway, for the credentials in its custody (M7.7):
     /// read at each call so a call's arguments can be refused for carrying
     /// one; never stored anywhere else.
@@ -550,6 +553,8 @@ impl ToolHost {
         modbit_tools::forge::register_forge(&mut registry).map_err(|e| anyhow::anyhow!("{e}"))?;
         modbit_tools::browser::register_browser(&mut registry)
             .map_err(|e| anyhow::anyhow!("{e}"))?;
+        modbit_tools::computer::register_computer(&mut registry)
+            .map_err(|e| anyhow::anyhow!("{e}"))?;
         // M9.4: the read declarations the host publishes are shared with the
         // registered `external.call`, so the effect class it presents to the
         // kernel is always the host's current judgement.
@@ -597,6 +602,7 @@ impl ToolHost {
             hooks: Arc::new(crate::hooks::HookBus::default()),
             data_dir: data_dir.to_path_buf(),
             browser,
+            computer: Arc::new(crate::computer::ComputerHost::new(data_dir)),
             gateway,
             sandbox_gateway: Mutex::new(None),
             sandboxes: Mutex::new(HashMap::new()),
@@ -800,6 +806,7 @@ impl ToolHost {
         lease: Option<&CapabilityLease>,
     ) -> Vec<ToolSpec> {
         let kernel = CapabilityKernel::default();
+        let computer = self.computer.offered();
         self.runtime
             .registry()
             .specs()
@@ -807,6 +814,11 @@ impl ToolHost {
             .filter(|s| {
                 if s.required_capabilities.iter().any(|c| c == "shell.exec") && self.execd.is_none()
                 {
+                    return false;
+                }
+                // PX-069 (fail closed): native control is offered only while
+                // a configured actuator is attached.
+                if crate::computer::is_computer_tool(&s.name) && !computer {
                     return false;
                 }
                 let Some(p) = profile else {
@@ -990,6 +1002,7 @@ impl ToolHost {
             // text, not its canonical form): selectors and targets must be
             // spelled from the same root to be compared.
             root: workspace_root.clone(),
+            deny_gui_shell: self.computer.is_child(task_id),
         };
         let search: Option<Arc<dyn modbit_tools::SearchPort>> = match (&workspace, &root) {
             (Some(ws), Some(r)) => Some(
@@ -1198,6 +1211,21 @@ impl ToolHost {
                 cancel: cancel.clone(),
             }) as Arc<dyn modbit_tools::GitStatePort>
         });
+        // PX-069: the computer tools reach the runtime through a port bound to
+        // this task, run, mode and policy; nothing else holds the actuator.
+        let computer_port: Option<Arc<dyn modbit_computer::ComputerPort>> =
+            crate::computer::is_computer_tool(tool_name).then(|| {
+                Arc::new(crate::computer::CorePort {
+                    host: Arc::clone(&self.computer),
+                    task_id,
+                    session_id,
+                    run_id: run_id.map(|r| r.to_string()).unwrap_or_default(),
+                    mode: mode.name().to_owned(),
+                    emergency_stopped,
+                    policy: crate::computer::policy_of(&task_config),
+                    redactor: self.redactor(),
+                }) as Arc<dyn modbit_computer::ComputerPort>
+            });
         let ctx = InvokeContext {
             task_id,
             execution_profile: execution_profile.to_owned(),
@@ -1222,6 +1250,9 @@ impl ToolHost {
                 actor: actor.clone(),
             })),
             browser: Some(Arc::clone(&self.browser)),
+            computer: computer_port,
+            approval_id: None,
+            intent_hash: None,
             sandbox: self
                 .sandboxes
                 .lock()
@@ -1412,6 +1443,12 @@ impl ToolHost {
             .runtime
             .invoke(&ctx, tool_call_id, tool_name, arguments_json)
             .await;
+        // PX-069: what the runtime recorded while the call ran (a session
+        // opened, an observation, an input, a latch) reaches the log now, so
+        // it is there when the call's own outcome is.
+        if crate::computer::is_computer_tool(tool_name) {
+            self.computer.flush(store, tenant_id).await;
+        }
         // A hook rewrote the call: what ran is the rewrite, and its change
         // record diffs against the workspace as it was when it was rewritten.
         let mut final_arguments = arguments_json.to_owned();
@@ -1813,7 +1850,14 @@ impl ToolHost {
                                 effect_class,
                                 intent_hash: result.arguments_hash.clone(),
                                 scope_json,
-                                expires_at: Some(modbit_domain::Timestamp(now.0 + APPROVAL_TTL_MS)),
+                                expires_at: Some(modbit_domain::Timestamp(
+                                    now.0
+                                        + if crate::computer::is_computer_tool(tool_name) {
+                                            crate::computer::APPROVAL_TTL_MS
+                                        } else {
+                                            APPROVAL_TTL_MS
+                                        },
+                                )),
                             },
                             actor.clone(),
                         )],
@@ -1870,7 +1914,8 @@ impl ToolHost {
                 // chain - and so does a browser input whose outcome is unknown,
                 // whatever its class (PX-121): the receipt says UNKNOWN, so no
                 // reader takes the input for one that did not happen.
-                let browser_unknown = tool_name.starts_with("browser.")
+                let browser_unknown = (tool_name.starts_with("browser.")
+                    || tool_name.starts_with("computer."))
                     && result.status == ToolStatus::UnknownOutcome;
                 if effect_class >= modbit_domain::toolcall::EffectClass::ProtectedWrite
                     || browser_unknown
@@ -2364,6 +2409,9 @@ struct KernelPort {
     mode: modbit_domain::mode::TaskMode,
     /// The run mode in force and the durable rules (PX-057).
     run: crate::run_control::RunContext,
+    /// The task is a `computer-use` child (PX-075): its shell is for non-GUI
+    /// work, and a command that drives or captures the interface is refused.
+    deny_gui_shell: bool,
 }
 
 /// The absolute resources a call's workspace paths name, in the lease's
@@ -2420,6 +2468,20 @@ impl CapabilityPort for KernelPort {
             return PolicyDecision::Deny {
                 code,
                 reason,
+                approval_required: false,
+            };
+        }
+        // PX-075: a computer-use child's shell is for non-GUI work. Driving or
+        // capturing the interface through it would go around the typed
+        // refusals, the latch and the approval class, so it is refused here,
+        // whichever way the command was reached (a direct call or a program).
+        if self.deny_gui_shell
+            && let Some(argv) = &req.command
+            && crate::computer::argv_drives_gui(argv)
+        {
+            return PolicyDecision::Deny {
+                code: "GUI_DRIVE_VIA_SHELL_REFUSED".into(),
+                reason: "the shell is for non-GUI work in this role; operate the interface with the computer.* tools, which are typed, latched and approved per call".into(),
                 approval_required: false,
             };
         }
@@ -2490,6 +2552,18 @@ impl CapabilityPort for KernelPort {
                 approval_required: false,
             },
             KernelDecision::ApprovalRequired { reason, scope_json } => {
+                // PX-070: the exact intent the tool bound (the application's
+                // identity, the window, the element, the action and its
+                // arguments in full) is on the approval the person sees.
+                let scope_json = match &req.bound_intent {
+                    Some(bound) => {
+                        let mut v: serde_json::Value = serde_json::from_str(&scope_json)
+                            .unwrap_or_else(|_| serde_json::json!({}));
+                        v["intent"] = bound.clone();
+                        v.to_string()
+                    }
+                    None => scope_json,
+                };
                 PolicyDecision::ApprovalRequired { reason, scope_json }
             }
         }
