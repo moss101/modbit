@@ -1,0 +1,24 @@
+{
+  "expected": {
+    "nowMs": "1700000004000",
+    "offset": "41",
+    "proposals": [
+      {
+        "decidedAtMs": "0",
+        "decidedOffset": "0",
+        "expiresAtMs": "1700000015000",
+        "fromMode": "TASK_MODE_PLAN",
+        "outcomeReason": "",
+        "proposalId": "mp-call00",
+        "proposedAtMs": "1700000000000",
+        "proposedOffset": "40",
+        "reason": "the plan is ready",
+        "status": "PENDING",
+        "taskId": "71717171717171717171717171717171",
+        "toMode": "TASK_MODE_AGENT"
+      }
+    ],
+    "taskId": "71717171717171717171717171717171"
+  },
+  "type": "modbit.v1.ModeProposalList"
+}

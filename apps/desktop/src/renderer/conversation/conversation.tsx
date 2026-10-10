@@ -18,6 +18,7 @@ import { loadConversationPrefs, saveConversationPrefs, type ConversationPrefs } 
 import { useConversation } from "./use-conversation.ts";
 import { Composer } from "../composer/composer.tsx";
 import { ApprovalDock } from "../approvals/approval-dock.tsx";
+import { ModeProposalDock } from "../approvals/mode-proposal-dock.tsx";
 import { RunModeControl } from "../approvals/run-mode.tsx";
 import { useCheckpointSurface } from "./use-checkpoint-surface.tsx";
 
@@ -274,6 +275,7 @@ export function Conversation(props: ConversationProps) {
         {copied}
       </p>
       {ckpt.bar}
+      <ModeProposalDock sessionId={sessionId} taskId={taskId} connected={connected} />
       <ApprovalDock sessionId={sessionId} taskId={taskId} connected={connected} onChangeMode={() => setModeOpen(true)} titleOf={titleOf ?? ((id) => id.slice(0, 8))} onOpenTask={onOpenTask ?? (() => {})} />
       {ckpt.overlay}
       {/* The one tray host: docked directly above the composer, never beside or below it (AFW-H01). */}

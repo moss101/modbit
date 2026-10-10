@@ -2012,6 +2012,17 @@ pub fn load_approvals_for_session(
     Ok(rows.collect::<std::result::Result<Vec<_>, _>>()?)
 }
 
+/// Every approval still waiting for a decision, in every session, oldest
+/// first (the Core's expiry sweep reads exactly these).
+pub fn load_requested_approvals(tx: &rusqlite::Connection) -> Result<Vec<Approval>> {
+    let mut stmt = tx.prepare(&format!(
+        "SELECT {} FROM approvals a WHERE a.status = 'REQUESTED' ORDER BY a.requested_at, a.approval_id",
+        approval_cols()
+    ))?;
+    let rows = stmt.query_map([], approval_from_row)?;
+    Ok(rows.collect::<std::result::Result<Vec<_>, _>>()?)
+}
+
 fn lease_from_row(r: &rusqlite::Row<'_>) -> rusqlite::Result<CapabilityLease> {
     let id: Vec<u8> = r.get(0)?;
     let tenant: Vec<u8> = r.get(1)?;
