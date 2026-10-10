@@ -43,7 +43,8 @@ async function openConversation(page: Page, taskId: string): Promise<void> {
 test("PX-047: a streamed answer appears incrementally, is never shown as final while open, only grows, and is final when the stream completes", async () => {
   const repo = makeRepo(mkdtempSync(join(tmpdir(), "modbit-conv-repo-")));
   const gate = new Gate();
-  const model = await streamingModel([{ parts: [FIRST, { wait: gate }, SECOND, PLAN] }, { parts: [DONE] }]);
+  const finish = new Gate();
+  const model = await streamingModel([{ parts: [FIRST, { wait: gate }, SECOND, PLAN] }, { parts: [{ wait: finish }, DONE] }]);
   const dataDir = mkdtempSync(join(tmpdir(), "modbit-e2e-conv-stream-"));
   const { app, page } = await launch(dataDir, { env: { MODBIT_OPENAI_BASE_URL: model.url } });
   try {
@@ -77,6 +78,7 @@ test("PX-047: a streamed answer appears incrementally, is never shown as final w
     await expect(page.getByTestId("conv-streaming")).toHaveCount(0);
   } finally {
     gate.open();
+    finish.open();
     await closeApp(app);
     model.server.close();
   }
@@ -85,7 +87,8 @@ test("PX-047: a streamed answer appears incrementally, is never shown as final w
 test("PX-047: a reload in the middle of a stream resumes it: the partial text comes back and the rest follows", async () => {
   const repo = makeRepo(mkdtempSync(join(tmpdir(), "modbit-conv-repo-")));
   const gate = new Gate();
-  const model = await streamingModel([{ parts: [FIRST, { wait: gate }, SECOND, PLAN] }, { parts: [DONE] }]);
+  const finish = new Gate();
+  const model = await streamingModel([{ parts: [FIRST, { wait: gate }, SECOND, PLAN] }, { parts: [{ wait: finish }, DONE] }]);
   const dataDir = mkdtempSync(join(tmpdir(), "modbit-e2e-conv-reload-"));
   const { app, page } = await launch(dataDir, { env: { MODBIT_OPENAI_BASE_URL: model.url } });
   try {
@@ -105,6 +108,7 @@ test("PX-047: a reload in the middle of a stream resumes it: the partial text co
     expect((await page.getByTestId("conv-text").innerText()).replace(/\s+/g, " ").trim()).toBe(FULL.trim());
   } finally {
     gate.open();
+    finish.open();
     await closeApp(app);
     model.server.close();
   }
@@ -154,7 +158,8 @@ test("PX-047: scrolling up freezes follow, the pill counts later messages, the j
     await expect(page.getByTestId("conv-text")).toContainText("Paragraph 60", { timeout: 60_000 });
     // Following the tail while pinned.
     await expect(scroll).toHaveAttribute("data-pinned", "true");
-    expect(await scroll.evaluate((e) => e.scrollHeight - e.scrollTop - e.clientHeight)).toBeLessThan(40);
+    // The follow scroll lands after the layout that grew the text, so the distance is awaited, not sampled once.
+    await expect.poll(() => scroll.evaluate((e) => e.scrollHeight - e.scrollTop - e.clientHeight), { timeout: 15_000 }).toBeLessThan(40);
     // Inert content: text is literal, nothing executed, no element made from it.
     expect(await page.evaluate(() => (window as unknown as { __pwned?: number }).__pwned)).toBeUndefined();
     expect(await page.locator('[data-testid="conv-text"] img, [data-testid="conv-text"] script, [data-testid="conv-text"] a').count()).toBe(0);
