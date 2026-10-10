@@ -118,6 +118,25 @@ pub struct S3Config {
     pub allow_http: bool,
 }
 
+/// One decision of a sandbox's egress broker, as the gateway persisted it.
+#[derive(Clone, Debug, PartialEq, Eq, serde::Serialize)]
+pub struct EgressAuditRow {
+    /// `tunnel` | `http` | `credentialed`.
+    pub kind: String,
+    /// What the guest asked for.
+    pub destination: String,
+    /// Admitted or refused.
+    pub allowed: bool,
+    /// The capability of the rule that admitted it (empty when refused).
+    pub capability: String,
+    /// The typed reason of a refusal (`NO_EGRESS_RULE`, `ORG_ALLOW_LIST`, ...).
+    pub reason: String,
+    /// Words.
+    pub detail: String,
+    /// ms since the epoch.
+    pub at_ms: i64,
+}
+
 /// Store configuration.
 #[derive(Clone, Debug)]
 pub struct CloudStoreConfig {
@@ -2262,36 +2281,45 @@ impl CloudStore {
         destination: &str,
         allowed: bool,
         capability: &str,
+        reason: &str,
         detail: &str,
         at_ms: i64,
     ) -> Result<()> {
         let client = self.pool.get().await?;
         client
             .execute(
-                "INSERT INTO sandbox_egress (sandbox_id, tenant_id, kind, destination, allowed, capability, detail, at_ms) VALUES ($1, $2, $3, $4, $5, $6, $7, $8)",
-                &[&sandbox, &tenant_uuid(tenant), &kind, &destination, &allowed, &capability, &detail, &at_ms],
+                "INSERT INTO sandbox_egress (sandbox_id, tenant_id, kind, destination, allowed, capability, reason, detail, at_ms) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)",
+                &[&sandbox, &tenant_uuid(tenant), &kind, &destination, &allowed, &capability, &reason, &detail, &at_ms],
             )
             .await?;
         Ok(())
     }
 
-    /// The egress audit of a sandbox within its tenant:
-    /// `(kind, destination, allowed, capability, detail, at_ms)`.
+    /// The egress audit of a sandbox within its tenant: every decision, in
+    /// order.
     pub async fn egress_audit(
         &self,
         tenant: TenantId,
         sandbox: uuid::Uuid,
-    ) -> Result<Vec<(String, String, bool, String, String, i64)>> {
+    ) -> Result<Vec<EgressAuditRow>> {
         let client = self.pool.get().await?;
         let rows = client
             .query(
-                "SELECT kind, destination, allowed, capability, detail, at_ms FROM sandbox_egress WHERE tenant_id = $1 AND sandbox_id = $2 ORDER BY egress_id ASC",
+                "SELECT kind, destination, allowed, capability, reason, detail, at_ms FROM sandbox_egress WHERE tenant_id = $1 AND sandbox_id = $2 ORDER BY egress_id ASC",
                 &[&tenant_uuid(tenant), &sandbox],
             )
             .await?;
         Ok(rows
             .iter()
-            .map(|r| (r.get(0), r.get(1), r.get(2), r.get(3), r.get(4), r.get(5)))
+            .map(|r| EgressAuditRow {
+                kind: r.get(0),
+                destination: r.get(1),
+                allowed: r.get(2),
+                capability: r.get(3),
+                reason: r.get(4),
+                detail: r.get(5),
+                at_ms: r.get(6),
+            })
             .collect())
     }
 

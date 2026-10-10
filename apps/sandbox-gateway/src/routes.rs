@@ -326,10 +326,77 @@ fn spec_of(
         network: NetworkPolicy {
             egress,
             credentials: credentials_of(v).0,
+            // Never read from the request: the organisation's list is the
+            // tenant's signed policy, which the gateway reads for itself.
+            org_allow: None,
         },
         resources,
         browser: spec["browser"].as_bool().unwrap_or(false),
     })
+}
+
+/// The organisation's egress allow-list for `tenant` (PX-085, AUT-D07: "organisation
+/// allow-lists and forced policy apply"), from the tenant's newest signed
+/// policy bundle, which the gateway verifies for itself exactly as the worker
+/// does (the organisation's registered key signed it, it is written for this
+/// tenant, it is fresh). It is read here rather than taken from the request, so
+/// a Core, a worker or a definition cannot widen it.
+///
+/// * no bundle ever published, or a bundle with no `network_allow`: no
+///   organisation restriction (`None`);
+/// * a verified bundle with `network_allow`: that list;
+/// * a bundle the tenant holds but that cannot be verified or has expired:
+///   egress is closed (an empty list), the same fail-closed stance the worker
+///   takes by starting no task.
+async fn org_allow_of(
+    st: &AppState,
+    tenant: TenantId,
+) -> ApiResult<Option<modbit_sandbox::policy::OrgAllow>> {
+    use modbit_domain::policy_bundle::{self, Expect, SignedBundle};
+    use modbit_sandbox::policy::OrgAllow;
+    let Some((generation, value)) = st.store.current_policy_bundle(tenant).await? else {
+        return Ok(None);
+    };
+    let closed = |why: &str| {
+        Some(OrgAllow {
+            entries: vec![],
+            note: format!(
+                "organisation policy bundle generation {generation} {why}; egress is closed"
+            ),
+        })
+    };
+    let Ok(signed) = serde_json::from_value::<SignedBundle>(value) else {
+        return Ok(closed("is malformed"));
+    };
+    let keys = st.store.org_keys(tenant).await?;
+    let verdict = policy_bundle::verify(
+        &signed,
+        &Expect {
+            keys: &keys,
+            tenant_id: &tenant.to_string(),
+            now_ms: now_ms(),
+            min_generation: 0,
+            protocol_major: modbit_protocol::PROTOCOL_VERSION.major,
+        },
+    );
+    let doc = match verdict {
+        Ok(d) => d,
+        Err(r) => return Ok(closed(&format!("was refused ({})", r.code()))),
+    };
+    let Some(list) = doc.admin_config.get("network_allow") else {
+        return Ok(None);
+    };
+    let Some(entries) = list.as_array().map(|a| {
+        a.iter()
+            .filter_map(|e| e.as_str().map(str::to_owned))
+            .collect::<Vec<_>>()
+    }) else {
+        return Ok(closed("has a network_allow that is not a list"));
+    };
+    Ok(Some(OrgAllow {
+        entries,
+        note: format!("organisation policy bundle generation {generation}"),
+    }))
 }
 
 async fn provision(
@@ -387,7 +454,8 @@ async fn provision(
             ));
         }
     }
-    let spec = spec_of(&body, tenant, session, task)?;
+    let mut spec = spec_of(&body, tenant, session, task)?;
+    spec.network.org_allow = org_allow_of(&st, tenant).await?;
     let policy = compile(&spec)?;
     let sandbox_id = uuid::Uuid::now_v7();
     let mut provisioned = st
@@ -467,7 +535,7 @@ async fn provision(
             "sandbox_id": sandbox_id.to_string(),
             "backend": backend,
             "isolated": isolated,
-            "policy": {"workspace_root": policy.workspace_root, "protected_paths": policy.protected_paths, "network_interface": policy.network_interface, "egress_proxy": policy.egress_proxy, "egress": policy.egress.iter().map(|r| format!("{}:{}", r.host, r.port)).collect::<Vec<_>>(), "credentials": policy.spec.network.credentials.iter().map(|c| c.virtual_host.clone()).collect::<Vec<_>>(), "browser": policy.browser},
+            "policy": {"workspace_root": policy.workspace_root, "protected_paths": policy.protected_paths, "network_interface": policy.network_interface, "egress_proxy": policy.egress_proxy, "egress": policy.egress.iter().map(|r| format!("{}:{}", r.host, r.port)).collect::<Vec<_>>(), "credentials": policy.spec.network.credentials.iter().map(|c| c.virtual_host.clone()).collect::<Vec<_>>(), "org_allow": policy.spec.network.org_allow.as_ref().map(|o| json!({"entries": o.entries, "note": o.note})), "browser": policy.browser},
             "guest": {"version": hello.guest_version, "protocol": format!("{}.{}", hello.protocol_major, hello.protocol_minor), "methods": hello.methods, "boot_id": hello.boot_id},
             "image": st.backend.image().map(|m| json!({"kind": m.kind, "sha256": m.sha256, "guest_version": m.guest_version})),
         })),
@@ -946,7 +1014,7 @@ async fn egress(
     let stored = st.store.egress_audit(tenant, sandbox).await?;
     Ok(Json(json!({
         "sandbox_id": sandbox.to_string(),
-        "records": live.iter().map(|r| json!({"kind": r.kind, "destination": r.destination, "allowed": r.allowed, "capability": r.capability, "detail": r.detail, "at_ms": r.at_ms})).collect::<Vec<_>>(),
+        "records": live.iter().map(|r| json!({"kind": r.kind, "destination": r.destination, "allowed": r.allowed, "capability": r.capability, "reason": r.reason, "detail": r.detail, "at_ms": r.at_ms})).collect::<Vec<_>>(),
         "stored": stored.len(),
     })))
 }

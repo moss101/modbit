@@ -64,6 +64,48 @@ impl CredentialGrant {
     }
 }
 
+/// The organisation's egress allow-list (PX-085, AUT-D07: "organisation
+/// allow-lists and forced policy apply"). It is the signed policy bundle's
+/// `network_allow`, read by the gateway itself from the tenant's store when it
+/// provisions a sandbox, and it caps every rule below it: a destination the
+/// task's lease, a definition's approved hosts or a credential grant admits
+/// is still refused when this list does not name it. A rule can narrow the
+/// list; nothing a task, a definition or a Core sends can widen it.
+#[derive(Clone, Debug, Default, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
+pub struct OrgAllow {
+    /// Host names (`api.example.com`), `host:port` pairs, or `*.suffix`
+    /// wildcards. Empty admits nothing.
+    pub entries: Vec<String>,
+    /// Where the list came from, for the audit (`policy bundle generation 3`),
+    /// or why it admits nothing (`... could not be verified`).
+    pub note: String,
+}
+
+impl OrgAllow {
+    /// Whether the list names `host:port`.
+    #[must_use]
+    pub fn admits(&self, host: &str, port: u16) -> bool {
+        let host = host.to_ascii_lowercase();
+        self.entries.iter().any(|e| {
+            let e = e.trim().to_ascii_lowercase();
+            if e.is_empty() {
+                return false;
+            }
+            let (eh, ep) = match e.rsplit_once(':') {
+                Some((h, p)) if !h.is_empty() && p.chars().all(|c| c.is_ascii_digit()) => {
+                    (h.to_owned(), p.parse::<u16>().ok())
+                }
+                _ => (e.clone(), None),
+            };
+            let host_ok = match eh.strip_prefix("*.") {
+                Some(suffix) => host == suffix || host.ends_with(&format!(".{suffix}")),
+                None => host == eh,
+            };
+            host_ok && ep.is_none_or(|p| p == port)
+        })
+    }
+}
+
 /// Network policy: nothing unless granted (M8.6: what is granted is served
 /// by the gateway's egress broker over the sandbox's private channel —
 /// the guest gets no network interface either way).
@@ -73,6 +115,10 @@ pub struct NetworkPolicy {
     pub egress: Vec<EgressRule>,
     /// Credentialed virtual hosts.
     pub credentials: Vec<CredentialGrant>,
+    /// The organisation's allow-list over all of the above (`None`: the
+    /// tenant has no organisation policy that restricts egress).
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub org_allow: Option<OrgAllow>,
 }
 
 impl NetworkPolicy {
@@ -96,6 +142,13 @@ impl NetworkPolicy {
             };
             host_ok && (r.port == 0 || r.port == port)
         })
+    }
+
+    /// The organisation list that refuses `host:port`, if there is one and
+    /// it does.
+    #[must_use]
+    pub fn org_refusal(&self, host: &str, port: u16) -> Option<&OrgAllow> {
+        self.org_allow.as_ref().filter(|o| !o.admits(host, port))
     }
 
     /// The credential grant for a virtual host, if any.

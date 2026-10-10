@@ -37,8 +37,29 @@ pub struct EgressRecord {
     pub capability: String,
     /// Why, when refused; what was forwarded to, when credentialed.
     pub detail: String,
+    /// The typed reason of a refusal or a failure (`NO_EGRESS_RULE`,
+    /// `ORG_ALLOW_LIST`, ...; see [`reason`]); empty when admitted.
+    #[serde(default)]
+    pub reason: String,
     /// ms since the epoch.
     pub at_ms: i64,
+}
+
+/// The typed reasons an egress decision carries.
+pub mod reason {
+    /// No rule of the sandbox's policy names the destination.
+    pub const NO_EGRESS_RULE: &str = "NO_EGRESS_RULE";
+    /// A rule names it and the organisation's allow-list does not: the list
+    /// caps every rule below it (PX-085, AUT-D07).
+    pub const ORG_ALLOW_LIST: &str = "ORG_ALLOW_LIST";
+    /// The destination was admitted and could not be reached.
+    pub const CONNECT_FAILED: &str = "CONNECT_FAILED";
+    /// A credential grant is past its lifetime.
+    pub const CREDENTIAL_EXPIRED: &str = "CREDENTIAL_EXPIRED";
+    /// A credential grant holds no secret.
+    pub const CREDENTIAL_MISSING: &str = "CREDENTIAL_MISSING";
+    /// The guest asked in a form the broker does not speak.
+    pub const BAD_REQUEST: &str = "BAD_REQUEST";
 }
 
 /// Where decisions go.
@@ -90,7 +111,26 @@ enum CredentialLookup {
     /// Inject this grant's secret.
     Ready(Box<crate::policy::CredentialGrant>, String),
     /// Refuse, with the reason the audit records.
-    Refused(Box<crate::policy::CredentialGrant>, &'static str),
+    Refused(
+        Box<crate::policy::CredentialGrant>,
+        &'static str,
+        &'static str,
+    ),
+}
+
+/// What the policy decides for one destination.
+enum Decision {
+    /// A rule admits it (its capability, for the audit).
+    Admit(String),
+    /// No rule names it.
+    NoRule,
+    /// A rule names it and the organisation's list does not (the list's note).
+    Org(String),
+}
+
+/// The detail an organisation refusal carries.
+fn org_detail(note: &str) -> String {
+    format!("the organisation's egress allow-list does not name this destination ({note})")
 }
 
 /// The broker for one sandbox.
@@ -157,6 +197,7 @@ impl EgressBroker {
                 .remove(&grant.handle);
             return CredentialLookup::Refused(
                 grant,
+                reason::CREDENTIAL_EXPIRED,
                 "the credential handle has expired; the secret is dropped and a fresh one must be granted",
             );
         }
@@ -168,7 +209,11 @@ impl EgressBroker {
             .cloned();
         match secret {
             Some(secret) => CredentialLookup::Ready(grant, secret),
-            None => CredentialLookup::Refused(grant, "no secret is held under the handle"),
+            None => CredentialLookup::Refused(
+                grant,
+                reason::CREDENTIAL_MISSING,
+                "no secret is held under the handle",
+            ),
         }
     }
 
@@ -184,7 +229,15 @@ impl EgressBroker {
         }
     }
 
-    fn record(&self, kind: &str, destination: &str, allowed: bool, capability: &str, detail: &str) {
+    fn record(
+        &self,
+        kind: &str,
+        destination: &str,
+        allowed: bool,
+        capability: &str,
+        reason: &str,
+        detail: &str,
+    ) {
         self.audit.record(
             &self.sandbox_id,
             EgressRecord {
@@ -193,9 +246,40 @@ impl EgressBroker {
                 allowed,
                 capability: capability.into(),
                 detail: detail.into(),
+                reason: reason.into(),
                 at_ms: now_ms(),
             },
         );
+    }
+
+    /// What the policy says about `host:port`: the rule that admits it, or
+    /// why nothing does. The organisation's list is applied here, after the
+    /// rules, so a rule can never admit what the list does not name.
+    fn decide(&self, host: &str, port: u16) -> Decision {
+        let policy = self.policy.lock().unwrap_or_else(|e| e.into_inner());
+        let Some(rule) = policy.admits(host, port) else {
+            return Decision::NoRule;
+        };
+        match policy.org_refusal(host, port) {
+            Some(org) => Decision::Org(org.note.clone()),
+            None => Decision::Admit(rule.capability.clone()),
+        }
+    }
+
+    /// Whether the organisation's list refuses the host a credential grant
+    /// forwards to.
+    fn org_refuses_target(&self, target_url: &str) -> Option<String> {
+        let (scheme, rest) = target_url
+            .split_once("://")
+            .unwrap_or(("https", target_url));
+        let authority = rest.split(['/', '?', '#']).next().unwrap_or_default();
+        let authority = authority.rsplit('@').next().unwrap_or_default();
+        let (host, port) = split_host_port(authority, if scheme == "http" { 80 } else { 443 });
+        self.policy
+            .lock()
+            .unwrap_or_else(|e| e.into_inner())
+            .org_refusal(&host, port)
+            .map(|o| o.note.clone())
     }
 
     /// One channel.
@@ -210,130 +294,113 @@ impl EgressBroker {
         match verb {
             "TUNNEL" => {
                 let (host, port) = split_host_port(rest, 443);
-                let rule = self
-                    .policy
-                    .lock()
-                    .unwrap_or_else(|e| e.into_inner())
-                    .admits(&host, port)
-                    .cloned();
-                match rule {
-                    Some(rule) => {
-                        let cap = rule.capability.clone();
-                        match tokio::net::TcpStream::connect((host.as_str(), port)).await {
-                            Ok(upstream) => {
-                                self.record("tunnel", rest, true, &cap, "");
-                                let mut inner = r.into_inner();
-                                inner.write_all(b"OK\r\n").await?;
-                                relay(inner, upstream).await
-                            }
-                            Err(e) => {
-                                self.record(
-                                    "tunnel",
-                                    rest,
-                                    true,
-                                    &cap,
-                                    &format!("connect failed: {e}"),
-                                );
-                                let mut inner = r.into_inner();
-                                inner
-                                    .write_all(format!("DENIED connect failed: {e}\r\n").as_bytes())
-                                    .await
-                            }
-                        }
-                    }
-                    None => {
-                        self.record(
-                            "tunnel",
-                            rest,
-                            false,
-                            "",
-                            "no egress rule admits this destination",
-                        );
-                        let mut inner = r.into_inner();
-                        inner
-                            .write_all(b"DENIED no egress rule admits this destination\r\n")
-                            .await
-                    }
-                }
+                self.plain("tunnel", rest, &host, port, r).await
             }
             "HTTP" => {
                 let (host, port) = split_host_port(rest, 80);
                 match self.live_credential(&host) {
                     CredentialLookup::Ready(grant, secret) => {
                         let mut inner = r.into_inner();
+                        // The grant forwards to its target; the organisation's
+                        // list caps that host like any other.
+                        if let Some(note) = self.org_refuses_target(&grant.target_url) {
+                            let detail = org_detail(&note);
+                            self.record(
+                                "credentialed",
+                                &host,
+                                false,
+                                &grant.capability,
+                                reason::ORG_ALLOW_LIST,
+                                &detail,
+                            );
+                            return inner
+                                .write_all(
+                                    format!("DENIED {} {detail}\r\n", reason::ORG_ALLOW_LIST)
+                                        .as_bytes(),
+                                )
+                                .await;
+                        }
                         inner.write_all(b"OK\r\n").await?;
                         self.record(
                             "credentialed",
                             &host,
                             true,
                             &grant.capability,
+                            "",
                             &format!("forwarded to {}", grant.target_url),
                         );
                         return forward_credentialed(inner, &grant, &secret).await;
                     }
-                    CredentialLookup::Refused(grant, detail) => {
-                        self.record("credentialed", &host, false, &grant.capability, detail);
+                    CredentialLookup::Refused(grant, why, detail) => {
+                        self.record("credentialed", &host, false, &grant.capability, why, detail);
                         let mut inner = r.into_inner();
                         return inner
-                            .write_all(format!("DENIED {detail}\r\n").as_bytes())
+                            .write_all(format!("DENIED {why} {detail}\r\n").as_bytes())
                             .await;
                     }
                     CredentialLookup::NotCredentialed => {}
                 }
-                {
-                    let rule = self
-                        .policy
-                        .lock()
-                        .unwrap_or_else(|e| e.into_inner())
-                        .admits(&host, port)
-                        .cloned();
-                    match rule {
-                        Some(rule) => {
-                            let cap = rule.capability.clone();
-                            match tokio::net::TcpStream::connect((host.as_str(), port)).await {
-                                Ok(upstream) => {
-                                    self.record("http", rest, true, &cap, "");
-                                    let mut inner = r.into_inner();
-                                    inner.write_all(b"OK\r\n").await?;
-                                    relay(inner, upstream).await
-                                }
-                                Err(e) => {
-                                    self.record(
-                                        "http",
-                                        rest,
-                                        true,
-                                        &cap,
-                                        &format!("connect failed: {e}"),
-                                    );
-                                    let mut inner = r.into_inner();
-                                    inner
-                                        .write_all(
-                                            format!("DENIED connect failed: {e}\r\n").as_bytes(),
-                                        )
-                                        .await
-                                }
-                            }
-                        }
-                        None => {
-                            self.record(
-                                "http",
-                                rest,
-                                false,
-                                "",
-                                "no egress rule admits this destination",
-                            );
-                            let mut inner = r.into_inner();
-                            inner
-                                .write_all(b"DENIED no egress rule admits this destination\r\n")
-                                .await
-                        }
-                    }
-                }
+                self.plain("http", rest, &host, port, r).await
             }
             other => {
-                self.record("bad", other, false, "", "unknown verb");
+                self.record("bad", other, false, "", reason::BAD_REQUEST, "unknown verb");
                 let mut inner = r.into_inner();
-                inner.write_all(b"DENIED unknown verb\r\n").await
+                inner
+                    .write_all(b"DENIED BAD_REQUEST unknown verb\r\n")
+                    .await
+            }
+        }
+    }
+
+    /// A tunnel or a plain HTTP destination: the policy decides, the
+    /// decision is recorded, and an admitted destination is connected and
+    /// relayed.
+    async fn plain(
+        &self,
+        kind: &str,
+        rest: &str,
+        host: &str,
+        port: u16,
+        r: BufReader<Channel>,
+    ) -> std::io::Result<()> {
+        let mut inner = r.into_inner();
+        match self.decide(host, port) {
+            Decision::Admit(cap) => match tokio::net::TcpStream::connect((host, port)).await {
+                Ok(upstream) => {
+                    self.record(kind, rest, true, &cap, "", "");
+                    inner.write_all(b"OK\r\n").await?;
+                    relay(inner, upstream).await
+                }
+                Err(e) => {
+                    self.record(
+                        kind,
+                        rest,
+                        true,
+                        &cap,
+                        reason::CONNECT_FAILED,
+                        &format!("connect failed: {e}"),
+                    );
+                    inner
+                        .write_all(
+                            format!("DENIED {} connect failed: {e}\r\n", reason::CONNECT_FAILED)
+                                .as_bytes(),
+                        )
+                        .await
+                }
+            },
+            Decision::Org(note) => {
+                let detail = org_detail(&note);
+                self.record(kind, rest, false, "", reason::ORG_ALLOW_LIST, &detail);
+                inner
+                    .write_all(format!("DENIED {} {detail}\r\n", reason::ORG_ALLOW_LIST).as_bytes())
+                    .await
+            }
+            Decision::NoRule => {
+                let detail = "no egress rule admits this destination";
+                self.record(kind, rest, false, "", reason::NO_EGRESS_RULE, detail);
+                inner
+                    .write_all(format!("DENIED {} {detail}\r\n", reason::NO_EGRESS_RULE).as_bytes())
+                    .await
             }
         }
     }

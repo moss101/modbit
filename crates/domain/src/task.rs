@@ -786,6 +786,13 @@ pub enum TaskEvent {
         definition_hash: String,
         /// A dry-run: read-only, every protected effect denied.
         test: bool,
+        /// The hosts the enable approval lists (`network.egress` narrowed to
+        /// them). A cloud run's sandbox is given egress to these when its
+        /// lease carries `network.egress`, and the organisation's allow-list
+        /// still caps them at the gateway (PX-085, AUT-D07). Empty when the
+        /// approval lists none.
+        #[serde(default, skip_serializing_if = "Vec::is_empty")]
+        approved_hosts: Vec<String>,
     },
     /// `BrowserSessionOpened` (M7.1, docs/22): the task has a browser
     /// session — one live Chromium session a host holds for it, in its own
