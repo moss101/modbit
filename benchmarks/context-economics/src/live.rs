@@ -74,6 +74,9 @@ pub struct LiveConfig {
     pub repeats: u32,
     /// Where the report goes.
     pub out: PathBuf,
+    /// The spend cap in dollars (`MODBIT_LIVE_MAX_COST_USD`); `None` when the
+    /// owner set none. The live workflow always sets one.
+    pub max_cost_usd: Option<f64>,
 }
 
 impl std::fmt::Debug for LiveConfig {
@@ -82,11 +85,12 @@ impl std::fmt::Debug for LiveConfig {
             .field("model", &self.run.model)
             .field("repeats", &self.repeats)
             .field("out", &self.out)
+            .field("max_cost_usd", &self.max_cost_usd)
             .finish_non_exhaustive()
     }
 }
 
-fn is_placeholder(key: &str) -> bool {
+pub(crate) fn is_placeholder(key: &str) -> bool {
     let k = key.trim().to_ascii_lowercase();
     k.len() < 12
         || [
@@ -104,7 +108,7 @@ fn is_placeholder(key: &str) -> bool {
         .any(|p| k.contains(p))
 }
 
-fn is_loopback(url: &str) -> bool {
+pub(crate) fn is_loopback(url: &str) -> bool {
     let rest = url.split("://").nth(1).unwrap_or(url);
     let host = rest
         .split(['/', '?'])
@@ -167,6 +171,35 @@ pub fn live_config(var: &dyn Fn(&str) -> Option<String>) -> Result<LiveConfig, L
         };
         env.push((base_var.to_owned(), base.trim().to_owned()));
     }
+    // The catalog (priced models), the auth scheme and the extra request body
+    // of a compatible gateway are the Core's configuration for the family;
+    // forwarded when present, never invented.
+    let prefix = if key_var == "OPENAI_API_KEY" {
+        "MODBIT_OPENAI"
+    } else {
+        "MODBIT_ANTHROPIC"
+    };
+    for suffix in ["MODELS", "AUTH", "EXTRA_BODY"] {
+        let name = format!("{prefix}_{suffix}");
+        if let Some(v) = var(&name).filter(|v| !v.trim().is_empty()) {
+            env.push((name, v.trim().to_owned()));
+        }
+    }
+    let max_cost_usd = match var("MODBIT_LIVE_MAX_COST_USD").filter(|v| !v.trim().is_empty()) {
+        None => None,
+        Some(v) => Some(
+            v.trim()
+                .parse::<f64>()
+                .ok()
+                .filter(|c| c.is_finite() && *c > 0.0)
+                .ok_or_else(|| {
+                    LiveRefused::Invalid(
+                        "MODBIT_LIVE_MAX_COST_USD",
+                        "a positive number of dollars".into(),
+                    )
+                })?,
+        ),
+    };
     let repeats = match var("MODBIT_LIVE_REPEATS") {
         None => 1,
         Some(r) => r
@@ -193,5 +226,6 @@ pub fn live_config(var: &dyn Fn(&str) -> Option<String>) -> Result<LiveConfig, L
         repeats,
         out: var("MODBIT_LIVE_OUT")
             .map_or_else(|| PathBuf::from("px-114-live-report.json"), PathBuf::from),
+        max_cost_usd,
     })
 }

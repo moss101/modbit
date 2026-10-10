@@ -392,7 +392,7 @@ impl AcceptanceOutcome {
     }
 }
 
-fn changed_files(
+pub(crate) fn changed_files(
     base: &Path,
     ops: &[FileOp],
 ) -> (Vec<modbit_verification::ChangedFile>, Vec<ChangedPath>) {
