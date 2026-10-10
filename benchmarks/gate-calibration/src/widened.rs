@@ -599,7 +599,7 @@ pub fn pair_row(
     })
 }
 
-fn false_accepts(rows: &[&PairRow], widened: bool) -> Rate {
+pub(crate) fn false_accepts(rows: &[&PairRow], widened: bool) -> Rate {
     let bad: Vec<&&PairRow> = rows.iter().filter(|r| !r.oracle_correct).collect();
     let fa = bad
         .iter()
@@ -611,7 +611,7 @@ fn false_accepts(rows: &[&PairRow], widened: bool) -> Rate {
     )
 }
 
-fn false_rejects(rows: &[&PairRow], widened: bool) -> Rate {
+pub(crate) fn false_rejects(rows: &[&PairRow], widened: bool) -> Rate {
     let good: Vec<&&PairRow> = rows.iter().filter(|r| r.oracle_correct).collect();
     let fr = good
         .iter()
@@ -663,7 +663,7 @@ fn slices(rows: &[PairRow]) -> Vec<SliceRate> {
     out
 }
 
-fn risk_rates(outcomes: &[RiskOutcome]) -> RiskRates {
+pub(crate) fn risk_rates(outcomes: &[RiskOutcome]) -> RiskRates {
     let m = metrics(&[], outcomes);
     let fnr = m.rates["realized_risk_false_negative_rate"].clone();
     let fpr = m.rates["realized_risk_false_positive_rate"].clone();
