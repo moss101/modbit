@@ -91,8 +91,12 @@ export function nodeTerminal(script: string): { name: string; args: unknown } {
 
 /** Echoes each typed line back as `got:<line>`. */
 export const ECHO_LOOP = "process.stdout.write('READY\\n'); process.stdin.setEncoding('utf8'); process.stdin.on('data', (d) => process.stdout.write('got:' + d.trim() + '\\n')); setInterval(() => {}, 1000)";
-/** Prints the PTY's size at start and on every resize. */
-export const SIZE_REPORTER = "const p = () => process.stdout.write('SIZE ' + process.stdout.columns + ' ' + process.stdout.rows + '\\n'); p(); process.stdout.on('resize', p); setInterval(() => {}, 1000)";
+/**
+ * Prints the PTY's size at start and whenever it changes. The child asks the console for its size itself, every 100 ms, besides
+ * listening for 'resize': node on Windows learns of a pseudo-console resize only through its console event machinery, which a
+ * child that never reads its stdin does not run, so the 'resize' event alone never fires there. The size printed is the console's own.
+ */
+export const SIZE_REPORTER = "let last = ''; const p = () => { const w = [0, 0]; process.stdout._handle.getWindowSize(w); const s = 'SIZE ' + w[0] + ' ' + w[1]; if (s !== last) { last = s; process.stdout.write(s + '\\n'); } }; p(); process.stdout.on('resize', p); setInterval(p, 100)";
 /** About 400 KiB of numbered 1 KiB lines, then stays alive. */
 export const BIG_OUTPUT = "const l = 'x'.repeat(1019) + '\\n'; for (let i = 0; i < 400; i++) process.stdout.write(String(i).padStart(4, '0') + l); setInterval(() => {}, 1000)";
 /** Prints a line and exits with code 3. */
