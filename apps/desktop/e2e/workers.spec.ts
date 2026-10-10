@@ -118,6 +118,10 @@ const BRIDGE_ALLOW_LIST = [
   "browserPolicy", "setBrowserPolicy", "listBrowserViews", "selectBrowserView", "browserRefusals", "decideBrowserCertificate", "browserCertificateTrusts", "clearBrowserCertificateTrusts", "clearBrowserData",
   // PX-127 (forge evidence): CI results and pull-request comments ingested by the Core, on the person's command.
   "ingestCiResults", "ingestReviewComments",
+  // PX-046 / PX-047 (agent list and conversation): the Core's header, transcript and search projections, and its read and archive commands.
+  "agentHeaders", "transcript", "openStreams", "pendingApprovals", "searchConversations", "markRead", "archiveTask",
+  // REQ-PX-048 (the apps panel): the terminal stream, the read-only Files app and the effect receipts. Added on purpose; each is a typed request main validates.
+  "terminalList", "terminalAttach", "terminalAck", "terminalDetach", "terminalInput", "terminalResize", "terminalWrite", "terminalKill", "onTerminalFrame", "listWorkspaceDir", "readWorkspaceFile", "effectReceipts",
   "addCredential", "applyUserPatch", "attachFile", "attention", "browserLog", "browserSession", "cancelTask", "closeBrowser", "codeView", "contextInspector", "coreStatus", "createSession", "createTask", "dashboard", "debugCoreInfo", "debugIpcRefusals", "debugRendererLog", "decideReview", "deliverNotification", "describeBrowser", "emergencyStop", "hideBrowser", "languages", "listCredentials", "localState", "notificationLog", "onBrowserState", "onCoreStatus", "onEvent", "onRecovery", "openBrowser", "openPullRequest", "probeBrowser", "providerStatus", "removeCredential", "resolveApproval", "respondToQuestion", "reviewBundle", "sessionSnapshot", "setBrowserControl", "setTaskSelection", "setupProvider", "showBrowser", "starterTasks", "startTask", "steerTask", "subscribe", "taskEconomics", "taskStatus", "trustRepository", "typeAsPerson",
 ];
 
@@ -251,9 +255,18 @@ test("renderer killed (REQ-EV-0076): the renderer's process dies mid-session; ma
     // The renderer's process is killed under it (what a crash or the OS
     // does). Main notes it and opens a fresh window in the old one's place
     // (the crashed page is finished for the harness too).
-    const crashed = page1.waitForEvent("crash", { timeout: 30_000 });
+    // Playwright reports the dead renderer either as the page's "crash" or, when main has already replaced the window (as it does at once
+    // on a Windows runner), as that page closing: both mean the old renderer is gone, and the assertions below say what came back.
+    const crashed = Promise.any([page1.waitForEvent("crash", { timeout: 30_000 }), page1.waitForEvent("close", { timeout: 30_000 })]);
     const replaced = app.waitForEvent("window", { timeout: 60_000 });
-    await app.evaluate(({ BrowserWindow }) => BrowserWindow.getAllWindows()[0]!.webContents.forcefullyCrashRenderer());
+    if (process.platform === "win32") {
+      // forcefullyCrashRenderer() did not end the renderer within 30s on the Windows runner (neither a crash nor a close was seen):
+      // kill the real renderer process by its pid instead, which is what a crash or the OS does.
+      const pid = await app.evaluate(({ BrowserWindow }) => BrowserWindow.getAllWindows()[0]!.webContents.getOSProcessId());
+      process.kill(pid);
+    } else {
+      await app.evaluate(({ BrowserWindow }) => BrowserWindow.getAllWindows()[0]!.webContents.forcefullyCrashRenderer());
+    }
     await crashed;
     const page2 = await replaced;
     await expect(page2.getByTestId("core-status")).toContainText("Core connected", { timeout: 60_000 });

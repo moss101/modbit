@@ -3,6 +3,10 @@
  * renderer needs, over Electron's validated IPC. No Node, no fs, no shell.
  */
 import { contextBridge, ipcRenderer } from "electron";
+import type { AgentHeadersView, ConversationSearchView, OpenStreamView, PendingApprovalView, SearchOptions, TranscriptOptions, TranscriptPageView } from "../shared/conversation-types.ts";
+import type { TerminalFrameJson, TerminalViewJson } from "../main/terminal-host.ts";
+
+export type { TerminalFrameJson, TerminalViewJson };
 
 export interface ReviewHunk {
   index: number;
@@ -129,6 +133,8 @@ export interface ContextInspectorSummary {
   omittedCount: number;
   omittedPaths: string[];
   entries: ContextInspectorEntry[];
+  /** REQ-PX-059: the Core's breakdown of the last compiled request by category; null before the first compiled turn. */
+  accounting?: { totalTokens: string; totalSource: string; windowTokens: string; windowSource: string; usedBp: number; model: string; categories: { category: string; tokens: string; shareBp: number }[] } | null;
   // Compaction epochs and what they cost the prompt cache (docs/19).
   compactionEpoch: number;
   compactionEpochs: number;
@@ -216,12 +222,61 @@ export interface BrowserViewDescription {
   useSeq: number;
 }
 
+export interface WorkspaceEntry {
+  path: string;
+  name: string;
+  kind: string;
+  size: string;
+  protected: boolean;
+}
+export interface ReceiptView {
+  effectId: string;
+  toolCallId: string;
+  intentHash: string;
+  policyDecision: string;
+  executionTarget: string;
+  evidenceRef: string;
+  status: string;
+  occurredAtMs: number;
+  receiptHash: string;
+  reversibility: string;
+}
+
 export interface ModbitBridge {
+  /** PX-046: the header of every task of a session, with the Core's status class (the renderer never recomputes it). */
+  agentHeaders(sessionId: string, includeArchived?: boolean): Promise<AgentHeadersView>;
+  /** PX-047: one page of a task's conversation, projected by the Core in one of three densities. */
+  transcript(taskId: string, options?: TranscriptOptions): Promise<TranscriptPageView>;
+  /** PX-047: the protected effects of the session still waiting for a decision, with the exact intent each decision must name. */
+  pendingApprovals(sessionId: string): Promise<PendingApprovalView[]>;
+  /** PX-047: the text of the task's assistant streams that are still open, as main has seen them (a transcript carries a stream's text only once it completes). */
+  openStreams(taskId: string): Promise<OpenStreamView[]>;
+  /** PX-046: full-text search over the session's conversations (headers and bodies); snippets are plain data. */
+  searchConversations(sessionId: string, query: string, options?: SearchOptions): Promise<ConversationSearchView>;
+  /** PX-046: the person has seen the conversation up to an offset (decimal string; omitted = all of it). */
+  markRead(sessionId: string, taskId: string, upToOffset?: string): Promise<{ taskId: string; readOffset: string; offset: string }>;
+  /** PX-046: archive a task's conversation, or undo it with archived = false; the Core refuses a running task. */
+  archiveTask(sessionId: string, taskId: string, archived: boolean): Promise<{ taskId: string; archived: boolean; offset: string }>;
   coreStatus(): Promise<unknown>;
   localState(): Promise<{ sessionId?: string; platform?: { os: string; arch: string; state: string; statement: string } }>;
   languages(): Promise<{ language: string; tier: string; label: string; fixture: string; proven: string[]; provisional: string[]; notClaimed: string[]; note: string }[]>;
   contextInspector(taskId: string): Promise<ContextInspectorSummary>;
   taskEconomics(taskId: string): Promise<TaskEconomicsSummary>;
+  // REQ-PX-048: the apps panel's Terminal, Files and Evidence apps. Cursors are decimal strings (64-bit on the wire).
+  terminalList(taskId?: string): Promise<{ terminals: TerminalViewJson[]; nowMs: number; defaultWindowBytes: string; stallMs: string }>;
+  terminalAttach(sessionId: string, taskId: string, terminalId: string, afterCursor: string, opts?: { windowBytes?: number; takeInputLease?: boolean; stealInputLease?: boolean }): Promise<{ attachId: string; terminal: TerminalViewJson; afterCursor: string; windowBytes: string; inputLeaseHeld: boolean }>;
+  /** The renderer has consumed the output up to `cursor`; the Core may send that much more. */
+  terminalAck(attachId: string, cursor: string): Promise<string>;
+  terminalDetach(attachId: string): Promise<{ wasAttached: boolean; ackedCursor: string }>;
+  /** Take (hold) or give back the person's input lease on an attachment. */
+  terminalInput(attachId: string, hold: boolean, steal?: boolean): Promise<{ held: boolean; holder: string; offset: string }>;
+  terminalResize(attachId: string, rows: number, cols: number): Promise<{ rows: number; cols: number }>;
+  terminalWrite(attachId: string, data: Uint8Array | string): Promise<{ bytes: string; cursor: string }>;
+  terminalKill(sessionId: string, taskId: string, terminalId: string): Promise<{ outcome: string; exitCode: number | null }>;
+  onTerminalFrame(cb: (f: TerminalFrameJson) => void): () => void;
+  listWorkspaceDir(taskId: string, path: string): Promise<{ path: string; workspaceRevision: string; truncated: boolean; entries: WorkspaceEntry[] }>;
+  readWorkspaceFile(taskId: string, path: string): Promise<{ path: string; status: string; size: string; text: string; fileRevision: string; workspaceRevision: string; language: string }>;
+  effectReceipts(taskId: string): Promise<{ chainValid: boolean; detail: string; receipts: ReceiptView[] }>;
   /** M10.1: the session's telemetry, cost and SLO dashboard. */
   dashboard(sessionId: string): Promise<DashboardSummary>;
   /** PX-023: the typed task status (REQ-EV-0073) a snapshot does not carry. */
@@ -309,11 +364,34 @@ export interface ModbitBridge {
 }
 
 const bridge: ModbitBridge = {
+  agentHeaders: (sessionId, includeArchived) => ipcRenderer.invoke("agents:headers", sessionId, includeArchived ?? false),
+  transcript: (taskId, options) => ipcRenderer.invoke("conversation:transcript", taskId, options ?? {}),
+  pendingApprovals: (sessionId) => ipcRenderer.invoke("conversation:approvals", sessionId),
+  openStreams: (taskId) => ipcRenderer.invoke("conversation:openStreams", taskId),
+  searchConversations: (sessionId, query, options) => ipcRenderer.invoke("conversation:search", sessionId, query, options ?? {}),
+  markRead: (sessionId, taskId, upToOffset) => ipcRenderer.invoke("conversation:markRead", sessionId, taskId, upToOffset ?? ""),
+  archiveTask: (sessionId, taskId, archived) => ipcRenderer.invoke("conversation:archive", sessionId, taskId, archived),
   coreStatus: () => ipcRenderer.invoke("core:status"),
   localState: () => ipcRenderer.invoke("core:localState"),
   languages: () => ipcRenderer.invoke("languages:list"),
   contextInspector: (taskId: string) => ipcRenderer.invoke("context:inspector", taskId),
   taskEconomics: (taskId: string) => ipcRenderer.invoke("task:economics", taskId),
+  terminalList: (taskId) => ipcRenderer.invoke("terminal:list", taskId ?? ""),
+  terminalAttach: (sessionId, taskId, terminalId, afterCursor, opts) => ipcRenderer.invoke("terminal:attach", sessionId, taskId, terminalId, afterCursor, opts ?? {}),
+  terminalAck: (attachId, cursor) => ipcRenderer.invoke("terminal:ack", attachId, cursor),
+  terminalDetach: (attachId) => ipcRenderer.invoke("terminal:detach", attachId),
+  terminalInput: (attachId, hold, steal) => ipcRenderer.invoke("terminal:input", attachId, hold, steal ?? false),
+  terminalResize: (attachId, rows, cols) => ipcRenderer.invoke("terminal:resize", attachId, rows, cols),
+  terminalWrite: (attachId, data) => ipcRenderer.invoke("terminal:write", attachId, data),
+  terminalKill: (sessionId, taskId, terminalId) => ipcRenderer.invoke("terminal:kill", sessionId, taskId, terminalId),
+  onTerminalFrame: (cb) => {
+    const listener = (_: unknown, f: unknown) => cb(f as TerminalFrameJson);
+    ipcRenderer.on("terminal:frame", listener);
+    return () => ipcRenderer.removeListener("terminal:frame", listener);
+  },
+  listWorkspaceDir: (taskId, path) => ipcRenderer.invoke("files:list", taskId, path),
+  readWorkspaceFile: (taskId, path) => ipcRenderer.invoke("files:read", taskId, path),
+  effectReceipts: (taskId) => ipcRenderer.invoke("evidence:receipts", taskId),
   dashboard: (sessionId: string) => ipcRenderer.invoke("dashboard:get", sessionId),
   taskStatus: (taskId: string) => ipcRenderer.invoke("task:status", taskId),
   attention: (sessionId: string) => ipcRenderer.invoke("attention:list", sessionId),

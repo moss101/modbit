@@ -11,7 +11,8 @@ test("PX-024: global shortcuts work from anywhere with the platform modifier; si
   assert.equal(commandFor(key("n", { metaKey: true }), { ...fleet, isMac: true }), "newTask");
   assert.equal(commandFor(key("n", { ctrlKey: true }), { ...fleet, isMac: true }), null, "Ctrl is not the modifier on macOS");
   assert.equal(commandFor(key("n", { ctrlKey: true }), { ...fleet, editable: true }), "newTask", "the modifier shortcut works inside a text field");
-  assert.equal(commandFor(key("k", { ctrlKey: true }), { ...fleet, editable: true }), "search");
+  // PX-045 (AFW-A15): the primary-modifier K chord belongs to the command palette (shell/commands.ts), which subsumes the type-ahead filter; "/" still filters.
+  assert.equal(commandFor(key("k", { ctrlKey: true }), { ...fleet, editable: true }), null);
   assert.equal(commandFor(key("a"), { ...fleet, editable: true }), null, "typing an a is typing");
   assert.equal(commandFor(key("a"), fleet), "jumpAttention");
   assert.equal(commandFor(key("r"), fleet), "jumpRunning");
