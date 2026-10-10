@@ -592,6 +592,11 @@ pub async fn run_case(
         // `unreachable code` warning of a vacuous candidate into a build
         // failure and so makes the previous gate reject what it accepts here.
         ("RUSTFLAGS".into(), String::new()),
+        // The baseline and the candidate run in one tree within the same
+        // second; a `.pyc` written by the first and keyed on (mtime in
+        // seconds, size) can be reused by the second when an edit keeps the
+        // size, so the candidate's tests would run the baseline's bytes.
+        ("PYTHONDONTWRITEBYTECODE".into(), "1".into()),
     ];
     let own: Vec<String> = env.iter().map(|(k, _)| k.clone()).collect();
     let env: Vec<(String, String)> = std::env::vars()
