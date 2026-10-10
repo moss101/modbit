@@ -133,7 +133,9 @@ test("Terminal: owners and states are listed, an exited terminal shows its code,
 
   // The exited terminal replays its output and states how it ended.
   await pickTerminal(exited.terminalId);
-  await expect(screen()).toContainText("finished").catch(async (e: Error) => {
+  // The replay of a 111-byte terminal can take longer than the default 5s to reach the screen on the loaded Windows runner (the failure
+  // diagnostics showed the line on screen moments after the timeout); the assertion is unchanged.
+  await expect(screen()).toContainText("finished", { timeout: 30_000 }).catch(async (e: Error) => {
     const log = await readTerminal(page, { sessionId, taskId, terminalId: exited.terminalId, after: "0", windowBytes: 65536 });
     const view = await terminalView().evaluate((el) => ({ phase: el.getAttribute("data-phase"), cursor: el.getAttribute("data-cursor"), bytes: el.getAttribute("data-bytes"), rows: el.querySelectorAll(".xterm-rows > div").length, text: el.querySelector(".xterm-rows")?.textContent?.replace(/\s+/g, " ") ?? null }));
     const row = (await listTerminals()).find((t) => t.terminalId === exited.terminalId);
