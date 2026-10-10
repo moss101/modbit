@@ -255,7 +255,9 @@ test("renderer killed (REQ-EV-0076): the renderer's process dies mid-session; ma
     // The renderer's process is killed under it (what a crash or the OS
     // does). Main notes it and opens a fresh window in the old one's place
     // (the crashed page is finished for the harness too).
-    const crashed = page1.waitForEvent("crash", { timeout: 30_000 });
+    // Playwright reports the dead renderer either as the page's "crash" or, when main has already replaced the window (as it does at once
+    // on a Windows runner), as that page closing: both mean the old renderer is gone, and the assertions below say what came back.
+    const crashed = Promise.any([page1.waitForEvent("crash", { timeout: 30_000 }), page1.waitForEvent("close", { timeout: 30_000 })]);
     const replaced = app.waitForEvent("window", { timeout: 60_000 });
     await app.evaluate(({ BrowserWindow }) => BrowserWindow.getAllWindows()[0]!.webContents.forcefullyCrashRenderer());
     await crashed;

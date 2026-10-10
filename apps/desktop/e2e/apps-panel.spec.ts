@@ -123,7 +123,7 @@ test("Terminal: owners and states are listed, an exited terminal shows its code,
   // The four start in one turn, so tell them apart by their command, not by start time.
   const byCommand = (needle: string) => all.find((t) => t.title.includes(needle) || t.cwd.includes(needle))!;
   const echo = byCommand("READY");
-  const size = byCommand("process.stdout.columns");
+  const size = byCommand("getWindowSize");
   const big = byCommand("repeat(1019)");
   const exited = byCommand("process.exit(3)");
   expect([echo, size, big, exited].every((t) => t !== undefined), JSON.stringify(all.map((t) => t.title))).toBe(true);
