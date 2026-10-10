@@ -42,6 +42,9 @@ test("PX-054: in Ask a write the model asks for is refused by the Core and nothi
 });
 
 test("PX-054: a mode the Core has not acknowledged is drawn unconfirmed and never as active; the Core's acknowledgement confirms it", async () => {
+  // The Core is frozen with SIGSTOP/SIGCONT, which Windows does not have (Node throws "Unknown signal"). What is
+  // proven is the renderer's rule, which is the same on every platform; macOS and Linux run it.
+  test.skip(process.platform === "win32", "no SIGSTOP on Windows to hold the Core's acknowledgement");
   test.setTimeout(240_000);
   const repo = makeRepo(mkdtempSync(join(tmpdir(), "modbit-gap-repo-")));
   const model = await sequencedModel([]);
