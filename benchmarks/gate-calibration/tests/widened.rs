@@ -510,7 +510,17 @@ async fn qual_px_135_the_widened_gate_rejects_the_seeded_false_accepts_the_previ
             "{class}"
         );
         // The premise: the previous gate accepted every one of them.
-        assert_eq!(row.accepted_by_previous, row.seeded, "{class}");
+        assert_eq!(
+            row.accepted_by_previous,
+            row.seeded,
+            "{class}: not accepted by the previous gate: {:?}",
+            report
+                .rows
+                .iter()
+                .filter(|r| r.class == class && r.previous.verdict != "ACCEPT")
+                .map(|r| (&r.id, &r.previous, &r.findings))
+                .collect::<Vec<_>>()
+        );
         assert_eq!(
             row.newly_rejected,
             row.seeded - row.accepted_by_widened,
