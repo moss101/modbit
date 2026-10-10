@@ -1151,6 +1151,7 @@ fn trial_body(
         &cfg.opener.model,
         "--max-turns",
         &turns,
+        "--forbid-spawn",
         "--wait",
     ]
     .iter()
@@ -1202,6 +1203,7 @@ fn trial_body(
             &task_hex,
             "--max-turns",
             &turns,
+            "--forbid-spawn",
             "--wait",
         ]
         .iter()
@@ -1800,7 +1802,7 @@ pub fn report(
     }
     let verdict = verdict_text(&arms, &comparisons, cfg.live);
     let method = format!(
-        "{} tasks x {} repeats x {} arms, each trial a fresh repository, a fresh profile and a fresh Core driven through modbit-cli under the same signed two-binding registry ({} opens, {} is the stronger-solver and reviewer binding). {} Verified success needs the Core's own completion gating, the task's pristine check.py passing on the final tree and check.py untouched. Cost is priced from the usage the gateway returned for every model invocation of the session (the review task's included) at the catalog list prices, no cache discount. Gate errors compare the gate's verdict at the end of a leg with the independent check of the same tree. Wilson intervals for proportions, deterministic bootstrap for means and paired differences. {}",
+        "{} tasks x {} repeats x {} arms, each trial a fresh repository, a fresh profile and a fresh Core driven through modbit-cli under the same signed two-binding registry ({} opens, {} is the stronger-solver and reviewer binding). {} Verified success needs the Core's own completion gating, the task's pristine check.py passing on the final tree and check.py untouched. Cost is priced from the usage the gateway returned for every model invocation of the session (the review task's included) at the catalog list prices, no cache discount. Gate errors compare the gate's verdict at the end of a leg with the independent check of the same tree. Sub-agent spawning is forbidden on every arm (`--forbid-spawn`): a child's budget is clamped to the parent leg's small plan reservation and, in the first pilot, children exhausted it and dominated the cost. Wilson intervals for proportions, deterministic bootstrap for means and paired differences. {}",
         task_set.tasks.len(),
         cfg.repeats,
         arms_run.len(),
