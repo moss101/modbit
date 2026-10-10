@@ -2056,10 +2056,13 @@ version = "0.0.0"
 dependencies = [
  "hex",
  "modbit-compaction",
+ "modbit-providers",
+ "reqwest",
  "serde",
  "serde_json",
  "sha2 0.11.0",
  "tempfile",
+ "tokio",
 ]
 
 [[package]]

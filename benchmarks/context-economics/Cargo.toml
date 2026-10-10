@@ -14,6 +14,9 @@ modbit-compaction.workspace = true
 sha2.workspace = true
 hex.workspace = true
 tempfile.workspace = true
+modbit-providers.workspace = true
+reqwest.workspace = true
+tokio.workspace = true
 
 [lints]
 workspace = true

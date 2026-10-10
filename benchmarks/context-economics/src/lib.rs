@@ -14,9 +14,11 @@
 
 use serde::{Deserialize, Serialize};
 
+pub mod chat;
 pub mod compaction_eval;
 pub mod live;
 pub mod projection_trial;
+pub mod spend;
 pub mod suite;
 
 /// One run of one task under one configuration.
