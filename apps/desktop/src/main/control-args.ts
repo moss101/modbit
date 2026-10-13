@@ -146,3 +146,9 @@ export function validGoal(v: unknown): string {
   if (typeof v !== "string" || v.length > 20_000) return bad("goal must be text of at most 20000 characters");
   return v;
 }
+
+/** A mode-switch proposal id: the Core names it `mp-` and the proposing call's id (letters and digits). */
+export function validProposalId(v: unknown): string {
+  if (typeof v !== "string" || !/^mp-[A-Za-z0-9]{1,24}$/.test(v)) return bad("proposalId must be a proposal id");
+  return v;
+}

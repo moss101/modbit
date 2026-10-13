@@ -1,0 +1,78 @@
+// Mode-switch proposals (REQ-PX-051, REQ-PX-055; docs/65 AFW-D06; QUAL-PX-051,
+// QUAL-PX-055).
+//
+// The agent may ask the person to move a task to another mode (for instance
+// PLAN to AGENT) with the harness tool `task.propose_mode`. What it makes is a
+// PROPOSAL: a fact on the task's log that is data, never an instruction. A
+// proposal changes nothing by itself. The mode changes only if the person
+// accepts it in the card, and then only through the same path as SetTaskMode
+// (the lease check, the session check, the terminal-task refusal), so the
+// Capability Kernel's posture follows exactly as it follows any mode change.
+//
+// A proposal not decided within 15 seconds ends as SKIPPED with a typed
+// reason, never as accepted. A proposal pending when the Core dies is SKIPPED
+// when the next Core starts (CORE_RESTARTED). The mode is unchanged in both.
+//
+// There is no message here with which a client creates a proposal on the
+// agent's behalf, supplies a posture, or accepts one for a task it does not
+// hold the lease of. Field numbers: this area owns every number in this file;
+// no existing message gains a field.
+syntax = "proto3";
+
+package modbit.v1;
+
+import "modbit/v1/domain.proto";
+import "modbit/v1/tasking.proto";
+
+// One proposal as the Core's log says.
+message ModeProposalView {
+  string proposal_id = 1;
+  Id task_id = 2;
+  TaskMode from_mode = 3;       // the mode the task was in when it was proposed
+  TaskMode to_mode = 4;         // the mode proposed
+  string reason = 5;            // the agent's words (log text; untrusted, shown as data)
+  // PENDING | ACCEPTED | DECLINED | SKIPPED
+  string status = 6;
+  // For a decided proposal, why: ACCEPTED_BY_USER | DECLINED_BY_USER |
+  // UNANSWERED_15S | CORE_RESTARTED | TASK_ENDED | MODE_CHANGED. Empty while PENDING.
+  string outcome_reason = 7;
+  int64 proposed_at_ms = 8;
+  int64 expires_at_ms = 9;      // proposed_at + 15 s
+  int64 decided_at_ms = 10;     // 0 while PENDING
+  uint64 proposed_offset = 11;  // the ModeSwitchProposed event
+  uint64 decided_offset = 12;   // the ModeSwitchDecided event (0 while PENDING)
+}
+
+// The proposals of a task, oldest first. `now_ms` is the Core's clock when it
+// answered, so a client can show the time left without trusting its own.
+message ListModeProposals {
+  Id task_id = 1;
+}
+
+message ModeProposalList {
+  Id task_id = 1;
+  repeated ModeProposalView proposals = 2;
+  int64 now_ms = 3;
+  uint64 offset = 4;
+}
+
+// The person's answer. Accepting moves the task to the proposed mode through
+// the SetTaskMode path; declining records the refusal. Refused
+// UNKNOWN_PROPOSAL, PROPOSAL_NOT_PENDING (already decided or skipped: the
+// message names how it ended, and nothing is written), MODE_CHANGED (the task
+// is no longer in the mode the proposal was made from; the proposal is
+// recorded as SKIPPED), WRONG_SESSION, TASK_TERMINAL and, without the session
+// lease, the lease refusals of any command that changes a task. The same
+// command id sent again is replayed (status REPLAYED) and writes nothing.
+message DecideModeProposal {
+  Id task_id = 1;
+  string proposal_id = 2;
+  bool accept = 3;
+}
+
+message ModeProposalDecided {
+  ModeProposalView proposal = 1;
+  // On accept, what SetTaskMode would have answered.
+  TaskModeChanged mode_change = 2;
+  uint64 offset = 3;
+}

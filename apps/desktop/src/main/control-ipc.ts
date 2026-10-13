@@ -9,11 +9,11 @@
  * no authority, and main holds no policy.
  */
 import type { CoreClient } from "@modbit/ide-adapter-core";
-import { addAllowRule, forkTask, getContextAccounting, getRunMode, listAllowRules, listCheckpoints, previewRewind, readObjectRange, restoreCheckpoint, revokeAllowRule, setRunMode, setTaskBudgets } from "@modbit/ide-adapter-core";
-import { TranscriptDensity, type AllowRuleView, type ContextAccountingView, type RunModeView, type TranscriptRow } from "@modbit/surface-protocol";
-import type { AccountingInfo, AllowRuleInfo, CheckpointListInfo, DockApprovalView, ForkOutcome, RestoreOutcome, RewindPreviewInfo, RunModeInfo, TaskBudgetsInfo } from "../shared/control-types.ts";
+import { addAllowRule, decideModeProposal, forkTask, getContextAccounting, getRunMode, listAllowRules, listCheckpoints, listModeProposals, previewRewind, readObjectRange, restoreCheckpoint, revokeAllowRule, setRunMode, setTaskBudgets } from "@modbit/ide-adapter-core";
+import { TaskMode, TranscriptDensity, type AllowRuleView, type ContextAccountingView, type ModeProposalView, type RunModeView, type TranscriptRow } from "@modbit/surface-protocol";
+import type { AccountingInfo, AllowRuleInfo, CheckpointListInfo, DockApprovalView, ExpiredApprovalView, ForkOutcome, ModeProposalDecisionInfo, ModeProposalInfo, ModeProposalListInfo, ProposalStatus, RestoreOutcome, RewindPreviewInfo, RunModeInfo, TaskBudgetsInfo } from "../shared/control-types.ts";
 import { intentOf, reasonOf } from "./approval-intent.ts";
-import { bad, validApprovalId, validBool, validCommandId, validCount, validExpected, validGoal, validIntentHash, validKeepPaths, validReason, validRuleId, validRuleInput, validRunMode, validTarget } from "./control-args.ts";
+import { bad, validApprovalId, validBool, validCommandId, validCount, validExpected, validGoal, validIntentHash, validKeepPaths, validProposalId, validReason, validRuleId, validRuleInput, validRunMode, validTarget } from "./control-args.ts";
 import type { Registrar } from "./conversation-ipc.ts";
 
 const hexOf = (b: Uint8Array | undefined): string => Buffer.from(b ?? []).toString("hex");
@@ -117,6 +117,35 @@ export async function dockApprovals(c: CoreClient, sessionId: string, taskId: st
   return out;
 }
 
+/** The approvals of a session the Core closed as expired, for one task: shown as expired, never as pending or approved. */
+export async function expiredApprovals(c: CoreClient, sessionId: string, taskId: string): Promise<ExpiredApprovalView[]> {
+  const list = await c.listApprovals(sessionId);
+  return list.approvals
+    .filter((a) => a.status === "EXPIRED" && hexOf(a.taskId?.value) === taskId)
+    .sort((a, b) => (a.requestedAtMs < b.requestedAtMs ? -1 : a.requestedAtMs > b.requestedAtMs ? 1 : 0))
+    .map((a) => ({ approvalId: hexOf(a.approvalId?.value), taskId, toolName: a.toolName, effectClass: a.effectClass, intentHash: a.intentHash, expiresAtMs: msOf(a.expiresAtMs) }));
+}
+
+// ------------------------------------------------ the agent's mode proposal
+
+const modeName = (m: TaskMode): string => TaskMode[m] ?? "AGENT";
+
+export function proposalInfo(v: ModeProposalView): ModeProposalInfo {
+  const status = (["PENDING", "ACCEPTED", "DECLINED", "SKIPPED"] as const).includes(v.status as ProposalStatus) ? (v.status as ProposalStatus) : "SKIPPED";
+  return {
+    proposalId: v.proposalId,
+    taskId: hexOf(v.taskId?.value),
+    fromMode: modeName(v.fromMode),
+    toMode: modeName(v.toMode),
+    reason: v.reason,
+    status,
+    outcomeReason: v.outcomeReason,
+    proposedAtMs: msOf(v.proposedAtMs),
+    expiresAtMs: msOf(v.expiresAtMs),
+    decidedAtMs: msOf(v.decidedAtMs),
+  };
+}
+
 // ------------------------------------------------------------ the handlers
 
 export function registerControlHandlers(r: Registrar): void {
@@ -124,6 +153,26 @@ export function registerControlHandlers(r: Registrar): void {
     const sid = r.sessionId(a[0]);
     const tid = a[1] === undefined || a[1] === null || a[1] === "" ? null : r.taskId(a[1]);
     return dockApprovals(r.client(), sid, tid);
+  });
+
+  r.handle("approvals:expired", async (...a) => expiredApprovals(r.client(), r.sessionId(a[0]), r.taskId(a[1])));
+
+  // REQ-PX-055: the agent's mode proposal. Listing is a read; deciding is the person's, under the session lease the Core checks.
+  r.handle("modeproposals:list", async (...a): Promise<ModeProposalListInfo> => {
+    const tid = r.taskId(a[0]);
+    const l = await listModeProposals(r.client(), tid);
+    return { taskId: tid, proposals: l.proposals.map(proposalInfo), nowMs: msOf(l.nowMs) };
+  });
+  r.handle("modeproposals:decide", async (...a): Promise<ModeProposalDecisionInfo> => {
+    const sid = r.sessionId(a[0]);
+    const tid = r.taskId(a[1]);
+    const proposalId = validProposalId(a[2]);
+    const accept = validBool(a[3], "accept");
+    const c = r.client();
+    await r.lease(c, sid);
+    const d = await decideModeProposal(c, sid, tid, proposalId, accept);
+    if (!d.proposal) bad("the Core answered with no proposal");
+    return { proposal: proposalInfo(d.proposal!), modeChange: d.modeChange ? { mode: modeName(d.modeChange.mode), previousMode: modeName(d.modeChange.previousMode), effective: d.modeChange.effective } : null };
   });
 
   /**

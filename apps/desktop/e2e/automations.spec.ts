@@ -287,14 +287,21 @@ test("PX-086: a repository definition is data until its exact bytes are approved
     await accessible(page, "a repository definition whose file changed");
 
     // The next run notices before anything starts: the Core refuses it with SOURCE_CHANGED (the person sees the typed refusal at once),
-    // the approval is withdrawn and the attention item is raised. No run begins, so no run record and no task exist (the Core's own
-    // contract, proven in services/modbit-core/tests/automations_px.rs).
+    // the approval is withdrawn and the attention item is raised. Changed on purpose in Wave 6 (AUT-E01, "failures are counted and
+    // never dropped"): this spec used to expect zero rows. The refused run now leaves ONE history row, skipped with the typed reason
+    // SOURCE_CHANGED, and still starts nothing (no task: the row carries no task id; the Core's contract is proven in
+    // services/modbit-core/tests/automations_px.rs).
     await page.getByTestId("detail-run").click();
     await expect(page.getByTestId("automations-notice")).toContainText("SOURCE_CHANGED");
     await expect(row(page, "nightly-check")).toHaveAttribute("data-state", "NEEDS_APPROVAL");
     const attention = page.locator('[data-testid="automation-attention"][data-kind="SOURCE_CHANGED"]');
     await expect(attention).toBeVisible();
-    await expect(page.getByTestId("run-row")).toHaveCount(0);
+    const refusedRun = page.getByTestId("run-row");
+    await expect(refusedRun).toHaveCount(1);
+    await expect(refusedRun).toHaveAttribute("data-status", "skipped");
+    await expect(refusedRun).toHaveAttribute("data-reason", "SOURCE_CHANGED");
+    await expect(refusedRun).toHaveAttribute("data-task-id", "");
+    await expect(refusedRun.getByTestId("run-reason")).toHaveText("SOURCE_CHANGED");
     // Approving the bytes that were read is refused: they are no longer the bytes on disk.
     await page.getByTestId("detail-enable").click();
     await page.getByTestId("enable-confirm").click();

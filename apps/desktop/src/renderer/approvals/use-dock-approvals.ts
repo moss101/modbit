@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from "react";
-import type { DockApprovalView } from "../../shared/control-types.ts";
+import type { DockApprovalView, ExpiredApprovalView } from "../../shared/control-types.ts";
 import { deckOrder } from "./model.ts";
 
 interface WireEventLike {
@@ -15,8 +15,11 @@ const HOLD_MS = 120;
  * thread switch, a renderer reload and a Core restart: nothing is kept here but the last answer). The open task's come
  * first, then the other agents', each group oldest first. Re-read when an event passes, held briefly so a burst reads once.
  */
-export function useDockApprovals(sessionId: string | null, taskId: string | null, connected: boolean): { approvals: DockApprovalView[]; loaded: boolean; refresh: () => void } {
+export function useDockApprovals(sessionId: string | null, taskId: string | null, connected: boolean): { approvals: DockApprovalView[]; expired: ExpiredApprovalView[]; loaded: boolean; refresh: () => void } {
   const [approvals, setApprovals] = useState<DockApprovalView[]>([]);
+  // REQ-PX-058: approvals this card saw waiting that the Core has since closed as expired. They are named, never silently dropped.
+  const [expired, setExpired] = useState<ExpiredApprovalView[]>([]);
+  const seen = useRef(new Set<string>());
   const [loaded, setLoaded] = useState(false);
   const key = useRef({ sessionId, taskId });
   key.current = { sessionId, taskId };
@@ -34,8 +37,11 @@ export function useDockApprovals(sessionId: string | null, taskId: string | null
     inFlight.current = true;
     try {
       const list = await window.modbit.dockApprovals(sid);
+      for (const a of list) seen.current.add(a.approvalId);
+      const closed = seen.current.size > 0 ? await window.modbit.expiredApprovals(sid, tid) : [];
       if (key.current.taskId === tid) {
         setApprovals(deckOrder(list, tid));
+        setExpired(closed.filter((e) => seen.current.has(e.approvalId)));
         setLoaded(true);
       }
     } catch {
@@ -59,6 +65,8 @@ export function useDockApprovals(sessionId: string | null, taskId: string | null
 
   useEffect(() => {
     setApprovals([]);
+    setExpired([]);
+    seen.current = new Set();
     setLoaded(false);
   }, [taskId]);
 
@@ -81,5 +89,5 @@ export function useDockApprovals(sessionId: string | null, taskId: string | null
     };
   }, [taskId, refresh]);
 
-  return { approvals, loaded, refresh };
+  return { approvals, expired, loaded, refresh };
 }
