@@ -167,7 +167,11 @@ fn why_not_done(cfg: &RunConfig, arm: Arm, data_dir: &Path, session: &str) -> St
             continue;
         };
         let kind = v["event_type"].as_str().unwrap_or("?");
-        tail.push(kind.to_owned());
+        // The type and the start of its payload: a program that ran long, an
+        // attention class that suspended the run or an approval that was
+        // asked is named, not just counted.
+        let snippet: String = v["payload"].to_string().chars().take(200).collect();
+        tail.push(format!("{kind} {snippet}"));
         match kind {
             "AcceptanceGateEvaluated" => lines.push(format!("{kind}: {}", v["payload"])),
             "VerificationRunRecorded" => {
@@ -188,7 +192,7 @@ fn why_not_done(cfg: &RunConfig, arm: Arm, data_dir: &Path, session: &str) -> St
         }
     }
     let n = tail.len().saturating_sub(25);
-    lines.push(format!("last events: {:?}", &tail[n..]));
+    lines.push(format!("last events:\n  {}", tail[n..].join("\n  ")));
     lines.join("\n")
 }
 
@@ -311,6 +315,18 @@ pub fn run_trial(cfg: &RunConfig, arm: Arm, task: &TrialTask, repeat: u32) -> Ru
                 }
                 Some("ToolCallSucceeded" | "ToolCallFailed") => {
                     calls.insert(v["payload"]["tool_call_id"].to_string());
+                }
+                // How long a program ran: `proc.exec` hands back a handle after
+                // 2 s, which a scripted model must then wait on. With
+                // `MODBIT_TRIAL_TRACE` set the figure is printed for every run.
+                Some("ProgramEnded") if std::env::var_os("MODBIT_TRIAL_TRACE").is_some() => {
+                    eprintln!(
+                        "PX114_PROGRAM_ENDED arm={} task={} repeat={repeat} elapsed_ms={} tool_calls={}",
+                        arm.label(),
+                        task.id,
+                        v["payload"]["elapsed_ms"],
+                        v["payload"]["tool_calls"],
+                    );
                 }
                 _ => {}
             }

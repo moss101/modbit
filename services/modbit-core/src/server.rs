@@ -2226,6 +2226,9 @@ pub(crate) async fn handle_command_as(
                         principal: p.automation_principal.clone(),
                         definition_hash: p.automation_definition_hash.clone(),
                         test: p.automation_test,
+                        // A local run's hosts are lease resources
+                        // (`network.egress:<host>:443`), not sandbox rules.
+                        approved_hosts: vec![],
                     },
                     actor.clone(),
                 ));

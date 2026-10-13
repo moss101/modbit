@@ -9,7 +9,7 @@
 //! refuses write mode).
 
 /// The schema version this build writes.
-pub const CLOUD_SCHEMA_VERSION: i32 = 8;
+pub const CLOUD_SCHEMA_VERSION: i32 = 9;
 
 /// Ordered migrations `(version, name, sql)`.
 pub const MIGRATIONS: &[(i32, &str, &str)] = &[
@@ -408,6 +408,14 @@ CREATE TABLE IF NOT EXISTS automation_clock (
   offset_ms BIGINT NOT NULL DEFAULT 0
 );
 INSERT INTO automation_clock (id, offset_ms) VALUES (1, 0) ON CONFLICT (id) DO NOTHING;
+",
+    ),
+    (
+        9,
+        "cloud-v9: the egress audit carries the typed reason of a refusal (NO_EGRESS_RULE, ORG_ALLOW_LIST, ...), so a run's denials are readable by code (PX-085)",
+        r"
+ALTER TABLE sandbox_egress ADD COLUMN IF NOT EXISTS reason TEXT NOT NULL DEFAULT '';
+CREATE INDEX IF NOT EXISTS sandbox_egress_denied ON sandbox_egress(tenant_id, sandbox_id) WHERE allowed = FALSE;
 ",
     ),
 ];
