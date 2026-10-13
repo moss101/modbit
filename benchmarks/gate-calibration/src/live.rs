@@ -759,6 +759,36 @@ struct Attempt {
     error: Option<String>,
 }
 
+/// The option of question `qid` (from `question list`) a protocol that
+/// approves nothing picks: one that reads as a refusal, else the last listed.
+fn declining_option(listing: &str, qid: &str) -> Option<String> {
+    let mut in_q = false;
+    let mut options: Vec<(String, String)> = Vec::new();
+    for l in listing.lines() {
+        if l.starts_with("question ") {
+            in_q = l.split_whitespace().nth(1) == Some(qid);
+        } else if in_q && let Some(rest) = l.trim_start().strip_prefix("option ") {
+            let mut it = rest.splitn(2, ' ');
+            let id = it.next().unwrap_or_default().to_owned();
+            options.push((id, it.next().unwrap_or_default().to_ascii_lowercase()));
+        }
+    }
+    let refusing = [
+        "deny", "decline", "reject", "refuse", "no", "skip", "cancel", "stop",
+    ];
+    options
+        .iter()
+        .find(|(id, label)| {
+            refusing.iter().any(|w| {
+                id.to_ascii_lowercase() == *w
+                    || label.contains(&format!("\"{w}"))
+                    || label.contains(w) && *w != "no"
+            })
+        })
+        .or_else(|| options.last())
+        .map(|(id, _)| id.clone())
+}
+
 fn pending(text: &str, prefix: &str, status_any: &[&str]) -> Vec<(String, String)> {
     text.lines()
         .filter(|l| l.starts_with(prefix))
@@ -932,25 +962,30 @@ fn produce(
                         .measure
                         .notes
                         .push(format!("question {qid} answered by protocol"));
-                    r = cli.call(
-                        &[
-                            "question",
-                            "answer",
-                            "--session",
-                            &session,
-                            "--task",
-                            &tid,
-                            "--question",
-                            qid,
-                            "--endpoint",
-                            endpoint,
-                            "--model",
-                            &cfg.run.model,
-                            "--wait",
-                            QUESTION_ANSWER,
-                        ],
-                        remaining,
-                    );
+                    // A question that takes options only (no free text) is
+                    // answered with the declining option: the protocol never
+                    // approves a protected effect.
+                    let option = declining_option(&q.stdout, qid);
+                    let mut args = vec![
+                        "question",
+                        "answer",
+                        "--session",
+                        &session,
+                        "--task",
+                        &tid,
+                        "--question",
+                        qid,
+                        "--endpoint",
+                        endpoint,
+                        "--model",
+                        &cfg.run.model,
+                        "--wait",
+                    ];
+                    if let Some(o) = &option {
+                        args.extend(["--option", o.as_str()]);
+                    }
+                    args.push(QUESTION_ANSWER);
+                    r = cli.call(&args, remaining);
                 } else {
                     let a = cli.call(&["approval", "list", "--session", &session], short);
                     let aps = pending(
@@ -988,16 +1023,18 @@ fn produce(
             }
             attempt.measure.interactions = interactions;
             if timed_out {
+                // A model that did not finish in time left a tree: that tree is
+                // its candidate (the task is cancelled, the state says so). It is
+                // not a failure of the Core or the CLI.
                 let _ = cli.call(
                     &["task", "cancel", "--session", &session, "--task", &tid],
                     short,
                 );
-                return Err(format!(
-                    "the task did not finish within {}s and was cancelled",
+                attempt.measure.notes.push(format!(
+                    "the task did not finish within {}s and was cancelled; its tree is the candidate",
                     task_timeout.as_secs()
                 ));
-            }
-            if r.code == 1 || r.code < 0 {
+            } else if r.code == 1 || r.code < 0 {
                 return Err(format!(
                     "task run failed (exit {}): {}{}",
                     r.code, r.stdout, r.stderr
@@ -2377,6 +2414,14 @@ mod tests {
                 &aggregate(&rows, &langs).1
             )
         );
+    }
+
+    #[test]
+    fn an_options_only_question_is_answered_with_the_declining_option() {
+        let q = "question q-1 answered=false reason=x flags= option= text=\"\" \"May I?\"\n  option approve \"Approve\"\n  option deny \"Deny\"\nquestion q-2 answered=false\n  option a \"Go ahead\"\n  option b \"Leave it\"\n";
+        assert_eq!(declining_option(q, "q-1").as_deref(), Some("deny"));
+        assert_eq!(declining_option(q, "q-2").as_deref(), Some("b"));
+        assert_eq!(declining_option(q, "q-3"), None);
     }
 
     #[test]
