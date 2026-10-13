@@ -861,7 +861,7 @@ async fn serve_connection(core: Arc<Core>, mut stream: BoxedStream) -> Result<()
     let mut views = Views::default();
     // PX-043: the terminals this connection attached to — their frames
     // arrive here, and end with the connection.
-    let mut terms = crate::terminal_stream::Terminals::new(connection);
+    let (mut terms, mut terms_rx) = crate::terminal_stream::Terminals::new(connection);
     // The client's frames are read by a task of their own, so a frame that
     // arrives in pieces is never torn by another arm of the loop winning the
     // `select!` (a half-read frame cannot be resumed): terminal output makes
@@ -889,6 +889,7 @@ async fn serve_connection(core: Arc<Core>, mut stream: BoxedStream) -> Result<()
         &mut host_rx,
         &mut views,
         &mut terms,
+        &mut terms_rx,
     )
     .await;
     reader_task.abort();
@@ -1066,6 +1067,27 @@ async fn unwatch_browser_view(
 /// Connection counter (a host is tied to the connection it attached on).
 static CONNECTIONS: std::sync::atomic::AtomicU64 = std::sync::atomic::AtomicU64::new(0);
 
+/// Run a command on a terminal attachment while the connection keeps sending the attachment's frames to the client. The command waits
+/// for the broker's answer (`terminal_stream::ask`), and that answer comes on the same stream as the output, behind it: a connection
+/// that stopped sending output to wait would leave the output queue full, the stream unread, and the answer behind it unseen.
+async fn sending_terminal_frames(
+    stream: &mut tokio::io::WriteHalf<BoxedStream>,
+    queue: &mut crate::terminal_stream::TerminalQueue,
+    command: impl std::future::Future<Output = CommandAck>,
+) -> Result<CommandAck> {
+    let mut command = std::pin::pin!(command);
+    loop {
+        tokio::select! {
+            ack = &mut command => return Ok(ack),
+            f = queue.recv() => {
+                if let Some(f) = f {
+                    write_frame(stream, &SurfaceFrame { body: Some(Body::TerminalFrame(f)) }).await?;
+                }
+            }
+        }
+    }
+}
+
 #[allow(clippy::too_many_arguments)]
 async fn serve_frames(
     core: &Arc<Core>,
@@ -1079,6 +1101,7 @@ async fn serve_frames(
     host_rx: &mut Option<tokio::sync::mpsc::Receiver<wire::BrowserHostRequest>>,
     views: &mut Views,
     terms: &mut crate::terminal_stream::Terminals,
+    terms_rx: &mut crate::terminal_stream::TerminalQueue,
 ) -> Result<()> {
     loop {
         // Drain any events the subscriber has not seen yet, in bounded batches.
@@ -1116,7 +1139,7 @@ async fn serve_frames(
                 Some(Err(e)) => return Err(e.into()),
             },
             // PX-043: a slice of a terminal stream this connection attached to.
-            f = terms.rx.recv() => {
+            f = terms_rx.recv() => {
                 if let Some(f) = f {
                     write_frame(stream, &SurfaceFrame { body: Some(Body::TerminalFrame(f)) }).await?;
                 }
@@ -1210,13 +1233,28 @@ async fn serve_frames(
                         crate::terminal_stream::detach_terminal(core, env, terms).await
                     }
                     _ if env.command_type == "SetTerminalInput" => {
-                        crate::terminal_stream::set_terminal_input(core, env, terms).await
+                        sending_terminal_frames(
+                            stream,
+                            terms_rx,
+                            crate::terminal_stream::set_terminal_input(core, env, terms),
+                        )
+                        .await?
                     }
                     _ if env.command_type == "ResizeTerminal" => {
-                        crate::terminal_stream::resize_terminal(core, env, terms).await
+                        sending_terminal_frames(
+                            stream,
+                            terms_rx,
+                            crate::terminal_stream::resize_terminal(core, env, terms),
+                        )
+                        .await?
                     }
                     _ if env.command_type == "WriteTerminal" => {
-                        crate::terminal_stream::write_terminal(core, env, terms).await
+                        sending_terminal_frames(
+                            stream,
+                            terms_rx,
+                            crate::terminal_stream::write_terminal(core, env, terms),
+                        )
+                        .await?
                     }
                     // PX-043: stopping a task's background terminal.
                     _ if env.command_type == "KillTerminal" => {
