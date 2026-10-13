@@ -1345,6 +1345,14 @@ async fn qual_px_069_the_on_screen_stop_halts_the_actuator_and_is_sticky_for_the
         )
         .await
         .unwrap();
+    // "At once": the stop itself (command to ack) is bounded by the actuator stop
+    // deadline (500 ms) plus releasing the one session (2 s); 5 s leaves CI margin
+    // without letting the 60 s in-flight stall pass as a stop.
+    let stop_took = started.elapsed();
+    assert!(
+        stop_took < Duration::from_secs(5),
+        "the stop took {stop_took:?}"
+    );
     let stopped: ComputerStopped = Client::result(&ack).unwrap();
     assert_eq!(stopped.sessions_closed, 1);
     assert!(
@@ -1352,9 +1360,10 @@ async fn qual_px_069_the_on_screen_stop_halts_the_actuator_and_is_sticky_for_the
         "the actuator confirmed it stopped"
     );
     rig.finish().await;
-    // The in-flight input came back within the stop's bound, not its 60 s stall.
+    // The in-flight input did not wait out its stall: the whole run, teardown
+    // included, ended well under the 60 s the hung input would otherwise take.
     assert!(
-        started.elapsed() < Duration::from_secs(8),
+        started.elapsed() < Duration::from_secs(30),
         "{:?}",
         started.elapsed()
     );
@@ -1370,6 +1379,15 @@ async fn qual_px_069_the_on_screen_stop_halts_the_actuator_and_is_sticky_for_the
     expect_refusal(&o, 6, "USER_ABORTED", "abandon");
     let evs = rig.events().await;
     assert_eq!(of(&evs, "ComputerUserAborted").len(), 1);
+    // Order, not timing: the stop is in the log before the in-flight input's result.
+    let at = |t: &str| evs.iter().position(|e| e["event_type"] == t);
+    let aborted = at("ComputerUserAborted").unwrap();
+    if let Some(performed) = at("ComputerActionPerformed") {
+        assert!(
+            aborted < performed,
+            "the stop ({aborted}) precedes the in-flight result ({performed})"
+        );
+    }
     let closed = of(&evs, "ComputerSessionClosed");
     assert_eq!(closed[0]["payload"]["payload"]["reason"], "USER_ABORTED");
     assert_eq!(closed[0]["payload"]["payload"]["outcome"], "STOPPED");
