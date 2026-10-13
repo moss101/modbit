@@ -87,4 +87,6 @@ test("REQ-PX-058: titles are readable and a refusal is explained in the Core's t
   assert.equal(humanTitle("custom.tool_name"), "Custom tool name");
   assert.match(refusalWords("Error invoking remote method 'x': Error: INTENT_MISMATCH: no"), /no longer the one this card showed/);
   assert.match(refusalWords("STALE_APPROVAL: x"), /no longer waiting/);
+  // REQ-PX-058: an expired approval is refused by the Core and worded as expired, not as denied or stale.
+  assert.match(refusalWords("Error invoking remote method 'x': Error: APPROVAL_EXPIRED: the approval expired"), /expired before it was answered/);
 });

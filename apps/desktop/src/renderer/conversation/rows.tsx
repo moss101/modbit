@@ -267,6 +267,11 @@ function ApprovalRow({ row, ctx }: { row: TranscriptRowView; ctx: RowContext }) 
         <StatusDot status={requested ? "warn" : "ok"} label={requested ? "Needs you" : (row.hints.status || "Resolved").toLowerCase()} showLabel /> <strong>{isQuestion ? "The agent asks" : `Approval: ${f?.toolName || "a protected action"}`}</strong>
       </p>
       {row.text && <p className="conv-approval-text">{row.text}</p>}
+      {row.hints.status === "EXPIRED" && !isQuestion && (
+        <p className="meta" data-testid="conv-approval-expired">
+          Expired: nobody answered before the Core's recorded expiry, so it can no longer be approved. The effect did not run and the agent was told.
+        </p>
+      )}
       {!isQuestion && f && (
         <p className="meta">
           {f.effectClass ? `Effect class ${f.effectClass}` : ""}
