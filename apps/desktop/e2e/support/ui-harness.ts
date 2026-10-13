@@ -162,7 +162,8 @@ export async function describeRenderer(app: ElectronApplication | null, page: Pa
     page.evaluate(async () => {
       const p = (window as unknown as { __probe?: { ticks: number[]; frames: unknown[]; vis: unknown[] } }).__probe;
       const now = Math.round(performance.now());
-      const ticks = p?.ticks ?? [];
+      const ticks = (p?.ticks ?? []).slice();
+      const framesSeen = p?.frames.slice(-12);
       const gaps = ticks.slice(1).map((t, i) => t - ticks[i]!);
       // The active probe comes after the passive record was read: asking for frames may itself wake the page.
       const frames = await new Promise<number>((res) => {
@@ -186,7 +187,7 @@ export async function describeRenderer(app: ElectronApplication | null, page: Pa
         gapsOver500: gaps.filter((g) => g > 500).length,
         visibilityChanges: p?.vis,
         framesIn500ms: frames,
-        terminalFrames: p?.frames.slice(-12),
+        terminalFrames: framesSeen,
       };
     }),
     "renderer",
