@@ -16,9 +16,7 @@ jobs:
       matrix:
         include:
           - { job: apps-panel, harden: "off", raf: "0" }
-          - { job: apps-panel, harden: "off", raf: "1" }
-          - { job: apps-panel, harden: "on", raf: "0" }
-          - { job: browser-feedback, harden: "on", raf: "0" }
+          - { job: browser-feedback, harden: "off", raf: "0" }
     env:
       MODBIT_E2E_HARDEN: ${{ matrix.harden }}
       MODBIT_E2E_PROBE_RAF: ${{ matrix.raf }}
@@ -43,7 +41,7 @@ jobs:
         run: |
           cd apps/desktop
           case "${{ matrix.job }}" in
-            apps-panel) pnpm exec playwright test -c e2e/playwright.config.ts e2e/apps-panel.spec.ts --repeat-each 10 --workers 1 ;;
+            apps-panel) pnpm exec playwright test -c e2e/playwright.config.ts e2e/apps-panel.spec.ts --repeat-each 20 --workers 1 ;;
             browser-feedback) pnpm exec playwright test -c e2e/playwright.config.ts e2e/browser-feedback.spec.ts -g "console, network, viewport" --repeat-each 30 --workers 1 ;;
             probe) pnpm exec playwright test -c e2e/playwright.config.ts e2e/zz-stress-probe.spec.ts ;;
           esac

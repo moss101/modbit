@@ -103,22 +103,28 @@ struct Attachment {
 pub(crate) struct Terminals {
     attachments: HashMap<String, Attachment>,
     tx: mpsc::Sender<wire::TerminalFrame>,
-    pub(crate) rx: mpsc::Receiver<wire::TerminalFrame>,
     /// This connection's number, to name the holder of a lease.
     connection: u64,
 }
 
+/// The receiving end of a connection's terminal queue. It is kept apart from [`Terminals`] so the connection can send the frames
+/// queued here while a command on an attachment (a resize, a keystroke) waits for the broker's answer: the answer arrives on the same
+/// stream as the frames, behind them, so a connection that waited without sending them would wait for ever (see `ask`).
+pub(crate) type TerminalQueue = mpsc::Receiver<wire::TerminalFrame>;
+
 impl Terminals {
-    pub(crate) fn new(connection: u64) -> Self {
+    pub(crate) fn new(connection: u64) -> (Self, TerminalQueue) {
         // Bounded, small: with the broker's window this is what keeps a slow
         // client from growing the Core.
         let (tx, rx) = mpsc::channel(8);
-        Self {
-            attachments: HashMap::new(),
-            tx,
+        (
+            Self {
+                attachments: HashMap::new(),
+                tx,
+                connection,
+            },
             rx,
-            connection,
-        }
+        )
     }
 
     /// The connection ended: every attachment ends with it (their broker
@@ -725,7 +731,10 @@ fn attachment<'a>(
     })
 }
 
-/// Ask the broker something on an attachment and wait for its answer.
+/// Ask the broker something on an attachment and wait for its answer. The answer is read by the attachment's relay task in the order
+/// the broker sent it, behind any output already on the stream; the relay hands output to the connection through a queue of eight, so
+/// whoever calls this must keep sending that queue's frames to the client while it waits (`serve_frames` does), or an answer queued
+/// behind nine frames of output is never read and the wait ends after 10 s.
 async fn ask(
     a: &Attachment,
     kind: Kind,

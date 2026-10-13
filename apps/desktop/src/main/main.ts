@@ -891,9 +891,6 @@ function createWindow(bounds?: Electron.Rectangle): void {
       nodeIntegration: false,
       sandbox: true,
       webSecurity: true,
-      // The test launch only (e2e/support/renderer-flags.ts): a hosted runner's session can report the window as hidden, and a hidden renderer paints
-      // and runs timers once a second. A person's window is never in that state for long; production keeps Chromium's default.
-      ...(process.env.MODBIT_E2E_NO_THROTTLE === "1" ? { backgroundThrottling: false } : {}),
     },
   });
   win = w;

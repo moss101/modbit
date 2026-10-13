@@ -13,7 +13,6 @@ import { createServer, type Server } from "node:http";
 import { readFileSync } from "node:fs";
 import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
-import { rendererArgs, rendererEnv } from "./renderer-flags.ts";
 
 export const appDir = resolve(dirname(fileURLToPath(import.meta.url)), "..", "..");
 export const coreBin = process.env.MODBIT_CORE_BIN ?? resolve(appDir, "..", "..", "target", "debug", process.platform === "win32" ? "modbit-core.exe" : "modbit-core");
@@ -35,9 +34,9 @@ export interface LaunchOptions {
 
 export async function launch(dataDir: string, opts: LaunchOptions = {}): Promise<{ app: ElectronApplication; page: Page }> {
   const app = await electron.launch({
-    // The renderer must not depend on the runner's window stacking (renderer-flags.ts).
-    args: [...rendererArgs(), join(appDir, opts.outDir ?? "dist", "main", "main.cjs")],
-    env: { ...process.env, MODBIT_DATA_DIR: dataDir, MODBIT_CORE_BIN: coreBin, OPENAI_API_KEY: "", ANTHROPIC_API_KEY: "", MODBIT_SUPPRESS_OS_NOTIFICATIONS: "1", MODBIT_QUIT_PROMPT: "off", ...rendererEnv(), ...opts.env },
+    // A window the OS reports as covered gets no animation frames, and xterm.js paints its rows in one: the run must not depend on the runner's window stacking.
+    args: ["--disable-features=CalculateNativeWinOcclusion", "--disable-backgrounding-occluded-windows", "--disable-renderer-backgrounding", join(appDir, opts.outDir ?? "dist", "main", "main.cjs")],
+    env: { ...process.env, MODBIT_DATA_DIR: dataDir, MODBIT_CORE_BIN: coreBin, OPENAI_API_KEY: "", ANTHROPIC_API_KEY: "", MODBIT_SUPPRESS_OS_NOTIFICATIONS: "1", MODBIT_QUIT_PROMPT: "off", ...opts.env },
   });
   const page = await app.firstWindow();
   app.process().stderr?.on("data", (d: Buffer) => process.stderr.write(`[electron] ${d}`));
