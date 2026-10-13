@@ -7,6 +7,10 @@ rust-version.workspace = true
 license.workspace = true
 publish.workspace = true
 
+[[bin]]
+name = "paired-trial"
+path = "src/bin/paired_trial.rs"
+
 [dependencies]
 serde.workspace = true
 serde_json.workspace = true
@@ -14,6 +18,19 @@ modbit-compaction.workspace = true
 sha2.workspace = true
 hex.workspace = true
 tempfile.workspace = true
+modbit-providers.workspace = true
+modbit-protocol.workspace = true
+modbit-domain.workspace = true
+prost.workspace = true
+rand.workspace = true
+ed25519-dalek.workspace = true
+modbit-secrets.workspace = true
+tokio-util.workspace = true
+tokio.workspace = true
+
+[[bin]]
+name = "compaction-eval-live"
+path = "src/bin/compaction_eval_live.rs"
 
 [lints]
 workspace = true

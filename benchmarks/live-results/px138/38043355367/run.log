@@ -1,0 +1,25 @@
+compaction-eval-live: run 1/24 (long-00) done, $0.0039 spent
+compaction-eval-live: run 2/24 (long-01) done, $0.0085 spent
+compaction-eval-live: run 3/24 (long-02) done, $0.0118 spent
+compaction-eval-live: run 4/24 (long-03) done, $0.0160 spent
+compaction-eval-live: run 5/24 (long-04) done, $0.0198 spent
+compaction-eval-live: run 6/24 (long-05) done, $0.0238 spent
+compaction-eval-live: run 7/24 (long-06) done, $0.0293 spent
+compaction-eval-live: run 8/24 (long-07) done, $0.0329 spent
+compaction-eval-live: run 9/24 (long-08) done, $0.0370 spent
+compaction-eval-live: run 10/24 (long-09) done, $0.0423 spent
+compaction-eval-live: run 11/24 (long-10) done, $0.0466 spent
+compaction-eval-live: run 12/24 (long-11) done, $0.0509 spent
+compaction-eval-live: run 13/24 (long-12) done, $0.0548 spent
+compaction-eval-live: run 14/24 (long-13) done, $0.0586 spent
+compaction-eval-live: run 15/24 (long-14) done, $0.0628 spent
+compaction-eval-live: run 16/24 (long-15) done, $0.0664 spent
+compaction-eval-live: run 17/24 (long-16) done, $0.0706 spent
+compaction-eval-live: run 18/24 (long-17) done, $0.0752 spent
+compaction-eval-live: run 19/24 (long-18) done, $0.0788 spent
+compaction-eval-live: run 20/24 (long-19) done, $0.0846 spent
+compaction-eval-live: run 21/24 (long-20) done, $0.0881 spent
+compaction-eval-live: run 22/24 (long-21) done, $0.0924 spent
+compaction-eval-live: run 23/24 (long-22) done, $0.0963 spent
+compaction-eval-live: run 24/24 (long-23) done, $0.1004 spent
+24 runs scored; digest 4bc7ea3d561b41ddc004abcc7d29e7f53a1e0f16b2fb48807fcec99aaf919d1c; COMPLETE
