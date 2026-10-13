@@ -79,6 +79,27 @@ pub enum Revision {
     Revised2,
 }
 
+/// The downstream continuation task of a long run, with the criteria that
+/// decide its success. Every field is recorded by the generator beside the
+/// event log, before any arm runs (the live half, `compaction_live`, scores a
+/// model's continuation plan against it); none is read from a summary.
+#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
+pub struct ContinuationTask {
+    /// Words the plan's next step must contain (case-insensitive): the step
+    /// the assistant said it would take next, and the module it concerns.
+    pub next_step_keys: Vec<String>,
+    /// The directory the user said must not be touched.
+    pub forbidden_dir: String,
+    /// The component of the constraint the user added later in the session.
+    pub constraint_component: String,
+    /// The timeout, in milliseconds, of that constraint.
+    pub constraint_ms: usize,
+    /// Index of the user entry that added the constraint.
+    pub constraint_entry: usize,
+    /// Index of the assistant entry that announced the next step.
+    pub next_step_entry: usize,
+}
+
 /// One long fixture run: an event log and the questions it supports.
 #[derive(Clone, Debug)]
 pub struct LongRun {
@@ -90,6 +111,8 @@ pub struct LongRun {
     pub entries: Vec<SourceEntry>,
     /// Held-out probes.
     pub probes: Vec<Probe>,
+    /// The continuation task and its log-derived success criteria.
+    pub task: ContinuationTask,
 }
 
 /// A deterministic generator (splitmix64): the fixtures never depend on a
@@ -223,6 +246,7 @@ fn long_run(index: usize, revision: Revision) -> LongRun {
     let mut recent_decision: Option<(usize, String, String)> = None;
     let mut recent_file: Option<(usize, String)> = None;
     let mut extra_user = false;
+    let mut later_constraint: Option<(usize, String, usize)> = None;
     for s in 0..steps {
         let component = format!("{}{index}x{s}", rng.pick(&NOUNS));
         let reason = rng.pick(&REASONS).to_owned();
@@ -292,8 +316,10 @@ fn long_run(index: usize, revision: Revision) -> LongRun {
         }
         if s == steps / 2 && !extra_user {
             extra_user = true;
-            let constraint = format!("keep the {component} timeout at {} ms", 100 + s * 7);
+            let ms = 100 + s * 7;
+            let constraint = format!("keep the {component} timeout at {ms} ms");
             let u = push("user", "", format!("Also, {constraint}."), None);
+            later_constraint = Some((u, component.clone(), ms));
             probe(
                 &mut probes,
                 "user",
@@ -303,6 +329,7 @@ fn long_run(index: usize, revision: Revision) -> LongRun {
             );
         }
     }
+    let kept_fn_name = kept_fn.clone();
     let next = format!(
         "Next I will run the full suite for {kept_fn} and then update the changelog for {kept_fn}."
     );
@@ -389,11 +416,22 @@ fn long_run(index: usize, revision: Revision) -> LongRun {
         vec!["update the changelog".into(), kept_fn],
         n,
     );
+    let (constraint_entry, constraint_component, constraint_ms) = later_constraint
+        .expect("every run has a later user constraint: steps/2 is always a step index");
+    let task = ContinuationTask {
+        next_step_keys: vec!["changelog".into(), kept_fn_name],
+        forbidden_dir: forbidden.to_owned(),
+        constraint_component,
+        constraint_ms,
+        constraint_entry,
+        next_step_entry: n,
+    };
     LongRun {
         revision,
         id,
         entries,
         probes,
+        task,
     }
 }
 

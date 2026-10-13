@@ -756,7 +756,7 @@ test("human activity preemption: a real key from the person takes control; the a
       return id;
     }, bsid);
     await expect(page.getByTestId("browser-control")).toHaveAttribute("data-controller", "USER", { timeout: 15_000 });
-    await expect(page.getByTestId("browser-control")).toHaveAttribute("data-lease-generation", "2");
+    await expect(page.getByTestId("browser-control")).toHaveAttribute("data-lease-generation", "2", { timeout: 15_000 });
     const described = await page.evaluate((id) => window.modbit.describeBrowser(id), bsid);
     expect((described as { humanInputAt?: number } | null)?.humanInputAt ?? 0).toBeGreaterThan(0);
     openFirst();
@@ -823,8 +823,9 @@ test("human activity preemption: a mouse press or a scroll from the person takes
       { type: "mouseDown", x: 10, y: 10, button: "left", clickCount: 1 },
       { type: "mouseUp", x: 10, y: 10, button: "left", clickCount: 1 },
     ]);
+    // The host's fence (USER) stands at once; the lease generation is the Core's answer to the hand-over, which is as slow as the Core is.
     await expect(control).toHaveAttribute("data-controller", "USER", { timeout: 15_000 });
-    await expect(control).toHaveAttribute("data-lease-generation", "2");
+    await expect(control).toHaveAttribute("data-lease-generation", "2", { timeout: 15_000 });
     await page.getByTestId("browser-return-control").click();
     await expect(control).toHaveAttribute("data-controller", "AGENT", { timeout: 15_000 });
     await expect(control).toHaveAttribute("data-lease-generation", "3");
@@ -836,7 +837,7 @@ test("human activity preemption: a mouse press or a scroll from the person takes
     // A scroll: control moves again.
     await viewInput(app, [{ type: "mouseWheel", x: 20, y: 20, deltaX: 0, deltaY: -120 }]);
     await expect(control).toHaveAttribute("data-controller", "USER", { timeout: 15_000 });
-    await expect(control).toHaveAttribute("data-lease-generation", "4");
+    await expect(control).toHaveAttribute("data-lease-generation", "4", { timeout: 15_000 });
     await closeApp(app);
   } finally {
     model.server.close();

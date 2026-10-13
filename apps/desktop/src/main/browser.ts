@@ -473,19 +473,30 @@ export class BrowserHost {
   /** Agent input dispatched by this host in the last moments (the person's hook ignores what arrives inside it). */
   private agentInputUntil = 0;
 
-  /** IMP-EV-0087: the person acted in the view — control moves to them on the Core and here. */
+  /**
+   * IMP-EV-0087: the person acted in the view - control moves to them on the Core and here. The host's own fence holds at once; the
+   * Core's record follows. A hand-over the Core did not take (a slow or briefly unavailable Core) is asked again, because the Core
+   * answers a repeated hand-over to the holder with `changed: false`: the host and the Core must not stay apart until the person
+   * happens to press a button.
+   */
   private async preempt(h: HostedSession): Promise<void> {
     h.humanInputAt = Date.now();
     if (h.controller === "USER") return;
     h.controller = "USER";
-    const c = this.client();
-    if (!c) return;
-    try {
-      const r = await c.setBrowserControl(h.sessionId, h.browserSessionId, h.taskId, "USER");
-      h.leaseGeneration = Math.max(h.leaseGeneration, Number(r.leaseGeneration));
-      this.notify("browser:state", { browserSessionId: h.browserSessionId, ...this.state(h), controller: "USER", leaseGeneration: h.leaseGeneration, preempted: true });
-    } catch {
-      // The Core will learn on the next hand-over; the host's own fence holds.
+    for (const waitMs of [0, 250, 1_000, 3_000]) {
+      if (waitMs > 0) await new Promise((r) => setTimeout(r, waitMs));
+      // The person may have handed control back meanwhile; that hand-over is the Core's by then.
+      if (h.controller !== "USER") return;
+      const c = this.client();
+      if (!c) continue;
+      try {
+        const r = await c.setBrowserControl(h.sessionId, h.browserSessionId, h.taskId, "USER");
+        h.leaseGeneration = Math.max(h.leaseGeneration, Number(r.leaseGeneration));
+        this.notify("browser:state", { browserSessionId: h.browserSessionId, ...this.state(h), controller: "USER", leaseGeneration: h.leaseGeneration, preempted: true });
+        return;
+      } catch (e) {
+        console.error(`modbit-desktop: browser preemption: SetBrowserControl USER refused (${(e as Error).message}); the host's fence holds, asking again`);
+      }
     }
   }
 
