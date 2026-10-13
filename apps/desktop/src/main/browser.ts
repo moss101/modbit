@@ -23,7 +23,7 @@ import type { CoreClient } from "@modbit/ide-adapter-core";
 import { indexDom, mergeAx, type AxNode, type DomIndex, type DomNode, type RawNode } from "./browser-ax.ts";
 import { CertHold, CertTrustStore, type CertInfo, type Trust } from "./browser-cert.ts";
 import { PageFeedback } from "./browser-feedback.ts";
-import { NoticeBatcher, OBSERVER_BINDING, OBSERVER_SOURCE, OBSERVER_WORLD, type Notice } from "./browser-observer.ts";
+import { bringsBackReclaimed, NoticeBatcher, OBSERVER_BINDING, OBSERVER_SOURCE, OBSERVER_WORLD, type Notice } from "./browser-observer.ts";
 import { CdpDenied, PolicyStore, checkOrigin, checkUrlLiteral, describeClass, guardCdp, type AddressClass, type BrowserPolicy } from "./browser-policy.ts";
 import { admitsAgentInput, isHumanInput } from "./lease.ts";
 import { StopRegistry } from "./stop.ts";
@@ -907,7 +907,12 @@ export class BrowserHost {
       // so a failure dump shows which request received the reset note (or consumed it).
       if (h && h.pendingReset !== null) this.log.push({ browserSessionId: h.browserSessionId, kind: "request-while-reset-pending", ok: true, code: `${req.kind}${(req as { observer?: boolean }).observer === true ? ":observer" : ""}${background ? ":background" : ""}`, generation: h.leaseGeneration, atMs: Date.now() });
       if (!h || (this.gone(h) && !h.reclaimed)) return { kind: "error", code: "NO_SUCH_SESSION", message: `this host holds no view for ${bsid}` };
-      if (h.reclaimed && req.kind !== "state" && req.kind !== "close") await this.revive(h);
+      // The Core reading a page it was told changed, after the view was reclaimed, is not use: the view stays reclaimed (and the Core reads again at the next notice).
+      if (h.reclaimed && background) {
+        this.log.push({ browserSessionId: h.browserSessionId, kind: "background-read-declined", ok: true, code: "view reclaimed", generation: h.leaseGeneration, atMs: Date.now() });
+        return { kind: "error", code: "VIEW_RECLAIMED", message: "the view was reclaimed; the Core's own reading of the page does not bring it back" };
+      }
+      if (h.reclaimed && bringsBackReclaimed(req)) await this.revive(h);
       // A revive started by another request (the panel's show) may still be loading: its reset note is not set until it is done.
       if (h.reviving) await h.reviving;
       // Recency counts use, not observation: a read of the view's state, or the Core
