@@ -16,7 +16,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { createHash } from "node:crypto";
 import { BIG_OUTPUT, ECHO_LOOP, EXIT_THREE, expectTerminals, SIZE_REPORTER, gate, handlesIn, nodeTerminal, readTerminal, steppedModel, toolResults, type Step } from "./support/apps-harness.ts";
-import { accessible, closeApp, git, launch, makeRepo, MOD, setContentSize } from "./support/ui-harness.ts";
+import { accessible, closeApp, describeRenderer, git, launch, makeRepo, MOD, setContentSize } from "./support/ui-harness.ts";
 
 test.describe.configure({ mode: "serial" });
 
@@ -199,7 +199,7 @@ test("replay: a reload shows the same bytes; two attaches from the start read id
     const log = await readTerminal(page, { sessionId, taskId, terminalId: echo, after: "0", windowBytes: 65536 });
     const rows = await terminalView().evaluate((el) => [...el.querySelectorAll(".xterm-rows > div")].map((r) => r.textContent ?? "").filter((t) => t.trim() !== ""));
     const listed = (await listTerminals()).find((t) => t.terminalId === echo);
-    throw new Error(`${e.message}\nthe Core's replay: ${JSON.stringify(new TextDecoder().decode(Uint8Array.from(log.bytes)))}\nthe screen's rows: ${JSON.stringify(rows)}\nthe listed terminal: ${JSON.stringify({ rows: listed?.rows, cols: listed?.cols, bytesSoFar: listed?.bytesSoFar })}`);
+    throw new Error(`${e.message}\nthe Core's replay: ${JSON.stringify(new TextDecoder().decode(Uint8Array.from(log.bytes)))}\nthe screen's rows: ${JSON.stringify(rows)}\nthe listed terminal: ${JSON.stringify({ rows: listed?.rows, cols: listed?.cols, bytesSoFar: listed?.bytesSoFar })}\nthe renderer: ${await describeRenderer(app, page)}`);
   });
   await expect(screen()).toContainText("READY", { timeout: 30_000 });
   if (process.platform === "win32") {
@@ -359,7 +359,21 @@ test("Files: the workspace is browsable read-only; binary, oversized, protected 
 test("Evidence: the task's receipts, checks and context accounting are shown read-only", async () => {
   await expect.poll(async () => (await page.evaluate((t) => window.modbit.effectReceipts(t), taskId)).receipts.length, { timeout: 60_000 }).toBeGreaterThanOrEqual(2);
   await page.getByTestId("tab-evidence").click();
-  await expect(page.getByTestId("app-evidence")).toBeVisible();
+  await expect(page.getByTestId("app-evidence")).toBeVisible().catch(async (e: Error) => {
+    // The panel shows "Reading the evidence" until three Core reads settle: say which one, if any, was slow, and what the renderer was doing.
+    const read = async (what: string, f: () => Promise<unknown>) => {
+      const t0 = Date.now();
+      const r = await f().then(() => "ok", (x: Error) => x.message.slice(0, 120));
+      return `${what}: ${r} in ${Date.now() - t0} ms`;
+    };
+    const reads = [
+      await read("reviewBundle", () => page.evaluate((t) => window.modbit.reviewBundle(t), taskId)),
+      await read("effectReceipts", () => page.evaluate((t) => window.modbit.effectReceipts(t), taskId)),
+      await read("contextInspector", () => page.evaluate((t) => window.modbit.contextInspector(t), taskId)),
+    ];
+    const shown = await page.locator('[data-testid="apps-panel"] [role="tabpanel"]').first().innerText().catch(() => "?");
+    throw new Error(`${e.message}\nthe panel shows: ${JSON.stringify(shown.slice(0, 200))}\n${reads.join("\n")}\nthe renderer: ${await describeRenderer(app, page)}`);
+  });
   // Closing the worktree was a protected effect: it left an authorization receipt and its result receipt, and the chain verifies.
   await expect(page.getByTestId("evidence-receipt").first()).toBeVisible({ timeout: 30_000 });
   expect(await page.getByTestId("evidence-receipt").count()).toBeGreaterThanOrEqual(2);

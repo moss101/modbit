@@ -1061,13 +1061,13 @@ export class BrowserHost {
     if (first === "loaded" && failedLoad !== null) {
       const f = failedLoad as { code: number; desc: string };
       if (f.code <= -200 && f.code > -300) return { kind: "error", code: "CERTIFICATE_REJECTED", message: `the certificate of ${u.host} was not accepted (${f.desc}); the person decides` };
-      return { kind: "error", code: "NAVIGATION_FAILED", message: `${f.desc} (${f.code}) loading ${u.host}` };
+      return { kind: "error", code: "NAVIGATION_FAILED", message: `${f.desc} (${f.code}) loading ${u.host}${f.code === -130 ? ` (the proxy: ${h.proxy.describe()})` : ""}` };
     }
     if (first !== "loaded") {
       const rejected = h.certHold && h.certHold.isSettled ? "CERTIFICATE_REJECTED" : null;
       if (rejected) return { kind: "error", code: "CERTIFICATE_REJECTED", message: `the person did not trust the certificate (${first.message.slice(0, 120)})` };
       // A load that failed still leaves the page where it is: report it, do not guess.
-      return { kind: "error", code: "NAVIGATION_FAILED", message: first.message.slice(0, 300) };
+      return { kind: "error", code: "NAVIGATION_FAILED", message: `${first.message.slice(0, 300)}${/ERR_PROXY_CONNECTION_FAILED/.test(first.message) ? ` (the proxy: ${h.proxy.describe()})` : ""}` };
     }
     return { kind: "state", state: this.state(h) };
   }

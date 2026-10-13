@@ -13,6 +13,7 @@ import { createServer, type Server } from "node:http";
 import { readFileSync } from "node:fs";
 import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
+import { rendererArgs, rendererEnv } from "./renderer-flags.ts";
 
 export const appDir = resolve(dirname(fileURLToPath(import.meta.url)), "..", "..");
 export const coreBin = process.env.MODBIT_CORE_BIN ?? resolve(appDir, "..", "..", "target", "debug", process.platform === "win32" ? "modbit-core.exe" : "modbit-core");
@@ -34,13 +35,13 @@ export interface LaunchOptions {
 
 export async function launch(dataDir: string, opts: LaunchOptions = {}): Promise<{ app: ElectronApplication; page: Page }> {
   const app = await electron.launch({
-    // A window the OS reports as covered gets no animation frames, and xterm.js paints its rows in one: on a Windows runner's desktop the
-    // terminal's text reached the DOM only when something woke the page (seconds late). The run must not depend on the runner's window stacking.
-    args: ["--disable-features=CalculateNativeWinOcclusion", "--disable-backgrounding-occluded-windows", "--disable-renderer-backgrounding", join(appDir, opts.outDir ?? "dist", "main", "main.cjs")],
-    env: { ...process.env, MODBIT_DATA_DIR: dataDir, MODBIT_CORE_BIN: coreBin, OPENAI_API_KEY: "", ANTHROPIC_API_KEY: "", MODBIT_SUPPRESS_OS_NOTIFICATIONS: "1", MODBIT_QUIT_PROMPT: "off", ...opts.env },
+    // The renderer must not depend on the runner's window stacking (renderer-flags.ts).
+    args: [...rendererArgs(), join(appDir, opts.outDir ?? "dist", "main", "main.cjs")],
+    env: { ...process.env, MODBIT_DATA_DIR: dataDir, MODBIT_CORE_BIN: coreBin, OPENAI_API_KEY: "", ANTHROPIC_API_KEY: "", MODBIT_SUPPRESS_OS_NOTIFICATIONS: "1", MODBIT_QUIT_PROMPT: "off", ...rendererEnv(), ...opts.env },
   });
   const page = await app.firstWindow();
   app.process().stderr?.on("data", (d: Buffer) => process.stderr.write(`[electron] ${d}`));
+  await installRendererProbe(page);
   if (opts.waitForCore !== false) await expect(page.getByTestId("core-status")).toContainText("Core connected", { timeout: 60_000 });
   return { app, page };
 }
@@ -133,4 +134,72 @@ export function scriptedModel(script: { text?: string; calls?: { name: string; a
     });
     server.listen(0, "127.0.0.1", () => resolveServer({ server, url: `http://127.0.0.1:${(server.address() as { port: number }).port}` }));
   });
+}
+
+/**
+ * A passive record of what the renderer's main thread did, kept in the page (it schedules no animation frame, so it cannot make the page
+ * paint): a 100 ms timer's ticks, the page's visibility changes, and the terminal frames the bridge delivered with their arrival times.
+ * A failure reads it back (`describeRenderer`) to tell a page that was not run from a Core that did not send.
+ */
+const RENDERER_PROBE = `(() => {
+  if (window.__probe) return;
+  const p = (window.__probe = { ticks: [], frames: [], vis: [[0, document.visibilityState]] });
+  setInterval(() => { p.ticks.push(Math.round(performance.now())); if (p.ticks.length > 600) p.ticks.shift(); }, 100);
+  document.addEventListener('visibilitychange', () => p.vis.push([Math.round(performance.now()), document.visibilityState]));
+  const listen = (n) => { try { window.modbit.onTerminalFrame((f) => { p.frames.push([Math.round(performance.now()), f.kind, String(f.cursor), f.data ? f.data.length : 0]); if (p.frames.length > 300) p.frames.shift(); }); } catch (e) { if (n < 50) setTimeout(() => listen(n + 1), 100); } };
+  listen(0);
+})()`;
+
+export async function installRendererProbe(page: Page): Promise<void> {
+  await page.addInitScript(RENDERER_PROBE);
+  await page.evaluate(RENDERER_PROBE).catch(() => undefined);
+}
+
+/** What the renderer and its window were doing (one line of JSON); never throws, never waits more than a few seconds. */
+export async function describeRenderer(app: ElectronApplication | null, page: Page): Promise<string> {
+  const bounded = <T>(p: Promise<T>, what: string): Promise<T | string> => Promise.race([p, new Promise<string>((r) => setTimeout(() => r(`${what}: no answer in 6 s`), 6_000))]).catch((e: Error) => `${what}: ${e.message}`);
+  const renderer = await bounded(
+    page.evaluate(async () => {
+      const p = (window as unknown as { __probe?: { ticks: number[]; frames: unknown[]; vis: unknown[] } }).__probe;
+      const now = Math.round(performance.now());
+      const ticks = p?.ticks ?? [];
+      const gaps = ticks.slice(1).map((t, i) => t - ticks[i]!);
+      // The active probe comes after the passive record was read: asking for frames may itself wake the page.
+      const frames = await new Promise<number>((res) => {
+        let n = 0;
+        const t0 = performance.now();
+        const f = () => {
+          n += 1;
+          if (performance.now() - t0 < 500) requestAnimationFrame(f);
+          else res(n);
+        };
+        requestAnimationFrame(f);
+        setTimeout(() => res(-n), 3_000);
+      });
+      return {
+        now,
+        visibility: document.visibilityState,
+        focus: document.hasFocus(),
+        lastTickAgoMs: ticks.length ? now - ticks[ticks.length - 1]! : null,
+        ticksIn10s: ticks.filter((t) => now - t < 10_000).length,
+        maxGapMs: gaps.length ? Math.max(...gaps) : null,
+        gapsOver500: gaps.filter((g) => g > 500).length,
+        visibilityChanges: p?.vis,
+        framesIn500ms: frames,
+        terminalFrames: p?.frames.slice(-12),
+      };
+    }),
+    "renderer",
+  );
+  const main = app
+    ? await bounded(
+        app.evaluate(({ BrowserWindow, app: a, screen }) => ({
+          windows: BrowserWindow.getAllWindows().map((w) => ({ visible: w.isVisible(), minimized: w.isMinimized(), focused: w.isFocused(), bounds: w.getBounds() })),
+          displays: screen.getAllDisplays().map((d) => d.bounds),
+          cpu: a.getAppMetrics().map((m) => `${m.type}:${m.cpu.percentCPUUsage.toFixed(0)}%`),
+        })),
+        "main",
+      )
+    : null;
+  return JSON.stringify({ renderer, main });
 }
