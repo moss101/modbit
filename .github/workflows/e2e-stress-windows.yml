@@ -8,16 +8,20 @@ on:
     paths: [.github/workflows/e2e-stress-windows.yml]
 jobs:
   stress:
-    name: stress ${{ matrix.job }} (hardening ${{ matrix.harden }})
+    name: stress ${{ matrix.job }} (hardening ${{ matrix.harden }}, raf probe ${{ matrix.raf }})
     runs-on: windows-latest
     timeout-minutes: 90
     strategy:
       fail-fast: false
       matrix:
-        harden: [off, on]
-        job: [apps-panel, browser-feedback, probe]
+        include:
+          - { job: apps-panel, harden: "off", raf: "0" }
+          - { job: apps-panel, harden: "off", raf: "1" }
+          - { job: apps-panel, harden: "on", raf: "0" }
+          - { job: browser-feedback, harden: "on", raf: "0" }
     env:
       MODBIT_E2E_HARDEN: ${{ matrix.harden }}
+      MODBIT_E2E_PROBE_RAF: ${{ matrix.raf }}
     steps:
       - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
       - run: rustup show
@@ -40,13 +44,13 @@ jobs:
           cd apps/desktop
           case "${{ matrix.job }}" in
             apps-panel) pnpm exec playwright test -c e2e/playwright.config.ts e2e/apps-panel.spec.ts --repeat-each 10 --workers 1 ;;
-            browser-feedback) pnpm exec playwright test -c e2e/playwright.config.ts e2e/browser-feedback.spec.ts -g "console, network, viewport" --repeat-each 20 --workers 1 ;;
+            browser-feedback) pnpm exec playwright test -c e2e/playwright.config.ts e2e/browser-feedback.spec.ts -g "console, network, viewport" --repeat-each 30 --workers 1 ;;
             probe) pnpm exec playwright test -c e2e/playwright.config.ts e2e/zz-stress-probe.spec.ts ;;
           esac
       - name: Upload traces
         if: always()
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
         with:
-          name: stress-traces-${{ matrix.job }}-${{ matrix.harden }}
+          name: stress-traces-${{ matrix.job }}-${{ matrix.harden }}-${{ matrix.raf }}
           path: apps/desktop/test-results
           if-no-files-found: ignore

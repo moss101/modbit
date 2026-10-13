@@ -143,11 +143,20 @@ export function scriptedModel(script: { text?: string; calls?: { name: string; a
  */
 const RENDERER_PROBE = `(() => {
   if (window.__probe) return;
-  const p = (window.__probe = { ticks: [], frames: [], vis: [[0, document.visibilityState]] });
-  setInterval(() => { p.ticks.push(Math.round(performance.now())); if (p.ticks.length > 600) p.ticks.shift(); }, 100);
+  const p = (window.__probe = { ticks: [], frames: [], dom: [], raf: [], vis: [[0, document.visibilityState]] });
+  const keep = (a, n) => { if (a.length > n) a.shift(); };
+  setInterval(() => { p.ticks.push(Math.round(performance.now())); keep(p.ticks, 600); }, 100);
+  let lastDom = '';
+  setInterval(() => {
+    const rows = [...document.querySelectorAll('.xterm-rows > div')].map((r) => r.textContent || '').filter((t) => t.trim() !== '').join('|');
+    const v = document.querySelector('[data-testid="terminal-view"]');
+    const key = rows + '#' + (v ? v.getAttribute('data-cursor') + '/' + v.getAttribute('data-bytes') + '/' + v.getAttribute('data-phase') : '-');
+    if (key !== lastDom) { lastDom = key; p.dom.push([Math.round(performance.now()), key.slice(0, 160)]); keep(p.dom, 120); }
+  }, 50);
   document.addEventListener('visibilitychange', () => p.vis.push([Math.round(performance.now()), document.visibilityState]));
-  const listen = (n) => { try { window.modbit.onTerminalFrame((f) => { p.frames.push([Math.round(performance.now()), f.kind, String(f.cursor), f.data ? f.data.length : 0]); if (p.frames.length > 300) p.frames.shift(); }); } catch (e) { if (n < 50) setTimeout(() => listen(n + 1), 100); } };
+  const listen = (n) => { try { window.modbit.onTerminalFrame((f) => { p.frames.push([Math.round(performance.now()), String(f.attachId).slice(0, 4), f.kind, String(f.cursor), f.data ? f.data.length : 0]); keep(p.frames, 300); }); } catch (e) { if (n < 50) setTimeout(() => listen(n + 1), 100); } };
   listen(0);
+  ${process.env.MODBIT_E2E_PROBE_RAF === "1" ? "const loop = () => { p.raf.push(Math.round(performance.now())); keep(p.raf, 600); requestAnimationFrame(loop); }; requestAnimationFrame(loop);" : ""}
 })()`;
 
 export async function installRendererProbe(page: Page): Promise<void> {
@@ -160,10 +169,12 @@ export async function describeRenderer(app: ElectronApplication | null, page: Pa
   const bounded = <T>(p: Promise<T>, what: string): Promise<T | string> => Promise.race([p, new Promise<string>((r) => setTimeout(() => r(`${what}: no answer in 6 s`), 6_000))]).catch((e: Error) => `${what}: ${e.message}`);
   const renderer = await bounded(
     page.evaluate(async () => {
-      const p = (window as unknown as { __probe?: { ticks: number[]; frames: unknown[]; vis: unknown[] } }).__probe;
+      const p = (window as unknown as { __probe?: { ticks: number[]; frames: unknown[]; vis: unknown[]; dom: unknown[]; raf: number[] } }).__probe;
       const now = Math.round(performance.now());
       const ticks = (p?.ticks ?? []).slice();
-      const framesSeen = p?.frames.slice(-12);
+      const framesSeen = p?.frames.slice(-40);
+      const domSeen = p?.dom.slice(-40);
+      const rafGaps = (p?.raf ?? []).slice(1).map((t, i) => t - p!.raf[i]!);
       const gaps = ticks.slice(1).map((t, i) => t - ticks[i]!);
       // The active probe comes after the passive record was read: asking for frames may itself wake the page.
       const frames = await new Promise<number>((res) => {
@@ -187,7 +198,9 @@ export async function describeRenderer(app: ElectronApplication | null, page: Pa
         gapsOver500: gaps.filter((g) => g > 500).length,
         visibilityChanges: p?.vis,
         framesIn500ms: frames,
+        rafLoop: rafGaps.length ? { n: rafGaps.length, maxGapMs: Math.max(...rafGaps), over250: rafGaps.filter((g) => g > 250).length } : null,
         terminalFrames: framesSeen,
+        domChanges: domSeen,
       };
     }),
     "renderer",
