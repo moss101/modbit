@@ -72,26 +72,36 @@ fn task_of<'a>(body: &serde_json::Value, tasks: &'a [TrialTask]) -> &'a TrialTas
 
 #[tokio::test(flavor = "multi_thread")]
 async fn the_trial_harness_runs_three_arms_through_the_real_core_and_reports_every_run() {
+    trial_harness(&[]).await;
+}
+
+/// The same harness when every program outlives `proc.exec`'s inline grace
+/// (which a slow runner does by accident and `MODBIT_EXEC_INLINE_GRACE_MS=1`
+/// makes a certainty): each procedural and exec-only run is handed a handle,
+/// the scripted model waits for it, and every run still ends where it would
+/// have - the wait is not a step of the script.
+#[tokio::test(flavor = "multi_thread")]
+async fn the_trial_harness_is_unchanged_when_every_program_outlives_the_inline_grace() {
+    trial_harness(&[("MODBIT_EXEC_INLINE_GRACE_MS", "1")]).await;
+}
+
+async fn trial_harness(extra_env: &[(&str, &str)]) {
     let tasks: Vec<TrialTask> = builtin_suite().into_iter().take(2).collect();
     let suite = Arc::new(tasks.clone());
     // The second task is sabotaged under exec_only only: a failed arm must
     // appear in the report, counted and named.
     let reply_suite = Arc::clone(&suite);
-    let (base, seen) = scripted_model_fn(Arc::new(move |body, results| {
+    let (base, seen) = scripted_model_fn(Arc::new(move |body, _results| {
         let arm = arm_of(body);
         let task = task_of(body, &reply_suite);
         let sabotage = arm == Arm::ExecOnly && task.id == reply_suite[1].id;
-        let last = body["messages"]
-            .as_array()
-            .and_then(|m| m.iter().rev().find(|x| x["role"] == "tool"))
-            .and_then(|m| m["content"].as_str())
-            .unwrap_or_default()
-            .to_owned();
-        if last.contains("status: RUNNING") {
-            return json!({"calls": [{"name": "proc.wait", "args": {"handle": "call_1_0", "timeout_ms": 60000}}]});
+        // A program that outlives proc.exec's 2 s inline grace (a slow
+        // runner's) is waited for, and the wait is not a step of the script.
+        if let Some(wait) = program_wait_reply(body) {
+            return wait;
         }
         solve_script(task, arm, sabotage)
-            .get(results)
+            .get(script_steps_done(body))
             .cloned()
             .unwrap_or_else(|| json!({"text": "nothing further"}))
     }))
@@ -108,7 +118,11 @@ async fn the_trial_harness_runs_three_arms_through_the_real_core_and_reports_eve
         cli,
         core: core_bin,
         model: "gpt-5-mini".into(),
-        env: model_env(&base),
+        env: {
+            let mut env = model_env(&base);
+            env.extend(extra_env.iter().map(|(k, v)| ((*k).into(), (*v).into())));
+            env
+        },
         max_turns: 10,
         live: false,
     };

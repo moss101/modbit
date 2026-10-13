@@ -50,6 +50,10 @@ fn workspace(dir: &Path) -> PathBuf {
 struct EgressStack {
     allowed: std::net::SocketAddr,
     denied: std::net::SocketAddr,
+    /// A server a rule of the spec admits and the organisation's allow-list
+    /// does not name (PX-085), and how many requests it ever received.
+    org_denied: std::net::SocketAddr,
+    org_denied_hits: Arc<std::sync::atomic::AtomicUsize>,
     target: std::net::SocketAddr,
     secret: String,
     /// What the target saw in `Authorization` (never printed to the guest).
@@ -71,6 +75,19 @@ async fn egress_stack() -> EgressStack {
     let allowed =
         bind(Router::new().route("/hello", get(|| async { "hello from allowed\n" }))).await;
     let denied = bind(Router::new().route("/hello", get(|| async { "hello from denied\n" }))).await;
+    let org_denied_hits: Arc<std::sync::atomic::AtomicUsize> = Default::default();
+    let hits = Arc::clone(&org_denied_hits);
+    let org_denied = bind(Router::new().route(
+        "/hello",
+        get(move || {
+            let hits = Arc::clone(&hits);
+            async move {
+                hits.fetch_add(1, std::sync::atomic::Ordering::SeqCst);
+                "hello from org-denied\n"
+            }
+        }),
+    ))
+    .await;
     let expected = format!("Bearer {secret}");
     let seen2 = Arc::clone(&seen);
     let target = bind(Router::new().route(
@@ -103,6 +120,8 @@ async fn egress_stack() -> EgressStack {
     EgressStack {
         allowed,
         denied,
+        org_denied,
+        org_denied_hits,
         target,
         secret,
         seen,
@@ -116,11 +135,19 @@ fn spec(ws: &Path) -> SandboxSpec {
 fn spec_with(ws: &Path, eg: Option<&EgressStack>) -> SandboxSpec {
     let network = match eg {
         Some(e) => NetworkPolicy {
-            egress: vec![modbit_sandbox::policy::EgressRule {
-                host: "127.0.0.1".into(),
-                port: e.allowed.port(),
-                capability: "network.egress".into(),
-            }],
+            egress: vec![
+                modbit_sandbox::policy::EgressRule {
+                    host: "127.0.0.1".into(),
+                    port: e.allowed.port(),
+                    capability: "network.egress".into(),
+                },
+                // A rule the organisation's list does not name (PX-085).
+                modbit_sandbox::policy::EgressRule {
+                    host: "127.0.0.1".into(),
+                    port: e.org_denied.port(),
+                    capability: "network.egress".into(),
+                },
+            ],
             credentials: vec![modbit_sandbox::policy::CredentialGrant {
                 handle: "forge-token".into(),
                 virtual_host: "forge.modbit.internal".into(),
@@ -136,6 +163,15 @@ fn spec_with(ws: &Path, eg: Option<&EgressStack>) -> SandboxSpec {
                     .unwrap_or_default()
                     + 5 * 60 * 1000,
             }],
+            // The organisation's list names the allowed server and the
+            // credentialed target, and not the org-denied one.
+            org_allow: Some(modbit_sandbox::policy::OrgAllow {
+                entries: vec![
+                    format!("127.0.0.1:{}", e.allowed.port()),
+                    format!("127.0.0.1:{}", e.target.port()),
+                ],
+                note: "the test organisation's policy".into(),
+            }),
         },
         None => NetworkPolicy::default(),
     };
@@ -185,6 +221,7 @@ fn fixture_with(ws: &Path, eg: Option<&EgressStack>, busybox: bool) -> Fixture {
         allowed_url: format!("http://{}/hello", e.allowed),
         denied_url: format!("http://{}/hello", e.denied),
         denied_tunnel_url: format!("https://{}/hello", e.denied),
+        org_denied_url: Some(format!("http://{}/hello", e.org_denied)),
         credentialed_url: "http://forge.modbit.internal/user".into(),
         secret: e.secret.clone(),
         secrets: [("forge-token".to_owned(), e.secret.clone())]
@@ -363,7 +400,13 @@ async fn assert_conformance_with(
     // REQ-EV-0288: the short-lived-handle steps are part of every backend's
     // contract, not an optional extra — a report without them is a report
     // that did not prove the handle expires.
+    assert_eq!(
+        eg.org_denied_hits.load(std::sync::atomic::Ordering::SeqCst),
+        0,
+        "the server the organisation's list does not name never saw a request"
+    );
     for name in [
+        "egress_org_list_caps_a_rule",
         "egress_credentialed",
         "egress_secret_never_in_guest",
         "credential_handle_is_short_lived_and_absent_from_the_policy",
@@ -881,4 +924,301 @@ async fn qual_m8_3_the_gateway_binds_sandboxes_to_the_tenant_and_the_workers_ses
     );
     gw.served.stop();
     tokio::time::sleep(Duration::from_millis(50)).await;
+}
+
+/// PX-085 (AUT-D07): the organisation's egress allow-list is the tenant's
+/// signed policy bundle's `network_allow`, and the gateway reads and verifies
+/// it itself when it provisions a sandbox - a request cannot name one, a
+/// bundle that cannot be verified or has expired closes egress, and a tenant
+/// with no list is unrestricted by an organisation.
+#[tokio::test]
+async fn qual_px_085_the_gateway_reads_the_tenants_signed_organisation_list_itself_and_fails_closed()
+ {
+    use ed25519_dalek::SigningKey;
+    use modbit_domain::policy_bundle::{self, BundleDocument, KIND, SCHEMA_VERSION};
+    let Ok(url) = std::env::var("MODBIT_CLOUD_TEST_DATABASE_URL") else {
+        eprintln!(
+            "SKIPPED: MODBIT_CLOUD_TEST_DATABASE_URL unset (the hosted cloud job runs this against Postgres)"
+        );
+        return;
+    };
+    let bin = guest_bin();
+    assert!(bin.is_file(), "modbit-guest at {}", bin.display());
+    let database_url = fresh_database(&url).await;
+    let dir = tempfile::tempdir().unwrap();
+    let ws = workspace(dir.path());
+    let (signed, trusted_keys) = signed_by_test("reference-guest", &bin, &guest_version());
+    let manifest_path = dir.path().join("guest.manifest.json");
+    std::fs::write(&manifest_path, serde_json::to_string(&signed).unwrap()).unwrap();
+    let served = modbit_sandbox_gateway::serve(modbit_sandbox_gateway::Config {
+        store: modbit_event_store::cloud::CloudStoreConfig {
+            database_url,
+            s3: None,
+        },
+        worker_key: None,
+        bind: "127.0.0.1:0".into(),
+        backend: modbit_sandbox_gateway::BackendChoice::Reference {
+            guest_bin: bin,
+            work_dir: dir.path().join("sandboxes"),
+            manifest: Some(manifest_path),
+            trusted_keys,
+            chromium: modbit_sandbox::backend::reference::detect_chromium(),
+        },
+    })
+    .await
+    .expect("gateway");
+    let gw = Gw {
+        base: format!("http://{}", served.addr),
+        http: reqwest::Client::new(),
+        served,
+    };
+    let store = &gw.served.state.store;
+    let token = gw
+        .served
+        .state
+        .worker_key
+        .issue(&modbit_sandbox::auth::WorkerClaims {
+            worker_id: "w1".into(),
+            exp_ms: i64::MAX,
+        });
+    let org_key = SigningKey::from_bytes(&[85u8; 32]);
+    let stranger = SigningKey::from_bytes(&[86u8; 32]);
+    let doc = |tenant: TenantId, generation: u64, ttl_ms: i64, admin: Value| BundleDocument {
+        kind: KIND.into(),
+        schema_version: SCHEMA_VERSION,
+        tenant_id: tenant.to_string(),
+        generation,
+        issued_at_ms: modbit_domain::Timestamp::now().millis() - 10_000,
+        expires_at_ms: modbit_domain::Timestamp::now().millis() + ttl_ms,
+        min_protocol_major: 1,
+        admin_config: admin,
+    };
+    // One tenant per case, each with a ready session its worker holds.
+    let provision = |tenant: TenantId, extra_spec: Value| {
+        let (gw, token, ws) = (&gw, token.clone(), ws.clone());
+        async move {
+            let session = SessionId::new();
+            let task = TaskId::new();
+            let store = &gw.served.state.store;
+            store
+                .append(
+                    modbit_event_store::AppendRequest {
+                        tenant_id: tenant,
+                        session_id: session,
+                        task_id: None,
+                        run_id: None,
+                        turn_id: None,
+                        step_id: None,
+                        aggregate_type: modbit_domain::event::AggregateType::Session,
+                        aggregate_id: *session.as_bytes(),
+                        expected_sequence: Some(0),
+                        events: vec![
+                            modbit_event_store::cloud::new_event(
+                                "SessionCreated",
+                                &modbit_domain::session::SessionEvent::SessionCreated {
+                                    tenant_id: tenant,
+                                    user_id: modbit_domain::UserId::new(),
+                                    space_id: modbit_domain::SpaceId::new(),
+                                },
+                                modbit_domain::event::Actor::External("test".into()),
+                            )
+                            .unwrap(),
+                        ],
+                    },
+                    None,
+                )
+                .await
+                .unwrap();
+            store.mark_ready(tenant, session).await.unwrap();
+            let lease = store
+                .claim_session(session, "w1", 60_000)
+                .await
+                .unwrap()
+                .expect("claimed");
+            let mut spec = json!({"workspace_source": ws.to_string_lossy(), "protected_paths": [".git/hooks"], "egress": [{"host": "reports.example.com", "port": 443, "capability": "network.egress"}]});
+            for (k, v) in extra_spec.as_object().cloned().unwrap_or_default() {
+                spec[k] = v;
+            }
+            let (s, created) = gw
+                .post(&token, "/v1/sandboxes", json!({"tenant_id": tenant.to_string(), "session_id": session.to_string(), "task_id": task.to_string(), "lease_generation": lease.generation, "spec": spec}))
+                .await;
+            assert_eq!(s, 201, "{created}");
+            created["policy"]["org_allow"].clone()
+        }
+    };
+
+    // No bundle ever: no organisation restriction. A request that names a list
+    // of its own is not believed.
+    let t0 = store.create_tenant("no-bundle").await.unwrap();
+    assert_eq!(provision(t0, json!({})).await, Value::Null);
+    assert_eq!(
+        provision(
+            t0,
+            json!({"org_allow": {"entries": ["*"], "note": "from the request"}})
+        )
+        .await,
+        Value::Null,
+        "the request cannot set the organisation's list"
+    );
+
+    // A verified bundle with `network_allow`: that list.
+    let t1 = store.create_tenant("with-list").await.unwrap();
+    store
+        .put_org_key(
+            t1,
+            "org-1",
+            &hex::encode(org_key.verifying_key().to_bytes()),
+        )
+        .await
+        .unwrap();
+    let d = doc(
+        t1,
+        1,
+        3_600_000,
+        json!({"network_allow": ["reports.example.com", "*.corp.example", "api.example.com:8443"]}),
+    );
+    let published =
+        serde_json::to_value(policy_bundle::sign(&d, "org-1", &org_key).unwrap()).unwrap();
+    assert!(
+        store
+            .publish_policy_bundle(t1, 1, "org-1", &published, uuid::Uuid::nil())
+            .await
+            .unwrap()
+    );
+    let got = provision(t1, json!({})).await;
+    assert_eq!(
+        got["entries"],
+        json!([
+            "reports.example.com",
+            "*.corp.example",
+            "api.example.com:8443"
+        ]),
+        "{got}"
+    );
+    assert!(
+        got["note"].as_str().unwrap().contains("generation 1"),
+        "{got}"
+    );
+
+    // A verified bundle with no `network_allow`: the organisation restricts nothing.
+    let t2 = store.create_tenant("no-network-key").await.unwrap();
+    store
+        .put_org_key(
+            t2,
+            "org-1",
+            &hex::encode(org_key.verifying_key().to_bytes()),
+        )
+        .await
+        .unwrap();
+    let d = doc(t2, 1, 3_600_000, json!({"models_allow": ["gpt-5"]}));
+    let published =
+        serde_json::to_value(policy_bundle::sign(&d, "org-1", &org_key).unwrap()).unwrap();
+    store
+        .publish_policy_bundle(t2, 1, "org-1", &published, uuid::Uuid::nil())
+        .await
+        .unwrap();
+    assert_eq!(provision(t2, json!({})).await, Value::Null);
+
+    // A bundle signed by a key the organisation never registered, written
+    // straight into the table past the API: egress is closed, and the note
+    // says why.
+    let t3 = store.create_tenant("forged").await.unwrap();
+    store
+        .put_org_key(
+            t3,
+            "org-1",
+            &hex::encode(org_key.verifying_key().to_bytes()),
+        )
+        .await
+        .unwrap();
+    let d = doc(t3, 1, 3_600_000, json!({"network_allow": ["*"]}));
+    let forged =
+        serde_json::to_value(policy_bundle::sign(&d, "org-1", &stranger).unwrap()).unwrap();
+    store
+        .publish_policy_bundle(t3, 1, "org-1", &forged, uuid::Uuid::nil())
+        .await
+        .unwrap();
+    let got = provision(t3, json!({})).await;
+    assert_eq!(
+        got["entries"],
+        json!([]),
+        "a forged list admits nothing: {got}"
+    );
+    assert!(
+        got["note"]
+            .as_str()
+            .unwrap()
+            .contains("BUNDLE_BAD_SIGNATURE"),
+        "{got}"
+    );
+
+    // A bundle past its expiry: closed, not reverted to unrestricted.
+    let t4 = store.create_tenant("expired").await.unwrap();
+    store
+        .put_org_key(
+            t4,
+            "org-1",
+            &hex::encode(org_key.verifying_key().to_bytes()),
+        )
+        .await
+        .unwrap();
+    let d = doc(
+        t4,
+        1,
+        -1_000,
+        json!({"network_allow": ["reports.example.com"]}),
+    );
+    let old = serde_json::to_value(policy_bundle::sign(&d, "org-1", &org_key).unwrap()).unwrap();
+    store
+        .publish_policy_bundle(t4, 1, "org-1", &old, uuid::Uuid::nil())
+        .await
+        .unwrap();
+    let got = provision(t4, json!({})).await;
+    assert_eq!(got["entries"], json!([]), "{got}");
+    assert!(
+        got["note"].as_str().unwrap().contains("BUNDLE_EXPIRED"),
+        "{got}"
+    );
+
+    // The list is the tenant's: tenant 1's list is not tenant 0's.
+    assert_eq!(provision(t0, json!({})).await, Value::Null);
+    gw.served.stop();
+    tokio::time::sleep(Duration::from_millis(50)).await;
+}
+
+/// The organisation list's matching: host, `host:port` and `*.suffix`
+/// entries; case does not matter; nothing else matches.
+#[test]
+fn the_organisations_list_names_hosts_host_ports_and_suffixes_and_nothing_else() {
+    use modbit_sandbox::policy::OrgAllow;
+    let list = OrgAllow {
+        entries: vec![
+            "Reports.Example.com".into(),
+            "*.corp.example".into(),
+            "api.example.com:8443".into(),
+        ],
+        note: String::new(),
+    };
+    assert!(list.admits("reports.example.com", 443));
+    assert!(
+        list.admits("REPORTS.example.com", 80),
+        "any port for a bare host"
+    );
+    assert!(list.admits("git.corp.example", 443));
+    assert!(list.admits("corp.example", 443), "the suffix itself");
+    assert!(list.admits("api.example.com", 8443));
+    assert!(
+        !list.admits("api.example.com", 443),
+        "a host:port entry names its port"
+    );
+    assert!(
+        !list.admits("evil-corp.example", 443),
+        "a suffix is a label boundary"
+    );
+    assert!(!list.admits("reports.example.com.evil.test", 443));
+    assert!(!list.admits("127.0.0.1", 443));
+    assert!(
+        !OrgAllow::default().admits("reports.example.com", 443),
+        "an empty list admits nothing"
+    );
 }

@@ -19,6 +19,35 @@ use modbit_sandbox::port::SandboxPort;
 use crate::runtime::typed;
 use crate::server::Core;
 
+/// The hosts the enable approval of the automation that made `task` listed,
+/// as the task's own log records them (`TaskTriggeredByAutomation`); none for
+/// a task no automation made. Host names only: anything else is dropped.
+async fn approved_hosts_of(core: &Arc<Core>, task: &Task) -> Vec<String> {
+    let store = core.store.lock().await;
+    let Ok(events) =
+        store.read_aggregate_of_types(task.task_id.as_bytes(), &["TaskTriggeredByAutomation"], 0)
+    else {
+        return vec![];
+    };
+    let mut hosts: Vec<String> = Vec::new();
+    for e in &events {
+        let Ok(payload) = store.payload(&e.envelope) else {
+            continue;
+        };
+        for h in payload["approved_hosts"].as_array().into_iter().flatten() {
+            let Some(h) = h.as_str() else { continue };
+            let plain = !h.is_empty()
+                && h.len() <= 253
+                && h.chars()
+                    .all(|c| c.is_ascii_lowercase() || c.is_ascii_digit() || c == '.' || c == '-');
+            if plain && !hosts.iter().any(|x| x == h) {
+                hosts.push(h.to_owned());
+            }
+        }
+    }
+    hosts
+}
+
 /// Provision the task's sandbox unless it has one; refuse when no gateway
 /// is configured or the gateway refuses.
 pub async fn ensure_for_task(
@@ -78,6 +107,19 @@ pub async fn ensure_for_task(
         .collect();
     let mut egress = Vec::new();
     let mut credentials = Vec::new();
+    // PX-085 (AUT-D07): a cloud automation's run reaches the hosts its owner's
+    // enable approval listed - when its lease carries `network.egress` - and
+    // no others. They are rules like any other: the gateway's broker caps
+    // them with the organisation's allow-list, which the run cannot widen.
+    if ops.iter().any(|o| o == "network.egress") {
+        for host in approved_hosts_of(core, task).await {
+            egress.push(modbit_sandbox::policy::EgressRule {
+                host,
+                port: 443,
+                capability: "network.egress".into(),
+            });
+        }
+    }
     if let Some(forge) = core.tools.forge.get() {
         let target = forge.egress_target();
         let (host, port) = target

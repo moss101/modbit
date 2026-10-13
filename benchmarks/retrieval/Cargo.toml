@@ -14,9 +14,14 @@ serde.workspace = true
 serde_json.workspace = true
 sha2.workspace = true
 hex.workspace = true
+tokio.workspace = true
 
 [dev-dependencies]
 tempfile.workspace = true
+
+[[bin]]
+name = "retrieval-live"
+path = "src/bin/retrieval-live.rs"
 
 [lints]
 workspace = true

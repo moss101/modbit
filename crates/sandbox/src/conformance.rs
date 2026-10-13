@@ -77,6 +77,11 @@ pub struct EgressFixture {
     /// wget sends it as a plain proxied GET). `None`: `fetch` of
     /// `denied_tunnel_url` tunnels (curl does).
     pub tunnel: Option<Vec<String>>,
+    /// A URL (`http://127.0.0.1:<port>/hello`) on a host the spec's rules
+    /// admit and the spec's organisation allow-list does not name (PX-085):
+    /// the broker must refuse it with `ORG_ALLOW_LIST` and the server must
+    /// never see the request. `None` skips the step.
+    pub org_denied_url: Option<String>,
 }
 
 /// One step's outcome.
@@ -840,6 +845,53 @@ pub async fn run(backend: &dyn SandboxBackend, fx: &Fixture) -> Result<Report> {
             allowed_http && denied_http && denied_tunnel && credentialed,
             format!("{records:?}"),
         );
+        // PX-085 (AUT-D07): the organisation's allow-list caps a rule. The
+        // destination below is admitted by a rule of the spec and not named
+        // by the list; it is refused at the broker, by a typed reason, and
+        // the answer the guest gets is the broker's refusal, not the
+        // server's page.
+        if let Some(url) = &eg.org_denied_url {
+            let r = link
+                .exec(
+                    &task,
+                    "eff-30",
+                    wire::GuestExec {
+                        argv: fetch(url),
+                        cwd: policy.workspace_root.clone(),
+                        env: fx.exec_env.clone(),
+                        timeout_ms: 20_000,
+                        stdin: vec![],
+                    },
+                )
+                .await;
+            let body = r
+                .as_ref()
+                .map(|r| String::from_utf8_lossy(&r.stdout).into_owned())
+                .unwrap_or_default();
+            let destination = url
+                .trim_start_matches("http://")
+                .split('/')
+                .next()
+                .unwrap_or_default()
+                .to_owned();
+            let records = audit.records(&sandbox_id);
+            let refusal = records
+                .iter()
+                .find(|x| x.destination == destination && !x.allowed);
+            push(
+                "egress_org_list_caps_a_rule",
+                !body.contains("hello")
+                    && refusal.is_some_and(|x| {
+                        x.reason == crate::egress::reason::ORG_ALLOW_LIST
+                            && x.capability.is_empty()
+                            && x.detail.contains("organisation")
+                    })
+                    && !records
+                        .iter()
+                        .any(|x| x.destination == destination && x.allowed),
+                format!("body {body:?}; records {records:?}"),
+            );
+        }
         // REQ-EV-0288: nothing the substrate provisions from carries the
         // secret. The compiled policy — the artifact the backend builds the
         // guest out of — names the virtual host and the handle and holds no
