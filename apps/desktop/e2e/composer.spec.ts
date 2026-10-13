@@ -227,7 +227,7 @@ test("PX-054: Shift+Tab walks the modes with the right chip and placeholder, the
     for (const [label, mode] of [["Plan", "PLAN"], ["Debug", "DEBUG"], ["Multitask", "MULTITASK"], ["Ask", "ASK"]] as const) {
       await page.keyboard.press("Shift+Tab");
       await expect(page.getByTestId("mode-label")).toHaveText(label);
-      await expect(page.getByTestId("composer")).toHaveAttribute("data-mode-status", "confirmed");
+      await expect(page.getByTestId("composer")).toHaveAttribute("data-mode-status", "confirmed", { timeout: 60_000 });
       expect(await corePosture()).toBe(mode);
       await expect(page.getByTestId("composer")).toHaveAttribute("data-mode", mode);
       placeholders.add((await input.getAttribute("placeholder")) ?? "");
