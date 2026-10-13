@@ -1561,6 +1561,12 @@ async fn qual_px_069_a_second_controller_is_refused_until_the_first_lets_go() {
             .into_owned(),
     ];
     // Two tasks share one scripted model; the goal tells them apart.
+    // B's second attempt is held until A's release result has come back to the
+    // model (the Core frees the lock before that call returns), not for a time.
+    let released = desktop_dir.path().join("a-released");
+    let released_s = released.to_string_lossy().into_owned();
+    let started = desktop_dir.path().join("a-started");
+    let started_s = started.to_string_lossy().into_owned();
     let a_steps: Vec<Step> = vec![
         fx(plan()),
         start(FORM),
@@ -1571,10 +1577,10 @@ async fn qual_px_069_a_second_controller_is_refused_until_the_first_lets_go() {
     let b_steps: Vec<Step> = vec![
         fx(plan()),
         fx(
-            json!({"delay_ms": 1200, "calls": [{"name": "computer.start", "args": {"application": "org.example.fixture.docs"}}]}),
+            json!({"wait_file": started_s, "calls": [{"name": "computer.start", "args": {"application": "org.example.fixture.docs"}}]}),
         ),
         fx(
-            json!({"delay_ms": 3500, "calls": [{"name": "computer.start", "args": {"application": "org.example.fixture.docs"}}]}),
+            json!({"wait_file": released_s, "calls": [{"name": "computer.start", "args": {"application": "org.example.fixture.docs"}}]}),
         ),
         fx(call("computer.state", json!({}))),
         fx(complete()),
@@ -1587,6 +1593,14 @@ async fn qual_px_069_a_second_controller_is_refused_until_the_first_lets_go() {
             &b_steps
         };
         let st = st_of(body);
+        // A's request carrying the start result: A holds the machine.
+        if text.contains("task A goal") && results >= 2 {
+            let _ = std::fs::write(&started, b"started");
+        }
+        // A's request carrying the release result: the lock is free.
+        if text.contains("task A goal") && results >= 4 {
+            let _ = std::fs::write(&released, b"released");
+        }
         steps
             .get(results)
             .map(|f| f(&st))
