@@ -26,7 +26,7 @@ export interface ApprovalDockProps {
 }
 
 export function ApprovalDock({ sessionId, taskId, connected, onChangeMode, titleOf, onOpenTask }: ApprovalDockProps) {
-  const { approvals, refresh } = useDockApprovals(sessionId, taskId, connected);
+  const { approvals, expired, refresh } = useDockApprovals(sessionId, taskId, connected);
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [confirming, setConfirming] = useState(false);
   const [busy, setBusy] = useState(false);
@@ -144,9 +144,18 @@ export function ApprovalDock({ sessionId, taskId, connected, onChangeMode, title
   useEffect(() => {
     setNote(null);
   }, [taskId]);
-  return note?.kind === "ok" ? (
-    <p className="meta appr-last" role="status" data-testid="approval-last">
-      {note.text}
-    </p>
-  ) : null;
+  return (
+    <>
+      {note?.kind === "ok" && (
+        <p className="meta appr-last" role="status" data-testid="approval-last">
+          {note.text}
+        </p>
+      )}
+      {expired.map((e) => (
+        <p key={e.approvalId} className="meta appr-last" role="status" data-testid="approval-expired" data-state="EXPIRED" data-approval-id={e.approvalId} data-intent-hash={e.intentHash}>
+          Expired: “{humanTitle(e.toolName)}” (<code>{e.toolName}</code>) was not answered in time, so it can no longer be approved and it did not run. The agent was told; if it still needs the effect it asks again.
+        </p>
+      ))}
+    </>
+  );
 }

@@ -1063,11 +1063,28 @@ impl ToolHost {
                     "CANCELLED",
                     "the call was cancelled".into(),
                 ),
-                _ => (
-                    ToolStatus::PolicyDenied,
-                    "APPROVAL_DENIED",
-                    c.policy_decision.clone().unwrap_or_default(),
-                ),
+                _ => {
+                    // REQ-PX-058: a call failed because its approval expired is
+                    // told as expired, not as denied by a person.
+                    let expired = store
+                        .lock()
+                        .await
+                        .approval_for_call(&tool_call_id)
+                        .ok()
+                        .flatten()
+                        .is_some_and(|a| {
+                            a.state == modbit_domain::approval::ApprovalState::Expired
+                        });
+                    (
+                        ToolStatus::PolicyDenied,
+                        if expired {
+                            "APPROVAL_EXPIRED"
+                        } else {
+                            "APPROVAL_DENIED"
+                        },
+                        c.policy_decision.clone().unwrap_or_default(),
+                    )
+                }
             };
             let result = modbit_tools::ToolCallResult {
                 tool_call_id,
@@ -1855,7 +1872,7 @@ impl ToolHost {
                                         + if crate::computer::is_computer_tool(tool_name) {
                                             crate::computer::APPROVAL_TTL_MS
                                         } else {
-                                            APPROVAL_TTL_MS
+                                            crate::approval_expiry::ttl_ms()
                                         },
                                 )),
                             },
@@ -2324,9 +2341,6 @@ impl ToolHost {
         })
     }
 }
-
-/// Approvals expire a day after they are requested (docs/23: approval binds expiry).
-const APPROVAL_TTL_MS: i64 = 24 * 60 * 60 * 1000;
 
 /// One invocation as the Core sees it.
 pub struct InvokeRequest<'a> {
