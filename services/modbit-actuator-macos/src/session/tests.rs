@@ -88,7 +88,10 @@ impl Backend for Script {
         if *id == ident() {
             Ok(info())
         } else {
-            Err(Fail::nd("WINDOW_UNVERIFIABLE", "not the approved application"))
+            Err(Fail::nd(
+                "WINDOW_UNVERIFIABLE",
+                "not the approved application",
+            ))
         }
     }
     fn read_tree(&self, a: &ReadArgs<'_>, _: &Ctl) -> Res<wire::ReadStateResponse> {
@@ -183,7 +186,10 @@ fn delivery_of(r: &wire::ActuatorResponse) -> i32 {
     }
 }
 
-async fn next_event(rx: &mut Receiver<wire::ActuatorFrame>, within: Duration) -> Option<wire::actuator_event::Event> {
+async fn next_event(
+    rx: &mut Receiver<wire::ActuatorFrame>,
+    within: Duration,
+) -> Option<wire::actuator_event::Event> {
     let deadline = Instant::now() + within;
     while Instant::now() < deadline {
         if let Ok(Some(f)) = tokio::time::timeout(Duration::from_millis(50), rx.recv()).await
@@ -200,13 +206,23 @@ async fn one_controller_holds_the_machine_until_it_lets_go() {
     let b = Script::new();
     let (hub, _rx) = hub_over(&b, Denied::default());
     assert_eq!(code_of(&hub.handle(req(1, acquire("A"))).await), "OK");
-    assert_eq!(code_of(&hub.handle(req(2, acquire("B"))).await), "SESSION_BUSY");
+    assert_eq!(
+        code_of(&hub.handle(req(2, acquire("B"))).await),
+        "SESSION_BUSY"
+    );
     // The same controller may re-acquire (a lease renewal).
     assert_eq!(code_of(&hub.handle(req(3, acquire("A"))).await), "OK");
     let rel = hub
-        .handle(req(4, wire::actuator_request::Call::Release(wire::ReleaseRequest { control_id: "A".into() })))
+        .handle(req(
+            4,
+            wire::actuator_request::Call::Release(wire::ReleaseRequest {
+                control_id: "A".into(),
+            }),
+        ))
         .await;
-    assert!(matches!(rel.result, Some(wire::actuator_response::Result::Release(ref r)) if r.was_held));
+    assert!(
+        matches!(rel.result, Some(wire::actuator_response::Result::Release(ref r)) if r.was_held)
+    );
     assert_eq!(code_of(&hub.handle(req(5, acquire("B"))).await), "OK");
 }
 
@@ -214,7 +230,10 @@ async fn one_controller_holds_the_machine_until_it_lets_go() {
 async fn an_input_without_the_lease_or_for_another_application_is_refused_and_nothing_runs() {
     let b = Script::new();
     let (hub, _rx) = hub_over(&b, Denied::default());
-    assert_eq!(code_of(&hub.handle(req(1, perform_call("A", ""))).await), "WINDOW_UNVERIFIABLE");
+    assert_eq!(
+        code_of(&hub.handle(req(1, perform_call("A", ""))).await),
+        "WINDOW_UNVERIFIABLE"
+    );
     let mut other = ident();
     other.signing_identity = "EVIL:org.example.app".into();
     let r = hub
@@ -228,7 +247,11 @@ async fn an_input_without_the_lease_or_for_another_application_is_refused_and_no
             }),
         ))
         .await;
-    assert_eq!(code_of(&r), "WINDOW_UNVERIFIABLE", "a swapped signing identity is not the approved application");
+    assert_eq!(
+        code_of(&r),
+        "WINDOW_UNVERIFIABLE",
+        "a swapped signing identity is not the approved application"
+    );
     assert_eq!(b.performs.load(Ordering::SeqCst), 0);
 }
 
@@ -253,7 +276,10 @@ async fn stop_ends_an_input_in_flight_within_the_bound_and_nothing_is_injected_a
     let h2 = Arc::clone(&hub);
     let flight = tokio::spawn(async move { h2.handle(req(2, perform_call("A", ""))).await });
     tokio::time::sleep(Duration::from_millis(120)).await;
-    assert!(injected.load(Ordering::SeqCst) > 5, "the input is under way");
+    assert!(
+        injected.load(Ordering::SeqCst) > 5,
+        "the input is under way"
+    );
     let t0 = Instant::now();
     let stop = hub.stop().await;
     let took = t0.elapsed();
@@ -262,12 +288,23 @@ async fn stop_ends_an_input_in_flight_within_the_bound_and_nothing_is_injected_a
     assert_eq!(stop.halted_leases, 1);
     assert!(stop.stopped_within_ms < 500, "{stop:?}");
     tokio::time::sleep(Duration::from_millis(100)).await;
-    assert_eq!(injected.load(Ordering::SeqCst), at_stop, "no injection after the stop answered");
+    assert_eq!(
+        injected.load(Ordering::SeqCst),
+        at_stop,
+        "no injection after the stop answered"
+    );
     let r = flight.await.unwrap();
     assert_eq!(code_of(&r), "USER_ABORTED");
-    assert_eq!(delivery_of(&r), wire::Delivery::Unknown as i32, "part of it was injected: the outcome is unknown");
+    assert_eq!(
+        delivery_of(&r),
+        wire::Delivery::Unknown as i32,
+        "part of it was injected: the outcome is unknown"
+    );
     // The lease went with it.
-    assert_eq!(code_of(&hub.handle(req(3, perform_call("A", ""))).await), "WINDOW_UNVERIFIABLE");
+    assert_eq!(
+        code_of(&hub.handle(req(3, perform_call("A", ""))).await),
+        "WINDOW_UNVERIFIABLE"
+    );
 }
 
 #[tokio::test]
@@ -292,8 +329,16 @@ async fn an_input_queued_behind_a_running_one_does_not_run_after_stop() {
     hub.stop().await;
     let (a, c) = (first.await.unwrap(), second.await.unwrap());
     assert_eq!(code_of(&a), "USER_ABORTED");
-    assert_eq!(code_of(&c), "WINDOW_UNVERIFIABLE", "the queued input found no lease");
-    assert_eq!(b.performs.load(Ordering::SeqCst), 1, "the second input never reached the backend");
+    assert_eq!(
+        code_of(&c),
+        "WINDOW_UNVERIFIABLE",
+        "the queued input found no lease"
+    );
+    assert_eq!(
+        b.performs.load(Ordering::SeqCst),
+        1,
+        "the second input never reached the backend"
+    );
 }
 
 #[tokio::test]
@@ -317,20 +362,40 @@ async fn a_physical_event_parks_the_controller_ends_the_input_in_flight_and_is_r
     // A person touches the keyboard.
     *b.idle.lock().unwrap() = Some(Duration::from_millis(1));
     let ev = next_event(&mut rx, Duration::from_secs(2)).await;
-    assert!(matches!(ev, Some(wire::actuator_event::Event::HumanInput(_))), "{ev:?}");
+    assert!(
+        matches!(ev, Some(wire::actuator_event::Event::HumanInput(_))),
+        "{ev:?}"
+    );
     *b.idle.lock().unwrap() = Some(Duration::from_secs(30));
     let r = flight.await.unwrap();
-    assert_eq!(code_of(&r), "USER_ABORTED", "the input in flight ended at its next event");
+    assert_eq!(
+        code_of(&r),
+        "USER_ABORTED",
+        "the input in flight ended at its next event"
+    );
     // Re-acquire: the next agent input is HUMAN_ACTIVE until the cooldown ends.
     hub.handle(req(3, acquire("A"))).await;
-    assert_eq!(code_of(&hub.handle(req(4, perform_call("A", ""))).await), "HUMAN_ACTIVE");
+    assert_eq!(
+        code_of(&hub.handle(req(4, perform_call("A", ""))).await),
+        "HUMAN_ACTIVE"
+    );
     let ping = hub
-        .handle(req(5, wire::actuator_request::Call::Ping(wire::PingRequest { control_id: "A".into() })))
+        .handle(req(
+            5,
+            wire::actuator_request::Call::Ping(wire::PingRequest {
+                control_id: "A".into(),
+            }),
+        ))
         .await;
-    assert!(matches!(ping.result, Some(wire::actuator_response::Result::Ping(ref p)) if p.human_active));
+    assert!(
+        matches!(ping.result, Some(wire::actuator_response::Result::Ping(ref p)) if p.human_active)
+    );
     tokio::time::sleep(HUMAN_COOLDOWN + Duration::from_millis(200)).await;
     *b.perform.lock().unwrap() = Arc::new(|_, _| Ok(wire::PerformResponse::default()));
-    assert_eq!(code_of(&hub.handle(req(6, perform_call("A", ""))).await), "OK");
+    assert_eq!(
+        code_of(&hub.handle(req(6, perform_call("A", ""))).await),
+        "OK"
+    );
 }
 
 #[tokio::test]
@@ -352,13 +417,22 @@ async fn the_actuators_own_hardware_level_events_are_not_a_person() {
     tokio::time::sleep(Duration::from_millis(60)).await;
     *b.idle.lock().unwrap() = Some(Duration::from_millis(1));
     assert!(
-        next_event(&mut rx, Duration::from_millis(150)).await.is_none(),
+        next_event(&mut rx, Duration::from_millis(150))
+            .await
+            .is_none(),
         "no HumanInput during the actuator's own injection"
     );
-    assert_eq!(code_of(&flight.await.unwrap()), "OK", "and the injection itself was not halted");
+    assert_eq!(
+        code_of(&flight.await.unwrap()),
+        "OK",
+        "and the injection itself was not halted"
+    );
     // Once the window closes, the same counter IS a person.
     let ev = next_event(&mut rx, Duration::from_secs(2)).await;
-    assert!(matches!(ev, Some(wire::actuator_event::Event::HumanInput(_))), "{ev:?}");
+    assert!(
+        matches!(ev, Some(wire::actuator_event::Event::HumanInput(_))),
+        "{ev:?}"
+    );
 }
 
 #[tokio::test]
@@ -371,11 +445,26 @@ async fn a_missing_permission_refuses_every_operation_that_needs_it_and_crashes_
             screen_recording: false,
         },
     );
-    assert_eq!(code_of(&hub.handle(req(1, acquire("A"))).await), "PERMISSION_REQUIRED");
+    assert_eq!(
+        code_of(&hub.handle(req(1, acquire("A"))).await),
+        "PERMISSION_REQUIRED"
+    );
     for (i, call) in [
-        wire::actuator_request::Call::ReadState(wire::ReadStateRequest { control_id: "A".into(), application: Some(ident()), ..Default::default() }),
-        wire::actuator_request::Call::Capture(wire::CaptureRequest { control_id: "A".into(), application: Some(ident()), ..Default::default() }),
-        wire::actuator_request::Call::Wait(wire::WaitRequest { control_id: "A".into(), application: Some(ident()), ..Default::default() }),
+        wire::actuator_request::Call::ReadState(wire::ReadStateRequest {
+            control_id: "A".into(),
+            application: Some(ident()),
+            ..Default::default()
+        }),
+        wire::actuator_request::Call::Capture(wire::CaptureRequest {
+            control_id: "A".into(),
+            application: Some(ident()),
+            ..Default::default()
+        }),
+        wire::actuator_request::Call::Wait(wire::WaitRequest {
+            control_id: "A".into(),
+            application: Some(ident()),
+            ..Default::default()
+        }),
         perform_call("A", ""),
     ]
     .into_iter()
@@ -392,8 +481,26 @@ async fn a_missing_permission_refuses_every_operation_that_needs_it_and_crashes_
     }
     assert_eq!(b.performs.load(Ordering::SeqCst), 0);
     // Reads that need no permission still work; Stop and Release never fail.
-    assert_eq!(code_of(&hub.handle(req(20, wire::actuator_request::Call::ListApplications(wire::ListApplicationsRequest {}))).await), "OK");
-    assert_eq!(code_of(&hub.handle(req(21, wire::actuator_request::Call::Stop(wire::StopRequest::default()))).await), "OK");
+    assert_eq!(
+        code_of(
+            &hub.handle(req(
+                20,
+                wire::actuator_request::Call::ListApplications(wire::ListApplicationsRequest {})
+            ))
+            .await
+        ),
+        "OK"
+    );
+    assert_eq!(
+        code_of(
+            &hub.handle(req(
+                21,
+                wire::actuator_request::Call::Stop(wire::StopRequest::default())
+            ))
+            .await
+        ),
+        "OK"
+    );
 }
 
 #[tokio::test]
@@ -411,8 +518,12 @@ async fn screen_recording_alone_gates_capture_and_a_revocation_mid_lease_ends_co
         matches!(&ev, Some(wire::actuator_event::Event::PermissionChanged(p)) if p.permission == "screen_recording" && !p.granted),
         "{ev:?}"
     );
-    assert_eq!(code_of(&hub.handle(req(2, perform_call("A", ""))).await), "WINDOW_UNVERIFIABLE", "the lease ended with the permission");
-    hub.handle(req(3, acquire("A"))).await.result.as_ref().map(|_| ());
+    assert_eq!(
+        code_of(&hub.handle(req(2, perform_call("A", ""))).await),
+        "WINDOW_UNVERIFIABLE",
+        "the lease ended with the permission"
+    );
+    hub.handle(req(3, acquire("A"))).await;
     let cap = hub
         .handle(req(
             4,
@@ -432,10 +543,19 @@ async fn a_repeated_idempotency_key_is_answered_never_injected_again() {
     let b = Script::new();
     let (hub, _rx) = hub_over(&b, Denied::default());
     hub.handle(req(1, acquire("A"))).await;
-    assert_eq!(code_of(&hub.handle(req(2, perform_call("A", "call-9"))).await), "OK");
-    assert_eq!(code_of(&hub.handle(req(3, perform_call("A", "call-9"))).await), "OK");
+    assert_eq!(
+        code_of(&hub.handle(req(2, perform_call("A", "call-9"))).await),
+        "OK"
+    );
+    assert_eq!(
+        code_of(&hub.handle(req(3, perform_call("A", "call-9"))).await),
+        "OK"
+    );
     assert_eq!(b.performs.load(Ordering::SeqCst), 1);
-    assert_eq!(code_of(&hub.handle(req(4, perform_call("A", "call-10"))).await), "OK");
+    assert_eq!(
+        code_of(&hub.handle(req(4, perform_call("A", "call-10"))).await),
+        "OK"
+    );
     assert_eq!(b.performs.load(Ordering::SeqCst), 2);
 }
 
@@ -446,7 +566,12 @@ async fn a_frame_leaves_at_the_canvas_size_with_its_secure_region_black_and_decl
     *b.raw.lock().unwrap() = Some((
         640,
         400,
-        vec![crate::canvas::Rect { x: 100.0, y: 50.0, w: 300.0, h: 30.0 }],
+        vec![crate::canvas::Rect {
+            x: 100.0,
+            y: 50.0,
+            w: 300.0,
+            h: 30.0,
+        }],
     ));
     let (hub, _rx) = hub_over(&b, Denied::default());
     hub.handle(req(1, acquire("A"))).await;
@@ -470,7 +595,10 @@ async fn a_frame_leaves_at_the_canvas_size_with_its_secure_region_black_and_decl
     assert_eq!(c.masked_regions, 1);
     assert_eq!(c.secure_regions.len(), 1);
     let lb = c.letterbox.unwrap();
-    assert!((lb.scale - 2.0).abs() < 1e-9, "640x400 fits the canvas at 2x");
+    assert!(
+        (lb.scale - 2.0).abs() < 1e-9,
+        "640x400 fits the canvas at 2x"
+    );
     // Decode and look at the pixels.
     let dec = png::Decoder::new(std::io::Cursor::new(&c.png));
     let mut reader = dec.read_info().unwrap();
@@ -484,11 +612,19 @@ async fn a_frame_leaves_at_the_canvas_size_with_its_secure_region_black_and_decl
     let s = &c.secure_regions[0];
     for y in s.y..s.y + s.height {
         for x in s.x..s.x + s.width {
-            assert_eq!(px(x as usize, y as usize), [0, 0, 0, 255], "({x},{y}) is masked");
+            assert_eq!(
+                px(x as usize, y as usize),
+                [0, 0, 0, 255],
+                "({x},{y}) is masked"
+            );
         }
     }
     assert!(s.x <= 200 && s.y <= 100 && s.x + s.width >= 800 && s.y + s.height >= 160);
-    assert_eq!(px(10, 10), [12, 200, 34, 255], "outside the secure region the frame is untouched");
+    assert_eq!(
+        px(10, 10),
+        [12, 200, 34, 255],
+        "outside the secure region the frame is untouched"
+    );
     // The "secret" colour appears nowhere inside the region.
     let secret_in_region = (s.y..s.y + s.height)
         .flat_map(|y| (s.x..s.x + s.width).map(move |x| (x, y)))
@@ -532,17 +668,40 @@ async fn a_lease_the_core_stops_renewing_is_released_and_a_lost_window_is_report
     hub.handle(req(1, a)).await;
     b.window_alive.store(false, Ordering::SeqCst);
     let ev = next_event(&mut rx, Duration::from_secs(2)).await;
-    assert!(matches!(&ev, Some(wire::actuator_event::Event::WindowGone(w)) if w.window_id == "7" && w.control_id == "A"), "{ev:?}");
+    assert!(
+        matches!(&ev, Some(wire::actuator_event::Event::WindowGone(w)) if w.window_id == "7" && w.control_id == "A"),
+        "{ev:?}"
+    );
     tokio::time::sleep(Duration::from_millis(900)).await;
     let ping = hub
-        .handle(req(2, wire::actuator_request::Call::Ping(wire::PingRequest { control_id: "A".into() })))
+        .handle(req(
+            2,
+            wire::actuator_request::Call::Ping(wire::PingRequest {
+                control_id: "A".into(),
+            }),
+        ))
         .await;
-    assert!(matches!(ping.result, Some(wire::actuator_response::Result::Ping(ref p)) if !p.lease_held), "{ping:?}");
+    assert!(
+        matches!(ping.result, Some(wire::actuator_response::Result::Ping(ref p)) if !p.lease_held),
+        "{ping:?}"
+    );
 }
 
 #[test]
 fn the_deny_list_parses_and_can_only_remove_capability() {
-    assert_eq!(Denied::parse("accessibility"), Denied { accessibility: true, screen_recording: false });
-    assert_eq!(Denied::parse(" accessibility , screen_recording,bogus"), Denied { accessibility: true, screen_recording: true });
+    assert_eq!(
+        Denied::parse("accessibility"),
+        Denied {
+            accessibility: true,
+            screen_recording: false
+        }
+    );
+    assert_eq!(
+        Denied::parse(" accessibility , screen_recording,bogus"),
+        Denied {
+            accessibility: true,
+            screen_recording: true
+        }
+    );
     assert_eq!(Denied::parse(""), Denied::default());
 }

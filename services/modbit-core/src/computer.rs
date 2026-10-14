@@ -123,9 +123,10 @@ fn actuator_config(data_dir: &Path) -> Option<ActuatorConfig> {
         #[serde(default)]
         allow_unsigned_manifest: bool,
     }
-    let file: Option<File> = std::fs::read_to_string(data_dir.join("computer").join("actuator.json"))
-        .ok()
-        .and_then(|t| serde_json::from_str(&t).ok());
+    let file: Option<File> =
+        std::fs::read_to_string(data_dir.join("computer").join("actuator.json"))
+            .ok()
+            .and_then(|t| serde_json::from_str(&t).ok());
     let env_str = |k: &str| {
         std::env::var(k)
             .ok()
@@ -135,12 +136,19 @@ fn actuator_config(data_dir: &Path) -> Option<ActuatorConfig> {
     // A bundled, hash-pinned helper wins over a bare executable: when a
     // manifest is configured the helper is only ever launched through the
     // verification of `modbit_computer::supply` (PX-072).
-    let manifest = env_str("MODBIT_COMPUTER_ACTUATOR_MANIFEST")
-        .or_else(|| file.as_ref().map(|f| f.manifest.clone()).filter(|m| !m.is_empty()));
+    let manifest = env_str("MODBIT_COMPUTER_ACTUATOR_MANIFEST").or_else(|| {
+        file.as_ref()
+            .map(|f| f.manifest.clone())
+            .filter(|m| !m.is_empty())
+    });
     if let Some(manifest) = manifest {
-        let keys = env_str("MODBIT_COMPUTER_ACTUATOR_KEYS")
-            .or_else(|| file.as_ref().map(|f| f.trusted_keys.clone()).filter(|m| !m.is_empty()));
-        let allow_unsigned = env_str("MODBIT_COMPUTER_ACTUATOR_ALLOW_UNSIGNED").is_some_and(|v| v == "1")
+        let keys = env_str("MODBIT_COMPUTER_ACTUATOR_KEYS").or_else(|| {
+            file.as_ref()
+                .map(|f| f.trusted_keys.clone())
+                .filter(|m| !m.is_empty())
+        });
+        let allow_unsigned = env_str("MODBIT_COMPUTER_ACTUATOR_ALLOW_UNSIGNED")
+            .is_some_and(|v| v == "1")
             || file.as_ref().is_some_and(|f| f.allow_unsigned_manifest);
         return Some(ActuatorConfig {
             executable: PathBuf::new(),

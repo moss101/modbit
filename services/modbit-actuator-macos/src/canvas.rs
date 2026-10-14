@@ -58,14 +58,17 @@ impl Letterbox {
     /// The source point (display points, relative to the source origin) a
     /// canvas point denotes, or `None` for the margin or outside the canvas.
     #[must_use]
-    pub fn to_source(&self, x: f64, y: f64) -> Option<(f64, f64)> {
+    pub fn to_source(self, x: f64, y: f64) -> Option<(f64, f64)> {
         if !(0.0..=f64::from(W)).contains(&x) || !(0.0..=f64::from(H)).contains(&y) {
             return None;
         }
         if self.scale <= 0.0 {
             return None;
         }
-        let (sx, sy) = ((x - self.offset_x) / self.scale, (y - self.offset_y) / self.scale);
+        let (sx, sy) = (
+            (x - self.offset_x) / self.scale,
+            (y - self.offset_y) / self.scale,
+        );
         (sx >= -0.5
             && sy >= -0.5
             && sx <= f64::from(self.source_w) + 0.5
@@ -77,7 +80,7 @@ impl Letterbox {
     /// the source origin) covers, rounded outward by one pixel so a mask
     /// never leaves a sliver of a secret at an edge. Clipped to the canvas.
     #[must_use]
-    pub fn to_canvas(&self, r: Rect) -> Option<(u32, u32, u32, u32)> {
+    pub fn to_canvas(self, r: Rect) -> Option<(u32, u32, u32, u32)> {
         let x0 = (r.x * self.scale + self.offset_x).floor() - 1.0;
         let y0 = (r.y * self.scale + self.offset_y).floor() - 1.0;
         let x1 = ((r.x + r.w) * self.scale + self.offset_x).ceil() + 1.0;
@@ -145,9 +148,9 @@ pub fn compose(rgba: &[u8], px_w: u32, px_h: u32, lb: &Letterbox) -> Vec<u8> {
                 // Averages of u8 values fit u8.
                 #[allow(clippy::cast_possible_truncation)]
                 {
-                    out[o] = (r / n) as u8;
-                    out[o + 1] = (g / n) as u8;
-                    out[o + 2] = (b / n) as u8;
+                    out[o] = r.checked_div(n).unwrap_or(0) as u8;
+                    out[o + 1] = g.checked_div(n).unwrap_or(0) as u8;
+                    out[o + 2] = b.checked_div(n).unwrap_or(0) as u8;
                 }
                 out[o + 3] = 255;
             }
@@ -211,7 +214,10 @@ mod tests {
         assert!((lb.scale - 0.5).abs() < 1e-9 && lb.offset_x == 0.0 && lb.offset_y == 0.0);
         let sq = fit(800, 800);
         assert!((sq.scale - 1.0).abs() < 1e-9 && (sq.offset_x - 240.0).abs() < 1e-9);
-        assert!(sq.to_source(100.0, 100.0).is_none(), "the margin has no source");
+        assert!(
+            sq.to_source(100.0, 100.0).is_none(),
+            "the margin has no source"
+        );
         let (x, y) = sq.to_source(240.0, 400.0).unwrap();
         assert!(x.abs() < 1e-9 && (y - 400.0).abs() < 1e-9);
     }
@@ -219,9 +225,27 @@ mod tests {
     #[test]
     fn a_mask_covers_its_region_and_one_pixel_beyond_it() {
         let lb = fit(1280, 800);
-        let (x0, y0, x1, y1) = lb.to_canvas(Rect { x: 100.0, y: 50.0, w: 200.0, h: 30.0 }).unwrap();
-        assert!(x0 <= 99 && y0 <= 49 && x1 >= 301 && y1 >= 81, "{x0},{y0},{x1},{y1}");
-        assert!(lb.to_canvas(Rect { x: 5000.0, y: 0.0, w: 10.0, h: 10.0 }).is_none());
+        let (x0, y0, x1, y1) = lb
+            .to_canvas(Rect {
+                x: 100.0,
+                y: 50.0,
+                w: 200.0,
+                h: 30.0,
+            })
+            .unwrap();
+        assert!(
+            x0 <= 99 && y0 <= 49 && x1 >= 301 && y1 >= 81,
+            "{x0},{y0},{x1},{y1}"
+        );
+        assert!(
+            lb.to_canvas(Rect {
+                x: 5000.0,
+                y: 0.0,
+                w: 10.0,
+                h: 10.0
+            })
+            .is_none()
+        );
     }
 
     #[test]
@@ -244,14 +268,24 @@ mod tests {
             [c[o], c[o + 1], c[o + 2], c[o + 3]]
         };
         assert_eq!(at(&c, 300, 115), [12, 200, 34, 255]);
-        let r = lb.to_canvas(Rect { x: 200.0, y: 100.0, w: 200.0, h: 30.0 }).unwrap();
+        let r = lb
+            .to_canvas(Rect {
+                x: 200.0,
+                y: 100.0,
+                w: 200.0,
+                h: 30.0,
+            })
+            .unwrap();
         mask(&mut c, &[r]);
         for y in r.1..r.3 {
             for x in r.0..r.2 {
                 assert_eq!(at(&c, x, y), [0, 0, 0, 255]);
             }
         }
-        assert!(!c.chunks_exact(4).any(|p| p == [12, 200, 34, 255]), "no pixel of the secret is left");
+        assert!(
+            !c.chunks_exact(4).any(|p| p == [12, 200, 34, 255]),
+            "no pixel of the secret is left"
+        );
         assert_eq!(encode_png(&c)[..4], [0x89, b'P', b'N', b'G']);
     }
 

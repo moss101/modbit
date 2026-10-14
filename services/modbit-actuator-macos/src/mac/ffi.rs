@@ -3,7 +3,12 @@
 //! Security, libSystem). No binding crate: the surface is small, every
 //! declaration is checked against the SDK headers, and a smaller dependency
 //! tree is the point of a privileged helper.
-#![allow(non_snake_case, non_upper_case_globals, non_camel_case_types, dead_code)]
+#![allow(
+    non_snake_case,
+    non_upper_case_globals,
+    non_camel_case_types,
+    dead_code
+)]
 
 use std::ffi::{c_char, c_int, c_void};
 
@@ -97,12 +102,8 @@ unsafe extern "C" {
     pub fn CFArrayGetValueAtIndex(a: CFArrayRef, i: CFIndex) -> *const c_void;
     pub fn CFStringGetLength(s: CFStringRef) -> CFIndex;
     pub fn CFStringGetMaximumSizeForEncoding(len: CFIndex, enc: u32) -> CFIndex;
-    pub fn CFStringGetCString(
-        s: CFStringRef,
-        buf: *mut c_char,
-        size: CFIndex,
-        enc: u32,
-    ) -> Boolean;
+    pub fn CFStringGetCString(s: CFStringRef, buf: *mut c_char, size: CFIndex, enc: u32)
+    -> Boolean;
     pub fn CFStringCreateWithCString(
         alloc: CFAllocatorRef,
         c: *const c_char,
@@ -168,8 +169,7 @@ unsafe extern "C" {
     pub fn CGPreflightScreenCaptureAccess() -> Boolean;
     pub fn CGRequestScreenCaptureAccess() -> Boolean;
     pub fn CGWindowListCopyWindowInfo(option: u32, relative_to: u32) -> CFArrayRef;
-    pub fn CGRectMakeWithDictionaryRepresentation(d: CFDictionaryRef, out: *mut CGRect)
-    -> Boolean;
+    pub fn CGRectMakeWithDictionaryRepresentation(d: CFDictionaryRef, out: *mut CGRect) -> Boolean;
     pub fn CGMainDisplayID() -> u32;
     pub fn CGDisplayBounds(id: u32) -> CGRect;
     pub fn CGImageGetWidth(i: CGImageRef) -> usize;
@@ -221,11 +221,7 @@ unsafe extern "C" {
 
 #[link(name = "Security", kind = "framework")]
 unsafe extern "C" {
-    pub fn SecStaticCodeCreateWithPath(
-        path: CFURLRef,
-        flags: u32,
-        out: *mut *const c_void,
-    ) -> i32;
+    pub fn SecStaticCodeCreateWithPath(path: CFURLRef, flags: u32, out: *mut *const c_void) -> i32;
     pub fn SecCodeCopySigningInformation(
         code: *const c_void,
         flags: u32,
@@ -235,8 +231,13 @@ unsafe extern "C" {
 
 unsafe extern "C" {
     pub fn proc_pidpath(pid: c_int, buf: *mut c_void, size: u32) -> c_int;
-    pub fn proc_pidinfo(pid: c_int, flavor: c_int, arg: u64, buf: *mut c_void, size: c_int)
-    -> c_int;
+    pub fn proc_pidinfo(
+        pid: c_int,
+        flavor: c_int,
+        arg: u64,
+        buf: *mut c_void,
+        size: c_int,
+    ) -> c_int;
     pub fn proc_listallpids(buf: *mut c_void, size: c_int) -> c_int;
     pub fn geteuid() -> u32;
     pub fn dlsym(handle: *mut c_void, name: *const c_char) -> *mut c_void;

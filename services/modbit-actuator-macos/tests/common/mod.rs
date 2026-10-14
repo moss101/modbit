@@ -2,6 +2,9 @@
 //! helper binary the way the Core does, and building requests.
 #![allow(dead_code)]
 
+#[cfg(target_os = "macos")]
+pub mod fixture_app;
+
 use std::path::PathBuf;
 use std::time::Duration;
 
@@ -18,7 +21,10 @@ pub fn config(env: &[(&str, &str)]) -> ActuatorConfig {
     ActuatorConfig {
         executable: helper_bin(),
         args: vec![],
-        env: env.iter().map(|(k, v)| ((*k).into(), (*v).into())).collect(),
+        env: env
+            .iter()
+            .map(|(k, v)| ((*k).into(), (*v).into()))
+            .collect(),
         log_path: None,
         supply: None,
     }

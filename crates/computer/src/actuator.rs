@@ -204,15 +204,21 @@ impl ProcessActuator {
             let verified = match supply::verify_entry(&entry, &dir, supply_cfg) {
                 Ok(v) => v,
                 Err(reason) => {
-                    rejected.push(Attempt { version: entry.version, reason });
+                    rejected.push(Attempt {
+                        version: entry.version,
+                        reason,
+                    });
                     continue;
                 }
             };
-            match Self::launch_one(config, &verified.path, Some(&verified), handshake_timeout)
-                .await
+            match Self::launch_one(config, &verified.path, Some(&verified), handshake_timeout).await
             {
                 Ok(me) => {
-                    let _ = me.shared.report.set(SupplyReport { used: verified, rejected });
+                    let _ = me.shared.report.set(SupplyReport {
+                        used: verified,
+                        identity_checked: supply::IDENTITY_CHECKED,
+                        rejected,
+                    });
                     return Ok(me);
                 }
                 Err(f) => {
@@ -223,7 +229,10 @@ impl ProcessActuator {
                         OneFail::Launch(LaunchError::Spawn(m)) => Reject::Spawn(m),
                         OneFail::Launch(LaunchError::Unverified(m)) => Reject::ProcessIdentity(m),
                     };
-                    rejected.push(Attempt { version: entry.version, reason });
+                    rejected.push(Attempt {
+                        version: entry.version,
+                        reason,
+                    });
                 }
             }
         }
@@ -298,7 +307,9 @@ impl ProcessActuator {
                 OneFail::Launch(LaunchError::Spawn(format!("{}: {e}", executable.display())))
             })?;
         let (Some(stdin), Some(stdout)) = (child.stdin.take(), child.stdout.take()) else {
-            return Err(OneFail::Launch(LaunchError::Spawn("no standard streams".into())));
+            return Err(OneFail::Launch(LaunchError::Spawn(
+                "no standard streams".into(),
+            )));
         };
         let pid = child.id();
         // Process identity, before the hello: the running image is the file

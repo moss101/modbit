@@ -14,7 +14,7 @@ use modbit_protocol::v1 as wire;
 
 use super::cf::{Cf, CfStr, string_of};
 use super::ffi::{
-    CFBundleCreate, CFBundleGetIdentifier, CFURLCreateFromFileSystemRepresentation, CFRelease,
+    CFBundleCreate, CFBundleGetIdentifier, CFRelease, CFURLCreateFromFileSystemRepresentation,
     SecCodeCopySigningInformation, SecStaticCodeCreateWithPath, geteuid, kCFAllocatorDefault,
     proc_listallpids, proc_pidinfo, proc_pidpath,
 };

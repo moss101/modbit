@@ -270,19 +270,26 @@ pub fn ax_fail(e: AXError, what: &str, after_start: bool) -> Fail {
             "PERMISSION_REQUIRED",
             "Accessibility is not granted to the actuator",
         ),
-        kAXErrorInvalidUIElement => Fail::nd("TARGET_STALE", format!("{what}: the element is gone")),
+        kAXErrorInvalidUIElement => {
+            Fail::nd("TARGET_STALE", format!("{what}: the element is gone"))
+        }
         kAXErrorActionUnsupported | kAXErrorAttributeUnsupported | kAXErrorNotImplemented => {
             Fail::nd(
                 "UNSUPPORTED_REQUEST",
                 format!("{what}: the element does not support it"),
             )
         }
-        kAXErrorIllegalArgument => Fail::nd("UNSUPPORTED_REQUEST", format!("{what}: refused the argument")),
+        kAXErrorIllegalArgument => Fail::nd(
+            "UNSUPPORTED_REQUEST",
+            format!("{what}: refused the argument"),
+        ),
         kAXErrorCannotComplete | kAXErrorFailure | kAXErrorNoValue => {
             if after_start {
                 Fail::unknown(
                     "INPUT_FAILED",
-                    format!("{what}: the application did not answer (AX error {e}); the effect is unknown"),
+                    format!(
+                        "{what}: the application did not answer (AX error {e}); the effect is unknown"
+                    ),
                 )
             } else {
                 Fail::nd(
@@ -370,16 +377,23 @@ pub fn windows(app: &Ax) -> Vec<Window> {
         let id = el
             .window_number()
             .map_or_else(|| format!("ax{i}"), |n| n.to_string());
-        let sheet = el
-            .elements(&n.children)
-            .is_some_and(|c| c.iter().any(|c| c.string(&n.role).as_deref() == Some("AXSheet")));
+        let sheet = el.elements(&n.children).is_some_and(|c| {
+            c.iter()
+                .any(|c| c.string(&n.role).as_deref() == Some("AXSheet"))
+        });
         let modal = el.boolean(&n.modal).unwrap_or(false);
         let info = wire::WindowInfo {
             version: window_version(&id, &bounds),
             window_id: id,
-            title: el.string(&n.title).unwrap_or_default().chars().take(MAX_NAME).collect(),
+            title: el
+                .string(&n.title)
+                .unwrap_or_default()
+                .chars()
+                .take(MAX_NAME)
+                .collect(),
             bounds: Some(bounds),
-            focused: el.boolean(&n.main).unwrap_or(false) || el.boolean(&n.focused).unwrap_or(false),
+            focused: el.boolean(&n.main).unwrap_or(false)
+                || el.boolean(&n.focused).unwrap_or(false),
             modal: false,
             minimized: el.boolean(&n.minimized).unwrap_or(false),
         };
@@ -607,7 +621,7 @@ pub fn walk(window: &Ax, max: usize, budget: Duration, ctl: &Ctl) -> Res<Walked>
 pub fn tree_digest(nodes: &[wire::AxNode]) -> String {
     let mut h = Sha256::new();
     for n in nodes {
-        let b = n.bounds.clone().unwrap_or_default();
+        let b = n.bounds.unwrap_or_default();
         h.update(
             format!(
                 "{}|{}|{}|{}|{}|{}|{}|{}|{},{},{},{}\n",
@@ -649,38 +663,73 @@ mod tests {
     fn roles_map_and_a_secure_field_is_recognised_by_subrole_or_role() {
         assert_eq!(role_of("AXButton", ""), ("button".into(), false));
         assert_eq!(role_of("AXTextField", ""), ("textfield".into(), false));
-        assert_eq!(role_of("AXTextField", "AXSecureTextField"), ("securetextfield".into(), true));
-        assert_eq!(role_of("AXSecureTextField", ""), ("securetextfield".into(), true));
+        assert_eq!(
+            role_of("AXTextField", "AXSecureTextField"),
+            ("securetextfield".into(), true)
+        );
+        assert_eq!(
+            role_of("AXSecureTextField", ""),
+            ("securetextfield".into(), true)
+        );
         assert_eq!(role_of("AXStaticText", ""), ("label".into(), false));
         assert_eq!(role_of("AXCheckBox", ""), ("checkbox".into(), false));
     }
 
     #[test]
     fn a_window_version_changes_with_geometry_and_identity_only() {
-        let r = wire::Rect { x: 1, y: 2, width: 300, height: 200 };
+        let r = wire::Rect {
+            x: 1,
+            y: 2,
+            width: 300,
+            height: 200,
+        };
         let v = window_version("7", &r);
         assert_eq!(v, window_version("7", &r));
         assert_ne!(v, window_version("8", &r));
-        assert_ne!(v, window_version("7", &wire::Rect { x: 2, ..r.clone() }));
+        assert_ne!(v, window_version("7", &wire::Rect { x: 2, ..r }));
         assert_ne!(v, window_version("7", &wire::Rect { width: 301, ..r }));
     }
 
     #[test]
     fn digests_ignore_nothing_but_the_secure_value_is_never_present() {
-        let mut a = wire::AxNode { element_id: "n1".into(), role: "textfield".into(), value: "x".into(), ..Default::default() };
+        let mut a = wire::AxNode {
+            element_id: "n1".into(),
+            role: "textfield".into(),
+            value: "x".into(),
+            ..Default::default()
+        };
         let d1 = tree_digest(std::slice::from_ref(&a));
         a.value = "y".into();
         assert_ne!(d1, tree_digest(std::slice::from_ref(&a)));
-        assert_eq!(structure_digest(std::slice::from_ref(&a)), structure_digest(&[wire::AxNode { element_id: "n1".into(), role: "textfield".into(), ..Default::default() }]));
+        assert_eq!(
+            structure_digest(std::slice::from_ref(&a)),
+            structure_digest(&[wire::AxNode {
+                element_id: "n1".into(),
+                role: "textfield".into(),
+                ..Default::default()
+            }])
+        );
     }
 
     #[test]
     fn ax_errors_become_typed_refusals_with_honest_delivery() {
-        assert_eq!(ax_fail(kAXErrorAPIDisabled, "x", true).code, "PERMISSION_REQUIRED");
-        assert_eq!(ax_fail(kAXErrorInvalidUIElement, "x", true).code, "TARGET_STALE");
+        assert_eq!(
+            ax_fail(kAXErrorAPIDisabled, "x", true).code,
+            "PERMISSION_REQUIRED"
+        );
+        assert_eq!(
+            ax_fail(kAXErrorInvalidUIElement, "x", true).code,
+            "TARGET_STALE"
+        );
         let f = ax_fail(kAXErrorCannotComplete, "press", true);
-        assert_eq!((f.code, f.delivery), ("INPUT_FAILED", wire::Delivery::Unknown));
+        assert_eq!(
+            (f.code, f.delivery),
+            ("INPUT_FAILED", wire::Delivery::Unknown)
+        );
         let f = ax_fail(kAXErrorCannotComplete, "read", false);
-        assert_eq!((f.code, f.delivery), ("ACCESSIBILITY_UNAVAILABLE", wire::Delivery::NotDelivered));
+        assert_eq!(
+            (f.code, f.delivery),
+            ("ACCESSIBILITY_UNAVAILABLE", wire::Delivery::NotDelivered)
+        );
     }
 }

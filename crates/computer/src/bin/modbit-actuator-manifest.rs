@@ -31,7 +31,10 @@ const PKCS8_PREFIX: [u8; 16] = [
 ];
 
 fn arg(args: &[String], name: &str) -> Option<String> {
-    args.iter().position(|a| a == name).and_then(|i| args.get(i + 1)).cloned()
+    args.iter()
+        .position(|a| a == name)
+        .and_then(|i| args.get(i + 1))
+        .cloned()
 }
 
 fn need(args: &[String], name: &str) -> Result<String, String> {
@@ -45,7 +48,10 @@ fn pem(label: &str, der: &[u8]) -> String {
         .chunks(64)
         .map(|c| String::from_utf8_lossy(c).into_owned())
         .collect();
-    format!("-----BEGIN {label}-----\n{}\n-----END {label}-----\n", lines.join("\n"))
+    format!(
+        "-----BEGIN {label}-----\n{}\n-----END {label}-----\n",
+        lines.join("\n")
+    )
 }
 
 fn read_signing_key(path: &str) -> Result<SigningKey, String> {
@@ -69,7 +75,8 @@ fn run(args: &[String]) -> Result<(), String> {
             let mut der = PKCS8_PREFIX.to_vec();
             der.extend_from_slice(&seed);
             let private = need(args, "--private")?;
-            std::fs::write(&private, pem("PRIVATE KEY", &der)).map_err(|e| format!("{private}: {e}"))?;
+            std::fs::write(&private, pem("PRIVATE KEY", &der))
+                .map_err(|e| format!("{private}: {e}"))?;
             #[cfg(unix)]
             {
                 use std::os::unix::fs::PermissionsExt;
@@ -77,7 +84,8 @@ fn run(args: &[String]) -> Result<(), String> {
             }
             let public = need(args, "--public")?;
             let pinned = supply::pinned_for(&sk);
-            std::fs::write(&public, &pinned.public_key_pem).map_err(|e| format!("{public}: {e}"))?;
+            std::fs::write(&public, &pinned.public_key_pem)
+                .map_err(|e| format!("{public}: {e}"))?;
             println!("key_id {}", pinned.key_id);
             Ok(())
         }
@@ -85,13 +93,18 @@ fn run(args: &[String]) -> Result<(), String> {
             let spec = need(args, "--spec")?;
             let root = PathBuf::from(need(args, "--root")?);
             let text = std::fs::read_to_string(&spec).map_err(|e| format!("{spec}: {e}"))?;
-            let mut v: serde_json::Value = serde_json::from_str(&text).map_err(|e| format!("{spec}: {e}"))?;
+            let mut v: serde_json::Value =
+                serde_json::from_str(&text).map_err(|e| format!("{spec}: {e}"))?;
             let helpers = v
                 .get_mut("helpers")
                 .and_then(|h| h.as_array_mut())
                 .ok_or("the spec has no helpers array")?;
             for h in helpers {
-                let rel = h.get("path").and_then(|p| p.as_str()).ok_or("a helper has no path")?.to_owned();
+                let rel = h
+                    .get("path")
+                    .and_then(|p| p.as_str())
+                    .ok_or("a helper has no path")?
+                    .to_owned();
                 let file = root.join(&rel);
                 let bytes = std::fs::read(&file).map_err(|e| format!("{}: {e}", file.display()))?;
                 h["sha256"] = serde_json::json!(hex::encode(Sha256::digest(&bytes)));
@@ -99,10 +112,14 @@ fn run(args: &[String]) -> Result<(), String> {
             }
             v["schema"] = serde_json::json!(supply::SCHEMA);
             v["kind"] = serde_json::json!(supply::KIND);
-            let m: Manifest = serde_json::from_value(v).map_err(|e| format!("the spec is not a manifest: {e}"))?;
+            let m: Manifest = serde_json::from_value(v)
+                .map_err(|e| format!("the spec is not a manifest: {e}"))?;
             let out = need(args, "--out")?;
-            std::fs::write(&out, serde_json::to_string_pretty(&m).map_err(|e| e.to_string())?)
-                .map_err(|e| format!("{out}: {e}"))
+            std::fs::write(
+                &out,
+                serde_json::to_string_pretty(&m).map_err(|e| e.to_string())?,
+            )
+            .map_err(|e| format!("{out}: {e}"))
         }
         Some("sign") => {
             let payload = need(args, "--payload")?;
@@ -111,8 +128,11 @@ fn run(args: &[String]) -> Result<(), String> {
             let sk = read_signing_key(&need(args, "--key")?)?;
             let signed = supply::sign_manifest(&m, &sk);
             let out = need(args, "--out")?;
-            std::fs::write(&out, serde_json::to_string_pretty(&signed).map_err(|e| e.to_string())?)
-                .map_err(|e| format!("{out}: {e}"))
+            std::fs::write(
+                &out,
+                serde_json::to_string_pretty(&signed).map_err(|e| e.to_string())?,
+            )
+            .map_err(|e| format!("{out}: {e}"))
         }
         Some("audit") => {
             let cfg = SupplyConfig {
@@ -124,7 +144,9 @@ fn run(args: &[String]) -> Result<(), String> {
             };
             let results = supply::audit(&cfg).map_err(|e| e.to_string())?;
             if results.is_empty() {
-                return Err("NO_ENTRY_FOR_PLATFORM: the manifest pins no helper for this platform".into());
+                return Err(
+                    "NO_ENTRY_FOR_PLATFORM: the manifest pins no helper for this platform".into(),
+                );
             }
             let mut bad = 0;
             for (version, r) in results {
@@ -136,9 +158,16 @@ fn run(args: &[String]) -> Result<(), String> {
                     }
                 }
             }
-            if bad == 0 { Ok(()) } else { Err(format!("{bad} helper(s) did not verify")) }
+            if bad == 0 {
+                Ok(())
+            } else {
+                Err(format!("{bad} helper(s) did not verify"))
+            }
         }
-        _ => Err("usage: modbit-actuator-manifest <keygen|build|sign|audit> ... (see the module docs)".into()),
+        _ => Err(
+            "usage: modbit-actuator-manifest <keygen|build|sign|audit> ... (see the module docs)"
+                .into(),
+        ),
     }
 }
 

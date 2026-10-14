@@ -60,6 +60,15 @@ jobs:
         run: cargo build --workspace --locked
       - name: Test (includes real cargo-metadata forbidden-edge test)
         run: cargo test --workspace --locked
+      - name: macOS actuator real-permission tests (PX-071) - SKIPPED loudly where the runner has no Accessibility / Screen Recording grant
+        if: runner.os == 'macOS'
+        # A hosted runner normally has neither permission, and the tests drive a
+        # real AppKit application through the real Accessibility API. The script
+        # asks the helper itself (`--check-permissions`), runs the #[ignore]d
+        # tests when the answer is yes, and otherwise prints SKIPPED with the
+        # count and the owner steps and writes a warning annotation. It never
+        # reports a skipped test as passed.
+        run: services/modbit-actuator-macos/scripts/ax-tests.sh
       - name: Architecture dependency lint (docs/12, docs/81)
         run: cargo run --locked -p architecture-lint -- --manifest-path Cargo.toml --rules tools/architecture-lint/rules.toml
       - name: Git spawn lint — a Git process is built only by the hardened runner (PX-067, docs/65 AFW-J09)

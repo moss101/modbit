@@ -240,7 +240,9 @@ impl fmt::Display for Reject {
             | Self::Handshake(s)
             | Self::Spawn(s) => write!(f, "{s}"),
             Self::SizeMismatch { want, got } => write!(f, "{got} bytes, the manifest pins {want}"),
-            Self::DigestMismatch { want, got } => write!(f, "sha256 {got}, the manifest pins {want}"),
+            Self::DigestMismatch { want, got } => {
+                write!(f, "sha256 {got}, the manifest pins {want}")
+            }
             Self::CoreTooOld { needs, have } => write!(f, "needs Core {needs}, this is {have}"),
             Self::ProtocolMismatch { helper, core } => {
                 write!(f, "the helper speaks protocol {helper}, this Core {core}")
@@ -312,8 +314,10 @@ impl fmt::Display for SupplyError {
             Self::ManifestUnsigned => write!(f, "the manifest carries no signature"),
             Self::SignatureInvalid => write!(f, "the signature does not match the payload"),
             Self::NoVerifiedHelper(a) => {
-                let parts: Vec<String> =
-                    a.iter().map(|x| format!("{} -> {}", x.version, x.reason)).collect();
+                let parts: Vec<String> = a
+                    .iter()
+                    .map(|x| format!("{} -> {}", x.version, x.reason))
+                    .collect();
                 write!(f, "no bundled helper could be used ({})", parts.join("; "))
             }
         }
@@ -340,6 +344,9 @@ pub struct Verified {
 pub struct SupplyReport {
     /// The helper in use.
     pub used: Verified,
+    /// Whether the running process's executable was checked against the pin
+    /// ([`IDENTITY_CHECKED`]).
+    pub identity_checked: bool,
     /// Candidates rejected on the way, newest first. Non-empty means the
     /// launch ROLLED BACK.
     pub rejected: Vec<Attempt>,
@@ -366,7 +373,10 @@ pub fn pem_of(public: &[u8; 32]) -> String {
         .chunks(64)
         .map(|c| String::from_utf8_lossy(c).into_owned())
         .collect();
-    format!("-----BEGIN PUBLIC KEY-----\n{}\n-----END PUBLIC KEY-----\n", lines.join("\n"))
+    format!(
+        "-----BEGIN PUBLIC KEY-----\n{}\n-----END PUBLIC KEY-----\n",
+        lines.join("\n")
+    )
 }
 
 /// A [`PinnedKey`] for a signing key.
@@ -434,21 +444,26 @@ pub fn verify_manifest(s: &SignedManifest, pinned: &[PinnedKey]) -> Result<Manif
         )));
     };
     if key.revoked {
-        return Err(SupplyError::SignatureKeyRevoked(format!("key {} is revoked", s.key_id)));
+        return Err(SupplyError::SignatureKeyRevoked(format!(
+            "key {} is revoked",
+            s.key_id
+        )));
     }
     let vk = verifying_key(key)?;
     let sig_bytes = base64::engine::general_purpose::STANDARD
         .decode(s.signature.trim())
         .map_err(|_| SupplyError::SignatureInvalid)?;
-    let sig_arr: [u8; 64] = sig_bytes.try_into().map_err(|_| SupplyError::SignatureInvalid)?;
+    let sig_arr: [u8; 64] = sig_bytes
+        .try_into()
+        .map_err(|_| SupplyError::SignatureInvalid)?;
     vk.verify(s.payload.as_bytes(), &Signature::from_bytes(&sig_arr))
         .map_err(|_| SupplyError::SignatureInvalid)?;
     parse_payload(&s.payload)
 }
 
 fn parse_payload(payload: &str) -> Result<Manifest, SupplyError> {
-    let m: Manifest = serde_json::from_str(payload)
-        .map_err(|e| SupplyError::ManifestMalformed(e.to_string()))?;
+    let m: Manifest =
+        serde_json::from_str(payload).map_err(|e| SupplyError::ManifestMalformed(e.to_string()))?;
     if m.schema != SCHEMA || m.kind != KIND {
         return Err(SupplyError::ManifestMalformed(format!(
             "schema {} kind {:?}, expected schema {SCHEMA} kind {KIND:?}",
@@ -474,8 +489,8 @@ pub fn load_manifest(cfg: &SupplyConfig) -> Result<Manifest, SupplyError> {
         }
         return Err(SupplyError::ManifestUnsigned);
     }
-    let envelope: SignedManifest = serde_json::from_value(value)
-        .map_err(|e| SupplyError::ManifestMalformed(e.to_string()))?;
+    let envelope: SignedManifest =
+        serde_json::from_value(value).map_err(|e| SupplyError::ManifestMalformed(e.to_string()))?;
     let mut keys = cfg.keys.clone();
     if let Some(p) = &cfg.keys_file {
         let t = std::fs::read_to_string(p)
@@ -576,7 +591,9 @@ fn resolve_inside(dir: &Path, rel: &str) -> Result<PathBuf, Reject> {
             )
         })
     {
-        return Err(Reject::PathEscapes(format!("{rel:?} is not a path inside the bundle")));
+        return Err(Reject::PathEscapes(format!(
+            "{rel:?} is not a path inside the bundle"
+        )));
     }
     let root = std::fs::canonicalize(dir)
         .map_err(|e| Reject::Missing(format!("{}: {e}", dir.display())))?;
@@ -610,16 +627,24 @@ pub fn verify_entry(e: &HelperEntry, dir: &Path, cfg: &SupplyConfig) -> Result<V
         });
     }
     let path = resolve_inside(dir, &e.path)?;
-    let meta = std::fs::metadata(&path).map_err(|err| Reject::Missing(format!("{}: {err}", path.display())))?;
+    let meta = std::fs::metadata(&path)
+        .map_err(|err| Reject::Missing(format!("{}: {err}", path.display())))?;
     if !meta.is_file() {
         return Err(Reject::NotRegularFile(path.display().to_string()));
     }
     if meta.len() != e.size {
-        return Err(Reject::SizeMismatch { want: e.size, got: meta.len() });
+        return Err(Reject::SizeMismatch {
+            want: e.size,
+            got: meta.len(),
+        });
     }
-    let (digest, _) = sha256_file(&path).map_err(|err| Reject::Missing(format!("{}: {err}", path.display())))?;
+    let (digest, _) =
+        sha256_file(&path).map_err(|err| Reject::Missing(format!("{}: {err}", path.display())))?;
     if !digest.eq_ignore_ascii_case(&e.sha256) {
-        return Err(Reject::DigestMismatch { want: e.sha256.to_ascii_lowercase(), got: digest });
+        return Err(Reject::DigestMismatch {
+            want: e.sha256.to_ascii_lowercase(),
+            got: digest,
+        });
     }
     #[cfg(unix)]
     {
@@ -708,13 +733,16 @@ pub fn bundle_dir(cfg: &SupplyConfig) -> PathBuf {
         .map_or_else(|| PathBuf::from("."), Path::to_path_buf)
 }
 
+/// One audited entry: its version and whether it verified.
+pub type AuditRow = (String, Result<Verified, Reject>);
+
 /// Verify what a bundle ships, without launching it (the entry point of the
 /// application updater and of the release gate): the manifest is trusted and
 /// every entry for this platform is checked.
 ///
 /// # Errors
 /// The manifest's trust failure; per-entry results are in the `Ok`.
-pub fn audit(cfg: &SupplyConfig) -> Result<Vec<(String, Result<Verified, Reject>)>, SupplyError> {
+pub fn audit(cfg: &SupplyConfig) -> Result<Vec<AuditRow>, SupplyError> {
     let m = load_manifest(cfg)?;
     let dir = bundle_dir(cfg);
     Ok(m.helpers
@@ -750,12 +778,24 @@ pub fn process_exe(pid: u32) -> Option<PathBuf> {
     }
 }
 
+/// Whether this platform can name a running process's executable. The
+/// actuator exists on macOS only (docs/66 CUC-A03); Linux is checked so the
+/// logic is proven in CI; elsewhere the check is reported as not made.
+pub const IDENTITY_CHECKED: bool = cfg!(any(target_os = "macos", target_os = "linux"));
+
 /// The running process `pid` is the verified helper: same executable path,
-/// and the file at that path still has the pinned digest.
+/// and the file at that path still has the pinned digest. On a platform
+/// where [`IDENTITY_CHECKED`] is false nothing is checked (and the report
+/// says so); where it is true, a process whose executable cannot be named is
+/// refused (fail closed).
 ///
 /// # Errors
 /// What differs.
 pub fn check_process(pid: u32, v: &Verified) -> Result<(), Reject> {
+    if !IDENTITY_CHECKED {
+        let _ = (pid, v);
+        return Ok(());
+    }
     let Some(exe) = process_exe(pid) else {
         return Err(Reject::ProcessIdentity(format!(
             "the executable of process {pid} cannot be determined"
@@ -815,7 +855,9 @@ pub fn terminate_verified(pid: u32, expected: &Path) -> Result<(), Reject> {
     }
     #[cfg(not(unix))]
     {
-        Err(Reject::ProcessIdentity("signalling by pid is not supported here".into()))
+        Err(Reject::ProcessIdentity(
+            "signalling by pid is not supported here".into(),
+        ))
     }
 }
 
@@ -846,7 +888,12 @@ mod tests {
     }
 
     fn manifest(h: Vec<HelperEntry>) -> Manifest {
-        Manifest { schema: SCHEMA, kind: KIND.into(), helpers: h, sbom: vec![] }
+        Manifest {
+            schema: SCHEMA,
+            kind: KIND.into(),
+            helpers: h,
+            sbom: vec![],
+        }
     }
 
     #[test]
@@ -868,22 +915,37 @@ mod tests {
         // payload edited after signing
         let mut t = signed.clone();
         t.payload = t.payload.replace("1.0.0", "9.9.9");
-        assert_eq!(verify_manifest(&t, &pinned), Err(SupplyError::SignatureInvalid));
+        assert_eq!(
+            verify_manifest(&t, &pinned),
+            Err(SupplyError::SignatureInvalid)
+        );
         // signed by a key that is not pinned
         let other = sign_manifest(&m, &key(8));
-        assert!(matches!(verify_manifest(&other, &pinned), Err(SupplyError::SignatureUnknownKey(_))));
+        assert!(matches!(
+            verify_manifest(&other, &pinned),
+            Err(SupplyError::SignatureUnknownKey(_))
+        ));
         // revoked
         let mut revoked = pinned.clone();
         revoked[0].revoked = true;
-        assert!(matches!(verify_manifest(&signed, &revoked), Err(SupplyError::SignatureKeyRevoked(_))));
+        assert!(matches!(
+            verify_manifest(&signed, &revoked),
+            Err(SupplyError::SignatureKeyRevoked(_))
+        ));
         // a pinned key whose declared id lies about the key
         let mut liar = pinned.clone();
         liar[0].public_key_pem = pem_of(&key(9).verifying_key().to_bytes());
-        assert!(matches!(verify_manifest(&signed, &liar), Err(SupplyError::KeysUnreadable(_))));
+        assert!(matches!(
+            verify_manifest(&signed, &liar),
+            Err(SupplyError::KeysUnreadable(_))
+        ));
         // a wrong kind
         let mut bad = m.clone();
         bad.kind = "something-else".into();
-        assert!(matches!(verify_manifest(&sign_manifest(&bad, &sk), &pinned), Err(SupplyError::ManifestMalformed(_))));
+        assert!(matches!(
+            verify_manifest(&sign_manifest(&bad, &sk), &pinned),
+            Err(SupplyError::ManifestMalformed(_))
+        ));
     }
 
     #[test]
@@ -894,7 +956,10 @@ mod tests {
         assert_eq!(id.len(), 16);
         assert!(id.chars().all(|c| c.is_ascii_hexdigit()));
         assert_eq!(pinned_for(&sk).key_id, id);
-        assert!(pem_of(&sk.verifying_key().to_bytes()).starts_with("-----BEGIN PUBLIC KEY-----\nMCowBQYDK2VwAyEA"));
+        assert!(
+            pem_of(&sk.verifying_key().to_bytes())
+                .starts_with("-----BEGIN PUBLIC KEY-----\nMCowBQYDK2VwAyEA")
+        );
     }
 
     #[test]
@@ -906,7 +971,10 @@ mod tests {
         b.rollback_to = Some("1.0.0".into());
         c.rollback_to = Some("3.0.0".into()); // a loop
         let chain = candidates(&manifest(vec![c.clone(), a.clone(), b.clone()])).unwrap();
-        assert_eq!(chain.iter().map(|e| e.version.as_str()).collect::<Vec<_>>(), ["3.0.0", "2.0.0", "1.0.0"]);
+        assert_eq!(
+            chain.iter().map(|e| e.version.as_str()).collect::<Vec<_>>(),
+            ["3.0.0", "2.0.0", "1.0.0"]
+        );
         // An entry that is not on the newest entry's chain is never launched.
         a.rollback_to = None;
         let chain = candidates(&manifest(vec![a, b, c])).unwrap();
@@ -918,10 +986,22 @@ mod tests {
     #[test]
     fn a_path_may_not_leave_the_bundle() {
         let d = tempfile::tempdir().unwrap();
-        assert!(matches!(resolve_inside(d.path(), "../x"), Err(Reject::PathEscapes(_))));
-        assert!(matches!(resolve_inside(d.path(), "/bin/sh"), Err(Reject::PathEscapes(_))));
-        assert!(matches!(resolve_inside(d.path(), "a/../../x"), Err(Reject::PathEscapes(_))));
-        assert!(matches!(resolve_inside(d.path(), "missing"), Err(Reject::Missing(_))));
+        assert!(matches!(
+            resolve_inside(d.path(), "../x"),
+            Err(Reject::PathEscapes(_))
+        ));
+        assert!(matches!(
+            resolve_inside(d.path(), "/bin/sh"),
+            Err(Reject::PathEscapes(_))
+        ));
+        assert!(matches!(
+            resolve_inside(d.path(), "a/../../x"),
+            Err(Reject::PathEscapes(_))
+        ));
+        assert!(matches!(
+            resolve_inside(d.path(), "missing"),
+            Err(Reject::Missing(_))
+        ));
         std::fs::write(d.path().join("ok"), b"x").unwrap();
         assert!(resolve_inside(d.path(), "ok").is_ok());
         #[cfg(unix)]
@@ -929,7 +1009,10 @@ mod tests {
             let outside = tempfile::tempdir().unwrap();
             std::fs::write(outside.path().join("evil"), b"x").unwrap();
             std::os::unix::fs::symlink(outside.path().join("evil"), d.path().join("link")).unwrap();
-            assert!(matches!(resolve_inside(d.path(), "link"), Err(Reject::PathEscapes(_))));
+            assert!(matches!(
+                resolve_inside(d.path(), "link"),
+                Err(Reject::PathEscapes(_))
+            ));
         }
     }
 
@@ -944,32 +1027,56 @@ mod tests {
             std::fs::set_permissions(&f, std::fs::Permissions::from_mode(0o755)).unwrap();
         }
         let (digest, size) = sha256_file(&f).unwrap();
-        let cfg = SupplyConfig { manifest: d.path().join("m.json"), keys_file: None, keys: vec![], allow_unsigned: true, core_version: "1.0.0".into() };
+        let cfg = SupplyConfig {
+            manifest: d.path().join("m.json"),
+            keys_file: None,
+            keys: vec![],
+            allow_unsigned: true,
+            core_version: "1.0.0".into(),
+        };
         let mut e = entry("1.0.0", "helper");
         e.sha256 = digest.clone();
         e.size = size;
         assert!(verify_entry(&e, d.path(), &cfg).is_ok());
         let mut x = e.clone();
         x.size += 1;
-        assert!(matches!(verify_entry(&x, d.path(), &cfg), Err(Reject::SizeMismatch { .. })));
+        assert!(matches!(
+            verify_entry(&x, d.path(), &cfg),
+            Err(Reject::SizeMismatch { .. })
+        ));
         let mut x = e.clone();
         x.sha256 = "ab".repeat(32);
-        assert!(matches!(verify_entry(&x, d.path(), &cfg), Err(Reject::DigestMismatch { .. })));
+        assert!(matches!(
+            verify_entry(&x, d.path(), &cfg),
+            Err(Reject::DigestMismatch { .. })
+        ));
         let mut x = e.clone();
         x.min_core_version = "2.0.0".into();
-        assert!(matches!(verify_entry(&x, d.path(), &cfg), Err(Reject::CoreTooOld { .. })));
+        assert!(matches!(
+            verify_entry(&x, d.path(), &cfg),
+            Err(Reject::CoreTooOld { .. })
+        ));
         let mut x = e.clone();
         x.protocol_major = 2;
-        assert!(matches!(verify_entry(&x, d.path(), &cfg), Err(Reject::ProtocolMismatch { .. })));
+        assert!(matches!(
+            verify_entry(&x, d.path(), &cfg),
+            Err(Reject::ProtocolMismatch { .. })
+        ));
         // same size, one byte different: the digest, not the size, catches it
         std::fs::write(&f, b"#!/bin/sh\nexit 1\n").unwrap();
-        assert!(matches!(verify_entry(&e, d.path(), &cfg), Err(Reject::DigestMismatch { .. })));
+        assert!(matches!(
+            verify_entry(&e, d.path(), &cfg),
+            Err(Reject::DigestMismatch { .. })
+        ));
         #[cfg(unix)]
         {
             use std::os::unix::fs::PermissionsExt;
             std::fs::write(&f, b"#!/bin/sh\nexit 0\n").unwrap();
             std::fs::set_permissions(&f, std::fs::Permissions::from_mode(0o644)).unwrap();
-            assert!(matches!(verify_entry(&e, d.path(), &cfg), Err(Reject::NotExecutable(_))));
+            assert!(matches!(
+                verify_entry(&e, d.path(), &cfg),
+                Err(Reject::NotExecutable(_))
+            ));
         }
     }
 
@@ -986,8 +1093,18 @@ mod tests {
     fn manifests_without_a_signature_need_an_explicit_developer_opt_in() {
         let d = tempfile::tempdir().unwrap();
         let p = d.path().join("actuator-manifest.json");
-        std::fs::write(&p, serde_json::to_string(&manifest(vec![entry("1.0.0", "h")])).unwrap()).unwrap();
-        let mut cfg = SupplyConfig { manifest: p, keys_file: None, keys: vec![], allow_unsigned: false, core_version: "1.0.0".into() };
+        std::fs::write(
+            &p,
+            serde_json::to_string(&manifest(vec![entry("1.0.0", "h")])).unwrap(),
+        )
+        .unwrap();
+        let mut cfg = SupplyConfig {
+            manifest: p,
+            keys_file: None,
+            keys: vec![],
+            allow_unsigned: false,
+            core_version: "1.0.0".into(),
+        };
         assert_eq!(load_manifest(&cfg), Err(SupplyError::ManifestUnsigned));
         cfg.allow_unsigned = true;
         assert!(load_manifest(&cfg).is_ok());
@@ -995,7 +1112,10 @@ mod tests {
         let sk = key(3);
         let env = sign_manifest(&manifest(vec![entry("1.0.0", "h")]), &sk);
         std::fs::write(&cfg.manifest, serde_json::to_string(&env).unwrap()).unwrap();
-        assert!(matches!(load_manifest(&cfg), Err(SupplyError::SignatureUnknownKey(_))));
+        assert!(matches!(
+            load_manifest(&cfg),
+            Err(SupplyError::SignatureUnknownKey(_))
+        ));
         cfg.keys = vec![pinned_for(&sk)];
         assert!(load_manifest(&cfg).is_ok());
     }

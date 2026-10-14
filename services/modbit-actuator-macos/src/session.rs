@@ -11,9 +11,7 @@ use std::time::{Duration, Instant};
 use modbit_protocol::v1 as wire;
 use tokio::sync::mpsc::Sender;
 
-use crate::backend::{
-    Backend, CaptureArgs, Ctl, Fail, PerformArgs, Permissions, ReadArgs, Res,
-};
+use crate::backend::{Backend, CaptureArgs, Ctl, Fail, PerformArgs, Permissions, ReadArgs, Res};
 use crate::canvas;
 
 /// How long after a physical event the controller stays parked (CUC-D04's
@@ -261,7 +259,9 @@ impl Hub {
             Call::Release(r) => {
                 let held = {
                     let st = self.lock();
-                    st.lease.as_ref().is_some_and(|l| l.control_id == r.control_id)
+                    st.lease
+                        .as_ref()
+                        .is_some_and(|l| l.control_id == r.control_id)
                 };
                 if held {
                     self.halt();
@@ -319,8 +319,15 @@ impl Hub {
     async fn acquire(&self, a: wire::AcquireRequest, dl: u64) -> Res<wire::AcquireResponse> {
         {
             let st = self.lock();
-            if st.lease.as_ref().is_some_and(|l| l.control_id != a.control_id) {
-                return Err(Fail::nd("SESSION_BUSY", "another controller holds the machine"));
+            if st
+                .lease
+                .as_ref()
+                .is_some_and(|l| l.control_id != a.control_id)
+            {
+                return Err(Fail::nd(
+                    "SESSION_BUSY",
+                    "another controller holds the machine",
+                ));
             }
         }
         let screen = a.scope == wire::Scope::Screen as i32;
@@ -340,8 +347,7 @@ impl Hub {
                 if info.elevated {
                     return Err(Fail::nd("TARGET_ELEVATED", "the application runs elevated"));
                 }
-                if !window_id.is_empty() && !info.windows.iter().any(|w| w.window_id == window_id)
-                {
+                if !window_id.is_empty() && !info.windows.iter().any(|w| w.window_id == window_id) {
                     return Err(Fail::nd("WINDOW_UNVERIFIABLE", "no such window"));
                 }
                 Ok(info)
@@ -349,8 +355,15 @@ impl Hub {
             .await?;
         let mut st = self.lock();
         // Re-check under the lock: two acquires can race.
-        if st.lease.as_ref().is_some_and(|l| l.control_id != a.control_id) {
-            return Err(Fail::nd("SESSION_BUSY", "another controller holds the machine"));
+        if st
+            .lease
+            .as_ref()
+            .is_some_and(|l| l.control_id != a.control_id)
+        {
+            return Err(Fail::nd(
+                "SESSION_BUSY",
+                "another controller holds the machine",
+            ));
         }
         st.generation += 1;
         let generation = st.generation;
@@ -360,7 +373,10 @@ impl Hub {
             wire::Scope::App
         };
         let window_id = if a.window_id.is_empty() {
-            info.windows.first().map(|w| w.window_id.clone()).unwrap_or_default()
+            info.windows
+                .first()
+                .map(|w| w.window_id.clone())
+                .unwrap_or_default()
         } else {
             a.window_id.clone()
         };
@@ -544,7 +560,9 @@ impl Hub {
         let b = Arc::clone(&self.backend);
         let key = p.idempotency_key.clone();
         let resp = self
-            .blocking(dl, move |ctl| b.perform(&PerformArgs { req: &p, scope }, ctl))
+            .blocking(dl, move |ctl| {
+                b.perform(&PerformArgs { req: &p, scope }, ctl)
+            })
             .await?;
         if !key.is_empty() {
             let mut st = self.lock();

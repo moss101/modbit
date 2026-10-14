@@ -9,11 +9,11 @@ use std::time::Duration;
 use modbit_protocol::v1 as wire;
 use wire::perform_request::Action;
 
+use super::Mac;
 use super::ax::{self, Ax, Window};
 use super::cgwin;
 use super::ffi::{CGPoint, kAXErrorActionUnsupported};
 use super::input::{Poster, Route, parse_chord};
-use super::Mac;
 use crate::backend::{Ctl, Fail, Halt, PerformArgs, Res};
 use crate::canvas;
 
@@ -96,7 +96,7 @@ fn to_global(
         let d = cgwin::main_display();
         (d.origin, d.size.width, d.size.height)
     } else {
-        let b = win.bounds.clone().unwrap_or_default();
+        let b = win.bounds.unwrap_or_default();
         (
             CGPoint {
                 x: f64::from(b.x),
@@ -163,8 +163,12 @@ pub fn perform(mac: &Mac, a: &PerformArgs<'_>, ctl: &Ctl) -> Res<wire::PerformRe
             if p.action == "focus" {
                 t.ax.set_bool(&n.focused, true)
                     .map_err(|e| ax::ax_fail(e, "focus", true))?;
+                mac.focus_hint
+                    .lock()
+                    .unwrap_or_else(|e| e.into_inner())
+                    .insert((pid, wid.clone()), t.ax.clone());
             } else {
-                if !t.node.actions.iter().any(|x| *x == p.action) {
+                if !t.node.actions.contains(&p.action) {
                     return Err(Fail::nd(
                         "UNSUPPORTED_REQUEST",
                         "the element does not offer that action",
@@ -224,7 +228,9 @@ pub fn perform(mac: &Mac, a: &PerformArgs<'_>, ctl: &Ctl) -> Res<wire::PerformRe
         Some(Action::Drag(d)) => {
             outcome.modality = "coordinate";
             if req.window_version != win.info.version {
-                return Err(stale("the window moved or was replaced since the screenshot"));
+                return Err(stale(
+                    "the window moved or was replaced since the screenshot",
+                ));
             }
             let (Some(f), Some(t)) = (d.from.as_ref(), d.to.as_ref()) else {
                 return Err(Fail::nd("UNSUPPORTED_REQUEST", "no points"));
@@ -240,16 +246,18 @@ pub fn perform(mac: &Mac, a: &PerformArgs<'_>, ctl: &Ctl) -> Res<wire::PerformRe
         Some(Action::Scroll(sc)) => {
             outcome.modality = "coordinate";
             if req.window_version != win.info.version {
-                return Err(stale("the window moved or was replaced since the screenshot"));
+                return Err(stale(
+                    "the window moved or was replaced since the screenshot",
+                ));
             }
-            let at = sc.at.clone().unwrap_or(wire::Point { x: 640.0, y: 400.0 });
+            let at = sc.at.unwrap_or(wire::Point { x: 640.0, y: 400.0 });
             let (pt, _) = to_global(&at, a.scope, &win.info)?;
             occlusion(a.scope, &win.info, pt)?;
             Poster::new(route).scroll(pt, sc.dx, sc.dy, ctl);
             outcome.reason = "synthesised scroll".into();
         }
         Some(Action::Type(t)) => {
-            type_text(&mut outcome, &app, &win, route, t, ctl)?;
+            type_text(&mut outcome, mac, pid, &app, &win, route, t, ctl)?;
         }
         Some(Action::Key(k)) => {
             outcome.modality = "raw";
@@ -317,11 +325,17 @@ fn click(
         return Err(Fail::nd("UNSUPPORTED_REQUEST", "no point"));
     };
     if req.window_version != win.info.version {
-        return Err(stale("the window moved or was replaced since the screenshot"));
+        return Err(stale(
+            "the window moved or was replaced since the screenshot",
+        ));
     }
     let (pt, _) = to_global(at, scope, &win.info)?;
     occlusion(scope, &win.info, pt)?;
-    let button = if c.button.is_empty() { "left" } else { c.button.as_str() };
+    let button = if c.button.is_empty() {
+        "left"
+    } else {
+        c.button.as_str()
+    };
     let count = c.count.max(1);
     // Rung 2: the element under the point offers AXPress and the click is a
     // plain left click - press it without touching the pointer.
@@ -348,8 +362,11 @@ fn click(
     Ok(())
 }
 
+#[allow(clippy::too_many_arguments)]
 fn type_text(
     out: &mut Outcome,
+    mac: &Mac,
+    pid: u32,
     app: &Ax,
     win: &Window,
     route: Route,
@@ -358,8 +375,22 @@ fn type_text(
 ) -> Res<()> {
     let n = ax::names();
     out.modality = "raw";
-    let Some(focus) = app.element(&n.focused_element) else {
-        return Err(Fail::nd("TARGET_NOT_EDITABLE", "nothing has the keyboard focus"));
+    let hint = mac
+        .focus_hint
+        .lock()
+        .unwrap_or_else(|e| e.into_inner())
+        .get(&(pid, win.info.window_id.clone()))
+        .cloned();
+    // The application's own account of its focus first; the element this
+    // actuator focused otherwise (a background application reports none).
+    let Some(focus) = app
+        .element(&n.focused_element)
+        .or_else(|| hint.filter(|h| h.attr(&n.role).is_ok()))
+    else {
+        return Err(Fail::nd(
+            "TARGET_NOT_EDITABLE",
+            "nothing has the keyboard focus",
+        ));
     };
     // The keyboard focus must be in the window the person approved.
     if let Some(w) = focus.element(&n.window)
@@ -394,7 +425,8 @@ fn type_text(
     match t.then.as_str() {
         "" => {}
         "enter" => {
-            if focus.actions().iter().any(|a| a == "AXConfirm") && focus.perform("AXConfirm").is_ok()
+            if focus.actions().iter().any(|a| a == "AXConfirm")
+                && focus.perform("AXConfirm").is_ok()
             {
                 out.reason.push_str("; confirmed through AXConfirm");
             } else {
@@ -487,7 +519,6 @@ fn after(
     resp.window = Some(win.info);
     resp
 }
-
 
 #[cfg(test)]
 mod tests {

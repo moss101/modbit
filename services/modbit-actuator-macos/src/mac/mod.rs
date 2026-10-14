@@ -56,6 +56,10 @@ pub(crate) struct Snapshot {
 /// The production backend.
 pub struct Mac {
     pub(crate) snapshots: Mutex<HashMap<(u32, String), Snapshot>>,
+    /// The element the actuator last gave the keyboard focus in a window: a
+    /// background application may report no focused element until it is
+    /// active, and typing still has to know where it is going.
+    pub(crate) focus_hint: Mutex<HashMap<(u32, String), ax::Ax>>,
     own_pid: u32,
 }
 
@@ -65,6 +69,7 @@ impl Mac {
     pub fn new() -> Self {
         Self {
             snapshots: Mutex::default(),
+            focus_hint: Mutex::default(),
             own_pid: std::process::id(),
         }
     }
@@ -102,7 +107,11 @@ impl Mac {
             && let Some(app) = ax::Ax::app(pid)
         {
             let w: Vec<_> = ax::windows(&app).into_iter().map(|w| w.info).collect();
-            if w.is_empty() { self.cg_windows(pid) } else { w }
+            if w.is_empty() {
+                self.cg_windows(pid)
+            } else {
+                w
+            }
         } else {
             self.cg_windows(pid)
         };
@@ -122,7 +131,10 @@ impl Mac {
             .collect()
     }
 
-    pub(crate) fn verified(&self, id: &wire::ApplicationIdentity) -> Res<wire::ApplicationIdentity> {
+    pub(crate) fn verified(
+        &self,
+        id: &wire::ApplicationIdentity,
+    ) -> Res<wire::ApplicationIdentity> {
         let Some(live) = procinfo::identity(id.pid) else {
             return Err(Fail::nd("WINDOW_UNVERIFIABLE", "no such process"));
         };
@@ -162,9 +174,15 @@ impl Backend for Mac {
     fn capabilities(&self) -> Vec<String> {
         // Only what is true: no on-screen Stop overlay is drawn by this
         // helper (the desktop's Stop control sends `Stop` over the Core).
-        ["app_scope", "screen_scope", "screenshot", "secure_field_masking", "human_input_detection"]
-            .map(String::from)
-            .to_vec()
+        [
+            "app_scope",
+            "screen_scope",
+            "screenshot",
+            "secure_field_masking",
+            "human_input_detection",
+        ]
+        .map(String::from)
+        .to_vec()
     }
 
     fn permissions(&self) -> Permissions {
@@ -240,7 +258,9 @@ impl Backend for Mac {
             if seen.contains(&p) || p == self.own_pid {
                 continue;
             }
-            let Some(exe) = procinfo::exe_path(p) else { continue };
+            let Some(exe) = procinfo::exe_path(p) else {
+                continue;
+            };
             if !exe.to_string_lossy().contains(".app/Contents/MacOS/") {
                 continue;
             }

@@ -13,6 +13,7 @@ use std::time::{Duration, Instant};
 
 use modbit_protocol::v1 as wire;
 
+use super::Mac;
 use super::ax::{self, Ax};
 use super::cgwin;
 use super::ffi::{
@@ -20,7 +21,6 @@ use super::ffi::{
     CGContextRelease, CGImageGetHeight, CGImageGetWidth, CGImageRef, CGImageRelease, CGPoint,
     CGRect, CGRectNull, CGSize, CGWindowListCreateImageFn, RTLD_DEFAULT, dlsym,
 };
-use super::Mac;
 use crate::backend::{CaptureArgs, Ctl, Fail, RawFrame, Res};
 use crate::canvas::Rect;
 
@@ -34,7 +34,8 @@ fn create_image_fn() -> Option<CGWindowListCreateImageFn> {
         let name = c"CGWindowListCreateImage";
         // SAFETY: dlsym of a C symbol; the transmute target is its documented signature.
         let p = unsafe { dlsym(RTLD_DEFAULT, name.as_ptr()) };
-        (!p.is_null()).then(|| unsafe { std::mem::transmute::<*mut c_void, CGWindowListCreateImageFn>(p) })
+        (!p.is_null())
+            .then(|| unsafe { std::mem::transmute::<*mut c_void, CGWindowListCreateImageFn>(p) })
     })
 }
 
@@ -114,8 +115,7 @@ fn secure_regions(win: &Ax, ctl: &Ctl, budget: Duration) -> Result<Vec<CGRect>, 
     if w.truncated {
         return Err(());
     }
-    Ok(w
-        .nodes
+    Ok(w.nodes
         .iter()
         .filter(|n| n.secure)
         .filter_map(|n| n.bounds.as_ref())
@@ -144,8 +144,8 @@ fn rel(r: &CGRect, origin: CGPoint) -> Rect {
 
 pub fn capture(mac: &Mac, a: &CaptureArgs<'_>, ctl: &Ctl) -> Res<RawFrame> {
     mac.verified(a.app)?;
-    let app = Ax::app(a.app.pid)
-        .ok_or_else(|| Fail::nd("WINDOW_UNVERIFIABLE", "no such process"))?;
+    let app =
+        Ax::app(a.app.pid).ok_or_else(|| Fail::nd("WINDOW_UNVERIFIABLE", "no such process"))?;
     let win = ax::find_window(&app, a.window_id).map_err(|f| {
         if f.code == "ACCESSIBILITY_UNAVAILABLE" {
             Fail::nd(
@@ -186,8 +186,12 @@ pub fn capture(mac: &Mac, a: &CaptureArgs<'_>, ctl: &Ctl) -> Res<RawFrame> {
             rgba,
             px_w,
             px_h,
-            pt_w: u32::try_from(super::round(cg.bounds.size.width)).unwrap_or(1).max(1),
-            pt_h: u32::try_from(super::round(cg.bounds.size.height)).unwrap_or(1).max(1),
+            pt_w: u32::try_from(super::round(cg.bounds.size.width))
+                .unwrap_or(1)
+                .max(1),
+            pt_h: u32::try_from(super::round(cg.bounds.size.height))
+                .unwrap_or(1)
+                .max(1),
             secure: own.iter().map(|r| rel(r, origin)).collect(),
             window: win.info,
         });
@@ -239,8 +243,12 @@ pub fn capture(mac: &Mac, a: &CaptureArgs<'_>, ctl: &Ctl) -> Res<RawFrame> {
         rgba,
         px_w,
         px_h,
-        pt_w: u32::try_from(super::round(display.size.width)).unwrap_or(1).max(1),
-        pt_h: u32::try_from(super::round(display.size.height)).unwrap_or(1).max(1),
+        pt_w: u32::try_from(super::round(display.size.width))
+            .unwrap_or(1)
+            .max(1),
+        pt_h: u32::try_from(super::round(display.size.height))
+            .unwrap_or(1)
+            .max(1),
         secure,
         window: win.info,
     })

@@ -23,6 +23,11 @@
 //! `modbit-actuator-fixture`; the difference is that this one touches the
 //! real machine (macOS only; other platforms answer `UNSUPPORTED_REQUEST`).
 
+// Off macOS the backend is the unsupported stub: the parts of the portable
+// layer that only the macOS backend calls (cancellation, the secure-region
+// fields, ...) are legitimately unused there.
+#![cfg_attr(not(target_os = "macos"), allow(dead_code))]
+
 mod backend;
 mod canvas;
 #[cfg(target_os = "macos")]
@@ -75,7 +80,10 @@ fn vet_hello(h: &wire::ActuatorHello, parent: Option<u32>, pinned_hash: Option<&
     if let Some(p) = parent
         && p != h.core_pid
     {
-        return format!("the parent process is {p} and the hello names {}", h.core_pid);
+        return format!(
+            "the parent process is {p} and the hello names {}",
+            h.core_pid
+        );
     }
     String::new()
 }
@@ -109,12 +117,14 @@ fn denied_from_env() -> Denied {
 
 #[tokio::main]
 async fn main() {
-    let mut args = std::env::args().skip(1);
-    while let Some(a) = args.next() {
+    // One command-line flag at most; the process is otherwise driven over its
+    // standard streams by the Core that launched it.
+    if let Some(a) = std::env::args().nth(1) {
         match a.as_str() {
             "--version" => {
-                println!("modbit-actuator-macos {VERSION} protocol {PROTOCOL_MAJOR}.{PROTOCOL_MINOR}");
-                return;
+                println!(
+                    "modbit-actuator-macos {VERSION} protocol {PROTOCOL_MAJOR}.{PROTOCOL_MINOR}"
+                );
             }
             // Print the permissions held and exit: the first-run window of
             // PX-074 and the test runner use it. Asks for nothing.
@@ -129,7 +139,6 @@ async fn main() {
                     p.screen_recording && !d.screen_recording,
                     b.secure_desktop()
                 );
-                return;
             }
             // Ask the OS to show the permission prompts, from THIS process
             // (QUAL-PX-071: the prompt comes from the helper, never from
@@ -137,13 +146,13 @@ async fn main() {
             "--request-permissions" => {
                 #[cfg(target_os = "macos")]
                 mac::request_permissions();
-                return;
             }
             other => {
                 eprintln!("modbit-actuator-macos: unknown argument {other}");
                 std::process::exit(2);
             }
         }
+        return;
     }
 
     let mut stdin = tokio::io::stdin();
@@ -269,8 +278,6 @@ mod tests {
         assert!(vet_hello(&hello(1, t.clone(), 7), Some(8), None).contains("parent"));
         let good = hex::encode(Sha256::digest(&t));
         assert_eq!(vet_hello(&hello(1, t.clone(), 7), Some(7), Some(&good)), "");
-        assert!(
-            vet_hello(&hello(1, t, 7), Some(7), Some(&"0".repeat(64))).contains("pinned")
-        );
+        assert!(vet_hello(&hello(1, t, 7), Some(7), Some(&"0".repeat(64))).contains("pinned"));
     }
 }
