@@ -54,6 +54,13 @@ if ! command -v swiftc >/dev/null 2>&1; then
   skip "swiftc is not installed (the fixture application is built with it)"
 fi
 
+# The real-helper-behind-the-real-Core tests that need no permission (a missing
+# permission is itself a case, and so is the signed manifest). They are
+# #[ignore]d in px_computer so they do not share CPU with its timing-sensitive
+# tests; they run here, serially, wherever macOS and swiftc exist.
+cargo build -q -p modbit-core -p modbit-execd -p modbit-actuator-macos -p modbit-actuator-fixture || { echo "building failed" >&2; exit 1; }
+cargo test -p modbit-core --test px_computer -- --ignored --test-threads=1 qual_px_071_the_real_helper qual_px_072 || exit 1
+
 cargo build -q -p modbit-actuator-macos || { echo "building the helper failed" >&2; exit 1; }
 target="${CARGO_TARGET_DIR:-$root/target}"
 perms="$("$target/debug/modbit-actuator-macos" --check-permissions)"
@@ -62,4 +69,5 @@ case "$perms" in *'"accessibility":true'*) ;; *) skip "Accessibility is not gran
 case "$perms" in *'"screen_recording":true'*) ;; *) skip "Screen Recording is not granted to this process" ;; esac
 case "$perms" in *'"secure_desktop":false'*) ;; *) skip "the screen is locked (or a secure prompt is up)" ;; esac
 
+cargo test -p modbit-core --test px_computer -- --ignored --test-threads=1 qual_px_071_the_real_core_drives || exit 1
 exec cargo test -p modbit-actuator-macos --test ax_fixture -- --ignored --test-threads=1 --nocapture

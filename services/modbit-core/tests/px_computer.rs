@@ -3214,6 +3214,7 @@ async fn runtime_view(rig: &Rig) -> modbit_protocol::v1::ComputerRuntimeView {
 /// documented escalation; nothing is actuated and no control session opens.
 #[cfg(target_os = "macos")]
 #[tokio::test(flavor = "multi_thread")]
+#[ignore = "macOS real-helper test (needs no permission); run serially by services/modbit-actuator-macos/scripts/ax-tests.sh so it cannot starve the timing-sensitive Stop tests of this suite"]
 async fn qual_px_071_the_real_helper_serves_the_real_core_and_a_missing_permission_is_a_typed_refusal()
  {
     let app = fixture_app::Fixture::launch();
@@ -3356,6 +3357,7 @@ impl HelperBundle {
 /// typed reason, and the computer tools are not offered.
 #[cfg(target_os = "macos")]
 #[tokio::test(flavor = "multi_thread")]
+#[ignore = "macOS real-helper test (needs no permission); run serially by services/modbit-actuator-macos/scripts/ax-tests.sh so it cannot starve the timing-sensitive Stop tests of this suite"]
 async fn qual_px_072_the_core_launches_only_a_helper_the_signed_manifest_pins_and_rolls_back() {
     let probe = vec![fx(call("fs.read", json!({"path": "README.md"})))];
     // Intact: the newest verified helper is the process.

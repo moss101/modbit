@@ -145,6 +145,7 @@ pub fn perform(mac: &Mac, a: &PerformArgs<'_>, ctl: &Ctl) -> Res<wire::PerformRe
     let app = Ax::app(pid).ok_or_else(|| Fail::nd("WINDOW_UNVERIFIABLE", "no such process"))?;
     let win = ax::find_window(&app, &req.window_id)?;
     let wid = win.info.window_id.clone();
+    eprintln!("perform: window {wid} found for pid {}", id.pid);
     let n = ax::names();
     let route = route_for(a.scope, pid);
     ctl.check().map_err(|h| Ctl::halt_fail(h, false))?;
@@ -266,6 +267,7 @@ pub fn perform(mac: &Mac, a: &PerformArgs<'_>, ctl: &Ctl) -> Res<wire::PerformRe
             for key in &k.keys {
                 parse_chord(key).map_err(|e| Fail::nd("UNSUPPORTED_REQUEST", e))?;
             }
+            eprintln!("perform: key route {route:?}, {} chords", k.keys.len());
             let p = Poster::new(route);
             for (i, key) in k.keys.iter().enumerate() {
                 ctl.check().map_err(|h| halted(h, i))?;
