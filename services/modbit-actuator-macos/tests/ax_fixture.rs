@@ -54,6 +54,7 @@ unsafe extern "C" {
     fn CGEventSourceCreate(state: i32) -> *mut c_void;
     fn CGEventCreateMouseEvent(source: *const c_void, ty: u32, p: Pt, button: u32) -> *mut c_void;
     fn CGEventPost(tap: u32, e: *mut c_void);
+    fn CGWarpMouseCursorPosition(p: Pt) -> i32;
 }
 #[link(name = "CoreFoundation", kind = "framework")]
 unsafe extern "C" {
@@ -77,20 +78,21 @@ fn synthetic_hid_nudge() {
     // SAFETY: create/post/release; state 1 = HID system state, tap 0 = HID.
     unsafe {
         let src = CGEventSourceCreate(1);
-        for dx in [1.0, 0.0] {
-            let e = CGEventCreateMouseEvent(
-                src,
-                5,
-                Pt {
-                    x: at.x + dx,
-                    y: at.y,
-                },
-                0,
-            );
-            CGEventPost(0, e);
-            CFRelease(e);
-        }
+        let e = CGEventCreateMouseEvent(
+            src,
+            5,
+            Pt {
+                x: at.x + 1.0,
+                y: at.y,
+            },
+            0,
+        );
+        CGEventPost(0, e);
+        CFRelease(e);
         CFRelease(src);
+        // Put the pointer back without an event (a warp posts none).
+        std::thread::sleep(std::time::Duration::from_millis(60));
+        CGWarpMouseCursorPosition(at);
     }
 }
 
@@ -646,7 +648,10 @@ async fn stop_halts_an_input_in_flight_within_500_ms_and_the_application_sees_no
             } else {
                 "the input is still running".to_owned()
             };
-            panic!("no key reached the application ({why})");
+            panic!(
+                "no key reached the application ({why}); helper log:\n{}",
+                last_helper_log()
+            );
         }
         assert!(t0.elapsed() < Duration::from_secs(8), "unreachable");
         std::thread::sleep(Duration::from_millis(20));
@@ -713,7 +718,7 @@ async fn synthesised_events_are_never_a_person_not_the_helpers_not_anyone_elses(
     synthetic_hid_nudge();
     synthetic_hid_nudge();
     tokio::time::sleep(Duration::from_millis(400)).await;
-    assert_eq!(cursor(), before, "the nudges cancel out");
+    assert_eq!(cursor(), before, "the nudge was undone");
     let ping = call(
         &s.a,
         Call::Ping(wire::PingRequest {
@@ -772,7 +777,11 @@ async fn the_core_going_away_stops_the_helper_mid_input_and_killing_the_helper_m
     });
     let t0 = Instant::now();
     while fx.keys().len() < 5 {
-        assert!(t0.elapsed() < Duration::from_secs(8), "no key arrived");
+        assert!(
+            t0.elapsed() < Duration::from_secs(8),
+            "no key arrived; helper log:\n{}",
+            last_helper_log()
+        );
         std::thread::sleep(Duration::from_millis(20));
     }
     // SIGKILL the helper: the strongest "it died" there is.
@@ -887,7 +896,11 @@ async fn closing_the_connection_stops_injection_within_500_ms() {
     .await;
     let t0 = Instant::now();
     while fx.keys().len() < 5 {
-        assert!(t0.elapsed() < Duration::from_secs(8), "no key arrived");
+        assert!(
+            t0.elapsed() < Duration::from_secs(8),
+            "no key arrived; helper log:\n{}",
+            last_helper_log()
+        );
         std::thread::sleep(Duration::from_millis(20));
     }
     let t_close = now_ms();

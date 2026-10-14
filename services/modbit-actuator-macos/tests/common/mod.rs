@@ -30,8 +30,26 @@ pub fn config(env: &[(&str, &str)]) -> ActuatorConfig {
     }
 }
 
+static LOG: std::sync::Mutex<Option<PathBuf>> = std::sync::Mutex::new(None);
+
+/// What the most recently launched helper wrote to its standard error.
+pub fn last_helper_log() -> String {
+    let p = LOG.lock().unwrap().clone();
+    p.and_then(|p| std::fs::read_to_string(p).ok())
+        .unwrap_or_default()
+}
+
 pub async fn launch(env: &[(&str, &str)]) -> Result<ProcessActuator, LaunchError> {
-    ProcessActuator::launch(&config(env), Duration::from_secs(10)).await
+    static N: std::sync::atomic::AtomicU32 = std::sync::atomic::AtomicU32::new(0);
+    let mut cfg = config(env);
+    let log = std::env::temp_dir().join(format!(
+        "modbit-helper-{}-{}.log",
+        std::process::id(),
+        N.fetch_add(1, std::sync::atomic::Ordering::SeqCst)
+    ));
+    cfg.log_path = Some(log.clone());
+    *LOG.lock().unwrap() = Some(log);
+    ProcessActuator::launch(&cfg, Duration::from_secs(10)).await
 }
 
 pub async fn call(a: &ProcessActuator, c: Call) -> Result<Reply, CallError> {

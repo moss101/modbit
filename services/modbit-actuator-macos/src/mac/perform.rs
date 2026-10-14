@@ -271,6 +271,9 @@ pub fn perform(mac: &Mac, a: &PerformArgs<'_>, ctl: &Ctl) -> Res<wire::PerformRe
                 ctl.check().map_err(|h| halted(h, i))?;
                 p.chord(key, ctl)
                     .map_err(|e| Fail::nd("UNSUPPORTED_REQUEST", e))?;
+                if i % 50 == 0 {
+                    eprintln!("key {i}/{} posted to pid {pid} ({key})", k.keys.len());
+                }
                 std::thread::sleep(Duration::from_millis(15));
             }
         }
@@ -501,7 +504,10 @@ fn after(
                     if resp.changes.len() >= 50 {
                         break;
                     }
-                    let (kind, b, a) = if o.value != nw.value {
+                    let (kind, b, a) = if o.role == "label" && o.name != nw.name {
+                        // A label's text is its name (see `node_of`).
+                        ("value", o.name.clone(), nw.name.clone())
+                    } else if o.value != nw.value {
                         ("value", o.value.clone(), nw.value.clone())
                     } else if o.focused != nw.focused {
                         ("focus", String::new(), String::new())
