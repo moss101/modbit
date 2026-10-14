@@ -87,6 +87,8 @@ pub struct Hub {
     st: Mutex<St>,
     epoch: Arc<AtomicU64>,
     own: crate::backend::OwnPosts,
+    /// Why the epoch last moved (for the typed refusal an input in flight gets).
+    cause: Mutex<String>,
     inflight: AtomicUsize,
     work: tokio::sync::Mutex<()>,
     tx: Tx,
@@ -110,6 +112,7 @@ impl Hub {
             st: Mutex::new(St::default()),
             epoch: Arc::default(),
             own: Arc::default(),
+            cause: Mutex::new(String::new()),
             inflight: AtomicUsize::new(0),
             work: tokio::sync::Mutex::new(()),
             tx,
@@ -147,9 +150,15 @@ impl Hub {
     }
 
     /// Halt everything in flight and drop the lease. Returns whether a lease was held.
-    fn halt(&self) -> bool {
-        self.epoch.fetch_add(1, Ordering::SeqCst);
+    fn halt(&self, cause: &str) -> bool {
+        self.bump(cause);
         self.lock().lease.take().is_some()
+    }
+
+    /// Move the epoch (everything in flight ends at its next unit) and record why.
+    fn bump(&self, cause: &str) {
+        *self.cause.lock().unwrap_or_else(|e| e.into_inner()) = cause.to_owned();
+        self.epoch.fetch_add(1, Ordering::SeqCst);
     }
 
     async fn event(&self, e: wire::actuator_event::Event) {
@@ -185,7 +194,15 @@ impl Hub {
             )),
         };
         self.inflight.fetch_sub(1, Ordering::SeqCst);
-        out
+        out.map_err(|mut f| {
+            if f.code == "USER_ABORTED" {
+                let why = self.cause.lock().unwrap_or_else(|e| e.into_inner()).clone();
+                if !why.is_empty() {
+                    f.message = format!("{} - because of {why}", f.message);
+                }
+            }
+            f
+        })
     }
 
     fn need_ax(&self) -> Res<()> {
@@ -267,7 +284,7 @@ impl Hub {
                         .is_some_and(|l| l.control_id == r.control_id)
                 };
                 if held {
-                    self.halt();
+                    self.halt("the lease was released");
                 }
                 Ok(R::Release(wire::ReleaseResponse { was_held: held }))
             }
@@ -292,7 +309,7 @@ impl Hub {
     /// the in-flight work to wind down so `stopped_within_ms` is measured.
     pub async fn stop(&self) -> wire::StopResponse {
         let t0 = Instant::now();
-        let n = u32::from(self.halt());
+        let n = u32::from(self.halt("a Stop request"));
         while self.inflight.load(Ordering::SeqCst) > 0 && t0.elapsed() < STOP_GRACE {
             tokio::time::sleep(Duration::from_millis(2)).await;
         }
@@ -604,7 +621,7 @@ impl Hub {
                 {
                     st.lease = None;
                     drop(st);
-                    self.epoch.fetch_add(1, Ordering::SeqCst);
+                    self.bump("the lease expired (the Core stopped renewing it)");
                     None
                 } else {
                     st.lease
@@ -669,12 +686,15 @@ impl Hub {
                 st.human_until = Some(Instant::now() + HUMAN_COOLDOWN);
                 !was || last_event.elapsed() > Duration::from_millis(250)
             };
-            self.epoch.fetch_add(1, Ordering::SeqCst);
+            self.bump(&format!(
+                "a hardware input event {}ms ago that is none of this actuator's own",
+                idle.as_millis()
+            ));
             if fresh {
                 last_event = Instant::now();
                 self.event(wire::actuator_event::Event::HumanInput(wire::HumanInput {
                     at_ms: now_ms,
-                    kind: "hid".into(),
+                    kind: format!("hid idle={}ms", idle.as_millis()),
                 }))
                 .await;
             }
@@ -682,14 +702,31 @@ impl Hub {
     }
 
     async fn watch_permissions(self: Arc<Self>) {
+        // A change counts once it holds for two consecutive samples: a
+        // permission check that blips for one sample is not a revocation.
+        let mut pending: Option<Permissions> = None;
         loop {
             tokio::time::sleep(Duration::from_millis(500)).await;
-            let now = self.permissions();
+            let sample = self.permissions();
+            let known = self.lock().last_perms;
+            let Some(known) = known else {
+                self.lock().last_perms = Some(sample);
+                continue;
+            };
+            if sample == known {
+                pending = None;
+                continue;
+            }
+            if pending != Some(sample) {
+                pending = Some(sample);
+                continue;
+            }
+            pending = None;
+            let now = sample;
             let prev = {
                 let mut st = self.lock();
-                st.last_perms.replace(now)
+                st.last_perms.replace(now).unwrap_or(known)
             };
-            let Some(prev) = prev else { continue };
             if prev == now {
                 continue;
             }
@@ -715,7 +752,7 @@ impl Hub {
             if (prev.accessibility && !now.accessibility)
                 || (prev.screen_recording && !now.screen_recording)
             {
-                self.halt();
+                self.halt("a permission was revoked");
             }
         }
     }

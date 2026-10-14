@@ -59,6 +59,11 @@ pub struct Mac {
     /// The element the actuator last gave the keyboard focus in a window: a
     /// background application may report no focused element until it is
     /// active, and typing still has to know where it is going.
+    /// Applications whose accessibility tree has been walked once. The first
+    /// walk wakes the application's accessibility support up and AppKit adds
+    /// elements it had not built (measured: 11 elements, then 12 on every
+    /// later read), so the first walk is made, discarded, and made again.
+    warmed: Mutex<std::collections::HashSet<u32>>,
     pub(crate) focus_hint: Mutex<HashMap<(u32, String), ax::Ax>>,
     own_pid: u32,
 }
@@ -69,6 +74,7 @@ impl Mac {
     pub fn new() -> Self {
         Self {
             snapshots: Mutex::default(),
+            warmed: Mutex::default(),
             focus_hint: Mutex::default(),
             own_pid: std::process::id(),
         }
@@ -289,7 +295,17 @@ impl Backend for Mac {
         self.verified(a.app)?;
         let app = ax::Ax::app(a.app.pid)
             .ok_or_else(|| Fail::nd("WINDOW_UNVERIFIABLE", "no such process"))?;
-        let win = ax::find_window(&app, a.window_id)?;
+        let mut win = ax::find_window(&app, a.window_id)?;
+        let first_touch = self
+            .warmed
+            .lock()
+            .unwrap_or_else(|e| e.into_inner())
+            .insert(a.app.pid);
+        if first_touch {
+            let _ = ax::walk(&win.el, a.max_nodes, ax::WALK_BUDGET, ctl)?;
+            std::thread::sleep(Duration::from_millis(200));
+            win = ax::find_window(&app, a.window_id)?;
+        }
         let walked = ax::walk(&win.el, a.max_nodes, ax::WALK_BUDGET, ctl)?;
         let digest = ax::tree_digest(&walked.nodes);
         if !a.probe {

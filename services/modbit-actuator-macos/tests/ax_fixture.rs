@@ -620,7 +620,7 @@ async fn stop_halts_an_input_in_flight_within_500_ms_and_the_application_sees_no
     assert_eq!(code(&s.press(&t, "textfield", "Name", "focus").await), "OK");
     let a2 = s.a.clone();
     let (ident, control) = (s.ident.clone(), s.control.clone());
-    let flight = tokio::spawn(async move {
+    let mut flight = tokio::spawn(async move {
         a2.call(
             Call::Perform(wire::PerformRequest {
                 control_id: control,
@@ -640,10 +640,15 @@ async fn stop_halts_an_input_in_flight_within_500_ms_and_the_application_sees_no
     // Wait until keys are arriving.
     let t0 = Instant::now();
     while fx.keys().len() < 5 {
-        assert!(
-            t0.elapsed() < Duration::from_secs(8),
-            "no key reached the application: the raw route does not deliver to a background app"
-        );
+        if t0.elapsed() > Duration::from_secs(8) {
+            let why = if flight.is_finished() {
+                format!("the input ended: {:?}", (&mut flight).await)
+            } else {
+                "the input is still running".to_owned()
+            };
+            panic!("no key reached the application ({why})");
+        }
+        assert!(t0.elapsed() < Duration::from_secs(8), "unreachable");
         std::thread::sleep(Duration::from_millis(20));
     }
     let t_stop = now_ms();
@@ -700,7 +705,7 @@ async fn synthesised_events_are_never_a_person_not_the_helpers_not_anyone_elses(
             }),
         )
         .await;
-    assert_eq!(code(&r), "OK");
+    assert_eq!(code(&r), "OK", "{r:?}");
     // Events posted at the HID tap by another process (what an automation
     // tool does): the hardware idle counter the helper watches is not reset by
     // them either - measured, V01 - so they do not park the controller.
@@ -733,7 +738,7 @@ async fn synthesised_events_are_never_a_person_not_the_helpers_not_anyone_elses(
             }),
         )
         .await;
-    assert_eq!(code(&r), "OK");
+    assert_eq!(code(&r), "OK", "{r:?}");
 }
 
 #[tokio::test]
