@@ -5,7 +5,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { CERT_HOLD_MS, CertHold, CertTrustStore, type CertInfo } from "./browser-cert.ts";
 import { indexDom, mergeAx, type AxNode, type DomNode } from "./browser-ax.ts";
-import { NoticeBatcher, type Notice } from "./browser-observer.ts";
+import { bringsBackReclaimed, NoticeBatcher, type Notice } from "./browser-observer.ts";
 import { PageFeedback, Ring } from "./browser-feedback.ts";
 
 const cert = (over: Partial<CertInfo> = {}): CertInfo => ({ id: "c1", hostPort: "127.0.0.1:8443", url: "https://127.0.0.1:8443/", error: "net::ERR_CERT_AUTHORITY_INVALID", issuer: "CN=fixture", subject: "CN=localhost", validStart: 1, validExpiry: 4_000_000_000, fingerprint: "sha256/AAAA", ...over });
@@ -169,4 +169,14 @@ test("PX-122/123: the DOM walk gives controls a stable identity, their form, the
   assert.deepEqual(sub.nodes.map((n) => [n.id, n.parent, n.role, n.frame]), [["f1:1", "7", "iframe", "f1"], ["f1:2", "f1:1", "button", "f1"]]);
   // The bound: the host says it cut the tree.
   assert.equal(mergeAx(ax, { prefix: "", limit: 3, dom: idx }).truncated, true);
+});
+
+test("PX-073: only a request somebody made brings a reclaimed view back; the Core reading the page on its own account does not", () => {
+  assert.equal(bringsBackReclaimed({ kind: "snapshot" }), true, "the agent's snapshot");
+  assert.equal(bringsBackReclaimed({ kind: "snapshot", observer: false }), true);
+  assert.equal(bringsBackReclaimed({ kind: "navigate" }), true);
+  assert.equal(bringsBackReclaimed({ kind: "act" }), true);
+  assert.equal(bringsBackReclaimed({ kind: "snapshot", observer: true }), false, "the observer's read after a change notice");
+  assert.equal(bringsBackReclaimed({ kind: "state" }), false);
+  assert.equal(bringsBackReclaimed({ kind: "close" }), false);
 });

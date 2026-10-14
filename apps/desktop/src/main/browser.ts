@@ -23,7 +23,7 @@ import type { CoreClient } from "@modbit/ide-adapter-core";
 import { indexDom, mergeAx, type AxNode, type DomIndex, type DomNode, type RawNode } from "./browser-ax.ts";
 import { CertHold, CertTrustStore, type CertInfo, type Trust } from "./browser-cert.ts";
 import { PageFeedback } from "./browser-feedback.ts";
-import { NoticeBatcher, OBSERVER_BINDING, OBSERVER_SOURCE, OBSERVER_WORLD, type Notice } from "./browser-observer.ts";
+import { bringsBackReclaimed, NoticeBatcher, OBSERVER_BINDING, OBSERVER_SOURCE, OBSERVER_WORLD, type Notice } from "./browser-observer.ts";
 import { CdpDenied, PolicyStore, checkOrigin, checkUrlLiteral, describeClass, guardCdp, type AddressClass, type BrowserPolicy } from "./browser-policy.ts";
 import { admitsAgentInput, isHumanInput } from "./lease.ts";
 import { StopRegistry } from "./stop.ts";
@@ -907,7 +907,12 @@ export class BrowserHost {
       // so a failure dump shows which request received the reset note (or consumed it).
       if (h && h.pendingReset !== null) this.log.push({ browserSessionId: h.browserSessionId, kind: "request-while-reset-pending", ok: true, code: `${req.kind}${(req as { observer?: boolean }).observer === true ? ":observer" : ""}${background ? ":background" : ""}`, generation: h.leaseGeneration, atMs: Date.now() });
       if (!h || (this.gone(h) && !h.reclaimed)) return { kind: "error", code: "NO_SUCH_SESSION", message: `this host holds no view for ${bsid}` };
-      if (h.reclaimed && req.kind !== "state" && req.kind !== "close") await this.revive(h);
+      // The Core reading a page it was told changed, after the view was reclaimed, is not use: the view stays reclaimed (and the Core reads again at the next notice).
+      if (h.reclaimed && background) {
+        this.log.push({ browserSessionId: h.browserSessionId, kind: "background-read-declined", ok: true, code: "view reclaimed", generation: h.leaseGeneration, atMs: Date.now() });
+        return { kind: "error", code: "VIEW_RECLAIMED", message: "the view was reclaimed; the Core's own reading of the page does not bring it back" };
+      }
+      if (h.reclaimed && bringsBackReclaimed(req)) await this.revive(h);
       // A revive started by another request (the panel's show) may still be loading: its reset note is not set until it is done.
       if (h.reviving) await h.reviving;
       // Recency counts use, not observation: a read of the view's state, or the Core
@@ -1056,13 +1061,13 @@ export class BrowserHost {
     if (first === "loaded" && failedLoad !== null) {
       const f = failedLoad as { code: number; desc: string };
       if (f.code <= -200 && f.code > -300) return { kind: "error", code: "CERTIFICATE_REJECTED", message: `the certificate of ${u.host} was not accepted (${f.desc}); the person decides` };
-      return { kind: "error", code: "NAVIGATION_FAILED", message: `${f.desc} (${f.code}) loading ${u.host}` };
+      return { kind: "error", code: "NAVIGATION_FAILED", message: `${f.desc} (${f.code}) loading ${u.host}${f.code === -130 ? ` (the proxy: ${h.proxy.describe()})` : ""}` };
     }
     if (first !== "loaded") {
       const rejected = h.certHold && h.certHold.isSettled ? "CERTIFICATE_REJECTED" : null;
       if (rejected) return { kind: "error", code: "CERTIFICATE_REJECTED", message: `the person did not trust the certificate (${first.message.slice(0, 120)})` };
       // A load that failed still leaves the page where it is: report it, do not guess.
-      return { kind: "error", code: "NAVIGATION_FAILED", message: first.message.slice(0, 300) };
+      return { kind: "error", code: "NAVIGATION_FAILED", message: `${first.message.slice(0, 300)}${/ERR_PROXY_CONNECTION_FAILED/.test(first.message) ? ` (the proxy: ${h.proxy.describe()})` : ""}` };
     }
     return { kind: "state", state: this.state(h) };
   }

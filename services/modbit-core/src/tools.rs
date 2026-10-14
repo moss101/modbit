@@ -3470,6 +3470,43 @@ fn ensure_semantic<'a>(
     slot.as_ref().ok_or_else(|| "semantic index".to_owned())
 }
 
+/// How long a read waits for the event store's writer (the store opens its
+/// SQLite connection with a ten second busy timeout; a read waits no longer).
+const STORE_READ_WAIT: std::time::Duration = std::time::Duration::from_secs(10);
+
+/// Lock `m` from synchronous tool code that runs on a runtime worker, waiting
+/// up to `wait` for the holder. A multi-thread runtime lets the worker block
+/// (the holder runs on another worker); on a current-thread runtime the
+/// holder cannot run while this thread waits, so the lock is tried once.
+fn lock_bounded<T>(
+    m: &Mutex<T>,
+    wait: std::time::Duration,
+) -> Option<tokio::sync::MutexGuard<'_, T>> {
+    if let Ok(g) = m.try_lock() {
+        return Some(g);
+    }
+    if let Ok(h) = tokio::runtime::Handle::try_current() {
+        if h.runtime_flavor() != tokio::runtime::RuntimeFlavor::MultiThread {
+            return None;
+        }
+        return tokio::task::block_in_place(|| poll_lock(m, wait));
+    }
+    poll_lock(m, wait)
+}
+
+fn poll_lock<T>(m: &Mutex<T>, wait: std::time::Duration) -> Option<tokio::sync::MutexGuard<'_, T>> {
+    let deadline = std::time::Instant::now() + wait;
+    loop {
+        if let Ok(g) = m.try_lock() {
+            return Some(g);
+        }
+        if std::time::Instant::now() >= deadline {
+            return None;
+        }
+        std::thread::sleep(std::time::Duration::from_millis(2));
+    }
+}
+
 impl modbit_tools::SearchPort for IndexPort {
     fn search(
         &self,
@@ -3730,7 +3767,11 @@ impl IndexPort {
             "evidence" => {
                 let args: serde_json::Value = serde_json::from_str(&req.query)
                     .map_err(|e| ("BAD_QUERY".to_owned(), e.to_string()))?;
-                let store = self.store.try_lock().map_err(|_| {
+                // A read waits for the writer that holds the store (an append
+                // is an fsync'd SQLite transaction, slow on a loaded Windows
+                // runner) up to the SQLite busy timeout the store itself
+                // uses; only a writer that outlasts it makes the read busy.
+                let store = lock_bounded(&self.store, STORE_READ_WAIT).ok_or_else(|| {
                     (
                         "STORE_BUSY".to_owned(),
                         "the event store is busy; retry".to_owned(),
@@ -4393,5 +4434,85 @@ mod resource_target_tests {
             resolved(Some(r"C:\repo"), &[r"src\a.rs"]),
             vec![r"C:\repo/src/a.rs".to_owned()]
         );
+    }
+}
+
+#[cfg(test)]
+mod store_wait_tests {
+    use super::{Mutex, lock_bounded};
+    use modbit_event_store::{EventStore, EvidenceScope};
+    use std::sync::Arc;
+    use std::time::{Duration, Instant};
+
+    fn store() -> (tempfile::TempDir, Arc<Mutex<EventStore>>) {
+        let dir = tempfile::tempdir().unwrap();
+        let s = EventStore::open(dir.path()).unwrap();
+        (dir, Arc::new(Mutex::new(s)))
+    }
+
+    /// Hold the store (what an append in flight does) for `hold`, with the
+    /// holder already running when this returns.
+    async fn hold(store: &Arc<Mutex<EventStore>>, hold: Duration) {
+        let guard = Arc::clone(store).lock_owned().await;
+        tokio::spawn(async move {
+            tokio::time::sleep(hold).await;
+            drop(guard);
+        });
+    }
+
+    /// A read that meets a writer in flight waits for it and then answers,
+    /// instead of failing with STORE_BUSY at the first contention (the
+    /// Windows failure of `evidence.search` under load).
+    #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+    async fn a_read_waits_for_a_writer_that_finishes_within_the_wait() {
+        let (_dir, store) = store();
+        hold(&store, Duration::from_millis(700)).await;
+        let started = Instant::now();
+        let guard = lock_bounded(&store, Duration::from_secs(10))
+            .expect("the writer lets go within the wait, so the read gets the store");
+        assert!(
+            started.elapsed() >= Duration::from_millis(500),
+            "it waited for the writer: {:?}",
+            started.elapsed()
+        );
+        let tenant = modbit_domain::ids::TenantId::from_bytes([7; 16]);
+        let scope = EvidenceScope {
+            session_id: None,
+            task_id: None,
+            run_id: None,
+            step_id: None,
+        };
+        assert!(
+            guard
+                .search_evidence(&tenant, &scope, "anything", &[], 10)
+                .unwrap()
+                .is_empty()
+        );
+    }
+
+    /// A writer that outlasts the wait is the only thing that makes a read busy,
+    /// and it does so after the wait, not before.
+    #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+    async fn a_read_is_busy_only_after_the_whole_wait() {
+        let (_dir, store) = store();
+        hold(&store, Duration::from_secs(5)).await;
+        let started = Instant::now();
+        assert!(lock_bounded(&store, Duration::from_millis(400)).is_none());
+        let waited = started.elapsed();
+        assert!(
+            waited >= Duration::from_millis(400) && waited < Duration::from_secs(3),
+            "{waited:?}"
+        );
+    }
+
+    /// On a current-thread runtime the holder cannot run while the caller
+    /// blocks, so the caller does not wait for it (it would never finish).
+    #[tokio::test(flavor = "current_thread")]
+    async fn a_current_thread_runtime_does_not_block_on_the_holder() {
+        let (_dir, store) = store();
+        hold(&store, Duration::from_millis(200)).await;
+        let started = Instant::now();
+        assert!(lock_bounded(&store, Duration::from_secs(10)).is_none());
+        assert!(started.elapsed() < Duration::from_millis(150));
     }
 }

@@ -267,20 +267,72 @@ test("renderer killed (REQ-EV-0076): the renderer's process dies mid-session; ma
     // The renderer's process is killed under it (what a crash or the OS
     // does). Main notes it and opens a fresh window in the old one's place
     // (the crashed page is finished for the harness too).
-    // Playwright reports the dead renderer either as the page's "crash" or, when main has already replaced the window (as it does at once
-    // on a Windows runner), as that page closing: both mean the old renderer is gone, and the assertions below say what came back.
-    const crashed = Promise.any([page1.waitForEvent("crash", { timeout: 30_000 }), page1.waitForEvent("close", { timeout: 30_000 })]);
-    const replaced = app.waitForEvent("window", { timeout: 60_000 });
+    //
+    // What proves the renderer is gone and was replaced is read from the real
+    // processes, not from Playwright's per-page events: Playwright reports a
+    // dead renderer as the page's "crash", as its "close" (main has already
+    // destroyed the window), or, on the Windows runner, sometimes as neither
+    // within 30 s (workers.spec.ts failed that way on PR #81) because a page
+    // that crashes and is destroyed in the same turn can leave the harness
+    // with no event to deliver. So: the renderer's OS process disappears; main
+    // reports a different, live window; and Playwright then hands over that
+    // window's page. The events are recorded (not required) for the timeline.
+    const t0 = Date.now();
+    const seen: string[] = [];
+    const note = (what: string) => {
+      seen.push(`${what}@${Date.now() - t0}ms`);
+      console.log(`[renderer-diag] ${what} at ${Date.now() - t0} ms`);
+    };
+    page1.once("crash", () => note("page1.crash"));
+    page1.once("close", () => note("page1.close"));
+    const old = await app.evaluate(({ BrowserWindow }) => {
+      const wc = BrowserWindow.getAllWindows()[0]!.webContents;
+      return { webContentsId: wc.id, pid: wc.getOSProcessId() };
+    });
+    expect(old.pid).toBeGreaterThan(0);
+    // What the app's processes are, by type, so a kill that lands on the wrong one is visible in the log.
+    const metrics = () => app.evaluate(({ app: a }) => a.getAppMetrics().map((m) => `${m.pid}:${m.type}${m.name ? `(${m.name})` : ""}`));
+    console.log(`[renderer-diag] window renderer pid=${old.pid} webContents=${old.webContentsId}; processes: ${(await metrics()).join(" ")}`);
+    const mainWindows = () =>
+      app.evaluate(({ BrowserWindow }) => BrowserWindow.getAllWindows().map((w) => ({ webContentsId: w.webContents.id, pid: w.webContents.getOSProcessId(), destroyed: w.isDestroyed(), crashed: w.webContents.isCrashed() })));
     if (process.platform === "win32") {
-      // forcefullyCrashRenderer() did not end the renderer within 30s on the Windows runner (neither a crash nor a close was seen):
+      // forcefullyCrashRenderer() did not end the renderer within 30s on the Windows runner:
       // kill the real renderer process by its pid instead, which is what a crash or the OS does.
-      const pid = await app.evaluate(({ BrowserWindow }) => BrowserWindow.getAllWindows()[0]!.webContents.getOSProcessId());
-      process.kill(pid);
+      process.kill(old.pid);
     } else {
       await app.evaluate(({ BrowserWindow }) => BrowserWindow.getAllWindows()[0]!.webContents.forcefullyCrashRenderer());
     }
-    await crashed;
-    const page2 = await replaced;
+    // The kill's own effect, in the log whatever happens next.
+    void (async () => {
+      await new Promise((r) => setTimeout(r, 5_000));
+      const state = await mainWindows().then((w) => JSON.stringify(w), (e) => String(e));
+      console.log(`[renderer-diag] 5 s after the kill: pid ${old.pid} alive=${(() => { try { process.kill(old.pid, 0); return true; } catch { return false; } })()}; main windows=${state}; processes: ${(await metrics().catch(() => [])).join(" ")}`);
+    })().catch(() => undefined);
+    // 1. Main, which notes the loss, has put a new window (a new web contents with its own process) in the old one's place.
+    await expect
+      .poll(async () => (await mainWindows()).filter((w) => !w.destroyed && w.webContentsId !== old.webContentsId).length, { timeout: 60_000, message: "main never opened a replacement window" })
+      .toBe(1);
+    note("main-replaced");
+    // 2. The old renderer's OS process is gone (signal 0 only tests for existence).
+    const alive = (pid: number) => {
+      try {
+        process.kill(pid, 0);
+        return true;
+      } catch {
+        return false;
+      }
+    };
+    await expect.poll(() => alive(old.pid), { timeout: 30_000, message: `the killed renderer (pid ${old.pid}) still exists` }).toBe(false);
+    note("renderer-pid-gone");
+    // 3. Playwright hands over the new window's page.
+    const handedOver = async () => app.windows().filter((p) => p !== page1 && !p.isClosed());
+    try {
+      await expect.poll(async () => (await handedOver()).length, { timeout: 60_000 }).toBe(1);
+    } catch (e) {
+      throw new Error(`Playwright never exposed the replacement page: main=${JSON.stringify(await mainWindows())} playwright=${app.windows().length} page1.closed=${page1.isClosed()}; ${seen.join(", ")}\n${String(e)}`);
+    }
+    note("playwright-window");
+    const page2 = (await handedOver())[0]!;
     await expect(page2.getByTestId("core-status")).toContainText("Core connected", { timeout: 60_000 });
     expect(await app.evaluate(({ BrowserWindow }) => BrowserWindow.getAllWindows().length)).toBe(1);
     const page = page2;

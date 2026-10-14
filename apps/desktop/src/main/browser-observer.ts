@@ -18,6 +18,17 @@ export const OBSERVER_BINDING = "__modbitObserverReport";
 /** Notices leave the host at most this often. */
 export const NOTICE_EVERY_MS = 250;
 
+/**
+ * Whether a request from the Core brings a reclaimed view back (PX-073). Only a request somebody made does: the agent's, or the
+ * person's opening of the view. The Core reading the page on its own account after a change notice is not use, and a read of the
+ * state or a close needs no page. A notice sent just before the reclaim is answered by a read just after it; that read must not
+ * undo the reclaim (the view would come back as the newest and the cap would reclaim a different one).
+ */
+export function bringsBackReclaimed(req: { kind: string; observer?: boolean }): boolean {
+  if (req.kind === "state" || req.kind === "close") return false;
+  return !(req.kind === "snapshot" && req.observer === true);
+}
+
 /** The source injected into every document (and run in the current one). */
 export const OBSERVER_SOURCE = `(() => {
   if (globalThis.__modbitObserverInstalled) return;
