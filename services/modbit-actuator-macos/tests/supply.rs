@@ -88,9 +88,10 @@ impl Bundle {
     }
 
     fn file(&self, v: &str) -> PathBuf {
-        self.dir
-            .path()
-            .join(format!("helpers/modbit-actuator-macos-{v}"))
+        self.dir.path().join(format!(
+            "helpers/modbit-actuator-macos-{v}{}",
+            std::env::consts::EXE_SUFFIX
+        ))
     }
 
     fn supply(&self) -> SupplyConfig {
@@ -408,7 +409,10 @@ mod codesign {
     }
 
     fn repin(b: &mut Bundle, v: &str, require: bool, requirement: Option<&str>) {
-        let rel = format!("helpers/modbit-actuator-macos-{v}");
+        let rel = format!(
+            "helpers/modbit-actuator-macos-{v}{}",
+            std::env::consts::EXE_SUFFIX
+        );
         let mut e = entry(v, &rel, &b.file(v));
         e.require_signature = require;
         e.designated_requirement = requirement.map(str::to_owned);

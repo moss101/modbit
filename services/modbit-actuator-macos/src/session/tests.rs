@@ -275,11 +275,15 @@ async fn stop_ends_an_input_in_flight_within_the_bound_and_nothing_is_injected_a
     assert_eq!(code_of(&hub.handle(req(1, acquire("A"))).await), "OK");
     let h2 = Arc::clone(&hub);
     let flight = tokio::spawn(async move { h2.handle(req(2, perform_call("A", ""))).await });
-    tokio::time::sleep(Duration::from_millis(120)).await;
-    assert!(
-        injected.load(Ordering::SeqCst) > 5,
-        "the input is under way"
-    );
+    // Wait for the input to be under way (a loaded runner is slow to start it).
+    let t_wait = Instant::now();
+    while injected.load(Ordering::SeqCst) <= 5 {
+        assert!(
+            t_wait.elapsed() < Duration::from_secs(10),
+            "the input is under way"
+        );
+        tokio::time::sleep(Duration::from_millis(10)).await;
+    }
     let t0 = Instant::now();
     let stop = hub.stop().await;
     let took = t0.elapsed();
