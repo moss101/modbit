@@ -17,6 +17,11 @@ use tokio::sync::Notify;
 pub const RING_BYTES: usize = 4 * 1024 * 1024;
 /// Exited processes kept for replay before the oldest is dropped.
 const KEEP_EXITED: usize = 64;
+/// How long after a process ended its output readers may keep draining. The
+/// readers end at EOF, which comes once every holder of the pipe is gone; a
+/// grandchild that outlives the process holds it open, and must not hold the
+/// exit back for good.
+const DRAIN_GRACE: Duration = Duration::from_secs(2);
 
 struct Ring {
     buf: VecDeque<u8>,
@@ -326,6 +331,7 @@ impl ProcTable {
             started: Instant::now(),
         });
         self.insert(Arc::clone(&p));
+        let mut readers = Vec::new();
         for mut reader in [
             tokio::io::BufReader::new(
                 Box::pin(stdout) as std::pin::Pin<Box<dyn tokio::io::AsyncRead + Send>>
@@ -335,7 +341,7 @@ impl ProcTable {
             ),
         ] {
             let p = Arc::clone(&p);
-            tokio::spawn(async move {
+            readers.push(tokio::spawn(async move {
                 let mut buf = vec![0u8; 16 * 1024];
                 loop {
                     match reader.read(&mut buf).await {
@@ -343,7 +349,7 @@ impl ProcTable {
                         Ok(n) => p.append(&buf[..n]),
                     }
                 }
-            });
+            }));
         }
         let p_wait = Arc::clone(&p);
         let timeout = spec.timeout;
@@ -352,14 +358,25 @@ impl ProcTable {
                 let mut c = child.lock().await;
                 c.wait().await
             };
+            // The exit is published only after the readers drained the pipes:
+            // `wait` can return while the process's last bytes are still
+            // in the pipe, and a follower that stops at `!running` would
+            // lose them.
             match tokio::time::timeout(timeout, wait).await {
-                Ok(Ok(status)) => p_wait.finish(status.code(), false, false),
-                Ok(Err(_)) => p_wait.finish(None, false, false),
+                Ok(Ok(status)) => {
+                    drain(readers).await;
+                    p_wait.finish(status.code(), false, false);
+                }
+                Ok(Err(_)) => {
+                    drain(readers).await;
+                    p_wait.finish(None, false, false);
+                }
                 Err(_) => {
                     let killer = p_wait.killer.lock().expect("killer").take();
                     if let Some(Killer::Pipe(c)) = killer {
                         let _ = c.lock().await.start_kill();
                     }
+                    drain(readers).await;
                     p_wait.finish(None, true, false);
                 }
             }
@@ -422,7 +439,7 @@ impl ProcTable {
         });
         self.insert(Arc::clone(&p));
         let p_read = Arc::clone(&p);
-        tokio::task::spawn_blocking(move || {
+        let reader_task = tokio::task::spawn_blocking(move || {
             let mut buf = vec![0u8; 16 * 1024];
             loop {
                 match std::io::Read::read(&mut reader, &mut buf) {
@@ -449,18 +466,35 @@ impl ProcTable {
                 }
             });
             match tokio::time::timeout(timeout, wait).await {
-                Ok(Ok(status)) => p_wait.finish(Some(status.exit_code() as i32), false, false),
-                Ok(Err(_)) => p_wait.finish(None, false, false),
+                Ok(Ok(status)) => {
+                    drain(vec![reader_task]).await;
+                    p_wait.finish(Some(status.exit_code() as i32), false, false);
+                }
+                Ok(Err(_)) => {
+                    drain(vec![reader_task]).await;
+                    p_wait.finish(None, false, false);
+                }
                 Err(_) => {
                     if let Some(c) = child.lock().expect("pty child").as_mut() {
                         let _ = c.kill();
                     }
+                    drain(vec![reader_task]).await;
                     p_wait.finish(None, true, false);
                 }
             }
         });
         Ok(p)
     }
+}
+
+/// Wait for the output readers to reach EOF, at most `DRAIN_GRACE`.
+async fn drain(readers: Vec<tokio::task::JoinHandle<()>>) {
+    let all = async {
+        for r in readers {
+            let _ = r.await;
+        }
+    };
+    let _ = tokio::time::timeout(DRAIN_GRACE, all).await;
 }
 
 fn exited_len_over(total: usize) -> usize {
