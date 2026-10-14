@@ -1719,6 +1719,14 @@ pub async fn run_live(
     let mut errors: Vec<RunError> = Vec::new();
     let mut largest: Option<f64> = None;
     let mut consecutive_errors = 0usize;
+    // A wall-clock budget (`MODBIT_LIVE_DEADLINE_MINUTES`): a run that would
+    // not finish before the job's own timeout stops cleanly and writes the
+    // partial result instead of being killed with nothing written.
+    let began = std::time::Instant::now();
+    let deadline = std::env::var("MODBIT_LIVE_DEADLINE_MINUTES")
+        .ok()
+        .and_then(|v| v.trim().parse::<u64>().ok())
+        .map(|m| std::time::Duration::from_secs(m * 60));
     'plan: for repeat in 0..cfg.repeats {
         for wc in &lineages {
             let run_id = format!(
@@ -1728,6 +1736,15 @@ pub async fn run_live(
             );
             if meter.admit(largest.unwrap_or(INITIAL_RESERVE_USD)).is_err() {
                 // The meter remembers; the status says the cap ended the run.
+                break 'plan;
+            }
+            if let Some(d) = deadline
+                && began.elapsed() + opts.task_timeout > d
+            {
+                missing.push(format!(
+                    "the wall-clock budget ({} min) ended the run before {run_id}",
+                    d.as_secs() / 60
+                ));
                 break 'plan;
             }
             let run_dir = opts.out_dir.join("runs").join(&run_id);
