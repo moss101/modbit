@@ -28,7 +28,7 @@ jobs:
       - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
         with:
           # base: the diagnostic commit without the fix; fix: this commit.
-          ref: ${{ matrix.variant == 'base' && 'd40f50cb' || github.sha }}
+          ref: ${{ matrix.variant == 'base' && 'd40f50cb74c1ff18850b719e98e0688a967dbbe3' || github.sha }}
       - run: rustup show
       - uses: Swatinem/rust-cache@6323deb102c322ba6fcbdcafc7e3dddab59af2b6 # v2
       - run: cargo build -p modbit-core -p modbit-execd --locked
