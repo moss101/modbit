@@ -457,6 +457,21 @@ mod unix {
         }
     }
 
+    /// The stop condition of the catch-up reads: a stream cut between the
+    /// last number and its line feed (a frame boundary can fall there) is
+    /// not the whole output, with or without the PTY's carriage return.
+    #[test]
+    fn a_stream_is_complete_only_once_the_last_line_is_whole() {
+        assert!(!printed_line(b"2999999\r\n3000000", "3000000"));
+        assert!(!printed_line(b"2999999\r\n3000000\r", "3000000"));
+        assert!(printed_line(b"2999999\r\n3000000\r\n", "3000000"));
+        assert!(printed_line(b"2999999\n3000000\n", "3000000"));
+        assert!(!printed_line(b"3000000\n3", "3000000"));
+        assert!(!printed_line(b"", "3000000"));
+        // The old stop condition took the cut stream for the whole.
+        assert!(has(b"2999999\r\n3000000", "3000000"));
+    }
+
     /// What `seq 1 n` prints, line feeds only; a PTY may add carriage returns
     /// of its own to what a process wrote, so the stream is compared to this
     /// with them removed and to the broker's own log byte for byte.
@@ -546,6 +561,17 @@ mod unix {
         }
         out.truncate(len);
         out
+    }
+
+    /// Whether the stream ends with the complete line `line` (its line feed
+    /// included, a PTY's carriage return ignored). A frame boundary can fall
+    /// between the last digit and the line feed, so "the tail contains the
+    /// last number" is true before the line is whole: a stream stopped there
+    /// is one byte short of what the command printed (the flake behind
+    /// PX-099's "and the command's output, in order").
+    fn printed_line(bytes: &[u8], line: &str) -> bool {
+        let tail = &bytes[bytes.len().saturating_sub(line.len() + 8)..];
+        without_cr(tail).ends_with(format!("{line}\n").as_bytes())
     }
 
     fn has(bytes: &[u8], needle: &str) -> bool {
@@ -1450,7 +1476,7 @@ mod unix {
             &mut rest_cursor,
             &mut rest,
             Some(4096),
-            |b| has(&b[b.len().saturating_sub(24)..], &last),
+            |b| printed_line(b, &last),
         )
         .await;
         assert!(matches!(stop, Stop::Satisfied), "{stop:?}");
@@ -1606,7 +1632,7 @@ mod unix {
             &mut cursor,
             &mut got,
             Some(64 * 1024),
-            |b| has(&b[b.len().saturating_sub(24)..], &last),
+            |b| printed_line(b, &last),
         )
         .await;
         eprintln!("px_099 slow client: caught up at {:?}", t0.elapsed());

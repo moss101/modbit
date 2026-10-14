@@ -77,6 +77,17 @@ fn main() {
                 std::thread::sleep(Duration::from_millis(20));
             }
         }
+        // PX-099: 4000 numbered lines, each written and flushed on its own
+        // with a pause between, so the broker's reader stores a record of a
+        // few bytes per line (what a PTY gives a process that prints a line
+        // at a time).
+        "tiny-lines" => {
+            for i in 0..4000u32 {
+                writeln!(out, "{i}").unwrap();
+                out.flush().unwrap();
+                std::thread::sleep(Duration::from_micros(300));
+            }
+        }
         "cat" => {
             let stdin = std::io::stdin();
             for line in stdin.lock().lines() {
