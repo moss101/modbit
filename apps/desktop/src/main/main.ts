@@ -904,11 +904,15 @@ function createWindow(bounds?: Electron.Rectangle): void {
   w.webContents.on("did-start-loading", () => void terminalHost.detachAll());
   w.webContents.on("will-navigate", (e) => e.preventDefault());
   w.webContents.setWindowOpenHandler(() => ({ action: "deny" }));
-  w.webContents.on("render-process-gone", (_e, details) => {
-    const replace = details.reason !== "clean-exit" && win === w && !w.isDestroyed();
-    rendererLog.push({ reason: details.reason, exitCode: details.exitCode, reloaded: replace, atMs: Date.now() });
+  // One path for "this window's renderer is gone", whoever notices first: Chromium's own report, or the liveness watch below.
+  let gone = false;
+  const rendererGone = (reason: string, exitCode: number, via: "event" | "watch") => {
+    if (gone) return;
+    const replace = reason !== "clean-exit" && win === w && !w.isDestroyed();
+    if (replace) gone = true;
+    rendererLog.push({ reason, exitCode, reloaded: replace, atMs: Date.now() });
     if (rendererLog.length > 50) rendererLog.splice(0, rendererLog.length - 50);
-    console.error(`modbit-desktop: renderer gone: reason=${details.reason} exitCode=${details.exitCode} replacing=${replace}`);
+    console.error(`modbit-desktop: renderer gone: reason=${reason} exitCode=${exitCode} via=${via} replacing=${replace}`);
     if (!replace) return;
     // The views the dead renderer showed leave the old window first (they
     // are this process's, not the window's); the new renderer shows them
@@ -916,7 +920,35 @@ function createWindow(bounds?: Electron.Rectangle): void {
     browserHost.windowReplaced(w);
     createWindow(w.getBounds());
     w.destroy();
-  });
+  };
+  w.webContents.on("render-process-gone", (_e, details) => rendererGone(details.reason, details.exitCode, "event"));
+  // On Windows a renderer whose process was terminated from outside has been seen to stay unreported by Chromium for a minute or
+  // more (the process is gone, `render-process-gone` never arrives, the window stays blank). The OS process is the truth: a
+  // renderer whose pid no longer exists on two consecutive looks, while the page is not mid-navigation, is gone.
+  let lastDeadPid = 0;
+  const watch = setInterval(() => {
+    if (gone || w.isDestroyed() || win !== w) {
+      clearInterval(watch);
+      return;
+    }
+    const pid = w.webContents.getOSProcessId();
+    if (!pid || w.webContents.isLoading()) {
+      lastDeadPid = 0;
+      return;
+    }
+    let alive = true;
+    try {
+      process.kill(pid, 0);
+    } catch (e) {
+      alive = (e as NodeJS.ErrnoException).code === "EPERM";
+    }
+    if (alive) lastDeadPid = 0;
+    else if (lastDeadPid === pid) {
+      clearInterval(watch);
+      rendererGone("killed", -1, "watch");
+    } else lastDeadPid = pid;
+  }, 1000);
+  w.on("closed", () => clearInterval(watch));
   void w.loadFile(join(__dirname, "..", "renderer", "index.html"));
 }
 

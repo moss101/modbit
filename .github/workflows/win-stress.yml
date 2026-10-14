@@ -41,7 +41,7 @@ jobs:
           wfail=0
           for i in $(seq 1 8); do
             if cargo test --locked -p modbit-core --test memory_graph_index > run.log 2>&1; then echo "memory_graph_index run $i: ok"; else wfail=$((wfail+1)); echo "memory_graph_index run $i: FAILED"; grep -m3 -o 'rebuild_reasons: \[[^]]*\]\|panicked at.*' run.log; fi
-            grep -c 'transient file error' run.log | sed 's/^/transient-retries logged: /'
+            (grep -c 'transient file error' run.log || true) | sed 's/^/transient-retries logged: /'
           done
           echo "SUMMARY memory_graph_index whole file: $wfail failures in 8 runs"
           sfail=0
