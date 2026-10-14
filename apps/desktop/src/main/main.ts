@@ -908,6 +908,7 @@ function createWindow(bounds?: Electron.Rectangle): void {
     const replace = details.reason !== "clean-exit" && win === w && !w.isDestroyed();
     rendererLog.push({ reason: details.reason, exitCode: details.exitCode, reloaded: replace, atMs: Date.now() });
     if (rendererLog.length > 50) rendererLog.splice(0, rendererLog.length - 50);
+    console.error(`modbit-desktop: renderer gone: reason=${details.reason} exitCode=${details.exitCode} replacing=${replace}`);
     if (!replace) return;
     // The views the dead renderer showed leave the old window first (they
     // are this process's, not the window's); the new renderer shows them
