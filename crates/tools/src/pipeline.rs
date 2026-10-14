@@ -248,6 +248,16 @@ pub struct InvokeContext {
     /// `git.merge.*` and `git.worktree.apply` / `undo` keep on the event log.
     /// `None` = the host keeps none, and those tools refuse.
     pub git_state: Option<Arc<dyn crate::gitstate::GitStatePort>>,
+    /// Native computer control (PX-069): `computer.*` reach the actuator
+    /// through it. `None` = no actuator in this build, and every call
+    /// answers `ACTUATOR_UNAVAILABLE`.
+    pub computer: Option<Arc<dyn modbit_computer::ComputerPort>>,
+    /// The approval that authorised this call (set by the pipeline before the
+    /// effector runs), so an effector can name it in its own audit.
+    pub approval_id: Option<String>,
+    /// The intent hash the call was decided under, including whatever its
+    /// tool bound (`Tool::prepare`). Set by the pipeline.
+    pub intent_hash: Option<String>,
 }
 
 /// What a pinned environment revision gives a process.
@@ -693,6 +703,56 @@ impl ToolRuntime {
             }
         }
 
+        // 2c. what the tool can decide before a person is asked, and what an
+        // approval of it must bind (PX-069, PX-070): a refusal here means no
+        // approval is offered for something that cannot be done; a binding is
+        // folded into the intent hash, so a change in the facts it names (the
+        // application's identity, the window, the element) is a different
+        // intent and the old approval authorises nothing.
+        let mut bound_intent: Option<Value> = None;
+        if verdict.denied.is_none() {
+            match tool.prepare(ctx, &args).await {
+                Ok(None) => {}
+                Ok(Some(bound)) => {
+                    args_hash = hex::encode(Sha256::digest(
+                        canonical(&json!({"arguments": args, "bound": bound})).as_bytes(),
+                    ));
+                    stages.push(StageRecord {
+                        stage: "prepare".into(),
+                        outcome: format!("bound sha256:{args_hash}"),
+                    });
+                    bound_intent = Some(bound);
+                }
+                Err(o) => {
+                    stages.push(StageRecord {
+                        stage: "prepare".into(),
+                        outcome: format!(
+                            "refused before any approval: {}",
+                            o.error_code.clone().unwrap_or_default()
+                        ),
+                    });
+                    let mut result = base(
+                        if o.infra_failure {
+                            ToolStatus::InfraFailure
+                        } else {
+                            ToolStatus::InvalidArguments
+                        },
+                        &args_hash,
+                        o.error_code.clone(),
+                        o.error_message.clone(),
+                    );
+                    result.structured_output = o.structured_output.clone();
+                    return PipelineOutcome {
+                        result,
+                        stages,
+                        policy: None,
+                        effect_class: Some(effect_class),
+                        tool_version: Some(spec.version.clone()),
+                    };
+                }
+            }
+        }
+
         // 3. policy (arguments are never shown to the kernel as text)
         let port: &dyn CapabilityPort = match &ctx.kernel {
             Some(k) => k.as_ref(),
@@ -716,6 +776,7 @@ impl ToolRuntime {
             has_lease: ctx.capability_lease_id.is_some(),
             intent_hash: args_hash.clone(),
             paths: crate::policy::path_targets(&spec.required_capabilities, &args),
+            bound_intent: bound_intent.clone(),
         });
         if !spec
             .execution_profiles
@@ -842,6 +903,11 @@ impl ToolRuntime {
         let mut call_ctx = ctx.clone();
         call_ctx.tool_call_id = Some(tool_call_id);
         call_ctx.effect_class = Some(effect_class);
+        call_ctx.intent_hash = Some(args_hash.clone());
+        call_ctx.approval_id = match &decision {
+            PolicyDecision::Allow { approval_id, .. } => approval_id.clone(),
+            _ => None,
+        };
         let outcome: ToolOutcome = tool.invoke(&call_ctx, args).await;
         stages.push(StageRecord {
             stage: "execute".into(),

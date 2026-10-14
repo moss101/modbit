@@ -1,0 +1,17 @@
+{
+  "expected": {
+    "actuatorName": "modbit-actuator-macos",
+    "actuatorVersion": "1.0.0",
+    "capabilities": [
+      "app_scope",
+      "screenshot"
+    ],
+    "pid": 777,
+    "platform": "macos",
+    "protocolMajor": 1,
+    "protocolMinor": 0,
+    "refusal": "",
+    "tokenProof": "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc"
+  },
+  "type": "modbit.v1.ActuatorWelcome"
+}

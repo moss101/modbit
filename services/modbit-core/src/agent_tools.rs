@@ -47,7 +47,7 @@ pub(crate) fn projections() -> Vec<modbit_providers::ToolProjection> {
     vec![
         modbit_providers::ToolProjection {
             name: SPAWN_TOOL.into(),
-            description: "Delegate one bounded subtask to a child agent in its own worktree. Work alone unless the subtask is separable: independent of your next steps, disjoint in what it writes, and large enough to pay for a second agent; do the rest yourself. Admitted as one transaction (capacity, write-set overlap, worktree, least-privilege lease, node, work ownership, a slice of your own budget) or refused at the failing step; nothing partial. A child's budget (turns, tool calls, max_cost_minor, max_wall_ms) is clamped to what you have left and reserved against you: its spend is yours, and what it does not use comes back when it stops. read_scope: the only paths it may read (its write_scope is readable too); outside it a read is refused. idempotency_key: a retry reattaches. write_scope: the only paths it may write. mode BACKGROUND runs detached (collect with agent.wait); FOREGROUND waits here; a child your own pending work depends on runs FOREGROUND regardless (scheduling BLOCKING).".into(),
+            description: "Delegate one bounded subtask to a child agent in its own worktree. Work alone unless the subtask is separable: independent of your next steps, disjoint in what it writes, and large enough to pay for a second agent; do the rest yourself. Admitted as one transaction (capacity, write-set overlap, worktree, least-privilege lease, node, work ownership, a slice of your own budget) or refused at the failing step; nothing partial. A child's budget (turns, tool calls, max_cost_minor, max_wall_ms) is clamped to what you have left and reserved against you: its spend is yours, and what it does not use comes back when it stops. read_scope: the only paths it may read (its write_scope is readable too); outside it a read is refused. idempotency_key: a retry reattaches. write_scope: the only paths it may write. mode BACKGROUND runs detached (collect with agent.wait); FOREGROUND waits here; a child your own pending work depends on runs FOREGROUND regardless (scheduling BLOCKING). profile `computer-use` runs a long GUI loop outside your context: read, search, non-GUI shell and the computer.* tools, its own control session (it never shares your handles and holds no grant of yours), FOREGROUND only, and only once you record in environment_healthy what you observed that makes the environment fit (the application is built and running).".into(),
             input_schema: serde_json::json!({"type":"object","properties":{
                 "idempotency_key":{"type":"string","minLength":1},
                 "objective":{"type":"string","minLength":1},
@@ -63,7 +63,8 @@ pub(crate) fn projections() -> Vec<modbit_providers::ToolProjection> {
                 "max_wall_ms":{"type":"integer","minimum":0},
                 "work_node":{"type":"string"},
                 "mode":{"type":"string","enum":["BACKGROUND","FOREGROUND"]},
-                "profile":{"type":"string"}
+                "profile":{"type":"string"},
+                "environment_healthy":{"type":"string"}
             },"required":["idempotency_key","objective","write_scope"]}),
         },
         modbit_providers::ToolProjection {

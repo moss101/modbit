@@ -68,6 +68,11 @@ pub(crate) struct SubagentFork {
     pub read_scope: Vec<String>,
     /// The highest effect class the child's lease allows.
     pub effect_ceiling_cap: Option<modbit_domain::toolcall::EffectClass>,
+    /// The child is a `computer-use` child (PX-075): its lease keeps the
+    /// computer capabilities and nothing that writes, reaches the network
+    /// or holds a secret. Every other child's lease loses the computer
+    /// capabilities: native control is never inherited.
+    pub computer_use: bool,
 }
 
 /// What a fork produced.
@@ -624,6 +629,20 @@ pub(crate) async fn fork(
         // its parent allows (REQ-EV-0046 / 0048).
         operations.retain(|o| o != "git.worktree" && o != "git.merge" && o != "git.apply");
         resources.retain(|r| !r.starts_with("git.worktree:") && !r.starts_with("git.merge:"));
+        if sub.computer_use {
+            // Read, search, non-GUI shell and computer.*: nothing else.
+            let keep = |o: &str| {
+                matches!(
+                    o,
+                    "fs.read" | "git.read" | "shell.exec" | "memory.query" | "external.list"
+                ) || o.starts_with("computer.")
+            };
+            operations.retain(|o| keep(o));
+            resources.retain(|r| keep(r.split(':').next().unwrap_or_default()));
+        } else {
+            operations.retain(|o| !o.starts_with("computer."));
+            resources.retain(|r| !r.starts_with("computer."));
+        }
         if !sub.write_scope.is_empty() {
             resources.retain(|r| !r.starts_with("fs.write:"));
             for p in &sub.write_scope {

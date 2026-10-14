@@ -1,0 +1,37 @@
+[package]
+name = "modbit-actuator-fixture"
+description = "Modbit fixture actuator: a real actuator process over an in-memory desktop, for tests"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+publish.workspace = true
+
+[[bin]]
+name = "modbit-actuator-fixture"
+path = "src/main.rs"
+
+[dependencies]
+modbit-protocol.workspace = true
+hex.workspace = true
+png = "0.18"
+serde.workspace = true
+serde_json.workspace = true
+sha2.workspace = true
+tokio = { workspace = true, features = ["io-std"] }
+
+[lints]
+workspace = true
+
+# Module registration parsed by `architecture-lint modules` (M0.4, docs/45, docs/81).
+# The fixture actuator is a leaf process the Core's tests launch (PX-069): it
+# speaks the real actuator RPC of PX-071 over an in-memory desktop, so every
+# Core path is proven over a real process boundary on all three operating
+# systems with no display and no permission. Registered under the `browser`
+# owner; it claims no canonical system.
+[package.metadata.modbit]
+owner = "browser"
+canonical = []
+capabilities = [
+  { id = "computer.fixture_actuator", requirements = ["REQ-PX-069"] },
+]
