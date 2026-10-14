@@ -87,7 +87,35 @@ export class TargetProxy {
     this.resolve = opts.resolve ?? systemResolver;
     this.server = http.createServer((req, res) => void this.forward(req, res));
     this.server.on("connect", (req, socket, head) => void this.tunnel(req, socket as net.Socket, head));
-    this.server.on("clientError", (_e, socket) => socket.destroy());
+    this.server.on("clientError", (e, socket) => {
+      this.note(`clientError ${(e as NodeJS.ErrnoException).code ?? e.message}`);
+      socket.destroy();
+    });
+    // What the browser's connections to this proxy did, so a load that failed with "proxy connection failed" can say whether the proxy ever saw it.
+    this.server.on("connection", (socket) => {
+      this.accepted += 1;
+      socket.on("error", (e) => this.note(`socket ${(e as NodeJS.ErrnoException).code ?? e.message}`));
+      socket.on("close", (hadError) => {
+        this.closed += 1;
+        if (hadError) this.note("socket closed with error");
+      });
+    });
+    this.server.on("error", (e) => this.note(`server ${(e as NodeJS.ErrnoException).code ?? e.message}`));
+  }
+
+  private accepted = 0;
+  private closed = 0;
+  private readonly notes: { atMs: number; text: string }[] = [];
+  private note(text: string): void {
+    this.notes.push({ atMs: Date.now(), text });
+    if (this.notes.length > 20) this.notes.shift();
+  }
+
+  /** One line: how many connections the proxy accepted and closed, and the last things that went wrong on them. */
+  describe(): string {
+    const now = Date.now();
+    const recent = this.notes.slice(-5).map((n) => `${n.text} ${now - n.atMs} ms ago`);
+    return `${this.server.listening ? "listening" : "not listening"} on ${this.port}, ${this.accepted} connection(s) accepted, ${this.closed} closed${recent.length ? `; ${recent.join("; ")}` : ""}`;
   }
 
   async listen(): Promise<number> {
