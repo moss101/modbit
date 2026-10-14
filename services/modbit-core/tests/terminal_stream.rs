@@ -466,6 +466,58 @@ mod unix {
             .collect()
     }
 
+    /// Where `got` first departs from `want`, and whether the difference is a
+    /// truncation, a duplicate, a gap or something else, with the bytes around
+    /// it (what a failing assertion prints).
+    fn first_difference(got: &[u8], want: &[u8]) -> String {
+        let at = got.iter().zip(want).position(|(a, b)| a != b);
+        let Some(at) = at else {
+            return if got.len() < want.len() {
+                format!(
+                    "truncated: got {} bytes, want {}; the stream ends …{:?}, the next wanted bytes are {:?}",
+                    got.len(),
+                    want.len(),
+                    String::from_utf8_lossy(&got[got.len().saturating_sub(24)..]),
+                    String::from_utf8_lossy(&want[got.len()..want.len().min(got.len() + 24)])
+                )
+            } else {
+                format!(
+                    "extra bytes: got {} bytes, want {}; past the end {:?}",
+                    got.len(),
+                    want.len(),
+                    String::from_utf8_lossy(&got[want.len()..got.len().min(want.len() + 24)])
+                )
+            };
+        };
+        let window = |b: &[u8]| {
+            String::from_utf8_lossy(&b[at.saturating_sub(16)..b.len().min(at + 16)]).into_owned()
+        };
+        // A duplicate repeats what was just before the difference; a gap
+        // skips ahead in the wanted bytes.
+        let kind = if want[at..].starts_with(&got[at..got.len().min(at + 8)]) {
+            "same bytes"
+        } else if got[at..].starts_with(&want[at.saturating_sub(8)..at]) {
+            "a duplicate (the stream repeats earlier bytes)"
+        } else if want[at..].len() > 8
+            && got[at..got.len().min(at + 8)].len() == 8
+            && want[at..]
+                .windows(8)
+                .take(1 << 16)
+                .any(|w| w == &got[at..at + 8])
+        {
+            "a gap (the stream skips ahead)"
+        } else {
+            "a reorder or corruption"
+        };
+        format!(
+            "first difference at offset {at} of {} (want {}): {kind}; got …{:?}… want …{:?}…",
+            got.len(),
+            want.len(),
+            window(got),
+            window(want)
+        )
+    }
+
     fn without_cr(bytes: &[u8]) -> Vec<u8> {
         bytes.iter().copied().filter(|b| *b != b'\r').collect()
     }
@@ -1569,7 +1621,8 @@ mod unix {
         );
         assert!(
             without_cr(&got) == seq_lf(n),
-            "and the command's output, in order"
+            "and the command's output, in order: {}",
+            first_difference(&without_cr(&got), &seq_lf(n))
         );
         let r = invoke(
             &mut c,
