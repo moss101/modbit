@@ -1,0 +1,74 @@
+# TEMPORARY (wave6/win-bugs2): repeats the three Windows-only flaky tests to measure a failure rate. Deleted before the final push.
+name: win-stress
+on:
+  workflow_dispatch:
+  push:
+    branches: [wave6/win-bugs2, wave6/win-bugs2-before]
+permissions:
+  contents: read
+env:
+  CARGO_TERM_COLOR: never
+  CARGO_INCREMENTAL: "0"
+  RUSTFLAGS: "-D warnings"
+jobs:
+  px111:
+    if: github.event_name == 'workflow_dispatch' || contains(github.event.head_commit.message, '[stress]')
+    runs-on: windows-latest
+    timeout-minutes: 120
+    steps:
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
+      - run: rustup show
+      - uses: Swatinem/rust-cache@6323deb102c322ba6fcbdcafc7e3dddab59af2b6 # v2
+      - uses: pnpm/action-setup@b906affcce14559ad1aafd4ab0e942779e9f58b1 # v4
+      - uses: actions/setup-node@a0853c24544627f65ddf259abe73b1d18a591444 # v5
+        with:
+          node-version-file: .node-version
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - name: Build
+        run: cargo build --locked -p modbit-core -p modbit-execd -p modbit-cli
+      - name: px_111 x20 and qual_ev_0134 x10
+        shell: bash
+        run: |
+          cargo test --locked -p modbit-core --test memory_graph_index --no-run
+          cargo test --locked -p modbit-core --test surface_protocol --no-run
+          fail=0; total=0
+          for i in $(seq 1 20); do
+            total=$((total+1))
+            if cargo test --locked -p modbit-core --test memory_graph_index px_111_a_restarted -- --test-threads 1 > run.log 2>&1; then echo "px111 run $i: ok"; else fail=$((fail+1)); echo "px111 run $i: FAILED"; grep -o 'rebuild_reasons: \[[^]]*\]' run.log | head -1; fi
+          done
+          echo "SUMMARY px_111: $fail failures in $total runs"
+          sfail=0
+          for i in $(seq 1 10); do
+            if cargo test --locked -p modbit-core --test surface_protocol qual_ev_0134 -- --test-threads 1 > run.log 2>&1; then echo "qual0134 run $i: ok"; else sfail=$((sfail+1)); echo "qual0134 run $i: FAILED"; grep -m3 'panicked\|STORE_BUSY' run.log; fi
+          done
+          echo "SUMMARY qual_ev_0134: $sfail failures in 10 runs"
+  workers:
+    if: github.event_name == 'workflow_dispatch' || contains(github.event.head_commit.message, '[stress]')
+    runs-on: windows-latest
+    timeout-minutes: 120
+    steps:
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
+      - run: rustup show
+      - uses: Swatinem/rust-cache@6323deb102c322ba6fcbdcafc7e3dddab59af2b6 # v2
+      - uses: pnpm/action-setup@b906affcce14559ad1aafd4ab0e942779e9f58b1 # v4
+      - uses: actions/setup-node@a0853c24544627f65ddf259abe73b1d18a591444 # v5
+        with:
+          node-version-file: .node-version
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: cargo build --locked -p modbit-core -p modbit-execd -p modbit-cli
+      - run: pnpm --filter @modbit/desktop build
+      - run: pnpm --filter @modbit/desktop exec electron --version
+        continue-on-error: true
+      - name: renderer-killed spec x15
+        shell: bash
+        env:
+          MODBIT_CORE_BIN: ${{ github.workspace }}/target/debug/modbit-core.exe
+        run: |
+          fail=0
+          for i in $(seq 1 15); do
+            if pnpm --filter @modbit/desktop exec playwright test -c e2e/playwright.config.ts e2e/workers.spec.ts -g "renderer killed" > run.log 2>&1; then echo "workers run $i: ok"; else fail=$((fail+1)); echo "workers run $i: FAILED"; grep -m6 'Error\|Timeout\|renderer-diag' run.log; fi
+            grep 'renderer-diag' run.log | head -3 || true
+          done
+          echo "SUMMARY workers: $fail failures in 15 runs"
