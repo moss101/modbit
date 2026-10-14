@@ -27,9 +27,10 @@ const { composerCss } = await import("./src/renderer/composer/composer-css.ts");
 const { controlsCss } = await import("./src/renderer/controls-css.ts");
 const { automationsCss } = await import("./src/renderer/automations/automations-css.ts");
 const { projectsCss } = await import("./src/renderer/projects/projects-css.ts");
+const { computerCss } = await import("./src/renderer/computer/computer-css.ts");
 // xterm.js ships its own stylesheet (the terminal app, REQ-PX-048); it is bundled with ours so the CSP needs nothing external.
 const xtermCss = readFileSync(createRequire(import.meta.url).resolve("@xterm/xterm/css/xterm.css"), "utf8");
-writeFileSync(join(out, "renderer", "app.css"), [tokensCss(), uiCss, xtermCss, legacyCss, shellCss, workspaceCss, composerCss, controlsCss, automationsCss, projectsCss].join("\n"));
+writeFileSync(join(out, "renderer", "app.css"), [tokensCss(), uiCss, xtermCss, legacyCss, shellCss, workspaceCss, composerCss, controlsCss, computerCss, automationsCss, projectsCss].join("\n"));
 
 const common = { bundle: true, sourcemap: true, logLevel: "warning", target: "es2024" };
 await build({ ...common, entryPoints: ["src/main/main.ts"], outfile: join(out, "main/main.cjs"), platform: "node", format: "cjs", external: ["electron"] });

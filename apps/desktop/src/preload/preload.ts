@@ -8,6 +8,7 @@ import type { TerminalFrameJson, TerminalViewJson } from "../main/terminal-host.
 import type { AttachmentResult, InterruptView, ModeChangedView, ModelCatalogView, PostureView, PreferencePatch, PreferenceSetView, QueuedChangeView, QueueView, SendBehaviorState, SideAnswerView, SlashInventoryView, TaskModeId, InputModeId } from "../shared/composer-types.ts";
 import type { AutoDetail, AutoEnableInput, AutoKillReport, AutoList, AutoRepoLoad, AutoRun, AutoRunInput, AutoRunStarted, AutoValidation, AutoView } from "../shared/automation-types.ts";
 import type { ApplyAckInfo, ApplyInputArgs, CleanupReportInfo, ProjectChangedInfo, ProjectInput, ProjectListInfo, ProjectPatch, WorktreeListInfo, WorktreeRemovalInfo } from "../shared/project-types.ts";
+import type { ComputerCardsInfo, ComputerFrameInfo, ComputerPresenceInfo, ComputerStopInfo, OpenSettingsInfo, PermissionName } from "../shared/computer-types.ts";
 import type { AccountingInfo, AddRuleInput, AllowRuleInfo, CheckpointListInfo, CheckpointTargetInput, DockApprovalView, ExpiredApprovalView, ForkOutcome, ModeProposalDecisionInfo, ModeProposalListInfo, RestoreOutcome, RewindPreviewInfo, RunModeInfo, TaskBudgetsInfo } from "../shared/control-types.ts";
 
 export type { TerminalFrameJson, TerminalViewJson };
@@ -299,6 +300,19 @@ export interface ModbitBridge {
   readWorkspaceFile(taskId: string, path: string): Promise<{ path: string; status: string; size: string; text: string; fileRevision: string; workspaceRevision: string; language: string }>;
   effectReceipts(taskId: string): Promise<{ chainValid: boolean; detail: string; receipts: ReceiptView[] }>;
   /** REQ-PX-058: the protected effects waiting for a decision (oldest first), each with the Core's typed reason and the exact intent; with a task id, that task's only. */
+  /** PX-074: who holds the machine (every task), the actuator, and the permissions it reports. The Core's answer; nothing is kept in the renderer. */
+  computerPresence(): Promise<ComputerPresenceInfo | null>;
+  /** The on-screen Stop: the Core stops the actuator at once, closes the task's session and makes the stop sticky for the run. */
+  computerStop(sessionId: string, taskId: string, reason?: string): Promise<ComputerStopInfo>;
+  /** The person looked at the machine and resolves an unknown-outcome latch. */
+  computerResolveLatch(sessionId: string, taskId: string, note?: string): Promise<{ wasLatched: boolean }>;
+  /** The task's computer tool calls as cards, joined from the transcript, the Core's activity and the approvals. */
+  computerCards(sessionId: string, taskId: string): Promise<ComputerCardsInfo>;
+  /** A masked frame the task's activity names (a thumbnail, or the stored frame with `full`); null once retention removed it. */
+  computerFrame(taskId: string, artifactRef: string, full?: boolean): Promise<ComputerFrameInfo | null>;
+  /** Opens a pane of System Settings. It never changes a setting. */
+  computerOpenSettings(pane: PermissionName): Promise<OpenSettingsInfo>;
+  debugOpenedSettings(): Promise<{ pane: PermissionName; url: string; atMs: number }[]>;
   dockApprovals(sessionId: string, taskId?: string): Promise<DockApprovalView[]>;
   /** REQ-PX-058: the task's approvals the Core closed as expired (nobody answered before the recorded expiry). They can no longer be approved. */
   expiredApprovals(sessionId: string, taskId: string): Promise<ExpiredApprovalView[]>;
@@ -488,6 +502,13 @@ const bridge: ModbitBridge = {
   listWorkspaceDir: (taskId, path) => ipcRenderer.invoke("files:list", taskId, path),
   readWorkspaceFile: (taskId, path) => ipcRenderer.invoke("files:read", taskId, path),
   effectReceipts: (taskId) => ipcRenderer.invoke("evidence:receipts", taskId),
+  computerPresence: () => ipcRenderer.invoke("computer:presence"),
+  computerStop: (sessionId, taskId, reason) => ipcRenderer.invoke("computer:stop", sessionId, taskId, reason ?? ""),
+  computerResolveLatch: (sessionId, taskId, note) => ipcRenderer.invoke("computer:resolveLatch", sessionId, taskId, note ?? ""),
+  computerCards: (sessionId, taskId) => ipcRenderer.invoke("computer:cards", sessionId, taskId),
+  computerFrame: (taskId, artifactRef, full) => ipcRenderer.invoke("computer:frame", taskId, artifactRef, full ?? false),
+  computerOpenSettings: (pane) => ipcRenderer.invoke("computer:openSettings", pane),
+  debugOpenedSettings: () => ipcRenderer.invoke("debug:openedSettings"),
   dockApprovals: (sessionId, taskId) => ipcRenderer.invoke("approvals:dock", sessionId, taskId ?? ""),
   expiredApprovals: (sessionId, taskId) => ipcRenderer.invoke("approvals:expired", sessionId, taskId),
   modeProposals: (taskId) => ipcRenderer.invoke("modeproposals:list", taskId),

@@ -10,6 +10,8 @@ import { useMemo, useRef } from "react";
 import { Badge, Button, Kbd, useKeyScope } from "@modbit/ui";
 import type { KeyScope } from "@modbit/ui/logic";
 import type { DockApprovalView } from "../../shared/control-types.ts";
+import { ComputerApprovalBody } from "../computer/approval-body.tsx";
+import { approvalTitle } from "../computer/model.ts";
 import { alwaysAvailable, askClassLabel, cardKey, commandLine, effectWords, humanTitle, isIrreversible, prefixLadder, stepIndex, whyAsked, type CardKey, type KeyFacts } from "./model.ts";
 
 export interface DeckProps {
@@ -91,7 +93,9 @@ export function ApprovalDeck(props: DeckProps) {
   const why = whyAsked(a.reason);
   const foreign = a.taskId !== props.openTaskId;
   const irreversible = isIrreversible(a.effectClass);
-  const ladder = a.intent.argv ? prefixLadder(a.intent.argv) : [];
+  // PX-074: a native-control card has its own body and offers no rule of any kind.
+  const cc = a.computer ?? null;
+  const ladder = !cc && a.intent.argv ? prefixLadder(a.intent.argv) : [];
   const prefixKey = props.prefix.join("\u0000");
   const n = approvals.length;
   return (
@@ -122,10 +126,11 @@ export function ApprovalDeck(props: DeckProps) {
         </p>
       )}
       <h2 className="appr-title" data-testid="approval-title">
-        {humanTitle(a.toolName)} <code data-testid="approval-tool">{a.toolName}</code>
+        {cc ? approvalTitle(cc.tool, cc.kind) : humanTitle(a.toolName)} <code data-testid="approval-tool">{a.toolName}</code>
         <Badge tone={irreversible ? "danger" : "warn"}>{effectWords(a.effectClass)}</Badge>
       </h2>
-      <dl className="appr-intent" data-testid="approval-intent">
+      {cc && <ComputerApprovalBody taskId={a.taskId} intent={cc} expiresAtMs={a.expiresAtMs} />}
+      {!cc && <dl className="appr-intent" data-testid="approval-intent">
         {a.intent.argv ? (
           <>
             <dt>Command</dt>
@@ -180,24 +185,26 @@ export function ApprovalDeck(props: DeckProps) {
             <dd data-testid="approval-classes">{a.reason.askClasses.map(askClassLabel).join(", ")}</dd>
           </>
         )}
-      </dl>
-      {!a.intent.found && (
+      </dl>}
+      {!cc && !a.intent.found && (
         <p className="appr-fine" data-testid="approval-no-args">
           The call's arguments could not be read from the Core's record. The decision is still bound to the intent hash below.
         </p>
       )}
-      {a.intent.found && (
+      {!cc && a.intent.found && (
         <details className="appr-args">
           <summary data-testid="approval-args-toggle">Exact arguments{a.intent.truncated ? " (long values clipped)" : ""}</summary>
           <pre data-testid="approval-args">{a.intent.argsPreview}</pre>
         </details>
       )}
-      <p className="appr-why" data-testid="approval-why">
-        <strong>{why.headline}</strong> {why.detail}
-      </p>
+      {!cc && (
+        <p className="appr-why" data-testid="approval-why">
+          <strong>{why.headline}</strong> {why.detail}
+        </p>
+      )}
       <p className="appr-fine">
-        Intent <code data-testid="approval-intent-hash" title={a.intentHash}>{a.intentHash.slice(0, 16)}</code>. Running it once runs exactly this; the same command asked again asks again.
-        {a.reason.runMode && (
+        Intent <code data-testid="approval-intent-hash" title={a.intentHash}>{a.intentHash.slice(0, 16)}</code>. {cc ? "Approving it once approves exactly this; the same action asked again asks again." : "Running it once runs exactly this; the same command asked again asks again."}
+        {!cc && a.reason.runMode && (
           <>
             {" "}Run mode: <span data-testid="approval-mode">{a.reason.runMode.replace(/_/g, " ").toLowerCase()}</span>.{" "}
             <button type="button" className="agents-link" onClick={props.onChangeMode} data-testid="approval-change-mode">
@@ -213,7 +220,7 @@ export function ApprovalDeck(props: DeckProps) {
       )}
       {confirming ? (
         <div className="appr-foot" data-testid="approval-confirm">
-          <p className="appr-warn">This effect cannot be undone. Run it?</p>
+          <p className="appr-warn">{cc ? (cc.kind === "observation_grant" ? `Let the agent observe ${cc.applicationName || "this application"}?` : `This input cannot be taken back. Let the agent do it in ${cc.applicationName || "this application"}?`) : "This effect cannot be undone. Run it?"}</p>
           <span className="appr-spacer" />
           <Button size="sm" onClick={props.onBack} disabled={busy} data-testid="approval-back">
             Back <Kbd chord="esc" />
@@ -253,11 +260,11 @@ export function ApprovalDeck(props: DeckProps) {
             </>
           )}
           <Button size="sm" variant="primary" onClick={props.onRun} disabled={busy} data-testid="approval-run">
-            Run <Kbd chord="enter" />
+            {cc ? "Approve" : "Run"} <Kbd chord="enter" />
           </Button>
         </div>
       )}
-      {!alwaysOk && !confirming && (
+      {!cc && !alwaysOk && !confirming && (
         <p className="appr-fine" data-testid="approval-always-why">
           {alwaysAvailable(a).ok ? "" : (alwaysAvailable(a) as { why: string }).why}
         </p>

@@ -22,7 +22,105 @@ struct Lease {
     ttl: Duration,
 }
 
+/// The operating-system permissions the fixture pretends to hold (PX-074):
+/// what the Core shows in the permission window. Tests change them through a
+/// file (`--permissions-file`), as a person would in System Settings.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub struct Permissions {
+    pub accessibility: bool,
+    pub screen_recording: bool,
+}
+
+#[derive(serde::Deserialize)]
+struct PermissionsFile {
+    #[serde(default = "yes")]
+    accessibility: bool,
+    #[serde(default = "yes")]
+    screen_recording: bool,
+}
+
+fn yes() -> bool {
+    true
+}
+
+fn read_permissions_file(path: &std::path::Path) -> Option<Permissions> {
+    let text = std::fs::read_to_string(path).ok()?;
+    let f: PermissionsFile = serde_json::from_str(&text).ok()?;
+    Some(Permissions {
+        accessibility: f.accessibility,
+        screen_recording: f.screen_recording,
+    })
+}
+
+/// What the actuator holds at start: the file when there is one, else both
+/// (a desktop whose `permission_missing` fault is set holds neither).
+pub fn initial_permissions(desktop: &Desktop, file: Option<&std::path::Path>) -> Permissions {
+    let base = file.and_then(read_permissions_file).unwrap_or(Permissions {
+        accessibility: true,
+        screen_recording: true,
+    });
+    if desktop.faults.permission_missing {
+        Permissions {
+            accessibility: false,
+            screen_recording: false,
+        }
+    } else {
+        base
+    }
+}
+
+/// Watch the permissions file and push `PermissionChanged` when a permission
+/// flips - the way the macOS helper reports a grant made in System Settings.
+pub fn spawn_permission_watcher(s: Shared, tx: Tx, path: std::path::PathBuf) {
+    tokio::spawn(async move {
+        loop {
+            tokio::time::sleep(Duration::from_millis(100)).await;
+            let Some(now) = read_permissions_file(&path) else {
+                continue;
+            };
+            let (old, changed) = {
+                let mut st = lock(&s);
+                let old = st.perms;
+                if now != old {
+                    st.perms = now;
+                }
+                (old, now != old)
+            };
+            if !changed {
+                continue;
+            }
+            for (name, was, is) in [
+                ("accessibility", old.accessibility, now.accessibility),
+                (
+                    "screen_recording",
+                    old.screen_recording,
+                    now.screen_recording,
+                ),
+            ] {
+                if was != is {
+                    let _ = tx
+                        .send(wire::ActuatorFrame {
+                            body: Some(wire::actuator_frame::Body::Event(wire::ActuatorEvent {
+                                event: Some(wire::actuator_event::Event::PermissionChanged(
+                                    wire::PermissionChanged {
+                                        permission: name.into(),
+                                        granted: is,
+                                    },
+                                )),
+                            })),
+                        })
+                        .await;
+                }
+            }
+        }
+    });
+}
+
 pub struct State {
+    perms: Permissions,
+    /// A file written when an input begins to hang (`--hang-marker`): a test's
+    /// real signal that the input is in flight inside the actuator.
+    pub hang_marker: Option<std::path::PathBuf>,
     desktop: Desktop,
     lease: Option<Lease>,
     generation: u64,
@@ -34,9 +132,11 @@ pub struct State {
 }
 
 impl State {
-    pub fn new(desktop: Desktop) -> Self {
+    pub fn new(desktop: Desktop, perms: Permissions) -> Self {
         let secure = desktop.faults.secure_desktop;
         Self {
+            perms,
+            hang_marker: None,
             desktop,
             lease: None,
             generation: 0,
@@ -393,7 +493,7 @@ fn read_state(
             wire::Delivery::NotDelivered,
         ));
     }
-    if st.desktop.faults.permission_missing {
+    if !st.perms.accessibility {
         return Err(err(
             "PERMISSION_REQUIRED",
             "accessibility has not been granted to the actuator",
@@ -480,7 +580,7 @@ fn capture(
         ));
     }
     let faults = st.desktop.faults.clone();
-    if faults.permission_missing {
+    if !st.perms.screen_recording {
         return Err(err(
             "PERMISSION_REQUIRED",
             "screen recording has not been granted to the actuator",
@@ -772,7 +872,7 @@ async fn perform(
         if st.secure_desktop {
             return Err(err("SECURE_DESKTOP", "the secure desktop is up", nd));
         }
-        if st.desktop.faults.permission_missing {
+        if !st.perms.accessibility {
             return Err(err(
                 "PERMISSION_REQUIRED",
                 "accessibility has not been granted to the actuator",
@@ -1056,6 +1156,10 @@ async fn perform(
         std::process::abort();
     }
     if after.hang_ms > 0 {
+        let marker = lock(shared).hang_marker.clone();
+        if let Some(m) = marker {
+            let _ = std::fs::write(m, b"in flight");
+        }
         let until = Instant::now() + Duration::from_millis(after.hang_ms);
         while Instant::now() < until {
             tokio::time::sleep(Duration::from_millis(25)).await;

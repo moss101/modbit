@@ -356,6 +356,10 @@ pub(crate) struct Shared {
     pub next_attempt: Mutex<Instant>,
     pub backoff: Mutex<Duration>,
     pub last_ping: Mutex<Instant>,
+    /// Permission changes the attached actuator pushed (PX-074): the
+    /// connection epoch they belong to, then permission -> granted. A new
+    /// connection starts from its own welcome.
+    pub perms: Mutex<(u64, BTreeMap<String, bool>)>,
 }
 
 /// The Computer Runtime.
@@ -436,6 +440,7 @@ impl ComputerRuntime {
                 next_attempt: Mutex::new(Instant::now()),
                 backoff: Mutex::new(Duration::from_millis(250)),
                 last_ping: Mutex::new(Instant::now()),
+                perms: Mutex::new((0, BTreeMap::new())),
             }),
         }
     }
@@ -704,6 +709,45 @@ impl ComputerRuntime {
             latch,
             user_aborted,
         }
+    }
+
+    /// The operating-system permissions the attached actuator holds: what its
+    /// welcome said, then what it pushed since. A permission it never named
+    /// is absent (unknown, not granted); with no actuator attached the map is
+    /// empty.
+    #[must_use]
+    pub fn permissions(&self) -> BTreeMap<String, bool> {
+        let Some(info) = self
+            .shared
+            .actuator
+            .lock()
+            .unwrap_or_else(|e| e.into_inner())
+            .as_ref()
+            .filter(|a| a.actuator.is_alive())
+            .map(|a| (a.epoch, a.actuator.info().permissions.clone()))
+        else {
+            return BTreeMap::new();
+        };
+        let mut out: BTreeMap<String, bool> = info.1.into_iter().collect();
+        let pushed = self.shared.perms.lock().unwrap_or_else(|e| e.into_inner());
+        if pushed.0 == info.0 {
+            out.extend(pushed.1.iter().map(|(k, v)| (k.clone(), *v)));
+        }
+        out
+    }
+
+    /// Every task that holds the machine, or has a sticky stop or an
+    /// unknown-outcome latch to show (PX-074 presence). The caller reads each
+    /// one's view against the task's current run.
+    #[must_use]
+    pub fn presence_tasks(&self) -> Vec<TaskId> {
+        let st = self.lock();
+        let mut out: Vec<TaskId> = st.sessions.values().map(|s| s.task_id).collect();
+        out.extend(st.latches.keys().copied());
+        out.extend(st.aborted.keys().copied());
+        out.sort_by_key(|t| *t.as_bytes());
+        out.dedup();
+        out
     }
 
     /// Restore what a restarted Core read from the task's log: the latch and

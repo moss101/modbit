@@ -197,6 +197,16 @@ export declare type ActuatorWelcome = Message<"modbit.v1.ActuatorWelcome"> & {
    * @generated from field: string refusal = 9;
    */
   refusal: string;
+
+  /**
+   * The operating-system permissions the actuator holds right now (PX-074):
+   * "accessibility" and "screen_recording". A change later is pushed as
+   * `PermissionChanged`. An actuator that cannot tell leaves a permission out
+   * and the Core shows it as UNKNOWN, never as granted.
+   *
+   * @generated from field: repeated modbit.v1.PermissionState permissions = 10;
+   */
+  permissions: PermissionState[];
 };
 
 /**
@@ -204,6 +214,27 @@ export declare type ActuatorWelcome = Message<"modbit.v1.ActuatorWelcome"> & {
  * Use `create(ActuatorWelcomeSchema)` to create a new message.
  */
 export declare const ActuatorWelcomeSchema: GenMessage<ActuatorWelcome>;
+
+/**
+ * @generated from message modbit.v1.PermissionState
+ */
+export declare type PermissionState = Message<"modbit.v1.PermissionState"> & {
+  /**
+   * @generated from field: string permission = 1;
+   */
+  permission: string;
+
+  /**
+   * @generated from field: bool granted = 2;
+   */
+  granted: boolean;
+};
+
+/**
+ * Describes the message modbit.v1.PermissionState.
+ * Use `create(PermissionStateSchema)` to create a new message.
+ */
+export declare const PermissionStateSchema: GenMessage<PermissionState>;
 
 /**
  * @generated from message modbit.v1.ActuatorRequest
@@ -531,6 +562,8 @@ export declare type WindowGone = Message<"modbit.v1.WindowGone"> & {
 export declare const WindowGoneSchema: GenMessage<WindowGone>;
 
 /**
+ * `permission` is "accessibility" or "screen_recording" (see `ActuatorWelcome.permissions`).
+ *
  * @generated from message modbit.v1.PermissionChanged
  */
 export declare type PermissionChanged = Message<"modbit.v1.PermissionChanged"> & {
@@ -2006,6 +2039,383 @@ export declare type ComputerStopped = Message<"modbit.v1.ComputerStopped"> & {
  * Use `create(ComputerStoppedSchema)` to create a new message.
  */
 export declare const ComputerStoppedSchema: GenMessage<ComputerStopped>;
+
+/**
+ * What every window shows: whether the machine is controlled and by which
+ * task, the operating-system permissions the actuator reports, and the
+ * actuator itself. Not task-scoped: the permission window and the presence
+ * indicator read it without naming a task.
+ *
+ * @generated from message modbit.v1.GetComputerPresence
+ */
+export declare type GetComputerPresence = Message<"modbit.v1.GetComputerPresence"> & {
+};
+
+/**
+ * Describes the message modbit.v1.GetComputerPresence.
+ * Use `create(GetComputerPresenceSchema)` to create a new message.
+ */
+export declare const GetComputerPresenceSchema: GenMessage<GetComputerPresence>;
+
+/**
+ * @generated from message modbit.v1.ComputerPresenceView
+ */
+export declare type ComputerPresenceView = Message<"modbit.v1.ComputerPresenceView"> & {
+  /**
+   * @generated from field: bool configured = 1;
+   */
+  configured: boolean;
+
+  /**
+   * @generated from field: bool attached = 2;
+   */
+  attached: boolean;
+
+  /**
+   * @generated from field: string actuator_name = 3;
+   */
+  actuatorName: string;
+
+  /**
+   * @generated from field: string actuator_version = 4;
+   */
+  actuatorVersion: string;
+
+  /**
+   * @generated from field: string platform = 5;
+   */
+  platform: string;
+
+  /**
+   * why it is not attached, when it is not
+   *
+   * @generated from field: string detail = 6;
+   */
+  detail: string;
+
+  /**
+   * "GRANTED" | "DENIED" | "UNKNOWN" (no actuator attached, or it did not say).
+   *
+   * @generated from field: string permission_accessibility = 7;
+   */
+  permissionAccessibility: string;
+
+  /**
+   * @generated from field: string permission_screen_recording = 8;
+   */
+  permissionScreenRecording: string;
+
+  /**
+   * One entry per task that holds, or has just lost, the machine; empty
+   * when nothing controls it.
+   *
+   * @generated from field: repeated modbit.v1.ComputerPresence control = 10;
+   */
+  control: ComputerPresence[];
+
+  /**
+   * @generated from field: string non_drivable_version = 11;
+   */
+  nonDrivableVersion: string;
+};
+
+/**
+ * Describes the message modbit.v1.ComputerPresenceView.
+ * Use `create(ComputerPresenceViewSchema)` to create a new message.
+ */
+export declare const ComputerPresenceViewSchema: GenMessage<ComputerPresenceView>;
+
+/**
+ * @generated from message modbit.v1.ComputerPresence
+ */
+export declare type ComputerPresence = Message<"modbit.v1.ComputerPresence"> & {
+  /**
+   * @generated from field: modbit.v1.Id task_id = 1;
+   */
+  taskId?: Id | undefined;
+
+  /**
+   * "" when no session is open (a stop or a latch outlives the session)
+   *
+   * @generated from field: string control_id = 2;
+   */
+  controlId: string;
+
+  /**
+   * display name (an untrusted label)
+   *
+   * @generated from field: string application = 3;
+   */
+  application: string;
+
+  /**
+   * @generated from field: string bundle_id = 4;
+   */
+  bundleId: string;
+
+  /**
+   * APP | SCREEN
+   *
+   * @generated from field: string scope = 5;
+   */
+  scope: string;
+
+  /**
+   * CONTROLLING (the agent holds it) | PARKED (the person touched the machine)
+   * | STOPPED | USER_ABORTED (the person pressed Stop: sticky until the next
+   * turn) | LATCHED (an input's outcome is unknown).
+   *
+   * @generated from field: string state = 6;
+   */
+  state: string;
+
+  /**
+   * AGENT | PARKED | STOPPED | "" (no session)
+   *
+   * @generated from field: string controller = 7;
+   */
+  controller: string;
+
+  /**
+   * @generated from field: int64 grant_expires_ms = 8;
+   */
+  grantExpiresMs: bigint;
+
+  /**
+   * "<tool> <action>: <reason>" or ""
+   *
+   * @generated from field: string latch = 9;
+   */
+  latch: string;
+
+  /**
+   * @generated from field: string latch_tool_call_id = 10;
+   */
+  latchToolCallId: string;
+
+  /**
+   * @generated from field: uint32 actions = 11;
+   */
+  actions: number;
+
+  /**
+   * @generated from field: uint32 screenshots = 12;
+   */
+  screenshots: number;
+
+  /**
+   * @generated from field: uint32 observations = 13;
+   */
+  observations: number;
+};
+
+/**
+ * Describes the message modbit.v1.ComputerPresence.
+ * Use `create(ComputerPresenceSchema)` to create a new message.
+ */
+export declare const ComputerPresenceSchema: GenMessage<ComputerPresence>;
+
+/**
+ * The task's computer activity, in order, from the log: counts, kinds and
+ * artifact references only (CUC-F03). The desktop joins each entry with the
+ * approval that bound it and the tool call's own record.
+ *
+ * @generated from message modbit.v1.ListComputerActivity
+ */
+export declare type ListComputerActivity = Message<"modbit.v1.ListComputerActivity"> & {
+  /**
+   * @generated from field: modbit.v1.Id task_id = 1;
+   */
+  taskId?: Id | undefined;
+};
+
+/**
+ * Describes the message modbit.v1.ListComputerActivity.
+ * Use `create(ListComputerActivitySchema)` to create a new message.
+ */
+export declare const ListComputerActivitySchema: GenMessage<ListComputerActivity>;
+
+/**
+ * @generated from message modbit.v1.ComputerActivityView
+ */
+export declare type ComputerActivityView = Message<"modbit.v1.ComputerActivityView"> & {
+  /**
+   * @generated from field: repeated modbit.v1.ComputerActivityEntry entries = 1;
+   */
+  entries: ComputerActivityEntry[];
+
+  /**
+   * only the newest entries are returned
+   *
+   * @generated from field: bool truncated = 2;
+   */
+  truncated: boolean;
+};
+
+/**
+ * Describes the message modbit.v1.ComputerActivityView.
+ * Use `create(ComputerActivityViewSchema)` to create a new message.
+ */
+export declare const ComputerActivityViewSchema: GenMessage<ComputerActivityView>;
+
+/**
+ * @generated from message modbit.v1.ComputerActivityEntry
+ */
+export declare type ComputerActivityEntry = Message<"modbit.v1.ComputerActivityEntry"> & {
+  /**
+   * @generated from field: uint64 offset = 1;
+   */
+  offset: bigint;
+
+  /**
+   * @generated from field: int64 at_ms = 2;
+   */
+  atMs: bigint;
+
+  /**
+   * SESSION_STARTED | OBSERVED | ACTION | LATCHED | LATCH_RESOLVED |
+   * SESSION_CLOSED | USER_ABORTED
+   *
+   * @generated from field: string kind = 3;
+   */
+  kind: string;
+
+  /**
+   * @generated from field: string control_id = 4;
+   */
+  controlId: string;
+
+  /**
+   * @generated from field: string tool_call_id = 5;
+   */
+  toolCallId: string;
+
+  /**
+   * @generated from field: string approval_id = 6;
+   */
+  approvalId: string;
+
+  /**
+   * @generated from field: string intent_hash = 7;
+   */
+  intentHash: string;
+
+  /**
+   * @generated from field: string bundle_id = 8;
+   */
+  bundleId: string;
+
+  /**
+   * untrusted label, as the session recorded it
+   *
+   * @generated from field: string application = 9;
+   */
+  application: string;
+
+  /**
+   * @generated from field: string scope = 10;
+   */
+  scope: string;
+
+  /**
+   * OBSERVED: apps | resolve | state | screenshot | wait. ACTION: press |
+   * set_value | click | move | drag | type | key | scroll.
+   *
+   * @generated from field: string detail = 11;
+   */
+  detail: string;
+
+  /**
+   * ACTION: ax | coordinate | raw
+   *
+   * @generated from field: string modality = 12;
+   */
+  modality: string;
+
+  /**
+   * ACTION: SUCCEEDED | FAILED | UNKNOWN; SESSION_CLOSED: OK | LATCHED | STOPPED
+   *
+   * @generated from field: string outcome = 13;
+   */
+  outcome: string;
+
+  /**
+   * the typed refusal, when one
+   *
+   * @generated from field: string code = 14;
+   */
+  code: string;
+
+  /**
+   * SESSION_CLOSED / LATCHED / USER_ABORTED: why
+   *
+   * @generated from field: string reason = 15;
+   */
+  reason: string;
+
+  /**
+   * OBSERVED screenshot: the masked frame in the object store
+   *
+   * @generated from field: string artifact_ref = 16;
+   */
+  artifactRef: string;
+
+  /**
+   * @generated from field: string artifact_digest = 17;
+   */
+  artifactDigest: string;
+
+  /**
+   * the retention window removed the pixels; the record stays
+   *
+   * @generated from field: bool artifact_expired = 18;
+   */
+  artifactExpired: boolean;
+
+  /**
+   * OBSERVED state: elements in the tree
+   *
+   * @generated from field: uint32 elements = 19;
+   */
+  elements: number;
+
+  /**
+   * secure fields whose values were withheld
+   *
+   * @generated from field: uint32 secure_withheld = 20;
+   */
+  secureWithheld: number;
+
+  /**
+   * secure regions masked before the frame was kept
+   *
+   * @generated from field: uint32 masked_regions = 21;
+   */
+  maskedRegions: number;
+
+  /**
+   * @generated from field: uint64 duration_ms = 22;
+   */
+  durationMs: bigint;
+
+  /**
+   * ACTION: whether the effect was checked afterwards
+   *
+   * @generated from field: bool verified_known = 23;
+   */
+  verifiedKnown: boolean;
+
+  /**
+   * @generated from field: bool verified = 24;
+   */
+  verified: boolean;
+};
+
+/**
+ * Describes the message modbit.v1.ComputerActivityEntry.
+ * Use `create(ComputerActivityEntrySchema)` to create a new message.
+ */
+export declare const ComputerActivityEntrySchema: GenMessage<ComputerActivityEntry>;
 
 /**
  * @generated from enum modbit.v1.Delivery

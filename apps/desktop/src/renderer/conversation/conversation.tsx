@@ -21,6 +21,9 @@ import { ApprovalDock } from "../approvals/approval-dock.tsx";
 import { ModeProposalDock } from "../approvals/mode-proposal-dock.tsx";
 import { RunModeControl } from "../approvals/run-mode.tsx";
 import { useCheckpointSurface } from "./use-checkpoint-surface.tsx";
+import { useComputerCards } from "../computer/use-computer.ts";
+import { callKey } from "../computer/model.ts";
+import type { ComputerCardContext } from "../computer/action-card.tsx";
 
 export interface ConversationProps {
   taskId: string;
@@ -50,6 +53,14 @@ const findRow = (rows: readonly TranscriptRowView[], id: string, path: string[] 
   }
   return null;
 };
+
+/** The task's native-control tool calls in transcript order (a fold's children included): the cards' numbers. */
+function computerCalls(rows: readonly TranscriptRowView[], out: string[]): void {
+  for (const r of rows) {
+    if (r.facts.type === "tool" && r.facts.toolName.startsWith("computer.")) out.push(callKey(r.facts.toolCallId));
+    computerCalls(r.children, out);
+  }
+}
 
 function collectTurnText(rows: readonly TranscriptRowView[], turnId: string, out: string[]): void {
   for (const r of rows) {
@@ -175,9 +186,30 @@ export function Conversation(props: ConversationProps) {
     [conv.rows],
   );
 
+  // PX-074: native-control calls are numbered action cards joined from the Core's records.
+  const computerIds = useMemo(() => {
+    const ids: string[] = [];
+    computerCalls(conv.rows, ids);
+    return ids;
+  }, [conv.rows]);
+  const computer = useComputerCards(sessionId, taskId, connected, computerIds.length > 0, `${conv.lastOffset}:${computerIds.length}`);
+  const resolveLatch = useCallback(
+    async (tid: string): Promise<string> => {
+      if (!sessionId) throw new Error("no session");
+      const r = await window.modbit.computerResolveLatch(sessionId, tid, "resolved on the action card");
+      computer.reload();
+      return r.wasLatched ? "Resolved. Nothing runs until the agent opens a new session, looks again and you approve." : "There was no latch to resolve.";
+    },
+    [sessionId, computer],
+  );
+  const computerCtx = useMemo<ComputerCardContext | undefined>(
+    () => (computerIds.length === 0 ? undefined : { taskId, cards: computer.cards, ordinals: new Map(computerIds.map((id, i) => [id, i + 1])), onResolveLatch: resolveLatch }),
+    [taskId, computerIds, computer.cards, resolveLatch],
+  );
+
   const ctx = useMemo<RowContext>(
-    () => ({ sessionId, card, live: conv.live, approvals: conv.approvals, openGroups, onToggleGroup: toggleGroup, codeOpen: prefs.codeOpen, onCodeOpen: (open) => setPrefs((p) => ({ ...p, codeOpen: open })), onResume, onCopyTurn: copyTurn, highlightRowId: highlight, latestUserRowId: latestUser, checkpoints: ckpt.context }),
-    [sessionId, card, conv.live, conv.approvals, openGroups, toggleGroup, prefs.codeOpen, onResume, copyTurn, highlight, latestUser, ckpt.context],
+    () => ({ sessionId, card, live: conv.live, approvals: conv.approvals, openGroups, onToggleGroup: toggleGroup, codeOpen: prefs.codeOpen, onCodeOpen: (open) => setPrefs((p) => ({ ...p, codeOpen: open })), onResume, onCopyTurn: copyTurn, highlightRowId: highlight, latestUserRowId: latestUser, checkpoints: ckpt.context, computer: computerCtx }),
+    [sessionId, card, conv.live, conv.approvals, openGroups, toggleGroup, prefs.codeOpen, onResume, copyTurn, highlight, latestUser, ckpt.context, computerCtx],
   );
 
   const jumpUser = (dir: 1 | -1) => {

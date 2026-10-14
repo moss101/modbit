@@ -37,7 +37,7 @@ import { file_modbit_v1_domain } from "./domain_pb.js";
  * Describes the file modbit/v1/computer.proto.
  */
 export const file_modbit_v1_computer = /*@__PURE__*/
-  fileDesc("Chhtb2RiaXQvdjEvY29tcHV0ZXIucHJvdG8SCW1vZGJpdC52MSL8AQoNQWN0dWF0b3JGcmFtZRIpCgVoZWxsbxgBIAEoCzIYLm1vZGJpdC52MS5BY3R1YXRvckhlbGxvSAASLQoHd2VsY29tZRgCIAEoCzIaLm1vZGJpdC52MS5BY3R1YXRvcldlbGNvbWVIABItCgdyZXF1ZXN0GAMgASgLMhoubW9kYml0LnYxLkFjdHVhdG9yUmVxdWVzdEgAEi8KCHJlc3BvbnNlGAQgASgLMhsubW9kYml0LnYxLkFjdHVhdG9yUmVzcG9uc2VIABIpCgVldmVudBgFIAEoCzIYLm1vZGJpdC52MS5BY3R1YXRvckV2ZW50SABCBgoEYm9keSJ2Cg1BY3R1YXRvckhlbGxvEhYKDnByb3RvY29sX21ham9yGAEgASgNEhYKDnByb3RvY29sX21pbm9yGAIgASgNEg0KBXRva2VuGAMgASgMEhAKCGNvcmVfcGlkGAQgASgNEhQKDGNvcmVfdmVyc2lvbhgFIAEoCSLNAQoPQWN0dWF0b3JXZWxjb21lEhYKDnByb3RvY29sX21ham9yGAEgASgNEhYKDnByb3RvY29sX21pbm9yGAIgASgNEhUKDWFjdHVhdG9yX25hbWUYAyABKAkSGAoQYWN0dWF0b3JfdmVyc2lvbhgEIAEoCRILCgNwaWQYBSABKA0SEAoIcGxhdGZvcm0YBiABKAkSEwoLdG9rZW5fcHJvb2YYByABKAkSFAoMY2FwYWJpbGl0aWVzGAggAygJEg8KB3JlZnVzYWwYCSABKAkiqwQKD0FjdHVhdG9yUmVxdWVzdBISCgpyZXF1ZXN0X2lkGAEgASgEEhMKC2RlYWRsaW5lX21zGAIgASgEEj8KEWxpc3RfYXBwbGljYXRpb25zGAogASgLMiIubW9kYml0LnYxLkxpc3RBcHBsaWNhdGlvbnNSZXF1ZXN0SAASQwoTcmVzb2x2ZV9hcHBsaWNhdGlvbhgLIAEoCzIkLm1vZGJpdC52MS5SZXNvbHZlQXBwbGljYXRpb25SZXF1ZXN0SAASLAoHYWNxdWlyZRgMIAEoCzIZLm1vZGJpdC52MS5BY3F1aXJlUmVxdWVzdEgAEiwKB3JlbGVhc2UYDSABKAsyGS5tb2RiaXQudjEuUmVsZWFzZVJlcXVlc3RIABIxCgpyZWFkX3N0YXRlGA4gASgLMhsubW9kYml0LnYxLlJlYWRTdGF0ZVJlcXVlc3RIABIsCgdjYXB0dXJlGA8gASgLMhkubW9kYml0LnYxLkNhcHR1cmVSZXF1ZXN0SAASJgoEd2FpdBgQIAEoCzIWLm1vZGJpdC52MS5XYWl0UmVxdWVzdEgAEiwKB3BlcmZvcm0YESABKAsyGS5tb2RiaXQudjEuUGVyZm9ybVJlcXVlc3RIABImCgRzdG9wGBIgASgLMhYubW9kYml0LnYxLlN0b3BSZXF1ZXN0SAASJgoEcGluZxgTIAEoCzIWLm1vZGJpdC52MS5QaW5nUmVxdWVzdEgAQgYKBGNhbGwizgQKEEFjdHVhdG9yUmVzcG9uc2USEgoKcmVxdWVzdF9pZBgBIAEoBBJAChFsaXN0X2FwcGxpY2F0aW9ucxgKIAEoCzIjLm1vZGJpdC52MS5MaXN0QXBwbGljYXRpb25zUmVzcG9uc2VIABJEChNyZXNvbHZlX2FwcGxpY2F0aW9uGAsgASgLMiUubW9kYml0LnYxLlJlc29sdmVBcHBsaWNhdGlvblJlc3BvbnNlSAASLQoHYWNxdWlyZRgMIAEoCzIaLm1vZGJpdC52MS5BY3F1aXJlUmVzcG9uc2VIABItCgdyZWxlYXNlGA0gASgLMhoubW9kYml0LnYxLlJlbGVhc2VSZXNwb25zZUgAEjIKCnJlYWRfc3RhdGUYDiABKAsyHC5tb2RiaXQudjEuUmVhZFN0YXRlUmVzcG9uc2VIABItCgdjYXB0dXJlGA8gASgLMhoubW9kYml0LnYxLkNhcHR1cmVSZXNwb25zZUgAEicKBHdhaXQYECABKAsyFy5tb2RiaXQudjEuV2FpdFJlc3BvbnNlSAASLQoHcGVyZm9ybRgRIAEoCzIaLm1vZGJpdC52MS5QZXJmb3JtUmVzcG9uc2VIABInCgRzdG9wGBIgASgLMhcubW9kYml0LnYxLlN0b3BSZXNwb25zZUgAEicKBHBpbmcYEyABKAsyFy5tb2RiaXQudjEuUGluZ1Jlc3BvbnNlSAASKQoFZXJyb3IYYyABKAsyGC5tb2RiaXQudjEuQWN0dWF0b3JFcnJvckgAQggKBnJlc3VsdCJVCg1BY3R1YXRvckVycm9yEgwKBGNvZGUYASABKAkSDwoHbWVzc2FnZRgCIAEoCRIlCghkZWxpdmVyeRgDIAEoDjITLm1vZGJpdC52MS5EZWxpdmVyeSLkAQoNQWN0dWF0b3JFdmVudBIsCgtodW1hbl9pbnB1dBgBIAEoCzIVLm1vZGJpdC52MS5IdW1hbklucHV0SAASMgoOc3RvcF9yZXF1ZXN0ZWQYAiABKAsyGC5tb2RiaXQudjEuU3RvcFJlcXVlc3RlZEgAEiwKC3dpbmRvd19nb25lGAMgASgLMhUubW9kYml0LnYxLldpbmRvd0dvbmVIABI6ChJwZXJtaXNzaW9uX2NoYW5nZWQYBCABKAsyHC5tb2RiaXQudjEuUGVybWlzc2lvbkNoYW5nZWRIAEIHCgVldmVudCIpCgpIdW1hbklucHV0Eg0KBWF0X21zGAEgASgEEgwKBGtpbmQYAiABKAkiMwoNU3RvcFJlcXVlc3RlZBIOCgZzb3VyY2UYASABKAkSEgoKY29udHJvbF9pZBgCIAEoCSIzCgpXaW5kb3dHb25lEhIKCmNvbnRyb2xfaWQYASABKAkSEQoJd2luZG93X2lkGAIgASgJIjgKEVBlcm1pc3Npb25DaGFuZ2VkEhIKCnBlcm1pc3Npb24YASABKAkSDwoHZ3JhbnRlZBgCIAEoCCJ2ChNBcHBsaWNhdGlvbklkZW50aXR5EhEKCWJ1bmRsZV9pZBgBIAEoCRIXCg9leGVjdXRhYmxlX3BhdGgYAiABKAkSGAoQc2lnbmluZ19pZGVudGl0eRgDIAEoCRILCgNwaWQYBCABKA0SDAoEbmFtZRgFIAEoCSI7CgRSZWN0EgkKAXgYASABKAUSCQoBeRgCIAEoBRINCgV3aWR0aBgDIAEoBRIOCgZoZWlnaHQYBCABKAUikwEKCldpbmRvd0luZm8SEQoJd2luZG93X2lkGAEgASgJEg0KBXRpdGxlGAIgASgJEh8KBmJvdW5kcxgDIAEoCzIPLm1vZGJpdC52MS5SZWN0Eg8KB2ZvY3VzZWQYBCABKAgSDQoFbW9kYWwYBSABKAgSEQoJbWluaW1pemVkGAYgASgIEg8KB3ZlcnNpb24YByABKAQifQoPQXBwbGljYXRpb25JbmZvEjAKCGlkZW50aXR5GAEgASgLMh4ubW9kYml0LnYxLkFwcGxpY2F0aW9uSWRlbnRpdHkSJgoHd2luZG93cxgCIAMoCzIVLm1vZGJpdC52MS5XaW5kb3dJbmZvEhAKCGVsZXZhdGVkGAMgASgIIhkKF0xpc3RBcHBsaWNhdGlvbnNSZXF1ZXN0IkwKGExpc3RBcHBsaWNhdGlvbnNSZXNwb25zZRIwCgxhcHBsaWNhdGlvbnMYASADKAsyGi5tb2RiaXQudjEuQXBwbGljYXRpb25JbmZvIkkKGVJlc29sdmVBcHBsaWNhdGlvblJlcXVlc3QSEQoJYnVuZGxlX2lkGAEgASgJEgwKBG5hbWUYAiABKAkSCwoDcGlkGAMgASgNIk0KGlJlc29sdmVBcHBsaWNhdGlvblJlc3BvbnNlEi8KC2FwcGxpY2F0aW9uGAEgASgLMhoubW9kYml0LnYxLkFwcGxpY2F0aW9uSW5mbyKjAQoOQWNxdWlyZVJlcXVlc3QSEgoKY29udHJvbF9pZBgBIAEoCRIfCgVzY29wZRgCIAEoDjIQLm1vZGJpdC52MS5TY29wZRIzCgthcHBsaWNhdGlvbhgDIAEoCzIeLm1vZGJpdC52MS5BcHBsaWNhdGlvbklkZW50aXR5EhEKCXdpbmRvd19pZBgEIAEoCRIUCgxsZWFzZV90dGxfbXMYBSABKAQicAoPQWNxdWlyZVJlc3BvbnNlEhIKCmNvbnRyb2xfaWQYASABKAkSGAoQbGVhc2VfZ2VuZXJhdGlvbhgCIAEoBBIvCgthcHBsaWNhdGlvbhgDIAEoCzIaLm1vZGJpdC52MS5BcHBsaWNhdGlvbkluZm8iJAoOUmVsZWFzZVJlcXVlc3QSEgoKY29udHJvbF9pZBgBIAEoCSIjCg9SZWxlYXNlUmVzcG9uc2USEAoId2FzX2hlbGQYASABKAgipQEKEFJlYWRTdGF0ZVJlcXVlc3QSEgoKY29udHJvbF9pZBgBIAEoCRIzCgthcHBsaWNhdGlvbhgCIAEoCzIeLm1vZGJpdC52MS5BcHBsaWNhdGlvbklkZW50aXR5EhEKCXdpbmRvd19pZBgDIAEoCRITCgtzbmFwc2hvdF9pZBgEIAEoCRIRCgltYXhfbm9kZXMYBSABKA0SDQoFcHJvYmUYBiABKAgi0AEKBkF4Tm9kZRISCgplbGVtZW50X2lkGAEgASgJEhEKCXBhcmVudF9pZBgCIAEoCRIMCgRyb2xlGAMgASgJEgwKBG5hbWUYBCABKAkSDQoFdmFsdWUYBSABKAkSEAoIc2V0dGFibGUYBiABKAgSDgoGc2VjdXJlGAcgASgIEg8KB2VuYWJsZWQYCCABKAgSDwoHZm9jdXNlZBgJIAEoCBIPCgdhY3Rpb25zGAogAygJEh8KBmJvdW5kcxgLIAEoCzIPLm1vZGJpdC52MS5SZWN0IpkBChFSZWFkU3RhdGVSZXNwb25zZRITCgtzbmFwc2hvdF9pZBgBIAEoCRIlCgZ3aW5kb3cYAiABKAsyFS5tb2RiaXQudjEuV2luZG93SW5mbxIgCgVub2RlcxgDIAMoCzIRLm1vZGJpdC52MS5BeE5vZGUSEQoJdHJ1bmNhdGVkGAQgASgIEhMKC3RyZWVfZGlnZXN0GAUgASgJIroBCg5DYXB0dXJlUmVxdWVzdBISCgpjb250cm9sX2lkGAEgASgJEjMKC2FwcGxpY2F0aW9uGAIgASgLMh4ubW9kYml0LnYxLkFwcGxpY2F0aW9uSWRlbnRpdHkSEQoJd2luZG93X2lkGAMgASgJEh8KBXNjb3BlGAQgASgOMhAubW9kYml0LnYxLlNjb3BlEhQKDGNhbnZhc193aWR0aBgFIAEoDRIVCg1jYW52YXNfaGVpZ2h0GAYgASgNImsKCUxldHRlcmJveBIUCgxzb3VyY2Vfd2lkdGgYASABKA0SFQoNc291cmNlX2hlaWdodBgCIAEoDRINCgVzY2FsZRgDIAEoARIQCghvZmZzZXRfeBgEIAEoARIQCghvZmZzZXRfeRgFIAEoASLkAQoPQ2FwdHVyZVJlc3BvbnNlEgsKA3BuZxgBIAEoDBINCgV3aWR0aBgCIAEoDRIOCgZoZWlnaHQYAyABKA0SJwoJbGV0dGVyYm94GAQgASgLMhQubW9kYml0LnYxLkxldHRlcmJveBIlCgZ3aW5kb3cYBSABKAsyFS5tb2RiaXQudjEuV2luZG93SW5mbxIWCg5tYXNrZWRfcmVnaW9ucxgGIAEoDRInCg5zZWN1cmVfcmVnaW9ucxgHIAMoCzIPLm1vZGJpdC52MS5SZWN0EhQKDGZyYW1lX2RpZ2VzdBgIIAEoCSKTAQoLV2FpdFJlcXVlc3QSEgoKY29udHJvbF9pZBgBIAEoCRIzCgthcHBsaWNhdGlvbhgCIAEoCzIeLm1vZGJpdC52MS5BcHBsaWNhdGlvbklkZW50aXR5EhEKCXdpbmRvd19pZBgDIAEoCRISCgp0aW1lb3V0X21zGAQgASgEEhQKDHNpbmNlX2RpZ2VzdBgFIAEoCSJHCgxXYWl0UmVzcG9uc2USDwoHY2hhbmdlZBgBIAEoCBITCgt0cmVlX2RpZ2VzdBgCIAEoCRIRCgl3YWl0ZWRfbXMYAyABKAQiHQoFUG9pbnQSCQoBeBgBIAEoARIJCgF5GAIgASgBIjEKC1ByZXNzQWN0aW9uEhIKCmVsZW1lbnRfaWQYASABKAkSDgoGYWN0aW9uGAIgASgJIjMKDlNldFZhbHVlQWN0aW9uEhIKCmVsZW1lbnRfaWQYASABKAkSDQoFdmFsdWUYAiABKAkiSgoLQ2xpY2tBY3Rpb24SHAoCYXQYASABKAsyEC5tb2RiaXQudjEuUG9pbnQSDgoGYnV0dG9uGAIgASgJEg0KBWNvdW50GAMgASgNIioKCk1vdmVBY3Rpb24SHAoCdG8YASABKAsyEC5tb2RiaXQudjEuUG9pbnQiSgoKRHJhZ0FjdGlvbhIeCgRmcm9tGAEgASgLMhAubW9kYml0LnYxLlBvaW50EhwKAnRvGAIgASgLMhAubW9kYml0LnYxLlBvaW50IigKClR5cGVBY3Rpb24SDAoEdGV4dBgBIAEoCRIMCgR0aGVuGAIgASgJIhkKCUtleUFjdGlvbhIMCgRrZXlzGAEgAygJIlgKDFNjcm9sbEFjdGlvbhIcCgJhdBgBIAEoCzIQLm1vZGJpdC52MS5Qb2ludBIKCgJkeBgCIAEoARIKCgJkeRgDIAEoARISCgplbGVtZW50X2lkGAQgASgJIrkECg5QZXJmb3JtUmVxdWVzdBISCgpjb250cm9sX2lkGAEgASgJEjMKC2FwcGxpY2F0aW9uGAIgASgLMh4ubW9kYml0LnYxLkFwcGxpY2F0aW9uSWRlbnRpdHkSEQoJd2luZG93X2lkGAMgASgJEhMKC3NuYXBzaG90X2lkGAQgASgJEhMKC2ZyYW1lX3Rva2VuGAUgASgJEhYKDndpbmRvd192ZXJzaW9uGAYgASgEEh8KBXNjb3BlGAcgASgOMhAubW9kYml0LnYxLlNjb3BlEhcKD2lkZW1wb3RlbmN5X2tleRgIIAEoCRInCgVwcmVzcxgUIAEoCzIWLm1vZGJpdC52MS5QcmVzc0FjdGlvbkgAEi4KCXNldF92YWx1ZRgVIAEoCzIZLm1vZGJpdC52MS5TZXRWYWx1ZUFjdGlvbkgAEicKBWNsaWNrGBYgASgLMhYubW9kYml0LnYxLkNsaWNrQWN0aW9uSAASJQoEbW92ZRgXIAEoCzIVLm1vZGJpdC52MS5Nb3ZlQWN0aW9uSAASJQoEZHJhZxgYIAEoCzIVLm1vZGJpdC52MS5EcmFnQWN0aW9uSAASJQoEdHlwZRgZIAEoCzIVLm1vZGJpdC52MS5UeXBlQWN0aW9uSAASIwoDa2V5GBogASgLMhQubW9kYml0LnYxLktleUFjdGlvbkgAEikKBnNjcm9sbBgbIAEoCzIXLm1vZGJpdC52MS5TY3JvbGxBY3Rpb25IAEIICgZhY3Rpb24iUAoNRWxlbWVudENoYW5nZRISCgplbGVtZW50X2lkGAEgASgJEgwKBGtpbmQYAiABKAkSDgoGYmVmb3JlGAMgASgJEg0KBWFmdGVyGAQgASgJIuUBCg9QZXJmb3JtUmVzcG9uc2USJQoIZGVsaXZlcnkYASABKA4yEy5tb2RiaXQudjEuRGVsaXZlcnkSEAoIbW9kYWxpdHkYAiABKAkSFwoPbW9kYWxpdHlfcmVhc29uGAMgASgJEhkKEXN0cnVjdHVyZV9jaGFuZ2VkGAQgASgIEhMKC3RyZWVfZGlnZXN0GAUgASgJEikKB2NoYW5nZXMYBiADKAsyGC5tb2RiaXQudjEuRWxlbWVudENoYW5nZRIlCgZ3aW5kb3cYByABKAsyFS5tb2RiaXQudjEuV2luZG93SW5mbyItCgtTdG9wUmVxdWVzdBIOCgZyZWFzb24YASABKAkSDgoGc291cmNlGAIgASgJIkAKDFN0b3BSZXNwb25zZRIVCg1oYWx0ZWRfbGVhc2VzGAEgASgNEhkKEXN0b3BwZWRfd2l0aGluX21zGAIgASgEIiEKC1BpbmdSZXF1ZXN0EhIKCmNvbnRyb2xfaWQYASABKAkiUgoMUGluZ1Jlc3BvbnNlEhIKCmxlYXNlX2hlbGQYASABKAgSGAoQbGVhc2VfZ2VuZXJhdGlvbhgCIAEoBBIUCgxodW1hbl9hY3RpdmUYAyABKAgiNAoSR2V0Q29tcHV0ZXJSdW50aW1lEh4KB3Rhc2tfaWQYASABKAsyDS5tb2RiaXQudjEuSWQi6AMKE0NvbXB1dGVyUnVudGltZVZpZXcSEgoKY29uZmlndXJlZBgBIAEoCBIQCghhdHRhY2hlZBgCIAEoCBIVCg1hY3R1YXRvcl9uYW1lGAMgASgJEhgKEGFjdHVhdG9yX3ZlcnNpb24YBCABKAkSFAoMYWN0dWF0b3JfcGlkGAUgASgNEhAKCHBsYXRmb3JtGAYgASgJEg4KBmRldGFpbBgHIAEoCRISCgpjb250cm9sX2lkGAogASgJEhMKC2FwcGxpY2F0aW9uGAsgASgJEhEKCWJ1bmRsZV9pZBgMIAEoCRINCgVzY29wZRgNIAEoCRISCgpjb250cm9sbGVyGA4gASgJEhgKEGdyYW50X2V4cGlyZXNfbXMYDyABKAMSGAoQZ3JhbnRfY2FsbHNfbGVmdBgQIAEoDRINCgVsYXRjaBgUIAEoCRIaChJsYXRjaF90b29sX2NhbGxfaWQYFSABKAkSFAoMdXNlcl9hYm9ydGVkGBYgASgIEg8KB2FjdGlvbnMYFyABKA0SEwoLc2NyZWVuc2hvdHMYGCABKA0SFAoMb2JzZXJ2YXRpb25zGBkgASgNEhQKDG5vbl9kcml2YWJsZRgeIAMoCRIcChRub25fZHJpdmFibGVfdmVyc2lvbhgfIAEoCSJEChRSZXNvbHZlQ29tcHV0ZXJMYXRjaBIeCgd0YXNrX2lkGAEgASgLMg0ubW9kYml0LnYxLklkEgwKBG5vdGUYAiABKAkiLAoVQ29tcHV0ZXJMYXRjaFJlc29sdmVkEhMKC3dhc19sYXRjaGVkGAEgASgIIj4KDENvbXB1dGVyU3RvcBIeCgd0YXNrX2lkGAEgASgLMg0ubW9kYml0LnYxLklkEg4KBnJlYXNvbhgCIAEoCSJECg9Db21wdXRlclN0b3BwZWQSFwoPc2Vzc2lvbnNfY2xvc2VkGAEgASgNEhgKEGFjdHVhdG9yX3N0b3BwZWQYAiABKAgqbgoIRGVsaXZlcnkSGAoUREVMSVZFUllfVU5TUEVDSUZJRUQQABIaChZERUxJVkVSWV9OT1RfREVMSVZFUkVEEAESFgoSREVMSVZFUllfREVMSVZFUkVEEAISFAoQREVMSVZFUllfVU5LTk9XThADKj8KBVNjb3BlEhUKEVNDT1BFX1VOU1BFQ0lGSUVEEAASDQoJU0NPUEVfQVBQEAESEAoMU0NPUEVfU0NSRUVOEAIyxQUKCEFjdHVhdG9yElsKEExpc3RBcHBsaWNhdGlvbnMSIi5tb2RiaXQudjEuTGlzdEFwcGxpY2F0aW9uc1JlcXVlc3QaIy5tb2RiaXQudjEuTGlzdEFwcGxpY2F0aW9uc1Jlc3BvbnNlEmEKElJlc29sdmVBcHBsaWNhdGlvbhIkLm1vZGJpdC52MS5SZXNvbHZlQXBwbGljYXRpb25SZXF1ZXN0GiUubW9kYml0LnYxLlJlc29sdmVBcHBsaWNhdGlvblJlc3BvbnNlEkAKB0FjcXVpcmUSGS5tb2RiaXQudjEuQWNxdWlyZVJlcXVlc3QaGi5tb2RiaXQudjEuQWNxdWlyZVJlc3BvbnNlEkAKB1JlbGVhc2USGS5tb2RiaXQudjEuUmVsZWFzZVJlcXVlc3QaGi5tb2RiaXQudjEuUmVsZWFzZVJlc3BvbnNlEkYKCVJlYWRTdGF0ZRIbLm1vZGJpdC52MS5SZWFkU3RhdGVSZXF1ZXN0GhwubW9kYml0LnYxLlJlYWRTdGF0ZVJlc3BvbnNlEkAKB0NhcHR1cmUSGS5tb2RiaXQudjEuQ2FwdHVyZVJlcXVlc3QaGi5tb2RiaXQudjEuQ2FwdHVyZVJlc3BvbnNlEjcKBFdhaXQSFi5tb2RiaXQudjEuV2FpdFJlcXVlc3QaFy5tb2RiaXQudjEuV2FpdFJlc3BvbnNlEkAKB1BlcmZvcm0SGS5tb2RiaXQudjEuUGVyZm9ybVJlcXVlc3QaGi5tb2RiaXQudjEuUGVyZm9ybVJlc3BvbnNlEjcKBFN0b3ASFi5tb2RiaXQudjEuU3RvcFJlcXVlc3QaFy5tb2RiaXQudjEuU3RvcFJlc3BvbnNlEjcKBFBpbmcSFi5tb2RiaXQudjEuUGluZ1JlcXVlc3QaFy5tb2RiaXQudjEuUGluZ1Jlc3BvbnNlYgZwcm90bzM", [file_modbit_v1_domain]);
+  fileDesc("Chhtb2RiaXQvdjEvY29tcHV0ZXIucHJvdG8SCW1vZGJpdC52MSL8AQoNQWN0dWF0b3JGcmFtZRIpCgVoZWxsbxgBIAEoCzIYLm1vZGJpdC52MS5BY3R1YXRvckhlbGxvSAASLQoHd2VsY29tZRgCIAEoCzIaLm1vZGJpdC52MS5BY3R1YXRvcldlbGNvbWVIABItCgdyZXF1ZXN0GAMgASgLMhoubW9kYml0LnYxLkFjdHVhdG9yUmVxdWVzdEgAEi8KCHJlc3BvbnNlGAQgASgLMhsubW9kYml0LnYxLkFjdHVhdG9yUmVzcG9uc2VIABIpCgVldmVudBgFIAEoCzIYLm1vZGJpdC52MS5BY3R1YXRvckV2ZW50SABCBgoEYm9keSJ2Cg1BY3R1YXRvckhlbGxvEhYKDnByb3RvY29sX21ham9yGAEgASgNEhYKDnByb3RvY29sX21pbm9yGAIgASgNEg0KBXRva2VuGAMgASgMEhAKCGNvcmVfcGlkGAQgASgNEhQKDGNvcmVfdmVyc2lvbhgFIAEoCSL+AQoPQWN0dWF0b3JXZWxjb21lEhYKDnByb3RvY29sX21ham9yGAEgASgNEhYKDnByb3RvY29sX21pbm9yGAIgASgNEhUKDWFjdHVhdG9yX25hbWUYAyABKAkSGAoQYWN0dWF0b3JfdmVyc2lvbhgEIAEoCRILCgNwaWQYBSABKA0SEAoIcGxhdGZvcm0YBiABKAkSEwoLdG9rZW5fcHJvb2YYByABKAkSFAoMY2FwYWJpbGl0aWVzGAggAygJEg8KB3JlZnVzYWwYCSABKAkSLwoLcGVybWlzc2lvbnMYCiADKAsyGi5tb2RiaXQudjEuUGVybWlzc2lvblN0YXRlIjYKD1Blcm1pc3Npb25TdGF0ZRISCgpwZXJtaXNzaW9uGAEgASgJEg8KB2dyYW50ZWQYAiABKAgiqwQKD0FjdHVhdG9yUmVxdWVzdBISCgpyZXF1ZXN0X2lkGAEgASgEEhMKC2RlYWRsaW5lX21zGAIgASgEEj8KEWxpc3RfYXBwbGljYXRpb25zGAogASgLMiIubW9kYml0LnYxLkxpc3RBcHBsaWNhdGlvbnNSZXF1ZXN0SAASQwoTcmVzb2x2ZV9hcHBsaWNhdGlvbhgLIAEoCzIkLm1vZGJpdC52MS5SZXNvbHZlQXBwbGljYXRpb25SZXF1ZXN0SAASLAoHYWNxdWlyZRgMIAEoCzIZLm1vZGJpdC52MS5BY3F1aXJlUmVxdWVzdEgAEiwKB3JlbGVhc2UYDSABKAsyGS5tb2RiaXQudjEuUmVsZWFzZVJlcXVlc3RIABIxCgpyZWFkX3N0YXRlGA4gASgLMhsubW9kYml0LnYxLlJlYWRTdGF0ZVJlcXVlc3RIABIsCgdjYXB0dXJlGA8gASgLMhkubW9kYml0LnYxLkNhcHR1cmVSZXF1ZXN0SAASJgoEd2FpdBgQIAEoCzIWLm1vZGJpdC52MS5XYWl0UmVxdWVzdEgAEiwKB3BlcmZvcm0YESABKAsyGS5tb2RiaXQudjEuUGVyZm9ybVJlcXVlc3RIABImCgRzdG9wGBIgASgLMhYubW9kYml0LnYxLlN0b3BSZXF1ZXN0SAASJgoEcGluZxgTIAEoCzIWLm1vZGJpdC52MS5QaW5nUmVxdWVzdEgAQgYKBGNhbGwizgQKEEFjdHVhdG9yUmVzcG9uc2USEgoKcmVxdWVzdF9pZBgBIAEoBBJAChFsaXN0X2FwcGxpY2F0aW9ucxgKIAEoCzIjLm1vZGJpdC52MS5MaXN0QXBwbGljYXRpb25zUmVzcG9uc2VIABJEChNyZXNvbHZlX2FwcGxpY2F0aW9uGAsgASgLMiUubW9kYml0LnYxLlJlc29sdmVBcHBsaWNhdGlvblJlc3BvbnNlSAASLQoHYWNxdWlyZRgMIAEoCzIaLm1vZGJpdC52MS5BY3F1aXJlUmVzcG9uc2VIABItCgdyZWxlYXNlGA0gASgLMhoubW9kYml0LnYxLlJlbGVhc2VSZXNwb25zZUgAEjIKCnJlYWRfc3RhdGUYDiABKAsyHC5tb2RiaXQudjEuUmVhZFN0YXRlUmVzcG9uc2VIABItCgdjYXB0dXJlGA8gASgLMhoubW9kYml0LnYxLkNhcHR1cmVSZXNwb25zZUgAEicKBHdhaXQYECABKAsyFy5tb2RiaXQudjEuV2FpdFJlc3BvbnNlSAASLQoHcGVyZm9ybRgRIAEoCzIaLm1vZGJpdC52MS5QZXJmb3JtUmVzcG9uc2VIABInCgRzdG9wGBIgASgLMhcubW9kYml0LnYxLlN0b3BSZXNwb25zZUgAEicKBHBpbmcYEyABKAsyFy5tb2RiaXQudjEuUGluZ1Jlc3BvbnNlSAASKQoFZXJyb3IYYyABKAsyGC5tb2RiaXQudjEuQWN0dWF0b3JFcnJvckgAQggKBnJlc3VsdCJVCg1BY3R1YXRvckVycm9yEgwKBGNvZGUYASABKAkSDwoHbWVzc2FnZRgCIAEoCRIlCghkZWxpdmVyeRgDIAEoDjITLm1vZGJpdC52MS5EZWxpdmVyeSLkAQoNQWN0dWF0b3JFdmVudBIsCgtodW1hbl9pbnB1dBgBIAEoCzIVLm1vZGJpdC52MS5IdW1hbklucHV0SAASMgoOc3RvcF9yZXF1ZXN0ZWQYAiABKAsyGC5tb2RiaXQudjEuU3RvcFJlcXVlc3RlZEgAEiwKC3dpbmRvd19nb25lGAMgASgLMhUubW9kYml0LnYxLldpbmRvd0dvbmVIABI6ChJwZXJtaXNzaW9uX2NoYW5nZWQYBCABKAsyHC5tb2RiaXQudjEuUGVybWlzc2lvbkNoYW5nZWRIAEIHCgVldmVudCIpCgpIdW1hbklucHV0Eg0KBWF0X21zGAEgASgEEgwKBGtpbmQYAiABKAkiMwoNU3RvcFJlcXVlc3RlZBIOCgZzb3VyY2UYASABKAkSEgoKY29udHJvbF9pZBgCIAEoCSIzCgpXaW5kb3dHb25lEhIKCmNvbnRyb2xfaWQYASABKAkSEQoJd2luZG93X2lkGAIgASgJIjgKEVBlcm1pc3Npb25DaGFuZ2VkEhIKCnBlcm1pc3Npb24YASABKAkSDwoHZ3JhbnRlZBgCIAEoCCJ2ChNBcHBsaWNhdGlvbklkZW50aXR5EhEKCWJ1bmRsZV9pZBgBIAEoCRIXCg9leGVjdXRhYmxlX3BhdGgYAiABKAkSGAoQc2lnbmluZ19pZGVudGl0eRgDIAEoCRILCgNwaWQYBCABKA0SDAoEbmFtZRgFIAEoCSI7CgRSZWN0EgkKAXgYASABKAUSCQoBeRgCIAEoBRINCgV3aWR0aBgDIAEoBRIOCgZoZWlnaHQYBCABKAUikwEKCldpbmRvd0luZm8SEQoJd2luZG93X2lkGAEgASgJEg0KBXRpdGxlGAIgASgJEh8KBmJvdW5kcxgDIAEoCzIPLm1vZGJpdC52MS5SZWN0Eg8KB2ZvY3VzZWQYBCABKAgSDQoFbW9kYWwYBSABKAgSEQoJbWluaW1pemVkGAYgASgIEg8KB3ZlcnNpb24YByABKAQifQoPQXBwbGljYXRpb25JbmZvEjAKCGlkZW50aXR5GAEgASgLMh4ubW9kYml0LnYxLkFwcGxpY2F0aW9uSWRlbnRpdHkSJgoHd2luZG93cxgCIAMoCzIVLm1vZGJpdC52MS5XaW5kb3dJbmZvEhAKCGVsZXZhdGVkGAMgASgIIhkKF0xpc3RBcHBsaWNhdGlvbnNSZXF1ZXN0IkwKGExpc3RBcHBsaWNhdGlvbnNSZXNwb25zZRIwCgxhcHBsaWNhdGlvbnMYASADKAsyGi5tb2RiaXQudjEuQXBwbGljYXRpb25JbmZvIkkKGVJlc29sdmVBcHBsaWNhdGlvblJlcXVlc3QSEQoJYnVuZGxlX2lkGAEgASgJEgwKBG5hbWUYAiABKAkSCwoDcGlkGAMgASgNIk0KGlJlc29sdmVBcHBsaWNhdGlvblJlc3BvbnNlEi8KC2FwcGxpY2F0aW9uGAEgASgLMhoubW9kYml0LnYxLkFwcGxpY2F0aW9uSW5mbyKjAQoOQWNxdWlyZVJlcXVlc3QSEgoKY29udHJvbF9pZBgBIAEoCRIfCgVzY29wZRgCIAEoDjIQLm1vZGJpdC52MS5TY29wZRIzCgthcHBsaWNhdGlvbhgDIAEoCzIeLm1vZGJpdC52MS5BcHBsaWNhdGlvbklkZW50aXR5EhEKCXdpbmRvd19pZBgEIAEoCRIUCgxsZWFzZV90dGxfbXMYBSABKAQicAoPQWNxdWlyZVJlc3BvbnNlEhIKCmNvbnRyb2xfaWQYASABKAkSGAoQbGVhc2VfZ2VuZXJhdGlvbhgCIAEoBBIvCgthcHBsaWNhdGlvbhgDIAEoCzIaLm1vZGJpdC52MS5BcHBsaWNhdGlvbkluZm8iJAoOUmVsZWFzZVJlcXVlc3QSEgoKY29udHJvbF9pZBgBIAEoCSIjCg9SZWxlYXNlUmVzcG9uc2USEAoId2FzX2hlbGQYASABKAgipQEKEFJlYWRTdGF0ZVJlcXVlc3QSEgoKY29udHJvbF9pZBgBIAEoCRIzCgthcHBsaWNhdGlvbhgCIAEoCzIeLm1vZGJpdC52MS5BcHBsaWNhdGlvbklkZW50aXR5EhEKCXdpbmRvd19pZBgDIAEoCRITCgtzbmFwc2hvdF9pZBgEIAEoCRIRCgltYXhfbm9kZXMYBSABKA0SDQoFcHJvYmUYBiABKAgi0AEKBkF4Tm9kZRISCgplbGVtZW50X2lkGAEgASgJEhEKCXBhcmVudF9pZBgCIAEoCRIMCgRyb2xlGAMgASgJEgwKBG5hbWUYBCABKAkSDQoFdmFsdWUYBSABKAkSEAoIc2V0dGFibGUYBiABKAgSDgoGc2VjdXJlGAcgASgIEg8KB2VuYWJsZWQYCCABKAgSDwoHZm9jdXNlZBgJIAEoCBIPCgdhY3Rpb25zGAogAygJEh8KBmJvdW5kcxgLIAEoCzIPLm1vZGJpdC52MS5SZWN0IpkBChFSZWFkU3RhdGVSZXNwb25zZRITCgtzbmFwc2hvdF9pZBgBIAEoCRIlCgZ3aW5kb3cYAiABKAsyFS5tb2RiaXQudjEuV2luZG93SW5mbxIgCgVub2RlcxgDIAMoCzIRLm1vZGJpdC52MS5BeE5vZGUSEQoJdHJ1bmNhdGVkGAQgASgIEhMKC3RyZWVfZGlnZXN0GAUgASgJIroBCg5DYXB0dXJlUmVxdWVzdBISCgpjb250cm9sX2lkGAEgASgJEjMKC2FwcGxpY2F0aW9uGAIgASgLMh4ubW9kYml0LnYxLkFwcGxpY2F0aW9uSWRlbnRpdHkSEQoJd2luZG93X2lkGAMgASgJEh8KBXNjb3BlGAQgASgOMhAubW9kYml0LnYxLlNjb3BlEhQKDGNhbnZhc193aWR0aBgFIAEoDRIVCg1jYW52YXNfaGVpZ2h0GAYgASgNImsKCUxldHRlcmJveBIUCgxzb3VyY2Vfd2lkdGgYASABKA0SFQoNc291cmNlX2hlaWdodBgCIAEoDRINCgVzY2FsZRgDIAEoARIQCghvZmZzZXRfeBgEIAEoARIQCghvZmZzZXRfeRgFIAEoASLkAQoPQ2FwdHVyZVJlc3BvbnNlEgsKA3BuZxgBIAEoDBINCgV3aWR0aBgCIAEoDRIOCgZoZWlnaHQYAyABKA0SJwoJbGV0dGVyYm94GAQgASgLMhQubW9kYml0LnYxLkxldHRlcmJveBIlCgZ3aW5kb3cYBSABKAsyFS5tb2RiaXQudjEuV2luZG93SW5mbxIWCg5tYXNrZWRfcmVnaW9ucxgGIAEoDRInCg5zZWN1cmVfcmVnaW9ucxgHIAMoCzIPLm1vZGJpdC52MS5SZWN0EhQKDGZyYW1lX2RpZ2VzdBgIIAEoCSKTAQoLV2FpdFJlcXVlc3QSEgoKY29udHJvbF9pZBgBIAEoCRIzCgthcHBsaWNhdGlvbhgCIAEoCzIeLm1vZGJpdC52MS5BcHBsaWNhdGlvbklkZW50aXR5EhEKCXdpbmRvd19pZBgDIAEoCRISCgp0aW1lb3V0X21zGAQgASgEEhQKDHNpbmNlX2RpZ2VzdBgFIAEoCSJHCgxXYWl0UmVzcG9uc2USDwoHY2hhbmdlZBgBIAEoCBITCgt0cmVlX2RpZ2VzdBgCIAEoCRIRCgl3YWl0ZWRfbXMYAyABKAQiHQoFUG9pbnQSCQoBeBgBIAEoARIJCgF5GAIgASgBIjEKC1ByZXNzQWN0aW9uEhIKCmVsZW1lbnRfaWQYASABKAkSDgoGYWN0aW9uGAIgASgJIjMKDlNldFZhbHVlQWN0aW9uEhIKCmVsZW1lbnRfaWQYASABKAkSDQoFdmFsdWUYAiABKAkiSgoLQ2xpY2tBY3Rpb24SHAoCYXQYASABKAsyEC5tb2RiaXQudjEuUG9pbnQSDgoGYnV0dG9uGAIgASgJEg0KBWNvdW50GAMgASgNIioKCk1vdmVBY3Rpb24SHAoCdG8YASABKAsyEC5tb2RiaXQudjEuUG9pbnQiSgoKRHJhZ0FjdGlvbhIeCgRmcm9tGAEgASgLMhAubW9kYml0LnYxLlBvaW50EhwKAnRvGAIgASgLMhAubW9kYml0LnYxLlBvaW50IigKClR5cGVBY3Rpb24SDAoEdGV4dBgBIAEoCRIMCgR0aGVuGAIgASgJIhkKCUtleUFjdGlvbhIMCgRrZXlzGAEgAygJIlgKDFNjcm9sbEFjdGlvbhIcCgJhdBgBIAEoCzIQLm1vZGJpdC52MS5Qb2ludBIKCgJkeBgCIAEoARIKCgJkeRgDIAEoARISCgplbGVtZW50X2lkGAQgASgJIrkECg5QZXJmb3JtUmVxdWVzdBISCgpjb250cm9sX2lkGAEgASgJEjMKC2FwcGxpY2F0aW9uGAIgASgLMh4ubW9kYml0LnYxLkFwcGxpY2F0aW9uSWRlbnRpdHkSEQoJd2luZG93X2lkGAMgASgJEhMKC3NuYXBzaG90X2lkGAQgASgJEhMKC2ZyYW1lX3Rva2VuGAUgASgJEhYKDndpbmRvd192ZXJzaW9uGAYgASgEEh8KBXNjb3BlGAcgASgOMhAubW9kYml0LnYxLlNjb3BlEhcKD2lkZW1wb3RlbmN5X2tleRgIIAEoCRInCgVwcmVzcxgUIAEoCzIWLm1vZGJpdC52MS5QcmVzc0FjdGlvbkgAEi4KCXNldF92YWx1ZRgVIAEoCzIZLm1vZGJpdC52MS5TZXRWYWx1ZUFjdGlvbkgAEicKBWNsaWNrGBYgASgLMhYubW9kYml0LnYxLkNsaWNrQWN0aW9uSAASJQoEbW92ZRgXIAEoCzIVLm1vZGJpdC52MS5Nb3ZlQWN0aW9uSAASJQoEZHJhZxgYIAEoCzIVLm1vZGJpdC52MS5EcmFnQWN0aW9uSAASJQoEdHlwZRgZIAEoCzIVLm1vZGJpdC52MS5UeXBlQWN0aW9uSAASIwoDa2V5GBogASgLMhQubW9kYml0LnYxLktleUFjdGlvbkgAEikKBnNjcm9sbBgbIAEoCzIXLm1vZGJpdC52MS5TY3JvbGxBY3Rpb25IAEIICgZhY3Rpb24iUAoNRWxlbWVudENoYW5nZRISCgplbGVtZW50X2lkGAEgASgJEgwKBGtpbmQYAiABKAkSDgoGYmVmb3JlGAMgASgJEg0KBWFmdGVyGAQgASgJIuUBCg9QZXJmb3JtUmVzcG9uc2USJQoIZGVsaXZlcnkYASABKA4yEy5tb2RiaXQudjEuRGVsaXZlcnkSEAoIbW9kYWxpdHkYAiABKAkSFwoPbW9kYWxpdHlfcmVhc29uGAMgASgJEhkKEXN0cnVjdHVyZV9jaGFuZ2VkGAQgASgIEhMKC3RyZWVfZGlnZXN0GAUgASgJEikKB2NoYW5nZXMYBiADKAsyGC5tb2RiaXQudjEuRWxlbWVudENoYW5nZRIlCgZ3aW5kb3cYByABKAsyFS5tb2RiaXQudjEuV2luZG93SW5mbyItCgtTdG9wUmVxdWVzdBIOCgZyZWFzb24YASABKAkSDgoGc291cmNlGAIgASgJIkAKDFN0b3BSZXNwb25zZRIVCg1oYWx0ZWRfbGVhc2VzGAEgASgNEhkKEXN0b3BwZWRfd2l0aGluX21zGAIgASgEIiEKC1BpbmdSZXF1ZXN0EhIKCmNvbnRyb2xfaWQYASABKAkiUgoMUGluZ1Jlc3BvbnNlEhIKCmxlYXNlX2hlbGQYASABKAgSGAoQbGVhc2VfZ2VuZXJhdGlvbhgCIAEoBBIUCgxodW1hbl9hY3RpdmUYAyABKAgiNAoSR2V0Q29tcHV0ZXJSdW50aW1lEh4KB3Rhc2tfaWQYASABKAsyDS5tb2RiaXQudjEuSWQi6AMKE0NvbXB1dGVyUnVudGltZVZpZXcSEgoKY29uZmlndXJlZBgBIAEoCBIQCghhdHRhY2hlZBgCIAEoCBIVCg1hY3R1YXRvcl9uYW1lGAMgASgJEhgKEGFjdHVhdG9yX3ZlcnNpb24YBCABKAkSFAoMYWN0dWF0b3JfcGlkGAUgASgNEhAKCHBsYXRmb3JtGAYgASgJEg4KBmRldGFpbBgHIAEoCRISCgpjb250cm9sX2lkGAogASgJEhMKC2FwcGxpY2F0aW9uGAsgASgJEhEKCWJ1bmRsZV9pZBgMIAEoCRINCgVzY29wZRgNIAEoCRISCgpjb250cm9sbGVyGA4gASgJEhgKEGdyYW50X2V4cGlyZXNfbXMYDyABKAMSGAoQZ3JhbnRfY2FsbHNfbGVmdBgQIAEoDRINCgVsYXRjaBgUIAEoCRIaChJsYXRjaF90b29sX2NhbGxfaWQYFSABKAkSFAoMdXNlcl9hYm9ydGVkGBYgASgIEg8KB2FjdGlvbnMYFyABKA0SEwoLc2NyZWVuc2hvdHMYGCABKA0SFAoMb2JzZXJ2YXRpb25zGBkgASgNEhQKDG5vbl9kcml2YWJsZRgeIAMoCRIcChRub25fZHJpdmFibGVfdmVyc2lvbhgfIAEoCSJEChRSZXNvbHZlQ29tcHV0ZXJMYXRjaBIeCgd0YXNrX2lkGAEgASgLMg0ubW9kYml0LnYxLklkEgwKBG5vdGUYAiABKAkiLAoVQ29tcHV0ZXJMYXRjaFJlc29sdmVkEhMKC3dhc19sYXRjaGVkGAEgASgIIj4KDENvbXB1dGVyU3RvcBIeCgd0YXNrX2lkGAEgASgLMg0ubW9kYml0LnYxLklkEg4KBnJlYXNvbhgCIAEoCSJECg9Db21wdXRlclN0b3BwZWQSFwoPc2Vzc2lvbnNfY2xvc2VkGAEgASgNEhgKEGFjdHVhdG9yX3N0b3BwZWQYAiABKAgiFQoTR2V0Q29tcHV0ZXJQcmVzZW5jZSKiAgoUQ29tcHV0ZXJQcmVzZW5jZVZpZXcSEgoKY29uZmlndXJlZBgBIAEoCBIQCghhdHRhY2hlZBgCIAEoCBIVCg1hY3R1YXRvcl9uYW1lGAMgASgJEhgKEGFjdHVhdG9yX3ZlcnNpb24YBCABKAkSEAoIcGxhdGZvcm0YBSABKAkSDgoGZGV0YWlsGAYgASgJEiAKGHBlcm1pc3Npb25fYWNjZXNzaWJpbGl0eRgHIAEoCRIjChtwZXJtaXNzaW9uX3NjcmVlbl9yZWNvcmRpbmcYCCABKAkSLAoHY29udHJvbBgKIAMoCzIbLm1vZGJpdC52MS5Db21wdXRlclByZXNlbmNlEhwKFG5vbl9kcml2YWJsZV92ZXJzaW9uGAsgASgJIqECChBDb21wdXRlclByZXNlbmNlEh4KB3Rhc2tfaWQYASABKAsyDS5tb2RiaXQudjEuSWQSEgoKY29udHJvbF9pZBgCIAEoCRITCgthcHBsaWNhdGlvbhgDIAEoCRIRCglidW5kbGVfaWQYBCABKAkSDQoFc2NvcGUYBSABKAkSDQoFc3RhdGUYBiABKAkSEgoKY29udHJvbGxlchgHIAEoCRIYChBncmFudF9leHBpcmVzX21zGAggASgDEg0KBWxhdGNoGAkgASgJEhoKEmxhdGNoX3Rvb2xfY2FsbF9pZBgKIAEoCRIPCgdhY3Rpb25zGAsgASgNEhMKC3NjcmVlbnNob3RzGAwgASgNEhQKDG9ic2VydmF0aW9ucxgNIAEoDSI2ChRMaXN0Q29tcHV0ZXJBY3Rpdml0eRIeCgd0YXNrX2lkGAEgASgLMg0ubW9kYml0LnYxLklkIlwKFENvbXB1dGVyQWN0aXZpdHlWaWV3EjEKB2VudHJpZXMYASADKAsyIC5tb2RiaXQudjEuQ29tcHV0ZXJBY3Rpdml0eUVudHJ5EhEKCXRydW5jYXRlZBgCIAEoCCLrAwoVQ29tcHV0ZXJBY3Rpdml0eUVudHJ5Eg4KBm9mZnNldBgBIAEoBBINCgVhdF9tcxgCIAEoAxIMCgRraW5kGAMgASgJEhIKCmNvbnRyb2xfaWQYBCABKAkSFAoMdG9vbF9jYWxsX2lkGAUgASgJEhMKC2FwcHJvdmFsX2lkGAYgASgJEhMKC2ludGVudF9oYXNoGAcgASgJEhEKCWJ1bmRsZV9pZBgIIAEoCRITCgthcHBsaWNhdGlvbhgJIAEoCRINCgVzY29wZRgKIAEoCRIOCgZkZXRhaWwYCyABKAkSEAoIbW9kYWxpdHkYDCABKAkSDwoHb3V0Y29tZRgNIAEoCRIMCgRjb2RlGA4gASgJEg4KBnJlYXNvbhgPIAEoCRIUCgxhcnRpZmFjdF9yZWYYECABKAkSFwoPYXJ0aWZhY3RfZGlnZXN0GBEgASgJEhgKEGFydGlmYWN0X2V4cGlyZWQYEiABKAgSEAoIZWxlbWVudHMYEyABKA0SFwoPc2VjdXJlX3dpdGhoZWxkGBQgASgNEhYKDm1hc2tlZF9yZWdpb25zGBUgASgNEhMKC2R1cmF0aW9uX21zGBYgASgEEhYKDnZlcmlmaWVkX2tub3duGBcgASgIEhAKCHZlcmlmaWVkGBggASgIKm4KCERlbGl2ZXJ5EhgKFERFTElWRVJZX1VOU1BFQ0lGSUVEEAASGgoWREVMSVZFUllfTk9UX0RFTElWRVJFRBABEhYKEkRFTElWRVJZX0RFTElWRVJFRBACEhQKEERFTElWRVJZX1VOS05PV04QAyo/CgVTY29wZRIVChFTQ09QRV9VTlNQRUNJRklFRBAAEg0KCVNDT1BFX0FQUBABEhAKDFNDT1BFX1NDUkVFThACMsUFCghBY3R1YXRvchJbChBMaXN0QXBwbGljYXRpb25zEiIubW9kYml0LnYxLkxpc3RBcHBsaWNhdGlvbnNSZXF1ZXN0GiMubW9kYml0LnYxLkxpc3RBcHBsaWNhdGlvbnNSZXNwb25zZRJhChJSZXNvbHZlQXBwbGljYXRpb24SJC5tb2RiaXQudjEuUmVzb2x2ZUFwcGxpY2F0aW9uUmVxdWVzdBolLm1vZGJpdC52MS5SZXNvbHZlQXBwbGljYXRpb25SZXNwb25zZRJACgdBY3F1aXJlEhkubW9kYml0LnYxLkFjcXVpcmVSZXF1ZXN0GhoubW9kYml0LnYxLkFjcXVpcmVSZXNwb25zZRJACgdSZWxlYXNlEhkubW9kYml0LnYxLlJlbGVhc2VSZXF1ZXN0GhoubW9kYml0LnYxLlJlbGVhc2VSZXNwb25zZRJGCglSZWFkU3RhdGUSGy5tb2RiaXQudjEuUmVhZFN0YXRlUmVxdWVzdBocLm1vZGJpdC52MS5SZWFkU3RhdGVSZXNwb25zZRJACgdDYXB0dXJlEhkubW9kYml0LnYxLkNhcHR1cmVSZXF1ZXN0GhoubW9kYml0LnYxLkNhcHR1cmVSZXNwb25zZRI3CgRXYWl0EhYubW9kYml0LnYxLldhaXRSZXF1ZXN0GhcubW9kYml0LnYxLldhaXRSZXNwb25zZRJACgdQZXJmb3JtEhkubW9kYml0LnYxLlBlcmZvcm1SZXF1ZXN0GhoubW9kYml0LnYxLlBlcmZvcm1SZXNwb25zZRI3CgRTdG9wEhYubW9kYml0LnYxLlN0b3BSZXF1ZXN0GhcubW9kYml0LnYxLlN0b3BSZXNwb25zZRI3CgRQaW5nEhYubW9kYml0LnYxLlBpbmdSZXF1ZXN0GhcubW9kYml0LnYxLlBpbmdSZXNwb25zZWIGcHJvdG8z", [file_modbit_v1_domain]);
 
 /**
  * Describes the message modbit.v1.ActuatorFrame.
@@ -61,354 +61,403 @@ export const ActuatorWelcomeSchema = /*@__PURE__*/
   messageDesc(file_modbit_v1_computer, 2);
 
 /**
+ * Describes the message modbit.v1.PermissionState.
+ * Use `create(PermissionStateSchema)` to create a new message.
+ */
+export const PermissionStateSchema = /*@__PURE__*/
+  messageDesc(file_modbit_v1_computer, 3);
+
+/**
  * Describes the message modbit.v1.ActuatorRequest.
  * Use `create(ActuatorRequestSchema)` to create a new message.
  */
 export const ActuatorRequestSchema = /*@__PURE__*/
-  messageDesc(file_modbit_v1_computer, 3);
+  messageDesc(file_modbit_v1_computer, 4);
 
 /**
  * Describes the message modbit.v1.ActuatorResponse.
  * Use `create(ActuatorResponseSchema)` to create a new message.
  */
 export const ActuatorResponseSchema = /*@__PURE__*/
-  messageDesc(file_modbit_v1_computer, 4);
+  messageDesc(file_modbit_v1_computer, 5);
 
 /**
  * Describes the message modbit.v1.ActuatorError.
  * Use `create(ActuatorErrorSchema)` to create a new message.
  */
 export const ActuatorErrorSchema = /*@__PURE__*/
-  messageDesc(file_modbit_v1_computer, 5);
+  messageDesc(file_modbit_v1_computer, 6);
 
 /**
  * Describes the message modbit.v1.ActuatorEvent.
  * Use `create(ActuatorEventSchema)` to create a new message.
  */
 export const ActuatorEventSchema = /*@__PURE__*/
-  messageDesc(file_modbit_v1_computer, 6);
+  messageDesc(file_modbit_v1_computer, 7);
 
 /**
  * Describes the message modbit.v1.HumanInput.
  * Use `create(HumanInputSchema)` to create a new message.
  */
 export const HumanInputSchema = /*@__PURE__*/
-  messageDesc(file_modbit_v1_computer, 7);
+  messageDesc(file_modbit_v1_computer, 8);
 
 /**
  * Describes the message modbit.v1.StopRequested.
  * Use `create(StopRequestedSchema)` to create a new message.
  */
 export const StopRequestedSchema = /*@__PURE__*/
-  messageDesc(file_modbit_v1_computer, 8);
+  messageDesc(file_modbit_v1_computer, 9);
 
 /**
  * Describes the message modbit.v1.WindowGone.
  * Use `create(WindowGoneSchema)` to create a new message.
  */
 export const WindowGoneSchema = /*@__PURE__*/
-  messageDesc(file_modbit_v1_computer, 9);
+  messageDesc(file_modbit_v1_computer, 10);
 
 /**
  * Describes the message modbit.v1.PermissionChanged.
  * Use `create(PermissionChangedSchema)` to create a new message.
  */
 export const PermissionChangedSchema = /*@__PURE__*/
-  messageDesc(file_modbit_v1_computer, 10);
+  messageDesc(file_modbit_v1_computer, 11);
 
 /**
  * Describes the message modbit.v1.ApplicationIdentity.
  * Use `create(ApplicationIdentitySchema)` to create a new message.
  */
 export const ApplicationIdentitySchema = /*@__PURE__*/
-  messageDesc(file_modbit_v1_computer, 11);
+  messageDesc(file_modbit_v1_computer, 12);
 
 /**
  * Describes the message modbit.v1.Rect.
  * Use `create(RectSchema)` to create a new message.
  */
 export const RectSchema = /*@__PURE__*/
-  messageDesc(file_modbit_v1_computer, 12);
+  messageDesc(file_modbit_v1_computer, 13);
 
 /**
  * Describes the message modbit.v1.WindowInfo.
  * Use `create(WindowInfoSchema)` to create a new message.
  */
 export const WindowInfoSchema = /*@__PURE__*/
-  messageDesc(file_modbit_v1_computer, 13);
+  messageDesc(file_modbit_v1_computer, 14);
 
 /**
  * Describes the message modbit.v1.ApplicationInfo.
  * Use `create(ApplicationInfoSchema)` to create a new message.
  */
 export const ApplicationInfoSchema = /*@__PURE__*/
-  messageDesc(file_modbit_v1_computer, 14);
+  messageDesc(file_modbit_v1_computer, 15);
 
 /**
  * Describes the message modbit.v1.ListApplicationsRequest.
  * Use `create(ListApplicationsRequestSchema)` to create a new message.
  */
 export const ListApplicationsRequestSchema = /*@__PURE__*/
-  messageDesc(file_modbit_v1_computer, 15);
+  messageDesc(file_modbit_v1_computer, 16);
 
 /**
  * Describes the message modbit.v1.ListApplicationsResponse.
  * Use `create(ListApplicationsResponseSchema)` to create a new message.
  */
 export const ListApplicationsResponseSchema = /*@__PURE__*/
-  messageDesc(file_modbit_v1_computer, 16);
+  messageDesc(file_modbit_v1_computer, 17);
 
 /**
  * Describes the message modbit.v1.ResolveApplicationRequest.
  * Use `create(ResolveApplicationRequestSchema)` to create a new message.
  */
 export const ResolveApplicationRequestSchema = /*@__PURE__*/
-  messageDesc(file_modbit_v1_computer, 17);
+  messageDesc(file_modbit_v1_computer, 18);
 
 /**
  * Describes the message modbit.v1.ResolveApplicationResponse.
  * Use `create(ResolveApplicationResponseSchema)` to create a new message.
  */
 export const ResolveApplicationResponseSchema = /*@__PURE__*/
-  messageDesc(file_modbit_v1_computer, 18);
+  messageDesc(file_modbit_v1_computer, 19);
 
 /**
  * Describes the message modbit.v1.AcquireRequest.
  * Use `create(AcquireRequestSchema)` to create a new message.
  */
 export const AcquireRequestSchema = /*@__PURE__*/
-  messageDesc(file_modbit_v1_computer, 19);
+  messageDesc(file_modbit_v1_computer, 20);
 
 /**
  * Describes the message modbit.v1.AcquireResponse.
  * Use `create(AcquireResponseSchema)` to create a new message.
  */
 export const AcquireResponseSchema = /*@__PURE__*/
-  messageDesc(file_modbit_v1_computer, 20);
+  messageDesc(file_modbit_v1_computer, 21);
 
 /**
  * Describes the message modbit.v1.ReleaseRequest.
  * Use `create(ReleaseRequestSchema)` to create a new message.
  */
 export const ReleaseRequestSchema = /*@__PURE__*/
-  messageDesc(file_modbit_v1_computer, 21);
+  messageDesc(file_modbit_v1_computer, 22);
 
 /**
  * Describes the message modbit.v1.ReleaseResponse.
  * Use `create(ReleaseResponseSchema)` to create a new message.
  */
 export const ReleaseResponseSchema = /*@__PURE__*/
-  messageDesc(file_modbit_v1_computer, 22);
+  messageDesc(file_modbit_v1_computer, 23);
 
 /**
  * Describes the message modbit.v1.ReadStateRequest.
  * Use `create(ReadStateRequestSchema)` to create a new message.
  */
 export const ReadStateRequestSchema = /*@__PURE__*/
-  messageDesc(file_modbit_v1_computer, 23);
+  messageDesc(file_modbit_v1_computer, 24);
 
 /**
  * Describes the message modbit.v1.AxNode.
  * Use `create(AxNodeSchema)` to create a new message.
  */
 export const AxNodeSchema = /*@__PURE__*/
-  messageDesc(file_modbit_v1_computer, 24);
+  messageDesc(file_modbit_v1_computer, 25);
 
 /**
  * Describes the message modbit.v1.ReadStateResponse.
  * Use `create(ReadStateResponseSchema)` to create a new message.
  */
 export const ReadStateResponseSchema = /*@__PURE__*/
-  messageDesc(file_modbit_v1_computer, 25);
+  messageDesc(file_modbit_v1_computer, 26);
 
 /**
  * Describes the message modbit.v1.CaptureRequest.
  * Use `create(CaptureRequestSchema)` to create a new message.
  */
 export const CaptureRequestSchema = /*@__PURE__*/
-  messageDesc(file_modbit_v1_computer, 26);
+  messageDesc(file_modbit_v1_computer, 27);
 
 /**
  * Describes the message modbit.v1.Letterbox.
  * Use `create(LetterboxSchema)` to create a new message.
  */
 export const LetterboxSchema = /*@__PURE__*/
-  messageDesc(file_modbit_v1_computer, 27);
+  messageDesc(file_modbit_v1_computer, 28);
 
 /**
  * Describes the message modbit.v1.CaptureResponse.
  * Use `create(CaptureResponseSchema)` to create a new message.
  */
 export const CaptureResponseSchema = /*@__PURE__*/
-  messageDesc(file_modbit_v1_computer, 28);
+  messageDesc(file_modbit_v1_computer, 29);
 
 /**
  * Describes the message modbit.v1.WaitRequest.
  * Use `create(WaitRequestSchema)` to create a new message.
  */
 export const WaitRequestSchema = /*@__PURE__*/
-  messageDesc(file_modbit_v1_computer, 29);
+  messageDesc(file_modbit_v1_computer, 30);
 
 /**
  * Describes the message modbit.v1.WaitResponse.
  * Use `create(WaitResponseSchema)` to create a new message.
  */
 export const WaitResponseSchema = /*@__PURE__*/
-  messageDesc(file_modbit_v1_computer, 30);
+  messageDesc(file_modbit_v1_computer, 31);
 
 /**
  * Describes the message modbit.v1.Point.
  * Use `create(PointSchema)` to create a new message.
  */
 export const PointSchema = /*@__PURE__*/
-  messageDesc(file_modbit_v1_computer, 31);
+  messageDesc(file_modbit_v1_computer, 32);
 
 /**
  * Describes the message modbit.v1.PressAction.
  * Use `create(PressActionSchema)` to create a new message.
  */
 export const PressActionSchema = /*@__PURE__*/
-  messageDesc(file_modbit_v1_computer, 32);
+  messageDesc(file_modbit_v1_computer, 33);
 
 /**
  * Describes the message modbit.v1.SetValueAction.
  * Use `create(SetValueActionSchema)` to create a new message.
  */
 export const SetValueActionSchema = /*@__PURE__*/
-  messageDesc(file_modbit_v1_computer, 33);
+  messageDesc(file_modbit_v1_computer, 34);
 
 /**
  * Describes the message modbit.v1.ClickAction.
  * Use `create(ClickActionSchema)` to create a new message.
  */
 export const ClickActionSchema = /*@__PURE__*/
-  messageDesc(file_modbit_v1_computer, 34);
+  messageDesc(file_modbit_v1_computer, 35);
 
 /**
  * Describes the message modbit.v1.MoveAction.
  * Use `create(MoveActionSchema)` to create a new message.
  */
 export const MoveActionSchema = /*@__PURE__*/
-  messageDesc(file_modbit_v1_computer, 35);
+  messageDesc(file_modbit_v1_computer, 36);
 
 /**
  * Describes the message modbit.v1.DragAction.
  * Use `create(DragActionSchema)` to create a new message.
  */
 export const DragActionSchema = /*@__PURE__*/
-  messageDesc(file_modbit_v1_computer, 36);
+  messageDesc(file_modbit_v1_computer, 37);
 
 /**
  * Describes the message modbit.v1.TypeAction.
  * Use `create(TypeActionSchema)` to create a new message.
  */
 export const TypeActionSchema = /*@__PURE__*/
-  messageDesc(file_modbit_v1_computer, 37);
+  messageDesc(file_modbit_v1_computer, 38);
 
 /**
  * Describes the message modbit.v1.KeyAction.
  * Use `create(KeyActionSchema)` to create a new message.
  */
 export const KeyActionSchema = /*@__PURE__*/
-  messageDesc(file_modbit_v1_computer, 38);
+  messageDesc(file_modbit_v1_computer, 39);
 
 /**
  * Describes the message modbit.v1.ScrollAction.
  * Use `create(ScrollActionSchema)` to create a new message.
  */
 export const ScrollActionSchema = /*@__PURE__*/
-  messageDesc(file_modbit_v1_computer, 39);
+  messageDesc(file_modbit_v1_computer, 40);
 
 /**
  * Describes the message modbit.v1.PerformRequest.
  * Use `create(PerformRequestSchema)` to create a new message.
  */
 export const PerformRequestSchema = /*@__PURE__*/
-  messageDesc(file_modbit_v1_computer, 40);
+  messageDesc(file_modbit_v1_computer, 41);
 
 /**
  * Describes the message modbit.v1.ElementChange.
  * Use `create(ElementChangeSchema)` to create a new message.
  */
 export const ElementChangeSchema = /*@__PURE__*/
-  messageDesc(file_modbit_v1_computer, 41);
+  messageDesc(file_modbit_v1_computer, 42);
 
 /**
  * Describes the message modbit.v1.PerformResponse.
  * Use `create(PerformResponseSchema)` to create a new message.
  */
 export const PerformResponseSchema = /*@__PURE__*/
-  messageDesc(file_modbit_v1_computer, 42);
+  messageDesc(file_modbit_v1_computer, 43);
 
 /**
  * Describes the message modbit.v1.StopRequest.
  * Use `create(StopRequestSchema)` to create a new message.
  */
 export const StopRequestSchema = /*@__PURE__*/
-  messageDesc(file_modbit_v1_computer, 43);
+  messageDesc(file_modbit_v1_computer, 44);
 
 /**
  * Describes the message modbit.v1.StopResponse.
  * Use `create(StopResponseSchema)` to create a new message.
  */
 export const StopResponseSchema = /*@__PURE__*/
-  messageDesc(file_modbit_v1_computer, 44);
+  messageDesc(file_modbit_v1_computer, 45);
 
 /**
  * Describes the message modbit.v1.PingRequest.
  * Use `create(PingRequestSchema)` to create a new message.
  */
 export const PingRequestSchema = /*@__PURE__*/
-  messageDesc(file_modbit_v1_computer, 45);
+  messageDesc(file_modbit_v1_computer, 46);
 
 /**
  * Describes the message modbit.v1.PingResponse.
  * Use `create(PingResponseSchema)` to create a new message.
  */
 export const PingResponseSchema = /*@__PURE__*/
-  messageDesc(file_modbit_v1_computer, 46);
+  messageDesc(file_modbit_v1_computer, 47);
 
 /**
  * Describes the message modbit.v1.GetComputerRuntime.
  * Use `create(GetComputerRuntimeSchema)` to create a new message.
  */
 export const GetComputerRuntimeSchema = /*@__PURE__*/
-  messageDesc(file_modbit_v1_computer, 47);
+  messageDesc(file_modbit_v1_computer, 48);
 
 /**
  * Describes the message modbit.v1.ComputerRuntimeView.
  * Use `create(ComputerRuntimeViewSchema)` to create a new message.
  */
 export const ComputerRuntimeViewSchema = /*@__PURE__*/
-  messageDesc(file_modbit_v1_computer, 48);
+  messageDesc(file_modbit_v1_computer, 49);
 
 /**
  * Describes the message modbit.v1.ResolveComputerLatch.
  * Use `create(ResolveComputerLatchSchema)` to create a new message.
  */
 export const ResolveComputerLatchSchema = /*@__PURE__*/
-  messageDesc(file_modbit_v1_computer, 49);
+  messageDesc(file_modbit_v1_computer, 50);
 
 /**
  * Describes the message modbit.v1.ComputerLatchResolved.
  * Use `create(ComputerLatchResolvedSchema)` to create a new message.
  */
 export const ComputerLatchResolvedSchema = /*@__PURE__*/
-  messageDesc(file_modbit_v1_computer, 50);
+  messageDesc(file_modbit_v1_computer, 51);
 
 /**
  * Describes the message modbit.v1.ComputerStop.
  * Use `create(ComputerStopSchema)` to create a new message.
  */
 export const ComputerStopSchema = /*@__PURE__*/
-  messageDesc(file_modbit_v1_computer, 51);
+  messageDesc(file_modbit_v1_computer, 52);
 
 /**
  * Describes the message modbit.v1.ComputerStopped.
  * Use `create(ComputerStoppedSchema)` to create a new message.
  */
 export const ComputerStoppedSchema = /*@__PURE__*/
-  messageDesc(file_modbit_v1_computer, 52);
+  messageDesc(file_modbit_v1_computer, 53);
+
+/**
+ * Describes the message modbit.v1.GetComputerPresence.
+ * Use `create(GetComputerPresenceSchema)` to create a new message.
+ */
+export const GetComputerPresenceSchema = /*@__PURE__*/
+  messageDesc(file_modbit_v1_computer, 54);
+
+/**
+ * Describes the message modbit.v1.ComputerPresenceView.
+ * Use `create(ComputerPresenceViewSchema)` to create a new message.
+ */
+export const ComputerPresenceViewSchema = /*@__PURE__*/
+  messageDesc(file_modbit_v1_computer, 55);
+
+/**
+ * Describes the message modbit.v1.ComputerPresence.
+ * Use `create(ComputerPresenceSchema)` to create a new message.
+ */
+export const ComputerPresenceSchema = /*@__PURE__*/
+  messageDesc(file_modbit_v1_computer, 56);
+
+/**
+ * Describes the message modbit.v1.ListComputerActivity.
+ * Use `create(ListComputerActivitySchema)` to create a new message.
+ */
+export const ListComputerActivitySchema = /*@__PURE__*/
+  messageDesc(file_modbit_v1_computer, 57);
+
+/**
+ * Describes the message modbit.v1.ComputerActivityView.
+ * Use `create(ComputerActivityViewSchema)` to create a new message.
+ */
+export const ComputerActivityViewSchema = /*@__PURE__*/
+  messageDesc(file_modbit_v1_computer, 58);
+
+/**
+ * Describes the message modbit.v1.ComputerActivityEntry.
+ * Use `create(ComputerActivityEntrySchema)` to create a new message.
+ */
+export const ComputerActivityEntrySchema = /*@__PURE__*/
+  messageDesc(file_modbit_v1_computer, 59);
 
 /**
  * Describes the enum modbit.v1.Delivery.

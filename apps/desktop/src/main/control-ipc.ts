@@ -9,10 +9,11 @@
  * no authority, and main holds no policy.
  */
 import type { CoreClient } from "@modbit/ide-adapter-core";
-import { addAllowRule, decideModeProposal, forkTask, getContextAccounting, getRunMode, listAllowRules, listCheckpoints, listModeProposals, previewRewind, readObjectRange, restoreCheckpoint, revokeAllowRule, setRunMode, setTaskBudgets } from "@modbit/ide-adapter-core";
+import { addAllowRule, decideModeProposal, forkTask, getContextAccounting, getRunMode, listAllowRules, listComputerActivity, listCheckpoints, listModeProposals, previewRewind, readObjectRange, restoreCheckpoint, revokeAllowRule, setRunMode, setTaskBudgets } from "@modbit/ide-adapter-core";
 import { TaskMode, TranscriptDensity, type AllowRuleView, type ContextAccountingView, type ModeProposalView, type RunModeView, type TranscriptRow } from "@modbit/surface-protocol";
 import type { AccountingInfo, AllowRuleInfo, CheckpointListInfo, DockApprovalView, ExpiredApprovalView, ForkOutcome, ModeProposalDecisionInfo, ModeProposalInfo, ModeProposalListInfo, ProposalStatus, RestoreOutcome, RewindPreviewInfo, RunModeInfo, TaskBudgetsInfo } from "../shared/control-types.ts";
 import { intentOf, reasonOf } from "./approval-intent.ts";
+import { computerIntentOf } from "./computer-intent.ts";
 import { bad, validApprovalId, validBool, validCommandId, validCount, validExpected, validGoal, validIntentHash, validKeepPaths, validProposalId, validReason, validRuleId, validRuleInput, validRunMode, validTarget } from "./control-args.ts";
 import type { Registrar } from "./conversation-ipc.ts";
 
@@ -70,7 +71,7 @@ function findTool(rows: readonly TranscriptRow[], toolCallId: string): string | 
   return null;
 }
 
-async function argumentsOf(c: CoreClient, taskId: string, toolCallId: string): Promise<string | null> {
+export async function argumentsOf(c: CoreClient, taskId: string, toolCallId: string): Promise<string | null> {
   const key = `${taskId}:${toolCallId}`;
   if (argsCache.has(key)) return argsCache.get(key) ?? null;
   let text: string | null = null;
@@ -101,6 +102,16 @@ export async function dockApprovals(c: CoreClient, sessionId: string, taskId: st
   for (const a of pending) {
     const tid = hexOf(a.taskId?.value);
     const callId = hexOf(a.toolCallId?.value);
+    const computer = computerIntentOf(a.scopeJson);
+    if (computer) {
+      // The before-thumbnail: the newest masked screenshot this task's observations kept (a reference; the pixels are read on demand).
+      try {
+        const kept = (await listComputerActivity(c, tid)).entries.filter((e) => e.artifactRef !== "" && !e.artifactExpired);
+        computer.beforeArtifact = kept.length > 0 ? kept[kept.length - 1]!.artifactRef : "";
+      } catch {
+        computer.beforeArtifact = "";
+      }
+    }
     out.push({
       approvalId: hexOf(a.approvalId?.value),
       taskId: tid,
@@ -112,6 +123,8 @@ export async function dockApprovals(c: CoreClient, sessionId: string, taskId: st
       expiresAtMs: msOf(a.expiresAtMs),
       reason: reasonOf(a.scopeJson),
       intent: intentOf(await argumentsOf(c, tid, callId)),
+      // PX-074: a native-control approval carries its exact intent (application identity, window, element, action, arguments).
+      computer,
     });
   }
   return out;
@@ -192,6 +205,8 @@ export function registerControlHandlers(r: Registrar): void {
     const open = (await c.listApprovals(sid)).approvals.find((x) => hexOf(x.approvalId?.value) === approvalId);
     if (!open || open.status !== "REQUESTED") bad("STALE_APPROVAL: the effect is no longer waiting for a decision");
     if (open!.intentHash !== hash) bad("INTENT_MISMATCH: the effect on this card is not the one the Core is asking about");
+    // PX-074 / docs/66 CUC-C01: native control is approved per call and is never covered by a rule, whatever the renderer sends.
+    if (open!.toolName.startsWith("computer.") || computerIntentOf(open!.scopeJson) !== null) bad("ALWAYS_REFUSED: native computer control is approved one call at a time and no rule can cover it");
     const taskId = hexOf(open!.taskId?.value);
     const created = await addAllowRule(c, sid, taskId, rule);
     try {

@@ -195,10 +195,12 @@ export function withLiveOnly(body: readonly TranscriptRowView[], live: LiveStrea
 
 const TOOL_BAD = new Set(["FAILED", "DENIED", "UNKNOWN_OUTCOME", "CANCELLED"]);
 
-/** Whether a row (or anything folded inside it) needs the person or reports a failure. Such a fold is shown open. */
+/** Whether a row (or anything folded inside it) needs the person, reports a failure or drove the person's machine. Such a fold is shown open. */
 export function needsEyes(r: TranscriptRowView): boolean {
   if (r.kind === "APPROVAL_CARD" && r.hints.status === "REQUESTED") return true;
   if (r.kind === "TOOL_CARD" && (TOOL_BAD.has(r.hints.status) || r.hints.status === "AWAITING_APPROVAL")) return true;
+  // PX-074: what was done to the person's machine is never folded away.
+  if (r.facts.type === "tool" && r.facts.toolName.startsWith("computer.")) return true;
   if (r.facts.type === "stream" && r.facts.phase === "ABORTED") return true;
   if (r.facts.type === "footer" && r.facts.outcome === "FAILED") return true;
   return r.children.some(needsEyes);

@@ -1,0 +1,31 @@
+{
+  "expected": {
+    "actuatorName": "modbit-actuator-fixture",
+    "actuatorVersion": "0.0.0",
+    "attached": true,
+    "configured": true,
+    "control": [
+      {
+        "actions": 2,
+        "application": "Form App",
+        "bundleId": "org.example.fixture.form",
+        "controlId": "c0123456789ab",
+        "controller": "AGENT",
+        "grantExpiresMs": "1791626238917",
+        "latch": "",
+        "latchToolCallId": "",
+        "observations": 4,
+        "scope": "APP",
+        "screenshots": 1,
+        "state": "CONTROLLING",
+        "taskId": "72727272727272727272727272727272"
+      }
+    ],
+    "detail": "",
+    "nonDrivableVersion": "2026-10-10.1",
+    "permissionAccessibility": "GRANTED",
+    "permissionScreenRecording": "DENIED",
+    "platform": "fixture"
+  },
+  "type": "modbit.v1.ComputerPresenceView"
+}
