@@ -1,0 +1,26 @@
+{
+  "expected": {
+    "frameDigest": "ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff",
+    "height": 800,
+    "letterbox": {
+      "offsetX": 40.0,
+      "offsetY": 0.0,
+      "scale": 2.0,
+      "sourceHeight": 400,
+      "sourceWidth": 600
+    },
+    "maskedRegions": 1,
+    "png": "89504e47",
+    "secureRegions": [
+      {
+        "height": 60,
+        "width": 720,
+        "x": 80,
+        "y": 200
+      }
+    ],
+    "width": 1280,
+    "window": null
+  },
+  "type": "modbit.v1.CaptureResponse"
+}
