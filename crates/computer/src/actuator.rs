@@ -76,6 +76,10 @@ pub struct ActuatorInfo {
     pub platform: String,
     /// Capabilities it offers.
     pub capabilities: Vec<String>,
+    /// The operating-system permissions it reported at the handshake
+    /// (`accessibility`, `screen_recording`). A permission it did not name is
+    /// unknown, never granted.
+    pub permissions: Vec<(String, bool)>,
 }
 
 /// Why a call did not produce an answer.
@@ -411,6 +415,11 @@ impl ProcessActuator {
                 pid: w.pid,
                 platform: w.platform,
                 capabilities: w.capabilities,
+                permissions: w
+                    .permissions
+                    .into_iter()
+                    .map(|p| (p.permission, p.granted))
+                    .collect(),
             },
             writer: AsyncMutex::new(writer),
             pending: Mutex::new(HashMap::new()),
@@ -594,6 +603,7 @@ mod tests {
                     token_proof: proof_for(&h.token),
                     capabilities: vec!["app_scope".into()],
                     refusal: String::new(),
+                    permissions: vec![],
                 })),
             };
             write_message(&mut act_w, &welcome).await.unwrap();

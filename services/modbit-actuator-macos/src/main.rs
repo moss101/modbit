@@ -98,6 +98,16 @@ fn parent_pid() -> Option<u32> {
     None
 }
 
+/// The operating system's permissions minus any forced off for this run.
+fn hub_permissions(b: &dyn Backend) -> backend::Permissions {
+    let p = b.permissions();
+    let d = denied_from_env();
+    backend::Permissions {
+        accessibility: p.accessibility && !d.accessibility,
+        screen_recording: p.screen_recording && !d.screen_recording,
+    }
+}
+
 fn make_backend() -> Arc<dyn Backend> {
     #[cfg(target_os = "macos")]
     {
@@ -186,6 +196,25 @@ async fn main() {
             },
             capabilities: backend.capabilities(),
             refusal: refusal.clone(),
+            // What the person has granted right now (PX-074); changes are
+            // pushed as `PermissionChanged`.
+            // A platform with no backend cannot tell: it names none, and the
+            // Core shows UNKNOWN, never granted.
+            permissions: if cfg!(target_os = "macos") {
+                let p = hub_permissions(&*backend);
+                vec![
+                    wire::PermissionState {
+                        permission: "accessibility".into(),
+                        granted: p.accessibility,
+                    },
+                    wire::PermissionState {
+                        permission: "screen_recording".into(),
+                        granted: p.screen_recording,
+                    },
+                ]
+            } else {
+                vec![]
+            },
         })),
     };
     if write_message(&mut stdout, &welcome).await.is_err() || !refusal.is_empty() {

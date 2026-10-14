@@ -8,6 +8,8 @@
  * changes and whether a redo is still exact are the Core's answers.
  */
 
+import type { ComputerIntentView } from "./computer-types.ts";
+
 /** The run modes, least to most approving (the Core's own list; the view model reads `RunModeView.modes`). */
 export const RUN_MODES = ["ASK", "ALLOWLIST", "ALLOWLIST_SANDBOX", "RUN_EVERYTHING"] as const;
 export type RunModeName = (typeof RUN_MODES)[number];
@@ -58,6 +60,8 @@ export interface DockApprovalView {
   expiresAtMs: number;
   reason: ApprovalReasonView;
   intent: ApprovalIntentView;
+  /** PX-074: the exact intent of a native-control approval; null for every other effect. Never allowlistable. */
+  computer?: ComputerIntentView | null;
 }
 
 /** An approval the Core closed as expired: nobody answered before its recorded expiry, so it can no longer be approved and the effect did not run (REQ-PX-058). */

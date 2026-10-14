@@ -20,6 +20,8 @@ export interface ShellFrameProps {
   panel: ReactNode | null;
   agents: (rail: boolean) => ReactNode;
   topBar: ReactNode;
+  /** PX-074: what must always be on screen while the machine is controlled (the presence bar and its Stop); above everything in the centre. */
+  banner?: ReactNode | undefined;
   statusRow: ReactNode;
   tray: ReactNode;
   children: ReactNode;
@@ -29,7 +31,7 @@ export interface ShellFrameProps {
   contentElement?: "main" | "div" | undefined;
 }
 
-export function ShellFrame({ prefs, onPrefs, panelOpen, panel, agents, topBar, statusRow, tray, children, fixedWidth, contentElement = "main" }: ShellFrameProps) {
+export function ShellFrame({ prefs, onPrefs, panelOpen, panel, agents, topBar, banner, statusRow, tray, children, fixedWidth, contentElement = "main" }: ShellFrameProps) {
   const root = useRef<HTMLDivElement>(null);
   const [width, setWidth] = useState(fixedWidth ?? (typeof window === "undefined" ? GEOMETRY.windowDefault.width : window.innerWidth));
   const [segment, setSegment] = useState<"conversation" | "apps">("conversation");
@@ -74,6 +76,7 @@ export function ShellFrame({ prefs, onPrefs, panelOpen, panel, agents, topBar, s
         )}
       </nav>
       <div className="shell-center" data-testid="region-conversation">
+        {banner}
         {topBar}
         {layout.stacked && (
           <nav aria-label="Conversation or apps" className="shell-segments" data-testid="stack-segments">

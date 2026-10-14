@@ -333,9 +333,12 @@ async fn a_process_that_is_not_the_pinned_file_is_not_trusted_and_not_signalled(
     use modbit_computer::supply::Verified;
     let sleeper_dir = tempfile::tempdir().unwrap();
     let sleep = sleeper_dir.path().join("sleeper");
-    std::fs::copy("/bin/sleep", &sleep).unwrap();
+    // A long-lived process of our own (the helper waits on its stdin);
+    // a copied system binary can be killed by the platform-binary check.
+    std::fs::copy(helper(), &sleep).unwrap();
     let mut child = std::process::Command::new(&sleep)
-        .arg("60")
+        .stdin(std::process::Stdio::piped())
+        .stdout(std::process::Stdio::null())
         .spawn()
         .unwrap();
     let pid = child.id();

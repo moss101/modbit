@@ -20,7 +20,10 @@
 //! * **Retention.** A stored frame is removed from the object store once the
 //!   retention window passes (`MODBIT_COMPUTER_RETENTION_SECS`, default a
 //!   day); the observation's record stays, the pixels do not.
-//! * **Commands.** `GetComputerRuntime`, `ResolveComputerLatch`, `ComputerStop`.
+//! * **Commands.** `GetComputerRuntime`, `ResolveComputerLatch`, `ComputerStop`,
+//!   and the desktop surface's reads (PX-074): `GetComputerPresence` (who holds
+//!   the machine, the operating-system permissions) and `ListComputerActivity`
+//!   (the task's computer events, for the action cards).
 
 use std::collections::HashMap;
 use std::path::{Path, PathBuf};
@@ -1036,8 +1039,222 @@ pub(crate) async fn handle(core: &Arc<Core>, env: &wire::CommandEnvelope) -> wir
                 .encode_to_vec(),
             )
         }
+        // PX-074: what every window shows - who holds the machine and which
+        // operating-system permissions the actuator reports. Not task-scoped.
+        "GetComputerPresence" => {
+            let _ = decode!(wire::GetComputerPresence);
+            accept(cid, false, presence_view(core).await.encode_to_vec())
+        }
+        // PX-074: the task's computer activity from its log, for the cards.
+        "ListComputerActivity" => {
+            let p = decode!(wire::ListComputerActivity);
+            let task_id = match task_of(p.task_id.as_ref()) {
+                Ok(t) => t,
+                Err((c, m)) => return reject(cid, &c, m),
+            };
+            match core.store.lock().await.task(&task_id) {
+                Ok(Some(_)) => {}
+                Ok(None) => return reject(cid, "UNKNOWN_TASK", task_id.to_string()),
+                Err(e) => return reject(cid, crate::server::error_code(&e), e.to_string()),
+            }
+            let view = {
+                let st = core.store.lock().await;
+                activity_view(&st, task_id)
+            };
+            accept(cid, false, view.encode_to_vec())
+        }
         other => reject(cid, "UNKNOWN_COMMAND", other),
     }
+}
+
+/// The permission word for the surface: only what the actuator said.
+fn permission_word(perms: &std::collections::BTreeMap<String, bool>, name: &str) -> String {
+    match perms.get(name) {
+        Some(true) => "GRANTED",
+        Some(false) => "DENIED",
+        None => "UNKNOWN",
+    }
+    .to_owned()
+}
+
+/// The presence of native control, for every window (PX-074, CUC-H01): the
+/// tasks that hold the machine, or carry a sticky stop or an unknown-outcome
+/// latch, and the actuator's permissions (CUC-E05). Read from the runtime;
+/// the desktop keeps none of it.
+async fn presence_view(core: &Core) -> wire::ComputerPresenceView {
+    let rt = &core.tools.computer.runtime;
+    let perms = rt.permissions();
+    let info = rt.view(TaskId::from_bytes([0; 16]), "");
+    let mut out = wire::ComputerPresenceView {
+        configured: info.configured,
+        attached: info.attached,
+        detail: info.detail,
+        permission_accessibility: permission_word(&perms, "accessibility"),
+        permission_screen_recording: permission_word(&perms, "screen_recording"),
+        non_drivable_version: policy::NON_DRIVABLE_VERSION.to_owned(),
+        ..Default::default()
+    };
+    if let Some(i) = info.info {
+        out.actuator_name = i.name;
+        out.actuator_version = i.version;
+        out.platform = i.platform;
+    }
+    for task_id in rt.presence_tasks() {
+        let run = current_run(core, task_id).await;
+        let v = runtime_view(core, task_id, &run);
+        let state = if v.latch.is_empty() && v.control_id.is_empty() && !v.user_aborted {
+            continue;
+        } else if v.user_aborted {
+            "USER_ABORTED"
+        } else if !v.latch.is_empty() {
+            "LATCHED"
+        } else {
+            match v.controller.as_str() {
+                "PARKED" => "PARKED",
+                "STOPPED" => "STOPPED",
+                _ => "CONTROLLING",
+            }
+        };
+        out.control.push(wire::ComputerPresence {
+            task_id: Some(wire::Id {
+                value: task_id.as_bytes().to_vec(),
+            }),
+            control_id: v.control_id,
+            application: v.application,
+            bundle_id: v.bundle_id,
+            scope: v.scope,
+            state: state.to_owned(),
+            controller: v.controller,
+            grant_expires_ms: v.grant_expires_ms,
+            latch: v.latch,
+            latch_tool_call_id: v.latch_tool_call_id,
+            actions: v.actions,
+            screenshots: v.screenshots,
+            observations: v.observations,
+        });
+    }
+    out
+}
+
+/// The newest activity entries one view returns.
+const MAX_ACTIVITY: usize = 400;
+
+/// The task's computer events as entries: kinds, counts, outcomes and the
+/// masked frame references - never contents (CUC-F03). The application of an
+/// action is the one its session was approved for.
+fn activity_view(store: &EventStore, task_id: TaskId) -> wire::ComputerActivityView {
+    let types = [
+        "ComputerSessionStarted",
+        "ComputerObserved",
+        "ComputerActionPerformed",
+        "ComputerLatched",
+        "ComputerLatchResolved",
+        "ComputerSessionClosed",
+        "ComputerUserAborted",
+        "ComputerArtifactExpired",
+    ];
+    let Ok(events) = store.read_aggregate_of_types(task_id.as_bytes(), &types, 0) else {
+        return wire::ComputerActivityView::default();
+    };
+    // control id -> (bundle id, application, scope)
+    let mut sessions: HashMap<String, (String, String, String)> = HashMap::new();
+    let mut expired: std::collections::HashSet<String> = Default::default();
+    let mut entries: Vec<wire::ComputerActivityEntry> = Vec::new();
+    let s = |v: &Value, k: &str| v[k].as_str().unwrap_or_default().to_owned();
+    let n = |v: &Value, k: &str| u32::try_from(v[k].as_u64().unwrap_or(0)).unwrap_or(u32::MAX);
+    for e in &events {
+        let Ok(p) = store.payload(&e.envelope) else {
+            continue;
+        };
+        let mut en = wire::ComputerActivityEntry {
+            offset: e.offset,
+            at_ms: e.envelope.occurred_at.millis(),
+            control_id: s(&p, "control_id"),
+            tool_call_id: s(&p, "tool_call_id"),
+            ..Default::default()
+        };
+        if let Some((b, a, sc)) = sessions.get(&en.control_id) {
+            en.bundle_id.clone_from(b);
+            en.application.clone_from(a);
+            en.scope.clone_from(sc);
+        }
+        match e.envelope.event_type.as_str() {
+            "ComputerSessionStarted" => {
+                en.kind = "SESSION_STARTED".into();
+                en.approval_id = s(&p, "approval_id");
+                en.intent_hash = s(&p, "intent_hash");
+                en.bundle_id = s(&p, "bundle_id");
+                en.application = s(&p, "application");
+                en.scope = s(&p, "scope");
+                sessions.insert(
+                    en.control_id.clone(),
+                    (
+                        en.bundle_id.clone(),
+                        en.application.clone(),
+                        en.scope.clone(),
+                    ),
+                );
+            }
+            "ComputerObserved" => {
+                en.kind = "OBSERVED".into();
+                en.detail = s(&p, "kind");
+                en.artifact_ref = s(&p, "artifact_ref");
+                en.artifact_digest = s(&p, "artifact_digest");
+                en.elements = n(&p, "elements");
+                en.secure_withheld = n(&p, "secure_withheld");
+                en.masked_regions = n(&p, "masked_by_actuator") + n(&p, "masked_by_core");
+            }
+            "ComputerActionPerformed" => {
+                en.kind = "ACTION".into();
+                en.approval_id = s(&p, "approval_id");
+                en.intent_hash = s(&p, "intent_hash");
+                en.detail = s(&p, "kind");
+                en.modality = s(&p, "modality");
+                en.outcome = s(&p, "outcome");
+                en.code = s(&p, "code");
+                en.reason = s(&p, "modality_reason");
+                en.duration_ms = p["duration_ms"].as_u64().unwrap_or(0);
+                if let Some(v) = p["verified"].as_bool() {
+                    en.verified_known = true;
+                    en.verified = v;
+                }
+            }
+            "ComputerLatched" => {
+                en.kind = "LATCHED".into();
+                en.detail = format!("{} {}", s(&p, "tool"), s(&p, "action"));
+                en.reason = s(&p, "reason");
+            }
+            "ComputerLatchResolved" => {
+                en.kind = "LATCH_RESOLVED".into();
+                en.tool_call_id = s(&p, "was_tool_call_id");
+                en.reason = s(&p, "by");
+            }
+            "ComputerSessionClosed" => {
+                en.kind = "SESSION_CLOSED".into();
+                en.reason = s(&p, "reason");
+                en.outcome = s(&p, "outcome");
+                en.duration_ms = p["duration_ms"].as_u64().unwrap_or(0);
+            }
+            "ComputerUserAborted" => {
+                en.kind = "USER_ABORTED".into();
+                en.reason = s(&p, "reason");
+            }
+            "ComputerArtifactExpired" => {
+                expired.insert(s(&p, "artifact_ref"));
+                continue;
+            }
+            _ => continue,
+        }
+        entries.push(en);
+    }
+    for en in &mut entries {
+        en.artifact_expired = !en.artifact_ref.is_empty() && expired.contains(&en.artifact_ref);
+    }
+    let truncated = entries.len() > MAX_ACTIVITY;
+    if truncated {
+        entries.drain(..entries.len() - MAX_ACTIVITY);
+    }
+    wire::ComputerActivityView { entries, truncated }
 }
 
 /// Programs and API names that synthesize input or capture the screen outside

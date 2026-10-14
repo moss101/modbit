@@ -1429,7 +1429,7 @@ fn required_client_capability(env: &CommandEnvelope) -> Option<&'static str> {
         "SetRunMode" | "AddAllowRule" | "RevokeAllowRule" => "approval.resolve",
         // PX-069: the runtime's state is a read of the log; resolving a latch
         // and the on-screen Stop are the person's control of the machine.
-        "GetComputerRuntime" => "events.subscribe",
+        "GetComputerRuntime" | "GetComputerPresence" | "ListComputerActivity" => "events.subscribe",
         "ResolveComputerLatch" | "ComputerStop" => "session.control",
         "SetSendBehavior" => "task.author",
         // PX-050: the queue is the author's; reading it is reading the log.
@@ -2756,9 +2756,11 @@ pub(crate) async fn handle_command_as(
         }
         // PX-069: native computer control - the runtime's state, the person
         // resolving an unknown-outcome latch, and the on-screen Stop.
-        "GetComputerRuntime" | "ResolveComputerLatch" | "ComputerStop" => {
-            crate::computer::handle(core, &env).await
-        }
+        "GetComputerRuntime"
+        | "GetComputerPresence"
+        | "ListComputerActivity"
+        | "ResolveComputerLatch"
+        | "ComputerStop" => crate::computer::handle(core, &env).await,
         "GetContextAccounting" => {
             let Ok(p) = wire::GetContextAccounting::decode(env.payload.as_slice()) else {
                 return reject(cid, "BAD_PAYLOAD", "GetContextAccounting");

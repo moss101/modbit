@@ -459,3 +459,24 @@ async fn acquire_refuses_an_application_whose_identity_is_not_the_one_approved()
     let _ = sleeper.kill();
     let _ = sleeper.wait();
 }
+
+/// PX-074: the welcome reports the permissions truthfully (a platform that
+/// cannot tell names none, which the Core shows as UNKNOWN).
+#[tokio::test]
+async fn the_welcome_reports_the_permissions_the_helper_holds_and_never_a_guess() {
+    let mut h = spawn_raw(&[("MODBIT_ACTUATOR_DENY", "accessibility,screen_recording")]);
+    h.send(&hello(1, vec![7; 32], me())).await;
+    let w = h.welcome().await.expect("a welcome");
+    if cfg!(target_os = "macos") {
+        let get = |n: &str| {
+            w.permissions
+                .iter()
+                .find(|p| p.permission == n)
+                .map(|p| p.granted)
+        };
+        assert_eq!(get("accessibility"), Some(false));
+        assert_eq!(get("screen_recording"), Some(false));
+    } else {
+        assert!(w.permissions.is_empty(), "{:?}", w.permissions);
+    }
+}

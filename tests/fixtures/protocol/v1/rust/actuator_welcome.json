@@ -6,6 +6,16 @@
       "app_scope",
       "screenshot"
     ],
+    "permissions": [
+      {
+        "granted": true,
+        "permission": "accessibility"
+      },
+      {
+        "granted": false,
+        "permission": "screen_recording"
+      }
+    ],
     "pid": 777,
     "platform": "macos",
     "protocolMajor": 1,
