@@ -466,3 +466,104 @@ impl ProcTable {
 fn exited_len_over(total: usize) -> usize {
     total.saturating_sub(KEEP_EXITED) + 1
 }
+
+#[cfg(all(test, unix))]
+mod tests {
+    use super::*;
+
+    fn sh(script: &str) -> Vec<String> {
+        vec!["/bin/sh".into(), "-c".into(), script.into()]
+    }
+
+    /// A follower that sees `running == false` must already have seen every
+    /// byte the process wrote: the exit is published only after the output
+    /// readers drained the pipes. Before that ordering the waiter could report
+    /// the exit while the final bytes were still in the pipe, and a follower
+    /// that stops at `!running` (the contract's `proc_stdin` step) lost them.
+    async fn run_once(table: &Arc<ProcTable>, pty: bool, stdin_open: bool, script: &str) -> String {
+        let argv = sh(script);
+        let env = vec!["PATH=/usr/bin:/bin".to_string()];
+        let p = table
+            .start(StartSpec {
+                argv: &argv,
+                cwd: std::env::temp_dir(),
+                env: &env,
+                timeout: Duration::from_secs(20),
+                pty,
+                size: (80, 24),
+                stdin_open,
+            })
+            .await
+            .expect("start");
+        if stdin_open {
+            p.write_stdin(b"hello stdin\n", true).await.expect("write");
+        }
+        let mut got = Vec::new();
+        let mut cur = 0;
+        for _ in 0..40 {
+            let o = p.follow(cur, 1 << 20, Duration::from_secs(3)).await;
+            got.extend_from_slice(&o.data);
+            cur = o.cursor;
+            if !o.running {
+                break;
+            }
+        }
+        assert!(!p.running(), "the process never reported its exit");
+        String::from_utf8_lossy(&got).into_owned()
+    }
+
+    #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
+    async fn output_is_never_lost_to_a_fast_exit_after_stdin_closes() {
+        let table = Arc::new(ProcTable::default());
+        for i in 0..300 {
+            let text = run_once(&table, false, true, "read l; echo got:$l").await;
+            assert!(
+                text.contains("got:hello stdin"),
+                "iteration {i}: output lost at exit: {text:?}"
+            );
+        }
+    }
+
+    #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
+    async fn a_followed_process_reports_exit_only_after_all_its_output() {
+        let table = Arc::new(ProcTable::default());
+        for i in 0..100 {
+            let text = run_once(
+                &table,
+                false,
+                false,
+                "head -c 200000 /dev/zero | tr '\\0' x; echo END",
+            )
+            .await;
+            assert!(
+                text.ends_with("END\n") && text.len() == 200_004,
+                "iteration {i}: {} bytes",
+                text.len()
+            );
+        }
+    }
+
+    #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
+    async fn a_pty_process_reports_exit_only_after_all_its_output() {
+        let table = Arc::new(ProcTable::default());
+        for i in 0..100 {
+            let text = run_once(&table, true, true, "read l; echo got:$l").await;
+            assert!(text.contains("got:hello stdin"), "iteration {i}: {text:?}");
+        }
+    }
+
+    /// A grandchild that keeps the pipes open after the process exits must
+    /// not hold the exit back forever.
+    #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
+    async fn a_lingering_grandchild_does_not_hold_the_exit_back() {
+        let table = Arc::new(ProcTable::default());
+        let started = Instant::now();
+        let text = run_once(&table, false, false, "(sleep 30 &) ; echo done").await;
+        assert!(text.contains("done"), "{text:?}");
+        assert!(
+            started.elapsed() < Duration::from_secs(10),
+            "{:?}",
+            started.elapsed()
+        );
+    }
+}
