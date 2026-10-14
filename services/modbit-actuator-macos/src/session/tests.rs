@@ -21,10 +21,16 @@ struct Script {
     perform: Mutex<Arc<PerformFn>>,
     window_alive: AtomicBool,
     performs: AtomicUsize,
+    last_touch: Mutex<Option<Instant>>,
     raw: Mutex<Option<(u32, u32, Vec<crate::canvas::Rect>)>>,
 }
 
 impl Script {
+    /// The simulated hardware idle counter moves now.
+    fn touch(&self) {
+        *self.last_touch.lock().unwrap() = Some(Instant::now());
+    }
+
     fn new() -> Arc<Self> {
         Arc::new(Self {
             perms: Mutex::new(Permissions {
@@ -36,6 +42,7 @@ impl Script {
             perform: Mutex::new(Arc::new(|_, _| Ok(wire::PerformResponse::default()))),
             window_alive: AtomicBool::new(true),
             performs: AtomicUsize::new(0),
+            last_touch: Mutex::new(None),
             raw: Mutex::new(None),
         })
     }
@@ -128,7 +135,10 @@ impl Backend for Script {
         f(a.req, ctl)
     }
     fn human_idle(&self) -> Option<Duration> {
-        *self.idle.lock().unwrap()
+        if let Some(d) = *self.idle.lock().unwrap() {
+            return Some(d);
+        }
+        self.last_touch.lock().unwrap().map(|t| t.elapsed())
     }
     fn window_exists(&self, _: u32, _: &str) -> bool {
         self.window_alive.load(Ordering::SeqCst)
@@ -403,35 +413,37 @@ async fn a_physical_event_parks_the_controller_ends_the_input_in_flight_and_is_r
 }
 
 #[tokio::test]
-async fn the_actuators_own_hardware_level_events_are_not_a_person() {
+async fn the_actuators_own_events_are_not_a_person_but_a_person_during_them_is() {
     let b = Script::new();
-    *b.perform.lock().unwrap() = Arc::new(|_, ctl| {
-        // SCREEN scope: the backend marks its own injection window, and the
-        // hardware idle counter resets because of it.
-        ctl.own_hid_for(Duration::from_millis(400));
-        std::thread::sleep(Duration::from_millis(250));
+    let b2 = Arc::clone(&b);
+    *b.perform.lock().unwrap() = Arc::new(move |_, ctl| {
+        // Posts a synthetic event every 10 ms for 300 ms; each one resets the
+        // (simulated) hardware idle counter, as it does on some macOS versions.
+        for _ in 0..30 {
+            ctl.own_event();
+            b2.touch();
+            std::thread::sleep(Duration::from_millis(10));
+        }
         Ok(wire::PerformResponse::default())
     });
     let (hub, mut rx) = hub_over(&b, Denied::default());
     hub.spawn_monitors();
     hub.handle(req(1, acquire("A"))).await;
-    let h2 = Arc::clone(&hub);
-    let flight = tokio::spawn(async move { h2.handle(req(2, perform_call("A", ""))).await });
-    // The injection has begun and registered its window; the counter resets.
-    tokio::time::sleep(Duration::from_millis(60)).await;
-    *b.idle.lock().unwrap() = Some(Duration::from_millis(1));
+    let resp = hub.handle(req(2, perform_call("A", ""))).await;
+    assert_eq!(
+        code_of(&resp),
+        "OK",
+        "the injection was not halted by its own events"
+    );
     assert!(
-        next_event(&mut rx, Duration::from_millis(150))
+        next_event(&mut rx, Duration::from_millis(200))
             .await
             .is_none(),
-        "no HumanInput during the actuator's own injection"
+        "no HumanInput for the actuator's own events"
     );
-    assert_eq!(
-        code_of(&flight.await.unwrap()),
-        "OK",
-        "and the injection itself was not halted"
-    );
-    // Once the window closes, the same counter IS a person.
+    // A person touches the machine at a moment the actuator did not post.
+    tokio::time::sleep(Duration::from_millis(100)).await;
+    b.touch();
     let ev = next_event(&mut rx, Duration::from_secs(2)).await;
     assert!(
         matches!(ev, Some(wire::actuator_event::Event::HumanInput(_))),

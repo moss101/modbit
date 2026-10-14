@@ -23,6 +23,9 @@ const HUMAN_POLL: Duration = Duration::from_millis(15);
 const DEFAULT_DEADLINE: Duration = Duration::from_secs(30);
 /// How long `Stop` waits for in-flight work to wind down before it answers.
 const STOP_GRACE: Duration = Duration::from_millis(400);
+/// How far from one of its own posts the counter's last movement may be and
+/// still count as that post (event timestamping and poll skew).
+const OWN_EVENT_SLACK_MS: u64 = 25;
 const DEFAULT_NODES: usize = 400;
 /// Hard ceiling on a tree read, whatever the Core asks.
 const MAX_NODES: usize = 5000;
@@ -83,7 +86,7 @@ pub struct Hub {
     backend: Arc<dyn Backend>,
     st: Mutex<St>,
     epoch: Arc<AtomicU64>,
-    own_hid: Arc<AtomicU64>,
+    own: crate::backend::OwnPosts,
     inflight: AtomicUsize,
     work: tokio::sync::Mutex<()>,
     tx: Tx,
@@ -106,7 +109,7 @@ impl Hub {
             backend,
             st: Mutex::new(St::default()),
             epoch: Arc::default(),
-            own_hid: Arc::default(),
+            own: Arc::default(),
             inflight: AtomicUsize::new(0),
             work: tokio::sync::Mutex::new(()),
             tx,
@@ -137,7 +140,7 @@ impl Hub {
         };
         Ctl::new(
             Arc::clone(&self.epoch),
-            Arc::clone(&self.own_hid),
+            Arc::clone(&self.own),
             self.origin,
             d,
         )
@@ -648,8 +651,17 @@ impl Hub {
                 continue;
             }
             let now_ms = u64::try_from(self.origin.elapsed().as_millis()).unwrap_or(u64::MAX);
-            if now_ms <= self.own_hid.load(Ordering::SeqCst) {
-                continue; // the actuator's own SCREEN-scope injection
+            // When the counter last moved. If that is the instant of one of
+            // this actuator's own posts, it was not a person.
+            let moved_at = now_ms.saturating_sub(u64::try_from(idle.as_millis()).unwrap_or(0));
+            let ours = self
+                .own
+                .lock()
+                .unwrap_or_else(|e| e.into_inner())
+                .iter()
+                .any(|p| p.abs_diff(moved_at) <= OWN_EVENT_SLACK_MS);
+            if ours {
+                continue;
             }
             let fresh = {
                 let mut st = self.lock();

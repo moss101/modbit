@@ -487,6 +487,11 @@ fn after(
             let now = ax::structure_digest(&w.nodes);
             if now != structure {
                 resp.structure_changed = true;
+                resp.modality_reason.push_str(&format!(
+                    "; the tree's structure changed ({} -> {} elements)",
+                    old.len(),
+                    w.nodes.len()
+                ));
                 mac.snapshots
                     .lock()
                     .unwrap_or_else(|e| e.into_inner())

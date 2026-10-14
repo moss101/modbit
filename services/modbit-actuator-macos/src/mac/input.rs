@@ -64,13 +64,13 @@ impl Poster {
         if ev.is_null() {
             return;
         }
+        ctl.own_event();
         match self.route {
             Route::Pid(pid) => {
                 // SAFETY: `ev` is live; the pid fits i32 (checked at route creation).
                 unsafe { CGEventPostToPid(i32::try_from(pid).unwrap_or(0), ev) };
             }
             Route::Hid => {
-                ctl.own_hid_for(Duration::from_millis(80));
                 // SAFETY: `ev` is live; tap 0 = kCGHIDEventTap.
                 unsafe { CGEventPost(0, ev) };
             }

@@ -66,6 +66,10 @@ pub struct Permissions {
     pub screen_recording: bool,
 }
 
+/// Instants (ms since the connection began) at which this actuator posted a
+/// synthetic event.
+pub type OwnPosts = Arc<std::sync::Mutex<std::collections::VecDeque<u64>>>;
+
 /// Cancellation and deadline for one blocking backend call. A backend checks
 /// [`Ctl::check`] between every unit of work (an element, a key event), so a
 /// Stop or an expired deadline ends the call at the next unit - the 500 ms
@@ -75,7 +79,7 @@ pub struct Ctl {
     epoch: Arc<AtomicU64>,
     at_start: u64,
     deadline: Instant,
-    own_hid: Arc<AtomicU64>,
+    own: OwnPosts,
     origin: Instant,
 }
 
@@ -91,18 +95,13 @@ pub enum Halt {
 impl Ctl {
     /// A control block for a call that starts now.
     #[must_use]
-    pub fn new(
-        epoch: Arc<AtomicU64>,
-        own_hid: Arc<AtomicU64>,
-        origin: Instant,
-        deadline: Duration,
-    ) -> Self {
+    pub fn new(epoch: Arc<AtomicU64>, own: OwnPosts, origin: Instant, deadline: Duration) -> Self {
         let at_start = epoch.load(Ordering::SeqCst);
         Self {
             epoch,
             at_start,
             deadline: Instant::now() + deadline,
-            own_hid,
+            own,
             origin,
         }
     }
@@ -127,15 +126,19 @@ impl Ctl {
         self.deadline.saturating_duration_since(Instant::now())
     }
 
-    /// The backend is about to inject at the hardware-event level (SCREEN
-    /// scope): events in the next `span` are the actuator's own, not a
-    /// person's (CUC-D04: "excludes its own synthetic events").
-    pub fn own_hid_for(&self, span: Duration) {
-        let until = self.origin.elapsed() + span;
-        self.own_hid.fetch_max(
-            u64::try_from(until.as_millis()).unwrap_or(u64::MAX),
-            Ordering::SeqCst,
-        );
+    /// The backend is about to post one synthetic event. The hardware idle
+    /// counter may or may not move for it (it did not on the macOS measured,
+    /// and did on others): the instant is recorded so the human-input monitor
+    /// can tell "the counter moved because of OUR event" from "a person moved
+    /// it" - by the event's time, not by a blanket window, so a person typing
+    /// during an injection is still seen (CUC-D04).
+    pub fn own_event(&self) {
+        let now = u64::try_from(self.origin.elapsed().as_millis()).unwrap_or(u64::MAX);
+        let mut q = self.own.lock().unwrap_or_else(|e| e.into_inner());
+        q.push_back(now);
+        while q.front().is_some_and(|t| now.saturating_sub(*t) > 3000) {
+            q.pop_front();
+        }
     }
 
     /// The typed refusal for a halt.

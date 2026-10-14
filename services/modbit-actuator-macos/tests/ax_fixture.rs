@@ -324,7 +324,15 @@ async fn a_press_runs_in_the_background_and_the_real_cursor_does_not_move() {
     }
     assert_eq!(cursor(), before, "the person's cursor stayed where it was");
     // The next read shows the new label; the press did not change the structure.
-    assert!(!p.structure_changed);
+    assert!(
+        !p.structure_changed,
+        "the press changed the structure: {:?} / reason {:?}",
+        t.nodes
+            .iter()
+            .map(|n| (&n.element_id, &n.role, &n.name))
+            .collect::<Vec<_>>(),
+        p.modality_reason
+    );
     let t2 = s.read(0).await;
     find(&t2, "label", "count=1");
     assert!(

@@ -318,11 +318,22 @@ impl ProcessActuator {
         let pid = child.id();
         // Process identity, before the hello: the running image is the file
         // the manifest pins (CUC-E03).
-        if let (Some(v), Some(p)) = (expect, pid)
-            && let Err(r) = supply::check_process(p, v)
-        {
-            let _ = child.start_kill();
-            return Err(OneFail::Identity(r));
+        if let (Some(v), Some(p)) = (expect, pid) {
+            // A freshly spawned child can still show its parent's image for
+            // a moment (the window between fork and exec on some kernels):
+            // look again for up to a second before calling it a mismatch.
+            let mut verdict = supply::check_process(p, v);
+            for _ in 0..40 {
+                if verdict.is_ok() {
+                    break;
+                }
+                tokio::time::sleep(Duration::from_millis(25)).await;
+                verdict = supply::check_process(p, v);
+            }
+            if let Err(r) = verdict {
+                let _ = child.start_kill();
+                return Err(OneFail::Identity(r));
+            }
         }
         match Self::establish(
             Box::new(stdout),
