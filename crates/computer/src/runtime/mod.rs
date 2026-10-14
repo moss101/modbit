@@ -356,6 +356,10 @@ pub(crate) struct Shared {
     pub next_attempt: Mutex<Instant>,
     pub backoff: Mutex<Duration>,
     pub last_ping: Mutex<Instant>,
+    /// Test seam: runs right after an input's call returns, before its outcome
+    /// is recorded, so a test can land the actuator's death notice exactly there.
+    #[cfg(test)]
+    pub after_input: Mutex<Option<Arc<dyn Fn() + Send + Sync>>>,
 }
 
 /// The Computer Runtime.
@@ -428,6 +432,8 @@ impl ComputerRuntime {
                 state: Mutex::new(State::default()),
                 actuator: Mutex::new(None),
                 config: Mutex::new(None),
+                #[cfg(test)]
+                after_input: Mutex::new(None),
                 detail: Mutex::new("no actuator is configured".into()),
                 fatal: AtomicBool::new(false),
                 pending: Mutex::new(Vec::new()),
