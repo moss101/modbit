@@ -48,6 +48,7 @@ members = [
     "apps/sandbox-gateway",
     "apps/cli",
     "services/modbit-actuator-fixture",
+    "services/modbit-actuator-macos",
     "services/modbit-execd",
     "services/modbit-guest",
     "services/modbit-core",

@@ -105,35 +105,79 @@ struct ArtifactRow {
 
 fn actuator_config(data_dir: &Path) -> Option<ActuatorConfig> {
     let log_path = Some(data_dir.join("computer").join("actuator.log"));
-    if let Ok(exe) = std::env::var("MODBIT_COMPUTER_ACTUATOR")
-        && !exe.trim().is_empty()
-    {
-        let args: Vec<String> = std::env::var("MODBIT_COMPUTER_ACTUATOR_ARGS")
-            .ok()
-            .and_then(|a| serde_json::from_str(&a).ok())
-            .unwrap_or_default();
-        return Some(ActuatorConfig {
-            executable: PathBuf::from(exe.trim()),
-            args,
-            env: vec![],
-            log_path,
-        });
-    }
-    let text = std::fs::read_to_string(data_dir.join("computer").join("actuator.json")).ok()?;
-    #[derive(serde::Deserialize)]
+    #[derive(serde::Deserialize, Default)]
     struct File {
+        #[serde(default)]
         executable: String,
         #[serde(default)]
         args: Vec<String>,
         #[serde(default)]
         env: HashMap<String, String>,
+        /// The bundled helper's signed manifest (PX-072).
+        #[serde(default)]
+        manifest: String,
+        /// Trusted manifest signing keys (a JSON array of pinned keys).
+        #[serde(default)]
+        trusted_keys: String,
+        /// A developer build only: accept a manifest with no signature.
+        #[serde(default)]
+        allow_unsigned_manifest: bool,
     }
-    let f: File = serde_json::from_str(&text).ok()?;
+    let file: Option<File> = std::fs::read_to_string(data_dir.join("computer").join("actuator.json"))
+        .ok()
+        .and_then(|t| serde_json::from_str(&t).ok());
+    let env_str = |k: &str| {
+        std::env::var(k)
+            .ok()
+            .map(|v| v.trim().to_owned())
+            .filter(|v| !v.is_empty())
+    };
+    // A bundled, hash-pinned helper wins over a bare executable: when a
+    // manifest is configured the helper is only ever launched through the
+    // verification of `modbit_computer::supply` (PX-072).
+    let manifest = env_str("MODBIT_COMPUTER_ACTUATOR_MANIFEST")
+        .or_else(|| file.as_ref().map(|f| f.manifest.clone()).filter(|m| !m.is_empty()));
+    if let Some(manifest) = manifest {
+        let keys = env_str("MODBIT_COMPUTER_ACTUATOR_KEYS")
+            .or_else(|| file.as_ref().map(|f| f.trusted_keys.clone()).filter(|m| !m.is_empty()));
+        let allow_unsigned = env_str("MODBIT_COMPUTER_ACTUATOR_ALLOW_UNSIGNED").is_some_and(|v| v == "1")
+            || file.as_ref().is_some_and(|f| f.allow_unsigned_manifest);
+        return Some(ActuatorConfig {
+            executable: PathBuf::new(),
+            args: file.as_ref().map(|f| f.args.clone()).unwrap_or_default(),
+            env: file
+                .map(|f| f.env.into_iter().collect())
+                .unwrap_or_default(),
+            log_path,
+            supply: Some(modbit_computer::supply::SupplyConfig {
+                manifest: PathBuf::from(manifest),
+                keys_file: keys.map(PathBuf::from),
+                keys: vec![],
+                allow_unsigned,
+                core_version: env!("CARGO_PKG_VERSION").to_owned(),
+            }),
+        });
+    }
+    if let Some(exe) = env_str("MODBIT_COMPUTER_ACTUATOR") {
+        let args: Vec<String> = std::env::var("MODBIT_COMPUTER_ACTUATOR_ARGS")
+            .ok()
+            .and_then(|a| serde_json::from_str(&a).ok())
+            .unwrap_or_default();
+        return Some(ActuatorConfig {
+            executable: PathBuf::from(exe),
+            args,
+            env: vec![],
+            log_path,
+            supply: None,
+        });
+    }
+    let f = file.filter(|f| !f.executable.is_empty())?;
     Some(ActuatorConfig {
         executable: PathBuf::from(f.executable),
         args: f.args,
         env: f.env.into_iter().collect(),
         log_path,
+        supply: None,
     })
 }
 

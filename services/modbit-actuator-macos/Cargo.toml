@@ -1,0 +1,46 @@
+[package]
+name = "modbit-actuator-macos"
+description = "Modbit macOS actuator helper: a separate process with the Accessibility and Screen Recording permissions that drives applications for the Computer Runtime"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+publish.workspace = true
+
+[[bin]]
+name = "modbit-actuator-macos"
+path = "src/main.rs"
+
+# The helper holds operating-system permissions and nothing else: no model,
+# policy, credential, secret or filesystem authority. Its only dependencies
+# are the wire protocol, hashing, the PNG encoder and the async runtime
+# (QUAL-PX-071: a static dependency scan fails a helper that links a
+# credential or path-authority crate). The macOS frameworks are bound by
+# hand-written `extern "C"` declarations in `src/mac/ffi.rs`; no binding
+# crate is added.
+[dependencies]
+modbit-protocol.workspace = true
+hex.workspace = true
+png = "0.18"
+sha2.workspace = true
+tokio = { workspace = true, features = ["io-std"] }
+
+[dev-dependencies]
+ed25519-dalek.workspace = true
+modbit-computer.workspace = true
+serde_json.workspace = true
+tempfile.workspace = true
+
+[lints]
+workspace = true
+
+# Module registration parsed by `architecture-lint modules` (M0.4, docs/45, docs/81).
+# The macOS actuator is a leaf process the Core launches (PX-071): the real
+# implementation of the actuator RPC of `computer.proto`, registered under the
+# `browser` owner; it claims no canonical system.
+[package.metadata.modbit]
+owner = "browser"
+canonical = []
+capabilities = [
+  { id = "computer.macos_actuator", requirements = ["REQ-PX-071"] },
+]

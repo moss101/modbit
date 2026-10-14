@@ -642,6 +642,7 @@ impl ComputerRuntime {
                     e,
                     crate::actuator::LaunchError::Refused(_)
                         | crate::actuator::LaunchError::Handshake(_)
+                        | crate::actuator::LaunchError::Unverified(_)
                 ) || matches!(&e, crate::actuator::LaunchError::Spawn(s) if s.contains("No such file") || s.contains("cannot find") || s.contains("not found"))
                 {
                     self.shared.fatal.store(true, Ordering::SeqCst);
