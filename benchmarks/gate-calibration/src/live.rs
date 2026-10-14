@@ -759,6 +759,36 @@ struct Attempt {
     error: Option<String>,
 }
 
+/// The option of question `qid` (from `question list`) a protocol that
+/// approves nothing picks: one that reads as a refusal, else the last listed.
+fn declining_option(listing: &str, qid: &str) -> Option<String> {
+    let mut in_q = false;
+    let mut options: Vec<(String, String)> = Vec::new();
+    for l in listing.lines() {
+        if l.starts_with("question ") {
+            in_q = l.split_whitespace().nth(1) == Some(qid);
+        } else if in_q && let Some(rest) = l.trim_start().strip_prefix("option ") {
+            let mut it = rest.splitn(2, ' ');
+            let id = it.next().unwrap_or_default().to_owned();
+            options.push((id, it.next().unwrap_or_default().to_ascii_lowercase()));
+        }
+    }
+    let refusing = [
+        "deny", "decline", "reject", "refuse", "no", "skip", "cancel", "stop",
+    ];
+    options
+        .iter()
+        .find(|(id, label)| {
+            refusing.iter().any(|w| {
+                id.to_ascii_lowercase() == *w
+                    || label.contains(&format!("\"{w}"))
+                    || label.contains(w) && *w != "no"
+            })
+        })
+        .or_else(|| options.last())
+        .map(|(id, _)| id.clone())
+}
+
 fn pending(text: &str, prefix: &str, status_any: &[&str]) -> Vec<(String, String)> {
     text.lines()
         .filter(|l| l.starts_with(prefix))
@@ -932,25 +962,30 @@ fn produce(
                         .measure
                         .notes
                         .push(format!("question {qid} answered by protocol"));
-                    r = cli.call(
-                        &[
-                            "question",
-                            "answer",
-                            "--session",
-                            &session,
-                            "--task",
-                            &tid,
-                            "--question",
-                            qid,
-                            "--endpoint",
-                            endpoint,
-                            "--model",
-                            &cfg.run.model,
-                            "--wait",
-                            QUESTION_ANSWER,
-                        ],
-                        remaining,
-                    );
+                    // A question that takes options only (no free text) is
+                    // answered with the declining option: the protocol never
+                    // approves a protected effect.
+                    let option = declining_option(&q.stdout, qid);
+                    let mut args = vec![
+                        "question",
+                        "answer",
+                        "--session",
+                        &session,
+                        "--task",
+                        &tid,
+                        "--question",
+                        qid,
+                        "--endpoint",
+                        endpoint,
+                        "--model",
+                        &cfg.run.model,
+                        "--wait",
+                    ];
+                    if let Some(o) = &option {
+                        args.extend(["--option", o.as_str()]);
+                    }
+                    args.push(QUESTION_ANSWER);
+                    r = cli.call(&args, remaining);
                 } else {
                     let a = cli.call(&["approval", "list", "--session", &session], short);
                     let aps = pending(
@@ -988,16 +1023,18 @@ fn produce(
             }
             attempt.measure.interactions = interactions;
             if timed_out {
+                // A model that did not finish in time left a tree: that tree is
+                // its candidate (the task is cancelled, the state says so). It is
+                // not a failure of the Core or the CLI.
                 let _ = cli.call(
                     &["task", "cancel", "--session", &session, "--task", &tid],
                     short,
                 );
-                return Err(format!(
-                    "the task did not finish within {}s and was cancelled",
+                attempt.measure.notes.push(format!(
+                    "the task did not finish within {}s and was cancelled; its tree is the candidate",
                     task_timeout.as_secs()
                 ));
-            }
-            if r.code == 1 || r.code < 0 {
+            } else if r.code == 1 || r.code < 0 {
                 return Err(format!(
                     "task run failed (exit {}): {}{}",
                     r.code, r.stdout, r.stderr
@@ -1682,6 +1719,14 @@ pub async fn run_live(
     let mut errors: Vec<RunError> = Vec::new();
     let mut largest: Option<f64> = None;
     let mut consecutive_errors = 0usize;
+    // A wall-clock budget (`MODBIT_LIVE_DEADLINE_MINUTES`): a run that would
+    // not finish before the job's own timeout stops cleanly and writes the
+    // partial result instead of being killed with nothing written.
+    let began = std::time::Instant::now();
+    let deadline = std::env::var("MODBIT_LIVE_DEADLINE_MINUTES")
+        .ok()
+        .and_then(|v| v.trim().parse::<u64>().ok())
+        .map(|m| std::time::Duration::from_secs(m * 60));
     'plan: for repeat in 0..cfg.repeats {
         for wc in &lineages {
             let run_id = format!(
@@ -1691,6 +1736,15 @@ pub async fn run_live(
             );
             if meter.admit(largest.unwrap_or(INITIAL_RESERVE_USD)).is_err() {
                 // The meter remembers; the status says the cap ended the run.
+                break 'plan;
+            }
+            if let Some(d) = deadline
+                && began.elapsed() + opts.task_timeout > d
+            {
+                missing.push(format!(
+                    "the wall-clock budget ({} min) ended the run before {run_id}",
+                    d.as_secs() / 60
+                ));
                 break 'plan;
             }
             let run_dir = opts.out_dir.join("runs").join(&run_id);
@@ -2377,6 +2431,14 @@ mod tests {
                 &aggregate(&rows, &langs).1
             )
         );
+    }
+
+    #[test]
+    fn an_options_only_question_is_answered_with_the_declining_option() {
+        let q = "question q-1 answered=false reason=x flags= option= text=\"\" \"May I?\"\n  option approve \"Approve\"\n  option deny \"Deny\"\nquestion q-2 answered=false\n  option a \"Go ahead\"\n  option b \"Leave it\"\n";
+        assert_eq!(declining_option(q, "q-1").as_deref(), Some("deny"));
+        assert_eq!(declining_option(q, "q-2").as_deref(), Some("b"));
+        assert_eq!(declining_option(q, "q-3"), None);
     }
 
     #[test]
