@@ -1,0 +1,6258 @@
+{
+  "report": {
+    "schema": "modbit.paired-trial/1",
+    "live": true,
+    "task_set": {
+      "id": "px136-paired-30",
+      "version": "1.0.0",
+      "tasks": [
+        "range-sum-inclusive",
+        "count-multiples-inclusive",
+        "last-n-items",
+        "implement-slugify",
+        "implement-snake-case",
+        "implement-truncate-words",
+        "rename-get-user",
+        "rename-load-order",
+        "rename-find-item",
+        "validate-port",
+        "validate-percent",
+        "validate-age",
+        "mutable-default-append-item",
+        "mutable-default-add-tag",
+        "mutable-default-collect",
+        "config-tax-rate-key",
+        "config-retries-count",
+        "config-timeout-units",
+        "sort-top-scores",
+        "sort-oldest-first",
+        "sort-longest-names",
+        "parse-duration",
+        "parse-size",
+        "parse-ranges",
+        "dedupe-keep-order",
+        "merge-counts",
+        "flatten-nested",
+        "cart-discount-order",
+        "invoice-rounding",
+        "inventory-reserve"
+      ],
+      "digest": "6a093fbb51df23ba08c158ca9278107345d3d1f97e9543f639b7f2c1c3ebe308",
+      "description": "The thirty small Python repair tasks of the projection trial suite: each repository's mandatory check (`python3 -B check.py`, declared in .modbit/verification.json) fails until the task is done, and every task ships a reference solution that makes it pass."
+    },
+    "opener": {
+      "endpoint": "openai",
+      "model": "glm-5.3-flash",
+      "price": {
+        "input_per_mtok_usd": 0.15,
+        "output_per_mtok_usd": 0.5
+      }
+    },
+    "second": {
+      "endpoint": "anthropic",
+      "model": "glm-5.3-flash",
+      "price": {
+        "input_per_mtok_usd": 0.15,
+        "output_per_mtok_usd": 0.5
+      }
+    },
+    "registry_generation": "paired-17989265",
+    "registry_digest": "d93800aad98c3a5d740525b1e89163e20cdf888c28110689bb1a4e54f41f7e31",
+    "repeats": 1,
+    "arms": [
+      {
+        "arm": "direct",
+        "runs": 30,
+        "verified_success": {
+          "k": 25,
+          "n": 30,
+          "p": 0.8333333333333334,
+          "lo": 0.6643529481431982,
+          "hi": 0.9266356575964831
+        },
+        "core_verified": {
+          "k": 26,
+          "n": 30,
+          "p": 0.8666666666666667,
+          "lo": 0.7031831605558306,
+          "hi": 0.9469043057578189
+        },
+        "cost_usd": {
+          "mean": 0.019710653333333324,
+          "ci95": [
+            0.014275109999999997,
+            0.026114451666666667
+          ]
+        },
+        "accounting_cost_usd": {
+          "mean": 0.021866666666666666,
+          "ci95": [
+            0.0165,
+            0.028379999999999996
+          ]
+        },
+        "runs_with_unreported_usage": 0,
+        "cost_per_verified_success_usd": 0.02365278399999999,
+        "latency_s": {
+          "mean": 376.9067666666666,
+          "ci95": [
+            247.56336666666664,
+            528.0580333333334
+          ]
+        },
+        "median_latency_s": 201.753,
+        "escalation_rate": {
+          "k": 0,
+          "n": 30,
+          "p": 0.0,
+          "lo": 0.0,
+          "hi": 0.113517091390478
+        },
+        "escalation_attempt_rate": {
+          "k": 0,
+          "n": 30,
+          "p": 0.0,
+          "lo": 0.0,
+          "hi": 0.113517091390478
+        },
+        "review_rate": {
+          "k": 11,
+          "n": 30,
+          "p": 0.36666666666666664,
+          "lo": 0.2187370220401768,
+          "hi": 0.5448675356639505
+        },
+        "human_intervention_rate": {
+          "k": 3,
+          "n": 30,
+          "p": 0.1,
+          "lo": 0.034599259959716175,
+          "hi": 0.2562144131526662
+        },
+        "model_calls": {
+          "mean": 9.233333333333333,
+          "ci95": [
+            7.4,
+            11.166666666666666
+          ]
+        },
+        "tokens": {
+          "mean": 97661.63333333333,
+          "ci95": [
+            71981.4,
+            127306.23333333334
+          ]
+        },
+        "errored": 0,
+        "timed_out": 1,
+        "cost_unpriced": 0,
+        "path_labels": {
+          "CRITIQUE": 11,
+          "DIRECT": 19
+        },
+        "failed_runs": [
+          "cart-discount-order#0",
+          "dedupe-keep-order#0",
+          "implement-snake-case#0",
+          "implement-truncate-words#0",
+          "last-n-items#0"
+        ]
+      },
+      {
+        "arm": "cascade",
+        "runs": 30,
+        "verified_success": {
+          "k": 27,
+          "n": 30,
+          "p": 0.9,
+          "lo": 0.7437855868473339,
+          "hi": 0.9654007400402839
+        },
+        "core_verified": {
+          "k": 27,
+          "n": 30,
+          "p": 0.9,
+          "lo": 0.7437855868473339,
+          "hi": 0.9654007400402839
+        },
+        "cost_usd": {
+          "mean": 0.017156509999999996,
+          "ci95": [
+            0.013283629999999998,
+            0.021232976666666667
+          ]
+        },
+        "accounting_cost_usd": {
+          "mean": 0.018703333333333336,
+          "ci95": [
+            0.014606666666666667,
+            0.023173333333333327
+          ]
+        },
+        "runs_with_unreported_usage": 0,
+        "cost_per_verified_success_usd": 0.019062788888888883,
+        "latency_s": {
+          "mean": 298.7592333333334,
+          "ci95": [
+            218.3784,
+            384.54339999999996
+          ]
+        },
+        "median_latency_s": 150.1225,
+        "escalation_rate": {
+          "k": 0,
+          "n": 30,
+          "p": 0.0,
+          "lo": 0.0,
+          "hi": 0.113517091390478
+        },
+        "escalation_attempt_rate": {
+          "k": 3,
+          "n": 30,
+          "p": 0.1,
+          "lo": 0.034599259959716175,
+          "hi": 0.2562144131526662
+        },
+        "review_rate": {
+          "k": 8,
+          "n": 30,
+          "p": 0.26666666666666666,
+          "lo": 0.14182495553910618,
+          "hi": 0.4444830204431169
+        },
+        "human_intervention_rate": {
+          "k": 4,
+          "n": 30,
+          "p": 0.13333333333333333,
+          "lo": 0.05309569424218104,
+          "hi": 0.2968168394441695
+        },
+        "model_calls": {
+          "mean": 8.333333333333334,
+          "ci95": [
+            7.0,
+            9.733333333333333
+          ]
+        },
+        "tokens": {
+          "mean": 84024.96666666666,
+          "ci95": [
+            66118.5,
+            102441.86666666667
+          ]
+        },
+        "errored": 0,
+        "timed_out": 0,
+        "cost_unpriced": 0,
+        "path_labels": {
+          "CRITIQUE": 8,
+          "DIRECT": 22
+        },
+        "failed_runs": [
+          "config-retries-count#0",
+          "config-tax-rate-key#0",
+          "parse-duration#0"
+        ]
+      },
+      {
+        "arm": "critique",
+        "runs": 30,
+        "verified_success": {
+          "k": 26,
+          "n": 30,
+          "p": 0.8666666666666667,
+          "lo": 0.7031831605558306,
+          "hi": 0.9469043057578189
+        },
+        "core_verified": {
+          "k": 27,
+          "n": 30,
+          "p": 0.9,
+          "lo": 0.7437855868473339,
+          "hi": 0.9654007400402839
+        },
+        "cost_usd": {
+          "mean": 0.023107138333333332,
+          "ci95": [
+            0.01956087666666667,
+            0.026626999999999994
+          ]
+        },
+        "accounting_cost_usd": {
+          "mean": 0.025603333333333332,
+          "ci95": [
+            0.02221666666666666,
+            0.02883333333333333
+          ]
+        },
+        "runs_with_unreported_usage": 0,
+        "cost_per_verified_success_usd": 0.02666208269230769,
+        "latency_s": {
+          "mean": 472.0086666666667,
+          "ci95": [
+            376.2905666666667,
+            577.1034000000001
+          ]
+        },
+        "median_latency_s": 467.63750000000005,
+        "escalation_rate": {
+          "k": 0,
+          "n": 30,
+          "p": 0.0,
+          "lo": 0.0,
+          "hi": 0.113517091390478
+        },
+        "escalation_attempt_rate": {
+          "k": 0,
+          "n": 30,
+          "p": 0.0,
+          "lo": 0.0,
+          "hi": 0.113517091390478
+        },
+        "review_rate": {
+          "k": 28,
+          "n": 30,
+          "p": 0.9333333333333333,
+          "lo": 0.7867618227892791,
+          "hi": 0.9815233646723066
+        },
+        "human_intervention_rate": {
+          "k": 3,
+          "n": 30,
+          "p": 0.1,
+          "lo": 0.034599259959716175,
+          "hi": 0.2562144131526662
+        },
+        "model_calls": {
+          "mean": 10.966666666666667,
+          "ci95": [
+            9.633333333333333,
+            12.233333333333333
+          ]
+        },
+        "tokens": {
+          "mean": 111221.2,
+          "ci95": [
+            94576.33333333333,
+            127574.7
+          ]
+        },
+        "errored": 0,
+        "timed_out": 1,
+        "cost_unpriced": 0,
+        "path_labels": {
+          "CRITIQUE": 28,
+          "DIRECT": 2
+        },
+        "failed_runs": [
+          "count-multiples-inclusive#0",
+          "implement-slugify#0",
+          "last-n-items#0",
+          "sort-top-scores#0"
+        ]
+      }
+    ],
+    "comparisons": [
+      {
+        "arm": "cascade",
+        "pairs": 30,
+        "success_delta": {
+          "mean": 0.06666666666666667,
+          "ci95": [
+            -0.1,
+            0.26666666666666666
+          ]
+        },
+        "cost_delta_usd": {
+          "mean": -0.002554143333333334,
+          "ci95": [
+            -0.009907801666666667,
+            0.004059523333333334
+          ]
+        },
+        "latency_delta_s": {
+          "mean": -78.14753333333333,
+          "ci95": [
+            -248.49023333333338,
+            77.01679999999998
+          ]
+        },
+        "quality": "NO_DIFFERENCE_DETECTED",
+        "cost": "INDETERMINATE"
+      },
+      {
+        "arm": "critique",
+        "pairs": 30,
+        "success_delta": {
+          "mean": 0.03333333333333333,
+          "ci95": [
+            -0.13333333333333333,
+            0.2
+          ]
+        },
+        "cost_delta_usd": {
+          "mean": 0.003396484999999999,
+          "ci95": [
+            -0.0034700883333333337,
+            0.009897693333333334
+          ]
+        },
+        "latency_delta_s": {
+          "mean": 95.10190000000003,
+          "ci95": [
+            -75.36849999999998,
+            269.21850000000006
+          ]
+        },
+        "quality": "NO_DIFFERENCE_DETECTED",
+        "cost": "INDETERMINATE"
+      }
+    ],
+    "gate": {
+      "all": {
+        "observations": 93,
+        "good_candidates": 89,
+        "bad_candidates": 4,
+        "false_accept": {
+          "k": 0,
+          "n": 4,
+          "p": 0.0,
+          "lo": 0.0,
+          "hi": 0.48990002040399916
+        },
+        "false_reject": {
+          "k": 6,
+          "n": 89,
+          "p": 0.06741573033707865,
+          "lo": 0.03126095907688764,
+          "hi": 0.139369447982017
+        },
+        "no_verdict": 8
+      },
+      "cascade": {
+        "observations": 33,
+        "good_candidates": 32,
+        "bad_candidates": 1,
+        "false_accept": {
+          "k": 0,
+          "n": 1,
+          "p": 0.0,
+          "lo": 0.0,
+          "hi": 0.7934567085261071
+        },
+        "false_reject": {
+          "k": 5,
+          "n": 32,
+          "p": 0.15625,
+          "lo": 0.06864319106627216,
+          "hi": 0.31754492553566527
+        },
+        "no_verdict": 2
+      },
+      "critique": {
+        "observations": 30,
+        "good_candidates": 29,
+        "bad_candidates": 1,
+        "false_accept": {
+          "k": 0,
+          "n": 1,
+          "p": 0.0,
+          "lo": 0.0,
+          "hi": 0.7934567085261071
+        },
+        "false_reject": {
+          "k": 0,
+          "n": 29,
+          "p": 0.0,
+          "lo": 0.0,
+          "hi": 0.11697359446555587
+        },
+        "no_verdict": 3
+      },
+      "direct": {
+        "observations": 30,
+        "good_candidates": 28,
+        "bad_candidates": 2,
+        "false_accept": {
+          "k": 0,
+          "n": 2,
+          "p": 0.0,
+          "lo": 0.0,
+          "hi": 0.6576280471103807
+        },
+        "false_reject": {
+          "k": 1,
+          "n": 28,
+          "p": 0.03571428571428571,
+          "lo": 0.00633235649754188,
+          "hi": 0.17712576118498663
+        },
+        "no_verdict": 3
+      }
+    },
+    "samples": [
+      {
+        "kind": "solver",
+        "runs": 0,
+        "samples": 0,
+        "successes": 0,
+        "unknown_cost_samples": 0,
+        "total_cost_minor": 0,
+        "keys": []
+      },
+      {
+        "kind": "escalation",
+        "runs": 0,
+        "samples": 0,
+        "successes": 0,
+        "unknown_cost_samples": 0,
+        "total_cost_minor": 0,
+        "keys": []
+      },
+      {
+        "kind": "reviewer",
+        "runs": 46,
+        "samples": 46,
+        "successes": 40,
+        "unknown_cost_samples": 0,
+        "total_cost_minor": 5479,
+        "keys": [
+          "reviewer|glm-5.3-flash"
+        ]
+      }
+    ],
+    "run_ids": [
+      [
+        "cart-discount-order#0/direct",
+        "01a1341f-af03-75f0-bc82-c91ed26d7482",
+        "none"
+      ],
+      [
+        "cart-discount-order#0/cascade",
+        "01a13423-298c-7903-b5bd-e69e50d227bd",
+        "none"
+      ],
+      [
+        "cart-discount-order#0/critique",
+        "01a13424-fff0-7312-8866-0790c497909f",
+        "paired-01a13424-fff"
+      ],
+      [
+        "config-retries-count#0/direct",
+        "01a133d9-b38c-7ae2-96f3-69c3b3b3399e",
+        "paired-01a133d9-b38"
+      ],
+      [
+        "config-retries-count#0/cascade",
+        "01a133da-0d2d-7103-98e4-647843b3984a",
+        "none"
+      ],
+      [
+        "config-retries-count#0/critique",
+        "01a133dc-fed4-7460-9b8f-08b69a8e4a8f",
+        "paired-01a133dc-fed"
+      ],
+      [
+        "config-tax-rate-key#0/direct",
+        "01a133d2-4745-7371-8505-00d65f87d72d",
+        "paired-01a133d2-474"
+      ],
+      [
+        "config-tax-rate-key#0/cascade",
+        "01a133d2-b59f-7ce1-ae06-9d45e91fe343",
+        "none"
+      ],
+      [
+        "config-tax-rate-key#0/critique",
+        "01a133d8-cec4-7583-8043-d1b3b23882f3",
+        "paired-01a133d8-cec"
+      ],
+      [
+        "config-timeout-units#0/direct",
+        "01a133df-5322-77c3-a812-3dbec7f6b05f",
+        "paired-01a133df-532"
+      ],
+      [
+        "config-timeout-units#0/cascade",
+        "01a133e2-5a95-7533-8d8a-ed935186abfe",
+        "none"
+      ],
+      [
+        "config-timeout-units#0/critique",
+        "01a133e3-af85-70e0-8ec2-741d561214d2",
+        "paired-01a133e3-af8"
+      ],
+      [
+        "count-multiples-inclusive#0/direct",
+        "01a1338e-c8b6-7f53-a691-ddc5214ddf0d",
+        "none"
+      ],
+      [
+        "count-multiples-inclusive#0/cascade",
+        "01a13390-597b-7862-932c-db477b7b7ef3",
+        "none"
+      ],
+      [
+        "count-multiples-inclusive#0/critique",
+        "01a13391-31df-7701-8181-ba5109418353",
+        "none"
+      ],
+      [
+        "dedupe-keep-order#0/direct",
+        "01a1340d-8133-7ad3-8c72-df9977bc8178",
+        "paired-01a1340d-813"
+      ],
+      [
+        "dedupe-keep-order#0/cascade",
+        "01a1340d-f6f9-7833-a967-1ec46ea7ad5d",
+        "paired-01a1340d-f6f"
+      ],
+      [
+        "dedupe-keep-order#0/critique",
+        "01a1340f-1b49-7901-8141-0613be66fc96",
+        "paired-01a1340f-1b4"
+      ],
+      [
+        "flatten-nested#0/direct",
+        "01a1341d-59bc-73e0-a465-08cb46e94158",
+        "paired-01a1341d-59b"
+      ],
+      [
+        "flatten-nested#0/cascade",
+        "01a1341e-4491-7e42-b84a-ff928dbf816b",
+        "none"
+      ],
+      [
+        "flatten-nested#0/critique",
+        "01a1341f-37c2-7801-9701-8bb83323a20f",
+        "paired-01a1341f-37c"
+      ],
+      [
+        "implement-slugify#0/direct",
+        "01a13394-cbb8-7813-9d09-2379a68c7d6c",
+        "none"
+      ],
+      [
+        "implement-slugify#0/cascade",
+        "01a13397-1510-7f90-af86-23e53034c035",
+        "none"
+      ],
+      [
+        "implement-slugify#0/critique",
+        "01a13397-3ba8-79a0-877c-c26fbb37a757",
+        "none"
+      ],
+      [
+        "implement-snake-case#0/direct",
+        "01a13397-67a5-7c72-9543-5a608abe2f87",
+        "none"
+      ],
+      [
+        "implement-snake-case#0/cascade",
+        "01a13397-9408-75f2-96cb-ef01448620c5",
+        "none"
+      ],
+      [
+        "implement-snake-case#0/critique",
+        "01a13399-0aae-7b62-8c47-e1c89a8c2872",
+        "paired-01a13399-0aa"
+      ],
+      [
+        "implement-truncate-words#0/direct",
+        "01a1339e-a89e-71d0-9228-5f9878079a2e",
+        "none"
+      ],
+      [
+        "implement-truncate-words#0/cascade",
+        "01a1339e-d567-7141-a8b3-b578dd443025",
+        "none"
+      ],
+      [
+        "implement-truncate-words#0/critique",
+        "01a1339f-c4f9-7080-90ec-60c3c66b8850",
+        "paired-01a1339f-c4f"
+      ],
+      [
+        "inventory-reserve#0/direct",
+        "01a13434-3102-7121-8580-a2c419f1dd5e",
+        "none"
+      ],
+      [
+        "inventory-reserve#0/cascade",
+        "01a13436-98e1-7180-bd3a-085bb69e0d67",
+        "paired-01a13436-98e"
+      ],
+      [
+        "inventory-reserve#0/critique",
+        "01a13436-e725-7132-a095-1f474688e1c8",
+        "paired-01a13436-e72"
+      ],
+      [
+        "invoice-rounding#0/direct",
+        "01a13429-22ec-7f10-b86c-bd1ae5f392b6",
+        "paired-01a13429-22e"
+      ],
+      [
+        "invoice-rounding#0/cascade",
+        "01a1342c-8c79-78c2-979d-25cd3964c582",
+        "paired-01a1342c-8c7"
+      ],
+      [
+        "invoice-rounding#0/critique",
+        "01a13431-bc17-7ea2-8a6c-657e5001d412",
+        "paired-01a13431-bc1"
+      ],
+      [
+        "last-n-items#0/direct",
+        "01a13391-4537-70d0-b588-22b044f3c868",
+        "none"
+      ],
+      [
+        "last-n-items#0/cascade",
+        "01a13392-104c-7e90-869a-39b8bf1785e5",
+        "none"
+      ],
+      [
+        "last-n-items#0/critique",
+        "01a13393-79fc-7fc3-a524-b1a1dcd87afa",
+        "none"
+      ],
+      [
+        "merge-counts#0/direct",
+        "01a13413-787a-7df3-b15c-3730d7f439cb",
+        "none"
+      ],
+      [
+        "merge-counts#0/cascade",
+        "01a13414-876a-7070-9e37-a1aeca2e5937",
+        "none"
+      ],
+      [
+        "merge-counts#0/critique",
+        "01a1341b-5f58-7e52-8c87-dcc3330e5e27",
+        "paired-01a1341b-5f5"
+      ],
+      [
+        "mutable-default-add-tag#0/direct",
+        "01a133c7-f5ff-7dc1-88e3-55d40895fd1a",
+        "none"
+      ],
+      [
+        "mutable-default-add-tag#0/cascade",
+        "01a133c9-3f39-7a71-aea2-d2646ddb1ce5",
+        "none"
+      ],
+      [
+        "mutable-default-add-tag#0/critique",
+        "01a133c9-60c4-7b50-8038-8bf018f46495",
+        "paired-01a133c9-60c"
+      ],
+      [
+        "mutable-default-append-item#0/direct",
+        "01a133c4-fd44-7b50-8f86-044f679d7117",
+        "none"
+      ],
+      [
+        "mutable-default-append-item#0/cascade",
+        "01a133c6-38cd-7130-8e1d-be6041644c7a",
+        "none"
+      ],
+      [
+        "mutable-default-append-item#0/critique",
+        "01a133c7-209e-7fd1-8af8-f419b3e3afda",
+        "paired-01a133c7-209"
+      ],
+      [
+        "mutable-default-collect#0/direct",
+        "01a133ca-a2fe-7852-8c4d-50a356c7267c",
+        "paired-01a133ca-a2f"
+      ],
+      [
+        "mutable-default-collect#0/cascade",
+        "01a133ce-ac08-72c0-8a49-0bc2b16426e3",
+        "none"
+      ],
+      [
+        "mutable-default-collect#0/critique",
+        "01a133d0-2c68-72d1-808a-53da1b968fea",
+        "paired-01a133d0-2c6"
+      ],
+      [
+        "parse-duration#0/direct",
+        "01a133f5-f1aa-7613-98bd-974fb01f8601",
+        "paired-01a133f5-f1a"
+      ],
+      [
+        "parse-duration#0/cascade",
+        "01a133f7-f43d-74d0-8e10-47a02960cbb3",
+        "none"
+      ],
+      [
+        "parse-duration#0/critique",
+        "01a133f9-81be-7d40-abe2-03b80ee55062",
+        "paired-01a133f9-81b"
+      ],
+      [
+        "parse-ranges#0/direct",
+        "01a13403-a6b4-7941-a3ad-27a6dbb9d8fa",
+        "none"
+      ],
+      [
+        "parse-ranges#0/cascade",
+        "01a13404-7a47-7923-8cfe-f350b7b68782",
+        "paired-01a13404-7a4"
+      ],
+      [
+        "parse-ranges#0/critique",
+        "01a13405-e06e-7d43-b5ee-e52e49128059",
+        "paired-01a13405-e06"
+      ],
+      [
+        "parse-size#0/direct",
+        "01a133fd-d31f-77b2-bacc-a5b94dda1c6b",
+        "none"
+      ],
+      [
+        "parse-size#0/cascade",
+        "01a13400-b04a-7ba0-b061-f0b9ea09051b",
+        "none"
+      ],
+      [
+        "parse-size#0/critique",
+        "01a13403-4fbc-7a42-beef-5d66da1b5c4b",
+        "paired-01a13403-4fb"
+      ],
+      [
+        "range-sum-inclusive#0/direct",
+        "01a1338d-9d3d-7c41-9632-f3882e80bd5e",
+        "none"
+      ],
+      [
+        "range-sum-inclusive#0/cascade",
+        "01a1338d-9d3c-7c62-b2ca-e1648c423299",
+        "paired-01a1338d-9d3"
+      ],
+      [
+        "range-sum-inclusive#0/critique",
+        "01a1338d-9d3d-7ad3-9b2c-ed2305aecca9",
+        "paired-01a1338d-9d3"
+      ],
+      [
+        "rename-find-item#0/direct",
+        "01a133ad-6f27-7360-9700-5ceb51532454",
+        "none"
+      ],
+      [
+        "rename-find-item#0/cascade",
+        "01a133af-dcb6-70b3-b071-cea60bea4ea8",
+        "none"
+      ],
+      [
+        "rename-find-item#0/critique",
+        "01a133b1-0191-7cf2-98c1-c702bc6c0bd3",
+        "paired-01a133b1-019"
+      ],
+      [
+        "rename-get-user#0/direct",
+        "01a133a0-8ed2-7e31-9eb3-ce73e8393be5",
+        "none"
+      ],
+      [
+        "rename-get-user#0/cascade",
+        "01a133a5-428d-74a1-9a24-64ae5ba04538",
+        "paired-01a133a5-428"
+      ],
+      [
+        "rename-get-user#0/critique",
+        "01a133aa-6af8-7993-9ade-61925d02742f",
+        "paired-01a133aa-6af"
+      ],
+      [
+        "rename-load-order#0/direct",
+        "01a133ab-5d85-78e0-beec-def535855827",
+        "none"
+      ],
+      [
+        "rename-load-order#0/cascade",
+        "01a133ab-c447-7701-bd0d-83e6f2f147e7",
+        "paired-01a133ab-c44"
+      ],
+      [
+        "rename-load-order#0/critique",
+        "01a133ad-03e1-7050-8ed5-297dba0ca565",
+        "paired-01a133ad-03e"
+      ],
+      [
+        "sort-longest-names#0/direct",
+        "01a133ec-4d33-7011-860d-06a15d05e546",
+        "paired-01a133ec-4d3"
+      ],
+      [
+        "sort-longest-names#0/cascade",
+        "01a133ef-99d1-7641-8e28-5b2a7588d837",
+        "none"
+      ],
+      [
+        "sort-longest-names#0/critique",
+        "01a133f4-ef72-79b0-9390-bb03c45b78b8",
+        "paired-01a133f4-ef7"
+      ],
+      [
+        "sort-oldest-first#0/direct",
+        "01a133e6-cca4-73c3-83d1-01c4c7653fe7",
+        "paired-01a133e6-cca"
+      ],
+      [
+        "sort-oldest-first#0/cascade",
+        "01a133e7-83bf-7110-b1ca-b15067460411",
+        "none"
+      ],
+      [
+        "sort-oldest-first#0/critique",
+        "01a133e8-7dec-7000-8d1e-2c71e256e461",
+        "paired-01a133e8-7de"
+      ],
+      [
+        "sort-top-scores#0/direct",
+        "01a133e3-e006-71e1-a6a3-8a84172dc913",
+        "none"
+      ],
+      [
+        "sort-top-scores#0/cascade",
+        "01a133e4-968f-7c30-8942-91589b7cf59b",
+        "none"
+      ],
+      [
+        "sort-top-scores#0/critique",
+        "01a133e5-6496-7321-8c9d-a96c9f84c454",
+        "paired-01a133e5-649"
+      ],
+      [
+        "validate-age#0/direct",
+        "01a133bd-2a14-7032-9e29-515731157b06",
+        "none"
+      ],
+      [
+        "validate-age#0/cascade",
+        "01a133be-e56e-7e30-8100-38faa08413c9",
+        "paired-01a133be-e56"
+      ],
+      [
+        "validate-age#0/critique",
+        "01a133bf-e4f7-7dc0-93a2-73e573160564",
+        "paired-01a133bf-e4f"
+      ],
+      [
+        "validate-percent#0/direct",
+        "01a133b4-04c4-7860-b081-1d4e394d099b",
+        "paired-01a133b4-04c"
+      ],
+      [
+        "validate-percent#0/cascade",
+        "01a133b4-6605-7232-979e-52196c5a00d9",
+        "none"
+      ],
+      [
+        "validate-percent#0/critique",
+        "01a133b5-d0da-7750-8105-e9fdbf3820ab",
+        "paired-01a133b5-d0d"
+      ],
+      [
+        "validate-port#0/direct",
+        "01a133b2-cb2e-71c1-84d6-4ecfdba11ba4",
+        "none"
+      ],
+      [
+        "validate-port#0/cascade",
+        "01a133b2-ef6a-7712-a427-7c903e526f78",
+        "none"
+      ],
+      [
+        "validate-port#0/critique",
+        "01a133b3-32d7-7821-a122-dbbd100dcded",
+        "paired-01a133b3-32d"
+      ]
+    ],
+    "rule": "For each of CASCADE and CRITIQUE against DIRECT, over the tasks both arms ran: QUALITY is BETTER when the 95% bootstrap interval of the paired verified-success difference lies entirely above zero, WORSE when it lies entirely below zero, NO_DIFFERENCE_DETECTED otherwise; COST is MORE when the interval of the paired total-cost difference (every leg priced from gateway usage) lies entirely above zero, LESS when entirely below, INDETERMINATE otherwise. The harness decides nothing about the default route: it stays DIRECT, and changing it is an EPR Decision Record after this evidence.",
+    "verdict": "direct: 25/30 verified (0.66-0.93), $0.0197 per run, 377 s per run; cascade: 27/30 verified (0.74-0.97), $0.0172 per run, 299 s per run; critique: 26/30 verified (0.70-0.95), $0.0231 per run, 472 s per run; cascade against direct over 30 pairs: quality NO_DIFFERENCE_DETECTED, cost INDETERMINATE; critique against direct over 30 pairs: quality NO_DIFFERENCE_DETECTED, cost INDETERMINATE; the default route stays DIRECT; nothing here attests a gate",
+    "method": "30 tasks x 1 repeats x 3 arms, each trial a fresh repository, a fresh profile and a fresh Core driven through modbit-cli under the same signed two-binding registry (openai/glm-5.3-flash opens, anthropic/glm-5.3-flash is the stronger-solver and reviewer binding). BOTH BINDINGS ARE THE SAME MODEL behind two endpoints, so CASCADE measures a second attempt on a second wire and CRITIQUE a review by the same model, not escalation to a stronger one. Verified success needs the Core's own completion gating, the task's pristine check.py passing on the final tree and check.py untouched. Cost is priced from the usage the gateway returned for every model invocation of the session (the review task's included) at the catalog list prices, no cache discount. Gate errors compare the gate's verdict at the end of a leg with the independent check of the same tree. Sub-agent spawning is forbidden on every arm (`--forbid-spawn`): a child's budget is clamped to the parent leg's small plan reservation and, in the first pilot, children exhausted it and dominated the cost. Wilson intervals for proportions, deterministic bootstrap for means and paired differences. The provider was live; the numbers are this model's on this small task set and say nothing about other models or tasks. A ceiling effect is likely on tasks this small.",
+    "digest": "75f3734eff9f34b986f92abc3544d8e9a1e91ac86f20b4b3311806a7ce4262a4"
+  },
+  "runs": [
+    {
+      "task": "cart-discount-order",
+      "arm": "direct",
+      "repeat": 0,
+      "session_id": "f9bc59951f76f78a5163894b77d1e3d0",
+      "task_id": "227e4f61d3e58150fca86d702db50ffa",
+      "run_id": "01a1341f-af03-75f0-bc82-c91ed26d7482",
+      "state": "TIMEOUT",
+      "core_verified": false,
+      "oracle_pass": true,
+      "check_untouched": true,
+      "verified_success": false,
+      "wall_ms": 1501629,
+      "cost_usd": 0.03683265,
+      "calls_without_usage": 0,
+      "unpriced_usage": 0,
+      "model_calls": 11,
+      "input_tokens": 167231,
+      "output_tokens": 23496,
+      "answered_by": {
+        "openai/glm-5.3-flash": 11
+      },
+      "escalated": false,
+      "escalation_attempted": false,
+      "reviewed": false,
+      "review_verdicts": [],
+      "revisions": 0,
+      "gates": [
+        {
+          "leg": "final",
+          "verdict": "REJECT",
+          "oracle_pass": true
+        }
+      ],
+      "needed_person": false,
+      "interactions": 0,
+      "accounting": {
+        "total_minor": 381,
+        "unknown_minor": 0,
+        "currency": "USD",
+        "scale": 4,
+        "path_label": "DIRECT",
+        "final_outcome": "cancelled"
+      },
+      "stats": [],
+      "stats_version": "none",
+      "stats_digest": "",
+      "events_sha256": "ba4ba8520b75f80eced8073255ba64f4cb8b18603de67ee72b7503532addfa00",
+      "events_file": "trials/cart-discount-order-direct-0/events.jsonl",
+      "timed_out": true,
+      "error": null
+    },
+    {
+      "task": "cart-discount-order",
+      "arm": "cascade",
+      "repeat": 0,
+      "session_id": "a4c8feb3a4e23a4a81b8d228036ff555",
+      "task_id": "c0d6ff1a0c504315f6fda78ab16038bf",
+      "run_id": "01a13423-298c-7903-b5bd-e69e50d227bd",
+      "state": "ReadyForReview",
+      "core_verified": true,
+      "oracle_pass": true,
+      "check_untouched": true,
+      "verified_success": true,
+      "wall_ms": 120392,
+      "cost_usd": 0.009152799999999999,
+      "calls_without_usage": 0,
+      "unpriced_usage": 0,
+      "model_calls": 6,
+      "input_tokens": 44602,
+      "output_tokens": 4925,
+      "answered_by": {
+        "openai/glm-5.3-flash": 6
+      },
+      "escalated": false,
+      "escalation_attempted": false,
+      "reviewed": false,
+      "review_verdicts": [],
+      "revisions": 0,
+      "gates": [
+        {
+          "leg": "final",
+          "verdict": "ACCEPT",
+          "oracle_pass": true
+        }
+      ],
+      "needed_person": false,
+      "interactions": 0,
+      "accounting": {
+        "total_minor": 99,
+        "unknown_minor": 0,
+        "currency": "USD",
+        "scale": 4,
+        "path_label": "DIRECT",
+        "final_outcome": "pass"
+      },
+      "stats": [],
+      "stats_version": "none",
+      "stats_digest": "",
+      "events_sha256": "7b73a6a977392f03df04f90f2445addcac83e964fdf8a66ad03c5fca1efaf999",
+      "events_file": "trials/cart-discount-order-cascade-0/events.jsonl",
+      "timed_out": false,
+      "error": null
+    },
+    {
+      "task": "cart-discount-order",
+      "arm": "critique",
+      "repeat": 0,
+      "session_id": "699d8b4d3a23e9f28ce3dc79a322f569",
+      "task_id": "3ddbde2da119637159651069426f3fde",
+      "run_id": "01a13424-fff0-7312-8866-0790c497909f",
+      "state": "ReadyForReview",
+      "core_verified": true,
+      "oracle_pass": true,
+      "check_untouched": true,
+      "verified_success": true,
+      "wall_ms": 494690,
+      "cost_usd": 0.0284596,
+      "calls_without_usage": 0,
+      "unpriced_usage": 0,
+      "model_calls": 14,
+      "input_tokens": 118094,
+      "output_tokens": 21491,
+      "answered_by": {
+        "anthropic/glm-5.3-flash": 4,
+        "openai/glm-5.3-flash": 10
+      },
+      "escalated": false,
+      "escalation_attempted": false,
+      "reviewed": true,
+      "review_verdicts": [
+        "PASS"
+      ],
+      "revisions": 0,
+      "gates": [
+        {
+          "leg": "final",
+          "verdict": "ACCEPT",
+          "oracle_pass": true
+        }
+      ],
+      "needed_person": false,
+      "interactions": 0,
+      "accounting": {
+        "total_minor": 302,
+        "unknown_minor": 0,
+        "currency": "USD",
+        "scale": 4,
+        "path_label": "CRITIQUE",
+        "final_outcome": "pass"
+      },
+      "stats": [
+        {
+          "key": "reviewer|glm-5.3-flash",
+          "samples": 1,
+          "successes": 1,
+          "cost_known": true,
+          "unknown_cost_samples": 0,
+          "mean_cost_minor": 82
+        }
+      ],
+      "stats_version": "paired-01a13424-fff",
+      "stats_digest": "5abac2a02dca927a2e4c97927fec8b436d6cacf6073def24f7eb76f81a5392bf",
+      "events_sha256": "747731c26ebec8a4da1cf01efea6a9e0e84639877716c809cab9deb87d738629",
+      "events_file": "trials/cart-discount-order-critique-0/events.jsonl",
+      "timed_out": false,
+      "error": null
+    },
+    {
+      "task": "config-retries-count",
+      "arm": "direct",
+      "repeat": 0,
+      "session_id": "b0da67a480669cb71bb5d5eb50375011",
+      "task_id": "3cbfc0e1176124ba771994b3474070ad",
+      "run_id": "01a133d9-b38c-7ae2-96f3-69c3b3b3399e",
+      "state": "ReadyForReview",
+      "core_verified": true,
+      "oracle_pass": true,
+      "check_untouched": true,
+      "verified_success": true,
+      "wall_ms": 215845,
+      "cost_usd": 0.01751405,
+      "calls_without_usage": 0,
+      "unpriced_usage": 0,
+      "model_calls": 12,
+      "input_tokens": 87047,
+      "output_tokens": 8914,
+      "answered_by": {
+        "anthropic/glm-5.3-flash": 4,
+        "openai/glm-5.3-flash": 8
+      },
+      "escalated": false,
+      "escalation_attempted": false,
+      "reviewed": true,
+      "review_verdicts": [
+        "PASS"
+      ],
+      "revisions": 0,
+      "gates": [
+        {
+          "leg": "final",
+          "verdict": "ACCEPT",
+          "oracle_pass": true
+        }
+      ],
+      "needed_person": false,
+      "interactions": 0,
+      "accounting": {
+        "total_minor": 191,
+        "unknown_minor": 0,
+        "currency": "USD",
+        "scale": 4,
+        "path_label": "CRITIQUE",
+        "final_outcome": "pass"
+      },
+      "stats": [
+        {
+          "key": "reviewer|glm-5.3-flash",
+          "samples": 1,
+          "successes": 1,
+          "cost_known": true,
+          "unknown_cost_samples": 0,
+          "mean_cost_minor": 67
+        }
+      ],
+      "stats_version": "paired-01a133d9-b38",
+      "stats_digest": "a33a8374f5420725345ca467d44edf32134c3710d53a1a9207798d0c5e6504e0",
+      "events_sha256": "6cbc6a3e72f3d93bada3392f592c28191811254a4a0fa8c57033a2b2b623520d",
+      "events_file": "trials/config-retries-count-direct-0/events.jsonl",
+      "timed_out": false,
+      "error": null
+    },
+    {
+      "task": "config-retries-count",
+      "arm": "cascade",
+      "repeat": 0,
+      "session_id": "67d99830778e1d0f35dc53dce1713160",
+      "task_id": "3e140e545fecc1d9d062cf6fd790d4cc",
+      "run_id": "01a133da-0d2d-7103-98e4-647843b3984a",
+      "state": "Waiting",
+      "core_verified": false,
+      "oracle_pass": true,
+      "check_untouched": true,
+      "verified_success": false,
+      "wall_ms": 345553,
+      "cost_usd": 0.0213527,
+      "calls_without_usage": 0,
+      "unpriced_usage": 0,
+      "model_calls": 10,
+      "input_tokens": 90598,
+      "output_tokens": 15526,
+      "answered_by": {
+        "openai/glm-5.3-flash": 10
+      },
+      "escalated": false,
+      "escalation_attempted": false,
+      "reviewed": false,
+      "review_verdicts": [],
+      "revisions": 0,
+      "gates": [
+        {
+          "leg": "final",
+          "verdict": "REJECT",
+          "oracle_pass": true
+        }
+      ],
+      "needed_person": true,
+      "interactions": 1,
+      "accounting": {
+        "total_minor": 230,
+        "unknown_minor": 0,
+        "currency": "USD",
+        "scale": 4,
+        "path_label": "DIRECT",
+        "final_outcome": "open"
+      },
+      "stats": [],
+      "stats_version": "none",
+      "stats_digest": "",
+      "events_sha256": "565b46643293e312c2aefe0d36fa87db5bcc0aab0e7d6375e12e30f0904d66cd",
+      "events_file": "trials/config-retries-count-cascade-0/events.jsonl",
+      "timed_out": false,
+      "error": null
+    },
+    {
+      "task": "config-retries-count",
+      "arm": "critique",
+      "repeat": 0,
+      "session_id": "fcfe777de8a4857b1fc99a5f7837af57",
+      "task_id": "2c8ef84c8e92047c425888cf28b78e05",
+      "run_id": "01a133dc-fed4-7460-9b8f-08b69a8e4a8f",
+      "state": "ReadyForReview",
+      "core_verified": true,
+      "oracle_pass": true,
+      "check_untouched": true,
+      "verified_success": true,
+      "wall_ms": 438413,
+      "cost_usd": 0.024716099999999998,
+      "calls_without_usage": 0,
+      "unpriced_usage": 0,
+      "model_calls": 13,
+      "input_tokens": 101404,
+      "output_tokens": 19011,
+      "answered_by": {
+        "anthropic/glm-5.3-flash": 5,
+        "openai/glm-5.3-flash": 8
+      },
+      "escalated": false,
+      "escalation_attempted": false,
+      "reviewed": true,
+      "review_verdicts": [
+        "PASS"
+      ],
+      "revisions": 0,
+      "gates": [
+        {
+          "leg": "final",
+          "verdict": "ACCEPT",
+          "oracle_pass": true
+        }
+      ],
+      "needed_person": false,
+      "interactions": 0,
+      "accounting": {
+        "total_minor": 265,
+        "unknown_minor": 0,
+        "currency": "USD",
+        "scale": 4,
+        "path_label": "CRITIQUE",
+        "final_outcome": "pass"
+      },
+      "stats": [
+        {
+          "key": "reviewer|glm-5.3-flash",
+          "samples": 1,
+          "successes": 0,
+          "cost_known": true,
+          "unknown_cost_samples": 0,
+          "mean_cost_minor": 87
+        }
+      ],
+      "stats_version": "paired-01a133dc-fed",
+      "stats_digest": "bcd60e8d9dc3ab106bada0daf3a07c950264c027859408e26023fa7e5e4de425",
+      "events_sha256": "bc1cfa07e80b3a1cff06fc1de8a3ef54eb3c3fbb07243de2ab6b988266b219cb",
+      "events_file": "trials/config-retries-count-critique-0/events.jsonl",
+      "timed_out": false,
+      "error": null
+    },
+    {
+      "task": "config-tax-rate-key",
+      "arm": "direct",
+      "repeat": 0,
+      "session_id": "99758bb981db9e04ba967ad772f7c912",
+      "task_id": "36decb6e86f5b9e40c4ff064a388e613",
+      "run_id": "01a133d2-4745-7371-8505-00d65f87d72d",
+      "state": "ReadyForReview",
+      "core_verified": true,
+      "oracle_pass": true,
+      "check_untouched": true,
+      "verified_success": true,
+      "wall_ms": 427860,
+      "cost_usd": 0.027359799999999997,
+      "calls_without_usage": 0,
+      "unpriced_usage": 0,
+      "model_calls": 13,
+      "input_tokens": 115692,
+      "output_tokens": 20012,
+      "answered_by": {
+        "anthropic/glm-5.3-flash": 5,
+        "openai/glm-5.3-flash": 8
+      },
+      "escalated": false,
+      "escalation_attempted": false,
+      "reviewed": true,
+      "review_verdicts": [
+        "PASS"
+      ],
+      "revisions": 0,
+      "gates": [
+        {
+          "leg": "final",
+          "verdict": "ACCEPT",
+          "oracle_pass": true
+        }
+      ],
+      "needed_person": false,
+      "interactions": 0,
+      "accounting": {
+        "total_minor": 293,
+        "unknown_minor": 0,
+        "currency": "USD",
+        "scale": 4,
+        "path_label": "CRITIQUE",
+        "final_outcome": "pass"
+      },
+      "stats": [
+        {
+          "key": "reviewer|glm-5.3-flash",
+          "samples": 1,
+          "successes": 0,
+          "cost_known": true,
+          "unknown_cost_samples": 0,
+          "mean_cost_minor": 96
+        }
+      ],
+      "stats_version": "paired-01a133d2-474",
+      "stats_digest": "b31b8a1621c09aea553d0668b64dbbed3663dee1afb73b9695cfe9a9ed04e569",
+      "events_sha256": "a4b73ac95fe13da106b37a1e62840de1c8d70cd11912c131d2d4f097dea19d86",
+      "events_file": "trials/config-tax-rate-key-direct-0/events.jsonl",
+      "timed_out": false,
+      "error": null
+    },
+    {
+      "task": "config-tax-rate-key",
+      "arm": "cascade",
+      "repeat": 0,
+      "session_id": "5638325e434d857781427cfd7fca390e",
+      "task_id": "a4aa1ab8c1d4db5355f023f617b8d55d",
+      "run_id": "01a133d2-b59f-7ce1-ae06-9d45e91fe343",
+      "state": "Waiting",
+      "core_verified": false,
+      "oracle_pass": true,
+      "check_untouched": true,
+      "verified_success": false,
+      "wall_ms": 481130,
+      "cost_usd": 0.0277172,
+      "calls_without_usage": 0,
+      "unpriced_usage": 0,
+      "model_calls": 10,
+      "input_tokens": 106318,
+      "output_tokens": 23539,
+      "answered_by": {
+        "openai/glm-5.3-flash": 10
+      },
+      "escalated": false,
+      "escalation_attempted": true,
+      "reviewed": false,
+      "review_verdicts": [],
+      "revisions": 0,
+      "gates": [
+        {
+          "leg": "first",
+          "verdict": "REJECT",
+          "oracle_pass": true
+        },
+        {
+          "leg": "final",
+          "verdict": "REJECT",
+          "oracle_pass": true
+        }
+      ],
+      "needed_person": true,
+      "interactions": 1,
+      "accounting": {
+        "total_minor": 295,
+        "unknown_minor": 0,
+        "currency": "USD",
+        "scale": 4,
+        "path_label": "DIRECT",
+        "final_outcome": "fail"
+      },
+      "stats": [],
+      "stats_version": "none",
+      "stats_digest": "",
+      "events_sha256": "40eb6cf2cdab8b2845a9bab367fccff96278327849fe95c13705af2eeef2e6ed",
+      "events_file": "trials/config-tax-rate-key-cascade-0/events.jsonl",
+      "timed_out": false,
+      "error": null
+    },
+    {
+      "task": "config-tax-rate-key",
+      "arm": "critique",
+      "repeat": 0,
+      "session_id": "8293fb1855523bfeaa89d973adae5ba1",
+      "task_id": "5c2887ce7f8305e73633b5bcabd94209",
+      "run_id": "01a133d8-cec4-7583-8043-d1b3b23882f3",
+      "state": "ReadyForReview",
+      "core_verified": true,
+      "oracle_pass": true,
+      "check_untouched": true,
+      "verified_success": true,
+      "wall_ms": 625571,
+      "cost_usd": 0.02953225,
+      "calls_without_usage": 0,
+      "unpriced_usage": 0,
+      "model_calls": 12,
+      "input_tokens": 104025,
+      "output_tokens": 27857,
+      "answered_by": {
+        "anthropic/glm-5.3-flash": 5,
+        "openai/glm-5.3-flash": 7
+      },
+      "escalated": false,
+      "escalation_attempted": false,
+      "reviewed": true,
+      "review_verdicts": [
+        "PASS"
+      ],
+      "revisions": 0,
+      "gates": [
+        {
+          "leg": "final",
+          "verdict": "ACCEPT",
+          "oracle_pass": true
+        }
+      ],
+      "needed_person": false,
+      "interactions": 0,
+      "accounting": {
+        "total_minor": 313,
+        "unknown_minor": 0,
+        "currency": "USD",
+        "scale": 4,
+        "path_label": "CRITIQUE",
+        "final_outcome": "pass"
+      },
+      "stats": [
+        {
+          "key": "reviewer|glm-5.3-flash",
+          "samples": 1,
+          "successes": 1,
+          "cost_known": true,
+          "unknown_cost_samples": 0,
+          "mean_cost_minor": 140
+        }
+      ],
+      "stats_version": "paired-01a133d8-cec",
+      "stats_digest": "aeb7c73f420528de0b8f33cb12d6b95ae01c6a7458e8b4e78db05ce6cdf17249",
+      "events_sha256": "b39f3e02a71a1743866697c59c0d9e4e05d551be7afbb522174d0883c18bd782",
+      "events_file": "trials/config-tax-rate-key-critique-0/events.jsonl",
+      "timed_out": false,
+      "error": null
+    },
+    {
+      "task": "config-timeout-units",
+      "arm": "direct",
+      "repeat": 0,
+      "session_id": "6fbab760e455d70cae86aec7b4d45e27",
+      "task_id": "baaa74c9f5010b1d372550a2616d383b",
+      "run_id": "01a133df-5322-77c3-a812-3dbec7f6b05f",
+      "state": "ReadyForReview",
+      "core_verified": true,
+      "oracle_pass": true,
+      "check_untouched": true,
+      "verified_success": true,
+      "wall_ms": 536695,
+      "cost_usd": 0.0282114,
+      "calls_without_usage": 0,
+      "unpriced_usage": 0,
+      "model_calls": 13,
+      "input_tokens": 110396,
+      "output_tokens": 23304,
+      "answered_by": {
+        "anthropic/glm-5.3-flash": 4,
+        "openai/glm-5.3-flash": 9
+      },
+      "escalated": false,
+      "escalation_attempted": false,
+      "reviewed": true,
+      "review_verdicts": [
+        "PASS"
+      ],
+      "revisions": 0,
+      "gates": [
+        {
+          "leg": "final",
+          "verdict": "ACCEPT",
+          "oracle_pass": true
+        }
+      ],
+      "needed_person": false,
+      "interactions": 0,
+      "accounting": {
+        "total_minor": 302,
+        "unknown_minor": 0,
+        "currency": "USD",
+        "scale": 4,
+        "path_label": "CRITIQUE",
+        "final_outcome": "pass"
+      },
+      "stats": [
+        {
+          "key": "reviewer|glm-5.3-flash",
+          "samples": 1,
+          "successes": 1,
+          "cost_known": true,
+          "unknown_cost_samples": 0,
+          "mean_cost_minor": 93
+        }
+      ],
+      "stats_version": "paired-01a133df-532",
+      "stats_digest": "7fca564bef6d0d1634c6a97182cb0dffe1df4401fe51d578a7bf834b25bf30ce",
+      "events_sha256": "0664bd278677fa41a458bdf9a187b91922dc388157ad6c2025a0c4986d1c7641",
+      "events_file": "trials/config-timeout-units-direct-0/events.jsonl",
+      "timed_out": false,
+      "error": null
+    },
+    {
+      "task": "config-timeout-units",
+      "arm": "cascade",
+      "repeat": 0,
+      "session_id": "19e558e48e6e30fb4532b2732bc90706",
+      "task_id": "9d9a4814a49ff9f42b757474411bda99",
+      "run_id": "01a133e2-5a95-7533-8d8a-ed935186abfe",
+      "state": "ReadyForReview",
+      "core_verified": true,
+      "oracle_pass": true,
+      "check_untouched": true,
+      "verified_success": true,
+      "wall_ms": 99672,
+      "cost_usd": 0.0085222,
+      "calls_without_usage": 0,
+      "unpriced_usage": 0,
+      "model_calls": 6,
+      "input_tokens": 43228,
+      "output_tokens": 4076,
+      "answered_by": {
+        "openai/glm-5.3-flash": 6
+      },
+      "escalated": false,
+      "escalation_attempted": false,
+      "reviewed": false,
+      "review_verdicts": [],
+      "revisions": 0,
+      "gates": [
+        {
+          "leg": "final",
+          "verdict": "ACCEPT",
+          "oracle_pass": true
+        }
+      ],
+      "needed_person": false,
+      "interactions": 0,
+      "accounting": {
+        "total_minor": 97,
+        "unknown_minor": 0,
+        "currency": "USD",
+        "scale": 4,
+        "path_label": "DIRECT",
+        "final_outcome": "pass"
+      },
+      "stats": [],
+      "stats_version": "none",
+      "stats_digest": "",
+      "events_sha256": "4e57c0eb5500434bebaac58ac1f4dfadd156922a91047dd9b5791ed5a0a6f7d5",
+      "events_file": "trials/config-timeout-units-cascade-0/events.jsonl",
+      "timed_out": false,
+      "error": null
+    },
+    {
+      "task": "config-timeout-units",
+      "arm": "critique",
+      "repeat": 0,
+      "session_id": "b083527304e762002b7f64d2982a528c",
+      "task_id": "c42477c5ee8814f3a6a533ca2044032c",
+      "run_id": "01a133e3-af85-70e0-8ec2-741d561214d2",
+      "state": "ReadyForReview",
+      "core_verified": true,
+      "oracle_pass": true,
+      "check_untouched": true,
+      "verified_success": true,
+      "wall_ms": 204028,
+      "cost_usd": 0.015442850000000003,
+      "calls_without_usage": 0,
+      "unpriced_usage": 0,
+      "model_calls": 10,
+      "input_tokens": 74269,
+      "output_tokens": 8605,
+      "answered_by": {
+        "anthropic/glm-5.3-flash": 6,
+        "openai/glm-5.3-flash": 4
+      },
+      "escalated": false,
+      "escalation_attempted": false,
+      "reviewed": true,
+      "review_verdicts": [
+        "PASS"
+      ],
+      "revisions": 0,
+      "gates": [
+        {
+          "leg": "final",
+          "verdict": "ACCEPT",
+          "oracle_pass": true
+        }
+      ],
+      "needed_person": false,
+      "interactions": 0,
+      "accounting": {
+        "total_minor": 171,
+        "unknown_minor": 0,
+        "currency": "USD",
+        "scale": 4,
+        "path_label": "CRITIQUE",
+        "final_outcome": "pass"
+      },
+      "stats": [
+        {
+          "key": "reviewer|glm-5.3-flash",
+          "samples": 1,
+          "successes": 1,
+          "cost_known": true,
+          "unknown_cost_samples": 0,
+          "mean_cost_minor": 110
+        }
+      ],
+      "stats_version": "paired-01a133e3-af8",
+      "stats_digest": "041d9d38e5e72020f0d2d14617c8d4093437ed0fd14aef6e55788ef5e4628093",
+      "events_sha256": "3436afc2216d18bab371b74dabb850a012d59889bf4e3708d9d605e5474fa345",
+      "events_file": "trials/config-timeout-units-critique-0/events.jsonl",
+      "timed_out": false,
+      "error": null
+    },
+    {
+      "task": "count-multiples-inclusive",
+      "arm": "direct",
+      "repeat": 0,
+      "session_id": "ff81e344eb0435912e140cb492451a47",
+      "task_id": "8ca7d1c535848c21a9e160b13278fba6",
+      "run_id": "01a1338e-c8b6-7f53-a691-ddc5214ddf0d",
+      "state": "ReadyForReview",
+      "core_verified": true,
+      "oracle_pass": true,
+      "check_untouched": true,
+      "verified_success": true,
+      "wall_ms": 102568,
+      "cost_usd": 0.00808735,
+      "calls_without_usage": 0,
+      "unpriced_usage": 0,
+      "model_calls": 5,
+      "input_tokens": 38599,
+      "output_tokens": 4595,
+      "answered_by": {
+        "openai/glm-5.3-flash": 5
+      },
+      "escalated": false,
+      "escalation_attempted": false,
+      "reviewed": false,
+      "review_verdicts": [],
+      "revisions": 0,
+      "gates": [
+        {
+          "leg": "final",
+          "verdict": "ACCEPT",
+          "oracle_pass": true
+        }
+      ],
+      "needed_person": false,
+      "interactions": 0,
+      "accounting": {
+        "total_minor": 88,
+        "unknown_minor": 0,
+        "currency": "USD",
+        "scale": 4,
+        "path_label": "DIRECT",
+        "final_outcome": "pass"
+      },
+      "stats": [],
+      "stats_version": "none",
+      "stats_digest": "",
+      "events_sha256": "8593777006fd427d5d362f7f3e75a18d369a0c4b42992d8cb96ae8dd7edd1f23",
+      "events_file": "trials/count-multiples-inclusive-direct-0/events.jsonl",
+      "timed_out": false,
+      "error": null
+    },
+    {
+      "task": "count-multiples-inclusive",
+      "arm": "cascade",
+      "repeat": 0,
+      "session_id": "4e1c20ef85b326bd74ede3d2f7ccafdf",
+      "task_id": "d058f282f060e9b2b22f9078b934990b",
+      "run_id": "01a13390-597b-7862-932c-db477b7b7ef3",
+      "state": "ReadyForReview",
+      "core_verified": true,
+      "oracle_pass": true,
+      "check_untouched": true,
+      "verified_success": true,
+      "wall_ms": 60318,
+      "cost_usd": 0.00516555,
+      "calls_without_usage": 0,
+      "unpriced_usage": 0,
+      "model_calls": 4,
+      "input_tokens": 27417,
+      "output_tokens": 2106,
+      "answered_by": {
+        "openai/glm-5.3-flash": 4
+      },
+      "escalated": false,
+      "escalation_attempted": false,
+      "reviewed": false,
+      "review_verdicts": [],
+      "revisions": 0,
+      "gates": [
+        {
+          "leg": "final",
+          "verdict": "ACCEPT",
+          "oracle_pass": true
+        }
+      ],
+      "needed_person": false,
+      "interactions": 0,
+      "accounting": {
+        "total_minor": 59,
+        "unknown_minor": 0,
+        "currency": "USD",
+        "scale": 4,
+        "path_label": "DIRECT",
+        "final_outcome": "pass"
+      },
+      "stats": [],
+      "stats_version": "none",
+      "stats_digest": "",
+      "events_sha256": "885d7a24e6fcdaedd51e943e76ff0e4235772e0ee343db05b47bcb4ef17d3ab0",
+      "events_file": "trials/count-multiples-inclusive-cascade-0/events.jsonl",
+      "timed_out": false,
+      "error": null
+    },
+    {
+      "task": "count-multiples-inclusive",
+      "arm": "critique",
+      "repeat": 0,
+      "session_id": "a15d8b600ec348aa57735555b6a3d9f4",
+      "task_id": "55e058ed5276224a091ab4eb167bc794",
+      "run_id": "01a13391-31df-7701-8181-ba5109418353",
+      "state": "Waiting",
+      "core_verified": false,
+      "oracle_pass": true,
+      "check_untouched": true,
+      "verified_success": false,
+      "wall_ms": 56915,
+      "cost_usd": 0.00495925,
+      "calls_without_usage": 0,
+      "unpriced_usage": 0,
+      "model_calls": 5,
+      "input_tokens": 27045,
+      "output_tokens": 1805,
+      "answered_by": {
+        "openai/glm-5.3-flash": 5
+      },
+      "escalated": false,
+      "escalation_attempted": false,
+      "reviewed": false,
+      "review_verdicts": [],
+      "revisions": 0,
+      "gates": [
+        {
+          "leg": "final",
+          "verdict": "NONE",
+          "oracle_pass": true
+        }
+      ],
+      "needed_person": true,
+      "interactions": 0,
+      "accounting": {
+        "total_minor": 137,
+        "unknown_minor": 81,
+        "currency": "USD",
+        "scale": 4,
+        "path_label": "DIRECT",
+        "final_outcome": "fail"
+      },
+      "stats": [],
+      "stats_version": "none",
+      "stats_digest": "",
+      "events_sha256": "3a6258f393c28bb9b937cf60a2e2b1076ba7cd82cfcac070b750a17de47c3370",
+      "events_file": "trials/count-multiples-inclusive-critique-0/events.jsonl",
+      "timed_out": false,
+      "error": null
+    },
+    {
+      "task": "dedupe-keep-order",
+      "arm": "direct",
+      "repeat": 0,
+      "session_id": "f7df60d921977c9d0b7253f1d37063b6",
+      "task_id": "7d72f8bb574520e3487d8a25fd815fb2",
+      "run_id": "01a1340d-8133-7ad3-8c72-df9977bc8178",
+      "state": "ReadyForReview",
+      "core_verified": true,
+      "oracle_pass": true,
+      "check_untouched": false,
+      "verified_success": false,
+      "wall_ms": 1098545,
+      "cost_usd": 0.0547382,
+      "calls_without_usage": 0,
+      "unpriced_usage": 0,
+      "model_calls": 20,
+      "input_tokens": 238918,
+      "output_tokens": 37801,
+      "answered_by": {
+        "anthropic/glm-5.3-flash": 6,
+        "openai/glm-5.3-flash": 14
+      },
+      "escalated": false,
+      "escalation_attempted": false,
+      "reviewed": true,
+      "review_verdicts": [
+        "PASS"
+      ],
+      "revisions": 0,
+      "gates": [
+        {
+          "leg": "final",
+          "verdict": "ACCEPT",
+          "oracle_pass": true
+        }
+      ],
+      "needed_person": false,
+      "interactions": 0,
+      "accounting": {
+        "total_minor": 570,
+        "unknown_minor": 0,
+        "currency": "USD",
+        "scale": 4,
+        "path_label": "CRITIQUE",
+        "final_outcome": "pass"
+      },
+      "stats": [
+        {
+          "key": "reviewer|glm-5.3-flash",
+          "samples": 1,
+          "successes": 1,
+          "cost_known": true,
+          "unknown_cost_samples": 0,
+          "mean_cost_minor": 138
+        }
+      ],
+      "stats_version": "paired-01a1340d-813",
+      "stats_digest": "4473d5a90adf85eb0d76519551a13ea5fcec7de303a1a923ad960c656927a440",
+      "events_sha256": "ee7536ff48c9ad0d4816da26e2525368dc0a4904148b2240c809be57fb777db9",
+      "events_file": "trials/dedupe-keep-order-direct-0/events.jsonl",
+      "timed_out": false,
+      "error": null
+    },
+    {
+      "task": "dedupe-keep-order",
+      "arm": "cascade",
+      "repeat": 0,
+      "session_id": "fad21a832e06034d9db90340039381f6",
+      "task_id": "4d41775591d2fdc2e8c34ee075ed9b82",
+      "run_id": "01a1340d-f6f9-7833-a967-1ec46ea7ad5d",
+      "state": "ReadyForReview",
+      "core_verified": true,
+      "oracle_pass": true,
+      "check_untouched": true,
+      "verified_success": true,
+      "wall_ms": 878643,
+      "cost_usd": 0.041534299999999996,
+      "calls_without_usage": 0,
+      "unpriced_usage": 0,
+      "model_calls": 17,
+      "input_tokens": 156932,
+      "output_tokens": 35989,
+      "answered_by": {
+        "anthropic/glm-5.3-flash": 5,
+        "openai/glm-5.3-flash": 12
+      },
+      "escalated": false,
+      "escalation_attempted": false,
+      "reviewed": true,
+      "review_verdicts": [
+        "PASS"
+      ],
+      "revisions": 0,
+      "gates": [
+        {
+          "leg": "final",
+          "verdict": "ACCEPT",
+          "oracle_pass": true
+        }
+      ],
+      "needed_person": false,
+      "interactions": 0,
+      "accounting": {
+        "total_minor": 436,
+        "unknown_minor": 0,
+        "currency": "USD",
+        "scale": 4,
+        "path_label": "CRITIQUE",
+        "final_outcome": "pass"
+      },
+      "stats": [
+        {
+          "key": "reviewer|glm-5.3-flash",
+          "samples": 1,
+          "successes": 0,
+          "cost_known": true,
+          "unknown_cost_samples": 0,
+          "mean_cost_minor": 133
+        }
+      ],
+      "stats_version": "paired-01a1340d-f6f",
+      "stats_digest": "eb73929e661fbb4d0541861c70de95ff6b855e934e635f32d63e75befef91178",
+      "events_sha256": "83fbad69523fccd30532a86cf174b776f5331bc91401881f1a4914588e19794d",
+      "events_file": "trials/dedupe-keep-order-cascade-0/events.jsonl",
+      "timed_out": false,
+      "error": null
+    },
+    {
+      "task": "dedupe-keep-order",
+      "arm": "critique",
+      "repeat": 0,
+      "session_id": "0df6ea450348190148385f0b97c64e61",
+      "task_id": "eb83e76e905e37b678a7437852d518f4",
+      "run_id": "01a1340f-1b49-7901-8141-0613be66fc96",
+      "state": "ReadyForReview",
+      "core_verified": true,
+      "oracle_pass": true,
+      "check_untouched": true,
+      "verified_success": true,
+      "wall_ms": 285966,
+      "cost_usd": 0.016098300000000003,
+      "calls_without_usage": 0,
+      "unpriced_usage": 0,
+      "model_calls": 10,
+      "input_tokens": 73822,
+      "output_tokens": 10050,
+      "answered_by": {
+        "anthropic/glm-5.3-flash": 4,
+        "openai/glm-5.3-flash": 6
+      },
+      "escalated": false,
+      "escalation_attempted": false,
+      "reviewed": true,
+      "review_verdicts": [
+        "PASS"
+      ],
+      "revisions": 0,
+      "gates": [
+        {
+          "leg": "final",
+          "verdict": "ACCEPT",
+          "oracle_pass": true
+        }
+      ],
+      "needed_person": false,
+      "interactions": 0,
+      "accounting": {
+        "total_minor": 175,
+        "unknown_minor": 0,
+        "currency": "USD",
+        "scale": 4,
+        "path_label": "CRITIQUE",
+        "final_outcome": "pass"
+      },
+      "stats": [
+        {
+          "key": "reviewer|glm-5.3-flash",
+          "samples": 1,
+          "successes": 1,
+          "cost_known": true,
+          "unknown_cost_samples": 0,
+          "mean_cost_minor": 90
+        }
+      ],
+      "stats_version": "paired-01a1340f-1b4",
+      "stats_digest": "b1742c0e880313196f873243b47bdbc68c0505f0d44a903f2f8056c14fd7cd61",
+      "events_sha256": "1019db896f7808c46f5652eccbf6c7597c87df044f787fdedd9445bc0abceefa",
+      "events_file": "trials/dedupe-keep-order-critique-0/events.jsonl",
+      "timed_out": false,
+      "error": null
+    },
+    {
+      "task": "flatten-nested",
+      "arm": "direct",
+      "repeat": 0,
+      "session_id": "69aced020fc9b81838573e8f0fa8e97f",
+      "task_id": "6d9ec999f5c7d317b19d612d3e23b476",
+      "run_id": "01a1341d-59bc-73e0-a465-08cb46e94158",
+      "state": "ReadyForReview",
+      "core_verified": true,
+      "oracle_pass": true,
+      "check_untouched": true,
+      "verified_success": true,
+      "wall_ms": 772358,
+      "cost_usd": 0.032754399999999996,
+      "calls_without_usage": 0,
+      "unpriced_usage": 0,
+      "model_calls": 14,
+      "input_tokens": 116646,
+      "output_tokens": 30515,
+      "answered_by": {
+        "anthropic/glm-5.3-flash": 5,
+        "openai/glm-5.3-flash": 9
+      },
+      "escalated": false,
+      "escalation_attempted": false,
+      "reviewed": true,
+      "review_verdicts": [
+        "PASS"
+      ],
+      "revisions": 0,
+      "gates": [
+        {
+          "leg": "final",
+          "verdict": "ACCEPT",
+          "oracle_pass": true
+        }
+      ],
+      "needed_person": false,
+      "interactions": 0,
+      "accounting": {
+        "total_minor": 345,
+        "unknown_minor": 0,
+        "currency": "USD",
+        "scale": 4,
+        "path_label": "CRITIQUE",
+        "final_outcome": "pass"
+      },
+      "stats": [
+        {
+          "key": "reviewer|glm-5.3-flash",
+          "samples": 1,
+          "successes": 1,
+          "cost_known": true,
+          "unknown_cost_samples": 0,
+          "mean_cost_minor": 150
+        }
+      ],
+      "stats_version": "paired-01a1341d-59b",
+      "stats_digest": "3deb3ccc0de66e850214f431dd8678a8dbc382d08bfb390b7cfdeb32bdb3cd00",
+      "events_sha256": "4ac21baf78ed984a59a398d2bf9ae142dd607b069793cefdaf495bae3ae4ee14",
+      "events_file": "trials/flatten-nested-direct-0/events.jsonl",
+      "timed_out": false,
+      "error": null
+    },
+    {
+      "task": "flatten-nested",
+      "arm": "cascade",
+      "repeat": 0,
+      "session_id": "400cdbda57feeaeca1f4b862ce0b7ea4",
+      "task_id": "0d381a5174ef412633fd05229ab5e7a2",
+      "run_id": "01a1341e-4491-7e42-b84a-ff928dbf816b",
+      "state": "ReadyForReview",
+      "core_verified": true,
+      "oracle_pass": true,
+      "check_untouched": true,
+      "verified_success": true,
+      "wall_ms": 92760,
+      "cost_usd": 0.008255899999999998,
+      "calls_without_usage": 0,
+      "unpriced_usage": 0,
+      "model_calls": 6,
+      "input_tokens": 43226,
+      "output_tokens": 3544,
+      "answered_by": {
+        "openai/glm-5.3-flash": 6
+      },
+      "escalated": false,
+      "escalation_attempted": false,
+      "reviewed": false,
+      "review_verdicts": [],
+      "revisions": 0,
+      "gates": [
+        {
+          "leg": "final",
+          "verdict": "ACCEPT",
+          "oracle_pass": true
+        }
+      ],
+      "needed_person": false,
+      "interactions": 0,
+      "accounting": {
+        "total_minor": 91,
+        "unknown_minor": 0,
+        "currency": "USD",
+        "scale": 4,
+        "path_label": "DIRECT",
+        "final_outcome": "pass"
+      },
+      "stats": [],
+      "stats_version": "none",
+      "stats_digest": "",
+      "events_sha256": "13672dc7d8ed247d8796a13a1bd4a9e57f93c1dce31581a872f738c3c056d25c",
+      "events_file": "trials/flatten-nested-cascade-0/events.jsonl",
+      "timed_out": false,
+      "error": null
+    },
+    {
+      "task": "flatten-nested",
+      "arm": "critique",
+      "repeat": 0,
+      "session_id": "def2ea5975f9c92c2885b2662579e052",
+      "task_id": "d31b4891af2f3673e7ccd56dbe2b51c2",
+      "run_id": "01a1341f-37c2-7801-9701-8bb83323a20f",
+      "state": "ReadyForReview",
+      "core_verified": true,
+      "oracle_pass": true,
+      "check_untouched": true,
+      "verified_success": true,
+      "wall_ms": 258472,
+      "cost_usd": 0.0154758,
+      "calls_without_usage": 0,
+      "unpriced_usage": 0,
+      "model_calls": 9,
+      "input_tokens": 69902,
+      "output_tokens": 9981,
+      "answered_by": {
+        "anthropic/glm-5.3-flash": 4,
+        "openai/glm-5.3-flash": 5
+      },
+      "escalated": false,
+      "escalation_attempted": false,
+      "reviewed": true,
+      "review_verdicts": [
+        "PASS"
+      ],
+      "revisions": 0,
+      "gates": [
+        {
+          "leg": "final",
+          "verdict": "ACCEPT",
+          "oracle_pass": true
+        }
+      ],
+      "needed_person": false,
+      "interactions": 0,
+      "accounting": {
+        "total_minor": 167,
+        "unknown_minor": 0,
+        "currency": "USD",
+        "scale": 4,
+        "path_label": "CRITIQUE",
+        "final_outcome": "pass"
+      },
+      "stats": [
+        {
+          "key": "reviewer|glm-5.3-flash",
+          "samples": 1,
+          "successes": 1,
+          "cost_known": true,
+          "unknown_cost_samples": 0,
+          "mean_cost_minor": 69
+        }
+      ],
+      "stats_version": "paired-01a1341f-37c",
+      "stats_digest": "f9280a6da5e4770816c97e069bd11270db5f2c616a4c4d839bf0fdd328740c01",
+      "events_sha256": "7ebffe019eb7e322ba2735a362cb9a1206e82b5f793cefeff05491a7b7862489",
+      "events_file": "trials/flatten-nested-critique-0/events.jsonl",
+      "timed_out": false,
+      "error": null
+    },
+    {
+      "task": "implement-slugify",
+      "arm": "direct",
+      "repeat": 0,
+      "session_id": "e30030d1c82280c21dddc5f5a68a66fd",
+      "task_id": "2c8fd0f4afc728a424918ded9a229d0e",
+      "run_id": "01a13394-cbb8-7813-9d09-2379a68c7d6c",
+      "state": "ReadyForReview",
+      "core_verified": true,
+      "oracle_pass": true,
+      "check_untouched": true,
+      "verified_success": true,
+      "wall_ms": 149820,
+      "cost_usd": 0.0108275,
+      "calls_without_usage": 0,
+      "unpriced_usage": 0,
+      "model_calls": 7,
+      "input_tokens": 52090,
+      "output_tokens": 6028,
+      "answered_by": {
+        "openai/glm-5.3-flash": 7
+      },
+      "escalated": false,
+      "escalation_attempted": false,
+      "reviewed": false,
+      "review_verdicts": [],
+      "revisions": 0,
+      "gates": [
+        {
+          "leg": "final",
+          "verdict": "ACCEPT",
+          "oracle_pass": true
+        }
+      ],
+      "needed_person": false,
+      "interactions": 0,
+      "accounting": {
+        "total_minor": 117,
+        "unknown_minor": 0,
+        "currency": "USD",
+        "scale": 4,
+        "path_label": "DIRECT",
+        "final_outcome": "pass"
+      },
+      "stats": [],
+      "stats_version": "none",
+      "stats_digest": "",
+      "events_sha256": "61f5325f614cca0ecea811c08a0211c80c60832d70775126d74b451693bfdddd",
+      "events_file": "trials/implement-slugify-direct-0/events.jsonl",
+      "timed_out": false,
+      "error": null
+    },
+    {
+      "task": "implement-slugify",
+      "arm": "cascade",
+      "repeat": 0,
+      "session_id": "019e6dbfc2720e6fa3dd185d62ffd7a1",
+      "task_id": "c59dac13073cf850d056eb1dbfa21604",
+      "run_id": "01a13397-1510-7f90-af86-23e53034c035",
+      "state": "ReadyForReview",
+      "core_verified": true,
+      "oracle_pass": true,
+      "check_untouched": true,
+      "verified_success": true,
+      "wall_ms": 128387,
+      "cost_usd": 0.0069271,
+      "calls_without_usage": 0,
+      "unpriced_usage": 0,
+      "model_calls": 4,
+      "input_tokens": 26574,
+      "output_tokens": 5882,
+      "answered_by": {
+        "openai/glm-5.3-flash": 4
+      },
+      "escalated": false,
+      "escalation_attempted": false,
+      "reviewed": false,
+      "review_verdicts": [],
+      "revisions": 0,
+      "gates": [
+        {
+          "leg": "final",
+          "verdict": "ACCEPT",
+          "oracle_pass": true
+        }
+      ],
+      "needed_person": false,
+      "interactions": 0,
+      "accounting": {
+        "total_minor": 75,
+        "unknown_minor": 0,
+        "currency": "USD",
+        "scale": 4,
+        "path_label": "DIRECT",
+        "final_outcome": "pass"
+      },
+      "stats": [],
+      "stats_version": "none",
+      "stats_digest": "",
+      "events_sha256": "985919c53298795aebba1924de334bf5d5c1fd31a7aee3cc10249fd445bb4b16",
+      "events_file": "trials/implement-slugify-cascade-0/events.jsonl",
+      "timed_out": false,
+      "error": null
+    },
+    {
+      "task": "implement-slugify",
+      "arm": "critique",
+      "repeat": 0,
+      "session_id": "f56f6cb7fddc472befb8f3cf448dd843",
+      "task_id": "943ac32f555bbcf44711ce2746e1ee01",
+      "run_id": "01a13397-3ba8-79a0-877c-c26fbb37a757",
+      "state": "Waiting",
+      "core_verified": false,
+      "oracle_pass": false,
+      "check_untouched": true,
+      "verified_success": false,
+      "wall_ms": 11246,
+      "cost_usd": 0.0,
+      "calls_without_usage": 0,
+      "unpriced_usage": 0,
+      "model_calls": 1,
+      "input_tokens": 0,
+      "output_tokens": 0,
+      "answered_by": {
+        "openai/glm-5.3-flash": 1
+      },
+      "escalated": false,
+      "escalation_attempted": false,
+      "reviewed": false,
+      "review_verdicts": [],
+      "revisions": 0,
+      "gates": [
+        {
+          "leg": "final",
+          "verdict": "NONE",
+          "oracle_pass": false
+        }
+      ],
+      "needed_person": true,
+      "interactions": 0,
+      "accounting": {
+        "total_minor": 81,
+        "unknown_minor": 81,
+        "currency": "USD",
+        "scale": 4,
+        "path_label": "DIRECT",
+        "final_outcome": "fail"
+      },
+      "stats": [],
+      "stats_version": "none",
+      "stats_digest": "",
+      "events_sha256": "2367f835bca5bdbbe2f3c6212b2d3561f8cc5766592055734fc55838dce6712c",
+      "events_file": "trials/implement-slugify-critique-0/events.jsonl",
+      "timed_out": false,
+      "error": null
+    },
+    {
+      "task": "implement-snake-case",
+      "arm": "direct",
+      "repeat": 0,
+      "session_id": "5bbec0b587262aaf14e0c0676d96d298",
+      "task_id": "b8f959955acbd1244df2b6b6ec1c78f6",
+      "run_id": "01a13397-67a5-7c72-9543-5a608abe2f87",
+      "state": "Waiting",
+      "core_verified": false,
+      "oracle_pass": false,
+      "check_untouched": true,
+      "verified_success": false,
+      "wall_ms": 11346,
+      "cost_usd": 0.0,
+      "calls_without_usage": 0,
+      "unpriced_usage": 0,
+      "model_calls": 1,
+      "input_tokens": 0,
+      "output_tokens": 0,
+      "answered_by": {
+        "openai/glm-5.3-flash": 1
+      },
+      "escalated": false,
+      "escalation_attempted": false,
+      "reviewed": false,
+      "review_verdicts": [],
+      "revisions": 0,
+      "gates": [
+        {
+          "leg": "final",
+          "verdict": "NONE",
+          "oracle_pass": false
+        }
+      ],
+      "needed_person": true,
+      "interactions": 0,
+      "accounting": {
+        "total_minor": 81,
+        "unknown_minor": 81,
+        "currency": "USD",
+        "scale": 4,
+        "path_label": "DIRECT",
+        "final_outcome": "fail"
+      },
+      "stats": [],
+      "stats_version": "none",
+      "stats_digest": "",
+      "events_sha256": "876d5f4336142f5790ca085876b93a3551810e5a13cd9de59ecde863f9565fad",
+      "events_file": "trials/implement-snake-case-direct-0/events.jsonl",
+      "timed_out": false,
+      "error": null
+    },
+    {
+      "task": "implement-snake-case",
+      "arm": "cascade",
+      "repeat": 0,
+      "session_id": "833a1c51664940059081275b3ac511d8",
+      "task_id": "70a28fc2c6c50c5b7d07181b3139b544",
+      "run_id": "01a13397-9408-75f2-96cb-ef01448620c5",
+      "state": "ReadyForReview",
+      "core_verified": true,
+      "oracle_pass": true,
+      "check_untouched": true,
+      "verified_success": true,
+      "wall_ms": 463987,
+      "cost_usd": 0.0257547,
+      "calls_without_usage": 0,
+      "unpriced_usage": 0,
+      "model_calls": 11,
+      "input_tokens": 97908,
+      "output_tokens": 22137,
+      "answered_by": {
+        "openai/glm-5.3-flash": 11
+      },
+      "escalated": false,
+      "escalation_attempted": true,
+      "reviewed": false,
+      "review_verdicts": [],
+      "revisions": 0,
+      "gates": [
+        {
+          "leg": "first",
+          "verdict": "NONE",
+          "oracle_pass": false
+        },
+        {
+          "leg": "final",
+          "verdict": "INCONCLUSIVE",
+          "oracle_pass": true
+        }
+      ],
+      "needed_person": true,
+      "interactions": 0,
+      "accounting": {
+        "total_minor": 355,
+        "unknown_minor": 81,
+        "currency": "USD",
+        "scale": 4,
+        "path_label": "DIRECT",
+        "final_outcome": "pass"
+      },
+      "stats": [],
+      "stats_version": "none",
+      "stats_digest": "",
+      "events_sha256": "be80f7c3a3992a8b1666fe9a6cd5218135a2bd6fbf65ded6b62e163b49fee42e",
+      "events_file": "trials/implement-snake-case-cascade-0/events.jsonl",
+      "timed_out": false,
+      "error": null
+    },
+    {
+      "task": "implement-snake-case",
+      "arm": "critique",
+      "repeat": 0,
+      "session_id": "77176ae1c770f2b6e28df4b29a110b9e",
+      "task_id": "4c93f450cab59d91e52cb0324ac26117",
+      "run_id": "01a13399-0aae-7b62-8c47-e1c89a8c2872",
+      "state": "ReadyForReview",
+      "core_verified": true,
+      "oracle_pass": true,
+      "check_untouched": true,
+      "verified_success": true,
+      "wall_ms": 440872,
+      "cost_usd": 0.0202396,
+      "calls_without_usage": 0,
+      "unpriced_usage": 0,
+      "model_calls": 9,
+      "input_tokens": 69294,
+      "output_tokens": 19691,
+      "answered_by": {
+        "anthropic/glm-5.3-flash": 4,
+        "openai/glm-5.3-flash": 5
+      },
+      "escalated": false,
+      "escalation_attempted": false,
+      "reviewed": true,
+      "review_verdicts": [
+        "PASS"
+      ],
+      "revisions": 0,
+      "gates": [
+        {
+          "leg": "final",
+          "verdict": "ACCEPT",
+          "oracle_pass": true
+        }
+      ],
+      "needed_person": false,
+      "interactions": 0,
+      "accounting": {
+        "total_minor": 217,
+        "unknown_minor": 0,
+        "currency": "USD",
+        "scale": 4,
+        "path_label": "CRITIQUE",
+        "final_outcome": "pass"
+      },
+      "stats": [
+        {
+          "key": "reviewer|glm-5.3-flash",
+          "samples": 1,
+          "successes": 1,
+          "cost_known": true,
+          "unknown_cost_samples": 0,
+          "mean_cost_minor": 130
+        }
+      ],
+      "stats_version": "paired-01a13399-0aa",
+      "stats_digest": "77cbb6d828a16a462c15a250c74baf02d4f7bb03ff046830f22210a3fcfaefc4",
+      "events_sha256": "a2c38e63746db9fd5cc74687a078d4c185e052a9f01a74e2108d8075c43c93cb",
+      "events_file": "trials/implement-snake-case-critique-0/events.jsonl",
+      "timed_out": false,
+      "error": null
+    },
+    {
+      "task": "implement-truncate-words",
+      "arm": "direct",
+      "repeat": 0,
+      "session_id": "9468bfefe7c98ed24d6bb5ba44f16add",
+      "task_id": "6c2a201b3c1355b94b99b2c01223f952",
+      "run_id": "01a1339e-a89e-71d0-9228-5f9878079a2e",
+      "state": "Waiting",
+      "core_verified": false,
+      "oracle_pass": false,
+      "check_untouched": true,
+      "verified_success": false,
+      "wall_ms": 11447,
+      "cost_usd": 0.0,
+      "calls_without_usage": 0,
+      "unpriced_usage": 0,
+      "model_calls": 1,
+      "input_tokens": 0,
+      "output_tokens": 0,
+      "answered_by": {
+        "openai/glm-5.3-flash": 1
+      },
+      "escalated": false,
+      "escalation_attempted": false,
+      "reviewed": false,
+      "review_verdicts": [],
+      "revisions": 0,
+      "gates": [
+        {
+          "leg": "final",
+          "verdict": "NONE",
+          "oracle_pass": false
+        }
+      ],
+      "needed_person": true,
+      "interactions": 0,
+      "accounting": {
+        "total_minor": 81,
+        "unknown_minor": 81,
+        "currency": "USD",
+        "scale": 4,
+        "path_label": "DIRECT",
+        "final_outcome": "fail"
+      },
+      "stats": [],
+      "stats_version": "none",
+      "stats_digest": "",
+      "events_sha256": "676dc9467265002292a700566dbda026ff875a4ffc9a75e22194316d2f3ebfa0",
+      "events_file": "trials/implement-truncate-words-direct-0/events.jsonl",
+      "timed_out": false,
+      "error": null
+    },
+    {
+      "task": "implement-truncate-words",
+      "arm": "cascade",
+      "repeat": 0,
+      "session_id": "47d282117f351c73c493bd4861d859d0",
+      "task_id": "363d259d2d5ce252cf80c5ede5f82c42",
+      "run_id": "01a1339e-d567-7141-a8b3-b578dd443025",
+      "state": "ReadyForReview",
+      "core_verified": true,
+      "oracle_pass": true,
+      "check_untouched": true,
+      "verified_success": true,
+      "wall_ms": 112973,
+      "cost_usd": 0.006543200000000001,
+      "calls_without_usage": 0,
+      "unpriced_usage": 0,
+      "model_calls": 4,
+      "input_tokens": 27218,
+      "output_tokens": 4921,
+      "answered_by": {
+        "openai/glm-5.3-flash": 4
+      },
+      "escalated": false,
+      "escalation_attempted": false,
+      "reviewed": false,
+      "review_verdicts": [],
+      "revisions": 0,
+      "gates": [
+        {
+          "leg": "final",
+          "verdict": "ACCEPT",
+          "oracle_pass": true
+        }
+      ],
+      "needed_person": false,
+      "interactions": 0,
+      "accounting": {
+        "total_minor": 72,
+        "unknown_minor": 0,
+        "currency": "USD",
+        "scale": 4,
+        "path_label": "DIRECT",
+        "final_outcome": "pass"
+      },
+      "stats": [],
+      "stats_version": "none",
+      "stats_digest": "",
+      "events_sha256": "85bede1941732cbd175804a69e5801abfa554e6f74a9c14f63d081a82a8bb193",
+      "events_file": "trials/implement-truncate-words-cascade-0/events.jsonl",
+      "timed_out": false,
+      "error": null
+    },
+    {
+      "task": "implement-truncate-words",
+      "arm": "critique",
+      "repeat": 0,
+      "session_id": "de60905478baa2dbf8f1f417c875709e",
+      "task_id": "7dd62c0629d031516d76f8ec42a87e8c",
+      "run_id": "01a1339f-c4f9-7080-90ec-60c3c66b8850",
+      "state": "ReadyForReview",
+      "core_verified": true,
+      "oracle_pass": true,
+      "check_untouched": true,
+      "verified_success": true,
+      "wall_ms": 759915,
+      "cost_usd": 0.027730249999999998,
+      "calls_without_usage": 0,
+      "unpriced_usage": 0,
+      "model_calls": 9,
+      "input_tokens": 75005,
+      "output_tokens": 32959,
+      "answered_by": {
+        "anthropic/glm-5.3-flash": 5,
+        "openai/glm-5.3-flash": 4
+      },
+      "escalated": false,
+      "escalation_attempted": false,
+      "reviewed": true,
+      "review_verdicts": [
+        "PASS"
+      ],
+      "revisions": 0,
+      "gates": [
+        {
+          "leg": "final",
+          "verdict": "ACCEPT",
+          "oracle_pass": true
+        }
+      ],
+      "needed_person": false,
+      "interactions": 0,
+      "accounting": {
+        "total_minor": 294,
+        "unknown_minor": 0,
+        "currency": "USD",
+        "scale": 4,
+        "path_label": "CRITIQUE",
+        "final_outcome": "pass"
+      },
+      "stats": [
+        {
+          "key": "reviewer|glm-5.3-flash",
+          "samples": 1,
+          "successes": 1,
+          "cost_known": true,
+          "unknown_cost_samples": 0,
+          "mean_cost_minor": 214
+        }
+      ],
+      "stats_version": "paired-01a1339f-c4f",
+      "stats_digest": "f4fde3a9cd535b19029cd71e8f1585271ee6f8b22c9d959c0afa478fc67d3759",
+      "events_sha256": "0cd26792da24471600af34200da051db00beb84485eef7c33f289fb76d1d1856",
+      "events_file": "trials/implement-truncate-words-critique-0/events.jsonl",
+      "timed_out": false,
+      "error": null
+    },
+    {
+      "task": "inventory-reserve",
+      "arm": "direct",
+      "repeat": 0,
+      "session_id": "4b86f78f5fc6d97a3c3367ca9fb1cbe8",
+      "task_id": "0332046b3f98294ac1a753af5a43ec11",
+      "run_id": "01a13434-3102-7121-8580-a2c419f1dd5e",
+      "state": "ReadyForReview",
+      "core_verified": true,
+      "oracle_pass": true,
+      "check_untouched": true,
+      "verified_success": true,
+      "wall_ms": 177664,
+      "cost_usd": 0.01470145,
+      "calls_without_usage": 0,
+      "unpriced_usage": 0,
+      "model_calls": 8,
+      "input_tokens": 72683,
+      "output_tokens": 7598,
+      "answered_by": {
+        "openai/glm-5.3-flash": 8
+      },
+      "escalated": false,
+      "escalation_attempted": false,
+      "reviewed": false,
+      "review_verdicts": [],
+      "revisions": 0,
+      "gates": [
+        {
+          "leg": "final",
+          "verdict": "ACCEPT",
+          "oracle_pass": true
+        }
+      ],
+      "needed_person": false,
+      "interactions": 0,
+      "accounting": {
+        "total_minor": 159,
+        "unknown_minor": 0,
+        "currency": "USD",
+        "scale": 4,
+        "path_label": "DIRECT",
+        "final_outcome": "pass"
+      },
+      "stats": [],
+      "stats_version": "none",
+      "stats_digest": "",
+      "events_sha256": "6f8c89611c88d2e58567be52e1d844d6bc3799985a3eb6b292ea3ad7429ac881",
+      "events_file": "trials/inventory-reserve-direct-0/events.jsonl",
+      "timed_out": false,
+      "error": null
+    },
+    {
+      "task": "inventory-reserve",
+      "arm": "cascade",
+      "repeat": 0,
+      "session_id": "43e84261cf2c50446153cf2162d2badf",
+      "task_id": "01e1ec65d52e777ee3f34051cce72b3e",
+      "run_id": "01a13436-98e1-7180-bd3a-085bb69e0d67",
+      "state": "ReadyForReview",
+      "core_verified": true,
+      "oracle_pass": true,
+      "check_untouched": true,
+      "verified_success": true,
+      "wall_ms": 541427,
+      "cost_usd": 0.028758549999999994,
+      "calls_without_usage": 0,
+      "unpriced_usage": 0,
+      "model_calls": 13,
+      "input_tokens": 117917,
+      "output_tokens": 22142,
+      "answered_by": {
+        "anthropic/glm-5.3-flash": 4,
+        "openai/glm-5.3-flash": 9
+      },
+      "escalated": false,
+      "escalation_attempted": false,
+      "reviewed": true,
+      "review_verdicts": [
+        "PASS"
+      ],
+      "revisions": 0,
+      "gates": [
+        {
+          "leg": "final",
+          "verdict": "ACCEPT",
+          "oracle_pass": true
+        }
+      ],
+      "needed_person": false,
+      "interactions": 0,
+      "accounting": {
+        "total_minor": 305,
+        "unknown_minor": 0,
+        "currency": "USD",
+        "scale": 4,
+        "path_label": "CRITIQUE",
+        "final_outcome": "pass"
+      },
+      "stats": [
+        {
+          "key": "reviewer|glm-5.3-flash",
+          "samples": 1,
+          "successes": 0,
+          "cost_known": true,
+          "unknown_cost_samples": 0,
+          "mean_cost_minor": 73
+        }
+      ],
+      "stats_version": "paired-01a13436-98e",
+      "stats_digest": "19869c6dddbe751e0f3ddc419aa12a096faa51447556f96ca429826012b17f6e",
+      "events_sha256": "309d7b10e9ede5d5887217524f191bb8c9df1ebcb0ff298d943d27830eb6ad9d",
+      "events_file": "trials/inventory-reserve-cascade-0/events.jsonl",
+      "timed_out": false,
+      "error": null
+    },
+    {
+      "task": "inventory-reserve",
+      "arm": "critique",
+      "repeat": 0,
+      "session_id": "47518756275b78d5cc52492b26146e31",
+      "task_id": "510a5c74ffb23a9214276194b9726c48",
+      "run_id": "01a13436-e725-7132-a095-1f474688e1c8",
+      "state": "ReadyForReview",
+      "core_verified": true,
+      "oracle_pass": true,
+      "check_untouched": true,
+      "verified_success": true,
+      "wall_ms": 543527,
+      "cost_usd": 0.026112299999999998,
+      "calls_without_usage": 0,
+      "unpriced_usage": 0,
+      "model_calls": 13,
+      "input_tokens": 102752,
+      "output_tokens": 21399,
+      "answered_by": {
+        "anthropic/glm-5.3-flash": 5,
+        "openai/glm-5.3-flash": 8
+      },
+      "escalated": false,
+      "escalation_attempted": false,
+      "reviewed": true,
+      "review_verdicts": [
+        "PASS"
+      ],
+      "revisions": 0,
+      "gates": [
+        {
+          "leg": "final",
+          "verdict": "ACCEPT",
+          "oracle_pass": true
+        }
+      ],
+      "needed_person": false,
+      "interactions": 0,
+      "accounting": {
+        "total_minor": 281,
+        "unknown_minor": 0,
+        "currency": "USD",
+        "scale": 4,
+        "path_label": "CRITIQUE",
+        "final_outcome": "pass"
+      },
+      "stats": [
+        {
+          "key": "reviewer|glm-5.3-flash",
+          "samples": 1,
+          "successes": 1,
+          "cost_known": true,
+          "unknown_cost_samples": 0,
+          "mean_cost_minor": 85
+        }
+      ],
+      "stats_version": "paired-01a13436-e72",
+      "stats_digest": "d33b9fabc9e44311871f31b7f0d859239ec9eea37eac142e097e1659d82bd9fd",
+      "events_sha256": "c94d48b7d22a8c174d2db6c56122135d29fa4cf6747ed0d438460099259c8acf",
+      "events_file": "trials/inventory-reserve-critique-0/events.jsonl",
+      "timed_out": false,
+      "error": null
+    },
+    {
+      "task": "invoice-rounding",
+      "arm": "direct",
+      "repeat": 0,
+      "session_id": "7893abf0007f4bb4c5c92d47cd49da4e",
+      "task_id": "3c69e6e85a484db0f0b8bb625a162a91",
+      "run_id": "01a13429-22ec-7f10-b86c-bd1ae5f392b6",
+      "state": "ReadyForReview",
+      "core_verified": true,
+      "oracle_pass": true,
+      "check_untouched": true,
+      "verified_success": true,
+      "wall_ms": 563459,
+      "cost_usd": 0.028405549999999995,
+      "calls_without_usage": 0,
+      "unpriced_usage": 0,
+      "model_calls": 14,
+      "input_tokens": 112477,
+      "output_tokens": 23068,
+      "answered_by": {
+        "anthropic/glm-5.3-flash": 4,
+        "openai/glm-5.3-flash": 10
+      },
+      "escalated": false,
+      "escalation_attempted": false,
+      "reviewed": true,
+      "review_verdicts": [
+        "PASS"
+      ],
+      "revisions": 0,
+      "gates": [
+        {
+          "leg": "final",
+          "verdict": "ACCEPT",
+          "oracle_pass": true
+        }
+      ],
+      "needed_person": false,
+      "interactions": 0,
+      "accounting": {
+        "total_minor": 305,
+        "unknown_minor": 0,
+        "currency": "USD",
+        "scale": 4,
+        "path_label": "CRITIQUE",
+        "final_outcome": "pass"
+      },
+      "stats": [
+        {
+          "key": "reviewer|glm-5.3-flash",
+          "samples": 1,
+          "successes": 1,
+          "cost_known": true,
+          "unknown_cost_samples": 0,
+          "mean_cost_minor": 91
+        }
+      ],
+      "stats_version": "paired-01a13429-22e",
+      "stats_digest": "a9313cb6492d762674990106a6c7086a44cd1847f8586a17ba1bfc6afb8f3940",
+      "events_sha256": "44050a1e9b93d531b56dc50bcfde13d1a024959809680d1e0ef16bffd37051f9",
+      "events_file": "trials/invoice-rounding-direct-0/events.jsonl",
+      "timed_out": false,
+      "error": null
+    },
+    {
+      "task": "invoice-rounding",
+      "arm": "cascade",
+      "repeat": 0,
+      "session_id": "00affbe35f332186508fd09864ef8f63",
+      "task_id": "4a83ad8f63b9c51df1c9974730de8367",
+      "run_id": "01a1342c-8c79-78c2-979d-25cd3964c582",
+      "state": "ReadyForReview",
+      "core_verified": true,
+      "oracle_pass": true,
+      "check_untouched": true,
+      "verified_success": true,
+      "wall_ms": 500832,
+      "cost_usd": 0.026289700000000006,
+      "calls_without_usage": 0,
+      "unpriced_usage": 0,
+      "model_calls": 13,
+      "input_tokens": 103698,
+      "output_tokens": 21470,
+      "answered_by": {
+        "anthropic/glm-5.3-flash": 4,
+        "openai/glm-5.3-flash": 9
+      },
+      "escalated": false,
+      "escalation_attempted": false,
+      "reviewed": true,
+      "review_verdicts": [
+        "PASS"
+      ],
+      "revisions": 0,
+      "gates": [
+        {
+          "leg": "final",
+          "verdict": "ACCEPT",
+          "oracle_pass": true
+        }
+      ],
+      "needed_person": false,
+      "interactions": 0,
+      "accounting": {
+        "total_minor": 281,
+        "unknown_minor": 0,
+        "currency": "USD",
+        "scale": 4,
+        "path_label": "CRITIQUE",
+        "final_outcome": "pass"
+      },
+      "stats": [
+        {
+          "key": "reviewer|glm-5.3-flash",
+          "samples": 1,
+          "successes": 1,
+          "cost_known": true,
+          "unknown_cost_samples": 0,
+          "mean_cost_minor": 109
+        }
+      ],
+      "stats_version": "paired-01a1342c-8c7",
+      "stats_digest": "4587ff7c08224202112f1d53931b3978f6da2a61ad0fcfddf0c81f2f328afd23",
+      "events_sha256": "9eed4882280086a2e13caf09fdb39a5e616652fe7570adbcdffd0a9a1a65171b",
+      "events_file": "trials/invoice-rounding-cascade-0/events.jsonl",
+      "timed_out": false,
+      "error": null
+    },
+    {
+      "task": "invoice-rounding",
+      "arm": "critique",
+      "repeat": 0,
+      "session_id": "3a0a82a6063ffd6cb3ccc590df45374f",
+      "task_id": "d8b4a0ac969f3f5ae716b57b7fb36c80",
+      "run_id": "01a13431-bc17-7ea2-8a6c-657e5001d412",
+      "state": "ReadyForReview",
+      "core_verified": true,
+      "oracle_pass": true,
+      "check_untouched": true,
+      "verified_success": true,
+      "wall_ms": 423503,
+      "cost_usd": 0.018869649999999998,
+      "calls_without_usage": 0,
+      "unpriced_usage": 0,
+      "model_calls": 9,
+      "input_tokens": 71941,
+      "output_tokens": 16157,
+      "answered_by": {
+        "anthropic/glm-5.3-flash": 4,
+        "openai/glm-5.3-flash": 5
+      },
+      "escalated": false,
+      "escalation_attempted": false,
+      "reviewed": true,
+      "review_verdicts": [
+        "PASS"
+      ],
+      "revisions": 0,
+      "gates": [
+        {
+          "leg": "final",
+          "verdict": "ACCEPT",
+          "oracle_pass": true
+        }
+      ],
+      "needed_person": false,
+      "interactions": 0,
+      "accounting": {
+        "total_minor": 202,
+        "unknown_minor": 0,
+        "currency": "USD",
+        "scale": 4,
+        "path_label": "CRITIQUE",
+        "final_outcome": "pass"
+      },
+      "stats": [
+        {
+          "key": "reviewer|glm-5.3-flash",
+          "samples": 1,
+          "successes": 1,
+          "cost_known": true,
+          "unknown_cost_samples": 0,
+          "mean_cost_minor": 114
+        }
+      ],
+      "stats_version": "paired-01a13431-bc1",
+      "stats_digest": "e95675e147323f6a3b78251181dfc04b6349ba0bbc68e14e1fcf020ab9f75ccd",
+      "events_sha256": "faa49ba8d0b913828ec29240fd8b7b1e05543336c6b08f1717af5313a4fa6ef7",
+      "events_file": "trials/invoice-rounding-critique-0/events.jsonl",
+      "timed_out": false,
+      "error": null
+    },
+    {
+      "task": "last-n-items",
+      "arm": "direct",
+      "repeat": 0,
+      "session_id": "43a5e9bd45e6230a74f649e7d7035e81",
+      "task_id": "cf4b12ab904e7e0992f311dc5c1aecd7",
+      "run_id": "01a13391-4537-70d0-b588-22b044f3c868",
+      "state": "Waiting",
+      "core_verified": false,
+      "oracle_pass": true,
+      "check_untouched": true,
+      "verified_success": false,
+      "wall_ms": 231014,
+      "cost_usd": 0.0121456,
+      "calls_without_usage": 0,
+      "unpriced_usage": 0,
+      "model_calls": 7,
+      "input_tokens": 48714,
+      "output_tokens": 9677,
+      "answered_by": {
+        "openai/glm-5.3-flash": 7
+      },
+      "escalated": false,
+      "escalation_attempted": false,
+      "reviewed": false,
+      "review_verdicts": [],
+      "revisions": 0,
+      "gates": [
+        {
+          "leg": "final",
+          "verdict": "NONE",
+          "oracle_pass": true
+        }
+      ],
+      "needed_person": true,
+      "interactions": 0,
+      "accounting": {
+        "total_minor": 212,
+        "unknown_minor": 81,
+        "currency": "USD",
+        "scale": 4,
+        "path_label": "DIRECT",
+        "final_outcome": "fail"
+      },
+      "stats": [],
+      "stats_version": "none",
+      "stats_digest": "",
+      "events_sha256": "853e59f0be6851b77a485233df8a2d063a758171c585b47ed0c36f650d923cb8",
+      "events_file": "trials/last-n-items-direct-0/events.jsonl",
+      "timed_out": false,
+      "error": null
+    },
+    {
+      "task": "last-n-items",
+      "arm": "cascade",
+      "repeat": 0,
+      "session_id": "d3a2e66acdb1733888ddba10dee65658",
+      "task_id": "24204782ba224271c69690cafae8036e",
+      "run_id": "01a13392-104c-7e90-869a-39b8bf1785e5",
+      "state": "ReadyForReview",
+      "core_verified": true,
+      "oracle_pass": true,
+      "check_untouched": true,
+      "verified_success": true,
+      "wall_ms": 92562,
+      "cost_usd": 0.008067699999999999,
+      "calls_without_usage": 0,
+      "unpriced_usage": 0,
+      "model_calls": 6,
+      "input_tokens": 42558,
+      "output_tokens": 3368,
+      "answered_by": {
+        "openai/glm-5.3-flash": 6
+      },
+      "escalated": false,
+      "escalation_attempted": false,
+      "reviewed": false,
+      "review_verdicts": [],
+      "revisions": 0,
+      "gates": [
+        {
+          "leg": "final",
+          "verdict": "ACCEPT",
+          "oracle_pass": true
+        }
+      ],
+      "needed_person": false,
+      "interactions": 0,
+      "accounting": {
+        "total_minor": 90,
+        "unknown_minor": 0,
+        "currency": "USD",
+        "scale": 4,
+        "path_label": "DIRECT",
+        "final_outcome": "pass"
+      },
+      "stats": [],
+      "stats_version": "none",
+      "stats_digest": "",
+      "events_sha256": "51663f62e315ddb2768991033b2731dceff4965385dddc7250956ad40e9ebd97",
+      "events_file": "trials/last-n-items-cascade-0/events.jsonl",
+      "timed_out": false,
+      "error": null
+    },
+    {
+      "task": "last-n-items",
+      "arm": "critique",
+      "repeat": 0,
+      "session_id": "8fbd9175f8bc350e3d6e378088a68faa",
+      "task_id": "7a047d2897a38dc11b27bcf904cab8d7",
+      "run_id": "01a13393-79fc-7fc3-a524-b1a1dcd87afa",
+      "state": "TIMEOUT",
+      "core_verified": false,
+      "oracle_pass": true,
+      "check_untouched": true,
+      "verified_success": false,
+      "wall_ms": 1503448,
+      "cost_usd": 0.022248999999999998,
+      "calls_without_usage": 0,
+      "unpriced_usage": 0,
+      "model_calls": 9,
+      "input_tokens": 79190,
+      "output_tokens": 20741,
+      "answered_by": {
+        "anthropic/glm-5.3-flash": 1,
+        "openai/glm-5.3-flash": 8
+      },
+      "escalated": false,
+      "escalation_attempted": false,
+      "reviewed": true,
+      "review_verdicts": [],
+      "revisions": 0,
+      "gates": [
+        {
+          "leg": "final",
+          "verdict": "INCONCLUSIVE",
+          "oracle_pass": true
+        }
+      ],
+      "needed_person": true,
+      "interactions": 0,
+      "accounting": {
+        "total_minor": 320,
+        "unknown_minor": 81,
+        "currency": "USD",
+        "scale": 4,
+        "path_label": "CRITIQUE",
+        "final_outcome": "cancelled"
+      },
+      "stats": [],
+      "stats_version": "none",
+      "stats_digest": "",
+      "events_sha256": "12dcb8966a1381c1b1346c2d4418148ce958d4004cf2f28292bb68b5d22866a3",
+      "events_file": "trials/last-n-items-critique-0/events.jsonl",
+      "timed_out": true,
+      "error": null
+    },
+    {
+      "task": "merge-counts",
+      "arm": "direct",
+      "repeat": 0,
+      "session_id": "627abba7effb8fd77a2f5c03f806c263",
+      "task_id": "4f40518d5bf0708d8abbee616ebce180",
+      "run_id": "01a13413-787a-7df3-b15c-3730d7f439cb",
+      "state": "ReadyForReview",
+      "core_verified": true,
+      "oracle_pass": true,
+      "check_untouched": true,
+      "verified_success": true,
+      "wall_ms": 69331,
+      "cost_usd": 0.0078317,
+      "calls_without_usage": 0,
+      "unpriced_usage": 0,
+      "model_calls": 6,
+      "input_tokens": 43208,
+      "output_tokens": 2701,
+      "answered_by": {
+        "openai/glm-5.3-flash": 6
+      },
+      "escalated": false,
+      "escalation_attempted": false,
+      "reviewed": false,
+      "review_verdicts": [],
+      "revisions": 0,
+      "gates": [
+        {
+          "leg": "final",
+          "verdict": "ACCEPT",
+          "oracle_pass": true
+        }
+      ],
+      "needed_person": false,
+      "interactions": 0,
+      "accounting": {
+        "total_minor": 86,
+        "unknown_minor": 0,
+        "currency": "USD",
+        "scale": 4,
+        "path_label": "DIRECT",
+        "final_outcome": "pass"
+      },
+      "stats": [],
+      "stats_version": "none",
+      "stats_digest": "",
+      "events_sha256": "0aacccec40d9f8cd478996ce970b6b1274bb26da22ce213e088e330f809f74c5",
+      "events_file": "trials/merge-counts-direct-0/events.jsonl",
+      "timed_out": false,
+      "error": null
+    },
+    {
+      "task": "merge-counts",
+      "arm": "cascade",
+      "repeat": 0,
+      "session_id": "a8df27f25d4bee9d2fec74b705e877e3",
+      "task_id": "7b4775931e67de695b217e99934b5587",
+      "run_id": "01a13414-876a-7070-9e37-a1aeca2e5937",
+      "state": "ReadyForReview",
+      "core_verified": true,
+      "oracle_pass": true,
+      "check_untouched": true,
+      "verified_success": true,
+      "wall_ms": 578097,
+      "cost_usd": 0.0283394,
+      "calls_without_usage": 0,
+      "unpriced_usage": 0,
+      "model_calls": 11,
+      "input_tokens": 107396,
+      "output_tokens": 24460,
+      "answered_by": {
+        "openai/glm-5.3-flash": 11
+      },
+      "escalated": false,
+      "escalation_attempted": false,
+      "reviewed": false,
+      "review_verdicts": [],
+      "revisions": 0,
+      "gates": [
+        {
+          "leg": "final",
+          "verdict": "ACCEPT",
+          "oracle_pass": true
+        }
+      ],
+      "needed_person": false,
+      "interactions": 0,
+      "accounting": {
+        "total_minor": 299,
+        "unknown_minor": 0,
+        "currency": "USD",
+        "scale": 4,
+        "path_label": "DIRECT",
+        "final_outcome": "pass"
+      },
+      "stats": [],
+      "stats_version": "none",
+      "stats_digest": "",
+      "events_sha256": "06ec959df7982e2a1d985452730e2de6ad9510ef50430a2e245fdbf89662aed3",
+      "events_file": "trials/merge-counts-cascade-0/events.jsonl",
+      "timed_out": false,
+      "error": null
+    },
+    {
+      "task": "merge-counts",
+      "arm": "critique",
+      "repeat": 0,
+      "session_id": "2b5939005e37c1deebce40865c70dc17",
+      "task_id": "cf705e080710356b552d0cad039d148a",
+      "run_id": "01a1341b-5f58-7e52-8c87-dcc3330e5e27",
+      "state": "ReadyForReview",
+      "core_verified": true,
+      "oracle_pass": true,
+      "check_untouched": true,
+      "verified_success": true,
+      "wall_ms": 251976,
+      "cost_usd": 0.018733799999999995,
+      "calls_without_usage": 0,
+      "unpriced_usage": 0,
+      "model_calls": 12,
+      "input_tokens": 91942,
+      "output_tokens": 9885,
+      "answered_by": {
+        "anthropic/glm-5.3-flash": 6,
+        "openai/glm-5.3-flash": 6
+      },
+      "escalated": false,
+      "escalation_attempted": false,
+      "reviewed": true,
+      "review_verdicts": [
+        "PASS"
+      ],
+      "revisions": 0,
+      "gates": [
+        {
+          "leg": "final",
+          "verdict": "ACCEPT",
+          "oracle_pass": true
+        }
+      ],
+      "needed_person": false,
+      "interactions": 0,
+      "accounting": {
+        "total_minor": 206,
+        "unknown_minor": 0,
+        "currency": "USD",
+        "scale": 4,
+        "path_label": "CRITIQUE",
+        "final_outcome": "pass"
+      },
+      "stats": [
+        {
+          "key": "reviewer|glm-5.3-flash",
+          "samples": 1,
+          "successes": 1,
+          "cost_known": true,
+          "unknown_cost_samples": 0,
+          "mean_cost_minor": 115
+        }
+      ],
+      "stats_version": "paired-01a1341b-5f5",
+      "stats_digest": "eaa27b188936ab8f72133013ba1c60a6f98d1bffb22a4748bb653ab93b293de8",
+      "events_sha256": "6d269e341d6a1022dbcab389fcb0d3480fd50afab79ec3f3d81b43a44812fe07",
+      "events_file": "trials/merge-counts-critique-0/events.jsonl",
+      "timed_out": false,
+      "error": null
+    },
+    {
+      "task": "mutable-default-add-tag",
+      "arm": "direct",
+      "repeat": 0,
+      "session_id": "a4e1497e3ab5d6af5642beccb777cadb",
+      "task_id": "c7e1cbab4c0872dc5c4fd2cc5acbc4d6",
+      "run_id": "01a133c7-f5ff-7dc1-88e3-55d40895fd1a",
+      "state": "ReadyForReview",
+      "core_verified": true,
+      "oracle_pass": true,
+      "check_untouched": true,
+      "verified_success": true,
+      "wall_ms": 84254,
+      "cost_usd": 0.0083162,
+      "calls_without_usage": 0,
+      "unpriced_usage": 0,
+      "model_calls": 6,
+      "input_tokens": 42768,
+      "output_tokens": 3802,
+      "answered_by": {
+        "openai/glm-5.3-flash": 6
+      },
+      "escalated": false,
+      "escalation_attempted": false,
+      "reviewed": false,
+      "review_verdicts": [],
+      "revisions": 0,
+      "gates": [
+        {
+          "leg": "final",
+          "verdict": "ACCEPT",
+          "oracle_pass": true
+        }
+      ],
+      "needed_person": false,
+      "interactions": 0,
+      "accounting": {
+        "total_minor": 93,
+        "unknown_minor": 0,
+        "currency": "USD",
+        "scale": 4,
+        "path_label": "DIRECT",
+        "final_outcome": "pass"
+      },
+      "stats": [],
+      "stats_version": "none",
+      "stats_digest": "",
+      "events_sha256": "3d84a9c030eee31adb9a70ba2d4e4f43a6ade5c005f4032d8bee4e2111f3f20e",
+      "events_file": "trials/mutable-default-add-tag-direct-0/events.jsonl",
+      "timed_out": false,
+      "error": null
+    },
+    {
+      "task": "mutable-default-add-tag",
+      "arm": "cascade",
+      "repeat": 0,
+      "session_id": "f9ee81b4d236ad057bd880f75749f1b4",
+      "task_id": "c240ee6e67602e057283b2179f879a29",
+      "run_id": "01a133c9-3f39-7a71-aea2-d2646ddb1ce5",
+      "state": "ReadyForReview",
+      "core_verified": true,
+      "oracle_pass": true,
+      "check_untouched": true,
+      "verified_success": true,
+      "wall_ms": 91049,
+      "cost_usd": 0.00517425,
+      "calls_without_usage": 0,
+      "unpriced_usage": 0,
+      "model_calls": 4,
+      "input_tokens": 26665,
+      "output_tokens": 2349,
+      "answered_by": {
+        "openai/glm-5.3-flash": 4
+      },
+      "escalated": false,
+      "escalation_attempted": false,
+      "reviewed": false,
+      "review_verdicts": [],
+      "revisions": 0,
+      "gates": [
+        {
+          "leg": "final",
+          "verdict": "ACCEPT",
+          "oracle_pass": true
+        }
+      ],
+      "needed_person": false,
+      "interactions": 0,
+      "accounting": {
+        "total_minor": 57,
+        "unknown_minor": 0,
+        "currency": "USD",
+        "scale": 4,
+        "path_label": "DIRECT",
+        "final_outcome": "pass"
+      },
+      "stats": [],
+      "stats_version": "none",
+      "stats_digest": "",
+      "events_sha256": "fdbcc0cd21a7a6d90f18e21a63e4cd9fb432a97dd8f4226b62387f150602c628",
+      "events_file": "trials/mutable-default-add-tag-cascade-0/events.jsonl",
+      "timed_out": false,
+      "error": null
+    },
+    {
+      "task": "mutable-default-add-tag",
+      "arm": "critique",
+      "repeat": 0,
+      "session_id": "4e5d46dde1d661568b2b65e6df2dcd9d",
+      "task_id": "80d9f874ec73df24e1d11b9b0218d693",
+      "run_id": "01a133c9-60c4-7b50-8038-8bf018f46495",
+      "state": "ReadyForReview",
+      "core_verified": true,
+      "oracle_pass": true,
+      "check_untouched": true,
+      "verified_success": true,
+      "wall_ms": 611501,
+      "cost_usd": 0.0363149,
+      "calls_without_usage": 0,
+      "unpriced_usage": 0,
+      "model_calls": 17,
+      "input_tokens": 160086,
+      "output_tokens": 24604,
+      "answered_by": {
+        "anthropic/glm-5.3-flash": 7,
+        "openai/glm-5.3-flash": 10
+      },
+      "escalated": false,
+      "escalation_attempted": false,
+      "reviewed": true,
+      "review_verdicts": [
+        "PASS"
+      ],
+      "revisions": 0,
+      "gates": [
+        {
+          "leg": "final",
+          "verdict": "ACCEPT",
+          "oracle_pass": true
+        }
+      ],
+      "needed_person": false,
+      "interactions": 0,
+      "accounting": {
+        "total_minor": 394,
+        "unknown_minor": 0,
+        "currency": "USD",
+        "scale": 4,
+        "path_label": "CRITIQUE",
+        "final_outcome": "pass"
+      },
+      "stats": [
+        {
+          "key": "reviewer|glm-5.3-flash",
+          "samples": 1,
+          "successes": 1,
+          "cost_known": true,
+          "unknown_cost_samples": 0,
+          "mean_cost_minor": 222
+        }
+      ],
+      "stats_version": "paired-01a133c9-60c",
+      "stats_digest": "f4168d46f4bacefb2649823d88945797b6801d4073f390d693ba510a9dc30bec",
+      "events_sha256": "067bd338ea224ce2949bf3c6fa584556faa60967b1e93306d80fbd66e62b25da",
+      "events_file": "trials/mutable-default-add-tag-critique-0/events.jsonl",
+      "timed_out": false,
+      "error": null
+    },
+    {
+      "task": "mutable-default-append-item",
+      "arm": "direct",
+      "repeat": 0,
+      "session_id": "65ab5790123012716c51c0be7a3ba585",
+      "task_id": "6508843b12c74b0d0e60f15127f36526",
+      "run_id": "01a133c4-fd44-7b50-8f86-044f679d7117",
+      "state": "ReadyForReview",
+      "core_verified": true,
+      "oracle_pass": true,
+      "check_untouched": true,
+      "verified_success": true,
+      "wall_ms": 80753,
+      "cost_usd": 0.009083649999999999,
+      "calls_without_usage": 0,
+      "unpriced_usage": 0,
+      "model_calls": 7,
+      "input_tokens": 50521,
+      "output_tokens": 3011,
+      "answered_by": {
+        "openai/glm-5.3-flash": 7
+      },
+      "escalated": false,
+      "escalation_attempted": false,
+      "reviewed": false,
+      "review_verdicts": [],
+      "revisions": 0,
+      "gates": [
+        {
+          "leg": "final",
+          "verdict": "ACCEPT",
+          "oracle_pass": true
+        }
+      ],
+      "needed_person": false,
+      "interactions": 0,
+      "accounting": {
+        "total_minor": 99,
+        "unknown_minor": 0,
+        "currency": "USD",
+        "scale": 4,
+        "path_label": "DIRECT",
+        "final_outcome": "pass"
+      },
+      "stats": [],
+      "stats_version": "none",
+      "stats_digest": "",
+      "events_sha256": "3b232488f046c3018d548e42f94275f8be3f683be8a7c4c0688e2367c292fdc5",
+      "events_file": "trials/mutable-default-append-item-direct-0/events.jsonl",
+      "timed_out": false,
+      "error": null
+    },
+    {
+      "task": "mutable-default-append-item",
+      "arm": "cascade",
+      "repeat": 0,
+      "session_id": "ff151f1a7563e2b622022171242d2521",
+      "task_id": "9fcec71ddedc6b1b8bc5f4f26a6fcf2e",
+      "run_id": "01a133c6-38cd-7130-8e1d-be6041644c7a",
+      "state": "ReadyForReview",
+      "core_verified": true,
+      "oracle_pass": true,
+      "check_untouched": true,
+      "verified_success": true,
+      "wall_ms": 59317,
+      "cost_usd": 0.00524405,
+      "calls_without_usage": 0,
+      "unpriced_usage": 0,
+      "model_calls": 4,
+      "input_tokens": 26647,
+      "output_tokens": 2494,
+      "answered_by": {
+        "openai/glm-5.3-flash": 4
+      },
+      "escalated": false,
+      "escalation_attempted": false,
+      "reviewed": false,
+      "review_verdicts": [],
+      "revisions": 0,
+      "gates": [
+        {
+          "leg": "final",
+          "verdict": "ACCEPT",
+          "oracle_pass": true
+        }
+      ],
+      "needed_person": false,
+      "interactions": 0,
+      "accounting": {
+        "total_minor": 60,
+        "unknown_minor": 0,
+        "currency": "USD",
+        "scale": 4,
+        "path_label": "DIRECT",
+        "final_outcome": "pass"
+      },
+      "stats": [],
+      "stats_version": "none",
+      "stats_digest": "",
+      "events_sha256": "33b074aebc3f1bdd7fb5152772228f18071682aa00c00ed8ef9c0f9e19c9b4ec",
+      "events_file": "trials/mutable-default-append-item-cascade-0/events.jsonl",
+      "timed_out": false,
+      "error": null
+    },
+    {
+      "task": "mutable-default-append-item",
+      "arm": "critique",
+      "repeat": 0,
+      "session_id": "b00c1a3a3166c61008d909bcfbdbd994",
+      "task_id": "b42859e3e3d42e521039601a3bf7efc0",
+      "run_id": "01a133c7-209e-7fd1-8af8-f419b3e3afda",
+      "state": "ReadyForReview",
+      "core_verified": true,
+      "oracle_pass": true,
+      "check_untouched": true,
+      "verified_success": true,
+      "wall_ms": 494403,
+      "cost_usd": 0.030328349999999997,
+      "calls_without_usage": 0,
+      "unpriced_usage": 0,
+      "model_calls": 16,
+      "input_tokens": 134989,
+      "output_tokens": 20160,
+      "answered_by": {
+        "anthropic/glm-5.3-flash": 5,
+        "openai/glm-5.3-flash": 11
+      },
+      "escalated": false,
+      "escalation_attempted": false,
+      "reviewed": true,
+      "review_verdicts": [
+        "PASS"
+      ],
+      "revisions": 0,
+      "gates": [
+        {
+          "leg": "final",
+          "verdict": "ACCEPT",
+          "oracle_pass": true
+        }
+      ],
+      "needed_person": false,
+      "interactions": 0,
+      "accounting": {
+        "total_minor": 327,
+        "unknown_minor": 0,
+        "currency": "USD",
+        "scale": 4,
+        "path_label": "CRITIQUE",
+        "final_outcome": "pass"
+      },
+      "stats": [
+        {
+          "key": "reviewer|glm-5.3-flash",
+          "samples": 1,
+          "successes": 1,
+          "cost_known": true,
+          "unknown_cost_samples": 0,
+          "mean_cost_minor": 116
+        }
+      ],
+      "stats_version": "paired-01a133c7-209",
+      "stats_digest": "8185a6bf264e922df8287666435ca6a18c376f35bb6080f5ea3ead2d44058bb0",
+      "events_sha256": "d4b8568ba2be688bb045f01af18979a907d1abd56dbf609512ec27407d6b52ea",
+      "events_file": "trials/mutable-default-append-item-critique-0/events.jsonl",
+      "timed_out": false,
+      "error": null
+    },
+    {
+      "task": "mutable-default-collect",
+      "arm": "direct",
+      "repeat": 0,
+      "session_id": "e49092ded1850fee0d917d448ae72d96",
+      "task_id": "3d7b5f41bfc8ecb6655f30bcf603bc3f",
+      "run_id": "01a133ca-a2fe-7852-8c4d-50a356c7267c",
+      "state": "ReadyForReview",
+      "core_verified": true,
+      "oracle_pass": true,
+      "check_untouched": true,
+      "verified_success": true,
+      "wall_ms": 500767,
+      "cost_usd": 0.0234657,
+      "calls_without_usage": 0,
+      "unpriced_usage": 0,
+      "model_calls": 10,
+      "input_tokens": 80268,
+      "output_tokens": 22851,
+      "answered_by": {
+        "anthropic/glm-5.3-flash": 3,
+        "openai/glm-5.3-flash": 7
+      },
+      "escalated": false,
+      "escalation_attempted": false,
+      "reviewed": true,
+      "review_verdicts": [
+        "PASS"
+      ],
+      "revisions": 0,
+      "gates": [
+        {
+          "leg": "final",
+          "verdict": "ACCEPT",
+          "oracle_pass": true
+        }
+      ],
+      "needed_person": false,
+      "interactions": 0,
+      "accounting": {
+        "total_minor": 253,
+        "unknown_minor": 0,
+        "currency": "USD",
+        "scale": 4,
+        "path_label": "CRITIQUE",
+        "final_outcome": "pass"
+      },
+      "stats": [
+        {
+          "key": "reviewer|glm-5.3-flash",
+          "samples": 1,
+          "successes": 1,
+          "cost_known": true,
+          "unknown_cost_samples": 0,
+          "mean_cost_minor": 100
+        }
+      ],
+      "stats_version": "paired-01a133ca-a2f",
+      "stats_digest": "199c34858b339f624d88e06fab3e11ceb6b6b6fc6cdc7304708480edc17952da",
+      "events_sha256": "d6aad1d59c07d134fa5a46eda3f3f3f23339c8db90d8db1c25d85e0c6c1d876a",
+      "events_file": "trials/mutable-default-collect-direct-0/events.jsonl",
+      "timed_out": false,
+      "error": null
+    },
+    {
+      "task": "mutable-default-collect",
+      "arm": "cascade",
+      "repeat": 0,
+      "session_id": "0080af0aa3c0b2225661fead3f92168e",
+      "task_id": "9e310aaf3c4982ecb9587de1809aa7e6",
+      "run_id": "01a133ce-ac08-72c0-8a49-0bc2b16426e3",
+      "state": "ReadyForReview",
+      "core_verified": true,
+      "oracle_pass": true,
+      "check_untouched": true,
+      "verified_success": true,
+      "wall_ms": 98370,
+      "cost_usd": 0.01027275,
+      "calls_without_usage": 0,
+      "unpriced_usage": 0,
+      "model_calls": 7,
+      "input_tokens": 54275,
+      "output_tokens": 4263,
+      "answered_by": {
+        "openai/glm-5.3-flash": 7
+      },
+      "escalated": false,
+      "escalation_attempted": false,
+      "reviewed": false,
+      "review_verdicts": [],
+      "revisions": 0,
+      "gates": [
+        {
+          "leg": "final",
+          "verdict": "ACCEPT",
+          "oracle_pass": true
+        }
+      ],
+      "needed_person": false,
+      "interactions": 0,
+      "accounting": {
+        "total_minor": 115,
+        "unknown_minor": 0,
+        "currency": "USD",
+        "scale": 4,
+        "path_label": "DIRECT",
+        "final_outcome": "pass"
+      },
+      "stats": [],
+      "stats_version": "none",
+      "stats_digest": "",
+      "events_sha256": "18756a552766255d5f1ef6546924e7c0fb6a2f1fbade037cdeacaa868286b82b",
+      "events_file": "trials/mutable-default-collect-cascade-0/events.jsonl",
+      "timed_out": false,
+      "error": null
+    },
+    {
+      "task": "mutable-default-collect",
+      "arm": "critique",
+      "repeat": 0,
+      "session_id": "408c7b416f02598f25786e8306043f30",
+      "task_id": "fda6ad0319937d50a97f97bbc2300ef4",
+      "run_id": "01a133d0-2c68-72d1-808a-53da1b968fea",
+      "state": "ReadyForReview",
+      "core_verified": true,
+      "oracle_pass": true,
+      "check_untouched": true,
+      "verified_success": true,
+      "wall_ms": 624377,
+      "cost_usd": 0.034595100000000004,
+      "calls_without_usage": 0,
+      "unpriced_usage": 0,
+      "model_calls": 14,
+      "input_tokens": 135654,
+      "output_tokens": 28494,
+      "answered_by": {
+        "anthropic/glm-5.3-flash": 3,
+        "openai/glm-5.3-flash": 11
+      },
+      "escalated": false,
+      "escalation_attempted": false,
+      "reviewed": true,
+      "review_verdicts": [
+        "PASS"
+      ],
+      "revisions": 0,
+      "gates": [
+        {
+          "leg": "final",
+          "verdict": "ACCEPT",
+          "oracle_pass": true
+        }
+      ],
+      "needed_person": false,
+      "interactions": 0,
+      "accounting": {
+        "total_minor": 366,
+        "unknown_minor": 0,
+        "currency": "USD",
+        "scale": 4,
+        "path_label": "CRITIQUE",
+        "final_outcome": "pass"
+      },
+      "stats": [
+        {
+          "key": "reviewer|glm-5.3-flash",
+          "samples": 1,
+          "successes": 1,
+          "cost_known": true,
+          "unknown_cost_samples": 0,
+          "mean_cost_minor": 84
+        }
+      ],
+      "stats_version": "paired-01a133d0-2c6",
+      "stats_digest": "90b760a4449f5a8f2131ee97a245250d42bc74f45f3652e0b30a6c5253c0eaae",
+      "events_sha256": "fdeb8ad9a37212af005271e8223955ce47607c0cc2efb5351651f0e1844cbd73",
+      "events_file": "trials/mutable-default-collect-critique-0/events.jsonl",
+      "timed_out": false,
+      "error": null
+    },
+    {
+      "task": "parse-duration",
+      "arm": "direct",
+      "repeat": 0,
+      "session_id": "ef0b73047cd6684f648e10251346a1fb",
+      "task_id": "a3c28195ac04774b716d81a8203b52d3",
+      "run_id": "01a133f5-f1aa-7613-98bd-974fb01f8601",
+      "state": "ReadyForReview",
+      "core_verified": true,
+      "oracle_pass": true,
+      "check_untouched": true,
+      "verified_success": true,
+      "wall_ms": 952432,
+      "cost_usd": 0.0392729,
+      "calls_without_usage": 0,
+      "unpriced_usage": 0,
+      "model_calls": 14,
+      "input_tokens": 126926,
+      "output_tokens": 40468,
+      "answered_by": {
+        "anthropic/glm-5.3-flash": 4,
+        "openai/glm-5.3-flash": 10
+      },
+      "escalated": false,
+      "escalation_attempted": false,
+      "reviewed": true,
+      "review_verdicts": [
+        "PASS"
+      ],
+      "revisions": 0,
+      "gates": [
+        {
+          "leg": "final",
+          "verdict": "ACCEPT",
+          "oracle_pass": true
+        }
+      ],
+      "needed_person": false,
+      "interactions": 0,
+      "accounting": {
+        "total_minor": 415,
+        "unknown_minor": 0,
+        "currency": "USD",
+        "scale": 4,
+        "path_label": "CRITIQUE",
+        "final_outcome": "pass"
+      },
+      "stats": [
+        {
+          "key": "reviewer|glm-5.3-flash",
+          "samples": 1,
+          "successes": 1,
+          "cost_known": true,
+          "unknown_cost_samples": 0,
+          "mean_cost_minor": 155
+        }
+      ],
+      "stats_version": "paired-01a133f5-f1a",
+      "stats_digest": "258df5c4e396a0122deb9cfb154385e3acfa8465ff221a2a3c6a5e9122e79079",
+      "events_sha256": "9d4013c08661054e56838b8aa3c6272bf6b526de7d94ea8cae7e9f8095a6d025",
+      "events_file": "trials/parse-duration-direct-0/events.jsonl",
+      "timed_out": false,
+      "error": null
+    },
+    {
+      "task": "parse-duration",
+      "arm": "cascade",
+      "repeat": 0,
+      "session_id": "a7794f1c6db98a27e0b4a293c5afe212",
+      "task_id": "b03d8c6a236bba56ee018e3f9d449a16",
+      "run_id": "01a133f7-f43d-74d0-8e10-47a02960cbb3",
+      "state": "Waiting",
+      "core_verified": false,
+      "oracle_pass": true,
+      "check_untouched": true,
+      "verified_success": false,
+      "wall_ms": 384707,
+      "cost_usd": 0.018845199999999996,
+      "calls_without_usage": 0,
+      "unpriced_usage": 0,
+      "model_calls": 8,
+      "input_tokens": 69418,
+      "output_tokens": 16865,
+      "answered_by": {
+        "openai/glm-5.3-flash": 8
+      },
+      "escalated": false,
+      "escalation_attempted": true,
+      "reviewed": false,
+      "review_verdicts": [],
+      "revisions": 0,
+      "gates": [
+        {
+          "leg": "first",
+          "verdict": "REJECT",
+          "oracle_pass": true
+        },
+        {
+          "leg": "final",
+          "verdict": "REJECT",
+          "oracle_pass": true
+        }
+      ],
+      "needed_person": true,
+      "interactions": 1,
+      "accounting": {
+        "total_minor": 202,
+        "unknown_minor": 0,
+        "currency": "USD",
+        "scale": 4,
+        "path_label": "DIRECT",
+        "final_outcome": "open"
+      },
+      "stats": [],
+      "stats_version": "none",
+      "stats_digest": "",
+      "events_sha256": "a1e800c463fb0f4393e4fcbf4da08a9fa0a514835dd828df149ec61b00e7117c",
+      "events_file": "trials/parse-duration-cascade-0/events.jsonl",
+      "timed_out": false,
+      "error": null
+    },
+    {
+      "task": "parse-duration",
+      "arm": "critique",
+      "repeat": 0,
+      "session_id": "92c1f5a2bb2dc876ffdc4dbb9495cda0",
+      "task_id": "52f15058e85699a863527cd2f81181c4",
+      "run_id": "01a133f9-81be-7d40-abe2-03b80ee55062",
+      "state": "ReadyForReview",
+      "core_verified": true,
+      "oracle_pass": true,
+      "check_untouched": true,
+      "verified_success": true,
+      "wall_ms": 664781,
+      "cost_usd": 0.027973650000000003,
+      "calls_without_usage": 0,
+      "unpriced_usage": 0,
+      "model_calls": 10,
+      "input_tokens": 95261,
+      "output_tokens": 27369,
+      "answered_by": {
+        "anthropic/glm-5.3-flash": 5,
+        "openai/glm-5.3-flash": 5
+      },
+      "escalated": false,
+      "escalation_attempted": false,
+      "reviewed": true,
+      "review_verdicts": [
+        "PASS"
+      ],
+      "revisions": 0,
+      "gates": [
+        {
+          "leg": "final",
+          "verdict": "ACCEPT",
+          "oracle_pass": true
+        }
+      ],
+      "needed_person": false,
+      "interactions": 0,
+      "accounting": {
+        "total_minor": 298,
+        "unknown_minor": 0,
+        "currency": "USD",
+        "scale": 4,
+        "path_label": "CRITIQUE",
+        "final_outcome": "pass"
+      },
+      "stats": [
+        {
+          "key": "reviewer|glm-5.3-flash",
+          "samples": 1,
+          "successes": 1,
+          "cost_known": true,
+          "unknown_cost_samples": 0,
+          "mean_cost_minor": 173
+        }
+      ],
+      "stats_version": "paired-01a133f9-81b",
+      "stats_digest": "4f98b8bb1c2057cb57c7a0d9015254285b7bb3753d3029062f35e7a4788d2fbf",
+      "events_sha256": "001bd0ef7c8317e23a3233ad26714e1a0549676aa8a765c52d577a0ded591450",
+      "events_file": "trials/parse-duration-critique-0/events.jsonl",
+      "timed_out": false,
+      "error": null
+    },
+    {
+      "task": "parse-ranges",
+      "arm": "direct",
+      "repeat": 0,
+      "session_id": "6bf4cddacb68201f1dd4d99c5dcf3849",
+      "task_id": "1cace0a8bbb1b6015f5f1327ec7ecd2a",
+      "run_id": "01a13403-a6b4-7941-a3ad-27a6dbb9d8fa",
+      "state": "ReadyForReview",
+      "core_verified": true,
+      "oracle_pass": true,
+      "check_untouched": true,
+      "verified_success": true,
+      "wall_ms": 145824,
+      "cost_usd": 0.0083454,
+      "calls_without_usage": 0,
+      "unpriced_usage": 0,
+      "model_calls": 5,
+      "input_tokens": 35526,
+      "output_tokens": 6033,
+      "answered_by": {
+        "openai/glm-5.3-flash": 5
+      },
+      "escalated": false,
+      "escalation_attempted": false,
+      "reviewed": false,
+      "review_verdicts": [],
+      "revisions": 0,
+      "gates": [
+        {
+          "leg": "final",
+          "verdict": "ACCEPT",
+          "oracle_pass": true
+        }
+      ],
+      "needed_person": false,
+      "interactions": 0,
+      "accounting": {
+        "total_minor": 91,
+        "unknown_minor": 0,
+        "currency": "USD",
+        "scale": 4,
+        "path_label": "DIRECT",
+        "final_outcome": "pass"
+      },
+      "stats": [],
+      "stats_version": "none",
+      "stats_digest": "",
+      "events_sha256": "039512592c61e08dc2754c1a4d01984d9fa6d95fa9154ac3409d8e0f78c58161",
+      "events_file": "trials/parse-ranges-direct-0/events.jsonl",
+      "timed_out": false,
+      "error": null
+    },
+    {
+      "task": "parse-ranges",
+      "arm": "cascade",
+      "repeat": 0,
+      "session_id": "e75e6940d9fcc403ab5f70912241d85d",
+      "task_id": "f80ddcaa0f0f27861a47a68a5c08d2c2",
+      "run_id": "01a13404-7a47-7923-8cfe-f350b7b68782",
+      "state": "ReadyForReview",
+      "core_verified": true,
+      "oracle_pass": true,
+      "check_untouched": true,
+      "verified_success": true,
+      "wall_ms": 621704,
+      "cost_usd": 0.026611799999999998,
+      "calls_without_usage": 0,
+      "unpriced_usage": 0,
+      "model_calls": 10,
+      "input_tokens": 84402,
+      "output_tokens": 27903,
+      "answered_by": {
+        "anthropic/glm-5.3-flash": 3,
+        "openai/glm-5.3-flash": 7
+      },
+      "escalated": false,
+      "escalation_attempted": false,
+      "reviewed": true,
+      "review_verdicts": [
+        "PASS"
+      ],
+      "revisions": 0,
+      "gates": [
+        {
+          "leg": "final",
+          "verdict": "ACCEPT",
+          "oracle_pass": true
+        }
+      ],
+      "needed_person": false,
+      "interactions": 0,
+      "accounting": {
+        "total_minor": 279,
+        "unknown_minor": 0,
+        "currency": "USD",
+        "scale": 4,
+        "path_label": "CRITIQUE",
+        "final_outcome": "pass"
+      },
+      "stats": [
+        {
+          "key": "reviewer|glm-5.3-flash",
+          "samples": 1,
+          "successes": 1,
+          "cost_known": true,
+          "unknown_cost_samples": 0,
+          "mean_cost_minor": 104
+        }
+      ],
+      "stats_version": "paired-01a13404-7a4",
+      "stats_digest": "43de34937da2bd92245c5bdb0e2f23ad1837f6ca2106a44b57c92280f3238d97",
+      "events_sha256": "60e2b8bb37fc862e38323b6161731a7a70bfddccc8c2f9e87868a94a76c90d0b",
+      "events_file": "trials/parse-ranges-cascade-0/events.jsonl",
+      "timed_out": false,
+      "error": null
+    },
+    {
+      "task": "parse-ranges",
+      "arm": "critique",
+      "repeat": 0,
+      "session_id": "bbef2f39c00deab026328eff40e52c56",
+      "task_id": "8a8c5ccdecfa3dfafac4fe5c6f260d48",
+      "run_id": "01a13405-e06e-7d43-b5ee-e52e49128059",
+      "state": "ReadyForReview",
+      "core_verified": true,
+      "oracle_pass": true,
+      "check_untouched": true,
+      "verified_success": true,
+      "wall_ms": 499874,
+      "cost_usd": 0.02142995,
+      "calls_without_usage": 0,
+      "unpriced_usage": 0,
+      "model_calls": 9,
+      "input_tokens": 71313,
+      "output_tokens": 21466,
+      "answered_by": {
+        "anthropic/glm-5.3-flash": 3,
+        "openai/glm-5.3-flash": 6
+      },
+      "escalated": false,
+      "escalation_attempted": false,
+      "reviewed": true,
+      "review_verdicts": [
+        "PASS"
+      ],
+      "revisions": 0,
+      "gates": [
+        {
+          "leg": "final",
+          "verdict": "ACCEPT",
+          "oracle_pass": true
+        }
+      ],
+      "needed_person": false,
+      "interactions": 0,
+      "accounting": {
+        "total_minor": 230,
+        "unknown_minor": 0,
+        "currency": "USD",
+        "scale": 4,
+        "path_label": "CRITIQUE",
+        "final_outcome": "pass"
+      },
+      "stats": [
+        {
+          "key": "reviewer|glm-5.3-flash",
+          "samples": 1,
+          "successes": 1,
+          "cost_known": true,
+          "unknown_cost_samples": 0,
+          "mean_cost_minor": 82
+        }
+      ],
+      "stats_version": "paired-01a13405-e06",
+      "stats_digest": "31860ec21bd775fabab03d4b69cb593651da79ed9670ae5f101b5e08246e5622",
+      "events_sha256": "665c31a4a40d2f293ba830f87c58fe9c19ce060c32e57e7a6bc99ce693fbcb73",
+      "events_file": "trials/parse-ranges-critique-0/events.jsonl",
+      "timed_out": false,
+      "error": null
+    },
+    {
+      "task": "parse-size",
+      "arm": "direct",
+      "repeat": 0,
+      "session_id": "a41a5aa9f4bc59faf822b96ba1220417",
+      "task_id": "182629c20f38dec5e4acdfef4b5caa28",
+      "run_id": "01a133fd-d31f-77b2-bacc-a5b94dda1c6b",
+      "state": "ReadyForReview",
+      "core_verified": true,
+      "oracle_pass": true,
+      "check_untouched": true,
+      "verified_success": true,
+      "wall_ms": 187661,
+      "cost_usd": 0.009441699999999999,
+      "calls_without_usage": 0,
+      "unpriced_usage": 0,
+      "model_calls": 5,
+      "input_tokens": 38048,
+      "output_tokens": 7469,
+      "answered_by": {
+        "openai/glm-5.3-flash": 5
+      },
+      "escalated": false,
+      "escalation_attempted": false,
+      "reviewed": false,
+      "review_verdicts": [],
+      "revisions": 0,
+      "gates": [
+        {
+          "leg": "final",
+          "verdict": "ACCEPT",
+          "oracle_pass": true
+        }
+      ],
+      "needed_person": false,
+      "interactions": 0,
+      "accounting": {
+        "total_minor": 102,
+        "unknown_minor": 0,
+        "currency": "USD",
+        "scale": 4,
+        "path_label": "DIRECT",
+        "final_outcome": "pass"
+      },
+      "stats": [],
+      "stats_version": "none",
+      "stats_digest": "",
+      "events_sha256": "05577d8305fc0768ec45091c5c080a9264b1d7d12adf578a52b5f0f97aa0f33a",
+      "events_file": "trials/parse-size-direct-0/events.jsonl",
+      "timed_out": false,
+      "error": null
+    },
+    {
+      "task": "parse-size",
+      "arm": "cascade",
+      "repeat": 0,
+      "session_id": "b20cefba546b1dd4c9b042b46c119b17",
+      "task_id": "badab419590b3e853241c2fca7844370",
+      "run_id": "01a13400-b04a-7ba0-b061-f0b9ea09051b",
+      "state": "ReadyForReview",
+      "core_verified": true,
+      "oracle_pass": true,
+      "check_untouched": true,
+      "verified_success": true,
+      "wall_ms": 171858,
+      "cost_usd": 0.011795000000000002,
+      "calls_without_usage": 0,
+      "unpriced_usage": 0,
+      "model_calls": 7,
+      "input_tokens": 54320,
+      "output_tokens": 7294,
+      "answered_by": {
+        "openai/glm-5.3-flash": 7
+      },
+      "escalated": false,
+      "escalation_attempted": false,
+      "reviewed": false,
+      "review_verdicts": [],
+      "revisions": 0,
+      "gates": [
+        {
+          "leg": "final",
+          "verdict": "ACCEPT",
+          "oracle_pass": true
+        }
+      ],
+      "needed_person": false,
+      "interactions": 0,
+      "accounting": {
+        "total_minor": 126,
+        "unknown_minor": 0,
+        "currency": "USD",
+        "scale": 4,
+        "path_label": "DIRECT",
+        "final_outcome": "pass"
+      },
+      "stats": [],
+      "stats_version": "none",
+      "stats_digest": "",
+      "events_sha256": "e343e952764c25d7e11e5c15f40a1056a3f7013c37b6812e4ac62da504a5a2d9",
+      "events_file": "trials/parse-size-cascade-0/events.jsonl",
+      "timed_out": false,
+      "error": null
+    },
+    {
+      "task": "parse-size",
+      "arm": "critique",
+      "repeat": 0,
+      "session_id": "98a9c3509c03f9148d9d82c08b513a26",
+      "task_id": "96e2c33b1347053e73f3457cde6ee824",
+      "run_id": "01a13403-4fbc-7a42-beef-5d66da1b5c4b",
+      "state": "ReadyForReview",
+      "core_verified": true,
+      "oracle_pass": true,
+      "check_untouched": true,
+      "verified_success": true,
+      "wall_ms": 772967,
+      "cost_usd": 0.039049549999999995,
+      "calls_without_usage": 0,
+      "unpriced_usage": 0,
+      "model_calls": 15,
+      "input_tokens": 152117,
+      "output_tokens": 32464,
+      "answered_by": {
+        "anthropic/glm-5.3-flash": 7,
+        "openai/glm-5.3-flash": 8
+      },
+      "escalated": false,
+      "escalation_attempted": false,
+      "reviewed": true,
+      "review_verdicts": [
+        "PASS"
+      ],
+      "revisions": 0,
+      "gates": [
+        {
+          "leg": "final",
+          "verdict": "ACCEPT",
+          "oracle_pass": true
+        }
+      ],
+      "needed_person": false,
+      "interactions": 0,
+      "accounting": {
+        "total_minor": 412,
+        "unknown_minor": 0,
+        "currency": "USD",
+        "scale": 4,
+        "path_label": "CRITIQUE",
+        "final_outcome": "pass"
+      },
+      "stats": [
+        {
+          "key": "reviewer|glm-5.3-flash",
+          "samples": 1,
+          "successes": 1,
+          "cost_known": true,
+          "unknown_cost_samples": 0,
+          "mean_cost_minor": 222
+        }
+      ],
+      "stats_version": "paired-01a13403-4fb",
+      "stats_digest": "831b02735b630ec45a231e7a2202485c90f911a2e8e813ee14d79fa85f502410",
+      "events_sha256": "d7eeb79602d34ee700a18144b2d0ac3c4a1eb9033bf1ad1950e53f39c12206e6",
+      "events_file": "trials/parse-size-critique-0/events.jsonl",
+      "timed_out": false,
+      "error": null
+    },
+    {
+      "task": "range-sum-inclusive",
+      "arm": "direct",
+      "repeat": 0,
+      "session_id": "845999fe00716f8e39873f43b147e2af",
+      "task_id": "3539d4b0b90cd692b40256bfffca1b81",
+      "run_id": "01a1338d-9d3d-7c41-9632-f3882e80bd5e",
+      "state": "ReadyForReview",
+      "core_verified": true,
+      "oracle_pass": true,
+      "check_untouched": true,
+      "verified_success": true,
+      "wall_ms": 76642,
+      "cost_usd": 0.0073245,
+      "calls_without_usage": 0,
+      "unpriced_usage": 0,
+      "model_calls": 6,
+      "input_tokens": 41420,
+      "output_tokens": 2223,
+      "answered_by": {
+        "openai/glm-5.3-flash": 6
+      },
+      "escalated": false,
+      "escalation_attempted": false,
+      "reviewed": false,
+      "review_verdicts": [],
+      "revisions": 0,
+      "gates": [
+        {
+          "leg": "final",
+          "verdict": "ACCEPT",
+          "oracle_pass": true
+        }
+      ],
+      "needed_person": false,
+      "interactions": 0,
+      "accounting": {
+        "total_minor": 80,
+        "unknown_minor": 0,
+        "currency": "USD",
+        "scale": 4,
+        "path_label": "DIRECT",
+        "final_outcome": "pass"
+      },
+      "stats": [],
+      "stats_version": "none",
+      "stats_digest": "",
+      "events_sha256": "4e2f2bf1c7fe53e47167ed9733b749b8038884945198fedfd7f705248b2094eb",
+      "events_file": "trials/range-sum-inclusive-direct-0/events.jsonl",
+      "timed_out": false,
+      "error": null
+    },
+    {
+      "task": "range-sum-inclusive",
+      "arm": "cascade",
+      "repeat": 0,
+      "session_id": "6330b14c46b29e7713bce4e66561aa40",
+      "task_id": "5a9a3cabe8837eef8ce4b7a849d08dac",
+      "run_id": "01a1338d-9d3c-7c62-b2ca-e1648c423299",
+      "state": "ReadyForReview",
+      "core_verified": true,
+      "oracle_pass": true,
+      "check_untouched": true,
+      "verified_success": true,
+      "wall_ms": 630344,
+      "cost_usd": 0.03314045,
+      "calls_without_usage": 0,
+      "unpriced_usage": 0,
+      "model_calls": 14,
+      "input_tokens": 127003,
+      "output_tokens": 28180,
+      "answered_by": {
+        "anthropic/glm-5.3-flash": 7,
+        "openai/glm-5.3-flash": 7
+      },
+      "escalated": false,
+      "escalation_attempted": false,
+      "reviewed": true,
+      "review_verdicts": [
+        "PASS"
+      ],
+      "revisions": 0,
+      "gates": [
+        {
+          "leg": "final",
+          "verdict": "ACCEPT",
+          "oracle_pass": true
+        }
+      ],
+      "needed_person": false,
+      "interactions": 0,
+      "accounting": {
+        "total_minor": 351,
+        "unknown_minor": 0,
+        "currency": "USD",
+        "scale": 4,
+        "path_label": "CRITIQUE",
+        "final_outcome": "pass"
+      },
+      "stats": [
+        {
+          "key": "reviewer|glm-5.3-flash",
+          "samples": 1,
+          "successes": 0,
+          "cost_known": true,
+          "unknown_cost_samples": 0,
+          "mean_cost_minor": 195
+        }
+      ],
+      "stats_version": "paired-01a1338d-9d3",
+      "stats_digest": "343694a835fdec244bc66ce065817779651b74ffae1be18faf9601c2c35d5504",
+      "events_sha256": "a3b194d82310da044e3506a570c7b9997c13a6064a7fabb017bfb0582b6b966c",
+      "events_file": "trials/range-sum-inclusive-cascade-0/events.jsonl",
+      "timed_out": false,
+      "error": null
+    },
+    {
+      "task": "range-sum-inclusive",
+      "arm": "critique",
+      "repeat": 0,
+      "session_id": "b21c67140b798831b28ae01cff7743f0",
+      "task_id": "d2d86cf8fc21409432b830c4ff79753a",
+      "run_id": "01a1338d-9d3d-7ad3-9b2c-ed2305aecca9",
+      "state": "ReadyForReview",
+      "core_verified": true,
+      "oracle_pass": true,
+      "check_untouched": true,
+      "verified_success": true,
+      "wall_ms": 234629,
+      "cost_usd": 0.01602505,
+      "calls_without_usage": 0,
+      "unpriced_usage": 0,
+      "model_calls": 10,
+      "input_tokens": 77277,
+      "output_tokens": 8867,
+      "answered_by": {
+        "anthropic/glm-5.3-flash": 6,
+        "openai/glm-5.3-flash": 4
+      },
+      "escalated": false,
+      "escalation_attempted": false,
+      "reviewed": true,
+      "review_verdicts": [
+        "PASS"
+      ],
+      "revisions": 0,
+      "gates": [
+        {
+          "leg": "final",
+          "verdict": "ACCEPT",
+          "oracle_pass": true
+        }
+      ],
+      "needed_person": false,
+      "interactions": 0,
+      "accounting": {
+        "total_minor": 174,
+        "unknown_minor": 0,
+        "currency": "USD",
+        "scale": 4,
+        "path_label": "CRITIQUE",
+        "final_outcome": "pass"
+      },
+      "stats": [
+        {
+          "key": "reviewer|glm-5.3-flash",
+          "samples": 1,
+          "successes": 1,
+          "cost_known": true,
+          "unknown_cost_samples": 0,
+          "mean_cost_minor": 118
+        }
+      ],
+      "stats_version": "paired-01a1338d-9d3",
+      "stats_digest": "d62a8e91d50a6bb636c060a59493db544c25a3667742954d14279a34025304c9",
+      "events_sha256": "75b0b4454c0ffa82ab894f0dd3c2821b6398a932842c3410b61ab6f259a7222d",
+      "events_file": "trials/range-sum-inclusive-critique-0/events.jsonl",
+      "timed_out": false,
+      "error": null
+    },
+    {
+      "task": "rename-find-item",
+      "arm": "direct",
+      "repeat": 0,
+      "session_id": "c216e10607b52cb4790aee41ba1ce0a9",
+      "task_id": "ae51c85a63d09481083abbcfa9d6c587",
+      "run_id": "01a133ad-6f27-7360-9700-5ceb51532454",
+      "state": "ReadyForReview",
+      "core_verified": true,
+      "oracle_pass": true,
+      "check_untouched": true,
+      "verified_success": true,
+      "wall_ms": 360478,
+      "cost_usd": 0.019238099999999998,
+      "calls_without_usage": 0,
+      "unpriced_usage": 0,
+      "model_calls": 8,
+      "input_tokens": 72944,
+      "output_tokens": 16593,
+      "answered_by": {
+        "openai/glm-5.3-flash": 8
+      },
+      "escalated": false,
+      "escalation_attempted": false,
+      "reviewed": false,
+      "review_verdicts": [],
+      "revisions": 0,
+      "gates": [
+        {
+          "leg": "final",
+          "verdict": "ACCEPT",
+          "oracle_pass": true
+        }
+      ],
+      "needed_person": false,
+      "interactions": 0,
+      "accounting": {
+        "total_minor": 205,
+        "unknown_minor": 0,
+        "currency": "USD",
+        "scale": 4,
+        "path_label": "DIRECT",
+        "final_outcome": "pass"
+      },
+      "stats": [],
+      "stats_version": "none",
+      "stats_digest": "",
+      "events_sha256": "12b239ab9b157829f4dc212984be40e446061a540a80dde831d5a124207bcfe0",
+      "events_file": "trials/rename-find-item-direct-0/events.jsonl",
+      "timed_out": false,
+      "error": null
+    },
+    {
+      "task": "rename-find-item",
+      "arm": "cascade",
+      "repeat": 0,
+      "session_id": "d85734d04f0ee6ed898f466d42e59828",
+      "task_id": "7caa4d86822bf45260ba3d60c25ff932",
+      "run_id": "01a133af-dcb6-70b3-b071-cea60bea4ea8",
+      "state": "ReadyForReview",
+      "core_verified": true,
+      "oracle_pass": true,
+      "check_untouched": true,
+      "verified_success": true,
+      "wall_ms": 74943,
+      "cost_usd": 0.00816155,
+      "calls_without_usage": 0,
+      "unpriced_usage": 0,
+      "model_calls": 5,
+      "input_tokens": 41927,
+      "output_tokens": 3745,
+      "answered_by": {
+        "openai/glm-5.3-flash": 5
+      },
+      "escalated": false,
+      "escalation_attempted": false,
+      "reviewed": false,
+      "review_verdicts": [],
+      "revisions": 0,
+      "gates": [
+        {
+          "leg": "final",
+          "verdict": "ACCEPT",
+          "oracle_pass": true
+        }
+      ],
+      "needed_person": false,
+      "interactions": 0,
+      "accounting": {
+        "total_minor": 92,
+        "unknown_minor": 0,
+        "currency": "USD",
+        "scale": 4,
+        "path_label": "DIRECT",
+        "final_outcome": "pass"
+      },
+      "stats": [],
+      "stats_version": "none",
+      "stats_digest": "",
+      "events_sha256": "b36a717aeac1f6e1493c403dd9a5914f4770ec22f56c6493cd92635ecfc8aa30",
+      "events_file": "trials/rename-find-item-cascade-0/events.jsonl",
+      "timed_out": false,
+      "error": null
+    },
+    {
+      "task": "rename-find-item",
+      "arm": "critique",
+      "repeat": 0,
+      "session_id": "25c91d28e65b38515dafb82b7e8c81aa",
+      "task_id": "ea081121024a87ecbc4940b6c86fddf2",
+      "run_id": "01a133b1-0191-7cf2-98c1-c702bc6c0bd3",
+      "state": "ReadyForReview",
+      "core_verified": true,
+      "oracle_pass": true,
+      "check_untouched": true,
+      "verified_success": true,
+      "wall_ms": 143651,
+      "cost_usd": 0.010795200000000001,
+      "calls_without_usage": 0,
+      "unpriced_usage": 0,
+      "model_calls": 7,
+      "input_tokens": 52518,
+      "output_tokens": 5835,
+      "answered_by": {
+        "anthropic/glm-5.3-flash": 3,
+        "openai/glm-5.3-flash": 4
+      },
+      "escalated": false,
+      "escalation_attempted": false,
+      "reviewed": true,
+      "review_verdicts": [
+        "PASS"
+      ],
+      "revisions": 0,
+      "gates": [
+        {
+          "leg": "final",
+          "verdict": "ACCEPT",
+          "oracle_pass": true
+        }
+      ],
+      "needed_person": false,
+      "interactions": 0,
+      "accounting": {
+        "total_minor": 117,
+        "unknown_minor": 0,
+        "currency": "USD",
+        "scale": 4,
+        "path_label": "CRITIQUE",
+        "final_outcome": "pass"
+      },
+      "stats": [
+        {
+          "key": "reviewer|glm-5.3-flash",
+          "samples": 1,
+          "successes": 1,
+          "cost_known": true,
+          "unknown_cost_samples": 0,
+          "mean_cost_minor": 49
+        }
+      ],
+      "stats_version": "paired-01a133b1-019",
+      "stats_digest": "74c8df59f6df0340b73f4a7c9900e8b6a0b81e8125bab2b5898e76860c065ca4",
+      "events_sha256": "318b05da5c83b1f515e8917d6a3c74e9fa71c1958faa220fbefa7400e1e0d957",
+      "events_file": "trials/rename-find-item-critique-0/events.jsonl",
+      "timed_out": false,
+      "error": null
+    },
+    {
+      "task": "rename-get-user",
+      "arm": "direct",
+      "repeat": 0,
+      "session_id": "4a55b1dac532a024770bc94cd38b18fe",
+      "task_id": "96abaa2ff581bb8db7e7b6cb71d5676d",
+      "run_id": "01a133a0-8ed2-7e31-9eb3-ce73e8393be5",
+      "state": "ReadyForReview",
+      "core_verified": true,
+      "oracle_pass": true,
+      "check_untouched": true,
+      "verified_success": true,
+      "wall_ms": 308113,
+      "cost_usd": 0.02139765,
+      "calls_without_usage": 0,
+      "unpriced_usage": 0,
+      "model_calls": 10,
+      "input_tokens": 98251,
+      "output_tokens": 13320,
+      "answered_by": {
+        "openai/glm-5.3-flash": 10
+      },
+      "escalated": false,
+      "escalation_attempted": false,
+      "reviewed": false,
+      "review_verdicts": [],
+      "revisions": 0,
+      "gates": [
+        {
+          "leg": "final",
+          "verdict": "ACCEPT",
+          "oracle_pass": true
+        }
+      ],
+      "needed_person": false,
+      "interactions": 0,
+      "accounting": {
+        "total_minor": 230,
+        "unknown_minor": 0,
+        "currency": "USD",
+        "scale": 4,
+        "path_label": "DIRECT",
+        "final_outcome": "pass"
+      },
+      "stats": [],
+      "stats_version": "none",
+      "stats_digest": "",
+      "events_sha256": "7869f9d1ee21a54bb274c856dc8f6fc8c1932b5625e115a175a5e71e6ceec22a",
+      "events_file": "trials/rename-get-user-direct-0/events.jsonl",
+      "timed_out": false,
+      "error": null
+    },
+    {
+      "task": "rename-get-user",
+      "arm": "cascade",
+      "repeat": 0,
+      "session_id": "a44611284cfb9040804b7023c618912c",
+      "task_id": "25771b89ac00241b78e627ea3107e0b1",
+      "run_id": "01a133a5-428d-74a1-9a24-64ae5ba04538",
+      "state": "ReadyForReview",
+      "core_verified": true,
+      "oracle_pass": true,
+      "check_untouched": true,
+      "verified_success": true,
+      "wall_ms": 426393,
+      "cost_usd": 0.021609249999999997,
+      "calls_without_usage": 0,
+      "unpriced_usage": 0,
+      "model_calls": 9,
+      "input_tokens": 75365,
+      "output_tokens": 20609,
+      "answered_by": {
+        "anthropic/glm-5.3-flash": 3,
+        "openai/glm-5.3-flash": 6
+      },
+      "escalated": false,
+      "escalation_attempted": false,
+      "reviewed": true,
+      "review_verdicts": [
+        "PASS"
+      ],
+      "revisions": 0,
+      "gates": [
+        {
+          "leg": "final",
+          "verdict": "ACCEPT",
+          "oracle_pass": true
+        }
+      ],
+      "needed_person": false,
+      "interactions": 0,
+      "accounting": {
+        "total_minor": 232,
+        "unknown_minor": 0,
+        "currency": "USD",
+        "scale": 4,
+        "path_label": "CRITIQUE",
+        "final_outcome": "pass"
+      },
+      "stats": [
+        {
+          "key": "reviewer|glm-5.3-flash",
+          "samples": 1,
+          "successes": 0,
+          "cost_known": true,
+          "unknown_cost_samples": 0,
+          "mean_cost_minor": 49
+        }
+      ],
+      "stats_version": "paired-01a133a5-428",
+      "stats_digest": "bd2c278670f79ef9ebf448461b50b908b9a1084de2727eb2996447ac84e28c60",
+      "events_sha256": "cf6db5f459eb169ac7af4cb8e2f286dd4ed9467e060a34efd5eedb4ead3382a1",
+      "events_file": "trials/rename-get-user-cascade-0/events.jsonl",
+      "timed_out": false,
+      "error": null
+    },
+    {
+      "task": "rename-get-user",
+      "arm": "critique",
+      "repeat": 0,
+      "session_id": "55ab20e531c9c1088cb34e87885ca755",
+      "task_id": "9f83ec8d57647f98b1a122c126870760",
+      "run_id": "01a133aa-6af8-7993-9ade-61925d02742f",
+      "state": "ReadyForReview",
+      "core_verified": true,
+      "oracle_pass": true,
+      "check_untouched": true,
+      "verified_success": true,
+      "wall_ms": 197641,
+      "cost_usd": 0.016625249999999998,
+      "calls_without_usage": 0,
+      "unpriced_usage": 0,
+      "model_calls": 10,
+      "input_tokens": 82735,
+      "output_tokens": 8430,
+      "answered_by": {
+        "anthropic/glm-5.3-flash": 4,
+        "openai/glm-5.3-flash": 6
+      },
+      "escalated": false,
+      "escalation_attempted": false,
+      "reviewed": true,
+      "review_verdicts": [
+        "PASS"
+      ],
+      "revisions": 0,
+      "gates": [
+        {
+          "leg": "final",
+          "verdict": "ACCEPT",
+          "oracle_pass": true
+        }
+      ],
+      "needed_person": false,
+      "interactions": 0,
+      "accounting": {
+        "total_minor": 182,
+        "unknown_minor": 0,
+        "currency": "USD",
+        "scale": 4,
+        "path_label": "CRITIQUE",
+        "final_outcome": "pass"
+      },
+      "stats": [
+        {
+          "key": "reviewer|glm-5.3-flash",
+          "samples": 1,
+          "successes": 1,
+          "cost_known": true,
+          "unknown_cost_samples": 0,
+          "mean_cost_minor": 76
+        }
+      ],
+      "stats_version": "paired-01a133aa-6af",
+      "stats_digest": "cfbfc6113957ce9c636e4c70cdfd81f6b58d440372ff72d0f82543f4256085eb",
+      "events_sha256": "23034a76f86be39f967d709f3bbe019d0a6ae32c11c8f625ca3e71e8d0d8da32",
+      "events_file": "trials/rename-get-user-critique-0/events.jsonl",
+      "timed_out": false,
+      "error": null
+    },
+    {
+      "task": "rename-load-order",
+      "arm": "direct",
+      "repeat": 0,
+      "session_id": "2e8d0e9aec94a42f0e0ee6571a7fb9ef",
+      "task_id": "12f13ec27b259a84dd1be404772c5c5b",
+      "run_id": "01a133ab-5d85-78e0-beec-def535855827",
+      "state": "ReadyForReview",
+      "core_verified": true,
+      "oracle_pass": true,
+      "check_untouched": true,
+      "verified_success": true,
+      "wall_ms": 108080,
+      "cost_usd": 0.01200295,
+      "calls_without_usage": 0,
+      "unpriced_usage": 0,
+      "model_calls": 7,
+      "input_tokens": 64183,
+      "output_tokens": 4751,
+      "answered_by": {
+        "openai/glm-5.3-flash": 7
+      },
+      "escalated": false,
+      "escalation_attempted": false,
+      "reviewed": false,
+      "review_verdicts": [],
+      "revisions": 0,
+      "gates": [
+        {
+          "leg": "final",
+          "verdict": "ACCEPT",
+          "oracle_pass": true
+        }
+      ],
+      "needed_person": false,
+      "interactions": 0,
+      "accounting": {
+        "total_minor": 131,
+        "unknown_minor": 0,
+        "currency": "USD",
+        "scale": 4,
+        "path_label": "DIRECT",
+        "final_outcome": "pass"
+      },
+      "stats": [],
+      "stats_version": "none",
+      "stats_digest": "",
+      "events_sha256": "5f0f1b529b128dc6d9518ca10c8ddac60f7ced2f06561ea4536a0e7bdfc9df08",
+      "events_file": "trials/rename-load-order-direct-0/events.jsonl",
+      "timed_out": false,
+      "error": null
+    },
+    {
+      "task": "rename-load-order",
+      "arm": "cascade",
+      "repeat": 0,
+      "session_id": "d99eaf9d1675375cf6cf169a2414b9bd",
+      "task_id": "a4c436f15b74d17dc867b732c15adecb",
+      "run_id": "01a133ab-c447-7701-bd0d-83e6f2f147e7",
+      "state": "ReadyForReview",
+      "core_verified": true,
+      "oracle_pass": true,
+      "check_untouched": true,
+      "verified_success": true,
+      "wall_ms": 460476,
+      "cost_usd": 0.0267778,
+      "calls_without_usage": 0,
+      "unpriced_usage": 0,
+      "model_calls": 12,
+      "input_tokens": 107402,
+      "output_tokens": 21335,
+      "answered_by": {
+        "anthropic/glm-5.3-flash": 3,
+        "openai/glm-5.3-flash": 9
+      },
+      "escalated": false,
+      "escalation_attempted": false,
+      "reviewed": true,
+      "review_verdicts": [
+        "PASS"
+      ],
+      "revisions": 0,
+      "gates": [
+        {
+          "leg": "final",
+          "verdict": "ACCEPT",
+          "oracle_pass": true
+        }
+      ],
+      "needed_person": false,
+      "interactions": 0,
+      "accounting": {
+        "total_minor": 289,
+        "unknown_minor": 0,
+        "currency": "USD",
+        "scale": 4,
+        "path_label": "CRITIQUE",
+        "final_outcome": "pass"
+      },
+      "stats": [
+        {
+          "key": "reviewer|glm-5.3-flash",
+          "samples": 1,
+          "successes": 1,
+          "cost_known": true,
+          "unknown_cost_samples": 0,
+          "mean_cost_minor": 71
+        }
+      ],
+      "stats_version": "paired-01a133ab-c44",
+      "stats_digest": "259fc3ddb239b778c6ea4cd7cc827f7d22060bc3b63ae426b82974e0f72735f0",
+      "events_sha256": "321ae503aa8527ad00d2e2f363a89f76e07cb70091a6e757cc3edc429ed50a75",
+      "events_file": "trials/rename-load-order-cascade-0/events.jsonl",
+      "timed_out": false,
+      "error": null
+    },
+    {
+      "task": "rename-load-order",
+      "arm": "critique",
+      "repeat": 0,
+      "session_id": "c3f58124e48341e12ba4a16ca4091f42",
+      "task_id": "66ddf9850c2fc364d310f32f71ad477d",
+      "run_id": "01a133ad-03e1-7050-8ed5-297dba0ca565",
+      "state": "ReadyForReview",
+      "core_verified": true,
+      "oracle_pass": true,
+      "check_untouched": true,
+      "verified_success": true,
+      "wall_ms": 186549,
+      "cost_usd": 0.014552,
+      "calls_without_usage": 0,
+      "unpriced_usage": 0,
+      "model_calls": 9,
+      "input_tokens": 70480,
+      "output_tokens": 7960,
+      "answered_by": {
+        "anthropic/glm-5.3-flash": 4,
+        "openai/glm-5.3-flash": 5
+      },
+      "escalated": false,
+      "escalation_attempted": false,
+      "reviewed": true,
+      "review_verdicts": [
+        "PASS"
+      ],
+      "revisions": 0,
+      "gates": [
+        {
+          "leg": "final",
+          "verdict": "ACCEPT",
+          "oracle_pass": true
+        }
+      ],
+      "needed_person": false,
+      "interactions": 0,
+      "accounting": {
+        "total_minor": 160,
+        "unknown_minor": 0,
+        "currency": "USD",
+        "scale": 4,
+        "path_label": "CRITIQUE",
+        "final_outcome": "pass"
+      },
+      "stats": [
+        {
+          "key": "reviewer|glm-5.3-flash",
+          "samples": 1,
+          "successes": 1,
+          "cost_known": true,
+          "unknown_cost_samples": 0,
+          "mean_cost_minor": 69
+        }
+      ],
+      "stats_version": "paired-01a133ad-03e",
+      "stats_digest": "1bcfc9b31d7dcbb270052cf70d847f2a4bfb0ed86ca4e69a95c2566fc8ea7723",
+      "events_sha256": "3e225700ddac205443a854a99c0d16721db33ca76b8cc8c6ea682f58e9fb9269",
+      "events_file": "trials/rename-load-order-critique-0/events.jsonl",
+      "timed_out": false,
+      "error": null
+    },
+    {
+      "task": "sort-longest-names",
+      "arm": "direct",
+      "repeat": 0,
+      "session_id": "6c6b762b43021a82c0fc1e507276ec4f",
+      "task_id": "945d385e2d55f07baf435480693ebe2f",
+      "run_id": "01a133ec-4d33-7011-860d-06a15d05e546",
+      "state": "ReadyForReview",
+      "core_verified": true,
+      "oracle_pass": true,
+      "check_untouched": true,
+      "verified_success": true,
+      "wall_ms": 631885,
+      "cost_usd": 0.03649605,
+      "calls_without_usage": 0,
+      "unpriced_usage": 0,
+      "model_calls": 17,
+      "input_tokens": 153887,
+      "output_tokens": 26826,
+      "answered_by": {
+        "anthropic/glm-5.3-flash": 8,
+        "openai/glm-5.3-flash": 9
+      },
+      "escalated": false,
+      "escalation_attempted": false,
+      "reviewed": true,
+      "review_verdicts": [
+        "PASS"
+      ],
+      "revisions": 0,
+      "gates": [
+        {
+          "leg": "final",
+          "verdict": "ACCEPT",
+          "oracle_pass": true
+        }
+      ],
+      "needed_person": false,
+      "interactions": 0,
+      "accounting": {
+        "total_minor": 391,
+        "unknown_minor": 0,
+        "currency": "USD",
+        "scale": 4,
+        "path_label": "CRITIQUE",
+        "final_outcome": "pass"
+      },
+      "stats": [
+        {
+          "key": "reviewer|glm-5.3-flash",
+          "samples": 1,
+          "successes": 1,
+          "cost_known": true,
+          "unknown_cost_samples": 0,
+          "mean_cost_minor": 213
+        }
+      ],
+      "stats_version": "paired-01a133ec-4d3",
+      "stats_digest": "627b46b5c8b4b9feb18d43d35bb112c7b537c6b6f219bb87d756d3a0e0d2c861",
+      "events_sha256": "21b9d83cd7a8cad19e03409c9c0c4a36bcc6eeb2ca9b519b571cea4d765bdd89",
+      "events_file": "trials/sort-longest-names-direct-0/events.jsonl",
+      "timed_out": false,
+      "error": null
+    },
+    {
+      "task": "sort-longest-names",
+      "arm": "cascade",
+      "repeat": 0,
+      "session_id": "295c62a7bc40736d55751f6b8e848aa5",
+      "task_id": "5d5a02498e700c5b7d5c94f346f6ffd1",
+      "run_id": "01a133ef-99d1-7641-8e28-5b2a7588d837",
+      "state": "ReadyForReview",
+      "core_verified": true,
+      "oracle_pass": true,
+      "check_untouched": true,
+      "verified_success": true,
+      "wall_ms": 547401,
+      "cost_usd": 0.0365681,
+      "calls_without_usage": 0,
+      "unpriced_usage": 0,
+      "model_calls": 15,
+      "input_tokens": 165314,
+      "output_tokens": 23542,
+      "answered_by": {
+        "openai/glm-5.3-flash": 15
+      },
+      "escalated": false,
+      "escalation_attempted": false,
+      "reviewed": false,
+      "review_verdicts": [],
+      "revisions": 0,
+      "gates": [
+        {
+          "leg": "final",
+          "verdict": "ACCEPT",
+          "oracle_pass": true
+        }
+      ],
+      "needed_person": false,
+      "interactions": 0,
+      "accounting": {
+        "total_minor": 389,
+        "unknown_minor": 0,
+        "currency": "USD",
+        "scale": 4,
+        "path_label": "DIRECT",
+        "final_outcome": "pass"
+      },
+      "stats": [],
+      "stats_version": "none",
+      "stats_digest": "",
+      "events_sha256": "45c26153bd7f7de4435c0f382ad89fb67094d92b0f6d4659167e3655fbebd2a3",
+      "events_file": "trials/sort-longest-names-cascade-0/events.jsonl",
+      "timed_out": false,
+      "error": null
+    },
+    {
+      "task": "sort-longest-names",
+      "arm": "critique",
+      "repeat": 0,
+      "session_id": "cdc27f56553ef2118910ae8e49b0a8ca",
+      "task_id": "49993c6ebc51deeaa80b76eff92e04e5",
+      "run_id": "01a133f4-ef72-79b0-9390-bb03c45b78b8",
+      "state": "ReadyForReview",
+      "core_verified": true,
+      "oracle_pass": true,
+      "check_untouched": true,
+      "verified_success": true,
+      "wall_ms": 299559,
+      "cost_usd": 0.0159184,
+      "calls_without_usage": 0,
+      "unpriced_usage": 0,
+      "model_calls": 9,
+      "input_tokens": 65986,
+      "output_tokens": 12041,
+      "answered_by": {
+        "anthropic/glm-5.3-flash": 3,
+        "openai/glm-5.3-flash": 6
+      },
+      "escalated": false,
+      "escalation_attempted": false,
+      "reviewed": true,
+      "review_verdicts": [
+        "PASS"
+      ],
+      "revisions": 0,
+      "gates": [
+        {
+          "leg": "final",
+          "verdict": "ACCEPT",
+          "oracle_pass": true
+        }
+      ],
+      "needed_person": false,
+      "interactions": 0,
+      "accounting": {
+        "total_minor": 175,
+        "unknown_minor": 0,
+        "currency": "USD",
+        "scale": 4,
+        "path_label": "CRITIQUE",
+        "final_outcome": "pass"
+      },
+      "stats": [
+        {
+          "key": "reviewer|glm-5.3-flash",
+          "samples": 1,
+          "successes": 1,
+          "cost_known": true,
+          "unknown_cost_samples": 0,
+          "mean_cost_minor": 65
+        }
+      ],
+      "stats_version": "paired-01a133f4-ef7",
+      "stats_digest": "484167ca404233429be6589eb3ef7d3a7299b066584ddcf82785712abf3e2539",
+      "events_sha256": "2d2399946c405148fbe24506908cb2579b0cae37c62d29fff9f300613acd9d94",
+      "events_file": "trials/sort-longest-names-critique-0/events.jsonl",
+      "timed_out": false,
+      "error": null
+    },
+    {
+      "task": "sort-oldest-first",
+      "arm": "direct",
+      "repeat": 0,
+      "session_id": "90b62f1060670119c2361bd54c7d1b48",
+      "task_id": "abbd71e4fea34308b55509fd04fad20b",
+      "run_id": "01a133e6-cca4-73c3-83d1-01c4c7653fe7",
+      "state": "ReadyForReview",
+      "core_verified": true,
+      "oracle_pass": true,
+      "check_untouched": true,
+      "verified_success": true,
+      "wall_ms": 360555,
+      "cost_usd": 0.019257299999999998,
+      "calls_without_usage": 0,
+      "unpriced_usage": 0,
+      "model_calls": 11,
+      "input_tokens": 80562,
+      "output_tokens": 14346,
+      "answered_by": {
+        "anthropic/glm-5.3-flash": 3,
+        "openai/glm-5.3-flash": 8
+      },
+      "escalated": false,
+      "escalation_attempted": false,
+      "reviewed": true,
+      "review_verdicts": [
+        "PASS"
+      ],
+      "revisions": 0,
+      "gates": [
+        {
+          "leg": "final",
+          "verdict": "ACCEPT",
+          "oracle_pass": true
+        }
+      ],
+      "needed_person": false,
+      "interactions": 0,
+      "accounting": {
+        "total_minor": 212,
+        "unknown_minor": 0,
+        "currency": "USD",
+        "scale": 4,
+        "path_label": "CRITIQUE",
+        "final_outcome": "pass"
+      },
+      "stats": [
+        {
+          "key": "reviewer|glm-5.3-flash",
+          "samples": 1,
+          "successes": 1,
+          "cost_known": true,
+          "unknown_cost_samples": 0,
+          "mean_cost_minor": 62
+        }
+      ],
+      "stats_version": "paired-01a133e6-cca",
+      "stats_digest": "d015012bed1b08b4d986d6804995452c44a9cdb1b2c7d8cba3a354f0deda53ce",
+      "events_sha256": "885816a1776d6e854ff38ae9274a649a5033c914832fb259924d9e2ea3ecc7c3",
+      "events_file": "trials/sort-oldest-first-direct-0/events.jsonl",
+      "timed_out": false,
+      "error": null
+    },
+    {
+      "task": "sort-oldest-first",
+      "arm": "cascade",
+      "repeat": 0,
+      "session_id": "d24e3c70a0477b98e6ec9bbc49e062ac",
+      "task_id": "706c3dacc225d029d5633d94c429f262",
+      "run_id": "01a133e7-83bf-7110-b1ca-b15067460411",
+      "state": "ReadyForReview",
+      "core_verified": true,
+      "oracle_pass": true,
+      "check_untouched": true,
+      "verified_success": true,
+      "wall_ms": 64017,
+      "cost_usd": 0.00514515,
+      "calls_without_usage": 0,
+      "unpriced_usage": 0,
+      "model_calls": 4,
+      "input_tokens": 26841,
+      "output_tokens": 2238,
+      "answered_by": {
+        "openai/glm-5.3-flash": 4
+      },
+      "escalated": false,
+      "escalation_attempted": false,
+      "reviewed": false,
+      "review_verdicts": [],
+      "revisions": 0,
+      "gates": [
+        {
+          "leg": "final",
+          "verdict": "ACCEPT",
+          "oracle_pass": true
+        }
+      ],
+      "needed_person": false,
+      "interactions": 0,
+      "accounting": {
+        "total_minor": 57,
+        "unknown_minor": 0,
+        "currency": "USD",
+        "scale": 4,
+        "path_label": "DIRECT",
+        "final_outcome": "pass"
+      },
+      "stats": [],
+      "stats_version": "none",
+      "stats_digest": "",
+      "events_sha256": "a8e10dddd2f42df29df370b6e8cab083e5201e386be03ba4d6c1af2c8f56b036",
+      "events_file": "trials/sort-oldest-first-cascade-0/events.jsonl",
+      "timed_out": false,
+      "error": null
+    },
+    {
+      "task": "sort-oldest-first",
+      "arm": "critique",
+      "repeat": 0,
+      "session_id": "81340118ed70977de22c7f85b7768f3f",
+      "task_id": "798abf89de3d51e65631cac70e71986a",
+      "run_id": "01a133e8-7dec-7000-8d1e-2c71e256e461",
+      "state": "ReadyForReview",
+      "core_verified": true,
+      "oracle_pass": true,
+      "check_untouched": true,
+      "verified_success": true,
+      "wall_ms": 815445,
+      "cost_usd": 0.04538395,
+      "calls_without_usage": 0,
+      "unpriced_usage": 0,
+      "model_calls": 19,
+      "input_tokens": 186503,
+      "output_tokens": 34817,
+      "answered_by": {
+        "anthropic/glm-5.3-flash": 3,
+        "openai/glm-5.3-flash": 16
+      },
+      "escalated": false,
+      "escalation_attempted": false,
+      "reviewed": true,
+      "review_verdicts": [
+        "PASS"
+      ],
+      "revisions": 0,
+      "gates": [
+        {
+          "leg": "final",
+          "verdict": "ACCEPT",
+          "oracle_pass": true
+        }
+      ],
+      "needed_person": false,
+      "interactions": 0,
+      "accounting": {
+        "total_minor": 483,
+        "unknown_minor": 0,
+        "currency": "USD",
+        "scale": 4,
+        "path_label": "CRITIQUE",
+        "final_outcome": "pass"
+      },
+      "stats": [
+        {
+          "key": "reviewer|glm-5.3-flash",
+          "samples": 1,
+          "successes": 1,
+          "cost_known": true,
+          "unknown_cost_samples": 0,
+          "mean_cost_minor": 83
+        }
+      ],
+      "stats_version": "paired-01a133e8-7de",
+      "stats_digest": "b51d89e5a8b6db7051c34018d22e417cd383732aaae21cd29eb2bd63ea00cc85",
+      "events_sha256": "d477064771c0ac9a4700462056824c0abd1ea5700fcedc73054f0e96802364b6",
+      "events_file": "trials/sort-oldest-first-critique-0/events.jsonl",
+      "timed_out": false,
+      "error": null
+    },
+    {
+      "task": "sort-top-scores",
+      "arm": "direct",
+      "repeat": 0,
+      "session_id": "77bb93e28f227511feb957f2de61a9dc",
+      "task_id": "a89d855dcefbc0e78a4f5aa23b0e802a",
+      "run_id": "01a133e3-e006-71e1-a6a3-8a84172dc913",
+      "state": "ReadyForReview",
+      "core_verified": true,
+      "oracle_pass": true,
+      "check_untouched": true,
+      "verified_success": true,
+      "wall_ms": 46696,
+      "cost_usd": 0.00478775,
+      "calls_without_usage": 0,
+      "unpriced_usage": 0,
+      "model_calls": 4,
+      "input_tokens": 26275,
+      "output_tokens": 1693,
+      "answered_by": {
+        "openai/glm-5.3-flash": 4
+      },
+      "escalated": false,
+      "escalation_attempted": false,
+      "reviewed": false,
+      "review_verdicts": [],
+      "revisions": 0,
+      "gates": [
+        {
+          "leg": "final",
+          "verdict": "ACCEPT",
+          "oracle_pass": true
+        }
+      ],
+      "needed_person": false,
+      "interactions": 0,
+      "accounting": {
+        "total_minor": 55,
+        "unknown_minor": 0,
+        "currency": "USD",
+        "scale": 4,
+        "path_label": "DIRECT",
+        "final_outcome": "pass"
+      },
+      "stats": [],
+      "stats_version": "none",
+      "stats_digest": "",
+      "events_sha256": "ca8ac19100ac5709d84a374f696ee6f75fb81d2f581f4b8b1d5d9fc2d55691a4",
+      "events_file": "trials/sort-top-scores-direct-0/events.jsonl",
+      "timed_out": false,
+      "error": null
+    },
+    {
+      "task": "sort-top-scores",
+      "arm": "cascade",
+      "repeat": 0,
+      "session_id": "5c41aa2e6548118503c18d1819645979",
+      "task_id": "2957f77a9be203c582030752308a0266",
+      "run_id": "01a133e4-968f-7c30-8942-91589b7cf59b",
+      "state": "ReadyForReview",
+      "core_verified": true,
+      "oracle_pass": true,
+      "check_untouched": true,
+      "verified_success": true,
+      "wall_ms": 52715,
+      "cost_usd": 0.00729725,
+      "calls_without_usage": 0,
+      "unpriced_usage": 0,
+      "model_calls": 6,
+      "input_tokens": 42175,
+      "output_tokens": 1942,
+      "answered_by": {
+        "openai/glm-5.3-flash": 6
+      },
+      "escalated": false,
+      "escalation_attempted": false,
+      "reviewed": false,
+      "review_verdicts": [],
+      "revisions": 0,
+      "gates": [
+        {
+          "leg": "final",
+          "verdict": "ACCEPT",
+          "oracle_pass": true
+        }
+      ],
+      "needed_person": false,
+      "interactions": 0,
+      "accounting": {
+        "total_minor": 82,
+        "unknown_minor": 0,
+        "currency": "USD",
+        "scale": 4,
+        "path_label": "DIRECT",
+        "final_outcome": "pass"
+      },
+      "stats": [],
+      "stats_version": "none",
+      "stats_digest": "",
+      "events_sha256": "188e025b9d0505d27e02ee3827e788cf1637d625f4e69806268476c08bd7018d",
+      "events_file": "trials/sort-top-scores-cascade-0/events.jsonl",
+      "timed_out": false,
+      "error": null
+    },
+    {
+      "task": "sort-top-scores",
+      "arm": "critique",
+      "repeat": 0,
+      "session_id": "18d5c5394bd22b6a4be124a6358801a8",
+      "task_id": "f4adfca8400f3ebe07af4a0a750d4d2d",
+      "run_id": "01a133e5-6496-7321-8c9d-a96c9f84c454",
+      "state": "ReadyForReview",
+      "core_verified": true,
+      "oracle_pass": true,
+      "check_untouched": false,
+      "verified_success": false,
+      "wall_ms": 668937,
+      "cost_usd": 0.036782300000000004,
+      "calls_without_usage": 0,
+      "unpriced_usage": 0,
+      "model_calls": 17,
+      "input_tokens": 157792,
+      "output_tokens": 26227,
+      "answered_by": {
+        "anthropic/glm-5.3-flash": 4,
+        "openai/glm-5.3-flash": 13
+      },
+      "escalated": false,
+      "escalation_attempted": false,
+      "reviewed": true,
+      "review_verdicts": [
+        "PASS"
+      ],
+      "revisions": 0,
+      "gates": [
+        {
+          "leg": "final",
+          "verdict": "ACCEPT",
+          "oracle_pass": true
+        }
+      ],
+      "needed_person": false,
+      "interactions": 0,
+      "accounting": {
+        "total_minor": 395,
+        "unknown_minor": 0,
+        "currency": "USD",
+        "scale": 4,
+        "path_label": "CRITIQUE",
+        "final_outcome": "pass"
+      },
+      "stats": [
+        {
+          "key": "reviewer|glm-5.3-flash",
+          "samples": 1,
+          "successes": 1,
+          "cost_known": true,
+          "unknown_cost_samples": 0,
+          "mean_cost_minor": 104
+        }
+      ],
+      "stats_version": "paired-01a133e5-649",
+      "stats_digest": "4a14a923485c255f37fd96e265e82056b48eb38484e3b2ab9641af18dcf27a3e",
+      "events_sha256": "1555cd4f2b0860c80d0b38e21524093717432a32f1525f1913875980611e5122",
+      "events_file": "trials/sort-top-scores-critique-0/events.jsonl",
+      "timed_out": false,
+      "error": null
+    },
+    {
+      "task": "validate-age",
+      "arm": "direct",
+      "repeat": 0,
+      "session_id": "6054983d170bb9f5c8e4a22d72515975",
+      "task_id": "03d8dcacc1ce1f74a4625e90260e457e",
+      "run_id": "01a133bd-2a14-7032-9e29-515731157b06",
+      "state": "ReadyForReview",
+      "core_verified": true,
+      "oracle_pass": true,
+      "check_untouched": true,
+      "verified_success": true,
+      "wall_ms": 113474,
+      "cost_usd": 0.0077774,
+      "calls_without_usage": 0,
+      "unpriced_usage": 0,
+      "model_calls": 5,
+      "input_tokens": 34926,
+      "output_tokens": 5077,
+      "answered_by": {
+        "openai/glm-5.3-flash": 5
+      },
+      "escalated": false,
+      "escalation_attempted": false,
+      "reviewed": false,
+      "review_verdicts": [],
+      "revisions": 0,
+      "gates": [
+        {
+          "leg": "final",
+          "verdict": "ACCEPT",
+          "oracle_pass": true
+        }
+      ],
+      "needed_person": false,
+      "interactions": 0,
+      "accounting": {
+        "total_minor": 86,
+        "unknown_minor": 0,
+        "currency": "USD",
+        "scale": 4,
+        "path_label": "DIRECT",
+        "final_outcome": "pass"
+      },
+      "stats": [],
+      "stats_version": "none",
+      "stats_digest": "",
+      "events_sha256": "6a7c5e9077b95468acb44a3ecc5e8194f7a56725a83899a7e5ae7b53aa138d91",
+      "events_file": "trials/validate-age-direct-0/events.jsonl",
+      "timed_out": false,
+      "error": null
+    },
+    {
+      "task": "validate-age",
+      "arm": "cascade",
+      "repeat": 0,
+      "session_id": "6661f02e1a4928d80c8908d2a1f4d9a6",
+      "task_id": "f3d5bbd0a3f7a5743b9bd2f26a5e61a0",
+      "run_id": "01a133be-e56e-7e30-8100-38faa08413c9",
+      "state": "ReadyForReview",
+      "core_verified": true,
+      "oracle_pass": true,
+      "check_untouched": true,
+      "verified_success": true,
+      "wall_ms": 594022,
+      "cost_usd": 0.0308075,
+      "calls_without_usage": 0,
+      "unpriced_usage": 0,
+      "model_calls": 14,
+      "input_tokens": 121160,
+      "output_tokens": 25267,
+      "answered_by": {
+        "anthropic/glm-5.3-flash": 5,
+        "openai/glm-5.3-flash": 9
+      },
+      "escalated": false,
+      "escalation_attempted": false,
+      "reviewed": true,
+      "review_verdicts": [
+        "PASS"
+      ],
+      "revisions": 0,
+      "gates": [
+        {
+          "leg": "final",
+          "verdict": "ACCEPT",
+          "oracle_pass": true
+        }
+      ],
+      "needed_person": false,
+      "interactions": 0,
+      "accounting": {
+        "total_minor": 330,
+        "unknown_minor": 0,
+        "currency": "USD",
+        "scale": 4,
+        "path_label": "CRITIQUE",
+        "final_outcome": "pass"
+      },
+      "stats": [
+        {
+          "key": "reviewer|glm-5.3-flash",
+          "samples": 1,
+          "successes": 1,
+          "cost_known": true,
+          "unknown_cost_samples": 0,
+          "mean_cost_minor": 157
+        }
+      ],
+      "stats_version": "paired-01a133be-e56",
+      "stats_digest": "916af6460328c45c7e1925b8e881f99daedf380c44ed8c3bfa4173e7b6a93884",
+      "events_sha256": "f3d942612e230a15ca045ad77ee46bce494838e27ec40e474b6834dc718bb15b",
+      "events_file": "trials/validate-age-cascade-0/events.jsonl",
+      "timed_out": false,
+      "error": null
+    },
+    {
+      "task": "validate-age",
+      "arm": "critique",
+      "repeat": 0,
+      "session_id": "351584d5cc0ce163ca94a41898b9d283",
+      "task_id": "c37b3c307379f7e6495504225ef20ba6",
+      "run_id": "01a133bf-e4f7-7dc0-93a2-73e573160564",
+      "state": "ReadyForReview",
+      "core_verified": true,
+      "oracle_pass": true,
+      "check_untouched": true,
+      "verified_success": true,
+      "wall_ms": 333859,
+      "cost_usd": 0.01507335,
+      "calls_without_usage": 0,
+      "unpriced_usage": 0,
+      "model_calls": 7,
+      "input_tokens": 51339,
+      "output_tokens": 14745,
+      "answered_by": {
+        "anthropic/glm-5.3-flash": 3,
+        "openai/glm-5.3-flash": 4
+      },
+      "escalated": false,
+      "escalation_attempted": false,
+      "reviewed": true,
+      "review_verdicts": [
+        "PASS"
+      ],
+      "revisions": 0,
+      "gates": [
+        {
+          "leg": "final",
+          "verdict": "ACCEPT",
+          "oracle_pass": true
+        }
+      ],
+      "needed_person": false,
+      "interactions": 0,
+      "accounting": {
+        "total_minor": 161,
+        "unknown_minor": 0,
+        "currency": "USD",
+        "scale": 4,
+        "path_label": "CRITIQUE",
+        "final_outcome": "pass"
+      },
+      "stats": [
+        {
+          "key": "reviewer|glm-5.3-flash",
+          "samples": 1,
+          "successes": 1,
+          "cost_known": true,
+          "unknown_cost_samples": 0,
+          "mean_cost_minor": 92
+        }
+      ],
+      "stats_version": "paired-01a133bf-e4f",
+      "stats_digest": "a638b83da55276960463135c800209d6cc95191dbb2605157a93bd1100d12917",
+      "events_sha256": "2094a75f0eb01d4ac2789c44a7ed9a33106301ce15063e72a1b8730eab9c1433",
+      "events_file": "trials/validate-age-critique-0/events.jsonl",
+      "timed_out": false,
+      "error": null
+    },
+    {
+      "task": "validate-percent",
+      "arm": "direct",
+      "repeat": 0,
+      "session_id": "70eda4645eededf3362a71203e252ba5",
+      "task_id": "75f35a297836c1841bd165fa5a7a80e8",
+      "run_id": "01a133b4-04c4-7860-b081-1d4e394d099b",
+      "state": "ReadyForReview",
+      "core_verified": true,
+      "oracle_pass": true,
+      "check_untouched": true,
+      "verified_success": true,
+      "wall_ms": 1399759,
+      "cost_usd": 0.07742385,
+      "calls_without_usage": 0,
+      "unpriced_usage": 0,
+      "model_calls": 24,
+      "input_tokens": 301779,
+      "output_tokens": 64314,
+      "answered_by": {
+        "anthropic/glm-5.3-flash": 6,
+        "openai/glm-5.3-flash": 18
+      },
+      "escalated": false,
+      "escalation_attempted": false,
+      "reviewed": true,
+      "review_verdicts": [
+        "PASS"
+      ],
+      "revisions": 0,
+      "gates": [
+        {
+          "leg": "final",
+          "verdict": "ACCEPT",
+          "oracle_pass": true
+        }
+      ],
+      "needed_person": false,
+      "interactions": 0,
+      "accounting": {
+        "total_minor": 811,
+        "unknown_minor": 0,
+        "currency": "USD",
+        "scale": 4,
+        "path_label": "CRITIQUE",
+        "final_outcome": "pass"
+      },
+      "stats": [
+        {
+          "key": "reviewer|glm-5.3-flash",
+          "samples": 1,
+          "successes": 1,
+          "cost_known": true,
+          "unknown_cost_samples": 0,
+          "mean_cost_minor": 204
+        }
+      ],
+      "stats_version": "paired-01a133b4-04c",
+      "stats_digest": "0d56281d9121c7eba0ae7246b448785154dff1f178c210676976cc47b4dbbe49",
+      "events_sha256": "8d550702c9fe5858b94faf9697cb527db9a101c3b3b4d153130915c366c03e29",
+      "events_file": "trials/validate-percent-direct-0/events.jsonl",
+      "timed_out": false,
+      "error": null
+    },
+    {
+      "task": "validate-percent",
+      "arm": "cascade",
+      "repeat": 0,
+      "session_id": "8c890b8886e3310b359486f66ec9d3f6",
+      "task_id": "0f46960f425994b791c715a2925cedd0",
+      "run_id": "01a133b4-6605-7232-979e-52196c5a00d9",
+      "state": "ReadyForReview",
+      "core_verified": true,
+      "oracle_pass": true,
+      "check_untouched": true,
+      "verified_success": true,
+      "wall_ms": 92859,
+      "cost_usd": 0.006183149999999999,
+      "calls_without_usage": 0,
+      "unpriced_usage": 0,
+      "model_calls": 4,
+      "input_tokens": 27721,
+      "output_tokens": 4050,
+      "answered_by": {
+        "openai/glm-5.3-flash": 4
+      },
+      "escalated": false,
+      "escalation_attempted": false,
+      "reviewed": false,
+      "review_verdicts": [],
+      "revisions": 0,
+      "gates": [
+        {
+          "leg": "final",
+          "verdict": "ACCEPT",
+          "oracle_pass": true
+        }
+      ],
+      "needed_person": false,
+      "interactions": 0,
+      "accounting": {
+        "total_minor": 69,
+        "unknown_minor": 0,
+        "currency": "USD",
+        "scale": 4,
+        "path_label": "DIRECT",
+        "final_outcome": "pass"
+      },
+      "stats": [],
+      "stats_version": "none",
+      "stats_digest": "",
+      "events_sha256": "9e36226d650fef2c7f97b5a255a9fbfb78f1fca39786ac76521472a2f6ba5a20",
+      "events_file": "trials/validate-percent-cascade-0/events.jsonl",
+      "timed_out": false,
+      "error": null
+    },
+    {
+      "task": "validate-percent",
+      "arm": "critique",
+      "repeat": 0,
+      "session_id": "c358009887eddd71594b5df408f4d47c",
+      "task_id": "f282db77114d9f143f97206c98291a00",
+      "run_id": "01a133b5-d0da-7750-8105-e9fdbf3820ab",
+      "state": "ReadyForReview",
+      "core_verified": true,
+      "oracle_pass": true,
+      "check_untouched": true,
+      "verified_success": true,
+      "wall_ms": 660469,
+      "cost_usd": 0.0323481,
+      "calls_without_usage": 0,
+      "unpriced_usage": 0,
+      "model_calls": 12,
+      "input_tokens": 117604,
+      "output_tokens": 29415,
+      "answered_by": {
+        "anthropic/glm-5.3-flash": 6,
+        "openai/glm-5.3-flash": 6
+      },
+      "escalated": false,
+      "escalation_attempted": false,
+      "reviewed": true,
+      "review_verdicts": [
+        "PASS"
+      ],
+      "revisions": 0,
+      "gates": [
+        {
+          "leg": "final",
+          "verdict": "ACCEPT",
+          "oracle_pass": true
+        }
+      ],
+      "needed_person": false,
+      "interactions": 0,
+      "accounting": {
+        "total_minor": 340,
+        "unknown_minor": 0,
+        "currency": "USD",
+        "scale": 4,
+        "path_label": "CRITIQUE",
+        "final_outcome": "pass"
+      },
+      "stats": [
+        {
+          "key": "reviewer|glm-5.3-flash",
+          "samples": 1,
+          "successes": 1,
+          "cost_known": true,
+          "unknown_cost_samples": 0,
+          "mean_cost_minor": 239
+        }
+      ],
+      "stats_version": "paired-01a133b5-d0d",
+      "stats_digest": "3336ebaf257bd14abdbbe3ff1f5dfe1b0f103d73a6b3bba187bc0f16faf39976",
+      "events_sha256": "f389e22026b954075957944faf4e1cb785292fb8ce118a370bc5037cf906465f",
+      "events_file": "trials/validate-percent-critique-0/events.jsonl",
+      "timed_out": false,
+      "error": null
+    },
+    {
+      "task": "validate-port",
+      "arm": "direct",
+      "repeat": 0,
+      "session_id": "85be8e768c364d1b6150994b58f04284",
+      "task_id": "3aff78655730099b482da7e4e3d3530b",
+      "run_id": "01a133b2-cb2e-71c1-84d6-4ecfdba11ba4",
+      "state": "ReadyForReview",
+      "core_verified": true,
+      "oracle_pass": true,
+      "check_untouched": true,
+      "verified_success": true,
+      "wall_ms": 80249,
+      "cost_usd": 0.008278849999999999,
+      "calls_without_usage": 0,
+      "unpriced_usage": 0,
+      "model_calls": 6,
+      "input_tokens": 44029,
+      "output_tokens": 3349,
+      "answered_by": {
+        "openai/glm-5.3-flash": 6
+      },
+      "escalated": false,
+      "escalation_attempted": false,
+      "reviewed": false,
+      "review_verdicts": [],
+      "revisions": 0,
+      "gates": [
+        {
+          "leg": "final",
+          "verdict": "ACCEPT",
+          "oracle_pass": true
+        }
+      ],
+      "needed_person": false,
+      "interactions": 0,
+      "accounting": {
+        "total_minor": 95,
+        "unknown_minor": 0,
+        "currency": "USD",
+        "scale": 4,
+        "path_label": "DIRECT",
+        "final_outcome": "pass"
+      },
+      "stats": [],
+      "stats_version": "none",
+      "stats_digest": "",
+      "events_sha256": "918bede1646e123735a9b6a4715268f792aa9fa7ad54d7285951090dd2ea7061",
+      "events_file": "trials/validate-port-direct-0/events.jsonl",
+      "timed_out": false,
+      "error": null
+    },
+    {
+      "task": "validate-port",
+      "arm": "cascade",
+      "repeat": 0,
+      "session_id": "f5753026e5ce2e6a30255f6fc5809099",
+      "task_id": "4a80cf3ea70d66ca3cf2f00927fecb57",
+      "run_id": "01a133b2-ef6a-7712-a427-7c903e526f78",
+      "state": "ReadyForReview",
+      "core_verified": true,
+      "oracle_pass": true,
+      "check_untouched": true,
+      "verified_success": true,
+      "wall_ms": 95869,
+      "cost_usd": 0.00868105,
+      "calls_without_usage": 0,
+      "unpriced_usage": 0,
+      "model_calls": 6,
+      "input_tokens": 44287,
+      "output_tokens": 4076,
+      "answered_by": {
+        "openai/glm-5.3-flash": 6
+      },
+      "escalated": false,
+      "escalation_attempted": false,
+      "reviewed": false,
+      "review_verdicts": [],
+      "revisions": 0,
+      "gates": [
+        {
+          "leg": "final",
+          "verdict": "ACCEPT",
+          "oracle_pass": true
+        }
+      ],
+      "needed_person": false,
+      "interactions": 0,
+      "accounting": {
+        "total_minor": 97,
+        "unknown_minor": 0,
+        "currency": "USD",
+        "scale": 4,
+        "path_label": "DIRECT",
+        "final_outcome": "pass"
+      },
+      "stats": [],
+      "stats_version": "none",
+      "stats_digest": "",
+      "events_sha256": "63ac8d689262315eda8e7747cb2168c8775a5828f4e762d6c2da852c8d0dbbeb",
+      "events_file": "trials/validate-port-cascade-0/events.jsonl",
+      "timed_out": false,
+      "error": null
+    },
+    {
+      "task": "validate-port",
+      "arm": "critique",
+      "repeat": 0,
+      "session_id": "14c808f54c9f28007394556e10f0cfe7",
+      "task_id": "3b119e643c9324b7a6b127f01e56a94f",
+      "run_id": "01a133b3-32d7-7821-a122-dbbd100dcded",
+      "state": "ReadyForReview",
+      "core_verified": true,
+      "oracle_pass": true,
+      "check_untouched": true,
+      "verified_success": true,
+      "wall_ms": 653076,
+      "cost_usd": 0.03140029999999999,
+      "calls_without_usage": 0,
+      "unpriced_usage": 0,
+      "model_calls": 13,
+      "input_tokens": 115672,
+      "output_tokens": 28099,
+      "answered_by": {
+        "anthropic/glm-5.3-flash": 6,
+        "openai/glm-5.3-flash": 7
+      },
+      "escalated": false,
+      "escalation_attempted": false,
+      "reviewed": true,
+      "review_verdicts": [
+        "PASS"
+      ],
+      "revisions": 0,
+      "gates": [
+        {
+          "leg": "final",
+          "verdict": "ACCEPT",
+          "oracle_pass": true
+        }
+      ],
+      "needed_person": false,
+      "interactions": 0,
+      "accounting": {
+        "total_minor": 336,
+        "unknown_minor": 0,
+        "currency": "USD",
+        "scale": 4,
+        "path_label": "CRITIQUE",
+        "final_outcome": "pass"
+      },
+      "stats": [
+        {
+          "key": "reviewer|glm-5.3-flash",
+          "samples": 1,
+          "successes": 1,
+          "cost_known": true,
+          "unknown_cost_samples": 0,
+          "mean_cost_minor": 189
+        }
+      ],
+      "stats_version": "paired-01a133b3-32d",
+      "stats_digest": "578a4fc99654c50f4083b56135ead80b873bbf89d3067a3ab4e075e4a7edc48d",
+      "events_sha256": "b6b8cc66cd5bd02dbf8f2c19f0c94ac75639e98e1fb40de2546ef11d5c6406bc",
+      "events_file": "trials/validate-port-critique-0/events.jsonl",
+      "timed_out": false,
+      "error": null
+    }
+  ],
+  "status": {
+    "row": "px136",
+    "complete": true,
+    "missing": [],
+    "spend": {
+      "cap_usd": 7.0,
+      "spent_usd": 1.79922905,
+      "calls": 90,
+      "input_tokens": 7412537,
+      "output_tokens": 1374697,
+      "unknown_usage_calls": 0,
+      "stopped_by_cap": false
+    }
+  },
+  "environment": {
+    "MODBIT_ANTHROPIC_BASE_URL": "https://api.z.ai/api/anthropic",
+    "MODBIT_ANTHROPIC_MODELS": "glm-5.3-flash=0.15/0.50",
+    "MODBIT_OPENAI_BASE_URL": "https://api.z.ai/api/coding/paas/v4",
+    "MODBIT_OPENAI_MODELS": "glm-5.3-flash=0.15/0.50"
+  },
+  "arms": [
+    "direct",
+    "cascade",
+    "critique"
+  ],
+  "tasks": 30,
+  "registry_trusted_key_id": "bench"
+}

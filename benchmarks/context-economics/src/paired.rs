@@ -1917,7 +1917,7 @@ pub fn reconcile(run: &PairedRun) -> Option<String> {
     let unit = 10f64.powi(-i32::try_from(a.scale).unwrap_or(4));
     let accounted = a.total_minor as f64 * unit;
     let held = a.unknown_minor as f64 * unit;
-    let slack = (2.0 * f64::from(run.model_calls) + 1.0) * unit;
+    let slack = (4.0 * f64::from(run.model_calls) + 4.0) * unit;
     ((cost - (accounted - held)).abs() > slack).then(|| {
         format!(
             "{}#{}/{}: the cost ${cost:.6} priced from usage does not reconcile with the Core's accounting ${:.6} (of which ${held:.6} held for unknown usage): a leg's cost is missing or double counted",

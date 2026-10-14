@@ -1254,6 +1254,80 @@ mod unix {
         );
     }
 
+    /// PX-099: a request on an attachment (a resize, the first keystroke's lease) is answered while the stream is busy. A Windows
+    /// pseudo-console writes a terminal's output in many tiny records, so a view that attaches has dozens of frames queued behind it
+    /// when it asks to resize; the answer comes from the same broker connection, in order, behind those frames. The Core's connection
+    /// task waited for the answer without sending the frames (its queue holds eight), so the answer could not arrive: the resize failed
+    /// after 10 s, and every later request stalled the same way (the desktop's terminal showed one character per ten seconds after a
+    /// reload; CI: apps-panel.spec.ts:184 on Windows). The Core now sends the frames while it waits.
+    #[tokio::test]
+    async fn px_099_a_resize_is_answered_while_many_small_frames_are_queued_behind_it() {
+        let (_repo, root) = workspace();
+        let dir = tempfile::tempdir().unwrap();
+        let core = CoreProcess::spawn(dir.path(), &[]);
+        let mut c = core.client().await;
+        let (session, g) = create_session(&mut c, 0x71).await;
+        let task = create_task(&mut c, &session, g, &root).await;
+        // Thousands of separate one-byte writes: the PTY delivers them as thousands of records, which the broker replays one frame each.
+        let sid = start_shell(
+            &mut c,
+            &task,
+            g,
+            "i=0; while [ $i -lt 30000 ]; do printf x; i=$((i+1)); done; echo done; sleep 600",
+        )
+        .await;
+        let mut waited = 0;
+        loop {
+            let listed = list_terminals(&mut c, Some(&task)).await;
+            if listed.terminals[0].bytes_so_far >= 30000 {
+                break;
+            }
+            waited += 1;
+            assert!(waited < 300, "the shell did not write its 30000 bytes");
+            tokio::time::sleep(Duration::from_millis(100)).await;
+        }
+        let a = attach(&mut c, g, &task, &sid, 0, 0, false, false)
+            .await
+            .unwrap();
+        // The replay is still being sent when the view asks (a view asks as soon as it has laid out).
+        tokio::time::sleep(Duration::from_millis(50)).await;
+        let started = std::time::Instant::now();
+        let ack = c
+            .command(fenced(
+                envelope(
+                    fresh(),
+                    "ResizeTerminal",
+                    ResizeTerminal {
+                        attach_id: a.attach_id.clone(),
+                        rows: 30,
+                        cols: 100,
+                    }
+                    .encode_to_vec(),
+                ),
+                g,
+            ))
+            .await
+            .expect("the resize is answered, not timed out");
+        let done: TerminalResizeDone = Client::result(&ack).unwrap();
+        assert_eq!((done.rows, done.cols), (30, 100));
+        assert!(
+            started.elapsed() < Duration::from_secs(5),
+            "the resize took {:?}",
+            started.elapsed()
+        );
+        // The stream still delivers every byte, in order.
+        let (mut cursor, mut seen) = (0u64, Vec::new());
+        consume(&mut c, &a.attach_id, &mut cursor, &mut seen, true, |b| {
+            has(b, "done")
+        })
+        .await;
+        assert!(
+            has(&seen, &"x".repeat(30000)),
+            "{:?}",
+            String::from_utf8_lossy(&seen)
+        );
+    }
+
     /// PX-099 failure injection: the Core is killed (SIGKILL) while a client
     /// is attached mid-stream and holds the input lease. The process keeps
     /// running in the broker, the lease ends with the Core's connection, the
