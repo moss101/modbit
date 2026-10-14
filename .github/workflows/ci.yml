@@ -61,7 +61,7 @@ jobs:
       - name: Test (includes real cargo-metadata forbidden-edge test)
         run: cargo test --workspace --locked
       - name: macOS actuator real-permission tests (PX-071) - SKIPPED loudly where the runner has no Accessibility / Screen Recording grant
-        if: runner.os == 'macOS'
+        if: ${{ !cancelled() && runner.os == 'macOS' }}
         # A hosted runner normally has neither permission, and the tests drive a
         # real AppKit application through the real Accessibility API. The script
         # asks the helper itself (`--check-permissions`), runs the #[ignore]d
