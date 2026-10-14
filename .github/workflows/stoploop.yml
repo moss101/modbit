@@ -1,0 +1,35 @@
+name: stoploop-temp
+on:
+  push:
+    branches: [wave6/cc-stop-order]
+permissions:
+  contents: read
+env:
+  CARGO_INCREMENTAL: "0"
+jobs:
+  loop:
+    runs-on: ubuntu-latest
+    timeout-minutes: 120
+    strategy:
+      fail-fast: false
+      matrix:
+        which: [before, after]
+    steps:
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
+        with:
+          ref: ${{ matrix.which == 'before' && '7fcd48ad' || github.sha }}
+      - run: rustup show
+      - uses: Swatinem/rust-cache@6323deb102c322ba6fcbdcafc7e3dddab59af2b6 # v2
+      - run: cargo build -p modbit-core -p modbit-execd -p modbit-actuator-fixture --locked
+      - name: loop px_computer under load
+        shell: bash
+        run: |
+          for i in 1 2 3; do (yes > /dev/null &) ; done
+          cargo test -p modbit-core --test px_computer --no-run --locked
+          fails=0
+          for i in $(seq 1 20); do
+            if ! cargo test -p modbit-core --test px_computer --locked > run.log 2>&1; then
+              fails=$((fails+1)); grep -E "^test .*FAILED|panicked at" run.log | head -5
+            fi
+          done
+          echo "RESULT ${{ matrix.which }}: $fails/20 runs failed"
