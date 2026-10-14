@@ -789,10 +789,9 @@ impl ComputerRuntime {
             }
             (ids, run)
         };
-        let stopped = self.stop_actuator(reason, "desktop").await;
-        for (id, _) in &ids {
-            self.close_session(id, "USER_ABORTED", true).await;
-        }
+        // The person's Stop is recorded the moment it is requested, before the
+        // actuator is told: an input in flight returns as soon as the actuator
+        // stops, and its result must land after the abort in the log (CUC-D05).
         self.emit(
             task_id,
             session_id,
@@ -802,6 +801,10 @@ impl ComputerRuntime {
                 reason: reason.to_owned(),
             },
         );
+        let stopped = self.stop_actuator(reason, "desktop").await;
+        for (id, _) in &ids {
+            self.close_session(id, "USER_ABORTED", true).await;
+        }
         (ids.len(), stopped)
     }
 
