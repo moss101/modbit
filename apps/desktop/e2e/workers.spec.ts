@@ -288,6 +288,9 @@ test("renderer killed (REQ-EV-0076): the renderer's process dies mid-session; ma
       return { webContentsId: wc.id, pid: wc.getOSProcessId() };
     });
     expect(old.pid).toBeGreaterThan(0);
+    // What the app's processes are, by type, so a kill that lands on the wrong one is visible in the log.
+    const metrics = () => app.evaluate(({ app: a }) => a.getAppMetrics().map((m) => `${m.pid}:${m.type}${m.name ? `(${m.name})` : ""}`));
+    console.log(`[renderer-diag] window renderer pid=${old.pid} webContents=${old.webContentsId}; processes: ${(await metrics()).join(" ")}`);
     const mainWindows = () =>
       app.evaluate(({ BrowserWindow }) => BrowserWindow.getAllWindows().map((w) => ({ webContentsId: w.webContents.id, pid: w.webContents.getOSProcessId(), destroyed: w.isDestroyed(), crashed: w.webContents.isCrashed() })));
     if (process.platform === "win32") {
@@ -297,6 +300,12 @@ test("renderer killed (REQ-EV-0076): the renderer's process dies mid-session; ma
     } else {
       await app.evaluate(({ BrowserWindow }) => BrowserWindow.getAllWindows()[0]!.webContents.forcefullyCrashRenderer());
     }
+    // The kill's own effect, in the log whatever happens next.
+    void (async () => {
+      await new Promise((r) => setTimeout(r, 5_000));
+      const state = await mainWindows().then((w) => JSON.stringify(w), (e) => String(e));
+      console.log(`[renderer-diag] 5 s after the kill: pid ${old.pid} alive=${(() => { try { process.kill(old.pid, 0); return true; } catch { return false; } })()}; main windows=${state}; processes: ${(await metrics().catch(() => [])).join(" ")}`);
+    })().catch(() => undefined);
     // 1. Main, which notes the loss, has put a new window (a new web contents with its own process) in the old one's place.
     await expect
       .poll(async () => (await mainWindows()).filter((w) => !w.destroyed && w.webContentsId !== old.webContentsId).length, { timeout: 60_000, message: "main never opened a replacement window" })

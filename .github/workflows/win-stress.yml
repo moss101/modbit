@@ -33,16 +33,22 @@ jobs:
           cargo test --locked -p modbit-core --test memory_graph_index --no-run
           cargo test --locked -p modbit-core --test surface_protocol --no-run
           fail=0; total=0
-          for i in $(seq 1 20); do
+          for i in $(seq 1 1); do
             total=$((total+1))
             if cargo test --locked -p modbit-core --test memory_graph_index px_111_a_restarted -- --test-threads 1 > run.log 2>&1; then echo "px111 run $i: ok"; else fail=$((fail+1)); echo "px111 run $i: FAILED"; grep -o 'rebuild_reasons: \[[^]]*\]' run.log | head -1; fi
           done
-          echo "SUMMARY px_111: $fail failures in $total runs"
+          echo "SUMMARY px_111 alone: $fail failures in $total runs"
+          wfail=0
+          for i in $(seq 1 8); do
+            if cargo test --locked -p modbit-core --test memory_graph_index > run.log 2>&1; then echo "memory_graph_index run $i: ok"; else wfail=$((wfail+1)); echo "memory_graph_index run $i: FAILED"; grep -m3 -o 'rebuild_reasons: \[[^]]*\]\|panicked at.*' run.log; fi
+            grep -c 'transient file error' run.log | sed 's/^/transient-retries logged: /'
+          done
+          echo "SUMMARY memory_graph_index whole file: $wfail failures in 8 runs"
           sfail=0
-          for i in $(seq 1 10); do
+          for i in $(seq 1 40); do
             if cargo test --locked -p modbit-core --test surface_protocol qual_ev_0134 -- --test-threads 1 > run.log 2>&1; then echo "qual0134 run $i: ok"; else sfail=$((sfail+1)); echo "qual0134 run $i: FAILED"; grep -m3 'panicked\|STORE_BUSY' run.log; fi
           done
-          echo "SUMMARY qual_ev_0134: $sfail failures in 10 runs"
+          echo "SUMMARY qual_ev_0134: $sfail failures in 40 runs"
   workers:
     if: github.event_name == 'workflow_dispatch' || contains(github.event.head_commit.message, '[stress]')
     runs-on: windows-latest
@@ -67,8 +73,7 @@ jobs:
           MODBIT_CORE_BIN: ${{ github.workspace }}/target/debug/modbit-core.exe
         run: |
           fail=0
-          for i in $(seq 1 15); do
-            if pnpm --filter @modbit/desktop exec playwright test -c e2e/playwright.config.ts e2e/workers.spec.ts -g "renderer killed" > run.log 2>&1; then echo "workers run $i: ok"; else fail=$((fail+1)); echo "workers run $i: FAILED"; grep -m6 'Error\|Timeout\|renderer-diag' run.log; fi
-            grep 'renderer-diag' run.log | head -3 || true
+          for i in $(seq 1 40); do
+            if pnpm --filter @modbit/desktop exec playwright test -c e2e/playwright.config.ts e2e/workers.spec.ts -g "renderer killed" > run.log 2>&1; then echo "workers run $i: ok"; else fail=$((fail+1)); echo "workers run $i: FAILED"; grep 'renderer-diag\|modbit-desktop\|Error:' run.log | cut -c1-600 | head -30; fi
           done
-          echo "SUMMARY workers: $fail failures in 15 runs"
+          echo "SUMMARY workers: $fail failures in 40 runs"
