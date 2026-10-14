@@ -107,9 +107,16 @@ impl Proc {
     /// A snapshot of the output after `cursor`.
     #[must_use]
     pub fn follow_now(&self, cursor: u64, max: usize) -> modbit_protocol::v1::GuestProcOutput {
-        let (data, next, truncated) = self.ring.lock().expect("ring").read(cursor, max);
-        let total = self.ring.lock().expect("ring").total;
+        // The state first, the ring second: the exit is published after the
+        // last byte reached the ring, so a snapshot that saw `running ==
+        // false` reads a ring that already holds all the output. In the other
+        // order a byte appended and the exit published between the two reads
+        // would be reported as "exited" without that byte.
         let st = *self.state.lock().expect("state");
+        let ring = self.ring.lock().expect("ring");
+        let (data, next, truncated) = ring.read(cursor, max);
+        let total = ring.total;
+        drop(ring);
         modbit_protocol::v1::GuestProcOutput {
             proc_id: self.id.clone(),
             data,

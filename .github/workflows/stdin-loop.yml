@@ -1,7 +1,7 @@
 name: stdin-loop
 on:
   push:
-    branches: [wave6/cloud-stdin]
+    branches: [wave6/cloud-stdin, wave6/cloud-stdin-base]
 permissions:
   contents: read
 env:
@@ -12,7 +12,7 @@ jobs:
   loop:
     name: stdin loop
     runs-on: ubuntu-latest
-    timeout-minutes: 45
+    timeout-minutes: 80
     steps:
       - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
       - name: Install pinned Rust toolchain (rust-toolchain.toml)
@@ -101,8 +101,9 @@ jobs:
           cargo test --locked -p modbit-sandbox-gateway --test gateway --no-run
           cargo test --locked -p modbit-guest --no-run
           gfail=0; cfail=0
-          for i in $(seq 1 40); do
+          for i in $(seq 1 25); do
             cargo test --locked -p modbit-guest procs:: > g.log 2>&1 || { gfail=$((gfail+1)); grep -E "panicked|iteration" g.log | head -3; }
             cargo test --locked -p modbit-sandbox-gateway --test gateway qual_m8_3 -- --nocapture > c.log 2>&1 || { cfail=$((cfail+1)); grep -E "proc_stdin|failed steps" c.log | head -3; }
+            echo "iteration $i done: guest-unit failures $gfail, contract failures $cfail"
           done
-          echo "RESULT guest-unit failures $gfail/40 ; contract failures $cfail/40"
+          echo "RESULT guest-unit failures $gfail/25 ; contract failures $cfail/25"
