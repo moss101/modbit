@@ -467,6 +467,8 @@ export class CoreClient {
    */
   private takePending(ack: CommandAck): Pending | undefined {
     const id = ack.commandId?.value && ack.commandId.value.length > 0 ? hex(ack.commandId.value) : "";
+    // A closed client has answered its pending commands with DISCONNECTED; the acks still arriving in the frames already read are expected.
+    if (this.closed) return undefined;
     if (id === "") return this.pending.shift();
     const at = this.pending.findIndex((p) => p.id === id);
     if (at < 0) {
