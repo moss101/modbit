@@ -8,6 +8,10 @@ process.env.MODBIT_EXECD_ORPHAN_GRACE_SECS ??= "5";
 export default defineConfig({
   testDir: ".",
   timeout: 120_000,
+  // An assertion without its own timeout waited Playwright's 5 s default, which the Windows and macOS CI runners
+  // regularly overran (a task card appearing, a mode acknowledgement): the Core had answered, the wait had not allowed it.
+  // Waiting longer changes nothing about what is asserted; an assertion that needs less still passes at once.
+  expect: { timeout: 15_000 },
   retries: 0,
   workers: 1,
   reporter: [["list"], ["json", { outputFile: "../../target/desktop-e2e-report.json" }]],
