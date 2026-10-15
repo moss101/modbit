@@ -25,7 +25,9 @@ jobs:
   rust:
     name: rust CI_COMPATIBLE (${{ matrix.os }})
     runs-on: ${{ matrix.os }}
-    timeout-minutes: 75
+    # The Windows test step alone takes 67-73 minutes (ConPTY, process spawn and file I/O are slow there); at 75 it was
+    # cancelled on main and on PR runs with every visible test passing. macOS and Ubuntu finish in 25-45 minutes.
+    timeout-minutes: ${{ matrix.os == 'windows-latest' && 150 || 75 }}
     strategy:
       fail-fast: false
       matrix:

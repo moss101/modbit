@@ -1382,15 +1382,68 @@ async fn qual_px_069_the_on_screen_stop_halts_the_actuator_and_is_sticky_for_the
     // Order, not timing: the stop is in the log before the in-flight input's result.
     let at = |t: &str| evs.iter().position(|e| e["event_type"] == t);
     let aborted = at("ComputerUserAborted").unwrap();
-    if let Some(performed) = at("ComputerActionPerformed") {
-        assert!(
-            aborted < performed,
-            "the stop ({aborted}) precedes the in-flight result ({performed})"
-        );
-    }
+    let performed = at("ComputerActionPerformed").expect("the in-flight input is on the record");
+    assert!(
+        aborted < performed,
+        "the stop ({aborted}) precedes the in-flight result ({performed})"
+    );
     let closed = of(&evs, "ComputerSessionClosed");
     assert_eq!(closed[0]["payload"]["payload"]["reason"], "USER_ABORTED");
     assert_eq!(closed[0]["payload"]["payload"]["outcome"], "STOPPED");
+}
+
+/// QUAL-PX-069 (CUC-D05): the person's Stop is on the record the moment it is
+/// requested, so an input in flight can never be logged ahead of it, however long
+/// the actuator takes to confirm (the fixture ends the input at once and answers the
+/// stop 300 ms later, inside the 500 ms stop deadline).
+#[tokio::test(flavor = "multi_thread")]
+async fn qual_px_069_the_stop_is_recorded_before_the_in_flight_result_however_slow_the_actuator() {
+    use modbit_protocol::v1::{ComputerStop, ComputerStopped};
+    let steps = vec![
+        start(FORM),
+        fx(call("computer.state", json!({}))),
+        st(|s| {
+            call(
+                "computer.press",
+                json!({"element": s.el("Hang after delivery")}),
+            )
+        }),
+    ];
+    let opts = Opts {
+        desktop: Some(desktop_with(|d| d["faults"] = json!({"slow_stop_ms": 300}))),
+        ..Opts::default()
+    };
+    let mut rig = run(opts, steps, approve_all()).await;
+    when_in_flight(rig.approvals.clone(), "computer.press").await;
+    let ack = rig
+        .side_command(
+            "ComputerStop",
+            ComputerStop {
+                task_id: Some(rig.task.clone()),
+                reason: "on-screen Stop".into(),
+            }
+            .encode_to_vec(),
+        )
+        .await
+        .unwrap();
+    let stopped: ComputerStopped = Client::result(&ack).unwrap();
+    assert!(stopped.actuator_stopped, "{stopped:?}");
+    rig.finish().await;
+    let evs = rig.events().await;
+    assert_eq!(of(&evs, "ComputerUserAborted").len(), 1);
+    let at = |t: &str| evs.iter().position(|e| e["event_type"] == t);
+    let aborted = at("ComputerUserAborted").unwrap();
+    let performed = at("ComputerActionPerformed").expect("the in-flight input is on the record");
+    assert!(
+        aborted < performed,
+        "the stop ({aborted}) precedes the in-flight result ({performed})"
+    );
+    let o = rig.outs();
+    assert!(
+        o[2].0.starts_with("status: UNKNOWNOUTCOME"),
+        "never a success after the stop: {}",
+        o[2].0
+    );
 }
 
 /// QUAL-PX-069 (docs/23): the session's emergency stop stops the actuator and refuses control the same way.
