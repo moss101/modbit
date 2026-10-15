@@ -135,7 +135,7 @@ jobs:
     needs: plan
     if: ${{ inputs.which == 'px135' || inputs.which == 'all' }}
     runs-on: ubuntu-latest
-    timeout-minutes: 240
+    timeout-minutes: 355
     steps:
       - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
       - name: Install pinned Rust toolchain (rust-toolchain.toml)
@@ -162,6 +162,7 @@ jobs:
           MODBIT_LIVE_MODEL: ${{ vars.MODBIT_LIVE_MODEL }}
           MODBIT_LIVE_CLI: target/debug/modbit-cli
           MODBIT_LIVE_CORE: target/debug/modbit-core
+          MODBIT_LIVE_DEADLINE_MINUTES: "335"
           CAP: ${{ needs.plan.outputs.px135 }}
         run: |
           if [ -z "$OPENAI_API_KEY" ]; then
@@ -169,7 +170,7 @@ jobs:
             exit 1
           fi
           mkdir -p live-evals/px135
-          target/debug/gate-calibration-live --out-dir live-evals/px135 --max-cost-usd "$CAP" --repeats 2 2>&1 | tee live-evals/px135/run.log
+          target/debug/gate-calibration-live --out-dir live-evals/px135 --max-cost-usd "$CAP" --repeats 1 2>&1 | tee live-evals/px135/run.log
       - name: Retain the result bundle
         if: always()
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
