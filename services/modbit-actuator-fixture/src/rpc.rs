@@ -227,7 +227,13 @@ pub async fn handle(
             ))),
         };
     };
-    let slow = lock(shared).desktop.faults.slow_read_ms;
+    let (slow, slow_stop) = {
+        let st = lock(shared);
+        (
+            st.desktop.faults.slow_read_ms,
+            st.desktop.faults.slow_stop_ms,
+        )
+    };
     let out: Result<R, wire::ActuatorError> = match call {
         Call::ListApplications(_) => {
             let st = lock(shared);
@@ -277,9 +283,15 @@ pub async fn handle(
         Call::Wait(w) => wait(shared, w).await,
         Call::Perform(p) => perform(shared, tx, p).await,
         Call::Stop(_) => {
-            let mut st = lock(shared);
-            let n = u32::from(st.lease.take().is_some());
-            st.stop_epoch += 1;
+            let n = {
+                let mut st = lock(shared);
+                let n = u32::from(st.lease.take().is_some());
+                st.stop_epoch += 1;
+                n
+            };
+            if slow_stop > 0 {
+                tokio::time::sleep(Duration::from_millis(slow_stop)).await;
+            }
             Ok(R::Stop(wire::StopResponse {
                 halted_leases: n,
                 stopped_within_ms: 1,
