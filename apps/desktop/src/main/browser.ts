@@ -501,6 +501,8 @@ export class BrowserHost {
         note(true, `asked the Core for USER (host at generation ${h.leaseGeneration})`, h.leaseGeneration);
         const r = await c.setBrowserControl(h.sessionId, h.browserSessionId, h.taskId, "USER");
         note(true, `Core answered ${r.controller} generation ${r.leaseGeneration} changed=${r.changed}`, Number(r.leaseGeneration));
+        // An answer that does not say USER at a generation above zero is not the answer to this hand-over: the host does not take it for one.
+        if (r.controller !== "USER" || r.leaseGeneration === 0n) throw new Error(`the Core's answer is not a hand-over to USER (controller "${r.controller}", generation ${r.leaseGeneration})`);
         h.leaseGeneration = Math.max(h.leaseGeneration, Number(r.leaseGeneration));
         this.notify("browser:state", { browserSessionId: h.browserSessionId, ...this.state(h), controller: "USER", leaseGeneration: h.leaseGeneration, preempted: true });
         return;
