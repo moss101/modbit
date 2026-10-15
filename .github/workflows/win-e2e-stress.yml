@@ -13,7 +13,8 @@ jobs:
     steps:
       - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
       - id: m
-        run: echo "matrix=$(jq -c '{include: .}' .github/stress-plan.json)" >> "$GITHUB_OUTPUT"
+        run: |
+          echo "matrix=$(jq -c '{include: .}' .github/stress-plan.json)" >> "$GITHUB_OUTPUT"
   stress:
     needs: plan
     name: stress ${{ matrix.name }}
