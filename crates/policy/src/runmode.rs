@@ -171,6 +171,9 @@ fn has_shell_syntax(token: &str) -> bool {
         })
 }
 
+/// The typed reason a rule that names a computer tool is refused (PX-070).
+pub const COMPUTER_NOT_ALLOWLISTABLE: &str = "COMPUTER_NOT_ALLOWLISTABLE";
+
 /// Validate an argv-prefix pattern for a new rule.
 ///
 /// # Errors
@@ -183,6 +186,19 @@ pub fn validate_pattern(pattern: &[String]) -> Result<(), RuleRefusal> {
         return Err(refuse(
             "PATTERN_TOO_LONG",
             format!("a pattern has at most {MAX_PATTERN_TOKENS} tokens"),
+        ));
+    }
+    // PX-070 (CUC-C01): an input to an application on the person's machine
+    // is approved per call, with its exact intent, and nothing stands for
+    // that approval - not a rule, not a preset. A pattern that names a
+    // computer tool is not a rule, whatever else it says.
+    if pattern.iter().any(|t| {
+        let t = t.trim().to_ascii_lowercase();
+        t == "computer" || t.starts_with("computer.")
+    }) {
+        return Err(refuse(
+            COMPUTER_NOT_ALLOWLISTABLE,
+            "computer control (`computer.*`) is approved per call with its exact intent and can never be covered by an allowlist rule, a preset or a run mode; the person is asked every time",
         ));
     }
     for t in pattern {

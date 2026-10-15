@@ -1,0 +1,29 @@
+{
+  "expected": {
+    "actions": 3,
+    "actuatorName": "modbit-actuator-fixture",
+    "actuatorPid": 4242,
+    "actuatorVersion": "0.0.0",
+    "application": "Form App",
+    "attached": true,
+    "bundleId": "org.example.fixture.form",
+    "configured": true,
+    "controlId": "c0123456789ab",
+    "controller": "AGENT",
+    "detail": "",
+    "grantCallsLeft": 97,
+    "grantExpiresMs": "1791626238917",
+    "latch": "computer.press press: ACTUATOR_LOST",
+    "latchToolCallId": "01a08f33-0d97-7d40-b299-f8a7bc5cda60",
+    "nonDrivable": [
+      "com.apple.terminal: a terminal and shell host"
+    ],
+    "nonDrivableVersion": "2026-10-10.1",
+    "observations": 5,
+    "platform": "fixture",
+    "scope": "APP",
+    "screenshots": 1,
+    "userAborted": false
+  },
+  "type": "modbit.v1.ComputerRuntimeView"
+}
