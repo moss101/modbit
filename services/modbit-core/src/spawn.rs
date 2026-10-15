@@ -176,11 +176,26 @@ pub(crate) async fn spawn(
                 return Err(refuse("PROFILE_INVALID", e.to_string(), "PROFILE", vec![]));
             }
         };
+        // PX-075: the computer-use profile starts only where a person can
+        // approve each input, an actuator is attached, the mode carries
+        // computer use and the parent has recorded a healthy environment.
+        if profile.name == crate::agent_profiles::COMPUTER_USE
+            && let Some((code, detail)) = crate::agent_profiles::computer_use_refusal(
+                core,
+                parent,
+                req.mode,
+                &req.spec.environment_healthy,
+            )
+        {
+            let r = refuse(code, detail, "PROFILE", vec![]);
+            record_and_return(core, parent, lt, &req.idempotency_key, actor, r.clone()).await;
+            return Err(r);
+        }
         let compiled = crate::agent_profiles::compile(
             core,
             parent,
             &profile,
-            modbit_domain::toolcall::EffectClass::ReversibleWrite,
+            crate::agent_profiles::ceiling_of(&profile),
         );
         if req.spec.required_tools.is_empty() {
             req.spec.required_tools = compiled.tools.clone();
@@ -217,6 +232,14 @@ pub(crate) async fn spawn(
         }
         profile_name = profile.name.clone();
         profile_context = profile.context.clone();
+        if profile.name == crate::agent_profiles::COMPUTER_USE {
+            // What the parent recorded about the environment is the child's
+            // starting context - the parent's word, not the child's finding.
+            profile_context.push_str(&format!(
+                "\n\nThe parent recorded this about the environment before you started (verify it by observing): {}",
+                req.spec.environment_healthy.trim()
+            ));
+        }
     }
     let record_refusal = |core: &Core, r: &SpawnRefused| {
         let store = core.store.clone();
@@ -579,7 +602,12 @@ pub(crate) async fn spawn(
             return Err(r);
         }
         let store = core.store.lock().await;
-        if req.spec.write_scope.is_empty() && !live_children.is_empty() {
+        // A computer-use child writes nothing (read, search, non-GUI shell and
+        // computer.* only), so it has no scope to overlap.
+        if req.spec.write_scope.is_empty()
+            && !live_children.is_empty()
+            && profile_name != crate::agent_profiles::COMPUTER_USE
+        {
             let r = refuse(
                 "WRITE_CONFLICT",
                 "a builder with an unbounded write scope cannot run beside admitted workers; name its write_scope".into(),
@@ -698,6 +726,7 @@ pub(crate) async fn spawn(
         return Err(r);
     }
     let child_task_id = TaskId::new();
+    let computer_use = profile_name == crate::agent_profiles::COMPUTER_USE;
     let fork = crate::branch::fork(
         core,
         crate::branch::ForkRequest {
@@ -710,7 +739,12 @@ pub(crate) async fn spawn(
             subagent: Some(crate::branch::SubagentFork {
                 write_scope: req.spec.write_scope.clone(),
                 read_scope: req.spec.read_scope.clone(),
-                effect_ceiling_cap: Some(EffectClass::ReversibleWrite),
+                effect_ceiling_cap: Some(if computer_use {
+                    EffectClass::ExternalSideEffect
+                } else {
+                    EffectClass::ReversibleWrite
+                }),
+                computer_use,
             }),
         },
         actor,
@@ -820,7 +854,13 @@ pub(crate) async fn spawn(
         max_tool_calls,
         max_cost_minor: grant.cost_minor.unwrap_or(0),
         max_wall_ms: grant.wall_ms.unwrap_or(0),
-        effect_ceiling: "REVERSIBLE_WRITE".into(),
+        // A computer-use child asks the person for each input (an external
+        // side effect); every other child stays at reversible writes.
+        effect_ceiling: if computer_use {
+            "EXTERNAL_SIDE_EFFECT".into()
+        } else {
+            "REVERSIBLE_WRITE".into()
+        },
         worktree: forked.worktree.clone(),
         branch: forked.branch.clone(),
         allowed_modalities: vec!["text".into(), "image".into()],
@@ -2017,6 +2057,17 @@ pub(crate) fn record_result(
         evidence_refs.push(format!("prior_result:{prior}"));
     }
     evidence_refs.push(format!("attempt:{attempt}"));
+    if capsule["profile"].as_str() == Some(crate::agent_profiles::COMPUTER_USE) {
+        // The frames it kept are its evidence (PX-076).
+        if let Some(r) = core
+            .tools
+            .computer
+            .envelope_report(store, child.task_id, "")["evidence_refs"]
+            .as_array()
+        {
+            evidence_refs.extend(r.iter().filter_map(|x| x.as_str().map(str::to_owned)));
+        }
+    }
     let mut unresolved: Vec<String> = state.open_failures.clone();
     if status != "COMPLETED" {
         unresolved.push(format!("ended {status}: {end_reason}"));
@@ -2043,6 +2094,16 @@ pub(crate) fn record_result(
         branch: branch.clone(),
         worktree,
         candidate_revision: state.candidate_revision.unwrap_or(0),
+        // PX-075: a computer-use child's envelope carries its GUI report.
+        computer: (capsule["profile"].as_str() == Some(crate::agent_profiles::COMPUTER_USE)).then(
+            || {
+                core.tools.computer.envelope_report(
+                    store,
+                    child.task_id,
+                    state.completion_summary.as_deref().unwrap_or(end_reason),
+                )
+            },
+        ),
     };
     let result_ref = store
         .objects()

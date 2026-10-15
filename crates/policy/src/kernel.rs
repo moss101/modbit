@@ -514,8 +514,16 @@ impl CapabilityKernel {
                 }
             }
         }
-        // 6. approval-gated effects.
-        if self.envelope.approval_effects.contains(&req.effect_class) && ask_reason.is_none() {
+        // 6. approval-gated effects. Native computer control is gated by its
+        // capability, not by the class an envelope happens to list: whatever
+        // the envelope says, a start or an input asks (PX-070, CUC-C01).
+        let computer_control = req
+            .required_capabilities
+            .iter()
+            .any(|c| c == "computer.act" || c == "computer.screen");
+        if (self.envelope.approval_effects.contains(&req.effect_class) || computer_control)
+            && ask_reason.is_none()
+        {
             ask_reason = Some(format!(
                 "{:?} effects require an approval bound to the intent",
                 req.effect_class
@@ -540,8 +548,17 @@ impl CapabilityKernel {
                 ),
             );
         }
-        // 7. the run mode: who approves inside the envelope.
-        let run_decision = req.run.map(|r| r.decide(req.now.0));
+        // 7. the run mode: who approves inside the envelope. Computer control
+        // is never covered by it (PX-070, CUC-C01): no preset, no allowlist
+        // rule and no `RUN_EVERYTHING` approves an input to an application;
+        // the person is asked every time, with the exact intent.
+        let run_decision = if computer_control {
+            Some(crate::runmode::RunDecision::Ask {
+                code: "ALWAYS_ASK:COMPUTER_CONTROL".into(),
+            })
+        } else {
+            req.run.map(|r| r.decide(req.now.0))
+        };
         let run_ask_code = match &run_decision {
             Some(crate::runmode::RunDecision::Ask { code }) => Some(code.clone()),
             _ => None,
@@ -559,6 +576,11 @@ impl CapabilityKernel {
             }
             if let Some(code) = &run_ask_code {
                 scope["ask_reason"] = serde_json::json!(code);
+            }
+            if computer_control {
+                scope["computer_control"] = serde_json::json!(true);
+                scope["allowlistable"] = serde_json::json!(false);
+                scope["ask_classes"] = serde_json::json!(["COMPUTER_CONTROL"]);
             }
         };
         let reason = match &run_ask_code {
@@ -692,7 +714,11 @@ pub fn default_lease_for_profile(
         // The trusted profile also reaches the configured forge (PX-006,
         // docs/23): egress to its one API host and the use of its one token
         // handle — approval-bound for every write, refused elsewhere — and
-        // the task's browser session (M7.1).
+        // the task's browser session (M7.1). Native applications on the
+        // person's own machine (PX-069): the capabilities are leased; the
+        // tools exist only where an actuator is attached, every start and
+        // every input is approved exactly and per call, and policy may
+        // forbid any of the three.
         _ => vec![
             "fs.read",
             "fs.write",
@@ -704,6 +730,9 @@ pub fn default_lease_for_profile(
             "network.egress",
             "secret.use",
             "browser.control",
+            "computer.observe",
+            "computer.act",
+            "computer.screen",
             "memory.query",
             "memory.propose",
             "external.list",
@@ -721,6 +750,9 @@ pub fn default_lease_for_profile(
             "network.egress" => "network.egress:forge-api:443".to_owned(),
             "secret.use" => "secret.use:forge-token -> forge-api".to_owned(),
             "browser.control" => "browser.control:task-session".to_owned(),
+            "computer.observe" | "computer.act" | "computer.screen" => {
+                format!("{o}:approved-application")
+            }
             "memory.query" => "memory.query:scope-chain".to_owned(),
             "memory.propose" => "memory.propose:scope-chain".to_owned(),
             // The hub decides which servers a task may see; the lease grants

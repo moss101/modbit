@@ -295,14 +295,7 @@ impl LexicalIndex {
             field("rev")?,
         );
         let writer: IndexWriter = index.writer_with_num_threads(1, 15_000_000)?;
-        // The default policy treats every segment under ten thousand
-        // documents as one layer, so after a few one-file refreshes it merges
-        // them into the big first segment: a rewrite of the whole index in the
-        // middle of an edit. A low floor keeps the small segments of
-        // refreshes merging among themselves and leaves the big one alone.
-        let mut policy = tantivy::merge_policy::LogMergePolicy::default();
-        policy.set_min_layer_size(256);
-        writer.set_merge_policy(Box::new(policy));
+        writer.set_merge_policy(Self::merge_policy());
         let reader = index.reader()?;
         Ok(Self {
             index,
@@ -412,7 +405,40 @@ impl LexicalIndex {
     }
 
     /// Refresh the changed paths at `revision`: `None` text removes the document.
+    ///
+    /// A commit that fails with a transient Windows file error (see
+    /// [`is_transient_io`]) is rolled back and the whole change set applied
+    /// and committed again: the failed attempt may have lost part of its
+    /// queued documents, so a bare second `commit()` could succeed with the
+    /// index missing them. Only when the retries are spent is the error
+    /// returned, and the caller then rebuilds the index with a recorded reason.
     pub fn refresh(&mut self, changed: &[ChangedDoc], revision: u64) -> tantivy::Result<()> {
+        let mut attempt = 0;
+        loop {
+            match self.apply_and_commit(changed, revision) {
+                Ok(()) => break,
+                Err(e) if attempt < TRANSIENT_RETRIES && is_transient_tantivy(&e) => {
+                    eprintln!(
+                        "modbit-retrieval: lexical commit hit a transient file error (attempt {}): {e}",
+                        attempt + 1
+                    );
+                    std::thread::sleep(transient_delay(attempt));
+                    attempt += 1;
+                    // Discard what the failed attempt queued and restore the
+                    // writer to the last durable commit; the merge policy is
+                    // a property of the writer, so it is set again.
+                    self.writer.rollback()?;
+                    self.writer.set_merge_policy(Self::merge_policy());
+                }
+                Err(e) => return Err(e),
+            }
+        }
+        retry_transient(|| self.reader.reload(), is_transient_tantivy)?;
+        self.revision = revision;
+        Ok(())
+    }
+
+    fn apply_and_commit(&mut self, changed: &[ChangedDoc], revision: u64) -> tantivy::Result<()> {
         for (p, content) in changed {
             match content {
                 Some((t, l)) => self.add(p, t, l.as_deref(), revision)?,
@@ -424,9 +450,18 @@ impl LexicalIndex {
             }
         }
         self.writer.commit()?;
-        self.reader.reload()?;
-        self.revision = revision;
         Ok(())
+    }
+
+    fn merge_policy() -> Box<tantivy::merge_policy::LogMergePolicy> {
+        // The default policy treats every segment under ten thousand
+        // documents as one layer, so after a few one-file refreshes it merges
+        // them into the big first segment: a rewrite of the whole index in the
+        // middle of an edit. A low floor keeps the small segments of
+        // refreshes merging among themselves and leaves the big one alone.
+        let mut policy = tantivy::merge_policy::LogMergePolicy::default();
+        policy.set_min_layer_size(256);
+        Box::new(policy)
     }
 
     /// The index's own analysis of a word (the tokenizer the text was
@@ -613,5 +648,120 @@ impl LexicalIndex {
                 self.collect(self.disjunction(&terms).as_ref(), max)
             }
         }
+    }
+}
+
+/// Retries of a lexical commit or reload that failed with a transient file error.
+const TRANSIENT_RETRIES: u32 = 6;
+
+/// Wait before retry number `attempt` (0-based): 25 ms doubling, about 1.6 s in all.
+fn transient_delay(attempt: u32) -> std::time::Duration {
+    std::time::Duration::from_millis(25u64 << attempt.min(6))
+}
+
+/// Whether an I/O error is the kind Windows reports for a file another
+/// handle (a virus scanner, the search indexer, a reader's mapping that
+/// Tantivy has not yet released) holds without delete sharing: access denied
+/// (5), sharing violation (32), lock violation (33). The same file is free
+/// moments later, so the operation is retried. On other platforms these
+/// numbers mean something else (`EIO`, `EPIPE`, ...), and a permission error
+/// there is not transient.
+#[must_use]
+pub fn is_transient_io(e: &std::io::Error) -> bool {
+    cfg!(windows) && matches!(e.raw_os_error(), Some(5 | 32 | 33))
+}
+
+fn is_transient_tantivy(e: &tantivy::TantivyError) -> bool {
+    matches!(e, tantivy::TantivyError::IoError(io) if is_transient_io(io))
+}
+
+/// Run `op`, retrying it with a growing delay while it fails with an error
+/// `transient` accepts, at most [`TRANSIENT_RETRIES`] times.
+fn retry_transient<T, E>(
+    mut op: impl FnMut() -> Result<T, E>,
+    transient: impl Fn(&E) -> bool,
+) -> Result<T, E> {
+    let mut attempt = 0;
+    loop {
+        match op() {
+            Err(e) if attempt < TRANSIENT_RETRIES && transient(&e) => {
+                std::thread::sleep(transient_delay(attempt));
+                attempt += 1;
+            }
+            other => return other,
+        }
+    }
+}
+
+#[cfg(test)]
+mod transient_tests {
+    use super::*;
+
+    #[test]
+    fn a_transient_error_is_retried_until_it_clears_and_a_permanent_one_is_not() {
+        let mut calls = 0;
+        let got: Result<u32, &str> = retry_transient(
+            || {
+                calls += 1;
+                if calls < 3 { Err("busy") } else { Ok(calls) }
+            },
+            |e| *e == "busy",
+        );
+        assert_eq!(got, Ok(3));
+        let mut calls = 0;
+        let got: Result<u32, &str> = retry_transient(
+            || {
+                calls += 1;
+                Err("denied for good")
+            },
+            |_| false,
+        );
+        assert_eq!((got, calls), (Err("denied for good"), 1));
+        let mut calls = 0;
+        let got: Result<u32, &str> = retry_transient(
+            || {
+                calls += 1;
+                Err("busy")
+            },
+            |_| true,
+        );
+        assert_eq!((got, calls), (Err("busy"), TRANSIENT_RETRIES + 1));
+    }
+
+    #[cfg(windows)]
+    #[test]
+    fn windows_access_denied_and_sharing_violations_are_transient() {
+        for code in [5, 32, 33] {
+            assert!(is_transient_io(&std::io::Error::from_raw_os_error(code)));
+        }
+        assert!(!is_transient_io(&std::io::Error::from_raw_os_error(2)));
+    }
+
+    #[cfg(not(windows))]
+    #[test]
+    fn no_error_is_transient_off_windows() {
+        assert!(!is_transient_io(&std::io::Error::from_raw_os_error(5)));
+    }
+
+    /// The rollback-and-reapply path leaves a refreshed index whole: a refresh
+    /// after a rollback serves exactly the documents of the change set.
+    #[test]
+    fn a_rolled_back_writer_refreshes_to_the_same_index() {
+        let dir = tempfile::tempdir().unwrap();
+        let files = [("a.rs", "fn alpha_unique() {}\n", Some("rust"))];
+        let mut lx = LexicalIndex::build_in_dir(dir.path(), files.into_iter(), 1).unwrap();
+        lx.writer
+            .delete_term(Term::from_field_text(lx.path, "a.rs"));
+        lx.writer.rollback().unwrap();
+        lx.writer.set_merge_policy(LexicalIndex::merge_policy());
+        let changed: Vec<ChangedDoc> = vec![(
+            "b.rs".into(),
+            Some(("fn beta_unique() {}\n".into(), Some("rust".into()))),
+        )];
+        lx.refresh(&changed, 2).unwrap();
+        assert_eq!(lx.len(), 2);
+        drop(lx);
+        let reopened = LexicalIndex::open_in_dir(dir.path(), 2).unwrap();
+        assert_eq!(reopened.doc_hashes().len(), 2, "both files are durable");
     }
 }

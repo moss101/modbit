@@ -95,6 +95,9 @@ fn fixture(exec: Option<ExecTarget>) -> Fixture {
         cancel: None,
         hooks: None,
         git_state: None,
+        computer: None,
+        approval_id: None,
+        intent_hash: None,
     };
     let mut registry = ToolRegistry::new();
     modbit_tools::direct::register_direct(&mut registry).unwrap();
@@ -227,6 +230,9 @@ async fn qual_ev_0239_0080_denial_is_monotonic_and_argument_text_cannot_bypass_p
         cancel: None,
         hooks: None,
         git_state: None,
+        computer: None,
+        approval_id: None,
+        intent_hash: None,
     };
     let o = f
         .runtime
