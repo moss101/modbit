@@ -1,0 +1,20 @@
+[
+ {
+  "name": "load-old",
+  "files": "e2e/browser.spec.ts e2e/browser-semantic.spec.ts",
+  "grep": "human activity preemption: a mouse press|pages are classified",
+  "repeat": 8,
+  "hour": "no",
+  "arm": "old",
+  "load": 8
+ },
+ {
+  "name": "load-new",
+  "files": "e2e/browser.spec.ts e2e/browser-semantic.spec.ts",
+  "grep": "human activity preemption: a mouse press|pages are classified",
+  "repeat": 8,
+  "hour": "no",
+  "arm": "new",
+  "load": 8
+ }
+]

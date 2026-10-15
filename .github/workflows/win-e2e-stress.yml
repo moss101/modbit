@@ -4,24 +4,24 @@ on:
   workflow_dispatch:
   push:
     branches: [wave6/win-e2e3]
-    paths: [.github/workflows/win-e2e-stress.yml]
+    paths: [.github/workflows/win-e2e-stress.yml, .github/stress-plan.json]
 jobs:
+  plan:
+    runs-on: ubuntu-latest
+    outputs:
+      matrix: ${{ steps.m.outputs.matrix }}
+    steps:
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
+      - id: m
+        run: echo "matrix=$(jq -c . .github/stress-plan.json)" >> "$GITHUB_OUTPUT"
   stress:
+    needs: plan
     name: stress ${{ matrix.name }}
     runs-on: windows-latest
     timeout-minutes: 120
     strategy:
       fail-fast: false
-      matrix:
-        include:
-          - { name: suite-old-1, files: "PREFIX", grep: "", repeat: 3, hour: "no", arm: old }
-          - { name: suite-new-1, files: "PREFIX", grep: "", repeat: 3, hour: "no", arm: new }
-          - { name: suite-old-2, files: "PREFIX", grep: "", repeat: 3, hour: "no", arm: old }
-          - { name: suite-new-2, files: "PREFIX", grep: "", repeat: 3, hour: "no", arm: new }
-          - { name: browser-old, files: "BROWSER", grep: "", repeat: 5, hour: "no", arm: old }
-          - { name: browser-new, files: "BROWSER", grep: "", repeat: 5, hour: "no", arm: new }
-          - { name: states-at-hour-old, files: "e2e/states.spec.ts", grep: "screen states: provider down", repeat: 1, hour: "yes", arm: old }
-          - { name: states-at-hour-new, files: "e2e/states.spec.ts", grep: "screen states: provider down", repeat: 1, hour: "yes", arm: new }
+      matrix: ${{ fromJSON(needs.plan.outputs.matrix) }}
     steps:
       - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
         with:
@@ -59,8 +59,12 @@ jobs:
           BROWSER="e2e/browser-feedback.spec.ts e2e/browser-hardening.spec.ts e2e/browser-observer.spec.ts e2e/browser-semantic.spec.ts e2e/browser.spec.ts"
           FILES="${{ matrix.files }}"; [ "$FILES" = PREFIX ] && FILES="$PREFIX"; [ "$FILES" = BROWSER ] && FILES="$BROWSER"
           GREP=(); [ -n "${{ matrix.grep }}" ] && GREP=(-g "${{ matrix.grep }}")
+          LOAD=${{ matrix.load || 0 }}
+          for i in $(seq 1 $LOAD); do node -e "for(;;){}" & done
           pnpm exec playwright test -c e2e/playwright.config.ts $FILES "${GREP[@]}" --repeat-each ${{ matrix.repeat }} --workers 1 2>&1 | tee ../../stress.log
           echo "exit ${PIPESTATUS[0]}"
+          [ "$LOAD" -gt 0 ] && kill $(jobs -p) 2>/dev/null
+          true
       - name: Summary
         if: always()
         shell: bash
