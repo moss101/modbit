@@ -158,6 +158,10 @@ pub struct Faults {
     /// Read state slowly.
     #[serde(default)]
     pub slow_read_ms: u64,
+    /// Answer a Stop slowly: the stop takes effect at once (an input in flight
+    /// ends), the reply comes this many milliseconds later.
+    #[serde(default)]
+    pub slow_stop_ms: u64,
     /// The secure desktop is up from the start.
     #[serde(default)]
     pub secure_desktop: bool,
