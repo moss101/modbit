@@ -458,11 +458,28 @@ impl ComputerRuntime {
         if let Some(s) = self.lock().sessions.get_mut(&plan.control_id) {
             s.in_flight = true;
         }
+        // The session stays "in flight" until the input's outcome is recorded (the
+        // latch set, the session closed): the actuator's death notice must not close
+        // it in the gap between the call returning and the outcome, or the session
+        // would end as a bare ACTUATOR_LOST that is not latched.
+        let _in_flight = InFlight {
+            rt: self,
+            control_id: &plan.control_id,
+        };
         let result = a
             .call(Call::Perform(request), self.shared.cfg.action_deadline)
             .await;
-        if let Some(s) = self.lock().sessions.get_mut(&plan.control_id) {
-            s.in_flight = false;
+        #[cfg(test)]
+        {
+            let hook = self
+                .shared
+                .after_input
+                .lock()
+                .unwrap_or_else(|e| e.into_inner())
+                .clone();
+            if let Some(h) = hook {
+                h();
+            }
         }
         let duration_ms = u64::try_from(started.elapsed().as_millis()).unwrap_or(u64::MAX);
         let kind = act.kind();
@@ -792,5 +809,19 @@ impl ComputerRuntime {
             frame = ans.frame;
         }
         Ok(Answer { output: out, frame })
+    }
+}
+
+/// Marks a session's input as in flight until the guard drops.
+struct InFlight<'a> {
+    rt: &'a ComputerRuntime,
+    control_id: &'a str,
+}
+
+impl Drop for InFlight<'_> {
+    fn drop(&mut self) {
+        if let Some(s) = self.rt.lock().sessions.get_mut(self.control_id) {
+            s.in_flight = false;
+        }
     }
 }
