@@ -42,6 +42,10 @@ pub struct PolicyRequest {
     /// The escalation the call declares it needs: `none` | `network` | `all`
     /// (empty = not declared). A typed field, not a reading of the command.
     pub declared_escalation: String,
+    /// The facts the tool bound into the intent beyond the arguments
+    /// (`Tool::prepare`): shown on the approval, and already part of
+    /// `intent_hash`. `None` for a tool that binds nothing.
+    pub bound_intent: Option<serde_json::Value>,
 }
 
 /// A workspace-relative path a call names, and the capability reaching it.

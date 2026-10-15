@@ -1,0 +1,425 @@
+// Native computer control (PX-069, PX-070, PX-075, PX-076; docs/66, DR-PX-2026-10-03-008).
+//
+// Two surfaces live here, both additive:
+//
+//   1. The ACTUATOR RPC: the contract between the Core and a separate
+//      actuator process (the macOS helper of PX-071, or the fixture actuator
+//      the repository ships for tests). The actuator holds the operating
+//      system permissions and no model, policy, credential or filesystem
+//      authority; it is a leaf. The Core is the only client. Every message
+//      below is carried in an `ActuatorFrame`, length-prefixed with the same
+//      4-byte big-endian framing as the rest of the local protocol
+//      (`modbit_protocol::framing::{read_message, write_message}`), over a
+//      bidirectional byte stream the Core owns end to end: the actuator's
+//      standard input and output when the Core launches it (CUC-E02: the
+//      inherited descriptors are bound to the launcher by construction), or
+//      any other authenticated stream a later transport provides. The first
+//      frame the Core sends is an `ActuatorHello` carrying a per-launch random
+//      token; the first frame the actuator answers is an `ActuatorWelcome`
+//      proving it received it. A protocol major mismatch refuses.
+//
+//   2. The Core's own surface messages for computer control: read the
+//      runtime state, resolve an unknown-outcome latch, stop. Client → Core,
+//      like every other command (`CommandEnvelope.command_type` names them).
+//
+// Nothing here carries a secret. A typed-text argument travels to the
+// actuator as the approval showed it; a credential is never an argument
+// (CUC-B06). Frames are screenshots and trees: sensitive artifacts (CUC-F01).
+syntax = "proto3";
+
+package modbit.v1;
+
+import "modbit/v1/domain.proto";
+
+// ---------------------------------------------------------------------------
+// 1. The actuator RPC
+// ---------------------------------------------------------------------------
+
+// The methods of the actuator, for the record. The wire does not use gRPC:
+// each method is one `ActuatorRequest.call` variant answered by the matching
+// `ActuatorResponse.result` variant (or an `ActuatorError`), matched by
+// `request_id`. The actuator may also push `ActuatorEvent`s at any time.
+service Actuator {
+  rpc ListApplications(ListApplicationsRequest) returns (ListApplicationsResponse);
+  rpc ResolveApplication(ResolveApplicationRequest) returns (ResolveApplicationResponse);
+  rpc Acquire(AcquireRequest) returns (AcquireResponse);
+  rpc Release(ReleaseRequest) returns (ReleaseResponse);
+  rpc ReadState(ReadStateRequest) returns (ReadStateResponse);
+  rpc Capture(CaptureRequest) returns (CaptureResponse);
+  rpc Wait(WaitRequest) returns (WaitResponse);
+  rpc Perform(PerformRequest) returns (PerformResponse);
+  rpc Stop(StopRequest) returns (StopResponse);
+  rpc Ping(PingRequest) returns (PingResponse);
+}
+
+message ActuatorFrame {
+  oneof body {
+    ActuatorHello hello = 1;       // Core -> actuator, first frame
+    ActuatorWelcome welcome = 2;   // actuator -> Core, first answer
+    ActuatorRequest request = 3;   // Core -> actuator
+    ActuatorResponse response = 4; // actuator -> Core
+    ActuatorEvent event = 5;       // actuator -> Core, unsolicited
+  }
+}
+
+message ActuatorHello {
+  uint32 protocol_major = 1;
+  uint32 protocol_minor = 2;
+  bytes token = 3;               // 32 random bytes, per launch, never logged
+  uint32 core_pid = 4;           // the actuator verifies its parent is this process
+  string core_version = 5;
+}
+
+message ActuatorWelcome {
+  uint32 protocol_major = 1;
+  uint32 protocol_minor = 2;
+  string actuator_name = 3;      // "modbit-actuator-fixture", "modbit-actuator-macos"
+  string actuator_version = 4;
+  uint32 pid = 5;                // the actuator's own process id (the Core compares it with the child it spawned)
+  string platform = 6;           // "macos" | "fixture" | ...
+  // hex(sha256("modbit-actuator-welcome\0" || token)): proves the actuator
+  // received this launch's token. The Core accepts a welcome from no other.
+  string token_proof = 7;
+  // What this actuator can do: "app_scope", "screen_scope", "screenshot",
+  // "secure_field_masking", "human_input_detection", "stop_overlay".
+  repeated string capabilities = 8;
+  string refusal = 9;            // non-empty: the actuator refuses this Core (version, parent, ...)
+}
+
+message ActuatorRequest {
+  uint64 request_id = 1;         // unique per connection, chosen by the Core
+  // Relative deadline in milliseconds: the actuator abandons the call (and,
+  // for an input not yet delivered, does not deliver it) when it passes.
+  // 0 = the actuator's own default.
+  uint64 deadline_ms = 2;
+  oneof call {
+    ListApplicationsRequest list_applications = 10;
+    ResolveApplicationRequest resolve_application = 11;
+    AcquireRequest acquire = 12;
+    ReleaseRequest release = 13;
+    ReadStateRequest read_state = 14;
+    CaptureRequest capture = 15;
+    WaitRequest wait = 16;
+    PerformRequest perform = 17;
+    StopRequest stop = 18;
+    PingRequest ping = 19;
+  }
+}
+
+message ActuatorResponse {
+  uint64 request_id = 1;
+  oneof result {
+    ListApplicationsResponse list_applications = 10;
+    ResolveApplicationResponse resolve_application = 11;
+    AcquireResponse acquire = 12;
+    ReleaseResponse release = 13;
+    ReadStateResponse read_state = 14;
+    CaptureResponse capture = 15;
+    WaitResponse wait = 16;
+    PerformResponse perform = 17;
+    StopResponse stop = 18;
+    PingResponse ping = 19;
+    ActuatorError error = 99;
+  }
+}
+
+// A refusal or failure by the actuator. `code` is one of the Core's
+// taxonomy codes (docs/66 CUC-D01): TARGET_STALE, TARGET_OCCLUDED,
+// WINDOW_UNVERIFIABLE, ACCESSIBILITY_UNAVAILABLE, HUMAN_ACTIVE,
+// MODAL_BLOCKING, TARGET_NOT_EDITABLE, ACTION_UNSAFE, PERMISSION_REQUIRED,
+// SECURE_DESKTOP, TARGET_ELEVATED, CAPTURE_FAILED, INPUT_FAILED, TIMEOUT,
+// UNSUPPORTED_REQUEST, SESSION_BUSY, USER_ABORTED. A code the Core does not
+// know is treated as INPUT_FAILED for an input and CAPTURE_FAILED for a read.
+message ActuatorError {
+  string code = 1;
+  string message = 2;
+  // For a `Perform` only: how far the input got before the failure. The
+  // Core never retries an input that may have been delivered (CUC-D02).
+  Delivery delivery = 3;
+}
+
+enum Delivery {
+  DELIVERY_UNSPECIFIED = 0;      // not an input, or the actuator does not say: the Core assumes UNKNOWN for an input
+  DELIVERY_NOT_DELIVERED = 1;    // provably nothing was injected
+  DELIVERY_DELIVERED = 2;        // the input was injected
+  DELIVERY_UNKNOWN = 3;          // injection began; the actuator cannot say whether it finished
+}
+
+// Pushed by the actuator on its own.
+message ActuatorEvent {
+  oneof event {
+    HumanInput human_input = 1;     // a physical key or pointer event (never the actuator's own synthetic ones)
+    StopRequested stop_requested = 2; // the on-screen Stop control, or the actuator's own watchdog
+    WindowGone window_gone = 3;
+    PermissionChanged permission_changed = 4;
+  }
+}
+
+message HumanInput { uint64 at_ms = 1; string kind = 2; }
+message StopRequested { string source = 1; string control_id = 2; }
+message WindowGone { string control_id = 1; string window_id = 2; }
+message PermissionChanged { string permission = 1; bool granted = 2; }
+
+// ----- identity and geometry -----
+
+// The identity of an application, as the operating system vouches for it
+// (CUC-C01): never the window title.
+message ApplicationIdentity {
+  string bundle_id = 1;          // "com.apple.TextEdit"
+  string executable_path = 2;
+  string signing_identity = 3;   // code-signing team / designated requirement, "" = unsigned
+  uint32 pid = 4;
+  string name = 5;               // display name (untrusted label)
+}
+
+message Rect { int32 x = 1; int32 y = 2; int32 width = 3; int32 height = 4; }
+
+message WindowInfo {
+  string window_id = 1;          // opaque, stable for the window's life
+  string title = 2;              // untrusted label
+  Rect bounds = 3;               // in display points
+  bool focused = 4;
+  bool modal = 5;                // a modal sheet or dialog is in front of it
+  bool minimized = 6;
+  uint64 version = 7;            // changes whenever the window moves, resizes or is replaced
+}
+
+message ApplicationInfo {
+  ApplicationIdentity identity = 1;
+  repeated WindowInfo windows = 2;
+  bool elevated = 3;             // runs with more privilege than the actuator (TARGET_ELEVATED)
+}
+
+// ----- ListApplications / ResolveApplication -----
+
+message ListApplicationsRequest {}
+message ListApplicationsResponse { repeated ApplicationInfo applications = 1; }
+
+// Resolve without activating or focusing: by bundle id, or by display name, or by pid.
+message ResolveApplicationRequest {
+  string bundle_id = 1;
+  string name = 2;
+  uint32 pid = 3;
+}
+message ResolveApplicationResponse { ApplicationInfo application = 1; }
+
+// ----- Acquire / Release: the actuator's single-controller lock and takeover lease -----
+
+enum Scope {
+  SCOPE_UNSPECIFIED = 0;
+  SCOPE_APP = 1;     // background, through the accessibility tree; no cursor, no display
+  SCOPE_SCREEN = 2;  // exclusive: real cursor, display, a visible Stop control
+}
+
+message AcquireRequest {
+  string control_id = 1;         // minted by the Core
+  Scope scope = 2;
+  ApplicationIdentity application = 3; // the identity the person approved
+  string window_id = 4;          // "" = the application's main window
+  uint64 lease_ttl_ms = 5;       // the actuator releases and stops injecting after this long without a Ping
+}
+message AcquireResponse {
+  string control_id = 1;
+  uint64 lease_generation = 2;   // increments on every hand-over
+  ApplicationInfo application = 3; // as verified at acquisition
+}
+message ReleaseRequest { string control_id = 1; }
+message ReleaseResponse { bool was_held = 1; }
+
+// ----- ReadState: the accessibility tree -----
+
+message ReadStateRequest {
+  string control_id = 1;
+  ApplicationIdentity application = 2;
+  string window_id = 3;
+  string snapshot_id = 4;        // minted by the Core; the actuator stores it as the window's current snapshot
+  uint32 max_nodes = 5;          // 0 = 400
+  // A read the Core makes only to learn where secure fields are (so it can
+  // verify a frame's masking): the actuator answers it but does NOT replace
+  // the window's current snapshot with it, so element ids the model holds
+  // stay valid.
+  bool probe = 6;
+}
+
+// One element of the tree. `element_id` is valid only with the snapshot id
+// of the read that produced it.
+message AxNode {
+  string element_id = 1;
+  string parent_id = 2;          // "" = a root
+  string role = 3;               // window | button | textfield | securetextfield | checkbox | list | row | image | ...
+  string name = 4;               // untrusted label
+  string value = 5;              // untrusted; empty for a secure field (the actuator never reads one)
+  bool settable = 6;
+  bool secure = 7;               // a password or other secure input
+  bool enabled = 8;
+  bool focused = 9;
+  repeated string actions = 10;  // "press", "increment", "show_menu", ...
+  Rect bounds = 11;              // in display points; zero = unknown
+}
+
+message ReadStateResponse {
+  string snapshot_id = 1;
+  WindowInfo window = 2;
+  repeated AxNode nodes = 3;
+  bool truncated = 4;
+  string tree_digest = 5;        // sha256 over the structural content, for change detection
+}
+
+// ----- Capture: a window frame at the canvas -----
+
+message CaptureRequest {
+  string control_id = 1;
+  ApplicationIdentity application = 2;
+  string window_id = 3;
+  Scope scope = 4;               // APP = the target window only; SCREEN = the display
+  uint32 canvas_width = 5;       // always 1280 (CUC-B02)
+  uint32 canvas_height = 6;      // always 800
+}
+
+// How the real surface was fitted to the canvas by one scaler: a point p in
+// canvas pixels maps to source = (p - offset) / scale.
+message Letterbox {
+  uint32 source_width = 1;
+  uint32 source_height = 2;
+  double scale = 3;
+  double offset_x = 4;
+  double offset_y = 5;
+}
+
+message CaptureResponse {
+  // Exactly canvas_width x canvas_height, secure fields masked. A masked
+  // pixel is opaque black (0,0,0,255): the Core verifies every secure region
+  // against that and masks again what is not.
+  bytes png = 1;
+  uint32 width = 2;
+  uint32 height = 3;
+  Letterbox letterbox = 4;
+  WindowInfo window = 5;
+  // Secure fields the actuator masked before the frame left it. The Core
+  // verifies the masking against the tree and masks again what is not.
+  uint32 masked_regions = 6;
+  repeated Rect secure_regions = 7; // in canvas pixels
+  string frame_digest = 8;       // sha256 of the unmasked-independent frame content, for memoization
+}
+
+// ----- Wait -----
+
+message WaitRequest {
+  string control_id = 1;
+  ApplicationIdentity application = 2;
+  string window_id = 3;
+  uint64 timeout_ms = 4;         // bounded by the Core
+  // Return when the tree digest differs from `since_digest` (empty: just sleep `timeout_ms`).
+  string since_digest = 5;
+}
+message WaitResponse { bool changed = 1; string tree_digest = 2; uint64 waited_ms = 3; }
+
+// ----- Perform: an input -----
+
+message Point { double x = 1; double y = 2; }  // canvas pixels
+
+message PressAction { string element_id = 1; string action = 2; }          // an element action by name
+message SetValueAction { string element_id = 1; string value = 2; }        // set a settable element's value
+message ClickAction { Point at = 1; string button = 2; uint32 count = 3; } // canvas coordinates
+message MoveAction { Point to = 1; }
+message DragAction { Point from = 1; Point to = 2; }
+// Typed to the verified focus. `text` never carries a control character; a
+// following key is the separate `then` ("enter" | "tab" | "" for none).
+message TypeAction { string text = 1; string then = 2; }
+message KeyAction { repeated string keys = 1; }                            // "cmd+a", "tab"
+message ScrollAction { Point at = 1; double dx = 2; double dy = 3; string element_id = 4; }
+
+message PerformRequest {
+  string control_id = 1;
+  ApplicationIdentity application = 2; // the identity the person approved; verified again, never trusted
+  string window_id = 3;
+  string snapshot_id = 4;        // the tree element ids come from ("" for a coordinate action)
+  string frame_token = 5;        // the screenshot a coordinate came from ("" for an element action)
+  uint64 window_version = 6;     // the window version at that screenshot; a moved window is TARGET_STALE
+  Scope scope = 7;
+  string idempotency_key = 8;    // the tool call id; a repeat of a delivered key is answered, never re-injected
+  oneof action {
+    PressAction press = 20;
+    SetValueAction set_value = 21;
+    ClickAction click = 22;
+    MoveAction move = 23;
+    DragAction drag = 24;
+    TypeAction type = 25;
+    KeyAction key = 26;
+    ScrollAction scroll = 27;
+  }
+}
+
+message ElementChange {
+  string element_id = 1;
+  string kind = 2;               // value | focus | added | removed | enabled
+  string before = 3;             // never the content of a secure field
+  string after = 4;
+}
+
+message PerformResponse {
+  Delivery delivery = 1;         // DELIVERED on success
+  string modality = 2;           // "ax" | "coordinate" | "raw": the rung the actuator used
+  string modality_reason = 3;
+  bool structure_changed = 4;    // a sheet or dialog opened, or the tree was replaced: element ids are no longer valid
+  string tree_digest = 5;        // after
+  repeated ElementChange changes = 6; // bounded
+  WindowInfo window = 7;         // after
+}
+
+// ----- Stop / Ping -----
+
+message StopRequest { string reason = 1; string source = 2; }
+message StopResponse { uint32 halted_leases = 1; uint64 stopped_within_ms = 2; }
+message PingRequest { string control_id = 1; }
+message PingResponse { bool lease_held = 1; uint64 lease_generation = 2; bool human_active = 3; }
+
+// ---------------------------------------------------------------------------
+// 2. The Core's surface messages for computer control (client -> Core)
+// ---------------------------------------------------------------------------
+
+// Read the runtime: whether an actuator is attached, the task's control
+// session, the observation grant, the latch, the audit counters and the
+// policy list of applications that cannot be driven.
+message GetComputerRuntime { Id task_id = 1; }
+
+message ComputerRuntimeView {
+  bool configured = 1;
+  bool attached = 2;
+  string actuator_name = 3;
+  string actuator_version = 4;
+  uint32 actuator_pid = 5;
+  string platform = 6;
+  string detail = 7;             // why it is not attached, when it is not
+  // The task's control session ("" = none).
+  string control_id = 10;
+  string application = 11;       // display name
+  string bundle_id = 12;
+  string scope = 13;             // APP | SCREEN
+  string controller = 14;        // AGENT | PARKED | STOPPED
+  int64 grant_expires_ms = 15;
+  uint32 grant_calls_left = 16;
+  // The unknown-outcome latch ("" = none): "<tool> <action>: <reason>".
+  string latch = 20;
+  string latch_tool_call_id = 21;
+  bool user_aborted = 22;
+  uint32 actions = 23;
+  uint32 screenshots = 24;
+  uint32 observations = 25;
+  // The versioned policy list of applications no approval can lift (CUC-C05).
+  repeated string non_drivable = 30;   // "<bundle id pattern>: <why>"
+  string non_drivable_version = 31;
+}
+
+// The person resolves an unknown-outcome latch: they looked at the machine
+// and say the earlier input's effect is known or does not matter. The model
+// still needs a new control session, a fresh observation and a new approval
+// to act (CUC-D03); this clears the refusal that otherwise stands.
+message ResolveComputerLatch { Id task_id = 1; string note = 2; }
+message ComputerLatchResolved { bool was_latched = 1; }
+
+// The on-screen Stop control, as the desktop sends it (CUC-D05): the
+// actuator stops injecting, the task's control session closes, and a user
+// stop is sticky for the rest of the run (USER_ABORTED).
+message ComputerStop { Id task_id = 1; string reason = 2; }
+message ComputerStopped { uint32 sessions_closed = 1; bool actuator_stopped = 2; }

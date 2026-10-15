@@ -338,3 +338,142 @@ fn a_spent_approval_asks_again_unless_the_mode_approves_the_same_call() {
     r.run = Some(&widest);
     assert_eq!(code(&k.decide(&r)), "ALLOW");
 }
+
+/// PX-070 (CUC-C01): computer control asks in every mode, with or without a rule, whatever the
+/// envelope says about approvals; an unattended profile cannot ask, so it cannot have it.
+#[test]
+fn computer_control_asks_in_every_run_mode_and_no_envelope_setting_removes_the_ask() {
+    let c = caps(&["computer.act"]);
+    let l = lease("local_trusted");
+    let widest = policy(RunMode::RunEverything, vec![], &["computer.press"]);
+    let ruled = policy(
+        RunMode::Allowlist,
+        vec![AllowRule {
+            covers_always_ask: true,
+            ..rule("r1", &["computer.press"], RuleScope::Task, "t1")
+        }],
+        &["computer.press"],
+    );
+    let k = CapabilityKernel::default();
+    for p in [None, Some(&widest), Some(&ruled)] {
+        let d = k.decide(&req(
+            EffectClass::ExternalSideEffect,
+            &c,
+            "local_trusted",
+            Some(&l),
+            p,
+        ));
+        assert_eq!(code(&d), "APPROVAL_REQUIRED", "{p:?}");
+        let KernelDecision::ApprovalRequired { scope_json, .. } = d else {
+            unreachable!()
+        };
+        let scope: serde_json::Value = serde_json::from_str(&scope_json).unwrap();
+        assert_eq!(scope["allowlistable"], false);
+        assert_eq!(
+            scope["ask_classes"],
+            serde_json::json!(["COMPUTER_CONTROL"])
+        );
+    }
+    // An envelope that no longer lists external side effects among the effects that ask changes
+    // nothing for the capability: it asks.
+    let mut env = PolicyEnvelope::default();
+    env.approval_effects.clear();
+    let lax = CapabilityKernel::new(env);
+    assert_eq!(
+        code(&lax.decide(&req(
+            EffectClass::ExternalSideEffect,
+            &c,
+            "local_trusted",
+            Some(&l),
+            Some(&widest)
+        ))),
+        "APPROVAL_REQUIRED"
+    );
+    // Observation is a read: no approval, and no mode is consulted.
+    let observe = caps(&["computer.observe"]);
+    assert_eq!(
+        code(&k.decide(&req(
+            EffectClass::ReadOnly,
+            &observe,
+            "local_trusted",
+            Some(&l),
+            None
+        ))),
+        "ALLOW"
+    );
+    // An unattended profile cannot ask, and its lease does not carry the capability.
+    let auto = lease("local_autonomous");
+    assert_eq!(
+        code(&k.decide(&req(
+            EffectClass::ExternalSideEffect,
+            &c,
+            "local_autonomous",
+            Some(&auto),
+            Some(&widest)
+        ))),
+        "CAPABILITY_NOT_LEASED"
+    );
+    // A read-only mode carries no computer capability at all.
+    let mut ask_mode = req(
+        EffectClass::ReadOnly,
+        &observe,
+        "local_trusted",
+        Some(&l),
+        None,
+    );
+    ask_mode.mode = TaskMode::Ask;
+    assert_eq!(code(&k.decide(&ask_mode)), "MODE_POSTURE");
+    // The policy may deny any of the three capabilities.
+    let mut layers = std::collections::BTreeMap::new();
+    layers.insert(
+        modbit_policy::Authority::Admin,
+        modbit_policy::Layer {
+            permissions: [(
+                "computer.screen".to_owned(),
+                modbit_policy::Permission::Deny,
+            )]
+            .into_iter()
+            .collect(),
+            ..Default::default()
+        },
+    );
+    let cfg = modbit_policy::resolve(&layers);
+    let screen = caps(&["computer.act", "computer.screen"]);
+    let mut denied = req(
+        EffectClass::ExternalSideEffect,
+        &screen,
+        "local_trusted",
+        Some(&l),
+        None,
+    );
+    denied.config = Some(&cfg);
+    assert_eq!(code(&k.decide(&denied)), "CAPABILITY_DENIED_BY_CONFIG");
+}
+
+/// PX-070: a durable rule can never name a computer tool.
+#[test]
+fn no_allowlist_rule_can_name_a_computer_tool() {
+    for pattern in [
+        vec!["computer.press"],
+        vec!["computer"],
+        vec!["x", "computer.type"],
+        vec!["COMPUTER.CLICK"],
+    ] {
+        let r = rule("r", &pattern, RuleScope::Task, "t1");
+        let e = modbit_policy::runmode::validate_rule(&r).unwrap_err();
+        assert_eq!(
+            e.code,
+            modbit_policy::runmode::COMPUTER_NOT_ALLOWLISTABLE,
+            "{pattern:?}"
+        );
+    }
+    assert!(
+        modbit_policy::runmode::validate_rule(&rule(
+            "r",
+            &["cargo", "test"],
+            RuleScope::Task,
+            "t1"
+        ))
+        .is_ok()
+    );
+}

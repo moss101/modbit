@@ -1,0 +1,107 @@
+{
+  "display": {"x": 0, "y": 0, "width": 1920, "height": 1200},
+  "apps": [
+    {
+      "bundle_id": "org.example.fixture.form", "name": "Form App", "pid": 4101,
+      "executable_path": "/Applications/Fixture Form.app/Contents/MacOS/Form",
+      "signing_identity": "TEAM1:fixture-form",
+      "windows": [
+        {"id": "w-form", "title": "Order form", "bounds": {"x": 100, "y": 100, "width": 800, "height": 600},
+         "elements": [
+           {"id": "title", "role": "label", "name": "Order form", "bounds": {"x": 120, "y": 120, "width": 300, "height": 30}},
+           {"id": "name", "role": "textfield", "name": "Name", "value": "", "settable": true, "actions": ["focus"],
+            "bounds": {"x": 120, "y": 170, "width": 400, "height": 30},
+            "behaviors": {"enter": [{"op": "SetValue", "target": "status", "value": "name entered"}]}},
+           {"id": "qty", "role": "textfield", "name": "Quantity", "value": "1", "settable": true, "actions": ["focus"],
+            "bounds": {"x": 120, "y": 220, "width": 100, "height": 30}},
+           {"id": "submit", "role": "button", "name": "Submit", "actions": ["press"],
+            "bounds": {"x": 120, "y": 280, "width": 120, "height": 40},
+            "behaviors": {"press": [{"op": "SetValue", "target": "status", "value": "submitted"}, {"op": "OpenWindow", "window": "w-confirm"}]}},
+           {"id": "status", "role": "label", "name": "Status", "value": "idle", "bounds": {"x": 120, "y": 340, "width": 300, "height": 30}},
+           {"id": "crash", "role": "button", "name": "Crash after delivery", "actions": ["press"],
+            "bounds": {"x": 300, "y": 280, "width": 160, "height": 40},
+            "behaviors": {"press": [{"op": "SetValue", "target": "status", "value": "crashing"}, {"op": "AbortAfterDeliver"}]}},
+           {"id": "hang", "role": "button", "name": "Hang after delivery", "actions": ["press"],
+            "bounds": {"x": 480, "y": 280, "width": 160, "height": 40},
+            "behaviors": {"press": [{"op": "SetValue", "target": "status", "value": "hanging"}, {"op": "HangMs", "ms": 60000}]}},
+           {"id": "human", "role": "button", "name": "Simulate the person", "actions": ["press"],
+            "bounds": {"x": 660, "y": 280, "width": 160, "height": 40},
+            "behaviors": {"press": [{"op": "EmitHumanInput"}]}},
+           {"id": "lock", "role": "button", "name": "Lock the screen", "actions": ["press"],
+            "bounds": {"x": 660, "y": 340, "width": 160, "height": 40},
+            "behaviors": {"press": [{"op": "SecureDesktop", "on": true}]}},
+           {"id": "swap", "role": "button", "name": "Swap the application", "actions": ["press"],
+            "bounds": {"x": 480, "y": 340, "width": 160, "height": 40},
+            "behaviors": {"press": [{"op": "SwapIdentity", "bundle_id": "org.example.impostor", "signing_identity": "TEAM9:impostor"}]}},
+           {"id": "move", "role": "button", "name": "Move the window", "actions": ["press"],
+            "bounds": {"x": 300, "y": 340, "width": 160, "height": 40},
+            "behaviors": {"press": [{"op": "MoveWindow", "x": 140, "y": 130}]}}
+         ]},
+        {"id": "w-confirm", "title": "Confirm order", "hidden": true, "modal": true, "bounds": {"x": 250, "y": 250, "width": 400, "height": 200},
+         "elements": [
+           {"id": "msg", "role": "label", "name": "Place this order?", "bounds": {"x": 270, "y": 270, "width": 300, "height": 30}},
+           {"id": "ok", "role": "button", "name": "OK", "actions": ["press"], "bounds": {"x": 270, "y": 400, "width": 80, "height": 30},
+            "behaviors": {"press": [{"op": "CloseWindow", "window": "w-confirm"}]}}
+         ]}
+      ]
+    },
+    {
+      "bundle_id": "org.example.fixture.docs", "name": "Document App", "pid": 4102,
+      "executable_path": "/Applications/Fixture Docs.app/Contents/MacOS/Docs",
+      "signing_identity": "TEAM1:fixture-docs",
+      "windows": [
+        {"id": "w-doc", "title": "Notes", "bounds": {"x": 200, "y": 150, "width": 900, "height": 700},
+         "elements": [
+           {"id": "body", "role": "textarea", "name": "Document", "value": "", "settable": true, "focused": true, "actions": ["focus"],
+            "bounds": {"x": 210, "y": 200, "width": 880, "height": 300}},
+           {"id": "photo", "role": "image", "name": "Photo", "photo": true, "bounds": {"x": 210, "y": 520, "width": 880, "height": 300}},
+           {"id": "bold", "role": "button", "name": "Bold", "actions": ["press"], "bounds": {"x": 210, "y": 160, "width": 60, "height": 30},
+            "behaviors": {"press": [{"op": "SetValue", "target": "body", "value": "**bold**"}]}}
+         ]}
+      ]
+    },
+    {
+      "bundle_id": "org.example.fixture.login", "name": "Login App", "pid": 4103,
+      "executable_path": "/Applications/Fixture Login.app/Contents/MacOS/Login",
+      "signing_identity": "TEAM1:fixture-login",
+      "windows": [
+        {"id": "w-login", "title": "Sign in", "bounds": {"x": 300, "y": 200, "width": 600, "height": 400},
+         "elements": [
+           {"id": "user", "role": "textfield", "name": "Username", "value": "alice", "settable": true, "actions": ["focus"],
+            "bounds": {"x": 320, "y": 240, "width": 360, "height": 30}},
+           {"id": "pw", "role": "SecureTextField", "name": "Password", "value": "hunter2-correct-horse", "secure": true, "settable": true, "actions": ["focus"],
+            "bounds": {"x": 320, "y": 300, "width": 360, "height": 30}},
+           {"id": "pw2", "role": "textfield", "name": "Confirm password", "value": "hunter2-correct-horse", "settable": true, "actions": ["focus"],
+            "bounds": {"x": 320, "y": 350, "width": 360, "height": 30}},
+           {"id": "note", "role": "label", "name": "API key sk-live-ABCDEF0123456789ABCDEF0123456789 is shown here", "bounds": {"x": 320, "y": 400, "width": 400, "height": 30}},
+           {"id": "signin", "role": "button", "name": "Sign in", "actions": ["press"], "bounds": {"x": 320, "y": 450, "width": 100, "height": 30}}
+         ]}
+      ]
+    },
+    {
+      "bundle_id": "com.apple.keychainaccess", "name": "Keychain Access", "pid": 4104,
+      "executable_path": "/System/Applications/Utilities/Keychain Access.app/Contents/MacOS/Keychain Access",
+      "signing_identity": "apple",
+      "windows": [{"id": "w-kc", "title": "Keychain Access", "bounds": {"x": 50, "y": 50, "width": 500, "height": 400},
+                   "elements": [{"id": "list", "role": "list", "name": "Passwords", "bounds": {"x": 60, "y": 90, "width": 400, "height": 300}}]}]
+    },
+    {
+      "bundle_id": "com.apple.Terminal", "name": "Terminal", "pid": 4105,
+      "executable_path": "/System/Applications/Utilities/Terminal.app/Contents/MacOS/Terminal",
+      "signing_identity": "apple",
+      "windows": [{"id": "w-term", "title": "bash", "bounds": {"x": 60, "y": 60, "width": 600, "height": 400}, "elements": []}]
+    },
+    {
+      "bundle_id": "org.example.fixture.forms", "name": "Form App", "pid": 4106,
+      "executable_path": "/Applications/Fixture Forms Lookalike.app/Contents/MacOS/Forms",
+      "signing_identity": "TEAM2:lookalike",
+      "windows": [{"id": "w-look", "title": "Order form", "bounds": {"x": 100, "y": 100, "width": 800, "height": 600},
+                   "elements": [{"id": "submit", "role": "button", "name": "Submit", "actions": ["press"], "bounds": {"x": 120, "y": 280, "width": 120, "height": 40}}]}]
+    },
+    {
+      "bundle_id": "org.example.fixture.priv", "name": "Admin Tool", "pid": 4107, "elevated": true,
+      "executable_path": "/usr/local/bin/admin-tool", "signing_identity": "TEAM1:admin",
+      "windows": [{"id": "w-priv", "title": "Admin", "bounds": {"x": 70, "y": 70, "width": 300, "height": 200}, "elements": []}]
+    }
+  ]
+}
