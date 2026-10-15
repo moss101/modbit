@@ -14,20 +14,22 @@ jobs:
       fail-fast: false
       matrix:
         include:
-          - { name: preempt, spec: e2e/browser.spec.ts, grep: "human activity preemption", repeat: 20, hour: "no", old: "no" }
-          - { name: semantic, spec: e2e/browser-semantic.spec.ts, grep: "pages are classified", repeat: 10, hour: "no", old: "no" }
-          - { name: semantic-old-spec, spec: e2e/browser-semantic.spec.ts, grep: "pages are classified", repeat: 10, hour: "no", old: "yes" }
-          - { name: states, spec: e2e/states.spec.ts, grep: "screen states: provider down", repeat: 5, hour: "no", old: "no" }
-          - { name: states-at-hour-old-spec, spec: e2e/states.spec.ts, grep: "screen states: provider down", repeat: 1, hour: "yes", old: "yes" }
-          - { name: states-at-hour, spec: e2e/states.spec.ts, grep: "screen states: provider down", repeat: 1, hour: "yes", old: "no" }
+          - { name: suite-old-1, files: "PREFIX", grep: "", repeat: 3, hour: "no", arm: old }
+          - { name: suite-new-1, files: "PREFIX", grep: "", repeat: 3, hour: "no", arm: new }
+          - { name: suite-old-2, files: "PREFIX", grep: "", repeat: 3, hour: "no", arm: old }
+          - { name: suite-new-2, files: "PREFIX", grep: "", repeat: 3, hour: "no", arm: new }
+          - { name: browser-old, files: "BROWSER", grep: "", repeat: 5, hour: "no", arm: old }
+          - { name: browser-new, files: "BROWSER", grep: "", repeat: 5, hour: "no", arm: new }
+          - { name: states-at-hour-old, files: "e2e/states.spec.ts", grep: "screen states: provider down", repeat: 1, hour: "yes", arm: old }
+          - { name: states-at-hour-new, files: "e2e/states.spec.ts", grep: "screen states: provider down", repeat: 1, hour: "yes", arm: new }
     steps:
       - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
         with:
           fetch-depth: 0
-      - name: Use the spec as it stood on main (the "before" arm)
-        if: matrix.old == 'yes'
+      - name: The "old" arm runs the code and specs as they stood on main (7fcd48ad)
+        if: matrix.arm == 'old'
         shell: bash
-        run: git checkout 7fcd48ad -- apps/desktop/${{ matrix.spec }}
+        run: git checkout 7fcd48ad -- apps/desktop packages/ide-adapter-core/src
       - run: rustup show
       - uses: Swatinem/rust-cache@6323deb102c322ba6fcbdcafc7e3dddab59af2b6 # v2
       - uses: pnpm/action-setup@b906affcce14559ad1aafd4ab0e942779e9f58b1 # v4
@@ -53,7 +55,11 @@ jobs:
         run: |
           cd apps/desktop
           set +e
-          pnpm exec playwright test -c e2e/playwright.config.ts ${{ matrix.spec }} -g "${{ matrix.grep }}" --repeat-each ${{ matrix.repeat }} --workers 1 2>&1 | tee ../../stress.log
+          PREFIX="e2e/agent-workspace.spec.ts e2e/agents.spec.ts e2e/approvals.spec.ts e2e/apps-panel.spec.ts e2e/attention.spec.ts e2e/automations.spec.ts e2e/browser-feedback.spec.ts e2e/browser-hardening.spec.ts e2e/browser-observer.spec.ts e2e/browser-semantic.spec.ts e2e/browser.spec.ts"
+          BROWSER="e2e/browser-feedback.spec.ts e2e/browser-hardening.spec.ts e2e/browser-observer.spec.ts e2e/browser-semantic.spec.ts e2e/browser.spec.ts"
+          FILES="${{ matrix.files }}"; [ "$FILES" = PREFIX ] && FILES="$PREFIX"; [ "$FILES" = BROWSER ] && FILES="$BROWSER"
+          GREP=(); [ -n "${{ matrix.grep }}" ] && GREP=(-g "${{ matrix.grep }}")
+          pnpm exec playwright test -c e2e/playwright.config.ts $FILES "${GREP[@]}" --repeat-each ${{ matrix.repeat }} --workers 1 2>&1 | tee ../../stress.log
           echo "exit ${PIPESTATUS[0]}"
       - name: Summary
         if: always()
@@ -62,7 +68,7 @@ jobs:
           {
             echo "### ${{ matrix.name }}"
             echo '```'
-            grep -E "^\s+(✓|✘|x|ok) |passed|failed|modbit-client|Error occurred in handler|Expected:|Received:|preemption" stress.log | head -80
+            grep -E "^\s+(x) |passed|failed|flaky|modbit-client|Expected:|Received:|hand-over attempts|expected lease generation|host: |core: " stress.log | head -120
             echo '```'
           } >> "$GITHUB_STEP_SUMMARY"
       - name: Upload traces

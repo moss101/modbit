@@ -347,7 +347,7 @@ export function freshId(): Uint8Array {
 export const hex = (b: Uint8Array): string => Buffer.from(b).toString("hex");
 export const unhex = (s: string): Uint8Array => new Uint8Array(Buffer.from(s, "hex"));
 
-type Pending = { resolve: (a: CommandAck) => void; reject: (e: Error) => void };
+type Pending = { resolve: (a: CommandAck) => void; reject: (e: Error) => void; id: string; type: string };
 
 /** One authenticated connection to a Core. */
 export class CoreClient {
@@ -432,9 +432,9 @@ export class CoreClient {
   private dispatch(f: SurfaceFrame): void {
     switch (f.body.case) {
       case "commandAck": {
-        const p = this.pending.shift();
-        if (!p) return;
         const ack = f.body.value;
+        const p = this.takePending(ack);
+        if (!p) return;
         if (ack.status === CommandStatus.REJECTED) p.reject(new RejectedError(ack.errorCode, ack.errorMessage));
         else p.resolve(ack);
         return;
@@ -459,6 +459,24 @@ export class CoreClient {
     }
   }
 
+  /**
+   * The command an ack answers: the one it names (`command_id`), not merely the oldest. The Core answers in the order it read, but a
+   * client must not rest a result's type on that: an ack taken by the wrong command decodes as another message (a lease generation
+   * read from someone else's reply; a UTF-8 error in a string that was never one). An ack that names no pending command is not
+   * given to any; an ack without an id (none today) falls back to the oldest.
+   */
+  private takePending(ack: CommandAck): Pending | undefined {
+    const id = ack.commandId?.value && ack.commandId.value.length > 0 ? hex(ack.commandId.value) : "";
+    if (id === "") return this.pending.shift();
+    const at = this.pending.findIndex((p) => p.id === id);
+    if (at < 0) {
+      console.error(`modbit-client: an ack for command ${id.slice(0, 8)} matches no pending command (pending: ${this.pending.map((p) => p.type).join(", ") || "none"}); ignored`);
+      return undefined;
+    }
+    if (at > 0) console.error(`modbit-client: ack out of order: ${this.pending[at]!.type} answered while ${this.pending.slice(0, at).map((p) => p.type).join(", ")} still pending`);
+    return this.pending.splice(at, 1)[0];
+  }
+
   private fail(reason: string): void {
     if (this.closed) return;
     this.closed = true;
@@ -479,7 +497,7 @@ export class CoreClient {
     // `sessionId` names the session the caller acts in: the Core refuses a command on a task of another session (WRONG_SESSION).
     const envelope = create(CommandEnvelopeSchema, { commandId: { value: commandId }, commandType, schemaVersion: 1, payload, ...(expectedGeneration !== undefined ? { expectedGeneration } : {}), ...(sessionId ? { sessionId: { value: unhex(sessionId) } } : {}) });
     return new Promise((resolve, reject) => {
-      this.pending.push({ resolve, reject });
+      this.pending.push({ resolve, reject, id: hex(commandId), type: commandType });
       this.socket.write(encodeFrame({ body: { case: "command", value: envelope } }));
     });
   }
