@@ -95,6 +95,7 @@ async fn services(c: &mut Client, task: &Id, include_gone: bool) -> ProcessServi
 }
 
 async fn wait_services<F: Fn(&ProcessServiceList) -> bool>(
+    label: &str,
     c: &mut Client,
     task: &Id,
     secs: u64,
@@ -107,9 +108,18 @@ async fn wait_services<F: Fn(&ProcessServiceList) -> bool>(
         if done(&l) {
             return l;
         }
+        if std::time::Instant::now() >= deadline {
+            let ps = Command::new("ps")
+                .args(["-eo", "pid,ppid,pgid,sid,stat,args"])
+                .output()
+                .map(|o| String::from_utf8_lossy(&o.stdout).into_owned())
+                .unwrap_or_default();
+            eprintln!("process table at the failure:\n{ps}");
+        }
         assert!(
             std::time::Instant::now() < deadline,
-            "the service state never arrived: {l:#?}"
+            "the service state never arrived ({label}, include_gone={include_gone}), with gone included: {:#?}; without: {l:#?}",
+            services(c, task, true).await
         );
         tokio::time::sleep(Duration::from_millis(150)).await;
     }
@@ -278,13 +288,20 @@ async fn qual_px_132_three_dev_servers_are_reported_ready_and_the_agent_is_told_
         );
         tokio::time::sleep(Duration::from_millis(150)).await;
     };
-    wait_services(&mut c, &task, 60, false, |l| {
-        expected.iter().all(|(_, p)| {
-            l.services
-                .iter()
-                .any(|s| s.port == *p && s.state == "READY")
-        })
-    })
+    wait_services(
+        "before the agent is released",
+        &mut c,
+        &task,
+        60,
+        false,
+        |l| {
+            expected.iter().all(|(_, p)| {
+                l.services
+                    .iter()
+                    .any(|s| s.port == *p && s.state == "READY")
+            })
+        },
+    )
     .await;
     {
         let (open, cv) = &*gate;
@@ -292,7 +309,7 @@ async fn qual_px_132_three_dev_servers_are_reported_ready_and_the_agent_is_told_
         cv.notify_all();
     }
     run_to_end(&mut c, &task, 180).await;
-    let list = wait_services(&mut c, &task, 30, false, |l| {
+    let list = wait_services("after the task ended", &mut c, &task, 30, false, |l| {
         expected.iter().all(|(_, p)| {
             l.services
                 .iter()
@@ -428,7 +445,7 @@ async fn qual_px_132_a_server_that_returns_500_is_unhealthy_and_one_that_dies_is
     )
     .await;
     start_task(&mut c, &task, g, 0x43, "gpt-5-mini").await;
-    let listed = wait_services(&mut c, &task, 60, false, |l| !l.services.is_empty()).await;
+    let listed = wait_services("test", &mut c, &task, 60, false, |l| !l.services.is_empty()).await;
     let s = &listed.services[0];
     assert_eq!(s.state, "UNHEALTHY", "listening but answering 500: {s:?}");
     assert_eq!(s.http_status, 500);
@@ -454,7 +471,7 @@ async fn qual_px_132_a_server_that_returns_500_is_unhealthy_and_one_that_dies_is
             .unwrap()
             .success()
     );
-    let gone = wait_services(&mut c, &task, 30, true, |l| {
+    let gone = wait_services("test", &mut c, &task, 30, true, |l| {
         l.services
             .iter()
             .any(|s| s.port == port && s.state == "GONE")
@@ -526,7 +543,7 @@ async fn qual_px_132_a_restarted_core_reattaches_and_reobserves_without_repeatin
     .await;
     start_task(&mut c, &task, g, 0x53, "gpt-5-mini").await;
     run_to_end(&mut c, &task, 120).await;
-    let ready = wait_services(&mut c, &task, 30, false, |l| {
+    let ready = wait_services("test", &mut c, &task, 30, false, |l| {
         l.services.iter().any(|s| s.state == "READY")
     })
     .await;
@@ -544,7 +561,7 @@ async fn qual_px_132_a_restarted_core_reattaches_and_reobserves_without_repeatin
     let core2 = spawn(dir.path(), &base);
     let mut c2 = core2.client().await;
     // The read model survives the restart (it is folded from the log) ...
-    let again = wait_services(&mut c2, &task, 30, false, |l| {
+    let again = wait_services("test", &mut c2, &task, 30, false, |l| {
         l.services
             .iter()
             .any(|s| s.port == port && s.state == "READY")
@@ -567,7 +584,7 @@ async fn qual_px_132_a_restarted_core_reattaches_and_reobserves_without_repeatin
             .unwrap()
             .success()
     );
-    wait_services(&mut c2, &task, 30, true, |l| {
+    wait_services("test", &mut c2, &task, 30, true, |l| {
         l.services
             .iter()
             .any(|s| s.port == port && s.state == "GONE")
@@ -609,7 +626,7 @@ async fn qual_px_132_a_server_that_died_while_the_core_was_down_is_recorded_gone
     .await;
     start_task(&mut c, &task, g, 0x63, "gpt-5-mini").await;
     run_to_end(&mut c, &task, 120).await;
-    let ready = wait_services(&mut c, &task, 30, false, |l| {
+    let ready = wait_services("test", &mut c, &task, 30, false, |l| {
         l.services.iter().any(|s| s.state == "READY")
     })
     .await;
@@ -630,7 +647,7 @@ async fn qual_px_132_a_server_that_died_while_the_core_was_down_is_recorded_gone
     );
     let core2 = spawn(dir.path(), &base);
     let mut c2 = core2.client().await;
-    wait_services(&mut c2, &task, 30, true, |l| {
+    wait_services("test", &mut c2, &task, 30, true, |l| {
         l.services
             .iter()
             .any(|s| s.port == port && s.state == "GONE")

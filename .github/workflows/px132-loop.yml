@@ -1,0 +1,25 @@
+name: px132-loop
+on: workflow_dispatch
+jobs:
+  loop:
+    runs-on: ubuntu-latest
+    timeout-minutes: 120
+    steps:
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
+      - run: rustup show
+      - uses: Swatinem/rust-cache@6323deb102c322ba6fcbdcafc7e3dddab59af2b6 # v2
+      - uses: actions/setup-node@a0853c24544627f65ddf259abe73b1d18a591444 # v5
+        with:
+          node-version-file: .node-version
+      - run: cargo build --locked -p modbit-core -p modbit-execd && cargo test --locked -p modbit-core --test px_132_services --no-run
+      - name: loop
+        run: |
+          mkdir -p logs
+          for i in $(seq 1 30); do
+            cargo test --locked -p modbit-core --test px_132_services -- --nocapture > logs/run-$i.log 2>&1 && echo "run $i ok" || echo "run $i FAILED"
+          done
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: px132-logs
+          path: logs
