@@ -1118,3 +1118,61 @@ async fn fix_20_finished_sessions_are_retained_by_count_and_their_logs_are_delet
     };
     assert!(!s.replayed);
 }
+
+/// PX-099: a windowed attachment (the Core's relay of a terminal) replays a
+/// log made of tiny records in full-size chunks, not one frame per record: a
+/// catch-up of 25 MB written a line at a time was slower than the process
+/// that wrote it (the PX-099 flake). The bytes are the log's, in order; an
+/// unwindowed attachment still ends each chunk with its record.
+#[tokio::test]
+async fn px_099_windowed_replay_of_tiny_records_is_in_full_chunks_with_the_same_bytes() {
+    let dir = tempfile::tempdir().unwrap();
+    let execd = Execd::spawn(dir.path());
+    let mut a = execd.client().await;
+    a.exec(req("tiny", "tiny-lines", &[])).await.unwrap();
+    let (sid, out, _, _) = run_to_exit(&mut a).await;
+    let expected: Vec<u8> = (0..4000u32)
+        .flat_map(|i| format!("{i}\n").into_bytes())
+        .collect();
+    assert_eq!(out, expected);
+
+    async fn replay(execd: &Execd, sid: &str, window: u64) -> (Vec<u8>, usize) {
+        let mut c = execd.client().await;
+        c.attach_with(
+            sid,
+            0,
+            modbit_terminal::AttachOptions {
+                window_bytes: window,
+                stall_ms: 30_000,
+                ..Default::default()
+            },
+        )
+        .await
+        .unwrap();
+        let (mut bytes, mut frames) = (Vec::new(), 0usize);
+        loop {
+            match c.next().await.unwrap().expect("broker closed") {
+                Event::Output(o) => {
+                    assert_eq!(o.cursor, bytes.len() as u64, "no gap and no duplicate");
+                    bytes.extend_from_slice(&o.data);
+                    frames += 1;
+                }
+                Event::Exited(_) => return (bytes, frames),
+                _ => {}
+            }
+        }
+    }
+    let (plain, plain_frames) = replay(&execd, &sid, 0).await;
+    assert_eq!(plain, expected);
+    assert!(
+        plain_frames > 20,
+        "the premise: the log holds many small records (an unwindowed replay is {plain_frames} frames)"
+    );
+    let (windowed, windowed_frames) = replay(&execd, &sid, 4 * 1024 * 1024).await;
+    assert_eq!(windowed, expected, "the same bytes, in order");
+    assert_eq!(
+        windowed_frames,
+        expected.len().div_ceil(64 * 1024),
+        "full-size chunks (the unwindowed replay was {plain_frames} frames)"
+    );
+}
