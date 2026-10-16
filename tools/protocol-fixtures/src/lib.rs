@@ -2009,6 +2009,96 @@ pub fn samples() -> Vec<Sample> {
             }),
             decode: reencode::<ComputerRuntimeView>,
         },
+        // PX-074: the desktop surface's reads - presence with permissions, and the activity behind the cards.
+        Sample {
+            name: "computer_presence_view",
+            type_name: "modbit.v1.ComputerPresenceView",
+            bytes: ComputerPresenceView {
+                configured: true,
+                attached: true,
+                actuator_name: "modbit-actuator-fixture".into(),
+                actuator_version: "0.0.0".into(),
+                platform: "fixture".into(),
+                detail: String::new(),
+                permission_accessibility: "GRANTED".into(),
+                permission_screen_recording: "DENIED".into(),
+                control: vec![ComputerPresence {
+                    task_id: id(0x72),
+                    control_id: "c0123456789ab".into(),
+                    application: "Form App".into(),
+                    bundle_id: "org.example.fixture.form".into(),
+                    scope: "APP".into(),
+                    state: "CONTROLLING".into(),
+                    controller: "AGENT".into(),
+                    grant_expires_ms: 1_791_626_238_917,
+                    latch: String::new(),
+                    latch_tool_call_id: String::new(),
+                    actions: 2,
+                    screenshots: 1,
+                    observations: 4,
+                }],
+                non_drivable_version: "2026-10-10.1".into(),
+            }
+            .encode_to_vec(),
+            expected: json!({
+                "configured": true, "attached": true,
+                "actuatorName": "modbit-actuator-fixture", "actuatorVersion": "0.0.0",
+                "platform": "fixture", "detail": "", "permissionAccessibility": "GRANTED",
+                "permissionScreenRecording": "DENIED",
+                "control": [{
+                    "taskId": idhex(0x72), "controlId": "c0123456789ab", "application": "Form App",
+                    "bundleId": "org.example.fixture.form", "scope": "APP", "state": "CONTROLLING",
+                    "controller": "AGENT", "grantExpiresMs": "1791626238917",
+                    "latch": "", "latchToolCallId": "",
+                    "actions": 2, "screenshots": 1, "observations": 4
+                }],
+                "nonDrivableVersion": "2026-10-10.1"
+            }),
+            decode: reencode::<ComputerPresenceView>,
+        },
+        Sample {
+            name: "computer_activity_view",
+            type_name: "modbit.v1.ComputerActivityView",
+            bytes: ComputerActivityView {
+                entries: vec![ComputerActivityEntry {
+                    offset: 42,
+                    at_ms: 1_791_626_000_000,
+                    kind: "ACTION".into(),
+                    control_id: "c0123456789ab".into(),
+                    tool_call_id: "01a08f33-0d97-7d40-b299-f8a7bc5cda60".into(),
+                    approval_id: "01a08f33-0d97-7d40-b299-f8a7bc5cda61".into(),
+                    intent_hash: "a".repeat(64),
+                    bundle_id: "org.example.fixture.form".into(),
+                    application: "Form App".into(),
+                    scope: "APP".into(),
+                    detail: "press".into(),
+                    modality: "ax".into(),
+                    outcome: "SUCCEEDED".into(),
+                    duration_ms: 12,
+                    verified_known: true,
+                    verified: true,
+                    ..Default::default()
+                }],
+                truncated: false,
+            }
+            .encode_to_vec(),
+            expected: json!({
+                "entries": [{
+                    "offset": "42", "atMs": "1791626000000", "kind": "ACTION",
+                    "controlId": "c0123456789ab",
+                    "toolCallId": "01a08f33-0d97-7d40-b299-f8a7bc5cda60",
+                    "approvalId": "01a08f33-0d97-7d40-b299-f8a7bc5cda61",
+                    "intentHash": "a".repeat(64), "bundleId": "org.example.fixture.form",
+                    "application": "Form App", "scope": "APP", "detail": "press",
+                    "modality": "ax", "outcome": "SUCCEEDED", "code": "", "reason": "",
+                    "artifactRef": "", "artifactDigest": "", "artifactExpired": false,
+                    "elements": 0, "secureWithheld": 0, "maskedRegions": 0, "durationMs": "12",
+                    "verifiedKnown": true, "verified": true
+                }],
+                "truncated": false
+            }),
+            decode: reencode::<ComputerActivityView>,
+        },
         Sample {
             name: "resolve_computer_latch",
             type_name: "modbit.v1.ResolveComputerLatch",
@@ -2051,13 +2141,27 @@ pub fn samples() -> Vec<Sample> {
                 token_proof: "c".repeat(64),
                 capabilities: vec!["app_scope".into(), "screenshot".into()],
                 refusal: String::new(),
+                permissions: vec![
+                    PermissionState {
+                        permission: "accessibility".into(),
+                        granted: true,
+                    },
+                    PermissionState {
+                        permission: "screen_recording".into(),
+                        granted: false,
+                    },
+                ],
             }
             .encode_to_vec(),
             expected: json!({
                 "protocolMajor": 1, "protocolMinor": 0,
                 "actuatorName": "modbit-actuator-macos", "actuatorVersion": "1.0.0",
                 "pid": 777, "platform": "macos", "tokenProof": "c".repeat(64),
-                "capabilities": ["app_scope", "screenshot"], "refusal": ""
+                "capabilities": ["app_scope", "screenshot"], "refusal": "",
+                "permissions": [
+                    {"permission": "accessibility", "granted": true},
+                    {"permission": "screen_recording", "granted": false}
+                ]
             }),
             decode: reencode::<ActuatorWelcome>,
         },

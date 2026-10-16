@@ -7,7 +7,7 @@
  * still a typed preload call made by those screens.
  */
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { TrayHost, useEscapeLayers, useKeyDispatch, useKeyScope, type MenuItem } from "@modbit/ui";
+import { TrayHost, chordMatches, isMacPlatform, useEscapeLayers, useKeyDispatch, useKeyScope, type MenuItem } from "@modbit/ui";
 import type { KeyScope } from "@modbit/ui/logic";
 import { THEME_LABEL, THEME_PREFERENCES, type ThemePreference } from "@modbit/design-tokens";
 import type { AppState } from "../state/use-app.ts";
@@ -34,6 +34,10 @@ import { StatusRow } from "./status-row.tsx";
 import { ContextRing } from "../context/ring.tsx";
 import { TrayDirector } from "../context/tray-director.tsx";
 import { TopBar } from "./top-bar.tsx";
+import { PermissionsDialog } from "../computer/permissions-dialog.tsx";
+import { PresenceBar, STOP_CHORD, useComputerStop } from "../computer/presence-bar.tsx";
+import { holdsMachine, permissionsNeeded } from "../computer/model.ts";
+import { useComputerPresence } from "../computer/use-computer.ts";
 
 const LOCATION = "Local, trusted workspace";
 
@@ -70,6 +74,10 @@ export function Shell({ app }: { app: AppState }) {
   const [projectPage, setProjectPage] = useState<string | null>(null);
   const [worktreesOpen, setWorktreesOpen] = useState(false);
   const connected = core.state === "connected";
+  // PX-074: who holds the machine and which permissions the helper reports, as the Core says (nothing of it is kept here).
+  const presence = useComputerPresence(connected);
+  const computerStop = useComputerStop(model.sessionId, presence.refresh);
+  const [permissionsOpen, setPermissionsOpen] = useState(false);
   const projects = useProjects(connected);
   const worktrees = useWorktrees(connected && worktreesOpen);
   const [nowMs, setNowMs] = useState(() => Date.now());
@@ -81,6 +89,44 @@ export function Shell({ app }: { app: AppState }) {
   }, [worktreesOpen, worktrees.list]);
   useEscapeLayers();
   useKeyDispatch();
+
+  // Stop is never behind a dialog: this listener sits beside the key dispatcher and answers the chord even while a modal blocks the shell's other keys.
+  const controlsRef = useRef(presence.info?.controls ?? []);
+  controlsRef.current = presence.info?.controls ?? [];
+  const stopAllRef = useRef(computerStop.stopAll);
+  stopAllRef.current = computerStop.stopAll;
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent): void => {
+      if (e.defaultPrevented || !chordMatches(e, STOP_CHORD, isMacPlatform())) return;
+      if (!controlsRef.current.some(holdsMachine)) return;
+      e.preventDefault();
+      e.stopImmediatePropagation();
+      void stopAllRef.current(controlsRef.current);
+    };
+    window.addEventListener("keydown", onKey, true);
+    return () => window.removeEventListener("keydown", onKey, true);
+  }, []);
+
+  // CUC-E05: a call blocked by a missing permission routes the permission window once, in this (the root workspace) window only.
+  const routedPermissions = useRef(false);
+  const [blockedEpisodes, setBlockedEpisodes] = useState(0);
+  useEffect(() => {
+    const off = window.modbit.onEvent((raw) => {
+      const e = raw as { eventType?: string; payload?: { failure_code?: string } | null };
+      if (e.eventType === "ToolCallFailed" && e.payload?.failure_code === "PERMISSION_REQUIRED") setBlockedEpisodes((n) => n + 1);
+    });
+    return off;
+  }, []);
+  useEffect(() => {
+    if (blockedEpisodes === 0) return;
+    void presence.refresh();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [blockedEpisodes]);
+  useEffect(() => {
+    if (blockedEpisodes === 0 || routedPermissions.current || !permissionsNeeded(presence.info)) return;
+    routedPermissions.current = true;
+    setPermissionsOpen(true);
+  }, [blockedEpisodes, presence.info]);
 
   useEffect(() => saveUiPrefs(prefs), [prefs]);
   useEffect(() => applyTheme(prefs.theme), [prefs.theme]);
@@ -231,6 +277,9 @@ export function Shell({ app }: { app: AppState }) {
     zoom: (delta) => setPrefs((p) => ({ ...p, zoom: delta === 0 ? 1 : clampZoom(p.zoom + delta * ZOOM_STEP) })),
     zoomAvailability: () => (browsing ? "Zoom is unavailable while the browser view is open" : true),
     appAvailability,
+    stopComputer: () => void computerStop.stopAll(presence.info?.controls ?? []),
+    computerStopAvailability: () => ((presence.info?.controls ?? []).some(holdsMachine) ? true : "Nothing is controlling this computer"),
+    openComputerPermissions: () => setPermissionsOpen(true),
     canGoBack: () => reviewing !== null || browsing !== null || dashboardOpen || conversation !== null || automationsOpen || projectPage !== null || worktreesOpen,
   };
   const actionsRef = useRef(actions);
@@ -383,6 +432,16 @@ export function Shell({ app }: { app: AppState }) {
             list={rail ? undefined : <AgentList sessionId={model.sessionId} connected={core.state === "connected"} selectedTaskId={conversation?.taskId ?? null} onSelect={openConversation} projects={projects} selectedProjectId={projectPage} onOpenProject={openProject} onProjectArchived={(id, archived) => { if (archived && projectPage === id) setProjectPage(null); }} />}
           />
         )}
+        banner={
+          <PresenceBar
+            info={presence.info}
+            titleOf={(id) => model.tasks.get(id)?.goalText ?? "another task"}
+            onOpenTask={(id) => openConversation(id)}
+            onStop={(id) => void computerStop.stop(id)}
+            busy={computerStop.busy}
+            note={computerStop.note}
+          />
+        }
         topBar={
           <TopBar
             title={title}
@@ -449,6 +508,7 @@ export function Shell({ app }: { app: AppState }) {
         )}
       </ShellFrame>
       <TrayDirector core={{ state: core.state, reason: core.state === "restarting" || core.state === "failed" ? core.reason : "" }} sessionId={model.sessionId} taskId={conversation?.taskId ?? null} card={conversation ? model.tasks.get(conversation.taskId) : undefined} onResume={(id) => void startTask(id)} />
+      <PermissionsDialog open={permissionsOpen} onClose={() => setPermissionsOpen(false)} info={presence.info} refresh={presence.refresh} />
       <CommandPalette open={paletteOpen} items={paletteItems} onClose={() => setPaletteOpen(false)} announce={setNotice} />
       <ShortcutHelp open={helpOpen} onClose={() => setHelpOpen(false)} registry={shellRegistry} />
     </>

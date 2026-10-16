@@ -88,7 +88,16 @@ impl ComputerRuntime {
                     self.close_session(&id, "WINDOW_GONE", true).await;
                 }
             }
-            wire::actuator_event::Event::PermissionChanged(_) => {}
+            wire::actuator_event::Event::PermissionChanged(p) => {
+                // Only the connection that is attached speaks for the machine.
+                if epoch == self.epoch_now() {
+                    let mut g = self.shared.perms.lock().unwrap_or_else(|e| e.into_inner());
+                    if g.0 != epoch {
+                        *g = (epoch, std::collections::BTreeMap::new());
+                    }
+                    g.1.insert(p.permission, p.granted);
+                }
+            }
         }
     }
 

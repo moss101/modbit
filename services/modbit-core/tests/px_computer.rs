@@ -3241,3 +3241,114 @@ async fn qual_px_075_the_child_resumes_by_identity_after_a_restart_and_needs_a_n
     assert_eq!(env["status"], "COMPLETED", "{env}");
     assert_eq!(env["child_task_id"], child_task);
 }
+
+impl Rig {
+    async fn presence(&self) -> modbit_protocol::v1::ComputerPresenceView {
+        use modbit_protocol::v1::GetComputerPresence;
+        let mut c = self.core.client().await;
+        let ack = c
+            .command(envelope(
+                rand_id(),
+                "GetComputerPresence",
+                GetComputerPresence {}.encode_to_vec(),
+            ))
+            .await
+            .unwrap();
+        Client::result(&ack).unwrap()
+    }
+}
+
+/// QUAL-PX-074 (CUC-H01, CUC-D05): presence names who holds the machine and where, a Stop turns it
+/// into the sticky USER_ABORTED state, and the task's activity lists its computer events with the
+/// application each belongs to - all read from the Core, none kept by the desktop.
+#[tokio::test(flavor = "multi_thread")]
+async fn qual_px_074_presence_follows_the_core_and_the_activity_lists_the_task_events() {
+    use modbit_protocol::v1::{ComputerActivityView, ComputerStop, ListComputerActivity};
+    let steps = vec![
+        start(FORM),
+        fx(call("computer.state", json!({}))),
+        st(|s| {
+            call(
+                "computer.press",
+                json!({"element": s.el("Hang after delivery")}),
+            )
+        }),
+        fx(call("computer.state", json!({}))),
+    ];
+    let mut rig = run(Opts::default(), steps, approve_all()).await;
+    when_in_flight(rig.approvals.clone(), "computer.press").await;
+    let held = rig.presence().await;
+    assert!(held.attached && held.configured, "{held:?}");
+    assert_eq!(held.permission_accessibility, "GRANTED");
+    assert_eq!(held.permission_screen_recording, "GRANTED");
+    assert_eq!(held.control.len(), 1, "{held:?}");
+    let c = &held.control[0];
+    assert_eq!(c.state, "CONTROLLING");
+    assert_eq!(c.application, "Form App");
+    assert_eq!(c.scope, "APP");
+    assert_eq!(c.task_id.as_ref().unwrap().value, rig.task.value);
+    rig.side_command(
+        "ComputerStop",
+        ComputerStop {
+            task_id: Some(rig.task.clone()),
+            reason: "on-screen Stop".into(),
+        }
+        .encode_to_vec(),
+    )
+    .await
+    .unwrap();
+    let stopped = rig.presence().await;
+    assert!(
+        stopped.control.iter().all(|c| c.state != "CONTROLLING"),
+        "{stopped:?}"
+    );
+    rig.finish().await;
+    let ack = rig
+        .side_command(
+            "ListComputerActivity",
+            ListComputerActivity {
+                task_id: Some(rig.task.clone()),
+            }
+            .encode_to_vec(),
+        )
+        .await
+        .unwrap();
+    let a: ComputerActivityView = Client::result(&ack).unwrap();
+    let kinds: Vec<&str> = a.entries.iter().map(|e| e.kind.as_str()).collect();
+    assert_eq!(kinds.first(), Some(&"SESSION_STARTED"), "{kinds:?}");
+    assert!(
+        kinds.contains(&"OBSERVED") && kinds.contains(&"USER_ABORTED"),
+        "{kinds:?}"
+    );
+    let started = &a.entries[0];
+    assert_eq!(started.bundle_id, FORM);
+    assert_eq!(started.application, "Form App");
+    assert!(!started.approval_id.is_empty() && started.intent_hash.len() == 64);
+    let observed = a.entries.iter().find(|e| e.kind == "OBSERVED").unwrap();
+    assert_eq!(
+        observed.bundle_id, FORM,
+        "an observation belongs to its session's application"
+    );
+    assert!(observed.elements > 0);
+}
+
+/// QUAL-PX-074 (CUC-E05): the permissions the actuator reports are shown as it reports them; a
+/// desktop without its permissions is DENIED, never granted by default.
+#[tokio::test(flavor = "multi_thread")]
+async fn qual_px_074_presence_reports_a_missing_permission_as_denied() {
+    let rig = setup(
+        Opts {
+            desktop: Some(json!({"apps": [], "faults": {"permission_missing": true}})),
+            declare: false,
+            ..Opts::default()
+        },
+        vec![],
+        approve_all(),
+    )
+    .await;
+    let p = rig.presence().await;
+    assert!(p.attached, "{p:?}");
+    assert_eq!(p.permission_accessibility, "DENIED");
+    assert_eq!(p.permission_screen_recording, "DENIED");
+    assert!(p.control.is_empty());
+}

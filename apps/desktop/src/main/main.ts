@@ -5,7 +5,7 @@
  * preload bridge. The renderer gets durable ids and Core events; it never gets
  * the socket, the secret, Node, or the filesystem.
  */
-import { app, BrowserWindow, dialog, ipcMain, nativeImage, Notification, safeStorage, session, type IpcMainInvokeEvent } from "electron";
+import { app, BrowserWindow, dialog, ipcMain, nativeImage, Notification, safeStorage, session, shell, type IpcMainInvokeEvent } from "electron";
 import { existsSync, mkdirSync, readFileSync, statSync, writeFileSync } from "node:fs";
 import { join, resolve } from "node:path";
 import { CoreSupervisor, freshId, type CoreClient, type CoreStatus } from "@modbit/ide-adapter-core";
@@ -17,6 +17,7 @@ import { observeStreamEvent, registerConversationHandlers } from "./conversation
 import { registerComposerHandlers, requireSkillNames } from "./composer-ipc.js";
 import { registerProjectHandlers } from "./project-ipc.js";
 import { registerControlHandlers } from "./control-ipc.js";
+import { openedSettings, registerComputerHandlers } from "./computer-ipc.js";
 import { registerAutomationHandlers } from "./automation-ipc.js";
 import { optionalWindow, requireBool, requireCursor, requireDimension, requireHandle, requireKeystrokes, requireWorkspacePath } from "./apps-args.js";
 import { noWork, quitPrompt, runShutdown, WINDOW_DEFAULT, WINDOW_MIN, type ActiveWork, type ShutdownStep } from "./lifecycle.js";
@@ -811,6 +812,34 @@ registerComposerHandlers({
 });
 // REQ-PX-057 / 058 / 060 / 062: the approval stack, run modes and allowlist rules, the context ring's accounting and the checkpoint surface.
 registerControlHandlers(conversationRegistrar);
+// PX-074: native computer control's desktop surface (presence, the permission window, Stop, the action cards). No capture and
+// no input API lives in this process: the actuator is the Core's, and Stop is the Core's `ComputerStop`.
+registerComputerHandlers(conversationRegistrar, {
+  openExternal: (url) => shell.openExternal(url),
+  suppressOpen: process.env.MODBIT_SUPPRESS_OPEN_SETTINGS === "1",
+  platform: process.platform,
+  thumbnail: (bytes, maxWidth) => {
+    try {
+      const img = nativeImage.createFromBuffer(Buffer.from(bytes));
+      if (img.isEmpty()) return null;
+      const { width, height } = img.getSize();
+      const t = width > maxWidth ? img.resize({ width: maxWidth, quality: "good" }) : img;
+      const sz = t.getSize();
+      return { dataUrl: t.toDataURL(), width: sz.width || width, height: sz.height || height };
+    } catch {
+      return null;
+    }
+  },
+  size: (bytes) => {
+    try {
+      const img = nativeImage.createFromBuffer(Buffer.from(bytes));
+      return img.isEmpty() ? null : img.getSize();
+    } catch {
+      return null;
+    }
+  },
+});
+handle("debug:openedSettings", () => openedSettings.slice());
 // REQ-PX-086: the automations surface (definitions, the enable approval, test and manual runs, history, pause and kill).
 registerAutomationHandlers(conversationRegistrar);
 // REQ-PX-048 (the apps panel): the Terminal, Files and Evidence apps. Every

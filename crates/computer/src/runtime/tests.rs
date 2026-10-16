@@ -182,6 +182,7 @@ fn fake(
                 pid: 1,
                 platform: "fake".into(),
                 capabilities: vec![],
+                permissions: vec![],
             },
             handler,
             delay: Duration::from_millis(delay_ms),

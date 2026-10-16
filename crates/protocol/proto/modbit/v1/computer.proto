@@ -84,7 +84,14 @@ message ActuatorWelcome {
   // "secure_field_masking", "human_input_detection", "stop_overlay".
   repeated string capabilities = 8;
   string refusal = 9;            // non-empty: the actuator refuses this Core (version, parent, ...)
+  // The operating-system permissions the actuator holds right now (PX-074):
+  // "accessibility" and "screen_recording". A change later is pushed as
+  // `PermissionChanged`. An actuator that cannot tell leaves a permission out
+  // and the Core shows it as UNKNOWN, never as granted.
+  repeated PermissionState permissions = 10;
 }
+
+message PermissionState { string permission = 1; bool granted = 2; }
 
 message ActuatorRequest {
   uint64 request_id = 1;         // unique per connection, chosen by the Core
@@ -158,6 +165,7 @@ message ActuatorEvent {
 message HumanInput { uint64 at_ms = 1; string kind = 2; }
 message StopRequested { string source = 1; string control_id = 2; }
 message WindowGone { string control_id = 1; string window_id = 2; }
+// `permission` is "accessibility" or "screen_recording" (see `ActuatorWelcome.permissions`).
 message PermissionChanged { string permission = 1; bool granted = 2; }
 
 // ----- identity and geometry -----
@@ -423,3 +431,91 @@ message ComputerLatchResolved { bool was_latched = 1; }
 // stop is sticky for the rest of the run (USER_ABORTED).
 message ComputerStop { Id task_id = 1; string reason = 2; }
 message ComputerStopped { uint32 sessions_closed = 1; bool actuator_stopped = 2; }
+
+// ---------------------------------------------------------------------------
+// 3. The desktop surface (PX-074): presence, permissions and the activity
+//    behind the action cards. Reads of the Core's own state; the desktop
+//    keeps none of it (docs/66 CUC-E05, CUC-H01).
+// ---------------------------------------------------------------------------
+
+// What every window shows: whether the machine is controlled and by which
+// task, the operating-system permissions the actuator reports, and the
+// actuator itself. Not task-scoped: the permission window and the presence
+// indicator read it without naming a task.
+message GetComputerPresence {}
+
+message ComputerPresenceView {
+  bool configured = 1;
+  bool attached = 2;
+  string actuator_name = 3;
+  string actuator_version = 4;
+  string platform = 5;
+  string detail = 6;             // why it is not attached, when it is not
+  // "GRANTED" | "DENIED" | "UNKNOWN" (no actuator attached, or it did not say).
+  string permission_accessibility = 7;
+  string permission_screen_recording = 8;
+  // One entry per task that holds, or has just lost, the machine; empty
+  // when nothing controls it.
+  repeated ComputerPresence control = 10;
+  string non_drivable_version = 11;
+}
+
+message ComputerPresence {
+  Id task_id = 1;
+  string control_id = 2;         // "" when no session is open (a stop or a latch outlives the session)
+  string application = 3;        // display name (an untrusted label)
+  string bundle_id = 4;
+  string scope = 5;              // APP | SCREEN
+  // CONTROLLING (the agent holds it) | PARKED (the person touched the machine)
+  // | STOPPED | USER_ABORTED (the person pressed Stop: sticky until the next
+  // turn) | LATCHED (an input's outcome is unknown).
+  string state = 6;
+  string controller = 7;         // AGENT | PARKED | STOPPED | "" (no session)
+  int64 grant_expires_ms = 8;
+  string latch = 9;              // "<tool> <action>: <reason>" or ""
+  string latch_tool_call_id = 10;
+  uint32 actions = 11;
+  uint32 screenshots = 12;
+  uint32 observations = 13;
+}
+
+// The task's computer activity, in order, from the log: counts, kinds and
+// artifact references only (CUC-F03). The desktop joins each entry with the
+// approval that bound it and the tool call's own record.
+message ListComputerActivity { Id task_id = 1; }
+
+message ComputerActivityView {
+  repeated ComputerActivityEntry entries = 1;
+  bool truncated = 2;            // only the newest entries are returned
+}
+
+message ComputerActivityEntry {
+  uint64 offset = 1;
+  int64 at_ms = 2;
+  // SESSION_STARTED | OBSERVED | ACTION | LATCHED | LATCH_RESOLVED |
+  // SESSION_CLOSED | USER_ABORTED
+  string kind = 3;
+  string control_id = 4;
+  string tool_call_id = 5;
+  string approval_id = 6;
+  string intent_hash = 7;
+  string bundle_id = 8;
+  string application = 9;        // untrusted label, as the session recorded it
+  string scope = 10;
+  // OBSERVED: apps | resolve | state | screenshot | wait. ACTION: press |
+  // set_value | click | move | drag | type | key | scroll.
+  string detail = 11;
+  string modality = 12;          // ACTION: ax | coordinate | raw
+  string outcome = 13;           // ACTION: SUCCEEDED | FAILED | UNKNOWN; SESSION_CLOSED: OK | LATCHED | STOPPED
+  string code = 14;              // the typed refusal, when one
+  string reason = 15;            // SESSION_CLOSED / LATCHED / USER_ABORTED: why
+  string artifact_ref = 16;      // OBSERVED screenshot: the masked frame in the object store
+  string artifact_digest = 17;
+  bool artifact_expired = 18;    // the retention window removed the pixels; the record stays
+  uint32 elements = 19;          // OBSERVED state: elements in the tree
+  uint32 secure_withheld = 20;   // secure fields whose values were withheld
+  uint32 masked_regions = 21;    // secure regions masked before the frame was kept
+  uint64 duration_ms = 22;
+  bool verified_known = 23;      // ACTION: whether the effect was checked afterwards
+  bool verified = 24;
+}
