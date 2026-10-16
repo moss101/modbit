@@ -1,5 +1,8 @@
 name: px132-loop
-on: workflow_dispatch
+on:
+  push:
+    branches: [wave6/px132-empty]
+  workflow_dispatch
 jobs:
   loop:
     runs-on: ubuntu-latest
