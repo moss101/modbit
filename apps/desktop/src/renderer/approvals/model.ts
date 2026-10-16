@@ -86,6 +86,8 @@ export function defaultPrefix(argv: readonly string[]): string[] {
 
 /** Whether "always allow this prefix" is offered for the card, and if not, why (the Core still validates any rule that is made). */
 export function alwaysAvailable(a: DockApprovalView): { ok: true } | { ok: false; why: string } {
+  // PX-074 / docs/66 CUC-C01: native control is approved one call at a time. No rule, prefix or run mode covers it.
+  if (a.computer || a.toolName.startsWith("computer.")) return { ok: false, why: "Native computer control is approved one call at a time. No rule and no run mode covers it." };
   if (!a.intent.argv || a.intent.argv.length === 0) return { ok: false, why: "Only a command with an argument list can be allowed by prefix." };
   if (a.reason.askClasses.length > 0 || a.reason.code.startsWith("ALWAYS_ASK:")) return { ok: false, why: "This kind of effect always asks. A rule that covers it is made in the run-mode settings, on purpose." };
   if (isIrreversible(a.effectClass)) return { ok: false, why: "An effect that cannot be undone is never allowed by a rule from this card." };

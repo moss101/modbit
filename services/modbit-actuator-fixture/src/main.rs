@@ -39,15 +39,15 @@ fn proof(token: &[u8]) -> String {
 async fn main() {
     let mut desktop_path: Option<String> = None;
     let mut pid_file: Option<String> = None;
-    let mut delivered_file: Option<String> = None;
+    let mut permissions_file: Option<String> = None;
+    let mut hang_marker: Option<String> = None;
     let mut args = std::env::args().skip(1);
     while let Some(a) = args.next() {
         match a.as_str() {
             "--desktop" => desktop_path = args.next(),
             "--pid-file" => pid_file = args.next(),
-            // A file the fixture writes once an input has been applied and is about to
-            // stall or die (the test's signal that the input is in flight).
-            "--delivered-file" => delivered_file = args.next(),
+            "--permissions-file" => permissions_file = args.next(),
+            "--hang-marker" => hang_marker = args.next(),
             other => {
                 eprintln!("modbit-actuator-fixture: unknown argument {other}");
                 std::process::exit(2);
@@ -71,6 +71,10 @@ async fn main() {
         let _ = std::fs::write(p, std::process::id().to_string());
     }
 
+    let perms0 = rpc::initial_permissions(
+        &desktop,
+        permissions_file.as_deref().map(std::path::Path::new),
+    );
     let mut stdin = tokio::io::stdin();
     let mut stdout = tokio::io::stdout();
 
@@ -118,6 +122,16 @@ async fn main() {
                 "stop_overlay".into(),
             ],
             refusal: refusal.clone(),
+            permissions: vec![
+                wire::PermissionState {
+                    permission: "accessibility".into(),
+                    granted: perms0.accessibility,
+                },
+                wire::PermissionState {
+                    permission: "screen_recording".into(),
+                    granted: perms0.screen_recording,
+                },
+            ],
         })),
     };
     if write_message(&mut stdout, &welcome).await.is_err() || !refusal.is_empty() {
@@ -134,8 +148,13 @@ async fn main() {
         }
     });
 
-    let state = Arc::new(Mutex::new(rpc::State::new(desktop, delivered_file)));
+    let mut st0 = rpc::State::new(desktop, perms0);
+    st0.hang_marker = hang_marker.map(Into::into);
+    let state = Arc::new(Mutex::new(st0));
     rpc::spawn_lease_watchdog(Arc::clone(&state));
+    if let Some(p) = permissions_file {
+        rpc::spawn_permission_watcher(Arc::clone(&state), tx.clone(), p.into());
+    }
 
     // The Core is gone when the stream ends: stop injecting and leave (CUC-D05).
     while let Ok(Some(frame)) = read_message::<_, wire::ActuatorFrame>(&mut stdin).await {

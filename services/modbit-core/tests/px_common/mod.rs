@@ -434,10 +434,13 @@ pub async fn scripted_model_fn(reply_fn: Reply) -> (String, Seen) {
                 let reply = reply_fn(&body, results);
                 seen.lock().unwrap().push(body);
                 // A reply may wait on the test: `{"wait_file": path, ...}` is held until
-                // that file exists (at most 180 s, a ceiling for a loaded Windows runner; the wait
-                // ends the moment the file does), so ordering is by event, not by sleep.
+                // that file exists (at most 180 s, or `wait_file_secs`; a ceiling for a loaded Windows runner), so ordering is by
+                // event, not by sleep. The wait is asynchronous: a reply function that
+                // blocks the thread (a Condvar, a sleep) would pin a worker of the test's
+                // own runtime and starve the test body that has to release it.
                 if let Some(path) = reply["wait_file"].as_str() {
-                    for _ in 0..1800 {
+                    let tries = reply["wait_file_secs"].as_u64().unwrap_or(180) * 10;
+                    for _ in 0..tries {
                         if std::path::Path::new(path).exists() {
                             break;
                         }
