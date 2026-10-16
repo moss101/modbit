@@ -212,7 +212,7 @@ jobs:
           cache: pnpm
       - run: pnpm install --frozen-lockfile
       - name: Build the real Core
-        run: cargo build --locked -p modbit-core -p modbit-execd -p modbit-cli
+        run: cargo build --locked -p modbit-core -p modbit-execd -p modbit-cli -p modbit-actuator-fixture
       - name: Build desktop bundles
         run: pnpm --filter @modbit/desktop build
       - name: Warm the Electron binary (a cold download inside the test budget stalls macOS runners)

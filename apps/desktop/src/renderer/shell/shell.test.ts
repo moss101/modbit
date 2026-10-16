@@ -142,6 +142,7 @@ test("AFW-A16: every registered command runs its action, and an unavailable one 
       if (name === "zoomAvailability") return () => true;
       if (name === "appAvailability") return () => true;
       if (name === "canGoBack") return () => true;
+      if (name === "computerStopAvailability") return () => true;
       if (name === "showApp") return (k: string) => (calls.push(`showApp:${k}`), true);
       return (...args: unknown[]) => void calls.push(`${name}${args.length ? `:${args.join(",")}` : ""}`);
     },

@@ -14,5 +14,6 @@ export * from "./control.ts";
 export * from "./automations.ts";
 export * from "./projects.ts";
 export * from "./mode-proposals.ts";
+export * from "./computer.ts";
 export * from "./supervisor.ts";
 export * from "./conformance.ts";

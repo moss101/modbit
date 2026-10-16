@@ -457,6 +457,21 @@ mod unix {
         }
     }
 
+    /// The stop condition of the catch-up reads: a stream cut between the
+    /// last number and its line feed (a frame boundary can fall there) is
+    /// not the whole output, with or without the PTY's carriage return.
+    #[test]
+    fn a_stream_is_complete_only_once_the_last_line_is_whole() {
+        assert!(!printed_line(b"2999999\r\n3000000", "3000000"));
+        assert!(!printed_line(b"2999999\r\n3000000\r", "3000000"));
+        assert!(printed_line(b"2999999\r\n3000000\r\n", "3000000"));
+        assert!(printed_line(b"2999999\n3000000\n", "3000000"));
+        assert!(!printed_line(b"3000000\n3", "3000000"));
+        assert!(!printed_line(b"", "3000000"));
+        // The old stop condition took the cut stream for the whole.
+        assert!(has(b"2999999\r\n3000000", "3000000"));
+    }
+
     /// What `seq 1 n` prints, line feeds only; a PTY may add carriage returns
     /// of its own to what a process wrote, so the stream is compared to this
     /// with them removed and to the broker's own log byte for byte.
@@ -464,6 +479,58 @@ mod unix {
         (1..=n)
             .flat_map(|i| format!("{i}\n").into_bytes())
             .collect()
+    }
+
+    /// Where `got` first departs from `want`, and whether the difference is a
+    /// truncation, a duplicate, a gap or something else, with the bytes around
+    /// it (what a failing assertion prints).
+    fn first_difference(got: &[u8], want: &[u8]) -> String {
+        let at = got.iter().zip(want).position(|(a, b)| a != b);
+        let Some(at) = at else {
+            return if got.len() < want.len() {
+                format!(
+                    "truncated: got {} bytes, want {}; the stream ends …{:?}, the next wanted bytes are {:?}",
+                    got.len(),
+                    want.len(),
+                    String::from_utf8_lossy(&got[got.len().saturating_sub(24)..]),
+                    String::from_utf8_lossy(&want[got.len()..want.len().min(got.len() + 24)])
+                )
+            } else {
+                format!(
+                    "extra bytes: got {} bytes, want {}; past the end {:?}",
+                    got.len(),
+                    want.len(),
+                    String::from_utf8_lossy(&got[want.len()..got.len().min(want.len() + 24)])
+                )
+            };
+        };
+        let window = |b: &[u8]| {
+            String::from_utf8_lossy(&b[at.saturating_sub(16)..b.len().min(at + 16)]).into_owned()
+        };
+        // A duplicate repeats what was just before the difference; a gap
+        // skips ahead in the wanted bytes.
+        let kind = if want[at..].starts_with(&got[at..got.len().min(at + 8)]) {
+            "same bytes"
+        } else if got[at..].starts_with(&want[at.saturating_sub(8)..at]) {
+            "a duplicate (the stream repeats earlier bytes)"
+        } else if want[at..].len() > 8
+            && got[at..got.len().min(at + 8)].len() == 8
+            && want[at..]
+                .windows(8)
+                .take(1 << 16)
+                .any(|w| w == &got[at..at + 8])
+        {
+            "a gap (the stream skips ahead)"
+        } else {
+            "a reorder or corruption"
+        };
+        format!(
+            "first difference at offset {at} of {} (want {}): {kind}; got …{:?}… want …{:?}…",
+            got.len(),
+            want.len(),
+            window(got),
+            window(want)
+        )
     }
 
     fn without_cr(bytes: &[u8]) -> Vec<u8> {
@@ -494,6 +561,17 @@ mod unix {
         }
         out.truncate(len);
         out
+    }
+
+    /// Whether the stream ends with the complete line `line` (its line feed
+    /// included, a PTY's carriage return ignored). A frame boundary can fall
+    /// between the last digit and the line feed, so "the tail contains the
+    /// last number" is true before the line is whole: a stream stopped there
+    /// is one byte short of what the command printed (the flake behind
+    /// PX-099's "and the command's output, in order").
+    fn printed_line(bytes: &[u8], line: &str) -> bool {
+        let tail = &bytes[bytes.len().saturating_sub(line.len() + 8)..];
+        without_cr(tail).ends_with(format!("{line}\n").as_bytes())
     }
 
     fn has(bytes: &[u8], needle: &str) -> bool {
@@ -1398,7 +1476,7 @@ mod unix {
             &mut rest_cursor,
             &mut rest,
             Some(4096),
-            |b| has(&b[b.len().saturating_sub(24)..], &last),
+            |b| printed_line(b, &last),
         )
         .await;
         assert!(matches!(stop, Stop::Satisfied), "{stop:?}");
@@ -1554,7 +1632,7 @@ mod unix {
             &mut cursor,
             &mut got,
             Some(64 * 1024),
-            |b| has(&b[b.len().saturating_sub(24)..], &last),
+            |b| printed_line(b, &last),
         )
         .await;
         eprintln!("px_099 slow client: caught up at {:?}", t0.elapsed());
@@ -1569,7 +1647,8 @@ mod unix {
         );
         assert!(
             without_cr(&got) == seq_lf(n),
-            "and the command's output, in order"
+            "and the command's output, in order: {}",
+            first_difference(&without_cr(&got), &seq_lf(n))
         );
         let r = invoke(
             &mut c,

@@ -304,6 +304,40 @@ pub fn read_at(
     cursor: u64,
     max: usize,
 ) -> std::io::Result<ReadOutcome> {
+    read(dir, id, segments, high, cursor, max, false)
+}
+
+/// As [`read_at`], but the chunk runs on through the records that follow the
+/// one holding `cursor` while they carry the same tag and are contiguous, up
+/// to `max` bytes. A PTY records one piece per read and a process that writes
+/// a line at a time makes pieces of a few bytes: replaying them one record
+/// per chunk costs a frame, two file opens and an index search per record,
+/// which is what made a catch-up from the log slower than the process that
+/// wrote it. The bytes and their order are the log's; only the chunk
+/// boundaries differ.
+pub fn read_run(
+    dir: &Path,
+    id: &str,
+    segments: &[Segment],
+    high: u64,
+    cursor: u64,
+    max: usize,
+) -> std::io::Result<ReadOutcome> {
+    read(dir, id, segments, high, cursor, max, true)
+}
+
+/// The index entries read per round trip while a chunk is extended.
+const RUN_BATCH: u64 = 1024;
+
+fn read(
+    dir: &Path,
+    id: &str,
+    segments: &[Segment],
+    high: u64,
+    cursor: u64,
+    max: usize,
+    coalesce: bool,
+) -> std::io::Result<ReadOutcome> {
     let Some(first) = segments.first() else {
         return Ok(ReadOutcome::End);
     };
@@ -344,7 +378,30 @@ pub fn read_at(
             (tag, end)
         }
     };
-    let stop = record_end.min(limit).min(cursor.saturating_add(max as u64));
+    let want_end = limit.min(cursor.saturating_add(max as u64));
+    let mut record_end = record_end;
+    if coalesce && lo > 0 {
+        let mut next = lo;
+        'run: while record_end < want_end && next < count {
+            let take = RUN_BATCH.min(count - next);
+            let mut raw = vec![0u8; (take * ENTRY) as usize];
+            idx.seek(SeekFrom::Start(next * ENTRY))?;
+            idx.read_exact(&mut raw)?;
+            for e in raw.chunks_exact(ENTRY as usize) {
+                let off = u64::from_be_bytes(e[..8].try_into().expect("8 bytes"));
+                let len = u32::from_be_bytes(e[9..].try_into().expect("4 bytes"));
+                if e[8] != tag || off != record_end {
+                    break 'run;
+                }
+                record_end = off + u64::from(len);
+                if record_end >= want_end {
+                    break 'run;
+                }
+            }
+            next += take;
+        }
+    }
+    let stop = record_end.min(want_end);
     let mut log = File::open(data_path(dir, id, seg.base))?;
     log.seek(SeekFrom::Start(cursor - seg.base))?;
     let mut data = vec![0u8; (stop - cursor) as usize];
@@ -546,6 +603,75 @@ mod tests {
         let object = std::fs::read(root.join(&sealed.hash[..2]).join(&sealed.hash[2..])).unwrap();
         assert_eq!(object, model.bytes[log.oldest() as usize..high as usize]);
         assert_eq!(hex::encode(Sha256::digest(&object)), sealed.hash);
+    }
+
+    /// A PTY records one piece per read, and a process writing a line at a
+    /// time makes pieces of a few bytes. Replaying them must not cost a chunk
+    /// (a frame, two file opens, an index search) per piece: a chunk runs on
+    /// through the records after its first while they share a tag, ends where
+    /// the tag changes and at `max`, and the bytes are the log's, in order.
+    #[test]
+    fn read_run_replays_tiny_records_in_full_chunks() {
+        let dir = tempfile::tempdir().unwrap();
+        let mut log = SegLog::create(dir.path(), "r", 1 << 30, 1 << 30).unwrap();
+        let mut model = Vec::new();
+        let mut tags = Vec::new();
+        for i in 0..100_000u32 {
+            let data = format!("{i}\n").into_bytes();
+            // A stderr record every 5000 pieces splits the run.
+            let tag = if i % 5000 == 4999 {
+                TAG_STDERR
+            } else {
+                TAG_PTY
+            };
+            log.append(tag, &data).unwrap();
+            tags.extend(std::iter::repeat_n(tag, data.len()));
+            model.extend_from_slice(&data);
+        }
+        let (segs, high) = log.snapshot();
+        let max = 64 * 1024;
+        let (mut cursor, mut chunks, mut got) = (0u64, 0u64, Vec::new());
+        while cursor < high {
+            let ReadOutcome::Chunk { tag, data } =
+                read_run(dir.path(), "r", &segs, high, cursor, max).unwrap()
+            else {
+                panic!("no chunk at {cursor} of {high}")
+            };
+            assert!(!data.is_empty() && data.len() <= max);
+            let at = cursor as usize;
+            assert!(
+                tags[at..at + data.len()].iter().all(|t| *t == tag),
+                "a chunk never mixes streams"
+            );
+            if at + data.len() < tags.len() && data.len() < max {
+                assert_ne!(
+                    tags[at + data.len()],
+                    tag,
+                    "a short chunk ends only where the stream changes"
+                );
+            }
+            cursor += data.len() as u64;
+            got.extend(data);
+            chunks += 1;
+        }
+        assert_eq!(
+            got, model,
+            "the log's bytes, in order, no gap, no duplicate"
+        );
+        // 100 000 records; one chunk per record was the cost before.
+        let floor = high / max as u64;
+        assert!(
+            chunks <= floor + 2 * 20 + 2,
+            "{chunks} chunks for {high} bytes (>= {floor} needed): records were not coalesced"
+        );
+        // A cursor in the middle of a record starts exactly there.
+        let mid = 12_345;
+        let ReadOutcome::Chunk { data, .. } =
+            read_run(dir.path(), "r", &segs, high, mid, max).unwrap()
+        else {
+            panic!()
+        };
+        assert_eq!(&data[..], &model[mid as usize..mid as usize + data.len()]);
     }
 
     /// A log with a million tiny records is read at a cursor by binary
