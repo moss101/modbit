@@ -2,7 +2,11 @@ name: px132-loop
 on:
   push:
     branches: [wave6/px132-empty]
-  workflow_dispatch
+  workflow_dispatch:
+env:
+  CARGO_TERM_COLOR: always
+  CARGO_INCREMENTAL: "0"
+  RUSTFLAGS: "-D warnings"
 jobs:
   loop:
     runs-on: ubuntu-latest
