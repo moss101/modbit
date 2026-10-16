@@ -18,7 +18,8 @@ use std::time::Duration;
 
 use modbit_protocol::client::Client;
 use modbit_protocol::v1::{
-    ContextInspectorView, GetContextInspector, Id, ListProcessServices, ProcessServiceList,
+    ContextInspectorView, GetContextInspector, GetTaskStatus, Id, ListProcessServices,
+    ProcessServiceList,
 };
 use prost::Message;
 use px_common::*;
@@ -94,6 +95,55 @@ async fn services(c: &mut Client, task: &Id, include_gone: bool) -> ProcessServi
     Client::result(&ack).unwrap()
 }
 
+static T0: std::sync::OnceLock<std::time::Instant> = std::sync::OnceLock::new();
+
+/// A line on stderr with the seconds since the test began, so a failing run
+/// in CI says what happened when.
+fn trace(msg: impl std::fmt::Display) {
+    let t = T0.get_or_init(std::time::Instant::now).elapsed();
+    eprintln!("[px132 +{:7.2}s] {msg}", t.as_secs_f64());
+}
+
+fn summary(l: &ProcessServiceList) -> String {
+    let mut v: Vec<String> = l
+        .services
+        .iter()
+        .map(|s| format!("{}:{}={}({})", s.address, s.port, s.state, s.detail))
+        .collect();
+    v.sort();
+    v.join(" | ")
+}
+
+/// Poll until `done`, or return the last list (and the list with gone
+/// services included) when `secs` pass. Every change of what the Core
+/// reports is traced.
+async fn try_wait_services<F: Fn(&ProcessServiceList) -> bool>(
+    c: &mut Client,
+    task: &Id,
+    secs: u64,
+    include_gone: bool,
+    done: F,
+) -> Result<ProcessServiceList, (ProcessServiceList, ProcessServiceList)> {
+    let deadline = std::time::Instant::now() + Duration::from_secs(secs);
+    let mut last = String::from("<none>");
+    loop {
+        let l = services(c, task, include_gone).await;
+        let now = summary(&l);
+        if now != last {
+            trace(format_args!("services: {now}"));
+            last = now;
+        }
+        if done(&l) {
+            return Ok(l);
+        }
+        if std::time::Instant::now() >= deadline {
+            let all = services(c, task, true).await;
+            return Err((l, all));
+        }
+        tokio::time::sleep(Duration::from_millis(150)).await;
+    }
+}
+
 async fn wait_services<F: Fn(&ProcessServiceList) -> bool>(
     label: &str,
     c: &mut Client,
@@ -102,27 +152,56 @@ async fn wait_services<F: Fn(&ProcessServiceList) -> bool>(
     include_gone: bool,
     done: F,
 ) -> ProcessServiceList {
-    let deadline = std::time::Instant::now() + Duration::from_secs(secs);
-    loop {
-        let l = services(c, task, include_gone).await;
-        if done(&l) {
-            return l;
-        }
-        if std::time::Instant::now() >= deadline {
-            let ps = Command::new("ps")
-                .args(["-eo", "pid,ppid,pgid,sid,stat,args"])
-                .output()
-                .map(|o| String::from_utf8_lossy(&o.stdout).into_owned())
-                .unwrap_or_default();
-            eprintln!("process table at the failure:\n{ps}");
-        }
-        assert!(
-            std::time::Instant::now() < deadline,
-            "the service state never arrived ({label}, include_gone={include_gone}), with gone included: {:#?}; without: {l:#?}",
-            services(c, task, true).await
-        );
-        tokio::time::sleep(Duration::from_millis(150)).await;
+    match try_wait_services(c, task, secs, include_gone, done).await {
+        Ok(l) => l,
+        Err((l, all)) => panic!(
+            "the service state never arrived ({label}, include_gone={include_gone}), with gone included: {all:#?}; without: {l:#?}"
+        ),
     }
+}
+
+/// What the Core and the machine looked like when a wait gave up.
+async fn explain_failure(core: &CoreProcess, session: &Id, c: &mut Client, task: &Id) {
+    let ps = Command::new("ps")
+        .args(["-eo", "pid,ppid,pgid,sid,stat,args"])
+        .output()
+        .map(|o| String::from_utf8_lossy(&o.stdout).into_owned())
+        .unwrap_or_default();
+    let user: Vec<&str> = ps
+        .lines()
+        .filter(|l| !l.contains('[') || l.contains("PID"))
+        .collect();
+    trace(format_args!("process table:\n{}", user.join("\n")));
+    let ack = c
+        .command(envelope(
+            rand_id(),
+            "GetTaskStatus",
+            GetTaskStatus {
+                task_id: Some(task.clone()),
+            }
+            .encode_to_vec(),
+        ))
+        .await
+        .unwrap();
+    let st: modbit_protocol::v1::TaskStatus = Client::result(&ack).unwrap();
+    trace(format_args!("task status: {st:?}"));
+    let evs = replay(core, session).await;
+    let lines: Vec<String> = evs
+        .iter()
+        .map(|e| {
+            format!(
+                "{} {} {}",
+                e["offset"],
+                e["event_type"].as_str().unwrap_or_default(),
+                e["payload"]["payload"]
+                    .to_string()
+                    .chars()
+                    .take(160)
+                    .collect::<String>()
+            )
+        })
+        .collect();
+    trace(format_args!("events:\n{}", lines.join("\n")));
 }
 
 fn observed(evs: &[Value], task: &Id) -> Vec<Value> {
@@ -237,6 +316,7 @@ async fn qual_px_132_three_dev_servers_are_reported_ready_and_the_agent_is_told_
         let gate = std::sync::Arc::clone(&gate);
         scripted_model_fn(std::sync::Arc::new(move |_body, results| {
             if results == hold_at {
+                trace("the model request is held at the gate");
                 let (open, cv) = &*gate;
                 let guard = open.lock().unwrap();
                 let _ = cv
@@ -250,6 +330,7 @@ async fn qual_px_132_three_dev_servers_are_reported_ready_and_the_agent_is_told_
         }))
         .await
     };
+    trace("test begins");
     let dir = tempfile::tempdir().unwrap();
     let core = spawn(dir.path(), &base);
     let mut c = core.client().await;
@@ -268,6 +349,7 @@ async fn qual_px_132_three_dev_servers_are_reported_ready_and_the_agent_is_told_
 
     // Every server has written its port file; then the Core must report each
     // one READY before the agent is released to read its tool result.
+    trace("task started; waiting for the port files");
     let deadline = std::time::Instant::now() + Duration::from_secs(60);
     let expected: Vec<(&str, u32)> = loop {
         let got: Option<Vec<(&str, u32)>> = files
@@ -280,6 +362,7 @@ async fn qual_px_132_three_dev_servers_are_reported_ready_and_the_agent_is_told_
             })
             .collect();
         if let Some(v) = got {
+            trace(format_args!("port files: {v:?}"));
             break v;
         }
         assert!(
@@ -288,21 +371,21 @@ async fn qual_px_132_three_dev_servers_are_reported_ready_and_the_agent_is_told_
         );
         tokio::time::sleep(Duration::from_millis(150)).await;
     };
-    wait_services(
-        "before the agent is released",
-        &mut c,
-        &task,
-        60,
-        false,
-        |l| {
-            expected.iter().all(|(_, p)| {
-                l.services
-                    .iter()
-                    .any(|s| s.port == *p && s.state == "READY")
-            })
-        },
-    )
-    .await;
+    if let Err((l, all)) = try_wait_services(&mut c, &task, 60, false, |l| {
+        expected.iter().all(|(_, p)| {
+            l.services
+                .iter()
+                .any(|s| s.port == *p && s.state == "READY")
+        })
+    })
+    .await
+    {
+        explain_failure(&core, &session, &mut c, &task).await;
+        panic!(
+            "the service state never arrived (before the agent is released), expected {expected:?}; with gone included: {all:#?}; without: {l:#?}"
+        );
+    }
+    trace("every server is READY on the Core; releasing the agent");
     {
         let (open, cv) = &*gate;
         *open.lock().unwrap() = true;
