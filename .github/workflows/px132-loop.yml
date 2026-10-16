@@ -23,7 +23,10 @@ jobs:
       - name: loop
         run: |
           mkdir -p logs
+          # Cold starts and a loaded machine: the failing run was the first, with a slow rustc.
+          (yes > /dev/null &); (yes > /dev/null &)
           for i in $(seq 1 30); do
+            sync; echo 3 | sudo tee /proc/sys/vm/drop_caches > /dev/null || true
             cargo test --locked -p modbit-core --test px_132_services -- --nocapture > logs/run-$i.log 2>&1 && echo "run $i ok" || echo "run $i FAILED"
           done
       - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
