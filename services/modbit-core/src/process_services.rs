@@ -445,7 +445,17 @@ async fn pass(core: &Arc<Core>, client: &mut Option<ExecClient>) -> Result<bool,
     if let Some(l) = &listeners
         && !l.scan_error.is_empty()
     {
-        // A failed scan says nothing about the services: judge none.
+        // A failed scan says nothing about the services: judge none. It is
+        // not silent (logged once per distinct error): an operator reading the
+        // Core's log sees why no service was reported, rather than a list that
+        // looks like "nothing runs".
+        static LAST_SCAN_ERROR: std::sync::Mutex<String> = std::sync::Mutex::new(String::new());
+        let why = core.tools.redactor().error_text(&l.scan_error);
+        let mut last = LAST_SCAN_ERROR.lock().unwrap_or_else(|e| e.into_inner());
+        if *last != why {
+            eprintln!("modbit-core: process services: the broker's listener scan failed: {why}");
+            last.clone_from(&why);
+        }
         return Ok(true);
     }
     let scanned: Vec<wire::SessionListener> = listeners

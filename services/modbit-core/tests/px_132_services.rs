@@ -18,7 +18,8 @@ use std::time::Duration;
 
 use modbit_protocol::client::Client;
 use modbit_protocol::v1::{
-    ContextInspectorView, GetContextInspector, Id, ListProcessServices, ProcessServiceList,
+    ContextInspectorView, GetContextInspector, GetTaskStatus, Id, ListProcessServices,
+    ProcessServiceList,
 };
 use prost::Message;
 use px_common::*;
@@ -49,6 +50,9 @@ const RUST_CARGO: &str =
 const RUST_SERVER: &str = r#"
 use std::io::{Read, Write};
 fn main() {
+    // A slow build or start: the port file is written only once listening.
+    let ms: u64 = std::env::var("RSRV_DELAY_MS").ok().and_then(|v| v.parse().ok()).unwrap_or(0);
+    std::thread::sleep(std::time::Duration::from_millis(ms));
     let l = std::net::TcpListener::bind("127.0.0.1:0").unwrap();
     std::fs::write("rust.port", l.local_addr().unwrap().port().to_string()).unwrap();
     for s in l.incoming().flatten() {
@@ -94,25 +98,113 @@ async fn services(c: &mut Client, task: &Id, include_gone: bool) -> ProcessServi
     Client::result(&ack).unwrap()
 }
 
+static T0: std::sync::OnceLock<std::time::Instant> = std::sync::OnceLock::new();
+
+/// A line on stderr with the seconds since the test began, so a failing run
+/// in CI says what happened when.
+fn trace(msg: impl std::fmt::Display) {
+    let t = T0.get_or_init(std::time::Instant::now).elapsed();
+    eprintln!("[px132 +{:7.2}s] {msg}", t.as_secs_f64());
+}
+
+fn summary(l: &ProcessServiceList) -> String {
+    let mut v: Vec<String> = l
+        .services
+        .iter()
+        .map(|s| format!("{}:{}={}({})", s.address, s.port, s.state, s.detail))
+        .collect();
+    v.sort();
+    v.join(" | ")
+}
+
+/// Poll until `done`, or return the last list (and the list with gone
+/// services included) when `secs` pass. Every change of what the Core
+/// reports is traced.
+async fn try_wait_services<F: Fn(&ProcessServiceList) -> bool>(
+    c: &mut Client,
+    task: &Id,
+    secs: u64,
+    include_gone: bool,
+    done: F,
+) -> Result<ProcessServiceList, (ProcessServiceList, ProcessServiceList)> {
+    let deadline = std::time::Instant::now() + Duration::from_secs(secs);
+    let mut last = String::from("<none>");
+    loop {
+        let l = services(c, task, include_gone).await;
+        let now = summary(&l);
+        if now != last {
+            trace(format_args!("services: {now}"));
+            last = now;
+        }
+        if done(&l) {
+            return Ok(l);
+        }
+        if std::time::Instant::now() >= deadline {
+            let all = services(c, task, true).await;
+            return Err((l, all));
+        }
+        tokio::time::sleep(Duration::from_millis(150)).await;
+    }
+}
+
 async fn wait_services<F: Fn(&ProcessServiceList) -> bool>(
+    label: &str,
     c: &mut Client,
     task: &Id,
     secs: u64,
     include_gone: bool,
     done: F,
 ) -> ProcessServiceList {
-    let deadline = std::time::Instant::now() + Duration::from_secs(secs);
-    loop {
-        let l = services(c, task, include_gone).await;
-        if done(&l) {
-            return l;
-        }
-        assert!(
-            std::time::Instant::now() < deadline,
-            "the service state never arrived: {l:#?}"
-        );
-        tokio::time::sleep(Duration::from_millis(150)).await;
+    match try_wait_services(c, task, secs, include_gone, done).await {
+        Ok(l) => l,
+        Err((l, all)) => panic!(
+            "the service state never arrived ({label}, include_gone={include_gone}), with gone included: {all:#?}; without: {l:#?}"
+        ),
     }
+}
+
+/// What the Core and the machine looked like when a wait gave up.
+async fn explain_failure(core: &CoreProcess, session: &Id, c: &mut Client, task: &Id) {
+    let ps = Command::new("ps")
+        .args(["-eo", "pid,ppid,pgid,sid,stat,args"])
+        .output()
+        .map(|o| String::from_utf8_lossy(&o.stdout).into_owned())
+        .unwrap_or_default();
+    let user: Vec<&str> = ps
+        .lines()
+        .filter(|l| !l.contains('[') || l.contains("PID"))
+        .collect();
+    trace(format_args!("process table:\n{}", user.join("\n")));
+    let ack = c
+        .command(envelope(
+            rand_id(),
+            "GetTaskStatus",
+            GetTaskStatus {
+                task_id: Some(task.clone()),
+            }
+            .encode_to_vec(),
+        ))
+        .await
+        .unwrap();
+    let st: modbit_protocol::v1::TaskStatus = Client::result(&ack).unwrap();
+    trace(format_args!("task status: {st:?}"));
+    let evs = replay(core, session).await;
+    let lines: Vec<String> = evs
+        .iter()
+        .map(|e| {
+            format!(
+                "{} {} {}",
+                e["offset"],
+                e["event_type"].as_str().unwrap_or_default(),
+                e["payload"]["payload"]
+                    .to_string()
+                    .chars()
+                    .take(160)
+                    .collect::<String>()
+            )
+        })
+        .collect();
+    trace(format_args!("events:\n{}", lines.join("\n")));
 }
 
 fn observed(evs: &[Value], task: &Id) -> Vec<Value> {
@@ -133,17 +225,21 @@ fn complete() -> Value {
     json!({"calls": [{"name": "task.complete", "args": {"summary": "done", "self_review": {"findings": []}}}]})
 }
 
+fn start_cmd_env(argv: &[&str], env: Value) -> Value {
+    json!({"calls": [{"name": "shell.start", "args": {"argv": argv, "env": env}}]})
+}
+
 fn start_cmd(argv: &[&str]) -> Value {
     json!({"calls": [{"name": "shell.start", "args": {"argv": argv}}]})
 }
 
 /// Wait for every named port file (up to ~25 s) and then a beat, so the Core
 /// has probed what came up.
-fn settle(files: &[&str]) -> Value {
+fn settle(files: &[&str], tries: u32) -> Value {
     let waits = files
         .iter()
         .map(|f| {
-            format!("i=0; while [ ! -f {f} ] && [ $i -lt 125 ]; do sleep 0.2; i=$((i+1)); done")
+            format!("i=0; while [ ! -f {f} ] && [ $i -lt {tries} ]; do sleep 0.2; i=$((i+1)); done")
         })
         .collect::<Vec<_>>()
         .join("; ");
@@ -178,6 +274,24 @@ async fn run_to_end(c: &mut Client, task: &Id, secs: u64) {
 /// the policy changes because a server was found.
 #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn qual_px_132_three_dev_servers_are_reported_ready_and_the_agent_is_told_without_asking() {
+    three_servers(0, 125).await;
+}
+
+/// The same, when the Rust server comes up after the agent's own wait for
+/// the port files has ended (a slow build on a busy machine): the model's
+/// request that carries the wait's result is then genuinely held until the
+/// test sees all three READY. Holding it must not stall the test itself: the
+/// hold was once a blocking wait on a worker of the test's own runtime, which
+/// froze the test for the whole hold (120 s), the task failed in the meantime
+/// ("6 consecutive turns without progress"), its terminals were reaped and the
+/// services were reported GONE, so a list without gone services was empty.
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
+async fn qual_px_132_a_server_that_is_late_for_the_agents_wait_is_reported_before_the_agent_is_told()
+ {
+    three_servers(12_000, 10).await;
+}
+
+async fn three_servers(rust_delay_ms: u64, settle_tries: u32) {
     let node = have("node", "--version");
     let python = have("python3", "--version");
     assert!(node || python, "no Node and no Python on this machine");
@@ -207,39 +321,53 @@ async fn qual_px_132_three_dev_servers_are_reported_ready_and_the_agent_is_told_
         steps.push(start_cmd(&["python3", "server.py"]));
         files.push("py.port");
     }
-    steps.push(start_cmd(&[
+    let cargo_run: &[&str] = &[
         "cargo",
         "run",
         "--quiet",
         "--manifest-path",
         "rsrv/Cargo.toml",
-    ]));
-    steps.push(settle(&files));
+    ];
+    steps.push(if rust_delay_ms > 0 {
+        start_cmd_env(
+            cargo_run,
+            json!({"RSRV_DELAY_MS": rust_delay_ms.to_string()}),
+        )
+    } else {
+        start_cmd(cargo_run)
+    });
+    steps.push(settle(&files, settle_tries));
     steps.push(read_notes());
     steps.push(complete());
     // The request that carries the settle step's result is held until the
     // test has seen every server READY on the Core, so the agent's next tool
     // result is taken after the Core has probed them rather than on a timer.
     let hold_at = steps.len() - 2;
-    let gate = std::sync::Arc::new((std::sync::Mutex::new(false), std::sync::Condvar::new()));
+    // The gate is a file the test creates: the scripted server waits for it
+    // asynchronously (`wait_file`), so no thread of the test's runtime is held.
+    let gate_dir = tempfile::tempdir().unwrap();
+    let gate = gate_dir.path().join("agents-may-continue");
     let (base, seen) = {
         let script = steps.clone();
-        let gate = std::sync::Arc::clone(&gate);
+        let gate = gate.clone();
         scripted_model_fn(std::sync::Arc::new(move |_body, results| {
-            if results == hold_at {
-                let (open, cv) = &*gate;
-                let guard = open.lock().unwrap();
-                let _ = cv
-                    .wait_timeout_while(guard, Duration::from_secs(120), |o| !*o)
-                    .unwrap();
-            }
-            script
+            let mut reply = script
                 .get(results)
                 .cloned()
-                .unwrap_or_else(|| json!({"text": "I have nothing further to do."}))
+                .unwrap_or_else(|| json!({"text": "I have nothing further to do."}));
+            if results == hold_at {
+                trace(format_args!(
+                    "the model request is held at the gate (open: {})",
+                    gate.exists()
+                ));
+                reply["wait_file"] = json!(gate.to_string_lossy());
+                reply["wait_file_secs"] = json!(170);
+            }
+            reply
         }))
         .await
     };
+    trace("test begins");
     let dir = tempfile::tempdir().unwrap();
     let core = spawn(dir.path(), &base);
     let mut c = core.client().await;
@@ -258,6 +386,7 @@ async fn qual_px_132_three_dev_servers_are_reported_ready_and_the_agent_is_told_
 
     // Every server has written its port file; then the Core must report each
     // one READY before the agent is released to read its tool result.
+    trace("task started; waiting for the port files");
     let deadline = std::time::Instant::now() + Duration::from_secs(60);
     let expected: Vec<(&str, u32)> = loop {
         let got: Option<Vec<(&str, u32)>> = files
@@ -270,6 +399,7 @@ async fn qual_px_132_three_dev_servers_are_reported_ready_and_the_agent_is_told_
             })
             .collect();
         if let Some(v) = got {
+            trace(format_args!("port files: {v:?}"));
             break v;
         }
         assert!(
@@ -278,21 +408,24 @@ async fn qual_px_132_three_dev_servers_are_reported_ready_and_the_agent_is_told_
         );
         tokio::time::sleep(Duration::from_millis(150)).await;
     };
-    wait_services(&mut c, &task, 60, false, |l| {
+    if let Err((l, all)) = try_wait_services(&mut c, &task, 60, false, |l| {
         expected.iter().all(|(_, p)| {
             l.services
                 .iter()
                 .any(|s| s.port == *p && s.state == "READY")
         })
     })
-    .await;
+    .await
     {
-        let (open, cv) = &*gate;
-        *open.lock().unwrap() = true;
-        cv.notify_all();
+        explain_failure(&core, &session, &mut c, &task).await;
+        panic!(
+            "the service state never arrived (before the agent is released), expected {expected:?}; with gone included: {all:#?}; without: {l:#?}"
+        );
     }
+    trace("every server is READY on the Core; releasing the agent");
+    std::fs::write(&gate, b"go").unwrap();
     run_to_end(&mut c, &task, 180).await;
-    let list = wait_services(&mut c, &task, 30, false, |l| {
+    let list = wait_services("after the task ended", &mut c, &task, 30, false, |l| {
         expected.iter().all(|(_, p)| {
             l.services
                 .iter()
@@ -349,10 +482,26 @@ async fn qual_px_132_three_dev_servers_are_reported_ready_and_the_agent_is_told_
     // The agent was told in a tool result it asked for something else with.
     let last = seen.lock().unwrap().last().cloned().unwrap();
     let texts = tool_texts(&last);
-    let told = texts
+    let marked: Vec<&String> = texts
         .iter()
-        .find(|t| t.contains("process services of this task's terminals"))
-        .unwrap_or_else(|| panic!("no tool result carried the services: {texts:#?}"));
+        .filter(|t| t.contains("process services of this task's terminals"))
+        .collect();
+    assert!(
+        !marked.is_empty(),
+        "no tool result carried the services: {texts:#?}"
+    );
+    // Servers up before the agent's wait ended are all named in one result.
+    // A server that came up later is named in the next result the agent
+    // receives: every port reaches the agent, across the results it got.
+    let told = if rust_delay_ms == 0 {
+        marked[0].clone()
+    } else {
+        marked
+            .iter()
+            .map(|t| t.as_str())
+            .collect::<Vec<_>>()
+            .join("\n")
+    };
     for (_, port) in &expected {
         assert!(told.contains(&format!("127.0.0.1:{port}")), "{told}");
     }
@@ -395,7 +544,7 @@ async fn qual_px_132_a_server_that_returns_500_is_unhealthy_and_one_that_dies_is
     let steps = [
         plan(),
         node_start,
-        settle(&["node.port"]),
+        settle(&["node.port"], 125),
         json!({"text": "", "delay_ms": 0, "calls": [{"name": "fs.read", "args": {"path": "notes.txt"}}]}),
         read_notes(),
         complete(),
@@ -428,7 +577,7 @@ async fn qual_px_132_a_server_that_returns_500_is_unhealthy_and_one_that_dies_is
     )
     .await;
     start_task(&mut c, &task, g, 0x43, "gpt-5-mini").await;
-    let listed = wait_services(&mut c, &task, 60, false, |l| !l.services.is_empty()).await;
+    let listed = wait_services("test", &mut c, &task, 60, false, |l| !l.services.is_empty()).await;
     let s = &listed.services[0];
     assert_eq!(s.state, "UNHEALTHY", "listening but answering 500: {s:?}");
     assert_eq!(s.http_status, 500);
@@ -454,7 +603,7 @@ async fn qual_px_132_a_server_that_returns_500_is_unhealthy_and_one_that_dies_is
             .unwrap()
             .success()
     );
-    let gone = wait_services(&mut c, &task, 30, true, |l| {
+    let gone = wait_services("test", &mut c, &task, 30, true, |l| {
         l.services
             .iter()
             .any(|s| s.port == port && s.state == "GONE")
@@ -505,7 +654,7 @@ async fn qual_px_132_a_restarted_core_reattaches_and_reobserves_without_repeatin
     let steps = vec![
         plan(),
         start_cmd(&["node", "server.js"]),
-        settle(&["node.port"]),
+        settle(&["node.port"], 125),
         read_notes(),
         complete(),
     ];
@@ -526,7 +675,7 @@ async fn qual_px_132_a_restarted_core_reattaches_and_reobserves_without_repeatin
     .await;
     start_task(&mut c, &task, g, 0x53, "gpt-5-mini").await;
     run_to_end(&mut c, &task, 120).await;
-    let ready = wait_services(&mut c, &task, 30, false, |l| {
+    let ready = wait_services("test", &mut c, &task, 30, false, |l| {
         l.services.iter().any(|s| s.state == "READY")
     })
     .await;
@@ -544,7 +693,7 @@ async fn qual_px_132_a_restarted_core_reattaches_and_reobserves_without_repeatin
     let core2 = spawn(dir.path(), &base);
     let mut c2 = core2.client().await;
     // The read model survives the restart (it is folded from the log) ...
-    let again = wait_services(&mut c2, &task, 30, false, |l| {
+    let again = wait_services("test", &mut c2, &task, 30, false, |l| {
         l.services
             .iter()
             .any(|s| s.port == port && s.state == "READY")
@@ -567,7 +716,7 @@ async fn qual_px_132_a_restarted_core_reattaches_and_reobserves_without_repeatin
             .unwrap()
             .success()
     );
-    wait_services(&mut c2, &task, 30, true, |l| {
+    wait_services("test", &mut c2, &task, 30, true, |l| {
         l.services
             .iter()
             .any(|s| s.port == port && s.state == "GONE")
@@ -588,7 +737,7 @@ async fn qual_px_132_a_server_that_died_while_the_core_was_down_is_recorded_gone
     let steps = vec![
         plan(),
         start_cmd(&["node", "server.js"]),
-        settle(&["node.port"]),
+        settle(&["node.port"], 125),
         read_notes(),
         complete(),
     ];
@@ -609,7 +758,7 @@ async fn qual_px_132_a_server_that_died_while_the_core_was_down_is_recorded_gone
     .await;
     start_task(&mut c, &task, g, 0x63, "gpt-5-mini").await;
     run_to_end(&mut c, &task, 120).await;
-    let ready = wait_services(&mut c, &task, 30, false, |l| {
+    let ready = wait_services("test", &mut c, &task, 30, false, |l| {
         l.services.iter().any(|s| s.state == "READY")
     })
     .await;
@@ -630,7 +779,7 @@ async fn qual_px_132_a_server_that_died_while_the_core_was_down_is_recorded_gone
     );
     let core2 = spawn(dir.path(), &base);
     let mut c2 = core2.client().await;
-    wait_services(&mut c2, &task, 30, true, |l| {
+    wait_services("test", &mut c2, &task, 30, true, |l| {
         l.services
             .iter()
             .any(|s| s.port == port && s.state == "GONE")
