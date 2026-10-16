@@ -21,7 +21,7 @@ jobs:
           for i in $(seq 1 30); do
             cargo test --locked -p modbit-core --test px_132_services -- --nocapture > logs/run-$i.log 2>&1 && echo "run $i ok" || echo "run $i FAILED"
           done
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
         if: always()
         with:
           name: px132-logs
