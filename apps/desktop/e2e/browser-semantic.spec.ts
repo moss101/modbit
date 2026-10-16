@@ -31,17 +31,29 @@ function listen(handler: (url: string, method: string, body: string) => string |
   });
 }
 
-/** Approve whatever the card asks, recording the effect class it names. */
+/**
+ * Approve whatever the card asks, recording the effect class the approval itself names. The approval is read in one evaluation (its
+ * id with its text, from the node the person would click) and decided by that id: the decision of one approval can take seconds to
+ * land (a slow Core on Windows), the card keeps showing the old approval meanwhile, and a click that waits for the button then lands
+ * on the NEXT approval - while the cause recorded was the old one. An approval already decided is not read or clicked again.
+ */
 function approver(page: Page): { causes: string[]; stop: () => void } {
   const causes: string[] = [];
+  const recorded = new Set<string>();
+  const decided = new Set<string>();
   let live = true;
   void (async () => {
     const card = page.getByTestId("task-card").first();
     while (live) {
       try {
-        if (await card.getByTestId("task-approval").isVisible()) {
-          causes.push((await card.getByTestId("task-screen-state-cause").textContent()) ?? "");
-          await card.getByTestId("task-approve").click({ timeout: 5_000 });
+        const seen = await card.getByTestId("task-approval").evaluate((el) => ({ id: el.getAttribute("data-approval-id") ?? "", text: el.textContent ?? "" }), undefined, { timeout: 1_000 });
+        if (seen.id && !decided.has(seen.id)) {
+          if (!recorded.has(seen.id)) {
+            recorded.add(seen.id);
+            causes.push(seen.text);
+          }
+          await card.locator(`[data-testid="task-approval"][data-approval-id="${seen.id}"]`).getByTestId("task-approve").click({ timeout: 10_000 });
+          decided.add(seen.id);
         }
       } catch {
         // the card moved on
