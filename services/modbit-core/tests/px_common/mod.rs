@@ -434,9 +434,10 @@ pub async fn scripted_model_fn(reply_fn: Reply) -> (String, Seen) {
                 let reply = reply_fn(&body, results);
                 seen.lock().unwrap().push(body);
                 // A reply may wait on the test: `{"wait_file": path, ...}` is held until
-                // that file exists (at most 60 s), so ordering is by event, not by sleep.
+                // that file exists (at most 180 s, a ceiling for a loaded Windows runner; the wait
+                // ends the moment the file does), so ordering is by event, not by sleep.
                 if let Some(path) = reply["wait_file"].as_str() {
-                    for _ in 0..600 {
+                    for _ in 0..1800 {
                         if std::path::Path::new(path).exists() {
                             break;
                         }
