@@ -31,10 +31,11 @@ pub struct State {
     secure_desktop: bool,
     stop_epoch: u64,
     counters: HashMap<String, u32>,
+    delivered_file: Option<String>,
 }
 
 impl State {
-    pub fn new(desktop: Desktop) -> Self {
+    pub fn new(desktop: Desktop, delivered_file: Option<String>) -> Self {
         let secure = desktop.faults.secure_desktop;
         Self {
             desktop,
@@ -45,6 +46,7 @@ impl State {
             secure_desktop: secure,
             stop_epoch: 0,
             counters: HashMap::new(),
+            delivered_file,
         }
     }
 }
@@ -1062,6 +1064,12 @@ async fn perform(
                 })),
             })
             .await;
+    }
+    if (after.abort || after.hang_ms > 0)
+        && let Some(p) = lock(shared).delivered_file.clone()
+    {
+        // The input is applied and is now in flight: say so before stalling or dying.
+        let _ = std::fs::write(p, b"delivered");
     }
     if after.abort {
         // The input has been applied; the actuator dies before it answers.

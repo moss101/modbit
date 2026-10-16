@@ -39,11 +39,15 @@ fn proof(token: &[u8]) -> String {
 async fn main() {
     let mut desktop_path: Option<String> = None;
     let mut pid_file: Option<String> = None;
+    let mut delivered_file: Option<String> = None;
     let mut args = std::env::args().skip(1);
     while let Some(a) = args.next() {
         match a.as_str() {
             "--desktop" => desktop_path = args.next(),
             "--pid-file" => pid_file = args.next(),
+            // A file the fixture writes once an input has been applied and is about to
+            // stall or die (the test's signal that the input is in flight).
+            "--delivered-file" => delivered_file = args.next(),
             other => {
                 eprintln!("modbit-actuator-fixture: unknown argument {other}");
                 std::process::exit(2);
@@ -130,7 +134,7 @@ async fn main() {
         }
     });
 
-    let state = Arc::new(Mutex::new(rpc::State::new(desktop)));
+    let state = Arc::new(Mutex::new(rpc::State::new(desktop, delivered_file)));
     rpc::spawn_lease_watchdog(Arc::clone(&state));
 
     // The Core is gone when the stream ends: stop injecting and leave (CUC-D05).
