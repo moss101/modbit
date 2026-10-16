@@ -142,7 +142,7 @@ struct St {
 }
 
 /// The ceiling for a run to end: a loaded Windows runner with a parent and a child needs minutes.
-const FINISH_SECS: u64 = 300;
+const FINISH_SECS: u64 = 600;
 
 /// The ceiling for one awaited event (an approval asked, an input delivered, a process gone). The
 /// wait ends the moment the event does; the ceiling only bounds a real hang.
@@ -2651,13 +2651,39 @@ async fn routed(parent: Vec<Step>, child: Vec<Step>) -> (String, Seen) {
 
 async fn routed_on(marker: &'static str, parent: Vec<Step>, child: Vec<Step>) -> (String, Seen) {
     scripted_model_fn(Arc::new(move |body, results| {
-        let steps = if body["messages"].to_string().contains(marker) {
-            &child
-        } else {
-            &parent
-        };
         let st = st_of(body);
-        steps
+        if !body["messages"].to_string().contains(marker) {
+            // The parent. A foreground spawn waits for its child only up to a ceiling (120 s) and
+            // then answers "not done within ..."; on a loaded runner a GUI child with an approval
+            // per input can need longer. A parent that is told its child is still running waits
+            // for it again - which is what the tool says to do - and that wait is not a step of
+            // the script, so the script's position is the results minus those waits.
+            let waits = st
+                .texts
+                .iter()
+                .filter(|t| t.contains("not done within"))
+                .count();
+            if st
+                .texts
+                .last()
+                .is_some_and(|t| t.contains("not done within"))
+            {
+                let agent_id = st
+                    .texts
+                    .iter()
+                    .find_map(|t| t.lines().find_map(|l| l.strip_prefix("agent_id: ")))
+                    .unwrap_or_default();
+                return call(
+                    "agent.wait",
+                    json!({"agent_id": agent_id, "timeout_ms": 120_000}),
+                );
+            }
+            return parent
+                .get(results - waits)
+                .map(|f| f(&st))
+                .unwrap_or_else(|| json!({"text": "I have nothing further to do."}));
+        }
+        child
             .get(results)
             .map(|f| f(&st))
             .unwrap_or_else(|| json!({"text": "I have nothing further to do."}))
