@@ -1001,7 +1001,8 @@ async fn qual_px_070_a_decision_on_another_intent_is_refused() {
     let mut rig = run(Opts::default(), steps, ignore).await;
     // Wait for the approval to be asked.
     let mut approval = None;
-    for _ in 0..100 {
+    let deadline = std::time::Instant::now() + Duration::from_secs(WAIT_SECS);
+    while std::time::Instant::now() < deadline {
         let ack = rig
             .client
             .command(envelope(
@@ -1580,7 +1581,8 @@ async fn qual_px_069_the_emergency_stop_halts_control_and_stays_in_force() {
         started.elapsed()
     );
     let mut closed = vec![];
-    for _ in 0..50 {
+    let deadline = std::time::Instant::now() + Duration::from_secs(WAIT_SECS);
+    while std::time::Instant::now() < deadline {
         closed = of(&rig.events().await, "ComputerSessionClosed")
             .into_iter()
             .cloned()
@@ -2510,7 +2512,8 @@ async fn qual_px_076_the_audit_of_a_session_holds_counts_and_no_content_and_fram
         .to_owned();
     assert!(object_path(&rig, &digest).exists());
     let mut gone = false;
-    for _ in 0..120 {
+    let deadline = std::time::Instant::now() + Duration::from_secs(WAIT_SECS);
+    while std::time::Instant::now() < deadline {
         if !object_path(&rig, &digest).exists() {
             gone = true;
             break;
@@ -2519,7 +2522,8 @@ async fn qual_px_076_the_audit_of_a_session_holds_counts_and_no_content_and_fram
     }
     assert!(gone, "the frame outlived its retention");
     let mut expired = vec![];
-    for _ in 0..40 {
+    let deadline = std::time::Instant::now() + Duration::from_secs(WAIT_SECS);
+    while std::time::Instant::now() < deadline {
         expired = of(&rig.events().await, "ComputerArtifactExpired")
             .into_iter()
             .cloned()
