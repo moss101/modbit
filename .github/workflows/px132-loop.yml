@@ -9,6 +9,10 @@ env:
   RUSTFLAGS: "-D warnings"
 jobs:
   loop:
+    strategy:
+      fail-fast: false
+      matrix:
+        shard: [1, 2, 3, 4, 5, 6, 7, 8]
     runs-on: ubuntu-latest
     timeout-minutes: 120
     steps:
@@ -24,7 +28,7 @@ jobs:
         run: |
           mkdir -p logs
           # Cold starts and a loaded machine: the failing run was the first, with a slow rustc.
-          (yes > /dev/null &); (yes > /dev/null &)
+          for k in 1 2 3 4; do (yes > /dev/null &); done
           for i in $(seq 1 30); do
             sync; echo 3 | sudo tee /proc/sys/vm/drop_caches > /dev/null || true
             cargo test --locked -p modbit-core --test px_132_services -- --nocapture > logs/run-$i.log 2>&1 && echo "run $i ok" || echo "run $i FAILED"
@@ -32,5 +36,5 @@ jobs:
       - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
         if: always()
         with:
-          name: px132-logs
+          name: px132-logs-${{ matrix.shard }}
           path: logs
