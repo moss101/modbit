@@ -1736,6 +1736,29 @@ async fn qual_px_069_a_second_controller_is_refused_until_the_first_lets_go() {
     drop(repo);
 }
 
+/// The session's log once `ready` holds of it, polled with a deadline. `replay` ends
+/// at the first 600 ms without a frame, so on a loaded runner a stall in the middle of
+/// a long log truncates it; what a test asserts is the log's content, not how fast a
+/// subscription drains it. The deadline is generous and a miss returns the last read.
+async fn replay_when(
+    core: &CoreProcess,
+    session: &Id,
+    ready: impl Fn(&[Value]) -> bool,
+) -> Vec<Value> {
+    let deadline = std::time::Instant::now() + Duration::from_secs(45);
+    loop {
+        let evs = replay(core, session).await;
+        if ready(&evs) || std::time::Instant::now() > deadline {
+            return evs;
+        }
+        tokio::time::sleep(Duration::from_millis(200)).await;
+    }
+}
+
+fn has(evs: &[Value], t: &str) -> bool {
+    evs.iter().any(|e| e["event_type"] == t)
+}
+
 /// A run reduced to its tool results, for the one-fault-at-a-time tests.
 async fn quick(opts: Opts, steps: Vec<Step>, decide: Decider) -> (Rig, Vec<(String, Value)>) {
     let mut rig = run(opts, steps, decide).await;
@@ -2443,8 +2466,25 @@ async fn qual_px_069_a_core_killed_with_a_session_and_an_input_in_flight_leaves_
         .unwrap();
     let l: SessionLeaseAcquired = Client::result(&ack).unwrap();
     rig.g = Some(l.lease_generation);
-    let evs = replay(&rig.core, &rig.session).await;
+    let evs = replay_when(&rig.core, &rig.session, |e| {
+        has(e, "ComputerSessionClosed")
+            && has(e, "ComputerLatched")
+            && has(e, "SessionLeaseAcquired")
+    })
+    .await;
     // The session the dead Core left open is closed on the record; the in-flight input is latched.
+    // Recovery ran before the Core said it was ready, so it is in the log ahead of the
+    // first thing this client did (order, not timing).
+    let at = |t: &str| evs.iter().position(|e| e["event_type"] == t).unwrap();
+    // The new Core's client took its lease last (the first Core's was taken earlier).
+    let lease = evs
+        .iter()
+        .rposition(|e| e["event_type"] == "SessionLeaseAcquired")
+        .unwrap();
+    assert!(
+        at("ComputerLatched") < lease && at("ComputerSessionClosed") < lease,
+        "recovery precedes the first command of the new Core's first client"
+    );
     let closed = of(&evs, "ComputerSessionClosed");
     assert_eq!(closed.len(), 1, "{closed:?}");
     assert_eq!(closed[0]["payload"]["payload"]["reason"], "CORE_RESTART");
@@ -2478,7 +2518,7 @@ async fn qual_px_069_a_core_killed_with_a_session_and_an_input_in_flight_leaves_
     let r: ComputerLatchResolved = Client::result(&ack).unwrap();
     assert!(r.was_latched);
     assert_eq!(rig.view().await.latch, "");
-    let evs = replay(&rig.core, &rig.session).await;
+    let evs = replay_when(&rig.core, &rig.session, |e| has(e, "ComputerLatchResolved")).await;
     assert_eq!(
         of(&evs, "ComputerLatchResolved")[0]["payload"]["payload"]["by"],
         "person"
@@ -3138,7 +3178,10 @@ async fn qual_px_075_the_child_resumes_by_identity_after_a_restart_and_needs_a_n
     let l: SessionLeaseAcquired = Client::result(&ack).unwrap();
     rig.g = Some(l.lease_generation);
     // The restart closed the child's control session on its record, and latched the input in flight.
-    let evs = replay(&rig.core, &rig.session).await;
+    let evs = replay_when(&rig.core, &rig.session, |e| {
+        has(e, "ComputerSessionClosed") && has(e, "SessionLeaseAcquired")
+    })
+    .await;
     let closed = of(&evs, "ComputerSessionClosed");
     assert_eq!(closed.len(), 1);
     assert_eq!(closed[0]["payload"]["payload"]["reason"], "CORE_RESTART");

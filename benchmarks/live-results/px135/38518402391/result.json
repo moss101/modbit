@@ -1,0 +1,1491 @@
+{
+  "suite_version": "gate-calibration-live/1",
+  "row": "px135",
+  "live": true,
+  "model": "glm-5.3-flash",
+  "endpoint": "openai",
+  "gateway": "api.z.ai",
+  "scope": {
+    "languages": [
+      "rust",
+      "python",
+      "javascript",
+      "typescript"
+    ],
+    "lineages": [
+      "holdout/rust-shop/quantity",
+      "holdout/rust-shop/discount",
+      "holdout/rust-shop/sku",
+      "holdout/rust-shop/shipping",
+      "holdout/python-shop/quantity",
+      "holdout/python-shop/discount",
+      "holdout/python-shop/sku",
+      "holdout/python-shop/shipping",
+      "holdout/javascript-shop/quantity",
+      "holdout/javascript-shop/discount",
+      "holdout/javascript-shop/sku",
+      "holdout/javascript-shop/shipping",
+      "holdout/typescript-shop/quantity",
+      "holdout/typescript-shop/discount",
+      "holdout/typescript-shop/sku",
+      "holdout/typescript-shop/shipping"
+    ],
+    "repeats": 1,
+    "expected_runs": 16,
+    "filtered": false
+  },
+  "corpus_digest": "d5ebc80989bcfbb5e608943ecc54a1fc7d82005cd419cde45e1b77a86180a23b",
+  "gate_version": "gate-1",
+  "generator_version": "adversarial-checks/1",
+  "risk_label_rule": "live-risk-label/1",
+  "report": {
+    "model": "glm-5.3-flash",
+    "repeats": 1,
+    "rows": [
+      {
+        "row": {
+          "id": "live-rust-quantity-0",
+          "language": "rust",
+          "lineage": "holdout/rust-shop/quantity",
+          "class": "live",
+          "flavor": "0",
+          "oracle_correct": true,
+          "previous": {
+            "verdict": "ACCEPT",
+            "reasons": [],
+            "missing": []
+          },
+          "widened": {
+            "verdict": "REJECT",
+            "reasons": [
+              "tests failed: adv:boundary-pinned FAIL"
+            ],
+            "missing": []
+          },
+          "findings": [
+            "adv:boundary-pinned: src/lib.rs:9: mutant `>` -> `>=` survived every check; no test reaches this boundary",
+            "adv:boundary-pinned: src/lib.rs:9: mutant boundary 100 -> 101 next to `>` survived every check; no test reaches this boundary",
+            "adv:boundary-pinned: src/lib.rs:9: mutant boundary 100 -> 99 next to `>` survived every check; no test reaches this boundary"
+          ],
+          "decision_digest": "1274e1807ce24b96a4b719696d30bb92c92ee4400cab76bb4a2c5806e9399f61"
+        },
+        "task_state": "Waiting",
+        "changed": [
+          "src/lib.rs"
+        ],
+        "leaks": [],
+        "candidate_sha256": "3dd1dca298379321216ab4a304de22b285a55dd51c0f391a302fa0e8e760a0fe",
+        "risk": {
+          "id": "live-rust-quantity-0",
+          "lineage": "holdout/rust-shop/quantity",
+          "level": "MEDIUM",
+          "review_required": false,
+          "human_required": false,
+          "oracle": {
+            "review_required": false,
+            "human_required": false,
+            "critical_surface": false
+          },
+          "false_negative": false,
+          "false_positive": false,
+          "critical_miss": false
+        },
+        "run": {
+          "run_id": "rust-quantity-0",
+          "language": "rust",
+          "repeat": 0,
+          "model_calls": 12,
+          "input_tokens": 168369,
+          "cached_input_tokens": 38784,
+          "output_tokens": 22757,
+          "cost_usd": 0.036634,
+          "wall_ms": 507810,
+          "interactions": 0,
+          "models_answered": [
+            "glm-5.3-flash",
+            "endpoint:openai",
+            "glm-5.3-flash"
+          ],
+          "notes": []
+        }
+      },
+      {
+        "row": {
+          "id": "live-rust-discount-0",
+          "language": "rust",
+          "lineage": "holdout/rust-shop/discount",
+          "class": "live",
+          "flavor": "0",
+          "oracle_correct": true,
+          "previous": {
+            "verdict": "ACCEPT",
+            "reasons": [],
+            "missing": []
+          },
+          "widened": {
+            "verdict": "ACCEPT",
+            "reasons": [],
+            "missing": []
+          },
+          "findings": [],
+          "decision_digest": "309b91c21c4b7904bd68921ab004e2ebc3ce959648e4237b255624df91c8d9f3"
+        },
+        "task_state": "Cancelled",
+        "changed": [
+          "src/lib.rs",
+          "tests/discount.rs"
+        ],
+        "leaks": [],
+        "candidate_sha256": "f40a4e6655f7acd6cd57b951354fedce1d243b7911a5f1b71f7aeaf571e6f71d",
+        "risk": {
+          "id": "live-rust-discount-0",
+          "lineage": "holdout/rust-shop/discount",
+          "level": "LOW",
+          "review_required": false,
+          "human_required": false,
+          "oracle": {
+            "review_required": false,
+            "human_required": false,
+            "critical_surface": false
+          },
+          "false_negative": false,
+          "false_positive": false,
+          "critical_miss": false
+        },
+        "run": {
+          "run_id": "rust-discount-0",
+          "language": "rust",
+          "repeat": 0,
+          "model_calls": 18,
+          "input_tokens": 254059,
+          "cached_input_tokens": 34880,
+          "output_tokens": 47559,
+          "cost_usd": null,
+          "wall_ms": 1201274,
+          "interactions": 0,
+          "models_answered": [
+            "glm-5.3-flash",
+            "endpoint:openai",
+            "glm-5.3-flash"
+          ],
+          "notes": [
+            "the task did not finish within 1200s and was cancelled; its tree is the candidate"
+          ]
+        }
+      },
+      {
+        "row": {
+          "id": "live-rust-sku-0",
+          "language": "rust",
+          "lineage": "holdout/rust-shop/sku",
+          "class": "live",
+          "flavor": "0",
+          "oracle_correct": true,
+          "previous": {
+            "verdict": "ACCEPT",
+            "reasons": [],
+            "missing": []
+          },
+          "widened": {
+            "verdict": "ACCEPT",
+            "reasons": [],
+            "missing": []
+          },
+          "findings": [],
+          "decision_digest": "309b91c21c4b7904bd68921ab004e2ebc3ce959648e4237b255624df91c8d9f3"
+        },
+        "task_state": "ReadyForReview",
+        "changed": [
+          "src/lib.rs"
+        ],
+        "leaks": [],
+        "candidate_sha256": "c65d9200062a1b2c160c6658bd6c21b863feda21d98f6899447479b058b1943a",
+        "risk": {
+          "id": "live-rust-sku-0",
+          "lineage": "holdout/rust-shop/sku",
+          "level": "MEDIUM",
+          "review_required": false,
+          "human_required": false,
+          "oracle": {
+            "review_required": false,
+            "human_required": false,
+            "critical_surface": false
+          },
+          "false_negative": false,
+          "false_positive": false,
+          "critical_miss": false
+        },
+        "run": {
+          "run_id": "rust-sku-0",
+          "language": "rust",
+          "repeat": 0,
+          "model_calls": 4,
+          "input_tokens": 37952,
+          "cached_input_tokens": 11776,
+          "output_tokens": 6707,
+          "cost_usd": 0.009046,
+          "wall_ms": 161583,
+          "interactions": 0,
+          "models_answered": [
+            "glm-5.3-flash",
+            "endpoint:openai",
+            "glm-5.3-flash"
+          ],
+          "notes": []
+        }
+      },
+      {
+        "row": {
+          "id": "live-rust-shipping-0",
+          "language": "rust",
+          "lineage": "holdout/rust-shop/shipping",
+          "class": "live",
+          "flavor": "0",
+          "oracle_correct": true,
+          "previous": {
+            "verdict": "ACCEPT",
+            "reasons": [],
+            "missing": []
+          },
+          "widened": {
+            "verdict": "ACCEPT",
+            "reasons": [],
+            "missing": []
+          },
+          "findings": [],
+          "decision_digest": "309b91c21c4b7904bd68921ab004e2ebc3ce959648e4237b255624df91c8d9f3"
+        },
+        "task_state": "Cancelled",
+        "changed": [
+          "src/lib.rs",
+          "tests/shipping_boundaries.rs"
+        ],
+        "leaks": [],
+        "candidate_sha256": "a3885e45c86194585647bf4c064d9b42eb1fe9e19b7f56bfb1bd277808b2ebf6",
+        "risk": {
+          "id": "live-rust-shipping-0",
+          "lineage": "holdout/rust-shop/shipping",
+          "level": "LOW",
+          "review_required": false,
+          "human_required": false,
+          "oracle": {
+            "review_required": false,
+            "human_required": false,
+            "critical_surface": false
+          },
+          "false_negative": false,
+          "false_positive": false,
+          "critical_miss": false
+        },
+        "run": {
+          "run_id": "rust-shipping-0",
+          "language": "rust",
+          "repeat": 0,
+          "model_calls": 17,
+          "input_tokens": 229358,
+          "cached_input_tokens": 11072,
+          "output_tokens": 41266,
+          "cost_usd": null,
+          "wall_ms": 1201158,
+          "interactions": 0,
+          "models_answered": [
+            "glm-5.3-flash",
+            "endpoint:openai",
+            "glm-5.3-flash"
+          ],
+          "notes": [
+            "the task did not finish within 1200s and was cancelled; its tree is the candidate"
+          ]
+        }
+      },
+      {
+        "row": {
+          "id": "live-python-quantity-0",
+          "language": "python",
+          "lineage": "holdout/python-shop/quantity",
+          "class": "live",
+          "flavor": "0",
+          "oracle_correct": true,
+          "previous": {
+            "verdict": "ACCEPT",
+            "reasons": [],
+            "missing": []
+          },
+          "widened": {
+            "verdict": "ACCEPT",
+            "reasons": [],
+            "missing": []
+          },
+          "findings": [],
+          "decision_digest": "309b91c21c4b7904bd68921ab004e2ebc3ce959648e4237b255624df91c8d9f3"
+        },
+        "task_state": "ReadyForReview",
+        "changed": [
+          "shop.py",
+          "test_quantity.py"
+        ],
+        "leaks": [],
+        "candidate_sha256": "94c8318aa2b43c57a6ad4318a4a85848039e1c3b7556fcd8c559ea11481e37f6",
+        "risk": {
+          "id": "live-python-quantity-0",
+          "lineage": "holdout/python-shop/quantity",
+          "level": "LOW",
+          "review_required": false,
+          "human_required": false,
+          "oracle": {
+            "review_required": false,
+            "human_required": false,
+            "critical_surface": false
+          },
+          "false_negative": false,
+          "false_positive": false,
+          "critical_miss": false
+        },
+        "run": {
+          "run_id": "python-quantity-0",
+          "language": "python",
+          "repeat": 0,
+          "model_calls": 12,
+          "input_tokens": 171991,
+          "cached_input_tokens": 20352,
+          "output_tokens": 25298,
+          "cost_usd": 0.038448,
+          "wall_ms": 598417,
+          "interactions": 0,
+          "models_answered": [
+            "glm-5.3-flash",
+            "endpoint:openai",
+            "glm-5.3-flash"
+          ],
+          "notes": []
+        }
+      },
+      {
+        "row": {
+          "id": "live-python-discount-0",
+          "language": "python",
+          "lineage": "holdout/python-shop/discount",
+          "class": "live",
+          "flavor": "0",
+          "oracle_correct": true,
+          "previous": {
+            "verdict": "ACCEPT",
+            "reasons": [],
+            "missing": []
+          },
+          "widened": {
+            "verdict": "REJECT",
+            "reasons": [
+              "tests failed: adv:boundary-pinned FAIL"
+            ],
+            "missing": []
+          },
+          "findings": [
+            "adv:boundary-pinned: shop.py:14: mutant `>=` -> `>` survived every check; no test reaches this boundary",
+            "adv:boundary-pinned: shop.py:14: mutant boundary 10000 -> 10001 next to `>=` survived every check; no test reaches this boundary",
+            "adv:boundary-pinned: shop.py:14: mutant boundary 10000 -> 9999 next to `>=` survived every check; no test reaches this boundary"
+          ],
+          "decision_digest": "306690de873f4b9b7c8cab24e42775b33ecb4f17dee958ff20eb0d9ccf4c035a"
+        },
+        "task_state": "Waiting",
+        "changed": [
+          "shop.py"
+        ],
+        "leaks": [],
+        "candidate_sha256": "a5d6de4ad0b7f3532aa3a89edac6bfc9b477aca501c8609cc0bf1aab6e2f7096",
+        "risk": {
+          "id": "live-python-discount-0",
+          "lineage": "holdout/python-shop/discount",
+          "level": "MEDIUM",
+          "review_required": false,
+          "human_required": false,
+          "oracle": {
+            "review_required": false,
+            "human_required": false,
+            "critical_surface": false
+          },
+          "false_negative": false,
+          "false_positive": false,
+          "critical_miss": false
+        },
+        "run": {
+          "run_id": "python-discount-0",
+          "language": "python",
+          "repeat": 0,
+          "model_calls": 13,
+          "input_tokens": 178711,
+          "cached_input_tokens": 11456,
+          "output_tokens": 34382,
+          "cost_usd": 0.043998,
+          "wall_ms": 829290,
+          "interactions": 0,
+          "models_answered": [
+            "glm-5.3-flash",
+            "endpoint:openai",
+            "glm-5.3-flash"
+          ],
+          "notes": []
+        }
+      },
+      {
+        "row": {
+          "id": "live-python-sku-0",
+          "language": "python",
+          "lineage": "holdout/python-shop/sku",
+          "class": "live",
+          "flavor": "0",
+          "oracle_correct": true,
+          "previous": {
+            "verdict": "ACCEPT",
+            "reasons": [],
+            "missing": []
+          },
+          "widened": {
+            "verdict": "ACCEPT",
+            "reasons": [],
+            "missing": []
+          },
+          "findings": [],
+          "decision_digest": "309b91c21c4b7904bd68921ab004e2ebc3ce959648e4237b255624df91c8d9f3"
+        },
+        "task_state": "ReadyForReview",
+        "changed": [
+          "shop.py"
+        ],
+        "leaks": [],
+        "candidate_sha256": "932150b54ed89b6b4eb07ddad02cd45ddfa3d4a5457693801f442b6f7c5cf020",
+        "risk": {
+          "id": "live-python-sku-0",
+          "lineage": "holdout/python-shop/sku",
+          "level": "MEDIUM",
+          "review_required": false,
+          "human_required": false,
+          "oracle": {
+            "review_required": false,
+            "human_required": false,
+            "critical_surface": false
+          },
+          "false_negative": false,
+          "false_positive": false,
+          "critical_miss": false
+        },
+        "run": {
+          "run_id": "python-sku-0",
+          "language": "python",
+          "repeat": 0,
+          "model_calls": 10,
+          "input_tokens": 117792,
+          "cached_input_tokens": 22656,
+          "output_tokens": 18421,
+          "cost_usd": 0.026879,
+          "wall_ms": 457638,
+          "interactions": 0,
+          "models_answered": [
+            "glm-5.3-flash",
+            "endpoint:openai",
+            "glm-5.3-flash"
+          ],
+          "notes": []
+        }
+      },
+      {
+        "row": {
+          "id": "live-python-shipping-0",
+          "language": "python",
+          "lineage": "holdout/python-shop/shipping",
+          "class": "live",
+          "flavor": "0",
+          "oracle_correct": true,
+          "previous": {
+            "verdict": "ACCEPT",
+            "reasons": [],
+            "missing": []
+          },
+          "widened": {
+            "verdict": "ACCEPT",
+            "reasons": [],
+            "missing": []
+          },
+          "findings": [],
+          "decision_digest": "309b91c21c4b7904bd68921ab004e2ebc3ce959648e4237b255624df91c8d9f3"
+        },
+        "task_state": "ReadyForReview",
+        "changed": [
+          "shop.py",
+          "test_shipping.py"
+        ],
+        "leaks": [],
+        "candidate_sha256": "baab103c63951fd0b5e7048060946bb8f6a3d924950bee7113fcc1da14d06028",
+        "risk": {
+          "id": "live-python-shipping-0",
+          "lineage": "holdout/python-shop/shipping",
+          "level": "LOW",
+          "review_required": false,
+          "human_required": false,
+          "oracle": {
+            "review_required": false,
+            "human_required": false,
+            "critical_surface": false
+          },
+          "false_negative": false,
+          "false_positive": false,
+          "critical_miss": false
+        },
+        "run": {
+          "run_id": "python-shipping-0",
+          "language": "python",
+          "repeat": 0,
+          "model_calls": 12,
+          "input_tokens": 136030,
+          "cached_input_tokens": 46976,
+          "output_tokens": 13855,
+          "cost_usd": 0.027332,
+          "wall_ms": 365626,
+          "interactions": 0,
+          "models_answered": [
+            "glm-5.3-flash",
+            "endpoint:openai",
+            "glm-5.3-flash"
+          ],
+          "notes": []
+        }
+      },
+      {
+        "row": {
+          "id": "live-javascript-quantity-0",
+          "language": "javascript",
+          "lineage": "holdout/javascript-shop/quantity",
+          "class": "live",
+          "flavor": "0",
+          "oracle_correct": false,
+          "previous": {
+            "verdict": "ACCEPT",
+            "reasons": [],
+            "missing": []
+          },
+          "widened": {
+            "verdict": "ACCEPT",
+            "reasons": [],
+            "missing": []
+          },
+          "findings": [],
+          "decision_digest": "309b91c21c4b7904bd68921ab004e2ebc3ce959648e4237b255624df91c8d9f3"
+        },
+        "task_state": "Cancelled",
+        "changed": [],
+        "leaks": [],
+        "candidate_sha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
+        "risk": {
+          "id": "live-javascript-quantity-0",
+          "lineage": "holdout/javascript-shop/quantity",
+          "level": "LOW",
+          "review_required": false,
+          "human_required": false,
+          "oracle": {
+            "review_required": false,
+            "human_required": false,
+            "critical_surface": false
+          },
+          "false_negative": false,
+          "false_positive": false,
+          "critical_miss": false
+        },
+        "run": {
+          "run_id": "javascript-quantity-0",
+          "language": "javascript",
+          "repeat": 0,
+          "model_calls": 14,
+          "input_tokens": 175538,
+          "cached_input_tokens": 5888,
+          "output_tokens": 39987,
+          "cost_usd": null,
+          "wall_ms": 1201076,
+          "interactions": 3,
+          "models_answered": [
+            "glm-5.3-flash",
+            "endpoint:openai",
+            "glm-5.3-flash"
+          ],
+          "notes": [
+            "question q-callec4b9e260b4a42e59ab4 answered by protocol",
+            "question q-call654d6339480846e9829c answered by protocol",
+            "question q-call2b46ec66c0ed4670bcb3 answered by protocol",
+            "the task did not finish within 1200s and was cancelled; its tree is the candidate"
+          ]
+        }
+      },
+      {
+        "row": {
+          "id": "live-javascript-discount-0",
+          "language": "javascript",
+          "lineage": "holdout/javascript-shop/discount",
+          "class": "live",
+          "flavor": "0",
+          "oracle_correct": true,
+          "previous": {
+            "verdict": "ACCEPT",
+            "reasons": [],
+            "missing": []
+          },
+          "widened": {
+            "verdict": "REJECT",
+            "reasons": [
+              "tests failed: adv:boundary-pinned FAIL"
+            ],
+            "missing": []
+          },
+          "findings": [
+            "adv:boundary-pinned: src/shop.mjs:11: mutant `<` -> `<=` survived every check; no test reaches this boundary",
+            "adv:boundary-pinned: src/shop.mjs:11: mutant boundary 10000 -> 10001 next to `<` survived every check; no test reaches this boundary",
+            "adv:boundary-pinned: src/shop.mjs:11: mutant boundary 10000 -> 9999 next to `<` survived every check; no test reaches this boundary"
+          ],
+          "decision_digest": "f94d986bb57b74fb6d3ff9a5a511f520baaab6b050da2b64f91b07bd73d61507"
+        },
+        "task_state": "Cancelled",
+        "changed": [
+          "src/shop.mjs"
+        ],
+        "leaks": [],
+        "candidate_sha256": "6defe12cd132349102763fd489ca8995893f6d72186fd23c963950fe44503a54",
+        "risk": {
+          "id": "live-javascript-discount-0",
+          "lineage": "holdout/javascript-shop/discount",
+          "level": "LOW",
+          "review_required": false,
+          "human_required": false,
+          "oracle": {
+            "review_required": false,
+            "human_required": false,
+            "critical_surface": false
+          },
+          "false_negative": false,
+          "false_positive": false,
+          "critical_miss": false
+        },
+        "run": {
+          "run_id": "javascript-discount-0",
+          "language": "javascript",
+          "repeat": 0,
+          "model_calls": 15,
+          "input_tokens": 219772,
+          "cached_input_tokens": 0,
+          "output_tokens": 44698,
+          "cost_usd": null,
+          "wall_ms": 1201084,
+          "interactions": 1,
+          "models_answered": [
+            "glm-5.3-flash",
+            "endpoint:openai",
+            "glm-5.3-flash"
+          ],
+          "notes": [
+            "question q-call08d5474b6e954b2db6ee answered by protocol",
+            "the task did not finish within 1200s and was cancelled; its tree is the candidate"
+          ]
+        }
+      },
+      {
+        "row": {
+          "id": "live-javascript-sku-0",
+          "language": "javascript",
+          "lineage": "holdout/javascript-shop/sku",
+          "class": "live",
+          "flavor": "0",
+          "oracle_correct": true,
+          "previous": {
+            "verdict": "ACCEPT",
+            "reasons": [],
+            "missing": []
+          },
+          "widened": {
+            "verdict": "ACCEPT",
+            "reasons": [],
+            "missing": []
+          },
+          "findings": [],
+          "decision_digest": "309b91c21c4b7904bd68921ab004e2ebc3ce959648e4237b255624df91c8d9f3"
+        },
+        "task_state": "ReadyForReview",
+        "changed": [
+          "src/shop.mjs"
+        ],
+        "leaks": [],
+        "candidate_sha256": "010ae4495df4ada46dfbc3921ddb1e0e51ca0a4daf0873c89783a1f3540e48b5",
+        "risk": {
+          "id": "live-javascript-sku-0",
+          "lineage": "holdout/javascript-shop/sku",
+          "level": "LOW",
+          "review_required": false,
+          "human_required": false,
+          "oracle": {
+            "review_required": false,
+            "human_required": false,
+            "critical_surface": false
+          },
+          "false_negative": false,
+          "false_positive": false,
+          "critical_miss": false
+        },
+        "run": {
+          "run_id": "javascript-sku-0",
+          "language": "javascript",
+          "repeat": 0,
+          "model_calls": 14,
+          "input_tokens": 172641,
+          "cached_input_tokens": 0,
+          "output_tokens": 40503,
+          "cost_usd": 0.046148,
+          "wall_ms": 1071018,
+          "interactions": 3,
+          "models_answered": [
+            "glm-5.3-flash",
+            "endpoint:openai",
+            "glm-5.3-flash"
+          ],
+          "notes": [
+            "question q-calle946e83fb95b42148638 answered by protocol",
+            "question q-call86ce5be207654bbba7f8 answered by protocol",
+            "question q-call69a286abc5834f379a4c answered by protocol"
+          ]
+        }
+      },
+      {
+        "row": {
+          "id": "live-javascript-shipping-0",
+          "language": "javascript",
+          "lineage": "holdout/javascript-shop/shipping",
+          "class": "live",
+          "flavor": "0",
+          "oracle_correct": false,
+          "previous": {
+            "verdict": "ACCEPT",
+            "reasons": [],
+            "missing": []
+          },
+          "widened": {
+            "verdict": "ACCEPT",
+            "reasons": [],
+            "missing": []
+          },
+          "findings": [],
+          "decision_digest": "309b91c21c4b7904bd68921ab004e2ebc3ce959648e4237b255624df91c8d9f3"
+        },
+        "task_state": "Cancelled",
+        "changed": [],
+        "leaks": [],
+        "candidate_sha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
+        "risk": {
+          "id": "live-javascript-shipping-0",
+          "lineage": "holdout/javascript-shop/shipping",
+          "level": "LOW",
+          "review_required": false,
+          "human_required": false,
+          "oracle": {
+            "review_required": false,
+            "human_required": false,
+            "critical_surface": false
+          },
+          "false_negative": false,
+          "false_positive": false,
+          "critical_miss": false
+        },
+        "run": {
+          "run_id": "javascript-shipping-0",
+          "language": "javascript",
+          "repeat": 0,
+          "model_calls": 13,
+          "input_tokens": 157396,
+          "cached_input_tokens": 5888,
+          "output_tokens": 38462,
+          "cost_usd": null,
+          "wall_ms": 1201040,
+          "interactions": 3,
+          "models_answered": [
+            "glm-5.3-flash",
+            "endpoint:openai",
+            "glm-5.3-flash"
+          ],
+          "notes": [
+            "question q-call44d80f44df474135a69a answered by protocol",
+            "question q-call1494b5ea67d045009e0b answered by protocol",
+            "question q-callba604f73e00e4bd1b538 answered by protocol",
+            "the task did not finish within 1200s and was cancelled; its tree is the candidate"
+          ]
+        }
+      },
+      {
+        "row": {
+          "id": "live-typescript-quantity-0",
+          "language": "typescript",
+          "lineage": "holdout/typescript-shop/quantity",
+          "class": "live",
+          "flavor": "0",
+          "oracle_correct": true,
+          "previous": {
+            "verdict": "ACCEPT",
+            "reasons": [],
+            "missing": []
+          },
+          "widened": {
+            "verdict": "ACCEPT",
+            "reasons": [],
+            "missing": []
+          },
+          "findings": [],
+          "decision_digest": "309b91c21c4b7904bd68921ab004e2ebc3ce959648e4237b255624df91c8d9f3"
+        },
+        "task_state": "ReadyForReview",
+        "changed": [
+          "src/shop.ts"
+        ],
+        "leaks": [],
+        "candidate_sha256": "4d5106c12b73f079ce3396e5d1c51fa04fbc2bb786f8ab717146416bbedaf8e3",
+        "risk": {
+          "id": "live-typescript-quantity-0",
+          "lineage": "holdout/typescript-shop/quantity",
+          "level": "MEDIUM",
+          "review_required": false,
+          "human_required": false,
+          "oracle": {
+            "review_required": false,
+            "human_required": false,
+            "critical_surface": false
+          },
+          "false_negative": false,
+          "false_positive": false,
+          "critical_miss": false
+        },
+        "run": {
+          "run_id": "typescript-quantity-0",
+          "language": "typescript",
+          "repeat": 0,
+          "model_calls": 6,
+          "input_tokens": 60338,
+          "cached_input_tokens": 11776,
+          "output_tokens": 7332,
+          "cost_usd": 0.012717,
+          "wall_ms": 200476,
+          "interactions": 0,
+          "models_answered": [
+            "glm-5.3-flash",
+            "endpoint:openai",
+            "glm-5.3-flash"
+          ],
+          "notes": []
+        }
+      },
+      {
+        "row": {
+          "id": "live-typescript-discount-0",
+          "language": "typescript",
+          "lineage": "holdout/typescript-shop/discount",
+          "class": "live",
+          "flavor": "0",
+          "oracle_correct": true,
+          "previous": {
+            "verdict": "ACCEPT",
+            "reasons": [],
+            "missing": []
+          },
+          "widened": {
+            "verdict": "REJECT",
+            "reasons": [
+              "tests failed: adv:boundary-pinned FAIL"
+            ],
+            "missing": []
+          },
+          "findings": [
+            "adv:boundary-pinned: src/shop.ts:11: mutant `<` -> `<=` survived every check; no test reaches this boundary",
+            "adv:boundary-pinned: src/shop.ts:11: mutant boundary 10000 -> 10001 next to `<` survived every check; no test reaches this boundary",
+            "adv:boundary-pinned: src/shop.ts:11: mutant boundary 10000 -> 9999 next to `<` survived every check; no test reaches this boundary"
+          ],
+          "decision_digest": "a769bfc0c92bf20273093baa5c74e14b2d4b1aac427af7b4e2b728c6ea6dc2c1"
+        },
+        "task_state": "Waiting",
+        "changed": [
+          "src/shop.ts"
+        ],
+        "leaks": [],
+        "candidate_sha256": "b7b943b62952e0b88193a499b7ba1fafb934e7def7c1622e97bfedaa32b6fa9e",
+        "risk": {
+          "id": "live-typescript-discount-0",
+          "lineage": "holdout/typescript-shop/discount",
+          "level": "MEDIUM",
+          "review_required": false,
+          "human_required": false,
+          "oracle": {
+            "review_required": false,
+            "human_required": false,
+            "critical_surface": false
+          },
+          "false_negative": false,
+          "false_positive": false,
+          "critical_miss": false
+        },
+        "run": {
+          "run_id": "typescript-discount-0",
+          "language": "typescript",
+          "repeat": 0,
+          "model_calls": 6,
+          "input_tokens": 62057,
+          "cached_input_tokens": 7040,
+          "output_tokens": 13784,
+          "cost_usd": 0.016201,
+          "wall_ms": 366417,
+          "interactions": 0,
+          "models_answered": [
+            "glm-5.3-flash",
+            "endpoint:openai",
+            "glm-5.3-flash"
+          ],
+          "notes": []
+        }
+      },
+      {
+        "row": {
+          "id": "live-typescript-sku-0",
+          "language": "typescript",
+          "lineage": "holdout/typescript-shop/sku",
+          "class": "live",
+          "flavor": "0",
+          "oracle_correct": true,
+          "previous": {
+            "verdict": "ACCEPT",
+            "reasons": [],
+            "missing": []
+          },
+          "widened": {
+            "verdict": "ACCEPT",
+            "reasons": [],
+            "missing": []
+          },
+          "findings": [],
+          "decision_digest": "309b91c21c4b7904bd68921ab004e2ebc3ce959648e4237b255624df91c8d9f3"
+        },
+        "task_state": "ReadyForReview",
+        "changed": [
+          "src/shop.ts"
+        ],
+        "leaks": [],
+        "candidate_sha256": "3b0ff11e8ad16333161ef3b0335eb365f5c4cc202b2c6ef16f318b0d47157918",
+        "risk": {
+          "id": "live-typescript-sku-0",
+          "lineage": "holdout/typescript-shop/sku",
+          "level": "MEDIUM",
+          "review_required": false,
+          "human_required": false,
+          "oracle": {
+            "review_required": false,
+            "human_required": false,
+            "critical_surface": false
+          },
+          "false_negative": false,
+          "false_positive": false,
+          "critical_miss": false
+        },
+        "run": {
+          "run_id": "typescript-sku-0",
+          "language": "typescript",
+          "repeat": 0,
+          "model_calls": 5,
+          "input_tokens": 52196,
+          "cached_input_tokens": 0,
+          "output_tokens": 8314,
+          "cost_usd": 0.011986,
+          "wall_ms": 194730,
+          "interactions": 0,
+          "models_answered": [
+            "glm-5.3-flash",
+            "endpoint:openai",
+            "glm-5.3-flash"
+          ],
+          "notes": []
+        }
+      },
+      {
+        "row": {
+          "id": "live-typescript-shipping-0",
+          "language": "typescript",
+          "lineage": "holdout/typescript-shop/shipping",
+          "class": "live",
+          "flavor": "0",
+          "oracle_correct": true,
+          "previous": {
+            "verdict": "ACCEPT",
+            "reasons": [],
+            "missing": []
+          },
+          "widened": {
+            "verdict": "ACCEPT",
+            "reasons": [],
+            "missing": []
+          },
+          "findings": [],
+          "decision_digest": "309b91c21c4b7904bd68921ab004e2ebc3ce959648e4237b255624df91c8d9f3"
+        },
+        "task_state": "ReadyForReview",
+        "changed": [
+          "src/shop.ts",
+          "test/shipping.test.ts"
+        ],
+        "leaks": [],
+        "candidate_sha256": "50b603cef718f5f324f320820f14a238e683b97588d9a6842444a2a9b01f57d1",
+        "risk": {
+          "id": "live-typescript-shipping-0",
+          "lineage": "holdout/typescript-shop/shipping",
+          "level": "LOW",
+          "review_required": false,
+          "human_required": false,
+          "oracle": {
+            "review_required": false,
+            "human_required": false,
+            "critical_surface": false
+          },
+          "false_negative": false,
+          "false_positive": false,
+          "critical_miss": false
+        },
+        "run": {
+          "run_id": "typescript-shipping-0",
+          "language": "typescript",
+          "repeat": 0,
+          "model_calls": 13,
+          "input_tokens": 157526,
+          "cached_input_tokens": 27520,
+          "output_tokens": 28517,
+          "cost_usd": 0.037887,
+          "wall_ms": 680014,
+          "interactions": 0,
+          "models_answered": [
+            "glm-5.3-flash",
+            "endpoint:openai",
+            "glm-5.3-flash"
+          ],
+          "notes": []
+        }
+      }
+    ],
+    "live": true
+  },
+  "rates": [
+    {
+      "language": "rust",
+      "candidates": 4,
+      "correct": 4,
+      "incorrect": 0,
+      "false_accept": {
+        "previous": {
+          "count": 0,
+          "n": 0,
+          "rate": 0.0,
+          "lower": 0.0,
+          "upper": 1.0
+        },
+        "widened": {
+          "count": 0,
+          "n": 0,
+          "rate": 0.0,
+          "lower": 0.0,
+          "upper": 1.0
+        }
+      },
+      "false_reject": {
+        "previous": {
+          "count": 0,
+          "n": 4,
+          "rate": 0.0,
+          "lower": 0.0,
+          "upper": 0.4898908364545973
+        },
+        "widened": {
+          "count": 1,
+          "n": 4,
+          "rate": 0.25,
+          "lower": 0.04558726080970055,
+          "upper": 0.6993581574175981
+        }
+      },
+      "risk": {
+        "false_negative": {
+          "count": 0,
+          "n": 0,
+          "rate": 0.0,
+          "lower": 0.0,
+          "upper": 1.0
+        },
+        "false_positive": {
+          "count": 0,
+          "n": 4,
+          "rate": 0.0,
+          "lower": 0.0,
+          "upper": 0.4898908364545973
+        },
+        "critical_miss": {
+          "count": 0,
+          "n": 0,
+          "rate": 0.0,
+          "lower": 0.0,
+          "upper": 1.0
+        },
+        "minimum_met": false,
+        "misses": []
+      }
+    },
+    {
+      "language": "python",
+      "candidates": 4,
+      "correct": 4,
+      "incorrect": 0,
+      "false_accept": {
+        "previous": {
+          "count": 0,
+          "n": 0,
+          "rate": 0.0,
+          "lower": 0.0,
+          "upper": 1.0
+        },
+        "widened": {
+          "count": 0,
+          "n": 0,
+          "rate": 0.0,
+          "lower": 0.0,
+          "upper": 1.0
+        }
+      },
+      "false_reject": {
+        "previous": {
+          "count": 0,
+          "n": 4,
+          "rate": 0.0,
+          "lower": 0.0,
+          "upper": 0.4898908364545973
+        },
+        "widened": {
+          "count": 1,
+          "n": 4,
+          "rate": 0.25,
+          "lower": 0.04558726080970055,
+          "upper": 0.6993581574175981
+        }
+      },
+      "risk": {
+        "false_negative": {
+          "count": 0,
+          "n": 0,
+          "rate": 0.0,
+          "lower": 0.0,
+          "upper": 1.0
+        },
+        "false_positive": {
+          "count": 0,
+          "n": 4,
+          "rate": 0.0,
+          "lower": 0.0,
+          "upper": 0.4898908364545973
+        },
+        "critical_miss": {
+          "count": 0,
+          "n": 0,
+          "rate": 0.0,
+          "lower": 0.0,
+          "upper": 1.0
+        },
+        "minimum_met": false,
+        "misses": []
+      }
+    },
+    {
+      "language": "javascript",
+      "candidates": 4,
+      "correct": 2,
+      "incorrect": 2,
+      "false_accept": {
+        "previous": {
+          "count": 2,
+          "n": 2,
+          "rate": 1.0,
+          "lower": 0.34238022750665303,
+          "upper": 1.0
+        },
+        "widened": {
+          "count": 2,
+          "n": 2,
+          "rate": 1.0,
+          "lower": 0.34238022750665303,
+          "upper": 1.0
+        }
+      },
+      "false_reject": {
+        "previous": {
+          "count": 0,
+          "n": 2,
+          "rate": 0.0,
+          "lower": 0.0,
+          "upper": 0.6576197724933469
+        },
+        "widened": {
+          "count": 1,
+          "n": 2,
+          "rate": 0.5,
+          "lower": 0.09453120573423074,
+          "upper": 0.9054687942657693
+        }
+      },
+      "risk": {
+        "false_negative": {
+          "count": 0,
+          "n": 0,
+          "rate": 0.0,
+          "lower": 0.0,
+          "upper": 1.0
+        },
+        "false_positive": {
+          "count": 0,
+          "n": 4,
+          "rate": 0.0,
+          "lower": 0.0,
+          "upper": 0.4898908364545973
+        },
+        "critical_miss": {
+          "count": 0,
+          "n": 0,
+          "rate": 0.0,
+          "lower": 0.0,
+          "upper": 1.0
+        },
+        "minimum_met": false,
+        "misses": []
+      }
+    },
+    {
+      "language": "typescript",
+      "candidates": 4,
+      "correct": 4,
+      "incorrect": 0,
+      "false_accept": {
+        "previous": {
+          "count": 0,
+          "n": 0,
+          "rate": 0.0,
+          "lower": 0.0,
+          "upper": 1.0
+        },
+        "widened": {
+          "count": 0,
+          "n": 0,
+          "rate": 0.0,
+          "lower": 0.0,
+          "upper": 1.0
+        }
+      },
+      "false_reject": {
+        "previous": {
+          "count": 0,
+          "n": 4,
+          "rate": 0.0,
+          "lower": 0.0,
+          "upper": 0.4898908364545973
+        },
+        "widened": {
+          "count": 1,
+          "n": 4,
+          "rate": 0.25,
+          "lower": 0.04558726080970055,
+          "upper": 0.6993581574175981
+        }
+      },
+      "risk": {
+        "false_negative": {
+          "count": 0,
+          "n": 0,
+          "rate": 0.0,
+          "lower": 0.0,
+          "upper": 1.0
+        },
+        "false_positive": {
+          "count": 0,
+          "n": 4,
+          "rate": 0.0,
+          "lower": 0.0,
+          "upper": 0.4898908364545973
+        },
+        "critical_miss": {
+          "count": 0,
+          "n": 0,
+          "rate": 0.0,
+          "lower": 0.0,
+          "upper": 1.0
+        },
+        "minimum_met": false,
+        "misses": []
+      }
+    },
+    {
+      "language": "all",
+      "candidates": 16,
+      "correct": 14,
+      "incorrect": 2,
+      "false_accept": {
+        "previous": {
+          "count": 2,
+          "n": 2,
+          "rate": 1.0,
+          "lower": 0.34238022750665303,
+          "upper": 1.0
+        },
+        "widened": {
+          "count": 2,
+          "n": 2,
+          "rate": 1.0,
+          "lower": 0.34238022750665303,
+          "upper": 1.0
+        }
+      },
+      "false_reject": {
+        "previous": {
+          "count": 0,
+          "n": 14,
+          "rate": 0.0,
+          "lower": 0.0,
+          "upper": 0.2153108027376358
+        },
+        "widened": {
+          "count": 4,
+          "n": 14,
+          "rate": 0.2857142857142857,
+          "lower": 0.11721378644576919,
+          "upper": 0.5464908432989318
+        }
+      },
+      "risk": {
+        "false_negative": {
+          "count": 0,
+          "n": 0,
+          "rate": 0.0,
+          "lower": 0.0,
+          "upper": 1.0
+        },
+        "false_positive": {
+          "count": 0,
+          "n": 16,
+          "rate": 0.0,
+          "lower": 0.0,
+          "upper": 0.1936076805344365
+        },
+        "critical_miss": {
+          "count": 0,
+          "n": 0,
+          "rate": 0.0,
+          "lower": 0.0,
+          "upper": 1.0
+        },
+        "minimum_met": false,
+        "misses": []
+      }
+    }
+  ],
+  "comparison": [
+    {
+      "language": "rust",
+      "incorrect": 0,
+      "incorrect_accepted_previous": 0,
+      "incorrect_accepted_widened": 0,
+      "newly_rejected_incorrect": 0,
+      "correct": 4,
+      "correct_not_accepted_previous": 0,
+      "correct_not_accepted_widened": 1,
+      "newly_rejected_correct": 1
+    },
+    {
+      "language": "python",
+      "incorrect": 0,
+      "incorrect_accepted_previous": 0,
+      "incorrect_accepted_widened": 0,
+      "newly_rejected_incorrect": 0,
+      "correct": 4,
+      "correct_not_accepted_previous": 0,
+      "correct_not_accepted_widened": 1,
+      "newly_rejected_correct": 1
+    },
+    {
+      "language": "javascript",
+      "incorrect": 2,
+      "incorrect_accepted_previous": 2,
+      "incorrect_accepted_widened": 2,
+      "newly_rejected_incorrect": 0,
+      "correct": 2,
+      "correct_not_accepted_previous": 0,
+      "correct_not_accepted_widened": 1,
+      "newly_rejected_correct": 1
+    },
+    {
+      "language": "typescript",
+      "incorrect": 0,
+      "incorrect_accepted_previous": 0,
+      "incorrect_accepted_widened": 0,
+      "newly_rejected_incorrect": 0,
+      "correct": 4,
+      "correct_not_accepted_previous": 0,
+      "correct_not_accepted_widened": 1,
+      "newly_rejected_correct": 1
+    },
+    {
+      "language": "all",
+      "incorrect": 2,
+      "incorrect_accepted_previous": 2,
+      "incorrect_accepted_widened": 2,
+      "newly_rejected_incorrect": 0,
+      "correct": 14,
+      "correct_not_accepted_previous": 0,
+      "correct_not_accepted_widened": 4,
+      "newly_rejected_correct": 4
+    }
+  ],
+  "errors": [],
+  "leak": {
+    "needles": [
+      "\"declared\"",
+      "MODBIT-ORACLE-CANARY",
+      "MODBIT-ORACLE-CANARY-javascript-9e60b7f3",
+      "MODBIT-ORACLE-CANARY-python-2b94d0e7",
+      "MODBIT-ORACLE-CANARY-rust-7f3a91c2",
+      "MODBIT-ORACLE-CANARY-typescript-c81d35a4",
+      "oracle_correct",
+      "oracle_spec",
+      "test_oracle_spec"
+    ],
+    "runs_searched": 16,
+    "hits": []
+  },
+  "spend": {
+    "cap_usd": 5.0,
+    "spent_usd": 0.307276,
+    "calls": 16,
+    "input_tokens": 1315603,
+    "output_tokens": 219870,
+    "unknown_usage_calls": 5,
+    "stopped_by_cap": false
+  },
+  "digest_reproduced": true,
+  "report_digest": "aef6cf6e036605f80783cbbe4e82ae2c62183fe200a1f40e688ceaac127871d8",
+  "status": {
+    "row": "px135",
+    "complete": false,
+    "missing": [
+      "run rust-discount-0: cost unknown (the model is not in the Core's price catalog; an unknown price is not free)",
+      "run rust-shipping-0: cost unknown (the model is not in the Core's price catalog; an unknown price is not free)",
+      "run javascript-quantity-0: cost unknown (the model is not in the Core's price catalog; an unknown price is not free)",
+      "run javascript-discount-0: cost unknown (the model is not in the Core's price catalog; an unknown price is not free)",
+      "run javascript-shipping-0: cost unknown (the model is not in the Core's price catalog; an unknown price is not free)"
+    ],
+    "spend": {
+      "cap_usd": 5.0,
+      "spent_usd": 0.307276,
+      "calls": 16,
+      "input_tokens": 1315603,
+      "output_tokens": 219870,
+      "unknown_usage_calls": 5,
+      "stopped_by_cap": false
+    }
+  }
+}

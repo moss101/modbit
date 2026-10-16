@@ -151,13 +151,15 @@ test("screen states: provider down, human continuation, review gate and a denied
       await expect(settings.getByTestId("settings-state-label")).toHaveText("keychain unavailable");
       await expect(settings.getByTestId("settings-state-evidence")).toContainText("keychainAvailable=false");
     }
-    // Notifications: opt in to attention and completion; quiet hours cover now.
+    // Notifications: opt in to attention and completion; quiet hours cover now. They cover this hour and the next: the spec runs for
+    // a minute or more, and a window of one hour ends under it when it starts in the last minute of the hour (observed on Windows CI:
+    // started 07:59:56, window [7,8), the failure notification arrived at 08:00:10 and was delivered).
     const hour = new Date().getHours();
     await page.getByTestId("notify-attention").check();
     await page.getByTestId("notify-completion").check();
     await page.getByTestId("notify-quiet").check();
     await page.getByTestId("notify-quiet-start").fill(String(hour));
-    await page.getByTestId("notify-quiet-end").fill(String((hour + 1) % 24));
+    await page.getByTestId("notify-quiet-end").fill(String((hour + 2) % 24));
     // New Task: the composer names the repository as not yet trusted; running trusts it.
     await page.getByTestId("workspace").fill(repo);
     await expect(page.getByTestId("composer-state-label")).toContainText("not yet trusted");

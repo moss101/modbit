@@ -483,18 +483,31 @@ export class BrowserHost {
     h.humanInputAt = Date.now();
     if (h.controller === "USER") return;
     h.controller = "USER";
+    // Every attempt and the Core's answer to it is on the host's log (`browserLog`): when the host stands at USER and the Core's lease
+    // did not move, the log says whether the Core was asked, what it answered, or that nothing came back.
+    const note = (ok: boolean, code: string, generation: number): void => {
+      this.log.push({ browserSessionId: h.browserSessionId, kind: "human-takeover", ok, code, generation, atMs: Date.now() });
+    };
     for (const waitMs of [0, 250, 1_000, 3_000]) {
       if (waitMs > 0) await new Promise((r) => setTimeout(r, waitMs));
       // The person may have handed control back meanwhile; that hand-over is the Core's by then.
       if (h.controller !== "USER") return;
       const c = this.client();
-      if (!c) continue;
+      if (!c) {
+        note(false, "no Core client", h.leaseGeneration);
+        continue;
+      }
       try {
+        note(true, `asked the Core for USER (host at generation ${h.leaseGeneration})`, h.leaseGeneration);
         const r = await c.setBrowserControl(h.sessionId, h.browserSessionId, h.taskId, "USER");
+        note(true, `Core answered ${r.controller} generation ${r.leaseGeneration} changed=${r.changed}`, Number(r.leaseGeneration));
+        // An answer that does not say USER at a generation above zero is not the answer to this hand-over: the host does not take it for one.
+        if (r.controller !== "USER" || r.leaseGeneration === 0n) throw new Error(`the Core's answer is not a hand-over to USER (controller "${r.controller}", generation ${r.leaseGeneration})`);
         h.leaseGeneration = Math.max(h.leaseGeneration, Number(r.leaseGeneration));
         this.notify("browser:state", { browserSessionId: h.browserSessionId, ...this.state(h), controller: "USER", leaseGeneration: h.leaseGeneration, preempted: true });
         return;
       } catch (e) {
+        note(false, `refused: ${(e as Error).message.slice(0, 120)}`, h.leaseGeneration);
         console.error(`modbit-desktop: browser preemption: SetBrowserControl USER refused (${(e as Error).message}); the host's fence holds, asking again`);
       }
     }
