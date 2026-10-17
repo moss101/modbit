@@ -9,6 +9,7 @@
 //! the emergency stop. Protected paths live in `modbit-workspace`.
 
 pub mod assurance;
+pub mod budget;
 pub mod config;
 pub mod epoch;
 pub mod kernel;

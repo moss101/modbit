@@ -12,7 +12,7 @@ import type { CoreClient } from "@modbit/ide-adapter-core";
 import { addAllowRule, decideModeProposal, forkTask, getContextAccounting, getRunMode, listAllowRules, listComputerActivity, listCheckpoints, listModeProposals, previewRewind, readObjectRange, restoreCheckpoint, revokeAllowRule, setRunMode, setTaskBudgets } from "@modbit/ide-adapter-core";
 import { TaskMode, TranscriptDensity, type AllowRuleView, type ContextAccountingView, type ModeProposalView, type RunModeView, type TranscriptRow } from "@modbit/surface-protocol";
 import type { AccountingInfo, AllowRuleInfo, CheckpointListInfo, DockApprovalView, ExpiredApprovalView, ForkOutcome, ModeProposalDecisionInfo, ModeProposalInfo, ModeProposalListInfo, ProposalStatus, RestoreOutcome, RewindPreviewInfo, RunModeInfo, TaskBudgetsInfo } from "../shared/control-types.ts";
-import { intentOf, reasonOf } from "./approval-intent.ts";
+import { BUDGET_RAISE_EFFECT, budgetRaiseIntentOf, intentOf, reasonOf } from "./approval-intent.ts";
 import { computerIntentOf } from "./computer-intent.ts";
 import { bad, validApprovalId, validBool, validCommandId, validCount, validExpected, validGoal, validIntentHash, validKeepPaths, validProposalId, validReason, validRuleId, validRuleInput, validRunMode, validTarget } from "./control-args.ts";
 import type { Registrar } from "./conversation-ipc.ts";
@@ -122,7 +122,7 @@ export async function dockApprovals(c: CoreClient, sessionId: string, taskId: st
       requestedAtMs: msOf(a.requestedAtMs),
       expiresAtMs: msOf(a.expiresAtMs),
       reason: reasonOf(a.scopeJson),
-      intent: intentOf(await argumentsOf(c, tid, callId)),
+      intent: a.toolName === BUDGET_RAISE_EFFECT ? budgetRaiseIntentOf(a.scopeJson) : intentOf(await argumentsOf(c, tid, callId)),
       // PX-074: a native-control approval carries its exact intent (application identity, window, element, action, arguments).
       computer,
     });

@@ -1,7 +1,7 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import type { AccountingInfo } from "../../shared/control-types.ts";
-import { budgetBars, categorySum, countFrom, nearLimit, percentUsed, ringLabel, ringLevel, sumsToTotal, trayPlan, usageVisible } from "./model.ts";
+import { budgetBars, categorySum, countFrom, nearLimit, percentUsed, raiseOutcome, ringLabel, ringLevel, sumsToTotal, trayPlan, usageVisible } from "./model.ts";
 import { parseUsageSetting } from "./prefs.ts";
 
 const acct = (over: Partial<AccountingInfo> = {}): AccountingInfo => ({
@@ -80,4 +80,16 @@ test("REQ-PX-060: trays are due by the Core's typed codes: the Core away, BUDGET
 test("REQ-PX-060: a new budget cap is whole digits or nothing", () => {
   assert.equal(countFrom(" 42 "), "42");
   for (const t of ["", "-1", "1.5", "1e3", "abc", "1".repeat(16)]) assert.equal(countFrom(t), null);
+});
+
+test("REQ-PX-060: the Core's typed answers to a raise are said in words, and an untyped one is shown as the Core's", () => {
+  const wrap = (m: string): string => `Error invoking remote method 'budgets:set': Error: ${m}`;
+  assert.equal(raiseOutcome(wrap("BUDGET_CEILING_EXCEEDED: the cost cap may not exceed 1000")).kind, "ceiling");
+  assert.match(raiseOutcome(wrap("BUDGET_CEILING_EXCEEDED: the cost cap may not exceed 1000")).text, /No approval can lift this/);
+  assert.equal(raiseOutcome(wrap("BUDGET_RAISE_NEEDS_APPROVAL: x; approval a is waiting")).kind, "approval");
+  assert.equal(raiseOutcome("BUDGET_RAISE_APPROVAL_PENDING: approval a").kind, "pending");
+  assert.equal(raiseOutcome("BUDGET_RAISE_DENIED: no").kind, "denied");
+  assert.equal(raiseOutcome("BUDGET_POLICY_INVALID: unreadable").kind, "policy");
+  const other = raiseOutcome("UNKNOWN_TASK: t");
+  assert.deepEqual([other.kind, other.text], ["other", "The Core refused: UNKNOWN_TASK: t"]);
 });

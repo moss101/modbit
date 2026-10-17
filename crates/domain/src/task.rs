@@ -1692,6 +1692,36 @@ pub enum TaskEvent {
         max_children: u32,
         /// No `agent.spawn` for this task.
         forbid_spawn: bool,
+        /// The budget-policy rule that allowed the change (REQ-PX-060):
+        /// `not-a-raise`, `within-ceiling` or `approved`.
+        #[serde(default, skip_serializing_if = "String::is_empty")]
+        rule: String,
+        /// The approval a raise was applied under, when one was needed.
+        #[serde(default, skip_serializing_if = "Option::is_none")]
+        approval_id: Option<String>,
+    },
+    /// `TaskBudgetRaiseDecided` (REQ-PX-060): the budget policy refused a
+    /// raise, or asked for a person's exact-intent approval before it applies.
+    /// The caps do not change. No state change.
+    TaskBudgetRaiseDecided {
+        /// `REFUSED` or `APPROVAL_REQUESTED`.
+        decision: String,
+        /// Typed code (`BUDGET_CEILING_EXCEEDED`, `BUDGET_RAISE_NEEDS_APPROVAL`, ...).
+        code: String,
+        /// Why, in words.
+        reason: String,
+        /// The approval opened for it, if any.
+        #[serde(default)]
+        approval_id: Option<String>,
+        /// The intent hash the approval binds, if any.
+        #[serde(default)]
+        intent_hash: Option<String>,
+        /// The cost cap asked for (0 = none).
+        requested_cost_minor: u64,
+        /// The wall-clock cap asked for, ms (0 = none).
+        requested_wall_ms: u64,
+        /// The live-children limit asked for (effective; 0 = none).
+        requested_children: u32,
     },
     /// `SubagentAdmissionRefused`: an admission step failed and everything
     /// taken before it was returned; nothing started (REQ-EV-0267). No
@@ -3161,6 +3191,7 @@ impl TaskEvent {
             Self::AgentBindingChanged { .. } => "AgentBindingChanged",
             Self::SubagentAdmitted { .. } => "SubagentAdmitted",
             Self::TaskBudgetsSet { .. } => "TaskBudgetsSet",
+            Self::TaskBudgetRaiseDecided { .. } => "TaskBudgetRaiseDecided",
             Self::SubagentAdmissionRefused { .. } => "SubagentAdmissionRefused",
             Self::SubagentCapsuleBound { .. } => "SubagentCapsuleBound",
             Self::SubagentResultRecorded { .. } => "SubagentResultRecorded",
@@ -3376,6 +3407,7 @@ impl Task {
             | TaskEvent::WorkNodesChanged { .. }
             | TaskEvent::SubagentAdmitted { .. }
             | TaskEvent::TaskBudgetsSet { .. }
+            | TaskEvent::TaskBudgetRaiseDecided { .. }
             | TaskEvent::SubagentAdmissionRefused { .. }
             | TaskEvent::SubagentCapsuleBound { .. }
             | TaskEvent::SubagentResultRecorded { .. }

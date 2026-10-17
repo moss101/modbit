@@ -103,3 +103,19 @@ export function intentOf(argumentsJson: string | null): ApprovalIntentView {
     truncated: p.truncated,
   };
 }
+
+/** The tool name the Core gives the approval of a budget raise (REQ-PX-060): the effect is not a tool call and has no recorded arguments. */
+export const BUDGET_RAISE_EFFECT = "task.budget.raise";
+
+/** The exact intent of a budget raise, from the Core's own scope: the caps in force and the caps asked for. */
+export function budgetRaiseIntentOf(scopeJson: string): ApprovalIntentView {
+  try {
+    const v: unknown = JSON.parse(scopeJson);
+    const r = v && typeof v === "object" ? (v as Record<string, unknown>).budget_raise : undefined;
+    if (!r || typeof r !== "object") return { ...EMPTY };
+    const o = r as Record<string, unknown>;
+    return intentOf(JSON.stringify({ from: o.from, to: o.to }));
+  } catch {
+    return { ...EMPTY };
+  }
+}
