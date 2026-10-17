@@ -1,0 +1,50 @@
+{
+  "row": "px047-scroll-frames",
+  "run": "local-macos-debug-core-700-queued-inputs",
+  "recordedAt": "2026-10-17T09:46:06.569Z",
+  "environment": {
+    "platform": "darwin",
+    "os": "27.0.0",
+    "cpu": "Apple M5 Pro",
+    "cores": 18,
+    "memoryGiB": 24,
+    "ci": false,
+    "runner": "local",
+    "app": "unpackaged build (apps/desktop/dist) under Playwright; the packaged-app run is PX-025's (M10.4)",
+    "clock": "Core event timestamp (recorded_at, ms) and the renderer's performance.timeOrigin+now on the same host"
+  },
+  "budgets": [
+    {
+      "statement": "QUAL-PX-047: 1,000 rows scroll without dropped frames beyond the budget. The dossier gives no frame budget (no count, no interval): this is an owner question.",
+      "limitMs": null,
+      "percentile": null
+    }
+  ],
+  "method": {
+    "queuedInputs": 700,
+    "toolCallsPerTurn": 4,
+    "density": "DETAILED",
+    "rowsProjectedByTheCore": 889,
+    "rowsOnThePage": 914,
+    "reachedQualRowCount": false,
+    "framesMeasured": 28868,
+    "droppedFrames": 49,
+    "droppedFrameMeansIntervalOver": "33.3 ms (two 60 Hz frames)",
+    "profile": "ci"
+  },
+  "distributions": {
+    "frame interval while scrolling (ms)": {
+      "n": 28868,
+      "min": 6.2,
+      "p50": 8.3,
+      "p95": 10,
+      "p99": 10.3,
+      "max": 102,
+      "mean": 8.46
+    }
+  },
+  "verdict": {
+    "met": null,
+    "text": "889 rows (the QUAL names 1,000: not reached on this run); 49 of 28868 frames over 33.3 ms (0.2 %); no numeric budget exists to judge them against"
+  }
+}

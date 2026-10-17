@@ -125,7 +125,7 @@ export function retain(info: TestInfo, row: string, result: Record<string, unkno
   const json = { row, run, recordedAt: new Date().toISOString(), environment: environment(), ...result };
   writeFileSync(join(dir, "result.json"), `${JSON.stringify(json, null, 2)}\n`);
   const lines = [`# ${row}`, "", `Run ${run} on ${String((json.environment as { platform: string }).platform)} (${String((json.environment as { cpu: string }).cpu)}, ${String((json.environment as { cores: number }).cores)} cores).`, ""];
-  for (const [name, d] of Object.entries(result.distributions as Record<string, Dist>)) lines.push(`- ${name}: n=${d.n}, p50 ${d.p50} ms, p95 ${d.p95} ms, p99 ${d.p99} ms, max ${d.max} ms`);
+  for (const [name, d] of Object.entries(result.distributions as Record<string, Dist>)) lines.push(d.n === 0 ? `- ${name}: none` : `- ${name}: n=${d.n}, p50 ${d.p50} ms, p95 ${d.p95} ms, p99 ${d.p99} ms, max ${d.max} ms`);
   const verdict = result.verdict as { met: boolean | null; text: string } | undefined;
   if (verdict) lines.push("", `Budget: ${verdict.met === null ? "no numeric budget in the dossier" : verdict.met ? "MET" : "NOT MET"}. ${verdict.text}`);
   writeFileSync(join(dir, "summary.md"), `${lines.join("\n")}\n`);
