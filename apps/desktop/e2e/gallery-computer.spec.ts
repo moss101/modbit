@@ -64,13 +64,6 @@ test("PX-074: every state of the native-control surface is accessible in every t
     for (const theme of THEMES) {
       await page.getByTestId(`theme-${theme}`).click();
       await expect(page.locator("html")).toHaveAttribute("data-theme", theme);
-      // A colour transition on an element that is off screen does not advance until it is scrolled into view: bring each control on screen so the theme has really applied before it is measured.
-      await page.evaluate(async () => {
-        for (const el of document.querySelectorAll('[data-testid="gallery-computer"] button')) {
-          el.scrollIntoView({ block: "center" });
-          await new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(r)));
-        }
-      });
       await accessible(page, `the native-control gallery in ${theme}`, '[data-testid="gallery-computer"]');
     }
   } finally {

@@ -147,6 +147,25 @@ struct St {
     control: String,
 }
 
+/// The ceiling for a run to end: a loaded Windows runner with a parent and a child needs minutes.
+const FINISH_SECS: u64 = 600;
+
+/// The ceiling for one awaited event (an approval asked, an input delivered, a process gone). The
+/// wait ends the moment the event does; the ceiling only bounds a real hang.
+const WAIT_SECS: u64 = 90;
+
+/// Poll `ready` until it holds, panicking with `what` after `secs`.
+async fn wait_for(secs: u64, what: &str, ready: impl Fn() -> bool) {
+    let deadline = std::time::Instant::now() + Duration::from_secs(secs);
+    while !ready() {
+        assert!(
+            std::time::Instant::now() < deadline,
+            "{what} (waited {secs} s)"
+        );
+        tokio::time::sleep(Duration::from_millis(25)).await;
+    }
+}
+
 fn call(name: &str, args: Value) -> Value {
     json!({"calls": [{"name": name, "args": args}]})
 }
@@ -344,6 +363,14 @@ async fn setup_model(opts: Opts, base: String, seen: Seen, decide: Decider) -> R
             .to_string_lossy()
             .into_owned(),
     );
+    args.push("--hang-marker".into());
+    args.push(
+        desktop_dir
+            .path()
+            .join("delivered")
+            .to_string_lossy()
+            .into_owned(),
+    );
     let dir = tempfile::tempdir().unwrap();
     let mut env: Vec<(String, String)> = model_env(&base);
     if let Some(h) = &opts.helper {
@@ -409,9 +436,53 @@ impl Rig {
         start_task_long(&mut self.client, &task, g, 0x12).await;
     }
 
+    /// Wait for the run to end. The bound is a ceiling for a loaded Windows runner (a parent and
+    /// a child on a shared four-core machine need minutes), never a pace the run is held to; a run
+    /// that really hangs prints what it did before the assertion fails.
     async fn finish(&mut self) {
-        let st = wait_task(&mut self.client, &self.task, 120).await;
+        let st = wait_task(&mut self.client, &self.task, FINISH_SECS).await;
+        if st.loop_alive {
+            self.dump().await;
+        }
         assert!(!st.loop_alive, "the run did not end: {st:?}");
+    }
+
+    /// The actuator has applied an input and is holding it in flight: the fixture says so itself
+    /// (a file), so nothing here guesses how long the delivery takes on a loaded machine.
+    async fn wait_delivered(&self) {
+        let p = self.desktop_dir.path().join("delivered");
+        wait_for(
+            WAIT_SECS,
+            "the actuator never reported an input in flight",
+            || p.exists(),
+        )
+        .await;
+    }
+
+    /// The path of the actuator's pid, once it has written it.
+    async fn wait_actuator_pid(&self) -> u32 {
+        let p = self.desktop_dir.path().join("actuator.pid");
+        wait_for(WAIT_SECS, "the actuator never wrote its pid", || {
+            std::fs::read_to_string(&p).is_ok_and(|t| t.trim().parse::<u32>().is_ok())
+        })
+        .await;
+        self.actuator_pid()
+    }
+
+    /// The model has been asked for its `n`-th reply (it has been shown `n` tool results).
+    async fn wait_model_shown(&self, n: usize) {
+        let seen = self.seen.clone();
+        wait_for(
+            WAIT_SECS,
+            "the model was never shown that many results",
+            move || {
+                seen.lock()
+                    .unwrap()
+                    .iter()
+                    .any(|b| st_of(b).texts.len() >= n)
+            },
+        )
+        .await;
     }
 
     /// The tool results the model was shown, after the plan's, in call order.
@@ -428,8 +499,38 @@ impl Rig {
             .collect()
     }
 
+    /// The whole log of the session. `replay` ends at the first 600 ms without a frame, so on a
+    /// loaded runner a stall in the middle of a long log would truncate it; the log is complete
+    /// once it reaches the offset the Core reports as its tip when the read starts.
     async fn events(&self) -> Vec<Value> {
-        replay(&self.core, &self.session).await
+        let mut c = self.core.client().await;
+        let tip = {
+            use modbit_protocol::v1::{GetTaskStatus, TaskStatus};
+            let ack = c
+                .command(envelope(
+                    rand_id(),
+                    "GetTaskStatus",
+                    GetTaskStatus {
+                        task_id: Some(self.task.clone()),
+                    }
+                    .encode_to_vec(),
+                ))
+                .await
+                .unwrap();
+            Client::result::<TaskStatus>(&ack).unwrap().last_offset
+        };
+        let deadline = std::time::Instant::now() + Duration::from_secs(WAIT_SECS);
+        loop {
+            let evs = replay(&self.core, &self.session).await;
+            let top = evs
+                .iter()
+                .filter_map(|e| e["offset"].as_u64())
+                .max()
+                .unwrap_or(0);
+            if top >= tip || std::time::Instant::now() >= deadline {
+                return evs;
+            }
+        }
     }
 
     /// Print what the model was shown (for a failing run).
@@ -915,7 +1016,8 @@ async fn qual_px_070_a_decision_on_another_intent_is_refused() {
     let mut rig = run(Opts::default(), steps, ignore).await;
     // Wait for the approval to be asked.
     let mut approval = None;
-    for _ in 0..100 {
+    let deadline = std::time::Instant::now() + Duration::from_secs(WAIT_SECS);
+    while std::time::Instant::now() < deadline {
         let ack = rig
             .client
             .command(envelope(
@@ -1022,26 +1124,6 @@ async fn qual_px_070_policy_restricts_applications_and_forbids_screen_scope_with
         vec!["computer.start"],
         "only the allowed application was asked about"
     );
-}
-
-/// The person approved a `tool` call and gave the application a moment to be in the middle of it.
-async fn when_in_flight(
-    rig_approvals: Arc<Mutex<Vec<(ApprovalView, Value, Decision)>>>,
-    tool: &'static str,
-) {
-    for _ in 0..300 {
-        if rig_approvals
-            .lock()
-            .unwrap()
-            .iter()
-            .any(|(a, ..)| a.tool_name == tool)
-        {
-            tokio::time::sleep(Duration::from_millis(700)).await;
-            return;
-        }
-        tokio::time::sleep(Duration::from_millis(50)).await;
-    }
-    panic!("no {tool} approval was asked");
 }
 
 fn receipts(evs: &[Value]) -> Vec<Value> {
@@ -1153,6 +1235,22 @@ fn alive(pid: u32) -> bool {
     }
 }
 
+/// Wait for a process to be gone. One sample of `alive` right after a kill races the operating
+/// system (and the Core, which reaps its child when it sees the pipe close), so the answer is
+/// "gone by the deadline", with the deadline generous.
+async fn process_gone(pid: u32, secs: u64) -> bool {
+    let deadline = std::time::Instant::now() + Duration::from_secs(secs);
+    loop {
+        if !alive(pid) {
+            return true;
+        }
+        if std::time::Instant::now() >= deadline {
+            return false;
+        }
+        tokio::time::sleep(Duration::from_millis(50)).await;
+    }
+}
+
 /// QUAL-PX-069 (failure injection): the actuator process is killed from outside while an input is in
 /// flight - the outcome is UNKNOWN, the latch holds, the actuator comes back and the model is not
 /// let through until the person-approved new session observes.
@@ -1172,27 +1270,9 @@ async fn qual_px_069_killing_the_actuator_mid_action_leaves_the_outcome_unknown_
         fx(call("computer.state", json!({}))),
     ];
     let mut rig = run(Opts::default(), steps, approve_all()).await;
-    let pid_before = {
-        // The fixture writes its pid before it answers the handshake.
-        tokio::time::sleep(Duration::from_millis(300)).await;
-        rig.actuator_pid()
-    };
-    when_in_flight(rig.approvals.clone(), "computer.press").await;
-    // Skip the start's own approval: the press is the second computer approval.
-    for _ in 0..100 {
-        if rig
-            .approvals
-            .lock()
-            .unwrap()
-            .iter()
-            .filter(|(a, ..)| a.tool_name == "computer.press")
-            .count()
-            >= 1
-        {
-            break;
-        }
-        tokio::time::sleep(Duration::from_millis(50)).await;
-    }
+    // The press was applied and is in flight (the fixture says so), and its pid is on disk.
+    rig.wait_delivered().await;
+    let pid_before = rig.wait_actuator_pid().await;
     kill_pid(pid_before);
     rig.finish().await;
     let o = rig.outs();
@@ -1222,8 +1302,13 @@ async fn qual_px_069_killing_the_actuator_mid_action_leaves_the_outcome_unknown_
     assert_eq!(closed.len(), 1);
     assert_eq!(closed[0]["payload"]["payload"]["outcome"], "LATCHED");
     // The actuator that was killed is gone, and a new one is attached (the tools stay offered).
-    assert!(!alive(pid_before));
-    let view = rig.view().await;
+    assert!(
+        process_gone(pid_before, WAIT_SECS).await,
+        "the killed actuator is still there"
+    );
+    // The Core relaunches a lost actuator on its supervision tick, so "a new one is attached" is
+    // an event to wait for, not a state to sample.
+    let view = rig.view_attached().await;
     assert!(view.attached, "{view:?}");
     assert!(view.latch.contains("press"), "{view:?}");
 }
@@ -1271,6 +1356,19 @@ async fn qual_px_069_the_watchdog_times_an_input_out_into_an_unknown_outcome_and
 }
 
 impl Rig {
+    /// The runtime view once an actuator is attached (or, after the deadline, as it is): a lost
+    /// actuator is relaunched on the supervision tick, a new Core attaches while it boots.
+    async fn view_attached(&self) -> ViewOut {
+        let deadline = std::time::Instant::now() + Duration::from_secs(WAIT_SECS);
+        loop {
+            let v = self.view().await;
+            if v.attached || std::time::Instant::now() >= deadline {
+                return v;
+            }
+            tokio::time::sleep(Duration::from_millis(100)).await;
+        }
+    }
+
     async fn view(&self) -> ViewOut {
         use modbit_protocol::v1::{ComputerRuntimeView, GetComputerRuntime};
         let mut c = self.core.client().await;
@@ -1347,7 +1445,7 @@ async fn qual_px_069_the_on_screen_stop_halts_the_actuator_and_is_sticky_for_the
         }),
     ];
     let mut rig = run(Opts::default(), steps, approve_all()).await;
-    when_in_flight(rig.approvals.clone(), "computer.press").await;
+    rig.wait_delivered().await;
     let started = std::time::Instant::now();
     let ack = rig
         .side_command(
@@ -1397,15 +1495,68 @@ async fn qual_px_069_the_on_screen_stop_halts_the_actuator_and_is_sticky_for_the
     // Order, not timing: the stop is in the log before the in-flight input's result.
     let at = |t: &str| evs.iter().position(|e| e["event_type"] == t);
     let aborted = at("ComputerUserAborted").unwrap();
-    if let Some(performed) = at("ComputerActionPerformed") {
-        assert!(
-            aborted < performed,
-            "the stop ({aborted}) precedes the in-flight result ({performed})"
-        );
-    }
+    let performed = at("ComputerActionPerformed").expect("the in-flight input is on the record");
+    assert!(
+        aborted < performed,
+        "the stop ({aborted}) precedes the in-flight result ({performed})"
+    );
     let closed = of(&evs, "ComputerSessionClosed");
     assert_eq!(closed[0]["payload"]["payload"]["reason"], "USER_ABORTED");
     assert_eq!(closed[0]["payload"]["payload"]["outcome"], "STOPPED");
+}
+
+/// QUAL-PX-069 (CUC-D05): the person's Stop is on the record the moment it is
+/// requested, so an input in flight can never be logged ahead of it, however long
+/// the actuator takes to confirm (the fixture ends the input at once and answers the
+/// stop 300 ms later, inside the 500 ms stop deadline).
+#[tokio::test(flavor = "multi_thread")]
+async fn qual_px_069_the_stop_is_recorded_before_the_in_flight_result_however_slow_the_actuator() {
+    use modbit_protocol::v1::{ComputerStop, ComputerStopped};
+    let steps = vec![
+        start(FORM),
+        fx(call("computer.state", json!({}))),
+        st(|s| {
+            call(
+                "computer.press",
+                json!({"element": s.el("Hang after delivery")}),
+            )
+        }),
+    ];
+    let opts = Opts {
+        desktop: Some(desktop_with(|d| d["faults"] = json!({"slow_stop_ms": 300}))),
+        ..Opts::default()
+    };
+    let mut rig = run(opts, steps, approve_all()).await;
+    rig.wait_delivered().await;
+    let ack = rig
+        .side_command(
+            "ComputerStop",
+            ComputerStop {
+                task_id: Some(rig.task.clone()),
+                reason: "on-screen Stop".into(),
+            }
+            .encode_to_vec(),
+        )
+        .await
+        .unwrap();
+    let stopped: ComputerStopped = Client::result(&ack).unwrap();
+    assert!(stopped.actuator_stopped, "{stopped:?}");
+    rig.finish().await;
+    let evs = rig.events().await;
+    assert_eq!(of(&evs, "ComputerUserAborted").len(), 1);
+    let at = |t: &str| evs.iter().position(|e| e["event_type"] == t);
+    let aborted = at("ComputerUserAborted").unwrap();
+    let performed = at("ComputerActionPerformed").expect("the in-flight input is on the record");
+    assert!(
+        aborted < performed,
+        "the stop ({aborted}) precedes the in-flight result ({performed})"
+    );
+    let o = rig.outs();
+    assert!(
+        o[2].0.starts_with("status: UNKNOWNOUTCOME"),
+        "never a success after the stop: {}",
+        o[2].0
+    );
 }
 
 /// QUAL-PX-069 (docs/23): the session's emergency stop stops the actuator and refuses control the same way.
@@ -1423,7 +1574,7 @@ async fn qual_px_069_the_emergency_stop_halts_control_and_stays_in_force() {
         }),
     ];
     let mut rig = run(Opts::default(), steps, approve_all()).await;
-    when_in_flight(rig.approvals.clone(), "computer.press").await;
+    rig.wait_delivered().await;
     let started = std::time::Instant::now();
     let ack = rig
         .side_command(
@@ -1445,7 +1596,8 @@ async fn qual_px_069_the_emergency_stop_halts_control_and_stays_in_force() {
         started.elapsed()
     );
     let mut closed = vec![];
-    for _ in 0..50 {
+    let deadline = std::time::Instant::now() + Duration::from_secs(WAIT_SECS);
+    while std::time::Instant::now() < deadline {
         closed = of(&rig.events().await, "ComputerSessionClosed")
             .into_iter()
             .cloned()
@@ -1551,15 +1703,25 @@ async fn qual_px_070_a_grant_ends_with_its_time_its_cap_and_the_watchdog_closes_
 #[tokio::test(flavor = "multi_thread")]
 async fn qual_px_070_a_mode_switch_ends_the_grant() {
     use modbit_protocol::v1::SetTaskMode;
+    // The model's third reply is held until the person has switched the mode: a slow model, made
+    // exact (a file the test writes once the switch is acknowledged), not a guessed 1.8 s.
+    let switched = tempfile::tempdir().unwrap();
+    let switched_s = switched
+        .path()
+        .join("switched")
+        .to_string_lossy()
+        .into_owned();
     let steps = vec![
         start(FORM),
         fx(call("computer.state", json!({}))),
-        fx(json!({"delay_ms": 1800, "calls": [{"name": "computer.state", "args": {}}]})),
+        fx(json!({"wait_file": switched_s, "calls": [{"name": "computer.state", "args": {}}]})),
         // The mode a person set is adopted at the next round boundary.
         fx(call("computer.state", json!({}))),
     ];
     let mut rig = run(Opts::default(), steps, approve_all()).await;
-    when_in_flight(rig.approvals.clone(), "computer.start").await;
+    // The grant has been given and used (the plan, the start and the first state have come back
+    // to the model), and the model is now deciding.
+    rig.wait_model_shown(3).await;
     // DEBUG carries the same capabilities as AGENT; the grant was given in AGENT.
     let ack = rig
         .side_command(
@@ -1573,6 +1735,7 @@ async fn qual_px_070_a_mode_switch_ends_the_grant() {
         )
         .await;
     assert_eq!(rejected_code(ack), "");
+    std::fs::write(switched.path().join("switched"), b"switched").unwrap();
     rig.finish().await;
     let o = rig.outs();
     expect_refusal(&o, 3, "GRANT_EXPIRED", "ask_user");
@@ -1600,10 +1763,14 @@ async fn qual_px_069_a_second_controller_is_refused_until_the_first_lets_go() {
     let released_s = released.to_string_lossy().into_owned();
     let started = desktop_dir.path().join("a-started");
     let started_s = started.to_string_lossy().into_owned();
+    // A holds the machine until B's first attempt has come back refused (an event, not a time:
+    // a slow runner would otherwise let A release before B ever asked).
+    let tried = desktop_dir.path().join("b-tried");
+    let tried_s = tried.to_string_lossy().into_owned();
     let a_steps: Vec<Step> = vec![
         fx(plan()),
         start(FORM),
-        fx(json!({"delay_ms": 3000, "calls": [{"name": "computer.state", "args": {}}]})),
+        fx(json!({"wait_file": tried_s, "calls": [{"name": "computer.state", "args": {}}]})),
         fx(call("computer.release", json!({}))),
         fx(complete()),
     ];
@@ -1629,6 +1796,10 @@ async fn qual_px_069_a_second_controller_is_refused_until_the_first_lets_go() {
         // A's request carrying the start result: A holds the machine.
         if text.contains("task A goal") && results >= 2 {
             let _ = std::fs::write(&started, b"started");
+        }
+        // B's request carrying its first start's result: B has been refused while A held it.
+        if text.contains("task B goal") && results >= 2 {
+            let _ = std::fs::write(&tried, b"tried");
         }
         // A's request carrying the release result: the lock is free.
         if text.contains("task A goal") && results >= 4 {
@@ -1677,8 +1848,8 @@ async fn qual_px_069_a_second_controller_is_refused_until_the_first_lets_go() {
     let (person, _approvals) = spawn_person(&core, &session, g, approve_all()).await;
     start_task_long(&mut c, &a, g, 0x12).await;
     start_task_long(&mut c, &b, g, 0x14).await;
-    let _ = wait_task(&mut c, &a, 60).await;
-    let _ = wait_task(&mut c, &b, 60).await;
+    let _ = wait_task(&mut c, &a, FINISH_SECS).await;
+    let _ = wait_task(&mut c, &b, FINISH_SECS).await;
     let bodies = seen.lock().unwrap().clone();
     // The last request of task B carries its results.
     let b_last = bodies
@@ -1696,6 +1867,29 @@ async fn qual_px_069_a_second_controller_is_refused_until_the_first_lets_go() {
     );
     person.abort();
     drop(repo);
+}
+
+/// The session's log once `ready` holds of it, polled with a deadline. `replay` ends
+/// at the first 600 ms without a frame, so on a loaded runner a stall in the middle of
+/// a long log truncates it; what a test asserts is the log's content, not how fast a
+/// subscription drains it. The deadline is generous and a miss returns the last read.
+async fn replay_when(
+    core: &CoreProcess,
+    session: &Id,
+    ready: impl Fn(&[Value]) -> bool,
+) -> Vec<Value> {
+    let deadline = std::time::Instant::now() + Duration::from_secs(45);
+    loop {
+        let evs = replay(core, session).await;
+        if ready(&evs) || std::time::Instant::now() > deadline {
+            return evs;
+        }
+        tokio::time::sleep(Duration::from_millis(200)).await;
+    }
+}
+
+fn has(evs: &[Value], t: &str) -> bool {
+    evs.iter().any(|e| e["event_type"] == t)
 }
 
 /// A run reduced to its tool results, for the one-fault-at-a-time tests.
@@ -1813,7 +2007,10 @@ async fn qual_px_069_the_faults_an_actuator_can_raise_are_typed_with_their_escal
                     json!({"element": s.el("Name"), "value": "x"}),
                 )
             }),
-            fx(json!({"delay_ms": 1200, "calls": [{"name": "computer.state", "args": {}}]})),
+            // Longer than both the Core's cooldown (700 ms) and the fixture's own 1500 ms
+            // window in which it refuses input after a physical key: the observation and the
+            // input after it come after both however fast the machine is.
+            fx(json!({"delay_ms": 2000, "calls": [{"name": "computer.state", "args": {}}]})),
             st(|s| {
                 call(
                     "computer.set_value",
@@ -2330,7 +2527,8 @@ async fn qual_px_076_the_audit_of_a_session_holds_counts_and_no_content_and_fram
         .to_owned();
     assert!(object_path(&rig, &digest).exists());
     let mut gone = false;
-    for _ in 0..120 {
+    let deadline = std::time::Instant::now() + Duration::from_secs(WAIT_SECS);
+    while std::time::Instant::now() < deadline {
         if !object_path(&rig, &digest).exists() {
             gone = true;
             break;
@@ -2339,7 +2537,8 @@ async fn qual_px_076_the_audit_of_a_session_holds_counts_and_no_content_and_fram
     }
     assert!(gone, "the frame outlived its retention");
     let mut expired = vec![];
-    for _ in 0..40 {
+    let deadline = std::time::Instant::now() + Duration::from_secs(WAIT_SECS);
+    while std::time::Instant::now() < deadline {
         expired = of(&rig.events().await, "ComputerArtifactExpired")
             .into_iter()
             .cloned()
@@ -2370,18 +2569,11 @@ async fn qual_px_069_a_core_killed_with_a_session_and_an_input_in_flight_leaves_
         }),
     ];
     let mut rig = run(Opts::default(), steps, approve_all()).await;
-    when_in_flight(rig.approvals.clone(), "computer.press").await;
+    rig.wait_delivered().await;
     let old_actuator = rig.actuator_pid();
     rig.core.kill();
     // The actuator stops injecting when the Core's pipe closes: it does not outlive the Core.
-    let mut gone = false;
-    for _ in 0..80 {
-        if !alive(old_actuator) {
-            gone = true;
-            break;
-        }
-        tokio::time::sleep(Duration::from_millis(100)).await;
-    }
+    let gone = process_gone(old_actuator, WAIT_SECS).await;
     assert!(gone, "the actuator outlived its Core");
     // A new Core on the same data directory.
     let env_refs: Vec<(&str, &str)> = rig
@@ -2405,8 +2597,25 @@ async fn qual_px_069_a_core_killed_with_a_session_and_an_input_in_flight_leaves_
         .unwrap();
     let l: SessionLeaseAcquired = Client::result(&ack).unwrap();
     rig.g = Some(l.lease_generation);
-    let evs = replay(&rig.core, &rig.session).await;
+    let evs = replay_when(&rig.core, &rig.session, |e| {
+        has(e, "ComputerSessionClosed")
+            && has(e, "ComputerLatched")
+            && has(e, "SessionLeaseAcquired")
+    })
+    .await;
     // The session the dead Core left open is closed on the record; the in-flight input is latched.
+    // Recovery ran before the Core said it was ready, so it is in the log ahead of the
+    // first thing this client did (order, not timing).
+    let at = |t: &str| evs.iter().position(|e| e["event_type"] == t).unwrap();
+    // The new Core's client took its lease last (the first Core's was taken earlier).
+    let lease = evs
+        .iter()
+        .rposition(|e| e["event_type"] == "SessionLeaseAcquired")
+        .unwrap();
+    assert!(
+        at("ComputerLatched") < lease && at("ComputerSessionClosed") < lease,
+        "recovery precedes the first command of the new Core's first client"
+    );
     let closed = of(&evs, "ComputerSessionClosed");
     assert_eq!(closed.len(), 1, "{closed:?}");
     assert_eq!(closed[0]["payload"]["payload"]["reason"], "CORE_RESTART");
@@ -2418,7 +2627,7 @@ async fn qual_px_069_a_core_killed_with_a_session_and_an_input_in_flight_leaves_
             .unwrap()
             .contains("CORE_RESTART")
     );
-    let v = rig.view().await;
+    let v = rig.view_attached().await;
     assert!(v.attached, "a new actuator is attached: {v:?}");
     assert_eq!(v.control_id, "", "no session survived: {v:?}");
     assert!(v.latch.contains("press"), "{v:?}");
@@ -2440,7 +2649,7 @@ async fn qual_px_069_a_core_killed_with_a_session_and_an_input_in_flight_leaves_
     let r: ComputerLatchResolved = Client::result(&ack).unwrap();
     assert!(r.was_latched);
     assert_eq!(rig.view().await.latch, "");
-    let evs = replay(&rig.core, &rig.session).await;
+    let evs = replay_when(&rig.core, &rig.session, |e| has(e, "ComputerLatchResolved")).await;
     assert_eq!(
         of(&evs, "ComputerLatchResolved")[0]["payload"]["payload"]["by"],
         "person"
@@ -2457,13 +2666,39 @@ async fn routed(parent: Vec<Step>, child: Vec<Step>) -> (String, Seen) {
 
 async fn routed_on(marker: &'static str, parent: Vec<Step>, child: Vec<Step>) -> (String, Seen) {
     scripted_model_fn(Arc::new(move |body, results| {
-        let steps = if body["messages"].to_string().contains(marker) {
-            &child
-        } else {
-            &parent
-        };
         let st = st_of(body);
-        steps
+        if !body["messages"].to_string().contains(marker) {
+            // The parent. A foreground spawn waits for its child only up to a ceiling (120 s) and
+            // then answers "not done within ..."; on a loaded runner a GUI child with an approval
+            // per input can need longer. A parent that is told its child is still running waits
+            // for it again - which is what the tool says to do - and that wait is not a step of
+            // the script, so the script's position is the results minus those waits.
+            let waits = st
+                .texts
+                .iter()
+                .filter(|t| t.contains("not done within"))
+                .count();
+            if st
+                .texts
+                .last()
+                .is_some_and(|t| t.contains("not done within"))
+            {
+                let agent_id = st
+                    .texts
+                    .iter()
+                    .find_map(|t| t.lines().find_map(|l| l.strip_prefix("agent_id: ")))
+                    .unwrap_or_default();
+                return call(
+                    "agent.wait",
+                    json!({"agent_id": agent_id, "timeout_ms": 120_000}),
+                );
+            }
+            return parent
+                .get(results - waits)
+                .map(|f| f(&st))
+                .unwrap_or_else(|| json!({"text": "I have nothing further to do."}));
+        }
+        child
             .get(results)
             .map(|f| f(&st))
             .unwrap_or_else(|| json!({"text": "I have nothing further to do."}))
@@ -3066,7 +3301,7 @@ async fn qual_px_075_the_child_resumes_by_identity_after_a_restart_and_needs_a_n
     let (base, seen) = routed(parent, child).await;
     let mut rig = setup_model(Opts::default(), base, seen, approve_all()).await;
     rig.begin().await;
-    when_in_flight(rig.approvals.clone(), "computer.press").await;
+    rig.wait_delivered().await;
     let child_task = {
         let evs = rig.events().await;
         let admitted = of(&evs, "SubagentAdmitted");
@@ -3100,7 +3335,10 @@ async fn qual_px_075_the_child_resumes_by_identity_after_a_restart_and_needs_a_n
     let l: SessionLeaseAcquired = Client::result(&ack).unwrap();
     rig.g = Some(l.lease_generation);
     // The restart closed the child's control session on its record, and latched the input in flight.
-    let evs = replay(&rig.core, &rig.session).await;
+    let evs = replay_when(&rig.core, &rig.session, |e| {
+        has(e, "ComputerSessionClosed") && has(e, "SessionLeaseAcquired")
+    })
+    .await;
     let closed = of(&evs, "ComputerSessionClosed");
     assert_eq!(closed.len(), 1);
     assert_eq!(closed[0]["payload"]["payload"]["reason"], "CORE_RESTART");
@@ -3490,7 +3728,7 @@ async fn qual_px_074_presence_follows_the_core_and_the_activity_lists_the_task_e
         fx(call("computer.state", json!({}))),
     ];
     let mut rig = run(Opts::default(), steps, approve_all()).await;
-    when_in_flight(rig.approvals.clone(), "computer.press").await;
+    rig.wait_delivered().await;
     let held = rig.presence().await;
     assert!(held.attached && held.configured, "{held:?}");
     assert_eq!(held.permission_accessibility, "GRANTED");

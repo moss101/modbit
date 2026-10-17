@@ -40,6 +40,8 @@ export const computerCss = `
 .cc-frame img { max-width: 100%; height: auto; border: 1px solid var(--mb-color-border-control); border-radius: var(--mb-radius-3); background: var(--mb-color-sunken); align-self: flex-start; }
 .cc-frame .cc-frame-full { max-width: 100%; }
 .cc-latch { align-items: center; }
+/* The gallery shows every state at once: rows are not skipped while off screen, so a theme change really applies to them before it is measured. */
+[data-testid="gallery-computer"] .conv-row { content-visibility: visible; }
 
 .cc-appr { display: flex; flex-direction: column; gap: var(--mb-space-2); }
 `;

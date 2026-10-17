@@ -498,3 +498,47 @@ async fn an_identity_the_policy_forbids_or_the_list_never_allows_is_refused_befo
     );
     let _ = c2;
 }
+
+/// The actuator's death notice lands exactly between an input's call returning
+/// `Lost` and its outcome being recorded (the seam runs there): the session must
+/// still close once, as LATCHED, never as a bare ACTUATOR_LOST with the task not
+/// latched (the Ubuntu CI failure: "OK" where "LATCHED" was expected).
+#[tokio::test(flavor = "multi_thread")]
+async fn a_death_notice_between_the_call_and_its_outcome_still_closes_the_session_latched() {
+    let (a, _log) = fake(0, || Err(CallError::Lost));
+    let rt = Arc::new(runtime());
+    rt.install(a);
+    let c = ctx(TaskId::new());
+    let snap = session_with_snapshot(&rt, &c, "org.example.a").await;
+    let epoch = rt
+        .lock()
+        .sessions
+        .values()
+        .next()
+        .map(|s| s.epoch)
+        .expect("a session");
+    let (rt2, handle) = (Arc::clone(&rt), tokio::runtime::Handle::current());
+    *rt.shared.after_input.lock().unwrap() = Some(Arc::new(move || {
+        let (rt3, handle) = (Arc::clone(&rt2), handle.clone());
+        std::thread::spawn(move || handle.block_on(rt3.actuator_lost(epoch)))
+            .join()
+            .unwrap();
+    }));
+    let r = rt.invoke(&c, "computer.press", press(&snap)).await;
+    assert!(r.is_err(), "{r:?}");
+    let closed: Vec<_> = rt
+        .drain_events()
+        .into_iter()
+        .filter_map(|p| match p.event {
+            TaskEvent::ComputerSessionClosed {
+                reason, outcome, ..
+            } => Some((reason, outcome)),
+            _ => None,
+        })
+        .collect();
+    assert_eq!(
+        closed,
+        vec![("LATCHED".to_owned(), "LATCHED".to_owned())],
+        "{closed:?}"
+    );
+}

@@ -393,7 +393,9 @@ test("PX-074: Stop is one chord away and keyboard-only, even behind a modal dial
   test.setTimeout(240_000);
   const repo = newRepo();
   const rig = computerRig();
-  const model = await computerModel([plan(), start(FORM), () => call("computer.state", {}), (s) => call("computer.press", { element: elementOf(s, "Hang after delivery") })]);
+  // The model holds its next turn: the turn must still be running when the person looks at what the Stop left behind.
+  const hold = new Gate();
+  const model = await computerModel([plan(), start(FORM), () => call("computer.state", {}), (s) => call("computer.press", { element: elementOf(s, "Hang after delivery") }), () => [{ wait: hold }, ...call("computer.state", {})]]);
   const { app, page } = await launch(rig.dataDir, { env: { ...rig.env, MODBIT_OPENAI_BASE_URL: model.url } });
   try {
     await setContentSize(app, page, 1280, 800);

@@ -3055,7 +3055,11 @@ async fn px_065_a_scheduled_run_fires_on_its_interval() {
         repo,
         root,
         &[
-            ("MODBIT_WORKTREE_CLEANUP_INTERVAL_MS", "1500"),
+            // The interval must outlast the Core's start: the last run was recorded at `now`, before the repository and
+            // the Core were set up, and a start slower than the interval (a loaded Windows runner) makes the first run
+            // overdue, which the Core rightly reports as `catch-up`, not `scheduled`. 8 s covers a start several times
+            // slower than usual; the wait below allows for the interval plus the run.
+            ("MODBIT_WORKTREE_CLEANUP_INTERVAL_MS", "8000"),
             ("MODBIT_WORKTREE_CLEANUP_CATCHUP_MS", "100"),
         ],
         dir,
@@ -3065,7 +3069,7 @@ async fn px_065_a_scheduled_run_fires_on_its_interval() {
     let first = fx.list().await;
     assert!(first.next_cleanup_at_ms as u128 >= now, "{first:?}");
     let mut seen = None;
-    for _ in 0..40 {
+    for _ in 0..150 {
         let l = fx.list().await;
         if let Some(r) = &l.last_cleanup
             && r.status == "COMPLETED"

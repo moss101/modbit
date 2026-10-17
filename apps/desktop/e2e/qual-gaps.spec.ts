@@ -27,7 +27,7 @@ test("PX-054: in Ask a write the model asks for is refused by the Core and nothi
     await page.getByTestId("composer-input").focus();
     for (let i = 0; i < 4; i++) await page.keyboard.press("Shift+Tab");
     await expect(page.getByTestId("mode-label")).toHaveText("Ask");
-    await expect(page.getByTestId("composer")).toHaveAttribute("data-mode-status", "confirmed");
+    await expect(page.getByTestId("composer")).toHaveAttribute("data-mode-status", "confirmed", { timeout: 60_000 });
     expect(await page.evaluate((t) => window.modbit.composerPosture(t).then((p) => p.mode), taskId)).toBe("ASK");
     await page.getByTestId("conv-start").click();
     await expect.poll(() => model.requests(), { timeout: 90_000 }).toBeGreaterThanOrEqual(2);
@@ -435,7 +435,7 @@ async function startPlanTaskThatProposes(page: Page, repo: string, goal: string)
   await page.getByTestId("composer-input").focus();
   await page.keyboard.press("Shift+Tab");
   await expect(page.getByTestId("mode-label")).toHaveText("Plan");
-  await expect(page.getByTestId("composer")).toHaveAttribute("data-mode-status", "confirmed");
+  await expect(page.getByTestId("composer")).toHaveAttribute("data-mode-status", "confirmed", { timeout: 60_000 });
   await page.getByTestId("conv-start").click();
   return taskId;
 }
