@@ -7,8 +7,9 @@
 mod px_common;
 
 use modbit_bench_context_economics::projection_trial::{
-    Arm, Direction, RunConfig, report, run_matrix, validate,
+    Arm, Direction, RunConfig, report, run_matrix, run_matrix_capped, validate,
 };
+use modbit_bench_context_economics::spend::{Price, SpendMeter};
 use modbit_bench_context_economics::suite::{TrialTask, builtin_suite};
 use px_common::*;
 use serde_json::json;
@@ -185,4 +186,83 @@ async fn trial_harness(extra_env: &[(&str, &str)]) {
             .all(|c| c.direction == Direction::NotEvaluated)
     );
     assert!(rep.method.contains("not a live result"));
+}
+
+/// The live matrix runs under a hard spend cap (the `live-core` workflow's
+/// PX-114 job): a run starts only if the meter admits it, every finished run
+/// is charged from the usage the gateway returned, and once the cap refuses,
+/// no further run starts and the matrix says it is partial. A scripted
+/// provider stands in for the gateway, so this checks the harness only.
+#[tokio::test(flavor = "multi_thread")]
+async fn the_capped_matrix_stops_when_the_cap_refuses_and_charges_what_the_runs_used() {
+    let tasks: Vec<TrialTask> = builtin_suite().into_iter().take(3).collect();
+    let suite = Arc::new(tasks.clone());
+    let reply_suite = Arc::clone(&suite);
+    let (base, _seen) = scripted_model_fn(Arc::new(move |body, _results| {
+        let arm = arm_of(body);
+        let task = task_of(body, &reply_suite);
+        if let Some(wait) = program_wait_reply(body) {
+            return wait;
+        }
+        solve_script(task, arm, false)
+            .get(script_steps_done(body))
+            .cloned()
+            .unwrap_or_else(|| json!({"text": "nothing further"}))
+    }))
+    .await;
+    let core_bin = std::path::PathBuf::from(env!("CARGO_BIN_EXE_modbit-core"));
+    let cli = core_bin.with_file_name(if cfg!(windows) {
+        "modbit-cli.exe"
+    } else {
+        "modbit-cli"
+    });
+    assert!(cli.exists(), "build modbit-cli first: {}", cli.display());
+    let cfg = RunConfig {
+        cli,
+        core: core_bin,
+        model: "gpt-5-mini".into(),
+        env: model_env(&base),
+        max_turns: 10,
+        live: false,
+    };
+    // 10 USD per million tokens: a run of about 8 000 tokens costs about 8
+    // cents, so a 0.2 USD cap with 0.1 reserved per run admits only a few of
+    // the nine.
+    let price = Price {
+        input_per_mtok_usd: 10.0,
+        output_per_mtok_usd: 10.0,
+    };
+    let meter = SpendMeter::new(0.2).unwrap();
+    let capped = tokio::task::spawn_blocking({
+        let cfg = cfg.clone();
+        let tasks = tasks.clone();
+        move || run_matrix_capped(&cfg, &tasks, 1, 1, &meter, price, 0.1)
+    })
+    .await
+    .unwrap();
+    assert_eq!(capped.planned, 9, "3 tasks x 1 repeat x 3 arms");
+    assert!(
+        !capped.runs.is_empty() && capped.runs.len() < 9,
+        "the cap stopped the matrix part way: {} runs",
+        capped.runs.len()
+    );
+    assert!(capped.spend.stopped_by_cap, "{:?}", capped.spend);
+    let tokens: u64 = capped
+        .runs
+        .iter()
+        .map(|r| r.trial.input_tokens + r.trial.output_tokens)
+        .sum();
+    let input: u64 = capped.runs.iter().map(|r| r.trial.input_tokens).sum();
+    assert_eq!(capped.spend.input_tokens, input, "charged from the usage the runs returned");
+    assert!(tokens > 0);
+    // It never started a run the meter would not admit: what was spent stays
+    // within the cap plus the one run that was admitted before the last charge.
+    assert!(
+        capped.spend.spent_usd <= 0.2 + 0.1 + 1e-9,
+        "{:?}",
+        capped.spend
+    );
+    // A partial matrix is not a valid report.
+    let rep = report(&capped.runs, "gpt-5-mini", 3, 1, false);
+    assert!(validate(&rep, 3, 1).is_err(), "a partial matrix must not validate");
 }

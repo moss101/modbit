@@ -359,6 +359,88 @@ pub fn run_matrix(cfg: &RunConfig, tasks: &[TrialTask], repeats: u32) -> Vec<Run
     out
 }
 
+/// What a capped matrix run made: the runs, how many were planned, and the
+/// account of what they spent.
+#[derive(Clone, Debug)]
+pub struct CappedMatrix {
+    /// The runs that were made (every one counted, failed ones included).
+    pub runs: Vec<RunRecord>,
+    /// Runs the matrix planned (tasks x repeats x arms).
+    pub planned: usize,
+    /// The spend account.
+    pub spend: crate::spend::SpendRecord,
+}
+
+/// [`run_matrix`] under the spend cap of the live workflow, on `parallel`
+/// threads. Before each run starts the meter must admit `reserve_usd`; once it
+/// refuses, no further run starts and the matrix is reported as partial. Each
+/// finished run is charged from the usage the gateway returned (the Core's
+/// economics view), never from an estimate; a run that returned no usage is
+/// counted as unknown, not as free.
+///
+/// Runs are taken in the order `run_matrix` makes them, so arms of one
+/// (task, repeat) run close together.
+#[must_use]
+pub fn run_matrix_capped(
+    cfg: &RunConfig,
+    tasks: &[TrialTask],
+    repeats: u32,
+    parallel: usize,
+    meter: &crate::spend::SpendMeter,
+    price: crate::spend::Price,
+    reserve_usd: f64,
+) -> CappedMatrix {
+    let mut jobs: Vec<(&TrialTask, u32, Arm)> = Vec::new();
+    for task in tasks {
+        for repeat in 0..repeats {
+            for arm in Arm::ALL {
+                jobs.push((task, repeat, arm));
+            }
+        }
+    }
+    let planned = jobs.len();
+    let next = std::sync::atomic::AtomicUsize::new(0);
+    let stop = std::sync::atomic::AtomicBool::new(false);
+    let done: std::sync::Mutex<Vec<(usize, RunRecord)>> = std::sync::Mutex::new(Vec::new());
+    std::thread::scope(|scope| {
+        for _ in 0..parallel.max(1) {
+            scope.spawn(|| {
+                loop {
+                    if stop.load(std::sync::atomic::Ordering::SeqCst) {
+                        return;
+                    }
+                    let i = next.fetch_add(1, std::sync::atomic::Ordering::SeqCst);
+                    let Some((task, repeat, arm)) = jobs.get(i).copied() else {
+                        return;
+                    };
+                    if meter.admit(reserve_usd).is_err() {
+                        stop.store(true, std::sync::atomic::Ordering::SeqCst);
+                        return;
+                    }
+                    let rec = run_trial(cfg, arm, task, repeat);
+                    if rec.trial.input_tokens == 0 && rec.trial.output_tokens == 0 {
+                        meter.charge_unknown();
+                    } else {
+                        meter.charge(price, rec.trial.input_tokens, rec.trial.output_tokens);
+                    }
+                    done.lock()
+                        .unwrap_or_else(std::sync::PoisonError::into_inner)
+                        .push((i, rec));
+                }
+            });
+        }
+    });
+    let mut made = done
+        .into_inner()
+        .unwrap_or_else(std::sync::PoisonError::into_inner);
+    made.sort_by_key(|(i, _)| *i);
+    CappedMatrix {
+        runs: made.into_iter().map(|(_, r)| r).collect(),
+        planned,
+        spend: meter.record(),
+    }
+}
+
 /// A float that JSON wrote as `null` because it was NaN (no sample) reads back
 /// as NaN, so a retained report can be read again and re-scored.
 pub(crate) fn nan_if_null<'de, D: serde::Deserializer<'de>>(d: D) -> Result<f64, D::Error> {

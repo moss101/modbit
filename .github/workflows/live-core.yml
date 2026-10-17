@@ -182,10 +182,11 @@ jobs:
             exit 1
           fi
           mkdir -p live-core/px114
-          target/debug/projection-trial --cli target/debug/modbit-cli --core target/debug/modbit-core \
-            --model "$MODBIT_LIVE_MODEL" --live --repeats 1 --max-turns 40 \
-            --max-cost-usd "$CAP" --catalog "$MODBIT_OPENAI_MODELS" \
-            --out live-core/px114/report.json 2>&1 | tee live-core/px114/run.log
+          export MODBIT_LIVE_CLI="$PWD/target/debug/modbit-cli" MODBIT_LIVE_CORE="$PWD/target/debug/modbit-core"
+          export MODBIT_LIVE_OUT="$PWD/live-core/px114/report.json"
+          export MODBIT_LIVE_MAX_COST_USD="$CAP" MODBIT_LIVE_PARALLEL=4 MODBIT_LIVE_REPEATS=1
+          set -o pipefail
+          target/debug/live_trial 2>&1 | tee live-core/px114/run.log
       - name: Retain the report
         if: always()
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
