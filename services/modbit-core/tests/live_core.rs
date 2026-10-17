@@ -3315,6 +3315,201 @@ async fn live_px057_allowlist() {
 }
 
 // ---------------------------------------------------------------------------
+// QUAL-PX-100: the real CLI binary sets task mode and execution preference
+// ---------------------------------------------------------------------------
+
+/// The `modbit-cli` binary next to the Core.
+fn cli_binary() -> std::path::PathBuf {
+    let core = std::path::PathBuf::from(env!("CARGO_BIN_EXE_modbit-core"));
+    let cli = core.with_file_name("modbit-cli");
+    assert!(cli.exists(), "build modbit-cli first: {}", cli.display());
+    cli
+}
+
+struct CliOut {
+    code: i32,
+    text: String,
+}
+
+/// One `modbit-cli` call against a profile (the CLI starts its Core on the
+/// first call, with `env`).
+fn cli(data: &Path, env: &[(String, String)], args: &[&str]) -> CliOut {
+    let out = std::process::Command::new(cli_binary())
+        .arg("--data-dir")
+        .arg(data)
+        .args(args)
+        .env("MODBIT_CORE_BIN", env!("CARGO_BIN_EXE_modbit-core"))
+        .envs(env.iter().map(|(k, v)| (k, v)))
+        .output()
+        .expect("spawn modbit-cli");
+    CliOut {
+        code: out.status.code().unwrap_or(-1),
+        text: format!(
+            "{}{}",
+            String::from_utf8_lossy(&out.stdout),
+            String::from_utf8_lossy(&out.stderr)
+        ),
+    }
+}
+
+fn word_after<'a>(text: &'a str, key: &str) -> Option<&'a str> {
+    text.split_whitespace()
+        .skip_while(|w| *w != key)
+        .nth(1)
+}
+
+fn kill_profile_core(data: &Path) {
+    let needle = format!("--data-dir {}", data.display());
+    if let Ok(o) = std::process::Command::new("pgrep").args(["-f", "--", &needle]).output() {
+        for pid in String::from_utf8_lossy(&o.stdout).split_whitespace() {
+            let _ = std::process::Command::new("kill").args(["-9", pid]).status();
+        }
+    }
+}
+
+/// Kills the Core a CLI started for a profile when the leg ends, however it ends.
+struct ProfileGuard(std::path::PathBuf);
+
+impl Drop for ProfileGuard {
+    fn drop(&mut self) {
+        kill_profile_core(&self.0);
+    }
+}
+
+/// Through the real CLI and the live gateway: a task started with `--mode ask`
+/// is refused a write by the Kernel, a control without the flag writes;
+/// `--mode plan` records a plan and writes nothing until the plan is
+/// accepted; `--objective intelligence` is recorded in the task's preference
+/// and routing, and a desktop-kind client reads the same; a pin the
+/// organisation forbids is refused with the typed reason and changes no state;
+/// the mode set in the CLI is the same after the Core is killed and restarted.
+async fn leg_px100_cli(env: Arc<LiveEnv>) {
+    let mut leg = Leg::begin(&env, "px100", "cli", 0.20);
+    let data = tempfile::tempdir().unwrap();
+    std::fs::write(
+        data.path().join("admin-config.json"),
+        serde_json::to_string(&json!({"models_allow": [env.model]})).unwrap(),
+    )
+    .unwrap();
+    let (_repo, root) = plain_repo(&[("a.txt", "alpha\n")]);
+    let catalog = format!(
+        "{},ghost-forbidden-px100={}/{}",
+        env.catalog, env.price.input_per_mtok_usd, env.price.output_per_mtok_usd
+    );
+    let mut cenv: Vec<(String, String)> = env.core_env.clone();
+    cenv.retain(|(k, _)| k != "MODBIT_OPENAI_MODELS");
+    cenv.push(("MODBIT_OPENAI_MODELS".into(), catalog));
+    let d = data.path();
+    let _guard = ProfileGuard(d.to_path_buf());
+    let model = env.model.clone();
+    let out = cli(d, &cenv, &["session", "create"]);
+    let sid = word_after(&out.text, "session").unwrap_or_default().to_owned();
+    leg.check("session_created", sid.len() == 32, out.text.clone());
+    let new_task = |extra: &[&str], goal: &str| -> String {
+        let mut args = vec!["task", "create", "--session", sid.as_str(), "--workspace", root.as_str()];
+        args.extend_from_slice(extra);
+        args.push(goal);
+        let o = cli(d, &cenv, &args);
+        word_after(&o.text, "task").unwrap_or_default().to_owned()
+    };
+    let run = |tid: &str| -> CliOut {
+        cli(d, &cenv, &["task", "run", "--session", &sid, "--task", tid, "--model", &model, "--max-turns", "10", "--wait"])
+    };
+    let events = |tid: &str| -> Vec<Value> {
+        cli(d, &cenv, &["events", "tail", "--session", &sid, "--json", "--count", "100000"])
+            .text
+            .lines()
+            .filter_map(|l| serde_json::from_str::<Value>(l).ok())
+            .filter(|v| v["task_id"].as_str().is_none_or(|t| t == tid))
+            .collect()
+    };
+    // ---- --mode ask ----
+    let ask = new_task(&["--mode", "ask"], "Create the file hello.txt containing the text hi, using change.apply.");
+    leg.check("ask_task_created", ask.len() == 32, ask.clone());
+    let r = run(&ask);
+    leg.count("ask_run_exit", r.code);
+    leg.check("ask_wrote_nothing", !Path::new(&root).join("hello.txt").exists(), "hello.txt exists");
+    let posture = cli(d, &cenv, &["task", "posture", "--task", &ask]);
+    leg.check("cli_mode_is_the_cores_mode", posture.text.contains("mode=ASK in_force=ASK writes=false"), posture.text.clone());
+    let w = cli(d, &cenv, &["tool", "invoke", "--session", &sid, "--task", &ask, "change.apply", r#"{"path":"hello.txt","op":"replace","content":"hi\n"}"#]);
+    leg.check("kernel_refuses_the_write_in_ask", w.text.contains("MODE_POSTURE") && !Path::new(&root).join("hello.txt").exists(), w.text.clone());
+    // The control: the same call on a task started without the flag writes
+    // (a CLI that skipped the mode field would make this pass for ask too).
+    let agent = new_task(&[], "control");
+    let w = cli(d, &cenv, &["tool", "invoke", "--session", &sid, "--task", &agent, "change.apply", r#"{"path":"control.txt","op":"replace","content":"hi\n"}"#]);
+    leg.check("control_without_the_flag_writes", Path::new(&root).join("control.txt").exists(), w.text.clone());
+    // ---- --mode plan ----
+    let plan = new_task(&["--mode", "plan"], "Plan how to add the file b.txt whose content is the same as a.txt. Record the plan with plan.update (expected_files: b.txt), write nothing, then state the plan in one sentence and stop. Do not call task.complete.");
+    run(&plan);
+    let shown = cli(d, &cenv, &["plan", "show", "--task", &plan]);
+    leg.check("plan_recorded", word_after(&shown.text, "plan").is_some() && shown.text.contains("current_version=1"), shown.text.clone());
+    leg.check("plan_wrote_nothing_until_accepted", !Path::new(&root).join("b.txt").exists(), "b.txt exists");
+    let accepted = cli(d, &cenv, &["task", "mode", "--session", &sid, "--task", &plan, "agent"]);
+    leg.check("acceptance_through_the_cli", accepted.code == 0, accepted.text.clone());
+    // ---- --objective intelligence ----
+    let obj = new_task(&["--objective", "intelligence"], "Reply with the single word done and call no tool.");
+    let before = cli(d, &cenv, &["task", "posture", "--task", &obj]);
+    leg.check("objective_recorded_at_creation", before.text.contains("objective=INTELLIGENCE"), before.text.clone());
+    run(&obj);
+    let after = cli(d, &cenv, &["task", "posture", "--task", &obj]);
+    leg.check("objective_in_the_routing_decision", after.text.contains("objective=INTELLIGENCE") && after.text.contains("routing outcome="), after.text.clone());
+    leg.count("routing_line", after.text.lines().find(|l| l.starts_with("routing")).unwrap_or_default().to_owned());
+    let ev = events(&obj);
+    leg.check("preference_event_on_the_log", ev.iter().any(|e| e["event_type"] == "ExecutionPreferenceSet" && e["payload"].to_string().contains("INTELLIGENCE")), "no ExecutionPreferenceSet naming the objective");
+    // A desktop-kind client reads the same posture from the same Core.
+    {
+        use modbit_protocol::local::{ReadyLine, decode_hex};
+        use modbit_protocol::v1::{ClientKind, GetTaskPosture, TaskPostureView};
+        let ready = std::fs::read_to_string(d.join("core.ready")).unwrap();
+        let ready = ReadyLine::parse(ready.trim()).expect("core.ready");
+        let mut desktop = Client::connect(&ready.endpoint, &decode_hex(&ready.boot_secret_hex).unwrap(), ClientKind::Desktop, "live-core-desktop").await.unwrap();
+        let tid = modbit_domain::TaskId::parse(&format!("{}-{}-{}-{}-{}", &obj[0..8], &obj[8..12], &obj[12..16], &obj[16..20], &obj[20..32])).unwrap();
+        let ack = desktop
+            .command(envelope(rand_id(), "GetTaskPosture", GetTaskPosture { task_id: Some(Id { value: tid.as_bytes().to_vec() }) }.encode_to_vec()))
+            .await
+            .unwrap();
+        let v: TaskPostureView = Client::result(&ack).unwrap();
+        leg.check(
+            "desktop_reads_the_same_objective",
+            v.preference.as_ref().is_some_and(|p| p.objective == modbit_protocol::v1::ObjectiveProfile::Intelligence as i32),
+            format!("{:?}", v.preference),
+        );
+    }
+    // ---- a pin the organisation forbids ----
+    let pin = cli(d, &cenv, &["task", "preference", "--session", &sid, "--task", &obj, "--pin", "openai/ghost-forbidden-px100"]);
+    leg.check("forbidden_pin_refused_with_the_typed_reason", pin.code != 0 && pin.text.contains("MODEL_NOT_ALLOWED"), pin.text.clone());
+    let unchanged = cli(d, &cenv, &["task", "posture", "--task", &obj]);
+    leg.check("forbidden_pin_changed_nothing", !unchanged.text.contains("pin=openai/"), unchanged.text.clone());
+    // ---- the mode survives a Core restart ----
+    kill_profile_core(d);
+    tokio::time::sleep(Duration::from_millis(500)).await;
+    let ask_after = cli(d, &cenv, &["task", "posture", "--task", &ask]);
+    let plan_after = cli(d, &cenv, &["task", "posture", "--task", &plan]);
+    leg.check("ask_mode_after_a_restart", ask_after.text.contains("mode=ASK"), ask_after.text.clone());
+    leg.check("accepted_plan_mode_after_a_restart", plan_after.text.contains("mode=AGENT"), plan_after.text.clone());
+    kill_profile_core(d);
+    // What the runs cost, from the profile's own economics views.
+    let mut calls = 0u64;
+    let (mut input, mut output) = (0u64, 0u64);
+    for t in [&ask, &plan, &obj] {
+        let e = cli(d, &cenv, &["task", "economics", "--task", t]);
+        let n = |k: &str| e.text.split_whitespace().find_map(|w| w.strip_prefix(&format!("{k}=")).and_then(|v| v.parse::<u64>().ok())).unwrap_or(0);
+        calls += n("calls");
+        input += n("input_tokens");
+        output += n("output_tokens");
+    }
+    leg.charge(calls, input, output);
+    leg.note("the VS Code extension host of PX-002 (an IDE adapter showing the CLI-set mode after a restart) is not available on the runner; the desktop-kind protocol client stands in for the shared Core read");
+    leg.finish();
+}
+
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
+#[ignore = "live: needs MODBIT_LIVE=1 and the gateway credential (the live-core workflow)"]
+async fn live_px100_cli() {
+    leg_px100_cli(LiveEnv::from_process()).await;
+}
+
+// ---------------------------------------------------------------------------
 // the scripted stand-in for the offline runs of the same legs
 // ---------------------------------------------------------------------------
 
@@ -3793,5 +3988,32 @@ async fn scripted_px057_allowlist_leg_mechanics() {
     let results = tempfile::tempdir().unwrap();
     leg_px057_allowlist(scripted_env(&base, results.path())).await;
     let rec: Value = serde_json::from_str(&std::fs::read_to_string(results.path().join("px057-allowlist.json")).unwrap()).unwrap();
+    assert_eq!(rec["passed"], true, "{rec:#}");
+}
+
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
+async fn scripted_px100_cli_leg_mechanics() {
+    let (base, _seen) = scripted_model_fn(Arc::new(|body, results| {
+        let text = body["messages"].to_string();
+        if text.contains("Create the file hello.txt") {
+            let steps = [
+                json!({"calls": [{"name": "change.apply", "args": {"path": "hello.txt", "op": "replace", "content": "hi\n"}}]}),
+                json!({"text": "I could not write it."}),
+            ];
+            steps.get(results).cloned().unwrap_or_else(|| json!({"text": "done"}))
+        } else if text.contains("Plan how to add") {
+            let steps = [
+                json!({"calls": [{"name": "plan.update", "args": {"outcome": "b mirrors a", "expected_files": ["b.txt"]}}]}),
+                json!({"text": "Plan: b.txt mirrors a.txt."}),
+            ];
+            steps.get(results).cloned().unwrap_or_else(|| json!({"text": "done"}))
+        } else {
+            json!({"text": "done"})
+        }
+    }))
+    .await;
+    let results = tempfile::tempdir().unwrap();
+    leg_px100_cli(scripted_env(&base, results.path())).await;
+    let rec: Value = serde_json::from_str(&std::fs::read_to_string(results.path().join("px100-cli.json")).unwrap()).unwrap();
     assert_eq!(rec["passed"], true, "{rec:#}");
 }
