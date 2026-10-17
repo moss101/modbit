@@ -3,7 +3,7 @@
  "product": "Modbit",
  "edition": "V3.3 EPR v1.1",
  "authority_date": "2026-09-05",
- "generated_on": "2026-10-05",
+ "generated_on": "2026-10-17",
  "generator": "tools/build_graph.py",
  "status_vocabulary": [
   "NOT_STARTED",
@@ -33836,9 +33836,24 @@
    ],
    "task_card": "docs/62_PRODUCT_EXTENSION_REQUIREMENTS_TASKS_AND_QUALIFICATIONS.md#px-030",
    "audit_at_adoption": "DOCUMENTED-ONLY; no product caller present",
-   "status": "IMPLEMENTING",
-   "evidence": [],
-   "status_changed_on": "2026-09-26T10:34:33Z"
+   "status": "WIRED",
+   "evidence": [
+    "commit:e4166a25",
+    "run:38990216920",
+    "artifact:evidence/m10/PX-030/ci-run-36235004309.json",
+    "test:tools/ci_label.py",
+    "test:tools/support_claims.py"
+   ],
+   "notes": [
+    {
+     "at": "2026-10-17T06:34:55Z",
+     "from": "IMPLEMENTING",
+     "to": "WIRED",
+     "note": "graph integration 2026-10-17 on main dbe83fc9: The three-OS matrix, label-from-results job, support-claim scan and Windows PTY/symlink/secret suites are wired and run on every push, but the task card's own remaining items (packaging/updater suite needing M10.2, owner-held required statu Open: packaging and updater suite needs the packaged build of M10.2; required status checks on main are a repository setting held by the owner"
+    }
+   ],
+   "owner_agent": "graph-integrator",
+   "status_changed_on": "2026-10-17T06:34:55Z"
   },
   {
    "id": "PX-031",
@@ -34643,8 +34658,24 @@
    ],
    "task_card": "docs/62_PRODUCT_EXTENSION_REQUIREMENTS_TASKS_AND_QUALIFICATIONS.md#px-041",
    "audit_at_adoption": "DOCUMENTED-ONLY; no product caller present",
-   "status": "NOT_STARTED",
-   "evidence": []
+   "status": "REAL_TESTING",
+   "evidence": [
+    "commit:5774ec68",
+    "run:38990216920",
+    "test:services/modbit-core/tests/stream_transcript.rs::qual_px_041_a_streamed_answer_arrives_as_bounded_deltas_before_its_completion_and_replays_by_cursor",
+    "test:services/modbit-core/tests/stream_transcript.rs::qual_px_041_a_core_killed_mid_stream_leaves_an_aborted_stream_after_restart",
+    "test:services/modbit-core/tests/stream_transcript.rs::qual_px_041_a_planted_secret_is_redacted_before_append_even_when_split_across_chunks"
+   ],
+   "notes": [
+    {
+     "at": "2026-10-17T06:34:55Z",
+     "from": "WIRED",
+     "to": "REAL_TESTING",
+     "note": "graph integration 2026-10-17 on main dbe83fc9: Real Core over its socket against a scripted OpenAI-compatible endpoint proves bounded deltas, cursor replay, SIGKILL abort, split-chunk redaction, forged-delta refusal and the store's sequence checks, but QUAL-PX-041 also demands a live-ga Open: no run of the 400-word answer through the Core on the live gateway (no workflow does it); event-timestamp-to-render p95 <= 100 ms in the app is not measured anywhere; retention class collapsing deltas into the completed record not built (it would break the aggregate hash chain"
+    }
+   ],
+   "owner_agent": "graph-integrator",
+   "status_changed_on": "2026-10-17T06:34:55Z"
   },
   {
    "id": "PX-042",
@@ -34700,8 +34731,25 @@
    ],
    "task_card": "docs/62_PRODUCT_EXTENSION_REQUIREMENTS_TASKS_AND_QUALIFICATIONS.md#px-043",
    "audit_at_adoption": "DOCUMENTED-ONLY; no product caller present",
-   "status": "NOT_STARTED",
-   "evidence": []
+   "status": "REAL_TESTING",
+   "evidence": [
+    "commit:5774ec68",
+    "run:38990216920",
+    "test:services/modbit-core/tests/terminal_stream.rs::px_043_attach_detach_reattach_resumes_from_the_cursor_byte_exactly",
+    "test:services/modbit-core/tests/terminal_stream.rs::px_043_kill_terminal_ends_the_process_records_who_and_why_and_acts_once",
+    "test:services/modbit-core/tests/background_wake.rs::px_043_a_killed_terminal_wakes_the_agent_once_by_a_typed_event_never_a_user_message",
+    "commit:213f649c"
+   ],
+   "notes": [
+    {
+     "at": "2026-10-17T06:34:55Z",
+     "from": "WIRED",
+     "to": "REAL_TESTING",
+     "note": "graph integration 2026-10-17 on main dbe83fc9: Attach/reattach by cursor, kill-once, single typed wake and CLI parity are proven on a real PTY, but the >10 MB build stream is only exercised at 108 KB here and the broker catch-up defect fixed in unmerged PR #87 (tiny records replayed one Open: PR #87 (windowed catch-up of tiny records, test deadline) is not on main; no >10 MB build-output test for PX-043 itself (PX-099 has a 200 MiB test)"
+    }
+   ],
+   "owner_agent": "graph-integrator",
+   "status_changed_on": "2026-10-17T06:34:55Z"
   },
   {
    "id": "PX-044",
@@ -34725,8 +34773,23 @@
    ],
    "task_card": "docs/62_PRODUCT_EXTENSION_REQUIREMENTS_TASKS_AND_QUALIFICATIONS.md#px-044",
    "audit_at_adoption": "DOCUMENTED-ONLY; no product caller present",
-   "status": "NOT_STARTED",
-   "evidence": []
+   "status": "REAL_TESTING",
+   "evidence": [
+    "commit:fe5101f0",
+    "run:38990216920",
+    "test:apps/desktop/e2e/gallery.spec.ts",
+    "test:packages/design-tokens/src/index.test.ts"
+   ],
+   "notes": [
+    {
+     "at": "2026-10-17T06:34:55Z",
+     "from": "WIRED",
+     "to": "REAL_TESTING",
+     "note": "graph integration 2026-10-17 on main dbe83fc9: Tokens, primitives, tray host, contrast and reduced-motion are proven with axe in light/dark/high-contrast, but the QUAL negative proof that an evidence check rejects a gallery state counted as proof has no tool or test. Open: evidence-check rule rejecting gallery states as proof does not exist in tools/"
+    }
+   ],
+   "owner_agent": "graph-integrator",
+   "status_changed_on": "2026-10-17T06:34:55Z"
   },
   {
    "id": "PX-045",
@@ -34893,8 +34956,24 @@
    ],
    "task_card": "docs/62_PRODUCT_EXTENSION_REQUIREMENTS_TASKS_AND_QUALIFICATIONS.md#px-050",
    "audit_at_adoption": "DOCUMENTED-ONLY; no product caller present",
-   "status": "NOT_STARTED",
-   "evidence": []
+   "status": "REAL_TESTING",
+   "evidence": [
+    "commit:d10d46d7",
+    "run:38990216920",
+    "test:services/modbit-core/tests/run_control.rs::qual_px_050_queue_edit_delete_and_reorder_take_effect_and_drain_in_order_as_separate_turns",
+    "test:services/modbit-core/tests/run_control.rs::qual_px_050_the_queue_survives_sigkill_and_drains_in_order_after_recovery",
+    "test:services/modbit-core/tests/run_control.rs::qual_px_050_send_now_cuts_a_live_stream_as_a_user_interrupt_and_starts_the_new_turn_once"
+   ],
+   "notes": [
+    {
+     "at": "2026-10-17T06:34:55Z",
+     "from": "WIRED",
+     "to": "REAL_TESTING",
+     "note": "graph integration 2026-10-17 on main dbe83fc9: Queue order/edit/reorder, Send now, Stop, SIGKILL recovery and fencing are proven on the real Core with a scripted provider; the QUAL's live-provider leg is not run. Open: live-provider leg of QUAL-PX-050 not run by any workflow; interrupt-during-unknown-outcome-effect negative not located"
+    }
+   ],
+   "owner_agent": "graph-integrator",
+   "status_changed_on": "2026-10-17T06:34:55Z"
   },
   {
    "id": "PX-051",
@@ -34922,8 +35001,24 @@
    ],
    "task_card": "docs/62_PRODUCT_EXTENSION_REQUIREMENTS_TASKS_AND_QUALIFICATIONS.md#px-051",
    "audit_at_adoption": "DOCUMENTED-ONLY; no product caller present",
-   "status": "NOT_STARTED",
-   "evidence": []
+   "status": "REAL_TESTING",
+   "evidence": [
+    "commit:5774ec68",
+    "run:38990216920",
+    "test:services/modbit-core/tests/task_modes.rs::px_051_ask_and_plan_are_read_only_at_the_kernel_and_the_mode_outlives_a_kill",
+    "test:services/modbit-core/tests/task_modes.rs::px_051_a_plan_mode_run_offers_no_write_refuses_one_asked_for_and_acceptance_makes_it_an_agent",
+    "test:services/modbit-core/tests/task_modes.rs::px_051_debug_mode_makes_reproduction_before_a_fix_mandatory"
+   ],
+   "notes": [
+    {
+     "at": "2026-10-17T06:34:55Z",
+     "from": "WIRED",
+     "to": "REAL_TESTING",
+     "note": "graph integration 2026-10-17 on main dbe83fc9: ASK/PLAN/DEBUG enforcement, mid-task mode change, restart persistence and the 15 s proposal skip are proven on the real Core; remembered consent per transition is not built, MULTITASK child admission is only a policy-kernel unit test, and t Open: remembered consent per mode transition (AFW-D06) not built; needs a decision on scope and storage; MULTITASK bounded-child admission with a ticket has no Core-level test (crates/policy/tests/kernel.rs only); live-gateway leg not run"
+    }
+   ],
+   "owner_agent": "graph-integrator",
+   "status_changed_on": "2026-10-17T06:34:55Z"
   },
   {
    "id": "PX-052",
@@ -34950,8 +35045,24 @@
    ],
    "task_card": "docs/62_PRODUCT_EXTENSION_REQUIREMENTS_TASKS_AND_QUALIFICATIONS.md#px-052",
    "audit_at_adoption": "DOCUMENTED-ONLY; no product caller present",
-   "status": "NOT_STARTED",
-   "evidence": []
+   "status": "REAL_TESTING",
+   "evidence": [
+    "commit:d10d46d7",
+    "run:38990216920",
+    "test:services/modbit-core/tests/slash_inventory.rs::qual_px_052_the_slash_inventory_is_one_ordered_union_of_what_the_core_holds",
+    "test:services/modbit-core/tests/surface_protocol.rs::qual_px_105_052_trust_by_hash_index_and_skill_load_reach_a_model_only_when_the_owner_says",
+    "test:apps/desktop/e2e/composer.spec.ts"
+   ],
+   "notes": [
+    {
+     "at": "2026-10-17T06:34:55Z",
+     "from": "WIRED",
+     "to": "REAL_TESTING",
+     "note": "graph integration 2026-10-17 on main dbe83fc9: ListSkills inventory with scope, trust, order/divider, metadata-only, session scoping and one-byte untrust is proven on the real Core and rendered by the desktop. (held at REAL_TESTING: the QUAL Core suites run on macOS and Linux only (no Core-level Windows run)) Open: PR #64 notes parts of the inventory had no Core data source; docs lag"
+    }
+   ],
+   "owner_agent": "graph-integrator",
+   "status_changed_on": "2026-10-17T06:34:55Z"
   },
   {
    "id": "PX-053",
@@ -34977,8 +35088,24 @@
    ],
    "task_card": "docs/62_PRODUCT_EXTENSION_REQUIREMENTS_TASKS_AND_QUALIFICATIONS.md#px-053",
    "audit_at_adoption": "DOCUMENTED-ONLY; no product caller present",
-   "status": "NOT_STARTED",
-   "evidence": []
+   "status": "E2E_PROVEN",
+   "evidence": [
+    "commit:5774ec68",
+    "run:38990216920",
+    "test:services/modbit-core/tests/task_modes.rs::px_053_a_preference_is_recorded_survives_a_kill_reaches_the_wire_and_routing_says_direct",
+    "test:services/modbit-core/tests/task_modes.rs::px_053_invalid_preferences_and_forbidden_pins_are_refused_with_typed_errors_and_change_nothing",
+    "test:services/modbit-core/tests/task_modes.rs::px_053_with_a_signed_registry_the_router_reads_the_objective_and_says_which_floor"
+   ],
+   "notes": [
+    {
+     "at": "2026-10-17T06:34:55Z",
+     "from": "REAL_TESTING",
+     "to": "E2E_PROVEN",
+     "note": "graph integration 2026-10-17 on main dbe83fc9: Preference record, kill survival, signed-registry floor, forbidden pin refusal and CLI/desktop parity are proven on the real Core. Open: repo boundary check that compiler/gate/statistics code is untouched not located"
+    }
+   ],
+   "owner_agent": "graph-integrator",
+   "status_changed_on": "2026-10-17T06:34:55Z"
   },
   {
    "id": "PX-054",
@@ -35088,8 +35215,24 @@
    ],
    "task_card": "docs/62_PRODUCT_EXTENSION_REQUIREMENTS_TASKS_AND_QUALIFICATIONS.md#px-057",
    "audit_at_adoption": "DOCUMENTED-ONLY; no product caller present",
-   "status": "NOT_STARTED",
-   "evidence": []
+   "status": "REAL_TESTING",
+   "evidence": [
+    "commit:d10d46d7",
+    "run:38990216920",
+    "test:services/modbit-core/tests/run_control.rs::qual_px_057_ask_allowlist_rules_scope_expiry_and_revocation_against_the_real_approval_flow",
+    "test:services/modbit-core/tests/run_control.rs::qual_px_057_always_ask_classes_ask_under_run_everything_and_run_everything_dies_with_the_process",
+    "test:apps/desktop/e2e/approvals.spec.ts"
+   ],
+   "notes": [
+    {
+     "at": "2026-10-17T06:34:55Z",
+     "from": "WIRED",
+     "to": "REAL_TESTING",
+     "note": "graph integration 2026-10-17 on main dbe83fc9: Presets, exact-prefix allow rules with receipts, always-ask classes under Run everything, restart behaviour and revocation are proven on the real approval flow; the sandbox-contained allowlist path is proven at kernel level only and the liv Open: Allowlist-with-sandbox contained/uncontained path proven at kernel level only (PR #64); live-gateway leg not run; 'continue at lower cost' action needs the picker's routing (PR #67)"
+    }
+   ],
+   "owner_agent": "graph-integrator",
+   "status_changed_on": "2026-10-17T06:34:55Z"
   },
   {
    "id": "PX-058",
@@ -35144,8 +35287,24 @@
    ],
    "task_card": "docs/62_PRODUCT_EXTENSION_REQUIREMENTS_TASKS_AND_QUALIFICATIONS.md#px-059",
    "audit_at_adoption": "DOCUMENTED-ONLY; no product caller present",
-   "status": "NOT_STARTED",
-   "evidence": []
+   "status": "REAL_TESTING",
+   "evidence": [
+    "commit:d10d46d7",
+    "run:38990216920",
+    "test:services/modbit-core/tests/run_control.rs::qual_px_059_the_categories_sum_to_the_provider_reported_total_and_the_window_is_the_models",
+    "test:services/modbit-core/tests/run_control.rs::qual_px_059_without_a_provider_count_the_total_is_the_estimate_and_says_so",
+    "test:services/modbit-core/tests/run_control.rs::qual_px_059_rules_and_memory_the_request_carries_are_counted_in_their_own_categories"
+   ],
+   "notes": [
+    {
+     "at": "2026-10-17T06:34:55Z",
+     "from": "WIRED",
+     "to": "REAL_TESTING",
+     "note": "graph integration 2026-10-17 on main dbe83fc9: Category sums, model-aware window, estimator fallback and compaction-epoch behaviour are proven against a scripted provider's counts; the live gateway's counts are never compared. Open: total vs a live provider's counted tokens within the estimator error not checked"
+    }
+   ],
+   "owner_agent": "graph-integrator",
+   "status_changed_on": "2026-10-17T06:34:55Z"
   },
   {
    "id": "PX-060",
@@ -35201,8 +35360,24 @@
    ],
    "task_card": "docs/62_PRODUCT_EXTENSION_REQUIREMENTS_TASKS_AND_QUALIFICATIONS.md#px-061",
    "audit_at_adoption": "DOCUMENTED-ONLY; no product caller present",
-   "status": "NOT_STARTED",
-   "evidence": []
+   "status": "REAL_TESTING",
+   "evidence": [
+    "commit:5774ec68",
+    "run:38990216920",
+    "test:services/modbit-core/tests/checkpoints_px.rs::px_061_every_turn_leaves_a_checkpoint_and_a_restore_is_exactly_reversible",
+    "test:services/modbit-core/tests/checkpoints_px.rs::px_061_kill_during_capture_and_during_restore_recovers_consistently",
+    "test:services/modbit-core/tests/checkpoints_px.rs::px_061_a_fork_at_a_turn_has_that_turns_files_and_leaves_the_parent_alone"
+   ],
+   "notes": [
+    {
+     "at": "2026-10-17T06:34:55Z",
+     "from": "WIRED",
+     "to": "REAL_TESTING",
+     "note": "graph integration 2026-10-17 on main dbe83fc9: Per-turn checkpoints, exact restore/redo by hash, kill during capture and restore, fork and stale-redo refusal are proven on a real worktree; the live-gateway leg is missing. Open: live-gateway leg not run"
+    }
+   ],
+   "owner_agent": "graph-integrator",
+   "status_changed_on": "2026-10-17T06:34:55Z"
   },
   {
    "id": "PX-062",
@@ -35254,8 +35429,24 @@
    ],
    "task_card": "docs/62_PRODUCT_EXTENSION_REQUIREMENTS_TASKS_AND_QUALIFICATIONS.md#px-063",
    "audit_at_adoption": "DOCUMENTED-ONLY; no product caller present",
-   "status": "NOT_STARTED",
-   "evidence": []
+   "status": "REAL_TESTING",
+   "evidence": [
+    "commit:4528f7c1",
+    "run:38990216920",
+    "test:services/modbit-core/tests/projects_px.rs::qual_px_063_records_membership_and_each_guard_with_its_typed_reason",
+    "test:services/modbit-core/tests/projects_px.rs::qual_px_063_a_core_killed_at_every_step_of_every_project_command_leaves_the_old_or_the_new_state_never_a_mixture",
+    "test:services/modbit-core/tests/projects_px.rs::qual_px_063_a_membership_the_log_never_recorded_is_not_shown_after_recovery"
+   ],
+   "notes": [
+    {
+     "at": "2026-10-17T06:34:56Z",
+     "from": "WIRED",
+     "to": "REAL_TESTING",
+     "note": "graph integration 2026-10-17 on main dbe83fc9: Membership, each guard's typed refusal, kill at every step of every project command (PR #77 atomicity proof), replay-once and CLI parity are proven on the real Core. (held at REAL_TESTING: QUAL 'pending two-phase state' is met by single-transaction commands; that reading awaits an owner decision) Open: QUAL 'pending two-phase state' is satisfied by single-transaction commands (reading recorded in PR #77); owner"
+    }
+   ],
+   "owner_agent": "graph-integrator",
+   "status_changed_on": "2026-10-17T06:34:56Z"
   },
   {
    "id": "PX-064",
@@ -35309,8 +35500,25 @@
    ],
    "task_card": "docs/62_PRODUCT_EXTENSION_REQUIREMENTS_TASKS_AND_QUALIFICATIONS.md#px-065",
    "audit_at_adoption": "DOCUMENTED-ONLY; no product caller present",
-   "status": "NOT_STARTED",
-   "evidence": []
+   "status": "E2E_PROVEN",
+   "evidence": [
+    "commit:d10d46d7",
+    "run:38990216920",
+    "test:services/modbit-core/tests/worktrees_px.rs::px_065_cleanup_removes_only_what_is_eligible_in_orphan_then_lru_order",
+    "test:services/modbit-core/tests/worktrees_px.rs::px_065_a_second_cleanup_while_the_lease_is_held_is_refused_naming_the_holder",
+    "test:services/modbit-core/tests/worktrees_px.rs::px_065_the_schedule_catches_up_after_a_restart_and_persists_the_last_run",
+    "commit:2b7f2ac9"
+   ],
+   "notes": [
+    {
+     "at": "2026-10-17T06:34:56Z",
+     "from": "REAL_TESTING",
+     "to": "E2E_PROVEN",
+     "note": "graph integration 2026-10-17 on main dbe83fc9: Real Git worktrees: dirty/untracked copies, branch-in-use, setup failure/timeout, scheduled and catch-up cleanup, single lease holder, orphan-then-LRU eligibility and symlink-safe removal are proven."
+    }
+   ],
+   "owner_agent": "graph-integrator",
+   "status_changed_on": "2026-10-17T06:34:56Z"
   },
   {
    "id": "PX-066",
@@ -35362,8 +35570,24 @@
    ],
    "task_card": "docs/62_PRODUCT_EXTENSION_REQUIREMENTS_TASKS_AND_QUALIFICATIONS.md#px-067",
    "audit_at_adoption": "DOCUMENTED-ONLY; no product caller present",
-   "status": "NOT_STARTED",
-   "evidence": []
+   "status": "E2E_PROVEN",
+   "evidence": [
+    "commit:d10d46d7",
+    "run:38990216920",
+    "test:services/modbit-core/tests/worktrees_px.rs::px_067_a_hostile_repository_runs_nothing_and_leaks_no_token_through_core_operations",
+    "test:crates/git/tests/px_067_remaining.rs",
+    "test:tools/architecture-lint/tests/spawns.rs"
+   ],
+   "notes": [
+    {
+     "at": "2026-10-17T06:34:56Z",
+     "from": "REAL_TESTING",
+     "to": "E2E_PROVEN",
+     "note": "graph integration 2026-10-17 on main dbe83fc9: Hostile hook/fsmonitor/clean-filter/tokenised-remote fixtures run nothing and leak nothing through the Core's Git operations, and the spawn lint runs in CI."
+    }
+   ],
+   "owner_agent": "graph-integrator",
+   "status_changed_on": "2026-10-17T06:34:56Z"
   },
   {
    "id": "PX-068",
@@ -35422,8 +35646,27 @@
    ],
    "task_card": "docs/62_PRODUCT_EXTENSION_REQUIREMENTS_TASKS_AND_QUALIFICATIONS.md#px-069",
    "audit_at_adoption": "DOCUMENTED-ONLY; no product caller present",
-   "status": "NOT_STARTED",
-   "evidence": []
+   "status": "WIRED",
+   "evidence": [
+    "commit:7fcd48ad",
+    "run:38990216920",
+    "test:services/modbit-core/tests/px_computer.rs::qual_px_069_an_accessibility_first_task_completes_and_leaves_its_audit",
+    "test:services/modbit-core/tests/px_computer.rs::qual_px_069_every_refusal_is_typed_with_its_escalation_and_actuates_nothing",
+    "test:services/modbit-core/tests/px_computer.rs::qual_px_069_a_crash_after_delivery_latches_and_only_a_new_session_observing_reconciles",
+    "commit:9da0a2b0",
+    "commit:c472e1cf",
+    "commit:390bdf71"
+   ],
+   "notes": [
+    {
+     "at": "2026-10-17T06:34:56Z",
+     "from": "IMPLEMENTING",
+     "to": "WIRED",
+     "note": "graph integration 2026-10-17 on main dbe83fc9: The Computer Runtime Core (16 tools, 25 typed refusals, unknown-outcome latch, single controller, watchdog) is wired through production routing against a fixture actuator; QUAL-PX-069 requires the real macOS actuator and the stop-ordering r Open: real OS actuator (PX-071, PR #82) not on main; QUAL needs it with fixture apps; PR #89: Stop recorded after the in-flight result (flaky qual_px_069_the_on_screen_stop on Ubuntu) not landed; positive credential entry into native secure fields not built (refusal only)"
+    }
+   ],
+   "owner_agent": "graph-integrator",
+   "status_changed_on": "2026-10-17T06:34:56Z"
   },
   {
    "id": "PX-070",
@@ -35536,8 +35779,22 @@
    ],
    "task_card": "docs/62_PRODUCT_EXTENSION_REQUIREMENTS_TASKS_AND_QUALIFICATIONS.md#px-073",
    "audit_at_adoption": "DOCUMENTED-ONLY; no product caller present",
-   "status": "NOT_STARTED",
-   "evidence": []
+   "status": "REAL_TESTING",
+   "evidence": [
+    "commit:d10d46d7",
+    "run:38990216920",
+    "test:apps/desktop/e2e/browser-hardening.spec.ts"
+   ],
+   "notes": [
+    {
+     "at": "2026-10-17T06:34:56Z",
+     "from": "WIRED",
+     "to": "REAL_TESTING",
+     "note": "graph integration 2026-10-17 on main dbe83fc9: Per-call origin gate, certificate prompt, permission denial, partition wipe and per-task view ownership/LRU reclaim are proven on real Chromium, but agent-set emulation reverted at turn end is not built and eviction past the 12-page history Open: device/viewport emulation (reverted at turn end, not over the user's) not built; needs a DR (PR #64); eviction past the 12-page history untested"
+    }
+   ],
+   "owner_agent": "graph-integrator",
+   "status_changed_on": "2026-10-17T06:34:56Z"
   },
   {
    "id": "PX-074",
@@ -35793,8 +36050,24 @@
    ],
    "task_card": "docs/62_PRODUCT_EXTENSION_REQUIREMENTS_TASKS_AND_QUALIFICATIONS.md#px-082",
    "audit_at_adoption": "DOCUMENTED-ONLY; no product caller present",
-   "status": "NOT_STARTED",
-   "evidence": []
+   "status": "REAL_TESTING",
+   "evidence": [
+    "commit:4528f7c1",
+    "run:38990216920",
+    "test:services/modbit-core/tests/automations_px.rs::px_082_three_versions_enable_the_third_and_a_killed_core_replays_them_all",
+    "test:services/modbit-core/tests/automations_px.rs::px_082_definitions_validate_version_and_need_the_owners_exact_approval",
+    "test:services/modbit-core/tests/automations_px.rs::px_082_a_repository_definition_stays_disabled_until_its_hash_is_approved_and_a_changed_byte_disables_it"
+   ],
+   "notes": [
+    {
+     "at": "2026-10-17T06:34:56Z",
+     "from": "WIRED",
+     "to": "REAL_TESTING",
+     "note": "graph integration 2026-10-17 on main dbe83fc9: Versioning, typed validation, hash-bound exact-capability approval, repository definitions inert until approved, model-origin denial, secret/budget refusal and SIGKILL replay are proven on the real Core (AUT-E01 landed in #74). (held at REAL_TESTING: the QUAL Core suites run on macOS and Linux only (no Core-level Windows run))"
+    }
+   ],
+   "owner_agent": "graph-integrator",
+   "status_changed_on": "2026-10-17T06:34:56Z"
   },
   {
    "id": "PX-083",
@@ -36340,8 +36613,24 @@
    ],
    "task_card": "docs/62_PRODUCT_EXTENSION_REQUIREMENTS_TASKS_AND_QUALIFICATIONS.md#px-101",
    "audit_at_adoption": "DOCUMENTED-ONLY; no product caller present",
-   "status": "NOT_STARTED",
-   "evidence": []
+   "status": "REAL_TESTING",
+   "evidence": [
+    "commit:5774ec68",
+    "run:38990216920",
+    "test:services/modbit-core/tests/checkpoints_px.rs::px_101_pause_during_a_streaming_turn_parks_at_the_boundary_and_resume_completes",
+    "test:services/modbit-core/tests/checkpoints_px.rs::px_101_a_pause_survives_a_killed_core_and_a_stale_resume_is_refused",
+    "test:services/modbit-core/tests/checkpoints_px.rs::px_101_pause_waits_for_a_running_command_and_leaves_an_approval_pending"
+   ],
+   "notes": [
+    {
+     "at": "2026-10-17T06:34:56Z",
+     "from": "WIRED",
+     "to": "REAL_TESTING",
+     "note": "graph integration 2026-10-17 on main dbe83fc9: Pause at the stream/command boundary, SIGKILL survival, stale-lease refusal and pending approvals are proven on the real Core; QUAL names scripted and live providers. Open: live-provider leg not run"
+    }
+   ],
+   "owner_agent": "graph-integrator",
+   "status_changed_on": "2026-10-17T06:34:56Z"
   },
   {
    "id": "PX-102",
@@ -36513,8 +36802,24 @@
    ],
    "task_card": "docs/62_PRODUCT_EXTENSION_REQUIREMENTS_TASKS_AND_QUALIFICATIONS.md#px-107",
    "audit_at_adoption": "DOCUMENTED-ONLY; no product caller present",
-   "status": "NOT_STARTED",
-   "evidence": []
+   "status": "E2E_PROVEN",
+   "evidence": [
+    "commit:5774ec68",
+    "run:38990216920",
+    "test:services/modbit-core/tests/context_rules_pack.rs::px_107_agents_md_reaches_the_model_only_in_a_trusted_repository_with_provenance",
+    "test:services/modbit-core/tests/context_rules_pack.rs::px_107_editing_agents_md_between_turns_changes_the_next_request_and_its_hash",
+    "test:services/modbit-core/tests/context_rules_pack.rs::px_107_oversize_files_are_cut_with_a_marker_and_the_aggregate_stays_bounded"
+   ],
+   "notes": [
+    {
+     "at": "2026-10-17T06:34:56Z",
+     "from": "REAL_TESTING",
+     "to": "E2E_PROVEN",
+     "note": "graph integration 2026-10-17 on main dbe83fc9: Trust-gated AGENTS.md/CLAUDE.md load with provenance, nearer-directory precedence, caps with markers, hostile-text immunity and edit-between-turns are proven by capturing the provider request. Open: device/admin precedence tier not built (PR #63; not a QUAL clause)"
+    }
+   ],
+   "owner_agent": "graph-integrator",
+   "status_changed_on": "2026-10-17T06:34:56Z"
   },
   {
    "id": "PX-108",
@@ -36542,8 +36847,24 @@
    ],
    "task_card": "docs/62_PRODUCT_EXTENSION_REQUIREMENTS_TASKS_AND_QUALIFICATIONS.md#px-108",
    "audit_at_adoption": "DOCUMENTED-ONLY; no product caller present",
-   "status": "NOT_STARTED",
-   "evidence": []
+   "status": "E2E_PROVEN",
+   "evidence": [
+    "commit:5774ec68",
+    "run:38990216920",
+    "test:services/modbit-core/tests/context_rules_pack.rs::px_108_the_first_request_carries_a_goal_seeded_pack_without_a_model_tool_call",
+    "test:services/modbit-core/tests/context_rules_pack.rs::px_108_a_write_invalidates_the_fragment_and_model_retrieval_still_works",
+    "test:services/modbit-core/tests/context_rules_pack.rs::px_108_the_pack_stays_inside_the_budget_across_fifty_turns"
+   ],
+   "notes": [
+    {
+     "at": "2026-10-17T06:34:56Z",
+     "from": "REAL_TESTING",
+     "to": "E2E_PROVEN",
+     "note": "graph integration 2026-10-17 on main dbe83fc9: Goal-seeded pack on the first request, invalidation on write, budget over fifty turns, restart consistency, empty-pack reason and the first-correct-read comparison are proven."
+    }
+   ],
+   "owner_agent": "graph-integrator",
+   "status_changed_on": "2026-10-17T06:34:56Z"
   },
   {
    "id": "PX-109",
@@ -36573,8 +36894,24 @@
    ],
    "task_card": "docs/62_PRODUCT_EXTENSION_REQUIREMENTS_TASKS_AND_QUALIFICATIONS.md#px-109",
    "audit_at_adoption": "DOCUMENTED-ONLY; no product caller present",
-   "status": "NOT_STARTED",
-   "evidence": []
+   "status": "REAL_TESTING",
+   "evidence": [
+    "commit:5774ec68",
+    "run:38990216920",
+    "test:services/modbit-core/tests/context_rules_pack.rs::px_109_a_validated_model_summary_installs_and_the_pointer_reads_back_the_exact_text",
+    "test:services/modbit-core/tests/context_rules_pack.rs::px_109_every_way_a_summarizer_can_fail_falls_back_to_the_extractive_epoch",
+    "test:services/modbit-core/tests/context_rules_pack.rs::px_109_a_core_killed_mid_summary_resumes_consistently_and_completes"
+   ],
+   "notes": [
+    {
+     "at": "2026-10-17T06:34:56Z",
+     "from": "WIRED",
+     "to": "REAL_TESTING",
+     "note": "graph integration 2026-10-17 on main dbe83fc9: Validated summaries, fabricated-citation rejection, extractive fallback on timeout/429/malformed, kill during compaction and window-aware thresholds are proven with a scripted summarizer; the run-to-85-percent compaction on the live gateway Open: live-gateway compaction run driven to 85 percent of the window not run; summarizer is off unless policy names one (MODBIT_COMPACTION_SUMMARIZER); owner decision on defaults"
+    }
+   ],
+   "owner_agent": "graph-integrator",
+   "status_changed_on": "2026-10-17T06:34:56Z"
   },
   {
    "id": "PX-110",
@@ -36603,8 +36940,24 @@
    ],
    "task_card": "docs/62_PRODUCT_EXTENSION_REQUIREMENTS_TASKS_AND_QUALIFICATIONS.md#px-110",
    "audit_at_adoption": "DOCUMENTED-ONLY; no product caller present",
-   "status": "NOT_STARTED",
-   "evidence": []
+   "status": "E2E_PROVEN",
+   "evidence": [
+    "commit:d10d46d7",
+    "run:38990216920",
+    "test:crates/retrieval/tests/code_graph.rs::labelled_queries_meet_the_recall_and_precision_floors",
+    "test:crates/retrieval/tests/code_graph.rs::an_interface_change_reaches_its_implementors_and_dropping_implementor_edges_fails_it",
+    "test:services/modbit-core/tests/memory_graph_index.rs::px_110_impact_callers_and_implementors_are_served_by_the_core_and_follow_an_edit"
+   ],
+   "notes": [
+    {
+     "at": "2026-10-17T06:34:56Z",
+     "from": "REAL_TESTING",
+     "to": "E2E_PROVEN",
+     "note": "graph integration 2026-10-17 on main dbe83fc9: At least thirty hand-labelled queries over the three fixtures meet recall/precision floors, edges carry confidence and revision, edits invalidate incrementally, the expansion cap says partial, and the Core serves it."
+    }
+   ],
+   "owner_agent": "graph-integrator",
+   "status_changed_on": "2026-10-17T06:34:56Z"
   },
   {
    "id": "PX-111",
@@ -36633,8 +36986,24 @@
    ],
    "task_card": "docs/62_PRODUCT_EXTENSION_REQUIREMENTS_TASKS_AND_QUALIFICATIONS.md#px-111",
    "audit_at_adoption": "DOCUMENTED-ONLY; no product caller present",
-   "status": "NOT_STARTED",
-   "evidence": []
+   "status": "E2E_PROVEN",
+   "evidence": [
+    "commit:d10d46d7",
+    "run:38990216920",
+    "test:services/modbit-core/tests/memory_graph_index.rs::px_111_a_restarted_core_does_not_rebuild_and_damage_or_staleness_is_rebuilt_with_a_reason",
+    "test:services/modbit-core/tests/memory_graph_index.rs::px_111_a_core_killed_inside_an_index_write_recovers_to_a_whole_snapshot",
+    "test:services/modbit-core/tests/memory_graph_index.rs::px_111_indexed_search_returns_what_the_scan_returns_through_the_core"
+   ],
+   "notes": [
+    {
+     "at": "2026-10-17T06:34:56Z",
+     "from": "REAL_TESTING",
+     "to": "E2E_PROVEN",
+     "note": "graph integration 2026-10-17 on main dbe83fc9: Persisted incremental indexes: no rebuild after restart, checksum-detected corruption rebuilt with a reason, kill mid-write, and 200 indexed-vs-scan queries byte-identical are proven."
+    }
+   ],
+   "owner_agent": "graph-integrator",
+   "status_changed_on": "2026-10-17T06:34:56Z"
   },
   {
    "id": "PX-112",
@@ -36691,8 +37060,24 @@
    ],
    "task_card": "docs/62_PRODUCT_EXTENSION_REQUIREMENTS_TASKS_AND_QUALIFICATIONS.md#px-113",
    "audit_at_adoption": "DOCUMENTED-ONLY; no product caller present",
-   "status": "NOT_STARTED",
-   "evidence": []
+   "status": "E2E_PROVEN",
+   "evidence": [
+    "commit:d10d46d7",
+    "run:38990216920",
+    "test:services/modbit-core/tests/memory_graph_index.rs::px_113_a_promoted_memory_reaches_a_later_sessions_prompt_and_forgetting_removes_it_after_a_restart",
+    "test:services/modbit-core/tests/memory_graph_index.rs::px_113_mutations_are_events_that_replay_to_the_same_store_and_a_direct_write_does_not_survive",
+    "test:services/modbit-core/tests/memory_graph_index.rs::px_113_ttl_scope_precedence_and_sensitivity_decide_what_is_injected"
+   ],
+   "notes": [
+    {
+     "at": "2026-10-17T06:34:57Z",
+     "from": "REAL_TESTING",
+     "to": "E2E_PROVEN",
+     "note": "graph integration 2026-10-17 on main dbe83fc9: Memory promoted in one session reaches the next request with provenance, forget survives restart, mutations are replayable events, TTL/scope precedence and the 50-memory budget hold, hostile text changes no projection."
+    }
+   ],
+   "owner_agent": "graph-integrator",
+   "status_changed_on": "2026-10-17T06:34:57Z"
   },
   {
    "id": "PX-114",
@@ -36722,8 +37107,24 @@
    ],
    "task_card": "docs/62_PRODUCT_EXTENSION_REQUIREMENTS_TASKS_AND_QUALIFICATIONS.md#px-114",
    "audit_at_adoption": "DOCUMENTED-ONLY; no product caller present",
-   "status": "NOT_STARTED",
-   "evidence": []
+   "status": "REAL_TESTING",
+   "evidence": [
+    "commit:5774ec68",
+    "run:38990216920",
+    "test:services/modbit-core/tests/px_114_projection.rs::qual_px_114_exec_only_shows_the_small_surface_and_programs_do_the_work_through_the_pipeline",
+    "test:services/modbit-core/tests/px_114_projection.rs::qual_px_114_the_schema_budget_drops_the_lowest_priority_tools_first_and_records_it",
+    "test:services/modbit-core/tests/px_114_projection.rs::qual_px_114_a_hidden_tool_called_directly_is_refused_and_a_program_still_reaches_it"
+   ],
+   "notes": [
+    {
+     "at": "2026-10-17T06:34:57Z",
+     "from": "WIRED",
+     "to": "REAL_TESTING",
+     "note": "graph integration 2026-10-17 on main dbe83fc9: Exec-only projection, schema-bytes budget with recorded degradation, kernel-gated deferred tools and per-task/per-model selection are proven; the live paired trial over at least thirty tasks has never run (the harness reports NOT_EVALUATED) Open: live paired trial (>= 30 tasks, both arms, intervals, recorded verdict) not run; there is no live-evals job fo"
+    }
+   ],
+   "owner_agent": "graph-integrator",
+   "status_changed_on": "2026-10-17T06:34:57Z"
   },
   {
    "id": "PX-115",
@@ -36752,8 +37153,24 @@
    ],
    "task_card": "docs/62_PRODUCT_EXTENSION_REQUIREMENTS_TASKS_AND_QUALIFICATIONS.md#px-115",
    "audit_at_adoption": "DOCUMENTED-ONLY; no product caller present",
-   "status": "NOT_STARTED",
-   "evidence": []
+   "status": "REAL_TESTING",
+   "evidence": [
+    "commit:5774ec68",
+    "run:38990216920",
+    "test:services/modbit-core/tests/px_115_mcp.rs::qual_px_115_a_five_hundred_tool_catalog_lists_by_name_in_pages_with_no_schemas_and_bounded_latency",
+    "test:services/modbit-core/tests/px_115_mcp.rs::qual_px_115_describe_returns_exactly_the_named_schemas_and_never_authorises_a_call",
+    "test:services/modbit-core/tests/px_115_mcp.rs::qual_px_115_list_changed_refreshes_the_catalog_without_a_restart"
+   ],
+   "notes": [
+    {
+     "at": "2026-10-17T06:34:57Z",
+     "from": "WIRED",
+     "to": "REAL_TESTING",
+     "note": "graph integration 2026-10-17 on main dbe83fc9: Lazy discovery over a 507-tool MCP server: no schemas before describe, describe never authorises, list_changed, idle reap and kill after grace, reconnect and the lazy-vs-eager benchmark. (held at REAL_TESTING: idle-reaper and kill-after-grace tests are Unix-only) Open: HTTP, resources and prompts transports not covered (PR #63; not QUAL clauses)"
+    }
+   ],
+   "owner_agent": "graph-integrator",
+   "status_changed_on": "2026-10-17T06:34:57Z"
   },
   {
    "id": "PX-116",
@@ -36784,8 +37201,24 @@
    ],
    "task_card": "docs/62_PRODUCT_EXTENSION_REQUIREMENTS_TASKS_AND_QUALIFICATIONS.md#px-116",
    "audit_at_adoption": "DOCUMENTED-ONLY; no product caller present",
-   "status": "NOT_STARTED",
-   "evidence": []
+   "status": "REAL_TESTING",
+   "evidence": [
+    "commit:5774ec68",
+    "run:38990216920",
+    "test:services/modbit-core/tests/surface_protocol.rs::qual_px_116_child_cost_budgets_are_clamped_reserved_exhaust_typed_and_roll_up",
+    "test:services/modbit-core/tests/surface_protocol.rs::qual_px_116_max_children_refuses_the_extra_spawn_and_a_task_can_forbid_delegation",
+    "test:services/modbit-core/tests/surface_protocol.rs::qual_px_116_a_child_reads_only_its_read_scope_and_carries_the_parents_scoped_references"
+   ],
+   "notes": [
+    {
+     "at": "2026-10-17T06:34:57Z",
+     "from": "WIRED",
+     "to": "REAL_TESTING",
+     "note": "graph integration 2026-10-17 on main dbe83fc9: Clamped reservations, wall-clock exhaustion, max_children, forbidden spawn, read-scope enforcement and kill reconciliation are proven on the real Core; the live gateway leg is missing. Open: live-gateway leg not run"
+    }
+   ],
+   "owner_agent": "graph-integrator",
+   "status_changed_on": "2026-10-17T06:34:57Z"
   },
   {
    "id": "PX-117",
@@ -36814,8 +37247,24 @@
    ],
    "task_card": "docs/62_PRODUCT_EXTENSION_REQUIREMENTS_TASKS_AND_QUALIFICATIONS.md#px-117",
    "audit_at_adoption": "DOCUMENTED-ONLY; no product caller present",
-   "status": "NOT_STARTED",
-   "evidence": []
+   "status": "REAL_TESTING",
+   "evidence": [
+    "commit:5774ec68",
+    "run:38990216920",
+    "test:services/modbit-core/tests/px_117_hooks.rs::qual_px_117_each_new_event_fires_at_its_real_lifecycle_point_with_a_typed_versioned_payload",
+    "test:services/modbit-core/tests/px_117_hooks.rs::qual_px_117_hook_context_is_labelled_scanned_bounded_data_and_never_widens_authority",
+    "test:services/modbit-core/tests/px_117_hooks.rs::qual_px_117_a_prompt_hook_routes_through_the_gateway_denies_but_never_allows_and_fails_closed"
+   ],
+   "notes": [
+    {
+     "at": "2026-10-17T06:34:57Z",
+     "from": "WIRED",
+     "to": "REAL_TESTING",
+     "note": "graph integration 2026-10-17 on main dbe83fc9: New hook points fire at real lifecycle points with real hook processes, additional_context is labelled and bounded, prompt hooks deny-only and fail closed, untrusted project hooks do not run. (held at REAL_TESTING: the QUAL Core suites run on macOS and Linux only (no Core-level Windows run))"
+    }
+   ],
+   "owner_agent": "graph-integrator",
+   "status_changed_on": "2026-10-17T06:34:57Z"
   },
   {
    "id": "PX-118",
@@ -37049,8 +37498,23 @@
    ],
    "task_card": "docs/62_PRODUCT_EXTENSION_REQUIREMENTS_TASKS_AND_QUALIFICATIONS.md#px-125",
    "audit_at_adoption": "DOCUMENTED-ONLY; no product caller present",
-   "status": "NOT_STARTED",
-   "evidence": []
+   "status": "WIRED",
+   "evidence": [
+    "commit:d10d46d7",
+    "run:38990216920",
+    "test:services/modbit-core/tests/px_125_forge.rs::qual_px_125_the_forge_adapter_reads_a_pull_request_and_its_diff_and_posts_approved_redacted_comments",
+    "test:tests/support/github_fake.rs"
+   ],
+   "notes": [
+    {
+     "at": "2026-10-17T06:34:57Z",
+     "from": "IMPLEMENTING",
+     "to": "WIRED",
+     "note": "graph integration 2026-10-17 on main dbe83fc9: forge.pr.read/diff/comment are wired through the Kernel against a wire-faithful GitHub fake; QUAL-PX-125 requires real GitHub and says the fake does not close the row. Open: run against the owner's real GitHub test repository (token + repository)"
+    }
+   ],
+   "owner_agent": "graph-integrator",
+   "status_changed_on": "2026-10-17T06:34:57Z"
   },
   {
    "id": "PX-126",
@@ -37166,8 +37630,24 @@
    ],
    "task_card": "docs/62_PRODUCT_EXTENSION_REQUIREMENTS_TASKS_AND_QUALIFICATIONS.md#px-129",
    "audit_at_adoption": "DOCUMENTED-ONLY; no product caller present",
-   "status": "NOT_STARTED",
-   "evidence": []
+   "status": "REAL_TESTING",
+   "evidence": [
+    "commit:d10d46d7",
+    "run:38990216920",
+    "test:apps/cloud-api/tests/px_129_identity.rs::qual_px_129_oidc_with_pkce_signs_provisioned_principals_in_and_every_forgery_is_refused",
+    "test:apps/cloud-api/tests/px_129_identity.rs::qual_px_129_only_bundles_the_organisation_signed_with_a_greater_generation_are_accepted_and_served",
+    "test:apps/cloud-worker/tests/px_129_policy.rs::qual_px_129_the_worker_enforces_only_bundles_it_verifies_keeps_the_last_good_one_and_starts_nothing_on_an_expired_one"
+   ],
+   "notes": [
+    {
+     "at": "2026-10-17T06:34:57Z",
+     "from": "WIRED",
+     "to": "REAL_TESTING",
+     "note": "graph integration 2026-10-17 on main dbe83fc9: QUAL-PX-129 asks for a real local OIDC provider fixture and staging Cloud API with Postgres: PKCE sign-in, replay/state/nonce/verifier/expiry refusals, provisioning, signed bundles with generation checks and a fail-closed client are proven  (held at REAL_TESTING: RS256 requirement and per-tenant forge credentials are open owner decisions) Open: RS256 requirement and per-tenant forge credentials are open owner decisions (PR #64)"
+    }
+   ],
+   "owner_agent": "graph-integrator",
+   "status_changed_on": "2026-10-17T06:34:57Z"
   },
   {
    "id": "PX-130",
@@ -37196,8 +37676,22 @@
    ],
    "task_card": "docs/62_PRODUCT_EXTENSION_REQUIREMENTS_TASKS_AND_QUALIFICATIONS.md#px-130",
    "audit_at_adoption": "DOCUMENTED-ONLY; no product caller present",
-   "status": "NOT_STARTED",
-   "evidence": []
+   "status": "IMPLEMENTING",
+   "evidence": [
+    "commit:d10d46d7",
+    "run:38990216920",
+    "test:services/modbit-core/tests/px_130_broker.rs::qual_px_130_a_provider_key_is_used_through_the_broker_counted_revoked_and_rotated"
+   ],
+   "notes": [
+    {
+     "at": "2026-10-17T06:34:57Z",
+     "from": "AUDITING",
+     "to": "IMPLEMENTING",
+     "note": "graph integration 2026-10-17 on main dbe83fc9: Only the provider consumer is proven through the broker (counted, revoked, rotated); tools, MCP, browser and cloud consumers are not migrated and the architecture lint fixture does not exist. Open: cloud apps and guest HMAC path not migrated; no lint that fails a direct credential read (PR #64)"
+    }
+   ],
+   "owner_agent": "graph-integrator",
+   "status_changed_on": "2026-10-17T06:34:57Z"
   },
   {
    "id": "PX-131",
@@ -37225,8 +37719,24 @@
    ],
    "task_card": "docs/62_PRODUCT_EXTENSION_REQUIREMENTS_TASKS_AND_QUALIFICATIONS.md#px-131",
    "audit_at_adoption": "DOCUMENTED-ONLY; no product caller present",
-   "status": "NOT_STARTED",
-   "evidence": []
+   "status": "REAL_TESTING",
+   "evidence": [
+    "commit:d10d46d7",
+    "run:38990216920",
+    "test:services/modbit-core/tests/px_131_epoch.rs::qual_px_131_a_policy_tightened_mid_round_applies_from_the_next_round_with_both_epochs_recorded",
+    "test:services/modbit-core/tests/px_131_epoch.rs::qual_px_131_an_emergency_stop_takes_effect_inside_the_round",
+    "test:services/modbit-core/tests/px_131_epoch.rs::qual_px_131_a_core_killed_mid_round_resumes_the_same_snapshot_and_epoch"
+   ],
+   "notes": [
+    {
+     "at": "2026-10-17T06:34:57Z",
+     "from": "WIRED",
+     "to": "REAL_TESTING",
+     "note": "graph integration 2026-10-17 on main dbe83fc9: Frozen per-round snapshot, both epochs on decisions and receipts, immediate emergency stop, kill replay of the same snapshot and forged-epoch chain failure are proven; the 'skill revoked mid-round' clause has no test. Open: skill revoked mid-round leaves the round's projection unchanged and is absent next round: no test"
+    }
+   ],
+   "owner_agent": "graph-integrator",
+   "status_changed_on": "2026-10-17T06:34:57Z"
   },
   {
    "id": "PX-132",
@@ -37284,8 +37794,24 @@
    ],
    "task_card": "docs/62_PRODUCT_EXTENSION_REQUIREMENTS_TASKS_AND_QUALIFICATIONS.md#px-133",
    "audit_at_adoption": "DOCUMENTED-ONLY; no product caller present",
-   "status": "NOT_STARTED",
-   "evidence": []
+   "status": "REAL_TESTING",
+   "evidence": [
+    "commit:4528f7c1",
+    "run:38990216920",
+    "test:services/modbit-core/tests/surface_protocol.rs",
+    "test:benchmarks/context-economics/tests/paired.rs::required_leg_samples_must_exist_and_be_priced",
+    "artifact:benchmarks/live-results/px133/38345205224/RUN.md"
+   ],
+   "notes": [
+    {
+     "at": "2026-10-17T06:34:57Z",
+     "from": "WIRED",
+     "to": "REAL_TESTING",
+     "note": "graph integration 2026-10-17 on main dbe83fc9: Per-leg priced samples, reviewer samples and replay are tested with a scripted cascade/critique, but the one required live run is INCOMPLETE: zero Escalation samples occurred (no cascade activated its stronger-solver slot) and two cost reco Open: zero Escalation samples in the live run: needs a task set/plan that actually escalates and a re-run; re-run after the tolerance fix (credential/spend)"
+    }
+   ],
+   "owner_agent": "graph-integrator",
+   "status_changed_on": "2026-10-17T06:34:57Z"
   },
   {
    "id": "PX-134",
@@ -37340,8 +37866,24 @@
    ],
    "task_card": "docs/62_PRODUCT_EXTENSION_REQUIREMENTS_TASKS_AND_QUALIFICATIONS.md#px-135",
    "audit_at_adoption": "DOCUMENTED-ONLY; no product caller present",
-   "status": "NOT_STARTED",
-   "evidence": []
+   "status": "REAL_TESTING",
+   "evidence": [
+    "commit:4528f7c1",
+    "run:38990216920",
+    "test:benchmarks/gate-calibration/tests/widened.rs::qual_px_135_the_widened_gate_rejects_the_seeded_false_accepts_the_previous_gate_accepted",
+    "test:benchmarks/gate-calibration/tests/widened.rs::a_mutation_that_exposes_the_oracle_to_the_gate_fails_the_leak_search",
+    "test:services/modbit-core/tests/px_135_adversarial_gate.rs::qual_px_135_an_overfit_candidate_is_refused_completion_and_survives_a_restart"
+   ],
+   "notes": [
+    {
+     "at": "2026-10-17T06:34:57Z",
+     "from": "WIRED",
+     "to": "REAL_TESTING",
+     "note": "graph integration 2026-10-17 on main dbe83fc9: Widened corpora, generated adversarial checks wired into the Core's completion gate, leak search and digest reproduction are tested; the live-candidate report (per-language rates with intervals) is incomplete and its result sits in unmerged Open: live result benchmarks/live-results/px135/38518402391 only in PR #88; incomplete (five timed-out runs have no ; per-slice corpus floors were set by the implementer: owner must accept them"
+    }
+   ],
+   "owner_agent": "graph-integrator",
+   "status_changed_on": "2026-10-17T06:34:57Z"
   },
   {
    "id": "PX-136",
@@ -37401,8 +37943,24 @@
    ],
    "task_card": "docs/62_PRODUCT_EXTENSION_REQUIREMENTS_TASKS_AND_QUALIFICATIONS.md#px-137",
    "audit_at_adoption": "DOCUMENTED-ONLY; no product caller present",
-   "status": "NOT_STARTED",
-   "evidence": []
+   "status": "REAL_TESTING",
+   "evidence": [
+    "commit:4528f7c1",
+    "run:38990216920",
+    "test:benchmarks/retrieval/tests/external_baseline.rs::a_missing_ripgrep_fails_the_run_instead_of_leaving_the_column_out",
+    "test:benchmarks/retrieval/tests/live_agent.rs::rescoring_retained_transcripts_reproduces_the_digest_and_catches_any_edit",
+    "artifact:benchmarks/live-results/px137/38044424486/RUN.md"
+   ],
+   "notes": [
+    {
+     "at": "2026-10-17T06:34:57Z",
+     "from": "WIRED",
+     "to": "REAL_TESTING",
+     "note": "graph integration 2026-10-17 on main dbe83fc9: A complete 77-case live run on ripgrep with a real rg baseline, intervals, 100 MB index times and a reproducing digest exists, but it ran on branch commit 4f0491f with the first direct-HTTP chat client; the harness was later moved onto the  Open: re-run on the current main harness (RUN.md itself says a later re-run exercises the gateway path)"
+    }
+   ],
+   "owner_agent": "graph-integrator",
+   "status_changed_on": "2026-10-17T06:34:57Z"
   },
   {
    "id": "PX-138",
