@@ -32,8 +32,15 @@ use modbit_bench_context_economics::live::live_config;
 use modbit_bench_context_economics::spend::{Price, SpendMeter, price_from_catalog};
 use serde_json::{Value, json};
 
+/// Model usage a leg has used so far: calls, input tokens, output tokens. The
+/// fixtures keep it current from the usage the Core logged, so that a leg that
+/// fails part way is still charged for what it spent.
+pub type Usage = Arc<std::sync::Mutex<(u64, u64, u64)>>;
+
 /// What a live run is configured with, validated.
 pub struct LiveEnv {
+    /// The usage of the leg that is running (the legs run one at a time).
+    pub current_usage: std::sync::Mutex<Option<Usage>>,
     /// The model id the legs start tasks on.
     pub model: String,
     /// The gateway's base URL (the endpoint recorded with every result).
@@ -106,6 +113,7 @@ impl LiveEnv {
                 )
             });
         Ok(Self {
+            current_usage: std::sync::Mutex::new(None),
             window: catalog_window(&catalog, &cfg.run.model),
             endpoint: var("MODBIT_LIVE_BASE_URL")
                 .map(|v| v.trim().to_owned())
@@ -178,6 +186,9 @@ pub struct Leg {
     cost_usd: f64,
     stopped_by_cap: bool,
     finished: bool,
+    tracked: Usage,
+    /// What of `tracked` has been charged to the spend meter.
+    tracked_charged: (u64, u64, u64),
 }
 
 impl Leg {
@@ -209,9 +220,22 @@ impl Leg {
             cost_usd: 0.0,
             stopped_by_cap: false,
             finished: false,
+            tracked: Arc::new(std::sync::Mutex::new((0, 0, 0))),
+            tracked_charged: (0, 0, 0),
         };
+        *env.current_usage.lock().unwrap_or_else(std::sync::PoisonError::into_inner) = Some(Arc::clone(&leg.tracked));
         leg.admit(reserve_usd);
         leg
+    }
+
+    /// The usage a fixture keeps current for this leg.
+    #[must_use]
+    pub fn usage_handle(&self) -> Usage {
+        Arc::clone(&self.tracked)
+    }
+
+    fn tracked_totals(&self) -> (u64, u64, u64) {
+        *self.tracked.lock().unwrap_or_else(std::sync::PoisonError::into_inner)
     }
 
     /// The environment.
@@ -274,6 +298,9 @@ impl Leg {
     /// The record as JSON.
     #[must_use]
     pub fn record(&self, passed: bool) -> Value {
+        let (tc, ti, to) = self.tracked_totals();
+        let (calls, input, output) = (self.calls + tc, self.input_tokens + ti, self.output_tokens + to);
+        let cost = self.cost_usd + self.env.price.cost_usd(ti, to);
         json!({
             "row": self.row,
             "leg": self.name,
@@ -285,10 +312,10 @@ impl Leg {
             "elapsed_s": self.started.elapsed().as_secs_f64(),
             "passed": passed,
             "stopped_by_cap": self.stopped_by_cap,
-            "model_calls": self.calls,
-            "input_tokens": self.input_tokens,
-            "output_tokens": self.output_tokens,
-            "cost_usd": self.cost_usd,
+            "model_calls": calls,
+            "input_tokens": input,
+            "output_tokens": output,
+            "cost_usd": cost,
             "counts": self.counts,
             "checks": self.checks.iter().map(|c| json!({"name": c.name, "ok": c.ok, "detail": c.detail})).collect::<Vec<_>>(),
             "notes": self.notes,
@@ -310,6 +337,13 @@ impl Drop for Leg {
             && !std::thread::panicking()
             && !self.stopped_by_cap
             && self.checks.iter().all(|c| c.ok);
+        // What the fixtures tracked is charged to the spend account now.
+        let (tc, ti, to) = self.tracked_totals();
+        let (_, ci, co) = self.tracked_charged;
+        if ti + to > ci + co {
+            self.env.meter.charge_usd(self.env.price.cost_usd(ti - ci, to - co), ti - ci, to - co);
+            self.tracked_charged = (tc, ti, to);
+        }
         let mut record = self.record(passed);
         if !passed && !self.checks.iter().any(|c| !c.ok) {
             record["failure"] = json!(if self.stopped_by_cap {
