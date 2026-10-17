@@ -76,6 +76,11 @@ impl CoreProcess {
         .unwrap()
     }
 
+    /// Whether the process has exited (an injected abort, a crash).
+    pub fn has_exited(&mut self) -> bool {
+        matches!(self.child.try_wait(), Ok(Some(_)))
+    }
+
     pub fn kill(&mut self) {
         let _ = self.child.kill();
         let _ = self.child.wait();

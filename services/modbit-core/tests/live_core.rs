@@ -2683,6 +2683,390 @@ async fn live_px109_fallback() {
 }
 
 // ---------------------------------------------------------------------------
+// QUAL-PX-116: hierarchical budgets, max_children and read scope, with live
+// children
+// ---------------------------------------------------------------------------
+
+use modbit_protocol::v1::{ActivateModelRegistry, ModelRegistryView, SetTaskBudgets};
+
+/// The registry prices in hundredths of a cent (scale 4, the most the router
+/// accepts): 0.15 USD per million input tokens is 1 500 minor units per
+/// million, so a request of ten thousand tokens costs 15.
+fn registry_prices(env: &LiveEnv) -> (u64, u64) {
+    (
+        (env.price.input_per_mtok_usd * 10_000.0).round() as u64,
+        (env.price.output_per_mtok_usd * 10_000.0).round() as u64,
+    )
+}
+
+/// A signed registry that binds the live model with its catalog price at
+/// scale 4, so that the Core can meter cost caps in minor units.
+fn signed_registry(env: &LiveEnv, key: &ed25519_dalek::SigningKey) -> String {
+    use ed25519_dalek::Signer;
+    use modbit_providers::registry::{
+        Economics, Governance, Latency, QualityFloor, REGISTRY_SCHEMA_VERSION, RegistryDocument,
+        RegistryEntry, SignedRegistry,
+    };
+    let (input, output) = registry_prices(env);
+    let now = modbit_domain::Timestamp::now().0;
+    let document = RegistryDocument {
+        promotion: None,
+        schema_version: REGISTRY_SCHEMA_VERSION,
+        registry_generation: "registry-live-core".into(),
+        stats_version: "stats-1".into(),
+        issued_at_ms: now - 60_000,
+        expires_at_ms: now + 86_400_000,
+        quality_floors: vec![QualityFloor {
+            mode: "auto".into(),
+            min_quality: 0.72,
+            max_cost_minor: 50_000,
+            currency: "USD".into(),
+            scale: 4,
+        }],
+        entries: vec![RegistryEntry {
+            endpoint: "openai".into(),
+            provider: "openai".into(),
+            family: "glm".into(),
+            model: env.model.clone(),
+            roles: vec!["solver".into(), "reviewer".into()],
+            input_modalities: vec!["text".into()],
+            context_tokens: u32::try_from(env.window.unwrap_or(128_000)).unwrap_or(128_000),
+            max_output_tokens: 16_384,
+            tools: true,
+            vision: false,
+            reasoning: false,
+            structured_output: true,
+            economics: Economics {
+                input_per_mtok_minor: input,
+                output_per_mtok_minor: output,
+                currency: "USD".into(),
+                scale: 4,
+                cached_input_per_mtok_minor: Some(input),
+                cache_write_per_mtok_minor: None,
+                cache_ttl_ms: None,
+            },
+            latency: Latency {
+                p50_ms: 900,
+                p95_ms: 12_000,
+            },
+            governance: Governance {
+                data_residency: "us".into(),
+                retains_prompts: false,
+                allowed_profiles: vec![],
+            },
+            revoked: false,
+            fallbacks: vec![],
+        }],
+    };
+    let json = serde_json::to_string(&document).unwrap();
+    serde_json::to_string(&SignedRegistry {
+        key_id: "ops".into(),
+        signature_hex: hex::encode(key.sign(json.as_bytes()).to_bytes()),
+        document_json: json,
+    })
+    .unwrap()
+}
+
+impl Fx {
+    async fn activate_registry(&mut self, signed: &str) {
+        let r: ModelRegistryView = self
+            .ok(
+                "ActivateModelRegistry",
+                ActivateModelRegistry {
+                    signed_json: signed.to_owned(),
+                    expected_generation: String::new(),
+                },
+                false,
+            )
+            .await;
+        assert!(r.active, "{r:?}");
+    }
+
+    async fn set_budgets(&mut self, task: &Id, cost: u64, wall: u64, children: u32, forbid: bool) {
+        let _: modbit_protocol::v1::TaskBudgetsView = self
+            .ok(
+                "SetTaskBudgets",
+                SetTaskBudgets {
+                    task_id: Some(task.clone()),
+                    max_cost_minor: cost,
+                    max_wall_ms: wall,
+                    max_children: children,
+                    forbid_spawn: forbid,
+                },
+                true,
+            )
+            .await;
+    }
+}
+
+/// The cost of each reported model call an event list records, priced the way
+/// the ledger prices it: each part rounded up.
+fn call_costs(env: &LiveEnv, events: &[Ev]) -> Vec<u64> {
+    let (input, output) = registry_prices(env);
+    let c = |tokens: u64, price: u64| (u128::from(tokens) * u128::from(price)).div_ceil(1_000_000) as u64;
+    events
+        .iter()
+        .filter(|e| e.kind == "ModelUsageRecorded" && e.payload["reported"].as_bool() == Some(true))
+        .map(|e| {
+            let cached = e.payload["cached_input_tokens"].as_u64().unwrap_or(0);
+            c(e.payload["input_tokens"].as_u64().unwrap_or(0).saturating_sub(cached), input)
+                + c(cached, input)
+                + c(e.payload["output_tokens"].as_u64().unwrap_or(0), output)
+        })
+        .collect()
+}
+
+fn child_id(admitted: &Ev) -> Id {
+    Id {
+        value: modbit_domain::TaskId::parse(admitted.payload["child_task_id"].as_str().unwrap_or_default())
+            .map(|t| t.as_bytes().to_vec())
+            .unwrap_or_default(),
+    }
+}
+
+/// The arguments of one `agent.spawn`, with a write scope of its own (a child
+/// with no named scope is unbounded and cannot run beside another worker).
+fn spawn_call(key: &str, objective: &str, extra: &str) -> String {
+    format!("{{\"idempotency_key\":\"{key}\",\"objective\":\"{objective}\",\"write_scope\":[\"scope/{key}/\"]{extra}}}")
+}
+
+/// Live children under a parent's cost cap: three children whose requests
+/// exceed what the parent has left (the third is clamped, the reservations
+/// never exceed the cap), a child that exhausts its cost ends typed
+/// `BUDGET_EXHAUSTED`, child spend is in the parent's accounting and nothing
+/// stays reserved; `max_children` refuses the extra spawn typed; a
+/// configuration layer that denies `agent.spawn` removes delegation; a child
+/// reads only its `read_scope`; and a Core killed between the reservation and
+/// the child's start comes back with the child admitted once and started.
+async fn leg_px116_budgets(env: Arc<LiveEnv>) {
+    let mut leg = Leg::begin(&env, "px116", "budgets", 0.60);
+    let key = ed25519_dalek::SigningKey::from_bytes(&[116u8; 32]);
+    let keys = format!("ops:{}", hex::encode(key.verifying_key().to_bytes()));
+    let signed = signed_registry(&env, &key);
+    let mut fx = Fx::with_env(
+        &env,
+        &[
+            ("README.md", "# Split work\n"),
+            ("src/a/x.txt", "needle alpha\n"),
+            ("src/secret/key.txt", "needle SECRET-KEY-VALUE\n"),
+            ("scope/k1/.keep", ""),
+            ("scope/k2/.keep", ""),
+            ("scope/k3/.keep", ""),
+        ],
+        &[("MODBIT_REGISTRY_KEYS", keys.as_str()), ("MODBIT_CAPACITY", "model=4,provider=8")],
+    )
+    .await;
+    fx.activate_registry(&signed).await;
+    let (approver, _approved) = spawn_approver_for(&fx.core, &fx.session, fx.g, |t| t.starts_with("git.merge.") || t.starts_with("git.apply.")).await;
+
+    // ---- A. the cost cap: clamp, exhaust, roll up ----------------------------
+    let cap: u64 = 400;
+    let parent = fx
+        .task(&format!(
+            "Do exactly this and nothing else. Step 1: call plan.update with outcome \"three read-only children\" and expected_files [\"README.md\"]. Step 2: call agent.spawn three times with exactly these arguments: {} then {} then {}. Step 3: call agent.wait for k1, then k2, then k3 (timeout_ms 120000 each). Step 4: call task.complete with a one-sentence summary.",
+            spawn_call("k1", "CHILD-A read README.md and report its title in one sentence", ",\"max_cost_minor\":120"),
+            spawn_call("k2", "CHILD-B read README.md and report its title in one sentence", ",\"max_cost_minor\":6"),
+            spawn_call("k3", "CHILD-C read README.md and report its title in one sentence", ",\"max_cost_minor\":2000"),
+        ))
+        .await;
+    fx.set_budgets(&parent, cap, 0, 0, false).await;
+    fx.start(&parent, 40, 8).await;
+    let st = fx.wait(&parent, 600).await;
+    leg.check("parent_run_ended", !st.loop_alive, format!("{st:?}"));
+    tokio::time::sleep(Duration::from_millis(800)).await;
+    let all = fx.events().await;
+    let evs = of_task(all.clone(), &parent);
+    let admitted: Vec<&Ev> = of_kind(&evs, "SubagentAdmitted");
+    leg.check("three_children_admitted", admitted.len() == 3, format!("{} admitted; refusals {:?}", admitted.len(), of_kind(&evs, "SubagentAdmissionRefused").iter().map(|e| &e.payload).collect::<Vec<_>>()));
+    let by_key = |k: &str| admitted.iter().find(|a| a.payload["idempotency_key"] == k).copied();
+    let (k1, k2, k3) = (by_key("k1"), by_key("k2"), by_key("k3"));
+    leg.check("keys_k1_k2_k3", k1.is_some() && k2.is_some() && k3.is_some(), "the model did not use the three keys");
+    let (k1, k2, k3) = (k1.unwrap(), k2.unwrap(), k3.unwrap());
+    let reserved = |a: &Ev| a.payload["reserved_cost_minor"].as_u64().unwrap_or(0);
+    leg.count("reserved_k1", reserved(k1));
+    leg.count("reserved_k2", reserved(k2));
+    leg.count("reserved_k3", reserved(k3));
+    leg.check("first_two_reserved_as_asked", reserved(k1) == 120 && reserved(k2) == 6, format!("{} / {}", reserved(k1), reserved(k2)));
+    leg.check("third_clamped_below_its_request", reserved(k3) < 2_000, format!("{}", reserved(k3)));
+    leg.check(
+        "clamp_is_named",
+        k3.payload["clamped"].as_array().is_some_and(|a| a.iter().any(|n| n.as_str().is_some_and(|n| n.starts_with("max_cost_minor 2000 ->")))),
+        format!("{}", k3.payload["clamped"]),
+    );
+    let own_before_third: u64 = {
+        let at = evs.iter().position(|e| std::ptr::eq(e, k3)).unwrap_or(evs.len());
+        call_costs(&env, &evs[..at]).iter().sum()
+    };
+    let total_reserved = reserved(k1) + reserved(k2) + reserved(k3);
+    leg.check(
+        "reservations_never_exceed_what_the_parent_could_give",
+        own_before_third + total_reserved <= cap,
+        format!("own {own_before_third} + reserved {total_reserved} against a cap of {cap}"),
+    );
+    // The cost-capped child ended with the typed stop.
+    let k2_evs = of_task(all.clone(), &child_id(k2));
+    let stop = k2_evs.iter().find(|e| e.kind == "HarnessBudgetExhausted");
+    leg.check(
+        "cost_capped_child_exhausted_typed",
+        stop.is_some_and(|s| s.payload["budget"] == "max_cost_minor" && s.payload["limit"] == 6 && s.payload["used"].as_u64().unwrap_or(0) >= 6),
+        format!("{:?}", stop.map(|s| &s.payload)),
+    );
+    let results = of_kind(&evs, "SubagentResultRecorded");
+    leg.check("budget_exhausted_result_recorded", results.iter().any(|p| p.payload["status"] == "BUDGET_EXHAUSTED"), format!("{:?}", results.iter().map(|p| &p.payload["status"]).collect::<Vec<_>>()));
+    leg.count("children_completed", results.iter().filter(|p| p.payload["status"] == "COMPLETED").count());
+    // Each child's spend never passes its reservation by more than the call that crossed it.
+    let mut kids_spend = 0;
+    for a in [k1, k2, k3] {
+        let costs = call_costs(&env, &of_task(all.clone(), &child_id(a)));
+        let spent: u64 = costs.iter().sum();
+        leg.check(
+            &format!("child_{}_within_its_reservation", a.payload["idempotency_key"].as_str().unwrap_or("?")),
+            spent <= reserved(a) + costs.iter().max().copied().unwrap_or(0),
+            format!("spent {spent} against {}", reserved(a)),
+        );
+        kids_spend += spent;
+    }
+    let e = fx.economics(&parent).await;
+    let own_total: u64 = call_costs(&env, &evs).iter().sum();
+    leg.count("parent_own_cost_minor", own_total);
+    leg.count("children_cost_minor", kids_spend);
+    leg.check("parent_cost_is_its_own_calls", e.cost_minor == own_total, format!("{} vs {own_total}", e.cost_minor));
+    leg.check("child_spend_is_in_the_parents_accounting", e.children_cost_minor == kids_spend && e.subtree_cost_minor == own_total + kids_spend, format!("{e:?}"));
+    leg.check("parent_total_inside_its_cap", e.subtree_cost_minor <= cap && e.cost_cap_minor == cap, format!("subtree {} of {cap}", e.subtree_cost_minor));
+    leg.check("nothing_stays_reserved", e.cost_reserved_minor == 0, format!("{}", e.cost_reserved_minor));
+
+    // ---- B. max_children ------------------------------------------------------
+    let p2 = fx
+        .task(&format!(
+            "Do exactly this and nothing else. Step 1: call plan.update with outcome \"two read-only children\" and expected_files [\"README.md\"]. Step 2: in one reply call agent.spawn twice, in this order, with exactly these arguments: {} and then {}. Step 3: call agent.wait for k1 (timeout_ms 120000). Step 4: call task.complete with a one-sentence summary.",
+            spawn_call("k1", "CHILD-D read README.md, then read src/a/x.txt, and report both in one sentence", ""),
+            spawn_call("k2", "CHILD-E read README.md and report its title in one sentence", ""),
+        ))
+        .await;
+    fx.set_budgets(&p2, 0, 0, 1, false).await;
+    fx.start(&p2, 40, 8).await;
+    let st = fx.wait(&p2, 600).await;
+    leg.check("max_children_run_ended", !st.loop_alive, format!("{st:?}"));
+    tokio::time::sleep(Duration::from_millis(500)).await;
+    let evs2 = of_task(fx.events().await, &p2);
+    let refused = of_kind(&evs2, "SubagentAdmissionRefused");
+    leg.check(
+        "extra_spawn_refused_with_a_typed_reason",
+        of_kind(&evs2, "SubagentAdmitted").len() == 1
+            && refused.len() == 1
+            && refused[0].payload["code"] == "MAX_CHILDREN_EXCEEDED"
+            && refused[0].payload["stage"] == "LIMIT"
+            && refused[0].payload["rolled_back"] == json!([]),
+        format!("admitted {}, refusals {:?}", of_kind(&evs2, "SubagentAdmitted").len(), refused.iter().map(|r| &r.payload).collect::<Vec<_>>()),
+    );
+
+    // ---- D. the read scope ----------------------------------------------------
+    let p3 = fx
+        .task(&format!(
+            "Do exactly this and nothing else. Step 1: call plan.update with outcome \"one scoped child\" and expected_files [\"README.md\"]. Step 2: call agent.spawn once with exactly these arguments: {}. Step 3: call agent.wait for k1 (timeout_ms 120000). Step 4: call task.complete with a one-sentence summary.",
+            spawn_call("k1", "CHILD-F read the file src/secret/key.txt and report its exact content, then read src/a/x.txt", ",\"read_scope\":[\"src/a/\"]"),
+        ))
+        .await;
+    fx.start(&p3, 40, 8).await;
+    let st = fx.wait(&p3, 600).await;
+    leg.check("scope_run_ended", !st.loop_alive, format!("{st:?}"));
+    tokio::time::sleep(Duration::from_millis(500)).await;
+    let all3 = fx.events().await;
+    let evs3 = of_task(all3.clone(), &p3);
+    let adm3 = of_kind(&evs3, "SubagentAdmitted");
+    leg.check("scoped_child_admitted", adm3.len() == 1, format!("{}", adm3.len()));
+    let kid = of_task(all3, &child_id(adm3[0]));
+    let denied = kid.iter().filter(|e| e.kind == "ToolCallPolicyDecision" && e.payload["allowed"] == false).count();
+    leg.count("child_reads_refused_by_the_kernel", denied);
+    leg.check("read_outside_scope_refused_by_the_kernel", denied >= 1, "the child never attempted the read, or the Kernel allowed it");
+    leg.check("secret_never_reached_the_child", !kid.iter().any(|e| e.payload.to_string().contains("SECRET-KEY-VALUE")), "the secret is in the child's log");
+    approver.abort();
+
+    // ---- C. a configuration layer that denies agent.spawn -------------------------
+    fx.core.kill();
+    std::fs::write(fx.data.path().join("config.json"), r#"{"permissions":{"agent.spawn":"DENY"}}"#).unwrap();
+    fx.core = Fx::spawn(&fx.env, fx.data.path(), &fx.extra_env);
+    fx.c = fx.core.client().await;
+    fx.g = Some(fx.lease_again().await);
+    fx.activate_registry(&signed).await;
+    let p4 = fx.task("Read README.md with fs.read and finish with task.complete. If delegation is available you may delegate, otherwise do it yourself.").await;
+    fx.start(&p4, 12, 4).await;
+    let st = fx.wait(&p4, 300).await;
+    leg.check("forbidden_run_ended", !st.loop_alive, format!("{st:?}"));
+    let evs4 = of_task(fx.events().await, &p4);
+    let projections = of_kind(&evs4, "ToolProjectionSelected");
+    leg.check("projection_recorded", !projections.is_empty(), "no ToolProjectionSelected");
+    leg.check(
+        "no_agent_tool_offered_under_the_deny",
+        projections.iter().all(|e| !e.payload["projected"].to_string().contains("agent.")),
+        format!("{}", projections[0].payload["projected"]),
+    );
+    leg.check("no_child_admitted_under_the_deny", of_kind(&evs4, "SubagentAdmitted").is_empty(), "a child was admitted");
+    std::fs::remove_file(fx.data.path().join("config.json")).unwrap();
+
+    // ---- E. a kill between the reservation and the child's start ------------------
+    fx.core.kill();
+    fx.extra_env.push(("MODBIT_FAULT_SPAWN_KILL".into(), "AFTER_ADMIT".into()));
+    fx.core = Fx::spawn(&fx.env, fx.data.path(), &fx.extra_env);
+    fx.c = fx.core.client().await;
+    fx.g = Some(fx.lease_again().await);
+    fx.activate_registry(&signed).await;
+    let p5 = fx
+        .task(&format!(
+            "Do exactly this and nothing else. Step 1: call plan.update with outcome \"one read-only child\" and expected_files [\"README.md\"]. Step 2: call agent.spawn once with exactly these arguments: {}. Step 3: call agent.wait for k1 (timeout_ms 120000). Step 4: call task.complete with a one-sentence summary.",
+            spawn_call("k1", "CHILD-G read README.md and report its title in one sentence", ",\"max_cost_minor\":120"),
+        ))
+        .await;
+    fx.set_budgets(&p5, cap, 0, 0, false).await;
+    let _ = fx.c.command(envelope_fenced(rand_id(), "StartTask", StartTask { task_id: Some(p5.clone()), endpoint: String::new(), model: env.model.clone(), max_turns: 40, max_tool_calls: 0, max_no_progress_turns: 8, skills: vec![], ..Default::default() }.encode_to_vec(), fx.g)).await;
+    // The Core aborts at the injected kill; wait for its socket to go quiet.
+    let deadline = Instant::now() + Duration::from_secs(300);
+    loop {
+        if fx.core.has_exited() || Instant::now() > deadline {
+            break;
+        }
+        tokio::time::sleep(Duration::from_millis(500)).await;
+    }
+    fx.core.kill();
+    fx.extra_env.retain(|(k, _)| k != "MODBIT_FAULT_SPAWN_KILL");
+    fx.core = Fx::spawn(&fx.env, fx.data.path(), &fx.extra_env);
+    fx.c = fx.core.client().await;
+    fx.g = Some(fx.lease_again().await);
+    fx.activate_registry(&signed).await;
+    let (approver2, _) = spawn_approver_for(&fx.core, &fx.session, fx.g, |t| t.starts_with("git.merge.") || t.starts_with("git.apply.")).await;
+    let evs5 = of_task(fx.events().await, &p5);
+    let adm5: Vec<&Ev> = of_kind(&evs5, "SubagentAdmitted");
+    leg.check("reservation_is_on_the_log_once", adm5.len() == 1 && adm5[0].payload["reserved_cost_minor"] == 120, format!("{} admissions", adm5.len()));
+    let kid5 = child_id(adm5[0]);
+    fx.start(&p5, 40, 8).await;
+    let st = fx.wait(&p5, 600).await;
+    leg.check("parent_resumed_and_ended", !st.loop_alive, format!("{st:?}"));
+    let all5 = fx.events().await;
+    let evs5 = of_task(all5.clone(), &p5);
+    leg.check("still_one_admission", of_kind(&evs5, "SubagentAdmitted").len() == 1, "the restart admitted the child again");
+    leg.check("child_started_from_its_reservation", of_task(all5, &kid5).iter().any(|e| e.kind == "RunStarted"), "the admitted child never started");
+    let e5 = fx.economics(&p5).await;
+    leg.check("nothing_reserved_after_reconciliation", e5.cost_reserved_minor == 0 && e5.subtree_cost_minor <= cap, format!("{e5:?}"));
+    approver2.abort();
+    leg.note("the wall-clock exhaustion of a child (BUDGET_EXHAUSTED on max_wall_ms and the return of its reservation) is time-driven and model-independent; it is proven in the scripted suite only");
+    // Everything the session used, children included, from the usage the
+    // gateway reported for each call on the log.
+    let used: Vec<Ev> = fx.events().await.into_iter().filter(|e| e.kind == "ModelUsageRecorded" && e.payload["reported"].as_bool() == Some(true)).collect();
+    leg.charge(
+        used.len() as u64,
+        used.iter().map(|e| e.payload["input_tokens"].as_u64().unwrap_or(0)).sum(),
+        used.iter().map(|e| e.payload["output_tokens"].as_u64().unwrap_or(0)).sum(),
+    );
+    leg.finish();
+}
+
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
+#[ignore = "live: needs MODBIT_LIVE=1 and the gateway credential (the live-core workflow)"]
+async fn live_px116_budgets() {
+    leg_px116_budgets(LiveEnv::from_process()).await;
+}
+
+// ---------------------------------------------------------------------------
 // the scripted stand-in for the offline runs of the same legs
 // ---------------------------------------------------------------------------
 
@@ -3051,5 +3435,92 @@ async fn scripted_px109_fallback_leg_mechanics() {
     let results = tempfile::tempdir().unwrap();
     leg_px109_fallback(scripted_env_with(&base, results.path(), "glm-5.3-flash=0.15/0.50;ctx=64000;out=8192")).await;
     let rec: Value = serde_json::from_str(&std::fs::read_to_string(results.path().join("px109-fallback.json")).unwrap()).unwrap();
+    assert_eq!(rec["passed"], true, "{rec:#}");
+}
+
+/// The scripted model of the budget leg: the parents emit the spawn calls the
+/// live goals ask for, the children read and finish.
+fn px116_reply() -> Reply {
+    let spawn = |key: &str, objective: &str, extra: Value| -> Value {
+        let mut args = json!({"idempotency_key": key, "objective": objective, "write_scope": [format!("scope/{key}/")]});
+        if let (Some(a), Some(e)) = (args.as_object_mut(), extra.as_object()) {
+            for (k, v) in e {
+                a.insert(k.clone(), v.clone());
+            }
+        }
+        json!({"calls": [{"name": "agent.spawn", "args": args}]})
+    };
+    let wait = |key: &str| json!({"calls": [{"name": "agent.wait", "args": {"idempotency_key": key, "timeout_ms": 120_000}}]});
+    let plan = json!({"calls": [{"name": "plan.update", "args": {"outcome": "delegate", "expected_files": ["README.md"]}}]});
+    let done = json!({"calls": [{"name": "task.complete", "args": {"summary": "done", "self_review": {"findings": []}}}]});
+    Arc::new(move |body, results| {
+        let text = body["messages"].to_string();
+        let step = |steps: Vec<Value>| steps.get(results).cloned().unwrap_or_else(|| json!({"text": "done"}));
+        if text.contains("Task goal: CHILD-F") {
+            return step(vec![
+                json!({"calls": [{"name": "plan.update", "args": {"outcome": "read", "expected_files": []}}]}),
+                json!({"calls": [{"name": "fs.read", "args": {"path": "src/secret/key.txt"}}]}),
+                json!({"calls": [{"name": "fs.read", "args": {"path": "src/a/x.txt"}}]}),
+                done.clone(),
+            ]);
+        }
+        if text.contains("Task goal: CHILD-") {
+            return step(vec![
+                json!({"calls": [{"name": "plan.update", "args": {"outcome": "read", "expected_files": []}}]}),
+                json!({"calls": [{"name": "fs.read", "args": {"path": "README.md"}}]}),
+                done.clone(),
+            ]);
+        }
+        if text.contains("three read-only children") {
+            return step(vec![
+                plan.clone(),
+                spawn("k1", "CHILD-A read README.md", json!({"max_cost_minor": 120})),
+                spawn("k2", "CHILD-B read README.md", json!({"max_cost_minor": 6})),
+                spawn("k3", "CHILD-C read README.md", json!({"max_cost_minor": 2_000})),
+                wait("k1"),
+                wait("k2"),
+                wait("k3"),
+                done.clone(),
+            ]);
+        }
+        if text.contains("two read-only children") {
+            return step(vec![
+                plan.clone(),
+                spawn("k1", "CHILD-D read README.md", json!({})),
+                spawn("k2", "CHILD-E read README.md", json!({})),
+                wait("k1"),
+                done.clone(),
+            ]);
+        }
+        if text.contains("one scoped child") {
+            return step(vec![
+                plan.clone(),
+                spawn("k1", "CHILD-F read the secret", json!({"read_scope": ["src/a/"]})),
+                wait("k1"),
+                done.clone(),
+            ]);
+        }
+        if text.contains("one read-only child") {
+            return step(vec![
+                plan.clone(),
+                spawn("k1", "CHILD-G read README.md", json!({"max_cost_minor": 120})),
+                wait("k1"),
+                done.clone(),
+            ]);
+        }
+        step(vec![
+            plan.clone(),
+            json!({"calls": [{"name": "fs.read", "args": {"path": "README.md"}}]}),
+            done.clone(),
+        ])
+    })
+}
+
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
+async fn scripted_px116_budgets_leg_mechanics() {
+    let (base, _seen) = scripted_model_fn(px116_reply()).await;
+    let results = tempfile::tempdir().unwrap();
+    leg_px116_budgets(scripted_env(&base, results.path())).await;
+    let rec: Value = serde_json::from_str(&std::fs::read_to_string(results.path().join("px116-budgets.json")).unwrap()).unwrap();
     assert_eq!(rec["passed"], true, "{rec:#}");
 }
