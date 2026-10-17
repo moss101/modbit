@@ -452,6 +452,15 @@ pub async fn scripted_model_fn(reply_fn: Reply) -> (String, Seen) {
                     tokio::time::sleep(Duration::from_millis(ms)).await;
                 }
                 let mut frames: Vec<String> = Vec::new();
+                // A reply may stream its text as several frames:
+                // `{"chunks": ["a ", "b "], "chunk_gap_ms": N}` (the live
+                // legs' stand-in for a model that speaks over time).
+                let chunk_gap_ms = reply["chunk_gap_ms"].as_u64().unwrap_or(0);
+                if let Some(chunks) = reply["chunks"].as_array() {
+                    for t in chunks.iter().filter_map(|c| c.as_str()) {
+                        frames.push(serde_json::json!({"id":"c","model":"scripted-1","choices":[{"index":0,"delta":{"content":t},"finish_reason":null}]}).to_string());
+                    }
+                }
                 if let Some(t) = reply["text"].as_str() {
                     frames.push(serde_json::json!({"id":"c","model":"scripted-1","choices":[{"index":0,"delta":{"content":t},"finish_reason":null}]}).to_string());
                 }
@@ -479,6 +488,10 @@ pub async fn scripted_model_fn(reply_fn: Reply) -> (String, Seen) {
                     let _ = sock
                         .write_all(format!("{:x}\r\n{}\r\n", frame.len(), frame).as_bytes())
                         .await;
+                    if chunk_gap_ms > 0 {
+                        let _ = sock.flush().await;
+                        tokio::time::sleep(Duration::from_millis(chunk_gap_ms)).await;
+                    }
                 }
                 let _ = sock.write_all(b"0\r\n\r\n").await;
                 let _ = sock.flush().await;
