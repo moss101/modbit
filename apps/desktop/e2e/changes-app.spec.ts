@@ -292,9 +292,11 @@ test("the Core killed in the middle of a push: the effect is shown as in doubt a
   for (const s of hanging.sockets) s.destroy();
 
   // After the restart: the commit exists locally, the remote never got it, and the effect is authorized with no result.
-  await page.getByTestId("changes-refresh").click();
   const effect = page.locator(`[data-testid="changes-effect"][data-state="AUTHORIZED_IN_DOUBT"]`);
-  await expect(effect).toHaveCount(1, { timeout: 60_000 });
+  await expect(async () => {
+    await page.getByTestId("changes-refresh").click({ timeout: 5_000 });
+    await expect(effect).toHaveCount(1, { timeout: 5_000 });
+  }).toPass({ timeout: 90_000 });
   await expect(effect).toHaveAttribute("data-has-result-receipt", "false");
   await expect(page.getByTestId("changes-effect-words").last()).toContainText("unknown");
   expect(g("log", "-1", "--format=%s")).toBe("Pushed into the void");

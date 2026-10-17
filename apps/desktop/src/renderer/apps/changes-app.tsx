@@ -135,11 +135,23 @@ export function ChangesApp({ sessionId, taskId, taskState, refreshKey, onOpenRev
     if (state && commit?.status === "APPROVAL_PENDING" && !state.effects.some((e) => e.approvalId === commit.approvalId && e.state === "APPROVAL_PENDING")) setCommit(null);
   }, [state, commit]);
 
+  // A Core that is restarting answers nothing for a moment: the view reads it again by itself until it can, and offers the retry meanwhile.
+  useEffect(() => {
+    if (!error) return;
+    const t = setTimeout(() => void load(), 2000);
+    return () => clearTimeout(t);
+  }, [error, load]);
+
   if (error) {
     return (
-      <p className="meta" role="status" data-testid="changes-error">
-        The change set could not be read: {error}
-      </p>
+      <div className="changes-app" data-testid="app-changes-unavailable">
+        <p className="meta" role="status" data-testid="changes-error">
+          The change set could not be read: {error}
+        </p>
+        <Button size="sm" onClick={() => void load()} data-testid="changes-refresh">
+          Try again
+        </Button>
+      </div>
     );
   }
   if (!bundle || !state) {
