@@ -1193,6 +1193,211 @@ async fn live_px059_accounting() {
 }
 
 // ---------------------------------------------------------------------------
+// QUAL-PX-061: per-turn checkpoints and an exactly reversible restore
+// ---------------------------------------------------------------------------
+
+use std::collections::BTreeMap;
+
+use modbit_protocol::v1::{
+    CheckpointList, CheckpointRestoreResult, FileHash, ListCheckpoints, PreviewRewind,
+    RestoreCheckpoint, RewindPreview,
+};
+
+/// Every file of a worktree (not `.git`) by content hash: what "exactly" is
+/// compared with.
+fn tree(root: &str) -> BTreeMap<String, String> {
+    let mut out = BTreeMap::new();
+    let mut stack = vec![std::path::PathBuf::from(root)];
+    while let Some(d) = stack.pop() {
+        for e in std::fs::read_dir(&d).into_iter().flatten().flatten() {
+            let p = e.path();
+            if p.file_name().is_some_and(|n| n == ".git") {
+                continue;
+            }
+            if p.is_dir() {
+                stack.push(p);
+            } else if let Ok(b) = std::fs::read(&p) {
+                out.insert(
+                    p.strip_prefix(root).unwrap().to_string_lossy().replace('\\', "/"),
+                    hex::encode(sha2::Sha256::digest(b)),
+                );
+            }
+        }
+    }
+    out
+}
+
+/// Snapshots of the worktree taken the moment each `CheckpointCommitted`
+/// reaches this client: what the files were at that turn's boundary, observed
+/// from outside the Core. The model's next write is a whole model round away.
+async fn snapshot_on_checkpoints(
+    core: &CoreProcess,
+    session: &Id,
+    root: &str,
+) -> Arc<Mutex<BTreeMap<String, (u32, BTreeMap<String, String>)>>> {
+    let out = Arc::new(Mutex::new(BTreeMap::new()));
+    let sink = Arc::clone(&out);
+    let root = root.to_owned();
+    let session = session.clone();
+    let mut c = core.client().await;
+    tokio::spawn(async move {
+        if c.subscribe(session, 0).await.is_err() {
+            return;
+        }
+        while let Ok(Some(e)) = c.next_event().await {
+            let ev = ev_of(e);
+            if ev.kind == "CheckpointCommitted" {
+                let id = payload_str(&ev, "checkpoint_id");
+                let ordinal = u32::try_from(ev.payload["turn_ordinal"].as_u64().unwrap_or(0)).unwrap_or(0);
+                sink.lock().unwrap().insert(id, (ordinal, tree(&root)));
+            }
+        }
+    });
+    out
+}
+
+impl Fx {
+    async fn checkpoints(&mut self, task: &Id) -> CheckpointList {
+        self.ok("ListCheckpoints", ListCheckpoints { task_id: Some(task.clone()) }, false).await
+    }
+
+    async fn restore(&mut self, mut req: RestoreCheckpoint, task: &Id) -> CheckpointRestoreResult {
+        req.task_id = Some(task.clone());
+        self.ok("RestoreCheckpoint", req, true).await
+    }
+}
+
+/// Live turns each leave a checkpoint; restoring turn 1 deletes the files the
+/// later turns created and restores the changed ones byte for byte (compared
+/// with the tree observed from outside at that turn); the redo restores the
+/// pre-restore state exactly; a file the user edited after the checkpoint is
+/// refused without the choice and kept with it; a replayed restore command
+/// restores once; a Core killed in the middle of a restore comes back to the
+/// pre-restore state, never a mixture.
+async fn leg_px061_checkpoints(env: Arc<LiveEnv>) {
+    let mut leg = Leg::begin(&env, "px061", "checkpoints", 0.10);
+    let mut fx = Fx::new(&env, &[("a.txt", "a\n"), ("b.txt", "b\n")]).await;
+    let task = fx
+        .task("Do exactly these three steps, one tool call per step, and call no other tool except plan.update first and task.complete last. Step 1: create the file one.txt containing the text one. Step 2: create the file two.txt containing the text two. Step 3: replace the content of a.txt with the text a-changed. Then finish.")
+        .await;
+    let snaps = snapshot_on_checkpoints(&fx.core, &fx.session, &fx.root).await;
+    fx.start(&task, 20, 4).await;
+    let st = fx.wait(&task, 300).await;
+    leg.check("run_ended", !st.loop_alive, format!("{st:?}"));
+    tokio::time::sleep(Duration::from_millis(600)).await;
+    let at_end = tree(&fx.root);
+    leg.check(
+        "the_model_did_the_work",
+        at_end.contains_key("one.txt") && at_end.contains_key("two.txt") && at_end.get("a.txt") != tree_of_base().get("a.txt"),
+        format!("{:?}", at_end.keys().collect::<Vec<_>>()),
+    );
+    let l = fx.checkpoints(&task).await;
+    let turn_cps: Vec<_> = l.checkpoints.iter().filter(|c| c.reason == "turn_boundary").collect();
+    let mut ordinals: Vec<u32> = turn_cps.iter().map(|c| c.turn_ordinal).collect();
+    ordinals.sort_unstable();
+    ordinals.dedup();
+    leg.count("turn_checkpoints", turn_cps.len());
+    leg.count("turns", ordinals.len());
+    leg.check(
+        "every_turn_has_a_checkpoint",
+        ordinals.len() >= 3 && ordinals == (1..=u32::try_from(ordinals.len()).unwrap()).collect::<Vec<_>>(),
+        format!("ordinals {ordinals:?}"),
+    );
+    let snaps_now = snaps.lock().unwrap().clone();
+    leg.check("snapshots_taken_for_every_checkpoint", snaps_now.len() >= turn_cps.len(), format!("{} snapshots", snaps_now.len()));
+    // The state at the end of turn 1 (the plan): none of the files exists yet.
+    let cp1 = l.checkpoints.iter().rev().find(|c| c.turn_ordinal == 1 && c.reason == "turn_boundary").expect("turn 1 checkpoint").clone();
+    let at_turn1 = snaps_now.get(&cp1.checkpoint_id).map(|(_, t)| t.clone()).expect("a snapshot of turn 1");
+    leg.check("turn1_precedes_the_work", !at_turn1.contains_key("one.txt") && at_turn1 != at_end, format!("{:?}", at_turn1.keys().collect::<Vec<_>>()));
+    // Restore turn 1 by ordinal, with a command id we replay.
+    let cmd = rand_id();
+    let req = |c: &Id| RestoreCheckpoint { task_id: Some(c.clone()), turn_ordinal: 1, ..Default::default() };
+    let ack = fx.c.command(envelope_fenced(cmd.clone(), "RestoreCheckpoint", req(&task).encode_to_vec(), fx.g)).await.unwrap();
+    let r: CheckpointRestoreResult = Client::result(&ack).unwrap();
+    leg.check("restored", r.restored && !r.pre_restore_checkpoint_id.is_empty(), format!("{r:?}"));
+    leg.check("created_files_deleted_changed_restored_byte_for_byte", tree(&fx.root) == at_turn1, format!("{:?} vs {:?}", tree(&fx.root), at_turn1));
+    std::fs::write(format!("{}/probe.txt", fx.root), "x").unwrap();
+    let ack2 = fx.c.command(envelope_fenced(cmd, "RestoreCheckpoint", req(&task).encode_to_vec(), fx.g)).await.unwrap();
+    let r2: CheckpointRestoreResult = Client::result(&ack2).unwrap();
+    leg.check(
+        "replayed_command_restores_once",
+        ack2.status == 2 && r2.replayed && Path::new(&format!("{}/probe.txt", fx.root)).exists(),
+        format!("status {}, {r2:?}", ack2.status),
+    );
+    std::fs::remove_file(format!("{}/probe.txt", fx.root)).unwrap();
+    // The redo restores the state before the restore, exactly.
+    let redo = fx.restore(RestoreCheckpoint { checkpoint_id: r.pre_restore_checkpoint_id.clone(), redo: true, ..Default::default() }, &task).await;
+    leg.check("redo_restored", redo.restored && redo.redo, format!("{redo:?}"));
+    leg.check("redo_equals_the_pre_restore_state", tree(&fx.root) == at_end, "file hashes differ from the state before the restore");
+    // A file the user edits after the checkpoint is listed by the preview; an
+    // edit made after the person looked is refused without the choice.
+    std::fs::write(format!("{}/b.txt", fx.root), "first edit by the user\n").unwrap();
+    let preview: RewindPreview = fx.ok("PreviewRewind", PreviewRewind { task_id: Some(task.clone()), turn_ordinal: 1, ..Default::default() }, false).await;
+    let listed = preview.entries.iter().find(|e| e.path == "b.txt");
+    leg.check(
+        "user_edited_file_is_listed",
+        listed.is_some_and(|e| e.action != "UNCHANGED" && e.current_hash == hex::encode(sha2::Sha256::digest(b"first edit by the user\n"))),
+        format!("{listed:?}"),
+    );
+    let expected: Vec<FileHash> = preview.entries.iter().filter(|e| e.action != "UNCHANGED").map(|e| FileHash { path: e.path.clone(), content_hash: e.current_hash.clone() }).collect();
+    std::fs::write(format!("{}/b.txt", fx.root), "edited by the user after the preview\n").unwrap();
+    let edited = tree(&fx.root);
+    let refused = fx.restore(RestoreCheckpoint { turn_ordinal: 1, expected: expected.clone(), ..Default::default() }, &task).await;
+    leg.check(
+        "user_edit_refuses_the_restore_without_the_choice",
+        !refused.restored && refused.refusal == "HASH_MISMATCH" && tree(&fx.root) == edited,
+        format!("{refused:?}"),
+    );
+    // The same edit with the choice made: kept, everything else restored.
+    let kept = fx.restore(RestoreCheckpoint { turn_ordinal: 1, keep_paths: vec!["b.txt".into()], ..Default::default() }, &task).await;
+    leg.check("restore_with_the_choice", kept.restored && kept.kept_paths.contains(&"b.txt".to_owned()), format!("{kept:?}"));
+    leg.check(
+        "edited_file_kept_others_restored",
+        std::fs::read_to_string(format!("{}/b.txt", fx.root)).unwrap() == "edited by the user after the preview\n" && !Path::new(&format!("{}/one.txt", fx.root)).exists(),
+        "b.txt or one.txt wrong",
+    );
+    // Back to the end state for the kill.
+    let back = fx.restore(RestoreCheckpoint { checkpoint_id: kept.pre_restore_checkpoint_id.clone(), redo: true, ..Default::default() }, &task).await;
+    leg.check("redo_after_choice", back.restored, format!("{back:?}"));
+    let pre_kill = tree(&fx.root);
+    // SIGKILL in the middle of a restore: half the files written, then the
+    // next Core resolves to exactly the pre-restore state.
+    fx.core.kill();
+    fx.extra_env.push(("MODBIT_FAULT_CHECKPOINT".into(), "MID_RESTORE_WRITE".into()));
+    fx.core = Fx::spawn(&fx.env, fx.data.path(), &fx.extra_env);
+    fx.c = fx.core.client().await;
+    fx.g = Some(fx.lease_again().await);
+    let died = fx.c.command(envelope_fenced(rand_id(), "RestoreCheckpoint", RestoreCheckpoint { task_id: Some(task.clone()), turn_ordinal: 1, ..Default::default() }.encode_to_vec(), fx.g)).await;
+    leg.check("core_died_mid_restore", died.is_err(), "the injected fault did not stop the Core");
+    let mixture = tree(&fx.root);
+    leg.count("files_in_the_mixture", mixture.len());
+    fx.core.kill();
+    fx.extra_env.retain(|(k, _)| k != "MODBIT_FAULT_CHECKPOINT");
+    fx.core = Fx::spawn(&fx.env, fx.data.path(), &fx.extra_env);
+    fx.c = fx.core.client().await;
+    fx.g = Some(fx.lease_again().await);
+    leg.check(
+        "never_a_mixture",
+        tree(&fx.root) == pre_kill,
+        format!("the mixture had {} files; after recovery {} files, expected {}", mixture.len(), tree(&fx.root).len(), pre_kill.len()),
+    );
+    fx.charge(&mut leg, &task).await;
+    leg.finish();
+}
+
+fn tree_of_base() -> BTreeMap<String, String> {
+    let mut m = BTreeMap::new();
+    m.insert("a.txt".to_owned(), hex::encode(sha2::Sha256::digest(b"a\n")));
+    m
+}
+
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
+#[ignore = "live: needs MODBIT_LIVE=1 and the gateway credential (the live-core workflow)"]
+async fn live_px061_checkpoints() {
+    leg_px061_checkpoints(LiveEnv::from_process()).await;
+}
+
+// ---------------------------------------------------------------------------
 // the scripted stand-in for the offline runs of the same legs
 // ---------------------------------------------------------------------------
 
@@ -1343,5 +1548,24 @@ async fn scripted_px059_accounting_leg_mechanics() {
     let results = tempfile::tempdir().unwrap();
     leg_px059_accounting(scripted_env(&base, results.path())).await;
     let rec: Value = serde_json::from_str(&std::fs::read_to_string(results.path().join("px059-accounting.json")).unwrap()).unwrap();
+    assert_eq!(rec["passed"], true, "{rec:#}");
+}
+
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
+async fn scripted_px061_checkpoints_leg_mechanics() {
+    let (base, _seen) = scripted_model_fn(Arc::new(|_, results| {
+        let steps = [
+            json!({"calls": [{"name": "plan.update", "args": {"outcome": "three steps", "expected_files": ["one.txt", "two.txt", "a.txt"]}}]}),
+            json!({"calls": [{"name": "change.apply", "args": {"path": "one.txt", "op": "create", "content": "one\n"}}], "delay_ms": 300}),
+            json!({"calls": [{"name": "change.apply", "args": {"path": "two.txt", "op": "create", "content": "two\n"}}], "delay_ms": 300}),
+            json!({"calls": [{"name": "change.apply", "args": {"path": "a.txt", "op": "replace", "content": "a-changed\n"}}], "delay_ms": 300}),
+            json!({"calls": [{"name": "task.complete", "args": {"summary": "done", "self_review": {"findings": []}}}], "delay_ms": 300}),
+        ];
+        steps.get(results).cloned().unwrap_or_else(|| json!({"text": "done"}))
+    }))
+    .await;
+    let results = tempfile::tempdir().unwrap();
+    leg_px061_checkpoints(scripted_env(&base, results.path())).await;
+    let rec: Value = serde_json::from_str(&std::fs::read_to_string(results.path().join("px061-checkpoints.json")).unwrap()).unwrap();
     assert_eq!(rec["passed"], true, "{rec:#}");
 }
