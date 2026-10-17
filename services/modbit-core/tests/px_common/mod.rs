@@ -474,13 +474,11 @@ pub async fn scripted_model_fn(reply_fn: Reply) -> (String, Seen) {
                     "tool_calls"
                 };
                 // A reply may state the usage it reports: `{"usage": [prompt, completion]}`.
-                let (prompt_tokens, completion_tokens) = match (
-                    reply["usage"][0].as_u64(),
-                    reply["usage"][1].as_u64(),
-                ) {
-                    (Some(p), Some(c)) => (p as usize, c as usize),
-                    _ => (prompt_tokens, reply.to_string().len().div_ceil(4)),
-                };
+                let (prompt_tokens, completion_tokens) =
+                    match (reply["usage"][0].as_u64(), reply["usage"][1].as_u64()) {
+                        (Some(p), Some(c)) => (p as usize, c as usize),
+                        _ => (prompt_tokens, reply.to_string().len().div_ceil(4)),
+                    };
                 let request_id = format!(
                     "req_px_{results}_{}",
                     SCRIPTED_REQUESTS.fetch_add(1, std::sync::atomic::Ordering::SeqCst)

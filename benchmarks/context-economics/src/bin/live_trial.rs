@@ -50,7 +50,9 @@ fn main() -> std::process::ExitCode {
     let price = match price_from_catalog(&catalog, &cfg.run.model) {
         Ok(p) => p,
         Err(e) => {
-            eprintln!("LIVE: NOT RUN (a capped run needs the model's price in MODBIT_OPENAI_MODELS: {e})");
+            eprintln!(
+                "LIVE: NOT RUN (a capped run needs the model's price in MODBIT_OPENAI_MODELS: {e})"
+            );
             return std::process::ExitCode::from(2);
         }
     };
@@ -76,7 +78,12 @@ fn main() -> std::process::ExitCode {
         RESERVE_PER_RUN_USD,
     );
     let _ = repeats;
-    finish(&cfg, &tasks, &capped.runs, Some((capped.planned, capped.spend)))
+    finish(
+        &cfg,
+        &tasks,
+        &capped.runs,
+        Some((capped.planned, capped.spend)),
+    )
 }
 
 fn finish(
@@ -90,7 +97,10 @@ fn finish(
         .out
         .parent()
         .filter(|p| !p.as_os_str().is_empty())
-        .map_or_else(|| std::path::PathBuf::from("."), std::path::Path::to_path_buf);
+        .map_or_else(
+            || std::path::PathBuf::from("."),
+            std::path::Path::to_path_buf,
+        );
     let _ = std::fs::create_dir_all(&dir);
     let rep = report(runs, &cfg.run.model, tasks.len(), repeats, true);
     let validated = validate(&rep, tasks.len(), repeats);

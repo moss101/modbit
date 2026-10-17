@@ -73,9 +73,7 @@ fn a_leg_is_refused_without_the_credential_the_model_the_catalog_or_a_cap() {
     // A live leg spends money: it needs a hard cap.
     assert!(refused(&[("MODBIT_LIVE_MAX_COST_USD", "")]).contains("MODBIT_LIVE_MAX_COST_USD"));
     // A loopback gateway is a stand-in, not a live one.
-    assert!(
-        refused(&[("MODBIT_LIVE_BASE_URL", "http://127.0.0.1:9000")]).contains("loopback")
-    );
+    assert!(refused(&[("MODBIT_LIVE_BASE_URL", "http://127.0.0.1:9000")]).contains("loopback"));
 }
 
 #[test]
@@ -103,7 +101,13 @@ fn the_catalog_window_and_the_price_are_read_from_the_catalog() {
     let env = env_with(&vars(&[]), dir.path());
     assert_eq!(env.window, Some(200_000));
     assert!((env.price.cost_usd(1_000_000, 1_000_000) - 0.65).abs() < 1e-9);
-    assert_eq!(env.core_env.iter().find(|(k, _)| k == "ANTHROPIC_API_KEY").map(|(_, v)| v.as_str()), Some(""));
+    assert_eq!(
+        env.core_env
+            .iter()
+            .find(|(k, _)| k == "ANTHROPIC_API_KEY")
+            .map(|(_, v)| v.as_str()),
+        Some("")
+    );
     assert_eq!(percentile(&[5, 1, 9, 3, 7], 95.0), 9);
     assert_eq!(percentile(&[5, 1, 9, 3, 7], 50.0), 5);
     assert_eq!(percentile(&[], 95.0), 0);
@@ -121,7 +125,8 @@ fn a_passing_leg_writes_a_complete_record() {
     leg.finish();
     let path = leg.path();
     drop(leg);
-    let rec: serde_json::Value = serde_json::from_str(&std::fs::read_to_string(path).unwrap()).unwrap();
+    let rec: serde_json::Value =
+        serde_json::from_str(&std::fs::read_to_string(path).unwrap()).unwrap();
     assert_eq!(rec["passed"], true);
     assert_eq!(rec["row"], "px998");
     assert_eq!(rec["model_calls"], 3);
@@ -130,7 +135,10 @@ fn a_passing_leg_writes_a_complete_record() {
     assert_eq!(rec["checks"][0]["name"], "sum");
     assert_eq!(rec["live"], true);
     // 2000 in at 0.15 and 400 out at 0.50 per million tokens.
-    assert!((rec["cost_usd"].as_f64().unwrap() - 0.0005).abs() < 1e-9, "{rec}");
+    assert!(
+        (rec["cost_usd"].as_f64().unwrap() - 0.0005).abs() < 1e-9,
+        "{rec}"
+    );
 }
 
 #[test]
@@ -141,7 +149,11 @@ fn a_failed_assertion_fails_the_leg_and_the_failure_is_retained() {
     let r = catch_unwind(AssertUnwindSafe(|| {
         let mut leg = Leg::begin(&env, "px997", "bad", 0.1);
         leg.check("fine", true, "yes");
-        leg.check("total_equals_provider", false, "total 9 differs from the provider's 12");
+        leg.check(
+            "total_equals_provider",
+            false,
+            "total 9 differs from the provider's 12",
+        );
         leg.finish();
     }));
     let msg = r.expect_err("a failed check must panic, which fails the test");
@@ -151,10 +163,16 @@ fn a_failed_assertion_fails_the_leg_and_the_failure_is_retained() {
         .or_else(|| msg.downcast_ref::<&str>().map(|s| (*s).to_owned()))
         .unwrap_or_default();
     assert!(msg.contains("total_equals_provider"), "{msg}");
-    let rec: serde_json::Value = serde_json::from_str(&std::fs::read_to_string(&path).unwrap()).unwrap();
+    let rec: serde_json::Value =
+        serde_json::from_str(&std::fs::read_to_string(&path).unwrap()).unwrap();
     assert_eq!(rec["passed"], false, "{rec}");
     assert_eq!(rec["checks"][1]["ok"], false);
-    assert!(rec["checks"][1]["detail"].as_str().unwrap().contains("differs"));
+    assert!(
+        rec["checks"][1]["detail"]
+            .as_str()
+            .unwrap()
+            .contains("differs")
+    );
 }
 
 #[test]
@@ -167,17 +185,26 @@ fn a_leg_that_panics_or_returns_early_is_not_a_pass() {
         panic!("the Core did not answer");
     }));
     assert!(r.is_err());
-    let rec: serde_json::Value =
-        serde_json::from_str(&std::fs::read_to_string(dir.path().join("px996-crash.json")).unwrap()).unwrap();
+    let rec: serde_json::Value = serde_json::from_str(
+        &std::fs::read_to_string(dir.path().join("px996-crash.json")).unwrap(),
+    )
+    .unwrap();
     assert_eq!(rec["passed"], false);
-    assert!(rec["failure"].as_str().unwrap().contains("before it finished"));
+    assert!(
+        rec["failure"]
+            .as_str()
+            .unwrap()
+            .contains("before it finished")
+    );
     // An early return without finish() is also not a pass.
     {
         let mut leg = Leg::begin(&env, "px995", "early", 0.1);
         leg.check("fine", true, "yes");
     }
-    let rec: serde_json::Value =
-        serde_json::from_str(&std::fs::read_to_string(dir.path().join("px995-early.json")).unwrap()).unwrap();
+    let rec: serde_json::Value = serde_json::from_str(
+        &std::fs::read_to_string(dir.path().join("px995-early.json")).unwrap(),
+    )
+    .unwrap();
     assert_eq!(rec["passed"], false);
 }
 
@@ -199,8 +226,10 @@ fn the_spend_cap_refuses_the_next_leg_and_records_it() {
     let msg = r.expect_err("the cap must stop the run");
     let msg = msg.downcast_ref::<String>().cloned().unwrap_or_default();
     assert!(msg.contains("spend cap reached"), "{msg}");
-    let rec: serde_json::Value =
-        serde_json::from_str(&std::fs::read_to_string(dir.path().join("px994-second.json")).unwrap()).unwrap();
+    let rec: serde_json::Value = serde_json::from_str(
+        &std::fs::read_to_string(dir.path().join("px994-second.json")).unwrap(),
+    )
+    .unwrap();
     assert_eq!(rec["passed"], false);
     assert_eq!(rec["stopped_by_cap"], true);
     assert!(env.meter.record().stopped_by_cap);
@@ -219,11 +248,11 @@ fn the_spend_cap_refuses_the_next_leg_and_records_it() {
 
 #[cfg(unix)]
 mod checker {
-    use super::*;
     use std::process::Command;
 
     fn script() -> std::path::PathBuf {
-        std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("../../.github/scripts/live_core_check.py")
+        std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
+            .join("../../.github/scripts/live_core_check.py")
     }
 
     fn run(dir: &std::path::Path, rows: &str, cap: &str) -> (bool, String) {
@@ -262,14 +291,20 @@ mod checker {
         assert!(ok, "{text}");
         // A requested row with no record fails.
         let (ok, text) = run(d.path(), "px001,px002", "5");
-        assert!(!ok && text.contains("px002") && text.contains("NO RECORD"), "{text}");
+        assert!(
+            !ok && text.contains("px002") && text.contains("NO RECORD"),
+            "{text}"
+        );
         // A failed record fails, naming the failed check.
         let mut bad = good("px003", 0.0);
         bad["passed"] = serde_json::json!(false);
         bad["checks"] = serde_json::json!([{"name": "sum", "ok": false, "detail": "9 != 12"}]);
         write(d.path(), "px003-main.json", bad);
         let (ok, text) = run(d.path(), "px003", "5");
-        assert!(!ok && text.contains("sum") && text.contains("9 != 12"), "{text}");
+        assert!(
+            !ok && text.contains("sum") && text.contains("9 != 12"),
+            "{text}"
+        );
         // A record stopped by the cap fails even if it says passed.
         let d2 = tempfile::tempdir().unwrap();
         let mut capped = good("px004", 0.1);

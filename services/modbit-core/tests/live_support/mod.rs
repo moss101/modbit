@@ -129,9 +129,7 @@ impl LiveEnv {
     #[must_use]
     pub fn from_process() -> Arc<Self> {
         static ENV: OnceLock<Result<Arc<LiveEnv>, String>> = OnceLock::new();
-        match ENV.get_or_init(|| {
-            Self::from_vars(&|k| std::env::var(k).ok()).map(Arc::new)
-        }) {
+        match ENV.get_or_init(|| Self::from_vars(&|k| std::env::var(k).ok()).map(Arc::new)) {
             Ok(env) => Arc::clone(env),
             Err(why) => panic!("{why}"),
         }
@@ -187,7 +185,12 @@ impl Leg {
     /// # Panics
     /// The cap would be exceeded: the leg is refused and its record says so.
     #[must_use]
-    pub fn begin(env: &Arc<LiveEnv>, row: &'static str, name: &'static str, reserve_usd: f64) -> Self {
+    pub fn begin(
+        env: &Arc<LiveEnv>,
+        row: &'static str,
+        name: &'static str,
+        reserve_usd: f64,
+    ) -> Self {
         let mut leg = Self {
             env: Arc::clone(env),
             row,
@@ -255,7 +258,11 @@ impl Leg {
             ok,
             detail: detail.clone(),
         });
-        assert!(ok, "{}/{}: check `{name}` failed: {detail}", self.row, self.name);
+        assert!(
+            ok,
+            "{}/{}: check `{name}` failed: {detail}",
+            self.row, self.name
+        );
     }
 
     /// The leg ran to its end: every check was made and none failed.

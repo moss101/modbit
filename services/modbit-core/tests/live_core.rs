@@ -303,7 +303,6 @@ struct Ev {
     payload: Value,
     recorded_ms: i64,
     aggregate: Vec<u8>,
-    task: Option<String>,
     /// When this process received it (ms since the epoch); 0 for a replay.
     received_ms: i64,
 }
@@ -325,7 +324,6 @@ fn ev_of(e: modbit_protocol::v1::StoredEventFrame) -> Ev {
         payload: p["payload"].clone(),
         recorded_ms: at.seconds * 1000 + i64::from(at.nanos) / 1_000_000,
         aggregate: ev.aggregate_id.map(|i| i.value).unwrap_or_default(),
-        task: ev.task_id.map(|t| hex::encode(t.value)),
         received_ms: now_ms(),
     }
 }
@@ -412,7 +410,11 @@ fn of_kind<'a>(events: &'a [Ev], kind: &str) -> Vec<&'a Ev> {
 fn stream_text(deltas: &[&Ev]) -> String {
     let mut out = String::new();
     for (i, d) in deltas.iter().enumerate() {
-        assert_eq!(d.sequence, i as u64 + 1, "the stream's deltas are contiguous");
+        assert_eq!(
+            d.sequence,
+            i as u64 + 1,
+            "the stream's deltas are contiguous"
+        );
         out.push_str(d.payload["text"].as_str().unwrap_or_default());
     }
     out
@@ -490,20 +492,32 @@ async fn leg_px041_stream(env: Arc<LiveEnv>) {
         .into_iter()
         .filter(|d| d.aggregate == stream_id)
         .collect();
-    leg.check("one_completion", done.len() == 1, format!("{} completions", done.len()));
+    leg.check(
+        "one_completion",
+        done.len() == 1,
+        format!("{} completions", done.len()),
+    );
     leg.check(
         "not_aborted",
         of_kind(&all, "AssistantMessageAborted").is_empty(),
         "a live stream aborted",
     );
-    leg.check("streamed_in_pieces", deltas.len() >= 2, format!("{} deltas", deltas.len()));
+    leg.check(
+        "streamed_in_pieces",
+        deltas.len() >= 2,
+        format!("{} deltas", deltas.len()),
+    );
     // Bounds: size, order, rate.
     let max_bytes = deltas
         .iter()
         .map(|d| d.payload["text"].as_str().unwrap_or_default().len())
         .max()
         .unwrap_or(0);
-    leg.check("delta_size_bound", max_bytes <= 2048, format!("largest delta {max_bytes} bytes"));
+    leg.check(
+        "delta_size_bound",
+        max_bytes <= 2048,
+        format!("largest delta {max_bytes} bytes"),
+    );
     leg.check(
         "strictly_increasing",
         deltas.windows(2).all(|w| w[0].offset < w[1].offset),
@@ -515,7 +529,10 @@ async fn leg_px041_stream(env: Arc<LiveEnv>) {
     leg.check(
         "rate_bound",
         deltas.len() <= allowed,
-        format!("{} deltas in {span_ms} ms (at most {allowed})", deltas.len()),
+        format!(
+            "{} deltas in {span_ms} ms (at most {allowed})",
+            deltas.len()
+        ),
     );
     leg.check(
         "delta_before_completion",
@@ -525,15 +542,29 @@ async fn leg_px041_stream(env: Arc<LiveEnv>) {
     // The concatenation is the completed message.
     let digest = hex::encode(sha2::Sha256::digest(text.as_bytes()));
     let p = &done[0].payload;
-    leg.check("delta_count_matches", p["delta_count"] == deltas.len() as u64, format!("{}", p["delta_count"]));
-    leg.check("content_hash_matches", p["content_hash"] == digest, format!("{} vs {digest}", p["content_hash"]));
+    leg.check(
+        "delta_count_matches",
+        p["delta_count"] == deltas.len() as u64,
+        format!("{}", p["delta_count"]),
+    );
+    leg.check(
+        "content_hash_matches",
+        p["content_hash"] == digest,
+        format!("{} vs {digest}", p["content_hash"]),
+    );
     let object = fx.read_object(&digest).await;
-    leg.check("object_is_the_concatenation", object == text.as_bytes(), format!("{} bytes", object.len()));
+    leg.check(
+        "object_is_the_concatenation",
+        object == text.as_bytes(),
+        format!("{} bytes", object.len()),
+    );
     // A client dropped mid-stream resumes by cursor: its events plus the
     // replay after its last offset are exactly the log, no gap, no duplicate.
     let first_part = dropped.lock().unwrap().clone();
     let cut = first_part.last().map_or(0, |e| e.offset);
-    let saw_completion = first_part.iter().any(|e| e.kind == "AssistantMessageCompleted");
+    let saw_completion = first_part
+        .iter()
+        .any(|e| e.kind == "AssistantMessageCompleted");
     leg.check(
         "client_dropped_before_completion",
         !saw_completion && !first_part.is_empty(),
@@ -546,10 +577,19 @@ async fn leg_px041_stream(env: Arc<LiveEnv>) {
     leg.check(
         "resume_has_no_gap_and_no_duplicate",
         joined == whole,
-        format!("{} + {} events vs {} in the log", first_part.len(), resumed.len(), whole.len()),
+        format!(
+            "{} + {} events vs {} in the log",
+            first_part.len(),
+            resumed.len(),
+            whole.len()
+        ),
     );
     let live_offsets: Vec<u64> = live.iter().map(|e| e.offset).collect();
-    leg.check("live_view_equals_log", live_offsets == whole, format!("{} vs {}", live_offsets.len(), whole.len()));
+    leg.check(
+        "live_view_equals_log",
+        live_offsets == whole,
+        format!("{} vs {}", live_offsets.len(), whole.len()),
+    );
     // Core-to-client latency of each delta (event timestamp to receipt on the
     // same host). The render in the packaged app is not measured here.
     let lat: Vec<u64> = live
@@ -559,11 +599,25 @@ async fn leg_px041_stream(env: Arc<LiveEnv>) {
         .collect();
     let p95 = percentile(&lat, 95.0);
     leg.count("latency_core_to_client_p95_ms", p95);
-    leg.count("latency_core_to_client_max_ms", lat.iter().copied().max().unwrap_or(0));
-    leg.check("latency_p95_within_100ms", p95 <= 100, format!("p95 {p95} ms over {} deltas", lat.len()));
+    leg.count(
+        "latency_core_to_client_max_ms",
+        lat.iter().copied().max().unwrap_or(0),
+    );
+    leg.check(
+        "latency_p95_within_100ms",
+        p95 <= 100,
+        format!("p95 {p95} ms over {} deltas", lat.len()),
+    );
     // The planted secret: never in a delta, the completion or the object.
-    let leaked = text.contains(SHAPED_SECRET) || object.windows(SHAPED_SECRET.len()).any(|w| w == SHAPED_SECRET.as_bytes());
-    leg.check("planted_secret_not_in_the_stream", !leaked, "a delta or the completed record carries the planted token");
+    let leaked = text.contains(SHAPED_SECRET)
+        || object
+            .windows(SHAPED_SECRET.len())
+            .any(|w| w == SHAPED_SECRET.as_bytes());
+    leg.check(
+        "planted_secret_not_in_the_stream",
+        !leaked,
+        "a delta or the completed record carries the planted token",
+    );
     let echoed = text.contains("[redacted]");
     leg.count("secret_echoed_and_redacted", echoed);
     if !echoed {
@@ -605,23 +659,45 @@ async fn leg_px041_kill(env: Arc<LiveEnv>) {
     let all = fx.events().await;
     let deltas = of_kind(&all, "AssistantTextDelta");
     let aborted = of_kind(&all, "AssistantMessageAborted");
-    leg.check("one_aborted_record", aborted.len() == 1, format!("{} abort records", aborted.len()));
-    leg.check("source_recovery", aborted[0].payload["source"] == "RECOVERY", format!("{}", aborted[0].payload["source"]));
-    leg.check("code_aborted_by_recovery", aborted[0].payload["code"] == "ABORTED_BY_RECOVERY", format!("{}", aborted[0].payload["code"]));
+    leg.check(
+        "one_aborted_record",
+        aborted.len() == 1,
+        format!("{} abort records", aborted.len()),
+    );
+    leg.check(
+        "source_recovery",
+        aborted[0].payload["source"] == "RECOVERY",
+        format!("{}", aborted[0].payload["source"]),
+    );
+    leg.check(
+        "code_aborted_by_recovery",
+        aborted[0].payload["code"] == "ABORTED_BY_RECOVERY",
+        format!("{}", aborted[0].payload["code"]),
+    );
     leg.check(
         "no_partial_text_marked_complete",
-        of_kind(&all, "AssistantMessageCompleted").iter().all(|c| c.aggregate != aborted[0].aggregate),
+        of_kind(&all, "AssistantMessageCompleted")
+            .iter()
+            .all(|c| c.aggregate != aborted[0].aggregate),
         "the aborted stream also completed",
     );
     leg.check(
         "abort_counts_every_delta",
         aborted[0].payload["delta_count"] == deltas.len() as u64
             && aborted[0].offset > deltas.last().unwrap().offset,
-        format!("{} vs {} deltas", aborted[0].payload["delta_count"], deltas.len()),
+        format!(
+            "{} vs {} deltas",
+            aborted[0].payload["delta_count"],
+            deltas.len()
+        ),
     );
     leg.count("deltas_before_kill", deltas.len());
     let st = fx.status(&task).await;
-    leg.check("loop_not_resumed_mid_token", !st.loop_alive, format!("{st:?}"));
+    leg.check(
+        "loop_not_resumed_mid_token",
+        !st.loop_alive,
+        format!("{st:?}"),
+    );
     // The run proceeds under the existing recovery path: started again, it
     // completes a new stream; the aborted one stays aborted.
     fx.start(&task, 4, 1).await;
@@ -629,10 +705,17 @@ async fn leg_px041_kill(env: Arc<LiveEnv>) {
     leg.check("run_ends_after_resume", !st.loop_alive, format!("{st:?}"));
     let after = fx.events().await;
     let completed = of_kind(&after, "AssistantMessageCompleted");
-    leg.check("a_new_stream_completes", !completed.is_empty(), "no completed message after the resume");
+    leg.check(
+        "a_new_stream_completes",
+        !completed.is_empty(),
+        "no completed message after the resume",
+    );
     leg.check(
         "aborted_stream_stays_aborted",
-        completed.iter().all(|c| c.aggregate != aborted[0].aggregate) && of_kind(&after, "AssistantMessageAborted").len() == 1,
+        completed
+            .iter()
+            .all(|c| c.aggregate != aborted[0].aggregate)
+            && of_kind(&after, "AssistantMessageAborted").len() == 1,
         "the aborted stream changed",
     );
     // The first request's usage never arrived (killed): charge it at an
@@ -660,8 +743,7 @@ async fn live_px041_kill() {
 
 use modbit_protocol::v1::{
     EditQueuedInput, InputQueued, InterruptAccepted, ListQueuedInputs, QueueInput,
-    QueuedInputChanged, QueuedInputList, RemoveQueuedInput, ReorderQueuedInput,
-    SendQueuedInputNow,
+    QueuedInputChanged, QueuedInputList, RemoveQueuedInput, ReorderQueuedInput, SendQueuedInputNow,
 };
 
 const ESSAY: &str = "Write an essay of about 1500 words on the history of the printing press, in plain prose with no headings and no lists. Do not call any tool.";
@@ -710,7 +792,11 @@ fn steered(events: &[Ev]) -> Vec<Vec<String>> {
         .map(|e| {
             e.payload["input_ids"]
                 .as_array()
-                .map(|a| a.iter().filter_map(|v| v.as_str().map(str::to_owned)).collect())
+                .map(|a| {
+                    a.iter()
+                        .filter_map(|v| v.as_str().map(str::to_owned))
+                        .collect()
+                })
                 .unwrap_or_default()
         })
         .collect()
@@ -743,8 +829,16 @@ async fn leg_px050_queue(env: Arc<LiveEnv>) {
         fx.queue(&task, id, "FOLLOW_UP", text).await;
     }
     let l = fx.queued(&task, false).await;
-    leg.check("listed_in_order", queued_ids(&l) == ["a", "b", "c", "d"], format!("{:?}", queued_ids(&l)));
-    leg.check("run_alive_while_queued", l.run_alive, "the run was not alive");
+    leg.check(
+        "listed_in_order",
+        queued_ids(&l) == ["a", "b", "c", "d"],
+        format!("{:?}", queued_ids(&l)),
+    );
+    leg.check(
+        "run_alive_while_queued",
+        l.run_alive,
+        "the run was not alive",
+    );
     let edited = "Message B, edited: reply with just the word BRAVO-EDITED.";
     let ch: QueuedInputChanged = fx
         .ok(
@@ -783,15 +877,25 @@ async fn leg_px050_queue(env: Arc<LiveEnv>) {
         )
         .await;
     let l = fx.queued(&task, true).await;
-    leg.check("order_after_edits", queued_ids(&l) == ["c", "a", "b"], format!("{:?}", queued_ids(&l)));
+    leg.check(
+        "order_after_edits",
+        queued_ids(&l) == ["c", "a", "b"],
+        format!("{:?}", queued_ids(&l)),
+    );
     leg.check(
         "edit_text_kept",
-        l.items.iter().find(|i| i.input_id == "b").is_some_and(|i| i.text == edited && i.edited),
+        l.items
+            .iter()
+            .find(|i| i.input_id == "b")
+            .is_some_and(|i| i.text == edited && i.edited),
         "the edit was not recorded",
     );
     leg.check(
         "delete_recorded",
-        l.items.iter().find(|i| i.input_id == "d").is_some_and(|i| i.state == "REMOVED"),
+        l.items
+            .iter()
+            .find(|i| i.input_id == "d")
+            .is_some_and(|i| i.state == "REMOVED"),
         "d was not removed",
     );
     let st = fx.wait(&task, 300).await;
@@ -811,14 +915,28 @@ async fn leg_px050_queue(env: Arc<LiveEnv>) {
     );
     let completed = of_kind(&ev, "AssistantMessageCompleted").len();
     leg.count("assistant_messages", completed);
-    leg.check("a_turn_per_input", completed >= 4, format!("{completed} assistant messages for the essay and three inputs"));
+    leg.check(
+        "a_turn_per_input",
+        completed >= 4,
+        format!("{completed} assistant messages for the essay and three inputs"),
+    );
     let l = fx.queued(&task, true).await;
-    leg.check("queue_settled", queued_ids(&l).is_empty(), "inputs still queued");
+    leg.check(
+        "queue_settled",
+        queued_ids(&l).is_empty(),
+        "inputs still queued",
+    );
     leg.check(
         "three_dispatched_one_removed",
         l.items.iter().filter(|i| i.state == "DISPATCHED").count() == 3
             && l.items.iter().filter(|i| i.state == "REMOVED").count() == 1,
-        format!("{:?}", l.items.iter().map(|i| (&i.input_id, &i.state)).collect::<Vec<_>>()),
+        format!(
+            "{:?}",
+            l.items
+                .iter()
+                .map(|i| (&i.input_id, &i.state))
+                .collect::<Vec<_>>()
+        ),
     );
     // The deleted input is nowhere in the conversation the model was given.
     let page: modbit_protocol::v1::TranscriptPage = fx
@@ -834,10 +952,16 @@ async fn leg_px050_queue(env: Arc<LiveEnv>) {
             false,
         )
         .await;
-    let rows: Vec<(String, String)> = page.rows.iter().map(|r| (r.row_id.clone(), r.text.clone())).collect();
+    let rows: Vec<(String, String)> = page
+        .rows
+        .iter()
+        .map(|r| (r.row_id.clone(), r.text.clone()))
+        .collect();
     leg.check(
         "deleted_input_absent_from_the_conversation",
-        !rows.iter().any(|(id, t)| id == "user:in:d" || t.contains("Message D")),
+        !rows
+            .iter()
+            .any(|(id, t)| id == "user:in:d" || t.contains("Message D")),
         "message D reached the conversation",
     );
     leg.check(
@@ -864,7 +988,13 @@ async fn leg_px050_interrupt(env: Arc<LiveEnv>) {
     })
     .await;
     tokio::time::sleep(Duration::from_millis(300)).await;
-    fx.queue(&task, "x", "FOLLOW_UP", "Urgent: stop the essay and reply with just the word URGENT.").await;
+    fx.queue(
+        &task,
+        "x",
+        "FOLLOW_UP",
+        "Urgent: stop the essay and reply with just the word URGENT.",
+    )
+    .await;
     let asked = Instant::now();
     let cmd_id = rand_id();
     let send_now = |interrupt: &str| SendQueuedInputNow {
@@ -873,9 +1003,8 @@ async fn leg_px050_interrupt(env: Arc<LiveEnv>) {
         interrupt_id: interrupt.into(),
         reason: String::new(),
     };
-    let ack = fx
-        .c
-        .command(envelope_fenced(
+    let ack =
+        fx.c.command(envelope_fenced(
             cmd_id.clone(),
             "SendQueuedInputNow",
             send_now("int-1").encode_to_vec(),
@@ -884,64 +1013,135 @@ async fn leg_px050_interrupt(env: Arc<LiveEnv>) {
         .await
         .unwrap();
     let acc: InterruptAccepted = Client::result(&ack).unwrap();
-    leg.check("accepted_send_now", acc.kind == "SEND_NOW" && acc.run_alive, format!("{acc:?}"));
-    leg.check("status_accepted_not_replayed", ack.status == 1, format!("status {}", ack.status));
-    fx.queue(&task, "y", "FOLLOW_UP", "And then reply with just the word AFTER.").await;
+    leg.check(
+        "accepted_send_now",
+        acc.kind == "SEND_NOW" && acc.run_alive,
+        format!("{acc:?}"),
+    );
+    leg.check(
+        "status_accepted_not_replayed",
+        ack.status == 1,
+        format!("status {}", ack.status),
+    );
+    fx.queue(
+        &task,
+        "y",
+        "FOLLOW_UP",
+        "And then reply with just the word AFTER.",
+    )
+    .await;
     let ev = until_events(&feed, 60, "the interrupt applied", |e| {
         !of_kind(e, "TaskInterruptApplied").is_empty()
     })
     .await;
     let cut_ms = asked.elapsed().as_millis() as u64;
     leg.count("interrupt_applied_after_ms", cut_ms);
-    leg.check("cut_at_the_next_safe_point", cut_ms < 15_000, format!("{cut_ms} ms"));
+    leg.check(
+        "cut_at_the_next_safe_point",
+        cut_ms < 15_000,
+        format!("{cut_ms} ms"),
+    );
     let applied = of_kind(&ev, "TaskInterruptApplied");
     leg.check(
         "stream_was_cut_not_finished",
         applied[0].payload["outcome"] == "STREAM_ABORTED",
         format!("outcome {} (the model's answer ended before the interrupt arrived if this is not STREAM_ABORTED)", applied[0].payload["outcome"]),
     );
-    let replay = fx
-        .c
-        .command(envelope_fenced(cmd_id, "SendQueuedInputNow", send_now("int-1").encode_to_vec(), fx.g))
+    let replay =
+        fx.c.command(envelope_fenced(
+            cmd_id,
+            "SendQueuedInputNow",
+            send_now("int-1").encode_to_vec(),
+            fx.g,
+        ))
         .await
         .unwrap();
-    leg.check("replay_of_the_command_is_a_replay", replay.status == 2, format!("status {}", replay.status));
-    let again = fx
-        .c
-        .command(envelope_fenced(rand_id(), "SendQueuedInputNow", send_now("int-1").encode_to_vec(), fx.g))
+    leg.check(
+        "replay_of_the_command_is_a_replay",
+        replay.status == 2,
+        format!("status {}", replay.status),
+    );
+    let again =
+        fx.c.command(envelope_fenced(
+            rand_id(),
+            "SendQueuedInputNow",
+            send_now("int-1").encode_to_vec(),
+            fx.g,
+        ))
         .await
         .unwrap();
-    leg.check("same_interrupt_id_is_the_same_interrupt", again.status == 2, format!("status {}", again.status));
+    leg.check(
+        "same_interrupt_id_is_the_same_interrupt",
+        again.status == 2,
+        format!("status {}", again.status),
+    );
     let st = fx.wait(&task, 300).await;
     leg.check("run_ended", !st.loop_alive, format!("{st:?}"));
     tokio::time::sleep(Duration::from_millis(500)).await;
     let ev = fx.events().await;
     let aborted = of_kind(&ev, "AssistantMessageAborted");
-    leg.check("one_aborted_stream", aborted.len() == 1, format!("{} aborted streams", aborted.len()));
+    leg.check(
+        "one_aborted_stream",
+        aborted.len() == 1,
+        format!("{} aborted streams", aborted.len()),
+    );
     leg.check(
         "typed_source",
-        aborted[0].payload["source"] == "USER_INTERRUPT" && aborted[0].payload["code"] == "USER_SEND_NOW",
-        format!("{} / {}", aborted[0].payload["source"], aborted[0].payload["code"]),
+        aborted[0].payload["source"] == "USER_INTERRUPT"
+            && aborted[0].payload["code"] == "USER_SEND_NOW",
+        format!(
+            "{} / {}",
+            aborted[0].payload["source"], aborted[0].payload["code"]
+        ),
     );
-    let partial: Vec<&Ev> = of_kind(&ev, "AssistantTextDelta").into_iter().filter(|d| d.aggregate == aborted[0].aggregate).collect();
-    leg.check("partial_text_kept", !partial.is_empty(), "no delta of the cut stream is on the log");
-    leg.check("delta_count_matches", aborted[0].payload["delta_count"] == partial.len() as u64, format!("{} vs {}", aborted[0].payload["delta_count"], partial.len()));
+    let partial: Vec<&Ev> = of_kind(&ev, "AssistantTextDelta")
+        .into_iter()
+        .filter(|d| d.aggregate == aborted[0].aggregate)
+        .collect();
+    leg.check(
+        "partial_text_kept",
+        !partial.is_empty(),
+        "no delta of the cut stream is on the log",
+    );
+    leg.check(
+        "delta_count_matches",
+        aborted[0].payload["delta_count"] == partial.len() as u64,
+        format!("{} vs {}", aborted[0].payload["delta_count"], partial.len()),
+    );
     leg.check(
         "cut_stream_never_completes",
-        of_kind(&ev, "AssistantMessageCompleted").iter().all(|c| c.aggregate != aborted[0].aggregate),
+        of_kind(&ev, "AssistantMessageCompleted")
+            .iter()
+            .all(|c| c.aggregate != aborted[0].aggregate),
         "the cut stream also completed",
     );
-    leg.check("interrupt_requested_once", of_kind(&ev, "TaskInterruptRequested").len() == 1, format!("{}", of_kind(&ev, "TaskInterruptRequested").len()));
+    leg.check(
+        "interrupt_requested_once",
+        of_kind(&ev, "TaskInterruptRequested").len() == 1,
+        format!("{}", of_kind(&ev, "TaskInterruptRequested").len()),
+    );
     let applied = of_kind(&ev, "TaskInterruptApplied");
     leg.check(
         "applied_once_with_dispatch_next",
-        applied.len() == 1 && applied[0].payload["stream_aborted"] == true && applied[0].payload["next"] == "DISPATCH",
-        format!("{:?}", applied.iter().map(|a| &a.payload).collect::<Vec<_>>()),
+        applied.len() == 1
+            && applied[0].payload["stream_aborted"] == true
+            && applied[0].payload["next"] == "DISPATCH",
+        format!(
+            "{:?}",
+            applied.iter().map(|a| &a.payload).collect::<Vec<_>>()
+        ),
     );
     let order = steered(&ev);
-    let x_turns = order.iter().filter(|ids| ids.iter().any(|i| i == "x")).count();
+    let x_turns = order
+        .iter()
+        .filter(|ids| ids.iter().any(|i| i == "x"))
+        .count();
     leg.check("new_turn_started_once", x_turns == 1, format!("{order:?}"));
-    leg.check("next_input_after_it", order.concat() == ["x", "y"], format!("{order:?}"));
+    leg.check(
+        "next_input_after_it",
+        order.concat() == ["x", "y"],
+        format!("{order:?}"),
+    );
     leg.count("partial_deltas", partial.len());
     fx.charge(&mut leg, &task).await;
     leg.finish();
@@ -971,41 +1171,83 @@ async fn leg_px050_kill(env: Arc<LiveEnv>) {
     let _: QueuedInputChanged = fx
         .ok(
             "EditQueuedInput",
-            EditQueuedInput { task_id: Some(task.clone()), input_id: "b".into(), text: edited.into(), mode: String::new(), model: String::new() },
+            EditQueuedInput {
+                task_id: Some(task.clone()),
+                input_id: "b".into(),
+                text: edited.into(),
+                mode: String::new(),
+                model: String::new(),
+            },
             true,
         )
         .await;
     let _: QueuedInputChanged = fx
         .ok(
             "ReorderQueuedInput",
-            ReorderQueuedInput { task_id: Some(task.clone()), input_id: "c".into(), before_input_id: "a".into() },
+            ReorderQueuedInput {
+                task_id: Some(task.clone()),
+                input_id: "c".into(),
+                before_input_id: "a".into(),
+            },
             true,
         )
         .await;
     let before = fx.queued(&task, false).await;
-    leg.check("order_before_the_kill", queued_ids(&before) == ["c", "a", "b"], format!("{:?}", queued_ids(&before)));
+    leg.check(
+        "order_before_the_kill",
+        queued_ids(&before) == ["c", "a", "b"],
+        format!("{:?}", queued_ids(&before)),
+    );
     drop(feed);
     fx.restart().await;
     let after = fx.queued(&task, false).await;
-    leg.check("same_inputs_same_order", queued_ids(&after) == ["c", "a", "b"], format!("{:?}", queued_ids(&after)));
+    leg.check(
+        "same_inputs_same_order",
+        queued_ids(&after) == ["c", "a", "b"],
+        format!("{:?}", queued_ids(&after)),
+    );
     leg.check(
         "edit_survived",
-        after.items.iter().find(|i| i.input_id == "b").is_some_and(|i| i.text == edited),
+        after
+            .items
+            .iter()
+            .find(|i| i.input_id == "b")
+            .is_some_and(|i| i.text == edited),
         "the edit was lost",
     );
-    leg.check("nothing_runs_until_resumed", !after.run_alive, "the run was alive after the restart");
+    leg.check(
+        "nothing_runs_until_resumed",
+        !after.run_alive,
+        "the run was alive after the restart",
+    );
     fx.start(&task, 30, 8).await;
     let st = fx.wait(&task, 300).await;
     leg.check("run_ended_after_resume", !st.loop_alive, format!("{st:?}"));
     tokio::time::sleep(Duration::from_millis(500)).await;
     let ev = fx.events().await;
     let order = steered(&ev);
-    leg.check("drained_in_order_after_recovery", order.concat() == ["c", "a", "b"], format!("{order:?}"));
+    leg.check(
+        "drained_in_order_after_recovery",
+        order.concat() == ["c", "a", "b"],
+        format!("{order:?}"),
+    );
     let done = fx.queued(&task, true).await;
     leg.check(
         "all_three_dispatched",
-        queued_ids(&done).is_empty() && done.items.iter().filter(|i| i.state == "DISPATCHED").count() == 3,
-        format!("{:?}", done.items.iter().map(|i| (&i.input_id, &i.state)).collect::<Vec<_>>()),
+        queued_ids(&done).is_empty()
+            && done
+                .items
+                .iter()
+                .filter(|i| i.state == "DISPATCHED")
+                .count()
+                == 3,
+        format!(
+            "{:?}",
+            done.items
+                .iter()
+                .map(|i| (&i.input_id, &i.state))
+                .collect::<Vec<_>>()
+        ),
     );
     leg.charge(1, 2_500, 3_000);
     fx.charge(&mut leg, &task).await;
@@ -1034,11 +1276,19 @@ async fn live_px050_kill() {
 // QUAL-PX-059: context accounting by category against the provider's count
 // ---------------------------------------------------------------------------
 
-fn category<'a>(v: &'a ContextAccountingView, name: &str) -> &'a modbit_protocol::v1::ContextCategoryView {
+fn category<'a>(
+    v: &'a ContextAccountingView,
+    name: &str,
+) -> &'a modbit_protocol::v1::ContextCategoryView {
     v.categories
         .iter()
         .find(|c| c.category == name)
-        .unwrap_or_else(|| panic!("no category {name} in {:?}", v.categories.iter().map(|c| &c.category).collect::<Vec<_>>()))
+        .unwrap_or_else(|| {
+            panic!(
+                "no category {name} in {:?}",
+                v.categories.iter().map(|c| &c.category).collect::<Vec<_>>()
+            )
+        })
 }
 
 /// Write a skill package `dir/<name>/SKILL.md` and return its content hash.
@@ -1077,7 +1327,14 @@ async fn leg_px059_accounting(env: Arc<LiveEnv>) {
     .unwrap();
     let mut fx = Fx::build(
         &env,
-        &[("README.md", "# Hash table notes\n\nA small repository used to measure context accounting.\n"), ("AGENTS.md", agents), ("a.txt", "alpha\nbeta\ngamma\n")],
+        &[
+            (
+                "README.md",
+                "# Hash table notes\n\nA small repository used to measure context accounting.\n",
+            ),
+            ("AGENTS.md", agents),
+            ("a.txt", "alpha\nbeta\ngamma\n"),
+        ],
         &[("MODBIT_MCP_SERVERS", servers.as_str())],
         &move |data| {
             *hash_slot.lock().unwrap() = skill_package(
@@ -1092,14 +1349,34 @@ async fn leg_px059_accounting(env: Arc<LiveEnv>) {
     let root = fx.root.clone();
     let session = fx.session.clone();
     let _: RepositoryTrusted = fx
-        .ok("TrustRepository", TrustRepository { session_id: Some(session), workspace_root: root, scope: "repository".into() }, true)
+        .ok(
+            "TrustRepository",
+            TrustRepository {
+                session_id: Some(session),
+                workspace_root: root,
+                scope: "repository".into(),
+            },
+            true,
+        )
         .await;
     let task = fx.task("Do these steps in order. Step 1: call tool.search once with the query \"external\" so that the external tools become available. Step 2: read README.md with fs.read. Step 3: answer in one sentence with the title of that file. Call no other tool.").await;
     let hash = skill_hash.lock().unwrap().clone();
     let trusted: SkillTrustResult = fx
-        .ok("TrustSkill", TrustSkill { name: "lintfix".into(), content_hash: hash, task_id: Some(task.clone()) }, false)
+        .ok(
+            "TrustSkill",
+            TrustSkill {
+                name: "lintfix".into(),
+                content_hash: hash,
+                task_id: Some(task.clone()),
+            },
+            false,
+        )
         .await;
-    leg.check("skill_trusted", trusted.trust == "TRUSTED_BY_OWNER", trusted.trust.clone());
+    leg.check(
+        "skill_trusted",
+        trusted.trust == "TRUSTED_BY_OWNER",
+        trusted.trust.clone(),
+    );
     let p: MemoryProposed = fx
         .ok(
             "ProposeMemory",
@@ -1108,32 +1385,69 @@ async fn leg_px059_accounting(env: Arc<LiveEnv>) {
                 scope: "repository".into(),
                 record_type: "convention".into(),
                 topic: "indentation".into(),
-                content: "Use four spaces for indentation in every language in this project.".into(),
+                content: "Use four spaces for indentation in every language in this project."
+                    .into(),
                 ..Default::default()
             },
             true,
         )
         .await;
     let promoted: MemoryPromoted = fx
-        .ok("PromoteMemory", PromoteMemory { task_id: Some(task.clone()), memory_id: p.memory_id.clone() }, true)
+        .ok(
+            "PromoteMemory",
+            PromoteMemory {
+                task_id: Some(task.clone()),
+                memory_id: p.memory_id.clone(),
+            },
+            true,
+        )
         .await;
-    leg.check("memory_curated", promoted.outcome == "curated", format!("{promoted:?}"));
+    leg.check(
+        "memory_curated",
+        promoted.outcome == "curated",
+        format!("{promoted:?}"),
+    );
     // Before anything is compiled there is nothing to account for.
     let none = fx.accounting(&task).await;
-    leg.check("nothing_before_the_first_turn", !none.available && none.categories.is_empty(), format!("{none:?}"));
+    leg.check(
+        "nothing_before_the_first_turn",
+        !none.available && none.categories.is_empty(),
+        format!("{none:?}"),
+    );
     fx.start(&task, 10, 3).await;
     let st = fx.wait(&task, 240).await;
     leg.check("run_ended", !st.loop_alive, format!("{st:?}"));
     let v = fx.accounting(&task).await;
     leg.check("available", v.available, "no accounting after a run");
-    leg.check("provider_reported", v.total_source == "PROVIDER_REPORTED" && v.provider_reported_input > 0, format!("{} / {}", v.total_source, v.provider_reported_input));
-    leg.check("total_is_the_providers_count", v.total_tokens == v.provider_reported_input, format!("{} vs {}", v.total_tokens, v.provider_reported_input));
-    leg.check("nine_categories", v.categories.len() == 9, format!("{}", v.categories.len()));
+    leg.check(
+        "provider_reported",
+        v.total_source == "PROVIDER_REPORTED" && v.provider_reported_input > 0,
+        format!("{} / {}", v.total_source, v.provider_reported_input),
+    );
+    leg.check(
+        "total_is_the_providers_count",
+        v.total_tokens == v.provider_reported_input,
+        format!("{} vs {}", v.total_tokens, v.provider_reported_input),
+    );
+    leg.check(
+        "nine_categories",
+        v.categories.len() == 9,
+        format!("{}", v.categories.len()),
+    );
     let sum: u64 = v.categories.iter().map(|c| c.tokens).sum();
-    leg.check("categories_sum_exactly_to_the_total", sum == v.total_tokens, format!("{sum} vs {}", v.total_tokens));
+    leg.check(
+        "categories_sum_exactly_to_the_total",
+        sum == v.total_tokens,
+        format!("{sum} vs {}", v.total_tokens),
+    );
     // The provider's count against the independent per-step usage ledger.
     let e = fx.economics(&task).await;
-    let last_step_input = e.runs.iter().flat_map(|r| r.steps.iter()).filter(|s| s.input_tokens > 0).last().map(|s| s.input_tokens);
+    let last_step_input = e
+        .runs
+        .iter()
+        .flat_map(|r| r.steps.iter())
+        .rfind(|s| s.input_tokens > 0)
+        .map(|s| s.input_tokens);
     leg.count("provider_reported_input", v.provider_reported_input);
     leg.count("estimated_total", v.estimated_total);
     leg.count("estimator_error_bp", v.estimator_error_bp);
@@ -1146,25 +1460,60 @@ async fn leg_px059_accounting(env: Arc<LiveEnv>) {
     leg.check(
         "estimator_within_declared_error",
         v.estimator_error_bp <= v.declared_error_bp && v.declared_error_bp > 0,
-        format!("the estimator counted {} against the provider's {}: {} bp off, {} bp declared", v.estimated_total, v.provider_reported_input, v.estimator_error_bp, v.declared_error_bp),
+        format!(
+            "the estimator counted {} against the provider's {}: {} bp off, {} bp declared",
+            v.estimated_total, v.provider_reported_input, v.estimator_error_bp, v.declared_error_bp
+        ),
     );
     let non_zero = |name: &str| category(&v, name).tokens > 0;
-    for name in ["SYSTEM", "TOOLS", "RULES", "SKILLS", "MCP", "MEMORY", "SUBAGENTS", "CONVERSATION"] {
-        leg.check(&format!("{}_non_zero", name.to_lowercase()), non_zero(name), format!("{:?}", category(&v, name)));
+    for name in [
+        "SYSTEM",
+        "TOOLS",
+        "RULES",
+        "SKILLS",
+        "MCP",
+        "MEMORY",
+        "SUBAGENTS",
+        "CONVERSATION",
+    ] {
+        leg.check(
+            &format!("{}_non_zero", name.to_lowercase()),
+            non_zero(name),
+            format!("{:?}", category(&v, name)),
+        );
     }
     leg.check(
         "summary_names_no_epoch_without_compaction",
         v.compaction_epoch == 0 && category(&v, "SUMMARY").sources.is_empty(),
-        format!("epoch {}, {:?}", v.compaction_epoch, category(&v, "SUMMARY")),
+        format!(
+            "epoch {}, {:?}",
+            v.compaction_epoch,
+            category(&v, "SUMMARY")
+        ),
     );
     // The window is the model's own (here the catalog's), and the percent follows.
     let window = env.window.unwrap_or(0);
-    leg.check("window_from_the_catalog", v.window_tokens == window && window > 0, format!("{} ({}) vs {window}", v.window_tokens, v.window_source));
-    leg.check("percent_follows_the_window", u64::from(v.used_bp) == v.total_tokens * 10_000 / window.max(1), format!("{} bp", v.used_bp));
-    leg.check("model_is_the_live_model", v.model == env.model, v.model.clone());
+    leg.check(
+        "window_from_the_catalog",
+        v.window_tokens == window && window > 0,
+        format!("{} ({}) vs {window}", v.window_tokens, v.window_source),
+    );
+    leg.check(
+        "percent_follows_the_window",
+        u64::from(v.used_bp) == v.total_tokens * 10_000 / window.max(1),
+        format!("{} bp", v.used_bp),
+    );
+    leg.check(
+        "model_is_the_live_model",
+        v.model == env.model,
+        v.model.clone(),
+    );
     // A different catalog window for the same model moves the window and the
     // percent (no second real model exists on the gateway to switch to).
-    let narrow = format!("{}={}/{};ctx=100000;out=8192", env.model, env.price.input_per_mtok_usd, env.price.output_per_mtok_usd);
+    let narrow = format!(
+        "{}={}/{};ctx=100000;out=8192",
+        env.model, env.price.input_per_mtok_usd, env.price.output_per_mtok_usd
+    );
     let session = fx.session.clone();
     fx.core.kill();
     fx.extra_env.push(("MODBIT_OPENAI_MODELS".into(), narrow));
@@ -1172,14 +1521,28 @@ async fn leg_px059_accounting(env: Arc<LiveEnv>) {
     fx.c = fx.core.client().await;
     fx.g = Some(fx.lease_again().await);
     let _ = session;
-    let t2 = fx.task("Read a.txt with fs.read and answer in one sentence. Call no other tool.").await;
+    let t2 = fx
+        .task("Read a.txt with fs.read and answer in one sentence. Call no other tool.")
+        .await;
     fx.start(&t2, 8, 3).await;
     let st = fx.wait(&t2, 240).await;
     leg.check("second_run_ended", !st.loop_alive, format!("{st:?}"));
     let n = fx.accounting(&t2).await;
-    leg.check("window_follows_the_catalog_entry", n.window_tokens == 100_000, format!("{} ({})", n.window_tokens, n.window_source));
-    leg.check("percent_follows_the_new_window", u64::from(n.used_bp) == n.total_tokens * 10_000 / 100_000, format!("{} bp of {}", n.used_bp, n.total_tokens));
-    leg.check("second_categories_sum", n.categories.iter().map(|c| c.tokens).sum::<u64>() == n.total_tokens, "sum");
+    leg.check(
+        "window_follows_the_catalog_entry",
+        n.window_tokens == 100_000,
+        format!("{} ({})", n.window_tokens, n.window_source),
+    );
+    leg.check(
+        "percent_follows_the_new_window",
+        u64::from(n.used_bp) == n.total_tokens * 10_000 / 100_000,
+        format!("{} bp of {}", n.used_bp, n.total_tokens),
+    );
+    leg.check(
+        "second_categories_sum",
+        n.categories.iter().map(|c| c.tokens).sum::<u64>() == n.total_tokens,
+        "sum",
+    );
     leg.note("a model switch to a second real model was not possible: the gateway key serves one priced model (glm-5.3-flash); the window was moved by changing its catalog entry");
     fx.charge(&mut leg, &task).await;
     fx.charge(&mut leg, &t2).await;
@@ -1218,7 +1581,10 @@ fn tree(root: &str) -> BTreeMap<String, String> {
                 stack.push(p);
             } else if let Ok(b) = std::fs::read(&p) {
                 out.insert(
-                    p.strip_prefix(root).unwrap().to_string_lossy().replace('\\', "/"),
+                    p.strip_prefix(root)
+                        .unwrap()
+                        .to_string_lossy()
+                        .replace('\\', "/"),
                     hex::encode(sha2::Sha256::digest(b)),
                 );
             }
@@ -1248,7 +1614,8 @@ async fn snapshot_on_checkpoints(
             let ev = ev_of(e);
             if ev.kind == "CheckpointCommitted" {
                 let id = payload_str(&ev, "checkpoint_id");
-                let ordinal = u32::try_from(ev.payload["turn_ordinal"].as_u64().unwrap_or(0)).unwrap_or(0);
+                let ordinal =
+                    u32::try_from(ev.payload["turn_ordinal"].as_u64().unwrap_or(0)).unwrap_or(0);
                 sink.lock().unwrap().insert(id, (ordinal, tree(&root)));
             }
         }
@@ -1258,7 +1625,14 @@ async fn snapshot_on_checkpoints(
 
 impl Fx {
     async fn checkpoints(&mut self, task: &Id) -> CheckpointList {
-        self.ok("ListCheckpoints", ListCheckpoints { task_id: Some(task.clone()) }, false).await
+        self.ok(
+            "ListCheckpoints",
+            ListCheckpoints {
+                task_id: Some(task.clone()),
+            },
+            false,
+        )
+        .await
     }
 
     async fn restore(&mut self, mut req: RestoreCheckpoint, task: &Id) -> CheckpointRestoreResult {
@@ -1288,11 +1662,17 @@ async fn leg_px061_checkpoints(env: Arc<LiveEnv>) {
     let at_end = tree(&fx.root);
     leg.check(
         "the_model_did_the_work",
-        at_end.contains_key("one.txt") && at_end.contains_key("two.txt") && at_end.get("a.txt") != tree_of_base().get("a.txt"),
+        at_end.contains_key("one.txt")
+            && at_end.contains_key("two.txt")
+            && at_end.get("a.txt") != tree_of_base().get("a.txt"),
         format!("{:?}", at_end.keys().collect::<Vec<_>>()),
     );
     let l = fx.checkpoints(&task).await;
-    let turn_cps: Vec<_> = l.checkpoints.iter().filter(|c| c.reason == "turn_boundary").collect();
+    let turn_cps: Vec<_> = l
+        .checkpoints
+        .iter()
+        .filter(|c| c.reason == "turn_boundary")
+        .collect();
     let mut ordinals: Vec<u32> = turn_cps.iter().map(|c| c.turn_ordinal).collect();
     ordinals.sort_unstable();
     ordinals.dedup();
@@ -1300,24 +1680,70 @@ async fn leg_px061_checkpoints(env: Arc<LiveEnv>) {
     leg.count("turns", ordinals.len());
     leg.check(
         "every_turn_has_a_checkpoint",
-        ordinals.len() >= 3 && ordinals == (1..=u32::try_from(ordinals.len()).unwrap()).collect::<Vec<_>>(),
+        ordinals.len() >= 3
+            && ordinals == (1..=u32::try_from(ordinals.len()).unwrap()).collect::<Vec<_>>(),
         format!("ordinals {ordinals:?}"),
     );
     let snaps_now = snaps.lock().unwrap().clone();
-    leg.check("snapshots_taken_for_every_checkpoint", snaps_now.len() >= turn_cps.len(), format!("{} snapshots", snaps_now.len()));
+    leg.check(
+        "snapshots_taken_for_every_checkpoint",
+        snaps_now.len() >= turn_cps.len(),
+        format!("{} snapshots", snaps_now.len()),
+    );
     // The state at the end of turn 1 (the plan): none of the files exists yet.
-    let cp1 = l.checkpoints.iter().rev().find(|c| c.turn_ordinal == 1 && c.reason == "turn_boundary").expect("turn 1 checkpoint").clone();
-    let at_turn1 = snaps_now.get(&cp1.checkpoint_id).map(|(_, t)| t.clone()).expect("a snapshot of turn 1");
-    leg.check("turn1_precedes_the_work", !at_turn1.contains_key("one.txt") && at_turn1 != at_end, format!("{:?}", at_turn1.keys().collect::<Vec<_>>()));
+    let cp1 = l
+        .checkpoints
+        .iter()
+        .rev()
+        .find(|c| c.turn_ordinal == 1 && c.reason == "turn_boundary")
+        .expect("turn 1 checkpoint")
+        .clone();
+    let at_turn1 = snaps_now
+        .get(&cp1.checkpoint_id)
+        .map(|(_, t)| t.clone())
+        .expect("a snapshot of turn 1");
+    leg.check(
+        "turn1_precedes_the_work",
+        !at_turn1.contains_key("one.txt") && at_turn1 != at_end,
+        format!("{:?}", at_turn1.keys().collect::<Vec<_>>()),
+    );
     // Restore turn 1 by ordinal, with a command id we replay.
     let cmd = rand_id();
-    let req = |c: &Id| RestoreCheckpoint { task_id: Some(c.clone()), turn_ordinal: 1, ..Default::default() };
-    let ack = fx.c.command(envelope_fenced(cmd.clone(), "RestoreCheckpoint", req(&task).encode_to_vec(), fx.g)).await.unwrap();
+    let req = |c: &Id| RestoreCheckpoint {
+        task_id: Some(c.clone()),
+        turn_ordinal: 1,
+        ..Default::default()
+    };
+    let ack =
+        fx.c.command(envelope_fenced(
+            cmd.clone(),
+            "RestoreCheckpoint",
+            req(&task).encode_to_vec(),
+            fx.g,
+        ))
+        .await
+        .unwrap();
     let r: CheckpointRestoreResult = Client::result(&ack).unwrap();
-    leg.check("restored", r.restored && !r.pre_restore_checkpoint_id.is_empty(), format!("{r:?}"));
-    leg.check("created_files_deleted_changed_restored_byte_for_byte", tree(&fx.root) == at_turn1, format!("{:?} vs {:?}", tree(&fx.root), at_turn1));
+    leg.check(
+        "restored",
+        r.restored && !r.pre_restore_checkpoint_id.is_empty(),
+        format!("{r:?}"),
+    );
+    leg.check(
+        "created_files_deleted_changed_restored_byte_for_byte",
+        tree(&fx.root) == at_turn1,
+        format!("{:?} vs {:?}", tree(&fx.root), at_turn1),
+    );
     std::fs::write(format!("{}/probe.txt", fx.root), "x").unwrap();
-    let ack2 = fx.c.command(envelope_fenced(cmd, "RestoreCheckpoint", req(&task).encode_to_vec(), fx.g)).await.unwrap();
+    let ack2 =
+        fx.c.command(envelope_fenced(
+            cmd,
+            "RestoreCheckpoint",
+            req(&task).encode_to_vec(),
+            fx.g,
+        ))
+        .await
+        .unwrap();
     let r2: CheckpointRestoreResult = Client::result(&ack2).unwrap();
     leg.check(
         "replayed_command_restores_once",
@@ -1326,49 +1752,141 @@ async fn leg_px061_checkpoints(env: Arc<LiveEnv>) {
     );
     std::fs::remove_file(format!("{}/probe.txt", fx.root)).unwrap();
     // The redo restores the state before the restore, exactly.
-    let redo = fx.restore(RestoreCheckpoint { checkpoint_id: r.pre_restore_checkpoint_id.clone(), redo: true, ..Default::default() }, &task).await;
-    leg.check("redo_restored", redo.restored && redo.redo, format!("{redo:?}"));
-    leg.check("redo_equals_the_pre_restore_state", tree(&fx.root) == at_end, "file hashes differ from the state before the restore");
+    let redo = fx
+        .restore(
+            RestoreCheckpoint {
+                checkpoint_id: r.pre_restore_checkpoint_id.clone(),
+                redo: true,
+                ..Default::default()
+            },
+            &task,
+        )
+        .await;
+    leg.check(
+        "redo_restored",
+        redo.restored && redo.redo,
+        format!("{redo:?}"),
+    );
+    leg.check(
+        "redo_equals_the_pre_restore_state",
+        tree(&fx.root) == at_end,
+        "file hashes differ from the state before the restore",
+    );
     // A file the user edits after the checkpoint is listed by the preview; an
     // edit made after the person looked is refused without the choice.
     std::fs::write(format!("{}/b.txt", fx.root), "first edit by the user\n").unwrap();
-    let preview: RewindPreview = fx.ok("PreviewRewind", PreviewRewind { task_id: Some(task.clone()), turn_ordinal: 1, ..Default::default() }, false).await;
+    let preview: RewindPreview = fx
+        .ok(
+            "PreviewRewind",
+            PreviewRewind {
+                task_id: Some(task.clone()),
+                turn_ordinal: 1,
+                ..Default::default()
+            },
+            false,
+        )
+        .await;
     let listed = preview.entries.iter().find(|e| e.path == "b.txt");
     leg.check(
         "user_edited_file_is_listed",
-        listed.is_some_and(|e| e.action != "UNCHANGED" && e.current_hash == hex::encode(sha2::Sha256::digest(b"first edit by the user\n"))),
+        listed.is_some_and(|e| {
+            e.action != "UNCHANGED"
+                && e.current_hash == hex::encode(sha2::Sha256::digest(b"first edit by the user\n"))
+        }),
         format!("{listed:?}"),
     );
-    let expected: Vec<FileHash> = preview.entries.iter().filter(|e| e.action != "UNCHANGED").map(|e| FileHash { path: e.path.clone(), content_hash: e.current_hash.clone() }).collect();
-    std::fs::write(format!("{}/b.txt", fx.root), "edited by the user after the preview\n").unwrap();
+    let expected: Vec<FileHash> = preview
+        .entries
+        .iter()
+        .filter(|e| e.action != "UNCHANGED")
+        .map(|e| FileHash {
+            path: e.path.clone(),
+            content_hash: e.current_hash.clone(),
+        })
+        .collect();
+    std::fs::write(
+        format!("{}/b.txt", fx.root),
+        "edited by the user after the preview\n",
+    )
+    .unwrap();
     let edited = tree(&fx.root);
-    let refused = fx.restore(RestoreCheckpoint { turn_ordinal: 1, expected: expected.clone(), ..Default::default() }, &task).await;
+    let refused = fx
+        .restore(
+            RestoreCheckpoint {
+                turn_ordinal: 1,
+                expected: expected.clone(),
+                ..Default::default()
+            },
+            &task,
+        )
+        .await;
     leg.check(
         "user_edit_refuses_the_restore_without_the_choice",
         !refused.restored && refused.refusal == "HASH_MISMATCH" && tree(&fx.root) == edited,
         format!("{refused:?}"),
     );
     // The same edit with the choice made: kept, everything else restored.
-    let kept = fx.restore(RestoreCheckpoint { turn_ordinal: 1, keep_paths: vec!["b.txt".into()], ..Default::default() }, &task).await;
-    leg.check("restore_with_the_choice", kept.restored && kept.kept_paths.contains(&"b.txt".to_owned()), format!("{kept:?}"));
+    let kept = fx
+        .restore(
+            RestoreCheckpoint {
+                turn_ordinal: 1,
+                keep_paths: vec!["b.txt".into()],
+                ..Default::default()
+            },
+            &task,
+        )
+        .await;
+    leg.check(
+        "restore_with_the_choice",
+        kept.restored && kept.kept_paths.contains(&"b.txt".to_owned()),
+        format!("{kept:?}"),
+    );
     leg.check(
         "edited_file_kept_others_restored",
-        std::fs::read_to_string(format!("{}/b.txt", fx.root)).unwrap() == "edited by the user after the preview\n" && !Path::new(&format!("{}/one.txt", fx.root)).exists(),
+        std::fs::read_to_string(format!("{}/b.txt", fx.root)).unwrap()
+            == "edited by the user after the preview\n"
+            && !Path::new(&format!("{}/one.txt", fx.root)).exists(),
         "b.txt or one.txt wrong",
     );
     // Back to the end state for the kill.
-    let back = fx.restore(RestoreCheckpoint { checkpoint_id: kept.pre_restore_checkpoint_id.clone(), redo: true, ..Default::default() }, &task).await;
+    let back = fx
+        .restore(
+            RestoreCheckpoint {
+                checkpoint_id: kept.pre_restore_checkpoint_id.clone(),
+                redo: true,
+                ..Default::default()
+            },
+            &task,
+        )
+        .await;
     leg.check("redo_after_choice", back.restored, format!("{back:?}"));
     let pre_kill = tree(&fx.root);
     // SIGKILL in the middle of a restore: half the files written, then the
     // next Core resolves to exactly the pre-restore state.
     fx.core.kill();
-    fx.extra_env.push(("MODBIT_FAULT_CHECKPOINT".into(), "MID_RESTORE_WRITE".into()));
+    fx.extra_env
+        .push(("MODBIT_FAULT_CHECKPOINT".into(), "MID_RESTORE_WRITE".into()));
     fx.core = Fx::spawn(&fx.env, fx.data.path(), &fx.extra_env);
     fx.c = fx.core.client().await;
     fx.g = Some(fx.lease_again().await);
-    let died = fx.c.command(envelope_fenced(rand_id(), "RestoreCheckpoint", RestoreCheckpoint { task_id: Some(task.clone()), turn_ordinal: 1, ..Default::default() }.encode_to_vec(), fx.g)).await;
-    leg.check("core_died_mid_restore", died.is_err(), "the injected fault did not stop the Core");
+    let died =
+        fx.c.command(envelope_fenced(
+            rand_id(),
+            "RestoreCheckpoint",
+            RestoreCheckpoint {
+                task_id: Some(task.clone()),
+                turn_ordinal: 1,
+                ..Default::default()
+            }
+            .encode_to_vec(),
+            fx.g,
+        ))
+        .await;
+    leg.check(
+        "core_died_mid_restore",
+        died.is_err(),
+        "the injected fault did not stop the Core",
+    );
     let mixture = tree(&fx.root);
     leg.count("files_in_the_mixture", mixture.len());
     fx.core.kill();
@@ -1379,7 +1897,12 @@ async fn leg_px061_checkpoints(env: Arc<LiveEnv>) {
     leg.check(
         "never_a_mixture",
         tree(&fx.root) == pre_kill,
-        format!("the mixture had {} files; after recovery {} files, expected {}", mixture.len(), tree(&fx.root).len(), pre_kill.len()),
+        format!(
+            "the mixture had {} files; after recovery {} files, expected {}",
+            mixture.len(),
+            tree(&fx.root).len(),
+            pre_kill.len()
+        ),
     );
     fx.charge(&mut leg, &task).await;
     leg.finish();
@@ -1387,7 +1910,10 @@ async fn leg_px061_checkpoints(env: Arc<LiveEnv>) {
 
 fn tree_of_base() -> BTreeMap<String, String> {
     let mut m = BTreeMap::new();
-    m.insert("a.txt".to_owned(), hex::encode(sha2::Sha256::digest(b"a\n")));
+    m.insert(
+        "a.txt".to_owned(),
+        hex::encode(sha2::Sha256::digest(b"a\n")),
+    );
     m
 }
 
@@ -1412,13 +1938,19 @@ fn scripted_env(base: &str, results: &Path) -> Arc<LiveEnv> {
         ("MODBIT_LIVE_MODEL", "glm-5.3-flash"),
         ("MODBIT_LIVE_BASE_URL", base),
         ("MODBIT_LIVE_ALLOW_LOOPBACK", "1"),
-        ("MODBIT_OPENAI_MODELS", "glm-5.3-flash=0.15/0.50;ctx=200000;out=8192".into()),
-        ("MODBIT_LIVE_MAX_COST_USD", "5".into()),
+        (
+            "MODBIT_OPENAI_MODELS",
+            "glm-5.3-flash=0.15/0.50;ctx=200000;out=8192",
+        ),
+        ("MODBIT_LIVE_MAX_COST_USD", "5"),
     ]
     .into_iter()
     .map(|(k, v)| (k, v.to_owned()))
     .collect();
-    m.insert("MODBIT_LIVE_RESULTS_DIR", results.to_string_lossy().into_owned());
+    m.insert(
+        "MODBIT_LIVE_RESULTS_DIR",
+        results.to_string_lossy().into_owned(),
+    );
     let mut env = LiveEnv::from_vars(&|k| m.get(k).cloned()).unwrap();
     env.live = false;
     Arc::new(env)
@@ -1426,16 +1958,19 @@ fn scripted_env(base: &str, results: &Path) -> Arc<LiveEnv> {
 
 fn four_hundred_words() -> (String, Vec<String>) {
     let words: Vec<String> = (0..400).map(|i| format!("word{i}")).collect();
-    let chunks: Vec<String> = words.chunks(5).map(|w| format!("{} ", w.join(" "))).collect();
+    let chunks: Vec<String> = words
+        .chunks(5)
+        .map(|w| format!("{} ", w.join(" ")))
+        .collect();
     (chunks.concat(), chunks)
 }
 
 #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn scripted_px041_stream_leg_mechanics() {
     let (_, chunks) = four_hundred_words();
-    let (base, _seen) = scripted_model_fn(Arc::new(move |_, _| {
-        json!({"chunks": chunks, "chunk_gap_ms": 15})
-    }))
+    let (base, _seen) = scripted_model_fn(Arc::new(
+        move |_, _| json!({"chunks": chunks, "chunk_gap_ms": 15}),
+    ))
     .await;
     let results = tempfile::tempdir().unwrap();
     leg_px041_stream(scripted_env(&base, results.path())).await;
@@ -1490,7 +2025,10 @@ async fn scripted_px050_queue_leg_mechanics() {
     .await;
     let results = tempfile::tempdir().unwrap();
     leg_px050_queue(scripted_env(&base, results.path())).await;
-    let rec: Value = serde_json::from_str(&std::fs::read_to_string(results.path().join("px050-queue.json")).unwrap()).unwrap();
+    let rec: Value = serde_json::from_str(
+        &std::fs::read_to_string(results.path().join("px050-queue.json")).unwrap(),
+    )
+    .unwrap();
     assert_eq!(rec["passed"], true, "{rec:#}");
 }
 
@@ -1508,7 +2046,10 @@ async fn scripted_px050_interrupt_leg_mechanics() {
     .await;
     let results = tempfile::tempdir().unwrap();
     leg_px050_interrupt(scripted_env(&base, results.path())).await;
-    let rec: Value = serde_json::from_str(&std::fs::read_to_string(results.path().join("px050-interrupt.json")).unwrap()).unwrap();
+    let rec: Value = serde_json::from_str(
+        &std::fs::read_to_string(results.path().join("px050-interrupt.json")).unwrap(),
+    )
+    .unwrap();
     assert_eq!(rec["passed"], true, "{rec:#}");
 }
 
@@ -1526,7 +2067,10 @@ async fn scripted_px050_kill_leg_mechanics() {
     .await;
     let results = tempfile::tempdir().unwrap();
     leg_px050_kill(scripted_env(&base, results.path())).await;
-    let rec: Value = serde_json::from_str(&std::fs::read_to_string(results.path().join("px050-kill.json")).unwrap()).unwrap();
+    let rec: Value = serde_json::from_str(
+        &std::fs::read_to_string(results.path().join("px050-kill.json")).unwrap(),
+    )
+    .unwrap();
     assert_eq!(rec["passed"], true, "{rec:#}");
 }
 
@@ -1547,7 +2091,10 @@ async fn scripted_px059_accounting_leg_mechanics() {
     .await;
     let results = tempfile::tempdir().unwrap();
     leg_px059_accounting(scripted_env(&base, results.path())).await;
-    let rec: Value = serde_json::from_str(&std::fs::read_to_string(results.path().join("px059-accounting.json")).unwrap()).unwrap();
+    let rec: Value = serde_json::from_str(
+        &std::fs::read_to_string(results.path().join("px059-accounting.json")).unwrap(),
+    )
+    .unwrap();
     assert_eq!(rec["passed"], true, "{rec:#}");
 }
 
@@ -1566,6 +2113,9 @@ async fn scripted_px061_checkpoints_leg_mechanics() {
     .await;
     let results = tempfile::tempdir().unwrap();
     leg_px061_checkpoints(scripted_env(&base, results.path())).await;
-    let rec: Value = serde_json::from_str(&std::fs::read_to_string(results.path().join("px061-checkpoints.json")).unwrap()).unwrap();
+    let rec: Value = serde_json::from_str(
+        &std::fs::read_to_string(results.path().join("px061-checkpoints.json")).unwrap(),
+    )
+    .unwrap();
     assert_eq!(rec["passed"], true, "{rec:#}");
 }

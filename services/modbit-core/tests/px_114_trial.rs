@@ -253,7 +253,10 @@ async fn the_capped_matrix_stops_when_the_cap_refuses_and_charges_what_the_runs_
         .map(|r| r.trial.input_tokens + r.trial.output_tokens)
         .sum();
     let input: u64 = capped.runs.iter().map(|r| r.trial.input_tokens).sum();
-    assert_eq!(capped.spend.input_tokens, input, "charged from the usage the runs returned");
+    assert_eq!(
+        capped.spend.input_tokens, input,
+        "charged from the usage the runs returned"
+    );
     assert!(tokens > 0);
     // It never started a run the meter would not admit: what was spent stays
     // within the cap plus the one run that was admitted before the last charge.
@@ -264,5 +267,8 @@ async fn the_capped_matrix_stops_when_the_cap_refuses_and_charges_what_the_runs_
     );
     // A partial matrix is not a valid report.
     let rep = report(&capped.runs, "gpt-5-mini", 3, 1, false);
-    assert!(validate(&rep, 3, 1).is_err(), "a partial matrix must not validate");
+    assert!(
+        validate(&rep, 3, 1).is_err(),
+        "a partial matrix must not validate"
+    );
 }
