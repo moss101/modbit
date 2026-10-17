@@ -65,7 +65,8 @@ pub fn catalog_window(spec: &str, model: &str) -> Option<u64> {
         if head.split_once('=').map(|(n, _)| n.trim()) != Some(model) {
             continue;
         }
-        return parts.find_map(|p| p.trim().strip_prefix("ctx=")?.parse().ok());
+        // The catalog's own default when the entry names none.
+        return Some(parts.find_map(|p| p.trim().strip_prefix("ctx=")?.parse().ok()).unwrap_or(128_000));
     }
     None
 }

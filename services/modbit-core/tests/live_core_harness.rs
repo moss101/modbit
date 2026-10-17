@@ -95,7 +95,7 @@ fn the_key_never_appears_in_a_refusal_or_in_a_record() {
 #[test]
 fn the_catalog_window_and_the_price_are_read_from_the_catalog() {
     assert_eq!(catalog_window(CATALOG, "glm-5.3-flash"), Some(200_000));
-    assert_eq!(catalog_window("m=1/2", "m"), None);
+    assert_eq!(catalog_window("m=1/2", "m"), Some(128_000), "the catalog defaults the window");
     assert_eq!(catalog_window(CATALOG, "other"), None);
     let dir = tempfile::tempdir().unwrap();
     let env = env_with(&vars(&[]), dir.path());

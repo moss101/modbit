@@ -228,9 +228,23 @@ impl Fx {
         loop {
             let st = self.status(task).await;
             if !st.loop_alive || Instant::now() > deadline {
+                if !st.failure_class.is_empty() || st.loop_alive {
+                    self.diagnose(task).await;
+                }
                 return st;
             }
             tokio::time::sleep(Duration::from_millis(150)).await;
+        }
+    }
+
+    /// What the log says about a task that did not end cleanly (printed so a
+    /// failed leg can be read from the job log).
+    async fn diagnose(&self, task: &Id) {
+        let ev = of_task(self.events().await, task);
+        eprintln!("--- the last events of a task that did not end cleanly ---");
+        for e in ev.iter().rev().take(40).collect::<Vec<_>>().into_iter().rev() {
+            let text = e.payload.to_string();
+            eprintln!("{} {}", e.kind, text.chars().take(220).collect::<String>());
         }
     }
 
@@ -2458,6 +2472,217 @@ async fn live_px118_worktree() {
 }
 
 // ---------------------------------------------------------------------------
+// QUAL-PX-109: compaction on a live run driven to the model's window
+// ---------------------------------------------------------------------------
+
+use modbit_protocol::v1::{ContextInspectorView, GetContextInspector};
+
+const NEEDLE: &str = "heliotrope-7421";
+
+/// `parts` files of about 15 KB of plain lines (the most of a file the model
+/// is shown in one result is 16 KiB); the needle sits in part 03.
+fn big_parts(parts: usize) -> Vec<(String, String)> {
+    (1..=parts)
+        .map(|p| {
+            let mut text = String::new();
+            for i in 0..230 {
+                if p == 3 && i == 40 {
+                    text.push_str(&format!("NEEDLE-CODEWORD: {NEEDLE}\n"));
+                }
+                text.push_str(&format!(
+                    "part {p:02} line {i:04}: the quick brown fox jumps over the lazy dog {i}\n"
+                ));
+            }
+            (format!("part-{p:02}.txt"), text)
+        })
+        .collect()
+}
+
+struct CompactionRun {
+    task: Id,
+    events: Vec<Ev>,
+    inspector: ContextInspectorView,
+    status: TaskStatus,
+}
+
+/// A live run that reads file after file until the Core compacts, then goes on
+/// to finish. `summarizer` is `MODBIT_COMPACTION_SUMMARIZER`.
+async fn compaction_run(
+    env: &Arc<LiveEnv>,
+    leg: &mut Leg,
+    parts: usize,
+    summarizer: &str,
+    catalog: Option<String>,
+) -> (Fx, CompactionRun) {
+    let files = big_parts(parts);
+    let mut repo_files: Vec<(&str, &str)> = files.iter().map(|(n, t)| (n.as_str(), t.as_str())).collect();
+    repo_files.push(("README.md", "# big files\n"));
+    let mut extra: Vec<(&str, &str)> = vec![("MODBIT_COMPACTION_SUMMARIZER", summarizer)];
+    let cat = catalog.clone().unwrap_or_default();
+    if catalog.is_some() {
+        extra.push(("MODBIT_OPENAI_MODELS", cat.as_str()));
+    }
+    let mut fx = Fx::with_env(env, &repo_files, &extra).await;
+    let names: Vec<&str> = files.iter().map(|(n, _)| n.as_str()).collect();
+    let goal = format!(
+        "First call plan.update once (outcome: read the files, expected_files: an empty list). Then read these files in order, one fs.read call per file with max_bytes 60000, and call no other tool: {}. Do not skip any. When you have read them all, finish with task.complete whose summary states the code word that follows NEEDLE-CODEWORD: in one of them and one sentence on what the last file contains.",
+        names.join(", ")
+    );
+    let task = fx.task(&goal).await;
+    // Reading is not progress to the harness: the no-progress bound is
+    // widened so that the run is not suspended before it reaches the window.
+    fx.start(&task, 60, 40).await;
+    let status = fx.wait(&task, 1500).await;
+    leg.admit(0.05);
+    tokio::time::sleep(Duration::from_millis(500)).await;
+    let events = of_task(fx.events().await, &task);
+    let inspector: ContextInspectorView = fx.ok("GetContextInspector", GetContextInspector { task_id: Some(task.clone()) }, false).await;
+    (fx, CompactionRun { task, events, inspector, status })
+}
+
+/// The accounting records of every compiled turn, in order.
+async fn compile_records(fx: &mut Fx, events: &[Ev]) -> Vec<Value> {
+    let mut out = Vec::new();
+    for e in events.iter().filter(|e| e.kind == "StepSucceeded") {
+        let Some(hash) = e.payload["output_ref"].as_str() else {
+            continue;
+        };
+        let bytes = fx.read_object(hash).await;
+        if let Ok(v) = serde_json::from_slice::<Value>(&bytes)
+            && v.get("accounting").is_some()
+        {
+            out.push(v["accounting"].clone());
+        }
+    }
+    out
+}
+
+/// A run driven to the window compacts through the model summarizer (the run's
+/// own model), installs the summary with its provenance and a transcript
+/// pointer, resumes and completes; the accounting afterwards shows the
+/// summarised-conversation category non-zero and the conversation category
+/// fallen.
+async fn leg_px109_compaction(env: Arc<LiveEnv>) {
+    let mut leg = Leg::begin(&env, "px109", "compaction", 0.45);
+    let (mut fx, run) = compaction_run(&env, &mut leg, 30, "run", None).await;
+    leg.check("run_ended", !run.status.loop_alive && run.status.failure_class.is_empty(), format!("{:?}", run.status));
+    let epochs = of_kind(&run.events, "ContextEpochOpened");
+    leg.count("epochs", epochs.len());
+    let peak_all = run.events.iter().filter(|e| e.kind == "ModelUsageRecorded").filter_map(|e| e.payload["input_tokens"].as_u64()).max().unwrap_or(0);
+    leg.count("peak_provider_input_tokens", peak_all);
+    leg.check(
+        "the_run_compacted",
+        !epochs.is_empty(),
+        format!("no ContextEpochOpened: the run never reached its compaction budget (peak request {peak_all} tokens; trigger {:?})", run.inspector.compaction_thresholds),
+    );
+    let first = epochs[0];
+    leg.check(
+        "model_summary_installed",
+        first.payload["summary_source"] == "MODEL" && first.payload["fallback_reason"] == "",
+        format!("summary_source {} fallback_reason {}", first.payload["summary_source"], first.payload["fallback_reason"]),
+    );
+    leg.check(
+        "summarizer_is_the_policy_named_model",
+        payload_str(first, "summarizer").contains(&env.model),
+        payload_str(first, "summarizer"),
+    );
+    let committed = of_kind(&run.events, "CompactionCommitted");
+    leg.check("committed", !committed.is_empty() && committed[0].payload["summary_source"] == "MODEL", format!("{}", committed.len()));
+    leg.check(
+        "summarizer_usage_recorded_under_its_role",
+        of_kind(&run.events, "ModelUsageRecorded").iter().any(|u| u.payload["route"]["role"] == "compaction-summarizer"),
+        "no usage under the compaction-summarizer role",
+    );
+    // The threshold follows the model's window; the run really was near it.
+    let th = run.inspector.compaction_thresholds.clone().expect("thresholds");
+    let window = env.window.unwrap_or(128_000);
+    leg.count("window_tokens", th.context_window_tokens);
+    leg.count("hard_budget_tokens", th.hard_budget_tokens);
+    leg.check("threshold_from_the_model_window", th.source == "MODEL_WINDOW" && u64::from(th.context_window_tokens) == window, format!("{th:?}"));
+    leg.check("budget_is_a_share_of_the_window", u64::from(th.hard_budget_tokens) > window / 2 && u64::from(th.hard_budget_tokens) < window, format!("{th:?}"));
+    let epoch_at = run.events.iter().position(|e| e.kind == "ContextEpochOpened").unwrap();
+    let before: Vec<u64> = run
+        .events
+        .iter()
+        .take(epoch_at)
+        .filter(|e| e.kind == "ModelUsageRecorded" && e.payload["route"]["role"] != "compaction-summarizer")
+        .filter_map(|e| e.payload["input_tokens"].as_u64())
+        .collect();
+    let peak = before.iter().copied().max().unwrap_or(0);
+    leg.count("provider_input_tokens_at_the_epoch", peak);
+    leg.count("percent_of_window_at_the_epoch", peak * 100 / window.max(1));
+    leg.check("driven_near_the_window", peak * 100 / window.max(1) >= 55, format!("the largest request before the epoch was {peak} tokens of a {window}-token window"));
+    // The summary's provenance and the transcript pointer.
+    let s = &run.inspector.compaction_summaries[0];
+    leg.check("inspector_names_the_model", s.summary_source == "MODEL" && s.transcript_ref.len() == 64, format!("{s:?}"));
+    let stored = fx.read_object(&s.transcript_ref).await;
+    leg.check("pointer_holds_the_exact_earlier_text", String::from_utf8_lossy(&stored).contains("part 01 line 0000"), format!("{} bytes", stored.len()));
+    let pointer_uses = of_kind(&run.events, "ToolCallSucceeded").iter().filter(|e| e.payload["tool_name"] == "artifact.range").count();
+    leg.count("model_fetches_through_the_pointer", pointer_uses);
+    // The accounting after the epoch.
+    let v = fx.accounting(&run.task).await;
+    leg.check("accounting_sees_the_epoch", v.compaction_epoch >= 1 && v.compaction_summaries >= 1, format!("epoch {} summaries {}", v.compaction_epoch, v.compaction_summaries));
+    leg.check("summary_category_non_zero_with_sources", category(&v, "SUMMARY").tokens > 0 && !category(&v, "SUMMARY").sources.is_empty(), format!("{:?}", category(&v, "SUMMARY")));
+    let records = compile_records(&mut fx, &run.events).await;
+    let est = |r: &Value, k: &str| r["estimates"][k].as_u64().unwrap_or(0);
+    let peak_conv = records.iter().map(|r| est(r, "CONVERSATION")).max().unwrap_or(0);
+    let last = records.last().expect("a compiled turn");
+    leg.count("conversation_peak_estimate", peak_conv);
+    leg.count("conversation_last_estimate", est(last, "CONVERSATION"));
+    leg.check("conversation_falls_after_the_epoch", est(last, "CONVERSATION") < peak_conv, format!("peak {peak_conv}, last {}", est(last, "CONVERSATION")));
+    leg.check("summary_grows_after_the_epoch", est(last, "SUMMARY") > est(&records[0], "SUMMARY"), format!("{} vs {}", est(last, "SUMMARY"), est(&records[0], "SUMMARY")));
+    // The task completed: the model finished with task.complete.
+    let completes: Vec<&Ev> = run.events.iter().filter(|e| e.payload.to_string().contains("task.complete")).collect();
+    leg.check("the_run_finished_with_task_complete", !completes.is_empty(), "no task.complete on the log");
+    let answer: String = completes.iter().map(|e| e.payload.to_string()).collect();
+    leg.count("final_answer_has_the_needle", answer.contains(NEEDLE));
+    leg.note(format!("completion: {}", answer.chars().take(300).collect::<String>()));
+    leg.note("the registered window is the catalog's (ctx defaults to 128000 when MODBIT_OPENAI_MODELS does not name one); the Core's trigger is 85 percent of the window less the output budget and a margin, not of the raw window");
+    fx.charge(&mut leg, &run.task).await;
+    leg.finish();
+}
+
+/// A summarizer that fails for real (the gateway rejects a model it does not
+/// know) costs the run nothing but the summary: the epoch is the extractive
+/// one with a typed reason, and the run still completes.
+async fn leg_px109_fallback(env: Arc<LiveEnv>) {
+    let mut leg = Leg::begin(&env, "px109", "fallback", 0.45);
+    let catalog = format!(
+        "{},ghost-summarizer-px109={}/{}",
+        env.catalog,
+        env.price.input_per_mtok_usd,
+        env.price.output_per_mtok_usd
+    );
+    let (mut fx, run) = compaction_run(&env, &mut leg, 30, "openai/ghost-summarizer-px109", Some(catalog)).await;
+    leg.check("run_ended_despite_the_summarizer", !run.status.loop_alive && run.status.failure_class.is_empty(), format!("{:?}", run.status));
+    let epochs = of_kind(&run.events, "ContextEpochOpened");
+    leg.check("the_run_compacted", !epochs.is_empty(), "no ContextEpochOpened");
+    let first = epochs[0];
+    leg.check(
+        "extractive_fallback_with_a_typed_reason",
+        first.payload["summary_source"] == "EXTRACTIVE" && !payload_str(first, "fallback_reason").is_empty(),
+        format!("{} / {}", first.payload["summary_source"], first.payload["fallback_reason"]),
+    );
+    leg.count("fallback_reason", payload_str(first, "fallback_reason"));
+    leg.check("extractive_epoch_installed", !of_kind(&run.events, "CompactionCommitted").is_empty(), "no CompactionCommitted");
+    leg.check("finished_with_task_complete", run.events.iter().any(|e| e.payload.to_string().contains("task.complete")), "no task.complete on the log");
+    fx.charge(&mut leg, &run.task).await;
+    leg.finish();
+}
+
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
+#[ignore = "live: needs MODBIT_LIVE=1 and the gateway credential (the live-core workflow)"]
+async fn live_px109_compaction() {
+    leg_px109_compaction(LiveEnv::from_process()).await;
+}
+
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
+#[ignore = "live: needs MODBIT_LIVE=1 and the gateway credential (the live-core workflow)"]
+async fn live_px109_fallback() {
+    leg_px109_fallback(LiveEnv::from_process()).await;
+}
+
+// ---------------------------------------------------------------------------
 // the scripted stand-in for the offline runs of the same legs
 // ---------------------------------------------------------------------------
 
@@ -2466,16 +2691,21 @@ const SCRIPTED_KEY: &str = "sk-live-0123456789abcdef0123456789";
 /// An environment pointing the legs at a scripted server. Its records say
 /// `live: false`; the checker refuses them as live evidence.
 fn scripted_env(base: &str, results: &Path) -> Arc<LiveEnv> {
+    scripted_env_with(
+        base,
+        results,
+        "glm-5.3-flash=0.15/0.50;ctx=200000;out=8192",
+    )
+}
+
+fn scripted_env_with(base: &str, results: &Path, catalog: &str) -> Arc<LiveEnv> {
     let mut m: std::collections::BTreeMap<&str, String> = [
         ("MODBIT_LIVE", "1"),
         ("MODBIT_LIVE_API_KEY", SCRIPTED_KEY),
         ("MODBIT_LIVE_MODEL", "glm-5.3-flash"),
         ("MODBIT_LIVE_BASE_URL", base),
         ("MODBIT_LIVE_ALLOW_LOOPBACK", "1"),
-        (
-            "MODBIT_OPENAI_MODELS",
-            "glm-5.3-flash=0.15/0.50;ctx=200000;out=8192",
-        ),
+        ("MODBIT_OPENAI_MODELS", catalog),
         ("MODBIT_LIVE_MAX_COST_USD", "5"),
     ]
     .into_iter()
@@ -2747,5 +2977,79 @@ async fn scripted_px118_worktree_leg_mechanics() {
     let results = tempfile::tempdir().unwrap();
     leg_px118_worktree(scripted_env(&base, results.path())).await;
     let rec: Value = serde_json::from_str(&std::fs::read_to_string(results.path().join("px118-worktree.json")).unwrap()).unwrap();
+    assert_eq!(rec["passed"], true, "{rec:#}");
+}
+
+/// The reply of a scripted model for the compaction legs: it reads the parts
+/// in order, answers the summarizer's request faithfully (or, for the ghost
+/// summarizer, with something that is not a summary) and finishes with the
+/// needle.
+fn compaction_reply(parts: usize) -> Reply {
+    // After an epoch the conversation holds fewer tool results, so the model
+    // keeps its own count of the files it has read.
+    let served = Arc::new(std::sync::atomic::AtomicUsize::new(0));
+    Arc::new(move |body, _results| {
+        let sys = body["messages"]
+            .as_array()
+            .into_iter()
+            .flatten()
+            .filter(|m| m["role"] == "system")
+            .filter_map(|m| m["content"].as_str())
+            .collect::<Vec<_>>()
+            .join("\n");
+        if sys.contains("context summarizer") {
+            if body["model"] == "ghost-summarizer-px109" {
+                return json!({"text": "I am sorry, I cannot summarise this."});
+            }
+            let user = body["messages"]
+                .as_array()
+                .and_then(|m| m.last())
+                .and_then(|m| m["content"].as_str())
+                .unwrap_or("{}");
+            let entries = serde_json::from_str::<Value>(user).unwrap_or_default()["transcript"]
+                .as_array()
+                .cloned()
+                .unwrap_or_default();
+            let users: Vec<Value> = entries.iter().filter(|e| e["role"] == "user").map(|e| e["text"].clone()).collect();
+            let summary = json!({
+                "primary_request": "read the parts",
+                "user_messages": users,
+                "plan": "read every part in order",
+                "todos": [{"text": "finish reading", "status": "open"}],
+                "decisions": [],
+                "files": [{"path": "part-01.txt", "note": "read"}],
+                "failures": [],
+                "progress": "the first parts were read",
+                "next_steps": ["read the rest"]
+            });
+            return json!({"text": summary.to_string()});
+        }
+        let read = served.fetch_add(1, std::sync::atomic::Ordering::SeqCst);
+        if read == 0 {
+            json!({"calls": [{"name": "plan.update", "args": {"outcome": "read the files", "expected_files": []}}]})
+        } else if read <= parts {
+            let read = read - 1;
+            json!({"calls": [{"name": "fs.read", "args": {"path": format!("part-{:02}.txt", read + 1), "max_bytes": 60000}}]})
+        } else {
+            json!({"calls": [{"name": "task.complete", "args": {"summary": format!("The code word is {NEEDLE}. The last file is a list of lines."), "self_review": {"findings": []}}}]})
+        }
+    })
+}
+
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
+async fn scripted_px109_compaction_leg_mechanics() {
+    let (base, _seen) = scripted_model_fn(compaction_reply(30)).await;
+    let results = tempfile::tempdir().unwrap();
+    leg_px109_compaction(scripted_env_with(&base, results.path(), "glm-5.3-flash=0.15/0.50;ctx=64000;out=8192")).await;
+    let rec: Value = serde_json::from_str(&std::fs::read_to_string(results.path().join("px109-compaction.json")).unwrap()).unwrap();
+    assert_eq!(rec["passed"], true, "{rec:#}");
+}
+
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
+async fn scripted_px109_fallback_leg_mechanics() {
+    let (base, _seen) = scripted_model_fn(compaction_reply(30)).await;
+    let results = tempfile::tempdir().unwrap();
+    leg_px109_fallback(scripted_env_with(&base, results.path(), "glm-5.3-flash=0.15/0.50;ctx=64000;out=8192")).await;
+    let rec: Value = serde_json::from_str(&std::fs::read_to_string(results.path().join("px109-fallback.json")).unwrap()).unwrap();
     assert_eq!(rec["passed"], true, "{rec:#}");
 }
