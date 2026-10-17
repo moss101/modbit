@@ -15,6 +15,7 @@ import { CredentialStore } from "./credentials.js";
 import { platformState } from "./platform.js";
 import { observeStreamEvent, registerConversationHandlers } from "./conversation-ipc.js";
 import { registerComposerHandlers, requireSkillNames } from "./composer-ipc.js";
+import { registerChangesHandlers } from "./changes-ipc.js";
 import { registerProjectHandlers } from "./project-ipc.js";
 import { registerControlHandlers } from "./control-ipc.js";
 import { openedSettings, registerComputerHandlers } from "./computer-ipc.js";
@@ -782,6 +783,8 @@ const conversationRegistrar = {
 registerConversationHandlers(conversationRegistrar);
 // REQ-PX-063 / 064 / 068: projects and the worktree surface (list, removal, cleanup, apply-back).
 registerProjectHandlers(conversationRegistrar);
+// REQ-PX-048: the Changes app's revert, stage and Commit and push, each a typed Core command named for its session.
+registerChangesHandlers(conversationRegistrar);
 // REQ-PX-054..056: the composer's mode, preference, queue, interrupt, slash, model and attachment commands.
 registerComposerHandlers({
   handle: (channel, fn) => handle(channel, (_e, ...args) => fn(...args)),

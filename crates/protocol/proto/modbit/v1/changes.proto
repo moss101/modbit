@@ -1,0 +1,158 @@
+// The Changes app's actions (REQ-PX-048; docs/62 PX-048, docs/65 AFW-G05 and
+// AFW-G06): per-file and per-hunk revert through the Core's ChangeTransaction,
+// stage and unstage of paths, and Commit and push as ONE protected effect
+// bound to its exact intent.
+//
+// This file is new in its entirety; no field is added to an existing message.
+// Every task-scoped mutating command here is fenced by the session lease, and
+// the client names the session. Typed refusals come back as the command's
+// rejection code: STALE_REVISION (the file is not the revision the client
+// saw), DIRTY_CONFLICT (the path or the repository is in a state the action
+// would silently fight: staged changes, an unmerged path, a merge in
+// progress), PROTECTED_PATH, NO_REMOTE, NO_BRANCH, NOTHING_STAGED,
+// STALE_STAGE (the staged set is not the one the client showed), TASK_RUNNING.
+syntax = "proto3";
+
+package modbit.v1;
+
+import "modbit/v1/domain.proto";
+
+// ---- State (a read) ----
+
+// What the Changes app shows besides the review bundle's hunks: where each
+// changed path stands in the index, the branch and remote a commit would go
+// to, and the commit-and-push attempts the task has made.
+message GetChangesState {
+  Id task_id = 1;
+}
+
+message ChangedPathState {
+  string path = 1;
+  string status = 2;              // A | M | D: the working tree against HEAD
+  string staged = 3;              // "" | A | M | D: the index against HEAD
+  string unstaged = 4;            // "" | A | M | D: the working tree against the index
+  string file_revision = 5;       // sha256 of the working-tree bytes; "" when the file is deleted
+  bool unmerged = 6;
+  bool protected_path = 7;        // the workspace path policy forbids writing it
+}
+
+// One Commit and push the task has asked for, joined with its approval and
+// its receipts, so a Core that stopped mid-push still tells the truth after a
+// restart: AUTHORIZED_IN_DOUBT is an authorization receipt with no result.
+message ChangeEffectView {
+  string tool_call_id = 1;
+  string state = 2;               // APPROVAL_PENDING | AUTHORIZED_IN_DOUBT | COMPLETED | FAILED | DENIED
+  string approval_id = 3;
+  string intent_hash = 4;
+  string message = 5;
+  repeated string paths = 6;
+  string branch = 7;
+  string remote = 8;
+  bool push_only = 9;
+  string head_before = 10;
+  string commit = 11;             // the commit made; "" until the effect completes
+  string authorized_receipt = 12; // receipt_hash of the AUTHORIZED receipt; "" before it
+  string result_receipt = 13;     // receipt_hash of the result receipt; "" while in doubt
+  string result_status = 14;      // the result receipt's status
+  string code = 15;               // the typed refusal of a FAILED effect
+  string detail = 16;
+}
+
+message ChangesState {
+  uint64 workspace_revision = 1;
+  string branch = 2;              // "" when HEAD is detached
+  string head = 3;
+  string remote = 4;              // the remote a push goes to ("" when there is none)
+  string remote_url = 5;          // with credentials removed
+  repeated ChangedPathState paths = 6;
+  uint32 unpushed = 7;            // commits no remote-tracking branch of `remote` holds
+  bool task_running = 8;
+  bool merge_in_progress = 9;
+  string staged_digest = 10;      // binds the staged set an approval will cover
+  repeated ChangeEffectView effects = 11;
+  string identity = 12;           // the author a commit will carry, "" when the repository has none (the commit is then authored as Modbit)
+}
+
+// ---- Revert ----
+
+// Revert one file to HEAD, or one hunk of it, through the Core's
+// ChangeTransaction. The file revision is a precondition: a file edited since
+// the client read it is refused STALE_REVISION and nothing is written. A
+// checkpoint of the task is taken first, so the revert is undone like any
+// other restore.
+message RevertChanges {
+  Id task_id = 1;
+  string path = 2;
+  bool whole_file = 3;
+  uint32 hunk_index = 4;          // when !whole_file
+  string expected_file_revision = 5;
+}
+
+message RevertChangesAck {
+  string path = 1;
+  string action = 2;              // REVERTED_FILE | REVERTED_HUNK | DELETED_FILE | RESTORED_FILE
+  uint32 hunk_index = 3;
+  uint64 workspace_revision = 4;
+  uint64 previous_revision = 5;
+  string file_revision = 6;       // after; "" when the file no longer exists
+  string before_hash = 7;
+  string checkpoint_id = 8;       // restore it to undo the revert
+  uint64 offset = 9;
+  bool replayed = 10;
+}
+
+// ---- Stage ----
+
+message StagePath {
+  string path = 1;
+  string expected_file_revision = 2;  // staging takes the file as the client saw it; "" for an unstage
+}
+
+message StageChanges {
+  Id task_id = 1;
+  repeated StagePath paths = 2;
+  bool stage = 3;                 // false: unstage
+}
+
+message StageChangesAck {
+  repeated string paths = 1;
+  bool staged = 2;
+  string staged_digest = 3;
+  uint64 offset = 4;
+}
+
+// ---- Commit and push ----
+
+// Commit the staged set and push the current branch: one protected effect.
+// The first call answers APPROVAL_PENDING with the exact intent (message,
+// files, branch, remote, the HEAD it commits onto, the staged digest) and
+// nothing has run; after ResolveApproval the same call runs it. With nothing
+// staged and commits the remote lacks, the intent is a push alone (push_only).
+message CommitAndPush {
+  Id task_id = 1;
+  string message = 2;
+  string remote = 3;              // "" = the default remote
+  string expected_head = 4;       // the HEAD the client showed; "" = not checked
+  string expected_staged_digest = 5;  // the staged set the client showed; "" = not checked
+}
+
+message CommitAndPushAck {
+  string status = 1;              // APPROVAL_PENDING | COMPLETED | FAILED | DENIED
+  string approval_id = 2;
+  string intent_hash = 3;
+  string tool_call_id = 4;
+  string message = 5;
+  repeated string paths = 6;
+  string branch = 7;
+  string remote = 8;
+  string remote_url = 9;          // credentials removed
+  string head_before = 10;
+  string commit = 11;
+  bool pushed = 12;
+  bool push_only = 13;
+  repeated string effect_receipt_ids = 14;
+  bool replayed = 15;
+  string code = 16;               // the typed refusal of a FAILED call
+  string detail = 17;
+  string staged_digest = 18;
+}

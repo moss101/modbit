@@ -17,8 +17,10 @@
 use std::path::{Path, PathBuf};
 
 pub mod apply;
+pub mod changes;
 pub mod diff;
 mod harden;
+pub use changes::{StagedEntry, StagedSet};
 pub use diff::{FileDiff, Hunk, apply_selected, parse_unified};
 pub use harden::{
     Neutralized, redact_url_credentials, validate_branch_syntax, validate_remote, validate_revision,
