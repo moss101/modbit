@@ -7,7 +7,7 @@
 
 use sha2::{Digest, Sha256};
 
-use crate::{Error, Repo, Result, harden, run, run_bytes};
+use crate::{Error, Repo, Result, harden, redact_url_credentials, run, run_bytes};
 
 /// One path the index holds a change for, relative to `HEAD`.
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -217,7 +217,10 @@ impl Repo {
     }
 
     /// Push `branch` to the same-named branch of `remote` (never forced),
-    /// with `envs` set for this one process.
+    /// with `envs` set for this one process. A refused push is an
+    /// [`Error::Git`] whose text carries git's stderr and its porcelain status
+    /// lines (`! ref [rejected] (fetch first)`), so a rejection is recognizable
+    /// whatever advice the installed git prints.
     pub fn push_with_env(
         &self,
         remote: &str,
@@ -235,6 +238,32 @@ impl Repo {
             remote,
             &refspec,
         ];
-        run_bytes(&self.dir, &args, envs).map(|b| String::from_utf8_lossy(&b).into_owned())
+        let mut cmd = harden::command(&self.dir, &args)?;
+        cmd.args(args);
+        for (k, v) in envs {
+            cmd.env(k, v);
+        }
+        let out = cmd.output().map_err(Error::Spawn)?;
+        let stdout = String::from_utf8_lossy(&out.stdout).into_owned();
+        if out.status.success() {
+            return Ok(stdout);
+        }
+        let stderr = String::from_utf8_lossy(&out.stderr);
+        if harden::is_dubious_ownership(&stderr) {
+            return Err(Error::UnsafeRepository(self.dir.display().to_string()));
+        }
+        let status_lines: Vec<&str> = stdout
+            .lines()
+            .filter(|l| {
+                l.starts_with('!') || l.contains("[rejected]") || l.contains("[remote rejected]")
+            })
+            .collect();
+        Err(Error::Git {
+            args: args.iter().map(|a| redact_url_credentials(a)).collect(),
+            code: out.status.code(),
+            stderr: redact_url_credentials(
+                format!("{}\n{}", stderr.trim(), status_lines.join("\n")).trim(),
+            ),
+        })
     }
 }
