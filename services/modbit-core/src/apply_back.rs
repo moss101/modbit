@@ -101,7 +101,7 @@ pub(crate) fn fault_point(point: &str) {
     }
 }
 
-fn protected_fn(origin: &Path) -> Result<modbit_workspace::PathPolicy, Refusal> {
+pub(crate) fn protected_fn(origin: &Path) -> Result<modbit_workspace::PathPolicy, Refusal> {
     modbit_workspace::PathPolicy::new(origin, &[]).map_err(|e| refuse("PATH_POLICY", e.to_string()))
 }
 
@@ -311,7 +311,7 @@ fn conflict_view(
 
 // ---- the command ----
 
-fn digest_of(parts: &[&str]) -> String {
+pub(crate) fn digest_of(parts: &[&str]) -> String {
     let mut h = Sha256::new();
     for p in parts {
         h.update(p.as_bytes());
@@ -321,7 +321,7 @@ fn digest_of(parts: &[&str]) -> String {
 }
 
 /// What a governed call produced.
-enum Called {
+pub(crate) enum Called {
     Pending {
         approval_id: String,
         intent_hash: String,
@@ -333,7 +333,7 @@ enum Called {
 /// Invoke `tool` for `task` through the pipeline (approval, journal, receipt),
 /// re-entering the call an earlier attempt left open.
 #[allow(clippy::too_many_arguments)]
-async fn call_tool(
+pub(crate) async fn call_tool(
     core: &Arc<Core>,
     task: &modbit_domain::task::Task,
     tool: &str,

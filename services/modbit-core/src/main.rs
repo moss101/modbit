@@ -26,6 +26,7 @@ mod browser_cloud;
 mod browser_observer;
 mod budgets;
 mod capacity;
+mod changes;
 mod checkpoint;
 mod checkpoint_gc;
 mod ci_evidence;

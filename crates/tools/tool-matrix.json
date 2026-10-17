@@ -198,6 +198,20 @@
       "test": "px_066_apply_is_a_protected_effect_bound_to_its_intent_and_undo_is_exact"
     },
     {
+      "tool": "git.changes.commit_push",
+      "family": "task",
+      "source_behaviors": [
+        "commit the staged files and push the current branch as one approved effect"
+      ],
+      "owner": "Worktree Manager",
+      "effect": "ExternalSideEffect",
+      "capabilities": [
+        "git.commit",
+        "git.push"
+      ],
+      "test": "px_048_commit_and_push_is_one_protected_effect_bound_to_its_exact_intent"
+    },
+    {
       "tool": "git.apply.undo",
       "family": "task",
       "source_behaviors": [

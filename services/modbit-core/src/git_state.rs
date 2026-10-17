@@ -41,6 +41,8 @@ pub(crate) struct CoreGitState {
     /// `.modbit/verification.json` as the task pinned it at its start.
     pub verification_json: Option<Option<String>>,
     pub cancel: Option<tokio_util::sync::CancellationToken>,
+    /// The forge this Core may reach, for the push token of a Commit and push.
+    pub forge: Option<Arc<modbit_tools::forge::ForgeConfig>>,
 }
 
 impl CoreGitState {
@@ -147,6 +149,7 @@ impl GitStatePort for CoreGitState {
                     )
                     .await
                 }
+                "changes.commit_push" => crate::changes::exec_commit_push(self, args).await,
                 "worktree.created" => self.created(args).await,
                 "worktree.closed" => self.closed(args).await,
                 other => Err((
