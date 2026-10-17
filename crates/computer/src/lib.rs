@@ -18,6 +18,8 @@
 //! * [`frame`] - screenshot artifacts: masking, the content-aware codec, memo.
 //! * [`actuator`] - the Core's client of the actuator RPC.
 //! * [`ops`] - the tool calls, parsed strictly.
+//! * [`supply`] - the actuator's supply chain: signed hash-pinned manifest,
+//!   verification before every spawn, process identity, rollback.
 //! * [`runtime`] - sessions, grants, handles, the latch, the watchdog, stop.
 //!
 //! Dependency direction: this crate depends on the browser crate's shared
@@ -34,6 +36,7 @@ pub mod ops;
 pub mod policy;
 pub mod port;
 pub mod runtime;
+pub mod supply;
 pub mod taxonomy;
 pub mod tree;
 

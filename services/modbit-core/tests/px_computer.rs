@@ -6,6 +6,12 @@
 //! `ResolveApproval`, and a scripted OpenAI-compatible model.
 mod px_common;
 
+/// The AppKit fixture application of the macOS helper's tests (built with
+/// `swiftc`), shared by path with that crate's own tests.
+#[cfg(target_os = "macos")]
+#[path = "../../modbit-actuator-macos/tests/common/fixture_app.rs"]
+mod fixture_app;
+
 use std::path::PathBuf;
 use std::sync::{Arc, Mutex};
 use std::time::Duration;
@@ -268,6 +274,8 @@ struct Rig {
 
 /// Options for one run.
 struct Opts {
+    /// Drive the real macOS helper (PX-071) instead of the fixture actuator.
+    helper: Option<PathBuf>,
     desktop: Option<Value>,
     env: Vec<(&'static str, String)>,
     profile: &'static str,
@@ -278,6 +286,7 @@ struct Opts {
 impl Default for Opts {
     fn default() -> Self {
         Self {
+            helper: None,
             desktop: None,
             env: vec![],
             profile: "local_trusted",
@@ -364,7 +373,13 @@ async fn setup_model(opts: Opts, base: String, seen: Seen, decide: Decider) -> R
     );
     let dir = tempfile::tempdir().unwrap();
     let mut env: Vec<(String, String)> = model_env(&base);
-    if opts.actuator {
+    if let Some(h) = &opts.helper {
+        // The real helper takes no fixture arguments (no desktop, no pid file).
+        env.push((
+            "MODBIT_COMPUTER_ACTUATOR".into(),
+            h.to_string_lossy().into_owned(),
+        ));
+    } else if opts.actuator {
         env.push((
             "MODBIT_COMPUTER_ACTUATOR".into(),
             fixture_bin().to_string_lossy().into_owned(),
@@ -3382,6 +3397,301 @@ async fn qual_px_075_the_child_resumes_by_identity_after_a_restart_and_needs_a_n
     let env = child_envelope(&rig).await;
     assert_eq!(env["status"], "COMPLETED", "{env}");
     assert_eq!(env["child_task_id"], child_task);
+}
+
+// ---------------------------------------------------------------------------
+// PX-071 / PX-072: the REAL macOS helper behind the REAL Core. The fixture
+// actuator above proves the Core against a scripted desktop on every OS; these
+// prove the same Core against the helper that touches the machine. They run on
+// macOS only. The first two need no operating-system permission; the last
+// needs Accessibility and Screen Recording for the process that runs the
+// tests and an unlocked screen, so it is `#[ignore]`d (run it with
+// services/modbit-actuator-macos/scripts/ax-tests.sh).
+// ---------------------------------------------------------------------------
+
+/// The real helper, built if the test binary was built without it.
+#[cfg(target_os = "macos")]
+fn helper_bin() -> PathBuf {
+    let core = PathBuf::from(env!("CARGO_BIN_EXE_modbit-core"));
+    let dir = core.parent().unwrap().to_path_buf();
+    let p = dir.join("modbit-actuator-macos");
+    if !p.exists() {
+        let status = std::process::Command::new(env!("CARGO"))
+            .args(["build", "-p", "modbit-actuator-macos", "--target-dir"])
+            .arg(dir.parent().unwrap())
+            .current_dir(env!("CARGO_MANIFEST_DIR"))
+            .status()
+            .unwrap();
+        assert!(status.success(), "building the macOS helper");
+    }
+    p
+}
+
+/// What the Core says about its actuator, in full.
+#[cfg(target_os = "macos")]
+async fn runtime_view(rig: &Rig) -> modbit_protocol::v1::ComputerRuntimeView {
+    use modbit_protocol::v1::{ComputerRuntimeView, GetComputerRuntime};
+    let mut c = rig.core.client().await;
+    let ack = c
+        .command(envelope(
+            rand_id(),
+            "GetComputerRuntime",
+            GetComputerRuntime {
+                task_id: Some(rig.task.clone()),
+            }
+            .encode_to_vec(),
+        ))
+        .await
+        .unwrap();
+    Client::result::<ComputerRuntimeView>(&ack).unwrap()
+}
+
+/// QUAL-PX-071: the real helper attaches to the real Core (its welcome, its
+/// platform, its pid are what the Core reports) and, with the permissions
+/// absent, every call the Core makes is refused with the typed code and the
+/// documented escalation; nothing is actuated and no control session opens.
+#[cfg(target_os = "macos")]
+#[tokio::test(flavor = "multi_thread")]
+#[ignore = "macOS real-helper test (needs no permission); run serially by services/modbit-actuator-macos/scripts/ax-tests.sh so it cannot starve the timing-sensitive Stop tests of this suite"]
+async fn qual_px_071_the_real_helper_serves_the_real_core_and_a_missing_permission_is_a_typed_refusal()
+ {
+    let app = fixture_app::Fixture::launch();
+    let steps = vec![
+        fx(call("computer.apps", json!({}))),
+        start(fixture_app::BUNDLE_ID),
+    ];
+    let (rig, o) = quick(
+        Opts {
+            helper: Some(helper_bin()),
+            // Permissions forced OFF for this run (it can only remove capability).
+            env: vec![(
+                "MODBIT_ACTUATOR_DENY",
+                "accessibility,screen_recording".into(),
+            )],
+            ..Opts::default()
+        },
+        steps,
+        approve_all(),
+    )
+    .await;
+    let v = runtime_view(&rig).await;
+    assert!(v.attached, "{v:?}");
+    assert_eq!(v.actuator_name, "modbit-actuator-macos");
+    assert_eq!(v.platform, "macos");
+    assert_ne!(v.actuator_pid, 0);
+    assert!(o[0].0.starts_with("status: SUCCESS"), "{}", o[0].0);
+    expect_refusal(&o, 1, "PERMISSION_REQUIRED", "ask_user");
+    assert!(
+        o[1].0.contains("Accessibility"),
+        "the refusal names the permission: {}",
+        o[1].0
+    );
+    let evs = rig.events().await;
+    assert!(
+        of(&evs, "ComputerSessionStarted").is_empty(),
+        "no control session opened without the permission"
+    );
+    assert!(of(&evs, "ComputerActionPerformed").is_empty());
+    assert_eq!(app.get("pressed").as_deref(), Some("0"));
+    assert!(app.keys().is_empty());
+}
+
+/// A signed bundle holding copies of the real helper, one directory per version.
+#[cfg(target_os = "macos")]
+struct HelperBundle {
+    dir: tempfile::TempDir,
+}
+
+#[cfg(target_os = "macos")]
+impl HelperBundle {
+    fn new(versions: &[(&str, Option<&str>)]) -> Self {
+        use modbit_computer::supply::{self, HelperEntry, KIND, Manifest, SCHEMA};
+        use sha2::Digest;
+        let dir = tempfile::tempdir().unwrap();
+        std::fs::create_dir_all(dir.path().join("helpers")).unwrap();
+        let mut helpers = vec![];
+        for (v, rollback) in versions {
+            let rel = format!("helpers/modbit-actuator-macos-{v}");
+            std::fs::copy(helper_bin(), dir.path().join(&rel)).unwrap();
+            let bytes = std::fs::read(dir.path().join(&rel)).unwrap();
+            helpers.push(HelperEntry {
+                id: "modbit-actuator-macos".into(),
+                version: (*v).into(),
+                path: rel,
+                sha256: hex::encode(sha2::Sha256::digest(&bytes)),
+                size: bytes.len() as u64,
+                platform: supply::this_platform().into(),
+                arch: "universal".into(),
+                min_core_version: "0.0.0".into(),
+                protocol_major: 1,
+                require_signature: false,
+                designated_requirement: None,
+                rollback_to: rollback.map(str::to_owned),
+            });
+        }
+        let sk = ed25519_dalek::SigningKey::from_bytes(&[5; 32]);
+        let m = Manifest {
+            schema: SCHEMA,
+            kind: KIND.into(),
+            helpers,
+            sbom: vec![],
+        };
+        std::fs::write(
+            dir.path().join("actuator-manifest.json"),
+            serde_json::to_string(&supply::sign_manifest(&m, &sk)).unwrap(),
+        )
+        .unwrap();
+        std::fs::write(
+            dir.path().join("trusted-keys.json"),
+            serde_json::to_string(&vec![supply::pinned_for(&sk)]).unwrap(),
+        )
+        .unwrap();
+        Self { dir }
+    }
+
+    fn file(&self, v: &str) -> PathBuf {
+        self.dir
+            .path()
+            .join(format!("helpers/modbit-actuator-macos-{v}"))
+    }
+
+    fn tamper(&self, v: &str) {
+        let mut b = std::fs::read(self.file(v)).unwrap();
+        let at = b.len() / 4;
+        b[at] ^= 0xFF;
+        std::fs::write(self.file(v), b).unwrap();
+    }
+
+    fn opts(&self) -> Opts {
+        Opts {
+            actuator: false,
+            env: vec![
+                (
+                    "MODBIT_COMPUTER_ACTUATOR_MANIFEST",
+                    self.dir
+                        .path()
+                        .join("actuator-manifest.json")
+                        .to_string_lossy()
+                        .into_owned(),
+                ),
+                (
+                    "MODBIT_COMPUTER_ACTUATOR_KEYS",
+                    self.dir
+                        .path()
+                        .join("trusted-keys.json")
+                        .to_string_lossy()
+                        .into_owned(),
+                ),
+            ],
+            ..Opts::default()
+        }
+    }
+}
+
+/// QUAL-PX-072: the Core launches the bundled helper only through the signed,
+/// hash-pinned manifest: the verified helper runs (and the pid is that file);
+/// a modified newest helper is never executed and the previous pinned one
+/// takes over; when nothing verifies the Core has no actuator, says why in the
+/// typed reason, and the computer tools are not offered.
+#[cfg(target_os = "macos")]
+#[tokio::test(flavor = "multi_thread")]
+#[ignore = "macOS real-helper test (needs no permission); run serially by services/modbit-actuator-macos/scripts/ax-tests.sh so it cannot starve the timing-sensitive Stop tests of this suite"]
+async fn qual_px_072_the_core_launches_only_a_helper_the_signed_manifest_pins_and_rolls_back() {
+    let probe = vec![fx(call("fs.read", json!({"path": "README.md"})))];
+    // Intact: the newest verified helper is the process.
+    let b = HelperBundle::new(&[("0.1.0", None), ("0.2.0", Some("0.1.0"))]);
+    let (rig, _) = quick(b.opts(), probe.clone(), approve_all()).await;
+    let v = runtime_view(&rig).await;
+    assert!(v.attached, "{v:?}");
+    assert_eq!(
+        std::fs::canonicalize(modbit_computer::supply::process_exe(v.actuator_pid).unwrap())
+            .unwrap(),
+        std::fs::canonicalize(b.file("0.2.0")).unwrap(),
+        "the running helper is the pinned file"
+    );
+
+    // The newest is modified after the manifest was signed: it never runs; the previous pinned one does.
+    let b = HelperBundle::new(&[("0.1.0", None), ("0.2.0", Some("0.1.0"))]);
+    b.tamper("0.2.0");
+    let (rig, _) = quick(b.opts(), probe.clone(), approve_all()).await;
+    let v = runtime_view(&rig).await;
+    assert!(v.attached, "rolled back: {v:?}");
+    assert_eq!(
+        std::fs::canonicalize(modbit_computer::supply::process_exe(v.actuator_pid).unwrap())
+            .unwrap(),
+        std::fs::canonicalize(b.file("0.1.0")).unwrap(),
+        "the previous pinned helper is the process"
+    );
+
+    // Nothing verifies: no actuator, a typed reason, no computer tools.
+    let b = HelperBundle::new(&[("0.1.0", None), ("0.2.0", Some("0.1.0"))]);
+    b.tamper("0.1.0");
+    b.tamper("0.2.0");
+    let (rig, _) = quick(b.opts(), probe.clone(), approve_all()).await;
+    let v = runtime_view(&rig).await;
+    assert!(v.configured && !v.attached, "{v:?}");
+    assert!(
+        v.detail.contains("NO_VERIFIED_HELPER") && v.detail.contains("DIGEST_MISMATCH"),
+        "{}",
+        v.detail
+    );
+    let offered = tool_names_offered(&rig).concat().join(" ") + &search_catalog(&rig);
+    assert!(!offered.contains("computer"), "{offered}");
+}
+
+/// QUAL-PX-071 end to end on a real Mac: the real Core, the real helper, a real
+/// AppKit application. An accessibility-first task completes with no
+/// coordinate; the application itself reports the press; the secure field is
+/// masked in the frame the model sees and its secret is in no event or object.
+/// Needs Accessibility and Screen Recording and an unlocked screen.
+#[cfg(target_os = "macos")]
+#[tokio::test(flavor = "multi_thread")]
+#[ignore = "needs Accessibility + Screen Recording for this process and an unlocked screen: services/modbit-actuator-macos/scripts/ax-tests.sh"]
+async fn qual_px_071_the_real_core_drives_a_real_application_through_the_real_helper() {
+    let app = fixture_app::Fixture::launch();
+    let steps = vec![
+        start(fixture_app::BUNDLE_ID),
+        fx(call("computer.state", json!({}))),
+        st(|s| {
+            call(
+                "computer.set_value",
+                json!({"element": s.el("Name"), "value": "Ada Lovelace"}),
+            )
+        }),
+        st(|s| call("computer.press", json!({"element": s.el("Increment")}))),
+        fx(call("computer.screenshot", json!({}))),
+        fx(call("computer.state", json!({}))),
+        fx(call("computer.release", json!({}))),
+    ];
+    let mut rig = run(
+        Opts {
+            helper: Some(helper_bin()),
+            ..Opts::default()
+        },
+        steps,
+        approve_all(),
+    )
+    .await;
+    rig.finish().await;
+    let outs = rig.outs();
+    for (i, (t, _)) in outs.iter().enumerate() {
+        assert!(t.starts_with("status: SUCCESS"), "call {i}: {t}");
+    }
+    // The application says it happened, from outside the accessibility API.
+    assert_eq!(app.get("pressed").as_deref(), Some("1"));
+    assert_eq!(outs[3].1["modality"], "ax", "no coordinate was used");
+    // The frame: the helper masked the password field; the Core had nothing left to mask.
+    let shot = &outs[4].1;
+    assert_eq!(shot["masked"]["by_actuator"], 1, "{shot}");
+    assert_eq!(shot["masked"]["by_core"], 0, "{shot}");
+    let last = outs[5].1["tree"].as_str().unwrap();
+    assert!(last.contains("count=1"), "{last}");
+    assert!(last.contains("value=(withheld)"), "{last}");
+    let evs = rig.events().await;
+    let all = serde_json::to_string(&evs).unwrap();
+    assert!(!all.contains("hunter2"), "the secret is in an event");
+    assert_eq!(objects_containing(&rig, "hunter2"), 0);
+    assert_eq!(of(&evs, "ComputerSessionClosed").len(), 1);
 }
 
 impl Rig {

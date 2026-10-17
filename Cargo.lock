@@ -2037,6 +2037,21 @@ dependencies = [
 ]
 
 [[package]]
+name = "modbit-actuator-macos"
+version = "0.0.0"
+dependencies = [
+ "ed25519-dalek",
+ "hex",
+ "modbit-computer",
+ "modbit-protocol",
+ "png",
+ "serde_json",
+ "sha2 0.11.0",
+ "tempfile",
+ "tokio",
+]
+
+[[package]]
 name = "modbit-automation"
 version = "0.0.0"
 dependencies = [
@@ -2264,6 +2279,8 @@ dependencies = [
 name = "modbit-computer"
 version = "0.0.0"
 dependencies = [
+ "base64",
+ "ed25519-dalek",
  "hex",
  "modbit-browser",
  "modbit-domain",

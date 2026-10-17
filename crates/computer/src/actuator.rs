@@ -27,6 +27,8 @@ use modbit_protocol::framing::{FrameError, read_message, write_message};
 use modbit_protocol::v1 as wire;
 use sha2::{Digest, Sha256};
 use tokio::io::{AsyncRead, AsyncWrite};
+
+use crate::supply::{self, Attempt, Reject, SupplyConfig, SupplyError, SupplyReport, Verified};
 use tokio::sync::{Mutex as AsyncMutex, broadcast, oneshot};
 
 /// The protocol major version this Core speaks.
@@ -53,6 +55,12 @@ pub struct ActuatorConfig {
     pub env: Vec<(String, String)>,
     /// Where its standard error goes (appended); `None` = discarded.
     pub log_path: Option<PathBuf>,
+    /// A bundled, hash-pinned helper (PX-072): when set, the executable is
+    /// chosen and verified from the signed manifest before every spawn (and
+    /// `executable` is not used); the process identity is checked before the
+    /// Core sends its hello; a helper that does not verify rolls back to the
+    /// manifest's previous entry.
+    pub supply: Option<SupplyConfig>,
 }
 
 /// What a welcome told the Core.
@@ -101,6 +109,11 @@ pub enum LaunchError {
     /// The actuator refused this Core.
     #[error("the actuator refused this Core: {0}")]
     Refused(String),
+    /// No helper passed verification (PX-072): nothing was launched, or the
+    /// process that started was not the pinned file. The text is
+    /// `<CODE>: ...` with every candidate's typed reason.
+    #[error("the actuator could not be verified: {0}")]
+    Unverified(String),
 }
 
 /// A connection to an actuator. Object-safe so the runtime can be tested
@@ -135,6 +148,12 @@ pub fn token_proof(token: &[u8]) -> String {
 
 type Pending = Mutex<HashMap<u64, oneshot::Sender<wire::ActuatorResponse>>>;
 
+/// Why one candidate launch did not produce a connection.
+enum OneFail {
+    Launch(LaunchError),
+    Identity(Reject),
+}
+
 struct Shared {
     info: ActuatorInfo,
     writer: AsyncMutex<Box<dyn AsyncWrite + Send + Unpin>>,
@@ -144,6 +163,7 @@ struct Shared {
     events: broadcast::Sender<wire::ActuatorEvent>,
     closed: tokio::sync::watch::Sender<bool>,
     child: Mutex<Option<tokio::process::Child>>,
+    report: std::sync::OnceLock<SupplyReport>,
 }
 
 /// An actuator connection over a pair of byte streams, normally the standard
@@ -156,13 +176,87 @@ pub struct ProcessActuator {
 impl ProcessActuator {
     /// Launch `config` and attach.
     ///
+    /// With `config.supply` set, the helper is the bundled one the signed
+    /// manifest pins: each candidate (newest first, then its rollback chain)
+    /// is verified right before it is spawned, its process identity is
+    /// checked before the hello is sent, and a candidate that fails any step
+    /// is recorded and the next one tried. Nothing unverified ever receives
+    /// the launch token.
+    ///
     /// # Errors
-    /// The process did not start, the handshake failed, or it refused.
+    /// The process did not start, the handshake failed, it refused, or no
+    /// bundled helper could be verified.
     pub async fn launch(
         config: &ActuatorConfig,
         handshake_timeout: Duration,
     ) -> Result<Self, LaunchError> {
-        let mut command = tokio::process::Command::new(&config.executable);
+        let Some(supply_cfg) = &config.supply else {
+            return Self::launch_one(config, &config.executable, None, handshake_timeout)
+                .await
+                .map_err(|f| match f {
+                    OneFail::Launch(e) => e,
+                    OneFail::Identity(r) => LaunchError::Unverified(r.to_string()),
+                });
+        };
+        let unverified = |e: &SupplyError| LaunchError::Unverified(e.to_string());
+        let manifest = supply::load_manifest(supply_cfg).map_err(|e| unverified(&e))?;
+        let chain = supply::candidates(&manifest).map_err(|e| unverified(&e))?;
+        let dir = supply::bundle_dir(supply_cfg);
+        let mut rejected: Vec<Attempt> = Vec::new();
+        for entry in chain {
+            // Verified NOW, immediately before the spawn.
+            let verified = match supply::verify_entry(&entry, &dir, supply_cfg) {
+                Ok(v) => v,
+                Err(reason) => {
+                    rejected.push(Attempt {
+                        version: entry.version,
+                        reason,
+                    });
+                    continue;
+                }
+            };
+            match Self::launch_one(config, &verified.path, Some(&verified), handshake_timeout).await
+            {
+                Ok(me) => {
+                    let _ = me.shared.report.set(SupplyReport {
+                        used: verified,
+                        identity_checked: supply::IDENTITY_CHECKED,
+                        rejected,
+                    });
+                    return Ok(me);
+                }
+                Err(f) => {
+                    let reason = match f {
+                        OneFail::Identity(r) => r,
+                        OneFail::Launch(LaunchError::Refused(m)) => Reject::Refused(m),
+                        OneFail::Launch(LaunchError::Handshake(m)) => Reject::Handshake(m),
+                        OneFail::Launch(LaunchError::Spawn(m)) => Reject::Spawn(m),
+                        OneFail::Launch(LaunchError::Unverified(m)) => Reject::ProcessIdentity(m),
+                    };
+                    rejected.push(Attempt {
+                        version: entry.version,
+                        reason,
+                    });
+                }
+            }
+        }
+        Err(unverified(&SupplyError::NoVerifiedHelper(rejected)))
+    }
+
+    /// What a launch of a bundled helper settled on: the helper in use and
+    /// every candidate rejected on the way (non-empty = it rolled back).
+    #[must_use]
+    pub fn supply_report(&self) -> Option<&SupplyReport> {
+        self.shared.report.get()
+    }
+
+    async fn launch_one(
+        config: &ActuatorConfig,
+        executable: &std::path::Path,
+        expect: Option<&Verified>,
+        handshake_timeout: Duration,
+    ) -> Result<Self, OneFail> {
+        let mut command = tokio::process::Command::new(executable);
         // The actuator never holds a credential of this Core: it cannot
         // print what it was never given.
         for (k, _) in std::env::vars() {
@@ -182,6 +276,14 @@ impl ProcessActuator {
         for (k, v) in &config.env {
             command.env(k, v);
         }
+        // The per-launch token exists before the process does; the helper is
+        // told only its hash, so a stream that carries any other token is
+        // refused by the helper itself (a forged hello).
+        let token: Vec<u8> = (0..32).map(|_| rand::random::<u8>()).collect();
+        command.env(
+            "MODBIT_ACTUATOR_TOKEN_SHA256",
+            hex::encode(Sha256::digest(&token)),
+        );
         let stderr = match &config.log_path {
             Some(p) => {
                 if let Some(dir) = p.parent() {
@@ -205,12 +307,34 @@ impl ProcessActuator {
             .stderr(stderr)
             .kill_on_drop(true)
             .spawn()
-            .map_err(|e| LaunchError::Spawn(format!("{}: {e}", config.executable.display())))?;
+            .map_err(|e| {
+                OneFail::Launch(LaunchError::Spawn(format!("{}: {e}", executable.display())))
+            })?;
         let (Some(stdin), Some(stdout)) = (child.stdin.take(), child.stdout.take()) else {
-            return Err(LaunchError::Spawn("no standard streams".into()));
+            return Err(OneFail::Launch(LaunchError::Spawn(
+                "no standard streams".into(),
+            )));
         };
         let pid = child.id();
-        let token: Vec<u8> = (0..32).map(|_| rand::random::<u8>()).collect();
+        // Process identity, before the hello: the running image is the file
+        // the manifest pins (CUC-E03).
+        if let (Some(v), Some(p)) = (expect, pid) {
+            // A freshly spawned child can still show its parent's image for
+            // a moment (the window between fork and exec on some kernels):
+            // look again for up to a second before calling it a mismatch.
+            let mut verdict = supply::check_process(p, v);
+            for _ in 0..40 {
+                if verdict.is_ok() {
+                    break;
+                }
+                tokio::time::sleep(Duration::from_millis(25)).await;
+                verdict = supply::check_process(p, v);
+            }
+            if let Err(r) = verdict {
+                let _ = child.start_kill();
+                return Err(OneFail::Identity(r));
+            }
+        }
         match Self::establish(
             Box::new(stdout),
             Box::new(stdin),
@@ -228,7 +352,7 @@ impl ProcessActuator {
             }
             Err(e) => {
                 let _ = child.start_kill();
-                Err(e)
+                Err(OneFail::Launch(e))
             }
         }
     }
@@ -315,6 +439,7 @@ impl ProcessActuator {
             events,
             closed,
             child: Mutex::new(None),
+            report: std::sync::OnceLock::new(),
         });
         let s2 = Arc::clone(&shared);
         tokio::spawn(async move {
