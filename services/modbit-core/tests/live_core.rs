@@ -303,6 +303,7 @@ struct Ev {
     payload: Value,
     recorded_ms: i64,
     aggregate: Vec<u8>,
+    task: Option<String>,
     /// When this process received it (ms since the epoch); 0 for a replay.
     received_ms: i64,
 }
@@ -324,6 +325,7 @@ fn ev_of(e: modbit_protocol::v1::StoredEventFrame) -> Ev {
         payload: p["payload"].clone(),
         recorded_ms: at.seconds * 1000 + i64::from(at.nanos) / 1_000_000,
         aggregate: ev.aggregate_id.map(|i| i.value).unwrap_or_default(),
+        task: ev.task_id.map(|t| hex::encode(t.value)),
         received_ms: now_ms(),
     }
 }
@@ -400,6 +402,12 @@ async fn until_events(
         );
         tokio::time::sleep(Duration::from_millis(40)).await;
     }
+}
+
+/// The events that belong to one task.
+fn of_task(events: Vec<Ev>, task: &Id) -> Vec<Ev> {
+    let hex = hex::encode(&task.value);
+    events.into_iter().filter(|e| e.task.as_deref() == Some(hex.as_str())).collect()
 }
 
 fn of_kind<'a>(events: &'a [Ev], kind: &str) -> Vec<&'a Ev> {
@@ -2037,6 +2045,150 @@ async fn live_px101_pause() {
 }
 
 // ---------------------------------------------------------------------------
+// QUAL-PX-051 (and the Core half of PX-100): task modes enforced by the Kernel
+// ---------------------------------------------------------------------------
+
+use modbit_protocol::v1::{InvokeTool, SetTaskMode, TaskMode, TaskModeChanged, ToolInvoked};
+
+impl Fx {
+    /// One tool call through the Capability Kernel on a task, as a client
+    /// makes it (not the model).
+    async fn invoke(&mut self, task: &Id, tool: &str, args: Value) -> ToolInvoked {
+        self.ok(
+            "InvokeTool",
+            InvokeTool {
+                task_id: Some(task.clone()),
+                tool_name: tool.into(),
+                arguments_json: args.to_string(),
+                tool_call_id: Some(rand_id()),
+                output_budget_bytes: 65_536,
+            },
+            true,
+        )
+        .await
+    }
+
+    async fn set_mode(&mut self, task: &Id, mode: TaskMode) -> TaskModeChanged {
+        self.ok(
+            "SetTaskMode",
+            SetTaskMode {
+                task_id: Some(task.clone()),
+                mode: mode as i32,
+                reason: "live leg".into(),
+            },
+            true,
+        )
+        .await
+    }
+}
+
+/// The denials of the Capability Kernel on the log, as their decision codes.
+fn denials(events: &[Ev]) -> Vec<String> {
+    of_kind(events, "ToolCallPolicyDecision")
+        .iter()
+        .filter(|e| e.payload["allowed"] == false)
+        .map(|e| e.payload["decision"].as_str().unwrap_or_default().to_owned())
+        .collect()
+}
+
+const BUGGY_CALC: &str = "def double(x):\n    return x + x + 1\n";
+const CALC_TEST: &str = "import unittest\nfrom calc import double\n\n\nclass DoubleTest(unittest.TestCase):\n    def test_double(self):\n        self.assertEqual(double(3), 6)\n\n\nif __name__ == '__main__':\n    unittest.main()\n";
+const UNITTEST_CHECK: &str =
+    "{\"commands\": [{\"id\": \"unit\", \"argv\": [\"python3\", \"-m\", \"unittest\", \"-q\"]}]}";
+
+/// With the live gateway: in ASK a prompt to edit a file yields a refusal by
+/// the Kernel and no write (the model is not even offered one, and a call the
+/// client makes anyway is denied); in PLAN the agent records a plan, writes
+/// nothing, and once the plan is accepted the task is an AGENT with the plan
+/// attached and the write lands; in DEBUG a fix is not accepted before the
+/// failure is reproduced.
+async fn leg_px051_modes(env: Arc<LiveEnv>) {
+    let mut leg = Leg::begin(&env, "px051", "modes", 0.20);
+    let mut fx = Fx::new(
+        &env,
+        &[
+            ("a.txt", "alpha\n"),
+            ("calc.py", BUGGY_CALC),
+            ("test_calc.py", CALC_TEST),
+            (".modbit/verification.json", UNITTEST_CHECK),
+        ],
+    )
+    .await;
+    // ---- ASK ----
+    let ask = fx.task_in_mode("Create the file hello.txt containing the text hi, using change.apply.", TaskMode::Ask as i32).await;
+    fx.start(&ask, 8, 3).await;
+    let st = fx.wait(&ask, 240).await;
+    leg.check("ask_run_ended", !st.loop_alive, format!("{st:?}"));
+    let ev = of_task(fx.events().await, &ask);
+    leg.check("ask_wrote_nothing", !Path::new(&fx.root).join("hello.txt").exists() && of_kind(&ev, "FileChanged").is_empty(), "hello.txt exists or a FileChanged was logged");
+    let posture_denials = denials(&ev).into_iter().filter(|d| d.starts_with("MODE_POSTURE")).count();
+    leg.count("ask_model_write_attempts_refused_by_the_kernel", posture_denials);
+    leg.check("ask_denials_are_the_modes", denials(&ev).iter().all(|d| d.starts_with("MODE_POSTURE")), format!("{:?}", denials(&ev)));
+    // A write the client makes anyway is denied by the Kernel with the mode's code.
+    let r = fx.invoke(&ask, "change.apply", json!({"path": "hello.txt", "op": "replace", "content": "hi\n"})).await;
+    leg.check("ask_write_denied_by_the_kernel", r.status == "POLICY_DENIED" && r.error_code == "MODE_POSTURE", format!("{r:?}"));
+    let r = fx.invoke(&ask, "shell.exec", json!({"argv": ["git", "--version"]})).await;
+    leg.check("ask_execution_denied", r.status == "POLICY_DENIED" && r.error_code == "MODE_POSTURE", format!("{r:?}"));
+    leg.check("ask_still_wrote_nothing", !Path::new(&fx.root).join("hello.txt").exists(), "hello.txt exists");
+    // ---- PLAN ----
+    let plan = fx
+        .task_in_mode("Plan how to add the file b.txt whose content is the same as a.txt. Record the plan with plan.update (expected_files: b.txt), write nothing, then state the plan in one sentence and stop. Do not call task.complete.", TaskMode::Plan as i32)
+        .await;
+    fx.start(&plan, 10, 3).await;
+    let st = fx.wait(&plan, 240).await;
+    leg.check("plan_run_ended", !st.loop_alive, format!("{st:?}"));
+    let ev = of_task(fx.events().await, &plan);
+    let plans = of_kind(&ev, "PlanRecorded");
+    leg.check("plan_recorded", !plans.is_empty(), "the agent recorded no plan");
+    leg.check("plan_wrote_nothing", !Path::new(&fx.root).join("b.txt").exists(), "b.txt exists before acceptance");
+    let r = fx.invoke(&plan, "change.apply", json!({"path": "b.txt", "op": "replace", "content": "alpha\n"})).await;
+    leg.check("plan_write_rejected_until_acceptance", r.error_code == "MODE_POSTURE", format!("{r:?}"));
+    let accepted = fx.set_mode(&plan, TaskMode::Agent).await;
+    leg.check("acceptance_attaches_the_plan", accepted.accepted_plan_version >= 1 && accepted.mode == TaskMode::Agent as i32, format!("{accepted:?}"));
+    fx.queue(&plan, "go", "FOLLOW_UP", "The plan is accepted. Now create b.txt exactly as planned, then finish.").await;
+    fx.start(&plan, 12, 4).await;
+    let st = fx.wait(&plan, 240).await;
+    leg.check("agent_run_ended", !st.loop_alive, format!("{st:?}"));
+    leg.check(
+        "after_acceptance_the_write_lands",
+        std::fs::read_to_string(Path::new(&fx.root).join("b.txt")).is_ok_and(|t| t.contains("alpha")),
+        "b.txt was not written after the plan was accepted",
+    );
+    let set = of_kind(&of_task(fx.events().await, &plan), "TaskModeSet").len();
+    leg.check("mode_change_on_the_log", set >= 1, format!("{set}"));
+    // ---- DEBUG ----
+    let debug = fx
+        .task_in_mode("The unit test in test_calc.py fails. Fix calc.py so that it passes, then finish.", TaskMode::Debug as i32)
+        .await;
+    fx.start(&debug, 20, 5).await;
+    let st = fx.wait(&debug, 300).await;
+    leg.check("debug_run_ended", !st.loop_alive, format!("{st:?}"));
+    let ev: Vec<Ev> = of_task(fx.events().await, &debug);
+    let first_write = ev.iter().position(|e| e.kind == "FileChanged");
+    let first_repro = ev.iter().position(|e| e.kind == "ReproductionRecorded");
+    leg.check(
+        "debug_reproduces_before_a_fix_lands",
+        first_repro.is_some() && first_write.is_none_or(|w| first_repro.unwrap() < w),
+        format!("reproduction at {first_repro:?}, first write at {first_write:?}"),
+    );
+    let refused = ev.iter().filter(|e| e.kind == "StepFailed" && e.payload["failure_code"] == "HARNESS_REPRODUCTION_REQUIRED").count();
+    leg.count("debug_fixes_refused_before_reproduction", refused);
+    let calc = std::fs::read_to_string(Path::new(&fx.root).join("calc.py")).unwrap_or_default();
+    leg.count("debug_fixed_calc", calc != BUGGY_CALC);
+    leg.note("MULTITASK (a bounded child admitted with a ticket), the 15 s expiry of an unanswered mode proposal and consent surviving a restart are not model-dependent or need a second child run; they are proven in the scripted suite only");
+    for t in [&ask, &plan, &debug] {
+        fx.charge(&mut leg, t).await;
+    }
+    leg.finish();
+}
+
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
+#[ignore = "live: needs MODBIT_LIVE=1 and the gateway credential (the live-core workflow)"]
+async fn live_px051_modes() {
+    leg_px051_modes(LiveEnv::from_process()).await;
+}
+
+// ---------------------------------------------------------------------------
 // the scripted stand-in for the offline runs of the same legs
 // ---------------------------------------------------------------------------
 
@@ -2249,5 +2401,53 @@ async fn scripted_px101_pause_leg_mechanics() {
     let results = tempfile::tempdir().unwrap();
     leg_px101_pause(scripted_env(&base, results.path())).await;
     let rec: Value = serde_json::from_str(&std::fs::read_to_string(results.path().join("px101-pause.json")).unwrap()).unwrap();
+    assert_eq!(rec["passed"], true, "{rec:#}");
+}
+
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
+async fn scripted_px051_modes_leg_mechanics() {
+    // The scripted model asks for a write in every task; the mode decides.
+    let (base, _seen) = scripted_model_fn(Arc::new(|body, results| {
+        let text = body["messages"].to_string();
+        if text.contains("hello.txt") {
+            // ASK: the model insists on writing.
+            let steps = [
+                json!({"calls": [{"name": "change.apply", "args": {"path": "hello.txt", "op": "replace", "content": "hi\n"}}]}),
+                json!({"text": "I could not write it."}),
+            ];
+            steps.get(results).cloned().unwrap_or_else(|| json!({"text": "done"}))
+        } else if text.contains("Plan how to add") {
+            // PLAN, then the accepted follow-up.
+            if text.contains("The plan is accepted") {
+                let steps = [
+                    json!({"calls": [{"name": "plan.update", "args": {"outcome": "b mirrors a", "expected_files": ["b.txt"]}}]}),
+                    json!({"calls": [{"name": "change.apply", "args": {"path": "b.txt", "op": "replace", "content": "alpha\n"}}]}),
+                    json!({"calls": [{"name": "task.complete", "args": {"summary": "done", "self_review": {"findings": []}}}]}),
+                ];
+                // The first request after the follow-up carries the earlier results too.
+                let done = text.matches("\"role\":\"tool\"").count();
+                steps.get(done.saturating_sub(2)).cloned().unwrap_or_else(|| json!({"text": "done"}))
+            } else {
+                let steps = [
+                    json!({"calls": [{"name": "plan.update", "args": {"outcome": "b mirrors a", "expected_files": ["b.txt"]}}]}),
+                    json!({"text": "Plan: b.txt mirrors a.txt."}),
+                ];
+                steps.get(results).cloned().unwrap_or_else(|| json!({"text": "done"}))
+            }
+        } else {
+            // DEBUG: fix at once; the mode asks for a reproduction first.
+            let steps = [
+                json!({"calls": [{"name": "plan.update", "args": {"outcome": "fix calc", "expected_files": ["calc.py"]}}]}),
+                json!({"calls": [{"name": "change.apply", "args": {"path": "calc.py", "op": "replace", "content": "def double(x):\n    return x + x\n"}}]}),
+                json!({"calls": [{"name": "change.apply", "args": {"path": "calc.py", "op": "replace", "content": "def double(x):\n    return x * 2\n"}}]}),
+                json!({"calls": [{"name": "task.complete", "args": {"summary": "fixed", "self_review": {"findings": []}}}]}),
+            ];
+            steps.get(results).cloned().unwrap_or_else(|| json!({"text": "done"}))
+        }
+    }))
+    .await;
+    let results = tempfile::tempdir().unwrap();
+    leg_px051_modes(scripted_env(&base, results.path())).await;
+    let rec: Value = serde_json::from_str(&std::fs::read_to_string(results.path().join("px051-modes.json")).unwrap()).unwrap();
     assert_eq!(rec["passed"], true, "{rec:#}");
 }
