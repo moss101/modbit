@@ -73,7 +73,11 @@ pub fn catalog_window(spec: &str, model: &str) -> Option<u64> {
             continue;
         }
         // The catalog's own default when the entry names none.
-        return Some(parts.find_map(|p| p.trim().strip_prefix("ctx=")?.parse().ok()).unwrap_or(128_000));
+        return Some(
+            parts
+                .find_map(|p| p.trim().strip_prefix("ctx=")?.parse().ok())
+                .unwrap_or(128_000),
+        );
     }
     None
 }
@@ -223,7 +227,9 @@ impl Leg {
             tracked: Arc::new(std::sync::Mutex::new((0, 0, 0))),
             tracked_charged: (0, 0, 0),
         };
-        *env.current_usage.lock().unwrap_or_else(std::sync::PoisonError::into_inner) = Some(Arc::clone(&leg.tracked));
+        *env.current_usage
+            .lock()
+            .unwrap_or_else(std::sync::PoisonError::into_inner) = Some(Arc::clone(&leg.tracked));
         leg.admit(reserve_usd);
         leg
     }
@@ -235,7 +241,10 @@ impl Leg {
     }
 
     fn tracked_totals(&self) -> (u64, u64, u64) {
-        *self.tracked.lock().unwrap_or_else(std::sync::PoisonError::into_inner)
+        *self
+            .tracked
+            .lock()
+            .unwrap_or_else(std::sync::PoisonError::into_inner)
     }
 
     /// The environment.
@@ -278,6 +287,14 @@ impl Leg {
     /// One assertion. A failed one is recorded and PANICS with its detail.
     pub fn check(&mut self, name: &str, ok: bool, detail: impl std::fmt::Display) {
         let detail = detail.to_string();
+        // Progress, readable from the job log while a long leg runs.
+        eprintln!(
+            "live-core {}/{} [{:>6.1}s] {} {name}",
+            self.row,
+            self.name,
+            self.started.elapsed().as_secs_f64(),
+            if ok { "ok  " } else { "FAIL" }
+        );
         self.checks.push(Check {
             name: name.to_owned(),
             ok,
@@ -299,7 +316,11 @@ impl Leg {
     #[must_use]
     pub fn record(&self, passed: bool) -> Value {
         let (tc, ti, to) = self.tracked_totals();
-        let (calls, input, output) = (self.calls + tc, self.input_tokens + ti, self.output_tokens + to);
+        let (calls, input, output) = (
+            self.calls + tc,
+            self.input_tokens + ti,
+            self.output_tokens + to,
+        );
         let cost = self.cost_usd + self.env.price.cost_usd(ti, to);
         json!({
             "row": self.row,
@@ -341,7 +362,9 @@ impl Drop for Leg {
         let (tc, ti, to) = self.tracked_totals();
         let (_, ci, co) = self.tracked_charged;
         if ti + to > ci + co {
-            self.env.meter.charge_usd(self.env.price.cost_usd(ti - ci, to - co), ti - ci, to - co);
+            self.env
+                .meter
+                .charge_usd(self.env.price.cost_usd(ti - ci, to - co), ti - ci, to - co);
             self.tracked_charged = (tc, ti, to);
         }
         let mut record = self.record(passed);
