@@ -3067,6 +3067,254 @@ async fn live_px116_budgets() {
 }
 
 // ---------------------------------------------------------------------------
+// QUAL-PX-057: run-mode presets and durable allowlist rules over the real
+// approval flow
+// ---------------------------------------------------------------------------
+
+use modbit_protocol::v1::{
+    AddAllowRule, AllowRuleRevoked, AllowRuleView, ApprovalView, EffectReceiptList,
+    EffectReceiptView, GetEffectReceipts, GetRunMode, RevokeAllowRule, RunModeView, SetRunMode,
+};
+
+/// A directory with one executable `mytool` that writes `out.txt` in its
+/// working directory: a program the classifier does not know, so a call to it
+/// is a protected effect that asks in the default mode.
+fn tool_dir() -> tempfile::TempDir {
+    use std::os::unix::fs::PermissionsExt;
+    let dir = tempfile::tempdir().unwrap();
+    let path = dir.path().join("mytool");
+    std::fs::write(&path, "#!/bin/sh\necho \"ran $*\" > out.txt\n").unwrap();
+    std::fs::set_permissions(&path, std::fs::Permissions::from_mode(0o755)).unwrap();
+    dir
+}
+
+impl Fx {
+    async fn pending_for(&mut self, task: &Id) -> Vec<ApprovalView> {
+        let l: ApprovalList = self
+            .ok(
+                "ListApprovals",
+                ListApprovals {
+                    session_id: Some(self.session.clone()),
+                },
+                false,
+            )
+            .await;
+        l.approvals
+            .into_iter()
+            .filter(|a| a.status == "REQUESTED" && a.task_id.as_ref() == Some(task))
+            .collect()
+    }
+
+    /// Start the task and wait for either an approval to appear or the run to
+    /// end (the live model decides which).
+    async fn run_until_asked_or_done(&mut self, task: &Id, turns: u32) -> Vec<ApprovalView> {
+        self.start(task, turns, 3).await;
+        let deadline = Instant::now() + Duration::from_secs(240);
+        loop {
+            let asked = self.pending_for(task).await;
+            if !asked.is_empty() {
+                return asked;
+            }
+            if !self.status(task).await.loop_alive {
+                // The run can end between the approval being asked and our poll.
+                return self.pending_for(task).await;
+            }
+            assert!(Instant::now() < deadline, "the run neither asked nor finished");
+            tokio::time::sleep(Duration::from_millis(100)).await;
+        }
+    }
+
+    async fn decide(&mut self, a: &ApprovalView, approve: bool) {
+        let _: modbit_protocol::v1::ApprovalResolvedAck = self
+            .ok(
+                "ResolveApproval",
+                ResolveApproval {
+                    approval_id: a.approval_id.clone(),
+                    approve,
+                    reason: "live leg".into(),
+                    intent_hash: a.intent_hash.clone(),
+                },
+                true,
+            )
+            .await;
+    }
+
+    /// Deny everything else the task asks until its run ends (the model may
+    /// try another way after a refusal).
+    async fn deny_until_done(&mut self, task: &Id) {
+        let deadline = Instant::now() + Duration::from_secs(240);
+        loop {
+            for a in self.pending_for(task).await {
+                self.decide(&a, false).await;
+            }
+            if !self.status(task).await.loop_alive || Instant::now() > deadline {
+                return;
+            }
+            tokio::time::sleep(Duration::from_millis(150)).await;
+        }
+    }
+
+    async fn receipts(&mut self, task: &Id) -> Vec<EffectReceiptView> {
+        let l: EffectReceiptList = self
+            .ok("GetEffectReceipts", GetEffectReceipts { task_id: Some(task.clone()) }, false)
+            .await;
+        assert!(l.chain_valid, "the receipt chain is broken");
+        l.receipts
+    }
+
+    async fn run_mode(&mut self, task: &Id, mode: &str, ack: bool) -> Result<RunModeView, (String, String)> {
+        self.cmd("SetRunMode", SetRunMode { task_id: Some(task.clone()), mode: mode.into(), acknowledge_risk: ack }, true).await
+    }
+
+    async fn allow_rule(&mut self, task: &Id, pattern: &[&str], scope: &str, fenced: bool) -> Result<AllowRuleView, (String, String)> {
+        self.cmd(
+            "AddAllowRule",
+            AddAllowRule {
+                task_id: Some(task.clone()),
+                rule_id: String::new(),
+                pattern: pattern.iter().map(|p| (*p).to_owned()).collect(),
+                scope: scope.into(),
+                expires_at_ms: 0,
+                covers_always_ask: false,
+            },
+            fenced,
+        )
+        .await
+    }
+}
+
+fn command_goal(argv: &[&str]) -> String {
+    format!(
+        "Run exactly this one command with shell.exec, arguments {}, then finish with task.complete. Run nothing else, and if it is refused do not try another way.",
+        serde_json::to_string(&json!({"argv": argv, "inherit_env": true})).unwrap()
+    )
+}
+
+fn scope_json(a: &ApprovalView) -> Value {
+    serde_json::from_str(&a.scope_json).unwrap_or_default()
+}
+
+/// With the live gateway and the real approval flow: in Ask a shell write asks
+/// with its exact intent; after `AddAllowRule` for an exact argv prefix the
+/// same command runs without asking and a receipt names the rule; a command
+/// that adds a redirection or a pipeline to the prefix asks again; an
+/// outside-workspace write and a network fetch ask even in Run everything;
+/// revoking a rule makes the next run ask; Run everything is gone after a Core
+/// restart while a durable mode survives.
+async fn leg_px057_allowlist(env: Arc<LiveEnv>) {
+    let mut leg = Leg::begin(&env, "px057", "allowlist", 0.30);
+    let bin = tool_dir();
+    let path = format!("{}:{}", bin.path().display(), std::env::var("PATH").unwrap_or_default());
+    let mut fx = Fx::with_env(&env, &[("a.txt", "alpha\n")], &[("PATH", path.as_str())]).await;
+    let out = Path::new(&fx.root).join("out.txt");
+    let mut tasks: Vec<Id> = Vec::new();
+
+    // ---- Ask: the command asks with its exact intent ----
+    let t1 = fx.task(&command_goal(&["mytool", "build"])).await;
+    tasks.push(t1.clone());
+    let mode: RunModeView = fx.ok("GetRunMode", GetRunMode { task_id: Some(t1.clone()) }, false).await;
+    leg.check("default_mode_is_ask", mode.mode == "ASK", mode.mode.clone());
+    let asked = fx.run_until_asked_or_done(&t1, 6).await;
+    leg.check("a_protected_write_asks_in_ask", asked.len() == 1 && asked[0].tool_name == "shell.exec" && asked[0].effect_class == "ProtectedWrite", format!("{:?}", asked.iter().map(|a| (&a.tool_name, &a.effect_class)).collect::<Vec<_>>()));
+    let scope = scope_json(&asked[0]);
+    leg.check("ask_names_the_mode_and_reason", scope["run_mode"] == "ASK" && scope["ask_reason"] == "MODE_ASK", format!("{scope}"));
+    leg.check("approval_binds_the_exact_intent", !asked[0].intent_hash.is_empty() && scope["intent_hash"] == asked[0].intent_hash.as_str(), format!("{scope}"));
+    leg.check("nothing_ran_before_the_decision", !out.exists(), "out.txt exists before the person decided");
+    fx.decide(&asked[0], true).await;
+    let st = fx.wait(&t1, 240).await;
+    leg.check("approved_run_ended", !st.loop_alive, format!("{st:?}"));
+    leg.check("approved_command_ran", out.exists(), "out.txt was not written");
+    let r1 = fx.receipts(&t1).await;
+    leg.check("receipt_names_the_approval", r1.iter().any(|r| r.status == "AUTHORIZED" && r.policy_decision.starts_with("approval:")), format!("{:?}", r1.iter().map(|r| (&r.status, &r.policy_decision)).collect::<Vec<_>>()));
+    std::fs::remove_file(&out).unwrap();
+
+    // ---- rules need the lease and a literal prefix; the mode needs the acknowledgement ----
+    let t2 = fx.task(&command_goal(&["mytool", "build"])).await;
+    tasks.push(t2.clone());
+    let r = fx.allow_rule(&t2, &["mytool", "build"], "REPO", false).await;
+    leg.check("rule_without_the_lease_refused", r.as_ref().err().is_some_and(|(c, _)| c == "LEASE_REQUIRED"), format!("{r:?}"));
+    for (pattern, code) in [(vec!["mytool", "build", "|", "tee"], "PATTERN_SHELL_SYNTAX"), (vec!["sh", "-c"], "PATTERN_WRAPPER"), (vec!["git"], "PATTERN_TOO_BROAD")] {
+        let r = fx.allow_rule(&t2, &pattern, "REPO", true).await;
+        leg.check(&format!("pattern_{code}"), r.as_ref().err().is_some_and(|(c, _)| c == code), format!("{r:?}"));
+    }
+    let rule = fx.allow_rule(&t2, &["mytool", "build"], "REPO", true).await.unwrap();
+    leg.check("rule_is_active_by_a_user", rule.state == "ACTIVE" && rule.created_by.starts_with("user:") && rule.scope_key == fx.root, format!("{rule:?}"));
+    let r = fx.run_mode(&t2, "ALLOWLIST", false).await;
+    leg.check("mode_needs_the_acknowledgement", r.as_ref().err().is_some_and(|(c, _)| c == "ACKNOWLEDGEMENT_REQUIRED"), format!("{r:?}"));
+    let v = fx.run_mode(&t2, "ALLOWLIST", true).await.unwrap();
+    leg.check("allowlist_in_force", v.mode == "ALLOWLIST" && v.rules_in_force == 1, format!("{v:?}"));
+    // ---- the covered command runs silently and the receipt names the rule ----
+    let asked = fx.run_until_asked_or_done(&t2, 6).await;
+    leg.check("covered_command_does_not_ask", asked.is_empty(), format!("{asked:?}"));
+    let st = fx.wait(&t2, 240).await;
+    leg.check("covered_run_ended", !st.loop_alive, format!("{st:?}"));
+    leg.check("covered_command_ran", out.exists(), "out.txt was not written");
+    let r2 = fx.receipts(&t2).await;
+    leg.check("receipt_names_the_rule", r2.iter().any(|r| r.status == "AUTHORIZED" && r.policy_decision == format!("allowlist:{}", rule.rule_id)), format!("{:?}", r2.iter().map(|r| (&r.status, &r.policy_decision)).collect::<Vec<_>>()));
+    std::fs::remove_file(&out).unwrap();
+    // ---- a redirection or a pipeline added to the matching prefix asks again ----
+    for (name, argv) in [("redirect", vec!["sh", "-c", "mytool build > out2.txt"]), ("pipe", vec!["sh", "-c", "mytool build | cat"])] {
+        let t = fx.task(&command_goal(&argv)).await;
+        tasks.push(t.clone());
+        fx.run_mode(&t, "ALLOWLIST", true).await.unwrap();
+        let asked = fx.run_until_asked_or_done(&t, 6).await;
+        leg.check(&format!("{name}_asks_again"), asked.len() == 1 && scope_json(&asked[0])["ask_reason"] == "NOT_IN_ALLOWLIST", format!("{:?}", asked.iter().map(scope_json).collect::<Vec<_>>()));
+        fx.decide(&asked[0], false).await;
+        fx.deny_until_done(&t).await;
+    }
+    leg.check("denied_commands_never_ran", !Path::new(&fx.root).join("out2.txt").exists() && !out.exists(), "a denied command ran");
+    // ---- the always-ask classes ask even in Run everything ----
+    for (name, argv, class) in [
+        ("outside_workspace", vec!["touch", "../escaped-by-live-leg.txt"], "OUTSIDE_WORKSPACE_WRITE"),
+        ("network", vec!["curl", "http://127.0.0.1:9/"], "NETWORK"),
+    ] {
+        let t = fx.task(&command_goal(&argv)).await;
+        tasks.push(t.clone());
+        fx.run_mode(&t, "RUN_EVERYTHING", true).await.unwrap();
+        let asked = fx.run_until_asked_or_done(&t, 6).await;
+        leg.check(
+            &format!("{name}_asks_under_run_everything"),
+            asked.len() == 1 && scope_json(&asked[0])["run_mode"] == "RUN_EVERYTHING" && scope_json(&asked[0])["ask_reason"] == format!("ALWAYS_ASK:{class}"),
+            format!("{:?}", asked.iter().map(scope_json).collect::<Vec<_>>()),
+        );
+        fx.decide(&asked[0], false).await;
+        fx.deny_until_done(&t).await;
+    }
+    leg.check("outside_write_never_happened", !Path::new(&fx.root).join("../escaped-by-live-leg.txt").exists(), "the outside-workspace write happened");
+    // ---- a revoked rule asks again ----
+    let t_other = fx.task(&command_goal(&["mytool", "build"])).await;
+    tasks.push(t_other.clone());
+    let _: AllowRuleRevoked = fx
+        .ok("RevokeAllowRule", RevokeAllowRule { task_id: Some(t_other.clone()), rule_id: rule.rule_id.clone(), reason: "no longer wanted".into() }, true)
+        .await;
+    fx.run_mode(&t_other, "ALLOWLIST", true).await.unwrap();
+    let asked = fx.run_until_asked_or_done(&t_other, 6).await;
+    leg.check("revoked_rule_no_longer_covers", asked.len() == 1 && scope_json(&asked[0])["ask_reason"] == "NOT_IN_ALLOWLIST", format!("{:?}", asked.iter().map(scope_json).collect::<Vec<_>>()));
+    fx.decide(&asked[0], false).await;
+    fx.deny_until_done(&t_other).await;
+    // ---- Run everything dies with the process; a durable mode does not ----
+    let keep = fx.task("keep").await;
+    fx.run_mode(&keep, "ALLOWLIST_SANDBOX", true).await.unwrap();
+    let t_run = fx.task("run everything").await;
+    fx.run_mode(&t_run, "RUN_EVERYTHING", true).await.unwrap();
+    fx.restart().await;
+    let m_keep: RunModeView = fx.ok("GetRunMode", GetRunMode { task_id: Some(keep.clone()) }, false).await;
+    let m_run: RunModeView = fx.ok("GetRunMode", GetRunMode { task_id: Some(t_run.clone()) }, false).await;
+    leg.check("durable_mode_survives_the_restart", m_keep.mode == "ALLOWLIST_SANDBOX", m_keep.mode.clone());
+    leg.check("run_everything_is_gone_after_the_restart", m_run.mode != "RUN_EVERYTHING", m_run.mode.clone());
+    for t in &tasks {
+        fx.charge(&mut leg, t).await;
+    }
+    leg.finish();
+}
+
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
+#[ignore = "live: needs MODBIT_LIVE=1 and the gateway credential (the live-core workflow)"]
+async fn live_px057_allowlist() {
+    leg_px057_allowlist(LiveEnv::from_process()).await;
+}
+
+// ---------------------------------------------------------------------------
 // the scripted stand-in for the offline runs of the same legs
 // ---------------------------------------------------------------------------
 
@@ -3522,5 +3770,28 @@ async fn scripted_px116_budgets_leg_mechanics() {
     let results = tempfile::tempdir().unwrap();
     leg_px116_budgets(scripted_env(&base, results.path())).await;
     let rec: Value = serde_json::from_str(&std::fs::read_to_string(results.path().join("px116-budgets.json")).unwrap()).unwrap();
+    assert_eq!(rec["passed"], true, "{rec:#}");
+}
+
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
+async fn scripted_px057_allowlist_leg_mechanics() {
+    // A model that runs the command its task's goal names, once.
+    let (base, _seen) = scripted_model_fn(Arc::new(|body, results| {
+        if results > 0 {
+            return json!({"calls": [{"name": "task.complete", "args": {"summary": "done", "self_review": {"findings": []}}}]});
+        }
+        let text = body["messages"].to_string();
+        let start = text.find("arguments ").map_or(0, |i| i + "arguments ".len());
+        let rest = &text[start..];
+        // The goal embeds the JSON arguments, escaped inside the request body.
+        let unescaped = rest.replace("\\\"", "\"");
+        let end = unescaped.find("}, then").map_or(unescaped.len(), |i| i + 1);
+        let args: Value = serde_json::from_str(&unescaped[..end]).unwrap_or_else(|_| json!({"argv": ["true"]}));
+        json!({"calls": [{"name": "shell.exec", "args": args}]})
+    }))
+    .await;
+    let results = tempfile::tempdir().unwrap();
+    leg_px057_allowlist(scripted_env(&base, results.path())).await;
+    let rec: Value = serde_json::from_str(&std::fs::read_to_string(results.path().join("px057-allowlist.json")).unwrap()).unwrap();
     assert_eq!(rec["passed"], true, "{rec:#}");
 }
