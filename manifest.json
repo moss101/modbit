@@ -2,13 +2,13 @@
   "product": "Modbit",
   "edition": "V3.3 EPR v1.1",
   "authority_date": "2026-09-05",
-  "generated_on": "2026-10-05",
+  "generated_on": "2026-10-17",
   "hash_algorithm": "sha256",
   "scope_rule": "docs/*.md, root *.md except MANIFEST.md, docs/decisions/*.md, graph JSON/Markdown, tools/*.py, evidence payloads; manifests exclude themselves and transient caches",
   "counts": {
     "docs": 97,
     "root_and_tooling": 1670,
-    "docs_bytes": 2128508
+    "docs_bytes": 2132640
   },
   "sections": [
     {
@@ -914,8 +914,8 @@
       "section": "governance",
       "section_title": "Agent process and governance",
       "title": "Dossier maintenance log",
-      "bytes": 111104,
-      "sha256": "15395a0c5735f1d156a988ddac50fa1646a2d9e5764bc9ae23c6d22a5b5b43d8"
+      "bytes": 114710,
+      "sha256": "5ca9c0424c6b32609e3d69a1c251586c73ce8ae71281928960b27a89c661fda6"
     },
     {
       "path": "docs/98_BUILD_MANIFEST.md",
@@ -923,8 +923,8 @@
       "section": "live-state",
       "section_title": "Live state",
       "title": "Build Manifest",
-      "bytes": 14435,
-      "sha256": "6cb1bd98843b9de346bf065ed6dfb0d524a78c545697d86f37037a9978c68dec"
+      "bytes": 14961,
+      "sha256": "824d5b749252e6cba1de566c5e766cbfaefce23f4cda2fd64bc07398e251b102"
     }
   ],
   "root_and_tooling": [
@@ -9216,12 +9216,12 @@
     {
       "path": "graph/PROJECT_GRAPH.md",
       "bytes": 44991,
-      "sha256": "84643ac5408072a37703690bdbe7c9858d18af96fe2464132e058df27c68981a"
+      "sha256": "fbf1487db6cf49e0c355e5684119de80d12801f2380541d5a2a3f9be7cee99e8"
     },
     {
       "path": "graph/project-graph.json",
-      "bytes": 2221993,
-      "sha256": "34603f963767d534595698190b6a8b6ed8819c78506ed456ae52657f65a19767"
+      "bytes": 2256738,
+      "sha256": "cb34b600e430ff2c3f21fe62eaf66be06aa70bcd3f771359e7955b4a5a85f770"
     },
     {
       "path": "tools/build_graph.py",
@@ -9275,8 +9275,8 @@
     },
     {
       "path": "tools/test_dossier.py",
-      "bytes": 67379,
-      "sha256": "740facd2f5272d025a26207cce2bf0048c50ceb3203540b78aff69faa815a020"
+      "bytes": 67926,
+      "sha256": "4c8c7e6b4dc13bd250cece5f9dd2ec22cb21e936951822cea82ee5dd3781099d"
     }
   ],
   "renames_v3_to_v3_1": {

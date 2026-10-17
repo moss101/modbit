@@ -371,7 +371,13 @@ class DossierTests(unittest.TestCase):
                 pid = "PX-%03d" % n
                 self.assertEqual(nodes[pid]["milestone"], "M10", pid)
                 self.assertEqual(nodes[pid]["release"], "RELEASE_ZERO", pid)
-                self.assertEqual(nodes[pid]["status"], "NOT_STARTED", pid)
+                # A row behind a record the owner has NOT accepted cannot have started. A row behind an ACCEPTED record may
+                # move (the build began on 2026-10-05); the graph tool still refuses any move whose prerequisites are not
+                # COMPLETE, and the gating chain asserted below is unchanged.
+                if accepted:
+                    self.assertIn(nodes[pid]["status"], ("NOT_STARTED", "AUDITING", "IMPLEMENTING", "WIRED", "REAL_TESTING", "E2E_PROVEN", "COMPLETE", "BLOCKED"), pid)
+                else:
+                    self.assertEqual(nodes[pid]["status"], "NOT_STARTED", pid)
                 self.assertIn((pid, dr), auth, pid)
                 self.assertNotIn((pid, "DR-PX-2026-09-05-006"), auth, pid)
                 self.assertTrue(self.reaches(after, pid, {task}), "%s is not gated by %s" % (pid, task))
