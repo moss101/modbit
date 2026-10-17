@@ -2189,6 +2189,275 @@ async fn live_px051_modes() {
 }
 
 // ---------------------------------------------------------------------------
+// The person at the keyboard for the approvals a live run asks for
+// ---------------------------------------------------------------------------
+
+use modbit_protocol::v1::{ApprovalList, ListApprovals, ResolveApproval};
+
+/// What the stand-in person approved, tool by tool, with the exact intent
+/// they saw.
+type Approved = Arc<Mutex<Vec<(String, String)>>>;
+
+/// Approves, exactly as a thin client does (naming the intent hash it was
+/// shown), every approval of a tool for which `allow` holds; leaves every
+/// other approval pending. A leg that needs a person says so in its record.
+async fn spawn_approver_for(
+    core: &CoreProcess,
+    session: &Id,
+    generation: Option<u64>,
+    allow: fn(&str) -> bool,
+) -> (tokio::task::JoinHandle<()>, Approved) {
+    let approved: Approved = Arc::new(Mutex::new(Vec::new()));
+    let log = Arc::clone(&approved);
+    let mut c = core.client().await;
+    let session = session.clone();
+    let handle = tokio::spawn(async move {
+        let mut done: std::collections::HashSet<Vec<u8>> = std::collections::HashSet::new();
+        loop {
+            let ack = c
+                .command(envelope(
+                    rand_id(),
+                    "ListApprovals",
+                    ListApprovals {
+                        session_id: Some(session.clone()),
+                    }
+                    .encode_to_vec(),
+                ))
+                .await;
+            let Ok(ack) = ack else { return };
+            let list: ApprovalList = Client::result(&ack).unwrap();
+            for a in list
+                .approvals
+                .iter()
+                .filter(|a| a.status == "REQUESTED" && allow(&a.tool_name))
+            {
+                let id = a.approval_id.clone().unwrap();
+                if done.insert(id.value.clone()) {
+                    let r = c
+                        .command(envelope_fenced(
+                            rand_id(),
+                            "ResolveApproval",
+                            ResolveApproval {
+                                approval_id: Some(id),
+                                approve: true,
+                                reason: "live leg: the person approves this tool".into(),
+                                intent_hash: a.intent_hash.clone(),
+                            }
+                            .encode_to_vec(),
+                            generation,
+                        ))
+                        .await;
+                    if r.is_ok() {
+                        log.lock()
+                            .unwrap()
+                            .push((a.tool_name.clone(), a.scope_json.clone()));
+                    }
+                }
+            }
+            tokio::time::sleep(Duration::from_millis(150)).await;
+        }
+    });
+    (handle, approved)
+}
+
+// ---------------------------------------------------------------------------
+// QUAL-PX-118: a task in its own worktree
+// ---------------------------------------------------------------------------
+
+use modbit_protocol::v1::{GetSessionSnapshot, SessionSnapshot, TaskIsolation};
+
+impl Fx {
+    /// A task whose work happens in its own worktree.
+    async fn task_isolated(&mut self, goal: &str) -> Id {
+        let created: TaskCreated = self
+            .ok(
+                "CreateTask",
+                modbit_protocol::v1::CreateTask {
+                    session_id: Some(self.session.clone()),
+                    goal_text: goal.into(),
+                    origin: "cli".into(),
+                    workspace_root: self.root.clone(),
+                    execution_profile: "local_trusted".into(),
+                    isolation: TaskIsolation::Worktree as i32,
+                    ..Default::default()
+                },
+                true,
+            )
+            .await;
+        created.task_id.unwrap()
+    }
+
+    async fn task_view(&mut self, task: &Id) -> modbit_protocol::v1::TaskView {
+        let snap: SessionSnapshot = self
+            .ok(
+                "GetSessionSnapshot",
+                GetSessionSnapshot {
+                    session_id: Some(self.session.clone()),
+                },
+                false,
+            )
+            .await;
+        snap.tasks
+            .into_iter()
+            .find(|t| t.task_id.as_ref() == Some(task))
+            .expect("the task is in the snapshot")
+    }
+}
+
+fn git_out(dir: &str, args: &[&str]) -> String {
+    let out = std::process::Command::new("git")
+        .arg("-C")
+        .arg(dir)
+        .args(args)
+        .output()
+        .unwrap();
+    String::from_utf8_lossy(&out.stdout).trim().to_owned()
+}
+
+fn same_dir(a: &str, b: &Path) -> bool {
+    Path::new(a)
+        .canonicalize()
+        .ok()
+        .zip(b.canonicalize().ok())
+        .is_some_and(|(x, y)| x == y)
+}
+
+fn python_tests_pass(dir: &str) -> bool {
+    std::process::Command::new("python3")
+        .args(["-m", "unittest", "-q"])
+        .current_dir(dir)
+        .output()
+        .is_ok_and(|o| o.status.success())
+}
+
+/// A live task created with `worktree` isolation edits files and runs the
+/// tests while the user's checkout (with the user's own uncommitted work in
+/// it) stays byte-identical; a path escaping the worktree through `..`, an
+/// absolute path and a symlink is refused; an unwritable worktree root fails
+/// the creation with the typed reason and writes nothing; a Core killed mid-run
+/// resumes in the same worktree.
+async fn leg_px118_worktree(env: Arc<LiveEnv>) {
+    let mut leg = Leg::begin(&env, "px118", "worktree", 0.25);
+    let mut fx = Fx::new(
+        &env,
+        &[
+            ("calc.py", BUGGY_CALC),
+            ("test_calc.py", CALC_TEST),
+            ("README.md", "# demo\n"),
+            (".modbit/verification.json", UNITTEST_CHECK),
+        ],
+    )
+    .await;
+    // The user's own work in the checkout: a tracked edit and an untracked file.
+    std::fs::write(Path::new(&fx.root).join("README.md"), "# demo, edited by the user\n").unwrap();
+    std::fs::write(Path::new(&fx.root).join("notes.txt"), "user notes\n").unwrap();
+    let before = tree(&fx.root);
+    let head_before = git_out(&fx.root, &["rev-parse", "HEAD"]);
+    // An unwritable worktree root: typed refusal, no task, nothing written.
+    let in_the_way = fx.data.path().join("worktrees");
+    std::fs::write(&in_the_way, b"in the way").unwrap();
+    let refused = fx
+        .cmd::<TaskCreated>(
+            "CreateTask",
+            modbit_protocol::v1::CreateTask {
+                session_id: Some(fx.session.clone()),
+                goal_text: "x".into(),
+                origin: "cli".into(),
+                workspace_root: fx.root.clone(),
+                execution_profile: "local_trusted".into(),
+                isolation: TaskIsolation::Worktree as i32,
+                ..Default::default()
+            },
+            true,
+        )
+        .await;
+    leg.check(
+        "unwritable_root_is_a_typed_refusal",
+        refused.as_ref().err().is_some_and(|(c, m)| c == "ISOLATION_ROOT_UNWRITABLE" && m.contains("nothing was written to the checkout")),
+        format!("{refused:?}"),
+    );
+    leg.check("unwritable_root_wrote_nothing", tree(&fx.root) == before, "the checkout changed");
+    std::fs::remove_file(&in_the_way).unwrap();
+    // The live task, in its own worktree.
+    let (approver, approved) = spawn_approver_for(&fx.core, &fx.session, fx.g, |t| t == "shell.exec" || t == "test.run").await;
+    let task = fx
+        .task_isolated("The unit test in test_calc.py fails. Fix calc.py so that double(3) returns 6, check it by running the tests with: python3 -m unittest -q (use shell.exec), then finish with task.complete.")
+        .await;
+    let view = fx.task_view(&task).await;
+    let wt = fx.data.path().join("worktrees").join(uuid_text(&task.value));
+    leg.check("worktree_exists", wt.join(".git").exists(), format!("{wt:?}"));
+    leg.check(
+        "task_root_is_the_worktree_not_the_checkout",
+        same_dir(&view.workspace_root, &wt) && same_dir(&view.origin_root, Path::new(&fx.root)) && view.isolation == TaskIsolation::Worktree as i32,
+        format!("{} / {}", view.workspace_root, view.origin_root),
+    );
+    leg.check(
+        "users_work_was_carried_by_copy",
+        std::fs::read_to_string(wt.join("README.md")).is_ok_and(|t| t == "# demo, edited by the user\n") && wt.join("notes.txt").exists(),
+        "README.md or notes.txt missing from the worktree",
+    );
+    fx.start(&task, 25, 6).await;
+    let st = fx.wait(&task, 360).await;
+    leg.check("run_ended", !st.loop_alive, format!("{st:?}"));
+    tokio::time::sleep(Duration::from_millis(500)).await;
+    leg.check("checkout_tree_identical", tree(&fx.root) == before, format!("{:?}", tree(&fx.root).keys().collect::<Vec<_>>()));
+    leg.check("checkout_head_identical", git_out(&fx.root, &["rev-parse", "HEAD"]) == head_before, "HEAD moved");
+    let calc = std::fs::read_to_string(wt.join("calc.py")).unwrap_or_default();
+    leg.check("the_worktree_changed", calc != BUGGY_CALC, "calc.py in the worktree is the original");
+    leg.check("the_fix_works_in_the_worktree", python_tests_pass(&wt.to_string_lossy()), "the unit tests fail in the worktree");
+    let ev = of_task(fx.events().await, &task);
+    leg.count("file_changes", of_kind(&ev, "FileChanged").len());
+    leg.count("shell_calls_approved_by_the_person", approved.lock().unwrap().len());
+    leg.check("the_model_changed_files", !of_kind(&ev, "FileChanged").is_empty(), "no FileChanged on the log");
+    // Escapes are refused at the Kernel.
+    let r = fx.invoke(&task, "change.apply", json!({"path": "../escape.txt", "op": "replace", "content": "x"})).await;
+    leg.check("dotdot_refused", r.status == "APPLICATION_FAILURE" && r.error_code == "PATH_OUTSIDE_ROOT", format!("{r:?}"));
+    let target = Path::new(&fx.root).join("calc.py");
+    let r = fx.invoke(&task, "change.apply", json!({"path": target.to_string_lossy(), "op": "replace", "content": "pwned\n"})).await;
+    leg.check("absolute_path_into_the_checkout_refused", r.status == "APPLICATION_FAILURE", format!("{r:?}"));
+    std::os::unix::fs::symlink(&fx.root, wt.join("sneaky")).unwrap();
+    let r = fx.invoke(&task, "change.apply", json!({"path": "sneaky/calc.py", "op": "replace", "content": "pwned\n"})).await;
+    leg.check("symlink_into_the_checkout_refused", r.status == "APPLICATION_FAILURE", format!("{r:?}"));
+    leg.check("nothing_reached_the_checkout", tree(&fx.root) == before, "the checkout changed after the escapes");
+    approver.abort();
+    // A Core killed in the middle of a live run resumes in the same worktree.
+    let second = fx
+        .task_isolated("Create the files f1.txt, f2.txt, f3.txt and f4.txt, each containing its own file name, one file per step. Call plan.update first and task.complete last.")
+        .await;
+    let wt2 = fx.data.path().join("worktrees").join(uuid_text(&second.value));
+    let feed = collect_live(&fx.core, &fx.session, 0).await;
+    fx.start(&second, 25, 6).await;
+    until_events(&feed, 180, "the first file", |e| of_task(e.to_vec(), &second).iter().any(|x| x.kind == "FileChanged")).await;
+    drop(feed);
+    fx.restart().await;
+    let view2 = fx.task_view(&second).await;
+    leg.check("same_worktree_after_the_kill", same_dir(&view2.workspace_root, &wt2) && view2.isolation == TaskIsolation::Worktree as i32, format!("{}", view2.workspace_root));
+    fx.start(&second, 25, 6).await;
+    let st = fx.wait(&second, 360).await;
+    leg.check("second_run_ended", !st.loop_alive, format!("{st:?}"));
+    let in_wt = (1..=4).filter(|i| wt2.join(format!("f{i}.txt")).exists()).count();
+    leg.count("files_in_the_worktree_after_resume", in_wt);
+    leg.check("resumed_work_landed_in_the_worktree", in_wt >= 1, "no f*.txt in the worktree");
+    leg.check("resumed_work_never_in_the_checkout", (1..=4).all(|i| !Path::new(&fx.root).join(format!("f{i}.txt")).exists()) && tree(&fx.root) == before, "a file reached the checkout");
+    leg.note("the reaper of PX-065 (removes an old terminal worktree, spares the running one) is time-driven and model-independent; it is proven in the scripted suite only");
+    for t in [&task, &second] {
+        fx.charge(&mut leg, t).await;
+    }
+    leg.finish();
+}
+
+fn uuid_text(bytes: &[u8]) -> String {
+    let h = hex::encode(bytes);
+    format!("{}-{}-{}-{}-{}", &h[0..8], &h[8..12], &h[12..16], &h[16..20], &h[20..32])
+}
+
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
+#[ignore = "live: needs MODBIT_LIVE=1 and the gateway credential (the live-core workflow)"]
+async fn live_px118_worktree() {
+    leg_px118_worktree(LiveEnv::from_process()).await;
+}
+
+// ---------------------------------------------------------------------------
 // the scripted stand-in for the offline runs of the same legs
 // ---------------------------------------------------------------------------
 
@@ -2449,5 +2718,34 @@ async fn scripted_px051_modes_leg_mechanics() {
     let results = tempfile::tempdir().unwrap();
     leg_px051_modes(scripted_env(&base, results.path())).await;
     let rec: Value = serde_json::from_str(&std::fs::read_to_string(results.path().join("px051-modes.json")).unwrap()).unwrap();
+    assert_eq!(rec["passed"], true, "{rec:#}");
+}
+
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
+async fn scripted_px118_worktree_leg_mechanics() {
+    let (base, _seen) = scripted_model_fn(Arc::new(|body, results| {
+        let text = body["messages"].to_string();
+        if text.contains("test_calc.py fails") || text.contains("The unit test in test_calc.py fails") {
+            let steps = [
+                json!({"calls": [{"name": "plan.update", "args": {"outcome": "fix calc", "expected_files": ["calc.py"]}}]}),
+                json!({"calls": [{"name": "change.apply", "args": {"path": "calc.py", "op": "replace", "content": "def double(x):\n    return x * 2\n"}}]}),
+                json!({"calls": [{"name": "shell.exec", "args": {"argv": ["python3", "-m", "unittest", "-q"]}}]}),
+                json!({"calls": [{"name": "task.complete", "args": {"summary": "fixed", "self_review": {"findings": []}}}]}),
+            ];
+            steps.get(results).cloned().unwrap_or_else(|| json!({"text": "done"}))
+        } else {
+            let steps = [
+                json!({"calls": [{"name": "plan.update", "args": {"outcome": "four files", "expected_files": ["f1.txt", "f2.txt", "f3.txt", "f4.txt"]}}]}),
+                json!({"calls": [{"name": "change.apply", "args": {"path": "f1.txt", "op": "create", "content": "f1.txt\n"}}], "delay_ms": 1500}),
+                json!({"calls": [{"name": "change.apply", "args": {"path": "f2.txt", "op": "create", "content": "f2.txt\n"}}]}),
+                json!({"calls": [{"name": "task.complete", "args": {"summary": "done", "self_review": {"findings": []}}}]}),
+            ];
+            steps.get(results).cloned().unwrap_or_else(|| json!({"text": "done"}))
+        }
+    }))
+    .await;
+    let results = tempfile::tempdir().unwrap();
+    leg_px118_worktree(scripted_env(&base, results.path())).await;
+    let rec: Value = serde_json::from_str(&std::fs::read_to_string(results.path().join("px118-worktree.json")).unwrap()).unwrap();
     assert_eq!(rec["passed"], true, "{rec:#}");
 }
