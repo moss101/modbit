@@ -62,8 +62,20 @@ impl Fx {
     }
 
     async fn with_env(env: &Arc<LiveEnv>, files: &[(&str, &str)], extra: &[(&str, &str)]) -> Self {
+        Self::build(env, files, extra, &|_| {}).await
+    }
+
+    /// `setup` runs on the profile directory before the Core starts (a skill
+    /// package the owner authored, a registry file).
+    async fn build(
+        env: &Arc<LiveEnv>,
+        files: &[(&str, &str)],
+        extra: &[(&str, &str)],
+        setup: &dyn Fn(&Path),
+    ) -> Self {
         let (repo, root) = plain_repo(files);
         let data = tempfile::tempdir().unwrap();
+        setup(data.path());
         let extra_env: Vec<(String, String)> = extra
             .iter()
             .map(|(k, v)| ((*k).to_owned(), (*v).to_owned()))
@@ -643,6 +655,544 @@ async fn live_px041_kill() {
 }
 
 // ---------------------------------------------------------------------------
+// QUAL-PX-050: queue management and the typed interrupt on a live stream
+// ---------------------------------------------------------------------------
+
+use modbit_protocol::v1::{
+    EditQueuedInput, InputQueued, InterruptAccepted, ListQueuedInputs, QueueInput,
+    QueuedInputChanged, QueuedInputList, RemoveQueuedInput, ReorderQueuedInput,
+    SendQueuedInputNow,
+};
+
+const ESSAY: &str = "Write an essay of about 1500 words on the history of the printing press, in plain prose with no headings and no lists. Do not call any tool.";
+
+impl Fx {
+    async fn queue(&mut self, task: &Id, id: &str, mode: &str, text: &str) {
+        let _: InputQueued = self
+            .ok(
+                "QueueInput",
+                QueueInput {
+                    task_id: Some(task.clone()),
+                    input_id: id.into(),
+                    mode: mode.into(),
+                    text: text.into(),
+                },
+                true,
+            )
+            .await;
+    }
+
+    async fn queued(&mut self, task: &Id, settled: bool) -> QueuedInputList {
+        self.ok(
+            "ListQueuedInputs",
+            ListQueuedInputs {
+                task_id: Some(task.clone()),
+                include_settled: settled,
+            },
+            false,
+        )
+        .await
+    }
+}
+
+fn queued_ids(l: &QueuedInputList) -> Vec<String> {
+    l.items
+        .iter()
+        .filter(|i| i.state == "QUEUED")
+        .map(|i| i.input_id.clone())
+        .collect()
+}
+
+/// The input ids the log says were dispatched, one list per `TaskSteered`.
+fn steered(events: &[Ev]) -> Vec<Vec<String>> {
+    of_kind(events, "TaskSteered")
+        .iter()
+        .map(|e| {
+            e.payload["input_ids"]
+                .as_array()
+                .map(|a| a.iter().filter_map(|v| v.as_str().map(str::to_owned)).collect())
+                .unwrap_or_default()
+        })
+        .collect()
+}
+
+/// Queue four messages during a live streaming turn, edit one, delete one,
+/// reorder: they drain in the order the person left them as separate turns,
+/// and the deleted one is never dispatched.
+async fn leg_px050_queue(env: Arc<LiveEnv>) {
+    let mut leg = Leg::begin(&env, "px050", "queue", 0.20);
+    let mut fx = Fx::new(&env, &[("a.txt", "alpha\n")]).await;
+    let task = fx.task(ESSAY).await;
+    let feed = collect_live(&fx.core, &fx.session, 0).await;
+    fx.start(&task, 30, 8).await;
+    let seen = until_events(&feed, 120, "the first delta", |e| {
+        !of_kind(e, "AssistantTextDelta").is_empty()
+    })
+    .await;
+    leg.check(
+        "queued_during_a_streaming_turn",
+        of_kind(&seen, "AssistantMessageCompleted").is_empty(),
+        "the first answer had already completed when the inputs were queued",
+    );
+    for (id, text) in [
+        ("a", "Message A: reply with just the word ALPHA."),
+        ("b", "Message B: reply with just the word BRAVO."),
+        ("c", "Message C: reply with just the word CHARLIE."),
+        ("d", "Message D: reply with just the word DELTA."),
+    ] {
+        fx.queue(&task, id, "FOLLOW_UP", text).await;
+    }
+    let l = fx.queued(&task, false).await;
+    leg.check("listed_in_order", queued_ids(&l) == ["a", "b", "c", "d"], format!("{:?}", queued_ids(&l)));
+    leg.check("run_alive_while_queued", l.run_alive, "the run was not alive");
+    let edited = "Message B, edited: reply with just the word BRAVO-EDITED.";
+    let ch: QueuedInputChanged = fx
+        .ok(
+            "EditQueuedInput",
+            EditQueuedInput {
+                task_id: Some(task.clone()),
+                input_id: "b".into(),
+                text: edited.into(),
+                mode: String::new(),
+                model: String::new(),
+            },
+            true,
+        )
+        .await;
+    leg.check("edit_applied", ch.state == "QUEUED", ch.state.clone());
+    let _: QueuedInputChanged = fx
+        .ok(
+            "RemoveQueuedInput",
+            RemoveQueuedInput {
+                task_id: Some(task.clone()),
+                input_id: "d".into(),
+                reason: String::new(),
+            },
+            true,
+        )
+        .await;
+    let _: QueuedInputChanged = fx
+        .ok(
+            "ReorderQueuedInput",
+            ReorderQueuedInput {
+                task_id: Some(task.clone()),
+                input_id: "c".into(),
+                before_input_id: "a".into(),
+            },
+            true,
+        )
+        .await;
+    let l = fx.queued(&task, true).await;
+    leg.check("order_after_edits", queued_ids(&l) == ["c", "a", "b"], format!("{:?}", queued_ids(&l)));
+    leg.check(
+        "edit_text_kept",
+        l.items.iter().find(|i| i.input_id == "b").is_some_and(|i| i.text == edited && i.edited),
+        "the edit was not recorded",
+    );
+    leg.check(
+        "delete_recorded",
+        l.items.iter().find(|i| i.input_id == "d").is_some_and(|i| i.state == "REMOVED"),
+        "d was not removed",
+    );
+    let st = fx.wait(&task, 300).await;
+    leg.check("run_drained_and_ended", !st.loop_alive, format!("{st:?}"));
+    tokio::time::sleep(Duration::from_millis(500)).await;
+    let ev = fx.events().await;
+    let order = steered(&ev);
+    leg.check(
+        "drained_in_the_order_left",
+        order.concat() == ["c", "a", "b"],
+        format!("{order:?}"),
+    );
+    leg.check(
+        "each_input_its_own_turn",
+        order.iter().all(|ids| ids.len() == 1),
+        format!("{order:?}"),
+    );
+    let completed = of_kind(&ev, "AssistantMessageCompleted").len();
+    leg.count("assistant_messages", completed);
+    leg.check("a_turn_per_input", completed >= 4, format!("{completed} assistant messages for the essay and three inputs"));
+    let l = fx.queued(&task, true).await;
+    leg.check("queue_settled", queued_ids(&l).is_empty(), "inputs still queued");
+    leg.check(
+        "three_dispatched_one_removed",
+        l.items.iter().filter(|i| i.state == "DISPATCHED").count() == 3
+            && l.items.iter().filter(|i| i.state == "REMOVED").count() == 1,
+        format!("{:?}", l.items.iter().map(|i| (&i.input_id, &i.state)).collect::<Vec<_>>()),
+    );
+    // The deleted input is nowhere in the conversation the model was given.
+    let page: modbit_protocol::v1::TranscriptPage = fx
+        .ok(
+            "GetTranscript",
+            modbit_protocol::v1::GetTranscript {
+                task_id: Some(task.clone()),
+                density: modbit_protocol::v1::TranscriptDensity::Detailed as i32,
+                after_row: 0,
+                limit: 500,
+                as_of_offset: 0,
+            },
+            false,
+        )
+        .await;
+    let rows: Vec<(String, String)> = page.rows.iter().map(|r| (r.row_id.clone(), r.text.clone())).collect();
+    leg.check(
+        "deleted_input_absent_from_the_conversation",
+        !rows.iter().any(|(id, t)| id == "user:in:d" || t.contains("Message D")),
+        "message D reached the conversation",
+    );
+    leg.check(
+        "edited_text_in_the_conversation",
+        rows.contains(&("user:in:b".into(), edited.into())),
+        format!("{rows:?}"),
+    );
+    fx.charge(&mut leg, &task).await;
+    leg.finish();
+}
+
+/// Send now on a live stream: the stream ends aborted as a typed user
+/// interrupt with the partial text kept, the new turn starts once, a replay of
+/// the command (and of the interrupt id under another command id) interrupts
+/// nothing more, and the next input is processed after it.
+async fn leg_px050_interrupt(env: Arc<LiveEnv>) {
+    let mut leg = Leg::begin(&env, "px050", "interrupt", 0.20);
+    let mut fx = Fx::new(&env, &[("a.txt", "alpha\n")]).await;
+    let task = fx.task(ESSAY).await;
+    let feed = collect_live(&fx.core, &fx.session, 0).await;
+    fx.start(&task, 30, 3).await;
+    until_events(&feed, 120, "partial text", |e| {
+        !of_kind(e, "AssistantTextDelta").is_empty()
+    })
+    .await;
+    tokio::time::sleep(Duration::from_millis(300)).await;
+    fx.queue(&task, "x", "FOLLOW_UP", "Urgent: stop the essay and reply with just the word URGENT.").await;
+    let asked = Instant::now();
+    let cmd_id = rand_id();
+    let send_now = |interrupt: &str| SendQueuedInputNow {
+        task_id: Some(task.clone()),
+        input_id: "x".into(),
+        interrupt_id: interrupt.into(),
+        reason: String::new(),
+    };
+    let ack = fx
+        .c
+        .command(envelope_fenced(
+            cmd_id.clone(),
+            "SendQueuedInputNow",
+            send_now("int-1").encode_to_vec(),
+            fx.g,
+        ))
+        .await
+        .unwrap();
+    let acc: InterruptAccepted = Client::result(&ack).unwrap();
+    leg.check("accepted_send_now", acc.kind == "SEND_NOW" && acc.run_alive, format!("{acc:?}"));
+    leg.check("status_accepted_not_replayed", ack.status == 1, format!("status {}", ack.status));
+    fx.queue(&task, "y", "FOLLOW_UP", "And then reply with just the word AFTER.").await;
+    let ev = until_events(&feed, 60, "the interrupt applied", |e| {
+        !of_kind(e, "TaskInterruptApplied").is_empty()
+    })
+    .await;
+    let cut_ms = asked.elapsed().as_millis() as u64;
+    leg.count("interrupt_applied_after_ms", cut_ms);
+    leg.check("cut_at_the_next_safe_point", cut_ms < 15_000, format!("{cut_ms} ms"));
+    let applied = of_kind(&ev, "TaskInterruptApplied");
+    leg.check(
+        "stream_was_cut_not_finished",
+        applied[0].payload["outcome"] == "STREAM_ABORTED",
+        format!("outcome {} (the model's answer ended before the interrupt arrived if this is not STREAM_ABORTED)", applied[0].payload["outcome"]),
+    );
+    let replay = fx
+        .c
+        .command(envelope_fenced(cmd_id, "SendQueuedInputNow", send_now("int-1").encode_to_vec(), fx.g))
+        .await
+        .unwrap();
+    leg.check("replay_of_the_command_is_a_replay", replay.status == 2, format!("status {}", replay.status));
+    let again = fx
+        .c
+        .command(envelope_fenced(rand_id(), "SendQueuedInputNow", send_now("int-1").encode_to_vec(), fx.g))
+        .await
+        .unwrap();
+    leg.check("same_interrupt_id_is_the_same_interrupt", again.status == 2, format!("status {}", again.status));
+    let st = fx.wait(&task, 300).await;
+    leg.check("run_ended", !st.loop_alive, format!("{st:?}"));
+    tokio::time::sleep(Duration::from_millis(500)).await;
+    let ev = fx.events().await;
+    let aborted = of_kind(&ev, "AssistantMessageAborted");
+    leg.check("one_aborted_stream", aborted.len() == 1, format!("{} aborted streams", aborted.len()));
+    leg.check(
+        "typed_source",
+        aborted[0].payload["source"] == "USER_INTERRUPT" && aborted[0].payload["code"] == "USER_SEND_NOW",
+        format!("{} / {}", aborted[0].payload["source"], aborted[0].payload["code"]),
+    );
+    let partial: Vec<&Ev> = of_kind(&ev, "AssistantTextDelta").into_iter().filter(|d| d.aggregate == aborted[0].aggregate).collect();
+    leg.check("partial_text_kept", !partial.is_empty(), "no delta of the cut stream is on the log");
+    leg.check("delta_count_matches", aborted[0].payload["delta_count"] == partial.len() as u64, format!("{} vs {}", aborted[0].payload["delta_count"], partial.len()));
+    leg.check(
+        "cut_stream_never_completes",
+        of_kind(&ev, "AssistantMessageCompleted").iter().all(|c| c.aggregate != aborted[0].aggregate),
+        "the cut stream also completed",
+    );
+    leg.check("interrupt_requested_once", of_kind(&ev, "TaskInterruptRequested").len() == 1, format!("{}", of_kind(&ev, "TaskInterruptRequested").len()));
+    let applied = of_kind(&ev, "TaskInterruptApplied");
+    leg.check(
+        "applied_once_with_dispatch_next",
+        applied.len() == 1 && applied[0].payload["stream_aborted"] == true && applied[0].payload["next"] == "DISPATCH",
+        format!("{:?}", applied.iter().map(|a| &a.payload).collect::<Vec<_>>()),
+    );
+    let order = steered(&ev);
+    let x_turns = order.iter().filter(|ids| ids.iter().any(|i| i == "x")).count();
+    leg.check("new_turn_started_once", x_turns == 1, format!("{order:?}"));
+    leg.check("next_input_after_it", order.concat() == ["x", "y"], format!("{order:?}"));
+    leg.count("partial_deltas", partial.len());
+    fx.charge(&mut leg, &task).await;
+    leg.finish();
+}
+
+/// SIGKILL of the Core with inputs queued on a live run: the edits and the
+/// order survive, nothing runs until the person resumes, and the queue then
+/// drains in order.
+async fn leg_px050_kill(env: Arc<LiveEnv>) {
+    let mut leg = Leg::begin(&env, "px050", "kill", 0.20);
+    let mut fx = Fx::new(&env, &[("a.txt", "alpha\n")]).await;
+    let task = fx.task(ESSAY).await;
+    let feed = collect_live(&fx.core, &fx.session, 0).await;
+    fx.start(&task, 30, 8).await;
+    until_events(&feed, 120, "the first delta", |e| {
+        !of_kind(e, "AssistantTextDelta").is_empty()
+    })
+    .await;
+    for (id, text) in [
+        ("a", "Message A: reply with just the word ALPHA."),
+        ("b", "Message B: reply with just the word BRAVO."),
+        ("c", "Message C: reply with just the word CHARLIE."),
+    ] {
+        fx.queue(&task, id, "FOLLOW_UP", text).await;
+    }
+    let edited = "Message B, edited: reply with just the word BRAVO-EDITED.";
+    let _: QueuedInputChanged = fx
+        .ok(
+            "EditQueuedInput",
+            EditQueuedInput { task_id: Some(task.clone()), input_id: "b".into(), text: edited.into(), mode: String::new(), model: String::new() },
+            true,
+        )
+        .await;
+    let _: QueuedInputChanged = fx
+        .ok(
+            "ReorderQueuedInput",
+            ReorderQueuedInput { task_id: Some(task.clone()), input_id: "c".into(), before_input_id: "a".into() },
+            true,
+        )
+        .await;
+    let before = fx.queued(&task, false).await;
+    leg.check("order_before_the_kill", queued_ids(&before) == ["c", "a", "b"], format!("{:?}", queued_ids(&before)));
+    drop(feed);
+    fx.restart().await;
+    let after = fx.queued(&task, false).await;
+    leg.check("same_inputs_same_order", queued_ids(&after) == ["c", "a", "b"], format!("{:?}", queued_ids(&after)));
+    leg.check(
+        "edit_survived",
+        after.items.iter().find(|i| i.input_id == "b").is_some_and(|i| i.text == edited),
+        "the edit was lost",
+    );
+    leg.check("nothing_runs_until_resumed", !after.run_alive, "the run was alive after the restart");
+    fx.start(&task, 30, 8).await;
+    let st = fx.wait(&task, 300).await;
+    leg.check("run_ended_after_resume", !st.loop_alive, format!("{st:?}"));
+    tokio::time::sleep(Duration::from_millis(500)).await;
+    let ev = fx.events().await;
+    let order = steered(&ev);
+    leg.check("drained_in_order_after_recovery", order.concat() == ["c", "a", "b"], format!("{order:?}"));
+    let done = fx.queued(&task, true).await;
+    leg.check(
+        "all_three_dispatched",
+        queued_ids(&done).is_empty() && done.items.iter().filter(|i| i.state == "DISPATCHED").count() == 3,
+        format!("{:?}", done.items.iter().map(|i| (&i.input_id, &i.state)).collect::<Vec<_>>()),
+    );
+    leg.charge(1, 2_500, 3_000);
+    fx.charge(&mut leg, &task).await;
+    leg.finish();
+}
+
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
+#[ignore = "live: needs MODBIT_LIVE=1 and the gateway credential (the live-core workflow)"]
+async fn live_px050_queue() {
+    leg_px050_queue(LiveEnv::from_process()).await;
+}
+
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
+#[ignore = "live: needs MODBIT_LIVE=1 and the gateway credential (the live-core workflow)"]
+async fn live_px050_interrupt() {
+    leg_px050_interrupt(LiveEnv::from_process()).await;
+}
+
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
+#[ignore = "live: needs MODBIT_LIVE=1 and the gateway credential (the live-core workflow)"]
+async fn live_px050_kill() {
+    leg_px050_kill(LiveEnv::from_process()).await;
+}
+
+// ---------------------------------------------------------------------------
+// QUAL-PX-059: context accounting by category against the provider's count
+// ---------------------------------------------------------------------------
+
+fn category<'a>(v: &'a ContextAccountingView, name: &str) -> &'a modbit_protocol::v1::ContextCategoryView {
+    v.categories
+        .iter()
+        .find(|c| c.category == name)
+        .unwrap_or_else(|| panic!("no category {name} in {:?}", v.categories.iter().map(|c| &c.category).collect::<Vec<_>>()))
+}
+
+/// Write a skill package `dir/<name>/SKILL.md` and return its content hash.
+fn skill_package(root: &Path, name: &str, front: &str, body: &str) -> String {
+    let d = root.join(name);
+    std::fs::create_dir_all(&d).unwrap();
+    std::fs::write(
+        d.join("SKILL.md"),
+        format!("---\nname: {name}\nversion: 1.0.0\n{front}\n---\n{body}\n"),
+    )
+    .unwrap();
+    modbit_skills::load_package(&d).unwrap().content_hash
+}
+
+/// After a live multi-turn run with rules, a memory, a trusted skill, an
+/// external tool and the delegation tools in play: the categories sum exactly
+/// to the total, the total is the count the provider reported for the last
+/// request and the estimator's own count is within its declared error of it,
+/// the non-zero categories are the ones the request carries, and the window is
+/// the catalog's (it follows the catalog entry, not a constant).
+async fn leg_px059_accounting(env: Arc<LiveEnv>) {
+    use modbit_protocol::v1::{
+        MemoryPromoted, MemoryProposed, PromoteMemory, ProposeMemory, RepositoryTrusted,
+        SkillTrustResult, TrustRepository, TrustSkill,
+    };
+    let mut leg = Leg::begin(&env, "px059", "accounting", 0.15);
+    let agents = "# Rules for this repository\n\nAlways run the formatter before you finish. Never edit generated files. Prefer small functions and explain each public item in one sentence. Keep commit messages short.\n";
+    let skill_hash = std::sync::Arc::new(Mutex::new(String::new()));
+    let hash_slot = Arc::clone(&skill_hash);
+    let servers = serde_json::to_string(&json!([px_common::mcp_support::server_entry(
+        "docs",
+        json!({}),
+        &["search"],
+        "TRUSTED"
+    )]))
+    .unwrap();
+    let mut fx = Fx::build(
+        &env,
+        &[("README.md", "# Hash table notes\n\nA small repository used to measure context accounting.\n"), ("AGENTS.md", agents), ("a.txt", "alpha\nbeta\ngamma\n")],
+        &[("MODBIT_MCP_SERVERS", servers.as_str())],
+        &move |data| {
+            *hash_slot.lock().unwrap() = skill_package(
+                &data.join("skills"),
+                "lintfix",
+                "description: fix lint warnings in a changed file",
+                "Run the linter, fix what it reports, rerun it, and stop when it is clean.",
+            );
+        },
+    )
+    .await;
+    let root = fx.root.clone();
+    let session = fx.session.clone();
+    let _: RepositoryTrusted = fx
+        .ok("TrustRepository", TrustRepository { session_id: Some(session), workspace_root: root, scope: "repository".into() }, true)
+        .await;
+    let task = fx.task("Do these steps in order. Step 1: call tool.search once with the query \"external\" so that the external tools become available. Step 2: read README.md with fs.read. Step 3: answer in one sentence with the title of that file. Call no other tool.").await;
+    let hash = skill_hash.lock().unwrap().clone();
+    let trusted: SkillTrustResult = fx
+        .ok("TrustSkill", TrustSkill { name: "lintfix".into(), content_hash: hash, task_id: Some(task.clone()) }, false)
+        .await;
+    leg.check("skill_trusted", trusted.trust == "TRUSTED_BY_OWNER", trusted.trust.clone());
+    let p: MemoryProposed = fx
+        .ok(
+            "ProposeMemory",
+            ProposeMemory {
+                task_id: Some(task.clone()),
+                scope: "repository".into(),
+                record_type: "convention".into(),
+                topic: "indentation".into(),
+                content: "Use four spaces for indentation in every language in this project.".into(),
+                ..Default::default()
+            },
+            true,
+        )
+        .await;
+    let promoted: MemoryPromoted = fx
+        .ok("PromoteMemory", PromoteMemory { task_id: Some(task.clone()), memory_id: p.memory_id.clone() }, true)
+        .await;
+    leg.check("memory_curated", promoted.outcome == "curated", format!("{promoted:?}"));
+    // Before anything is compiled there is nothing to account for.
+    let none = fx.accounting(&task).await;
+    leg.check("nothing_before_the_first_turn", !none.available && none.categories.is_empty(), format!("{none:?}"));
+    fx.start(&task, 10, 3).await;
+    let st = fx.wait(&task, 240).await;
+    leg.check("run_ended", !st.loop_alive, format!("{st:?}"));
+    let v = fx.accounting(&task).await;
+    leg.check("available", v.available, "no accounting after a run");
+    leg.check("provider_reported", v.total_source == "PROVIDER_REPORTED" && v.provider_reported_input > 0, format!("{} / {}", v.total_source, v.provider_reported_input));
+    leg.check("total_is_the_providers_count", v.total_tokens == v.provider_reported_input, format!("{} vs {}", v.total_tokens, v.provider_reported_input));
+    leg.check("nine_categories", v.categories.len() == 9, format!("{}", v.categories.len()));
+    let sum: u64 = v.categories.iter().map(|c| c.tokens).sum();
+    leg.check("categories_sum_exactly_to_the_total", sum == v.total_tokens, format!("{sum} vs {}", v.total_tokens));
+    // The provider's count against the independent per-step usage ledger.
+    let e = fx.economics(&task).await;
+    let last_step_input = e.runs.iter().flat_map(|r| r.steps.iter()).filter(|s| s.input_tokens > 0).last().map(|s| s.input_tokens);
+    leg.count("provider_reported_input", v.provider_reported_input);
+    leg.count("estimated_total", v.estimated_total);
+    leg.count("estimator_error_bp", v.estimator_error_bp);
+    leg.count("declared_error_bp", v.declared_error_bp);
+    leg.check(
+        "total_matches_the_usage_ledger_of_the_last_step",
+        last_step_input == Some(v.provider_reported_input),
+        format!("{last_step_input:?} vs {}", v.provider_reported_input),
+    );
+    leg.check(
+        "estimator_within_declared_error",
+        v.estimator_error_bp <= v.declared_error_bp && v.declared_error_bp > 0,
+        format!("the estimator counted {} against the provider's {}: {} bp off, {} bp declared", v.estimated_total, v.provider_reported_input, v.estimator_error_bp, v.declared_error_bp),
+    );
+    let non_zero = |name: &str| category(&v, name).tokens > 0;
+    for name in ["SYSTEM", "TOOLS", "RULES", "SKILLS", "MCP", "MEMORY", "SUBAGENTS", "CONVERSATION"] {
+        leg.check(&format!("{}_non_zero", name.to_lowercase()), non_zero(name), format!("{:?}", category(&v, name)));
+    }
+    leg.check(
+        "summary_names_no_epoch_without_compaction",
+        v.compaction_epoch == 0 && category(&v, "SUMMARY").sources.is_empty(),
+        format!("epoch {}, {:?}", v.compaction_epoch, category(&v, "SUMMARY")),
+    );
+    // The window is the model's own (here the catalog's), and the percent follows.
+    let window = env.window.unwrap_or(0);
+    leg.check("window_from_the_catalog", v.window_tokens == window && window > 0, format!("{} ({}) vs {window}", v.window_tokens, v.window_source));
+    leg.check("percent_follows_the_window", u64::from(v.used_bp) == v.total_tokens * 10_000 / window.max(1), format!("{} bp", v.used_bp));
+    leg.check("model_is_the_live_model", v.model == env.model, v.model.clone());
+    // A different catalog window for the same model moves the window and the
+    // percent (no second real model exists on the gateway to switch to).
+    let narrow = format!("{}={}/{};ctx=100000;out=8192", env.model, env.price.input_per_mtok_usd, env.price.output_per_mtok_usd);
+    let session = fx.session.clone();
+    fx.core.kill();
+    fx.extra_env.push(("MODBIT_OPENAI_MODELS".into(), narrow));
+    fx.core = Fx::spawn(&fx.env, fx.data.path(), &fx.extra_env);
+    fx.c = fx.core.client().await;
+    fx.g = Some(fx.lease_again().await);
+    let _ = session;
+    let t2 = fx.task("Read a.txt with fs.read and answer in one sentence. Call no other tool.").await;
+    fx.start(&t2, 8, 3).await;
+    let st = fx.wait(&t2, 240).await;
+    leg.check("second_run_ended", !st.loop_alive, format!("{st:?}"));
+    let n = fx.accounting(&t2).await;
+    leg.check("window_follows_the_catalog_entry", n.window_tokens == 100_000, format!("{} ({})", n.window_tokens, n.window_source));
+    leg.check("percent_follows_the_new_window", u64::from(n.used_bp) == n.total_tokens * 10_000 / 100_000, format!("{} bp of {}", n.used_bp, n.total_tokens));
+    leg.check("second_categories_sum", n.categories.iter().map(|c| c.tokens).sum::<u64>() == n.total_tokens, "sum");
+    leg.note("a model switch to a second real model was not possible: the gateway key serves one priced model (glm-5.3-flash); the window was moved by changing its catalog entry");
+    fx.charge(&mut leg, &task).await;
+    fx.charge(&mut leg, &t2).await;
+    leg.finish();
+}
+
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
+#[ignore = "live: needs MODBIT_LIVE=1 and the gateway credential (the live-core workflow)"]
+async fn live_px059_accounting() {
+    leg_px059_accounting(LiveEnv::from_process()).await;
+}
+
+// ---------------------------------------------------------------------------
 // the scripted stand-in for the offline runs of the same legs
 // ---------------------------------------------------------------------------
 
@@ -714,5 +1264,84 @@ async fn scripted_px041_kill_leg_mechanics() {
         &std::fs::read_to_string(results.path().join("px041-kill.json")).unwrap(),
     )
     .unwrap();
+    assert_eq!(rec["passed"], true, "{rec:#}");
+}
+
+fn slow_chunks(n: usize) -> Vec<String> {
+    (0..n).map(|i| format!("word{i} ")).collect()
+}
+
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
+async fn scripted_px050_queue_leg_mechanics() {
+    let calls = Arc::new(std::sync::atomic::AtomicUsize::new(0));
+    let chunks = slow_chunks(60);
+    let (base, _seen) = scripted_model_fn(Arc::new(move |_, _| {
+        if calls.fetch_add(1, std::sync::atomic::Ordering::SeqCst) == 0 {
+            json!({"chunks": chunks, "chunk_gap_ms": 100})
+        } else {
+            json!({"text": "noted"})
+        }
+    }))
+    .await;
+    let results = tempfile::tempdir().unwrap();
+    leg_px050_queue(scripted_env(&base, results.path())).await;
+    let rec: Value = serde_json::from_str(&std::fs::read_to_string(results.path().join("px050-queue.json")).unwrap()).unwrap();
+    assert_eq!(rec["passed"], true, "{rec:#}");
+}
+
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
+async fn scripted_px050_interrupt_leg_mechanics() {
+    let calls = Arc::new(std::sync::atomic::AtomicUsize::new(0));
+    let chunks = slow_chunks(300);
+    let (base, _seen) = scripted_model_fn(Arc::new(move |_, _| {
+        if calls.fetch_add(1, std::sync::atomic::Ordering::SeqCst) == 0 {
+            json!({"chunks": chunks, "chunk_gap_ms": 50})
+        } else {
+            json!({"text": "noted"})
+        }
+    }))
+    .await;
+    let results = tempfile::tempdir().unwrap();
+    leg_px050_interrupt(scripted_env(&base, results.path())).await;
+    let rec: Value = serde_json::from_str(&std::fs::read_to_string(results.path().join("px050-interrupt.json")).unwrap()).unwrap();
+    assert_eq!(rec["passed"], true, "{rec:#}");
+}
+
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
+async fn scripted_px050_kill_leg_mechanics() {
+    let calls = Arc::new(std::sync::atomic::AtomicUsize::new(0));
+    let chunks = slow_chunks(300);
+    let (base, _seen) = scripted_model_fn(Arc::new(move |_, _| {
+        if calls.fetch_add(1, std::sync::atomic::Ordering::SeqCst) == 0 {
+            json!({"chunks": chunks, "chunk_gap_ms": 100})
+        } else {
+            json!({"text": "noted"})
+        }
+    }))
+    .await;
+    let results = tempfile::tempdir().unwrap();
+    leg_px050_kill(scripted_env(&base, results.path())).await;
+    let rec: Value = serde_json::from_str(&std::fs::read_to_string(results.path().join("px050-kill.json")).unwrap()).unwrap();
+    assert_eq!(rec["passed"], true, "{rec:#}");
+}
+
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
+async fn scripted_px059_accounting_leg_mechanics() {
+    // The scripted provider reports the size of the whole request body as its
+    // count (a stand-in for a provider's own tokenizer).
+    let (base, _seen) = scripted_model_fn(Arc::new(|body, results| {
+        let used = serde_json::to_string(body).map_or(0, |b| b.len().div_ceil(4));
+        if results == 0 {
+            json!({"calls": [{"name": "tool.search", "args": {"query": "external"}}], "usage": [used, 30]})
+        } else if results == 1 {
+            json!({"calls": [{"name": "fs.read", "args": {"path": "README.md"}}], "usage": [used, 30]})
+        } else {
+            json!({"text": "Hash table notes", "usage": [used, 10]})
+        }
+    }))
+    .await;
+    let results = tempfile::tempdir().unwrap();
+    leg_px059_accounting(scripted_env(&base, results.path())).await;
+    let rec: Value = serde_json::from_str(&std::fs::read_to_string(results.path().join("px059-accounting.json")).unwrap()).unwrap();
     assert_eq!(rec["passed"], true, "{rec:#}");
 }
