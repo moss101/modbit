@@ -1,0 +1,99 @@
+{
+  "row": "px046-agent-list",
+  "run": "local-macos-debug-core-ci-profile",
+  "recordedAt": "2026-10-17T09:38:53.277Z",
+  "environment": {
+    "platform": "darwin",
+    "os": "27.0.0",
+    "cpu": "Apple M5 Pro",
+    "cores": 18,
+    "memoryGiB": 24,
+    "ci": false,
+    "runner": "local",
+    "app": "unpackaged build (apps/desktop/dist) under Playwright; the packaged-app run is PX-025's (M10.4)",
+    "clock": "Core event timestamp (recorded_at, ms) and the renderer's performance.timeOrigin+now on the same host"
+  },
+  "budgets": [
+    {
+      "statement": "QUAL-PX-046: the list reflects a Core event within 150 ms at p95 (200-task fixture)",
+      "limitMs": 150,
+      "percentile": "p95"
+    }
+  ],
+  "method": {
+    "fixtureTasks": 200,
+    "samplesPerKind": 220,
+    "events": "TaskCreated (a row appears), ConversationArchived (a row goes)",
+    "profile": "ci",
+    "enforced": false
+  },
+  "distributions": {
+    "event timestamp to rendered frame, a task appears": {
+      "n": 220,
+      "min": 59.9,
+      "p50": 91.6,
+      "p95": 122.6,
+      "p99": 146.7,
+      "max": 155.1,
+      "mean": 93
+    },
+    "event timestamp to rendered frame, a task is archived": {
+      "n": 220,
+      "min": 0.2,
+      "p50": 20.2,
+      "p95": 75.2,
+      "p99": 78.3,
+      "max": 114.7,
+      "mean": 18.56
+    },
+    "event timestamp to rendered frame, both": {
+      "n": 440,
+      "min": 0.2,
+      "p50": 69.2,
+      "p95": 112.8,
+      "p99": 136.2,
+      "max": 155.1,
+      "mean": 55.78
+    },
+    "event timestamp to main-process receipt (Core append, its connection, socket)": {
+      "n": 440,
+      "min": 0,
+      "p50": 1,
+      "p95": 2,
+      "p99": 3,
+      "max": 5,
+      "mean": 1.04
+    },
+    "main-process receipt to renderer receipt (main thread, IPC)": {
+      "n": 440,
+      "min": -0.6,
+      "p50": 0.3,
+      "p95": 17.7,
+      "p99": 45.6,
+      "max": 52.1,
+      "mean": 4.47
+    },
+    "renderer receipt to the row present or gone": {
+      "n": 440,
+      "min": 0,
+      "p50": 66.3,
+      "p95": 106.9,
+      "p99": 129.2,
+      "max": 140.5,
+      "mean": 47.24
+    },
+    "that to the next frame": {
+      "n": 440,
+      "min": 0,
+      "p50": 1,
+      "p95": 11,
+      "p99": 15.2,
+      "max": 25.4,
+      "mean": 3.04
+    }
+  },
+  "verdict": {
+    "met": true,
+    "text": "recorded on the \"ci\" profile; asserted only on the reference profile"
+  }
+}

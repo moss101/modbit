@@ -174,6 +174,133 @@ test("PX-060: BUDGET_EXHAUSTED docks a limit tray naming what ran out; raising t
   }
 });
 
+/** A task held at a spent wall-clock cap of 1 ms, standing at the limit tray. The model waits on `release` for its first answer. */
+async function exhaustedAtTheTray(env: Record<string, string>, tag: string) {
+  const repo = newRepo();
+  const release = new Gate();
+  const model = await routedModel(async (_goal, results): Promise<ModelPart[]> => {
+    if (results === 0) {
+      await release.opened;
+      return ["Planning.", plan];
+    }
+    if (results === 1) return ["Reading.", readNotes];
+    return ["Finished.", complete];
+  });
+  const dataDir = mkdtempSync(join(tmpdir(), `modbit-e2e-${tag}-`));
+  const { app, page } = await launch(dataDir, { env: { MODBIT_OPENAI_BASE_URL: model.url, ...env } });
+  await setContentSize(app, page, 1280, 800);
+  const taskId = await createTask(page, "read the notes twice", repo);
+  const sid = await sessionOf(page);
+  await page.evaluate(([s, t]) => window.modbit.setTaskBudgets(s!, t!, { maxWallMs: "1" }), [sid, taskId]);
+  await page.getByTestId("task-card").filter({ hasText: "read the notes twice" }).getByTestId("task-start").click();
+  await openConversation(page, taskId);
+  release.open();
+  await expect(page.getByTestId("tray-budget")).toBeVisible({ timeout: 120_000 });
+  const close = async () => {
+    release.open();
+    await closeApp(app);
+    model.server.close();
+  };
+  return { app, page, taskId, close };
+}
+
+async function capNow(page: Page, taskId: string): Promise<string | undefined> {
+  return (await page.evaluate((t) => window.modbit.contextAccounting(t), taskId)).budgets?.maxWallMs;
+}
+
+async function killCore(page: Page): Promise<void> {
+  const info = await page.evaluate(() => window.modbit.debugCoreInfo());
+  process.kill(info!.pid, "SIGKILL");
+  // A new Core, not the old one still shown as connected for a moment.
+  await expect
+    .poll(() => page.evaluate(() => window.modbit.debugCoreInfo()).then((i) => i?.pid ?? 0, () => 0), { timeout: 90_000 })
+    .not.toBe(info!.pid);
+  await expect(page.getByTestId("core-status")).toContainText("Core connected", { timeout: 90_000 });
+}
+
+test("PX-060: a raise above the organisation's ceiling is refused with the Core's typed reason and changes nothing, also after the Core is killed; a raise within it resumes the run", async () => {
+  test.setTimeout(300_000);
+  const { page, taskId, close } = await exhaustedAtTheTray({ MODBIT_BUDGET_POLICY: "ceiling_wall_ms=3600000" }, "ceiling");
+  try {
+    const note = page.getByTestId("tray-budget-note");
+    await page.getByTestId("tray-budget-wall").fill("7200");
+    await page.getByTestId("tray-budget-raise").click();
+    await expect(note).toContainText("organisation policy");
+    await expect(note).toHaveAttribute("data-outcome", "ceiling");
+    await expect(note).toContainText("No approval can lift this");
+    await accessible(page, "the limit tray after a refused raise");
+    // Nothing was applied and no approval was opened: a ceiling is not approvable.
+    expect(await capNow(page, taskId)).toBe("1");
+    await expect(page.getByTestId("approval-card")).toHaveCount(0);
+
+    // The refusal is the Core's, on its log: a kill and a restart change neither the cap nor the answer.
+    await killCore(page);
+    await expect(page.getByTestId("tray-budget")).toBeVisible({ timeout: 90_000 });
+    expect(await capNow(page, taskId)).toBe("1");
+    await page.getByTestId("tray-budget-wall").fill("7200");
+    await page.getByTestId("tray-budget-raise").click();
+    await expect(page.getByTestId("tray-budget-note")).toHaveAttribute("data-outcome", "ceiling");
+    // Removing the cap altogether is the largest raise there is.
+    await page.getByTestId("tray-budget-wall").fill("0");
+    await page.getByTestId("tray-budget-raise").click();
+    await expect(page.getByTestId("tray-budget-note")).toHaveAttribute("data-outcome", "ceiling");
+    expect(await capNow(page, taskId)).toBe("1");
+
+    // Within the ceiling it is the person's to raise, and the run goes on with its work.
+    await page.getByTestId("tray-budget-wall").fill("3600");
+    await page.getByTestId("tray-budget-raise").click();
+    await expect(page.getByTestId("review")).toBeVisible({ timeout: 120_000 });
+    await page.keyboard.press("Escape");
+    await expect(page.getByTestId("tray-budget")).toHaveCount(0);
+    expect(await capNow(page, taskId)).toBe("3600000");
+  } finally {
+    await close();
+  }
+});
+
+test("PX-060: a raise that policy sends for approval waits in the approval stack with its exact caps, applies once approved and asked again, and survives a Core kill", async () => {
+  test.setTimeout(300_000);
+  const { page, taskId, close } = await exhaustedAtTheTray({ MODBIT_BUDGET_POLICY: "raise_approval=always" }, "approval");
+  try {
+    await page.getByTestId("tray-budget-wall").fill("3600");
+    await page.getByTestId("tray-budget-raise").click();
+    // The Core answered "needs approval": its card docks (and outranks this tray, so the tray's own note is not a thing to wait for).
+    // The exact raise is on the approval card, in the stack the person already uses.
+    const card = page.getByTestId("approval-card");
+    await expect(card).toBeVisible({ timeout: 30_000 });
+    expect(await capNow(page, taskId), "the raise is not applied before it is approved").toBe("1");
+    await expect(page.getByTestId("approval-tool")).toHaveText("task.budget.raise");
+    await expect(page.getByTestId("approval-why")).toContainText("budget raise");
+    await page.getByTestId("approval-args-toggle").click();
+    await expect(page.getByTestId("approval-args")).toContainText('"wall_ms":3600000');
+    await accessible(page, "the budget-raise approval card");
+    // The approval stack outranks the limit tray while the raise waits; the card is the one thing asked.
+    await expect(page.getByTestId("approval-count")).toContainText("1 pending");
+    await expect(page.getByTestId("tray-budget")).toHaveCount(0);
+
+    // The approval is the Core's: it is still there, still unapplied, after a SIGKILL.
+    const hash = (await card.getAttribute("data-intent-hash"))!;
+    await killCore(page);
+    await expect(page.getByTestId("approval-card")).toHaveAttribute("data-intent-hash", hash, { timeout: 90_000 });
+    expect(await capNow(page, taskId)).toBe("1");
+
+    // Approved, then asked again: it applies and the run resumes.
+    await page.getByTestId("approval-run").click();
+    await expect(page.getByTestId("approval-last")).toContainText("Approved", { timeout: 30_000 });
+    expect(await capNow(page, taskId), "approving is not applying").toBe("1");
+    // The limit tray is back with the person's ask still filled in.
+    await expect(page.getByTestId("tray-budget")).toBeVisible();
+    await expect(page.getByTestId("tray-budget-wall")).toHaveValue("3600");
+    await expect(page.getByTestId("tray-budget-note")).toHaveAttribute("data-outcome", "approval");
+    await page.getByTestId("tray-budget-raise").click();
+    await expect(page.getByTestId("review")).toBeVisible({ timeout: 120_000 });
+    await page.keyboard.press("Escape");
+    expect(await capNow(page, taskId)).toBe("3600000");
+  } finally {
+    await close();
+  }
+});
+
 test("PX-060: a Core that goes away docks an offline tray while it is gone, keeps the conversation readable, and takes the tray away when it is back", async () => {
   test.setTimeout(240_000);
   const repo = newRepo();

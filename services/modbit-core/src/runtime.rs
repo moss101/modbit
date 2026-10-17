@@ -1688,6 +1688,10 @@ pub(crate) async fn rebuild(
         budgets,
         ..Default::default()
     };
+    // REQ-PX-060: the organization's ceilings bind a task that never set a cap.
+    if task.origin != modbit_domain::task::TaskOrigin::Subagent {
+        crate::budgets::clamp_runtime(&mut state.budgets);
+    }
     let mut transcript: Vec<Message> = Vec::new();
     let mut last_offset = 0;
     let mut pending_steps: HashMap<[u8; 16], StepType> = HashMap::new();
@@ -1732,6 +1736,7 @@ pub(crate) async fn rebuild(
                             .and_then(|c| u32::try_from(c).ok())
                             .unwrap_or(harness::DEFAULT_MAX_CHILDREN)
                     };
+                    crate::budgets::clamp_runtime(&mut state.budgets);
                 }
             }
             "TaskForked" => {
