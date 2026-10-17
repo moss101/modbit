@@ -1924,6 +1924,119 @@ async fn live_px061_checkpoints() {
 }
 
 // ---------------------------------------------------------------------------
+// QUAL-PX-101: pause and resume over the runtime park
+// ---------------------------------------------------------------------------
+
+use modbit_protocol::v1::{PauseTask, ResumeTask, TaskPauseResult, TaskResumeResult};
+
+fn rejected_code<T: std::fmt::Debug>(r: Result<T, ClientError>) -> String {
+    match r {
+        Err(ClientError::Rejected { code, .. }) => code,
+        other => panic!("expected a typed refusal, got {other:?}"),
+    }
+}
+
+/// Pause during a live streaming turn: the answer says the turn is in flight,
+/// the turn finishes (its stream completes, never aborts), the run parks at
+/// the boundary typed paused with a record of who and why; a duplicate pause
+/// acts once; `SIGKILL` of the Core while paused leaves the task paused with
+/// the same checkpoint and no lost event; a resume with a stale lease
+/// generation is refused and changes nothing; the resume under the current
+/// one continues the same run exactly once.
+async fn leg_px101_pause(env: Arc<LiveEnv>) {
+    let mut leg = Leg::begin(&env, "px101", "pause", 0.15);
+    let mut fx = Fx::new(&env, &[("a.txt", "a\n")]).await;
+    let task = fx
+        .task("Create the files f1.txt, f2.txt, f3.txt and f4.txt, each containing its own file name, one file per step. Before each file write one short paragraph saying what you are about to create. Call plan.update first and task.complete last.")
+        .await;
+    let feed = collect_live(&fx.core, &fx.session, 0).await;
+    let started = fx.start(&task, 30, 6).await;
+    until_events(&feed, 120, "a streaming turn", |e| !of_kind(e, "AssistantTextDelta").is_empty()).await;
+    let cmd = rand_id();
+    let ack = fx.c.command(envelope_fenced(cmd.clone(), "PauseTask", PauseTask { task_id: Some(task.clone()), reason: "lunch".into(), wait_ms: 0 }.encode_to_vec(), fx.g)).await.unwrap();
+    let p: TaskPauseResult = Client::result(&ack).unwrap();
+    leg.check("pause_accepted", ack.status == 1, format!("status {}", ack.status));
+    leg.check(
+        "answer_says_the_turn_is_in_flight",
+        p.state == "PAUSING" && p.waits_for_boundary && !p.note.is_empty(),
+        format!("{p:?} (a turn that had already ended is not a streaming-turn pause)"),
+    );
+    let deadline = Instant::now() + Duration::from_secs(180);
+    let st = loop {
+        let st = fx.status(&task).await;
+        if (st.wait_reason == "Paused" && !st.loop_alive) || Instant::now() > deadline {
+            break st;
+        }
+        tokio::time::sleep(Duration::from_millis(150)).await;
+    };
+    leg.check("parked_at_the_boundary", st.state == "Waiting" && st.wait_reason == "Paused" && !st.loop_alive, format!("{st:?}"));
+    leg.check("a_pause_is_not_a_fault", st.failure_class.is_empty(), format!("{st:?}"));
+    tokio::time::sleep(Duration::from_millis(500)).await;
+    let ev = fx.events().await;
+    leg.check("no_stream_was_aborted", of_kind(&ev, "AssistantMessageAborted").is_empty(), "a pause cut a stream");
+    let streams_open: Vec<&Ev> = of_kind(&ev, "AssistantTextDelta")
+        .into_iter()
+        .filter(|d| of_kind(&ev, "AssistantMessageCompleted").iter().all(|c| c.aggregate != d.aggregate))
+        .collect();
+    leg.check("in_flight_turn_finished", streams_open.is_empty(), format!("{} deltas of an unfinished stream", streams_open.len()));
+    let paused = of_kind(&ev, "TaskPaused");
+    leg.check("one_pause_record", paused.len() == 1, format!("{}", paused.len()));
+    leg.check(
+        "record_names_who_why_and_the_checkpoint",
+        paused[0].payload["reason"] == "lunch" && paused[0].payload["boundary"] == "TURN_BOUNDARY" && !payload_str(paused[0], "checkpoint_id").is_empty(),
+        format!("{}", paused[0].payload),
+    );
+    // A duplicate pause acts once; a fresh pause on a paused task is a no-op answer.
+    let dup = fx.c.command(envelope_fenced(cmd, "PauseTask", PauseTask { task_id: Some(task.clone()), reason: "lunch".into(), wait_ms: 0 }.encode_to_vec(), fx.g)).await.unwrap();
+    leg.check("duplicate_pause_is_a_replay", dup.status == 2, format!("status {}", dup.status));
+    leg.check("duplicate_recorded_nothing", of_kind(&fx.events().await, "TaskPauseRequested").len() == 1, "more than one request on the log");
+    let again: TaskPauseResult = fx.ok("PauseTask", PauseTask { task_id: Some(task.clone()), reason: "again".into(), wait_ms: 0 }, true).await;
+    leg.check("pause_of_a_paused_task", again.state == "ALREADY_PAUSED", again.state.clone());
+    // SIGKILL while paused.
+    let cps_before = fx.checkpoints(&task).await;
+    let held_events = |ev: &[Ev]| ev.iter().filter(|e| matches!(e.kind.as_str(), "TaskPaused" | "TaskWaiting" | "RunSuspended")).count();
+    let held_before = held_events(&fx.events().await);
+    let old_generation = fx.g;
+    drop(feed);
+    fx.restart().await;
+    let after = fx.status(&task).await;
+    leg.check("paused_after_the_kill", after.state == "Waiting" && after.wait_reason == "Paused" && !after.loop_alive && after.failure_class.is_empty(), format!("{after:?}"));
+    leg.check("same_run_state", st.run_state == after.run_state, format!("{} vs {}", st.run_state, after.run_state));
+    let cps_after = fx.checkpoints(&task).await;
+    leg.check("same_checkpoint_held", cps_after.current_checkpoint_id == cps_before.current_checkpoint_id, format!("{} vs {}", cps_after.current_checkpoint_id, cps_before.current_checkpoint_id));
+    leg.check("no_event_lost_or_invented", held_events(&fx.events().await) == held_before, "the pause events changed across the restart");
+    // A second client with the previous generation: refused, nothing changes.
+    let stale = fx.c.command(envelope_fenced(rand_id(), "ResumeTask", ResumeTask { task_id: Some(task.clone()), ..Default::default() }.encode_to_vec(), old_generation)).await;
+    leg.check("stale_resume_refused", rejected_code(stale) == "STALE_LEASE", "the stale generation was not refused as STALE_LEASE");
+    let still = fx.status(&task).await;
+    leg.check("stale_resume_changed_nothing", still.wait_reason == "Paused" && !still.loop_alive, format!("{still:?}"));
+    // The current generation resumes the run, once.
+    let usage_before = of_kind(&fx.events().await, "AssistantMessageCompleted").len();
+    let rid = rand_id();
+    let ack = fx.c.command(envelope_fenced(rid.clone(), "ResumeTask", ResumeTask { task_id: Some(task.clone()), model: env.model.clone(), ..Default::default() }.encode_to_vec(), fx.g)).await.unwrap();
+    let r: TaskResumeResult = Client::result(&ack).unwrap();
+    leg.check("resumed_the_same_run", r.resumed && r.run_id == started.run_id, format!("{r:?} vs {:?}", started.run_id));
+    let dup = fx.c.command(envelope_fenced(rid, "ResumeTask", ResumeTask { task_id: Some(task.clone()), model: env.model.clone(), ..Default::default() }.encode_to_vec(), fx.g)).await.unwrap();
+    leg.check("duplicate_resume_is_a_replay", dup.status == 2, format!("status {}", dup.status));
+    let st = fx.wait(&task, 300).await;
+    leg.check("run_ended_after_resume", !st.loop_alive && st.failure_class.is_empty(), format!("{st:?}"));
+    let ev = fx.events().await;
+    leg.check("one_pause_one_completion", of_kind(&ev, "TaskPaused").len() == 1, "more than one pause record");
+    leg.check("the_run_made_progress_after_the_resume", of_kind(&ev, "AssistantMessageCompleted").len() > usage_before, "no model turn completed after the resume");
+    let not_paused = fx.c.command(envelope_fenced(rand_id(), "ResumeTask", ResumeTask { task_id: Some(task.clone()), ..Default::default() }.encode_to_vec(), fx.g)).await;
+    leg.check("resume_of_a_running_or_finished_task_is_refused", rejected_code(not_paused) == "NOT_PAUSED", "not NOT_PAUSED");
+    leg.note("pause during a running shell command and with a pending approval are model-driven (the model must run a long command or ask) and are proven in the scripted suite only");
+    fx.charge(&mut leg, &task).await;
+    leg.finish();
+}
+
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
+#[ignore = "live: needs MODBIT_LIVE=1 and the gateway credential (the live-core workflow)"]
+async fn live_px101_pause() {
+    leg_px101_pause(LiveEnv::from_process()).await;
+}
+
+// ---------------------------------------------------------------------------
 // the scripted stand-in for the offline runs of the same legs
 // ---------------------------------------------------------------------------
 
@@ -2117,5 +2230,24 @@ async fn scripted_px061_checkpoints_leg_mechanics() {
         &std::fs::read_to_string(results.path().join("px061-checkpoints.json")).unwrap(),
     )
     .unwrap();
+    assert_eq!(rec["passed"], true, "{rec:#}");
+}
+
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
+async fn scripted_px101_pause_leg_mechanics() {
+    let chunks = slow_chunks(40);
+    let (base, _seen) = scripted_model_fn(Arc::new(move |_, results| {
+        let steps = [
+            json!({"calls": [{"name": "plan.update", "args": {"outcome": "four files", "expected_files": ["f1.txt", "f2.txt"]}}], "delay_ms": 200}),
+            json!({"chunks": chunks, "chunk_gap_ms": 100, "calls": [{"name": "change.apply", "args": {"path": "f1.txt", "op": "create", "content": "f1.txt\n"}}]}),
+            json!({"calls": [{"name": "change.apply", "args": {"path": "f2.txt", "op": "create", "content": "f2.txt\n"}}], "text": "writing f2"}),
+            json!({"calls": [{"name": "task.complete", "args": {"summary": "done", "self_review": {"findings": []}}}], "text": "finishing"}),
+        ];
+        steps.get(results).cloned().unwrap_or_else(|| json!({"text": "done"}))
+    }))
+    .await;
+    let results = tempfile::tempdir().unwrap();
+    leg_px101_pause(scripted_env(&base, results.path())).await;
+    let rec: Value = serde_json::from_str(&std::fs::read_to_string(results.path().join("px101-pause.json")).unwrap()).unwrap();
     assert_eq!(rec["passed"], true, "{rec:#}");
 }
