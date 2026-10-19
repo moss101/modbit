@@ -8,6 +8,7 @@ import type { TerminalFrameJson, TerminalViewJson } from "../main/terminal-host.
 import type { AttachmentResult, InterruptView, ModeChangedView, ModelCatalogView, PostureView, PreferencePatch, PreferenceSetView, QueuedChangeView, QueueView, SendBehaviorState, SideAnswerView, SlashInventoryView, TaskModeId, InputModeId } from "../shared/composer-types.ts";
 import type { AutoDetail, AutoEnableInput, AutoKillReport, AutoList, AutoRepoLoad, AutoRun, AutoRunInput, AutoRunStarted, AutoValidation, AutoView } from "../shared/automation-types.ts";
 import type { ApplyAckInfo, ApplyInputArgs, CleanupReportInfo, ProjectChangedInfo, ProjectInput, ProjectListInfo, ProjectPatch, WorktreeListInfo, WorktreeRemovalInfo } from "../shared/project-types.ts";
+import type { ChangesStateInfo, CommitPushAckInfo, CommitPushInput, RevertAckInfo, RevertInput, StageAckInfo } from "../shared/changes-types.ts";
 import type { ComputerCardsInfo, ComputerFrameInfo, ComputerPresenceInfo, ComputerStopInfo, OpenSettingsInfo, PermissionName } from "../shared/computer-types.ts";
 import type { AccountingInfo, AddRuleInput, AllowRuleInfo, CheckpointListInfo, CheckpointTargetInput, DockApprovalView, ExpiredApprovalView, ForkOutcome, ModeProposalDecisionInfo, ModeProposalListInfo, RestoreOutcome, RewindPreviewInfo, RunModeInfo, TaskBudgetsInfo } from "../shared/control-types.ts";
 
@@ -279,6 +280,13 @@ export interface ModbitBridge {
   applyWorktree(sessionId: string, taskId: string, input?: ApplyInputArgs): Promise<ApplyAckInfo>;
   undoApply(sessionId: string, taskId: string, applyId?: string): Promise<ApplyAckInfo>;
   discardWorktree(sessionId: string, taskId: string, reason: string, confirm: string): Promise<{ worktreeId: string; disposition: string; offset: string }>;
+  // REQ-PX-048 (the Changes app): the Core's state beside the review bundle, revert, stage and Commit and push. The Core decides every one of them; main runs no Git.
+  changesState(taskId: string): Promise<ChangesStateInfo>;
+  /** Revert a file or one hunk of it to HEAD through the Core's ChangeTransaction; a file edited since `expectedFileRevision` is refused STALE_REVISION. The ack names the checkpoint that undoes it. */
+  revertChanges(sessionId: string, taskId: string, input: RevertInput): Promise<RevertAckInfo>;
+  stageChanges(sessionId: string, taskId: string, paths: { path: string; expectedFileRevision: string }[], stage: boolean): Promise<StageAckInfo>;
+  /** One protected effect: the first call answers APPROVAL_PENDING with the exact intent; after `resolveApproval` the same call commits and pushes. */
+  commitAndPush(sessionId: string, taskId: string, input: CommitPushInput): Promise<CommitPushAckInfo>;
   coreStatus(): Promise<unknown>;
   localState(): Promise<{ sessionId?: string; platform?: { os: string; arch: string; state: string; statement: string } }>;
   languages(): Promise<{ language: string; tier: string; label: string; fixture: string; proven: string[]; provisional: string[]; notClaimed: string[]; note: string }[]>;
@@ -475,6 +483,10 @@ const bridge: ModbitBridge = {
   archiveProject: (sessionId, projectId, archived, commandId) => ipcRenderer.invoke("projects:archive", sessionId, projectId, archived, commandId ?? ""),
   addProjectMember: (sessionId, projectId, taskId, commandId) => ipcRenderer.invoke("projects:addMember", sessionId, projectId, taskId, commandId ?? ""),
   removeProjectMember: (sessionId, projectId, taskId, commandId) => ipcRenderer.invoke("projects:removeMember", sessionId, projectId, taskId, commandId ?? ""),
+  changesState: (taskId) => ipcRenderer.invoke("changes:state", taskId),
+  revertChanges: (sessionId, taskId, input) => ipcRenderer.invoke("changes:revert", sessionId, taskId, input),
+  stageChanges: (sessionId, taskId, paths, stage) => ipcRenderer.invoke("changes:stage", sessionId, taskId, paths, stage),
+  commitAndPush: (sessionId, taskId, input) => ipcRenderer.invoke("changes:commitPush", sessionId, taskId, input),
   listWorktrees: (options) => ipcRenderer.invoke("worktrees:list", options ?? {}),
   removeWorktree: (sessionId, worktreeId, dryRun, commandId) => ipcRenderer.invoke("worktrees:remove", sessionId, worktreeId, dryRun, commandId ?? ""),
   runWorktreeCleanup: (sessionId, options) => ipcRenderer.invoke("worktrees:cleanup", sessionId, options ?? {}),

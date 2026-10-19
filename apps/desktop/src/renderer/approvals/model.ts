@@ -29,6 +29,7 @@ const TOOL_TITLES: Record<string, string> = {
   "git.commit": "Commit changes",
   "git.push": "Push commits",
   "change.apply": "Change a file",
+  "task.budget.raise": "Raise the task's budget",
 };
 
 /** A readable title for the tool (the tool's own name stays beside it). */
@@ -57,6 +58,7 @@ export function whyAsked(r: ApprovalReasonView): Why {
   const code = r.code;
   if (code === "MODE_ASK") return { headline: "Every protected effect asks in the Ask mode.", detail: "Change the run mode to let rules you make run without asking." };
   if (code === "NOT_IN_ALLOWLIST") return { headline: "No allowlist rule covers this command.", detail: r.contained ? "It would run inside a sandbox, but the mode in force does not approve that on its own." : "Run it once, or allow its prefix so the same kind of command runs without asking." };
+  if (code === "BUDGET_RAISE") return { headline: "A budget raise spends more than was set.", detail: "Approving lets this one raise apply when it is asked again; it changes the task's caps and nothing else. The organisation's ceiling still holds." };
   if (code.startsWith("ALWAYS_ASK:")) {
     const cls = code.slice("ALWAYS_ASK:".length);
     const w = ASK_CLASS_WORDS[cls];

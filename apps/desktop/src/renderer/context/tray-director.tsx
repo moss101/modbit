@@ -11,7 +11,7 @@ import { useEffect, useRef, useState } from "react";
 import { Button, trays } from "@modbit/ui";
 import type { AccountingInfo } from "../../shared/control-types.ts";
 import type { TaskCard } from "../model.ts";
-import { budgetBars, countFrom, formatCount, formatWall, trayPlan, type TraySpec } from "./model.ts";
+import { budgetBars, countFrom, formatCount, formatWall, raiseOutcome, trayPlan, type RaiseOutcome, type TraySpec } from "./model.ts";
 
 export interface TrayDirectorProps {
   core: { state: "starting" | "connected" | "restarting" | "failed"; reason: string };
@@ -52,13 +52,16 @@ export function TrayDirector({ core, sessionId, taskId, card, onResume }: TrayDi
   const diagnostic: Diag | null = !taskId ? null : card?.diagnostic ? { code: card.diagnostic.code, detail: card.diagnostic.detail, userAction: card.diagnostic.userAction } : status && status.taskId === taskId && waiting ? status.diag : null;
   const specs = trayPlan({ coreState: core.state, everConnected, coreReason: core.reason, diagnostic, taskId }).filter((s): s is PresentedSpec => s.kind !== "policy");
   const presented = useRef<Set<string>>(new Set());
+  // The caps the person last asked for: the approval stack outranks this tray while a raise waits for its approval, so the tray
+  // is rebuilt when it comes back and must not make the person type the same numbers again.
+  const lastAsk = useRef<LastAsk | null>(null);
   const specKey = specs.map((s) => `${s.id}:${s.title}:${s.text}`).join("|");
 
   useEffect(() => {
     const now = new Set<string>();
     for (const s of specs) {
       now.add(s.id);
-      trays.present(trayFor(s, { sessionId, onResume, dismiss: () => trays.dismiss(s.id) }));
+      trays.present(trayFor(s, { sessionId, onResume, dismiss: () => trays.dismiss(s.id), lastAsk }));
     }
     for (const id of presented.current) if (!now.has(id)) trays.dismiss(id);
     presented.current = now;
@@ -78,21 +81,29 @@ export function TrayDirector({ core, sessionId, taskId, card, onResume }: TrayDi
 /** The policy-blocked entry is the composer's (composer/trays.tsx PolicyTray, one TrayHost entry at priority 60), so this director never presents it. */
 type PresentedSpec = Exclude<TraySpec, { kind: "policy" }>;
 
-function trayFor(s: PresentedSpec, ctx:{ sessionId: string | null; onResume: (taskId: string) => void; dismiss: () => void }) {
+interface LastAsk {
+  taskId: string;
+  cost: string;
+  wall: string;
+}
+
+function trayFor(s: PresentedSpec, ctx: { sessionId: string | null; onResume: (taskId: string) => void; dismiss: () => void; lastAsk: { current: LastAsk | null } }) {
   switch (s.kind) {
     case "offline":
       return { id: s.id, tone: "warn" as const, title: s.title, priority: 80, dismissible: false, body: <p data-testid="tray-offline-text">{s.text}</p> };
     case "budget":
-      return { id: s.id, tone: "warn" as const, title: s.title, priority: 60, dismissible: true, body: <BudgetTray spec={s} sessionId={ctx.sessionId} onResume={ctx.onResume} onDone={ctx.dismiss} /> };
+      return { id: s.id, tone: "warn" as const, title: s.title, priority: 60, dismissible: true, body: <BudgetTray spec={s} sessionId={ctx.sessionId} onResume={ctx.onResume} onDone={ctx.dismiss} lastAsk={ctx.lastAsk} /> };
   }
 }
 
 /** The limit tray: what ran out, what the caps are now, and a way to raise them and continue. */
-export function BudgetTray({ spec, sessionId, onResume, onDone }: { spec: Extract<TraySpec, { kind: "budget" }>; sessionId: string | null; onResume: (taskId: string) => void; onDone: () => void }) {
+export function BudgetTray({ spec, sessionId, onResume, onDone, lastAsk }: { spec: Extract<TraySpec, { kind: "budget" }>; sessionId: string | null; onResume: (taskId: string) => void; onDone: () => void; lastAsk?: { current: LastAsk | null } }) {
   const [acct, setAcct] = useState<AccountingInfo | null>(null);
-  const [cost, setCost] = useState("");
-  const [wall, setWall] = useState("");
-  const [note, setNote] = useState("");
+  const remembered = lastAsk?.current?.taskId === spec.taskId ? lastAsk.current : null;
+  const [cost, setCost] = useState(remembered?.cost ?? "");
+  const [wall, setWall] = useState(remembered?.wall ?? "");
+  const [note, setNote] = useState(remembered ? "Your last ask is filled in. If its approval was granted, press the button to apply it." : "");
+  const [outcome, setOutcome] = useState<RaiseOutcome["kind"] | null>(remembered ? "approval" : null);
   const [busy, setBusy] = useState(false);
   useEffect(() => {
     let live = true;
@@ -113,15 +124,19 @@ export function BudgetTray({ spec, sessionId, onResume, onDone }: { spec: Extrac
       setNote("Give a new cap as a whole number: minor currency units for cost, seconds for time. 0 removes a cap.");
       return;
     }
+    if (lastAsk) lastAsk.current = { taskId: spec.taskId, cost, wall };
     setBusy(true);
     setNote("");
+    setOutcome(null);
     try {
       const b = acct?.budgets;
       await window.modbit.setTaskBudgets(sessionId, spec.taskId, { maxCostMinor: c ?? b?.maxCostMinor ?? "0", maxWallMs: wsec === undefined ? (b?.maxWallMs ?? "0") : String(BigInt(wsec) * 1000n) });
       onResume(spec.taskId);
       onDone();
     } catch (e) {
-      setNote(`The Core refused: ${(e as Error).message.replace(/^Error invoking remote method '[^']*': (Error: )?/, "")}`);
+      const o = raiseOutcome((e as Error).message);
+      setOutcome(o.kind);
+      setNote(o.text);
     } finally {
       setBusy(false);
     }
@@ -144,15 +159,15 @@ export function BudgetTray({ spec, sessionId, onResume, onDone }: { spec: Extrac
           <input inputMode="numeric" value={wall} onChange={(e) => setWall(e.target.value)} disabled={busy} data-testid="tray-budget-wall" />
         </label>
         <Button size="sm" variant="primary" onClick={() => void raise()} disabled={busy} data-testid="tray-budget-raise">
-          Raise and continue
+          {outcome === "approval" || outcome === "pending" ? "Apply the approved raise and continue" : "Raise and continue"}
         </Button>
       </div>
       {note && (
-        <p className="appr-note" role="alert" data-testid="tray-budget-note">
+        <p className="appr-note" role="alert" data-testid="tray-budget-note" data-outcome={outcome ?? undefined}>
           {note}
         </p>
       )}
-      <p className="meta">Raising a cap records it on the task and resumes the run with its partial work. Choosing a cheaper model is in the composer's model picker.</p>
+      <p className="meta">Raising a cap records it on the task and resumes the run with its partial work. The Core refuses a raise above the organisation's ceiling, and one that needs an approval waits for it in the approval stack. Choosing a cheaper model is in the composer's model picker.</p>
     </div>
   );
 }

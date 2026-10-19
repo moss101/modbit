@@ -149,3 +149,23 @@ export function countFrom(text: string): string | null {
   const t = text.trim();
   return /^\d{1,15}$/.test(t) ? t : null;
 }
+
+/** What the Core said to a raise of the caps (REQ-PX-060): its typed code, in words. The Core decides; this only says it. */
+export type RaiseOutcome =
+  | { kind: "ceiling"; text: string }
+  | { kind: "approval"; text: string }
+  | { kind: "pending"; text: string }
+  | { kind: "denied"; text: string }
+  | { kind: "policy"; text: string }
+  | { kind: "other"; text: string };
+
+export function raiseOutcome(message: string): RaiseOutcome {
+  const m = message.replace(/^Error invoking remote method '[^']*': (Error: )?/, "");
+  const detail = m.replace(/^[A-Z_]+: /, "");
+  if (/^BUDGET_CEILING_EXCEEDED/.test(m)) return { kind: "ceiling", text: `Refused by organisation policy: ${detail}. No approval can lift this; choose a lower cap, or ask your administrator.` };
+  if (/^BUDGET_RAISE_NEEDS_APPROVAL/.test(m)) return { kind: "approval", text: `This raise needs an approval. It is waiting in the approval stack with the exact caps. Approve it there, then press the button again to apply it. (${detail})` };
+  if (/^BUDGET_RAISE_APPROVAL_PENDING/.test(m)) return { kind: "pending", text: `The approval for this exact raise is still waiting in the approval stack. Nothing changed. ${detail}` };
+  if (/^BUDGET_RAISE_DENIED/.test(m)) return { kind: "denied", text: `A person denied this exact raise, so the caps stay as they are. ${detail}` };
+  if (/^BUDGET_POLICY_INVALID/.test(m)) return { kind: "policy", text: `Refused: ${detail}` };
+  return { kind: "other", text: `The Core refused: ${m}` };
+}
