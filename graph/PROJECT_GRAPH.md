@@ -1,7 +1,7 @@
 # Modbit Project Graph
 
 > Generated from `graph/project-graph.json` by `tools/graph.py render --write`. Do not edit by hand; edit the graph through `tools/graph.py set` or regenerate structure with `tools/build_graph.py`.  
-> Graph generated on 2026-10-17; view rendered on 2026-10-17.
+> Graph generated on 2026-10-19; view rendered on 2026-10-19.
 
 ## What the graph is
 
@@ -14,13 +14,13 @@ One JSON file that answers *what exists, what depends on what, what proves what,
 | `milestone` | 11 | M0–M10 from docs/43; carries proof statement and dependency edges |
 | `milestone_task` | 78 | Mx.y row from docs/43 (plus five tasks the V2 sequencing delta named but did not enumerate); ordered inside its milestone; carries status |
 | `subsystem` | 23 | canonical single-owner boundary (docs/81); owns REQ rows and IMP tasks; delivered in a primary milestone |
-| `requirement` | 451 | REQ-EV from docs/40, additive REQ-EPR from docs/49 or additive REQ-PX from docs/62 |
+| `requirement` | 452 | REQ-EV from docs/40, additive REQ-EPR from docs/49 or additive REQ-PX from docs/62 |
 | `imp_task` | 422 | IMP-EV from docs/41, EPR from docs/49 or PX from docs/62; carries status and evidence |
-| `dossier_task` | 22 | governance package work outside product milestone roll-ups |
+| `dossier_task` | 23 | governance package work outside product milestone roll-ups |
 | `release_gate` | 7 | EPR promotion gate from docs/61; derived state OPEN/TASKS_COMPLETE/SATISFIED; carries attestation evidence, never a lifecycle status |
 | `source_patch` | 2 | immutable user-supplied patch provenance |
-| `change_record` | 18 | explicit approved dossier amendment |
-| `qual_test` | 451 | QUAL-EV from docs/42, QUAL-EPR from docs/61 or QUAL-PX from docs/62 |
+| `change_record` | 19 | explicit approved dossier amendment |
+| `qual_test` | 452 | QUAL-EV from docs/42, QUAL-EPR from docs/61 or QUAL-PX from docs/62 |
 | `release` | 3 | ALPHA / BETA / RELEASE_ZERO projection from docs/75; readiness derived from included work items and required gates, never stored |
 | `scenario` | 254 | E2E-nnn, WSK-E2E-nnn, MEDIA-E2E-nnn, EPR-E2E/FI-nnn or PX-E2E-nnn scenario, or FI-nn fault case |
 | `decision` | 61 | MOD-* or ADR-R-* decision from docs/02 with authority status |
@@ -31,23 +31,23 @@ One JSON file that answers *what exists, what depends on what, what proves what,
 | `references` | 572 | doc → doc (explicit filename mention) |
 | `depends_on` | 18 | milestone → milestone it requires COMPLETE first |
 | `part_of` | 78 | milestone_task → milestone |
-| `after` | 572 | work item → required COMPLETE work item, including cross-milestone EPR dependencies |
+| `after` | 573 | work item → required COMPLETE work item, including cross-milestone EPR dependencies |
 | `delivered_in` | 22 | subsystem → primary milestone |
-| `specified_by` | 440 | subsystem → doc |
-| `owned_by_req` | 451 | requirement → subsystem |
-| `owned_by` | 444 | imp_task → subsystem |
+| `specified_by` | 445 | subsystem → doc |
+| `owned_by_req` | 452 | requirement → subsystem |
+| `owned_by` | 445 | imp_task → subsystem |
 | `scheduled_in` | 422 | imp_task → milestone |
 | `implemented_by` | 422 | requirement → imp_task |
-| `qualified_by` | 451 | requirement → qual_test |
+| `qualified_by` | 452 | requirement → qual_test |
 | `proven_by` | 626 | imp_task → qual_test |
 | `proves` | 254 | scenario → milestone |
 | `constrains` | 64 | decision → subsystem |
 | `requires_task` | 27 | release gate → required implementation task |
 | `extends` | 380 | additive requirement → related preserved EV requirement |
-| `authorized_by` | 599 | adopted task/decision/requirement → approved change record |
+| `authorized_by` | 602 | adopted task/decision/requirement → approved change record |
 | `adopts` | 2 | change record → immutable source patch |
 | `supersedes` | 10 | new authority → prior authority, only within the recorded scope |
-| `refines` | 12 | v1.1 source/change → previous source/change; non-conflicting authority survives |
+| `refines` | 13 | v1.1 source/change → previous source/change; non-conflicting authority survives |
 | `gated_by` | 7 | milestone → release gate that must be SATISFIED before the milestone rolls up COMPLETE |
 | `includes` | 932 | release → product work item whose COMPLETE status the release requires |
 | `requires_gate` | 7 | release → release gate that must be SATISFIED before the release is READY |
@@ -123,7 +123,7 @@ Each canonical subsystem is a single-owner boundary (`docs/81_ARCHITECTURE_GUARD
 ```mermaid
 flowchart TB
   subgraph M0["M0 — Repository and authority"]
-    governance["Architecture Governance & Product Scope<br/>26 tasks"]
+    governance["Architecture Governance & Product Scope<br/>27 tasks"]
   end
   subgraph M1["M1 — Durable local shell and Core"]
     domain_events["Domain Model, Event Store & Protocol State<br/>22 tasks"]
@@ -179,14 +179,14 @@ flowchart TB
 | `eval-bench` Eval Harness & Benchmarks | M3 | `benchmarks/retrieval`, `benchmarks/context-economics`, `benchmarks/agent-engineering`, `benchmarks/latency` | `53`, `61`, `63`, `38` | 26 | 23 | MOD-JIT-001, ADR-R-044, ADR-R-051, ADR-R-056 |
 | `extensions-hooks` Hook Bus, Extension System & Importers | M9 | `crates/tools (hooks)`, `crates/skills (import)` | `25` | 13 | 12 | — |
 | `external-tools` MCP Hub, Integrations & Web Gateway | M9 | `crates/tools (external.*)`, `crates/tools (forge.*)` | `16`, `29` | 9 | 8 | — |
-| `governance` Architecture Governance & Product Scope | M0 | `tools/architecture-lint`, `tools/evidence-check`, `docs/decisions` | `02`, `03`, `76`, `81`, `82` | 10 | 26 | MOD-PROD-001, MOD-IDE-001, MOD-IDE-002, MOD-COV-001 |
+| `governance` Architecture Governance & Product Scope | M0 | `tools/architecture-lint`, `tools/evidence-check`, `docs/decisions` | `02`, `03`, `76`, `81`, `82` | 10 | 27 | MOD-PROD-001, MOD-IDE-001, MOD-IDE-002, MOD-COV-001 |
 | `media` Media Pipeline & Artifact Store | M5 | `crates/tools (media)`, `object store` | `25` | 6 | 6 | MOD-MEDIA-001, MOD-MEDIA-002, MOD-MM-001 |
 | `memory` Engineering Memory | M9 | `crates/memory` | `19` | 2 | 2 | — |
 | `model-gateway` Execution Policy Router & Provider Gateway | M2 | `crates/providers` | `15`, `27`, `38` | 13 | 13 | ADR-R-039, ADR-R-040, ADR-R-041, ADR-R-047, ADR-R-049, ADR-R-050 |
 | `observability` Observability, Cost & Operations | M10 | `crates/observability` | `34`, `71`, `38` | 7 | 6 | ADR-R-045, ADR-R-048, ADR-R-055 |
 | `procedural-runtime` Procedural Tool Runtime | M5 | `crates/procedural-runtime` | `16` | 3 | 3 | — |
 | `sandbox-cloud` Sandbox Gateway, Guest & Cloud Control Plane | M8 | `crates/sandbox`, `apps/cloud-api`, `apps/cloud-worker`, `apps/sandbox-gateway`, `services/modbit-guest` | `21`, `24` | 18 | 17 | MOD-SBX-001, MOD-AUTH-001, MOD-CLOUD-001 |
-| `skills` Skill Registry, Compiler & Evolution Lab | M5 | `crates/skills`, `crates/prompt-compiler` | `26`, `38` | 24 | 24 | MOD-SKILL-001, MOD-SKILL-002 |
+| `skills` Skill Registry, Compiler & Evolution Lab | M5 | `crates/skills`, `crates/prompt-compiler` | `26`, `38` | 25 | 24 | MOD-SKILL-001, MOD-SKILL-002 |
 | `terminal` Terminal Broker & Execution Router | M2 | `crates/terminal`, `services/modbit-execd` | `21` | 10 | 10 | MOD-EXEC-001, MOD-EXEC-002 |
 | `tool-runtime` Tool Registry & Capability Kernel | M2 | `crates/tools`, `crates/policy` | `16`, `17` | 10 | 10 | MOD-TOOL-001, MOD-TOOL-002, MOD-TOOL-003 |
 | `verification` Verification Engine & Quality Gates | M2 | `crates/verification`, `tools/release-gate` | `28`, `50`, `51`, `63`, `64`, `76`, `83`, `38`, `61` | 18 | 18 | MOD-VERIFY-001, ADR-R-052, ADR-R-056 |
@@ -211,7 +211,7 @@ flowchart LR
   ETASK -->|owned_by| SUB
 ```
 
-Disposition counts: ADAPT 63, ADOPT 346, ALREADY COVERED 11, DEFERRED 12, EXPERIMENT 13, REJECT 6.
+Disposition counts: ADAPT 63, ADOPT 346, ALREADY COVERED 11, DEFERRED 13, EXPERIMENT 13, REJECT 6.
 
 ## Execution policy development dependencies
 
@@ -382,6 +382,7 @@ flowchart LR
 - `DOC-PX-011`: REAL_TESTING; Product extension stage: Extension marketplace and Customize, PX-087..093; evidence: artifact:evidence/dossier-px-007/validation.json, artifact:evidence/dossier-px-007/tests.log
 - `DOC-PX-012`: REAL_TESTING; Product extension stage: Desktop shell platform integration, PX-094..098; evidence: artifact:evidence/dossier-px-007/validation.json, artifact:evidence/dossier-px-007/tests.log
 - `DOC-PX-013`: COMPLETE; Product extension stage: Audit-driven capability completion, PX-099..139; evidence: artifact:evidence/dossier-px-013/validation.json, artifact:evidence/dossier-px-013/tests.log, commit:89fea27edcde3810a92acd5f033ecd80f83785e8
+- `DOC-PX-014`: NOT_STARTED; Product extension stage: Per-task harness refinement and lesson library, PX-140 (deferred); evidence: none
 
 ## Milestone tasks in execution order
 
