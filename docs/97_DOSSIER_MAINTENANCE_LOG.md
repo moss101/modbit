@@ -1065,6 +1065,18 @@ The audit fix FIX-01 (pull request moss101/modbit#61, branch `wip/audit-fixes-in
 | Changed | `tools/build_graph.py`, `tools/test_dossier.py` |
 | Changed | `MANIFEST.md`, `manifest.json`, `graph/PROJECT_GRAPH.md`, `graph/project-graph.json` |
 
+## DOC-PX-014 — Per-task harness refinement: Decision Record and the deferred row PX-140 (2026-10-19)
+
+Dossier only. No product code, status of a product task or release gate changed.
+
+- **Trigger:** the owner asked what Harness² (Google Research, arXiv 2610.14224, Apache-2.0) could add to Modbit, then asked for a Decision Record and a task card, then chose option A with C in chat on 2026-10-19.
+- **Basis:** the Harness² README, paper abstract and `core/recursion.py`, `proposer.py`, `selection.py`, `ledger.py`, `library.py`, `context.py` read at its main of 2026-10-14. Its reported gains are on non-repository benchmarks and weaker executors; no claim is made for Modbit until its own benchmark shows one.
+- **Decision:** `docs/decisions/DR-PX-2026-10-19-014-per-task-harness-refinement.md`, accepted. REQ-PX-140 and QUAL-PX-140 added to doc 62 as DEFERRED, POST_ZERO, no task, card or scenario (the ledger forbids them on DEFERRED rows). The activation task card and scenario stay in the record's appendix.
+- **Tooling:** one entry in the parity table of `tools/build_graph.py` (creates the change record and DOC-PX-014); `tools/test_dossier.py` pins 141 PX rows, 137 ADOPT tasks and four DEFERRED rows and asserts that REQ-PX-140 is deferred, authorized by the record and gates no task.
+- **Other files:** `docs/02_AUTHORITY_AND_DECISIONS.md` (summary paragraph), `docs/decisions/README.md` (ledger row), regenerated manifest and graph.
+- **Not done:** DOC-PX-014 is not advanced past NOT_STARTED because no commit exists to cite as evidence; option C is not built and has no task card; the three open points of the record (selector, per-task budget, hardness threshold) are unset.
+- **Next safe action:** commit the change, then advance DOC-PX-014 with the commit and the integrity-run evidence. Activation of PX-140 starts from a new record, not from this one.
+
 ## Graph integration — product-extension status recorded from `origin/main` dbe83fc9 (2026-10-17)
 
 A bookkeeping change to the project graph only; no requirement row, disposition, owner, Decision Record or product code changed, and no release gate was attested.
