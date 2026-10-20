@@ -3,7 +3,7 @@
  "product": "Modbit",
  "edition": "V3.3 EPR v1.1",
  "authority_date": "2026-09-05",
- "generated_on": "2026-10-19",
+ "generated_on": "2026-10-20",
  "generator": "tools/build_graph.py",
  "status_vocabulary": [
   "NOT_STARTED",
@@ -35108,13 +35108,16 @@
    ],
    "task_card": "docs/62_PRODUCT_EXTENSION_REQUIREMENTS_TASKS_AND_QUALIFICATIONS.md#px-053",
    "audit_at_adoption": "DOCUMENTED-ONLY; no product caller present",
-   "status": "E2E_PROVEN",
+   "status": "COMPLETE",
    "evidence": [
     "commit:5774ec68",
     "run:38990216920",
     "test:services/modbit-core/tests/task_modes.rs::px_053_a_preference_is_recorded_survives_a_kill_reaches_the_wire_and_routing_says_direct",
     "test:services/modbit-core/tests/task_modes.rs::px_053_invalid_preferences_and_forbidden_pins_are_refused_with_typed_errors_and_change_nothing",
-    "test:services/modbit-core/tests/task_modes.rs::px_053_with_a_signed_registry_the_router_reads_the_objective_and_says_which_floor"
+    "test:services/modbit-core/tests/task_modes.rs::px_053_with_a_signed_registry_the_router_reads_the_objective_and_says_which_floor",
+    "run:39029466637",
+    "artifact:evidence/m10/PX-053/evidence.json",
+    "commit:ac4aa804"
    ],
    "notes": [
     {
@@ -35125,7 +35128,7 @@
     }
    ],
    "owner_agent": "graph-integrator",
-   "status_changed_on": "2026-10-17T06:34:55Z"
+   "status_changed_on": "2026-10-20T03:37:24Z"
   },
   {
    "id": "PX-054",
@@ -35520,14 +35523,17 @@
    ],
    "task_card": "docs/62_PRODUCT_EXTENSION_REQUIREMENTS_TASKS_AND_QUALIFICATIONS.md#px-065",
    "audit_at_adoption": "DOCUMENTED-ONLY; no product caller present",
-   "status": "E2E_PROVEN",
+   "status": "COMPLETE",
    "evidence": [
     "commit:d10d46d7",
     "run:38990216920",
     "test:services/modbit-core/tests/worktrees_px.rs::px_065_cleanup_removes_only_what_is_eligible_in_orphan_then_lru_order",
     "test:services/modbit-core/tests/worktrees_px.rs::px_065_a_second_cleanup_while_the_lease_is_held_is_refused_naming_the_holder",
     "test:services/modbit-core/tests/worktrees_px.rs::px_065_the_schedule_catches_up_after_a_restart_and_persists_the_last_run",
-    "commit:2b7f2ac9"
+    "commit:2b7f2ac9",
+    "run:39029466637",
+    "artifact:evidence/m10/PX-065/evidence.json",
+    "commit:ac4aa804"
    ],
    "notes": [
     {
@@ -35538,7 +35544,7 @@
     }
    ],
    "owner_agent": "graph-integrator",
-   "status_changed_on": "2026-10-17T06:34:56Z"
+   "status_changed_on": "2026-10-20T03:37:24Z"
   },
   {
    "id": "PX-066",
@@ -35590,13 +35596,16 @@
    ],
    "task_card": "docs/62_PRODUCT_EXTENSION_REQUIREMENTS_TASKS_AND_QUALIFICATIONS.md#px-067",
    "audit_at_adoption": "DOCUMENTED-ONLY; no product caller present",
-   "status": "E2E_PROVEN",
+   "status": "COMPLETE",
    "evidence": [
     "commit:d10d46d7",
     "run:38990216920",
     "test:services/modbit-core/tests/worktrees_px.rs::px_067_a_hostile_repository_runs_nothing_and_leaks_no_token_through_core_operations",
     "test:crates/git/tests/px_067_remaining.rs",
-    "test:tools/architecture-lint/tests/spawns.rs"
+    "test:tools/architecture-lint/tests/spawns.rs",
+    "run:39029466637",
+    "artifact:evidence/m10/PX-067/evidence.json",
+    "commit:ac4aa804"
    ],
    "notes": [
     {
@@ -35607,7 +35616,7 @@
     }
    ],
    "owner_agent": "graph-integrator",
-   "status_changed_on": "2026-10-17T06:34:56Z"
+   "status_changed_on": "2026-10-20T03:37:24Z"
   },
   {
    "id": "PX-068",
@@ -36822,13 +36831,16 @@
    ],
    "task_card": "docs/62_PRODUCT_EXTENSION_REQUIREMENTS_TASKS_AND_QUALIFICATIONS.md#px-107",
    "audit_at_adoption": "DOCUMENTED-ONLY; no product caller present",
-   "status": "E2E_PROVEN",
+   "status": "COMPLETE",
    "evidence": [
     "commit:5774ec68",
     "run:38990216920",
     "test:services/modbit-core/tests/context_rules_pack.rs::px_107_agents_md_reaches_the_model_only_in_a_trusted_repository_with_provenance",
     "test:services/modbit-core/tests/context_rules_pack.rs::px_107_editing_agents_md_between_turns_changes_the_next_request_and_its_hash",
-    "test:services/modbit-core/tests/context_rules_pack.rs::px_107_oversize_files_are_cut_with_a_marker_and_the_aggregate_stays_bounded"
+    "test:services/modbit-core/tests/context_rules_pack.rs::px_107_oversize_files_are_cut_with_a_marker_and_the_aggregate_stays_bounded",
+    "run:39029466637",
+    "artifact:evidence/m10/PX-107/evidence.json",
+    "commit:ac4aa804"
    ],
    "notes": [
     {
@@ -36839,7 +36851,7 @@
     }
    ],
    "owner_agent": "graph-integrator",
-   "status_changed_on": "2026-10-17T06:34:56Z"
+   "status_changed_on": "2026-10-20T03:37:24Z"
   },
   {
    "id": "PX-108",
@@ -36867,13 +36879,16 @@
    ],
    "task_card": "docs/62_PRODUCT_EXTENSION_REQUIREMENTS_TASKS_AND_QUALIFICATIONS.md#px-108",
    "audit_at_adoption": "DOCUMENTED-ONLY; no product caller present",
-   "status": "E2E_PROVEN",
+   "status": "COMPLETE",
    "evidence": [
     "commit:5774ec68",
     "run:38990216920",
     "test:services/modbit-core/tests/context_rules_pack.rs::px_108_the_first_request_carries_a_goal_seeded_pack_without_a_model_tool_call",
     "test:services/modbit-core/tests/context_rules_pack.rs::px_108_a_write_invalidates_the_fragment_and_model_retrieval_still_works",
-    "test:services/modbit-core/tests/context_rules_pack.rs::px_108_the_pack_stays_inside_the_budget_across_fifty_turns"
+    "test:services/modbit-core/tests/context_rules_pack.rs::px_108_the_pack_stays_inside_the_budget_across_fifty_turns",
+    "run:39029466637",
+    "artifact:evidence/m10/PX-108/evidence.json",
+    "commit:ac4aa804"
    ],
    "notes": [
     {
@@ -36884,7 +36899,7 @@
     }
    ],
    "owner_agent": "graph-integrator",
-   "status_changed_on": "2026-10-17T06:34:56Z"
+   "status_changed_on": "2026-10-20T03:37:24Z"
   },
   {
    "id": "PX-109",
@@ -36960,13 +36975,16 @@
    ],
    "task_card": "docs/62_PRODUCT_EXTENSION_REQUIREMENTS_TASKS_AND_QUALIFICATIONS.md#px-110",
    "audit_at_adoption": "DOCUMENTED-ONLY; no product caller present",
-   "status": "E2E_PROVEN",
+   "status": "COMPLETE",
    "evidence": [
     "commit:d10d46d7",
     "run:38990216920",
     "test:crates/retrieval/tests/code_graph.rs::labelled_queries_meet_the_recall_and_precision_floors",
     "test:crates/retrieval/tests/code_graph.rs::an_interface_change_reaches_its_implementors_and_dropping_implementor_edges_fails_it",
-    "test:services/modbit-core/tests/memory_graph_index.rs::px_110_impact_callers_and_implementors_are_served_by_the_core_and_follow_an_edit"
+    "test:services/modbit-core/tests/memory_graph_index.rs::px_110_impact_callers_and_implementors_are_served_by_the_core_and_follow_an_edit",
+    "run:39029466637",
+    "artifact:evidence/m10/PX-110/evidence.json",
+    "commit:ac4aa804"
    ],
    "notes": [
     {
@@ -36977,7 +36995,7 @@
     }
    ],
    "owner_agent": "graph-integrator",
-   "status_changed_on": "2026-10-17T06:34:56Z"
+   "status_changed_on": "2026-10-20T03:37:25Z"
   },
   {
    "id": "PX-111",
@@ -37006,13 +37024,16 @@
    ],
    "task_card": "docs/62_PRODUCT_EXTENSION_REQUIREMENTS_TASKS_AND_QUALIFICATIONS.md#px-111",
    "audit_at_adoption": "DOCUMENTED-ONLY; no product caller present",
-   "status": "E2E_PROVEN",
+   "status": "COMPLETE",
    "evidence": [
     "commit:d10d46d7",
     "run:38990216920",
     "test:services/modbit-core/tests/memory_graph_index.rs::px_111_a_restarted_core_does_not_rebuild_and_damage_or_staleness_is_rebuilt_with_a_reason",
     "test:services/modbit-core/tests/memory_graph_index.rs::px_111_a_core_killed_inside_an_index_write_recovers_to_a_whole_snapshot",
-    "test:services/modbit-core/tests/memory_graph_index.rs::px_111_indexed_search_returns_what_the_scan_returns_through_the_core"
+    "test:services/modbit-core/tests/memory_graph_index.rs::px_111_indexed_search_returns_what_the_scan_returns_through_the_core",
+    "run:39029466637",
+    "artifact:evidence/m10/PX-111/evidence.json",
+    "commit:ac4aa804"
    ],
    "notes": [
     {
@@ -37023,7 +37044,7 @@
     }
    ],
    "owner_agent": "graph-integrator",
-   "status_changed_on": "2026-10-17T06:34:56Z"
+   "status_changed_on": "2026-10-20T03:37:25Z"
   },
   {
    "id": "PX-112",
@@ -37080,13 +37101,16 @@
    ],
    "task_card": "docs/62_PRODUCT_EXTENSION_REQUIREMENTS_TASKS_AND_QUALIFICATIONS.md#px-113",
    "audit_at_adoption": "DOCUMENTED-ONLY; no product caller present",
-   "status": "E2E_PROVEN",
+   "status": "COMPLETE",
    "evidence": [
     "commit:d10d46d7",
     "run:38990216920",
     "test:services/modbit-core/tests/memory_graph_index.rs::px_113_a_promoted_memory_reaches_a_later_sessions_prompt_and_forgetting_removes_it_after_a_restart",
     "test:services/modbit-core/tests/memory_graph_index.rs::px_113_mutations_are_events_that_replay_to_the_same_store_and_a_direct_write_does_not_survive",
-    "test:services/modbit-core/tests/memory_graph_index.rs::px_113_ttl_scope_precedence_and_sensitivity_decide_what_is_injected"
+    "test:services/modbit-core/tests/memory_graph_index.rs::px_113_ttl_scope_precedence_and_sensitivity_decide_what_is_injected",
+    "run:39029466637",
+    "artifact:evidence/m10/PX-113/evidence.json",
+    "commit:ac4aa804"
    ],
    "notes": [
     {
@@ -37097,7 +37121,7 @@
     }
    ],
    "owner_agent": "graph-integrator",
-   "status_changed_on": "2026-10-17T06:34:57Z"
+   "status_changed_on": "2026-10-20T03:37:25Z"
   },
   {
    "id": "PX-114",
