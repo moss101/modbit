@@ -1,0 +1,29 @@
+{
+ "task": "PX-110",
+ "requirements": [
+  "REQ-PX-110",
+  "QUAL-PX-110",
+  "docs/62_PRODUCT_EXTENSION_REQUIREMENTS_TASKS_AND_QUALIFICATIONS.md#px-110"
+ ],
+ "scenarios": [
+  "Real Core and fixture repositories (ts-webapp, python-service, rust-cli) with a hand-labelled set of callers, implementors and impacted files: for each of at least thirty labelled queries (including an interface change and a renamed function) the returned non-test dependents match the labels with recall and precision at or above the thresholds recorded in the qualification, ambiguous and unresolved edges are labelled as such, impact feeds test selection and the selected tests include the dependent's tests; an edit invalidates the changed file's edges incrementally and the result is correct at the new revision; a result that hits the expansion cap says it is partial."
+ ],
+ "tests": [
+  "crates/retrieval/tests/code_graph.rs::labelled_queries_meet_the_recall_and_precision_floors",
+  "crates/retrieval/tests/code_graph.rs::an_interface_change_reaches_its_implementors_and_dropping_implementor_edges_fails_it",
+  "services/modbit-core/tests/memory_graph_index.rs::px_110_impact_callers_and_implementors_are_served_by_the_core_and_follow_an_edit"
+ ],
+ "audit": "DOCUMENTED-ONLY; no product caller present",
+ "proof": "Real Core, protocol and stores; re-run 2026-10-20 on macOS with the pinned rustup toolchain 1.97.1 (task_modes 11, worktrees_px 37, context_rules_pack 19, memory_graph_index 14 passed; retrieval code_graph 6, git px_067_remaining 6, architecture-lint spawns 2) and in CI on main ac4aa804.",
+ "limitations": "Windows and Linux legs proven by CI only; no release gate attested; no threshold profile owner-approved.",
+ "runs": [
+  "39029466637"
+ ],
+ "ci": {
+  "run_id": "39029466637",
+  "head_sha": "ac4aa8042dab538534bd56a9f518f13672f8ce19",
+  "conclusion": "success",
+  "note": "all 14 jobs green on macOS, Linux and Windows",
+  "json": "evidence/m10/PX-110/ci-run-39029466637.json"
+ }
+}

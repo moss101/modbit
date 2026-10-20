@@ -1,0 +1,29 @@
+{
+ "task": "PX-107",
+ "requirements": [
+  "REQ-PX-107",
+  "QUAL-PX-107",
+  "docs/62_PRODUCT_EXTENSION_REQUIREMENTS_TASKS_AND_QUALIFICATIONS.md#px-107"
+ ],
+ "scenarios": [
+  "Real Core and the scripted provider capturing the provider request: Modbit's own AGENTS.md rules appear in a run's request in a trusted checkout of this repository and are absent in the same checkout marked untrusted (the Inspector lists them as not loaded with the reason); a nearer-directory file takes precedence over the root file for a touched path; a file above the cap is truncated with the marker and the request stays under the aggregate cap; a planted line in AGENTS.md asking to approve everything or to call a tool changes no policy and no tool projection; editing the file between turns changes the next request and the recorded hash."
+ ],
+ "tests": [
+  "services/modbit-core/tests/context_rules_pack.rs::px_107_agents_md_reaches_the_model_only_in_a_trusted_repository_with_provenance",
+  "services/modbit-core/tests/context_rules_pack.rs::px_107_editing_agents_md_between_turns_changes_the_next_request_and_its_hash",
+  "services/modbit-core/tests/context_rules_pack.rs::px_107_oversize_files_are_cut_with_a_marker_and_the_aggregate_stays_bounded"
+ ],
+ "audit": "DOCUMENTED-ONLY; no product caller present",
+ "proof": "Real Core, protocol and stores; re-run 2026-10-20 on macOS with the pinned rustup toolchain 1.97.1 (task_modes 11, worktrees_px 37, context_rules_pack 19, memory_graph_index 14 passed; retrieval code_graph 6, git px_067_remaining 6, architecture-lint spawns 2) and in CI on main ac4aa804.",
+ "limitations": "Windows and Linux legs proven by CI only; no release gate attested; no threshold profile owner-approved.",
+ "runs": [
+  "39029466637"
+ ],
+ "ci": {
+  "run_id": "39029466637",
+  "head_sha": "ac4aa8042dab538534bd56a9f518f13672f8ce19",
+  "conclusion": "success",
+  "note": "all 14 jobs green on macOS, Linux and Windows",
+  "json": "evidence/m10/PX-107/ci-run-39029466637.json"
+ }
+}
