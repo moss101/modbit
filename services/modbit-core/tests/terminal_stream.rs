@@ -30,9 +30,10 @@ mod unix {
     use modbit_protocol::v1::{
         AckTerminal, AcquireSessionLease, AttachTerminal, ClientKind, CommandEnvelope,
         CreateSession, CreateTask, DetachTerminal, GetSessionSnapshot, Id, InvokeTool,
-        ListTerminals, ResizeTerminal, SessionCreated, SessionLeaseAcquired, SessionSnapshot,
-        TaskCreated, TerminalAttached, TerminalDetached, TerminalExit, TerminalList,
-        TerminalResizeDone, TerminalWritten, ToolInvoked, WriteTerminal,
+        ListTerminals, ObjectRangeChunk, ReadObjectRange, ResizeTerminal, SessionCreated,
+        SessionLeaseAcquired, SessionSnapshot, TaskCreated, TerminalAttached, TerminalDetached,
+        TerminalExit, TerminalList, TerminalResizeDone, TerminalWritten, ToolInvoked,
+        WriteTerminal,
     };
     use prost::Message;
     use serde_json::{Value, json};
@@ -1939,6 +1940,184 @@ mod unix {
                 .await
                 .len(),
             1
+        );
+    }
+
+    /// The whole object behind an `output_ref`, paged through the Core's
+    /// `ReadObjectRange` command.
+    async fn read_object(c: &mut Client, hash: &str) -> Vec<u8> {
+        let mut out = Vec::new();
+        loop {
+            let ack = c
+                .command(envelope(
+                    fresh(),
+                    "ReadObjectRange",
+                    ReadObjectRange {
+                        object_hash: hash.to_owned(),
+                        offset: out.len() as u64,
+                        length: 256 * 1024,
+                    }
+                    .encode_to_vec(),
+                ))
+                .await
+                .unwrap();
+            let chunk: ObjectRangeChunk = Client::result(&ack).unwrap();
+            out.extend_from_slice(&chunk.data);
+            if chunk.data.is_empty() || out.len() as u64 >= chunk.total_bytes {
+                return out;
+            }
+        }
+    }
+
+    /// PX-043 acceptance, composed: a build that prints more than 10 MB
+    /// streams in order; the client detaches, the Core is killed, the build
+    /// is released and finishes unwatched; the stored cursor is by then older
+    /// than the replay window (typed CURSOR_EXPIRED); the older output is
+    /// read as `output_ref` ranges and equals what the command printed, the
+    /// bytes the client already consumed are its prefix, and the window's
+    /// own start attaches and reads to the end of the same bytes.
+    #[tokio::test]
+    async fn px_043_a_ten_megabyte_build_streams_survives_detach_and_core_restart_and_older_output_reads_by_output_ref()
+     {
+        let (_repo, root) = workspace();
+        let dir = tempfile::tempdir().unwrap();
+        let env = [
+            ("MODBIT_EXECD_REPLAY_WINDOW_BYTES", "1048576"),
+            ("MODBIT_EXECD_SEGMENT_BYTES", "65536"),
+            ("MODBIT_BACKGROUND_WATCH_MS", "100"),
+        ];
+        let mut core = CoreProcess::spawn(dir.path(), &env);
+        let mut c = core.client().await;
+        let (session, g) = create_session(&mut c, 0x44).await;
+        let task = create_task(&mut c, &session, g, &root).await;
+        let (first_part, n) = (20_000u64, 1_800_000u64);
+        let sid = start_shell(
+            &mut c,
+            &task,
+            g,
+            &format!(
+                "seq -f %.0f 1 {first_part}; read go; seq -f %.0f {} {n}",
+                first_part + 1
+            ),
+        )
+        .await;
+        let a = attach(&mut c, g, &task, &sid, 0, 64 * 1024, false, false)
+            .await
+            .unwrap();
+        let (mut cursor, mut consumed) = (0u64, Vec::new());
+        let first = first_part.to_string();
+        let stop = consume_every(
+            &mut c,
+            &a.attach_id,
+            &mut cursor,
+            &mut consumed,
+            Some(16 * 1024),
+            |b| printed_line(b, &first),
+        )
+        .await;
+        assert!(matches!(stop, Stop::Satisfied), "{stop:?}");
+        ack_cursor(&mut c, &a.attach_id, cursor).await;
+        let d = detach(&mut c, &a.attach_id).await;
+        assert_eq!(d.acked_cursor, cursor);
+        // The Core dies with the build parked on its read.
+        let _ = core.child.kill();
+        let _ = core.child.wait();
+        drop(c);
+        let core2 = CoreProcess::spawn(dir.path(), &env);
+        let mut c2 = core2.client().await;
+        let listed = list_terminals(&mut c2, Some(&task)).await;
+        assert_eq!(listed.terminals.len(), 1, "{listed:?}");
+        assert_eq!(listed.terminals[0].state, "RUNNING");
+        let g2 = acquire_lease(&mut c2, &session, "test-2").await;
+        let r = invoke(
+            &mut c2,
+            &task,
+            g2,
+            "shell.input",
+            &json!({"session_id": sid, "text": "go"}),
+        )
+        .await;
+        assert_eq!(r.status, "SUCCESS", "{r:?}");
+        // Nobody reads: the build runs to its end unwatched.
+        let mut ended = Vec::new();
+        for _ in 0..1200 {
+            ended = events_of(&core2, &session, &task, "BackgroundProcessEnded").await;
+            if !ended.is_empty() {
+                break;
+            }
+            tokio::time::sleep(Duration::from_millis(100)).await;
+        }
+        assert_eq!(ended.len(), 1, "{ended:#?}");
+        assert_eq!(ended[0]["how"], "EXITED");
+        let output_ref = ended[0]["output_ref"].as_str().unwrap().to_owned();
+        assert_eq!(output_ref.len(), 64);
+        // The cursor the client stored is older than the window now.
+        let view = list_terminals(&mut c2, Some(&task)).await.terminals[0].clone();
+        assert!(
+            view.bytes_so_far > 10_000_000,
+            "the build printed {} bytes",
+            view.bytes_so_far
+        );
+        assert!(view.oldest_cursor > cursor, "{view:?} vs {cursor}");
+        let (code, message) =
+            rejected(attach(&mut c2, g2, &task, &sid, cursor, 0, false, false).await);
+        assert_eq!(code, "CURSOR_EXPIRED");
+        assert!(
+            message.contains(&format!("oldest_cursor={}", view.oldest_cursor)),
+            "{message}"
+        );
+        // Older output: the object, by range.
+        let object = read_object(&mut c2, &output_ref).await;
+        // The sealed object is the retained bytes (bounded disk, docs/38):
+        // it ends at the head and starts at or before the window's start,
+        // and is the command's own tail, once and in order.
+        let retained_from = view.bytes_so_far - object.len() as u64;
+        assert!(
+            retained_from <= view.oldest_cursor && object.len() >= 1_048_576,
+            "the object holds {} bytes from {retained_from}; the window starts at {}",
+            object.len(),
+            view.oldest_cursor
+        );
+        assert!(
+            retained_from > cursor,
+            "the bytes the client had consumed are older than the object, which is why its cursor is expired"
+        );
+        let printed = seq_lf(n);
+        let seen = without_cr(&object);
+        assert!(
+            seen.len() < printed.len() && printed.ends_with(&seen),
+            "the object is the tail of what the command printed, once, in order"
+        );
+        // The window's own start attaches and reads to the end of the same bytes.
+        let a2 = attach(
+            &mut c2,
+            g2,
+            &task,
+            &sid,
+            view.oldest_cursor,
+            0,
+            false,
+            false,
+        )
+        .await
+        .unwrap();
+        let (mut tail_cursor, mut tail) = (view.oldest_cursor, Vec::new());
+        let head = view.bytes_so_far;
+        let stop = consume(
+            &mut c2,
+            &a2.attach_id,
+            &mut tail_cursor,
+            &mut tail,
+            true,
+            |_| false,
+        )
+        .await;
+        assert!(matches!(stop, Stop::Exited(_)), "{stop:?}");
+        assert_eq!(tail_cursor, head);
+        let from = (view.oldest_cursor - retained_from) as usize;
+        assert!(
+            tail == object[from..],
+            "the window's bytes are the object's bytes"
         );
     }
 }
