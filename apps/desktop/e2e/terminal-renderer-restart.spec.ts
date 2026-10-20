@@ -12,7 +12,7 @@ import { mkdtempSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { ECHO_LOOP, expectTerminals, gate, nodeTerminal, steppedModel, type Step } from "./support/apps-harness.ts";
-import { closeApp, launch, makeRepo, MOD } from "./support/ui-harness.ts";
+import { closeApp, launch, makeRepo, MOD, setContentSize } from "./support/ui-harness.ts";
 
 test("a background terminal survives a crashed renderer: same handle, same Core, replayed screen, live input", async () => {
   const modelGate = gate();
@@ -30,6 +30,8 @@ test("a background terminal survives a crashed renderer: same handle, same Core,
   const dataDir = mkdtempSync(join(tmpdir(), "modbit-e2e-term-restart-"));
   const { app, page: page1 } = await launch(dataDir, { env: { MODBIT_OPENAI_BASE_URL: model.url } });
   try {
+    // A narrow window has no room for the apps panel; the hosted runners' default window is narrow.
+    await setContentSize(app, page1, 1280, 800);
     await page1.getByTestId("goal").fill("Keep a terminal running");
     await page1.getByTestId("workspace").fill(repo);
     await page1.getByTestId("run").click();
@@ -67,6 +69,7 @@ test("a background terminal survives a crashed renderer: same handle, same Core,
     await expect.poll(() => handedOver().length, { timeout: 60_000, message: "Playwright never exposed the replacement page" }).toBe(1);
     const page: Page = handedOver()[0]!;
     await expect(page.getByTestId("core-status")).toContainText("Core connected", { timeout: 60_000 });
+    await setContentSize(app, page, 1280, 800);
 
     // The same Core, the same terminal handle, still running, nothing lost from its log.
     const coreAfter = await page.evaluate(() => window.modbit.debugCoreInfo());
