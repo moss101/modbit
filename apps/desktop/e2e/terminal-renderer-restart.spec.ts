@@ -102,7 +102,18 @@ test("a background terminal survives a crashed renderer: same handle, same Core,
         const log = await readTerminal(page, { sessionId, taskId, terminalId: before.terminalId, after: "0", windowBytes: 65536 });
         return new TextDecoder().decode(Uint8Array.from(log.bytes)).includes("got:after-crash");
       }, { timeout: 60_000, message: "the child never answered the new view's input" })
-      .toBe(true);
+      .toBe(true)
+      .catch(async (e: Error) => {
+        // What tells a lost keystroke from a lost line: the PTY's own echo of the typed text, who holds the input lease, and any notice the view showed.
+        const log = await readTerminal(page, { sessionId, taskId, terminalId: before.terminalId, after: "0", windowBytes: 65536 });
+        const text = new TextDecoder().decode(Uint8Array.from(log.bytes));
+        const listed = (await page.evaluate((t) => window.modbit.terminalList(t).then((l) => l.terminals), taskId))[0];
+        const notice = await page.getByTestId("terminal-notice").textContent().catch(() => null);
+        const lease = await page.getByTestId("terminal-view").getAttribute("data-lease").catch(() => null);
+        throw new Error(
+          `${e.message}\nthe PTY echoed the typed text: ${text.includes("after-crash")}; view lease: ${lease}; Core lease holder: ${JSON.stringify(listed?.inputLeaseHolder)}; size ${listed?.rows}x${listed?.cols}; notice: ${JSON.stringify(notice)}\nlog tail: ${JSON.stringify(text.slice(-600))}`,
+        );
+      });
   } finally {
     modelGate.open();
     await closeApp(app);
