@@ -2,13 +2,13 @@
   "product": "Modbit",
   "edition": "V3.3 EPR v1.1",
   "authority_date": "2026-09-05",
-  "generated_on": "2026-10-05",
+  "generated_on": "2026-10-20",
   "hash_algorithm": "sha256",
   "scope_rule": "docs/*.md, root *.md except MANIFEST.md, docs/decisions/*.md, graph JSON/Markdown, tools/*.py, evidence payloads; manifests exclude themselves and transient caches",
   "counts": {
     "docs": 97,
-    "root_and_tooling": 1670,
-    "docs_bytes": 2128508
+    "root_and_tooling": 1695,
+    "docs_bytes": 2138953
   },
   "sections": [
     {
@@ -77,8 +77,8 @@
       "section": "authority",
       "section_title": "Authority and orientation",
       "title": "Authority, Decision Register, and Conflict Resolution",
-      "bytes": 24635,
-      "sha256": "bbfd042e7ebdeb240ccdd0dfc47a88540e26f78c5576f4a90b02d328757bc25d"
+      "bytes": 25617,
+      "sha256": "f780e8ec295f92d4198c478f04e11c831c1f2f7993a36db2c2f94e4499778409"
     },
     {
       "path": "docs/03_ARCHITECTURAL_CONFLICTS_AND_SUPERSESSIONS.md",
@@ -599,8 +599,8 @@
       "section": "verification",
       "section_title": "Verification and testing",
       "title": "Product extension requirements, tasks and qualifications",
-      "bytes": 505405,
-      "sha256": "2c9fdf5f1d506778bc65c3521fe0c374ec6754af33f0df0021fa8039321eb4c8"
+      "bytes": 507523,
+      "sha256": "7cece47d9b5f43361ad0017557ded25177dcefeac02792e072e9f352e0bf0bb5"
     },
     {
       "path": "docs/63_AGENT_COMPETENCE_BENCHMARKS_AND_REGRESSION_SUITES.md",
@@ -914,8 +914,8 @@
       "section": "governance",
       "section_title": "Agent process and governance",
       "title": "Dossier maintenance log",
-      "bytes": 111104,
-      "sha256": "15395a0c5735f1d156a988ddac50fa1646a2d9e5764bc9ae23c6d22a5b5b43d8"
+      "bytes": 117923,
+      "sha256": "ddeec3201db5b458299eb7104182eb15d2320d7e34c07e8ffccf23af50919d16"
     },
     {
       "path": "docs/98_BUILD_MANIFEST.md",
@@ -923,8 +923,8 @@
       "section": "live-state",
       "section_title": "Live state",
       "title": "Build Manifest",
-      "bytes": 14435,
-      "sha256": "6cb1bd98843b9de346bf065ed6dfb0d524a78c545697d86f37037a9978c68dec"
+      "bytes": 14961,
+      "sha256": "824d5b749252e6cba1de566c5e766cbfaefce23f4cda2fd64bc07398e251b102"
     }
   ],
   "root_and_tooling": [
@@ -1079,9 +1079,14 @@
       "sha256": "01e7af921cf9249014c6fdb411fda39482af4ff7c91e598cf19c302c91245bab"
     },
     {
+      "path": "docs/decisions/DR-PX-2026-10-19-014-per-task-harness-refinement.md",
+      "bytes": 17309,
+      "sha256": "c1fdae3e270803a585c698244c32e42f2132ed5866a8ccfb786c05d2d1adfa76"
+    },
+    {
       "path": "docs/decisions/README.md",
-      "bytes": 6223,
-      "sha256": "3d7bd1b532523a0f4f33e19731d85ac511275663a9699a8eeff97d6aa90a532f"
+      "bytes": 6598,
+      "sha256": "dab5a2452e003a451bbe67b211870895cc4ffe1ff2e3e8322ce072ab72973cc1"
     },
     {
       "path": "evidence/dossier-epr-v1.1/baseline.json",
@@ -1987,6 +1992,126 @@
       "path": "evidence/m10/PX-030/ci-run-36235004309.json",
       "bytes": 43308,
       "sha256": "7b519219b5bd3f7b64a1a6aa1ee94d36b4bf59e784f44131822b23876f16ad70"
+    },
+    {
+      "path": "evidence/m10/PX-053/TASK_CARD.md",
+      "bytes": 1721,
+      "sha256": "7d8b09f7707d974ad23ef74408045cf05cd56050a9bc5d070e4f565385e61193"
+    },
+    {
+      "path": "evidence/m10/PX-053/ci-run-39029466637.json",
+      "bytes": 44828,
+      "sha256": "51d55901cfaeefcd93f7fc07a20a2115bbcd4758fcf802268d3e99e3d0928e70"
+    },
+    {
+      "path": "evidence/m10/PX-053/evidence.json",
+      "bytes": 1803,
+      "sha256": "5a568ba66366852b73f322b0c5a8543bd5751c617536618cf5817c449c9031a9"
+    },
+    {
+      "path": "evidence/m10/PX-065/TASK_CARD.md",
+      "bytes": 1924,
+      "sha256": "ad76884525dda5cf7bc24118b116fa81a9db693d5f6e0f51a37fc64a60d7c56e"
+    },
+    {
+      "path": "evidence/m10/PX-065/ci-run-39029466637.json",
+      "bytes": 44828,
+      "sha256": "51d55901cfaeefcd93f7fc07a20a2115bbcd4758fcf802268d3e99e3d0928e70"
+    },
+    {
+      "path": "evidence/m10/PX-065/evidence.json",
+      "bytes": 1981,
+      "sha256": "7bd8e97caccf5bb06db2a389a37f04ebc4c0e8d9143352f4c45c0b0704965744"
+    },
+    {
+      "path": "evidence/m10/PX-067/TASK_CARD.md",
+      "bytes": 1564,
+      "sha256": "8d869707f37a93fcb08d7ef67e4dd18d108d48fb36a87ba909dcdde2c59e2b6a"
+    },
+    {
+      "path": "evidence/m10/PX-067/ci-run-39029466637.json",
+      "bytes": 44828,
+      "sha256": "51d55901cfaeefcd93f7fc07a20a2115bbcd4758fcf802268d3e99e3d0928e70"
+    },
+    {
+      "path": "evidence/m10/PX-067/evidence.json",
+      "bytes": 1624,
+      "sha256": "533571477403877cb37f38b2aa98b7f4e697a5acd76189146b2cd8f0dcbefc68"
+    },
+    {
+      "path": "evidence/m10/PX-107/TASK_CARD.md",
+      "bytes": 1897,
+      "sha256": "c4fa97487b99a689661dc7bc2d3a2a874ecf705d271b67dedfe46982fe8b880d"
+    },
+    {
+      "path": "evidence/m10/PX-107/ci-run-39029466637.json",
+      "bytes": 44828,
+      "sha256": "51d55901cfaeefcd93f7fc07a20a2115bbcd4758fcf802268d3e99e3d0928e70"
+    },
+    {
+      "path": "evidence/m10/PX-107/evidence.json",
+      "bytes": 1993,
+      "sha256": "eadc7d9a9b887a3ec7ccedecf61b0fa7eee45f387fffb87e74c8c15a1547b1f7"
+    },
+    {
+      "path": "evidence/m10/PX-108/TASK_CARD.md",
+      "bytes": 1858,
+      "sha256": "37fdd605749c8aba3f54d9941e0e231e5760f4edc173ebe0d73695485a1477c2"
+    },
+    {
+      "path": "evidence/m10/PX-108/ci-run-39029466637.json",
+      "bytes": 44828,
+      "sha256": "51d55901cfaeefcd93f7fc07a20a2115bbcd4758fcf802268d3e99e3d0928e70"
+    },
+    {
+      "path": "evidence/m10/PX-108/evidence.json",
+      "bytes": 1972,
+      "sha256": "3c51ba9fcf43c278e57a54df0496ada5a5557ed9bf6152388bb3993e44ba6cef"
+    },
+    {
+      "path": "evidence/m10/PX-110/TASK_CARD.md",
+      "bytes": 1923,
+      "sha256": "97bb8dfd51de8e460bc0306f0e0385a2ac1a15426f16e3dafad6b6b9c238c923"
+    },
+    {
+      "path": "evidence/m10/PX-110/ci-run-39029466637.json",
+      "bytes": 44828,
+      "sha256": "51d55901cfaeefcd93f7fc07a20a2115bbcd4758fcf802268d3e99e3d0928e70"
+    },
+    {
+      "path": "evidence/m10/PX-110/evidence.json",
+      "bytes": 1983,
+      "sha256": "f295ca23795680ec273576d192037b2b3520f4178796612131a6ff0850d90821"
+    },
+    {
+      "path": "evidence/m10/PX-111/TASK_CARD.md",
+      "bytes": 1953,
+      "sha256": "9fa90cd97c453131dc1aa3974522dc9bfec3cb4704e98053c6b832b8d5747a1d"
+    },
+    {
+      "path": "evidence/m10/PX-111/ci-run-39029466637.json",
+      "bytes": 44828,
+      "sha256": "51d55901cfaeefcd93f7fc07a20a2115bbcd4758fcf802268d3e99e3d0928e70"
+    },
+    {
+      "path": "evidence/m10/PX-111/evidence.json",
+      "bytes": 2046,
+      "sha256": "ae76bdcfdad1513e9902e633d3536a12e3cee9ea671461454f4acefedccf2aed"
+    },
+    {
+      "path": "evidence/m10/PX-113/TASK_CARD.md",
+      "bytes": 1880,
+      "sha256": "7b34528c3e3c41c1610fee7869cb47d0319ac054da04c16bc064a92813bcba5f"
+    },
+    {
+      "path": "evidence/m10/PX-113/ci-run-39029466637.json",
+      "bytes": 44828,
+      "sha256": "51d55901cfaeefcd93f7fc07a20a2115bbcd4758fcf802268d3e99e3d0928e70"
+    },
+    {
+      "path": "evidence/m10/PX-113/evidence.json",
+      "bytes": 1948,
+      "sha256": "f3482faec71e1074ab11e7eac875490685d6ff66e9de12019708ca173efa1ed9"
     },
     {
       "path": "evidence/m2/IMP-EV-0011/TASK_CARD.md",
@@ -9215,18 +9340,18 @@
     },
     {
       "path": "graph/PROJECT_GRAPH.md",
-      "bytes": 44991,
-      "sha256": "84643ac5408072a37703690bdbe7c9858d18af96fe2464132e058df27c68981a"
+      "bytes": 45127,
+      "sha256": "0ecc1c497fbd107ec574c4cec2516661c08d0e36793a4cb1b398940ffd22c064"
     },
     {
       "path": "graph/project-graph.json",
-      "bytes": 2221993,
-      "sha256": "34603f963767d534595698190b6a8b6ed8819c78506ed456ae52657f65a19767"
+      "bytes": 2262844,
+      "sha256": "396ab2ddb135f7b4db62b0c5aba29126e4c0f3ffff2695822d26fb9292576c4c"
     },
     {
       "path": "tools/build_graph.py",
-      "bytes": 62067,
-      "sha256": "f4b1016163d099618cb1f387a935e371e282ac0dc0afcc3b1f960c3770978182"
+      "bytes": 62560,
+      "sha256": "7e491e47f2e89f8cad4827a72701b7849d4d628754417022c862dc9b21431061"
     },
     {
       "path": "tools/build_manifest.py",
@@ -9275,8 +9400,8 @@
     },
     {
       "path": "tools/test_dossier.py",
-      "bytes": 67379,
-      "sha256": "740facd2f5272d025a26207cce2bf0048c50ceb3203540b78aff69faa815a020"
+      "bytes": 69790,
+      "sha256": "385a3b7b82039634f64282ed7e523baffe6711b70da7f7643f1bcf2b7df2c00d"
     }
   ],
   "renames_v3_to_v3_1": {

@@ -1,0 +1,11 @@
+{
+  "id": "javascript-sku-vacuous-b",
+  "class": "vacuous",
+  "flavor": "b",
+  "leg": "initial",
+  "write_set": [
+    "src/shop.mjs",
+    "test/sku.test.mjs"
+  ],
+  "declared": "incorrect"
+}

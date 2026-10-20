@@ -43,7 +43,7 @@ export function AppsPanel(p: AppsPanelProps) {
       <Tabs label="Apps" tabs={tabs} selected={p.tab} onSelect={(id) => p.onTab(id as AppKind)} idPrefix="apps" testId="apps-tabs">
         {p.tab === "changes" &&
           (p.artifacts.includes("changes") ? (
-            <ChangesApp taskId={p.taskId} taskState={p.taskState} refreshKey={p.refreshKey} onOpenReview={p.onOpenReview} />
+            <ChangesApp sessionId={p.sessionId} taskId={p.taskId} taskState={p.taskState} refreshKey={p.refreshKey} onOpenReview={p.onOpenReview} />
           ) : (
             <p className="meta" data-testid="app-changes-empty">
               This task has no change set to show yet.

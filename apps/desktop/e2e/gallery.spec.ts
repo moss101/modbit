@@ -128,6 +128,39 @@ test("PX-044: the tray host keeps one active tray, and the scoped keys move with
   }
 });
 
+test("PX-054..056: the composer's menus, trays, chips and picker render from fixtures with no Core; axe passes on each in light, dark and high contrast", async () => {
+  const { app, page } = await launchGallery();
+  try {
+    const status = await page.evaluate(() => window.modbit.coreStatus());
+    expect((status as { state: string }).state, "no Core is connected to this page").not.toBe("connected");
+    const section = page.getByTestId("gallery-composer");
+    await expect(section).toBeVisible();
+    await expect(page.getByTestId("gallery-mode-chips").locator(".cmp-mode")).toHaveCount(4);
+    await expect(page.getByTestId("queue-tray")).toContainText("3 queued");
+    await expect(page.getByTestId("education-tray")).toContainText("Messages sent during a turn are queued");
+    await expect(page.getByTestId("stopped-tray")).toContainText("Stopped by you");
+    await expect(page.getByTestId("policy-tray")).toContainText("gpt-5-mini is not available to you");
+    await expect(page.getByTestId("terminals-tray")).toContainText("cargo watch");
+    await expect(page.getByTestId("slash-divider")).toHaveCount(1);
+    await expect(page.getByTestId("slash-detail")).toContainText("Not trusted");
+    // A planted description is text, not markup.
+    await expect(page.getByTestId("slash-description")).toContainText("<b>Looks like markup</b>");
+    expect(await page.getByTestId("gallery-slash").locator("b").count()).toBe(0);
+    await expect(page.locator('[data-testid="mention-option"][aria-disabled="true"]')).toContainText("path policy");
+    // The picker opens from its chip and lists the blocked model as blocked.
+    await page.getByTestId("gallery-picker").getByTestId("model-chip").click();
+    await expect(page.getByTestId("model-row").first()).toBeVisible();
+    await expect(page.locator('[data-row-id="openai/gpt-5-mini#medium"]')).toHaveAttribute("data-blocked", "true");
+    for (const theme of THEMES) {
+      await page.getByTestId(`theme-${theme}`).click();
+      await expect(page.locator("html")).toHaveAttribute("data-theme", theme);
+      await accessible(page, `the composer gallery in ${theme}`, '[data-testid="gallery-composer"]');
+    }
+  } finally {
+    await closeApp(app);
+  }
+});
+
 test("PX-044: every primitive operates by keyboard alone with its ARIA contract", async () => {
   const { app, page } = await launchGallery();
   try {

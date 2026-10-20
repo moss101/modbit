@@ -64,16 +64,16 @@ export class TrayStore<B = unknown> {
 
   getSnapshot = (): TraySnapshot<B> => this.snap;
 
-  /** Presents (or replaces, by id) a tray. A new tray becomes active unless the active one outranks it. */
+  /** Presents (or replaces, by id) a tray. A new tray becomes active unless the active one outranks it; refreshing a tray already shown never moves the slot, so a tray the person brought forward stays forward while the others update. */
   present(def: TrayDef<B>): void {
     const existing = this.trays.findIndex((t) => t.id === def.id);
-    if (existing >= 0) this.trays[existing] = def;
-    else {
+    const isNew = existing < 0;
+    if (isNew) {
       this.trays.push(def);
       this.seq.set(def.id, ++this.counter);
-    }
+    } else this.trays[existing] = def;
     const active = this.trays.find((t) => t.id === this.activeId);
-    if (!active || (def.priority ?? 0) >= (active.priority ?? 0)) this.activeId = def.id;
+    if (!active || (isNew && (def.priority ?? 0) >= (active.priority ?? 0))) this.activeId = def.id;
     this.publish();
   }
 

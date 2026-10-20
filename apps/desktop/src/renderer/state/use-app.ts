@@ -45,6 +45,8 @@ export function useApp() {
     }, 150);
   }, []);
   const [workspaceRoot, setWorkspaceRoot] = useState("");
+  // PX-118: the task works in its own worktree; the checkout is untouched until its result is applied.
+  const [isolate, setIsolate] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [reviewing, setReviewing] = useState<string | null>(null);
   // PX-045: the task the person last focused; the apps panel follows it.
@@ -226,7 +228,7 @@ export function useApp() {
           const t = await window.modbit.trustRepository(sessionId, root);
           setTrusted(t.workspaceRoot);
         }
-        const r = await window.modbit.createTask(sessionId, text, commandId, root, issue || undefined);
+        const r = await window.modbit.createTask(sessionId, text, commandId, root, issue || undefined, isolate && root ? { isolation: "WORKTREE" } : {});
         // Render from the durable id the Core returned; the events will follow.
         setModel((m) => {
           if (m.tasks.has(r.taskId)) return m;
@@ -245,7 +247,7 @@ export function useApp() {
         setSubmitting(false);
       }
     },
-    [goal, issueUrl, workspaceRoot, submitting, trusted],
+    [goal, issueUrl, workspaceRoot, submitting, trusted, isolate],
   );
 
   const startTask = useCallback(async (taskId: string) => {
@@ -573,7 +575,7 @@ export function useApp() {
   // and no tasks keeps it up with step 3.
   const onboarding = core.state === "connected" && provider !== null && (!provider.configured || model.tasks.size === 0);
 
-  return { selectedTaskId, setSelectedTaskId, core, setCore, model, setModel, screen, setScreen, platform, setPlatform, error, setError, recovered, setRecovered, recovery, setRecovery, goal, setGoal, issueUrl, setIssueUrl, languages, setLanguages, inspector, setInspector, economics, setEconomics, attentionItems, setAttentionItems, attentionLoaded, setAttentionLoaded, attentionTimer, refreshAttention, workspaceRoot, setWorkspaceRoot, submitting, setSubmitting, reviewing, setReviewing, dashboardOpen, setDashboardOpen, browsing, setBrowsing, provider, setProvider, credentials, setCredentials, credentialForm, setCredentialForm, credentialError, setCredentialError, refreshCredentials, providerKind, setProviderKind, providerKey, setProviderKey, providerUrl, setProviderUrl, providerBusy, setProviderBusy, providerResult, setProviderResult, trustRoot, setTrustRoot, trusted, setTrusted, trustBusy, setTrustBusy, trustError, setTrustError, starters, setStarters, autoReview, setAutoReview, createError, setCreateError, filter, setFilter, helpOpen, setHelpOpen, confirm, setConfirm, focusedTask, announcement, setAnnouncement, seenAttention, prefs, setPrefs, delivered, setDelivered, previousNotifications, modelRef, wasRestarting, load, submit, startTask, openBrowser, setupProvider, trustRepository, runStarter, cols, attention, visible, focusedCard, cardsOf, runFleetCommand, tasks, fleet, composer, settings, notifications, savePrefs, open, onboarding };
+  return { selectedTaskId, setSelectedTaskId, core, setCore, model, setModel, screen, setScreen, platform, setPlatform, error, setError, recovered, setRecovered, recovery, setRecovery, goal, setGoal, issueUrl, setIssueUrl, languages, setLanguages, inspector, setInspector, economics, setEconomics, attentionItems, setAttentionItems, attentionLoaded, setAttentionLoaded, attentionTimer, refreshAttention, workspaceRoot, setWorkspaceRoot, isolate, setIsolate, submitting, setSubmitting, reviewing, setReviewing, dashboardOpen, setDashboardOpen, browsing, setBrowsing, provider, setProvider, credentials, setCredentials, credentialForm, setCredentialForm, credentialError, setCredentialError, refreshCredentials, providerKind, setProviderKind, providerKey, setProviderKey, providerUrl, setProviderUrl, providerBusy, setProviderBusy, providerResult, setProviderResult, trustRoot, setTrustRoot, trusted, setTrusted, trustBusy, setTrustBusy, trustError, setTrustError, starters, setStarters, autoReview, setAutoReview, createError, setCreateError, filter, setFilter, helpOpen, setHelpOpen, confirm, setConfirm, focusedTask, announcement, setAnnouncement, seenAttention, prefs, setPrefs, delivered, setDelivered, previousNotifications, modelRef, wasRestarting, load, submit, startTask, openBrowser, setupProvider, trustRepository, runStarter, cols, attention, visible, focusedCard, cardsOf, runFleetCommand, tasks, fleet, composer, settings, notifications, savePrefs, open, onboarding };
 }
 
 export type AppState = ReturnType<typeof useApp>;

@@ -1315,6 +1315,17 @@ pub(crate) fn headers(
         .filter(|a| a.state == ApprovalState::Requested)
         .map(|a| a.task_id)
         .collect();
+    let projects = crate::projects::memberships(store);
+    // A task that works in a worktree of its own names the checkout the
+    // worktree was made from (`checkout_root`): the repository the person
+    // knows. Its `workspace_root` stays the root it really works in.
+    let worktrees = crate::worktrees::registry_of_session(store, &session);
+    let checkout_of = |root: &str| -> Option<String> {
+        worktrees
+            .iter()
+            .find(|r| !r.removed && crate::worktrees::same_path(&r.path, root))
+            .map(|r| r.origin_root.clone())
+    };
     let mut out: Vec<wire::AgentHeader> = Vec::new();
     for t in tasks {
         let Some(d) = digests.get(&t.task_id) else {
@@ -1385,6 +1396,14 @@ pub(crate) fn headers(
             last_offset: d.last_offset,
             read_offset: d.read_offset,
             attention_items: attention_items as u32,
+            project_id: projects
+                .get(&t.task_id)
+                .map(|p| crate::server::wire_id(p.as_bytes())),
+            checkout_root: t
+                .workspace_root
+                .as_deref()
+                .and_then(checkout_of)
+                .unwrap_or_default(),
         });
     }
     out.sort_by(|a, b| {

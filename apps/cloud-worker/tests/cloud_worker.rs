@@ -3690,19 +3690,24 @@ async fn qual_ev_0023_a_cloud_tasks_starts_emit_every_slo_timestamp_and_cold_and
         )
         .await;
     assert_eq!(s, 202);
-    until("the sandbox to be released", 120, async || {
-        let (_, v) = api
-            .get(
-                &a,
-                &format!("/v1/events?session_id={sid}&after=0&limit=1000"),
-            )
-            .await;
-        v["events"]
-            .as_array()?
-            .iter()
-            .any(|e| e["envelope"]["event_type"] == "SandboxReleased")
-            .then_some(())
-    })
+    until_dumping(
+        "the sandbox to be released",
+        120,
+        async || {
+            let (_, v) = api
+                .get(
+                    &a,
+                    &format!("/v1/events?session_id={sid}&after=0&limit=1000"),
+                )
+                .await;
+            v["events"]
+                .as_array()?
+                .iter()
+                .any(|e| e["envelope"]["event_type"] == "SandboxReleased")
+                .then_some(())
+        },
+        async || session_dump(&api, &a, &sid).await,
+    )
     .await;
     worker.stop().await;
 }

@@ -1,0 +1,11 @@
+{
+  "id": "rust-quantity-weakening-a",
+  "class": "weakening",
+  "flavor": "a",
+  "leg": "initial",
+  "write_set": [
+    "src/lib.rs",
+    "tests/discount.rs"
+  ],
+  "declared": "incorrect"
+}

@@ -1,0 +1,28 @@
+{
+  "expected": {
+    "modeChange": {
+      "acceptedPlanVersion": 2,
+      "effective": "NEXT_ROUND_BOUNDARY",
+      "mode": "TASK_MODE_AGENT",
+      "offset": "42",
+      "previousMode": "TASK_MODE_PLAN",
+      "taskId": "71717171717171717171717171717171"
+    },
+    "offset": "43",
+    "proposal": {
+      "decidedAtMs": "1700000006000",
+      "decidedOffset": "43",
+      "expiresAtMs": "1700000015000",
+      "fromMode": "TASK_MODE_PLAN",
+      "outcomeReason": "ACCEPTED_BY_USER",
+      "proposalId": "mp-call00",
+      "proposedAtMs": "1700000000000",
+      "proposedOffset": "40",
+      "reason": "the plan is ready",
+      "status": "ACCEPTED",
+      "taskId": "71717171717171717171717171717171",
+      "toMode": "TASK_MODE_AGENT"
+    }
+  },
+  "type": "modbit.v1.ModeProposalDecided"
+}

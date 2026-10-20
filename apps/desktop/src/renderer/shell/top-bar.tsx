@@ -14,6 +14,10 @@ export interface TopBarProps {
   dashboardOpen: boolean;
   dashboardDisabled: boolean;
   onToggleDashboard: () => void;
+  /** REQ-PX-086: the Automations surface. */
+  automationsOpen?: boolean | undefined;
+  automationsDisabled?: boolean | undefined;
+  onToggleAutomations?: (() => void) | undefined;
   panelOpen: boolean;
   /** Why the panel cannot open (no task has an artifact), or null when it can. */
   panelUnavailable: string | null;
@@ -36,6 +40,11 @@ export function TopBar(p: TopBarProps) {
         {p.location}
       </Badge>
       <span className="topbar-spacer" />
+      {p.onToggleAutomations && (
+        <Button size="sm" data-testid="open-automations" aria-pressed={p.automationsOpen ?? false} disabled={p.automationsDisabled ?? false} onClick={p.onToggleAutomations}>
+          Automations
+        </Button>
+      )}
       <Button size="sm" data-testid="open-dashboard" disabled={p.dashboardDisabled} onClick={p.onToggleDashboard}>
         {p.dashboardOpen ? "Close dashboard" : "Dashboard"}
       </Button>

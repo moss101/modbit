@@ -485,3 +485,60 @@ fn qual_px_100_the_cli_sets_mode_and_preference_through_the_core_and_the_core_de
         assert!(types.iter().any(|x| x == t), "{t} in {types:?}");
     }
 }
+
+/// REQ-PX-055 (CLI half): the proposals of a task are listed from the Core and
+/// answered through the same typed command as the desktop's card. A task with
+/// none lists none; an answer naming a proposal the Core does not know is
+/// refused with the Core's typed code and changes nothing (each invocation is
+/// its own Core over the same data directory, so this is also a restart).
+#[test]
+fn px_055_the_cli_lists_and_answers_mode_proposals_through_the_core() {
+    let core = core_bin();
+    let tmp = tempfile::tempdir().unwrap();
+    let data_dir = tmp.path().join("profile");
+    std::fs::create_dir_all(&data_dir).unwrap();
+    let root = repo(tmp.path());
+    let cli = Cli {
+        data_dir,
+        core,
+        env: vec![
+            ("OPENAI_API_KEY".into(), String::new()),
+            ("ANTHROPIC_API_KEY".into(), String::new()),
+        ],
+    };
+    let out = cli.ok(&["session", "create"]);
+    let sid = out.trim().strip_prefix("session ").unwrap().to_owned();
+    let out = cli.ok(&[
+        "task",
+        "create",
+        "--session",
+        &sid,
+        "--workspace",
+        &root,
+        "--mode",
+        "plan",
+        "look at a.txt",
+    ]);
+    let tid = out.trim().strip_prefix("task ").unwrap().to_owned();
+    let out = cli.ok(&["task", "proposals", "--task", &tid]);
+    assert_eq!(out.trim(), "no proposals", "{out}");
+    let (code, out, err) = cli.run(&[
+        "task",
+        "proposal",
+        "--session",
+        &sid,
+        "--task",
+        &tid,
+        "--proposal",
+        "mp-nothing",
+        "accept",
+    ]);
+    assert_ne!(code, 0, "{out}{err}");
+    assert!(
+        format!("{out}{err}").contains("UNKNOWN_PROPOSAL"),
+        "{out}{err}"
+    );
+    // The mode is what the person set; nothing moved it.
+    let out = cli.ok(&["task", "posture", "--task", &tid]);
+    assert!(out.contains("PLAN"), "{out}");
+}

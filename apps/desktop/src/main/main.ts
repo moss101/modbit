@@ -5,8 +5,8 @@
  * preload bridge. The renderer gets durable ids and Core events; it never gets
  * the socket, the secret, Node, or the filesystem.
  */
-import { app, BrowserWindow, dialog, ipcMain, Notification, safeStorage, session, type IpcMainInvokeEvent } from "electron";
-import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
+import { app, BrowserWindow, dialog, ipcMain, nativeImage, Notification, safeStorage, session, shell, type IpcMainInvokeEvent } from "electron";
+import { existsSync, mkdirSync, readFileSync, statSync, writeFileSync } from "node:fs";
 import { join, resolve } from "node:path";
 import { CoreSupervisor, freshId, type CoreClient, type CoreStatus } from "@modbit/ide-adapter-core";
 import { serializeEvent, type WireEvent } from "./events.js";
@@ -14,6 +14,12 @@ import { BrowserHost } from "./browser.js";
 import { CredentialStore } from "./credentials.js";
 import { platformState } from "./platform.js";
 import { observeStreamEvent, registerConversationHandlers } from "./conversation-ipc.js";
+import { registerComposerHandlers, requireSkillNames } from "./composer-ipc.js";
+import { registerChangesHandlers } from "./changes-ipc.js";
+import { registerProjectHandlers } from "./project-ipc.js";
+import { registerControlHandlers } from "./control-ipc.js";
+import { openedSettings, registerComputerHandlers } from "./computer-ipc.js";
+import { registerAutomationHandlers } from "./automation-ipc.js";
 import { optionalWindow, requireBool, requireCursor, requireDimension, requireHandle, requireKeystrokes, requireWorkspacePath } from "./apps-args.js";
 import { noWork, quitPrompt, runShutdown, WINDOW_DEFAULT, WINDOW_MIN, type ActiveWork, type ShutdownStep } from "./lifecycle.js";
 import { TerminalHost } from "./terminal-host.js";
@@ -414,8 +420,11 @@ handle("session:snapshot", async (_e: IpcMainInvokeEvent, sessionId: unknown) =>
     tasks: s.tasks.map((t) => ({ taskId: Buffer.from(t.taskId?.value ?? []).toString("hex"), goalText: t.goalText, state: t.state, generation: Number(t.generation), createdAtMs: Number(t.createdAt?.seconds ?? 0n) * 1000, origin: t.origin, parentTaskId: t.parentTaskId ? Buffer.from(t.parentTaskId.value).toString("hex") : null })),
   };
 });
-handle("task:create", async (_e: IpcMainInvokeEvent, sessionId: unknown, goal: unknown, commandIdHex: unknown, workspaceRoot: unknown, issueUrl: unknown) => {
+handle("task:create", async (_e: IpcMainInvokeEvent, sessionId: unknown, goal: unknown, commandIdHex: unknown, workspaceRoot: unknown, issueUrl: unknown, options: unknown) => {
   const sid = requireSessionId(sessionId);
+  // PX-118: the one creation option the Fleet form offers; the Core decides what isolation means.
+  const isolation = (options as { isolation?: unknown } | null | undefined)?.isolation;
+  if (isolation !== undefined && isolation !== "NONE" && isolation !== "WORKTREE") throw new Error("BAD_ARGUMENT: isolation must be NONE or WORKTREE");
   // PX-010: from an issue, the goal may be empty (the Core names the task after it).
   const issue = typeof issueUrl === "string" && issueUrl.trim().length > 0 ? issueUrl.trim() : undefined;
   if (issue !== undefined && (issue.length > 2_000 || !/^https:\/\/[^\s/]+\/[^\s/]+\/[^\s/]+\/issues\/\d+$/.test(issue))) throw new Error("BAD_ARGUMENT: issue URL must be https://<host>/<owner>/<repo>/issues/<number>");
@@ -425,14 +434,16 @@ handle("task:create", async (_e: IpcMainInvokeEvent, sessionId: unknown, goal: u
   const cid = typeof commandIdHex === "string" && HEX32.test(commandIdHex) ? new Uint8Array(Buffer.from(commandIdHex, "hex")) : freshId();
   const c = requireClient();
   if (c.leaseGeneration(sid) === undefined) await c.joinSessionLease(sid, `desktop ${app.getVersion()}`);
-  return c.createTask(sid, g, cid, root, issue);
+  return c.createTask(sid, g, cid, root, issue, isolation === "WORKTREE" ? { isolation } : {});
 });
-handle("task:start", async (_e: IpcMainInvokeEvent, sessionId: unknown, taskId: unknown) => {
+handle("task:start", async (_e: IpcMainInvokeEvent, sessionId: unknown, taskId: unknown, options: unknown) => {
   const sid = requireSessionId(sessionId);
   const tid = requireTaskId(taskId);
+  // PX-054: skills the person named in the slash menu; the Core still decides whether each may reach the model.
+  const skills = requireSkillNames((options as { skills?: unknown } | null | undefined)?.skills);
   const c = requireClient();
   if (c.leaseGeneration(sid) === undefined) await c.joinSessionLease(sid, `desktop ${app.getVersion()}`);
-  return c.startTask(sid, tid);
+  return c.startTask(sid, tid, skills.length > 0 ? { skills } : {});
 });
 // PX-024: cancel and steer the focused task from the keyboard. Cancel is
 // confirmed in the renderer before it reaches here; steering queues one
@@ -453,21 +464,10 @@ handle("task:steer", async (_e: IpcMainInvokeEvent, sessionId: unknown, taskId: 
   const r = await c.queueInput(sid, tid, text, "STEER");
   return { sequence: r.sequence.toString(), offset: r.offset.toString() };
 });
-// REQ-EV-0190: attach a local file to a task. Main reads the bytes (bounded)
-// and the Core normalizes them; the renderer never sees a filesystem.
-const MAX_ATTACHMENT_BYTES = 3 * 1024 * 1024;
-handle("task:attach", async (_e: IpcMainInvokeEvent, sessionId: unknown, taskId: unknown, filePath: unknown) => {
-  const sid = requireSessionId(sessionId);
-  const tid = requireTaskId(taskId);
-  if (typeof filePath !== "string" || filePath.length === 0 || filePath.length > 4096) throw new Error("BAD_ARGUMENT: file path required");
-  const abs = resolve(filePath);
-  if (!existsSync(abs)) throw new Error("BAD_ARGUMENT: file does not exist");
-  const data = readFileSync(abs);
-  if (data.byteLength === 0 || data.byteLength > MAX_ATTACHMENT_BYTES) throw new Error(`BAD_ARGUMENT: attachment must be 1..${MAX_ATTACHMENT_BYTES} bytes`);
-  const c = requireClient();
-  if (c.leaseGeneration(sid) === undefined) await c.joinSessionLease(sid, `desktop ${app.getVersion()}`);
-  return c.ingestAttachment(sid, tid, abs.split(/[\\/]/).pop() ?? "attachment", new Uint8Array(data));
-});
+// REQ-EV-0190, REQ-PX-054: attaching a file is `composer:attachPath` and
+// `composer:attachBytes` (composer-ipc.ts): main reads a chosen file (bounded),
+// decides its type from its bytes, and the Core normalizes it; the renderer
+// never sees a filesystem and the preload resolves a File's path itself.
 // Review surface (docs/20): immutable, revision-bound payloads from the Core.
 handle("review:bundle", async (_e: IpcMainInvokeEvent, taskId: unknown) => {
   const b = await requireClient().getReviewBundle(requireTaskId(taskId));
@@ -771,7 +771,22 @@ handle("onboarding:starters", async (_e: IpcMainInvokeEvent, workspaceRoot: unkn
   return requireClient().listStarterTasks(resolve(root));
 });
 // PX-046 / PX-047: the agent list and the conversation, over the Core's header, transcript and search projections.
-registerConversationHandlers({
+const conversationRegistrar = {
+  handle: (channel: string, fn: (...args: unknown[]) => unknown) => handle(channel, (_e, ...args) => fn(...args)),
+  client: requireClient,
+  sessionId: requireSessionId,
+  taskId: requireTaskId,
+  lease: async (c: CoreClient, sid: string) => {
+    if (c.leaseGeneration(sid) === undefined) await c.joinSessionLease(sid, `desktop ${app.getVersion()}`);
+  },
+};
+registerConversationHandlers(conversationRegistrar);
+// REQ-PX-063 / 064 / 068: projects and the worktree surface (list, removal, cleanup, apply-back).
+registerProjectHandlers(conversationRegistrar);
+// REQ-PX-048: the Changes app's revert, stage and Commit and push, each a typed Core command named for its session.
+registerChangesHandlers(conversationRegistrar);
+// REQ-PX-054..056: the composer's mode, preference, queue, interrupt, slash, model and attachment commands.
+registerComposerHandlers({
   handle: (channel, fn) => handle(channel, (_e, ...args) => fn(...args)),
   client: requireClient,
   sessionId: requireSessionId,
@@ -779,7 +794,57 @@ registerConversationHandlers({
   lease: async (c, sid) => {
     if (c.leaseGeneration(sid) === undefined) await c.joinSessionLease(sid, `desktop ${app.getVersion()}`);
   },
+  thumbnail: (bytes) => {
+    try {
+      const img = nativeImage.createFromBuffer(Buffer.from(bytes));
+      if (img.isEmpty()) return null;
+      const { width } = img.getSize();
+      return (width > 96 ? img.resize({ width: 96, quality: "good" }) : img).toDataURL();
+    } catch {
+      return null;
+    }
+  },
+  readFile: (path, maxBytes) => {
+    const abs = resolve(path);
+    const st = statSync(abs, { throwIfNoEntry: false });
+    if (!st) throw new Error("BAD_ARGUMENT: file does not exist");
+    if (!st.isFile()) throw new Error("ATTACHMENT_REFUSED: only a file can be attached, not a folder");
+    if (st.size > maxBytes) throw new Error(`ATTACHMENT_REFUSED: The file is larger than ${Math.round(maxBytes / (1024 * 1024))} MB, the most one attachment may be.`);
+    return { name: abs.split(/[\\/]/).pop() ?? "attachment", bytes: new Uint8Array(readFileSync(abs)) };
+  },
 });
+// REQ-PX-057 / 058 / 060 / 062: the approval stack, run modes and allowlist rules, the context ring's accounting and the checkpoint surface.
+registerControlHandlers(conversationRegistrar);
+// PX-074: native computer control's desktop surface (presence, the permission window, Stop, the action cards). No capture and
+// no input API lives in this process: the actuator is the Core's, and Stop is the Core's `ComputerStop`.
+registerComputerHandlers(conversationRegistrar, {
+  openExternal: (url) => shell.openExternal(url),
+  suppressOpen: process.env.MODBIT_SUPPRESS_OPEN_SETTINGS === "1",
+  platform: process.platform,
+  thumbnail: (bytes, maxWidth) => {
+    try {
+      const img = nativeImage.createFromBuffer(Buffer.from(bytes));
+      if (img.isEmpty()) return null;
+      const { width, height } = img.getSize();
+      const t = width > maxWidth ? img.resize({ width: maxWidth, quality: "good" }) : img;
+      const sz = t.getSize();
+      return { dataUrl: t.toDataURL(), width: sz.width || width, height: sz.height || height };
+    } catch {
+      return null;
+    }
+  },
+  size: (bytes) => {
+    try {
+      const img = nativeImage.createFromBuffer(Buffer.from(bytes));
+      return img.isEmpty() ? null : img.getSize();
+    } catch {
+      return null;
+    }
+  },
+});
+handle("debug:openedSettings", () => openedSettings.slice());
+// REQ-PX-086: the automations surface (definitions, the enable approval, test and manual runs, history, pause and kill).
+registerAutomationHandlers(conversationRegistrar);
 // REQ-PX-048 (the apps panel): the Terminal, Files and Evidence apps. Every
 // call validates its arguments here and goes to the Core through the one
 // client; the renderer gets views, never a socket, a path outside the
@@ -871,10 +936,15 @@ function createWindow(bounds?: Electron.Rectangle): void {
   w.webContents.on("did-start-loading", () => void terminalHost.detachAll());
   w.webContents.on("will-navigate", (e) => e.preventDefault());
   w.webContents.setWindowOpenHandler(() => ({ action: "deny" }));
-  w.webContents.on("render-process-gone", (_e, details) => {
-    const replace = details.reason !== "clean-exit" && win === w && !w.isDestroyed();
-    rendererLog.push({ reason: details.reason, exitCode: details.exitCode, reloaded: replace, atMs: Date.now() });
+  // One path for "this window's renderer is gone", whoever notices first: Chromium's own report, or the liveness watch below.
+  let gone = false;
+  const rendererGone = (reason: string, exitCode: number, via: "event" | "watch") => {
+    if (gone) return;
+    const replace = reason !== "clean-exit" && win === w && !w.isDestroyed();
+    if (replace) gone = true;
+    rendererLog.push({ reason, exitCode, reloaded: replace, atMs: Date.now() });
     if (rendererLog.length > 50) rendererLog.splice(0, rendererLog.length - 50);
+    console.error(`modbit-desktop: renderer gone: reason=${reason} exitCode=${exitCode} via=${via} replacing=${replace}`);
     if (!replace) return;
     // The views the dead renderer showed leave the old window first (they
     // are this process's, not the window's); the new renderer shows them
@@ -882,7 +952,35 @@ function createWindow(bounds?: Electron.Rectangle): void {
     browserHost.windowReplaced(w);
     createWindow(w.getBounds());
     w.destroy();
-  });
+  };
+  w.webContents.on("render-process-gone", (_e, details) => rendererGone(details.reason, details.exitCode, "event"));
+  // On Windows a renderer whose process was terminated from outside has been seen to stay unreported by Chromium for a minute or
+  // more (the process is gone, `render-process-gone` never arrives, the window stays blank). The OS process is the truth: a
+  // renderer whose pid no longer exists on two consecutive looks, while the page is not mid-navigation, is gone.
+  let lastDeadPid = 0;
+  const watch = setInterval(() => {
+    if (gone || w.isDestroyed() || win !== w) {
+      clearInterval(watch);
+      return;
+    }
+    const pid = w.webContents.getOSProcessId();
+    if (!pid || w.webContents.isLoading()) {
+      lastDeadPid = 0;
+      return;
+    }
+    let alive = true;
+    try {
+      process.kill(pid, 0);
+    } catch (e) {
+      alive = (e as NodeJS.ErrnoException).code === "EPERM";
+    }
+    if (alive) lastDeadPid = 0;
+    else if (lastDeadPid === pid) {
+      clearInterval(watch);
+      rendererGone("killed", -1, "watch");
+    } else lastDeadPid = pid;
+  }, 1000);
+  w.on("closed", () => clearInterval(watch));
   void w.loadFile(join(__dirname, "..", "renderer", "index.html"));
 }
 

@@ -14,6 +14,8 @@ import type { PendingApprovalView, TranscriptRowView } from "../../shared/conver
 import type { TaskCard } from "../model.ts";
 import { needsEyes, presentAssistant, streamKey, type LiveStreams, type MessageState, type PresentedRow } from "./model.ts";
 import { sameBlock, splitBlocks, type Block } from "./blocks.ts";
+import { EditBox, MessageActions, TurnMarker, type CheckpointContext } from "./checkpoint-controls.tsx";
+import { ComputerActionCard, type ComputerCardContext } from "../computer/action-card.tsx";
 
 export interface RowContext {
   sessionId: string | null;
@@ -30,6 +32,10 @@ export interface RowContext {
   highlightRowId: string | null;
   /** The latest user message of the conversation stays pinned as a sticky card while its turn is on screen (AFW-C07). */
   latestUserRowId: string | null;
+  /** REQ-PX-062: the checkpoint surface (restore, edit in place, fork); absent where the rows are drawn without a task (the gallery). */
+  checkpoints?: CheckpointContext | undefined;
+  /** PX-074: the cards of the task's native-control tool calls; absent where the rows are drawn without a task (the gallery). */
+  computer?: ComputerCardContext | undefined;
 }
 
 export function formatDuration(ms: number): string {
@@ -148,12 +154,13 @@ function UserRow({ row, ctx }: { row: TranscriptRowView; ctx: RowContext }) {
   const sticky = ctx.latestUserRowId === row.rowId;
   return (
     <article className="conv-row conv-user" data-testid="conv-user" data-row-id={row.rowId} data-kind="USER_MESSAGE" data-sticky={sticky} data-highlight={ctx.highlightRowId === row.rowId} aria-label="Your message">
-      <p className="conv-user-text">{row.text}</p>
+      {ctx.checkpoints?.editingRowId === row.rowId ? <EditBox row={row} cp={ctx.checkpoints} /> : <p className="conv-user-text">{row.text}</p>}
       <p className="meta">
         {f?.source === "answer" ? "Your answer" : f?.source === "queued_input" ? `Queued ${f.mode ? f.mode.toLowerCase() : "input"}` : "Task"}
         {f?.untrusted ? ` · from ${f.provenance.replace(/_/g, " ") || "outside"} (untrusted text)` : ""}
         {row.atMs ? ` · ${clock(row.atMs)}` : ""}
       </p>
+      {ctx.checkpoints && ctx.checkpoints.editingRowId !== row.rowId && <MessageActions row={row} cp={ctx.checkpoints} />}
     </article>
   );
 }
@@ -166,6 +173,8 @@ function ToolRow({ row, ctx }: { row: TranscriptRowView; ctx: RowContext }) {
   const status = row.hints.status;
   const bad = status === "FAILED" || status === "DENIED" || status === "UNKNOWN_OUTCOME" || status === "CANCELLED";
   const word = TOOL_STATUS_WORD[status] ?? status.toLowerCase();
+  // PX-074: a native-control call is a numbered action card, not a command line.
+  if (f && f.toolName.startsWith("computer.") && ctx.computer) return <ComputerActionCard toolCallId={f.toolCallId} tool={f.toolName} state={status} failureCode={f.failureCode} atMs={row.atMs} highlight={ctx.highlightRowId === row.rowId} rowId={row.rowId} ctx={ctx.computer} />;
   return (
     <div className="conv-row conv-tool" data-testid="conv-tool" data-row-id={row.rowId} data-kind="TOOL_CARD" data-tool-class={f?.toolClass} data-status={status} data-highlight={ctx.highlightRowId === row.rowId}>
       <span className="conv-tool-class">{CLASS_WORD[f?.toolClass ?? "OTHER"] ?? "Tool"}</span>
@@ -263,6 +272,11 @@ function ApprovalRow({ row, ctx }: { row: TranscriptRowView; ctx: RowContext }) 
         <StatusDot status={requested ? "warn" : "ok"} label={requested ? "Needs you" : (row.hints.status || "Resolved").toLowerCase()} showLabel /> <strong>{isQuestion ? "The agent asks" : `Approval: ${f?.toolName || "a protected action"}`}</strong>
       </p>
       {row.text && <p className="conv-approval-text">{row.text}</p>}
+      {row.hints.status === "EXPIRED" && !isQuestion && (
+        <p className="meta" data-testid="conv-approval-expired">
+          Expired: nobody answered before the Core's recorded expiry, so it can no longer be approved. The effect did not run and the agent was told.
+        </p>
+      )}
       {!isQuestion && f && (
         <p className="meta">
           {f.effectClass ? `Effect class ${f.effectClass}` : ""}
@@ -349,6 +363,7 @@ function FooterRow({ row, ctx }: { row: TranscriptRowView; ctx: RowContext }) {
       <Button size="sm" variant="ghost" onClick={() => ctx.onCopyTurn(f.turnId)} data-testid="conv-copy-turn">
         Copy answer
       </Button>
+      {ctx.checkpoints && <TurnMarker turnId={f.turnId} cp={ctx.checkpoints} />}
     </div>
   );
 }
@@ -406,6 +421,8 @@ export const RowView = memo(RowInner, (a, b) => {
     const k = streamKey(a.row.facts.streamId);
     if (x.live.get(k) !== y.live.get(k)) return false;
   }
-  if (a.row.kind === "APPROVAL_CARD" || a.row.kind === "WORK_GROUP") return x.card === y.card && x.approvals === y.approvals;
+  if (a.row.kind === "APPROVAL_CARD" || a.row.kind === "WORK_GROUP") return x.card === y.card && x.approvals === y.approvals && x.computer === y.computer;
+  if (a.row.kind === "USER_MESSAGE" || a.row.kind === "TURN_FOOTER") return x.checkpoints === y.checkpoints;
+  if (a.row.kind === "TOOL_CARD") return x.computer === y.computer;
   return true;
 });

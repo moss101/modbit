@@ -1,0 +1,11 @@
+{
+  "id": "rust-shipping-correct-a",
+  "class": "correct",
+  "flavor": "a",
+  "leg": "initial",
+  "write_set": [
+    "src/lib.rs",
+    "tests/shipping.rs"
+  ],
+  "declared": "correct"
+}

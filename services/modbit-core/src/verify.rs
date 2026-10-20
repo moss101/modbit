@@ -496,3 +496,112 @@ pub fn observation(run: &VerificationRun, store: &EventStore) -> String {
     text.push_str("(page any raw log with artifact.range on its raw_output_ref)\n");
     text
 }
+
+/// The generated adversarial checks of a COMPLETION candidate (PX-135,
+/// REQ-EPR-017), derived by the Verification Engine's own module and judged
+/// by the one Acceptance Gate like any other check. Static checks read the
+/// candidate files and the tree; the boundary check re-runs the plan's own
+/// mandatory check commands over mutants in a scratch copy through `runner`
+/// (a repository-defined command is first decided by the Capability Kernel;
+/// a refusal means no mutant runs and the check is UNKNOWN, never a pass).
+pub async fn adversarial_checks(
+    runner: &BrokerRunner,
+    plan: &modbit_verification::VerificationPlan,
+    root: &Path,
+    scratch: &Path,
+    env: &[(String, String)],
+    files: &[ChangedFile],
+) -> Vec<modbit_verification::adversarial::GeneratedCheck> {
+    use modbit_verification::adversarial::{
+        Class, GeneratedCheck, MutationOptions, Status, boundary_check, static_checks,
+    };
+    let declared: Vec<String> = plan
+        .declared_changes
+        .iter()
+        .map(|(c, _)| c.clone())
+        .collect();
+    let mut out = static_checks(root, files, &declared);
+    let mut commands: Vec<Vec<String>> = Vec::new();
+    let mut refused: Option<String> = None;
+    for c in plan
+        .commands
+        .iter()
+        .filter(|c| c.mandatory && (c.id.starts_with("suite:") || c.is_repo_defined()))
+    {
+        if c.is_repo_defined()
+            && let Err(e) = runner.authorize(&c.id, &c.argv).await
+        {
+            refused = Some(e);
+            break;
+        }
+        // A boundary is pinned by a test that runs. A check that is only an
+        // exit code (`git --version`, a grep) cannot kill a mutant, so it is
+        // not a candidate for the check: a repository whose mandatory checks
+        // run no test gets the static checks and no mutation evidence.
+        if modbit_verification::detect(&c.argv)
+            != modbit_verification::RunnerFamily::ConfiguredCommand
+            || c.argv.iter().any(|a| a == "test" || a == "--test")
+        {
+            commands.push(c.argv.clone());
+        }
+    }
+    out.push(match refused {
+        Some(why) => GeneratedCheck {
+            class: Class::BoundaryNotPinned,
+            status: Status::Unknown,
+            findings: vec![why],
+        },
+        None if commands.is_empty() => GeneratedCheck {
+            class: Class::BoundaryNotPinned,
+            status: Status::Skip,
+            findings: vec![
+                "no mandatory check command runs tests; a boundary cannot be pinned by it".into(),
+            ],
+        },
+        None => {
+            boundary_check(
+                runner,
+                &commands,
+                root,
+                scratch,
+                env,
+                files,
+                &MutationOptions::default(),
+            )
+            .await
+        }
+    });
+    out
+}
+
+/// A generated check as the run record carries it: the check id, kind
+/// `adversarial`, its status and the typed class
+/// (`ADVERSARIAL_TEST_WEAKENING`, ...); the fingerprint is the digest of the
+/// findings, which `report_ref` holds in full.
+#[must_use]
+pub fn adversarial_summary(c: &modbit_verification::adversarial::GeneratedCheck) -> CheckSummary {
+    let e = c.to_evidence();
+    CheckSummary {
+        check_id: e.check_id,
+        kind: e.kind,
+        status: e.status,
+        duration_ms: 0,
+        error_class: (c.status != modbit_verification::adversarial::Status::Pass).then(|| {
+            match c.class {
+                modbit_verification::adversarial::Class::TestWeakening => {
+                    "ADVERSARIAL_TEST_WEAKENING"
+                }
+                modbit_verification::adversarial::Class::VacuousPass => "ADVERSARIAL_VACUOUS_PASS",
+                modbit_verification::adversarial::Class::OverfitLiteral => {
+                    "ADVERSARIAL_OVERFIT_LITERAL"
+                }
+                modbit_verification::adversarial::Class::BoundaryNotPinned => {
+                    "ADVERSARIAL_BOUNDARY_NOT_PINNED"
+                }
+            }
+            .to_owned()
+        }),
+        message_fingerprint: Some(c.digest()),
+        path: None,
+    }
+}

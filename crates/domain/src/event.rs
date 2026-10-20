@@ -47,6 +47,15 @@ pub enum AggregateType {
     /// bytes of the item's content-addressed id; the `memory_items` table is
     /// a projection of these events and rebuilds from them.
     Memory,
+    /// One automation definition's life and its run history (PX-082,
+    /// docs/68): versions, enable approvals, kill switches, firings and run
+    /// outcomes. The Core folds them into the automation registry; the
+    /// aggregate id is the definition's id (the global switch has its own).
+    Automation,
+    /// A project's life (PX-063): created, renamed, archived, and the tasks
+    /// that joined or left it. The `projects` and `project_members` tables
+    /// are projections of these events and rebuild from them.
+    Project,
 }
 
 impl AggregateType {
@@ -68,6 +77,8 @@ impl AggregateType {
             Self::AssistantStream => "assistant_stream",
             Self::Conversation => "conversation",
             Self::Memory => "memory",
+            Self::Automation => "automation",
+            Self::Project => "project",
         }
     }
 
@@ -89,6 +100,8 @@ impl AggregateType {
             "assistant_stream" => Self::AssistantStream,
             "conversation" => Self::Conversation,
             "memory" => Self::Memory,
+            "automation" => Self::Automation,
+            "project" => Self::Project,
             _ => return None,
         })
     }

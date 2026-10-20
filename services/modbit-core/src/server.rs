@@ -71,6 +71,12 @@ pub struct Core {
     pub(crate) conversation_index: crate::conversation_search::Index,
     /// The worktree cleanup lease and schedule (PX-065).
     pub(crate) worktrees: crate::worktree_cleanup::Manager,
+    /// The automation ledger, its time source and its dispatch state
+    /// (PX-082..084): definitions as data, evaluated by the one tick that
+    /// asks this Core to create ordinary tasks.
+    pub(crate) automation: crate::automation::Host,
+    /// PX-055: the mode-switch proposals awaiting an answer.
+    pub(crate) mode_proposals: crate::mode_proposals::Host,
 }
 
 impl Core {
@@ -101,6 +107,17 @@ pub(crate) async fn require_lease(
     env: &CommandEnvelope,
     session_id: &SessionId,
 ) -> Result<(), CommandAck> {
+    // A command that names the session it acts in acts only on that session's tasks: the lease generation below is the owning
+    // session's, and two sessions can hold the same number, so it cannot tell the caller's session from another.
+    if let Some(named) = env.session_id.as_ref().and_then(id16)
+        && named != *session_id.as_bytes()
+    {
+        return Err(reject(
+            cid.clone(),
+            "WRONG_SESSION",
+            "the task belongs to another session",
+        ));
+    }
     let store = core.store.lock().await;
     let session = match store.session(session_id) {
         Ok(Some(s)) => s,
@@ -265,6 +282,8 @@ pub async fn run_as(
         browser,
         conversation_index: crate::conversation_search::Index::from_env(),
         worktrees: Default::default(),
+        automation: crate::automation::Host::from_env(),
+        mode_proposals: Default::default(),
     });
     // PX-057: a RUN_EVERYTHING recorded before this point belongs to a
     // process that is gone and is not in force.
@@ -305,6 +324,21 @@ pub async fn run_as(
     // PX-065: the cleanup schedule (every 6 h; a catch-up 30 s after start
     // when the last completed run is overdue).
     crate::worktree_cleanup::start_schedule(&core);
+    // PX-082..084: the automation ledger is rebuilt from the log and the one
+    // tick that evaluates triggers starts; a firing recorded but not
+    // dispatched when the last Core died is finished here, once.
+    crate::automation::start(&core).await;
+    // REQ-PX-058: an approval the last Core left pending past its expiry is
+    // expired before any client can look; the sweep then runs for the life of
+    // this Core. PX-055: a mode-switch proposal the last Core left pending is
+    // resolved (skipped) the same way, and the 15 s expiry runs from here.
+    crate::approval_expiry::start(&core).await;
+    crate::mode_proposals::start(&core).await;
+    // PX-069: what a dead Core left of native control is closed on the
+    // record, then the configured actuator is attached - or the tools stay
+    // absent (fail closed) - and the pump that records the runtime starts.
+    core.tools.computer.recover(&core).await;
+    core.tools.computer.start(&core).await;
     // EPR-012: the last activated registry generation, verified again.
     crate::model_registry::restore(&core).await;
     // REQ-PX-132: the observer of the listening services of the tasks'
@@ -469,6 +503,7 @@ fn acquire_singleton_lock(data_dir: &Path) -> Result<()> {
         .open(&lock)
         .with_context(|| format!("opening {}", lock.display()))?;
     let mut attempts = 0;
+    let mut gone_waits = 0;
     loop {
         match file.try_lock() {
             Ok(()) => break,
@@ -477,6 +512,15 @@ fn acquire_singleton_lock(data_dir: &Path) -> Result<()> {
                     .ok()
                     .and_then(|t| t.trim().parse::<u32>().ok())
                     .unwrap_or(0);
+                // The recorded owner no longer exists, yet the lock is still held:
+                // its release is in flight (a killed Core's descriptors close as the
+                // kernel finishes tearing it down). Give that a moment instead of
+                // refusing the restart of a profile nobody owns.
+                if pid != 0 && gone_waits < 40 && owner_is_gone(pid) {
+                    gone_waits += 1;
+                    std::thread::sleep(std::time::Duration::from_millis(50));
+                    continue;
+                }
                 let owner = process_command(pid);
                 // A tethered Core whose supervising parent is gone is an orphan
                 // by contract (docs/33): reclaim the profile from it once.
@@ -508,6 +552,21 @@ fn acquire_singleton_lock(data_dir: &Path) -> Result<()> {
     // Held until exit: dropping the handle would release the lock.
     std::mem::forget(file);
     Ok(())
+}
+
+/// Whether no process has this pid (`kill -0` finds none).
+#[cfg(unix)]
+fn owner_is_gone(pid: u32) -> bool {
+    std::process::Command::new("kill")
+        .args(["-0", &pid.to_string()])
+        .stderr(std::process::Stdio::null())
+        .status()
+        .is_ok_and(|s| !s.success())
+}
+
+#[cfg(not(unix))]
+fn owner_is_gone(_pid: u32) -> bool {
+    false
 }
 
 /// The owner's command line plus parent pid, state, age and the parent's
@@ -688,6 +747,7 @@ async fn serve_connection(core: Arc<Core>, mut stream: BoxedStream) -> Result<()
                     "GetEffectReceipts",
                     "GetCapabilityLeases",
                     "ListModels",
+                    "ListModelVariants",
                     "ListLanguages",
                     "GetContextInspector",
                     "GetRoutingPlan",
@@ -748,6 +808,10 @@ async fn serve_connection(core: Arc<Core>, mut stream: BoxedStream) -> Result<()
                     "ReadWorkspaceFile",
                     "DecideReview",
                     "ApplyUserPatch",
+                    "GetChangesState",
+                    "RevertChanges",
+                    "StageChanges",
+                    "CommitAndPush",
                     "SubmitExternalDiagnostics",
                     "OpenPullRequest",
                     "UpdatePullRequest",
@@ -762,6 +826,8 @@ async fn serve_connection(core: Arc<Core>, mut stream: BoxedStream) -> Result<()
                     "SetTaskMode",
                     "SetExecutionPreference",
                     "GetTaskPosture",
+                    "ListModeProposals",
+                    "DecideModeProposal",
                     "SetTaskBudgets",
                     "ListSkills",
                     "TrustSkill",
@@ -798,6 +864,14 @@ async fn serve_connection(core: Arc<Core>, mut stream: BoxedStream) -> Result<()
                     "ApplyWorktree",
                     "UndoApply",
                     "DiscardWorktree",
+                    "CreateProject",
+                    "RenameProject",
+                    "ArchiveProject",
+                    "AddProjectMember",
+                    "RemoveProjectMember",
+                    "ListProjects",
+                    "GetProject",
+                    "RemoveWorktree",
                 ]
                 .map(String::from)
                 .to_vec(),
@@ -821,7 +895,7 @@ async fn serve_connection(core: Arc<Core>, mut stream: BoxedStream) -> Result<()
     let mut views = Views::default();
     // PX-043: the terminals this connection attached to — their frames
     // arrive here, and end with the connection.
-    let mut terms = crate::terminal_stream::Terminals::new(connection);
+    let (mut terms, mut terms_rx) = crate::terminal_stream::Terminals::new(connection);
     // The client's frames are read by a task of their own, so a frame that
     // arrives in pieces is never torn by another arm of the loop winning the
     // `select!` (a half-read frame cannot be resumed): terminal output makes
@@ -849,6 +923,7 @@ async fn serve_connection(core: Arc<Core>, mut stream: BoxedStream) -> Result<()
         &mut host_rx,
         &mut views,
         &mut terms,
+        &mut terms_rx,
     )
     .await;
     reader_task.abort();
@@ -1026,6 +1101,27 @@ async fn unwatch_browser_view(
 /// Connection counter (a host is tied to the connection it attached on).
 static CONNECTIONS: std::sync::atomic::AtomicU64 = std::sync::atomic::AtomicU64::new(0);
 
+/// Run a command on a terminal attachment while the connection keeps sending the attachment's frames to the client. The command waits
+/// for the broker's answer (`terminal_stream::ask`), and that answer comes on the same stream as the output, behind it: a connection
+/// that stopped sending output to wait would leave the output queue full, the stream unread, and the answer behind it unseen.
+async fn sending_terminal_frames(
+    stream: &mut tokio::io::WriteHalf<BoxedStream>,
+    queue: &mut crate::terminal_stream::TerminalQueue,
+    command: impl std::future::Future<Output = CommandAck>,
+) -> Result<CommandAck> {
+    let mut command = std::pin::pin!(command);
+    loop {
+        tokio::select! {
+            ack = &mut command => return Ok(ack),
+            f = queue.recv() => {
+                if let Some(f) = f {
+                    write_frame(stream, &SurfaceFrame { body: Some(Body::TerminalFrame(f)) }).await?;
+                }
+            }
+        }
+    }
+}
+
 #[allow(clippy::too_many_arguments)]
 async fn serve_frames(
     core: &Arc<Core>,
@@ -1039,6 +1135,7 @@ async fn serve_frames(
     host_rx: &mut Option<tokio::sync::mpsc::Receiver<wire::BrowserHostRequest>>,
     views: &mut Views,
     terms: &mut crate::terminal_stream::Terminals,
+    terms_rx: &mut crate::terminal_stream::TerminalQueue,
 ) -> Result<()> {
     loop {
         // Drain any events the subscriber has not seen yet, in bounded batches.
@@ -1076,7 +1173,7 @@ async fn serve_frames(
                 Some(Err(e)) => return Err(e.into()),
             },
             // PX-043: a slice of a terminal stream this connection attached to.
-            f = terms.rx.recv() => {
+            f = terms_rx.recv() => {
                 if let Some(f) = f {
                     write_frame(stream, &SurfaceFrame { body: Some(Body::TerminalFrame(f)) }).await?;
                 }
@@ -1170,17 +1267,36 @@ async fn serve_frames(
                         crate::terminal_stream::detach_terminal(core, env, terms).await
                     }
                     _ if env.command_type == "SetTerminalInput" => {
-                        crate::terminal_stream::set_terminal_input(core, env, terms).await
+                        sending_terminal_frames(
+                            stream,
+                            terms_rx,
+                            crate::terminal_stream::set_terminal_input(core, env, terms),
+                        )
+                        .await?
                     }
                     _ if env.command_type == "ResizeTerminal" => {
-                        crate::terminal_stream::resize_terminal(core, env, terms).await
+                        sending_terminal_frames(
+                            stream,
+                            terms_rx,
+                            crate::terminal_stream::resize_terminal(core, env, terms),
+                        )
+                        .await?
                     }
                     _ if env.command_type == "WriteTerminal" => {
-                        crate::terminal_stream::write_terminal(core, env, terms).await
+                        sending_terminal_frames(
+                            stream,
+                            terms_rx,
+                            crate::terminal_stream::write_terminal(core, env, terms),
+                        )
+                        .await?
                     }
                     // PX-043: stopping a task's background terminal.
                     _ if env.command_type == "KillTerminal" => {
                         crate::background_process::kill_terminal(core, env).await
+                    }
+                    // PX-082..086: the automation ledger and its kill switches.
+                    _ if crate::automation::is_command(&env.command_type) => {
+                        crate::automation::handle(core, env).await
                     }
                     _ => handle_command(core, env).await,
                 };
@@ -1270,6 +1386,9 @@ fn client_capabilities(kind: i32) -> Vec<&'static str> {
             "repository.trust",
             "ui.selection",
             "ui.code_view",
+            // PX-082..086: defining, approving, pausing and running automations.
+            "automation.manage",
+            "automation.dispatch",
             // M7.1: only the desktop hosts a browser (a sandboxed
             // WebContentsView in Electron main); a headless client cannot.
             "browser.host",
@@ -1296,6 +1415,8 @@ fn client_capabilities(kind: i32) -> Vec<&'static str> {
             "attachments.ingest",
             "provider.configure",
             "repository.trust",
+            "automation.manage",
+            "automation.dispatch",
         ],
         // M8.2: the Cloud Core Worker acts for the cloud's principals on its
         // local Core — it authors and controls tasks, decides approvals and
@@ -1314,6 +1435,8 @@ fn client_capabilities(kind: i32) -> Vec<&'static str> {
             "repository.trust",
             "session.mirror",
             "sandbox.configure",
+            // A verified trigger delivery relayed from the Cloud API.
+            "automation.dispatch",
         ],
         ClientKind::SandboxGuest | ClientKind::Unspecified => vec!["events.subscribe"],
     }
@@ -1350,18 +1473,36 @@ fn required_client_capability(env: &CommandEnvelope) -> Option<&'static str> {
         // an archive are the person's own curation of a session.
         "GetTranscript" | "GetAgentHeaders" | "SearchConversations" => "events.subscribe",
         "MarkRead" | "ArchiveTask" => "session.control",
+        // PX-063: a project is the person's own grouping of their tasks; the
+        // reads are reads of the log.
+        "CreateProject" | "RenameProject" | "ArchiveProject" | "AddProjectMember"
+        | "RemoveProjectMember" => "session.control",
+        "ListProjects" | "GetProject" => "events.subscribe",
         "DecideReview" => "review.decide",
         // Steering a task from its pull request's comments is steering it.
         "ApplyUserPatch" | "SubmitExternalDiagnostics" | "IngestReviewComments" => "task.author",
+        // PX-048: the Changes app reverts and stages the person's own working
+        // tree like an inline patch; Commit and push is a review decision
+        // about where work leaves the tree, like opening a pull request.
+        "RevertChanges" | "StageChanges" => "task.author",
+        "CommitAndPush" => "review.decide",
         // Counteracting an effect on the forge is the same class of decision
         // as the pull request it counteracts (REQ-EV-0066).
         "OpenPullRequest" | "UpdatePullRequest" | "IngestCiResults" | "CompensateEffect" => {
             "review.decide"
         }
         "ResolveApproval" => "approval.resolve",
+        // PX-055: the person's answer to the agent's mode proposal is the
+        // author's (it is how SetTaskMode is gated); reading is a read.
+        "DecideModeProposal" => "task.author",
+        "ListModeProposals" => "events.subscribe",
         // PX-057: who approves protected effects, and the durable rules that
         // stand for an approval, are approvals' own class of decision.
         "SetRunMode" | "AddAllowRule" | "RevokeAllowRule" => "approval.resolve",
+        // PX-069: the runtime's state is a read of the log; resolving a latch
+        // and the on-screen Stop are the person's control of the machine.
+        "GetComputerRuntime" | "GetComputerPresence" | "ListComputerActivity" => "events.subscribe",
+        "ResolveComputerLatch" | "ComputerStop" => "session.control",
         "SetSendBehavior" => "task.author",
         // PX-050: the queue is the author's; reading it is reading the log.
         "EditQueuedInput" | "RemoveQueuedInput" | "ReorderQueuedInput" | "SendQueuedInputNow"
@@ -1401,6 +1542,25 @@ fn required_client_capability(env: &CommandEnvelope) -> Option<&'static str> {
         // write to steer the agent — the same class of decision as trusting
         // the repository.
         "SetTaskBudgets" => "task.author",
+        // PX-082..086: reading the ledger is reading the log; every change
+        // to a definition, its approval, the kill switches and a manual run
+        // is a person's act, held by the clients that act for one. A verified
+        // trigger delivery is the cloud relay's.
+        "ListAutomations"
+        | "GetAutomation"
+        | "ListAutomationRuns"
+        | "ValidateAutomation"
+        | "ListAutomationTemplates" => "events.subscribe",
+        "CreateAutomation"
+        | "UpdateAutomation"
+        | "LoadRepositoryAutomations"
+        | "EnableAutomation"
+        | "DisableAutomation"
+        | "PauseAutomation"
+        | "KillAutomation"
+        | "RunAutomation"
+        | "AckAutomationAttention" => "automation.manage",
+        "FireAutomationEvent" => "automation.dispatch",
         // Seeing what credentials exist and cutting one off are the
         // provider-configuration class of decision.
         "GetCredentialBroker" | "RevokeCredential" => "provider.configure",
@@ -1422,7 +1582,7 @@ fn required_client_capability(env: &CommandEnvelope) -> Option<&'static str> {
         // decision); applying a task's result to the checkout, undoing that
         // and discarding a result are the person's review decisions.
         "ListWorktrees" => "events.subscribe",
-        "RunWorktreeCleanup" => "session.control",
+        "RunWorktreeCleanup" | "RemoveWorktree" => "session.control",
         "ApplyWorktree" | "UndoApply" | "DiscardWorktree" => "review.decide",
         // Removing recovery data under a policy is a session-level decision.
         "RunCheckpointGc" => "session.control",
@@ -1796,6 +1956,20 @@ pub(crate) fn accept(command_id: Option<wire::Id>, replayed: bool, result: Vec<u
 }
 
 pub(crate) async fn handle_command(core: &Arc<Core>, env: CommandEnvelope) -> CommandAck {
+    // The dispatcher's future is large; it lives on the heap so the callers
+    // that nest it (resume starts a task through it) keep a shallow stack.
+    Box::pin(handle_command_as(core, env, None)).await
+}
+
+/// Run a command as `host`: the Core's own automation host acting for a
+/// principal (PX-083). `None` is a client's command, made as the local user.
+/// Only the host's commands may create a task with origin `automation` or
+/// carry the `automation_*` / `lease_*` fields of `CreateTask`.
+pub(crate) async fn handle_command_as(
+    core: &Arc<Core>,
+    env: CommandEnvelope,
+    host: Option<Actor>,
+) -> CommandAck {
     let cid = env.command_id.clone();
     let Some(command_id) = env.command_id.as_ref().and_then(id16) else {
         return reject(cid, "BAD_COMMAND_ID", "command_id must be 16 bytes");
@@ -1816,7 +1990,8 @@ pub(crate) async fn handle_command(core: &Arc<Core>, env: CommandEnvelope) -> Co
         command_type: command_type.to_owned(),
         request_hash: request_hash.clone(),
     };
-    let actor = Actor::User(core.user_id);
+    let from_host = host.is_some();
+    let actor = host.unwrap_or(Actor::User(core.user_id));
     match env.command_type.as_str() {
         "CreateSession" => {
             let Ok(p) = wire::CreateSession::decode(env.payload.as_slice()) else {
@@ -1883,12 +2058,40 @@ pub(crate) async fn handle_command(core: &Arc<Core>, env: CommandEnvelope) -> Co
             else {
                 return reject(cid, "BAD_PAYLOAD", "session_id required");
             };
+            // PX-083: a trigger's run is created by the Core's own automation
+            // host and by nothing else; a client (and so a model) cannot name
+            // the origin, the provenance or a narrowed lease.
+            if !from_host
+                && (p.origin == "automation"
+                    || !p.automation_id.is_empty()
+                    || p.automation_version != 0
+                    || !p.automation_event_id.is_empty()
+                    || !p.automation_dispatch_key.is_empty()
+                    || !p.automation_principal.is_empty()
+                    || !p.automation_trigger.is_empty()
+                    || !p.automation_trigger_kind.is_empty()
+                    || !p.automation_definition_hash.is_empty()
+                    || !p.lease_operations.is_empty()
+                    || !p.lease_resources.is_empty()
+                    || !p.lease_effect_ceiling.is_empty()
+                    || !p.trigger_payload.is_empty()
+                    || !p.trigger_payload_label.is_empty()
+                    || p.payload_findings != 0
+                    || p.automation_test)
+            {
+                return reject(
+                    cid,
+                    "AUTOMATION_FIELDS_RESERVED",
+                    "origin `automation` and the automation and lease fields of CreateTask belong to the Core's automation host; a trigger creates its own tasks",
+                );
+            }
             let origin = match p.origin.as_str() {
                 "desktop" => TaskOrigin::Desktop,
                 "cli" => TaskOrigin::Cli,
                 "ide_adapter" => TaskOrigin::IdeAdapter,
                 "forge_issue" => TaskOrigin::ForgeIssue,
                 "forge_webhook" => TaskOrigin::ForgeWebhook,
+                "automation" => TaskOrigin::Automation,
                 other => return reject(cid, "BAD_PAYLOAD", format!("unknown origin `{other}`")),
             };
             if p.goal_text.trim().is_empty()
@@ -2103,6 +2306,62 @@ pub(crate) async fn handle_command(core: &Arc<Core>, env: CommandEnvelope) -> Co
                     actor.clone(),
                 ));
             }
+            // PX-083 / PX-084: the run's provenance, and the trigger payload as
+            // a labelled, untrusted context document beside the goal — data
+            // the loop reads, never instruction and never policy (AUT-D04).
+            if origin == TaskOrigin::Automation {
+                intake_events.push(typed(
+                    "TaskTriggeredByAutomation",
+                    &TaskEvent::TaskTriggeredByAutomation {
+                        automation_id: p.automation_id.clone(),
+                        version: p.automation_version,
+                        trigger_id: p.automation_trigger.clone(),
+                        trigger_kind: p.automation_trigger_kind.clone(),
+                        event_id: p.automation_event_id.clone(),
+                        dispatch_key: p.automation_dispatch_key.clone(),
+                        principal: p.automation_principal.clone(),
+                        definition_hash: p.automation_definition_hash.clone(),
+                        test: p.automation_test,
+                        // A local run's hosts are lease resources
+                        // (`network.egress:<host>:443`), not sandbox rules.
+                        approved_hosts: vec![],
+                    },
+                    actor.clone(),
+                ));
+                if !p.trigger_payload.is_empty() {
+                    use sha2::Digest;
+                    let text = crate::automation::payload_document(
+                        &p.trigger_payload_label,
+                        &p.automation_event_id,
+                        &p.trigger_payload,
+                        p.payload_findings,
+                    );
+                    let content_ref = match store.objects().put(text.as_bytes()) {
+                        Ok(r) => r,
+                        Err(e) => return reject(cid, "OBJECT_STORE", e.to_string()),
+                    };
+                    intake_events.push(typed(
+                        "ContextDocumentAttached",
+                        &TaskEvent::ContextDocumentAttached {
+                            document_id: hex::encode(sha2::Sha256::digest(text.as_bytes())),
+                            source: format!(
+                                "{}:{}",
+                                if p.trigger_payload_label.is_empty() {
+                                    "webhook"
+                                } else {
+                                    &p.trigger_payload_label
+                                },
+                                p.automation_event_id
+                            ),
+                            title: "Trigger payload (untrusted data)".into(),
+                            content_ref,
+                            byte_length: text.len() as u64,
+                            trust: "UNTRUSTED_EXTERNAL_CONTENT".into(),
+                        },
+                        actor.clone(),
+                    ));
+                }
+            }
             let mut events = vec![
                 typed(
                     "TaskCreated",
@@ -2206,6 +2465,23 @@ pub(crate) async fn handle_command(core: &Arc<Core>, env: CommandEnvelope) -> Co
                         // present it; the tool name alone is never authority.
                         let (resources, operations, effect_ceiling) =
                             modbit_policy::default_lease_for_profile(&profile, root.as_deref());
+                        // PX-084: an automation's run holds the profile's lease
+                        // narrowed to its principal's ceiling, never wider.
+                        let (resources, operations, effect_ceiling) =
+                            if from_host && !p.lease_operations.is_empty() {
+                                match crate::automation::narrow_lease(
+                                    (resources, operations, effect_ceiling),
+                                    root.as_deref(),
+                                    &p.lease_operations,
+                                    &p.lease_resources,
+                                    &p.lease_effect_ceiling,
+                                ) {
+                                    Ok(l) => l,
+                                    Err(why) => return reject(cid, "AUTOMATION_LEASE", why),
+                                }
+                            } else {
+                                (resources, operations, effect_ceiling)
+                            };
                         let lease_id = modbit_domain::CapabilityLeaseId::new();
                         let grant = AppendRequest {
                             tenant_id: core.tenant_id,
@@ -2539,6 +2815,10 @@ pub(crate) async fn handle_command(core: &Arc<Core>, env: CommandEnvelope) -> Co
         "SetTaskMode" | "SetExecutionPreference" | "GetTaskPosture" => {
             crate::tasking::handle(core, &env).await
         }
+        // PX-055: the agent's proposals to change the mode, and the answers.
+        "ListModeProposals" | "DecideModeProposal" => {
+            crate::mode_proposals::handle(core, &env).await
+        }
         // PX-050 / PX-057: the input queue, the typed interrupt, the run mode
         // and the durable allowlist rules.
         "ListQueuedInputs" | "EditQueuedInput" | "RemoveQueuedInput" | "ReorderQueuedInput"
@@ -2546,6 +2826,13 @@ pub(crate) async fn handle_command(core: &Arc<Core>, env: CommandEnvelope) -> Co
         | "SetRunMode" | "GetRunMode" | "AddAllowRule" | "RevokeAllowRule" | "ListAllowRules" => {
             crate::run_control::handle(core, &env).await
         }
+        // PX-069: native computer control - the runtime's state, the person
+        // resolving an unknown-outcome latch, and the on-screen Stop.
+        "GetComputerRuntime"
+        | "GetComputerPresence"
+        | "ListComputerActivity"
+        | "ResolveComputerLatch"
+        | "ComputerStop" => crate::computer::handle(core, &env).await,
         "GetContextAccounting" => {
             let Ok(p) = wire::GetContextAccounting::decode(env.payload.as_slice()) else {
                 return reject(cid, "BAD_PAYLOAD", "GetContextAccounting");
@@ -3256,6 +3543,9 @@ pub(crate) async fn handle_command(core: &Arc<Core>, env: CommandEnvelope) -> Co
             else {
                 return reject(cid, "BAD_PAYLOAD", "session_id required");
             };
+            // REQ-PX-058: a pending approval past its expiry is closed before
+            // it is listed, so a client never sees a due approval as open.
+            crate::approval_expiry::sweep(core).await;
             let store = core.store.lock().await;
             match store.approvals_for_session(&session_id) {
                 Ok(list) => accept(
@@ -3281,6 +3571,20 @@ pub(crate) async fn handle_command(core: &Arc<Core>, env: CommandEnvelope) -> Co
             else {
                 return reject(cid, "BAD_PAYLOAD", "approval_id required");
             };
+            // REQ-PX-058: an approval past its expiry is closed by the Core
+            // first, whatever the sweep's timing, so the decision below sees
+            // `EXPIRED` and nothing can approve it late.
+            let due = core
+                .store
+                .lock()
+                .await
+                .approval(&approval_id)
+                .ok()
+                .flatten()
+                .filter(|a| crate::approval_expiry::is_due(a, Timestamp::now()));
+            if let Some(a) = due {
+                crate::approval_expiry::expire(core, &a).await;
+            }
             let (approval, task) = {
                 let store = core.store.lock().await;
                 let approval = match store.approval(&approval_id) {
@@ -3309,6 +3613,13 @@ pub(crate) async fn handle_command(core: &Arc<Core>, env: CommandEnvelope) -> Co
                         approval.intent_hash, p.intent_hash
                     ),
                 );
+            }
+            // REQ-PX-058 (AFW-F02, AFW-F09): an approval that expired can no
+            // longer be approved. The refusal is typed like a stale hash; the
+            // agent was already told the effect did not run, and it asks again
+            // (a new approval) if it still needs the effect.
+            if approval.state == modbit_domain::approval::ApprovalState::Expired && p.approve {
+                return reject(cid, "APPROVAL_EXPIRED", expired_words(&approval));
             }
             if approval.state != modbit_domain::approval::ApprovalState::Requested {
                 return accept(
@@ -3345,7 +3656,17 @@ pub(crate) async fn handle_command(core: &Arc<Core>, env: CommandEnvelope) -> Co
             };
             let mut offset = match store.append(resolved) {
                 Ok(ev) => ev.last().map(|e| e.offset).unwrap_or(0),
-                Err(e) => return reject(cid, error_code(&e), e.to_string()),
+                Err(e) => {
+                    // The expiry sweep may have closed it between the read and
+                    // the write; the generation check refused the late decision.
+                    if let Ok(Some(now)) = store.approval(&approval_id)
+                        && now.state == modbit_domain::approval::ApprovalState::Expired
+                        && p.approve
+                    {
+                        return reject(cid, "APPROVAL_EXPIRED", expired_words(&now));
+                    }
+                    return reject(cid, error_code(&e), e.to_string());
+                }
             };
             if !p.approve
                 && let Ok(Some(call)) = store.tool_call(&approval.tool_call_id)
@@ -3495,8 +3816,20 @@ pub(crate) async fn handle_command(core: &Arc<Core>, env: CommandEnvelope) -> Co
                     cancelled += 1;
                 }
             }
+            // PX-069 (CUC-D05): the stop is host-owned and does not wait for
+            // the model loop - the actuator stops injecting and the session's
+            // control sessions close, sticky for their runs.
+            let controls = core
+                .tools
+                .computer
+                .runtime
+                .emergency_stop(session_id, &reason)
+                .await;
+            if controls > 0 {
+                core.tools.computer.flush(&core.store, core.tenant_id).await;
+            }
             eprintln!(
-                "modbit-core: emergency stop on session {session_id}: {revoked} lease(s) revoked, {cancelled} live run(s) cancelled ({reason})"
+                "modbit-core: emergency stop on session {session_id}: {revoked} lease(s) revoked, {cancelled} live run(s) cancelled, {controls} control session(s) stopped ({reason})"
             );
             accept(
                 cid,
@@ -4156,6 +4489,29 @@ pub(crate) async fn handle_command(core: &Arc<Core>, env: CommandEnvelope) -> Co
             };
             match crate::worktree_cleanup::command(core, &p, &actor).await {
                 Ok(report) => accept(cid, false, report.encode_to_vec()),
+                Err((code, msg)) => reject(cid, &code, msg),
+            }
+        }
+        "RemoveWorktree" => {
+            let Ok(p) = wire::RemoveWorktree::decode(env.payload.as_slice()) else {
+                return reject(cid, "BAD_PAYLOAD", "RemoveWorktree");
+            };
+            let Some(session_id) = p
+                .session_id
+                .as_ref()
+                .and_then(id16)
+                .map(SessionId::from_bytes)
+            else {
+                return reject(cid, "BAD_PAYLOAD", "session_id required");
+            };
+            // A dry run removes nothing and needs no lease.
+            if !p.dry_run
+                && let Err(ack) = require_lease(core, &cid, &env, &session_id).await
+            {
+                return ack;
+            }
+            match crate::worktree_cleanup::remove_command(core, &p, &actor).await {
+                Ok(r) => accept(cid, false, r.encode_to_vec()),
                 Err((code, msg)) => reject(cid, &code, msg),
             }
         }
@@ -6207,6 +6563,16 @@ pub(crate) async fn handle_command(core: &Arc<Core>, env: CommandEnvelope) -> Co
                 wire::ModelList { models, health }.encode_to_vec(),
             )
         }
+        "ListModelVariants" => crate::composer::list_variants(core, cid, &env.payload).await,
+        "CreateProject"
+        | "RenameProject"
+        | "ArchiveProject"
+        | "AddProjectMember"
+        | "RemoveProjectMember"
+        | "ListProjects"
+        | "GetProject" => {
+            crate::projects::handle(core, &env, record(&env.command_type), actor).await
+        }
         "ProbeModel" => {
             let Ok(p) = wire::ProbeModel::decode(env.payload.as_slice()) else {
                 return reject(cid, "BAD_PAYLOAD", "ProbeModel");
@@ -7419,6 +7785,84 @@ pub(crate) async fn handle_command(core: &Arc<Core>, env: CommandEnvelope) -> Co
                 Err((code, msg)) => reject(cid, &code, msg),
             }
         }
+        "GetChangesState" => {
+            let Ok(p) = wire::GetChangesState::decode(env.payload.as_slice()) else {
+                return reject(cid, "BAD_PAYLOAD", "GetChangesState");
+            };
+            match crate::changes::state(core, &p).await {
+                Ok(v) => accept(cid, false, v.encode_to_vec()),
+                Err((code, msg)) => reject(cid, &code, msg),
+            }
+        }
+        "RevertChanges" | "StageChanges" | "CommitAndPush" => {
+            let (task_id, bad) = match env.command_type.as_str() {
+                "RevertChanges" => wire::RevertChanges::decode(env.payload.as_slice())
+                    .map(|p| p.task_id)
+                    .map_err(|_| "RevertChanges"),
+                "StageChanges" => wire::StageChanges::decode(env.payload.as_slice())
+                    .map(|p| p.task_id)
+                    .map_err(|_| "StageChanges"),
+                _ => wire::CommitAndPush::decode(env.payload.as_slice())
+                    .map(|p| p.task_id)
+                    .map_err(|_| "CommitAndPush"),
+            }
+            .map_or_else(|b| (None, Some(b)), |t| (t, None));
+            if let Some(b) = bad {
+                return reject(cid, "BAD_PAYLOAD", b);
+            }
+            let Some(task_id) = task_id.as_ref().and_then(id16).map(TaskId::from_bytes) else {
+                return reject(cid, "BAD_PAYLOAD", "task_id required");
+            };
+            let session_id = match core.store.lock().await.task(&task_id) {
+                Ok(Some(t)) => t.session_id,
+                Ok(None) => return reject(cid, "UNKNOWN_TASK", task_id.to_string()),
+                Err(e) => return reject(cid, error_code(&e), e.to_string()),
+            };
+            if let Err(ack) = require_lease(core, &cid, &env, &session_id).await {
+                return ack;
+            }
+            match env.command_type.as_str() {
+                "RevertChanges" => {
+                    let p = wire::RevertChanges::decode(env.payload.as_slice()).expect("decoded");
+                    match crate::changes::revert(
+                        core,
+                        &p,
+                        command_id,
+                        record("RevertChanges"),
+                        actor,
+                    )
+                    .await
+                    {
+                        Ok(v) => {
+                            let replayed = v.replayed;
+                            accept(cid, replayed, v.encode_to_vec())
+                        }
+                        Err((code, msg)) => reject(cid, &code, msg),
+                    }
+                }
+                "StageChanges" => {
+                    let p = wire::StageChanges::decode(env.payload.as_slice()).expect("decoded");
+                    match crate::changes::stage(core, &p, actor).await {
+                        Ok(v) => accept(cid, false, v.encode_to_vec()),
+                        Err((code, msg)) => reject(cid, &code, msg),
+                    }
+                }
+                _ => {
+                    let p = wire::CommitAndPush::decode(env.payload.as_slice()).expect("decoded");
+                    match crate::changes::commit_push_command(
+                        core,
+                        &p,
+                        &actor,
+                        env.expected_generation,
+                    )
+                    .await
+                    {
+                        Ok(v) => accept(cid, false, v.encode_to_vec()),
+                        Err((code, msg)) => reject(cid, &code, msg),
+                    }
+                }
+            }
+        }
         "SubmitExternalDiagnostics" => {
             let Ok(p) = wire::SubmitExternalDiagnostics::decode(env.payload.as_slice()) else {
                 return reject(cid, "BAD_PAYLOAD", "SubmitExternalDiagnostics");
@@ -7733,6 +8177,17 @@ fn protocol_state_view(state: &modbit_protocol_state::ProtocolState) -> wire::Pr
             })
             .collect(),
     }
+}
+
+/// The refusal text for a decision on an approval that expired.
+fn expired_words(a: &modbit_domain::approval::Approval) -> String {
+    format!(
+        "the approval for `{}` expired{} without a decision and can no longer be approved; the effect did not run and the agent was told so; if it is still needed the agent asks again",
+        a.tool_name,
+        a.expires_at
+            .map(|e| format!(" at {}", e.millis()))
+            .unwrap_or_default()
+    )
 }
 
 fn approval_view(a: &modbit_domain::approval::Approval) -> wire::ApprovalView {

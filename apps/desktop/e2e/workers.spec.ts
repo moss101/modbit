@@ -120,8 +120,22 @@ const BRIDGE_ALLOW_LIST = [
   "ingestCiResults", "ingestReviewComments",
   // PX-046 / PX-047 (agent list and conversation): the Core's header, transcript and search projections, and its read and archive commands.
   "agentHeaders", "transcript", "openStreams", "pendingApprovals", "searchConversations", "markRead", "archiveTask",
+  // REQ-PX-063 / 064 / 068 (projects, worktrees, apply-back). Added on purpose; each is a typed request main validates (project-ipc.ts).
+  "listProjects", "getProject", "createProject", "renameProject", "archiveProject", "addProjectMember", "removeProjectMember", "listWorktrees", "removeWorktree", "runWorktreeCleanup", "applyWorktree", "undoApply", "discardWorktree",
+  // REQ-PX-048 (the Changes app): the Core's state beside the review bundle, revert, stage and Commit and push. Added on purpose; each is a typed request main validates (changes-ipc.ts).
+  "changesState", "revertChanges", "stageChanges", "commitAndPush",
   // REQ-PX-048 (the apps panel): the terminal stream, the read-only Files app and the effect receipts. Added on purpose; each is a typed request main validates.
   "terminalList", "terminalAttach", "terminalAck", "terminalDetach", "terminalInput", "terminalResize", "terminalWrite", "terminalKill", "onTerminalFrame", "listWorkspaceDir", "readWorkspaceFile", "effectReceipts",
+  // REQ-PX-054..056 (the composer): mode, preference, queue, interrupt, send behaviour, slash inventory, model variants and the side question. Added on purpose; each is one typed Core command or read that main validates (composer-ipc.ts).
+  "composerPosture", "composerSetMode", "composerSetPreference", "composerVariants", "composerSlash", "composerQueue", "composerQueueInput", "composerEditQueued", "composerRemoveQueued", "composerReorderQueued", "composerSendNow", "composerInterrupt", "composerSendBehavior", "composerSetSendBehavior", "composerSideQuestion",
+  // REQ-PX-057 / 058 / 060 / 062 (approval stack, run modes, context accounting, checkpoints). Added on purpose; each is a typed request main validates (control-ipc.ts, control-args.ts).
+  "dockApprovals", "allowAlways", "runMode", "setRunMode", "allowRules", "addAllowRule", "revokeAllowRule", "contextAccounting", "setTaskBudgets", "checkpoints", "previewRestore", "restoreCheckpoint", "forkFromTurn",
+  // REQ-PX-055 / 058 (Wave 6): the agent's mode proposal and the approvals the Core closed as expired. Added on purpose; each is a typed request main validates (control-ipc.ts, control-args.ts).
+  "expiredApprovals", "modeProposals", "decideModeProposal",
+  // REQ-PX-074 (native computer control's surface): presence, Stop, the latch, the action cards, a masked frame by reference and a System Settings pane. Added on purpose; each is a typed request main validates (computer-ipc.ts, computer-args.ts). None captures the screen or sends input.
+  "computerPresence", "computerStop", "computerResolveLatch", "computerCards", "computerFrame", "computerOpenSettings", "debugOpenedSettings",
+  // REQ-PX-086 (automations surface): definitions, validation, the enable approval, runs, history, pause and kill. Added on purpose; each is a typed request main validates (automation-ipc.ts, automation-args.ts).
+  "automations", "automation", "automationRuns", "validateAutomation", "createAutomation", "updateAutomation", "loadRepositoryAutomations", "enableAutomation", "disableAutomation", "pauseAutomation", "killAutomation", "runAutomation", "ackAutomationAttention", "automationTaskHeaders",
   "addCredential", "applyUserPatch", "attachFile", "attention", "browserLog", "browserSession", "cancelTask", "closeBrowser", "codeView", "contextInspector", "coreStatus", "createSession", "createTask", "dashboard", "debugCoreInfo", "debugIpcRefusals", "debugRendererLog", "decideReview", "deliverNotification", "describeBrowser", "emergencyStop", "hideBrowser", "languages", "listCredentials", "localState", "notificationLog", "onBrowserState", "onCoreStatus", "onEvent", "onRecovery", "openBrowser", "openPullRequest", "probeBrowser", "providerStatus", "removeCredential", "resolveApproval", "respondToQuestion", "reviewBundle", "sessionSnapshot", "setBrowserControl", "setTaskSelection", "setupProvider", "showBrowser", "starterTasks", "startTask", "steerTask", "subscribe", "taskEconomics", "taskStatus", "trustRepository", "typeAsPerson",
 ];
 
@@ -255,20 +269,72 @@ test("renderer killed (REQ-EV-0076): the renderer's process dies mid-session; ma
     // The renderer's process is killed under it (what a crash or the OS
     // does). Main notes it and opens a fresh window in the old one's place
     // (the crashed page is finished for the harness too).
-    // Playwright reports the dead renderer either as the page's "crash" or, when main has already replaced the window (as it does at once
-    // on a Windows runner), as that page closing: both mean the old renderer is gone, and the assertions below say what came back.
-    const crashed = Promise.any([page1.waitForEvent("crash", { timeout: 30_000 }), page1.waitForEvent("close", { timeout: 30_000 })]);
-    const replaced = app.waitForEvent("window", { timeout: 60_000 });
+    //
+    // What proves the renderer is gone and was replaced is read from the real
+    // processes, not from Playwright's per-page events: Playwright reports a
+    // dead renderer as the page's "crash", as its "close" (main has already
+    // destroyed the window), or, on the Windows runner, sometimes as neither
+    // within 30 s (workers.spec.ts failed that way on PR #81) because a page
+    // that crashes and is destroyed in the same turn can leave the harness
+    // with no event to deliver. So: the renderer's OS process disappears; main
+    // reports a different, live window; and Playwright then hands over that
+    // window's page. The events are recorded (not required) for the timeline.
+    const t0 = Date.now();
+    const seen: string[] = [];
+    const note = (what: string) => {
+      seen.push(`${what}@${Date.now() - t0}ms`);
+      console.log(`[renderer-diag] ${what} at ${Date.now() - t0} ms`);
+    };
+    page1.once("crash", () => note("page1.crash"));
+    page1.once("close", () => note("page1.close"));
+    const old = await app.evaluate(({ BrowserWindow }) => {
+      const wc = BrowserWindow.getAllWindows()[0]!.webContents;
+      return { webContentsId: wc.id, pid: wc.getOSProcessId() };
+    });
+    expect(old.pid).toBeGreaterThan(0);
+    // What the app's processes are, by type, so a kill that lands on the wrong one is visible in the log.
+    const metrics = () => app.evaluate(({ app: a }) => a.getAppMetrics().map((m) => `${m.pid}:${m.type}${m.name ? `(${m.name})` : ""}`));
+    console.log(`[renderer-diag] window renderer pid=${old.pid} webContents=${old.webContentsId}; processes: ${(await metrics()).join(" ")}`);
+    const mainWindows = () =>
+      app.evaluate(({ BrowserWindow }) => BrowserWindow.getAllWindows().map((w) => ({ webContentsId: w.webContents.id, pid: w.webContents.getOSProcessId(), destroyed: w.isDestroyed(), crashed: w.webContents.isCrashed() })));
     if (process.platform === "win32") {
-      // forcefullyCrashRenderer() did not end the renderer within 30s on the Windows runner (neither a crash nor a close was seen):
+      // forcefullyCrashRenderer() did not end the renderer within 30s on the Windows runner:
       // kill the real renderer process by its pid instead, which is what a crash or the OS does.
-      const pid = await app.evaluate(({ BrowserWindow }) => BrowserWindow.getAllWindows()[0]!.webContents.getOSProcessId());
-      process.kill(pid);
+      process.kill(old.pid);
     } else {
       await app.evaluate(({ BrowserWindow }) => BrowserWindow.getAllWindows()[0]!.webContents.forcefullyCrashRenderer());
     }
-    await crashed;
-    const page2 = await replaced;
+    // The kill's own effect, in the log whatever happens next.
+    void (async () => {
+      await new Promise((r) => setTimeout(r, 5_000));
+      const state = await mainWindows().then((w) => JSON.stringify(w), (e) => String(e));
+      console.log(`[renderer-diag] 5 s after the kill: pid ${old.pid} alive=${(() => { try { process.kill(old.pid, 0); return true; } catch { return false; } })()}; main windows=${state}; processes: ${(await metrics().catch(() => [])).join(" ")}`);
+    })().catch(() => undefined);
+    // 1. Main, which notes the loss, has put a new window (a new web contents with its own process) in the old one's place.
+    await expect
+      .poll(async () => (await mainWindows()).filter((w) => !w.destroyed && w.webContentsId !== old.webContentsId).length, { timeout: 60_000, message: "main never opened a replacement window" })
+      .toBe(1);
+    note("main-replaced");
+    // 2. The old renderer's OS process is gone (signal 0 only tests for existence).
+    const alive = (pid: number) => {
+      try {
+        process.kill(pid, 0);
+        return true;
+      } catch {
+        return false;
+      }
+    };
+    await expect.poll(() => alive(old.pid), { timeout: 30_000, message: `the killed renderer (pid ${old.pid}) still exists` }).toBe(false);
+    note("renderer-pid-gone");
+    // 3. Playwright hands over the new window's page.
+    const handedOver = async () => app.windows().filter((p) => p !== page1 && !p.isClosed());
+    try {
+      await expect.poll(async () => (await handedOver()).length, { timeout: 60_000 }).toBe(1);
+    } catch (e) {
+      throw new Error(`Playwright never exposed the replacement page: main=${JSON.stringify(await mainWindows())} playwright=${app.windows().length} page1.closed=${page1.isClosed()}; ${seen.join(", ")}\n${String(e)}`);
+    }
+    note("playwright-window");
+    const page2 = (await handedOver())[0]!;
     await expect(page2.getByTestId("core-status")).toContainText("Core connected", { timeout: 60_000 });
     expect(await app.evaluate(({ BrowserWindow }) => BrowserWindow.getAllWindows().length)).toBe(1);
     const page = page2;

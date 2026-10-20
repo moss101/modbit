@@ -1,0 +1,11 @@
+{
+  "id": "typescript-shipping-vacuous-b",
+  "class": "vacuous",
+  "flavor": "b",
+  "leg": "initial",
+  "write_set": [
+    "src/shop.ts",
+    "test/shipping.test.ts"
+  ],
+  "declared": "incorrect"
+}

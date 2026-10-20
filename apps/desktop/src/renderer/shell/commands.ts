@@ -9,7 +9,7 @@
  * Chords (AFW-A16; `mod` is Cmd on macOS and Ctrl elsewhere): new task mod+N,
  * palette mod+K, changes mod+E, terminal mod+J, browser mod+Shift+B, files
  * mod+G, settings mod+comma, shortcut help Ctrl+Shift+slash, zoom mod+plus,
- * mod+minus, mod+0. The PX-024 single-letter keys stay in keyboard.ts.
+ * mod+minus, mod+0, stop computer control mod+shift+S (PX-074). The PX-024 single-letter keys stay in keyboard.ts.
  */
 import { CommandRegistry, type CommandDef } from "@modbit/ui/logic";
 import { THEME_LABEL, THEME_PREFERENCES, type ThemePreference } from "@modbit/design-tokens";
@@ -30,6 +30,7 @@ export interface ShellActions {
   /** Opens the apps panel on `kind`; false (with a reason) when the task has no artifact for it. */
   showApp(kind: AppKind): true | string;
   openDashboard(): void;
+  openAutomations(): void;
   goBack(): void;
   setTheme(theme: ThemePreference): void;
   zoom(delta: 1 | -1 | 0): void;
@@ -38,6 +39,12 @@ export interface ShellActions {
   /** Whether an app can be shown for the current task, or the reason it cannot. */
   appAvailability(kind: AppKind): true | string;
   canGoBack(): boolean;
+  /** PX-074: Stop every task that holds the machine (the Core's `ComputerStop`). */
+  stopComputer(): void;
+  /** Whether anything holds the machine, or why Stop is unavailable. */
+  computerStopAvailability(): true | string;
+  /** Opens the computer-control permission window (it also opens once by itself when a permission blocks a call). */
+  openComputerPermissions(): void;
 }
 
 type Def = CommandDef<ShellActions>;
@@ -67,6 +74,9 @@ export function shellCommandDefs(): Def[] {
     { id: "list.toggle", title: "Toggle agent list", group: "General", keywords: ["sidebar", "rail"], run: (a) => a.toggleAgentList() },
     { id: "settings.open", title: "Settings", group: "General", keys: ["mod+comma"], keywords: ["preferences", "provider"], run: (a) => a.openSettings() },
     { id: "help.shortcuts", title: "Keyboard shortcuts", group: "General", keys: ["ctrl+shift+slash"], keywords: ["help", "keys"], run: (a) => a.toggleHelp() },
+    { id: "view.automations", title: "Open automations", group: "General", keys: ["mod+shift+a"], keywords: ["schedule", "trigger", "cron", "webhook", "unattended"], run: (a) => a.openAutomations() },
+    { id: "computer.stop", title: "Stop computer control", group: "General", keys: ["mod+shift+s"], keywords: ["emergency", "halt", "agent", "mouse", "keyboard", "application"], enabled: (a) => a.computerStopAvailability(), run: (a) => a.stopComputer() },
+    { id: "computer.permissions", title: "Computer control permissions", group: "Settings", keywords: ["accessibility", "screen recording", "helper", "applications", "system settings"], run: (a) => a.openComputerPermissions() },
     { id: "view.dashboard", title: "Open dashboard", group: "General", keywords: ["telemetry", "cost"], run: (a) => a.openDashboard() },
     { id: "nav.back", title: "Back to the fleet", group: "General", keywords: ["close", "return"], enabled: (a) => (a.canGoBack() ? true : "Already on the fleet"), run: (a) => a.goBack() },
     { id: "zoom.in", title: "Zoom in", group: "View", keys: ["mod+plus"], enabled: (a) => a.zoomAvailability(), run: (a) => a.zoom(1) },

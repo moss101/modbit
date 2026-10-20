@@ -1688,6 +1688,10 @@ pub(crate) async fn rebuild(
         budgets,
         ..Default::default()
     };
+    // REQ-PX-060: the organization's ceilings bind a task that never set a cap.
+    if task.origin != modbit_domain::task::TaskOrigin::Subagent {
+        crate::budgets::clamp_runtime(&mut state.budgets);
+    }
     let mut transcript: Vec<Message> = Vec::new();
     let mut last_offset = 0;
     let mut pending_steps: HashMap<[u8; 16], StepType> = HashMap::new();
@@ -1732,6 +1736,7 @@ pub(crate) async fn rebuild(
                             .and_then(|c| u32::try_from(c).ok())
                             .unwrap_or(harness::DEFAULT_MAX_CHILDREN)
                     };
+                    crate::budgets::clamp_runtime(&mut state.budgets);
                 }
             }
             "TaskForked" => {
@@ -1862,6 +1867,9 @@ pub(crate) async fn rebuild(
                     >(&bytes)
                 {
                     state.write_scope = c.spec.write_scope.clone();
+                    if c.profile == crate::agent_profiles::COMPUTER_USE {
+                        core.tools.computer.mark_child(task.task_id);
+                    }
                     state.capsule = Some(serde_json::json!({
                         "agent_id": c.agent_id.to_string(),
                         "parent_task_id": c.parent_task_id.to_string(),
@@ -2540,12 +2548,12 @@ fn projection(
     ));
     // PX-051: the mode posture in force narrows what is offered, and the
     // kernel refuses what is named anyway.
-    let posture = core
+    let mode_in_force = core
         .tools
         .tasking
         .in_force_now(task.task_id)
-        .unwrap_or_default()
-        .posture();
+        .unwrap_or_default();
+    let posture = mode_in_force.posture();
     for s in visible {
         if !capsule_tools.is_empty() && !capsule_tools.iter().any(|t| t == &s.name) {
             continue;
@@ -2695,6 +2703,15 @@ fn projection(
         // configuration in force allow it.
         tools.extend(crate::agent_tools::projections());
     }
+    // PX-055: the agent may ask the person to change the mode; offered to an
+    // interactive primary agent in a constrained mode, where a switch is the
+    // natural request. It changes nothing by itself.
+    if !crate::critique::is_review(task)
+        && state.capsule.is_none()
+        && crate::mode_proposals::offered(task, mode_in_force)
+    {
+        tools.push(crate::mode_proposals::projection());
+    }
     tools.push(ToolProjection {
         name: PLAN_TOOL.into(),
         description: format!(
@@ -2725,6 +2742,7 @@ fn projection(
                     | CONTEXT_TOOL
                     | ASK_TOOL
                     | PLAN_TOOL
+                    | crate::mode_proposals::TOOL
                     | crate::agent_tools::SPAWN_TOOL
                     | crate::agent_tools::WAIT_TOOL
                     | crate::agent_tools::RESULT_TOOL
@@ -4968,6 +4986,46 @@ async fn run_loop(
                     StepType::ToolCall,
                     Some("PROTECTED_EFFECT_REFUSED".to_owned()),
                 ),
+                // PX-055: a proposal to change the mode. Refused when this
+                // turn did not offer it; otherwise recorded as data and the
+                // run goes on in the mode it has.
+                crate::mode_proposals::TOOL if !projected_names.contains(&name) => (
+                    TranscriptEntry::ToolResult {
+                        call_id: call_id.clone(),
+                        name: name.clone(),
+                        text: format!(
+                            "status: REFUSED\nerror_code: TOOL_NOT_PROJECTED\nerror: `{name}` is not offered to this task"
+                        ),
+                        failure_signature: None,
+                        clears: vec![],
+                        wrote: None,
+                        progress: false,
+                        media: vec![],
+                    },
+                    StepType::ToolCall,
+                    Some("TOOL_NOT_PROJECTED".to_owned()),
+                ),
+                crate::mode_proposals::TOOL => {
+                    let (entry, ok) = crate::mode_proposals::handle_tool(
+                        &core,
+                        &task,
+                        lt,
+                        &actor,
+                        &call_id,
+                        &arguments_json,
+                    )
+                    .await;
+                    progress = true;
+                    (
+                        entry,
+                        StepType::Plan,
+                        if ok {
+                            None
+                        } else {
+                            Some("INVALID_MODE_PROPOSAL".to_owned())
+                        },
+                    )
+                }
                 PLAN_TOOL => {
                     let (entry, ok) = handle_plan(
                         &core,
@@ -6153,6 +6211,21 @@ async fn run_loop(
                 }
             }
         }
+        // PX-075 (CUC-D06): a computer-use child that failed four times in a
+        // row, or went three turns without a new observation or action,
+        // stops and reports what it observed, what blocked it and the best
+        // next step.
+        if state
+            .capsule
+            .as_ref()
+            .is_some_and(|c| c["profile"].as_str() == Some(crate::agent_profiles::COMPUTER_USE))
+            && let Some(report) = core.tools.computer.turn_boundary(task.task_id)
+        {
+            break 'outer LoopEnd::NeedsAttention {
+                code: "COMPUTER_USE_STALLED",
+                reason: report.to_string(),
+            };
+        }
         seen_offset = core
             .store
             .lock()
@@ -6185,6 +6258,12 @@ async fn run_loop(
     // A program still running when the loop ends is ended with it: it stops
     // at its next interrupt poll or binding call.
     programs.cancel_all();
+    // PX-069: a control session and its observation grant end with the turn
+    // (CUC-C02); the machine is given back whatever way the run ended.
+    core.tools
+        .computer
+        .end_run(&core, task.task_id, &run_id.to_string(), "RUN_ENDED")
+        .await;
     let end = match lease_lost(&core, &task, cfg.lease_generation).await {
         Some((current, owner)) if !matches!(end, LoopEnd::Fenced { .. }) => LoopEnd::Fenced {
             current_generation: current,
@@ -8939,6 +9018,7 @@ async fn execute_tool_call(
                 );
             }
             // Wait for the resolver at a safe boundary; the same tool_call_id re-enters.
+            let approval_expired: bool;
             loop {
                 if cancel.is_cancelled() {
                     let diagnostic =
@@ -8969,7 +9049,10 @@ async fn execute_tool_call(
                     .await
                     .approval_for_call(&tool_call_id)
                     .unwrap_or(None);
-                if a.is_some_and(|a| a.state != modbit_domain::approval::ApprovalState::Requested) {
+                if let Some(a) = a
+                    && a.state != modbit_domain::approval::ApprovalState::Requested
+                {
+                    approval_expired = a.state == modbit_domain::approval::ApprovalState::Expired;
                     break;
                 }
             }
@@ -8990,6 +9073,37 @@ async fn execute_tool_call(
                 .await
                 .tool_call(&tool_call_id)
                 .unwrap_or(None);
+            if call
+                .as_ref()
+                .is_some_and(|c| c.state == ToolCallState::Failed)
+                && approval_expired
+            {
+                // REQ-PX-058: nobody answered before the approval's expiry. The
+                // Core closed it; the effect did not run and nothing was approved.
+                let diagnostic =
+                    modbit_core_runtime::classify(&modbit_core_runtime::FailureSource::Tool {
+                        tool: name,
+                        status: "POLICY_DENIED",
+                        code: Some("APPROVAL_EXPIRED"),
+                        message: Some("the approval expired before anyone answered"),
+                        result_ref: "",
+                        timed_out: false,
+                        cancelled: false,
+                    });
+                return TranscriptEntry::ToolResult {
+                    call_id: call_id.into(),
+                    name: name.into(),
+                    text: format!(
+                        "status: POLICY_DENIED\nerror_code: APPROVAL_EXPIRED\nerror: the approval expired before anyone answered; the effect did not run and nothing was approved\n{}",
+                        diagnostic.render()
+                    ),
+                    failure_signature: None,
+                    clears: vec![],
+                    wrote: None,
+                    progress: false,
+                    media: vec![],
+                };
+            }
             if call.is_some_and(|c| c.state == ToolCallState::Failed) {
                 let diagnostic =
                     modbit_core_runtime::classify(&modbit_core_runtime::FailureSource::Tool {
@@ -9055,6 +9169,16 @@ async fn execute_tool_call(
                 });
             obs.text.push_str(&diagnostic.render());
         }
+        // PX-075: the stall rules of a computer-use child watch its calls.
+        if name.starts_with("computer.") {
+            core.tools.computer.note_tool(
+                task.task_id,
+                r.status == ToolStatus::Success,
+                &r.structured_output,
+                r.error_code.as_deref(),
+                r.error_message.as_deref(),
+            );
+        }
         let sig_prefix = format!("{name}:");
         let clears: Vec<String> = if is_check && !check_failed {
             state
@@ -9103,6 +9227,21 @@ async fn execute_tool_call(
                 || name == "browser.navigate"
                 || name == "browser.act"
                 || name == "browser.fill_form"
+                // PX-069: an input to the application, or a session opened for
+                // one, advances the work; looking at it does not.
+                || matches!(
+                    name,
+                    "computer.start"
+                        | "computer.start_screen"
+                        | "computer.press"
+                        | "computer.set_value"
+                        | "computer.click"
+                        | "computer.move"
+                        | "computer.drag"
+                        | "computer.type"
+                        | "computer.key"
+                        | "computer.scroll"
+                )
                 || name.starts_with("lsp.")
                 || name.starts_with("git.worktree"));
         return TranscriptEntry::ToolResult {
@@ -9713,6 +9852,55 @@ async fn run_verification_stage(
             // What stays pending after a run — an independent review, a
             // human decision — still goes to the user's review carrying the
             // obligation.
+            // PX-135: the generated adversarial checks (test weakening, vacuous
+            // pass, overfit literal, unpinned boundary) are evidence of this
+            // COMPLETION run. They ride the run's own record as `adversarial`
+            // checks, so the one Acceptance Gate weighs them like any other
+            // check: a FAIL rejects, an UNKNOWN cannot accept. A candidate
+            // that changes nothing has nothing to derive them from.
+            let mut adversarial_findings: Vec<String> = Vec::new();
+            if !files.is_empty() {
+                let scratch = std::env::temp_dir().join(format!("modbit-adversarial-{run_id}"));
+                let generated = crate::verify::adversarial_checks(
+                    &runner,
+                    &plan,
+                    std::path::Path::new(&root),
+                    &scratch,
+                    &env,
+                    &files,
+                )
+                .await;
+                let _ = std::fs::remove_dir_all(&scratch);
+                let findings_ref = {
+                    let store = core.store.lock().await;
+                    store
+                        .objects()
+                        .put(&serde_json::to_vec(&generated).unwrap_or_default())
+                        .unwrap_or_default()
+                };
+                for ev in events
+                    .iter_mut()
+                    .filter(|e| e.event_type == "VerificationRunRecorded")
+                {
+                    if let Some(checks) = ev.payload["checks"].as_array_mut() {
+                        checks.extend(generated.iter().map(|g| {
+                            serde_json::to_value(crate::verify::adversarial_summary(g))
+                                .unwrap_or_default()
+                        }));
+                    }
+                    if let Some(refs) = ev.payload["report_refs"].as_array_mut() {
+                        refs.push(serde_json::Value::String(findings_ref.clone()));
+                    }
+                }
+                for g in &generated {
+                    use modbit_verification::adversarial::Status;
+                    if matches!(g.status, Status::Fail | Status::Unknown) {
+                        for f in &g.findings {
+                            adversarial_findings.push(format!("{}: {f}", g.class.check_id()));
+                        }
+                    }
+                }
+            }
             let mut gate_blockers: Vec<String>;
             {
                 let (policy, _) = crate::assurance::policy_for(
@@ -9766,6 +9954,12 @@ async fn run_verification_stage(
                     state.open_failures.push(format!("completion:{b}"));
                     text.push_str(&format!("blocked: {b}\n"));
                 }
+                for f in &adversarial_findings {
+                    state
+                        .open_failures
+                        .push(format!("completion:adversarial {f}"));
+                    text.push_str(&format!("blocked: adversarial check {f}\n"));
+                }
                 state.acceptance = Some(serde_json::json!({
                     "verdict": gate.verdict.label(),
                     "candidate_revision": gate.candidate_revision,
@@ -9781,6 +9975,7 @@ async fn run_verification_stage(
             ok = !attribution.blocks_acceptance
                 && !deny
                 && gate_blockers.is_empty()
+                && adversarial_findings.is_empty()
                 && state.open_flags.is_empty()
                 && (unverified_ok
                     || matches!(

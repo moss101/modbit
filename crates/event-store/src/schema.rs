@@ -632,6 +632,35 @@ ALTER TABLE effect_receipts ADD COLUMN authorization_epoch INTEGER;
 ALTER TABLE effect_receipts ADD COLUMN capability_snapshot_hash TEXT;
 "#;
 
+/// Version 19 (PX-063): projects. `projects` is the projection of a
+/// `Project` aggregate's events; `project_members` is the membership map from
+/// task to project. A task is in at most one project, so the task id is the
+/// key of the map: a second project cannot hold it even if a check were
+/// missed. Both tables rebuild from the log.
+pub const V19_PROJECTS: &str = r#"
+CREATE TABLE IF NOT EXISTS projects (
+  project_id     BLOB    PRIMARY KEY NOT NULL,
+  name           TEXT    NOT NULL,
+  name_key       TEXT    NOT NULL,
+  color          TEXT    NOT NULL,
+  icon           TEXT    NOT NULL,
+  workspace_root TEXT    NOT NULL,
+  archived       INTEGER NOT NULL DEFAULT 0,
+  created_at_ms  INTEGER NOT NULL,
+  updated_at_ms  INTEGER NOT NULL,
+  created_offset INTEGER NOT NULL,
+  last_offset    INTEGER NOT NULL
+);
+CREATE INDEX IF NOT EXISTS projects_workspace ON projects (workspace_root, archived);
+CREATE TABLE IF NOT EXISTS project_members (
+  task_id      BLOB    PRIMARY KEY NOT NULL,
+  project_id   BLOB    NOT NULL,
+  added_at_ms  INTEGER NOT NULL,
+  added_offset INTEGER NOT NULL
+);
+CREATE INDEX IF NOT EXISTS project_members_project ON project_members (project_id, added_offset);
+"#;
+
 /// All migrations in order. Never edit an entry once shipped; append a new one.
 pub const MIGRATIONS: &[Migration] = &[
     Migration {
@@ -741,6 +770,12 @@ pub const MIGRATIONS: &[Migration] = &[
         name: "receipt_authorization_epoch",
         up: V18_RECEIPT_AUTHORIZATION_EPOCH,
         rollback: "Additive nullable derivable columns. Rollback = ignore them; a rebuild derives them from the receipts on the log, whose hashes cover them; no event is touched.",
+    },
+    Migration {
+        version: 19,
+        name: "projects",
+        up: V19_PROJECTS,
+        rollback: "Additive derivable tables (`projects`, `project_members`). Rollback = drop the tables; a rebuild derives the rows from the `Project` events on the log; no event is touched.",
     },
 ];
 

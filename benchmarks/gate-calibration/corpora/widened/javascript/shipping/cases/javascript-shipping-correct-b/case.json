@@ -1,0 +1,11 @@
+{
+  "id": "javascript-shipping-correct-b",
+  "class": "correct",
+  "flavor": "b",
+  "leg": "initial",
+  "write_set": [
+    "src/shop.mjs",
+    "test/shipping_boundaries.test.mjs"
+  ],
+  "declared": "correct"
+}

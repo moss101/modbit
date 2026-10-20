@@ -1,0 +1,34 @@
+{
+  "expected": {
+    "entries": [
+      {
+        "application": "Form App",
+        "approvalId": "01a08f33-0d97-7d40-b299-f8a7bc5cda61",
+        "artifactDigest": "",
+        "artifactExpired": false,
+        "artifactRef": "",
+        "atMs": "1791626000000",
+        "bundleId": "org.example.fixture.form",
+        "code": "",
+        "controlId": "c0123456789ab",
+        "detail": "press",
+        "durationMs": "12",
+        "elements": 0,
+        "intentHash": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "kind": "ACTION",
+        "maskedRegions": 0,
+        "modality": "ax",
+        "offset": "42",
+        "outcome": "SUCCEEDED",
+        "reason": "",
+        "scope": "APP",
+        "secureWithheld": 0,
+        "toolCallId": "01a08f33-0d97-7d40-b299-f8a7bc5cda60",
+        "verified": true,
+        "verifiedKnown": true
+      }
+    ],
+    "truncated": false
+  },
+  "type": "modbit.v1.ComputerActivityView"
+}

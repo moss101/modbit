@@ -1,0 +1,10 @@
+{
+  "id": "javascript-discount-offbyone-b",
+  "class": "offbyone",
+  "flavor": "b",
+  "leg": "initial",
+  "write_set": [
+    "src/shop.mjs"
+  ],
+  "declared": "incorrect"
+}

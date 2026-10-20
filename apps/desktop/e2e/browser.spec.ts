@@ -756,7 +756,7 @@ test("human activity preemption: a real key from the person takes control; the a
       return id;
     }, bsid);
     await expect(page.getByTestId("browser-control")).toHaveAttribute("data-controller", "USER", { timeout: 15_000 });
-    await expect(page.getByTestId("browser-control")).toHaveAttribute("data-lease-generation", "2");
+    await expect(page.getByTestId("browser-control")).toHaveAttribute("data-lease-generation", "2", { timeout: 15_000 });
     const described = await page.evaluate((id) => window.modbit.describeBrowser(id), bsid);
     expect((described as { humanInputAt?: number } | null)?.humanInputAt ?? 0).toBeGreaterThan(0);
     openFirst();
@@ -816,6 +816,21 @@ test("human activity preemption: a mouse press or a scroll from the person takes
     const panel = page.getByTestId("browser");
     await expect(panel).toHaveAttribute("data-browser-session-id", /^[0-9a-f]{32}$/, { timeout: 30_000 });
     const control = page.getByTestId("browser-control");
+    const taskId = (await card.getAttribute("data-task-id"))!;
+    const bsid = (await panel.getAttribute("data-browser-session-id"))!;
+    // The lease generation the panel shows is the Core's answer to the hand-over as the host learned it. When it does not arrive, the
+    // failure says what each side holds: the host's view, the Core's record, and every attempt the host made with the Core's answer.
+    const generationIs = async (generation: string) => {
+      try {
+        await expect(control).toHaveAttribute("data-lease-generation", generation, { timeout: 15_000 });
+      } catch (e) {
+        const host = await page.evaluate((id) => window.modbit.describeBrowser(id), bsid).catch((x) => `describeBrowser failed: ${x}`);
+        const core = await page.evaluate(([id, tid]) => window.modbit.browserSession(id!, tid!), [bsid, taskId]).catch((x) => `browserSession failed: ${x}`);
+        const log = await page.evaluate(() => window.modbit.browserLog()).catch(() => []);
+        const takeovers = log.filter((l) => l.kind === "human-takeover").map((l) => `+${l.atMs % 100000}ms ${l.ok ? "ok" : "FAILED"} ${l.code}`);
+        throw new Error(`${(e as Error).message}\nexpected lease generation ${generation}\nhost: ${JSON.stringify(host)}\ncore: ${JSON.stringify(core)}\nhand-over attempts: ${JSON.stringify(takeovers)}`);
+      }
+    };
     await expect(control).toHaveAttribute("data-controller", "AGENT");
     await expect(control).toHaveAttribute("data-lease-generation", "1");
     // A mouse press: control moves to the person.
@@ -823,11 +838,12 @@ test("human activity preemption: a mouse press or a scroll from the person takes
       { type: "mouseDown", x: 10, y: 10, button: "left", clickCount: 1 },
       { type: "mouseUp", x: 10, y: 10, button: "left", clickCount: 1 },
     ]);
+    // The host's fence (USER) stands at once; the lease generation is the Core's answer to the hand-over, which is as slow as the Core is.
     await expect(control).toHaveAttribute("data-controller", "USER", { timeout: 15_000 });
-    await expect(control).toHaveAttribute("data-lease-generation", "2");
+    await generationIs("2");
     await page.getByTestId("browser-return-control").click();
     await expect(control).toHaveAttribute("data-controller", "AGENT", { timeout: 15_000 });
-    await expect(control).toHaveAttribute("data-lease-generation", "3");
+    await generationIs("3");
     // A hover is not acting.
     await viewInput(app, [{ type: "mouseMove", x: 20, y: 20 }]);
     await page.waitForTimeout(750);
@@ -836,7 +852,7 @@ test("human activity preemption: a mouse press or a scroll from the person takes
     // A scroll: control moves again.
     await viewInput(app, [{ type: "mouseWheel", x: 20, y: 20, deltaX: 0, deltaY: -120 }]);
     await expect(control).toHaveAttribute("data-controller", "USER", { timeout: 15_000 });
-    await expect(control).toHaveAttribute("data-lease-generation", "4");
+    await generationIs("4");
     await closeApp(app);
   } finally {
     model.server.close();

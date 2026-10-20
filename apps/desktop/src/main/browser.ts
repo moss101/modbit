@@ -23,7 +23,7 @@ import type { CoreClient } from "@modbit/ide-adapter-core";
 import { indexDom, mergeAx, type AxNode, type DomIndex, type DomNode, type RawNode } from "./browser-ax.ts";
 import { CertHold, CertTrustStore, type CertInfo, type Trust } from "./browser-cert.ts";
 import { PageFeedback } from "./browser-feedback.ts";
-import { NoticeBatcher, OBSERVER_BINDING, OBSERVER_SOURCE, OBSERVER_WORLD, type Notice } from "./browser-observer.ts";
+import { bringsBackReclaimed, NoticeBatcher, OBSERVER_BINDING, OBSERVER_SOURCE, OBSERVER_WORLD, type Notice } from "./browser-observer.ts";
 import { CdpDenied, PolicyStore, checkOrigin, checkUrlLiteral, describeClass, guardCdp, type AddressClass, type BrowserPolicy } from "./browser-policy.ts";
 import { admitsAgentInput, isHumanInput } from "./lease.ts";
 import { StopRegistry } from "./stop.ts";
@@ -473,19 +473,43 @@ export class BrowserHost {
   /** Agent input dispatched by this host in the last moments (the person's hook ignores what arrives inside it). */
   private agentInputUntil = 0;
 
-  /** IMP-EV-0087: the person acted in the view — control moves to them on the Core and here. */
+  /**
+   * IMP-EV-0087: the person acted in the view - control moves to them on the Core and here. The host's own fence holds at once; the
+   * Core's record follows. A hand-over the Core did not take (a slow or briefly unavailable Core) is asked again, because the Core
+   * answers a repeated hand-over to the holder with `changed: false`: the host and the Core must not stay apart until the person
+   * happens to press a button.
+   */
   private async preempt(h: HostedSession): Promise<void> {
     h.humanInputAt = Date.now();
     if (h.controller === "USER") return;
     h.controller = "USER";
-    const c = this.client();
-    if (!c) return;
-    try {
-      const r = await c.setBrowserControl(h.sessionId, h.browserSessionId, h.taskId, "USER");
-      h.leaseGeneration = Math.max(h.leaseGeneration, Number(r.leaseGeneration));
-      this.notify("browser:state", { browserSessionId: h.browserSessionId, ...this.state(h), controller: "USER", leaseGeneration: h.leaseGeneration, preempted: true });
-    } catch {
-      // The Core will learn on the next hand-over; the host's own fence holds.
+    // Every attempt and the Core's answer to it is on the host's log (`browserLog`): when the host stands at USER and the Core's lease
+    // did not move, the log says whether the Core was asked, what it answered, or that nothing came back.
+    const note = (ok: boolean, code: string, generation: number): void => {
+      this.log.push({ browserSessionId: h.browserSessionId, kind: "human-takeover", ok, code, generation, atMs: Date.now() });
+    };
+    for (const waitMs of [0, 250, 1_000, 3_000]) {
+      if (waitMs > 0) await new Promise((r) => setTimeout(r, waitMs));
+      // The person may have handed control back meanwhile; that hand-over is the Core's by then.
+      if (h.controller !== "USER") return;
+      const c = this.client();
+      if (!c) {
+        note(false, "no Core client", h.leaseGeneration);
+        continue;
+      }
+      try {
+        note(true, `asked the Core for USER (host at generation ${h.leaseGeneration})`, h.leaseGeneration);
+        const r = await c.setBrowserControl(h.sessionId, h.browserSessionId, h.taskId, "USER");
+        note(true, `Core answered ${r.controller} generation ${r.leaseGeneration} changed=${r.changed}`, Number(r.leaseGeneration));
+        // An answer that does not say USER at a generation above zero is not the answer to this hand-over: the host does not take it for one.
+        if (r.controller !== "USER" || r.leaseGeneration === 0n) throw new Error(`the Core's answer is not a hand-over to USER (controller "${r.controller}", generation ${r.leaseGeneration})`);
+        h.leaseGeneration = Math.max(h.leaseGeneration, Number(r.leaseGeneration));
+        this.notify("browser:state", { browserSessionId: h.browserSessionId, ...this.state(h), controller: "USER", leaseGeneration: h.leaseGeneration, preempted: true });
+        return;
+      } catch (e) {
+        note(false, `refused: ${(e as Error).message.slice(0, 120)}`, h.leaseGeneration);
+        console.error(`modbit-desktop: browser preemption: SetBrowserControl USER refused (${(e as Error).message}); the host's fence holds, asking again`);
+      }
     }
   }
 
@@ -896,7 +920,12 @@ export class BrowserHost {
       // so a failure dump shows which request received the reset note (or consumed it).
       if (h && h.pendingReset !== null) this.log.push({ browserSessionId: h.browserSessionId, kind: "request-while-reset-pending", ok: true, code: `${req.kind}${(req as { observer?: boolean }).observer === true ? ":observer" : ""}${background ? ":background" : ""}`, generation: h.leaseGeneration, atMs: Date.now() });
       if (!h || (this.gone(h) && !h.reclaimed)) return { kind: "error", code: "NO_SUCH_SESSION", message: `this host holds no view for ${bsid}` };
-      if (h.reclaimed && req.kind !== "state" && req.kind !== "close") await this.revive(h);
+      // The Core reading a page it was told changed, after the view was reclaimed, is not use: the view stays reclaimed (and the Core reads again at the next notice).
+      if (h.reclaimed && background) {
+        this.log.push({ browserSessionId: h.browserSessionId, kind: "background-read-declined", ok: true, code: "view reclaimed", generation: h.leaseGeneration, atMs: Date.now() });
+        return { kind: "error", code: "VIEW_RECLAIMED", message: "the view was reclaimed; the Core's own reading of the page does not bring it back" };
+      }
+      if (h.reclaimed && bringsBackReclaimed(req)) await this.revive(h);
       // A revive started by another request (the panel's show) may still be loading: its reset note is not set until it is done.
       if (h.reviving) await h.reviving;
       // Recency counts use, not observation: a read of the view's state, or the Core
@@ -1045,13 +1074,23 @@ export class BrowserHost {
     if (first === "loaded" && failedLoad !== null) {
       const f = failedLoad as { code: number; desc: string };
       if (f.code <= -200 && f.code > -300) return { kind: "error", code: "CERTIFICATE_REJECTED", message: `the certificate of ${u.host} was not accepted (${f.desc}); the person decides` };
-      return { kind: "error", code: "NAVIGATION_FAILED", message: `${f.desc} (${f.code}) loading ${u.host}` };
+      return { kind: "error", code: "NAVIGATION_FAILED", message: `${f.desc} (${f.code}) loading ${u.host}${f.code === -130 ? ` (the proxy: ${h.proxy.describe()})` : ""}` };
     }
     if (first !== "loaded") {
+      // Chromium can fail the load with the certificate error (-2xx) in the same turn as, or just before, it raises
+      // `certificate-error`: the hold that follows is still this navigation's, and the person still decides.
+      if (/\(-2\d\d\)/.test(first.message)) {
+        const until = Date.now() + 1_000;
+        while (!(h.certHold && !h.certHold.isSettled) && Date.now() < until) await sleep(25);
+      }
+      if (h.certHold && !h.certHold.isSettled && h.certHold.atMs >= started) {
+        const info = h.certHold.info;
+        return { kind: "error", code: "CERTIFICATE_PENDING", message: `the certificate of ${info.hostPort} is not trusted (${info.error}); issuer ${info.issuer}, subject ${info.subject}, fingerprint ${info.fingerprint}: the person decides in the Browser panel` };
+      }
       const rejected = h.certHold && h.certHold.isSettled ? "CERTIFICATE_REJECTED" : null;
       if (rejected) return { kind: "error", code: "CERTIFICATE_REJECTED", message: `the person did not trust the certificate (${first.message.slice(0, 120)})` };
       // A load that failed still leaves the page where it is: report it, do not guess.
-      return { kind: "error", code: "NAVIGATION_FAILED", message: first.message.slice(0, 300) };
+      return { kind: "error", code: "NAVIGATION_FAILED", message: `${first.message.slice(0, 300)}${/ERR_PROXY_CONNECTION_FAILED/.test(first.message) ? ` (the proxy: ${h.proxy.describe()})` : ""}` };
     }
     return { kind: "state", state: this.state(h) };
   }

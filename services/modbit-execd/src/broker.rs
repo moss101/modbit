@@ -282,15 +282,23 @@ impl Session {
         }
     }
 
-    /// The next piece of output at `cursor` (at most one record, at most
-    /// `CHUNK` bytes) or why there is none. The segment table is read under
+    /// The next piece of output at `cursor` (at most `CHUNK` bytes) or why
+    /// there is none. With `coalesce` it runs on through consecutive records
+    /// of one stream, so a log of many tiny PTY reads replays in full-size
+    /// frames (a windowed attachment, PX-099); without it, it ends with the
+    /// record, the boundaries the output was written in (QUAL-EV-0271). The segment table is read under
     /// the writer's lock; the bytes are read outside it, through the index,
     /// so a reader never re-reads the log and never blocks the writer.
-    fn read_chunk(&self, cursor: u64, high: u64) -> std::io::Result<ReadOutcome> {
+    fn read_chunk(&self, cursor: u64, high: u64, coalesce: bool) -> std::io::Result<ReadOutcome> {
         let mut last = None;
         for _ in 0..4 {
             let (segments, _) = self.log.lock().expect("log").snapshot();
-            match seglog::read_at(&self.log_dir, &self.id, &segments, high, cursor, CHUNK) {
+            let read = if coalesce {
+                seglog::read_run(&self.log_dir, &self.id, &segments, high, cursor, CHUNK)
+            } else {
+                seglog::read_at(&self.log_dir, &self.id, &segments, high, cursor, CHUNK)
+            };
+            match read {
                 Err(e) if e.kind() == std::io::ErrorKind::NotFound => last = Some(e),
                 other => return other,
             }
@@ -1419,6 +1427,7 @@ fn spawn_forwarder(
 ) {
     tokio::spawn(async move {
         let mut cursor = after_cursor;
+        let coalesce = flow.is_some();
         let mut rx = s.written.subscribe();
         loop {
             if s.generation.load(Ordering::SeqCst) > generation {
@@ -1468,7 +1477,7 @@ fn spawn_forwarder(
                 }
                 let read = {
                     let s = Arc::clone(&s);
-                    tokio::task::spawn_blocking(move || s.read_chunk(cursor, high)).await
+                    tokio::task::spawn_blocking(move || s.read_chunk(cursor, high, coalesce)).await
                 };
                 match read {
                     Ok(Ok(ReadOutcome::Chunk { tag, data })) => {

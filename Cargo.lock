@@ -2024,6 +2024,48 @@ dependencies = [
 ]
 
 [[package]]
+name = "modbit-actuator-fixture"
+version = "0.0.0"
+dependencies = [
+ "hex",
+ "modbit-protocol",
+ "png",
+ "serde",
+ "serde_json",
+ "sha2 0.11.0",
+ "tokio",
+]
+
+[[package]]
+name = "modbit-actuator-macos"
+version = "0.0.0"
+dependencies = [
+ "ed25519-dalek",
+ "hex",
+ "modbit-computer",
+ "modbit-protocol",
+ "png",
+ "serde_json",
+ "sha2 0.11.0",
+ "tempfile",
+ "tokio",
+]
+
+[[package]]
+name = "modbit-automation"
+version = "0.0.0"
+dependencies = [
+ "hex",
+ "hmac",
+ "modbit-secrets",
+ "regex",
+ "serde",
+ "serde_json",
+ "sha2 0.11.0",
+ "subtle",
+]
+
+[[package]]
 name = "modbit-bench-agent-engineering"
 version = "0.0.0"
 dependencies = [
@@ -2040,9 +2082,21 @@ dependencies = [
 name = "modbit-bench-context-economics"
 version = "0.0.0"
 dependencies = [
+ "ed25519-dalek",
+ "hex",
+ "modbit-compaction",
+ "modbit-domain",
+ "modbit-protocol",
+ "modbit-providers",
+ "modbit-secrets",
+ "prost",
+ "rand 0.10.2",
  "serde",
  "serde_json",
+ "sha2 0.11.0",
  "tempfile",
+ "tokio",
+ "tokio-util",
 ]
 
 [[package]]
@@ -2050,6 +2104,7 @@ name = "modbit-bench-gate-calibration"
 version = "0.0.0"
 dependencies = [
  "hex",
+ "modbit-bench-context-economics",
  "modbit-policy",
  "modbit-verification",
  "serde",
@@ -2085,11 +2140,14 @@ dependencies = [
 name = "modbit-bench-retrieval"
 version = "0.0.0"
 dependencies = [
+ "hex",
  "modbit-bench-context-economics",
  "modbit-retrieval",
  "serde",
  "serde_json",
+ "sha2 0.11.0",
  "tempfile",
+ "tokio",
 ]
 
 [[package]]
@@ -2156,6 +2214,7 @@ dependencies = [
  "futures-util",
  "hex",
  "hmac",
+ "modbit-automation",
  "modbit-domain",
  "modbit-event-store",
  "modbit-protocol",
@@ -2167,6 +2226,7 @@ dependencies = [
  "serde_json",
  "sha2 0.11.0",
  "tokio",
+ "tokio-postgres",
  "tokio-tungstenite 0.26.2",
  "tower-http",
  "uuid",
@@ -2183,6 +2243,7 @@ dependencies = [
  "futures-util",
  "hex",
  "hmac",
+ "modbit-automation",
  "modbit-cloud-api",
  "modbit-domain",
  "modbit-event-store",
@@ -2215,6 +2276,28 @@ dependencies = [
 ]
 
 [[package]]
+name = "modbit-computer"
+version = "0.0.0"
+dependencies = [
+ "base64",
+ "ed25519-dalek",
+ "hex",
+ "modbit-browser",
+ "modbit-domain",
+ "modbit-protocol",
+ "png",
+ "rand 0.10.2",
+ "regex",
+ "serde",
+ "serde_json",
+ "sha2 0.11.0",
+ "tempfile",
+ "thiserror 2.0.20",
+ "tokio",
+ "tokio-util",
+]
+
+[[package]]
 name = "modbit-context"
 version = "0.0.0"
 dependencies = [
@@ -2235,6 +2318,7 @@ dependencies = [
  "globset",
  "hex",
  "libc",
+ "modbit-automation",
  "modbit-bench-context-economics",
  "modbit-bench-gate-calibration",
  "modbit-bench-outcome-statistics",
@@ -2242,6 +2326,7 @@ dependencies = [
  "modbit-browser",
  "modbit-checkpoint",
  "modbit-compaction",
+ "modbit-computer",
  "modbit-context",
  "modbit-core-runtime",
  "modbit-diagnostics",
@@ -2588,6 +2673,7 @@ dependencies = [
  "anyhow",
  "axum",
  "base64",
+ "ed25519-dalek",
  "futures-util",
  "hex",
  "modbit-domain",
@@ -2655,6 +2741,7 @@ dependencies = [
  "jsonschema",
  "lopdf",
  "modbit-browser",
+ "modbit-computer",
  "modbit-domain",
  "modbit-git",
  "modbit-mcp",

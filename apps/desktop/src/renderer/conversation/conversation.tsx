@@ -4,18 +4,26 @@
  * a tail-status line with the stall ladder, pinned-to-bottom scrolling with an
  * "N new messages" pill, three Core-projected densities, folded work groups
  * that never hide something the person must act on, and the failure the Core
- * typed. The composer is PX-054's; only the minimal controls that already work
- * (steer, resume, new task, the inline approval and question cards) live here.
+ * typed. The composer below it is PX-054..056's (composer/composer.tsx); the
+ * inline approval and question cards live here.
  * Nothing in this file holds authority: every effect is a typed preload call.
  */
 import { memo, useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
-import { Button, StatusDot } from "@modbit/ui";
+import { Button, StatusDot, TrayHost } from "@modbit/ui";
 import { DENSITIES, type Density, type TranscriptRowView } from "../../shared/conversation-types.ts";
 import type { TaskCard } from "../model.ts";
 import { INITIAL_FOLLOW, identityOf, messageIds, onDismiss, onJumpToBottom, onMessages, onScroll, pillText, stallLevel, withDivider, withLiveOnly, type Follow } from "./model.ts";
 import { RowView, type RowContext } from "./rows.tsx";
 import { loadConversationPrefs, saveConversationPrefs, type ConversationPrefs } from "./prefs.ts";
 import { useConversation } from "./use-conversation.ts";
+import { Composer } from "../composer/composer.tsx";
+import { ApprovalDock } from "../approvals/approval-dock.tsx";
+import { ModeProposalDock } from "../approvals/mode-proposal-dock.tsx";
+import { RunModeControl } from "../approvals/run-mode.tsx";
+import { useCheckpointSurface } from "./use-checkpoint-surface.tsx";
+import { useComputerCards } from "../computer/use-computer.ts";
+import { callKey } from "../computer/model.ts";
+import type { ComputerCardContext } from "../computer/action-card.tsx";
 
 export interface ConversationProps {
   taskId: string;
@@ -27,6 +35,12 @@ export interface ConversationProps {
   focusRowId: string | null;
   onResume: (taskId: string) => void;
   onNewTask: () => void;
+  /** Opens one of the task's terminals in the apps panel (the background-terminals tray). */
+  onOpenTerminal?: ((taskId: string, terminalId: string) => void) | undefined;
+  /** Open another task's conversation (a fork opens its child). */
+  onOpenTask?: ((taskId: string) => void) | undefined;
+  /** A task's name for the approvals of other agents shown above this composer. */
+  titleOf?: ((taskId: string) => string) | undefined;
 }
 
 const DENSITY_LABEL: Record<Density, string> = { COMPACT: "Compact", BALANCED: "Balanced", DETAILED: "Detailed" };
@@ -40,6 +54,14 @@ const findRow = (rows: readonly TranscriptRowView[], id: string, path: string[] 
   return null;
 };
 
+/** The task's native-control tool calls in transcript order (a fold's children included): the cards' numbers. */
+function computerCalls(rows: readonly TranscriptRowView[], out: string[]): void {
+  for (const r of rows) {
+    if (r.facts.type === "tool" && r.facts.toolName.startsWith("computer.")) out.push(callKey(r.facts.toolCallId));
+    computerCalls(r.children, out);
+  }
+}
+
 function collectTurnText(rows: readonly TranscriptRowView[], turnId: string, out: string[]): void {
   for (const r of rows) {
     if (r.kind === "ASSISTANT_MESSAGE" && r.turnId === turnId && r.facts.type === "stream" && r.facts.phase === "COMPLETED") out.push(r.text);
@@ -48,7 +70,7 @@ function collectTurnText(rows: readonly TranscriptRowView[], turnId: string, out
 }
 
 export function Conversation(props: ConversationProps) {
-  const { taskId, sessionId, connected, card, title, focusRowId, onResume, onNewTask } = props;
+  const { taskId, sessionId, connected, card, title, focusRowId, onResume, onNewTask, onOpenTerminal, onOpenTask, titleOf } = props;
   const [prefs, setPrefs] = useState<ConversationPrefs>(loadConversationPrefs);
   useEffect(() => saveConversationPrefs(prefs), [prefs]);
   const conv = useConversation(taskId, sessionId, prefs.density, connected);
@@ -58,6 +80,9 @@ export function Conversation(props: ConversationProps) {
   const [copied, setCopied] = useState("");
   const scroller = useRef<HTMLDivElement>(null);
   const seen = useRef<Set<string> | null>(null);
+  // REQ-PX-057 / 062: the run-mode dialog (also opened from an approval card) and the checkpoint surface.
+  const [modeOpen, setModeOpen] = useState(false);
+  const ckpt = useCheckpointSurface({ taskId, sessionId, connected, card, onResume, onOpenTask });
 
   const body = useMemo(() => withDivider(withLiveOnly(conv.rows, conv.live), conv.dividerOffset, (n) => `${n} new`), [conv.rows, conv.live, conv.dividerOffset]);
   const latestUser = useMemo(() => [...body].reverse().find((r) => r.kind === "USER_MESSAGE")?.rowId ?? null, [body]);
@@ -161,9 +186,30 @@ export function Conversation(props: ConversationProps) {
     [conv.rows],
   );
 
+  // PX-074: native-control calls are numbered action cards joined from the Core's records.
+  const computerIds = useMemo(() => {
+    const ids: string[] = [];
+    computerCalls(conv.rows, ids);
+    return ids;
+  }, [conv.rows]);
+  const computer = useComputerCards(sessionId, taskId, connected, computerIds.length > 0, `${conv.lastOffset}:${computerIds.length}`);
+  const resolveLatch = useCallback(
+    async (tid: string): Promise<string> => {
+      if (!sessionId) throw new Error("no session");
+      const r = await window.modbit.computerResolveLatch(sessionId, tid, "resolved on the action card");
+      computer.reload();
+      return r.wasLatched ? "Resolved. Nothing runs until the agent opens a new session, looks again and you approve." : "There was no latch to resolve.";
+    },
+    [sessionId, computer],
+  );
+  const computerCtx = useMemo<ComputerCardContext | undefined>(
+    () => (computerIds.length === 0 ? undefined : { taskId, cards: computer.cards, ordinals: new Map(computerIds.map((id, i) => [id, i + 1])), onResolveLatch: resolveLatch }),
+    [taskId, computerIds, computer.cards, resolveLatch],
+  );
+
   const ctx = useMemo<RowContext>(
-    () => ({ sessionId, card, live: conv.live, approvals: conv.approvals, openGroups, onToggleGroup: toggleGroup, codeOpen: prefs.codeOpen, onCodeOpen: (open) => setPrefs((p) => ({ ...p, codeOpen: open })), onResume, onCopyTurn: copyTurn, highlightRowId: highlight, latestUserRowId: latestUser }),
-    [sessionId, card, conv.live, conv.approvals, openGroups, toggleGroup, prefs.codeOpen, onResume, copyTurn, highlight, latestUser],
+    () => ({ sessionId, card, live: conv.live, approvals: conv.approvals, openGroups, onToggleGroup: toggleGroup, codeOpen: prefs.codeOpen, onCodeOpen: (open) => setPrefs((p) => ({ ...p, codeOpen: open })), onResume, onCopyTurn: copyTurn, highlightRowId: highlight, latestUserRowId: latestUser, checkpoints: ckpt.context, computer: computerCtx }),
+    [sessionId, card, conv.live, conv.approvals, openGroups, toggleGroup, prefs.codeOpen, onResume, copyTurn, highlight, latestUser, ckpt.context, computerCtx],
   );
 
   const jumpUser = (dir: 1 | -1) => {
@@ -201,6 +247,8 @@ export function Conversation(props: ConversationProps) {
           {card ? `${card.state}${card.waitReason ? `, waiting on ${card.waitReason}` : ""}` : conv.taskState}
         </span>
         <span className="conv-spacer" />
+        {ckpt.head}
+        <RunModeControl sessionId={sessionId} taskId={taskId} connected={connected} open={modeOpen} onOpenChange={setModeOpen} />
         <label className="conv-density">
           <span className="meta">Density</span>
           <select value={prefs.density} onChange={(e) => setPrefs((p) => ({ ...p, density: e.target.value as Density }))} data-testid="conv-density" aria-label="Conversation density">
@@ -258,7 +306,13 @@ export function Conversation(props: ConversationProps) {
       <p className="mb-sr-only" role="status" aria-live="polite" data-testid="conv-live">
         {copied}
       </p>
-      <ComposerRegion taskId={taskId} sessionId={sessionId} card={card} approvalPending={conv.approvals.length > 0} onResume={onResume} onNewTask={onNewTask} />
+      {ckpt.bar}
+      <ModeProposalDock sessionId={sessionId} taskId={taskId} connected={connected} />
+      <ApprovalDock sessionId={sessionId} taskId={taskId} connected={connected} onChangeMode={() => setModeOpen(true)} titleOf={titleOf ?? ((id) => id.slice(0, 8))} onOpenTask={onOpenTask ?? (() => {})} />
+      {ckpt.overlay}
+      {/* The one tray host: docked directly above the composer, never beside or below it (AFW-H01). */}
+      <TrayHost />
+      <Composer taskId={taskId} sessionId={sessionId} connected={connected} card={card} approvalPending={conv.approvals.length > 0} lastUserText={lastUserText} hasMessages={conv.rows.length > 0} onResume={onResume} onNewTask={onNewTask} onOpenTerminal={onOpenTerminal} />
     </section>
   );
 }
@@ -350,49 +404,5 @@ export function FailureBlock({ taskId, card, onResume, promptText }: { taskId: s
         )}
       </div>
     </div>
-  );
-}
-
-/** The composer's place. PX-054 owns the composer; until it lands only what already works is here: steer, resume and new task. */
-function ComposerRegion({ taskId, sessionId, card, approvalPending, onResume, onNewTask }: { taskId: string; sessionId: string | null; card: TaskCard | undefined; approvalPending: boolean; onResume: (taskId: string) => void; onNewTask: () => void }) {
-  const [steer, setSteer] = useState("");
-  const [note, setNote] = useState<string | null>(null);
-  const active = card && (card.state === "Running" || card.state === "Waiting" || card.state === "Queued");
-  // A wait on an approval the Core no longer lists (it was decided while the run was suspended, by a restart) is resumed like any other wait.
-  const startable = card && (card.state === "Queued" || (card.state === "Waiting" && card.waitReason !== "Capacity" && !(card.waitReason === "Approval" && approvalPending)));
-  const send = async () => {
-    if (!sessionId || !steer.trim()) return;
-    try {
-      const r = await window.modbit.steerTask(sessionId, taskId, steer.trim());
-      setNote(`steered at offset ${r.offset}`);
-      setSteer("");
-    } catch (e) {
-      setNote(`refused: ${(e as Error).message}`);
-    }
-  };
-  return (
-    <section className="conv-composer" aria-label="Composer" data-testid="composer-region">
-      <p className="meta" data-testid="composer-placeholder">
-        The composer (modes, attachments, model choice, slash commands, queued messages) is PX-054's and arrives with it. Until then these controls work as they do on the Fleet board.
-      </p>
-      <div className="decision">
-        {active && (
-          <input data-testid="conv-steer" aria-label="Steer this task" value={steer} onChange={(e) => setSteer(e.target.value)} onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); void send(); } }} placeholder="steer this task, Enter sends" />
-        )}
-        {startable && (
-          <Button size="sm" variant="primary" onClick={() => onResume(taskId)} data-testid="conv-start">
-            {card?.state === "Waiting" ? "Resume" : "Start"}
-          </Button>
-        )}
-        <Button size="sm" onClick={onNewTask} data-testid="conv-new-task">
-          New task
-        </Button>
-        {note && (
-          <span className="meta" role="status" data-testid="conv-steer-note">
-            {note}
-          </span>
-        )}
-      </div>
-    </section>
   );
 }

@@ -41,13 +41,19 @@ pub(crate) struct CoreGitState {
     /// `.modbit/verification.json` as the task pinned it at its start.
     pub verification_json: Option<Option<String>>,
     pub cancel: Option<tokio_util::sync::CancellationToken>,
+    /// The forge this Core may reach, for the push token of a Commit and push.
+    pub forge: Option<Arc<modbit_tools::forge::ForgeConfig>>,
 }
 
 impl CoreGitState {
     /// A worktree the model made with `git.worktree.create`: the registry
     /// knows it, so the cleanup can see it.
     async fn created(&self, args: &Value) -> Result<Value, Refusal> {
-        let path = args["path"].as_str().unwrap_or_default();
+        let given = args["path"].as_str().unwrap_or_default();
+        // The record carries the platform's one canonical form, so a later
+        // existence check (and the close that matches it) agrees on Windows.
+        let resolved = worktrees::plain_path(&worktrees::resolve_path(std::path::Path::new(given)));
+        let path = resolved.as_str();
         let id = format!(
             "tool-{}",
             &hex::encode(Sha256::digest(path.as_bytes()))[..16]
@@ -143,6 +149,7 @@ impl GitStatePort for CoreGitState {
                     )
                     .await
                 }
+                "changes.commit_push" => crate::changes::exec_commit_push(self, args).await,
                 "worktree.created" => self.created(args).await,
                 "worktree.closed" => self.closed(args).await,
                 other => Err((

@@ -439,6 +439,7 @@ async fn host_inner(
             lapse_logged = false;
             if let Err(e) = start_queued(
                 &mut c,
+                store,
                 cfg,
                 sid,
                 local_generation,
@@ -802,6 +803,7 @@ async fn execute_relayed(
 /// on the next pass; a task the Core refuses for good is logged).
 async fn start_queued(
     c: &mut Client,
+    store: &CloudStore,
     cfg: &Config,
     sid: SessionId,
     generation: u64,
@@ -834,6 +836,56 @@ async fn start_queued(
         if !resumable || started.contains(&id) {
             continue;
         }
+        // PX-085 (AUT-C01): a task an automation firing made starts with the
+        // definition's limits, not the defaults - and if they cannot be read
+        // it does not start at all (an unattended run is never unbounded).
+        let budgets = match store
+            .automation_budgets_for_task(modbit_domain::TaskId::from_bytes(id))
+            .await
+        {
+            Ok(b) => b,
+            Err(e) => {
+                eprintln!(
+                    "modbit-cloud-worker[{}]: task {} waits: its automation limits are unreadable: {e}",
+                    cfg.worker_id,
+                    hex::encode(id)
+                );
+                continue;
+            }
+        };
+        if let Some(b) = budgets {
+            // On the task's log before it starts; the command id is derived
+            // from the task, so a retried pass records them once.
+            let mut bid = id;
+            bid[0] ^= 0xB5;
+            let ack = c
+                .command(envelope_with_id(
+                    id_of(&bid),
+                    "SetTaskBudgets",
+                    wire::SetTaskBudgets {
+                        task_id: Some(id_of(&id)),
+                        max_cost_minor: b.max_cost_minor,
+                        max_wall_ms: b.max_wall_ms,
+                        max_children: 0,
+                        forbid_spawn: true,
+                    }
+                    .encode_to_vec(),
+                    Some(generation),
+                ))
+                .await;
+            if let Err(e) = ack {
+                eprintln!(
+                    "modbit-cloud-worker[{}]: task {} waits: its budgets were refused: {e}",
+                    cfg.worker_id,
+                    hex::encode(id)
+                );
+                continue;
+            }
+        }
+        let (max_turns, max_tool_calls, max_no_progress) = match budgets {
+            Some(b) => (b.max_turns, b.max_tool_calls, 6),
+            None => (0, 0, 0),
+        };
         let mut trusted_once = false;
         loop {
             let ack = c
@@ -843,9 +895,9 @@ async fn start_queued(
                         task_id: Some(id_of(&id)),
                         endpoint: cfg.endpoint.clone().unwrap_or_default(),
                         model: cfg.model.clone().unwrap_or_default(),
-                        max_turns: 0,
-                        max_tool_calls: 0,
-                        max_no_progress_turns: 0,
+                        max_turns,
+                        max_tool_calls,
+                        max_no_progress_turns: max_no_progress,
                         skills: vec![],
                         ..Default::default()
                     }

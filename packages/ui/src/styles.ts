@@ -73,7 +73,8 @@ export const uiCss = `
 .mb-row-title { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: var(--mb-type-chrome-size); }
 .mb-row-subtitle { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: var(--mb-type-caption-size); color: var(--mb-color-text-muted); }
 .mb-row-trailing, .mb-row-leading { display: inline-flex; align-items: center; color: var(--mb-color-text-muted); font-size: var(--mb-type-caption-size); }
-.mb-tray-host { display: flex; flex-direction: column; gap: var(--mb-space-1); padding: 0 var(--mb-space-3); z-index: var(--mb-z-tray); }
+.mb-tray-host { display: flex; flex-direction: column; gap: var(--mb-space-1); padding: 0 var(--mb-space-3); z-index: var(--mb-z-tray); pointer-events: none; }
+.mb-tray-host > * { pointer-events: auto; }
 .mb-tray-host:empty, .mb-tray-host[data-count="0"] { display: none; }
 .mb-tray { background: var(--mb-color-raised); border: 1px solid var(--mb-color-border-control); border-radius: var(--mb-radius-5); padding: var(--mb-space-2) var(--mb-space-3); box-shadow: var(--mb-elevation-1); }
 .mb-tray[data-tone="error"] { background: var(--mb-color-danger-tint); border-color: var(--mb-color-danger); }

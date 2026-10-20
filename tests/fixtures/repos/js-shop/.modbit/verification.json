@@ -1,0 +1,12 @@
+{
+  "commands": [
+    {
+      "id": "node-test",
+      "argv": [
+        "node",
+        "--test",
+        "test/*.test.mjs"
+      ]
+    }
+  ]
+}

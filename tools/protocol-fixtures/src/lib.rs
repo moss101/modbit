@@ -192,6 +192,8 @@ pub fn samples() -> Vec<Sample> {
             last_offset: 90,
             read_offset: 40,
             attention_items: 0,
+            project_id: id(0x63),
+            checkout_root: "/repo".into(),
         }],
         last_offset: 90,
         events_read: 0,
@@ -559,6 +561,7 @@ pub fn samples() -> Vec<Sample> {
             reason_code: "NO_ACTIVE_REGISTRY".into(),
             detail: "no signed registry is active".into(),
             floor_mode: String::new(),
+            registry_generation: "reg-px134".into(),
         }),
     };
     let session_tree = SessionTreeView {
@@ -999,6 +1002,209 @@ pub fn samples() -> Vec<Sample> {
             decode: reencode::<WorktreeView>,
         },
         Sample {
+            // PX-082 (automations.proto): one definition as the list shows it.
+            name: "automation_view",
+            type_name: "modbit.v1.AutomationView",
+            bytes: AutomationView {
+                automation_id: "ab".repeat(16),
+                name: "drift".into(),
+                description: "Report the drift of the default branch.".into(),
+                current_version: 3,
+                definition_hash: "cd".repeat(32),
+                state: "ENABLED".into(),
+                disabled_reason: String::new(),
+                disabled_detail: String::new(),
+                paused: false,
+                enabled: Some(AutomationEnableView {
+                    version: 3,
+                    definition_hash: "cd".repeat(32),
+                    effects: "reversible_write".into(),
+                    capabilities: vec!["fs.write".into()],
+                    paths: vec!["reports/**".into()],
+                    hosts: vec![],
+                    approver: "user:x".into(),
+                    approved_ms: 1_757_289_600_123,
+                    repo_revision: String::new(),
+                    source_sha256: String::new(),
+                }),
+                source_kind: "repository".into(),
+                source_path: ".modbit/automations/drift.json".into(),
+                workspace_root: "/work/repo".into(),
+                principal: "service:ci-bot".into(),
+                triggers: vec![AutomationTriggerView {
+                    id: "nightly".into(),
+                    kind: "schedule".into(),
+                    summary: "cron 0 3 * * * (UTC)".into(),
+                    next_due_ms: 1_757_300_000_000,
+                }],
+                effects: "reversible_write".into(),
+                capabilities: vec!["fs.write".into()],
+                paths: vec!["reports/**".into()],
+                hosts: vec![],
+                consecutive_failures: 2,
+                last_run_ms: 1_757_289_700_000,
+                last_run_status: "failed".into(),
+                definition_json: "{}".into(),
+                needs_listed_approval: true,
+                content_changed: false,
+                queued: 1,
+                active: 1,
+                limit_deadline_minutes: 30,
+                limit_max_cost_minor: 9_007_199_254_740_993,
+                limit_approval_wait_minutes: 1440,
+            }
+            .encode_to_vec(),
+            expected: json!({
+                "automationId": "ab".repeat(16), "name": "drift",
+                "description": "Report the drift of the default branch.", "currentVersion": 3,
+                "definitionHash": "cd".repeat(32), "state": "ENABLED", "disabledReason": "",
+                "disabledDetail": "", "paused": false,
+                "enabled": {
+                    "version": 3, "definitionHash": "cd".repeat(32), "effects": "reversible_write",
+                    "capabilities": ["fs.write"], "paths": ["reports/**"], "hosts": [],
+                    "approver": "user:x", "approvedMs": "1757289600123", "repoRevision": "",
+                    "sourceSha256": ""
+                },
+                "sourceKind": "repository", "sourcePath": ".modbit/automations/drift.json",
+                "workspaceRoot": "/work/repo", "principal": "service:ci-bot",
+                "triggers": [{"id": "nightly", "kind": "schedule",
+                    "summary": "cron 0 3 * * * (UTC)", "nextDueMs": "1757300000000"}],
+                "effects": "reversible_write", "capabilities": ["fs.write"],
+                "paths": ["reports/**"], "hosts": [], "consecutiveFailures": 2,
+                "lastRunMs": "1757289700000", "lastRunStatus": "failed", "definitionJson": "{}",
+                "needsListedApproval": true, "contentChanged": false, "queued": 1, "active": 1,
+                "limitDeadlineMinutes": "30", "limitMaxCostMinor": "9007199254740993",
+                "limitApprovalWaitMinutes": "1440"
+            }),
+            decode: reencode::<AutomationView>,
+        },
+        Sample {
+            // PX-083 (automations.proto): one row of the run history.
+            name: "automation_run_view",
+            type_name: "modbit.v1.AutomationRunView",
+            bytes: AutomationRunView {
+                dispatch_key: "ef".repeat(32),
+                automation_id: "ab".repeat(16),
+                name: "drift".into(),
+                version: 3,
+                trigger_id: "nightly".into(),
+                trigger_kind: "schedule".into(),
+                event_id: "nightly@1757300000000".into(),
+                status: "cancelled".into(),
+                reason: "APPROVAL_EXPIRED".into(),
+                detail: "no one answered".into(),
+                task_id: idhex(0x41),
+                session_id: idhex(0x42),
+                principal: "user:x".into(),
+                fired_ms: 1_757_300_000_000,
+                dispatched_ms: 1_757_300_000_100,
+                finished_ms: 1_757_386_400_000,
+                cost_minor: 12,
+                test: false,
+                catch_up: true,
+                missed: 4,
+                findings: 1,
+                outputs_json: "{\"task_state\":\"Cancelled\"}".into(),
+                acknowledged: false,
+                slot_ms: 1_757_300_000_000,
+                gate_decision: "SKIP".into(),
+                gate_detail: "nothing changed".into(),
+                gate_task_id: idhex(0x43),
+            }
+            .encode_to_vec(),
+            expected: json!({
+                "dispatchKey": "ef".repeat(32), "automationId": "ab".repeat(16), "name": "drift",
+                "version": 3, "triggerId": "nightly", "triggerKind": "schedule",
+                "eventId": "nightly@1757300000000", "status": "cancelled",
+                "reason": "APPROVAL_EXPIRED", "detail": "no one answered", "taskId": idhex(0x41),
+                "sessionId": idhex(0x42), "principal": "user:x", "firedMs": "1757300000000",
+                "dispatchedMs": "1757300000100", "finishedMs": "1757386400000", "costMinor": "12",
+                "test": false, "catchUp": true, "missed": "4", "findings": 1,
+                "outputsJson": "{\"task_state\":\"Cancelled\"}", "acknowledged": false,
+                "slotMs": "1757300000000", "gateDecision": "SKIP",
+                "gateDetail": "nothing changed", "gateTaskId": idhex(0x43)
+            }),
+            decode: reencode::<AutomationRunView>,
+        },
+        Sample {
+            // PX-082: the live validation the editor shows.
+            name: "automation_validation",
+            type_name: "modbit.v1.AutomationValidation",
+            bytes: AutomationValidation {
+                ok: false,
+                issues: vec![AutomationIssue {
+                    path: "/triggers/0/cron".into(),
+                    code: "BELOW_FLOOR".into(),
+                    message: "the floor is one run per 5 minutes".into(),
+                }],
+                name: "drift".into(),
+                definition_hash: String::new(),
+                canonical_json: String::new(),
+                effects: "read_only".into(),
+                capabilities: vec![],
+                paths: vec![],
+                hosts: vec![],
+                needs_listed_approval: false,
+                triggers: vec![],
+            }
+            .encode_to_vec(),
+            expected: json!({
+                "ok": false,
+                "issues": [{"path": "/triggers/0/cron", "code": "BELOW_FLOOR",
+                    "message": "the floor is one run per 5 minutes"}],
+                "name": "drift", "definitionHash": "", "canonicalJson": "",
+                "effects": "read_only", "capabilities": [], "paths": [], "hosts": [],
+                "needsListedApproval": false, "triggers": []
+            }),
+            decode: reencode::<AutomationValidation>,
+        },
+        Sample {
+            // PX-083 / PX-084: the fields only the Core's automation host sets.
+            name: "create_task_automation_host",
+            type_name: "modbit.v1.CreateTask",
+            bytes: CreateTask {
+                session_id: id(0x11),
+                goal_text: "Report the drift.".into(),
+                workspace_id: None,
+                execution_profile: "plan".into(),
+                origin: "automation".into(),
+                workspace_root: "/work/repo".into(),
+                automation_id: "ab".repeat(16),
+                automation_version: 3,
+                automation_event_id: "nightly@1757300000000".into(),
+                automation_dispatch_key: "ef".repeat(32),
+                automation_principal: "service:ci-bot".into(),
+                automation_trigger: "nightly".into(),
+                lease_operations: vec!["fs.read".into(), "git.read".into()],
+                lease_resources: vec!["fs.write:/work/repo/reports/**".into()],
+                lease_effect_ceiling: "READ_ONLY".into(),
+                trigger_payload: "{\"action\":\"opened\"}".into(),
+                trigger_payload_label: "forge_pr".into(),
+                payload_findings: 2,
+                automation_test: true,
+                automation_definition_hash: "cd".repeat(32),
+                automation_trigger_kind: "event".into(),
+                ..Default::default()
+            }
+            .encode_to_vec(),
+            expected: json!({
+                "sessionId": idhex(0x11), "goalText": "Report the drift.",
+                "workspaceId": null, "preference": null,
+                "executionProfile": "plan", "origin": "automation",
+                "workspaceRoot": "/work/repo", "issueUrl": "", "issueJson": "",
+                "mode": "TASK_MODE_UNSPECIFIED", "isolation": "TASK_ISOLATION_UNSPECIFIED",
+                "automationId": "ab".repeat(16), "automationVersion": 3,
+                "automationEventId": "nightly@1757300000000",
+                "automationDispatchKey": "ef".repeat(32), "automationPrincipal": "service:ci-bot",
+                "automationTrigger": "nightly", "leaseOperations": ["fs.read", "git.read"],
+                "leaseResources": ["fs.write:/work/repo/reports/**"],
+                "leaseEffectCeiling": "READ_ONLY", "triggerPayload": "{\"action\":\"opened\"}",
+                "triggerPayloadLabel": "forge_pr", "payloadFindings": 2, "automationTest": true,
+                "automationDefinitionHash": "cd".repeat(32), "automationTriggerKind": "event"
+            }),
+            decode: reencode::<CreateTask>,
+        },
+        Sample {
             name: "output_ref_read_response",
             type_name: "modbit.v1.OutputRefReadResponse",
             bytes: read.encode_to_vec(),
@@ -1074,7 +1280,8 @@ pub fn samples() -> Vec<Sample> {
                 },
                 "routing": {
                     "outcome": "DIRECT", "reasonCode": "NO_ACTIVE_REGISTRY",
-                    "detail": "no signed registry is active", "floorMode": ""
+                    "detail": "no signed registry is active", "floorMode": "",
+                    "registryGeneration": "reg-px134"
                 }
             }),
             decode: reencode::<TaskPostureView>,
@@ -1207,7 +1414,7 @@ pub fn samples() -> Vec<Sample> {
                     "linesAdded": 14, "linesRemoved": 3, "lastCheckpointAt": null,
                     "subagent": false, "archived": false, "executionLocation": "local",
                     "origin": "cli", "taskState": "ReadyForReview", "lastOffset": "90",
-                    "readOffset": "40", "attentionItems": 0
+                    "readOffset": "40", "attentionItems": 0, "projectId": idhex(0x63), "checkoutRoot": "/repo"
                 }],
                 "lastOffset": "90", "eventsRead": "0", "objectsRead": "0"
             }),
@@ -1611,6 +1818,585 @@ pub fn samples() -> Vec<Sample> {
                 "createdAt": "2026-10-07T20:20:26Z"
             }),
             decode: reencode::<ReviewCommentThreadView>,
+        },
+        // PX-056 (composer.proto): the model picker's variants and the typed block code.
+        Sample {
+            name: "model_variant_list",
+            type_name: "modbit.v1.ModelVariantList",
+            bytes: ModelVariantList {
+                models: vec![ModelVariantsEntry {
+                    endpoint: "openai".into(),
+                    model: "gpt-5-mini".into(),
+                    provider: "openai".into(),
+                    reasoning: true,
+                    vision: true,
+                    context_tokens: 400_000,
+                    default_effort: "medium".into(),
+                    default_service_tier: String::new(),
+                    variants: vec![
+                        ModelVariantView {
+                            effort: "medium".into(),
+                            service_tier: String::new(),
+                            label: "Medium effort".into(),
+                            is_default: true,
+                            raises_cost: false,
+                        },
+                        ModelVariantView {
+                            effort: "high".into(),
+                            service_tier: "priority".into(),
+                            label: "High effort".into(),
+                            is_default: false,
+                            raises_cost: true,
+                        },
+                    ],
+                    credential_available: true,
+                    blocked_by_policy: "block=openai/gpt-5-mini".into(),
+                    pin_refusal_code: "POLICY_BLOCKED".into(),
+                    pin_allowed: false,
+                }],
+                objectives: vec!["COST".into(), "BALANCE".into(), "INTELLIGENCE".into()],
+                default_objective: "BALANCE".into(),
+            }
+            .encode_to_vec(),
+            expected: json!({
+                "models": [{
+                    "endpoint": "openai", "model": "gpt-5-mini", "provider": "openai",
+                    "reasoning": true, "vision": true, "contextTokens": 400000,
+                    "defaultEffort": "medium", "defaultServiceTier": "",
+                    "variants": [
+                        { "effort": "medium", "serviceTier": "", "label": "Medium effort", "isDefault": true, "raisesCost": false },
+                        { "effort": "high", "serviceTier": "priority", "label": "High effort", "isDefault": false, "raisesCost": true }
+                    ],
+                    "credentialAvailable": true, "blockedByPolicy": "block=openai/gpt-5-mini",
+                    "pinRefusalCode": "POLICY_BLOCKED", "pinAllowed": false
+                }],
+                "objectives": ["COST", "BALANCE", "INTELLIGENCE"],
+                "defaultObjective": "BALANCE"
+            }),
+            decode: reencode::<ModelVariantList>,
+        },
+        // PX-063 (projects.proto): a project with a member, its rollup and a pull request with CI.
+        Sample {
+            name: "project_changed",
+            type_name: "modbit.v1.ProjectChanged",
+            bytes: ProjectChanged {
+                project: Some(ProjectView {
+                    project_id: id(0x63),
+                    name: "Release 2".into(),
+                    color: "warn".into(),
+                    icon: "rocket".into(),
+                    workspace_root: "/work/repo".into(),
+                    archived: false,
+                    created_at_ms: 1_700_000_000_000,
+                    updated_at_ms: 1_700_000_100_000,
+                    created_offset: 7,
+                    last_offset: 19,
+                    rollup: Some(ProjectRollup {
+                        members: 1,
+                        by_status: vec![ProjectStatusCount {
+                            status_class: AgentStatusClass::NeedsAttention as i32,
+                            label: "Needs attention".into(),
+                            count: 1,
+                        }],
+                        attention_tasks: 1,
+                        attention_items: 2,
+                        pending_approvals: 1,
+                        unread: 1,
+                        pull_requests: 1,
+                        ci_passing: 0,
+                        ci_failing: 1,
+                        ci_pending: 0,
+                    }),
+                    members: vec![ProjectMemberView {
+                        task_id: id(0x64),
+                        session_id: id(0x65),
+                        title: "Fix the thing".into(),
+                        status_class: AgentStatusClass::NeedsAttention as i32,
+                        status_label: "Needs attention".into(),
+                        unread: true,
+                        pending_approval: true,
+                        attention_items: 2,
+                        task_state: "Waiting".into(),
+                        archived: false,
+                        added_at_ms: 1_700_000_050_000,
+                        updated_at_ms: 1_700_000_090_000,
+                        pull_request: Some(ProjectPullRequestView {
+                            number: 42,
+                            url: "https://example.test/o/r/pull/42".into(),
+                            head: "task/x".into(),
+                            state: "open".into(),
+                            has_ci: true,
+                            checks_passed: 2,
+                            checks_failed: 1,
+                            checks_pending: 0,
+                        }),
+                    }],
+                }),
+                offset: 19,
+            }
+            .encode_to_vec(),
+            expected: json!({
+                "project": {
+                    "projectId": idhex(0x63),
+                    "name": "Release 2", "color": "warn", "icon": "rocket",
+                    "workspaceRoot": "/work/repo", "archived": false,
+                    "createdAtMs": "1700000000000", "updatedAtMs": "1700000100000",
+                    "createdOffset": "7", "lastOffset": "19",
+                    "rollup": {
+                        "members": 1,
+                        "byStatus": [{ "statusClass": "AGENT_STATUS_CLASS_NEEDS_ATTENTION", "label": "Needs attention", "count": 1 }],
+                        "attentionTasks": 1, "attentionItems": 2, "pendingApprovals": 1, "unread": 1,
+                        "pullRequests": 1, "ciPassing": 0, "ciFailing": 1, "ciPending": 0
+                    },
+                    "members": [{
+                        "taskId": idhex(0x64), "sessionId": idhex(0x65),
+                        "title": "Fix the thing",
+                        "statusClass": "AGENT_STATUS_CLASS_NEEDS_ATTENTION", "statusLabel": "Needs attention",
+                        "unread": true, "pendingApproval": true, "attentionItems": 2,
+                        "taskState": "Waiting", "archived": false,
+                        "addedAtMs": "1700000050000", "updatedAtMs": "1700000090000",
+                        "pullRequest": {
+                            "number": "42", "url": "https://example.test/o/r/pull/42", "head": "task/x",
+                            "state": "open", "hasCi": true, "checksPassed": 2, "checksFailed": 1, "checksPending": 0
+                        }
+                    }]
+                },
+                "offset": "19"
+            }),
+            decode: reencode::<ProjectChanged>,
+        },
+        // PX-069: what a client reads of the Computer Runtime for a task.
+        Sample {
+            name: "computer_runtime_view",
+            type_name: "modbit.v1.ComputerRuntimeView",
+            bytes: ComputerRuntimeView {
+                configured: true,
+                attached: true,
+                actuator_name: "modbit-actuator-fixture".into(),
+                actuator_version: "0.0.0".into(),
+                actuator_pid: 4242,
+                platform: "fixture".into(),
+                detail: String::new(),
+                control_id: "c0123456789ab".into(),
+                application: "Form App".into(),
+                bundle_id: "org.example.fixture.form".into(),
+                scope: "APP".into(),
+                controller: "AGENT".into(),
+                grant_expires_ms: 1_791_626_238_917,
+                grant_calls_left: 97,
+                latch: "computer.press press: ACTUATOR_LOST".into(),
+                latch_tool_call_id: "01a08f33-0d97-7d40-b299-f8a7bc5cda60".into(),
+                user_aborted: false,
+                actions: 3,
+                screenshots: 1,
+                observations: 5,
+                non_drivable: vec!["com.apple.terminal: a terminal and shell host".into()],
+                non_drivable_version: "2026-10-10.1".into(),
+            }
+            .encode_to_vec(),
+            expected: json!({
+                "configured": true, "attached": true,
+                "actuatorName": "modbit-actuator-fixture", "actuatorVersion": "0.0.0",
+                "actuatorPid": 4242, "platform": "fixture", "detail": "",
+                "controlId": "c0123456789ab", "application": "Form App",
+                "bundleId": "org.example.fixture.form", "scope": "APP", "controller": "AGENT",
+                "grantExpiresMs": "1791626238917", "grantCallsLeft": 97,
+                "latch": "computer.press press: ACTUATOR_LOST",
+                "latchToolCallId": "01a08f33-0d97-7d40-b299-f8a7bc5cda60",
+                "userAborted": false, "actions": 3, "screenshots": 1, "observations": 5,
+                "nonDrivable": ["com.apple.terminal: a terminal and shell host"],
+                "nonDrivableVersion": "2026-10-10.1"
+            }),
+            decode: reencode::<ComputerRuntimeView>,
+        },
+        // PX-074: the desktop surface's reads - presence with permissions, and the activity behind the cards.
+        Sample {
+            name: "computer_presence_view",
+            type_name: "modbit.v1.ComputerPresenceView",
+            bytes: ComputerPresenceView {
+                configured: true,
+                attached: true,
+                actuator_name: "modbit-actuator-fixture".into(),
+                actuator_version: "0.0.0".into(),
+                platform: "fixture".into(),
+                detail: String::new(),
+                permission_accessibility: "GRANTED".into(),
+                permission_screen_recording: "DENIED".into(),
+                control: vec![ComputerPresence {
+                    task_id: id(0x72),
+                    control_id: "c0123456789ab".into(),
+                    application: "Form App".into(),
+                    bundle_id: "org.example.fixture.form".into(),
+                    scope: "APP".into(),
+                    state: "CONTROLLING".into(),
+                    controller: "AGENT".into(),
+                    grant_expires_ms: 1_791_626_238_917,
+                    latch: String::new(),
+                    latch_tool_call_id: String::new(),
+                    actions: 2,
+                    screenshots: 1,
+                    observations: 4,
+                }],
+                non_drivable_version: "2026-10-10.1".into(),
+            }
+            .encode_to_vec(),
+            expected: json!({
+                "configured": true, "attached": true,
+                "actuatorName": "modbit-actuator-fixture", "actuatorVersion": "0.0.0",
+                "platform": "fixture", "detail": "", "permissionAccessibility": "GRANTED",
+                "permissionScreenRecording": "DENIED",
+                "control": [{
+                    "taskId": idhex(0x72), "controlId": "c0123456789ab", "application": "Form App",
+                    "bundleId": "org.example.fixture.form", "scope": "APP", "state": "CONTROLLING",
+                    "controller": "AGENT", "grantExpiresMs": "1791626238917",
+                    "latch": "", "latchToolCallId": "",
+                    "actions": 2, "screenshots": 1, "observations": 4
+                }],
+                "nonDrivableVersion": "2026-10-10.1"
+            }),
+            decode: reencode::<ComputerPresenceView>,
+        },
+        Sample {
+            name: "computer_activity_view",
+            type_name: "modbit.v1.ComputerActivityView",
+            bytes: ComputerActivityView {
+                entries: vec![ComputerActivityEntry {
+                    offset: 42,
+                    at_ms: 1_791_626_000_000,
+                    kind: "ACTION".into(),
+                    control_id: "c0123456789ab".into(),
+                    tool_call_id: "01a08f33-0d97-7d40-b299-f8a7bc5cda60".into(),
+                    approval_id: "01a08f33-0d97-7d40-b299-f8a7bc5cda61".into(),
+                    intent_hash: "a".repeat(64),
+                    bundle_id: "org.example.fixture.form".into(),
+                    application: "Form App".into(),
+                    scope: "APP".into(),
+                    detail: "press".into(),
+                    modality: "ax".into(),
+                    outcome: "SUCCEEDED".into(),
+                    duration_ms: 12,
+                    verified_known: true,
+                    verified: true,
+                    ..Default::default()
+                }],
+                truncated: false,
+            }
+            .encode_to_vec(),
+            expected: json!({
+                "entries": [{
+                    "offset": "42", "atMs": "1791626000000", "kind": "ACTION",
+                    "controlId": "c0123456789ab",
+                    "toolCallId": "01a08f33-0d97-7d40-b299-f8a7bc5cda60",
+                    "approvalId": "01a08f33-0d97-7d40-b299-f8a7bc5cda61",
+                    "intentHash": "a".repeat(64), "bundleId": "org.example.fixture.form",
+                    "application": "Form App", "scope": "APP", "detail": "press",
+                    "modality": "ax", "outcome": "SUCCEEDED", "code": "", "reason": "",
+                    "artifactRef": "", "artifactDigest": "", "artifactExpired": false,
+                    "elements": 0, "secureWithheld": 0, "maskedRegions": 0, "durationMs": "12",
+                    "verifiedKnown": true, "verified": true
+                }],
+                "truncated": false
+            }),
+            decode: reencode::<ComputerActivityView>,
+        },
+        Sample {
+            name: "resolve_computer_latch",
+            type_name: "modbit.v1.ResolveComputerLatch",
+            bytes: ResolveComputerLatch {
+                task_id: id(0x71),
+                note: "looked at the app".into(),
+            }
+            .encode_to_vec(),
+            expected: json!({"taskId": idhex(0x71), "note": "looked at the app"}),
+            decode: reencode::<ResolveComputerLatch>,
+        },
+        // PX-069: the actuator RPC (docs/66, computer.proto) - the messages PX-071 implements.
+        Sample {
+            name: "actuator_hello",
+            type_name: "modbit.v1.ActuatorHello",
+            bytes: ActuatorHello {
+                protocol_major: 1,
+                protocol_minor: 0,
+                token: vec![0xab; 32],
+                core_pid: 31337,
+                core_version: "0.0.0".into(),
+            }
+            .encode_to_vec(),
+            expected: json!({
+                "protocolMajor": 1, "protocolMinor": 0, "token": hex(&[0xab; 32]),
+                "corePid": 31337, "coreVersion": "0.0.0"
+            }),
+            decode: reencode::<ActuatorHello>,
+        },
+        Sample {
+            name: "actuator_welcome",
+            type_name: "modbit.v1.ActuatorWelcome",
+            bytes: ActuatorWelcome {
+                protocol_major: 1,
+                protocol_minor: 0,
+                actuator_name: "modbit-actuator-macos".into(),
+                actuator_version: "1.0.0".into(),
+                pid: 777,
+                platform: "macos".into(),
+                token_proof: "c".repeat(64),
+                capabilities: vec!["app_scope".into(), "screenshot".into()],
+                refusal: String::new(),
+                permissions: vec![
+                    PermissionState {
+                        permission: "accessibility".into(),
+                        granted: true,
+                    },
+                    PermissionState {
+                        permission: "screen_recording".into(),
+                        granted: false,
+                    },
+                ],
+            }
+            .encode_to_vec(),
+            expected: json!({
+                "protocolMajor": 1, "protocolMinor": 0,
+                "actuatorName": "modbit-actuator-macos", "actuatorVersion": "1.0.0",
+                "pid": 777, "platform": "macos", "tokenProof": "c".repeat(64),
+                "capabilities": ["app_scope", "screenshot"], "refusal": "",
+                "permissions": [
+                    {"permission": "accessibility", "granted": true},
+                    {"permission": "screen_recording", "granted": false}
+                ]
+            }),
+            decode: reencode::<ActuatorWelcome>,
+        },
+        Sample {
+            name: "actuator_read_state_response",
+            type_name: "modbit.v1.ReadStateResponse",
+            bytes: ReadStateResponse {
+                snapshot_id: "s0123".into(),
+                window: Some(WindowInfo {
+                    window_id: "w1".into(),
+                    title: "Order form".into(),
+                    bounds: Some(Rect {
+                        x: 100,
+                        y: 100,
+                        width: 800,
+                        height: 600,
+                    }),
+                    focused: true,
+                    modal: false,
+                    minimized: false,
+                    version: 3,
+                }),
+                nodes: vec![AxNode {
+                    element_id: "n2".into(),
+                    parent_id: "n0".into(),
+                    role: "textfield".into(),
+                    name: "Name".into(),
+                    value: "Ada".into(),
+                    settable: true,
+                    secure: false,
+                    enabled: true,
+                    focused: true,
+                    actions: vec!["focus".into()],
+                    bounds: Some(Rect {
+                        x: 120,
+                        y: 170,
+                        width: 400,
+                        height: 30,
+                    }),
+                }],
+                truncated: false,
+                tree_digest: "d".repeat(64),
+            }
+            .encode_to_vec(),
+            expected: json!({
+                "snapshotId": "s0123",
+                "window": {
+                    "windowId": "w1", "title": "Order form",
+                    "bounds": {"x": 100, "y": 100, "width": 800, "height": 600},
+                    "focused": true, "modal": false, "minimized": false, "version": "3"
+                },
+                "nodes": [{
+                    "elementId": "n2", "parentId": "n0", "role": "textfield", "name": "Name",
+                    "value": "Ada", "settable": true, "secure": false, "enabled": true,
+                    "focused": true, "actions": ["focus"],
+                    "bounds": {"x": 120, "y": 170, "width": 400, "height": 30}
+                }],
+                "truncated": false, "treeDigest": "d".repeat(64)
+            }),
+            decode: reencode::<ReadStateResponse>,
+        },
+        Sample {
+            name: "actuator_perform_response",
+            type_name: "modbit.v1.PerformResponse",
+            bytes: PerformResponse {
+                delivery: Delivery::Delivered as i32,
+                modality: "ax".into(),
+                modality_reason: "the element offers press".into(),
+                structure_changed: true,
+                tree_digest: "e".repeat(64),
+                changes: vec![ElementChange {
+                    element_id: "n5".into(),
+                    kind: "value".into(),
+                    before: "idle".into(),
+                    after: "submitted".into(),
+                }],
+                window: Some(WindowInfo {
+                    window_id: "w1".into(),
+                    title: "Order form".into(),
+                    bounds: Some(Rect {
+                        x: 100,
+                        y: 100,
+                        width: 800,
+                        height: 600,
+                    }),
+                    focused: true,
+                    modal: true,
+                    minimized: false,
+                    version: 4,
+                }),
+            }
+            .encode_to_vec(),
+            expected: json!({
+                "delivery": "DELIVERY_DELIVERED", "modality": "ax",
+                "modalityReason": "the element offers press", "structureChanged": true,
+                "treeDigest": "e".repeat(64),
+                "changes": [{"elementId": "n5", "kind": "value", "before": "idle", "after": "submitted"}],
+                "window": {
+                    "windowId": "w1", "title": "Order form",
+                    "bounds": {"x": 100, "y": 100, "width": 800, "height": 600},
+                    "focused": true, "modal": true, "minimized": false, "version": "4"
+                }
+            }),
+            decode: reencode::<PerformResponse>,
+        },
+        Sample {
+            name: "actuator_error",
+            type_name: "modbit.v1.ActuatorError",
+            bytes: ActuatorError {
+                code: "TARGET_STALE".into(),
+                message: "the window moved".into(),
+                delivery: Delivery::NotDelivered as i32,
+            }
+            .encode_to_vec(),
+            expected: json!({
+                "code": "TARGET_STALE", "message": "the window moved",
+                "delivery": "DELIVERY_NOT_DELIVERED"
+            }),
+            decode: reencode::<ActuatorError>,
+        },
+        Sample {
+            name: "actuator_capture_response",
+            type_name: "modbit.v1.CaptureResponse",
+            bytes: CaptureResponse {
+                png: vec![0x89, b'P', b'N', b'G'],
+                width: 1280,
+                height: 800,
+                letterbox: Some(Letterbox {
+                    source_width: 600,
+                    source_height: 400,
+                    scale: 2.0,
+                    offset_x: 40.0,
+                    offset_y: 0.0,
+                }),
+                window: None,
+                masked_regions: 1,
+                secure_regions: vec![Rect {
+                    x: 80,
+                    y: 200,
+                    width: 720,
+                    height: 60,
+                }],
+                frame_digest: "f".repeat(64),
+            }
+            .encode_to_vec(),
+            expected: json!({
+                "png": hex(&[0x89, b'P', b'N', b'G']), "width": 1280, "height": 800,
+                "letterbox": {"sourceWidth": 600, "sourceHeight": 400, "scale": 2.0, "offsetX": 40.0, "offsetY": 0.0},
+                "window": null, "maskedRegions": 1,
+                "secureRegions": [{"x": 80, "y": 200, "width": 720, "height": 60}],
+                "frameDigest": "f".repeat(64)
+            }),
+            decode: reencode::<CaptureResponse>,
+        },
+        // PX-055 (mode_proposals.proto): a pending proposal in a list, and an accepted one with the mode change it caused.
+        Sample {
+            name: "mode_proposal_list",
+            type_name: "modbit.v1.ModeProposalList",
+            bytes: ModeProposalList {
+                task_id: id(0x71),
+                proposals: vec![ModeProposalView {
+                    proposal_id: "mp-call00".into(),
+                    task_id: id(0x71),
+                    from_mode: TaskMode::Plan as i32,
+                    to_mode: TaskMode::Agent as i32,
+                    reason: "the plan is ready".into(),
+                    status: "PENDING".into(),
+                    outcome_reason: String::new(),
+                    proposed_at_ms: 1_700_000_000_000,
+                    expires_at_ms: 1_700_000_015_000,
+                    decided_at_ms: 0,
+                    proposed_offset: 40,
+                    decided_offset: 0,
+                }],
+                now_ms: 1_700_000_004_000,
+                offset: 41,
+            }
+            .encode_to_vec(),
+            expected: json!({
+                "taskId": idhex(0x71),
+                "proposals": [{
+                    "proposalId": "mp-call00", "taskId": idhex(0x71),
+                    "fromMode": "TASK_MODE_PLAN", "toMode": "TASK_MODE_AGENT",
+                    "reason": "the plan is ready", "status": "PENDING", "outcomeReason": "",
+                    "proposedAtMs": "1700000000000", "expiresAtMs": "1700000015000", "decidedAtMs": "0",
+                    "proposedOffset": "40", "decidedOffset": "0"
+                }],
+                "nowMs": "1700000004000", "offset": "41"
+            }),
+            decode: reencode::<ModeProposalList>,
+        },
+        Sample {
+            name: "mode_proposal_decided",
+            type_name: "modbit.v1.ModeProposalDecided",
+            bytes: ModeProposalDecided {
+                proposal: Some(ModeProposalView {
+                    proposal_id: "mp-call00".into(),
+                    task_id: id(0x71),
+                    from_mode: TaskMode::Plan as i32,
+                    to_mode: TaskMode::Agent as i32,
+                    reason: "the plan is ready".into(),
+                    status: "ACCEPTED".into(),
+                    outcome_reason: "ACCEPTED_BY_USER".into(),
+                    proposed_at_ms: 1_700_000_000_000,
+                    expires_at_ms: 1_700_000_015_000,
+                    decided_at_ms: 1_700_000_006_000,
+                    proposed_offset: 40,
+                    decided_offset: 43,
+                }),
+                mode_change: Some(TaskModeChanged {
+                    task_id: id(0x71),
+                    mode: TaskMode::Agent as i32,
+                    previous_mode: TaskMode::Plan as i32,
+                    effective: "NEXT_ROUND_BOUNDARY".into(),
+                    offset: 42,
+                    accepted_plan_version: 2,
+                }),
+                offset: 43,
+            }
+            .encode_to_vec(),
+            expected: json!({
+                "proposal": {
+                    "proposalId": "mp-call00", "taskId": idhex(0x71),
+                    "fromMode": "TASK_MODE_PLAN", "toMode": "TASK_MODE_AGENT",
+                    "reason": "the plan is ready", "status": "ACCEPTED", "outcomeReason": "ACCEPTED_BY_USER",
+                    "proposedAtMs": "1700000000000", "expiresAtMs": "1700000015000", "decidedAtMs": "1700000006000",
+                    "proposedOffset": "40", "decidedOffset": "43"
+                },
+                "modeChange": {
+                    "taskId": idhex(0x71), "mode": "TASK_MODE_AGENT", "previousMode": "TASK_MODE_PLAN",
+                    "effective": "NEXT_ROUND_BOUNDARY", "offset": "42", "acceptedPlanVersion": 2
+                },
+                "offset": "43"
+            }),
+            decode: reencode::<ModeProposalDecided>,
         },
     ]
 }

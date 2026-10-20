@@ -1,7 +1,8 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import { STATUS_CLASSES, type AgentHeaderView, type StatusClass } from "../../shared/conversation-types.ts";
-import { CLASS_META, NO_FILTERS, PIN_CAP, PIN_CAP_MESSAGE, SECTION_HEIGHT, ROW_HEIGHT, classRank, filterCount, flatten, groupHeaders, layoutOf, nearestSibling, passes, pin, relativeAge, timeBucket, unpin, visibleRange, visibleTaskIds } from "./list-model.ts";
+import { CLASS_META, MAX_VIEWS, NO_FILTERS, NO_PROJECT, PIN_CAP, PIN_CAP_MESSAGE, SECTION_HEIGHT, ROW_HEIGHT, classRank, deleteView, filterCount, flatten, groupHeaders, layoutOf, listItems, nearestSibling, passes, pin, relativeAge, saveView, timeBucket, unpin, viewMatches, visibleRange, visibleTaskIds, type ListItem, type StoredView } from "./list-model.ts";
+import type { ProjectInfo } from "../../shared/project-types.ts";
 import { DEFAULT_LIST_PREFS, parseListPrefs, serializeListPrefs } from "./prefs.ts";
 import { highlightRuns } from "./snippets.ts";
 
@@ -95,7 +96,7 @@ test("filters: chips widen within a family and narrow across families; archived 
   assert.deepEqual(ids({ ...NO_FILTERS, states: ["done"] }), [unread.taskId]);
   assert.deepEqual(ids({ ...NO_FILTERS, origins: ["cli"] }), [failed.taskId]);
   assert.equal(ids({ ...NO_FILTERS, showArchived: true }).length, 4);
-  assert.equal(filterCount({ states: ["running"], locations: ["local"], origins: [], showArchived: true }), 3);
+  assert.equal(filterCount({ states: ["running"], locations: ["local"], origins: [], projects: [], showArchived: true }), 3);
 });
 
 test("an archive hands the selection to the nearest remaining sibling: next, else previous, else nothing", () => {
@@ -162,4 +163,136 @@ test("search snippets highlight by UTF-8 byte ranges and drop ranges that are ou
   assert.deepEqual(highlightRuns("éa", [{ start: 0, end: 2 }]), [{ text: "é", match: true }, { text: "a", match: false }]);
   assert.deepEqual(highlightRuns("abc", [{ start: 2, end: 3 }, { start: 0, end: 1 }]).filter((r) => r.match).map((r) => r.text), ["c"]);
   assert.deepEqual(highlightRuns("abc", [{ start: 0, end: 99 }]), [{ text: "abc", match: false }]);
+});
+
+// ------------------------------------------------------------ PX-064: projects
+
+const proj = (id: string, name: string, over: Partial<ProjectInfo> = {}): ProjectInfo => ({ projectId: id, name, color: "accent", icon: "folder", workspaceRoot: "/w/alpha", archived: false, createdAtMs: 1, updatedAtMs: 1, createdOffset: "1", lastOffset: "1", rollup: { members: 0, byStatus: [], attentionTasks: 0, attentionItems: 0, pendingApprovals: 0, unread: 0, pullRequests: 0, ciPassing: 0, ciFailing: 0, ciPending: 0 }, members: [], ...over });
+const items = (over: Partial<Parameters<typeof listItems>[0]> & { headers: ReturnType<typeof h>[] }) => listItems({ projects: [], grouping: "repository", pins: [], collapsed: new Set(), nowMs: NOW, sort: "recent", showArchived: false, ...over });
+const kinds = (xs: ListItem[]) => xs.map((i) => (i.kind === "row" ? `row:${i.header.taskId}` : i.kind === "section" ? `section:${i.label}` : i.kind === "project" ? `project:${i.project.name}` : i.kind));
+
+test("without a project the list is exactly what it was: no Projects group, no new row", () => {
+  const rows = [h(), h()];
+  const before = flatten(groupHeaders(rows, "repository", [], NOW), new Set());
+  assert.deepEqual(items({ headers: rows }), before);
+});
+
+test("the Projects group sits after the pins and before the repositories; a member is shown under its project and nowhere else", () => {
+  const a = proj("pa", "Alpha");
+  const b = proj("pb", "Beta");
+  const m1 = h({ projectId: "pa" });
+  const m2 = h({ projectId: "pa" });
+  const free = h();
+  const pinned = h({ projectId: "pb" });
+  const out = items({ headers: [m1, m2, free, pinned], projects: [a, b], pins: [pinned.taskId] });
+  assert.deepEqual(kinds(out), ["section:Pinned", `row:${pinned.taskId}`, "projects-head", "project:Alpha", `row:${m1.taskId}`, `row:${m2.taskId}`, "project:Beta", "new-project", "section:alpha", `row:${free.taskId}`]);
+  // Each task appears once; the pinned member stays pinned and does not appear under its project.
+  const rowIds = out.flatMap((i) => (i.kind === "row" ? [i.header.taskId] : []));
+  assert.equal(new Set(rowIds).size, rowIds.length);
+  const proj_b = out.find((i) => i.kind === "project" && i.project.projectId === "pb");
+  assert.equal(proj_b?.kind === "project" ? proj_b.shown : -1, 0);
+});
+
+test("collapsing a project hides its tasks and collapsing the group hides the projects, each by its own key", () => {
+  const a = proj("pa", "Alpha");
+  const m = h({ projectId: "pa" });
+  assert.deepEqual(kinds(items({ headers: [m], projects: [a], collapsed: new Set(["project:pa"]) })), ["projects-head", "project:Alpha", "new-project"]);
+  assert.deepEqual(kinds(items({ headers: [m], projects: [a], collapsed: new Set(["projects"]) })), ["projects-head"], "the group is closed and the member is not listed a second time");
+});
+
+test("an archived project is not a parent unless archived items are asked for; its tasks stay listed where they were", () => {
+  const old = proj("pa", "Old", { archived: true });
+  const m = h({ projectId: "pa" });
+  const hidden = items({ headers: [m], projects: [old] });
+  assert.deepEqual(kinds(hidden), ["section:alpha", `row:${m.taskId}`]);
+  const shown = items({ headers: [m], projects: [old], showArchived: true });
+  assert.deepEqual(kinds(shown), ["projects-head", "project:Old", `row:${m.taskId}`, "new-project"]);
+});
+
+test("the Project grouping makes the projects the sections, empty ones included, and tasks of no project last", () => {
+  const a = proj("pa", "Alpha");
+  const b = proj("pb", "Beta");
+  const m = h({ projectId: "pa" });
+  const free = h();
+  const out = items({ headers: [free, m], projects: [a, b], grouping: "project" });
+  assert.deepEqual(kinds(out), ["section:Alpha", `row:${m.taskId}`, "section:Beta", "section:No project", `row:${free.taskId}`]);
+  // A task whose project the list does not show is in no project here.
+  assert.deepEqual(kinds(items({ headers: [m], projects: [], grouping: "project" })), ["section:No project", `row:${m.taskId}`]);
+});
+
+test("project chips filter by the Core's map; 'no project' is its own chip and a chip never matches by name", () => {
+  const inA = h({ projectId: "pa" });
+  const inB = h({ projectId: "pb" });
+  const free = h();
+  const ids = (projects: string[]) => [inA, inB, free].filter((x) => passes(x, { ...NO_FILTERS, projects })).map((x) => x.taskId);
+  assert.deepEqual(ids(["pa"]), [inA.taskId]);
+  assert.deepEqual(ids(["pa", "pb"]), [inA.taskId, inB.taskId]);
+  assert.deepEqual(ids([NO_PROJECT]), [free.taskId]);
+  assert.deepEqual(ids(["pa", NO_PROJECT]), [inA.taskId, free.taskId]);
+  assert.deepEqual(ids([]), [inA.taskId, inB.taskId, free.taskId]);
+  assert.equal(filterCount({ ...NO_FILTERS, projects: ["pa", NO_PROJECT] }), 2);
+});
+
+test("sorting inside sections is a stored choice: by status, by title, by recency", () => {
+  const a = h({ title: "b-task", statusClass: "COMPLETED", updatedAtMs: NOW - 1 });
+  const b = h({ title: "a-task", statusClass: "FAILED", updatedAtMs: NOW - 3 });
+  const c = h({ title: "c-task", statusClass: "RUNNING", updatedAtMs: NOW - 2 });
+  const order = (sort: "recent" | "status" | "title") => groupHeaders([a, b, c], "repository", [], NOW, { sort })[0]!.rows.map((x) => x.title);
+  assert.deepEqual(order("recent"), ["b-task", "c-task", "a-task"]);
+  assert.deepEqual(order("status"), ["a-task", "c-task", "b-task"]);
+  assert.deepEqual(order("title"), ["a-task", "b-task", "c-task"]);
+});
+
+// ------------------------------------------------------------ stored views
+
+test("a stored view is a saved query: saved by unique name, matched by what it stores, replaced by its name, deleted by id", () => {
+  let n = 0;
+  const id = () => `v${++n}`;
+  const now = { grouping: "status" as const, filters: { ...NO_FILTERS, states: ["running"] as ("running" | "failed")[], projects: ["pa"] }, sort: "title" as const };
+  const r = saveView([], "  Running in Alpha ", now, id);
+  assert.ok(r.ok);
+  if (!r.ok) return;
+  assert.equal(r.view.name, "Running in Alpha");
+  assert.ok(viewMatches(r.view, now));
+  assert.equal(viewMatches(r.view, { ...now, sort: "recent" }), false);
+  assert.equal(viewMatches(r.view, { ...now, filters: { ...now.filters, projects: [] } }), false);
+  assert.equal(viewMatches(r.view, { ...now, filters: { ...now.filters, states: ["running"], projects: ["pa"] } }), true, "chip order does not matter");
+  // Saving the same name (any case) replaces that view, keeping its id.
+  const again = saveView(r.views, "running in alpha", { ...now, sort: "recent" }, id);
+  assert.ok(again.ok);
+  if (again.ok) {
+    assert.equal(again.views.length, 1);
+    assert.equal(again.views[0]!.id, r.view.id);
+    assert.equal(again.views[0]!.sort, "recent");
+  }
+  // A view is a copy: changing the list's filters afterwards does not change it.
+  now.filters.states.push("failed");
+  assert.deepEqual(r.view.filters.states, ["running"]);
+  assert.deepEqual(deleteView(r.views, r.view.id), []);
+});
+
+test("a view needs a name and the list holds a bounded number of them", () => {
+  const now = { grouping: "repository" as const, filters: NO_FILTERS, sort: "recent" as const };
+  assert.equal(saveView([], "   ", now, () => "x").ok, false);
+  assert.equal(saveView([], "x".repeat(41), now, () => "x").ok, false);
+  let views: StoredView[] = [];
+  for (let i = 0; i < MAX_VIEWS; i++) {
+    const r = saveView(views, `view ${i}`, now, () => `id${i}`);
+    assert.ok(r.ok);
+    if (r.ok) views = r.views;
+  }
+  const over = saveView(views, "one more", now, () => "zz");
+  assert.equal(over.ok, false);
+  assert.equal(saveView(views, "VIEW 3", now, () => "zz").ok, true, "replacing a view is not adding one");
+});
+
+test("stored preferences with views: hostile entries are cut back; valid views round-trip", () => {
+  const good = { id: "v1", name: "Mine", grouping: "project", sort: "status", filters: { states: ["running", "<x>"], projects: ["pa", 7], showArchived: true } };
+  const p = parseListPrefs(JSON.stringify({ sort: "title", views: [good, { ...good, id: "v2", name: "mine" }, { ...good, id: "v3", grouping: "nope" }, { id: "v4", name: "", grouping: "status", sort: "recent" }, "junk", null] }));
+  assert.equal(p.sort, "title");
+  assert.equal(p.views.length, 1, "a duplicate name, a bad grouping, no name and junk are dropped");
+  assert.deepEqual(p.views[0]!.filters, { states: ["running"], locations: [], origins: [], projects: ["pa"], showArchived: true });
+  assert.deepEqual(parseListPrefs(serializeListPrefs(p)), p);
+  assert.equal(parseListPrefs(JSON.stringify({ sort: "sideways" })).sort, "recent");
+  assert.deepEqual(parseListPrefs(JSON.stringify({ views: "nope" })).views, []);
 });

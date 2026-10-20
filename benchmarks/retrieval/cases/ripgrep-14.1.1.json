@@ -1,0 +1,936 @@
+{
+ "schema": "modbit-retrieval-live-cases-v1",
+ "name": "ripgrep-14.1.1",
+ "repo_url": "https://github.com/BurntSushi/ripgrep.git",
+ "commit": "4649aa9700619f94cf9c66876e9549d83420e16c",
+ "description": "Hand-labelled questions over the ripgrep 14.1.1 tag (BurntSushi/ripgrep, a Rust workspace of ten crates). Each label is a file path at the pinned commit plus an evidence string the harness checks the file contains, so a label cannot be invented or rot silently. Labels were written by reading the code, not from any retrieval tool's output. A multi_hop case needs every labelled file.",
+ "cases": [
+  {
+   "id": "size-parse",
+   "kind": "behavior",
+   "question": "Which source file turns a human-readable size string such as 10M or 2G into a number of bytes?",
+   "labels": [
+    {
+     "path": "crates/cli/src/human.rs",
+     "evidence": "pub fn parse_human_readable_size"
+    }
+   ]
+  },
+  {
+   "id": "decompress",
+   "kind": "behavior",
+   "question": "Where is the logic that maps a file extension like .gz, .xz or .bz2 to an external decompression program and then reads the program's output?",
+   "labels": [
+    {
+     "path": "crates/cli/src/decompress.rs",
+     "evidence": "pub struct DecompressionMatcherBuilder"
+    }
+   ]
+  },
+  {
+   "id": "escape",
+   "kind": "behavior",
+   "question": "Which module converts escape sequences such as a backslash followed by x and two hex digits into raw bytes, and back?",
+   "labels": [
+    {
+     "path": "crates/cli/src/escape.rs",
+     "evidence": "pub fn unescape"
+    }
+   ]
+  },
+  {
+   "id": "hostname",
+   "kind": "behavior",
+   "question": "Where does the shared command-line support crate look up the name of the machine it runs on?",
+   "labels": [
+    {
+     "path": "crates/cli/src/hostname.rs",
+     "evidence": "fn gethostname"
+    }
+   ]
+  },
+  {
+   "id": "patterns-file",
+   "kind": "behavior",
+   "question": "Which file reads search patterns from a file or from standard input, one per line, and rejects bytes that are not valid UTF-8?",
+   "labels": [
+    {
+     "path": "crates/cli/src/pattern.rs",
+     "evidence": "pub fn patterns_from_reader"
+    }
+   ]
+  },
+  {
+   "id": "child-reader",
+   "kind": "behavior",
+   "question": "Where is the reader that wraps a spawned child process, exposing its standard output and turning its standard error into an error when the child fails?",
+   "labels": [
+    {
+     "path": "crates/cli/src/process.rs",
+     "evidence": "pub struct CommandReader"
+    }
+   ]
+  },
+  {
+   "id": "stdout-writer",
+   "kind": "behavior",
+   "question": "Which file builds the colored standard output writer and chooses between line-buffered and block-buffered writing?",
+   "labels": [
+    {
+     "path": "crates/cli/src/wtr.rs",
+     "evidence": "pub fn stdout_buffered_block"
+    }
+   ]
+  },
+  {
+   "id": "haystack",
+   "kind": "symbol_lookup",
+   "question": "Where is the type that represents one candidate thing to search, including the check for whether it was named explicitly on the command line rather than discovered while walking?",
+   "labels": [
+    {
+     "path": "crates/core/haystack.rs",
+     "evidence": "fn is_explicit"
+    }
+   ]
+  },
+  {
+   "id": "logger",
+   "kind": "behavior",
+   "question": "Which file implements the minimal logger that prints debug and trace messages to standard error, avoiding an extra dependency?",
+   "labels": [
+    {
+     "path": "crates/core/logger.rs",
+     "evidence": "pub(crate) struct Logger"
+    }
+   ]
+  },
+  {
+   "id": "error-flag",
+   "kind": "behavior",
+   "question": "Where is the process-wide flag that remembers whether any error message was printed, together with the macros used to print messages?",
+   "labels": [
+    {
+     "path": "crates/core/messages.rs",
+     "evidence": "static ERRORED"
+    }
+   ]
+  },
+  {
+   "id": "fnv",
+   "kind": "behavior",
+   "question": "Which module in the glob crate provides a fast non-cryptographic hasher used for its hash maps?",
+   "labels": [
+    {
+     "path": "crates/globset/src/fnv.rs",
+     "evidence": "FNV"
+    }
+   ]
+  },
+  {
+   "id": "glob-regex",
+   "kind": "behavior",
+   "question": "Where is a single glob pattern such as src/**/*.rs parsed into tokens and translated to a regular expression?",
+   "labels": [
+    {
+     "path": "crates/globset/src/glob.rs",
+     "evidence": "struct Tokens"
+    }
+   ]
+  },
+  {
+   "id": "globset-strategy",
+   "kind": "behavior",
+   "question": "Which file picks, for a whole set of globs, a cheaper matching strategy like literal, extension, prefix or suffix instead of always using a regex?",
+   "labels": [
+    {
+     "path": "crates/globset/src/lib.rs",
+     "evidence": "enum GlobSetMatchStrategy"
+    }
+   ]
+  },
+  {
+   "id": "glob-pathutil",
+   "kind": "behavior",
+   "question": "Where do the glob matchers extract the final path component and the file extension used for the extension and basename strategies?",
+   "labels": [
+    {
+     "path": "crates/globset/src/pathutil.rs",
+     "evidence": "pub(crate) fn file_name"
+    }
+   ]
+  },
+  {
+   "id": "glob-serde",
+   "kind": "behavior",
+   "question": "Which file lets a glob or a glob set be serialized and deserialized with serde?",
+   "labels": [
+    {
+     "path": "crates/globset/src/serde_impl.rs",
+     "evidence": "struct GlobSetVisitor"
+    }
+   ]
+  },
+  {
+   "id": "types-builder",
+   "kind": "behavior",
+   "question": "Where is the builder that lets callers select and negate named file types such as rust or python and turn that into a matcher?",
+   "labels": [
+    {
+     "path": "crates/ignore/src/types.rs",
+     "evidence": "pub struct TypesBuilder"
+    }
+   ]
+  },
+  {
+   "id": "default-types",
+   "kind": "behavior",
+   "question": "Which file holds the built-in table that maps file type names to their glob patterns?",
+   "labels": [
+    {
+     "path": "crates/ignore/src/default_types.rs",
+     "evidence": "\"rust\""
+    }
+   ]
+  },
+  {
+   "id": "overrides",
+   "kind": "behavior",
+   "question": "Where are command-line glob overrides implemented, which take precedence over ignore files and use an inverted meaning of the exclamation mark?",
+   "labels": [
+    {
+     "path": "crates/ignore/src/overrides.rs",
+     "evidence": "pub struct OverrideBuilder"
+    }
+   ]
+  },
+  {
+   "id": "gitignore-match",
+   "kind": "behavior",
+   "question": "Which file parses gitignore rules and decides whether a path is ignored or whitelisted, including directory-only patterns?",
+   "labels": [
+    {
+     "path": "crates/ignore/src/gitignore.rs",
+     "evidence": "pub struct GitignoreBuilder"
+    }
+   ]
+  },
+  {
+   "id": "dir-ignore-state",
+   "kind": "behavior",
+   "question": "Where is the per-directory ignore state built up by combining gitignore, ignore and rgignore files from the directory and its parents, with the global git excludes?",
+   "labels": [
+    {
+     "path": "crates/ignore/src/dir.rs",
+     "evidence": "pub(crate) fn add_child"
+    }
+   ]
+  },
+  {
+   "id": "parallel-walk",
+   "kind": "behavior",
+   "question": "Which file contains the multi-threaded recursive directory walker?",
+   "labels": [
+    {
+     "path": "crates/ignore/src/walk.rs",
+     "evidence": "pub struct WalkParallel"
+    }
+   ]
+  },
+  {
+   "id": "hidden-files",
+   "kind": "behavior",
+   "question": "Where does the directory walker decide that an entry is hidden, with a different rule on Windows than on Unix?",
+   "labels": [
+    {
+     "path": "crates/ignore/src/pathutil.rs",
+     "evidence": "fn is_hidden"
+    }
+   ]
+  },
+  {
+   "id": "interpolate",
+   "kind": "behavior",
+   "question": "Which file expands capture group references like $1 or ${name} inside a replacement string?",
+   "labels": [
+    {
+     "path": "crates/matcher/src/interpolate.rs",
+     "evidence": "pub fn interpolate"
+    }
+   ]
+  },
+  {
+   "id": "matcher-trait",
+   "kind": "symbol_lookup",
+   "question": "Where is the abstract interface that every regex engine must implement for the searcher, with methods like find_at and captures?",
+   "labels": [
+    {
+     "path": "crates/matcher/src/lib.rs",
+     "evidence": "pub trait Matcher"
+    }
+   ]
+  },
+  {
+   "id": "pcre2-jit",
+   "kind": "behavior",
+   "question": "Which file wraps the PCRE2 library as a matcher and exposes the JIT option?",
+   "labels": [
+    {
+     "path": "crates/pcre2/src/matcher.rs",
+     "evidence": "pub fn jit"
+    }
+   ]
+  },
+  {
+   "id": "pcre2-error",
+   "kind": "symbol_lookup",
+   "question": "Where is the error type for the PCRE2 matcher defined?",
+   "labels": [
+    {
+     "path": "crates/pcre2/src/error.rs",
+     "evidence": "pub struct Error"
+    }
+   ]
+  },
+  {
+   "id": "color-specs",
+   "kind": "behavior",
+   "question": "Where are user color specifications such as match:fg:red or path:style:bold parsed?",
+   "labels": [
+    {
+     "path": "crates/printer/src/color.rs",
+     "evidence": "pub struct UserColorSpec"
+    }
+   ]
+  },
+  {
+   "id": "hyperlink-format",
+   "kind": "behavior",
+   "question": "Which file defines the format language for terminal hyperlinks, with placeholders like path, line and column?",
+   "labels": [
+    {
+     "path": "crates/printer/src/hyperlink.rs",
+     "evidence": "pub struct HyperlinkFormat"
+    }
+   ]
+  },
+  {
+   "id": "hyperlink-alias",
+   "kind": "behavior",
+   "question": "Where is the table of named hyperlink presets for specific editors and terminals?",
+   "labels": [
+    {
+     "path": "crates/printer/src/hyperlink_aliases.rs",
+     "evidence": "vscode"
+    }
+   ]
+  },
+  {
+   "id": "json-printer",
+   "kind": "behavior",
+   "question": "Which file implements the printer that emits JSON Lines with begin, match, context, end and summary messages?",
+   "labels": [
+    {
+     "path": "crates/printer/src/json.rs",
+     "evidence": "pub struct JSONBuilder"
+    }
+   ]
+  },
+  {
+   "id": "json-types",
+   "kind": "behavior",
+   "question": "Where are the serializable message types for the JSON output, with a text-or-base64 representation of byte data?",
+   "labels": [
+    {
+     "path": "crates/printer/src/jsont.rs",
+     "evidence": "fn base64_standard"
+    }
+   ]
+  },
+  {
+   "id": "standard-printer",
+   "kind": "behavior",
+   "question": "Which file implements the default grep-like human-readable output, including line numbers, columns and context lines?",
+   "labels": [
+    {
+     "path": "crates/printer/src/standard.rs",
+     "evidence": "pub struct StandardBuilder"
+    }
+   ]
+  },
+  {
+   "id": "summary-printer",
+   "kind": "behavior",
+   "question": "Where is the printer for outputs that only report counts or file paths rather than matching lines?",
+   "labels": [
+    {
+     "path": "crates/printer/src/summary.rs",
+     "evidence": "pub enum SummaryKind"
+    }
+   ]
+  },
+  {
+   "id": "stats",
+   "kind": "symbol_lookup",
+   "question": "Where is the structure that accumulates statistics such as elapsed time, bytes searched and number of matches across searches?",
+   "labels": [
+    {
+     "path": "crates/printer/src/stats.rs",
+     "evidence": "pub struct Stats"
+    }
+   ]
+  },
+  {
+   "id": "path-printer",
+   "kind": "behavior",
+   "question": "Which file prints a file path with an optional terminator and hyperlink for the files-with-matches style outputs?",
+   "labels": [
+    {
+     "path": "crates/printer/src/path.rs",
+     "evidence": "pub struct PathPrinterBuilder"
+    }
+   ]
+  },
+  {
+   "id": "counter-writer",
+   "kind": "symbol_lookup",
+   "question": "Where is the writer wrapper that counts how many bytes have been written through it?",
+   "labels": [
+    {
+     "path": "crates/printer/src/counter.rs",
+     "evidence": "struct CounterWriter"
+    }
+   ]
+  },
+  {
+   "id": "replace-captures",
+   "kind": "behavior",
+   "question": "Which printer helper finds every match in a line and rewrites it with a replacement that can reference capture groups?",
+   "labels": [
+    {
+     "path": "crates/printer/src/util.rs",
+     "evidence": "fn replace_with_captures_in_context"
+    }
+   ]
+  },
+  {
+   "id": "smart-case",
+   "kind": "behavior",
+   "question": "Where does the regex crate analyse a pattern's syntax tree to find out whether it contains an uppercase literal, which smart case depends on?",
+   "labels": [
+    {
+     "path": "crates/regex/src/ast.rs",
+     "evidence": "any_uppercase"
+    }
+   ]
+  },
+  {
+   "id": "ban-byte",
+   "kind": "behavior",
+   "question": "Which file checks that a regex cannot match a forbidden byte such as a newline anywhere in its expression?",
+   "labels": [
+    {
+     "path": "crates/regex/src/ban.rs",
+     "evidence": "pub(crate) fn check"
+    }
+   ]
+  },
+  {
+   "id": "regex-literals",
+   "kind": "behavior",
+   "question": "Where are literal prefixes, suffixes and inner literals extracted from a regex so a fast prefilter can be used?",
+   "labels": [
+    {
+     "path": "crates/regex/src/literal.rs",
+     "evidence": "struct Extractor"
+    }
+   ]
+  },
+  {
+   "id": "regex-config",
+   "kind": "behavior",
+   "question": "Which file holds the configuration of the regex matcher builder such as case insensitivity, Unicode and line terminator, and compiles it into a regex?",
+   "labels": [
+    {
+     "path": "crates/regex/src/config.rs",
+     "evidence": "pub(crate) struct Config"
+    }
+   ]
+  },
+  {
+   "id": "regex-errors",
+   "kind": "behavior",
+   "question": "Where are regex failures wrapped in an error type with a hint about escaping curly braces?",
+   "labels": [
+    {
+     "path": "crates/regex/src/error.rs",
+     "evidence": "pub enum ErrorKind"
+    }
+   ]
+  },
+  {
+   "id": "strip-terminator",
+   "kind": "behavior",
+   "question": "Which function removes the line terminator from character classes in a parsed regex, and returns an error when a literal terminator cannot be removed?",
+   "labels": [
+    {
+     "path": "crates/regex/src/strip.rs",
+     "evidence": "fn strip_from_match_ascii"
+    }
+   ]
+  },
+  {
+   "id": "non-matching-bytes",
+   "kind": "behavior",
+   "question": "Where is the set of byte values that can never occur in any match of a regex computed?",
+   "labels": [
+    {
+     "path": "crates/regex/src/non_matching.rs",
+     "evidence": "fn non_matching_bytes"
+    }
+   ]
+  },
+  {
+   "id": "regex-matcher",
+   "kind": "symbol_lookup",
+   "question": "Where is the Matcher implementation backed by the Rust regex engine, including its builder with a multi_line option?",
+   "labels": [
+    {
+     "path": "crates/regex/src/matcher.rs",
+     "evidence": "pub struct RegexMatcherBuilder"
+    }
+   ]
+  },
+  {
+   "id": "line-buffer",
+   "kind": "behavior",
+   "question": "Which file implements the incremental buffer that reads a stream in chunks, keeps whole lines, and stops or quits when a NUL byte reveals binary data?",
+   "labels": [
+    {
+     "path": "crates/searcher/src/line_buffer.rs",
+     "evidence": "pub(crate) struct LineBuffer"
+    }
+   ]
+  },
+  {
+   "id": "line-iter",
+   "kind": "behavior",
+   "question": "Where are the helpers for iterating over lines in a byte slice and counting line terminators?",
+   "labels": [
+    {
+     "path": "crates/searcher/src/lines.rs",
+     "evidence": "pub struct LineIter"
+    }
+   ]
+  },
+  {
+   "id": "mmap",
+   "kind": "behavior",
+   "question": "Which file decides whether a file may be searched through a memory map and contains the unsafe call that creates it?",
+   "labels": [
+    {
+     "path": "crates/searcher/src/searcher/mmap.rs",
+     "evidence": "pub struct MmapChoice"
+    }
+   ]
+  },
+  {
+   "id": "sink",
+   "kind": "symbol_lookup",
+   "question": "Where is the trait that receives each match and context line found by the searcher, together with the match and context payload types?",
+   "labels": [
+    {
+     "path": "crates/searcher/src/sink.rs",
+     "evidence": "pub trait Sink"
+    }
+   ]
+  },
+  {
+   "id": "searcher-core",
+   "kind": "behavior",
+   "question": "Which file contains the core state machine of the searcher that walks the buffer, tracks before and after context and invokes the sink?",
+   "labels": [
+    {
+     "path": "crates/searcher/src/searcher/core.rs",
+     "evidence": "enum FastMatchResult"
+    }
+   ]
+  },
+  {
+   "id": "searcher-glue",
+   "kind": "behavior",
+   "question": "Where are the three strategies for driving a search, over an incrementally read stream, over a whole in-memory slice line by line, and over a slice for multi-line patterns?",
+   "labels": [
+    {
+     "path": "crates/searcher/src/searcher/glue.rs",
+     "evidence": "struct MultiLine"
+    }
+   ]
+  },
+  {
+   "id": "searcher-builder",
+   "kind": "behavior",
+   "question": "Which file defines the searcher builder with options for line terminator, binary detection, encoding and passthru?",
+   "labels": [
+    {
+     "path": "crates/searcher/src/searcher/mod.rs",
+     "evidence": "pub struct SearcherBuilder"
+    }
+   ]
+  },
+  {
+   "id": "searcher-testutil",
+   "kind": "behavior",
+   "question": "Where is the test harness of the searcher crate that runs the same expectation under many configurations and compares the sink output?",
+   "labels": [
+    {
+     "path": "crates/searcher/src/testutil.rs",
+     "evidence": "struct TesterConfig"
+    }
+   ]
+  },
+  {
+   "id": "rg-examples",
+   "kind": "behavior",
+   "question": "Which example program shows the grep facade crate searching a directory tree recursively and printing matches?",
+   "labels": [
+    {
+     "path": "crates/grep/examples/simplegrep.rs",
+     "evidence": "fn main"
+    }
+   ]
+  },
+  {
+   "id": "grep-facade",
+   "kind": "behavior",
+   "question": "Where does the facade crate re-export the matcher, printer, regex, searcher and ignore crates under one name?",
+   "labels": [
+    {
+     "path": "crates/grep/src/lib.rs",
+     "evidence": "pub extern crate"
+    }
+   ]
+  },
+  {
+   "id": "files-mode",
+   "kind": "behavior",
+   "question": "In the binary's entry point, which file contains the function that lists the files that would be searched when the user asks for the files only, without searching?",
+   "labels": [
+    {
+     "path": "crates/core/main.rs",
+     "evidence": "fn files("
+    }
+   ]
+  },
+  {
+   "id": "search-parallel",
+   "kind": "behavior",
+   "question": "Which file contains the entry point of the binary and the version of the search loop that runs on many threads and prints each file's output atomically?",
+   "labels": [
+    {
+     "path": "crates/core/main.rs",
+     "evidence": "fn search_parallel"
+    }
+   ]
+  },
+  {
+   "id": "mh-maxfilesize",
+   "kind": "multi_hop",
+   "question": "A user passes --max-filesize 10M. Which file defines the flag and calls the size parser, and which file contains the parser that understands the M suffix?",
+   "labels": [
+    {
+     "path": "crates/core/flags/defs.rs",
+     "evidence": "struct MaxFilesize"
+    },
+    {
+     "path": "crates/cli/src/human.rs",
+     "evidence": "pub fn parse_human_readable_size"
+    }
+   ]
+  },
+  {
+   "id": "mh-config-file",
+   "kind": "multi_hop",
+   "question": "The environment variable RIPGREP_CONFIG_PATH points at a file of default flags. Which file reads that file into arguments, and which file merges them with the real command line before parsing?",
+   "labels": [
+    {
+     "path": "crates/core/flags/config.rs",
+     "evidence": "RIPGREP_CONFIG_PATH"
+    },
+    {
+     "path": "crates/core/flags/parse.rs",
+     "evidence": "pub(crate) fn parse_low_raw"
+    }
+   ]
+  },
+  {
+   "id": "mh-lowargs-hiargs",
+   "kind": "multi_hop",
+   "question": "Flags are first parsed into plain values and then converted into a richer configuration used to build the matcher, printer and walker. Which file holds the first representation and which converts it?",
+   "labels": [
+    {
+     "path": "crates/core/flags/lowargs.rs",
+     "evidence": "pub(crate) struct LowArgs"
+    },
+    {
+     "path": "crates/core/flags/hiargs.rs",
+     "evidence": "pub(crate) struct HiArgs"
+    }
+   ]
+  },
+  {
+   "id": "mh-json-output",
+   "kind": "multi_hop",
+   "question": "For --json output, which file implements the JSON printer and which file in the binary's search module holds the printer choice that wraps it?",
+   "labels": [
+    {
+     "path": "crates/printer/src/json.rs",
+     "evidence": "pub struct JSONBuilder"
+    },
+    {
+     "path": "crates/core/search.rs",
+     "evidence": "JSON(grep::printer::JSON<W>)"
+    }
+   ]
+  },
+  {
+   "id": "mh-decompress-search",
+   "kind": "multi_hop",
+   "question": "When searching compressed files with the decompression flag, which file defines the decompressing reader and which file in the binary decides to search through it instead of the raw path?",
+   "labels": [
+    {
+     "path": "crates/cli/src/decompress.rs",
+     "evidence": "pub struct DecompressionReaderBuilder"
+    },
+    {
+     "path": "crates/core/search.rs",
+     "evidence": "decomp_builder"
+    }
+   ]
+  },
+  {
+   "id": "mh-bash-completion",
+   "kind": "multi_hop",
+   "question": "Which file generates the bash completion script and which file holds the list of flags it iterates over?",
+   "labels": [
+    {
+     "path": "crates/core/flags/complete/bash.rs",
+     "evidence": "FLAGS"
+    },
+    {
+     "path": "crates/core/flags/defs.rs",
+     "evidence": "pub(super) const FLAGS"
+    }
+   ]
+  },
+  {
+   "id": "mh-man-page",
+   "kind": "multi_hop",
+   "question": "Which file renders the man page by filling a template with the flag documentation, and which file is that template?",
+   "labels": [
+    {
+     "path": "crates/core/flags/doc/man.rs",
+     "evidence": "template.rg.1"
+    },
+    {
+     "path": "crates/core/flags/doc/template.rg.1",
+     "evidence": ".TH RG 1"
+    }
+   ]
+  },
+  {
+   "id": "mh-help-text",
+   "kind": "multi_hop",
+   "question": "For the long --help output, which file generates the text from the flag definitions and which file is the template it is poured into?",
+   "labels": [
+    {
+     "path": "crates/core/flags/doc/help.rs",
+     "evidence": "template.long.help"
+    },
+    {
+     "path": "crates/core/flags/doc/template.long.help",
+     "evidence": "USAGE"
+    }
+   ]
+  },
+  {
+   "id": "mh-version-hash",
+   "kind": "multi_hop",
+   "question": "The version output includes the git revision of the build. Which file at the repository root exports the revision as an environment variable at compile time, and which file formats the long version string?",
+   "labels": [
+    {
+     "path": "build.rs",
+     "evidence": "RIPGREP_BUILD_GIT_HASH"
+    },
+    {
+     "path": "crates/core/flags/doc/version.rs",
+     "evidence": "pub(crate) fn generate_long"
+    }
+   ]
+  },
+  {
+   "id": "mh-hyperlink-host",
+   "kind": "multi_hop",
+   "question": "Hyperlinks in the output can include the machine's hostname. Which file defines the hyperlink placeholders, and which file provides the hostname value?",
+   "labels": [
+    {
+     "path": "crates/printer/src/hyperlink.rs",
+     "evidence": "pub struct HyperlinkEnvironment"
+    },
+    {
+     "path": "crates/cli/src/hostname.rs",
+     "evidence": "pub fn hostname"
+    }
+   ]
+  },
+  {
+   "id": "mh-type-add",
+   "kind": "multi_hop",
+   "question": "The --type-add flag lets users define new file types. Which file defines the flag and which file holds the built-in types that it extends?",
+   "labels": [
+    {
+     "path": "crates/core/flags/defs.rs",
+     "evidence": "struct TypeAdd"
+    },
+    {
+     "path": "crates/ignore/src/default_types.rs",
+     "evidence": "\"rust\""
+    }
+   ]
+  },
+  {
+   "id": "mh-replacement",
+   "kind": "multi_hop",
+   "question": "For --replace with $1 style references, which file expands the references and which printer file applies the replacement to matched lines?",
+   "labels": [
+    {
+     "path": "crates/matcher/src/interpolate.rs",
+     "evidence": "pub fn interpolate"
+    },
+    {
+     "path": "crates/printer/src/util.rs",
+     "evidence": "fn replace_with_captures_in_context"
+    }
+   ]
+  },
+  {
+   "id": "mh-stats",
+   "kind": "multi_hop",
+   "question": "For the --stats output, which printer file defines the counters and which file in the binary accumulates them across files and prints them at the end?",
+   "labels": [
+    {
+     "path": "crates/printer/src/stats.rs",
+     "evidence": "pub struct Stats"
+    },
+    {
+     "path": "crates/core/main.rs",
+     "evidence": "stats"
+    }
+   ]
+  },
+  {
+   "id": "mh-glob-ignore",
+   "kind": "multi_hop",
+   "question": "The ignore crate's gitignore matching relies on compiling many patterns into one matcher. Which file in the ignore crate builds gitignore rules, and which file in the glob crate provides the set matcher it builds on?",
+   "labels": [
+    {
+     "path": "crates/ignore/src/gitignore.rs",
+     "evidence": "GlobSetBuilder"
+    },
+    {
+     "path": "crates/globset/src/lib.rs",
+     "evidence": "pub struct GlobSetBuilder"
+    }
+   ]
+  },
+  {
+   "id": "mh-multiline",
+   "kind": "multi_hop",
+   "question": "Searching with the multi-line flag requires both the searcher to run in whole-slice mode and the regex builder to allow patterns to cross lines. Which two files hold the searcher's multi_line option and the regex matcher builder's multi_line option?",
+   "labels": [
+    {
+     "path": "crates/searcher/src/searcher/mod.rs",
+     "evidence": "pub fn multi_line"
+    },
+    {
+     "path": "crates/regex/src/matcher.rs",
+     "evidence": "pub fn multi_line"
+    }
+   ]
+  },
+  {
+   "id": "mh-walk-build",
+   "kind": "multi_hop",
+   "question": "Which file turns the user's flags (threads, depth, symlink following, ignore rules) into a configured directory walker, and which file defines the walker builder it configures?",
+   "labels": [
+    {
+     "path": "crates/core/flags/hiargs.rs",
+     "evidence": "fn walk_builder"
+    },
+    {
+     "path": "crates/ignore/src/walk.rs",
+     "evidence": "pub struct WalkBuilder"
+    }
+   ]
+  },
+  {
+   "id": "mh-pcre2-choice",
+   "kind": "multi_hop",
+   "question": "When the user asks for the PCRE2 engine, which file in the binary's flag handling selects between the default and PCRE2 matchers, and which file wraps the PCRE2 library?",
+   "labels": [
+    {
+     "path": "crates/core/flags/hiargs.rs",
+     "evidence": "EngineChoice::PCRE2"
+    },
+    {
+     "path": "crates/pcre2/src/matcher.rs",
+     "evidence": "pub struct RegexMatcherBuilder"
+    }
+   ]
+  },
+  {
+   "id": "mh-binary-detect",
+   "kind": "multi_hop",
+   "question": "Which file defines the configurable binary detection behavior of the searcher and which file implements the check on each buffer read from a stream?",
+   "labels": [
+    {
+     "path": "crates/searcher/src/searcher/mod.rs",
+     "evidence": "pub struct BinaryDetection"
+    },
+    {
+     "path": "crates/searcher/src/line_buffer.rs",
+     "evidence": "BinaryDetection"
+    }
+   ]
+  },
+  {
+   "id": "mh-encoding",
+   "kind": "multi_hop",
+   "question": "For the encoding flag, which file in the binary's flag definitions declares it and which searcher file converts the input from that encoding to UTF-8 before searching?",
+   "labels": [
+    {
+     "path": "crates/core/flags/defs.rs",
+     "evidence": "struct Encoding"
+    },
+    {
+     "path": "crates/searcher/src/searcher/mod.rs",
+     "evidence": "DecodeReaderBytesBuilder"
+    }
+   ]
+  },
+  {
+   "id": "mh-sort",
+   "kind": "multi_hop",
+   "question": "Sorting results by path or by modification time: which file defines the sort mode value and which file applies the sort to the files before searching?",
+   "labels": [
+    {
+     "path": "crates/core/flags/lowargs.rs",
+     "evidence": "pub(crate) struct SortMode"
+    },
+    {
+     "path": "crates/core/flags/hiargs.rs",
+     "evidence": "SortModeKind::Path"
+    }
+   ]
+  }
+ ]
+}

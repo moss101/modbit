@@ -446,6 +446,9 @@ pub struct ToolHost {
     pub(crate) data_dir: std::path::PathBuf,
     /// The browser sessions `browser.*` reach through their hosts (M7.1).
     pub browser: Arc<dyn modbit_browser::BrowserPort>,
+    /// Native computer control (PX-069): the runtime, the attached actuator
+    /// and the host that records what it does on the log.
+    pub computer: Arc<crate::computer::ComputerHost>,
     /// The provider gateway, for the credentials in its custody (M7.7):
     /// read at each call so a call's arguments can be refused for carrying
     /// one; never stored anywhere else.
@@ -550,6 +553,8 @@ impl ToolHost {
         modbit_tools::forge::register_forge(&mut registry).map_err(|e| anyhow::anyhow!("{e}"))?;
         modbit_tools::browser::register_browser(&mut registry)
             .map_err(|e| anyhow::anyhow!("{e}"))?;
+        modbit_tools::computer::register_computer(&mut registry)
+            .map_err(|e| anyhow::anyhow!("{e}"))?;
         // M9.4: the read declarations the host publishes are shared with the
         // registered `external.call`, so the effect class it presents to the
         // kernel is always the host's current judgement.
@@ -597,6 +602,7 @@ impl ToolHost {
             hooks: Arc::new(crate::hooks::HookBus::default()),
             data_dir: data_dir.to_path_buf(),
             browser,
+            computer: Arc::new(crate::computer::ComputerHost::new(data_dir)),
             gateway,
             sandbox_gateway: Mutex::new(None),
             sandboxes: Mutex::new(HashMap::new()),
@@ -800,13 +806,27 @@ impl ToolHost {
         lease: Option<&CapabilityLease>,
     ) -> Vec<ToolSpec> {
         let kernel = CapabilityKernel::default();
+        let computer = self.computer.offered();
         self.runtime
             .registry()
             .specs()
             .into_iter()
             .filter(|s| {
+                // PX-048: a Commit and push is the person's act from the Changes
+                // app (the Core's `CommitAndPush` command asks for the approval
+                // and issues the call); the model is never offered the tool.
+                // Hiding is not authority: the call needs the approval whoever
+                // makes it.
+                if s.name == crate::changes::TOOL {
+                    return false;
+                }
                 if s.required_capabilities.iter().any(|c| c == "shell.exec") && self.execd.is_none()
                 {
+                    return false;
+                }
+                // PX-069 (fail closed): native control is offered only while
+                // a configured actuator is attached.
+                if crate::computer::is_computer_tool(&s.name) && !computer {
                     return false;
                 }
                 let Some(p) = profile else {
@@ -990,6 +1010,7 @@ impl ToolHost {
             // text, not its canonical form): selectors and targets must be
             // spelled from the same root to be compared.
             root: workspace_root.clone(),
+            deny_gui_shell: self.computer.is_child(task_id),
         };
         let search: Option<Arc<dyn modbit_tools::SearchPort>> = match (&workspace, &root) {
             (Some(ws), Some(r)) => Some(
@@ -1050,11 +1071,28 @@ impl ToolHost {
                     "CANCELLED",
                     "the call was cancelled".into(),
                 ),
-                _ => (
-                    ToolStatus::PolicyDenied,
-                    "APPROVAL_DENIED",
-                    c.policy_decision.clone().unwrap_or_default(),
-                ),
+                _ => {
+                    // REQ-PX-058: a call failed because its approval expired is
+                    // told as expired, not as denied by a person.
+                    let expired = store
+                        .lock()
+                        .await
+                        .approval_for_call(&tool_call_id)
+                        .ok()
+                        .flatten()
+                        .is_some_and(|a| {
+                            a.state == modbit_domain::approval::ApprovalState::Expired
+                        });
+                    (
+                        ToolStatus::PolicyDenied,
+                        if expired {
+                            "APPROVAL_EXPIRED"
+                        } else {
+                            "APPROVAL_DENIED"
+                        },
+                        c.policy_decision.clone().unwrap_or_default(),
+                    )
+                }
             };
             let result = modbit_tools::ToolCallResult {
                 tool_call_id,
@@ -1179,6 +1217,7 @@ impl ToolHost {
         let git_state: Option<Arc<dyn modbit_tools::GitStatePort>> = (tool_name
             .starts_with("git.merge.")
             || tool_name.starts_with("git.apply.")
+            || tool_name.starts_with("git.changes.")
             || tool_name.starts_with("git.worktree."))
         .then(|| {
             Arc::new(crate::git_state::CoreGitState {
@@ -1196,8 +1235,24 @@ impl ToolHost {
                 config: Arc::clone(&task_config),
                 verification_json: self.configurations.verification_json(task_id),
                 cancel: cancel.clone(),
+                forge: self.forge.get(),
             }) as Arc<dyn modbit_tools::GitStatePort>
         });
+        // PX-069: the computer tools reach the runtime through a port bound to
+        // this task, run, mode and policy; nothing else holds the actuator.
+        let computer_port: Option<Arc<dyn modbit_computer::ComputerPort>> =
+            crate::computer::is_computer_tool(tool_name).then(|| {
+                Arc::new(crate::computer::CorePort {
+                    host: Arc::clone(&self.computer),
+                    task_id,
+                    session_id,
+                    run_id: run_id.map(|r| r.to_string()).unwrap_or_default(),
+                    mode: mode.name().to_owned(),
+                    emergency_stopped,
+                    policy: crate::computer::policy_of(&task_config),
+                    redactor: self.redactor(),
+                }) as Arc<dyn modbit_computer::ComputerPort>
+            });
         let ctx = InvokeContext {
             task_id,
             execution_profile: execution_profile.to_owned(),
@@ -1222,6 +1277,9 @@ impl ToolHost {
                 actor: actor.clone(),
             })),
             browser: Some(Arc::clone(&self.browser)),
+            computer: computer_port,
+            approval_id: None,
+            intent_hash: None,
             sandbox: self
                 .sandboxes
                 .lock()
@@ -1412,6 +1470,12 @@ impl ToolHost {
             .runtime
             .invoke(&ctx, tool_call_id, tool_name, arguments_json)
             .await;
+        // PX-069: what the runtime recorded while the call ran (a session
+        // opened, an observation, an input, a latch) reaches the log now, so
+        // it is there when the call's own outcome is.
+        if crate::computer::is_computer_tool(tool_name) {
+            self.computer.flush(store, tenant_id).await;
+        }
         // A hook rewrote the call: what ran is the rewrite, and its change
         // record diffs against the workspace as it was when it was rewritten.
         let mut final_arguments = arguments_json.to_owned();
@@ -1813,7 +1877,14 @@ impl ToolHost {
                                 effect_class,
                                 intent_hash: result.arguments_hash.clone(),
                                 scope_json,
-                                expires_at: Some(modbit_domain::Timestamp(now.0 + APPROVAL_TTL_MS)),
+                                expires_at: Some(modbit_domain::Timestamp(
+                                    now.0
+                                        + if crate::computer::is_computer_tool(tool_name) {
+                                            crate::computer::APPROVAL_TTL_MS
+                                        } else {
+                                            crate::approval_expiry::ttl_ms()
+                                        },
+                                )),
                             },
                             actor.clone(),
                         )],
@@ -1870,7 +1941,8 @@ impl ToolHost {
                 // chain - and so does a browser input whose outcome is unknown,
                 // whatever its class (PX-121): the receipt says UNKNOWN, so no
                 // reader takes the input for one that did not happen.
-                let browser_unknown = tool_name.starts_with("browser.")
+                let browser_unknown = (tool_name.starts_with("browser.")
+                    || tool_name.starts_with("computer."))
                     && result.status == ToolStatus::UnknownOutcome;
                 if effect_class >= modbit_domain::toolcall::EffectClass::ProtectedWrite
                     || browser_unknown
@@ -2280,9 +2352,6 @@ impl ToolHost {
     }
 }
 
-/// Approvals expire a day after they are requested (docs/23: approval binds expiry).
-const APPROVAL_TTL_MS: i64 = 24 * 60 * 60 * 1000;
-
 /// One invocation as the Core sees it.
 pub struct InvokeRequest<'a> {
     /// Tenant.
@@ -2364,6 +2433,9 @@ struct KernelPort {
     mode: modbit_domain::mode::TaskMode,
     /// The run mode in force and the durable rules (PX-057).
     run: crate::run_control::RunContext,
+    /// The task is a `computer-use` child (PX-075): its shell is for non-GUI
+    /// work, and a command that drives or captures the interface is refused.
+    deny_gui_shell: bool,
 }
 
 /// The absolute resources a call's workspace paths name, in the lease's
@@ -2420,6 +2492,20 @@ impl CapabilityPort for KernelPort {
             return PolicyDecision::Deny {
                 code,
                 reason,
+                approval_required: false,
+            };
+        }
+        // PX-075: a computer-use child's shell is for non-GUI work. Driving or
+        // capturing the interface through it would go around the typed
+        // refusals, the latch and the approval class, so it is refused here,
+        // whichever way the command was reached (a direct call or a program).
+        if self.deny_gui_shell
+            && let Some(argv) = &req.command
+            && crate::computer::argv_drives_gui(argv)
+        {
+            return PolicyDecision::Deny {
+                code: "GUI_DRIVE_VIA_SHELL_REFUSED".into(),
+                reason: "the shell is for non-GUI work in this role; operate the interface with the computer.* tools, which are typed, latched and approved per call".into(),
                 approval_required: false,
             };
         }
@@ -2490,6 +2576,18 @@ impl CapabilityPort for KernelPort {
                 approval_required: false,
             },
             KernelDecision::ApprovalRequired { reason, scope_json } => {
+                // PX-070: the exact intent the tool bound (the application's
+                // identity, the window, the element, the action and its
+                // arguments in full) is on the approval the person sees.
+                let scope_json = match &req.bound_intent {
+                    Some(bound) => {
+                        let mut v: serde_json::Value = serde_json::from_str(&scope_json)
+                            .unwrap_or_else(|_| serde_json::json!({}));
+                        v["intent"] = bound.clone();
+                        v.to_string()
+                    }
+                    None => scope_json,
+                };
                 PolicyDecision::ApprovalRequired { reason, scope_json }
             }
         }
@@ -3382,6 +3480,43 @@ fn ensure_semantic<'a>(
     slot.as_ref().ok_or_else(|| "semantic index".to_owned())
 }
 
+/// How long a read waits for the event store's writer (the store opens its
+/// SQLite connection with a ten second busy timeout; a read waits no longer).
+const STORE_READ_WAIT: std::time::Duration = std::time::Duration::from_secs(10);
+
+/// Lock `m` from synchronous tool code that runs on a runtime worker, waiting
+/// up to `wait` for the holder. A multi-thread runtime lets the worker block
+/// (the holder runs on another worker); on a current-thread runtime the
+/// holder cannot run while this thread waits, so the lock is tried once.
+fn lock_bounded<T>(
+    m: &Mutex<T>,
+    wait: std::time::Duration,
+) -> Option<tokio::sync::MutexGuard<'_, T>> {
+    if let Ok(g) = m.try_lock() {
+        return Some(g);
+    }
+    if let Ok(h) = tokio::runtime::Handle::try_current() {
+        if h.runtime_flavor() != tokio::runtime::RuntimeFlavor::MultiThread {
+            return None;
+        }
+        return tokio::task::block_in_place(|| poll_lock(m, wait));
+    }
+    poll_lock(m, wait)
+}
+
+fn poll_lock<T>(m: &Mutex<T>, wait: std::time::Duration) -> Option<tokio::sync::MutexGuard<'_, T>> {
+    let deadline = std::time::Instant::now() + wait;
+    loop {
+        if let Ok(g) = m.try_lock() {
+            return Some(g);
+        }
+        if std::time::Instant::now() >= deadline {
+            return None;
+        }
+        std::thread::sleep(std::time::Duration::from_millis(2));
+    }
+}
+
 impl modbit_tools::SearchPort for IndexPort {
     fn search(
         &self,
@@ -3642,7 +3777,11 @@ impl IndexPort {
             "evidence" => {
                 let args: serde_json::Value = serde_json::from_str(&req.query)
                     .map_err(|e| ("BAD_QUERY".to_owned(), e.to_string()))?;
-                let store = self.store.try_lock().map_err(|_| {
+                // A read waits for the writer that holds the store (an append
+                // is an fsync'd SQLite transaction, slow on a loaded Windows
+                // runner) up to the SQLite busy timeout the store itself
+                // uses; only a writer that outlasts it makes the read busy.
+                let store = lock_bounded(&self.store, STORE_READ_WAIT).ok_or_else(|| {
                     (
                         "STORE_BUSY".to_owned(),
                         "the event store is busy; retry".to_owned(),
@@ -4305,5 +4444,85 @@ mod resource_target_tests {
             resolved(Some(r"C:\repo"), &[r"src\a.rs"]),
             vec![r"C:\repo/src/a.rs".to_owned()]
         );
+    }
+}
+
+#[cfg(test)]
+mod store_wait_tests {
+    use super::{Mutex, lock_bounded};
+    use modbit_event_store::{EventStore, EvidenceScope};
+    use std::sync::Arc;
+    use std::time::{Duration, Instant};
+
+    fn store() -> (tempfile::TempDir, Arc<Mutex<EventStore>>) {
+        let dir = tempfile::tempdir().unwrap();
+        let s = EventStore::open(dir.path()).unwrap();
+        (dir, Arc::new(Mutex::new(s)))
+    }
+
+    /// Hold the store (what an append in flight does) for `hold`, with the
+    /// holder already running when this returns.
+    async fn hold(store: &Arc<Mutex<EventStore>>, hold: Duration) {
+        let guard = Arc::clone(store).lock_owned().await;
+        tokio::spawn(async move {
+            tokio::time::sleep(hold).await;
+            drop(guard);
+        });
+    }
+
+    /// A read that meets a writer in flight waits for it and then answers,
+    /// instead of failing with STORE_BUSY at the first contention (the
+    /// Windows failure of `evidence.search` under load).
+    #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+    async fn a_read_waits_for_a_writer_that_finishes_within_the_wait() {
+        let (_dir, store) = store();
+        hold(&store, Duration::from_millis(700)).await;
+        let started = Instant::now();
+        let guard = lock_bounded(&store, Duration::from_secs(10))
+            .expect("the writer lets go within the wait, so the read gets the store");
+        assert!(
+            started.elapsed() >= Duration::from_millis(500),
+            "it waited for the writer: {:?}",
+            started.elapsed()
+        );
+        let tenant = modbit_domain::ids::TenantId::from_bytes([7; 16]);
+        let scope = EvidenceScope {
+            session_id: None,
+            task_id: None,
+            run_id: None,
+            step_id: None,
+        };
+        assert!(
+            guard
+                .search_evidence(&tenant, &scope, "anything", &[], 10)
+                .unwrap()
+                .is_empty()
+        );
+    }
+
+    /// A writer that outlasts the wait is the only thing that makes a read busy,
+    /// and it does so after the wait, not before.
+    #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+    async fn a_read_is_busy_only_after_the_whole_wait() {
+        let (_dir, store) = store();
+        hold(&store, Duration::from_secs(5)).await;
+        let started = Instant::now();
+        assert!(lock_bounded(&store, Duration::from_millis(400)).is_none());
+        let waited = started.elapsed();
+        assert!(
+            waited >= Duration::from_millis(400) && waited < Duration::from_secs(3),
+            "{waited:?}"
+        );
+    }
+
+    /// On a current-thread runtime the holder cannot run while the caller
+    /// blocks, so the caller does not wait for it (it would never finish).
+    #[tokio::test(flavor = "current_thread")]
+    async fn a_current_thread_runtime_does_not_block_on_the_holder() {
+        let (_dir, store) = store();
+        hold(&store, Duration::from_millis(200)).await;
+        let started = Instant::now();
+        assert!(lock_bounded(&store, Duration::from_secs(10)).is_none());
+        assert!(started.elapsed() < Duration::from_millis(150));
     }
 }

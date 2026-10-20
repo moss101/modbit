@@ -1,0 +1,10 @@
+{
+  "id": "javascript-discount-vacuous-a",
+  "class": "vacuous",
+  "flavor": "a",
+  "leg": "initial",
+  "write_set": [
+    "test/discount.test.mjs"
+  ],
+  "declared": "incorrect"
+}

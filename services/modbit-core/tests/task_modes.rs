@@ -1973,3 +1973,282 @@ async fn px_053_with_a_signed_registry_the_router_reads_the_objective_and_says_w
         }
     }
 }
+
+/// QUAL-PX-056: a command that names a session other than the task's is refused `WRONG_SESSION`, even with a lease generation
+/// that happens to equal the owning session's, and nothing on the task changes; the owning session is accepted.
+#[tokio::test]
+async fn px_056_a_pin_or_mode_named_from_another_session_is_refused_and_changes_nothing() {
+    let (_repo, root) = repo(&[("a.txt", "a\n")]);
+    let model = scripted(vec![], None).await;
+    let dir = tempfile::tempdir().unwrap();
+    let core = CoreProcess::spawn(
+        dir.path(),
+        &env_for(&model.base, &[("MODBIT_OPENAI_MODELS", "gpt-a=1/2")]),
+    );
+    let mut c = core.client().await;
+    let (session_a, ga) = create_session(&mut c, 0x10).await;
+    let (session_b, gb) = create_session(&mut c, 0x20).await;
+    assert_eq!(
+        ga, gb,
+        "the generations coincide, which is what the old check could not tell apart"
+    );
+    let task = create_task(&mut c, ga, &session_a, 0x11, &root, "look", 0, "", None)
+        .await
+        .unwrap();
+    let from = |session: &Id, id: u8, ty: &str, payload: Vec<u8>| {
+        let mut e = envelope(id16(id), ty, payload, gb);
+        e.session_id = Some(session.clone());
+        e
+    };
+    let pin = ExecutionPreference {
+        pin_endpoint: "openai".into(),
+        pin_model: "gpt-a".into(),
+        ..Default::default()
+    };
+    let pref_payload = SetExecutionPreference {
+        task_id: Some(task.clone()),
+        preference: Some(pin),
+    }
+    .encode_to_vec();
+    let refused = c
+        .command(from(
+            &session_b,
+            0x30,
+            "SetExecutionPreference",
+            pref_payload.clone(),
+        ))
+        .await;
+    assert!(
+        matches!(&refused, Err(ClientError::Rejected { code, .. }) if code == "WRONG_SESSION"),
+        "{refused:?}"
+    );
+    let mode_payload = SetTaskMode {
+        task_id: Some(task.clone()),
+        mode: TaskMode::Plan as i32,
+        reason: "test".into(),
+    }
+    .encode_to_vec();
+    let refused = c
+        .command(from(&session_b, 0x31, "SetTaskMode", mode_payload))
+        .await;
+    assert!(
+        matches!(&refused, Err(ClientError::Rejected { code, .. }) if code == "WRONG_SESSION"),
+        "{refused:?}"
+    );
+    let p = posture(&mut c, 0x32, &task).await;
+    assert_eq!(
+        p.preference.unwrap().pin_model,
+        "",
+        "the pin was not recorded"
+    );
+    assert_eq!(p.mode, TaskMode::Agent as i32, "the mode did not change");
+    // The owning session is accepted.
+    let ok = c
+        .command(from(
+            &session_a,
+            0x33,
+            "SetExecutionPreference",
+            pref_payload,
+        ))
+        .await;
+    assert!(ok.is_ok(), "{ok:?}");
+    let p = posture(&mut c, 0x34, &task).await;
+    assert_eq!(p.preference.unwrap().pin_model, "gpt-a");
+}
+
+/// QUAL-PX-056 (PX-050/057/061/062/116 families): every task-scoped mutating command is fenced by the lease of the task's own
+/// session, and the lease check refuses a command that names another session `WRONG_SESSION` even when the two sessions hold
+/// the same lease generation. Two sessions, one generation, over the real socket: each foreign call is refused and the log of
+/// the task's session does not move; the owning session's call is accepted.
+#[tokio::test]
+async fn px_056_every_task_scoped_command_refuses_a_caller_from_another_session() {
+    use modbit_protocol::v1 as w;
+    let (_repo, root) = repo(&[("a.txt", "a\n")]);
+    let model = scripted(vec![], None).await;
+    let dir = tempfile::tempdir().unwrap();
+    let core = CoreProcess::spawn(
+        dir.path(),
+        &env_for(&model.base, &[("MODBIT_OPENAI_MODELS", "gpt-a=1/2")]),
+    );
+    let mut c = core.client().await;
+    let (session_a, ga) = create_session(&mut c, 0x10).await;
+    let (session_b, gb) = create_session(&mut c, 0x20).await;
+    assert_eq!(ga, gb, "one lease generation in two sessions");
+    let task = create_task(&mut c, ga, &session_a, 0x11, &root, "look", 0, "", None)
+        .await
+        .unwrap();
+    let t = Some(task.clone());
+    let calls: Vec<(&str, Vec<u8>)> = vec![
+        (
+            "QueueInput",
+            w::QueueInput {
+                task_id: t.clone(),
+                input_id: "i1".into(),
+                mode: "FOLLOW_UP".into(),
+                text: "x".into(),
+            }
+            .encode_to_vec(),
+        ),
+        (
+            "EditQueuedInput",
+            w::EditQueuedInput {
+                task_id: t.clone(),
+                input_id: "i1".into(),
+                text: "y".into(),
+                ..Default::default()
+            }
+            .encode_to_vec(),
+        ),
+        (
+            "RemoveQueuedInput",
+            w::RemoveQueuedInput {
+                task_id: t.clone(),
+                input_id: "i1".into(),
+                reason: "r".into(),
+            }
+            .encode_to_vec(),
+        ),
+        (
+            "ReorderQueuedInput",
+            w::ReorderQueuedInput {
+                task_id: t.clone(),
+                input_id: "i1".into(),
+                before_input_id: String::new(),
+            }
+            .encode_to_vec(),
+        ),
+        (
+            "SendQueuedInputNow",
+            w::SendQueuedInputNow {
+                task_id: t.clone(),
+                input_id: "i1".into(),
+                ..Default::default()
+            }
+            .encode_to_vec(),
+        ),
+        (
+            "InterruptTask",
+            w::InterruptTask {
+                task_id: t.clone(),
+                ..Default::default()
+            }
+            .encode_to_vec(),
+        ),
+        (
+            "SetSendBehavior",
+            w::SetSendBehavior {
+                task_id: t.clone(),
+                while_running: "QUEUE".into(),
+                send_now: "INTERRUPT".into(),
+            }
+            .encode_to_vec(),
+        ),
+        (
+            "SetRunMode",
+            w::SetRunMode {
+                task_id: t.clone(),
+                mode: "ASK".into(),
+                acknowledge_risk: false,
+            }
+            .encode_to_vec(),
+        ),
+        (
+            "AddAllowRule",
+            w::AddAllowRule {
+                task_id: t.clone(),
+                pattern: vec!["git".into(), "status".into()],
+                scope: "TASK".into(),
+                ..Default::default()
+            }
+            .encode_to_vec(),
+        ),
+        (
+            "SetTaskBudgets",
+            w::SetTaskBudgets {
+                task_id: t.clone(),
+                max_wall_ms: 60_000,
+                ..Default::default()
+            }
+            .encode_to_vec(),
+        ),
+        (
+            "StartTask",
+            w::StartTask {
+                task_id: t.clone(),
+                ..Default::default()
+            }
+            .encode_to_vec(),
+        ),
+        (
+            "CancelTask",
+            w::CancelTask { task_id: t.clone() }.encode_to_vec(),
+        ),
+        (
+            "RestoreCheckpoint",
+            w::RestoreCheckpoint {
+                task_id: t.clone(),
+                ..Default::default()
+            }
+            .encode_to_vec(),
+        ),
+        (
+            "ApplyWorktree",
+            w::ApplyWorktree {
+                task_id: t.clone(),
+                ..Default::default()
+            }
+            .encode_to_vec(),
+        ),
+        (
+            "RespondToQuestion",
+            w::RespondToQuestion {
+                task_id: t.clone(),
+                question_id: "q".into(),
+                ..Default::default()
+            }
+            .encode_to_vec(),
+        ),
+    ];
+    let before = log_end(&mut c, &session_a, 0x60).await;
+    for (i, (ty, payload)) in calls.iter().enumerate() {
+        let mut e = envelope(
+            id16(0x70 + u8::try_from(i).unwrap()),
+            ty,
+            payload.clone(),
+            gb,
+        );
+        e.session_id = Some(session_b.clone());
+        let r = c.command(e).await;
+        assert!(
+            matches!(&r, Err(ClientError::Rejected { code, .. }) if code == "WRONG_SESSION"),
+            "{ty} from another session: {r:?}"
+        );
+    }
+    assert_eq!(
+        log_end(&mut c, &session_a, 0x61).await,
+        before,
+        "no foreign call wrote to the log"
+    );
+    // The owning session's own call is accepted and does write.
+    let mut e = envelope(id16(0x90), "QueueInput", calls[0].1.clone(), ga);
+    e.session_id = Some(session_a.clone());
+    let ok = c.command(e).await;
+    assert!(ok.is_ok(), "{ok:?}");
+    assert!(log_end(&mut c, &session_a, 0x62).await > before);
+}
+
+/// The last log offset of a session.
+async fn log_end(c: &mut Client, session: &Id, id: u8) -> u64 {
+    let snap: SessionSnapshot = send(
+        c,
+        id,
+        "GetSessionSnapshot",
+        GetSessionSnapshot {
+            session_id: Some(session.clone()),
+        },
+        None,
+    )
+    .await
+    .unwrap();
+    snap.last_offset
+}

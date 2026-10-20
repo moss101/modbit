@@ -8,6 +8,7 @@ resolver = "3"
 exclude = ["tests/fixtures/repos/rust-cli"]
 members = [
     "crates/domain",
+    "crates/automation",
     "crates/protocol",
     "crates/core-runtime",
     "crates/event-store",
@@ -37,6 +38,7 @@ members = [
     "crates/diagnostics",
     "crates/terminal",
     "crates/browser",
+    "crates/computer",
     "crates/sandbox",
     "crates/verification",
     "crates/secrets",
@@ -45,6 +47,8 @@ members = [
     "apps/cloud-worker",
     "apps/sandbox-gateway",
     "apps/cli",
+    "services/modbit-actuator-fixture",
+    "services/modbit-actuator-macos",
     "services/modbit-execd",
     "services/modbit-guest",
     "services/modbit-core",
@@ -65,6 +69,7 @@ publish = false
 similar = "2.7"
 # intra-workspace
 modbit-domain = { path = "crates/domain" }
+modbit-automation = { path = "crates/automation" }
 modbit-cloud-api = { path = "apps/cloud-api" }
 modbit-protocol = { path = "crates/protocol" }
 modbit-core-runtime = { path = "crates/core-runtime" }
@@ -95,6 +100,7 @@ modbit-git = { path = "crates/git" }
 modbit-diagnostics = { path = "crates/diagnostics" }
 modbit-terminal = { path = "crates/terminal" }
 modbit-browser = { path = "crates/browser" }
+modbit-computer = { path = "crates/computer" }
 modbit-sandbox = { path = "crates/sandbox" }
 modbit-verification = { path = "crates/verification" }
 modbit-secrets = { path = "crates/secrets" }

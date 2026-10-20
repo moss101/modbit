@@ -142,6 +142,22 @@ test("FIX-21: Needs Attention is the Core's attention view; the card's own next 
   assert.deepEqual(some.completed.map((c) => c.taskId), ["d"], "a finished task is never in Needs Attention");
 });
 
+test("a pending approval or question puts the card in Needs Attention at once, before the Core's attention view answers (no column move under the pointer)", () => {
+  let m = emptyModel();
+  m = applyEvent(m, ev(1, "TaskCreated", { goal_text: "asks" }), "a");
+  m = applyEvent(m, ev(2, "TaskStarted"), "a");
+  m = applyEvent(m, ev(3, "ApprovalRequested", { tool_name: "browser.act", effect_class: "EXTERNAL_SIDE_EFFECT", intent_hash: "h" }), "a");
+  m = applyEvent(m, ev(4, "TaskWaiting", { reason: "APPROVAL" }), "a");
+  // The Core's attention view has answered, and has not listed the approval yet: the card does not move twice.
+  assert.deepEqual(columns(m, []).needsAttention.map((c) => c.taskId), ["a"]);
+  assert.deepEqual(columns(m).needsAttention.map((c) => c.taskId), ["a"]);
+  // Decided: the approval no longer holds the card there.
+  m = applyEvent(m, ev(5, "ApprovalResolved", {}), "a");
+  m = applyEvent(m, ev(6, "TaskResumed"), "a");
+  assert.equal(columns(m, []).needsAttention.length, 0);
+  assert.deepEqual(columns(m, []).running.map((c) => c.taskId), ["a"]);
+});
+
 /** n events over `cards` cards: creations first, then a mix that exercises every kind of write (a card, the agent map, links, a growing record list). */
 function replay(n: number, cards: number, agentIds = Infinity): { event: Event; taskId: string }[] {
   const out: { event: Event; taskId: string }[] = [];

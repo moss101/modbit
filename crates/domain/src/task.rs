@@ -59,6 +59,11 @@ pub enum TaskOrigin {
     /// docs/38 "CounterfactualReplay"): the request's snapshot in a scratch
     /// repository, an alternative validated plan, the replay-only ceiling.
     Replay,
+    /// Created by an automation trigger (PX-083, docs/68): an unattended run
+    /// for a stable principal under a ceiling. Only the Core's own
+    /// automation host creates one; its provenance (definition, version,
+    /// event id) is the `TaskTriggeredByAutomation` event beside creation.
+    Automation,
 }
 
 /// Typed input dispatch mode (MOD-INPUT-001, docs/14): concurrency semantics
@@ -534,6 +539,39 @@ pub enum TaskEvent {
         #[serde(default)]
         accepted_plan_version: u32,
     },
+    /// `ModeSwitchProposed` (PX-055, docs/65 AFW-D06): the agent asked the
+    /// person to move the task to another mode. A proposal is data: it changes
+    /// no mode and grants nothing; only the person's acceptance does, through
+    /// `TaskModeSet`. It expires to skipped, never to accepted. No state change.
+    ModeSwitchProposed {
+        /// The proposal's id (`mp-` and the proposing call's id).
+        proposal_id: String,
+        /// The tool call that proposed it.
+        call_id: String,
+        /// The mode the task was in when it was proposed.
+        from: crate::mode::TaskMode,
+        /// The mode proposed.
+        to: crate::mode::TaskMode,
+        /// The agent's words (log text; untrusted, never an instruction).
+        #[serde(default)]
+        reason: String,
+        /// When it expires unanswered (milliseconds since the epoch).
+        expires_at_ms: i64,
+    },
+    /// `ModeSwitchDecided` (PX-055): the proposal ended. `ACCEPTED` is
+    /// recorded with the `TaskModeSet` that applied it, in one transaction;
+    /// `DECLINED` and `SKIPPED` leave the mode as it was. No state change.
+    ModeSwitchDecided {
+        /// The proposal.
+        proposal_id: String,
+        /// `ACCEPTED` | `DECLINED` | `SKIPPED`.
+        outcome: String,
+        /// `ACCEPTED_BY_USER` | `DECLINED_BY_USER` | `UNANSWERED_15S` |
+        /// `CORE_RESTARTED` | `TASK_ENDED` | `MODE_CHANGED`.
+        reason_code: String,
+        /// Who decided: `user:<id>` or `core`.
+        resolver: String,
+    },
     /// `TaskPostureApplied` (PX-051): the run's round boundary adopted a mode;
     /// from here the Capability Kernel enforces that mode's posture. A call in
     /// flight keeps the posture it was decided under. No state change.
@@ -758,6 +796,37 @@ pub enum TaskEvent {
         /// sha256 of the attached text (the `ContextDocumentAttached` document id).
         document_id: String,
     },
+    /// `TaskTriggeredByAutomation` (PX-083, docs/68 AUT-C01): the task is the
+    /// run of an automation firing. Names the definition, its version, the
+    /// event that fired it and the principal whose ceiling it runs under. No
+    /// state change.
+    TaskTriggeredByAutomation {
+        /// The definition.
+        automation_id: String,
+        /// Its version when it fired.
+        version: u32,
+        /// The trigger that fired.
+        trigger_id: String,
+        /// `schedule`, `manual`, `event` or `webhook`.
+        trigger_kind: String,
+        /// The delivery id or schedule slot id.
+        event_id: String,
+        /// `sha256(definition | version | event id)`.
+        dispatch_key: String,
+        /// `user:<id>` or `service:<id>`.
+        principal: String,
+        /// The definition's hash the enable approval named.
+        definition_hash: String,
+        /// A dry-run: read-only, every protected effect denied.
+        test: bool,
+        /// The hosts the enable approval lists (`network.egress` narrowed to
+        /// them). A cloud run's sandbox is given egress to these when its
+        /// lease carries `network.egress`, and the organisation's allow-list
+        /// still caps them at the gateway (PX-085, AUT-D07). Empty when the
+        /// approval lists none.
+        #[serde(default, skip_serializing_if = "Vec::is_empty")]
+        approved_hosts: Vec<String>,
+    },
     /// `BrowserSessionOpened` (M7.1, docs/22): the task has a browser
     /// session — one live Chromium session a host holds for it, in its own
     /// partition, with a control lease starting with the agent. No state change.
@@ -953,6 +1022,191 @@ pub enum TaskEvent {
         tool_call_id: String,
         /// The tool call whose outcome had been unknown.
         was_tool_call_id: String,
+    },
+    /// `ComputerSessionStarted` (PX-069, PX-070): a native-control session
+    /// opened for the task after a person approved its observation grant
+    /// (docs/66 CUC-C02). The application is named by the identity the
+    /// operating system vouches for, never by a window title. No state change.
+    ComputerSessionStarted {
+        /// The control session.
+        control_id: String,
+        /// The `computer.start` call that opened it.
+        tool_call_id: String,
+        /// The approval that bound the grant.
+        approval_id: String,
+        /// The intent hash the approval bound (application identity, window, scope, expiry bounds).
+        intent_hash: String,
+        /// Bundle identifier of the application.
+        bundle_id: String,
+        /// Display name (an untrusted label).
+        application: String,
+        /// Executable path.
+        executable_path: String,
+        /// Code-signing identity.
+        signing_identity: String,
+        /// Process id.
+        pid: u32,
+        /// `APP` | `SCREEN`.
+        scope: String,
+        /// The run (the turn the grant ends with).
+        run_id: String,
+        /// The task mode the grant was given in; a switch ends it.
+        mode: String,
+        /// When the grant ends (ms since the epoch).
+        grant_expires_ms: i64,
+        /// Observation calls the grant allows.
+        grant_call_cap: u32,
+        /// The actuator's lease generation.
+        lease_generation: u64,
+        /// True when this session opened over an unknown-outcome latch and
+        /// its first observation will reconcile it.
+        #[serde(default)]
+        reconciling: bool,
+    },
+    /// `ComputerObserved` (PX-069, PX-076): an observation of the target.
+    /// Counts and artifact references only, never contents (CUC-F03). No
+    /// state change.
+    ComputerObserved {
+        /// The control session.
+        control_id: String,
+        /// The observing call.
+        tool_call_id: String,
+        /// `apps` | `resolve` | `state` | `screenshot` | `wait`.
+        kind: String,
+        /// The snapshot id of the tree read, when one was.
+        #[serde(default)]
+        snapshot_id: String,
+        /// Elements in the tree.
+        #[serde(default)]
+        elements: u32,
+        /// Secure elements whose values were withheld.
+        #[serde(default)]
+        secure_withheld: u32,
+        /// The stored frame (object reference), when one was kept.
+        #[serde(default)]
+        artifact_ref: String,
+        /// The frame's content digest (after masking).
+        #[serde(default)]
+        artifact_digest: String,
+        /// `lossless` or a ladder rung.
+        #[serde(default)]
+        codec: String,
+        /// `flat` | `photographic`.
+        #[serde(default)]
+        content: String,
+        /// The identical frame was not encoded again.
+        #[serde(default)]
+        reused: bool,
+        /// Secure regions the actuator masked.
+        #[serde(default)]
+        masked_by_actuator: u32,
+        /// Secure regions the Core had to mask.
+        #[serde(default)]
+        masked_by_core: u32,
+    },
+    /// `ComputerActionPerformed` (PX-069, PX-070): one approved input and
+    /// how it ended. The kind, the rung and the outcome; never the text
+    /// typed, never a pixel (CUC-F03). No state change.
+    ComputerActionPerformed {
+        /// The control session.
+        control_id: String,
+        /// The call.
+        tool_call_id: String,
+        /// The approval that bound it.
+        approval_id: String,
+        /// The intent hash it was approved under.
+        intent_hash: String,
+        /// `press` | `set_value` | `click` | `move` | `drag` | `type` | `key` | `scroll`.
+        kind: String,
+        /// `ax` | `coordinate` | `raw`.
+        modality: String,
+        /// Why that rung.
+        #[serde(default)]
+        modality_reason: String,
+        /// `SUCCEEDED` | `FAILED` | `UNKNOWN`.
+        outcome: String,
+        /// The refusal code, when it did not succeed.
+        #[serde(default)]
+        code: String,
+        /// Wall time in the actuator call.
+        duration_ms: u64,
+        /// Whether the expected effect was observed afterwards (`None`: nothing to check).
+        #[serde(default)]
+        verified: Option<bool>,
+    },
+    /// `ComputerLatched` (PX-069, CUC-D03): an input may have happened and
+    /// nothing says whether it did; further input is refused until it is
+    /// reconciled. No state change.
+    ComputerLatched {
+        /// The control session.
+        control_id: String,
+        /// The call whose outcome is unknown.
+        tool_call_id: String,
+        /// The tool.
+        tool: String,
+        /// The action kind.
+        action: String,
+        /// What was observed (`ACTUATOR_LOST`, `TIMEOUT`, ...).
+        reason: String,
+    },
+    /// `ComputerLatchResolved` (PX-069): the latch ended, by a fresh
+    /// observation in a new session or by the person. No state change.
+    ComputerLatchResolved {
+        /// The session that observed (empty when the person resolved it).
+        control_id: String,
+        /// The call whose outcome had been unknown.
+        was_tool_call_id: String,
+        /// `fresh_observation` | `person`.
+        by: String,
+    },
+    /// `ComputerSessionClosed` (PX-069, PX-076, CUC-F03): a control session
+    /// ended. The audit of a session: counts by kind, the screenshot count,
+    /// the duration, the outcome, the application and the approvals - never
+    /// contents. No state change.
+    ComputerSessionClosed {
+        /// The control session.
+        control_id: String,
+        /// `RELEASED` | `RUN_ENDED` | `USER_ABORTED` | `EMERGENCY_STOP` |
+        /// `WATCHDOG` | `GRANT_EXPIRED` | `ACTUATOR_LOST` | `WINDOW_GONE` |
+        /// `CORE_RESTART` | `MODE_CHANGED` | `LATCHED`.
+        reason: String,
+        /// Bundle identifier of the application.
+        bundle_id: String,
+        /// `APP` | `SCREEN`.
+        scope: String,
+        /// How long it was open.
+        duration_ms: u64,
+        /// Inputs by kind.
+        actions_by_kind: std::collections::BTreeMap<String, u32>,
+        /// Screenshots taken.
+        screenshots: u32,
+        /// Observations (state reads, waits, screenshots).
+        observations: u32,
+        /// `OK` | `LATCHED` | `STOPPED`.
+        outcome: String,
+        /// The approvals that bound its inputs.
+        approval_ids: Vec<String>,
+    },
+    /// `ComputerArtifactExpired` (PX-076, CUC-F01): a screenshot the task's
+    /// retention policy no longer keeps was removed from the object store.
+    /// The record of the observation stays; the pixels are gone. No state
+    /// change.
+    ComputerArtifactExpired {
+        /// The stored frame (object reference).
+        artifact_ref: String,
+        /// The retention that applied, in seconds.
+        retention_secs: u64,
+        /// When it was taken (ms since the epoch).
+        taken_at_ms: i64,
+    },
+    /// `ComputerUserAborted` (PX-069, CUC-D05): the person stopped native
+    /// control. Sticky for the rest of the run: no input, start or release
+    /// is accepted. No state change.
+    ComputerUserAborted {
+        /// The run the stop applies to.
+        run_id: String,
+        /// Why (`on-screen Stop`, `emergency stop`).
+        reason: String,
     },
     /// `BrowserCredentialFilled` (M7.8, docs/22 "Credentials"): a credential
     /// the person bound to an origin was filled by handle into a field of a
@@ -1438,6 +1692,36 @@ pub enum TaskEvent {
         max_children: u32,
         /// No `agent.spawn` for this task.
         forbid_spawn: bool,
+        /// The budget-policy rule that allowed the change (REQ-PX-060):
+        /// `not-a-raise`, `within-ceiling` or `approved`.
+        #[serde(default, skip_serializing_if = "String::is_empty")]
+        rule: String,
+        /// The approval a raise was applied under, when one was needed.
+        #[serde(default, skip_serializing_if = "Option::is_none")]
+        approval_id: Option<String>,
+    },
+    /// `TaskBudgetRaiseDecided` (REQ-PX-060): the budget policy refused a
+    /// raise, or asked for a person's exact-intent approval before it applies.
+    /// The caps do not change. No state change.
+    TaskBudgetRaiseDecided {
+        /// `REFUSED` or `APPROVAL_REQUESTED`.
+        decision: String,
+        /// Typed code (`BUDGET_CEILING_EXCEEDED`, `BUDGET_RAISE_NEEDS_APPROVAL`, ...).
+        code: String,
+        /// Why, in words.
+        reason: String,
+        /// The approval opened for it, if any.
+        #[serde(default)]
+        approval_id: Option<String>,
+        /// The intent hash the approval binds, if any.
+        #[serde(default)]
+        intent_hash: Option<String>,
+        /// The cost cap asked for (0 = none).
+        requested_cost_minor: u64,
+        /// The wall-clock cap asked for, ms (0 = none).
+        requested_wall_ms: u64,
+        /// The live-children limit asked for (effective; 0 = none).
+        requested_children: u32,
     },
     /// `SubagentAdmissionRefused`: an admission step failed and everything
     /// taken before it was returned; nothing started (REQ-EV-0267). No
@@ -2842,6 +3126,8 @@ impl TaskEvent {
             Self::UserQuestionAnswered { .. } => "UserQuestionAnswered",
             Self::AttachmentIngested { .. } => "AttachmentIngested",
             Self::TaskModeSet { .. } => "TaskModeSet",
+            Self::ModeSwitchProposed { .. } => "ModeSwitchProposed",
+            Self::ModeSwitchDecided { .. } => "ModeSwitchDecided",
             Self::TaskPostureApplied { .. } => "TaskPostureApplied",
             Self::ExecutionPreferenceSet { .. } => "ExecutionPreferenceSet",
             Self::ExecutionPreferenceApplied { .. } => "ExecutionPreferenceApplied",
@@ -2855,6 +3141,7 @@ impl TaskEvent {
             Self::ForgePullRequestUpdated { .. } => "ForgePullRequestUpdated",
             Self::ForgeCommentPosted { .. } => "ForgeCommentPosted",
             Self::TaskCreatedFromIssue { .. } => "TaskCreatedFromIssue",
+            Self::TaskTriggeredByAutomation { .. } => "TaskTriggeredByAutomation",
             Self::BrowserSessionOpened { .. } => "BrowserSessionOpened",
             Self::BrowserHostAttached { .. } => "BrowserHostAttached",
             Self::BrowserNavigated { .. } => "BrowserNavigated",
@@ -2866,6 +3153,14 @@ impl TaskEvent {
             Self::BrowserPageChanged { .. } => "BrowserPageChanged",
             Self::BrowserOutcomeUnknown { .. } => "BrowserOutcomeUnknown",
             Self::BrowserOutcomeReconciled { .. } => "BrowserOutcomeReconciled",
+            Self::ComputerSessionStarted { .. } => "ComputerSessionStarted",
+            Self::ComputerObserved { .. } => "ComputerObserved",
+            Self::ComputerActionPerformed { .. } => "ComputerActionPerformed",
+            Self::ComputerLatched { .. } => "ComputerLatched",
+            Self::ComputerLatchResolved { .. } => "ComputerLatchResolved",
+            Self::ComputerSessionClosed { .. } => "ComputerSessionClosed",
+            Self::ComputerUserAborted { .. } => "ComputerUserAborted",
+            Self::ComputerArtifactExpired { .. } => "ComputerArtifactExpired",
             Self::SecurityEventRecorded { .. } => "SecurityEventRecorded",
             Self::SloStageRecorded { .. } => "SloStageRecorded",
             Self::BrowserCredentialFilled { .. } => "BrowserCredentialFilled",
@@ -2896,6 +3191,7 @@ impl TaskEvent {
             Self::AgentBindingChanged { .. } => "AgentBindingChanged",
             Self::SubagentAdmitted { .. } => "SubagentAdmitted",
             Self::TaskBudgetsSet { .. } => "TaskBudgetsSet",
+            Self::TaskBudgetRaiseDecided { .. } => "TaskBudgetRaiseDecided",
             Self::SubagentAdmissionRefused { .. } => "SubagentAdmissionRefused",
             Self::SubagentCapsuleBound { .. } => "SubagentCapsuleBound",
             Self::SubagentResultRecorded { .. } => "SubagentResultRecorded",
@@ -3056,6 +3352,8 @@ impl Task {
             | TaskEvent::AttachmentIngested { .. }
             | TaskEvent::TaskModeSet { .. }
             | TaskEvent::TaskPostureApplied { .. }
+            | TaskEvent::ModeSwitchProposed { .. }
+            | TaskEvent::ModeSwitchDecided { .. }
             | TaskEvent::ExecutionPreferenceSet { .. }
             | TaskEvent::ExecutionPreferenceApplied { .. }
             | TaskEvent::PlanRecorded { .. }
@@ -3068,6 +3366,7 @@ impl Task {
             | TaskEvent::ForgePullRequestUpdated { .. }
             | TaskEvent::ForgeCommentPosted { .. }
             | TaskEvent::TaskCreatedFromIssue { .. }
+            | TaskEvent::TaskTriggeredByAutomation { .. }
             | TaskEvent::BrowserSessionOpened { .. }
             | TaskEvent::BrowserHostAttached { .. }
             | TaskEvent::BrowserNavigated { .. }
@@ -3108,6 +3407,7 @@ impl Task {
             | TaskEvent::WorkNodesChanged { .. }
             | TaskEvent::SubagentAdmitted { .. }
             | TaskEvent::TaskBudgetsSet { .. }
+            | TaskEvent::TaskBudgetRaiseDecided { .. }
             | TaskEvent::SubagentAdmissionRefused { .. }
             | TaskEvent::SubagentCapsuleBound { .. }
             | TaskEvent::SubagentResultRecorded { .. }
@@ -3174,6 +3474,17 @@ impl Task {
             TaskEvent::RunModeSet { .. }
             | TaskEvent::AllowRuleAdded { .. }
             | TaskEvent::AllowRuleRevoked { .. } => None,
+            // Native control (PX-069): a session closes, a latch is reconciled
+            // and a stop is recorded whatever state the task is in by then
+            // (a run ends, and its control sessions with it).
+            TaskEvent::ComputerSessionStarted { .. }
+            | TaskEvent::ComputerObserved { .. }
+            | TaskEvent::ComputerActionPerformed { .. }
+            | TaskEvent::ComputerLatched { .. }
+            | TaskEvent::ComputerLatchResolved { .. }
+            | TaskEvent::ComputerSessionClosed { .. }
+            | TaskEvent::ComputerUserAborted { .. }
+            | TaskEvent::ComputerArtifactExpired { .. } => None,
             // A service the task's terminal started is lost when the task
             // ends (its terminals are killed): the record says so whatever
             // state the task is in (REQ-PX-132).

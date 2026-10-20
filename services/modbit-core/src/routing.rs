@@ -494,15 +494,9 @@ pub(crate) fn feasibility_of(
         skill: skill_set.clone(),
         harness: crate::baseline::harness_version(),
     });
-    let continuation_key = initial.zip(continuation).map(|(i, c)| {
-        modbit_bench_outcome_statistics::StatKey::Escalation {
-            from_model: i.model.clone(),
-            to_model: c.model.clone(),
-            gate: "acceptance".into(),
-            repository: "workspace".into(),
-            verification: "configured".into(),
-        }
-    });
+    let continuation_key = initial
+        .zip(continuation)
+        .map(|(i, c)| crate::statistics::escalation_key(&i.model, &c.model));
     let initial_key_id = initial_key
         .as_ref()
         .map_or_else(|| "solver|none".to_owned(), |k| k.key_id());

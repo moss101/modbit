@@ -251,6 +251,9 @@ async fn fs_read_returns_media_envelopes_through_the_registry() {
         cancel: None,
         hooks: None,
         git_state: None,
+        computer: None,
+        approval_id: None,
+        intent_hash: None,
     };
     let mut registry = ToolRegistry::new();
     modbit_tools::direct::register_direct(&mut registry).unwrap();

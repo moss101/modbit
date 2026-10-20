@@ -1,0 +1,11 @@
+{
+  "id": "typescript-discount-correct-a",
+  "class": "correct",
+  "flavor": "a",
+  "leg": "initial",
+  "write_set": [
+    "src/shop.ts",
+    "test/discount.test.ts"
+  ],
+  "declared": "correct"
+}

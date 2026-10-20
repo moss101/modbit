@@ -27,7 +27,40 @@ export * from "./gen/modbit/v1/slash_inventory_pb.js";
 export * from "./gen/modbit/v1/security_runtime_pb.js";
 export * from "./gen/modbit/v1/worktrees_pb.js";
 export * from "./gen/modbit/v1/browser_runtime_pb.js";
+export * from "./gen/modbit/v1/composer_pb.js";
+export * from "./gen/modbit/v1/automations_pb.js";
+export * from "./gen/modbit/v1/projects_pb.js";
+export * from "./gen/modbit/v1/mode_proposals_pb.js";
+// PX-074: the desktop surface's computer-control messages. Named exports only: the actuator RPC in the same file
+// (Rect, Point, Scope, ...) is the Core's and the actuator's, and a client never speaks it.
+export {
+  ComputerActivityEntrySchema,
+  ComputerActivityViewSchema,
+  ComputerLatchResolvedSchema,
+  ComputerPresenceSchema,
+  ComputerPresenceViewSchema,
+  ComputerRuntimeViewSchema,
+  ComputerStopSchema,
+  ComputerStoppedSchema,
+  GetComputerPresenceSchema,
+  GetComputerRuntimeSchema,
+  ListComputerActivitySchema,
+  ResolveComputerLatchSchema,
+  type ComputerActivityEntry,
+  type ComputerActivityView,
+  type ComputerLatchResolved,
+  type ComputerPresence,
+  type ComputerPresenceView,
+  type ComputerRuntimeView,
+  type ComputerStop,
+  type ComputerStopped,
+  type GetComputerPresence,
+  type GetComputerRuntime,
+  type ListComputerActivity,
+  type ResolveComputerLatch,
+} from "./gen/modbit/v1/computer_pb.js";
 
 /** The protocol version this build speaks (mirrors `modbit_protocol::PROTOCOL_VERSION`). */
 export const PROTOCOL_VERSION = { major: 1, minor: 0 } as const;
 export * from "./gen/modbit/v1/workspace_files_pb.js";
+export * from "./gen/modbit/v1/changes_pb.js";

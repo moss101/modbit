@@ -114,6 +114,9 @@ id_type! {
     /// One streamed model output (PX-041): the aggregate of its deltas and
     /// the record that closes it.
     StreamId,
+    /// A project (PX-063): a named, archivable grouping of top-level tasks of
+    /// one workspace. The aggregate of its own events.
+    ProjectId,
 }
 
 #[cfg(test)]

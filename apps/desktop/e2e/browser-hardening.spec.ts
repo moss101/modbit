@@ -487,6 +487,10 @@ test("PX-073: a task lists and selects only the views it owns; hidden views are 
     // The person holds B: it is not reclaimable.
     await ui.evaluate((b) => window.modbit.setBrowserControl(b, "USER"), B.bsid);
     await expect.poll(async () => (await ui.evaluate((id) => window.modbit.describeBrowser(id), B.bsid))?.controller, { timeout: 15_000 }).toBe("USER");
+    // A's page keeps changing until the view is reclaimed, so the Core has a change notice in flight (and a read of the page scheduled
+    // 120 ms after it) when the reclaim comes: that read must not bring the view back, or A returns as the newest and C is reclaimed instead.
+    const wcA = (await ui.evaluate((id) => window.modbit.describeBrowser(id), A.bsid))!.webContentsId;
+    await app.evaluate(({ webContents }, id) => webContents.fromId(id)?.executeJavaScript("setInterval(() => document.body?.append(document.createElement('i')), 20)"), wcA);
     const C = await mk(3);
     await settled(C.bsid);
     const state = async (b: string) => (await ui.evaluate((id) => window.modbit.describeBrowser(id), b))!.reclaimed;
@@ -496,6 +500,12 @@ test("PX-073: a task lists and selects only the views it owns; hidden views are 
     await expect.poll(() => state(A.bsid), { timeout: 15_000, message: await dump() }).toBe(true);
     expect(await state(B.bsid), await dump()).toBe(false);
     expect(await state(C.bsid), await dump()).toBe(false);
+    // The Core's own read of A's page that was already on its way is declined (the host says so in its log); A stays reclaimed.
+    // When no read was pending there is nothing to decline: wait for the decline only as long as a read can still be in flight (a notice, then 120 ms).
+    const declined = async () => (await ui.evaluate(() => window.modbit.browserLog())).some((l) => l.kind === "background-read-declined" && l.browserSessionId === A.bsid);
+    await expect.poll(declined, { timeout: 3_000 }).toBe(true).catch(() => undefined);
+    expect(await state(A.bsid), await dump()).toBe(true);
+    expect((await ui.evaluate(() => window.modbit.browserLog())).filter((l) => l.kind === "view-revived"), await dump()).toEqual([]);
     // The reclaimed view is the owner's still, and the agent's first request of it states the reset.
     await ui.evaluate(([s, r]) => window.modbit.trustRepository(s!, r!), [sessionId, repo]);
     await ui.evaluate(([s, t]) => window.modbit.startTask(s!, t!), [sessionId, A.taskId]);

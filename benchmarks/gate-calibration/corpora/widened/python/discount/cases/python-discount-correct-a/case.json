@@ -1,0 +1,11 @@
+{
+  "id": "python-discount-correct-a",
+  "class": "correct",
+  "flavor": "a",
+  "leg": "initial",
+  "write_set": [
+    "shop.py",
+    "test_discount.py"
+  ],
+  "declared": "correct"
+}

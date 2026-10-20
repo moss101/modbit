@@ -1064,3 +1064,37 @@ The audit fix FIX-01 (pull request moss101/modbit#61, branch `wip/audit-fixes-in
 | Changed | `docs/00_MASTER_INDEX.md`, `docs/02_AUTHORITY_AND_DECISIONS.md`, `docs/decisions/README.md`, `docs/97_DOSSIER_MAINTENANCE_LOG.md` |
 | Changed | `tools/build_graph.py`, `tools/test_dossier.py` |
 | Changed | `MANIFEST.md`, `manifest.json`, `graph/PROJECT_GRAPH.md`, `graph/project-graph.json` |
+
+## DOC-PX-014 — Per-task harness refinement: Decision Record and the deferred row PX-140 (2026-10-19)
+
+Dossier only. No product code, status of a product task or release gate changed.
+
+- **Trigger:** the owner asked what Harness² (Google Research, arXiv 2610.14224, Apache-2.0) could add to Modbit, then asked for a Decision Record and a task card, then chose option A with C in chat on 2026-10-19.
+- **Basis:** the Harness² README, paper abstract and `core/recursion.py`, `proposer.py`, `selection.py`, `ledger.py`, `library.py`, `context.py` read at its main of 2026-10-14. Its reported gains are on non-repository benchmarks and weaker executors; no claim is made for Modbit until its own benchmark shows one.
+- **Decision:** `docs/decisions/DR-PX-2026-10-19-014-per-task-harness-refinement.md`, accepted. REQ-PX-140 and QUAL-PX-140 added to doc 62 as DEFERRED, POST_ZERO, no task, card or scenario (the ledger forbids them on DEFERRED rows). The activation task card and scenario stay in the record's appendix.
+- **Tooling:** one entry in the parity table of `tools/build_graph.py` (creates the change record and DOC-PX-014); `tools/test_dossier.py` pins 141 PX rows, 137 ADOPT tasks and four DEFERRED rows and asserts that REQ-PX-140 is deferred, authorized by the record and gates no task.
+- **Other files:** `docs/02_AUTHORITY_AND_DECISIONS.md` (summary paragraph), `docs/decisions/README.md` (ledger row), regenerated manifest and graph.
+- **Not done:** DOC-PX-014 is not advanced past NOT_STARTED because no commit exists to cite as evidence; option C is not built and has no task card; the three open points of the record (selector, per-task budget, hardness threshold) are unset.
+- **Next safe action:** commit the change, then advance DOC-PX-014 with the commit and the integrity-run evidence. Activation of PX-140 starts from a new record, not from this one.
+
+## Graph integration — product-extension status recorded from `origin/main` dbe83fc9 (2026-10-17)
+
+A bookkeeping change to the project graph only; no requirement row, disposition, owner, Decision Record or product code changed, and no release gate was attested.
+
+- **Basis:** the read-only audit in `research/audit/` (GRAPH-AUDIT.md, graph-audit.json, graph-moves.sh) of main 7fcd48ad, re-verified against dbe83fc9: every cited test file and name exists, every commit exists, and the evidence run is the latest green main run 38990216920 (2b7f2ac9). Main run 39010263996 (dbe83fc9) was still in progress and is not cited.
+- **Moves:** 34 PX nodes left NOT_STARTED and PX-030 advanced to WIRED through `graph.py set`, one lifecycle step at a time, each with its test, commit and run references. States reached: E2E_PROVEN PX-053, 065, 067, 107, 108, 110, 111, 113; REAL_TESTING PX-041, 043, 044, 050, 051, 052, 057, 059, 061, 063, 073, 082, 101, 109, 114, 115, 116, 117, 129, 131, 133, 135, 137; WIRED PX-030, 069, 125; IMPLEMENTING PX-130. Nothing was set COMPLETE: no evidence bundle exists under `evidence/m10/` for any PX row and the docs that pull requests 63 and 64 say lag the code are not yet written.
+- **Held below the audit's proposal on reading the evidence rule (docs/93: E2E_PROVEN needs the QUAL proof on the required operating systems):** PX-052, 082, 117 (Core suites run on macOS and Linux only), PX-115 (reaper tests Unix-only), PX-063 (QUAL "pending two-phase state" met by single-transaction commands) and PX-129 (RS256 and per-tenant forge credentials open) are REAL_TESTING.
+- **Changed since the audit:** PX-043 gains the pull request 87 fix (213f649c); PX-069 gains the Stop-ordering and determinism fixes (9da0a2b0, c472e1cf, 390bdf71) and stays WIRED because the real accessibility actuator of pull request 82 runs only on the hosted macOS runner and 3 of its 12 tests fail there; PX-065 gains 2b7f2ac9.
+- **Refused by the graph tool (a prerequisite is not COMPLETE), so recorded nowhere:** the audit's Section B, which now includes PX-099, 132 (blocked by PX-043), PX-071, 072, 074 (PX-069 is WIRED), PX-085 and 083 and 084 (PX-082), PX-136 (PX-133) and the rest of the dependency chains. The audit files remain the record of their honest state.
+- **Owner decisions still open (not decided here):** the unsafe-FFI exception for the macOS helper; the granularity of observation approval (V05); remembered consent (AFW-D06); the approval-expiry default of 24 hours via MODBIT_APPROVAL_TTL_MS; the mode-proposal restart skip; refused-run-as-skipped; the PX-135 corpus floors; also ratification of DR-PX-2026-10-03-009, -011 and -012, first-party providers for PX-136, and the threshold profile for gates A to G.
+- **Integrity test refined, with the owner's approval in chat (2026-10-17):** `test_parity_push_rows_are_authorized_gated_and_release_zero_only` in `tools/test_dossier.py` asserted `NOT_STARTED` for every row of PX-041..098. That stopped being true when the build began on 2026-10-05, after DR-PX-2026-10-03-007, 008, 010 and 013 were accepted. It now requires `NOT_STARTED` for rows behind an unaccepted record (DR-009, DR-011, DR-012) and a valid lifecycle state for rows behind an accepted record. Every other assertion in the test is unchanged, including the gating chain, the milestone, the release inclusion and the authorizing record.
+- **Unfinished behaviour:** every clause listed under "main gap" in the audit table for the moved rows, among them the live-gateway legs, the p95 latency budgets, the PX-060 policy gate and the real accessibility Stop bound.
+
+## Graph integration — eight E2E_PROVEN product-extension rows closed COMPLETE (2026-10-20)
+
+A bookkeeping change to the project graph and `evidence/m10/` only; no requirement row, disposition, owner, Decision Record or product code changed, and no release gate was attested.
+
+- **Rows:** PX-053, 065, 067, 107, 108, 110, 111, 113 advanced E2E_PROVEN → COMPLETE through `graph.py set`, each with `run:39029466637`, `commit:ac4aa804` and its `artifact:evidence/m10/<id>/evidence.json`.
+- **Basis:** CI run 39029466637 on main ac4aa804, all 14 jobs green on macOS, Linux and Windows (this closes the operating-system condition recorded on 2026-10-17); and a local re-run on macOS with the pinned rustup 1.97.1 toolchain: `task_modes` 11, `worktrees_px` 37, `context_rules_pack` 19, `memory_graph_index` 14 (1 ignored benchmark, not cited), retrieval `code_graph` 6, git `px_067_remaining` 6, architecture-lint `spawns` 2, all passed. A stale `modbit-protocol` build cache (`cargo clean -p modbit-protocol`) and the Homebrew rustc (broken against its LLVM) had to be avoided first.
+- **Bundles:** `evidence/m10/<id>/` holds TASK_CARD.md, evidence.json and the CI run JSON for each row.
+- **Unfinished behaviour:** the docs that earlier pull requests say lag the code are still unwritten; Windows and Linux legs are proven by CI only.

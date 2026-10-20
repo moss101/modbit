@@ -15,6 +15,9 @@ export interface AgentRegionProps {
   /** The Fleet board is the view in the centre (it stays reachable as its own view). */
   fleetActive?: boolean | undefined;
   onShowFleet?: (() => void) | undefined;
+  /** The worktree list (PX-068) is its own view in the centre. */
+  worktreesActive?: boolean | undefined;
+  onShowWorktrees?: (() => void) | undefined;
 }
 
 /**
@@ -22,7 +25,7 @@ export interface AgentRegionProps {
  * new task, the Fleet board), then the list. Below a 448 px centre it is a
  * 40 px rail.
  */
-export function AgentRegion({ rail, canExpand, taskCount, attentionCount, onNewTask, onExpand, list, fleetActive, onShowFleet }: AgentRegionProps) {
+export function AgentRegion({ rail, canExpand, taskCount, attentionCount, onNewTask, onExpand, list, fleetActive, onShowFleet, worktreesActive, onShowWorktrees }: AgentRegionProps) {
   if (rail) {
     return (
       <div className="agent-rail" data-testid="agent-rail">
@@ -40,6 +43,11 @@ export function AgentRegion({ rail, canExpand, taskCount, attentionCount, onNewT
         {onShowFleet && (
           <Button size="sm" className="agent-fleet" aria-pressed={fleetActive === true} onClick={onShowFleet} data-testid="agents-fleet">
             Fleet board
+          </Button>
+        )}
+        {onShowWorktrees && (
+          <Button size="sm" className="agent-fleet" aria-pressed={worktreesActive === true} onClick={onShowWorktrees} data-testid="agents-worktrees">
+            Worktrees
           </Button>
         )}
         <IconButton label="New task" icon={<IconPlus />} onClick={onNewTask} data-testid="agents-new-task" />

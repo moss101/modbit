@@ -203,9 +203,9 @@ pub(crate) fn guard(core: &Arc<Core>, task: TaskId) -> LoopGuard {
 
 // ---- parsing and validation (typed refusals) ----
 
-type Refusal = (String, String);
+pub(crate) type Refusal = (String, String);
 
-fn refuse(code: &str, why: impl Into<String>) -> Refusal {
+pub(crate) fn refuse(code: &str, why: impl Into<String>) -> Refusal {
     (code.to_owned(), why.into())
 }
 
@@ -229,7 +229,7 @@ pub(crate) fn mode_of(value: i32, required: bool) -> Result<Option<Mode>, Refusa
     }
 }
 
-fn wire_mode(m: Mode) -> wire::TaskMode {
+pub(crate) fn wire_mode(m: Mode) -> wire::TaskMode {
     match m {
         Mode::Agent => wire::TaskMode::Agent,
         Mode::Plan => wire::TaskMode::Plan,
@@ -383,6 +383,24 @@ fn check_pin(core: &Core, task: &Task, pin: &(String, String)) -> Result<(), Ref
             format!("`{endpoint}` serves no model `{model}`"),
         ));
     }
+    // The organisation's block rule is the gateway's own check at dispatch;
+    // a pin it would refuse there is refused here with the same rule named,
+    // so the person learns it before any token (PX-056, AFW-H02).
+    if let Some(ep) = core
+        .gateway
+        .endpoints()
+        .iter()
+        .find(|e| &e.name == endpoint)
+        && let Some(rule) = core
+            .gateway
+            .policy()
+            .blocking_rule(endpoint, ep.kind, model)
+    {
+        return Err(refuse(
+            "POLICY_BLOCKED",
+            format!("{endpoint}/{model} is blocked by the organisation model policy ({rule})"),
+        ));
+    }
     match crate::routing::refused_by_model_policy(
         crate::routing::model_policy(core, task).as_deref(),
         [(endpoint.clone(), model.clone())],
@@ -394,7 +412,11 @@ fn check_pin(core: &Core, task: &Task, pin: &(String, String)) -> Result<(), Ref
 
 // ---- commands ----
 
-fn record_of(core: &Core, env: &wire::CommandEnvelope, command_id: [u8; 16]) -> CommandRecord {
+pub(crate) fn record_of(
+    core: &Core,
+    env: &wire::CommandEnvelope,
+    command_id: [u8; 16],
+) -> CommandRecord {
     CommandRecord {
         command_id: modbit_domain::EventId::from_bytes(command_id),
         tenant_id: core.tenant_id,
@@ -405,11 +427,11 @@ fn record_of(core: &Core, env: &wire::CommandEnvelope, command_id: [u8; 16]) -> 
     }
 }
 
-fn reject(cid: Option<wire::Id>, (code, message): Refusal) -> wire::CommandAck {
+pub(crate) fn reject(cid: Option<wire::Id>, (code, message): Refusal) -> wire::CommandAck {
     crate::server::reject(cid, &code, message)
 }
 
-fn id16(id: &wire::Id) -> Option<[u8; 16]> {
+pub(crate) fn id16(id: &wire::Id) -> Option<[u8; 16]> {
     <[u8; 16]>::try_from(id.value.as_slice()).ok()
 }
 
@@ -448,7 +470,24 @@ pub(crate) async fn handle(core: &Arc<Core>, env: &wire::CommandEnvelope) -> wir
 }
 
 /// The task a command names, refused when it is unknown or over.
-async fn open_task(core: &Core, task_id: TaskId) -> Result<Task, Refusal> {
+/// A command that names its session (`CommandEnvelope.session_id`) acts only on that session's tasks: a task of another session
+/// is refused `WRONG_SESSION` before its pin, its lease or its log is looked at. A command that names no session keeps the
+/// lease check against the task's own session.
+pub(crate) fn wrong_session(
+    cid: &Option<wire::Id>,
+    env: &wire::CommandEnvelope,
+    task: &Task,
+) -> Option<wire::CommandAck> {
+    let named = env.session_id.as_ref().and_then(id16)?;
+    (named != *task.session_id.as_bytes()).then(|| {
+        reject(
+            cid.clone(),
+            refuse("WRONG_SESSION", "the task belongs to another session"),
+        )
+    })
+}
+
+pub(crate) async fn open_task(core: &Core, task_id: TaskId) -> Result<Task, Refusal> {
     let store = core.store.lock().await;
     match store.task(&task_id) {
         Ok(Some(t)) if t.state.is_terminal() => Err(refuse(
@@ -483,9 +522,38 @@ async fn set_mode(
         Ok(t) => t,
         Err(r) => return reject(cid, r),
     };
+    if let Some(ack) = wrong_session(&cid, env, &task) {
+        return ack;
+    }
     if let Err(ack) = crate::server::require_lease(core, &cid, env, &task.session_id).await {
         return ack;
     }
+    apply_mode(core, env, cid, command_id, &task, mode, &p.reason, None).await
+}
+
+/// A check run under the store lock, against the facts the new mode would
+/// replace, before the mode is recorded.
+pub(crate) type ModeGuard<'a> =
+    &'a (dyn Fn(&EventStore, &Facts) -> Result<(), Refusal> + Send + Sync);
+
+/// A mode, a proposal's acceptance included, takes this one path: the task is
+/// open, the session and lease were checked by the caller, and one
+/// `TaskModeSet` (the same event `SetTaskMode` writes) lands with whatever
+/// `also` records in the same transaction. The Kernel enforces the posture
+/// from the event, so there is no second way for a mode to change.
+/// `guard` may refuse after the facts are read and before anything is written.
+#[allow(clippy::too_many_arguments)]
+pub(crate) async fn apply_mode(
+    core: &Arc<Core>,
+    env: &wire::CommandEnvelope,
+    cid: Option<wire::Id>,
+    command_id: [u8; 16],
+    task: &Task,
+    mode: Mode,
+    reason: &str,
+    also: Option<(ModeGuard<'_>, Vec<NewEvent>)>,
+) -> wire::CommandAck {
+    let task_id = task.task_id;
     let running = core.runtime.is_running(&task_id).await;
     let effective = if running {
         "NEXT_ROUND_BOUNDARY"
@@ -497,6 +565,15 @@ async fn set_mode(
         Ok(f) => f,
         Err(e) => return reject(cid, refuse("STORE_ERROR", e)),
     };
+    let (guard, extra) = match also {
+        Some((g, e)) => (Some(g), e),
+        None => (None, Vec::new()),
+    };
+    if let Some(g) = guard
+        && let Err(r) = g(&store, &facts)
+    {
+        return reject(cid, r);
+    }
     let previous = facts.mode;
     let accepted_plan_version = if previous == Mode::Plan && mode != Mode::Plan {
         crate::plans::view(&store, task_id)
@@ -518,17 +595,21 @@ async fn set_mode(
         aggregate_type: AggregateType::Task,
         aggregate_id: *task_id.as_bytes(),
         expected_sequence: None,
-        events: vec![typed(
-            "TaskModeSet",
-            &TaskEvent::TaskModeSet {
-                mode,
-                previous: Some(previous),
-                source: "user".into(),
-                reason: p.reason.chars().take(512).collect(),
-                accepted_plan_version,
-            },
-            Actor::User(core.user_id),
-        )],
+        events: {
+            let mut events = vec![typed(
+                "TaskModeSet",
+                &TaskEvent::TaskModeSet {
+                    mode,
+                    previous: Some(previous),
+                    source: "user".into(),
+                    reason: reason.chars().take(512).collect(),
+                    accepted_plan_version,
+                },
+                Actor::User(core.user_id),
+            )];
+            events.extend(extra);
+            events
+        },
     };
     match store.execute_command(record_of(core, env, command_id), req) {
         Ok(outcome) => {
@@ -585,6 +666,9 @@ async fn set_preference(
         Ok(t) => t,
         Err(r) => return reject(cid, r),
     };
+    if let Some(ack) = wrong_session(&cid, env, &task) {
+        return ack;
+    }
     if let Some(Some(pin)) = &patch.pin
         && let Err(r) = check_pin(core, &task, pin)
     {
@@ -824,6 +908,7 @@ fn routing_projection(
             reason_code: "NO_ACTIVE_REGISTRY".into(),
             detail: NO_REGISTRY_DETAIL.into(),
             floor_mode: String::new(),
+            registry_generation: String::new(),
         },
         Some(registry) => {
             let (floor, choice) = floor_for(&registry, preference.objective);
@@ -835,6 +920,7 @@ fn routing_projection(
                     floor.map(|f| f.mode.as_str()).unwrap_or("none")
                 ),
                 floor_mode: floor.map(|f| f.mode.clone()).unwrap_or_default(),
+                registry_generation: registry.generation().to_owned(),
             }
         }
     }
@@ -874,6 +960,11 @@ fn build_posture(core: &Core, task: &Task, facts: &Facts, in_force: Mode) -> wir
             reason_code: a.reason_code.clone(),
             detail: a.detail.clone(),
             floor_mode: a.floor_mode.clone(),
+            // What is active now, so a registry activated or rolled back
+            // since the last dispatch is what the picker states.
+            registry_generation: crate::model_registry::for_task(core, task)
+                .map(|r| r.generation().to_owned())
+                .unwrap_or_default(),
         },
         None => routing_projection(core, task, &facts.preference),
     };
@@ -942,6 +1033,9 @@ pub(crate) async fn annotate_routing(
             reason_code: a.reason_code.clone(),
             detail: a.detail.clone(),
             floor_mode: a.floor_mode.clone(),
+            registry_generation: crate::model_registry::for_task(core, &task)
+                .map(|r| r.generation().to_owned())
+                .unwrap_or_default(),
         },
         None => routing_projection(core, &task, &facts.preference),
     });
