@@ -428,16 +428,16 @@ class DossierTests(unittest.TestCase):
 
     def test_parity_surface_counts_are_pinned_and_dr_013_is_traced(self):
         # The additive PX ledger pins nothing in tools/dossier_px.py (totals are computed); the parity-push surface is pinned here
-        # in the same reseal that adds a record: PX-000..139 (140 rows, 137 ADOPT tasks, 3 DEFERRED), seven records of which
+        # in the same reseal that adds a record: PX-000..140 (141 rows, 137 ADOPT tasks, 4 DEFERRED), eight records of which
         # 007, 008, 010 and 013 are accepted, and the 41 rows of DR-PX-2026-10-05-013 (39 release-critical, 2 iteration).
         self.rebuild()
         g = self.graph()
         nodes = {n["id"]: n for n in g["nodes"]}
         reqs = [n for n in g["nodes"] if re.match(r"^REQ-PX-\d{3}$", n["id"])]
         tasks = [n for n in g["nodes"] if re.match(r"^PX-\d{3}$", n["id"]) and n["type"] == "imp_task"]
-        self.assertEqual(len(reqs), 140)
+        self.assertEqual(len(reqs), 141)
         self.assertEqual(len(tasks), 137)
-        self.assertEqual(sorted(n["id"] for n in reqs if n.get("disposition") == "DEFERRED"), ["REQ-PX-003", "REQ-PX-012", "REQ-PX-013"])
+        self.assertEqual(sorted(n["id"] for n in reqs if n.get("disposition") == "DEFERRED"), ["REQ-PX-003", "REQ-PX-012", "REQ-PX-013", "REQ-PX-140"])
         self.assertEqual(len([r for r in self.PARITY_RECORDS if r[4]]), 4)
         self.assertEqual(len(self.PARITY_RECORDS), 7)
         text = (self.root / "docs/62_PRODUCT_EXTENSION_REQUIREMENTS_TASKS_AND_QUALIFICATIONS.md").read_text()
@@ -462,6 +462,32 @@ class DossierTests(unittest.TestCase):
         # EPR-pinned behaviour: the new rows only reference EPR rows as prerequisites or related requirements; the sealed EPR docs
         # are guarded by check_dossier (baseline hashes), so a changed EPR row would already fail the integrity gate.
         self.run_tool("check_dossier", "--manifest", contains="manifest hashes verified")
+
+    def test_dr_014_defers_px_140_and_gates_no_task(self):
+        # DR-PX-2026-10-19-014 (accepted 2026-10-19, option A): REQ-PX-140 is DEFERRED and POST_ZERO with a qualification and no
+        # task, card or scenario. The record has a change record and a dossier task but no PX task, so nothing is gated by it and
+        # RELEASE_ZERO is unchanged. The activation text lives in the record, not in doc 62.
+        self.rebuild()
+        g = self.graph()
+        nodes = {n["id"]: n for n in g["nodes"]}
+        after, auth, includes = self.edges(g)
+        self.assertEqual(nodes["DR-PX-2026-10-19-014"]["type"], "change_record")
+        self.assertEqual(nodes["DR-PX-2026-10-19-014"]["status"], "APPROVED")
+        self.assertEqual(nodes["DOC-PX-014"]["type"], "dossier_task")
+        self.assertIn((("DOC-PX-014"), "DR-PX-2026-10-19-014"), auth)
+        self.assertEqual(nodes["REQ-PX-140"]["disposition"], "DEFERRED")
+        self.assertEqual(nodes["REQ-PX-140"]["release"], "POST_ZERO")
+        self.assertEqual(nodes["REQ-PX-140"]["subsystem"], "skills")
+        self.assertIn(("REQ-PX-140", "DR-PX-2026-10-19-014"), auth)
+        self.assertNotIn("PX-140", nodes)
+        self.assertNotIn("PX-E2E-140", nodes)
+        self.assertFalse([e for e in g["edges"] if e["from"] == "REQ-PX-140" and e["type"] == "implemented_by"])
+        self.assertFalse([k for k, v in after.items() if "DOC-PX-014" in v], "DOC-PX-014 must gate no task")
+        text = (self.root / "docs/62_PRODUCT_EXTENSION_REQUIREMENTS_TASKS_AND_QUALIFICATIONS.md").read_text()
+        self.assertNotIn("## PX-140 ", text)
+        record = (self.root / "docs/decisions/DR-PX-2026-10-19-014-per-task-harness-refinement.md").read_text()
+        self.assertIn("status: accepted", record)
+        self.assertIn("PX-E2E-140", record)  # the activation text is kept in the record
 
     def test_decision_record_status_and_approval_match_the_graph(self):
         # An accepted record names who approved it; a proposed one says it is pending; the graph change record follows the file.
