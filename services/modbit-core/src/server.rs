@@ -503,6 +503,7 @@ fn acquire_singleton_lock(data_dir: &Path) -> Result<()> {
         .open(&lock)
         .with_context(|| format!("opening {}", lock.display()))?;
     let mut attempts = 0;
+    let mut gone_waits = 0;
     loop {
         match file.try_lock() {
             Ok(()) => break,
@@ -511,6 +512,15 @@ fn acquire_singleton_lock(data_dir: &Path) -> Result<()> {
                     .ok()
                     .and_then(|t| t.trim().parse::<u32>().ok())
                     .unwrap_or(0);
+                // The recorded owner no longer exists, yet the lock is still held:
+                // its release is in flight (a killed Core's descriptors close as the
+                // kernel finishes tearing it down). Give that a moment instead of
+                // refusing the restart of a profile nobody owns.
+                if pid != 0 && gone_waits < 40 && owner_is_gone(pid) {
+                    gone_waits += 1;
+                    std::thread::sleep(std::time::Duration::from_millis(50));
+                    continue;
+                }
                 let owner = process_command(pid);
                 // A tethered Core whose supervising parent is gone is an orphan
                 // by contract (docs/33): reclaim the profile from it once.
@@ -542,6 +552,21 @@ fn acquire_singleton_lock(data_dir: &Path) -> Result<()> {
     // Held until exit: dropping the handle would release the lock.
     std::mem::forget(file);
     Ok(())
+}
+
+/// Whether no process has this pid (`kill -0` finds none).
+#[cfg(unix)]
+fn owner_is_gone(pid: u32) -> bool {
+    std::process::Command::new("kill")
+        .args(["-0", &pid.to_string()])
+        .stderr(std::process::Stdio::null())
+        .status()
+        .is_ok_and(|s| !s.success())
+}
+
+#[cfg(not(unix))]
+fn owner_is_gone(_pid: u32) -> bool {
+    false
 }
 
 /// The owner's command line plus parent pid, state, age and the parent's

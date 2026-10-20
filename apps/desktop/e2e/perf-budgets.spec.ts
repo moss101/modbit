@@ -119,9 +119,13 @@ test("PERF PX-041/PX-047: a streamed delta renders within 100 ms of its event ti
       await expect(page.getByTestId("review")).toBeVisible({ timeout: 600_000 });
       await page.keyboard.press("Escape");
     }
-    // Every stamp is rendered once its frame callback ran.
-    await expect.poll(() => page.evaluate(() => (window as unknown as { __stamps: Stamp[] }).__stamps.filter((s) => s.frame === 0).length), { timeout: 30_000 }).toBe(0);
-    const stamps = await page.evaluate(() => (window as unknown as { __stamps: Stamp[] }).__stamps);
+    // Every stamp whose text reached the DOM is rendered once its frame callback ran.
+    await expect.poll(() => page.evaluate(() => (window as unknown as { __stamps: Stamp[] }).__stamps.filter((s) => s.mut !== 0 && s.frame === 0).length), { timeout: 30_000 }).toBe(0);
+    const seen = await page.evaluate(() => (window as unknown as { __stamps: Stamp[] }).__stamps);
+    // A delta whose text never showed in the watched conversation (it arrived before the conversation was opened, or after it was left, and the transcript view does not
+    // list it) was not rendered live, so it has no render time. It is counted, bounded and reported, not measured.
+    const stamps = seen.filter((s) => s.frame !== 0);
+    const neverShown = seen.length - stamps.length;
     // What a read of the finished task's log costs the Core: the app makes these on every non-delta event, and each holds the store while it folds the log.
     const reads = await page.evaluate(
       async ([s, t]) => {
@@ -166,10 +170,11 @@ test("PERF PX-041/PX-047: a streamed delta renders within 100 ms of its event ti
       ],
       method: { tasks: TASKS, turnsPerTask: TURNS, deltasPerMessage: CHUNKS, gapMs: GAP_MS, model: "scripted OpenAI-compatible endpoint (stream pieces 60 ms apart)", profile: PROFILE, enforced: ENFORCE },
       distributions,
-      diagnostics: { deltasOver100ms: slow.length, ofThoseDuringAnRendererLongTask: explained.length },
+      diagnostics: { deltasOver100ms: slow.length, ofThoseDuringAnRendererLongTask: explained.length, deltasSeen: seen.length, neverShownInTheWatchedConversation: neverShown },
       verdict: { met, text: ENFORCE ? "asserted (reference profile)" : `recorded on the "${PROFILE}" profile; asserted only on the reference profile` },
     });
-    expect(stamps.length, "every delta was seen by the renderer").toBeGreaterThanOrEqual(TASKS * TURNS);
+    expect(seen.length, "every delta was seen by the renderer").toBeGreaterThanOrEqual(TASKS * TURNS);
+    expect(neverShown, `deltas whose text never showed in the watched conversation (${seen.length} seen)`).toBeLessThanOrEqual(Math.ceil(seen.length * 0.02));
     if (ENFORCE) {
       expect(distributions["event timestamp to rendered frame, every delta"]!.p95, "p95 of every delta, ms").toBeLessThanOrEqual(100);
       expect(distributions["event timestamp to rendered frame, first delta of a message"]!.p95, "p95 of first deltas, ms").toBeLessThanOrEqual(100);
