@@ -11,7 +11,7 @@ import { expect, test, type Page } from "@playwright/test";
 import { mkdtempSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { ECHO_LOOP, expectTerminals, gate, nodeTerminal, steppedModel, type Step } from "./support/apps-harness.ts";
+import { ECHO_LOOP, expectTerminals, gate, nodeTerminal, readTerminal, steppedModel, type Step } from "./support/apps-harness.ts";
 import { closeApp, launch, makeRepo, MOD, setContentSize } from "./support/ui-harness.ts";
 
 test("a background terminal survives a crashed renderer: same handle, same Core, replayed screen, live input", async () => {
@@ -37,6 +37,7 @@ test("a background terminal survives a crashed renderer: same handle, same Core,
     await page1.getByTestId("run").click();
     const card = page1.getByTestId("task-card").first();
     const taskId = (await card.getAttribute("data-task-id"))!;
+    const sessionId = (await page1.evaluate(() => window.modbit.localState()).then((st) => st.sessionId))!;
     await card.getByTestId("task-start").click();
     await expect(card.getByTestId("task-state")).toHaveText("Running", { timeout: 60_000 });
     await expectTerminals(page1, taskId, 1);
@@ -94,7 +95,14 @@ test("a background terminal survives a crashed renderer: same handle, same Core,
     await screen.click();
     await page.keyboard.type("after-crash");
     await page.keyboard.press("Enter");
-    await expect(screen).toContainText("got:after-crash", { timeout: 30_000 });
+    // The proof is the process's own output in the Core's log. A Windows pseudo-console repaints the screen when a viewer attaches, so the
+    // screen's rows are not a reliable witness of the order of lines there.
+    await expect
+      .poll(async () => {
+        const log = await readTerminal(page, { sessionId, taskId, terminalId: before.terminalId, after: "0", windowBytes: 65536 });
+        return new TextDecoder().decode(Uint8Array.from(log.bytes)).includes("got:after-crash");
+      }, { timeout: 60_000, message: "the child never answered the new view's input" })
+      .toBe(true);
   } finally {
     modelGate.open();
     await closeApp(app);
