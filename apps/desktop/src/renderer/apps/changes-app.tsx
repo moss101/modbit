@@ -32,12 +32,16 @@ export function ChangesApp({ sessionId, taskId, taskState, refreshKey, onOpenRev
   const [message, setMessage] = useState("");
   const [commit, setCommit] = useState<CommitPushAckInfo | null>(null);
   const seq = useRef(0);
+  /** The load that last set `state`, and the sequence number the current approval card was raised at: a state read before the card existed says nothing about it. */
+  const loaded = useRef(0);
+  const raisedAt = useRef(0);
 
   const load = useCallback(async () => {
     const mine = ++seq.current;
     try {
       const [b, s] = await Promise.all([window.modbit.reviewBundle(taskId), window.modbit.changesState(taskId)]);
       if (mine !== seq.current) return;
+      loaded.current = mine;
       setBundle(b);
       setState(s);
       setError(null);
@@ -104,10 +108,16 @@ export function ChangesApp({ sessionId, taskId, taskState, refreshKey, onOpenRev
   };
 
   const mode = state ? commitMode(state.paths.filter((p) => p.staged !== "").length, state.unpushed) : "none";
+  /** Shows the approval card and fences off every state read before it: a load that was already running (or that `act` saw discarded) can predate the approval, and would clear the card as if the Core no longer held it. */
+  const raise = (ack: CommitPushAckInfo) => {
+    raisedAt.current = ++seq.current;
+    setCommit(ack);
+    void load();
+  };
   const askToCommit = async () => {
     if (!state) return;
     const ack = await act(() => window.modbit.commitAndPush(sessionId, taskId, { message, expectedHead: state.head, expectedStagedDigest: state.stagedDigest }));
-    if (ack) setCommit(ack);
+    if (ack) raise(ack);
   };
   const decide = async (ack: CommitPushAckInfo, ok: boolean) => {
     setBusy(true);
@@ -132,7 +142,7 @@ export function ChangesApp({ sessionId, taskId, taskState, refreshKey, onOpenRev
   };
   // An approval card is shown only while the Core still holds that approval as pending: after a restart or a decision made elsewhere it goes, and the list below says how the attempt stands.
   useEffect(() => {
-    if (state && commit?.status === "APPROVAL_PENDING" && !state.effects.some((e) => e.approvalId === commit.approvalId && e.state === "APPROVAL_PENDING")) setCommit(null);
+    if (state && commit?.status === "APPROVAL_PENDING" && loaded.current > raisedAt.current && !state.effects.some((e) => e.approvalId === commit.approvalId && e.state === "APPROVAL_PENDING")) setCommit(null);
   }, [state, commit]);
 
   // A Core that is restarting answers nothing for a moment: the view reads it again by itself until it can, and offers the retry meanwhile.
