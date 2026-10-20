@@ -1077,6 +1077,16 @@ export class BrowserHost {
       return { kind: "error", code: "NAVIGATION_FAILED", message: `${f.desc} (${f.code}) loading ${u.host}${f.code === -130 ? ` (the proxy: ${h.proxy.describe()})` : ""}` };
     }
     if (first !== "loaded") {
+      // Chromium can fail the load with the certificate error (-2xx) in the same turn as, or just before, it raises
+      // `certificate-error`: the hold that follows is still this navigation's, and the person still decides.
+      if (/\(-2\d\d\)/.test(first.message)) {
+        const until = Date.now() + 1_000;
+        while (!(h.certHold && !h.certHold.isSettled) && Date.now() < until) await sleep(25);
+      }
+      if (h.certHold && !h.certHold.isSettled && h.certHold.atMs >= started) {
+        const info = h.certHold.info;
+        return { kind: "error", code: "CERTIFICATE_PENDING", message: `the certificate of ${info.hostPort} is not trusted (${info.error}); issuer ${info.issuer}, subject ${info.subject}, fingerprint ${info.fingerprint}: the person decides in the Browser panel` };
+      }
       const rejected = h.certHold && h.certHold.isSettled ? "CERTIFICATE_REJECTED" : null;
       if (rejected) return { kind: "error", code: "CERTIFICATE_REJECTED", message: `the person did not trust the certificate (${first.message.slice(0, 120)})` };
       // A load that failed still leaves the page where it is: report it, do not guess.

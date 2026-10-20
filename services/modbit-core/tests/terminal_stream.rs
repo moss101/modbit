@@ -1020,7 +1020,8 @@ mod unix {
             &task,
             g,
             "shell.attach",
-            &json!({"session_id": sid, "after_cursor": cursor, "wait_ms": 5000, "quiet_ms": 300}),
+            // The read returns 300 ms after the reply; the tool's own ceiling (15 s) is for a loaded runner (5 s once saw nothing at all).
+            &json!({"session_id": sid, "after_cursor": cursor, "wait_ms": 15000, "quiet_ms": 300}),
         )
         .await;
         assert_eq!(r.status, "SUCCESS", "{r:?}");
