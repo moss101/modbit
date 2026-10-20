@@ -20,6 +20,7 @@ class FakeBridge implements TerminalBridge {
   leaseHeld = false;
   processState = "RUNNING";
   resizeFailures = 0;
+  head = "0";
   onAttach: ((id: string) => void) | null = null;
   async terminalAttach(_s: string, _t: string, _term: string, after: string, opts?: { takeInputLease?: boolean }) {
     this.attaches.push({ after, lease: opts?.takeInputLease === true });
@@ -31,7 +32,7 @@ class FakeBridge implements TerminalBridge {
     }
     const attachId = `att${++this.nextAttach}`;
     this.onAttach?.(attachId);
-    return { attachId, terminal: { ...VIEW, state: this.processState }, afterCursor: after, windowBytes: "262144", inputLeaseHeld: opts?.takeInputLease === true };
+    return { attachId, terminal: { ...VIEW, state: this.processState, bytesSoFar: this.head }, afterCursor: after, windowBytes: "262144", inputLeaseHeld: opts?.takeInputLease === true };
   }
   async terminalAck(attachId: string, cursor: string) {
     this.acks.push(`${attachId}:${cursor}`);
@@ -296,4 +297,28 @@ test("PX-048: a resize the broker could not answer in time is asked again, a few
   await second.c.resize(10, 10);
   await new Promise((r) => setTimeout(r, 150));
   assert.equal(second.bridge.calls.filter((x) => x.startsWith("resize-failed")).length, 4, "the first ask and three retries");
+});
+
+test("PX-043: replayed output's terminal queries are not answered into the live process; live ones and typed keys are", async () => {
+  const { bridge, sink, c } = make();
+  // The terminal printed a cursor-position query at its start (a Windows pseudo-console does) and a prompt: 14 bytes before this attach.
+  bridge.head = "14";
+  // The sink answers a query while parsing it, as xterm does (synchronously, before the write's callback).
+  const write = sink.write.bind(sink);
+  sink.write = (data, done) => {
+    if (new TextDecoder().decode(data).includes("\x1b[6n")) void c.input("\x1b[1;1R");
+    write(data, done);
+  };
+  await c.start(0n);
+  bridge.emit(out("att1", 0, "\x1b[6nREADY\r\n\x1b[K"));
+  await tick();
+  assert.deepEqual(bridge.writes, [], "the replay's question is not answered");
+  // Typing is input, replay or not.
+  await c.input("a");
+  assert.deepEqual(bridge.writes, ["a"]);
+  // A question the process asks now is answered.
+  bridge.emit(out("att1", 14, "\x1b[6n"));
+  await tick();
+  await c.input("\r");
+  assert.deepEqual(bridge.writes, ["a", "\x1b[1;1R", "\r"]);
 });
