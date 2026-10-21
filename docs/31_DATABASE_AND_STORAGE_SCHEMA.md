@@ -8,7 +8,7 @@
 
 ## Local storage
 
-Use SQLite in WAL mode with `foreign_keys=ON`, `synchronous=FULL` for authoritative event/protocol/effect commits, explicit schema migrations and periodic integrity check. Large blobs use a content-addressed object directory keyed by SHA-256.
+Use SQLite in WAL mode with `foreign_keys=ON`, `synchronous=FULL` for authoritative event/protocol/effect commits (the one exception is a streamed assistant-text delta, the live preview of a message whose authoritative record is its completion event: it commits `synchronous=NORMAL`, and the next full commit hardens it — DR-PX-2026-10-21-015), explicit schema migrations and periodic integrity check. Large blobs use a content-addressed object directory keyed by SHA-256.
 
 Recommended logical database split is **not** one SQLite file per feature. Use two durable DBs to reduce cross-file transaction complexity:
 - `core.db` — identity, sessions, tasks, events, projections, protocol state, checkpoints, compaction metadata, memory metadata, policy/effects.

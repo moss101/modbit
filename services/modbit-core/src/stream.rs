@@ -31,11 +31,11 @@ use modbit_domain::stream::{
     StreamEvent, StreamKind, TextRef,
 };
 use modbit_domain::{RunId, RunStepId, StreamId, TenantId, TurnId};
-use modbit_event_store::{AppendRequest, EventStore};
+use modbit_event_store::{AppendRequest, Durability, EventStore};
 use sha2::Digest;
 use tokio::time::Instant;
 
-use crate::runtime::{Lineage, append, typed};
+use crate::runtime::{Lineage, append, append_with, typed};
 use crate::server::Core;
 
 /// Provenance every delta carries: the model said it; it is data.
@@ -361,15 +361,20 @@ async fn publish(
     if events.is_empty() {
         return;
     }
+    // Deltas are the live preview of a message whose authoritative record is
+    // its completion event: they commit without a per-delta fsync and the next
+    // full commit hardens them (DR-PX-2026-10-21-015). A lane that is closing
+    // appends its closing record through `close`, at full durability.
     let appended = {
         let mut store = core.store.lock().await;
-        append(
+        append_with(
             &mut store,
             core,
             *lineage,
             AggregateType::AssistantStream,
             *lane.id.as_bytes(),
             events,
+            Durability::Relaxed,
         )
     };
     match appended {
