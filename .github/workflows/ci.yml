@@ -62,6 +62,18 @@ jobs:
         run: cargo build --workspace --locked
       - name: Test (includes real cargo-metadata forbidden-edge test)
         run: cargo test --workspace --locked
+      - name: Record the PX-041 Core-share latency distribution (DR-PX-2026-10-21-015) - recorded on every runner, asserted only on the reference profile
+        if: ${{ !cancelled() }}
+        env:
+          MODBIT_PERF_OUT: ${{ runner.temp }}/perf
+        run: cargo test --locked -p modbit-core --test stream_transcript perf_px_041 -- --nocapture
+      - name: Upload the recorded latency distribution
+        if: ${{ !cancelled() }}
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: perf-px041-core-stream-${{ matrix.os }}
+          path: ${{ runner.temp }}/perf
+          if-no-files-found: warn
       - name: macOS actuator real-permission tests (PX-071) - SKIPPED loudly where the runner has no Accessibility / Screen Recording grant
         if: ${{ !cancelled() && runner.os == 'macOS' }}
         # While the real-AX suite settles on hosted runners its failures are shown
