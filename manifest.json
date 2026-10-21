@@ -2,13 +2,13 @@
   "product": "Modbit",
   "edition": "V3.3 EPR v1.1",
   "authority_date": "2026-09-05",
-  "generated_on": "2026-10-20",
+  "generated_on": "2026-10-21",
   "hash_algorithm": "sha256",
   "scope_rule": "docs/*.md, root *.md except MANIFEST.md, docs/decisions/*.md, graph JSON/Markdown, tools/*.py, evidence payloads; manifests exclude themselves and transient caches",
   "counts": {
     "docs": 97,
-    "root_and_tooling": 1695,
-    "docs_bytes": 2138953
+    "root_and_tooling": 1696,
+    "docs_bytes": 2141590
   },
   "sections": [
     {
@@ -77,8 +77,8 @@
       "section": "authority",
       "section_title": "Authority and orientation",
       "title": "Authority, Decision Register, and Conflict Resolution",
-      "bytes": 25617,
-      "sha256": "f780e8ec295f92d4198c478f04e11c831c1f2f7993a36db2c2f94e4499778409"
+      "bytes": 26844,
+      "sha256": "c3ce98647a4dea3f9a34a52b8f73c49dd31db561aa4f53c26ae310a476b951cf"
     },
     {
       "path": "docs/03_ARCHITECTURAL_CONFLICTS_AND_SUPERSESSIONS.md",
@@ -320,8 +320,8 @@
       "section": "implementation",
       "section_title": "Implementation specifications",
       "title": "Database and Storage Schema",
-      "bytes": 15319,
-      "sha256": "d3e06f3b23aec1e27b22d3020a4c2c96a58a758dda2155cfa584d8389f1e4189"
+      "bytes": 15551,
+      "sha256": "665eb1ebb6297481640d3b0f0c05c49c5fb351c67189a9e7bdd5439fb6078063"
     },
     {
       "path": "docs/32_DESKTOP_FRONTEND_IMPLEMENTATION.md",
@@ -914,8 +914,8 @@
       "section": "governance",
       "section_title": "Agent process and governance",
       "title": "Dossier maintenance log",
-      "bytes": 117923,
-      "sha256": "ddeec3201db5b458299eb7104182eb15d2320d7e34c07e8ffccf23af50919d16"
+      "bytes": 119101,
+      "sha256": "f84a4b9dc4fe03ac90df73284a7013b075f2d63fb92120fbbe0a4766f5758688"
     },
     {
       "path": "docs/98_BUILD_MANIFEST.md",
@@ -1084,9 +1084,14 @@
       "sha256": "c1fdae3e270803a585c698244c32e42f2132ed5866a8ccfb786c05d2d1adfa76"
     },
     {
+      "path": "docs/decisions/DR-PX-2026-10-21-015-streamed-delta-durability.md",
+      "bytes": 10995,
+      "sha256": "31c6cddec03523b494e28e65ccfdad71b368763ef868784b6fdc42f571b3e1ec"
+    },
+    {
       "path": "docs/decisions/README.md",
-      "bytes": 6598,
-      "sha256": "dab5a2452e003a451bbe67b211870895cc4ffe1ff2e3e8322ce072ab72973cc1"
+      "bytes": 7013,
+      "sha256": "88f49f9074586f07df58235f05b1e120dca8f8905f47073c4ad707cd31a62815"
     },
     {
       "path": "evidence/dossier-epr-v1.1/baseline.json",
@@ -9341,12 +9346,12 @@
     {
       "path": "graph/PROJECT_GRAPH.md",
       "bytes": 45127,
-      "sha256": "0ecc1c497fbd107ec574c4cec2516661c08d0e36793a4cb1b398940ffd22c064"
+      "sha256": "e4be4d5d1da495bc702c72f80d4b00aa537f01c28de0d547ca387add3a96fca1"
     },
     {
       "path": "graph/project-graph.json",
       "bytes": 2262844,
-      "sha256": "396ab2ddb135f7b4db62b0c5aba29126e4c0f3ffff2695822d26fb9292576c4c"
+      "sha256": "919d30133d00ef1fc8cb4019ece827432e8df73a757c776939015dd5095d2f9b"
     },
     {
       "path": "tools/build_graph.py",
