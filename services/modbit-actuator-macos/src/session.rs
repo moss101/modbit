@@ -657,14 +657,22 @@ impl Hub {
         let mut last_event = Instant::now()
             .checked_sub(Duration::from_secs(60))
             .unwrap_or_else(Instant::now);
+        let mut previous = Instant::now();
         loop {
             tokio::time::sleep(HUMAN_POLL).await;
             let b = Arc::clone(&self.backend);
             let Ok(Some(idle)) = tokio::task::spawn_blocking(move || b.human_idle()).await else {
                 continue;
             };
-            // An event since the previous poll (with slack for scheduling).
-            if idle > HUMAN_POLL * 3 {
+            // An event since the previous poll. The window is the time that
+            // really passed since that poll, not the nominal interval: a poll
+            // that the host delayed (a loaded runner, a stalled scheduler) must
+            // still see an event that fell in the gap, or a person's touch
+            // during the stall is never reported and the agent keeps going.
+            let sampled = Instant::now();
+            let window = sampled.duration_since(previous).max(HUMAN_POLL) + HUMAN_POLL * 2;
+            previous = sampled;
+            if idle > window {
                 continue;
             }
             let now_ms = u64::try_from(self.origin.elapsed().as_millis()).unwrap_or(u64::MAX);

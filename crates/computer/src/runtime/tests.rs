@@ -433,6 +433,60 @@ async fn a_stop_is_final_for_its_run_and_not_for_the_next() {
     assert!(rt.invoke(&next, "computer.start", start()).await.is_ok());
 }
 
+/// The person's Stop is final for the run whatever else closes the task's
+/// session afterwards: the input that was in flight returns unknown and the
+/// latch closes the (already closed) session with its own reason, which must
+/// not turn the model's next observation into "start a new session" (the
+/// PX-074 Stop spec on the hosted macOS runner saw SESSION_REQUIRED where it
+/// expected USER_ABORTED).
+#[tokio::test]
+async fn a_stop_stays_the_answer_when_a_later_close_overwrites_the_sessions_note() {
+    let (a, _) = fake(0, performed);
+    let rt = runtime();
+    rt.install(a);
+    let task = TaskId::new();
+    let c = ctx(task);
+    session_with_snapshot(&rt, &c, "org.example.a").await;
+    rt.stop_task(task, c.session_id, "run-1", "on-screen Stop")
+        .await;
+    // What the in-flight input's unknown outcome does after the stop.
+    rt.lock()
+        .closed
+        .insert(task, ("LATCHED".into(), c.run_id.clone()));
+    for (tool, op) in [
+        ("computer.apps", Op::Apps),
+        (
+            "computer.state",
+            Op::State {
+                window: None,
+                max_nodes: None,
+            },
+        ),
+    ] {
+        match rt.invoke(&c, tool, op).await {
+            Err(Failure::Refused(r)) => assert_eq!(r.code, Code::UserAborted, "{tool}"),
+            other => panic!("{tool}: {other:?}"),
+        }
+    }
+    // The next run is a new turn: there the note is what it was.
+    let mut next = c.clone();
+    next.run_id = "run-2".into();
+    match rt
+        .invoke(
+            &next,
+            "computer.state",
+            Op::State {
+                window: None,
+                max_nodes: None,
+            },
+        )
+        .await
+    {
+        Err(Failure::Refused(r)) => assert_eq!(r.code, Code::SessionRequired),
+        other => panic!("{other:?}"),
+    }
+}
+
 #[tokio::test]
 async fn a_restored_latch_refuses_every_input_until_resolved() {
     let (a, log) = fake(0, performed);
