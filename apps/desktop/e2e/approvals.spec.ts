@@ -151,10 +151,16 @@ test("PX-058: three pending approvals form a deck, oldest first, each decided on
     const left = await page.evaluate((s) => window.modbit.dockApprovals(s).then((l) => l.map((a) => a.approvalId)), sid);
     expect(left).not.toContain(second);
     // Approve the open task's own card with the keyboard (focus is neutral, the card is this task's).
+    const own = (await page.getByTestId("approval-card").getAttribute("data-approval-id"))!;
+    const third = left.find((id) => id !== own)!;
+    expect(third, "the third agent's approval is the one left").toBeTruthy();
     await page.getByTestId("approval-card").focus();
     await page.keyboard.press("Enter");
     await expect.poll(() => remotes(repos[0]!), { timeout: 90_000 }).toEqual(["r1"]);
     await expect(page.getByTestId("approval-count")).toContainText("1 pending", { timeout: 30_000 });
+    // The count falls before the deck shows the next card: a click now would land on the card that was just decided (the hosted Windows runner saw
+    // "Run" do nothing). Wait for the card on screen to be the one that is left.
+    await expect(page.getByTestId("approval-card")).toHaveAttribute("data-approval-id", third, { timeout: 30_000 });
     // The skipped one did not run; the remaining one is still waiting; the model was told it was skipped (the task goes on).
     expect(remotes(repos[1]!)).toEqual([]);
     expect(remotes(repos[2]!)).toEqual([]);
