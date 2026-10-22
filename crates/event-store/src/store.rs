@@ -209,6 +209,16 @@ impl NewEvent {
     }
 }
 
+/// How hard an append is synced to the disk (DR-PX-2026-10-21-015).
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum Durability {
+    /// `synchronous=FULL`: the commit is on the disk when the call returns.
+    Full,
+    /// `synchronous=NORMAL`: written to the WAL (survives the process), synced
+    /// to the disk by the next full commit. Streamed assistant-text deltas only.
+    Relaxed,
+}
+
 /// An append to one aggregate.
 #[derive(Clone, Debug)]
 pub struct AppendRequest {
@@ -320,6 +330,9 @@ pub struct EventStore {
     /// Events loaded into memory by the read methods since this store
     /// opened: a reader that must not load a log can assert it did not move.
     events_read: std::sync::atomic::AtomicU64,
+    /// A relaxed append could not return the connection to full durability:
+    /// every further append is refused (fail closed).
+    relaxed_stuck: bool,
 }
 
 /// What every appended payload passes before it is hashed and persisted
@@ -468,6 +481,7 @@ impl EventStore {
             fault: FaultPlan::from_env(),
             filter: None,
             events_read: std::sync::atomic::AtomicU64::new(0),
+            relaxed_stuck: false,
         };
         if report.applied.iter().any(|v| *v >= 2) {
             // Projections were introduced after events may already exist: derive them.
@@ -514,9 +528,100 @@ impl EventStore {
     }
 
     /// Append events to one aggregate in a single transaction, updating the
-    /// projections in that same transaction.
+    /// projections in that same transaction. Committed with full durability.
     pub fn append(&mut self, req: AppendRequest) -> Result<Vec<StoredEvent>> {
+        self.append_with(req, Durability::Full)
+    }
+
+    /// [`Self::append`] with an explicit durability (DR-PX-2026-10-21-015).
+    ///
+    /// [`Durability::Relaxed`] commits with `synchronous=NORMAL`: the WAL
+    /// frames are written (a killed process loses nothing) but not synced to
+    /// the disk. It is accepted only for `AssistantTextDelta` events of an
+    /// `AssistantStream` aggregate — the live preview of a message whose
+    /// authoritative record is its completion event — and the connection is
+    /// returned to `synchronous=FULL` before this call returns, whatever the
+    /// outcome, so no other append is ever relaxed. The next full-durability
+    /// commit syncs the whole WAL and so hardens every relaxed commit before
+    /// it; a power loss can take only the tail after the last full commit.
+    pub fn append_with(
+        &mut self,
+        req: AppendRequest,
+        durability: Durability,
+    ) -> Result<Vec<StoredEvent>> {
         let req = Self::filtered(self.filter.as_ref(), req);
+        self.enter_durability(&req, durability)?;
+        let result = self.append_committed(req);
+        self.leave_durability(durability)?;
+        result
+    }
+
+    /// [`Self::append_fenced`] with an explicit durability; see
+    /// [`Self::append_with`].
+    pub fn append_fenced_with(
+        &mut self,
+        req: AppendRequest,
+        lease_generation: u64,
+        durability: Durability,
+    ) -> Result<Vec<StoredEvent>> {
+        self.enter_durability(&req, durability)?;
+        let result = self.append_fenced_committed(req, lease_generation);
+        self.leave_durability(durability)?;
+        result
+    }
+
+    /// The connection's `synchronous` level now (2 = FULL, 1 = NORMAL): outside
+    /// a relaxed append it is always FULL. For diagnostics and tests.
+    pub fn synchronous_level(&self) -> Result<i64> {
+        Ok(self
+            .conn
+            .query_row("PRAGMA synchronous", [], |r| r.get(0))?)
+    }
+
+    /// Check that `durability` is allowed for `req` and set the connection to it.
+    fn enter_durability(&mut self, req: &AppendRequest, durability: Durability) -> Result<()> {
+        if self.relaxed_stuck {
+            return Err(Error::RelaxedRefused {
+                detail: "the store could not return to full durability after a relaxed append"
+                    .into(),
+            });
+        }
+        if durability == Durability::Relaxed {
+            let only_deltas = req.aggregate_type == AggregateType::AssistantStream
+                && !req.events.is_empty()
+                && req
+                    .events
+                    .iter()
+                    .all(|e| e.event_type == "AssistantTextDelta");
+            if !only_deltas {
+                return Err(Error::RelaxedRefused {
+                    detail: "relaxed durability is for AssistantTextDelta events of an AssistantStream aggregate only"
+                        .into(),
+                });
+            }
+            self.conn.pragma_update(None, "synchronous", "NORMAL")?;
+        }
+        Ok(())
+    }
+
+    /// Return the connection to full durability, whatever the append's outcome.
+    /// Fail closed: a connection left relaxed would weaken every later commit.
+    fn leave_durability(&mut self, durability: Durability) -> Result<()> {
+        if durability == Durability::Relaxed
+            && self
+                .conn
+                .pragma_update(None, "synchronous", "FULL")
+                .is_err()
+        {
+            self.relaxed_stuck = true;
+            return Err(Error::RelaxedRefused {
+                detail: "the store could not return to full durability".into(),
+            });
+        }
+        Ok(())
+    }
+
+    fn append_committed(&mut self, req: AppendRequest) -> Result<Vec<StoredEvent>> {
         let tx = self
             .conn
             .transaction_with_behavior(TransactionBehavior::Immediate)?;
@@ -755,6 +860,14 @@ impl EventStore {
     /// still record audit events through [`Self::append`], but it cannot
     /// advance state.
     pub fn append_fenced(
+        &mut self,
+        req: AppendRequest,
+        lease_generation: u64,
+    ) -> Result<Vec<StoredEvent>> {
+        self.append_fenced_with(req, lease_generation, Durability::Full)
+    }
+
+    fn append_fenced_committed(
         &mut self,
         req: AppendRequest,
         lease_generation: u64,
