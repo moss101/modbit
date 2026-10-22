@@ -207,6 +207,11 @@ impl ComputerRuntime {
     }
 
     fn policy_observe(&self, ctx: &CallCtx) -> Result<(), Refusal> {
+        // The person's Stop is final for the run and is answered before any
+        // session is looked up: a session's note can be rewritten after the
+        // stop (the in-flight input's unknown outcome closes it again with its
+        // own reason), and the stop must not turn into "start a new session".
+        self.check_aborted(ctx)?;
         if ctx.policy.observe_denied {
             return Err(Refusal::new(
                 Code::ActionUnsafe,
