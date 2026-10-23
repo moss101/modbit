@@ -10,6 +10,7 @@
  */
 import { expect, test } from "@playwright/test";
 import { mkdtempSync } from "node:fs";
+import { createServer } from "node:http";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { accessible, box, closeApp, focusedTestId, launch, liftMinimumSize, makeRepo, MOD, scriptedModel, setContentSize } from "./support/ui-harness.ts";
@@ -99,6 +100,55 @@ test("PX-045: below a 448 centre the shell is single-pane with the 40 px rail; t
     near((await box(page, "region-agents")).width, 260, 2, "the expanded list");
   } finally {
     await closeApp(app);
+  }
+});
+
+test("PX-045: at 1000 x 700 and 900 x 600 the list keeps 260, the top bar 40 and the centre stays above the single-pane threshold with nothing overflowing", async () => {
+  const dataDir = mkdtempSync(join(tmpdir(), "modbit-e2e-shell-sizes-"));
+  const { app, page } = await launch(dataDir);
+  try {
+    for (const [w, h] of [[1000, 700], [900, 600]] as const) {
+      await setContentSize(app, page, w, h);
+      near((await box(page, "region-agents")).width, 260, 2, `agent list at ${w}`);
+      near((await box(page, "top-bar")).height, 40, 1, `top bar at ${w}`);
+      expect((await box(page, "region-conversation")).width, `centre at ${w}`).toBeGreaterThanOrEqual(448);
+      await expect(page.getByTestId("agent-rail"), `no rail at ${w}`).toHaveCount(0);
+      await expect(page.getByTestId("shell")).not.toHaveAttribute("data-single-pane", "true");
+      expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth), `no horizontal overflow at ${w}`).toBe(true);
+      await accessible(page, `shell at ${w} x ${h}`);
+    }
+  } finally {
+    await closeApp(app);
+  }
+});
+
+test("PX-045: opening Settings with a running task neither stops nor alters the task", async () => {
+  // A model that accepts the request and never answers keeps the task running for the whole test.
+  const stalled = createServer(() => undefined);
+  await new Promise<void>((r) => stalled.listen(0, "127.0.0.1", r));
+  const url = `http://127.0.0.1:${(stalled.address() as { port: number }).port}`;
+  const repo = makeRepo(mkdtempSync(join(tmpdir(), "modbit-e2e-shell-settings-repo-")));
+  const dataDir = mkdtempSync(join(tmpdir(), "modbit-e2e-shell-settings-"));
+  const { app, page } = await launch(dataDir, { env: { MODBIT_OPENAI_BASE_URL: url } });
+  try {
+    await setContentSize(app, page, 1280, 800);
+    await page.getByTestId("goal").fill("Keep running while settings open");
+    await page.getByTestId("workspace").fill(repo);
+    await page.getByTestId("run").click();
+    const card = page.getByTestId("task-card").first();
+    await card.getByTestId("task-start").click();
+    const running = page.getByTestId("column-running").getByTestId("task-card");
+    await expect(running).toHaveCount(1, { timeout: 60_000 });
+    const taskId = await running.first().getAttribute("data-task-id");
+    await page.keyboard.press(`${MOD}+Comma`);
+    await expect.poll(() => focusedTestId(page)).toBe("settings");
+    await page.keyboard.press("Escape");
+    await expect(page.getByTestId("column-running").getByTestId("task-card"), "still running after Settings opened and closed").toHaveCount(1);
+    await expect(page.getByTestId("column-running").getByTestId("task-card").first()).toHaveAttribute("data-task-id", taskId!);
+  } finally {
+    await closeApp(app);
+    stalled.closeAllConnections();
+    stalled.close();
   }
 });
 
