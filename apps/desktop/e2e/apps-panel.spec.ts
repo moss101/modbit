@@ -266,6 +266,9 @@ test("slow consumer at the IPC level: the Core sends no more than the window bey
         // Quiet means no frame for 400 ms after at least one arrived; the Core has nothing more it may send.
         while (Date.now() - lastFrameAt < 400) await new Promise((res) => setTimeout(res, 50));
       };
+      // A slow runner can take longer than the quiet window to deliver the first frame: wait for it, then for the quiet.
+      const first = Date.now();
+      while (received === 0n && Date.now() - first < 30_000) await new Promise((res) => setTimeout(res, 50));
       await quiet();
       const stalledAt = received;
       // Consume in steps: each acknowledgement lets the Core send up to one more window.
