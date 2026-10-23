@@ -1,0 +1,29 @@
+{
+ "task": "PX-132",
+ "requirements": [
+  "REQ-PX-132",
+  "QUAL-PX-132",
+  "docs/62_PRODUCT_EXTENSION_REQUIREMENTS_TASKS_AND_QUALIFICATIONS.md#px-132"
+ ],
+ "scenarios": [
+  "QUAL-PX-132 / PX-E2E-132"
+ ],
+ "tests": [
+  "services/modbit-core/tests/px_132_services.rs::qual_px_132_three_dev_servers_are_reported_ready_and_the_agent_is_told_without_asking",
+  "services/modbit-core/tests/px_132_services.rs::qual_px_132_a_server_that_returns_500_is_unhealthy_and_one_that_dies_is_gone",
+  "services/modbit-core/tests/px_132_services.rs::qual_px_132_a_restarted_core_reattaches_and_reobserves_without_repeating_itself",
+  "services/modbit-core/tests/px_132_services.rs::qual_px_132_a_server_that_died_while_the_core_was_down_is_recorded_gone_on_restart",
+  "services/modbit-execd/tests/services.rs::qual_px_132_the_broker_reports_the_listeners_of_a_sessions_own_tree_and_nothing_else"
+ ],
+ "proof": "Real Core / real broker / real CLI as each test states. CI run 39960289486 (head f5a67b545a74017c3b632f687b09a8323cf2c8c3): conclusion success.",
+ "limitations": "Unix-only suites; the Windows leg is not run; remote/cloud processes report through the guest RPC and are not exercised here; no gate attested.",
+ "runs": [
+  "39960289486"
+ ],
+ "ci": {
+  "run_id": "39960289486",
+  "head_sha": "f5a67b545a74017c3b632f687b09a8323cf2c8c3",
+  "conclusion": "success",
+  "json": "evidence/m10/PX-132/ci-run-39960289486.json"
+ }
+}

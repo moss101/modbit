@@ -34796,12 +34796,15 @@
    ],
    "task_card": "docs/62_PRODUCT_EXTENSION_REQUIREMENTS_TASKS_AND_QUALIFICATIONS.md#px-044",
    "audit_at_adoption": "DOCUMENTED-ONLY; no product caller present",
-   "status": "REAL_TESTING",
+   "status": "COMPLETE",
    "evidence": [
     "commit:fe5101f0",
     "run:38990216920",
     "test:apps/desktop/e2e/gallery.spec.ts",
-    "test:packages/design-tokens/src/index.test.ts"
+    "test:packages/design-tokens/src/index.test.ts",
+    "run:39960289486",
+    "commit:f5a67b545a74017c3b632f687b09a8323cf2c8c3",
+    "artifact:evidence/m10/PX-044/evidence.json"
    ],
    "notes": [
     {
@@ -34811,8 +34814,8 @@
      "note": "graph integration 2026-10-17 on main dbe83fc9: Tokens, primitives, tray host, contrast and reduced-motion are proven with axe in light/dark/high-contrast, but the QUAL negative proof that an evidence check rejects a gallery state counted as proof has no tool or test. Open: evidence-check rule rejecting gallery states as proof does not exist in tools/"
     }
    ],
-   "owner_agent": "graph-integrator",
-   "status_changed_on": "2026-10-17T06:34:55Z"
+   "owner_agent": "claude",
+   "status_changed_on": "2026-10-23T15:45:24Z"
   },
   {
    "id": "PX-045",
@@ -36588,8 +36591,14 @@
    ],
    "task_card": "docs/62_PRODUCT_EXTENSION_REQUIREMENTS_TASKS_AND_QUALIFICATIONS.md#px-099",
    "audit_at_adoption": "DOCUMENTED-ONLY; no product caller present",
-   "status": "NOT_STARTED",
-   "evidence": []
+   "status": "COMPLETE",
+   "evidence": [
+    "run:39960289486",
+    "commit:f5a67b545a74017c3b632f687b09a8323cf2c8c3",
+    "artifact:evidence/m10/PX-099/evidence.json"
+   ],
+   "owner_agent": "claude",
+   "status_changed_on": "2026-10-23T15:45:31Z"
   },
   {
    "id": "PX-100",
@@ -37339,8 +37348,10 @@
    ],
    "task_card": "docs/62_PRODUCT_EXTENSION_REQUIREMENTS_TASKS_AND_QUALIFICATIONS.md#px-118",
    "audit_at_adoption": "DOCUMENTED-ONLY; no product caller present",
-   "status": "NOT_STARTED",
-   "evidence": []
+   "status": "REAL_TESTING",
+   "evidence": [],
+   "owner_agent": "claude",
+   "status_changed_on": "2026-10-23T15:45:32Z"
   },
   {
    "id": "PX-119",
@@ -37766,13 +37777,16 @@
    ],
    "task_card": "docs/62_PRODUCT_EXTENSION_REQUIREMENTS_TASKS_AND_QUALIFICATIONS.md#px-131",
    "audit_at_adoption": "DOCUMENTED-ONLY; no product caller present",
-   "status": "REAL_TESTING",
+   "status": "COMPLETE",
    "evidence": [
     "commit:d10d46d7",
     "run:38990216920",
     "test:services/modbit-core/tests/px_131_epoch.rs::qual_px_131_a_policy_tightened_mid_round_applies_from_the_next_round_with_both_epochs_recorded",
     "test:services/modbit-core/tests/px_131_epoch.rs::qual_px_131_an_emergency_stop_takes_effect_inside_the_round",
-    "test:services/modbit-core/tests/px_131_epoch.rs::qual_px_131_a_core_killed_mid_round_resumes_the_same_snapshot_and_epoch"
+    "test:services/modbit-core/tests/px_131_epoch.rs::qual_px_131_a_core_killed_mid_round_resumes_the_same_snapshot_and_epoch",
+    "run:39960289486",
+    "commit:f5a67b545a74017c3b632f687b09a8323cf2c8c3",
+    "artifact:evidence/m10/PX-131/evidence.json"
    ],
    "notes": [
     {
@@ -37782,8 +37796,8 @@
      "note": "graph integration 2026-10-17 on main dbe83fc9: Frozen per-round snapshot, both epochs on decisions and receipts, immediate emergency stop, kill replay of the same snapshot and forged-epoch chain failure are proven; the 'skill revoked mid-round' clause has no test. Open: skill revoked mid-round leaves the round's projection unchanged and is absent next round: no test"
     }
    ],
-   "owner_agent": "graph-integrator",
-   "status_changed_on": "2026-10-17T06:34:57Z"
+   "owner_agent": "claude",
+   "status_changed_on": "2026-10-23T15:45:26Z"
   },
   {
    "id": "PX-132",
@@ -37811,8 +37825,14 @@
    ],
    "task_card": "docs/62_PRODUCT_EXTENSION_REQUIREMENTS_TASKS_AND_QUALIFICATIONS.md#px-132",
    "audit_at_adoption": "DOCUMENTED-ONLY; no product caller present",
-   "status": "NOT_STARTED",
-   "evidence": []
+   "status": "COMPLETE",
+   "evidence": [
+    "run:39960289486",
+    "commit:f5a67b545a74017c3b632f687b09a8323cf2c8c3",
+    "artifact:evidence/m10/PX-132/evidence.json"
+   ],
+   "owner_agent": "claude",
+   "status_changed_on": "2026-10-23T15:45:29Z"
   },
   {
    "id": "PX-133",
@@ -37885,8 +37905,14 @@
    ],
    "task_card": "docs/62_PRODUCT_EXTENSION_REQUIREMENTS_TASKS_AND_QUALIFICATIONS.md#px-134",
    "audit_at_adoption": "DOCUMENTED-ONLY; no product caller present",
-   "status": "NOT_STARTED",
-   "evidence": []
+   "status": "COMPLETE",
+   "evidence": [
+    "run:39960289486",
+    "commit:f5a67b545a74017c3b632f687b09a8323cf2c8c3",
+    "artifact:evidence/m10/PX-134/evidence.json"
+   ],
+   "owner_agent": "claude",
+   "status_changed_on": "2026-10-23T15:45:23Z"
   },
   {
    "id": "PX-135",

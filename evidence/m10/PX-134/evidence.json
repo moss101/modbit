@@ -1,0 +1,27 @@
+{
+ "task": "PX-134",
+ "requirements": [
+  "REQ-PX-134",
+  "QUAL-PX-134",
+  "docs/62_PRODUCT_EXTENSION_REQUIREMENTS_TASKS_AND_QUALIFICATIONS.md#px-134"
+ ],
+ "scenarios": [
+  "QUAL-PX-134 / PX-E2E-134"
+ ],
+ "tests": [
+  "apps/cli/tests/px_134_registry.rs::registry_verbs_sign_verify_activate_status_revoke_and_roll_back_through_the_core",
+  "services/modbit-core/tests/px_134_activation.rs::an_older_bundle_is_refused_until_it_is_rolled_back_to",
+  "services/modbit-core/tests/px_134_activation.rs::sigkill_during_activation_leaves_exactly_one_whole_active_bundle"
+ ],
+ "proof": "Real Core / real broker / real CLI as each test states. CI run 39960289486 (head f5a67b545a74017c3b632f687b09a8323cf2c8c3): conclusion success.",
+ "limitations": "Verify, sign, activate, rollback, tamper, unknown-key, revoked-binding and key-never-printed are proven through the real CLI and Core; the SIGKILL proof kills the Core at twelve points of an activation rather than at a named instruction; the dev-key verb is not for production; no gate attested.",
+ "runs": [
+  "39960289486"
+ ],
+ "ci": {
+  "run_id": "39960289486",
+  "head_sha": "f5a67b545a74017c3b632f687b09a8323cf2c8c3",
+  "conclusion": "success",
+  "json": "evidence/m10/PX-134/ci-run-39960289486.json"
+ }
+}

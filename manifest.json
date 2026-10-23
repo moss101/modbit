@@ -7,8 +7,8 @@
   "scope_rule": "docs/*.md, root *.md except MANIFEST.md, docs/decisions/*.md, graph JSON/Markdown, tools/*.py, evidence payloads; manifests exclude themselves and transient caches",
   "counts": {
     "docs": 97,
-    "root_and_tooling": 1699,
-    "docs_bytes": 2142234
+    "root_and_tooling": 1714,
+    "docs_bytes": 2144981
   },
   "sections": [
     {
@@ -914,8 +914,8 @@
       "section": "governance",
       "section_title": "Agent process and governance",
       "title": "Dossier maintenance log",
-      "bytes": 119745,
-      "sha256": "1745ffeafaa690a71a1b1d33a1cd1d2421c1a9ccf5a6dc06f02758d204772cba"
+      "bytes": 122492,
+      "sha256": "75bf93db6fd279c80aabc50b6dfb118a2223f8d9605b0cd47cd95683bee4c953"
     },
     {
       "path": "docs/98_BUILD_MANIFEST.md",
@@ -2014,6 +2014,21 @@
       "sha256": "595f451878696e1fd7e97193184f8542395ec72abbef78ea9a1c3e450f37f144"
     },
     {
+      "path": "evidence/m10/PX-044/TASK_CARD.md",
+      "bytes": 943,
+      "sha256": "3ae58dafb7714b6b8f23ed9aef430c58a26db7b34590241782ca5e81d03e1842"
+    },
+    {
+      "path": "evidence/m10/PX-044/ci-run-39960289486.json",
+      "bytes": 46978,
+      "sha256": "a8dbcd6ad3f3d474c37e6bf506048288320694cbf9e882e0a9124bb70a7480dd"
+    },
+    {
+      "path": "evidence/m10/PX-044/evidence.json",
+      "bytes": 891,
+      "sha256": "1aa97cbf7ccc292b941d7198dc0a43777ec1178d210b539a90bfa572d9a425d9"
+    },
+    {
       "path": "evidence/m10/PX-053/TASK_CARD.md",
       "bytes": 1721,
       "sha256": "7d8b09f7707d974ad23ef74408045cf05cd56050a9bc5d070e4f565385e61193"
@@ -2057,6 +2072,21 @@
       "path": "evidence/m10/PX-067/evidence.json",
       "bytes": 1624,
       "sha256": "533571477403877cb37f38b2aa98b7f4e697a5acd76189146b2cd8f0dcbefc68"
+    },
+    {
+      "path": "evidence/m10/PX-099/TASK_CARD.md",
+      "bytes": 1506,
+      "sha256": "176efbba92374c5adc0774fef998ebc2ea6f6e23f3942f3d59ebe863211e73bd"
+    },
+    {
+      "path": "evidence/m10/PX-099/ci-run-39960289486.json",
+      "bytes": 46978,
+      "sha256": "a8dbcd6ad3f3d474c37e6bf506048288320694cbf9e882e0a9124bb70a7480dd"
+    },
+    {
+      "path": "evidence/m10/PX-099/evidence.json",
+      "bytes": 1484,
+      "sha256": "6f5e382a877e71f9391af8ce0898dde8c0908cdcefce80690b8f06f1cda50720"
     },
     {
       "path": "evidence/m10/PX-107/TASK_CARD.md",
@@ -2132,6 +2162,51 @@
       "path": "evidence/m10/PX-113/evidence.json",
       "bytes": 1948,
       "sha256": "f3482faec71e1074ab11e7eac875490685d6ff66e9de12019708ca173efa1ed9"
+    },
+    {
+      "path": "evidence/m10/PX-131/TASK_CARD.md",
+      "bytes": 1557,
+      "sha256": "3d880ca472c96d0ca75b01a42670617a72f6c3e6d0890d9a2794471170e5c6a7"
+    },
+    {
+      "path": "evidence/m10/PX-131/ci-run-39960289486.json",
+      "bytes": 46978,
+      "sha256": "a8dbcd6ad3f3d474c37e6bf506048288320694cbf9e882e0a9124bb70a7480dd"
+    },
+    {
+      "path": "evidence/m10/PX-131/evidence.json",
+      "bytes": 1519,
+      "sha256": "eb9b80cd319869cd45ae91f8746a8940432b65450005ec58222b805c949fe9c8"
+    },
+    {
+      "path": "evidence/m10/PX-132/TASK_CARD.md",
+      "bytes": 1461,
+      "sha256": "3cc693d2fdfdc0239eba896a290c7a93d8769abdcad64f0d029a4277d75608b8"
+    },
+    {
+      "path": "evidence/m10/PX-132/ci-run-39960289486.json",
+      "bytes": 46978,
+      "sha256": "a8dbcd6ad3f3d474c37e6bf506048288320694cbf9e882e0a9124bb70a7480dd"
+    },
+    {
+      "path": "evidence/m10/PX-132/evidence.json",
+      "bytes": 1417,
+      "sha256": "de7d8fd155c09ea1f5aede57e1e7b9b6121992e7d2e89872be9759f64f1edae2"
+    },
+    {
+      "path": "evidence/m10/PX-134/TASK_CARD.md",
+      "bytes": 1306,
+      "sha256": "a935fb43af7fd040e7b92dfc3c914f166c937a9ec75e09854afa836335b7f4ef"
+    },
+    {
+      "path": "evidence/m10/PX-134/ci-run-39960289486.json",
+      "bytes": 46978,
+      "sha256": "a8dbcd6ad3f3d474c37e6bf506048288320694cbf9e882e0a9124bb70a7480dd"
+    },
+    {
+      "path": "evidence/m10/PX-134/evidence.json",
+      "bytes": 1252,
+      "sha256": "bba5a8a5662ddf8d142ec8421ea8565cc2b40bc578c65ad97f7363445f5b6545"
     },
     {
       "path": "evidence/m2/IMP-EV-0011/TASK_CARD.md",
@@ -9361,12 +9436,12 @@
     {
       "path": "graph/PROJECT_GRAPH.md",
       "bytes": 45127,
-      "sha256": "ad74a430a5441d942568c71d5bf2a13566b1c3630c05eb8aaa92798bfde2b395"
+      "sha256": "6c31de66e319ab25ed48bbf6671f3150335361e970eb23a749728d27bac44b2f"
     },
     {
       "path": "graph/project-graph.json",
-      "bytes": 2262936,
-      "sha256": "47aec82ae8ab0af388c1860ad4535063fdbd96907504384f3f4d6c3f55e84f18"
+      "bytes": 2263853,
+      "sha256": "59077c6df0f77db6e33a4c4642e423c3953db3bb9c5763090134eb2aeec3b24d"
     },
     {
       "path": "tools/build_graph.py",
