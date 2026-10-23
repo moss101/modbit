@@ -137,7 +137,8 @@ pub fn device_policy_path() -> std::path::PathBuf {
 ///
 /// # Errors
 /// A device policy file that exists but does not parse.
-pub fn device_constraints() -> Result<Option<modbit_policy::config::DeviceConstraints>, ConfigError> {
+pub fn device_constraints() -> Result<Option<modbit_policy::config::DeviceConstraints>, ConfigError>
+{
     Ok(read_layer(&device_policy_path(), Authority::Device)?.and_then(|l| l.device))
 }
 
