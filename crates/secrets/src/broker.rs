@@ -1363,3 +1363,89 @@ mod tests {
         );
     }
 }
+
+// ------------------------------------------------ process-start credentials
+
+static PROCESS: std::sync::OnceLock<CredentialBroker> = std::sync::OnceLock::new();
+static PROCESS_REGISTERED: Mutex<Option<HashSet<CredentialId>>> = Mutex::new(None);
+
+/// The broker of a process that has no Core around it — a cloud service, a
+/// worker, the CLI — and so loads a credential from its own environment. It
+/// is the same [`CredentialBroker`] with the same checks, counting and audit,
+/// not a second implementation.
+#[must_use]
+pub fn process_broker() -> &'static CredentialBroker {
+    PROCESS.get_or_init(CredentialBroker::new)
+}
+
+/// One use of the credential an environment variable holds, through the
+/// process broker (REQ-PX-130): registered on first use, read from the
+/// variable *now* (so a rotation applies to the next use), counted and
+/// audited. `None` when the variable is unset or empty.
+///
+/// This is how a process entry point reads a secret; reading the variable
+/// directly is refused by `architecture-lint credentials`.
+#[must_use]
+pub fn env_secret(kind: Kind, var: &str, purpose: &str) -> Option<Secret> {
+    let broker = process_broker();
+    let id = CredentialId::new(kind, var);
+    {
+        let mut seen = PROCESS_REGISTERED
+            .lock()
+            .unwrap_or_else(std::sync::PoisonError::into_inner);
+        if seen.get_or_insert_with(HashSet::new).insert(id.clone()) {
+            broker.register(Registration {
+                id: id.clone(),
+                kind,
+                source: SecretHandle::Env(var.to_owned()),
+                audience: "process".into(),
+            });
+        }
+    }
+    broker
+        .acquire(
+            &id,
+            &Use {
+                principal: "process".into(),
+                audience: "process".into(),
+                purpose: purpose.to_owned(),
+                nonce: None,
+            },
+        )
+        .ok()
+}
+
+#[cfg(test)]
+mod process_tests {
+    use super::*;
+
+    #[test]
+    fn an_environment_credential_is_used_through_the_broker_counted_and_never_printed() {
+        // `PATH` exists in every test environment; the crate forbids `unsafe`,
+        // so the test cannot set a variable of its own.
+        let var = "PATH";
+        let id = CredentialId::new(Kind::Cloud, var);
+        let s = env_secret(Kind::Cloud, var, "test.use").expect("PATH is set");
+        assert!(!s.expose().is_empty());
+        assert_eq!(format!("{s} {s:?}"), "<redacted> Secret(<redacted>)");
+        let used = || {
+            process_broker()
+                .credentials()
+                .into_iter()
+                .find(|c| c.id == id)
+                .map(|c| c.uses)
+        };
+        assert_eq!(used(), Some(1), "the use is counted at the interface");
+        let _ = env_secret(Kind::Cloud, var, "test.use").unwrap();
+        assert_eq!(used(), Some(2));
+        assert!(
+            process_broker()
+                .audit_tail(8)
+                .iter()
+                .any(|a| a.action == "USE" && a.credential == id.to_string()),
+            "the use is audited"
+        );
+        // Unset is no credential, not an empty one.
+        assert!(env_secret(Kind::Cloud, "MODBIT_TEST_PX130_NEVER_SET", "test.use").is_none());
+    }
+}

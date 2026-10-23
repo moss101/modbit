@@ -131,9 +131,10 @@ reason = "PX-067: a Git process is built only by the hardened runner in crates/g
 
 # PX-130 (QUAL-PX-130): every credential is resolved through the one broker
 # interface. No source file may read an environment variable that names a
-# credential except the broker itself and the entry points listed below, which
-# still load their own secret at process start; each is a migration debt, and
-# listing them is what stops a new ad hoc read from appearing beside them.
+# credential except the broker itself; a process entry point that loads a
+# secret from its own environment uses `modbit_secrets::broker::env_secret`.
+# `grandfathered` (exact `path::VARIABLE` pairs) is the escape hatch for a
+# debt that cannot be migrated yet and is empty.
 # Evaluated by `architecture-lint credentials`.
 [[credentials]]
 roots = ["crates", "services", "apps"]
@@ -143,22 +144,7 @@ allowed = [
   "services/modbit-core/src/credentials.rs",
   "crates/secrets/src/",
 ]
-grandfathered = [
-  "services/modbit-core/src/forge.rs::MODBIT_GITHUB_TOKEN",
-  "apps/cli/src/cloud.rs::MODBIT_CLOUD_SECRET",
-  "apps/cli/src/main.rs::MODBIT_PROVIDER_API_KEY",
-  "apps/cloud-api/src/lib.rs::MODBIT_CLOUD_ADMIN_SECRET",
-  "apps/cloud-api/src/lib.rs::MODBIT_CLOUD_S3_SECRET_ACCESS_KEY",
-  "apps/cloud-api/src/lib.rs::MODBIT_CLOUD_TOKEN_KEY_HEX",
-  "apps/cloud-api/src/lib.rs::MODBIT_CLOUD_GITHUB_WEBHOOK_SECRET",
-  "apps/cloud-api/src/oidc.rs::MODBIT_CLOUD_OIDC_CLIENT_SECRET",
-  "apps/cloud-worker/src/lib.rs::MODBIT_CLOUD_S3_SECRET_ACCESS_KEY",
-  "apps/cloud-worker/src/lib.rs::MODBIT_CLOUD_WORKER_PROVIDER_API_KEY",
-  "apps/cloud-worker/src/lib.rs::MODBIT_SANDBOX_WORKER_TOKEN",
-  "apps/cloud-worker/src/lib.rs::MODBIT_CLOUD_WORKER_FORGE_TOKEN",
-  "apps/cloud-worker/src/lib.rs::MODBIT_CLOUD_WORKER_API_TOKEN",
-  "apps/sandbox-gateway/src/lib.rs::MODBIT_CLOUD_S3_SECRET_ACCESS_KEY",
-]
+grandfathered = []
 reason = "PX-130: a credential is resolved only through the broker interface (services/modbit-core/src/credentials.rs); a new direct read needs the broker, not an exception"
 
 # ---------------------------------------------------------------------------

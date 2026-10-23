@@ -343,7 +343,13 @@ async fn login(data_dir: &str, words: &[&str]) -> Result<(), String> {
                 .map_err(|e| e.to_string())?;
             s.trim().to_owned()
         } else {
-            std::env::var("MODBIT_CLOUD_SECRET").map_err(|_| {
+            modbit_secrets::broker::env_secret(
+                modbit_secrets::broker::Kind::Cloud,
+                "MODBIT_CLOUD_SECRET",
+                "cloud.sign_in",
+            )
+            .map(|s| s.expose().to_owned())
+            .ok_or_else(|| {
                 "give the principal's secret on stdin (--secret-stdin) or in MODBIT_CLOUD_SECRET, or sign in with --oidc".to_owned()
             })?
         };

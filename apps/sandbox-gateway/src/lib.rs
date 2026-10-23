@@ -81,8 +81,13 @@ impl Config {
                 region: std::env::var("MODBIT_CLOUD_S3_REGION")
                     .unwrap_or_else(|_| "us-east-1".into()),
                 access_key_id: std::env::var("MODBIT_CLOUD_S3_ACCESS_KEY_ID").unwrap_or_default(),
-                secret_access_key: std::env::var("MODBIT_CLOUD_S3_SECRET_ACCESS_KEY")
-                    .unwrap_or_default(),
+                secret_access_key: modbit_secrets::broker::env_secret(
+                    modbit_secrets::broker::Kind::Cloud,
+                    "MODBIT_CLOUD_S3_SECRET_ACCESS_KEY",
+                    "cloud.object_store",
+                )
+                .map(|s| s.expose().to_owned())
+                .unwrap_or_default(),
                 allow_http: std::env::var("MODBIT_CLOUD_S3_ALLOW_HTTP").is_ok_and(|v| v == "1"),
             }),
             _ => None,
