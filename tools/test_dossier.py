@@ -638,6 +638,23 @@ class DossierTests(unittest.TestCase):
         result = subprocess.run([sys.executable, "tools/check_dossier.py"], cwd=self.root, capture_output=True, text=True, timeout=30)
         self.assertNotIn("[G9]", result.stdout + result.stderr)
 
+    def test_gallery_state_counted_as_proof_is_rejected(self):
+        """QUAL-PX-044: a model-free gallery state is design review only, never proof."""
+        g = self.graph()
+        for node in g["nodes"]:
+            if node["id"] == "IMP-EV-0208":
+                node["status"] = "COMPLETE"
+                node["evidence"] = ["test:apps/desktop/e2e/gallery.spec.ts", "commit:abc123"]
+        self.write_graph(g)
+        out = self.run_tool("check_dossier", ok=False, contains="[G11]")
+        self.assertIn("gallery-state evidence only", out)
+        for node in g["nodes"]:
+            if node["id"] == "IMP-EV-0208":
+                node["evidence"] = ["test:apps/desktop/e2e/gallery.spec.ts", "test:services/modbit-core/tests/x.rs::real", "commit:abc123"]
+        self.write_graph(g)
+        result = subprocess.run([sys.executable, "tools/check_dossier.py"], cwd=self.root, capture_output=True, text=True, timeout=30)
+        self.assertNotIn("[G11]", result.stdout + result.stderr)
+
     def test_release_readiness_is_derived_from_tasks(self):
         self.reset_m01_fixture()
         out = self.run_tool("graph", "releases")
