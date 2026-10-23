@@ -751,7 +751,7 @@ async fn qual_px_131_a_skill_revoked_mid_round_is_in_that_round_and_absent_from_
     assert!(snaps.valid, "{}", snaps.detail);
     assert!(snaps.snapshots.len() >= 3, "{snaps:#?}");
     let named = format!("lintfix-px131@{hash}");
-    let has = |i: usize| snaps.snapshots[i].skills.iter().any(|s| *s == named);
+    let has = |i: usize| snaps.snapshots[i].skills.contains(&named);
     assert!(has(0), "round 1 offered the skill: {snaps:#?}");
     assert!(
         has(1),
