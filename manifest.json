@@ -7,7 +7,7 @@
   "scope_rule": "docs/*.md, root *.md except MANIFEST.md, docs/decisions/*.md, graph JSON/Markdown, tools/*.py, evidence payloads; manifests exclude themselves and transient caches",
   "counts": {
     "docs": 97,
-    "root_and_tooling": 1721,
+    "root_and_tooling": 1722,
     "docs_bytes": 2146494
   },
   "sections": [
@@ -2107,6 +2107,11 @@
       "path": "evidence/m10/PX-082/mutation-check.txt",
       "bytes": 2417,
       "sha256": "7a9d29659ad2111025dc38085c04468d3a15b852315dd5bbf7609b6427acf641"
+    },
+    {
+      "path": "evidence/m10/PX-083/mutation-check.txt",
+      "bytes": 2208,
+      "sha256": "b307dbbd08c04b6962ca456b789e6b645710b00f6359d9d84a23e6060a432f30"
     },
     {
       "path": "evidence/m10/PX-099/TASK_CARD.md",
