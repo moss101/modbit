@@ -111,13 +111,20 @@ fn device_policy_prints_the_constraints_the_updater_must_honor() {
     assert_eq!(set["update_channel"], "stable");
     assert_eq!(set["minimum_version"], "1.2.0");
 
-    // A file that is not a configuration layer is no opinion, as it is for the Core's own reader.
-    std::fs::write(&file, "not json").unwrap();
-    let broken = json(&core(
+    // A file that is not a configuration layer fails closed, as it does for the
+    // Core's own reader: the updater gets no answer, so it installs nothing.
+    std::fs::write(&file, "not a layer").unwrap();
+    let broken = core(
         &["device-policy"],
         &[("MODBIT_DEVICE_POLICY", file.to_str().unwrap())],
-    ));
-    assert!(broken["minimum_version"].is_null());
+    );
+    assert!(!broken.status.success());
+    assert!(broken.stdout.is_empty());
+    assert!(
+        String::from_utf8_lossy(&broken.stderr).contains("not a configuration layer"),
+        "{}",
+        String::from_utf8_lossy(&broken.stderr)
+    );
 }
 
 #[test]
