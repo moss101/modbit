@@ -1,0 +1,30 @@
+{
+ "task": "PX-082",
+ "requirements": [
+  "REQ-PX-082",
+  "QUAL-PX-082",
+  "docs/62_PRODUCT_EXTENSION_REQUIREMENTS_TASKS_AND_QUALIFICATIONS.md#px-082"
+ ],
+ "scenarios": [
+  "QUAL-PX-082 / PX-E2E-082"
+ ],
+ "tests": [
+  "services/modbit-core/tests/automations_px.rs::px_082_definitions_validate_version_and_need_the_owners_exact_approval",
+  "services/modbit-core/tests/automations_px.rs::px_082_a_client_cannot_create_an_automation_task_and_a_tool_cannot_reach_the_ledger",
+  "services/modbit-core/tests/automations_px.rs::px_082_a_repository_definition_stays_disabled_until_its_hash_is_approved_and_a_changed_byte_disables_it",
+  "services/modbit-core/tests/automations_px.rs::px_082_three_versions_enable_the_third_and_a_killed_core_replays_them_all",
+  "services/modbit-core/tests/automations_px.rs::px_082_a_missing_budget_a_secret_value_and_a_client_without_the_right_fail_closed",
+  "services/modbit-core/tests/automations_px.rs::px_082_a_model_that_calls_for_the_ledger_changes_nothing"
+ ],
+ "proof": "Real Core / real broker / real CLI as each test states. CI run 39993797935 (head ce0995876a03966eba4225b2bfa8e2c3c39a9194): conclusion success.",
+ "limitations": "Mutation A (the approval's hash binding dropped) fails the suite; mutation B (the run gate's duplicate hash comparison dropped) survives because the version comparison beside it still refuses an edited definition, and State::live()'s comparison likewise survives, so those lines are defence in depth, not the binding the QUAL names. The reference drift definition is exercised with a scripted model; no live provider. No gate attested.",
+ "runs": [
+  "39993797935"
+ ],
+ "ci": {
+  "run_id": "39993797935",
+  "head_sha": "ce0995876a03966eba4225b2bfa8e2c3c39a9194",
+  "conclusion": "success",
+  "json": "evidence/m10/PX-082/ci-run-39993797935.json"
+ }
+}
