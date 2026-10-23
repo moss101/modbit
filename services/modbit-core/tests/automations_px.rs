@@ -3012,6 +3012,18 @@ fn px_083_each_host_has_one_trigger_clock_and_no_second_scheduler_loop() {
     assert_eq!(spawns("crates/automation/src/schedule.rs"), 0);
 }
 
+/// A harmless program the shell classifier does not know, so running it under
+/// `MODE_ASK` is a protected effect that needs an approval: `groups` on Unix,
+/// `tzutil` (prints the time zone) on Windows. Neither is in the classifier's
+/// read-only or build lists.
+fn unlisted_argv() -> Vec<&'static str> {
+    if cfg!(windows) {
+        vec!["tzutil", "/g"]
+    } else {
+        vec!["groups"]
+    }
+}
+
 // ---- PX-084 completion: stated limits, approving later, rules and tools ----
 
 /// Without a price for the model a stated cost limit cannot be proven kept, so
@@ -3049,7 +3061,7 @@ async fn px_084_a_parked_approval_the_person_grants_later_lets_the_run_continue_
     let script = vec![
         call("fs.read", json!({"path": "README.md"})),
         plan_update(&[], &["shell.exec"]),
-        call("shell.exec", json!({"argv": ["groups"]})),
+        call("shell.exec", json!({"argv": unlisted_argv()})),
         complete(),
     ];
     let mut f = fx_priced(script, &[("README.md", "x")], &[]).await;
@@ -3225,7 +3237,7 @@ async fn px_084_a_persons_rules_and_modes_computer_tools_and_approving_tools_do_
         call("approval.resolve", json!({"approve": true})),
         call("fs.read", json!({"path": "README.md"})),
         plan_update(&[], &["shell.exec"]),
-        call("shell.exec", json!({"argv": ["groups"]})),
+        call("shell.exec", json!({"argv": unlisted_argv()})),
         complete(),
     ];
     let mut f = fx_priced(script, &[("README.md", "x")], &[]).await;
@@ -3260,7 +3272,7 @@ async fn px_084_a_persons_rules_and_modes_computer_tools_and_approving_tools_do_
         modbit_protocol::v1::AddAllowRule {
             task_id: Some(mine.clone()),
             rule_id: "groups-for-me".into(),
-            pattern: vec!["groups".into()],
+            pattern: vec![unlisted_argv()[0].to_owned()],
             scope: "USER".into(),
             expires_at_ms: 0,
             covers_always_ask: false,
@@ -3368,7 +3380,7 @@ async fn px_084_a_persons_rules_and_modes_computer_tools_and_approving_tools_do_
                 value: hex::decode(&run.task_id).unwrap(),
             }),
             rule_id: "for-the-run".into(),
-            pattern: vec!["groups".into()],
+            pattern: vec![unlisted_argv()[0].to_owned()],
             scope: "TASK".into(),
             expires_at_ms: 0,
             covers_always_ask: false,
@@ -3393,7 +3405,7 @@ async fn px_086_a_test_run_of_a_write_capable_definition_changes_nothing_and_lea
             "change.apply",
             json!({"path": "probe.txt", "op": "create", "content": "probe\n"}),
         ),
-        call("shell.exec", json!({"argv": ["groups"]})),
+        call("shell.exec", json!({"argv": unlisted_argv()})),
         call("fs.read", json!({"path": "README.md"})),
         plan_update(&[], &[]),
         complete(),
