@@ -36063,6 +36063,28 @@ async fn qual_m7_8_a_credential_is_filled_by_handle_into_its_bound_origin_only_a
     assert_eq!(fills.len(), 1, "{served:#?}");
     assert_eq!(fills[0]["backend_dom_node_id"], 5);
     assert_eq!(fills[0]["credential_handle"], "cred_0123456789ab");
+    // PX-130: the fill that ran is one use at the broker's interface, and the
+    // broker never held a value (the host's custody): the counter equals the
+    // fills the host performed, and the view carries no secret.
+    {
+        use modbit_protocol::v1::{CredentialBrokerView, GetCredentialBroker};
+        let ack = c
+            .command(envelope(
+                id16(0xEE),
+                "GetCredentialBroker",
+                GetCredentialBroker { audit_limit: 100 }.encode_to_vec(),
+            ))
+            .await
+            .unwrap();
+        let view: CredentialBrokerView = Client::result(&ack).unwrap();
+        let row = view
+            .credentials
+            .iter()
+            .find(|r| r.id.contains("cred_0123456789ab"))
+            .unwrap_or_else(|| panic!("the browser credential is in the broker: {view:#?}"));
+        assert_eq!(row.kind, "browser", "{row:?}");
+        assert_eq!(row.uses, fills.len() as u64, "{row:?}");
+    }
     let bodies = seen.lock().unwrap().clone();
     let texts: Vec<String> = bodies.last().unwrap()["messages"]
         .as_array()
