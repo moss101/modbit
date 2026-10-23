@@ -2930,6 +2930,172 @@ async fn px_083_a_core_killed_in_the_middle_of_a_run_reconciles_to_one_typed_out
     f.core = core2;
 }
 
+/// QUAL-PX-083: the run a schedule makes is an ordinary task whose workspace
+/// is a worktree of its own, never the person's checkout, and whose
+/// origin/provenance is on the task's own log and on its status.
+#[tokio::test(flavor = "multi_thread")]
+async fn px_083_a_scheduled_runs_task_works_in_an_isolated_worktree_of_its_own() {
+    let mut f = fx(finish_script(), &[("README.md", "x")], &[]).await;
+    let t0 = now_ms();
+    set_clock(&f.clock, t0);
+    let v = create(
+        &mut f.c,
+        &def(
+            "isolated",
+            json!([{"kind": "schedule", "id": "tick", "every_minutes": 5}]),
+            json!({}),
+        ),
+        &f.root,
+    )
+    .await
+    .unwrap();
+    let on = enable_exact(&mut f.c, &v).await.unwrap();
+    let next = on.triggers[0].next_due_ms;
+    set_clock(&f.clock, next + 1000);
+    let r = wait_runs(&mut f.c, &v.automation_id, 30, "the slot's run", |r| {
+        done(r) == 1
+    })
+    .await;
+    assert_eq!(r[0].status, "succeeded", "{:?}", r[0]);
+    let ev = session_events(&f.core, &r[0]).await;
+    let created = ev
+        .iter()
+        .find(|e| e["event_type"] == "TaskCreated")
+        .expect("TaskCreated");
+    assert_eq!(created["payload"]["payload"]["origin"], "automation");
+    let wt_root = created["payload"]["payload"]["workspace_root"]
+        .as_str()
+        .expect("the task names its workspace")
+        .to_owned();
+    let wt = std::fs::canonicalize(&wt_root).unwrap_or_else(|_| PathBuf::from(&wt_root));
+    let checkout = std::fs::canonicalize(&f.root).unwrap();
+    assert_ne!(
+        wt, checkout,
+        "the run must not work in the person's checkout"
+    );
+    // A real Git worktree of the repository (Git itself says so), not a copy
+    // the test invented.
+    let listing = git_in(&f.root, &["worktree", "list", "--porcelain"]);
+    assert!(
+        listing.lines().any(|l| {
+            l.strip_prefix("worktree ")
+                .is_some_and(|p| std::fs::canonicalize(p).is_ok_and(|p| p == wt))
+        }),
+        "git does not list {wt:?} as a worktree:\n{listing}"
+    );
+    // The checkout's own branch and tree are untouched by the run.
+    assert_eq!(git_in(&f.root, &["status", "--porcelain"]).trim(), "");
+}
+
+/// QUAL-PX-083: a gate that skips spends only the gate's own budget. The gate
+/// is a read-only task, bounded by its own turn limit; the main task, its
+/// worktree and its budget are never made; the model sees only gate requests.
+#[tokio::test(flavor = "multi_thread")]
+async fn px_083_a_gate_that_skips_spends_only_the_gates_own_budget() {
+    let decision = std::sync::Arc::new(std::sync::Mutex::new(
+        "GATE: SKIP nothing changed".to_owned(),
+    ));
+    let model = scripted_model_fn(gate_model(std::sync::Arc::clone(&decision))).await;
+    let mut f = fx_with(model, &[("README.md", "x")], &[]).await;
+    let v = create(
+        &mut f.c,
+        &def(
+            "gate-budget",
+            manual(),
+            json!({
+                "gate": {"prompt": "Decide whether anything changed.", "max_turns": 4},
+                "limits": {"max_turns": 30}
+            }),
+        ),
+        &f.root,
+    )
+    .await
+    .unwrap();
+    enable_exact(&mut f.c, &v).await.unwrap();
+    let _: AutomationRunStarted = cmd(
+        &mut f.c,
+        "RunAutomation",
+        RunAutomation {
+            automation_id: v.automation_id.clone(),
+            event_id: "gb-1".into(),
+            ..Default::default()
+        },
+    )
+    .await
+    .unwrap();
+    let r = wait_runs(&mut f.c, &v.automation_id, 60, "the gate to skip", |r| {
+        r.iter().any(|x| x.status == "skipped")
+    })
+    .await;
+    let run = r.iter().find(|x| x.status == "skipped").unwrap();
+    assert_eq!(
+        (run.reason.as_str(), run.gate_decision.as_str()),
+        ("GATE", "SKIP")
+    );
+    assert!(run.task_id.is_empty(), "no main task: {run:?}");
+    let bodies = seen_bodies(&f);
+    let is_gate = |b: &Value| {
+        b["messages"].as_array().unwrap().iter().any(|m| {
+            m["content"]
+                .as_str()
+                .is_some_and(|c| c.contains("You are the gate of an automation"))
+        })
+    };
+    assert!(
+        !bodies.is_empty() && bodies.iter().all(is_gate),
+        "only the gate spent"
+    );
+    assert!(
+        bodies.len() <= 4,
+        "the gate stays inside its own turn bound: {} requests",
+        bodies.len()
+    );
+    // The gate task ran read-only: its lease grants no write, shell or network.
+    // A skipped run has no main session; the gate's session id derives from
+    // the run's key (the Core's `stage_id`).
+    let gate_session = {
+        use sha2::{Digest, Sha256};
+        let h = Sha256::digest(format!("{}:gate-session", run.dispatch_key).as_bytes());
+        Id {
+            value: h[..16].to_vec(),
+        }
+    };
+    let ev = replay(&f.core, &gate_session).await;
+    let lease = ev
+        .iter()
+        .find(|e| e["event_type"] == "CapabilityLeaseGranted")
+        .unwrap_or_else(|| {
+            panic!(
+                "no lease: {:?} {run:?}",
+                ev.iter()
+                    .map(|e| e["event_type"].clone())
+                    .collect::<Vec<_>>()
+            )
+        });
+    let lp = &lease["payload"]["payload"];
+    assert_eq!(lp["effect_ceiling"], "READ_ONLY", "{lp}");
+    let ops: Vec<&str> = lp["operations"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .filter_map(|x| x.as_str())
+        .collect();
+    assert!(
+        !ops.iter().any(|o| o.starts_with("fs.write")
+            || o.starts_with("shell")
+            || o.starts_with("network")),
+        "{ops:?}"
+    );
+    // Exactly one task exists on the run's session: the gate's.
+    assert_eq!(
+        ev.iter()
+            .filter(|e| e["event_type"] == "TaskCreated")
+            .count(),
+        1,
+        "only the gate's task was made"
+    );
+}
+
 fn workspace_root() -> PathBuf {
     let here = PathBuf::from(env!("CARGO_MANIFEST_DIR"));
     here.parent().unwrap().parent().unwrap().to_path_buf()
