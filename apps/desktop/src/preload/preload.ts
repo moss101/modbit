@@ -14,6 +14,16 @@ import type { AccountingInfo, AddRuleInput, AllowRuleInfo, CheckpointListInfo, C
 
 export type { TerminalFrameJson, TerminalViewJson };
 
+export interface UpdateViewDto {
+  enabled: boolean;
+  disabledReason?: string;
+  version: string;
+  channel: string;
+  feedUrl?: string;
+  status: { state: string; version?: string; reason?: string; code?: string; detail?: string; mandatory?: boolean; requiresBackup?: boolean };
+  lastApply?: { ok: boolean; version: string; error?: string };
+  canRollback: boolean;
+}
 export interface ReviewHunk {
   index: number;
   header: string;
@@ -288,6 +298,11 @@ export interface ModbitBridge {
   /** One protected effect: the first call answers APPROVAL_PENDING with the exact intent; after `resolveApproval` the same call commits and pushes. */
   commitAndPush(sessionId: string, taskId: string, input: CommitPushInput): Promise<CommitPushAckInfo>;
   coreStatus(): Promise<unknown>;
+  /** M10.2: the updater's state and the three things a person can ask of it. */
+  updateView(): Promise<UpdateViewDto>;
+  updateCheck(): Promise<UpdateViewDto>;
+  updateInstall(): Promise<UpdateViewDto>;
+  updateRollback(): Promise<UpdateViewDto>;
   localState(): Promise<{ sessionId?: string; platform?: { os: string; arch: string; state: string; statement: string } }>;
   languages(): Promise<{ language: string; tier: string; label: string; fixture: string; proven: string[]; provisional: string[]; notClaimed: string[]; note: string }[]>;
   contextInspector(taskId: string): Promise<ContextInspectorSummary>;
@@ -495,6 +510,10 @@ const bridge: ModbitBridge = {
   discardWorktree: (sessionId, taskId, reason, confirm) => ipcRenderer.invoke("worktrees:discard", sessionId, taskId, reason, confirm),
   coreStatus: () => ipcRenderer.invoke("core:status"),
   localState: () => ipcRenderer.invoke("core:localState"),
+  updateView: () => ipcRenderer.invoke("update:view"),
+  updateCheck: () => ipcRenderer.invoke("update:check"),
+  updateInstall: () => ipcRenderer.invoke("update:install"),
+  updateRollback: () => ipcRenderer.invoke("update:rollback"),
   languages: () => ipcRenderer.invoke("languages:list"),
   contextInspector: (taskId: string) => ipcRenderer.invoke("context:inspector", taskId),
   taskEconomics: (taskId: string) => ipcRenderer.invoke("task:economics", taskId),

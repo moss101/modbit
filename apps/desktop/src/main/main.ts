@@ -23,13 +23,18 @@ import { registerAutomationHandlers } from "./automation-ipc.js";
 import { optionalWindow, requireBool, requireCursor, requireDimension, requireHandle, requireKeystrokes, requireWorkspacePath } from "./apps-args.js";
 import { noWork, quitPrompt, runShutdown, WINDOW_DEFAULT, WINDOW_MIN, type ActiveWork, type ShutdownStep } from "./lifecycle.js";
 import { TerminalHost } from "./terminal-host.js";
+import { UpdateService } from "./update/service.js";
 
 const dataDir = process.env.MODBIT_DATA_DIR ?? join(app.getPath("userData"), "modbit");
 // A profile named by MODBIT_DATA_DIR is a whole profile: the renderer's
 // storage (preferences, caches) lives under it too, so two profiles — or
 // two E2E runs — never share what one viewer stored (PX-024).
 if (process.env.MODBIT_DATA_DIR) app.setPath("userData", join(dataDir, "electron"));
-const coreBin = process.env.MODBIT_CORE_BIN ?? resolve(app.getAppPath(), "..", "..", "target", "debug", process.platform === "win32" ? "modbit-core.exe" : "modbit-core");
+const coreName = process.platform === "win32" ? "modbit-core.exe" : "modbit-core";
+// M10.2: a packaged app carries its own release Core and execd broker in the
+// resources directory (electron-builder `extraResources`); from a checkout the
+// debug build under target/ is used. MODBIT_CORE_BIN overrides both.
+const coreBin = process.env.MODBIT_CORE_BIN ?? (app.isPackaged ? join(process.resourcesPath, coreName) : resolve(app.getAppPath(), "..", "..", "target", "debug", coreName));
 mkdirSync(dataDir, { recursive: true });
 
 /** Client-local convenience only: which session this window last used. The
@@ -253,6 +258,28 @@ function handle(channel: string, fn: (e: IpcMainInvokeEvent, ...args: unknown[])
   });
 }
 handle("core:status", () => supervisor.status);
+// M10.2 (docs/70 "Desktop update"): signed-manifest updates. Staging only until
+// the person asks to install; a build with no pinned key verifies nothing and
+// refuses every update. The person's "Restart to update" is the quit question's
+// answer, so the install's own quit skips the prompt.
+const updater = new UpdateService({
+  version: app.getVersion(),
+  platform: process.platform,
+  arch: process.arch,
+  isPackaged: app.isPackaged,
+  resourcesPath: process.resourcesPath,
+  execPath: process.execPath,
+  dataDir,
+  coreBin,
+  quit: () => {
+    quitConfirmed = true;
+    app.quit();
+  },
+});
+handle("update:view", () => updater.view());
+handle("update:check", () => updater.check());
+handle("update:install", () => updater.installPending());
+handle("update:rollback", () => updater.rollback());
 handle("core:localState", () => ({ ...loadLocalState(), platform: platformState() }));
 // Context Inspector (REQ-EV-0035 / 0131 / 0175): what the pack selected and
 // excluded, and what the prompt envelope injected.
@@ -989,6 +1016,7 @@ app.whenReady().then(async () => {
     cb({ responseHeaders: { ...details.responseHeaders, "Content-Security-Policy": ["default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; connect-src 'none'; object-src 'none'; base-uri 'none'; form-action 'none'"] } });
   });
   createWindow();
+  updater.start();
   await supervisor.start();
 });
 
@@ -1055,6 +1083,7 @@ app.on("before-quit", (e) => {
   // Core child and the socket, or the main process lingers.
   const steps: ShutdownStep[] = [
     { name: "browser-views", run: () => browserHost.closeAll() },
+    { name: "updater", run: () => updater.stop() },
     { name: "core", run: () => supervisor.stop() },
   ];
   void runShutdown(steps, SHUTDOWN_DEADLINE_MS).then((report) => {

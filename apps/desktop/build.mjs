@@ -36,5 +36,7 @@ const common = { bundle: true, sourcemap: true, logLevel: "warning", target: "es
 await build({ ...common, entryPoints: ["src/main/main.ts"], outfile: join(out, "main/main.cjs"), platform: "node", format: "cjs", external: ["electron"] });
 await build({ ...common, entryPoints: ["src/preload/preload.ts"], outfile: join(out, "preload/preload.cjs"), platform: "node", format: "cjs", external: ["electron"] });
 await build({ ...common, entryPoints: ["src/renderer/index.tsx"], outfile: join(out, "renderer/index.js"), platform: "browser", format: "iife", jsx: "automatic", define: { __MODBIT_GALLERY__: gallery ? "true" : "false" } });
+// The install helper runs as plain Node under ELECTRON_RUN_AS_NODE, outside the app bundle.
+await build({ ...common, entryPoints: ["src/main/update/apply-helper.ts"], outfile: join(out, "main/apply-helper.cjs"), platform: "node", format: "cjs" });
 copyFileSync("src/renderer/index.html", join(out, "renderer/index.html"));
 console.log(`desktop bundles written to ${out}/${gallery ? " (with the state gallery)" : ""}`);

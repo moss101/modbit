@@ -31,6 +31,7 @@ import { clampZoom, loadUiPrefs, saveUiPrefs, ZOOM_STEP, type AppKind, type Pane
 import { ShellFrame } from "./shell-frame.tsx";
 import { ShortcutHelp } from "./shortcut-help.tsx";
 import { StatusRow } from "./status-row.tsx";
+import { UpdateIndicator } from "./update-indicator.tsx";
 import { ContextRing } from "../context/ring.tsx";
 import { TrayDirector } from "../context/tray-director.tsx";
 import { TopBar } from "./top-bar.tsx";
@@ -471,6 +472,7 @@ export function Shell({ app }: { app: AppState }) {
             location={LOCATION}
             extra={
               <>
+                <UpdateIndicator />
                 {conversation && <ContextRing key={conversation.taskId} taskId={conversation.taskId} connected={core.state === "connected"} />}
                 {recoveryNote && (
                   <span className="meta" data-testid="recovery-summary">

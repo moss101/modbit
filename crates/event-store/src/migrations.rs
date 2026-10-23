@@ -138,3 +138,56 @@ pub fn rollback_plans() -> Vec<(u32, &'static str, &'static str)> {
         .map(|m| (m.version, m.name, m.rollback))
         .collect()
 }
+
+/// What an updater needs to know before it installs a build (docs/70 "Desktop
+/// update"): the schema this build writes and the one on disk, read without
+/// migrating anything.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct SchemaInfo {
+    /// `SCHEMA_VERSION` of this build.
+    pub build_schema_version: u32,
+    /// Schema recorded in `core.db`; `None` when the profile has no database yet.
+    pub on_disk_schema_version: Option<u32>,
+}
+
+/// Read the schema versions for the profile rooted at `dir`. Opens `core.db`
+/// read-only: no migration, no WAL checkpoint, no file created, so it is safe
+/// beside a running Core and cannot change what a later install must open.
+pub fn schema_info(dir: &std::path::Path) -> Result<SchemaInfo> {
+    let db = dir.join("core.db");
+    let on_disk = if db.exists() {
+        let conn = Connection::open_with_flags(
+            &db,
+            rusqlite::OpenFlags::SQLITE_OPEN_READ_ONLY | rusqlite::OpenFlags::SQLITE_OPEN_NO_MUTEX,
+        )?;
+        conn.busy_timeout(std::time::Duration::from_secs(10))?;
+        Some(current_version(&conn)?)
+    } else {
+        None
+    };
+    Ok(SchemaInfo {
+        build_schema_version: SCHEMA_VERSION,
+        on_disk_schema_version: on_disk,
+    })
+}
+
+/// A consistent single-file copy of `core.db` (docs/70: a critical migration
+/// takes a backup first). `VACUUM INTO` reads one transaction's snapshot, so a
+/// Core writing in WAL mode cannot tear the copy; the destination must not exist.
+pub fn backup_database(dir: &std::path::Path, dest: &std::path::Path) -> Result<u32> {
+    if dest.exists() {
+        return Err(Error::Io(std::io::Error::new(
+            std::io::ErrorKind::AlreadyExists,
+            format!("backup destination {} exists", dest.display()),
+        )));
+    }
+    let conn = Connection::open_with_flags(
+        dir.join("core.db"),
+        rusqlite::OpenFlags::SQLITE_OPEN_READ_ONLY | rusqlite::OpenFlags::SQLITE_OPEN_NO_MUTEX,
+    )?;
+    conn.busy_timeout(std::time::Duration::from_secs(10))?;
+    let version = current_version(&conn)?;
+    let dest_str = dest.to_string_lossy().into_owned();
+    conn.execute("VACUUM INTO ?1", [dest_str])?;
+    Ok(version)
+}

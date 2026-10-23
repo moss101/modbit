@@ -1,0 +1,8 @@
+{
+  "note": "docs/36 license gate: permissive licenses are allowed by default after notice obligations; copyleft, network-copyleft and unknown licenses need a recorded legal review before merge. First-party workspace packages are recognized from the workspace itself (cargo metadata and packages/*), never from this file, so a third-party UNLICENSED crate still fails. An OR expression passes when one alternative is allowed; AND and WITH need every term allowed.",
+  "allowed": [
+    "0BSD", "Apache-2.0", "BSD-2-Clause", "BSD-3-Clause", "BSL-1.0", "CDLA-Permissive-2.0", "ISC",
+    "LLVM-exception", "MIT", "MIT-0", "Unicode-3.0", "Unlicense", "Zlib"
+  ],
+  "reviewed": []
+}
