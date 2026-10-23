@@ -1,0 +1,32 @@
+QUAL-PX-083 mutation check (2026-10-24, base 5e342b88)
+
+MUTATION idempotency-key
+  file:   services/modbit-core/src/automation.rs (the fire path, AUT-B05)
+  change: 'if reg.runs.contains_key(&key) {'  ->  'if false && reg.runs.contains_key(&key) {'
+          (the (definition, version, event id) dedupe is removed, so a repeated
+          event id is no longer recognised as a duplicate)
+  command: cargo test -p modbit-core --test automations_px px_083
+  cargo exit: 101 (the suite FAILS, as the QUAL requires)
+
+Output (verdict lines of the mutated run):
+test px_083_each_host_has_one_trigger_clock_and_no_second_scheduler_loop ... ok
+test px_083_a_duplicate_firing_creates_one_task ... FAILED
+test px_083_a_gate_that_skips_spends_only_the_gates_own_budget ... ok
+test px_083_a_scheduled_runs_task_works_in_an_isolated_worktree_of_its_own ... ok
+test px_083_a_core_killed_between_the_firing_and_the_dispatch_neither_loses_nor_repeats_the_run ... FAILED
+test px_083_a_core_killed_in_the_middle_of_a_run_reconciles_to_one_typed_outcome ... FAILED
+test px_083_a_gate_decides_whether_the_rest_of_the_run_happens ... ok
+test px_083_missed_slots_follow_the_policy_and_are_never_replayed_in_bulk ... ok
+test px_083_a_schedule_fires_once_per_slot_on_a_controlled_clock_with_provenance ... ok
+test px_083_the_rate_limit_and_the_daily_budget_stop_admission_with_a_typed_skip_and_attention ... ok
+test px_083_concurrency_policy_skips_queues_or_replaces_the_active_run ... ok
+thread 'px_083_a_duplicate_firing_creates_one_task' panicked at automations_px.rs:832:5:
+  left: "CONCURRENCY"   right: "DUPLICATE"
+thread 'px_083_a_core_killed_between_the_firing_and_the_dispatch_neither_loses_nor_repeats_the_run' panicked at automations_px.rs:936:9:
+  left: "TASK_COMPLETED"   right: "DUPLICATE"
+thread 'px_083_a_core_killed_in_the_middle_of_a_run_reconciles_to_one_typed_outcome' panicked at automations_px.rs:2909:5:
+  left: "CORE_RESTARTED"   right: "DUPLICATE"
+test result: FAILED. 8 passed; 3 failed; 0 ignored; 0 measured; 16 filtered out
+
+Source restored afterwards: `git diff --stat -- services/modbit-core/src crates` is empty
+(only services/modbit-core/tests/automations_px.rs and this evidence directory differ).
