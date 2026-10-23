@@ -1538,8 +1538,10 @@ async fn px_108_a_pack_that_misses_the_deadline_degrades_typed_and_never_blocks_
     );
     // The run was not held for it: the model was asked and answered.
     assert!(r.seen.lock().unwrap().len() >= 2);
-    // The job finished in the background and recorded its pack.
-    let deadline = std::time::Instant::now() + Duration::from_secs(30);
+    // The job finished in the background and recorded its pack. It builds an
+    // index in a debug binary beside the rest of the suite, so a hosted macOS
+    // runner needs far longer than a developer machine (3 s here).
+    let deadline = std::time::Instant::now() + Duration::from_secs(120);
     loop {
         let evs = r.surface.events(&r.core, &r.task).await;
         if of(&evs, "ContextPackRecorded")

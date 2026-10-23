@@ -1106,3 +1106,9 @@ Accepted on the owner's chat instruction (Decisions 1 and 2). A decision record 
 - **Files:** `docs/decisions/DR-PX-2026-10-21-015-streamed-delta-durability.md` (new), `docs/decisions/README.md` (ledger row), `docs/02_AUTHORITY_AND_DECISIONS.md` (register section), `docs/31_DATABASE_AND_STORAGE_SCHEMA.md` ("Local storage": deltas are the stated exception to `synchronous=FULL`), regenerated manifest and graph.
 - **Product change under it:** `modbit-event-store` `Durability::Relaxed` (delta events of an assistant stream only; FULL restored before every call returns, fail closed), used only by the assistant stream's delta publish; tests `relaxed_durability.rs` and `qual_px_041_a_power_loss_...`; the Core-share budget of `perf_px_041` follows the profile rule.
 - **Not done:** the measurement on the hosted Windows runner (the record expects a smaller gain there); Decision 3 (the WAL autocheckpoint off the delta path) is deferred.
+
+## PX-043 closed COMPLETE (2026-10-23)
+
+- **Row:** PX-043 advanced REAL_TESTING → E2E_PROVEN → COMPLETE through `graph.py set` with `run:39873543897`, `commit:fc0db107` and `artifact:evidence/m10/PX-043/evidence.json`.
+- **Basis:** the >10 MB / detach / Core-restart / OutputRef test (#106) and the renderer-crash desktop E2E (#103), plus the existing attach, kill, wake and lease tests; CI run 39873543897, all 14 jobs green on macOS, Linux and Windows.
+- **Unfinished behaviour:** the user-versus-agent input clause is proven through the PX-099 lease (LEASE_REQUIRED, INPUT_LEASED), not a separate terminal-kind split; no gate attested.
