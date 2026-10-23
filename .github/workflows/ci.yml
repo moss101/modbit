@@ -61,7 +61,25 @@ jobs:
       - name: Build
         run: cargo build --workspace --locked
       - name: Test (includes real cargo-metadata forbidden-edge test)
+        # MODBIT_PERF_OUT: perf_px_041 runs here beside the other tests of its file, the load that put the Core's share over 100 ms before
+        # DR-PX-2026-10-21-015; its result is kept for comparison with the quiet re-run below.
+        env:
+          MODBIT_PERF_OUT: ${{ runner.temp }}/perf-in-suite
         run: cargo test --workspace --locked
+      - name: Record the PX-041 Core-share latency distribution (DR-PX-2026-10-21-015) - recorded on every runner, asserted only on the reference profile
+        if: ${{ !cancelled() }}
+        env:
+          MODBIT_PERF_OUT: ${{ runner.temp }}/perf
+        run: cargo test --locked -p modbit-core --test stream_transcript perf_px_041 -- --nocapture
+      - name: Upload the recorded latency distribution
+        if: ${{ !cancelled() }}
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: perf-px041-core-stream-${{ matrix.os }}
+          path: |
+            ${{ runner.temp }}/perf
+            ${{ runner.temp }}/perf-in-suite
+          if-no-files-found: warn
       - name: macOS actuator real-permission tests (PX-071) - SKIPPED loudly where the runner has no Accessibility / Screen Recording grant
         if: ${{ !cancelled() && runner.os == 'macOS' }}
         # While the real-AX suite settles on hosted runners its failures are shown

@@ -58,6 +58,10 @@ export class TerminalController {
   private generation = 0;
   private chain: Promise<unknown> = Promise.resolve();
   private size: { rows: number; cols: number } | null = null;
+  /** Bytes before this cursor were printed before this attach: a replay, not the process speaking now. */
+  private historyEnd = 0n;
+  /** Replayed writes the sink is still parsing: a terminal report produced meanwhile answers a question the process asked long ago. */
+  private historyParsing = 0;
   private wantLease = false;
   /** The Core listed the process as running when this view attached; an ended process takes no resize or keystroke. */
   private running = true;
@@ -125,6 +129,7 @@ export class TerminalController {
       }
       this.attachId = a.attachId;
       this.running = a.terminal.state === "RUNNING";
+      this.historyEnd = BigInt(a.terminal.bytesSoFar);
       // A terminal that already ended replays its output and then its exit frame; until that frame the view is live.
       this.set({ phase: "live", leaseHeld: a.inputLeaseHeld });
       if (this.size) void this.resize(this.size.rows, this.size.cols, true);
@@ -171,7 +176,12 @@ export class TerminalController {
         const next = (at < have ? have : at) + BigInt(data.length);
         this.state = { ...this.state, cursor: next, bytes: this.state.bytes + BigInt(data.length) };
         this.notifySoon();
-        this.sink.write(data, () => this.consumed(next));
+        const historical = at < this.historyEnd;
+        if (historical) this.historyParsing++;
+        this.sink.write(data, () => {
+          if (historical) this.historyParsing--;
+          this.consumed(next);
+        });
         return;
       }
       case "exit":
@@ -229,6 +239,10 @@ export class TerminalController {
 
   /** Keystrokes: the first one takes the input lease (the agent's input is refused while it is held), then writes in order. */
   input(data: string | Uint8Array): Promise<void> {
+    // A terminal answers some sequences by itself (a cursor-position or device report). Replayed output holds the questions the
+    // process asked when it started (a Windows pseudo-console asks for the cursor position); answering them again types into the
+    // live process: on Windows a cursor report reads as F3 and recalls the previous line. Reports while a replay is parsed are dropped.
+    if (this.historyParsing > 0 && (typeof data === "string" ? data.charCodeAt(0) === 0x1b : data[0] === 0x1b)) return this.chain as Promise<void>;
     const run = async () => {
       const id = this.attachId;
       if (!id || !this.running || this.state.phase === "exited") return;

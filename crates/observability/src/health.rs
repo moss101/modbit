@@ -154,8 +154,11 @@ impl HealthStore {
                 schema: SCHEMA.into(),
                 components: Self::merged(&g).into_values().collect(),
             };
-            drop(g);
+            // Written under the lock: a snapshot taken earlier must not reach
+            // the disk after a later one, and two writers must not share the
+            // temporary file.
             self.write(&file);
+            drop(g);
         }
     }
 
@@ -233,5 +236,40 @@ mod tests {
         assert!(HealthStore::open(path.clone()).view(0).is_empty());
         std::fs::write(&path, b"not json").unwrap();
         assert!(HealthStore::open(path).view(0).is_empty());
+    }
+
+    /// The file is the last observation made, never an older one: writers
+    /// that race (the sampler and an on-demand report) must not leave a
+    /// stale snapshot on disk that a restart then reports as the previous
+    /// state.
+    #[test]
+    fn racing_observers_leave_the_file_equal_to_the_last_state_in_memory() {
+        use std::sync::Arc;
+        for round in 0..1000 {
+            let dir = tempfile::tempdir().unwrap();
+            let path = dir.path().join("health.json");
+            let h = Arc::new(HealthStore::open(path.clone()));
+            let threads: Vec<_> = (0..6)
+                .map(|i| {
+                    let h = Arc::clone(&h);
+                    std::thread::spawn(move || {
+                        let (state, detail) = if i % 2 == 0 {
+                            (HealthState::Unknown, "no request has been made")
+                        } else {
+                            (HealthState::Ok, "1 request(s), none failed")
+                        };
+                        for k in 0..50 {
+                            h.observe("provider:openai", state, detail, 1_000 + k);
+                        }
+                    })
+                })
+                .collect();
+            for t in threads {
+                t.join().unwrap();
+            }
+            let in_memory = h.view(5_000)[0].observation.state;
+            let on_disk = HealthStore::open(path).view(5_000)[0].observation.state;
+            assert_eq!(on_disk, in_memory, "round {round}: a stale snapshot won");
+        }
     }
 }

@@ -4401,6 +4401,7 @@ pub(crate) fn error_code(e: &anyhow::Error) -> &'static str {
         Some(Json(_)) => "JSON",
         Some(SchemaTooNew { .. }) => "SCHEMA_TOO_NEW",
         Some(ReceiptChainStale { .. }) => "RECEIPT_CHAIN_STALE",
+        Some(RelaxedRefused { .. }) => "RELAXED_DURABILITY_REFUSED",
         None => "INFRA_FAILURE",
     }
 }

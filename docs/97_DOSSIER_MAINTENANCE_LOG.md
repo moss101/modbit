@@ -1098,3 +1098,11 @@ A bookkeeping change to the project graph and `evidence/m10/` only; no requireme
 - **Basis:** CI run 39029466637 on main ac4aa804, all 14 jobs green on macOS, Linux and Windows (this closes the operating-system condition recorded on 2026-10-17); and a local re-run on macOS with the pinned rustup 1.97.1 toolchain: `task_modes` 11, `worktrees_px` 37, `context_rules_pack` 19, `memory_graph_index` 14 (1 ignored benchmark, not cited), retrieval `code_graph` 6, git `px_067_remaining` 6, architecture-lint `spawns` 2, all passed. A stale `modbit-protocol` build cache (`cargo clean -p modbit-protocol`) and the Homebrew rustc (broken against its LLVM) had to be avoided first.
 - **Bundles:** `evidence/m10/<id>/` holds TASK_CARD.md, evidence.json and the CI run JSON for each row.
 - **Unfinished behaviour:** the docs that earlier pull requests say lag the code are still unwritten; Windows and Linux legs are proven by CI only.
+
+## Decision Record DR-PX-2026-10-21-015 — streamed-delta durability (2026-10-21)
+
+Accepted on the owner's chat instruction (Decisions 1 and 2). A decision record and its register entries only: no requirement row, disposition, owner, pinned count, EPR row, gate or algorithm changed, and no graph node changed state.
+
+- **Files:** `docs/decisions/DR-PX-2026-10-21-015-streamed-delta-durability.md` (new), `docs/decisions/README.md` (ledger row), `docs/02_AUTHORITY_AND_DECISIONS.md` (register section), `docs/31_DATABASE_AND_STORAGE_SCHEMA.md` ("Local storage": deltas are the stated exception to `synchronous=FULL`), regenerated manifest and graph.
+- **Product change under it:** `modbit-event-store` `Durability::Relaxed` (delta events of an assistant stream only; FULL restored before every call returns, fail closed), used only by the assistant stream's delta publish; tests `relaxed_durability.rs` and `qual_px_041_a_power_loss_...`; the Core-share budget of `perf_px_041` follows the profile rule.
+- **Not done:** the measurement on the hosted Windows runner (the record expects a smaller gain there); Decision 3 (the WAL autocheckpoint off the delta path) is deferred.
