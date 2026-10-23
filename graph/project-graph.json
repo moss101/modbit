@@ -3,7 +3,7 @@
  "product": "Modbit",
  "edition": "V3.3 EPR v1.1",
  "authority_date": "2026-09-05",
- "generated_on": "2026-10-21",
+ "generated_on": "2026-10-23",
  "generator": "tools/build_graph.py",
  "status_vocabulary": [
   "NOT_STARTED",
@@ -34751,14 +34751,17 @@
    ],
    "task_card": "docs/62_PRODUCT_EXTENSION_REQUIREMENTS_TASKS_AND_QUALIFICATIONS.md#px-043",
    "audit_at_adoption": "DOCUMENTED-ONLY; no product caller present",
-   "status": "REAL_TESTING",
+   "status": "COMPLETE",
    "evidence": [
     "commit:5774ec68",
     "run:38990216920",
     "test:services/modbit-core/tests/terminal_stream.rs::px_043_attach_detach_reattach_resumes_from_the_cursor_byte_exactly",
     "test:services/modbit-core/tests/terminal_stream.rs::px_043_kill_terminal_ends_the_process_records_who_and_why_and_acts_once",
     "test:services/modbit-core/tests/background_wake.rs::px_043_a_killed_terminal_wakes_the_agent_once_by_a_typed_event_never_a_user_message",
-    "commit:213f649c"
+    "commit:213f649c",
+    "run:39873543897",
+    "commit:fc0db107",
+    "artifact:evidence/m10/PX-043/evidence.json"
    ],
    "notes": [
     {
@@ -34769,7 +34772,7 @@
     }
    ],
    "owner_agent": "graph-integrator",
-   "status_changed_on": "2026-10-17T06:34:55Z"
+   "status_changed_on": "2026-10-23T05:28:44Z"
   },
   {
    "id": "PX-044",
