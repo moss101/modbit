@@ -91,6 +91,9 @@ pub struct Rules {
     /// Programs that may be spawned only from listed source paths (PX-067).
     #[serde(default)]
     pub spawns: Vec<spawns::SpawnRule>,
+    /// Where an environment variable that names a credential may be read (PX-130).
+    #[serde(default)]
+    pub credentials: Vec<credentials::CredentialRule>,
 }
 
 impl Rules {
@@ -301,6 +304,7 @@ pub fn check(graph: &Graph, rules: &Rules) -> Vec<Violation> {
     out
 }
 
+pub mod credentials;
 pub mod locked;
 pub mod modules;
 pub mod spawns;
