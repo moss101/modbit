@@ -19,9 +19,9 @@ A dossier package is valid only if every path below exists with the listed SHA-2
 | Requirements, tasks and traceability | 40–49 | 10 | 351840 |
 | Verification and testing | 50–69 | 20 | 819608 |
 | Delivery and operations | 70–79 | 10 | 125383 |
-| Agent process and governance | 80–97 | 18 | 185609 |
+| Agent process and governance | 80–97 | 18 | 188356 |
 | Live state | 98–99 | 1 | 14961 |
-| **Total docs** | | **97** | **2142234** |
+| **Total docs** | | **97** | **2144981** |
 
 ## Specification files (`docs/`)
 
@@ -122,7 +122,7 @@ A dossier package is valid only if every path below exists with the listed SHA-2
 | 94 | `docs/94_EXECUTION_POLICY_DOSSIER_TASK_AND_HANDOFF.md` | Execution policy dossier task and handoff | governance | 11506 | `bc3c83f033db8ca5934751227cce2437f4cd7772a21917551618ae03f79b81ba` |
 | 95 | `docs/95_EPR_V1_1_DOSSIER_TASK_AND_HANDOFF.md` | EPR v1.1 dossier task and handoff | governance | 10525 | `264069b600baf40d1e54d2f89be7e9804a8b77c0dbf3ddb0a9dca41111582413` |
 | 96 | `docs/96_DOSSIER_GOVERNANCE_MAINTENANCE_TASK_AND_HANDOFF.md` | Dossier governance maintenance task and handoff | governance | 9070 | `af650309e48dd7fd60dd6d286c460ed7c3128a2201964078c7f50aea385bfb8c` |
-| 97 | `docs/97_DOSSIER_MAINTENANCE_LOG.md` | Dossier maintenance log | governance | 119745 | `1745ffeafaa690a71a1b1d33a1cd1d2421c1a9ccf5a6dc06f02758d204772cba` |
+| 97 | `docs/97_DOSSIER_MAINTENANCE_LOG.md` | Dossier maintenance log | governance | 122492 | `75bf93db6fd279c80aabc50b6dfb118a2223f8d9605b0cd47cd95683bee4c953` |
 | 98 | `docs/98_BUILD_MANIFEST.md` | Build Manifest | live-state | 14961 | `824d5b749252e6cba1de566c5e766cbfaefce23f4cda2fd64bc07398e251b102` |
 
 ## Root governing files and tooling
@@ -346,6 +346,9 @@ A dossier package is valid only if every path below exists with the listed SHA-2
 | `evidence/m10/PX-043/TASK_CARD.md` | retained evidence | 2934 | `285b403fc76c7337dcd0a90319a124986e8785e2fdf8716706001d5bf5f16033` |
 | `evidence/m10/PX-043/ci-run-39873543897.json` | retained evidence | 46185 | `05d7134690fba0f89a3019d7a65313bb37b7d49c52b4bd5235c8c1d98760fc77` |
 | `evidence/m10/PX-043/evidence.json` | retained evidence | 3138 | `595f451878696e1fd7e97193184f8542395ec72abbef78ea9a1c3e450f37f144` |
+| `evidence/m10/PX-044/TASK_CARD.md` | retained evidence | 943 | `3ae58dafb7714b6b8f23ed9aef430c58a26db7b34590241782ca5e81d03e1842` |
+| `evidence/m10/PX-044/ci-run-39960289486.json` | retained evidence | 46978 | `a8dbcd6ad3f3d474c37e6bf506048288320694cbf9e882e0a9124bb70a7480dd` |
+| `evidence/m10/PX-044/evidence.json` | retained evidence | 891 | `1aa97cbf7ccc292b941d7198dc0a43777ec1178d210b539a90bfa572d9a425d9` |
 | `evidence/m10/PX-053/TASK_CARD.md` | retained evidence | 1721 | `7d8b09f7707d974ad23ef74408045cf05cd56050a9bc5d070e4f565385e61193` |
 | `evidence/m10/PX-053/ci-run-39029466637.json` | retained evidence | 44828 | `51d55901cfaeefcd93f7fc07a20a2115bbcd4758fcf802268d3e99e3d0928e70` |
 | `evidence/m10/PX-053/evidence.json` | retained evidence | 1803 | `5a568ba66366852b73f322b0c5a8543bd5751c617536618cf5817c449c9031a9` |
@@ -355,6 +358,9 @@ A dossier package is valid only if every path below exists with the listed SHA-2
 | `evidence/m10/PX-067/TASK_CARD.md` | retained evidence | 1564 | `8d869707f37a93fcb08d7ef67e4dd18d108d48fb36a87ba909dcdde2c59e2b6a` |
 | `evidence/m10/PX-067/ci-run-39029466637.json` | retained evidence | 44828 | `51d55901cfaeefcd93f7fc07a20a2115bbcd4758fcf802268d3e99e3d0928e70` |
 | `evidence/m10/PX-067/evidence.json` | retained evidence | 1624 | `533571477403877cb37f38b2aa98b7f4e697a5acd76189146b2cd8f0dcbefc68` |
+| `evidence/m10/PX-099/TASK_CARD.md` | retained evidence | 1506 | `176efbba92374c5adc0774fef998ebc2ea6f6e23f3942f3d59ebe863211e73bd` |
+| `evidence/m10/PX-099/ci-run-39960289486.json` | retained evidence | 46978 | `a8dbcd6ad3f3d474c37e6bf506048288320694cbf9e882e0a9124bb70a7480dd` |
+| `evidence/m10/PX-099/evidence.json` | retained evidence | 1484 | `6f5e382a877e71f9391af8ce0898dde8c0908cdcefce80690b8f06f1cda50720` |
 | `evidence/m10/PX-107/TASK_CARD.md` | retained evidence | 1897 | `c4fa97487b99a689661dc7bc2d3a2a874ecf705d271b67dedfe46982fe8b880d` |
 | `evidence/m10/PX-107/ci-run-39029466637.json` | retained evidence | 44828 | `51d55901cfaeefcd93f7fc07a20a2115bbcd4758fcf802268d3e99e3d0928e70` |
 | `evidence/m10/PX-107/evidence.json` | retained evidence | 1993 | `eadc7d9a9b887a3ec7ccedecf61b0fa7eee45f387fffb87e74c8c15a1547b1f7` |
@@ -370,6 +376,15 @@ A dossier package is valid only if every path below exists with the listed SHA-2
 | `evidence/m10/PX-113/TASK_CARD.md` | retained evidence | 1880 | `7b34528c3e3c41c1610fee7869cb47d0319ac054da04c16bc064a92813bcba5f` |
 | `evidence/m10/PX-113/ci-run-39029466637.json` | retained evidence | 44828 | `51d55901cfaeefcd93f7fc07a20a2115bbcd4758fcf802268d3e99e3d0928e70` |
 | `evidence/m10/PX-113/evidence.json` | retained evidence | 1948 | `f3482faec71e1074ab11e7eac875490685d6ff66e9de12019708ca173efa1ed9` |
+| `evidence/m10/PX-131/TASK_CARD.md` | retained evidence | 1557 | `3d880ca472c96d0ca75b01a42670617a72f6c3e6d0890d9a2794471170e5c6a7` |
+| `evidence/m10/PX-131/ci-run-39960289486.json` | retained evidence | 46978 | `a8dbcd6ad3f3d474c37e6bf506048288320694cbf9e882e0a9124bb70a7480dd` |
+| `evidence/m10/PX-131/evidence.json` | retained evidence | 1519 | `eb9b80cd319869cd45ae91f8746a8940432b65450005ec58222b805c949fe9c8` |
+| `evidence/m10/PX-132/TASK_CARD.md` | retained evidence | 1461 | `3cc693d2fdfdc0239eba896a290c7a93d8769abdcad64f0d029a4277d75608b8` |
+| `evidence/m10/PX-132/ci-run-39960289486.json` | retained evidence | 46978 | `a8dbcd6ad3f3d474c37e6bf506048288320694cbf9e882e0a9124bb70a7480dd` |
+| `evidence/m10/PX-132/evidence.json` | retained evidence | 1417 | `de7d8fd155c09ea1f5aede57e1e7b9b6121992e7d2e89872be9759f64f1edae2` |
+| `evidence/m10/PX-134/TASK_CARD.md` | retained evidence | 1306 | `a935fb43af7fd040e7b92dfc3c914f166c937a9ec75e09854afa836335b7f4ef` |
+| `evidence/m10/PX-134/ci-run-39960289486.json` | retained evidence | 46978 | `a8dbcd6ad3f3d474c37e6bf506048288320694cbf9e882e0a9124bb70a7480dd` |
+| `evidence/m10/PX-134/evidence.json` | retained evidence | 1252 | `bba5a8a5662ddf8d142ec8421ea8565cc2b40bc578c65ad97f7363445f5b6545` |
 | `evidence/m2/IMP-EV-0011/TASK_CARD.md` | retained evidence | 1620 | `22a7ddc2c80526c5aba876366bfeb862fac72742059962c5ad19deb8239fb5d2` |
 | `evidence/m2/IMP-EV-0011/ci-run-34409173853-tests.log` | retained evidence | 80671 | `523c4dc423fa906a9c846d64d864d36c759cb9f98bd8f4e582600a39d7c14b05` |
 | `evidence/m2/IMP-EV-0011/ci-run-34409173853.json` | retained evidence | 36682 | `49f5cd98348f61290daeee2920913a705bc385ed441cf7a15a9d9a357ad2ebdf` |
@@ -1815,8 +1830,8 @@ A dossier package is valid only if every path below exists with the listed SHA-2
 | `evidence/m9/PX-009/TASK_CARD.md` | retained evidence | 3716 | `143ff5f9be712b78a43f415d143fba93a8568e2f9b6980d28e278d4731838fa2` |
 | `evidence/m9/PX-009/ci-run-35830456557.json` | retained evidence | 42199 | `508168affe8ad4b8a13e97c3d4f855efbf4255325e88b58fec882ad41376033a` |
 | `evidence/m9/PX-009/evidence.json` | retained evidence | 2230 | `61d514ff843ff8750fecb6fd7d4936bd84d3255b2e9d2e72cbbc32901de9d99e` |
-| `graph/PROJECT_GRAPH.md` | human view of the graph | 45127 | `ad74a430a5441d942568c71d5bf2a13566b1c3630c05eb8aaa92798bfde2b395` |
-| `graph/project-graph.json` | project driver graph with live status | 2262936 | `47aec82ae8ab0af388c1860ad4535063fdbd96907504384f3f4d6c3f55e84f18` |
+| `graph/PROJECT_GRAPH.md` | human view of the graph | 45127 | `6c31de66e319ab25ed48bbf6671f3150335361e970eb23a749728d27bac44b2f` |
+| `graph/project-graph.json` | project driver graph with live status | 2263853 | `59077c6df0f77db6e33a4c4642e423c3953db3bb9c5763090134eb2aeec3b24d` |
 | `tools/build_graph.py` | regenerates graph structure from docs | 62560 | `7e491e47f2e89f8cad4827a72701b7849d4d628754417022c862dc9b21431061` |
 | `tools/build_manifest.py` | regenerates this manifest | 14871 | `b35f87f995ebea778ef5002f42c4dcb2f195f303ae121d7b4d73070d95d665b7` |
 | `tools/check_dossier.py` | integrity gate | 18887 | `1bd2634078a0c20b34a565ccf0f6d9061e83bd0945b7bf719ac137611e3fcf35` |
