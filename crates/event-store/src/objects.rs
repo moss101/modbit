@@ -14,6 +14,9 @@ use crate::{Error, Result};
 #[derive(Debug, Clone)]
 pub struct ObjectStore {
     root: PathBuf,
+    /// Objects read through this store (and its clones) since it opened: a
+    /// reader that must not load bodies can assert this did not move.
+    reads: std::sync::Arc<std::sync::atomic::AtomicU64>,
 }
 
 /// Lowercase hex SHA-256 of `bytes`.
@@ -27,10 +30,26 @@ impl ObjectStore {
     pub fn open(root: impl Into<PathBuf>) -> Result<Self> {
         let root = root.into();
         fs::create_dir_all(&root)?;
-        Ok(Self { root })
+        Ok(Self {
+            root,
+            reads: std::sync::Arc::default(),
+        })
+    }
+
+    /// How many objects have been read since this store opened.
+    #[must_use]
+    pub fn reads(&self) -> u64 {
+        self.reads.load(std::sync::atomic::Ordering::Relaxed)
     }
 
     fn path_for(&self, hash: &str) -> PathBuf {
+        // A name that is not a sha256 digest is not an object: it maps to a
+        // path nothing is ever stored at, so an empty or hostile name (an
+        // empty ref on a degraded record, `../x` from a client) can neither
+        // panic nor leave the store.
+        if hash.len() != 64 || !hash.bytes().all(|b| b.is_ascii_hexdigit()) {
+            return self.root.join("_not_a_digest_");
+        }
         self.root.join(&hash[..2]).join(&hash[2..])
     }
 
@@ -56,8 +75,63 @@ impl ObjectStore {
         Ok(hash)
     }
 
+    /// Remove an object; the bytes it held, or `None` when it was not there.
+    /// Only a store whose every reference is accounted for may call this
+    /// (the checkpoint blob store, REQ-PX-102): the Core's main store is
+    /// referenced from the log and is never collected.
+    pub fn remove(&self, hash: &str) -> Result<Option<u64>> {
+        if hash.len() < 3 {
+            return Ok(None);
+        }
+        let path = self.path_for(hash);
+        match fs::metadata(&path) {
+            Ok(m) => {
+                let len = m.len();
+                fs::remove_file(&path)?;
+                Ok(Some(len))
+            }
+            Err(e) if e.kind() == std::io::ErrorKind::NotFound => Ok(None),
+            Err(e) => Err(e.into()),
+        }
+    }
+
+    /// Every object: its hash, its size, and when it was last written.
+    pub fn list(&self) -> Result<Vec<(String, u64, std::time::SystemTime)>> {
+        let mut out = Vec::new();
+        let Ok(top) = fs::read_dir(&self.root) else {
+            return Ok(out);
+        };
+        for dir in top.flatten() {
+            let prefix = dir.file_name().to_string_lossy().into_owned();
+            if prefix.len() != 2 || !dir.path().is_dir() {
+                continue;
+            }
+            let Ok(inner) = fs::read_dir(dir.path()) else {
+                continue;
+            };
+            for f in inner.flatten() {
+                let name = f.file_name().to_string_lossy().into_owned();
+                // Temporary files of a put in flight never name an object.
+                if name.contains('.') || name.len() != 62 {
+                    continue;
+                }
+                let Ok(meta) = f.metadata() else { continue };
+                if meta.is_file() {
+                    out.push((
+                        format!("{prefix}{name}"),
+                        meta.len(),
+                        meta.modified().unwrap_or(std::time::UNIX_EPOCH),
+                    ));
+                }
+            }
+        }
+        Ok(out)
+    }
+
     /// Read and verify an object.
     pub fn get(&self, hash: &str) -> Result<Vec<u8>> {
+        self.reads
+            .fetch_add(1, std::sync::atomic::Ordering::Relaxed);
         let path = self.path_for(hash);
         let bytes = fs::read(&path).map_err(|e| Error::Object {
             hash: hash.to_owned(),
@@ -84,6 +158,8 @@ impl ObjectStore {
         length: u64,
     ) -> Result<(Vec<u8>, u64, Vec<u8>)> {
         use std::io::{Read, Seek, SeekFrom};
+        self.reads
+            .fetch_add(1, std::sync::atomic::Ordering::Relaxed);
         let path = self.path_for(hash);
         let mut f = fs::File::open(&path).map_err(|e| Error::Object {
             hash: hash.to_owned(),

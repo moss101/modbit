@@ -147,7 +147,7 @@ pub type RawChunk = (String, (u32, u32), (u64, u64), String);
 /// Chunking window for files without symbol chunks.
 const WINDOW_LINES: u32 = 40;
 /// Maximum chunk text embedded (bytes).
-const MAX_CHUNK_BYTES: usize = 4096;
+pub const MAX_CHUNK_BYTES: usize = 4096;
 
 /// The semantic index of one workspace.
 pub struct SemanticIndex {
@@ -182,15 +182,54 @@ pub fn chunk_file(text: &str, symbols: &[(String, u64, u64)]) -> Vec<RawChunk> {
             if s >= e || !text.is_char_boundary(s) || !text.is_char_boundary(e) {
                 continue;
             }
-            let body: String = text[s..e].chars().take(MAX_CHUNK_BYTES).collect();
             let line_start = text[..s].matches('\n').count() as u32 + 1;
-            let line_end = line_start + body.matches('\n').count() as u32;
-            out.push((
-                label.clone(),
-                (line_start, line_end),
-                (*start, e as u64),
-                body,
-            ));
+            if e - s <= MAX_CHUNK_BYTES {
+                let body = &text[s..e];
+                let line_end = line_start + body.matches('\n').count() as u32;
+                out.push((
+                    label.clone(),
+                    (line_start, line_end),
+                    (*start, e as u64),
+                    body.to_owned(),
+                ));
+                continue;
+            }
+            // A definition larger than one chunk is embedded whole, in
+            // consecutive pieces cut at line boundaries (N9): nothing past
+            // the first 4 KiB goes unindexed.
+            let mut piece_start = s;
+            let mut piece_line = line_start;
+            let mut piece = 0usize;
+            while piece_start < e {
+                let mut piece_end = piece_start;
+                for line in text[piece_start..e].split_inclusive('\n') {
+                    if piece_end > piece_start
+                        && piece_end - piece_start + line.len() > MAX_CHUNK_BYTES
+                    {
+                        break;
+                    }
+                    piece_end += line.len();
+                }
+                let body = &text[piece_start..piece_end];
+                let lines_in_piece = body.matches('\n').count() as u32;
+                let ends_with_newline = body.ends_with('\n');
+                piece += 1;
+                out.push((
+                    if piece == 1 {
+                        label.clone()
+                    } else {
+                        format!("{label}#{piece}")
+                    },
+                    (
+                        piece_line,
+                        piece_line + lines_in_piece.saturating_sub(u32::from(ends_with_newline)),
+                    ),
+                    (piece_start as u64, piece_end as u64),
+                    body.chars().take(MAX_CHUNK_BYTES).collect(),
+                ));
+                piece_line += lines_in_piece + u32::from(!ends_with_newline);
+                piece_start = piece_end;
+            }
         }
         if !out.is_empty() {
             return out;

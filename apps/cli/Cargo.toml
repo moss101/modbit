@@ -17,14 +17,20 @@ tokio.workspace = true
 
 serde_json.workspace = true
 
+# PX-128 / PX-129: the cloud client speaks the Cloud API over HTTPS and
+# verifies the organisation's signed policy bundle itself.
+reqwest.workspace = true
+sha2.workspace = true
+hex.workspace = true
+base64.workspace = true
+ed25519-dalek.workspace = true
+
 # Windows: a spawned Core must not inherit this process's std handles (a
 # caller reading our stdout would otherwise wait for the detached Core).
 [target.'cfg(windows)'.dependencies]
 windows-sys = { version = "0.61.2", features = ["Win32_Foundation", "Win32_System_Console"] }
 
 [dev-dependencies]
-ed25519-dalek.workspace = true
-hex.workspace = true
 tempfile.workspace = true
 
 [lints]

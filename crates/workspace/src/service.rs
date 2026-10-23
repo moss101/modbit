@@ -301,6 +301,13 @@ impl WorkspaceService {
         self.policy.root()
     }
 
+    /// The path policy of this root (the protected patterns, including the
+    /// task's extra ones).
+    #[must_use]
+    pub fn policy(&self) -> &PathPolicy {
+        &self.policy
+    }
+
     /// Apply the path policy to `path` without opening it (for callers that
     /// hand the resolved location to another effector, e.g. a process cwd).
     pub fn resolve(&self, path: &str) -> Result<ResolvedPath> {

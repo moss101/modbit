@@ -1,0 +1,28 @@
+{
+  "expected": {
+    "argv": [
+      "sh",
+      "-c",
+      "sleep 30"
+    ],
+    "bytesSoFar": "9007199254740993",
+    "cols": 120,
+    "cwd": "/work",
+    "elapsedMs": "30001",
+    "exitCode": -1,
+    "inputLeaseHolder": "user:3-ab12cd",
+    "oldestCursor": "4194288",
+    "outputRef": "abababababababababababababababababababababababababababababababab",
+    "owner": "agent",
+    "pty": true,
+    "replayWindowBytes": "67108864",
+    "rows": 40,
+    "sessionId": "5e55f00d",
+    "startedAtMs": "1757289600123",
+    "state": "EXITED",
+    "taskId": "77777777777777777777777777777777",
+    "timedOut": false,
+    "title": "sh -c sleep 30"
+  },
+  "type": "modbit.v1.TerminalView"
+}

@@ -1,0 +1,31 @@
+{
+  "expected": {
+    "baseRevision": "abababababababababababababababababababab",
+    "branch": "modbit/task-x",
+    "bytes": "9007199254740993",
+    "changedFiles": 4,
+    "createdAtMs": "1757289600123",
+    "dirty": true,
+    "disposition": "APPLIED",
+    "kind": "TASK",
+    "lastActivityMs": "1757289700000",
+    "neutralized": [
+      "HOOK",
+      "FILTER"
+    ],
+    "originRoot": "/work/repo",
+    "orphan": false,
+    "path": "/profile/worktrees/x",
+    "protected": true,
+    "removable": false,
+    "removableReason": "younger than the protection window",
+    "setupDetail": "",
+    "setupStatus": "PASSED",
+    "state": "ACTIVE",
+    "taskId": "32323232323232323232323232323232",
+    "taskRunning": false,
+    "unapplied": false,
+    "worktreeId": "01a1183e-0000-7000-8000-000000000001"
+  },
+  "type": "modbit.v1.WorktreeView"
+}

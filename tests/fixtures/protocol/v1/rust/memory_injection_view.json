@@ -1,0 +1,43 @@
+{
+  "expected": {
+    "compilerVersion": "memory-pack-v1",
+    "entries": [
+      {
+        "author": "user:b1b1b1b1b1b1b1b1b1b1b1b1b1b1b1b1",
+        "clipped": false,
+        "confidence": 0.8999999761581421,
+        "conflictsWith": [],
+        "createdAtMs": "1757289600000",
+        "expiresAtMs": "0",
+        "lastValidationRevision": "",
+        "memoryId": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "reasons": [
+          "relevant: topic",
+          "scope:agent_profile"
+        ],
+        "recordType": "convention",
+        "scope": "agent_profile:primary",
+        "source": "user_stated",
+        "tokenCost": 42,
+        "topic": "indentation",
+        "validated": true
+      }
+    ],
+    "excluded": [
+      {
+        "memoryId": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+        "reason": "shadowed_by:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+      },
+      {
+        "memoryId": "dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd",
+        "reason": "sensitive"
+      }
+    ],
+    "omittedCount": 3,
+    "packId": "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
+    "rejectedIds": [],
+    "tokenBudget": 800,
+    "tokenUsed": 211
+  },
+  "type": "modbit.v1.MemoryInjectionView"
+}

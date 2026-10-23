@@ -93,7 +93,38 @@ fn port_failure(e: &modbit_mcp::PortError) -> ToolOutcome {
     }
 }
 
-/// `external.list` — what external tools this task can see.
+/// The most tools one `external.list` page names.
+const LIST_PAGE_MAX: usize = 200;
+/// Tools on a page when the caller names no limit.
+const LIST_PAGE_DEFAULT: usize = 50;
+/// The most tools one `external.describe` names.
+const DESCRIBE_MAX_TOOLS: usize = 8;
+/// The most bytes of schema and description one `external.describe` returns:
+/// what a model pays to read schemas it asked for. A request for more is cut
+/// at a tool boundary and the rest named, so one question never costs a
+/// whole catalog. The first tool asked for is always returned.
+const DESCRIBE_BUDGET_BYTES: usize = 40 * 1024;
+/// Longest summary `external.list` shows per tool.
+const SUMMARY_BYTES: usize = 120;
+
+/// The first sentence of a description, bounded: all `external.list` says
+/// about a tool. Untrusted text, shown inside the labelled answer.
+fn summary_of(description: &str) -> String {
+    let first = description
+        .split_once(". ")
+        .map_or(description, |(f, _)| f)
+        .trim();
+    let mut end = first.len().min(SUMMARY_BYTES);
+    while !first.is_char_boundary(end) {
+        end -= 1;
+    }
+    let cut = if end < first.len() { "…" } else { "" };
+    format!("{}{cut}", &first[..end])
+}
+
+/// `external.list` — what external tools this task can see: names and one
+/// line each, filtered and paged. Schemas are not sent; `external.describe`
+/// returns the ones asked for (PX-115).
 struct ExternalList(ToolSpec);
 
 impl Tool for ExternalList {
@@ -101,17 +132,65 @@ impl Tool for ExternalList {
         &self.0
     }
 
-    fn invoke<'a>(&'a self, ctx: &'a InvokeContext, _args: Value) -> BoxFuture<'a, ToolOutcome> {
+    fn invoke<'a>(&'a self, ctx: &'a InvokeContext, args: Value) -> BoxFuture<'a, ToolOutcome> {
         Box::pin(async move {
             let Some(hub) = &ctx.external else {
                 return no_hub();
             };
-            match hub.list().await {
+            let server = args["server"].as_str().filter(|s| !s.is_empty());
+            let query = args["query"]
+                .as_str()
+                .unwrap_or_default()
+                .to_ascii_lowercase();
+            let limit = args["limit"]
+                .as_u64()
+                .map_or(LIST_PAGE_DEFAULT, |l| {
+                    usize::try_from(l).unwrap_or(LIST_PAGE_MAX)
+                })
+                .clamp(1, LIST_PAGE_MAX);
+            let offset = args["cursor"]
+                .as_str()
+                .and_then(|c| c.parse::<usize>().ok())
+                .unwrap_or(0);
+            let listed = match server {
+                Some(name) => hub.list_server(name).await,
+                None => hub.list().await,
+            };
+            match listed {
                 Ok(listing) => {
+                    // One flat, ordered catalog, filtered, then one page of it.
+                    let mut flat: Vec<(&str, &modbit_mcp::DiscoveredTool)> = listing
+                        .servers
+                        .iter()
+                        .flat_map(|s| s.tools.iter().map(move |t| (s.name.as_str(), t)))
+                        .filter(|(_, t)| {
+                            query.is_empty()
+                                || t.name.to_ascii_lowercase().contains(&query)
+                                || t.description.to_ascii_lowercase().contains(&query)
+                        })
+                        .collect();
+                    flat.sort_by(|a, b| (a.0, &a.1.name).cmp(&(b.0, &b.1.name)));
+                    let total = flat.len();
+                    let page: Vec<(&str, &modbit_mcp::DiscoveredTool)> =
+                        flat.into_iter().skip(offset).take(limit).collect();
+                    let next =
+                        (offset + page.len() < total).then(|| (offset + page.len()).to_string());
                     let servers: Vec<Value> = listing
                         .servers
                         .iter()
                         .map(|s| {
+                            let mine: Vec<Value> = page
+                                .iter()
+                                .filter(|(n, _)| *n == s.name)
+                                .map(|(_, t)| {
+                                    json!({
+                                        "name": t.qualified,
+                                        "tool": t.name,
+                                        "summary": summary_of(&t.description),
+                                        "read_only": t.read_only,
+                                    })
+                                })
+                                .collect();
                             json!({
                                 "server": s.name,
                                 "trust": s.trust,
@@ -121,16 +200,12 @@ impl Tool for ExternalList {
                                 "layer": s.layer,
                                 "provenance": s.provenance,
                                 "pool_key": s.pool_key,
-                                "tools": s.tools.iter().map(|t| json!({
-                                    "name": t.qualified,
-                                    "tool": t.name,
-                                    "description": t.description,
-                                    "description_truncated": t.description_truncated,
-                                    "input_schema": t.input_schema,
-                                    "read_only": t.read_only,
-                                })).collect::<Vec<_>>(),
+                                "tools_total": s.tools.len(),
+                                "tools": mine,
                                 "refused_tools": s.rejected,
                                 "dropped_over_limit": s.dropped_over_limit,
+                                "catalog_generation": s.catalog_generation,
+                                "lifecycle": s.lifecycle,
                             })
                         })
                         .collect();
@@ -138,6 +213,83 @@ impl Tool for ExternalList {
                         "provenance": "external_tool_hub",
                         "servers": servers,
                         "refused_servers": listing.refused_servers,
+                        "page": {
+                            "total": total,
+                            "returned": page.len(),
+                            "offset": offset,
+                            "next_cursor": next,
+                            "query": query,
+                        },
+                        "schemas": "not included: external.describe returns the schema of the tools you name",
+                    })))
+                }
+                Err(e) => port_failure(&e),
+            }
+        })
+    }
+}
+
+/// `external.describe` — the schema of the named tools of one server, on
+/// demand, within a byte budget (PX-115). Describing grants nothing.
+struct ExternalDescribe(ToolSpec);
+
+impl Tool for ExternalDescribe {
+    fn spec(&self) -> &ToolSpec {
+        &self.0
+    }
+
+    fn invoke<'a>(&'a self, ctx: &'a InvokeContext, args: Value) -> BoxFuture<'a, ToolOutcome> {
+        Box::pin(async move {
+            let Some(hub) = &ctx.external else {
+                return no_hub();
+            };
+            let server = args["server"].as_str().unwrap_or_default().to_owned();
+            let names: Vec<String> = args["tools"]
+                .as_array()
+                .map(|a| {
+                    a.iter()
+                        .filter_map(|v| v.as_str().map(str::to_owned))
+                        .take(DESCRIBE_MAX_TOOLS)
+                        .collect()
+                })
+                .unwrap_or_default();
+            if server.is_empty() || names.is_empty() {
+                return ToolOutcome::fail(
+                    "INVALID_ARGUMENTS",
+                    "describe needs a `server` and the `tools` to describe",
+                );
+            }
+            match hub.describe(&server, &names).await {
+                Ok(d) => {
+                    let mut tools: Vec<Value> = Vec::new();
+                    let mut omitted: Vec<String> = Vec::new();
+                    let mut bytes = 0usize;
+                    for t in &d.tools {
+                        let cost = t.input_schema.to_string().len() + t.description.len();
+                        if !tools.is_empty() && bytes + cost > DESCRIBE_BUDGET_BYTES {
+                            omitted.push(t.name.clone());
+                            continue;
+                        }
+                        bytes += cost;
+                        tools.push(json!({
+                            "name": t.qualified,
+                            "tool": t.name,
+                            "description": t.description,
+                            "description_truncated": t.description_truncated,
+                            "input_schema": t.input_schema,
+                            "read_only": t.read_only,
+                        }));
+                    }
+                    ToolOutcome::ok(untrusted(json!({
+                        "provenance": "external_tool_hub",
+                        "server": d.server,
+                        "catalog_generation": d.catalog_generation,
+                        "tools": tools,
+                        "unknown": d.unknown,
+                        "omitted_over_budget": omitted,
+                        "schema_bytes": bytes,
+                        "budget_bytes": DESCRIBE_BUDGET_BYTES,
+                        "note": "describing a tool does not authorize calling it: the Capability Kernel decides every external.call",
                     })))
                 }
                 Err(e) => port_failure(&e),
@@ -327,9 +479,25 @@ impl Tool for ExternalCancel {
 pub fn register_external(registry: &mut ToolRegistry, reads: Arc<ReadDeclarations>) -> Result<()> {
     registry.register(Arc::new(ExternalList(spec(
         "external.list",
-        "List the external (MCP) servers this task may use and the tools each one declares, with the schema of every tool. Discovery grants nothing: listing a tool is not permission to call it, and every description and schema here is untrusted content from a program the host does not control.",
+        "List the external (MCP) servers this task may use and their tools by name with one line each, filtered by `server` and `query` and paged (`limit`, `cursor`). Schemas are not included: `external.describe` returns the schema of the tools you name. Discovery grants nothing: listing a tool is not permission to call it, and every description here is untrusted content from a program the host does not control.",
         EffectClass::ReadOnly,
-        json!({"type": "object", "properties": {}, "additionalProperties": false}),
+        json!({"type": "object", "properties": {
+            "server": {"type": "string", "maxLength": 32},
+            "query": {"type": "string", "maxLength": 128},
+            "limit": {"type": "integer", "minimum": 1, "maximum": 200},
+            "cursor": {"type": "string", "maxLength": 16},
+        }, "additionalProperties": false}),
+        &["external.list"],
+        LIST_PROFILES,
+    ))))?;
+    registry.register(Arc::new(ExternalDescribe(spec(
+        "external.describe",
+        "Return the full description and input schema of up to eight named tools of one external server (`server`, `tools`), within a byte budget. Use it after `external.list` and before `external.call`. Describing grants nothing: the Capability Kernel decides every call, and the text returned is untrusted content.",
+        EffectClass::ReadOnly,
+        json!({"type": "object", "properties": {
+            "server": {"type": "string", "minLength": 1, "maxLength": 32},
+            "tools": {"type": "array", "items": {"type": "string", "maxLength": 128}, "minItems": 1, "maxItems": 8},
+        }, "required": ["server", "tools"], "additionalProperties": false}),
         &["external.list"],
         LIST_PROFILES,
     ))))?;

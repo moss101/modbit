@@ -62,8 +62,17 @@ pub(crate) struct ForkRequest {
 pub(crate) struct SubagentFork {
     /// Paths (relative to the worktree) the child may write; empty = all.
     pub write_scope: Vec<String>,
+    /// Paths (relative to the worktree) the child may read; empty = all.
+    /// Its lease's `fs.read` selectors are narrowed to these and to its
+    /// write scope, so the Kernel refuses a read outside them (REQ-PX-116).
+    pub read_scope: Vec<String>,
     /// The highest effect class the child's lease allows.
     pub effect_ceiling_cap: Option<modbit_domain::toolcall::EffectClass>,
+    /// The child is a `computer-use` child (PX-075): its lease keeps the
+    /// computer capabilities and nothing that writes, reaches the network
+    /// or holds a secret. Every other child's lease loses the computer
+    /// capabilities: native control is never inherited.
+    pub computer_use: bool,
 }
 
 /// What a fork produced.
@@ -548,6 +557,24 @@ pub(crate) async fn fork(
             actor.clone(),
         ));
     }
+    // PX-051: a fork never widens what its source was held to: it is made in
+    // the mode the source was in (a subagent has its own goal and posture).
+    if req.subagent.is_none()
+        && let Ok(f) = core.tools.tasking.facts(&store, source.task_id)
+        && f.mode != modbit_domain::mode::TaskMode::Agent
+    {
+        events.push(typed(
+            "TaskModeSet",
+            &TaskEvent::TaskModeSet {
+                mode: f.mode,
+                previous: None,
+                source: "fork".into(),
+                reason: format!("the mode of task {}", source.task_id),
+                accepted_plan_version: 0,
+            },
+            actor.clone(),
+        ));
+    }
     let stored = store.append(AppendRequest {
         tenant_id: core.tenant_id,
         session_id: source.session_id,
@@ -561,6 +588,35 @@ pub(crate) async fn fork(
         events,
     })?;
     let mut offset = stored.last().map(|e| e.offset).unwrap_or(0);
+    // PX-065: the worktree is in the registry, so the lifecycle — its
+    // result's disposition, the integration gate, the cleanup — knows it.
+    {
+        let kind = if req.subagent.is_some() {
+            "SUBAGENT"
+        } else {
+            "FORK"
+        };
+        let id = req.new_task_id.to_string();
+        let last = crate::worktrees::append_events(
+            &mut store,
+            core.tenant_id,
+            source.session_id,
+            req.new_task_id,
+            crate::worktrees::aggregate_id(&id),
+            vec![crate::worktrees::provisioned_event(
+                kind,
+                &id,
+                req.new_task_id,
+                &worktree,
+                &crate::worktrees::plain_path(Path::new(root)),
+                &branch,
+                &base,
+                actor,
+            )],
+        )
+        .map_err(|e| anyhow::anyhow!("worktree registry: {e}"))?;
+        offset = offset.max(last);
+    }
     // Capability Kernel (docs/23): the fork's own default lease on its own root.
     let (mut resources, mut operations, mut effect_ceiling) =
         modbit_policy::default_lease_for_profile(
@@ -571,8 +627,22 @@ pub(crate) async fn fork(
         // M6.3: least privilege for a child — writes only inside its write
         // scope, no worktrees of its own, never a higher effect class than
         // its parent allows (REQ-EV-0046 / 0048).
-        operations.retain(|o| o != "git.worktree");
-        resources.retain(|r| !r.starts_with("git.worktree:"));
+        operations.retain(|o| o != "git.worktree" && o != "git.merge" && o != "git.apply");
+        resources.retain(|r| !r.starts_with("git.worktree:") && !r.starts_with("git.merge:"));
+        if sub.computer_use {
+            // Read, search, non-GUI shell and computer.*: nothing else.
+            let keep = |o: &str| {
+                matches!(
+                    o,
+                    "fs.read" | "git.read" | "shell.exec" | "memory.query" | "external.list"
+                ) || o.starts_with("computer.")
+            };
+            operations.retain(|o| keep(o));
+            resources.retain(|r| keep(r.split(':').next().unwrap_or_default()));
+        } else {
+            operations.retain(|o| !o.starts_with("computer."));
+            resources.retain(|r| !r.starts_with("computer."));
+        }
         if !sub.write_scope.is_empty() {
             resources.retain(|r| !r.starts_with("fs.write:"));
             for p in &sub.write_scope {
@@ -580,6 +650,15 @@ pub(crate) async fn fork(
                 let p = p.trim_end_matches("/**").trim_end_matches("/*");
                 resources.push(format!("fs.write:{worktree}/{p}/**"));
                 resources.push(format!("fs.write:{worktree}/{p}"));
+            }
+        }
+        if !sub.read_scope.is_empty() {
+            resources.retain(|r| !r.starts_with("fs.read:"));
+            for p in sub.read_scope.iter().chain(sub.write_scope.iter()) {
+                let p = p.trim().trim_start_matches("./").trim_end_matches('/');
+                let p = p.trim_end_matches("/**").trim_end_matches("/*");
+                resources.push(format!("fs.read:{worktree}/{p}/**"));
+                resources.push(format!("fs.read:{worktree}/{p}"));
             }
         }
         if let Some(cap) = sub.effect_ceiling_cap
@@ -686,9 +765,26 @@ pub(crate) async fn preview_rewind(
         state
     };
     let repo = modbit_git::Repo::open(&canonical)?;
+    // FIX-18: a preview must not promise a restore that HEAD drift refuses.
+    if let Some(refused) =
+        crate::checkpoint::head_drift(&repo, state.git_head.as_deref(), state.checkpoint_id)
+    {
+        return Ok(Err(refused));
+    }
     let ws = ws.lock().await;
     let now = worktree_now(&repo, &ws)?;
-    let entries = plan_rewind(&state, &now.current, &now.tracked);
+    // A path the checkpoint holds and the worktree has clean (it is at HEAD's content) is not in the dirty set, but
+    // its content is not "absent": a client that sends the hash it saw as its precondition would otherwise be
+    // refused as a stale preview by a restore that is exactly what it showed.
+    let mut current = now.current.clone();
+    for path in state.files.keys() {
+        if !current.contains_key(path)
+            && let Some(bytes) = read_workspace_file(&ws, path)
+        {
+            current.insert(path.clone(), Some(content_hash(&bytes)));
+        }
+    }
+    let entries = plan_rewind(&state, &current, &now.tracked);
     Ok(Ok(Preview {
         checkpoint_id: state.checkpoint_id,
         epoch: state.epoch,
@@ -780,6 +876,11 @@ pub(crate) fn session_tree(
                         files_reverted: p["files_reverted"].as_u64().unwrap_or(0) as u32,
                         preconditions_checked: p["preconditions_checked"].as_u64().unwrap_or(0)
                             as u32,
+                        pre_restore_checkpoint_id: p["pre_restore_checkpoint_id"]
+                            .as_str()
+                            .unwrap_or_default()
+                            .to_owned(),
+                        redo: p["redo"].as_bool().unwrap_or(false),
                     });
                 }
             }

@@ -10,6 +10,8 @@
 
 Filesystem + Git revision are authoritative. UI buffers are never canonical because Modbit has no embedded IDE/editor architecture.
 
+**Proposed scoped supersession (DR-PX-2026-10-03-009, `67_WORKSPACE_EDITOR_SPECIFICATION.md`, not in force until the record is accepted).** A Workspace Editor may hold a non-authoritative draft overlay over a revision-pinned snapshot; filesystem plus Git revision stay the only truth and every write is a ChangeTransaction. No IDE architecture, Monaco or Code-OSS.
+
 `WorkspaceRevision` is a monotonic Modbit revision linked to Git HEAD, worktree identity and a content fingerprint of changed files. Every CodeReference and ContextPack binds to it.
 
 ## Workspace File Service

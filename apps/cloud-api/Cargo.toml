@@ -10,6 +10,7 @@ publish.workspace = true
 [dependencies]
 modbit-secrets.workspace = true
 modbit-domain.workspace = true
+modbit-automation.workspace = true
 modbit-protocol.workspace = true
 modbit-event-store = { workspace = true, features = ["cloud"] }
 modbit-sandbox.workspace = true
@@ -26,10 +27,12 @@ uuid.workspace = true
 rand.workspace = true
 futures-util.workspace = true
 anyhow.workspace = true
+ed25519-dalek.workspace = true
+reqwest.workspace = true
 
 [dev-dependencies]
-reqwest.workspace = true
 tokio-tungstenite = "0.26"
+tokio-postgres.workspace = true
 
 [lints]
 workspace = true

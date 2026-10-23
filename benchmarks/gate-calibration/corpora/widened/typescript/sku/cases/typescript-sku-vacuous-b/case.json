@@ -1,0 +1,11 @@
+{
+  "id": "typescript-sku-vacuous-b",
+  "class": "vacuous",
+  "flavor": "b",
+  "leg": "initial",
+  "write_set": [
+    "src/shop.ts",
+    "test/sku.test.ts"
+  ],
+  "declared": "incorrect"
+}

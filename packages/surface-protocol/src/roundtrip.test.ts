@@ -27,11 +27,30 @@ import { file_modbit_v1_tool } from "./gen/modbit/v1/tool_pb.js";
 import { file_modbit_v1_output_ref } from "./gen/modbit/v1/output_ref_pb.js";
 import { file_modbit_v1_negotiation } from "./gen/modbit/v1/negotiation_pb.js";
 import { file_modbit_v1_surface } from "./gen/modbit/v1/surface_pb.js";
+import { file_modbit_v1_stream } from "./gen/modbit/v1/stream_pb.js";
+import { file_modbit_v1_terminal } from "./gen/modbit/v1/terminal_pb.js";
+import { file_modbit_v1_tasking } from "./gen/modbit/v1/tasking_pb.js";
+import { file_modbit_v1_checkpoints } from "./gen/modbit/v1/checkpoints_pb.js";
+import { file_modbit_v1_skills_budgets } from "./gen/modbit/v1/skills_budgets_pb.js";
+import { file_modbit_v1_context_knowledge } from "./gen/modbit/v1/context_knowledge_pb.js";
+import { file_modbit_v1_conversation_search } from "./gen/modbit/v1/conversation_search_pb.js";
+import { file_modbit_v1_terminal_control } from "./gen/modbit/v1/terminal_control_pb.js";
+import { file_modbit_v1_slash_inventory } from "./gen/modbit/v1/slash_inventory_pb.js";
+import { file_modbit_v1_run_control } from "./gen/modbit/v1/run_control_pb.js";
+import { file_modbit_v1_security_runtime } from "./gen/modbit/v1/security_runtime_pb.js";
+import { file_modbit_v1_worktrees } from "./gen/modbit/v1/worktrees_pb.js";
+import { file_modbit_v1_browser_runtime } from "./gen/modbit/v1/browser_runtime_pb.js";
+import { file_modbit_v1_forge_cloud } from "./gen/modbit/v1/forge_cloud_pb.js";
+import { file_modbit_v1_composer } from "./gen/modbit/v1/composer_pb.js";
+import { file_modbit_v1_automations } from "./gen/modbit/v1/automations_pb.js";
+import { file_modbit_v1_projects } from "./gen/modbit/v1/projects_pb.js";
+import { file_modbit_v1_computer } from "./gen/modbit/v1/computer_pb.js";
+import { file_modbit_v1_mode_proposals } from "./gen/modbit/v1/mode_proposals_pb.js";
 
 const here = dirname(fileURLToPath(import.meta.url));
 const fixtures = join(here, "../../../tests/fixtures/protocol/v1");
 const messagesByType = new Map<string, DescMessage>(
-  [file_modbit_v1_domain, file_modbit_v1_envelope, file_modbit_v1_tool, file_modbit_v1_output_ref, file_modbit_v1_negotiation, file_modbit_v1_surface]
+  [file_modbit_v1_domain, file_modbit_v1_envelope, file_modbit_v1_tool, file_modbit_v1_output_ref, file_modbit_v1_negotiation, file_modbit_v1_surface, file_modbit_v1_stream, file_modbit_v1_terminal, file_modbit_v1_tasking, file_modbit_v1_checkpoints, file_modbit_v1_skills_budgets, file_modbit_v1_context_knowledge, file_modbit_v1_conversation_search, file_modbit_v1_terminal_control, file_modbit_v1_slash_inventory, file_modbit_v1_run_control, file_modbit_v1_security_runtime, file_modbit_v1_worktrees, file_modbit_v1_browser_runtime, file_modbit_v1_forge_cloud, file_modbit_v1_composer, file_modbit_v1_automations, file_modbit_v1_projects, file_modbit_v1_computer, file_modbit_v1_mode_proposals]
     .flatMap((f) => f.messages)
     .map((m) => [m.typeName, m]),
 );

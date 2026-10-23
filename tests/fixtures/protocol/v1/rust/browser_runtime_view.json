@@ -1,0 +1,16 @@
+{
+  "expected": {
+    "browserSessionId": "61616161616161616161616161616161",
+    "changeSeq": "9007199254740993",
+    "compiledSeq": "11",
+    "deliveredFingerprint": "ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff",
+    "history": 3,
+    "knownEntities": 7,
+    "lastFingerprint": "eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee",
+    "latch": "browser.act click: BROWSER_TIMEOUT",
+    "latchToolCallId": "01a08f33-0d97-7d40-b299-f8a7bc5cda60",
+    "notices": "12",
+    "pageKind": "login"
+  },
+  "type": "modbit.v1.BrowserRuntimeView"
+}

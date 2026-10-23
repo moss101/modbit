@@ -1,0 +1,10 @@
+{
+  "id": "python-shipping-vacuous-a",
+  "class": "vacuous",
+  "flavor": "a",
+  "leg": "initial",
+  "write_set": [
+    "test_shipping.py"
+  ],
+  "declared": "incorrect"
+}

@@ -1,0 +1,10 @@
+{
+  "id": "rust-quantity-offbyone-b",
+  "class": "offbyone",
+  "flavor": "b",
+  "leg": "initial",
+  "write_set": [
+    "src/lib.rs"
+  ],
+  "declared": "incorrect"
+}

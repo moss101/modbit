@@ -1,0 +1,204 @@
+// Security and runtime read models of the audit-driven completion rows
+// PX-130 (credential broker), PX-131 (authorization epochs), PX-132 (process
+// services) and PX-139 (observability), as clients see them (docs/62, docs/79).
+// Commands travel as CommandEnvelope payloads named by `command_type`. Fields
+// this wave adds to messages of other files take the block 320-339.
+syntax = "proto3";
+
+package modbit.v1;
+
+import "modbit/v1/domain.proto";
+
+// ---------------------------------------------------------------- PX-131
+
+// The capability snapshots a task's model rounds were frozen with, and
+// whether their record is consistent.
+message GetCapabilitySnapshots {
+  Id task_id = 1;
+  uint64 after_epoch = 2;          // only epochs greater than this; 0 = all
+}
+
+message CapabilitySnapshotView {
+  uint64 epoch = 1;                // monotonic per task, from 1
+  string run_id = 2;
+  string turn_id = 3;
+  uint32 round = 4;                // the turn's ordinal in its run
+  string config_generation = 5;    // the policy generation the round was decided under
+  string mode = 6;
+  string execution_profile = 7;
+  string lease_id = 8;             // "" = the task held no lease
+  uint64 lease_generation = 9;
+  repeated string lease_operations = 10;
+  repeated string projected_tools = 11;
+  string projection_hash = 12;
+  repeated string skills = 13;     // name@content_hash
+  string snapshot_hash = 14;       // what the round's decisions and receipts name
+  int64 recorded_at_ms = 15;
+}
+
+message CapabilitySnapshotList {
+  repeated CapabilitySnapshotView snapshots = 1;
+  uint64 current_epoch = 2;        // the epoch a decision made now carries; 0 = no round yet
+  bool valid = 3;                  // hashes recompute, epochs are monotonic and gapless
+  string detail = 4;
+}
+
+// ---------------------------------------------------------------- PX-132
+
+// Broker side (ExecFrame.list_services / service_listeners): the listening
+// sockets of the process trees of the sessions the requester may see. Only
+// the processes of a session's own tree are reported, never an unrelated
+// listener of the machine.
+message ListServices {
+  string requester = 1;            // as ListSessions.requester
+}
+
+message SessionListener {
+  string session_id = 1;
+  uint32 pid = 2;                  // the listening process
+  uint32 port = 3;
+  string address = 4;              // the bound address: 127.0.0.1, ::1, 0.0.0.0, ::, ...
+  string command = 5;              // its command line, bounded; may carry anything the command line carries
+  string process_name = 6;
+}
+
+message SessionListeners {
+  repeated SessionListener listeners = 1;
+  int64 scanned_at_ms = 2;
+  uint32 scanned_sessions = 3;     // running sessions whose trees were scanned
+  string scan_error = 4;           // "" = the scan completed
+}
+
+// Core side: the services a task's terminals started, as the Core observed
+// them (ProcessServiceObserved on the task's log).
+message ListProcessServices {
+  Id task_id = 1;                  // absent = every task
+  bool include_gone = 2;
+}
+
+message ProcessServiceView {
+  Id task_id = 1;
+  string session_id = 2;           // the terminal that owns the process
+  uint32 port = 3;
+  string address = 4;
+  uint32 pid = 5;
+  string command = 6;              // redacted, bounded
+  string kind = 7;                 // dev_server | service
+  string state = 8;                // STARTING | READY | UNHEALTHY | GONE
+  int32 http_status = 9;           // 0 = no HTTP answer
+  int64 first_seen_ms = 10;
+  int64 state_since_ms = 11;
+  int64 last_probe_ms = 12;
+  uint64 probe_latency_ms = 13;
+  string detail = 14;              // why it is in this state
+}
+
+message ProcessServiceList {
+  repeated ProcessServiceView services = 1;
+  int64 scanned_at_ms = 2;
+}
+
+// ---------------------------------------------------------------- PX-139
+
+// Component health, persisted, and the state of the OpenTelemetry export.
+message GetComponentHealth {}
+
+message ComponentHealthView {
+  string name = 1;                 // provider:<endpoint> | execd | sandbox_gateway | telemetry | ...
+  string state = 2;                // OK | DEGRADED | DOWN | UNKNOWN | DISABLED
+  string detail = 3;
+  int64 observed_at_ms = 4;
+  int64 age_ms = 5;                // now - observed_at_ms
+  bool observed_this_run = 6;      // false: read back from the previous run and not yet replaced
+}
+
+message TelemetryExportView {
+  bool enabled = 1;                // off by default
+  string endpoint = 2;             // scheme://host:port only; never a path, query or credential
+  string disabled_reason = 3;
+  uint64 spans_queued = 4;
+  uint64 spans_sent = 5;
+  uint64 spans_dropped_overflow = 6; // dropped because the bounded queue was full
+  uint64 spans_lost = 7;           // dropped after their attempts failed
+  uint64 requests_ok = 8;
+  uint64 requests_failed = 9;
+  uint64 metric_exports_ok = 10;
+  uint64 metric_exports_failed = 11;
+  uint64 queue_depth = 12;
+  string last_error = 13;          // redacted and bounded
+  int64 last_success_ms = 14;
+  int64 last_attempt_ms = 15;
+}
+
+message ComponentHealthList {
+  repeated ComponentHealthView components = 1;
+  int64 now_ms = 2;
+  TelemetryExportView export = 3;
+}
+
+// ---------------------------------------------------------------- PX-130
+
+// The credential broker: what it holds, who may use it, and every use. No
+// message here carries a credential value.
+message GetCredentialBroker {
+  uint32 audit_limit = 1;          // 0 = 50, at most 500
+}
+
+message CredentialView {
+  string id = 1;                   // <kind>:<name>
+  string kind = 2;                 // provider | mcp | browser | forge | cloud | webhook | telemetry
+  string audience = 3;
+  uint64 generation = 4;           // bumped by every rotation
+  bool revoked = 5;
+  bool configured = 6;             // its source has a value now
+  bool delegated = 7;              // the value lives in another process
+  uint64 uses = 8;
+  uint64 refusals = 9;
+  int64 last_used_ms = 10;
+  int64 registered_at_ms = 11;
+}
+
+message GrantView {
+  string id = 1;
+  string credential = 2;
+  string principal = 3;
+  string audience = 4;
+  string purpose = 5;
+  int64 expires_at_ms = 6;
+  uint32 max_uses = 7;             // 0 = unlimited within the TTL
+  uint32 uses = 8;
+  bool revoked = 9;
+  bool expired = 10;
+}
+
+message CredentialAuditView {
+  int64 at_ms = 1;
+  string action = 2;
+  string credential = 3;
+  string grant = 4;
+  string principal = 5;
+  string audience = 6;
+  string purpose = 7;
+  string outcome = 8;              // OK or the refusal code
+}
+
+message CredentialBrokerView {
+  repeated CredentialView credentials = 1;
+  repeated GrantView grants = 2;
+  repeated CredentialAuditView audit = 3;
+  uint64 issued = 4;
+  uint64 used = 5;
+  map<string, uint64> refused = 6; // by refusal code
+}
+
+// Revoke by credential, by grant or by principal (exactly one).
+message RevokeCredential {
+  string credential_id = 1;
+  string grant_id = 2;
+  string principal = 3;
+  string reason = 4;
+}
+
+message CredentialRevoked {
+  uint32 revoked = 1;
+}

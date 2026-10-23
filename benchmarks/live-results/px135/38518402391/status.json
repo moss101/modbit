@@ -1,0 +1,20 @@
+{
+  "row": "px135",
+  "complete": false,
+  "missing": [
+    "run rust-discount-0: cost unknown (the model is not in the Core's price catalog; an unknown price is not free)",
+    "run rust-shipping-0: cost unknown (the model is not in the Core's price catalog; an unknown price is not free)",
+    "run javascript-quantity-0: cost unknown (the model is not in the Core's price catalog; an unknown price is not free)",
+    "run javascript-discount-0: cost unknown (the model is not in the Core's price catalog; an unknown price is not free)",
+    "run javascript-shipping-0: cost unknown (the model is not in the Core's price catalog; an unknown price is not free)"
+  ],
+  "spend": {
+    "cap_usd": 5.0,
+    "spent_usd": 0.307276,
+    "calls": 16,
+    "input_tokens": 1315603,
+    "output_tokens": 219870,
+    "unknown_usage_calls": 5,
+    "stopped_by_cap": false
+  }
+}

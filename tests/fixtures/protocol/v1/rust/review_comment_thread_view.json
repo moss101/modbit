@@ -1,0 +1,21 @@
+{
+  "expected": {
+    "answered": true,
+    "author": "reviewer",
+    "body": "@modbit please guard negatives",
+    "commentId": "9007199254740993",
+    "createdAt": "2026-10-07T20:20:26Z",
+    "disposition": "STEERED",
+    "ingestedOffset": "4096",
+    "inputId": "forge-comment-11",
+    "kind": "review",
+    "line": "2",
+    "path": "src/app.ts",
+    "provenance": "forge_review_comment",
+    "reason": "",
+    "reportedBack": false,
+    "trust": "UNTRUSTED_EXTERNAL_CONTENT",
+    "url": "https://github.test/o/r/pull/3#discussion_r11"
+  },
+  "type": "modbit.v1.ReviewCommentThreadView"
+}

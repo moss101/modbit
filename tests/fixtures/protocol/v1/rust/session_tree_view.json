@@ -19,6 +19,13 @@
             "baseCheckpointId": "",
             "checkpointId": "01a09072-1262-70f2-b103-63d3e8f0feda",
             "committedAtMs": "1700000000500",
+            "cost": {
+              "blobsWritten": 1,
+              "bytesWritten": "9007199254740993",
+              "cacheHits": 40,
+              "captureMs": "12",
+              "hashedFiles": 1
+            },
             "createdAtMs": "1700000000000",
             "epoch": 1,
             "eventOffset": "120",
@@ -28,9 +35,16 @@
             "integrityHash": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
             "kind": "BASELINE",
             "manifestRef": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+            "name": "before the refactor",
             "reason": "before the fork",
             "removed": 0,
+            "retention": [
+              "NAMED",
+              "FORK_PARENT"
+            ],
             "status": "CURRENT",
+            "turnId": "14141414141414141414141414141414",
+            "turnOrdinal": 2,
             "workspaceRevision": "3"
           }
         ],
@@ -47,7 +61,9 @@
             "filesReverted": 1,
             "filesWritten": 1,
             "offset": "140",
-            "preconditionsChecked": 2
+            "preRestoreCheckpointId": "01a09072-1262-70f2-b103-63d3e8f0fedb",
+            "preconditionsChecked": 2,
+            "redo": false
           }
         ],
         "runs": [

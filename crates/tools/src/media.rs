@@ -225,6 +225,41 @@ pub fn read(req: &ReadRequest<'_>, sink: &dyn ObjectSink) -> Result<MediaRead, M
                 stripped,
             )?;
         }
+        (MediaKind::Image, "image/gif" | "image/webp") => {
+            // Both are parsed structurally (no pixel decoder is in the tree):
+            // the canvas is read from the header and checked against the pixel
+            // budget before anything else, the metadata blocks are walked and
+            // dropped, and a file that does not parse is a typed failure, never
+            // a partial copy.
+            let gif = mime == "image/gif";
+            let (w, h) = if gif {
+                gif_dimensions(req.bytes)?
+            } else {
+                webp_dimensions(req.bytes)?
+            };
+            check_pixels(w, h, &req.budget)?;
+            if req.region.is_some() {
+                return Err(err(
+                    "MEDIA_CROP_UNSUPPORTED",
+                    "cropping a GIF or WebP is not supported (PNG regions are); read the full image or convert it",
+                ));
+            }
+            env.width = Some(w);
+            env.height = Some(h);
+            let (egress, stripped) = if gif {
+                strip_gif_metadata(req.bytes)?
+            } else {
+                strip_webp_metadata(req.bytes)?
+            };
+            record_egress(
+                &mut env,
+                sink,
+                "metadata_strip",
+                &original_digest,
+                egress,
+                stripped,
+            )?;
+        }
         (MediaKind::Document, _) => {
             let doc = lopdf::Document::load_mem(req.bytes)
                 .map_err(|e| err("MEDIA_MALFORMED", format!("pdf: {e}")))?;
@@ -534,6 +569,217 @@ pub fn strip_png_metadata(bytes: &[u8]) -> (Vec<u8>, Vec<String>) {
         i = end;
     }
     (out, stripped)
+}
+
+/// Width/height of the logical screen of a GIF (no decoding).
+pub fn gif_dimensions(bytes: &[u8]) -> Result<(u32, u32), MediaError> {
+    if bytes.len() < 13 {
+        return Err(err("MEDIA_MALFORMED", "gif: truncated header"));
+    }
+    let w = u32::from(u16::from_le_bytes([bytes[6], bytes[7]]));
+    let h = u32::from(u16::from_le_bytes([bytes[8], bytes[9]]));
+    Ok((w, h))
+}
+
+/// Skip a run of GIF data sub-blocks starting at `i` (each is a length byte
+/// and that many bytes, ended by a zero length); returns the index after the
+/// terminator.
+fn gif_sub_blocks(bytes: &[u8], mut i: usize) -> Result<usize, MediaError> {
+    loop {
+        let len = usize::from(
+            *bytes
+                .get(i)
+                .ok_or_else(|| err("MEDIA_MALFORMED", "gif: truncated data sub-block"))?,
+        );
+        i += 1;
+        if len == 0 {
+            return Ok(i);
+        }
+        i += len;
+        if i > bytes.len() {
+            return Err(err("MEDIA_MALFORMED", "gif: truncated data sub-block"));
+        }
+    }
+}
+
+/// Drop comment blocks, XMP and every other application block (vendor blobs)
+/// and unknown extension blocks from a GIF. The graphic control, plain text,
+/// image data and the NETSCAPE / ANIMEXTS loop-count blocks stay. The
+/// stream is walked block by block; a truncated or unknown block is a typed
+/// failure, never a partial copy.
+pub fn strip_gif_metadata(bytes: &[u8]) -> Result<(Vec<u8>, Vec<String>), MediaError> {
+    let truncated = || err("MEDIA_MALFORMED", "gif: truncated stream");
+    if bytes.len() < 13 {
+        return Err(truncated());
+    }
+    let mut out = Vec::with_capacity(bytes.len());
+    let mut stripped = Vec::new();
+    let color_table = |flags: u8| -> usize {
+        if flags & 0x80 != 0 {
+            3 * (1usize << ((flags & 0x07) + 1))
+        } else {
+            0
+        }
+    };
+    let mut i = 13 + color_table(bytes[10]);
+    if i > bytes.len() {
+        return Err(truncated());
+    }
+    out.extend_from_slice(&bytes[..i]);
+    loop {
+        let Some(&introducer) = bytes.get(i) else {
+            return Err(truncated());
+        };
+        match introducer {
+            0x3B => {
+                out.push(0x3B);
+                return Ok((out, stripped));
+            }
+            0x21 => {
+                let label = *bytes.get(i + 1).ok_or_else(truncated)?;
+                let end = gif_sub_blocks(bytes, i + 2)?;
+                let keep = match label {
+                    0xF9 | 0x01 => true,
+                    0xFF => {
+                        // Application block: 11 bytes of identifier first.
+                        let ident = bytes.get(i + 3..i + 14).ok_or_else(truncated)?;
+                        matches!(ident, b"NETSCAPE2.0" | b"ANIMEXTS1.0")
+                    }
+                    _ => false,
+                };
+                if keep {
+                    out.extend_from_slice(&bytes[i..end]);
+                } else {
+                    stripped.push(match label {
+                        0xFE => "comment".to_owned(),
+                        0xFF => format!(
+                            "application({})",
+                            String::from_utf8_lossy(bytes.get(i + 3..i + 14).unwrap_or_default())
+                        ),
+                        l => format!("extension({l:#04x})"),
+                    });
+                }
+                i = end;
+            }
+            0x2C => {
+                let desc = bytes.get(i..i + 10).ok_or_else(truncated)?;
+                let table = color_table(desc[9]);
+                // Descriptor, local color table, LZW minimum code size, data.
+                let data_start = i + 10 + table + 1;
+                if data_start > bytes.len() {
+                    return Err(truncated());
+                }
+                let end = gif_sub_blocks(bytes, data_start)?;
+                out.extend_from_slice(&bytes[i..end]);
+                i = end;
+            }
+            other => {
+                return Err(err(
+                    "MEDIA_MALFORMED",
+                    format!("gif: unknown block {other:#04x}"),
+                ));
+            }
+        }
+    }
+}
+
+/// Iterate the chunks of a RIFF/WEBP container as `(fourcc, data offset, data
+/// length)`, validating every bound; the RIFF size must fit the file.
+fn webp_chunks(bytes: &[u8]) -> Result<Vec<([u8; 4], usize, usize)>, MediaError> {
+    let bad = |m: &str| err("MEDIA_MALFORMED", format!("webp: {m}"));
+    if bytes.len() < 20 || &bytes[..4] != b"RIFF" || &bytes[8..12] != b"WEBP" {
+        return Err(bad("not a RIFF/WEBP container"));
+    }
+    let riff = u32::from_le_bytes([bytes[4], bytes[5], bytes[6], bytes[7]]) as usize;
+    let end = riff
+        .checked_add(8)
+        .filter(|e| *e <= bytes.len() && *e >= 20)
+        .ok_or_else(|| bad("RIFF size does not fit the file"))?;
+    let mut chunks = Vec::new();
+    let mut i = 12usize;
+    while i < end {
+        let head = bytes.get(i..i + 8).filter(|_| i + 8 <= end);
+        let head = head.ok_or_else(|| bad("truncated chunk header"))?;
+        let id = [head[0], head[1], head[2], head[3]];
+        let len = u32::from_le_bytes([head[4], head[5], head[6], head[7]]) as usize;
+        let data = i + 8;
+        let next = data
+            .checked_add(len)
+            .and_then(|n| n.checked_add(len % 2))
+            .filter(|n| *n <= end)
+            .ok_or_else(|| bad("chunk runs past the end of the file"))?;
+        chunks.push((id, data, len));
+        i = next;
+    }
+    Ok(chunks)
+}
+
+/// Canvas size of a WebP from its first image chunk (no decoding): the
+/// extended header's canvas, or the lossy / lossless bitstream header.
+pub fn webp_dimensions(bytes: &[u8]) -> Result<(u32, u32), MediaError> {
+    let bad = |m: &str| err("MEDIA_MALFORMED", format!("webp: {m}"));
+    for (id, at, len) in webp_chunks(bytes)? {
+        let data = &bytes[at..at + len];
+        match &id {
+            b"VP8X" => {
+                if data.len() < 10 {
+                    return Err(bad("short VP8X chunk"));
+                }
+                let w = u32::from_le_bytes([data[4], data[5], data[6], 0]) + 1;
+                let h = u32::from_le_bytes([data[7], data[8], data[9], 0]) + 1;
+                return Ok((w, h));
+            }
+            b"VP8L" => {
+                if data.len() < 5 || data[0] != 0x2f {
+                    return Err(bad("bad VP8L signature"));
+                }
+                let bits = u32::from_le_bytes([data[1], data[2], data[3], data[4]]);
+                return Ok(((bits & 0x3FFF) + 1, ((bits >> 14) & 0x3FFF) + 1));
+            }
+            b"VP8 " => {
+                if data.len() < 10 || data[3..6] != [0x9d, 0x01, 0x2a] {
+                    return Err(bad("bad VP8 start code"));
+                }
+                let w = u32::from(u16::from_le_bytes([data[6], data[7]]) & 0x3FFF);
+                let h = u32::from(u16::from_le_bytes([data[8], data[9]]) & 0x3FFF);
+                return Ok((w, h));
+            }
+            _ => {}
+        }
+    }
+    Err(bad("no image chunk"))
+}
+
+/// Drop the EXIF and XMP chunks from a WebP and clear the extended header's
+/// flags that announced them; the RIFF size is rewritten to what is left.
+/// Colour profile (ICCP), animation and bitstream chunks are image data.
+pub fn strip_webp_metadata(bytes: &[u8]) -> Result<(Vec<u8>, Vec<String>), MediaError> {
+    let chunks = webp_chunks(bytes)?;
+    let mut body = Vec::with_capacity(bytes.len());
+    let mut stripped = Vec::new();
+    for (id, at, len) in chunks {
+        let whole = &bytes[at - 8..at + len + len % 2];
+        if matches!(&id, b"EXIF" | b"XMP ") {
+            stripped.push(String::from_utf8_lossy(&id).into_owned());
+            continue;
+        }
+        let start = body.len();
+        body.extend_from_slice(whole);
+        if &id == b"VP8X" && len >= 1 {
+            // Flag bits: 0x08 EXIF present, 0x04 XMP present.
+            body[start + 8] &= !(0x08 | 0x04);
+        }
+    }
+    let mut out = Vec::with_capacity(body.len() + 12);
+    out.extend_from_slice(b"RIFF");
+    out.extend_from_slice(
+        &u32::try_from(body.len() + 4)
+            .unwrap_or(u32::MAX)
+            .to_le_bytes(),
+    );
+    out.extend_from_slice(b"WEBP");
+    out.extend_from_slice(&body);
+    Ok((out, stripped))
 }
 
 /// Drop APP1..APP15 (EXIF, XMP, ICC-less vendor blobs) and COM segments from a JPEG.

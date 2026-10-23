@@ -27,9 +27,10 @@
 //! did not happen.
 //!
 //! **Credentials.** A server's credential is a handle name; the value lives
-//! in this hub's memory only, is placed into the child's environment at
-//! spawn and appears nowhere else — not in the configuration, not in a log,
-//! not in a listing, not in an argument and not in a result.
+//! in the credential broker (REQ-PX-130), is obtained from it for the spawn
+//! — scoped to the server it is for — placed into the child's environment
+//! and appears nowhere else: not in the configuration, not in a log, not in a
+//! listing, not in an argument and not in a result.
 
 use std::collections::{BTreeMap, BTreeSet};
 use std::process::Stdio;
@@ -40,14 +41,15 @@ use modbit_mcp::calls::{CallTable, CancelPlan, Reconciled};
 use modbit_mcp::config::{ConfigError, PoolKey, ServerConfig, Trust};
 use modbit_mcp::discovery::{Discovery, Limits, validate_arguments};
 use modbit_mcp::port::{
-    BoxFuture, Cancelled, Correlation, ExternalCall, Health, Listing, McpPort, PortError,
-    ServerListing,
+    BoxFuture, Cancelled, Correlation, Described, ExternalCall, Health, LifecycleRecord, Listing,
+    McpPort, PortError, ServerListing,
 };
 use modbit_mcp::protocol::{self, Frame, ServerInfo};
 use modbit_mcp::result::{CallResult, parse_call_result};
 use serde_json::{Value, json};
 use tokio::io::{AsyncBufReadExt, AsyncWriteExt, BufReader};
 use tokio::sync::{Mutex, mpsc, oneshot};
+use tokio_util::sync::CancellationToken;
 
 /// How long the hub waits for one request before it cancels it.
 const DEFAULT_CALL_TIMEOUT_MS: u64 = 120_000;
@@ -57,6 +59,13 @@ const HANDSHAKE_TIMEOUT_MS: u64 = 20_000;
 const PING_TIMEOUT_MS: u64 = 5_000;
 /// Most `tools/list` pages followed for one server.
 const MAX_LIST_PAGES: usize = 16;
+/// How long a pooled server may sit unused before the reaper stops it.
+const DEFAULT_IDLE_TTL_MS: u64 = 300_000;
+/// How long a server gets to exit after its input is closed before it is
+/// killed (the second phase of a two-phase shutdown).
+const DEFAULT_SHUTDOWN_GRACE_MS: u64 = 3_000;
+/// Most lifecycle records kept per pooled server.
+const MAX_LIFECYCLE: usize = 16;
 /// The environment variable a server's credential is placed in.
 const DEFAULT_CREDENTIAL_ENV: &str = "MCP_CREDENTIAL";
 
@@ -76,6 +85,26 @@ struct Shared {
     calls: CallTable,
     lost: Option<String>,
     reconciled: Vec<Reconciled>,
+    /// The server said its tool list changed (`notifications/tools/list_changed`):
+    /// the cached catalog is stale until the next discovery (PX-115).
+    catalog_stale: bool,
+}
+
+/// How a shutdown ended.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub(crate) enum ShutdownOutcome {
+    /// The server exited when its input was closed.
+    Graceful,
+    /// The server ignored the closed input and was killed after the grace.
+    Killed,
+    /// The process was already gone.
+    AlreadyGone,
+}
+
+/// A request to the task that owns the child process.
+struct ShutdownRequest {
+    grace: std::time::Duration,
+    done: oneshot::Sender<ShutdownOutcome>,
 }
 
 /// One live server process and the two tasks that drive its pipes.
@@ -87,9 +116,39 @@ struct Connection {
     info: ServerInfo,
     limits: Limits,
     timeout: std::time::Duration,
+    /// Phase one of a shutdown: closes the child's input.
+    close: CancellationToken,
+    /// The task that owns the child: phase two (the kill after the grace).
+    ctl: mpsc::UnboundedSender<ShutdownRequest>,
 }
 
 impl Connection {
+    /// Two-phase shutdown (PX-115): close the server's input, which is how
+    /// MCP tells a stdio server to exit, wait the grace period, then kill
+    /// what is still running. The caller learns which of the two ended it.
+    async fn shutdown(&self, grace: std::time::Duration) -> ShutdownOutcome {
+        {
+            let mut s = self.lock();
+            if s.lost.is_none() {
+                s.lost = Some("the host shut the server down".into());
+            }
+        }
+        // The request is queued before the input is closed: a server that
+        // exits the instant its input ends must still find the shutdown it
+        // was given, or the exit would be mistaken for an unexpected death.
+        let (done, rx) = oneshot::channel();
+        if self.ctl.send(ShutdownRequest { grace, done }).is_err() {
+            self.close.cancel();
+            return ShutdownOutcome::AlreadyGone;
+        }
+        self.close.cancel();
+        tokio::time::timeout(grace + std::time::Duration::from_secs(10), rx)
+            .await
+            .ok()
+            .and_then(Result::ok)
+            .unwrap_or(ShutdownOutcome::AlreadyGone)
+    }
+
     fn lock(&self) -> std::sync::MutexGuard<'_, Shared> {
         self.shared.lock().unwrap_or_else(|e| e.into_inner())
     }
@@ -215,11 +274,33 @@ struct PooledState {
     sessions: BTreeSet<String>,
     discovery: Option<Discovery>,
     failure: Option<(String, String)>,
+    /// How many times the catalog has been read from the server.
+    catalog_generation: u64,
+    /// What happened to the process, newest last.
+    lifecycle: Vec<LifecycleRecord>,
+    /// When a session last used this server (reads, calls, discovery).
+    last_used: Option<std::time::Instant>,
 }
 
 impl Pooled {
     fn state(&self) -> std::sync::MutexGuard<'_, PooledState> {
         self.state.lock().unwrap_or_else(|e| e.into_inner())
+    }
+
+    /// A session used the server now: the idle clock restarts.
+    fn touch(&self) {
+        self.state().last_used = Some(std::time::Instant::now());
+    }
+
+    fn record(&self, event: &str, pid: Option<u32>) {
+        let mut st = self.state();
+        st.lifecycle.push(LifecycleRecord {
+            at_ms: modbit_domain::Timestamp::now().0,
+            event: event.to_owned(),
+            pid,
+        });
+        let excess = st.lifecycle.len().saturating_sub(MAX_LIFECYCLE);
+        st.lifecycle.drain(..excess);
     }
 }
 
@@ -232,8 +313,14 @@ pub struct McpHub {
     limits: Limits,
     timeout: std::time::Duration,
     reads: Arc<modbit_mcp::ReadDeclarations>,
-    credentials: std::sync::Mutex<BTreeMap<String, String>>,
+    /// The credential broker the servers' credentials live in.
+    broker: Arc<modbit_secrets::CredentialBroker>,
     pool: Mutex<BTreeMap<PoolKey, Arc<Pooled>>>,
+    /// Unused longer than this, a server is stopped (PX-115).
+    idle_ttl: std::time::Duration,
+    /// How long a server gets to exit before it is killed.
+    grace: std::time::Duration,
+    reaper_started: std::sync::atomic::AtomicBool,
 }
 
 /// What one task brings to the hub: the servers its configuration resolved
@@ -313,9 +400,31 @@ impl McpHub {
     /// `MODBIT_MCP_CALL_TIMEOUT_MS`, and the credentials handed to the Core
     /// at boot as `MODBIT_MCP_CREDENTIAL_<HANDLE>` — taken into memory here
     /// and never written anywhere else.
-    pub fn from_env(reads: Arc<modbit_mcp::ReadDeclarations>) -> Self {
+    pub fn from_env(
+        reads: Arc<modbit_mcp::ReadDeclarations>,
+        broker: Arc<modbit_secrets::CredentialBroker>,
+    ) -> Self {
+        let env_ms = |key: &str, default: u64| -> std::time::Duration {
+            std::time::Duration::from_millis(
+                std::env::var(key)
+                    .ok()
+                    .and_then(|v| v.parse().ok())
+                    .unwrap_or(default),
+            )
+        };
+        let mut limits = Limits::default();
+        if let Some(n) = std::env::var("MODBIT_MCP_MAX_TOOLS")
+            .ok()
+            .and_then(|v| v.parse::<usize>().ok())
+            .filter(|n| *n > 0)
+        {
+            limits.max_tools = n;
+        }
         let hub = Self {
-            limits: Limits::default(),
+            idle_ttl: env_ms("MODBIT_MCP_IDLE_TTL_MS", DEFAULT_IDLE_TTL_MS),
+            grace: env_ms("MODBIT_MCP_SHUTDOWN_GRACE_MS", DEFAULT_SHUTDOWN_GRACE_MS),
+            reaper_started: std::sync::atomic::AtomicBool::new(false),
+            limits,
             timeout: std::time::Duration::from_millis(
                 std::env::var("MODBIT_MCP_CALL_TIMEOUT_MS")
                     .ok()
@@ -323,7 +432,7 @@ impl McpHub {
                     .unwrap_or(DEFAULT_CALL_TIMEOUT_MS),
             ),
             reads,
-            credentials: std::sync::Mutex::new(BTreeMap::new()),
+            broker,
             pool: Mutex::new(BTreeMap::new()),
         };
         for (key, value) in std::env::vars() {
@@ -348,54 +457,33 @@ impl McpHub {
         Ok(())
     }
 
-    /// Put a credential value in this Core's custody under `handle`. Held in
-    /// memory only: never journaled, logged, written to any file, echoed in
-    /// a view or returned to a client.
+    /// The broker's identity of a server credential handle.
+    pub(crate) fn credential_id(handle: &str) -> modbit_secrets::CredentialId {
+        modbit_secrets::CredentialId::new(modbit_secrets::Kind::Mcp, &credential_key(handle))
+    }
+
+    /// Put a credential value in the broker under `handle` (a rotation when
+    /// it is already there). Held in memory only: never journaled, logged,
+    /// written to any file, echoed in a view or returned to a client.
     pub fn set_credential(&self, handle: &str, value: String) {
-        self.credentials
-            .lock()
-            .unwrap_or_else(|e| e.into_inner())
-            .insert(credential_key(handle), value);
+        self.broker.register(modbit_secrets::Registration {
+            id: Self::credential_id(handle),
+            kind: modbit_secrets::Kind::Mcp,
+            source: modbit_secrets::SecretHandle::Inline(value),
+            audience: "mcp:*".into(),
+        });
     }
 
-    /// The credential held for `handle`, for an owner in the Core that
-    /// hands it to its own transport (an extension's model provider,
-    /// REQ-EV-0138). Never for a view, a log or a client.
-    pub(crate) fn credential(&self, handle: &str) -> Option<String> {
-        self.credentials
-            .lock()
-            .unwrap_or_else(|e| e.into_inner())
-            .get(&credential_key(handle))
-            .cloned()
-    }
-
-    /// Whether this Core holds a credential for `handle`.
+    /// Whether the broker holds a usable credential for `handle`.
     pub fn has_credential(&self, handle: &str) -> bool {
-        self.credentials
-            .lock()
-            .unwrap_or_else(|e| e.into_inner())
-            .contains_key(&credential_key(handle))
+        self.broker.configured(&Self::credential_id(handle))
     }
 
     /// Forget a credential. A server that needs it stops being reachable at
     /// its next start; a transport already running keeps what it was given
     /// until it is replaced.
     pub fn clear_credential(&self, handle: &str) {
-        self.credentials
-            .lock()
-            .unwrap_or_else(|e| e.into_inner())
-            .remove(&credential_key(handle));
-    }
-
-    /// The credential values in custody — what the pipeline refuses to let
-    /// through tool arguments (M9.3).
-    pub fn secrets_in_custody(&self) -> Vec<String> {
-        self.credentials
-            .lock()
-            .unwrap_or_else(|e| e.into_inner())
-            .values()
-            .cloned()
-            .collect()
+        self.broker.forget(&Self::credential_id(handle));
     }
 
     /// Stop every pooled transport of the server called `name`. A person
@@ -412,9 +500,14 @@ impl McpHub {
         for key in doomed {
             let entry = self.pool.lock().await.remove(&key);
             if let Some(entry) = entry {
-                // Dropping the sender ends the writer task, which closes the
-                // child's input; an MCP server exits when its input ends.
-                let _ = entry.conn.lock().await.take();
+                // A person taking trust away means the program stops: its
+                // input is closed and, if it does not exit, it is killed.
+                let conn = entry.conn.lock().await.take();
+                if let Some(c) = conn {
+                    let pid = c.pid;
+                    let outcome = c.shutdown(self.grace).await;
+                    entry.record(outcome_label(outcome), pid);
+                }
             }
         }
     }
@@ -422,15 +515,74 @@ impl McpHub {
     /// Stop every pooled server (Core shutdown).
     pub async fn shutdown(&self) {
         let entries: Vec<Arc<Pooled>> = self.pool.lock().await.values().cloned().collect();
+        let mut stops = Vec::new();
         for entry in entries {
-            let mut conn = entry.conn.lock().await;
-            if let Some(c) = conn.take() {
-                // Dropping the sender ends the writer task, which closes the
-                // child's stdin; an MCP server exits when its input ends.
-                drop(c);
+            let conn = entry.conn.lock().await.take();
+            if let Some(c) = conn {
+                let grace = self.grace.min(std::time::Duration::from_millis(400));
+                stops.push(tokio::spawn(async move { c.shutdown(grace).await }));
             }
         }
+        for s in stops {
+            let _ = s.await;
+        }
         self.pool.lock().await.clear();
+    }
+
+    /// Stop every pooled server that has been unused for the idle bound and
+    /// has no call in flight: close its input, wait the grace period, kill
+    /// what is left (PX-115). The next use starts a fresh process. Returns
+    /// how many were stopped.
+    pub(crate) async fn reap_idle(&self) -> usize {
+        let entries: Vec<Arc<Pooled>> = self.pool.lock().await.values().cloned().collect();
+        let mut stopped = 0;
+        for entry in entries {
+            let conn = {
+                let mut slot = entry.conn.lock().await;
+                let Some(c) = slot.as_ref() else { continue };
+                let idle = entry
+                    .state()
+                    .last_used
+                    .is_none_or(|t| t.elapsed() >= self.idle_ttl);
+                let busy = !c.lock().calls.in_flight().is_empty();
+                if !idle || busy {
+                    continue;
+                }
+                entry.state().discovery = None;
+                slot.take()
+            };
+            if let Some(c) = conn {
+                let pid = c.pid;
+                let outcome = c.shutdown(self.grace).await;
+                entry.record(outcome_label(outcome), pid);
+                stopped += 1;
+            }
+        }
+        stopped
+    }
+
+    /// Start the idle reaper once, on the runtime that serves the Core.
+    fn ensure_reaper(self: &Arc<Self>) {
+        if self.idle_ttl.is_zero()
+            || tokio::runtime::Handle::try_current().is_err()
+            || self
+                .reaper_started
+                .swap(true, std::sync::atomic::Ordering::SeqCst)
+        {
+            return;
+        }
+        let weak = Arc::downgrade(self);
+        let interval = (self.idle_ttl / 4).clamp(
+            std::time::Duration::from_millis(20),
+            std::time::Duration::from_secs(30),
+        );
+        tokio::spawn(async move {
+            loop {
+                tokio::time::sleep(interval).await;
+                let Some(hub) = weak.upgrade() else { break };
+                hub.reap_idle().await;
+            }
+        });
     }
 
     /// The hub as one task sees it.
@@ -444,6 +596,7 @@ impl McpHub {
         for s in &scope.servers {
             let _ = self.configure(s.config.clone());
         }
+        self.ensure_reaper();
         TaskHub {
             hub: Arc::clone(self),
             tenant: tenant.to_owned(),
@@ -503,16 +656,20 @@ impl McpHub {
             // while it still answers. A server that has stopped answering
             // is not "ready" because it once was.
             if c.lock().lost.is_none() && alive(c).await {
+                entry.touch();
                 return Ok(Arc::clone(c));
             }
             // A dead transport is never handed out again: the entry starts
             // a fresh process for the next caller.
+            entry.record("LOST", c.pid);
             *slot = None;
             entry.state().discovery = None;
         }
         match self.start(cfg).await {
             Ok(c) => {
                 entry.state().failure = None;
+                entry.record("STARTED", c.pid);
+                entry.touch();
                 *slot = Some(Arc::clone(&c));
                 Ok(c)
             }
@@ -537,22 +694,30 @@ impl McpHub {
             .stderr(Stdio::null())
             .kill_on_drop(true);
         if let Some(handle) = &cfg.credential {
-            let value = self
-                .credentials
-                .lock()
-                .unwrap_or_else(|e| e.into_inner())
-                .get(&credential_key(handle))
-                .cloned();
-            let Some(value) = value else {
-                return Err(PortError::clean(
-                    "EXTERNAL_CREDENTIAL_UNAVAILABLE",
-                    format!(
-                        "`{}` needs the credential `{handle}`, which is not in this Core's custody",
-                        cfg.name
-                    ),
-                ));
-            };
-            command.env(DEFAULT_CREDENTIAL_ENV, value);
+            // The credential for this server, from the broker: scoped to the
+            // server it is started for, counted, and refused if revoked.
+            let secret = self
+                .broker
+                .acquire(
+                    &Self::credential_id(handle),
+                    &modbit_secrets::Use {
+                        principal: "core".into(),
+                        audience: format!("mcp:{}", cfg.name),
+                        purpose: "mcp.spawn".into(),
+                        nonce: None,
+                    },
+                )
+                .map_err(|refusal| {
+                    PortError::clean(
+                        "EXTERNAL_CREDENTIAL_UNAVAILABLE",
+                        format!(
+                            "`{}` needs the credential `{handle}`, which the credential broker does not give it ({})",
+                            cfg.name,
+                            refusal.code()
+                        ),
+                    )
+                })?;
+            command.env(DEFAULT_CREDENTIAL_ENV, secret.expose());
         }
         let mut child = command.spawn().map_err(|e| {
             PortError::clean(
@@ -565,13 +730,14 @@ impl McpHub {
         let stdout = child.stdout.take().expect("piped stdout");
         let shared = Arc::new(std::sync::Mutex::new(Shared::default()));
         let (tx, rx) = mpsc::unbounded_channel::<String>();
-        spawn_writer(stdin, rx);
+        let close = CancellationToken::new();
+        let (ctl, ctl_rx) = mpsc::unbounded_channel::<ShutdownRequest>();
+        spawn_writer(stdin, rx, close.clone());
         spawn_reader(stdout, Arc::clone(&shared), self.limits, cfg.name.clone());
-        // The child is owned by a task that reaps it when the pipes close,
-        // so a finished server never becomes a zombie.
-        tokio::spawn(async move {
-            let _ = child.wait().await;
-        });
+        // The child is owned by a task that reaps it when it exits, so a
+        // finished server never becomes a zombie, and that carries out the
+        // second phase of a shutdown (the kill after the grace period).
+        spawn_child_owner(child, ctl_rx, self.grace);
         let conn = Arc::new(Connection {
             pid,
             out: tx,
@@ -580,6 +746,8 @@ impl McpHub {
             info: ServerInfo::default(),
             limits: self.limits,
             timeout: std::time::Duration::from_millis(HANDSHAKE_TIMEOUT_MS),
+            close: close.clone(),
+            ctl: ctl.clone(),
         });
         let id = conn.next_id.fetch_add(1, Ordering::SeqCst);
         let (waiter, rx) = oneshot::channel();
@@ -611,6 +779,8 @@ impl McpHub {
             info,
             limits: self.limits,
             timeout: self.timeout,
+            close,
+            ctl,
         }))
     }
 
@@ -620,6 +790,13 @@ impl McpHub {
         entry: &Arc<Pooled>,
         conn: &Arc<Connection>,
     ) -> Result<Discovery, PortError> {
+        // `notifications/tools/list_changed` invalidates the cached catalog:
+        // the next read asks the server again (PX-115).
+        let stale = std::mem::take(&mut conn.lock().catalog_stale);
+        if stale {
+            entry.state().discovery = None;
+            entry.record("CATALOG_CHANGED", conn.pid);
+        }
         if let Some(d) = entry.state().discovery.clone() {
             return Ok(d);
         }
@@ -649,7 +826,11 @@ impl McpHub {
                 break;
             }
         }
-        entry.state().discovery = Some(all.clone());
+        {
+            let mut st = entry.state();
+            st.discovery = Some(all.clone());
+            st.catalog_generation += 1;
+        }
         Ok(all)
     }
 }
@@ -667,9 +848,67 @@ async fn alive(conn: &Arc<Connection>) -> bool {
     )
 }
 
-fn spawn_writer(mut stdin: tokio::process::ChildStdin, mut rx: mpsc::UnboundedReceiver<String>) {
+fn outcome_label(o: ShutdownOutcome) -> &'static str {
+    match o {
+        ShutdownOutcome::Graceful => "REAPED_GRACEFUL",
+        ShutdownOutcome::Killed => "REAPED_KILLED",
+        ShutdownOutcome::AlreadyGone => "LOST",
+    }
+}
+
+/// Owns the child process. It reaps the child when it exits on its own and
+/// carries out a shutdown: the input is already closed by the caller, so it
+/// waits the grace period and kills the process if it is still there. When
+/// every handle to the connection is dropped it does the same with the
+/// default grace, so a server that ignores a closed input cannot outlive its
+/// connection.
+fn spawn_child_owner(
+    mut child: tokio::process::Child,
+    mut ctl: mpsc::UnboundedReceiver<ShutdownRequest>,
+    default_grace: std::time::Duration,
+) {
     tokio::spawn(async move {
-        while let Some(line) = rx.recv().await {
+        let request = tokio::select! {
+            _ = child.wait() => {
+                // Exited: if a host shutdown was waiting, this is its
+                // graceful end; otherwise it died on its own.
+                while let Ok(req) = ctl.try_recv() {
+                    let _ = req.done.send(ShutdownOutcome::Graceful);
+                }
+                return;
+            }
+            r = ctl.recv() => r,
+        };
+        let (grace, done) = match request {
+            Some(r) => (r.grace, Some(r.done)),
+            None => (default_grace, None),
+        };
+        let outcome = match tokio::time::timeout(grace, child.wait()).await {
+            Ok(_) => ShutdownOutcome::Graceful,
+            Err(_) => {
+                let _ = child.kill().await;
+                let _ = child.wait().await;
+                ShutdownOutcome::Killed
+            }
+        };
+        if let Some(done) = done {
+            let _ = done.send(outcome);
+        }
+    });
+}
+
+fn spawn_writer(
+    mut stdin: tokio::process::ChildStdin,
+    mut rx: mpsc::UnboundedReceiver<String>,
+    close: CancellationToken,
+) {
+    tokio::spawn(async move {
+        loop {
+            let line = tokio::select! {
+                l = rx.recv() => l,
+                () = close.cancelled() => None,
+            };
+            let Some(line) = line else { break };
             if stdin.write_all(line.as_bytes()).await.is_err() || stdin.flush().await.is_err() {
                 break;
             }
@@ -697,7 +936,18 @@ fn spawn_reader(
             let Ok(frame) = protocol::decode(&line, limits.max_frame_bytes) else {
                 continue;
             };
-            let Some(id) = frame.id else { continue };
+            let Some(id) = frame.id else {
+                // A notification. The only one the host acts on is a changed
+                // tool list, and only by marking its cache stale: the server
+                // can cost one more `tools/list`, nothing else.
+                if frame.method.as_deref() == Some(protocol::METHOD_TOOLS_LIST_CHANGED) {
+                    shared
+                        .lock()
+                        .unwrap_or_else(|e| e.into_inner())
+                        .catalog_stale = true;
+                }
+                continue;
+            };
             if frame.method.is_some() {
                 // The host declared no client capabilities, so it serves no
                 // server-initiated request.
@@ -849,6 +1099,8 @@ impl TaskHub {
             tools: vec![],
             rejected: vec![],
             dropped_over_limit: 0,
+            catalog_generation: 0,
+            lifecycle: vec![],
         };
         if cfg.trust != Trust::Trusted {
             listing.health = Health::Untrusted;
@@ -874,6 +1126,7 @@ impl TaskHub {
                     listing.tools = d.tools;
                     listing.rejected = d.rejected;
                     listing.dropped_over_limit = d.dropped_over_limit;
+                    entry.touch();
                 }
                 Err(e) => {
                     let e = self.redact_error(e);
@@ -891,11 +1144,98 @@ impl TaskHub {
                 };
             }
         }
+        {
+            let st = entry.state();
+            listing.catalog_generation = st.catalog_generation;
+            listing.lifecycle = st.lifecycle.clone();
+        }
         listing
     }
 }
 
 impl McpPort for TaskHub {
+    fn list_server<'a>(&'a self, server: &'a str) -> BoxFuture<'a, Result<Listing, PortError>> {
+        Box::pin(async move {
+            let mut servers = Vec::new();
+            for s in self.servers.iter().filter(|s| s.config.name == server) {
+                servers.push(self.listing_for(s).await);
+            }
+            Ok(Listing {
+                servers,
+                refused_servers: self.refused_servers.clone(),
+            })
+        })
+    }
+
+    fn describe<'a>(
+        &'a self,
+        server: &'a str,
+        tools: &'a [String],
+    ) -> BoxFuture<'a, Result<Described, PortError>> {
+        Box::pin(async move {
+            let Some(configured) = self.server(server) else {
+                return Err(PortError::clean(
+                    "EXTERNAL_SERVER_UNKNOWN",
+                    format!("no external server named `{server}` is configured for this task"),
+                ));
+            };
+            let cfg = &configured.config;
+            // Describing starts the server, so it is held to the same gates
+            // as listing it: trusted, and leased. Only this server starts.
+            if cfg.trust != Trust::Trusted {
+                return Err(PortError::clean(
+                    "EXTERNAL_SERVER_UNTRUSTED",
+                    format!(
+                        "`{}` is proposed but not trusted; it has not been started and has no tools to describe",
+                        cfg.name
+                    ),
+                ));
+            }
+            let missing = self.unleased(cfg);
+            if !missing.is_empty() {
+                return Err(PortError::clean(
+                    "EXTERNAL_CAPABILITY_NOT_LEASED",
+                    format!(
+                        "`{}` needs {missing:?}, which this task's capability lease does not grant",
+                        cfg.name
+                    ),
+                ));
+            }
+            let entry = self
+                .hub
+                .entry(&self.tenant, self.workspace.as_deref(), cfg)
+                .await;
+            let conn = self
+                .hub
+                .connection(&entry, &self.correlation.session_id, cfg)
+                .await
+                .map_err(|e| self.redact_error(e))?;
+            let d = self
+                .hub
+                .discover(&entry, &conn)
+                .await
+                .map_err(|e| self.redact_error(e))?;
+            entry.touch();
+            let mut out = Described {
+                server: cfg.name.clone(),
+                catalog_generation: entry.state().catalog_generation,
+                ..Described::default()
+            };
+            for name in tools {
+                // A tool is named by its own name or its qualified one.
+                match d
+                    .tools
+                    .iter()
+                    .find(|t| &t.name == name || &t.qualified == name)
+                {
+                    Some(t) => out.tools.push(t.clone()),
+                    None => out.unknown.push(name.clone()),
+                }
+            }
+            Ok(out)
+        })
+    }
+
     fn list<'a>(&'a self) -> BoxFuture<'a, Result<Listing, PortError>> {
         Box::pin(async move {
             let mut servers = Vec::new();
@@ -970,6 +1310,7 @@ impl McpPort for TaskHub {
                 )
                 .await
                 .map_err(|e| self.redact_error(e))?;
+            entry.touch();
             let mut parsed = parse_call_result(&result, &conn.limits)
                 .map_err(|e| PortError::clean(e.code, e.message))?;
             parsed.redacted = self.redact(&mut parsed);

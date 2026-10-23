@@ -1,0 +1,52 @@
+// Browser runtime (PX-073, PX-120..PX-123): what the browser host tells the
+// Core about the page on its own (change notices from the host's mutation
+// observer) and what a client reads of the runtime's state (the
+// unknown-outcome latch, the page kind, the observer's counters, the
+// known-state map). Additive: the existing browser messages
+// (OpenBrowserSession, AttachBrowserHost, BrowserHostRequest,
+// BrowserHostResponse, BrowserSessionView) keep their shape; everything new
+// lives here so the owners of other areas never conflict on it.
+syntax = "proto3";
+
+package modbit.v1;
+
+import "modbit/v1/domain.proto";
+
+// Host → Core: the page changed (PX-122). The host's mutation observer
+// batches what the page did to its own DOM into bounded notices; the Core
+// reads the page again, compiles it and journals the semantic delta — no
+// model call. `notice_json` is a modbit-browser PageNotice. A host sends at
+// most a few notices a second whatever the page does; the Core folds what
+// arrives faster. Observation only: a notice grants nothing and acts on
+// nothing.
+message BrowserHostNotice {
+  Id browser_session_id = 1;
+  string notice_json = 2;
+}
+
+message BrowserHostNoticed {
+  bool accepted = 1;             // false = no such session, or not this host's
+  uint64 change_seq = 2;         // the latest observer counter the Core holds
+  uint64 notices = 3;            // notices accepted for the session so far
+}
+
+// Read the runtime state of a browser session (name task_id to rebuild the
+// session after a Core restart, as GetBrowserSession does).
+message GetBrowserRuntime {
+  Id browser_session_id = 1;
+  Id task_id = 2;
+}
+
+message BrowserRuntimeView {
+  Id browser_session_id = 1;
+  string latch = 2;              // "" = none; else the unknown-outcome latch: "<tool> <action>: <reason>"
+  string latch_tool_call_id = 3; // the call whose outcome is unknown
+  string page_kind = 4;          // login | search_results | form | checkout | article | error | ... of the last compiled page
+  uint64 change_seq = 5;         // the latest observer counter reported
+  uint64 notices = 6;            // notices accepted
+  uint64 compiled_seq = 7;       // the counter the Core has compiled and journaled up to
+  uint32 known_entities = 8;     // entities in the known-state map (survives a restart)
+  uint32 history = 9;            // pages held for since_fingerprint
+  string last_fingerprint = 10;  // state fingerprint of the last compiled page
+  string delivered_fingerprint = 11; // what the model last received
+}

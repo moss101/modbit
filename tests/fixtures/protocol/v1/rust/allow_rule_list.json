@@ -1,0 +1,24 @@
+{
+  "expected": {
+    "rules": [
+      {
+        "coversAlwaysAsk": false,
+        "createdAtMs": "1700000000123",
+        "createdBy": "user:b1",
+        "expiresAtMs": "9007199254740993",
+        "offset": "77",
+        "originTask": "t-1",
+        "pattern": [
+          "cargo",
+          "test"
+        ],
+        "revokedBy": "",
+        "ruleId": "r-1",
+        "scope": "REPO",
+        "scopeKey": "/repo",
+        "state": "ACTIVE"
+      }
+    ]
+  },
+  "type": "modbit.v1.AllowRuleList"
+}

@@ -21,9 +21,14 @@
 
 pub mod evolution;
 pub mod import;
+pub mod index;
+pub mod load;
+pub mod trust;
 
 use std::collections::BTreeMap;
 use std::path::{Path, PathBuf};
+
+pub use trust::TrustContext;
 
 use ed25519_dalek::{Signature, VerifyingKey};
 use serde::{Deserialize, Serialize};
@@ -166,6 +171,11 @@ pub struct SkillManifest {
     /// Phrases that select it for a task goal.
     #[serde(default)]
     pub triggers: Vec<String>,
+    /// Path globs that gate its activation (REQ-PX-105): the skill is
+    /// indexed and selected only while a matching path is active for the
+    /// task (read, retrieved, written or planned). Empty = always.
+    #[serde(default)]
+    pub paths: Vec<String>,
     /// Provenance.
     #[serde(default)]
     pub provenance: Provenance,
@@ -298,11 +308,90 @@ impl Default for SkillPolicy {
     }
 }
 
+/// Where a skill was found (REQ-PX-105). The registry reads the scopes in
+/// this order and the first that carries a name wins it, so a System skill
+/// cannot be shadowed by a project's or the user's.
+#[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord, Serialize, Deserialize)]
+#[serde(rename_all = "SCREAMING_SNAKE_CASE")]
+pub enum SkillScope {
+    /// An administrator's, provisioned outside the profile and any repository.
+    System,
+    /// The task's repository (`.modbit/skills`).
+    Project,
+    /// An active extension's (an imported one's among them).
+    Extension,
+    /// The profile's own (`<data dir>/skills`).
+    User,
+}
+
+impl SkillScope {
+    /// The label clients show.
+    #[must_use]
+    pub fn label(self) -> &'static str {
+        match self {
+            Self::System => "SYSTEM",
+            Self::Project => "PROJECT",
+            Self::Extension => "EXTENSION",
+            Self::User => "USER",
+        }
+    }
+}
+
+/// A directory of skill packages and the scope it belongs to.
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct SkillSource {
+    /// Holds one directory per skill.
+    pub root: PathBuf,
+    /// The scope it gives them.
+    pub scope: SkillScope,
+}
+
+/// Why a skill is or is not allowed to reach a model (REQ-PX-105): the one
+/// state clients show and the prompt compiler obeys.
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "SCREAMING_SNAKE_CASE")]
+pub enum TrustState {
+    /// Provisioned by the System scope's authority.
+    System,
+    /// A trusted key attests the content hash.
+    Signed,
+    /// The owner trusted exactly this content (`skill trust name@hash`).
+    TrustedByOwner,
+    /// Enabled by the development flag only (debug builds); not a trust path.
+    DevFlag,
+    /// Nothing vouches for it: it is listed and reaches no model.
+    Untrusted,
+    /// The owner trusted an earlier content of this name; this is not it.
+    ChangedSinceTrusted,
+    /// The System scope forbids it, whatever else says.
+    Forbidden,
+}
+
+impl TrustState {
+    /// The label clients show.
+    #[must_use]
+    pub fn label(self) -> &'static str {
+        match self {
+            Self::System => "SYSTEM",
+            Self::Signed => "SIGNED",
+            Self::TrustedByOwner => "TRUSTED_BY_OWNER",
+            Self::DevFlag => "DEV_FLAG",
+            Self::Untrusted => "UNTRUSTED",
+            Self::ChangedSinceTrusted => "CHANGED_SINCE_TRUSTED",
+            Self::Forbidden => "FORBIDDEN",
+        }
+    }
+}
+
 /// A skill in the registry with its lifecycle decided.
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
 pub struct RegisteredSkill {
     /// The package.
     pub package: SkillPackage,
+    /// Where it was found.
+    pub scope: SkillScope,
+    /// Why it is or is not allowed to reach a model.
+    pub trust: TrustState,
     /// Lifecycle.
     pub lifecycle: Lifecycle,
     /// The verified attestation, when signed.
@@ -645,16 +734,39 @@ impl SkillRegistry {
     /// Discover every package under `roots` (each root holds one directory
     /// per skill) and decide each lifecycle under `policy` with `trusted`
     /// keys. The first root that carries a name wins it (a project skill
-    /// shadows a user skill of the same name).
+    /// shadows a user skill of the same name). Every root is the user's
+    /// scope and no owner trust applies; the Core uses [`Self::discover_scoped`].
     #[must_use]
     pub fn discover(
         roots: &[PathBuf],
         trusted: &BTreeMap<String, [u8; 32]>,
         policy: &SkillPolicy,
     ) -> Self {
+        let sources: Vec<SkillSource> = roots
+            .iter()
+            .map(|r| SkillSource {
+                root: r.clone(),
+                scope: SkillScope::User,
+            })
+            .collect();
+        Self::discover_scoped(&sources, trusted, policy, &TrustContext::default())
+    }
+
+    /// Discover every package under the scoped `sources`, first source
+    /// first (the first that carries a name wins it), and decide each
+    /// skill's trust: the System scope's prohibitions first, then its own
+    /// authority, a signature, the owner's content-hash decision, and the
+    /// development flag last (REQ-PX-105).
+    #[must_use]
+    pub fn discover_scoped(
+        sources: &[SkillSource],
+        trusted: &BTreeMap<String, [u8; 32]>,
+        policy: &SkillPolicy,
+        ctx: &TrustContext,
+    ) -> Self {
         let mut reg = Self::default();
-        for root in roots {
-            let Ok(entries) = std::fs::read_dir(root) else {
+        for source in sources {
+            let Ok(entries) = std::fs::read_dir(&source.root) else {
                 continue;
             };
             let mut dirs: Vec<PathBuf> = entries
@@ -673,7 +785,8 @@ impl SkillRegistry {
                         {
                             continue;
                         }
-                        reg.skills.push(register(package, trusted, policy));
+                        reg.skills
+                            .push(register(package, source.scope, trusted, policy, ctx));
                     }
                     Err(SkillError::NoManifest) => {}
                     Err(e) => reg.rejected.push((dir.display().to_string(), e)),
@@ -690,10 +803,33 @@ impl SkillRegistry {
     }
 }
 
+/// Whether any of `active` paths matches one of the skill's `paths` globs;
+/// a skill with no `paths` is always active. A glob that does not parse
+/// matches nothing (a gate that cannot be read stays shut).
+#[must_use]
+pub fn paths_active(manifest: &SkillManifest, active: &[String]) -> bool {
+    if manifest.paths.is_empty() {
+        return true;
+    }
+    manifest.paths.iter().any(|g| {
+        globset::GlobBuilder::new(g)
+            .literal_separator(false)
+            .build()
+            .map(|b| b.compile_matcher())
+            .is_ok_and(|m| {
+                active
+                    .iter()
+                    .any(|p| m.is_match(p.trim_start_matches("./")))
+            })
+    })
+}
+
 fn register(
     package: SkillPackage,
+    scope: SkillScope,
     trusted: &BTreeMap<String, [u8; 32]>,
     policy: &SkillPolicy,
+    ctx: &TrustContext,
 ) -> RegisteredSkill {
     let mut lifecycle = Lifecycle::Incubator;
     let mut notes: Vec<String> = Vec::new();
@@ -724,21 +860,70 @@ fn register(
         },
         Err(_) => notes.push("no signature".into()),
     }
-    let enable = match lifecycle {
-        Lifecycle::Signed => policy.enable_signed,
-        Lifecycle::Incubator | Lifecycle::Evaluated => policy.enable_incubator,
-        Lifecycle::Enabled => true,
+    let name = package.manifest.name.clone();
+    let hash = package.content_hash.clone();
+    // Decide in the order authority runs: a prohibition outranks everything;
+    // then the System scope's own authority; then a signature a trusted key
+    // made; then the owner's decision on exactly this content; the
+    // development flag only after all of them, and only ever on its own.
+    let (enabled, trust, detail) = if ctx.is_forbidden(&name, &hash) {
+        (
+            false,
+            TrustState::Forbidden,
+            "the System scope forbids this skill; no trust decision of the owner's changes that"
+                .to_owned(),
+        )
+    } else if scope == SkillScope::System {
+        (
+            true,
+            TrustState::System,
+            "provisioned by the System scope".to_owned(),
+        )
+    } else if lifecycle == Lifecycle::Signed && policy.enable_signed {
+        (
+            true,
+            TrustState::Signed,
+            "a trusted key attests this content".to_owned(),
+        )
+    } else if ctx.is_trusted(&name, &hash) {
+        (
+            true,
+            TrustState::TrustedByOwner,
+            "the owner trusted exactly this content".to_owned(),
+        )
+    } else if policy.enable_incubator && lifecycle != Lifecycle::Signed {
+        (
+            true,
+            TrustState::DevFlag,
+            "enabled by the development flag only; not a trust decision".to_owned(),
+        )
+    } else if ctx.trusted_other_content(&name, &hash) {
+        (
+            false,
+            TrustState::ChangedSinceTrusted,
+            format!(
+                "the owner trusted an earlier content of `{name}`; this is {hash}. Review it and trust it again: `skill trust {name}@{hash}`"
+            ),
+        )
+    } else {
+        (
+            false,
+            TrustState::Untrusted,
+            format!(
+                "nothing vouches for this skill; after reviewing it the owner can run `skill trust {name}@{hash}`"
+            ),
+        )
     };
-    if enable {
+    if enabled {
         lifecycle = Lifecycle::Enabled;
         notes.clear();
-    } else if lifecycle == Lifecycle::Signed {
-        notes.push("signed skills are not enabled by policy".into());
     } else {
-        notes.push("unsigned skills are not enabled by policy".into());
+        notes.push(detail);
     }
     RegisteredSkill {
         package,
+        scope,
+        trust,
         lifecycle,
         attestation,
         evaluation,

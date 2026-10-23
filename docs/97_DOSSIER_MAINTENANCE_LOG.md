@@ -618,3 +618,491 @@ Recorded in doc 07 for the whole extension; this entry adds only: **Test impact*
 | Changed | `docs/77_RELEASE_ZERO_EXECUTION_GOAL.md`, `docs/97_DOSSIER_MAINTENANCE_LOG.md` |
 | Changed | `tools/build_graph.py`, `tools/test_dossier.py` |
 | Changed | `MANIFEST.md`, `manifest.json`, `graph/PROJECT_GRAPH.md`, `graph/project-graph.json` |
+
+## DOC-PX-007 — Agent-first workspace: Decision Record, specification and PX-041..068
+
+### Identity and authority
+
+- Task: DOC-PX-007 (`dossier_task`); owner: governance; prerequisite: DOC-GOV-007 COMPLETE; outside product roll-ups.
+- Decision Record: DR-PX-2026-10-03-007 (`decisions/DR-PX-2026-10-03-007-agent-first-workspace.md`), status **proposed**. The owner must ratify it before any of PX-041..PX-068 starts; every root row lists DOC-PX-007 as a prerequisite so the graph enforces that.
+- Scope: the record, its specification `65_AGENT_FIRST_WORKSPACE_SPECIFICATION.md`, the PX rows PX-041..PX-068 in doc 62, the scoped supersession entries in docs 02 and 03, the change record and dossier task in `tools/build_graph.py`, this entry and the retained evidence. No requirement row of the sealed base, EPR ledger or ADR set, no pinned count and no product status changes.
+- Revision before change: `../evidence/dossier-px-007/baseline.json` (`main` 5fdb47f, hashes of every governed file, initial integrity gate exit 0).
+
+### Decision Record (change-control fields)
+
+| Field | Content |
+|---|---|
+| Trigger / evidence | Owner decisions of 2026-10-03 (clean-room posture accepted, agent-first workspace first, live verification) and the parity research: static teardown, a signed-in passive read of the profile and logs, and live window probes. Live observation corrected several static claims, and doc 65 uses the corrected facts. |
+| Current behavior | A supervision console over a Core far ahead of it: no conversation, streamed text, terminal view, agent list, composer controls, checkpoint or approval surface next to the conversation, projects or worktree management; design tokens and primitives are empty stubs. |
+| Replacement | 28 rows (22 release-critical, 6 iteration) in three phases, 108 tagged requirements (58 LIVE, 17 DISK, 28 STATIC, 5 UNVERIFIED by lead tag), an implementation audit of 16 areas, a traceability table and a register of 26 unverified items. |
+| Migration | None for existing nodes. Additive rows, change record and dossier task; statuses untouched. |
+| Compatibility | ALPHA and BETA stay READY. RELEASE_ZERO grows by 28 work items because doc 75 forces ADOPT rows into it; if the owner prefers to sequence the workspace after Release Zero the alternative is to ratify with the rows re-classed DEFERRED. |
+| Security impact | None on the product (dossier only). The record states the security model each row must prove. |
+| Test impact | `tools/test_dossier.py` gains a chain assertion for the new dossier tasks and change records; no pinned constant changes. |
+| Rollback | Revert the commits adding the rows and spec and rerun the reseal. Docs 02, 62 and the decisions directory are locked paths, so reversal needs a new Decision Record. |
+| Explicit user approval | Pending. The owner's decisions of 2026-10-03 are the basis, not the ratification. |
+
+### Stage applicability
+
+| Stage | DOC-PX-007 execution |
+|---|---|
+| AUDITING | Governing files read (AGENTS.md, SKILLS.md, docs 01, 02, 03, 10, 29, 46, 62, 81, 93, 95, 96, 97, the decisions README, two recent Decision Records, `tools/build_graph.py`, `dossier_px.py`, `check_dossier.py`, `test_dossier.py`); research read from the owner's untracked archive (clean-room); implementation audit of the renderer, the main process, `surface.proto` and the Core at `main` 5fdb47f; baseline hashes in `evidence/dossier-px-007/baseline.json`. |
+| IMPLEMENTING | The Decision Record, the specification, the PX rows, the supersession entries, the graph change record and dossier task, and this entry |
+| WIRED | Graph and manifests regenerated through the real CLIs |
+| REAL_TESTING | `check_dossier --manifest` and the copied-package suite pass locally |
+| E2E_PROVEN | Not reached: a pull request green on hosted CI and landed on `main` after the owner ratifies the record |
+| COMPLETE | Not reached: one-step ladder with evidence citing the landing commit and the owner's acceptance of the record |
+| Product qualification | Non-applicable: dossier only. No product behaviour, status or evidence claim changes; every PX row is NOT_STARTED. |
+
+
+### Implementation audit headline
+
+16 areas: 4 NOT-FOUND (transcript projections, the agent-first shell, projects, Git hardening), 1 SCAFFOLDED (design tokens), 1 DOCUMENTED-ONLY (`SetExecutionPreference`), 10 IMPLEMENTED-PARTIAL (provider streaming, terminal stream, window and quit lifecycle, input queue, task modes, skills listing, approvals and run modes, context accounting, checkpoints and restore, worktree lifecycle). The mechanisms beneath are production-working and reused in place: provider streaming, durable terminals, typed input, exact-intent approvals, the context inspector, checkpoints with hash preconditions and worktree primitives. No duplicate generation was found. The Git runner sets only the prompt and locale environment; no hook, fsmonitor or attributes neutralisation exists in any crate.
+
+### Status and handoff
+
+- **Evidence:** the `../evidence/dossier-px-007/` bundle (baseline, tests.log, validation.json). One shared bundle covers DOC-PX-007 to DOC-PX-012, which were produced in one dossier change; validation.json lists each task.
+- **Remaining product work:** all of PX-041..PX-068 NOT_STARTED. Unfinished behaviour: all of it. Nothing here is a product proof.
+- **Owner questions:** (1) ratify with RELEASE_ZERO growing by 28 items, or have the rows re-classed DEFERRED until after Release Zero; (2) whether the reference-derived concrete surface colours should be recorded now: the spec deliberately carries constraints and Modbit-chosen accent and semantic values only, not the reference's surface hex values.
+- **Next safe action:** the owner ratifies or amends the record (flip `status` to `accepted` with who and where in the commit that lands the rows); until then no row may start. After landing, `python3 tools/graph.py ready` lists the first rows.
+
+### Exact file inventory for this change
+
+| Action | Path |
+|---|---|
+| Added | `docs/65_AGENT_FIRST_WORKSPACE_SPECIFICATION.md` |
+| Added | `docs/decisions/DR-PX-2026-10-03-007-agent-first-workspace.md` |
+| Changed | `docs/62_PRODUCT_EXTENSION_REQUIREMENTS_TASKS_AND_QUALIFICATIONS.md` (rows REQ-PX-041..068, qualifications, cards, scenarios) |
+| Changed | `docs/00_MASTER_INDEX.md`, `docs/10_PRODUCT_PRD_AND_UX.md`, `docs/32_DESKTOP_FRONTEND_IMPLEMENTATION.md`, `docs/decisions/README.md` |
+
+## DOC-PX-008 — Native computer control and browser control hardening: Decision Record, specification and PX-069..076
+
+### Identity and authority
+
+- Task: DOC-PX-008 (`dossier_task`); owner: governance; prerequisite: DOC-GOV-007 COMPLETE; outside product roll-ups.
+- Decision Record: DR-PX-2026-10-03-008 (`decisions/DR-PX-2026-10-03-008-native-computer-control.md`), status **proposed**. The owner must ratify it before any of PX-069..PX-076 starts; every root row lists DOC-PX-008 as a prerequisite so the graph enforces that.
+- Scope: the record, its specification `66_NATIVE_COMPUTER_CONTROL_SPECIFICATION.md`, the PX rows PX-069..PX-076 in doc 62, the scoped supersession entries in docs 02 and 03, the change record and dossier task in `tools/build_graph.py`, this entry and the retained evidence. No requirement row of the sealed base, EPR ledger or ADR set, no pinned count and no product status changes.
+- Revision before change: `../evidence/dossier-px-007/baseline.json` (`main` 5fdb47f, hashes of every governed file, initial integrity gate exit 0).
+
+### Decision Record (change-control fields)
+
+| Field | Content |
+|---|---|
+| Trigger / evidence | Owner statement that local OS control gets its own record, REQ-EV-0075 and 0081..0090 (already ADOPT for a Computer Runtime), doc 17's `computer.*` rows, and the research: a reference computer-use extension read statically (STATIC), the capability off in the sampled profile (DISK), the native helper not present in the bundle (UNVERIFIED). |
+| Current behavior | Described in the record and in section 3 of the specification. |
+| Replacement | Eight release-critical rows: Computer Runtime contract, per-call exact-intent approvals that can never be allowlisted, a macOS actuator helper process, its supply chain, browser control hardening (DevTools deny list, per-call origin gate), the desktop surface, a `computer_use` subagent profile, and screenshot artifacts; 37 tagged requirements (33 STATIC, 4 UNVERIFIED), 7 unverified items. |
+| Migration | None for existing nodes. Additive rows, change record and dossier task; statuses untouched. |
+| Compatibility | Graph schema 1.2 unchanged. `tools/dossier_px.py` pins no count; the EPR pins, ADR-R-039..056, gates A to G and the sealed 291/265/291 surface are unchanged. ALPHA and BETA stay READY; RELEASE_ZERO grows by the number of rows. |
+| Security impact | None on the product (dossier only). The record states the security model each row must prove. |
+| Test impact | `tools/test_dossier.py` gains a chain assertion for the new dossier tasks and change records; no pinned constant changes. |
+| Rollback | Revert the commits adding the rows and spec and rerun the reseal. Docs 02, 62 and the decisions directory are locked paths, so reversal needs a new Decision Record. |
+| Explicit user approval | Pending. The owner's statement of 2026-10-03 that this is a real goal is the basis, not the ratification. |
+
+### Stage applicability
+
+| Stage | DOC-PX-008 execution |
+|---|---|
+| AUDITING | Governing files read (AGENTS.md, SKILLS.md, docs 01, 02, 03, 10, 29, 46, 62, 81, 93, 95, 96, 97, the decisions README, two recent Decision Records, `tools/build_graph.py`, `dossier_px.py`, `check_dossier.py`, `test_dossier.py`); research read from the owner's untracked archive (clean-room); implementation audit of the renderer, the main process, `surface.proto` and the Core at `main` 5fdb47f; baseline hashes in `evidence/dossier-px-007/baseline.json`. |
+| IMPLEMENTING | The Decision Record, the specification, the PX rows, the supersession entries, the graph change record and dossier task, and this entry |
+| WIRED | Graph and manifests regenerated through the real CLIs |
+| REAL_TESTING | `check_dossier --manifest` and the copied-package suite pass locally |
+| E2E_PROVEN | Not reached: a pull request green on hosted CI and landed on `main` after the owner ratifies the record |
+| COMPLETE | Not reached: one-step ladder with evidence citing the landing commit and the owner's acceptance of the record |
+| Product qualification | Non-applicable: dossier only. No product behaviour, status or evidence claim changes; every PX row is NOT_STARTED. |
+
+
+### Implementation audit headline
+
+6 areas: browser runtime PRODUCTION-WORKING; native control DOCUMENTED-ONLY; origin gate and DevTools deny list IMPLEMENTED-PARTIAL; refusal contract and latch IMPLEMENTED-PARTIAL; permission flow NOT-FOUND; actuator and supply chain NOT-FOUND.
+
+### Status and handoff
+
+- **Evidence:** the `../evidence/dossier-px-007/` bundle (baseline, tests.log, validation.json). One shared bundle covers DOC-PX-007 to DOC-PX-012, which were produced in one dossier change; validation.json lists each task.
+- **Remaining product work:** all of PX-069..PX-076 NOT_STARTED. Unfinished behaviour: all of it. Nothing here is a product proof.
+- **Owner questions:** (1) observation approved per grant (the record) or per call; (2) macOS only for the first release of native control.
+- **Next safe action:** the owner ratifies or amends the record (flip `status` to `accepted` with who and where in the commit that lands the rows); until then no row may start. After landing, `python3 tools/graph.py ready` lists the first rows.
+
+### Exact file inventory for this change
+
+| Action | Path |
+|---|---|
+| Added | `docs/66_NATIVE_COMPUTER_CONTROL_SPECIFICATION.md` |
+| Added | `docs/decisions/DR-PX-2026-10-03-008-native-computer-control.md` |
+
+## DOC-PX-009 — Workspace Editor: Decision Record, specification and PX-077..081
+
+### Identity and authority
+
+- Task: DOC-PX-009 (`dossier_task`); owner: governance; prerequisite: DOC-GOV-007 COMPLETE; outside product roll-ups.
+- Decision Record: DR-PX-2026-10-03-009 (`decisions/DR-PX-2026-10-03-009-workspace-editor.md`), status **proposed**. The owner must ratify it before any of PX-077..PX-081 starts; every root row lists DOC-PX-009 as a prerequisite so the graph enforces that.
+- Scope: the record, its specification `67_WORKSPACE_EDITOR_SPECIFICATION.md`, the PX rows PX-077..PX-081 in doc 62, the scoped supersession entries in docs 02 and 03, the change record and dossier task in `tools/build_graph.py`, this entry and the retained evidence. No requirement row of the sealed base, EPR ledger or ADR set, no pinned count and no product status changes.
+- Revision before change: `../evidence/dossier-px-007/baseline.json` (`main` 5fdb47f, hashes of every governed file, initial integrity gate exit 0).
+
+### Decision Record (change-control fields)
+
+| Field | Content |
+|---|---|
+| Trigger / evidence | Owner statement; sealed constraints MOD-SURF-001 and MOD-SURF-002 (LOCKED), MOD-IDE-001 and MOD-IDE-002 (REJECTED), docs 20, 29 and 32, PX-005; the research gives no editor mechanics (the reference is a fork of a full IDE), so the design is independent and its requirements are tagged UNVERIFIED (design choice). |
+| Current behavior | Described in the record and in section 3 of the specification. |
+| Replacement | Five release-critical rows: editor file service, language intelligence from the Core, the editor surface with an engine admitted by dependency admission, agent-aware editing, a text-safety conformance suite; 21 requirements (20 UNVERIFIED design, 1 DISK); a scoped supersession of MOD-IDE-002 and MOD-SURF-002 recorded explicitly. |
+| Migration | None for existing nodes. Additive rows, change record and dossier task; statuses untouched. |
+| Compatibility | Graph schema 1.2 unchanged. `tools/dossier_px.py` pins no count; the EPR pins, ADR-R-039..056, gates A to G and the sealed 291/265/291 surface are unchanged. ALPHA and BETA stay READY; RELEASE_ZERO grows by the number of rows. |
+| Security impact | None on the product (dossier only). The record states the security model each row must prove. |
+| Test impact | `tools/test_dossier.py` gains a chain assertion for the new dossier tasks and change records; no pinned constant changes. |
+| Rollback | Revert the commits adding the rows and spec and rerun the reseal. Docs 02, 62 and the decisions directory are locked paths, so reversal needs a new Decision Record. |
+| Explicit user approval | Pending. The owner's statement of 2026-10-03 that this is a real goal is the basis, not the ratification. |
+
+### Stage applicability
+
+| Stage | DOC-PX-009 execution |
+|---|---|
+| AUDITING | Governing files read (AGENTS.md, SKILLS.md, docs 01, 02, 03, 10, 29, 46, 62, 81, 93, 95, 96, 97, the decisions README, two recent Decision Records, `tools/build_graph.py`, `dossier_px.py`, `check_dossier.py`, `test_dossier.py`); research read from the owner's untracked archive (clean-room); implementation audit of the renderer, the main process, `surface.proto` and the Core at `main` 5fdb47f; baseline hashes in `evidence/dossier-px-007/baseline.json`. |
+| IMPLEMENTING | The Decision Record, the specification, the PX rows, the supersession entries, the graph change record and dossier task, and this entry |
+| WIRED | Graph and manifests regenerated through the real CLIs |
+| REAL_TESTING | `check_dossier --manifest` and the copied-package suite pass locally |
+| E2E_PROVEN | Not reached: a pull request green on hosted CI and landed on `main` after the owner ratifies the record |
+| COMPLETE | Not reached: one-step ladder with evidence citing the landing commit and the owner's acceptance of the record |
+| Product qualification | Non-applicable: dossier only. No product behaviour, status or evidence claim changes; every PX row is NOT_STARTED. |
+
+
+### Implementation audit headline
+
+6 areas: Review surface and inline patch PRODUCTION-WORKING; editing view NOT-FOUND; language intelligence and editor context bridge and merge basis IMPLEMENTED-PARTIAL.
+
+### Status and handoff
+
+- **Evidence:** the `../evidence/dossier-px-007/` bundle (baseline, tests.log, validation.json). One shared bundle covers DOC-PX-007 to DOC-PX-012, which were produced in one dossier change; validation.json lists each task.
+- **Remaining product work:** all of PX-077..PX-081 NOT_STARTED. Unfinished behaviour: all of it. Nothing here is a product proof.
+- **Owner questions:** (1) whether completion lists and inline predictive completion are wanted in the first release; (2) explicit acceptance of the scoped change to a LOCKED row (MOD-SURF-002).
+- **Next safe action:** the owner ratifies or amends the record (flip `status` to `accepted` with who and where in the commit that lands the rows); until then no row may start. After landing, `python3 tools/graph.py ready` lists the first rows.
+
+### Exact file inventory for this change
+
+| Action | Path |
+|---|---|
+| Added | `docs/67_WORKSPACE_EDITOR_SPECIFICATION.md` |
+| Added | `docs/decisions/DR-PX-2026-10-03-009-workspace-editor.md` |
+
+## DOC-PX-010 — Automations: Decision Record, specification and PX-082..086
+
+### Identity and authority
+
+- Task: DOC-PX-010 (`dossier_task`); owner: governance; prerequisite: DOC-GOV-007 COMPLETE; outside product roll-ups.
+- Decision Record: DR-PX-2026-10-03-010 (`decisions/DR-PX-2026-10-03-010-automations.md`), status **proposed**. The owner must ratify it before any of PX-082..PX-086 starts; every root row lists DOC-PX-010 as a prerequisite so the graph enforces that.
+- Scope: the record, its specification `68_AUTOMATIONS_SPECIFICATION.md`, the PX rows PX-082..PX-086 in doc 62, the scoped supersession entries in docs 02 and 03, the change record and dossier task in `tools/build_graph.py`, this entry and the retained evidence. No requirement row of the sealed base, EPR ledger or ADR set, no pinned count and no product status changes.
+- Revision before change: `../evidence/dossier-px-007/baseline.json` (`main` 5fdb47f, hashes of every governed file, initial integrity gate exit 0).
+
+### Decision Record (change-control fields)
+
+| Field | Content |
+|---|---|
+| Trigger / evidence | Owner statement; MOD-AUTO-001 and REQ-EV-0149, 0264 (DEFERRED), REQ-EV-0236 (REJECT), REQ-EV-0275 and doc 81 (no second scheduler); research: the reference's automations bundle read statically (STATIC), no live observation possible (DISK: gate on, no definitions). |
+| Current behavior | Described in the record and in section 3 of the specification. |
+| Replacement | Five release-critical rows: definitions with enable approval bound to the definition hash, trigger evaluation inside the existing Scheduler, unattended run policy that fails closed, cloud triggers with signed webhooks, the surface and CLI; 23 requirements (17 STATIC, 6 UNVERIFIED), 4 unverified items; scoped supersession of MOD-AUTO-001 recorded, base rows left byte-identical. |
+| Migration | None for existing nodes. Additive rows, change record and dossier task; statuses untouched. |
+| Compatibility | Graph schema 1.2 unchanged. `tools/dossier_px.py` pins no count; the EPR pins, ADR-R-039..056, gates A to G and the sealed 291/265/291 surface are unchanged. ALPHA and BETA stay READY; RELEASE_ZERO grows by the number of rows. |
+| Security impact | None on the product (dossier only). The record states the security model each row must prove. |
+| Test impact | `tools/test_dossier.py` gains a chain assertion for the new dossier tasks and change records; no pinned constant changes. |
+| Rollback | Revert the commits adding the rows and spec and rerun the reseal. Docs 02, 62 and the decisions directory are locked paths, so reversal needs a new Decision Record. |
+| Explicit user approval | Pending. The owner's statement of 2026-10-03 that this is a real goal is the basis, not the ratification. |
+
+### Stage applicability
+
+| Stage | DOC-PX-010 execution |
+|---|---|
+| AUDITING | Governing files read (AGENTS.md, SKILLS.md, docs 01, 02, 03, 10, 29, 46, 62, 81, 93, 95, 96, 97, the decisions README, two recent Decision Records, `tools/build_graph.py`, `dossier_px.py`, `check_dossier.py`, `test_dossier.py`); research read from the owner's untracked archive (clean-room); implementation audit of the renderer, the main process, `surface.proto` and the Core at `main` 5fdb47f; baseline hashes in `evidence/dossier-px-007/baseline.json`. |
+| IMPLEMENTING | The Decision Record, the specification, the PX rows, the supersession entries, the graph change record and dossier task, and this entry |
+| WIRED | Graph and manifests regenerated through the real CLIs |
+| REAL_TESTING | `check_dossier --manifest` and the copied-package suite pass locally |
+| E2E_PROVEN | Not reached: a pull request green on hosted CI and landed on `main` after the owner ratifies the record |
+| COMPLETE | Not reached: one-step ladder with evidence citing the landing commit and the owner's acceptance of the record |
+| Product qualification | Non-applicable: dossier only. No product behaviour, status or evidence claim changes; every PX row is NOT_STARTED. |
+
+
+### Implementation audit headline
+
+6 areas: Scheduler and admission PRODUCTION-WORKING; forge webhook intake PRODUCTION-WORKING; read-only posture PRODUCTION-WORKING; unattended policy IMPLEMENTED-PARTIAL; time triggers NOT-FOUND; definitions and UI NOT-FOUND.
+
+### Status and handoff
+
+- **Evidence:** the `../evidence/dossier-px-007/` bundle (baseline, tests.log, validation.json). One shared bundle covers DOC-PX-007 to DOC-PX-012, which were produced in one dossier change; validation.json lists each task.
+- **Remaining product work:** all of PX-082..PX-086 NOT_STARTED. Unfinished behaviour: all of it. Nothing here is a product proof.
+- **Owner questions:** (1) whether local schedules should fire with the app closed; (2) the schedule floor and the approval expiry defaults.
+- **Next safe action:** the owner ratifies or amends the record (flip `status` to `accepted` with who and where in the commit that lands the rows); until then no row may start. After landing, `python3 tools/graph.py ready` lists the first rows.
+
+### Exact file inventory for this change
+
+| Action | Path |
+|---|---|
+| Added | `docs/68_AUTOMATIONS_SPECIFICATION.md` |
+| Added | `docs/decisions/DR-PX-2026-10-03-010-automations.md` |
+
+## DOC-PX-011 — Extension marketplace and Customize: Decision Record, specification and PX-087..093
+
+### Identity and authority
+
+- Task: DOC-PX-011 (`dossier_task`); owner: governance; prerequisite: DOC-GOV-007 COMPLETE; outside product roll-ups.
+- Decision Record: DR-PX-2026-10-03-011 (`decisions/DR-PX-2026-10-03-011-extension-marketplace-and-customize.md`), status **proposed**. The owner must ratify it before any of PX-087..PX-093 starts; every root row lists DOC-PX-011 as a prerequisite so the graph enforces that.
+- Scope: the record, its specification `69_EXTENSION_MARKETPLACE_AND_CUSTOMIZE_SPECIFICATION.md`, the PX rows PX-087..PX-093 in doc 62, the scoped supersession entries in docs 02 and 03, the change record and dossier task in `tools/build_graph.py`, this entry and the retained evidence. No requirement row of the sealed base, EPR ledger or ADR set, no pinned count and no product status changes.
+- Revision before change: `../evidence/dossier-px-007/baseline.json` (`main` 5fdb47f, hashes of every governed file, initial integrity gate exit 0).
+
+### Decision Record (change-control fields)
+
+| Field | Content |
+|---|---|
+| Trigger / evidence | Owner statement and hard carry-overs; REQ-EV-0225, 0138, 0137, 0114, 0224, 0239, 0240, REQ-EV-0216 (REJECT); doc 10's P0 marketplace non-goal; research: Customize editor observed live in a signed-out instance (LIVE), plugins, marketplace, MCP, hooks and security jewels read statically (STATIC). |
+| Current behavior | Described in the record and in section 3 of the specification. |
+| Replacement | Seven release-critical rows: package and signed catalog format, digest-pinned install and update pipeline, variables and hostile-content handling, MCP trust by configuration hash, the agent self-extension write-protection map and organisation policy, hook contract completion, the Customize surface; 18 requirements (16 STATIC, 2 LIVE), 5 unverified items. |
+| Migration | None for existing nodes. Additive rows, change record and dossier task; statuses untouched. |
+| Compatibility | Graph schema 1.2 unchanged. `tools/dossier_px.py` pins no count; the EPR pins, ADR-R-039..056, gates A to G and the sealed 291/265/291 surface are unchanged. ALPHA and BETA stay READY; RELEASE_ZERO grows by the number of rows. |
+| Security impact | None on the product (dossier only). The record states the security model each row must prove. |
+| Test impact | `tools/test_dossier.py` gains a chain assertion for the new dossier tasks and change records; no pinned constant changes. |
+| Rollback | Revert the commits adding the rows and spec and rerun the reseal. Docs 02, 62 and the decisions directory are locked paths, so reversal needs a new Decision Record. |
+| Explicit user approval | Pending. The owner's statement of 2026-10-03 that this is a real goal is the basis, not the ratification. |
+
+### Stage applicability
+
+| Stage | DOC-PX-011 execution |
+|---|---|
+| AUDITING | Governing files read (AGENTS.md, SKILLS.md, docs 01, 02, 03, 10, 29, 46, 62, 81, 93, 95, 96, 97, the decisions README, two recent Decision Records, `tools/build_graph.py`, `dossier_px.py`, `check_dossier.py`, `test_dossier.py`); research read from the owner's untracked archive (clean-room); implementation audit of the renderer, the main process, `surface.proto` and the Core at `main` 5fdb47f; baseline hashes in `evidence/dossier-px-007/baseline.json`. |
+| IMPLEMENTING | The Decision Record, the specification, the PX rows, the supersession entries, the graph change record and dossier task, and this entry |
+| WIRED | Graph and manifests regenerated through the real CLIs |
+| REAL_TESTING | `check_dossier --manifest` and the copied-package suite pass locally |
+| E2E_PROVEN | Not reached: a pull request green on hosted CI and landed on `main` after the owner ratifies the record |
+| COMPLETE | Not reached: one-step ladder with evidence citing the landing commit and the owner's acceptance of the record |
+| Product qualification | Non-applicable: dossier only. No product behaviour, status or evidence claim changes; every PX row is NOT_STARTED. |
+
+
+### Implementation audit headline
+
+7 areas: extension package, signature and quarantine PRODUCTION-WORKING; skills registry and importers PRODUCTION-WORKING; external-server trust, hook bus and self-extension boundary IMPLEMENTED-PARTIAL; catalog, install, update, variables and Customize NOT-FOUND.
+
+### Status and handoff
+
+- **Evidence:** the `../evidence/dossier-px-007/` bundle (baseline, tests.log, validation.json). One shared bundle covers DOC-PX-007 to DOC-PX-012, which were produced in one dossier change; validation.json lists each task.
+- **Remaining product work:** all of PX-087..PX-093 NOT_STARTED. Unfinished behaviour: all of it. Nothing here is a product proof.
+- **Owner questions:** (1) whether Modbit operates an official catalog; (2) which declared-capability changes force re-approval on update.
+- **Next safe action:** the owner ratifies or amends the record (flip `status` to `accepted` with who and where in the commit that lands the rows); until then no row may start. After landing, `python3 tools/graph.py ready` lists the first rows.
+
+### Exact file inventory for this change
+
+| Action | Path |
+|---|---|
+| Added | `docs/69_EXTENSION_MARKETPLACE_AND_CUSTOMIZE_SPECIFICATION.md` |
+| Added | `docs/decisions/DR-PX-2026-10-03-011-extension-marketplace-and-customize.md` |
+
+## DOC-PX-012 — Desktop shell platform integration (the Electron main-process change): Decision Record, specification and PX-094..098
+
+### Identity and authority
+
+- Task: DOC-PX-012 (`dossier_task`); owner: governance; prerequisite: DOC-GOV-007 COMPLETE; outside product roll-ups.
+- Decision Record: DR-PX-2026-10-03-012 (`decisions/DR-PX-2026-10-03-012-desktop-shell-platform-integration.md`), status **proposed**. The owner must ratify it before any of PX-094..PX-098 starts; every root row lists DOC-PX-012 as a prerequisite so the graph enforces that.
+- Scope: the record, its specification `78_DESKTOP_SHELL_PLATFORM_INTEGRATION_SPECIFICATION.md`, the PX rows PX-094..PX-098 in doc 62, the scoped supersession entries in docs 02 and 03, the change record and dossier task in `tools/build_graph.py`, this entry and the retained evidence. No requirement row of the sealed base, EPR ledger or ADR set, no pinned count and no product status changes.
+- Revision before change: `../evidence/dossier-px-007/baseline.json` (`main` 5fdb47f, hashes of every governed file, initial integrity gate exit 0).
+
+### Decision Record (change-control fields)
+
+| Field | Content |
+|---|---|
+| Trigger / evidence | Owner statement without a scope; synthesis section 5; MOD-DESK-001; research on window chrome, vibrancy, permissions, deep links and process graph (LIVE, STATIC, DISK) with no source for fuses, ASAR integrity or shell updates (UNVERIFIED, stated). The record states its assumption and asks the owner. |
+| Current behavior | Described in the record and in section 3 of the specification. |
+| Replacement | Five release-critical rows: window chrome, native menus and deep links, main-process hardening, update application, version policy; 19 requirements (7 UNVERIFIED, 4 LIVE, 5 STATIC, 3 DISK), 6 unverified items. Renderer isolation, CSP and preload stay byte-identical. |
+| Migration | None for existing nodes. Additive rows, change record and dossier task; statuses untouched. |
+| Compatibility | Graph schema 1.2 unchanged. `tools/dossier_px.py` pins no count; the EPR pins, ADR-R-039..056, gates A to G and the sealed 291/265/291 surface are unchanged. ALPHA and BETA stay READY; RELEASE_ZERO grows by the number of rows. |
+| Security impact | None on the product (dossier only). The record states the security model each row must prove. |
+| Test impact | `tools/test_dossier.py` gains a chain assertion for the new dossier tasks and change records; no pinned constant changes. |
+| Rollback | Revert the commits adding the rows and spec and rerun the reseal. Docs 02, 62 and the decisions directory are locked paths, so reversal needs a new Decision Record. |
+| Explicit user approval | Pending. The owner's statement of 2026-10-03 that this is a real goal is the basis, not the ratification. |
+
+### Stage applicability
+
+| Stage | DOC-PX-012 execution |
+|---|---|
+| AUDITING | Governing files read (AGENTS.md, SKILLS.md, docs 01, 02, 03, 10, 29, 46, 62, 81, 93, 95, 96, 97, the decisions README, two recent Decision Records, `tools/build_graph.py`, `dossier_px.py`, `check_dossier.py`, `test_dossier.py`); research read from the owner's untracked archive (clean-room); implementation audit of the renderer, the main process, `surface.proto` and the Core at `main` 5fdb47f; baseline hashes in `evidence/dossier-px-007/baseline.json`. |
+| IMPLEMENTING | The Decision Record, the specification, the PX rows, the supersession entries, the graph change record and dossier task, and this entry |
+| WIRED | Graph and manifests regenerated through the real CLIs |
+| REAL_TESTING | `check_dossier --manifest` and the copied-package suite pass locally |
+| E2E_PROVEN | Not reached: a pull request green on hosted CI and landed on `main` after the owner ratifies the record |
+| COMPLETE | Not reached: one-step ladder with evidence citing the landing commit and the owner's acceptance of the record |
+| Product qualification | Non-applicable: dossier only. No product behaviour, status or evidence claim changes; every PX row is NOT_STARTED. |
+
+
+### Implementation audit headline
+
+6 areas: window and renderer hardening IMPLEMENTED-PARTIAL; menus and notifications IMPLEMENTED-PARTIAL; window chrome, fuses, updater and version policy NOT-FOUND.
+
+### Status and handoff
+
+- **Evidence:** the `../evidence/dossier-px-007/` bundle (baseline, tests.log, validation.json). One shared bundle covers DOC-PX-007 to DOC-PX-012, which were produced in one dossier change; validation.json lists each task.
+- **Remaining product work:** all of PX-094..PX-098 NOT_STARTED. Unfinished behaviour: all of it. Nothing here is a product proof.
+- **Owner questions:** What the owner means by the Electron change (the record assumes platform integration and hardening, not a framework replacement); local schedules with the app closed; whether translucency is wanted.
+- **Next safe action:** the owner ratifies or amends the record (flip `status` to `accepted` with who and where in the commit that lands the rows); until then no row may start. After landing, `python3 tools/graph.py ready` lists the first rows.
+
+### Exact file inventory for this change
+
+| Action | Path |
+|---|---|
+| Added | `docs/78_DESKTOP_SHELL_PLATFORM_INTEGRATION_SPECIFICATION.md` |
+| Added | `docs/decisions/DR-PX-2026-10-03-012-desktop-shell-platform-integration.md` |
+
+### Shared file inventory (DOC-PX-007 to DOC-PX-012)
+
+| Action | Path |
+|---|---|
+| Added | `evidence/dossier-px-007/baseline.json`, `tests.log`, `validation.json` |
+| Changed | `docs/02_AUTHORITY_AND_DECISIONS.md` (proposed decisions and scoped supersession table), `docs/03_ARCHITECTURAL_CONFLICTS_AND_SUPERSESSIONS.md` (proposed supersessions), `docs/20_WORKSPACE_GIT_AND_TRUSTED_CODE_SURFACE.md`, `docs/29_CLIENT_SURFACES_AND_SOURCE_CONTROL_INTEGRATION.md` (pointers) |
+| Changed | `docs/97_DOSSIER_MAINTENANCE_LOG.md`, `tools/build_graph.py`, `tools/test_dossier.py` |
+| Changed | `MANIFEST.md`, `manifest.json`, `graph/PROJECT_GRAPH.md`, `graph/project-graph.json` |
+
+## DOC-PX-007, DOC-PX-008 and DOC-PX-010 — Ratification of three Decision Records (2026-10-05) and the PX-067 delivered-in-part note
+
+### Identity and authority
+
+- Tasks: DOC-PX-007, DOC-PX-008 and DOC-PX-010 (`dossier_task`); owner: governance; prerequisite: DOC-GOV-007 COMPLETE (unchanged); outside product roll-ups.
+- Decision Records: DR-PX-2026-10-03-007 (agent-first workspace, PX-041..068), DR-PX-2026-10-03-008 (native computer control and browser hardening, PX-069..076) and DR-PX-2026-10-03-010 (automations, PX-082..086), flipped from **proposed** to **accepted** with `approved_by: owner instruction 2026-10-05 (goal: implement research/audit/01-TASK-LIST.md); the basis of 007 is the owner's decisions of 2026-10-03`. On 2026-10-05 the owner set the goal "end to end implementation for tasks in research/audit/01-TASK-LIST.md", whose Tier 1 and Tier 3 build tasks need the agent-first workspace (BLD-01..07), native computer control (BLD-22) and automations (BLD-25); the instruction is recorded as the ratification of those three records, as drafted.
+- **Not ratified:** DR-PX-2026-10-03-009 (Workspace Editor), -011 (extension marketplace and Customize) and -012 (desktop shell platform integration). The owner did not ask for them (the task list names a plugin marketplace as out of scope until the owner asks, and no BLD task needs the editor or the Electron main-process work). Their records stay `proposed`, their dossier tasks DOC-PX-009, DOC-PX-011 and DOC-PX-012 stay at REAL_TESTING, and PX-077..081, PX-087..093 and PX-094..098 stay blocked behind them. `graph.py set` now refuses E2E_PROVEN and COMPLETE on a dossier task whose change record is still PROPOSED, and a test asserts that no row of an accepted record depends, directly or transitively, on a row or task of a proposed one.
+- Scope: the three records' front matter and approval sections; the authority lines of docs 65, 66 and 68; docs 02, 03 and 10 (proposed text now in force for the three records, still proposed for the other three); the doc 62 introduction; the PX-067 card; the decisions README ledger; `tools/build_graph.py` (the change record status follows the record file and an accepted record must name its approval); `tools/graph.py` (the guard above); `tools/test_dossier.py`; this entry; the retained evidence under `../evidence/dossier-px-007/ratification.json`, `../evidence/dossier-px-008/` and `../evidence/dossier-px-010/`. No requirement row, ADR, EPR row, gate or pinned count changes.
+- Revision before change: `../evidence/dossier-px-008/baseline.json` and `../evidence/dossier-px-010/baseline.json` (commit `de1507ee`, the drafts as proposed).
+
+### Decision Record (change-control fields)
+
+| Field | Content |
+|---|---|
+| Trigger / evidence | The owner's goal of 2026-10-05 (implement `research/audit/01-TASK-LIST.md`); the audit (`research/audit/00-SUMMARY.md`) shows the Core is reachable only through a supervision console and that native computer control and automations are not built. |
+| Current behavior | Three accepted-pending records whose rows cannot start; BLD-01..07, BLD-22 and BLD-25 have no ratified owner row. |
+| Replacement | The three records are accepted as drafted. That includes the drafts' own answers to their owner questions (observation approved per grant and never allowlistable; macOS only for the first release of native control; local schedules fire only while the Core runs; five-minute schedule floor and 24-hour approval expiry as policy data) and the release effect of DR-007 (its 28 rows stay ADOPT in RELEASE_ZERO, not re-classified DEFERRED). The owner may change any of these by a later record that names the old one in `supersedes`. |
+| Migration | None for existing nodes. The three change records become APPROVED; DOC-PX-007, -008 and -010 move REAL_TESTING to E2E_PROVEN to COMPLETE through `graph.py`; PX rows stay NOT_STARTED. |
+| Compatibility | ALPHA and BETA stay READY; RELEASE_ZERO already includes the rows. The scoped supersession of MOD-AUTO-001 (docs 02 and 03) and the clarifications of docs 10 and 22 take effect for 008 and 010; those of 009, 011 and 012 do not. |
+| Security impact | None on the product (dossier only). Accepting 008 and 010 adds no capability by itself; every row still needs its own real proof. |
+| Test impact | `tools/test_dossier.py` replaces the all-proposed assertion with per-record states and adds two tests: unratified records stay blocked and no accepted row depends on them; record status and approval match the graph. |
+| Rollback | Restore the three records to `status: proposed` and `approved_by: pending ...` by a new Decision Record (docs/62 and the decisions directory are locked paths) and rerun the reseal. |
+| Explicit user approval | The owner's instruction of 2026-10-05 in chat, quoted above. |
+
+### PX-067 delivered-in-part note
+
+The audit fix FIX-01 (pull request moss101/modbit#61, branch `wip/audit-fixes-integration`, not merged) delivered most of PX-067's scope. A clearly marked note on the PX-067 card and in doc 65 lists the remaining scope (bare-repository safeguard, redaction beyond error text, the security event, the architecture-lint rule and the spawns outside `crates/git`, repository-local `core.sshCommand` and `credential.helper`, and QUAL-PX-067 on the Core operations on the packaged build). The row text, prerequisites, tier and qualification are unchanged and the row stays NOT_STARTED; nothing of it earns status until #61 is merged and the qualification runs. The note is an annotation under DR-PX-2026-10-03-007.
+
+### Stage applicability
+
+| Stage | Execution |
+|---|---|
+| AUDITING / IMPLEMENTING / WIRED | Done for the original drafts (entries above); here: the ratification edits, the builder and tool changes, the regenerated graph and manifests |
+| REAL_TESTING | Held already; re-established by `check_dossier --manifest` (exit 0) and the copied-package suite (exit 0) on the ratified tree |
+| E2E_PROVEN | For a dossier task: the integrity and copied-package suites pass on the ratified tree and the owner's acceptance is recorded. Hosted-CI landing of the branch on `main` has NOT happened (no push or merge was performed); the landing commit is added later as further `commit:` evidence with `graph.py set ... COMPLETE --evidence commit:<sha>`, which the tool allows at the same state |
+| COMPLETE | The owner's acceptance is the only remaining precondition of these three tasks, and it is recorded |
+| Product qualification | Non-applicable: dossier only. No product behaviour, status or evidence claim changes |
+
+### Status and handoff
+
+- **Evidence:** `../evidence/dossier-px-007/ratification.json`, `../evidence/dossier-px-008/{baseline.json,tests.log,validation.json}`, `../evidence/dossier-px-010/{baseline.json,tests.log,validation.json}` and the change commit as `commit:` evidence on each graph node.
+- **Remaining dossier acceptance:** DOC-PX-009, DOC-PX-011 and DOC-PX-012 await the owner. Landing of this branch on `main` through a green hosted-CI pull request.
+- **Remaining product work:** every PX row NOT_STARTED. Nothing here is a product proof.
+- **Next safe action:** `python3 tools/graph.py ready` lists the rows of the three accepted records whose other prerequisites are complete; DR-PX-2026-10-05-013 (next entry) adds the audit-driven rows.
+
+### Exact file inventory for this change
+
+| Action | Path |
+|---|---|
+| Added | `evidence/dossier-px-007/ratification.json`, `evidence/dossier-px-008/*`, `evidence/dossier-px-010/*` |
+| Changed | `docs/decisions/DR-PX-2026-10-03-007-agent-first-workspace.md`, `-008-native-computer-control.md`, `-010-automations.md`, `docs/decisions/README.md` |
+| Changed | `docs/02_AUTHORITY_AND_DECISIONS.md`, `docs/03_ARCHITECTURAL_CONFLICTS_AND_SUPERSESSIONS.md`, `docs/10_PRODUCT_PRD_AND_UX.md`, `docs/62_PRODUCT_EXTENSION_REQUIREMENTS_TASKS_AND_QUALIFICATIONS.md`, `docs/65_AGENT_FIRST_WORKSPACE_SPECIFICATION.md`, `docs/66_NATIVE_COMPUTER_CONTROL_SPECIFICATION.md`, `docs/68_AUTOMATIONS_SPECIFICATION.md`, `docs/97_DOSSIER_MAINTENANCE_LOG.md` |
+| Changed | `tools/build_graph.py`, `tools/graph.py`, `tools/test_dossier.py` |
+| Changed | `MANIFEST.md`, `manifest.json`, `graph/PROJECT_GRAPH.md`, `graph/project-graph.json` |
+
+## DOC-PX-013 — Audit-driven capability completion: Decision Record, specification and PX-099..139
+
+### Identity and authority
+
+- Task: DOC-PX-013 (`dossier_task`); owner: governance; prerequisite: DOC-GOV-007 COMPLETE; outside product roll-ups.
+- Decision Record: DR-PX-2026-10-05-013 (`decisions/DR-PX-2026-10-05-013-audit-driven-capability-completion.md`), status **accepted** on 2026-10-05 with `approved_by: owner instruction 2026-10-05 (goal: implement research/audit/01-TASK-LIST.md); the basis of 007 is the owner's decisions of 2026-10-03`. Every row lists DOC-PX-013 as a prerequisite so the graph enforces the order.
+- Scope: the record; the specification `79_AUDIT_DRIVEN_CAPABILITY_COMPLETION_SPECIFICATION.md` (audit classification of the 30 BLD tasks, 41 requirements ADC-A01..ADC-J03, the traceability table BLD to PX rows to owner to tier to prerequisites, the corrections to the draft mapping and the non-adoptions); rows REQ-PX-099..139 in doc 62 (a ledger row, a qualification, a task card and a PX-E2E scenario each); the change record and dossier task in `tools/build_graph.py`; the pinned parity counts and the dependency-separation guard in `tools/test_dossier.py`; this entry; the retained evidence under `../evidence/dossier-px-013/`. No sealed row, EPR row, gate, ADR-R clause, pinned count or product status changes.
+- Revision before change: `../evidence/dossier-px-013/baseline.json` (the ratified tree of the previous entry).
+
+### Decision Record (change-control fields)
+
+| Field | Content |
+|---|---|
+| Trigger / evidence | The owner's goal of 2026-10-05 and the audit (`research/audit/00-SUMMARY.md`, `01-TASK-LIST.md`, `audit-A..I.md`, and the fix results in `02-PHASE0-AND-FIX-RESULTS.md`). |
+| Current behavior | Of the 30 BLD tasks, four are fully covered by accepted rows (BLD-01, 06, 22, 25), eight are covered in their principal part (BLD-02, 03, 04, 05, 07, 17, 18, 19) and eighteen have no row (BLD-08 to 16, 20, 21, 23, 24, 26 to 30). |
+| Replacement | 41 rows in ten groups over existing owners, 39 release-critical and 2 iteration (PX-137 and PX-138, measurement only), each naming its real boundary, failure injection and mutation; doc 79 as the specification and traceability. Eight corrections to the draft mapping are recorded (doc 79 section 8). |
+| Migration | Additive. The graph gains a change record, DOC-PX-013 and 41 PX nodes. RELEASE_ZERO grows by 41 work items; ALPHA and BETA are unchanged. |
+| Compatibility | No row depends on a row or task of the proposed records DR-PX-2026-10-03-009, -011 or -012 (asserted by a test). PX-106 is a Customize view over existing registries only; PX-117 does not depend on PX-092. EPR-pinned behaviour is untouched: PX-133 conforms the statistics emission to ADR-R-051 and ADR-R-055, PX-134 adds operator verbs for the signed registry, PX-135 widens calibration data, PX-136 measures; reviewer family enforcement, a correlated feasibility bound and a no-checks cascade and critique policy are NOT adopted (doc 79 section 9). |
+| Security impact | None on the product (dossier only). Every row carries its hostile-input or fault proof. |
+| Test impact | `tools/test_dossier.py` pins the parity surface (PX-000..139: 140 rows, 137 ADOPT tasks, 3 DEFERRED; seven records of which four accepted; 41 rows here, tier split 39 and 2), asserts that each of the 41 rows has an existing owner, DOC-PX-013 and the record's authorization, and that doc 79 traces every BLD task and every new row; the generic guards for accepted-versus-proposed records apply to the new record. |
+| Rollback | Revert the commits adding the rows, the specification and the graph nodes and rerun the reseal; a new record is needed because doc 62 and the decisions directory are locked paths. |
+| Explicit user approval | The owner's instruction of 2026-10-05 in chat, quoted above. |
+
+### Stage applicability
+
+| Stage | DOC-PX-013 execution |
+|---|---|
+| AUDITING | Governing files read (AGENTS.md, SKILLS.md, docs 02, 62, 75, 81, 83, 93, 95, 96, 97, the decisions README, DR-PX-2026-10-03-007 and -010, `tools/build_graph.py`, `dossier_px.py`, `check_dossier.py`, `test_dossier.py`); the audit read in full; every BLD task checked against the actual rows of doc 62; the audit-fix branch inspected for what FIX-01 delivered (PX-067 note). |
+| IMPLEMENTING | The record, the specification, the rows, the graph change record and dossier task, the tests, this entry |
+| WIRED | Graph and manifests regenerated through the real CLIs; the rows reach the graph with existing owners, M10, RELEASE_ZERO membership and the gating edge to this task |
+| REAL_TESTING | `check_dossier --manifest` and the copied-package suite pass |
+| E2E_PROVEN and COMPLETE | For a dossier task: the integrity and copied-package suites pass on the sealed tree and the owner's acceptance is recorded. Hosted-CI landing of the branch on `main` has not happened (no push or merge was performed) and is added later as further `commit:` evidence |
+| Product qualification | Non-applicable: dossier only. Every PX row is NOT_STARTED and none is a product proof |
+
+### Implementation audit headline
+
+30 BLD tasks classified at `main` 5fdb47f1 (doc 79 section 4): 4 fully covered by accepted rows; 8 partly covered with the residual specified here; 18 not covered. The audit fixes (FIX-01..21, unmerged, pull request #61) already delivered parts that the rows build on; rows that depend on them say so, because fix tasks are not graph nodes and cannot gate a row.
+
+### Status and handoff
+
+- **Evidence:** the `../evidence/dossier-px-013/` bundle (baseline, tests.log, validation.json) and the change commit as `commit:` evidence on the graph node.
+- **Remaining product work:** all of PX-099..139 NOT_STARTED. Unfinished behaviour: all of it. Nothing here is a product proof.
+- **Owner inputs the rows name:** a dependency admission for the embedding model (PX-112); a GitHub test repository and token (PX-125 to PX-127); first-party provider keys (PX-136); a threshold profile for gates A to G (no row attests a gate); the signing identity and SBOM record of M10.2.
+- **Next safe action:** `python3 tools/graph.py ready` lists the rows whose prerequisites are complete; take one, set it AUDITING and begin with the existing-code audit on the merged state. Merging pull request #61 first removes the main ambiguity about what the fixes delivered.
+
+### Exact file inventory for this change
+
+| Action | Path |
+|---|---|
+| Added | `docs/79_AUDIT_DRIVEN_CAPABILITY_COMPLETION_SPECIFICATION.md`, `docs/decisions/DR-PX-2026-10-05-013-audit-driven-capability-completion.md` |
+| Added | `evidence/dossier-px-013/baseline.json`, `tests.log`, `validation.json` |
+| Changed | `docs/62_PRODUCT_EXTENSION_REQUIREMENTS_TASKS_AND_QUALIFICATIONS.md` (rows REQ-PX-099..139, qualifications, cards, scenarios, introduction) |
+| Changed | `docs/00_MASTER_INDEX.md`, `docs/02_AUTHORITY_AND_DECISIONS.md`, `docs/decisions/README.md`, `docs/97_DOSSIER_MAINTENANCE_LOG.md` |
+| Changed | `tools/build_graph.py`, `tools/test_dossier.py` |
+| Changed | `MANIFEST.md`, `manifest.json`, `graph/PROJECT_GRAPH.md`, `graph/project-graph.json` |
+
+## DOC-PX-014 — Per-task harness refinement: Decision Record and the deferred row PX-140 (2026-10-19)
+
+Dossier only. No product code, status of a product task or release gate changed.
+
+- **Trigger:** the owner asked what Harness² (Google Research, arXiv 2610.14224, Apache-2.0) could add to Modbit, then asked for a Decision Record and a task card, then chose option A with C in chat on 2026-10-19.
+- **Basis:** the Harness² README, paper abstract and `core/recursion.py`, `proposer.py`, `selection.py`, `ledger.py`, `library.py`, `context.py` read at its main of 2026-10-14. Its reported gains are on non-repository benchmarks and weaker executors; no claim is made for Modbit until its own benchmark shows one.
+- **Decision:** `docs/decisions/DR-PX-2026-10-19-014-per-task-harness-refinement.md`, accepted. REQ-PX-140 and QUAL-PX-140 added to doc 62 as DEFERRED, POST_ZERO, no task, card or scenario (the ledger forbids them on DEFERRED rows). The activation task card and scenario stay in the record's appendix.
+- **Tooling:** one entry in the parity table of `tools/build_graph.py` (creates the change record and DOC-PX-014); `tools/test_dossier.py` pins 141 PX rows, 137 ADOPT tasks and four DEFERRED rows and asserts that REQ-PX-140 is deferred, authorized by the record and gates no task.
+- **Other files:** `docs/02_AUTHORITY_AND_DECISIONS.md` (summary paragraph), `docs/decisions/README.md` (ledger row), regenerated manifest and graph.
+- **Not done:** DOC-PX-014 is not advanced past NOT_STARTED because no commit exists to cite as evidence; option C is not built and has no task card; the three open points of the record (selector, per-task budget, hardness threshold) are unset.
+- **Next safe action:** commit the change, then advance DOC-PX-014 with the commit and the integrity-run evidence. Activation of PX-140 starts from a new record, not from this one.
+
+## Graph integration — product-extension status recorded from `origin/main` dbe83fc9 (2026-10-17)
+
+A bookkeeping change to the project graph only; no requirement row, disposition, owner, Decision Record or product code changed, and no release gate was attested.
+
+- **Basis:** the read-only audit in `research/audit/` (GRAPH-AUDIT.md, graph-audit.json, graph-moves.sh) of main 7fcd48ad, re-verified against dbe83fc9: every cited test file and name exists, every commit exists, and the evidence run is the latest green main run 38990216920 (2b7f2ac9). Main run 39010263996 (dbe83fc9) was still in progress and is not cited.
+- **Moves:** 34 PX nodes left NOT_STARTED and PX-030 advanced to WIRED through `graph.py set`, one lifecycle step at a time, each with its test, commit and run references. States reached: E2E_PROVEN PX-053, 065, 067, 107, 108, 110, 111, 113; REAL_TESTING PX-041, 043, 044, 050, 051, 052, 057, 059, 061, 063, 073, 082, 101, 109, 114, 115, 116, 117, 129, 131, 133, 135, 137; WIRED PX-030, 069, 125; IMPLEMENTING PX-130. Nothing was set COMPLETE: no evidence bundle exists under `evidence/m10/` for any PX row and the docs that pull requests 63 and 64 say lag the code are not yet written.
+- **Held below the audit's proposal on reading the evidence rule (docs/93: E2E_PROVEN needs the QUAL proof on the required operating systems):** PX-052, 082, 117 (Core suites run on macOS and Linux only), PX-115 (reaper tests Unix-only), PX-063 (QUAL "pending two-phase state" met by single-transaction commands) and PX-129 (RS256 and per-tenant forge credentials open) are REAL_TESTING.
+- **Changed since the audit:** PX-043 gains the pull request 87 fix (213f649c); PX-069 gains the Stop-ordering and determinism fixes (9da0a2b0, c472e1cf, 390bdf71) and stays WIRED because the real accessibility actuator of pull request 82 runs only on the hosted macOS runner and 3 of its 12 tests fail there; PX-065 gains 2b7f2ac9.
+- **Refused by the graph tool (a prerequisite is not COMPLETE), so recorded nowhere:** the audit's Section B, which now includes PX-099, 132 (blocked by PX-043), PX-071, 072, 074 (PX-069 is WIRED), PX-085 and 083 and 084 (PX-082), PX-136 (PX-133) and the rest of the dependency chains. The audit files remain the record of their honest state.
+- **Owner decisions still open (not decided here):** the unsafe-FFI exception for the macOS helper; the granularity of observation approval (V05); remembered consent (AFW-D06); the approval-expiry default of 24 hours via MODBIT_APPROVAL_TTL_MS; the mode-proposal restart skip; refused-run-as-skipped; the PX-135 corpus floors; also ratification of DR-PX-2026-10-03-009, -011 and -012, first-party providers for PX-136, and the threshold profile for gates A to G.
+- **Integrity test refined, with the owner's approval in chat (2026-10-17):** `test_parity_push_rows_are_authorized_gated_and_release_zero_only` in `tools/test_dossier.py` asserted `NOT_STARTED` for every row of PX-041..098. That stopped being true when the build began on 2026-10-05, after DR-PX-2026-10-03-007, 008, 010 and 013 were accepted. It now requires `NOT_STARTED` for rows behind an unaccepted record (DR-009, DR-011, DR-012) and a valid lifecycle state for rows behind an accepted record. Every other assertion in the test is unchanged, including the gating chain, the milestone, the release inclusion and the authorizing record.
+- **Unfinished behaviour:** every clause listed under "main gap" in the audit table for the moved rows, among them the live-gateway legs, the p95 latency budgets, the PX-060 policy gate and the real accessibility Stop bound.
+
+## Graph integration — eight E2E_PROVEN product-extension rows closed COMPLETE (2026-10-20)
+
+A bookkeeping change to the project graph and `evidence/m10/` only; no requirement row, disposition, owner, Decision Record or product code changed, and no release gate was attested.
+
+- **Rows:** PX-053, 065, 067, 107, 108, 110, 111, 113 advanced E2E_PROVEN → COMPLETE through `graph.py set`, each with `run:39029466637`, `commit:ac4aa804` and its `artifact:evidence/m10/<id>/evidence.json`.
+- **Basis:** CI run 39029466637 on main ac4aa804, all 14 jobs green on macOS, Linux and Windows (this closes the operating-system condition recorded on 2026-10-17); and a local re-run on macOS with the pinned rustup 1.97.1 toolchain: `task_modes` 11, `worktrees_px` 37, `context_rules_pack` 19, `memory_graph_index` 14 (1 ignored benchmark, not cited), retrieval `code_graph` 6, git `px_067_remaining` 6, architecture-lint `spawns` 2, all passed. A stale `modbit-protocol` build cache (`cargo clean -p modbit-protocol`) and the Homebrew rustc (broken against its LLVM) had to be avoided first.
+- **Bundles:** `evidence/m10/<id>/` holds TASK_CARD.md, evidence.json and the CI run JSON for each row.
+- **Unfinished behaviour:** the docs that earlier pull requests say lag the code are still unwritten; Windows and Linux legs are proven by CI only.
+
+## Decision Record DR-PX-2026-10-21-015 — streamed-delta durability (2026-10-21)
+
+Accepted on the owner's chat instruction (Decisions 1 and 2). A decision record and its register entries only: no requirement row, disposition, owner, pinned count, EPR row, gate or algorithm changed, and no graph node changed state.
+
+- **Files:** `docs/decisions/DR-PX-2026-10-21-015-streamed-delta-durability.md` (new), `docs/decisions/README.md` (ledger row), `docs/02_AUTHORITY_AND_DECISIONS.md` (register section), `docs/31_DATABASE_AND_STORAGE_SCHEMA.md` ("Local storage": deltas are the stated exception to `synchronous=FULL`), regenerated manifest and graph.
+- **Product change under it:** `modbit-event-store` `Durability::Relaxed` (delta events of an assistant stream only; FULL restored before every call returns, fail closed), used only by the assistant stream's delta publish; tests `relaxed_durability.rs` and `qual_px_041_a_power_loss_...`; the Core-share budget of `perf_px_041` follows the profile rule.
+- **Not done:** the measurement on the hosted Windows runner (the record expects a smaller gain there); Decision 3 (the WAL autocheckpoint off the delta path) is deferred.

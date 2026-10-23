@@ -1,0 +1,62 @@
+{
+  "expected": {
+    "offset": "19",
+    "project": {
+      "archived": false,
+      "color": "warn",
+      "createdAtMs": "1700000000000",
+      "createdOffset": "7",
+      "icon": "rocket",
+      "lastOffset": "19",
+      "members": [
+        {
+          "addedAtMs": "1700000050000",
+          "archived": false,
+          "attentionItems": 2,
+          "pendingApproval": true,
+          "pullRequest": {
+            "checksFailed": 1,
+            "checksPassed": 2,
+            "checksPending": 0,
+            "hasCi": true,
+            "head": "task/x",
+            "number": "42",
+            "state": "open",
+            "url": "https://example.test/o/r/pull/42"
+          },
+          "sessionId": "65656565656565656565656565656565",
+          "statusClass": "AGENT_STATUS_CLASS_NEEDS_ATTENTION",
+          "statusLabel": "Needs attention",
+          "taskId": "64646464646464646464646464646464",
+          "taskState": "Waiting",
+          "title": "Fix the thing",
+          "unread": true,
+          "updatedAtMs": "1700000090000"
+        }
+      ],
+      "name": "Release 2",
+      "projectId": "63636363636363636363636363636363",
+      "rollup": {
+        "attentionItems": 2,
+        "attentionTasks": 1,
+        "byStatus": [
+          {
+            "count": 1,
+            "label": "Needs attention",
+            "statusClass": "AGENT_STATUS_CLASS_NEEDS_ATTENTION"
+          }
+        ],
+        "ciFailing": 1,
+        "ciPassing": 0,
+        "ciPending": 0,
+        "members": 1,
+        "pendingApprovals": 1,
+        "pullRequests": 1,
+        "unread": 1
+      },
+      "updatedAtMs": "1700000100000",
+      "workspaceRoot": "/work/repo"
+    }
+  },
+  "type": "modbit.v1.ProjectChanged"
+}

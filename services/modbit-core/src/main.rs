@@ -20,39 +20,63 @@ mod accounting;
 mod agent_profiles;
 mod agent_tools;
 mod agents;
+mod apply_back;
+mod approval_expiry;
 mod assurance;
 mod attention;
+mod automation;
+mod background_process;
 mod baseline;
 mod branch;
 mod browser;
 mod browser_cloud;
+mod browser_observer;
+mod budgets;
 mod capacity;
+mod changes;
 mod checkpoint;
+mod checkpoint_gc;
 mod ci_evidence;
+mod compaction_model;
 mod compensation;
+mod composer;
+mod computer;
 mod config;
+mod conversation_search;
+mod credentials;
 mod critique;
 mod dashboard;
 mod doctor;
 mod economics;
 mod environment;
+mod epoch;
 mod escalation;
 mod extensions;
 mod external_diagnostics;
 mod forge;
 mod gate;
+mod git_state;
 mod handoff;
 mod hooks;
+mod index_host;
 mod inspector;
+mod knowledge;
 mod languages;
 mod mcp;
 mod media_bridge;
 mod memory;
+mod memory_commands;
+mod merge_tx;
+mod mode_proposals;
 mod model_registry;
 mod onboarding;
+mod pause;
 mod plans;
+mod preturn;
 mod probe;
 mod procedural;
+mod process_services;
+mod projects;
 mod promotion;
 mod protocol;
 mod pull_request;
@@ -62,6 +86,7 @@ mod review_comments;
 mod review_env;
 mod routing;
 mod rules;
+mod run_control;
 mod runtime;
 mod sandboxes;
 mod server;
@@ -70,12 +95,21 @@ mod skills;
 mod slo;
 mod spawn;
 mod statistics;
+mod stream;
 mod subagent;
+mod tasking;
+mod telemetry;
+mod terminal_stream;
+mod tool_projection;
 mod tools;
+mod transcript;
 mod undo;
 mod usage;
 mod user_patch;
 mod verify;
+mod workspace_files;
+mod worktree_cleanup;
+mod worktrees;
 
 fn usage() -> &'static str {
     "usage: modbit-core --data-dir <dir> [--tether-stdin] [--idle-exit-secs N] [--tenant-id <uuid>]"
@@ -87,7 +121,13 @@ fn offline_command() -> Option<ExitCode> {
     let mut args = std::env::args().skip(1);
     let command = args.next()?;
     if command == "device-policy" {
-        let d = config::device_constraints().unwrap_or_default();
+        let d = match config::device_constraints() {
+            Ok(d) => d.unwrap_or_default(),
+            Err(e) => {
+                eprintln!("modbit-core device-policy: {e}");
+                return Some(ExitCode::FAILURE);
+            }
+        };
         println!(
             "{}",
             serde_json::json!({ "update_channel": d.update_channel, "minimum_version": d.minimum_version })
@@ -190,6 +230,18 @@ fn main() -> ExitCode {
             let mut sink = [0u8; 64];
             let mut stdin = std::io::stdin();
             while matches!(stdin.read(&mut sink), Ok(n) if n > 0) {}
+            // Windows: the client's pipes are gone with it, and `eprintln!` panics on a dead stderr, which
+            // would end this thread without the exit. (Unix keeps `eprintln!`: there the orphaned Core is
+            // reclaimed by the next Core as a crashed one, `orphaned_tethered_core`.)
+            #[cfg(windows)]
+            {
+                use std::io::Write;
+                let _ = writeln!(
+                    std::io::stderr(),
+                    "modbit-core: supervising client closed its pipe; exiting"
+                );
+            }
+            #[cfg(not(windows))]
             eprintln!("modbit-core: supervising client closed its pipe; exiting");
             std::process::exit(0);
         });

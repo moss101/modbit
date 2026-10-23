@@ -1,0 +1,11 @@
+{
+  "id": "python-sku-correct-b",
+  "class": "correct",
+  "flavor": "b",
+  "leg": "initial",
+  "write_set": [
+    "shop.py",
+    "test_sku_boundaries.py"
+  ],
+  "declared": "correct"
+}

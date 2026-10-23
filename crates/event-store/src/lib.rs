@@ -1,7 +1,9 @@
 //! `modbit-event-store` — append-only canonical event store (durability layer 1,
 //! docs/19) backed by SQLite in WAL mode with `synchronous=FULL` and
 //! `foreign_keys=ON` (docs/31 "Local storage"), plus a content-addressed object
-//! directory for payloads above the inline ceiling.
+//! directory for payloads above the inline ceiling. The one exception to FULL is
+//! [`Durability::Relaxed`], accepted only for streamed assistant-text deltas
+//! (DR-PX-2026-10-21-015).
 //!
 //! Canonical owner: core-runtime (`docs/12`); this crate is THE implementation of
 //! the doc 81 `event-state` system.
@@ -28,6 +30,7 @@
 
 #[cfg(feature = "cloud")]
 pub mod cloud;
+pub mod digest;
 pub mod migrations;
 pub mod objects;
 pub mod projections;
@@ -37,8 +40,9 @@ mod store;
 pub use migrations::{MigrationReport, SchemaInfo, backup_database, schema_info};
 pub use objects::ObjectStore;
 pub use store::{
-    AppendRequest, CommandOutcome, CommandRecord, EventStore, EvidenceHit, EvidenceScope,
-    MemoryRow, NewEvent, PayloadFilter, RecoveryOutcome, StoredEvent,
+    AppendRequest, CommandOutcome, CommandRecord, Durability, EventStore, EvidenceHit,
+    EvidenceScope, MemoryRow, NewEvent, PayloadFilter, ProjectMemberRow, ProjectRow, ReceiptSealer,
+    RecoveryOutcome, StoredEvent, memory_aggregate_id,
 };
 
 /// Errors from the store.
@@ -118,6 +122,30 @@ pub enum Error {
         presented: u64,
         /// Generation the session is at.
         current: u64,
+    },
+    /// A receipt was appended whose `previous_receipt_hash` is not the
+    /// chain's tail at commit time (docs/23 "Protected-effect receipt
+    /// chain"): another receipt landed first, so appending this one would
+    /// fork the chain. Nothing is written; seal over the new tail (or append
+    /// through [`EventStore::append_all_chained`], which does it in the
+    /// transaction) and retry.
+    #[error(
+        "receipt chain moved: the receipt links to {presented:?} but the chain tail is {tail:?}"
+    )]
+    ReceiptChainStale {
+        /// The `previous_receipt_hash` the receipt carries.
+        presented: Option<String>,
+        /// The hash of the receipt at the tail of the chain now.
+        tail: Option<String>,
+    },
+    /// A relaxed-durability append (DR-PX-2026-10-21-015) named something
+    /// other than streamed assistant-text deltas, or the store could not
+    /// return to full durability afterwards. Nothing is written for the
+    /// first; for the second the store refuses every further append.
+    #[error("relaxed durability refused: {detail}")]
+    RelaxedRefused {
+        /// What was wrong.
+        detail: String,
     },
 }
 

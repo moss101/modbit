@@ -143,6 +143,25 @@ async fn authenticate(
         )
         .into_response();
     };
+    // A disabled principal is refused at its next call, however long its
+    // access token has left (PX-129): the token is signed, the standing is
+    // the store's.
+    match state
+        .store
+        .principal(principal.tenant_id, principal.principal_id)
+        .await
+    {
+        Ok(Some(_)) => {}
+        Ok(None) => {
+            return ApiError::new(
+                StatusCode::UNAUTHORIZED,
+                "PRINCIPAL_DISABLED",
+                "this principal is disabled or does not exist",
+            )
+            .into_response();
+        }
+        Err(e) => return ApiError::from(e).into_response(),
+    }
     if !state.limiter.admit(&principal.principal_id.to_string()) {
         return ApiError::new(
             StatusCode::TOO_MANY_REQUESTS,
@@ -169,10 +188,59 @@ pub fn router(state: Arc<AppState>) -> Router {
         .route("/v1/artifacts/{hash}", get(artifact))
         .route("/v1/objects", axum::routing::put(put_object))
         .route("/v1/handoffs", post(handoff))
+        // PX-129: a tenant administrator's provisioning, and the policy bundle.
+        .route(
+            "/v1/principals",
+            post(crate::provisioning::create_principal).get(crate::provisioning::list_principals),
+        )
+        .route(
+            "/v1/principals/{principal_action}",
+            post(crate::provisioning::principal_action),
+        )
+        .route(
+            "/v1/policy/bundle",
+            axum::routing::put(crate::provisioning::publish_bundle)
+                .get(crate::provisioning::current_bundle),
+        )
         // PX-011: which repositories this tenant takes webhook deliveries for.
         .route(
             "/v1/forge/repositories",
             post(crate::forge::map_repository).get(crate::forge::list_repositories),
+        )
+        // PX-085: automations — definitions, enable approvals, webhook
+        // endpoints, run history, pause and kill switches.
+        .route(
+            "/v1/automations",
+            post(crate::automations::create).get(crate::automations::list),
+        )
+        .route(
+            "/v1/automations/validate",
+            post(crate::automations::validate),
+        )
+        .route("/v1/automations/audit", get(crate::automations::audit))
+        .route(
+            "/v1/automations/pause",
+            post(crate::automations::tenant_pause),
+        )
+        .route(
+            "/v1/automations/kill",
+            post(crate::automations::tenant_kill),
+        )
+        .route(
+            "/v1/automations/{automation_ref}",
+            get(crate::automations::get).post(crate::automations::action),
+        )
+        .route(
+            "/v1/automations/{automation_id}/runs",
+            get(crate::automations::runs),
+        )
+        .route(
+            "/v1/automations/{automation_id}/endpoints",
+            post(crate::automations::create_endpoint).get(crate::automations::list_endpoints),
+        )
+        .route(
+            "/v1/automation-endpoints/{endpoint_action}",
+            post(crate::automations::endpoint_action),
         )
         .route("/v1/stream", get(crate::stream::stream))
         // M8.8: the person's view of a cloud browser, through the worker's link.
@@ -192,6 +260,38 @@ pub fn router(state: Arc<AppState>) -> Router {
         .route("/v1/health", get(health))
         .route("/v1/auth/token", post(auth_token))
         .route("/v1/auth/refresh", post(auth_refresh))
+        // PX-129: OIDC authorization code with PKCE (the API is the relying party).
+        .route("/v1/auth/oidc/start", post(crate::oidc::start))
+        .route("/v1/auth/oidc/callback", post(crate::oidc::callback))
+        // PX-129: the platform administrator (a secret, not a principal).
+        .route(
+            "/v1/admin/tenants",
+            post(crate::provisioning::create_tenant),
+        )
+        .route(
+            "/v1/admin/tenants/{tenant_id}/principals",
+            post(crate::provisioning::admin_create_principal),
+        )
+        .route(
+            "/v1/admin/tenants/{tenant_id}/org-keys/{key_id}",
+            axum::routing::put(crate::provisioning::admin_org_key),
+        )
+        .route(
+            "/v1/admin/audit",
+            axum::routing::get(crate::provisioning::admin_audit),
+        )
+        // PX-085: the platform administrator's automation switches and audit.
+        .route(
+            "/v1/admin/automations/pause",
+            post(crate::automations::global_pause),
+        )
+        .route(
+            "/v1/admin/automations/audit",
+            get(crate::automations::admin_audit),
+        )
+        // PX-085: a signed generic webhook (the signature under the endpoint's
+        // derived secret is the authentication; the endpoint decides the tenant).
+        .route("/v1/hooks/{endpoint}", post(crate::automations::hook))
         // M8.8: a worker's outbound link (worker bearer token, not a principal's).
         .route("/v1/workers/link", get(crate::browser_view::worker_link))
         // PX-011: the GitHub App's deliveries (signed under the app's secret, not a bearer).
@@ -231,7 +331,7 @@ async fn health() -> Json<Value> {
     )
 }
 
-fn token_response(state: &AppState, p: &Principal, refresh: String) -> Value {
+pub(crate) fn token_response(state: &AppState, p: &Principal, refresh: String) -> Value {
     json!({
         "access_token": state.key.issue(p, state.access_ttl_ms),
         "expires_in_ms": state.access_ttl_ms,
@@ -296,6 +396,19 @@ async fn auth_refresh(
             "refresh token unknown, expired, spent or revoked",
         ));
     };
+    // A disabled principal buys no new token with an old refresh token.
+    if state
+        .store
+        .principal(p.tenant_id, p.principal_id)
+        .await?
+        .is_none()
+    {
+        return Err(ApiError::new(
+            StatusCode::UNAUTHORIZED,
+            "PRINCIPAL_DISABLED",
+            "this principal is disabled or does not exist",
+        ));
+    }
     Ok(Json(token_response(&state, &p, fresh)))
 }
 
@@ -750,6 +863,22 @@ async fn approval_action(
             .await?;
         return Err(ApiError::not_found(format!("approval {aid}")));
     };
+    // A decision on an approval already decided is refused here, whoever
+    // holds the session (PX-128: the second client's answer, from the CLI or
+    // the desktop, is "already decided", not a second application).
+    if !matches!(
+        approval.state,
+        modbit_domain::approval::ApprovalState::Requested
+    ) {
+        return Err(ApiError::new(
+            StatusCode::CONFLICT,
+            "APPROVAL_NOT_OPEN",
+            format!(
+                "approval {aid} is {:?}: it was decided already",
+                approval.state
+            ),
+        ));
+    }
     if let Some(r) = relay_if_held(
         &state,
         &p,

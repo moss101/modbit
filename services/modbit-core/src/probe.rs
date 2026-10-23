@@ -38,6 +38,7 @@ pub async fn probe(gw: &ProviderGateway, p: &wire::ProbeModel) -> wire::ModelPro
         },
         response_format: None,
         cache_key: None,
+        cache_breakpoints: vec![],
         max_output_tokens: 256,
         timeout_ms: if p.timeout_ms == 0 {
             30_000

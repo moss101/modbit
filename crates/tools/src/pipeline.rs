@@ -48,6 +48,10 @@ pub struct SearchRequest {
     pub path_glob: Option<String>,
     /// Total hit ceiling.
     pub max_hits: usize,
+    /// Let an exact or regex search use the index's trigram prefilter
+    /// (PX-111). `false` forces the full scan, for comparison; the hits are
+    /// the same either way.
+    pub use_index: bool,
 }
 
 /// Port to the host's retrieval index; results are JSON the tool bounds.
@@ -78,6 +82,17 @@ pub trait MemoryPort: Send + Sync {
         &'a self,
         args: &'a serde_json::Value,
     ) -> BoxFuture<'a, Result<serde_json::Value, (String, String)>>;
+}
+
+/// The skill registry a task reads through `skill.load` (REQ-PX-105): the
+/// Core re-reads the profile, System and project scopes and the owner's
+/// trust decisions at every call, and serves only what is enabled. Read-only:
+/// it returns text and grants nothing.
+pub trait SkillPort: Send + Sync {
+    /// Load the part of a skill `args` name (`name?`, `procedure?`,
+    /// `resource?`, `offset?`, `max_bytes?`); with no name, list what may be
+    /// loaded. `Err` carries a typed code and message.
+    fn load(&self, args: &serde_json::Value) -> Result<serde_json::Value, (String, String)>;
 }
 
 /// A language-service request (docs/18 "Semantic language services").
@@ -212,6 +227,8 @@ pub struct InvokeContext {
     /// curated memory through it and `memory.propose` records a candidate.
     /// `None` = no memory is served to this task.
     pub memory: Option<Arc<dyn MemoryPort>>,
+    /// The skill registry `skill.load` reads (REQ-PX-105). `None` = none.
+    pub skills: Option<Arc<dyn SkillPort>>,
     /// The host's external tool hub (M9.4, REQ-EV-0104/0193, docs/16):
     /// `external.list` / `external.call` / `external.cancel` reach the
     /// task's MCP servers through it, with the transports, the pool and
@@ -226,6 +243,21 @@ pub struct InvokeContext {
     /// The Hook Bus (REQ-EV-0042/0139): the task's typed hooks before and
     /// after the call. `None` = no hooks are in force.
     pub hooks: Option<Arc<dyn crate::hooks::HookPort>>,
+    /// The Core's merge and apply-back state (PX-119, PX-066): the merge
+    /// transaction, the pre-apply checkpoint and the worktree registry that
+    /// `git.merge.*` and `git.worktree.apply` / `undo` keep on the event log.
+    /// `None` = the host keeps none, and those tools refuse.
+    pub git_state: Option<Arc<dyn crate::gitstate::GitStatePort>>,
+    /// Native computer control (PX-069): `computer.*` reach the actuator
+    /// through it. `None` = no actuator in this build, and every call
+    /// answers `ACTUATOR_UNAVAILABLE`.
+    pub computer: Option<Arc<dyn modbit_computer::ComputerPort>>,
+    /// The approval that authorised this call (set by the pipeline before the
+    /// effector runs), so an effector can name it in its own audit.
+    pub approval_id: Option<String>,
+    /// The intent hash the call was decided under, including whatever its
+    /// tool bound (`Tool::prepare`). Set by the pipeline.
+    pub intent_hash: Option<String>,
 }
 
 /// What a pinned environment revision gives a process.
@@ -564,7 +596,17 @@ impl ToolRuntime {
 
         // The call's effect class: what the tool says of these arguments, never
         // below the registered class (a tool cannot talk its way down).
-        let mut effect_class = tool.effect_of(&args).max(spec.effect_class);
+        let mut effect_class = tool
+            .effect_in_profile(&args, &ctx.execution_profile)
+            .max(spec.effect_class);
+        if effect_class > spec.effect_class
+            && let Some(why) = tool.effect_reason(&args, &ctx.execution_profile)
+        {
+            stages.push(StageRecord {
+                stage: "classify".into(),
+                outcome: format!("{effect_class:?}: {why}"),
+            });
+        }
 
         // M7.7: arguments carrying a credential of the host are refused
         // before the kernel is asked — no approval, no effect, and the
@@ -608,7 +650,9 @@ impl ToolRuntime {
                     if errors.is_empty() {
                         args = rewritten;
                         args_hash = hex::encode(Sha256::digest(canonical(&args).as_bytes()));
-                        effect_class = tool.effect_of(&args).max(spec.effect_class);
+                        effect_class = tool
+                            .effect_in_profile(&args, &ctx.execution_profile)
+                            .max(spec.effect_class);
                         stages.push(StageRecord {
                             stage: "hooks".into(),
                             outcome: format!(
@@ -659,12 +703,71 @@ impl ToolRuntime {
             }
         }
 
+        // 2c. what the tool can decide before a person is asked, and what an
+        // approval of it must bind (PX-069, PX-070): a refusal here means no
+        // approval is offered for something that cannot be done; a binding is
+        // folded into the intent hash, so a change in the facts it names (the
+        // application's identity, the window, the element) is a different
+        // intent and the old approval authorises nothing.
+        let mut bound_intent: Option<Value> = None;
+        if verdict.denied.is_none() {
+            match tool.prepare(ctx, &args).await {
+                Ok(None) => {}
+                Ok(Some(bound)) => {
+                    args_hash = hex::encode(Sha256::digest(
+                        canonical(&json!({"arguments": args, "bound": bound})).as_bytes(),
+                    ));
+                    stages.push(StageRecord {
+                        stage: "prepare".into(),
+                        outcome: format!("bound sha256:{args_hash}"),
+                    });
+                    bound_intent = Some(bound);
+                }
+                Err(o) => {
+                    stages.push(StageRecord {
+                        stage: "prepare".into(),
+                        outcome: format!(
+                            "refused before any approval: {}",
+                            o.error_code.clone().unwrap_or_default()
+                        ),
+                    });
+                    let mut result = base(
+                        if o.infra_failure {
+                            ToolStatus::InfraFailure
+                        } else {
+                            ToolStatus::InvalidArguments
+                        },
+                        &args_hash,
+                        o.error_code.clone(),
+                        o.error_message.clone(),
+                    );
+                    result.structured_output = o.structured_output.clone();
+                    return PipelineOutcome {
+                        result,
+                        stages,
+                        policy: None,
+                        effect_class: Some(effect_class),
+                        tool_version: Some(spec.version.clone()),
+                    };
+                }
+            }
+        }
+
         // 3. policy (arguments are never shown to the kernel as text)
         let port: &dyn CapabilityPort = match &ctx.kernel {
             Some(k) => k.as_ref(),
             None => self.policy.as_ref(),
         };
+        let facts = tool.call_facts(&args, &ctx.execution_profile);
         let decision = port.decide(&PolicyRequest {
+            command: facts.argv,
+            outside_workspace_write: facts.outside_workspace_write,
+            protected_path: facts.protected_path,
+            declared_escalation: args
+                .get("escalation")
+                .and_then(Value::as_str)
+                .unwrap_or_default()
+                .to_owned(),
             tool_name: spec.name.clone(),
             effect_class,
             required_capabilities: spec.required_capabilities.clone(),
@@ -672,6 +775,8 @@ impl ToolRuntime {
             has_workspace: ctx.workspace.is_some(),
             has_lease: ctx.capability_lease_id.is_some(),
             intent_hash: args_hash.clone(),
+            paths: crate::policy::path_targets(&spec.required_capabilities, &args),
+            bound_intent: bound_intent.clone(),
         });
         if !spec
             .execution_profiles
@@ -693,6 +798,39 @@ impl ToolRuntime {
             stage: "policy".into(),
             outcome: format!("{decision:?}"),
         });
+        // PX-117: before a person is asked, `permission_request` hooks see
+        // the call. They can only refuse it — never approve it: the person's
+        // approval and the kernel's decision are untouched by anything else
+        // they say. A hook that fails here fails closed.
+        if matches!(decision, PolicyDecision::ApprovalRequired { .. })
+            && verdict.denied.is_none()
+            && let Some(hooks) = &ctx.hooks
+        {
+            let e = hooks
+                .before(
+                    crate::hooks::HookPoint::PermissionRequest,
+                    &spec.name,
+                    effect_class,
+                    &args,
+                )
+                .await;
+            if let Some((code, reason)) = &e.denied {
+                verdict.deny(code, reason);
+            }
+            if !e.records.is_empty() {
+                stages.push(StageRecord {
+                    stage: "hooks".into(),
+                    outcome: format!(
+                        "permission_request: {}",
+                        e.records
+                            .iter()
+                            .map(|r| format!("{} {}", r.hook, r.outcome.label()))
+                            .collect::<Vec<_>>()
+                            .join(", ")
+                    ),
+                });
+            }
+        }
         // Approval needed: no effect; the Core opens the approval and the same
         // tool_call_id re-enters the pipeline once it is resolved.
         if let PolicyDecision::ApprovalRequired { reason, .. } = &decision
@@ -765,6 +903,11 @@ impl ToolRuntime {
         let mut call_ctx = ctx.clone();
         call_ctx.tool_call_id = Some(tool_call_id);
         call_ctx.effect_class = Some(effect_class);
+        call_ctx.intent_hash = Some(args_hash.clone());
+        call_ctx.approval_id = match &decision {
+            PolicyDecision::Allow { approval_id, .. } => approval_id.clone(),
+            _ => None,
+        };
         let outcome: ToolOutcome = tool.invoke(&call_ctx, args).await;
         stages.push(StageRecord {
             stage: "execute".into(),

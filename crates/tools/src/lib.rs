@@ -17,26 +17,38 @@
 
 #![forbid(unsafe_code)]
 
+#[allow(clippy::result_large_err)]
 pub mod browser;
+#[allow(clippy::result_large_err)]
+mod browser_feedback;
+#[allow(clippy::result_large_err)]
+mod browser_forms;
+#[allow(clippy::result_large_err)]
+pub mod computer;
 pub mod direct;
 pub mod extensions;
 pub mod external;
 pub mod forge;
+pub mod gitstate;
 pub mod hooks;
 pub mod media;
 pub mod notebook;
 pub mod pipeline;
 pub mod policy;
 pub mod registry;
+pub mod shell_class;
 
+pub use gitstate::GitStatePort;
 pub use modbit_domain::toolcall::EffectClass;
 pub use pipeline::{
     ArtifactSource, DispatchJournal, DispatchRecord, InvokeContext, JournalFuture, LanguageRequest,
     LanguageServicePort, ObjectSink, PipelineOutcome, SearchPort, SearchRequest, StageRecord,
     ToolCallResult, ToolRuntime, ToolStatus, arguments_hash,
 };
-pub use policy::{CapabilityPort, PolicyDecision, PolicyRequest, ProfilePolicy};
-pub use registry::{Idempotency, Tool, ToolOutcome, ToolRegistry, ToolSpec};
+pub use policy::{
+    CapabilityPort, PathTarget, PolicyDecision, PolicyRequest, ProfilePolicy, path_targets,
+};
+pub use registry::{CallFacts, Idempotency, Tool, ToolOutcome, ToolRegistry, ToolSpec};
 
 /// Errors.
 #[derive(Debug, thiserror::Error)]

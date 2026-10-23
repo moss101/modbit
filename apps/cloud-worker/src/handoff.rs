@@ -69,11 +69,7 @@ pub async fn pending(
 }
 
 fn git(root: &Path, args: &[&str]) -> anyhow::Result<String> {
-    let out = std::process::Command::new("git")
-        .arg("-C")
-        .arg(root)
-        .args(args)
-        .output()?;
+    let out = modbit_git::output(root, args)?;
     if !out.status.success() {
         anyhow::bail!(
             "git {}: {}",
@@ -111,9 +107,13 @@ pub async fn materialize(
         let bytes = store.get_object(tenant, h).await?;
         let bundle_path = dir.join("repo.bundle");
         std::fs::write(&bundle_path, &bytes)?;
-        let out = std::process::Command::new("git")
-            .arg("clone")
-            .arg("-q")
+        // Through the hardened runner: a bundle is data, and its clone runs
+        // no hook or program of the repository it carries.
+        let clone_args = ["clone", "-q"];
+        let mut clone = modbit_git::command(dir, &clone_args)?;
+        let out = clone
+            .args(clone_args)
+            .arg("--")
             .arg(&bundle_path)
             .arg(&root)
             .output()?;

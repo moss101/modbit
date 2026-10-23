@@ -27,7 +27,7 @@ pub struct StoredEvent {
 /// whole item as JSON (the Core's `modbit_memory::MemoryItem`); the other
 /// columns index it for scoped query and conflict grouping. This store keeps
 /// the row; the Core owns the item schema and the promotion/query logic.
-#[derive(Clone, Debug, PartialEq, Eq)]
+#[derive(Clone, Debug, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
 pub struct MemoryRow {
     /// Item id.
     pub id: String,
@@ -49,6 +49,82 @@ pub struct MemoryRow {
     pub updated_at_ms: i64,
     /// The whole item as JSON.
     pub doc: String,
+}
+
+/// One row of the `projects` projection (PX-063).
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct ProjectRow {
+    /// Identity.
+    pub project_id: modbit_domain::ProjectId,
+    /// Display name.
+    pub name: String,
+    /// A palette role.
+    pub color: String,
+    /// An icon name.
+    pub icon: String,
+    /// The workspace root it is bound to.
+    pub workspace_root: String,
+    /// Whether it is archived.
+    pub archived: bool,
+    /// Created (ms).
+    pub created_at_ms: i64,
+    /// Last change (ms).
+    pub updated_at_ms: i64,
+    /// Offset of the event that created it.
+    pub created_offset: u64,
+    /// Offset of the latest event that changed it.
+    pub last_offset: u64,
+}
+
+/// One row of the `project_members` projection: a task and the project that
+/// holds it.
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct ProjectMemberRow {
+    /// The task.
+    pub task_id: TaskId,
+    /// The project that holds it.
+    pub project_id: modbit_domain::ProjectId,
+    /// When it joined (ms).
+    pub added_at_ms: i64,
+    /// Offset of the event that added it.
+    pub added_offset: u64,
+}
+
+const PROJECT_COLUMNS: &str = "project_id, name, color, icon, workspace_root, archived, created_at_ms, updated_at_ms, created_offset, last_offset";
+
+fn project_row_from(r: &rusqlite::Row<'_>) -> rusqlite::Result<ProjectRow> {
+    Ok(ProjectRow {
+        project_id: modbit_domain::ProjectId::from_bytes(blob16(r.get::<_, Vec<u8>>(0)?)?),
+        name: r.get(1)?,
+        color: r.get(2)?,
+        icon: r.get(3)?,
+        workspace_root: r.get(4)?,
+        archived: r.get::<_, i64>(5)? != 0,
+        created_at_ms: r.get(6)?,
+        updated_at_ms: r.get(7)?,
+        created_offset: u64::try_from(r.get::<_, i64>(8)?).unwrap_or_default(),
+        last_offset: u64::try_from(r.get::<_, i64>(9)?).unwrap_or_default(),
+    })
+}
+
+fn member_row_from(r: &rusqlite::Row<'_>) -> rusqlite::Result<ProjectMemberRow> {
+    Ok(ProjectMemberRow {
+        task_id: TaskId::from_bytes(blob16(r.get::<_, Vec<u8>>(0)?)?),
+        project_id: modbit_domain::ProjectId::from_bytes(blob16(r.get::<_, Vec<u8>>(1)?)?),
+        added_at_ms: r.get(2)?,
+        added_offset: u64::try_from(r.get::<_, i64>(3)?).unwrap_or_default(),
+    })
+}
+
+/// The aggregate id of a memory item: the first sixteen bytes of the SHA-256
+/// of its id (item ids are 64-character content hashes; the aggregate key is
+/// a fixed sixteen bytes).
+#[must_use]
+pub fn memory_aggregate_id(memory_id: &str) -> [u8; 16] {
+    let digest = Sha256::digest(memory_id.as_bytes());
+    let mut out = [0u8; 16];
+    out.copy_from_slice(&digest[..16]);
+    out
 }
 
 fn memory_row_from(r: &rusqlite::Row<'_>) -> rusqlite::Result<MemoryRow> {
@@ -131,6 +207,16 @@ impl NewEvent {
             occurred_at: None,
         }
     }
+}
+
+/// How hard an append is synced to the disk (DR-PX-2026-10-21-015).
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum Durability {
+    /// `synchronous=FULL`: the commit is on the disk when the call returns.
+    Full,
+    /// `synchronous=NORMAL`: written to the WAL (survives the process), synced
+    /// to the disk by the next full commit. Streamed assistant-text deltas only.
+    Relaxed,
 }
 
 /// An append to one aggregate.
@@ -241,6 +327,12 @@ pub struct EventStore {
     db_path: PathBuf,
     fault: FaultPlan,
     filter: Option<PayloadFilter>,
+    /// Events loaded into memory by the read methods since this store
+    /// opened: a reader that must not load a log can assert it did not move.
+    events_read: std::sync::atomic::AtomicU64,
+    /// A relaxed append could not return the connection to full durability:
+    /// every further append is refused (fail closed).
+    relaxed_stuck: bool,
 }
 
 /// What every appended payload passes before it is hashed and persisted
@@ -249,6 +341,15 @@ pub struct EventStore {
 /// one. Called with the event type and the payload, under the store's lock:
 /// it must not reach back into the store.
 pub type PayloadFilter = std::sync::Arc<dyn Fn(&str, &mut serde_json::Value) + Send + Sync>;
+
+/// Seals a receipt: fills its `receipt_hash` from every other field
+/// (`modbit_policy::ledger::seal`). The store links the chain; the ledger
+/// owns the hash.
+pub type ReceiptSealer =
+    fn(modbit_domain::toolcall::EffectReceipt) -> modbit_domain::toolcall::EffectReceipt;
+
+/// The event type that carries a protected-effect receipt.
+const RECEIPT_EVENT: &str = "EffectReceiptAppended";
 
 impl std::fmt::Debug for EventStore {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
@@ -379,6 +480,8 @@ impl EventStore {
             db_path,
             fault: FaultPlan::from_env(),
             filter: None,
+            events_read: std::sync::atomic::AtomicU64::new(0),
+            relaxed_stuck: false,
         };
         if report.applied.iter().any(|v| *v >= 2) {
             // Projections were introduced after events may already exist: derive them.
@@ -425,9 +528,100 @@ impl EventStore {
     }
 
     /// Append events to one aggregate in a single transaction, updating the
-    /// projections in that same transaction.
+    /// projections in that same transaction. Committed with full durability.
     pub fn append(&mut self, req: AppendRequest) -> Result<Vec<StoredEvent>> {
+        self.append_with(req, Durability::Full)
+    }
+
+    /// [`Self::append`] with an explicit durability (DR-PX-2026-10-21-015).
+    ///
+    /// [`Durability::Relaxed`] commits with `synchronous=NORMAL`: the WAL
+    /// frames are written (a killed process loses nothing) but not synced to
+    /// the disk. It is accepted only for `AssistantTextDelta` events of an
+    /// `AssistantStream` aggregate — the live preview of a message whose
+    /// authoritative record is its completion event — and the connection is
+    /// returned to `synchronous=FULL` before this call returns, whatever the
+    /// outcome, so no other append is ever relaxed. The next full-durability
+    /// commit syncs the whole WAL and so hardens every relaxed commit before
+    /// it; a power loss can take only the tail after the last full commit.
+    pub fn append_with(
+        &mut self,
+        req: AppendRequest,
+        durability: Durability,
+    ) -> Result<Vec<StoredEvent>> {
         let req = Self::filtered(self.filter.as_ref(), req);
+        self.enter_durability(&req, durability)?;
+        let result = self.append_committed(req);
+        self.leave_durability(durability)?;
+        result
+    }
+
+    /// [`Self::append_fenced`] with an explicit durability; see
+    /// [`Self::append_with`].
+    pub fn append_fenced_with(
+        &mut self,
+        req: AppendRequest,
+        lease_generation: u64,
+        durability: Durability,
+    ) -> Result<Vec<StoredEvent>> {
+        self.enter_durability(&req, durability)?;
+        let result = self.append_fenced_committed(req, lease_generation);
+        self.leave_durability(durability)?;
+        result
+    }
+
+    /// The connection's `synchronous` level now (2 = FULL, 1 = NORMAL): outside
+    /// a relaxed append it is always FULL. For diagnostics and tests.
+    pub fn synchronous_level(&self) -> Result<i64> {
+        Ok(self
+            .conn
+            .query_row("PRAGMA synchronous", [], |r| r.get(0))?)
+    }
+
+    /// Check that `durability` is allowed for `req` and set the connection to it.
+    fn enter_durability(&mut self, req: &AppendRequest, durability: Durability) -> Result<()> {
+        if self.relaxed_stuck {
+            return Err(Error::RelaxedRefused {
+                detail: "the store could not return to full durability after a relaxed append"
+                    .into(),
+            });
+        }
+        if durability == Durability::Relaxed {
+            let only_deltas = req.aggregate_type == AggregateType::AssistantStream
+                && !req.events.is_empty()
+                && req
+                    .events
+                    .iter()
+                    .all(|e| e.event_type == "AssistantTextDelta");
+            if !only_deltas {
+                return Err(Error::RelaxedRefused {
+                    detail: "relaxed durability is for AssistantTextDelta events of an AssistantStream aggregate only"
+                        .into(),
+                });
+            }
+            self.conn.pragma_update(None, "synchronous", "NORMAL")?;
+        }
+        Ok(())
+    }
+
+    /// Return the connection to full durability, whatever the append's outcome.
+    /// Fail closed: a connection left relaxed would weaken every later commit.
+    fn leave_durability(&mut self, durability: Durability) -> Result<()> {
+        if durability == Durability::Relaxed
+            && self
+                .conn
+                .pragma_update(None, "synchronous", "FULL")
+                .is_err()
+        {
+            self.relaxed_stuck = true;
+            return Err(Error::RelaxedRefused {
+                detail: "the store could not return to full durability".into(),
+            });
+        }
+        Ok(())
+    }
+
+    fn append_committed(&mut self, req: AppendRequest) -> Result<Vec<StoredEvent>> {
         let tx = self
             .conn
             .transaction_with_behavior(TransactionBehavior::Immediate)?;
@@ -578,6 +772,33 @@ impl EventStore {
         reqs: Vec<AppendRequest>,
         lease_generation: Option<u64>,
     ) -> Result<Vec<StoredEvent>> {
+        self.append_all_inner(reqs, lease_generation, None)
+    }
+
+    /// [`Self::append_all`] for a batch that carries protected-effect
+    /// receipts (FIX-08): inside the one `IMMEDIATE` transaction that writes
+    /// the batch, every `EffectReceiptAppended` is linked to the chain's tail
+    /// *at that moment* (`previous_receipt_hash` is overwritten with it) and
+    /// sealed with `seal`, in batch order, so concurrent writers cannot fork
+    /// the chain: the transaction lock serializes them and each receipt is
+    /// sealed over the receipt that committed before it. The store does not
+    /// own the hash function (the ledger in `modbit-policy` does); it only
+    /// guarantees the tail is read where it cannot move.
+    pub fn append_all_chained(
+        &mut self,
+        reqs: Vec<AppendRequest>,
+        lease_generation: Option<u64>,
+        seal: ReceiptSealer,
+    ) -> Result<Vec<StoredEvent>> {
+        self.append_all_inner(reqs, lease_generation, Some(seal))
+    }
+
+    fn append_all_inner(
+        &mut self,
+        mut reqs: Vec<AppendRequest>,
+        lease_generation: Option<u64>,
+        seal: Option<ReceiptSealer>,
+    ) -> Result<Vec<StoredEvent>> {
         let tx = self
             .conn
             .transaction_with_behavior(TransactionBehavior::Immediate)?;
@@ -596,6 +817,28 @@ impl EventStore {
                     presented: g,
                     current,
                 });
+            }
+        }
+        if let Some(seal) = seal {
+            let mut tail = crate::projections::last_receipt_hash(&tx)?;
+            for req in &mut reqs {
+                for ev in &mut req.events {
+                    if ev.event_type != RECEIPT_EVENT {
+                        continue;
+                    }
+                    let mut e: modbit_domain::toolcall::ToolCallEvent =
+                        serde_json::from_value(ev.payload.clone())?;
+                    if let modbit_domain::toolcall::ToolCallEvent::EffectReceiptAppended {
+                        receipt,
+                    } = &mut e
+                    {
+                        receipt.previous_receipt_hash = tail.clone();
+                        let sealed = seal(receipt.clone());
+                        tail = Some(sealed.receipt_hash.clone());
+                        *receipt = sealed;
+                    }
+                    ev.payload = serde_json::to_value(&e)?;
+                }
             }
         }
         let mut out = Vec::new();
@@ -617,6 +860,14 @@ impl EventStore {
     /// still record audit events through [`Self::append`], but it cannot
     /// advance state.
     pub fn append_fenced(
+        &mut self,
+        req: AppendRequest,
+        lease_generation: u64,
+    ) -> Result<Vec<StoredEvent>> {
+        self.append_fenced_with(req, lease_generation, Durability::Full)
+    }
+
+    fn append_fenced_committed(
         &mut self,
         req: AppendRequest,
         lease_generation: u64,
@@ -704,6 +955,16 @@ impl EventStore {
         Ok(CommandOutcome::Applied(events))
     }
 
+    /// Whether `projects` and `project_members` are exactly the fold of the
+    /// log's `Project` events. Nothing is changed (the check runs in a
+    /// transaction that is dropped).
+    pub fn project_tables_agree_with_log(&mut self) -> Result<bool> {
+        let tx = self
+            .conn
+            .transaction_with_behavior(TransactionBehavior::Immediate)?;
+        crate::projections::project_tables_agree_with_log(&tx, &self.objects)
+    }
+
     /// Rebuild every projection row from the event log (idempotent).
     pub fn rebuild_projections(&mut self) -> Result<u64> {
         let tx = self
@@ -743,6 +1004,14 @@ impl EventStore {
         let mut projections_rebuilt = false;
         if projection_offset != last_offset {
             notes.push(format!("projection cursor {projection_offset} lagged the log at {last_offset}; rebuilt from the log"));
+            self.rebuild_projections()?;
+            projections_rebuilt = true;
+        }
+        if !projections_rebuilt && !self.project_tables_agree_with_log()? {
+            // The membership map is a projection of the log and never its
+            // authority (PX-063): a map that disagrees is rebuilt from the
+            // log and the disagreement is reported, not trusted.
+            notes.push("project records or membership disagreed with the Project events of the log; rebuilt from the log".to_owned());
             self.rebuild_projections()?;
             projections_rebuilt = true;
         }
@@ -861,9 +1130,55 @@ impl EventStore {
         crate::projections::load_approvals_for_session(&self.conn, id)
     }
 
+    /// Every approval still waiting for a decision, oldest first.
+    pub fn requested_approvals(&self) -> Result<Vec<modbit_domain::approval::Approval>> {
+        crate::projections::load_requested_approvals(&self.conn)
+    }
+
     /// The checkpoints of a task (docs/31 `checkpoints`), by epoch.
     pub fn checkpoints(&self, task: &TaskId) -> Result<Vec<crate::projections::CheckpointRow>> {
         crate::projections::load_checkpoints(&self.conn, task)
+    }
+
+    /// Every committed, not collected checkpoint of every task, by task and
+    /// epoch (what the retention collector must keep blobs for, REQ-PX-102).
+    pub fn all_live_checkpoints(&self) -> Result<Vec<(TaskId, crate::projections::CheckpointRow)>> {
+        crate::projections::load_all_live_checkpoints(&self.conn)
+    }
+
+    /// The tasks of one session, oldest first.
+    pub fn tasks_for_session(&self, id: &SessionId) -> Result<Vec<modbit_domain::task::Task>> {
+        crate::projections::load_tasks_for_session(&self.conn, id)
+    }
+
+    /// Events of one aggregate with `sequence > after` whose type is one of
+    /// `types`, ascending. The ledgers derived from a task's log (the
+    /// checkpoint ledger of REQ-PX-061) read only their own event types.
+    pub fn read_aggregate_of_types(
+        &self,
+        aggregate_id: &[u8; 16],
+        types: &[&str],
+        after: u64,
+    ) -> Result<Vec<StoredEvent>> {
+        if types.is_empty() {
+            return Ok(Vec::new());
+        }
+        let marks = vec!["?"; types.len()].join(",");
+        let sql = format!(
+            "SELECT {COLUMNS} FROM events WHERE aggregate_id = ? AND sequence > ? AND event_type IN ({marks}) ORDER BY sequence ASC"
+        );
+        let mut stmt = self.conn.prepare(&sql)?;
+        let mut args: Vec<rusqlite::types::Value> = vec![
+            rusqlite::types::Value::Blob(aggregate_id.to_vec()),
+            rusqlite::types::Value::Integer(after as i64),
+        ];
+        args.extend(
+            types
+                .iter()
+                .map(|t| rusqlite::types::Value::Text((*t).to_owned())),
+        );
+        let rows = stmt.query_map(rusqlite::params_from_iter(args), row_to_event)?;
+        rows.map(|r| r.map_err(Error::from)).collect()
     }
 
     /// The agent nodes of a task (docs/31 `agent_nodes`, M6.1), in creation order.
@@ -1014,14 +1329,20 @@ impl EventStore {
         crate::projections::load_runs_for_task(&self.conn, id)
     }
 
-    // ---- engineering memory (M9.1, docs/19) ------------------------------
+    // ---- engineering memory (M9.1, docs/19; PX-113) ----------------------
     //
     // Low-level rows only: the whole item is the `doc` JSON, the columns
     // index it for scoped query and conflict grouping. The Core owns the
-    // schema and the promotion/query/conflict logic (`modbit-memory`); this
-    // store keeps memory's own durable, mutable table.
+    // schema and the promotion/query/conflict logic (`modbit-memory`). Since
+    // PX-113 the table is a PROJECTION of the `Memory` aggregate's events
+    // (`projections::apply` keeps it in the transaction that appends them and
+    // `rebuild_projections` replays it): nothing in the product writes it any
+    // other way, so a row that is not on the log does not survive a rebuild.
 
-    /// Insert or replace a memory row by id (the Core writes the whole item).
+    /// Insert or replace a memory row by id. Projection plumbing: the Core
+    /// never calls this (a mutation is an event); the store's own tests use
+    /// it to seed rows.
+    #[doc(hidden)]
     pub fn memory_upsert(&self, row: &MemoryRow) -> Result<()> {
         self.conn.execute(
             "INSERT OR REPLACE INTO memory_items (id, scope_key, record_type, topic, status, sensitivity, created_at_ms, expires_at_ms, updated_at_ms, doc) \
@@ -1089,6 +1410,155 @@ impl EventStore {
         Ok(rows)
     }
 
+    /// Every `Memory` event on the log, oldest first, across sessions (the
+    /// memory ledger the `memory_items` projection replays; PX-113).
+    pub fn read_memory_events(&self, after_offset: u64, limit: usize) -> Result<Vec<StoredEvent>> {
+        let mut stmt = self.conn.prepare_cached(&format!(
+            "SELECT {COLUMNS} FROM events WHERE aggregate_type = 'memory' AND offset > ?1 ORDER BY offset ASC LIMIT ?2"
+        ))?;
+        let rows = stmt.query_map(params![after_offset as i64, limit as i64], row_to_event)?;
+        rows.map(|r| r.map_err(Error::from)).collect()
+    }
+
+    /// Put legacy memory rows on the log (PX-113). Before this milestone the
+    /// table was written directly; a row with no `Memory` event would be
+    /// lost the first time the projections rebuild. Each such row is appended
+    /// once as a `MemoryImported` event on `session_id` (the Core's memory
+    /// ledger session), so the table is from then on a pure projection.
+    /// Returns how many rows were imported.
+    ///
+    /// The import happens once per database: it is marked in `schema_meta`
+    /// (`memory_log_adopted`), and from then on a row that is not on the log
+    /// is not memory — a rebuild drops it, which is what makes the table a
+    /// projection and a direct write to it worthless.
+    pub fn backfill_legacy_memory(
+        &mut self,
+        tenant_id: TenantId,
+        session_id: SessionId,
+    ) -> Result<usize> {
+        let adopted: Option<String> = self
+            .conn
+            .query_row(
+                "SELECT value FROM schema_meta WHERE key = 'memory_log_adopted'",
+                [],
+                |r| r.get(0),
+            )
+            .optional()?;
+        if adopted.is_some() {
+            return Ok(0);
+        }
+        let mut imported = 0;
+        let lagged = self.projection_offset()? != self.last_offset()?;
+        for row in self.memory_all()? {
+            let aggregate_id = memory_aggregate_id(&row.id);
+            let has_events: bool = self.conn.query_row(
+                "SELECT EXISTS (SELECT 1 FROM events WHERE aggregate_type = 'memory' AND aggregate_id = ?1)",
+                params![aggregate_id.as_slice()],
+                |r| r.get(0),
+            )?;
+            if has_events {
+                continue;
+            }
+            self.append(AppendRequest {
+                tenant_id,
+                session_id,
+                task_id: None,
+                run_id: None,
+                turn_id: None,
+                step_id: None,
+                aggregate_type: AggregateType::Memory,
+                aggregate_id,
+                expected_sequence: Some(0),
+                events: vec![NewEvent::new(
+                    "MemoryImported",
+                    serde_json::json!({
+                        "event_type": "MemoryImported",
+                        "memory_id": row.id,
+                        "row": row,
+                        "note": "a row written before memory mutations were events",
+                    }),
+                    Actor::Core("memory-backfill".into()),
+                )],
+            })?;
+            imported += 1;
+        }
+        // An append moves the projection cursor to the new event; if the
+        // projections were behind the log before it, that would hide the lag
+        // from startup recovery, so replay everything now (the imported rows
+        // are on the log, so the replay keeps them).
+        if imported > 0 && lagged {
+            self.rebuild_projections()?;
+        }
+        self.conn.execute(
+            "INSERT OR REPLACE INTO schema_meta (key, value) VALUES ('memory_log_adopted', '1')",
+            [],
+        )?;
+        Ok(imported)
+    }
+
+    // ---- projects (PX-063) ----------------------------------------------
+    //
+    // Read-only: `projects` and `project_members` are projections of the
+    // `Project` aggregate's events and change only when `projections::apply`
+    // folds one.
+
+    /// Every project, newest first, archived ones included.
+    pub fn projects(&self) -> Result<Vec<ProjectRow>> {
+        let mut stmt = self.conn.prepare_cached(&format!(
+            "SELECT {PROJECT_COLUMNS} FROM projects ORDER BY created_offset DESC"
+        ))?;
+        let rows = stmt
+            .query_map([], project_row_from)?
+            .collect::<std::result::Result<Vec<_>, _>>()?;
+        Ok(rows)
+    }
+
+    /// One project.
+    pub fn project(&self, id: &modbit_domain::ProjectId) -> Result<Option<ProjectRow>> {
+        self.conn
+            .query_row(
+                &format!("SELECT {PROJECT_COLUMNS} FROM projects WHERE project_id = ?1"),
+                params![id.as_bytes().as_slice()],
+                project_row_from,
+            )
+            .optional()
+            .map_err(Into::into)
+    }
+
+    /// The tasks a project holds, oldest member first.
+    pub fn project_members(&self, id: &modbit_domain::ProjectId) -> Result<Vec<ProjectMemberRow>> {
+        let mut stmt = self.conn.prepare_cached(
+            "SELECT task_id, project_id, added_at_ms, added_offset FROM project_members WHERE project_id = ?1 ORDER BY added_offset ASC, task_id ASC",
+        )?;
+        let rows = stmt
+            .query_map(params![id.as_bytes().as_slice()], member_row_from)?
+            .collect::<std::result::Result<Vec<_>, _>>()?;
+        Ok(rows)
+    }
+
+    /// The project holding a task, if any.
+    pub fn project_of_task(&self, task: &TaskId) -> Result<Option<ProjectMemberRow>> {
+        self.conn
+            .query_row(
+                "SELECT task_id, project_id, added_at_ms, added_offset FROM project_members WHERE task_id = ?1",
+                params![task.as_bytes().as_slice()],
+                member_row_from,
+            )
+            .optional()
+            .map_err(Into::into)
+    }
+
+    /// Every membership, for the headers of a session's tasks.
+    pub fn project_memberships(&self) -> Result<Vec<ProjectMemberRow>> {
+        let mut stmt = self.conn.prepare_cached(
+            "SELECT task_id, project_id, added_at_ms, added_offset FROM project_members ORDER BY added_offset ASC",
+        )?;
+        let rows = stmt
+            .query_map([], member_row_from)?
+            .collect::<std::result::Result<Vec<_>, _>>()?;
+        Ok(rows)
+    }
+
     /// Load a run-step projection.
     pub fn step(&self, id: &RunStepId) -> Result<Option<modbit_domain::step::RunStep>> {
         crate::projections::load_step(&self.conn, id)
@@ -1108,6 +1578,82 @@ impl EventStore {
             params![aggregate_id.as_slice(), after as i64, limit as i64],
             row_to_event,
         )?;
+        self.counted(rows.map(|r| r.map_err(Error::from)).collect())
+    }
+
+    fn counted(&self, events: Result<Vec<StoredEvent>>) -> Result<Vec<StoredEvent>> {
+        if let Ok(e) = &events {
+            self.events_read
+                .fetch_add(e.len() as u64, std::sync::atomic::Ordering::Relaxed);
+        }
+        events
+    }
+
+    /// How many events the read methods have loaded since this store opened.
+    #[must_use]
+    pub fn events_read(&self) -> u64 {
+        self.events_read.load(std::sync::atomic::Ordering::Relaxed)
+    }
+
+    /// The log of one task up to `until_offset`, ascending: every event of
+    /// the task's lineage, except that a stream of assistant text is
+    /// represented by its first delta (the rest are read by the caller from
+    /// the stream's own aggregate, only when it needs them).
+    pub fn read_task_log(
+        &self,
+        session_id: &SessionId,
+        task_id: &TaskId,
+        until_offset: u64,
+    ) -> Result<Vec<StoredEvent>> {
+        let mut stmt = self.conn.prepare_cached(&format!(
+            "SELECT {COLUMNS} FROM events WHERE session_id = ?1 AND task_id = ?2 AND offset <= ?3 AND (event_type <> 'AssistantTextDelta' OR sequence = 1) ORDER BY offset ASC"
+        ))?;
+        let rows = stmt.query_map(
+            params![
+                session_id.as_bytes().as_slice(),
+                task_id.as_bytes().as_slice(),
+                until_offset as i64
+            ],
+            row_to_event,
+        )?;
+        self.counted(rows.map(|r| r.map_err(Error::from)).collect())
+    }
+
+    /// Every task of a session, oldest first, from the task projection.
+    pub fn session_tasks(&self, session_id: &SessionId) -> Result<Vec<modbit_domain::task::Task>> {
+        let mut stmt = self.conn.prepare_cached(
+            "SELECT task_id FROM tasks WHERE session_id = ?1 ORDER BY created_at ASC, task_id ASC",
+        )?;
+        let ids: Vec<[u8; 16]> = stmt
+            .query_map(params![session_id.as_bytes().as_slice()], |r| {
+                blob16(r.get::<_, Vec<u8>>(0)?)
+            })?
+            .collect::<std::result::Result<_, _>>()?;
+        let mut out = Vec::with_capacity(ids.len());
+        for id in ids {
+            if let Some(t) = crate::projections::load_task(&self.conn, &TaskId::from_bytes(id))? {
+                out.push(t);
+            }
+        }
+        Ok(out)
+    }
+
+    /// Per-task digests of a session's log, computed by the database in a
+    /// few grouped passes without loading any event (PX-042).
+    pub fn task_digests(&self, session_id: &SessionId) -> Result<Vec<crate::digest::TaskDigest>> {
+        crate::digest::task_digests(&self.conn, session_id)
+    }
+
+    /// Assistant streams (PX-041) that have deltas and no closing record:
+    /// the streams a dead process left open, oldest first.
+    pub fn open_streams(&self) -> Result<Vec<[u8; 16]>> {
+        let mut stmt = self.conn.prepare_cached(
+            "SELECT aggregate_id FROM events WHERE aggregate_type = 'assistant_stream'
+             GROUP BY aggregate_id
+             HAVING SUM(event_type IN ('AssistantMessageCompleted', 'AssistantMessageAborted')) = 0
+             ORDER BY MIN(offset) ASC",
+        )?;
+        let rows = stmt.query_map([], |r| blob16(r.get::<_, Vec<u8>>(0)?))?;
         rows.map(|r| r.map_err(Error::from)).collect()
     }
 
@@ -1143,6 +1689,99 @@ impl EventStore {
             ],
             row_to_event,
         )?;
+        self.counted(rows.map(|r| r.map_err(Error::from)).collect())
+    }
+
+    /// Events of one session with `offset > after_offset` whose type is one
+    /// of `types`, ascending by offset (the fork edges of a session, the
+    /// retention collector's view of what still names a checkpoint).
+    pub fn read_session_of_types(
+        &self,
+        session_id: &SessionId,
+        types: &[&str],
+        after_offset: u64,
+    ) -> Result<Vec<StoredEvent>> {
+        if types.is_empty() {
+            return Ok(Vec::new());
+        }
+        let marks = vec!["?"; types.len()].join(",");
+        let sql = format!(
+            "SELECT {COLUMNS} FROM events WHERE session_id = ? AND offset > ? AND event_type IN ({marks}) ORDER BY offset ASC"
+        );
+        let mut stmt = self.conn.prepare(&sql)?;
+        let mut args: Vec<rusqlite::types::Value> = vec![
+            rusqlite::types::Value::Blob(session_id.as_bytes().to_vec()),
+            rusqlite::types::Value::Integer(after_offset as i64),
+        ];
+        args.extend(
+            types
+                .iter()
+                .map(|t| rusqlite::types::Value::Text((*t).to_owned())),
+        );
+        let rows = stmt.query_map(rusqlite::params_from_iter(args), row_to_event)?;
+        rows.map(|r| r.map_err(Error::from)).collect()
+    }
+
+    /// Every event of every session with `offset > after_offset` whose type is
+    /// one of `types`, ascending: the ledgers that span sessions (the worktree
+    /// registry of PX-065 and the merge transactions of PX-119) fold their own
+    /// event types from the start, not the whole log, and must not stop at a
+    /// page boundary.
+    pub fn read_all_of_types_to_end(
+        &self,
+        types: &[&str],
+        after_offset: u64,
+    ) -> Result<Vec<StoredEvent>> {
+        let mut out = Vec::new();
+        let mut cursor = after_offset;
+        loop {
+            let page = self.read_all_of_types(types, cursor, 1000)?;
+            let Some(last) = page.last() else {
+                return Ok(out);
+            };
+            cursor = last.offset;
+            out.extend(page);
+        }
+    }
+
+    /// Events of every session with `offset > after_offset` whose type is one
+    /// of `types`, ascending by offset, up to `limit`. The policy records that
+    /// outlive their task (run modes and allowlist rules, PX-057) are folded
+    /// from exactly these types, from a cursor, so a refresh reads only what
+    /// is new.
+    pub fn read_all_of_types(
+        &self,
+        types: &[&str],
+        after_offset: u64,
+        limit: usize,
+    ) -> Result<Vec<StoredEvent>> {
+        if types.is_empty() {
+            return Ok(Vec::new());
+        }
+        let marks = vec!["?"; types.len()].join(",");
+        let sql = format!(
+            "SELECT {COLUMNS} FROM events WHERE offset > ? AND event_type IN ({marks}) ORDER BY offset ASC LIMIT ?"
+        );
+        let mut stmt = self.conn.prepare(&sql)?;
+        let mut args: Vec<rusqlite::types::Value> =
+            vec![rusqlite::types::Value::Integer(after_offset as i64)];
+        args.extend(
+            types
+                .iter()
+                .map(|t| rusqlite::types::Value::Text((*t).to_owned())),
+        );
+        args.push(rusqlite::types::Value::Integer(limit as i64));
+        let rows = stmt.query_map(rusqlite::params_from_iter(args), row_to_event)?;
+        self.counted(rows.map(|r| r.map_err(Error::from)).collect())
+    }
+
+    /// Up to `limit` events of every session with `offset > after_offset`,
+    /// ascending (a whole-log pass: the collector's reachability mark).
+    pub fn read_all_after(&self, after_offset: u64, limit: usize) -> Result<Vec<StoredEvent>> {
+        let mut stmt = self.conn.prepare_cached(&format!(
+            "SELECT {COLUMNS} FROM events WHERE offset > ?1 ORDER BY offset ASC LIMIT ?2"
+        ))?;
+        let rows = stmt.query_map(params![after_offset as i64, limit as i64], row_to_event)?;
         rows.map(|r| r.map_err(Error::from)).collect()
     }
 
@@ -1533,6 +2172,17 @@ fn append_in(
     }
     let mut out = Vec::with_capacity(req.events.len());
     for (sequence, ev) in (current + 1..).zip(req.events) {
+        if ev.event_type == RECEIPT_EVENT {
+            // FIX-08: a receipt links to the tail as it is at commit time or
+            // it does not land — whatever path appended it.
+            let presented = ev.payload["receipt"]["previous_receipt_hash"]
+                .as_str()
+                .map(str::to_owned);
+            let tail = crate::projections::last_receipt_hash(tx)?;
+            if presented != tail {
+                return Err(Error::ReceiptChainStale { presented, tail });
+            }
+        }
         let payload_text = ev.payload.to_string();
         let payload = if payload_text.len() > INLINE_PAYLOAD_CEILING {
             let hash = objects.put(payload_text.as_bytes())?;

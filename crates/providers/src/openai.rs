@@ -28,7 +28,10 @@ fn media_block(p: &ContentPart) -> Value {
 #[must_use]
 pub fn request_body(req: &ModelRequest) -> Value {
     let mut messages = Vec::new();
-    for m in &req.messages {
+    // A tool result with no announcing tool call is a 400 on a strict
+    // endpoint; it never goes out (FIX-07).
+    let history = crate::contract::without_orphan_tool_results(&req.messages);
+    for m in history.iter() {
         match m.role {
             Role::Tool => {
                 // A strict OpenAI-compatible endpoint takes only a string in a

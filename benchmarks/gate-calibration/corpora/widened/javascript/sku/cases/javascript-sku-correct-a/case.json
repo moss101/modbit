@@ -1,0 +1,11 @@
+{
+  "id": "javascript-sku-correct-a",
+  "class": "correct",
+  "flavor": "a",
+  "leg": "initial",
+  "write_set": [
+    "src/shop.mjs",
+    "test/sku.test.mjs"
+  ],
+  "declared": "correct"
+}

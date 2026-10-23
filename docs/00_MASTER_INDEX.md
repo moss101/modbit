@@ -122,6 +122,11 @@ Do **not** preload the whole dossier. `89_BUILD_AGENT_CONTEXT_LOADING_POLICY.md`
 - `62_PRODUCT_EXTENSION_REQUIREMENTS_TASKS_AND_QUALIFICATIONS.md` — additive REQ-PX/PX/QUAL-PX ledger and PX-E2E scenarios (here because 40–49 is full; totals computed, not pinned)
 - `63_AGENT_COMPETENCE_BENCHMARKS_AND_REGRESSION_SUITES.md` — public and internal competence suites, metrics, two distinct baselines (routing at M2, competence at M3) before targets, regression gate
 - `64_VERIFICATION_EXECUTION_CONTRACTS.md` — how the verification plan executes: BASELINE/TARGETED/COMPLETION stages, normalized `TestReport`/`CheckResult`, `failure_signature` derivation, flake rerun and quarantine, diff invariants DI-1..DI-9, regression attribution, Alpha defaults
+- `65_AGENT_FIRST_WORKSPACE_SPECIFICATION.md` — clean-room specification of the agent-first workspace (DR-PX-2026-10-03-007): 108 tagged requirements, implementation audit, traceability to PX-041..068, the register of what is still unverified
+- `66_NATIVE_COMPUTER_CONTROL_SPECIFICATION.md` — semantic-first native computer control and browser control hardening (DR-PX-2026-10-03-008, PX-069..076)
+- `67_WORKSPACE_EDITOR_SPECIFICATION.md` — the transactional Workspace Editor under the no-Monaco, no-Code-OSS constraint (DR-PX-2026-10-03-009, PX-077..081)
+- `68_AUTOMATIONS_SPECIFICATION.md` — automations through the existing Scheduler, policy and approval owners (DR-PX-2026-10-03-010, PX-082..086)
+- `69_EXTENSION_MARKETPLACE_AND_CUSTOMIZE_SPECIFICATION.md` — catalog, install, update, hostile-input handling and the Customize surface (DR-PX-2026-10-03-011, PX-087..093)
 
 ### 70–79 Delivery and operations
 - `70_CI_CD_RELEASE_AND_SUPPLY_CHAIN.md` — PR/nightly/RC pipelines, reproducibility, updates
@@ -132,6 +137,8 @@ Do **not** preload the whole dossier. `89_BUILD_AGENT_CONTEXT_LOADING_POLICY.md`
 - `75_PHASED_RELEASE_PLAN_AND_READINESS.md` — ALPHA/BETA/RELEASE_ZERO as derived projections, membership rules, readiness derivation
 - `76_LANGUAGE_AND_PLATFORM_SUPPORT_MATRIX.md` — language tiers A/B/C/Unsupported earned by conformance suites; platform states CI_COMPATIBLE vs RELEASE_GRADE; macOS Alpha
 - `77_RELEASE_ZERO_EXECUTION_GOAL.md` — the executable goal for the production-ready application: RELEASE_ZERO READY plus the packaged Release Zero proof; exit criteria, dated stage plan, owner-supplied inputs, per-step protocol; live plan and exit code from `python3 tools/graph.py goal`
+- `78_DESKTOP_SHELL_PLATFORM_INTEGRATION_SPECIFICATION.md` — window chrome, native integration, main-process hardening, update application and version policy (DR-PX-2026-10-03-012, PX-094..098)
+- `79_AUDIT_DRIVEN_CAPABILITY_COMPLETION_SPECIFICATION.md` — the build tasks of the 2026-10-05 audit that no earlier row fully covers, over existing owners only: audit classification, 41 requirements, traceability from every BLD task to PX rows, corrections to the draft mapping and the explicit non-adoptions (DR-PX-2026-10-05-013, PX-099..139)
 
 ### 80–97 Agent process and governance
 - `80_ANTI_SUPERFICIAL_IMPLEMENTATION_STANDARD.md` — feature-depth equation, thin-implementation traps

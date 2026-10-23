@@ -178,6 +178,15 @@ pub struct SubtaskSpec {
     /// Tool calls it may make.
     #[serde(default)]
     pub max_tool_calls: u32,
+    /// Cost it may spend, in the active registry's minor units (REQ-PX-116);
+    /// 0 = a fair share of what its parent has left. Clamped to the
+    /// parent's remainder and reserved against it at admission.
+    #[serde(default)]
+    pub max_cost_minor: u64,
+    /// Wall clock it may use, milliseconds (REQ-PX-116); 0 = what its
+    /// parent has left. Never past the parent's own deadline.
+    #[serde(default)]
+    pub max_wall_ms: u64,
     /// The work node it will own; `None` = one is created from the objective.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub work_node: Option<WorkNodeId>,
@@ -185,6 +194,12 @@ pub struct SubtaskSpec {
     /// (REQ-EV-0115): its tools, model, default scope, budgets and context.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub profile: Option<String>,
+    /// What the parent observed that makes the environment fit for the
+    /// child to start in (PX-075, CUC-A05): the application is built and
+    /// running, the check passed. The `computer-use` profile is refused
+    /// without it; it is the parent's recorded word, in the child's context.
+    #[serde(default, skip_serializing_if = "String::is_empty")]
+    pub environment_healthy: String,
 }
 
 /// How a child is scheduled with respect to the parent's attention
@@ -225,6 +240,13 @@ pub struct AgentExecutionCapsule {
     pub max_turns: u32,
     /// Tool calls it may make.
     pub max_tool_calls: u32,
+    /// Cost it may spend, minor units; 0 = the parent had no cost cap
+    /// (REQ-PX-116). What was reserved against the parent at admission.
+    #[serde(default)]
+    pub max_cost_minor: u64,
+    /// Wall clock it may use, milliseconds; 0 = the parent had no deadline.
+    #[serde(default)]
+    pub max_wall_ms: u64,
     /// The effect ceiling of its lease (`READ_ONLY` | `WRITE` | …), never
     /// above the parent's (REQ-EV-0046).
     pub effect_ceiling: String,
@@ -277,6 +299,11 @@ pub struct SubagentResult {
     pub worktree: String,
     /// The child's final candidate revision.
     pub candidate_revision: u64,
+    /// The report of a `computer-use` child (PX-075): the final state it
+    /// observed, the actions it took by kind, the evidence it kept and - when
+    /// it stopped - what it observed, what blocked it and the best next step.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub computer: Option<serde_json::Value>,
 }
 
 /// Whether two write scopes overlap: a path prefix or glob of one covers

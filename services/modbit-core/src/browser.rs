@@ -12,13 +12,13 @@
 //! record survives (a host can attach again to the same partition) and a
 //! Core restart rebuilds it from the task's events.
 
-use std::collections::HashMap;
+use std::collections::{HashMap, VecDeque};
 use std::sync::Arc;
 use std::time::Duration;
 
 use modbit_browser::{
-    BoxFuture, BrowserPort, BrowserSessionId, ControlLease, HostRequest, HostResponse, PageState,
-    PortError,
+    BoxFuture, BrowserPort, BrowserSessionId, ControlLease, HostRequest, HostResponse, NoticeStats,
+    PageState, PortError, UnknownLatch,
 };
 use modbit_domain::ids::{SessionId, TaskId};
 use modbit_protocol::v1 as wire;
@@ -57,6 +57,82 @@ pub(crate) struct SessionRecord {
     /// Transitions observed in this session (IMP-EV-0280; bounded), keyed
     /// by the fingerprint before, the reference and the action.
     pub transitions: Vec<modbit_browser::KnownTransition>,
+    /// The pages compiled recently, newest last, by content fingerprint
+    /// (PX-122): what `since_fingerprint` starts from. Bounded.
+    pub history: VecDeque<(String, modbit_browser::compiler::PageEntities)>,
+    /// The fingerprint of the page the model last received (PX-122): what an
+    /// implicit delta starts from. A compile the model never saw (an
+    /// inspection, a change the observer reported) does not move it.
+    pub delivered: Option<String>,
+    /// An agent input of unknown outcome (PX-121): every further input is
+    /// refused until a fresh observation reconciles it.
+    pub latch: Option<UnknownLatch>,
+    /// What the host's change notices amounted to (PX-122).
+    pub notices: NoticeStats,
+    /// A compile for a notice is running (PX-122).
+    pub compiling: bool,
+    /// A notice arrived while one was running.
+    pub dirty: bool,
+    /// Mutations the host folded into the notices not yet compiled.
+    pub coalesced: u32,
+    /// When the oldest notice not yet compiled arrived.
+    pub first_pending: Option<std::time::Instant>,
+    /// The object reference of the last page the Core persisted (PX-122):
+    /// what a restart restores the known-state map from.
+    pub page_ref: Option<String>,
+}
+
+/// Pages kept for `since_fingerprint`.
+const HISTORY: usize = 12;
+/// Entities a session remembers at most.
+const KNOWN_MAX: usize = 4000;
+
+impl SessionRecord {
+    /// A fresh record.
+    fn new(task_id: TaskId, session_id: SessionId, partition: String) -> Self {
+        Self {
+            task_id,
+            session_id,
+            partition,
+            lease: ControlLease::initial(),
+            host: None,
+            state: PageState::default(),
+            closed: false,
+            known: HashMap::new(),
+            last_page: None,
+            transitions: Vec::new(),
+            history: VecDeque::new(),
+            delivered: None,
+            latch: None,
+            notices: NoticeStats::default(),
+            compiling: false,
+            dirty: false,
+            coalesced: 0,
+            first_pending: None,
+            page_ref: None,
+        }
+    }
+
+    /// Hold `page` as compiled: the known-state map learns its entities, the
+    /// bounded history keeps it by fingerprint.
+    pub(crate) fn hold(&mut self, page: modbit_browser::compiler::PageEntities) {
+        if self.known.len() > KNOWN_MAX {
+            self.known.clear();
+        }
+        for e in &page.entities {
+            self.known.insert(e.reference.clone(), e.clone());
+        }
+        let fp = modbit_browser::compiler::state_fingerprint(&page);
+        // A page with the same content keeps its first entry (and the state
+        // version it was read at): a delta from it says where it started.
+        if !self.history.iter().any(|(f, _)| *f == fp) {
+            self.history.push_back((fp, page.clone()));
+        }
+        while self.history.len() > HISTORY {
+            self.history.pop_front();
+        }
+        self.last_page = Some(page);
+    }
 }
 
 /// Why a host could not attach.
@@ -79,16 +155,65 @@ pub struct BrowserSessions {
     /// "Credentials"): handle, label, origin, account name — never a value.
     /// Memory only; a host registers them again when it reconnects.
     credentials: Mutex<HashMap<String, modbit_browser::CredentialHandle>>,
+    /// The credential broker (REQ-PX-130): each handle is registered with it
+    /// as a credential whose value lives in the host, bound to its origin;
+    /// every fill is a use the broker checks, counts and audits.
+    broker: Arc<modbit_secrets::CredentialBroker>,
+    /// The request queue of each connection that hosts sessions: one per
+    /// connection, shared by every session it hosts.
+    host_queues: std::sync::Mutex<HashMap<u64, mpsc::Sender<wire::BrowserHostRequest>>>,
+}
+
+/// The broker's identity of a browser credential handle.
+fn broker_id(handle: &str) -> modbit_secrets::CredentialId {
+    modbit_secrets::CredentialId::new(modbit_secrets::Kind::Browser, handle)
 }
 
 impl BrowserSessions {
+    /// A registry whose credentials live in `broker`.
+    #[must_use]
+    pub fn with_broker(broker: Arc<modbit_secrets::CredentialBroker>) -> Self {
+        Self {
+            broker,
+            ..Self::default()
+        }
+    }
+
+    /// The sending end of the request queue of `connection`, and - for the
+    /// first host on the connection - the receiving end its writer drains.
+    pub(crate) async fn host_channel(
+        &self,
+        connection: u64,
+    ) -> (
+        mpsc::Sender<wire::BrowserHostRequest>,
+        Option<mpsc::Receiver<wire::BrowserHostRequest>>,
+    ) {
+        let mut q = self.host_queues.lock().unwrap_or_else(|e| e.into_inner());
+        if let Some(tx) = q.get(&connection)
+            && !tx.is_closed()
+        {
+            return (tx.clone(), None);
+        }
+        let (tx, rx) = mpsc::channel(32);
+        q.insert(connection, tx.clone());
+        (tx, Some(rx))
+    }
+
     /// Register (or replace) a credential handle (M7.8).
     pub(crate) async fn register_credential(&self, c: modbit_browser::CredentialHandle) {
+        self.broker.register(modbit_secrets::Registration {
+            id: broker_id(&c.handle),
+            kind: modbit_secrets::Kind::Browser,
+            // The value is the host's: this process never has it.
+            source: modbit_secrets::SecretHandle::None,
+            audience: c.origin.clone(),
+        });
         self.credentials.lock().await.insert(c.handle.clone(), c);
     }
 
     /// Forget a credential handle (M7.8).
     pub(crate) async fn forget_credential(&self, handle: &str) -> bool {
+        self.broker.forget(&broker_id(handle));
         self.credentials.lock().await.remove(handle).is_some()
     }
 }
@@ -97,7 +222,9 @@ impl BrowserSessions {
 fn deadline(req: &HostRequest) -> Duration {
     match req {
         HostRequest::Navigate { .. } => Duration::from_secs(40),
-        HostRequest::Capture { .. } => Duration::from_secs(20),
+        HostRequest::Capture { .. } | HostRequest::Snapshot { .. } | HostRequest::Scroll { .. } => {
+            Duration::from_secs(20)
+        }
         _ => Duration::from_secs(15),
     }
 }
@@ -116,20 +243,89 @@ impl BrowserSessions {
         task_id: TaskId,
         session_id: SessionId,
     ) -> SessionRecord {
-        let rec = SessionRecord {
-            task_id,
-            session_id,
-            partition: Self::partition_for(id),
-            lease: ControlLease::initial(),
-            host: None,
-            state: PageState::default(),
-            closed: false,
-            known: HashMap::new(),
-            last_page: None,
-            transitions: Vec::new(),
-        };
+        let rec = SessionRecord::new(task_id, session_id, Self::partition_for(id));
         self.sessions.lock().await.insert(id, rec.clone());
         rec
+    }
+
+    /// A host's change notice (PX-122): counted; the second value says
+    /// whether a read must be started (none is running).
+    pub(crate) async fn note_notice(
+        &self,
+        id: BrowserSessionId,
+        n: &modbit_browser::PageNotice,
+    ) -> Option<(NoticeStats, bool)> {
+        let mut s = self.sessions.lock().await;
+        let rec = s.get_mut(&id)?;
+        if rec.closed {
+            return None;
+        }
+        rec.notices.change_seq = rec.notices.change_seq.max(n.change_seq);
+        rec.notices.notices += 1;
+        rec.coalesced = rec.coalesced.saturating_add(n.coalesced.max(1));
+        rec.first_pending
+            .get_or_insert_with(std::time::Instant::now);
+        rec.dirty = true;
+        let spawn = !rec.compiling;
+        if spawn {
+            rec.compiling = true;
+        }
+        Some((rec.notices.clone(), spawn))
+    }
+
+    /// The observer starts a read: the counter it covers and when the oldest
+    /// notice behind it arrived. `None` ends the observer (no session, no host).
+    pub(crate) async fn begin_read(
+        &self,
+        id: BrowserSessionId,
+    ) -> Option<(u64, Option<std::time::Instant>)> {
+        let mut s = self.sessions.lock().await;
+        let rec = s.get_mut(&id)?;
+        if rec.closed || rec.host.is_none() {
+            rec.compiling = false;
+            return None;
+        }
+        rec.dirty = false;
+        Some((rec.notices.change_seq, rec.first_pending.take()))
+    }
+
+    /// Mutations folded into the notices a read covers.
+    pub(crate) async fn take_coalesced(&self, id: BrowserSessionId) -> u32 {
+        self.sessions
+            .lock()
+            .await
+            .get_mut(&id)
+            .map_or(0, |r| std::mem::take(&mut r.coalesced))
+    }
+
+    /// The observer finished a read; `true` when notices arrived meanwhile.
+    pub(crate) async fn finish_read(&self, id: BrowserSessionId, seq: u64, compiled: bool) -> bool {
+        let mut s = self.sessions.lock().await;
+        let Some(rec) = s.get_mut(&id) else {
+            return false;
+        };
+        if compiled {
+            rec.notices.compiled_seq = rec.notices.compiled_seq.max(seq);
+            if let Some(p) = &rec.last_page {
+                rec.notices.last_fingerprint = modbit_browser::compiler::state_fingerprint(p);
+            }
+        }
+        if rec.dirty && !rec.closed && rec.host.is_some() {
+            true
+        } else {
+            rec.compiling = false;
+            false
+        }
+    }
+
+    /// The page the Core last persisted for the session.
+    pub(crate) async fn note_persisted(&self, id: BrowserSessionId, page_ref: String) {
+        if page_ref.is_empty() {
+            return;
+        }
+        if let Some(rec) = self.sessions.lock().await.get_mut(&id) {
+            rec.page_ref = Some(page_ref);
+        }
     }
 
     pub(crate) async fn get(&self, id: BrowserSessionId) -> Option<SessionRecord> {
@@ -202,6 +398,10 @@ impl BrowserSessions {
     /// The connection `connection` closed: its hosts are gone and every
     /// request they owed fails now (`HOST_GONE`), not at the deadline.
     pub(crate) async fn connection_closed(&self, connection: u64) {
+        self.host_queues
+            .lock()
+            .unwrap_or_else(|e| e.into_inner())
+            .remove(&connection);
         let gone: Vec<BrowserSessionId> = {
             let mut s = self.sessions.lock().await;
             let mut gone = Vec::new();
@@ -250,13 +450,21 @@ impl BrowserSessions {
     }
 }
 
-impl BrowserPort for BrowserSessions {
-    fn request<'a>(
-        &'a self,
+impl BrowserSessions {
+    /// One request to the session's host, under the control lease. An agent
+    /// input (`Navigate`, `Act`) is stamped with the lease generation its
+    /// caller decided it under (`observed`; the current one when the caller
+    /// did not say) and is refused `STALE_GENERATION` when the session has
+    /// been handed over since — checked against the generation the session
+    /// holds when the request is read and again as it is sent, not against
+    /// itself. The frame carries the stamp, so the host fences it too.
+    async fn send(
+        &self,
         session: BrowserSessionId,
         request: HostRequest,
-    ) -> BoxFuture<'a, Result<HostResponse, PortError>> {
-        Box::pin(async move {
+        observed: Option<u64>,
+    ) -> Result<HostResponse, PortError> {
+        {
             let (link, lease) = {
                 let s = self.sessions.lock().await;
                 let Some(rec) = s.get(&session) else {
@@ -277,19 +485,26 @@ impl BrowserPort for BrowserSessions {
                 (link, rec.lease)
             };
             // An agent input under the user's control is refused here, before
-            // it reaches the host (docs/22: takeover blocks input at once).
-            if matches!(
+            // it reaches the host (docs/22: takeover blocks input at once);
+            // one decided under an earlier generation is refused as stale.
+            let agent_input = matches!(
                 request,
-                HostRequest::Navigate { .. } | HostRequest::Act { .. }
-            ) && !lease.admits_agent_input(lease.generation)
-            {
-                return Err(PortError::Refused {
-                    code: "HUMAN_ACTIVE".into(),
-                    message: format!(
-                        "the person holds control of the session (lease generation {})",
-                        lease.generation
-                    ),
-                });
+                HostRequest::Navigate { .. } | HostRequest::Act { .. } | HostRequest::Scroll { .. }
+            );
+            let stamp = observed.unwrap_or(lease.generation);
+            if agent_input {
+                if lease.controller != modbit_browser::Controller::Agent {
+                    return Err(PortError::Refused {
+                        code: "HUMAN_ACTIVE".into(),
+                        message: format!(
+                            "the person holds control of the session (lease generation {})",
+                            lease.generation
+                        ),
+                    });
+                }
+                if !lease.admits_agent_input(stamp) {
+                    return Err(stale_generation(stamp, lease.generation));
+                }
             }
             let request_id = BrowserSessionId::new().to_string();
             let (tx, rx) = oneshot::channel();
@@ -297,17 +512,43 @@ impl BrowserPort for BrowserSessions {
                 .lock()
                 .await
                 .insert(request_id.clone(), (session, tx));
+            // The awaits above are where a hand-over can land: the lease
+            // read again, now, is what the stamp is held against.
+            if agent_input {
+                let now = self.sessions.lock().await.get(&session).map(|r| r.lease);
+                match now {
+                    Some(l) if l.admits_agent_input(stamp) => {}
+                    Some(l) if l.controller != modbit_browser::Controller::Agent => {
+                        self.pending.lock().await.remove(&request_id);
+                        return Err(PortError::Refused {
+                            code: "HUMAN_ACTIVE".into(),
+                            message: format!(
+                                "the person took control of the session (lease generation {})",
+                                l.generation
+                            ),
+                        });
+                    }
+                    other => {
+                        self.pending.lock().await.remove(&request_id);
+                        return Err(stale_generation(stamp, other.map_or(0, |l| l.generation)));
+                    }
+                }
+            }
             let frame = wire::BrowserHostRequest {
                 request_id: request_id.clone(),
                 browser_session_id: Some(wire::Id {
                     value: session.as_bytes().to_vec(),
                 }),
-                lease_generation: lease.generation,
+                // An agent input carries the generation it was decided under;
+                // an observation is not fenced and carries the current one.
+                lease_generation: if agent_input { stamp } else { lease.generation },
                 request_json: serde_json::to_string(&request).unwrap_or_default(),
             };
             if link.tx.send(frame).await.is_err() {
+                // Nothing was sent: the host was already gone, and no input
+                // reached it (PX-121: not an unknown outcome).
                 self.pending.lock().await.remove(&request_id);
-                return Err(PortError::HostGone);
+                return Err(PortError::NoHost);
             }
             match tokio::time::timeout(deadline(&request), rx).await {
                 Ok(Ok(resp)) => {
@@ -324,7 +565,38 @@ impl BrowserPort for BrowserSessions {
                     Err(PortError::Timeout)
                 }
             }
-        })
+        }
+    }
+}
+
+/// The refusal for an agent input decided under a lease generation the
+/// session has since moved past (docs/22: an input from before a hand-over
+/// never lands after it).
+fn stale_generation(stamped: u64, current: u64) -> PortError {
+    PortError::Refused {
+        code: "STALE_GENERATION".into(),
+        message: format!(
+            "the input was decided under lease generation {stamped}; the session is at {current}"
+        ),
+    }
+}
+
+impl BrowserPort for BrowserSessions {
+    fn request<'a>(
+        &'a self,
+        session: BrowserSessionId,
+        request: HostRequest,
+    ) -> BoxFuture<'a, Result<HostResponse, PortError>> {
+        Box::pin(self.send(session, request, None))
+    }
+
+    fn request_stamped<'a>(
+        &'a self,
+        session: BrowserSessionId,
+        request: HostRequest,
+        observed_generation: Option<u64>,
+    ) -> BoxFuture<'a, Result<HostResponse, PortError>> {
+        Box::pin(self.send(session, request, observed_generation))
     }
 
     fn lease<'a>(&'a self, session: BrowserSessionId) -> BoxFuture<'a, Option<ControlLease>> {
@@ -342,13 +614,7 @@ impl BrowserPort for BrowserSessions {
     ) -> BoxFuture<'a, ()> {
         Box::pin(async move {
             if let Some(rec) = self.sessions.lock().await.get_mut(&session) {
-                if rec.known.len() > 4000 {
-                    rec.known.clear();
-                }
-                for e in &page.entities {
-                    rec.known.insert(e.reference.clone(), e.clone());
-                }
-                rec.last_page = Some(page);
+                rec.hold(page);
             }
         })
     }
@@ -363,6 +629,81 @@ impl BrowserPort for BrowserSessions {
                 .await
                 .get(&session)
                 .and_then(|r| r.last_page.clone())
+        })
+    }
+
+    fn delivered_page<'a>(
+        &'a self,
+        session: BrowserSessionId,
+    ) -> BoxFuture<'a, Option<modbit_browser::compiler::PageEntities>> {
+        Box::pin(async move {
+            let s = self.sessions.lock().await;
+            let rec = s.get(&session)?;
+            let fp = rec.delivered.as_ref()?;
+            rec.history
+                .iter()
+                .find(|(f, _)| f == fp)
+                .map(|(_, p)| p.clone())
+        })
+    }
+
+    fn note_delivered<'a>(
+        &'a self,
+        session: BrowserSessionId,
+        fingerprint: &'a str,
+    ) -> BoxFuture<'a, ()> {
+        Box::pin(async move {
+            if let Some(rec) = self.sessions.lock().await.get_mut(&session) {
+                rec.delivered = Some(fingerprint.to_owned());
+            }
+        })
+    }
+
+    fn page_by_fingerprint<'a>(
+        &'a self,
+        session: BrowserSessionId,
+        fingerprint: &'a str,
+    ) -> BoxFuture<'a, Option<modbit_browser::compiler::PageEntities>> {
+        Box::pin(async move {
+            self.sessions
+                .lock()
+                .await
+                .get(&session)?
+                .history
+                .iter()
+                .find(|(f, _)| f == fingerprint)
+                .map(|(_, p)| p.clone())
+        })
+    }
+
+    fn latch<'a>(&'a self, session: BrowserSessionId) -> BoxFuture<'a, Option<UnknownLatch>> {
+        Box::pin(async move { self.sessions.lock().await.get(&session)?.latch.clone() })
+    }
+
+    fn set_latch<'a>(
+        &'a self,
+        session: BrowserSessionId,
+        latch: UnknownLatch,
+    ) -> BoxFuture<'a, ()> {
+        Box::pin(async move {
+            if let Some(rec) = self.sessions.lock().await.get_mut(&session) {
+                rec.latch = Some(latch);
+            }
+        })
+    }
+
+    fn clear_latch<'a>(&'a self, session: BrowserSessionId) -> BoxFuture<'a, Option<UnknownLatch>> {
+        Box::pin(async move { self.sessions.lock().await.get_mut(&session)?.latch.take() })
+    }
+
+    fn notice_stats<'a>(&'a self, session: BrowserSessionId) -> BoxFuture<'a, NoticeStats> {
+        Box::pin(async move {
+            self.sessions
+                .lock()
+                .await
+                .get(&session)
+                .map(|r| r.notices.clone())
+                .unwrap_or_default()
         })
     }
 
@@ -418,6 +759,35 @@ impl BrowserPort for BrowserSessions {
         handle: &'a str,
     ) -> BoxFuture<'a, Option<modbit_browser::CredentialHandle>> {
         Box::pin(async move { self.credentials.lock().await.get(handle).cloned() })
+    }
+
+    fn authorize_credential<'a>(
+        &'a self,
+        handle: &'a str,
+        origin: &'a str,
+        principal: &'a str,
+    ) -> BoxFuture<'a, Result<(), (String, String)>> {
+        Box::pin(async move {
+            self.broker
+                .acquire_authorization(
+                    &broker_id(handle),
+                    &modbit_secrets::Use {
+                        principal: principal.to_owned(),
+                        audience: origin.to_owned(),
+                        purpose: "browser.fill".into(),
+                        nonce: None,
+                    },
+                )
+                .map_err(|r| {
+                    (
+                        r.code().to_owned(),
+                        format!(
+                            "the credential broker refused `{handle}` for this page ({}): nothing was filled",
+                            r.code()
+                        ),
+                    )
+                })
+        })
     }
 
     fn credentials_for<'a>(
@@ -482,6 +852,49 @@ pub(crate) fn view(id: BrowserSessionId, rec: &SessionRecord) -> wire::BrowserSe
     }
 }
 
+/// The runtime state of a session a client reads (PX-121, PX-122).
+pub(crate) fn runtime_view(
+    id: BrowserSessionId,
+    rec: &SessionRecord,
+) -> modbit_protocol::v1::BrowserRuntimeView {
+    modbit_protocol::v1::BrowserRuntimeView {
+        browser_session_id: Some(wire::Id {
+            value: id.as_bytes().to_vec(),
+        }),
+        latch: rec
+            .latch
+            .as_ref()
+            .map(|l| format!("{} {}: {}", l.tool, l.action, l.reason))
+            .unwrap_or_default(),
+        latch_tool_call_id: rec
+            .latch
+            .as_ref()
+            .map(|l| l.tool_call_id.clone())
+            .unwrap_or_default(),
+        page_kind: rec
+            .last_page
+            .as_ref()
+            .map(|p| {
+                modbit_browser::semantic::classify_page(p)
+                    .kind
+                    .label()
+                    .to_owned()
+            })
+            .unwrap_or_default(),
+        change_seq: rec.notices.change_seq,
+        notices: rec.notices.notices,
+        compiled_seq: rec.notices.compiled_seq,
+        known_entities: rec.known.len() as u32,
+        history: rec.history.len() as u32,
+        last_fingerprint: rec
+            .last_page
+            .as_ref()
+            .map(modbit_browser::compiler::state_fingerprint)
+            .unwrap_or_default(),
+        delivered_fingerprint: rec.delivered.clone().unwrap_or_default(),
+    }
+}
+
 /// Rebuild a session record from the task's events (after a Core restart).
 pub(crate) fn from_events(
     id: BrowserSessionId,
@@ -497,18 +910,50 @@ pub(crate) fn from_events(
         }
         match e["__type"].as_str().unwrap_or_default() {
             "BrowserSessionOpened" => {
-                rec = Some(SessionRecord {
+                rec = Some(SessionRecord::new(
                     task_id,
                     session_id,
-                    partition: e["partition"].as_str().unwrap_or_default().to_owned(),
-                    lease: ControlLease::initial(),
-                    host: None,
-                    state: PageState::default(),
-                    closed: false,
-                    known: HashMap::new(),
-                    last_page: None,
-                    transitions: Vec::new(),
-                });
+                    e["partition"].as_str().unwrap_or_default().to_owned(),
+                ));
+            }
+            // PX-122: the last page the Core persisted - what the known-state
+            // map and the delta history are restored from - and the page the
+            // model last received.
+            "BrowserPageObserved" => {
+                if let Some(r) = rec.as_mut() {
+                    if let Some(p) = e["page_ref"].as_str().filter(|p| !p.is_empty()) {
+                        r.page_ref = Some(p.to_owned());
+                    }
+                    if let Some(f) = e["state_fingerprint"].as_str().filter(|f| !f.is_empty()) {
+                        r.delivered = Some(f.to_owned());
+                    }
+                }
+            }
+            "BrowserPageChanged" => {
+                if let Some(r) = rec.as_mut()
+                    && let Some(p) = e["page_ref"].as_str().filter(|p| !p.is_empty())
+                {
+                    r.page_ref = Some(p.to_owned());
+                }
+            }
+            // PX-121: an input of unknown outcome latches the session until
+            // a fresh observation reconciles it - across a restart too.
+            "BrowserOutcomeUnknown" => {
+                if let Some(r) = rec.as_mut() {
+                    r.latch = Some(UnknownLatch {
+                        tool: e["tool"].as_str().unwrap_or_default().to_owned(),
+                        action: e["action"].as_str().unwrap_or_default().to_owned(),
+                        reference: e["reference"].as_str().unwrap_or_default().to_owned(),
+                        reason: e["reason"].as_str().unwrap_or_default().to_owned(),
+                        tool_call_id: e["tool_call_id"].as_str().unwrap_or_default().to_owned(),
+                        at_ms: 0,
+                    });
+                }
+            }
+            "BrowserOutcomeReconciled" => {
+                if let Some(r) = rec.as_mut() {
+                    r.latch = None;
+                }
             }
             // IMP-EV-0280: transitions the session observed are rebuilt from
             // the log too — evidence survives a restart; a changed page will
@@ -522,6 +967,10 @@ pub(crate) fn from_events(
                     && !from.is_empty()
                     && !to.is_empty()
                 {
+                    r.delivered = Some(to.to_owned());
+                    if let Some(p) = e["page_ref"].as_str().filter(|p| !p.is_empty()) {
+                        r.page_ref = Some(p.to_owned());
+                    }
                     r.transitions.push(modbit_browser::KnownTransition {
                         from_fingerprint: from.to_owned(),
                         reference: e["reference"].as_str().unwrap_or_default().to_owned(),
@@ -586,4 +1035,140 @@ pub(crate) fn task_events(
 /// The port the tool host hands `browser.*`.
 pub(crate) fn port(sessions: &Arc<BrowserSessions>) -> Arc<dyn BrowserPort> {
     Arc::clone(sessions) as Arc<dyn BrowserPort>
+}
+
+#[cfg(test)]
+mod tests {
+    //! FIX-19: the Core's control-lease fence compares the generation an
+    //! agent input was decided under with the generation the session holds
+    //! now — a real fence, no longer the lease's generation against itself.
+    use super::*;
+    use modbit_browser::Controller;
+
+    /// A session with a host that answers every request with the page state
+    /// and records the lease generation each frame carried.
+    async fn session_with_host() -> (
+        Arc<BrowserSessions>,
+        BrowserSessionId,
+        Arc<std::sync::Mutex<Vec<u64>>>,
+    ) {
+        let sessions = Arc::new(BrowserSessions::default());
+        let id = BrowserSessionId::new();
+        sessions.open(id, TaskId::new(), SessionId::new()).await;
+        let (tx, mut rx) = mpsc::channel::<wire::BrowserHostRequest>(8);
+        sessions
+            .attach(
+                id,
+                HostLink {
+                    kind: "test".into(),
+                    tx,
+                    connection: 1,
+                    view: None,
+                },
+            )
+            .await
+            .unwrap();
+        let seen = Arc::new(std::sync::Mutex::new(Vec::new()));
+        let (s2, seen2) = (Arc::clone(&sessions), Arc::clone(&seen));
+        tokio::spawn(async move {
+            while let Some(frame) = rx.recv().await {
+                seen2.lock().unwrap().push(frame.lease_generation);
+                s2.deliver(
+                    &frame.request_id,
+                    HostResponse::State {
+                        state: PageState::default(),
+                    },
+                )
+                .await;
+            }
+        });
+        (sessions, id, seen)
+    }
+
+    fn act() -> HostRequest {
+        HostRequest::Act {
+            backend_dom_node_id: 1,
+            action: "click".into(),
+            value: String::new(),
+            key: String::new(),
+            at: None,
+            credential_handle: None,
+            frame: None,
+        }
+    }
+
+    fn refused_code(r: Result<HostResponse, PortError>) -> String {
+        match r {
+            Err(PortError::Refused { code, .. }) => code,
+            other => panic!("expected a refusal, got {other:?}"),
+        }
+    }
+
+    #[tokio::test]
+    async fn an_input_decided_before_a_hand_over_is_stale_after_it_even_when_the_agent_holds_control_again()
+     {
+        let (sessions, id, seen) = session_with_host().await;
+        // Decided under generation 1, sent under generation 1: lands, stamped 1.
+        sessions
+            .request_stamped(id, act(), Some(1))
+            .await
+            .expect("current generation lands");
+        assert_eq!(*seen.lock().unwrap(), vec![1]);
+        // The person takes control (2) and returns it (3): the agent holds
+        // the session again, but an input decided under 1 is not applied.
+        sessions.hand_control(id, Controller::User).await.unwrap();
+        sessions.hand_control(id, Controller::Agent).await.unwrap();
+        let code = refused_code(sessions.request_stamped(id, act(), Some(1)).await);
+        assert_eq!(code, "STALE_GENERATION");
+        let code = refused_code(
+            sessions
+                .request_stamped(
+                    id,
+                    HostRequest::Navigate {
+                        url: "https://a.test/".into(),
+                    },
+                    Some(2),
+                )
+                .await,
+        );
+        assert_eq!(code, "STALE_GENERATION", "generation 2 was the person's");
+        assert_eq!(
+            *seen.lock().unwrap(),
+            vec![1],
+            "nothing stale reached the host"
+        );
+        // Decided under the current generation: lands, and the host is told
+        // the generation it was decided under.
+        sessions
+            .request_stamped(id, act(), Some(3))
+            .await
+            .expect("current generation lands");
+        // A caller that does not say (`request`) is stamped with the current one.
+        sessions.request(id, act()).await.expect("unstamped lands");
+        assert_eq!(*seen.lock().unwrap(), vec![1, 3, 3]);
+    }
+
+    #[tokio::test]
+    async fn the_person_holding_control_is_human_active_and_observation_is_never_fenced() {
+        let (sessions, id, seen) = session_with_host().await;
+        sessions.hand_control(id, Controller::User).await.unwrap();
+        // Whatever the stamp, while the person holds control the input is
+        // HUMAN_ACTIVE (the model is told to wait, not to re-read).
+        for stamp in [None, Some(1), Some(2)] {
+            let code = refused_code(sessions.request_stamped(id, act(), stamp).await);
+            assert_eq!(code, "HUMAN_ACTIVE", "{stamp:?}");
+        }
+        // Observation is not an agent input: allowed under any stamp, any holder.
+        for stamp in [None, Some(1), Some(99)] {
+            sessions
+                .request_stamped(id, HostRequest::State, stamp)
+                .await
+                .expect("observation is never fenced");
+        }
+        assert_eq!(
+            seen.lock().unwrap().len(),
+            3,
+            "only the observations reached the host"
+        );
+    }
 }

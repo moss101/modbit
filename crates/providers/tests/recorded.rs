@@ -51,6 +51,7 @@ fn turn(endpoint: &str, model: &str, messages: Vec<Message>) -> ModelRequest {
         }],
         response_format: None,
         cache_key: Some("stable-prefix-hash".into()),
+        cache_breakpoints: vec![],
         // Room for a model that reasons before it acts.
         max_output_tokens: 1024,
         timeout_ms: 120_000,
@@ -245,7 +246,17 @@ async fn live_recorded_tool_round_trip_on_each_configured_wire() {
             },
             "exchanges": exchanges,
         });
-        let held: Vec<String> = ep.credential.resolve().into_iter().collect();
+        // The key the recording must not contain, as the broker holds it.
+        let held: Vec<String> = {
+            let broker = modbit_secrets::CredentialBroker::new();
+            broker.register(modbit_secrets::Registration {
+                id: modbit_providers::gateway::credential_id(&ep.name),
+                kind: modbit_secrets::Kind::Provider,
+                source: ep.credential.clone(),
+                audience: format!("provider:{}", ep.name),
+            });
+            broker.custody_for_screening()
+        };
         let findings = safety_findings(&fixture, &held);
         assert!(
             findings.is_empty(),
@@ -324,6 +335,12 @@ fn replay_endpoint(kind: ProviderKind, fixture: &Value, base_url: &str) -> Endpo
             agent_loop: true,
             input_price_per_mtok: 1.0,
             output_price_per_mtok: 2.0,
+            output_budget_tokens: 0,
+            request_timeout_ms: 0,
+            default_reasoning_effort: None,
+            default_service_tier: None,
+            projection_mode: None,
+            max_projection_bytes: 0,
         }],
         max_retries: 0,
         auth: if p["auth"] == "bearer" {
@@ -332,6 +349,7 @@ fn replay_endpoint(kind: ProviderKind, fixture: &Value, base_url: &str) -> Endpo
             AuthScheme::Native
         },
         extra_body: p["extra_body"].as_object().cloned().unwrap_or_default(),
+        max_concurrency: 0,
     }
 }
 

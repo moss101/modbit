@@ -430,13 +430,7 @@ pub(crate) async fn dispose(
     {
         let wt = std::path::Path::new(&env.worktree);
         out.worktree_removed = repo.worktree_remove(wt).is_ok() || !wt.exists();
-        let _ = std::process::Command::new("git")
-            .arg("-C")
-            .arg(&root)
-            .args(["branch", "-D", &env.branch])
-            .stdout(std::process::Stdio::null())
-            .stderr(std::process::Stdio::null())
-            .status();
+        let _ = repo.branch_delete(&env.branch);
     }
     if !out.worktree_removed && !std::path::Path::new(&env.worktree).exists() {
         out.worktree_removed = true;

@@ -9,7 +9,7 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import { execFileSync } from "node:child_process";
-import { mkdtempSync, writeFileSync } from "node:fs";
+import { mkdirSync, mkdtempSync, writeFileSync } from "node:fs";
 import { createServer, type Server } from "node:http";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
@@ -54,10 +54,14 @@ test("PX-E2E-002 (harness half): an editor restart mid-task resumes the session 
   writeFileSync(join(repo, "notes.txt"), "line 1\nline 2\nline 3\n");
   const git = (...args: string[]) => execFileSync("git", ["-C", repo, ...args], { stdio: "ignore" });
   git("init", "-q", "-b", "main");
+  // A completion needs a mandatory check (FIX-03); this test's subject is not verification, so the repository declares a no-op one.
+  mkdirSync(join(repo, ".modbit"), { recursive: true });
+  writeFileSync(join(repo, ".modbit", "verification.json"), JSON.stringify({ commands: [{ id: "fixture-noop", argv: ["git", "--version"] }] }));
   git("config", "core.autocrlf", "false");
   git("add", "-A");
   git("-c", "user.name=t", "-c", "user.email=t@e", "commit", "-q", "-m", "base");
-  const wt = `${repo}-wt`;
+  // A relative worktree path is relative to Modbit's own worktree directory (FIX-01).
+  const wt = "wt";
   const { server, url } = await scriptedModel([
     { calls: [{ name: "plan.update", args: { outcome: "annotate", expected_files: ["notes.txt"], protected_effects: ["git.worktree.close"] } }] },
     { calls: [{ name: "fs.read", args: { path: "notes.txt" } }] },

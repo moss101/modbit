@@ -14,6 +14,140 @@ use modbit_protocol::v1 as wire;
 
 use crate::server::Core;
 
+/// The joint key an escalation is counted under. One function for both
+/// sides: the plan compiler reads exactly the key the request records emit
+/// (`routing.rs` feasibility), so a drift between the two cannot hide.
+pub(crate) fn escalation_key(from_model: &str, to_model: &str) -> stats::StatKey {
+    stats::StatKey::Escalation {
+        from_model: from_model.to_owned(),
+        to_model: to_model.to_owned(),
+        gate: "acceptance".into(),
+        repository: "workspace".into(),
+        verification: "configured".into(),
+    }
+}
+
+/// The model part of an `endpoint/model` binding.
+fn model_of(binding: &str) -> &str {
+    binding.split_once('/').map_or(binding, |(_, m)| m)
+}
+
+/// A leg's cost for a sample: its priced spend, and only when the whole leg
+/// is priced. A leg holding a reservation for an attempt of unknown usage,
+/// or with an unpriced attempt, has no known cost, and an unknown cost is
+/// never averaged as zero.
+fn leg_cost(leg: &crate::accounting::Leg) -> Option<u64> {
+    (leg.unpriced_attempts == 0 && leg.held_minor == 0).then_some(leg.cost_minor)
+}
+
+fn leg_wall(leg: &crate::accounting::Leg) -> u64 {
+    u64::try_from(leg.ended_at_ms.saturating_sub(leg.started_at_ms)).unwrap_or(0)
+}
+
+/// Escalation and Reviewer samples from one request's accounting record
+/// (REQ-PX-133; ADR-R-051, ADR-R-055). Every number is read from the record
+/// the accounting derived from the canonical log; nothing is estimated here.
+///
+/// * An escalation is one observation of the joint key (failed binding,
+///   stronger binding, gate, repository, verification). It succeeds when the
+///   continuation did, and its cost is the continuation leg's priced spend,
+///   so the failed first leg is never credited and never charged to the
+///   stronger one. An undecided escalation is not yet an outcome.
+/// * A review is one observation of the reviewer's family. It succeeds when
+///   the reviewer reported and every finding it raised was supported by
+///   evidence at the revision (no false positive); a review that has not
+///   reported is not yet an outcome.
+pub(crate) fn samples_from_record(
+    rec: &crate::accounting::OutcomeRecord,
+    family_of: &dyn Fn(&str) -> Option<String>,
+) -> Vec<stats::Sample> {
+    let attributed_to = {
+        use sha2::{Digest, Sha256};
+        hex::encode(Sha256::digest(serde_json::to_vec(rec).unwrap_or_default()))
+    };
+    let mut out = Vec::new();
+    for esc in &rec.legs.escalations {
+        let Some(success) = esc.success else { continue };
+        let leg = rec.executed_path.iter().find(|l| {
+            l.role == "solver"
+                && l.trigger == "QUALITY_REJECTED"
+                && l.segments
+                    .iter()
+                    .any(|s| s.plan_id == esc.plan_id && s.slot_id == esc.to_slot)
+        });
+        out.push(stats::Sample {
+            outcome_id: format!("{}:escalation:{}:{}", rec.task_id, esc.plan_id, esc.to_slot),
+            key: escalation_key(model_of(&esc.from_binding), model_of(&esc.to_binding)),
+            success,
+            cost_minor: leg.and_then(leg_cost),
+            wall_ms: leg.map_or(0, leg_wall),
+            attributed_to: attributed_to.clone(),
+        });
+    }
+    for review in &rec.legs.reviews {
+        let Some(_verdict) = &review.verdict else {
+            continue;
+        };
+        let leg = rec
+            .executed_path
+            .iter()
+            .find(|l| l.role == "reviewer" && l.task_id == review.review_task_id);
+        let family =
+            family_of(&review.binding).unwrap_or_else(|| model_of(&review.binding).to_owned());
+        out.push(stats::Sample {
+            outcome_id: format!("{}:review:{}", rec.task_id, review.review_task_id),
+            key: stats::StatKey::Reviewer { family },
+            success: review.unsupported_findings == 0,
+            cost_minor: leg.and_then(leg_cost),
+            wall_ms: leg.map_or(0, leg_wall),
+            attributed_to: attributed_to.clone(),
+        });
+    }
+    out
+}
+
+/// Samples from every request recorded under a session, derived fresh from
+/// the log: replaying the events, or restarting the Core, yields the same
+/// samples under the same outcome ids, so a duplicate emission adds nothing.
+fn request_samples(
+    core: &Core,
+    store: &modbit_event_store::EventStore,
+    session_id: SessionId,
+) -> Vec<stats::Sample> {
+    let mut tasks: Vec<modbit_domain::TaskId> = Vec::new();
+    let mut after = 0u64;
+    loop {
+        let Ok(batch) = store.read_session(&session_id, after, 512) else {
+            break;
+        };
+        if batch.is_empty() {
+            break;
+        }
+        for ev in &batch {
+            after = ev.offset;
+            if ev.envelope.event_type == "RequestOutcomeRecorded"
+                && let Some(t) = ev.envelope.task_id
+                && !tasks.contains(&t)
+            {
+                tasks.push(t);
+            }
+        }
+    }
+    let registry = core.gateway.registry();
+    let family_of = |binding: &str| -> Option<String> {
+        let (endpoint, model) = binding.split_once('/')?;
+        registry
+            .as_ref()
+            .and_then(|r| r.entry(endpoint, model))
+            .map(|e| e.family.clone())
+    };
+    tasks
+        .into_iter()
+        .filter_map(|t| crate::accounting::derive(store, core.tenant_id, t, None))
+        .flat_map(|rec| samples_from_record(&rec, &family_of))
+        .collect()
+}
+
 /// Every baseline bundle published under a session, oldest first, with the
 /// digests the events pinned them by.
 async fn published_baselines(core: &Core, session_id: SessionId) -> Vec<BaselineBundle> {
@@ -67,7 +201,11 @@ pub(crate) async fn materialize(
         );
     }
     let bundles = published_baselines(core, session_id).await;
-    if bundles.is_empty() {
+    let leg_samples = {
+        let store = core.store.lock().await;
+        request_samples(core, &store, session_id)
+    };
+    if bundles.is_empty() && leg_samples.is_empty() {
         return refuse(
             "STATS_NO_SOURCE",
             "no outcome baseline is published for this session; statistics are derived from what was observed, never invented".into(),
@@ -76,16 +214,24 @@ pub(crate) async fn materialize(
     let samples: Vec<stats::Sample> = bundles
         .iter()
         .flat_map(stats::samples_from_baseline)
+        .chain(leg_samples)
         .collect();
-    let last = bundles.last().expect("non-empty");
-    let mut source_versions = vec![
-        ("build".to_owned(), last.build_digest.clone()),
-        (
-            "repository_revision".to_owned(),
-            last.repository_revision.clone(),
-        ),
-        ("environment".to_owned(), last.environment_digest.clone()),
-    ];
+    let mut source_versions = match bundles.last() {
+        Some(last) => vec![
+            ("build".to_owned(), last.build_digest.clone()),
+            (
+                "repository_revision".to_owned(),
+                last.repository_revision.clone(),
+            ),
+            ("environment".to_owned(), last.environment_digest.clone()),
+        ],
+        // Request records alone: the build that derived them is the source.
+        None => vec![("build".to_owned(), crate::baseline::harness_version())],
+    };
+    source_versions.push((
+        "accounting".to_owned(),
+        crate::accounting::ACCOUNTING_VERSION.to_owned(),
+    ));
     if let Some(registry) = core.gateway.registry() {
         source_versions.push((
             "registry_generation".to_owned(),

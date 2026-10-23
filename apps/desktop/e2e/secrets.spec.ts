@@ -20,6 +20,7 @@ import { createServer, type Server } from "node:http";
 import { tmpdir } from "node:os";
 import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
+import { closeApp } from "./support/close-app.ts";
 
 const appDir = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 const coreBin = process.env.MODBIT_CORE_BIN ?? resolve(appDir, "..", "..", "target", "debug", process.platform === "win32" ? "modbit-core.exe" : "modbit-core");
@@ -56,11 +57,6 @@ async function launch(dataDir: string): Promise<{ app: ElectronApplication; page
   return { app, page };
 }
 
-async function closeApp(app: ElectronApplication): Promise<void> {
-  const proc = app.process();
-  await Promise.race([app.close(), new Promise<void>((r) => setTimeout(r, 15_000))]);
-  if (proc.exitCode === null) proc.kill("SIGKILL");
-}
 
 /** Every file under `dir`, recursively. */
 function files(dir: string): string[] {

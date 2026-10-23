@@ -25,7 +25,6 @@
 //!    *observed* counterfactual, kept apart from the *estimated* one.
 
 use std::path::{Path, PathBuf};
-use std::process::Command;
 
 use modbit_domain::event::{Actor, AggregateType};
 use modbit_domain::lease::CapabilityLeaseEvent;
@@ -103,14 +102,7 @@ pub(crate) async fn capture(core: &Core, task: &Task, lt: Lineage, actor: &Actor
 }
 
 fn git(dir: &Path, args: &[&str]) -> Result<String, String> {
-    let out = Command::new("git")
-        .arg("-C")
-        .arg(dir)
-        .args(args)
-        .env("LC_ALL", "C")
-        .env("GIT_TERMINAL_PROMPT", "0")
-        .output()
-        .map_err(|e| e.to_string())?;
+    let out = modbit_git::output(dir, args).map_err(|e| e.to_string())?;
     if out.status.success() {
         Ok(String::from_utf8_lossy(&out.stdout).trim().to_owned())
     } else {
@@ -463,6 +455,7 @@ pub(crate) async fn start(
             max_turns: 20,
             max_tool_calls: 80,
             max_consecutive_no_progress_turns: 4,
+            ..modbit_core_runtime::Budgets::default()
         },
         pinned: true,
         plan_id: String::new(),

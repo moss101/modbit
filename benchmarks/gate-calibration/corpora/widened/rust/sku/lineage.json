@@ -1,0 +1,26 @@
+{
+  "lineage": "holdout/rust-shop/sku",
+  "goal": "`normalize_sku` must trim a SKU, drop its dashes, upper-case it, reject an empty result and reject a result longer than 12 characters. The visible test `acceptance_sku_is_normalised` fails; make it pass and fix the behaviour, without weakening or removing any test.",
+  "acceptance": [
+    "acceptance_sku_is_normalised"
+  ],
+  "seed": [
+    "src/lib.rs"
+  ],
+  "oracle": {
+    "files": [
+      [
+        "tests/oracle_spec.rs",
+        "rust/oracle_spec.rs"
+      ]
+    ],
+    "argv": [
+      "cargo",
+      "test",
+      "--quiet",
+      "--offline",
+      "--test",
+      "oracle_spec"
+    ]
+  }
+}

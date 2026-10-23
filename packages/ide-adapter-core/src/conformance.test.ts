@@ -36,6 +36,8 @@ const CLIENTS = [
     allow: [
       { file: "src/main/main.ts", specifier: "node:fs", why: "profile-local desktop state (the session id) under the app's own data dir; never a workspace file" },
       { file: "src/main/credentials.ts", specifier: "node:fs", why: "M7.8: the credential broker's ciphertext records (safeStorage) under the app's own data dir; never a workspace file" },
+      { file: "src/main/browser-cert.ts", specifier: "node:fs", why: "PX-073: the person's certificate trusts, a JSON file under the app's own data dir; never a workspace file" },
+      { file: "src/main/browser-policy.ts", specifier: "node:fs", why: "PX-120: the browser target allow-list the person edits, a JSON file under the app's own data dir; never a workspace file" },
     ],
   },
   { root: join(repoRoot, "packages", "vscode-adapter"), allow: [] },
@@ -125,6 +127,10 @@ function fixtureRepo(): string {
   const repo = mkdtempSync(join(tmpdir(), "modbit-conformance-repo-"));
   writeFileSync(join(repo, "a.txt"), "a\n");
   git(repo, "init", "-q", "-b", "main");
+  // A completion needs a mandatory check (FIX-03); this test's subject is not verification, so the repository declares a no-op one.
+  mkdirSync(join(repo, ".modbit"), { recursive: true });
+  writeFileSync(join(repo, ".modbit", "verification.json"), JSON.stringify({ commands: [{ id: "fixture-noop", argv: ["git", "--version"] }] }));
+
   git(repo, "config", "core.autocrlf", "false");
   git(repo, "add", "-A");
   git(repo, "-c", "user.name=t", "-c", "user.email=t@e", "commit", "-q", "-m", "base");
@@ -304,7 +310,7 @@ test("PX-E2E-001: the shared protocol client and the CLI pass every conformance 
     const conformance = (subject: ConformanceSubject) => {
       const repo = fixtureRepo();
       const key = `fixture-${++runs}-${Math.floor(Math.random() * 1e9).toString(16)}`;
-      wtOf.set(key, `${repo}-wt`);
+      wtOf.set(key, "wt"); // relative to Modbit's own worktree directory (FIX-01)
       return runConformance(subject, { reference: core.connect, workspaceRoot: repo, goal: `conformance ${key}`, endpoint: "openai", model: "gpt-5", timeoutMs: 240_000 });
     };
     const report = (r: ConformanceReport) => `${r.subject}:\n${r.cases.map((c) => `  ${c.status} ${c.id}: ${c.detail}`).join("\n")}`;

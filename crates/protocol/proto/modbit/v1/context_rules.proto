@@ -1,0 +1,69 @@
+// What the Core puts in front of the model before it asks anything, as the
+// Context Inspector shows it (REQ-PX-107, 108, 109; docs/18, docs/19):
+// instruction layers with their provenance, the goal-seeded pre-turn pack,
+// and how each compaction epoch's summary was made. These messages are
+// imported by surface.proto (ContextInspectorView fields 180-199) and import
+// nothing from it.
+syntax = "proto3";
+
+package modbit.v1;
+
+// One layer of instructions in force, or refused, for a task: a repository's
+// `.modbit/rules` file, its AGENTS.md / CLAUDE.md, an extension's rule or the
+// user's. Text in these layers is project instruction data: it guides the
+// model and grants nothing.
+message InstructionLayerView {
+  string layer = 1;               // project | repo-instructions | extension:<id> | user
+  string id = 2;
+  string source = 3;              // the file, as the user reads the path
+  string content_hash = 4;        // sha256 over the bytes the Core read
+  string reason = 5;              // GLOBAL | PATH:<active path> matched <glob>
+  bool loaded = 6;                // in the prompt this turn
+  string not_loaded_reason = 7;   // why a file that exists is not in force
+  uint64 bytes = 8;               // size of the file
+  bool truncated = 9;             // the text in the prompt is cut to a cap
+  repeated string scanner_findings = 10;  // instruction-shaped shapes the injection scanner named
+}
+
+// What the goal-seeded pre-turn step did (REQ-PX-108): the Core ran the
+// retrieval planner on the task's goal before the first model turn, after a
+// steering change of goal and after a compaction epoch. The pack itself is
+// in the Inspector's entries; this says why it is there, what it cost and,
+// when nothing was packed, why.
+message PreTurnPackView {
+  string trigger = 1;             // TASK_START | GOAL_CHANGE | COMPACTION
+  string status = 2;              // PACKED | EMPTY | DEGRADED
+  string reason = 3;              // the typed reason of EMPTY or DEGRADED
+  string pack_id = 4;
+  string pack_ref = 5;            // the pack object
+  uint32 token_budget = 6;
+  uint32 token_used = 7;
+  uint32 entries = 8;
+  uint32 stubs = 9;
+  uint64 workspace_revision = 10;
+  string seed_digest = 11;        // sha256 of the text the planner was seeded with
+  uint64 offset = 12;             // the event's offset on the log
+}
+
+// How one compaction epoch's summary was produced (REQ-PX-109). A summary a
+// model wrote and the Core validated is MODEL; a Core-extracted one is
+// EXTRACTIVE, with the typed reason the model path was not taken.
+message CompactionSummaryView {
+  uint32 epoch = 1;
+  string summary_source = 2;      // MODEL | EXTRACTIVE
+  string summarizer = 3;          // endpoint/model, when a model wrote it
+  string fallback_reason = 4;     // why EXTRACTIVE, e.g. SUMMARIZER_TIMEOUT
+  string transcript_ref = 5;      // the pre-compaction transcript object (artifact.range reads it)
+  uint32 transcript_entries = 6;
+  uint32 summary_tokens = 7;
+}
+
+// What the compaction trigger derives from (REQ-PX-109): the routed model's
+// context window, never a constant when the registry knows it.
+message CompactionThresholdView {
+  uint32 context_window_tokens = 1;   // 0 = unknown to the catalog
+  uint32 hard_budget_tokens = 2;      // the model-visible transcript budget at which a bounded synchronous compaction runs
+  uint32 soft_budget_tokens = 3;      // the fraction at which a worker starts
+  string source = 4;                  // MODEL_WINDOW | ENV_OVERRIDE | FALLBACK
+  string estimator = 5;               // the token estimator in force
+}

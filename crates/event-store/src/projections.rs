@@ -288,6 +288,7 @@ fn project_checkpoint(
             removed,
             event_offset,
             index_generation,
+            ..
         } => {
             let newest: Option<i64> = tx
                 .query_row(
@@ -360,6 +361,17 @@ fn project_checkpoint(
                 ],
             )?;
         }
+        // REQ-PX-102: collected checkpoints leave the restorable set. The row
+        // stays (the log is the history, a restore of it answers COLLECTED);
+        // its manifest no longer joins any chain.
+        TaskEvent::CheckpointCollected { checkpoint_ids, .. } => {
+            for id in checkpoint_ids {
+                tx.execute(
+                    "UPDATE checkpoints SET status = 'COLLECTED' WHERE task_id = ?1 AND checkpoint_id = ?2 AND status = 'SUPERSEDED'",
+                    params![task.task_id.as_bytes().as_slice(), id],
+                )?;
+            }
+        }
         TaskEvent::CheckpointRestored { .. } => {}
         _ => {}
     }
@@ -387,7 +399,7 @@ pub struct CheckpointRow {
     pub runtime_state_ref: Option<String>,
     /// Index generation.
     pub index_generation: u64,
-    /// `STARTED` | `CURRENT` | `SUPERSEDED` | `REJECTED`.
+    /// `STARTED` | `CURRENT` | `SUPERSEDED` | `REJECTED` | `COLLECTED`.
     pub status: String,
     /// Integrity hash once committed.
     pub integrity_hash: Option<String>,
@@ -429,6 +441,65 @@ pub fn load_checkpoints(tx: &rusqlite::Connection, task: &TaskId) -> Result<Vec<
         })
     })?;
     Ok(rows.collect::<std::result::Result<Vec<_>, _>>()?)
+}
+
+/// Every committed, not collected checkpoint of every task (the retention
+/// collector's view of what still names a content blob, REQ-PX-102).
+pub fn load_all_live_checkpoints(
+    tx: &rusqlite::Connection,
+) -> Result<Vec<(TaskId, CheckpointRow)>> {
+    let mut stmt = tx.prepare(
+        "SELECT task_id, checkpoint_id, epoch, kind, base_checkpoint_id, workspace_revision, manifest_object_hash, git_state_json, runtime_state_ref, index_generation, status, integrity_hash, reason, files, removed, created_at, committed_at FROM checkpoints WHERE status IN ('CURRENT', 'SUPERSEDED') ORDER BY task_id, epoch",
+    )?;
+    let rows = stmt.query_map([], |r| {
+        let task: Vec<u8> = r.get(0)?;
+        Ok((
+            task,
+            CheckpointRow {
+                checkpoint_id: r.get(1)?,
+                epoch: u32::try_from(r.get::<_, i64>(2)?).unwrap_or(u32::MAX),
+                kind: r.get(3)?,
+                base_checkpoint_id: r.get(4)?,
+                workspace_revision: r.get::<_, i64>(5)? as u64,
+                manifest_object_hash: r.get(6)?,
+                git_state_json: r.get(7)?,
+                runtime_state_ref: r.get(8)?,
+                index_generation: r.get::<_, i64>(9)? as u64,
+                status: r.get(10)?,
+                integrity_hash: r.get(11)?,
+                reason: r.get(12)?,
+                files: u32::try_from(r.get::<_, i64>(13)?).unwrap_or(u32::MAX),
+                removed: u32::try_from(r.get::<_, i64>(14)?).unwrap_or(u32::MAX),
+                created_at: Timestamp(r.get(15)?),
+                committed_at: r.get::<_, Option<i64>>(16)?.map(Timestamp),
+            },
+        ))
+    })?;
+    let mut out = Vec::new();
+    for row in rows {
+        let (task, cp) = row?;
+        out.push((TaskId::from_bytes(blob16(task)?), cp));
+    }
+    Ok(out)
+}
+
+/// The tasks of a session, oldest first.
+pub fn load_tasks_for_session(
+    tx: &rusqlite::Connection,
+    session: &modbit_domain::SessionId,
+) -> Result<Vec<Task>> {
+    let mut stmt =
+        tx.prepare("SELECT task_id FROM tasks WHERE session_id = ?1 ORDER BY created_at")?;
+    let ids: Vec<Vec<u8>> = stmt
+        .query_map(params![session.as_bytes().as_slice()], |r| r.get(0))?
+        .collect::<std::result::Result<Vec<_>, _>>()?;
+    let mut out = Vec::new();
+    for id in ids {
+        if let Some(t) = load_task(tx, &TaskId::from_bytes(blob16(id)?))? {
+            out.push(t);
+        }
+    }
+    Ok(out)
 }
 
 /// docs/31 `agent_nodes` / `work_nodes` (M6.1): the AgentGraph and the
@@ -845,7 +916,16 @@ pub fn apply(tx: &Transaction<'_>, ev: &StoredEvent, objects: &crate::ObjectStor
                         running: *running,
                     },
                 )),
+                // A background process the Core saw end (or a client killed)
+                // moves the handle's cursor to exited exactly as the run's own
+                // observation of the exit does (REQ-PX-043).
                 TaskEvent::ProcessExited {
+                    handle_id,
+                    output_ref,
+                    exit_code,
+                    ..
+                }
+                | TaskEvent::BackgroundProcessEnded {
                     handle_id,
                     output_ref,
                     exit_code,
@@ -1254,6 +1334,32 @@ pub fn apply(tx: &Transaction<'_>, ev: &StoredEvent, objects: &crate::ObjectStor
             )?;
             materialize_protocol_state(tx, session, l.task_id, at, ProtocolDelta::Rows)?;
         }
+        // PX-041: an assistant stream has no row of its own; the store
+        // refuses what a stream may not hold (a delta out of sequence, over
+        // the bound, or after the record that closed the stream).
+        AggregateType::AssistantStream => {
+            let event: modbit_domain::stream::StreamEvent = serde_json::from_value(payload)?;
+            let sequence = ev.envelope.sequence;
+            let previous: Option<String> = if sequence > 1 {
+                tx.query_row(
+                    "SELECT event_type FROM events WHERE aggregate_id = ?1 AND sequence = ?2",
+                    params![id.as_slice(), (sequence - 1) as i64],
+                    |r| r.get(0),
+                )
+                .optional()?
+            } else {
+                None
+            };
+            modbit_domain::stream::check_next(id, sequence, previous.as_deref(), &event)
+                .map_err(|detail| Error::Projection { offset, detail })?;
+        }
+        // PX-113: a memory event carries the row its item has after it (and
+        // `removed` when the item leaves the store); the projection is the
+        // plain replay of those rows in log order.
+        AggregateType::Memory => project_memory(tx, &payload)?,
+        // PX-063: a project's events fold into `projects` and
+        // `project_members`; the fold is the whole definition of both.
+        AggregateType::Project => project_project(tx, ev, &payload)?,
         // Aggregates whose projections belong to later milestones (checkpoints).
         _ => {}
     }
@@ -1261,6 +1367,206 @@ pub fn apply(tx: &Transaction<'_>, ev: &StoredEvent, objects: &crate::ObjectStor
         "INSERT OR REPLACE INTO projection_state (name, last_offset) VALUES (?1, ?2)",
         params![PROJECTION_NAME, offset as i64],
     )?;
+    Ok(())
+}
+
+/// Apply one `Memory` event: upsert the row it carries, or delete the item
+/// when it says `removed` (a forgotten item leaves the store; the log keeps
+/// the fact that it was forgotten).
+fn project_memory(tx: &Transaction<'_>, payload: &serde_json::Value) -> Result<()> {
+    if payload["removed"].as_bool() == Some(true) {
+        let id = payload["memory_id"].as_str().unwrap_or_default();
+        tx.execute("DELETE FROM memory_items WHERE id = ?1", params![id])?;
+        return Ok(());
+    }
+    let row: crate::MemoryRow = serde_json::from_value(payload["row"].clone())?;
+    tx.execute(
+        "INSERT OR REPLACE INTO memory_items (id, scope_key, record_type, topic, status, sensitivity, created_at_ms, expires_at_ms, updated_at_ms, doc) \
+         VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10)",
+        params![
+            row.id,
+            row.scope_key,
+            row.record_type,
+            row.topic,
+            row.status,
+            row.sensitivity,
+            row.created_at_ms,
+            row.expires_at_ms,
+            row.updated_at_ms,
+            row.doc,
+        ],
+    )?;
+    Ok(())
+}
+
+/// The project records and the membership map as rows, in a fixed order.
+type ProjectRows = (
+    Vec<(Vec<u8>, String, String, i64, i64)>,
+    Vec<(Vec<u8>, Vec<u8>, i64)>,
+);
+
+fn read_project_rows(tx: &Transaction<'_>) -> Result<ProjectRows> {
+    let projects = tx
+        .prepare(
+            "SELECT project_id, name, workspace_root, archived, last_offset FROM projects ORDER BY project_id",
+        )?
+        .query_map([], |r| {
+            Ok((r.get(0)?, r.get(1)?, r.get(2)?, r.get(3)?, r.get(4)?))
+        })?
+        .collect::<std::result::Result<Vec<_>, _>>()?;
+    let members = tx
+        .prepare("SELECT task_id, project_id, added_offset FROM project_members ORDER BY task_id")?
+        .query_map([], |r| Ok((r.get(0)?, r.get(1)?, r.get(2)?)))?
+        .collect::<std::result::Result<Vec<_>, _>>()?;
+    Ok((projects, members))
+}
+
+/// Whether `projects` and `project_members` are exactly the fold of the
+/// `Project` events of the log (the invariant of PX-063: the membership map is
+/// a projection and never the authority). The check replays the events into
+/// the tables inside `tx` and compares; the caller drops `tx` to leave the
+/// tables as they were.
+pub fn project_tables_agree_with_log(
+    tx: &Transaction<'_>,
+    objects: &crate::ObjectStore,
+) -> Result<bool> {
+    let before = read_project_rows(tx)?;
+    tx.execute("DELETE FROM project_members", [])?;
+    tx.execute("DELETE FROM projects", [])?;
+    for ev in &crate::store::read_all_from(tx, 0)? {
+        if ev.envelope.aggregate_type == AggregateType::Project {
+            let payload = payload_json(tx, ev, objects)?;
+            project_project(tx, ev, &payload)?;
+        }
+    }
+    Ok(read_project_rows(tx)? == before)
+}
+
+/// Apply one `Project` event to `projects` and `project_members`.
+fn project_project(
+    tx: &Transaction<'_>,
+    ev: &StoredEvent,
+    payload: &serde_json::Value,
+) -> Result<()> {
+    use modbit_domain::project::ProjectEvent;
+    let event: ProjectEvent = serde_json::from_value(payload.clone())?;
+    let at = ev.envelope.occurred_at.millis();
+    let offset = ev.offset as i64;
+    let pid = |p: &modbit_domain::ProjectId| p.as_bytes().to_vec();
+    let bad = |detail: String| Error::Projection {
+        offset: ev.offset,
+        detail,
+    };
+    let touched = |n: usize, what: &str| {
+        if n == 0 {
+            Err(bad(format!("{what} names a project that does not exist")))
+        } else {
+            Ok(())
+        }
+    };
+    match event {
+        ProjectEvent::ProjectCreated {
+            project_id,
+            name,
+            color,
+            icon,
+            workspace_root,
+        } => {
+            tx.execute(
+                "INSERT INTO projects (project_id, name, name_key, color, icon, workspace_root, archived, created_at_ms, updated_at_ms, created_offset, last_offset) \
+                 VALUES (?1, ?2, ?3, ?4, ?5, ?6, 0, ?7, ?7, ?8, ?8)",
+                params![
+                    pid(&project_id),
+                    name,
+                    modbit_domain::project::name_key(&name),
+                    color,
+                    icon,
+                    workspace_root,
+                    at,
+                    offset
+                ],
+            )?;
+        }
+        ProjectEvent::ProjectRenamed {
+            project_id,
+            name,
+            color,
+            icon,
+        } => {
+            let n = tx.execute(
+                "UPDATE projects SET name = ?2, name_key = ?3, color = ?4, icon = ?5, updated_at_ms = ?6, last_offset = ?7 WHERE project_id = ?1",
+                params![
+                    pid(&project_id),
+                    name,
+                    modbit_domain::project::name_key(&name),
+                    color,
+                    icon,
+                    at,
+                    offset
+                ],
+            )?;
+            touched(n, "ProjectRenamed")?;
+        }
+        ProjectEvent::ProjectArchived { project_id } => {
+            let n = tx.execute(
+                "UPDATE projects SET archived = 1, updated_at_ms = ?2, last_offset = ?3 WHERE project_id = ?1",
+                params![pid(&project_id), at, offset],
+            )?;
+            touched(n, "ProjectArchived")?;
+        }
+        ProjectEvent::ProjectUnarchived { project_id } => {
+            let n = tx.execute(
+                "UPDATE projects SET archived = 0, updated_at_ms = ?2, last_offset = ?3 WHERE project_id = ?1",
+                params![pid(&project_id), at, offset],
+            )?;
+            touched(n, "ProjectUnarchived")?;
+        }
+        ProjectEvent::ProjectMemberAdded {
+            project_id,
+            task_id,
+        } => {
+            let n = tx.execute(
+                "UPDATE projects SET updated_at_ms = ?2, last_offset = ?3 WHERE project_id = ?1",
+                params![pid(&project_id), at, offset],
+            )?;
+            touched(n, "ProjectMemberAdded")?;
+            // The task id is the map's key: a second project cannot hold it.
+            let held: Option<Vec<u8>> = tx
+                .query_row(
+                    "SELECT project_id FROM project_members WHERE task_id = ?1",
+                    params![task_id.as_bytes().as_slice()],
+                    |r| r.get(0),
+                )
+                .optional()?;
+            match held {
+                Some(other) if other != pid(&project_id) => {
+                    return Err(bad(
+                        "ProjectMemberAdded names a task another project holds".to_owned()
+                    ));
+                }
+                Some(_) => {}
+                None => {
+                    tx.execute(
+                        "INSERT INTO project_members (task_id, project_id, added_at_ms, added_offset) VALUES (?1, ?2, ?3, ?4)",
+                        params![task_id.as_bytes().as_slice(), pid(&project_id), at, offset],
+                    )?;
+                }
+            }
+        }
+        ProjectEvent::ProjectMemberRemoved {
+            project_id,
+            task_id,
+        } => {
+            tx.execute(
+                "UPDATE projects SET updated_at_ms = ?2, last_offset = ?3 WHERE project_id = ?1",
+                params![pid(&project_id), at, offset],
+            )?;
+            tx.execute(
+                "DELETE FROM project_members WHERE task_id = ?1 AND project_id = ?2",
+                params![task_id.as_bytes().as_slice(), pid(&project_id)],
+            )?;
+        }
+    }
     Ok(())
 }
 
@@ -1628,16 +1934,38 @@ fn approval_from_row(r: &rusqlite::Row<'_>) -> rusqlite::Result<Approval> {
         resolved_at: r.get::<_, Option<i64>>(10)?.map(Timestamp),
         resolver: r.get(11)?,
         expires_at: r.get::<_, Option<i64>>(12)?.map(Timestamp),
+        consumed_at: r.get::<_, Option<i64>>(13)?.map(Timestamp),
     })
 }
 
-const APPROVAL_COLS: &str = "approval_id, task_id, tool_call_id, tool_name, effect_class, intent_hash, scope_json, status, generation, requested_at, resolved_at, resolver_user_id, expires_at";
+/// The columns [`approval_from_row`] reads, qualified by the approvals alias
+/// `a`. The last one is the approval's consumption (FIX-15): an approval is
+/// bound to one tool call, and the call's `ToolCallDispatched` — the event
+/// the write-ahead journal appends, in the same transaction, before the
+/// effector runs — is the moment the approval is spent. It is read off the
+/// call's projection rather than stored twice, so there is no state in which
+/// an approval is spent without a dispatch or a dispatch ran without spending
+/// it.
+fn approval_cols() -> String {
+    "approval_id, task_id, tool_call_id, tool_name, effect_class, intent_hash, scope_json, status, generation, requested_at, resolved_at, resolver_user_id, expires_at"
+        .split(", ")
+        .map(|c| format!("a.{c}"))
+        .chain(std::iter::once(
+            "(SELECT t.dispatched_at FROM tool_calls t WHERE t.tool_call_id = a.tool_call_id)"
+                .to_owned(),
+        ))
+        .collect::<Vec<_>>()
+        .join(", ")
+}
 
 /// Load an approval.
 pub fn load_approval(tx: &rusqlite::Connection, id: &ApprovalId) -> Result<Option<Approval>> {
     Ok(tx
         .query_row(
-            &format!("SELECT {APPROVAL_COLS} FROM approvals WHERE approval_id = ?1"),
+            &format!(
+                "SELECT {} FROM approvals a WHERE a.approval_id = ?1",
+                approval_cols()
+            ),
             params![id.as_bytes().as_slice()],
             approval_from_row,
         )
@@ -1652,7 +1980,8 @@ pub fn load_approval_for_call(
     Ok(tx
         .query_row(
             &format!(
-                "SELECT {APPROVAL_COLS} FROM approvals WHERE tool_call_id = ?1 ORDER BY requested_at DESC, approval_id DESC LIMIT 1"
+                "SELECT {} FROM approvals a WHERE a.tool_call_id = ?1 ORDER BY a.requested_at DESC, a.approval_id DESC LIMIT 1",
+                approval_cols()
             ),
             params![id.as_bytes().as_slice()],
             approval_from_row,
@@ -1663,7 +1992,8 @@ pub fn load_approval_for_call(
 /// The approvals of a task, oldest first.
 pub fn load_approvals_for_task(tx: &rusqlite::Connection, task: &TaskId) -> Result<Vec<Approval>> {
     let mut stmt = tx.prepare(&format!(
-        "SELECT {APPROVAL_COLS} FROM approvals WHERE task_id = ?1 ORDER BY requested_at, approval_id"
+        "SELECT {} FROM approvals a WHERE a.task_id = ?1 ORDER BY a.requested_at, a.approval_id",
+        approval_cols()
     ))?;
     let rows = stmt.query_map(params![task.as_bytes().as_slice()], approval_from_row)?;
     Ok(rows.collect::<std::result::Result<Vec<_>, _>>()?)
@@ -1676,13 +2006,20 @@ pub fn load_approvals_for_session(
 ) -> Result<Vec<Approval>> {
     let mut stmt = tx.prepare(&format!(
         "SELECT {} FROM approvals a JOIN tasks t ON t.task_id = a.task_id WHERE t.session_id = ?1 ORDER BY (a.status <> 'REQUESTED'), a.requested_at, a.approval_id",
-        APPROVAL_COLS
-            .split(", ")
-            .map(|c| format!("a.{c}"))
-            .collect::<Vec<_>>()
-            .join(", ")
+        approval_cols()
     ))?;
     let rows = stmt.query_map(params![session.as_bytes().as_slice()], approval_from_row)?;
+    Ok(rows.collect::<std::result::Result<Vec<_>, _>>()?)
+}
+
+/// Every approval still waiting for a decision, in every session, oldest
+/// first (the Core's expiry sweep reads exactly these).
+pub fn load_requested_approvals(tx: &rusqlite::Connection) -> Result<Vec<Approval>> {
+    let mut stmt = tx.prepare(&format!(
+        "SELECT {} FROM approvals a WHERE a.status = 'REQUESTED' ORDER BY a.requested_at, a.approval_id",
+        approval_cols()
+    ))?;
+    let rows = stmt.query_map([], approval_from_row)?;
     Ok(rows.collect::<std::result::Result<Vec<_>, _>>()?)
 }
 
@@ -1763,8 +2100,8 @@ fn insert_receipt(tx: &rusqlite::Connection, r: &EffectReceipt) -> Result<()> {
         |row| row.get(0),
     )?;
     tx.execute(
-        "INSERT OR IGNORE INTO effect_receipts (effect_id, seq, previous_receipt_hash, task_id, turn_id, step_id, tool_call_id, capability_lease_id, intent_hash, policy_decision, approval_id, execution_target, evidence_ref, status, occurred_at, receipt_hash, reversibility, compensates)
-         VALUES (?1, ?2, ?3, ?4, NULL, NULL, ?5, ?6, ?7, ?8, ?9, ?10, ?11, ?12, ?13, ?14, ?15, ?16)",
+        "INSERT OR IGNORE INTO effect_receipts (effect_id, seq, previous_receipt_hash, task_id, turn_id, step_id, tool_call_id, capability_lease_id, intent_hash, policy_decision, approval_id, execution_target, evidence_ref, status, occurred_at, receipt_hash, reversibility, compensates, authorization_epoch, capability_snapshot_hash)
+         VALUES (?1, ?2, ?3, ?4, NULL, NULL, ?5, ?6, ?7, ?8, ?9, ?10, ?11, ?12, ?13, ?14, ?15, ?16, ?17, ?18)",
         params![
             r.effect_id.as_bytes().as_slice(),
             seq,
@@ -1782,6 +2119,10 @@ fn insert_receipt(tx: &rusqlite::Connection, r: &EffectReceipt) -> Result<()> {
             &r.receipt_hash,
             r.reversibility.map(|x| x.label()),
             r.compensates.map(|e| e.as_bytes().to_vec()),
+            r.authorization
+                .as_ref()
+                .map(|a| i64::try_from(a.epoch).unwrap_or(i64::MAX)),
+            r.authorization.as_ref().map(|a| a.snapshot_hash.clone()),
         ],
     )?;
     Ok(())
@@ -1821,10 +2162,20 @@ fn receipt_from_row(r: &rusqlite::Row<'_>) -> rusqlite::Result<EffectReceipt> {
             .map(blob16)
             .transpose()?
             .map(modbit_domain::EffectId::from_bytes),
+        authorization: match (
+            r.get::<_, Option<i64>>(15)?,
+            r.get::<_, Option<String>>(16)?,
+        ) {
+            (Some(epoch), Some(snapshot_hash)) => Some(modbit_domain::epoch::AuthorizationStamp {
+                epoch: u64::try_from(epoch).unwrap_or(0),
+                snapshot_hash,
+            }),
+            _ => None,
+        },
     })
 }
 
-const RECEIPT_COLS: &str = "effect_id, previous_receipt_hash, task_id, tool_call_id, capability_lease_id, intent_hash, policy_decision, approval_id, execution_target, evidence_ref, status, occurred_at, receipt_hash, reversibility, compensates";
+const RECEIPT_COLS: &str = "effect_id, previous_receipt_hash, task_id, tool_call_id, capability_lease_id, intent_hash, policy_decision, approval_id, execution_target, evidence_ref, status, occurred_at, receipt_hash, reversibility, compensates, authorization_epoch, capability_snapshot_hash";
 
 /// The hash of the newest receipt in the chain, if any.
 pub fn last_receipt_hash(tx: &rusqlite::Connection) -> Result<Option<String>> {
@@ -2268,6 +2619,9 @@ pub fn load_flaky_checks(
 /// Truncate the projection tables and replay every event from offset 0.
 pub fn rebuild(tx: &Transaction<'_>, objects: &crate::ObjectStore) -> Result<u64> {
     for t in [
+        "project_members",
+        "projects",
+        "memory_items",
         "checkpoints",
         "compaction_epochs",
         "protocol_state",

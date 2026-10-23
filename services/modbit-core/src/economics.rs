@@ -34,6 +34,7 @@ pub(crate) async fn view(core: &Core, task_id: TaskId) -> wire::TaskEconomicsVie
     let mut completion_run = String::new();
     let mut regressions: std::collections::HashSet<(String, String)> =
         std::collections::HashSet::new();
+    let mut cost_cap: u64 = 0;
     for e in &events {
         if e.envelope.task_id != Some(task_id) {
             continue;
@@ -65,6 +66,7 @@ pub(crate) async fn view(core: &Core, task_id: TaskId) -> wire::TaskEconomicsVie
                     v.model_ms += u64::try_from(at - started).unwrap_or(0);
                 }
             }
+            "TaskBudgetsSet" => cost_cap = p["max_cost_minor"].as_u64().unwrap_or(0),
             "ModelUsageRecorded" => {
                 v.input_tokens += p["input_tokens"].as_u64().unwrap_or(0);
                 v.output_tokens += p["output_tokens"].as_u64().unwrap_or(0);
@@ -78,6 +80,11 @@ pub(crate) async fn view(core: &Core, task_id: TaskId) -> wire::TaskEconomicsVie
                 if let Some(started) = tool_started.remove(&e.envelope.aggregate_id) {
                     v.tool_ms += u64::try_from(at - started).unwrap_or(0);
                 }
+            }
+            // The latest Context Pack the task compiled (FIX-12: counted from
+            // the log, so it is the same after a Core restart).
+            "ContextPackRecorded" => {
+                v.context_tokens_injected = p["token_used"].as_u64().unwrap_or(0);
             }
             "ContextEpochOpened" => {
                 v.compaction_epochs += 1;
@@ -138,7 +145,9 @@ pub(crate) async fn view(core: &Core, task_id: TaskId) -> wire::TaskEconomicsVie
     // with no derivable suite is reported as NO_CHECKS, never as verified.
     v.verification = match completion_status.as_str() {
         "" => "NOT_RUN",
-        "PASSED" if checks.is_empty() => "NO_CHECKS",
+        // An empty mandatory check set records UNKNOWN (FIX-03): the same
+        // fact as a run that passed with nothing to run, still not verified.
+        "PASSED" | "UNKNOWN" if checks.is_empty() => "NO_CHECKS",
         "PASSED" => "PASSED",
         _ => "FAILED",
     }
@@ -146,14 +155,6 @@ pub(crate) async fn view(core: &Core, task_id: TaskId) -> wire::TaskEconomicsVie
     v.verified = v.verification == "PASSED";
     if last_at > first_at {
         v.wall_ms = u64::try_from(last_at - first_at).unwrap_or(0);
-    }
-    // What the prompt envelope injected, from the task's Context Ledger.
-    {
-        let ledger = core.tools.ledger(task_id).await;
-        let ledger = ledger.lock().await;
-        if let Some(pack) = ledger.last_pack.as_ref() {
-            v.context_tokens_injected = u64::from(pack.token_used);
-        }
     }
     // IMP-EV-0032: every call on the canonical ledger, priced at its own
     // binding in the active registry (minor units); attributed per run and
@@ -174,6 +175,33 @@ pub(crate) async fn view(core: &Core, task_id: TaskId) -> wire::TaskEconomicsVie
         v.priced_under = pricing.generation;
     }
     v.runs = crate::usage::attribution(&store, &task, &calls);
+    // REQ-PX-116: what the task's children spent counts with the task's own,
+    // priced the same way from the same ledger; what is still held for live
+    // children is shown beside the cap.
+    let holds = crate::spawn::child_holds_in(&store, core, &task);
+    let child_ids: std::collections::HashSet<TaskId> = holds.iter().map(|(_, t, _)| *t).collect();
+    let kids: Vec<&crate::usage::Call> = calls
+        .iter()
+        .filter(|c| c.task_id.is_some_and(|t| child_ids.contains(&t)))
+        .collect();
+    v.children_cost_minor = kids.iter().filter_map(|c| c.cost_minor).sum();
+    v.children_model_calls = count(kids.iter());
+    v.children_unmetered_calls = count(kids.iter().filter(|c| c.cost_minor.is_none()));
+    v.subtree_cost_minor = v.cost_minor + v.children_cost_minor;
+    v.cost_cap_minor = cost_cap;
+    let only: Vec<modbit_core_runtime::budget::ChildHold> =
+        holds.iter().map(|(_, _, h)| *h).collect();
+    let committed = modbit_core_runtime::budget::committed(&only);
+    v.cost_reserved_minor = holds
+        .iter()
+        .filter(|(_, _, h)| h.live)
+        .map(|(_, _, h)| h.held().cost_minor)
+        .sum();
+    if cost_cap > 0 {
+        v.cost_remaining_minor = cost_cap
+            .saturating_sub(v.cost_minor)
+            .saturating_sub(committed.cost_minor);
+    }
     // Catalog list prices, no cache discount: what the run would cost at the
     // published rate, not a bill — each call at its own model's price, and
     // known only when every call was reported and its model is catalogued.

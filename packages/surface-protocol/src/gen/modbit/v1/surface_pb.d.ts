@@ -11,8 +11,17 @@ import type { GenEnum, GenFile, GenMessage } from "@bufbuild/protobuf/codegenv2"
 import type { Message } from "@bufbuild/protobuf";
 import type { Hello, HelloAck } from "./negotiation_pb.js";
 import type { Id } from "./domain_pb.js";
+import type { ExecutionPreference, ExecutionPreferenceView, RoutingOutcomeView, TaskMode, TaskPostureView } from "./tasking_pb.js";
+import type { TaskIsolation } from "./worktrees_pb.js";
 import type { Timestamp } from "@bufbuild/protobuf/wkt";
 import type { CommandEnvelope, EventEnvelope } from "./envelope_pb.js";
+import type { TerminalFrame } from "./terminal_pb.js";
+import type { CompactionSummaryView, CompactionThresholdView, InstructionLayerView, PreTurnPackView } from "./context_rules_pb.js";
+import type { MemoryEventView, MemoryInjectionView } from "./context_knowledge_pb.js";
+import type { ContextAccountingView } from "./run_control_pb.js";
+import type { ProcessServiceView } from "./security_runtime_pb.js";
+import type { ReviewCommentThreadView } from "./forge_cloud_pb.js";
+import type { CaptureCost } from "./checkpoints_pb.js";
 
 /**
  * Describes the file modbit/v1/surface.proto.
@@ -137,6 +146,136 @@ export declare type CreateTask = Message<"modbit.v1.CreateTask"> & {
    * @generated from field: string issue_json = 8;
    */
   issueJson: string;
+
+  /**
+   * PX-051 (tasking.proto): the task's mode; UNSPECIFIED = AGENT. The Core
+   * derives the posture; a client sends the mode and nothing else.
+   *
+   * @generated from field: modbit.v1.TaskMode mode = 140;
+   */
+  mode: TaskMode;
+
+  /**
+   * PX-053: the user's execution preference at creation (recorded on the task).
+   *
+   * @generated from field: modbit.v1.ExecutionPreference preference = 141;
+   */
+  preference?: ExecutionPreference | undefined;
+
+  /**
+   * PX-118 (worktrees.proto, field block 280-299): where the task's effects
+   * land. WORKTREE: the Core makes the task's own worktree before the first
+   * turn and binds the run's root, path policy, shell directory, index view
+   * and checkpoints to it; a worktree that cannot be made refuses the
+   * creation with a typed reason (never a silent fallback to the checkout).
+   * UNSPECIFIED = the Core's recorded default.
+   *
+   * @generated from field: modbit.v1.TaskIsolation isolation = 280;
+   */
+  isolation: TaskIsolation;
+
+  /**
+   * PX-083 / PX-084 (automations.proto, field block 400-419): set only by the
+   * Core's own automation host when a trigger fires (origin `automation`);
+   * any client that sends one is refused with AUTOMATION_FIELDS_RESERVED.
+   *
+   * @generated from field: string automation_id = 400;
+   */
+  automationId: string;
+
+  /**
+   * @generated from field: uint32 automation_version = 401;
+   */
+  automationVersion: number;
+
+  /**
+   * the delivery id or schedule slot id
+   *
+   * @generated from field: string automation_event_id = 402;
+   */
+  automationEventId: string;
+
+  /**
+   * sha256(definition | version | event id)
+   *
+   * @generated from field: string automation_dispatch_key = 403;
+   */
+  automationDispatchKey: string;
+
+  /**
+   * user:<id> | service:<id>; recorded on the task
+   *
+   * @generated from field: string automation_principal = 404;
+   */
+  automationPrincipal: string;
+
+  /**
+   * trigger id and kind
+   *
+   * @generated from field: string automation_trigger = 405;
+   */
+  automationTrigger: string;
+
+  /**
+   * The run's ceiling: the profile's default lease narrowed to these. The
+   * task's lease is the intersection with the profile's own, never wider.
+   *
+   * @generated from field: repeated string lease_operations = 406;
+   */
+  leaseOperations: string[];
+
+  /**
+   * @generated from field: repeated string lease_resources = 407;
+   */
+  leaseResources: string[];
+
+  /**
+   * @generated from field: string lease_effect_ceiling = 408;
+   */
+  leaseEffectCeiling: string;
+
+  /**
+   * The trigger payload: untrusted external content attached to the task as a
+   * labelled context document, never instruction (AUT-D04).
+   *
+   * @generated from field: string trigger_payload = 409;
+   */
+  triggerPayload: string;
+
+  /**
+   * forge_pr | forge_comment | webhook
+   *
+   * @generated from field: string trigger_payload_label = 410;
+   */
+  triggerPayloadLabel: string;
+
+  /**
+   * instruction-shaped passages the Core found in it
+   *
+   * @generated from field: uint32 payload_findings = 411;
+   */
+  payloadFindings: number;
+
+  /**
+   * a dry-run: read-only, protected effects denied
+   *
+   * @generated from field: bool automation_test = 412;
+   */
+  automationTest: boolean;
+
+  /**
+   * the hash the owner's enable approval named
+   *
+   * @generated from field: string automation_definition_hash = 413;
+   */
+  automationDefinitionHash: string;
+
+  /**
+   * schedule | manual | event | webhook
+   *
+   * @generated from field: string automation_trigger_kind = 414;
+   */
+  automationTriggerKind: string;
 };
 
 /**
@@ -320,6 +459,27 @@ export declare type TaskView = Message<"modbit.v1.TaskView"> & {
    * @generated from field: string workspace_root = 8;
    */
   workspaceRoot: string;
+
+  /**
+   * PX-051: the mode the user last set (AGENT when never set)
+   *
+   * @generated from field: modbit.v1.TaskMode mode = 140;
+   */
+  mode: TaskMode;
+
+  /**
+   * PX-118: NONE | WORKTREE (UNSPECIFIED for a task of an older Core)
+   *
+   * @generated from field: modbit.v1.TaskIsolation isolation = 280;
+   */
+  isolation: TaskIsolation;
+
+  /**
+   * PX-118: for a worktree task, the checkout its worktree was made from
+   *
+   * @generated from field: string origin_root = 281;
+   */
+  originRoot: string;
 };
 
 /**
@@ -492,6 +652,15 @@ export declare type SurfaceFrame = Message<"modbit.v1.SurfaceFrame"> & {
      */
     value: BrowserViewFrame;
     case: "browserFrame";
+  } | {
+    /**
+     * PX-043 (field block 120-139): a slice of a terminal stream this
+     * connection attached to (AttachTerminal).
+     *
+     * @generated from field: modbit.v1.TerminalFrame terminal_frame = 120;
+     */
+    value: TerminalFrame;
+    case: "terminalFrame";
   } | { case: undefined; value?: undefined };
 };
 
@@ -1261,6 +1430,20 @@ export declare type EffectReceiptView = Message<"modbit.v1.EffectReceiptView"> &
    * @generated from field: modbit.v1.Id compensates = 15;
    */
   compensates?: Id | undefined;
+
+  /**
+   * REQ-PX-131: the model round's epoch the effect was decided under; 0 before epochs
+   *
+   * @generated from field: uint64 authorization_epoch = 320;
+   */
+  authorizationEpoch: bigint;
+
+  /**
+   * the digest of that epoch's frozen capability snapshot
+   *
+   * @generated from field: string capability_snapshot_hash = 321;
+   */
+  capabilitySnapshotHash: string;
 };
 
 /**
@@ -2115,7 +2298,11 @@ export declare type ContextInspectorView = Message<"modbit.v1.ContextInspectorVi
   manifestRef: string;
 
   /**
-   * turns that reused the previous stable prefix
+   * By cache KEY: turns routed on the same stable-prefix key as the turn before
+   * (what the prompt asked the provider to reuse), not what the provider
+   * served; the provider-reported numbers are fields 27-29.
+   *
+   * turns that reused the previous stable prefix key
    *
    * @generated from field: uint32 prefix_cache_hits = 20;
    */
@@ -2156,6 +2343,85 @@ export declare type ContextInspectorView = Message<"modbit.v1.ContextInspectorVi
    * @generated from field: repeated modbit.v1.CompactionRequestView compactions = 26;
    */
   compactions: CompactionRequestView[];
+
+  /**
+   * What the provider reported serving from its prompt cache (FIX-13): summed
+   * over the model invocations whose usage the provider actually reported
+   * (an invocation that dropped before its usage frame is unknown, never
+   * zero). `reported_cached_input_tokens / reported_input_tokens` is the real
+   * cache hit rate; the key-based counts above are not.
+   *
+   * @generated from field: uint64 reported_input_tokens = 27;
+   */
+  reportedInputTokens: bigint;
+
+  /**
+   * @generated from field: uint64 reported_cached_input_tokens = 28;
+   */
+  reportedCachedInputTokens: bigint;
+
+  /**
+   * @generated from field: uint32 reported_invocations = 29;
+   */
+  reportedInvocations: number;
+
+  /**
+   * Fields 180-199 are the context rules/pack/compaction block (REQ-PX-107,
+   * 108, 109); the messages are in context_rules.proto.
+   * Every instruction layer of the task's last selection: in force, and the
+   * files that exist and are not (an untrusted repository's AGENTS.md among
+   * them, with the reason).
+   *
+   * @generated from field: repeated modbit.v1.InstructionLayerView instructions = 180;
+   */
+  instructions: InstructionLayerView[];
+
+  /**
+   * The latest goal-seeded pre-turn step.
+   *
+   * @generated from field: modbit.v1.PreTurnPackView pre_turn_pack = 181;
+   */
+  preTurnPack?: PreTurnPackView | undefined;
+
+  /**
+   * How each compaction epoch's summary was made.
+   *
+   * @generated from field: repeated modbit.v1.CompactionSummaryView compaction_summaries = 182;
+   */
+  compactionSummaries: CompactionSummaryView[];
+
+  /**
+   * What the compaction trigger derives from.
+   *
+   * @generated from field: modbit.v1.CompactionThresholdView compaction_thresholds = 183;
+   */
+  compactionThresholds?: CompactionThresholdView | undefined;
+
+  /**
+   * Engineering memory the prompt envelope injected on the last compiled turn
+   * (PX-113): the ids and provenance of every entry, what was left out and why.
+   *
+   * @generated from field: modbit.v1.MemoryInjectionView memory = 200;
+   */
+  memory?: MemoryInjectionView | undefined;
+
+  /**
+   * Fields 340-359 are the in-run control and context accounting block
+   * (REQ-PX-050, 057, 059); the messages are in run_control.proto.
+   * The Core's breakdown of the last compiled request by category.
+   *
+   * @generated from field: modbit.v1.ContextAccountingView accounting = 340;
+   */
+  accounting?: ContextAccountingView | undefined;
+
+  /**
+   * The listening services of the task's terminals the Core observed and has
+   * not seen end (REQ-PX-132), so the context breakdown shows what the agent
+   * would otherwise have to rediscover.
+   *
+   * @generated from field: repeated modbit.v1.ProcessServiceView process_services = 320;
+   */
+  processServices: ProcessServiceView[];
 };
 
 /**
@@ -3245,6 +3511,55 @@ export declare type TaskEconomicsView = Message<"modbit.v1.TaskEconomicsView"> &
    * @generated from field: repeated modbit.v1.RunUsageView runs = 32;
    */
   runs: RunUsageView[];
+
+  /**
+   * REQ-PX-116 (field block 240-259): the children's spend counts with the parent's.
+   *
+   * spend of the task's children (their own priced calls)
+   *
+   * @generated from field: uint64 children_cost_minor = 240;
+   */
+  childrenCostMinor: bigint;
+
+  /**
+   * @generated from field: uint32 children_model_calls = 241;
+   */
+  childrenModelCalls: number;
+
+  /**
+   * cost_minor + children_cost_minor
+   *
+   * @generated from field: uint64 subtree_cost_minor = 242;
+   */
+  subtreeCostMinor: bigint;
+
+  /**
+   * child calls whose cost is unknown (never counted as zero)
+   *
+   * @generated from field: uint32 children_unmetered_calls = 243;
+   */
+  childrenUnmeteredCalls: number;
+
+  /**
+   * the task's cap, 0 = none
+   *
+   * @generated from field: uint64 cost_cap_minor = 244;
+   */
+  costCapMinor: bigint;
+
+  /**
+   * held for live children at this moment
+   *
+   * @generated from field: uint64 cost_reserved_minor = 245;
+   */
+  costReservedMinor: bigint;
+
+  /**
+   * cap - own - children committed; 0 when there is no cap
+   *
+   * @generated from field: uint64 cost_remaining_minor = 246;
+   */
+  costRemainingMinor: bigint;
 };
 
 /**
@@ -3998,6 +4313,15 @@ export declare type StartTask = Message<"modbit.v1.StartTask"> & {
    * @generated from field: repeated string skills = 7;
    */
   skills: string[];
+
+  /**
+   * PX-100 (tasking.proto): objective, reasoning effort and service tier for
+   * this task from the start; recorded as the task's execution preference. A
+   * manual pin is `endpoint` and `model` above, so `pin_*` here is refused.
+   *
+   * @generated from field: modbit.v1.ExecutionPreference preference = 140;
+   */
+  preference?: ExecutionPreference | undefined;
 };
 
 /**
@@ -4185,6 +4509,14 @@ export declare type TaskStatus = Message<"modbit.v1.TaskStatus"> & {
    * @generated from field: string user_explanation = 14;
    */
   userExplanation: string;
+
+  /**
+   * PX-051 / PX-053: the task's mode, the posture in force and its execution
+   * preference (tasking.proto).
+   *
+   * @generated from field: modbit.v1.TaskPostureView posture = 140;
+   */
+  posture?: TaskPostureView | undefined;
 };
 
 /**
@@ -4443,6 +4775,19 @@ export declare type ReviewBundle = Message<"modbit.v1.ReviewBundle"> & {
    * @generated from field: repeated modbit.v1.CiCheckView ci_evidence = 15;
    */
   ciEvidence: CiCheckView[];
+
+  /**
+   * PX-127 (forge_cloud.proto): the pull request's comments the task has
+   * seen, untrusted, with what became of each; and the CI runs refused.
+   *
+   * @generated from field: repeated modbit.v1.ReviewCommentThreadView review_comments = 360;
+   */
+  reviewComments: ReviewCommentThreadView[];
+
+  /**
+   * @generated from field: repeated modbit.v1.CiRejectedView ci_rejected = 361;
+   */
+  ciRejected: CiRejectedView[];
 };
 
 /**
@@ -4875,6 +5220,19 @@ export declare type RoutingPlanView = Message<"modbit.v1.RoutingPlanView"> & {
    * @generated from field: modbit.v1.RoutingAdmissionView admission = 15;
    */
   admission?: RoutingAdmissionView | undefined;
+
+  /**
+   * PX-053: the user's execution preference and what routing did with it;
+   * with no signed registry the outcome is DIRECT with a typed reason.
+   *
+   * @generated from field: modbit.v1.ExecutionPreferenceView preference = 140;
+   */
+  preference?: ExecutionPreferenceView | undefined;
+
+  /**
+   * @generated from field: modbit.v1.RoutingOutcomeView preference_routing = 141;
+   */
+  preferenceRouting?: RoutingOutcomeView | undefined;
 };
 
 /**
@@ -7307,6 +7665,13 @@ export declare type CreateCheckpoint = Message<"modbit.v1.CreateCheckpoint"> & {
    * @generated from field: string reason = 3;
    */
   reason: string;
+
+  /**
+   * REQ-PX-102: label the new checkpoint (unique per task; NAME_TAKEN)
+   *
+   * @generated from field: string name = 160;
+   */
+  name: string;
 };
 
 /**
@@ -7342,7 +7707,7 @@ export declare type CheckpointView = Message<"modbit.v1.CheckpointView"> & {
   baseCheckpointId: string;
 
   /**
-   * STARTED | CURRENT | SUPERSEDED | REJECTED
+   * STARTED | CURRENT | SUPERSEDED | REJECTED | COLLECTED
    *
    * @generated from field: string status = 5;
    */
@@ -7408,6 +7773,43 @@ export declare type CheckpointView = Message<"modbit.v1.CheckpointView"> & {
    * @generated from field: int64 committed_at_ms = 16;
    */
   committedAtMs: bigint;
+
+  /**
+   * REQ-PX-061 / REQ-PX-102, block 160-179.
+   *
+   * the user's label, "" when none
+   *
+   * @generated from field: string name = 160;
+   */
+  name: string;
+
+  /**
+   * the turn whose boundary this is; absent when not a turn's
+   *
+   * @generated from field: modbit.v1.Id turn_id = 161;
+   */
+  turnId?: Id | undefined;
+
+  /**
+   * that turn's ordinal in its run (1-based); 0 when not a turn's
+   *
+   * @generated from field: uint32 turn_ordinal = 162;
+   */
+  turnOrdinal: number;
+
+  /**
+   * why the collector keeps it: NAMED | FORK_PARENT | LATEST | PRE_RESTORE | RESTORE_TARGET | CHAIN
+   *
+   * @generated from field: repeated string retention = 163;
+   */
+  retention: string[];
+
+  /**
+   * what the capture cost
+   *
+   * @generated from field: modbit.v1.CaptureCost cost = 164;
+   */
+  cost?: CaptureCost | undefined;
 };
 
 /**
@@ -7512,6 +7914,52 @@ export declare type RestoreCheckpoint = Message<"modbit.v1.RestoreCheckpoint"> &
    * @generated from field: repeated modbit.v1.FileHash expected = 3;
    */
   expected: FileHash[];
+
+  /**
+   * REQ-PX-061 / REQ-PX-102, block 160-179. The target is named by exactly
+   * one of checkpoint_id, name, turn_id or turn_ordinal (none = the current
+   * checkpoint).
+   *
+   * restore the checkpoint carrying this label
+   *
+   * @generated from field: string name = 160;
+   */
+  name: string;
+
+  /**
+   * restore the checkpoint of the latest turn with this ordinal
+   *
+   * @generated from field: uint32 turn_ordinal = 161;
+   */
+  turnOrdinal: number;
+
+  /**
+   * restore the checkpoint of this turn
+   *
+   * @generated from field: modbit.v1.Id turn_id = 162;
+   */
+  turnId?: Id | undefined;
+
+  /**
+   * checkpoint_id is a pre-restore checkpoint: undo that restore (REDO_SUPERSEDED when work moved on since)
+   *
+   * @generated from field: bool redo = 163;
+   */
+  redo: boolean;
+
+  /**
+   * refused as STALE_EPOCH when the task's current epoch differs; 0 = unchecked
+   *
+   * @generated from field: uint32 expected_current_epoch = 164;
+   */
+  expectedCurrentEpoch: number;
+
+  /**
+   * the user's choice for edited files: these paths keep their current content
+   *
+   * @generated from field: repeated string keep_paths = 165;
+   */
+  keepPaths: string[];
 };
 
 /**
@@ -7607,6 +8055,34 @@ export declare type CheckpointRestoreResult = Message<"modbit.v1.CheckpointResto
    * @generated from field: uint32 preconditions_checked = 11;
    */
   preconditionsChecked: number;
+
+  /**
+   * REQ-PX-061, block 160-179.
+   *
+   * the checkpoint of the state before this restore; restoring it is the redo
+   *
+   * @generated from field: string pre_restore_checkpoint_id = 160;
+   */
+  preRestoreCheckpointId: string;
+
+  /**
+   * this command id already restored; nothing was written again
+   *
+   * @generated from field: bool replayed = 161;
+   */
+  replayed: boolean;
+
+  /**
+   * paths left as they were by the caller's choice
+   *
+   * @generated from field: repeated string kept_paths = 162;
+   */
+  keptPaths: string[];
+
+  /**
+   * @generated from field: bool redo = 163;
+   */
+  redo: boolean;
 };
 
 /**
@@ -8989,6 +9465,31 @@ export declare type ForkTask = Message<"modbit.v1.ForkTask"> & {
    * @generated from field: string worktree_dir = 5;
    */
   worktreeDir: string;
+
+  /**
+   * REQ-PX-061 / REQ-PX-102, block 160-179. The fork point is named by at
+   * most one of checkpoint_id, turn_id, turn_ordinal or checkpoint_name; a
+   * named fork point forks a running source too (the chain is immutable).
+   *
+   * fork at the end of this turn
+   *
+   * @generated from field: modbit.v1.Id turn_id = 160;
+   */
+  turnId?: Id | undefined;
+
+  /**
+   * fork at the end of the latest turn with this ordinal
+   *
+   * @generated from field: uint32 turn_ordinal = 161;
+   */
+  turnOrdinal: number;
+
+  /**
+   * fork at the checkpoint carrying this label
+   *
+   * @generated from field: string checkpoint_name = 162;
+   */
+  checkpointName: string;
 };
 
 /**
@@ -9081,6 +9582,18 @@ export declare type TaskForked = Message<"modbit.v1.TaskForked"> & {
    * @generated from field: uint64 offset = 15;
    */
   offset: bigint;
+
+  /**
+   * the turn forked at, when the fork point was a turn
+   *
+   * @generated from field: modbit.v1.Id turn_id = 160;
+   */
+  turnId?: Id | undefined;
+
+  /**
+   * @generated from field: uint32 turn_ordinal = 161;
+   */
+  turnOrdinal: number;
 };
 
 /**
@@ -9107,6 +9620,27 @@ export declare type PreviewRewind = Message<"modbit.v1.PreviewRewind"> & {
    * @generated from field: string checkpoint_id = 2;
    */
   checkpointId: string;
+
+  /**
+   * REQ-PX-102: or the checkpoint carrying this label
+   *
+   * @generated from field: string name = 160;
+   */
+  name: string;
+
+  /**
+   * REQ-PX-061: or the latest turn with this ordinal
+   *
+   * @generated from field: uint32 turn_ordinal = 161;
+   */
+  turnOrdinal: number;
+
+  /**
+   * or this turn
+   *
+   * @generated from field: modbit.v1.Id turn_id = 162;
+   */
+  turnId?: Id | undefined;
 };
 
 /**
@@ -9268,6 +9802,16 @@ export declare type RestoreView = Message<"modbit.v1.RestoreView"> & {
    * @generated from field: uint32 preconditions_checked = 6;
    */
   preconditionsChecked: number;
+
+  /**
+   * @generated from field: string pre_restore_checkpoint_id = 160;
+   */
+  preRestoreCheckpointId: string;
+
+  /**
+   * @generated from field: bool redo = 161;
+   */
+  redo: boolean;
 };
 
 /**
@@ -11536,6 +12080,44 @@ export declare type ListMemory = Message<"modbit.v1.ListMemory"> & {
    * @generated from field: modbit.v1.Id task_id = 1;
    */
   taskId?: Id | undefined;
+
+  /**
+   * PX-113 (fields 200-219 are this area's): filters, and the history of one
+   * item (`memory show`).
+   *
+   * proposed | curated | superseded | expired; empty = all
+   *
+   * @generated from field: repeated string statuses = 200;
+   */
+  statuses: string[];
+
+  /**
+   * run | session | user | agent_profile | repository | space | organization; empty = all
+   *
+   * @generated from field: repeated string scope_kinds = 201;
+   */
+  scopeKinds: string[];
+
+  /**
+   * case-insensitive substring of topic or content
+   *
+   * @generated from field: string text = 202;
+   */
+  text: string;
+
+  /**
+   * only this item (an unambiguous id prefix of at least 8 characters works)
+   *
+   * @generated from field: string memory_id = 203;
+   */
+  memoryId: string;
+
+  /**
+   * with memory_id: the item's events from the log
+   *
+   * @generated from field: bool include_history = 204;
+   */
+  includeHistory: boolean;
 };
 
 /**
@@ -11573,6 +12155,13 @@ export declare type MemoryList = Message<"modbit.v1.MemoryList"> & {
    * @generated from field: repeated modbit.v1.MemoryConflict conflicts = 4;
    */
   conflicts: MemoryConflict[];
+
+  /**
+   * PX-113: the events of the one item asked for
+   *
+   * @generated from field: repeated modbit.v1.MemoryEventView history = 200;
+   */
+  history: MemoryEventView[];
 };
 
 /**
@@ -12507,6 +13096,13 @@ export declare type EffectivePolicyView = Message<"modbit.v1.EffectivePolicyView
    * @generated from field: repeated string rejected_widenings = 5;
    */
   rejectedWidenings: string[];
+
+  /**
+   * PX-051 / PX-053: the mode posture and the preference in force
+   *
+   * @generated from field: modbit.v1.TaskPostureView posture = 140;
+   */
+  posture?: TaskPostureView | undefined;
 };
 
 /**

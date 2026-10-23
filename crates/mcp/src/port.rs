@@ -177,6 +177,42 @@ pub struct ServerListing {
     pub rejected: Vec<RejectedTool>,
     /// Tools dropped because the server declared more than the bound.
     pub dropped_over_limit: usize,
+    /// How many times this transport's catalog has been (re)read; a
+    /// `notifications/tools/list_changed` makes the next read a new
+    /// generation, so a client can tell a stale description from a current
+    /// one (PX-115).
+    #[serde(default)]
+    pub catalog_generation: u64,
+    /// What happened to this server's process, newest last (PX-115): started,
+    /// reaped idle (gracefully or killed), lost.
+    #[serde(default)]
+    pub lifecycle: Vec<LifecycleRecord>,
+}
+
+/// One thing that happened to a pooled server's process.
+#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
+pub struct LifecycleRecord {
+    /// Milliseconds since the Unix epoch.
+    pub at_ms: i64,
+    /// `STARTED`, `CATALOG_CHANGED`, `REAPED_GRACEFUL`, `REAPED_KILLED`,
+    /// `LOST`.
+    pub event: String,
+    /// The process, when known.
+    pub pid: Option<u32>,
+}
+
+/// What `describe` returns: the named tools of one server, with their
+/// schemas.
+#[derive(Clone, Debug, Default, PartialEq, Serialize, Deserialize)]
+pub struct Described {
+    /// Server.
+    pub server: String,
+    /// The tools found, full.
+    pub tools: Vec<DiscoveredTool>,
+    /// Names the server does not declare.
+    pub unknown: Vec<String>,
+    /// The catalog generation these descriptions are from.
+    pub catalog_generation: u64,
 }
 
 /// What `external.list` returns.
@@ -232,6 +268,48 @@ pub trait McpPort: Send + Sync {
     /// Every server this task may see, with its tools. Discovery is lazy:
     /// this is what starts a trusted server that has not run yet.
     fn list<'a>(&'a self) -> BoxFuture<'a, Result<Listing, PortError>>;
+
+    /// Like [`McpPort::list`], touching only the server named (PX-115): a
+    /// request about one server never starts another. The default lists
+    /// everything and filters.
+    fn list_server<'a>(&'a self, server: &'a str) -> BoxFuture<'a, Result<Listing, PortError>> {
+        Box::pin(async move {
+            let mut listing = self.list().await?;
+            listing.servers.retain(|s| s.name == server);
+            Ok(listing)
+        })
+    }
+
+    /// The named tools of one server with their schemas (PX-115). Starts
+    /// only that server, and only when it is trusted and leased; never
+    /// authorises a call. The default reads the whole listing.
+    fn describe<'a>(
+        &'a self,
+        server: &'a str,
+        tools: &'a [String],
+    ) -> BoxFuture<'a, Result<Described, PortError>> {
+        Box::pin(async move {
+            let listing = self.list().await?;
+            let Some(s) = listing.servers.into_iter().find(|s| s.name == server) else {
+                return Err(PortError::clean(
+                    "EXTERNAL_SERVER_UNKNOWN",
+                    format!("no external server named `{server}` is configured for this task"),
+                ));
+            };
+            let mut out = Described {
+                server: s.name,
+                catalog_generation: s.catalog_generation,
+                ..Described::default()
+            };
+            for name in tools {
+                match s.tools.iter().find(|t| &t.name == name) {
+                    Some(t) => out.tools.push(t.clone()),
+                    None => out.unknown.push(name.clone()),
+                }
+            }
+            Ok(out)
+        })
+    }
 
     /// Invoke one tool.
     fn call<'a>(&'a self, call: ExternalCall) -> BoxFuture<'a, Result<CallResult, PortError>>;

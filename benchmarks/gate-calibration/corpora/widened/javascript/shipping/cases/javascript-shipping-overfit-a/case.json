@@ -1,0 +1,10 @@
+{
+  "id": "javascript-shipping-overfit-a",
+  "class": "overfit",
+  "flavor": "a",
+  "leg": "initial",
+  "write_set": [
+    "src/shop.mjs"
+  ],
+  "declared": "incorrect"
+}

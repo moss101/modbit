@@ -1,0 +1,630 @@
+{
+  "fixture": "Revised2",
+  "post_hoc": "POST-HOC. The fixture was revised twice after seeing results, so these numbers are not a pre-registered measurement. FirstRun (before any result was seen): uncompacted 140/192 (52 probes its reader could not match), extractive 96/192, structured 127/192, lossy 120/192; some of its runs had 29 entries, below the 30 specified. Revised1 (after the first run): uncompacted 192/192, extractive 96/192, structured 127/192, lossy 120/192. Revised2 (after the second run; this report): uncompacted 240/240, extractive 96/240, structured 169/240, lossy 120/240. Each revision is reproduced by the test the_recorded_numbers_of_each_revision_reproduce.",
+  "runs": 24,
+  "probes": 240,
+  "arms": [
+    {
+      "arm": "uncompacted",
+      "probes": 240,
+      "answered": {
+        "k": 240,
+        "n": 240,
+        "p": 1.0,
+        "lo": 0.9842455102000642,
+        "hi": 1.0
+      },
+      "visible": {
+        "k": 240,
+        "n": 240,
+        "p": 1.0,
+        "lo": 0.9842455102000642,
+        "hi": 1.0
+      },
+      "recoverable": {
+        "k": 240,
+        "n": 240,
+        "p": 1.0,
+        "lo": 0.9842455102000642,
+        "hi": 1.0
+      },
+      "by_kind": [
+        [
+          "assistant_decision",
+          72,
+          72
+        ],
+        [
+          "next_step",
+          24,
+          24
+        ],
+        [
+          "tool_result",
+          96,
+          96
+        ],
+        [
+          "user",
+          48,
+          48
+        ]
+      ],
+      "context_tokens": {
+        "mean": 2059.9583333333335,
+        "ci95": [
+          1965.9166666666667,
+          2160.75
+        ]
+      },
+      "tokens_saved": {
+        "mean": 0.0,
+        "ci95": [
+          0.0,
+          0.0
+        ]
+      },
+      "saved_fraction": {
+        "mean": 0.0,
+        "ci95": [
+          0.0,
+          0.0
+        ]
+      },
+      "refused": [],
+      "dropped": []
+    },
+    {
+      "arm": "extractive",
+      "probes": 240,
+      "answered": {
+        "k": 96,
+        "n": 240,
+        "p": 0.4,
+        "lo": 0.34006480281631607,
+        "hi": 0.463086095143671
+      },
+      "visible": {
+        "k": 96,
+        "n": 240,
+        "p": 0.4,
+        "lo": 0.34006480281631607,
+        "hi": 0.463086095143671
+      },
+      "recoverable": {
+        "k": 240,
+        "n": 240,
+        "p": 1.0,
+        "lo": 0.9842455102000642,
+        "hi": 1.0
+      },
+      "by_kind": [
+        [
+          "assistant_decision",
+          0,
+          72
+        ],
+        [
+          "next_step",
+          0,
+          24
+        ],
+        [
+          "tool_result",
+          48,
+          96
+        ],
+        [
+          "user",
+          48,
+          48
+        ]
+      ],
+      "context_tokens": {
+        "mean": 208.875,
+        "ci95": [
+          202.95833333333334,
+          215.33333333333334
+        ]
+      },
+      "tokens_saved": {
+        "mean": 1851.0833333333333,
+        "ci95": [
+          1762.75,
+          1945.5416666666667
+        ]
+      },
+      "saved_fraction": {
+        "mean": 0.8980039403187875,
+        "ci95": [
+          0.895704264183541,
+          0.9003139901761673
+        ]
+      },
+      "refused": [],
+      "dropped": [
+        "long-00/2",
+        "long-00/3",
+        "long-00/4",
+        "long-00/5",
+        "long-00/8",
+        "long-00/9",
+        "long-01/2",
+        "long-01/3",
+        "long-01/4",
+        "long-01/5",
+        "long-01/8",
+        "long-01/9",
+        "long-02/2",
+        "long-02/3",
+        "long-02/4",
+        "long-02/5",
+        "long-02/8",
+        "long-02/9",
+        "long-03/2",
+        "long-03/3",
+        "long-03/4",
+        "long-03/5",
+        "long-03/8",
+        "long-03/9",
+        "long-04/2",
+        "long-04/3",
+        "long-04/4",
+        "long-04/5",
+        "long-04/8",
+        "long-04/9",
+        "long-05/2",
+        "long-05/3",
+        "long-05/4",
+        "long-05/5",
+        "long-05/8",
+        "long-05/9",
+        "long-06/2",
+        "long-06/3",
+        "long-06/4",
+        "long-06/5",
+        "long-06/8",
+        "long-06/9",
+        "long-07/2",
+        "long-07/3",
+        "long-07/4",
+        "long-07/5",
+        "long-07/8",
+        "long-07/9",
+        "long-08/2",
+        "long-08/3",
+        "long-08/4",
+        "long-08/5",
+        "long-08/8",
+        "long-08/9",
+        "long-09/2",
+        "long-09/3",
+        "long-09/4",
+        "long-09/5",
+        "long-09/8",
+        "long-09/9",
+        "long-10/2",
+        "long-10/3",
+        "long-10/4",
+        "long-10/5",
+        "long-10/8",
+        "long-10/9",
+        "long-11/2",
+        "long-11/3",
+        "long-11/4",
+        "long-11/5",
+        "long-11/8",
+        "long-11/9",
+        "long-12/2",
+        "long-12/3",
+        "long-12/4",
+        "long-12/5",
+        "long-12/8",
+        "long-12/9",
+        "long-13/2",
+        "long-13/3",
+        "long-13/4",
+        "long-13/5",
+        "long-13/8",
+        "long-13/9",
+        "long-14/2",
+        "long-14/3",
+        "long-14/4",
+        "long-14/5",
+        "long-14/8",
+        "long-14/9",
+        "long-15/2",
+        "long-15/3",
+        "long-15/4",
+        "long-15/5",
+        "long-15/8",
+        "long-15/9",
+        "long-16/2",
+        "long-16/3",
+        "long-16/4",
+        "long-16/5",
+        "long-16/8",
+        "long-16/9",
+        "long-17/2",
+        "long-17/3",
+        "long-17/4",
+        "long-17/5",
+        "long-17/8",
+        "long-17/9",
+        "long-18/2",
+        "long-18/3",
+        "long-18/4",
+        "long-18/5",
+        "long-18/8",
+        "long-18/9",
+        "long-19/2",
+        "long-19/3",
+        "long-19/4",
+        "long-19/5",
+        "long-19/8",
+        "long-19/9",
+        "long-20/2",
+        "long-20/3",
+        "long-20/4",
+        "long-20/5",
+        "long-20/8",
+        "long-20/9",
+        "long-21/2",
+        "long-21/3",
+        "long-21/4",
+        "long-21/5",
+        "long-21/8",
+        "long-21/9",
+        "long-22/2",
+        "long-22/3",
+        "long-22/4",
+        "long-22/5",
+        "long-22/8",
+        "long-22/9",
+        "long-23/2",
+        "long-23/3",
+        "long-23/4",
+        "long-23/5",
+        "long-23/8",
+        "long-23/9"
+      ]
+    },
+    {
+      "arm": "structured",
+      "probes": 240,
+      "answered": {
+        "k": 169,
+        "n": 240,
+        "p": 0.7041666666666667,
+        "lo": 0.6435719235648601,
+        "hi": 0.7583283264334996
+      },
+      "visible": {
+        "k": 187,
+        "n": 240,
+        "p": 0.7791666666666667,
+        "lo": 0.7225176517861952,
+        "hi": 0.8270194247421739
+      },
+      "recoverable": {
+        "k": 240,
+        "n": 240,
+        "p": 1.0,
+        "lo": 0.9842455102000642,
+        "hi": 1.0
+      },
+      "by_kind": [
+        [
+          "assistant_decision",
+          25,
+          72
+        ],
+        [
+          "next_step",
+          24,
+          24
+        ],
+        [
+          "tool_result",
+          72,
+          96
+        ],
+        [
+          "user",
+          48,
+          48
+        ]
+      ],
+      "context_tokens": {
+        "mean": 616.2083333333334,
+        "ci95": [
+          609.75,
+          623.4166666666666
+        ]
+      },
+      "tokens_saved": {
+        "mean": 1443.75,
+        "ci95": [
+          1355.9583333333333,
+          1538.1666666666667
+        ]
+      },
+      "saved_fraction": {
+        "mean": 0.6975426090145395,
+        "ci95": [
+          0.6861282708784916,
+          0.7093322815299802
+        ]
+      },
+      "refused": [],
+      "dropped": [
+        "long-00/2",
+        "long-00/3",
+        "long-00/8",
+        "long-01/2",
+        "long-01/3",
+        "long-01/8",
+        "long-02/2",
+        "long-02/3",
+        "long-02/8",
+        "long-03/2",
+        "long-03/3",
+        "long-03/8",
+        "long-04/2",
+        "long-04/3",
+        "long-04/8",
+        "long-05/2",
+        "long-05/3",
+        "long-05/8",
+        "long-06/2",
+        "long-06/3",
+        "long-06/8",
+        "long-07/2",
+        "long-07/3",
+        "long-07/8",
+        "long-08/2",
+        "long-08/3",
+        "long-08/8",
+        "long-09/2",
+        "long-09/3",
+        "long-09/8",
+        "long-10/2",
+        "long-10/3",
+        "long-10/8",
+        "long-11/2",
+        "long-11/3",
+        "long-11/8",
+        "long-12/2",
+        "long-12/3",
+        "long-12/8",
+        "long-13/2",
+        "long-13/3",
+        "long-13/8",
+        "long-14/2",
+        "long-14/3",
+        "long-14/8",
+        "long-15/2",
+        "long-15/3",
+        "long-15/8",
+        "long-16/2",
+        "long-16/3",
+        "long-16/8",
+        "long-17/2",
+        "long-17/3",
+        "long-17/8",
+        "long-18/2",
+        "long-18/8",
+        "long-19/2",
+        "long-19/3",
+        "long-19/8",
+        "long-20/2",
+        "long-20/3",
+        "long-20/8",
+        "long-21/2",
+        "long-21/3",
+        "long-21/8",
+        "long-22/2",
+        "long-22/3",
+        "long-22/8",
+        "long-23/2",
+        "long-23/3",
+        "long-23/8"
+      ]
+    },
+    {
+      "arm": "lossy",
+      "probes": 240,
+      "answered": {
+        "k": 120,
+        "n": 240,
+        "p": 0.5,
+        "lo": 0.43724155475169957,
+        "hi": 0.5627584452483004
+      },
+      "visible": {
+        "k": 120,
+        "n": 240,
+        "p": 0.5,
+        "lo": 0.43724155475169957,
+        "hi": 0.5627584452483004
+      },
+      "recoverable": {
+        "k": 240,
+        "n": 240,
+        "p": 1.0,
+        "lo": 0.9842455102000642,
+        "hi": 1.0
+      },
+      "by_kind": [
+        [
+          "assistant_decision",
+          0,
+          72
+        ],
+        [
+          "next_step",
+          24,
+          24
+        ],
+        [
+          "tool_result",
+          48,
+          96
+        ],
+        [
+          "user",
+          48,
+          48
+        ]
+      ],
+      "context_tokens": {
+        "mean": 395.9583333333333,
+        "ci95": [
+          389.9166666666667,
+          402.5
+        ]
+      },
+      "tokens_saved": {
+        "mean": 1664.0,
+        "ci95": [
+          1576.0416666666667,
+          1758.2916666666667
+        ]
+      },
+      "saved_fraction": {
+        "mean": 0.8059091365837254,
+        "ci95": [
+          0.7994984888310214,
+          0.8125962702820811
+        ]
+      },
+      "refused": [],
+      "dropped": [
+        "long-00/2",
+        "long-00/3",
+        "long-00/4",
+        "long-00/5",
+        "long-00/8",
+        "long-01/2",
+        "long-01/3",
+        "long-01/4",
+        "long-01/5",
+        "long-01/8",
+        "long-02/2",
+        "long-02/3",
+        "long-02/4",
+        "long-02/5",
+        "long-02/8",
+        "long-03/2",
+        "long-03/3",
+        "long-03/4",
+        "long-03/5",
+        "long-03/8",
+        "long-04/2",
+        "long-04/3",
+        "long-04/4",
+        "long-04/5",
+        "long-04/8",
+        "long-05/2",
+        "long-05/3",
+        "long-05/4",
+        "long-05/5",
+        "long-05/8",
+        "long-06/2",
+        "long-06/3",
+        "long-06/4",
+        "long-06/5",
+        "long-06/8",
+        "long-07/2",
+        "long-07/3",
+        "long-07/4",
+        "long-07/5",
+        "long-07/8",
+        "long-08/2",
+        "long-08/3",
+        "long-08/4",
+        "long-08/5",
+        "long-08/8",
+        "long-09/2",
+        "long-09/3",
+        "long-09/4",
+        "long-09/5",
+        "long-09/8",
+        "long-10/2",
+        "long-10/3",
+        "long-10/4",
+        "long-10/5",
+        "long-10/8",
+        "long-11/2",
+        "long-11/3",
+        "long-11/4",
+        "long-11/5",
+        "long-11/8",
+        "long-12/2",
+        "long-12/3",
+        "long-12/4",
+        "long-12/5",
+        "long-12/8",
+        "long-13/2",
+        "long-13/3",
+        "long-13/4",
+        "long-13/5",
+        "long-13/8",
+        "long-14/2",
+        "long-14/3",
+        "long-14/4",
+        "long-14/5",
+        "long-14/8",
+        "long-15/2",
+        "long-15/3",
+        "long-15/4",
+        "long-15/5",
+        "long-15/8",
+        "long-16/2",
+        "long-16/3",
+        "long-16/4",
+        "long-16/5",
+        "long-16/8",
+        "long-17/2",
+        "long-17/3",
+        "long-17/4",
+        "long-17/5",
+        "long-17/8",
+        "long-18/2",
+        "long-18/3",
+        "long-18/4",
+        "long-18/5",
+        "long-18/8",
+        "long-19/2",
+        "long-19/3",
+        "long-19/4",
+        "long-19/5",
+        "long-19/8",
+        "long-20/2",
+        "long-20/3",
+        "long-20/4",
+        "long-20/5",
+        "long-20/8",
+        "long-21/2",
+        "long-21/3",
+        "long-21/4",
+        "long-21/5",
+        "long-21/8",
+        "long-22/2",
+        "long-22/3",
+        "long-22/4",
+        "long-22/5",
+        "long-22/8",
+        "long-23/2",
+        "long-23/3",
+        "long-23/4",
+        "long-23/5",
+        "long-23/8"
+      ]
+    }
+  ],
+  "live": "LIVE: NOT RUN - task success after compaction (does the same model, with the compacted context, still complete the task) needs a configured provider and is not measured here",
+  "oracle": "Questions and answers are recorded by the fixture generator beside each event log, before any arm runs; every answer is checked to be present in the event log at the entry the generator named. Nothing is derived from a compaction manifest or a summary.",
+  "method": "24 deterministic long runs of 30 to 50 entries, each compacted once as a whole; the reader is a scripted passage-retrieval stand-in that answers from the retained context only, so recall here is a property of what the context retains, not of a model's reasoning. The structured arm's summary is written by a scripted summarizer that must pass the product's own validation; the lossy arm is a test double that drops files, failures and decisions and exists to show the metric can fail. Intervals: Wilson for proportions, deterministic bootstrap for token means. The runs are synthetic: nothing here says how a live model behaves or how real sessions compact.",
+  "digest": "1182f9f0ed96c7af70d9266c8f9342901998a42fe340de3ed1d242267b09f13e"
+}

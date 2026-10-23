@@ -1,0 +1,1174 @@
+{
+  "version": "acceptance-widened-1",
+  "generator": "corpora/widened/generate.py",
+  "lineage_ring": {
+    "quantity": "discount",
+    "discount": "sku",
+    "sku": "shipping",
+    "shipping": "quantity"
+  },
+  "languages": [
+    {
+      "id": "rust",
+      "fixture": "rust-shop",
+      "lineages": [
+        "quantity",
+        "discount",
+        "sku",
+        "shipping"
+      ]
+    },
+    {
+      "id": "python",
+      "fixture": "py-shop",
+      "lineages": [
+        "quantity",
+        "discount",
+        "sku",
+        "shipping"
+      ]
+    },
+    {
+      "id": "javascript",
+      "fixture": "js-shop",
+      "lineages": [
+        "quantity",
+        "discount",
+        "sku",
+        "shipping"
+      ]
+    },
+    {
+      "id": "typescript",
+      "fixture": "ts-shop",
+      "lineages": [
+        "quantity",
+        "discount",
+        "sku",
+        "shipping"
+      ]
+    }
+  ],
+  "cases": [
+    {
+      "id": "rust-quantity-correct-a",
+      "language": "rust",
+      "lineage": "quantity",
+      "class": "correct",
+      "flavor": "a"
+    },
+    {
+      "id": "rust-quantity-correct-b",
+      "language": "rust",
+      "lineage": "quantity",
+      "class": "correct",
+      "flavor": "b"
+    },
+    {
+      "id": "rust-quantity-overfit-a",
+      "language": "rust",
+      "lineage": "quantity",
+      "class": "overfit",
+      "flavor": "a"
+    },
+    {
+      "id": "rust-quantity-overfit-b",
+      "language": "rust",
+      "lineage": "quantity",
+      "class": "overfit",
+      "flavor": "b"
+    },
+    {
+      "id": "rust-quantity-offbyone-a",
+      "language": "rust",
+      "lineage": "quantity",
+      "class": "offbyone",
+      "flavor": "a"
+    },
+    {
+      "id": "rust-quantity-offbyone-b",
+      "language": "rust",
+      "lineage": "quantity",
+      "class": "offbyone",
+      "flavor": "b"
+    },
+    {
+      "id": "rust-quantity-weakening-a",
+      "language": "rust",
+      "lineage": "quantity",
+      "class": "weakening",
+      "flavor": "a"
+    },
+    {
+      "id": "rust-quantity-weakening-b",
+      "language": "rust",
+      "lineage": "quantity",
+      "class": "weakening",
+      "flavor": "b"
+    },
+    {
+      "id": "rust-quantity-vacuous-a",
+      "language": "rust",
+      "lineage": "quantity",
+      "class": "vacuous",
+      "flavor": "a"
+    },
+    {
+      "id": "rust-quantity-vacuous-b",
+      "language": "rust",
+      "lineage": "quantity",
+      "class": "vacuous",
+      "flavor": "b"
+    },
+    {
+      "id": "rust-discount-correct-a",
+      "language": "rust",
+      "lineage": "discount",
+      "class": "correct",
+      "flavor": "a"
+    },
+    {
+      "id": "rust-discount-correct-b",
+      "language": "rust",
+      "lineage": "discount",
+      "class": "correct",
+      "flavor": "b"
+    },
+    {
+      "id": "rust-discount-overfit-a",
+      "language": "rust",
+      "lineage": "discount",
+      "class": "overfit",
+      "flavor": "a"
+    },
+    {
+      "id": "rust-discount-overfit-b",
+      "language": "rust",
+      "lineage": "discount",
+      "class": "overfit",
+      "flavor": "b"
+    },
+    {
+      "id": "rust-discount-offbyone-a",
+      "language": "rust",
+      "lineage": "discount",
+      "class": "offbyone",
+      "flavor": "a"
+    },
+    {
+      "id": "rust-discount-offbyone-b",
+      "language": "rust",
+      "lineage": "discount",
+      "class": "offbyone",
+      "flavor": "b"
+    },
+    {
+      "id": "rust-discount-weakening-a",
+      "language": "rust",
+      "lineage": "discount",
+      "class": "weakening",
+      "flavor": "a"
+    },
+    {
+      "id": "rust-discount-weakening-b",
+      "language": "rust",
+      "lineage": "discount",
+      "class": "weakening",
+      "flavor": "b"
+    },
+    {
+      "id": "rust-discount-vacuous-a",
+      "language": "rust",
+      "lineage": "discount",
+      "class": "vacuous",
+      "flavor": "a"
+    },
+    {
+      "id": "rust-discount-vacuous-b",
+      "language": "rust",
+      "lineage": "discount",
+      "class": "vacuous",
+      "flavor": "b"
+    },
+    {
+      "id": "rust-sku-correct-a",
+      "language": "rust",
+      "lineage": "sku",
+      "class": "correct",
+      "flavor": "a"
+    },
+    {
+      "id": "rust-sku-correct-b",
+      "language": "rust",
+      "lineage": "sku",
+      "class": "correct",
+      "flavor": "b"
+    },
+    {
+      "id": "rust-sku-overfit-a",
+      "language": "rust",
+      "lineage": "sku",
+      "class": "overfit",
+      "flavor": "a"
+    },
+    {
+      "id": "rust-sku-overfit-b",
+      "language": "rust",
+      "lineage": "sku",
+      "class": "overfit",
+      "flavor": "b"
+    },
+    {
+      "id": "rust-sku-offbyone-a",
+      "language": "rust",
+      "lineage": "sku",
+      "class": "offbyone",
+      "flavor": "a"
+    },
+    {
+      "id": "rust-sku-offbyone-b",
+      "language": "rust",
+      "lineage": "sku",
+      "class": "offbyone",
+      "flavor": "b"
+    },
+    {
+      "id": "rust-sku-weakening-a",
+      "language": "rust",
+      "lineage": "sku",
+      "class": "weakening",
+      "flavor": "a"
+    },
+    {
+      "id": "rust-sku-weakening-b",
+      "language": "rust",
+      "lineage": "sku",
+      "class": "weakening",
+      "flavor": "b"
+    },
+    {
+      "id": "rust-sku-vacuous-a",
+      "language": "rust",
+      "lineage": "sku",
+      "class": "vacuous",
+      "flavor": "a"
+    },
+    {
+      "id": "rust-sku-vacuous-b",
+      "language": "rust",
+      "lineage": "sku",
+      "class": "vacuous",
+      "flavor": "b"
+    },
+    {
+      "id": "rust-shipping-correct-a",
+      "language": "rust",
+      "lineage": "shipping",
+      "class": "correct",
+      "flavor": "a"
+    },
+    {
+      "id": "rust-shipping-correct-b",
+      "language": "rust",
+      "lineage": "shipping",
+      "class": "correct",
+      "flavor": "b"
+    },
+    {
+      "id": "rust-shipping-overfit-a",
+      "language": "rust",
+      "lineage": "shipping",
+      "class": "overfit",
+      "flavor": "a"
+    },
+    {
+      "id": "rust-shipping-overfit-b",
+      "language": "rust",
+      "lineage": "shipping",
+      "class": "overfit",
+      "flavor": "b"
+    },
+    {
+      "id": "rust-shipping-offbyone-a",
+      "language": "rust",
+      "lineage": "shipping",
+      "class": "offbyone",
+      "flavor": "a"
+    },
+    {
+      "id": "rust-shipping-offbyone-b",
+      "language": "rust",
+      "lineage": "shipping",
+      "class": "offbyone",
+      "flavor": "b"
+    },
+    {
+      "id": "rust-shipping-weakening-a",
+      "language": "rust",
+      "lineage": "shipping",
+      "class": "weakening",
+      "flavor": "a"
+    },
+    {
+      "id": "rust-shipping-weakening-b",
+      "language": "rust",
+      "lineage": "shipping",
+      "class": "weakening",
+      "flavor": "b"
+    },
+    {
+      "id": "rust-shipping-vacuous-a",
+      "language": "rust",
+      "lineage": "shipping",
+      "class": "vacuous",
+      "flavor": "a"
+    },
+    {
+      "id": "rust-shipping-vacuous-b",
+      "language": "rust",
+      "lineage": "shipping",
+      "class": "vacuous",
+      "flavor": "b"
+    },
+    {
+      "id": "python-quantity-correct-a",
+      "language": "python",
+      "lineage": "quantity",
+      "class": "correct",
+      "flavor": "a"
+    },
+    {
+      "id": "python-quantity-correct-b",
+      "language": "python",
+      "lineage": "quantity",
+      "class": "correct",
+      "flavor": "b"
+    },
+    {
+      "id": "python-quantity-overfit-a",
+      "language": "python",
+      "lineage": "quantity",
+      "class": "overfit",
+      "flavor": "a"
+    },
+    {
+      "id": "python-quantity-overfit-b",
+      "language": "python",
+      "lineage": "quantity",
+      "class": "overfit",
+      "flavor": "b"
+    },
+    {
+      "id": "python-quantity-offbyone-a",
+      "language": "python",
+      "lineage": "quantity",
+      "class": "offbyone",
+      "flavor": "a"
+    },
+    {
+      "id": "python-quantity-offbyone-b",
+      "language": "python",
+      "lineage": "quantity",
+      "class": "offbyone",
+      "flavor": "b"
+    },
+    {
+      "id": "python-quantity-weakening-a",
+      "language": "python",
+      "lineage": "quantity",
+      "class": "weakening",
+      "flavor": "a"
+    },
+    {
+      "id": "python-quantity-weakening-b",
+      "language": "python",
+      "lineage": "quantity",
+      "class": "weakening",
+      "flavor": "b"
+    },
+    {
+      "id": "python-quantity-vacuous-a",
+      "language": "python",
+      "lineage": "quantity",
+      "class": "vacuous",
+      "flavor": "a"
+    },
+    {
+      "id": "python-quantity-vacuous-b",
+      "language": "python",
+      "lineage": "quantity",
+      "class": "vacuous",
+      "flavor": "b"
+    },
+    {
+      "id": "python-discount-correct-a",
+      "language": "python",
+      "lineage": "discount",
+      "class": "correct",
+      "flavor": "a"
+    },
+    {
+      "id": "python-discount-correct-b",
+      "language": "python",
+      "lineage": "discount",
+      "class": "correct",
+      "flavor": "b"
+    },
+    {
+      "id": "python-discount-overfit-a",
+      "language": "python",
+      "lineage": "discount",
+      "class": "overfit",
+      "flavor": "a"
+    },
+    {
+      "id": "python-discount-overfit-b",
+      "language": "python",
+      "lineage": "discount",
+      "class": "overfit",
+      "flavor": "b"
+    },
+    {
+      "id": "python-discount-offbyone-a",
+      "language": "python",
+      "lineage": "discount",
+      "class": "offbyone",
+      "flavor": "a"
+    },
+    {
+      "id": "python-discount-offbyone-b",
+      "language": "python",
+      "lineage": "discount",
+      "class": "offbyone",
+      "flavor": "b"
+    },
+    {
+      "id": "python-discount-weakening-a",
+      "language": "python",
+      "lineage": "discount",
+      "class": "weakening",
+      "flavor": "a"
+    },
+    {
+      "id": "python-discount-weakening-b",
+      "language": "python",
+      "lineage": "discount",
+      "class": "weakening",
+      "flavor": "b"
+    },
+    {
+      "id": "python-discount-vacuous-a",
+      "language": "python",
+      "lineage": "discount",
+      "class": "vacuous",
+      "flavor": "a"
+    },
+    {
+      "id": "python-discount-vacuous-b",
+      "language": "python",
+      "lineage": "discount",
+      "class": "vacuous",
+      "flavor": "b"
+    },
+    {
+      "id": "python-sku-correct-a",
+      "language": "python",
+      "lineage": "sku",
+      "class": "correct",
+      "flavor": "a"
+    },
+    {
+      "id": "python-sku-correct-b",
+      "language": "python",
+      "lineage": "sku",
+      "class": "correct",
+      "flavor": "b"
+    },
+    {
+      "id": "python-sku-overfit-a",
+      "language": "python",
+      "lineage": "sku",
+      "class": "overfit",
+      "flavor": "a"
+    },
+    {
+      "id": "python-sku-overfit-b",
+      "language": "python",
+      "lineage": "sku",
+      "class": "overfit",
+      "flavor": "b"
+    },
+    {
+      "id": "python-sku-offbyone-a",
+      "language": "python",
+      "lineage": "sku",
+      "class": "offbyone",
+      "flavor": "a"
+    },
+    {
+      "id": "python-sku-offbyone-b",
+      "language": "python",
+      "lineage": "sku",
+      "class": "offbyone",
+      "flavor": "b"
+    },
+    {
+      "id": "python-sku-weakening-a",
+      "language": "python",
+      "lineage": "sku",
+      "class": "weakening",
+      "flavor": "a"
+    },
+    {
+      "id": "python-sku-weakening-b",
+      "language": "python",
+      "lineage": "sku",
+      "class": "weakening",
+      "flavor": "b"
+    },
+    {
+      "id": "python-sku-vacuous-a",
+      "language": "python",
+      "lineage": "sku",
+      "class": "vacuous",
+      "flavor": "a"
+    },
+    {
+      "id": "python-sku-vacuous-b",
+      "language": "python",
+      "lineage": "sku",
+      "class": "vacuous",
+      "flavor": "b"
+    },
+    {
+      "id": "python-shipping-correct-a",
+      "language": "python",
+      "lineage": "shipping",
+      "class": "correct",
+      "flavor": "a"
+    },
+    {
+      "id": "python-shipping-correct-b",
+      "language": "python",
+      "lineage": "shipping",
+      "class": "correct",
+      "flavor": "b"
+    },
+    {
+      "id": "python-shipping-overfit-a",
+      "language": "python",
+      "lineage": "shipping",
+      "class": "overfit",
+      "flavor": "a"
+    },
+    {
+      "id": "python-shipping-overfit-b",
+      "language": "python",
+      "lineage": "shipping",
+      "class": "overfit",
+      "flavor": "b"
+    },
+    {
+      "id": "python-shipping-offbyone-a",
+      "language": "python",
+      "lineage": "shipping",
+      "class": "offbyone",
+      "flavor": "a"
+    },
+    {
+      "id": "python-shipping-offbyone-b",
+      "language": "python",
+      "lineage": "shipping",
+      "class": "offbyone",
+      "flavor": "b"
+    },
+    {
+      "id": "python-shipping-weakening-a",
+      "language": "python",
+      "lineage": "shipping",
+      "class": "weakening",
+      "flavor": "a"
+    },
+    {
+      "id": "python-shipping-weakening-b",
+      "language": "python",
+      "lineage": "shipping",
+      "class": "weakening",
+      "flavor": "b"
+    },
+    {
+      "id": "python-shipping-vacuous-a",
+      "language": "python",
+      "lineage": "shipping",
+      "class": "vacuous",
+      "flavor": "a"
+    },
+    {
+      "id": "python-shipping-vacuous-b",
+      "language": "python",
+      "lineage": "shipping",
+      "class": "vacuous",
+      "flavor": "b"
+    },
+    {
+      "id": "javascript-quantity-correct-a",
+      "language": "javascript",
+      "lineage": "quantity",
+      "class": "correct",
+      "flavor": "a"
+    },
+    {
+      "id": "javascript-quantity-correct-b",
+      "language": "javascript",
+      "lineage": "quantity",
+      "class": "correct",
+      "flavor": "b"
+    },
+    {
+      "id": "javascript-quantity-overfit-a",
+      "language": "javascript",
+      "lineage": "quantity",
+      "class": "overfit",
+      "flavor": "a"
+    },
+    {
+      "id": "javascript-quantity-overfit-b",
+      "language": "javascript",
+      "lineage": "quantity",
+      "class": "overfit",
+      "flavor": "b"
+    },
+    {
+      "id": "javascript-quantity-offbyone-a",
+      "language": "javascript",
+      "lineage": "quantity",
+      "class": "offbyone",
+      "flavor": "a"
+    },
+    {
+      "id": "javascript-quantity-offbyone-b",
+      "language": "javascript",
+      "lineage": "quantity",
+      "class": "offbyone",
+      "flavor": "b"
+    },
+    {
+      "id": "javascript-quantity-weakening-a",
+      "language": "javascript",
+      "lineage": "quantity",
+      "class": "weakening",
+      "flavor": "a"
+    },
+    {
+      "id": "javascript-quantity-weakening-b",
+      "language": "javascript",
+      "lineage": "quantity",
+      "class": "weakening",
+      "flavor": "b"
+    },
+    {
+      "id": "javascript-quantity-vacuous-a",
+      "language": "javascript",
+      "lineage": "quantity",
+      "class": "vacuous",
+      "flavor": "a"
+    },
+    {
+      "id": "javascript-quantity-vacuous-b",
+      "language": "javascript",
+      "lineage": "quantity",
+      "class": "vacuous",
+      "flavor": "b"
+    },
+    {
+      "id": "javascript-discount-correct-a",
+      "language": "javascript",
+      "lineage": "discount",
+      "class": "correct",
+      "flavor": "a"
+    },
+    {
+      "id": "javascript-discount-correct-b",
+      "language": "javascript",
+      "lineage": "discount",
+      "class": "correct",
+      "flavor": "b"
+    },
+    {
+      "id": "javascript-discount-overfit-a",
+      "language": "javascript",
+      "lineage": "discount",
+      "class": "overfit",
+      "flavor": "a"
+    },
+    {
+      "id": "javascript-discount-overfit-b",
+      "language": "javascript",
+      "lineage": "discount",
+      "class": "overfit",
+      "flavor": "b"
+    },
+    {
+      "id": "javascript-discount-offbyone-a",
+      "language": "javascript",
+      "lineage": "discount",
+      "class": "offbyone",
+      "flavor": "a"
+    },
+    {
+      "id": "javascript-discount-offbyone-b",
+      "language": "javascript",
+      "lineage": "discount",
+      "class": "offbyone",
+      "flavor": "b"
+    },
+    {
+      "id": "javascript-discount-weakening-a",
+      "language": "javascript",
+      "lineage": "discount",
+      "class": "weakening",
+      "flavor": "a"
+    },
+    {
+      "id": "javascript-discount-weakening-b",
+      "language": "javascript",
+      "lineage": "discount",
+      "class": "weakening",
+      "flavor": "b"
+    },
+    {
+      "id": "javascript-discount-vacuous-a",
+      "language": "javascript",
+      "lineage": "discount",
+      "class": "vacuous",
+      "flavor": "a"
+    },
+    {
+      "id": "javascript-discount-vacuous-b",
+      "language": "javascript",
+      "lineage": "discount",
+      "class": "vacuous",
+      "flavor": "b"
+    },
+    {
+      "id": "javascript-sku-correct-a",
+      "language": "javascript",
+      "lineage": "sku",
+      "class": "correct",
+      "flavor": "a"
+    },
+    {
+      "id": "javascript-sku-correct-b",
+      "language": "javascript",
+      "lineage": "sku",
+      "class": "correct",
+      "flavor": "b"
+    },
+    {
+      "id": "javascript-sku-overfit-a",
+      "language": "javascript",
+      "lineage": "sku",
+      "class": "overfit",
+      "flavor": "a"
+    },
+    {
+      "id": "javascript-sku-overfit-b",
+      "language": "javascript",
+      "lineage": "sku",
+      "class": "overfit",
+      "flavor": "b"
+    },
+    {
+      "id": "javascript-sku-offbyone-a",
+      "language": "javascript",
+      "lineage": "sku",
+      "class": "offbyone",
+      "flavor": "a"
+    },
+    {
+      "id": "javascript-sku-offbyone-b",
+      "language": "javascript",
+      "lineage": "sku",
+      "class": "offbyone",
+      "flavor": "b"
+    },
+    {
+      "id": "javascript-sku-weakening-a",
+      "language": "javascript",
+      "lineage": "sku",
+      "class": "weakening",
+      "flavor": "a"
+    },
+    {
+      "id": "javascript-sku-weakening-b",
+      "language": "javascript",
+      "lineage": "sku",
+      "class": "weakening",
+      "flavor": "b"
+    },
+    {
+      "id": "javascript-sku-vacuous-a",
+      "language": "javascript",
+      "lineage": "sku",
+      "class": "vacuous",
+      "flavor": "a"
+    },
+    {
+      "id": "javascript-sku-vacuous-b",
+      "language": "javascript",
+      "lineage": "sku",
+      "class": "vacuous",
+      "flavor": "b"
+    },
+    {
+      "id": "javascript-shipping-correct-a",
+      "language": "javascript",
+      "lineage": "shipping",
+      "class": "correct",
+      "flavor": "a"
+    },
+    {
+      "id": "javascript-shipping-correct-b",
+      "language": "javascript",
+      "lineage": "shipping",
+      "class": "correct",
+      "flavor": "b"
+    },
+    {
+      "id": "javascript-shipping-overfit-a",
+      "language": "javascript",
+      "lineage": "shipping",
+      "class": "overfit",
+      "flavor": "a"
+    },
+    {
+      "id": "javascript-shipping-overfit-b",
+      "language": "javascript",
+      "lineage": "shipping",
+      "class": "overfit",
+      "flavor": "b"
+    },
+    {
+      "id": "javascript-shipping-offbyone-a",
+      "language": "javascript",
+      "lineage": "shipping",
+      "class": "offbyone",
+      "flavor": "a"
+    },
+    {
+      "id": "javascript-shipping-offbyone-b",
+      "language": "javascript",
+      "lineage": "shipping",
+      "class": "offbyone",
+      "flavor": "b"
+    },
+    {
+      "id": "javascript-shipping-weakening-a",
+      "language": "javascript",
+      "lineage": "shipping",
+      "class": "weakening",
+      "flavor": "a"
+    },
+    {
+      "id": "javascript-shipping-weakening-b",
+      "language": "javascript",
+      "lineage": "shipping",
+      "class": "weakening",
+      "flavor": "b"
+    },
+    {
+      "id": "javascript-shipping-vacuous-a",
+      "language": "javascript",
+      "lineage": "shipping",
+      "class": "vacuous",
+      "flavor": "a"
+    },
+    {
+      "id": "javascript-shipping-vacuous-b",
+      "language": "javascript",
+      "lineage": "shipping",
+      "class": "vacuous",
+      "flavor": "b"
+    },
+    {
+      "id": "typescript-quantity-correct-a",
+      "language": "typescript",
+      "lineage": "quantity",
+      "class": "correct",
+      "flavor": "a"
+    },
+    {
+      "id": "typescript-quantity-correct-b",
+      "language": "typescript",
+      "lineage": "quantity",
+      "class": "correct",
+      "flavor": "b"
+    },
+    {
+      "id": "typescript-quantity-overfit-a",
+      "language": "typescript",
+      "lineage": "quantity",
+      "class": "overfit",
+      "flavor": "a"
+    },
+    {
+      "id": "typescript-quantity-overfit-b",
+      "language": "typescript",
+      "lineage": "quantity",
+      "class": "overfit",
+      "flavor": "b"
+    },
+    {
+      "id": "typescript-quantity-offbyone-a",
+      "language": "typescript",
+      "lineage": "quantity",
+      "class": "offbyone",
+      "flavor": "a"
+    },
+    {
+      "id": "typescript-quantity-offbyone-b",
+      "language": "typescript",
+      "lineage": "quantity",
+      "class": "offbyone",
+      "flavor": "b"
+    },
+    {
+      "id": "typescript-quantity-weakening-a",
+      "language": "typescript",
+      "lineage": "quantity",
+      "class": "weakening",
+      "flavor": "a"
+    },
+    {
+      "id": "typescript-quantity-weakening-b",
+      "language": "typescript",
+      "lineage": "quantity",
+      "class": "weakening",
+      "flavor": "b"
+    },
+    {
+      "id": "typescript-quantity-vacuous-a",
+      "language": "typescript",
+      "lineage": "quantity",
+      "class": "vacuous",
+      "flavor": "a"
+    },
+    {
+      "id": "typescript-quantity-vacuous-b",
+      "language": "typescript",
+      "lineage": "quantity",
+      "class": "vacuous",
+      "flavor": "b"
+    },
+    {
+      "id": "typescript-discount-correct-a",
+      "language": "typescript",
+      "lineage": "discount",
+      "class": "correct",
+      "flavor": "a"
+    },
+    {
+      "id": "typescript-discount-correct-b",
+      "language": "typescript",
+      "lineage": "discount",
+      "class": "correct",
+      "flavor": "b"
+    },
+    {
+      "id": "typescript-discount-overfit-a",
+      "language": "typescript",
+      "lineage": "discount",
+      "class": "overfit",
+      "flavor": "a"
+    },
+    {
+      "id": "typescript-discount-overfit-b",
+      "language": "typescript",
+      "lineage": "discount",
+      "class": "overfit",
+      "flavor": "b"
+    },
+    {
+      "id": "typescript-discount-offbyone-a",
+      "language": "typescript",
+      "lineage": "discount",
+      "class": "offbyone",
+      "flavor": "a"
+    },
+    {
+      "id": "typescript-discount-offbyone-b",
+      "language": "typescript",
+      "lineage": "discount",
+      "class": "offbyone",
+      "flavor": "b"
+    },
+    {
+      "id": "typescript-discount-weakening-a",
+      "language": "typescript",
+      "lineage": "discount",
+      "class": "weakening",
+      "flavor": "a"
+    },
+    {
+      "id": "typescript-discount-weakening-b",
+      "language": "typescript",
+      "lineage": "discount",
+      "class": "weakening",
+      "flavor": "b"
+    },
+    {
+      "id": "typescript-discount-vacuous-a",
+      "language": "typescript",
+      "lineage": "discount",
+      "class": "vacuous",
+      "flavor": "a"
+    },
+    {
+      "id": "typescript-discount-vacuous-b",
+      "language": "typescript",
+      "lineage": "discount",
+      "class": "vacuous",
+      "flavor": "b"
+    },
+    {
+      "id": "typescript-sku-correct-a",
+      "language": "typescript",
+      "lineage": "sku",
+      "class": "correct",
+      "flavor": "a"
+    },
+    {
+      "id": "typescript-sku-correct-b",
+      "language": "typescript",
+      "lineage": "sku",
+      "class": "correct",
+      "flavor": "b"
+    },
+    {
+      "id": "typescript-sku-overfit-a",
+      "language": "typescript",
+      "lineage": "sku",
+      "class": "overfit",
+      "flavor": "a"
+    },
+    {
+      "id": "typescript-sku-overfit-b",
+      "language": "typescript",
+      "lineage": "sku",
+      "class": "overfit",
+      "flavor": "b"
+    },
+    {
+      "id": "typescript-sku-offbyone-a",
+      "language": "typescript",
+      "lineage": "sku",
+      "class": "offbyone",
+      "flavor": "a"
+    },
+    {
+      "id": "typescript-sku-offbyone-b",
+      "language": "typescript",
+      "lineage": "sku",
+      "class": "offbyone",
+      "flavor": "b"
+    },
+    {
+      "id": "typescript-sku-weakening-a",
+      "language": "typescript",
+      "lineage": "sku",
+      "class": "weakening",
+      "flavor": "a"
+    },
+    {
+      "id": "typescript-sku-weakening-b",
+      "language": "typescript",
+      "lineage": "sku",
+      "class": "weakening",
+      "flavor": "b"
+    },
+    {
+      "id": "typescript-sku-vacuous-a",
+      "language": "typescript",
+      "lineage": "sku",
+      "class": "vacuous",
+      "flavor": "a"
+    },
+    {
+      "id": "typescript-sku-vacuous-b",
+      "language": "typescript",
+      "lineage": "sku",
+      "class": "vacuous",
+      "flavor": "b"
+    },
+    {
+      "id": "typescript-shipping-correct-a",
+      "language": "typescript",
+      "lineage": "shipping",
+      "class": "correct",
+      "flavor": "a"
+    },
+    {
+      "id": "typescript-shipping-correct-b",
+      "language": "typescript",
+      "lineage": "shipping",
+      "class": "correct",
+      "flavor": "b"
+    },
+    {
+      "id": "typescript-shipping-overfit-a",
+      "language": "typescript",
+      "lineage": "shipping",
+      "class": "overfit",
+      "flavor": "a"
+    },
+    {
+      "id": "typescript-shipping-overfit-b",
+      "language": "typescript",
+      "lineage": "shipping",
+      "class": "overfit",
+      "flavor": "b"
+    },
+    {
+      "id": "typescript-shipping-offbyone-a",
+      "language": "typescript",
+      "lineage": "shipping",
+      "class": "offbyone",
+      "flavor": "a"
+    },
+    {
+      "id": "typescript-shipping-offbyone-b",
+      "language": "typescript",
+      "lineage": "shipping",
+      "class": "offbyone",
+      "flavor": "b"
+    },
+    {
+      "id": "typescript-shipping-weakening-a",
+      "language": "typescript",
+      "lineage": "shipping",
+      "class": "weakening",
+      "flavor": "a"
+    },
+    {
+      "id": "typescript-shipping-weakening-b",
+      "language": "typescript",
+      "lineage": "shipping",
+      "class": "weakening",
+      "flavor": "b"
+    },
+    {
+      "id": "typescript-shipping-vacuous-a",
+      "language": "typescript",
+      "lineage": "shipping",
+      "class": "vacuous",
+      "flavor": "a"
+    },
+    {
+      "id": "typescript-shipping-vacuous-b",
+      "language": "typescript",
+      "lineage": "shipping",
+      "class": "vacuous",
+      "flavor": "b"
+    }
+  ]
+}

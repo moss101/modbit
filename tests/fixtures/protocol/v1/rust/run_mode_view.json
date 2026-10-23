@@ -1,0 +1,20 @@
+{
+  "expected": {
+    "acknowledged": true,
+    "alwaysAsk": [
+      "NETWORK",
+      "SECRET"
+    ],
+    "mode": "ALLOWLIST",
+    "modes": [
+      "ASK",
+      "ALLOWLIST"
+    ],
+    "offset": "9007199254740993",
+    "rulesInForce": 2,
+    "sessionOnly": false,
+    "taskId": "31313131313131313131313131313131",
+    "warning": "a mode that approves more"
+  },
+  "type": "modbit.v1.RunModeView"
+}

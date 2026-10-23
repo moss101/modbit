@@ -55,6 +55,36 @@ pub(crate) fn views(
     out
 }
 
+/// The runs the forge listed that were refused as evidence (they named
+/// another commit, or were malformed), across every ingestion, for Review.
+pub(crate) fn rejected_views(
+    store: &modbit_event_store::EventStore,
+    task_id: TaskId,
+) -> Vec<wire::CiRejectedView> {
+    let mut out = Vec::new();
+    for e in store
+        .read_aggregate(task_id.as_bytes(), 0, usize::MAX)
+        .unwrap_or_default()
+        .iter()
+        .filter(|e| e.envelope.event_type == "CiEvidenceRecorded")
+    {
+        let Ok(p) = store.payload(&e.envelope) else {
+            continue;
+        };
+        let Ok(TaskEvent::CiEvidenceRecorded { rejected, .. }) =
+            serde_json::from_value::<TaskEvent>(p)
+        else {
+            continue;
+        };
+        out.extend(rejected.into_iter().map(|x| wire::CiRejectedView {
+            name: x.name,
+            head_sha: x.head_sha,
+            reason: x.reason,
+        }));
+    }
+    out
+}
+
 fn view(c: &CiCheckRecord, commit: &str, provenance: &str) -> wire::CiCheckView {
     wire::CiCheckView {
         name: c.name.clone(),

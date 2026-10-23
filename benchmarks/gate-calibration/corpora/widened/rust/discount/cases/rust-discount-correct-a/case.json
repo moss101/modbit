@@ -1,0 +1,11 @@
+{
+  "id": "rust-discount-correct-a",
+  "class": "correct",
+  "flavor": "a",
+  "leg": "initial",
+  "write_set": [
+    "src/lib.rs",
+    "tests/discount.rs"
+  ],
+  "declared": "correct"
+}

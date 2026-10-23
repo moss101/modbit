@@ -1,0 +1,22 @@
+{
+  "what": "Schema-bytes and discovery measurements taken from the requests the real Core sent to a SCRIPTED OpenAI-compatible server. They are the Core's real bytes; no model chose anything here and none of this is a live-provider result. The paired live trial (benchmarks/context-economics projection_trial --live) has not been run.",
+  "measure": "bytes of tool name + description + JSON schema per request, the one measure the Core records on ToolProjectionSelected.projected_bytes (equal to what the provider received: asserted in qual_px_114_exec_only_shows_the_small_surface_and_programs_do_the_work_through_the_pipeline)",
+  "px_114_same_task_two_modes": {
+    "test": "services/modbit-core/tests/px_114_projection.rs::qual_px_114_schema_bytes_per_request_are_measured_in_each_mode",
+    "direct": { "tools_first_request": 28, "schema_bytes_first_request": 15807, "requests": 5, "schema_bytes_total": 87079 },
+    "exec_only": { "tools_first_request": 6, "schema_bytes_first_request": 7776, "requests": 3, "schema_bytes_total": 24132 }
+  },
+  "px_114_three_arm_harness_run": {
+    "test": "services/modbit-core/tests/px_114_trial.rs (modbit-cli driving a real Core per run; 2 tasks x 2 repeats x 3 arms; scripted provider; report verdict NOT_EVALUATED)",
+    "mean_schema_bytes_per_request": { "direct_typed_only": 15376, "procedural_default_projection": 17148, "exec_only": 8044 }
+  },
+  "px_115_five_hundred_tool_catalog": {
+    "test": "services/modbit-core/tests/px_115_mcp.rs::qual_px_115_benchmark_lazy_discovery_against_eager_on_a_five_hundred_tool_server",
+    "catalog_tools": 507,
+    "eager_schema_and_description_bytes_for_the_whole_catalog": 329780,
+    "lazy_bytes_read_to_find_and_describe_one_tool": 2722,
+    "max_request_schema_bytes_in_the_run": 21976,
+    "cold_discovery_ms_507_tools_5_pages": 517,
+    "task_success": true
+  }
+}

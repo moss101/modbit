@@ -1,0 +1,10 @@
+{
+  "id": "javascript-discount-overfit-b",
+  "class": "overfit",
+  "flavor": "b",
+  "leg": "initial",
+  "write_set": [
+    "src/shop.mjs"
+  ],
+  "declared": "incorrect"
+}

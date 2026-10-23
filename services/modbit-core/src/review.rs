@@ -31,7 +31,7 @@ fn typed<E: serde::Serialize>(event_type: &str, e: &E, actor: Actor) -> NewEvent
     ev
 }
 
-fn language_for(path: &str) -> &'static str {
+pub(crate) fn language_for(path: &str) -> &'static str {
     match path.rsplit('.').next().unwrap_or_default() {
         "rs" => "rust",
         "ts" | "tsx" => "typescript",
@@ -52,22 +52,22 @@ fn sha(bytes: &[u8]) -> String {
 }
 
 /// Everything the review needs about the candidate diff.
-struct Candidate {
-    root: String,
-    repo: Repo,
-    base_commit: String,
-    files: Vec<FileDiff>,
+pub(crate) struct Candidate {
+    pub(crate) root: String,
+    pub(crate) repo: Repo,
+    pub(crate) base_commit: String,
+    pub(crate) files: Vec<FileDiff>,
 }
 
 /// The verification residue of the task's workspace, when it has one.
-async fn residue_of(core: &Core, task: &Task) -> std::collections::BTreeSet<String> {
+pub(crate) async fn residue_of(core: &Core, task: &Task) -> std::collections::BTreeSet<String> {
     match task.workspace_root.as_deref() {
-        Some(root) => crate::runtime::verification_residue(core, root).await,
+        Some(root) => crate::runtime::candidate_exclusions(core, task, root).await,
         None => std::collections::BTreeSet::new(),
     }
 }
 
-fn candidate(
+pub(crate) fn candidate(
     task: &Task,
     residue: &std::collections::BTreeSet<String>,
 ) -> Result<Candidate, (String, String)> {
@@ -89,25 +89,21 @@ fn candidate(
         .map_err(|e| ("GIT".to_owned(), e.to_string()))?;
     let untracked: Vec<&str> = status
         .iter()
-        .filter(|e| e.code.starts_with('?') && !e.path.starts_with(".modbit"))
+        .filter(|e| e.code.starts_with('?') && !crate::verify::is_scratch(&e.path))
         .filter(|e| !crate::verify::is_residue(&e.path, residue))
         .map(|e| e.path.as_str())
         .collect();
     if !untracked.is_empty() {
         let mut args = vec!["add", "-N", "--"];
         args.extend(untracked.iter().copied());
-        let _ = std::process::Command::new("git")
-            .arg("-C")
-            .arg(&root)
-            .args(&args)
-            .output();
+        let _ = modbit_git::output(std::path::Path::new(&root), &args);
     }
     let diff = repo
         .diff_worktree()
         .map_err(|e| ("GIT".to_owned(), e.to_string()))?;
     let files = parse_unified(&diff.unified)
         .into_iter()
-        .filter(|f| !f.path.starts_with(".modbit"))
+        .filter(|f| !crate::verify::is_scratch(&f.path))
         .filter(|f| !crate::verify::is_residue(&f.path, residue))
         .collect();
     Ok(Candidate {
@@ -258,6 +254,9 @@ pub async fn bundle(
     }
     // PX-009: CI results for the pushed commit, as external evidence.
     let ci_evidence = crate::ci_evidence::views(&store, task.task_id);
+    let ci_rejected = crate::ci_evidence::rejected_views(&store, task.task_id);
+    // PX-127: the pull request's comments the task has seen, untrusted.
+    let review_comments = crate::review_comments::threads(&store, task.task_id);
     for c in &ci_evidence {
         if !c.log_ref.is_empty() {
             evidence_links.push(format!("ci_log:{}", c.log_ref));
@@ -301,6 +300,8 @@ pub async fn bundle(
         receipts,
         evidence_links,
         ci_evidence,
+        review_comments,
+        ci_rejected,
     })
 }
 

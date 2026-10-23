@@ -9,6 +9,7 @@ publish.workspace = true
 
 [dependencies]
 modbit-domain.workspace = true
+modbit-git.workspace = true
 globset.workspace = true
 memchr.workspace = true
 regex.workspace = true

@@ -52,7 +52,7 @@ impl Default for Limits {
     fn default() -> Self {
         Self {
             max_frame_bytes: 4 * 1024 * 1024,
-            max_tools: 128,
+            max_tools: 512,
             max_tool_name_bytes: 64,
             max_description_bytes: 4 * 1024,
             max_schema_bytes: 32 * 1024,

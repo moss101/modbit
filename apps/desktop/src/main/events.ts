@@ -12,6 +12,8 @@ export interface WireEvent {
   /** Decoded JSON payload (the Core stores inline JSON or an object ref). */
   payload: unknown;
   occurredAtMs: number;
+  /** When the main process read the frame off the Core's socket, epoch ms: the latency budgets split into the Core's side and the renderer's by it. */
+  receivedAtMs: number;
 }
 
 export function serializeEvent(e: StoredEventFrame): WireEvent {
@@ -32,6 +34,8 @@ export function serializeEvent(e: StoredEventFrame): WireEvent {
     taskId: ev?.taskId ? Buffer.from(ev.taskId.value).toString("hex") : null,
     sessionId: Buffer.from(ev?.sessionId?.value ?? []).toString("hex"),
     payload,
-    occurredAtMs: Number(ev?.recordedAt?.seconds ?? 0n) * 1000,
+    // Millisecond precision: the interaction budgets (docs/65 AFW-K01) are measured from this stamp to the frame that shows the event.
+    receivedAtMs: Date.now(),
+    occurredAtMs: Number(ev?.recordedAt?.seconds ?? 0n) * 1000 + Math.floor((ev?.recordedAt?.nanos ?? 0) / 1_000_000),
   };
 }

@@ -15,7 +15,8 @@ use crate::toolcall::EffectClass;
 pub enum ApprovalState {
     /// Waiting for a resolver.
     Requested,
-    /// Approved: the bound intent may execute once before expiry.
+    /// Approved: the bound intent may execute once before expiry. "Once" is
+    /// [`Approval::consumed_at`]: the dispatch of the bound call spends it.
     Approved,
     /// Denied.
     Denied,
@@ -65,6 +66,13 @@ pub struct Approval {
     pub resolver: Option<String>,
     /// Expiry (millis since epoch); `None` = never.
     pub expires_at: Option<Timestamp>,
+    /// When the approval was spent: the bound tool call was dispatched under
+    /// it (FIX-15). A spent approval authorizes nothing further — a second
+    /// dispatch of the same intent asks again. Derived by the projection from
+    /// the call's `ToolCallDispatched`, never set by an event of its own, so
+    /// the spend and the dispatch cannot disagree.
+    #[serde(default)]
+    pub consumed_at: Option<Timestamp>,
 }
 
 /// Approval events (docs/30 "Security/effects").
@@ -143,6 +151,7 @@ impl Approval {
                 resolved_at: None,
                 resolver: None,
                 expires_at: *expires_at,
+                consumed_at: None,
             }),
             other => Err(crate::InvalidTransition {
                 aggregate: "Approval",
@@ -184,10 +193,18 @@ impl Approval {
         Ok(())
     }
 
-    /// Whether this approval authorizes `intent_hash` at `now`.
+    /// Whether the approval was approved and then spent by a dispatch.
+    #[must_use]
+    pub fn is_consumed(&self) -> bool {
+        self.state == ApprovalState::Approved && self.consumed_at.is_some()
+    }
+
+    /// Whether this approval authorizes `intent_hash` at `now`: approved,
+    /// bound to exactly this intent, unexpired and not yet spent.
     #[must_use]
     pub fn authorizes(&self, intent_hash: &str, now: Timestamp) -> bool {
         self.state == ApprovalState::Approved
+            && self.consumed_at.is_none()
             && self.intent_hash == intent_hash
             && self.expires_at.is_none_or(|e| now.0 < e.0)
     }
@@ -229,6 +246,14 @@ mod tests {
         assert!(
             a.apply(&ApprovalEvent::ApprovalExpired, Timestamp(4))
                 .is_err()
+        );
+        // Spent by a dispatch: the same intent, still unexpired, no longer
+        // authorizes.
+        a.consumed_at = Some(Timestamp(60));
+        assert!(a.is_consumed());
+        assert!(
+            !a.authorizes("h1", Timestamp(61)),
+            "an approval is single-use"
         );
     }
 }

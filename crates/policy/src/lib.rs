@@ -9,9 +9,12 @@
 //! the emergency stop. Protected paths live in `modbit-workspace`.
 
 pub mod assurance;
+pub mod budget;
 pub mod config;
+pub mod epoch;
 pub mod kernel;
 pub mod ledger;
+pub mod runmode;
 
 pub use assurance::{
     Advisory, AssuranceLayer, AssuranceLevel, AssurancePolicy, CandidateFacts, ChangeKind,
@@ -20,5 +23,7 @@ pub use assurance::{
 };
 pub use config::{Authority, Layer, Permission, Provenance, Resolved, ResolvedConfig, resolve};
 pub use kernel::{
-    CapabilityKernel, KernelDecision, KernelRequest, PolicyEnvelope, default_lease_for_profile,
+    CapabilityKernel, KernelDecision, KernelRequest, PolicyEnvelope, ResourceSelector,
+    ResourceTarget, default_lease_for_profile,
 };
+pub use runmode::{RuleRefusal, RunDecision, RunPolicy};

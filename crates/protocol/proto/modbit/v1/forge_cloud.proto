@@ -1,0 +1,36 @@
+// Forge-native work and the cloud client (PX-125..129; docs/79 ADC-F01..F05).
+//
+// Additive. Field numbers 360-379 of the existing messages this file's
+// messages extend belong to this area (docs/79, the wave-2 field map); a
+// new message here numbers its own fields from 1.
+//
+// Nothing here is a command: a pull request's CI evidence and review
+// comments reach clients as part of the ReviewBundle they already read
+// (`GetReviewBundle`), and the cloud verbs of the clients speak the Cloud
+// API's HTTP surface (docs/30), not the SurfaceProtocol.
+syntax = "proto3";
+
+package modbit.v1;
+
+// One pull-request comment as the task has seen it (PX-008 ingestion,
+// PX-126 webhooks), for Review and the CLI (PX-127). The text is the
+// forge author's: it is shown as untrusted data, never as an instruction,
+// and nothing in it granted anything.
+message ReviewCommentThreadView {
+  uint64 comment_id = 1;
+  string kind = 2;                 // review (on a line) | issue (on the conversation)
+  string author = 3;               // the forge login
+  string url = 4;                  // where a person reads it
+  string path = 5;                 // the file, for a line comment; empty otherwise
+  uint64 line = 6;
+  string body = 7;                 // the comment's text, bounded; UNTRUSTED
+  string trust = 8;                // always UNTRUSTED_EXTERNAL_CONTENT
+  string disposition = 9;          // STEERED | IGNORED
+  string reason = 10;              // DISALLOWED_AUTHOR | NOT_ADDRESSED | EMPTY, when ignored
+  string input_id = 11;            // the queued steering input, when steered
+  string provenance = 12;          // forge_review_comment
+  uint64 ingested_offset = 13;     // the log offset of the ingestion that decided it
+  bool answered = 14;              // the agent finished a pass after the steer was queued
+  bool reported_back = 15;         // a status comment was posted on the pull request afterwards
+  string created_at = 16;          // the forge's timestamp
+}

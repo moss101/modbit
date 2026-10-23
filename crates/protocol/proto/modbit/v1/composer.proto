@@ -1,0 +1,63 @@
+// The composer's model picker facts (REQ-PX-056; docs/65 AFW-D13, AFW-D14,
+// AFW-H02). One read: the variants each model of this Core's catalog offers,
+// so a client lists them and never computes a combination (AFW-D14).
+//
+// Everything here is a fact of the Core's catalog and policy. A variant is
+// the pair (reasoning effort, service tier) a request to the model can carry;
+// choosing one is the existing `SetExecutionPreference` (tasking.proto), whose
+// effort and service tier fields and typed refusals are unchanged. Whether a
+// model may be pinned is the Core's answer from the organisation policy and
+// the task's configured allow list, the same check `SetExecutionPreference`
+// makes, so the picker never offers a pin the command would refuse.
+//
+// Field numbers 380-399 of the existing messages that gain a field are
+// reserved for this area; this file adds none.
+syntax = "proto3";
+
+package modbit.v1;
+
+import "modbit/v1/domain.proto";
+
+// `ListModelVariants` (read). With a task, the task's configured model allow
+// list is applied as well as the organisation policy.
+message ListModelVariants {
+  Id task_id = 1;                  // optional
+}
+
+// One selectable (effort, tier) combination of a model.
+message ModelVariantView {
+  string effort = 1;               // low | medium | high; empty = the model exposes no reasoning effort
+  string service_tier = 2;         // a tier name; empty = the provider's own
+  string label = 3;                // the Core's words for the variant
+  bool is_default = 4;             // what a request carries when the person chooses nothing
+  bool raises_cost = 5;            // a value that raises cost relative to the default
+}
+
+message ModelVariantsEntry {
+  string endpoint = 1;
+  string model = 2;
+  string provider = 3;             // openai | anthropic
+  bool reasoning = 4;
+  bool vision = 5;
+  uint32 context_tokens = 6;
+  string default_effort = 7;       // the catalog entry's own; empty when none
+  string default_service_tier = 8;
+  repeated ModelVariantView variants = 9;
+  bool credential_available = 10;
+  // The organisation rule that blocks the model (ListModels' `blocked_by_policy`),
+  // or the task's allow-list refusal; empty when nothing blocks it.
+  string blocked_by_policy = 11;
+  // The typed code a pin of this model would be refused with (NO_CREDENTIAL,
+  // MODEL_NOT_ALLOWED, POLICY_BLOCKED); empty when a pin is allowed.
+  string pin_refusal_code = 12;
+  bool pin_allowed = 13;
+}
+
+message ModelVariantList {
+  repeated ModelVariantsEntry models = 1;
+  // The objective profiles the Core's router understands, least to most
+  // capable (COST, BALANCE, INTELLIGENCE); organisation profiles are not
+  // served by this Core.
+  repeated string objectives = 2;
+  string default_objective = 3;    // BALANCE
+}

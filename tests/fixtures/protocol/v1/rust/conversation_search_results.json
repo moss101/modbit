@@ -1,0 +1,49 @@
+{
+  "expected": {
+    "asOfOffset": "777",
+    "hasMore": false,
+    "hits": [
+      {
+        "archived": false,
+        "lastOffset": "9007199254740993",
+        "matchedRows": 2,
+        "score": 6,
+        "snippets": [
+          {
+            "cutAfter": true,
+            "cutBefore": false,
+            "kind": "TRANSCRIPT_ROW_KIND_ASSISTANT_MESSAGE",
+            "matches": [
+              {
+                "end": 37,
+                "start": 24
+              }
+            ],
+            "offset": "411",
+            "rowId": "msg:0123",
+            "score": 1,
+            "source": "SNIPPET_SOURCE_ASSISTANT",
+            "text": "The check failed; the file must say validated.",
+            "turnId": "turn-3"
+          }
+        ],
+        "statusClass": "AGENT_STATUS_CLASS_READY_FOR_REVIEW_UNSEEN",
+        "statusLabel": "Ready for review",
+        "taskId": "32323232323232323232323232323232",
+        "title": "Reject negative quantities.",
+        "titleMatched": false
+      }
+    ],
+    "indexBudgetBytes": "33554432",
+    "indexBytes": "9007199254740993",
+    "indexDigest": "abababababababababababababababababababababababababababababababab",
+    "query": "file must say \"file must\"",
+    "rowsIndexed": 13,
+    "sessionId": "31313131313131313131313131313131",
+    "tasksConsidered": 4,
+    "tasksRebuilt": 2,
+    "tasksTruncated": 1,
+    "totalHits": 1
+  },
+  "type": "modbit.v1.ConversationSearchResults"
+}

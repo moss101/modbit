@@ -139,6 +139,9 @@ pub(crate) async fn view(core: &Core, task_id: TaskId) -> wire::RoutingPlanView 
             .collect(),
         not_claimed: NOT_CLAIMED.iter().map(|s| (*s).to_owned()).collect(),
         admission,
+        // Filled by `tasking::annotate_routing` (PX-053).
+        preference: None,
+        preference_routing: None,
     }
 }
 
@@ -491,15 +494,9 @@ pub(crate) fn feasibility_of(
         skill: skill_set.clone(),
         harness: crate::baseline::harness_version(),
     });
-    let continuation_key = initial.zip(continuation).map(|(i, c)| {
-        modbit_bench_outcome_statistics::StatKey::Escalation {
-            from_model: i.model.clone(),
-            to_model: c.model.clone(),
-            gate: "acceptance".into(),
-            repository: "workspace".into(),
-            verification: "configured".into(),
-        }
-    });
+    let continuation_key = initial
+        .zip(continuation)
+        .map(|(i, c)| crate::statistics::escalation_key(&i.model, &c.model));
     let initial_key_id = initial_key
         .as_ref()
         .map_or_else(|| "solver|none".to_owned(), |k| k.key_id());
@@ -748,13 +745,16 @@ pub(crate) fn compile_for_run(
             "no signed registry is active; the direct path is the only plan the product compiles without one".into(),
         ));
     };
-    let Some(floor) = registry
-        .document
-        .quality_floors
-        .iter()
-        .find(|f| f.mode == "auto")
-        .cloned()
-    else {
+    // PX-053: the floor row is the `auto` one, unless the user's recorded
+    // objective names another row the signed registry already carries
+    // (docs/27, docs/38: modes govern the quality floor). No objective, or a
+    // registry without that row, is the `auto` floor, as it always was.
+    let Some(floor) = crate::tasking::floor_for(
+        &registry,
+        crate::tasking::objective_of(core, store, task.task_id),
+    )
+    .0
+    .cloned() else {
         return Err((
             "NO_MODE_FLOOR".into(),
             "the active registry defines no auto floor".into(),

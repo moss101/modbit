@@ -1,0 +1,16 @@
+{
+  "expected": {
+    "decision": "allow: local_trusted:reversiblewrite",
+    "endedBy": "user:b1b1b1b1",
+    "exitCode": null,
+    "offset": "412",
+    "outcome": "KILLED",
+    "outputRef": "cdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcd",
+    "reason": "the dev server is wedged",
+    "sessionId": "0123456789abcdef",
+    "signal": 9,
+    "taskId": "41414141414141414141414141414141",
+    "totalBytes": "9007199254740993"
+  },
+  "type": "modbit.v1.TerminalKilled"
+}

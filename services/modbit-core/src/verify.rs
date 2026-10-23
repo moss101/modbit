@@ -26,9 +26,138 @@ pub struct BrokerRunner {
     /// its process group is killed — and reported cancelled, instead of
     /// running to its exit or timeout.
     pub cancel: Option<tokio_util::sync::CancellationToken>,
+    /// What the Capability Kernel decides a repository-defined command
+    /// under (FIX-03). `None` = nothing to decide it with: such a command
+    /// is refused, never run unchecked.
+    pub kernel: Option<KernelGate>,
+}
+
+/// The authority a repository-defined verification command is decided under:
+/// the task's lease and execution profile, the session's emergency stop and
+/// the configuration snapshot in force, exactly what a `test.run` call by the
+/// model is decided under.
+pub struct KernelGate {
+    /// The task's lease, when it holds one.
+    pub lease: Option<modbit_domain::lease::CapabilityLease>,
+    /// Task execution profile.
+    pub execution_profile: String,
+    /// The task's mode posture in force (PX-051).
+    pub mode: modbit_domain::mode::TaskMode,
+    /// Session emergency stop is active.
+    pub emergency_stopped: bool,
+    /// Resolved configuration the task runs under.
+    pub config: std::sync::Arc<modbit_policy::config::ResolvedConfig>,
+}
+
+impl KernelGate {
+    /// The kernel's decision for running `argv` as check `check_id`: a
+    /// shell effect (`shell.exec`, the class of `test.run`) under the task's
+    /// lease. Anything but ALLOW refuses the command with the kernel's code.
+    pub fn decide(&self, check_id: &str, argv: &[String]) -> Result<(), String> {
+        use sha2::Digest;
+        let mut h = sha2::Sha256::new();
+        h.update(check_id.as_bytes());
+        for a in argv {
+            h.update([0]);
+            h.update(a.as_bytes());
+        }
+        let intent_hash = hex::encode(h.finalize());
+        let required = vec!["shell.exec".to_owned()];
+        let decision =
+            modbit_policy::CapabilityKernel::default().decide(&modbit_policy::KernelRequest {
+                tool_name: "verification.configured_command",
+                effect_class: modbit_domain::toolcall::EffectClass::ReversibleWrite,
+                required_capabilities: &required,
+                execution_profile: &self.execution_profile,
+                mode: self.mode,
+                lease: self.lease.as_ref(),
+                // A configured check names no resource the host can resolve.
+                targets: &[],
+                approval: None,
+                intent_hash: &intent_hash,
+                config: Some(&self.config),
+                // A configured check is the repository's own, decided by the
+                // kernel and the person; no run mode approves it.
+                run: None,
+                emergency_stopped: self.emergency_stopped,
+                now: modbit_domain::Timestamp::now(),
+            });
+        match decision {
+            modbit_policy::KernelDecision::Allow { .. } => Ok(()),
+            modbit_policy::KernelDecision::Deny { code, reason } => Err(format!(
+                "capability kernel denied `{check_id}`: {code}: {reason}"
+            )),
+            modbit_policy::KernelDecision::ApprovalRequired { reason, .. } => Err(format!(
+                "capability kernel requires an approval for `{check_id}` and a verification stage cannot ask: {reason}"
+            )),
+        }
+    }
+}
+
+/// What the Capability Kernel says of an effect a person asked for.
+pub(crate) enum UserEffect {
+    /// Allowed under this rule.
+    Allowed(String),
+    /// The policy asked for an approval and the person's own command, made
+    /// under the session lease, stands for it.
+    ApprovedByCommand(String),
+    /// Never: the kernel's code and reason.
+    Denied(String, String),
+}
+
+impl KernelGate {
+    /// The kernel's decision for an effect a PERSON asked the Core to carry
+    /// out on the task's behalf (`KillTerminal`): decided as the same tool
+    /// call the agent would make — `shell.exec`, a reversible write — under
+    /// the task's lease, profile, mode and configuration. A denial is final.
+    /// An approval the policy would ask a person for is the person's own
+    /// command, so it needs no second one.
+    pub(crate) fn decide_user_effect(&self, tool_name: &str, intent: &str) -> UserEffect {
+        use sha2::Digest;
+        let intent_hash = hex::encode(sha2::Sha256::digest(intent.as_bytes()));
+        let required = vec!["shell.exec".to_owned()];
+        match modbit_policy::CapabilityKernel::default().decide(&modbit_policy::KernelRequest {
+            tool_name,
+            effect_class: modbit_domain::toolcall::EffectClass::ReversibleWrite,
+            required_capabilities: &required,
+            execution_profile: &self.execution_profile,
+            mode: self.mode,
+            lease: self.lease.as_ref(),
+            targets: &[],
+            approval: None,
+            intent_hash: &intent_hash,
+            config: Some(&self.config),
+            run: None,
+            emergency_stopped: self.emergency_stopped,
+            now: modbit_domain::Timestamp::now(),
+        }) {
+            modbit_policy::KernelDecision::Allow { rule, .. } => UserEffect::Allowed(rule),
+            modbit_policy::KernelDecision::Deny { code, reason } => {
+                UserEffect::Denied(code, reason)
+            }
+            modbit_policy::KernelDecision::ApprovalRequired { reason, .. } => {
+                UserEffect::ApprovedByCommand(reason)
+            }
+        }
+    }
 }
 
 impl CommandRunner for BrokerRunner {
+    fn authorize<'a>(
+        &'a self,
+        check_id: &'a str,
+        argv: &'a [String],
+    ) -> BoxFuture<'a, Result<(), String>> {
+        Box::pin(async move {
+            match &self.kernel {
+                Some(k) => k.decide(check_id, argv),
+                None => Err(format!(
+                    "`{check_id}` is defined by repository content and no capability kernel context was attached"
+                )),
+            }
+        })
+    }
+
     fn run<'a>(
         &'a self,
         argv: &'a [String],
@@ -57,6 +186,9 @@ impl CommandRunner for BrokerRunner {
                 execution_profile: self.execution_profile.clone(),
                 capability_lease_id: None,
                 terminal_session_id: None,
+                owner: String::new(),
+                pty_rows: 0,
+                pty_cols: 0,
             };
             let mut client = match ExecClient::connect(&target.endpoint, &target.boot_secret).await
             {
@@ -238,6 +370,17 @@ pub fn untracked_paths(root: &Path) -> std::collections::BTreeSet<String> {
         .collect()
 }
 
+/// Whether a path is Modbit's own scratch in a working tree (the file
+/// service's temporary files, a reporter's output, the guest's browser
+/// profile): named `.modbit-*`, never the repository's `.modbit/` directory.
+/// That directory holds the project's configuration, rules, skills and
+/// verification commands, so a change under it is a change to be judged and
+/// reviewed, not scratch to be left out of the candidate (FIX-04).
+#[must_use]
+pub fn is_scratch(path: &str) -> bool {
+    path.starts_with(".modbit-")
+}
+
 /// Whether a path is inside a residue entry (a directory recorded as residue
 /// covers everything under it).
 #[must_use]
@@ -264,7 +407,7 @@ pub fn changed_files(
     };
     entries
         .into_iter()
-        .filter(|e| !e.path.starts_with(".modbit"))
+        .filter(|e| !is_scratch(&e.path))
         .filter(|e| !is_residue(&e.path, residue))
         .map(|e| {
             let old = repo
@@ -352,4 +495,113 @@ pub fn observation(run: &VerificationRun, store: &EventStore) -> String {
     }
     text.push_str("(page any raw log with artifact.range on its raw_output_ref)\n");
     text
+}
+
+/// The generated adversarial checks of a COMPLETION candidate (PX-135,
+/// REQ-EPR-017), derived by the Verification Engine's own module and judged
+/// by the one Acceptance Gate like any other check. Static checks read the
+/// candidate files and the tree; the boundary check re-runs the plan's own
+/// mandatory check commands over mutants in a scratch copy through `runner`
+/// (a repository-defined command is first decided by the Capability Kernel;
+/// a refusal means no mutant runs and the check is UNKNOWN, never a pass).
+pub async fn adversarial_checks(
+    runner: &BrokerRunner,
+    plan: &modbit_verification::VerificationPlan,
+    root: &Path,
+    scratch: &Path,
+    env: &[(String, String)],
+    files: &[ChangedFile],
+) -> Vec<modbit_verification::adversarial::GeneratedCheck> {
+    use modbit_verification::adversarial::{
+        Class, GeneratedCheck, MutationOptions, Status, boundary_check, static_checks,
+    };
+    let declared: Vec<String> = plan
+        .declared_changes
+        .iter()
+        .map(|(c, _)| c.clone())
+        .collect();
+    let mut out = static_checks(root, files, &declared);
+    let mut commands: Vec<Vec<String>> = Vec::new();
+    let mut refused: Option<String> = None;
+    for c in plan
+        .commands
+        .iter()
+        .filter(|c| c.mandatory && (c.id.starts_with("suite:") || c.is_repo_defined()))
+    {
+        if c.is_repo_defined()
+            && let Err(e) = runner.authorize(&c.id, &c.argv).await
+        {
+            refused = Some(e);
+            break;
+        }
+        // A boundary is pinned by a test that runs. A check that is only an
+        // exit code (`git --version`, a grep) cannot kill a mutant, so it is
+        // not a candidate for the check: a repository whose mandatory checks
+        // run no test gets the static checks and no mutation evidence.
+        if modbit_verification::detect(&c.argv)
+            != modbit_verification::RunnerFamily::ConfiguredCommand
+            || c.argv.iter().any(|a| a == "test" || a == "--test")
+        {
+            commands.push(c.argv.clone());
+        }
+    }
+    out.push(match refused {
+        Some(why) => GeneratedCheck {
+            class: Class::BoundaryNotPinned,
+            status: Status::Unknown,
+            findings: vec![why],
+        },
+        None if commands.is_empty() => GeneratedCheck {
+            class: Class::BoundaryNotPinned,
+            status: Status::Skip,
+            findings: vec![
+                "no mandatory check command runs tests; a boundary cannot be pinned by it".into(),
+            ],
+        },
+        None => {
+            boundary_check(
+                runner,
+                &commands,
+                root,
+                scratch,
+                env,
+                files,
+                &MutationOptions::default(),
+            )
+            .await
+        }
+    });
+    out
+}
+
+/// A generated check as the run record carries it: the check id, kind
+/// `adversarial`, its status and the typed class
+/// (`ADVERSARIAL_TEST_WEAKENING`, ...); the fingerprint is the digest of the
+/// findings, which `report_ref` holds in full.
+#[must_use]
+pub fn adversarial_summary(c: &modbit_verification::adversarial::GeneratedCheck) -> CheckSummary {
+    let e = c.to_evidence();
+    CheckSummary {
+        check_id: e.check_id,
+        kind: e.kind,
+        status: e.status,
+        duration_ms: 0,
+        error_class: (c.status != modbit_verification::adversarial::Status::Pass).then(|| {
+            match c.class {
+                modbit_verification::adversarial::Class::TestWeakening => {
+                    "ADVERSARIAL_TEST_WEAKENING"
+                }
+                modbit_verification::adversarial::Class::VacuousPass => "ADVERSARIAL_VACUOUS_PASS",
+                modbit_verification::adversarial::Class::OverfitLiteral => {
+                    "ADVERSARIAL_OVERFIT_LITERAL"
+                }
+                modbit_verification::adversarial::Class::BoundaryNotPinned => {
+                    "ADVERSARIAL_BOUNDARY_NOT_PINNED"
+                }
+            }
+            .to_owned()
+        }),
+        message_fingerprint: Some(c.digest()),
+        path: None,
+    }
 }

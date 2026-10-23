@@ -17,6 +17,11 @@ use tokio::sync::Notify;
 pub const RING_BYTES: usize = 4 * 1024 * 1024;
 /// Exited processes kept for replay before the oldest is dropped.
 const KEEP_EXITED: usize = 64;
+/// How long after a process ended its output readers may keep draining. The
+/// readers end at EOF, which comes once every holder of the pipe is gone; a
+/// grandchild that outlives the process holds it open, and must not hold the
+/// exit back for good.
+const DRAIN_GRACE: Duration = Duration::from_secs(2);
 
 struct Ring {
     buf: VecDeque<u8>,
@@ -102,9 +107,16 @@ impl Proc {
     /// A snapshot of the output after `cursor`.
     #[must_use]
     pub fn follow_now(&self, cursor: u64, max: usize) -> modbit_protocol::v1::GuestProcOutput {
-        let (data, next, truncated) = self.ring.lock().expect("ring").read(cursor, max);
-        let total = self.ring.lock().expect("ring").total;
+        // The state first, the ring second: the exit is published after the
+        // last byte reached the ring, so a snapshot that saw `running ==
+        // false` reads a ring that already holds all the output. In the other
+        // order a byte appended and the exit published between the two reads
+        // would be reported as "exited" without that byte.
         let st = *self.state.lock().expect("state");
+        let ring = self.ring.lock().expect("ring");
+        let (data, next, truncated) = ring.read(cursor, max);
+        let total = ring.total;
+        drop(ring);
         modbit_protocol::v1::GuestProcOutput {
             proc_id: self.id.clone(),
             data,
@@ -326,6 +338,7 @@ impl ProcTable {
             started: Instant::now(),
         });
         self.insert(Arc::clone(&p));
+        let mut readers = Vec::new();
         for mut reader in [
             tokio::io::BufReader::new(
                 Box::pin(stdout) as std::pin::Pin<Box<dyn tokio::io::AsyncRead + Send>>
@@ -335,7 +348,7 @@ impl ProcTable {
             ),
         ] {
             let p = Arc::clone(&p);
-            tokio::spawn(async move {
+            readers.push(tokio::spawn(async move {
                 let mut buf = vec![0u8; 16 * 1024];
                 loop {
                     match reader.read(&mut buf).await {
@@ -343,7 +356,7 @@ impl ProcTable {
                         Ok(n) => p.append(&buf[..n]),
                     }
                 }
-            });
+            }));
         }
         let p_wait = Arc::clone(&p);
         let timeout = spec.timeout;
@@ -352,14 +365,25 @@ impl ProcTable {
                 let mut c = child.lock().await;
                 c.wait().await
             };
+            // The exit is published only after the readers drained the pipes:
+            // `wait` can return while the process's last bytes are still
+            // in the pipe, and a follower that stops at `!running` would
+            // lose them.
             match tokio::time::timeout(timeout, wait).await {
-                Ok(Ok(status)) => p_wait.finish(status.code(), false, false),
-                Ok(Err(_)) => p_wait.finish(None, false, false),
+                Ok(Ok(status)) => {
+                    drain(readers).await;
+                    p_wait.finish(status.code(), false, false);
+                }
+                Ok(Err(_)) => {
+                    drain(readers).await;
+                    p_wait.finish(None, false, false);
+                }
                 Err(_) => {
                     let killer = p_wait.killer.lock().expect("killer").take();
                     if let Some(Killer::Pipe(c)) = killer {
                         let _ = c.lock().await.start_kill();
                     }
+                    drain(readers).await;
                     p_wait.finish(None, true, false);
                 }
             }
@@ -422,7 +446,7 @@ impl ProcTable {
         });
         self.insert(Arc::clone(&p));
         let p_read = Arc::clone(&p);
-        tokio::task::spawn_blocking(move || {
+        let reader_task = tokio::task::spawn_blocking(move || {
             let mut buf = vec![0u8; 16 * 1024];
             loop {
                 match std::io::Read::read(&mut reader, &mut buf) {
@@ -449,12 +473,19 @@ impl ProcTable {
                 }
             });
             match tokio::time::timeout(timeout, wait).await {
-                Ok(Ok(status)) => p_wait.finish(Some(status.exit_code() as i32), false, false),
-                Ok(Err(_)) => p_wait.finish(None, false, false),
+                Ok(Ok(status)) => {
+                    drain(vec![reader_task]).await;
+                    p_wait.finish(Some(status.exit_code() as i32), false, false);
+                }
+                Ok(Err(_)) => {
+                    drain(vec![reader_task]).await;
+                    p_wait.finish(None, false, false);
+                }
                 Err(_) => {
                     if let Some(c) = child.lock().expect("pty child").as_mut() {
                         let _ = c.kill();
                     }
+                    drain(vec![reader_task]).await;
                     p_wait.finish(None, true, false);
                 }
             }
@@ -463,6 +494,117 @@ impl ProcTable {
     }
 }
 
+/// Wait for the output readers to reach EOF, at most `DRAIN_GRACE`.
+async fn drain(readers: Vec<tokio::task::JoinHandle<()>>) {
+    let all = async {
+        for r in readers {
+            let _ = r.await;
+        }
+    };
+    let _ = tokio::time::timeout(DRAIN_GRACE, all).await;
+}
+
 fn exited_len_over(total: usize) -> usize {
     total.saturating_sub(KEEP_EXITED) + 1
+}
+
+#[cfg(all(test, unix))]
+mod tests {
+    use super::*;
+
+    fn sh(script: &str) -> Vec<String> {
+        vec!["/bin/sh".into(), "-c".into(), script.into()]
+    }
+
+    /// A follower that sees `running == false` must already have seen every
+    /// byte the process wrote: the exit is published only after the output
+    /// readers drained the pipes. Before that ordering the waiter could report
+    /// the exit while the final bytes were still in the pipe, and a follower
+    /// that stops at `!running` (the contract's `proc_stdin` step) lost them.
+    async fn run_once(table: &Arc<ProcTable>, pty: bool, stdin_open: bool, script: &str) -> String {
+        let argv = sh(script);
+        let env = vec!["PATH=/usr/bin:/bin".to_string()];
+        let p = table
+            .start(StartSpec {
+                argv: &argv,
+                cwd: std::env::temp_dir(),
+                env: &env,
+                timeout: Duration::from_secs(20),
+                pty,
+                size: (80, 24),
+                stdin_open,
+            })
+            .await
+            .expect("start");
+        if stdin_open {
+            p.write_stdin(b"hello stdin\n", true).await.expect("write");
+        }
+        let mut got = Vec::new();
+        let mut cur = 0;
+        for _ in 0..40 {
+            let o = p.follow(cur, 1 << 20, Duration::from_secs(3)).await;
+            got.extend_from_slice(&o.data);
+            cur = o.cursor;
+            if !o.running {
+                break;
+            }
+        }
+        assert!(!p.running(), "the process never reported its exit");
+        String::from_utf8_lossy(&got).into_owned()
+    }
+
+    #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
+    async fn output_is_never_lost_to_a_fast_exit_after_stdin_closes() {
+        let table = Arc::new(ProcTable::default());
+        for i in 0..300 {
+            let text = run_once(&table, false, true, "read l; echo got:$l").await;
+            assert!(
+                text.contains("got:hello stdin"),
+                "iteration {i}: output lost at exit: {text:?}"
+            );
+        }
+    }
+
+    #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
+    async fn a_followed_process_reports_exit_only_after_all_its_output() {
+        let table = Arc::new(ProcTable::default());
+        for i in 0..100 {
+            let text = run_once(
+                &table,
+                false,
+                false,
+                "head -c 200000 /dev/zero | tr '\\0' x; echo END",
+            )
+            .await;
+            assert!(
+                text.ends_with("END\n") && text.len() == 200_004,
+                "iteration {i}: {} bytes",
+                text.len()
+            );
+        }
+    }
+
+    #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
+    async fn a_pty_process_reports_exit_only_after_all_its_output() {
+        let table = Arc::new(ProcTable::default());
+        for i in 0..100 {
+            let text = run_once(&table, true, true, "read l; echo got:$l").await;
+            assert!(text.contains("got:hello stdin"), "iteration {i}: {text:?}");
+        }
+    }
+
+    /// A grandchild that keeps the pipes open after the process exits must
+    /// not hold the exit back forever.
+    #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
+    async fn a_lingering_grandchild_does_not_hold_the_exit_back() {
+        let table = Arc::new(ProcTable::default());
+        let started = Instant::now();
+        let text = run_once(&table, false, false, "(sleep 30 &) ; echo done").await;
+        assert!(text.contains("done"), "{text:?}");
+        assert!(
+            started.elapsed() < Duration::from_secs(10),
+            "{:?}",
+            started.elapsed()
+        );
+    }
 }

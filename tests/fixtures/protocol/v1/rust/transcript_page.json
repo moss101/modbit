@@ -1,0 +1,154 @@
+{
+  "expected": {
+    "asOfOffset": "90",
+    "density": "TRANSCRIPT_DENSITY_BALANCED",
+    "eventsRead": "12",
+    "hasMore": false,
+    "lastOffset": "90",
+    "nextAfterRow": 0,
+    "readOffset": "40",
+    "rows": [
+      {
+        "approval": null,
+        "at": {
+          "nanos": 0,
+          "seconds": "1700000001"
+        },
+        "boundary": null,
+        "children": [],
+        "footer": null,
+        "group": null,
+        "hints": {
+          "durationMs": "250",
+          "groupable": false,
+          "hasReasoning": false,
+          "linesAdded": 0,
+          "linesRemoved": 0,
+          "renderable": true,
+          "shortText": "2 new",
+          "status": "COMPLETE"
+        },
+        "kind": "TRANSCRIPT_ROW_KIND_UNREAD_DIVIDER",
+        "lastOffset": "61",
+        "offset": "51",
+        "ordinal": 1,
+        "rowId": "unread",
+        "stream": null,
+        "tail": null,
+        "text": "2 new",
+        "textRef": "",
+        "textTruncated": false,
+        "tool": null,
+        "turnId": "turn-1",
+        "user": null
+      },
+      {
+        "approval": null,
+        "at": {
+          "nanos": 0,
+          "seconds": "1700000002"
+        },
+        "boundary": null,
+        "children": [
+          {
+            "approval": null,
+            "at": {
+              "nanos": 0,
+              "seconds": "1700000001"
+            },
+            "boundary": null,
+            "children": [],
+            "footer": null,
+            "group": null,
+            "hints": {
+              "durationMs": "250",
+              "groupable": true,
+              "hasReasoning": false,
+              "linesAdded": 0,
+              "linesRemoved": 0,
+              "renderable": true,
+              "shortText": "fs.read a.txt",
+              "status": "COMPLETE"
+            },
+            "kind": "TRANSCRIPT_ROW_KIND_TOOL_CARD",
+            "lastOffset": "61",
+            "offset": "51",
+            "ordinal": 1,
+            "rowId": "tool:a",
+            "stream": null,
+            "tail": null,
+            "text": "fs.read a.txt",
+            "textRef": "",
+            "textTruncated": false,
+            "tool": null,
+            "turnId": "turn-1",
+            "user": null
+          },
+          {
+            "approval": null,
+            "at": {
+              "nanos": 0,
+              "seconds": "1700000002"
+            },
+            "boundary": null,
+            "children": [],
+            "footer": null,
+            "group": null,
+            "hints": {
+              "durationMs": "250",
+              "groupable": true,
+              "hasReasoning": false,
+              "linesAdded": 0,
+              "linesRemoved": 0,
+              "renderable": true,
+              "shortText": "fs.read b.txt",
+              "status": "COMPLETE"
+            },
+            "kind": "TRANSCRIPT_ROW_KIND_TOOL_CARD",
+            "lastOffset": "62",
+            "offset": "52",
+            "ordinal": 2,
+            "rowId": "tool:b",
+            "stream": null,
+            "tail": null,
+            "text": "fs.read b.txt",
+            "textRef": "",
+            "textTruncated": false,
+            "tool": null,
+            "turnId": "turn-1",
+            "user": null
+          }
+        ],
+        "footer": null,
+        "group": null,
+        "hints": {
+          "durationMs": "250",
+          "groupable": false,
+          "hasReasoning": false,
+          "linesAdded": 0,
+          "linesRemoved": 0,
+          "renderable": true,
+          "shortText": "Explored 2 items",
+          "status": "COMPLETE"
+        },
+        "kind": "TRANSCRIPT_ROW_KIND_WORK_GROUP",
+        "lastOffset": "62",
+        "offset": "52",
+        "ordinal": 2,
+        "rowId": "group:explore:tool:a",
+        "stream": null,
+        "tail": null,
+        "text": "Explored 2 items",
+        "textRef": "",
+        "textTruncated": false,
+        "tool": null,
+        "turnId": "turn-1",
+        "user": null
+      }
+    ],
+    "taskId": "21212121212121212121212121212121",
+    "taskState": "Running",
+    "totalRows": 2
+  },
+  "type": "modbit.v1.TranscriptPage"
+}

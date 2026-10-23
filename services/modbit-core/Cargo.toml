@@ -11,6 +11,7 @@ publish.workspace = true
 globset.workspace = true
 anyhow.workspace = true
 modbit-domain.workspace = true
+modbit-automation.workspace = true
 modbit-prompt-compiler.workspace = true
 modbit-core-runtime.workspace = true
 modbit-event-store.workspace = true
@@ -23,6 +24,7 @@ modbit-terminal.workspace = true
 modbit-tools.workspace = true
 modbit-secrets.workspace = true
 modbit-browser.workspace = true
+modbit-computer.workspace = true
 modbit-sandbox = { workspace = true, features = ["client"] }
 modbit-procedural-runtime.workspace = true
 modbit-skills.workspace = true

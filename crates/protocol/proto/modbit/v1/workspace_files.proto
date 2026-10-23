@@ -1,0 +1,48 @@
+// Read-only file browsing of a task's workspace for the apps panel's Files app
+// (REQ-PX-048; docs/65 AFW-I01). Both commands are reads served through the
+// Workspace File Service's path policy: the Core resolves symlinks, refuses
+// anything outside the workspace root and names protected paths without
+// opening them. Nothing here writes.
+syntax = "proto3";
+
+package modbit.v1;
+
+import "modbit/v1/domain.proto";
+
+message ListWorkspaceDir {
+  Id task_id = 1;
+  string path = 2;                  // workspace-relative; "" = the root
+}
+
+message WorkspaceEntryView {
+  string path = 1;                  // workspace-relative, forward slashes
+  string name = 2;
+  string kind = 3;                  // file | dir | symlink | other
+  uint64 size = 4;                  // bytes (files)
+  bool protected = 5;               // the path policy refuses it: listed by name only, never opened
+}
+
+message WorkspaceDirListing {
+  string path = 1;
+  repeated WorkspaceEntryView entries = 2;
+  uint64 workspace_revision = 3;
+  bool truncated = 4;               // more entries than the listing bound
+}
+
+message ReadWorkspaceFile {
+  Id task_id = 1;
+  string path = 2;
+}
+
+// `status`: TEXT (text is the content), BINARY (not shown), TOO_LARGE (not
+// shown; size says how large). Refusals of the path itself are typed command
+// rejections (OUTSIDE_ROOT, PROTECTED, NOT_FOUND), never a status here.
+message WorkspaceFileView {
+  string path = 1;
+  string status = 2;
+  uint64 size = 3;
+  string text = 4;
+  string file_revision = 5;
+  uint64 workspace_revision = 6;
+  string language = 7;
+}

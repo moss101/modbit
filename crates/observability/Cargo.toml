@@ -13,9 +13,12 @@ serde.workspace = true
 serde_json.workspace = true
 sha2.workspace = true
 hex.workspace = true
+reqwest.workspace = true
+tokio.workspace = true
 
 [dev-dependencies]
 serde_json.workspace = true
+tempfile.workspace = true
 
 [lints]
 workspace = true
@@ -31,4 +34,6 @@ capabilities = [
   { id = "observability.verified_outcome_baseline", requirements = ["REQ-EPR-000"] },
   { id = "observability.slo_ladder", requirements = ["REQ-EV-0023"] },
   { id = "observability.diagnostics_package", requirements = ["REQ-EV-0142"] },
+  { id = "observability.otlp_export", requirements = ["REQ-PX-139", "REQ-EV-0032"] },
+  { id = "observability.persisted_health", requirements = ["REQ-PX-139"] },
 ]

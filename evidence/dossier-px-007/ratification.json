@@ -1,0 +1,39 @@
+{
+ "task": "DOC-PX-007",
+ "change_record": "DR-PX-2026-10-03-007",
+ "change_record_status": "APPROVED",
+ "ratified_by": "owner instruction 2026-10-05 (goal: implement research/audit/01-TASK-LIST.md); the basis of 007 is the owner's decisions of 2026-10-03",
+ "scope": "Ratification of DR-PX-2026-10-03-007, -008 and -010 by the owner's instruction of 2026-10-05 (goal: implement research/audit/01-TASK-LIST.md); dossier only; no product behaviour, status or evidence claim changes.",
+ "decision_record": {
+  "change_record": "DR-PX-2026-10-03-007",
+  "file": "docs/decisions/DR-PX-2026-10-03-007-agent-first-workspace.md",
+  "before_sha256": "c5038778ac8847af3425202350d705717381570736af5cf7fa2bd1bb49940aca",
+  "after_sha256": "af24859c23295d97e8eb60a7b494098337579bdd20491570d1b13b3a238c398a"
+ },
+ "supersedes_nothing": "the original bundle of 2026-10-03 (baseline.json, tests.log, validation.json) is retained unchanged",
+ "tests": {
+  "command": [
+   "python3",
+   "tools/test_dossier.py",
+   "-v"
+  ],
+  "exit_code": 0,
+  "output_ref": "evidence/dossier-px-008/tests.log",
+  "sha256": "3c34f15fa42b62ba73bf28c13896c7a922d009be45cd5c8d2ef087e5d586e27d"
+ },
+ "integrity": {
+  "command": [
+   "python3",
+   "tools/check_dossier.py",
+   "--manifest"
+  ],
+  "exit_code": 0
+ },
+ "invariants": [
+  "DR-PX-2026-10-03-007, -008 and -010 are accepted (status and approved_by in each file; graph change records APPROVED)",
+  "DR-PX-2026-10-03-009, -011 and -012 stay proposed; DOC-PX-009, DOC-PX-011 and DOC-PX-012 are untouched and graph.py refuses E2E_PROVEN/COMPLETE on them",
+  "no row of PX-041..068, PX-069..076 or PX-082..086 depends on a row or task of a proposed record (asserted by tools/test_dossier.py)",
+  "every PX row of PX-041..098 stays NOT_STARTED, M10, RELEASE_ZERO only; the sealed surface (291 REQ-EV, 265 IMP-EV, 291 QUAL-EV, EPR-000..019, ADR-R-039..056, gates A-G) is untouched",
+  "PX-067 carries a delivered-in-part note for audit fix FIX-01 (pull request moss101/modbit#61); the row stays NOT_STARTED"
+ ]
+}

@@ -1,0 +1,684 @@
+{
+  "corpora": [
+    {
+      "corpus": "synthetic-3000",
+      "files": 3000,
+      "bytes": 8050374,
+      "cases": 60,
+      "cold_index": {
+        "exact_ms": 3863.403833,
+        "lexical_ms": 6164.081,
+        "symbols_ms": 323.73425,
+        "semantic_ms": 3420.533583,
+        "graph_ms": 312.030958,
+        "total_ms": 14083.784208000001
+      },
+      "incremental_ms": 14.214125,
+      "columns": [
+        {
+          "name": "ABaseline",
+          "kind": "planner",
+          "status": {
+            "status": "ran"
+          },
+          "recall": [
+            [
+              1,
+              {
+                "k": 0,
+                "n": 60,
+                "p": 0.0,
+                "lo": 0.0,
+                "hi": 0.06017393047793289
+              }
+            ],
+            [
+              5,
+              {
+                "k": 0,
+                "n": 60,
+                "p": 0.0,
+                "lo": 0.0,
+                "hi": 0.06017393047793289
+              }
+            ],
+            [
+              10,
+              {
+                "k": 0,
+                "n": 60,
+                "p": 0.0,
+                "lo": 0.0,
+                "hi": 0.06017393047793289
+              }
+            ]
+          ],
+          "full_recall": [
+            [
+              5,
+              {
+                "k": 0,
+                "n": 60,
+                "p": 0.0,
+                "lo": 0.0,
+                "hi": 0.06017393047793289
+              }
+            ],
+            [
+              10,
+              {
+                "k": 0,
+                "n": 60,
+                "p": 0.0,
+                "lo": 0.0,
+                "hi": 0.06017393047793289
+              }
+            ]
+          ],
+          "recall_at_budget": [
+            [
+              2000,
+              {
+                "k": 0,
+                "n": 60,
+                "p": 0.0,
+                "lo": 0.0,
+                "hi": 0.06017393047793289
+              }
+            ],
+            [
+              8000,
+              {
+                "k": 0,
+                "n": 60,
+                "p": 0.0,
+                "lo": 0.0,
+                "hi": 0.06017393047793289
+              }
+            ],
+            [
+              32000,
+              {
+                "k": 0,
+                "n": 60,
+                "p": 0.0,
+                "lo": 0.0,
+                "hi": 0.06017393047793289
+              }
+            ]
+          ],
+          "mean_latency_ms": 0.018098,
+          "median_latency_ms": 0.017042,
+          "mean_steps": 0.0,
+          "mean_tokens_top5": 0.0
+        },
+        {
+          "name": "BHybrid",
+          "kind": "planner",
+          "status": {
+            "status": "ran"
+          },
+          "recall": [
+            [
+              1,
+              {
+                "k": 14,
+                "n": 60,
+                "p": 0.23333333333333334,
+                "lo": 0.1443943161843107,
+                "hi": 0.3543651134039202
+              }
+            ],
+            [
+              5,
+              {
+                "k": 58,
+                "n": 60,
+                "p": 0.9666666666666667,
+                "lo": 0.8863601247107462,
+                "hi": 0.9908108735098498
+              }
+            ],
+            [
+              10,
+              {
+                "k": 60,
+                "n": 60,
+                "p": 1.0,
+                "lo": 0.9398260695220669,
+                "hi": 1.0
+              }
+            ]
+          ],
+          "full_recall": [
+            [
+              5,
+              {
+                "k": 58,
+                "n": 60,
+                "p": 0.9666666666666667,
+                "lo": 0.8863601247107462,
+                "hi": 0.9908108735098498
+              }
+            ],
+            [
+              10,
+              {
+                "k": 60,
+                "n": 60,
+                "p": 1.0,
+                "lo": 0.9398260695220669,
+                "hi": 1.0
+              }
+            ]
+          ],
+          "recall_at_budget": [
+            [
+              2000,
+              {
+                "k": 58,
+                "n": 60,
+                "p": 0.9666666666666667,
+                "lo": 0.8863601247107462,
+                "hi": 0.9908108735098498
+              }
+            ],
+            [
+              8000,
+              {
+                "k": 60,
+                "n": 60,
+                "p": 1.0,
+                "lo": 0.9398260695220669,
+                "hi": 1.0
+              }
+            ],
+            [
+              32000,
+              {
+                "k": 60,
+                "n": 60,
+                "p": 1.0,
+                "lo": 0.9398260695220669,
+                "hi": 1.0
+              }
+            ]
+          ],
+          "mean_latency_ms": 1.5194013499999994,
+          "median_latency_ms": 1.1839374999999999,
+          "mean_steps": 2.0,
+          "mean_tokens_top5": 1920.6166666666666
+        },
+        {
+          "name": "CStructural",
+          "kind": "planner",
+          "status": {
+            "status": "ran"
+          },
+          "recall": [
+            [
+              1,
+              {
+                "k": 14,
+                "n": 60,
+                "p": 0.23333333333333334,
+                "lo": 0.1443943161843107,
+                "hi": 0.3543651134039202
+              }
+            ],
+            [
+              5,
+              {
+                "k": 58,
+                "n": 60,
+                "p": 0.9666666666666667,
+                "lo": 0.8863601247107462,
+                "hi": 0.9908108735098498
+              }
+            ],
+            [
+              10,
+              {
+                "k": 60,
+                "n": 60,
+                "p": 1.0,
+                "lo": 0.9398260695220669,
+                "hi": 1.0
+              }
+            ]
+          ],
+          "full_recall": [
+            [
+              5,
+              {
+                "k": 58,
+                "n": 60,
+                "p": 0.9666666666666667,
+                "lo": 0.8863601247107462,
+                "hi": 0.9908108735098498
+              }
+            ],
+            [
+              10,
+              {
+                "k": 60,
+                "n": 60,
+                "p": 1.0,
+                "lo": 0.9398260695220669,
+                "hi": 1.0
+              }
+            ]
+          ],
+          "recall_at_budget": [
+            [
+              2000,
+              {
+                "k": 58,
+                "n": 60,
+                "p": 0.9666666666666667,
+                "lo": 0.8863601247107462,
+                "hi": 0.9908108735098498
+              }
+            ],
+            [
+              8000,
+              {
+                "k": 60,
+                "n": 60,
+                "p": 1.0,
+                "lo": 0.9398260695220669,
+                "hi": 1.0
+              }
+            ],
+            [
+              32000,
+              {
+                "k": 60,
+                "n": 60,
+                "p": 1.0,
+                "lo": 0.9398260695220669,
+                "hi": 1.0
+              }
+            ]
+          ],
+          "mean_latency_ms": 1.3798125333333335,
+          "median_latency_ms": 1.0560625,
+          "mean_steps": 2.0,
+          "mean_tokens_top5": 1920.6166666666666
+        },
+        {
+          "name": "LexicalOnly",
+          "kind": "planner",
+          "status": {
+            "status": "ran"
+          },
+          "recall": [
+            [
+              1,
+              {
+                "k": 58,
+                "n": 60,
+                "p": 0.9666666666666667,
+                "lo": 0.8863601247107462,
+                "hi": 0.9908108735098498
+              }
+            ],
+            [
+              5,
+              {
+                "k": 60,
+                "n": 60,
+                "p": 1.0,
+                "lo": 0.9398260695220669,
+                "hi": 1.0
+              }
+            ],
+            [
+              10,
+              {
+                "k": 60,
+                "n": 60,
+                "p": 1.0,
+                "lo": 0.9398260695220669,
+                "hi": 1.0
+              }
+            ]
+          ],
+          "full_recall": [
+            [
+              5,
+              {
+                "k": 60,
+                "n": 60,
+                "p": 1.0,
+                "lo": 0.9398260695220669,
+                "hi": 1.0
+              }
+            ],
+            [
+              10,
+              {
+                "k": 60,
+                "n": 60,
+                "p": 1.0,
+                "lo": 0.9398260695220669,
+                "hi": 1.0
+              }
+            ]
+          ],
+          "recall_at_budget": [
+            [
+              2000,
+              {
+                "k": 60,
+                "n": 60,
+                "p": 1.0,
+                "lo": 0.9398260695220669,
+                "hi": 1.0
+              }
+            ],
+            [
+              8000,
+              {
+                "k": 60,
+                "n": 60,
+                "p": 1.0,
+                "lo": 0.9398260695220669,
+                "hi": 1.0
+              }
+            ],
+            [
+              32000,
+              {
+                "k": 60,
+                "n": 60,
+                "p": 1.0,
+                "lo": 0.9398260695220669,
+                "hi": 1.0
+              }
+            ]
+          ],
+          "mean_latency_ms": 1.1051493166666666,
+          "median_latency_ms": 0.809542,
+          "mean_steps": 1.0,
+          "mean_tokens_top5": 1219.45
+        },
+        {
+          "name": "SemanticOnly",
+          "kind": "planner",
+          "status": {
+            "status": "ran"
+          },
+          "recall": [
+            [
+              1,
+              {
+                "k": 0,
+                "n": 60,
+                "p": 0.0,
+                "lo": 0.0,
+                "hi": 0.06017393047793289
+              }
+            ],
+            [
+              5,
+              {
+                "k": 18,
+                "n": 60,
+                "p": 0.3,
+                "lo": 0.19898010252726892,
+                "hi": 0.42508946966390415
+              }
+            ],
+            [
+              10,
+              {
+                "k": 20,
+                "n": 60,
+                "p": 0.3333333333333333,
+                "lo": 0.2272909421592783,
+                "hi": 0.459433701333366
+              }
+            ]
+          ],
+          "full_recall": [
+            [
+              5,
+              {
+                "k": 18,
+                "n": 60,
+                "p": 0.3,
+                "lo": 0.19898010252726892,
+                "hi": 0.42508946966390415
+              }
+            ],
+            [
+              10,
+              {
+                "k": 20,
+                "n": 60,
+                "p": 0.3333333333333333,
+                "lo": 0.2272909421592783,
+                "hi": 0.459433701333366
+              }
+            ]
+          ],
+          "recall_at_budget": [
+            [
+              2000,
+              {
+                "k": 18,
+                "n": 60,
+                "p": 0.3,
+                "lo": 0.19898010252726892,
+                "hi": 0.42508946966390415
+              }
+            ],
+            [
+              8000,
+              {
+                "k": 20,
+                "n": 60,
+                "p": 0.3333333333333333,
+                "lo": 0.2272909421592783,
+                "hi": 0.459433701333366
+              }
+            ],
+            [
+              32000,
+              {
+                "k": 20,
+                "n": 60,
+                "p": 0.3333333333333333,
+                "lo": 0.2272909421592783,
+                "hi": 0.459433701333366
+              }
+            ]
+          ],
+          "mean_latency_ms": 0.18322853333333328,
+          "median_latency_ms": 0.178875,
+          "mean_steps": 1.0,
+          "mean_tokens_top5": 2585.9666666666667
+        },
+        {
+          "name": "ExternalRipgrep",
+          "kind": "external",
+          "status": {
+            "status": "ran"
+          },
+          "recall": [
+            [
+              1,
+              {
+                "k": 58,
+                "n": 60,
+                "p": 0.9666666666666667,
+                "lo": 0.8863601247107462,
+                "hi": 0.9908108735098498
+              }
+            ],
+            [
+              5,
+              {
+                "k": 60,
+                "n": 60,
+                "p": 1.0,
+                "lo": 0.9398260695220669,
+                "hi": 1.0
+              }
+            ],
+            [
+              10,
+              {
+                "k": 60,
+                "n": 60,
+                "p": 1.0,
+                "lo": 0.9398260695220669,
+                "hi": 1.0
+              }
+            ]
+          ],
+          "full_recall": [
+            [
+              5,
+              {
+                "k": 60,
+                "n": 60,
+                "p": 1.0,
+                "lo": 0.9398260695220669,
+                "hi": 1.0
+              }
+            ],
+            [
+              10,
+              {
+                "k": 60,
+                "n": 60,
+                "p": 1.0,
+                "lo": 0.9398260695220669,
+                "hi": 1.0
+              }
+            ]
+          ],
+          "recall_at_budget": [
+            [
+              2000,
+              {
+                "k": 60,
+                "n": 60,
+                "p": 1.0,
+                "lo": 0.9398260695220669,
+                "hi": 1.0
+              }
+            ],
+            [
+              8000,
+              {
+                "k": 60,
+                "n": 60,
+                "p": 1.0,
+                "lo": 0.9398260695220669,
+                "hi": 1.0
+              }
+            ],
+            [
+              32000,
+              {
+                "k": 60,
+                "n": 60,
+                "p": 1.0,
+                "lo": 0.9398260695220669,
+                "hi": 1.0
+              }
+            ]
+          ],
+          "mean_latency_ms": 167.20976251666664,
+          "median_latency_ms": 160.593646,
+          "mean_steps": 5.85,
+          "mean_tokens_top5": 1419.0166666666667
+        },
+        {
+          "name": "ExternalZvecGrep",
+          "kind": "external",
+          "status": {
+            "status": "not_installed",
+            "detail": "zvec-grep was not found on PATH or in MODBIT_ZVEC_GREP_BIN; it is detected, never downloaded"
+          },
+          "recall": [],
+          "full_recall": [],
+          "recall_at_budget": [],
+          "mean_latency_ms": null,
+          "median_latency_ms": null,
+          "mean_steps": null,
+          "mean_tokens_top5": null
+        }
+      ],
+      "pairwise": [
+        {
+          "treatment": "ABaseline",
+          "baseline": "ExternalRipgrep",
+          "wins": 0,
+          "losses": 60,
+          "ties": 0,
+          "mean_delta": -1.0,
+          "ci95": [
+            -1.0,
+            -1.0
+          ]
+        },
+        {
+          "treatment": "BHybrid",
+          "baseline": "ExternalRipgrep",
+          "wins": 0,
+          "losses": 0,
+          "ties": 60,
+          "mean_delta": 0.0,
+          "ci95": [
+            0.0,
+            0.0
+          ]
+        },
+        {
+          "treatment": "CStructural",
+          "baseline": "ExternalRipgrep",
+          "wins": 0,
+          "losses": 0,
+          "ties": 60,
+          "mean_delta": 0.0,
+          "ci95": [
+            0.0,
+            0.0
+          ]
+        },
+        {
+          "treatment": "LexicalOnly",
+          "baseline": "ExternalRipgrep",
+          "wins": 0,
+          "losses": 0,
+          "ties": 60,
+          "mean_delta": 0.0,
+          "ci95": [
+            0.0,
+            0.0
+          ]
+        },
+        {
+          "treatment": "SemanticOnly",
+          "baseline": "ExternalRipgrep",
+          "wins": 0,
+          "losses": 40,
+          "ties": 20,
+          "mean_delta": -0.6666666666666666,
+          "ci95": [
+            -0.7833333333333333,
+            -0.5333333333333333
+          ]
+        }
+      ],
+      "ranking_digest": "a80bf1c68a82d98471228dd16e7f776538c530cf1d7d282ee3dab3f392ce2fcd"
+    }
+  ],
+  "live": "LIVE: NOT RUN - same-model agent accuracy, input tokens and tool calls with each profile (QUAL-PX-137) need a configured provider; the columns here are retrieval-only and say nothing about an agent's answers",
+  "labels": "Every label is author-written: the synthetic corpus labels are the files its generator wrote for each row of a hand-written feature table; the repository labels were written by hand from the modules' own headers and checked to exist. The repository cases are easier than real task descriptions because their words come from the files they find, which favours every lexical profile alike. No label was derived from any profile's output.",
+  "method": "Same corpus, same cases, same scoring function for every profile; the ranked paths of each profile are all the scorer sees. ripgrep runs as a real process, one invocation per query word, ranking files by distinct words then total matches. Intervals: Wilson for proportions, deterministic bootstrap for paired differences. Latencies are wall times on the machine that ran it and are not reproducible across machines; the ranking digest is. Index times are for the corpora named, not for a 100 MB repository, which was not run."
+}

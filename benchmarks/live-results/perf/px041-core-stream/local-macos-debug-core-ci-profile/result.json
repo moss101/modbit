@@ -1,0 +1,49 @@
+{
+  "budget": {
+    "limit_ms": 100,
+    "statement": "QUAL-PX-041: event timestamp to render is at most 100 ms at p95; the Core's share (event timestamp to a client holding it) is asserted at p95 <= 100 ms"
+  },
+  "distributions_ms": {
+    "Core event timestamp to the client holding the event": {
+      "max": 29,
+      "min": 0,
+      "n": 230,
+      "p50": 1,
+      "p95": 6,
+      "p99": 25
+    },
+    "first delta: first piece sent to the client holding it": {
+      "max": 4,
+      "min": 4,
+      "n": 1,
+      "p50": 4,
+      "p95": 4,
+      "p99": 4
+    },
+    "model piece sent to the Core's event timestamp": {
+      "max": 3,
+      "min": 0,
+      "n": 230,
+      "p50": 0,
+      "p95": 1,
+      "p99": 1
+    },
+    "model piece sent to the client holding the event": {
+      "max": 29,
+      "min": 0,
+      "n": 230,
+      "p50": 2,
+      "p95": 7,
+      "p99": 26
+    }
+  },
+  "method": {
+    "clock": "one host's wall clock for the model, the Core and the client",
+    "core": "debug build of modbit-core (the CI profile)",
+    "cpus": 18,
+    "enforced": true,
+    "os": "macos",
+    "provider": "scripted OpenAI-compatible SSE endpoint, 230 pieces of 5 words, 60 ms apart (longer than the 50 ms coalescing window)"
+  },
+  "row": "px041-core-stream"
+}

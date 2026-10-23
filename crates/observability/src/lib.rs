@@ -14,6 +14,8 @@
 
 pub mod baseline;
 pub mod diagnostics;
+pub mod health;
+pub mod otlp;
 pub mod slo;
 
 pub use baseline::{

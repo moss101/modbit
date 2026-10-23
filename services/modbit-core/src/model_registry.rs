@@ -117,6 +117,50 @@ pub(crate) fn priced_by(core: &Core, endpoint: &str, model: &str) -> Option<Mode
         .or(production)
 }
 
+/// What the run loop uses for a model the gateway's catalog does not list:
+/// the limits the loop used before they came from the catalog. Such a model
+/// is refused at routing (`UnknownModel`), so this only keeps the numbers
+/// recorded on a plan defined.
+const FALLBACK_OUTPUT_TOKENS: u32 = 4096;
+const FALLBACK_TIMEOUT_MS: u64 = 120_000;
+
+/// What one dispatch of `endpoint/model` runs with, from the catalog entry
+/// (audit G: the loop hard-coded 4096 output tokens and a 120 s timeout for
+/// every model, so long file writes truncated and a slow model was cut off
+/// at the same point as a fast one).
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub(crate) struct DispatchLimits {
+    /// Output tokens the request asks for.
+    pub max_output_tokens: u32,
+    /// Whole-request timeout.
+    pub timeout_ms: u64,
+    /// Reasoning effort the request carries, for a model that exposes it.
+    pub reasoning_effort: Option<String>,
+    /// Service tier the request carries.
+    pub service_tier: Option<String>,
+}
+
+/// The limits and execution preference for a dispatch of `endpoint/model`.
+pub(crate) fn dispatch_limits(core: &Core, endpoint: &str, model: &str) -> DispatchLimits {
+    match core.gateway.capability(endpoint, model) {
+        Some(cap) => {
+            let (reasoning_effort, service_tier) = cap.execution_preference();
+            DispatchLimits {
+                max_output_tokens: cap.output_budget(),
+                timeout_ms: cap.timeout_ms(),
+                reasoning_effort,
+                service_tier,
+            }
+        }
+        None => DispatchLimits {
+            max_output_tokens: FALLBACK_OUTPUT_TOKENS,
+            timeout_ms: FALLBACK_TIMEOUT_MS,
+            reasoning_effort: None,
+            service_tier: None,
+        },
+    }
+}
+
 /// Whether the policy in force for `task` allows canary routing.
 pub(crate) fn canary_allowed(core: &Core, task: &modbit_domain::task::Task) -> bool {
     core.tools

@@ -22,6 +22,19 @@ pub type BoxFuture<'a, T> = Pin<Box<dyn Future<Output = T> + Send + 'a>>;
 
 /// Where commands actually run (the Core binds this to the process broker).
 pub trait CommandRunner: Send + Sync {
+    /// Whether a command whose argv repository content defined may run (the
+    /// Core binds this to the capability kernel, FIX-03). `Err` carries the
+    /// refusal; the command is then not run and its outcome is UNKNOWN, never
+    /// a pass. Engine-derived commands are not asked.
+    fn authorize<'a>(
+        &'a self,
+        check_id: &'a str,
+        argv: &'a [String],
+    ) -> BoxFuture<'a, Result<(), String>> {
+        let _ = (check_id, argv);
+        Box::pin(async { Ok(()) })
+    }
+
     /// Run `argv` in `cwd` with `env`, bounded by `timeout_ms`; return the raw outcome.
     fn run<'a>(
         &'a self,
@@ -30,6 +43,27 @@ pub trait CommandRunner: Send + Sync {
         env: &'a [(String, String)],
         timeout_ms: u64,
     ) -> BoxFuture<'a, RawRun>;
+}
+
+/// Why a stage's status is `Unknown` although no command misbehaved: the
+/// evidence needed to say anything is absent (typed, never free text).
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "SCREAMING_SNAKE_CASE")]
+pub enum IndeterminateReason {
+    /// The mandatory check set is empty: no command in the plan is
+    /// mandatory, or the commands that ran produced no check at all. An
+    /// absent verifier is INDETERMINATE, never a pass (REQ-EV-0068).
+    NoMandatoryChecks,
+}
+
+impl IndeterminateReason {
+    /// Stable label (the code the model and the gate carry).
+    #[must_use]
+    pub const fn label(self) -> &'static str {
+        match self {
+            Self::NoMandatoryChecks => "NO_MANDATORY_CHECKS",
+        }
+    }
 }
 
 /// Where raw output goes (content-addressed).
@@ -61,6 +95,10 @@ pub struct VerificationRun {
     pub report_refs: Vec<String>,
     /// Wall clock.
     pub duration_ms: u64,
+    /// Why `status` is `Unknown` when it is for want of evidence rather than
+    /// a runner's outcome.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub indeterminate_reason: Option<IndeterminateReason>,
 }
 
 impl VerificationRun {
@@ -274,7 +312,19 @@ impl<'a> VerificationEngine<'a> {
         if let Some(p) = &reporter_path {
             let _ = std::fs::remove_file(p);
         }
-        let mut raw = self.runner.run(&argv, root, env, timeout_ms).await;
+        let permitted = if cmd.is_repo_defined() {
+            self.runner.authorize(&cmd.id, &argv).await
+        } else {
+            Ok(())
+        };
+        let mut raw = match permitted {
+            Ok(()) => self.runner.run(&argv, root, env, timeout_ms).await,
+            Err(refusal) => RawRun {
+                exit_code: None,
+                stderr: format!("not run: {refusal}"),
+                ..Default::default()
+            },
+        };
         if let Some(p) = &reporter_path {
             if let Ok(s) = std::fs::read_to_string(p) {
                 raw.reporter_file = Some(s);
@@ -470,7 +520,22 @@ impl<'a> VerificationEngine<'a> {
                 reports.extend(extra_reruns);
             }
         }
-        let status = overall(&reports);
+        let mut status = overall(&reports);
+        // The mandatory check set decides whether "nothing failed" means
+        // anything: with no mandatory command, or commands that produced no
+        // check, there is no evidence to pass (docs/64 §3, REQ-EV-0068).
+        let mut indeterminate_reason = None;
+        let produced_checks = reports
+            .iter()
+            .filter(|r| r.stage != Stage::Rerun)
+            .any(|r| !r.checks.is_empty());
+        let no_reports = reports.iter().all(|r| r.stage == Stage::Rerun);
+        if (status == ReportStatus::Passed || no_reports)
+            && (!plan.commands.iter().any(|c| c.mandatory) || !produced_checks)
+        {
+            status = ReportStatus::Unknown;
+            indeterminate_reason = Some(IndeterminateReason::NoMandatoryChecks);
+        }
         let report_refs: Vec<String> = reports
             .iter()
             .map(|r| {
@@ -490,6 +555,7 @@ impl<'a> VerificationEngine<'a> {
                 reports,
                 report_refs,
                 duration_ms: started.elapsed().as_millis() as u64,
+                indeterminate_reason,
             },
             quarantines,
         )
@@ -498,7 +564,10 @@ impl<'a> VerificationEngine<'a> {
 
 fn overall(reports: &[TestReport]) -> ReportStatus {
     let main: Vec<&TestReport> = reports.iter().filter(|r| r.stage != Stage::Rerun).collect();
-    if main.iter().any(|r| r.status == ReportStatus::Timeout) {
+    if main.is_empty() {
+        // No report is no evidence: INDETERMINATE, never a pass.
+        ReportStatus::Unknown
+    } else if main.iter().any(|r| r.status == ReportStatus::Timeout) {
         ReportStatus::Timeout
     } else if main.iter().any(|r| r.status == ReportStatus::Cancelled) {
         ReportStatus::Cancelled
@@ -613,6 +682,14 @@ pub fn attribute_against(
             "completion run status {:?} is INDETERMINATE",
             completion.status
         ));
+    }
+    if let Some(r) = completion.indeterminate_reason {
+        reasons.push(match r {
+            IndeterminateReason::NoMandatoryChecks => format!(
+                "{}: the repository has no mandatory verification check, so nothing was verified; declare one in .modbit/verification.json (a change the user reviews), or ask the user to waive verification with user.ask (reason `verification_waiver`) — an empty check set is never a pass",
+                r.label()
+            ),
+        });
     }
     AttributionReport {
         checks,

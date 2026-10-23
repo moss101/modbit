@@ -1,0 +1,11 @@
+{
+  "id": "javascript-discount-correct-b",
+  "class": "correct",
+  "flavor": "b",
+  "leg": "initial",
+  "write_set": [
+    "src/shop.mjs",
+    "test/discount_boundaries.test.mjs"
+  ],
+  "declared": "correct"
+}

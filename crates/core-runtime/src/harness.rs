@@ -15,6 +15,26 @@ pub struct Budgets {
     pub max_tool_calls: u32,
     /// Consecutive turns without progress.
     pub max_consecutive_no_progress_turns: u32,
+    /// Cost cap in the active model registry's minor units (REQ-PX-116);
+    /// `None` = uncapped. Counts the task's own priced calls and what its
+    /// children hold.
+    #[serde(default)]
+    pub max_cost_minor: Option<u64>,
+    /// Wall-clock cap in milliseconds across the task's runs (REQ-PX-116);
+    /// `None` = no deadline. A child's is its parent's remaining time.
+    #[serde(default)]
+    pub max_wall_ms: Option<u64>,
+    /// Children the task may have alive at once; 0 = no delegation.
+    #[serde(default = "default_max_children")]
+    pub max_children: u32,
+}
+
+/// Live children a parent may have at once by default: what the Core's
+/// capacity pool admits beside the parent's own run.
+pub const DEFAULT_MAX_CHILDREN: u32 = 3;
+
+fn default_max_children() -> u32 {
+    DEFAULT_MAX_CHILDREN
 }
 
 impl Default for Budgets {
@@ -25,6 +45,22 @@ impl Default for Budgets {
             // The no-progress bound is the repair policy's, not a second copy.
             max_consecutive_no_progress_turns: RepairPolicy::default()
                 .max_consecutive_no_progress_turns,
+            max_cost_minor: None,
+            max_wall_ms: None,
+            max_children: DEFAULT_MAX_CHILDREN,
+        }
+    }
+}
+
+impl Budgets {
+    /// The caps as the hierarchical arithmetic sees them (`budget`).
+    #[must_use]
+    pub fn caps(&self) -> crate::budget::Caps {
+        crate::budget::Caps {
+            turns: u64::from(self.max_turns),
+            tool_calls: u64::from(self.max_tool_calls),
+            cost_minor: self.max_cost_minor,
+            wall_ms: self.max_wall_ms,
         }
     }
 }
@@ -62,6 +98,31 @@ pub struct HarnessState {
     pub turns: u32,
     /// Tool calls used.
     pub tool_calls: u32,
+    /// Cost of the task's own model calls so far, minor units
+    /// (REQ-PX-116): priced at each call's own binding in the active
+    /// registry, from the canonical usage events.
+    #[serde(default)]
+    pub cost_minor: u64,
+    /// Model calls whose cost cannot be stated (the provider reported no
+    /// usage, or no registry prices the binding). Under a cost cap they
+    /// stop the run: spend control that cannot see the spend is not control.
+    #[serde(default)]
+    pub cost_unmetered_calls: u32,
+    /// Wall clock the task has used across its runs, milliseconds.
+    #[serde(default)]
+    pub wall_ms: u64,
+    /// What the task's children hold against it (REQ-PX-116): reserved
+    /// turns, tool calls and cost of the live ones, the spend of the rest.
+    #[serde(default)]
+    pub children_held: crate::budget::Held,
+    /// Children alive now.
+    #[serde(default)]
+    pub live_children: u32,
+    /// Whether the model has a skill to load this round (REQ-PX-105):
+    /// `skill.load` is projected only then. Set each round from the files
+    /// on disk; never part of the state the model reads.
+    #[serde(skip)]
+    pub skills_loadable: bool,
     /// Current plan.
     pub plan: Option<Plan>,
     /// Original write set (frozen by the first plan).
@@ -104,6 +165,21 @@ pub struct HarnessState {
     /// the next turn on; REQ-EV-0134).
     #[serde(default)]
     pub activated_tools: Vec<String>,
+    /// PX-114: the projection mode a person set for this task
+    /// (`ToolProjectionConfigured`); `None` = the model's or the Core's.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub projection_mode: Option<String>,
+    /// PX-114: the schema-bytes budget a person set for this task.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub projection_max_bytes: Option<u64>,
+    /// PX-114: this round projects `exec_only` (a runtime flag, never
+    /// carried to the model or the log).
+    #[serde(skip)]
+    pub exec_only: bool,
+    /// PX-114: the model asked for delegation through the tool search; the
+    /// `agent.*` family is offered for the next round only.
+    #[serde(skip)]
+    pub delegation_offered: bool,
     /// Repair policy (docs/28 §5).
     #[serde(default)]
     pub repair_policy: RepairPolicy,
@@ -193,7 +269,99 @@ pub struct HarnessState {
     pub quality_rejection: Option<String>,
 }
 
+/// Baseline checks the model is shown individually (non-passing first); the
+/// rest are counted by status.
+pub const VIEW_BASELINE_CHECKS: usize = 20;
+/// Newest repair attempts the model is shown; older ones are counted.
+pub const VIEW_REPAIR_ATTEMPTS: usize = 4;
+/// Entries of any other history list (open failures, out-of-plan files, open
+/// flags, KNOWN_FAILING symbols) the model is shown.
+pub const VIEW_LIST: usize = 20;
+
 impl HarnessState {
+    /// The state as the model sees it each turn (docs/14 contract 4), bounded
+    /// (audit C defect 2): the lists that grow with the run keep a top-N chosen
+    /// for what the model needs — failing checks before passing ones, the
+    /// newest attempts and failures — and say how much they left out in a
+    /// `*_summary` / `*_omitted` marker beside the list, never dropping the
+    /// rest in silence. The full state stays in `self` and on the log; only
+    /// what is serialized into the prompt is bounded. The prompt compiler
+    /// bounds whatever is left (nested lists, long strings) as a backstop.
+    #[must_use]
+    pub fn prompt_view(&self) -> serde_json::Value {
+        use serde_json::{Value, json};
+        let mut v = serde_json::to_value(self).unwrap_or_default();
+        let Some(map) = v.as_object_mut() else {
+            return v;
+        };
+        // Baseline checks: non-passing first, then passing, up to the cap.
+        if self.baseline_checks.len() > VIEW_BASELINE_CHECKS {
+            let (failing, passing): (Vec<_>, Vec<_>) = self
+                .baseline_checks
+                .iter()
+                .partition(|(_, status)| status != "PASS");
+            let shown: Vec<&(String, String)> = failing
+                .into_iter()
+                .chain(passing)
+                .take(VIEW_BASELINE_CHECKS)
+                .collect();
+            let mut by_status = std::collections::BTreeMap::<&str, u32>::new();
+            for (_, status) in &self.baseline_checks {
+                *by_status.entry(status.as_str()).or_default() += 1;
+            }
+            map.insert("baseline_checks".into(), json!(shown));
+            map.insert(
+                "baseline_checks_summary".into(),
+                json!({
+                    "total": self.baseline_checks.len(),
+                    "shown": shown.len(),
+                    "omitted": self.baseline_checks.len() - shown.len(),
+                    "by_status": by_status,
+                    "note": "non-passing checks are listed first; the rest are counted, not shown",
+                }),
+            );
+        }
+        // Repair attempts: the newest few, the rest counted.
+        if self.repair_attempts.len() > VIEW_REPAIR_ATTEMPTS {
+            let omitted = self.repair_attempts.len() - VIEW_REPAIR_ATTEMPTS;
+            let shown = &self.repair_attempts[omitted..];
+            map.insert("repair_attempts".into(), json!(shown));
+            map.insert(
+                "repair_attempts_summary".into(),
+                json!({
+                    "total": self.repair_attempts.len(),
+                    "shown": shown.len(),
+                    "omitted": omitted,
+                    "note": "the newest attempts are shown; older ones are on the log",
+                }),
+            );
+        }
+        // Histories where the newest entries matter most keep the tail; the
+        // frozen or declared sets keep their head.
+        let mut cap = |key: &str, keep_newest: bool| {
+            let Some(Value::Array(items)) = map.get_mut(key) else {
+                return;
+            };
+            if items.len() <= VIEW_LIST {
+                return;
+            }
+            let omitted = items.len() - VIEW_LIST;
+            if keep_newest {
+                items.drain(..omitted);
+            } else {
+                items.truncate(VIEW_LIST);
+            }
+            map.insert(format!("{key}_omitted"), json!(omitted));
+        };
+        cap("open_failures", true);
+        cap("out_of_plan_files", true);
+        cap("open_flags", true);
+        cap("baseline_failing", false);
+        cap("original_write_set", false);
+        cap("quarantined", true);
+        v
+    }
+
     /// Start a new leg on the same run (REQ-EPR-006): the continuation's
     /// repair loop and no-progress count begin fresh; the failed leg's
     /// attempts stay on the log, and the candidate revision, the plan and
@@ -558,6 +726,7 @@ pub const CORE_TOOLS: &[&str] = &[
     "search.retrieve",
     "search.exact",
     "context.pack",
+    "skill.load",
 ];
 /// Namespaces that are always core.
 pub const CORE_NAMESPACES: &[&str] = &["fs", "change"];
@@ -608,11 +777,44 @@ pub const WRITE_TOOLS: &[&str] = &[
 impl HarnessState {
     /// Check a turn may start; `Err` names the exhausted budget.
     pub fn check_turn_budget(&self) -> Result<(), Exhausted> {
-        if self.turns >= self.budgets.max_turns {
+        // Turns the children hold count against the parent (REQ-PX-116).
+        let turns = u64::from(self.turns).saturating_add(self.children_held.turns);
+        if turns >= u64::from(self.budgets.max_turns) {
             return Err(Exhausted {
                 budget: "max_turns".into(),
                 limit: u64::from(self.budgets.max_turns),
-                used: u64::from(self.turns),
+                used: turns,
+            });
+        }
+        // The round boundary is where cost and wall clock are judged, on
+        // every path (a direct run included): the spend of the round that
+        // just ended is on the log by now.
+        if let Some(cap) = self.budgets.max_cost_minor {
+            if self.cost_unmetered_calls > 0 {
+                return Err(Exhausted {
+                    budget: "cost_unmetered".into(),
+                    limit: 0,
+                    used: u64::from(self.cost_unmetered_calls),
+                });
+            }
+            let used = self
+                .cost_minor
+                .saturating_add(self.children_held.cost_minor);
+            if used >= cap {
+                return Err(Exhausted {
+                    budget: "max_cost_minor".into(),
+                    limit: cap,
+                    used,
+                });
+            }
+        }
+        if let Some(cap) = self.budgets.max_wall_ms
+            && self.wall_ms >= cap
+        {
+            return Err(Exhausted {
+                budget: "max_wall_ms".into(),
+                limit: cap,
+                used: self.wall_ms,
             });
         }
         if self.no_progress_turns >= self.budgets.max_consecutive_no_progress_turns {
@@ -627,11 +829,12 @@ impl HarnessState {
 
     /// Check a tool call may run.
     pub fn check_tool_budget(&self) -> Result<(), Exhausted> {
-        if self.tool_calls >= self.budgets.max_tool_calls {
+        let calls = u64::from(self.tool_calls).saturating_add(self.children_held.tool_calls);
+        if calls >= u64::from(self.budgets.max_tool_calls) {
             return Err(Exhausted {
                 budget: "max_tool_calls".into(),
                 limit: u64::from(self.budgets.max_tool_calls),
-                used: u64::from(self.tool_calls),
+                used: calls,
             });
         }
         Ok(())
@@ -1180,6 +1383,35 @@ pub fn observe(
     result_ref: &str,
     ceiling_bytes: usize,
 ) -> Observation {
+    observe_streams(
+        status,
+        error_code,
+        error_message,
+        structured_output,
+        stdout_ref,
+        None,
+        result_ref,
+        ceiling_bytes,
+    )
+}
+
+/// [`observe`] for a result with both output streams: the `stderr_ref` is
+/// named in the header beside the `stdout_ref`, so a cut of the structured
+/// output at the ceiling never hides that stderr exists or where the whole of
+/// it is (FIX-10: compiler errors and stack traces are on stderr; the
+/// `stderr_preview` itself rides in the structured output).
+#[must_use]
+#[allow(clippy::too_many_arguments)]
+pub fn observe_streams(
+    status: &str,
+    error_code: Option<&str>,
+    error_message: Option<&str>,
+    structured_output: &str,
+    stdout_ref: Option<&str>,
+    stderr_ref: Option<&str>,
+    result_ref: &str,
+    ceiling_bytes: usize,
+) -> Observation {
     let total = structured_output.len();
     let included = total.min(ceiling_bytes);
     let mut cut = included;
@@ -1203,6 +1435,9 @@ pub fn observe(
     if let Some(s) = stdout_ref {
         text.push_str(&format!("stdout_ref: {s}\n"));
     }
+    if let Some(s) = stderr_ref {
+        text.push_str(&format!("stderr_ref: {s}\n"));
+    }
     text.push_str("output:\n");
     text.push_str(body);
     Observation {
@@ -1216,6 +1451,122 @@ pub fn observe(
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    /// A run's state after `turn` turns of a long task: every verification
+    /// pass adds checks and failures, every failed fix adds an attempt.
+    fn long_run(turn: usize) -> HarnessState {
+        let mut h = HarnessState {
+            turns: u32::try_from(turn).unwrap(),
+            ..HarnessState::default()
+        };
+        h.baseline_checks = (0..turn * 30)
+            .map(|n| {
+                (
+                    format!("cargo:crate_{n}::tests::check_{n}"),
+                    if n % 7 == 0 { "FAIL" } else { "PASS" }.to_owned(),
+                )
+            })
+            .collect();
+        h.baseline_failing = h
+            .baseline_checks
+            .iter()
+            .filter(|(_, s)| s == "FAIL")
+            .map(|(id, _)| id.clone())
+            .collect();
+        h.open_failures = (0..turn * 2)
+            .map(|n| format!("verify:cargo:t.rs::f{n}:abcd"))
+            .collect();
+        h.out_of_plan_files = (0..turn).map(|n| format!("src/extra{n}.rs")).collect();
+        h.repair_attempts = (0..turn)
+            .map(|n| RepairAttempt {
+                attempt_ordinal: u32::try_from(n + 1).unwrap(),
+                failure_signature: "verify:cargo:t.rs::a:abcd".into(),
+                hypothesis: "the guard is missing ".repeat(turn),
+                evidence_refs: (0..turn).map(|e| format!("obj{e}")).collect(),
+                ..RepairAttempt::default()
+            })
+            .collect();
+        h
+    }
+
+    /// Audit C defect 2 (FIX-13): the lists that grow with a run no longer
+    /// grow the request. After 50 turns of accumulation the model-facing
+    /// state is bounded, says what it left out, and keeps what matters.
+    #[test]
+    fn the_prompt_view_is_bounded_across_fifty_turns_and_says_what_it_omits() {
+        let sizes: Vec<usize> = (1..=50)
+            .map(|turn| {
+                let view = long_run(turn).prompt_view();
+                modbit_prompt_bound(&view).to_string().len()
+            })
+            .collect();
+        let plateau = sizes[10..].iter().copied().max().unwrap();
+        assert!(
+            sizes[49] <= sizes[10] * 3 / 2,
+            "turn 50 is not much larger than turn 11: {sizes:?}"
+        );
+        assert!(plateau < 40 * 1024, "{plateau} bytes");
+        // The unbounded state, for scale: what every turn used to carry.
+        let raw = serde_json::to_string(&long_run(50)).unwrap().len();
+        assert!(raw > 5 * plateau, "{raw} vs {plateau}");
+
+        let h = long_run(50);
+        let v = h.prompt_view();
+        // Failing checks come first; the rest is counted by status.
+        let checks = v["baseline_checks"].as_array().unwrap();
+        assert_eq!(checks.len(), VIEW_BASELINE_CHECKS);
+        assert!(checks.iter().all(|c| c[1] == "FAIL"), "{checks:?}");
+        let s = &v["baseline_checks_summary"];
+        assert_eq!(s["total"], 1500);
+        assert_eq!(s["omitted"], 1500 - VIEW_BASELINE_CHECKS);
+        assert_eq!(s["by_status"]["FAIL"], 215);
+        assert_eq!(s["by_status"]["PASS"], 1285);
+        // The newest attempts are shown, older ones counted.
+        let attempts = v["repair_attempts"].as_array().unwrap();
+        assert_eq!(attempts.len(), VIEW_REPAIR_ATTEMPTS);
+        assert_eq!(attempts.last().unwrap()["attempt_ordinal"], 50);
+        assert_eq!(attempts[0]["attempt_ordinal"], 47);
+        assert_eq!(v["repair_attempts_summary"]["omitted"], 46);
+        // Histories keep their newest entries and say how many went.
+        let open = v["open_failures"].as_array().unwrap();
+        assert_eq!(open.len(), VIEW_LIST);
+        assert_eq!(open.last().unwrap(), "verify:cargo:t.rs::f99:abcd");
+        assert_eq!(v["open_failures_omitted"], 100 - VIEW_LIST);
+        assert_eq!(v["out_of_plan_files_omitted"], 50 - VIEW_LIST);
+        assert_eq!(v["baseline_failing"].as_array().unwrap().len(), VIEW_LIST);
+        assert_eq!(v["baseline_failing_omitted"], 215 - VIEW_LIST);
+        // The state itself is untouched: the view bounds only the prompt.
+        assert_eq!(h.baseline_checks.len(), 1500);
+        assert_eq!(h.repair_attempts.len(), 50);
+        // A short run is shown whole, with no markers.
+        let small = long_run(0).prompt_view();
+        assert!(small.get("baseline_checks_summary").is_none());
+        assert!(small.get("repair_attempts_summary").is_none());
+        assert!(small.get("open_failures_omitted").is_none());
+    }
+
+    /// The compiler bounds the view again (nested lists, long strings); this
+    /// mirrors that final pass for the size assertion without a dependency
+    /// on the compiler crate.
+    fn modbit_prompt_bound(v: &serde_json::Value) -> serde_json::Value {
+        match v {
+            serde_json::Value::Array(a) => serde_json::Value::Array(
+                a.iter()
+                    .take(24)
+                    .map(modbit_prompt_bound)
+                    .collect::<Vec<_>>(),
+            ),
+            serde_json::Value::Object(m) => serde_json::Value::Object(
+                m.iter()
+                    .map(|(k, v)| (k.clone(), modbit_prompt_bound(v)))
+                    .collect(),
+            ),
+            serde_json::Value::String(s) => {
+                serde_json::Value::String(s.chars().take(400).collect())
+            }
+            other => other.clone(),
+        }
+    }
 
     #[test]
     fn repair_loop_records_attempts_and_escalates_on_equivalence_bounds_and_worsening() {
@@ -1566,5 +1917,31 @@ mod tests {
             failure_signature("test.run", "EXIT", "a\n\nb\nc\nd"),
             failure_signature("test.run", "EXIT", "a\nb\nc\nzzz")
         );
+    }
+
+    #[test]
+    fn a_stderr_ref_is_named_in_the_header_even_when_the_output_is_cut() {
+        let structured = format!(
+            r#"{{"exit_code":101,"stderr_preview":"error[E0425]","stdout_preview":"{}"}}"#,
+            "x".repeat(500)
+        );
+        let o = observe_streams(
+            "APPLICATION_FAILURE",
+            Some("NON_ZERO_EXIT"),
+            None,
+            &structured,
+            Some("out-ref"),
+            Some("err-ref"),
+            "result-ref",
+            64,
+        );
+        assert!(o.truncated);
+        assert!(
+            o.text
+                .contains("stdout_ref: out-ref\nstderr_ref: err-ref\n")
+        );
+        // the existing entry point is the same thing without a stderr
+        let o = observe("SUCCESS", None, None, "{}", Some("s"), "r", 64);
+        assert!(!o.text.contains("stderr_ref"));
     }
 }

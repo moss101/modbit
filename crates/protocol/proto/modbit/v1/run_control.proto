@@ -1,0 +1,286 @@
+// In-run control, run modes and context accounting (REQ-PX-050, REQ-PX-057,
+// REQ-PX-059; docs/65 AFW-E01 to E07, AFW-F06 to F12, AFW-H04, AFW-H05;
+// docs/30).
+//
+// Every message here is a command payload or a result of one. The queue, the
+// run mode, the allowlist rules and the context breakdown are all facts of the
+// Core: a client names an input, a mode or a pattern and the Core decides,
+// records and serves. No message carries a breakdown, a policy or a queue
+// order *from* a client that the Core would store as its own.
+//
+// Field numbers 340-359 of the existing messages that gain a field here
+// (ContextInspectorView) are reserved for this area.
+syntax = "proto3";
+
+package modbit.v1;
+
+import "modbit/v1/domain.proto";
+
+// ---- REQ-PX-050: the durable input queue and the typed interrupt ----
+
+// One input the task holds, in the order it will be dispatched. `QUEUED`
+// inputs can be edited, removed, reordered and sent now; a `DISPATCHED` or
+// `REMOVED` one is history and can be none of those.
+message QueuedInputView {
+  string input_id = 1;
+  uint32 position = 2;         // 1-based among the queued; 0 for a settled input
+  string mode = 3;             // STEER | COLLECT | FOLLOW_UP
+  string text = 4;
+  string state = 5;            // QUEUED | DISPATCHED | REMOVED
+  string model = 6;            // the per-item model selection an edit recorded
+  bool edited = 7;
+  bool sent_now = 8;           // the person asked to send it now
+  string provenance = 9;       // empty for the person; forge_review_comment
+  bool untrusted = 10;
+  uint64 queued_offset = 11;   // the log offset of the QueueInput record
+  uint64 changed_offset = 12;  // the log offset of the record that last changed it
+}
+
+message ListQueuedInputs {
+  Id task_id = 1;
+  bool include_settled = 2;    // also the dispatched and removed ones
+}
+
+message QueuedInputList {
+  Id task_id = 1;
+  repeated QueuedInputView items = 2;
+  uint32 queued = 3;           // how many are waiting
+  bool run_alive = 4;          // a loop is running the task: they drain at its boundaries
+  uint64 offset = 5;           // the log offset this was read at
+}
+
+// Change a queued input before it is dispatched. An empty field is left as it
+// is; `mode` is STEER | COLLECT | FOLLOW_UP. Refused UNKNOWN_INPUT,
+// INPUT_NOT_QUEUED (already dispatched or removed) and, as for any command
+// that changes a task, without the session lease.
+message EditQueuedInput {
+  Id task_id = 1;
+  string input_id = 2;
+  string text = 3;
+  string mode = 4;
+  string model = 5;
+}
+
+// Delete a queued input: it is never dispatched.
+message RemoveQueuedInput {
+  Id task_id = 1;
+  string input_id = 2;
+  string reason = 3;
+}
+
+// Move a queued input before another queued input; an empty
+// `before_input_id` moves it to the end.
+message ReorderQueuedInput {
+  Id task_id = 1;
+  string input_id = 2;
+  string before_input_id = 3;
+}
+
+message QueuedInputChanged {
+  Id task_id = 1;
+  string input_id = 2;
+  string state = 3;            // the state after the command
+  uint32 position = 4;
+  uint64 sequence = 5;
+  uint64 offset = 6;
+}
+
+// What plain Enter does while a turn runs and what Send now does (docs/65
+// AFW-E05). The Core applies it: `QueueInput` with the mode DEFAULT takes the
+// task's `while_running`; `SendQueuedInputNow` takes its `send_now`. An empty
+// field keeps what is recorded. The labels a client shows state the
+// consequence, which this view carries in the Core's words.
+message SetSendBehavior {
+  Id task_id = 1;
+  string while_running = 2;    // QUEUE | COLLECT | STEER | STOP_AND_SEND
+  string send_now = 3;         // INTERRUPT | STEER
+}
+
+message GetSendBehavior {
+  Id task_id = 1;
+}
+
+message SendBehaviorView {
+  Id task_id = 1;
+  string while_running = 2;
+  string send_now = 3;
+  repeated string while_running_values = 4;
+  repeated string send_now_values = 5;
+  string while_running_consequence = 6;
+  string send_now_consequence = 7;
+  uint64 offset = 8;           // the log offset of the record that set it (0 = defaults)
+}
+
+// Send one queued input now: a typed interrupt-and-replace. The run cuts the
+// model stream it is in at the next safe point (the stream ends aborted with
+// source USER_INTERRUPT, its partial text kept and marked partial), cancels
+// the tool call in flight through the broker and reconciles it, then starts
+// the next turn from this input. `interrupt_id` is client-stable: sending
+// the same one again interrupts once.
+message SendQueuedInputNow {
+  Id task_id = 1;
+  string input_id = 2;
+  string interrupt_id = 3;     // empty = the command id
+  string reason = 4;
+}
+
+// Stop: end the current turn at the next safe point and pause the run (the
+// person continues it with ResumeTask). Nothing is dispatched. A user
+// interrupt is a different typed outcome from a runtime or transport abort.
+message InterruptTask {
+  Id task_id = 1;
+  string interrupt_id = 2;     // empty = the command id
+  string reason = 3;
+}
+
+message InterruptAccepted {
+  Id task_id = 1;
+  string interrupt_id = 2;
+  string kind = 3;             // SEND_NOW | STOP
+  bool run_alive = 4;          // a loop was running and has been told
+  uint64 sequence = 5;
+  uint64 offset = 6;
+}
+
+// ---- REQ-PX-057: run-mode presets and durable allowlist rules ----
+
+// Set who approves protected effects for the task: ASK (default) | ALLOWLIST |
+// ALLOWLIST_SANDBOX | RUN_EVERYTHING. A mode that approves more than the one
+// in force (RUN_EVERYTHING above all) must carry `acknowledge_risk`, the
+// person's acknowledgement that a prompt injection or an exfiltration could
+// run inside the envelope; it is recorded with the warning text. RUN_EVERYTHING
+// is per task and per Core process: after a restart the mode in force is the
+// last durable one. In no mode do the always-ask classes stop asking.
+message SetRunMode {
+  Id task_id = 1;
+  string mode = 2;
+  bool acknowledge_risk = 3;
+}
+
+message GetRunMode {
+  Id task_id = 1;
+}
+
+message RunModeView {
+  Id task_id = 1;
+  string mode = 2;                     // the mode in force
+  bool acknowledged = 3;               // the acknowledgement recorded with it
+  repeated string always_ask = 4;      // the classes that ask in every mode
+  repeated string modes = 5;           // every mode, least to most approving
+  string warning = 6;                  // the text a move to a higher mode must acknowledge
+  bool session_only = 7;               // the mode in force does not survive a Core restart
+  uint64 offset = 8;                   // the log offset of the record that set it (0 = default)
+  uint32 rules_in_force = 9;           // live rules that apply to this task
+}
+
+// Add a durable allowlist rule: `pattern` is an argv prefix, matched token by
+// token; it never matches shell operators, redirections, substitutions or
+// pipelines, and a compound command needs every sub-command covered. `scope`
+// is TASK (this task), REPO (this task's workspace root) or USER. A rule does
+// not stand for an always-ask class unless `covers_always_ask` says so, and
+// that is allowed only for TASK or REPO scope and a pattern of at least two
+// tokens. Refused for a client without the session lease and for an
+// unattended or subagent task.
+message AddAllowRule {
+  Id task_id = 1;
+  string rule_id = 2;                  // client-stable; empty = the command id
+  repeated string pattern = 3;
+  string scope = 4;                    // TASK | REPO | USER
+  int64 expires_at_ms = 5;             // 0 = no expiry
+  bool covers_always_ask = 6;
+}
+
+message RevokeAllowRule {
+  Id task_id = 1;                      // a task the rule applies to, whose session lease fences the command
+  string rule_id = 2;
+  string reason = 3;
+}
+
+message ListAllowRules {
+  Id task_id = 1;                      // only the rules that apply to this task; empty = all
+  bool include_inactive = 2;           // also expired and revoked ones
+}
+
+message AllowRuleView {
+  string rule_id = 1;
+  repeated string pattern = 2;
+  string scope = 3;
+  string scope_key = 4;
+  string created_by = 5;
+  int64 created_at_ms = 6;
+  int64 expires_at_ms = 7;             // 0 = none
+  bool covers_always_ask = 8;
+  string state = 9;                    // ACTIVE | EXPIRED | REVOKED
+  string revoked_by = 10;
+  string origin_task = 11;
+  uint64 offset = 12;                  // the log offset of the AllowRuleAdded record
+}
+
+message AllowRuleList {
+  repeated AllowRuleView rules = 1;
+}
+
+message AllowRuleRevoked {
+  string rule_id = 1;
+  uint64 offset = 2;
+}
+
+// ---- REQ-PX-059: context accounting by category ----
+
+message GetContextAccounting {
+  Id task_id = 1;
+}
+
+// One category of the last compiled request: SYSTEM | TOOLS | RULES | SKILLS |
+// MCP | MEMORY | SUMMARY | SUBAGENTS | CONVERSATION.
+message ContextCategoryView {
+  string category = 1;
+  uint64 tokens = 2;                   // apportioned: the categories sum to the total
+  uint64 estimated_tokens = 3;         // the estimator's own count before apportioning
+  uint32 share_bp = 4;                 // of the total, in basis points
+  repeated string sources = 5;         // what is in it: layers, memory ids, tool names, epochs
+}
+
+// What the budgets of REQ-PX-116 say beside the context numbers.
+message BudgetAccountingView {
+  uint64 max_cost_minor = 1;
+  uint64 spent_minor = 2;
+  uint64 held_by_children_minor = 3;
+  uint64 max_wall_ms = 4;
+  uint64 wall_ms_used = 5;
+  uint32 max_children = 6;
+  uint32 live_children = 7;
+  bool forbid_spawn = 8;
+}
+
+// The Core's breakdown of the request it last sent: the nine categories sum to
+// `total_tokens`, which is what the provider reported counting for that
+// request when it reported (`total_source` PROVIDER_REPORTED) and the
+// estimator's own count when it did not (ESTIMATED). The apportioning rule is
+// stated in `rounding_rule`. The window comes from the model registry or the
+// endpoint's capability, never a constant.
+message ContextAccountingView {
+  bool available = 1;                  // false before the first compiled turn
+  uint64 total_tokens = 2;
+  string total_source = 3;             // PROVIDER_REPORTED | ESTIMATED
+  uint64 estimated_total = 4;          // the estimator's count of the same request
+  uint64 provider_reported_input = 5;  // 0 when the provider did not report
+  uint32 estimator_error_bp = 6;       // |estimated - reported| / reported, in basis points
+  uint32 declared_error_bp = 7;        // the bound the estimator declares
+  string rounding_rule = 8;            // LARGEST_REMAINDER
+  uint64 window_tokens = 9;
+  string window_source = 10;           // REGISTRY | ENDPOINT | UNKNOWN
+  uint32 used_bp = 11;                 // total over window, in basis points (0 when the window is unknown)
+  repeated ContextCategoryView categories = 12;
+  string endpoint = 13;
+  string model = 14;
+  string turn_id = 15;
+  uint32 turn_ordinal = 16;
+  uint64 offset = 17;                  // the log offset of the compile record
+  // The numbers the other inspector fields report, so a client sees one story.
+  uint32 instruction_layers_in_force = 18;   // REQ-PX-107
+  uint32 memory_items_injected = 19;         // REQ-PX-113
+  uint32 compaction_epoch = 20;              // REQ-PX-109
+  uint32 compaction_summaries = 21;
+  BudgetAccountingView budgets = 22;         // REQ-PX-116
+}

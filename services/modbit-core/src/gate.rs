@@ -12,8 +12,8 @@ use modbit_event_store::EventStore;
 use modbit_policy::AssuranceLevel;
 use modbit_protocol::v1 as wire;
 use modbit_verification::{
-    AcceptanceGateResult, CheckEvidence, GateInput, InvariantEvidence, RequiredAssurance,
-    ReviewEvidence, Verdict, VerificationEvidence, evaluate_gate,
+    AcceptanceGateResult, CheckEvidence, EvidenceStatus, GateInput, InvariantEvidence,
+    RequiredAssurance, ReviewEvidence, Verdict, VerificationEvidence, evaluate_gate,
 };
 
 /// The evidence on the log for a task, as the gate reads it.
@@ -229,6 +229,97 @@ pub(crate) fn summary(r: &AcceptanceGateResult) -> String {
             r.missing_evidence.join(", ")
         ),
     }
+}
+
+/// The verification evidence the gate could not take as a pass: any weighed
+/// item other than the review and human obligations that is failed, missing,
+/// stale or incomplete. A completion is proposed only when this is empty
+/// (FIX-03); the obligations stay pending for the user's review.
+pub(crate) fn verification_blockers(r: &AcceptanceGateResult) -> Vec<String> {
+    r.evidence
+        .iter()
+        .filter(|e| e.required && e.status != EvidenceStatus::Pass)
+        .filter(|e| !matches!(e.kind.as_str(), "independent_review" | "human_decision"))
+        .map(|e| {
+            format!(
+                "{} {}: {}",
+                e.kind,
+                format!("{:?}", e.status).to_uppercase(),
+                e.detail
+            )
+        })
+        .collect()
+}
+
+/// Whether the task has landed a write on the log (a `FileChanged` of the
+/// tool host or a person's direct edit): the evidence that its candidate is
+/// not "nothing", whatever the working tree says now (FIX-03).
+pub(crate) fn task_wrote(store: &EventStore, task: &Task) -> bool {
+    store
+        .read_session(&task.session_id, 0, usize::MAX)
+        .unwrap_or_default()
+        .iter()
+        .filter(|e| e.envelope.event_type == "FileChanged")
+        .any(|e| {
+            e.envelope.task_id == Some(task.task_id)
+                || store
+                    .payload(&e.envelope)
+                    .is_ok_and(|p| p["task_id"] == task.task_id.to_string())
+        })
+}
+
+/// The `reason` of a `user.ask` that asks the user to waive verification.
+pub(crate) const VERIFICATION_WAIVER_REASON: &str = "verification_waiver";
+/// The option only the user's answer can choose, to waive.
+pub(crate) const WAIVE_VERIFICATION: &str = "waive_verification";
+/// The option that leaves verification required.
+pub(crate) const KEEP_VERIFICATION: &str = "keep_verification";
+
+/// The explicit waiver of verification on the log for `task` (FIX-03): the
+/// user's — never the agent's — `waive_verification` answer to a question
+/// the Core typed as a verification waiver, with no write landed after it.
+/// A write after the answer invalidates it: the user waived the candidate
+/// they were asked about. Read from the log, so a restarted Core agrees.
+/// Returns the question id.
+pub(crate) fn verification_waived(store: &EventStore, task: &Task) -> Option<String> {
+    use modbit_domain::event::Actor;
+    let events = store
+        .read_session(&task.session_id, 0, usize::MAX)
+        .unwrap_or_default();
+    let mut asked: Vec<String> = Vec::new();
+    let mut waived: Option<String> = None;
+    for e in &events {
+        let mine = e.envelope.task_id == Some(task.task_id);
+        match e.envelope.event_type.as_str() {
+            "UserQuestionAsked" if mine => {
+                let p = store.payload(&e.envelope).unwrap_or_default();
+                if p["reason"] == VERIFICATION_WAIVER_REASON
+                    && let Some(q) = p["question_id"].as_str()
+                {
+                    asked.push(q.to_owned());
+                }
+            }
+            "UserQuestionAnswered" if mine && matches!(e.envelope.actor, Actor::User(_)) => {
+                let p = store.payload(&e.envelope).unwrap_or_default();
+                if p["option_id"] == WAIVE_VERIFICATION
+                    && let Some(q) = p["question_id"].as_str()
+                    && asked.iter().any(|a| a == q)
+                {
+                    waived = Some(q.to_owned());
+                }
+            }
+            "FileChanged"
+                if mine
+                    || store
+                        .payload(&e.envelope)
+                        .is_ok_and(|p| p["task_id"] == task.task_id.to_string()) =>
+            {
+                waived = None;
+            }
+            _ => {}
+        }
+    }
+    waived
 }
 
 /// The latest gate result on the log for a task, with the offset.

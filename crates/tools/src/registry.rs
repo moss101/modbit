@@ -21,6 +21,20 @@ pub enum Idempotency {
     NonIdempotent,
 }
 
+/// What the host resolved about one call for the task's run mode (PX-057):
+/// facts from the tool's own classifier and path handling, never from the
+/// model's description of what it intends.
+#[derive(Clone, Debug, Default, PartialEq, Eq)]
+pub struct CallFacts {
+    /// The argv of a command-shaped call (`shell.exec`, `shell.start`,
+    /// `test.run`); `None` for everything else, which no rule can cover.
+    pub argv: Option<Vec<String>>,
+    /// The call knowingly writes outside the workspace.
+    pub outside_workspace_write: bool,
+    /// The call knowingly writes repository or tool configuration.
+    pub protected_path: bool,
+}
+
 /// Immutable tool metadata.
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
 pub struct ToolSpec {
@@ -131,6 +145,50 @@ pub trait Tool: Send + Sync {
     fn effect_of(&self, args: &Value) -> EffectClass {
         let _ = args;
         self.spec().effect_class
+    }
+
+    /// The class the kernel is asked about for one call under `profile`:
+    /// [`Tool::effect_of`] by default. A tool whose arguments name a program
+    /// it cannot fully resolve (the shell tools, FIX-02) is judged more
+    /// strictly where an approval can be asked than where it cannot. Like
+    /// `effect_of` it can only raise the registered class. The pipeline and
+    /// the Core's proposal both call this one, so what is logged, what the
+    /// kernel decides on and what is receipted are the same class.
+    fn effect_in_profile(&self, args: &Value, profile: &str) -> EffectClass {
+        let _ = profile;
+        self.effect_of(args)
+    }
+
+    /// What the host knows about this call that the run mode needs
+    /// (PX-057): the argv, and whether the tool's own classifier found a write
+    /// outside the workspace or to configuration. Empty by default.
+    fn call_facts(&self, args: &Value, profile: &str) -> CallFacts {
+        let _ = (args, profile);
+        CallFacts::default()
+    }
+
+    /// Everything that can be decided about a call before a person is asked
+    /// (PX-069, PX-070): the refusals a call would get anyway, so no approval
+    /// is offered for what cannot be done, and - for a tool whose approval
+    /// must be exact - the facts the approval binds beyond the arguments
+    /// (the identity of the application acted on, the window, the element).
+    /// The pipeline folds a returned binding into the call's intent hash, so
+    /// any change in those facts invalidates the approval. `Err` is the
+    /// refusal; `Ok(None)` (the default) binds nothing.
+    fn prepare<'a>(
+        &'a self,
+        ctx: &'a InvokeContext,
+        args: &'a Value,
+    ) -> BoxFuture<'a, std::result::Result<Option<Value>, ToolOutcome>> {
+        let _ = (ctx, args);
+        Box::pin(async { Ok(None) })
+    }
+
+    /// Why [`Tool::effect_in_profile`] raised the class above the registered
+    /// one, for the approval and the evidence record. `None` when it did not.
+    fn effect_reason(&self, args: &Value, profile: &str) -> Option<String> {
+        let _ = (args, profile);
+        None
     }
 }
 

@@ -12,6 +12,7 @@ import type { Message } from "@bufbuild/protobuf";
 import type { Id } from "./domain_pb.js";
 import type { ClientHello } from "./surface_pb.js";
 import type { HelloAck } from "./negotiation_pb.js";
+import type { ListServices, SessionListeners } from "./security_runtime_pb.js";
 
 /**
  * Describes the file modbit/v1/exec.proto.
@@ -95,6 +96,28 @@ export declare type ExecRequest = Message<"modbit.v1.ExecRequest"> & {
    * @generated from field: optional string terminal_session_id = 12;
    */
   terminalSessionId?: string | undefined;
+
+  /**
+   * FIX-20: the principal that owns the session (`task:<id>`); empty = the
+   * host itself. Only the owner and the host may list, read, write to or
+   * cancel it; any other requester is refused SESSION_NOT_OWNED.
+   *
+   * @generated from field: string owner = 13;
+   */
+  owner: string;
+
+  /**
+   * PX-099 (field block 120-139): the PTY's initial size; 0 = 40 rows, 120
+   * columns. A later `Resize` changes it.
+   *
+   * @generated from field: uint32 pty_rows = 120;
+   */
+  ptyRows: number;
+
+  /**
+   * @generated from field: uint32 pty_cols = 121;
+   */
+  ptyCols: number;
 };
 
 /**
@@ -216,6 +239,16 @@ export declare type ProcessExited = Message<"modbit.v1.ProcessExited"> & {
    * @generated from field: bool cancelled = 8;
    */
   cancelled: boolean;
+
+  /**
+   * FIX-09/FIX-20: the cursor of the first byte `output_ref` holds. 0 = the
+   * object is the complete output; larger = the replay window had already
+   * dropped the head, and `output_ref` is the sha256 of the retained tail
+   * (`total_bytes - retained_from` bytes), sealed in the Core's object store.
+   *
+   * @generated from field: uint64 retained_from = 9;
+   */
+  retainedFrom: bigint;
 };
 
 /**
@@ -249,6 +282,42 @@ export declare type Attach = Message<"modbit.v1.Attach"> & {
    * @generated from field: uint64 generation = 3;
    */
   generation: bigint;
+
+  /**
+   * FIX-20: who is attaching (`task:<id>`); empty = the host. A task may
+   * attach only to a session it owns. A cursor older than the replay window
+   * is answered CURSOR_EXPIRED (message carries `oldest_cursor=<n>`).
+   *
+   * @generated from field: string requester = 4;
+   */
+  requester: string;
+
+  /**
+   * PX-099 (field block 120-139). The most output bytes the broker may have
+   * sent on this attachment beyond the last `Ack`: at the window it pauses
+   * (the log on disk holds the rest, nothing is buffered) and, with no `Ack`
+   * for `stall_ms`, ends the attachment ATTACH_STALLED naming the cursor to
+   * resume from. 0 = an unwindowed attachment (the Core's own reads).
+   *
+   * @generated from field: uint64 window_bytes = 120;
+   */
+  windowBytes: bigint;
+
+  /**
+   * How long a full window waits for an `Ack` before the attachment is
+   * dropped to cursor-pull; 0 = the broker's default (30 s).
+   *
+   * @generated from field: uint64 stall_ms = 121;
+   */
+  stallMs: bigint;
+
+  /**
+   * When true a cursor beyond the session's head is refused
+   * CURSOR_BEYOND_HEAD instead of waiting for output to reach it.
+   *
+   * @generated from field: bool strict_cursor = 122;
+   */
+  strictCursor: boolean;
 };
 
 /**
@@ -270,6 +339,31 @@ export declare type WriteStdin = Message<"modbit.v1.WriteStdin"> & {
    * @generated from field: bytes data = 2;
    */
   data: Uint8Array;
+
+  /**
+   * FIX-20, as Attach.requester
+   *
+   * @generated from field: string requester = 3;
+   */
+  requester: string;
+
+  /**
+   * PX-099 (field block 120-139). True: the broker answers `StdinWritten`
+   * (with the cursor the log had reached) when the bytes were written.
+   *
+   * @generated from field: bool want_ack = 120;
+   */
+  wantAck: boolean;
+
+  /**
+   * True: these are a person's keystrokes, accepted only from the
+   * connection that holds the session's input lease (LEASE_REQUIRED
+   * otherwise). False: the agent's, refused INPUT_LEASED while any person
+   * holds the lease.
+   *
+   * @generated from field: bool as_user = 121;
+   */
+  asUser: boolean;
 };
 
 /**
@@ -279,6 +373,217 @@ export declare type WriteStdin = Message<"modbit.v1.WriteStdin"> & {
 export declare const WriteStdinSchema: GenMessage<WriteStdin>;
 
 /**
+ * PX-099: the client acknowledges the last output cursor it consumed on its
+ * attachment to `session_id` (the cursor after the last byte it has).
+ *
+ * @generated from message modbit.v1.TerminalAck
+ */
+export declare type TerminalAck = Message<"modbit.v1.TerminalAck"> & {
+  /**
+   * @generated from field: string session_id = 1;
+   */
+  sessionId: string;
+
+  /**
+   * @generated from field: uint64 cursor = 2;
+   */
+  cursor: bigint;
+};
+
+/**
+ * Describes the message modbit.v1.TerminalAck.
+ * Use `create(TerminalAckSchema)` to create a new message.
+ */
+export declare const TerminalAckSchema: GenMessage<TerminalAck>;
+
+/**
+ * PX-099: change the PTY's size; refused NOT_A_PTY for a piped session and
+ * BAD_SIZE outside 1..=500 rows, 1..=1000 columns.
+ *
+ * @generated from message modbit.v1.TerminalResize
+ */
+export declare type TerminalResize = Message<"modbit.v1.TerminalResize"> & {
+  /**
+   * @generated from field: string session_id = 1;
+   */
+  sessionId: string;
+
+  /**
+   * @generated from field: uint32 rows = 2;
+   */
+  rows: number;
+
+  /**
+   * @generated from field: uint32 cols = 3;
+   */
+  cols: number;
+
+  /**
+   * as Attach.requester
+   *
+   * @generated from field: string requester = 4;
+   */
+  requester: string;
+};
+
+/**
+ * Describes the message modbit.v1.TerminalResize.
+ * Use `create(TerminalResizeSchema)` to create a new message.
+ */
+export declare const TerminalResizeSchema: GenMessage<TerminalResize>;
+
+/**
+ * @generated from message modbit.v1.TerminalResized
+ */
+export declare type TerminalResized = Message<"modbit.v1.TerminalResized"> & {
+  /**
+   * @generated from field: string session_id = 1;
+   */
+  sessionId: string;
+
+  /**
+   * @generated from field: uint32 rows = 2;
+   */
+  rows: number;
+
+  /**
+   * @generated from field: uint32 cols = 3;
+   */
+  cols: number;
+};
+
+/**
+ * Describes the message modbit.v1.TerminalResized.
+ * Use `create(TerminalResizedSchema)` to create a new message.
+ */
+export declare const TerminalResizedSchema: GenMessage<TerminalResized>;
+
+/**
+ * PX-099: the terminal owner lease. A person attaching to a terminal takes
+ * the input lease; while one connection holds it the agent's stdin writes
+ * are refused INPUT_LEASED and no other connection's user input is accepted.
+ * Only the host (empty requester, the Core speaking for a person) may take
+ * it. The lease ends with `ReleaseInputLease`, with the holding connection,
+ * and with the session.
+ *
+ * @generated from message modbit.v1.AcquireTerminalLease
+ */
+export declare type AcquireTerminalLease = Message<"modbit.v1.AcquireTerminalLease"> & {
+  /**
+   * @generated from field: string session_id = 1;
+   */
+  sessionId: string;
+
+  /**
+   * as Attach.requester
+   *
+   * @generated from field: string requester = 2;
+   */
+  requester: string;
+
+  /**
+   * who the Core says holds it (`user:<client>`), for the record
+   *
+   * @generated from field: string holder = 3;
+   */
+  holder: string;
+
+  /**
+   * take it from another person's connection
+   *
+   * @generated from field: bool steal = 4;
+   */
+  steal: boolean;
+};
+
+/**
+ * Describes the message modbit.v1.AcquireTerminalLease.
+ * Use `create(AcquireTerminalLeaseSchema)` to create a new message.
+ */
+export declare const AcquireTerminalLeaseSchema: GenMessage<AcquireTerminalLease>;
+
+/**
+ * @generated from message modbit.v1.ReleaseTerminalLease
+ */
+export declare type ReleaseTerminalLease = Message<"modbit.v1.ReleaseTerminalLease"> & {
+  /**
+   * @generated from field: string session_id = 1;
+   */
+  sessionId: string;
+
+  /**
+   * as Attach.requester
+   *
+   * @generated from field: string requester = 2;
+   */
+  requester: string;
+};
+
+/**
+ * Describes the message modbit.v1.ReleaseTerminalLease.
+ * Use `create(ReleaseTerminalLeaseSchema)` to create a new message.
+ */
+export declare const ReleaseTerminalLeaseSchema: GenMessage<ReleaseTerminalLease>;
+
+/**
+ * @generated from message modbit.v1.TerminalLeaseState
+ */
+export declare type TerminalLeaseState = Message<"modbit.v1.TerminalLeaseState"> & {
+  /**
+   * @generated from field: string session_id = 1;
+   */
+  sessionId: string;
+
+  /**
+   * whether the requesting connection now holds it
+   *
+   * @generated from field: bool held = 2;
+   */
+  held: boolean;
+
+  /**
+   * the current holder, "" = nobody
+   *
+   * @generated from field: string holder = 3;
+   */
+  holder: string;
+};
+
+/**
+ * Describes the message modbit.v1.TerminalLeaseState.
+ * Use `create(TerminalLeaseStateSchema)` to create a new message.
+ */
+export declare const TerminalLeaseStateSchema: GenMessage<TerminalLeaseState>;
+
+/**
+ * @generated from message modbit.v1.StdinWritten
+ */
+export declare type StdinWritten = Message<"modbit.v1.StdinWritten"> & {
+  /**
+   * @generated from field: string session_id = 1;
+   */
+  sessionId: string;
+
+  /**
+   * @generated from field: uint64 bytes = 2;
+   */
+  bytes: bigint;
+
+  /**
+   * the log's head when the write was made
+   *
+   * @generated from field: uint64 cursor = 3;
+   */
+  cursor: bigint;
+};
+
+/**
+ * Describes the message modbit.v1.StdinWritten.
+ * Use `create(StdinWrittenSchema)` to create a new message.
+ */
+export declare const StdinWrittenSchema: GenMessage<StdinWritten>;
+
+/**
  * @generated from message modbit.v1.Cancel
  */
 export declare type Cancel = Message<"modbit.v1.Cancel"> & {
@@ -286,6 +591,13 @@ export declare type Cancel = Message<"modbit.v1.Cancel"> & {
    * @generated from field: string session_id = 1;
    */
   sessionId: string;
+
+  /**
+   * FIX-20, as Attach.requester
+   *
+   * @generated from field: string requester = 2;
+   */
+  requester: string;
 };
 
 /**
@@ -298,6 +610,13 @@ export declare const CancelSchema: GenMessage<Cancel>;
  * @generated from message modbit.v1.ListSessions
  */
 export declare type ListSessions = Message<"modbit.v1.ListSessions"> & {
+  /**
+   * FIX-20: a task is listed only the sessions it owns; empty = the host,
+   * which is listed all of them.
+   *
+   * @generated from field: string requester = 1;
+   */
+  requester: string;
 };
 
 /**
@@ -409,6 +728,80 @@ export declare type SessionInfo = Message<"modbit.v1.SessionInfo"> & {
    * @generated from field: string cwd = 10;
    */
   cwd: string;
+
+  /**
+   * FIX-20: the owning principal ("" = host)
+   *
+   * @generated from field: string owner = 11;
+   */
+  owner: string;
+
+  /**
+   * FIX-20: the oldest cursor still replayable
+   *
+   * @generated from field: uint64 oldest_cursor = 12;
+   */
+  oldestCursor: bigint;
+
+  /**
+   * PX-099 (field block 120-139).
+   *
+   * @generated from field: bool pty = 120;
+   */
+  pty: boolean;
+
+  /**
+   * @generated from field: uint32 pty_rows = 121;
+   */
+  ptyRows: number;
+
+  /**
+   * @generated from field: uint32 pty_cols = 122;
+   */
+  ptyCols: number;
+
+  /**
+   * "" = nobody holds the input lease
+   *
+   * @generated from field: string input_lease_holder = 123;
+   */
+  inputLeaseHolder: string;
+
+  /**
+   * 0 while running
+   *
+   * @generated from field: uint64 duration_ms = 124;
+   */
+  durationMs: bigint;
+
+  /**
+   * @generated from field: bool cancelled = 125;
+   */
+  cancelled: boolean;
+
+  /**
+   * @generated from field: bool timed_out = 126;
+   */
+  timedOut: boolean;
+
+  /**
+   * once exited
+   *
+   * @generated from field: string output_ref = 127;
+   */
+  outputRef: string;
+
+  /**
+   * the broker's replay window per session
+   *
+   * @generated from field: uint64 replay_window_bytes = 128;
+   */
+  replayWindowBytes: bigint;
+
+  /**
+   * @generated from field: bool lost = 129;
+   */
+  lost: boolean;
 };
 
 /**
@@ -550,6 +943,64 @@ export declare type ExecFrame = Message<"modbit.v1.ExecFrame"> & {
      */
     value: SandboxProbed;
     case: "sandboxProbed";
+  } | {
+    /**
+     * PX-099 (field block 120-139).
+     *
+     * @generated from field: modbit.v1.TerminalAck ack = 120;
+     */
+    value: TerminalAck;
+    case: "ack";
+  } | {
+    /**
+     * @generated from field: modbit.v1.TerminalResize resize = 121;
+     */
+    value: TerminalResize;
+    case: "resize";
+  } | {
+    /**
+     * @generated from field: modbit.v1.TerminalResized resized = 122;
+     */
+    value: TerminalResized;
+    case: "resized";
+  } | {
+    /**
+     * @generated from field: modbit.v1.AcquireTerminalLease acquire_lease = 123;
+     */
+    value: AcquireTerminalLease;
+    case: "acquireLease";
+  } | {
+    /**
+     * @generated from field: modbit.v1.ReleaseTerminalLease release_lease = 124;
+     */
+    value: ReleaseTerminalLease;
+    case: "releaseLease";
+  } | {
+    /**
+     * @generated from field: modbit.v1.TerminalLeaseState lease_state = 125;
+     */
+    value: TerminalLeaseState;
+    case: "leaseState";
+  } | {
+    /**
+     * @generated from field: modbit.v1.StdinWritten stdin_written = 126;
+     */
+    value: StdinWritten;
+    case: "stdinWritten";
+  } | {
+    /**
+     * PX-132 (field block 320-339).
+     *
+     * @generated from field: modbit.v1.ListServices list_services = 320;
+     */
+    value: ListServices;
+    case: "listServices";
+  } | {
+    /**
+     * @generated from field: modbit.v1.SessionListeners service_listeners = 321;
+     */
+    value: SessionListeners;
+    case: "serviceListeners";
   } | { case: undefined; value?: undefined };
 };
 

@@ -1,0 +1,119 @@
+{
+ "task": "DOC-PX-008",
+ "change_record": "DR-PX-2026-10-03-008",
+ "change_record_status": "APPROVED",
+ "edition": "V3.3 EPR v1.1",
+ "scope": "Ratification of DR-PX-2026-10-03-007, -008 and -010 by the owner's instruction of 2026-10-05 (goal: implement research/audit/01-TASK-LIST.md); dossier only; no product behaviour, status or evidence claim changes.",
+ "recorded_at_utc": "2026-10-05T03:46:51.046302+00:00",
+ "environment": {
+  "python": "3.9.6 (default, May 22 2026, 11:13:45) \n[Clang 21.0.0 (clang-2100.1.1.101)]",
+  "platform": "macOS-26.5.1-arm64-arm-64bit",
+  "machine": "arm64",
+  "dependencies": "Python standard library only"
+ },
+ "git": {
+  "baseline_commit": "de1507eec27a41a73dffd62705be49c0a3442059",
+  "branch": "worktree-agent-aba874fc14c617f97",
+  "change_commit": "recorded as commit: evidence on the graph node after the change commit (the seal commit changes only graph live state and the manifests)"
+ },
+ "tests": {
+  "command": [
+   "python3",
+   "tools/test_dossier.py",
+   "-v"
+  ],
+  "exit_code": 0,
+  "output_ref": "evidence/dossier-px-008/tests.log",
+  "sha256": "3c34f15fa42b62ba73bf28c13896c7a922d009be45cd5c8d2ef087e5d586e27d",
+  "result_line": "Ran 81 tests in 52.012s"
+ },
+ "integrity": {
+  "command": [
+   "python3",
+   "tools/check_dossier.py",
+   "--manifest"
+  ],
+  "exit_code": 0,
+  "output": "OK: 96 docs; base 291 REQ-EV/265 IMP-EV/291 QUAL-EV + EPR 20 + PX 99 (96 ADOPT tasks) = 410 requirements effective; 18 ADR-R, 7 gates, 3 releases; graph and references consistent; manifest hashes verified"
+ },
+ "graph_counts": {
+  "section": 8,
+  "doc": 96,
+  "milestone": 11,
+  "milestone_task": 78,
+  "subsystem": 23,
+  "requirement": 410,
+  "imp_task": 381,
+  "qual_test": 410,
+  "scenario": 213,
+  "decision": 61,
+  "release_gate": 7,
+  "change_record": 17,
+  "source_patch": 2,
+  "dossier_task": 21,
+  "release": 3
+ },
+ "invariants": [
+  "DR-PX-2026-10-03-007, -008 and -010 are accepted (status and approved_by in each file; graph change records APPROVED)",
+  "DR-PX-2026-10-03-009, -011 and -012 stay proposed; DOC-PX-009, DOC-PX-011 and DOC-PX-012 are untouched and graph.py refuses E2E_PROVEN/COMPLETE on them",
+  "no row of PX-041..068, PX-069..076 or PX-082..086 depends on a row or task of a proposed record (asserted by tools/test_dossier.py)",
+  "every PX row of PX-041..098 stays NOT_STARTED, M10, RELEASE_ZERO only; the sealed surface (291 REQ-EV, 265 IMP-EV, 291 QUAL-EV, EPR-000..019, ADR-R-039..056, gates A-G) is untouched",
+  "PX-067 carries a delivered-in-part note for audit fix FIX-01 (pull request moss101/modbit#61); the row stays NOT_STARTED"
+ ],
+ "changed_files": {
+  "docs/02_AUTHORITY_AND_DECISIONS.md": {
+   "before_sha256": "e86219304a7e3d16dd33a0df46662e076e6d4082e03b58dd5ebc80551e595ce9",
+   "after_sha256": "05d1e1cd91f02a195e22d35996f9c48018b126f8085026a3e5aa8085d1e26c52"
+  },
+  "docs/03_ARCHITECTURAL_CONFLICTS_AND_SUPERSESSIONS.md": {
+   "before_sha256": "6301337eb3a06361718c28be533ce070091d5131052a46b1f4f9e2ea7dc4a550",
+   "after_sha256": "ea0fad94a60f65459b4eae3d43873cbf94ee73559d8d4b547f287d904302f5b9"
+  },
+  "docs/10_PRODUCT_PRD_AND_UX.md": {
+   "before_sha256": "b77f7c51d733689341acc22395faf8466c2669356888ab58d2a497e35cc39a39",
+   "after_sha256": "33e7e3c922f924f23031db1d1635cbba9001ce406e0474228d9b2ec0d4b5b224"
+  },
+  "docs/62_PRODUCT_EXTENSION_REQUIREMENTS_TASKS_AND_QUALIFICATIONS.md": {
+   "before_sha256": "ad7f81181de3691f7e3f56b1fdb3c98e8768d9999bcc2dcf4b7a5afd548a4160",
+   "after_sha256": "e81fc3c3b822110e44d48acf4b69b5a30aaad9b36c102cf69abd94ac16474bba"
+  },
+  "docs/65_AGENT_FIRST_WORKSPACE_SPECIFICATION.md": {
+   "before_sha256": "2fc910d4209d0e6aeffcb4477ed33b8525d7954fc1be0da30ce64feb44d475c9",
+   "after_sha256": "f5e4ac6c1d79cf835479be133b3d1e390cf8e1dc192ccc793bd1ab6ca75215da"
+  },
+  "docs/66_NATIVE_COMPUTER_CONTROL_SPECIFICATION.md": {
+   "before_sha256": "14e65cfbabbcb97469325c9d8481434843408790e3711dbb12529e8b704c7ae2",
+   "after_sha256": "06505729d55fe7ab7dc8de8c87deb9df2349131de04afc19b260c3d3cccb313b"
+  },
+  "docs/68_AUTOMATIONS_SPECIFICATION.md": {
+   "before_sha256": "f5e5c5bc6b728928a48b9360c899158d13c90a17f964b80948c6ac980f8d42f7",
+   "after_sha256": "eb7ec629f4ac2d6e835004dba761f35ab0b3ecef5dddedd8d785da3b0684df22"
+  },
+  "docs/97_DOSSIER_MAINTENANCE_LOG.md": {
+   "before_sha256": "bd66900a50592a5970abfbe22526e62b3c584d96c2f9aaf677f76911ff356560",
+   "after_sha256": "c3d26617083fa343168b05054aef036efdf0cab5c3f66eddc65a7b665ad21d62"
+  },
+  "docs/decisions/README.md": {
+   "before_sha256": "3d64c0fb3193636120114e4220c649de22ae63b5529635e3b9642ad5cd1310ad",
+   "after_sha256": "d185facb67abe52b47301383a04ff7e520a1502b1cab59d1ed520e35bb649c2a"
+  },
+  "tools/build_graph.py": {
+   "before_sha256": "b5e45856e4d11485e783b7a5c9a2c8ca5a76b112a4edc881bbe55822443807d6",
+   "after_sha256": "179cd341d5c6d0b05e7e780ad66f5205967da41d287f04b8e729ef277433b2fb"
+  },
+  "tools/graph.py": {
+   "before_sha256": "7062c754275a5d323705f021e35b75adf9f75dd82378c34b19470c8c4b272296",
+   "after_sha256": "2e589b6e0e8e7be89f7323a19ff21bf5394c27f424faf13c809832cf338ca8a1"
+  },
+  "tools/test_dossier.py": {
+   "before_sha256": "7df946c82dddbb1fb31c96d092a6428824b90495362ba70ac7f04fc2cf34d95a",
+   "after_sha256": "c2009dd9b4d1699e2c0bd43ba6622579606cd6edbde1a0d5e291a668e5ae2992"
+  }
+ },
+ "decision_record": {
+  "change_record": "DR-PX-2026-10-03-008",
+  "file": "docs/decisions/DR-PX-2026-10-03-008-native-computer-control.md",
+  "before_sha256": "3cbffeee7e2fe5ddc2b20e60cc49917effff5e068ff93a1f2c8e648e8695737e",
+  "after_sha256": "e58279b0a71c8d4f23d506961d5382cfd1bcb692b4ab6ce67c05dcd7fc3fc202"
+ }
+}

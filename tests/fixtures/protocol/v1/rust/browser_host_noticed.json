@@ -1,0 +1,8 @@
+{
+  "expected": {
+    "accepted": true,
+    "changeSeq": "12",
+    "notices": "4"
+  },
+  "type": "modbit.v1.BrowserHostNoticed"
+}

@@ -1,0 +1,4364 @@
+{
+  "complete": true,
+  "digest_reproduced": true,
+  "errors": [],
+  "harness": "retrieval-live-v1",
+  "missing": [],
+  "per_case": [
+    {
+      "answered": [
+        "crates/regex/src/non_matching.rs"
+      ],
+      "capped": null,
+      "case_id": "ban-byte",
+      "correct": false,
+      "cost_usd": 0.0023246,
+      "extra": 1,
+      "found": 0,
+      "input_tokens": 13774,
+      "kind": "behavior",
+      "labels": 1,
+      "model_calls": 5,
+      "output_tokens": 517,
+      "profile": "baseline",
+      "retrieve_called": false,
+      "tool_calls": 6,
+      "tools": {
+        "read_file": 3,
+        "search": 3
+      },
+      "usage_known": true,
+      "wall_ms": 18881
+    },
+    {
+      "answered": [
+        "crates/cli/src/process.rs"
+      ],
+      "capped": null,
+      "case_id": "child-reader",
+      "correct": true,
+      "cost_usd": 0.00055665,
+      "extra": 0,
+      "found": 1,
+      "input_tokens": 3281,
+      "kind": "behavior",
+      "labels": 1,
+      "model_calls": 3,
+      "output_tokens": 129,
+      "profile": "baseline",
+      "retrieve_called": false,
+      "tool_calls": 3,
+      "tools": {
+        "read_file": 1,
+        "search": 2
+      },
+      "usage_known": true,
+      "wall_ms": 14226
+    },
+    {
+      "answered": [
+        "crates/printer/src/color.rs"
+      ],
+      "capped": null,
+      "case_id": "color-specs",
+      "correct": true,
+      "cost_usd": 0.0013438500000000002,
+      "extra": 0,
+      "found": 1,
+      "input_tokens": 8359,
+      "kind": "behavior",
+      "labels": 1,
+      "model_calls": 4,
+      "output_tokens": 180,
+      "profile": "baseline",
+      "retrieve_called": false,
+      "tool_calls": 4,
+      "tools": {
+        "read_file": 2,
+        "search": 2
+      },
+      "usage_known": true,
+      "wall_ms": 10410
+    },
+    {
+      "answered": [
+        "crates/printer/src/counter.rs"
+      ],
+      "capped": null,
+      "case_id": "counter-writer",
+      "correct": true,
+      "cost_usd": 0.0007947500000000001,
+      "extra": 0,
+      "found": 1,
+      "input_tokens": 4435,
+      "kind": "symbol_lookup",
+      "labels": 1,
+      "model_calls": 5,
+      "output_tokens": 259,
+      "profile": "baseline",
+      "retrieve_called": false,
+      "tool_calls": 5,
+      "tools": {
+        "read_file": 2,
+        "search": 3
+      },
+      "usage_known": true,
+      "wall_ms": 22856
+    },
+    {
+      "answered": [
+        "crates/cli/src/decompress.rs",
+        "crates/cli/src/process.rs"
+      ],
+      "capped": null,
+      "case_id": "decompress",
+      "correct": true,
+      "cost_usd": 0.00231345,
+      "extra": 1,
+      "found": 1,
+      "input_tokens": 13583,
+      "kind": "behavior",
+      "labels": 1,
+      "model_calls": 4,
+      "output_tokens": 552,
+      "profile": "baseline",
+      "retrieve_called": false,
+      "tool_calls": 5,
+      "tools": {
+        "read_file": 3,
+        "search": 2
+      },
+      "usage_known": true,
+      "wall_ms": 23134
+    },
+    {
+      "answered": [
+        "crates/ignore/src/default_types.rs"
+      ],
+      "capped": null,
+      "case_id": "default-types",
+      "correct": true,
+      "cost_usd": 0.0004041,
+      "extra": 0,
+      "found": 1,
+      "input_tokens": 2284,
+      "kind": "behavior",
+      "labels": 1,
+      "model_calls": 2,
+      "output_tokens": 123,
+      "profile": "baseline",
+      "retrieve_called": false,
+      "tool_calls": 2,
+      "tools": {
+        "search": 2
+      },
+      "usage_known": true,
+      "wall_ms": 5243
+    },
+    {
+      "answered": [
+        "crates/ignore/src/dir.rs",
+        "crates/ignore/src/gitignore.rs"
+      ],
+      "capped": null,
+      "case_id": "dir-ignore-state",
+      "correct": true,
+      "cost_usd": 0.0081577,
+      "extra": 1,
+      "found": 1,
+      "input_tokens": 51308,
+      "kind": "behavior",
+      "labels": 1,
+      "model_calls": 9,
+      "output_tokens": 923,
+      "profile": "baseline",
+      "retrieve_called": false,
+      "tool_calls": 10,
+      "tools": {
+        "read_file": 7,
+        "search": 3
+      },
+      "usage_known": true,
+      "wall_ms": 56850
+    },
+    {
+      "answered": [
+        "crates/core/messages.rs"
+      ],
+      "capped": null,
+      "case_id": "error-flag",
+      "correct": true,
+      "cost_usd": 0.0009782,
+      "extra": 0,
+      "found": 1,
+      "input_tokens": 6168,
+      "kind": "behavior",
+      "labels": 1,
+      "model_calls": 3,
+      "output_tokens": 106,
+      "profile": "baseline",
+      "retrieve_called": false,
+      "tool_calls": 3,
+      "tools": {
+        "read_file": 1,
+        "search": 2
+      },
+      "usage_known": true,
+      "wall_ms": 13865
+    },
+    {
+      "answered": [
+        "crates/cli/src/escape.rs"
+      ],
+      "capped": null,
+      "case_id": "escape",
+      "correct": true,
+      "cost_usd": 0.00070165,
+      "extra": 0,
+      "found": 1,
+      "input_tokens": 4081,
+      "kind": "behavior",
+      "labels": 1,
+      "model_calls": 3,
+      "output_tokens": 179,
+      "profile": "baseline",
+      "retrieve_called": false,
+      "tool_calls": 3,
+      "tools": {
+        "read_file": 1,
+        "search": 2
+      },
+      "usage_known": true,
+      "wall_ms": 15864
+    },
+    {
+      "answered": [
+        "crates/core/main.rs"
+      ],
+      "capped": null,
+      "case_id": "files-mode",
+      "correct": true,
+      "cost_usd": 0.0014183499999999999,
+      "extra": 0,
+      "found": 1,
+      "input_tokens": 8039,
+      "kind": "behavior",
+      "labels": 1,
+      "model_calls": 5,
+      "output_tokens": 425,
+      "profile": "baseline",
+      "retrieve_called": false,
+      "tool_calls": 6,
+      "tools": {
+        "read_file": 2,
+        "search": 4
+      },
+      "usage_known": true,
+      "wall_ms": 20589
+    },
+    {
+      "answered": [
+        "crates/globset/src/fnv.rs"
+      ],
+      "capped": null,
+      "case_id": "fnv",
+      "correct": true,
+      "cost_usd": 0.0007964,
+      "extra": 0,
+      "found": 1,
+      "input_tokens": 4296,
+      "kind": "behavior",
+      "labels": 1,
+      "model_calls": 4,
+      "output_tokens": 304,
+      "profile": "baseline",
+      "retrieve_called": false,
+      "tool_calls": 4,
+      "tools": {
+        "read_file": 2,
+        "search": 2
+      },
+      "usage_known": true,
+      "wall_ms": 21935
+    },
+    {
+      "answered": [
+        "crates/ignore/src/gitignore.rs"
+      ],
+      "capped": null,
+      "case_id": "gitignore-match",
+      "correct": true,
+      "cost_usd": 0.004448499999999999,
+      "extra": 0,
+      "found": 1,
+      "input_tokens": 28290,
+      "kind": "behavior",
+      "labels": 1,
+      "model_calls": 5,
+      "output_tokens": 410,
+      "profile": "baseline",
+      "retrieve_called": false,
+      "tool_calls": 6,
+      "tools": {
+        "read_file": 3,
+        "search": 3
+      },
+      "usage_known": true,
+      "wall_ms": 24880
+    },
+    {
+      "answered": [
+        "crates/globset/src/pathutil.rs",
+        "crates/globset/src/lib.rs"
+      ],
+      "capped": null,
+      "case_id": "glob-pathutil",
+      "correct": true,
+      "cost_usd": 0.0045217,
+      "extra": 1,
+      "found": 1,
+      "input_tokens": 27768,
+      "kind": "behavior",
+      "labels": 1,
+      "model_calls": 9,
+      "output_tokens": 713,
+      "profile": "baseline",
+      "retrieve_called": false,
+      "tool_calls": 9,
+      "tools": {
+        "read_file": 3,
+        "search": 6
+      },
+      "usage_known": true,
+      "wall_ms": 44215
+    },
+    {
+      "answered": [
+        "crates/globset/src/glob.rs"
+      ],
+      "capped": null,
+      "case_id": "glob-regex",
+      "correct": true,
+      "cost_usd": 0.006410299999999998,
+      "extra": 0,
+      "found": 1,
+      "input_tokens": 41172,
+      "kind": "behavior",
+      "labels": 1,
+      "model_calls": 8,
+      "output_tokens": 469,
+      "profile": "baseline",
+      "retrieve_called": false,
+      "tool_calls": 8,
+      "tools": {
+        "read_file": 3,
+        "search": 5
+      },
+      "usage_known": true,
+      "wall_ms": 35535
+    },
+    {
+      "answered": [
+        "crates/globset/src/serde_impl.rs"
+      ],
+      "capped": null,
+      "case_id": "glob-serde",
+      "correct": true,
+      "cost_usd": 0.00044065,
+      "extra": 0,
+      "found": 1,
+      "input_tokens": 2251,
+      "kind": "behavior",
+      "labels": 1,
+      "model_calls": 3,
+      "output_tokens": 206,
+      "profile": "baseline",
+      "retrieve_called": false,
+      "tool_calls": 3,
+      "tools": {
+        "read_file": 1,
+        "search": 2
+      },
+      "usage_known": true,
+      "wall_ms": 16936
+    },
+    {
+      "answered": [
+        "crates/globset/src/lib.rs",
+        "crates/globset/src/glob.rs"
+      ],
+      "capped": null,
+      "case_id": "globset-strategy",
+      "correct": true,
+      "cost_usd": 0.0007499,
+      "extra": 1,
+      "found": 1,
+      "input_tokens": 3446,
+      "kind": "behavior",
+      "labels": 1,
+      "model_calls": 3,
+      "output_tokens": 466,
+      "profile": "baseline",
+      "retrieve_called": false,
+      "tool_calls": 4,
+      "tools": {
+        "read_file": 2,
+        "search": 2
+      },
+      "usage_known": true,
+      "wall_ms": 18719
+    },
+    {
+      "answered": [
+        "crates/grep/src/lib.rs",
+        "crates/grep/Cargo.toml"
+      ],
+      "capped": null,
+      "case_id": "grep-facade",
+      "correct": true,
+      "cost_usd": 0.0019090499999999998,
+      "extra": 1,
+      "found": 1,
+      "input_tokens": 11377,
+      "kind": "behavior",
+      "labels": 1,
+      "model_calls": 7,
+      "output_tokens": 405,
+      "profile": "baseline",
+      "retrieve_called": false,
+      "tool_calls": 8,
+      "tools": {
+        "read_file": 2,
+        "search": 6
+      },
+      "usage_known": true,
+      "wall_ms": 26407
+    },
+    {
+      "answered": [
+        "crates/core/haystack.rs"
+      ],
+      "capped": null,
+      "case_id": "haystack",
+      "correct": true,
+      "cost_usd": 0.0007369,
+      "extra": 0,
+      "found": 1,
+      "input_tokens": 3216,
+      "kind": "symbol_lookup",
+      "labels": 1,
+      "model_calls": 3,
+      "output_tokens": 509,
+      "profile": "baseline",
+      "retrieve_called": false,
+      "tool_calls": 3,
+      "tools": {
+        "read_file": 1,
+        "search": 2
+      },
+      "usage_known": true,
+      "wall_ms": 18120
+    },
+    {
+      "answered": [
+        "crates/ignore/src/pathutil.rs"
+      ],
+      "capped": null,
+      "case_id": "hidden-files",
+      "correct": true,
+      "cost_usd": 0.0005963,
+      "extra": 0,
+      "found": 1,
+      "input_tokens": 3532,
+      "kind": "behavior",
+      "labels": 1,
+      "model_calls": 3,
+      "output_tokens": 133,
+      "profile": "baseline",
+      "retrieve_called": false,
+      "tool_calls": 3,
+      "tools": {
+        "read_file": 1,
+        "search": 2
+      },
+      "usage_known": true,
+      "wall_ms": 11970
+    },
+    {
+      "answered": [
+        "crates/cli/src/hostname.rs"
+      ],
+      "capped": null,
+      "case_id": "hostname",
+      "correct": true,
+      "cost_usd": 0.000705,
+      "extra": 0,
+      "found": 1,
+      "input_tokens": 4050,
+      "kind": "behavior",
+      "labels": 1,
+      "model_calls": 3,
+      "output_tokens": 195,
+      "profile": "baseline",
+      "retrieve_called": false,
+      "tool_calls": 3,
+      "tools": {
+        "read_file": 1,
+        "search": 2
+      },
+      "usage_known": true,
+      "wall_ms": 15437
+    },
+    {
+      "answered": [
+        "crates/printer/src/hyperlink_aliases.rs"
+      ],
+      "capped": null,
+      "case_id": "hyperlink-alias",
+      "correct": true,
+      "cost_usd": 0.00092735,
+      "extra": 0,
+      "found": 1,
+      "input_tokens": 5589,
+      "kind": "behavior",
+      "labels": 1,
+      "model_calls": 3,
+      "output_tokens": 178,
+      "profile": "baseline",
+      "retrieve_called": false,
+      "tool_calls": 3,
+      "tools": {
+        "read_file": 1,
+        "search": 2
+      },
+      "usage_known": true,
+      "wall_ms": 13300
+    },
+    {
+      "answered": [
+        "crates/printer/src/hyperlink.rs"
+      ],
+      "capped": null,
+      "case_id": "hyperlink-format",
+      "correct": true,
+      "cost_usd": 0.0014209000000000001,
+      "extra": 0,
+      "found": 1,
+      "input_tokens": 8926,
+      "kind": "behavior",
+      "labels": 1,
+      "model_calls": 3,
+      "output_tokens": 164,
+      "profile": "baseline",
+      "retrieve_called": false,
+      "tool_calls": 3,
+      "tools": {
+        "read_file": 1,
+        "search": 2
+      },
+      "usage_known": true,
+      "wall_ms": 11950
+    },
+    {
+      "answered": [
+        "crates/matcher/src/interpolate.rs"
+      ],
+      "capped": null,
+      "case_id": "interpolate",
+      "correct": true,
+      "cost_usd": 0.0005851000000000001,
+      "extra": 0,
+      "found": 1,
+      "input_tokens": 3354,
+      "kind": "behavior",
+      "labels": 1,
+      "model_calls": 3,
+      "output_tokens": 164,
+      "profile": "baseline",
+      "retrieve_called": false,
+      "tool_calls": 3,
+      "tools": {
+        "read_file": 1,
+        "search": 2
+      },
+      "usage_known": true,
+      "wall_ms": 14662
+    },
+    {
+      "answered": [
+        "crates/printer/src/json.rs",
+        "crates/core/main.rs"
+      ],
+      "capped": null,
+      "case_id": "json-printer",
+      "correct": true,
+      "cost_usd": 0.0021217,
+      "extra": 1,
+      "found": 1,
+      "input_tokens": 13098,
+      "kind": "behavior",
+      "labels": 1,
+      "model_calls": 6,
+      "output_tokens": 314,
+      "profile": "baseline",
+      "retrieve_called": false,
+      "tool_calls": 7,
+      "tools": {
+        "read_file": 3,
+        "search": 4
+      },
+      "usage_known": true,
+      "wall_ms": 21949
+    },
+    {
+      "answered": [
+        "crates/printer/src/jsont.rs"
+      ],
+      "capped": null,
+      "case_id": "json-types",
+      "correct": true,
+      "cost_usd": 0.00108005,
+      "extra": 0,
+      "found": 1,
+      "input_tokens": 6577,
+      "kind": "behavior",
+      "labels": 1,
+      "model_calls": 4,
+      "output_tokens": 187,
+      "profile": "baseline",
+      "retrieve_called": false,
+      "tool_calls": 4,
+      "tools": {
+        "read_file": 2,
+        "search": 2
+      },
+      "usage_known": true,
+      "wall_ms": 17952
+    },
+    {
+      "answered": [
+        "crates/searcher/src/line_buffer.rs"
+      ],
+      "capped": null,
+      "case_id": "line-buffer",
+      "correct": true,
+      "cost_usd": 0.00106395,
+      "extra": 0,
+      "found": 1,
+      "input_tokens": 5593,
+      "kind": "behavior",
+      "labels": 1,
+      "model_calls": 3,
+      "output_tokens": 450,
+      "profile": "baseline",
+      "retrieve_called": false,
+      "tool_calls": 3,
+      "tools": {
+        "read_file": 1,
+        "search": 2
+      },
+      "usage_known": true,
+      "wall_ms": 17152
+    },
+    {
+      "answered": [
+        "crates/searcher/src/lines.rs"
+      ],
+      "capped": null,
+      "case_id": "line-iter",
+      "correct": true,
+      "cost_usd": 0.0012905,
+      "extra": 0,
+      "found": 1,
+      "input_tokens": 7930,
+      "kind": "behavior",
+      "labels": 1,
+      "model_calls": 3,
+      "output_tokens": 202,
+      "profile": "baseline",
+      "retrieve_called": false,
+      "tool_calls": 3,
+      "tools": {
+        "read_file": 1,
+        "search": 2
+      },
+      "usage_known": true,
+      "wall_ms": 12396
+    },
+    {
+      "answered": [
+        "crates/core/logger.rs"
+      ],
+      "capped": null,
+      "case_id": "logger",
+      "correct": true,
+      "cost_usd": 0.0011374,
+      "extra": 0,
+      "found": 1,
+      "input_tokens": 6856,
+      "kind": "behavior",
+      "labels": 1,
+      "model_calls": 5,
+      "output_tokens": 218,
+      "profile": "baseline",
+      "retrieve_called": false,
+      "tool_calls": 7,
+      "tools": {
+        "read_file": 1,
+        "search": 6
+      },
+      "usage_known": true,
+      "wall_ms": 25955
+    },
+    {
+      "answered": [
+        "crates/matcher/src/lib.rs"
+      ],
+      "capped": null,
+      "case_id": "matcher-trait",
+      "correct": true,
+      "cost_usd": 0.00105765,
+      "extra": 0,
+      "found": 1,
+      "input_tokens": 6191,
+      "kind": "symbol_lookup",
+      "labels": 1,
+      "model_calls": 4,
+      "output_tokens": 258,
+      "profile": "baseline",
+      "retrieve_called": false,
+      "tool_calls": 5,
+      "tools": {
+        "read_file": 2,
+        "search": 3
+      },
+      "usage_known": true,
+      "wall_ms": 22218
+    },
+    {
+      "answered": [
+        "crates/core/flags/complete/bash.rs",
+        "crates/core/flags/defs.rs"
+      ],
+      "capped": null,
+      "case_id": "mh-bash-completion",
+      "correct": true,
+      "cost_usd": 0.0025088999999999997,
+      "extra": 0,
+      "found": 2,
+      "input_tokens": 16066,
+      "kind": "multi_hop",
+      "labels": 2,
+      "model_calls": 5,
+      "output_tokens": 198,
+      "profile": "baseline",
+      "retrieve_called": false,
+      "tool_calls": 5,
+      "tools": {
+        "read_file": 2,
+        "search": 3
+      },
+      "usage_known": true,
+      "wall_ms": 17323
+    },
+    {
+      "answered": [
+        "crates/searcher/src/searcher/mod.rs",
+        "crates/searcher/src/line_buffer.rs"
+      ],
+      "capped": null,
+      "case_id": "mh-binary-detect",
+      "correct": true,
+      "cost_usd": 0.0037251000000000003,
+      "extra": 0,
+      "found": 2,
+      "input_tokens": 21894,
+      "kind": "multi_hop",
+      "labels": 2,
+      "model_calls": 7,
+      "output_tokens": 882,
+      "profile": "baseline",
+      "retrieve_called": false,
+      "tool_calls": 9,
+      "tools": {
+        "read_file": 5,
+        "search": 4
+      },
+      "usage_known": true,
+      "wall_ms": 31434
+    },
+    {
+      "answered": [
+        "crates/core/flags/config.rs",
+        "crates/core/flags/parse.rs"
+      ],
+      "capped": null,
+      "case_id": "mh-config-file",
+      "correct": true,
+      "cost_usd": 0.0006621,
+      "extra": 0,
+      "found": 2,
+      "input_tokens": 3634,
+      "kind": "multi_hop",
+      "labels": 2,
+      "model_calls": 3,
+      "output_tokens": 234,
+      "profile": "baseline",
+      "retrieve_called": false,
+      "tool_calls": 3,
+      "tools": {
+        "read_file": 2,
+        "search": 1
+      },
+      "usage_known": true,
+      "wall_ms": 14384
+    },
+    {
+      "answered": [
+        "crates/cli/src/decompress.rs",
+        "crates/core/search.rs"
+      ],
+      "capped": null,
+      "case_id": "mh-decompress-search",
+      "correct": true,
+      "cost_usd": 0.0009155,
+      "extra": 0,
+      "found": 2,
+      "input_tokens": 4850,
+      "kind": "multi_hop",
+      "labels": 2,
+      "model_calls": 4,
+      "output_tokens": 376,
+      "profile": "baseline",
+      "retrieve_called": false,
+      "tool_calls": 5,
+      "tools": {
+        "read_file": 1,
+        "search": 4
+      },
+      "usage_known": true,
+      "wall_ms": 14512
+    },
+    {
+      "answered": [
+        "crates/core/flags/defs.rs",
+        "crates/searcher/src/searcher/mod.rs"
+      ],
+      "capped": null,
+      "case_id": "mh-encoding",
+      "correct": true,
+      "cost_usd": 0.00121515,
+      "extra": 0,
+      "found": 2,
+      "input_tokens": 6951,
+      "kind": "multi_hop",
+      "labels": 2,
+      "model_calls": 4,
+      "output_tokens": 345,
+      "profile": "baseline",
+      "retrieve_called": false,
+      "tool_calls": 5,
+      "tools": {
+        "read_file": 2,
+        "search": 3
+      },
+      "usage_known": true,
+      "wall_ms": 14747
+    },
+    {
+      "answered": [
+        "crates/ignore/src/gitignore.rs",
+        "crates/globset/src/lib.rs"
+      ],
+      "capped": null,
+      "case_id": "mh-glob-ignore",
+      "correct": true,
+      "cost_usd": 0.00081685,
+      "extra": 0,
+      "found": 2,
+      "input_tokens": 4409,
+      "kind": "multi_hop",
+      "labels": 2,
+      "model_calls": 3,
+      "output_tokens": 311,
+      "profile": "baseline",
+      "retrieve_called": false,
+      "tool_calls": 4,
+      "tools": {
+        "read_file": 2,
+        "search": 2
+      },
+      "usage_known": true,
+      "wall_ms": 11491
+    },
+    {
+      "answered": [
+        "crates/core/flags/doc/help.rs",
+        "crates/core/flags/doc/template.long.help"
+      ],
+      "capped": null,
+      "case_id": "mh-help-text",
+      "correct": true,
+      "cost_usd": 0.0010547500000000001,
+      "extra": 0,
+      "found": 2,
+      "input_tokens": 5855,
+      "kind": "multi_hop",
+      "labels": 2,
+      "model_calls": 3,
+      "output_tokens": 353,
+      "profile": "baseline",
+      "retrieve_called": false,
+      "tool_calls": 4,
+      "tools": {
+        "read_file": 2,
+        "search": 2
+      },
+      "usage_known": true,
+      "wall_ms": 11846
+    },
+    {
+      "answered": [
+        "crates/printer/src/hyperlink.rs",
+        "crates/cli/src/hostname.rs"
+      ],
+      "capped": null,
+      "case_id": "mh-hyperlink-host",
+      "correct": true,
+      "cost_usd": 0.0016245499999999998,
+      "extra": 0,
+      "found": 2,
+      "input_tokens": 9197,
+      "kind": "multi_hop",
+      "labels": 2,
+      "model_calls": 4,
+      "output_tokens": 490,
+      "profile": "baseline",
+      "retrieve_called": false,
+      "tool_calls": 5,
+      "tools": {
+        "read_file": 2,
+        "search": 3
+      },
+      "usage_known": true,
+      "wall_ms": 12360
+    },
+    {
+      "answered": [
+        "crates/printer/src/json.rs",
+        "crates/core/search.rs"
+      ],
+      "capped": null,
+      "case_id": "mh-json-output",
+      "correct": true,
+      "cost_usd": 0.00102045,
+      "extra": 0,
+      "found": 2,
+      "input_tokens": 5523,
+      "kind": "multi_hop",
+      "labels": 2,
+      "model_calls": 4,
+      "output_tokens": 384,
+      "profile": "baseline",
+      "retrieve_called": false,
+      "tool_calls": 6,
+      "tools": {
+        "read_file": 2,
+        "search": 4
+      },
+      "usage_known": true,
+      "wall_ms": 11714
+    },
+    {
+      "answered": [
+        "crates/core/flags/lowargs.rs",
+        "crates/core/flags/hiargs.rs"
+      ],
+      "capped": null,
+      "case_id": "mh-lowargs-hiargs",
+      "correct": true,
+      "cost_usd": 0.0009016,
+      "extra": 0,
+      "found": 2,
+      "input_tokens": 4094,
+      "kind": "multi_hop",
+      "labels": 2,
+      "model_calls": 5,
+      "output_tokens": 575,
+      "profile": "baseline",
+      "retrieve_called": false,
+      "tool_calls": 6,
+      "tools": {
+        "search": 6
+      },
+      "usage_known": true,
+      "wall_ms": 20197
+    },
+    {
+      "answered": [
+        "crates/core/flags/doc/man.rs",
+        "crates/core/flags/doc/template.rg.1"
+      ],
+      "capped": null,
+      "case_id": "mh-man-page",
+      "correct": true,
+      "cost_usd": 0.0007507,
+      "extra": 0,
+      "found": 2,
+      "input_tokens": 4448,
+      "kind": "multi_hop",
+      "labels": 2,
+      "model_calls": 3,
+      "output_tokens": 167,
+      "profile": "baseline",
+      "retrieve_called": false,
+      "tool_calls": 3,
+      "tools": {
+        "read_file": 1,
+        "search": 2
+      },
+      "usage_known": true,
+      "wall_ms": 9161
+    },
+    {
+      "answered": [
+        "crates/core/flags/defs.rs",
+        "crates/cli/src/human.rs"
+      ],
+      "capped": null,
+      "case_id": "mh-maxfilesize",
+      "correct": true,
+      "cost_usd": 0.0023554500000000003,
+      "extra": 0,
+      "found": 2,
+      "input_tokens": 14703,
+      "kind": "multi_hop",
+      "labels": 2,
+      "model_calls": 8,
+      "output_tokens": 300,
+      "profile": "baseline",
+      "retrieve_called": false,
+      "tool_calls": 8,
+      "tools": {
+        "read_file": 3,
+        "search": 5
+      },
+      "usage_known": true,
+      "wall_ms": 29386
+    },
+    {
+      "answered": [
+        "crates/searcher/src/searcher/mod.rs",
+        "crates/regex/src/matcher.rs"
+      ],
+      "capped": null,
+      "case_id": "mh-multiline",
+      "correct": true,
+      "cost_usd": 0.001036,
+      "extra": 0,
+      "found": 2,
+      "input_tokens": 5030,
+      "kind": "multi_hop",
+      "labels": 2,
+      "model_calls": 3,
+      "output_tokens": 563,
+      "profile": "baseline",
+      "retrieve_called": false,
+      "tool_calls": 3,
+      "tools": {
+        "read_file": 2,
+        "search": 1
+      },
+      "usage_known": true,
+      "wall_ms": 14924
+    },
+    {
+      "answered": [
+        "crates/core/flags/hiargs.rs",
+        "crates/pcre2/src/lib.rs",
+        "crates/pcre2/src/matcher.rs"
+      ],
+      "capped": null,
+      "case_id": "mh-pcre2-choice",
+      "correct": true,
+      "cost_usd": 0.0025467499999999995,
+      "extra": 1,
+      "found": 2,
+      "input_tokens": 12115,
+      "kind": "multi_hop",
+      "labels": 2,
+      "model_calls": 4,
+      "output_tokens": 1459,
+      "profile": "baseline",
+      "retrieve_called": false,
+      "tool_calls": 5,
+      "tools": {
+        "read_file": 3,
+        "search": 2
+      },
+      "usage_known": true,
+      "wall_ms": 33662
+    },
+    {
+      "answered": [
+        "crates/matcher/src/interpolate.rs",
+        "crates/printer/src/standard.rs",
+        "crates/printer/src/util.rs"
+      ],
+      "capped": null,
+      "case_id": "mh-replacement",
+      "correct": true,
+      "cost_usd": 0.004971499999999999,
+      "extra": 1,
+      "found": 2,
+      "input_tokens": 27370,
+      "kind": "multi_hop",
+      "labels": 2,
+      "model_calls": 7,
+      "output_tokens": 1732,
+      "profile": "baseline",
+      "retrieve_called": false,
+      "tool_calls": 8,
+      "tools": {
+        "read_file": 4,
+        "search": 4
+      },
+      "usage_known": true,
+      "wall_ms": 61126
+    },
+    {
+      "answered": [
+        "crates/core/flags/lowargs.rs",
+        "crates/core/flags/hiargs.rs"
+      ],
+      "capped": null,
+      "case_id": "mh-sort",
+      "correct": true,
+      "cost_usd": 0.0007427,
+      "extra": 0,
+      "found": 2,
+      "input_tokens": 4008,
+      "kind": "multi_hop",
+      "labels": 2,
+      "model_calls": 3,
+      "output_tokens": 283,
+      "profile": "baseline",
+      "retrieve_called": false,
+      "tool_calls": 4,
+      "tools": {
+        "read_file": 2,
+        "search": 2
+      },
+      "usage_known": true,
+      "wall_ms": 13692
+    },
+    {
+      "answered": [
+        "crates/printer/src/stats.rs",
+        "crates/core/main.rs"
+      ],
+      "capped": null,
+      "case_id": "mh-stats",
+      "correct": true,
+      "cost_usd": 0.0024145,
+      "extra": 0,
+      "found": 2,
+      "input_tokens": 14680,
+      "kind": "multi_hop",
+      "labels": 2,
+      "model_calls": 7,
+      "output_tokens": 425,
+      "profile": "baseline",
+      "retrieve_called": false,
+      "tool_calls": 7,
+      "tools": {
+        "read_file": 3,
+        "search": 4
+      },
+      "usage_known": true,
+      "wall_ms": 17787
+    },
+    {
+      "answered": [
+        "crates/core/flags/defs.rs",
+        "crates/ignore/src/default_types.rs"
+      ],
+      "capped": null,
+      "case_id": "mh-type-add",
+      "correct": true,
+      "cost_usd": 0.00031795,
+      "extra": 0,
+      "found": 2,
+      "input_tokens": 1593,
+      "kind": "multi_hop",
+      "labels": 2,
+      "model_calls": 2,
+      "output_tokens": 158,
+      "profile": "baseline",
+      "retrieve_called": false,
+      "tool_calls": 2,
+      "tools": {
+        "search": 2
+      },
+      "usage_known": true,
+      "wall_ms": 5050
+    },
+    {
+      "answered": [
+        "build.rs",
+        "crates/core/flags/doc/version.rs"
+      ],
+      "capped": null,
+      "case_id": "mh-version-hash",
+      "correct": true,
+      "cost_usd": 0.0008392499999999999,
+      "extra": 0,
+      "found": 2,
+      "input_tokens": 4815,
+      "kind": "multi_hop",
+      "labels": 2,
+      "model_calls": 4,
+      "output_tokens": 234,
+      "profile": "baseline",
+      "retrieve_called": false,
+      "tool_calls": 5,
+      "tools": {
+        "read_file": 1,
+        "search": 4
+      },
+      "usage_known": true,
+      "wall_ms": 19097
+    },
+    {
+      "answered": [
+        "crates/core/flags/hiargs.rs",
+        "crates/ignore/src/walk.rs"
+      ],
+      "capped": null,
+      "case_id": "mh-walk-build",
+      "correct": true,
+      "cost_usd": 0.0007149,
+      "extra": 0,
+      "found": 2,
+      "input_tokens": 3526,
+      "kind": "multi_hop",
+      "labels": 2,
+      "model_calls": 3,
+      "output_tokens": 372,
+      "profile": "baseline",
+      "retrieve_called": false,
+      "tool_calls": 3,
+      "tools": {
+        "read_file": 1,
+        "search": 2
+      },
+      "usage_known": true,
+      "wall_ms": 13886
+    },
+    {
+      "answered": [
+        "crates/searcher/src/searcher/mmap.rs"
+      ],
+      "capped": null,
+      "case_id": "mmap",
+      "correct": true,
+      "cost_usd": 0.0005311000000000001,
+      "extra": 0,
+      "found": 1,
+      "input_tokens": 2674,
+      "kind": "behavior",
+      "labels": 1,
+      "model_calls": 3,
+      "output_tokens": 260,
+      "profile": "baseline",
+      "retrieve_called": false,
+      "tool_calls": 3,
+      "tools": {
+        "read_file": 1,
+        "search": 2
+      },
+      "usage_known": true,
+      "wall_ms": 11572
+    },
+    {
+      "answered": [
+        "crates/regex/src/non_matching.rs"
+      ],
+      "capped": null,
+      "case_id": "non-matching-bytes",
+      "correct": true,
+      "cost_usd": 0.0016906999999999998,
+      "extra": 0,
+      "found": 1,
+      "input_tokens": 7178,
+      "kind": "behavior",
+      "labels": 1,
+      "model_calls": 5,
+      "output_tokens": 1228,
+      "profile": "baseline",
+      "retrieve_called": false,
+      "tool_calls": 7,
+      "tools": {
+        "read_file": 2,
+        "search": 5
+      },
+      "usage_known": true,
+      "wall_ms": 52642
+    },
+    {
+      "answered": [
+        "crates/ignore/src/overrides.rs",
+        "crates/core/flags/hiargs.rs",
+        "crates/ignore/src/walk.rs",
+        "crates/ignore/src/dir.rs"
+      ],
+      "capped": null,
+      "case_id": "overrides",
+      "correct": false,
+      "cost_usd": 0.0014269,
+      "extra": 3,
+      "found": 1,
+      "input_tokens": 7546,
+      "kind": "behavior",
+      "labels": 1,
+      "model_calls": 3,
+      "output_tokens": 590,
+      "profile": "baseline",
+      "retrieve_called": false,
+      "tool_calls": 4,
+      "tools": {
+        "read_file": 2,
+        "search": 2
+      },
+      "usage_known": true,
+      "wall_ms": 31053
+    },
+    {
+      "answered": [
+        "crates/ignore/src/walk.rs"
+      ],
+      "capped": null,
+      "case_id": "parallel-walk",
+      "correct": true,
+      "cost_usd": 0.00074155,
+      "extra": 0,
+      "found": 1,
+      "input_tokens": 4417,
+      "kind": "behavior",
+      "labels": 1,
+      "model_calls": 3,
+      "output_tokens": 158,
+      "profile": "baseline",
+      "retrieve_called": false,
+      "tool_calls": 3,
+      "tools": {
+        "read_file": 1,
+        "search": 2
+      },
+      "usage_known": true,
+      "wall_ms": 12265
+    },
+    {
+      "answered": [
+        "crates/printer/src/summary.rs"
+      ],
+      "capped": null,
+      "case_id": "path-printer",
+      "correct": false,
+      "cost_usd": 0.010816849999999998,
+      "extra": 1,
+      "found": 0,
+      "input_tokens": 70239,
+      "kind": "behavior",
+      "labels": 1,
+      "model_calls": 12,
+      "output_tokens": 562,
+      "profile": "baseline",
+      "retrieve_called": false,
+      "tool_calls": 13,
+      "tools": {
+        "read_file": 6,
+        "search": 7
+      },
+      "usage_known": true,
+      "wall_ms": 51197
+    },
+    {
+      "answered": [
+        "crates/cli/src/pattern.rs"
+      ],
+      "capped": null,
+      "case_id": "patterns-file",
+      "correct": true,
+      "cost_usd": 0.0010525999999999999,
+      "extra": 0,
+      "found": 1,
+      "input_tokens": 6604,
+      "kind": "behavior",
+      "labels": 1,
+      "model_calls": 3,
+      "output_tokens": 124,
+      "profile": "baseline",
+      "retrieve_called": false,
+      "tool_calls": 3,
+      "tools": {
+        "read_file": 1,
+        "search": 2
+      },
+      "usage_known": true,
+      "wall_ms": 14253
+    },
+    {
+      "answered": [
+        "crates/pcre2/src/error.rs"
+      ],
+      "capped": null,
+      "case_id": "pcre2-error",
+      "correct": true,
+      "cost_usd": 0.001019,
+      "extra": 0,
+      "found": 1,
+      "input_tokens": 6310,
+      "kind": "symbol_lookup",
+      "labels": 1,
+      "model_calls": 3,
+      "output_tokens": 145,
+      "profile": "baseline",
+      "retrieve_called": false,
+      "tool_calls": 3,
+      "tools": {
+        "read_file": 1,
+        "search": 2
+      },
+      "usage_known": true,
+      "wall_ms": 14812
+    },
+    {
+      "answered": [
+        "crates/pcre2/src/matcher.rs"
+      ],
+      "capped": null,
+      "case_id": "pcre2-jit",
+      "correct": true,
+      "cost_usd": 0.00117665,
+      "extra": 0,
+      "found": 1,
+      "input_tokens": 7321,
+      "kind": "behavior",
+      "labels": 1,
+      "model_calls": 3,
+      "output_tokens": 157,
+      "profile": "baseline",
+      "retrieve_called": false,
+      "tool_calls": 4,
+      "tools": {
+        "read_file": 2,
+        "search": 2
+      },
+      "usage_known": true,
+      "wall_ms": 12819
+    },
+    {
+      "answered": [
+        "crates/regex/src/config.rs"
+      ],
+      "capped": null,
+      "case_id": "regex-config",
+      "correct": true,
+      "cost_usd": 0.0011553499999999999,
+      "extra": 0,
+      "found": 1,
+      "input_tokens": 7089,
+      "kind": "behavior",
+      "labels": 1,
+      "model_calls": 3,
+      "output_tokens": 184,
+      "profile": "baseline",
+      "retrieve_called": false,
+      "tool_calls": 3,
+      "tools": {
+        "read_file": 1,
+        "search": 2
+      },
+      "usage_known": true,
+      "wall_ms": 16488
+    },
+    {
+      "answered": [
+        "crates/globset/src/lib.rs"
+      ],
+      "capped": null,
+      "case_id": "regex-errors",
+      "correct": false,
+      "cost_usd": 0.00683245,
+      "extra": 1,
+      "found": 0,
+      "input_tokens": 42663,
+      "kind": "behavior",
+      "labels": 1,
+      "model_calls": 9,
+      "output_tokens": 866,
+      "profile": "baseline",
+      "retrieve_called": false,
+      "tool_calls": 11,
+      "tools": {
+        "read_file": 3,
+        "search": 8
+      },
+      "usage_known": true,
+      "wall_ms": 46508
+    },
+    {
+      "answered": [
+        "crates/regex/src/literal.rs",
+        "crates/regex/src/matcher.rs"
+      ],
+      "capped": null,
+      "case_id": "regex-literals",
+      "correct": true,
+      "cost_usd": 0.004688,
+      "extra": 1,
+      "found": 1,
+      "input_tokens": 26860,
+      "kind": "behavior",
+      "labels": 1,
+      "model_calls": 7,
+      "output_tokens": 1318,
+      "profile": "baseline",
+      "retrieve_called": false,
+      "tool_calls": 10,
+      "tools": {
+        "read_file": 3,
+        "search": 7
+      },
+      "usage_known": true,
+      "wall_ms": 51402
+    },
+    {
+      "answered": [
+        "crates/regex/src/matcher.rs"
+      ],
+      "capped": null,
+      "case_id": "regex-matcher",
+      "correct": true,
+      "cost_usd": 0.00038605,
+      "extra": 0,
+      "found": 1,
+      "input_tokens": 2237,
+      "kind": "symbol_lookup",
+      "labels": 1,
+      "model_calls": 2,
+      "output_tokens": 101,
+      "profile": "baseline",
+      "retrieve_called": false,
+      "tool_calls": 2,
+      "tools": {
+        "search": 2
+      },
+      "usage_known": true,
+      "wall_ms": 4200
+    },
+    {
+      "answered": [
+        "crates/printer/src/util.rs"
+      ],
+      "capped": null,
+      "case_id": "replace-captures",
+      "correct": true,
+      "cost_usd": 0.00071175,
+      "extra": 0,
+      "found": 1,
+      "input_tokens": 3745,
+      "kind": "behavior",
+      "labels": 1,
+      "model_calls": 3,
+      "output_tokens": 300,
+      "profile": "baseline",
+      "retrieve_called": false,
+      "tool_calls": 3,
+      "tools": {
+        "read_file": 1,
+        "search": 2
+      },
+      "usage_known": true,
+      "wall_ms": 11515
+    },
+    {
+      "answered": [
+        "crates/grep/examples/simplegrep.rs"
+      ],
+      "capped": null,
+      "case_id": "rg-examples",
+      "correct": true,
+      "cost_usd": 0.00074025,
+      "extra": 0,
+      "found": 1,
+      "input_tokens": 4195,
+      "kind": "behavior",
+      "labels": 1,
+      "model_calls": 4,
+      "output_tokens": 222,
+      "profile": "baseline",
+      "retrieve_called": false,
+      "tool_calls": 5,
+      "tools": {
+        "read_file": 1,
+        "search": 4
+      },
+      "usage_known": true,
+      "wall_ms": 17469
+    },
+    {
+      "answered": [
+        "crates/core/main.rs"
+      ],
+      "capped": null,
+      "case_id": "search-parallel",
+      "correct": true,
+      "cost_usd": 0.0012594000000000001,
+      "extra": 0,
+      "found": 1,
+      "input_tokens": 7516,
+      "kind": "behavior",
+      "labels": 1,
+      "model_calls": 4,
+      "output_tokens": 264,
+      "profile": "baseline",
+      "retrieve_called": false,
+      "tool_calls": 5,
+      "tools": {
+        "read_file": 2,
+        "search": 3
+      },
+      "usage_known": true,
+      "wall_ms": 18355
+    },
+    {
+      "answered": [
+        "crates/searcher/src/searcher/mod.rs"
+      ],
+      "capped": null,
+      "case_id": "searcher-builder",
+      "correct": true,
+      "cost_usd": 0.001765,
+      "extra": 0,
+      "found": 1,
+      "input_tokens": 11000,
+      "kind": "behavior",
+      "labels": 1,
+      "model_calls": 4,
+      "output_tokens": 230,
+      "profile": "baseline",
+      "retrieve_called": false,
+      "tool_calls": 4,
+      "tools": {
+        "read_file": 1,
+        "search": 3
+      },
+      "usage_known": true,
+      "wall_ms": 11015
+    },
+    {
+      "answered": [
+        "crates/searcher/src/searcher/core.rs"
+      ],
+      "capped": null,
+      "case_id": "searcher-core",
+      "correct": true,
+      "cost_usd": 0.0006816999999999999,
+      "extra": 0,
+      "found": 1,
+      "input_tokens": 3798,
+      "kind": "behavior",
+      "labels": 1,
+      "model_calls": 3,
+      "output_tokens": 224,
+      "profile": "baseline",
+      "retrieve_called": false,
+      "tool_calls": 3,
+      "tools": {
+        "read_file": 1,
+        "search": 2
+      },
+      "usage_known": true,
+      "wall_ms": 14728
+    },
+    {
+      "answered": [
+        "crates/searcher/src/searcher/glue.rs"
+      ],
+      "capped": null,
+      "case_id": "searcher-glue",
+      "correct": true,
+      "cost_usd": 0.00182855,
+      "extra": 0,
+      "found": 1,
+      "input_tokens": 11267,
+      "kind": "behavior",
+      "labels": 1,
+      "model_calls": 4,
+      "output_tokens": 277,
+      "profile": "baseline",
+      "retrieve_called": false,
+      "tool_calls": 5,
+      "tools": {
+        "read_file": 3,
+        "search": 2
+      },
+      "usage_known": true,
+      "wall_ms": 12279
+    },
+    {
+      "answered": [
+        "crates/searcher/src/testutil.rs"
+      ],
+      "capped": null,
+      "case_id": "searcher-testutil",
+      "correct": true,
+      "cost_usd": 0.0025905,
+      "extra": 0,
+      "found": 1,
+      "input_tokens": 14930,
+      "kind": "behavior",
+      "labels": 1,
+      "model_calls": 8,
+      "output_tokens": 702,
+      "profile": "baseline",
+      "retrieve_called": false,
+      "tool_calls": 11,
+      "tools": {
+        "read_file": 5,
+        "search": 6
+      },
+      "usage_known": true,
+      "wall_ms": 42445
+    },
+    {
+      "answered": [
+        "crates/searcher/src/sink.rs"
+      ],
+      "capped": null,
+      "case_id": "sink",
+      "correct": true,
+      "cost_usd": 0.0002186,
+      "extra": 0,
+      "found": 1,
+      "input_tokens": 1074,
+      "kind": "symbol_lookup",
+      "labels": 1,
+      "model_calls": 2,
+      "output_tokens": 115,
+      "profile": "baseline",
+      "retrieve_called": false,
+      "tool_calls": 2,
+      "tools": {
+        "search": 2
+      },
+      "usage_known": true,
+      "wall_ms": 4305
+    },
+    {
+      "answered": [
+        "crates/cli/src/human.rs"
+      ],
+      "capped": null,
+      "case_id": "size-parse",
+      "correct": true,
+      "cost_usd": 0.0002878,
+      "extra": 0,
+      "found": 1,
+      "input_tokens": 1522,
+      "kind": "behavior",
+      "labels": 1,
+      "model_calls": 2,
+      "output_tokens": 119,
+      "profile": "baseline",
+      "retrieve_called": false,
+      "tool_calls": 2,
+      "tools": {
+        "search": 2
+      },
+      "usage_known": true,
+      "wall_ms": 11363
+    },
+    {
+      "answered": [
+        "crates/regex/src/ast.rs",
+        "crates/regex/src/config.rs"
+      ],
+      "capped": null,
+      "case_id": "smart-case",
+      "correct": true,
+      "cost_usd": 0.0013200999999999998,
+      "extra": 1,
+      "found": 1,
+      "input_tokens": 7164,
+      "kind": "behavior",
+      "labels": 1,
+      "model_calls": 4,
+      "output_tokens": 491,
+      "profile": "baseline",
+      "retrieve_called": false,
+      "tool_calls": 4,
+      "tools": {
+        "read_file": 2,
+        "search": 2
+      },
+      "usage_known": true,
+      "wall_ms": 21831
+    },
+    {
+      "answered": [
+        "crates/printer/src/standard.rs"
+      ],
+      "capped": null,
+      "case_id": "standard-printer",
+      "correct": true,
+      "cost_usd": 0.00195325,
+      "extra": 0,
+      "found": 1,
+      "input_tokens": 11895,
+      "kind": "behavior",
+      "labels": 1,
+      "model_calls": 7,
+      "output_tokens": 338,
+      "profile": "baseline",
+      "retrieve_called": false,
+      "tool_calls": 8,
+      "tools": {
+        "read_file": 2,
+        "search": 6
+      },
+      "usage_known": true,
+      "wall_ms": 32003
+    },
+    {
+      "answered": [
+        "crates/printer/src/stats.rs"
+      ],
+      "capped": null,
+      "case_id": "stats",
+      "correct": true,
+      "cost_usd": 0.0007599499999999999,
+      "extra": 0,
+      "found": 1,
+      "input_tokens": 4623,
+      "kind": "symbol_lookup",
+      "labels": 1,
+      "model_calls": 3,
+      "output_tokens": 133,
+      "profile": "baseline",
+      "retrieve_called": false,
+      "tool_calls": 3,
+      "tools": {
+        "read_file": 1,
+        "search": 2
+      },
+      "usage_known": true,
+      "wall_ms": 12363
+    },
+    {
+      "answered": [
+        "crates/cli/src/wtr.rs"
+      ],
+      "capped": null,
+      "case_id": "stdout-writer",
+      "correct": true,
+      "cost_usd": 0.0007957999999999999,
+      "extra": 0,
+      "found": 1,
+      "input_tokens": 4552,
+      "kind": "behavior",
+      "labels": 1,
+      "model_calls": 4,
+      "output_tokens": 226,
+      "profile": "baseline",
+      "retrieve_called": false,
+      "tool_calls": 5,
+      "tools": {
+        "read_file": 1,
+        "search": 4
+      },
+      "usage_known": true,
+      "wall_ms": 25913
+    },
+    {
+      "answered": [
+        "crates/regex/src/strip.rs"
+      ],
+      "capped": null,
+      "case_id": "strip-terminator",
+      "correct": true,
+      "cost_usd": 0.00386995,
+      "extra": 0,
+      "found": 1,
+      "input_tokens": 24733,
+      "kind": "behavior",
+      "labels": 1,
+      "model_calls": 6,
+      "output_tokens": 320,
+      "profile": "baseline",
+      "retrieve_called": false,
+      "tool_calls": 7,
+      "tools": {
+        "read_file": 3,
+        "search": 4
+      },
+      "usage_known": true,
+      "wall_ms": 19706
+    },
+    {
+      "answered": [
+        "crates/printer/src/summary.rs"
+      ],
+      "capped": null,
+      "case_id": "summary-printer",
+      "correct": true,
+      "cost_usd": 0.00047249999999999994,
+      "extra": 0,
+      "found": 1,
+      "input_tokens": 2440,
+      "kind": "behavior",
+      "labels": 1,
+      "model_calls": 3,
+      "output_tokens": 213,
+      "profile": "baseline",
+      "retrieve_called": false,
+      "tool_calls": 3,
+      "tools": {
+        "read_file": 1,
+        "search": 2
+      },
+      "usage_known": true,
+      "wall_ms": 15482
+    },
+    {
+      "answered": [
+        "crates/ignore/src/types.rs"
+      ],
+      "capped": null,
+      "case_id": "types-builder",
+      "correct": true,
+      "cost_usd": 0.0006263,
+      "extra": 0,
+      "found": 1,
+      "input_tokens": 3252,
+      "kind": "behavior",
+      "labels": 1,
+      "model_calls": 3,
+      "output_tokens": 277,
+      "profile": "baseline",
+      "retrieve_called": false,
+      "tool_calls": 4,
+      "tools": {
+        "read_file": 1,
+        "search": 3
+      },
+      "usage_known": true,
+      "wall_ms": 14124
+    },
+    {
+      "answered": [
+        "crates/regex/src/strip.rs"
+      ],
+      "capped": null,
+      "case_id": "ban-byte",
+      "correct": false,
+      "cost_usd": 0.00707245,
+      "extra": 1,
+      "found": 0,
+      "input_tokens": 43553,
+      "kind": "behavior",
+      "labels": 1,
+      "model_calls": 10,
+      "output_tokens": 1079,
+      "profile": "treatment",
+      "retrieve_called": true,
+      "tool_calls": 13,
+      "tools": {
+        "read_file": 5,
+        "retrieve": 1,
+        "search": 7
+      },
+      "usage_known": true,
+      "wall_ms": 50146
+    },
+    {
+      "answered": [
+        "crates/cli/src/process.rs"
+      ],
+      "capped": null,
+      "case_id": "child-reader",
+      "correct": true,
+      "cost_usd": 0.00119065,
+      "extra": 0,
+      "found": 1,
+      "input_tokens": 7071,
+      "kind": "behavior",
+      "labels": 1,
+      "model_calls": 4,
+      "output_tokens": 260,
+      "profile": "treatment",
+      "retrieve_called": false,
+      "tool_calls": 4,
+      "tools": {
+        "read_file": 2,
+        "search": 2
+      },
+      "usage_known": true,
+      "wall_ms": 21035
+    },
+    {
+      "answered": [
+        "crates/printer/src/color.rs"
+      ],
+      "capped": null,
+      "case_id": "color-specs",
+      "correct": true,
+      "cost_usd": 0.0030147999999999998,
+      "extra": 0,
+      "found": 1,
+      "input_tokens": 18722,
+      "kind": "behavior",
+      "labels": 1,
+      "model_calls": 6,
+      "output_tokens": 413,
+      "profile": "treatment",
+      "retrieve_called": true,
+      "tool_calls": 6,
+      "tools": {
+        "read_file": 3,
+        "retrieve": 1,
+        "search": 2
+      },
+      "usage_known": true,
+      "wall_ms": 24771
+    },
+    {
+      "answered": [
+        "crates/printer/src/counter.rs"
+      ],
+      "capped": null,
+      "case_id": "counter-writer",
+      "correct": true,
+      "cost_usd": 0.0010194,
+      "extra": 0,
+      "found": 1,
+      "input_tokens": 6256,
+      "kind": "symbol_lookup",
+      "labels": 1,
+      "model_calls": 5,
+      "output_tokens": 162,
+      "profile": "treatment",
+      "retrieve_called": true,
+      "tool_calls": 6,
+      "tools": {
+        "read_file": 1,
+        "retrieve": 1,
+        "search": 4
+      },
+      "usage_known": true,
+      "wall_ms": 17539
+    },
+    {
+      "answered": [
+        "crates/cli/src/decompress.rs"
+      ],
+      "capped": null,
+      "case_id": "decompress",
+      "correct": true,
+      "cost_usd": 0.0032773,
+      "extra": 0,
+      "found": 1,
+      "input_tokens": 21122,
+      "kind": "behavior",
+      "labels": 1,
+      "model_calls": 5,
+      "output_tokens": 218,
+      "profile": "treatment",
+      "retrieve_called": true,
+      "tool_calls": 5,
+      "tools": {
+        "read_file": 3,
+        "retrieve": 1,
+        "search": 1
+      },
+      "usage_known": true,
+      "wall_ms": 29748
+    },
+    {
+      "answered": [
+        "crates/ignore/src/default_types.rs"
+      ],
+      "capped": null,
+      "case_id": "default-types",
+      "correct": true,
+      "cost_usd": 0.0008914000000000001,
+      "extra": 0,
+      "found": 1,
+      "input_tokens": 5416,
+      "kind": "behavior",
+      "labels": 1,
+      "model_calls": 3,
+      "output_tokens": 158,
+      "profile": "treatment",
+      "retrieve_called": true,
+      "tool_calls": 3,
+      "tools": {
+        "read_file": 1,
+        "retrieve": 1,
+        "search": 1
+      },
+      "usage_known": true,
+      "wall_ms": 14846
+    },
+    {
+      "answered": [
+        "crates/ignore/src/dir.rs"
+      ],
+      "capped": null,
+      "case_id": "dir-ignore-state",
+      "correct": true,
+      "cost_usd": 0.00894845,
+      "extra": 0,
+      "found": 1,
+      "input_tokens": 55993,
+      "kind": "behavior",
+      "labels": 1,
+      "model_calls": 10,
+      "output_tokens": 1099,
+      "profile": "treatment",
+      "retrieve_called": true,
+      "tool_calls": 10,
+      "tools": {
+        "read_file": 6,
+        "retrieve": 1,
+        "search": 3
+      },
+      "usage_known": true,
+      "wall_ms": 47016
+    },
+    {
+      "answered": [
+        "crates/core/messages.rs"
+      ],
+      "capped": null,
+      "case_id": "error-flag",
+      "correct": true,
+      "cost_usd": 0.0007122,
+      "extra": 0,
+      "found": 1,
+      "input_tokens": 4028,
+      "kind": "behavior",
+      "labels": 1,
+      "model_calls": 3,
+      "output_tokens": 216,
+      "profile": "treatment",
+      "retrieve_called": true,
+      "tool_calls": 3,
+      "tools": {
+        "read_file": 1,
+        "retrieve": 1,
+        "search": 1
+      },
+      "usage_known": true,
+      "wall_ms": 16272
+    },
+    {
+      "answered": [
+        "crates/cli/src/escape.rs"
+      ],
+      "capped": null,
+      "case_id": "escape",
+      "correct": true,
+      "cost_usd": 0.0008530499999999999,
+      "extra": 0,
+      "found": 1,
+      "input_tokens": 5087,
+      "kind": "behavior",
+      "labels": 1,
+      "model_calls": 3,
+      "output_tokens": 180,
+      "profile": "treatment",
+      "retrieve_called": true,
+      "tool_calls": 3,
+      "tools": {
+        "read_file": 1,
+        "retrieve": 1,
+        "search": 1
+      },
+      "usage_known": true,
+      "wall_ms": 16601
+    },
+    {
+      "answered": [
+        "crates/core/main.rs"
+      ],
+      "capped": null,
+      "case_id": "files-mode",
+      "correct": true,
+      "cost_usd": 0.0009214499999999999,
+      "extra": 0,
+      "found": 1,
+      "input_tokens": 5203,
+      "kind": "behavior",
+      "labels": 1,
+      "model_calls": 3,
+      "output_tokens": 282,
+      "profile": "treatment",
+      "retrieve_called": false,
+      "tool_calls": 3,
+      "tools": {
+        "read_file": 1,
+        "search": 2
+      },
+      "usage_known": true,
+      "wall_ms": 12186
+    },
+    {
+      "answered": [
+        "crates/globset/src/fnv.rs"
+      ],
+      "capped": null,
+      "case_id": "fnv",
+      "correct": true,
+      "cost_usd": 0.000536,
+      "extra": 0,
+      "found": 1,
+      "input_tokens": 2870,
+      "kind": "behavior",
+      "labels": 1,
+      "model_calls": 3,
+      "output_tokens": 211,
+      "profile": "treatment",
+      "retrieve_called": true,
+      "tool_calls": 3,
+      "tools": {
+        "read_file": 1,
+        "retrieve": 1,
+        "search": 1
+      },
+      "usage_known": true,
+      "wall_ms": 13647
+    },
+    {
+      "answered": [
+        "crates/ignore/src/gitignore.rs"
+      ],
+      "capped": null,
+      "case_id": "gitignore-match",
+      "correct": true,
+      "cost_usd": 0.00248755,
+      "extra": 0,
+      "found": 1,
+      "input_tokens": 15967,
+      "kind": "behavior",
+      "labels": 1,
+      "model_calls": 5,
+      "output_tokens": 185,
+      "profile": "treatment",
+      "retrieve_called": true,
+      "tool_calls": 5,
+      "tools": {
+        "read_file": 3,
+        "retrieve": 1,
+        "search": 1
+      },
+      "usage_known": true,
+      "wall_ms": 23083
+    },
+    {
+      "answered": [
+        "crates/globset/src/pathutil.rs",
+        "crates/globset/src/lib.rs"
+      ],
+      "capped": null,
+      "case_id": "glob-pathutil",
+      "correct": true,
+      "cost_usd": 0.00088145,
+      "extra": 1,
+      "found": 1,
+      "input_tokens": 5003,
+      "kind": "behavior",
+      "labels": 1,
+      "model_calls": 3,
+      "output_tokens": 262,
+      "profile": "treatment",
+      "retrieve_called": true,
+      "tool_calls": 4,
+      "tools": {
+        "read_file": 2,
+        "retrieve": 1,
+        "search": 1
+      },
+      "usage_known": true,
+      "wall_ms": 18208
+    },
+    {
+      "answered": [
+        "crates/globset/src/glob.rs"
+      ],
+      "capped": null,
+      "case_id": "glob-regex",
+      "correct": true,
+      "cost_usd": 0.00408075,
+      "extra": 0,
+      "found": 1,
+      "input_tokens": 25645,
+      "kind": "behavior",
+      "labels": 1,
+      "model_calls": 7,
+      "output_tokens": 468,
+      "profile": "treatment",
+      "retrieve_called": true,
+      "tool_calls": 8,
+      "tools": {
+        "read_file": 4,
+        "retrieve": 1,
+        "search": 3
+      },
+      "usage_known": true,
+      "wall_ms": 34448
+    },
+    {
+      "answered": [
+        "crates/globset/src/serde_impl.rs"
+      ],
+      "capped": null,
+      "case_id": "glob-serde",
+      "correct": true,
+      "cost_usd": 0.0006447499999999999,
+      "extra": 0,
+      "found": 1,
+      "input_tokens": 3505,
+      "kind": "behavior",
+      "labels": 1,
+      "model_calls": 3,
+      "output_tokens": 238,
+      "profile": "treatment",
+      "retrieve_called": true,
+      "tool_calls": 3,
+      "tools": {
+        "read_file": 1,
+        "retrieve": 1,
+        "search": 1
+      },
+      "usage_known": true,
+      "wall_ms": 16913
+    },
+    {
+      "answered": [
+        "crates/globset/src/lib.rs",
+        "crates/globset/src/glob.rs"
+      ],
+      "capped": null,
+      "case_id": "globset-strategy",
+      "correct": true,
+      "cost_usd": 0.0010516500000000001,
+      "extra": 1,
+      "found": 1,
+      "input_tokens": 5601,
+      "kind": "behavior",
+      "labels": 1,
+      "model_calls": 3,
+      "output_tokens": 423,
+      "profile": "treatment",
+      "retrieve_called": false,
+      "tool_calls": 3,
+      "tools": {
+        "read_file": 1,
+        "search": 2
+      },
+      "usage_known": true,
+      "wall_ms": 19971
+    },
+    {
+      "answered": [
+        "crates/grep/src/lib.rs"
+      ],
+      "capped": null,
+      "case_id": "grep-facade",
+      "correct": true,
+      "cost_usd": 0.00053,
+      "extra": 0,
+      "found": 1,
+      "input_tokens": 2370,
+      "kind": "behavior",
+      "labels": 1,
+      "model_calls": 3,
+      "output_tokens": 349,
+      "profile": "treatment",
+      "retrieve_called": false,
+      "tool_calls": 3,
+      "tools": {
+        "read_file": 1,
+        "search": 2
+      },
+      "usage_known": true,
+      "wall_ms": 22009
+    },
+    {
+      "answered": [
+        "crates/core/haystack.rs"
+      ],
+      "capped": null,
+      "case_id": "haystack",
+      "correct": true,
+      "cost_usd": 0.0013102,
+      "extra": 0,
+      "found": 1,
+      "input_tokens": 6928,
+      "kind": "symbol_lookup",
+      "labels": 1,
+      "model_calls": 3,
+      "output_tokens": 542,
+      "profile": "treatment",
+      "retrieve_called": true,
+      "tool_calls": 3,
+      "tools": {
+        "read_file": 1,
+        "retrieve": 1,
+        "search": 1
+      },
+      "usage_known": true,
+      "wall_ms": 23516
+    },
+    {
+      "answered": [
+        "crates/ignore/src/pathutil.rs",
+        "crates/ignore/src/dir.rs"
+      ],
+      "capped": null,
+      "case_id": "hidden-files",
+      "correct": true,
+      "cost_usd": 0.0008546,
+      "extra": 1,
+      "found": 1,
+      "input_tokens": 4774,
+      "kind": "behavior",
+      "labels": 1,
+      "model_calls": 3,
+      "output_tokens": 277,
+      "profile": "treatment",
+      "retrieve_called": true,
+      "tool_calls": 4,
+      "tools": {
+        "read_file": 2,
+        "retrieve": 1,
+        "search": 1
+      },
+      "usage_known": true,
+      "wall_ms": 13808
+    },
+    {
+      "answered": [
+        "crates/cli/src/hostname.rs"
+      ],
+      "capped": null,
+      "case_id": "hostname",
+      "correct": true,
+      "cost_usd": 0.0008288,
+      "extra": 0,
+      "found": 1,
+      "input_tokens": 4862,
+      "kind": "behavior",
+      "labels": 1,
+      "model_calls": 3,
+      "output_tokens": 199,
+      "profile": "treatment",
+      "retrieve_called": true,
+      "tool_calls": 3,
+      "tools": {
+        "read_file": 1,
+        "retrieve": 1,
+        "search": 1
+      },
+      "usage_known": true,
+      "wall_ms": 16420
+    },
+    {
+      "answered": [
+        "crates/printer/src/hyperlink_aliases.rs"
+      ],
+      "capped": null,
+      "case_id": "hyperlink-alias",
+      "correct": true,
+      "cost_usd": 0.00158545,
+      "extra": 0,
+      "found": 1,
+      "input_tokens": 9713,
+      "kind": "behavior",
+      "labels": 1,
+      "model_calls": 5,
+      "output_tokens": 257,
+      "profile": "treatment",
+      "retrieve_called": true,
+      "tool_calls": 5,
+      "tools": {
+        "read_file": 2,
+        "retrieve": 1,
+        "search": 2
+      },
+      "usage_known": true,
+      "wall_ms": 16496
+    },
+    {
+      "answered": [
+        "crates/printer/src/hyperlink.rs"
+      ],
+      "capped": null,
+      "case_id": "hyperlink-format",
+      "correct": true,
+      "cost_usd": 0.00193135,
+      "extra": 0,
+      "found": 1,
+      "input_tokens": 11999,
+      "kind": "behavior",
+      "labels": 1,
+      "model_calls": 4,
+      "output_tokens": 263,
+      "profile": "treatment",
+      "retrieve_called": true,
+      "tool_calls": 4,
+      "tools": {
+        "read_file": 2,
+        "retrieve": 1,
+        "search": 1
+      },
+      "usage_known": true,
+      "wall_ms": 21290
+    },
+    {
+      "answered": [
+        "crates/matcher/src/interpolate.rs"
+      ],
+      "capped": null,
+      "case_id": "interpolate",
+      "correct": true,
+      "cost_usd": 0.00129535,
+      "extra": 0,
+      "found": 1,
+      "input_tokens": 7959,
+      "kind": "behavior",
+      "labels": 1,
+      "model_calls": 3,
+      "output_tokens": 203,
+      "profile": "treatment",
+      "retrieve_called": true,
+      "tool_calls": 3,
+      "tools": {
+        "read_file": 1,
+        "retrieve": 1,
+        "search": 1
+      },
+      "usage_known": true,
+      "wall_ms": 15909
+    },
+    {
+      "answered": [
+        "crates/printer/src/json.rs"
+      ],
+      "capped": null,
+      "case_id": "json-printer",
+      "correct": true,
+      "cost_usd": 0.0014485000000000001,
+      "extra": 0,
+      "found": 1,
+      "input_tokens": 8730,
+      "kind": "behavior",
+      "labels": 1,
+      "model_calls": 5,
+      "output_tokens": 278,
+      "profile": "treatment",
+      "retrieve_called": true,
+      "tool_calls": 5,
+      "tools": {
+        "read_file": 2,
+        "retrieve": 1,
+        "search": 2
+      },
+      "usage_known": true,
+      "wall_ms": 16717
+    },
+    {
+      "answered": [
+        "crates/printer/src/jsont.rs"
+      ],
+      "capped": null,
+      "case_id": "json-types",
+      "correct": true,
+      "cost_usd": 0.00156165,
+      "extra": 0,
+      "found": 1,
+      "input_tokens": 9401,
+      "kind": "behavior",
+      "labels": 1,
+      "model_calls": 4,
+      "output_tokens": 303,
+      "profile": "treatment",
+      "retrieve_called": true,
+      "tool_calls": 5,
+      "tools": {
+        "read_file": 2,
+        "retrieve": 1,
+        "search": 2
+      },
+      "usage_known": true,
+      "wall_ms": 19521
+    },
+    {
+      "answered": [
+        "crates/searcher/src/line_buffer.rs"
+      ],
+      "capped": null,
+      "case_id": "line-buffer",
+      "correct": true,
+      "cost_usd": 0.00127495,
+      "extra": 0,
+      "found": 1,
+      "input_tokens": 7793,
+      "kind": "behavior",
+      "labels": 1,
+      "model_calls": 3,
+      "output_tokens": 212,
+      "profile": "treatment",
+      "retrieve_called": true,
+      "tool_calls": 3,
+      "tools": {
+        "read_file": 1,
+        "retrieve": 1,
+        "search": 1
+      },
+      "usage_known": true,
+      "wall_ms": 10517
+    },
+    {
+      "answered": [
+        "crates/searcher/src/lines.rs"
+      ],
+      "capped": null,
+      "case_id": "line-iter",
+      "correct": true,
+      "cost_usd": 0.00133,
+      "extra": 0,
+      "found": 1,
+      "input_tokens": 7940,
+      "kind": "behavior",
+      "labels": 1,
+      "model_calls": 4,
+      "output_tokens": 278,
+      "profile": "treatment",
+      "retrieve_called": false,
+      "tool_calls": 5,
+      "tools": {
+        "read_file": 1,
+        "search": 4
+      },
+      "usage_known": true,
+      "wall_ms": 16878
+    },
+    {
+      "answered": [
+        "crates/core/logger.rs"
+      ],
+      "capped": null,
+      "case_id": "logger",
+      "correct": true,
+      "cost_usd": 0.0005309500000000001,
+      "extra": 0,
+      "found": 1,
+      "input_tokens": 3173,
+      "kind": "behavior",
+      "labels": 1,
+      "model_calls": 3,
+      "output_tokens": 110,
+      "profile": "treatment",
+      "retrieve_called": true,
+      "tool_calls": 3,
+      "tools": {
+        "read_file": 1,
+        "retrieve": 1,
+        "search": 1
+      },
+      "usage_known": true,
+      "wall_ms": 14044
+    },
+    {
+      "answered": [
+        "crates/matcher/src/lib.rs"
+      ],
+      "capped": null,
+      "case_id": "matcher-trait",
+      "correct": true,
+      "cost_usd": 0.00086275,
+      "extra": 0,
+      "found": 1,
+      "input_tokens": 4425,
+      "kind": "symbol_lookup",
+      "labels": 1,
+      "model_calls": 3,
+      "output_tokens": 398,
+      "profile": "treatment",
+      "retrieve_called": true,
+      "tool_calls": 4,
+      "tools": {
+        "read_file": 1,
+        "retrieve": 1,
+        "search": 2
+      },
+      "usage_known": true,
+      "wall_ms": 17272
+    },
+    {
+      "answered": [
+        "crates/core/flags/complete/bash.rs",
+        "crates/core/flags/defs.rs"
+      ],
+      "capped": null,
+      "case_id": "mh-bash-completion",
+      "correct": true,
+      "cost_usd": 0.0013448499999999999,
+      "extra": 0,
+      "found": 2,
+      "input_tokens": 8149,
+      "kind": "multi_hop",
+      "labels": 2,
+      "model_calls": 5,
+      "output_tokens": 245,
+      "profile": "treatment",
+      "retrieve_called": true,
+      "tool_calls": 5,
+      "tools": {
+        "read_file": 1,
+        "retrieve": 1,
+        "search": 3
+      },
+      "usage_known": true,
+      "wall_ms": 23340
+    },
+    {
+      "answered": [
+        "crates/searcher/src/searcher/mod.rs",
+        "crates/searcher/src/line_buffer.rs"
+      ],
+      "capped": null,
+      "case_id": "mh-binary-detect",
+      "correct": true,
+      "cost_usd": 0.005675399999999999,
+      "extra": 0,
+      "found": 2,
+      "input_tokens": 34016,
+      "kind": "multi_hop",
+      "labels": 2,
+      "model_calls": 9,
+      "output_tokens": 1146,
+      "profile": "treatment",
+      "retrieve_called": true,
+      "tool_calls": 10,
+      "tools": {
+        "read_file": 4,
+        "retrieve": 1,
+        "search": 5
+      },
+      "usage_known": true,
+      "wall_ms": 36567
+    },
+    {
+      "answered": [
+        "crates/core/flags/config.rs",
+        "crates/core/flags/parse.rs"
+      ],
+      "capped": null,
+      "case_id": "mh-config-file",
+      "correct": true,
+      "cost_usd": 0.00100655,
+      "extra": 0,
+      "found": 2,
+      "input_tokens": 5997,
+      "kind": "multi_hop",
+      "labels": 2,
+      "model_calls": 3,
+      "output_tokens": 214,
+      "profile": "treatment",
+      "retrieve_called": true,
+      "tool_calls": 4,
+      "tools": {
+        "read_file": 2,
+        "retrieve": 1,
+        "search": 1
+      },
+      "usage_known": true,
+      "wall_ms": 10384
+    },
+    {
+      "answered": [
+        "crates/cli/src/decompress.rs",
+        "crates/core/search.rs"
+      ],
+      "capped": null,
+      "case_id": "mh-decompress-search",
+      "correct": true,
+      "cost_usd": 0.00082205,
+      "extra": 0,
+      "found": 2,
+      "input_tokens": 3907,
+      "kind": "multi_hop",
+      "labels": 2,
+      "model_calls": 3,
+      "output_tokens": 472,
+      "profile": "treatment",
+      "retrieve_called": true,
+      "tool_calls": 3,
+      "tools": {
+        "read_file": 1,
+        "retrieve": 1,
+        "search": 1
+      },
+      "usage_known": true,
+      "wall_ms": 16914
+    },
+    {
+      "answered": [
+        "crates/core/flags/defs.rs",
+        "crates/searcher/src/searcher/mod.rs"
+      ],
+      "capped": null,
+      "case_id": "mh-encoding",
+      "correct": true,
+      "cost_usd": 0.0025226,
+      "extra": 0,
+      "found": 2,
+      "input_tokens": 15364,
+      "kind": "multi_hop",
+      "labels": 2,
+      "model_calls": 5,
+      "output_tokens": 436,
+      "profile": "treatment",
+      "retrieve_called": true,
+      "tool_calls": 7,
+      "tools": {
+        "read_file": 3,
+        "retrieve": 1,
+        "search": 3
+      },
+      "usage_known": true,
+      "wall_ms": 13823
+    },
+    {
+      "answered": [
+        "crates/ignore/src/gitignore.rs",
+        "crates/globset/src/lib.rs"
+      ],
+      "capped": null,
+      "case_id": "mh-glob-ignore",
+      "correct": true,
+      "cost_usd": 0.0011961,
+      "extra": 0,
+      "found": 2,
+      "input_tokens": 6784,
+      "kind": "multi_hop",
+      "labels": 2,
+      "model_calls": 4,
+      "output_tokens": 357,
+      "profile": "treatment",
+      "retrieve_called": true,
+      "tool_calls": 5,
+      "tools": {
+        "read_file": 1,
+        "retrieve": 1,
+        "search": 3
+      },
+      "usage_known": true,
+      "wall_ms": 14709
+    },
+    {
+      "answered": [
+        "crates/core/flags/doc/help.rs",
+        "crates/core/flags/doc/template.long.help"
+      ],
+      "capped": null,
+      "case_id": "mh-help-text",
+      "correct": true,
+      "cost_usd": 0.00103615,
+      "extra": 0,
+      "found": 2,
+      "input_tokens": 6271,
+      "kind": "multi_hop",
+      "labels": 2,
+      "model_calls": 3,
+      "output_tokens": 191,
+      "profile": "treatment",
+      "retrieve_called": true,
+      "tool_calls": 3,
+      "tools": {
+        "read_file": 1,
+        "retrieve": 1,
+        "search": 1
+      },
+      "usage_known": true,
+      "wall_ms": 7074
+    },
+    {
+      "answered": [
+        "crates/printer/src/hyperlink.rs",
+        "crates/cli/src/hostname.rs"
+      ],
+      "capped": null,
+      "case_id": "mh-hyperlink-host",
+      "correct": true,
+      "cost_usd": 0.0012679999999999998,
+      "extra": 0,
+      "found": 2,
+      "input_tokens": 7650,
+      "kind": "multi_hop",
+      "labels": 2,
+      "model_calls": 3,
+      "output_tokens": 241,
+      "profile": "treatment",
+      "retrieve_called": false,
+      "tool_calls": 4,
+      "tools": {
+        "read_file": 2,
+        "search": 2
+      },
+      "usage_known": true,
+      "wall_ms": 25211
+    },
+    {
+      "answered": [
+        "crates/printer/src/json.rs",
+        "crates/core/search.rs"
+      ],
+      "capped": null,
+      "case_id": "mh-json-output",
+      "correct": true,
+      "cost_usd": 0.00077935,
+      "extra": 0,
+      "found": 2,
+      "input_tokens": 3699,
+      "kind": "multi_hop",
+      "labels": 2,
+      "model_calls": 3,
+      "output_tokens": 449,
+      "profile": "treatment",
+      "retrieve_called": true,
+      "tool_calls": 3,
+      "tools": {
+        "read_file": 1,
+        "retrieve": 1,
+        "search": 1
+      },
+      "usage_known": true,
+      "wall_ms": 17014
+    },
+    {
+      "answered": [
+        "crates/core/flags/lowargs.rs",
+        "crates/core/flags/hiargs.rs"
+      ],
+      "capped": null,
+      "case_id": "mh-lowargs-hiargs",
+      "correct": true,
+      "cost_usd": 0.0007343,
+      "extra": 0,
+      "found": 2,
+      "input_tokens": 3322,
+      "kind": "multi_hop",
+      "labels": 2,
+      "model_calls": 3,
+      "output_tokens": 472,
+      "profile": "treatment",
+      "retrieve_called": true,
+      "tool_calls": 4,
+      "tools": {
+        "read_file": 2,
+        "retrieve": 1,
+        "search": 1
+      },
+      "usage_known": true,
+      "wall_ms": 16182
+    },
+    {
+      "answered": [
+        "crates/core/flags/doc/man.rs",
+        "crates/core/flags/doc/template.rg.1"
+      ],
+      "capped": null,
+      "case_id": "mh-man-page",
+      "correct": true,
+      "cost_usd": 0.00089775,
+      "extra": 0,
+      "found": 2,
+      "input_tokens": 5275,
+      "kind": "multi_hop",
+      "labels": 2,
+      "model_calls": 3,
+      "output_tokens": 213,
+      "profile": "treatment",
+      "retrieve_called": true,
+      "tool_calls": 3,
+      "tools": {
+        "read_file": 1,
+        "retrieve": 1,
+        "search": 1
+      },
+      "usage_known": true,
+      "wall_ms": 7459
+    },
+    {
+      "answered": [
+        "crates/core/flags/defs.rs",
+        "crates/cli/src/human.rs"
+      ],
+      "capped": null,
+      "case_id": "mh-maxfilesize",
+      "correct": true,
+      "cost_usd": 0.0033658499999999997,
+      "extra": 0,
+      "found": 2,
+      "input_tokens": 21629,
+      "kind": "multi_hop",
+      "labels": 2,
+      "model_calls": 7,
+      "output_tokens": 243,
+      "profile": "treatment",
+      "retrieve_called": false,
+      "tool_calls": 7,
+      "tools": {
+        "read_file": 3,
+        "search": 4
+      },
+      "usage_known": true,
+      "wall_ms": 22717
+    },
+    {
+      "answered": [
+        "crates/searcher/src/searcher/mod.rs",
+        "crates/regex/src/matcher.rs"
+      ],
+      "capped": null,
+      "case_id": "mh-multiline",
+      "correct": true,
+      "cost_usd": 0.00058075,
+      "extra": 0,
+      "found": 2,
+      "input_tokens": 2745,
+      "kind": "multi_hop",
+      "labels": 2,
+      "model_calls": 2,
+      "output_tokens": 338,
+      "profile": "treatment",
+      "retrieve_called": true,
+      "tool_calls": 2,
+      "tools": {
+        "retrieve": 1,
+        "search": 1
+      },
+      "usage_known": true,
+      "wall_ms": 11803
+    },
+    {
+      "answered": [
+        "crates/core/flags/hiargs.rs",
+        "crates/pcre2/src/lib.rs"
+      ],
+      "capped": null,
+      "case_id": "mh-pcre2-choice",
+      "correct": false,
+      "cost_usd": 0.003021,
+      "extra": 1,
+      "found": 1,
+      "input_tokens": 17050,
+      "kind": "multi_hop",
+      "labels": 2,
+      "model_calls": 5,
+      "output_tokens": 927,
+      "profile": "treatment",
+      "retrieve_called": true,
+      "tool_calls": 7,
+      "tools": {
+        "read_file": 3,
+        "retrieve": 1,
+        "search": 3
+      },
+      "usage_known": true,
+      "wall_ms": 28011
+    },
+    {
+      "answered": [
+        "crates/matcher/src/interpolate.rs",
+        "crates/printer/src/util.rs",
+        "crates/printer/src/standard.rs"
+      ],
+      "capped": null,
+      "case_id": "mh-replacement",
+      "correct": true,
+      "cost_usd": 0.00201285,
+      "extra": 1,
+      "found": 2,
+      "input_tokens": 11319,
+      "kind": "multi_hop",
+      "labels": 2,
+      "model_calls": 5,
+      "output_tokens": 630,
+      "profile": "treatment",
+      "retrieve_called": true,
+      "tool_calls": 5,
+      "tools": {
+        "read_file": 2,
+        "retrieve": 1,
+        "search": 2
+      },
+      "usage_known": true,
+      "wall_ms": 33331
+    },
+    {
+      "answered": [
+        "crates/core/flags/lowargs.rs",
+        "crates/core/flags/hiargs.rs"
+      ],
+      "capped": null,
+      "case_id": "mh-sort",
+      "correct": true,
+      "cost_usd": 0.00130335,
+      "extra": 0,
+      "found": 2,
+      "input_tokens": 7589,
+      "kind": "multi_hop",
+      "labels": 2,
+      "model_calls": 4,
+      "output_tokens": 330,
+      "profile": "treatment",
+      "retrieve_called": false,
+      "tool_calls": 5,
+      "tools": {
+        "read_file": 3,
+        "search": 2
+      },
+      "usage_known": true,
+      "wall_ms": 12668
+    },
+    {
+      "answered": [
+        "crates/printer/src/stats.rs",
+        "crates/core/main.rs"
+      ],
+      "capped": null,
+      "case_id": "mh-stats",
+      "correct": true,
+      "cost_usd": 0.008048999999999999,
+      "extra": 0,
+      "found": 2,
+      "input_tokens": 51260,
+      "kind": "multi_hop",
+      "labels": 2,
+      "model_calls": 10,
+      "output_tokens": 720,
+      "profile": "treatment",
+      "retrieve_called": true,
+      "tool_calls": 15,
+      "tools": {
+        "read_file": 6,
+        "retrieve": 2,
+        "search": 7
+      },
+      "usage_known": true,
+      "wall_ms": 48042
+    },
+    {
+      "answered": [
+        "crates/core/flags/defs.rs",
+        "crates/ignore/src/default_types.rs"
+      ],
+      "capped": null,
+      "case_id": "mh-type-add",
+      "correct": true,
+      "cost_usd": 0.00072455,
+      "extra": 0,
+      "found": 2,
+      "input_tokens": 3967,
+      "kind": "multi_hop",
+      "labels": 2,
+      "model_calls": 3,
+      "output_tokens": 259,
+      "profile": "treatment",
+      "retrieve_called": true,
+      "tool_calls": 4,
+      "tools": {
+        "read_file": 2,
+        "retrieve": 1,
+        "search": 1
+      },
+      "usage_known": true,
+      "wall_ms": 13109
+    },
+    {
+      "answered": [
+        "build.rs",
+        "crates/core/flags/doc/version.rs"
+      ],
+      "capped": null,
+      "case_id": "mh-version-hash",
+      "correct": true,
+      "cost_usd": 0.0007629,
+      "extra": 0,
+      "found": 2,
+      "input_tokens": 4426,
+      "kind": "multi_hop",
+      "labels": 2,
+      "model_calls": 3,
+      "output_tokens": 198,
+      "profile": "treatment",
+      "retrieve_called": false,
+      "tool_calls": 4,
+      "tools": {
+        "read_file": 2,
+        "search": 2
+      },
+      "usage_known": true,
+      "wall_ms": 7147
+    },
+    {
+      "answered": [
+        "crates/core/flags/hiargs.rs",
+        "crates/ignore/src/walk.rs"
+      ],
+      "capped": null,
+      "case_id": "mh-walk-build",
+      "correct": true,
+      "cost_usd": 0.00083905,
+      "extra": 0,
+      "found": 2,
+      "input_tokens": 4567,
+      "kind": "multi_hop",
+      "labels": 2,
+      "model_calls": 3,
+      "output_tokens": 308,
+      "profile": "treatment",
+      "retrieve_called": true,
+      "tool_calls": 3,
+      "tools": {
+        "read_file": 1,
+        "retrieve": 1,
+        "search": 1
+      },
+      "usage_known": true,
+      "wall_ms": 11468
+    },
+    {
+      "answered": [
+        "crates/searcher/src/searcher/mmap.rs"
+      ],
+      "capped": null,
+      "case_id": "mmap",
+      "correct": true,
+      "cost_usd": 0.00064155,
+      "extra": 0,
+      "found": 1,
+      "input_tokens": 3647,
+      "kind": "behavior",
+      "labels": 1,
+      "model_calls": 3,
+      "output_tokens": 189,
+      "profile": "treatment",
+      "retrieve_called": true,
+      "tool_calls": 3,
+      "tools": {
+        "read_file": 1,
+        "retrieve": 1,
+        "search": 1
+      },
+      "usage_known": true,
+      "wall_ms": 7662
+    },
+    {
+      "answered": [
+        "crates/regex/src/non_matching.rs",
+        "crates/matcher/src/lib.rs",
+        "crates/regex/src/config.rs"
+      ],
+      "capped": null,
+      "case_id": "non-matching-bytes",
+      "correct": true,
+      "cost_usd": 0.00177185,
+      "extra": 2,
+      "found": 1,
+      "input_tokens": 8889,
+      "kind": "behavior",
+      "labels": 1,
+      "model_calls": 5,
+      "output_tokens": 877,
+      "profile": "treatment",
+      "retrieve_called": true,
+      "tool_calls": 6,
+      "tools": {
+        "read_file": 1,
+        "retrieve": 1,
+        "search": 4
+      },
+      "usage_known": true,
+      "wall_ms": 27509
+    },
+    {
+      "answered": [
+        "crates/ignore/src/overrides.rs"
+      ],
+      "capped": null,
+      "case_id": "overrides",
+      "correct": true,
+      "cost_usd": 0.0010598499999999998,
+      "extra": 0,
+      "found": 1,
+      "input_tokens": 6349,
+      "kind": "behavior",
+      "labels": 1,
+      "model_calls": 3,
+      "output_tokens": 215,
+      "profile": "treatment",
+      "retrieve_called": true,
+      "tool_calls": 3,
+      "tools": {
+        "read_file": 1,
+        "retrieve": 1,
+        "search": 1
+      },
+      "usage_known": true,
+      "wall_ms": 16291
+    },
+    {
+      "answered": [
+        "crates/ignore/src/walk.rs"
+      ],
+      "capped": null,
+      "case_id": "parallel-walk",
+      "correct": true,
+      "cost_usd": 0.00054225,
+      "extra": 0,
+      "found": 1,
+      "input_tokens": 3205,
+      "kind": "behavior",
+      "labels": 1,
+      "model_calls": 3,
+      "output_tokens": 123,
+      "profile": "treatment",
+      "retrieve_called": true,
+      "tool_calls": 3,
+      "tools": {
+        "retrieve": 1,
+        "search": 2
+      },
+      "usage_known": true,
+      "wall_ms": 14629
+    },
+    {
+      "answered": [
+        "crates/printer/src/summary.rs"
+      ],
+      "capped": "rounds",
+      "case_id": "path-printer",
+      "correct": false,
+      "cost_usd": 0.012428,
+      "extra": 1,
+      "found": 0,
+      "input_tokens": 78700,
+      "kind": "behavior",
+      "labels": 1,
+      "model_calls": 13,
+      "output_tokens": 1246,
+      "profile": "treatment",
+      "retrieve_called": true,
+      "tool_calls": 15,
+      "tools": {
+        "read_file": 7,
+        "retrieve": 1,
+        "search": 7
+      },
+      "usage_known": true,
+      "wall_ms": 61458
+    },
+    {
+      "answered": [
+        "crates/cli/src/pattern.rs"
+      ],
+      "capped": null,
+      "case_id": "patterns-file",
+      "correct": true,
+      "cost_usd": 0.0015693,
+      "extra": 0,
+      "found": 1,
+      "input_tokens": 9402,
+      "kind": "behavior",
+      "labels": 1,
+      "model_calls": 4,
+      "output_tokens": 318,
+      "profile": "treatment",
+      "retrieve_called": true,
+      "tool_calls": 6,
+      "tools": {
+        "read_file": 4,
+        "retrieve": 1,
+        "search": 1
+      },
+      "usage_known": true,
+      "wall_ms": 21341
+    },
+    {
+      "answered": [
+        "crates/pcre2/src/error.rs"
+      ],
+      "capped": null,
+      "case_id": "pcre2-error",
+      "correct": true,
+      "cost_usd": 0.0016621000000000001,
+      "extra": 0,
+      "found": 1,
+      "input_tokens": 10324,
+      "kind": "symbol_lookup",
+      "labels": 1,
+      "model_calls": 4,
+      "output_tokens": 227,
+      "profile": "treatment",
+      "retrieve_called": true,
+      "tool_calls": 5,
+      "tools": {
+        "read_file": 2,
+        "retrieve": 1,
+        "search": 2
+      },
+      "usage_known": true,
+      "wall_ms": 17991
+    },
+    {
+      "answered": [
+        "crates/pcre2/src/matcher.rs"
+      ],
+      "capped": null,
+      "case_id": "pcre2-jit",
+      "correct": true,
+      "cost_usd": 0.00058435,
+      "extra": 0,
+      "found": 1,
+      "input_tokens": 3369,
+      "kind": "behavior",
+      "labels": 1,
+      "model_calls": 3,
+      "output_tokens": 158,
+      "profile": "treatment",
+      "retrieve_called": true,
+      "tool_calls": 3,
+      "tools": {
+        "read_file": 1,
+        "retrieve": 1,
+        "search": 1
+      },
+      "usage_known": true,
+      "wall_ms": 24152
+    },
+    {
+      "answered": [
+        "crates/regex/src/config.rs",
+        "crates/regex/src/matcher.rs"
+      ],
+      "capped": null,
+      "case_id": "regex-config",
+      "correct": true,
+      "cost_usd": 0.0011971500000000001,
+      "extra": 1,
+      "found": 1,
+      "input_tokens": 7461,
+      "kind": "behavior",
+      "labels": 1,
+      "model_calls": 3,
+      "output_tokens": 156,
+      "profile": "treatment",
+      "retrieve_called": false,
+      "tool_calls": 3,
+      "tools": {
+        "read_file": 1,
+        "search": 2
+      },
+      "usage_known": true,
+      "wall_ms": 8651
+    },
+    {
+      "answered": [
+        "crates/globset/src/lib.rs"
+      ],
+      "capped": "rounds",
+      "case_id": "regex-errors",
+      "correct": false,
+      "cost_usd": 0.0111843,
+      "extra": 1,
+      "found": 0,
+      "input_tokens": 71362,
+      "kind": "behavior",
+      "labels": 1,
+      "model_calls": 13,
+      "output_tokens": 960,
+      "profile": "treatment",
+      "retrieve_called": true,
+      "tool_calls": 18,
+      "tools": {
+        "read_file": 5,
+        "retrieve": 4,
+        "search": 9
+      },
+      "usage_known": true,
+      "wall_ms": 60150
+    },
+    {
+      "answered": [
+        "crates/regex/src/literal.rs",
+        "crates/regex/src/matcher.rs"
+      ],
+      "capped": null,
+      "case_id": "regex-literals",
+      "correct": true,
+      "cost_usd": 0.0063170000000000006,
+      "extra": 1,
+      "found": 1,
+      "input_tokens": 39840,
+      "kind": "behavior",
+      "labels": 1,
+      "model_calls": 10,
+      "output_tokens": 682,
+      "profile": "treatment",
+      "retrieve_called": true,
+      "tool_calls": 12,
+      "tools": {
+        "read_file": 4,
+        "retrieve": 1,
+        "search": 7
+      },
+      "usage_known": true,
+      "wall_ms": 59284
+    },
+    {
+      "answered": [
+        "crates/regex/src/matcher.rs",
+        "crates/regex/src/config.rs"
+      ],
+      "capped": null,
+      "case_id": "regex-matcher",
+      "correct": true,
+      "cost_usd": 0.0010633,
+      "extra": 1,
+      "found": 1,
+      "input_tokens": 6382,
+      "kind": "symbol_lookup",
+      "labels": 1,
+      "model_calls": 3,
+      "output_tokens": 212,
+      "profile": "treatment",
+      "retrieve_called": true,
+      "tool_calls": 3,
+      "tools": {
+        "read_file": 1,
+        "retrieve": 1,
+        "search": 1
+      },
+      "usage_known": true,
+      "wall_ms": 13365
+    },
+    {
+      "answered": [
+        "crates/printer/src/util.rs"
+      ],
+      "capped": null,
+      "case_id": "replace-captures",
+      "correct": true,
+      "cost_usd": 0.0005389999999999999,
+      "extra": 0,
+      "found": 1,
+      "input_tokens": 3070,
+      "kind": "behavior",
+      "labels": 1,
+      "model_calls": 3,
+      "output_tokens": 157,
+      "profile": "treatment",
+      "retrieve_called": true,
+      "tool_calls": 3,
+      "tools": {
+        "read_file": 1,
+        "retrieve": 1,
+        "search": 1
+      },
+      "usage_known": true,
+      "wall_ms": 12042
+    },
+    {
+      "answered": [
+        "crates/grep/examples/simplegrep.rs"
+      ],
+      "capped": null,
+      "case_id": "rg-examples",
+      "correct": true,
+      "cost_usd": 0.0007454499999999999,
+      "extra": 0,
+      "found": 1,
+      "input_tokens": 4123,
+      "kind": "behavior",
+      "labels": 1,
+      "model_calls": 3,
+      "output_tokens": 254,
+      "profile": "treatment",
+      "retrieve_called": true,
+      "tool_calls": 3,
+      "tools": {
+        "read_file": 1,
+        "retrieve": 1,
+        "search": 1
+      },
+      "usage_known": true,
+      "wall_ms": 12203
+    },
+    {
+      "answered": [
+        "crates/core/main.rs"
+      ],
+      "capped": null,
+      "case_id": "search-parallel",
+      "correct": true,
+      "cost_usd": 0.0015411499999999998,
+      "extra": 0,
+      "found": 1,
+      "input_tokens": 9021,
+      "kind": "behavior",
+      "labels": 1,
+      "model_calls": 4,
+      "output_tokens": 376,
+      "profile": "treatment",
+      "retrieve_called": false,
+      "tool_calls": 4,
+      "tools": {
+        "read_file": 2,
+        "search": 2
+      },
+      "usage_known": true,
+      "wall_ms": 17222
+    },
+    {
+      "answered": [
+        "crates/searcher/src/searcher/mod.rs"
+      ],
+      "capped": null,
+      "case_id": "searcher-builder",
+      "correct": true,
+      "cost_usd": 0.0010500000000000002,
+      "extra": 0,
+      "found": 1,
+      "input_tokens": 6110,
+      "kind": "behavior",
+      "labels": 1,
+      "model_calls": 4,
+      "output_tokens": 267,
+      "profile": "treatment",
+      "retrieve_called": true,
+      "tool_calls": 4,
+      "tools": {
+        "read_file": 1,
+        "retrieve": 1,
+        "search": 2
+      },
+      "usage_known": true,
+      "wall_ms": 12370
+    },
+    {
+      "answered": [
+        "crates/searcher/src/searcher/core.rs"
+      ],
+      "capped": null,
+      "case_id": "searcher-core",
+      "correct": true,
+      "cost_usd": 0.00069895,
+      "extra": 0,
+      "found": 1,
+      "input_tokens": 3983,
+      "kind": "behavior",
+      "labels": 1,
+      "model_calls": 3,
+      "output_tokens": 203,
+      "profile": "treatment",
+      "retrieve_called": true,
+      "tool_calls": 3,
+      "tools": {
+        "read_file": 1,
+        "retrieve": 1,
+        "search": 1
+      },
+      "usage_known": true,
+      "wall_ms": 8190
+    },
+    {
+      "answered": [
+        "crates/searcher/src/searcher/glue.rs"
+      ],
+      "capped": null,
+      "case_id": "searcher-glue",
+      "correct": true,
+      "cost_usd": 0.0017694,
+      "extra": 0,
+      "found": 1,
+      "input_tokens": 10726,
+      "kind": "behavior",
+      "labels": 1,
+      "model_calls": 4,
+      "output_tokens": 321,
+      "profile": "treatment",
+      "retrieve_called": true,
+      "tool_calls": 5,
+      "tools": {
+        "read_file": 2,
+        "retrieve": 1,
+        "search": 2
+      },
+      "usage_known": true,
+      "wall_ms": 16458
+    },
+    {
+      "answered": [
+        "crates/searcher/src/testutil.rs"
+      ],
+      "capped": null,
+      "case_id": "searcher-testutil",
+      "correct": true,
+      "cost_usd": 0.00133695,
+      "extra": 0,
+      "found": 1,
+      "input_tokens": 8203,
+      "kind": "behavior",
+      "labels": 1,
+      "model_calls": 4,
+      "output_tokens": 213,
+      "profile": "treatment",
+      "retrieve_called": true,
+      "tool_calls": 4,
+      "tools": {
+        "read_file": 2,
+        "retrieve": 1,
+        "search": 1
+      },
+      "usage_known": true,
+      "wall_ms": 12247
+    },
+    {
+      "answered": [
+        "crates/searcher/src/sink.rs"
+      ],
+      "capped": null,
+      "case_id": "sink",
+      "correct": true,
+      "cost_usd": 0.0012869,
+      "extra": 0,
+      "found": 1,
+      "input_tokens": 7666,
+      "kind": "symbol_lookup",
+      "labels": 1,
+      "model_calls": 4,
+      "output_tokens": 274,
+      "profile": "treatment",
+      "retrieve_called": true,
+      "tool_calls": 4,
+      "tools": {
+        "read_file": 2,
+        "retrieve": 1,
+        "search": 1
+      },
+      "usage_known": true,
+      "wall_ms": 12246
+    },
+    {
+      "answered": [
+        "crates/cli/src/human.rs"
+      ],
+      "capped": null,
+      "case_id": "size-parse",
+      "correct": true,
+      "cost_usd": 0.00064715,
+      "extra": 0,
+      "found": 1,
+      "input_tokens": 3901,
+      "kind": "behavior",
+      "labels": 1,
+      "model_calls": 3,
+      "output_tokens": 124,
+      "profile": "treatment",
+      "retrieve_called": true,
+      "tool_calls": 3,
+      "tools": {
+        "read_file": 1,
+        "retrieve": 1,
+        "search": 1
+      },
+      "usage_known": true,
+      "wall_ms": 15541
+    },
+    {
+      "answered": [
+        "crates/regex/src/ast.rs",
+        "crates/regex/src/config.rs"
+      ],
+      "capped": null,
+      "case_id": "smart-case",
+      "correct": true,
+      "cost_usd": 0.0013465999999999999,
+      "extra": 1,
+      "found": 1,
+      "input_tokens": 7604,
+      "kind": "behavior",
+      "labels": 1,
+      "model_calls": 4,
+      "output_tokens": 412,
+      "profile": "treatment",
+      "retrieve_called": true,
+      "tool_calls": 5,
+      "tools": {
+        "read_file": 2,
+        "retrieve": 1,
+        "search": 2
+      },
+      "usage_known": true,
+      "wall_ms": 16318
+    },
+    {
+      "answered": [
+        "crates/printer/src/standard.rs"
+      ],
+      "capped": null,
+      "case_id": "standard-printer",
+      "correct": true,
+      "cost_usd": 0.0006552,
+      "extra": 0,
+      "found": 1,
+      "input_tokens": 3768,
+      "kind": "behavior",
+      "labels": 1,
+      "model_calls": 3,
+      "output_tokens": 180,
+      "profile": "treatment",
+      "retrieve_called": true,
+      "tool_calls": 3,
+      "tools": {
+        "read_file": 1,
+        "retrieve": 1,
+        "search": 1
+      },
+      "usage_known": true,
+      "wall_ms": 12767
+    },
+    {
+      "answered": [
+        "crates/printer/src/stats.rs"
+      ],
+      "capped": null,
+      "case_id": "stats",
+      "correct": true,
+      "cost_usd": 0.00066815,
+      "extra": 0,
+      "found": 1,
+      "input_tokens": 3991,
+      "kind": "symbol_lookup",
+      "labels": 1,
+      "model_calls": 3,
+      "output_tokens": 139,
+      "profile": "treatment",
+      "retrieve_called": true,
+      "tool_calls": 3,
+      "tools": {
+        "read_file": 1,
+        "retrieve": 1,
+        "search": 1
+      },
+      "usage_known": true,
+      "wall_ms": 9869
+    },
+    {
+      "answered": [
+        "crates/cli/src/wtr.rs"
+      ],
+      "capped": null,
+      "case_id": "stdout-writer",
+      "correct": true,
+      "cost_usd": 0.0008280999999999999,
+      "extra": 0,
+      "found": 1,
+      "input_tokens": 4544,
+      "kind": "behavior",
+      "labels": 1,
+      "model_calls": 3,
+      "output_tokens": 293,
+      "profile": "treatment",
+      "retrieve_called": true,
+      "tool_calls": 3,
+      "tools": {
+        "read_file": 1,
+        "retrieve": 1,
+        "search": 1
+      },
+      "usage_known": true,
+      "wall_ms": 17003
+    },
+    {
+      "answered": [
+        "crates/regex/src/strip.rs"
+      ],
+      "capped": null,
+      "case_id": "strip-terminator",
+      "correct": true,
+      "cost_usd": 0.0011248999999999999,
+      "extra": 0,
+      "found": 1,
+      "input_tokens": 6516,
+      "kind": "behavior",
+      "labels": 1,
+      "model_calls": 3,
+      "output_tokens": 295,
+      "profile": "treatment",
+      "retrieve_called": false,
+      "tool_calls": 3,
+      "tools": {
+        "read_file": 1,
+        "search": 2
+      },
+      "usage_known": true,
+      "wall_ms": 11716
+    },
+    {
+      "answered": [
+        "crates/printer/src/summary.rs"
+      ],
+      "capped": null,
+      "case_id": "summary-printer",
+      "correct": true,
+      "cost_usd": 0.0008682,
+      "extra": 0,
+      "found": 1,
+      "input_tokens": 4608,
+      "kind": "behavior",
+      "labels": 1,
+      "model_calls": 3,
+      "output_tokens": 354,
+      "profile": "treatment",
+      "retrieve_called": true,
+      "tool_calls": 4,
+      "tools": {
+        "read_file": 2,
+        "retrieve": 1,
+        "search": 1
+      },
+      "usage_known": true,
+      "wall_ms": 14455
+    },
+    {
+      "answered": [
+        "crates/ignore/src/types.rs"
+      ],
+      "capped": null,
+      "case_id": "types-builder",
+      "correct": true,
+      "cost_usd": 0.00150805,
+      "extra": 0,
+      "found": 1,
+      "input_tokens": 8857,
+      "kind": "behavior",
+      "labels": 1,
+      "model_calls": 5,
+      "output_tokens": 359,
+      "profile": "treatment",
+      "retrieve_called": true,
+      "tool_calls": 5,
+      "tools": {
+        "read_file": 2,
+        "retrieve": 1,
+        "search": 2
+      },
+      "usage_known": true,
+      "wall_ms": 26106
+    }
+  ],
+  "report": {
+    "baseline": {
+      "accuracy": {
+        "hi": 0.9796156113950607,
+        "k": 73,
+        "lo": 0.8739053481109362,
+        "n": 77,
+        "p": 0.948051948051948
+      },
+      "accuracy_by_kind": {
+        "behavior": {
+          "hi": 0.9684509967442093,
+          "k": 46,
+          "lo": 0.8116149745493629,
+          "n": 50,
+          "p": 0.92
+        },
+        "multi_hop": {
+          "hi": 1.0,
+          "k": 20,
+          "lo": 0.8388698745050668,
+          "n": 20,
+          "p": 1.0
+        },
+        "symbol_lookup": {
+          "hi": 1.0,
+          "k": 7,
+          "lo": 0.6456611570247934,
+          "n": 7,
+          "p": 1.0
+        }
+      },
+      "capped_cases": 0,
+      "cases": 77,
+      "cases_using_retrieve": 0,
+      "cost_usd": 0.13352584999999995,
+      "input_tokens": {
+        "ci95": [
+          7911.480519480519,
+          13407.506493506493
+        ],
+        "mean": 10291.285714285714,
+        "total": 792429.0
+      },
+      "label_recall": {
+        "hi": 0.989426846635947,
+        "k": 94,
+        "lo": 0.9129785098835845,
+        "n": 97,
+        "p": 0.9690721649484536
+      },
+      "model_calls": {
+        "ci95": [
+          3.896103896103896,
+          4.766233766233766
+        ],
+        "mean": 4.298701298701299,
+        "total": 331.0
+      },
+      "output_tokens": {
+        "ci95": [
+          315.8831168831169,
+          459.09090909090907
+        ],
+        "mean": 380.8181818181818,
+        "total": 29323.0
+      },
+      "profile": "baseline",
+      "tool_calls": {
+        "ci95": [
+          4.376623376623376,
+          5.454545454545454
+        ],
+        "mean": 4.883116883116883,
+        "total": 376.0
+      },
+      "tools": {
+        "read_file": 142,
+        "search": 234
+      },
+      "usage_known": true,
+      "wall_ms": {
+        "ci95": [
+          17826.753246753247,
+          23367.974025974025
+        ],
+        "mean": 20460.935064935064,
+        "total": 1575492.0
+      }
+    },
+    "case_count": 77,
+    "harness": "retrieval-live-v1",
+    "meta": {
+      "case_order": [
+        "size-parse",
+        "decompress",
+        "escape",
+        "hostname",
+        "patterns-file",
+        "child-reader",
+        "stdout-writer",
+        "haystack",
+        "logger",
+        "error-flag",
+        "fnv",
+        "glob-regex",
+        "globset-strategy",
+        "glob-pathutil",
+        "glob-serde",
+        "types-builder",
+        "default-types",
+        "overrides",
+        "gitignore-match",
+        "dir-ignore-state",
+        "parallel-walk",
+        "hidden-files",
+        "interpolate",
+        "matcher-trait",
+        "pcre2-jit",
+        "pcre2-error",
+        "color-specs",
+        "hyperlink-format",
+        "hyperlink-alias",
+        "json-printer",
+        "json-types",
+        "standard-printer",
+        "summary-printer",
+        "stats",
+        "path-printer",
+        "counter-writer",
+        "replace-captures",
+        "smart-case",
+        "ban-byte",
+        "regex-literals",
+        "regex-config",
+        "regex-errors",
+        "strip-terminator",
+        "non-matching-bytes",
+        "regex-matcher",
+        "line-buffer",
+        "line-iter",
+        "mmap",
+        "sink",
+        "searcher-core",
+        "searcher-glue",
+        "searcher-builder",
+        "searcher-testutil",
+        "rg-examples",
+        "grep-facade",
+        "files-mode",
+        "search-parallel",
+        "mh-maxfilesize",
+        "mh-config-file",
+        "mh-lowargs-hiargs",
+        "mh-json-output",
+        "mh-decompress-search",
+        "mh-bash-completion",
+        "mh-man-page",
+        "mh-help-text",
+        "mh-version-hash",
+        "mh-hyperlink-host",
+        "mh-type-add",
+        "mh-replacement",
+        "mh-stats",
+        "mh-glob-ignore",
+        "mh-multiline",
+        "mh-walk-build",
+        "mh-pcre2-choice",
+        "mh-binary-detect",
+        "mh-encoding",
+        "mh-sort"
+      ],
+      "cases_name": "ripgrep-14.1.1",
+      "cases_sha256": "136620a07b2cc40db0702335e1429e67a3a5b8d9751715a86cb7b0f19e175a91",
+      "index": {
+        "checkout_bytes": 3025946,
+        "checkout_files": 212,
+        "cold": {
+          "exact_ms": 5337.988421,
+          "graph_ms": 17338.402345,
+          "lexical_ms": 3235.613747,
+          "semantic_ms": 393904.410579,
+          "symbols_ms": 19647.3104,
+          "total_ms": 439463.727335
+        },
+        "corpus": "the pinned checkout (212 files, 3025946 bytes) plus 6285 deterministic synthetic padding files (102973440 bytes) to reach the target; the padding is not repository content",
+        "incremental_ms": 15.036918,
+        "incremental_path": "crates/cli/src/human.rs",
+        "indexed_bytes": 105906833,
+        "indexed_files": 6497,
+        "padding_bytes": 102973440,
+        "padding_files": 6285,
+        "target_bytes": 104857600
+      },
+      "limits": {
+        "case_token_budget": 150000,
+        "max_output_tokens": 2048,
+        "max_rounds": 12,
+        "tool_output_chars": 6000
+      },
+      "model": "glm-5.3-flash",
+      "price": {
+        "input_per_mtok_usd": 0.15,
+        "output_per_mtok_usd": 0.5
+      },
+      "repo": {
+        "bytes": 3030042,
+        "commit": "4649aa9700619f94cf9c66876e9549d83420e16c",
+        "files": 213,
+        "head": "4649aa9700619f94cf9c66876e9549d83420e16c",
+        "labels_verified": 97,
+        "url": "https://github.com/BurntSushi/ripgrep.git"
+      }
+    },
+    "method": "Same model, same questions, same pinned checkout for both profiles. BASELINE = the external baseline surface: a real ripgrep process behind `search` plus `read_file`. TREATMENT = those same two tools plus `retrieve` (the Modbit retrieval planner, structural profile, in-process); it is OFFERED, never forced: the transcripts record forced=false on every call and the validator rejects any other value, and the report counts the cases in which the model chose to call it. Correctness is the oracle's, never a model's: every labelled file must be named in the final JSON answer, with at most two extra paths. Accuracy intervals are Wilson; token, tool-call and time means carry deterministic bootstrap intervals; the paired rows are treatment minus baseline per case. Decoding is at temperature 0 but a hosted model is not bit-reproducible, so one run is one sample; the rescore reproduces the report from the retained transcripts, not from the model. Wall times include the gateway's latency and are not comparable across machines. Index times are for the corpus named in the index block, which says how much of it is synthetic padding.",
+    "paired": [
+      {
+        "better": "higher",
+        "ci95": [
+          -0.03896103896103896,
+          0.03896103896103896
+        ],
+        "losses": 1,
+        "mean_delta": 0.0,
+        "measure": "accuracy",
+        "significant": false,
+        "ties": 75,
+        "wins": 1
+      },
+      {
+        "better": "lower",
+        "ci95": [
+          -508.2597402597403,
+          3258.1688311688313
+        ],
+        "losses": 47,
+        "mean_delta": 1289.4415584415585,
+        "measure": "input_tokens",
+        "significant": false,
+        "ties": 0,
+        "wins": 30
+      },
+      {
+        "better": "lower",
+        "ci95": [
+          -78.83116883116882,
+          29.07792207792208
+        ],
+        "losses": 43,
+        "mean_delta": -23.727272727272727,
+        "measure": "output_tokens",
+        "significant": false,
+        "ties": 0,
+        "wins": 34
+      },
+      {
+        "better": "lower",
+        "ci95": [
+          -0.5454545454545454,
+          0.5194805194805194
+        ],
+        "losses": 29,
+        "mean_delta": -0.025974025974025976,
+        "measure": "tool_calls",
+        "significant": false,
+        "ties": 21,
+        "wins": 27
+      },
+      {
+        "better": "lower",
+        "ci95": [
+          -2829.753246753247,
+          1889.4025974025974
+        ],
+        "losses": 38,
+        "mean_delta": -499.42857142857144,
+        "measure": "wall_ms",
+        "significant": false,
+        "ties": 0,
+        "wins": 39
+      }
+    ],
+    "paired_count": 77,
+    "report_digest": "f1ac05699374dcc6a5da03a39dc45571f89ef00c79b75be6034831f7e53af013",
+    "treatment": {
+      "accuracy": {
+        "hi": 0.9796156113950607,
+        "k": 73,
+        "lo": 0.8739053481109362,
+        "n": 77,
+        "p": 0.948051948051948
+      },
+      "accuracy_by_kind": {
+        "behavior": {
+          "hi": 0.9793854036353695,
+          "k": 47,
+          "lo": 0.8378265662912299,
+          "n": 50,
+          "p": 0.94
+        },
+        "multi_hop": {
+          "hi": 0.9911187805671268,
+          "k": 19,
+          "lo": 0.7638641064874331,
+          "n": 20,
+          "p": 0.95
+        },
+        "symbol_lookup": {
+          "hi": 1.0,
+          "k": 7,
+          "lo": 0.6456611570247934,
+          "n": 7,
+          "p": 1.0
+        }
+      },
+      "capped_cases": 2,
+      "cases": 77,
+      "cases_using_retrieve": 65,
+      "cost_usd": 0.14750539999999998,
+      "input_tokens": {
+        "ci95": [
+          8601.792207792209,
+          15099.675324675325
+        ],
+        "mean": 11580.727272727272,
+        "total": 891716.0
+      },
+      "label_recall": {
+        "hi": 0.983849024753711,
+        "k": 93,
+        "lo": 0.8987232470071496,
+        "n": 97,
+        "p": 0.9587628865979382
+      },
+      "model_calls": {
+        "ci95": [
+          3.8181818181818183,
+          4.8441558441558445
+        ],
+        "mean": 4.298701298701299,
+        "total": 331.0
+      },
+      "output_tokens": {
+        "ci95": [
+          304.1948051948052,
+          418.6623376623377
+        ],
+        "mean": 357.09090909090907,
+        "total": 27496.0
+      },
+      "profile": "treatment",
+      "tool_calls": {
+        "ci95": [
+          4.220779220779221,
+          5.558441558441558
+        ],
+        "mean": 4.857142857142857,
+        "total": 374.0
+      },
+      "tools": {
+        "read_file": 146,
+        "retrieve": 69,
+        "search": 159
+      },
+      "usage_known": true,
+      "wall_ms": {
+        "ci95": [
+          17449.20779220779,
+          22716.77922077922
+        ],
+        "mean": 19961.506493506495,
+        "total": 1537036.0
+      }
+    }
+  },
+  "row": "px137",
+  "spend": {
+    "calls": 662,
+    "cap_usd": 4.0,
+    "input_tokens": 1684145,
+    "output_tokens": 56819,
+    "spent_usd": 0.2810312499999999,
+    "stopped_by_cap": false,
+    "unknown_usage_calls": 0
+  }
+}

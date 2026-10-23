@@ -25,7 +25,9 @@ jobs:
   rust:
     name: rust CI_COMPATIBLE (${{ matrix.os }})
     runs-on: ${{ matrix.os }}
-    timeout-minutes: 75
+    # The Windows test step alone takes 67-73 minutes (ConPTY, process spawn and file I/O are slow there); at 75 it was
+    # cancelled on main and on PR runs with every visible test passing. macOS and Ubuntu finish in 25-45 minutes.
+    timeout-minutes: ${{ matrix.os == 'windows-latest' && 150 || 75 }}
     strategy:
       fail-fast: false
       matrix:
@@ -59,9 +61,41 @@ jobs:
       - name: Build
         run: cargo build --workspace --locked
       - name: Test (includes real cargo-metadata forbidden-edge test)
+        # MODBIT_PERF_OUT: perf_px_041 runs here beside the other tests of its file, the load that put the Core's share over 100 ms before
+        # DR-PX-2026-10-21-015; its result is kept for comparison with the quiet re-run below.
+        env:
+          MODBIT_PERF_OUT: ${{ runner.temp }}/perf-in-suite
         run: cargo test --workspace --locked
+      - name: Record the PX-041 Core-share latency distribution (DR-PX-2026-10-21-015) - recorded on every runner, asserted only on the reference profile
+        if: ${{ !cancelled() }}
+        env:
+          MODBIT_PERF_OUT: ${{ runner.temp }}/perf
+        run: cargo test --locked -p modbit-core --test stream_transcript perf_px_041 -- --nocapture
+      - name: Upload the recorded latency distribution
+        if: ${{ !cancelled() }}
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: perf-px041-core-stream-${{ matrix.os }}
+          path: |
+            ${{ runner.temp }}/perf
+            ${{ runner.temp }}/perf-in-suite
+          if-no-files-found: warn
+      - name: macOS actuator real-permission tests (PX-071) - SKIPPED loudly where the runner has no Accessibility / Screen Recording grant
+        if: ${{ !cancelled() && runner.os == 'macOS' }}
+        # While the real-AX suite settles on hosted runners its failures are shown
+        # (annotations + log) but do not fail the job; flip this off once it is stable.
+        continue-on-error: true
+        # A hosted runner normally has neither permission, and the tests drive a
+        # real AppKit application through the real Accessibility API. The script
+        # asks the helper itself (`--check-permissions`), runs the #[ignore]d
+        # tests when the answer is yes, and otherwise prints SKIPPED with the
+        # count and the owner steps and writes a warning annotation. It never
+        # reports a skipped test as passed.
+        run: services/modbit-actuator-macos/scripts/ax-tests.sh
       - name: Architecture dependency lint (docs/12, docs/81)
         run: cargo run --locked -p architecture-lint -- --manifest-path Cargo.toml --rules tools/architecture-lint/rules.toml
+      - name: Git spawn lint — a Git process is built only by the hardened runner (PX-067, docs/65 AFW-J09)
+        run: cargo run --locked -p architecture-lint -- spawns --repo . --rules tools/architecture-lint/rules.toml
       - name: Module registration lint — owner, canonical single-owner systems, capability requirement ids (M0.4, docs/45, docs/81)
         shell: bash
         run: |
@@ -157,6 +191,9 @@ jobs:
           MODBIT_GUEST_CHROMIUM: /usr/bin/google-chrome
           # The image's guests have a browser (M8.8; IMP-EV-0072: what the gateway declares).
           MODBIT_GUEST_FEATURES: browser
+          # PX-085: the cloud time source honours its clock-offset table only
+          # under this variable, so the worker loop's schedule test can move time.
+          MODBIT_CLOUD_AUTOMATION_TEST_CLOCK: "1"
         shell: bash
         run: |
           set -o pipefail
@@ -205,7 +242,7 @@ jobs:
           cache: pnpm
       - run: pnpm install --frozen-lockfile
       - name: Build the real Core
-        run: cargo build --locked -p modbit-core -p modbit-execd -p modbit-cli
+        run: cargo build --locked -p modbit-core -p modbit-execd -p modbit-cli -p modbit-actuator-fixture
       - name: Build desktop bundles
         run: pnpm --filter @modbit/desktop build
       - name: Warm the Electron binary (a cold download inside the test budget stalls macOS runners)

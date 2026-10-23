@@ -212,12 +212,56 @@ fn stop_inheriting_foreign_handles() {}
 /// data directory and wait for its ready line. `replay_generation` is the
 /// Core's boot generation: the fence every attach from this Core carries.
 pub fn spawn_execd(data_dir: &Path, replay_generation: u64) -> Result<Execd> {
+    import_legacy_execd_objects(data_dir);
     let execd = spawn_or_reattach(data_dir, replay_generation)?;
     if execd.reattached {
         eprintln!("modbit-core: reattached to the terminal broker a previous Core left alive");
     }
     hold_broker_open(execd.target.clone());
     Ok(execd)
+}
+
+/// The Core's content-addressed object store, which the terminal broker
+/// seals its `output_ref` objects into (FIX-09): one store for what
+/// `artifact.range` and `ReadObjectRange` read and what the broker names.
+pub fn core_object_dir(data_dir: &Path) -> PathBuf {
+    data_dir.join("core").join("objects")
+}
+
+/// Before the broker sealed into the Core's store it kept its own
+/// (`<data>/execd/objects`), which nothing in the Core could read. Move what
+/// a previous version left there into the Core's store, verifying each
+/// object's digest against its name; an object that does not match is left
+/// where it is rather than adopted.
+fn import_legacy_execd_objects(data_dir: &Path) {
+    let legacy = data_dir.join("execd").join("objects");
+    let Ok(shards) = std::fs::read_dir(&legacy) else {
+        return;
+    };
+    let Ok(store) = modbit_event_store::ObjectStore::open(core_object_dir(data_dir)) else {
+        return;
+    };
+    for shard in shards.flatten() {
+        let Ok(files) = std::fs::read_dir(shard.path()) else {
+            continue;
+        };
+        let prefix = shard.file_name().to_string_lossy().into_owned();
+        for f in files.flatten() {
+            let name = f.file_name().to_string_lossy().into_owned();
+            if prefix.len() != 2 || name.len() != 62 {
+                continue;
+            }
+            let Ok(bytes) = std::fs::read(f.path()) else {
+                continue;
+            };
+            if store
+                .put(&bytes)
+                .is_ok_and(|h| h == format!("{prefix}{name}"))
+            {
+                let _ = std::fs::remove_file(f.path());
+            }
+        }
+    }
 }
 
 fn spawn_or_reattach(data_dir: &Path, replay_generation: u64) -> Result<Execd> {
@@ -259,6 +303,8 @@ fn spawn_or_reattach(data_dir: &Path, replay_generation: u64) -> Result<Execd> {
     let mut child = command
         .arg("--data-dir")
         .arg(&execd_dir)
+        .arg("--object-dir")
+        .arg(core_object_dir(data_dir))
         .arg("--orphan-grace-secs")
         .arg(orphan_grace_secs().to_string())
         .stdin(Stdio::null())
@@ -348,8 +394,18 @@ pub struct ToolHost {
     pub(crate) lexical: Mutex<HashMap<PathBuf, Arc<Mutex<modbit_retrieval::LexicalIndex>>>>,
     /// Symbol indexes per canonical workspace root (M3.3).
     pub(crate) symbols: Mutex<HashMap<PathBuf, Arc<Mutex<modbit_retrieval::SymbolIndex>>>>,
-    /// Semantic chunk indexes per canonical workspace root (M3.5).
-    pub(crate) semantic: Mutex<HashMap<PathBuf, Arc<Mutex<modbit_retrieval::SemanticIndex>>>>,
+    /// Semantic chunk index slots per canonical workspace root (M3.5): empty
+    /// until a query that needs the embeddings builds them.
+    pub(crate) semantic:
+        Mutex<HashMap<PathBuf, Arc<Mutex<Option<modbit_retrieval::SemanticIndex>>>>>,
+    /// Reference, call and implementor graphs per canonical workspace root (PX-110).
+    pub(crate) refs: Mutex<HashMap<PathBuf, Arc<Mutex<modbit_retrieval::RefGraph>>>>,
+    /// How each workspace's indexes came to be and what searches did (PX-111).
+    pub(crate) index_states: Mutex<HashMap<PathBuf, Arc<crate::index_host::IndexState>>>,
+    /// Serializes opening a workspace's indexes.
+    pub(crate) loading: Mutex<()>,
+    /// Workspaces whose exact index is open and whose derived indexes are not.
+    pub(crate) pending_opens: Mutex<HashMap<PathBuf, crate::index_host::PendingOpen>>,
     /// Evidence graphs per canonical workspace root (M3.6).
     pub(crate) graphs: Mutex<HashMap<PathBuf, Arc<Mutex<modbit_retrieval::EvidenceGraph>>>>,
     /// The repository knowledge map per canonical workspace root, kept as a
@@ -375,13 +431,24 @@ pub struct ToolHost {
     /// The admin/project/user configuration resolved and pinned per task
     /// (REQ-EV-0039, REQ-EV-0128).
     pub configurations: crate::config::Configurations,
+    /// The frozen capability view of each task's newest model round
+    /// (REQ-PX-131): the epoch every decision and receipt is stamped with.
+    pub(crate) epochs: crate::epoch::Epochs,
+    /// The listening services of the tasks' terminals, as the Core observed
+    /// them (REQ-PX-132).
+    pub(crate) process_services: crate::process_services::ProcessServices,
+    /// Component health and the optional OpenTelemetry export (REQ-PX-139).
+    pub(crate) telemetry: crate::telemetry::Telemetry,
     /// The Hook Bus (REQ-EV-0042/0139/0240): loaded extensions per session
     /// and the runs a fail-closed after-hook stopped.
     pub hooks: Arc<crate::hooks::HookBus>,
     /// Where this Core's own configuration and profile live.
-    data_dir: std::path::PathBuf,
+    pub(crate) data_dir: std::path::PathBuf,
     /// The browser sessions `browser.*` reach through their hosts (M7.1).
     pub browser: Arc<dyn modbit_browser::BrowserPort>,
+    /// Native computer control (PX-069): the runtime, the attached actuator
+    /// and the host that records what it does on the log.
+    pub computer: Arc<crate::computer::ComputerHost>,
     /// The provider gateway, for the credentials in its custody (M7.7):
     /// read at each call so a call's arguments can be refused for carrying
     /// one; never stored anywhere else.
@@ -400,6 +467,11 @@ pub struct ToolHost {
     /// (REQ-EV-0062): its variables and `PATH` entries reach the processes
     /// the tools start.
     pub environments: crate::environment::Environments,
+    /// Each task's mode and execution preference, folded from its log, and
+    /// the mode posture the kernel enforces on it (PX-051, PX-053).
+    pub tasking: crate::tasking::Tasking,
+    /// The run modes and allowlist rules, folded from the log (PX-057).
+    pub run_policies: crate::run_control::RunPolicies,
 }
 
 /// The Sandbox Gateway a Cloud Core Worker's Core reaches (M8.5).
@@ -420,6 +492,55 @@ pub struct SandboxGatewayCustody {
 }
 
 impl ToolHost {
+    /// The last page compiled for `session`, as an object the log can point
+    /// at (PX-122): what a restarted Core restores the known-state map from.
+    /// Empty when nothing was compiled or the object could not be written.
+    async fn persisted_page_ref(
+        &self,
+        store: &Arc<Mutex<EventStore>>,
+        session: modbit_browser::BrowserSessionId,
+    ) -> String {
+        let Some(page) = self.browser.last_page(session).await else {
+            return String::new();
+        };
+        let guard = store.lock().await;
+        crate::browser_observer::persist_page(&guard, &page).unwrap_or_default()
+    }
+
+    /// How many background command sessions the broker has running (FIX-17).
+    /// The broker stops its processes once no Core returns within its orphan
+    /// grace, so a Core that exits while one runs kills it: an idle-exiting
+    /// Core waits for them. A broker that cannot be reached holds nothing;
+    /// one that does not answer in time is treated as holding something
+    /// (the Core stays up rather than guess).
+    pub(crate) async fn running_background_sessions(&self) -> usize {
+        use modbit_terminal::{Event, ExecClient};
+        let Some(execd) = &self.execd else {
+            return 0;
+        };
+        let target = execd.target.clone();
+        let ask = async move {
+            let mut client = ExecClient::connect(&target.endpoint, &target.boot_secret)
+                .await
+                .ok()?;
+            client.list().await.ok()?;
+            loop {
+                match client.next().await {
+                    Ok(Some(Event::Sessions(list))) => {
+                        return Some(list.iter().filter(|s| s.running).count());
+                    }
+                    Ok(Some(_)) => {}
+                    _ => return None,
+                }
+            }
+        };
+        match tokio::time::timeout(std::time::Duration::from_secs(2), ask).await {
+            Ok(Some(n)) => n,
+            Ok(None) => 0,
+            Err(_) => 1,
+        }
+    }
+
     /// Build the host: direct tools, default policy, broker.
     pub fn new(
         data_dir: &Path,
@@ -432,13 +553,18 @@ impl ToolHost {
         modbit_tools::forge::register_forge(&mut registry).map_err(|e| anyhow::anyhow!("{e}"))?;
         modbit_tools::browser::register_browser(&mut registry)
             .map_err(|e| anyhow::anyhow!("{e}"))?;
+        modbit_tools::computer::register_computer(&mut registry)
+            .map_err(|e| anyhow::anyhow!("{e}"))?;
         // M9.4: the read declarations the host publishes are shared with the
         // registered `external.call`, so the effect class it presents to the
         // kernel is always the host's current judgement.
         let external_reads = Arc::new(modbit_mcp::ReadDeclarations::new());
         modbit_tools::external::register_external(&mut registry, Arc::clone(&external_reads))
             .map_err(|e| anyhow::anyhow!("{e}"))?;
-        let mcp = Arc::new(crate::mcp::McpHub::from_env(external_reads));
+        let mcp = Arc::new(crate::mcp::McpHub::from_env(
+            external_reads,
+            Arc::clone(gateway.broker()),
+        ));
         let runtime = ToolRuntime::new(registry, Arc::new(ProfilePolicy));
         let execd = match spawn_execd(data_dir, replay_generation) {
             Ok(e) => Some(e),
@@ -457,49 +583,55 @@ impl ToolHost {
             lexical: Mutex::new(HashMap::new()),
             symbols: Mutex::new(HashMap::new()),
             semantic: Mutex::new(HashMap::new()),
+            refs: Mutex::new(HashMap::new()),
+            index_states: Mutex::new(HashMap::new()),
+            loading: Mutex::new(()),
+            pending_opens: Mutex::new(HashMap::new()),
             graphs: Mutex::new(HashMap::new()),
             knowledge: Mutex::new(HashMap::new()),
             ledgers: Mutex::new(HashMap::new()),
             diag_baselines: Mutex::new(HashMap::new()),
             language_servers: Arc::new(std::sync::Mutex::new(HashMap::new())),
             state_dir: data_dir.join("workspaces"),
-            forge: crate::forge::ForgeCustody::from_env(),
+            forge: crate::forge::ForgeCustody::from_env(Arc::clone(gateway.broker())),
             mcp,
             configurations: crate::config::Configurations::default(),
+            epochs: crate::epoch::Epochs::default(),
+            process_services: crate::process_services::ProcessServices::default(),
+            telemetry: crate::telemetry::Telemetry::new(data_dir),
             hooks: Arc::new(crate::hooks::HookBus::default()),
             data_dir: data_dir.to_path_buf(),
             browser,
+            computer: Arc::new(crate::computer::ComputerHost::new(data_dir)),
             gateway,
             sandbox_gateway: Mutex::new(None),
             sandboxes: Mutex::new(HashMap::new()),
             browserless: std::sync::Mutex::new(std::collections::HashSet::new()),
             environments: crate::environment::Environments::default(),
+            tasking: crate::tasking::Tasking::default(),
+            run_policies: crate::run_control::RunPolicies::default(),
         })
+    }
+
+    /// The credential broker every credential this Core holds lives in
+    /// (REQ-PX-130): provider keys, the forge token, external servers'
+    /// credentials, the credentials a browser host fills, an exporter's
+    /// headers.
+    pub(crate) fn broker(&self) -> &Arc<modbit_secrets::CredentialBroker> {
+        self.gateway.broker()
     }
 
     /// The one redactor over everything this Core holds (REQ-EV-0017).
     pub(crate) fn redactor(&self) -> modbit_secrets::Redactor {
-        modbit_secrets::Redactor::new(self.secrets_in_custody())
+        self.broker().redactor()
     }
 
-    /// Every credential this Core holds (M7.7, docs/22 "Prompt-injection
-    /// isolation"): the provider keys the gateway can present and the forge
-    /// token. Memory only; the pipeline compares, never records.
-    fn secrets_in_custody(&self) -> Vec<String> {
-        let mut out: Vec<String> = self
-            .gateway
-            .endpoints()
-            .iter()
-            .filter_map(|e| e.credential.resolve())
-            .collect();
-        if let Some(t) = self.forge.get().and_then(|f| f.token.clone()) {
-            out.push(t);
-        }
-        // M9.4: an external server's credential is in this Core's custody
-        // too, so an argument carrying its value is refused like any other.
-        out.extend(self.mcp.secrets_in_custody());
-        out.retain(|s| s.len() >= 8);
-        out
+    /// Every credential this Core holds, for the one thing that must compare
+    /// text with them (M7.7, docs/22 "Prompt-injection isolation"): the
+    /// screen that refuses a tool call whose arguments carry one. The values
+    /// are compared and never recorded.
+    pub(crate) fn secrets_in_custody(&self) -> Vec<String> {
+        self.broker().custody_for_screening()
     }
 
     pub(crate) async fn workspace(
@@ -532,124 +664,106 @@ impl ToolHost {
         CapabilityKernel::default().envelope().clone()
     }
 
-    /// The retrieval index of a workspace root, built at first use (M3.1).
+    /// The retrieval index of a workspace root: opened from the persisted
+    /// store at first use (M3.1, PX-111).
     pub(crate) async fn index(
         &self,
         canonical: &Path,
     ) -> Result<Arc<Mutex<modbit_retrieval::RepositoryIndex>>> {
-        let mut map = self.indexes.lock().await;
-        if let Some(i) = map.get(canonical) {
-            return Ok(Arc::clone(i));
-        }
-        let (ws, _) = self.workspace(&canonical.to_string_lossy()).await?;
-        let revision = ws.lock().await.revision().number;
-        let idx = Arc::new(Mutex::new(
-            modbit_retrieval::RepositoryIndex::build(canonical, revision)
-                .map_err(|e| anyhow::anyhow!("{e}"))?,
-        ));
-        map.insert(canonical.to_path_buf(), Arc::clone(&idx));
-        Ok(idx)
+        self.ensure_exact(canonical).await?;
+        self.indexes
+            .lock()
+            .await
+            .get(canonical)
+            .cloned()
+            .context("the exact index")
     }
 
-    /// The BM25 index of a workspace root, built from the exact index at first use (M3.2).
+    /// The BM25 index of a workspace root (M3.2).
     pub(crate) async fn lexical(
         &self,
         canonical: &Path,
     ) -> Result<Arc<Mutex<modbit_retrieval::LexicalIndex>>> {
-        let mut map = self.lexical.lock().await;
-        if let Some(i) = map.get(canonical) {
-            return Ok(Arc::clone(i));
-        }
-        let index = self.index(canonical).await?;
-        let index = index.lock().await;
-        let lx = modbit_retrieval::LexicalIndex::build(index.texts(), index.revision())
-            .map_err(|e| anyhow::anyhow!("{e}"))?;
-        let lx = Arc::new(Mutex::new(lx));
-        map.insert(canonical.to_path_buf(), Arc::clone(&lx));
-        Ok(lx)
+        self.ensure_loaded(canonical).await?;
+        self.lexical
+            .lock()
+            .await
+            .get(canonical)
+            .cloned()
+            .context("the lexical index")
     }
 
-    /// The symbol index of a workspace root, built from the exact index at first use (M3.3).
+    /// The symbol index of a workspace root (M3.3).
     pub(crate) async fn symbols(
         &self,
         canonical: &Path,
     ) -> Result<Arc<Mutex<modbit_retrieval::SymbolIndex>>> {
-        let mut map = self.symbols.lock().await;
-        if let Some(i) = map.get(canonical) {
-            return Ok(Arc::clone(i));
-        }
-        let index = self.index(canonical).await?;
-        let index = index.lock().await;
-        let sx = Arc::new(Mutex::new(modbit_retrieval::SymbolIndex::build(
-            index.texts_with_hash(),
-            index.revision(),
-        )));
-        map.insert(canonical.to_path_buf(), Arc::clone(&sx));
-        Ok(sx)
+        self.ensure_loaded(canonical).await?;
+        self.symbols
+            .lock()
+            .await
+            .get(canonical)
+            .cloned()
+            .context("the symbol index")
     }
 
-    /// The semantic chunk index of a workspace root, built from the exact and
-    /// symbol indexes with the hashing embedder at first use (M3.5).
-    pub(crate) async fn semantic(
-        &self,
-        canonical: &Path,
-    ) -> Result<Arc<Mutex<modbit_retrieval::SemanticIndex>>> {
-        let mut map = self.semantic.lock().await;
-        if let Some(i) = map.get(canonical) {
-            return Ok(Arc::clone(i));
-        }
-        let index = self.index(canonical).await?;
-        let symbols = self.symbols(canonical).await?;
-        let index = index.lock().await;
-        let symbols = symbols.lock().await;
-        let files: Vec<modbit_retrieval::FileSource> = index
-            .texts()
-            .map(|(p, t, _)| (p, t, symbol_spans(&symbols, p)))
-            .collect();
-        let sem = modbit_retrieval::SemanticIndex::build(
-            Box::new(modbit_retrieval::HashingEmbedder::default()),
-            files.into_iter(),
-            index.revision(),
-        )
-        .map_err(|e| anyhow::anyhow!("{e}"))?;
-        let sem = Arc::new(Mutex::new(sem));
-        map.insert(canonical.to_path_buf(), Arc::clone(&sem));
-        Ok(sem)
-    }
-
-    /// The Context Ledger of a task (M3.8).
+    /// The Context Ledger of a task (M3.8). The first access in a process
+    /// rebuilds it from the task's log (`restore_ledger`), so the pack the
+    /// prompt injects and the Inspector's pack view survive a Core restart.
     pub(crate) async fn ledger(
         &self,
+        store: &Arc<Mutex<EventStore>>,
         task_id: TaskId,
     ) -> Arc<Mutex<modbit_context::ContextLedger>> {
+        if let Some(l) = self.ledgers.lock().await.get(&task_id) {
+            return Arc::clone(l);
+        }
+        let restored = restore_ledger(&*store.lock().await, task_id);
         let mut map = self.ledgers.lock().await;
         Arc::clone(
             map.entry(task_id)
-                .or_insert_with(|| Arc::new(Mutex::new(modbit_context::ContextLedger::default()))),
+                .or_insert_with(|| Arc::new(Mutex::new(restored))),
         )
     }
 
-    /// The evidence graph of a workspace root, built from the exact index, the
-    /// recent Git history and the worktree diff at first use (M3.6).
+    /// Before a prompt is compiled: drop the latest pack's fragments whose
+    /// file changed after they were read, so a pre-edit excerpt is never
+    /// re-injected under its old revision and hash (FIX-12, audit N7). Reads
+    /// the bytes on disk now, as `unretrieved_targets` does. Returns what was
+    /// dropped.
+    pub(crate) async fn revalidate_pack(
+        &self,
+        store: &Arc<Mutex<EventStore>>,
+        task_id: TaskId,
+        root: Option<&str>,
+    ) -> Vec<modbit_context::Invalidated> {
+        let Some(root) = root.map(Path::new) else {
+            return vec![];
+        };
+        let ledger = self.ledger(store, task_id).await;
+        let mut ledger = ledger.lock().await;
+        // A file with several entries is read once.
+        let mut seen: HashMap<String, Option<modbit_context::FileState>> = HashMap::new();
+        ledger.invalidate_stale(|p| {
+            seen.entry(p.to_owned())
+                .or_insert_with(|| workspace_file_state(root, p))
+                .clone()
+        })
+    }
+
+    /// The evidence graph of a workspace root (M3.6): its import edges come
+    /// from the persisted records, its history and worktree diff from Git.
     pub(crate) async fn graph(
         &self,
         canonical: &Path,
     ) -> Result<Arc<Mutex<modbit_retrieval::EvidenceGraph>>> {
-        let mut map = self.graphs.lock().await;
-        if let Some(g) = map.get(canonical) {
-            return Ok(Arc::clone(g));
-        }
-        let index = self.index(canonical).await?;
-        let index = index.lock().await;
-        let g = modbit_retrieval::EvidenceGraph::build(
-            index.texts(),
-            recent_commits(canonical),
-            worktree_changed_lines(canonical),
-            index.revision(),
-        );
-        let g = Arc::new(Mutex::new(g));
-        map.insert(canonical.to_path_buf(), Arc::clone(&g));
-        Ok(g)
+        self.ensure_loaded(canonical).await?;
+        self.graphs
+            .lock()
+            .await
+            .get(canonical)
+            .cloned()
+            .context("the evidence graph")
     }
 
     /// The cached knowledge map slot of a workspace root.
@@ -692,13 +806,27 @@ impl ToolHost {
         lease: Option<&CapabilityLease>,
     ) -> Vec<ToolSpec> {
         let kernel = CapabilityKernel::default();
+        let computer = self.computer.offered();
         self.runtime
             .registry()
             .specs()
             .into_iter()
             .filter(|s| {
+                // PX-048: a Commit and push is the person's act from the Changes
+                // app (the Core's `CommitAndPush` command asks for the approval
+                // and issues the call); the model is never offered the tool.
+                // Hiding is not authority: the call needs the approval whoever
+                // makes it.
+                if s.name == crate::changes::TOOL {
+                    return false;
+                }
                 if s.required_capabilities.iter().any(|c| c == "shell.exec") && self.execd.is_none()
                 {
+                    return false;
+                }
+                // PX-069 (fail closed): native control is offered only while
+                // a configured actuator is attached.
+                if crate::computer::is_computer_tool(&s.name) && !computer {
                     return false;
                 }
                 let Some(p) = profile else {
@@ -714,10 +842,13 @@ impl ToolHost {
                             effect_class: s.effect_class,
                             required_capabilities: &s.required_capabilities,
                             execution_profile: p,
+                            mode: modbit_domain::mode::TaskMode::Agent,
                             lease: Some(l),
+                            targets: &[],
                             approval: None,
                             intent_hash: "",
                             config: None,
+                            run: None,
                             emergency_stopped: false,
                             now: modbit_domain::Timestamp::now(),
                         }),
@@ -727,6 +858,51 @@ impl ToolHost {
                 }
             })
             .collect()
+    }
+
+    /// The search port over a task's workspace index: the one every
+    /// retrieval tool call and the Core's own goal-seeded pre-turn pack
+    /// (REQ-PX-108) go through, so there is one retrieval entry.
+    #[allow(clippy::too_many_arguments)] // the task's identity, workspace and lease scope
+    pub(crate) async fn index_port(
+        &self,
+        store: &Arc<Mutex<EventStore>>,
+        tenant_id: TenantId,
+        session_id: SessionId,
+        task_id: TaskId,
+        ws: &Arc<Mutex<WorkspaceService>>,
+        r: &Path,
+        lease: Option<&CapabilityLease>,
+        workspace_root: Option<&str>,
+    ) -> Result<Arc<dyn modbit_tools::SearchPort>> {
+        Ok(Arc::new(IndexPort {
+            index: self.index(r).await?,
+            lexical: self.lexical(r).await?,
+            symbols: self.symbols(r).await?,
+            semantic: self.semantic_slot(r).await?,
+            graph: self.graph(r).await?,
+            refs: self.refs(r).await?,
+            state: self.index_state(r).await?,
+            knowledge: self.knowledge(r).await,
+            evidence: task_evidence(store, task_id).await,
+            external: {
+                // Lock order: workspace, then store (as every writer does).
+                let svc = ws.lock().await;
+                let st = store.lock().await;
+                crate::external_diagnostics::locations(&st, task_id, &svc)
+            },
+            selection: selection_of(store, task_id).await,
+            documents: attached_documents(store, task_id).await,
+            ledger: self.ledger(store, task_id).await,
+            objects: store.lock().await.objects().clone(),
+            store: Arc::clone(store),
+            tenant_id,
+            session_id,
+            task_id,
+            workspace: Arc::clone(ws),
+            read_selectors: read_selectors_of(lease, workspace_root),
+            scope_root: workspace_root.unwrap_or_default().to_owned(),
+        }))
     }
 
     pub async fn invoke(
@@ -783,42 +959,73 @@ impl ToolHost {
         // until its next round (M9.4). A call already in flight keeps the
         // snapshot it was decided with.
         let root_text = root.as_ref().map(|p| p.to_string_lossy().into_owned());
-        let task_config =
-            self.configurations
-                .for_task(task_id, &self.data_dir, root_text.as_deref());
+        // FIX-05: a call decided with no snapshot (nothing resolved the
+        // task's configuration yet) is decided only under a configuration
+        // whose every layer could be read.
+        let task_config = self
+            .configurations
+            .try_for_task(task_id, &self.data_dir, root_text.as_deref())
+            .map_err(|e| anyhow::anyhow!("{}: {e}", crate::config::ConfigError::CODE))?;
+        // PX-051: the task's mode posture, as its run's last round boundary
+        // adopted it (or, with no run, as the user last set it). An
+        // unreadable log is a refusal, never a guess.
+        let mode = {
+            let st = store.lock().await;
+            self.tasking
+                .mode_in_force(&st, task_id)
+                .map_err(|e| anyhow::anyhow!("MODE_UNREADABLE: {e}"))?
+        };
+        let lease_ref = lease.clone();
+        // PX-057: who approves protected effects for the task, and the
+        // durable rules in force. An unreadable log is a refusal, never a
+        // guess at the narrower mode.
+        let run = {
+            let st = store.lock().await;
+            crate::run_control::context_for(
+                &self.run_policies,
+                &st,
+                task_id,
+                workspace_root.as_deref(),
+            )
+            .map_err(|e| anyhow::anyhow!("RUN_POLICY_UNREADABLE: {e}"))?
+        };
+        // REQ-PX-131: the epoch of the model round this call is decided in
+        // (or, outside a round, of the last one): it stamps the decision and
+        // every receipt of the call. The configuration, the mode and the
+        // projection the kernel reads below are the ones that round froze.
+        let authorization = {
+            let st = store.lock().await;
+            self.epochs.current(&st, task_id)
+        };
         let port = KernelPort {
+            run,
+            mode,
             kernel: CapabilityKernel::default(),
             lease,
             approval,
             emergency_stopped,
             projection,
             config: Arc::clone(&task_config),
+            // The root as the lease was granted over it (the task's own
+            // text, not its canonical form): selectors and targets must be
+            // spelled from the same root to be compared.
+            root: workspace_root.clone(),
+            deny_gui_shell: self.computer.is_child(task_id),
         };
         let search: Option<Arc<dyn modbit_tools::SearchPort>> = match (&workspace, &root) {
-            (Some(ws), Some(r)) => Some(Arc::new(IndexPort {
-                index: self.index(r).await?,
-                lexical: self.lexical(r).await?,
-                symbols: self.symbols(r).await?,
-                semantic: self.semantic(r).await?,
-                graph: self.graph(r).await?,
-                knowledge: self.knowledge(r).await,
-                evidence: task_evidence(store, task_id).await,
-                external: {
-                    // Lock order: workspace, then store (as every writer does).
-                    let svc = ws.lock().await;
-                    let st = store.lock().await;
-                    crate::external_diagnostics::locations(&st, task_id, &svc)
-                },
-                selection: selection_of(store, task_id).await,
-                documents: attached_documents(store, task_id).await,
-                ledger: self.ledger(task_id).await,
-                objects: store.lock().await.objects().clone(),
-                store: Arc::clone(store),
-                tenant_id,
-                session_id,
-                task_id,
-                workspace: Arc::clone(ws),
-            })),
+            (Some(ws), Some(r)) => Some(
+                self.index_port(
+                    store,
+                    tenant_id,
+                    session_id,
+                    task_id,
+                    ws,
+                    r,
+                    lease_ref.as_ref(),
+                    workspace_root.as_deref(),
+                )
+                .await?,
+            ),
             _ => None,
         };
         let language: Option<Arc<dyn modbit_tools::LanguageServicePort>> = match (&workspace, &root)
@@ -864,11 +1071,28 @@ impl ToolHost {
                     "CANCELLED",
                     "the call was cancelled".into(),
                 ),
-                _ => (
-                    ToolStatus::PolicyDenied,
-                    "APPROVAL_DENIED",
-                    c.policy_decision.clone().unwrap_or_default(),
-                ),
+                _ => {
+                    // REQ-PX-058: a call failed because its approval expired is
+                    // told as expired, not as denied by a person.
+                    let expired = store
+                        .lock()
+                        .await
+                        .approval_for_call(&tool_call_id)
+                        .ok()
+                        .flatten()
+                        .is_some_and(|a| {
+                            a.state == modbit_domain::approval::ApprovalState::Expired
+                        });
+                    (
+                        ToolStatus::PolicyDenied,
+                        if expired {
+                            "APPROVAL_EXPIRED"
+                        } else {
+                            "APPROVAL_DENIED"
+                        },
+                        c.policy_decision.clone().unwrap_or_default(),
+                    )
+                }
             };
             let result = modbit_tools::ToolCallResult {
                 tool_call_id,
@@ -920,7 +1144,9 @@ impl ToolHost {
                 tool.as_ref(),
                 serde_json::from_str::<serde_json::Value>(arguments_json),
             ) {
-                (Some(t), Ok(args)) => t.effect_of(&args).max(t.spec().effect_class),
+                (Some(t), Ok(args)) => t
+                    .effect_in_profile(&args, execution_profile)
+                    .max(t.spec().effect_class),
                 _ => spec
                     .as_ref()
                     .map(|s| s.effect_class)
@@ -976,7 +1202,57 @@ impl ToolHost {
             actor: actor.clone(),
             prior_state,
             lease_generation,
+            lease_id,
+            execution_target: execution_target(root.as_deref()),
+            compensates,
+            reversibility: self
+                .runtime
+                .registry()
+                .get(tool_name)
+                .map(|t| t.spec().reversibility()),
+            authorization: authorization.clone(),
         });
+        // PX-119 / PX-066: the merge and apply-back tools keep their state on
+        // the log through this port, built for the one call that needs it.
+        let git_state: Option<Arc<dyn modbit_tools::GitStatePort>> = (tool_name
+            .starts_with("git.merge.")
+            || tool_name.starts_with("git.apply.")
+            || tool_name.starts_with("git.changes.")
+            || tool_name.starts_with("git.worktree."))
+        .then(|| {
+            Arc::new(crate::git_state::CoreGitState {
+                store: Arc::clone(store),
+                tenant: tenant_id,
+                session: session_id,
+                task: task_id,
+                actor: actor.clone(),
+                root: root.clone(),
+                exec: self.execd.as_ref().map(|e| e.target.clone()),
+                profile: execution_profile.to_owned(),
+                lease: lease_ref.clone(),
+                mode,
+                emergency: emergency_stopped,
+                config: Arc::clone(&task_config),
+                verification_json: self.configurations.verification_json(task_id),
+                cancel: cancel.clone(),
+                forge: self.forge.get(),
+            }) as Arc<dyn modbit_tools::GitStatePort>
+        });
+        // PX-069: the computer tools reach the runtime through a port bound to
+        // this task, run, mode and policy; nothing else holds the actuator.
+        let computer_port: Option<Arc<dyn modbit_computer::ComputerPort>> =
+            crate::computer::is_computer_tool(tool_name).then(|| {
+                Arc::new(crate::computer::CorePort {
+                    host: Arc::clone(&self.computer),
+                    task_id,
+                    session_id,
+                    run_id: run_id.map(|r| r.to_string()).unwrap_or_default(),
+                    mode: mode.name().to_owned(),
+                    emergency_stopped,
+                    policy: crate::computer::policy_of(&task_config),
+                    redactor: self.redactor(),
+                }) as Arc<dyn modbit_computer::ComputerPort>
+            });
         let ctx = InvokeContext {
             task_id,
             execution_profile: execution_profile.to_owned(),
@@ -1001,6 +1277,9 @@ impl ToolHost {
                 actor: actor.clone(),
             })),
             browser: Some(Arc::clone(&self.browser)),
+            computer: computer_port,
+            approval_id: None,
+            intent_hash: None,
             sandbox: self
                 .sandboxes
                 .lock()
@@ -1016,30 +1295,60 @@ impl ToolHost {
                 })
             }),
             secrets_in_custody,
+            // REQ-PX-105: `skill.load` reads the registry as the files on
+            // disk say now, under the owner's trust decisions. Built only
+            // for the call that needs it.
+            skills: (tool_name == "skill.load").then(|| {
+                Arc::new(crate::skills::SkillsPort {
+                    data_dir: self.data_dir.clone(),
+                    workspace_root: workspace_root.clone(),
+                    extension_dirs: self
+                        .hooks
+                        .loaded_now(session_id)
+                        .iter()
+                        .filter(|e| e.active())
+                        .map(|e| std::path::PathBuf::from(&e.path).join("skills"))
+                        .filter(|p| p.is_dir())
+                        .collect(),
+                }) as Arc<dyn modbit_tools::pipeline::SkillPort>
+            }),
             // M9.1 (REQ-EV-0162): the governed engineering-memory port over
             // the Core's durable store and the task's scope chain. The user
             // scope and the author come from the actor; the repository scope
             // is the canonical workspace root.
             memory: {
-                let (author, user) = match &actor {
-                    Actor::User(id) => (format!("user:{id}"), id.to_string()),
-                    Actor::Agent(a) => (format!("agent:{a}"), String::new()),
-                    Actor::Core(c) => (format!("core:{c}"), String::new()),
-                    Actor::External(e) => (format!("external:{e}"), String::new()),
+                // PX-113: the chain is the task's own — the session's user
+                // and space, the task's repository and agent profile — not
+                // the acting actor's, so an agent's `scope: user` binds to
+                // the person it works for. Every mutation is an event on
+                // this session's log.
+                let run_label = run_id.map(|r| r.to_string());
+                let chain = {
+                    let st = store.lock().await;
+                    match st.task(&task_id) {
+                        Ok(Some(t)) => {
+                            crate::memory::chain_in(&st, tenant_id, &t, run_label.as_deref())
+                        }
+                        _ => crate::memory::ScopeChain::for_task(
+                            tenant_id,
+                            session_id,
+                            run_label.as_deref(),
+                            "",
+                            workspace_root.as_deref(),
+                            None,
+                            None,
+                        ),
+                    }
                 };
-                let chain = crate::memory::ScopeChain::for_task(
-                    tenant_id,
-                    session_id,
-                    run_id.map(|r| r.to_string()).as_deref(),
-                    &user,
-                    root.as_ref()
-                        .map(|p| p.to_string_lossy().into_owned())
-                        .as_deref(),
-                );
                 Some(Arc::new(crate::memory::CoreMemory::new(
                     Arc::clone(store),
                     chain,
-                    author,
+                    crate::memory::MemoryCtx {
+                        tenant: tenant_id,
+                        session: session_id,
+                        task: Some(task_id),
+                        actor: actor.clone(),
+                    },
                     root.as_ref().map(|p| p.to_string_lossy().into_owned()),
                 ))
                     as Arc<dyn modbit_tools::pipeline::MemoryPort>)
@@ -1096,6 +1405,7 @@ impl ToolHost {
             ) as Arc<dyn modbit_mcp::McpPort>),
             cancel: cancel.clone(),
             hooks: None,
+            git_state,
         };
         // REQ-EV-0042/0139: the task's hooks before and after the call — its
         // pinned configuration's and its session's extensions'.
@@ -1125,6 +1435,17 @@ impl ToolHost {
                 flags: Arc::new(resolution.flags),
                 workspace: ctx.workspace.clone(),
                 rewritten: Arc::new(std::sync::Mutex::new(None)),
+                secrets: Arc::new(self.secrets_in_custody()),
+                prompter: Some(Arc::new(crate::hooks::GatewayPrompter::new(
+                    self.gateway.clone(),
+                    self.gateway.registry(),
+                    task_config
+                        .models_allow
+                        .as_ref()
+                        .map(|r| r.value.iter().cloned().collect()),
+                    ctx.execution_profile.clone(),
+                    task_id.to_string(),
+                ))),
             }
         };
         let mut ctx = ctx;
@@ -1149,6 +1470,12 @@ impl ToolHost {
             .runtime
             .invoke(&ctx, tool_call_id, tool_name, arguments_json)
             .await;
+        // PX-069: what the runtime recorded while the call ran (a session
+        // opened, an observation, an input, a latch) reaches the log now, so
+        // it is there when the call's own outcome is.
+        if crate::computer::is_computer_tool(tool_name) {
+            self.computer.flush(store, tenant_id).await;
+        }
         // A hook rewrote the call: what ran is the rewrite, and its change
         // record diffs against the workspace as it was when it was rewritten.
         let mut final_arguments = arguments_json.to_owned();
@@ -1326,7 +1653,7 @@ impl ToolHost {
                 } else {
                     pre_revision
                 };
-                let ledger = self.ledger(task_id).await;
+                let ledger = self.ledger(store, task_id).await;
                 let mut ledger = ledger.lock().await;
                 for p in &paths {
                     ledger.mark_used(p, use_rev, &tool_call_id.to_string(), tool_name);
@@ -1347,6 +1674,44 @@ impl ToolHost {
                         &actor,
                     ));
                 }
+            }
+        }
+        // FIX-12 (audit N8): the pack the call compiled and the ledger snapshot
+        // taken with it are on the log, in the same transaction as the call's
+        // outcome, so a restarted Core rebuilds the ledger instead of losing it.
+        if result.status == ToolStatus::Success && tool_name == "context.pack" {
+            let o = &result.structured_output;
+            if let (Some(pack_ref), Some(ledger_ref), Some(pack_id)) = (
+                o["pack_ref"].as_str(),
+                o["ledger_ref"].as_str(),
+                o["pack"]["pack_id"].as_str(),
+            ) {
+                let count = |k: &str| {
+                    u32::try_from(o["pack"][k].as_array().map_or(0, Vec::len)).unwrap_or(u32::MAX)
+                };
+                retrieval_events.push(typed_task_event(
+                    "ContextPackRecorded",
+                    &modbit_domain::task::TaskEvent::ContextPackRecorded {
+                        pack_id: pack_id.to_owned(),
+                        pack_ref: pack_ref.to_owned(),
+                        ledger_ref: ledger_ref.to_owned(),
+                        workspace_revision: o["pack"]["workspace_revision"].as_u64().unwrap_or(0),
+                        tool_call_id: tool_call_id.to_string(),
+                        token_used: u32::try_from(o["pack"]["token_used"].as_u64().unwrap_or(0))
+                            .unwrap_or(u32::MAX),
+                        entries: count("entries"),
+                        stubs: count("stubs"),
+                        trigger: String::new(),
+                        status: "PACKED".into(),
+                        reason: String::new(),
+                        token_budget: u32::try_from(
+                            o["pack"]["token_budget"].as_u64().unwrap_or(0),
+                        )
+                        .unwrap_or(u32::MAX),
+                        seed_digest: String::new(),
+                    },
+                    &actor,
+                ));
             }
         }
         // Terminal cursor metadata (docs/19 layer 2, M4.5): what the run now
@@ -1397,7 +1762,7 @@ impl ToolHost {
                         ));
                     }
                 }
-                "shell.read" if !sid.is_empty() => {
+                "shell.read" | "shell.attach" if !sid.is_empty() => {
                     retrieval_events.push(typed_task_event(
                         "TerminalOutputAdvanced",
                         &modbit_domain::task::TaskEvent::TerminalOutputAdvanced {
@@ -1428,93 +1793,12 @@ impl ToolHost {
         {
             let changes = workspace_changes(&result.structured_output);
             let ws = ws.lock().await;
-            // Index freshness (docs/18): the changed paths re-enter the index at the new revision.
-            if let Ok(index) = self.index(root).await {
-                let paths: Vec<String> = changes.iter().map(|c| c.path.clone()).collect();
-                let rev = ws.revision().number;
-                let mut index = index.lock().await;
-                index.refresh(&paths, rev);
-                if let Ok(lexical) = self.lexical(root).await {
-                    let changed: Vec<modbit_retrieval::ChangedDoc> = paths
-                        .iter()
-                        .map(|p| {
-                            let t = index
-                                .texts()
-                                .find(|(path, _, _)| *path == p.as_str())
-                                .map(|(_, t, l)| (t.to_owned(), l.map(str::to_owned)));
-                            (p.clone(), t)
-                        })
-                        .collect();
-                    if let Err(e) = lexical.lock().await.refresh(&changed, rev) {
-                        eprintln!("modbit-core: lexical index refresh failed: {e}");
-                    }
-                }
-                if let Ok(symbols) = self.symbols(root).await {
-                    let changed: Vec<modbit_retrieval::ChangedSymbols> = paths
-                        .iter()
-                        .map(|p| {
-                            let t = index
-                                .texts_with_hash()
-                                .find(|(path, _, _, _)| *path == p.as_str())
-                                .map(|(_, t, l, h)| {
-                                    (t.to_owned(), l.map(str::to_owned), h.to_owned())
-                                });
-                            (p.clone(), t)
-                        })
-                        .collect();
-                    symbols.lock().await.refresh(&changed, rev);
-                }
-                if let (Ok(semantic), Ok(symbols)) =
-                    (self.semantic(root).await, self.symbols(root).await)
-                {
-                    // docs/18: embedding is queued for changed chunks, then flushed here.
-                    let symbols = symbols.lock().await;
-                    let mut sem = semantic.lock().await;
-                    sem.mark_changed(&paths);
-                    let changed: Vec<ChangedChunkSource> = paths
-                        .iter()
-                        .map(|p| {
-                            let t = index
-                                .texts()
-                                .find(|(path, _, _)| *path == p.as_str())
-                                .map(|(_, t, _)| (t.to_owned(), symbol_spans(&symbols, p)));
-                            (p.clone(), t)
-                        })
-                        .collect();
-                    if let Ok(graph) = self.graph(root).await {
-                        // docs/18: import edges of the changed paths and the worktree's
-                        // changed lines re-enter the graph at the new revision.
-                        let changed: Vec<modbit_retrieval::ChangedDoc> = paths
-                            .iter()
-                            .map(|p| {
-                                let t = index
-                                    .texts()
-                                    .find(|(path, _, _)| *path == p.as_str())
-                                    .map(|(_, t, l)| (t.to_owned(), l.map(str::to_owned)));
-                                (p.clone(), t)
-                            })
-                            .collect();
-                        graph.lock().await.refresh(
-                            changed.iter().map(|(p, c)| {
-                                (
-                                    p.as_str(),
-                                    c.as_ref().map(|(t, l)| (t.as_str(), l.as_deref())),
-                                )
-                            }),
-                            worktree_changed_lines(root),
-                            None,
-                            rev,
-                        );
-                    }
-                    if let Err(e) = sem.flush(
-                        changed.iter().map(|(p, c)| {
-                            (p.as_str(), c.as_ref().map(|(t, s)| (t.as_str(), s.clone())))
-                        }),
-                        rev,
-                    ) {
-                        eprintln!("modbit-core: semantic index refresh failed: {e}");
-                    }
-                }
+            // Index freshness (docs/18, PX-111): the changed paths re-enter
+            // every index at the new revision, each parsed once.
+            let paths: Vec<String> = changes.iter().map(|c| c.path.clone()).collect();
+            let rev = ws.revision().number;
+            if let Err(e) = self.refresh_workspace(root, &paths, rev).await {
+                eprintln!("modbit-core: index refresh failed: {e:#}");
             }
             let objects = store.lock().await.objects().clone();
             file_events = file_changed_events(
@@ -1593,7 +1877,14 @@ impl ToolHost {
                                 effect_class,
                                 intent_hash: result.arguments_hash.clone(),
                                 scope_json,
-                                expires_at: Some(modbit_domain::Timestamp(now.0 + APPROVAL_TTL_MS)),
+                                expires_at: Some(modbit_domain::Timestamp(
+                                    now.0
+                                        + if crate::computer::is_computer_tool(tool_name) {
+                                            crate::computer::APPROVAL_TTL_MS
+                                        } else {
+                                            crate::approval_expiry::ttl_ms()
+                                        },
+                                )),
                             },
                             actor.clone(),
                         )],
@@ -1618,6 +1909,7 @@ impl ToolHost {
                         allowed: false,
                         decision,
                         approval_required: false,
+                        authorization: authorization.clone(),
                     },
                     actor.clone(),
                 ));
@@ -1645,8 +1937,16 @@ impl ToolHost {
                     other => (format!("{other:?}"), None),
                 };
                 approval_id = used_approval;
-                // Protected/external/destructive effects get a receipt in the chain.
-                if effect_class >= modbit_domain::toolcall::EffectClass::ProtectedWrite {
+                // Protected/external/destructive effects get a receipt in the
+                // chain - and so does a browser input whose outcome is unknown,
+                // whatever its class (PX-121): the receipt says UNKNOWN, so no
+                // reader takes the input for one that did not happen.
+                let browser_unknown = (tool_name.starts_with("browser.")
+                    || tool_name.starts_with("computer."))
+                    && result.status == ToolStatus::UnknownOutcome;
+                if effect_class >= modbit_domain::toolcall::EffectClass::ProtectedWrite
+                    || browser_unknown
+                {
                     let effect_id = modbit_domain::EffectId::new();
                     result.effect_receipt_ids.push(effect_id.to_string());
                     receipt = Some(EffectReceipt {
@@ -1658,12 +1958,13 @@ impl ToolHost {
                         intent_hash: result.arguments_hash.clone(),
                         policy_decision: decision,
                         approval_id: used_approval,
-                        execution_target: root
-                            .as_ref()
-                            .map(|r| format!("local:{}", r.display()))
-                            .unwrap_or_else(|| "local".into()),
+                        execution_target: execution_target(root.as_deref()),
                         evidence_ref: None,
-                        status: format!("{:?}", result.status).to_uppercase(),
+                        status: if browser_unknown {
+                            "UNKNOWN_OUTCOME".to_owned()
+                        } else {
+                            format!("{:?}", result.status).to_uppercase()
+                        },
                         occurred_at: now,
                         // REQ-EV-0066: how far this effect can be taken back,
                         // from the tool's own declaration; never optimistic.
@@ -1672,6 +1973,7 @@ impl ToolHost {
                             |t| t.spec().reversibility(),
                         )),
                         compensates,
+                        authorization: authorization.clone(),
                         receipt_hash: String::new(),
                     });
                 }
@@ -1681,11 +1983,12 @@ impl ToolHost {
         let result_ref = store.lock().await.objects().put(&result_json)?;
         if let Some(mut r) = receipt.take() {
             r.evidence_ref = Some(result_ref.clone());
-            r.previous_receipt_hash = store.lock().await.last_receipt_hash()?;
-            let sealed = modbit_policy::ledger::seal(r);
+            // Linked and sealed inside the append transaction
+            // (`append_all_chained`): the chain's tail is read where it
+            // cannot move (FIX-08), so this is a placeholder, not a read.
             events.push(typed(
                 "EffectReceiptAppended",
-                &ToolCallEvent::EffectReceiptAppended { receipt: sealed },
+                &ToolCallEvent::EffectReceiptAppended { receipt: r },
                 actor.clone(),
             ));
         }
@@ -1776,12 +2079,13 @@ impl ToolHost {
         // M7.4: an action on the page is on the log as the transition it
         // caused, by fingerprints, with its postcondition (REQ-EV-0280) —
         // when it ran (a refused or stale action is the call's outcome only).
-        if tool_name == "browser.act"
-            && matches!(
-                result.status,
-                ToolStatus::Success | ToolStatus::ApplicationFailure
-            )
-            && result.structured_output.get("fingerprint_before").is_some()
+        if matches!(
+            tool_name,
+            "browser.act" | "browser.scroll" | "browser.fill_form"
+        ) && matches!(
+            result.status,
+            ToolStatus::Success | ToolStatus::ApplicationFailure
+        ) && result.structured_output.get("fingerprint_before").is_some()
             && let Some(session) = self.browser.session_for(task_id).await
         {
             let o = &result.structured_output;
@@ -1790,6 +2094,7 @@ impl ToolHost {
                 .lease(session)
                 .await
                 .map_or(0, |l| l.generation);
+            let page_ref = self.persisted_page_ref(store, session).await;
             retrieval_events.push(typed_task_event(
                 "BrowserActionPerformed",
                 &modbit_domain::task::TaskEvent::BrowserActionPerformed {
@@ -1817,6 +2122,7 @@ impl ToolHost {
                     postcondition_held: o["postcondition"]["held"].as_bool(),
                     lease_generation,
                     visual_fallback: o.get("visual_fallback").filter(|v| !v.is_null()).cloned(),
+                    page_ref: page_ref.clone(),
                 },
                 &actor,
             ));
@@ -1894,6 +2200,71 @@ impl ToolHost {
                     removed: count("removed"),
                     changed: count("changed"),
                     url: o["url"].as_str().unwrap_or_default().to_owned(),
+                    page_ref: self.persisted_page_ref(store, session).await,
+                },
+                &actor,
+            ));
+        }
+        // PX-121: an input of unknown outcome latches the session; a fresh
+        // observation lifts it. Both are on the task's log, so a restarted
+        // Core still refuses what the live one refused.
+        if tool_name.starts_with("browser.")
+            && result.status == ToolStatus::UnknownOutcome
+            && let Some(session) = self.browser.session_for(task_id).await
+        {
+            let o = &result.structured_output;
+            retrieval_events.push(typed_task_event(
+                "BrowserOutcomeUnknown",
+                &modbit_domain::task::TaskEvent::BrowserOutcomeUnknown {
+                    browser_session_id: session.to_string(),
+                    tool_call_id: tool_call_id.to_string(),
+                    tool: tool_name.to_owned(),
+                    action: o["action"].as_str().unwrap_or_default().to_owned(),
+                    reference: o["ref"].as_str().unwrap_or_default().to_owned(),
+                    reason: o["reason"].as_str().unwrap_or_default().to_owned(),
+                },
+                &actor,
+            ));
+        }
+        if tool_name.starts_with("browser.")
+            && let Some(was) = result.structured_output["reconciled"]["was_latched_by"].as_object()
+            && let Some(session) = self.browser.session_for(task_id).await
+        {
+            retrieval_events.push(typed_task_event(
+                "BrowserOutcomeReconciled",
+                &modbit_domain::task::TaskEvent::BrowserOutcomeReconciled {
+                    browser_session_id: session.to_string(),
+                    tool_call_id: tool_call_id.to_string(),
+                    was_tool_call_id: was
+                        .get("tool_call_id")
+                        .and_then(|v| v.as_str())
+                        .unwrap_or_default()
+                        .to_owned(),
+                },
+                &actor,
+            ));
+        }
+        // PX-120 / PX-073: a destination or a page the policy refused is
+        // security evidence on the task, not only a failed call.
+        if matches!(
+            result.error_code.as_deref(),
+            Some("TARGET_NOT_ALLOWED" | "ORIGIN_NOT_ALLOWED" | "FILE_ORIGIN")
+        ) {
+            retrieval_events.push(typed_task_event(
+                "SecurityEventRecorded",
+                &modbit_domain::task::TaskEvent::SecurityEventRecorded {
+                    kind: "BROWSER_TARGET_REFUSED".into(),
+                    tool_name: tool_name.to_owned(),
+                    tool_call_id: tool_call_id.to_string(),
+                    patterns: vec![result.error_code.clone().unwrap_or_default()],
+                    detail: result
+                        .error_message
+                        .clone()
+                        .unwrap_or_default()
+                        .chars()
+                        .take(300)
+                        .collect(),
+                    action: "REFUSED".into(),
                 },
                 &actor,
             ));
@@ -1968,7 +2339,10 @@ impl ToolHost {
             }
         }
         if !batch.is_empty() {
-            store.lock().await.append_all(batch, None)?;
+            store
+                .lock()
+                .await
+                .append_all_chained(batch, None, modbit_policy::ledger::seal)?;
         }
         Ok(Invoked {
             result,
@@ -1977,9 +2351,6 @@ impl ToolHost {
         })
     }
 }
-
-/// Approvals expire a day after they are requested (docs/23: approval binds expiry).
-const APPROVAL_TTL_MS: i64 = 24 * 60 * 60 * 1000;
 
 /// One invocation as the Core sees it.
 pub struct InvokeRequest<'a> {
@@ -2054,10 +2425,90 @@ struct KernelPort {
     /// The configuration snapshot the call is decided under (REQ-EV-0041):
     /// its per-capability `DENY` denies and `ASK` escalates.
     config: Arc<modbit_policy::config::ResolvedConfig>,
+    /// The task's workspace root, as its lease's selectors spell it.
+    root: Option<String>,
+    /// The mode posture in force for the task (PX-051): the one its run's
+    /// round boundary adopted, so a call already in flight keeps the posture
+    /// it was decided under.
+    mode: modbit_domain::mode::TaskMode,
+    /// The run mode in force and the durable rules (PX-057).
+    run: crate::run_control::RunContext,
+    /// The task is a `computer-use` child (PX-075): its shell is for non-GUI
+    /// work, and a command that drives or captures the interface is refused.
+    deny_gui_shell: bool,
+}
+
+/// The absolute resources a call's workspace paths name, in the lease's
+/// selector vocabulary (FIX-15). Only a path that stays inside the root is a
+/// target: an absolute path or one that climbs out is not resolved here —
+/// the workspace's own path policy refuses it, as it always did — so a
+/// selector can narrow what a lease covers but never be the reason a path the
+/// workspace would have refused reads as a different error.
+fn resource_targets(
+    root: Option<&str>,
+    paths: &[modbit_tools::PathTarget],
+) -> Vec<modbit_policy::ResourceTarget> {
+    let Some(root) = root.map(|r| r.trim_end_matches(['/', '\\'])) else {
+        return vec![];
+    };
+    paths
+        .iter()
+        .filter_map(|p| {
+            if p.path.starts_with(['/', '\\']) || p.path.contains(':') {
+                return None;
+            }
+            let mut parts: Vec<&str> = Vec::new();
+            for seg in p.path.split(['/', '\\']) {
+                match seg {
+                    "" | "." => {}
+                    ".." => {
+                        parts.pop()?;
+                    }
+                    s => parts.push(s),
+                }
+            }
+            Some(modbit_policy::ResourceTarget {
+                capability: p.capability.clone(),
+                resource: if parts.is_empty() {
+                    root.to_owned()
+                } else {
+                    format!("{root}/{}", parts.join("/"))
+                },
+            })
+        })
+        .collect()
 }
 
 impl CapabilityPort for KernelPort {
     fn decide(&self, req: &PolicyRequest) -> PolicyDecision {
+        // PX-051: the mode's posture is the kernel's, and it speaks first: a
+        // call the mode forbids is refused with the mode's own typed code even
+        // when the tool was withheld from the projection and named anyway.
+        if let Some(KernelDecision::Deny { code, reason }) = CapabilityKernel::posture_denial(
+            self.mode,
+            req.effect_class,
+            &req.required_capabilities,
+        ) {
+            return PolicyDecision::Deny {
+                code,
+                reason,
+                approval_required: false,
+            };
+        }
+        // PX-075: a computer-use child's shell is for non-GUI work. Driving or
+        // capturing the interface through it would go around the typed
+        // refusals, the latch and the approval class, so it is refused here,
+        // whichever way the command was reached (a direct call or a program).
+        if self.deny_gui_shell
+            && let Some(argv) = &req.command
+            && crate::computer::argv_drives_gui(argv)
+        {
+            return PolicyDecision::Deny {
+                code: "GUI_DRIVE_VIA_SHELL_REFUSED".into(),
+                reason: "the shell is for non-GUI work in this role; operate the interface with the computer.* tools, which are typed, latched and approved per call".into(),
+                approval_required: false,
+            };
+        }
         // docs/16 (M5.1): a call to a tool the model was not offered this
         // turn is refused before the kernel is asked — a crafted name is not
         // a projection. The kernel remains the boundary for what was offered.
@@ -2073,12 +2524,41 @@ impl CapabilityPort for KernelPort {
                 approval_required: false,
             };
         }
+        // PX-057: the call as the run mode sees it. The always-ask classes
+        // come from what the host resolved, never from the model's account.
+        let run = modbit_policy::RunPolicy {
+            mode: self.run.mode,
+            task_id: self.run.task_id.clone(),
+            repo_root: self.run.repo_root.clone(),
+            rules: self.run.rules.clone(),
+            argv: req.command.clone(),
+            ask_classes: modbit_policy::runmode::ask_classes(
+                req.effect_class,
+                &req.required_capabilities,
+                req.outside_workspace_write,
+                req.protected_path,
+                &req.declared_escalation,
+            ),
+            contained: matches!(
+                req.execution_profile.as_str(),
+                modbit_policy::kernel::PROFILE_CLOUD_ISOLATED
+                    | modbit_policy::kernel::PROFILE_REVIEW_ISOLATED
+            ) && req.effect_class
+                != modbit_domain::toolcall::EffectClass::ExternalSideEffect
+                && !req
+                    .required_capabilities
+                    .iter()
+                    .any(|c| c == "network.egress" || c == "external.call"),
+        };
         let d = self.kernel.decide(&KernelRequest {
+            run: Some(&run),
             tool_name: &req.tool_name,
             effect_class: req.effect_class,
             required_capabilities: &req.required_capabilities,
             execution_profile: &req.execution_profile,
+            mode: self.mode,
             lease: self.lease.as_ref(),
+            targets: &resource_targets(self.root.as_deref(), &req.paths),
             approval: self.approval.as_ref(),
             intent_hash: &req.intent_hash,
             config: Some(&self.config),
@@ -2096,6 +2576,18 @@ impl CapabilityPort for KernelPort {
                 approval_required: false,
             },
             KernelDecision::ApprovalRequired { reason, scope_json } => {
+                // PX-070: the exact intent the tool bound (the application's
+                // identity, the window, the element, the action and its
+                // arguments in full) is on the approval the person sees.
+                let scope_json = match &req.bound_intent {
+                    Some(bound) => {
+                        let mut v: serde_json::Value = serde_json::from_str(&scope_json)
+                            .unwrap_or_else(|_| serde_json::json!({}));
+                        v["intent"] = bound.clone();
+                        v.to_string()
+                    }
+                    None => scope_json,
+                };
                 PolicyDecision::ApprovalRequired { reason, scope_json }
             }
         }
@@ -2119,6 +2611,21 @@ struct DispatchLog {
     prior_state: Option<ToolCallState>,
     /// The lease the dispatch is fenced by (M4.4).
     lease_generation: Option<u64>,
+    /// The lease the call presented (named on its authorization receipt).
+    lease_id: Option<modbit_domain::CapabilityLeaseId>,
+    /// Where the effect will run (as the result receipt names it).
+    execution_target: String,
+    /// The effect a compensating call counteracts.
+    compensates: Option<modbit_domain::EffectId>,
+    /// The tool's own reversibility declaration, when it is registered.
+    reversibility: Option<modbit_domain::toolcall::Reversibility>,
+    /// The authority epoch the dispatch is decided under (REQ-PX-131).
+    authorization: Option<modbit_domain::epoch::AuthorizationStamp>,
+}
+
+/// Where a call's effect runs, as a receipt records it.
+fn execution_target(root: Option<&std::path::Path>) -> String {
+    root.map_or_else(|| "local".into(), |r| format!("local:{}", r.display()))
 }
 
 impl modbit_tools::DispatchJournal for DispatchLog {
@@ -2131,6 +2638,7 @@ impl modbit_tools::DispatchJournal for DispatchLog {
                 PolicyDecision::Allow { rule, .. } => rule.clone(),
                 other => format!("{other:?}"),
             };
+            let decision_text = decision.clone();
             let mut events = Vec::new();
             if self.prior_state != Some(ToolCallState::ApprovalPending) {
                 events.push(typed(
@@ -2145,6 +2653,7 @@ impl modbit_tools::DispatchJournal for DispatchLog {
                     allowed: true,
                     decision,
                     approval_required: false,
+                    authorization: self.authorization.clone(),
                 },
                 self.actor.clone(),
             ));
@@ -2153,6 +2662,49 @@ impl modbit_tools::DispatchJournal for DispatchLog {
                 &ToolCallEvent::ToolCallDispatched,
                 self.actor.clone(),
             ));
+            // FIX-08: an effect that can reach beyond the workspace is
+            // authorized *in the chain* before it runs — intent hash, the
+            // decision, the approval and the lease, in the same transaction
+            // as the dispatch. The result receipt chains after it; a Core
+            // killed in between leaves this one with no result, which is how
+            // the effect is known to be in doubt (`ledger::in_doubt`).
+            if record.effect_class >= modbit_domain::toolcall::EffectClass::ProtectedWrite {
+                let approval_id = match &record.decision {
+                    PolicyDecision::Allow { approval_id, .. } => {
+                        approval_id.as_ref().and_then(|a| ApprovalId::parse(a).ok())
+                    }
+                    _ => None,
+                };
+                events.push(typed(
+                    "EffectReceiptAppended",
+                    &ToolCallEvent::EffectReceiptAppended {
+                        receipt: EffectReceipt {
+                            effect_id: modbit_domain::EffectId::new(),
+                            previous_receipt_hash: None,
+                            task_id: self.task_id,
+                            tool_call_id: record.tool_call_id,
+                            capability_lease_id: self.lease_id,
+                            intent_hash: record.arguments_hash.clone(),
+                            policy_decision: decision_text.clone(),
+                            approval_id,
+                            execution_target: self.execution_target.clone(),
+                            evidence_ref: None,
+                            status: modbit_policy::ledger::STATUS_AUTHORIZED.into(),
+                            occurred_at: modbit_domain::Timestamp::now(),
+                            reversibility: Some(self.reversibility.unwrap_or_else(|| {
+                                modbit_domain::toolcall::Reversibility::of(
+                                    record.effect_class,
+                                    false,
+                                )
+                            })),
+                            compensates: self.compensates,
+                            authorization: self.authorization.clone(),
+                            receipt_hash: String::new(),
+                        },
+                    },
+                    self.actor.clone(),
+                ));
+            }
             let mut st = self.store.lock().await;
             let expected_sequence = st
                 .tool_call(&record.tool_call_id)
@@ -2171,10 +2723,11 @@ impl modbit_tools::DispatchJournal for DispatchLog {
                 events,
             };
             // docs/33: a superseded owner cannot start an effect.
-            match self.lease_generation {
-                Some(g) => st.append_fenced(req, g),
-                None => st.append(req),
-            }
+            st.append_all_chained(
+                vec![req],
+                self.lease_generation,
+                modbit_policy::ledger::seal,
+            )
             .map(|_| ())
             .map_err(|e| e.to_string())
         })
@@ -2220,6 +2773,108 @@ pub(crate) fn change_targets(tool_name: &str, arguments_json: &str) -> Vec<Strin
 pub(crate) fn read_workspace_file(ws: &WorkspaceService, path: &str) -> Option<Vec<u8>> {
     let r = ws.resolve(path).ok()?;
     std::fs::read(&r.absolute).ok()
+}
+
+/// What the workspace holds for a pack entry's path now. A path that is not a
+/// plain relative path (a pack entry never is one, but a ledger rebuilt from a
+/// log is not trusted to be) is not checked, so it stays as it was.
+fn workspace_file_state(root: &Path, path: &str) -> Option<modbit_context::FileState> {
+    let rel = Path::new(path);
+    if rel.is_absolute()
+        || rel
+            .components()
+            .any(|c| !matches!(c, std::path::Component::Normal(_)))
+    {
+        return None;
+    }
+    match std::fs::read(root.join(rel)) {
+        Ok(bytes) => Some(modbit_context::FileState::Hash(
+            modbit_workspace::content_hash(&bytes),
+        )),
+        Err(e) if e.kind() == std::io::ErrorKind::NotFound => {
+            Some(modbit_context::FileState::Missing)
+        }
+        Err(_) => None,
+    }
+}
+
+/// Rebuild a task's Context Ledger from its log (FIX-12, audit N8): the
+/// ledger snapshot the newest `ContextPackRecorded` names (the packs, the
+/// latest pack, the direct reads, the usefulness marks at that moment), then
+/// every `RetrievalRecorded` after it replayed — a read is a retrieval record
+/// and, for the paths a pack holds, a use. A snapshot that cannot be loaded
+/// is skipped and the retrieval records alone rebuild the reads.
+pub(crate) fn restore_ledger(store: &EventStore, task_id: TaskId) -> modbit_context::ContextLedger {
+    const PAGE: usize = 5_000;
+    struct Retrieval {
+        path: String,
+        revision: u64,
+        content_hash: Option<String>,
+        tool_call_id: String,
+        tool_name: String,
+    }
+    let mut ledger = modbit_context::ContextLedger::default();
+    let mut tail: Vec<Retrieval> = Vec::new();
+    let mut after = 0u64;
+    loop {
+        let Ok(events) = store.read_aggregate(task_id.as_bytes(), after, PAGE) else {
+            break;
+        };
+        for e in &events {
+            after = e.envelope.sequence;
+            let Ok(p) = store.payload(&e.envelope) else {
+                continue;
+            };
+            match e.envelope.event_type.as_str() {
+                "ContextPackRecorded" => {
+                    let snapshot = p["ledger_ref"]
+                        .as_str()
+                        .filter(|h| !h.is_empty())
+                        .and_then(|h| store.objects().get(h).ok())
+                        .and_then(|b| {
+                            serde_json::from_slice::<modbit_context::ContextLedger>(&b).ok()
+                        });
+                    if let Some(l) = snapshot {
+                        // The snapshot already holds every read before the pack.
+                        ledger = l;
+                        tail.clear();
+                    }
+                }
+                "RetrievalRecorded" => {
+                    if let Some(path) = p["path"].as_str() {
+                        tail.push(Retrieval {
+                            path: path.to_owned(),
+                            revision: p["workspace_revision"].as_u64().unwrap_or(0),
+                            content_hash: p["content_hash"].as_str().map(str::to_owned),
+                            tool_call_id: p["tool_call_id"].as_str().unwrap_or_default().to_owned(),
+                            tool_name: p["tool_name"].as_str().unwrap_or_default().to_owned(),
+                        });
+                    }
+                }
+                _ => {}
+            }
+        }
+        if events.len() < PAGE {
+            break;
+        }
+    }
+    for r in tail {
+        // The live path marks a read at its own revision and a write at the
+        // revision before it (the record of a write carries the one after).
+        if r.tool_name == "fs.read" || r.tool_name.starts_with("lsp.") {
+            ledger.mark_used(&r.path, r.revision, &r.tool_call_id, &r.tool_name);
+        } else {
+            ledger.mark_used_before(&r.path, r.revision, &r.tool_call_id, &r.tool_name);
+        }
+        ledger.record_read(
+            &r.path,
+            r.revision,
+            r.content_hash.as_deref(),
+            &r.tool_call_id,
+            &r.tool_name,
+        );
+    }
+    ledger
 }
 
 /// A typed Task event as a `NewEvent` (mirrors the runtime's `typed`).
@@ -2319,7 +2974,7 @@ pub(crate) fn file_changed_events(
         let put = |b: &Option<Vec<u8>>| b.as_ref().and_then(|b| objects.put(b).ok());
         let before_ref = put(&before);
         let after_ref = put(&after);
-        let diff_ref = match (
+        let diff_text = match (
             before.as_deref().map(std::str::from_utf8),
             after.as_deref().map(std::str::from_utf8),
         ) {
@@ -2327,8 +2982,9 @@ pub(crate) fn file_changed_events(
             (Some(Ok(o)), None) => Some(unified_diff(&c.path, o, "")),
             (None, Some(Ok(n))) => Some(unified_diff(&c.path, "", n)),
             _ => None,
-        }
-        .and_then(|d| objects.put(d.as_bytes()).ok());
+        };
+        let (lines_added, lines_removed) = diff_text.as_deref().map_or((0, 0), diff_line_counts);
+        let diff_ref = diff_text.and_then(|d| objects.put(d.as_bytes()).ok());
         events.push(typed(
             "FileChanged",
             &WorkspaceEvent::FileChanged {
@@ -2346,12 +3002,38 @@ pub(crate) fn file_changed_events(
                 language: state_of(&c.path).language.clone(),
                 unsupported_language: state_of(&c.path).needs_opt_in,
                 provenance: provenance.to_owned(),
+                lines_added,
+                lines_removed,
             },
             Actor::Core("tool-host".into()),
         ));
         previous = c.workspace_revision.number;
     }
     events
+}
+
+/// Lines a unified diff adds and removes (its headers do not count).
+pub(crate) fn diff_line_counts(diff: &str) -> (u32, u32) {
+    let (mut added, mut removed) = (0u32, 0u32);
+    let mut lines = diff.lines().peekable();
+    // The two header lines (`--- a/path`, `+++ b/path`) are not changes; a
+    // removed line that itself starts with `--` is, so only the headers go.
+    for _ in 0..2 {
+        if lines
+            .peek()
+            .is_some_and(|l| l.starts_with("---") || l.starts_with("+++"))
+        {
+            lines.next();
+        }
+    }
+    for line in lines {
+        if line.starts_with('+') {
+            added = added.saturating_add(1);
+        } else if line.starts_with('-') {
+            removed = removed.saturating_add(1);
+        }
+    }
+    (added, removed)
 }
 
 /// What the product may claim about a path's language (PX-029, docs/76): the
@@ -2403,8 +3085,12 @@ struct IndexPort {
     index: Arc<Mutex<modbit_retrieval::RepositoryIndex>>,
     lexical: Arc<Mutex<modbit_retrieval::LexicalIndex>>,
     symbols: Arc<Mutex<modbit_retrieval::SymbolIndex>>,
-    semantic: Arc<Mutex<modbit_retrieval::SemanticIndex>>,
+    semantic: Arc<Mutex<Option<modbit_retrieval::SemanticIndex>>>,
     graph: Arc<Mutex<modbit_retrieval::EvidenceGraph>>,
+    /// Reference, call and implementor edges (PX-110).
+    refs: Arc<Mutex<modbit_retrieval::RefGraph>>,
+    /// Lifecycle and counters of this workspace's indexes (PX-111).
+    state: Arc<crate::index_host::IndexState>,
     knowledge: Arc<Mutex<Option<modbit_retrieval::knowledge::KnowledgeArtifact>>>,
     /// Verification checks of the task's runs as (check id, status).
     evidence: Vec<(String, String)>,
@@ -2425,6 +3111,11 @@ struct IndexPort {
     session_id: SessionId,
     task_id: TaskId,
     workspace: Arc<Mutex<WorkspaceService>>,
+    /// The `fs.read` selectors of a lease that reads less than the whole
+    /// worktree (a child with a `read_scope`); empty = unrestricted.
+    read_selectors: Vec<String>,
+    /// The root those selectors are spelled from.
+    scope_root: String,
 }
 
 /// Diagnostic linkage (docs/18): the failing checks of the task's
@@ -2475,7 +3166,7 @@ fn excerpt(text: &str, lines: Option<(u32, u32)>) -> (String, Option<(u32, u32)>
 }
 
 /// Recent commits of a root through the real git (empty outside a repository).
-fn recent_commits(root: &Path) -> Vec<modbit_retrieval::CommitRecord> {
+pub(crate) fn recent_commits(root: &Path) -> Vec<modbit_retrieval::CommitRecord> {
     modbit_git::Repo::open(root)
         .and_then(|r| r.log_recent(200))
         .map(|v| {
@@ -2493,7 +3184,7 @@ fn recent_commits(root: &Path) -> Vec<modbit_retrieval::CommitRecord> {
 }
 
 /// Changed line ranges of the worktree versus HEAD (empty outside a repository).
-fn worktree_changed_lines(root: &Path) -> modbit_retrieval::graph::ChangedLines {
+pub(crate) fn worktree_changed_lines(root: &Path) -> modbit_retrieval::graph::ChangedLines {
     modbit_git::Repo::open(root)
         .and_then(|r| r.diff_worktree())
         .map(|d| modbit_retrieval::graph::changed_lines_from_unified(&d.unified))
@@ -2641,21 +3332,206 @@ pub async fn attached_documents(
     out
 }
 
-/// A changed path with its new text and symbol spans (`None` = removed).
-type ChangedChunkSource = (String, Option<(String, Vec<(String, u64, u64)>)>);
-
 /// Symbol byte spans of a path as chunk boundaries (`name`, start, end).
-fn symbol_spans(symbols: &modbit_retrieval::SymbolIndex, path: &str) -> Vec<(String, u64, u64)> {
-    symbols
-        .symbols_in(path)
+pub(crate) fn symbol_spans(
+    symbols: &modbit_retrieval::SymbolIndex,
+    path: &str,
+) -> Vec<(String, u64, u64)> {
+    // A definition too large for one chunk (a big `impl`, a class) is
+    // embedded member by member, not by its first 4 KiB (FIX-12, N9).
+    symbols.chunk_spans(path, modbit_retrieval::semantic::MAX_CHUNK_BYTES)
+}
+
+/// REQ-PX-116: the `fs.read` selectors of a lease that does not cover the
+/// worktree's root (a child with a `read_scope` reads only part of it);
+/// empty = unrestricted. Every retrieval entry, the pre-turn pack included,
+/// narrows its results to them.
+fn read_selectors_of(lease: Option<&CapabilityLease>, workspace_root: Option<&str>) -> Vec<String> {
+    let (Some(l), Some(root)) = (lease, workspace_root) else {
+        return vec![];
+    };
+    let sels: Vec<String> = l
+        .resources
         .iter()
-        .filter(|s| s.container.is_none())
-        .map(|s| (s.name.clone(), s.span.0, s.span.1))
-        .collect()
+        .filter(|r| r.starts_with("fs.read:"))
+        .cloned()
+        .collect();
+    let covers_root = sels.iter().any(|s| {
+        modbit_policy::kernel::ResourceSelector::parse(s)
+            .is_some_and(|sel| sel.covers(root.trim_end_matches(['/', '\\'])))
+    });
+    if covers_root { vec![] } else { sels }
+}
+
+/// Whether a root-relative path lies inside the `fs.read` selectors of a
+/// lease that reads less than the worktree (REQ-PX-116).
+fn in_read_scope(root: &str, selectors: &[String], path: &str) -> bool {
+    let resource = format!(
+        "{}/{}",
+        root.trim_end_matches('/'),
+        path.trim_start_matches("./")
+    );
+    selectors.iter().any(|s| {
+        modbit_policy::kernel::ResourceSelector::parse(s).is_some_and(|sel| sel.covers(&resource))
+    })
+}
+
+/// Keys whose string value names a workspace path in a search answer.
+const PATH_KEYS: &[&str] = &["path", "from_path", "to_path"];
+/// Keys whose array holds bare path strings.
+const PATH_LIST_KEYS: &[&str] = &["covers", "tests", "changed", "paths", "stale_paths"];
+/// Keys whose array holds `[path, count]` pairs (the evidence graph).
+const PATH_PAIR_KEYS: &[&str] = &["imports", "importers", "cochange"];
+
+/// Whether an answer object names a path the selectors do not cover: one of
+/// its own path keys, or a step of the edge path that put it in an impact
+/// result (a dependent reached only through a file the child may not read
+/// would show that file's place in the graph).
+fn names_outside(
+    obj: &serde_json::Map<String, serde_json::Value>,
+    inside: &dyn Fn(&str) -> bool,
+) -> bool {
+    let named_outside = |o: &serde_json::Map<String, serde_json::Value>, keys: &[&str]| {
+        keys.iter().any(|k| {
+            o.get(*k)
+                .and_then(|p| p.as_str())
+                .is_some_and(|p| !inside(p))
+        })
+    };
+    if named_outside(obj, PATH_KEYS) {
+        return true;
+    }
+    obj.get("edge_path")
+        .and_then(|e| e.as_array())
+        .is_some_and(|steps| {
+            steps.iter().any(|st| {
+                st.as_object()
+                    .is_some_and(|o| named_outside(o, &["from", "to"]))
+            })
+        })
+}
+
+/// Drop from `v` everything that names a path the selectors do not cover
+/// (REQ-PX-116): an object in an array with a path key outside them, a bare
+/// path in a path list, a `[path, n]` pair, an impact dependent whose edge
+/// path runs through such a file. A child whose lease reads only part of the
+/// worktree is not shown the rest by a search, indexed or scanned, a graph
+/// query or an impact selection.
+fn scope_results(v: &mut serde_json::Value, root: &str, selectors: &[String]) {
+    let inside = |path: &str| in_read_scope(root, selectors, path);
+    scope_value(v, "", &inside);
+}
+
+fn scope_value(v: &mut serde_json::Value, key: &str, inside: &dyn Fn(&str) -> bool) {
+    match v {
+        serde_json::Value::Array(items) => {
+            items.retain(|e| match e {
+                serde_json::Value::Object(o) => !names_outside(o, inside),
+                serde_json::Value::String(p) if PATH_LIST_KEYS.contains(&key) => inside(p),
+                serde_json::Value::Array(pair) if PATH_PAIR_KEYS.contains(&key) => {
+                    pair.first().and_then(|p| p.as_str()).is_none_or(inside)
+                }
+                _ => true,
+            });
+            for e in items.iter_mut() {
+                scope_value(e, key, inside);
+            }
+        }
+        serde_json::Value::Object(map) => {
+            for (k, e) in map.iter_mut() {
+                scope_value(e, k, inside);
+            }
+        }
+        _ => {}
+    }
+}
+
+impl IndexPort {
+    /// Count how an exact or regex search was answered.
+    fn count_search(&self, plan: &modbit_retrieval::SearchPlan) {
+        use std::sync::atomic::Ordering;
+        if plan.path == "indexed" {
+            self.state.searches_indexed.fetch_add(1, Ordering::Relaxed);
+        } else {
+            self.state.searches_scanned.fetch_add(1, Ordering::Relaxed);
+        }
+    }
+}
+
+/// The semantic index, built from the exact and symbol indexes on the first
+/// query that needs the embeddings (the other searches never pay for them).
+fn ensure_semantic<'a>(
+    slot: &'a mut Option<modbit_retrieval::SemanticIndex>,
+    idx: &modbit_retrieval::RepositoryIndex,
+    symbols: &modbit_retrieval::SymbolIndex,
+    revision: u64,
+) -> std::result::Result<&'a modbit_retrieval::SemanticIndex, String> {
+    if slot.is_none() {
+        let files: Vec<modbit_retrieval::FileSource> = idx
+            .texts()
+            .map(|(p, t, _)| (p, t, symbol_spans(symbols, p)))
+            .collect();
+        *slot = Some(modbit_retrieval::SemanticIndex::build(
+            Box::new(modbit_retrieval::HashingEmbedder::default()),
+            files.into_iter(),
+            revision,
+        )?);
+    }
+    slot.as_ref().ok_or_else(|| "semantic index".to_owned())
+}
+
+/// How long a read waits for the event store's writer (the store opens its
+/// SQLite connection with a ten second busy timeout; a read waits no longer).
+const STORE_READ_WAIT: std::time::Duration = std::time::Duration::from_secs(10);
+
+/// Lock `m` from synchronous tool code that runs on a runtime worker, waiting
+/// up to `wait` for the holder. A multi-thread runtime lets the worker block
+/// (the holder runs on another worker); on a current-thread runtime the
+/// holder cannot run while this thread waits, so the lock is tried once.
+fn lock_bounded<T>(
+    m: &Mutex<T>,
+    wait: std::time::Duration,
+) -> Option<tokio::sync::MutexGuard<'_, T>> {
+    if let Ok(g) = m.try_lock() {
+        return Some(g);
+    }
+    if let Ok(h) = tokio::runtime::Handle::try_current() {
+        if h.runtime_flavor() != tokio::runtime::RuntimeFlavor::MultiThread {
+            return None;
+        }
+        return tokio::task::block_in_place(|| poll_lock(m, wait));
+    }
+    poll_lock(m, wait)
+}
+
+fn poll_lock<T>(m: &Mutex<T>, wait: std::time::Duration) -> Option<tokio::sync::MutexGuard<'_, T>> {
+    let deadline = std::time::Instant::now() + wait;
+    loop {
+        if let Ok(g) = m.try_lock() {
+            return Some(g);
+        }
+        if std::time::Instant::now() >= deadline {
+            return None;
+        }
+        std::thread::sleep(std::time::Duration::from_millis(2));
+    }
 }
 
 impl modbit_tools::SearchPort for IndexPort {
     fn search(
+        &self,
+        req: &modbit_tools::SearchRequest,
+    ) -> std::result::Result<serde_json::Value, (String, String)> {
+        let mut out = self.search_unscoped(req)?;
+        if !self.read_selectors.is_empty() {
+            scope_results(&mut out, &self.scope_root, &self.read_selectors);
+        }
+        Ok(out)
+    }
+}
+
+impl IndexPort {
+    fn search_unscoped(
         &self,
         req: &modbit_tools::SearchRequest,
     ) -> std::result::Result<serde_json::Value, (String, String)> {
@@ -2688,21 +3564,31 @@ impl modbit_tools::SearchPort for IndexPort {
                 "the index is being refreshed".to_owned(),
             )
         })?;
+        let mut graph_guard = self.graph.try_lock().map_err(|_| {
+            (
+                "INDEX_BUSY".to_owned(),
+                "the graph is being refreshed".to_owned(),
+            )
+        })?;
+        let mut refs_guard = self.refs.try_lock().map_err(|_| {
+            (
+                "INDEX_BUSY".to_owned(),
+                "the reference graph is being refreshed".to_owned(),
+            )
+        })?;
         if ws_rev > idx.revision() {
-            // Freshness (docs/18): a write without a recorded changed set is not possible
-            // through the tools, but an external edit may have moved the revision.
-            idx.rebuild(ws_rev)
-                .map_err(|e| ("INDEX_REBUILD".to_owned(), e.to_string()))?;
-            *lexical = modbit_retrieval::LexicalIndex::build(idx.texts(), ws_rev)
-                .map_err(|e| ("INDEX_REBUILD".to_owned(), e.to_string()))?;
-            *symbols = modbit_retrieval::SymbolIndex::build(idx.texts_with_hash(), ws_rev);
-            let files: Vec<modbit_retrieval::FileSource> = idx
-                .texts()
-                .map(|(p, t, _)| (p, t, symbol_spans(&symbols, p)))
-                .collect();
-            *semantic = modbit_retrieval::SemanticIndex::build(
-                Box::new(modbit_retrieval::HashingEmbedder::default()),
-                files.into_iter(),
+            // Freshness (docs/18): a write without a recorded changed set is
+            // not possible through the tools, but an external edit may have
+            // moved the revision. The files are diffed against the index by
+            // content hash and only what changed is parsed again (PX-111).
+            crate::index_host::refresh_with_guards(
+                &mut idx,
+                &mut lexical,
+                &mut symbols,
+                &mut refs_guard,
+                &mut graph_guard,
+                &mut semantic,
+                None,
                 ws_rev,
             )
             .map_err(|e| ("INDEX_REBUILD".to_owned(), e))?;
@@ -2715,10 +3601,18 @@ impl modbit_tools::SearchPort for IndexPort {
         };
         let stats = idx.stats();
         let body = match req.kind.as_str() {
-            "exact" => serde_json::json!({"hits": idx.search_exact(&req.query, &opts)}),
-            "regex" => serde_json::json!({"hits": idx
-                .search_regex(&req.query, &opts)
-                .map_err(|e| ("BAD_REGEX".to_owned(), e.to_string()))?}),
+            "exact" => {
+                let (hits, plan) = idx.search_exact_with(&req.query, &opts, req.use_index);
+                self.count_search(&plan);
+                serde_json::json!({"hits": hits, "search_plan": plan})
+            }
+            "regex" => {
+                let (hits, plan) = idx
+                    .search_regex_with(&req.query, &opts, req.use_index)
+                    .map_err(|e| ("BAD_REGEX".to_owned(), e.to_string()))?;
+                self.count_search(&plan);
+                serde_json::json!({"hits": hits, "search_plan": plan})
+            }
             "lexical" => serde_json::json!({"hits": lexical
                 .search(&req.query, req.max_hits)
                 .map_err(|e| ("BAD_QUERY".to_owned(), e.to_string()))?}),
@@ -2766,6 +3660,8 @@ impl modbit_tools::SearchPort for IndexPort {
                 serde_json::json!({"symbols": kept, "text_only": degraded})
             }
             "semantic" => {
+                let semantic = ensure_semantic(&mut semantic, &idx, &symbols, ws_rev)
+                    .map_err(|e| ("INDEX_REBUILD".to_owned(), e))?;
                 let hits = semantic
                     .search(&req.query, req.max_hits)
                     .map_err(|e| ("BAD_QUERY".to_owned(), e))?;
@@ -2779,33 +3675,22 @@ impl modbit_tools::SearchPort for IndexPort {
             "retrieve" => {
                 let args: serde_json::Value = serde_json::from_str(&req.query)
                     .map_err(|e| ("BAD_QUERY".to_owned(), e.to_string()))?;
-                let mut graph = self.graph.try_lock().map_err(|_| {
-                    (
-                        "INDEX_BUSY".to_owned(),
-                        "the graph is being refreshed".to_owned(),
-                    )
-                })?;
-                if ws_rev > graph.revision() {
-                    *graph = modbit_retrieval::EvidenceGraph::build(
-                        idx.texts(),
-                        recent_commits(idx.root()),
-                        worktree_changed_lines(idx.root()),
-                        ws_rev,
-                    );
-                }
+                let graph = &mut *graph_guard;
                 let diagnostics = failing_check_locations(&self.evidence, &symbols);
                 let external: Vec<(String, u32)> = self
                     .external
                     .iter()
                     .map(|l| (l.path.clone(), l.line))
                     .collect();
+                let semantic_ref = ensure_semantic(&mut semantic, &idx, &symbols, ws_rev)
+                    .map_err(|e| ("INDEX_REBUILD".to_owned(), e))?;
                 let plan = modbit_retrieval::planner::retrieve(
                     &modbit_retrieval::Sources {
                         index: &idx,
                         lexical: &lexical,
                         symbols: &symbols,
-                        semantic: &semantic,
-                        graph: &graph,
+                        semantic: semantic_ref,
+                        graph,
                     },
                     &modbit_retrieval::PlanRequest {
                         query: args["query"].as_str().unwrap_or_default().to_owned(),
@@ -2842,20 +3727,7 @@ impl modbit_tools::SearchPort for IndexPort {
                 })?;
                 let built_now = refresh || cached.is_none();
                 if built_now {
-                    let mut graph = self.graph.try_lock().map_err(|_| {
-                        (
-                            "INDEX_BUSY".to_owned(),
-                            "the graph is being refreshed".to_owned(),
-                        )
-                    })?;
-                    if ws_rev > graph.revision() {
-                        *graph = modbit_retrieval::EvidenceGraph::build(
-                            idx.texts(),
-                            recent_commits(idx.root()),
-                            worktree_changed_lines(idx.root()),
-                            ws_rev,
-                        );
-                    }
+                    let graph = &mut *graph_guard;
                     let paths: Vec<String> = hashes.keys().cloned().collect();
                     let facts: Vec<modbit_retrieval::knowledge::FileFacts<'_>> = paths
                         .iter()
@@ -2905,7 +3777,11 @@ impl modbit_tools::SearchPort for IndexPort {
             "evidence" => {
                 let args: serde_json::Value = serde_json::from_str(&req.query)
                     .map_err(|e| ("BAD_QUERY".to_owned(), e.to_string()))?;
-                let store = self.store.try_lock().map_err(|_| {
+                // A read waits for the writer that holds the store (an append
+                // is an fsync'd SQLite transaction, slow on a loaded Windows
+                // runner) up to the SQLite busy timeout the store itself
+                // uses; only a writer that outlasts it makes the read busy.
+                let store = lock_bounded(&self.store, STORE_READ_WAIT).ok_or_else(|| {
                     (
                         "STORE_BUSY".to_owned(),
                         "the event store is busy; retry".to_owned(),
@@ -2977,33 +3853,22 @@ impl modbit_tools::SearchPort for IndexPort {
                         required.push(p.clone());
                     }
                 }
-                let mut graph = self.graph.try_lock().map_err(|_| {
-                    (
-                        "INDEX_BUSY".to_owned(),
-                        "the graph is being refreshed".to_owned(),
-                    )
-                })?;
-                if ws_rev > graph.revision() {
-                    *graph = modbit_retrieval::EvidenceGraph::build(
-                        idx.texts(),
-                        recent_commits(idx.root()),
-                        worktree_changed_lines(idx.root()),
-                        ws_rev,
-                    );
-                }
+                let graph = &mut *graph_guard;
                 let diagnostics = failing_check_locations(&self.evidence, &symbols);
                 let external: Vec<(String, u32)> = self
                     .external
                     .iter()
                     .map(|l| (l.path.clone(), l.line))
                     .collect();
+                let semantic_ref = ensure_semantic(&mut semantic, &idx, &symbols, ws_rev)
+                    .map_err(|e| ("INDEX_REBUILD".to_owned(), e))?;
                 let plan = modbit_retrieval::planner::retrieve(
                     &modbit_retrieval::Sources {
                         index: &idx,
                         lexical: &lexical,
                         symbols: &symbols,
-                        semantic: &semantic,
-                        graph: &graph,
+                        semantic: semantic_ref,
+                        graph,
                     },
                     &modbit_retrieval::PlanRequest {
                         query: query.clone(),
@@ -3063,8 +3928,8 @@ impl modbit_tools::SearchPort for IndexPort {
                 for p in &required {
                     if let Some((t, hash, rehydrated)) = hydrated(p) {
                         let chosen = selected.contains(p);
-                        // A line range selects that range; everything else
-                        // enters whole.
+                        // A line range selects that range; anything else enters as
+                        // the head of the file (bounded, `excerpt`), not whole.
                         let span = self
                             .selection
                             .lines
@@ -3155,7 +4020,16 @@ impl modbit_tools::SearchPort for IndexPort {
                         source_ref: format!("attached:{}", d.source),
                     });
                 }
+                // REQ-PX-108: the Core's own pre-turn pack asks for corroborated
+                // evidence only. The hashing embedder returns its nearest
+                // neighbour whether or not anything matched, so a hit whose
+                // sole evidence is that neighbour is padding, and a goal with
+                // no real match yields an empty pack.
+                let corroborated = args["corroborated"].as_bool().unwrap_or(false);
                 for h in &plan.hits {
+                    if corroborated && h.sources.iter().all(|s| s == "semantic") {
+                        continue;
+                    }
                     let Some((t, hash, rehydrated)) = hydrated(&h.path) else {
                         continue;
                     };
@@ -3167,7 +4041,16 @@ impl modbit_tools::SearchPort for IndexPort {
                         span: h.span,
                         score: h.score,
                         sources: h.sources.clone(),
-                        reasons: h.reasons.clone(),
+                        reasons: h
+                            .reasons
+                            .iter()
+                            .cloned()
+                            .chain(
+                                h.evidence
+                                    .iter()
+                                    .map(|e| format!("method:{}#{}", e.source, e.rank)),
+                            )
+                            .collect(),
                         content_hash: Some(hash),
                         text,
                         critical: diagnostic,
@@ -3176,6 +4059,16 @@ impl modbit_tools::SearchPort for IndexPort {
                         rehydrated,
                         signatures: signatures_of(&h.path),
                         source_ref: String::new(),
+                    });
+                }
+                // REQ-PX-116: a child that reads part of the worktree is packed
+                // only from that part. The pack is also what the ledger keeps
+                // and what the next prompt carries, so the cut is made here,
+                // before anything is recorded, not on the answer afterwards.
+                if !self.read_selectors.is_empty() {
+                    cands.retain(|c| {
+                        !c.source_ref.is_empty()
+                            || in_read_scope(&self.scope_root, &self.read_selectors, &c.path)
                     });
                 }
                 let fingerprint = format!("{}|{}", query, plan.ended_at as u8);
@@ -3214,24 +4107,12 @@ impl modbit_tools::SearchPort for IndexPort {
                     })
                     .unwrap_or_default();
                 let depth = u32::try_from(args["depth"].as_u64().unwrap_or(2)).unwrap_or(2);
-                let mut graph = self.graph.try_lock().map_err(|_| {
-                    (
-                        "INDEX_BUSY".to_owned(),
-                        "the graph is being refreshed".to_owned(),
-                    )
-                })?;
-                if ws_rev > graph.revision() {
-                    *graph = modbit_retrieval::EvidenceGraph::build(
-                        idx.texts(),
-                        recent_commits(idx.root()),
-                        worktree_changed_lines(idx.root()),
-                        ws_rev,
-                    );
-                }
-                let selection = modbit_retrieval::select_impacted(
+                let graph = &mut *graph_guard;
+                let selection = modbit_retrieval::select_impacted_with_refs(
                     &idx,
                     &symbols,
-                    &graph,
+                    graph,
+                    &refs_guard,
                     &paths,
                     depth,
                     req.max_hits,
@@ -3243,20 +4124,7 @@ impl modbit_tools::SearchPort for IndexPort {
                 let path = parts.next().unwrap_or_default().to_owned();
                 let relation = parts.next().unwrap_or("all").to_owned();
                 let depth: u32 = parts.next().and_then(|d| d.parse().ok()).unwrap_or(1);
-                let mut graph = self.graph.try_lock().map_err(|_| {
-                    (
-                        "INDEX_BUSY".to_owned(),
-                        "the graph is being refreshed".to_owned(),
-                    )
-                })?;
-                if ws_rev > graph.revision() {
-                    *graph = modbit_retrieval::EvidenceGraph::build(
-                        idx.texts(),
-                        recent_commits(idx.root()),
-                        worktree_changed_lines(idx.root()),
-                        ws_rev,
-                    );
-                }
+                let graph = &mut *graph_guard;
                 // Runtime evidence (docs/18): a verification check whose id names a
                 // test symbol of this path is attributed to the path.
                 let names: Vec<&str> = symbols
@@ -3284,6 +4152,17 @@ impl modbit_tools::SearchPort for IndexPort {
                     max: req.max_hits,
                 });
                 serde_json::json!({"graph": view})
+            }
+            "symbol_graph" => {
+                let args: serde_json::Value = serde_json::from_str(&req.query)
+                    .map_err(|e| ("BAD_QUERY".to_owned(), e.to_string()))?;
+                let symbol = args["symbol"].as_str().unwrap_or_default();
+                let path = args["path"].as_str().filter(|p| !p.is_empty());
+                let relation = args["relation"].as_str().unwrap_or("all");
+                if symbol.is_empty() {
+                    return Err(("BAD_QUERY".to_owned(), "symbol is required".to_owned()));
+                }
+                serde_json::json!({"symbol_graph": refs_guard.symbol_edges(symbol, path, relation, req.max_hits)})
             }
             "paths" => serde_json::json!({"paths": idx
                 .find_paths(&req.query, req.max_hits)
@@ -3521,6 +4400,130 @@ pub(crate) fn error_code(e: &anyhow::Error) -> &'static str {
         Some(Io(_)) => "IO",
         Some(Json(_)) => "JSON",
         Some(SchemaTooNew { .. }) => "SCHEMA_TOO_NEW",
+        Some(ReceiptChainStale { .. }) => "RECEIPT_CHAIN_STALE",
+        Some(RelaxedRefused { .. }) => "RELAXED_DURABILITY_REFUSED",
         None => "INFRA_FAILURE",
+    }
+}
+
+#[cfg(test)]
+mod resource_target_tests {
+    use super::resource_targets;
+    use modbit_tools::PathTarget;
+
+    fn p(path: &str) -> PathTarget {
+        PathTarget {
+            capability: "fs.write".into(),
+            path: path.into(),
+        }
+    }
+
+    fn resolved(root: Option<&str>, paths: &[&str]) -> Vec<String> {
+        let paths: Vec<PathTarget> = paths.iter().map(|x| p(x)).collect();
+        resource_targets(root, &paths)
+            .into_iter()
+            .map(|t| t.resource)
+            .collect()
+    }
+
+    /// FIX-15: a workspace path becomes the absolute resource the lease's
+    /// selectors are spelled in; a path that is not plainly inside the root
+    /// is left to the workspace's own path policy (no target, no new error).
+    #[test]
+    fn workspace_paths_resolve_inside_the_root_and_nothing_else() {
+        assert_eq!(
+            resolved(Some("/repo/"), &["src/./a/../b.rs", "."]),
+            vec!["/repo/src/b.rs".to_owned(), "/repo".to_owned()],
+            "normalized lexically, trailing slash on the root tolerated"
+        );
+        assert!(resolved(Some("/repo"), &["../x", "a/../../x", "/etc/passwd", "C:/x"]).is_empty());
+        assert!(
+            resolved(None, &["a.txt"]).is_empty(),
+            "no root, no resource"
+        );
+        assert_eq!(
+            resolved(Some(r"C:\repo"), &[r"src\a.rs"]),
+            vec![r"C:\repo/src/a.rs".to_owned()]
+        );
+    }
+}
+
+#[cfg(test)]
+mod store_wait_tests {
+    use super::{Mutex, lock_bounded};
+    use modbit_event_store::{EventStore, EvidenceScope};
+    use std::sync::Arc;
+    use std::time::{Duration, Instant};
+
+    fn store() -> (tempfile::TempDir, Arc<Mutex<EventStore>>) {
+        let dir = tempfile::tempdir().unwrap();
+        let s = EventStore::open(dir.path()).unwrap();
+        (dir, Arc::new(Mutex::new(s)))
+    }
+
+    /// Hold the store (what an append in flight does) for `hold`, with the
+    /// holder already running when this returns.
+    async fn hold(store: &Arc<Mutex<EventStore>>, hold: Duration) {
+        let guard = Arc::clone(store).lock_owned().await;
+        tokio::spawn(async move {
+            tokio::time::sleep(hold).await;
+            drop(guard);
+        });
+    }
+
+    /// A read that meets a writer in flight waits for it and then answers,
+    /// instead of failing with STORE_BUSY at the first contention (the
+    /// Windows failure of `evidence.search` under load).
+    #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+    async fn a_read_waits_for_a_writer_that_finishes_within_the_wait() {
+        let (_dir, store) = store();
+        hold(&store, Duration::from_millis(700)).await;
+        let started = Instant::now();
+        let guard = lock_bounded(&store, Duration::from_secs(10))
+            .expect("the writer lets go within the wait, so the read gets the store");
+        assert!(
+            started.elapsed() >= Duration::from_millis(500),
+            "it waited for the writer: {:?}",
+            started.elapsed()
+        );
+        let tenant = modbit_domain::ids::TenantId::from_bytes([7; 16]);
+        let scope = EvidenceScope {
+            session_id: None,
+            task_id: None,
+            run_id: None,
+            step_id: None,
+        };
+        assert!(
+            guard
+                .search_evidence(&tenant, &scope, "anything", &[], 10)
+                .unwrap()
+                .is_empty()
+        );
+    }
+
+    /// A writer that outlasts the wait is the only thing that makes a read busy,
+    /// and it does so after the wait, not before.
+    #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+    async fn a_read_is_busy_only_after_the_whole_wait() {
+        let (_dir, store) = store();
+        hold(&store, Duration::from_secs(5)).await;
+        let started = Instant::now();
+        assert!(lock_bounded(&store, Duration::from_millis(400)).is_none());
+        let waited = started.elapsed();
+        assert!(
+            waited >= Duration::from_millis(400) && waited < Duration::from_secs(3),
+            "{waited:?}"
+        );
+    }
+
+    /// On a current-thread runtime the holder cannot run while the caller
+    /// blocks, so the caller does not wait for it (it would never finish).
+    #[tokio::test(flavor = "current_thread")]
+    async fn a_current_thread_runtime_does_not_block_on_the_holder() {
+        let (_dir, store) = store();
+        hold(&store, Duration::from_millis(200)).await;
+        let started = Instant::now();
+        assert!(lock_bounded(&store, Duration::from_secs(10)).is_none());
+        assert!(started.elapsed() < Duration::from_millis(150));
     }
 }

@@ -1,0 +1,44 @@
+{
+  "expected": {
+    "nodes": [
+      {
+        "actions": [
+          "focus"
+        ],
+        "bounds": {
+          "height": 30,
+          "width": 400,
+          "x": 120,
+          "y": 170
+        },
+        "elementId": "n2",
+        "enabled": true,
+        "focused": true,
+        "name": "Name",
+        "parentId": "n0",
+        "role": "textfield",
+        "secure": false,
+        "settable": true,
+        "value": "Ada"
+      }
+    ],
+    "snapshotId": "s0123",
+    "treeDigest": "dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd",
+    "truncated": false,
+    "window": {
+      "bounds": {
+        "height": 600,
+        "width": 800,
+        "x": 100,
+        "y": 100
+      },
+      "focused": true,
+      "minimized": false,
+      "modal": false,
+      "title": "Order form",
+      "version": "3",
+      "windowId": "w1"
+    }
+  },
+  "type": "modbit.v1.ReadStateResponse"
+}

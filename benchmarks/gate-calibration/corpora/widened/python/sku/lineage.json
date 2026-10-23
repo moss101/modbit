@@ -1,0 +1,27 @@
+{
+  "lineage": "holdout/python-shop/sku",
+  "goal": "`normalize_sku` must trim a SKU, drop its dashes, upper-case it, reject an empty result and reject a result longer than 12 characters. The visible test `test_acceptance_sku_is_normalised` fails; make it pass and fix the behaviour, without weakening or removing any test.",
+  "acceptance": [
+    "test_acceptance_sku_is_normalised"
+  ],
+  "seed": [
+    "shop.py"
+  ],
+  "oracle": {
+    "files": [
+      [
+        "test_oracle_spec.py",
+        "python/test_oracle_spec.py"
+      ]
+    ],
+    "argv": [
+      "python3",
+      "-m",
+      "pytest",
+      "-q",
+      "-p",
+      "no:cacheprovider",
+      "test_oracle_spec.py"
+    ]
+  }
+}

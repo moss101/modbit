@@ -407,9 +407,13 @@ fn register_providers(core: &Core, ext: &LoadedExtension) -> Vec<String> {
         let name = p.endpoint(&ext.manifest.name);
         let credential = match &p.credential {
             None => modbit_providers::SecretHandle::None,
-            Some(handle) => match core.tools.mcp.credential(handle) {
-                Some(v) => modbit_providers::SecretHandle::Inline(v),
-                None => {
+            Some(handle) => match core.tools.mcp.has_credential(handle) {
+                // The endpoint uses the credential the person configured
+                // by handle; the value is not copied out of the broker.
+                true => modbit_providers::SecretHandle::Credential(
+                    crate::mcp::McpHub::credential_id(handle),
+                ),
+                false => {
                     out.push(format!(
                         "{name}: not registered: the credential `{handle}` is not in this Core's custody"
                     ));
@@ -446,11 +450,18 @@ fn register_providers(core: &Core, ext: &LoadedExtension) -> Vec<String> {
                     agent_loop: m.tools,
                     input_price_per_mtok: 0.0,
                     output_price_per_mtok: 0.0,
+                    output_budget_tokens: 0,
+                    request_timeout_ms: 0,
+                    default_reasoning_effort: None,
+                    default_service_tier: None,
+                    projection_mode: None,
+                    max_projection_bytes: 0,
                 })
                 .collect(),
             max_retries: 2,
             auth: Default::default(),
             extra_body: Default::default(),
+            max_concurrency: 0,
         });
         out.push(name);
     }

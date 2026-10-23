@@ -51,12 +51,7 @@ impl WorkspaceRevision {
 /// repository or git is unavailable.
 #[must_use]
 pub fn git_head(root: &Path) -> Option<String> {
-    let out = std::process::Command::new("git")
-        .arg("-C")
-        .arg(root)
-        .args(["rev-parse", "--verify", "HEAD"])
-        .output()
-        .ok()?;
+    let out = modbit_git::output(root, &["rev-parse", "--verify", "HEAD"]).ok()?;
     if !out.status.success() {
         return None;
     }

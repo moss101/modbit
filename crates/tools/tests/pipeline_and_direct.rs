@@ -90,9 +90,14 @@ fn fixture(exec: Option<ExecTarget>) -> Fixture {
         secrets_in_custody: vec![],
         environment: None,
         memory: None,
+        skills: None,
         external: None,
         cancel: None,
         hooks: None,
+        git_state: None,
+        computer: None,
+        approval_id: None,
+        intent_hash: None,
     };
     let mut registry = ToolRegistry::new();
     modbit_tools::direct::register_direct(&mut registry).unwrap();
@@ -220,9 +225,14 @@ async fn qual_ev_0239_0080_denial_is_monotonic_and_argument_text_cannot_bypass_p
         secrets_in_custody: vec![],
         environment: None,
         memory: None,
+        skills: None,
         external: None,
         cancel: None,
         hooks: None,
+        git_state: None,
+        computer: None,
+        approval_id: None,
+        intent_hash: None,
     };
     let o = f
         .runtime
@@ -352,7 +362,11 @@ async fn fs_change_and_git_tools_run_against_the_real_substrate_with_revision_bi
         .clone();
     assert!(String::from_utf8(spilled).unwrap().contains("+fn run() {}"));
     // Worktree create/close through the tool.
-    let wt = f.root.parent().unwrap().join("wt-task");
+    // Worktrees live under the workspace's own worktree root (FIX-01); the
+    // directory is created by the tool, which is why the path is not canonicalized.
+    let wt = modbit_tools::direct::worktree_root(&f.root)
+        .unwrap()
+        .join("wt-task");
     let o = f
         .runtime
         .invoke(
@@ -427,6 +441,8 @@ async fn fs_change_and_git_tools_run_against_the_real_substrate_with_revision_bi
         .await;
     assert_eq!(o.result.status, ToolStatus::Success, "{:?}", o.result);
     assert!(!wt.exists());
+    // The worktree root is a sibling of the fixture's temp directory, not inside it.
+    let _ = std::fs::remove_dir(wt.parent().unwrap());
 }
 
 #[tokio::test]

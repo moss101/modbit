@@ -52,6 +52,100 @@ fn view(r: &ReviewCommentRecord) -> wire::ReviewCommentView {
     }
 }
 
+/// Bytes of a comment's text shown in Review and the CLI.
+const MAX_VIEW_BYTES: usize = 4 * 1024;
+
+/// The pull request's comments the task has seen, oldest first, as Review
+/// and the CLI show them (PX-127): who wrote each, where, its text (the
+/// steering input's — untrusted, never an instruction to the viewer's
+/// client), what became of it, and whether the agent has answered — a pass
+/// of the agent reached review or completion after the steer was queued —
+/// and reported back — a status comment was posted on the pull request
+/// afterwards.
+pub(crate) fn threads(
+    store: &modbit_event_store::EventStore,
+    task_id: TaskId,
+) -> Vec<wire::ReviewCommentThreadView> {
+    let events = store
+        .read_aggregate(task_id.as_bytes(), 0, usize::MAX)
+        .unwrap_or_default();
+    // The steering inputs by id: their text and where they sit in the log.
+    let mut inputs: std::collections::HashMap<String, (u64, String)> = Default::default();
+    for e in events
+        .iter()
+        .filter(|e| e.envelope.event_type == "TaskInputQueued")
+    {
+        let Ok(p) = store.payload(&e.envelope) else {
+            continue;
+        };
+        if p["provenance"] == PROVENANCE {
+            inputs.insert(
+                p["input_id"].as_str().unwrap_or_default().to_owned(),
+                (e.offset, p["text"].as_str().unwrap_or_default().to_owned()),
+            );
+        }
+    }
+    let after = |offset: u64, kinds: &[&str]| {
+        events
+            .iter()
+            .any(|e| e.offset > offset && kinds.contains(&e.envelope.event_type.as_str()))
+    };
+    let mut out = Vec::new();
+    for e in events
+        .iter()
+        .filter(|e| e.envelope.event_type == "ReviewCommentsIngested")
+    {
+        let Ok(TaskEvent::ReviewCommentsIngested {
+            steered, ignored, ..
+        }) = store
+            .payload(&e.envelope)
+            .map_err(|e| e.to_string())
+            .and_then(|p| serde_json::from_value::<TaskEvent>(p).map_err(|e| e.to_string()))
+        else {
+            continue;
+        };
+        for (rec, disposition) in steered
+            .iter()
+            .map(|r| (r, "STEERED"))
+            .chain(ignored.iter().map(|r| (r, "IGNORED")))
+        {
+            let steer = (disposition == "STEERED")
+                .then(|| inputs.get(&rec.input_id))
+                .flatten();
+            // The input's text is "Pull request #N comment by @a on p:l (url):\n<body>".
+            let body = steer
+                .map(|(_, t)| {
+                    t.split_once("):\n")
+                        .map_or(t.as_str(), |(_, b)| b)
+                        .to_owned()
+                })
+                .map(|b| bounded(&b, MAX_VIEW_BYTES))
+                .unwrap_or_default();
+            let queued_at = steer.map(|(o, _)| *o);
+            out.push(wire::ReviewCommentThreadView {
+                comment_id: rec.comment_id,
+                kind: rec.kind.clone(),
+                author: rec.author.clone(),
+                url: rec.url.clone(),
+                path: rec.path.clone(),
+                line: rec.line,
+                body,
+                trust: "UNTRUSTED_EXTERNAL_CONTENT".into(),
+                disposition: disposition.into(),
+                reason: rec.reason.clone(),
+                input_id: rec.input_id.clone(),
+                provenance: PROVENANCE.into(),
+                ingested_offset: e.offset,
+                answered: queued_at
+                    .is_some_and(|o| after(o, &["TaskReadyForReview", "TaskCompleted"])),
+                reported_back: queued_at.is_some_and(|o| after(o, &["ForgeCommentPosted"])),
+                created_at: rec.created_at.clone(),
+            });
+        }
+    }
+    out
+}
+
 /// Whether a comment addresses Modbit: the mention as a word of its own.
 fn addressed(body: &str) -> bool {
     let lower = body.to_ascii_lowercase();
@@ -225,6 +319,9 @@ pub(crate) async fn ingest(
             url: c["url"].as_str().unwrap_or_default().to_owned(),
             input_id: String::new(),
             reason: String::new(),
+            path: c["path"].as_str().unwrap_or_default().to_owned(),
+            line: c["line"].as_u64().unwrap_or(0),
+            created_at: c["created_at"].as_str().unwrap_or_default().to_owned(),
         };
         if !allowed.contains(&author.to_ascii_lowercase()) {
             rec.reason = "DISALLOWED_AUTHOR".into();

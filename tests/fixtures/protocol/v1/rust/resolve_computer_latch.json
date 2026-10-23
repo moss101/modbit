@@ -1,0 +1,7 @@
+{
+  "expected": {
+    "note": "looked at the app",
+    "taskId": "71717171717171717171717171717171"
+  },
+  "type": "modbit.v1.ResolveComputerLatch"
+}

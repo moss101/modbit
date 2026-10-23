@@ -1,0 +1,25 @@
+// Tool projection control (PX-114, docs/16 "Dynamic task-scoped projection").
+// A person chooses how a task's tool surface is shown to the model and what
+// the schemas of one request may cost. It changes what the model is shown,
+// never what it may do: the Capability Kernel decides every call.
+syntax = "proto3";
+
+package modbit.v1;
+
+import "modbit/v1/domain.proto";
+
+// Set a task's projection mode and/or schema-bytes budget. Takes effect at
+// the next round boundary, also for a task that is running. Empty mode and a
+// zero budget leave the earlier setting (the routed model's catalog entry,
+// then the Core's environment) in force.
+message SetTaskToolProjection {
+  Id task_id = 1;
+  string mode = 2;                  // "" | "direct" | "exec_only" | "typed"
+  uint64 max_projection_bytes = 3;  // 0 = unchanged
+}
+
+message TaskToolProjectionSet {
+  uint64 offset = 1;                // the event's offset on the log
+  string mode = 2;                  // the mode now set for the task ("" = none set)
+  uint64 max_projection_bytes = 3;
+}

@@ -1,0 +1,11 @@
+{
+  "id": "rust-discount-correct-b",
+  "class": "correct",
+  "flavor": "b",
+  "leg": "initial",
+  "write_set": [
+    "src/lib.rs",
+    "tests/discount_boundaries.rs"
+  ],
+  "declared": "correct"
+}

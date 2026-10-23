@@ -36,6 +36,26 @@ pub enum AggregateType {
     CompactionEpoch,
     /// Workspace (worktree) change stream.
     Workspace,
+    /// One streamed model output (PX-041): text deltas, then the record that
+    /// closes the stream as completed or aborted.
+    AssistantStream,
+    /// A person's curation of a task's conversation (PX-042): read markers
+    /// and archive.
+    Conversation,
+    /// One engineering-memory item's life (PX-113): proposed, promoted,
+    /// edited, superseded, forgotten. The aggregate id is the first sixteen
+    /// bytes of the item's content-addressed id; the `memory_items` table is
+    /// a projection of these events and rebuilds from them.
+    Memory,
+    /// One automation definition's life and its run history (PX-082,
+    /// docs/68): versions, enable approvals, kill switches, firings and run
+    /// outcomes. The Core folds them into the automation registry; the
+    /// aggregate id is the definition's id (the global switch has its own).
+    Automation,
+    /// A project's life (PX-063): created, renamed, archived, and the tasks
+    /// that joined or left it. The `projects` and `project_members` tables
+    /// are projections of these events and rebuild from them.
+    Project,
 }
 
 impl AggregateType {
@@ -54,6 +74,11 @@ impl AggregateType {
             Self::Checkpoint => "checkpoint",
             Self::CompactionEpoch => "compaction_epoch",
             Self::Workspace => "workspace",
+            Self::AssistantStream => "assistant_stream",
+            Self::Conversation => "conversation",
+            Self::Memory => "memory",
+            Self::Automation => "automation",
+            Self::Project => "project",
         }
     }
 
@@ -72,6 +97,11 @@ impl AggregateType {
             "checkpoint" => Self::Checkpoint,
             "compaction_epoch" => Self::CompactionEpoch,
             "workspace" => Self::Workspace,
+            "assistant_stream" => Self::AssistantStream,
+            "conversation" => Self::Conversation,
+            "memory" => Self::Memory,
+            "automation" => Self::Automation,
+            "project" => Self::Project,
             _ => return None,
         })
     }

@@ -43,6 +43,90 @@ pub struct ModelCapability {
     pub input_price_per_mtok: f64,
     /// USD per million output tokens.
     pub output_price_per_mtok: f64,
+    /// The output budget one request to this model asks for, in tokens;
+    /// 0 = derived ([`ModelCapability::output_budget`]). Never above
+    /// `max_output_tokens`.
+    #[serde(default)]
+    pub output_budget_tokens: u32,
+    /// The whole-request timeout for this model, in milliseconds; 0 =
+    /// derived ([`ModelCapability::timeout_ms`]).
+    #[serde(default)]
+    pub request_timeout_ms: u64,
+    /// The reasoning effort (`low`|`medium`|`high`) a request to this model
+    /// carries unless the caller says otherwise; only honoured for a model
+    /// that exposes reasoning. `None` = the provider's own default.
+    #[serde(default)]
+    pub default_reasoning_effort: Option<String>,
+    /// The service tier a request to this model carries unless the caller
+    /// says otherwise. `None` = the provider's own default.
+    #[serde(default)]
+    pub default_service_tier: Option<String>,
+    /// How a request to this model projects the tool surface (PX-114):
+    /// `direct` or `exec_only`. `None` = the Core's default. A small model
+    /// that follows a few schemas better than thirty is the case for
+    /// `exec_only`; the paired trial decides whether any model earns it.
+    #[serde(default)]
+    pub projection_mode: Option<String>,
+    /// The most bytes of tool schemas one request to this model may carry
+    /// (PX-114); 0 = the Core's default budget.
+    #[serde(default)]
+    pub max_projection_bytes: u32,
+}
+
+/// The output budget a request asks for when the catalog entry names none:
+/// room for a large file write without asking for the model's whole ceiling.
+pub const DEFAULT_OUTPUT_BUDGET_TOKENS: u32 = 16_384;
+/// The request timeout for a small output budget; a larger budget earns
+/// proportionally more time ([`ModelCapability::timeout_ms`]).
+pub const BASE_REQUEST_TIMEOUT_MS: u64 = 120_000;
+/// Milliseconds granted per output token beyond the first 4096 (a floor of
+/// about 33 tokens per second; a model slower than that sets its own
+/// `request_timeout_ms`).
+pub const TIMEOUT_MS_PER_EXTRA_OUTPUT_TOKEN: u64 = 30;
+/// Longest a provider's `Retry-After` is honoured; a provider asking for more
+/// is reported as rate limited rather than waited on.
+pub const MAX_RETRY_AFTER: Duration = Duration::from_secs(300);
+/// Concurrent requests per endpoint when the endpoint names no limit.
+pub const DEFAULT_ENDPOINT_CONCURRENCY: u32 = 16;
+
+impl ModelCapability {
+    /// The output budget one request asks for: the entry's own, else
+    /// [`DEFAULT_OUTPUT_BUDGET_TOKENS`], and never more than the model's
+    /// ceiling.
+    #[must_use]
+    pub fn output_budget(&self) -> u32 {
+        let asked = if self.output_budget_tokens > 0 {
+            self.output_budget_tokens
+        } else {
+            DEFAULT_OUTPUT_BUDGET_TOKENS
+        };
+        asked.min(self.max_output_tokens.max(1))
+    }
+
+    /// The whole-request timeout: the entry's own, else a base plus time in
+    /// proportion to the output budget beyond 4096 tokens.
+    #[must_use]
+    pub fn timeout_ms(&self) -> u64 {
+        if self.request_timeout_ms > 0 {
+            return self.request_timeout_ms;
+        }
+        BASE_REQUEST_TIMEOUT_MS
+            + u64::from(self.output_budget().saturating_sub(4096))
+                * TIMEOUT_MS_PER_EXTRA_OUTPUT_TOKEN
+    }
+
+    /// The reasoning effort and service tier a request to this model carries
+    /// by default. An effort is dropped for a model that exposes no
+    /// reasoning, because the route would refuse it (`CapabilityMismatch`).
+    #[must_use]
+    pub fn execution_preference(&self) -> (Option<String>, Option<String>) {
+        (
+            self.default_reasoning_effort
+                .clone()
+                .filter(|_| self.reasoning),
+            self.default_service_tier.clone(),
+        )
+    }
 }
 
 /// How the credential is presented on the wire.
@@ -83,6 +167,10 @@ pub struct Endpoint {
     /// endpoint where the canonical body has no such key. Never a secret.
     #[serde(default)]
     pub extra_body: serde_json::Map<String, serde_json::Value>,
+    /// Requests this endpoint is asked to serve at once; the rest wait for a
+    /// slot inside their own deadline. 0 = [`DEFAULT_ENDPOINT_CONCURRENCY`].
+    #[serde(default)]
+    pub max_concurrency: u32,
 }
 
 /// The request URL for a wire family on a base URL: the family's path under
@@ -187,6 +275,10 @@ pub struct Requirements {
     pub structured_output: bool,
     /// Input modalities present in the request.
     pub input_modalities: Vec<String>,
+    /// The registry role the request is made in (`None` = `solver`, a run
+    /// turn). A Core-originated call in another role — the compaction
+    /// summarizer — is routed to a model the registry binds for that role.
+    pub role: Option<String>,
 }
 
 /// Requested vs resolved route (REQ-EV-0112 routing record).
@@ -215,6 +307,9 @@ pub struct RouteRecord {
     pub provider_request_id: Option<String>,
 }
 
+/// An endpoint's concurrency limit and the semaphore that enforces it.
+type EndpointSlots = (u32, Arc<tokio::sync::Semaphore>);
+
 /// The gateway.
 #[derive(Clone)]
 pub struct ProviderGateway {
@@ -229,6 +324,46 @@ pub struct ProviderGateway {
     /// force allows canary routing; replacing production ends it.
     canary: Arc<Mutex<Option<crate::registry::ModelRegistry>>>,
     policy: Arc<OrgModelPolicy>,
+    /// One semaphore per endpoint, sized by its `max_concurrency`: what the
+    /// endpoint is asked to serve at once, whatever number of runs want it.
+    slots: Arc<Mutex<BTreeMap<String, EndpointSlots>>>,
+    /// Per endpoint, the instant before which no request is sent: set when a
+    /// provider answers a rate limit with `Retry-After`, honoured by every
+    /// request to that endpoint, not only the one that was told.
+    cooldown: Arc<Mutex<BTreeMap<String, Instant>>>,
+    /// The credential broker (REQ-PX-130): every endpoint's credential is
+    /// registered with it, and the gateway obtains the key for each request
+    /// through it — scoped to the task that makes the request, to the
+    /// endpoint, to the purpose — so a revoked or rotated credential applies
+    /// to the very next request.
+    broker: Arc<modbit_secrets::CredentialBroker>,
+}
+
+/// The broker's identity of an endpoint's credential.
+#[must_use]
+pub fn credential_id(endpoint: &str) -> modbit_secrets::CredentialId {
+    modbit_secrets::CredentialId::new(modbit_secrets::Kind::Provider, endpoint)
+}
+
+/// Register `ep`'s credential with `broker` (a rotation when it already is).
+fn register_credential(broker: &modbit_secrets::CredentialBroker, ep: &Endpoint) {
+    broker.register(modbit_secrets::Registration {
+        id: credential_id(&ep.name),
+        kind: modbit_secrets::Kind::Provider,
+        source: ep.credential.clone(),
+        audience: format!("provider:{}", ep.name),
+    });
+}
+
+/// The principal a request speaks for: its task (the request id is
+/// `<task id>:<ordinal>`), else the Core itself.
+fn principal_of(request_id: &str) -> String {
+    match request_id.split_once(':') {
+        Some((task, rest)) if task.len() == 36 && rest.chars().all(|c| c.is_ascii_digit()) => {
+            format!("task:{task}")
+        }
+        _ => "core".to_owned(),
+    }
 }
 
 /// Organization model policy (REQ-EV-0031): block or require providers,
@@ -321,11 +456,16 @@ impl ProviderGateway {
     /// Build over a set of endpoints.
     #[must_use]
     pub fn new(endpoints: Vec<Endpoint>) -> Self {
+        let broker = Arc::new(modbit_secrets::CredentialBroker::new());
+        for e in &endpoints {
+            register_credential(&broker, e);
+        }
         let map = endpoints
             .into_iter()
             .map(|e| (e.name.clone(), e))
             .collect::<BTreeMap<_, _>>();
         Self {
+            broker,
             endpoints: Arc::new(Mutex::new(map)),
             health: Arc::new(Mutex::new(BTreeMap::new())),
             policy: Arc::new(OrgModelPolicy::default()),
@@ -335,6 +475,88 @@ impl ProviderGateway {
                 .expect("reqwest client"),
             registry: Arc::new(Mutex::new(None)),
             canary: Arc::new(Mutex::new(None)),
+            slots: Arc::new(Mutex::new(BTreeMap::new())),
+            cooldown: Arc::new(Mutex::new(BTreeMap::new())),
+        }
+    }
+
+    /// Use `broker` as the credential broker (the Core shares one across
+    /// everything that holds a credential): every endpoint's credential is
+    /// registered with it.
+    #[must_use]
+    pub fn with_broker(mut self, broker: Arc<modbit_secrets::CredentialBroker>) -> Self {
+        for e in self.endpoints.lock().expect("endpoints").values() {
+            register_credential(&broker, e);
+        }
+        self.broker = broker;
+        self
+    }
+
+    /// The credential broker.
+    #[must_use]
+    pub fn broker(&self) -> &Arc<modbit_secrets::CredentialBroker> {
+        &self.broker
+    }
+
+    /// Whether the endpoint has a credential it can use now (or needs none).
+    #[must_use]
+    pub fn credential_configured(&self, endpoint: &str) -> bool {
+        let eps = self.endpoints.lock().expect("endpoints");
+        match eps.get(endpoint) {
+            Some(ep) if matches!(ep.credential, SecretHandle::None) => false,
+            Some(_) => self.broker.configured(&credential_id(endpoint)),
+            None => false,
+        }
+    }
+
+    /// Wait until `ep` may be sent a request: its cooldown (a provider's
+    /// `Retry-After`) has passed and one of its concurrency slots is free.
+    /// The caller races this against its own deadline and cancellation, so a
+    /// queue never outlives the request that joined it.
+    async fn admit(&self, ep: &Endpoint) -> tokio::sync::OwnedSemaphorePermit {
+        let size = if ep.max_concurrency == 0 {
+            DEFAULT_ENDPOINT_CONCURRENCY
+        } else {
+            ep.max_concurrency
+        };
+        loop {
+            let until = self
+                .cooldown
+                .lock()
+                .expect("cooldown")
+                .get(&ep.name)
+                .copied();
+            if let Some(until) = until
+                && until > Instant::now()
+            {
+                tokio::time::sleep_until(until.into()).await;
+                continue;
+            }
+            let semaphore = {
+                let mut slots = self.slots.lock().expect("slots");
+                let entry = slots.entry(ep.name.clone()).or_insert_with(|| {
+                    (size, Arc::new(tokio::sync::Semaphore::new(size as usize)))
+                });
+                if entry.0 != size {
+                    // The endpoint was reconfigured with another limit: a
+                    // new semaphore, while requests already admitted finish
+                    // on the old one.
+                    *entry = (size, Arc::new(tokio::sync::Semaphore::new(size as usize)));
+                }
+                Arc::clone(&entry.1)
+            };
+            let permit = semaphore.acquire_owned().await.expect("never closed");
+            // A rate limit may have arrived while this request queued.
+            let cooling = self
+                .cooldown
+                .lock()
+                .expect("cooldown")
+                .get(&ep.name)
+                .is_some_and(|until| *until > Instant::now());
+            if !cooling {
+                return permit;
+            }
+            drop(permit);
         }
     }
 
@@ -353,6 +575,8 @@ impl ProviderGateway {
     /// setup hands the Core a credential it holds in memory only; nothing is
     /// written to the log, the object store or any file by this call).
     pub fn configure_endpoint(&self, endpoint: Endpoint) {
+        // A rotation when the endpoint was configured before.
+        register_credential(&self.broker, &endpoint);
         self.endpoints
             .lock()
             .expect("endpoints")
@@ -362,6 +586,7 @@ impl ProviderGateway {
     /// Forget an endpoint, credential included. What provider setup could not
     /// confirm is not left registered.
     pub fn remove_endpoint(&self, name: &str) -> bool {
+        self.broker.forget(&credential_id(name));
         self.endpoints
             .lock()
             .expect("endpoints")
@@ -598,11 +823,11 @@ impl ProviderGateway {
             // A binding the canary holds passes too: routing gives it only
             // to requests whose policy allows canary routing, and the canary
             // keeps every revocation production has (REQ-EPR-012).
-            let checked =
-                registry.check_dispatch(&ep.name, &req.model_policy.model, "solver", &wanted);
+            let role = needs.role.as_deref().unwrap_or("solver");
+            let checked = registry.check_dispatch(&ep.name, &req.model_policy.model, role, &wanted);
             let checked = match (checked, canary.as_ref()) {
                 (Err(e), Some(c)) => c
-                    .check_dispatch(&ep.name, &req.model_policy.model, "solver", &wanted)
+                    .check_dispatch(&ep.name, &req.model_policy.model, role, &wanted)
                     .map_err(|_| e),
                 (r, _) => r,
             };
@@ -638,8 +863,11 @@ impl ProviderGateway {
         if (needs.vision || carried.iter().any(|m| m == "image")) && !cap.vision {
             return Err(mismatch("vision"));
         }
+        // A catalog entry can claim structured output; the adapter has to
+        // implement it. A wire that does not is refused here, whatever the
+        // entry says, so a request for JSON never silently degrades to text.
         if (needs.structured_output || req.response_format.as_deref() == Some("json_object"))
-            && !cap.structured_output
+            && (!cap.structured_output || !ep.kind.implements_structured_output())
         {
             return Err(mismatch("structured_output"));
         }
@@ -651,7 +879,9 @@ impl ProviderGateway {
         if req.model_policy.reasoning_effort.is_some() && !cap.reasoning {
             return Err(mismatch("reasoning"));
         }
-        if !matches!(ep.credential, SecretHandle::None) && ep.credential.resolve().is_none() {
+        if !matches!(ep.credential, SecretHandle::None)
+            && !self.broker.usable(&credential_id(&ep.name))
+        {
             return Err(RouteError::MissingCredential(ep.name.clone()));
         }
         let record = RouteRecord {
@@ -711,7 +941,13 @@ impl ProviderGateway {
             let outcome = tokio::select! {
                 _ = cancel.cancelled() => Attempt::Cancelled,
                 _ = tokio::time::sleep_until(deadline.into()) => Attempt::Timeout,
-                r = self.attempt(&ep, &req, &tx, &cancel, &route, deadline) => r,
+                r = async {
+                    // Queue behind the endpoint's cooldown and concurrency
+                    // limit; the slot is held until this attempt's stream
+                    // ends and is free again during a retry's backoff.
+                    let _slot = self.admit(&ep).await;
+                    self.attempt(&ep, &req, &tx, &cancel, &route, deadline).await
+                } => r,
             };
             match outcome {
                 Attempt::Done => {
@@ -760,9 +996,43 @@ impl ProviderGateway {
                         .await;
                     return;
                 }
-                Attempt::Retryable { code, message } => {
+                Attempt::Retryable {
+                    code,
+                    message,
+                    retry_after,
+                } => {
                     if code == "RATE_LIMITED" {
                         self.bump(&ep.name, |h| h.rate_limited += 1);
+                    }
+                    // The provider said how long to wait: every request to
+                    // this endpoint waits, and this one does not come back
+                    // sooner than that.
+                    let told = retry_after.map(|d| d.min(MAX_RETRY_AFTER));
+                    if let Some(wait) = told {
+                        self.cooldown
+                            .lock()
+                            .expect("cooldown")
+                            .insert(ep.name.clone(), Instant::now() + wait);
+                    }
+                    if let Some(asked) = retry_after {
+                        let left = deadline.saturating_duration_since(Instant::now());
+                        if asked > MAX_RETRY_AFTER || told.is_some_and(|w| w >= left) {
+                            // Waiting would outlive the request: say so now
+                            // rather than time out later.
+                            self.bump(&ep.name, |h| h.failures += 1);
+                            let _ = tx
+                                .send(ModelEvent::Error {
+                                    code,
+                                    message: format!(
+                                        "{message} (the provider asked for {} s before the next request; the request has {} s left)",
+                                        asked.as_secs(),
+                                        left.as_secs()
+                                    ),
+                                    retryable: true,
+                                })
+                                .await;
+                            return;
+                        }
                     }
                     attempt += 1;
                     if attempt > ep.max_retries {
@@ -780,7 +1050,7 @@ impl ProviderGateway {
                     // Bounded backoff with jitter, charged to the same request deadline.
                     let base = 100u64 * (1u64 << attempt.min(6));
                     let jitter: u64 = rand::random::<u64>() % (base / 2 + 1);
-                    let wait = Duration::from_millis(base + jitter);
+                    let wait = Duration::from_millis(base + jitter).max(told.unwrap_or_default());
                     tokio::select! {
                         _ = cancel.cancelled() => {
                             self.bump(&ep.name, |h| h.cancellations += 1);
@@ -817,11 +1087,36 @@ impl ProviderGateway {
         };
         // REQ-EV-0017: everything this attempt reports is error text, and
         // this endpoint's own key is the value most likely to come back in it.
-        let redactor = modbit_secrets::Redactor::new(ep.credential.resolve());
-        if let Some(key) = ep.credential.resolve() {
+        let redactor = self.broker.redactor();
+        if !matches!(ep.credential, SecretHandle::None) {
+            // The key is obtained for this request, for this task, for this
+            // endpoint: a revoked, expired or rotated credential is decided
+            // here, on the very next request.
+            let key = match self.broker.acquire(
+                &credential_id(&ep.name),
+                &modbit_secrets::Use {
+                    principal: principal_of(&req.request_id),
+                    audience: format!("provider:{}", ep.name),
+                    purpose: "model.request".into(),
+                    nonce: None,
+                },
+            ) {
+                Ok(k) => k,
+                Err(refusal) => {
+                    return Attempt::Failed {
+                        code: refusal.code().into(),
+                        message: format!(
+                            "the credential for endpoint `{}` was refused by the credential broker",
+                            ep.name
+                        ),
+                    };
+                }
+            };
             rb = match (ep.kind, ep.auth) {
-                (ProviderKind::Anthropic, AuthScheme::Native) => rb.header("x-api-key", key),
-                _ => rb.bearer_auth(key),
+                (ProviderKind::Anthropic, AuthScheme::Native) => {
+                    rb.header("x-api-key", key.expose())
+                }
+                _ => rb.bearer_auth(key.expose()),
             };
         }
         // Gateway-specific fields fill in beside the canonical body; a
@@ -854,11 +1149,13 @@ impl ProviderGateway {
                     Attempt::Retryable {
                         code: "CONNECT_FAILED".into(),
                         message: msg,
+                        retry_after: None,
                     }
                 } else if e.is_request() && !e.is_body() && !e.is_decode() {
                     Attempt::Retryable {
                         code: "TRANSPORT".into(),
                         message: msg,
+                        retry_after: None,
                     }
                 } else {
                     Attempt::Failed {
@@ -880,6 +1177,9 @@ impl ProviderGateway {
             route.lock().expect("route").provider_request_id = Some(id.to_owned());
         }
         if !status.is_success() {
+            // How long the provider asked for, from the response head, before
+            // the body is consumed.
+            let told = retry_after_of(resp.headers(), std::time::SystemTime::now());
             let text = resp.text().await.unwrap_or_default();
             // Redacted whole, then bounded: a cut through a key must not
             // leave its tail behind.
@@ -896,10 +1196,12 @@ impl ProviderGateway {
                 429 => Attempt::Retryable {
                     code: "RATE_LIMITED".into(),
                     message,
+                    retry_after: told,
                 },
                 500..=599 => Attempt::Retryable {
                     code: "PROVIDER_UNAVAILABLE".into(),
                     message,
+                    retry_after: told,
                 },
                 401 | 403 => Attempt::Failed {
                     code: "AUTH_REJECTED".into(),
@@ -933,6 +1235,7 @@ impl ProviderGateway {
                         Attempt::Retryable {
                             code: "CONNECT_FAILED".into(),
                             message: msg,
+                            retry_after: None,
                         }
                     };
                 }
@@ -949,6 +1252,7 @@ impl ProviderGateway {
                         Attempt::Retryable {
                             code: "EMPTY_STREAM".into(),
                             message: "stream ended before the first event".into(),
+                            retry_after: None,
                         }
                     };
                 }
@@ -991,6 +1295,7 @@ impl ProviderGateway {
                                 return Attempt::Retryable {
                                     code: code.clone(),
                                     message,
+                                    retry_after: None,
                                 };
                             }
                             let _ = tx
@@ -1020,13 +1325,76 @@ impl ProviderGateway {
     }
 }
 
+/// How long a provider asked for before the next request, from a rate-limit
+/// or overload response: `retry-after-ms` (milliseconds, as OpenAI sends it)
+/// or `retry-after` as a number of seconds or an HTTP date (RFC 9110
+/// §10.2.3). `None` when the response asks for nothing, or asks for a time
+/// already past or a value that is not one of those forms.
+#[must_use]
+pub fn retry_after_of(
+    headers: &reqwest::header::HeaderMap,
+    now: std::time::SystemTime,
+) -> Option<Duration> {
+    let text = |name: &str| {
+        headers
+            .get(name)
+            .and_then(|v| v.to_str().ok())
+            .map(str::trim)
+    };
+    if let Some(ms) = text("retry-after-ms").and_then(|v| v.parse::<u64>().ok()) {
+        return Some(Duration::from_millis(ms));
+    }
+    let value = text("retry-after")?;
+    if let Ok(secs) = value.parse::<f64>() {
+        return (secs.is_finite() && secs >= 0.0).then(|| Duration::from_secs_f64(secs.min(1e9)));
+    }
+    let at = http_date_to_unix(value)?;
+    let now = now.duration_since(std::time::UNIX_EPOCH).ok()?.as_secs();
+    at.checked_sub(now).map(Duration::from_secs)
+}
+
+/// Seconds since the epoch of an IMF-fixdate (`Sun, 06 Nov 1994 08:49:37
+/// GMT`), the one HTTP-date form a sender must produce.
+fn http_date_to_unix(s: &str) -> Option<u64> {
+    const MONTHS: [&str; 12] = [
+        "Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec",
+    ];
+    let mut it = s.split_once(", ")?.1.split_whitespace();
+    let day: i64 = it.next()?.parse().ok()?;
+    let name = it.next()?;
+    let month = i64::try_from(MONTHS.iter().position(|m| *m == name)?).ok()? + 1;
+    let year: i64 = it.next()?.parse().ok()?;
+    let mut hms = it.next()?.split(':').map(|p| p.parse::<i64>().ok());
+    let (h, m, sec) = (hms.next()??, hms.next()??, hms.next()??);
+    if it.next()? != "GMT" || !(1..=31).contains(&day) || h > 23 || m > 59 || sec > 60 {
+        return None;
+    }
+    // Days from the civil date (proleptic Gregorian), after Howard Hinnant.
+    let y = if month <= 2 { year - 1 } else { year };
+    let era = y.div_euclid(400);
+    let yoe = y.rem_euclid(400);
+    let doy = (153 * (if month > 2 { month - 3 } else { month + 9 }) + 2) / 5 + day - 1;
+    let doe = yoe * 365 + yoe / 4 - yoe / 100 + doy;
+    let days = era * 146_097 + doe - 719_468;
+    u64::try_from(days * 86_400 + h * 3600 + m * 60 + sec).ok()
+}
+
 enum Attempt {
     Done,
     Cancelled,
     Timeout,
     Interrupted(String),
-    Failed { code: String, message: String },
-    Retryable { code: String, message: String },
+    Failed {
+        code: String,
+        message: String,
+    },
+    Retryable {
+        code: String,
+        message: String,
+        /// How long the provider asked for before the next request, when it
+        /// said (`Retry-After`).
+        retry_after: Option<Duration>,
+    },
 }
 
 /// Endpoints from the Core's environment (docs/15 "Credentials": only the
@@ -1076,11 +1444,30 @@ pub fn endpoints_from(lookup: impl Fn(&str) -> Option<String>) -> Vec<Endpoint> 
             continue;
         };
         let configured = (|| -> Result<Endpoint, String> {
-            let models = match present(&format!("{prefix}_MODELS")) {
+            let mut models = match present(&format!("{prefix}_MODELS")) {
                 Some(spec) => {
                     parse_models_spec(&spec).map_err(|e| format!("{prefix}_MODELS: {e}"))?
                 }
                 None => defaults(),
+            };
+            // A catalog entry claims what the wire's adapter implements, not
+            // more (a configured entry cannot add structured output to a
+            // family whose adapter has none).
+            if !kind.implements_structured_output() {
+                for m in &mut models {
+                    m.structured_output = false;
+                }
+            }
+            let max_concurrency = match present(&format!("{prefix}_MAX_CONCURRENCY")) {
+                None => 0,
+                Some(v) => v
+                    .trim()
+                    .parse::<u32>()
+                    .ok()
+                    .filter(|n| *n > 0)
+                    .ok_or_else(|| {
+                        format!("{prefix}_MAX_CONCURRENCY: expected a positive number, got {v:?}")
+                    })?,
             };
             let auth = match present(&format!("{prefix}_AUTH")).as_deref() {
                 None | Some("native") => AuthScheme::Native,
@@ -1111,6 +1498,7 @@ pub fn endpoints_from(lookup: impl Fn(&str) -> Option<String>) -> Vec<Endpoint> 
                 max_retries: 3,
                 auth,
                 extra_body,
+                max_concurrency,
             })
         })();
         match configured {
@@ -1126,8 +1514,15 @@ pub fn endpoints_from(lookup: impl Fn(&str) -> Option<String>) -> Vec<Endpoint> 
 /// Prices are mandatory because an unknown provider cost is not free
 /// (docs/73). Optional keys: `ctx` (context tokens, default 128000), `out`
 /// (max output tokens, default 16384), `vision` and `reasoning` (`true` /
-/// `false`, default `false`). Example:
-/// `glm-5.3-flash=0.15/0.50;ctx=200000;out=131072`.
+/// `false`, default `false`), `budget` (the output tokens one request asks
+/// for, default [`DEFAULT_OUTPUT_BUDGET_TOKENS`], never above `out`),
+/// `timeout` (whole-request milliseconds, default derived from the budget),
+/// `effort` (`low`|`medium`|`high`, only with `reasoning=true`) and `tier`
+/// (the service tier a request carries), `projection` (`direct` |
+/// `exec_only` | `typed`, how the model's tool surface is projected, PX-114) and
+/// `schema_bytes` (the most tool-schema bytes one request may carry).
+/// Example:
+/// `glm-5.3-flash=0.15/0.50;ctx=200000;out=131072;budget=32768`.
 pub fn parse_models_spec(spec: &str) -> Result<Vec<ModelCapability>, String> {
     let mut out = Vec::new();
     for entry in spec.split(',').map(str::trim).filter(|e| !e.is_empty()) {
@@ -1153,6 +1548,9 @@ pub fn parse_models_spec(spec: &str) -> Result<Vec<ModelCapability>, String> {
         let (input_price, output_price) = (price(inp)?, price(outp)?);
         let (mut ctx, mut max_out, mut vision, mut reasoning) =
             (128_000u32, 16_384u32, false, false);
+        let (mut budget, mut timeout) = (0u32, 0u64);
+        let (mut effort, mut tier): (Option<String>, Option<String>) = (None, None);
+        let (mut projection, mut schema_bytes): (Option<String>, u32) = (None, 0);
         for field in fields.filter(|f| !f.is_empty()) {
             let (k, v) = field
                 .split_once('=')
@@ -1179,17 +1577,57 @@ pub fn parse_models_spec(spec: &str) -> Result<Vec<ModelCapability>, String> {
                         .parse()
                         .map_err(|_| format!("{entry:?}: reasoning {v:?} is not true/false"))?
                 }
+                "budget" => {
+                    budget = v
+                        .parse()
+                        .map_err(|_| format!("{entry:?}: budget {v:?} is not a token count"))?
+                }
+                "timeout" => {
+                    timeout = v
+                        .parse()
+                        .map_err(|_| format!("{entry:?}: timeout {v:?} is not milliseconds"))?
+                }
+                "effort" => {
+                    if !matches!(v, "low" | "medium" | "high") {
+                        return Err(format!("{entry:?}: effort {v:?} is not low/medium/high"));
+                    }
+                    effort = Some(v.to_owned());
+                }
+                "tier" => {
+                    if v.is_empty() || !v.chars().all(|c| c.is_ascii_alphanumeric() || c == '_') {
+                        return Err(format!("{entry:?}: tier {v:?} is not a tier name"));
+                    }
+                    tier = Some(v.to_owned());
+                }
+                "projection" => {
+                    if !matches!(v, "direct" | "exec_only" | "typed") {
+                        return Err(format!(
+                            "{entry:?}: projection {v:?} is not direct/exec_only/typed"
+                        ));
+                    }
+                    projection = Some(v.to_owned());
+                }
+                "schema_bytes" => {
+                    schema_bytes = v
+                        .parse()
+                        .map_err(|_| format!("{entry:?}: schema_bytes {v:?} is not a byte count"))?
+                }
                 other => {
                     return Err(format!(
-                        "{entry:?}: unknown key {other:?} (ctx, out, vision, reasoning)"
+                        "{entry:?}: unknown key {other:?} (ctx, out, vision, reasoning, budget, timeout, effort, tier, projection, schema_bytes)"
                     ));
                 }
             }
         }
+        if effort.is_some() && !reasoning {
+            return Err(format!(
+                "{entry:?}: effort needs reasoning=true (the model exposes no reasoning to set)"
+            ));
+        }
         if ctx == 0 || max_out == 0 {
             return Err(format!("{entry:?}: ctx and out must be positive"));
         }
-        out.push(cap(
+        let mut entry_cap = cap(
             model,
             ctx,
             max_out,
@@ -1197,7 +1635,14 @@ pub fn parse_models_spec(spec: &str) -> Result<Vec<ModelCapability>, String> {
             vision,
             input_price,
             output_price,
-        ));
+        );
+        entry_cap.output_budget_tokens = budget;
+        entry_cap.request_timeout_ms = timeout;
+        entry_cap.default_reasoning_effort = effort;
+        entry_cap.default_service_tier = tier;
+        entry_cap.projection_mode = projection;
+        entry_cap.max_projection_bytes = schema_bytes;
+        out.push(entry_cap);
     }
     if out.is_empty() {
         return Err("no model entries".into());
@@ -1231,6 +1676,12 @@ fn cap(
         agent_loop: true,
         input_price_per_mtok: inp,
         output_price_per_mtok: outp,
+        output_budget_tokens: 0,
+        request_timeout_ms: 0,
+        default_reasoning_effort: None,
+        default_service_tier: None,
+        projection_mode: None,
+        max_projection_bytes: 0,
     }
 }
 
@@ -1251,7 +1702,7 @@ pub fn default_openai_models() -> Vec<ModelCapability> {
 /// Default Anthropic catalog entries.
 #[must_use]
 pub fn default_anthropic_models() -> Vec<ModelCapability> {
-    vec![
+    let mut models = vec![
         cap("claude-opus-5", 200_000, 64_000, true, true, 15.0, 75.0),
         cap("claude-sonnet-5", 200_000, 64_000, true, true, 3.0, 15.0),
         cap(
@@ -1263,5 +1714,11 @@ pub fn default_anthropic_models() -> Vec<ModelCapability> {
             1.0,
             5.0,
         ),
-    ]
+    ];
+    // The Messages API has no JSON mode and the adapter implements none, so
+    // the catalog does not claim one (`route` refuses a request for it).
+    for m in &mut models {
+        m.structured_output = false;
+    }
+    models
 }

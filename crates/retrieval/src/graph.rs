@@ -70,6 +70,9 @@ pub struct GraphView {
 
 /// Changed line ranges per path.
 pub type ChangedLines = BTreeMap<String, Vec<(u32, u32)>>;
+/// A path refreshed from import specifiers already extracted: `None`
+/// removes it; `Some((language, specifiers))` re-reads it.
+pub type SpecUpdate = (String, Option<(Option<String>, Vec<String>)>);
 /// A refreshed path: `None` removes; `Some((text, language))` re-indexes.
 pub type ChangedFile<'a> = (&'a str, Option<(&'a str, Option<&'a str>)>);
 
@@ -84,6 +87,10 @@ pub struct EvidenceGraph {
     changed_lines: ChangedLines,
     evidence: BTreeMap<String, Vec<(String, String)>>,
     paths: BTreeSet<String>,
+    /// Raw import specifiers per file with its language: what a file says,
+    /// before it is resolved against the workspace's paths (PX-111 persists
+    /// these keyed by content hash; resolution is redone on load).
+    specs: BTreeMap<String, (Option<String>, Vec<String>)>,
 }
 
 fn grammar(language: &str, path: &str) -> Option<tree_sitter::Language> {
@@ -332,6 +339,137 @@ impl EvidenceGraph {
         g
     }
 
+    /// [`Self::build`] from import specifiers already extracted — `(path,
+    /// language, specifiers)` — so a persisted record, valid by content hash,
+    /// replaces the parse (PX-111). Resolution against the path set is always
+    /// redone: it depends on the other files.
+    pub fn build_from_specs<'a>(
+        files: impl Iterator<Item = (&'a str, Option<&'a str>, Vec<String>)>,
+        commits: Vec<CommitRecord>,
+        changed_lines: ChangedLines,
+        revision: u64,
+    ) -> Self {
+        let mut g = Self {
+            revision,
+            commits,
+            changed_lines,
+            ..Self::default()
+        };
+        for (p, l, specs) in files {
+            g.paths.insert(p.to_owned());
+            g.specs.insert(p.to_owned(), (l.map(str::to_owned), specs));
+        }
+        g.resolve_all();
+        g
+    }
+
+    /// The paths the worktree changes against HEAD, as the graph last saw them.
+    #[must_use]
+    pub fn changed_paths(&self) -> Vec<String> {
+        self.changed_lines.keys().cloned().collect()
+    }
+
+    /// The raw import specifiers of a file (for persistence).
+    #[must_use]
+    pub fn specs_of(&self, path: &str) -> Option<&[String]> {
+        self.specs.get(path).map(|(_, s)| s.as_slice())
+    }
+
+    /// Re-resolve every file's specifiers against the current path set.
+    fn resolve_all(&mut self) {
+        self.imports.clear();
+        self.importers.clear();
+        self.test_files = self
+            .paths
+            .iter()
+            .filter(|p| is_test_path(p))
+            .cloned()
+            .collect();
+        let specs = std::mem::take(&mut self.specs);
+        for (path, (language, list)) in &specs {
+            let Some(language) = language else { continue };
+            let mut targets = BTreeSet::new();
+            for spec in list {
+                if let Some(t) = resolve_import(language, path, spec, &self.paths)
+                    && t != *path
+                {
+                    targets.insert(t);
+                }
+            }
+            for t in &targets {
+                self.importers
+                    .entry(t.clone())
+                    .or_default()
+                    .insert(path.clone());
+            }
+            self.imports.insert(path.clone(), targets);
+        }
+        self.specs = specs;
+    }
+
+    /// [`Self::refresh`] from specifiers already extracted: `Some((language,
+    /// specifiers))` re-reads a path, `None` removes it. A path that joins or
+    /// leaves the workspace can change what other files' imports resolve to,
+    /// so then every file's specifiers are resolved again (no parsing: they
+    /// are held).
+    pub fn refresh_with_specs(
+        &mut self,
+        changed: Vec<SpecUpdate>,
+        changed_lines: ChangedLines,
+        commits: Option<Vec<CommitRecord>>,
+        revision: u64,
+    ) {
+        let mut set_changed = false;
+        for (p, content) in changed {
+            match content {
+                Some((language, specs)) => {
+                    set_changed |= self.paths.insert(p.clone());
+                    self.drop_imports(&p);
+                    self.specs
+                        .insert(p.clone(), (language.clone(), specs.clone()));
+                    if is_test_path(&p) {
+                        self.test_files.insert(p.clone());
+                    } else {
+                        self.test_files.remove(&p);
+                    }
+                    if let Some(language) = language {
+                        let mut targets = BTreeSet::new();
+                        for spec in &specs {
+                            if let Some(t) = resolve_import(&language, &p, spec, &self.paths)
+                                && t != p
+                            {
+                                targets.insert(t);
+                            }
+                        }
+                        for t in &targets {
+                            self.importers
+                                .entry(t.clone())
+                                .or_default()
+                                .insert(p.clone());
+                        }
+                        self.imports.insert(p, targets);
+                    }
+                }
+                None => {
+                    set_changed |= self.paths.remove(&p);
+                    self.drop_imports(&p);
+                    self.specs.remove(&p);
+                    self.importers.remove(&p);
+                    self.test_files.remove(&p);
+                    self.evidence.remove(&p);
+                }
+            }
+        }
+        if set_changed {
+            self.resolve_all();
+        }
+        self.changed_lines = changed_lines;
+        if let Some(c) = commits {
+            self.commits = c;
+        }
+        self.revision = revision;
+    }
+
     /// Revision.
     #[must_use]
     pub fn revision(&self) -> u64 {
@@ -362,9 +500,15 @@ impl EvidenceGraph {
         } else {
             self.test_files.remove(path);
         }
-        let Some(language) = language else { return };
+        let Some(language) = language else {
+            self.specs.insert(path.to_owned(), (None, vec![]));
+            return;
+        };
+        let list = import_specifiers(language, path, text);
+        self.specs
+            .insert(path.to_owned(), (Some(language.to_owned()), list.clone()));
         let mut targets = BTreeSet::new();
-        for spec in import_specifiers(language, path, text) {
+        for spec in list {
             if let Some(t) = resolve_import(language, path, &spec, &self.paths)
                 && t != path
             {
@@ -396,6 +540,7 @@ impl EvidenceGraph {
                     self.drop_imports(p);
                     self.importers.remove(p);
                     self.paths.remove(p);
+                    self.specs.remove(p);
                     self.test_files.remove(p);
                     self.evidence.remove(p);
                 }

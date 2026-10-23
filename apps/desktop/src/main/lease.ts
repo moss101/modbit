@@ -12,3 +12,14 @@ export function admitsAgentInput(requestGeneration: number, current: number, con
   return { ok: true };
 }
 
+/**
+ * Whether a raw input event from the view is the person acting (IMP-EV-0087):
+ * a key press, a mouse button press or a scroll wheel turn. Hovering is not
+ * acting; a key release or a mouse release only ends what a press began.
+ * Pure, so it is testable without Electron. The caller still ignores what the
+ * host itself is dispatching for the agent.
+ */
+export function isHumanInput(type: string): boolean {
+  return type === "keyDown" || type === "mouseDown" || type === "mouseWheel";
+}
+

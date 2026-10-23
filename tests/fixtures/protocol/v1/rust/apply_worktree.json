@@ -1,0 +1,14 @@
+{
+  "expected": {
+    "confirmPaths": [
+      "a.txt",
+      "src/b ü.rs"
+    ],
+    "expectedCandidateRevision": "18446744073709551615",
+    "expectedPlanDigest": "abababababababababababababababababababababababababababababababab",
+    "option": "OVERWRITE",
+    "remember": false,
+    "taskId": "31313131313131313131313131313131"
+  },
+  "type": "modbit.v1.ApplyWorktree"
+}

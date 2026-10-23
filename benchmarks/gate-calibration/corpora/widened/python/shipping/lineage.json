@@ -1,0 +1,27 @@
+{
+  "lineage": "holdout/python-shop/shipping",
+  "goal": "`shipping_cents` must charge 500 cents up to and including 500 g, 900 cents up to and including 2000 g and 1500 cents above that. The visible test `test_acceptance_heavy_parcels` fails; make it pass and fix the behaviour, without weakening or removing any test.",
+  "acceptance": [
+    "test_acceptance_heavy_parcels"
+  ],
+  "seed": [
+    "shop.py"
+  ],
+  "oracle": {
+    "files": [
+      [
+        "test_oracle_spec.py",
+        "python/test_oracle_spec.py"
+      ]
+    ],
+    "argv": [
+      "python3",
+      "-m",
+      "pytest",
+      "-q",
+      "-p",
+      "no:cacheprovider",
+      "test_oracle_spec.py"
+    ]
+  }
+}
