@@ -16,7 +16,6 @@
 //! * PX-084: an unattended run is held to its principal's ceiling, an
 //!   approval it needs parks and expires into a typed cancellation, a
 //!   hostile trigger payload changes nothing, and the kill switches stop it.
-#![cfg(unix)]
 
 mod px_common;
 
