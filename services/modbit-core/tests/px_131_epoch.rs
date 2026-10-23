@@ -670,3 +670,95 @@ async fn qual_px_131_receipts_carry_the_decision_epoch_and_a_forged_epoch_fails_
     );
     assert!(tampered.detail.contains("epoch"), "{}", tampered.detail);
 }
+
+/// QUAL-PX-131: a skill revoked while a round is running leaves that round's
+/// frozen projection as it was and is absent from the next round's.
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
+async fn qual_px_131_a_skill_revoked_mid_round_is_in_that_round_and_absent_from_the_next() {
+    let (_repo, root) = plain_repo(&[("notes.txt", "n\n")]);
+    let (base, _seen) = scripted_model_fn(two_call_round_model()).await;
+    let dir = tempfile::tempdir().unwrap();
+    // A user-scope skill the owner trusts by name and content hash.
+    let skill_dir = dir.path().join("skills").join("lintfix-px131");
+    std::fs::create_dir_all(&skill_dir).unwrap();
+    std::fs::write(
+        skill_dir.join("SKILL.md"),
+        "---\nname: lintfix-px131\nversion: 1.0.0\ndescription: fix lint warnings\n---\nrerun the linter.\n",
+    )
+    .unwrap();
+    let hash = modbit_skills::load_package(&skill_dir)
+        .unwrap()
+        .content_hash;
+    let core = spawn(dir.path(), &base);
+    let mut c = core.client().await;
+    let (session, g) = session_with_lease(&mut c, 0x71).await;
+    let task = create_task(
+        &mut c,
+        &session,
+        g,
+        &root,
+        0x72,
+        "local_trusted",
+        "two checks",
+    )
+    .await;
+    let trusted = c
+        .command(envelope(
+            rand_id(),
+            "TrustSkill",
+            modbit_protocol::v1::TrustSkill {
+                name: "lintfix-px131".into(),
+                content_hash: hash.clone(),
+                task_id: Some(task.clone()),
+            }
+            .encode_to_vec(),
+        ))
+        .await
+        .unwrap();
+    let t: modbit_protocol::v1::SkillTrustResult = Client::result(&trusted).unwrap();
+    assert_eq!(t.trust, "TRUSTED_BY_OWNER", "{t:?}");
+    let ack = c
+        .command(envelope_fenced(
+            id16(0x73),
+            "StartTask",
+            StartTask {
+                task_id: Some(task.clone()),
+                endpoint: String::new(),
+                model: "gpt-5-mini".into(),
+                max_turns: 14,
+                max_tool_calls: 0,
+                max_no_progress_turns: 6,
+                skills: vec!["lintfix-px131".into()],
+                ..Default::default()
+            }
+            .encode_to_vec(),
+            g,
+        ))
+        .await
+        .unwrap();
+    let _: TaskRunStarted = Client::result(&ack).unwrap();
+    // Round 2's slow call is running: the operator revokes the skill now.
+    wait_for(&core, &session, 60, |e| shell_dispatched(e, &task)).await;
+    std::fs::write(
+        dir.path().join("skills").join("revoked.json"),
+        r#"["lintfix-px131"]"#,
+    )
+    .unwrap();
+    let st = wait_task(&mut c, &task, 120).await;
+    assert!(!st.loop_alive, "{st:?}");
+
+    let snaps = snapshots(&core, &task).await;
+    assert!(snaps.valid, "{}", snaps.detail);
+    assert!(snaps.snapshots.len() >= 3, "{snaps:#?}");
+    let named = format!("lintfix-px131@{hash}");
+    let has = |i: usize| snaps.snapshots[i].skills.contains(&named);
+    assert!(has(0), "round 1 offered the skill: {snaps:#?}");
+    assert!(
+        has(1),
+        "the round the revocation arrived in is unchanged: {snaps:#?}"
+    );
+    assert!(
+        !has(2),
+        "the next round does not carry the revoked skill: {snaps:#?}"
+    );
+}

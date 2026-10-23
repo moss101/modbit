@@ -365,15 +365,15 @@ async fn px_099_cursor_beyond_the_head_is_typed_and_a_false_ack_widens_nothing()
 }
 
 /// PX-099: a broker whose client never acknowledges holds memory to a bound
-/// while a process writes 128 MiB, then the client catches up by cursor,
-/// byte-exact. (QUAL-PX-099 states 200 MiB; the bound is what is measured.)
+/// while a process writes 200 MiB, then the client catches up by cursor,
+/// byte-exact (QUAL-PX-099).
 #[tokio::test]
 async fn px_099_a_slow_client_does_not_grow_the_brokers_memory() {
     let dir = tempfile::tempdir().unwrap();
-    let execd = Execd::spawn_with(dir.path(), &["--replay-window-bytes", "201326592"]);
+    let execd = Execd::spawn_with(dir.path(), &["--replay-window-bytes", "268435456"]);
     let pid = execd.child.id();
     let mut starter = execd.client().await;
-    let total = 128 * MIB;
+    let total = 200 * MIB;
     let sid = start(&mut starter, noisy_req("mem", total / MIB)).await;
     drop(starter);
     // The slow client: attached, windowed, never reads and never acknowledges.

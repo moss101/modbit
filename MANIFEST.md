@@ -1819,7 +1819,7 @@ A dossier package is valid only if every path below exists with the listed SHA-2
 | `graph/project-graph.json` | project driver graph with live status | 2262936 | `47aec82ae8ab0af388c1860ad4535063fdbd96907504384f3f4d6c3f55e84f18` |
 | `tools/build_graph.py` | regenerates graph structure from docs | 62560 | `7e491e47f2e89f8cad4827a72701b7849d4d628754417022c862dc9b21431061` |
 | `tools/build_manifest.py` | regenerates this manifest | 14871 | `b35f87f995ebea778ef5002f42c4dcb2f195f303ae121d7b4d73070d95d665b7` |
-| `tools/check_dossier.py` | integrity gate | 17596 | `5c9b7a782d245223726f860ca583d766929a6f5662b644adebee64d257ad426b` |
+| `tools/check_dossier.py` | integrity gate | 18887 | `1bd2634078a0c20b34a565ccf0f6d9061e83bd0945b7bf719ac137611e3fcf35` |
 | `tools/ci_label.py` | source patch provenance | 3514 | `5d779c114472ed76e222eb15240cadfb72bb66dfa1bd2a6a8e381dceec326bb7` |
 | `tools/dossier_epr.py` | parses additive EPR authority and traceability | 9310 | `4b5e399ee1b4886662294e3780d7f0630195e29c8198256ff7719d5236591a18` |
 | `tools/dossier_px.py` | parses the additive product-extension ledger and phased release rules | 6931 | `0a7dd5bd5872fb1d959c56fd017bd3916062d0f60d1bc51b9abceddc134202e2` |
@@ -1827,7 +1827,7 @@ A dossier package is valid only if every path below exists with the listed SHA-2
 | `tools/graph.py` | query/update graph | 46849 | `2e589b6e0e8e7be89f7323a19ff21bf5394c27f424faf13c809832cf338ca8a1` |
 | `tools/integration_gate.py` | source patch provenance | 18020 | `413fa4b02d659f391a6abd5740096f45fa9e09417bdaa6f478182a655c520b56` |
 | `tools/support_claims.py` | source patch provenance | 6653 | `0e208c363d38a5f0466bf60a5f3121a7ed60a34c9ad662118d7d1d46bb5bbc00` |
-| `tools/test_dossier.py` | copied-package integration and negative tests | 69790 | `385a3b7b82039634f64282ed7e523baffe6711b70da7f7643f1bcf2b7df2c00d` |
+| `tools/test_dossier.py` | copied-package integration and negative tests | 70786 | `77a6b811b6bb4199aac475e08054d6a22b94bc98c226dda6de86043fc93482a6` |
 
 ## Rename map (V3 flat numbering → V3.1 `docs/`)
 
