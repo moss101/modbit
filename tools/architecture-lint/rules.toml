@@ -138,7 +138,7 @@ reason = "PX-067: a Git process is built only by the hardened runner in crates/g
 # Evaluated by `architecture-lint credentials`.
 [[credentials]]
 roots = ["crates", "services", "apps"]
-markers = ["API_KEY", "TOKEN", "SECRET", "PASSWORD", "CREDENTIAL"]
+markers = ["API_KEY", "TOKEN", "SECRET", "PASSWORD", "CREDENTIAL", "KEY_HEX"]
 exempt = ["BUDGET", "TTL", "TOKENS", "SHA256"]
 allowed = [
   "services/modbit-core/src/credentials.rs",

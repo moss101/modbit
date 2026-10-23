@@ -92,13 +92,17 @@ impl Config {
             }),
             _ => None,
         };
-        let worker_key = match std::env::var("MODBIT_GATEWAY_WORKER_KEY_HEX") {
-            Ok(h) if !h.is_empty() => {
-                Some(WorkerKey::new(hex::decode(h).map_err(|e| {
+        let worker_key = match modbit_secrets::broker::env_secret(
+            modbit_secrets::broker::Kind::Cloud,
+            "MODBIT_GATEWAY_WORKER_KEY_HEX",
+            "sandbox.worker_token_key",
+        ) {
+            Some(h) => {
+                Some(WorkerKey::new(hex::decode(h.expose()).map_err(|e| {
                     anyhow::anyhow!("MODBIT_GATEWAY_WORKER_KEY_HEX: {e}")
                 })?))
             }
-            _ => None,
+            None => None,
         };
         let backend = match std::env::var("MODBIT_SANDBOX_BACKEND").unwrap_or_else(|_| "microvm".into()).as_str() {
             "reference" => BackendChoice::Reference {

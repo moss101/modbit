@@ -137,10 +137,12 @@ impl Extras {
             e = e.with_admin_secret(secret.expose());
         }
         e.oidc = OidcConfig::from_env();
-        if let Ok(h) = std::env::var("MODBIT_CLOUD_WEBHOOK_MASTER_KEY_HEX")
-            && !h.is_empty()
-        {
-            match hex::decode(&h) {
+        if let Some(h) = modbit_secrets::broker::env_secret(
+            modbit_secrets::broker::Kind::Webhook,
+            "MODBIT_CLOUD_WEBHOOK_MASTER_KEY_HEX",
+            "automation.webhook_master",
+        ) {
+            match hex::decode(h.expose()) {
                 Ok(k) if k.len() >= 32 => e.webhook_master_key = Some(k),
                 _ => eprintln!(
                     "modbit-cloud-api: MODBIT_CLOUD_WEBHOOK_MASTER_KEY_HEX must be 32 or more bytes of hex; automation webhooks stay off"
@@ -213,9 +215,13 @@ impl Config {
             Some(h) => Some(hex::decode(h.expose())?),
             None => None,
         };
-        let worker_key = match std::env::var("MODBIT_CLOUD_WORKER_KEY_HEX") {
-            Ok(h) if !h.is_empty() => Some(hex::decode(h)?),
-            _ => None,
+        let worker_key = match modbit_secrets::broker::env_secret(
+            modbit_secrets::broker::Kind::Cloud,
+            "MODBIT_CLOUD_WORKER_KEY_HEX",
+            "cloud.worker_token_key",
+        ) {
+            Some(h) => Some(hex::decode(h.expose())?),
+            None => None,
         };
         // The webhook secret is read once and kept in memory; it is never
         // logged, stored or echoed (the same custody as every other secret).
