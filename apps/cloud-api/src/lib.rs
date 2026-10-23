@@ -129,16 +129,20 @@ impl Extras {
     #[must_use]
     pub fn from_env() -> Self {
         let mut e = Self::default();
-        if let Ok(secret) = std::env::var("MODBIT_CLOUD_ADMIN_SECRET")
-            && !secret.is_empty()
-        {
-            e = e.with_admin_secret(&secret);
+        if let Some(secret) = modbit_secrets::broker::env_secret(
+            modbit_secrets::broker::Kind::Cloud,
+            "MODBIT_CLOUD_ADMIN_SECRET",
+            "cloud.admin",
+        ) {
+            e = e.with_admin_secret(secret.expose());
         }
         e.oidc = OidcConfig::from_env();
-        if let Ok(h) = std::env::var("MODBIT_CLOUD_WEBHOOK_MASTER_KEY_HEX")
-            && !h.is_empty()
-        {
-            match hex::decode(&h) {
+        if let Some(h) = modbit_secrets::broker::env_secret(
+            modbit_secrets::broker::Kind::Webhook,
+            "MODBIT_CLOUD_WEBHOOK_MASTER_KEY_HEX",
+            "automation.webhook_master",
+        ) {
+            match hex::decode(h.expose()) {
                 Ok(k) if k.len() >= 32 => e.webhook_master_key = Some(k),
                 _ => eprintln!(
                     "modbit-cloud-api: MODBIT_CLOUD_WEBHOOK_MASTER_KEY_HEX must be 32 or more bytes of hex; automation webhooks stay off"
@@ -192,26 +196,41 @@ impl Config {
                 region: std::env::var("MODBIT_CLOUD_S3_REGION")
                     .unwrap_or_else(|_| "us-east-1".into()),
                 access_key_id: std::env::var("MODBIT_CLOUD_S3_ACCESS_KEY_ID").unwrap_or_default(),
-                secret_access_key: std::env::var("MODBIT_CLOUD_S3_SECRET_ACCESS_KEY")
-                    .unwrap_or_default(),
+                secret_access_key: modbit_secrets::broker::env_secret(
+                    modbit_secrets::broker::Kind::Cloud,
+                    "MODBIT_CLOUD_S3_SECRET_ACCESS_KEY",
+                    "cloud.object_store",
+                )
+                .map(|s| s.expose().to_owned())
+                .unwrap_or_default(),
                 allow_http: std::env::var("MODBIT_CLOUD_S3_ALLOW_HTTP").is_ok_and(|v| v == "1"),
             }),
             _ => None,
         };
-        let token_key = match std::env::var("MODBIT_CLOUD_TOKEN_KEY_HEX") {
-            Ok(h) if !h.is_empty() => Some(hex::decode(h)?),
-            _ => None,
+        let token_key = match modbit_secrets::broker::env_secret(
+            modbit_secrets::broker::Kind::Cloud,
+            "MODBIT_CLOUD_TOKEN_KEY_HEX",
+            "cloud.token_key",
+        ) {
+            Some(h) => Some(hex::decode(h.expose())?),
+            None => None,
         };
-        let worker_key = match std::env::var("MODBIT_CLOUD_WORKER_KEY_HEX") {
-            Ok(h) if !h.is_empty() => Some(hex::decode(h)?),
-            _ => None,
+        let worker_key = match modbit_secrets::broker::env_secret(
+            modbit_secrets::broker::Kind::Cloud,
+            "MODBIT_CLOUD_WORKER_KEY_HEX",
+            "cloud.worker_token_key",
+        ) {
+            Some(h) => Some(hex::decode(h.expose())?),
+            None => None,
         };
         // The webhook secret is read once and kept in memory; it is never
         // logged, stored or echoed (the same custody as every other secret).
-        let github_webhook_secret = match std::env::var("MODBIT_CLOUD_GITHUB_WEBHOOK_SECRET") {
-            Ok(s) if !s.is_empty() => Some(s.into_bytes()),
-            _ => None,
-        };
+        let github_webhook_secret = modbit_secrets::broker::env_secret(
+            modbit_secrets::broker::Kind::Webhook,
+            "MODBIT_CLOUD_GITHUB_WEBHOOK_SECRET",
+            "forge.webhook",
+        )
+        .map(|s| s.expose().as_bytes().to_vec());
         Ok(Self {
             store: CloudStoreConfig { database_url, s3 },
             token_key,

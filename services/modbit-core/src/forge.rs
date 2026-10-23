@@ -35,9 +35,13 @@ pub struct ForgeCustody {
 impl ForgeCustody {
     /// From the environment at boot.
     pub fn from_env(broker: Arc<modbit_secrets::CredentialBroker>) -> Self {
-        let token = std::env::var("MODBIT_GITHUB_TOKEN")
-            .ok()
-            .filter(|t| !t.trim().is_empty());
+        let token = modbit_secrets::broker::env_secret(
+            modbit_secrets::broker::Kind::Forge,
+            "MODBIT_GITHUB_TOKEN",
+            "forge.boot",
+        )
+        .map(|s| s.expose().to_owned())
+        .filter(|t| !t.trim().is_empty());
         let api_base = std::env::var("MODBIT_GITHUB_API_BASE_URL").ok();
         let custody = Self {
             current: Mutex::new(None),
