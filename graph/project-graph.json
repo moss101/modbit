@@ -36085,13 +36085,16 @@
    ],
    "task_card": "docs/62_PRODUCT_EXTENSION_REQUIREMENTS_TASKS_AND_QUALIFICATIONS.md#px-082",
    "audit_at_adoption": "DOCUMENTED-ONLY; no product caller present",
-   "status": "REAL_TESTING",
+   "status": "COMPLETE",
    "evidence": [
     "commit:4528f7c1",
     "run:38990216920",
     "test:services/modbit-core/tests/automations_px.rs::px_082_three_versions_enable_the_third_and_a_killed_core_replays_them_all",
     "test:services/modbit-core/tests/automations_px.rs::px_082_definitions_validate_version_and_need_the_owners_exact_approval",
-    "test:services/modbit-core/tests/automations_px.rs::px_082_a_repository_definition_stays_disabled_until_its_hash_is_approved_and_a_changed_byte_disables_it"
+    "test:services/modbit-core/tests/automations_px.rs::px_082_a_repository_definition_stays_disabled_until_its_hash_is_approved_and_a_changed_byte_disables_it",
+    "run:39993797935",
+    "commit:ce0995876a03966eba4225b2bfa8e2c3c39a9194",
+    "artifact:evidence/m10/PX-082/evidence.json"
    ],
    "notes": [
     {
@@ -36101,8 +36104,8 @@
      "note": "graph integration 2026-10-17 on main dbe83fc9: Versioning, typed validation, hash-bound exact-capability approval, repository definitions inert until approved, model-origin denial, secret/budget refusal and SIGKILL replay are proven on the real Core (AUT-E01 landed in #74). (held at REAL_TESTING: the QUAL Core suites run on macOS and Linux only (no Core-level Windows run))"
     }
    ],
-   "owner_agent": "graph-integrator",
-   "status_changed_on": "2026-10-17T06:34:56Z"
+   "owner_agent": "claude",
+   "status_changed_on": "2026-10-23T19:08:26Z"
   },
   {
    "id": "PX-083",
