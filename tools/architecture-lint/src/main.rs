@@ -13,7 +13,7 @@ use architecture_lint::locked::check_locked;
 use architecture_lint::modules::{GraphFacts, check_modules, collect};
 use architecture_lint::{Graph, Rules, check};
 
-const USAGE: &str = "usage:\n  architecture-lint [deps] [--manifest-path Cargo.toml] [--rules tools/architecture-lint/rules.toml] [--include-dev]\n  architecture-lint locked [--repo .] [--base <sha>] [--head HEAD] [--rules tools/architecture-lint/rules.toml]\n  architecture-lint modules [--repo .] [--manifest-path Cargo.toml] [--graph graph/project-graph.json] [--ts-manifest <package.json>]... [--rules ...]\n  architecture-lint spawns [--repo .] [--rules tools/architecture-lint/rules.toml]";
+const USAGE: &str = "usage:\n  architecture-lint [deps] [--manifest-path Cargo.toml] [--rules tools/architecture-lint/rules.toml] [--include-dev]\n  architecture-lint locked [--repo .] [--base <sha>] [--head HEAD] [--rules tools/architecture-lint/rules.toml]\n  architecture-lint modules [--repo .] [--manifest-path Cargo.toml] [--graph graph/project-graph.json] [--ts-manifest <package.json>]... [--rules ...]\n  architecture-lint spawns [--repo .] [--rules tools/architecture-lint/rules.toml]\n  architecture-lint credentials [--repo .] [--rules tools/architecture-lint/rules.toml]";
 
 fn take(args: &mut impl Iterator<Item = String>) -> anyhow::Result<String> {
     args.next().ok_or_else(|| anyhow::anyhow!(USAGE))
@@ -22,7 +22,9 @@ fn take(args: &mut impl Iterator<Item = String>) -> anyhow::Result<String> {
 fn run() -> anyhow::Result<bool> {
     let mut args = std::env::args().skip(1).peekable();
     let mode = match args.peek().map(String::as_str) {
-        Some("deps") | Some("locked") | Some("modules") | Some("spawns") => args.next().unwrap(),
+        Some("deps") | Some("locked") | Some("modules") | Some("spawns") | Some("credentials") => {
+            args.next().unwrap()
+        }
         Some("-h") | Some("--help") => {
             println!("{USAGE}");
             return Ok(true);
@@ -99,6 +101,23 @@ fn run() -> anyhow::Result<bool> {
             println!(
                 "architecture-lint spawns: {} rule(s), {} violation(s)",
                 rules.spawns.len(),
+                violations.len()
+            );
+            Ok(violations.is_empty())
+        }
+        "credentials" => {
+            let mut violations = Vec::new();
+            for rule in &rules.credentials {
+                violations.extend(architecture_lint::credentials::check_credentials(
+                    &repo, rule,
+                )?);
+            }
+            for v in &violations {
+                eprintln!("{v}");
+            }
+            println!(
+                "architecture-lint credentials: {} rule(s), {} violation(s)",
+                rules.credentials.len(),
                 violations.len()
             );
             Ok(violations.is_empty())
