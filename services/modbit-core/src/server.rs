@@ -503,6 +503,7 @@ fn acquire_singleton_lock(data_dir: &Path) -> Result<()> {
         .open(&lock)
         .with_context(|| format!("opening {}", lock.display()))?;
     let mut attempts = 0;
+    let mut gone_waits = 0;
     loop {
         match file.try_lock() {
             Ok(()) => break,
@@ -511,6 +512,15 @@ fn acquire_singleton_lock(data_dir: &Path) -> Result<()> {
                     .ok()
                     .and_then(|t| t.trim().parse::<u32>().ok())
                     .unwrap_or(0);
+                // The recorded owner no longer exists, yet the lock is still held:
+                // its release is in flight (a killed Core's descriptors close as the
+                // kernel finishes tearing it down). Give that a moment instead of
+                // refusing the restart of a profile nobody owns.
+                if pid != 0 && gone_waits < 40 && owner_is_gone(pid) {
+                    gone_waits += 1;
+                    std::thread::sleep(std::time::Duration::from_millis(50));
+                    continue;
+                }
                 let owner = process_command(pid);
                 // A tethered Core whose supervising parent is gone is an orphan
                 // by contract (docs/33): reclaim the profile from it once.
@@ -542,6 +552,21 @@ fn acquire_singleton_lock(data_dir: &Path) -> Result<()> {
     // Held until exit: dropping the handle would release the lock.
     std::mem::forget(file);
     Ok(())
+}
+
+/// Whether no process has this pid (`kill -0` finds none).
+#[cfg(unix)]
+fn owner_is_gone(pid: u32) -> bool {
+    std::process::Command::new("kill")
+        .args(["-0", &pid.to_string()])
+        .stderr(std::process::Stdio::null())
+        .status()
+        .is_ok_and(|s| !s.success())
+}
+
+#[cfg(not(unix))]
+fn owner_is_gone(_pid: u32) -> bool {
+    false
 }
 
 /// The owner's command line plus parent pid, state, age and the parent's
@@ -783,6 +808,10 @@ async fn serve_connection(core: Arc<Core>, mut stream: BoxedStream) -> Result<()
                     "ReadWorkspaceFile",
                     "DecideReview",
                     "ApplyUserPatch",
+                    "GetChangesState",
+                    "RevertChanges",
+                    "StageChanges",
+                    "CommitAndPush",
                     "SubmitExternalDiagnostics",
                     "OpenPullRequest",
                     "UpdatePullRequest",
@@ -1452,6 +1481,11 @@ fn required_client_capability(env: &CommandEnvelope) -> Option<&'static str> {
         "DecideReview" => "review.decide",
         // Steering a task from its pull request's comments is steering it.
         "ApplyUserPatch" | "SubmitExternalDiagnostics" | "IngestReviewComments" => "task.author",
+        // PX-048: the Changes app reverts and stages the person's own working
+        // tree like an inline patch; Commit and push is a review decision
+        // about where work leaves the tree, like opening a pull request.
+        "RevertChanges" | "StageChanges" => "task.author",
+        "CommitAndPush" => "review.decide",
         // Counteracting an effect on the forge is the same class of decision
         // as the pull request it counteracts (REQ-EV-0066).
         "OpenPullRequest" | "UpdatePullRequest" | "IngestCiResults" | "CompensateEffect" => {
@@ -7749,6 +7783,84 @@ pub(crate) async fn handle_command_as(
                     accept(cid, replayed, v.encode_to_vec())
                 }
                 Err((code, msg)) => reject(cid, &code, msg),
+            }
+        }
+        "GetChangesState" => {
+            let Ok(p) = wire::GetChangesState::decode(env.payload.as_slice()) else {
+                return reject(cid, "BAD_PAYLOAD", "GetChangesState");
+            };
+            match crate::changes::state(core, &p).await {
+                Ok(v) => accept(cid, false, v.encode_to_vec()),
+                Err((code, msg)) => reject(cid, &code, msg),
+            }
+        }
+        "RevertChanges" | "StageChanges" | "CommitAndPush" => {
+            let (task_id, bad) = match env.command_type.as_str() {
+                "RevertChanges" => wire::RevertChanges::decode(env.payload.as_slice())
+                    .map(|p| p.task_id)
+                    .map_err(|_| "RevertChanges"),
+                "StageChanges" => wire::StageChanges::decode(env.payload.as_slice())
+                    .map(|p| p.task_id)
+                    .map_err(|_| "StageChanges"),
+                _ => wire::CommitAndPush::decode(env.payload.as_slice())
+                    .map(|p| p.task_id)
+                    .map_err(|_| "CommitAndPush"),
+            }
+            .map_or_else(|b| (None, Some(b)), |t| (t, None));
+            if let Some(b) = bad {
+                return reject(cid, "BAD_PAYLOAD", b);
+            }
+            let Some(task_id) = task_id.as_ref().and_then(id16).map(TaskId::from_bytes) else {
+                return reject(cid, "BAD_PAYLOAD", "task_id required");
+            };
+            let session_id = match core.store.lock().await.task(&task_id) {
+                Ok(Some(t)) => t.session_id,
+                Ok(None) => return reject(cid, "UNKNOWN_TASK", task_id.to_string()),
+                Err(e) => return reject(cid, error_code(&e), e.to_string()),
+            };
+            if let Err(ack) = require_lease(core, &cid, &env, &session_id).await {
+                return ack;
+            }
+            match env.command_type.as_str() {
+                "RevertChanges" => {
+                    let p = wire::RevertChanges::decode(env.payload.as_slice()).expect("decoded");
+                    match crate::changes::revert(
+                        core,
+                        &p,
+                        command_id,
+                        record("RevertChanges"),
+                        actor,
+                    )
+                    .await
+                    {
+                        Ok(v) => {
+                            let replayed = v.replayed;
+                            accept(cid, replayed, v.encode_to_vec())
+                        }
+                        Err((code, msg)) => reject(cid, &code, msg),
+                    }
+                }
+                "StageChanges" => {
+                    let p = wire::StageChanges::decode(env.payload.as_slice()).expect("decoded");
+                    match crate::changes::stage(core, &p, actor).await {
+                        Ok(v) => accept(cid, false, v.encode_to_vec()),
+                        Err((code, msg)) => reject(cid, &code, msg),
+                    }
+                }
+                _ => {
+                    let p = wire::CommitAndPush::decode(env.payload.as_slice()).expect("decoded");
+                    match crate::changes::commit_push_command(
+                        core,
+                        &p,
+                        &actor,
+                        env.expected_generation,
+                    )
+                    .await
+                    {
+                        Ok(v) => accept(cid, false, v.encode_to_vec()),
+                        Err((code, msg)) => reject(cid, &code, msg),
+                    }
+                }
             }
         }
         "SubmitExternalDiagnostics" => {

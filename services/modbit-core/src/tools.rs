@@ -812,6 +812,14 @@ impl ToolHost {
             .specs()
             .into_iter()
             .filter(|s| {
+                // PX-048: a Commit and push is the person's act from the Changes
+                // app (the Core's `CommitAndPush` command asks for the approval
+                // and issues the call); the model is never offered the tool.
+                // Hiding is not authority: the call needs the approval whoever
+                // makes it.
+                if s.name == crate::changes::TOOL {
+                    return false;
+                }
                 if s.required_capabilities.iter().any(|c| c == "shell.exec") && self.execd.is_none()
                 {
                     return false;
@@ -1209,6 +1217,7 @@ impl ToolHost {
         let git_state: Option<Arc<dyn modbit_tools::GitStatePort>> = (tool_name
             .starts_with("git.merge.")
             || tool_name.starts_with("git.apply.")
+            || tool_name.starts_with("git.changes.")
             || tool_name.starts_with("git.worktree."))
         .then(|| {
             Arc::new(crate::git_state::CoreGitState {
@@ -1226,6 +1235,7 @@ impl ToolHost {
                 config: Arc::clone(&task_config),
                 verification_json: self.configurations.verification_json(task_id),
                 cancel: cancel.clone(),
+                forge: self.forge.get(),
             }) as Arc<dyn modbit_tools::GitStatePort>
         });
         // PX-069: the computer tools reach the runtime through a port bound to
@@ -4391,6 +4401,7 @@ pub(crate) fn error_code(e: &anyhow::Error) -> &'static str {
         Some(Json(_)) => "JSON",
         Some(SchemaTooNew { .. }) => "SCHEMA_TOO_NEW",
         Some(ReceiptChainStale { .. }) => "RECEIPT_CHAIN_STALE",
+        Some(RelaxedRefused { .. }) => "RELAXED_DURABILITY_REFUSED",
         None => "INFRA_FAILURE",
     }
 }

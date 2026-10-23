@@ -1,6 +1,6 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { intentOf, reasonOf } from "./approval-intent.ts";
+import { budgetRaiseIntentOf, intentOf, reasonOf } from "./approval-intent.ts";
 
 test("REQ-PX-058: the typed reason comes from the Kernel's scope; a missing or broken scope says nothing rather than guessing", () => {
   const r = reasonOf(JSON.stringify({ tool: "shell.exec", capabilities: ["shell.exec"], execution_profile: "local", run_mode: "ALLOWLIST", ask_classes: ["NETWORK"], contained: true, ask_reason: "ALWAYS_ASK:NETWORK" }));
@@ -34,4 +34,13 @@ test("REQ-PX-058: arguments that cannot be read are reported as not found; long 
   assert.ok(wide.argsPreview.length <= 4001);
   // An argv with a non-string token is not an argv (the card then shows the arguments, not a command).
   assert.equal(intentOf(JSON.stringify({ argv: ["a", 3] })).argv, null);
+});
+
+test("REQ-PX-060: a budget-raise approval shows the caps in force and the caps asked for, from the Core's scope", () => {
+  const scope = JSON.stringify({ ask_reason: "BUDGET_RAISE", budget_raise: { from: { cost_minor: 100, wall_ms: 0, children: 3 }, to: { cost_minor: 200, wall_ms: 0, children: 3 } } });
+  const i = budgetRaiseIntentOf(scope);
+  assert.equal(i.found, true);
+  assert.equal(i.argsPreview, '{"from":{"cost_minor":100,"wall_ms":0,"children":3},"to":{"cost_minor":200,"wall_ms":0,"children":3}}');
+  assert.equal(budgetRaiseIntentOf("not json").found, false);
+  assert.equal(budgetRaiseIntentOf("{}").found, false);
 });

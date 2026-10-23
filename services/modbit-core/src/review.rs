@@ -52,22 +52,22 @@ fn sha(bytes: &[u8]) -> String {
 }
 
 /// Everything the review needs about the candidate diff.
-struct Candidate {
-    root: String,
-    repo: Repo,
-    base_commit: String,
-    files: Vec<FileDiff>,
+pub(crate) struct Candidate {
+    pub(crate) root: String,
+    pub(crate) repo: Repo,
+    pub(crate) base_commit: String,
+    pub(crate) files: Vec<FileDiff>,
 }
 
 /// The verification residue of the task's workspace, when it has one.
-async fn residue_of(core: &Core, task: &Task) -> std::collections::BTreeSet<String> {
+pub(crate) async fn residue_of(core: &Core, task: &Task) -> std::collections::BTreeSet<String> {
     match task.workspace_root.as_deref() {
         Some(root) => crate::runtime::candidate_exclusions(core, task, root).await,
         None => std::collections::BTreeSet::new(),
     }
 }
 
-fn candidate(
+pub(crate) fn candidate(
     task: &Task,
     residue: &std::collections::BTreeSet<String>,
 ) -> Result<Candidate, (String, String)> {

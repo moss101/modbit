@@ -63,7 +63,7 @@ export function ApprovalDock({ sessionId, taskId, connected, onChangeMode, title
       try {
         // The hash is the one this card showed; the Core refuses any other.
         const r = await window.modbit.resolveApproval(sessionId, a.approvalId, approve, approve ? "approved on the approval card" : "skipped by the user", a.intentHash);
-        setNote({ kind: "ok", text: approve ? `Approved (${r.status.toLowerCase()}). It runs once.` : "Skipped. The agent is told you skipped it." });
+        setNote({ kind: "ok", text: approve ? (a.toolName === "task.budget.raise" ? `Approved (${r.status.toLowerCase()}). Press the button in the limit tray to apply it; it applies once.` : `Approved (${r.status.toLowerCase()}). It runs once.`) : "Skipped. The agent is told you skipped it." });
       } catch (e) {
         setNote({ kind: "refused", text: refusalWords((e as Error).message) });
       } finally {

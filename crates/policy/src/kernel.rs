@@ -726,6 +726,8 @@ pub fn default_lease_for_profile(
             "git.worktree",
             "git.merge",
             "git.apply",
+            "git.commit",
+            "git.push",
             "shell.exec",
             "network.egress",
             "secret.use",

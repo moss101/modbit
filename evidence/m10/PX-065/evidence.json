@@ -1,0 +1,29 @@
+{
+ "task": "PX-065",
+ "requirements": [
+  "REQ-PX-065",
+  "QUAL-PX-065",
+  "docs/62_PRODUCT_EXTENSION_REQUIREMENTS_TASKS_AND_QUALIFICATIONS.md#px-065"
+ ],
+ "scenarios": [
+  "Real Git and Core: create worktrees with dirty and untracked files and verify the copies and the typed branch-in-use error; a setup list that fails shows the failure and the task continues; a setup list that sleeps past 300 s is stopped and reported; with a shortened interval the cleanup runs on schedule, after a Core restart with an overdue last run the catch-up runs after 30 s, two concurrent requests give one lease holder and one refusal; with 30 worktrees (5 dirty, 3 with unapplied changes, 2 running, 1 under 10 minutes old) cleanup removes only eligible ones, in orphan-then-LRU order, and the report matches the filesystem; a skipped run reports skipped."
+ ],
+ "tests": [
+  "services/modbit-core/tests/worktrees_px.rs::px_065_cleanup_removes_only_what_is_eligible_in_orphan_then_lru_order",
+  "services/modbit-core/tests/worktrees_px.rs::px_065_a_second_cleanup_while_the_lease_is_held_is_refused_naming_the_holder",
+  "services/modbit-core/tests/worktrees_px.rs::px_065_the_schedule_catches_up_after_a_restart_and_persists_the_last_run"
+ ],
+ "audit": "DOCUMENTED-ONLY; no product caller present",
+ "proof": "Real Core, protocol and stores; re-run 2026-10-20 on macOS with the pinned rustup toolchain 1.97.1 (task_modes 11, worktrees_px 37, context_rules_pack 19, memory_graph_index 14 passed; retrieval code_graph 6, git px_067_remaining 6, architecture-lint spawns 2) and in CI on main ac4aa804.",
+ "limitations": "Windows and Linux legs proven by CI only; no release gate attested; no threshold profile owner-approved.",
+ "runs": [
+  "39029466637"
+ ],
+ "ci": {
+  "run_id": "39029466637",
+  "head_sha": "ac4aa8042dab538534bd56a9f518f13672f8ce19",
+  "conclusion": "success",
+  "note": "all 14 jobs green on macOS, Linux and Windows",
+  "json": "evidence/m10/PX-065/ci-run-39029466637.json"
+ }
+}

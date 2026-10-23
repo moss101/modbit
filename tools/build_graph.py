@@ -84,6 +84,9 @@ PX_PARITY = [
      "Proposed: PX-094..098, doc 78; the Electron main-process change (window chrome, native integration, hardening, updates, versions)"),
     ("DR-PX-2026-10-05-013", "DOC-PX-013", 99, 139, "79_AUDIT_DRIVEN_CAPABILITY_COMPLETION_SPECIFICATION.md", "Audit-driven capability completion, PX-099..139",
      "Proposed: PX-099..139, doc 79; the build tasks of the 2026-10-05 audit that no earlier row fully covers, over existing owners only"),
+    # A DEFERRED row: no task, so no PX task is gated by the dossier task; the ledger doc is the specification and the record holds the activation text.
+    ("DR-PX-2026-10-19-014", "DOC-PX-014", 140, 140, "62_PRODUCT_EXTENSION_REQUIREMENTS_TASKS_AND_QUALIFICATIONS.md", "Per-task harness refinement and lesson library, PX-140 (deferred)",
+     "Proposed: REQ-PX-140, DEFERRED and POST_ZERO; per-task Propose-Probe-Compose harness refinement as an extension of Skill Evolution, default off"),
 ]
 
 

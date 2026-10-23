@@ -3,7 +3,7 @@
  "product": "Modbit",
  "edition": "V3.3 EPR v1.1",
  "authority_date": "2026-09-05",
- "generated_on": "2026-10-17",
+ "generated_on": "2026-10-21",
  "generator": "tools/build_graph.py",
  "status_vocabulary": [
   "NOT_STARTED",
@@ -30136,6 +30136,13 @@
    "source": "docs/97_DOSSIER_MAINTENANCE_LOG.md"
   },
   {
+   "id": "DR-PX-2026-10-19-014",
+   "type": "change_record",
+   "title": "Approved: REQ-PX-140, DEFERRED and POST_ZERO; per-task Propose-Probe-Compose harness refinement as an extension of Skill Evolution, default off",
+   "status": "APPROVED",
+   "source": "docs/97_DOSSIER_MAINTENANCE_LOG.md"
+  },
+  {
    "id": "REQ-PX-000",
    "type": "requirement",
    "title": "Headless CLI thin client for the task lifecycle",
@@ -31954,6 +31961,19 @@
    "release": "RELEASE_ZERO",
    "source": "docs/62_PRODUCT_EXTENSION_REQUIREMENTS_TASKS_AND_QUALIFICATIONS.md",
    "mandatory_behavior": "Real Core, real children and a real local OpenTelemetry collector: a parent with two children exports one trace whose spans show the parent-child links and each span's cost, and the parent's cost equals its own plus its children's from the accounting record; a planted secret in a prompt and a file body appear in no span attribute; killing the collector mid-run does not delay or fail the task and the loss is counted; with export off nothing is sent; after a Core restart the health endpoint reports the previous state with its age; the exported cost equals the EPR accounting record for the same requests."
+  },
+  {
+   "id": "REQ-PX-140",
+   "type": "requirement",
+   "title": "Per-task harness refinement (Propose–Probe–Compose) and lesson library, default off",
+   "disposition": "DEFERRED",
+   "subsystem": "skills",
+   "owner_label": "skills",
+   "imp": null,
+   "qual": "QUAL-PX-140",
+   "release": "POST_ZERO",
+   "source": "docs/62_PRODUCT_EXTENSION_REQUIREMENTS_TASKS_AND_QUALIFICATIONS.md",
+   "mandatory_behavior": "Deferred proof, entry condition and not a current proof: on a fixture task the base harness fails, a default-off refinement run with k=1 executes base, two candidates and one composition with the real Core, forked worktrees and the live compatible gateway; the ledger shows four rollouts and three improver sessions; the selected candidate passes the real verification run and the Acceptance Gate; an overlay that edits a guardrail, a capability ceiling or a verification contract is rejected whole; a probe that attempts a push, a network write or a credential read is denied by the real kernel; planted hidden-test or rubric content in the evidence tree stops the run before any improver session; a killed and restarted Core leaves no applied overlay and no orphan worktree; the recorded cost equals the EPR-010 record; library lessons reach no production prompt. Activation also needs a paired comparison with the base harness on the doc 63 suite, with intervals and a cost ratio and no safety regression. The full text is in DR-PX-2026-10-19-014."
   },
   {
    "id": "PX-000",
@@ -35088,13 +35108,16 @@
    ],
    "task_card": "docs/62_PRODUCT_EXTENSION_REQUIREMENTS_TASKS_AND_QUALIFICATIONS.md#px-053",
    "audit_at_adoption": "DOCUMENTED-ONLY; no product caller present",
-   "status": "E2E_PROVEN",
+   "status": "COMPLETE",
    "evidence": [
     "commit:5774ec68",
     "run:38990216920",
     "test:services/modbit-core/tests/task_modes.rs::px_053_a_preference_is_recorded_survives_a_kill_reaches_the_wire_and_routing_says_direct",
     "test:services/modbit-core/tests/task_modes.rs::px_053_invalid_preferences_and_forbidden_pins_are_refused_with_typed_errors_and_change_nothing",
-    "test:services/modbit-core/tests/task_modes.rs::px_053_with_a_signed_registry_the_router_reads_the_objective_and_says_which_floor"
+    "test:services/modbit-core/tests/task_modes.rs::px_053_with_a_signed_registry_the_router_reads_the_objective_and_says_which_floor",
+    "run:39029466637",
+    "artifact:evidence/m10/PX-053/evidence.json",
+    "commit:ac4aa804"
    ],
    "notes": [
     {
@@ -35105,7 +35128,7 @@
     }
    ],
    "owner_agent": "graph-integrator",
-   "status_changed_on": "2026-10-17T06:34:55Z"
+   "status_changed_on": "2026-10-20T03:37:24Z"
   },
   {
    "id": "PX-054",
@@ -35500,14 +35523,17 @@
    ],
    "task_card": "docs/62_PRODUCT_EXTENSION_REQUIREMENTS_TASKS_AND_QUALIFICATIONS.md#px-065",
    "audit_at_adoption": "DOCUMENTED-ONLY; no product caller present",
-   "status": "E2E_PROVEN",
+   "status": "COMPLETE",
    "evidence": [
     "commit:d10d46d7",
     "run:38990216920",
     "test:services/modbit-core/tests/worktrees_px.rs::px_065_cleanup_removes_only_what_is_eligible_in_orphan_then_lru_order",
     "test:services/modbit-core/tests/worktrees_px.rs::px_065_a_second_cleanup_while_the_lease_is_held_is_refused_naming_the_holder",
     "test:services/modbit-core/tests/worktrees_px.rs::px_065_the_schedule_catches_up_after_a_restart_and_persists_the_last_run",
-    "commit:2b7f2ac9"
+    "commit:2b7f2ac9",
+    "run:39029466637",
+    "artifact:evidence/m10/PX-065/evidence.json",
+    "commit:ac4aa804"
    ],
    "notes": [
     {
@@ -35518,7 +35544,7 @@
     }
    ],
    "owner_agent": "graph-integrator",
-   "status_changed_on": "2026-10-17T06:34:56Z"
+   "status_changed_on": "2026-10-20T03:37:24Z"
   },
   {
    "id": "PX-066",
@@ -35570,13 +35596,16 @@
    ],
    "task_card": "docs/62_PRODUCT_EXTENSION_REQUIREMENTS_TASKS_AND_QUALIFICATIONS.md#px-067",
    "audit_at_adoption": "DOCUMENTED-ONLY; no product caller present",
-   "status": "E2E_PROVEN",
+   "status": "COMPLETE",
    "evidence": [
     "commit:d10d46d7",
     "run:38990216920",
     "test:services/modbit-core/tests/worktrees_px.rs::px_067_a_hostile_repository_runs_nothing_and_leaks_no_token_through_core_operations",
     "test:crates/git/tests/px_067_remaining.rs",
-    "test:tools/architecture-lint/tests/spawns.rs"
+    "test:tools/architecture-lint/tests/spawns.rs",
+    "run:39029466637",
+    "artifact:evidence/m10/PX-067/evidence.json",
+    "commit:ac4aa804"
    ],
    "notes": [
     {
@@ -35587,7 +35616,7 @@
     }
    ],
    "owner_agent": "graph-integrator",
-   "status_changed_on": "2026-10-17T06:34:56Z"
+   "status_changed_on": "2026-10-20T03:37:24Z"
   },
   {
    "id": "PX-068",
@@ -36802,13 +36831,16 @@
    ],
    "task_card": "docs/62_PRODUCT_EXTENSION_REQUIREMENTS_TASKS_AND_QUALIFICATIONS.md#px-107",
    "audit_at_adoption": "DOCUMENTED-ONLY; no product caller present",
-   "status": "E2E_PROVEN",
+   "status": "COMPLETE",
    "evidence": [
     "commit:5774ec68",
     "run:38990216920",
     "test:services/modbit-core/tests/context_rules_pack.rs::px_107_agents_md_reaches_the_model_only_in_a_trusted_repository_with_provenance",
     "test:services/modbit-core/tests/context_rules_pack.rs::px_107_editing_agents_md_between_turns_changes_the_next_request_and_its_hash",
-    "test:services/modbit-core/tests/context_rules_pack.rs::px_107_oversize_files_are_cut_with_a_marker_and_the_aggregate_stays_bounded"
+    "test:services/modbit-core/tests/context_rules_pack.rs::px_107_oversize_files_are_cut_with_a_marker_and_the_aggregate_stays_bounded",
+    "run:39029466637",
+    "artifact:evidence/m10/PX-107/evidence.json",
+    "commit:ac4aa804"
    ],
    "notes": [
     {
@@ -36819,7 +36851,7 @@
     }
    ],
    "owner_agent": "graph-integrator",
-   "status_changed_on": "2026-10-17T06:34:56Z"
+   "status_changed_on": "2026-10-20T03:37:24Z"
   },
   {
    "id": "PX-108",
@@ -36847,13 +36879,16 @@
    ],
    "task_card": "docs/62_PRODUCT_EXTENSION_REQUIREMENTS_TASKS_AND_QUALIFICATIONS.md#px-108",
    "audit_at_adoption": "DOCUMENTED-ONLY; no product caller present",
-   "status": "E2E_PROVEN",
+   "status": "COMPLETE",
    "evidence": [
     "commit:5774ec68",
     "run:38990216920",
     "test:services/modbit-core/tests/context_rules_pack.rs::px_108_the_first_request_carries_a_goal_seeded_pack_without_a_model_tool_call",
     "test:services/modbit-core/tests/context_rules_pack.rs::px_108_a_write_invalidates_the_fragment_and_model_retrieval_still_works",
-    "test:services/modbit-core/tests/context_rules_pack.rs::px_108_the_pack_stays_inside_the_budget_across_fifty_turns"
+    "test:services/modbit-core/tests/context_rules_pack.rs::px_108_the_pack_stays_inside_the_budget_across_fifty_turns",
+    "run:39029466637",
+    "artifact:evidence/m10/PX-108/evidence.json",
+    "commit:ac4aa804"
    ],
    "notes": [
     {
@@ -36864,7 +36899,7 @@
     }
    ],
    "owner_agent": "graph-integrator",
-   "status_changed_on": "2026-10-17T06:34:56Z"
+   "status_changed_on": "2026-10-20T03:37:24Z"
   },
   {
    "id": "PX-109",
@@ -36940,13 +36975,16 @@
    ],
    "task_card": "docs/62_PRODUCT_EXTENSION_REQUIREMENTS_TASKS_AND_QUALIFICATIONS.md#px-110",
    "audit_at_adoption": "DOCUMENTED-ONLY; no product caller present",
-   "status": "E2E_PROVEN",
+   "status": "COMPLETE",
    "evidence": [
     "commit:d10d46d7",
     "run:38990216920",
     "test:crates/retrieval/tests/code_graph.rs::labelled_queries_meet_the_recall_and_precision_floors",
     "test:crates/retrieval/tests/code_graph.rs::an_interface_change_reaches_its_implementors_and_dropping_implementor_edges_fails_it",
-    "test:services/modbit-core/tests/memory_graph_index.rs::px_110_impact_callers_and_implementors_are_served_by_the_core_and_follow_an_edit"
+    "test:services/modbit-core/tests/memory_graph_index.rs::px_110_impact_callers_and_implementors_are_served_by_the_core_and_follow_an_edit",
+    "run:39029466637",
+    "artifact:evidence/m10/PX-110/evidence.json",
+    "commit:ac4aa804"
    ],
    "notes": [
     {
@@ -36957,7 +36995,7 @@
     }
    ],
    "owner_agent": "graph-integrator",
-   "status_changed_on": "2026-10-17T06:34:56Z"
+   "status_changed_on": "2026-10-20T03:37:25Z"
   },
   {
    "id": "PX-111",
@@ -36986,13 +37024,16 @@
    ],
    "task_card": "docs/62_PRODUCT_EXTENSION_REQUIREMENTS_TASKS_AND_QUALIFICATIONS.md#px-111",
    "audit_at_adoption": "DOCUMENTED-ONLY; no product caller present",
-   "status": "E2E_PROVEN",
+   "status": "COMPLETE",
    "evidence": [
     "commit:d10d46d7",
     "run:38990216920",
     "test:services/modbit-core/tests/memory_graph_index.rs::px_111_a_restarted_core_does_not_rebuild_and_damage_or_staleness_is_rebuilt_with_a_reason",
     "test:services/modbit-core/tests/memory_graph_index.rs::px_111_a_core_killed_inside_an_index_write_recovers_to_a_whole_snapshot",
-    "test:services/modbit-core/tests/memory_graph_index.rs::px_111_indexed_search_returns_what_the_scan_returns_through_the_core"
+    "test:services/modbit-core/tests/memory_graph_index.rs::px_111_indexed_search_returns_what_the_scan_returns_through_the_core",
+    "run:39029466637",
+    "artifact:evidence/m10/PX-111/evidence.json",
+    "commit:ac4aa804"
    ],
    "notes": [
     {
@@ -37003,7 +37044,7 @@
     }
    ],
    "owner_agent": "graph-integrator",
-   "status_changed_on": "2026-10-17T06:34:56Z"
+   "status_changed_on": "2026-10-20T03:37:25Z"
   },
   {
    "id": "PX-112",
@@ -37060,13 +37101,16 @@
    ],
    "task_card": "docs/62_PRODUCT_EXTENSION_REQUIREMENTS_TASKS_AND_QUALIFICATIONS.md#px-113",
    "audit_at_adoption": "DOCUMENTED-ONLY; no product caller present",
-   "status": "E2E_PROVEN",
+   "status": "COMPLETE",
    "evidence": [
     "commit:d10d46d7",
     "run:38990216920",
     "test:services/modbit-core/tests/memory_graph_index.rs::px_113_a_promoted_memory_reaches_a_later_sessions_prompt_and_forgetting_removes_it_after_a_restart",
     "test:services/modbit-core/tests/memory_graph_index.rs::px_113_mutations_are_events_that_replay_to_the_same_store_and_a_direct_write_does_not_survive",
-    "test:services/modbit-core/tests/memory_graph_index.rs::px_113_ttl_scope_precedence_and_sensitivity_decide_what_is_injected"
+    "test:services/modbit-core/tests/memory_graph_index.rs::px_113_ttl_scope_precedence_and_sensitivity_decide_what_is_injected",
+    "run:39029466637",
+    "artifact:evidence/m10/PX-113/evidence.json",
+    "commit:ac4aa804"
    ],
    "notes": [
     {
@@ -37077,7 +37121,7 @@
     }
    ],
    "owner_agent": "graph-integrator",
-   "status_changed_on": "2026-10-17T06:34:57Z"
+   "status_changed_on": "2026-10-20T03:37:25Z"
   },
   {
    "id": "PX-114",
@@ -39422,6 +39466,16 @@
    "source": "docs/62_PRODUCT_EXTENSION_REQUIREMENTS_TASKS_AND_QUALIFICATIONS.md"
   },
   {
+   "id": "QUAL-PX-140",
+   "type": "qual_test",
+   "requirement": "REQ-PX-140",
+   "owner_label": "skills",
+   "title": "Deferred proof, entry condition and not a current proof: on a fixture task the base harness fails, a default-off refinement run with k=1 executes base, two candidates and one composition with the real Core, forked worktrees and the live compatible gateway; the ledger shows four rollouts and three improver sessions; the selected candidate passes the real verification run and the Acceptance Gate; an overlay that edits a guardrail, a capability ceiling or a verification contract is rejected whole; a probe that attempts a push, a network write or a credential read is denied by the real kernel; planted hidden-test or rubric content in the evidence tree stops the run before any improver session; a killed and restarted Core leaves no applied overlay and no orphan worktree; the recorded cost equals the EPR-010 record; library lessons reach no production prompt. Activation also needs a paired comparison with the base harness on the doc 63 suite, with intervals and a cost ratio and no safety regression. The full text is in DR-PX-2026-10-19-014.",
+   "failure_proof": "Deferred; not on the RELEASE_ZERO path. When activated: an overlay outside the closed surface being applied, a probe effect that is not denied, benchmark-leak content reaching an improver, a broken R = 4k or P = 3k ledger, cost missing from the single record, a library entry in a production prompt or a half-applied overlay after a kill fails the suite.",
+   "evidence_class": "real-system or production-equivalent",
+   "source": "docs/62_PRODUCT_EXTENSION_REQUIREMENTS_TASKS_AND_QUALIFICATIONS.md"
+  },
+  {
    "id": "PX-E2E-000",
    "type": "scenario",
    "kind": "px-e2e",
@@ -41720,6 +41774,16 @@
     }
    ],
    "status_changed_on": "2026-10-05T04:04:46Z"
+  },
+  {
+   "id": "DOC-PX-014",
+   "type": "dossier_task",
+   "title": "Product extension stage: Per-task harness refinement and lesson library, PX-140 (deferred)",
+   "subsystem": "governance",
+   "source": "docs/97_DOSSIER_MAINTENANCE_LOG.md",
+   "acceptance": "Decision Record, its rows, specification, supersession entries and change record added; implementation audit recorded; full integrity gate passes; the record is accepted by the owner and its status and approval are recorded; no product proof",
+   "status": "NOT_STARTED",
+   "evidence": []
   },
   {
    "id": "ALPHA",
@@ -57383,6 +57447,21 @@
    "type": "refines"
   },
   {
+   "from": "DR-PX-2026-10-19-014",
+   "to": "97_DOSSIER_MAINTENANCE_LOG.md",
+   "type": "specified_by"
+  },
+  {
+   "from": "DR-PX-2026-10-19-014",
+   "to": "62_PRODUCT_EXTENSION_REQUIREMENTS_TASKS_AND_QUALIFICATIONS.md",
+   "type": "specified_by"
+  },
+  {
+   "from": "DR-PX-2026-10-19-014",
+   "to": "DR-PX-2026-09-05",
+   "type": "refines"
+  },
+  {
    "from": "REQ-PX-000",
    "to": "desktop",
    "type": "owned_by_req"
@@ -61406,6 +61485,31 @@
    "from": "REQ-PX-139",
    "to": "PX-139",
    "type": "implemented_by"
+  },
+  {
+   "from": "REQ-PX-140",
+   "to": "skills",
+   "type": "owned_by_req"
+  },
+  {
+   "from": "REQ-PX-140",
+   "to": "QUAL-PX-140",
+   "type": "qualified_by"
+  },
+  {
+   "from": "REQ-PX-140",
+   "to": "62_PRODUCT_EXTENSION_REQUIREMENTS_TASKS_AND_QUALIFICATIONS.md",
+   "type": "specified_by"
+  },
+  {
+   "from": "REQ-PX-140",
+   "to": "DR-PX-2026-09-05",
+   "type": "authorized_by"
+  },
+  {
+   "from": "REQ-PX-140",
+   "to": "DR-PX-2026-10-19-014",
+   "type": "authorized_by"
   },
   {
    "from": "PX-000",
@@ -71605,6 +71709,31 @@
   {
    "from": "DOC-PX-013",
    "to": "DR-PX-2026-10-05-013",
+   "type": "authorized_by"
+  },
+  {
+   "from": "DOC-PX-014",
+   "to": "DOC-GOV-007",
+   "type": "after"
+  },
+  {
+   "from": "DOC-PX-014",
+   "to": "governance",
+   "type": "owned_by"
+  },
+  {
+   "from": "DOC-PX-014",
+   "to": "97_DOSSIER_MAINTENANCE_LOG.md",
+   "type": "specified_by"
+  },
+  {
+   "from": "DOC-PX-014",
+   "to": "62_PRODUCT_EXTENSION_REQUIREMENTS_TASKS_AND_QUALIFICATIONS.md",
+   "type": "specified_by"
+  },
+  {
+   "from": "DOC-PX-014",
+   "to": "DR-PX-2026-10-19-014",
    "type": "authorized_by"
   },
   {

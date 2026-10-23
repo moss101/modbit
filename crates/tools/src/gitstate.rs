@@ -1,6 +1,7 @@
 //! The governed tools over Core-hosted git state (PX-119, PX-066):
 //! `git.merge.prepare`, `git.merge.commit`, `git.merge.abort`,
-//! `git.apply.worktree` and `git.apply.undo`.
+//! `git.apply.worktree`, `git.apply.undo` and, from the Changes app (PX-048),
+//! `git.changes.commit_push`.
 //!
 //! Each is an ordinary registered tool: the pipeline validates its arguments,
 //! the Capability Kernel judges its effect class under the task's lease (an
@@ -131,7 +132,7 @@ fn tool(spec: ToolSpec, op: &'static str, raise: fn(&Value) -> EffectClass) -> A
     Arc::new(GitStateTool { spec, op, raise })
 }
 
-/// Register the five tools.
+/// Register the tools.
 pub fn register(registry: &mut ToolRegistry) -> Result<()> {
     for t in [
         tool(
@@ -200,6 +201,26 @@ pub fn register(registry: &mut ToolRegistry) -> Result<()> {
             ),
             "worktree.apply",
             apply_class,
+        ),
+        tool(
+            spec(
+                "git.changes.commit_push",
+                "Commit the files the person staged and push the current branch to a remote: one effect, bound to the exact intent (message, files, branch, remote, the HEAD it commits onto, the staged digest) the person approved. Issued by the Core's CommitAndPush command from the Changes app; nothing runs without that approval, a changed staged set or HEAD refuses the call, and the push goes through the hardened Git runner with the forge token from the credential broker only for the forge's own https host.",
+                EffectClass::ExternalSideEffect,
+                json!({"type":"object","properties":{
+                    "message":{"type":"string","maxLength":4000},
+                    "paths":{"type":"array","items":{"type":"string"},"maxItems":20000},
+                    "branch":{"type":"string","minLength":1},
+                    "remote":{"type":"string","minLength":1},
+                    "head_before":{"type":"string","minLength":4},
+                    "staged_digest":{"type":"string"},
+                    "push_only":{"type":"boolean"}
+                },"required":["message","paths","branch","remote","head_before","staged_digest"],"additionalProperties":false}),
+                &["git.commit", "git.push"],
+                PROFILES,
+            ),
+            "changes.commit_push",
+            plain,
         ),
         tool(
             spec(

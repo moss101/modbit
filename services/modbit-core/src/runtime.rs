@@ -32,7 +32,7 @@ use modbit_domain::turn::TurnEvent;
 use modbit_domain::{
     AgentId, RunId, RunStepId, SessionId, TaskId, TenantId, Timestamp, ToolCallId, TurnId,
 };
-use modbit_event_store::{AppendRequest, EventStore, NewEvent};
+use modbit_event_store::{AppendRequest, Durability, EventStore, NewEvent};
 use modbit_providers::{
     ContentPart, Message, ModelEvent, ModelPolicy, Requirements, Role, ToolProjection,
 };
@@ -1639,6 +1639,29 @@ pub(crate) fn append(
     aggregate_id: [u8; 16],
     events: Vec<NewEvent>,
 ) -> std::result::Result<u64, String> {
+    append_with(
+        store,
+        core,
+        l,
+        aggregate_type,
+        aggregate_id,
+        events,
+        Durability::Full,
+    )
+}
+
+/// [`append`] with an explicit durability. Only the assistant stream's deltas
+/// pass [`Durability::Relaxed`] (DR-PX-2026-10-21-015); the store refuses it
+/// for anything else.
+pub(crate) fn append_with(
+    store: &mut EventStore,
+    core: &Core,
+    l: Lineage,
+    aggregate_type: AggregateType,
+    aggregate_id: [u8; 16],
+    events: Vec<NewEvent>,
+    durability: Durability,
+) -> std::result::Result<u64, String> {
     let req = AppendRequest {
         tenant_id: l.tenant,
         session_id: l.session,
@@ -1654,8 +1677,8 @@ pub(crate) fn append(
     // A fenced lineage lands only while its lease generation is the
     // session's (docs/13, docs/33; M4.4).
     let stored = match l.lease {
-        Some(g) => store.append_fenced(req, g),
-        None => store.append(req),
+        Some(g) => store.append_fenced_with(req, g, durability),
+        None => store.append_with(req, durability),
     }
     .map_err(|e| match e {
         modbit_event_store::Error::StaleLease { .. } => format!("STALE_LEASE: {e}"),
@@ -1688,6 +1711,10 @@ pub(crate) async fn rebuild(
         budgets,
         ..Default::default()
     };
+    // REQ-PX-060: the organization's ceilings bind a task that never set a cap.
+    if task.origin != modbit_domain::task::TaskOrigin::Subagent {
+        crate::budgets::clamp_runtime(&mut state.budgets);
+    }
     let mut transcript: Vec<Message> = Vec::new();
     let mut last_offset = 0;
     let mut pending_steps: HashMap<[u8; 16], StepType> = HashMap::new();
@@ -1732,6 +1759,7 @@ pub(crate) async fn rebuild(
                             .and_then(|c| u32::try_from(c).ok())
                             .unwrap_or(harness::DEFAULT_MAX_CHILDREN)
                     };
+                    crate::budgets::clamp_runtime(&mut state.budgets);
                 }
             }
             "TaskForked" => {

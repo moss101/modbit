@@ -116,6 +116,17 @@ export const shellCss = `
 .terminal-pick { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .terminal-pick:hover:not(:disabled), .changes-file:hover:not(:disabled), .files-entry:hover:not(:disabled) { background: var(--mb-color-hover); border-color: transparent; }
 .terminal-pick[aria-pressed="true"], .changes-file[aria-pressed="true"], .files-entry[aria-pressed="true"] { background: var(--mb-color-selected); }
+.changes-row { display: flex; align-items: center; gap: var(--mb-space-1); }
+.changes-row .changes-file { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; }
+.changes-refusal { border: 1px solid var(--mb-color-danger); background: var(--mb-color-danger-tint); border-radius: var(--mb-radius-3); padding: var(--mb-space-2); }
+.changes-refusal p, .changes-result p, .changes-approval p { margin: 0 0 var(--mb-space-1); }
+.changes-undo, .changes-result { border: 1px solid var(--mb-color-border); border-radius: var(--mb-radius-3); padding: var(--mb-space-2); }
+.changes-commit { display: flex; flex-direction: column; gap: var(--mb-space-1); }
+.changes-commit textarea { width: 100%; box-sizing: border-box; font: inherit; }
+.changes-commit-actions { display: flex; align-items: center; flex-wrap: wrap; gap: var(--mb-space-2); }
+.changes-approval { border: 1px solid var(--mb-color-warn); background: var(--mb-color-warn-tint); border-radius: var(--mb-radius-3); padding: var(--mb-space-2); }
+.changes-effects ul { list-style: none; margin: 0; padding: 0; }
+.hunk-head .mb-btn { margin-left: var(--mb-space-2); }
 .terminal-toolbar, .changes-head { display: flex; align-items: center; flex-wrap: wrap; gap: var(--mb-space-2); }
 .xterm-wrap { background: var(--mb-color-sunken); border: 1px solid var(--mb-color-border-control); border-radius: var(--mb-radius-3); padding: var(--mb-space-1); height: 320px; min-height: 160px; resize: vertical; overflow: hidden; }
 .xterm-host { height: 100%; }

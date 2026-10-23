@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
-import { changeSummary, isReviewable, lineKind, rangesContain } from "./changes-model.ts";
+import { canCommitPush, changeSummary, commitLabel, commitMode, effectWords, isReviewable, lineKind, newCommandId, rangesContain, refusalWords, stageState } from "./changes-model.ts";
 import { categoryLabel, percent, windowLine } from "./evidence-model.ts";
 import { formatBytes, parentOf, refusalText, withheldText } from "./files-model.ts";
 import { groupByTask } from "./use-terminals.ts";
@@ -50,4 +50,45 @@ test("PX-048: the terminal list groups by owning task and drops host-owned termi
   const g = groupByTask([t("1", "a"), t("2", "b"), t("3", "a"), t("4", "")]);
   assert.deepEqual([...g.keys()], ["a", "b"]);
   assert.equal(g.get("a")?.length, 2);
+});
+
+
+test("changes actions: a path is staged, partly staged or not staged, from the Core's two columns", () => {
+  assert.equal(stageState({ staged: "", unstaged: "M" }), "none");
+  assert.equal(stageState({ staged: "M", unstaged: "" }), "staged");
+  assert.equal(stageState({ staged: "A", unstaged: "M" }), "partial");
+});
+
+test("changes actions: the toolbar commits staged files, or only pushes commits the remote lacks", () => {
+  assert.equal(commitMode(2, 0), "commit");
+  assert.equal(commitMode(1, 3), "commit");
+  assert.equal(commitMode(0, 3), "push");
+  assert.equal(commitMode(0, 0), "none");
+  assert.equal(commitLabel("push", 1), "Push 1 commit");
+  assert.equal(commitLabel("push", 2), "Push 2 commits");
+  assert.equal(commitLabel("commit", 0), "Commit and push");
+  assert.equal(canCommitPush("commit", "  ", false), false, "a commit needs a message");
+  assert.equal(canCommitPush("commit", "Fix it", false), true);
+  assert.equal(canCommitPush("push", "", false), true, "a push alone needs none");
+  assert.equal(canCommitPush("none", "x", false), false);
+  assert.equal(canCommitPush("commit", "x", true), false, "not while the task runs");
+});
+
+test("changes actions: every typed refusal has words, and an unknown code still says something", () => {
+  for (const code of ["STALE_REVISION", "DIRTY_CONFLICT", "PROTECTED_PATH", "NO_REMOTE", "NOTHING_STAGED", "STALE_INTENT", "PUSH_REJECTED", "TASK_RUNNING"]) assert.ok(refusalWords(code).length > 10, code);
+  assert.match(refusalWords("SOMETHING_NEW"), /refused/);
+  assert.match(refusalWords(""), /could not/);
+});
+
+test("changes actions: an authorization with no result is shown as in doubt, never as done", () => {
+  assert.match(effectWords({ state: "AUTHORIZED_IN_DOUBT", commit: "", code: "" }), /unknown/);
+  assert.match(effectWords({ state: "COMPLETED", commit: "0123456789abcdef", code: "" }), /0123456789 and pushed/);
+  assert.match(effectWords({ state: "FAILED", commit: "", code: "PUSH_REJECTED" }), /PUSH_REJECTED/);
+});
+
+test("changes actions: a command id is 32 hex characters and differs per click", () => {
+  const a = newCommandId();
+  const b = newCommandId();
+  assert.match(a, /^[0-9a-f]{32}$/);
+  assert.notEqual(a, b);
 });

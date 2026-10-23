@@ -18,6 +18,8 @@ struct Script {
     perms: Mutex<Permissions>,
     secure: AtomicBool,
     idle: Mutex<Option<Duration>>,
+    /// How long the next `human_idle` takes to answer (a stalled poll).
+    idle_stall: Mutex<Option<Duration>>,
     perform: Mutex<Arc<PerformFn>>,
     window_alive: AtomicBool,
     performs: AtomicUsize,
@@ -39,6 +41,7 @@ impl Script {
             }),
             secure: AtomicBool::new(false),
             idle: Mutex::new(None),
+            idle_stall: Mutex::new(None),
             perform: Mutex::new(Arc::new(|_, _| Ok(wire::PerformResponse::default()))),
             window_alive: AtomicBool::new(true),
             performs: AtomicUsize::new(0),
@@ -135,6 +138,10 @@ impl Backend for Script {
         f(a.req, ctl)
     }
     fn human_idle(&self) -> Option<Duration> {
+        let stall = self.idle_stall.lock().unwrap().take();
+        if let Some(d) = stall {
+            std::thread::sleep(d);
+        }
         if let Some(d) = *self.idle.lock().unwrap() {
             return Some(d);
         }
@@ -444,6 +451,37 @@ async fn the_actuators_own_events_are_not_a_person_but_a_person_during_them_is()
     // A person touches the machine at a moment the actuator did not post.
     tokio::time::sleep(Duration::from_millis(100)).await;
     b.touch();
+    let ev = next_event(&mut rx, Duration::from_secs(2)).await;
+    assert!(
+        matches!(ev, Some(wire::actuator_event::Event::HumanInput(_))),
+        "{ev:?}"
+    );
+}
+
+/// A person's touch that falls inside a stalled poll is still a person: the
+/// monitor judges "an event since the previous poll" by the time that really
+/// passed, not by the nominal 15 ms. (The hosted macOS runner missed the touch
+/// of `the_actuators_own_events_are_not_a_person_but_a_person_during_them_is`
+/// when a poll came late.)
+#[tokio::test]
+async fn a_touch_during_a_stalled_poll_is_still_reported() {
+    let b = Script::new();
+    // Nothing has moved for ten seconds.
+    *b.idle.lock().unwrap() = Some(Duration::from_secs(10));
+    let (hub, mut rx) = hub_over(&b, Denied::default());
+    hub.spawn_monitors();
+    hub.handle(req(1, acquire("A"))).await;
+    assert!(
+        next_event(&mut rx, Duration::from_millis(300))
+            .await
+            .is_none(),
+        "an idle machine is not a person"
+    );
+    // The next sample takes 200 ms to come back and says the counter moved 120
+    // ms ago: after the previous sample (about 200 ms earlier), but beyond the
+    // nominal 3 x 15 ms window.
+    *b.idle.lock().unwrap() = Some(Duration::from_millis(120));
+    *b.idle_stall.lock().unwrap() = Some(Duration::from_millis(200));
     let ev = next_event(&mut rx, Duration::from_secs(2)).await;
     assert!(
         matches!(ev, Some(wire::actuator_event::Event::HumanInput(_))),

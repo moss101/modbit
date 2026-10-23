@@ -303,9 +303,20 @@ async fn read_object(c: &mut Client, hash: &str) -> Vec<u8> {
 
 // ------------------------------------------------------------- the events
 
+/// Milliseconds since the epoch on this host's wall clock (the Core's event
+/// timestamps are on the same clock).
+fn epoch_ms() -> i64 {
+    std::time::SystemTime::now()
+        .duration_since(std::time::UNIX_EPOCH)
+        .unwrap()
+        .as_millis() as i64
+}
+
 /// One event as a client received it.
 #[derive(Clone, Debug)]
 struct Ev {
+    /// When this client read it off the socket, in milliseconds.
+    received_ms: i64,
     offset: u64,
     aggregate: String,
     kind: String,
@@ -322,6 +333,7 @@ fn ev_of(e: modbit_protocol::v1::StoredEventFrame) -> Ev {
     let p: serde_json::Value = serde_json::from_slice(&ev.payload).unwrap_or_default();
     let at = ev.recorded_at.unwrap_or_default();
     Ev {
+        received_ms: epoch_ms(),
         offset: e.offset,
         aggregate: ev.aggregate_type,
         kind: ev.event_type,
@@ -509,6 +521,9 @@ struct Step {
     end: End,
     /// After this many chunks have been written, wait on the gate.
     pause: Option<(usize, Gate)>,
+    /// When set, the epoch milliseconds at which each chunk was handed to the
+    /// socket, in order (the latency measurement's send side).
+    sent_ms: Option<Arc<Mutex<Vec<i64>>>>,
 }
 
 impl Step {
@@ -602,6 +617,9 @@ async fn streaming_model(steps: Vec<Step>) -> String {
                         && !gate.hold().await
                     {
                         return;
+                    }
+                    if let Some(log) = &step.sent_ms {
+                        log.lock().unwrap().push(epoch_ms());
                     }
                     if sock
                         .write_all(&write(delta(serde_json::json!({"content": c}))))
@@ -1094,6 +1112,135 @@ async fn qual_px_041_a_core_killed_mid_stream_leaves_an_aborted_stream_after_res
     let core = CoreProcess::spawn_with_env(dir.path(), &env_for(&base, ""));
     let again = replay(&core, &session, 0).await;
     assert_eq!(of_kind(&again, "AssistantMessageAborted").len(), 1);
+}
+
+/// Where the valid frames of a SQLite WAL end. A WAL that was checkpointed and
+/// restarted keeps its old length with stale frames after the live ones; a
+/// frame belongs to the live log only while its salts are the header's.
+fn wal_valid_end(path: &std::path::Path) -> u64 {
+    let Ok(bytes) = std::fs::read(path) else {
+        return 0;
+    };
+    if bytes.len() < 32 {
+        return 0;
+    }
+    let page = u32::from_be_bytes(bytes[8..12].try_into().unwrap()) as usize;
+    let frame = 24 + page;
+    let mut end = 32;
+    while end + frame <= bytes.len() && bytes[end + 8..end + 16] == bytes[16..24] {
+        end += frame;
+    }
+    end as u64
+}
+
+/// DR-PX-2026-10-21-015, the real Core: deltas commit without an fsync, so a
+/// power loss can take the unsynced tail of the WAL. Emulated by killing the
+/// Core mid-stream and cutting its WAL back to a point between its length when
+/// the model started streaming and its length at the kill (and to a torn byte
+/// past it). The restarted Core must open the log, show the stream's deltas as
+/// a contiguous prefix of what was streamed (never a gap), close the stream
+/// aborted by recovery counting exactly the deltas that survived (or find none
+/// open when none did), complete nothing, and not resume a loop mid-token.
+#[tokio::test]
+async fn qual_px_041_a_power_loss_that_takes_the_unsynced_wal_tail_leaves_a_contiguous_prefix_closed_by_recovery()
+ {
+    for (name, fraction, torn) in [
+        ("none of the tail", 0.0, 0),
+        ("half of the tail", 0.5, 0),
+        ("half of the tail and a torn byte", 0.5, 7),
+        ("all of the tail", 1.0, 0),
+    ] {
+        let (_, chunks) = four_hundred_words();
+        let gate = Gate::new();
+        let base = streaming_model(vec![Step {
+            chunks: chunks[..25].to_vec(),
+            gap_ms: 0,
+            end: End::Hang,
+            pause: Some((12, gate.clone())),
+            ..Step::default()
+        }])
+        .await;
+        let (_repo, root) = repo();
+        let dir = tempfile::tempdir().unwrap();
+        let mut core = CoreProcess::spawn_with_env(dir.path(), &env_for(&base, ""));
+        let mut c = core.client().await;
+        let (session, lease) = create_session(&mut c).await;
+        let task = create_task(&mut c, &session, lease, "answer at length", &root).await;
+        let wal = dir.path().join("core").join("core.db-wal");
+        let wal_len = || wal_valid_end(&wal);
+        let _ = start_task(&mut c, &task, lease).await;
+        gate.reached().await;
+        let at_stream_start = wal_len();
+        let _ = wait_for_events(&core, &session, "no delta while the stream was held", |e| {
+            !of_kind(e, "AssistantTextDelta").is_empty()
+        })
+        .await;
+        gate.release();
+        let before = wait_for_events(&core, &session, "no second delta arrived", |e| {
+            of_kind(e, "AssistantTextDelta").len() >= 2
+        })
+        .await;
+        let streamed = of_kind(&before, "AssistantTextDelta").len();
+        drop(c);
+        core.kill();
+        let at_kill = wal_len();
+        assert!(
+            at_kill > at_stream_start,
+            "{name}: the deltas reached the WAL"
+        );
+        let kept = at_stream_start + ((at_kill - at_stream_start) as f64 * fraction) as u64 + torn;
+        let bytes = std::fs::read(&wal).unwrap();
+        std::fs::write(
+            &wal,
+            &bytes[..usize::try_from(kept).unwrap().min(bytes.len())],
+        )
+        .unwrap();
+
+        let core = CoreProcess::spawn_with_env(dir.path(), &env_for(&base, ""));
+        let all = replay(&core, &session, 0).await;
+        let deltas = of_kind(&all, "AssistantTextDelta");
+        let survived = deltas.len();
+        assert!(
+            survived <= streamed,
+            "{name}: nothing appears that was not streamed"
+        );
+        if fraction >= 1.0 {
+            assert_eq!(
+                survived, streamed,
+                "{name}: a cut past the end loses nothing"
+            );
+        }
+        // Contiguous from 1: a lost tail never leaves a hole.
+        for (i, d) in deltas.iter().enumerate() {
+            assert_eq!(
+                d.payload["sequence"],
+                (i + 1) as u64,
+                "{name}: delta {i} out of sequence"
+            );
+        }
+        assert!(
+            of_kind(&all, "AssistantMessageCompleted").is_empty(),
+            "{name}: no partial text is marked complete"
+        );
+        let aborted = of_kind(&all, "AssistantMessageAborted");
+        if survived == 0 {
+            assert!(
+                aborted.is_empty(),
+                "{name}: no delta survived, no stream to close"
+            );
+        } else {
+            assert_eq!(aborted.len(), 1, "{name}");
+            assert_eq!(aborted[0].payload["source"], "RECOVERY", "{name}");
+            assert_eq!(aborted[0].payload["delta_count"], survived as u64, "{name}");
+            assert!(aborted[0].offset > deltas.last().unwrap().offset, "{name}");
+        }
+        let mut c = core.client().await;
+        let st = task_status(&mut c, &task).await;
+        assert!(
+            !st.loop_alive,
+            "{name}: recovery does not resume a loop mid-token: {st:?}"
+        );
+    }
 }
 
 /// A very long stream stays bounded: every delta within the byte bound, the
@@ -2708,4 +2855,178 @@ async fn qual_px_042_search_index_is_bounded_per_row_per_conversation_and_in_tot
     let one = search(&mut c, &session, "common7").await;
     assert_eq!(one.hits.len(), 1);
     assert!(hit_for(&one, &drafts[7]).is_some());
+}
+
+// ------------------------------------------------- the stream latency budget
+
+/// Nearest-rank percentile of an ascending list.
+fn percentile(sorted: &[i64], q: f64) -> i64 {
+    if sorted.is_empty() {
+        return 0;
+    }
+    let rank = (q * sorted.len() as f64).ceil() as usize;
+    sorted[rank.clamp(1, sorted.len()) - 1]
+}
+
+/// `{n, min, p50, p95, p99, max}` of a list of millisecond samples.
+fn distribution(samples: &[i64]) -> serde_json::Value {
+    let mut s = samples.to_vec();
+    s.sort_unstable();
+    serde_json::json!({
+        "n": s.len(),
+        "min": s.first().copied().unwrap_or(0),
+        "p50": percentile(&s, 0.5),
+        "p95": percentile(&s, 0.95),
+        "p99": percentile(&s, 0.99),
+        "max": s.last().copied().unwrap_or(0),
+    })
+}
+
+/// Keep a measurement under `MODBIT_PERF_OUT/<row>/<run>/` when asked to (a
+/// person keeping a run as `benchmarks/live-results/perf/...`); it is always
+/// printed, so a CI log holds it.
+fn perf_profile() -> String {
+    std::env::var("MODBIT_PERF_PROFILE").unwrap_or_else(|_| "ci".to_owned())
+}
+
+/// Budgets are asserted on the reference profile only.
+fn perf_enforced() -> bool {
+    perf_profile() == "reference"
+}
+
+fn retain_perf(row: &str, result: &serde_json::Value) {
+    println!("[perf] {row} {result}");
+    let Ok(root) = std::env::var("MODBIT_PERF_OUT") else {
+        return;
+    };
+    let run = std::env::var("MODBIT_PERF_RUN").unwrap_or_else(|_| epoch_ms().to_string());
+    let dir = std::path::Path::new(&root).join(row).join(run);
+    std::fs::create_dir_all(&dir).unwrap();
+    std::fs::write(
+        dir.join("result.json"),
+        format!("{}\n", serde_json::to_string_pretty(result).unwrap()),
+    )
+    .unwrap();
+}
+
+/// QUAL-PX-041, the Core's share of the budget "event timestamp to render is at
+/// most 100 ms at p95": a real Core process and a real client on its socket, the
+/// scripted provider speaking 230 pieces 60 ms apart. For every delta the client
+/// received, three intervals are recorded (n >= 150): the model handing the piece
+/// to the socket to the Core's event timestamp (the Core's coalescing and append),
+/// the Core's event timestamp to the client having it (store, subscription, socket),
+/// and the whole. The second is the Core's share of the 100 ms budget and is
+/// asserted at p95 on the reference profile; the others are on record. Profiles
+/// (`MODBIT_PERF_PROFILE`, DR-PX-2026-10-21-015, the same rule as
+/// `apps/desktop/e2e/perf-budgets.spec.ts`): docs/39 states its budgets "on the
+/// reference hardware". `reference` (a release-built Core on a quiet machine)
+/// asserts the budget; any other profile (the default, and what CI runs: a
+/// debug-built Core on a shared runner whose disk other tests are fsyncing)
+/// records the distribution and says whether the budget was met there. A budget
+/// is never changed to pass: a profile that misses it records "NOT MET".
+#[tokio::test]
+async fn perf_px_041_delta_latency_from_the_models_piece_to_the_client_is_a_recorded_distribution()
+{
+    const PIECES: usize = 230;
+    let words: Vec<String> = (0..PIECES * 5).map(|i| format!("w{i:05}")).collect();
+    let chunks: Vec<String> = words
+        .chunks(5)
+        .map(|w| format!("{} ", w.join(" ")))
+        .collect();
+    let sent = Arc::new(Mutex::new(Vec::new()));
+    let base = streaming_model(vec![Step {
+        chunks: chunks.clone(),
+        gap_ms: 60,
+        sent_ms: Some(Arc::clone(&sent)),
+        ..Step::default()
+    }])
+    .await;
+    let (_repo, root) = repo();
+    let dir = tempfile::tempdir().unwrap();
+    let core = CoreProcess::spawn_with_env(dir.path(), &env_for(&base, ""));
+    let mut c = core.client().await;
+    let (session, lease) = create_session(&mut c).await;
+    let task = create_task(&mut c, &session, lease, "answer at length", &root).await;
+    let live = collect_live(&core, &session, 0);
+    let _ = start_task(&mut c, &task, lease).await;
+    let st = wait_idle(&mut c, &task, 120).await;
+    assert!(!st.loop_alive, "{st:?}");
+    tokio::time::sleep(SETTLE).await;
+
+    let live = live.lock().unwrap().clone();
+    let deltas = of_kind(&live, "AssistantTextDelta");
+    assert_eq!(
+        stream_text(&deltas),
+        chunks.concat(),
+        "the whole answer arrived as deltas, in order"
+    );
+    let sent = sent.lock().unwrap().clone();
+    assert_eq!(sent.len(), PIECES);
+    // Which piece does each delta end on? Deltas coalesce pieces, so the last
+    // piece a delta holds is the one found by cumulative length.
+    let mut ends = Vec::new();
+    let mut at = 0usize;
+    for c in &chunks {
+        at += c.len();
+        ends.push(at);
+    }
+    let mut got = 0usize;
+    let (mut to_record, mut to_client, mut whole) = (Vec::new(), Vec::new(), Vec::new());
+    for d in &deltas {
+        got += d.payload["text"].as_str().unwrap().len();
+        let k = ends.iter().position(|e| *e >= got).unwrap();
+        to_record.push(d.recorded_ms - sent[k]);
+        to_client.push(d.received_ms - d.recorded_ms);
+        whole.push(d.received_ms - sent[k]);
+    }
+    let first_whole = deltas[0].received_ms - sent[0];
+    let mut s = to_client.clone();
+    s.sort_unstable();
+    let met = percentile(&s, 0.95) <= 100;
+    let result = serde_json::json!({
+        "row": "px041-core-stream",
+        "verdict": {
+            "met": met,
+            "text": if perf_enforced() {
+                "asserted (reference profile)".to_owned()
+            } else {
+                format!("recorded on the \"{}\" profile ({}); asserted only on the reference profile", perf_profile(), if met { "MET" } else { "NOT MET" })
+            },
+        },
+        "budget": {
+            "statement": "QUAL-PX-041: event timestamp to render is at most 100 ms at p95; the Core's share (event timestamp to a client holding it) is asserted at p95 <= 100 ms",
+            "limit_ms": 100
+        },
+        "method": {
+            "core": "debug build of modbit-core (the CI profile)",
+            "provider": "scripted OpenAI-compatible SSE endpoint, 230 pieces of 5 words, 60 ms apart (longer than the 50 ms coalescing window)",
+            "profile": perf_profile(),
+            "enforced": perf_enforced(),
+            "clock": "one host's wall clock for the model, the Core and the client",
+            "cpus": std::thread::available_parallelism().map_or(0, std::num::NonZero::get),
+            "os": std::env::consts::OS,
+        },
+        "distributions_ms": {
+            "model piece sent to the Core's event timestamp": distribution(&to_record),
+            "Core event timestamp to the client holding the event": distribution(&to_client),
+            "model piece sent to the client holding the event": distribution(&whole),
+            "first delta: first piece sent to the client holding it": distribution(&[first_whole]),
+        },
+    });
+    retain_perf("px041-core-stream", &result);
+    // Pieces that reach the Core inside one 50 ms coalescing window become one
+    // delta; a loaded host (the Windows runner) stretches a 60 ms gap often
+    // enough to merge a few dozen of the 230. 150 is still a distribution.
+    assert!(
+        deltas.len() >= 150,
+        "n >= 150 deltas for a distribution: {}",
+        deltas.len()
+    );
+    if perf_enforced() {
+        assert!(
+            percentile(&s, 0.95) <= 100,
+            "the Core's share of the 100 ms budget, p95: {}",
+            result["distributions_ms"]
+        );
+    }
 }

@@ -1,0 +1,155 @@
+{
+  "row": "px041-px047-stream-render",
+  "run": "local-macos-debug-core-ci-profile",
+  "recordedAt": "2026-10-17T09:38:18.260Z",
+  "environment": {
+    "platform": "darwin",
+    "os": "27.0.0",
+    "cpu": "Apple M5 Pro",
+    "cores": 18,
+    "memoryGiB": 24,
+    "ci": false,
+    "runner": "local",
+    "app": "unpackaged build (apps/desktop/dist) under Playwright; the packaged-app run is PX-025's (M10.4)",
+    "clock": "Core event timestamp (recorded_at, ms) and the renderer's performance.timeOrigin+now on the same host"
+  },
+  "budgets": [
+    {
+      "statement": "QUAL-PX-041: event timestamp to render is at most 100 ms at p95",
+      "limitMs": 100,
+      "percentile": "p95"
+    },
+    {
+      "statement": "QUAL-PX-047: first-delta render is within 100 ms of the event timestamp at p95",
+      "limitMs": 100,
+      "percentile": "p95"
+    }
+  ],
+  "method": {
+    "tasks": 4,
+    "turnsPerTask": 50,
+    "deltasPerMessage": 4,
+    "gapMs": 60,
+    "model": "scripted OpenAI-compatible endpoint (stream pieces 60 ms apart)",
+    "profile": "ci",
+    "enforced": false
+  },
+  "distributions": {
+    "event timestamp to rendered frame, every delta": {
+      "n": 794,
+      "min": 1,
+      "p50": 14.7,
+      "p95": 108.7,
+      "p99": 149,
+      "max": 209.8,
+      "mean": 33.66
+    },
+    "event timestamp to rendered frame, first delta of a message": {
+      "n": 204,
+      "min": 3.6,
+      "p50": 16.8,
+      "p95": 103.9,
+      "p99": 107,
+      "max": 152.9,
+      "mean": 27.19
+    },
+    "event timestamp to main-process receipt (Core append, its connection, socket)": {
+      "n": 794,
+      "min": 0,
+      "p50": 3,
+      "p95": 103,
+      "p99": 136,
+      "max": 206,
+      "mean": 25.66
+    },
+    "main-process receipt to renderer receipt (main thread, IPC)": {
+      "n": 794,
+      "min": -1.2,
+      "p50": 0.4,
+      "p95": 11.4,
+      "p99": 26.2,
+      "max": 36.1,
+      "mean": 2.11
+    },
+    "event timestamp to rendered frame, 2nd delta of a message": {
+      "n": 204,
+      "min": 1.2,
+      "p50": 9.8,
+      "p95": 68.9,
+      "p99": 106.4,
+      "max": 125.8,
+      "mean": 18.83
+    },
+    "event timestamp to rendered frame, 3rd delta of a message": {
+      "n": 204,
+      "min": 1,
+      "p50": 7.9,
+      "p95": 105.3,
+      "p99": 124.2,
+      "max": 149,
+      "mean": 19.21
+    },
+    "event timestamp to rendered frame, 4th delta of a message": {
+      "n": 182,
+      "min": 2.7,
+      "p50": 87.9,
+      "p95": 140.3,
+      "p99": 197.9,
+      "max": 209.8,
+      "mean": 73.72
+    },
+    "diagnostic: one transcript read of the last task, IPC round trip": {
+      "n": 20,
+      "min": 34.4,
+      "p50": 35.7,
+      "p95": 343.8,
+      "p99": 458.6,
+      "max": 458.6,
+      "mean": 91.37
+    },
+    "diagnostic: one agent-headers read, IPC round trip": {
+      "n": 20,
+      "min": 18.6,
+      "p50": 19.6,
+      "p95": 290.6,
+      "p99": 316.7,
+      "max": 316.7,
+      "mean": 52.21
+    },
+    "diagnostic: renderer long tasks (>50 ms main-thread work)": {
+      "n": 0,
+      "min": null,
+      "p50": null,
+      "p95": null,
+      "p99": null,
+      "max": null,
+      "mean": 0
+    },
+    "renderer receipt to DOM showing it": {
+      "n": 794,
+      "min": 0.4,
+      "p50": 1.1,
+      "p95": 6.6,
+      "p99": 14.4,
+      "max": 19.6,
+      "mean": 2.23
+    },
+    "DOM showing it to the next frame": {
+      "n": 794,
+      "min": 0.2,
+      "p50": 3.1,
+      "p95": 8.7,
+      "p99": 14.8,
+      "max": 18.8,
+      "mean": 3.66
+    }
+  },
+  "diagnostics": {
+    "deltasOver100ms": 76,
+    "ofThoseDuringAnRendererLongTask": 0
+  },
+  "verdict": {
+    "met": false,
+    "text": "recorded on the \"ci\" profile; asserted only on the reference profile"
+  }
+}
