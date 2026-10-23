@@ -144,7 +144,13 @@ allowed = [
   "services/modbit-core/src/credentials.rs",
   "crates/secrets/src/",
 ]
-grandfathered = []
+# The thin client holds no credential custody (PX-001: modbit-cli reaches no
+# `modbit-secrets` crate). These two reads are inputs it forwards to the Core or
+# the cloud API, which hold the credential; they are permanent, not debt.
+grandfathered = [
+  "apps/cli/src/cloud.rs::MODBIT_CLOUD_SECRET",
+  "apps/cli/src/main.rs::MODBIT_PROVIDER_API_KEY",
+]
 reason = "PX-130: a credential is resolved only through the broker interface (services/modbit-core/src/credentials.rs); a new direct read needs the broker, not an exception"
 
 # ---------------------------------------------------------------------------

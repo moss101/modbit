@@ -3598,13 +3598,9 @@ async fn run_command(ready: &ReadyLine, rest: Vec<String>) -> Result<(), String>
             let api_key = if clear {
                 String::new()
             } else {
-                match modbit_secrets::broker::env_secret(
-                    modbit_secrets::broker::Kind::Provider,
-                    "MODBIT_PROVIDER_API_KEY",
-                    "provider.configure",
-                ) {
-                    Some(v) => v.expose().to_owned(),
-                    None => {
+                match std::env::var("MODBIT_PROVIDER_API_KEY") {
+                    Ok(v) if !v.is_empty() => v,
+                    _ => {
                         let mut buf = String::new();
                         std::io::Read::read_to_string(&mut std::io::stdin(), &mut buf)
                             .map_err(|e| format!("reading the credential from stdin: {e}"))?;

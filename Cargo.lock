@@ -2192,7 +2192,6 @@ dependencies = [
  "hex",
  "modbit-domain",
  "modbit-protocol",
- "modbit-secrets",
  "modbit-skills",
  "prost",
  "rand 0.10.2",
