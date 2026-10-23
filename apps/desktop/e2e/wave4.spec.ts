@@ -206,8 +206,13 @@ test("Wave 4: compose with an @ chip and an attachment, queue-edit-send-now, dec
     expect(tokens.length).toBe(9);
     expect(tokens.reduce((s, t) => s + BigInt(t), 0n)).toBe(total);
     await accessible(page, "the context breakdown");
-    await ring.click();
-    await expect(ctxTray).toHaveCount(0);
+    // A click that lands while the ring re-renders can be lost (seen once on a
+    // Linux runner, PR 115); closing is retried only while the tray is still
+    // open, so a tray that never closes still fails.
+    await expect(async () => {
+      if ((await ctxTray.count()) > 0) await ring.click();
+      await expect(ctxTray).toHaveCount(0, { timeout: 2_000 });
+    }).toPass({ timeout: 20_000 });
 
     // ---- 9. Restore the turn that had a.txt and not b.txt, then redo: bytes on disk.
     const markers = await page.getByTestId("turn-checkpoint").evaluateAll((els) => els.map((e) => e.getAttribute("data-turn-ordinal")));
