@@ -252,3 +252,78 @@ async fn qual_px_130_a_provider_key_is_used_through_the_broker_counted_revoked_a
     assert!(provider_row(&view).revoked);
     drop(repo);
 }
+
+fn files_under(dir: &std::path::Path, out: &mut Vec<std::path::PathBuf>) {
+    let Ok(rd) = std::fs::read_dir(dir) else {
+        return;
+    };
+    for e in rd.flatten() {
+        let p = e.path();
+        match e.file_type() {
+            Ok(t) if t.is_dir() => files_under(&p, out),
+            Ok(t) if t.is_file() => out.push(p),
+            _ => {}
+        }
+    }
+}
+
+/// QUAL-PX-130: a planted provider key is searched for in every artifact the
+/// run leaves — the model's requests (so also tool results and prompts), the
+/// events, every file in the data directory (event store, objects, logs) and
+/// what a child process sees (its environment and the process table's
+/// arguments, both printed back to the model) — and is absent from all of it.
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
+async fn qual_px_130_a_planted_provider_key_is_in_no_artifact_and_no_child_process_sees_it() {
+    let (repo, root) = plain_repo(&[("a.txt", "a\n")]);
+    let (base, seen) = scripted_model_fn(std::sync::Arc::new(|_body, results| match results {
+        0 => json!({"calls": [{"name": "plan.update", "args": {"outcome": "inspect the environment", "expected_files": []}}]}),
+        1 => json!({"calls": [{"name": "shell.exec", "args": {"argv": ["sh", "-c", "env; echo ---; ps -ww -eo args"]}}]}),
+        _ => json!({"calls": [{"name": "task.complete", "args": {"summary": "done", "self_review": {"findings": []}}}]}),
+    }))
+    .await;
+    let dir = tempfile::tempdir().unwrap();
+    let mut env = model_env(&base);
+    env.push(("OPENAI_API_KEY".into(), KEY1.into()));
+    let refs: Vec<(&str, &str)> = env.iter().map(|(k, v)| (k.as_str(), v.as_str())).collect();
+    let core = CoreProcess::spawn_with_env(dir.path(), &refs);
+    let mut c = core.client().await;
+    let (session, g) = session_with_lease(&mut c, 0x41).await;
+    let task = create_task(&mut c, &session, g, &root, 0x42, "local_trusted", "look").await;
+    start_task(&mut c, &task, g, 0x43, "gpt-5-mini").await;
+    let st = wait_task(&mut c, &task, 120).await;
+    assert!(!st.loop_alive, "{st:?}");
+
+    // The child really ran and its output reached the model: the environment
+    // dump is in a later request (so the search below has something to find).
+    let bodies: Vec<String> = seen.lock().unwrap().iter().map(|b| b.to_string()).collect();
+    assert!(
+        bodies.iter().any(|b| b.contains("PATH=")),
+        "the child's environment was not printed back to the model"
+    );
+    // The key is in none of the model's requests...
+    assert!(
+        bodies.iter().all(|b| !b.contains(KEY1)),
+        "the key reached the model"
+    );
+    // ...the events...
+    let events = serde_json::to_string(&replay(&core, &session).await).unwrap();
+    assert!(!events.contains(KEY1), "the key is in an event");
+    // ...the broker's own view...
+    let (_, raw) = broker_view(&mut c).await;
+    assert!(!String::from_utf8_lossy(&raw).contains(KEY1));
+    // ...or any file the Core wrote.
+    drop(c);
+    drop(core);
+    let mut files = Vec::new();
+    files_under(dir.path(), &mut files);
+    assert!(!files.is_empty());
+    for f in files {
+        let bytes = std::fs::read(&f).unwrap_or_default();
+        assert!(
+            !bytes.windows(KEY1.len()).any(|w| w == KEY1.as_bytes()),
+            "the planted key is in {}",
+            f.display()
+        );
+    }
+    drop(repo);
+}
