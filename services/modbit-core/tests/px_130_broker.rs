@@ -20,6 +20,7 @@ use modbit_protocol::v1::{
     RevokeCredential,
 };
 use prost::Message;
+use px_common::mcp_support::{invoke_tool, server_entry};
 use px_common::*;
 use serde_json::json;
 use tokio::io::{AsyncReadExt, AsyncWriteExt};
@@ -322,6 +323,154 @@ async fn qual_px_130_a_planted_provider_key_is_in_no_artifact_and_no_child_proce
         assert!(
             !bytes.windows(KEY1.len()).any(|w| w == KEY1.as_bytes()),
             "the planted key is in {}",
+            f.display()
+        );
+    }
+    drop(repo);
+}
+
+/// QUAL-PX-130, the MCP consumer: a server's credential reaches the server
+/// only through the broker — counted once per start of the server, refused
+/// once revoked (the next start never happens) — and the planted value is in
+/// no model-visible or stored artifact.
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
+async fn qual_px_130_an_mcp_servers_credential_comes_from_the_broker_is_counted_and_refused_once_revoked()
+ {
+    use modbit_protocol::v1::{ConfigureExternalCredential, ExternalCredentialConfigured};
+    const TOKEN: &str = "mcp-planted-broker-token-9999aaaabbbbcccc";
+    let (repo, root) = plain_repo(&[("README.md", "# demo\n")]);
+    let mut entry = server_entry(
+        "vault",
+        json!({"MODBIT_MCP_TESTSRV_REQUIRE_ENV": format!("MCP_CREDENTIAL={TOKEN}")}),
+        &["search"],
+        "TRUSTED",
+    );
+    entry["credential"] = json!("docs-api");
+    let servers = json!([entry]).to_string();
+    let dir = tempfile::tempdir().unwrap();
+    let core = CoreProcess::spawn_with_env(
+        dir.path(),
+        &[
+            ("MODBIT_MCP_SERVERS", servers.as_str()),
+            ("MODBIT_MCP_IDLE_TTL_MS", "400"),
+            ("MODBIT_MCP_SHUTDOWN_GRACE_MS", "1500"),
+        ],
+    );
+    let mut c = core.client().await;
+    let (session, g) = session_with_lease(&mut c, 0x51).await;
+    let task = create_task(&mut c, &session, g, &root, 0x52, "local_trusted", "tools").await;
+    let call = |n: u8| (0x60 + n, 0x60 + n);
+    let search = r#"{"server":"vault","tool":"search","arguments":{"q":"a"}}"#;
+
+    // Without the credential the server is not started.
+    let (cmd, tc) = call(1);
+    let r = invoke_tool(&mut c, &task, g, cmd, tc, "external.call", search).await;
+    assert_ne!(r.status, "SUCCESS", "{r:?}");
+    let (view, _) = broker_view(&mut c).await;
+    assert!(
+        view.credentials.iter().all(|r| !r
+            .id
+            .to_ascii_lowercase()
+            .replace('_', "-")
+            .contains("docs-api"))
+            || {
+                let row = view
+                    .credentials
+                    .iter()
+                    .find(|r| {
+                        r.id.to_ascii_lowercase()
+                            .replace('_', "-")
+                            .contains("docs-api")
+                    })
+                    .unwrap();
+                row.uses == 0
+            },
+        "{view:?}"
+    );
+
+    // Configured, it is used at the server's start and the server accepts it.
+    let ack = c
+        .command(envelope(
+            rand_id(),
+            "ConfigureExternalCredential",
+            ConfigureExternalCredential {
+                handle: "docs-api".into(),
+                value: TOKEN.into(),
+            }
+            .encode_to_vec(),
+        ))
+        .await
+        .unwrap();
+    assert!(
+        Client::result::<ExternalCredentialConfigured>(&ack)
+            .unwrap()
+            .held
+    );
+    for n in 2..4 {
+        let (cmd, tc) = call(n);
+        let r = invoke_tool(&mut c, &task, g, cmd, tc, "external.call", search).await;
+        assert_eq!(r.status, "SUCCESS", "{r:?}");
+    }
+    let (view, raw) = broker_view(&mut c).await;
+    let row = view
+        .credentials
+        .iter()
+        .find(|r| {
+            r.id.to_ascii_lowercase()
+                .replace('_', "-")
+                .contains("docs-api")
+        })
+        .expect("the MCP credential is in the broker");
+    assert_eq!(row.kind, "mcp");
+    // Two calls, one running server: the counter at the interface is the
+    // number of starts, not the number of calls.
+    assert_eq!(row.uses, 1, "{row:?}");
+    assert!(!String::from_utf8_lossy(&raw).contains(TOKEN));
+    let id = row.id.clone();
+
+    // Revoked: the server idles out, and its next start is refused without a
+    // new use of the credential.
+    let ack = c
+        .command(envelope(
+            rand_id(),
+            "RevokeCredential",
+            RevokeCredential {
+                credential_id: id.clone(),
+                reason: "operator".into(),
+                ..Default::default()
+            }
+            .encode_to_vec(),
+        ))
+        .await
+        .unwrap();
+    assert_eq!(
+        Client::result::<CredentialRevoked>(&ack).unwrap().revoked,
+        1
+    );
+    tokio::time::sleep(Duration::from_millis(2500)).await;
+    let (cmd, tc) = call(4);
+    let r = invoke_tool(&mut c, &task, g, cmd, tc, "external.call", search).await;
+    assert_ne!(
+        r.status, "SUCCESS",
+        "a revoked credential starts no server: {r:?}"
+    );
+    let (view, _) = broker_view(&mut c).await;
+    let row = view.credentials.iter().find(|r| r.id == id).unwrap();
+    assert!(row.revoked);
+    assert_eq!(row.uses, 1, "{row:?}");
+
+    // The planted value is in no event and no stored file.
+    let events = serde_json::to_string(&replay(&core, &session).await).unwrap();
+    assert!(!events.contains(TOKEN), "the token is in an event");
+    drop(c);
+    drop(core);
+    let mut files = Vec::new();
+    files_under(dir.path(), &mut files);
+    for f in files {
+        let bytes = std::fs::read(&f).unwrap_or_default();
+        assert!(
+            !bytes.windows(TOKEN.len()).any(|w| w == TOKEN.as_bytes()),
+            "the planted token is in {}",
             f.display()
         );
     }
