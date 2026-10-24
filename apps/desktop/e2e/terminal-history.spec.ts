@@ -184,18 +184,23 @@ test("scrolling above the view reads the older output as OutputRef ranges: in or
   // The bytes: the pane's text followed by the Core's own replay from where the view begins is the build's output, line after line.
   const paneText = (await page.getByTestId("terminal-history-text").textContent()) ?? "";
   // The view's own bytes, from the sealed output too (the same object the pane was read from), so the junction is exact.
-  const tail = await page.evaluate(({ taskId, id, from }) => window.modbit.terminalHistory(taskId, id, from, String(BigInt(from) + 262_144n)).then((r) => Array.from(r.data)), { taskId, id: handle.ended, from: origin.toString() });
-  expect(tail.length, "the sealed output holds the whole view").toBe(262_144);
-  // A PTY's line end is CR LF; a doubled CR is seen at write boundaries on some platforms. Both are one line end, as in the pane.
-  const norm = (u: number[]) => new TextDecoder().decode(Uint8Array.from(u)).replace(/\r+\n/g, "\n").replace(/\r/g, "\n");
-  const whole = paneText + norm(tail);
-  // And the Core's live stream from the same cursor is the same bytes as the sealed output.
+  const listed = await viewOf(handle.ended);
+  const tail = await page.evaluate(({ taskId, id, from }) => window.modbit.terminalHistory(taskId, id, from, String(BigInt(from) + 262_144n)).then((r) => ({ from: r.from, startCursor: r.startCursor, bytes: Array.from(r.data) })), { taskId, id: handle.ended, from: origin.toString() });
   const replay = await readTerminal(page, { sessionId, taskId, terminalId: handle.ended, after: origin.toString(), windowBytes: 65_536 });
-  expect(replay.bytes.length).toBe(262_144);
-  const firstDiff = replay.bytes.findIndex((b, i) => b !== tail[i]);
-  expect(firstDiff, `the stream and the sealed output differ at view byte ${firstDiff}: stream ${JSON.stringify(replay.bytes.slice(Math.max(0, firstDiff - 4), firstDiff + 12))} object ${JSON.stringify(tail.slice(Math.max(0, firstDiff - 4), firstDiff + 12))}`).toBe(-1);
+  const head16 = (u: number[]) => JSON.stringify(u.slice(0, 16));
+  const cursors = `listing: oldestCursor=${listed.oldestCursor} bytesSoFar=${listed.bytesSoFar}; view origin=${origin}; object range starts at cursor ${tail.from} (retained from ${tail.startCursor}) and holds ${tail.bytes.length} bytes from there; stream from ${origin} holds ${replay.bytes.length} bytes (head ${replay.head}); object first bytes ${head16(tail.bytes)}, stream first bytes ${head16(replay.bytes)}`;
+  expect(tail.from, `the object range starts at the view's cursor. ${cursors}`).toBe(origin.toString());
+  // The Core's live stream from the same cursor is the same bytes as the sealed output, compared by cursor, not by the end.
+  const common = Math.min(tail.bytes.length, replay.bytes.length);
+  const firstDiff = replay.bytes.slice(0, common).findIndex((b, i) => b !== tail.bytes[i]);
+  expect(firstDiff, `the stream and the sealed output differ at view byte ${firstDiff} (cursor ${origin + BigInt(firstDiff)}). ${cursors}`).toBe(-1);
+  expect(tail.bytes.length, `the stream and the sealed output are the same length. ${cursors}`).toBe(replay.bytes.length);
+  // A PTY's line end is CR LF; a doubled CR is seen at write boundaries on some platforms. Both are one line end, as in the pane.
+  const norm = (u: number[]) => new TextDecoder().decode(Uint8Array.from(u)).replace(/\u001b\[[0-?]*[ -/]*[@-~]/g, "").replace(/\r+\n/g, "\n").replace(/\r/g, "\n");
+  const whole = paneText + norm(tail.bytes);
   const lines = whole.split("\n");
-  expect(lines.pop(), "the build ended with a line feed").toBe("");
+  const last = lines.pop()!;
+  expect(JSON.stringify(last), `the build ended with a line feed; what follows it is ${JSON.stringify(last)} (codes ${JSON.stringify(Array.from(last).map((ch) => ch.charCodeAt(0)))}). ${cursors}`).toBe('""');
   const firstFull = Number(/^(\d{7}) /.exec(lines[1]!)![1]);
   // The Core's retained start can fall inside a line: the first line is then the tail of the line before it.
   expect(lineOf(firstFull - 1).endsWith(lines[0]!), `first line ${JSON.stringify(lines[0])} is the tail of line ${firstFull - 1}`).toBe(true);

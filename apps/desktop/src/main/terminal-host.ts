@@ -230,10 +230,14 @@ export class TerminalHost {
     const t = (await c.listTerminals(taskId)).terminals.find((x) => x.sessionId === terminalId);
     if (!t) throw new Error("UNKNOWN_TERMINAL: this task has no such terminal");
     if (!t.outputRef) throw new Error("NO_OUTPUT_REF: the process is still running; its older output is sealed when it ends");
-    const head = t.bytesSoFar;
+    // The sealed object is the log's segments from the oldest retained cursor to where the log stood when the process ended. The
+    // listing's head can be later than that (bytes a PTY adds after the end), so the start is the oldest cursor, never head minus
+    // the object's length, and the end is the object's own.
+    const start = t.oldestCursor;
     const probe = await readObjectRange(c, t.outputRef, 0n, 1n);
-    const start = probe.totalBytes > head ? 0n : head - probe.totalBytes;
-    const plan = planHistoryRange(start, head, from, to);
+    const end = start + probe.totalBytes;
+    if (end > t.bytesSoFar) throw new Error(`OBJECT_LENGTH_MISMATCH: the sealed output holds ${probe.totalBytes} bytes from cursor ${start} but the log head is ${t.bytesSoFar}`);
+    const plan = planHistoryRange(start, end, from, to);
     const parts: Uint8Array[] = [];
     let at = plan.from;
     while (at < plan.to) {

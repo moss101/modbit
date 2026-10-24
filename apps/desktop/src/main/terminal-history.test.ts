@@ -9,11 +9,11 @@ const TID = "a".repeat(32);
 const REF = "f".repeat(64);
 
 /** A sealed object of `total` bytes (byte i is i % 251) behind a terminal that ended at `head`. */
-function sealed(opts: { head: bigint; total: number; outputRef: string; listed?: boolean }) {
+function sealed(opts: { head: bigint; total: number; outputRef: string; listed?: boolean; oldest?: bigint }) {
   const reads: { offset: bigint; length: bigint }[] = [];
   const client = {
     async listTerminals() {
-      return { terminals: opts.listed === false ? [] : [{ sessionId: "t1", taskId: { value: new Uint8Array(16).fill(0xaa) }, bytesSoFar: opts.head, outputRef: opts.outputRef }] };
+      return { terminals: opts.listed === false ? [] : [{ sessionId: "t1", taskId: { value: new Uint8Array(16).fill(0xaa) }, bytesSoFar: opts.head, oldestCursor: opts.oldest ?? opts.head - BigInt(opts.total), outputRef: opts.outputRef }] };
     },
     async command(name: string, payload: Uint8Array) {
       assert.equal(name, "ReadObjectRange");
@@ -56,6 +56,19 @@ test("PX-048: history reads the range from the terminal's own sealed output, tra
   assert.equal(gone.data.length, 0);
   assert.equal(gone.exhausted, true);
   assert.equal(reads.length, before + 1, "only the probe of the object's size was read for a range that is gone");
+});
+
+test("PX-048: bytes the log gained after the object was sealed do not shift the object's cursors", async () => {
+  // The object holds cursors 2000..5000; the listing's head is 5003 (three bytes a PTY added after the end).
+  const { host } = sealed({ head: 5000n, total: 3000, outputRef: REF });
+  const late = sealed({ head: 5003n, total: 3000, outputRef: REF, oldest: 2000n });
+  const a = await host.history(TID, "t1", 2500n, 2600n);
+  const b = await late.host.history(TID, "t1", 2500n, 2600n);
+  assert.deepEqual(Array.from(b.data), Array.from(a.data), "the same cursors read the same bytes");
+  const past = await late.host.history(TID, "t1", 4990n, 5010n);
+  assert.equal(past.data.length, 10, "a range stops at the object's end");
+  const short = sealed({ head: 4000n, total: 3000, outputRef: REF, oldest: 2000n });
+  await assert.rejects(short.host.history(TID, "t1", 2500n, 2600n), /OBJECT_LENGTH_MISMATCH/);
 });
 
 test("PX-048: history of a running terminal, or of one this task does not own, is refused", async () => {
