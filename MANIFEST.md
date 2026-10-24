@@ -19,9 +19,9 @@ A dossier package is valid only if every path below exists with the listed SHA-2
 | Requirements, tasks and traceability | 40–49 | 10 | 351840 |
 | Verification and testing | 50–69 | 20 | 819608 |
 | Delivery and operations | 70–79 | 10 | 125383 |
-| Agent process and governance | 80–97 | 18 | 189869 |
+| Agent process and governance | 80–97 | 18 | 190652 |
 | Live state | 98–99 | 1 | 14961 |
-| **Total docs** | | **97** | **2146494** |
+| **Total docs** | | **97** | **2147277** |
 
 ## Specification files (`docs/`)
 
@@ -122,7 +122,7 @@ A dossier package is valid only if every path below exists with the listed SHA-2
 | 94 | `docs/94_EXECUTION_POLICY_DOSSIER_TASK_AND_HANDOFF.md` | Execution policy dossier task and handoff | governance | 11506 | `bc3c83f033db8ca5934751227cce2437f4cd7772a21917551618ae03f79b81ba` |
 | 95 | `docs/95_EPR_V1_1_DOSSIER_TASK_AND_HANDOFF.md` | EPR v1.1 dossier task and handoff | governance | 10525 | `264069b600baf40d1e54d2f89be7e9804a8b77c0dbf3ddb0a9dca41111582413` |
 | 96 | `docs/96_DOSSIER_GOVERNANCE_MAINTENANCE_TASK_AND_HANDOFF.md` | Dossier governance maintenance task and handoff | governance | 9070 | `af650309e48dd7fd60dd6d286c460ed7c3128a2201964078c7f50aea385bfb8c` |
-| 97 | `docs/97_DOSSIER_MAINTENANCE_LOG.md` | Dossier maintenance log | governance | 124005 | `226ad85ac7c0d82343b3f29e4dfa7e50b38962efef9d15c3296cde4b8f8174b5` |
+| 97 | `docs/97_DOSSIER_MAINTENANCE_LOG.md` | Dossier maintenance log | governance | 124788 | `d52a1b5b7e7811e2444b0852acdab97ec502ed7576413ae9967ff79ddbc31225` |
 | 98 | `docs/98_BUILD_MANIFEST.md` | Build Manifest | live-state | 14961 | `824d5b749252e6cba1de566c5e766cbfaefce23f4cda2fd64bc07398e251b102` |
 
 ## Root governing files and tooling
@@ -365,6 +365,9 @@ A dossier package is valid only if every path below exists with the listed SHA-2
 | `evidence/m10/PX-082/ci-run-39993797935.json` | retained evidence | 46978 | `9e0475ef82c7599d39de31c8657f5c37261a57076d2ee12b20a790a5b42798a3` |
 | `evidence/m10/PX-082/evidence.json` | retained evidence | 1822 | `0e086d32630bc0787c0a8de3c79e250799296208f95a18759e2118b0a55792c3` |
 | `evidence/m10/PX-082/mutation-check.txt` | retained evidence | 2417 | `7a9d29659ad2111025dc38085c04468d3a15b852315dd5bbf7609b6427acf641` |
+| `evidence/m10/PX-083/TASK_CARD.md` | retained evidence | 2545 | `c5529eac80d0f44cd7316af88614617dc793d8c7273c4fbf407f091293680f88` |
+| `evidence/m10/PX-083/ci-run-40042355021.json` | retained evidence | 46978 | `75562c198803406fcf4dd2750e069b0ea119c62f764f072be00c68fc116ca291` |
+| `evidence/m10/PX-083/evidence.json` | retained evidence | 2396 | `10e2d7d6590db64fafe48a877ad38e117983ca55ad8a22d8018ece3fcc3b39cd` |
 | `evidence/m10/PX-083/mutation-check.txt` | retained evidence | 2208 | `b307dbbd08c04b6962ca456b789e6b645710b00f6359d9d84a23e6060a432f30` |
 | `evidence/m10/PX-099/TASK_CARD.md` | retained evidence | 1506 | `176efbba92374c5adc0774fef998ebc2ea6f6e23f3942f3d59ebe863211e73bd` |
 | `evidence/m10/PX-099/ci-run-39960289486.json` | retained evidence | 46978 | `a8dbcd6ad3f3d474c37e6bf506048288320694cbf9e882e0a9124bb70a7480dd` |
@@ -1838,8 +1841,8 @@ A dossier package is valid only if every path below exists with the listed SHA-2
 | `evidence/m9/PX-009/TASK_CARD.md` | retained evidence | 3716 | `143ff5f9be712b78a43f415d143fba93a8568e2f9b6980d28e278d4731838fa2` |
 | `evidence/m9/PX-009/ci-run-35830456557.json` | retained evidence | 42199 | `508168affe8ad4b8a13e97c3d4f855efbf4255325e88b58fec882ad41376033a` |
 | `evidence/m9/PX-009/evidence.json` | retained evidence | 2230 | `61d514ff843ff8750fecb6fd7d4936bd84d3255b2e9d2e72cbbc32901de9d99e` |
-| `graph/PROJECT_GRAPH.md` | human view of the graph | 45127 | `9f57ad4f4a97f653762ef4ab457bba84da45a6218ba9e43851b0c01c18e9ad2e` |
-| `graph/project-graph.json` | project driver graph with live status | 2264171 | `57fc4d202076815bb4ac66e68c26bb179ebcf32a67cfbe3fa0dfd793418e2b0c` |
+| `graph/PROJECT_GRAPH.md` | human view of the graph | 45127 | `911de30213d1bc8969dad85b610f97aa68c819fe496ffb94b2c4e7b48ad57202` |
+| `graph/project-graph.json` | project driver graph with live status | 2264375 | `de597279a561348c9429cabfc17e87e1924f0b0a4e45800e4c9114dae5585b0c` |
 | `tools/build_graph.py` | regenerates graph structure from docs | 62560 | `7e491e47f2e89f8cad4827a72701b7849d4d628754417022c862dc9b21431061` |
 | `tools/build_manifest.py` | regenerates this manifest | 14871 | `b35f87f995ebea778ef5002f42c4dcb2f195f303ae121d7b4d73070d95d665b7` |
 | `tools/check_dossier.py` | integrity gate | 18887 | `1bd2634078a0c20b34a565ccf0f6d9061e83bd0945b7bf719ac137611e3fcf35` |
