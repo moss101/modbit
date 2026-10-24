@@ -201,6 +201,22 @@ test("scrolling above the view reads the older output as OutputRef ranges: in or
   const lines = whole.split("\n");
   const last = lines.pop()!;
   expect(JSON.stringify(last), `the build ended with a line feed; what follows it is ${JSON.stringify(last)} (codes ${JSON.stringify(Array.from(last).map((ch) => ch.charCodeAt(0)))}). ${cursors}`).toBe('""');
+  // On every platform: the pane followed by the view is exactly what the Core's live stream carries from the oldest retained cursor
+  // to the head (a different path from the sealed object the pane was read from), whatever the platform's PTY does to the lines.
+  const everything = await readTerminal(page, { sessionId, taskId, terminalId: handle.ended, after: retainedFrom.toString(), windowBytes: 65_536 });
+  const streamText = norm(everything.bytes);
+  const joined = lines.join("\n") + "\n";
+  const at = joined.length === streamText.length && joined === streamText ? -1 : Array.from(joined).findIndex((ch, i) => ch !== streamText[i]);
+  expect(at, `the pane and the view differ from the Core's stream at text offset ${at} (pane+view ${joined.length} chars, stream ${streamText.length}): pane+view ${JSON.stringify(joined.slice(Math.max(0, at - 20), at + 40))}, stream ${JSON.stringify(streamText.slice(Math.max(0, at - 20), at + 40))}`).toBe(-1);
+  if (process.platform === "win32") {
+    // A Windows pseudo-console re-renders lines (wrapping, cursor sequences): the numbers are what stays. Each line number appears once, in order, up to the last.
+    const numbers = [...joined.matchAll(/(?<![0-9])(\d{7}) x/g)].map((m) => Number(m[1]));
+    expect(numbers.length, `line numbers found in ${JSON.stringify(joined.slice(0, 300))}`).toBeGreaterThan(1000);
+    const gap = numbers.findIndex((n, i) => i > 0 && n !== numbers[i - 1]! + 1);
+    expect(gap, `line numbers run on without a gap or a repeat; around ${gap}: ${JSON.stringify(numbers.slice(Math.max(0, gap - 2), gap + 3))}`).toBe(-1);
+    expect(numbers.at(-1)).toBe(ENDED_LINES - 1);
+    return;
+  }
   const firstFull = Number(/^(\d{7}) /.exec(lines[1]!)![1]);
   // The Core's retained start can fall inside a line: the first line is then the tail of the line before it.
   expect(lineOf(firstFull - 1).endsWith(lines[0]!), `first line ${JSON.stringify(lines[0])} is the tail of line ${firstFull - 1}`).toBe(true);
