@@ -362,6 +362,8 @@ A dossier package is valid only if every path below exists with the listed SHA-2
 | `evidence/m10/PX-065/TASK_CARD.md` | retained evidence | 1924 | `ad76884525dda5cf7bc24118b116fa81a9db693d5f6e0f51a37fc64a60d7c56e` |
 | `evidence/m10/PX-065/ci-run-39029466637.json` | retained evidence | 44828 | `51d55901cfaeefcd93f7fc07a20a2115bbcd4758fcf802268d3e99e3d0928e70` |
 | `evidence/m10/PX-065/evidence.json` | retained evidence | 1981 | `7bd8e97caccf5bb06db2a389a37f04ebc4c0e8d9143352f4c45c0b0704965744` |
+| `evidence/m10/PX-066/TASK_CARD.md` | retained evidence | 3690 | `1420793b35add95a013c5d7829e754f341707108c37df1c2cb464d73c4af723d` |
+| `evidence/m10/PX-066/mutation-check.txt` | retained evidence | 1910 | `da403e81046bb6f5ba2ff99201f5b13be1d2b9f169ac6d5c5ccb5180b669bf9f` |
 | `evidence/m10/PX-067/TASK_CARD.md` | retained evidence | 1564 | `8d869707f37a93fcb08d7ef67e4dd18d108d48fb36a87ba909dcdde2c59e2b6a` |
 | `evidence/m10/PX-067/ci-run-39029466637.json` | retained evidence | 44828 | `51d55901cfaeefcd93f7fc07a20a2115bbcd4758fcf802268d3e99e3d0928e70` |
 | `evidence/m10/PX-067/evidence.json` | retained evidence | 1624 | `533571477403877cb37f38b2aa98b7f4e697a5acd76189146b2cd8f0dcbefc68` |

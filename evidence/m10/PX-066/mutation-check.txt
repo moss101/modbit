@@ -1,0 +1,31 @@
+PX-066 mutation check (QUAL-PX-066: dropping the Core's typed-confirmation guard of an overwrite must fail the CLI conflict-option test)
+date: 2026-10-24T16:08:26Z
+base revision: 6fc98eccbd26c7a02fccdac3033ef6e574f94035
+
+== baseline (unmutated) ==
+test qual_px_066_cli_clean_apply_is_hash_exact_receipted_and_undo_restores_the_users_bytes ... ok
+test qual_px_066_cli_every_conflict_option_is_exact_and_undo_after_a_second_edit_destroys_nothing ... ok
+test result: ok. 2 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 19.39s
+baseline exit: 0
+
+== mutation: services/modbit-core/src/apply_back.rs 'if !missing.is_empty() {' -> 'if false && !missing.is_empty() {' (Core typed-confirmation guard dropped) ==
+diff --git a/services/modbit-core/src/apply_back.rs b/services/modbit-core/src/apply_back.rs
+index 13d0743f..80e2f907 100644
+--- a/services/modbit-core/src/apply_back.rs
++++ b/services/modbit-core/src/apply_back.rs
+@@ -607 +607 @@ pub(crate) async fn apply_command(
+-        if !missing.is_empty() {
++        if false && !missing.is_empty() {
+test qual_px_066_cli_every_conflict_option_is_exact_and_undo_after_a_second_edit_destroys_nothing ... FAILED
+test qual_px_066_cli_clean_apply_is_hash_exact_receipted_and_undo_restores_the_users_bytes ... ok
+thread 'qual_px_066_cli_every_conflict_option_is_exact_and_undo_after_a_second_edit_destroys_nothing' (38996358) panicked at apps/cli/tests/px_066_apply_back.rs:455:9:
+  left: 2
+ right: 1
+test result: FAILED. 1 passed; 1 failed; 0 ignored; 0 measured; 0 filtered out; finished in 9.10s
+mutated exit: 101
+
+== restored ==
+test qual_px_066_cli_clean_apply_is_hash_exact_receipted_and_undo_restores_the_users_bytes ... ok
+test qual_px_066_cli_every_conflict_option_is_exact_and_undo_after_a_second_edit_destroys_nothing ... ok
+test result: ok. 2 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 18.14s
+restored exit: 0
