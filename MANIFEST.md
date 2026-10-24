@@ -367,6 +367,8 @@ A dossier package is valid only if every path below exists with the listed SHA-2
 | `evidence/m10/PX-067/TASK_CARD.md` | retained evidence | 1564 | `8d869707f37a93fcb08d7ef67e4dd18d108d48fb36a87ba909dcdde2c59e2b6a` |
 | `evidence/m10/PX-067/ci-run-39029466637.json` | retained evidence | 44828 | `51d55901cfaeefcd93f7fc07a20a2115bbcd4758fcf802268d3e99e3d0928e70` |
 | `evidence/m10/PX-067/evidence.json` | retained evidence | 1624 | `533571477403877cb37f38b2aa98b7f4e697a5acd76189146b2cd8f0dcbefc68` |
+| `evidence/m10/PX-074/TASK_CARD.md` | retained evidence | 1652 | `e00fa4918ff2a625aebd5c75476f3195fc2dc1821724b6f2edc072a54460bad2` |
+| `evidence/m10/PX-074/mutation-check.txt` | retained evidence | 780 | `76fcb1d594ff7dcdceb8f6a03fa5ecaea5c049941aa980d8c81eb17691bafb9e` |
 | `evidence/m10/PX-082/TASK_CARD.md` | retained evidence | 1887 | `d5f76af250079ffddeea2995ff978016d8df8912550b937067597191273d11aa` |
 | `evidence/m10/PX-082/ci-run-39993797935.json` | retained evidence | 46978 | `9e0475ef82c7599d39de31c8657f5c37261a57076d2ee12b20a790a5b42798a3` |
 | `evidence/m10/PX-082/evidence.json` | retained evidence | 1822 | `0e086d32630bc0787c0a8de3c79e250799296208f95a18759e2118b0a55792c3` |
@@ -375,6 +377,8 @@ A dossier package is valid only if every path below exists with the listed SHA-2
 | `evidence/m10/PX-083/ci-run-40042355021.json` | retained evidence | 46978 | `75562c198803406fcf4dd2750e069b0ea119c62f764f072be00c68fc116ca291` |
 | `evidence/m10/PX-083/evidence.json` | retained evidence | 2396 | `10e2d7d6590db64fafe48a877ad38e117983ca55ad8a22d8018ece3fcc3b39cd` |
 | `evidence/m10/PX-083/mutation-check.txt` | retained evidence | 2208 | `b307dbbd08c04b6962ca456b789e6b645710b00f6359d9d84a23e6060a432f30` |
+| `evidence/m10/PX-086/TASK_CARD.md` | retained evidence | 2290 | `48f7e4f461ee409badcc4e77243df551152d86694dadf4a0d8c71b4acabf6017` |
+| `evidence/m10/PX-086/mutation-check.txt` | retained evidence | 1017 | `67faed3f80c47c7e59214bfc43398d57ba2a9c758960239d4e70d29c4eca6430` |
 | `evidence/m10/PX-099/TASK_CARD.md` | retained evidence | 1506 | `176efbba92374c5adc0774fef998ebc2ea6f6e23f3942f3d59ebe863211e73bd` |
 | `evidence/m10/PX-099/ci-run-39960289486.json` | retained evidence | 46978 | `a8dbcd6ad3f3d474c37e6bf506048288320694cbf9e882e0a9124bb70a7480dd` |
 | `evidence/m10/PX-099/evidence.json` | retained evidence | 1484 | `6f5e382a877e71f9391af8ce0898dde8c0908cdcefce80690b8f06f1cda50720` |

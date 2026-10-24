@@ -447,3 +447,52 @@ test("PX-074: a call blocked by a missing permission routes the permission windo
     model.server.close();
   }
 });
+
+test("PX-074: the renderer is killed while the agent holds the machine; the replacement window shows the Core's presence, the typed Stop still reaches the actuator and the stopped state stands", async () => {
+  test.setTimeout(300_000);
+  const repo = newRepo();
+  const rig = computerRig();
+  const hold = new Gate();
+  const model = await computerModel([plan(), start(FORM), () => call("computer.state", {}), (s) => call("computer.press", { element: elementOf(s, "Hang after delivery") }), () => [{ wait: hold }, ...call("computer.state", {})]]);
+  const { app, page: page1 } = await launch(rig.dataDir, { env: { ...rig.env, MODBIT_OPENAI_BASE_URL: model.url } });
+  try {
+    await setContentSize(app, page1, 1280, 800);
+    const taskId = await startAndOpen(page1, "operate the form app", repo);
+    await approveWithKeyboard(page1, "computer.start");
+    await approveWithKeyboard(page1, "computer.press");
+    // The input is in flight inside the actuator (it says so); presence is on screen.
+    await expect.poll(() => existsSync(rig.hangMarker), { timeout: 60_000 }).toBe(true);
+    await expect(page1.getByTestId("computer-presence-entry")).toHaveAttribute("data-state", "CONTROLLING");
+    const coreBefore = await page1.evaluate(() => window.modbit.debugCoreInfo());
+
+    // The renderer's process dies under it. Nothing about control lived there.
+    const old = await app.evaluate(({ BrowserWindow }) => BrowserWindow.getAllWindows()[0]!.webContents.id);
+    if (process.platform === "win32") process.kill(await app.evaluate(({ BrowserWindow }) => BrowserWindow.getAllWindows()[0]!.webContents.getOSProcessId()));
+    else await app.evaluate(({ BrowserWindow }) => BrowserWindow.getAllWindows()[0]!.webContents.forcefullyCrashRenderer());
+    await expect
+      .poll(() => app.evaluate(({ BrowserWindow }, id) => BrowserWindow.getAllWindows().filter((w) => !w.isDestroyed() && w.webContents.id !== id).length, old), { timeout: 60_000, message: "main never opened a replacement window" })
+      .toBe(1);
+    const handedOver = () => app.windows().filter((p) => p !== page1 && !p.isClosed());
+    await expect.poll(() => handedOver().length, { timeout: 60_000, message: "Playwright never exposed the replacement page" }).toBe(1);
+    const page: Page = handedOver()[0]!;
+    await expect(page.getByTestId("core-status")).toContainText("Core connected", { timeout: 60_000 });
+    await setContentSize(app, page, 1280, 800);
+    expect((await page.evaluate(() => window.modbit.debugCoreInfo()))?.pid).toBe(coreBefore?.pid);
+
+    // The new renderer shows only what the Core says: the machine is still held, by this task, and Stop is there.
+    await expect(page.getByTestId("computer-presence-entry")).toHaveAttribute("data-state", "CONTROLLING", { timeout: 60_000 });
+    await expect(page.getByTestId("computer-presence-entry")).toHaveAttribute("data-task-id", taskId);
+    expect(existsSync(rig.hangMarker), "the in-flight input outlived the renderer").toBe(true);
+    await accessible(page, "presence in the replacement window");
+    const t0 = Date.now();
+    await page.getByTestId("computer-stop").click();
+    await expect(page.getByTestId("computer-presence-entry")).toHaveAttribute("data-state", "USER_ABORTED", { timeout: 15_000 });
+    expect(Date.now() - t0, "the stop did not wait out the 60 s hang").toBeLessThan(20_000);
+    await expect(page.getByTestId("computer-live")).toContainText("stopped by you");
+    hold.open();
+  } finally {
+    hold.open();
+    await closeApp(app);
+    model.server.close();
+  }
+});

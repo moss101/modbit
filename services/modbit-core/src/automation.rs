@@ -2100,6 +2100,35 @@ async fn outputs_of(core: &Arc<Core>, task: &Task, test: bool) -> serde_json::Va
             "decision": p["decision"],
         }));
     }
+    // A dry run is read-only, so the Kernel never offers its write tools: a
+    // call to one is refused before any decision is made (TOOL_NOT_VISIBLE)
+    // and leaves no policy decision. The refusal is still a denied effect the
+    // report must list, with the tool the agent named.
+    if test {
+        let failed = store
+            .read_session_of_types(&task.session_id, &["StepFailed"], 0)
+            .unwrap_or_default();
+        for e in &failed {
+            let Ok(p) = store.payload(&e.envelope) else {
+                continue;
+            };
+            if p["failure_code"].as_str() != Some("TOOL_NOT_VISIBLE") {
+                continue;
+            }
+            let Some(entry) = p["output_ref"]
+                .as_str()
+                .and_then(|r| store.objects().get(r).ok())
+                .and_then(|b| serde_json::from_slice::<serde_json::Value>(&b).ok())
+            else {
+                continue;
+            };
+            denied.push(serde_json::json!({
+                "tool": entry["name"].as_str().unwrap_or_default(),
+                "outcome": "DENIED",
+                "decision": "TOOL_NOT_VISIBLE",
+            }));
+        }
+    }
     let mut o = serde_json::json!({ "task_state": format!("{:?}", task.state) });
     if test {
         o["would_have_asked"] = serde_json::Value::Array(denied);
