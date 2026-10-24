@@ -1957,12 +1957,45 @@ impl Broker {
             // its output reaches end-of-file. On Windows the pseudo-console
             // stays open while any end of it — the stdin writer included —
             // is held, and the reader would wait forever (PX-030 found it).
-            *s.stdin.lock().await = Stdin::Closed;
-            drop(s.pty_master.lock().expect("pty master").take());
+            //
+            // Dropping the writer is not silent: portable-pty answers it
+            // with a newline and the terminal's EOF character, and a
+            // terminal can echo that newline back as a `\r\n` that is not the
+            // command's output (seen on Linux under CPU load: a stray blank
+            // line after the last line, in the log and in the sealed object).
+            // So on Unix the writer is held until the reader has the
+            // end-of-file and is dropped only then; a reader that never gets
+            // there keeps the writer with it. Windows must release it first
+            // or its reader never ends.
+            let mut reader_task = reader_task;
+            #[cfg(windows)]
+            {
+                *s.stdin.lock().await = Stdin::Closed;
+                drop(s.pty_master.lock().expect("pty master").take());
+            }
+            #[cfg(not(windows))]
+            let held_writer = {
+                let w = std::mem::replace(&mut *s.stdin.lock().await, Stdin::Closed);
+                drop(s.pty_master.lock().expect("pty master").take());
+                w
+            };
             // Output written after the exit is drained if it arrives at
             // once; a reader that never sees end-of-file does not hold the
             // exit record back.
-            let _ = tokio::time::timeout(std::time::Duration::from_secs(5), reader_task).await;
+            let drained = tokio::time::timeout(std::time::Duration::from_secs(5), &mut reader_task)
+                .await
+                .is_ok();
+            #[cfg(not(windows))]
+            if drained {
+                drop(held_writer);
+            } else {
+                tokio::spawn(async move {
+                    let _ = reader_task.await;
+                    drop(held_writer);
+                });
+            }
+            #[cfg(windows)]
+            let _ = drained;
             let code = status.map(|st| st.exit_code() as i32);
             broker.finish(&s, code, None, timed_out, started).await;
         });
