@@ -15,7 +15,8 @@ import { fileURLToPath } from "node:url";
 
 const here = dirname(fileURLToPath(import.meta.url));
 const mainSource = readFileSync(join(here, "main.ts"), "utf8");
-const sha256 = (s: string | Buffer): string => createHash("sha256").update(s).digest("hex");
+// A Windows checkout may carry CRLF; the pins are over the LF form so the same source hashes the same everywhere.
+const sha256 = (s: string | Buffer): string => createHash("sha256").update(s.toString("utf8").replace(/\r\n/g, "\n")).digest("hex");
 
 /** The pins. Update one only for a reviewed change to the boundary it names. */
 const PINS = {
