@@ -181,3 +181,51 @@ test("a page that mutates thousands of nodes a second, and tries to take the obs
     site.server.close();
   }
 });
+
+test("an element keeps its reference when the page re-renders it under a new name, so the model's reference still acts on it", async () => {
+  test.setTimeout(180_000);
+  const repo = fixtureRepo();
+  const site = await serve((url) =>
+    url.startsWith("/rerender")
+      ? `<!doctype html><html><head><title>Rerender</title></head><body><main><h1>Rerender</h1><p id="out">waiting</p><div id="host"><button type="button" id="tog" data-testid="tog-button">Toggle</button></div></main><script>
+        setTimeout(function () {
+          var host = document.getElementById('host');
+          host.innerHTML = '';
+          var b = document.createElement('button');
+          b.type = 'button'; b.id = 'tog'; b.setAttribute('data-testid', 'tog-button'); b.textContent = 'Toggle details now';
+          b.onclick = function () { document.getElementById('out').textContent = 'saved after rerender'; };
+          host.appendChild(b); document.title = 'Rerendered';
+        }, 1500);
+      </script></body></html>`
+      : null,
+  );
+  const changed = gate();
+  const model = await scriptedModel([
+    { calls: [{ name: "plan.update", args: { outcome: "a re-rendered element is acted on", expected_files: [] } }] },
+    { calls: [{ name: "browser.navigate", args: { url: `http://127.0.0.1:${site.port}/rerender` } }] },
+    { calls: [{ name: "browser.snapshot", args: { mode: "full" } }] },
+    // Parked while the page replaces the node (new node, new accessible name, same stable attribute).
+    async (texts) => {
+      await changed.opened;
+      return { calls: [{ name: "browser.act", args: { ref: refOf(texts, "button", "Toggle"), action: "click", expect: { text_contains: "saved after rerender" } } }] };
+    },
+    { calls: [{ name: "task.complete", args: { summary: "acted on the re-rendered element", self_review: { findings: [] } } }] },
+  ]);
+  const dataDir = mkdtempSync(join(tmpdir(), "modbit-e2e-rerender-"));
+  try {
+    const { app, page } = await launch(dataDir, { MODBIT_OPENAI_BASE_URL: model.url, MODBIT_BROWSER_ALLOW_TARGETS: "127.0.0.1" });
+    await collectEvents(page);
+    const { bsid } = await startBrowserTask(page, repo, "act on the re-rendered element");
+    await expect.poll(() => model.toolTexts.length, { timeout: 60_000 }).toBe(3);
+    await expect.poll(async () => (await page.evaluate((id) => window.modbit.describeBrowser(id), bsid))?.title, { timeout: 30_000 }).toBe("Rerendered");
+    changed.open();
+    await readyForReview(page, model);
+    expect(model.toolTexts[3]).toContain("status: SUCCESS");
+    expect(model.toolTexts[3]).not.toContain("TARGET_STALE");
+    expect(model.toolTexts[3]).toContain("saved after rerender");
+    await closeApp(app);
+  } finally {
+    model.server.close();
+    site.server.close();
+  }
+});

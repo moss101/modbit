@@ -160,3 +160,72 @@ test("pages are classified, forms grouped, a form is filled in the order it need
     other.server.close();
   }
 });
+
+test("page kinds are classified correctly on a labelled set of real pages, and a derived action whose result cannot be read back is reported unverified, never success", async () => {
+  test.setTimeout(300_000);
+  const repo = fixtureRepo();
+  const SECRET = "hunter2-fixture-secret";
+  const items = Array.from({ length: 8 }, (_, i) => `<li><a href="/item/${i}">Result ${i}</a></li>`).join("");
+  const site = await listen((url) => {
+    if (url.startsWith("/search")) return pg("Results for rust", `<form role="search" aria-label="Search" action="/search"><label for="q">Search</label><input id="q" name="q" type="search"><button type="submit">Go</button></form><ul>${items}</ul>`);
+    if (url.startsWith("/checkout/1")) return pg("Shipping", `<form aria-label="Shipping" action="/checkout/2"><label for="a">Address</label><input id="a" name="a" type="text" autocomplete="street-address"><label for="z">Postcode</label><input id="z" name="z" type="text" autocomplete="postal-code"><button type="submit">Continue to payment</button></form>`);
+    if (url.startsWith("/checkout/2")) return pg("Payment", `<form aria-label="Card" action="/done"><label for="cc">Card number</label><input id="cc" name="cc" type="text" autocomplete="cc-number"><button type="submit">Pay now</button></form>`);
+    if (url.startsWith("/article")) return pg("On rivers", `<article><p>${"Rivers carry water from the hills to the sea, shaping the land on the way. ".repeat(12)}</p><p>${"Their courses change over centuries as banks erode and silt builds up. ".repeat(12)}</p></article>`);
+    if (url.startsWith("/missing")) return pg("404 Not Found", "<p>The page you requested does not exist.</p><a href='/article'>Home</a>");
+    if (url.startsWith("/login")) return pg("Sign in", `<form aria-label="Login" action="/session" method="post"><label for="e">Email</label><input id="e" name="email" type="email"><label for="p">Password</label><input id="p" name="pw" type="password" autocomplete="current-password"><button type="submit">Sign in</button></form>`);
+    return null;
+  });
+  const U = `http://127.0.0.1:${site.port}`;
+  const formRef = (t: string[]) => lastJson<{ forms: { ref: string }[] }>(t, '"forms":').forms[0]!.ref;
+  const handleOf = (t: string[]) => lastJson<{ credentials: { credential: string; label: string }[] }>(t, '"credentials":').credentials.find((c) => c.label === "Fixture sign-in")!.credential;
+  const model = await scriptedModel([
+    { calls: [{ name: "plan.update", args: { outcome: "the page kinds are read", expected_files: [] } }] },
+    { calls: [{ name: "browser.navigate", args: { url: `${U}/search?q=rust` } }] },
+    { calls: [{ name: "browser.snapshot", args: { mode: "full" } }] },
+    { calls: [{ name: "browser.navigate", args: { url: `${U}/checkout/1` } }] },
+    { calls: [{ name: "browser.snapshot", args: { mode: "full" } }] },
+    { calls: [{ name: "browser.navigate", args: { url: `${U}/checkout/2` } }] },
+    { calls: [{ name: "browser.snapshot", args: { mode: "full" } }] },
+    { calls: [{ name: "browser.navigate", args: { url: `${U}/article` } }] },
+    { calls: [{ name: "browser.snapshot", args: { mode: "full" } }] },
+    { calls: [{ name: "browser.navigate", args: { url: `${U}/missing` } }] },
+    { calls: [{ name: "browser.snapshot", args: { mode: "full" } }] },
+    { calls: [{ name: "browser.navigate", args: { url: `${U}/login` } }] },
+    { calls: [{ name: "browser.snapshot", args: { mode: "full" } }] },
+    // Only the password is entered, by handle, and nothing is submitted: the page cannot show what was entered.
+    (t) => ({ calls: [{ name: "browser.fill_form", args: { form: formRef(t), values: {}, credentials: { Password: handleOf(t) } } }] }),
+    { calls: [{ name: "task.complete", args: { summary: "read the page kinds", self_review: { findings: [] } } }] },
+  ]);
+  const dataDir = mkdtempSync(join(tmpdir(), "modbit-e2e-kinds-"));
+  try {
+    const { app, page } = await launch(dataDir, { MODBIT_OPENAI_BASE_URL: model.url, MODBIT_BROWSER_ALLOW_TARGETS: "127.0.0.1" });
+    await page.getByTestId("credential-label").fill("Fixture sign-in");
+    await page.getByTestId("credential-origin").fill(U);
+    await page.getByTestId("credential-username").fill("ada");
+    await page.getByTestId("credential-secret").fill(SECRET);
+    await page.getByTestId("credential-add").click();
+    await expect(page.getByTestId("credential")).toHaveCount(1, { timeout: 15_000 });
+    await startBrowserTask(page, repo, "read the page kinds");
+    const ap = approver(page);
+    await readyForReview(page, model, 180_000);
+    ap.stop();
+    await toolResults(model, 14, 10_000);
+    const kindOf = (i: number) => (/"page_kind":"([a-z_]+)"/.exec(model.toolTexts[i]!) ?? [])[1];
+    expect(kindOf(2), "search list").toBe("search_results");
+    expect(kindOf(4), "checkout step 1 (shipping, a checkout URL and a continue-to-payment step)").toBe("checkout");
+    expect(kindOf(6), "checkout step 2 (payment)").toBe("checkout");
+    expect(kindOf(8), "article").toBe("article");
+    expect(kindOf(10), "not found").toBe("error");
+    expect(kindOf(12), "login").toBe("login");
+    // The derived action ran but nothing on the page confirms it: unverified, not success.
+    const unverified = model.toolTexts[13]!;
+    expect(unverified).toContain('"outcome":"UNVERIFIED"');
+    expect(unverified).toContain('"verified":false');
+    expect(unverified).not.toContain('"outcome":"VERIFIED"');
+    for (const t of model.toolTexts) expect(t).not.toContain(SECRET);
+    await closeApp(app);
+  } finally {
+    model.server.close();
+    site.server.close();
+  }
+});

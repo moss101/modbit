@@ -687,7 +687,7 @@ async fn qual_px_122_a_change_notice_is_journaled_as_a_delta_without_a_model_cal
     assert!(last["page_ref"].as_str().unwrap().len() == 64);
     assert!(
         evs.iter()
-            .all(|e| e["event_type"] != "ToolCallRequested" && e["event_type"] != "ModelRequested")
+            .all(|e| e["event_type"] != "ToolCallProposed" && e["event_type"] != "ModelRequested")
     );
     // A killed Core: the known-state map is rebuilt from the log and the persisted page.
     drop(notifier);
@@ -702,8 +702,182 @@ async fn qual_px_122_a_change_notice_is_journaled_as_a_delta_without_a_model_cal
     );
     assert!(restored.known_entities >= 4, "{restored:?}");
     assert_eq!(restored.history, 1);
-    // The element keeps its reference: the identity is the DOM attribute, not the position.
+    // The element keeps its reference across the restart and a re-render: the identity is the DOM
+    // attribute, not the name or the position. The page comes back re-rendered (the field renamed and
+    // moved and given a value); the Core, rebuilt from its log, compares it with the page it held
+    // before it was killed: the field is a change of the same element, never a removal and an addition.
+    let part = opened.partition.clone();
+    let host2 = attach(&core2, &bsid, &task, &part, 0x24).await;
+    let _served2 = serve(host2, move |r| match r["kind"].as_str().unwrap() {
+        "snapshot" => {
+            let mut p = page(3, true);
+            let nodes = p["nodes"].as_array_mut().unwrap();
+            nodes.retain(|n| n["id"] != "4");
+            nodes.push(json!({"id": "6", "parent": "2", "role": "textbox", "name": "Note (renamed after the re-render)", "value": "typed after the restart", "depth": 2, "backend_dom_node_id": 99, "dom_ident": "id:note"}));
+            Some(p)
+        }
+        _ => None,
+    });
+    let mut notifier2 = core2.client_of_kind(ClientKind::Desktop).await;
+    notifier2
+        .command(envelope(
+            rand_id(),
+            "BrowserHostNotice",
+            BrowserHostNotice {
+                browser_session_id: Some(bsid.clone()),
+                notice_json:
+                    json!({"change_seq": 500, "kind": "mutation", "added": 2, "coalesced": 9})
+                        .to_string(),
+            }
+            .encode_to_vec(),
+        ))
+        .await
+        .unwrap();
+    let rerendered = wait_runtime(&mut c2, &bsid, &task, |r| {
+        r.last_fingerprint != after.last_fingerprint
+    })
+    .await;
+    assert!(rerendered.known_entities >= 4, "{rerendered:?}");
+    let evs2 = replay(&core2, &session).await;
+    let post = evs2
+        .iter()
+        .filter(|e| e["event_type"] == "BrowserPageChanged")
+        .map(|e| e["payload"]["payload"].clone())
+        .find(|p| p["from_fingerprint"] == after.last_fingerprint.as_str())
+        .expect("a change from the page held before the kill");
+    assert_eq!(
+        post["to_fingerprint"],
+        rerendered.last_fingerprint.as_str(),
+        "{post}"
+    );
+    assert_eq!(
+        post["removed"], 0,
+        "the renamed field is the same element, not a removal: {post}"
+    );
+    assert_eq!(post["added"], 0, "nothing new appeared: {post}");
+    assert_eq!(
+        post["changed"], 1,
+        "the re-rendered field is a change of the same reference: {post}"
+    );
     let _ = reference_of_ident("textbox", "", "id:note");
+}
+
+/// QUAL-PX-122: a delta requested after a compaction epoch. The model holds a fingerprint from before the epoch (its summary carries it); the page has changed; `since_fingerprint` answers the changes since that page from the Core's held history, which a context compaction does not touch, and a fingerprint nobody holds is answered with the full page and the reason.
+#[tokio::test(flavor = "multi_thread")]
+async fn qual_px_122_a_delta_after_a_compaction_epoch_uses_the_held_fingerprint_and_an_unheld_one_says_why()
+ {
+    use std::sync::atomic::{AtomicBool, AtomicUsize, Ordering};
+    let big: String = (0..400)
+        .map(|i| format!("line {i}: the quick brown fox jumps over the lazy dog {i}\n"))
+        .collect();
+    let (_repo, root) = plain_repo(&[("a.txt", big.as_str())]);
+    let changed = Arc::new(AtomicBool::new(false));
+    let held = Arc::new(Mutex::new(String::new()));
+    let turn = Arc::new(AtomicUsize::new(0));
+    let (changed2, held2, turn2) = (changed.clone(), held.clone(), turn.clone());
+    let (base, seen) = scripted_model_fn(Arc::new(move |body, _| {
+        // The fingerprint the model was given before the epoch: remembered the way a summary would carry it.
+        for m in body["messages"].as_array().into_iter().flatten() {
+            if m["role"] == "tool" {
+                let t = m["content"].as_str().unwrap_or_default();
+                if let Some(i) = t.find("\"state_fingerprint\":\"") {
+                    let fp = &t[i + 21..i + 21 + 64];
+                    let mut h = held2.lock().unwrap();
+                    if h.is_empty() {
+                        *h = fp.to_owned();
+                    }
+                }
+            }
+        }
+        let n = turn2.fetch_add(1, Ordering::SeqCst);
+        match n {
+            0 => call(
+                "plan.update",
+                json!({"outcome": "the page is followed across an epoch", "expected_files": []}),
+            ),
+            1 => call("browser.navigate", json!({"url": "https://app.test/"})),
+            2 => call("browser.snapshot", json!({"mode": "full"})),
+            3..=10 => call("fs.read", json!({"path": "a.txt"})),
+            11 => {
+                changed2.store(true, Ordering::SeqCst);
+                call(
+                    "browser.snapshot",
+                    json!({"since_fingerprint": held2.lock().unwrap().clone()}),
+                )
+            }
+            12 => call(
+                "browser.snapshot",
+                json!({"since_fingerprint": "0".repeat(64)}),
+            ),
+            13 => call(
+                "task.complete",
+                json!({"summary": "followed the page across an epoch", "self_review": {"findings": []}}),
+            ),
+            _ => json!({"text": "done"}),
+        }
+    }))
+    .await;
+    let dir = tempfile::tempdir().unwrap();
+    let mut env = model_env(&base);
+    env.push(("MODBIT_COMPACTION_TOKEN_BUDGET".into(), "3000".into()));
+    let env: Vec<(&str, &str)> = env.iter().map(|(k, v)| (k.as_str(), v.as_str())).collect();
+    let core = CoreProcess::spawn_with_env(dir.path(), &env);
+    let mut c = core.client().await;
+    let (session, g) = session_with_lease(&mut c, 0x30).await;
+    let task = create_task(&mut c, &session, g, &root, 0x31, "local_trusted", "epoch").await;
+    let opened = open_session(&mut c, &task, g, 0x32).await;
+    let bsid = opened.browser_session_id.clone().unwrap();
+    let host = attach(&core, &bsid, &task, &opened.partition, 0x33).await;
+    let changed3 = changed.clone();
+    let _served = serve(host, move |r| match r["kind"].as_str().unwrap() {
+        "navigate" => Some(
+            json!({"kind": "state", "state": {"url": r["url"], "title": "Fixture", "ready": true, "state_version": 1}}),
+        ),
+        "snapshot" => {
+            let c = changed3.load(Ordering::SeqCst);
+            Some(page(if c { 2 } else { 1 }, c))
+        }
+        _ => None,
+    });
+    start_task(&mut c, &task, g, 0x34, "gpt-5-mini").await;
+    let st = wait_task(&mut c, &task, 180).await;
+    assert!(!st.loop_alive, "{st:?}");
+    let evs = replay(&core, &session).await;
+    let epoch_at = evs
+        .iter()
+        .position(|e| e["event_type"] == "ContextEpochOpened")
+        .expect("the run compacted");
+    let texts = all_tool_texts(&seen);
+    let held = held.lock().unwrap().clone();
+    assert_eq!(held.len(), 64);
+    let delta = texts
+        .iter()
+        .find(|t| t.contains(&format!("\"from_fingerprint\":\"{held}\"")))
+        .expect("a delta from the held fingerprint was answered");
+    assert!(
+        delta.contains("\"mode\":\"delta\""),
+        "the delta starts at the fingerprint the model held across the epoch: {delta}"
+    );
+    assert!(
+        delta.contains("Later") && !delta.contains("\"rehydrate\""),
+        "exactly the new button, no rehydrate: {delta}"
+    );
+    let asked_at = evs
+        .iter()
+        .rposition(|e| e["event_type"] == "ToolCallProposed")
+        .unwrap();
+    assert!(
+        epoch_at < asked_at,
+        "the epoch came before the delta was asked for"
+    );
+    let full = texts
+        .iter()
+        .find(|t| t.contains("FINGERPRINT_UNKNOWN"))
+        .expect("an unheld fingerprint is answered with the reason");
+    assert!(
+        full.contains("\"mode\":\"full\"") && full.contains(&"0".repeat(64)),
+        "{full}"
+    );
 }
 
 async fn wait_runtime(
