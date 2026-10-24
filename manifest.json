@@ -7,8 +7,8 @@
   "scope_rule": "docs/*.md, root *.md except MANIFEST.md, docs/decisions/*.md, graph JSON/Markdown, tools/*.py, evidence payloads; manifests exclude themselves and transient caches",
   "counts": {
     "docs": 97,
-    "root_and_tooling": 1722,
-    "docs_bytes": 2146494
+    "root_and_tooling": 1725,
+    "docs_bytes": 2147277
   },
   "sections": [
     {
@@ -914,8 +914,8 @@
       "section": "governance",
       "section_title": "Agent process and governance",
       "title": "Dossier maintenance log",
-      "bytes": 124005,
-      "sha256": "226ad85ac7c0d82343b3f29e4dfa7e50b38962efef9d15c3296cde4b8f8174b5"
+      "bytes": 124788,
+      "sha256": "d52a1b5b7e7811e2444b0852acdab97ec502ed7576413ae9967ff79ddbc31225"
     },
     {
       "path": "docs/98_BUILD_MANIFEST.md",
@@ -2107,6 +2107,21 @@
       "path": "evidence/m10/PX-082/mutation-check.txt",
       "bytes": 2417,
       "sha256": "7a9d29659ad2111025dc38085c04468d3a15b852315dd5bbf7609b6427acf641"
+    },
+    {
+      "path": "evidence/m10/PX-083/TASK_CARD.md",
+      "bytes": 2545,
+      "sha256": "c5529eac80d0f44cd7316af88614617dc793d8c7273c4fbf407f091293680f88"
+    },
+    {
+      "path": "evidence/m10/PX-083/ci-run-40042355021.json",
+      "bytes": 46978,
+      "sha256": "75562c198803406fcf4dd2750e069b0ea119c62f764f072be00c68fc116ca291"
+    },
+    {
+      "path": "evidence/m10/PX-083/evidence.json",
+      "bytes": 2396,
+      "sha256": "10e2d7d6590db64fafe48a877ad38e117983ca55ad8a22d8018ece3fcc3b39cd"
     },
     {
       "path": "evidence/m10/PX-083/mutation-check.txt",
@@ -9476,12 +9491,12 @@
     {
       "path": "graph/PROJECT_GRAPH.md",
       "bytes": 45127,
-      "sha256": "9f57ad4f4a97f653762ef4ab457bba84da45a6218ba9e43851b0c01c18e9ad2e"
+      "sha256": "911de30213d1bc8969dad85b610f97aa68c819fe496ffb94b2c4e7b48ad57202"
     },
     {
       "path": "graph/project-graph.json",
-      "bytes": 2264171,
-      "sha256": "57fc4d202076815bb4ac66e68c26bb179ebcf32a67cfbe3fa0dfd793418e2b0c"
+      "bytes": 2264375,
+      "sha256": "de597279a561348c9429cabfc17e87e1924f0b0a4e45800e4c9114dae5585b0c"
     },
     {
       "path": "tools/build_graph.py",

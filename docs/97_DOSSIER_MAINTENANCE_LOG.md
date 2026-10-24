@@ -1129,3 +1129,7 @@ Accepted on the owner's chat instruction (Decisions 1 and 2). A decision record 
 ## PX-045 closed COMPLETE (2026-10-24)
 
 - **PX-045:** advanced NOT_STARTED → COMPLETE through `graph.py set` with `run:40018683027`, `commit:f790ed1182c0cff0be35a67969e2102c22bab466` and `artifact:evidence/m10/PX-045/evidence.json`; #126 added the 1000 x 700 / 900 x 600 geometry test and the Settings-with-a-running-task test; the full desktop suite then ran green on main. Unfinished: The suite drives the built Electron app against a real Core with a scripted model, not a signed packaged installer (M10.2 owns signing). The QUAL mutation checks (double-registered shortcut, unclamped panel ratio) rely on shell.test.ts and the existing conflict test; no new mutation run was retained. No gate attested.
+
+## PX-083 closed COMPLETE (2026-10-24)
+
+- **PX-083:** advanced NOT_STARTED → COMPLETE through `graph.py set` with `run:40042355021`, `commit:812bac4466305f86307d6e9c7ad4b84d581b2592` and `artifact:evidence/m10/PX-083/evidence.json`; #130 added the worktree-isolation and gate-skip-budget tests and retained the idempotency mutation check (evidence/m10/PX-083/mutation-check.txt: removing the event-id dedupe fails three tests). Unfinished: Time-triggered paths are proven on a controlled clock against a real Core with real SIGKILL restarts; the forge-event trigger consumer has no clause-specific test here. The mutation touched only the Core pre-check, not the event-fold's own repeated-key check. The gate-skip test recomputes the gate session id derivation. No gate attested.
