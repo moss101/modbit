@@ -1,0 +1,30 @@
+PX-106 mutation check, Core half (QUAL-PX-106: a hook disabled here must not fire on the next event; a mutation that keeps a switched-off hook in force must fail)
+date: 2026-10-24T20:46:39Z
+base revision: b78b0c1cbe13eec0e3d8ffe93e7538814ac5f607 (plus the working tree of this task)
+
+== baseline (unmutated) ==
+test qual_px_106_an_extension_is_a_structured_row_inert_until_its_exact_manifest_is_trusted ... ok
+test qual_px_106_a_hook_switched_off_fires_on_no_later_event_and_the_switch_survives_a_sigkill ... ok
+test result: ok. 2 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 2.50s
+baseline exit: 0
+
+== mutation: services/modbit-core/src/hooks.rs 'active.into_iter().partition(|r| off.contains(&r.id))' -> 'active.into_iter().partition(|r| off.contains(&r.id) && false)' ==
+test qual_px_106_an_extension_is_a_structured_row_inert_until_its_exact_manifest_is_trusted ... FAILED
+test qual_px_106_a_hook_switched_off_fires_on_no_later_event_and_the_switch_survives_a_sigkill ... FAILED
+thread 'qual_px_106_an_extension_is_a_structured_row_inert_until_its_exact_manifest_is_trusted' (43089200) panicked at services/modbit-core/tests/px_106_customize.rs:335:5:
+assertion `left == right` failed
+  left: 2
+ right: 1
+thread 'qual_px_106_a_hook_switched_off_fires_on_no_later_event_and_the_switch_survives_a_sigkill' (43089199) panicked at services/modbit-core/tests/px_106_customize.rs:221:5:
+assertion `left == right` failed: the disabled hook did not fire
+  left: (3, 3)
+ right: (2, 3)
+test result: FAILED. 0 passed; 2 failed; 0 ignored; 0 measured; 0 filtered out; finished in 2.28s
+error: test failed, to rerun pass `-p modbit-core --test px_106_customize`
+mutated exit: 101
+
+== restored ==
+test qual_px_106_an_extension_is_a_structured_row_inert_until_its_exact_manifest_is_trusted ... ok
+test qual_px_106_a_hook_switched_off_fires_on_no_later_event_and_the_switch_survives_a_sigkill ... ok
+test result: ok. 2 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 2.41s
+restored exit: 0

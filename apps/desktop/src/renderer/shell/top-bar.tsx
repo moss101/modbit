@@ -18,6 +18,10 @@ export interface TopBarProps {
   automationsOpen?: boolean | undefined;
   automationsDisabled?: boolean | undefined;
   onToggleAutomations?: (() => void) | undefined;
+  /** REQ-PX-106: the Customize view over skills, hooks and extensions. */
+  customizeOpen?: boolean | undefined;
+  customizeDisabled?: boolean | undefined;
+  onToggleCustomize?: (() => void) | undefined;
   panelOpen: boolean;
   /** Why the panel cannot open (no task has an artifact), or null when it can. */
   panelUnavailable: string | null;
@@ -43,6 +47,11 @@ export function TopBar(p: TopBarProps) {
       {p.onToggleAutomations && (
         <Button size="sm" data-testid="open-automations" aria-pressed={p.automationsOpen ?? false} disabled={p.automationsDisabled ?? false} onClick={p.onToggleAutomations}>
           Automations
+        </Button>
+      )}
+      {p.onToggleCustomize && (
+        <Button size="sm" data-testid="open-customize" aria-pressed={p.customizeOpen ?? false} disabled={p.customizeDisabled ?? false} onClick={p.onToggleCustomize}>
+          Customize
         </Button>
       )}
       <Button size="sm" data-testid="open-dashboard" disabled={p.dashboardDisabled} onClick={p.onToggleDashboard}>

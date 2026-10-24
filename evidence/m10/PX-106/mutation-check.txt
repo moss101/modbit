@@ -1,0 +1,26 @@
+PX-106 mutation check (QUAL-PX-106: a mutation that trusts by name only, without the hash, must fail the hash test)
+date: 2026-10-24T20:45:57Z
+base revision: b78b0c1cbe13eec0e3d8ffe93e7538814ac5f607 (plus the working tree of this task)
+
+== baseline (unmutated) ==
+[electron] Error occurred in handler for 'customize:skillTrust': Error: BAD_ARGUMENT: a trust decision names the 64-hex-digit content hash the Core showed
+[electron] Error occurred in handler for 'customize:skillTrust': RejectedError: HASH_MISMATCH: `beta-skill` is e0e8bd05293894bb3d3de8ab2548574953584cfe29fcd11b63630a9babaa2ada now, not 0000000000000000000000000000000000000000000000000000000000000000; review the current content and trust that
+[electron] Error occurred in handler for 'customize:skillTrust': RejectedError: HASH_MISMATCH: `beta-skill` is ddfefd831bceae5d6fa7db46073ce09ab247ead5d219bda5bbe38c789034b84b now, not e0e8bd05293894bb3d3de8ab2548574953584cfe29fcd11b63630a9babaa2ada; review the current content and trust that
+[electron] Error occurred in handler for 'customize:hookEnabled': RejectedError: HOOK_SCOPE_FORBIDS: `config:admin/admin-rec` is declared by the admin layer, which is above you: it cannot be switched off here
+  7 passed (9.6s)
+baseline exit: 0
+
+== mutation: apps/desktop/src/renderer/customize/customize.tsx 'window.modbit.customizeSkillTrust(s.name, s.contentHash, taskId ?? undefined)' -> 'window.modbit.customizeSkillTrust(s.name, "", taskId ?? undefined)' ==
+[electron] Error occurred in handler for 'customize:skillTrust': Error: BAD_ARGUMENT: a trust decision names the 64-hex-digit content hash the Core showed
+    Error: expect(locator).toHaveAttribute(expected) failed
+  1 failed
+  2 passed (17.7s)
+mutated exit: 1
+
+== restored ==
+[electron] Error occurred in handler for 'customize:skillTrust': Error: BAD_ARGUMENT: a trust decision names the 64-hex-digit content hash the Core showed
+[electron] Error occurred in handler for 'customize:skillTrust': RejectedError: HASH_MISMATCH: `beta-skill` is e0e8bd05293894bb3d3de8ab2548574953584cfe29fcd11b63630a9babaa2ada now, not 0000000000000000000000000000000000000000000000000000000000000000; review the current content and trust that
+[electron] Error occurred in handler for 'customize:skillTrust': RejectedError: HASH_MISMATCH: `beta-skill` is ddfefd831bceae5d6fa7db46073ce09ab247ead5d219bda5bbe38c789034b84b now, not e0e8bd05293894bb3d3de8ab2548574953584cfe29fcd11b63630a9babaa2ada; review the current content and trust that
+[electron] Error occurred in handler for 'customize:hookEnabled': RejectedError: HOOK_SCOPE_FORBIDS: `config:admin/admin-rec` is declared by the admin layer, which is above you: it cannot be switched off here
+  7 passed (8.2s)
+restored exit: 0

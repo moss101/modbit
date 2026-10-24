@@ -8,7 +8,8 @@ import type { TerminalFrameJson, TerminalViewJson } from "../main/terminal-host.
 import type { AttachmentResult, InterruptView, ModeChangedView, ModelCatalogView, PostureView, PreferencePatch, PreferenceSetView, QueuedChangeView, QueueView, SendBehaviorState, SideAnswerView, SlashInventoryView, TaskModeId, InputModeId } from "../shared/composer-types.ts";
 import type { AutoDetail, AutoEnableInput, AutoKillReport, AutoList, AutoRepoLoad, AutoRun, AutoRunInput, AutoRunStarted, AutoValidation, AutoView } from "../shared/automation-types.ts";
 import type { ApplyAckInfo, ApplyInputArgs, CleanupReportInfo, ProjectChangedInfo, ProjectInput, ProjectListInfo, ProjectPatch, WorktreeListInfo, WorktreeRemovalInfo } from "../shared/project-types.ts";
-import type { ChangesStateInfo, CommitPushAckInfo, CommitPushInput, RevertAckInfo, RevertInput, StageAckInfo } from "../shared/changes-types.ts";
+import type { CustomizeHooksView, HookEnabledInfo, ImportReportInfo, SkillsView, SkillTrustInfo } from "../shared/customize-types.ts";
+import type { ChangesStateInfo, CommitPushAckInfo, CommitPushInput, DecideHunkAckInfo, DecideHunkInput, RevertAckInfo, RevertInput, StageAckInfo } from "../shared/changes-types.ts";
 import type { ComputerCardsInfo, ComputerFrameInfo, ComputerPresenceInfo, ComputerStopInfo, OpenSettingsInfo, PermissionName } from "../shared/computer-types.ts";
 import type { AccountingInfo, AddRuleInput, AllowRuleInfo, CheckpointListInfo, CheckpointTargetInput, DockApprovalView, ExpiredApprovalView, ForkOutcome, ModeProposalDecisionInfo, ModeProposalListInfo, RestoreOutcome, RewindPreviewInfo, RunModeInfo, TaskBudgetsInfo } from "../shared/control-types.ts";
 
@@ -18,6 +19,18 @@ export interface ReviewHunk {
   index: number;
   header: string;
   lines: string[];
+  /** PX-103: where the hunk came from, as the Core attributed it; "" when it could not. */
+  toolCallId: string;
+  toolName: string;
+  turnId: string;
+  runId: string;
+  attributed: boolean;
+  alsoCallIds: string[];
+  attributionBasis: string;
+  hunkDigest: string;
+  /** "" | ACCEPTED: a person's recorded accept of this exact hunk. */
+  decision: string;
+  autoAcceptEligible: boolean;
 }
 export interface ReviewFileView {
   path: string;
@@ -284,9 +297,26 @@ export interface ModbitBridge {
   changesState(taskId: string): Promise<ChangesStateInfo>;
   /** Revert a file or one hunk of it to HEAD through the Core's ChangeTransaction; a file edited since `expectedFileRevision` is refused STALE_REVISION. The ack names the checkpoint that undoes it. */
   revertChanges(sessionId: string, taskId: string, input: RevertInput): Promise<RevertAckInfo>;
+  /** PX-103: accept or reject ONE hunk in any task state, a live run included. The Core refuses a decision on a moved file (STALE_REVISION) or a changed hunk (STALE_HUNK); a rejection reverts exactly that hunk and the agent is told at its next boundary. */
+  decideHunk(sessionId: string, taskId: string, input: DecideHunkInput): Promise<DecideHunkAckInfo>;
   stageChanges(sessionId: string, taskId: string, paths: { path: string; expectedFileRevision: string }[], stage: boolean): Promise<StageAckInfo>;
   /** One protected effect: the first call answers APPROVAL_PENDING with the exact intent; after `resolveApproval` the same call commits and pushes. */
   commitAndPush(sessionId: string, taskId: string, input: CommitPushInput): Promise<CommitPushAckInfo>;
+  // REQ-PX-106 (the Customize view): the Core's skills, hooks and extensions, and the few actions the Core already offers on them. No catalog, no install from a network location, no update.
+  customizeSkills(taskId?: string): Promise<SkillsView>;
+  /** Trust a skill by the content hash shown; the Core refuses any other (HASH_MISMATCH) and trust by name alone does not exist. */
+  customizeSkillTrust(name: string, contentHash: string, taskId?: string): Promise<SkillTrustInfo>;
+  customizeSkillRevoke(name: string, contentHash?: string): Promise<SkillTrustInfo>;
+  /** The hooks in force for a task (those switched off included) and the session's extensions; with no task, the extensions only. */
+  customizeHooks(sessionId: string, taskId?: string): Promise<CustomizeHooksView>;
+  /** Switch one hook on or off for the session. The Core refuses a hook a device or administrator layer declared (HOOK_SCOPE_FORBIDS). */
+  customizeHookEnabled(sessionId: string, taskId: string, hookId: string, enabled: boolean): Promise<HookEnabledInfo>;
+  customizeExtensionTrust(sessionId: string, extensionId: string, manifestDigest: string): Promise<{ extensionId: string; name: string; quarantined: string }>;
+  customizeExtensionUnload(sessionId: string, extensionId: string): Promise<{ extensionId: string; name: string; removed: string[] }>;
+  /** Import another agent's configuration through the Core's importer; the person picks the folder in the OS dialog. It arrives quarantined. Null when they cancel. */
+  customizeImport(sessionId: string, name: string): Promise<ImportReportInfo | null>;
+  /** Show a skill's or an extension's source folder (the path is the Core's listing, not the renderer's). */
+  customizeOpenSource(kind: "skill" | "extension", key: string, sessionId?: string, taskId?: string): Promise<{ opened: string }>;
   coreStatus(): Promise<unknown>;
   localState(): Promise<{ sessionId?: string; platform?: { os: string; arch: string; state: string; statement: string } }>;
   languages(): Promise<{ language: string; tier: string; label: string; fixture: string; proven: string[]; provisional: string[]; notClaimed: string[]; note: string }[]>;
@@ -487,6 +517,16 @@ const bridge: ModbitBridge = {
   removeProjectMember: (sessionId, projectId, taskId, commandId) => ipcRenderer.invoke("projects:removeMember", sessionId, projectId, taskId, commandId ?? ""),
   changesState: (taskId) => ipcRenderer.invoke("changes:state", taskId),
   revertChanges: (sessionId, taskId, input) => ipcRenderer.invoke("changes:revert", sessionId, taskId, input),
+  decideHunk: (sessionId, taskId, input) => ipcRenderer.invoke("changes:decideHunk", sessionId, taskId, input),
+  customizeSkills: (taskId) => ipcRenderer.invoke("customize:skills", taskId),
+  customizeSkillTrust: (name, contentHash, taskId) => ipcRenderer.invoke("customize:skillTrust", name, contentHash, taskId),
+  customizeSkillRevoke: (name, contentHash) => ipcRenderer.invoke("customize:skillRevoke", name, contentHash),
+  customizeHooks: (sessionId, taskId) => ipcRenderer.invoke("customize:hooks", sessionId, taskId),
+  customizeHookEnabled: (sessionId, taskId, hookId, enabled) => ipcRenderer.invoke("customize:hookEnabled", sessionId, taskId, hookId, enabled),
+  customizeExtensionTrust: (sessionId, extensionId, manifestDigest) => ipcRenderer.invoke("customize:extensionTrust", sessionId, extensionId, manifestDigest),
+  customizeExtensionUnload: (sessionId, extensionId) => ipcRenderer.invoke("customize:extensionUnload", sessionId, extensionId),
+  customizeImport: (sessionId, name) => ipcRenderer.invoke("customize:import", sessionId, name),
+  customizeOpenSource: (kind, key, sessionId, taskId) => ipcRenderer.invoke("customize:openSource", kind, key, sessionId ?? null, taskId ?? null),
   stageChanges: (sessionId, taskId, paths, stage) => ipcRenderer.invoke("changes:stage", sessionId, taskId, paths, stage),
   commitAndPush: (sessionId, taskId, input) => ipcRenderer.invoke("changes:commitPush", sessionId, taskId, input),
   listWorktrees: (options) => ipcRenderer.invoke("worktrees:list", options ?? {}),

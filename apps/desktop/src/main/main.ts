@@ -16,6 +16,7 @@ import { platformState } from "./platform.js";
 import { observeStreamEvent, registerConversationHandlers } from "./conversation-ipc.js";
 import { registerComposerHandlers, requireSkillNames } from "./composer-ipc.js";
 import { registerChangesHandlers } from "./changes-ipc.js";
+import { registerCustomizeHandlers } from "./customize-ipc.js";
 import { registerProjectHandlers } from "./project-ipc.js";
 import { registerControlHandlers } from "./control-ipc.js";
 import { openedSettings, registerComputerHandlers } from "./computer-ipc.js";
@@ -489,7 +490,7 @@ handle("review:bundle", async (_e: IpcMainInvokeEvent, taskId: unknown) => {
     workspaceRevision: b.workspaceRevision.toString(),
     baseCommit: b.baseCommit,
     workspaceRoot: b.workspaceRoot,
-    files: b.files.map((f) => ({ path: f.path, status: f.status, binary: f.binary, fileRevision: f.fileRevision, oldContentRef: f.oldContentRef, newContentRef: f.newContentRef, hunks: f.hunks.map((h) => ({ index: h.index, header: h.header, lines: h.lines })) })),
+    files: b.files.map((f) => ({ path: f.path, status: f.status, binary: f.binary, fileRevision: f.fileRevision, oldContentRef: f.oldContentRef, newContentRef: f.newContentRef, hunks: f.hunks.map((h) => ({ index: h.index, header: h.header, lines: h.lines, toolCallId: h.toolCallId, toolName: h.toolName, turnId: h.turnId, runId: h.runId, attributed: h.attributed, alsoCallIds: h.alsoCallIds, attributionBasis: h.attributionBasis, hunkDigest: h.hunkDigest, decision: h.decision, autoAcceptEligible: h.autoAcceptEligible })) })),
     planJson: b.planJson,
     selfReviewJson: b.selfReviewJson,
     verificationRuns: b.verificationRuns.map((v) => ({ id: v.verificationRunId, stage: v.stage, status: v.status, candidateRevision: v.candidateRevision, checks: v.checkIds.map((id, i) => ({ id, status: v.checkStatuses[i] ?? "" })) })),
@@ -797,6 +798,14 @@ registerConversationHandlers(conversationRegistrar);
 registerProjectHandlers(conversationRegistrar);
 // REQ-PX-048: the Changes app's revert, stage and Commit and push, each a typed Core command named for its session.
 registerChangesHandlers(conversationRegistrar);
+// REQ-PX-106: the Customize view over the skills, hooks and extensions the Core already holds. The two OS acts it needs are the person's.
+registerCustomizeHandlers(conversationRegistrar, {
+  pickDirectory: async () => {
+    const r = await dialog.showOpenDialog({ title: "Choose another agent's configuration to import", properties: ["openDirectory"] });
+    return r.canceled || !r.filePaths[0] ? null : r.filePaths[0];
+  },
+  reveal: (path) => shell.showItemInFolder(path),
+});
 // REQ-PX-054..056: the composer's mode, preference, queue, interrupt, slash, model and attachment commands.
 registerComposerHandlers({
   handle: (channel, fn) => handle(channel, (_e, ...args) => fn(...args)),

@@ -43707,6 +43707,7 @@ async fn qual_ev_0042_a_slow_or_failing_hook_follows_its_fail_policy_and_cannot_
                 "ListHooks",
                 ListHooks {
                     task_id: Some(task.clone()),
+                    ..Default::default()
                 }
                 .encode_to_vec(),
             ))
@@ -43986,6 +43987,7 @@ async fn qual_ev_0240_unloading_an_extension_removes_its_handlers_without_a_stal
             "ListHooks",
             ListHooks {
                 task_id: Some(task.clone()),
+                ..Default::default()
             }
             .encode_to_vec(),
         ))

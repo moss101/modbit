@@ -141,6 +141,10 @@ pub async fn bundle(
     let task = load_task(core, id).await?;
     let residue = residue_of(core, &task).await;
     let cand = candidate(&task, &residue)?;
+    // PX-103: where each hunk came from, and which a person accepted. Read
+    // from the log before the store is held for the rest of the bundle.
+    let attribution = crate::hunks::attribute_candidate(core, &cand).await;
+    let accepted = crate::hunks::accepted(core, &task).await;
     let store = core.store.lock().await;
     let mut files = Vec::new();
     for f in &cand.files {
@@ -174,14 +178,40 @@ pub async fn bundle(
             hunks: f
                 .hunks
                 .iter()
-                .map(|h| wire::HunkView {
-                    index: h.index,
-                    header: h.header.clone(),
-                    old_start: h.old_start,
-                    old_lines: h.old_lines,
-                    new_start: h.new_start,
-                    new_lines: h.new_lines,
-                    lines: h.lines.clone(),
+                .map(|h| {
+                    let info = attribution
+                        .get(&f.path)
+                        .and_then(|v| v.get(h.index as usize))
+                        .cloned()
+                        .unwrap_or_default();
+                    let digest = crate::hunks::hunk_digest(h);
+                    wire::HunkView {
+                        index: h.index,
+                        header: h.header.clone(),
+                        old_start: h.old_start,
+                        old_lines: h.old_lines,
+                        new_start: h.new_start,
+                        new_lines: h.new_lines,
+                        lines: h.lines.clone(),
+                        tool_call_id: info.call.clone(),
+                        tool_name: info.tool.clone(),
+                        turn_id: info.turn.clone(),
+                        run_id: info.run.clone(),
+                        attributed: info.attributed,
+                        also_call_ids: info.also.clone(),
+                        attribution_basis: if info.basis.is_empty() {
+                            "UNATTRIBUTED".to_owned()
+                        } else {
+                            info.basis.to_owned()
+                        },
+                        decision: if accepted.contains(&(f.path.clone(), digest.clone())) {
+                            "ACCEPTED".to_owned()
+                        } else {
+                            String::new()
+                        },
+                        auto_accept_eligible: info.attributed && !f.binary,
+                        hunk_digest: digest,
+                    }
                 })
                 .collect(),
         });

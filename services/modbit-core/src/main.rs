@@ -51,6 +51,7 @@ mod gate;
 mod git_state;
 mod handoff;
 mod hooks;
+mod hunks;
 mod index_host;
 mod inspector;
 mod knowledge;

@@ -1,9 +1,9 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { Badge, Button } from "@modbit/ui";
 import type { CodeView, ReviewBundleView, ReviewFileView } from "../../preload/preload.ts";
-import type { ChangeEffectInfo, ChangesStateInfo, CommitPushAckInfo, RevertAckInfo } from "../../shared/changes-types.ts";
+import type { ChangeEffectInfo, ChangesStateInfo, CommitPushAckInfo, DecideHunkAckInfo, RevertAckInfo } from "../../shared/changes-types.ts";
 import { parseRefusal } from "../projects/project-model.ts";
-import { canCommitPush, changeSummary, commitLabel, commitMode, effectWords, isReviewable, lineKind, newCommandId, rangesContain, refusalWords, stageState } from "./changes-model.ts";
+import { callRowId, canCommitPush, canDecide, changeSummary, chipText, commitLabel, commitMode, decisionWords, effectWords, isReviewable, lineKind, newCommandId, rangesContain, refusalWords, stageState } from "./changes-model.ts";
 
 /**
  * The Changes app (REQ-PX-048, PX-104's reachability half): the task's live,
@@ -18,8 +18,17 @@ import { canCommitPush, changeSummary, commitLabel, commitMode, effectWords, isR
  * Commit and push is one protected effect whose approval card shows the exact
  * intent the Core read from the repository. Decisions on hunks of a task that
  * is ready for review stay where the Core accepts them: the Review screen.
+ *
+ * PX-104: the same tab is reachable in every task state and carries a live
+ * per-hunk decision. Each hunk shows the Core's attribution as a chip that
+ * opens the producing call in the conversation, and Accept and Reject buttons
+ * that send `DecideHunk` with the file revision and hunk digest this view read.
+ * The Core's typed answer is rendered as it came: applied, stale (with a
+ * refresh) or refused. Rejecting while the run is live reverts exactly that
+ * hunk and the run goes on; the notice the agent will get is shown. Nothing is
+ * computed here: eligibility, staleness and attribution are the Core's.
  */
-export function ChangesApp({ sessionId, taskId, taskState, refreshKey, onOpenReview }: { sessionId: string; taskId: string; taskState: string; refreshKey: string; onOpenReview: () => void }) {
+export function ChangesApp({ sessionId, taskId, taskState, refreshKey, onOpenReview, onOpenCall }: { sessionId: string; taskId: string; taskState: string; refreshKey: string; onOpenReview: () => void; onOpenCall?: (toolCallId: string) => void }) {
   const [bundle, setBundle] = useState<ReviewBundleView | null>(null);
   const [state, setState] = useState<ChangesStateInfo | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -31,6 +40,8 @@ export function ChangesApp({ sessionId, taskId, taskState, refreshKey, onOpenRev
   const [undo, setUndo] = useState<{ ack: RevertAckInfo; note: string } | null>(null);
   const [message, setMessage] = useState("");
   const [commit, setCommit] = useState<CommitPushAckInfo | null>(null);
+  const [decided, setDecided] = useState<DecideHunkAckInfo | null>(null);
+  const [reason, setReason] = useState("");
   const seq = useRef(0);
   /** The load that last set `state`, and the sequence number the current approval card was raised at: a state read before the card existed says nothing about it. */
   const loaded = useRef(0);
@@ -60,6 +71,8 @@ export function ChangesApp({ sessionId, taskId, taskState, refreshKey, onOpenRev
     setUndo(null);
     setCommit(null);
     setMessage("");
+    setDecided(null);
+    setReason("");
   }, [taskId]);
 
   const file: ReviewFileView | undefined = bundle?.files.find((f) => f.path === path) ?? bundle?.files[0];
@@ -94,6 +107,16 @@ export function ChangesApp({ sessionId, taskId, taskState, refreshKey, onOpenRev
     if (ack) {
       setUndo({ ack, note: `${wholeFile ? "Reverted" : `Reverted hunk ${hunkIndex + 1} of`} ${ack.path}.` });
       setFull(null);
+    }
+  };
+  /** One hunk, decided on the revision and the hunk this view read; the Core's answer (or refusal) is shown as it came. */
+  const decideOne = async (f: ReviewFileView, h: ReviewFileView["hunks"][number], decision: "ACCEPT" | "REJECT") => {
+    setDecided(null);
+    const ack = await act(() => window.modbit.decideHunk(sessionId, taskId, { path: f.path, hunkIndex: h.index, decision, expectedFileRevision: f.fileRevision, expectedHunkDigest: h.hunkDigest, reason: decision === "REJECT" ? reason : "", commandId: newCommandId() }));
+    if (ack) {
+      setDecided(ack);
+      setFull(null);
+      if (decision === "REJECT") setReason("");
     }
   };
   const undoRevert = async () => {
@@ -188,7 +211,7 @@ export function ChangesApp({ sessionId, taskId, taskState, refreshKey, onOpenRev
       <p className="meta" data-testid="changes-note">
         {isReviewable(taskState)
           ? "This task is ready for review: accept or return it, hunk by hunk, in the review."
-          : "The task is still working. This is its change set as of workspace revision " + bundle.workspaceRevision + "; a decision on a hunk is taken once the task is ready for review."}
+          : "The task is still working. This is its change set as of workspace revision " + bundle.workspaceRevision + ". You can accept or reject a single hunk now; the run goes on and a rejected hunk is reverted and told to the agent."}
       </p>
       <p className="meta" data-testid="changes-branch" data-branch={state.branch} data-remote={state.remote} data-unpushed={state.unpushed}>
         {state.branch ? `On ${state.branch}` : "HEAD is detached"}
@@ -197,7 +220,7 @@ export function ChangesApp({ sessionId, taskId, taskState, refreshKey, onOpenRev
       </p>
       {state.taskRunning && (
         <p className="meta" role="status" data-testid="changes-locked">
-          The task is running and owns its files; revert, stage and commit wait until it stops.
+          The task is running and owns its files; whole-file revert, stage and commit wait until it stops. Accepting or rejecting one hunk does not wait.
         </p>
       )}
       {refusal && (
@@ -209,6 +232,16 @@ export function ChangesApp({ sessionId, taskId, taskState, refreshKey, onOpenRev
           <Button size="sm" onClick={() => { setRefusal(null); void load(); }} data-testid="changes-refusal-reload">
             Reload the changes
           </Button>
+        </div>
+      )}
+      {decided && (
+        <div className="changes-decision" role="status" data-testid="changes-decision" data-result={decided.result} data-run-live={decided.runLive ? "true" : "false"} data-checkpoint={decided.checkpointId} data-call={decided.attributedCallId}>
+          <span data-testid="changes-decision-note">{decisionWords(decided)}</span>
+          {decided.agentNotice && (
+            <p className="meta" data-testid="changes-decision-notice">
+              The agent will be told: {decided.agentNotice}
+            </p>
+          )}
         </div>
       )}
       {undo && (
@@ -255,13 +288,32 @@ export function ChangesApp({ sessionId, taskId, taskState, refreshKey, onOpenRev
           </ul>
           {file && (
             <section aria-label={`Diff of ${file.path}`} data-testid="changes-diff" data-path={file.path} data-file-revision={file.fileRevision}>
+              <label htmlFor="changes-reject-reason" className="meta">
+                Reason for rejecting a hunk (the agent is told)
+              </label>
+              <input id="changes-reject-reason" type="text" maxLength={2000} value={reason} onChange={(e) => setReason(e.target.value)} data-testid="changes-reject-reason" />
               {file.binary ? (
                 <p className="meta">Binary file: its change is not shown as text.</p>
               ) : (
                 file.hunks.map((h) => (
-                  <div key={h.index} className="hunk" data-testid="changes-hunk" data-index={h.index}>
+                  <div key={h.index} className="hunk" data-testid="changes-hunk" data-index={h.index} data-attributed={h.attributed ? "true" : "false"} data-decision={h.decision} data-digest={h.hunkDigest} data-call={h.toolCallId}>
                     <div className="hunk-head">
                       <span>{h.header}</span>
+                      <button type="button" className="changes-chip" disabled={h.toolCallId === "" || !onOpenCall} onClick={() => onOpenCall?.(h.toolCallId)} aria-label={`${chipText(h)}: open the call in the conversation`} data-testid="changes-hunk-chip" data-attribution={h.attributionBasis} data-row-id={h.toolCallId ? callRowId(h.toolCallId) : ""}>
+                        {chipText(h)}
+                      </button>
+                      {h.decision === "ACCEPTED" && <Badge tone="ok">Accepted</Badge>}
+                      {!h.autoAcceptEligible && (
+                        <span className="meta" data-testid="changes-hunk-unattributed">
+                          never accepted automatically
+                        </span>
+                      )}
+                      <Button size="sm" onClick={() => void decideOne(file, h, "ACCEPT")} disabled={!canDecide(busy, file.binary) || h.decision === "ACCEPTED"} aria-label={`Accept hunk ${h.index + 1} of ${file.path}`} data-testid="changes-accept-hunk">
+                        Accept
+                      </Button>
+                      <Button size="sm" onClick={() => void decideOne(file, h, "REJECT")} disabled={!canDecide(busy, file.binary)} aria-label={`Reject hunk ${h.index + 1} of ${file.path}`} data-testid="changes-reject-hunk">
+                        Reject
+                      </Button>
                       <Button size="sm" onClick={() => void revert(file, false, h.index)} disabled={locked} aria-label={`Revert hunk ${h.index + 1} of ${file.path}`} data-testid="changes-revert-hunk">
                         Revert hunk
                       </Button>
@@ -312,7 +364,7 @@ export function ChangesApp({ sessionId, taskId, taskState, refreshKey, onOpenRev
         </>
       )}
       <section className="changes-commit" aria-label="Commit and push" data-testid="changes-commit" data-mode={mode}>
-        <h3>Commit and push</h3>
+        <h2>Commit and push</h2>
         {commit?.status === "APPROVAL_PENDING" ? (
           <ApprovalCard ack={commit} busy={busy} onDecide={(ok) => void decide(commit, ok)} />
         ) : (
@@ -340,7 +392,7 @@ export function ChangesApp({ sessionId, taskId, taskState, refreshKey, onOpenRev
       </section>
       {state.effects.length > 0 && (
         <section className="changes-effects" aria-label="Earlier commits and pushes" data-testid="changes-effects">
-          <h3>Earlier attempts</h3>
+          <h2>Earlier attempts</h2>
           <ul>
             {state.effects.map((e) => (
               <EffectRow key={e.toolCallId} e={e} />
