@@ -49,6 +49,9 @@ pub struct Core {
     pub(crate) user_id: UserId,
     /// What startup recovery did (docs/19), served to clients.
     recovery: RecoveryOutcome,
+    /// REQ-PX-049: the tasks recovery suspended that the person asked, when
+    /// quitting, to have resumed (served in the recovery report).
+    resume_requested: Vec<TaskId>,
     started_at: Timestamp,
     /// Tool registry, kernel port, broker (M2.4).
     pub(crate) tools: crate::tools::ToolHost,
@@ -235,6 +238,7 @@ pub async fn run_as(
     if aborted > 0 {
         eprintln!("modbit-core: closed {aborted} open assistant stream(s) as aborted by recovery");
     }
+    let resume_requested = crate::session_end::resume_requests(&store, &suspended);
     let start = store.last_offset()?;
     let boot_secret: Vec<u8> = (0..32).map(|_| rand::random::<u8>()).collect();
     let nonce = encode_hex(&(0..6).map(|_| rand::random::<u8>()).collect::<Vec<_>>());
@@ -256,6 +260,7 @@ pub async fn run_as(
         tenant_id,
         user_id: UserId::from_bytes([0xB1; 16]),
         recovery,
+        resume_requested,
         started_at: Timestamp::now(),
         tools: crate::tools::ToolHost::new(
             &data_dir,
@@ -736,6 +741,7 @@ async fn serve_connection(core: Arc<Core>, mut stream: BoxedStream) -> Result<()
                     "GetSessionSnapshot",
                     "SubscribeEvents",
                     "GetRecoveryReport",
+                    "EndSession",
                     "AcquireSessionLease",
                     "QueueInput",
                     "ReadObjectRange",
@@ -1542,6 +1548,9 @@ fn required_client_capability(env: &CommandEnvelope) -> Option<&'static str> {
         // write to steer the agent — the same class of decision as trusting
         // the repository.
         "SetTaskBudgets" => "task.author",
+        // REQ-PX-049: quitting is the person's act, held by the client that
+        // acts for one.
+        "EndSession" => "task.author",
         // PX-082..086: reading the ledger is reading the log; every change
         // to a definition, its approval, the kill switches and a manual run
         // is a person's act, held by the clients that act for one. A verified
@@ -6407,6 +6416,39 @@ pub(crate) async fn handle_command_as(
         "ListSkills" | "TrustSkill" | "UntrustSkill" => {
             crate::skills::handle(core, cid, &env, actor).await
         }
+        "EndSession" => {
+            let Ok(p) = wire::EndSession::decode(env.payload.as_slice()) else {
+                return reject(cid, "BAD_PAYLOAD", "EndSession");
+            };
+            let Some(session_id) = p
+                .session_id
+                .as_ref()
+                .and_then(id16)
+                .map(SessionId::from_bytes)
+            else {
+                return reject(cid, "BAD_PAYLOAD", "session_id required");
+            };
+            match core.store.lock().await.session(&session_id) {
+                Ok(Some(_)) => {}
+                Ok(None) => return reject(cid, "UNKNOWN_SESSION", session_id.to_string()),
+                Err(e) => return reject(cid, error_code(&e), e.to_string()),
+            }
+            if let Err(ack) = require_lease(core, &cid, &env, &session_id).await {
+                return ack;
+            }
+            match crate::session_end::end_session(
+                core,
+                session_id,
+                p.resume_on_reopen,
+                env.expected_generation,
+                Actor::User(core.user_id),
+            )
+            .await
+            {
+                Ok(view) => accept(cid, true, view.encode_to_vec()),
+                Err((code, detail)) => reject(cid, &code, detail),
+            }
+        }
         "ListHooks" => {
             let Ok(p) = wire::ListHooks::decode(env.payload.as_slice()) else {
                 return reject(cid, "BAD_PAYLOAD", "ListHooks");
@@ -8063,6 +8105,11 @@ pub(crate) async fn handle_command_as(
                     tasks: r.tasks,
                     notes: r.notes.clone(),
                     recovery_ms: r.recovery_ms,
+                    resume_requested_tasks: core
+                        .resume_requested
+                        .iter()
+                        .map(|t| wire_id(t.as_bytes()))
+                        .collect(),
                 }
                 .encode_to_vec(),
             )

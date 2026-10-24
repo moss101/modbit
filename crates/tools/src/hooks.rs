@@ -115,11 +115,16 @@ pub enum HookPoint {
     /// A run ended and the person is told: ready for review, needs
     /// attention, cancelled.
     Notification,
+    /// The person is quitting (REQ-PX-049): the Core runs these to
+    /// completion, each under its own timeout, before the host exits. The
+    /// session is over, so the point only observes; a failure is on the
+    /// record and shown to the person, never swallowed.
+    SessionEnd,
 }
 
 impl HookPoint {
     /// Every point, in lifecycle order.
-    pub const ALL: [Self; 18] = [
+    pub const ALL: [Self; 19] = [
         Self::BeforeRun,
         Self::AfterRun,
         Self::BeforeModel,
@@ -138,6 +143,7 @@ impl HookPoint {
         Self::SubagentStart,
         Self::SubagentStop,
         Self::Notification,
+        Self::SessionEnd,
     ];
 
     /// The wire and record label.
@@ -162,6 +168,7 @@ impl HookPoint {
             Self::SubagentStart => "subagent_start",
             Self::SubagentStop => "subagent_stop",
             Self::Notification => "notification",
+            Self::SessionEnd => "session_end",
         }
     }
 
@@ -1176,11 +1183,11 @@ mod tests {
 
     #[test]
     fn every_point_has_a_label_a_versioned_payload_schema_and_a_typed_round_trip() {
-        assert_eq!(HookPoint::ALL.len(), 18);
+        assert_eq!(HookPoint::ALL.len(), 19);
         let mut labels: Vec<&str> = HookPoint::ALL.iter().map(|p| p.label()).collect();
         labels.sort_unstable();
         labels.dedup();
-        assert_eq!(labels.len(), 18, "labels are unique");
+        assert_eq!(labels.len(), 19, "labels are unique");
         for p in HookPoint::ALL {
             assert_eq!(p.payload_schema(), format!("{}.v1", p.label()));
             let json = serde_json::to_string(&p).unwrap();
@@ -1199,7 +1206,11 @@ mod tests {
         ] {
             assert!(before.is_before() && !before.may_mutate());
         }
-        for after in [HookPoint::SubagentStop, HookPoint::Notification] {
+        for after in [
+            HookPoint::SubagentStop,
+            HookPoint::Notification,
+            HookPoint::SessionEnd,
+        ] {
             assert!(!after.is_before());
         }
     }
