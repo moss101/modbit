@@ -11,7 +11,7 @@
  * renderer says it has consumed, so a renderer that stops consuming stops the
  * stream and nothing here grows with it.
  */
-import type { CoreClient } from "@modbit/ide-adapter-core";
+import { readObjectRange, type CoreClient } from "@modbit/ide-adapter-core";
 import type { TerminalFrame, TerminalView } from "@modbit/surface-protocol";
 
 const MAX_EARLY_FRAMES = 512;
@@ -36,6 +36,8 @@ export interface TerminalViewJson {
   inputLeaseHolder: string;
   cwd: string;
   timedOut: boolean;
+  /** The process ended and the Core sealed its output: older output than the replay window can be read as ranges. */
+  hasOutputRef: boolean;
 }
 
 export function viewJson(t: TerminalView): TerminalViewJson {
@@ -57,6 +59,7 @@ export function viewJson(t: TerminalView): TerminalViewJson {
     inputLeaseHolder: t.inputLeaseHolder,
     cwd: t.cwd,
     timedOut: t.timedOut,
+    hasOutputRef: t.outputRef !== "",
   };
 }
 
@@ -83,6 +86,22 @@ export function frameJson(f: TerminalFrame): TerminalFrameJson | null {
     default:
       return null;
   }
+}
+
+/** The most one history read returns: a page of the older output, never the whole object. */
+export const MAX_HISTORY_BYTES = 256 * 1024;
+const OBJECT_CHUNK = 1024n * 1024n;
+
+/**
+ * The cursor range of a sealed output that a read can serve. The object holds the bytes the broker retained: it ends at the
+ * head and starts at `start`. A range wholly before `start` is gone (empty); one that straddles it is clamped to it.
+ */
+export function planHistoryRange(start: bigint, head: bigint, from: bigint, to: bigint): { from: bigint; to: bigint } {
+  if (to > head) to = head;
+  if (from < start) from = start;
+  if (to <= from) return { from, to: from };
+  if (to - from > BigInt(MAX_HISTORY_BYTES)) to = from + BigInt(MAX_HISTORY_BYTES);
+  return { from, to };
 }
 
 export interface Attachment {
@@ -199,6 +218,33 @@ export class TerminalHost {
     await this.ensureLease(c, sessionId);
     const k = await c.killTerminal(sessionId, taskId, terminalId, "stopped from the apps panel");
     return { outcome: k.outcome, exitCode: k.exitCode ?? null };
+  }
+
+  /**
+   * Older output than the replay window, as ranges of the sealed output (`output_ref`) the Core holds once the process ended.
+   * The renderer names a terminal of its task and a cursor range; the object hash is read from the Core's own terminal view
+   * here and never comes from the renderer. A range before the start of what the Core retained comes back empty (`exhausted`).
+   */
+  async history(taskId: string, terminalId: string, from: bigint, to: bigint): Promise<{ startCursor: string; from: string; data: Uint8Array; exhausted: boolean }> {
+    const c = this.client();
+    const t = (await c.listTerminals(taskId)).terminals.find((x) => x.sessionId === terminalId);
+    if (!t) throw new Error("UNKNOWN_TERMINAL: this task has no such terminal");
+    if (!t.outputRef) throw new Error("NO_OUTPUT_REF: the process is still running; its older output is sealed when it ends");
+    const head = t.bytesSoFar;
+    const probe = await readObjectRange(c, t.outputRef, 0n, 1n);
+    const start = probe.totalBytes > head ? 0n : head - probe.totalBytes;
+    const plan = planHistoryRange(start, head, from, to);
+    const parts: Uint8Array[] = [];
+    let at = plan.from;
+    while (at < plan.to) {
+      const want = plan.to - at < OBJECT_CHUNK ? plan.to - at : OBJECT_CHUNK;
+      const chunk = await readObjectRange(c, t.outputRef, at - start, want);
+      if (chunk.data.byteLength === 0) break;
+      parts.push(chunk.data);
+      at += BigInt(chunk.data.byteLength);
+    }
+    const data = parts.length === 1 ? parts[0]! : Buffer.concat(parts);
+    return { startCursor: start.toString(), from: plan.from.toString(), data, exhausted: plan.from <= start };
   }
 
   /** The window went away (reload, crash): its attachments are over. Best effort on the Core. */

@@ -303,6 +303,8 @@ export interface ModbitBridge {
   terminalResize(attachId: string, rows: number, cols: number): Promise<{ rows: number; cols: number }>;
   terminalWrite(attachId: string, data: Uint8Array | string): Promise<{ bytes: string; cursor: string }>;
   terminalKill(sessionId: string, taskId: string, terminalId: string): Promise<{ outcome: string; exitCode: number | null }>;
+  /** Older output than the replay window as a cursor range of the sealed output (REQ-PX-048); empty and exhausted before what the Core kept. */
+  terminalHistory(taskId: string, terminalId: string, from: string, to: string): Promise<{ startCursor: string; from: string; data: Uint8Array; exhausted: boolean }>;
   onTerminalFrame(cb: (f: TerminalFrameJson) => void): () => void;
   listWorkspaceDir(taskId: string, path: string): Promise<{ path: string; workspaceRevision: string; truncated: boolean; entries: WorkspaceEntry[] }>;
   readWorkspaceFile(taskId: string, path: string): Promise<{ path: string; status: string; size: string; text: string; fileRevision: string; workspaceRevision: string; language: string }>;
@@ -506,6 +508,7 @@ const bridge: ModbitBridge = {
   terminalResize: (attachId, rows, cols) => ipcRenderer.invoke("terminal:resize", attachId, rows, cols),
   terminalWrite: (attachId, data) => ipcRenderer.invoke("terminal:write", attachId, data),
   terminalKill: (sessionId, taskId, terminalId) => ipcRenderer.invoke("terminal:kill", sessionId, taskId, terminalId),
+  terminalHistory: (taskId, terminalId, from, to) => ipcRenderer.invoke("terminal:history", taskId, terminalId, from, to),
   onTerminalFrame: (cb) => {
     const listener = (_: unknown, f: unknown) => cb(f as TerminalFrameJson);
     ipcRenderer.on("terminal:frame", listener);

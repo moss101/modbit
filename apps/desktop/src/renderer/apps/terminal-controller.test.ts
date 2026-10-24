@@ -1,9 +1,9 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
 import type { TerminalFrameJson, TerminalViewJson } from "../../preload/preload.ts";
-import { elapsedLabel, ownerNote, TerminalController, type TerminalBridge, type TerminalSink } from "./terminal-controller.ts";
+import { elapsedLabel, ownerNote, replayStart, TerminalController, VIEW_TAIL_BYTES, type TerminalBridge, type TerminalSink } from "./terminal-controller.ts";
 
-const VIEW: TerminalViewJson = { terminalId: "t1", taskId: "a".repeat(32), owner: "agent", title: "sh -c x", state: "RUNNING", exitCode: null, startedAtMs: 0, elapsedMs: "0", bytesSoFar: "0", oldestCursor: "0", replayWindowBytes: "0", pty: true, rows: 24, cols: 80, inputLeaseHolder: "", cwd: "", timedOut: false };
+const VIEW: TerminalViewJson = { terminalId: "t1", taskId: "a".repeat(32), owner: "agent", title: "sh -c x", state: "RUNNING", exitCode: null, startedAtMs: 0, elapsedMs: "0", bytesSoFar: "0", oldestCursor: "0", replayWindowBytes: "0", pty: true, rows: 24, cols: 80, inputLeaseHolder: "", cwd: "", timedOut: false, hasOutputRef: false };
 const enc = (s: string) => new TextEncoder().encode(s);
 const out = (attachId: string, cursor: number, text: string): TerminalFrameJson => ({ attachId, terminalId: "t1", kind: "output", cursor: String(cursor), stream: "pty", data: enc(text) });
 const tick = () => new Promise<void>((r) => setImmediate(r));
@@ -321,4 +321,26 @@ test("PX-043: replayed output's terminal queries are not answered into the live 
   await tick();
   await c.input("\r");
   assert.deepEqual(bridge.writes, ["a", "\x1b[1;1R", "\r"]);
+});
+
+test("PX-048: an ended terminal replays its tail and leaves the rest to ranges of the sealed output; a running one replays its whole window", () => {
+  const big = { oldestCursor: "1000", bytesSoFar: String(1000 + VIEW_TAIL_BYTES * 4), hasOutputRef: true };
+  assert.equal(replayStart(big), BigInt(1000 + VIEW_TAIL_BYTES * 3));
+  assert.equal(replayStart({ ...big, hasOutputRef: false }), 1000n, "a process that still runs replays from the oldest byte");
+  assert.equal(replayStart({ oldestCursor: "0", bytesSoFar: "500", hasOutputRef: true }), 0n, "a short output is replayed whole");
+  assert.equal(replayStart({ oldestCursor: "900", bytesSoFar: String(900 + VIEW_TAIL_BYTES), hasOutputRef: true }), 900n, "a tail that reaches the oldest byte starts there");
+});
+
+test("PX-048: the view reports the cursor of its first byte, including after the replay window moved past the cursor", async () => {
+  const bridge = new FakeBridge();
+  const states: bigint[] = [];
+  const c = new TerminalController(bridge, { write: (_d, done) => done(), reset: () => undefined, notice: () => undefined }, { sessionId: "s", taskId: "a".repeat(32), terminalId: "t1" }, (s) => states.push(s.origin));
+  await c.start(500n);
+  assert.equal(c.snapshot().origin, 500n);
+  const d = new TerminalController(bridge, { write: (_x, done) => done(), reset: () => undefined, notice: () => undefined }, { sessionId: "s", taskId: "a".repeat(32), terminalId: "t1" }, () => undefined);
+  bridge.attachError = new Error("CURSOR_EXPIRED: cursor 0 is older than the replay window; oldest_cursor=4096");
+  await d.start(0n);
+  assert.equal(d.snapshot().origin, 4096n, "history is read from before the byte the view really starts at");
+  await c.dispose();
+  await d.dispose();
 });

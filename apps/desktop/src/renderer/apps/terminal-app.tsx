@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import { Badge, Button, Dialog } from "@modbit/ui";
 import type { TerminalViewJson } from "../../preload/preload.ts";
 import { elapsedLabel, isRunning, ownerNote, terminalLabel, type TerminalViewState } from "./terminal-controller.ts";
+import { TerminalHistory } from "./terminal-history.tsx";
 import { XtermView } from "./xterm-view.tsx";
 
 export interface TerminalAppProps {
@@ -34,11 +35,13 @@ export function TerminalApp({ sessionId, taskId, terminals, selectedId, onSelect
   const [notice, setNotice] = useState("");
   const [killing, setKilling] = useState<TerminalViewJson | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [reachedTop, setReachedTop] = useState(0);
   const leave = useRef<HTMLButtonElement>(null);
   // A different terminal starts with a clean status line.
   useEffect(() => {
     setView(null);
     setNotice("");
+    setReachedTop(0);
   }, [selected?.terminalId]);
 
   const kill = async (t: TerminalViewJson) => {
@@ -100,7 +103,8 @@ export function TerminalApp({ sessionId, taskId, terminals, selectedId, onSelect
               {view?.phase === "attaching" ? "Attaching…" : view?.phase === "lost" || view?.phase === "refused" ? `Disconnected: ${view.reason ?? ""}` : view?.leaseHeld ? "You hold the input; the agent's input to this terminal is refused." : "Click the terminal to type."}
             </span>
           </div>
-          <XtermView key={selected.terminalId} sessionId={sessionId} terminal={selected} onLeave={() => leave.current?.focus()} onState={setView} onNotice={setNotice} />
+          <TerminalHistory taskId={taskId} terminalId={selected.terminalId} origin={view && view.phase !== "idle" ? view.origin : null} available={selected.hasOutputRef} retainedFrom={BigInt(selected.oldestCursor)} reachedTop={reachedTop} />
+          <XtermView key={selected.terminalId} sessionId={sessionId} terminal={selected} onLeave={() => leave.current?.focus()} onState={setView} onNotice={setNotice} onReachTop={() => setReachedTop((n) => n + 1)} />
           {exit && (
             <p className="meta" role="status" data-testid="terminal-exit">
               {exit.timedOut ? "Timed out" : exit.cancelled ? "Stopped" : exit.signal !== null ? `Ended by signal ${exit.signal}` : `Exited with code ${exit.exitCode ?? "unknown"}`}. The output above is its full replay.
