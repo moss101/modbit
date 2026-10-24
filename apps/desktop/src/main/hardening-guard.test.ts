@@ -20,7 +20,7 @@ const sha256 = (s: string | Buffer): string => createHash("sha256").update(s.toS
 
 /** The pins. Update one only for a reviewed change to the boundary it names. */
 const PINS = {
-  preloadSha256: "d305166837743c1bf479d42c27791a243c816621bd8d9d253e7a0ea0cd9dec03",
+  preloadSha256: "b92e8a94feceba495d3f76045fea784a28a54e085d221f5ab7d0d368bb08afb4",
   cspSha256: "e8c3fcc4286ba170b02ea95b02189f132b16228341d2002412facfec6eb929d1",
   webPreferencesSha256: "28515878dc43e119f2360de779e5a3733283d120b31a113837f7f7a6cf2356ee",
   windowOptionKeys: ["width", "height", "minWidth", "minHeight", "show", "webPreferences"],
