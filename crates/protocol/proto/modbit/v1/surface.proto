@@ -208,6 +208,11 @@ message RecoveryReport {
   // Empty when the store was clean; otherwise what recovery had to do.
   repeated string notes = 9;
   uint64 recovery_ms = 10;
+  // REQ-PX-049: tasks the person chose, when quitting, to have resumed the
+  // next time the app opens (the session's latest EndSession said so and no
+  // client has joined the session since). Recovery suspended them; resuming
+  // is the client's ordinary StartTask, so nothing runs without a provider.
+  repeated Id resume_requested_tasks = 11;
 }
 
 // Session kernel lease (REQ-EV-0054 / REQ-EV-0273; docs/13 fencing, docs/33
@@ -1715,6 +1720,28 @@ message HookListView {
   repeated HookView hooks = 1;
   repeated string refused = 2;     // "<hook> (<source>): <reason>"
   repeated string extensions = 3;  // "<extension_id> <name>@<version> sha256:<digest> <path>"
+}
+
+// REQ-PX-049: the person is quitting. The Core runs the session's session_end
+// hooks to completion (each under its own timeout), journals every run on the
+// task it ran for, and records the person's resume choice on the session log.
+message EndSession {
+  Id session_id = 1;
+  bool resume_on_reopen = 2;       // resume the running tasks the next time the app opens
+}
+
+message SessionEndHookRun {
+  Id task_id = 1;                  // the task whose log carries the HookInvoked entry
+  string hook = 2;                 // "<source>/<name>"
+  string outcome = 3;              // OK | DENIED | TIMEOUT | FAILED | MALFORMED | IGNORED | UNLOADED
+  uint64 duration_ms = 4;
+  string detail = 5;               // the hook's own reason, or why it failed
+}
+
+message SessionEndedView {
+  repeated SessionEndHookRun hooks = 1;
+  repeated Id resume_tasks = 2;    // the running tasks the choice applies to
+  uint64 offset = 3;               // of the SessionEnding record
 }
 
 message TrustRepository {
