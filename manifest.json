@@ -7,8 +7,8 @@
   "scope_rule": "docs/*.md, root *.md except MANIFEST.md, docs/decisions/*.md, graph JSON/Markdown, tools/*.py, evidence payloads; manifests exclude themselves and transient caches",
   "counts": {
     "docs": 97,
-    "root_and_tooling": 1728,
-    "docs_bytes": 2148426
+    "root_and_tooling": 1729,
+    "docs_bytes": 2148826
   },
   "sections": [
     {
@@ -914,8 +914,8 @@
       "section": "governance",
       "section_title": "Agent process and governance",
       "title": "Dossier maintenance log",
-      "bytes": 125937,
-      "sha256": "af742fe24f11739410fd6389bb0339855e7f34a6b03330d25d40bc5b1d59c9f3"
+      "bytes": 126337,
+      "sha256": "ce8937e53718bebd53180e612c6dda5da099c34c95ddc13198a56cb301147e76"
     },
     {
       "path": "docs/98_BUILD_MANIFEST.md",
@@ -2042,6 +2042,11 @@
       "path": "evidence/m10/PX-045/evidence.json",
       "bytes": 2016,
       "sha256": "3a560df28f9b64ca68eb3bbbe39999bf70253105e64eda9f1ce0e9482840a6dc"
+    },
+    {
+      "path": "evidence/m10/PX-048/TASK_CARD.md",
+      "bytes": 1892,
+      "sha256": "2f8ed1ee7e3ef5d1615326fd88bf32979c5f98bf8bb2d260584430e176ee40c4"
     },
     {
       "path": "evidence/m10/PX-049/TASK_CARD.md",
@@ -9510,8 +9515,8 @@
     },
     {
       "path": "graph/project-graph.json",
-      "bytes": 2264579,
-      "sha256": "27f4fe00dab45774bc319224cee30f8b9bd61fefc473c13a2b1c62e18715aaf7"
+      "bytes": 2264951,
+      "sha256": "4b401b8014946a57942d2b6b98693bc1eecf53575d92eca386f8c240a1e533ba"
     },
     {
       "path": "tools/build_graph.py",
