@@ -58,17 +58,18 @@ test("PX-048: history reads the range from the terminal's own sealed output, tra
   assert.equal(reads.length, before + 1, "only the probe of the object's size was read for a range that is gone");
 });
 
-test("PX-048: bytes the log gained after the object was sealed do not shift the object's cursors", async () => {
-  // The object holds cursors 2000..5000; the listing's head is 5003 (three bytes a PTY added after the end).
-  const { host } = sealed({ head: 5000n, total: 3000, outputRef: REF });
-  const late = sealed({ head: 5003n, total: 3000, outputRef: REF, oldest: 2000n });
-  const a = await host.history(TID, "t1", 2500n, 2600n);
-  const b = await late.host.history(TID, "t1", 2500n, 2600n);
-  assert.deepEqual(Array.from(b.data), Array.from(a.data), "the same cursors read the same bytes");
-  const past = await late.host.history(TID, "t1", 4990n, 5010n);
-  assert.equal(past.data.length, 10, "a range stops at the object's end");
-  const short = sealed({ head: 4000n, total: 3000, outputRef: REF, oldest: 2000n });
-  await assert.rejects(short.host.history(TID, "t1", 2500n, 2600n), /OBJECT_LENGTH_MISMATCH/);
+test("PX-048: a listing that does not agree with the sealed object reads nothing, rather than bytes from the wrong place", async () => {
+  // The object holds cursors 2000..5000 and the listing agrees.
+  const ok = sealed({ head: 5000n, total: 3000, outputRef: REF, oldest: 2000n });
+  assert.equal((await ok.host.history(TID, "t1", 2500n, 2600n)).data.length, 100);
+  // The listing's head is three bytes past the object (a late write), or short of it.
+  for (const head of [5003n, 4000n]) {
+    const off = sealed({ head, total: 3000, outputRef: REF, oldest: 2000n });
+    await assert.rejects(off.host.history(TID, "t1", 2500n, 2600n), /OBJECT_LENGTH_MISMATCH/);
+  }
+  // The oldest cursor moved after the seal: the same.
+  const moved = sealed({ head: 5000n, total: 3000, outputRef: REF, oldest: 2100n });
+  await assert.rejects(moved.host.history(TID, "t1", 2500n, 2600n), /OBJECT_LENGTH_MISMATCH/);
 });
 
 test("PX-048: history of a running terminal, or of one this task does not own, is refused", async () => {

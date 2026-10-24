@@ -205,6 +205,9 @@ test("scrolling above the view reads the older output as OutputRef ranges: in or
   // to the head (a different path from the sealed object the pane was read from), whatever the platform's PTY does to the lines.
   const everything = await readTerminal(page, { sessionId, taskId, terminalId: handle.ended, after: retainedFrom.toString(), windowBytes: 65_536 });
   const streamText = norm(everything.bytes);
+  // A finished process's log is final: its listing must not move between the first read and now (retention, a late write).
+  const settled = await viewOf(handle.ended);
+  expect({ oldestCursor: settled.oldestCursor, bytesSoFar: settled.bytesSoFar, outputRef: settled.hasOutputRef }, "the finished terminal's listing did not move after it was first read").toEqual({ oldestCursor: ended.oldestCursor, bytesSoFar: ended.bytesSoFar, outputRef: true });
   const joined = lines.join("\n") + "\n";
   const at = joined.length === streamText.length && joined === streamText ? -1 : Array.from(joined).findIndex((ch, i) => ch !== streamText[i]);
   expect(at, `the pane and the view differ from the Core's stream at text offset ${at} (pane+view ${joined.length} chars, stream ${streamText.length}): pane+view ${JSON.stringify(joined.slice(Math.max(0, at - 20), at + 40))}, stream ${JSON.stringify(streamText.slice(Math.max(0, at - 20), at + 40))}`).toBe(-1);
