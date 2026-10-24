@@ -50,7 +50,7 @@ export interface Deviation {
   exception: Exception["id"] | null;
 }
 
-const px = (v: string): number | null => (/^-?\d+(\.\d+)?px$/.test(v) ? Number.parseFloat(v) : null);
+const px = (v: string): number | null => (/^-?\d+(\.\d+)?(e[+-]?\d+)?px$/.test(v) ? Number.parseFloat(v) : null);
 const flat = (v: string) => v.replace(/\s+/g, " ").trim();
 /** A shadow without the transparent zero-size layers Tailwind's variable stack always adds: they paint nothing. */
 const noZeroLayers = (v: string) => flat(v.replace(/rgba\(0, 0, 0, 0\) 0px 0px 0px 0px,? ?/g, "")).replace(/,$/, "");

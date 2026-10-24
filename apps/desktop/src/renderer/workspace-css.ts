@@ -11,7 +11,7 @@ export const workspaceCss = `
 .agent-region-meta { padding: 0 var(--mb-space-3); margin: 0; }
 .agent-fleet[aria-pressed="true"] { background: var(--mb-color-selected); }
 .agents { flex: 1 1 0; min-height: 0; display: flex; flex-direction: column; }
-.agents-controls { padding: var(--mb-space-1) var(--mb-space-3) var(--mb-space-2); display: flex; flex-direction: column; gap: var(--mb-space-1); border-bottom: 1px solid var(--mb-color-border); }
+.agents-controls { padding: var(--mb-space-1) var(--mb-space-3) var(--mb-space-2); display: flex; flex-direction: column; gap: var(--mb-space-1); flex: 0 1 auto; min-height: 0; max-height: 60%; overflow-y: auto; border-bottom: 1px solid var(--mb-color-border); }
 .agents-search { width: 100%; box-sizing: border-box; font-size: var(--mb-type-chrome-size); padding: var(--mb-space-1) var(--mb-space-2); }
 .agents-tools { display: flex; align-items: center; gap: var(--mb-space-1); }
 .agents-group { flex: 1 1 0; min-width: 0; }
