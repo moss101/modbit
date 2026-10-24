@@ -8,6 +8,7 @@
  */
 export * from "./logic.ts";
 export { Button, IconButton, type ButtonProps, type ButtonSize, type ButtonVariant, type IconButtonProps } from "./button.tsx";
+export { Icon, ICON_NAMES, type IconName, type IconProps } from "./icons.tsx";
 export { Badge, Kbd, STATUS_TEXT, StatusDot, type BadgeTone, type Status, type StatusDotProps } from "./status.tsx";
 export { Tooltip, type TooltipProps } from "./tooltip.tsx";
 export { Menu, type MenuItem, type MenuProps } from "./menu.tsx";

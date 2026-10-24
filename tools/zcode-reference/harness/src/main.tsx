@@ -31,17 +31,12 @@ import { toast } from "./components/ui/toast.js";
 
 const q = new URLSearchParams(location.search);
 const theme = q.get("theme") === "dark" ? "zai-dark" : "zai-light";
-const sheet = q.get("sheet") ?? "controls";
+const sheet = q.get("sheet") ?? "buttons";
 const root = document.documentElement;
 root.classList.toggle("dark", theme === "zai-dark");
 root.classList.toggle("theme-zai-dark", theme === "zai-dark");
 root.classList.toggle("theme-zai-light", theme === "zai-light");
 root.style.colorScheme = theme === "zai-dark" ? "dark" : "light";
-// ZCode's desktop window frame is a transparent body over a window-root surface; this harness paints that surface itself.
-document.body.style.background = "var(--color-background)";
-document.body.style.color = "var(--color-foreground)";
-document.body.style.font = "";
-document.body.className = "font-sans text-ui-base";
 
 const VARIANTS = ["default", "outline", "secondary", "ghost", "destructive", "warning", "link"] as const;
 const SIZES = ["xs", "sm", "default", "lg"] as const;
@@ -56,7 +51,7 @@ function Spec({ id, children, className }: { id: string; children: React.ReactNo
   );
 }
 
-function Controls() {
+function Buttons() {
   return (
     <div className="p-6">
       <Spec id="button-matrix">
@@ -99,6 +94,13 @@ function Controls() {
           ))}
         </div>
       </Spec>
+    </div>
+  );
+}
+
+function Fields() {
+  return (
+    <div className="p-6">
       <Spec id="fields">
         <div className="flex max-w-md flex-col gap-3">
           <Label htmlFor="i1">Label</Label>
@@ -131,6 +133,13 @@ function Controls() {
           <TabsContent value="one">Tab content one</TabsContent>
         </Tabs>
       </Spec>
+    </div>
+  );
+}
+
+function Surfaces() {
+  return (
+    <div className="p-6">
       <Spec id="surfaces">
         <div className="flex max-w-3xl flex-col gap-3">
           <Card>
@@ -312,7 +321,9 @@ function ToastSheet() {
 }
 
 const SHEETS: Record<string, React.ReactNode> = {
-  controls: <Controls />,
+  buttons: <Buttons />,
+  fields: <Fields />,
+  surfaces: <Surfaces />,
   menu: <Menu />,
   select: <SelectSheet />,
   popover: <PopoverSheet />,
@@ -322,4 +333,11 @@ const SHEETS: Record<string, React.ReactNode> = {
   toast: <ToastSheet />,
 };
 
-createRoot(document.getElementById("root")!).render(<React.StrictMode>{SHEETS[sheet]}</React.StrictMode>);
+// Portals (menus, dialogs) mount on body, so the inherited text settings sit on body too.
+document.body.className = "font-sans text-ui-base text-foreground";
+// ZCode makes html, body and #root transparent (macOS vibrancy shows through); its panels paint --color-background themselves, so the page surface is a wrapper.
+createRoot(document.getElementById("root")!).render(
+  <React.StrictMode>
+    <div className="min-h-screen bg-background text-foreground font-sans text-ui-base">{SHEETS[sheet]}</div>
+  </React.StrictMode>,
+);

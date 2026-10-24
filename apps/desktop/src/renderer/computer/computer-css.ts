@@ -20,7 +20,7 @@ export const computerCss = `
 .cc-perm { display: flex; flex-direction: column; gap: var(--mb-space-3); }
 .cc-perm p { margin: 0; }
 .cc-perm-list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: var(--mb-space-2); }
-.cc-perm-row { display: flex; flex-direction: column; gap: var(--mb-space-1); padding: var(--mb-space-2) var(--mb-space-3); border: 1px solid var(--mb-color-border); border-radius: var(--mb-radius-3); background: var(--mb-color-sunken); }
+.cc-perm-row { display: flex; flex-direction: column; gap: var(--mb-space-1); padding: var(--mb-space-2) var(--mb-space-3); border: 1px solid var(--mb-color-border); border-radius: var(--radius-md); background: var(--mb-color-sunken); }
 .cc-perm-row[data-status="ready"] { border-color: var(--mb-color-ok); }
 .cc-perm-row[data-status="allow"] { border-color: var(--mb-color-warn); }
 .cc-perm-head { display: flex; align-items: center; justify-content: space-between; gap: var(--mb-space-2); }
@@ -29,7 +29,7 @@ export const computerCss = `
 
 .cc-card { display: flex; flex-direction: column; align-items: stretch; gap: var(--mb-space-1); }
 .cc-card-head { display: flex; flex-wrap: wrap; align-items: center; gap: var(--mb-space-2); }
-.cc-num { display: inline-flex; align-items: center; justify-content: center; min-width: 1.6em; height: 1.6em; padding: 0 var(--mb-space-1); border: 1px solid var(--mb-color-border-control); border-radius: var(--mb-radius-5); font-size: var(--mb-type-caption-size); font-variant-numeric: tabular-nums; }
+.cc-num { display: inline-flex; align-items: center; justify-content: center; min-width: 1.6em; height: 1.6em; padding: 0 var(--mb-space-1); border: 1px solid var(--mb-color-border-control); border-radius: var(--radius-xl); font-size: var(--mb-type-caption-size); font-variant-numeric: tabular-nums; }
 .cc-card-app q, .cc-card-target { overflow-wrap: anywhere; }
 .cc-card-facts { margin: 0; display: grid; grid-template-columns: max-content minmax(0, 1fr); gap: var(--mb-space-0_5) var(--mb-space-3); font-size: var(--mb-type-chrome-size); }
 .cc-card-facts dt { color: var(--mb-color-text-muted); }
@@ -37,7 +37,7 @@ export const computerCss = `
 .cc-card[data-status="danger"] { border-left: 3px solid var(--mb-color-danger); }
 .cc-card[data-status="warn"] { border-left: 3px solid var(--mb-color-warn); }
 .cc-frame { margin: 0; display: flex; flex-direction: column; gap: var(--mb-space-1); }
-.cc-frame img { max-width: 100%; height: auto; border: 1px solid var(--mb-color-border-control); border-radius: var(--mb-radius-3); background: var(--mb-color-sunken); align-self: flex-start; }
+.cc-frame img { max-width: 100%; height: auto; border: 1px solid var(--mb-color-border-control); border-radius: var(--radius-md); background: var(--mb-color-sunken); align-self: flex-start; }
 .cc-frame .cc-frame-full { max-width: 100%; }
 .cc-latch { align-items: center; }
 /* The gallery shows every state at once: rows are not skipped while off screen, so a theme change really applies to them before it is measured. */

@@ -296,13 +296,13 @@ test("PX-044/045: the shell geometry in the gallery frame: 1280 with the panel, 
     const shell = page.getByTestId("gallery-shell").getByTestId("shell");
     const num = async (name: string) => Number(await shell.getAttribute(name));
     await page.getByTestId("shell-width-1280").click();
-    await expect.poll(() => num("data-list-px")).toBe(260);
+    await expect.poll(() => num("data-list-px")).toBe(264);
     expect(await num("data-center-px")).toBe(424);
-    expect(await num("data-panel-px")).toBe(596);
+    expect(await num("data-panel-px")).toBe(592);
     await expect(shell).toHaveAttribute("data-stacked", "false");
     await page.getByTestId("shell-panel-toggle").click();
     await expect.poll(() => num("data-panel-px")).toBe(0);
-    await expect.poll(() => num("data-center-px")).toBe(1020);
+    await expect.poll(() => num("data-center-px")).toBe(1016);
     await page.getByTestId("shell-panel-toggle").click();
     await page.getByTestId("shell-width-900").click();
     await expect(shell).toHaveAttribute("data-stacked", "true");

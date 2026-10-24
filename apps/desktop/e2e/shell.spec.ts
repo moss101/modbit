@@ -26,20 +26,20 @@ test("PX-045: geometry at 1280 x 800, keyboard-resizable splits inside 210..400,
   let { app, page } = await launch(dataDir);
   try {
     await setContentSize(app, page, 1280, 800);
-    near((await box(page, "region-agents")).width, 260, 2, "agent list");
-    near((await box(page, "top-bar")).height, 40, 1, "top bar");
+    near((await box(page, "region-agents")).width, 264, 2, "agent list");
+    near((await box(page, "top-bar")).height, 48, 1, "top bar");
     expect(await page.getByTestId("region-apps").count(), "the apps panel is absent until a task has an artifact").toBe(0);
     await expect(page.getByTestId("toggle-apps-panel")).toHaveAttribute("aria-disabled", "true");
     expect((await box(page, "region-conversation")).width).toBeGreaterThanOrEqual(424);
 
     const sep = page.getByTestId("splitter-list");
     await expect(sep).toHaveAttribute("role", "separator");
-    await expect(sep).toHaveAttribute("aria-valuenow", "260");
+    await expect(sep).toHaveAttribute("aria-valuenow", "264");
     await expect(sep).toHaveAttribute("aria-valuemin", "210");
     await expect(sep).toHaveAttribute("aria-valuemax", "400");
     await sep.focus();
     for (let i = 0; i < 3; i++) await page.keyboard.press("ArrowRight");
-    await expect(sep).toHaveAttribute("aria-valuenow", "308");
+    await expect(sep).toHaveAttribute("aria-valuenow", "312");
     await page.keyboard.press("Home");
     await expect(sep).toHaveAttribute("aria-valuenow", "210");
     await page.keyboard.press("ArrowLeft");
@@ -50,10 +50,10 @@ test("PX-045: geometry at 1280 x 800, keyboard-resizable splits inside 210..400,
     await expect(sep, "the maximum holds").toHaveAttribute("aria-valuenow", "400");
     near((await box(page, "region-agents")).width, 400, 2, "agent list at its maximum");
     await page.keyboard.press("Enter");
-    await expect(sep, "Enter restores the default").toHaveAttribute("aria-valuenow", "260");
+    await expect(sep, "Enter restores the default").toHaveAttribute("aria-valuenow", "264");
     await page.keyboard.press("ArrowRight");
     await page.keyboard.press("ArrowRight");
-    await expect(sep).toHaveAttribute("aria-valuenow", "292");
+    await expect(sep).toHaveAttribute("aria-valuenow", "296");
     // A pointer drag moves it too.
     const b = (await sep.boundingBox())!;
     await page.mouse.move(b.x + b.width / 2, b.y + 100);
@@ -61,7 +61,7 @@ test("PX-045: geometry at 1280 x 800, keyboard-resizable splits inside 210..400,
     await page.mouse.move(b.x + b.width / 2 + 40, b.y + 100, { steps: 4 });
     await page.mouse.up();
     const dragged = Number(await sep.getAttribute("aria-valuenow"));
-    expect(dragged).toBeGreaterThan(292);
+    expect(dragged).toBeGreaterThan(296);
     expect(dragged).toBeLessThanOrEqual(400);
     await sep.focus();
     await page.keyboard.press("Home");
@@ -101,20 +101,20 @@ test("PX-045: below a 448 centre the shell is single-pane with the 40 px rail; t
     await page.getByTestId("rail-expand").focus();
     await page.keyboard.press("Enter");
     await expect(page.getByTestId("agent-rail")).toHaveCount(0);
-    near((await box(page, "region-agents")).width, 260, 2, "the expanded list");
+    near((await box(page, "region-agents")).width, 264, 2, "the expanded list");
   } finally {
     await closeApp(app);
   }
 });
 
-test("PX-045: at 1000 x 700 and 900 x 600 the list keeps 260, the top bar 40 and the centre stays above the single-pane threshold with nothing overflowing", async () => {
+test("PX-045: at 1000 x 700 and 900 x 600 the list keeps 264, the top bar 48 and the centre stays above the single-pane threshold with nothing overflowing", async () => {
   const dataDir = mkdtempSync(join(tmpdir(), "modbit-e2e-shell-sizes-"));
   const { app, page } = await launch(dataDir);
   try {
     for (const [w, h] of [[1000, 700], [900, 600]] as const) {
       await setContentSize(app, page, w, h);
-      near((await box(page, "region-agents")).width, 260, 2, `agent list at ${w}`);
-      near((await box(page, "top-bar")).height, 40, 1, `top bar at ${w}`);
+      near((await box(page, "region-agents")).width, 264, 2, `agent list at ${w}`);
+      near((await box(page, "top-bar")).height, 48, 1, `top bar at ${w}`);
       expect((await box(page, "region-conversation")).width, `centre at ${w}`).toBeGreaterThanOrEqual(448);
       await expect(page.getByTestId("agent-rail"), `no rail at ${w}`).toHaveCount(0);
       await expect(page.getByTestId("shell")).not.toHaveAttribute("data-single-pane", "true");

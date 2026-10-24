@@ -60,7 +60,8 @@ export function StatusDot({ status, label, showLabel = false }: StatusDotProps) 
   );
 }
 
-export type BadgeTone = "neutral" | "ok" | "warn" | "danger" | "info" | "accent";
+/** accent is the solid primary chip, neutral the filled grey one, outline the bordered one; the status tones are state-surface chips. */
+export type BadgeTone = "neutral" | "ok" | "warn" | "danger" | "info" | "accent" | "outline";
 
 /** A short text chip. It is always text (a count or a word), so it is never colour-only. */
 export function Badge({ tone = "neutral", children }: { tone?: BadgeTone | undefined; children: ReactNode }) {
@@ -73,10 +74,10 @@ export function Badge({ tone = "neutral", children }: { tone?: BadgeTone | undef
 
 /** A keyboard hint for a chord such as `mod+k`, spelled for the platform. */
 export function Kbd({ chord, children }: { chord?: string | undefined; children?: ReactNode }) {
-  if (children !== undefined) return <kbd className="mb-kbd">{children}</kbd>;
+  if (children !== undefined) return <kbd className="mb-kbd" data-apple={isMacPlatform() ? "true" : undefined}>{children}</kbd>;
   const parts = chord ? chordParts(chord, isMacPlatform()) : [];
   return (
-    <kbd className="mb-kbd" data-chord={chord}>
+    <kbd className="mb-kbd" data-chord={chord} data-apple={isMacPlatform() ? "true" : undefined}>
       {parts.join(isMacPlatform() ? "" : "+")}
     </kbd>
   );

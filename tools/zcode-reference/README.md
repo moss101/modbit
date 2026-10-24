@@ -7,7 +7,7 @@ DR-PX-2026-10-24-016 defines what is compared and why; PX-141 and PX-142 read th
 The harness uses only ZCode's components (`button`, `input`, `dialog`, ...) and `styles.css`, copied by `setup.sh` into a work
 directory **outside this repository** (they are ZCode's Apache-2.0 files, not Modbit code; Tailwind v4 also skips git-ignored
 files when it scans for classes, so an in-tree ignored copy renders unstyled), plus the harness sources committed here: two
-stubs (i18n, key-cap badge), the Vite config and the specimen page `src/main.tsx`.
+stubs (i18n and the key-cap badge, under `src/stub/` so Tailwind scans their classes), the Vite config and the specimen page `src/main.tsx`.
 
 ## Regenerate
 

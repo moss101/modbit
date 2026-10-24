@@ -38,7 +38,7 @@ export const PROBE_SRC = `(sel, rootSel) => {
     counts[key] = (counts[key] || 0) + 1;
     const r = el.getBoundingClientRect();
     const rec = { id: key + "#" + counts[key], spec, slot, variant, size, tag: el.tagName.toLowerCase(), text: (el.textContent || "").trim().slice(0, 40),
-      rect: { w: Math.round(r.width * 100) / 100, h: Math.round(r.height * 100) / 100 }, style: {} };
+      rect: { x: Math.round((r.left + scrollX) * 100) / 100, y: Math.round((r.top + scrollY) * 100) / 100, w: Math.round(r.width * 100) / 100, h: Math.round(r.height * 100) / 100 }, style: {} };
     for (const p of COLOR) rec.style[p] = rgba(cs[p]);
     for (const p of PLAIN) rec.style[p] = cs[p];
     out.push(rec);

@@ -7,8 +7,8 @@ export default defineConfig({
   plugins: [react(), tailwindcss()],
   resolve: {
     alias: [
-      { find: "@/i18n/IntlProvider.js", replacement: r("./stub/i18n/IntlProvider.tsx") },
-      { find: "@/ControlShortcutBadge.js", replacement: r("./stub/ControlShortcutBadge.tsx") },
+      { find: "@/i18n/IntlProvider.js", replacement: r("./src/stub/i18n/IntlProvider.tsx") },
+      { find: "@/ControlShortcutBadge.js", replacement: r("./src/stub/ControlShortcutBadge.tsx") },
       { find: "@/components/lib/utils.js", replacement: r("./src/components/lib/utils.ts") },
     ],
   },

@@ -43,6 +43,7 @@ export const ZSHADOW = {
   sm: "0 1px 3px 0 rgb(0 0 0 / 0.1), 0 1px 2px -1px rgb(0 0 0 / 0.1)",
   md: "0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1)",
   lg: "0 10px 15px -3px rgb(0 0 0 / 0.1), 0 4px 6px -4px rgb(0 0 0 / 0.1)",
+  "2xl": "0 25px 50px -12px rgb(0 0 0 / 0.25)",
 } as const;
 
 /** The conversation text size for a Text size setting (percent, clamped to 80..140); line pitch stays 24/14 of the size. */
@@ -65,10 +66,10 @@ export const ELEVATION = {
   "high-contrast": { 0: "none", 1: "none", 2: "0 0 0 1px #ffffff", 3: "0 0 0 2px #ffffff" },
 } as const;
 
-/** The shell geometry of AFW-A01..A08 (px, the pt of the spec). PX-143 moves the top bar to 48 and the list default to 264 (DR-PX-2026-10-24-016 section 5.3). */
+/** The shell geometry of AFW-A01..A08 (px, the pt of the spec). the top bar (48) and the list default (264) are ZCode's header and sidebar (DR-PX-2026-10-24-016 section 5.3). */
 export const GEOMETRY = {
-  topBar: 40,
-  listDefault: 260,
+  topBar: 48,
+  listDefault: 264,
   listMin: 210,
   listMax: 400,
   rail: 40,

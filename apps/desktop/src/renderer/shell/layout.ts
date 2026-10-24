@@ -1,7 +1,7 @@
 /**
  * Shell geometry (AFW-A01..A09), pure: the container width and the persisted
  * preferences give the three regions' widths. The agent list is 210..400 px
- * (default 260); the centre never narrows below 424; the apps panel is a
+ * (default 264); the centre never narrows below 424; the apps panel is a
  * persisted ratio of the window width clamped to keep the centre at 424 and
  * itself at 384 or more; below a 448 centre the shell is single-pane with the
  * agent list on a 40 px rail; when the panel is open but cannot sit beside a
