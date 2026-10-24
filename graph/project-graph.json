@@ -42027,8 +42027,13 @@
    "subsystem": "governance",
    "source": "docs/97_DOSSIER_MAINTENANCE_LOG.md",
    "acceptance": "Decision Record, its rows, specification, supersession entries and change record added; implementation audit recorded; full integrity gate passes; the record is accepted by the owner and its status and approval are recorded; no product proof",
-   "status": "NOT_STARTED",
-   "evidence": []
+   "status": "COMPLETE",
+   "evidence": [
+    "artifact:evidence/dossier-px-015/validation.json",
+    "artifact:evidence/dossier-px-015/tests.log",
+    "commit:437419a8e81bc76a52c7ef1b72dccb48e357941f"
+   ],
+   "status_changed_on": "2026-10-24T16:17:38Z"
   },
   {
    "id": "ALPHA",

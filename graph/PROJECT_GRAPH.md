@@ -383,7 +383,7 @@ flowchart LR
 - `DOC-PX-012`: REAL_TESTING; Product extension stage: Desktop shell platform integration, PX-094..098; evidence: artifact:evidence/dossier-px-007/validation.json, artifact:evidence/dossier-px-007/tests.log
 - `DOC-PX-013`: COMPLETE; Product extension stage: Audit-driven capability completion, PX-099..139; evidence: artifact:evidence/dossier-px-013/validation.json, artifact:evidence/dossier-px-013/tests.log, commit:89fea27edcde3810a92acd5f033ecd80f83785e8
 - `DOC-PX-014`: NOT_STARTED; Product extension stage: Per-task harness refinement and lesson library, PX-140 (deferred); evidence: none
-- `DOC-PX-015`: NOT_STARTED; Product extension stage: ZCode design language for the desktop renderer, PX-141..143; evidence: none
+- `DOC-PX-015`: COMPLETE; Product extension stage: ZCode design language for the desktop renderer, PX-141..143; evidence: artifact:evidence/dossier-px-015/validation.json, artifact:evidence/dossier-px-015/tests.log, commit:437419a8e81bc76a52c7ef1b72dccb48e357941f
 
 ## Milestone tasks in execution order
 
