@@ -38194,8 +38194,14 @@
    ],
    "task_card": "docs/62_PRODUCT_EXTENSION_REQUIREMENTS_TASKS_AND_QUALIFICATIONS.md#px-141",
    "audit_at_adoption": "DOCUMENTED-ONLY; no product caller present",
-   "status": "NOT_STARTED",
-   "evidence": []
+   "status": "REAL_TESTING",
+   "evidence": [
+    "artifact:evidence/m10/PX-141/evidence.json",
+    "artifact:evidence/m10/PX-141/mutation-check.txt",
+    "test:apps/desktop/e2e/zdl-tokens.spec.ts",
+    "test:packages/design-tokens/src/design-language.test.ts"
+   ],
+   "status_changed_on": "2026-10-24T16:29:43Z"
   },
   {
    "id": "PX-142",

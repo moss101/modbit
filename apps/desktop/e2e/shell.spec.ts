@@ -13,7 +13,11 @@ import { mkdtempSync } from "node:fs";
 import { createServer } from "node:http";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
+import { PALETTES } from "../../../packages/design-tokens/src/index.ts";
 import { accessible, box, closeApp, focusedTestId, launch, liftMinimumSize, makeRepo, MOD, scriptedModel, setContentSize } from "./support/ui-harness.ts";
+
+/** `#rrggbb` as the browser reports a computed colour. The window-root colour of each theme is read from the one token source (DR-PX-2026-10-24-016 changed the palette). */
+const rgb = (hex: string) => `rgb(${parseInt(hex.slice(1, 3), 16)}, ${parseInt(hex.slice(3, 5), 16)}, ${parseInt(hex.slice(5, 7), 16)})`;
 
 const near = (actual: number, expected: number, tol: number, what: string) => expect(Math.abs(actual - expected), `${what}: ${actual} vs ${expected}`).toBeLessThanOrEqual(tol);
 
@@ -301,10 +305,10 @@ test("PX-044/045: themes, high contrast and reduced motion; the primary button m
     await page.keyboard.press("Enter");
     await expect(page.locator("html")).not.toHaveAttribute("data-theme", /.+/);
     await page.emulateMedia({ colorScheme: "dark" });
-    await expect.poll(() => page.evaluate(() => getComputedStyle(document.body).backgroundColor)).toBe("rgb(18, 20, 26)");
+    await expect.poll(() => page.evaluate(() => getComputedStyle(document.body).backgroundColor)).toBe(rgb(PALETTES.dark.bg));
     await accessible(page, "fleet following a dark system");
     await page.emulateMedia({ colorScheme: "light" });
-    await expect.poll(() => page.evaluate(() => getComputedStyle(document.body).backgroundColor)).toBe("rgb(243, 244, 247)");
+    await expect.poll(() => page.evaluate(() => getComputedStyle(document.body).backgroundColor)).toBe(rgb(PALETTES.light.bg));
 
     // Reduced motion: no transition or animation runs.
     const motion = () => page.evaluate(() => {

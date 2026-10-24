@@ -45,3 +45,23 @@ export const PROBE_SRC = `(sel, rootSel) => {
   }
   return out;
 }`;
+
+// Canonicalises custom-property colours: (names) => { "--color-x": [r, g, b, a] }. The same function reads ZCode's capture and Modbit's
+// build (apps/desktop/e2e), so equal declarations always compare equal and a real difference never hides in the conversion.
+export const TOKENS_SRC = `(names) => {
+  const cv = document.createElement("canvas"); cv.width = cv.height = 1;
+  const cx = cv.getContext("2d", { willReadFrequently: true });
+  const px = (c, bg) => { cx.clearRect(0, 0, 1, 1); cx.fillStyle = bg; cx.fillRect(0, 0, 1, 1); cx.fillStyle = c; cx.fillRect(0, 0, 1, 1); return cx.getImageData(0, 0, 1, 1).data; };
+  const probe = document.createElement("div"); document.body.appendChild(probe);
+  const o = {};
+  for (const n of names) {
+    probe.style.color = "var(" + n + ")";
+    const c = getComputedStyle(probe).color;
+    if (!c) continue;
+    const w = px(c, "#fff"), b = px(c, "#000");
+    const a = Math.max(0, Math.min(1, 1 - (w[0] - b[0]) / 255));
+    o[n] = a < 0.004 ? [0, 0, 0, 0] : [Math.round(b[0] / a), Math.round(b[1] / a), Math.round(b[2] / a), Math.round(a * 1000) / 1000];
+  }
+  probe.remove();
+  return o;
+}`;

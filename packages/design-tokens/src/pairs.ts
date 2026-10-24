@@ -31,12 +31,14 @@ function build(): Pair[] {
     pairs.push({ fg: "text", bg, min: 4.5, use: "body text" });
     pairs.push({ fg: "textMuted", bg, min: 4.5, use: "secondary text" });
     pairs.push({ fg: "accentText", bg, min: 4.5, use: "links and accent text" });
+    pairs.push({ fg: "iconMuted", bg, min: 3, use: "muted icons and chevrons (ZDX-01: never text)" });
   }
   for (const bg of SURFACES) {
     for (const fg of ["ok", "warn", "danger", "info", "modeAsk", "modePlan", "modeDebug", "modeMultitask"] as ColorRole[]) pairs.push({ fg, bg, min: 4.5, use: "status and mode text and icons" });
     pairs.push({ fg: "borderControl", bg, min: 3, use: "control edge" });
     pairs.push({ fg: "focus", bg, min: 3, use: "focus ring" });
     pairs.push({ fg: "accent", bg, min: 3, use: "solid accent control against its surface" });
+    pairs.push({ fg: "dangerSolid", bg, min: 3, use: "solid destructive control against its surface" });
   }
   pairs.push({ fg: "focus", bg: "selected", min: 3, use: "focus ring on a selected row" });
   pairs.push({ fg: "borderControl", bg: "selected", min: 3, use: "control edge on a selected row" });
@@ -45,6 +47,7 @@ function build(): Pair[] {
     pairs.push({ fg: "text", bg, min: 4.5, use: "body text on a status tint" });
     pairs.push({ fg: "textMuted", bg, min: 4.5, use: "secondary text on a status tint" });
   }
+  pairs.push({ fg: "textOnDangerSolid", bg: "dangerSolid", min: 4.5, use: "destructive button label (ZDX-05)" });
   pairs.push({ fg: "textOnAccent", bg: "accent", min: 4.5, use: "primary button label" });
   pairs.push({ fg: "textOnAccent", bg: "accentHover", min: 4.5, use: "primary button label, hovered" });
   pairs.push({ fg: "textOnInverse", bg: "inverse", min: 4.5, use: "tooltip and inverse chip text" });
