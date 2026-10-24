@@ -2325,8 +2325,8 @@
     },
     {
       "path": "evidence/m10/PX-142/evidence.json",
-      "bytes": 1201,
-      "sha256": "ff688a5c42d640bc75f7b047fadb87836581eedab92fda481b254bbeda503204"
+      "bytes": 1305,
+      "sha256": "5d1380b5262c9f4eb22771bd007c250b0d86e682c92413b2c37458442abc9644"
     },
     {
       "path": "evidence/m10/PX-142/fidelity-report.json",
@@ -2425,8 +2425,8 @@
     },
     {
       "path": "evidence/m10/PX-143/evidence.json",
-      "bytes": 1032,
-      "sha256": "feafd34f6fb6941023673b8b6909831f021b895a26d9abaeb0b838f85bcc2934"
+      "bytes": 1136,
+      "sha256": "e5ef375198ad611a1ee817da3e83185381261509054ea21809b44c0d057c3e55"
     },
     {
       "path": "evidence/m2/IMP-EV-0011/TASK_CARD.md",

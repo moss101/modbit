@@ -408,7 +408,7 @@ A dossier package is valid only if every path below exists with the listed SHA-2
 | `evidence/m10/PX-141/evidence.json` | retained evidence | 1420 | `226d5726b09d1468f62364a50307ffd206de571409043607d055e6008e346488` |
 | `evidence/m10/PX-141/mutation-check.txt` | retained evidence | 4215 | `d9f45abdc83a7c45d139468c5e543db812d368bb6f1be8822950b3399928211b` |
 | `evidence/m10/PX-142/TASK_CARD.md` | retained evidence | 2727 | `05f5cdeca32d639392e186c5c367783caa4be3d0c55e6b3789db046ecd8e8f80` |
-| `evidence/m10/PX-142/evidence.json` | retained evidence | 1201 | `ff688a5c42d640bc75f7b047fadb87836581eedab92fda481b254bbeda503204` |
+| `evidence/m10/PX-142/evidence.json` | retained evidence | 1305 | `5d1380b5262c9f4eb22771bd007c250b0d86e682c92413b2c37458442abc9644` |
 | `evidence/m10/PX-142/fidelity-report.json` | retained evidence | 25402 | `db7e6a9aaf15500563d45ab5445442b89dffb26a087270b7df5a0b08c2bc7776` |
 | `evidence/m10/PX-142/mutation-check.txt` | retained evidence | 7116 | `f1aa9b781a610a2acd075d7160278c3ab7f6bc4c79131c911be29f6094f588e0` |
 | `evidence/m10/PX-143/TASK_CARD.md` | retained evidence | 3033 | `7247242b62ad148ca97e2de6dfdacfb73e09dc73d9754cc3c5201d27122bcd66` |
@@ -428,7 +428,7 @@ A dossier package is valid only if every path below exists with the listed SHA-2
 | `evidence/m10/PX-143/before/gallery-primitives-light.png` | retained evidence | 94579 | `2a32859bf8236d3db4403a8550bcf820bf32d50fe718c33403266b42ba4a8d03` |
 | `evidence/m10/PX-143/before/gallery-shell-dark.png` | retained evidence | 74483 | `5d80ff39c46b40a8b6e8c65db651c82f84360be4c885b78d2ee8ef79a9d959eb` |
 | `evidence/m10/PX-143/before/gallery-shell-light.png` | retained evidence | 75940 | `103f2e2d0f8ce9320be4add68c012e93509d14c395cafc2c02b7a824a58a95fe` |
-| `evidence/m10/PX-143/evidence.json` | retained evidence | 1032 | `feafd34f6fb6941023673b8b6909831f021b895a26d9abaeb0b838f85bcc2934` |
+| `evidence/m10/PX-143/evidence.json` | retained evidence | 1136 | `e5ef375198ad611a1ee817da3e83185381261509054ea21809b44c0d057c3e55` |
 | `evidence/m2/IMP-EV-0011/TASK_CARD.md` | retained evidence | 1620 | `22a7ddc2c80526c5aba876366bfeb862fac72742059962c5ad19deb8239fb5d2` |
 | `evidence/m2/IMP-EV-0011/ci-run-34409173853-tests.log` | retained evidence | 80671 | `523c4dc423fa906a9c846d64d864d36c759cb9f98bd8f4e582600a39d7c14b05` |
 | `evidence/m2/IMP-EV-0011/ci-run-34409173853.json` | retained evidence | 36682 | `49f5cd98348f61290daeee2920913a705bc385ed441cf7a15a9d9a357ad2ebdf` |

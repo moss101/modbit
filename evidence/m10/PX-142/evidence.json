@@ -16,7 +16,7 @@
   "apps/desktop/e2e/checkpoints.spec.ts",
   "apps/desktop/e2e/conversation.spec.ts"
  ],
- "proof": "Local, macOS arm64, Electron 44.3.0: fidelity.spec.ts 3 of 3 (closed coverage over 9 reference sheets; every compared property of 128 elements in light and dark equals ZCode's real components except declared ZDX-01, 02, 03 and 05; 78 elements pixel-identical, worst interior mismatch 4.9 percent), six retained mutations each fail the gate (mutation-check.txt), comparator unit tests 4 of 4. The full desktop e2e suite ran 168 passed with two defects found and fixed (a vendor name in a CSS comment, the composer height) and rerun green.",
+ "proof": "Local, macOS arm64, Electron 44.3.0: fidelity.spec.ts 3 of 3 (closed coverage over 9 reference sheets; every compared property of 128 elements in light and dark equals ZCode's real components except declared ZDX-01, 02, 03 and 05; 78 elements pixel-identical, worst interior mismatch 4.9 percent), six retained mutations each fail the gate (mutation-check.txt), comparator unit tests 4 of 4. The full desktop e2e suite ran 168 passed with two defects found and fixed (a vendor name in a CSS comment, the composer height) and rerun green. Final full desktop e2e run on the committed tree b4748de1: 170 passed, exit 0 (macOS arm64, real Core).",
  "limitations": "Not E2E_PROVEN and not movable in the graph: PX-141 must be COMPLETE first (CI on Linux and Windows). The pixel comparison runs at device scale 2 only.",
  "runs": []
 }

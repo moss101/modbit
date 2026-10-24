@@ -15,7 +15,7 @@
   "apps/desktop/e2e/conversation.spec.ts",
   "apps/desktop/src/renderer/shell/shell.test.ts"
  ],
- "proof": "Local, macOS arm64: the whole desktop e2e suite against a real Core passes (168 of 170 on the first full run on this tree, the two failures being a vendor name in a CSS comment and the composer height, both fixed and rerun green); shell geometry 264/48 measured; axe clean in light, dark and high contrast on every gallery state and region after fixing three findings the new look produced; before and after screenshots retained.",
+ "proof": "Local, macOS arm64: the whole desktop e2e suite against a real Core passes (168 of 170 on the first full run on this tree, the two failures being a vendor name in a CSS comment and the composer height, both fixed and rerun green); shell geometry 264/48 measured; axe clean in light, dark and high contrast on every gallery state and region after fixing three findings the new look produced; before and after screenshots retained. Final full desktop e2e run on the committed tree b4748de1: 170 passed, exit 0 (macOS arm64, real Core).",
  "limitations": "Not movable in the graph until PX-142 is COMPLETE. Windows and Linux are CI-only. Window chrome and translucency belong to PX-094.",
  "runs": []
 }
