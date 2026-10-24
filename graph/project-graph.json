@@ -34931,8 +34931,18 @@
    ],
    "task_card": "docs/62_PRODUCT_EXTENSION_REQUIREMENTS_TASKS_AND_QUALIFICATIONS.md#px-048",
    "audit_at_adoption": "DOCUMENTED-ONLY; no product caller present",
-   "status": "NOT_STARTED",
-   "evidence": []
+   "status": "REAL_TESTING",
+   "evidence": [],
+   "notes": [
+    {
+     "at": "2026-10-24T11:42:14Z",
+     "from": "WIRED",
+     "to": "REAL_TESTING",
+     "note": "terminal scroll-back built (#132); user-terminal input policy, Windows exact line order and review of the preload pin remain open: evidence/m10/PX-048/TASK_CARD.md"
+    }
+   ],
+   "owner_agent": "claude",
+   "status_changed_on": "2026-10-24T11:42:14Z"
   },
   {
    "id": "PX-049",
