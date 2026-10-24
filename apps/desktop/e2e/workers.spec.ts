@@ -125,7 +125,7 @@ const BRIDGE_ALLOW_LIST = [
   // REQ-PX-048 (the Changes app): the Core's state beside the review bundle, revert, stage and Commit and push. Added on purpose; each is a typed request main validates (changes-ipc.ts).
   "changesState", "revertChanges", "stageChanges", "commitAndPush",
   // REQ-PX-048 (the apps panel): the terminal stream, the read-only Files app and the effect receipts. Added on purpose; each is a typed request main validates.
-  "terminalList", "terminalAttach", "terminalAck", "terminalDetach", "terminalInput", "terminalResize", "terminalWrite", "terminalKill", "onTerminalFrame", "listWorkspaceDir", "readWorkspaceFile", "effectReceipts",
+  "terminalList", "terminalAttach", "terminalAck", "terminalDetach", "terminalInput", "terminalResize", "terminalWrite", "terminalKill", "terminalHistory", "onTerminalFrame", "listWorkspaceDir", "readWorkspaceFile", "effectReceipts",
   // REQ-PX-054..056 (the composer): mode, preference, queue, interrupt, send behaviour, slash inventory, model variants and the side question. Added on purpose; each is one typed Core command or read that main validates (composer-ipc.ts).
   "composerPosture", "composerSetMode", "composerSetPreference", "composerVariants", "composerSlash", "composerQueue", "composerQueueInput", "composerEditQueued", "composerRemoveQueued", "composerReorderQueued", "composerSendNow", "composerInterrupt", "composerSendBehavior", "composerSetSendBehavior", "composerSideQuestion",
   // REQ-PX-057 / 058 / 060 / 062 (approval stack, run modes, context accounting, checkpoints). Added on purpose; each is a typed request main validates (control-ipc.ts, control-args.ts).

@@ -876,6 +876,7 @@ handle("terminal:input", (_e: IpcMainInvokeEvent, attachId: unknown, hold: unkno
 handle("terminal:resize", (_e: IpcMainInvokeEvent, attachId: unknown, rows: unknown, cols: unknown) => terminalHost.resize(requireHandle(attachId, "attach id"), requireDimension(rows, "rows"), requireDimension(cols, "cols")));
 handle("terminal:write", (_e: IpcMainInvokeEvent, attachId: unknown, data: unknown) => terminalHost.write(requireHandle(attachId, "attach id"), requireKeystrokes(data)));
 handle("terminal:kill", (_e: IpcMainInvokeEvent, sessionId: unknown, taskId: unknown, terminalId: unknown) => terminalHost.kill(requireSessionId(sessionId), requireTaskId(taskId), requireHandle(terminalId, "terminal id")));
+handle("terminal:history", (_e: IpcMainInvokeEvent, taskId: unknown, terminalId: unknown, from: unknown, to: unknown) => terminalHost.history(requireTaskId(taskId), requireHandle(terminalId, "terminal id"), requireCursor(from, "from"), requireCursor(to, "to")));
 handle("files:list", async (_e: IpcMainInvokeEvent, taskId: unknown, path: unknown) => {
   const l = await requireClient().listWorkspaceDir(requireTaskId(taskId), requireWorkspacePath(path ?? "", true));
   return {

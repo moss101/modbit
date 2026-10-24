@@ -130,6 +130,9 @@ export const shellCss = `
 .terminal-toolbar, .changes-head { display: flex; align-items: center; flex-wrap: wrap; gap: var(--mb-space-2); }
 .xterm-wrap { background: var(--mb-color-sunken); border: 1px solid var(--mb-color-border-control); border-radius: var(--mb-radius-3); padding: var(--mb-space-1); height: 320px; min-height: 160px; resize: vertical; overflow: hidden; }
 .xterm-host { height: 100%; }
+.terminal-history-pane { max-height: 200px; overflow: auto; background: var(--mb-color-sunken); border: 1px solid var(--mb-color-border-control); border-radius: var(--mb-radius-3); }
+.terminal-history-pane:focus-visible { outline: 2px solid var(--mb-color-accent); }
+.terminal-history-pane pre { margin: 0; padding: var(--mb-space-2); font: 12px/1.4 var(--mb-font-mono); white-space: pre-wrap; overflow-wrap: anywhere; }
 .xterm-wrap:focus-within { outline: 2px solid var(--mb-color-accent); }
 pre.codeview { margin: 0; padding: var(--mb-space-2); max-height: 50vh; overflow: auto; font: 12px/1.4 var(--mb-font-mono); background: var(--mb-color-sunken); border-radius: var(--mb-radius-3); }
 pre.codeview .add { background: var(--mb-color-ok-tint); color: var(--mb-color-text); }
