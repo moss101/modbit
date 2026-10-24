@@ -83,6 +83,7 @@ mod run_control;
 mod runtime;
 mod sandboxes;
 mod server;
+mod session_end;
 mod side;
 mod skills;
 mod slo;

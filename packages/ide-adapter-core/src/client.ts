@@ -89,6 +89,7 @@ import {
   UserPatchAppliedAckSchema,
   type UserPatchAppliedAck,
   GetCodeViewSchema,
+  EndSessionSchema,
   GetRecoveryReportSchema,
   GetReviewBundleSchema,
   GetContextInspectorSchema,
@@ -116,6 +117,7 @@ import {
   ListLanguagesSchema,
   IdSchema,
   RecoveryReportSchema,
+  SessionEndedViewSchema,
   ReviewBundleSchema,
   ReviewDecidedSchema,
   SessionCreatedSchema,
@@ -779,6 +781,23 @@ export class CoreClient {
     const ack = await this.command("ExportHandoff", payload, undefined, this.leases.get(sessionId), sessionId);
     const r = fromBinary(HandoffExportedSchema, ack.result);
     return { bundleDir: r.bundleDir, manifestHash: r.manifestHash, parts: r.parts };
+  }
+
+  /**
+   * REQ-PX-049: the person is quitting. The Core runs the session's
+   * `session_end` hooks to completion (each under its own timeout), journals
+   * every run, and records whether the running tasks resume on reopen. The
+   * answer lists each hook run, so the host can show a failure.
+   */
+  async endSession(sessionId: string, resumeOnReopen: boolean): Promise<{ hooks: { taskId: string; hook: string; outcome: string; durationMs: bigint; detail: string }[]; resumeTasks: string[]; offset: bigint }> {
+    const payload = toBinary(EndSessionSchema, create(EndSessionSchema, { sessionId: { value: unhex(sessionId) }, resumeOnReopen }));
+    const ack = await this.command("EndSession", payload, undefined, this.leases.get(sessionId), sessionId);
+    const r = fromBinary(SessionEndedViewSchema, ack.result);
+    return {
+      hooks: r.hooks.map((h) => ({ taskId: hex(h.taskId?.value ?? new Uint8Array()), hook: h.hook, outcome: h.outcome, durationMs: h.durationMs, detail: h.detail })),
+      resumeTasks: r.resumeTasks.map((t) => hex(t.value)),
+      offset: r.offset,
+    };
   }
 
   /** Explicit, scoped repository trust (docs/39 step 3). */

@@ -743,6 +743,16 @@ export declare type RecoveryReport = Message<"modbit.v1.RecoveryReport"> & {
    * @generated from field: uint64 recovery_ms = 10;
    */
   recoveryMs: bigint;
+
+  /**
+   * REQ-PX-049: tasks the person chose, when quitting, to have resumed the
+   * next time the app opens (the session's latest EndSession said so and no
+   * client has joined the session since). Recovery suspended them; resuming
+   * is the client's ordinary StartTask, so nothing runs without a provider.
+   *
+   * @generated from field: repeated modbit.v1.Id resume_requested_tasks = 11;
+   */
+  resumeRequestedTasks: Id[];
 };
 
 /**
@@ -7185,6 +7195,107 @@ export declare type HookListView = Message<"modbit.v1.HookListView"> & {
  * Use `create(HookListViewSchema)` to create a new message.
  */
 export declare const HookListViewSchema: GenMessage<HookListView>;
+
+/**
+ * REQ-PX-049: the person is quitting. The Core runs the session's session_end
+ * hooks to completion (each under its own timeout), journals every run on the
+ * task it ran for, and records the person's resume choice on the session log.
+ *
+ * @generated from message modbit.v1.EndSession
+ */
+export declare type EndSession = Message<"modbit.v1.EndSession"> & {
+  /**
+   * @generated from field: modbit.v1.Id session_id = 1;
+   */
+  sessionId?: Id | undefined;
+
+  /**
+   * resume the running tasks the next time the app opens
+   *
+   * @generated from field: bool resume_on_reopen = 2;
+   */
+  resumeOnReopen: boolean;
+};
+
+/**
+ * Describes the message modbit.v1.EndSession.
+ * Use `create(EndSessionSchema)` to create a new message.
+ */
+export declare const EndSessionSchema: GenMessage<EndSession>;
+
+/**
+ * @generated from message modbit.v1.SessionEndHookRun
+ */
+export declare type SessionEndHookRun = Message<"modbit.v1.SessionEndHookRun"> & {
+  /**
+   * the task whose log carries the HookInvoked entry
+   *
+   * @generated from field: modbit.v1.Id task_id = 1;
+   */
+  taskId?: Id | undefined;
+
+  /**
+   * "<source>/<name>"
+   *
+   * @generated from field: string hook = 2;
+   */
+  hook: string;
+
+  /**
+   * OK | DENIED | TIMEOUT | FAILED | MALFORMED | IGNORED | UNLOADED
+   *
+   * @generated from field: string outcome = 3;
+   */
+  outcome: string;
+
+  /**
+   * @generated from field: uint64 duration_ms = 4;
+   */
+  durationMs: bigint;
+
+  /**
+   * the hook's own reason, or why it failed
+   *
+   * @generated from field: string detail = 5;
+   */
+  detail: string;
+};
+
+/**
+ * Describes the message modbit.v1.SessionEndHookRun.
+ * Use `create(SessionEndHookRunSchema)` to create a new message.
+ */
+export declare const SessionEndHookRunSchema: GenMessage<SessionEndHookRun>;
+
+/**
+ * @generated from message modbit.v1.SessionEndedView
+ */
+export declare type SessionEndedView = Message<"modbit.v1.SessionEndedView"> & {
+  /**
+   * @generated from field: repeated modbit.v1.SessionEndHookRun hooks = 1;
+   */
+  hooks: SessionEndHookRun[];
+
+  /**
+   * the running tasks the choice applies to
+   *
+   * @generated from field: repeated modbit.v1.Id resume_tasks = 2;
+   */
+  resumeTasks: Id[];
+
+  /**
+   * of the SessionEnding record
+   *
+   * @generated from field: uint64 offset = 3;
+   */
+  offset: bigint;
+};
+
+/**
+ * Describes the message modbit.v1.SessionEndedView.
+ * Use `create(SessionEndedViewSchema)` to create a new message.
+ */
+export declare const SessionEndedViewSchema: GenMessage<SessionEndedView>;
 
 /**
  * @generated from message modbit.v1.TrustRepository
