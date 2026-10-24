@@ -7,8 +7,8 @@
   "scope_rule": "docs/*.md, root *.md except MANIFEST.md, docs/decisions/*.md, graph JSON/Markdown, tools/*.py, evidence payloads; manifests exclude themselves and transient caches",
   "counts": {
     "docs": 97,
-    "root_and_tooling": 1729,
-    "docs_bytes": 2148826
+    "root_and_tooling": 1754,
+    "docs_bytes": 2168935
   },
   "sections": [
     {
@@ -77,8 +77,8 @@
       "section": "authority",
       "section_title": "Authority and orientation",
       "title": "Authority, Decision Register, and Conflict Resolution",
-      "bytes": 26844,
-      "sha256": "c3ce98647a4dea3f9a34a52b8f73c49dd31db561aa4f53c26ae310a476b951cf"
+      "bytes": 28299,
+      "sha256": "0e33283674ca903e24fdafee19c9db7b07b6ec8df09af253b9ccf3f8b0d3fc5c"
     },
     {
       "path": "docs/03_ARCHITECTURAL_CONFLICTS_AND_SUPERSESSIONS.md",
@@ -599,8 +599,8 @@
       "section": "verification",
       "section_title": "Verification and testing",
       "title": "Product extension requirements, tasks and qualifications",
-      "bytes": 507523,
-      "sha256": "7cece47d9b5f43361ad0017557ded25177dcefeac02792e072e9f352e0bf0bb5"
+      "bytes": 523404,
+      "sha256": "bf11e3feddd00af5116f7c1038a3aec660ebedfc154323d519822b0774e09915"
     },
     {
       "path": "docs/63_AGENT_COMPETENCE_BENCHMARKS_AND_REGRESSION_SUITES.md",
@@ -626,8 +626,8 @@
       "section": "verification",
       "section_title": "Verification and testing",
       "title": "Agent-first workspace specification (clean-room)",
-      "bytes": 84940,
-      "sha256": "f5e4ac6c1d79cf835479be133b3d1e390cf8e1dc192ccc793bd1ab6ca75215da"
+      "bytes": 85635,
+      "sha256": "72bffb1bbb02e799fa812d372324660ce3e72dce924102c012a08449c5385f6e"
     },
     {
       "path": "docs/66_NATIVE_COMPUTER_CONTROL_SPECIFICATION.md",
@@ -914,8 +914,8 @@
       "section": "governance",
       "section_title": "Agent process and governance",
       "title": "Dossier maintenance log",
-      "bytes": 126337,
-      "sha256": "ce8937e53718bebd53180e612c6dda5da099c34c95ddc13198a56cb301147e76"
+      "bytes": 128415,
+      "sha256": "381746c537b579093f8fca850cdfde94977cc11b3f9434ea7786c18795ef7c9b"
     },
     {
       "path": "docs/98_BUILD_MANIFEST.md",
@@ -1089,9 +1089,14 @@
       "sha256": "31c6cddec03523b494e28e65ccfdad71b368763ef868784b6fdc42f571b3e1ec"
     },
     {
+      "path": "docs/decisions/DR-PX-2026-10-24-016-zcode-design-language.md",
+      "bytes": 20014,
+      "sha256": "74fbc1db80cf5039ce2ec494c004931f124cc9f43e9de1a6f696f02a361f60e6"
+    },
+    {
       "path": "docs/decisions/README.md",
-      "bytes": 7013,
-      "sha256": "88f49f9074586f07df58235f05b1e120dca8f8905f47073c4ad707cd31a62815"
+      "bytes": 7660,
+      "sha256": "d9664d27a91eccb9c2f671e14c6e0e8d9b27ccbccb06d1d809b24c24b34334e0"
     },
     {
       "path": "evidence/dossier-epr-v1.1/baseline.json",
@@ -1387,6 +1392,21 @@
       "path": "evidence/dossier-px-013/validation.json",
       "bytes": 5166,
       "sha256": "17ab2e446ae56506e6522b4905ff02fececd803dec75d2fa99f1edf76f4e15f3"
+    },
+    {
+      "path": "evidence/dossier-px-015/baseline.json",
+      "bytes": 20734,
+      "sha256": "d0d66a9a81c767fa48d5a123707de217ea582b78f94ac6c11fdf47d0c04d62fd"
+    },
+    {
+      "path": "evidence/dossier-px-015/tests.log",
+      "bytes": 7182,
+      "sha256": "4bb545b4094859b4074186a7a92dcc46b8026501acf9bba0bcf623aca225d321"
+    },
+    {
+      "path": "evidence/dossier-px-015/validation.json",
+      "bytes": 11427,
+      "sha256": "88e7aa03d2a0d8e59846bf4d0d1a3026fb1b8583d9d5d1d80d03a5e38dd66d1b"
     },
     {
       "path": "evidence/m0/IMP-EV-0208/TASK_CARD.md",
@@ -9509,19 +9529,124 @@
       "sha256": "61d514ff843ff8750fecb6fd7d4936bd84d3255b2e9d2e72cbbc32901de9d99e"
     },
     {
+      "path": "evidence/zcode-ui/reference/PROVENANCE.md",
+      "bytes": 1710,
+      "sha256": "e9f9da370c884daabebfd4ef33add0c438e57d55a869024d17d97ec5a30c1240"
+    },
+    {
+      "path": "evidence/zcode-ui/reference/alert-dialog-dark.png",
+      "bytes": 31457,
+      "sha256": "e5fdda70079e133fbb24bdd016779cf1bae46484806655d45e5cb6be2627241b"
+    },
+    {
+      "path": "evidence/zcode-ui/reference/alert-dialog-light.png",
+      "bytes": 37427,
+      "sha256": "89b5b0545e28d0ad90f97a5d8264c449dea64ac3e0e7f7abcddaeb32cd98a18d"
+    },
+    {
+      "path": "evidence/zcode-ui/reference/contrast-zai.txt",
+      "bytes": 5821,
+      "sha256": "6f82cc19ae8b5201825b3e1682aed7edfa8ed4a7e444a8f7e1fa9c92127a288c"
+    },
+    {
+      "path": "evidence/zcode-ui/reference/controls-dark.png",
+      "bytes": 165971,
+      "sha256": "77e3cee4c9f5146f76b2ae8854bdb39bfe787a19ff2149ed654f0e3f2741b4bb"
+    },
+    {
+      "path": "evidence/zcode-ui/reference/controls-light.png",
+      "bytes": 165345,
+      "sha256": "cb0da8ad8ec99ba4c93f512b64214e3dac2ca6185d20c728398eda4d1dcd8cfe"
+    },
+    {
+      "path": "evidence/zcode-ui/reference/dialog-dark.png",
+      "bytes": 36904,
+      "sha256": "6a9ba265f1f9a23c7dff217d633cea13d9d704451db61d047f6813db9bd8e064"
+    },
+    {
+      "path": "evidence/zcode-ui/reference/dialog-light.png",
+      "bytes": 37987,
+      "sha256": "0a7a5f458beb7e343315293ef843cccaf475b3e8ff408c00f027b390937e25fc"
+    },
+    {
+      "path": "evidence/zcode-ui/reference/menu-dark.png",
+      "bytes": 35898,
+      "sha256": "1e1387cc1764c4082e0339d368bba38a9625cd48e69f621f678f9508386d4027"
+    },
+    {
+      "path": "evidence/zcode-ui/reference/menu-light.png",
+      "bytes": 37328,
+      "sha256": "74c84fe366f2dbfbceb29f389b6c42781cfe1ff6a372cb6d1893a077d28a4572"
+    },
+    {
+      "path": "evidence/zcode-ui/reference/popover-dark.png",
+      "bytes": 29382,
+      "sha256": "ea4921a81773fa5008e3afb26c0ec6556530a356ee043b568fbeff3fb11055de"
+    },
+    {
+      "path": "evidence/zcode-ui/reference/popover-light.png",
+      "bytes": 29406,
+      "sha256": "1f7223c58aefb5b7ab08e626d52284de381b20a9e9655fa293cc5af723f68e75"
+    },
+    {
+      "path": "evidence/zcode-ui/reference/select-dark.png",
+      "bytes": 23904,
+      "sha256": "8b4ee70fa506f94775ae11bd8232e9f0bd1aba36009c20a6fa7d6c6f9dce1c22"
+    },
+    {
+      "path": "evidence/zcode-ui/reference/select-light.png",
+      "bytes": 24925,
+      "sha256": "b3ec984bfc0c766f5bcd3ac5166f8237954323c67aefd05bd8b014b85d6ec548"
+    },
+    {
+      "path": "evidence/zcode-ui/reference/toast-dark.png",
+      "bytes": 42372,
+      "sha256": "5f03070dc97f1c1f66d22d3e478e700689aeef92a62aacbde44ea798bf042d70"
+    },
+    {
+      "path": "evidence/zcode-ui/reference/toast-light.png",
+      "bytes": 47830,
+      "sha256": "67a4d5cdba97851d6ab2a7b3fd7d0b725bfca06259c86a031056bf02529dc7e0"
+    },
+    {
+      "path": "evidence/zcode-ui/reference/tooltip-dark.png",
+      "bytes": 21400,
+      "sha256": "b59a912f2d8cc28a1890963b314b439c5bc9a78664cbf1bf8e75bc264294e88d"
+    },
+    {
+      "path": "evidence/zcode-ui/reference/tooltip-light.png",
+      "bytes": 21231,
+      "sha256": "0647f9970265bccd690c675e96b6bd043f15ca682e47bb82db1510036c1b33cc"
+    },
+    {
+      "path": "evidence/zcode-ui/reference/zcode-colors-rgba.json",
+      "bytes": 18690,
+      "sha256": "76372c3edbcd50fe596d5e4b7fcd7991adab9686588ddc578a728afa24b4f028"
+    },
+    {
+      "path": "evidence/zcode-ui/reference/zcode-computed.json",
+      "bytes": 713453,
+      "sha256": "665545fcbfb42adbf692b6b86ab4d19c0656a40622ebe15eda06016ba913fd33"
+    },
+    {
+      "path": "evidence/zcode-ui/reference/zcode-tokens-resolved.json",
+      "bytes": 30635,
+      "sha256": "066725c00059a05d073fbcdac9a8d965eab05f05c1f5df16e654854ff3e22b91"
+    },
+    {
       "path": "graph/PROJECT_GRAPH.md",
-      "bytes": 45127,
-      "sha256": "db0e2bbf808ea498913f0c6541c0975e9215a5d1a863ca1bf87007809b2d2cf3"
+      "bytes": 45293,
+      "sha256": "fb6ba8319b9d146922530a8a2036a9df9f91f3e3b36c4c2300aec9a6f9d77ebe"
     },
     {
       "path": "graph/project-graph.json",
-      "bytes": 2264951,
-      "sha256": "4b401b8014946a57942d2b6b98693bc1eecf53575d92eca386f8c240a1e533ba"
+      "bytes": 2285561,
+      "sha256": "86b3db2342b1752011bd999fd55186906db4516a7b5ed00de885ca7af59fce7e"
     },
     {
       "path": "tools/build_graph.py",
-      "bytes": 62560,
-      "sha256": "7e491e47f2e89f8cad4827a72701b7849d4d628754417022c862dc9b21431061"
+      "bytes": 63093,
+      "sha256": "4dd5b677347b7f71655c36bedf8137ee94b6afeb0b5a13e4fe86a5bf71501b22"
     },
     {
       "path": "tools/build_manifest.py",
@@ -9570,8 +9695,8 @@
     },
     {
       "path": "tools/test_dossier.py",
-      "bytes": 70786,
-      "sha256": "77a6b811b6bb4199aac475e08054d6a22b94bc98c226dda6de86043fc93482a6"
+      "bytes": 73999,
+      "sha256": "91e1ffd09a9e3030d5574e171a1679d09dfd04b638f689efb042cb3164171adf"
     }
   ],
   "renames_v3_to_v3_1": {

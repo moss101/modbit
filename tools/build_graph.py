@@ -87,6 +87,9 @@ PX_PARITY = [
     # A DEFERRED row: no task, so no PX task is gated by the dossier task; the ledger doc is the specification and the record holds the activation text.
     ("DR-PX-2026-10-19-014", "DOC-PX-014", 140, 140, "62_PRODUCT_EXTENSION_REQUIREMENTS_TASKS_AND_QUALIFICATIONS.md", "Per-task harness refinement and lesson library, PX-140 (deferred)",
      "Proposed: REQ-PX-140, DEFERRED and POST_ZERO; per-task Propose-Probe-Compose harness refinement as an extension of Skill Evolution, default off"),
+    # A presentation change over the existing owner `desktop`; the record is the specification (its section 5), doc 65 carries the scoped supersession note.
+    ("DR-PX-2026-10-24-016", "DOC-PX-015", 141, 143, "65_AGENT_FIRST_WORKSPACE_SPECIFICATION.md", "ZCode design language for the desktop renderer, PX-141..143",
+     "Proposed: PX-141..143, the ZCode design language (Apache-2.0) for the desktop renderer with a measured fidelity gate, declared AFW-A12 exceptions and a scoped supersession of AFW-A03, A04, A05, A07 and A11"),
 ]
 
 

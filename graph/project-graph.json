@@ -30143,6 +30143,13 @@
    "source": "docs/97_DOSSIER_MAINTENANCE_LOG.md"
   },
   {
+   "id": "DR-PX-2026-10-24-016",
+   "type": "change_record",
+   "title": "Approved: PX-141..143, the ZCode design language (Apache-2.0) for the desktop renderer with a measured fidelity gate, declared AFW-A12 exceptions and a scoped supersession of AFW-A03, A04, A05, A07 and A11",
+   "status": "APPROVED",
+   "source": "docs/97_DOSSIER_MAINTENANCE_LOG.md"
+  },
+  {
    "id": "REQ-PX-000",
    "type": "requirement",
    "title": "Headless CLI thin client for the task lifecycle",
@@ -30738,7 +30745,7 @@
    "qual": "QUAL-PX-045",
    "release": "RELEASE_ZERO",
    "source": "docs/62_PRODUCT_EXTENSION_REQUIREMENTS_TASKS_AND_QUALIFICATIONS.md",
-   "mandatory_behavior": "Playwright on the packaged app and a real Core at 1280 x 800, 1000 x 700 and 900 x 600: at 1280 the agent list is 260 pt (within 2 pt), the top bar 40 pt, the centre pane at least 424 pt with the panel open and the panel at least 384 pt; dragging the divider respects 210 to 400 pt; below 448 pt the single-pane mode and rail appear; layout survives an app restart; the palette finds a task by title and a setting; every shortcut of the registry fires its command and none collides; the six PX-023 screen states still render with cause and next action."
+   "mandatory_behavior": "Playwright on the packaged app and a real Core at 1280 x 800, 1000 x 700 and 900 x 600: at 1280 the agent list is 264 px (within 2 px; 260 pt before DR-PX-2026-10-24-016), the top bar 48 px (40 pt before it), the centre pane at least 424 pt with the panel open and the panel at least 384 pt; dragging the divider respects 210 to 400 pt; below 448 pt the single-pane mode and rail appear; layout survives an app restart; the palette finds a task by title and a setting; every shortcut of the registry fires its command and none collides; the six PX-023 screen states still render with cause and next action."
   },
   {
    "id": "REQ-PX-046",
@@ -31974,6 +31981,45 @@
    "release": "POST_ZERO",
    "source": "docs/62_PRODUCT_EXTENSION_REQUIREMENTS_TASKS_AND_QUALIFICATIONS.md",
    "mandatory_behavior": "Deferred proof, entry condition and not a current proof: on a fixture task the base harness fails, a default-off refinement run with k=1 executes base, two candidates and one composition with the real Core, forked worktrees and the live compatible gateway; the ledger shows four rollouts and three improver sessions; the selected candidate passes the real verification run and the Acceptance Gate; an overlay that edits a guardrail, a capability ceiling or a verification contract is rejected whole; a probe that attempts a push, a network write or a credential read is denied by the real kernel; planted hidden-test or rubric content in the evidence tree stops the run before any improver session; a killed and restarted Core leaves no applied overlay and no orphan worktree; the recorded cost equals the EPR-010 record; library lessons reach no production prompt. Activation also needs a paired comparison with the base harness on the doc 63 suite, with intervals and a cost ratio and no safety regression. The full text is in DR-PX-2026-10-19-014."
+  },
+  {
+   "id": "REQ-PX-141",
+   "type": "requirement",
+   "title": "ZCode design tokens: Zai Light and Zai Dark, type scale, radius, elevation and motion, with the retained reference capture and the declared accessibility exceptions",
+   "disposition": "ADOPT",
+   "subsystem": "desktop",
+   "owner_label": "desktop",
+   "imp": "PX-141",
+   "qual": "QUAL-PX-141",
+   "release": "RELEASE_ZERO",
+   "source": "docs/62_PRODUCT_EXTENSION_REQUIREMENTS_TASKS_AND_QUALIFICATIONS.md",
+   "mandatory_behavior": "The real Electron app, built from the tree, in both Zai themes: the emitted custom properties, resolved by the browser to canonical sRGB with alpha, equal the retained ZCode capture for every colour token the renderer uses, except the declared exceptions ZDX-01..09, each of which names its AFW-A12 pair and measured ratio; the computed contrast test (alpha-aware, over the surface each translucent token sits on) and the packaged axe suite pass in light, dark and high contrast; the persisted theme preference, `data-theme` values and the high-contrast palette are unchanged; the shipped notices carry the Apache-2.0 and ISC texts and the upstream revision, and the bundle contains no ZCode, Z.ai or Zai name, logo or mark outside the attribution lines."
+  },
+  {
+   "id": "REQ-PX-142",
+   "type": "requirement",
+   "title": "Primitive restyle to the ZCode recipes with a fidelity gate over computed style, geometry and pixels against the reference capture",
+   "disposition": "ADOPT",
+   "subsystem": "desktop",
+   "owner_label": "desktop",
+   "imp": "PX-142",
+   "qual": "QUAL-PX-142",
+   "release": "RELEASE_ZERO",
+   "source": "docs/62_PRODUCT_EXTENSION_REQUIREMENTS_TASKS_AND_QUALIFICATIONS.md",
+   "mandatory_behavior": "The real Electron app and the model-free state gallery's specimen sheets against the retained capture of ZCode's real primitives in light and dark: for every specimen key the computed colour, border, radius, font, spacing, height, width, shadow and opacity equal the capture within the recorded tolerances except declared exceptions, and the per-specimen pixel difference is under the recorded bound; every primitive keeps its role, accessible name, test id and keyboard path, focus is a visible 2 px ring, the tray host keeps one active tray, and reduced motion collapses every transition; the packaged axe suite passes on every state in three themes; the whole desktop e2e suite still passes against a real Core."
+  },
+  {
+   "id": "REQ-PX-143",
+   "type": "requirement",
+   "title": "Shell, conversation, composer and remaining screens in the ZCode panel language, with the Lucide icon set and the geometry of the superseding record",
+   "disposition": "ADOPT",
+   "subsystem": "desktop",
+   "owner_label": "desktop",
+   "imp": "PX-143",
+   "qual": "QUAL-PX-143",
+   "release": "RELEASE_ZERO",
+   "source": "docs/62_PRODUCT_EXTENSION_REQUIREMENTS_TASKS_AND_QUALIFICATIONS.md",
+   "mandatory_behavior": "The real Electron app against a real Core and a scripted model at 1280 x 800, 1000 x 700 and 900 x 600 in light and dark: the shell is independent framed panels with the geometry of the record (agent list 264 px within 2 px, header 48 px, 4 px gaps, panel radius 12 px, resize indicator 2 px), the centre keeps 424 pt, Fleet, conversation rows (user, assistant, tool and diff cards, approval deck, checkpoints), the composer and its trays, Review, Settings, dialogs and the palette render in the ZCode language with every role, name and test id unchanged; the Lucide table covers every icon the renderer draws and no icon has lost its accessible name; the whole desktop e2e suite passes with only the geometry assertions of the record replaced; axe passes on every region in three themes; before and after screenshots of every screen are retained as the supplemental record."
   },
   {
    "id": "PX-000",
@@ -34829,7 +34875,7 @@
    "release": "RELEASE_ZERO",
    "disposition": "ADOPT",
    "source": "docs/62_PRODUCT_EXTENSION_REQUIREMENTS_TASKS_AND_QUALIFICATIONS.md",
-   "acceptance": "Playwright on the packaged app and a real Core at 1280 x 800, 1000 x 700 and 900 x 600: at 1280 the agent list is 260 pt (within 2 pt), the top bar 40 pt, the centre pane at least 424 pt with the panel open and the panel at least 384 pt; dragging the divider respects 210 to 400 pt; below 448 pt the single-pane mode and rail appear; layout survives an app restart; the palette finds a task by title and a setting; every shortcut of the registry fires its command and none collides; the six PX-023 screen states still render with cause and next action.",
+   "acceptance": "Playwright on the packaged app and a real Core at 1280 x 800, 1000 x 700 and 900 x 600: at 1280 the agent list is 264 px (within 2 px; 260 pt before DR-PX-2026-10-24-016), the top bar 48 px (40 pt before it), the centre pane at least 424 pt with the panel open and the panel at least 384 pt; dragging the divider respects 210 to 400 pt; below 448 pt the single-pane mode and rail appear; layout survives an app restart; the palette finds a task by title and a setting; every shortcut of the registry fires its command and none collides; the six PX-023 screen states still render with cause and next action.",
    "prerequisites": [
     "M6.6",
     "PX-024",
@@ -38126,6 +38172,84 @@
    "evidence": []
   },
   {
+   "id": "PX-141",
+   "type": "imp_task",
+   "title": "ZCode design tokens: Zai Light and Zai Dark, type scale, radius, elevation and motion, with the retained reference capture and the declared accessibility exceptions",
+   "requirement": "REQ-PX-141",
+   "qual": "QUAL-PX-141",
+   "subsystem": "desktop",
+   "owner_label": "desktop",
+   "milestone": "M10",
+   "release": "RELEASE_ZERO",
+   "disposition": "ADOPT",
+   "source": "docs/62_PRODUCT_EXTENSION_REQUIREMENTS_TASKS_AND_QUALIFICATIONS.md",
+   "acceptance": "The real Electron app, built from the tree, in both Zai themes: the emitted custom properties, resolved by the browser to canonical sRGB with alpha, equal the retained ZCode capture for every colour token the renderer uses, except the declared exceptions ZDX-01..09, each of which names its AFW-A12 pair and measured ratio; the computed contrast test (alpha-aware, over the surface each translucent token sits on) and the packaged axe suite pass in light, dark and high contrast; the persisted theme preference, `data-theme` values and the high-contrast palette are unchanged; the shipped notices carry the Apache-2.0 and ISC texts and the upstream revision, and the bundle contains no ZCode, Z.ai or Zai name, logo or mark outside the attribution lines.",
+   "prerequisites": [
+    "PX-044",
+    "PX-045",
+    "DOC-PX-015"
+   ],
+   "related_requirements": [
+    "REQ-EV-0037"
+   ],
+   "task_card": "docs/62_PRODUCT_EXTENSION_REQUIREMENTS_TASKS_AND_QUALIFICATIONS.md#px-141",
+   "audit_at_adoption": "DOCUMENTED-ONLY; no product caller present",
+   "status": "NOT_STARTED",
+   "evidence": []
+  },
+  {
+   "id": "PX-142",
+   "type": "imp_task",
+   "title": "Primitive restyle to the ZCode recipes with a fidelity gate over computed style, geometry and pixels against the reference capture",
+   "requirement": "REQ-PX-142",
+   "qual": "QUAL-PX-142",
+   "subsystem": "desktop",
+   "owner_label": "desktop",
+   "milestone": "M10",
+   "release": "RELEASE_ZERO",
+   "disposition": "ADOPT",
+   "source": "docs/62_PRODUCT_EXTENSION_REQUIREMENTS_TASKS_AND_QUALIFICATIONS.md",
+   "acceptance": "The real Electron app and the model-free state gallery's specimen sheets against the retained capture of ZCode's real primitives in light and dark: for every specimen key the computed colour, border, radius, font, spacing, height, width, shadow and opacity equal the capture within the recorded tolerances except declared exceptions, and the per-specimen pixel difference is under the recorded bound; every primitive keeps its role, accessible name, test id and keyboard path, focus is a visible 2 px ring, the tray host keeps one active tray, and reduced motion collapses every transition; the packaged axe suite passes on every state in three themes; the whole desktop e2e suite still passes against a real Core.",
+   "prerequisites": [
+    "PX-141",
+    "DOC-PX-015"
+   ],
+   "related_requirements": [
+    "REQ-EV-0037"
+   ],
+   "task_card": "docs/62_PRODUCT_EXTENSION_REQUIREMENTS_TASKS_AND_QUALIFICATIONS.md#px-142",
+   "audit_at_adoption": "DOCUMENTED-ONLY; no product caller present",
+   "status": "NOT_STARTED",
+   "evidence": []
+  },
+  {
+   "id": "PX-143",
+   "type": "imp_task",
+   "title": "Shell, conversation, composer and remaining screens in the ZCode panel language, with the Lucide icon set and the geometry of the superseding record",
+   "requirement": "REQ-PX-143",
+   "qual": "QUAL-PX-143",
+   "subsystem": "desktop",
+   "owner_label": "desktop",
+   "milestone": "M10",
+   "release": "RELEASE_ZERO",
+   "disposition": "ADOPT",
+   "source": "docs/62_PRODUCT_EXTENSION_REQUIREMENTS_TASKS_AND_QUALIFICATIONS.md",
+   "acceptance": "The real Electron app against a real Core and a scripted model at 1280 x 800, 1000 x 700 and 900 x 600 in light and dark: the shell is independent framed panels with the geometry of the record (agent list 264 px within 2 px, header 48 px, 4 px gaps, panel radius 12 px, resize indicator 2 px), the centre keeps 424 pt, Fleet, conversation rows (user, assistant, tool and diff cards, approval deck, checkpoints), the composer and its trays, Review, Settings, dialogs and the palette render in the ZCode language with every role, name and test id unchanged; the Lucide table covers every icon the renderer draws and no icon has lost its accessible name; the whole desktop e2e suite passes with only the geometry assertions of the record replaced; axe passes on every region in three themes; before and after screenshots of every screen are retained as the supplemental record.",
+   "prerequisites": [
+    "PX-142",
+    "DOC-PX-015"
+   ],
+   "related_requirements": [
+    "REQ-EV-0037",
+    "REQ-EV-0143",
+    "REQ-EV-0151"
+   ],
+   "task_card": "docs/62_PRODUCT_EXTENSION_REQUIREMENTS_TASKS_AND_QUALIFICATIONS.md#px-143",
+   "audit_at_adoption": "DOCUMENTED-ONLY; no product caller present",
+   "status": "NOT_STARTED",
+   "evidence": []
+  },
+  {
    "id": "QUAL-PX-000",
    "type": "qual_test",
    "requirement": "REQ-PX-000",
@@ -38580,7 +38704,7 @@
    "type": "qual_test",
    "requirement": "REQ-PX-045",
    "owner_label": "desktop",
-   "title": "Playwright on the packaged app and a real Core at 1280 x 800, 1000 x 700 and 900 x 600: at 1280 the agent list is 260 pt (within 2 pt), the top bar 40 pt, the centre pane at least 424 pt with the panel open and the panel at least 384 pt; dragging the divider respects 210 to 400 pt; below 448 pt the single-pane mode and rail appear; layout survives an app restart; the palette finds a task by title and a setting; every shortcut of the registry fires its command and none collides; the six PX-023 screen states still render with cause and next action.",
+   "title": "Playwright on the packaged app and a real Core at 1280 x 800, 1000 x 700 and 900 x 600: at 1280 the agent list is 264 px (within 2 px; 260 pt before DR-PX-2026-10-24-016), the top bar 48 px (40 pt before it), the centre pane at least 424 pt with the panel open and the panel at least 384 pt; dragging the divider respects 210 to 400 pt; below 448 pt the single-pane mode and rail appear; layout survives an app restart; the palette finds a task by title and a setting; every shortcut of the registry fires its command and none collides; the six PX-023 screen states still render with cause and next action.",
    "failure_proof": "A shortcut registered twice fails the conflict test; a panel ratio that would push the centre under 424 pt is clamped; a layout preference written into task state fails the persistence check; a shell state with no keyboard path fails PX-024; opening Settings with a running task never stops or alters the task.",
    "evidence_class": "real-system or production-equivalent",
    "source": "docs/62_PRODUCT_EXTENSION_REQUIREMENTS_TASKS_AND_QUALIFICATIONS.md"
@@ -39532,6 +39656,36 @@
    "owner_label": "skills",
    "title": "Deferred proof, entry condition and not a current proof: on a fixture task the base harness fails, a default-off refinement run with k=1 executes base, two candidates and one composition with the real Core, forked worktrees and the live compatible gateway; the ledger shows four rollouts and three improver sessions; the selected candidate passes the real verification run and the Acceptance Gate; an overlay that edits a guardrail, a capability ceiling or a verification contract is rejected whole; a probe that attempts a push, a network write or a credential read is denied by the real kernel; planted hidden-test or rubric content in the evidence tree stops the run before any improver session; a killed and restarted Core leaves no applied overlay and no orphan worktree; the recorded cost equals the EPR-010 record; library lessons reach no production prompt. Activation also needs a paired comparison with the base harness on the doc 63 suite, with intervals and a cost ratio and no safety regression. The full text is in DR-PX-2026-10-19-014.",
    "failure_proof": "Deferred; not on the RELEASE_ZERO path. When activated: an overlay outside the closed surface being applied, a probe effect that is not denied, benchmark-leak content reaching an improver, a broken R = 4k or P = 3k ledger, cost missing from the single record, a library entry in a production prompt or a half-applied overlay after a kill fails the suite.",
+   "evidence_class": "real-system or production-equivalent",
+   "source": "docs/62_PRODUCT_EXTENSION_REQUIREMENTS_TASKS_AND_QUALIFICATIONS.md"
+  },
+  {
+   "id": "QUAL-PX-141",
+   "type": "qual_test",
+   "requirement": "REQ-PX-141",
+   "owner_label": "desktop",
+   "title": "The real Electron app, built from the tree, in both Zai themes: the emitted custom properties, resolved by the browser to canonical sRGB with alpha, equal the retained ZCode capture for every colour token the renderer uses, except the declared exceptions ZDX-01..09, each of which names its AFW-A12 pair and measured ratio; the computed contrast test (alpha-aware, over the surface each translucent token sits on) and the packaged axe suite pass in light, dark and high contrast; the persisted theme preference, `data-theme` values and the high-contrast palette are unchanged; the shipped notices carry the Apache-2.0 and ISC texts and the upstream revision, and the bundle contains no ZCode, Z.ai or Zai name, logo or mark outside the attribution lines.",
+   "failure_proof": "A token that differs from the capture and is not a declared exception, a declared exception that no longer differs, a pair below its ratio, an exception without a measured pair, a missing licence text or a vendor mark in the bundle fails the suite; a mutation that changes one reference-equal token by one channel must fail the parity gate.",
+   "evidence_class": "real-system or production-equivalent",
+   "source": "docs/62_PRODUCT_EXTENSION_REQUIREMENTS_TASKS_AND_QUALIFICATIONS.md"
+  },
+  {
+   "id": "QUAL-PX-142",
+   "type": "qual_test",
+   "requirement": "REQ-PX-142",
+   "owner_label": "desktop",
+   "title": "The real Electron app and the model-free state gallery's specimen sheets against the retained capture of ZCode's real primitives in light and dark: for every specimen key the computed colour, border, radius, font, spacing, height, width, shadow and opacity equal the capture within the recorded tolerances except declared exceptions, and the per-specimen pixel difference is under the recorded bound; every primitive keeps its role, accessible name, test id and keyboard path, focus is a visible 2 px ring, the tray host keeps one active tray, and reduced motion collapses every transition; the packaged axe suite passes on every state in three themes; the whole desktop e2e suite still passes against a real Core.",
+   "failure_proof": "A specimen outside tolerance, an undeclared deviation, a primitive that lost a role, name or key, focus suppression, or a gate that cannot fail fails the suite; a mutation that changes one radius, one colour and one font size must each fail the gate and be retained; a gallery or screenshot counted as proof fails check G11.",
+   "evidence_class": "real-system or production-equivalent",
+   "source": "docs/62_PRODUCT_EXTENSION_REQUIREMENTS_TASKS_AND_QUALIFICATIONS.md"
+  },
+  {
+   "id": "QUAL-PX-143",
+   "type": "qual_test",
+   "requirement": "REQ-PX-143",
+   "owner_label": "desktop",
+   "title": "The real Electron app against a real Core and a scripted model at 1280 x 800, 1000 x 700 and 900 x 600 in light and dark: the shell is independent framed panels with the geometry of the record (agent list 264 px within 2 px, header 48 px, 4 px gaps, panel radius 12 px, resize indicator 2 px), the centre keeps 424 pt, Fleet, conversation rows (user, assistant, tool and diff cards, approval deck, checkpoints), the composer and its trays, Review, Settings, dialogs and the palette render in the ZCode language with every role, name and test id unchanged; the Lucide table covers every icon the renderer draws and no icon has lost its accessible name; the whole desktop e2e suite passes with only the geometry assertions of the record replaced; axe passes on every region in three themes; before and after screenshots of every screen are retained as the supplemental record.",
+   "failure_proof": "An assertion changed outside the record's geometry table, a region that loses a role or name, a layout that pushes the centre under 424 pt or adds horizontal scroll, an icon-only control with no accessible name, or a state shown by colour alone fails the suite; a mutation that restores the old 40 px bar must fail the geometry spec.",
    "evidence_class": "real-system or production-equivalent",
    "source": "docs/62_PRODUCT_EXTENSION_REQUIREMENTS_TASKS_AND_QUALIFICATIONS.md"
   },
@@ -40492,6 +40646,27 @@
    "type": "scenario",
    "kind": "px-e2e",
    "title": "OpenTelemetry export, child-cost rollup and persisted health",
+   "source": "docs/62_PRODUCT_EXTENSION_REQUIREMENTS_TASKS_AND_QUALIFICATIONS.md"
+  },
+  {
+   "id": "PX-E2E-141",
+   "type": "scenario",
+   "kind": "px-e2e",
+   "title": "ZCode design tokens: Zai Light and Zai Dark, type scale, radius, elevation and motion, with the retained reference capture and the declared accessibility exceptions",
+   "source": "docs/62_PRODUCT_EXTENSION_REQUIREMENTS_TASKS_AND_QUALIFICATIONS.md"
+  },
+  {
+   "id": "PX-E2E-142",
+   "type": "scenario",
+   "kind": "px-e2e",
+   "title": "Primitive restyle to the ZCode recipes with a fidelity gate over computed style, geometry and pixels against the reference capture",
+   "source": "docs/62_PRODUCT_EXTENSION_REQUIREMENTS_TASKS_AND_QUALIFICATIONS.md"
+  },
+  {
+   "id": "PX-E2E-143",
+   "type": "scenario",
+   "kind": "px-e2e",
+   "title": "Shell, conversation, composer and remaining screens in the ZCode panel language, with the Lucide icon set and the geometry of the superseding record",
    "source": "docs/62_PRODUCT_EXTENSION_REQUIREMENTS_TASKS_AND_QUALIFICATIONS.md"
   },
   {
@@ -41839,6 +42014,16 @@
    "id": "DOC-PX-014",
    "type": "dossier_task",
    "title": "Product extension stage: Per-task harness refinement and lesson library, PX-140 (deferred)",
+   "subsystem": "governance",
+   "source": "docs/97_DOSSIER_MAINTENANCE_LOG.md",
+   "acceptance": "Decision Record, its rows, specification, supersession entries and change record added; implementation audit recorded; full integrity gate passes; the record is accepted by the owner and its status and approval are recorded; no product proof",
+   "status": "NOT_STARTED",
+   "evidence": []
+  },
+  {
+   "id": "DOC-PX-015",
+   "type": "dossier_task",
+   "title": "Product extension stage: ZCode design language for the desktop renderer, PX-141..143",
    "subsystem": "governance",
    "source": "docs/97_DOSSIER_MAINTENANCE_LOG.md",
    "acceptance": "Decision Record, its rows, specification, supersession entries and change record added; implementation audit recorded; full integrity gate passes; the record is accepted by the owner and its status and approval are recorded; no product proof",
@@ -57522,6 +57707,21 @@
    "type": "refines"
   },
   {
+   "from": "DR-PX-2026-10-24-016",
+   "to": "97_DOSSIER_MAINTENANCE_LOG.md",
+   "type": "specified_by"
+  },
+  {
+   "from": "DR-PX-2026-10-24-016",
+   "to": "65_AGENT_FIRST_WORKSPACE_SPECIFICATION.md",
+   "type": "specified_by"
+  },
+  {
+   "from": "DR-PX-2026-10-24-016",
+   "to": "DR-PX-2026-09-05",
+   "type": "refines"
+  },
+  {
    "from": "REQ-PX-000",
    "to": "desktop",
    "type": "owned_by_req"
@@ -61570,6 +61770,96 @@
    "from": "REQ-PX-140",
    "to": "DR-PX-2026-10-19-014",
    "type": "authorized_by"
+  },
+  {
+   "from": "REQ-PX-141",
+   "to": "desktop",
+   "type": "owned_by_req"
+  },
+  {
+   "from": "REQ-PX-141",
+   "to": "QUAL-PX-141",
+   "type": "qualified_by"
+  },
+  {
+   "from": "REQ-PX-141",
+   "to": "62_PRODUCT_EXTENSION_REQUIREMENTS_TASKS_AND_QUALIFICATIONS.md",
+   "type": "specified_by"
+  },
+  {
+   "from": "REQ-PX-141",
+   "to": "DR-PX-2026-09-05",
+   "type": "authorized_by"
+  },
+  {
+   "from": "REQ-PX-141",
+   "to": "DR-PX-2026-10-24-016",
+   "type": "authorized_by"
+  },
+  {
+   "from": "REQ-PX-141",
+   "to": "PX-141",
+   "type": "implemented_by"
+  },
+  {
+   "from": "REQ-PX-142",
+   "to": "desktop",
+   "type": "owned_by_req"
+  },
+  {
+   "from": "REQ-PX-142",
+   "to": "QUAL-PX-142",
+   "type": "qualified_by"
+  },
+  {
+   "from": "REQ-PX-142",
+   "to": "62_PRODUCT_EXTENSION_REQUIREMENTS_TASKS_AND_QUALIFICATIONS.md",
+   "type": "specified_by"
+  },
+  {
+   "from": "REQ-PX-142",
+   "to": "DR-PX-2026-09-05",
+   "type": "authorized_by"
+  },
+  {
+   "from": "REQ-PX-142",
+   "to": "DR-PX-2026-10-24-016",
+   "type": "authorized_by"
+  },
+  {
+   "from": "REQ-PX-142",
+   "to": "PX-142",
+   "type": "implemented_by"
+  },
+  {
+   "from": "REQ-PX-143",
+   "to": "desktop",
+   "type": "owned_by_req"
+  },
+  {
+   "from": "REQ-PX-143",
+   "to": "QUAL-PX-143",
+   "type": "qualified_by"
+  },
+  {
+   "from": "REQ-PX-143",
+   "to": "62_PRODUCT_EXTENSION_REQUIREMENTS_TASKS_AND_QUALIFICATIONS.md",
+   "type": "specified_by"
+  },
+  {
+   "from": "REQ-PX-143",
+   "to": "DR-PX-2026-09-05",
+   "type": "authorized_by"
+  },
+  {
+   "from": "REQ-PX-143",
+   "to": "DR-PX-2026-10-24-016",
+   "type": "authorized_by"
+  },
+  {
+   "from": "REQ-PX-143",
+   "to": "PX-143",
+   "type": "implemented_by"
   },
   {
    "from": "PX-000",
@@ -70837,6 +71127,186 @@
    "type": "proves"
   },
   {
+   "from": "PX-141",
+   "to": "DR-PX-2026-09-05",
+   "type": "authorized_by"
+  },
+  {
+   "from": "PX-141",
+   "to": "DR-PX-2026-10-24-016",
+   "type": "authorized_by"
+  },
+  {
+   "from": "PX-141",
+   "to": "desktop",
+   "type": "owned_by"
+  },
+  {
+   "from": "PX-141",
+   "to": "M10",
+   "type": "scheduled_in"
+  },
+  {
+   "from": "PX-141",
+   "to": "QUAL-PX-141",
+   "type": "proven_by"
+  },
+  {
+   "from": "PX-141",
+   "to": "62_PRODUCT_EXTENSION_REQUIREMENTS_TASKS_AND_QUALIFICATIONS.md",
+   "type": "specified_by"
+  },
+  {
+   "from": "PX-141",
+   "to": "PX-044",
+   "type": "after"
+  },
+  {
+   "from": "PX-141",
+   "to": "PX-045",
+   "type": "after"
+  },
+  {
+   "from": "PX-141",
+   "to": "DOC-PX-015",
+   "type": "after"
+  },
+  {
+   "from": "REQ-PX-141",
+   "to": "REQ-EV-0037",
+   "type": "extends"
+  },
+  {
+   "from": "PX-141",
+   "to": "PX-E2E-141",
+   "type": "proven_by"
+  },
+  {
+   "from": "PX-E2E-141",
+   "to": "M10",
+   "type": "proves"
+  },
+  {
+   "from": "PX-142",
+   "to": "DR-PX-2026-09-05",
+   "type": "authorized_by"
+  },
+  {
+   "from": "PX-142",
+   "to": "DR-PX-2026-10-24-016",
+   "type": "authorized_by"
+  },
+  {
+   "from": "PX-142",
+   "to": "desktop",
+   "type": "owned_by"
+  },
+  {
+   "from": "PX-142",
+   "to": "M10",
+   "type": "scheduled_in"
+  },
+  {
+   "from": "PX-142",
+   "to": "QUAL-PX-142",
+   "type": "proven_by"
+  },
+  {
+   "from": "PX-142",
+   "to": "62_PRODUCT_EXTENSION_REQUIREMENTS_TASKS_AND_QUALIFICATIONS.md",
+   "type": "specified_by"
+  },
+  {
+   "from": "PX-142",
+   "to": "PX-141",
+   "type": "after"
+  },
+  {
+   "from": "PX-142",
+   "to": "DOC-PX-015",
+   "type": "after"
+  },
+  {
+   "from": "REQ-PX-142",
+   "to": "REQ-EV-0037",
+   "type": "extends"
+  },
+  {
+   "from": "PX-142",
+   "to": "PX-E2E-142",
+   "type": "proven_by"
+  },
+  {
+   "from": "PX-E2E-142",
+   "to": "M10",
+   "type": "proves"
+  },
+  {
+   "from": "PX-143",
+   "to": "DR-PX-2026-09-05",
+   "type": "authorized_by"
+  },
+  {
+   "from": "PX-143",
+   "to": "DR-PX-2026-10-24-016",
+   "type": "authorized_by"
+  },
+  {
+   "from": "PX-143",
+   "to": "desktop",
+   "type": "owned_by"
+  },
+  {
+   "from": "PX-143",
+   "to": "M10",
+   "type": "scheduled_in"
+  },
+  {
+   "from": "PX-143",
+   "to": "QUAL-PX-143",
+   "type": "proven_by"
+  },
+  {
+   "from": "PX-143",
+   "to": "62_PRODUCT_EXTENSION_REQUIREMENTS_TASKS_AND_QUALIFICATIONS.md",
+   "type": "specified_by"
+  },
+  {
+   "from": "PX-143",
+   "to": "PX-142",
+   "type": "after"
+  },
+  {
+   "from": "PX-143",
+   "to": "DOC-PX-015",
+   "type": "after"
+  },
+  {
+   "from": "REQ-PX-143",
+   "to": "REQ-EV-0037",
+   "type": "extends"
+  },
+  {
+   "from": "REQ-PX-143",
+   "to": "REQ-EV-0143",
+   "type": "extends"
+  },
+  {
+   "from": "REQ-PX-143",
+   "to": "REQ-EV-0151",
+   "type": "extends"
+  },
+  {
+   "from": "PX-143",
+   "to": "PX-E2E-143",
+   "type": "proven_by"
+  },
+  {
+   "from": "PX-E2E-143",
+   "to": "M10",
+   "type": "proves"
+  },
+  {
    "from": "domain-events",
    "to": "38_EXECUTION_POLICY_CONTRACTS_AND_ALGORITHMS.md",
    "type": "specified_by"
@@ -71794,6 +72264,31 @@
   {
    "from": "DOC-PX-014",
    "to": "DR-PX-2026-10-19-014",
+   "type": "authorized_by"
+  },
+  {
+   "from": "DOC-PX-015",
+   "to": "DOC-GOV-007",
+   "type": "after"
+  },
+  {
+   "from": "DOC-PX-015",
+   "to": "governance",
+   "type": "owned_by"
+  },
+  {
+   "from": "DOC-PX-015",
+   "to": "97_DOSSIER_MAINTENANCE_LOG.md",
+   "type": "specified_by"
+  },
+  {
+   "from": "DOC-PX-015",
+   "to": "65_AGENT_FIRST_WORKSPACE_SPECIFICATION.md",
+   "type": "specified_by"
+  },
+  {
+   "from": "DOC-PX-015",
+   "to": "DR-PX-2026-10-24-016",
    "type": "authorized_by"
   },
   {
@@ -76454,6 +76949,21 @@
   {
    "from": "RELEASE_ZERO",
    "to": "PX-139",
+   "type": "includes"
+  },
+  {
+   "from": "RELEASE_ZERO",
+   "to": "PX-141",
+   "type": "includes"
+  },
+  {
+   "from": "RELEASE_ZERO",
+   "to": "PX-142",
+   "type": "includes"
+  },
+  {
+   "from": "RELEASE_ZERO",
+   "to": "PX-143",
    "type": "includes"
   },
   {
