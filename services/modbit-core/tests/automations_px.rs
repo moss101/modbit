@@ -3617,6 +3617,28 @@ async fn px_086_a_test_run_of_a_write_capable_definition_changes_nothing_and_lea
     );
     let outputs: Value = serde_json::from_str(&r[0].outputs_json).unwrap();
     assert_eq!(outputs["dry_run"], true, "{outputs}");
+    // The report lists every protected effect the agent asked for and the
+    // Kernel denied, by the tool it named, in the order it asked; the read it
+    // was allowed to do is not listed.
+    let listed: Vec<(String, String)> = outputs["would_have_asked"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .map(|e| {
+            (
+                e["tool"].as_str().unwrap().to_owned(),
+                e["outcome"].as_str().unwrap().to_owned(),
+            )
+        })
+        .collect();
+    assert_eq!(
+        listed,
+        vec![
+            ("change.apply".to_owned(), "DENIED".to_owned()),
+            ("shell.exec".to_owned(), "DENIED".to_owned())
+        ],
+        "{outputs}"
+    );
     let ev = session_events(&f.core, &r[0]).await;
     for name in ["change.apply", "shell.exec"] {
         assert!(

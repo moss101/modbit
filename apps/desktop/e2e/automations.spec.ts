@@ -401,8 +401,12 @@ test("PX-086: a manual run, a dry test run and a schedule slot on a controlled c
     const result = page.getByTestId("test-result");
     await expect(result).toHaveAttribute("data-finished", "true", { timeout: 120_000 });
     await expect(page.getByTestId("test-denied-note")).toContainText("No protected effect was performed");
-    // The report lists what the Kernel denied or would have asked; the reads-only profile offered no write tool, so there is nothing to list.
-    await expect(page.getByTestId("would-have-asked-none")).toBeVisible();
+    // The report lists what the Kernel denied: the reads-only profile does not offer the write tool, and the attempt to call it is
+    // listed by the tool the agent named (the Core's own record of the refusal), not dropped as "nothing tried".
+    await expect(page.getByTestId("would-have-asked")).toHaveAttribute("data-count", "1");
+    await expect(page.getByTestId("would-have-asked-entry")).toHaveAttribute("data-tool", "change.apply");
+    await expect(page.getByTestId("would-have-asked-entry")).toHaveAttribute("data-outcome", "DENIED");
+    await expect(page.getByTestId("would-have-asked-none")).toHaveCount(0);
     expect(existsSync(join(repo, "probe.txt")), "the dry run changed no file").toBe(false);
     await accessible(page, "the test run report");
     // The same dialog simulates an event: a payload the filters would skip says so and runs nothing.
