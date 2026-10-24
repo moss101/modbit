@@ -2014,7 +2014,13 @@ impl Broker {
         timed_out: bool,
         started: Instant,
     ) {
-        let (segments, total) = s.log.lock().expect("log").snapshot();
+        // The log is final from here: the object sealed below is exactly what the registry lists afterwards. Output that a reader
+        // delivers after this point (a reader that did not reach end-of-file in time) is not part of the record.
+        let (segments, total) = {
+            let mut log = s.log.lock().expect("log");
+            log.freeze();
+            log.snapshot()
+        };
         let sealed = {
             let (dir, id, root) = (s.log_dir.clone(), s.id.clone(), self.object_dir.clone());
             tokio::task::spawn_blocking(move || seglog::seal(&dir, &id, &segments, &root))

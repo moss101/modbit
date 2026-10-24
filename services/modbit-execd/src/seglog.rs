@@ -86,6 +86,10 @@ pub struct SegLog {
     active: Option<(File, File)>,
     /// High-water mark: the cursor of the next byte.
     written: u64,
+    /// Set when the output is sealed: the log is final, so what the registry lists (oldest cursor, head) is what the
+    /// sealed object holds and cannot move afterwards (a late write would append and evict, shifting every cursor
+    /// against the object).
+    frozen: bool,
 }
 
 impl SegLog {
@@ -99,6 +103,7 @@ impl SegLog {
             segment_bytes,
             segments: vec![Segment { base: 0, len: 0 }],
             active: Some(active),
+            frozen: false,
             written: 0,
         })
     }
@@ -203,12 +208,18 @@ impl SegLog {
             written: end,
             segments,
             active: Some((log, idx)),
+            frozen: false,
         }))
     }
 
     /// High-water mark.
     pub fn written(&self) -> u64 {
         self.written
+    }
+
+    /// Make the log final: later appends are dropped, so the oldest cursor and the head stay what they are now.
+    pub fn freeze(&mut self) {
+        self.frozen = true;
     }
 
     /// The oldest cursor still readable.
@@ -224,7 +235,7 @@ impl SegLog {
 
     /// Append one record; returns the new high-water mark.
     pub fn append(&mut self, tag: u8, data: &[u8]) -> std::io::Result<u64> {
-        if data.is_empty() {
+        if data.is_empty() || self.frozen {
             return Ok(self.written);
         }
         let last = *self.segments.last().expect("non-empty");
@@ -672,6 +683,28 @@ mod tests {
             panic!()
         };
         assert_eq!(&data[..], &model[mid as usize..mid as usize + data.len()]);
+    }
+
+    /// A frozen log is final: a write after the seal is dropped, so the head
+    /// and the oldest cursor stay what the sealed object holds (a late write
+    /// would have appended and evicted a segment, shifting every cursor
+    /// against the object).
+    #[test]
+    fn a_frozen_log_neither_grows_nor_evicts() {
+        let dir = tempfile::tempdir().unwrap();
+        let mut log = SegLog::create(dir.path(), "f", 256, 64).unwrap();
+        for i in 0..40u8 {
+            log.append(TAG_PTY, &[b'a' + i % 26; 16]).unwrap();
+        }
+        let (oldest, written) = (log.oldest(), log.written());
+        assert!(oldest > 0, "the window has dropped the head already");
+        let (segments, total) = log.snapshot();
+        log.freeze();
+        for _ in 0..40 {
+            assert_eq!(log.append(TAG_PTY, &[b'z'; 16]).unwrap(), written);
+        }
+        assert_eq!((log.oldest(), log.written()), (oldest, written));
+        assert_eq!(log.snapshot(), (segments, total));
     }
 
     /// A log with a million tiny records is read at a cursor by binary

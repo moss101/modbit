@@ -230,13 +230,13 @@ export class TerminalHost {
     const t = (await c.listTerminals(taskId)).terminals.find((x) => x.sessionId === terminalId);
     if (!t) throw new Error("UNKNOWN_TERMINAL: this task has no such terminal");
     if (!t.outputRef) throw new Error("NO_OUTPUT_REF: the process is still running; its older output is sealed when it ends");
-    // The sealed object is the log's segments from the oldest retained cursor to where the log stood when the process ended. The
-    // listing's head can be later than that (bytes a PTY adds after the end), so the start is the oldest cursor, never head minus
-    // the object's length, and the end is the object's own.
+    // The sealed object is the log's segments from the oldest retained cursor to the head, and the broker freezes the log when it
+    // seals, so for a finished terminal the listing and the object agree exactly. If they do not, a cursor cannot be placed in the
+    // object, and nothing is read rather than bytes from the wrong place.
     const start = t.oldestCursor;
     const probe = await readObjectRange(c, t.outputRef, 0n, 1n);
     const end = start + probe.totalBytes;
-    if (end > t.bytesSoFar) throw new Error(`OBJECT_LENGTH_MISMATCH: the sealed output holds ${probe.totalBytes} bytes from cursor ${start} but the log head is ${t.bytesSoFar}`);
+    if (end !== t.bytesSoFar) throw new Error(`OBJECT_LENGTH_MISMATCH: the sealed output holds ${probe.totalBytes} bytes from cursor ${start} but the log head is ${t.bytesSoFar}`);
     const plan = planHistoryRange(start, end, from, to);
     const parts: Uint8Array[] = [];
     let at = plan.from;
