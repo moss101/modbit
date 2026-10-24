@@ -76,6 +76,11 @@ impl CoreProcess {
         .unwrap()
     }
 
+    /// Whether the process has exited (an injected abort, a crash).
+    pub fn has_exited(&mut self) -> bool {
+        matches!(self.child.try_wait(), Ok(Some(_)))
+    }
+
     pub fn kill(&mut self) {
         let _ = self.child.kill();
         let _ = self.child.wait();
@@ -452,6 +457,15 @@ pub async fn scripted_model_fn(reply_fn: Reply) -> (String, Seen) {
                     tokio::time::sleep(Duration::from_millis(ms)).await;
                 }
                 let mut frames: Vec<String> = Vec::new();
+                // A reply may stream its text as several frames:
+                // `{"chunks": ["a ", "b "], "chunk_gap_ms": N}` (the live
+                // legs' stand-in for a model that speaks over time).
+                let chunk_gap_ms = reply["chunk_gap_ms"].as_u64().unwrap_or(0);
+                if let Some(chunks) = reply["chunks"].as_array() {
+                    for t in chunks.iter().filter_map(|c| c.as_str()) {
+                        frames.push(serde_json::json!({"id":"c","model":"scripted-1","choices":[{"index":0,"delta":{"content":t},"finish_reason":null}]}).to_string());
+                    }
+                }
                 if let Some(t) = reply["text"].as_str() {
                     frames.push(serde_json::json!({"id":"c","model":"scripted-1","choices":[{"index":0,"delta":{"content":t},"finish_reason":null}]}).to_string());
                 }
@@ -464,7 +478,12 @@ pub async fn scripted_model_fn(reply_fn: Reply) -> (String, Seen) {
                 } else {
                     "tool_calls"
                 };
-                let completion_tokens = reply.to_string().len().div_ceil(4);
+                // A reply may state the usage it reports: `{"usage": [prompt, completion]}`.
+                let (prompt_tokens, completion_tokens) =
+                    match (reply["usage"][0].as_u64(), reply["usage"][1].as_u64()) {
+                        (Some(p), Some(c)) => (p as usize, c as usize),
+                        _ => (prompt_tokens, reply.to_string().len().div_ceil(4)),
+                    };
                 let request_id = format!(
                     "req_px_{results}_{}",
                     SCRIPTED_REQUESTS.fetch_add(1, std::sync::atomic::Ordering::SeqCst)
@@ -479,6 +498,10 @@ pub async fn scripted_model_fn(reply_fn: Reply) -> (String, Seen) {
                     let _ = sock
                         .write_all(format!("{:x}\r\n{}\r\n", frame.len(), frame).as_bytes())
                         .await;
+                    if chunk_gap_ms > 0 {
+                        let _ = sock.flush().await;
+                        tokio::time::sleep(Duration::from_millis(chunk_gap_ms)).await;
+                    }
                 }
                 let _ = sock.write_all(b"0\r\n\r\n").await;
                 let _ = sock.flush().await;

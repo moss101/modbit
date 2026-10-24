@@ -1,0 +1,208 @@
+# Live-gateway legs of the Core qualifications (docs/62 QUAL-PX-*; the
+# GRAPH-AUDIT finding that about 16 Core rows lack the live leg their QUAL
+# text names). The legs are `#[ignore]`d Rust tests of
+# services/modbit-core/tests/live_core.rs: each drives the REAL `modbit-core`
+# binary over its real socket, SQLite log and git repository, with the REAL
+# provider adapter pointed at the gateway the repository variables name
+# (DR-M9-002), and asserts the QUAL's own acceptance condition. The same leg
+# code runs offline in the normal CI against a scripted server
+# (`scripted_*` tests), which proves the harness mechanics and nothing about a
+# model.
+#
+# - A skipped or partial live run is not a pass (like live-providers and
+#   live-evals): a missing secret fails the job; a leg refuses to run without
+#   the credential, the model, a priced catalog entry and a spend cap; the
+#   checker (.github/scripts/live_core_check.py) fails the job for a requested
+#   row with no result record, for a record that failed a check, for a leg the
+#   spend cap stopped, for a scripted (non-live) record, and for spend over the
+#   cap.
+# - The cap is charged from the usage the gateway returned (the Core's own
+#   usage ledger), never from an estimate, and every leg is admitted against
+#   it before it starts and between its phases. `max_cost_usd` is for the
+#   whole dispatch.
+# - A gateway model is recorded as such in every result; it is not a
+#   first-party provider.
+#
+# Secrets (never printed, used only through `secrets.*` in the step that runs
+# the legs): OPENAI_API_KEY. Repository variables point the OpenAI-compatible
+# family at the gateway and its priced catalog.
+# Artifacts: `live-core-results` holds one JSON record per leg (run id, model,
+# endpoint, counts, cost, every named check) and the run log.
+name: live-core
+
+on:
+  # TEMPORARY: a push to the development branch registers this workflow with
+  # GitHub before it exists on main, so it can be dispatched from the branch.
+  # The jobs below run only for a dispatch. Removed before merge.
+  push:
+    branches: [wave6/live-core]
+    paths: [".github/workflows/live-core.yml"]
+  workflow_dispatch:
+    inputs:
+      which:
+        description: "Rows to run, comma separated (px041,px050,px051,px057,px059,px061,px084,px100,px101,px109,px114,px116,px118) or all"
+        required: true
+        default: "all"
+      max_cost_usd:
+        description: "Hard spend cap in USD for this dispatch"
+        required: true
+        default: "5"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: live-core
+  cancel-in-progress: false
+
+jobs:
+  plan:
+    name: validate the dispatch and split the spend cap
+    if: ${{ github.event_name == 'workflow_dispatch' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    outputs:
+      rows: ${{ steps.plan.outputs.rows }}
+      filters: ${{ steps.plan.outputs.filters }}
+      core_rows: ${{ steps.plan.outputs.core_rows }}
+      core_cap: ${{ steps.plan.outputs.core_cap }}
+      run114: ${{ steps.plan.outputs.run114 }}
+      cap114: ${{ steps.plan.outputs.cap114 }}
+    steps:
+      - id: plan
+        env:
+          WHICH: ${{ inputs.which }}
+          CAP: ${{ inputs.max_cost_usd }}
+        run: |
+          python3 - <<'PY' >> "$GITHUB_OUTPUT"
+          import os, sys
+          # The rows that are Rust legs of live_core.rs, and PX-114 (the paired
+          # projection trial, its own harness).
+          core = ["px041", "px050", "px051", "px057", "px059", "px061", "px084", "px100", "px101", "px109", "px116", "px118"]
+          rows = core + ["px114"]
+          which, cap = os.environ["WHICH"].strip().lower(), os.environ["CAP"]
+          try:
+              cap = float(cap)
+          except ValueError:
+              sys.exit("max_cost_usd must be a number of dollars")
+          if not cap > 0 or cap > 15:
+              sys.exit("max_cost_usd must be in (0, 15]: the live legs may not spend more than 15 USD")
+          chosen = rows if which == "all" else [w.strip() for w in which.split(",") if w.strip()]
+          unknown = [w for w in chosen if w not in rows]
+          if unknown or not chosen:
+              sys.exit(f"unknown rows {unknown}; known: {rows}")
+          run114 = "px114" in chosen
+          core_rows = [r for r in chosen if r != "px114"]
+          # PX-114 is 90 paired runs; give it the larger share when it is asked for.
+          cap114 = cap * (0.6 if core_rows else 1.0) if run114 else 0.0
+          core_cap = cap - cap114
+          print("rows=" + ",".join(chosen))
+          print("core_rows=" + ",".join(core_rows))
+          print("filters=" + " ".join("live_" + r for r in core_rows))
+          print("core_cap=%.4f" % core_cap)
+          print("run114=" + ("true" if run114 else "false"))
+          print("cap114=%.4f" % cap114)
+          PY
+
+  core:
+    name: Core legs on the live gateway
+    needs: plan
+    if: ${{ needs.plan.outputs.core_rows != '' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 180
+    steps:
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
+      - name: Install pinned Rust toolchain (rust-toolchain.toml)
+        run: rustup show
+      - uses: Swatinem/rust-cache@6323deb102c322ba6fcbdcafc7e3dddab59af2b6 # v2
+      - name: Build the Core, its helpers and the leg binary
+        run: |
+          cargo build --locked -p modbit-core -p modbit-cli -p modbit-execd -p modbit-mcp-testserver -p modbit-guest
+          cargo test --locked -p modbit-core --test live_core --no-run
+      - name: Run the live legs (the credential is required)
+        env:
+          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+          MODBIT_OPENAI_BASE_URL: ${{ vars.MODBIT_OPENAI_BASE_URL }}
+          MODBIT_OPENAI_MODELS: ${{ vars.MODBIT_OPENAI_MODELS }}
+          MODBIT_OPENAI_AUTH: ${{ vars.MODBIT_OPENAI_AUTH }}
+          MODBIT_OPENAI_EXTRA_BODY: ${{ vars.MODBIT_OPENAI_EXTRA_BODY }}
+          MODBIT_LIVE: "1"
+          MODBIT_LIVE_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+          MODBIT_LIVE_BASE_URL: ${{ vars.MODBIT_OPENAI_BASE_URL }}
+          MODBIT_LIVE_MODEL: ${{ vars.MODBIT_LIVE_MODEL }}
+          MODBIT_LIVE_MAX_COST_USD: ${{ needs.plan.outputs.core_cap }}
+          FILTERS: ${{ needs.plan.outputs.filters }}
+        run: |
+          if [ -z "$OPENAI_API_KEY" ]; then
+            echo "::error::no OPENAI_API_KEY secret: a live proof cannot pass without the real credential; nothing was run"
+            exit 1
+          fi
+          mkdir -p live-core/results
+          export MODBIT_LIVE_RESULTS_DIR="$PWD/live-core/results"
+          set -o pipefail
+          # One process, one thread at a time: the spend cap is a single
+          # account and the legs share a gateway rate limit.
+          # shellcheck disable=SC2086
+          cargo test --locked -p modbit-core --test live_core -- --ignored --test-threads=1 --nocapture $FILTERS 2>&1 | tee live-core/run.log
+      - name: Retain the result records and the log
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: live-core-results
+          path: live-core
+          if-no-files-found: error
+      - name: Every requested row left a whole, passing record and the cap held
+        if: always()
+        env:
+          ROWS: ${{ needs.plan.outputs.core_rows }}
+          CAP: ${{ needs.plan.outputs.core_cap }}
+        run: python3 .github/scripts/live_core_check.py live-core/results "$ROWS" "$CAP"
+
+  px114:
+    name: PX-114 live paired projection trial
+    needs: plan
+    if: ${{ needs.plan.outputs.run114 == 'true' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 355
+    steps:
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
+      - name: Install pinned Rust toolchain (rust-toolchain.toml)
+        run: rustup show
+      - uses: Swatinem/rust-cache@6323deb102c322ba6fcbdcafc7e3dddab59af2b6 # v2
+      - name: Build the product and the harness
+        run: cargo build --locked -p modbit-core -p modbit-cli -p modbit-execd -p modbit-bench-context-economics
+      - name: Run the paired trial over the 30-task suite, three tool surfaces (the credential is required)
+        env:
+          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+          MODBIT_OPENAI_BASE_URL: ${{ vars.MODBIT_OPENAI_BASE_URL }}
+          MODBIT_OPENAI_MODELS: ${{ vars.MODBIT_OPENAI_MODELS }}
+          MODBIT_OPENAI_AUTH: ${{ vars.MODBIT_OPENAI_AUTH }}
+          MODBIT_OPENAI_EXTRA_BODY: ${{ vars.MODBIT_OPENAI_EXTRA_BODY }}
+          MODBIT_LIVE: "1"
+          MODBIT_LIVE_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+          MODBIT_LIVE_BASE_URL: ${{ vars.MODBIT_OPENAI_BASE_URL }}
+          MODBIT_LIVE_MODEL: ${{ vars.MODBIT_LIVE_MODEL }}
+          CAP: ${{ needs.plan.outputs.cap114 }}
+        run: |
+          if [ -z "$OPENAI_API_KEY" ]; then
+            echo "::error::no OPENAI_API_KEY secret: a live proof cannot pass without the real credential; nothing was run"
+            exit 1
+          fi
+          mkdir -p live-core/px114
+          export MODBIT_LIVE_CLI="$PWD/target/debug/modbit-cli" MODBIT_LIVE_CORE="$PWD/target/debug/modbit-core"
+          export MODBIT_LIVE_OUT="$PWD/live-core/px114/report.json"
+          export MODBIT_LIVE_MAX_COST_USD="$CAP" MODBIT_LIVE_PARALLEL=4 MODBIT_LIVE_REPEATS=1
+          set -o pipefail
+          target/debug/live_trial 2>&1 | tee live-core/px114/run.log
+      - name: Retain the report
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: live-core-px114
+          path: live-core/px114
+          if-no-files-found: error
+      - name: The report is complete (both arms, intervals, a verdict) and the cap held
+        if: always()
+        env:
+          CAP: ${{ needs.plan.outputs.cap114 }}
+        run: python3 .github/scripts/live_evals_check.py live-core/px114 px114 "$CAP"
