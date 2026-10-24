@@ -47,21 +47,24 @@ export async function launch(dataDir: string, opts: LaunchOptions = {}): Promise
 
 /** The accessibility suite (axe-core, WCAG 2.x A/AA and best practices) on the document or one subtree: no violation of any impact. */
 export async function accessible(page: Page, what: string, selector?: string): Promise<void> {
-  // A colour mid-transition (or mid-fade) is not a colour: let every finite CSS transition and animation finish before measuring.
-  await page.evaluate(() =>
-    Promise.all(
-      document
-        .getAnimations()
-        .filter((a) => a instanceof CSSTransition || (a instanceof CSSAnimation && Number.isFinite(a.effect?.getComputedTiming().endTime as number)))
-        .map((a) => a.finished.catch(() => undefined)),
-    ),
-  );
+  // A theme or state change starts its colour transitions on the next frame: let them exist before waiting for them to finish.
+  await page.evaluate(() => new Promise<void>((done) => requestAnimationFrame(() => requestAnimationFrame(() => done()))));
+  // A colour mid-transition (or mid-fade) is not a colour: let every finite CSS transition and animation finish before measuring. A
+  // child's colour follows its parent's, so a finished transition can start the next one down the tree: wait until none is left.
+  await page.evaluate(async () => {
+    const pending = () =>
+      document.getAnimations().filter((a) => a instanceof CSSTransition || (a instanceof CSSAnimation && Number.isFinite(a.effect?.getComputedTiming().endTime as number)));
+    for (let round = 0; round < 8 && pending().length > 0; round++) {
+      await Promise.all(pending().map((a) => a.finished.catch(() => undefined)));
+      await new Promise<void>((done) => requestAnimationFrame(() => done()));
+    }
+  });
   await page.evaluate(axeSource);
   const violations = await page.evaluate(async (sel) => {
-    const axe = (window as unknown as { axe: { run: (ctx: Element | Document, opts: unknown) => Promise<{ violations: { id: string; impact: string; help: string; nodes: { target: string[] }[] }[] }> } }).axe;
+    const axe = (window as unknown as { axe: { run: (ctx: Element | Document, opts: unknown) => Promise<{ violations: { id: string; impact: string; help: string; nodes: { target: string[]; any: { data?: { fgColor?: string; bgColor?: string; contrastRatio?: number } }[] }[] }[] }> } }).axe;
     const ctx = sel ? document.querySelector(sel)! : document;
     const r = await axe.run(ctx, { runOnly: { type: "tag", values: ["wcag2a", "wcag2aa", "wcag21a", "wcag21aa", "best-practice"] } });
-    return r.violations.map((v) => `${v.id} (${v.impact}): ${v.help} — ${v.nodes.map((n) => n.target.join(" ")).slice(0, 3).join("; ")}`);
+    return r.violations.map((v) => `${v.id} (${v.impact}): ${v.help} — ${v.nodes.map((n) => { const d = n.any[0]?.data; return n.target.join(" ") + (d?.contrastRatio ? ` [${d.fgColor} on ${d.bgColor} = ${d.contrastRatio}]` : ""); }).slice(0, 3).join("; ")}`);
   }, selector ?? null);
   expect(violations, `${what}: ${violations.join("\n")}`).toEqual([]);
 }

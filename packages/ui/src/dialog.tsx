@@ -19,6 +19,8 @@ export interface DialogProps {
   className?: string | undefined;
   /** Hide the visible title bar (the title still names the dialog for assistive technology). */
   hideTitle?: boolean | undefined;
+  /** A line under the title that says what the dialog is for; it also describes the dialog (aria-describedby). */
+  description?: ReactNode | undefined;
 }
 
 /**
@@ -26,8 +28,9 @@ export interface DialogProps {
  * and is trapped, Escape closes it (the layer stack), focus returns to the
  * opener, and the shell's shortcuts are blocked while it is open.
  */
-export function Dialog({ open, title, onClose, children, role = "dialog", dismissOnScrim = true, initialFocus, size = "md", testId, className, hideTitle = false }: DialogProps) {
+export function Dialog({ open, title, onClose, children, role = "dialog", dismissOnScrim = true, initialFocus, size = "md", testId, className, hideTitle = false, description }: DialogProps) {
   const titleId = useId();
+  const descriptionId = useId();
   const panel = useRef<HTMLDivElement>(null);
   useLayer(open, `dialog:${titleId}`, true, onClose);
   useKeyScope(open, { id: `dialog:${titleId}`, blocking: true, resolve: () => null });
@@ -35,10 +38,17 @@ export function Dialog({ open, title, onClose, children, role = "dialog", dismis
   if (!open) return null;
   return (
     <div className="mb-scrim" data-testid={testId ? `${testId}-scrim` : undefined} onPointerDown={(e) => dismissOnScrim && e.target === e.currentTarget && onClose()}>
-      <div ref={panel} role={role} aria-modal="true" aria-labelledby={titleId} tabIndex={-1} className={`mb-dialog${className ? ` ${className}` : ""}`} data-size={size} data-testid={testId}>
-        <h2 id={titleId} className={hideTitle ? "mb-sr-only" : "mb-dialog-title"}>
-          {title}
-        </h2>
+      <div ref={panel} role={role} aria-modal="true" aria-labelledby={titleId} aria-describedby={description ? descriptionId : undefined} tabIndex={-1} className={`mb-dialog${className ? ` ${className}` : ""}`} data-size={size} data-testid={testId}>
+        <div className="mb-dialog-header">
+          <h2 id={titleId} className={hideTitle ? "mb-sr-only" : "mb-dialog-title"}>
+            {title}
+          </h2>
+          {description ? (
+            <p id={descriptionId} className="mb-dialog-description">
+              {description}
+            </p>
+          ) : null}
+        </div>
         {children}
       </div>
     </div>

@@ -1,0 +1,73 @@
+# PX-142 retained mutation check (2026-10-24)
+
+Each mutation changes one source file by exact string replacement (refused unless the target occurs exactly once), rebuilds the desktop
+bundle and the gallery build, runs `apps/desktop/e2e/fidelity.spec.ts` against the real Electron app, and restores the file. The gate must
+fail on every one.
+
+## M1 one radius (default button radius md -> lg)
+edit: packages/ui/src/styles.ts: .mb-btn { box-sizing: border-box; display: inline-flex; flex-shrink: 0; align-items: center; justify-content: center; gap: 4px; height: var(--mb-control-md); padding: 0 8px; border: 1px solid transparent; border-radius: var(--radius-md);  ->  .mb-btn { box-sizing: border-box; display: inline-flex; flex-shrink: 0; align-items: center; justify-content: center; gap: 4px; height: var(--mb-control-md); padding: 0 8px; border: 1px solid transparent; border-radius: var(--radius-lg);
+  ✓  1 e2e/fidelity.spec.ts:82:1 › the coverage table is closed over the reference capture
+  ✘  2 e2e/fidelity.spec.ts:91:1 › Modbit's primitives match ZCode's real components in light and dark, except the declared exceptions
+    +   "button-matrix|button|default|sm borderTopLeftRadius: ZCode 6px / Modbit 8px [light]",
+    +   "button-matrix|button|default|sm borderTopRightRadius: ZCode 6px / Modbit 8px [light]",
+    +   "button-matrix|button|default|sm borderBottomRightRadius: ZCode 6px / Modbit 8px [light]",
+    +   "button-matrix|button|default|sm borderBottomLeftRadius: ZCode 6px / Modbit 8px [light]",
+    +   "button-matrix|button|default|default borderTopLeftRadius: ZCode 6px / Modbit 8px [light]",
+    +   "button-matrix|button|default|default borderTopRightRadius: ZCode 6px / Modbit 8px [light]",
+    +   "button-matrix|button|default|default borderBottomRightRadius: ZCode 6px / Modbit 8px [light]",
+
+## M2 one font size (menu items 14 -> 12)
+edit: packages/ui/src/styles.ts: .mb-menu-item { position: relative; display: flex; align-items: center; gap: 8px; padding: 4px 8px; border-radius: var(--radius-md); color: var(--color-foreground); font-size: var(--text-ui-base);  ->  .mb-menu-item { position: relative; display: flex; align-items: center; gap: 8px; padding: 4px 8px; border-radius: var(--radius-md); color: var(--color-foreground); font-size: var(--text-ui-sm);
+  ✓  1 e2e/fidelity.spec.ts:82:1 › the coverage table is closed over the reference capture
+  ✘  2 e2e/fidelity.spec.ts:91:1 › Modbit's primitives match ZCode's real components in light and dark, except the declared exceptions
+    +   "dropdown-menu|dropdown-menu-item|default| height: ZCode 30.75 / Modbit 27.5 [light]",
+    +   "dropdown-menu|dropdown-menu-item|default| fontSize: ZCode 14px / Modbit 12px [light]",
+    +   "dropdown-menu|dropdown-menu-item|default| lineHeight: ZCode 22.75px / Modbit 19.5px [light]",
+    +   "dropdown-menu|dropdown-menu-checkbox-item|| height: ZCode 33 / Modbit 30 [light]",
+    +   "dropdown-menu|dropdown-menu-checkbox-item|| fontSize: ZCode 14px / Modbit 12px [light]",
+    +   "dropdown-menu|dropdown-menu-checkbox-item|| lineHeight: ZCode 21px / Modbit 18px [light]",
+    +   "dropdown-menu|dropdown-menu-checkbox-item-indicator|| fontSize: ZCode 14px / Modbit 12px [light]",
+
+## M3 one colour (card background card -> surface)
+edit: packages/ui/src/styles.ts: border: 1px solid var(--color-card-border); border-radius: var(--radius-xl); background: var(--color-card);  ->  border: 1px solid var(--color-card-border); border-radius: var(--radius-xl); background: var(--color-surface);
+  ✓  1 e2e/fidelity.spec.ts:82:1 › the coverage table is closed over the reference capture
+  ✘  2 e2e/fidelity.spec.ts:91:1 › Modbit's primitives match ZCode's real components in light and dark, except the declared exceptions
+    +   "surfaces|card||default backgroundColor: ZCode rgba(255,255,255,1) / Modbit rgba(0,0,0,0.03) [light]",
+    +   "surfaces|card||default backgroundColor: ZCode rgba(43,43,43,1) / Modbit rgba(255,255,255,0.05) [dark]",
+  1 failed
+  1 passed
+
+## M4 an undeclared deviation (kbd text colour 5c5c5c role -> foreground)
+edit: packages/ui/src/styles.ts: background: var(--color-tooltip-tag); color: var(--color-tooltip-tag-foreground);  ->  background: var(--color-tooltip-tag); color: var(--color-foreground);
+  ✓  1 e2e/fidelity.spec.ts:82:1 › the coverage table is closed over the reference capture
+  ✘  2 e2e/fidelity.spec.ts:91:1 › Modbit's primitives match ZCode's real components in light and dark, except the declared exceptions
+    +   "surfaces|kbd|| color: ZCode rgba(92,92,92,1) / Modbit rgba(38,38,38,1) [light]",
+    +   "tooltip|kbd|| color: ZCode rgba(92,92,92,1) / Modbit rgba(38,38,38,1) [light]",
+    +   "surfaces|kbd|| color: ZCode rgba(173,173,173,1) / Modbit rgba(212,212,212,1) [dark]",
+    +   "tooltip|kbd|| color: ZCode rgba(173,173,173,1) / Modbit rgba(212,212,212,1) [dark]",
+  1 failed
+  1 passed
+
+## M5 a declared exception that covers nothing (ZDX-03 property list emptied)
+edit: packages/design-tokens/src/fidelity-exceptions.ts: props: EDGES, why  ->  props: [], why
+  ✓  1 e2e/fidelity.spec.ts:82:1 › the coverage table is closed over the reference capture
+  ✘  2 e2e/fidelity.spec.ts:91:1 › Modbit's primitives match ZCode's real components in light and dark, except the declared exceptions
+    +   "button-matrix|button|outline|xs borderTopColor: ZCode rgba(10,10,10,0.1) / Modbit rgba(133,133,133,1) [light]",
+    +   "button-matrix|button|outline|xs borderRightColor: ZCode rgba(10,10,10,0.1) / Modbit rgba(133,133,133,1) [light]",
+    +   "button-matrix|button|outline|xs borderBottomColor: ZCode rgba(10,10,10,0.1) / Modbit rgba(133,133,133,1) [light]",
+    +   "button-matrix|button|outline|xs borderLeftColor: ZCode rgba(10,10,10,0.1) / Modbit rgba(133,133,133,1) [light]",
+    +   "button-matrix|button|outline|sm borderTopColor: ZCode rgba(10,10,10,0.1) / Modbit rgba(133,133,133,1) [light]",
+    +   "button-matrix|button|outline|sm borderRightColor: ZCode rgba(10,10,10,0.1) / Modbit rgba(133,133,133,1) [light]",
+    +   "button-matrix|button|outline|sm borderBottomColor: ZCode rgba(10,10,10,0.1) / Modbit rgba(133,133,133,1) [light]",
+
+## M6 a stale exception (ZDX-05 matches a key that does not exist)
+edit: packages/design-tokens/src/fidelity-exceptions.ts: (k, t) => t === "dark" && /\|destructive\|/.test(k)  ->  (k, t) => t === "dark" && /\|nothing-matches\|/.test(k)
+  ✓  1 e2e/fidelity.spec.ts:82:1 › the coverage table is closed over the reference capture
+  ✘  2 e2e/fidelity.spec.ts:91:1 › Modbit's primitives match ZCode's real components in light and dark, except the declared exceptions
+    +   "button-matrix|button|destructive|xs color: ZCode rgba(255,255,255,1) / Modbit rgba(0,0,0,1) [dark]",
+    +   "button-matrix|button|destructive|sm color: ZCode rgba(255,255,255,1) / Modbit rgba(0,0,0,1) [dark]",
+    +   "button-matrix|button|destructive|default color: ZCode rgba(255,255,255,1) / Modbit rgba(0,0,0,1) [dark]",
+    +   "button-matrix|button|destructive|lg color: ZCode rgba(255,255,255,1) / Modbit rgba(0,0,0,1) [dark]",
+  1 failed
+  1 passed
+

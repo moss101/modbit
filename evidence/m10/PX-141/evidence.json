@@ -1,0 +1,21 @@
+{
+ "task": "PX-141",
+ "requirements": [
+  "REQ-PX-141",
+  "QUAL-PX-141",
+  "docs/62_PRODUCT_EXTENSION_REQUIREMENTS_TASKS_AND_QUALIFICATIONS.md#px-141"
+ ],
+ "scenarios": [
+  "QUAL-PX-141 / PX-E2E-141"
+ ],
+ "tests": [
+  "apps/desktop/e2e/zdl-tokens.spec.ts",
+  "apps/desktop/e2e/shell.spec.ts",
+  "apps/desktop/e2e/gallery.spec.ts",
+  "packages/design-tokens/src/design-language.test.ts",
+  "packages/design-tokens/src/index.test.ts"
+ ],
+ "proof": "Local, macOS arm64, Electron 44.3.0 against a real Core: zdl-tokens.spec.ts 4 of 4 (120 ZCode colour tokens x 2 themes resolve exactly to the retained capture; type scale, radius, shadow and font stacks measured; high contrast defines every token; no vendor mark in the bundle, notices present); gallery.spec.ts, shell.spec.ts (axe in light, dark and high contrast), states, keyboard, onboarding, conversation and gallery-controls pass (31 of 31 after the shell spec's two body-colour literals were read from the one token source); design-tokens unit suite 14 of 14 (alpha-aware contrast pairs: 90 pairs, 0 failing in three themes). Five retained mutations each fail the gate (evidence/m10/PX-141/mutation-check.txt).",
+ "limitations": "Not E2E_PROVEN: the Linux and Windows legs run only in CI after a push (docs/93). The fidelity of components and shell is PX-142 and PX-143. The packaged installer includes third-party/zcode-ui through M10.2, not before.",
+ "runs": []
+}

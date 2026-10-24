@@ -1,8 +1,11 @@
 import { cloneElement, useCallback, useEffect, useId, useRef, useState, type ReactElement } from "react";
 import { useLayer } from "./hooks.ts";
+import { Kbd } from "./status.tsx";
 
 export interface TooltipProps {
   text: string;
+  /** A chord hint such as `mod+k`, shown after the text as a key cap (display only: the command registry binds it). */
+  shortcut?: string | undefined;
   /** The single focusable child the tooltip describes. */
   children: ReactElement<{ "aria-describedby"?: string; onFocus?: (e: never) => void; onBlur?: (e: never) => void }>;
   /** Hover delay in ms; focus shows it at once. */
@@ -15,7 +18,7 @@ export interface TooltipProps {
  * and hoverable: the host wraps trigger and bubble, so moving the pointer
  * onto the bubble does not dismiss it.
  */
-export function Tooltip({ text, children, delay = 400 }: TooltipProps) {
+export function Tooltip({ text, shortcut, children, delay = 400 }: TooltipProps) {
   const id = useId();
   const [open, setOpen] = useState(false);
   const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -43,6 +46,7 @@ export function Tooltip({ text, children, delay = 400 }: TooltipProps) {
       {child}
       <span id={id} role="tooltip" className="mb-tooltip" hidden={!open}>
         {text}
+        {shortcut && <Kbd chord={shortcut} />}
       </span>
     </span>
   );

@@ -6,12 +6,12 @@ import { DEFAULT_UI_PREFS, parseUiPrefs, serializeUiPrefs, clampZoom, UI_PREFS_K
 import { artifactsOf, panelTaskFor } from "./artifacts.ts";
 import { REQUIRED_CHORDS, buildShellRegistry, shellCommandDefs, shellRegistry, type ShellActions } from "./commands.ts";
 
-const base = { listWidth: 260, listCollapsed: false, panelRatio: 0.5, panelOpen: false };
+const base = { listWidth: 264, listCollapsed: false, panelRatio: 0.5, panelOpen: false };
 
-test("AFW-A01/A03: at 1280 the agent list is 260 and the conversation takes the rest; the panel is absent until opened", () => {
+test("AFW-A01/A03: at 1280 the agent list is 264 and the conversation takes the rest; the panel is absent until opened", () => {
   const l = computeLayout({ ...base, width: 1280 });
-  assert.equal(l.listPx, 260);
-  assert.equal(l.centerPx, 1020);
+  assert.equal(l.listPx, 264);
+  assert.equal(l.centerPx, 1016);
   assert.equal(l.panelPx, 0);
   assert.equal(l.rail, false);
   assert.equal(l.stacked, false);
@@ -20,7 +20,7 @@ test("AFW-A01/A03: at 1280 the agent list is 260 and the conversation takes the 
 test("AFW-A06: with the panel open at 1280 the centre keeps 424 and the panel gets the remainder (>= 384)", () => {
   const l = computeLayout({ ...base, width: 1280, panelOpen: true });
   assert.equal(l.centerPx, 424);
-  assert.equal(l.panelPx, 596);
+  assert.equal(l.panelPx, 592);
   assert.ok(l.panelPx >= 384);
   assert.equal(l.listPx + l.centerPx + l.panelPx, 1280);
 });
@@ -31,13 +31,13 @@ test("AFW-A06: a stored ratio that would push the centre under 424 is clamped; o
   assert.equal(small.panelPx, 384);
   const mid = computeLayout({ ...base, width: 1600, panelOpen: true, panelRatio: 0.4 });
   assert.equal(mid.panelPx, 640);
-  assert.equal(mid.centerPx, 1600 - 260 - 640);
+  assert.equal(mid.centerPx, 1600 - 264 - 640);
 });
 
 test("AFW-A03: the agent list is clamped to 210..400 wherever the width comes from", () => {
   assert.equal(clampListWidth(100), 210);
   assert.equal(clampListWidth(900), 400);
-  assert.equal(clampListWidth(Number.NaN), 260);
+  assert.equal(clampListWidth(Number.NaN), 264);
   assert.equal(computeLayout({ ...base, width: 1280, listWidth: 1000 }).listPx, 400);
   assert.equal(computeLayout({ ...base, width: 1280, listWidth: 1 }).listPx, 210);
 });
@@ -48,9 +48,9 @@ test("AFW-A08: below a 448 centre the shell is single-pane with a 40 px rail; th
   assert.equal(narrow.listPx, 40);
   assert.equal(narrow.centerPx, 560);
   assert.equal(narrow.singlePane, true);
-  const edge = computeLayout({ ...base, width: 260 + 448 });
+  const edge = computeLayout({ ...base, width: 264 + 448 });
   assert.equal(edge.rail, false, "exactly 448 is not below");
-  assert.equal(computeLayout({ ...base, width: 260 + 447 }).rail, true);
+  assert.equal(computeLayout({ ...base, width: 264 + 447 }).rail, true);
   const collapsed = computeLayout({ ...base, width: 1280, listCollapsed: true });
   assert.equal(collapsed.listPx, 40);
   assert.equal(collapsed.centerPx, 1240);
@@ -60,9 +60,9 @@ test("AFW-A08: an open panel that cannot sit beside a 424 centre stacks behind a
   const l = computeLayout({ ...base, width: 900, panelOpen: true });
   assert.equal(l.stacked, true);
   assert.equal(l.panelPx, 0);
-  assert.equal(l.centerPx, 640);
-  assert.equal(computeLayout({ ...base, width: 260 + 424 + 384, panelOpen: true }).stacked, false, "exactly enough room sits side by side");
-  assert.equal(computeLayout({ ...base, width: 260 + 424 + 383, panelOpen: true }).stacked, true);
+  assert.equal(l.centerPx, 636);
+  assert.equal(computeLayout({ ...base, width: 264 + 424 + 384, panelOpen: true }).stacked, false, "exactly enough room sits side by side");
+  assert.equal(computeLayout({ ...base, width: 264 + 424 + 383, panelOpen: true }).stacked, true);
 });
 
 test("a drag stores a ratio of the window width that reproduces the width", () => {

@@ -428,15 +428,15 @@ class DossierTests(unittest.TestCase):
 
     def test_parity_surface_counts_are_pinned_and_dr_013_is_traced(self):
         # The additive PX ledger pins nothing in tools/dossier_px.py (totals are computed); the parity-push surface is pinned here
-        # in the same reseal that adds a record: PX-000..140 (141 rows, 137 ADOPT tasks, 4 DEFERRED), eight records of which
+        # in the same reseal that adds a record: PX-000..143 (144 rows, 140 ADOPT tasks, 4 DEFERRED), nine records of which
         # 007, 008, 010 and 013 are accepted, and the 41 rows of DR-PX-2026-10-05-013 (39 release-critical, 2 iteration).
         self.rebuild()
         g = self.graph()
         nodes = {n["id"]: n for n in g["nodes"]}
         reqs = [n for n in g["nodes"] if re.match(r"^REQ-PX-\d{3}$", n["id"])]
         tasks = [n for n in g["nodes"] if re.match(r"^PX-\d{3}$", n["id"]) and n["type"] == "imp_task"]
-        self.assertEqual(len(reqs), 141)
-        self.assertEqual(len(tasks), 137)
+        self.assertEqual(len(reqs), 144)
+        self.assertEqual(len(tasks), 140)
         self.assertEqual(sorted(n["id"] for n in reqs if n.get("disposition") == "DEFERRED"), ["REQ-PX-003", "REQ-PX-012", "REQ-PX-013", "REQ-PX-140"])
         self.assertEqual(len([r for r in self.PARITY_RECORDS if r[4]]), 4)
         self.assertEqual(len(self.PARITY_RECORDS), 7)
@@ -488,6 +488,51 @@ class DossierTests(unittest.TestCase):
         record = (self.root / "docs/decisions/DR-PX-2026-10-19-014-per-task-harness-refinement.md").read_text()
         self.assertIn("status: accepted", record)
         self.assertIn("PX-E2E-140", record)  # the activation text is kept in the record
+
+    def test_dr_016_adopts_the_zcode_design_language_without_relaxing_the_accessibility_floor(self):
+        # DR-PX-2026-10-24-016 (accepted 2026-10-24 on the owner's chat instruction): rows PX-141..143 are owned by the existing
+        # subsystem `desktop`, scheduled in M10, RELEASE_ZERO only, iteration tier, chained 141 -> 142 -> 143, gated by DOC-PX-015,
+        # and the record keeps AFW-A12/A13/A14, lists the nine declared exceptions and supersedes only the named doc 65 numbers.
+        self.rebuild()
+        g = self.graph()
+        nodes = {n["id"]: n for n in g["nodes"]}
+        after, auth, includes = self.edges(g)
+        dr = "DR-PX-2026-10-24-016"
+        self.assertEqual(nodes[dr]["type"], "change_record")
+        self.assertEqual(nodes[dr]["status"], "APPROVED")
+        self.assertEqual(nodes["DOC-PX-015"]["type"], "dossier_task")
+        self.assertIn(("DOC-PX-015", dr), auth)
+        self.assertIn("DOC-GOV-007", after["DOC-PX-015"])
+        owners = {e["from"]: e["to"] for e in g["edges"] if e["type"] == "owned_by"}
+        for pid in ("PX-141", "PX-142", "PX-143"):
+            self.assertEqual(nodes[pid]["milestone"], "M10", pid)
+            self.assertEqual(nodes[pid]["release"], "RELEASE_ZERO", pid)
+            self.assertEqual(owners[pid], "desktop", pid)
+            self.assertIn((pid, dr), auth, pid)
+            self.assertIn("DOC-PX-015", after[pid], pid)
+            self.assertTrue(self.reaches(after, pid, {"DOC-PX-015"}), pid)
+            self.assertEqual(includes.get(pid), {"RELEASE_ZERO"}, pid)
+        self.assertIn("PX-141", after["PX-142"])
+        self.assertIn("PX-142", after["PX-143"])
+        self.assertIn("PX-044", after["PX-141"])
+        text = (self.root / "docs/62_PRODUCT_EXTENSION_REQUIREMENTS_TASKS_AND_QUALIFICATIONS.md").read_text()
+        tiers = re.findall(r"\*\*Decision Record, phase and evidence tier:\*\* DR-PX-2026-10-24-016; [^;]+; (release-critical|iteration) \(", text)
+        self.assertEqual(tiers, ["iteration"] * 3)
+        record = (self.root / "docs/decisions/DR-PX-2026-10-24-016-zcode-design-language.md").read_text()
+        head = record.split("---")[1]
+        self.assertIn("status: accepted", head)
+        self.assertIn("approved_by: owner, chat instruction of 2026-10-24", head)
+        for zdx in range(1, 10):
+            self.assertIn("| ZDX-%02d |" % zdx, record)
+        for needle in ("AFW-A12", "AFW-A13", "AFW-A14", "third-party/zcode-ui", "3c5b227649371507ddc4eb46ac5133afe6db1cab", "Apache-2.0"):
+            self.assertIn(needle, record)
+        # the approval is bounded: the record says it does not cover a relaxation of the accessibility floor, and the ledger says so too
+        self.assertIn("does **not** cover any relaxation of AFW-A12 (WCAG 2.2 AA), AFW-A13 (themes) or AFW-A14", record)
+        self.assertIn("leave AFW-A12, A13 and A14 unrelaxed", text)
+        spec = (self.root / "docs/65_AGENT_FIRST_WORKSPACE_SPECIFICATION.md").read_text()
+        self.assertIn("Scoped supersession (DR-PX-2026-10-24-016", spec)
+        # the clean-room posture for the Cursor reference product is untouched
+        self.assertIn("No code, stylesheet, theme file, colour value taken from a theme", spec)
 
     def test_decision_record_status_and_approval_match_the_graph(self):
         # An accepted record names who approved it; a proposed one says it is pending; the graph change record follows the file.

@@ -12,6 +12,7 @@ import { createRoot } from "react-dom/client";
 import { Shell } from "./shell/shell.tsx";
 import { useApp } from "./state/use-app.ts";
 import { Gallery } from "./gallery/gallery.tsx";
+import { FidelityGallery } from "./gallery/fidelity-gallery.tsx";
 
 declare const __MODBIT_GALLERY__: boolean;
 
@@ -21,13 +22,14 @@ function App() {
 }
 
 function Root() {
-  const [gallery, setGallery] = useState(() => location.hash.startsWith("#gallery"));
+  const [hash, setHash] = useState(() => location.hash);
   useEffect(() => {
-    const onHash = () => setGallery(location.hash.startsWith("#gallery"));
+    const onHash = () => setHash(location.hash);
     window.addEventListener("hashchange", onHash);
     return () => window.removeEventListener("hashchange", onHash);
   }, []);
-  return __MODBIT_GALLERY__ && gallery ? <Gallery /> : <App />;
+  if (__MODBIT_GALLERY__ && hash.startsWith("#fidelity")) return <FidelityGallery />;
+  return __MODBIT_GALLERY__ && hash.startsWith("#gallery") ? <Gallery /> : <App />;
 }
 
 createRoot(document.getElementById("root")!).render(

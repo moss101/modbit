@@ -1,0 +1,250 @@
+{
+ "task": "DOC-PX-015",
+ "change_record": "DR-PX-2026-10-24-016",
+ "change_record_status": "APPROVED",
+ "edition": "V3.3 EPR v1.1",
+ "scope": "Decision Record DR-PX-2026-10-24-016 (accepted by the owner's chat instruction of 2026-10-24): the ZCode design language for the desktop renderer, with the specification, nine declared AFW-A12 exceptions and the scoped doc 65 geometry supersession; rows PX-141..143 in doc 62, graph change record and dossier task, pinned parity counts, one dedicated test, doc 97 entry, the retained reference capture and its recipe; dossier only; no product behaviour, status or evidence claim changes.",
+ "recorded_at_utc": "2026-10-24T16:17:23.872264+00:00",
+ "environment": {
+  "python": "3.9.6 (default, Aug 17 2026, 12:07:42) \n[Clang 21.0.0 (clang-2100.3.34.1)]",
+  "platform": "macOS-27.0.1-arm64-arm-64bit",
+  "machine": "arm64",
+  "dependencies": "Python standard library only for the dossier tools; the reference recipe uses the repository's Electron 44.3.0 and Playwright and a work directory outside the repository"
+ },
+ "git": {
+  "baseline_commit": "05455db3a2688f0a43d476247ffd5405281c8692",
+  "branch": "wip/zcode-design-language",
+  "change_commit": "recorded as commit: evidence on the graph node after the change commit (the seal commit changes only graph live state and the manifests)"
+ },
+ "tests": {
+  "command": [
+   "python3",
+   "tools/test_dossier.py",
+   "-v"
+  ],
+  "exit_code": 0,
+  "output_ref": "evidence/dossier-px-015/tests.log",
+  "sha256": "4bb545b4094859b4074186a7a92dcc46b8026501acf9bba0bcf623aca225d321",
+  "result_line": "Ran 85 tests in 152.414s"
+ },
+ "integrity": {
+  "command": [
+   "python3",
+   "tools/check_dossier.py",
+   "--manifest"
+  ],
+  "exit_code": 0,
+  "output": "OK: 97 docs; base 291 REQ-EV/265 IMP-EV/291 QUAL-EV + EPR 20 + PX 144 (140 ADOPT tasks) = 455 requirements effective; 18 ADR-R, 7 gates, 3 releases; graph and references consistent; manifest hashes verified"
+ },
+ "graph_counts": {
+  "section": 8,
+  "doc": 97,
+  "milestone": 11,
+  "milestone_task": 78,
+  "subsystem": 23,
+  "requirement": 455,
+  "imp_task": 425,
+  "qual_test": 455,
+  "scenario": 257,
+  "decision": 61,
+  "release_gate": 7,
+  "change_record": 20,
+  "source_patch": 2,
+  "dossier_task": 24,
+  "release": 3
+ },
+ "invariants": [
+  "3 new rows REQ-PX-141..143, all iteration tier, owner desktop, M10, RELEASE_ZERO only, chained 141 -> 142 -> 143 and gated by DOC-PX-015; every row has a ledger row, a qualification, a task card and a PX-E2E scenario (tools/dossier_px.py: 144 rows, 140 ADOPT tasks, 4 DEFERRED)",
+  "the record keeps AFW-A12, A13 and A14 unrelaxed and lists nine declared exceptions with measured ratios; it supersedes only the named numbers of AFW-A03, A04, A05, A07 and the provenance clause of AFW-A11; the clean-room posture for the Cursor reference product is unchanged (tools/test_dossier.py test_dr_016_...)",
+  "the reference capture regenerates byte-identical from the committed recipe in a clean work directory outside the repository (zcode-computed.json, zcode-tokens-resolved.json, zcode-colors-rgba.json)",
+  "the sealed surface (291 REQ-EV, 265 IMP-EV, 291 QUAL-EV, EPR-000..019, ADR-R-039..056, gates A-G) is untouched; every new PX row is NOT_STARTED"
+ ],
+ "changed_files": {
+  "docs/02_AUTHORITY_AND_DECISIONS.md": {
+   "before_sha256": "c3ce98647a4dea3f9a34a52b8f73c49dd31db561aa4f53c26ae310a476b951cf",
+   "after_sha256": "0e33283674ca903e24fdafee19c9db7b07b6ec8df09af253b9ccf3f8b0d3fc5c"
+  },
+  "docs/62_PRODUCT_EXTENSION_REQUIREMENTS_TASKS_AND_QUALIFICATIONS.md": {
+   "before_sha256": "7cece47d9b5f43361ad0017557ded25177dcefeac02792e072e9f352e0bf0bb5",
+   "after_sha256": "bf11e3feddd00af5116f7c1038a3aec660ebedfc154323d519822b0774e09915"
+  },
+  "docs/65_AGENT_FIRST_WORKSPACE_SPECIFICATION.md": {
+   "before_sha256": "f5e4ac6c1d79cf835479be133b3d1e390cf8e1dc192ccc793bd1ab6ca75215da",
+   "after_sha256": "72bffb1bbb02e799fa812d372324660ce3e72dce924102c012a08449c5385f6e"
+  },
+  "docs/97_DOSSIER_MAINTENANCE_LOG.md": {
+   "before_sha256": "ce8937e53718bebd53180e612c6dda5da099c34c95ddc13198a56cb301147e76",
+   "after_sha256": "381746c537b579093f8fca850cdfde94977cc11b3f9434ea7786c18795ef7c9b"
+  },
+  "docs/decisions/README.md": {
+   "before_sha256": "88f49f9074586f07df58235f05b1e120dca8f8905f47073c4ad707cd31a62815",
+   "after_sha256": "d9664d27a91eccb9c2f671e14c6e0e8d9b27ccbccb06d1d809b24c24b34334e0"
+  },
+  "tools/build_graph.py": {
+   "before_sha256": "7e491e47f2e89f8cad4827a72701b7849d4d628754417022c862dc9b21431061",
+   "after_sha256": "4dd5b677347b7f71655c36bedf8137ee94b6afeb0b5a13e4fe86a5bf71501b22"
+  },
+  "tools/test_dossier.py": {
+   "before_sha256": "77a6b811b6bb4199aac475e08054d6a22b94bc98c226dda6de86043fc93482a6",
+   "after_sha256": "91e1ffd09a9e3030d5574e171a1679d09dfd04b638f689efb042cb3164171adf"
+  },
+  "docs/decisions/DR-PX-2026-10-24-016-zcode-design-language.md": {
+   "before_sha256": null,
+   "after_sha256": "74fbc1db80cf5039ce2ec494c004931f124cc9f43e9de1a6f696f02a361f60e6"
+  },
+  "evidence/zcode-ui/reference/PROVENANCE.md": {
+   "before_sha256": null,
+   "after_sha256": "e9f9da370c884daabebfd4ef33add0c438e57d55a869024d17d97ec5a30c1240"
+  },
+  "evidence/zcode-ui/reference/alert-dialog-dark.png": {
+   "before_sha256": null,
+   "after_sha256": "e5fdda70079e133fbb24bdd016779cf1bae46484806655d45e5cb6be2627241b"
+  },
+  "evidence/zcode-ui/reference/alert-dialog-light.png": {
+   "before_sha256": null,
+   "after_sha256": "89b5b0545e28d0ad90f97a5d8264c449dea64ac3e0e7f7abcddaeb32cd98a18d"
+  },
+  "evidence/zcode-ui/reference/contrast-zai.txt": {
+   "before_sha256": null,
+   "after_sha256": "6f82cc19ae8b5201825b3e1682aed7edfa8ed4a7e444a8f7e1fa9c92127a288c"
+  },
+  "evidence/zcode-ui/reference/controls-dark.png": {
+   "before_sha256": null,
+   "after_sha256": "77e3cee4c9f5146f76b2ae8854bdb39bfe787a19ff2149ed654f0e3f2741b4bb"
+  },
+  "evidence/zcode-ui/reference/controls-light.png": {
+   "before_sha256": null,
+   "after_sha256": "cb0da8ad8ec99ba4c93f512b64214e3dac2ca6185d20c728398eda4d1dcd8cfe"
+  },
+  "evidence/zcode-ui/reference/dialog-dark.png": {
+   "before_sha256": null,
+   "after_sha256": "6a9ba265f1f9a23c7dff217d633cea13d9d704451db61d047f6813db9bd8e064"
+  },
+  "evidence/zcode-ui/reference/dialog-light.png": {
+   "before_sha256": null,
+   "after_sha256": "0a7a5f458beb7e343315293ef843cccaf475b3e8ff408c00f027b390937e25fc"
+  },
+  "evidence/zcode-ui/reference/menu-dark.png": {
+   "before_sha256": null,
+   "after_sha256": "1e1387cc1764c4082e0339d368bba38a9625cd48e69f621f678f9508386d4027"
+  },
+  "evidence/zcode-ui/reference/menu-light.png": {
+   "before_sha256": null,
+   "after_sha256": "74c84fe366f2dbfbceb29f389b6c42781cfe1ff6a372cb6d1893a077d28a4572"
+  },
+  "evidence/zcode-ui/reference/popover-dark.png": {
+   "before_sha256": null,
+   "after_sha256": "ea4921a81773fa5008e3afb26c0ec6556530a356ee043b568fbeff3fb11055de"
+  },
+  "evidence/zcode-ui/reference/popover-light.png": {
+   "before_sha256": null,
+   "after_sha256": "1f7223c58aefb5b7ab08e626d52284de381b20a9e9655fa293cc5af723f68e75"
+  },
+  "evidence/zcode-ui/reference/select-dark.png": {
+   "before_sha256": null,
+   "after_sha256": "8b4ee70fa506f94775ae11bd8232e9f0bd1aba36009c20a6fa7d6c6f9dce1c22"
+  },
+  "evidence/zcode-ui/reference/select-light.png": {
+   "before_sha256": null,
+   "after_sha256": "b3ec984bfc0c766f5bcd3ac5166f8237954323c67aefd05bd8b014b85d6ec548"
+  },
+  "evidence/zcode-ui/reference/toast-dark.png": {
+   "before_sha256": null,
+   "after_sha256": "5f03070dc97f1c1f66d22d3e478e700689aeef92a62aacbde44ea798bf042d70"
+  },
+  "evidence/zcode-ui/reference/toast-light.png": {
+   "before_sha256": null,
+   "after_sha256": "67a4d5cdba97851d6ab2a7b3fd7d0b725bfca06259c86a031056bf02529dc7e0"
+  },
+  "evidence/zcode-ui/reference/tooltip-dark.png": {
+   "before_sha256": null,
+   "after_sha256": "b59a912f2d8cc28a1890963b314b439c5bc9a78664cbf1bf8e75bc264294e88d"
+  },
+  "evidence/zcode-ui/reference/tooltip-light.png": {
+   "before_sha256": null,
+   "after_sha256": "0647f9970265bccd690c675e96b6bd043f15ca682e47bb82db1510036c1b33cc"
+  },
+  "evidence/zcode-ui/reference/zcode-colors-rgba.json": {
+   "before_sha256": null,
+   "after_sha256": "76372c3edbcd50fe596d5e4b7fcd7991adab9686588ddc578a728afa24b4f028"
+  },
+  "evidence/zcode-ui/reference/zcode-computed.json": {
+   "before_sha256": null,
+   "after_sha256": "665545fcbfb42adbf692b6b86ab4d19c0656a40622ebe15eda06016ba913fd33"
+  },
+  "evidence/zcode-ui/reference/zcode-tokens-resolved.json": {
+   "before_sha256": null,
+   "after_sha256": "066725c00059a05d073fbcdac9a8d965eab05f05c1f5df16e654854ff3e22b91"
+  },
+  "tools/zcode-reference/README.md": {
+   "before_sha256": null,
+   "after_sha256": "09c06958deb136d5517c85df24e39ec6e3afac85b4c103cd519a385603e0d78d"
+  },
+  "tools/zcode-reference/harness/index.html": {
+   "before_sha256": null,
+   "after_sha256": "0a19e89c526635ed92f5f252c9703aa8bca0cb0c38364a2d9176e6034c26a43b"
+  },
+  "tools/zcode-reference/harness/package.json": {
+   "before_sha256": null,
+   "after_sha256": "43574eecdbf2ee1bfd3d52126b28dd53c6ad1a9b91971b5412b0f2db8cbba5a4"
+  },
+  "tools/zcode-reference/harness/src/main.tsx": {
+   "before_sha256": null,
+   "after_sha256": "56e291cc9df1a1aff7158d49e934fa400ba1009392f6ca85585fdc37f86fd568"
+  },
+  "tools/zcode-reference/harness/stub/ControlShortcutBadge.tsx": {
+   "before_sha256": null,
+   "after_sha256": "34632407dfa7ce5bdb5edb554656325a750ded0cf06f9e712cf3e35c6874a07a"
+  },
+  "tools/zcode-reference/harness/stub/i18n/IntlProvider.tsx": {
+   "before_sha256": null,
+   "after_sha256": "e9fb4f228a7a770f65690414c5b09efc61e3dcf6b7339675385e8b530c001e95"
+  },
+  "tools/zcode-reference/harness/vite.config.ts": {
+   "before_sha256": null,
+   "after_sha256": "d0df693b94e1ddb156f2b41e851b6e7d99146a9b992a32a7dc1876d70fb53482"
+  },
+  "tools/zcode-reference/scripts/capture.mjs": {
+   "before_sha256": null,
+   "after_sha256": "baa02c886565807fbda85b5f248e4a7d19b4555a15a64055edac767ed33162ec"
+  },
+  "tools/zcode-reference/scripts/contrast.py": {
+   "before_sha256": null,
+   "after_sha256": "3976537a73d529e866c1c890629b03310136306c028564831d7c0fdce46a54b3"
+  },
+  "tools/zcode-reference/scripts/electron-page.mjs": {
+   "before_sha256": null,
+   "after_sha256": "9f2cb0ac112e3b28e7636b0f28db17c2dadef3f11042a203fe5a407695fb8dff"
+  },
+  "tools/zcode-reference/scripts/probe-lib.mjs": {
+   "before_sha256": null,
+   "after_sha256": "0d21245aad1b3df3816805d612f0906a8ae23d8a3a2819c62e0d5b2227957635"
+  },
+  "tools/zcode-reference/scripts/ref-shell/main.cjs": {
+   "before_sha256": null,
+   "after_sha256": "8580730192007704747aec91ac849a5d205a20f3ae8babac9436043735add785"
+  },
+  "tools/zcode-reference/scripts/token-rgba.mjs": {
+   "before_sha256": null,
+   "after_sha256": "6a1b6ffbc32dd8b2190ac170dee35d41f39e94cbe01c4c4fb1e70327642caf61"
+  },
+  "tools/zcode-reference/scripts/tokens.mjs": {
+   "before_sha256": null,
+   "after_sha256": "89aa7c36a05e723b110a03fd90b63c1802d5fb647f7261b4d591ef2954ecf3f9"
+  },
+  "tools/zcode-reference/scripts/transform_styles.py": {
+   "before_sha256": null,
+   "after_sha256": "8f2db5eb20539bbae3936a3a0718b3c469f1e270abde8fd6281d1b2d6fafb305"
+  },
+  "tools/zcode-reference/setup.sh": {
+   "before_sha256": null,
+   "after_sha256": "410eb1f46470d63480f4e7e828e5cdd0e5a85e10a89d2f7eb554465ae7a57840"
+  }
+ },
+ "decision_record": "docs/decisions/DR-PX-2026-10-24-016-zcode-design-language.md",
+ "new_rows": [
+  "REQ-PX-141",
+  "REQ-PX-142",
+  "REQ-PX-143"
+ ]
+}

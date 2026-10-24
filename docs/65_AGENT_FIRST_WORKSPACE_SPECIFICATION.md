@@ -16,6 +16,8 @@ This specification was derived from functional observation of a commercial agent
 
 What is carried over is facts, not expression. No code, stylesheet, theme file, colour value taken from a theme, icon, icon name, font, logo, brand colour, string of copy or file layout of the reference product appears in this document or may appear in any implementation derived from it. Where the reference product's behaviour is weaker or riskier than Modbit's strengths, the requirement states Modbit's stricter rule and says so. Tokens are Modbit's own proposal; the concrete surface colours are chosen by the implementing task from the constraints in AFW-A11 and AFW-A12 and verified by the computed contrast test, not copied from any source. Whether this posture is acceptable for a release was accepted by the owner on 2026-10-03 without prior counsel review; the DR records that decision and does not extend it.
 
+> **Scoped supersession (DR-PX-2026-10-24-016, accepted 2026-10-24).** The clean-room posture of this section is about the Cursor reference product and is unchanged. The owner has since adopted the design language of a different, Apache-2.0 product (ZCode) for the renderer; that record supersedes, and only, the numbers of AFW-A03 (agent list default 264 px), AFW-A04 (top bar 48 px), AFW-A05 (navigation row radius 6 px) and AFW-A07 (composer radius 16 px), and the provenance clause of AFW-A11 (tokens come from ZCode's Zai themes under the record's section 4, with the declared exceptions that keep AFW-A12, A13 and A14). Where a row below still shows the older number, the record governs.
+
 ## 3. Verification tags
 
 Every requirement carries the tag of the parity fact it derives from. A tag says how the fact was learned, not whether Modbit must follow it.

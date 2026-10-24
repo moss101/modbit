@@ -13,15 +13,15 @@ A dossier package is valid only if every path below exists with the listed SHA-2
 
 | Section | Range | Files | Bytes |
 |---|---|---:|---:|
-| Authority and orientation | 00–09 | 8 | 84090 |
+| Authority and orientation | 00–09 | 8 | 85545 |
 | Architecture and subsystems | 10–29 | 20 | 389566 |
-| Implementation specifications | 30–39 | 10 | 171177 |
+| Implementation specifications | 30–39 | 10 | 173370 |
 | Requirements, tasks and traceability | 40–49 | 10 | 351840 |
-| Verification and testing | 50–69 | 20 | 819608 |
+| Verification and testing | 50–69 | 20 | 836184 |
 | Delivery and operations | 70–79 | 10 | 125383 |
-| Agent process and governance | 80–97 | 18 | 192201 |
+| Agent process and governance | 80–97 | 18 | 195404 |
 | Live state | 98–99 | 1 | 14961 |
-| **Total docs** | | **97** | **2148826** |
+| **Total docs** | | **97** | **2172253** |
 
 ## Specification files (`docs/`)
 
@@ -29,7 +29,7 @@ A dossier package is valid only if every path below exists with the listed SHA-2
 |---:|---|---|---|---:|---|
 | 00 | `docs/00_MASTER_INDEX.md` | Modbit — AI-Agent Build Dossier V3.3 EPR v1.1 | authority | 18515 | `f8b210edca50f014bc0631ec67f9f4f49744007914730b113d1fbf6c53383757` |
 | 01 | `docs/01_START_HERE_FOR_BUILD_AGENTS.md` | Start Here for Build Agents | authority | 3036 | `e5ad750bd3c5c0a219f135bf3878c91c6230d417a66fca664becef682eb78fc2` |
-| 02 | `docs/02_AUTHORITY_AND_DECISIONS.md` | Authority, Decision Register, and Conflict Resolution | authority | 26844 | `c3ce98647a4dea3f9a34a52b8f73c49dd31db561aa4f53c26ae310a476b951cf` |
+| 02 | `docs/02_AUTHORITY_AND_DECISIONS.md` | Authority, Decision Register, and Conflict Resolution | authority | 28299 | `0e33283674ca903e24fdafee19c9db7b07b6ec8df09af253b9ccf3f8b0d3fc5c` |
 | 03 | `docs/03_ARCHITECTURAL_CONFLICTS_AND_SUPERSESSIONS.md` | Architectural Conflicts and Supersessions | authority | 12498 | `ea0fad94a60f65459b4eae3d43873cbf94ee73559d8d4b547f287d904302f5b9` |
 | 04 | `docs/04_REQUIREMENT_BASIS_AND_LIMITS.md` | Requirement Basis and Limits | authority | 1724 | `d9e07d840b4b006d79d00251d9525de503d5676e10e09b2229c7bfe5e2f04344` |
 | 05 | `docs/05_EXECUTION_POLICY_ROUTER_ADOPTION_DECISION.md` | Execution policy router adoption decision | authority | 6756 | `ebb8376a8f733b5214f7e3ae7b14a83a865d3bfff6d2afe1a445a9f3a7763866` |
@@ -57,11 +57,11 @@ A dossier package is valid only if every path below exists with the listed SHA-2
 | 29 | `docs/29_CLIENT_SURFACES_AND_SOURCE_CONTROL_INTEGRATION.md` | Client surfaces and source-control integration | architecture | 26785 | `007d247eda8fc4cc25bf241acbfaec9dd8876d70a3f62fc71b8c4f9270475a78` |
 | 30 | `docs/30_PROTOCOL_APIS_AND_EVENT_SCHEMAS.md` | Protocol, APIs, and Event Schemas | implementation | 53615 | `a55b9bfad1f03bdd53d266ea28f584258e94df95abec92993d8471c306c4618a` |
 | 31 | `docs/31_DATABASE_AND_STORAGE_SCHEMA.md` | Database and Storage Schema | implementation | 15551 | `665eb1ebb6297481640d3b0f0c05c49c5fb351c67189a9e7bdd5439fb6078063` |
-| 32 | `docs/32_DESKTOP_FRONTEND_IMPLEMENTATION.md` | Desktop Frontend Implementation | implementation | 13937 | `12c2bca2dbdf369a01eb94549dfff7f23d270300ad1a880068ce54c9f83769aa` |
+| 32 | `docs/32_DESKTOP_FRONTEND_IMPLEMENTATION.md` | Desktop Frontend Implementation | implementation | 15719 | `9ecc6191c08e22fa22094e8756f63ea759e1d71edb82c9bae113f1fdb5f39cb8` |
 | 33 | `docs/33_CORE_AND_CLOUD_BACKEND_IMPLEMENTATION.md` | Core and Cloud Backend Implementation | implementation | 13639 | `907fccbdc9e41e1002f8576ebdccf2b5875e9368760e8b41849d0f53a6057a84` |
 | 34 | `docs/34_OBSERVABILITY_COST_AND_OPERATIONS_DATA.md` | Observability, Cost, and Operations Data | implementation | 15216 | `9ac96f0babd8de75c4be5d65028bd8c22cda17da27d89ad2dee53dc07192affd` |
 | 35 | `docs/35_DEPENDENCY_AND_BINDING_DECISIONS.md` | Dependency and Binding Decisions | implementation | 2545 | `037a85253201401822bde5ff76b0b6625057099995d06b30c0d1aec4e572b1f9` |
-| 36 | `docs/36_BUILD_BUY_DEPENDENCY_AND_LICENSE_POLICY.md` | Build / Buy / Dependency / License Decisions | implementation | 3363 | `538f768996bec4254231f7671517e68bea6cf529f51b60588a5b2dd91007071a` |
+| 36 | `docs/36_BUILD_BUY_DEPENDENCY_AND_LICENSE_POLICY.md` | Build / Buy / Dependency / License Decisions | implementation | 3774 | `c9e0cb4d15cd4e653e4ec4bfe16a26ba2692e44db23978cc5870f12cc24db12d` |
 | 37 | `docs/37_EXISTING_CODE_DONOR_AND_REUSE_POLICY.md` | Existing-Code Donor and Reuse Policy | implementation | 3835 | `4dfad8325e6ed11e390952f46ff14caf6fa30fc72142f1ae58e32a22a620d4ee` |
 | 38 | `docs/38_EXECUTION_POLICY_CONTRACTS_AND_ALGORITHMS.md` | Execution policy contracts and algorithms | implementation | 33662 | `20334514a3f9873573e1e31dd6cb055c47cc2d8cb33807369b6aee79be58ee03` |
 | 39 | `docs/39_UX_FLOWS_ONBOARDING_AND_INTERACTION_BUDGETS.md` | UX flows, onboarding and interaction budgets | implementation | 15814 | `d941a887e6775d6c756b91470cb52b702d383d777451f87cda4b55f2454fd4a2` |
@@ -87,10 +87,10 @@ A dossier package is valid only if every path below exists with the listed SHA-2
 | 59 | `docs/59_RELEASE_ZERO_PROOF_SCENARIO.md` | Release Zero — Single Proof Scenario | verification | 3669 | `15fbb005f7a8196b4987468034f8de113dcd15a1ebd3f34dba822075012064fc` |
 | 60 | `docs/60_RELEASE_ZERO_EXPANDED_PROOF.md` | Release Zero Expanded Proof — Clean-Slate V2 | verification | 4001 | `0a3cc3ce5329c15cafb402833cb6bd70c9c6e4afdbdb838d2a811176c975939e` |
 | 61 | `docs/61_EXECUTION_POLICY_QUALIFICATION_AND_ROLLOUT_GATES.md` | Execution policy qualification and rollout gates | verification | 44986 | `c9929445ac4d98fde8fea87be19d54d9e01808052af53d09ed3f1b113db3badb` |
-| 62 | `docs/62_PRODUCT_EXTENSION_REQUIREMENTS_TASKS_AND_QUALIFICATIONS.md` | Product extension requirements, tasks and qualifications | verification | 507523 | `7cece47d9b5f43361ad0017557ded25177dcefeac02792e072e9f352e0bf0bb5` |
+| 62 | `docs/62_PRODUCT_EXTENSION_REQUIREMENTS_TASKS_AND_QUALIFICATIONS.md` | Product extension requirements, tasks and qualifications | verification | 523404 | `bf11e3feddd00af5116f7c1038a3aec660ebedfc154323d519822b0774e09915` |
 | 63 | `docs/63_AGENT_COMPETENCE_BENCHMARKS_AND_REGRESSION_SUITES.md` | Agent competence benchmarks and regression suites | verification | 10372 | `0123956ac1431d47487f96049e83a395704f6b1ae0c4b11d7503d4f8ae347c62` |
 | 64 | `docs/64_VERIFICATION_EXECUTION_CONTRACTS.md` | Verification execution contracts: baseline, targeting, result normalization, flake handling and diff invariants | verification | 17420 | `fae7f2d05cd40298da9ac6ee10fdd94ad3e5f87d40e263067f274162c4df735a` |
-| 65 | `docs/65_AGENT_FIRST_WORKSPACE_SPECIFICATION.md` | Agent-first workspace specification (clean-room) | verification | 84940 | `f5e4ac6c1d79cf835479be133b3d1e390cf8e1dc192ccc793bd1ab6ca75215da` |
+| 65 | `docs/65_AGENT_FIRST_WORKSPACE_SPECIFICATION.md` | Agent-first workspace specification (clean-room) | verification | 85635 | `72bffb1bbb02e799fa812d372324660ce3e72dce924102c012a08449c5385f6e` |
 | 66 | `docs/66_NATIVE_COMPUTER_CONTROL_SPECIFICATION.md` | Native computer control specification (clean-room) | verification | 29772 | `06505729d55fe7ab7dc8de8c87deb9df2349131de04afc19b260c3d3cccb313b` |
 | 67 | `docs/67_WORKSPACE_EDITOR_SPECIFICATION.md` | Workspace Editor specification (clean-room) | verification | 22092 | `ebbfeea104ec2266087b5b70601e5487fb54d5e0dab91031f1e1a05223fe4022` |
 | 68 | `docs/68_AUTOMATIONS_SPECIFICATION.md` | Automations specification (clean-room) | verification | 20700 | `eb7ec629f4ac2d6e835004dba761f35ab0b3ecef5dddedd8d785da3b0684df22` |
@@ -122,7 +122,7 @@ A dossier package is valid only if every path below exists with the listed SHA-2
 | 94 | `docs/94_EXECUTION_POLICY_DOSSIER_TASK_AND_HANDOFF.md` | Execution policy dossier task and handoff | governance | 11506 | `bc3c83f033db8ca5934751227cce2437f4cd7772a21917551618ae03f79b81ba` |
 | 95 | `docs/95_EPR_V1_1_DOSSIER_TASK_AND_HANDOFF.md` | EPR v1.1 dossier task and handoff | governance | 10525 | `264069b600baf40d1e54d2f89be7e9804a8b77c0dbf3ddb0a9dca41111582413` |
 | 96 | `docs/96_DOSSIER_GOVERNANCE_MAINTENANCE_TASK_AND_HANDOFF.md` | Dossier governance maintenance task and handoff | governance | 9070 | `af650309e48dd7fd60dd6d286c460ed7c3128a2201964078c7f50aea385bfb8c` |
-| 97 | `docs/97_DOSSIER_MAINTENANCE_LOG.md` | Dossier maintenance log | governance | 126337 | `ce8937e53718bebd53180e612c6dda5da099c34c95ddc13198a56cb301147e76` |
+| 97 | `docs/97_DOSSIER_MAINTENANCE_LOG.md` | Dossier maintenance log | governance | 129540 | `48135a1905037a2a6fb1203b0bbcd01f1a88343c94db52db214c03cc36d7a14a` |
 | 98 | `docs/98_BUILD_MANIFEST.md` | Build Manifest | live-state | 14961 | `824d5b749252e6cba1de566c5e766cbfaefce23f4cda2fd64bc07398e251b102` |
 
 ## Root governing files and tooling
@@ -161,7 +161,8 @@ A dossier package is valid only if every path below exists with the listed SHA-2
 | `docs/decisions/DR-PX-2026-10-05-013-audit-driven-capability-completion.md` | source patch provenance | 12052 | `01e7af921cf9249014c6fdb411fda39482af4ff7c91e598cf19c302c91245bab` |
 | `docs/decisions/DR-PX-2026-10-19-014-per-task-harness-refinement.md` | source patch provenance | 17309 | `c1fdae3e270803a585c698244c32e42f2132ed5866a8ccfb786c05d2d1adfa76` |
 | `docs/decisions/DR-PX-2026-10-21-015-streamed-delta-durability.md` | source patch provenance | 10995 | `31c6cddec03523b494e28e65ccfdad71b368763ef868784b6fdc42f571b3e1ec` |
-| `docs/decisions/README.md` | source patch provenance | 7013 | `88f49f9074586f07df58235f05b1e120dca8f8905f47073c4ad707cd31a62815` |
+| `docs/decisions/DR-PX-2026-10-24-016-zcode-design-language.md` | source patch provenance | 22683 | `fe82df0afee6850da1044ad5941708587736cd0b8911db89f83a4d04d3e490fb` |
+| `docs/decisions/README.md` | source patch provenance | 7660 | `d9664d27a91eccb9c2f671e14c6e0e8d9b27ccbccb06d1d809b24c24b34334e0` |
 | `evidence/dossier-epr-v1.1/baseline.json` | retained evidence | 11128 | `ae11c9be07272788d2957bff45bc1333f879e121d2b5205ebc01ce780ec62543` |
 | `evidence/dossier-epr-v1.1/tests.log` | retained evidence | 2071 | `2f4bbebb6db1f0f0c6802f8dee65e5d6aa7933db6d1bda28a8acd70aa9bd88b3` |
 | `evidence/dossier-epr-v1.1/validation.json` | retained evidence | 14010 | `288bf2fff83122240110c926d18d8ef616a9257fc62bc54eb70b536088dfbfb5` |
@@ -221,6 +222,9 @@ A dossier package is valid only if every path below exists with the listed SHA-2
 | `evidence/dossier-px-013/baseline.json` | retained evidence | 17069 | `5fa69dff8d917cd09f70fd0dadf8f9668ab8596b54845cbf200ebc6339e5c254` |
 | `evidence/dossier-px-013/tests.log` | retained evidence | 6827 | `2064d9461172c40589ebdb8186bdbd6f42295d31bfde84e57ed396c60b1d1dc3` |
 | `evidence/dossier-px-013/validation.json` | retained evidence | 5166 | `17ab2e446ae56506e6522b4905ff02fececd803dec75d2fa99f1edf76f4e15f3` |
+| `evidence/dossier-px-015/baseline.json` | retained evidence | 20734 | `d0d66a9a81c767fa48d5a123707de217ea582b78f94ac6c11fdf47d0c04d62fd` |
+| `evidence/dossier-px-015/tests.log` | retained evidence | 7182 | `4bb545b4094859b4074186a7a92dcc46b8026501acf9bba0bcf623aca225d321` |
+| `evidence/dossier-px-015/validation.json` | retained evidence | 11427 | `88e7aa03d2a0d8e59846bf4d0d1a3026fb1b8583d9d5d1d80d03a5e38dd66d1b` |
 | `evidence/m0/IMP-EV-0208/TASK_CARD.md` | retained evidence | 2676 | `2510e12a996033f4951c8a84a1adf68c6daca31607aa2695ebe53f8bcafb432a` |
 | `evidence/m0/IMP-EV-0208/evidence.json` | retained evidence | 747 | `757c00fb86bc657d3d64089f599343a5a43c6f85249ed3463574780ce376726e` |
 | `evidence/m0/M0.1/TASK_CARD.md` | retained evidence | 4582 | `9fbef0d723b9482b33064013d20ed743868d04ae71a795e7387aff0672eb0c7c` |
@@ -405,6 +409,31 @@ A dossier package is valid only if every path below exists with the listed SHA-2
 | `evidence/m10/PX-134/TASK_CARD.md` | retained evidence | 1306 | `a935fb43af7fd040e7b92dfc3c914f166c937a9ec75e09854afa836335b7f4ef` |
 | `evidence/m10/PX-134/ci-run-39960289486.json` | retained evidence | 46978 | `a8dbcd6ad3f3d474c37e6bf506048288320694cbf9e882e0a9124bb70a7480dd` |
 | `evidence/m10/PX-134/evidence.json` | retained evidence | 1252 | `bba5a8a5662ddf8d142ec8421ea8565cc2b40bc578c65ad97f7363445f5b6545` |
+| `evidence/m10/PX-141/TASK_CARD.md` | retained evidence | 2464 | `3e8bc5d9905e441fe8619147a9619f8cfc95dc0e8a707235ddb9765744e23326` |
+| `evidence/m10/PX-141/evidence.json` | retained evidence | 1420 | `226d5726b09d1468f62364a50307ffd206de571409043607d055e6008e346488` |
+| `evidence/m10/PX-141/mutation-check.txt` | retained evidence | 4215 | `d9f45abdc83a7c45d139468c5e543db812d368bb6f1be8822950b3399928211b` |
+| `evidence/m10/PX-142/TASK_CARD.md` | retained evidence | 2727 | `05f5cdeca32d639392e186c5c367783caa4be3d0c55e6b3789db046ecd8e8f80` |
+| `evidence/m10/PX-142/evidence.json` | retained evidence | 1305 | `5d1380b5262c9f4eb22771bd007c250b0d86e682c92413b2c37458442abc9644` |
+| `evidence/m10/PX-142/fidelity-report.json` | retained evidence | 25402 | `db7e6a9aaf15500563d45ab5445442b89dffb26a087270b7df5a0b08c2bc7776` |
+| `evidence/m10/PX-142/mutation-check.txt` | retained evidence | 7116 | `f1aa9b781a610a2acd075d7160278c3ab7f6bc4c79131c911be29f6094f588e0` |
+| `evidence/m10/PX-143/TASK_CARD.md` | retained evidence | 3033 | `7247242b62ad148ca97e2de6dfdacfb73e09dc73d9754cc3c5201d27122bcd66` |
+| `evidence/m10/PX-143/after/gallery-controls-dark.png` | retained evidence | 876695 | `51dc5e21a9ef361eed7cf101f66b5d4f4d2ff176ade8c208e5aa8bce72efc388` |
+| `evidence/m10/PX-143/after/gallery-controls-light.png` | retained evidence | 888722 | `44ee77356d17207963cd353346405bc7ab9a4983fa0a7c9eee324b2822b7e567` |
+| `evidence/m10/PX-143/after/gallery-conversation-dark.png` | retained evidence | 190365 | `713b9f3dad5ea0537142b6d053ccf03855bbcd11c9b26fb55a60fa5a215c42ce` |
+| `evidence/m10/PX-143/after/gallery-conversation-light.png` | retained evidence | 191568 | `8160c1a37ab5bf0df2ebff514c69e7b11a1e068dba2c332435d113124bf1ab14` |
+| `evidence/m10/PX-143/after/gallery-primitives-dark.png` | retained evidence | 88511 | `02c7f3228fe4d304339b2c2896226876fef3813eeb79002c7985ceb2247431b5` |
+| `evidence/m10/PX-143/after/gallery-primitives-light.png` | retained evidence | 93435 | `7d2df7fcfb6669ac3607b079a7ee48f56d966d956eb3f73e28ecf057c7a72a31` |
+| `evidence/m10/PX-143/after/gallery-shell-dark.png` | retained evidence | 65877 | `56c0c3843cd0e024527bf8254df3593ef03e7f99c0020c3b159183ba1a3465a6` |
+| `evidence/m10/PX-143/after/gallery-shell-light.png` | retained evidence | 69232 | `da6fc9cb4f8cf379db1ab26fd9f7a5baa86083dd9796adbb7a0a12e1105dc1e8` |
+| `evidence/m10/PX-143/before/gallery-controls-dark.png` | retained evidence | 860873 | `d89f550a2d7fb08927c083b97bb8571cc78150c6778ca4804a02282f0d39312d` |
+| `evidence/m10/PX-143/before/gallery-controls-light.png` | retained evidence | 861324 | `44b82b2972b62346ff18b51cd6bd40fbd776f4eb2db9309537c0affb85e411a5` |
+| `evidence/m10/PX-143/before/gallery-conversation-dark.png` | retained evidence | 202440 | `77510797bdc7a51abc66e0d1761107718985cdcf7f8362b1fccbd162987ca8e0` |
+| `evidence/m10/PX-143/before/gallery-conversation-light.png` | retained evidence | 202306 | `c14226d6919f3229e7569b976da77f55d2e5235827ac0170e14f1f183e0f5454` |
+| `evidence/m10/PX-143/before/gallery-primitives-dark.png` | retained evidence | 93943 | `496db1435d9d005be4a679f8cc433f5d1c8b9250a4d273d538b1481e15d56c57` |
+| `evidence/m10/PX-143/before/gallery-primitives-light.png` | retained evidence | 94579 | `2a32859bf8236d3db4403a8550bcf820bf32d50fe718c33403266b42ba4a8d03` |
+| `evidence/m10/PX-143/before/gallery-shell-dark.png` | retained evidence | 74483 | `5d80ff39c46b40a8b6e8c65db651c82f84360be4c885b78d2ee8ef79a9d959eb` |
+| `evidence/m10/PX-143/before/gallery-shell-light.png` | retained evidence | 75940 | `103f2e2d0f8ce9320be4add68c012e93509d14c395cafc2c02b7a824a58a95fe` |
+| `evidence/m10/PX-143/evidence.json` | retained evidence | 1136 | `e5ef375198ad611a1ee817da3e83185381261509054ea21809b44c0d057c3e55` |
 | `evidence/m2/IMP-EV-0011/TASK_CARD.md` | retained evidence | 1620 | `22a7ddc2c80526c5aba876366bfeb862fac72742059962c5ad19deb8239fb5d2` |
 | `evidence/m2/IMP-EV-0011/ci-run-34409173853-tests.log` | retained evidence | 80671 | `523c4dc423fa906a9c846d64d864d36c759cb9f98bd8f4e582600a39d7c14b05` |
 | `evidence/m2/IMP-EV-0011/ci-run-34409173853.json` | retained evidence | 36682 | `49f5cd98348f61290daeee2920913a705bc385ed441cf7a15a9d9a357ad2ebdf` |
@@ -1850,9 +1879,32 @@ A dossier package is valid only if every path below exists with the listed SHA-2
 | `evidence/m9/PX-009/TASK_CARD.md` | retained evidence | 3716 | `143ff5f9be712b78a43f415d143fba93a8568e2f9b6980d28e278d4731838fa2` |
 | `evidence/m9/PX-009/ci-run-35830456557.json` | retained evidence | 42199 | `508168affe8ad4b8a13e97c3d4f855efbf4255325e88b58fec882ad41376033a` |
 | `evidence/m9/PX-009/evidence.json` | retained evidence | 2230 | `61d514ff843ff8750fecb6fd7d4936bd84d3255b2e9d2e72cbbc32901de9d99e` |
-| `graph/PROJECT_GRAPH.md` | human view of the graph | 45127 | `db0e2bbf808ea498913f0c6541c0975e9215a5d1a863ca1bf87007809b2d2cf3` |
-| `graph/project-graph.json` | project driver graph with live status | 2264951 | `4b401b8014946a57942d2b6b98693bc1eecf53575d92eca386f8c240a1e533ba` |
-| `tools/build_graph.py` | regenerates graph structure from docs | 62560 | `7e491e47f2e89f8cad4827a72701b7849d4d628754417022c862dc9b21431061` |
+| `evidence/zcode-ui/reference/PROVENANCE.md` | retained evidence | 1996 | `12e7e184f6cb952bb3801cfc8dda6a5d9cb3c7d2569417a4b5bc9079adb15061` |
+| `evidence/zcode-ui/reference/alert-dialog-dark.png` | retained evidence | 31660 | `13d117726839f02d42842686d086f0c3b0f8d9afeea401588f3eaa2058f05cd3` |
+| `evidence/zcode-ui/reference/alert-dialog-light.png` | retained evidence | 37398 | `656f7c0880d90d2d1bc111713a8939849286a62ca1f3dc3b486ded53ea71168b` |
+| `evidence/zcode-ui/reference/buttons-dark.png` | retained evidence | 131503 | `64c975f5470640cd8efe356c39afa647e8e0c7396ffd1bc03d9000c5638c0966` |
+| `evidence/zcode-ui/reference/buttons-light.png` | retained evidence | 131486 | `ad86abae56ce5935d2125975a56dfff0cfa5ecb519a57ce4058a09e7caab1248` |
+| `evidence/zcode-ui/reference/contrast-zai.txt` | retained evidence | 5821 | `6f82cc19ae8b5201825b3e1682aed7edfa8ed4a7e444a8f7e1fa9c92127a288c` |
+| `evidence/zcode-ui/reference/dialog-dark.png` | retained evidence | 36946 | `bbcb09ef60b49cd9a138eace0c0a4aade2b609076e290f20183ee002f3dcfd5b` |
+| `evidence/zcode-ui/reference/dialog-light.png` | retained evidence | 38062 | `311ce9d558501da6366d8aedbb3c09e77a507beca2d9165c19fcc105b7005384` |
+| `evidence/zcode-ui/reference/fields-dark.png` | retained evidence | 48770 | `fb1057dee0abba9b2c8471ddbfc769f9af3936f3daaf2705d50f6e9ee36c624a` |
+| `evidence/zcode-ui/reference/fields-light.png` | retained evidence | 48889 | `567e156119617e1181d97d522605af303fb4d012486bcdfb3523d9ee7ad1b154` |
+| `evidence/zcode-ui/reference/menu-dark.png` | retained evidence | 35917 | `52d8121f2e2c421718631428aec4b2addcf7cc541e03eef6a98450350ff89832` |
+| `evidence/zcode-ui/reference/menu-light.png` | retained evidence | 37339 | `83b5fdb64bdbf63068eed7e926e326381f4642149a0479fa3a2e45e8bd1d7554` |
+| `evidence/zcode-ui/reference/popover-dark.png` | retained evidence | 29361 | `6b1d4bbfe28cc2bc37f92ec78c11e6f824083b6e4713786e43fe850742616244` |
+| `evidence/zcode-ui/reference/popover-light.png` | retained evidence | 29377 | `9ac77e944c11bb1b020cea0df85c7d86b4e15f6d677363b68ed374c058325548` |
+| `evidence/zcode-ui/reference/select-dark.png` | retained evidence | 23955 | `1bc97cb0d93eec8f909f7a812b8086daedd243109570297a6123aab777f835c6` |
+| `evidence/zcode-ui/reference/select-light.png` | retained evidence | 24922 | `21a956972623c1d81173659aa93580a721e83c22d218dc533188eb00c59d8620` |
+| `evidence/zcode-ui/reference/surfaces-dark.png` | retained evidence | 70354 | `b9c0b2d3b382da7ba36e090fd7547939f2e2d46429e6935afc79c735ce9e8456` |
+| `evidence/zcode-ui/reference/surfaces-light.png` | retained evidence | 71154 | `7dd3230c1ccf3774da16bea2f6918e4b1ce151c75588c40512c0314896d3e64b` |
+| `evidence/zcode-ui/reference/tooltip-dark.png` | retained evidence | 21552 | `8e41c0724ffa28d701a0caf78be86503ae1f8c3d734fb51288d628da101877c9` |
+| `evidence/zcode-ui/reference/tooltip-light.png` | retained evidence | 21386 | `d8a9407e1534f4ba562929a818a4377896352289a9347997fc15f55271d63629` |
+| `evidence/zcode-ui/reference/zcode-colors-rgba.json` | retained evidence | 18690 | `76372c3edbcd50fe596d5e4b7fcd7991adab9686588ddc578a728afa24b4f028` |
+| `evidence/zcode-ui/reference/zcode-computed.json` | retained evidence | 718674 | `9ae8821ce72aa0fff3be44aacd0f4c9d995465c54bad7f17d1a81f92841d1c2d` |
+| `evidence/zcode-ui/reference/zcode-tokens-resolved.json` | retained evidence | 30635 | `066725c00059a05d073fbcdac9a8d965eab05f05c1f5df16e654854ff3e22b91` |
+| `graph/PROJECT_GRAPH.md` | human view of the graph | 45427 | `11a7825c158912ecbfb5d94eac6a608bca4ea8c6bfcd1e65d7ec6df87e050c7c` |
+| `graph/project-graph.json` | project driver graph with live status | 2286038 | `5e3626700ee0074ad77d1a92476a6ab5759910857bd34c42bf5d4934af1c43f4` |
+| `tools/build_graph.py` | regenerates graph structure from docs | 63093 | `4dd5b677347b7f71655c36bedf8137ee94b6afeb0b5a13e4fe86a5bf71501b22` |
 | `tools/build_manifest.py` | regenerates this manifest | 14871 | `b35f87f995ebea778ef5002f42c4dcb2f195f303ae121d7b4d73070d95d665b7` |
 | `tools/check_dossier.py` | integrity gate | 18887 | `1bd2634078a0c20b34a565ccf0f6d9061e83bd0945b7bf719ac137611e3fcf35` |
 | `tools/ci_label.py` | source patch provenance | 3514 | `5d779c114472ed76e222eb15240cadfb72bb66dfa1bd2a6a8e381dceec326bb7` |
@@ -1862,7 +1914,7 @@ A dossier package is valid only if every path below exists with the listed SHA-2
 | `tools/graph.py` | query/update graph | 46849 | `2e589b6e0e8e7be89f7323a19ff21bf5394c27f424faf13c809832cf338ca8a1` |
 | `tools/integration_gate.py` | source patch provenance | 18020 | `413fa4b02d659f391a6abd5740096f45fa9e09417bdaa6f478182a655c520b56` |
 | `tools/support_claims.py` | source patch provenance | 6653 | `0e208c363d38a5f0466bf60a5f3121a7ed60a34c9ad662118d7d1d46bb5bbc00` |
-| `tools/test_dossier.py` | copied-package integration and negative tests | 70786 | `77a6b811b6bb4199aac475e08054d6a22b94bc98c226dda6de86043fc93482a6` |
+| `tools/test_dossier.py` | copied-package integration and negative tests | 73999 | `91e1ffd09a9e3030d5574e171a1679d09dfd04b638f689efb042cb3164171adf` |
 
 ## Rename map (V3 flat numbering → V3.1 `docs/`)
 
