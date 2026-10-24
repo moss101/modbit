@@ -169,6 +169,77 @@ test("PX-120: a destination on this machine or its network is refused unless the
   }
 });
 
+test("PX-120: a link that points straight at a local or private target is refused when clicked, the page stays where it was, and the server behind it is never reached", async () => {
+  test.setTimeout(240_000);
+  const repo = fixtureRepo();
+  const other = await serve(() => ({ body: page("Local secret", "<p>reached local</p>") }));
+  const home = await serve(() => ({ body: page("Home A", `<p>named by the policy</p><a href="http://127.0.0.1:${other.port}/direct">Local link</a> <a href="http://10.255.255.1/admin">Private link</a>`) }));
+  const beforeClick = gate();
+  const A = `http://127.0.0.1:${home.port}`;
+  const model = await scriptedModel([
+    { calls: [{ name: "plan.update", args: { outcome: "the links are clicked", expected_files: [] } }] },
+    { calls: [{ name: "browser.navigate", args: { url: `${A}/` } }] },
+    { calls: [{ name: "browser.snapshot", args: { mode: "full" } }] },
+    async (texts) => {
+      await beforeClick.opened;
+      return { calls: [{ name: "browser.act", args: { ref: refOf(texts, "link", "Local link"), action: "click" } }] };
+    },
+    { calls: [{ name: "browser.navigate", args: { url: `${A}/` } }] },
+    { calls: [{ name: "browser.snapshot", args: { mode: "full" } }] },
+    async (texts) => ({ calls: [{ name: "browser.act", args: { ref: refOf(texts, "link", "Private link"), action: "click" } }] }),
+    { calls: [{ name: "task.complete", args: { summary: "clicked the links", self_review: { findings: [] } } }] },
+  ]);
+  const dataDir = mkdtempSync(join(tmpdir(), "modbit-e2e-linkclick-"));
+  try {
+    const { app, page: ui } = await launch(dataDir, { MODBIT_OPENAI_BASE_URL: model.url, MODBIT_BROWSER_ALLOW_TARGETS: `127.0.0.1:${home.port}` });
+    await collectEvents(ui);
+    const { bsid } = await startBrowserTask(ui, repo, "click the links");
+    beforeClick.open();
+    // A link that leaves the origin asks the person first; the person approves, and the policy still refuses the destination.
+    let live = true;
+    const decided = new Set<string>();
+    void (async () => {
+      const card = ui.getByTestId("task-card").first();
+      while (live) {
+        try {
+          const id = await card.getByTestId("task-approval").evaluate((el) => el.getAttribute("data-approval-id") ?? "", undefined, { timeout: 1_000 });
+          if (id && !decided.has(id)) {
+            await card.locator(`[data-testid="task-approval"][data-approval-id="${id}"]`).getByTestId("task-approve").click({ timeout: 10_000 });
+            decided.add(id);
+          }
+        } catch {
+          // the card moved on
+        }
+        await sleep(300);
+      }
+    })();
+    await toolResults(model, 7, 120_000);
+    live = false;
+    expect(decided.size, "the person approved each click that leaves the origin").toBeGreaterThanOrEqual(1);
+    // The click on the loopback link: typed refusal that asks the person, naming the class.
+    const local = model.toolTexts[3]!;
+    expect(local).toContain("TARGET_NOT_ALLOWED");
+    expect(local).toContain('"escalation":"ask_user"');
+    expect(local).toContain("loopback");
+    // The click on the private-range link.
+    const priv = model.toolTexts[6]!;
+    expect(priv).toContain("TARGET_NOT_ALLOWED");
+    expect(priv).toContain('"escalation":"ask_user"');
+    expect(priv).toContain("private-network");
+    // The server behind the local link never saw a request.
+    expect(other.hits).toEqual([]);
+    const refusals = await ui.evaluate((id) => window.modbit.browserRefusals(id), bsid);
+    expect(refusals.map((r) => r.class)).toEqual(expect.arrayContaining(["loopback", "private"]));
+    expect((await eventsOf(ui, "SecurityEventRecorded")).filter((e) => e.kind === "BROWSER_TARGET_REFUSED").length).toBeGreaterThanOrEqual(2);
+    await readyForReview(ui, model);
+    await closeApp(app);
+  } finally {
+    model.server.close();
+    home.server.close();
+    other.server.close();
+  }
+});
+
 test("PX-073: every call looks at the page's origin - a client-side redirect after an allowed navigation, file: and an unknown origin are all refused, and the refusal lists what is allowed", async () => {
   test.setTimeout(240_000);
   const repo = fixtureRepo();

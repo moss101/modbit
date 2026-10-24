@@ -119,6 +119,22 @@ fn tool_texts(seen: &Seen) -> Vec<String> {
         .unwrap_or_default()
 }
 
+/// Every tool result the model was ever shown, in the order first shown (a later request may no longer carry an old result).
+fn all_tool_texts(seen: &Seen) -> Vec<String> {
+    let mut out: Vec<String> = Vec::new();
+    for b in seen.lock().unwrap().iter() {
+        for m in b["messages"].as_array().into_iter().flatten() {
+            if m["role"] == "tool" {
+                let c = m["content"].as_str().unwrap_or_default().to_owned();
+                if !out.contains(&c) {
+                    out.push(c);
+                }
+            }
+        }
+    }
+    out
+}
+
 fn call(name: &str, args: Value) -> Value {
     json!({"calls": [{"name": name, "args": args}]})
 }
@@ -275,6 +291,315 @@ async fn qual_px_121_an_unknown_outcome_latches_the_session_until_a_fresh_observ
     );
     assert!(!of("ToolCallUnknownOutcome").is_empty());
     assert!(runtime(&mut c, &bsid, &task).await.latch.is_empty());
+}
+
+/// QUAL-PX-121 (the remaining clauses, on the real Core with the host's stand-in): `browser.console` and `browser.network` return what the page produced with secrets redacted and the untrusted label, in a bounded read; `browser.capture` asks for the bounded viewport and the media budget refuses an oversized image; `browser.wait` resolves on a condition and times out typed with the escalation; and a model-supplied script or expression is not an argument of any of these tools - the Kernel's schema refuses it and the host never hears of it.
+#[tokio::test(flavor = "multi_thread")]
+async fn qual_px_121_feedback_reads_are_redacted_bounded_and_untrusted_and_a_script_argument_reaches_no_tool()
+ {
+    use base64::Engine as _;
+    let (_repo, root) = plain_repo(&[("README.md", "# browse\n")]);
+    // The script is indexed by the number of tool results the model has seen, so a turn of several
+    // calls takes that many places; and a run that makes no progress for six turns suspends, so reads share turns.
+    let mut script = vec![
+        call(
+            "plan.update",
+            json!({"outcome": "the feedback tools are exercised", "expected_files": []}),
+        ),
+        call("browser.navigate", json!({"url": "https://app.test/"})),
+    ];
+    let mut at = std::collections::BTreeMap::new();
+    let turns: Vec<Vec<(&'static str, &'static str, Value)>> = vec![
+        // A script or expression is never an argument, and an unbounded read is not expressible: nothing reaches the host.
+        vec![
+            (
+                "console_script",
+                "browser.console",
+                json!({"script": "document.cookie"}),
+            ),
+            (
+                "network_script",
+                "browser.network",
+                json!({"expression": "fetch('https://evil.test')"}),
+            ),
+            (
+                "capture_script",
+                "browser.capture",
+                json!({"viewport": true, "script": "window.stop()"}),
+            ),
+            (
+                "wait_script",
+                "browser.wait",
+                json!({"until": {"text": "x"}, "script": "while(1){}"}),
+            ),
+            (
+                "scroll_script",
+                "browser.scroll",
+                json!({"direction": "down", "script": "alert(1)"}),
+            ),
+            (
+                "console_unbounded",
+                "browser.console",
+                json!({"limit": 100000}),
+            ),
+        ],
+        // The reads themselves.
+        vec![
+            ("console", "browser.console", json!({"level": "errors"})),
+            ("network", "browser.network", json!({"failed_only": true})),
+        ],
+        // The viewport, then an image beyond the pixel budget.
+        vec![(
+            "capture",
+            "browser.capture",
+            json!({"viewport": true, "reason": "layout"}),
+        )],
+        vec![(
+            "capture_huge",
+            "browser.capture",
+            json!({"viewport": true, "reason": "layout again"}),
+        )],
+        // Wait: times out typed, and resolves.
+        vec![
+            (
+                "wait_timeout",
+                "browser.wait",
+                json!({"until": {"text": "never appears anywhere"}, "timeout_ms": 400}),
+            ),
+            (
+                "wait_ok",
+                "browser.wait",
+                json!({"until": {"text": "Press"}, "timeout_ms": 4000}),
+            ),
+        ],
+    ];
+    for turn in turns {
+        let first = script.len();
+        let mut calls = Vec::new();
+        for (label, name, args) in turn {
+            at.insert(label, first + calls.len());
+            calls.push(json!({"name": name, "args": args}));
+        }
+        let n = calls.len();
+        script.push(json!({ "calls": calls }));
+        script.extend(std::iter::repeat_n(json!({}), n - 1));
+    }
+    script.push(json!({"calls": [{"name": "task.complete", "args": {"summary": "read the feedback", "self_review": {"findings": []}}}]}));
+    let (base, seen) = scripted_model(script, vec![]).await;
+    let dir = tempfile::tempdir().unwrap();
+    let env = model_env(&base);
+    let env: Vec<(&str, &str)> = env.iter().map(|(k, v)| (k.as_str(), v.as_str())).collect();
+    let core = CoreProcess::spawn_with_env(dir.path(), &env);
+    let mut c = core.client().await;
+    let (session, g) = session_with_lease(&mut c, 0x30).await;
+    let task = create_task(
+        &mut c,
+        &session,
+        g,
+        &root,
+        0x31,
+        "local_trusted",
+        "feedback",
+    )
+    .await;
+    let opened = open_session(&mut c, &task, g, 0x32).await;
+    let bsid = opened.browser_session_id.clone().unwrap();
+    let host = attach(&core, &bsid, &task, &opened.partition, 0x33).await;
+    let one_pixel = base64::engine::general_purpose::STANDARD
+        .decode("iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNkYPhfDwAChwGA60e6kgAAAABJRU5ErkJggg==")
+        .unwrap();
+    let mut huge = one_pixel.clone();
+    // IHDR width and height declared as 20000 x 20000 (400 million pixels), before any decoding.
+    huge[16..20].copy_from_slice(&20_000u32.to_be_bytes());
+    huge[20..24].copy_from_slice(&20_000u32.to_be_bytes());
+    let (small_b64, huge_b64) = (
+        base64::engine::general_purpose::STANDARD.encode(&one_pixel),
+        base64::engine::general_purpose::STANDARD.encode(&huge),
+    );
+    let captures = Arc::new(Mutex::new(0u32));
+    let captures2 = captures.clone();
+    let state =
+        json!({"url": "https://app.test/", "title": "Fixture", "ready": true, "state_version": 1});
+    let served = serve(host, move |r| match r["kind"].as_str().unwrap() {
+        "navigate" => Some(json!({"kind": "state", "state": state.clone()})),
+        "snapshot" => Some(page(1, false)),
+        "console" => Some(
+            json!({"kind": "console", "next_seq": 2, "dropped": 0, "entries": [
+                {"seq": 1, "level": "error", "source": "console", "text": "boom token=abcd1234efgh in https://user:hunter2@app.test/x?api_key=sekrit123", "at_ms": 1},
+                {"seq": 2, "level": "log", "source": "console", "text": "fine", "at_ms": 2}
+            ]}),
+        ),
+        "network" => Some(
+            json!({"kind": "network", "next_seq": 1, "dropped": 0, "entries": [
+                {"seq": 1, "method": "GET", "url": "https://app.test/api/missing?token=sekrit123&x=1", "status": 500, "resource_type": "Fetch", "failed": "net::ERR_FAILED", "at_ms": 1}
+            ]}),
+        ),
+        "capture" => {
+            let mut n = captures2.lock().unwrap();
+            *n += 1;
+            let png = if *n == 1 {
+                small_b64.clone()
+            } else {
+                huge_b64.clone()
+            };
+            Some(
+                json!({"kind": "capture", "state": state.clone(), "png_base64": png, "clip": null, "width": 1, "height": 1}),
+            )
+        }
+        other => Some(json!({"kind": "error", "code": "UNSUPPORTED", "message": other})),
+    });
+    start_task(&mut c, &task, g, 0x34, "gpt-5").await;
+    let st = wait_task(&mut c, &task, 120).await;
+    assert!(!st.loop_alive, "{st:?}");
+    let t = all_tool_texts(&seen);
+    assert!(
+        t.len() > at["wait_ok"],
+        "the run ended early: {t:#?}\n{st:?}"
+    );
+    // Refused by the schema before any host request.
+    let ix = |l: &str| at[l];
+    for (name, i) in [
+        ("console", ix("console_script")),
+        ("network", ix("network_script")),
+        ("capture", ix("capture_script")),
+        ("wait", ix("wait_script")),
+        ("scroll", ix("scroll_script")),
+    ] {
+        assert!(
+            t[i].contains("SCHEMA_VIOLATION") || t[i].contains("INVALID"),
+            "{name}: {}",
+            t[i]
+        );
+        assert!(
+            !t[i].contains("status: SUCCESS"),
+            "{name}: a script is not an argument: {}",
+            t[i]
+        );
+    }
+    assert!(
+        t[ix("console_unbounded")].contains("SCHEMA_VIOLATION")
+            || t[ix("console_unbounded")].contains("INVALID"),
+        "an unbounded read is refused: {}",
+        t[ix("console_unbounded")]
+    );
+    // The reads: secrets gone, the untrusted label on, the benign line filtered by the level.
+    assert!(
+        t[ix("console")].contains("status: SUCCESS")
+            && t[ix("console")].contains("UNTRUSTED_WEB_CONTENT"),
+        "{}",
+        t[ix("console")]
+    );
+    for secret in ["abcd1234efgh", "hunter2", "sekrit123"] {
+        assert!(
+            !t[ix("console")].contains(secret) && !t[ix("network")].contains(secret),
+            "{secret} leaked: {} / {}",
+            t[ix("console")],
+            t[ix("network")]
+        );
+    }
+    assert!(
+        t[ix("console")].contains("[REDACTED]") && t[ix("console")].contains("boom"),
+        "{}",
+        t[ix("console")]
+    );
+    assert!(
+        !t[ix("console")].contains("\"fine\""),
+        "the level filter applies: {}",
+        t[ix("console")]
+    );
+    assert!(
+        t[ix("network")].contains("UNTRUSTED_WEB_CONTENT")
+            && t[ix("network")].contains("\"status\":500")
+            && t[ix("network")].contains("token=[REDACTED]"),
+        "{}",
+        t[ix("network")]
+    );
+    // The viewport is asked for at the 1280 by 800 budget; an image beyond the media budget is refused typed.
+    assert!(
+        t[ix("capture")].contains("status: SUCCESS")
+            && t[ix("capture")].contains("\"viewport\":true"),
+        "{}",
+        t[ix("capture")]
+    );
+    assert!(
+        t[ix("capture_huge")].contains("MEDIA_BUDGET_EXCEEDED"),
+        "{}",
+        t[ix("capture_huge")]
+    );
+    // Wait: typed timeout with the escalation; then a resolution.
+    assert!(
+        t[ix("wait_timeout")].contains("WAIT_TIMEOUT")
+            && t[ix("wait_timeout")].contains("\"escalation\":\"re_observe\""),
+        "{}",
+        t[ix("wait_timeout")]
+    );
+    assert!(
+        t[ix("wait_ok")].contains("status: SUCCESS") && t[ix("wait_ok")].contains("\"waited_ms\""),
+        "{}",
+        t[ix("wait_ok")]
+    );
+    // What the host heard: the schema-refused calls never arrived; the permitted ones did, once each.
+    let kinds: Vec<String> = served
+        .lock()
+        .unwrap()
+        .iter()
+        .filter_map(|r| r["kind"].as_str().map(str::to_owned))
+        .collect();
+    let count = |k: &str| kinds.iter().filter(|x| x.as_str() == k).count();
+    assert_eq!(count("console"), 1, "{kinds:?}");
+    assert_eq!(count("network"), 1, "{kinds:?}");
+    assert_eq!(count("capture"), 2, "{kinds:?}");
+    assert_eq!(count("scroll"), 0, "{kinds:?}");
+    let fit_ok = served
+        .lock()
+        .unwrap()
+        .iter()
+        .filter(|r| r["kind"] == "capture")
+        .all(|r| r["fit"] == json!([1280, 800]));
+    assert!(
+        fit_ok,
+        "the viewport is bounded at the host: {:?}",
+        served.lock().unwrap()
+    );
+    // Each call that ran went through the Kernel: proposed, decided by the policy, then dispatched - in that order, per call.
+    let evs = replay(&core, &session).await;
+    let by_tool = |tool: &str, ty: &str| -> Vec<&Value> {
+        let ids: Vec<&Value> = evs
+            .iter()
+            .filter(|e| {
+                e["event_type"] == "ToolCallProposed"
+                    && e["payload"]["payload"]["tool_name"] == tool
+            })
+            .map(|e| &e["aggregate_id"])
+            .collect();
+        evs.iter()
+            .filter(|e| e["event_type"] == ty && ids.contains(&&e["aggregate_id"]))
+            .collect()
+    };
+    for (tool, ran) in [
+        ("browser.console", 1),
+        ("browser.network", 1),
+        ("browser.capture", 2),
+        ("browser.wait", 2),
+        ("browser.scroll", 0),
+    ] {
+        let dispatched = by_tool(tool, "ToolCallDispatched");
+        assert_eq!(dispatched.len(), ran, "{tool} dispatched");
+        for d in dispatched {
+            let decision = evs
+                .iter()
+                .find(|e| {
+                    e["event_type"] == "ToolCallPolicyDecision"
+                        && e["aggregate_id"] == d["aggregate_id"]
+                })
+                .unwrap_or_else(|| panic!("{tool}: no policy decision before dispatch"));
+            assert_eq!(decision["payload"]["payload"]["allowed"], true, "{tool}");
+            assert!(
+                decision["offset"].as_u64() < d["offset"].as_u64(),
+                "{tool}: decided before dispatched"
+            );
+        }
+    }
 }
 
 /// QUAL-PX-122: a change notice makes the Core read, compile and journal the page with no model call; the known-state map and the held fingerprint survive a killed Core, so the same element keeps its reference and `since_fingerprint` still answers.

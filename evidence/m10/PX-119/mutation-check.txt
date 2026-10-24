@@ -1,0 +1,46 @@
+PX-119 mutation check (QUAL-PX-119: a mutation that drops the completion gate must fail the unmerged-child test)
+date: 2026-10-24T14:32:41Z
+base revision: 374abcb8e6bc8b4a4f06a69e6a3bda2fb01def3f
+
+== baseline (unmutated) ==
+test px_119_a_merge_needs_a_clean_target_and_an_approval ... ok
+test px_119_a_core_killed_before_git_ran_aborts_the_merge_to_a_whole_tree ... ok
+test px_119_a_core_killed_after_git_committed_records_the_commit ... ok
+test px_119_a_core_killed_with_the_merge_staged_resumes_it_or_aborts_it_whole ... ok
+test px_119_two_branches_conflict_the_resolution_is_verified_and_every_merge_has_a_receipt ... ok
+test px_119_a_parent_cannot_complete_beside_an_unintegrated_child_until_it_is_merged_or_discarded ... ok
+test px_119_a_parent_merges_two_conflicting_children_through_a_real_run ... ok
+test result: ok. 7 passed; 0 failed; 0 ignored; 0 measured; 31 filtered out; finished in 10.50s
+baseline exit: 0
+
+== mutation: services/modbit-core/src/runtime.rs 'if !open.is_empty() {' -> 'if false && !open.is_empty() {' (completion gate dropped) ==
+diff --git a/services/modbit-core/src/runtime.rs b/services/modbit-core/src/runtime.rs
+index f8731d9f..14d2fef5 100644
+--- a/services/modbit-core/src/runtime.rs
++++ b/services/modbit-core/src/runtime.rs
+@@ -8784 +8784 @@ async fn handle_complete(
+-            if !open.is_empty() {
++            if false && !open.is_empty() {
+test px_119_a_merge_needs_a_clean_target_and_an_approval ... ok
+test px_119_a_core_killed_after_git_committed_records_the_commit ... ok
+test px_119_a_core_killed_before_git_ran_aborts_the_merge_to_a_whole_tree ... ok
+test px_119_a_core_killed_with_the_merge_staged_resumes_it_or_aborts_it_whole ... ok
+test px_119_two_branches_conflict_the_resolution_is_verified_and_every_merge_has_a_receipt ... ok
+test px_119_a_parent_cannot_complete_beside_an_unintegrated_child_until_it_is_merged_or_discarded ... FAILED
+test px_119_a_parent_merges_two_conflicting_children_through_a_real_run ... ok
+thread 'px_119_a_parent_cannot_complete_beside_an_unintegrated_child_until_it_is_merged_or_discarded' (38077839) panicked at services/modbit-core/tests/worktrees_px.rs:2807:5:
+test result: FAILED. 6 passed; 1 failed; 0 ignored; 0 measured; 31 filtered out; finished in 11.28s
+mutated exit: 101
+
+== restore ==
+non-evidence diff after restore: [] (empty = source restored)
+== after restore ==
+test px_119_a_merge_needs_a_clean_target_and_an_approval ... ok
+test px_119_a_core_killed_before_git_ran_aborts_the_merge_to_a_whole_tree ... ok
+test px_119_a_core_killed_after_git_committed_records_the_commit ... ok
+test px_119_a_core_killed_with_the_merge_staged_resumes_it_or_aborts_it_whole ... ok
+test px_119_two_branches_conflict_the_resolution_is_verified_and_every_merge_has_a_receipt ... ok
+test px_119_a_parent_cannot_complete_beside_an_unintegrated_child_until_it_is_merged_or_discarded ... ok
+test px_119_a_parent_merges_two_conflicting_children_through_a_real_run ... ok
+test result: ok. 7 passed; 0 failed; 0 ignored; 0 measured; 31 filtered out; finished in 10.83s
+restored exit: 0

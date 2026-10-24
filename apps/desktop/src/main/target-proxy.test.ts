@@ -143,3 +143,101 @@ test("PX-120: a CONNECT tunnel to a denied address is refused with 403 and an al
     echo.close();
   }
 });
+
+/** Waits until `done()` holds, a few seconds at most. */
+async function until(done: () => boolean): Promise<void> {
+  for (let i = 0; i < 200 && !done(); i++) await new Promise((r) => setTimeout(r, 10));
+}
+
+test("PX-120: a name that resolves publicly when checked is connected to at that public address, never re-resolved to the private one", async () => {
+  const o = await origin();
+  const connected: string[] = [];
+  let calls = 0;
+  // The rebinding resolver fixture: the first answer (the check) is public, every later answer (a second look at connect time) is the local server.
+  const resolve: Resolver = async () => {
+    calls += 1;
+    return calls === 1 ? [{ address: "100.128.0.55", family: 4 }] : [{ address: "127.0.0.1", family: 4 }];
+  };
+  const proxy = new TargetProxy({ rules: () => [], resolve, onDenied: () => {}, onConnect: (_h, a) => connected.push(a) });
+  const port = await proxy.listen();
+  try {
+    const attempt = viaProxy(port, `http://rebind.test:${o.port}/x`).catch(() => null);
+    await until(() => connected.length > 0);
+    assert.deepEqual(connected, ["100.128.0.55"], "the connection is to the address that passed the check");
+    assert.equal(calls, 1, "one resolution: there is no connect-time lookup to rebind");
+    assert.deepEqual(o.hits, [], "the local server never saw the request");
+    proxy.close();
+    await attempt;
+  } finally {
+    proxy.close();
+    o.server.close();
+  }
+});
+
+test("PX-120: a name that resolves privately at connect time is refused whatever a check of its name would have said", async () => {
+  const o = await origin();
+  const denials: Denial[] = [];
+  const connected: string[] = [];
+  let calls = 0;
+  // Public-sounding names; the address each resolves to when the proxy connects is this machine.
+  const resolve: Resolver = async () => {
+    calls += 1;
+    return [{ address: "127.0.0.1", family: 4 }];
+  };
+  const proxy = new TargetProxy({ rules: () => [parseRule("10.0.0.0/8")!], resolve, onDenied: (d) => denials.push(d), onConnect: (_h, a) => connected.push(a) });
+  const port = await proxy.listen();
+  try {
+    for (const name of ["www.example.com", "cdn.example.org"]) {
+      const r = await viaProxy(port, `http://${name}:${o.port}/steal`);
+      assert.equal(r.status, 403, name);
+      assert.equal(r.blocked, "TARGET_NOT_ALLOWED", name);
+    }
+    assert.equal(calls, 2);
+    assert.deepEqual(connected, [], "no connection was made");
+    assert.deepEqual(o.hits, []);
+    assert.deepEqual(
+      denials.map((d) => [d.class, d.address]),
+      [
+        ["loopback", "127.0.0.1"],
+        ["loopback", "127.0.0.1"],
+      ],
+    );
+    assert.match(denials[0]!.reason, /www\.example\.com resolves to 127\.0\.0\.1/);
+  } finally {
+    proxy.close();
+    o.server.close();
+  }
+});
+
+test("PX-120: a private range, a link-local address and the metadata endpoint are each reached only when the policy names them", async () => {
+  const connected: string[] = [];
+  const denials: Denial[] = [];
+  let rules = [] as ReturnType<typeof parseRule>[];
+  const answers: Record<string, string> = { "intranet.test": "10.9.8.7", "metadata.test": "169.254.169.254", "linklocal.test": "169.254.7.7" };
+  const resolve: Resolver = async (h) => (answers[h] ? [{ address: answers[h]!, family: 4 }] : []);
+  const proxy = new TargetProxy({ rules: () => rules.filter(Boolean) as never, resolve, onDenied: (d) => denials.push(d), onConnect: (_h, a) => connected.push(a) });
+  try {
+    // Unnamed: all three are refused and classified, and nothing is connected to.
+    for (const [name, cls] of [
+      ["intranet.test", "private"],
+      ["metadata.test", "metadata"],
+      ["linklocal.test", "link_local"],
+    ] as const) {
+      const v = await proxy.pin(name, 80);
+      assert.equal(v.ok, false, name);
+      assert.equal(v.ok === false && v.denial?.class, cls, name);
+    }
+    assert.deepEqual(connected, []);
+    // Named by range, by address and by host: the same destinations are allowed.
+    rules = [parseRule("10.0.0.0/8"), parseRule("169.254.169.254"), parseRule("linklocal.test")];
+    assert.deepEqual(await proxy.pin("intranet.test", 80), { ok: true, address: "10.9.8.7", family: 4 });
+    assert.deepEqual(await proxy.pin("metadata.test", 80), { ok: true, address: "169.254.169.254", family: 4 });
+    assert.deepEqual(await proxy.pin("linklocal.test", 80), { ok: true, address: "169.254.7.7", family: 4 });
+    // Naming one address does not name its neighbours.
+    rules = [parseRule("169.254.169.254")];
+    assert.equal((await proxy.pin("linklocal.test", 80)).ok, false);
+    assert.equal(denials.length, 4);
+  } finally {
+    proxy.close();
+  }
+});
