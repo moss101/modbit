@@ -22,8 +22,9 @@ import { accessible, closeApp, launch, makeRepo, MOD, setContentSize } from "./s
 test.describe.configure({ mode: "serial" });
 
 /** One numbered line: 7 digits, a space, 120 x, a line feed (the PTY adds the carriage return). */
-const NUMBERED = "String(k).padStart(7,'0')+' '+'x'.repeat(120)+'\\n'";
-const lineOf = (k: number) => `${String(k).padStart(7, "0")} ${"x".repeat(120)}`;
+const WIDTH = Number(process.env.TERM_HISTORY_WIDTH ?? 120);
+const NUMBERED = `String(k).padStart(7,'0')+' '+'x'.repeat(${WIDTH})+'\\n'`;
+const lineOf = (k: number) => `${String(k).padStart(7, "0")} ${"x".repeat(WIDTH)}`;
 /** Prints `n` numbered lines in bulk, then exits (or, with `stay`, keeps running). */
 const flood = (tag: string, n: number, stay: boolean) =>
   `const tag='${tag}'; const N=${n}; let i=0; const go=()=>{ let s=''; for(let c=0;c<500&&i<N;c++,i++){ const k=i; s+=${NUMBERED}; } process.stdout.write(s,()=>{ if(i<N) setImmediate(go); else ${stay ? "setInterval(()=>{},1000)" : "process.exit(0)"}; }); }; go();`;
@@ -182,9 +183,17 @@ test("scrolling above the view reads the older output as OutputRef ranges: in or
 
   // The bytes: the pane's text followed by the Core's own replay from where the view begins is the build's output, line after line.
   const paneText = (await page.getByTestId("terminal-history-text").textContent()) ?? "";
+  // The view's own bytes, from the sealed output too (the same object the pane was read from), so the junction is exact.
+  const tail = await page.evaluate(({ taskId, id, from }) => window.modbit.terminalHistory(taskId, id, from, String(BigInt(from) + 262_144n)).then((r) => Array.from(r.data)), { taskId, id: handle.ended, from: origin.toString() });
+  expect(tail.length, "the sealed output holds the whole view").toBe(262_144);
+  // A PTY's line end is CR LF; a doubled CR is seen at write boundaries on some platforms. Both are one line end, as in the pane.
+  const norm = (u: number[]) => new TextDecoder().decode(Uint8Array.from(u)).replace(/\r+\n/g, "\n").replace(/\r/g, "\n");
+  const whole = paneText + norm(tail);
+  // And the Core's live stream from the same cursor is the same bytes as the sealed output.
   const replay = await readTerminal(page, { sessionId, taskId, terminalId: handle.ended, after: origin.toString(), windowBytes: 65_536 });
   expect(replay.bytes.length).toBe(262_144);
-  const whole = paneText + new TextDecoder().decode(Uint8Array.from(replay.bytes)).replace(/\r\n?/g, "\n");
+  const firstDiff = replay.bytes.findIndex((b, i) => b !== tail[i]);
+  expect(firstDiff, `the stream and the sealed output differ at view byte ${firstDiff}: stream ${JSON.stringify(replay.bytes.slice(Math.max(0, firstDiff - 4), firstDiff + 12))} object ${JSON.stringify(tail.slice(Math.max(0, firstDiff - 4), firstDiff + 12))}`).toBe(-1);
   const lines = whole.split("\n");
   expect(lines.pop(), "the build ended with a line feed").toBe("");
   const firstFull = Number(/^(\d{7}) /.exec(lines[1]!)![1]);

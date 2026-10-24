@@ -95,3 +95,8 @@ test("PX-048: history text drops terminal control sequences and normalises line 
   const raw = new TextEncoder().encode("\u001b[31mred\u001b[0m\r\nnext\u001b]0;title\u0007 line\r\n");
   assert.equal(historyText(raw), "red\nnext line\n");
 });
+
+test("PX-048: a doubled CR before a LF is one line end, and a CR that ends the bytes is half of a line end that continues in the view", () => {
+  assert.equal(historyText(new TextEncoder().encode("a\r\r\nb\r\nc\r")), "a\nb\nc");
+  assert.equal(historyText(new TextEncoder().encode("a\rb")), "a\nb");
+});

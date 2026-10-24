@@ -109,5 +109,9 @@ export function historyText(bytes: Uint8Array): string {
     .replace(/\u001b\][^\u0007\u001b]*(?:\u0007|\u001b\\)/g, "")
     .replace(/\u001b\[[0-?]*[ -/]*[@-~]/g, "")
     .replace(/\u001b[@-Z\\-_]/g, "")
-    .replace(/\r\n?/g, "\n");
+    // A terminal's line end is CR LF, and a PTY can emit a doubled CR before the LF (seen at write boundaries); both are one line end.
+    // A CR that ends the loaded bytes is the first half of a CR LF whose LF is the first byte of the view below: it is not a line end.
+    .replace(/\r+\n/g, "\n")
+    .replace(/\r+$/, "")
+    .replace(/\r/g, "\n");
 }
