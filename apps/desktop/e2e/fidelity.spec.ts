@@ -23,6 +23,15 @@ const reference = JSON.parse(readFileSync(join(REF, "zcode-computed.json"), "utf
 /** At most this share of an element's pixels may differ by more than 24 per channel per channel. */
 const PIXEL_BOUND = Number(process.env.ZDL_PIXEL_BOUND ?? 0.05);
 
+/**
+ * The reference was captured on macOS (evidence/zcode-ui/reference/PROVENANCE.md), where the system font, and the glyph of a shortcut
+ * (the command key), are the platform's own. On Linux and Windows the same CSS lays text out in another font with another shortcut
+ * label, so the text-dependent width, text and font family are compared on the reference platform only; every other property
+ * (colour, border, radius, spacing, shadow, transition) is compared on every platform.
+ */
+const REFERENCE_PLATFORM = process.platform === "darwin";
+const PLATFORM_TEXT = REFERENCE_PLATFORM ? [] : ["width", "text", "fontFamily"];
+
 const deviations: Deviation[] = [];
 const pixels: { key: string; theme: string; index: number; ratio: number; exempt: string | null }[] = [];
 let used = new Set<string>();
@@ -115,7 +124,7 @@ test("PX-142: Modbit's primitives match ZCode's real components in light and dar
           const got = (await probe(page, cover.select)).slice(0, cover.first ?? Infinity);
           expect(got.length, `${theme} ${sheet} ${key}: elements matching ${cover.select}`).toBe(want.length);
           for (const [i, ref] of want.entries()) {
-            const found = compareRecord(ref, got[i]!, theme, EXCEPTIONS, key, i, cover.ignore ?? []);
+            const found = compareRecord(ref, got[i]!, theme, EXCEPTIONS, key, i, [...(cover.ignore ?? []), ...PLATFORM_TEXT]);
             deviations.push(...found);
             if (dpr === 2 && !cover.noPixels) {
               const shot = await page.locator(cover.select).nth(i).screenshot();
@@ -143,6 +152,6 @@ test("PX-142: every element is within the pixel bound of its ZCode crop, and eve
     const bad = pixels.filter((p) => p.ratio > PIXEL_BOUND && p.exempt === null).map((p) => `${p.theme} ${p.key}#${p.index}: ${(p.ratio * 100).toFixed(1)}%`);
     expect(bad, `elements over ${PIXEL_BOUND * 100}% differing pixels`).toEqual([]);
   }
-  const stale = EXCEPTIONS.filter((e) => !used.has(e.id) && e.id !== "ZDX-06").map((e) => e.id);
+  const stale = EXCEPTIONS.filter((e) => REFERENCE_PLATFORM && !used.has(e.id) && e.id !== "ZDX-06").map((e) => e.id);
   expect(stale, "declared exceptions that no deviation uses any more").toEqual([]);
 });

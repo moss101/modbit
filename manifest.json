@@ -2,7 +2,7 @@
   "product": "Modbit",
   "edition": "V3.3 EPR v1.1",
   "authority_date": "2026-09-05",
-  "generated_on": "2026-10-24",
+  "generated_on": "2026-10-25",
   "hash_algorithm": "sha256",
   "scope_rule": "docs/*.md, root *.md except MANIFEST.md, docs/decisions/*.md, graph JSON/Markdown, tools/*.py, evidence payloads; manifests exclude themselves and transient caches",
   "counts": {
@@ -1090,8 +1090,8 @@
     },
     {
       "path": "docs/decisions/DR-PX-2026-10-24-016-zcode-design-language.md",
-      "bytes": 22683,
-      "sha256": "fe82df0afee6850da1044ad5941708587736cd0b8911db89f83a4d04d3e490fb"
+      "bytes": 23190,
+      "sha256": "d02f772e90acf2ed9cfc7cc40e04b02d6b4263e256b310f29659c2a7573c002d"
     },
     {
       "path": "docs/decisions/README.md",
@@ -9796,12 +9796,12 @@
     {
       "path": "graph/PROJECT_GRAPH.md",
       "bytes": 45427,
-      "sha256": "11a7825c158912ecbfb5d94eac6a608bca4ea8c6bfcd1e65d7ec6df87e050c7c"
+      "sha256": "faa9aa8965cb75579ec72a56ed166a2e06b5000ee9c1d61d853af97224d3492f"
     },
     {
       "path": "graph/project-graph.json",
       "bytes": 2286038,
-      "sha256": "5e3626700ee0074ad77d1a92476a6ab5759910857bd34c42bf5d4934af1c43f4"
+      "sha256": "306a50eb73bfa446aa0fca783658ed2a97d7d662453415f7120070253bafc916"
     },
     {
       "path": "tools/build_graph.py",

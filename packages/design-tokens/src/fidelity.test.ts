@@ -40,3 +40,9 @@ test("PX-142: a border colour is compared only where the border has width; a rec
   assert.deepEqual(compareRecord(none("a"), none("b"), "light", [], KEY, 0), []);
   assert.equal(keyOf("badge|badge|default|#2"), "badge|badge|default|");
 });
+
+test("an unbounded radius clamped to either Chromium ceiling is the same pill; a finite radius is still compared", () => {
+  assert.equal(sameValue("16777200px", "33554400px", "borderTopLeftRadius"), true);
+  assert.equal(sameValue("8px", "9px", "borderTopLeftRadius"), false);
+  assert.equal(sameValue("16777200px", "33554400px", "width"), false);
+});

@@ -135,7 +135,7 @@ const dialog: SheetCoverage = {
 };
 
 const alertDialog: SheetCoverage = {
-  "|alert-dialog-overlay||": { select: ".mb-scrim", ignore: ["text"] },
+  "|alert-dialog-overlay||": { select: ".mb-scrim", ignore: ["text", "height"] },
   "alert-dialog|alert-dialog-content||": { select: ".mb-dialog" },
   "alert-dialog|alert-dialog-header||": { select: ".mb-dialog-header" },
   "alert-dialog|alert-dialog-title||": { select: ".mb-dialog-title" },

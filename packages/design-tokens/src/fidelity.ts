@@ -60,6 +60,8 @@ export function sameValue(a: string, b: string, prop?: string): boolean {
   if (prop === "boxShadow") return noZeroLayers(a) === noZeroLayers(b);
   const x = px(a);
   const y = px(b);
+  // Chromium clamps an unbounded radius (a pill) to a build-dependent float ceiling (1.67772e+07 or 3.35544e+07); both paint the same pill.
+  if (x !== null && y !== null && x >= 1e6 && y >= 1e6 && /Radius$/.test(prop ?? "")) return true;
   if (x !== null && y !== null) return Math.abs(x - y) <= 0.5;
   return flat(a) === flat(b);
 }

@@ -1,7 +1,7 @@
 # Modbit Dossier Manifest — V3.3 EPR v1.1
 
 > **Authority date:** 2026-09-05  
-> **Generated:** 2026-10-24 by `tools/build_manifest.py`  
+> **Generated:** 2026-10-25 by `tools/build_manifest.py`  
 > **Scope:** every specification file in `docs/` plus the root governing files and tooling. The previous `99_MANIFEST.md` covered only 39 Part 2 files; this manifest covers all 97 docs.
 > **Machine-readable twin:** `manifest.json` (same content, same hashes).
 
@@ -161,7 +161,7 @@ A dossier package is valid only if every path below exists with the listed SHA-2
 | `docs/decisions/DR-PX-2026-10-05-013-audit-driven-capability-completion.md` | source patch provenance | 12052 | `01e7af921cf9249014c6fdb411fda39482af4ff7c91e598cf19c302c91245bab` |
 | `docs/decisions/DR-PX-2026-10-19-014-per-task-harness-refinement.md` | source patch provenance | 17309 | `c1fdae3e270803a585c698244c32e42f2132ed5866a8ccfb786c05d2d1adfa76` |
 | `docs/decisions/DR-PX-2026-10-21-015-streamed-delta-durability.md` | source patch provenance | 10995 | `31c6cddec03523b494e28e65ccfdad71b368763ef868784b6fdc42f571b3e1ec` |
-| `docs/decisions/DR-PX-2026-10-24-016-zcode-design-language.md` | source patch provenance | 22683 | `fe82df0afee6850da1044ad5941708587736cd0b8911db89f83a4d04d3e490fb` |
+| `docs/decisions/DR-PX-2026-10-24-016-zcode-design-language.md` | source patch provenance | 23190 | `d02f772e90acf2ed9cfc7cc40e04b02d6b4263e256b310f29659c2a7573c002d` |
 | `docs/decisions/README.md` | source patch provenance | 7660 | `d9664d27a91eccb9c2f671e14c6e0e8d9b27ccbccb06d1d809b24c24b34334e0` |
 | `evidence/dossier-epr-v1.1/baseline.json` | retained evidence | 11128 | `ae11c9be07272788d2957bff45bc1333f879e121d2b5205ebc01ce780ec62543` |
 | `evidence/dossier-epr-v1.1/tests.log` | retained evidence | 2071 | `2f4bbebb6db1f0f0c6802f8dee65e5d6aa7933db6d1bda28a8acd70aa9bd88b3` |
@@ -1902,8 +1902,8 @@ A dossier package is valid only if every path below exists with the listed SHA-2
 | `evidence/zcode-ui/reference/zcode-colors-rgba.json` | retained evidence | 18690 | `76372c3edbcd50fe596d5e4b7fcd7991adab9686588ddc578a728afa24b4f028` |
 | `evidence/zcode-ui/reference/zcode-computed.json` | retained evidence | 718674 | `9ae8821ce72aa0fff3be44aacd0f4c9d995465c54bad7f17d1a81f92841d1c2d` |
 | `evidence/zcode-ui/reference/zcode-tokens-resolved.json` | retained evidence | 30635 | `066725c00059a05d073fbcdac9a8d965eab05f05c1f5df16e654854ff3e22b91` |
-| `graph/PROJECT_GRAPH.md` | human view of the graph | 45427 | `11a7825c158912ecbfb5d94eac6a608bca4ea8c6bfcd1e65d7ec6df87e050c7c` |
-| `graph/project-graph.json` | project driver graph with live status | 2286038 | `5e3626700ee0074ad77d1a92476a6ab5759910857bd34c42bf5d4934af1c43f4` |
+| `graph/PROJECT_GRAPH.md` | human view of the graph | 45427 | `faa9aa8965cb75579ec72a56ed166a2e06b5000ee9c1d61d853af97224d3492f` |
+| `graph/project-graph.json` | project driver graph with live status | 2286038 | `306a50eb73bfa446aa0fca783658ed2a97d7d662453415f7120070253bafc916` |
 | `tools/build_graph.py` | regenerates graph structure from docs | 63093 | `4dd5b677347b7f71655c36bedf8137ee94b6afeb0b5a13e4fe86a5bf71501b22` |
 | `tools/build_manifest.py` | regenerates this manifest | 14871 | `b35f87f995ebea778ef5002f42c4dcb2f195f303ae121d7b4d73070d95d665b7` |
 | `tools/check_dossier.py` | integrity gate | 18887 | `1bd2634078a0c20b34a565ccf0f6d9061e83bd0945b7bf719ac137611e3fcf35` |
