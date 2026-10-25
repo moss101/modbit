@@ -7,8 +7,8 @@
   "scope_rule": "docs/*.md, root *.md except MANIFEST.md, docs/decisions/*.md, graph JSON/Markdown, tools/*.py, evidence payloads; manifests exclude themselves and transient caches",
   "counts": {
     "docs": 97,
-    "root_and_tooling": 1754,
-    "docs_bytes": 2156122
+    "root_and_tooling": 1760,
+    "docs_bytes": 2160700
   },
   "sections": [
     {
@@ -194,8 +194,8 @@
       "section": "architecture",
       "section_title": "Architecture and subsystems",
       "title": "Canonical Tool and Capability Inventory",
-      "bytes": 7044,
-      "sha256": "3542409ed94a42a9479b38ff322e578a06eefab925fb3cc60b7bc8cded4c4b65"
+      "bytes": 7755,
+      "sha256": "d728b5e69f715c9f28484dce95aca9e74f3d241c49f0f9dcc93f622fa3ab9bbb"
     },
     {
       "path": "docs/18_CONTEXT_RETRIEVAL_AND_ENGINEERING_KNOWLEDGE.md",
@@ -239,8 +239,8 @@
       "section": "architecture",
       "section_title": "Architecture and subsystems",
       "title": "Browser and Computer-Use Architecture",
-      "bytes": 31715,
-      "sha256": "0a846ff68035d09959118091e559439cd5d0f893e9d005e4d52b2ce495baebf7"
+      "bytes": 35582,
+      "sha256": "3dc0f96f22061190e9c59e75ecbb9b028496766ad91827f31ba633b629c8cc8a"
     },
     {
       "path": "docs/23_SECURITY_POLICY_EFFECT_LEDGER.md",
@@ -2362,6 +2362,36 @@
       "path": "evidence/m10/PX-123/mutation-check.txt",
       "bytes": 3103,
       "sha256": "632b9e3b5aeefeee1c2308225abe1bca8f0eb5071624a401345ab3466fff7b94"
+    },
+    {
+      "path": "evidence/m10/PX-124/TASK_CARD.md",
+      "bytes": 2379,
+      "sha256": "ff9361af1d5cd9d23f3dc6e27c85f99986958f9537a702df459d8062dddb2d4a"
+    },
+    {
+      "path": "evidence/m10/PX-124/core-test-run.txt",
+      "bytes": 4847,
+      "sha256": "4c8e6fcf1f276b04a9e0c7ba339b1a8c64546da5ec46510b83883c48054b12bc"
+    },
+    {
+      "path": "evidence/m10/PX-124/e2e-run.txt",
+      "bytes": 7594,
+      "sha256": "54bd3d7b326ba671fff468b148b19d2f00f241f1f43dc75571e9cfb55e02cc1f"
+    },
+    {
+      "path": "evidence/m10/PX-124/mutation-check.txt",
+      "bytes": 1336,
+      "sha256": "f9210d64859a6dbdb4bdca15414e47321117d4f97fa8a21a4629557d8c9f019b"
+    },
+    {
+      "path": "evidence/m10/PX-124/mutation-readonly-run.txt",
+      "bytes": 3920,
+      "sha256": "92542ec3bfab1c58475638d9d1759977e629151a7dd09a1c6ae99cddcfdec6ce"
+    },
+    {
+      "path": "evidence/m10/PX-124/mutation-stale-run.txt",
+      "bytes": 10259,
+      "sha256": "033def935833b1025135a8d9a76577ee7c4f3d573120fdc1692de20517e6a436"
     },
     {
       "path": "evidence/m10/PX-131/TASK_CARD.md",
