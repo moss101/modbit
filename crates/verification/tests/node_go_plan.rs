@@ -8,6 +8,13 @@ use std::path::Path;
 
 use modbit_verification::derive;
 
+/// npm installs `tsc.cmd` on Windows and a bare `tsc` shim elsewhere.
+const TSC_SHIM: &str = if cfg!(windows) {
+    "node_modules/.bin/tsc.cmd"
+} else {
+    "node_modules/.bin/tsc"
+};
+
 fn write(root: &Path, rel: &str, text: &str) {
     let p = root.join(rel);
     std::fs::create_dir_all(p.parent().unwrap()).unwrap();
@@ -31,7 +38,7 @@ fn a_typescript_project_gets_a_build_a_lint_and_its_tests_with_its_own_package_m
     );
     write(d.path(), "package-lock.json", "{}");
     write(d.path(), "tsconfig.json", "{}");
-    write(d.path(), "node_modules/.bin/tsc", "#!/bin/sh\n");
+    write(d.path(), TSC_SHIM, "#!/bin/sh\n");
     let plan = derive(d.path(), &[], &[]);
     assert_eq!(
         ids(&plan),
@@ -73,12 +80,12 @@ fn a_project_with_tsc_installed_and_no_script_is_type_checked_directly() {
     write(d.path(), "tsconfig.json", "{}");
     // tsc is not installed yet: nothing is invented.
     assert!(derive(d.path(), &[], &[]).commands.is_empty());
-    write(d.path(), "node_modules/.bin/tsc", "#!/bin/sh\n");
+    write(d.path(), TSC_SHIM, "#!/bin/sh\n");
     let plan = derive(d.path(), &[], &[]);
     assert_eq!(ids(&plan), vec![("typecheck:tsc".into(), true)]);
     let argv = &plan.commands[0].argv;
     assert_eq!(argv[1], "--noEmit");
-    assert!(argv[0].starts_with("node_modules/.bin/tsc"), "{argv:?}");
+    assert!(argv[0].starts_with(TSC_SHIM), "{argv:?}");
     // A named type-check script wins over the direct call.
     write(
         d.path(),
