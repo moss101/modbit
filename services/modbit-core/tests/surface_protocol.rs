@@ -13100,6 +13100,170 @@ async fn qual_px_105_a_system_skill_is_not_shadowed_and_a_system_prohibition_ove
     drop(repo);
 }
 
+/// QUAL-PX-105 (an imported skill stays quarantined until trusted) on the real
+/// Core, the real importer and the scripted provider that records every
+/// request: another agent's skill is imported from a real directory; loaded
+/// into a session the extension is quarantined and the skill is in no request
+/// and `skill.load` refuses it; trusting the extension (which activates what
+/// the extension would do) does not trust the skill — it is listed, still
+/// untrusted, and still reaches no model; `TrustSkill` by its hash is what
+/// lets it in (its index line, then `skill.load`'s body).
+#[tokio::test]
+#[allow(clippy::too_many_lines)]
+async fn qual_px_105_an_imported_skill_stays_quarantined_until_the_owner_trusts_its_hash() {
+    use serde_json::json;
+    const BODY: &str = "IMPORTED-SKILL-BODY-MARKER: extract the tables first.";
+    let source = tempfile::tempdir().unwrap();
+    let pkg = source.path().join(".claude/skills/pdf-px105");
+    std::fs::create_dir_all(&pkg).unwrap();
+    std::fs::write(
+        pkg.join("SKILL.md"),
+        format!("---\nname: pdf-px105\ndescription: extract text from PDF files\n---\n{BODY}\n"),
+    )
+    .unwrap();
+    let source_root = source.path().canonicalize().unwrap();
+    let source_root = source_root
+        .to_string_lossy()
+        .trim_start_matches(r"\\?\")
+        .to_owned();
+    let (repo, root) = plain_repo(&[("NOTES.md", "# notes\n")]);
+    let script = vec![
+        json!({"calls": [{"name": "plan.update", "args": {"outcome": "read", "expected_files": []}}]}),
+        json!({"calls": [{"name": "task.complete", "args": {"summary": "done", "self_review": {"findings": []}}}]}),
+    ];
+    let (base, seen) = scripted_model(script, None).await;
+    let dir = tempfile::tempdir().unwrap();
+    let env = [
+        ("MODBIT_OPENAI_BASE_URL", base.as_str()),
+        ("OPENAI_API_KEY", ""),
+        ("ANTHROPIC_API_KEY", ""),
+    ];
+    let core = CoreProcess::spawn_with_env(dir.path(), &env);
+    let mut c = core.client().await;
+    let (session, _) = create_session(&mut c, id16(0xF1)).await;
+    let g = lease_for(&session);
+
+    // ---- import, load: the extension is quarantined, the skill reaches nothing
+    let report = import_config(&mut c, &session, g, &source_root, "px105-import", 0xF2).await;
+    assert!(
+        report
+            .items
+            .iter()
+            .any(|i| i.source.ends_with("pdf-px105") && i.status == "MAPPED"),
+        "{report:#?}"
+    );
+    let loaded = load_extension(&mut c, &session, g, &report.extension_path, 0xF3)
+        .await
+        .unwrap();
+    assert!(!loaded.quarantined.is_empty(), "{loaded:?}");
+    let task_a = create_task_with_profile(&mut c, &session, g, &root, 0xF4, "local_trusted").await;
+    let l = px_list_skills(&mut c, Some(&task_a)).await;
+    assert!(
+        l.skills
+            .iter()
+            .all(|s| !(s.name == "pdf-px105" && s.enabled)),
+        "a quarantined extension's skill is not enabled: {l:#?}"
+    );
+    let refused = invoke_tool(
+        &mut c,
+        &task_a,
+        g,
+        0xF5,
+        0xF6,
+        "skill.load",
+        r#"{"name":"pdf-px105"}"#,
+    )
+    .await;
+    assert_ne!(refused.status, "SUCCESS", "{refused:?}");
+    assert!(
+        !refused
+            .structured_output_json
+            .contains("IMPORTED-SKILL-BODY")
+    );
+    let before = seen.lock().unwrap().len();
+    px_run(&mut c, &task_a, g, 0xF7, 8).await;
+    let quarantined_reqs: Vec<serde_json::Value> = seen.lock().unwrap()[before..].to_vec();
+    assert!(!quarantined_reqs.is_empty());
+    for b in &quarantined_reqs {
+        let t = b.to_string();
+        for needle in ["IMPORTED-SKILL-BODY", "pdf-px105", "extract text from PDF"] {
+            assert!(
+                !t.contains(needle),
+                "a quarantined skill reached the model: {needle}"
+            );
+        }
+    }
+
+    // ---- the extension is trusted: the skill is listed, and is still not trusted
+    let active = trust_extension(
+        &mut c,
+        &session,
+        g,
+        &loaded.extension_id,
+        &loaded.manifest_digest,
+        0xF8,
+    )
+    .await;
+    assert!(active.quarantined.is_empty(), "{active:?}");
+    let task_b = create_task_with_profile(&mut c, &session, g, &root, 0xF9, "local_trusted").await;
+    let l = px_list_skills(&mut c, Some(&task_b)).await;
+    let v = px_skill_view(&l, "pdf-px105");
+    assert_eq!(v.scope, "EXTENSION", "{v:#?}");
+    assert_eq!(
+        (v.trust.as_str(), v.enabled, v.indexed),
+        ("UNTRUSTED", false, false),
+        "{v:#?}"
+    );
+    let hash = v.content_hash.clone();
+    let before = seen.lock().unwrap().len();
+    px_run(&mut c, &task_b, g, 0xFA, 8).await;
+    for b in &seen.lock().unwrap()[before..] {
+        assert!(
+            !b.to_string().contains("IMPORTED-SKILL-BODY") && !b.to_string().contains("pdf-px105"),
+            "an active extension's skill that nobody trusted reached the model"
+        );
+    }
+
+    // ---- the owner trusts the bytes: the index line is in the next request
+    let r = px_trust(&mut c, "pdf-px105", &hash, Some(&task_b))
+        .await
+        .unwrap();
+    assert_eq!(r.trust, "TRUSTED_BY_OWNER", "{r:?}");
+    let task_c = create_task_with_profile(&mut c, &session, g, &root, 0xFB, "local_trusted").await;
+    let before = seen.lock().unwrap().len();
+    px_run(&mut c, &task_c, g, 0xFC, 8).await;
+    let trusted_reqs: Vec<serde_json::Value> = seen.lock().unwrap()[before..].to_vec();
+    assert!(
+        trusted_reqs[0]
+            .to_string()
+            .contains("pdf-px105: extract text from PDF files"),
+        "the trusted imported skill is indexed"
+    );
+    assert!(
+        !trusted_reqs[0].to_string().contains("IMPORTED-SKILL-BODY"),
+        "the index carries no body"
+    );
+    let task_d = create_task_with_profile(&mut c, &session, g, &root, 0xFD, "local_trusted").await;
+    let loaded_body = invoke_tool(
+        &mut c,
+        &task_d,
+        g,
+        0xFE,
+        0xFF,
+        "skill.load",
+        r#"{"name":"pdf-px105"}"#,
+    )
+    .await;
+    assert_eq!(loaded_body.status, "SUCCESS", "{loaded_body:?}");
+    assert!(
+        loaded_body
+            .structured_output_json
+            .contains("IMPORTED-SKILL-BODY")
+    );
+
+    drop(repo);
+}
+
 // ---- REQ-PX-116: hierarchical budgets ---------------------------------------
 
 /// `SetTaskBudgets` over the real socket.
