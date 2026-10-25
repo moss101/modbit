@@ -78,6 +78,7 @@ RepairAttempt {
 Rules enforced by Core:
 
 - Every repair attempt records all fields before the next verification run; a change without a RepairAttempt after a failed verification is rejected.
+- **The Core verifies and concludes (PX-145, DR-PX-2026-10-25-017).** At the end of a turn in which a write landed (baseline recorded, a plan, a mandatory check, the plan's declared files all written or the model asking for no tool), the Core runs a TARGETED stage by the one stage runner, concludes the pending attempt by the one conclusion path, and delivers the result as a labelled notice (`AutoVerificationDelivered`, replayed by the transcript rebuild): the engine's observation, the open failures, the attempts already made on them with their outcomes, the source lines the diagnostics name (read from the workspace, never outside it or through a link), and the next step. It runs at most 60 times per task, selects, skips or weakens no check, and `MODBIT_AUTO_VERIFY=0` turns it off for a Core. The repair itself stays the model's: a hypothesis is the model's to state, and a repeat is refused.
 - **Equivalent repeated hypotheses trigger escalation.** If a new attempt's hypothesis fingerprint equals a prior attempt's for the same failure signature, the loop does not run it. It escalates through the compiled continuation slot (stronger solver, independent review or human) or, when no slot exists in Alpha, moves the task to `Needs Attention` with the attempt history.
 - Bounds: at most N attempts per failure signature and M per task, both from policy, both budgeted in the plan; exhaustion escalates the same way. Budget exhaustion never truncates silently (`14_AGENT_RUNTIME_AND_ORCHESTRATION.md`).
 - A repair that worsens verification is recorded as `WORSENED` and reverted through the Change Engine before the next attempt unless the agent records why the regression is expected.
@@ -89,7 +90,7 @@ Rules enforced by Core:
 ```text
 RepairPolicy {
   max_attempts_per_signature        # Alpha default 2
-  max_attempts_per_task             # Alpha default 6
+  max_attempts_per_task             # Alpha default 12 (DR-PX-2026-10-25-017: a build reports one failure at a time)
   max_worsened_before_escalation    # Alpha default 1
   reproduction_required             # Alpha default true when the goal reports a failure or defect
   max_consecutive_no_progress_turns # Alpha default 3

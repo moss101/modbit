@@ -39,6 +39,9 @@ pub struct PolicyRequest {
     pub outside_workspace_write: bool,
     /// The tool's classifier found a write to configuration.
     pub protected_path: bool,
+    /// The tool's classifier found the call to be only the install of the
+    /// project's declared dependencies (DR-PX-2026-10-25-017).
+    pub dependency_install: bool,
     /// The escalation the call declares it needs: `none` | `network` | `all`
     /// (empty = not declared). A typed field, not a reading of the command.
     pub declared_escalation: String,

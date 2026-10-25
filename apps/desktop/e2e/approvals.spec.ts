@@ -45,7 +45,7 @@ async function chooseMode(page: Page, mode: string, widest = false): Promise<voi
   await page.getByTestId("runmode-understood").check();
   await page.getByTestId("runmode-warning-confirm").click();
   await expect(page.getByTestId("runmode-warning")).toHaveCount(0);
-  await expect(page.getByTestId("runmode-current")).toHaveText(mode === "ALLOWLIST" ? "Allowlist" : "Run everything (this session)");
+  await expect(page.getByTestId("runmode-current")).toHaveText(mode === "ALLOWLIST" ? "Supervised" : mode === "AUTONOMOUS" ? "Autonomous" : "Run everything (this session)");
   await page.getByTestId("runmode-close").click();
   await expect(page.getByTestId("runmode-dialog")).toHaveCount(0);
 }
@@ -65,8 +65,8 @@ test("PX-058: a pending effect docks a card with the exact intent and the Core's
     await expect(page.getByTestId("approval-tool")).toHaveText("shell.exec");
     await expect(page.getByTestId("approval-command")).toHaveText(`git remote add origin1 ${URL1}`);
     await expect(page.getByTestId("approval-effect")).toContainText("protected write");
-    await expect(page.getByTestId("approval-why")).toContainText("Every protected effect asks in the Ask mode");
-    await expect(card).toHaveAttribute("data-ask-reason", "MODE_ASK");
+    await expect(page.getByTestId("approval-why")).toContainText("No allowlist rule covers this command");
+    await expect(card).toHaveAttribute("data-ask-reason", "NOT_IN_ALLOWLIST");
     await expect(page.getByTestId("approval-count")).toContainText("1 pending");
     const hash = (await card.getAttribute("data-intent-hash"))!;
     expect(hash).toMatch(/^[0-9a-f]{64}$/);
@@ -247,14 +247,14 @@ test("PX-057/058: Allowlist plus Always on a card makes a durable rule through t
   try {
     await setContentSize(app, page, 1280, 800);
     const taskId = await startAndOpen(page, "add two remotes", repo);
-    await expect(page.getByTestId("runmode-current")).toHaveText("Ask");
+    // DR-PX-2026-10-25-017: an attended task starts Supervised, where a rule made from a card takes effect.
+    await expect(page.getByTestId("runmode-current")).toHaveText("Supervised");
     // The mode is chosen behind the warning dialog, with the always-ask classes explained.
     await page.getByTestId("runmode-button").click();
     await expect(page.getByTestId("runmode-always-ask")).toContainText("Deletions");
     await expect(page.getByTestId("runmode-always-ask")).toContainText("Network");
     await accessible(page, "the run-mode dialog");
     await page.getByTestId("runmode-close").click();
-    await chooseMode(page, "ALLOWLIST");
     gate.open();
     const card = page.getByTestId("approval-card");
     await expect(card).toBeVisible({ timeout: 90_000 });
@@ -322,7 +322,7 @@ test("PX-057: the widest preset needs its warning and still asks for the always-
     await expect(page.getByTestId("runmode-warning-text")).toContainText("prompt injection");
     await page.getByTestId("runmode-warning-cancel").click();
     await expect(page.getByTestId("runmode-warning")).toHaveCount(0);
-    await expect(page.getByTestId("runmode-current")).toHaveText("Ask");
+    await expect(page.getByTestId("runmode-current")).toHaveText("Supervised");
     await page.getByTestId("runmode-close").click();
     await chooseMode(page, "RUN_EVERYTHING", true);
     gate.open();

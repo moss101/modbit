@@ -1,0 +1,14 @@
+Rust verification of PX-144/145/146 (2026-10-25, macOS arm64, rustc 1.97.1, branch wip/autonomous-coding-engine)
+
+Full `cargo test -p modbit-core --no-fail-fast` (before the multi-file deferral rule): 610 passed, 3 failed.
+  The three: qual_px_135_a_weakened_test_is_refused_completion, m2_8_verification_engine_gates_completion_on_real_cargo_fixture,
+  qual_px_016_change_strategy_tests_first_one_concern_per_transaction_and_no_silent_scope_widening.
+  Cause: scripted multi-file edits were verified halfway and opened a repair obligation. Fix: the Core defers its own
+  verification while the plan names files not yet written, unless the turn asked for no tool (auto_verify::owed, unit-tested).
+Rerun after the fix: those three pass; qual_px_144 (x2), qual_px_145 (x3), qual_px_146 (x3) pass.
+Library and CLI crates (domain, policy, core-runtime, verification, tools, cli), --test-threads=2: all ok (0 failed).
+Mutation checks (restored afterwards): ignoring the classifier's dependency_install flag fails
+  autonomous_approves_a_manifest_install_and_nothing_else_that_always_asks; disabling auto_verify::due fails all three qual_px_145 tests.
+cargo clippy -D warnings (domain, policy, core-runtime, verification, tools, core; all targets): clean. cargo fmt --check: clean.
+Desktop: pnpm typecheck clean; node --test 302 pass; full Playwright e2e 187 passed, 1 skipped (the live spec), then autonomy.spec re-run after a test fix: pass.
+Live: see live-desktop-run-1..5.json and DR-PX-2026-10-25-017 section 9.

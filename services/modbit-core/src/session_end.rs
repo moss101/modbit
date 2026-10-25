@@ -128,6 +128,62 @@ pub(crate) async fn end_session(
     })
 }
 
+/// After a restart: of the tasks recovery just suspended, the AUTONOMOUS ones
+/// the Core died under (DR-PX-2026-10-25-017).
+///
+/// A person who chose AUTONOMOUS for a task asked it to go on without them, so
+/// a task whose run was cut by a crash is offered for resumption exactly as
+/// one the person asked to have resumed is: the client resumes it with its
+/// ordinary `StartTask`, which judges everything afresh (the session lease,
+/// the provider, the capability envelope, the mode and every rule's scope and
+/// expiry) and reconciles a call the dead Core had dispatched with its target
+/// instead of replaying it (docs/19). Nothing resumes without a client.
+///
+/// Not for a task whose session was ended on purpose after it last started
+/// (the person's own `EndSession` choice stands, whichever way it went), for
+/// one that is not AUTONOMOUS, or when `MODBIT_AUTO_RESUME=0`.
+pub(crate) fn crash_resumes(
+    store: &EventStore,
+    suspended: &[TaskId],
+    already: &[TaskId],
+) -> Vec<TaskId> {
+    if std::env::var("MODBIT_AUTO_RESUME").is_ok_and(|v| v.trim() == "0") {
+        return Vec::new();
+    }
+    let mut out = Vec::new();
+    for t in suspended {
+        if already.contains(t) {
+            continue;
+        }
+        let Ok(Some(task)) = store.task(t) else {
+            continue;
+        };
+        let autonomous = store
+            .read_aggregate_of_types(t.as_bytes(), &["RunModeSet"], 0)
+            .ok()
+            .and_then(|v| v.into_iter().next_back())
+            .and_then(|e| store.payload(&e.envelope).ok())
+            .is_some_and(|p| p["mode"] == "AUTONOMOUS");
+        if !autonomous {
+            continue;
+        }
+        let last_start = store
+            .read_aggregate_of_types(t.as_bytes(), &["TaskStarted", "TaskResumed"], 0)
+            .ok()
+            .and_then(|v| v.into_iter().next_back())
+            .map_or(0, |e| e.offset);
+        let ended_on_purpose = store
+            .read_session_of_types(&task.session_id, &["SessionEnding"], 0)
+            .ok()
+            .and_then(|v| v.into_iter().next_back())
+            .is_some_and(|e| e.offset > last_start);
+        if !ended_on_purpose {
+            out.push(*t);
+        }
+    }
+    out
+}
+
 /// After a restart: of the tasks recovery just suspended, the ones whose
 /// session's latest `SessionEnding` asked for a resume and which nothing has
 /// started or resumed since (a choice is spent by the resume it asked for).

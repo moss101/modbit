@@ -1341,6 +1341,13 @@ fn command_model() -> Script {
             "g-gitconfig" => vec!["git", "config", "user.name", "someone"],
             "g-outside" => vec!["touch", "../escaped.txt"],
             "g-curl" => vec!["curl", "http://127.0.0.1:9/"],
+            // DR-PX-2026-10-25-017: installs of the project's own dependencies
+            // and what stays gated beside them.
+            "g-install" => vec!["npm", "ci"],
+            "g-install-pkg" => vec!["npm", "install", "left-pad"],
+            "g-install-chain" => vec!["sh", "-c", "npm ci && mytool build"],
+            "g-install-curl" => vec!["sh", "-c", "npm ci && curl http://127.0.0.1:9/"],
+            "g-rmrf" => vec!["rm", "-rf", "dist"],
             // A call that declares it needs more than it has (AFW-F11).
             "g-escalate" => vec!["mytool", "build"],
             _ => return Step::text("nothing to do"),
@@ -1366,6 +1373,10 @@ fn tool_dir() -> Bin {
     let path = dir.path().join("mytool");
     std::fs::write(&path, "#!/bin/sh\necho \"ran $*\" > out.txt\n").unwrap();
     std::fs::set_permissions(&path, std::fs::Permissions::from_mode(0o755)).unwrap();
+    // A package manager that fetches nothing: it records what it was asked.
+    let npm = dir.path().join("npm");
+    std::fs::write(&npm, "#!/bin/sh\necho \"$*\" >> npm.log\n").unwrap();
+    std::fs::set_permissions(&npm, std::fs::Permissions::from_mode(0o755)).unwrap();
     Bin { dir }
 }
 
@@ -1546,7 +1557,9 @@ async fn qual_px_057_ask_allowlist_rules_scope_expiry_and_revocation_against_the
     let (session, g) = session_with_lease(&mut c, 0x10).await;
     let out = std::path::Path::new(&root).join("out.txt");
 
-    // ---- Ask (the default): the command asks with its exact intent.
+    // ---- The default (DR-PX-2026-10-25-017): an attended task starts in
+    // ALLOWLIST, which with no rule asks exactly as ASK does: the command asks
+    // with its exact intent.
     let t1 = task_for(&mut c, &session, g, &root, 0x11, "g-build").await;
     assert_eq!(
         cmd::<RunModeView>(
@@ -1560,15 +1573,15 @@ async fn qual_px_057_ask_allowlist_rules_scope_expiry_and_revocation_against_the
         .await
         .unwrap()
         .mode,
-        "ASK"
+        "ALLOWLIST"
     );
     let asked = run_until_asked_or_done(&mut c, &session, &t1, g).await;
-    assert_eq!(asked.len(), 1, "a protected effect asks in Ask");
+    assert_eq!(asked.len(), 1, "a protected effect asks with no rule");
     assert_eq!(asked[0].tool_name, "shell.exec");
     assert_eq!(asked[0].effect_class, "ProtectedWrite");
     let scope = scope_of(&asked[0]);
-    assert_eq!(scope["run_mode"], "ASK");
-    assert_eq!(scope["ask_reason"], "MODE_ASK");
+    assert_eq!(scope["run_mode"], "ALLOWLIST");
+    assert_eq!(scope["ask_reason"], "NOT_IN_ALLOWLIST");
     assert!(!out.exists(), "nothing ran before the person decided");
     decide(&mut c, &asked[0], true, g).await;
     wait_task(&mut c, &t1, 60).await;
@@ -1580,10 +1593,16 @@ async fn qual_px_057_ask_allowlist_rules_scope_expiry_and_revocation_against_the
     );
     std::fs::remove_file(&out).unwrap();
 
-    // ---- A rule alone changes nothing in Ask; the mode needs the person's
-    // acknowledgement; a rule is refused without the lease and when its
-    // pattern is not a literal prefix.
+    // ---- A rule alone changes nothing in ASK, which a person can still
+    // choose; moving up from it needs the person's acknowledgement; a rule is
+    // refused without the lease and when its pattern is not a literal prefix.
     let t2 = task_for(&mut c, &session, g, &root, 0x12, "g-build").await;
+    let v = set_mode(&mut c, &t2, g, "ASK", false).await.unwrap();
+    assert_eq!(
+        (v.mode.as_str(), v.acknowledged),
+        ("ASK", false),
+        "a move down needs no acknowledgement"
+    );
     assert_eq!(
         code_of(add_rule(&mut c, &t2, None, &["mytool", "build"], "REPO", 0).await),
         "LEASE_REQUIRED"
@@ -2011,8 +2030,8 @@ async fn qual_px_057_always_ask_classes_ask_under_run_everything_and_run_everyth
     .await
     .unwrap();
     assert_eq!(
-        after.mode, "ASK",
-        "Run everything does not survive a restart"
+        after.mode, "ALLOWLIST",
+        "Run everything does not survive a restart; the task falls back to its default"
     );
     let kept = cmd::<RunModeView>(
         &mut c,
@@ -2046,6 +2065,1034 @@ async fn qual_px_057_always_ask_classes_ask_under_run_everything_and_run_everyth
     // And moving back down needs no acknowledgement.
     let v = set_mode(&mut c, &t_keep, g, "ASK", false).await.unwrap();
     assert_eq!(v.mode, "ASK");
+}
+
+// =====================================================================
+// DR-PX-2026-10-25-017: autonomy presets
+// =====================================================================
+
+/// A rule made while the task is in its default mode takes effect (the
+/// "Always" button on an approval card makes exactly this rule), with no
+/// `SetRunMode` in between; a person who chooses ASK still gets a mode that
+/// ignores every rule.
+#[tokio::test]
+async fn qual_px_144_a_rule_made_in_the_default_mode_takes_effect_and_ask_still_ignores_rules() {
+    let (_repo, root) = plain_repo(&[("a.txt", "alpha\n")]);
+    let (base, _seen) = model(command_model()).await;
+    let bin = tool_dir();
+    let dir = tempfile::tempdir().unwrap();
+    let core = spawn(dir.path(), &env_of(&base, &[("PATH", &path_with(&bin))]));
+    let mut c = core.client().await;
+    let (session, g) = session_with_lease(&mut c, 0x10).await;
+    let out = std::path::Path::new(&root).join("out.txt");
+
+    // The first run asks; the person answers Always: a rule for the repository.
+    let t1 = task_for(&mut c, &session, g, &root, 0x11, "g-build").await;
+    let asked = run_until_asked_or_done(&mut c, &session, &t1, g).await;
+    assert_eq!(asked.len(), 1);
+    assert_eq!(scope_of(&asked[0])["run_mode"], "ALLOWLIST");
+    let rule = add_rule(&mut c, &t1, g, &["mytool", "build"], "REPO", 0)
+        .await
+        .unwrap();
+    decide(&mut c, &asked[0], true, g).await;
+    wait_task(&mut c, &t1, 60).await;
+    assert!(out.exists());
+    std::fs::remove_file(&out).unwrap();
+
+    // The next task, never given a mode, is not asked again, and the receipt
+    // names the rule.
+    let t2 = task_for(&mut c, &session, g, &root, 0x12, "g-build-fast").await;
+    let asked = run_until_asked_or_done(&mut c, &session, &t2, g).await;
+    assert!(
+        asked.is_empty(),
+        "the rule applies in the default mode: {asked:?}"
+    );
+    wait_task(&mut c, &t2, 60).await;
+    assert!(out.exists());
+    let r = receipts(&mut c, &t2).await;
+    assert!(
+        r.iter().any(|r| r.status == "AUTHORIZED"
+            && r.policy_decision == format!("allowlist:{}", rule.rule_id)),
+        "{r:?}"
+    );
+    std::fs::remove_file(&out).unwrap();
+
+    // ASK is still a mode a person can choose, and it ignores the rule.
+    let t3 = task_for(&mut c, &session, g, &root, 0x13, "g-build").await;
+    set_mode(&mut c, &t3, g, "ASK", false).await.unwrap();
+    let asked = run_until_asked_or_done(&mut c, &session, &t3, g).await;
+    assert_eq!(
+        asked.len(),
+        1,
+        "ASK asks although a rule covers the command"
+    );
+    assert_eq!(scope_of(&asked[0])["ask_reason"], "MODE_ASK");
+    decide(&mut c, &asked[0], false, g).await;
+    wait_task(&mut c, &t3, 60).await;
+    assert!(!out.exists());
+    // Going back up from ASK is a move to a mode that approves more.
+    assert_eq!(
+        code_of(set_mode(&mut c, &t3, g, "ALLOWLIST", false).await),
+        "ACKNOWLEDGEMENT_REQUIRED"
+    );
+}
+
+/// AUTONOMOUS runs the routine work of a coding task without asking (an
+/// install of the project's declared dependencies, an unknown project tool),
+/// keeps every other always-ask class asking, and unlike RUN_EVERYTHING it
+/// survives a Core restart with the acknowledgement that set it.
+#[tokio::test]
+async fn qual_px_144_autonomous_installs_dependencies_without_asking_and_keeps_the_rest_gated() {
+    let (_repo, root) = plain_repo(&[("a.txt", "alpha\n")]);
+    std::fs::create_dir_all(std::path::Path::new(&root).join("dist")).unwrap();
+    std::fs::write(std::path::Path::new(&root).join("dist/x.js"), "x").unwrap();
+    let (base, _seen) = model(command_model()).await;
+    let bin = tool_dir();
+    let dir = tempfile::tempdir().unwrap();
+    let env = env_of(&base, &[("PATH", &path_with(&bin))]);
+    let mut core = spawn(dir.path(), &env);
+    let mut c = core.client().await;
+    let (session, mut g) = session_with_lease(&mut c, 0x10).await;
+    let npm_log = std::path::Path::new(&root).join("npm.log");
+    let out = std::path::Path::new(&root).join("out.txt");
+
+    // The preset needs the person's acknowledgement, and is durable.
+    let t = task_for(&mut c, &session, g, &root, 0x11, "g-install").await;
+    assert_eq!(
+        code_of(set_mode(&mut c, &t, g, "AUTONOMOUS", false).await),
+        "ACKNOWLEDGEMENT_REQUIRED"
+    );
+    let v = set_mode(&mut c, &t, g, "AUTONOMOUS", true).await.unwrap();
+    assert_eq!(
+        (v.mode.as_str(), v.acknowledged, v.session_only),
+        ("AUTONOMOUS", true, false)
+    );
+    assert!(v.modes.iter().any(|m| m == "AUTONOMOUS"));
+    assert!(v.warning.contains("dependencies"));
+
+    // `npm ci` runs without a prompt and the receipt says why.
+    let asked = run_until_asked_or_done(&mut c, &session, &t, g).await;
+    assert!(
+        asked.is_empty(),
+        "a manifest install does not ask: {asked:?}"
+    );
+    wait_task(&mut c, &t, 60).await;
+    assert_eq!(std::fs::read_to_string(&npm_log).unwrap().trim(), "ci");
+    let r = receipts(&mut c, &t).await;
+    assert!(
+        r.iter().any(|r| r.status == "AUTHORIZED"
+            && r.policy_decision == "run_mode:AUTONOMOUS:dependency_install"),
+        "{:?}",
+        r.iter()
+            .map(|r| r.policy_decision.clone())
+            .collect::<Vec<_>>()
+    );
+    std::fs::remove_file(&npm_log).unwrap();
+
+    // An install followed by a project tool the classifier does not know is
+    // still routine work.
+    let t = task_for(&mut c, &session, g, &root, 0x12, "g-install-chain").await;
+    set_mode(&mut c, &t, g, "AUTONOMOUS", true).await.unwrap();
+    let asked = run_until_asked_or_done(&mut c, &session, &t, g).await;
+    assert!(asked.is_empty(), "{asked:?}");
+    wait_task(&mut c, &t, 60).await;
+    assert!(npm_log.exists() && out.exists());
+    std::fs::remove_file(&npm_log).unwrap();
+    std::fs::remove_file(&out).unwrap();
+
+    // What is not a manifest install still asks, with its typed reason, and
+    // nothing ran before the person decided (here: denied).
+    for (n, goal, class) in [
+        (0x13u8, "g-install-pkg", "NETWORK"),
+        (0x14, "g-install-curl", "NETWORK"),
+        (0x15, "g-curl", "NETWORK"),
+        (0x16, "g-rmrf", "DELETION"),
+        (0x17, "g-gitconfig", "PROTECTED_PATH"),
+        (0x18, "g-outside", "OUTSIDE_WORKSPACE_WRITE"),
+    ] {
+        let t = task_for(&mut c, &session, g, &root, n, goal).await;
+        set_mode(&mut c, &t, g, "AUTONOMOUS", true).await.unwrap();
+        let asked = run_until_asked_or_done(&mut c, &session, &t, g).await;
+        assert_eq!(asked.len(), 1, "{goal} must ask under AUTONOMOUS");
+        let scope = scope_of(&asked[0]);
+        assert_eq!(scope["run_mode"], "AUTONOMOUS", "{goal}");
+        assert_eq!(scope["ask_reason"], format!("ALWAYS_ASK:{class}"), "{goal}");
+        decide(&mut c, &asked[0], false, g).await;
+        wait_task(&mut c, &t, 60).await;
+    }
+    assert!(
+        !npm_log.exists(),
+        "no install ran that was not a manifest install"
+    );
+    assert!(
+        std::path::Path::new(&root).join("dist/x.js").exists(),
+        "the deletion never happened"
+    );
+    assert!(
+        !std::path::Path::new(&root)
+            .parent()
+            .unwrap()
+            .join("escaped.txt")
+            .exists()
+    );
+
+    // RUN_EVERYTHING does not carry the install: the same command asks.
+    let t = task_for(&mut c, &session, g, &root, 0x19, "g-install").await;
+    set_mode(&mut c, &t, g, "RUN_EVERYTHING", true)
+        .await
+        .unwrap();
+    let asked = run_until_asked_or_done(&mut c, &session, &t, g).await;
+    assert_eq!(asked.len(), 1);
+    assert_eq!(scope_of(&asked[0])["ask_reason"], "ALWAYS_ASK:NETWORK");
+    decide(&mut c, &asked[0], false, g).await;
+    wait_task(&mut c, &t, 60).await;
+
+    // SIGKILL the Core before a task that was set to AUTONOMOUS runs: the mode
+    // and its acknowledgement are on the log, and the run that follows is
+    // judged afresh (a new lease, the envelope, the classifier) and is routine.
+    let t_dur = task_for(&mut c, &session, g, &root, 0x1a, "g-install").await;
+    set_mode(&mut c, &t_dur, g, "AUTONOMOUS", true)
+        .await
+        .unwrap();
+    drop(c);
+    core.kill();
+    drop(core);
+    core = spawn(dir.path(), &env);
+    let mut c = core.client().await;
+    g = lease_again(&mut c, &session).await;
+    let after = cmd::<RunModeView>(
+        &mut c,
+        "GetRunMode",
+        GetRunMode {
+            task_id: Some(t_dur.clone()),
+        },
+        None,
+    )
+    .await
+    .unwrap();
+    assert_eq!(
+        (after.mode.as_str(), after.acknowledged, after.session_only),
+        ("AUTONOMOUS", true, false),
+        "a durable mode survives a restart with its acknowledgement"
+    );
+    let asked = run_until_asked_or_done(&mut c, &session, &t_dur, g).await;
+    assert!(asked.is_empty(), "{asked:?}");
+    wait_task(&mut c, &t_dur, 60).await;
+    assert_eq!(std::fs::read_to_string(&npm_log).unwrap().trim(), "ci");
+    drop(core);
+}
+
+// ---------------------------------------------------------------------
+// PX-145: the Core verifies the model's edits itself
+// ---------------------------------------------------------------------
+
+/// The repository's own `tsc`, reached through the `node_modules/.bin/tsc` a
+/// project would have. `None` (the test then says it did not run) when this
+/// checkout has not installed TypeScript.
+fn repo_tsc() -> Option<std::path::PathBuf> {
+    let p = std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("../../node_modules/.bin/tsc");
+    p.canonicalize().ok().filter(|p| p.exists())
+}
+
+/// A committed TypeScript project whose build is broken: `files` are its
+/// sources; `npm run build` is `tsc -p .` through a `node_modules/.bin/tsc`
+/// that runs the checkout's TypeScript. There is no `.modbit/verification.json`
+/// check: the plan the engine derives from `package.json` is all there is.
+fn broken_ts_project(tsc: &std::path::Path, files: &[(&str, &str)]) -> (tempfile::TempDir, String) {
+    use std::os::unix::fs::PermissionsExt;
+    let mut all: Vec<(&str, &str)> = vec![
+        (
+            "package.json",
+            r#"{"name":"app","version":"1.0.0","scripts":{"build":"tsc -p ."}}"#,
+        ),
+        ("package-lock.json", "{}"),
+        (
+            "tsconfig.json",
+            r#"{"compilerOptions":{"strict":true,"noEmit":true,"target":"es2020","module":"commonjs","types":[]},"include":["src"]}"#,
+        ),
+        (".gitignore", "node_modules/\n"),
+        (".modbit/verification.json", r#"{"commands":[]}"#),
+    ];
+    all.extend_from_slice(files);
+    let (repo, root) = plain_repo(&all);
+    let bin = repo.path().join("node_modules/.bin");
+    std::fs::create_dir_all(&bin).unwrap();
+    let wrapper = bin.join("tsc");
+    std::fs::write(
+        &wrapper,
+        format!("#!/bin/sh\nexec \"{}\" \"$@\"\n", tsc.display()),
+    )
+    .unwrap();
+    std::fs::set_permissions(&wrapper, std::fs::Permissions::from_mode(0o755)).unwrap();
+    (repo, root)
+}
+
+/// Run the project's build the way a person would; whether it passes.
+fn build_passes(root: &str) -> bool {
+    std::process::Command::new("npm")
+        .args(["run", "build", "--silent"])
+        .current_dir(root)
+        .output()
+        .map(|o| o.status.success())
+        .unwrap_or(false)
+}
+
+fn tool_result_count(body: &Value) -> usize {
+    body["messages"]
+        .as_array()
+        .map(|m| m.iter().filter(|x| x["role"] == "tool").count())
+        .unwrap_or(0)
+}
+
+/// The Core's automatic verification notices the request carries, in order.
+fn auto_notices(body: &Value) -> Vec<String> {
+    user_texts(body)
+        .into_iter()
+        .filter(|t| t.starts_with("[modbit: automatic verification]"))
+        .collect()
+}
+
+/// The first open failure a notice names.
+fn first_open_failure(notice: &str) -> String {
+    let line = notice
+        .lines()
+        .find(|l| l.contains("open failure(s): "))
+        .expect("the notice names the open failures");
+    line.split("open failure(s): ")
+        .nth(1)
+        .unwrap()
+        .split(", ")
+        .next()
+        .unwrap()
+        .trim()
+        .to_owned()
+}
+
+fn plan_call(files: &[&str]) -> Step {
+    Step::call(
+        "plan.update",
+        json!({"outcome": "the build passes", "expected_files": files, "verification": ["npm run build"]}),
+    )
+}
+
+fn replace_call(path: &str, content: &str) -> Step {
+    Step::call(
+        "change.apply",
+        json!({"path": path, "op": "replace", "content": content}),
+    )
+}
+
+fn complete_call() -> Step {
+    Step::call(
+        "task.complete",
+        json!({"summary": "the build passes", "self_review": {"findings": []}}),
+    )
+}
+
+async fn approvals_in(c: &mut Client, session: &Id) -> usize {
+    let l: ApprovalList = cmd(
+        c,
+        "ListApprovals",
+        ListApprovals {
+            session_id: Some(session.clone()),
+        },
+        None,
+    )
+    .await
+    .unwrap();
+    l.approvals.len()
+}
+
+async fn task_state(c: &mut Client, task: &Id) -> String {
+    let ack = c
+        .command(envelope(
+            rand_id(),
+            "GetTaskStatus",
+            modbit_protocol::v1::GetTaskStatus {
+                task_id: Some(task.clone()),
+            }
+            .encode_to_vec(),
+        ))
+        .await
+        .unwrap();
+    Client::result::<modbit_protocol::v1::TaskStatus>(&ack)
+        .unwrap()
+        .state
+}
+
+/// "Fix my broken build." The model reads, edits and stops editing; it never
+/// calls `verify.run` or `repair.attempt`. The Core runs the plan's build
+/// check after the edit by itself (derived from `package.json`: `npm run
+/// build` through the project's own `tsc`), tells the model the build now
+/// passes, and the task completes on a COMPLETION run that repeats it. No
+/// approval is asked anywhere.
+#[tokio::test]
+async fn qual_px_145_a_broken_typescript_build_is_verified_by_the_core_after_the_edit_and_completes()
+ {
+    let Some(tsc) = repo_tsc() else {
+        eprintln!("SKIPPED: this checkout has no node_modules/.bin/tsc");
+        return;
+    };
+    let (_repo, root) = broken_ts_project(
+        &tsc,
+        &[("src/index.ts", "export const total: number = \"oops\";\n")],
+    );
+    assert!(!build_passes(&root), "the fixture really is broken");
+    let script: Script = Arc::new(|body, _| {
+        if let Some(n) = auto_notices(body).last() {
+            return if n.contains("every mandatory check passed") {
+                complete_call()
+            } else {
+                Step::text("the build still fails")
+            };
+        }
+        match tool_result_count(body) {
+            0 => plan_call(&["src/index.ts"]),
+            1 => Step::call("fs.read", json!({"path": "src/index.ts"})),
+            2 => replace_call("src/index.ts", "export const total: number = 42;\n"),
+            _ => Step::text("waiting for the Core"),
+        }
+    });
+    let (base, seen) = model(script).await;
+    let dir = tempfile::tempdir().unwrap();
+    let core = spawn(dir.path(), &env_of(&base, &[]));
+    let mut c = core.client().await;
+    let (session, g) = session_with_lease(&mut c, 0x10).await;
+    let t = create_task(
+        &mut c,
+        &session,
+        g,
+        &root,
+        0x11,
+        "local_trusted",
+        "The build is broken: fix the TypeScript compile error",
+    )
+    .await;
+    start(&mut c, &t, g, "gpt-5-mini", 4).await;
+    wait_task(&mut c, &t, 180).await;
+    assert_eq!(task_state(&mut c, &t).await, "ReadyForReview");
+    assert!(build_passes(&root), "the build passes after the run");
+    let events = replay(&core, &session).await;
+    let delivered = kinds(&events, "AutoVerificationDelivered");
+    assert_eq!(
+        delivered.len(),
+        1,
+        "one automatic verification: {delivered:#?}"
+    );
+    assert_eq!(pl(&delivered[0])["ok"], true);
+    // The model never asked for any of it.
+    let bodies = seen.lock().unwrap().clone();
+    let mentions = |name: &str| {
+        bodies.iter().any(|b| {
+            b["messages"]
+                .as_array()
+                .into_iter()
+                .flatten()
+                .flat_map(|m| m["tool_calls"].as_array().into_iter().flatten())
+                .any(|c| c["function"]["name"] == name)
+        })
+    };
+    assert!(!mentions("verify.run") && !mentions("repair.attempt"));
+    // BASELINE saw the build fail before the first write.
+    let base_ev = kinds(&events, "VerificationBaselineRecorded");
+    assert_eq!(base_ev.len(), 1);
+    assert!(
+        pl(&base_ev[0])["checks"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .any(|c| c["status"] == "FAIL"),
+        "{:#?}",
+        base_ev[0]
+    );
+    assert_eq!(approvals_in(&mut c, &session).await, 0, "nothing asked");
+}
+
+/// Two broken files, a wrong first fix, a right second one. The Core reports
+/// each failure after the edit that left it; the second notice tells the model
+/// what its first attempt did and that a repeat is refused; the attempts and
+/// their outcomes are on the log; the build passes at the end; nothing asked.
+#[tokio::test]
+async fn qual_px_145_sequential_build_failures_are_repaired_through_the_cores_own_verifications() {
+    let Some(tsc) = repo_tsc() else {
+        eprintln!("SKIPPED: this checkout has no node_modules/.bin/tsc");
+        return;
+    };
+    let (_repo, root) = broken_ts_project(
+        &tsc,
+        &[
+            ("src/a.ts", "export const a: number = \"one\";\n"),
+            ("src/b.ts", "export const b: number = \"two\";\n"),
+            (
+                "src/index.ts",
+                "import { a } from \"./a\";\nimport { b } from \"./b\";\nexport const sum: number = a + b;\n",
+            ),
+        ],
+    );
+    assert!(!build_passes(&root));
+    let script: Script = Arc::new(|body, _| {
+        let notices = auto_notices(body);
+        let results = tool_result_count(body);
+        match (notices.len(), results) {
+            (0, 0) => plan_call(&["src/a.ts", "src/b.ts"]),
+            (0, 1) => Step::call("fs.read", json!({"path": "src/a.ts"})),
+            (0, 2) => Step::call("fs.read", json!({"path": "src/b.ts"})),
+            // Fix a.ts only: b.ts still breaks the build. The plan names b.ts
+            // too, so the Core does not look at a half-made change; it looks
+            // when the model stops asking for tools.
+            (0, 3) => replace_call("src/a.ts", "export const a: number = 1;\n"),
+            (0, 4) => Step::text("a.ts is fixed; let me see where the build stands."),
+            // The Core reports b.ts; record an attempt, make a fix that does not work.
+            (1, 4) => Step::call(
+                "repair.attempt",
+                json!({
+                    "failure_signature": first_open_failure(&notices[0]),
+                    "hypothesis": "b is assigned a string literal where a number is declared; quote it as a numeric string",
+                    "intended_fix": "change the literal to \"2\""
+                }),
+            ),
+            (1, 5) => replace_call("src/b.ts", "export const b: number = \"2\";\n"),
+            // The Core says that did nothing; a different cause, a real fix.
+            (2, 6) => Step::call(
+                "repair.attempt",
+                json!({
+                    "failure_signature": first_open_failure(&notices[1]),
+                    "hypothesis": "the declared type is number so the value must be a number literal, not any string",
+                    "intended_fix": "use the number 2"
+                }),
+            ),
+            (2, 7) => replace_call("src/b.ts", "export const b: number = 2;\n"),
+            (3, _) if notices[2].contains("every mandatory check passed") => complete_call(),
+            _ => Step::text("stuck"),
+        }
+    });
+    let (base, seen) = model(script).await;
+    let dir = tempfile::tempdir().unwrap();
+    let core = spawn(dir.path(), &env_of(&base, &[]));
+    let mut c = core.client().await;
+    let (session, g) = session_with_lease(&mut c, 0x10).await;
+    let t = create_task(
+        &mut c,
+        &session,
+        g,
+        &root,
+        0x11,
+        "local_trusted",
+        "The build is broken in two files: fix the TypeScript compile errors",
+    )
+    .await;
+    start(&mut c, &t, g, "gpt-5-mini", 4).await;
+    wait_task(&mut c, &t, 240).await;
+    assert_eq!(task_state(&mut c, &t).await, "ReadyForReview");
+    assert!(build_passes(&root));
+    let events = replay(&core, &session).await;
+    let delivered = kinds(&events, "AutoVerificationDelivered");
+    let oks: Vec<bool> = delivered
+        .iter()
+        .map(|e| pl(e)["ok"].as_bool().unwrap())
+        .collect();
+    assert_eq!(oks, vec![false, false, true], "{delivered:#?}");
+    // The second notice carries the first attempt's outcome and the source the
+    // diagnostics name.
+    let last = seen.lock().unwrap().last().cloned().unwrap();
+    let notices = auto_notices(&last);
+    assert_eq!(notices.len(), 3);
+    assert!(notices[0].contains("src/b.ts"), "{}", notices[0]);
+    assert!(
+        notices[0].contains("source the diagnostics point at:")
+            && notices[0].contains(">    1  export const b: number = \"two\";"),
+        "{}",
+        notices[0]
+    );
+    assert!(
+        notices[1].contains("attempt 1") && notices[1].contains("UNCHANGED"),
+        "{}",
+        notices[1]
+    );
+    let attempts = kinds(&events, "RepairAttemptRecorded");
+    let concluded = kinds(&events, "RepairAttemptConcluded");
+    assert_eq!(attempts.len(), 2);
+    assert_eq!(
+        concluded
+            .iter()
+            .map(|e| pl(e)["outcome"].as_str().unwrap().to_owned())
+            .collect::<Vec<_>>(),
+        vec!["UNCHANGED", "RESOLVED"]
+    );
+    assert_eq!(approvals_in(&mut c, &session).await, 0, "nothing asked");
+}
+
+/// The Core is killed while the model is being asked what to do about a
+/// failing build. After the restart the run resumes in the mode it was in
+/// (AUTONOMOUS is durable), the model reads the same notice from the rebuilt
+/// transcript, nothing the dead process did is run twice, and the task
+/// completes without an approval.
+#[tokio::test]
+async fn qual_px_145_a_killed_core_resumes_with_the_notice_the_model_had_and_the_same_permissions()
+{
+    let Some(tsc) = repo_tsc() else {
+        eprintln!("SKIPPED: this checkout has no node_modules/.bin/tsc");
+        return;
+    };
+    let (_repo, root) = broken_ts_project(
+        &tsc,
+        &[("src/index.ts", "export const total: number = \"oops\";\n")],
+    );
+    let hung = Arc::new(std::sync::atomic::AtomicBool::new(false));
+    let hung2 = Arc::clone(&hung);
+    let script: Script = Arc::new(move |body, _| {
+        let notices = auto_notices(body);
+        if let Some(n) = notices.last() {
+            if n.contains("every mandatory check passed") {
+                return complete_call();
+            }
+            // The first time the model is asked about the failure, the Core
+            // dies before it answers.
+            if !hung2.swap(true, std::sync::atomic::Ordering::SeqCst) {
+                return Step::hang_after(1);
+            }
+            return match tool_result_count(body) {
+                3 => Step::call(
+                    "repair.attempt",
+                    json!({
+                        "failure_signature": first_open_failure(n),
+                        "hypothesis": "the string literal is not a number",
+                        "intended_fix": "use a number"
+                    }),
+                ),
+                4 => replace_call("src/index.ts", "export const total: number = 42;\n"),
+                _ => Step::text("waiting"),
+            };
+        }
+        match tool_result_count(body) {
+            0 => plan_call(&["src/index.ts"]),
+            1 => Step::call("fs.read", json!({"path": "src/index.ts"})),
+            // A wrong edit that leaves the build failing differently.
+            2 => replace_call(
+                "src/index.ts",
+                "export const total: number = \"still wrong\";\n",
+            ),
+            _ => Step::text("waiting"),
+        }
+    });
+    let (base, seen) = model(script).await;
+    let dir = tempfile::tempdir().unwrap();
+    let env = env_of(&base, &[]);
+    let mut core = spawn(dir.path(), &env);
+    let mut c = core.client().await;
+    let (session, mut g) = session_with_lease(&mut c, 0x10).await;
+    let t = create_task(
+        &mut c,
+        &session,
+        g,
+        &root,
+        0x11,
+        "local_trusted",
+        "The build is broken: fix the TypeScript compile error",
+    )
+    .await;
+    set_mode(&mut c, &t, g, "AUTONOMOUS", true).await.unwrap();
+    start(&mut c, &t, g, "gpt-5-mini", 4).await;
+    let deadline = Instant::now() + Duration::from_secs(180);
+    while !hung.load(std::sync::atomic::Ordering::SeqCst) {
+        assert!(Instant::now() < deadline, "the failing notice never came");
+        tokio::time::sleep(Duration::from_millis(100)).await;
+    }
+    tokio::time::sleep(Duration::from_millis(500)).await;
+    drop(c);
+    core.kill();
+    drop(core);
+
+    let core = spawn(dir.path(), &env);
+    let mut c = core.client().await;
+    g = lease_again(&mut c, &session).await;
+    let mode = cmd::<RunModeView>(
+        &mut c,
+        "GetRunMode",
+        GetRunMode {
+            task_id: Some(t.clone()),
+        },
+        None,
+    )
+    .await
+    .unwrap();
+    assert_eq!(
+        (mode.mode.as_str(), mode.acknowledged),
+        ("AUTONOMOUS", true),
+        "the permission survives the kill with its acknowledgement"
+    );
+    let resumed = start(&mut c, &t, g, "gpt-5-mini", 4).await;
+    assert!(
+        resumed.resumed,
+        "a StartTask on an interrupted task resumes it"
+    );
+    let st = wait_task(&mut c, &t, 240).await;
+    if st.state != "ReadyForReview" {
+        let ev = replay(&core, &session).await;
+        let tail: Vec<String> = ev
+            .iter()
+            .rev()
+            .take(25)
+            .map(|e| {
+                format!(
+                    "{} {}",
+                    e["event_type"],
+                    e["payload"]
+                        .to_string()
+                        .chars()
+                        .take(200)
+                        .collect::<String>()
+                )
+            })
+            .collect();
+        let sb = seen.lock().unwrap().clone();
+        let counts: Vec<(usize, usize)> = sb
+            .iter()
+            .map(|b| (tool_result_count(b), auto_notices(b).len()))
+            .collect();
+        panic!(
+            "state {} wait {} attention {} code {} requests(results,notices)={counts:?}\n{}",
+            st.state,
+            st.wait_reason,
+            st.attention_reason,
+            st.failure_code,
+            tail.join("\n")
+        );
+    }
+    assert!(build_passes(&root));
+    // The request after the restart carried the notice the dead process
+    // delivered, from the rebuilt transcript, once.
+    let bodies = seen.lock().unwrap().clone();
+    let after: Vec<&Value> = bodies
+        .iter()
+        .filter(|b| !auto_notices(b).is_empty())
+        .collect();
+    assert!(after.len() >= 2, "asked before and after the kill");
+    assert_eq!(auto_notices(after[0]).len(), 1);
+    assert_eq!(auto_notices(after[1]).len(), 1, "once, not twice");
+    let events = replay(&core, &session).await;
+    assert_eq!(
+        kinds(&events, "RunModeSet")
+            .iter()
+            .filter(|e| pl(e)["mode"] == "AUTONOMOUS")
+            .count(),
+        1
+    );
+    assert_eq!(approvals_in(&mut c, &session).await, 0, "nothing asked");
+}
+
+// ---------------------------------------------------------------------
+// PX-146: budget windows
+// ---------------------------------------------------------------------
+
+/// A model that reads `a.txt` on its first `reads` requests and then
+/// completes the task.
+fn reads_then_completes(reads: usize) -> Script {
+    Arc::new(move |body, _| {
+        let r = tool_result_count(body);
+        if r == 0 {
+            plan_call(&[])
+        } else if r <= reads {
+            Step::call("fs.read", json!({"path": "a.txt"}))
+        } else {
+            complete_call()
+        }
+    })
+}
+
+async fn start_with(
+    c: &mut Client,
+    task: &Id,
+    g: Option<u64>,
+    max_turns: u32,
+    max_tool_calls: u32,
+) -> TaskRunStarted {
+    cmd(
+        c,
+        "StartTask",
+        StartTask {
+            task_id: Some(task.clone()),
+            endpoint: String::new(),
+            model: "gpt-5-mini".into(),
+            max_turns,
+            max_tool_calls,
+            max_no_progress_turns: 5,
+            skills: vec![],
+            ..Default::default()
+        },
+        g,
+    )
+    .await
+    .unwrap()
+}
+
+async fn status_of(c: &mut Client, task: &Id) -> modbit_protocol::v1::TaskStatus {
+    let ack = c
+        .command(envelope(
+            rand_id(),
+            "GetTaskStatus",
+            modbit_protocol::v1::GetTaskStatus {
+                task_id: Some(task.clone()),
+            }
+            .encode_to_vec(),
+        ))
+        .await
+        .unwrap();
+    Client::result(&ack).unwrap()
+}
+
+/// The turn budget is a window: a task that used it up stops waiting for its
+/// person, and resuming it with the same limits goes on from where it was
+/// (it used to meet the same exhausted count at once and stop again). An
+/// AUTONOMOUS task that is still making progress is given the next window
+/// itself; the window count and the ceiling bound both.
+#[tokio::test]
+async fn qual_px_146_an_exhausted_budget_is_a_window_a_person_or_an_autonomous_run_can_continue() {
+    let (_repo, root) = plain_repo(&[("a.txt", "alpha\n")]);
+    let (base, seen) = model(reads_then_completes(6)).await;
+    let dir = tempfile::tempdir().unwrap();
+    let core = spawn(dir.path(), &env_of(&base, &[]));
+    let mut c = core.client().await;
+    let (session, g) = session_with_lease(&mut c, 0x10).await;
+
+    // Supervised: the first window ends on max_turns and the task waits.
+    let t = create_task(
+        &mut c,
+        &session,
+        g,
+        &root,
+        0x11,
+        "local_trusted",
+        "read a lot",
+    )
+    .await;
+    start_with(&mut c, &t, g, 4, 0).await;
+    let st = wait_task(&mut c, &t, 60).await;
+    assert_eq!(st.state, "Waiting", "{st:?}");
+    assert_eq!(st.wait_reason, "UserInput");
+    assert!(
+        st.attention_reason.contains("max_turns"),
+        "{}",
+        st.attention_reason
+    );
+    // The person resumes it with the same limit: it continues, it does not
+    // meet the used-up count again.
+    start_with(&mut c, &t, g, 4, 0).await;
+    let st = wait_task(&mut c, &t, 60).await;
+    assert_eq!(st.state, "ReadyForReview", "{st:?}");
+    let events = replay(&core, &session).await;
+    assert_eq!(kinds(&events, "HarnessBudgetExhausted").len(), 1);
+
+    // Autonomous: the same task, no person in between.
+    let t2 = create_task(
+        &mut c,
+        &session,
+        g,
+        &root,
+        0x12,
+        "local_trusted",
+        "read a lot",
+    )
+    .await;
+    set_mode(&mut c, &t2, g, "AUTONOMOUS", true).await.unwrap();
+    start_with(&mut c, &t2, g, 4, 0).await;
+    let st = wait_task(&mut c, &t2, 60).await;
+    assert_eq!(st.state, "ReadyForReview", "{st:?}");
+    let events = replay(&core, &session).await;
+    let ext = kinds(&events, "BudgetWindowExtended");
+    assert!(!ext.is_empty(), "the Core opened a window");
+    assert_eq!(pl(&ext[0])["reason"], "AUTONOMOUS_PROGRESS");
+    assert_eq!(pl(&ext[0])["budget"], "max_turns");
+    assert_eq!(approvals_in(&mut c, &session).await, 0);
+
+    // The tool-call budget is judged at the turn boundary and ends the run
+    // as BUDGET_EXHAUSTED, not as a refusal on every call.
+    let t3 = create_task(
+        &mut c,
+        &session,
+        g,
+        &root,
+        0x13,
+        "local_trusted",
+        "read a lot",
+    )
+    .await;
+    start_with(&mut c, &t3, g, 0, 3).await;
+    let st = wait_task(&mut c, &t3, 60).await;
+    assert_eq!(st.state, "Waiting", "{st:?}");
+    assert!(
+        st.attention_reason.contains("max_tool_calls"),
+        "{}",
+        st.attention_reason
+    );
+
+    // No request can lift a window above the ceiling.
+    let t4 = create_task(
+        &mut c,
+        &session,
+        g,
+        &root,
+        0x14,
+        "local_trusted",
+        "read a lot",
+    )
+    .await;
+    start_with(&mut c, &t4, g, 1_000_000, 1_000_000).await;
+    wait_task(&mut c, &t4, 60).await;
+    let last = seen.lock().unwrap().last().cloned().unwrap();
+    let text = last["messages"].to_string();
+    assert!(
+        text.contains("\\\"max_turns\\\":1000"),
+        "{}",
+        &text[text.len().saturating_sub(600)..]
+    );
+    assert!(text.contains("\\\"max_tool_calls\\\":5000"));
+}
+
+/// An AUTONOMOUS run that stops making progress is not extended: the
+/// no-progress bound wins over the window.
+#[tokio::test]
+async fn qual_px_146_an_autonomous_run_that_makes_no_progress_is_not_extended() {
+    let (_repo, root) = plain_repo(&[("a.txt", "alpha\n")]);
+    let (base, _seen) = model(Arc::new(|body, _| {
+        if tool_result_count(body) == 0 {
+            plan_call(&[])
+        } else {
+            Step::text("I am thinking about it")
+        }
+    }))
+    .await;
+    let dir = tempfile::tempdir().unwrap();
+    let core = spawn(dir.path(), &env_of(&base, &[]));
+    let mut c = core.client().await;
+    let (session, g) = session_with_lease(&mut c, 0x10).await;
+    let t = create_task(&mut c, &session, g, &root, 0x11, "local_trusted", "think").await;
+    set_mode(&mut c, &t, g, "AUTONOMOUS", true).await.unwrap();
+    start_with(&mut c, &t, g, 40, 0).await;
+    let st = wait_task(&mut c, &t, 60).await;
+    assert_eq!(st.state, "Waiting", "{st:?}");
+    assert_eq!(st.failure_code, "NO_PROGRESS", "{st:?}");
+    let events = replay(&core, &session).await;
+    assert!(kinds(&events, "BudgetWindowExtended").is_empty());
+}
+
+/// A Core that dies under an AUTONOMOUS task offers it for resumption; one it
+/// dies under in any other mode, and one whose session the person ended on
+/// purpose, are left for the person. The resumption is the ordinary
+/// `StartTask`, which finishes the task with nothing asked.
+#[tokio::test]
+async fn qual_px_146_an_autonomous_task_a_crash_cut_short_is_offered_for_resumption_and_nothing_else_is()
+ {
+    use modbit_protocol::v1::{EndSession, GetRecoveryReport, RecoveryReport, SessionEndedView};
+    let (_repo, root) = plain_repo(&[("a.txt", "alpha\n")]);
+    let hangs = Arc::new(std::sync::atomic::AtomicUsize::new(0));
+    let hangs2 = Arc::clone(&hangs);
+    let (base, _seen) = model(Arc::new(move |body, _| {
+        if tool_result_count(body) == 0
+            && hangs2.fetch_add(1, std::sync::atomic::Ordering::SeqCst) < 3
+        {
+            return Step::hang_after(1);
+        }
+        match tool_result_count(body) {
+            0 => plan_call(&[]),
+            _ => complete_call(),
+        }
+    }))
+    .await;
+    let dir = tempfile::tempdir().unwrap();
+    let env = env_of(&base, &[]);
+    let mut core = spawn(dir.path(), &env);
+    let mut c = core.client().await;
+    let (s1, g1) = session_with_lease(&mut c, 0x10).await;
+    let (s2, g2) = session_with_lease(&mut c, 0x30).await;
+    let auto = create_task(
+        &mut c,
+        &s1,
+        g1,
+        &root,
+        0x11,
+        "local_trusted",
+        "autonomous work",
+    )
+    .await;
+    let plain = create_task(
+        &mut c,
+        &s1,
+        g1,
+        &root,
+        0x12,
+        "local_trusted",
+        "supervised work",
+    )
+    .await;
+    let ended = create_task(
+        &mut c,
+        &s2,
+        g2,
+        &root,
+        0x13,
+        "local_trusted",
+        "autonomous but ended",
+    )
+    .await;
+    set_mode(&mut c, &auto, g1, "AUTONOMOUS", true)
+        .await
+        .unwrap();
+    set_mode(&mut c, &ended, g2, "AUTONOMOUS", true)
+        .await
+        .unwrap();
+    for (t, g) in [(&auto, g1), (&plain, g1), (&ended, g2)] {
+        start_with(&mut c, t, g, 20, 0).await;
+    }
+    let deadline = Instant::now() + Duration::from_secs(60);
+    while hangs.load(std::sync::atomic::Ordering::SeqCst) < 3 {
+        assert!(
+            Instant::now() < deadline,
+            "the three runs never reached the model"
+        );
+        tokio::time::sleep(Duration::from_millis(100)).await;
+    }
+    tokio::time::sleep(Duration::from_millis(300)).await;
+    // The second session is ended on purpose, without a resume.
+    let _: SessionEndedView = cmd(
+        &mut c,
+        "EndSession",
+        EndSession {
+            session_id: Some(s2.clone()),
+            resume_on_reopen: false,
+        },
+        g2,
+    )
+    .await
+    .unwrap();
+    drop(c);
+    core.kill();
+    drop(core);
+
+    let core = spawn(dir.path(), &env);
+    let mut c = core.client().await;
+    let report: RecoveryReport = cmd(&mut c, "GetRecoveryReport", GetRecoveryReport {}, None)
+        .await
+        .unwrap();
+    let offered: Vec<Id> = report.resume_requested_tasks.clone();
+    assert_eq!(
+        offered,
+        vec![auto.clone()],
+        "only the autonomous task the crash cut short"
+    );
+    // Resumption is the ordinary StartTask under a fresh lease.
+    let g1 = lease_again(&mut c, &s1).await;
+    let r = start_with(&mut c, &auto, g1, 20, 0).await;
+    assert!(r.resumed);
+    let st = wait_task(&mut c, &auto, 60).await;
+    assert_eq!(st.state, "ReadyForReview", "{st:?}");
+    assert_eq!(approvals_in(&mut c, &s1).await, 0);
+    // The others are still suspended, waiting for a person.
+    for t in [&plain, &ended] {
+        let st = status_of(&mut c, t).await;
+        assert_ne!(st.state, "ReadyForReview", "{st:?}");
+        assert!(!st.loop_alive);
+    }
 }
 
 // =====================================================================

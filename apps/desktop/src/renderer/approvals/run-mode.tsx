@@ -26,7 +26,7 @@ export interface RunModePanelProps {
   now?: number;
 }
 
-const MODES_FALLBACK = ["ASK", "ALLOWLIST", "ALLOWLIST_SANDBOX", "RUN_EVERYTHING"];
+const MODES_FALLBACK = ["ASK", "ALLOWLIST", "ALLOWLIST_SANDBOX", "RUN_EVERYTHING", "AUTONOMOUS"];
 
 export function RunModePanel({ open, onClose, info, rules, onSetMode, onAddRule, onRevoke, now = Date.now() }: RunModePanelProps) {
   const modes = info && info.modes.length > 0 ? info.modes : MODES_FALLBACK;
@@ -103,6 +103,7 @@ export function RunModePanel({ open, onClose, info, rules, onSetMode, onAddRule,
   };
   const shown = orderRules(rules).filter((r) => showInactive || r.state === "ACTIVE");
   const widest = pending === "RUN_EVERYTHING";
+  const autonomous = pending === "AUTONOMOUS";
 
   return (
     <>
@@ -207,7 +208,7 @@ export function RunModePanel({ open, onClose, info, rules, onSetMode, onAddRule,
                 </Button>
               </div>
             </form>
-            <p className="meta">A rule is a literal word prefix. It never matches shell operators, redirections, substitutions or pipelines, and a compound command needs every part covered. Rules apply when the mode is Allowlist or higher.</p>
+            <p className="meta">A rule is a literal word prefix. It never matches shell operators, redirections, substitutions or pipelines, and a compound command needs every part covered. Rules apply in every mode except Ask.</p>
           </section>
           {error && (
             <p className="appr-note" role="alert" data-testid="runmode-error">
@@ -221,9 +222,14 @@ export function RunModePanel({ open, onClose, info, rules, onSetMode, onAddRule,
           </div>
         </div>
       </Dialog>
-      <Dialog open={open && pending !== null} onClose={() => setPending(null)} title={widest ? "Run everything without asking?" : "Let more run without asking?"} role="alertdialog" size="md" testId="runmode-warning">
+      <Dialog open={open && pending !== null} onClose={() => setPending(null)} title={widest ? "Run everything without asking?" : autonomous ? "Let the agent work autonomously?" : "Let more run without asking?"} role="alertdialog" size="md" testId="runmode-warning">
         <div className="ckpt-dialog">
           <p data-testid="runmode-warning-text">{info?.warning || "This lets the agent act without asking you first."}</p>
+          {autonomous && (
+            <p className="appr-warn" data-testid="runmode-warning-autonomous">
+              Autonomous runs builds, tests, project tools and the install of the project&apos;s declared dependencies without asking, and it lasts across a restart. Network access, secrets, deletions, pushes, writes outside the workspace and protected paths still ask.
+            </p>
+          )}
           {widest && (
             <p className="appr-warn" data-testid="runmode-warning-widest">
               This is the widest preset. It lasts for this session only and asks again every time you choose it. Effects that always ask still ask.

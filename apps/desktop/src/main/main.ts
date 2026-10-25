@@ -160,8 +160,9 @@ const supervisor = new CoreSupervisor(
             recoveryMs: r.recoveryMs.toString(),
           };
           send("core:recovery", lastRecovery);
-          // REQ-PX-049: tasks the person chose, when quitting, to have resumed on reopen. The Core names them (recovery has
-          // suspended them); resuming is the ordinary StartTask, after the provider and the session lease are in place.
+          // REQ-PX-049: tasks the person chose, when quitting, to have resumed on reopen, and (DR-PX-2026-10-25-017) the
+          // AUTONOMOUS tasks a crash cut short. The Core names them (recovery has suspended them); resuming is the ordinary
+          // StartTask, after the provider and the session lease are in place, and it judges every permission afresh.
           const resume = r.resumeRequestedTasks.map((t) => Buffer.from(t.value).toString("hex"));
           if (resume.length === 0 || !local.sessionId) return;
           await providerHanded;

@@ -30150,6 +30150,13 @@
    "source": "docs/97_DOSSIER_MAINTENANCE_LOG.md"
   },
   {
+   "id": "DR-PX-2026-10-25-017",
+   "type": "change_record",
+   "title": "Approved: PX-144..146, Supervised default and the AUTONOMOUS run mode, Core-run verification and repair conclusion over a derived Node/TypeScript and Go plan, budget windows and crash resumption, with a scoped supersession of AFW-F06, F07 and F08",
+   "status": "APPROVED",
+   "source": "docs/97_DOSSIER_MAINTENANCE_LOG.md"
+  },
+  {
    "id": "REQ-PX-000",
    "type": "requirement",
    "title": "Headless CLI thin client for the task lifecycle",
@@ -32020,6 +32027,45 @@
    "release": "RELEASE_ZERO",
    "source": "docs/62_PRODUCT_EXTENSION_REQUIREMENTS_TASKS_AND_QUALIFICATIONS.md",
    "mandatory_behavior": "The real Electron app against a real Core and a scripted model at 1280 x 800, 1000 x 700 and 900 x 600 in light and dark: the shell is independent framed panels with the geometry of the record (agent list 264 px within 2 px, header 48 px, 4 px gaps, panel radius 12 px, resize indicator 2 px), the centre keeps 424 pt, Fleet, conversation rows (user, assistant, tool and diff cards, approval deck, checkpoints), the composer and its trays, Review, Settings, dialogs and the palette render in the ZCode language with every role, name and test id unchanged; the Lucide table covers every icon the renderer draws and no icon has lost its accessible name; the whole desktop e2e suite passes with only the geometry assertions of the record replaced; axe passes on every region in three themes; before and after screenshots of every screen are retained as the supplemental record."
+  },
+  {
+   "id": "REQ-PX-144",
+   "type": "requirement",
+   "title": "Autonomy presets on the policy kernel: attended tasks start Supervised, the durable AUTONOMOUS run mode with the manifest-install carve-out, an Always rule that takes effect, and the toolchains a project installs known to the classifier",
+   "disposition": "ADOPT",
+   "subsystem": "effects-security",
+   "owner_label": "effects-security",
+   "imp": "PX-144",
+   "qual": "QUAL-PX-144",
+   "release": "RELEASE_ZERO",
+   "source": "docs/62_PRODUCT_EXTENSION_REQUIREMENTS_TASKS_AND_QUALIFICATIONS.md",
+   "mandatory_behavior": "The real Core, its real execution broker and the real Capability Kernel with a scripted model: a task nobody gave a mode starts in ALLOWLIST and asks with `NOT_IN_ALLOWLIST`; a rule made in that mode applies to the next task without a mode change and the receipt names it; ASK ignores the same rule with `MODE_ASK`; AUTONOMOUS needs the acknowledgement, is durable across a SIGKILL with its acknowledgement, runs `npm ci` (a package manager on the path that fetches nothing) and an unknown project tool without a card with the receipt `run_mode:AUTONOMOUS:dependency_install`, and still asks, with the typed class, for `npm install <package>`, an install chained to `curl`, `curl`, `rm -rf`, `git config`, a write outside the workspace and, under RUN_EVERYTHING, for the install itself; the classifier states `dependency_install` only for a manifest install with no package, global, prefix, registry or environment override and nothing else that reaches out; the desktop withholds Always on a card from an ASK task and main refuses it, a repository Always rule expires in 30 days, and the Autonomous choice shows its warning in the real renderer."
+  },
+  {
+   "id": "REQ-PX-145",
+   "type": "requirement",
+   "title": "Core-run verification after the model's edits with repair-attempt conclusion, durable notices and diagnosis context, and a derived plan that names a Node/TypeScript or Go project's type check, build, lint and tests",
+   "disposition": "ADOPT",
+   "subsystem": "core-runtime",
+   "owner_label": "core-runtime",
+   "imp": "PX-145",
+   "qual": "QUAL-PX-145",
+   "release": "RELEASE_ZERO",
+   "source": "docs/62_PRODUCT_EXTENSION_REQUIREMENTS_TASKS_AND_QUALIFICATIONS.md",
+   "mandatory_behavior": "The real Core with a real `tsc`, a real `npm run build`, a real git repository and a scripted model that never calls `verify.run` or `repair.attempt` to fix a seeded TypeScript build failure: BASELINE sees the build fail before the first write, the Core verifies the edit itself, the notice reaches the model and the task completes with the build passing and no approval; with two broken files and a wrong first fix the Core reports each failure after its edit, the second notice carries the first attempt's outcome and the quoted source, both attempts and their outcomes (UNCHANGED, RESOLVED) are on the log; a Core killed while the model is asked about the failure resumes in the same mode, the model reads the same notice from the rebuilt transcript once, and the task completes; the derived plan names the type check, build, lint and tests with the project's package manager, and a Go module's build, vet and tests."
+  },
+  {
+   "id": "REQ-PX-146",
+   "type": "requirement",
+   "title": "Budget windows for turns and tool calls (configurable defaults, ceilings, person and Autonomous continuation) and crash resumption of Autonomous tasks",
+   "disposition": "ADOPT",
+   "subsystem": "core-runtime",
+   "owner_label": "core-runtime",
+   "imp": "PX-146",
+   "qual": "QUAL-PX-146",
+   "release": "RELEASE_ZERO",
+   "source": "docs/62_PRODUCT_EXTENSION_REQUIREMENTS_TASKS_AND_QUALIFICATIONS.md",
+   "mandatory_behavior": "The real Core and a scripted model: a Supervised task that uses its turn window stops Waiting with the budget named and a `StartTask` with the same limit continues it to completion; an AUTONOMOUS task that is still making progress is given the next window by the Core (`BudgetWindowExtended`) and completes with no card; one that stops making progress is not extended and ends NO_PROGRESS; the tool-call window ends the run at the turn boundary; a request for more than the ceiling is clamped to 1000 turns and 5000 tool calls; a SIGKILL under an AUTONOMOUS task makes the restarted Core name it for resumption, and not a task in another mode nor one whose session the person ended, and the ordinary `StartTask` completes it with nothing asked."
   },
   {
    "id": "PX-000",
@@ -38256,6 +38302,90 @@
    "evidence": []
   },
   {
+   "id": "PX-144",
+   "type": "imp_task",
+   "title": "Autonomy presets on the policy kernel: Supervised default, the AUTONOMOUS run mode, an Always rule that takes effect and the toolchains a project installs",
+   "requirement": "REQ-PX-144",
+   "qual": "QUAL-PX-144",
+   "subsystem": "effects-security",
+   "owner_label": "effects-security",
+   "milestone": "M10",
+   "release": "RELEASE_ZERO",
+   "disposition": "ADOPT",
+   "source": "docs/62_PRODUCT_EXTENSION_REQUIREMENTS_TASKS_AND_QUALIFICATIONS.md",
+   "acceptance": "The real Core, its real execution broker and the real Capability Kernel with a scripted model: a task nobody gave a mode starts in ALLOWLIST and asks with `NOT_IN_ALLOWLIST`; a rule made in that mode applies to the next task without a mode change and the receipt names it; ASK ignores the same rule with `MODE_ASK`; AUTONOMOUS needs the acknowledgement, is durable across a SIGKILL with its acknowledgement, runs `npm ci` (a package manager on the path that fetches nothing) and an unknown project tool without a card with the receipt `run_mode:AUTONOMOUS:dependency_install`, and still asks, with the typed class, for `npm install <package>`, an install chained to `curl`, `curl`, `rm -rf`, `git config`, a write outside the workspace and, under RUN_EVERYTHING, for the install itself; the classifier states `dependency_install` only for a manifest install with no package, global, prefix, registry or environment override and nothing else that reaches out; the desktop withholds Always on a card from an ASK task and main refuses it, a repository Always rule expires in 30 days, and the Autonomous choice shows its warning in the real renderer.",
+   "prerequisites": [
+    "M2.5",
+    "M9.2",
+    "DOC-PX-016"
+   ],
+   "related_requirements": [
+    "REQ-EV-0031",
+    "REQ-EV-0088",
+    "REQ-EV-0194"
+   ],
+   "task_card": "docs/62_PRODUCT_EXTENSION_REQUIREMENTS_TASKS_AND_QUALIFICATIONS.md#px-144",
+   "audit_at_adoption": "DOCUMENTED-ONLY; no product caller present",
+   "status": "NOT_STARTED",
+   "evidence": []
+  },
+  {
+   "id": "PX-145",
+   "type": "imp_task",
+   "title": "Core-run verification after edits with repair conclusion, durable notices and diagnosis context, and a derived plan for Node/TypeScript and Go projects",
+   "requirement": "REQ-PX-145",
+   "qual": "QUAL-PX-145",
+   "subsystem": "core-runtime",
+   "owner_label": "core-runtime",
+   "milestone": "M10",
+   "release": "RELEASE_ZERO",
+   "disposition": "ADOPT",
+   "source": "docs/62_PRODUCT_EXTENSION_REQUIREMENTS_TASKS_AND_QUALIFICATIONS.md",
+   "acceptance": "The real Core with a real `tsc`, a real `npm run build`, a real git repository and a scripted model that never calls `verify.run` or `repair.attempt` to fix a seeded TypeScript build failure: BASELINE sees the build fail before the first write, the Core verifies the edit itself, the notice reaches the model and the task completes with the build passing and no approval; with two broken files and a wrong first fix the Core reports each failure after its edit, the second notice carries the first attempt's outcome and the quoted source, both attempts and their outcomes (UNCHANGED, RESOLVED) are on the log; a Core killed while the model is asked about the failure resumes in the same mode, the model reads the same notice from the rebuilt transcript once, and the task completes; the derived plan names the type check, build, lint and tests with the project's package manager, and a Go module's build, vet and tests.",
+   "prerequisites": [
+    "PX-018",
+    "PX-035",
+    "PX-039",
+    "DOC-PX-016"
+   ],
+   "related_requirements": [
+    "REQ-EV-0010",
+    "REQ-EV-0068",
+    "REQ-EV-0107"
+   ],
+   "task_card": "docs/62_PRODUCT_EXTENSION_REQUIREMENTS_TASKS_AND_QUALIFICATIONS.md#px-145",
+   "audit_at_adoption": "DOCUMENTED-ONLY; no product caller present",
+   "status": "NOT_STARTED",
+   "evidence": []
+  },
+  {
+   "id": "PX-146",
+   "type": "imp_task",
+   "title": "Budget windows for turns and tool calls and crash resumption of Autonomous tasks",
+   "requirement": "REQ-PX-146",
+   "qual": "QUAL-PX-146",
+   "subsystem": "core-runtime",
+   "owner_label": "core-runtime",
+   "milestone": "M10",
+   "release": "RELEASE_ZERO",
+   "disposition": "ADOPT",
+   "source": "docs/62_PRODUCT_EXTENSION_REQUIREMENTS_TASKS_AND_QUALIFICATIONS.md",
+   "acceptance": "The real Core and a scripted model: a Supervised task that uses its turn window stops Waiting with the budget named and a `StartTask` with the same limit continues it to completion; an AUTONOMOUS task that is still making progress is given the next window by the Core (`BudgetWindowExtended`) and completes with no card; one that stops making progress is not extended and ends NO_PROGRESS; the tool-call window ends the run at the turn boundary; a request for more than the ceiling is clamped to 1000 turns and 5000 tool calls; a SIGKILL under an AUTONOMOUS task makes the restarted Core name it for resumption, and not a task in another mode nor one whose session the person ended, and the ordinary `StartTask` completes it with nothing asked.",
+   "prerequisites": [
+    "M2.7",
+    "M4.4",
+    "PX-049",
+    "DOC-PX-016"
+   ],
+   "related_requirements": [
+    "REQ-EV-0073"
+   ],
+   "task_card": "docs/62_PRODUCT_EXTENSION_REQUIREMENTS_TASKS_AND_QUALIFICATIONS.md#px-146",
+   "audit_at_adoption": "DOCUMENTED-ONLY; no product caller present",
+   "status": "NOT_STARTED",
+   "evidence": []
+  },
+  {
    "id": "QUAL-PX-000",
    "type": "qual_test",
    "requirement": "REQ-PX-000",
@@ -39696,6 +39826,36 @@
    "source": "docs/62_PRODUCT_EXTENSION_REQUIREMENTS_TASKS_AND_QUALIFICATIONS.md"
   },
   {
+   "id": "QUAL-PX-144",
+   "type": "qual_test",
+   "requirement": "REQ-PX-144",
+   "owner_label": "effects-security",
+   "title": "The real Core, its real execution broker and the real Capability Kernel with a scripted model: a task nobody gave a mode starts in ALLOWLIST and asks with `NOT_IN_ALLOWLIST`; a rule made in that mode applies to the next task without a mode change and the receipt names it; ASK ignores the same rule with `MODE_ASK`; AUTONOMOUS needs the acknowledgement, is durable across a SIGKILL with its acknowledgement, runs `npm ci` (a package manager on the path that fetches nothing) and an unknown project tool without a card with the receipt `run_mode:AUTONOMOUS:dependency_install`, and still asks, with the typed class, for `npm install <package>`, an install chained to `curl`, `curl`, `rm -rf`, `git config`, a write outside the workspace and, under RUN_EVERYTHING, for the install itself; the classifier states `dependency_install` only for a manifest install with no package, global, prefix, registry or environment override and nothing else that reaches out; the desktop withholds Always on a card from an ASK task and main refuses it, a repository Always rule expires in 30 days, and the Autonomous choice shows its warning in the real renderer.",
+   "failure_proof": "Ignoring the classifier's flag in the kernel (mutation) fails the kernel and the Core tests; an always-ask class that passes in AUTONOMOUS, an unattended origin (forge, review, replay, subagent, automation) that starts in ALLOWLIST, an Always rule made in ASK, or a mode that is not acknowledged fails the suite.",
+   "evidence_class": "real-system or production-equivalent",
+   "source": "docs/62_PRODUCT_EXTENSION_REQUIREMENTS_TASKS_AND_QUALIFICATIONS.md"
+  },
+  {
+   "id": "QUAL-PX-145",
+   "type": "qual_test",
+   "requirement": "REQ-PX-145",
+   "owner_label": "core-runtime",
+   "title": "The real Core with a real `tsc`, a real `npm run build`, a real git repository and a scripted model that never calls `verify.run` or `repair.attempt` to fix a seeded TypeScript build failure: BASELINE sees the build fail before the first write, the Core verifies the edit itself, the notice reaches the model and the task completes with the build passing and no approval; with two broken files and a wrong first fix the Core reports each failure after its edit, the second notice carries the first attempt's outcome and the quoted source, both attempts and their outcomes (UNCHANGED, RESOLVED) are on the log; a Core killed while the model is asked about the failure resumes in the same mode, the model reads the same notice from the rebuilt transcript once, and the task completes; the derived plan names the type check, build, lint and tests with the project's package manager, and a Go module's build, vet and tests.",
+   "failure_proof": "Disabling the automatic verification (mutation) fails all three Core tests; a path outside the workspace, under `node_modules` or reached through a link quoted in a notice, a placeholder `npm init` test script treated as a check, a test or check skipped to obtain a pass, or an attempt repeated with an equivalent hypothesis accepted fails the suite.",
+   "evidence_class": "real-system or production-equivalent",
+   "source": "docs/62_PRODUCT_EXTENSION_REQUIREMENTS_TASKS_AND_QUALIFICATIONS.md"
+  },
+  {
+   "id": "QUAL-PX-146",
+   "type": "qual_test",
+   "requirement": "REQ-PX-146",
+   "owner_label": "core-runtime",
+   "title": "The real Core and a scripted model: a Supervised task that uses its turn window stops Waiting with the budget named and a `StartTask` with the same limit continues it to completion; an AUTONOMOUS task that is still making progress is given the next window by the Core (`BudgetWindowExtended`) and completes with no card; one that stops making progress is not extended and ends NO_PROGRESS; the tool-call window ends the run at the turn boundary; a request for more than the ceiling is clamped to 1000 turns and 5000 tool calls; a SIGKILL under an AUTONOMOUS task makes the restarted Core name it for resumption, and not a task in another mode nor one whose session the person ended, and the ordinary `StartTask` completes it with nothing asked.",
+   "failure_proof": "A window that is never bounded (more than four), a cost or wall-clock cap that a new window resets, an extension of a run with no progress, a resumption of a task the person ended on purpose, or a resumption that needs no client and lease fails the suite; a mutation that skips the window base fails the resume test.",
+   "evidence_class": "real-system or production-equivalent",
+   "source": "docs/62_PRODUCT_EXTENSION_REQUIREMENTS_TASKS_AND_QUALIFICATIONS.md"
+  },
+  {
    "id": "PX-E2E-000",
    "type": "scenario",
    "kind": "px-e2e",
@@ -40673,6 +40833,27 @@
    "type": "scenario",
    "kind": "px-e2e",
    "title": "Shell, conversation, composer and remaining screens in the ZCode panel language, with the Lucide icon set and the geometry of the superseding record",
+   "source": "docs/62_PRODUCT_EXTENSION_REQUIREMENTS_TASKS_AND_QUALIFICATIONS.md"
+  },
+  {
+   "id": "PX-E2E-144",
+   "type": "scenario",
+   "kind": "px-e2e",
+   "title": "Autonomy presets on the policy kernel: Supervised default, the AUTONOMOUS run mode, an Always rule that takes effect and the toolchains a project installs",
+   "source": "docs/62_PRODUCT_EXTENSION_REQUIREMENTS_TASKS_AND_QUALIFICATIONS.md"
+  },
+  {
+   "id": "PX-E2E-145",
+   "type": "scenario",
+   "kind": "px-e2e",
+   "title": "Core-run verification after edits with repair conclusion, durable notices and diagnosis context, and a derived plan for Node/TypeScript and Go projects",
+   "source": "docs/62_PRODUCT_EXTENSION_REQUIREMENTS_TASKS_AND_QUALIFICATIONS.md"
+  },
+  {
+   "id": "PX-E2E-146",
+   "type": "scenario",
+   "kind": "px-e2e",
+   "title": "Budget windows for turns and tool calls and crash resumption of Autonomous tasks",
    "source": "docs/62_PRODUCT_EXTENSION_REQUIREMENTS_TASKS_AND_QUALIFICATIONS.md"
   },
   {
@@ -42040,6 +42221,16 @@
     "commit:437419a8e81bc76a52c7ef1b72dccb48e357941f"
    ],
    "status_changed_on": "2026-10-24T16:17:38Z"
+  },
+  {
+   "id": "DOC-PX-016",
+   "type": "dossier_task",
+   "title": "Product extension stage: Autonomous coding engine inside the Capability Kernel's envelope, PX-144..146",
+   "subsystem": "governance",
+   "source": "docs/97_DOSSIER_MAINTENANCE_LOG.md",
+   "acceptance": "Decision Record, its rows, specification, supersession entries and change record added; implementation audit recorded; full integrity gate passes; the record is accepted by the owner and its status and approval are recorded; no product proof",
+   "status": "NOT_STARTED",
+   "evidence": []
   },
   {
    "id": "ALPHA",
@@ -57733,6 +57924,21 @@
    "type": "refines"
   },
   {
+   "from": "DR-PX-2026-10-25-017",
+   "to": "97_DOSSIER_MAINTENANCE_LOG.md",
+   "type": "specified_by"
+  },
+  {
+   "from": "DR-PX-2026-10-25-017",
+   "to": "62_PRODUCT_EXTENSION_REQUIREMENTS_TASKS_AND_QUALIFICATIONS.md",
+   "type": "specified_by"
+  },
+  {
+   "from": "DR-PX-2026-10-25-017",
+   "to": "DR-PX-2026-09-05",
+   "type": "refines"
+  },
+  {
    "from": "REQ-PX-000",
    "to": "desktop",
    "type": "owned_by_req"
@@ -61870,6 +62076,96 @@
   {
    "from": "REQ-PX-143",
    "to": "PX-143",
+   "type": "implemented_by"
+  },
+  {
+   "from": "REQ-PX-144",
+   "to": "effects-security",
+   "type": "owned_by_req"
+  },
+  {
+   "from": "REQ-PX-144",
+   "to": "QUAL-PX-144",
+   "type": "qualified_by"
+  },
+  {
+   "from": "REQ-PX-144",
+   "to": "62_PRODUCT_EXTENSION_REQUIREMENTS_TASKS_AND_QUALIFICATIONS.md",
+   "type": "specified_by"
+  },
+  {
+   "from": "REQ-PX-144",
+   "to": "DR-PX-2026-09-05",
+   "type": "authorized_by"
+  },
+  {
+   "from": "REQ-PX-144",
+   "to": "DR-PX-2026-10-25-017",
+   "type": "authorized_by"
+  },
+  {
+   "from": "REQ-PX-144",
+   "to": "PX-144",
+   "type": "implemented_by"
+  },
+  {
+   "from": "REQ-PX-145",
+   "to": "core-runtime",
+   "type": "owned_by_req"
+  },
+  {
+   "from": "REQ-PX-145",
+   "to": "QUAL-PX-145",
+   "type": "qualified_by"
+  },
+  {
+   "from": "REQ-PX-145",
+   "to": "62_PRODUCT_EXTENSION_REQUIREMENTS_TASKS_AND_QUALIFICATIONS.md",
+   "type": "specified_by"
+  },
+  {
+   "from": "REQ-PX-145",
+   "to": "DR-PX-2026-09-05",
+   "type": "authorized_by"
+  },
+  {
+   "from": "REQ-PX-145",
+   "to": "DR-PX-2026-10-25-017",
+   "type": "authorized_by"
+  },
+  {
+   "from": "REQ-PX-145",
+   "to": "PX-145",
+   "type": "implemented_by"
+  },
+  {
+   "from": "REQ-PX-146",
+   "to": "core-runtime",
+   "type": "owned_by_req"
+  },
+  {
+   "from": "REQ-PX-146",
+   "to": "QUAL-PX-146",
+   "type": "qualified_by"
+  },
+  {
+   "from": "REQ-PX-146",
+   "to": "62_PRODUCT_EXTENSION_REQUIREMENTS_TASKS_AND_QUALIFICATIONS.md",
+   "type": "specified_by"
+  },
+  {
+   "from": "REQ-PX-146",
+   "to": "DR-PX-2026-09-05",
+   "type": "authorized_by"
+  },
+  {
+   "from": "REQ-PX-146",
+   "to": "DR-PX-2026-10-25-017",
+   "type": "authorized_by"
+  },
+  {
+   "from": "REQ-PX-146",
+   "to": "PX-146",
    "type": "implemented_by"
   },
   {
@@ -71318,6 +71614,216 @@
    "type": "proves"
   },
   {
+   "from": "PX-144",
+   "to": "DR-PX-2026-09-05",
+   "type": "authorized_by"
+  },
+  {
+   "from": "PX-144",
+   "to": "DR-PX-2026-10-25-017",
+   "type": "authorized_by"
+  },
+  {
+   "from": "PX-144",
+   "to": "effects-security",
+   "type": "owned_by"
+  },
+  {
+   "from": "PX-144",
+   "to": "M10",
+   "type": "scheduled_in"
+  },
+  {
+   "from": "PX-144",
+   "to": "QUAL-PX-144",
+   "type": "proven_by"
+  },
+  {
+   "from": "PX-144",
+   "to": "62_PRODUCT_EXTENSION_REQUIREMENTS_TASKS_AND_QUALIFICATIONS.md",
+   "type": "specified_by"
+  },
+  {
+   "from": "PX-144",
+   "to": "M2.5",
+   "type": "after"
+  },
+  {
+   "from": "PX-144",
+   "to": "M9.2",
+   "type": "after"
+  },
+  {
+   "from": "PX-144",
+   "to": "DOC-PX-016",
+   "type": "after"
+  },
+  {
+   "from": "REQ-PX-144",
+   "to": "REQ-EV-0031",
+   "type": "extends"
+  },
+  {
+   "from": "REQ-PX-144",
+   "to": "REQ-EV-0088",
+   "type": "extends"
+  },
+  {
+   "from": "REQ-PX-144",
+   "to": "REQ-EV-0194",
+   "type": "extends"
+  },
+  {
+   "from": "PX-144",
+   "to": "PX-E2E-144",
+   "type": "proven_by"
+  },
+  {
+   "from": "PX-E2E-144",
+   "to": "M10",
+   "type": "proves"
+  },
+  {
+   "from": "PX-145",
+   "to": "DR-PX-2026-09-05",
+   "type": "authorized_by"
+  },
+  {
+   "from": "PX-145",
+   "to": "DR-PX-2026-10-25-017",
+   "type": "authorized_by"
+  },
+  {
+   "from": "PX-145",
+   "to": "core-runtime",
+   "type": "owned_by"
+  },
+  {
+   "from": "PX-145",
+   "to": "M10",
+   "type": "scheduled_in"
+  },
+  {
+   "from": "PX-145",
+   "to": "QUAL-PX-145",
+   "type": "proven_by"
+  },
+  {
+   "from": "PX-145",
+   "to": "62_PRODUCT_EXTENSION_REQUIREMENTS_TASKS_AND_QUALIFICATIONS.md",
+   "type": "specified_by"
+  },
+  {
+   "from": "PX-145",
+   "to": "PX-018",
+   "type": "after"
+  },
+  {
+   "from": "PX-145",
+   "to": "PX-035",
+   "type": "after"
+  },
+  {
+   "from": "PX-145",
+   "to": "PX-039",
+   "type": "after"
+  },
+  {
+   "from": "PX-145",
+   "to": "DOC-PX-016",
+   "type": "after"
+  },
+  {
+   "from": "REQ-PX-145",
+   "to": "REQ-EV-0010",
+   "type": "extends"
+  },
+  {
+   "from": "REQ-PX-145",
+   "to": "REQ-EV-0068",
+   "type": "extends"
+  },
+  {
+   "from": "REQ-PX-145",
+   "to": "REQ-EV-0107",
+   "type": "extends"
+  },
+  {
+   "from": "PX-145",
+   "to": "PX-E2E-145",
+   "type": "proven_by"
+  },
+  {
+   "from": "PX-E2E-145",
+   "to": "M10",
+   "type": "proves"
+  },
+  {
+   "from": "PX-146",
+   "to": "DR-PX-2026-09-05",
+   "type": "authorized_by"
+  },
+  {
+   "from": "PX-146",
+   "to": "DR-PX-2026-10-25-017",
+   "type": "authorized_by"
+  },
+  {
+   "from": "PX-146",
+   "to": "core-runtime",
+   "type": "owned_by"
+  },
+  {
+   "from": "PX-146",
+   "to": "M10",
+   "type": "scheduled_in"
+  },
+  {
+   "from": "PX-146",
+   "to": "QUAL-PX-146",
+   "type": "proven_by"
+  },
+  {
+   "from": "PX-146",
+   "to": "62_PRODUCT_EXTENSION_REQUIREMENTS_TASKS_AND_QUALIFICATIONS.md",
+   "type": "specified_by"
+  },
+  {
+   "from": "PX-146",
+   "to": "M2.7",
+   "type": "after"
+  },
+  {
+   "from": "PX-146",
+   "to": "M4.4",
+   "type": "after"
+  },
+  {
+   "from": "PX-146",
+   "to": "PX-049",
+   "type": "after"
+  },
+  {
+   "from": "PX-146",
+   "to": "DOC-PX-016",
+   "type": "after"
+  },
+  {
+   "from": "REQ-PX-146",
+   "to": "REQ-EV-0073",
+   "type": "extends"
+  },
+  {
+   "from": "PX-146",
+   "to": "PX-E2E-146",
+   "type": "proven_by"
+  },
+  {
+   "from": "PX-E2E-146",
+   "to": "M10",
+   "type": "proves"
+  },
+  {
    "from": "domain-events",
    "to": "38_EXECUTION_POLICY_CONTRACTS_AND_ALGORITHMS.md",
    "type": "specified_by"
@@ -72300,6 +72806,31 @@
   {
    "from": "DOC-PX-015",
    "to": "DR-PX-2026-10-24-016",
+   "type": "authorized_by"
+  },
+  {
+   "from": "DOC-PX-016",
+   "to": "DOC-GOV-007",
+   "type": "after"
+  },
+  {
+   "from": "DOC-PX-016",
+   "to": "governance",
+   "type": "owned_by"
+  },
+  {
+   "from": "DOC-PX-016",
+   "to": "97_DOSSIER_MAINTENANCE_LOG.md",
+   "type": "specified_by"
+  },
+  {
+   "from": "DOC-PX-016",
+   "to": "62_PRODUCT_EXTENSION_REQUIREMENTS_TASKS_AND_QUALIFICATIONS.md",
+   "type": "specified_by"
+  },
+  {
+   "from": "DOC-PX-016",
+   "to": "DR-PX-2026-10-25-017",
    "type": "authorized_by"
   },
   {
@@ -76975,6 +77506,21 @@
   {
    "from": "RELEASE_ZERO",
    "to": "PX-143",
+   "type": "includes"
+  },
+  {
+   "from": "RELEASE_ZERO",
+   "to": "PX-144",
+   "type": "includes"
+  },
+  {
+   "from": "RELEASE_ZERO",
+   "to": "PX-145",
+   "type": "includes"
+  },
+  {
+   "from": "RELEASE_ZERO",
+   "to": "PX-146",
    "type": "includes"
   },
   {

@@ -126,6 +126,54 @@ pub fn configured_commands_from(text: &str) -> Vec<CheckCommand> {
         .collect()
 }
 
+/// The package manager a Node project uses: the `packageManager` field of its
+/// `package.json`, else the lockfile it keeps, else `npm`.
+fn node_package_manager(root: &Path, package_json: &str) -> &'static str {
+    let declared = serde_json::from_str::<serde_json::Value>(package_json)
+        .ok()
+        .and_then(|v| v["packageManager"].as_str().map(str::to_owned));
+    if let Some(d) = declared {
+        for m in ["pnpm", "yarn", "bun", "npm"] {
+            if d.starts_with(m) {
+                return m;
+            }
+        }
+    }
+    if root.join("pnpm-lock.yaml").exists() {
+        "pnpm"
+    } else if root.join("yarn.lock").exists() {
+        "yarn"
+    } else if root.join("bun.lockb").exists() || root.join("bun.lock").exists() {
+        "bun"
+    } else {
+        "npm"
+    }
+}
+
+/// The `scripts` of a `package.json`, in file order.
+fn node_scripts(package_json: &str) -> Vec<(String, String)> {
+    serde_json::from_str::<serde_json::Value>(package_json)
+        .ok()
+        .and_then(|v| {
+            v["scripts"].as_object().map(|o| {
+                o.iter()
+                    .filter_map(|(k, v)| v.as_str().map(|v| (k.clone(), v.to_owned())))
+                    .collect()
+            })
+        })
+        .unwrap_or_default()
+}
+
+/// A binary the project installed under `node_modules/.bin`, as a path
+/// relative to the root.
+fn local_bin(name: &str) -> String {
+    if cfg!(windows) {
+        format!("node_modules/.bin/{name}.cmd")
+    } else {
+        format!("node_modules/.bin/{name}")
+    }
+}
+
 /// Derive the plan from a workspace root.
 #[must_use]
 pub fn derive(
@@ -177,8 +225,88 @@ pub fn derive_with_configured(
     }
     if root.join("package.json").exists() {
         stacks.push("node".into());
-        env_inputs.push("pnpm-lock.yaml".into());
         let pkg = std::fs::read_to_string(root.join("package.json")).unwrap_or_default();
+        let manager = node_package_manager(root, &pkg);
+        env_inputs.push(
+            match manager {
+                "pnpm" => "pnpm-lock.yaml",
+                "yarn" => "yarn.lock",
+                "bun" => "bun.lockb",
+                _ => "package-lock.json",
+            }
+            .into(),
+        );
+        let scripts = node_scripts(&pkg);
+        let script = |names: &[&str]| -> Option<String> {
+            names
+                .iter()
+                .find(|n| scripts.iter().any(|(k, v)| k == *n && !v.trim().is_empty()))
+                .map(|n| (*n).to_owned())
+        };
+        let run = |name: &str| -> Vec<String> { vec![manager.into(), "run".into(), name.into()] };
+        let script_text = |name: &str| {
+            scripts
+                .iter()
+                .find(|(k, _)| k == name)
+                .map_or("", |(_, v)| v.as_str())
+        };
+        // A type error or a failing build is the first thing a coding task
+        // meets in a JavaScript or TypeScript project, so the plan names them
+        // beside the tests (a plan with only a test script left a project
+        // whose tests do not exist with nothing to verify at all).
+        let build = script(&["build", "compile"]);
+        let build_covers_tsc = build
+            .as_deref()
+            .is_some_and(|b| script_text(b).contains("tsc"));
+        if let Some(name) = script(&[
+            "typecheck",
+            "type-check",
+            "check-types",
+            "types:check",
+            "check:types",
+        ]) {
+            commands.push(CheckCommand {
+                id: "typecheck:node".into(),
+                family: RunnerFamily::ConfiguredCommand,
+                argv: run(&name),
+                mandatory: true,
+                reporter_file: None,
+            });
+        } else if !build_covers_tsc
+            && root.join("tsconfig.json").exists()
+            && root.join(local_bin("tsc")).exists()
+        {
+            commands.push(CheckCommand {
+                id: "typecheck:tsc".into(),
+                family: RunnerFamily::ConfiguredCommand,
+                argv: vec![local_bin("tsc"), "--noEmit".into()],
+                mandatory: true,
+                reporter_file: None,
+            });
+        }
+        if let Some(name) = &build {
+            commands.push(CheckCommand {
+                id: "build:node".into(),
+                family: RunnerFamily::ConfiguredCommand,
+                argv: run(name),
+                mandatory: true,
+                reporter_file: None,
+            });
+        }
+        if let Some(name) = script(&["lint"]) {
+            // Advisory: a lint failure the repository already had is not the
+            // task's to fix, so it never blocks acceptance on its own.
+            commands.push(CheckCommand {
+                id: "lint:node".into(),
+                family: RunnerFamily::ConfiguredCommand,
+                argv: run(&name),
+                mandatory: false,
+                reporter_file: None,
+            });
+        }
+        let has_test_script = scripts
+            .iter()
+            .any(|(k, v)| k == "test" && !v.contains("no test specified") && !v.trim().is_empty());
         if pkg.contains("vitest") {
             commands.push(CheckCommand {
                 id: "suite:vitest".into(),
@@ -193,17 +321,56 @@ pub fn derive_with_configured(
                 mandatory: true,
                 reporter_file: Some(".modbit-vitest.json".into()),
             });
-        } else if pkg.contains("\"test\"") {
+        } else if has_test_script {
             commands.push(CheckCommand {
                 id: "suite:npm-test".into(),
                 family: RunnerFamily::ConfiguredCommand,
-                argv: vec!["pnpm".into(), "test".into()],
+                argv: if manager == "bun" {
+                    vec!["bun".into(), "run".into(), "test".into()]
+                } else {
+                    vec![manager.into(), "test".into()]
+                },
                 mandatory: true,
                 reporter_file: None,
             });
             limitations
                 .push("node test script has no structured reporter; HEURISTIC evidence".into());
         }
+        if commands
+            .iter()
+            .any(|c| c.id.ends_with(":node") || c.id == "typecheck:tsc")
+        {
+            limitations.push(
+                "node build, type-check and lint checks are exit-code based; their evidence is HEURISTIC"
+                    .into(),
+            );
+        }
+    }
+    if root.join("go.mod").exists() {
+        stacks.push("go".into());
+        env_inputs.push("go.sum".into());
+        commands.push(CheckCommand {
+            id: "build:go".into(),
+            family: RunnerFamily::ConfiguredCommand,
+            argv: vec!["go".into(), "build".into(), "./...".into()],
+            mandatory: true,
+            reporter_file: None,
+        });
+        commands.push(CheckCommand {
+            id: "vet:go".into(),
+            family: RunnerFamily::ConfiguredCommand,
+            argv: vec!["go".into(), "vet".into(), "./...".into()],
+            mandatory: false,
+            reporter_file: None,
+        });
+        commands.push(CheckCommand {
+            id: "suite:go".into(),
+            family: RunnerFamily::ConfiguredCommand,
+            argv: vec!["go".into(), "test".into(), "./...".into()],
+            mandatory: true,
+            reporter_file: None,
+        });
+        limitations.push("go checks are exit-code based; their evidence is HEURISTIC".into());
     }
     if root.join("pyproject.toml").exists() || root.join("pytest.ini").exists() {
         stacks.push("python".into());

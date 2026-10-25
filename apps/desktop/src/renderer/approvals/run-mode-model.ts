@@ -9,10 +9,11 @@
 import type { AllowRuleInfo } from "../../shared/control-types.ts";
 
 export const MODE_COPY: Record<string, { label: string; summary: string }> = {
-  ASK: { label: "Ask", summary: "Every protected effect asks you first. This is the default." },
-  ALLOWLIST: { label: "Allowlist", summary: "A command that a rule you made covers runs without asking. Everything else asks." },
-  ALLOWLIST_SANDBOX: { label: "Allowlist with sandbox", summary: "Also runs without asking what is fully contained in a sandbox, and what a rule covers. Everything else asks." },
+  ASK: { label: "Ask", summary: "Every protected effect asks you first, and rules are ignored." },
+  ALLOWLIST: { label: "Supervised", summary: "Reading, editing, builds and tests run on their own; a protected effect asks unless a rule you made covers it. This is the default." },
+  ALLOWLIST_SANDBOX: { label: "Supervised with sandbox", summary: "Also runs without asking what is fully contained in a sandbox, and what a rule covers. Everything else asks." },
   RUN_EVERYTHING: { label: "Run everything (this session)", summary: "Runs every effect inside the task's envelope without asking, except the kinds that always ask. It lasts until Modbit's Core restarts." },
+  AUTONOMOUS: { label: "Autonomous", summary: "Runs the routine work of a coding task on its own: builds, tests, unfamiliar project tools and installing the project's declared dependencies. Network, secrets, deletions, pushes, writes outside the workspace and protected paths still ask. It lasts across a restart." },
 };
 
 export const modeLabel = (mode: string): string => MODE_COPY[mode]?.label ?? mode.replace(/_/g, " ").toLowerCase();

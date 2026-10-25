@@ -33,6 +33,10 @@ pub struct CallFacts {
     pub outside_workspace_write: bool,
     /// The call knowingly writes repository or tool configuration.
     pub protected_path: bool,
+    /// Every network reach the call makes is the install of the project's
+    /// declared dependencies (DR-PX-2026-10-25-017); a run mode that grants
+    /// dependency installs may let the NETWORK ask-class pass for it.
+    pub dependency_install: bool,
 }
 
 /// Immutable tool metadata.

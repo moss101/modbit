@@ -238,7 +238,9 @@ pub async fn run_as(
     if aborted > 0 {
         eprintln!("modbit-core: closed {aborted} open assistant stream(s) as aborted by recovery");
     }
-    let resume_requested = crate::session_end::resume_requests(&store, &suspended);
+    let mut resume_requested = crate::session_end::resume_requests(&store, &suspended);
+    let crashed = crate::session_end::crash_resumes(&store, &suspended, &resume_requested);
+    resume_requested.extend(crashed);
     let start = store.last_offset()?;
     let boot_secret: Vec<u8> = (0..32).map(|_| rand::random::<u8>()).collect();
     let nonce = encode_hex(&(0..6).map(|_| rand::random::<u8>()).collect::<Vec<_>>());
@@ -6919,12 +6921,33 @@ pub(crate) async fn handle_command_as(
                 );
             };
             let mut budgets = modbit_core_runtime::Budgets::default();
+            // DR-PX-2026-10-25-017: the defaults can be set for the Core in
+            // its environment, and a request may ask for more or less; no
+            // source of a number lifts it above the ceiling.
+            let env_u32 = |name: &str| {
+                std::env::var(name)
+                    .ok()
+                    .and_then(|v| v.trim().parse::<u32>().ok())
+                    .filter(|n| *n > 0)
+            };
+            if let Some(n) = env_u32("MODBIT_DEFAULT_MAX_TURNS") {
+                budgets.max_turns = n;
+            }
+            if let Some(n) = env_u32("MODBIT_DEFAULT_MAX_TOOL_CALLS") {
+                budgets.max_tool_calls = n;
+            }
             if p.max_turns > 0 {
                 budgets.max_turns = p.max_turns;
             }
             if p.max_tool_calls > 0 {
                 budgets.max_tool_calls = p.max_tool_calls;
             }
+            budgets.max_turns = budgets
+                .max_turns
+                .min(modbit_core_runtime::harness::MAX_TURNS_CEILING);
+            budgets.max_tool_calls = budgets
+                .max_tool_calls
+                .min(modbit_core_runtime::harness::MAX_TOOL_CALLS_CEILING);
             if p.max_no_progress_turns > 0 {
                 budgets.max_consecutive_no_progress_turns = p.max_no_progress_turns;
             }

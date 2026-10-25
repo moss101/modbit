@@ -37,6 +37,10 @@ test("REQ-PX-058: Always is offered only for a command with an argv that is not 
   assert.equal(alwaysAvailable(approval({ intent: { ...approval().intent, argv: null } })).ok, false);
   assert.equal(alwaysAvailable(approval({ reason: { ...approval().reason, askClasses: ["NETWORK"], code: "ALWAYS_ASK:NETWORK" } })).ok, false);
   assert.equal(alwaysAvailable(approval({ effectClass: "Destructive" })).ok, false);
+  // DR-PX-2026-10-25-017: Ask never reads a rule, so Always is withheld there, with the reason, instead of saving a rule that does nothing.
+  const inAsk = alwaysAvailable(approval({ reason: { ...approval().reason, runMode: "ASK", code: "MODE_ASK" } }));
+  assert.equal(inAsk.ok, false);
+  assert.match((inAsk as { why: string }).why, /Ask mode.*never uses rules/);
   assert.equal(isIrreversible("Destructive"), true);
   assert.equal(isIrreversible("ExternalSideEffect"), true);
   assert.equal(isIrreversible("ProtectedWrite"), false);

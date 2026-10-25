@@ -31,16 +31,26 @@ pub enum RunMode {
     /// asking. Per task and per Core process: never persisted across a
     /// restart, acknowledged every time it is set.
     RunEverything,
+    /// The autonomous coding preset (DR-PX-2026-10-25-017): what
+    /// `RunEverything` approves, and additionally the install of the
+    /// project's own declared dependencies (the NETWORK ask-class passes for
+    /// `npm ci`, `pnpm install`, `cargo fetch`, ... and for nothing else).
+    /// Durable, so an interrupted run can continue after a restart; the
+    /// acknowledgement that set it is on the log, and every other check (the
+    /// lease, the envelope, the rules' scope and expiry) is made afresh for
+    /// each call.
+    Autonomous,
 }
 
 impl RunMode {
     /// Every mode, from the one that approves least to the one that approves
     /// most.
-    pub const ALL: [RunMode; 4] = [
+    pub const ALL: [RunMode; 5] = [
         RunMode::Ask,
         RunMode::Allowlist,
         RunMode::AllowlistSandbox,
         RunMode::RunEverything,
+        RunMode::Autonomous,
     ];
 
     /// How much the mode approves without a person; a move to a higher rank
@@ -52,6 +62,7 @@ impl RunMode {
             Self::Allowlist => 1,
             Self::AllowlistSandbox => 2,
             Self::RunEverything => 3,
+            Self::Autonomous => 4,
         }
     }
 
@@ -63,6 +74,7 @@ impl RunMode {
             Self::Allowlist => "ALLOWLIST",
             Self::AllowlistSandbox => "ALLOWLIST_SANDBOX",
             Self::RunEverything => "RUN_EVERYTHING",
+            Self::Autonomous => "AUTONOMOUS",
         }
     }
 

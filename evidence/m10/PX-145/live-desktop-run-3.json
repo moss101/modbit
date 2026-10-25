@@ -1,0 +1,35 @@
+{
+  "model": "glm-5.3-flash",
+  "baseHost": "api.z.ai",
+  "prices": "0.15/0.50",
+  "capMinor": "",
+  "wallMs": "1200000",
+  "goal": "Fix my broken application.",
+  "finalState": "ReadyForReview",
+  "waitReason": "",
+  "attention": "",
+  "failureCode": "",
+  "wallSeconds": 512,
+  "buildAndTestPassAfter": true,
+  "testFileUnchanged": true,
+  "changedFiles": [
+    " M src/cart.ts"
+  ],
+  "approvalsPending": [],
+  "approvalDecisionsInReceipts": 0,
+  "receiptsTotal": 0,
+  "autoVerifications": 2,
+  "verificationStages": {
+    "TARGETED": 3,
+    "COMPLETION": 2
+  },
+  "repairAttempts": 1,
+  "repairConcluded": [
+    "RESOLVED"
+  ],
+  "modelCalls": 12,
+  "inputTokens": 156964,
+  "outputTokens": 26427,
+  "budgetExhausted": 0,
+  "budgetWindowsExtended": 0
+}

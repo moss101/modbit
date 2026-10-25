@@ -1742,6 +1742,21 @@ pub(crate) async fn rebuild(
         spend.observe(&ev.envelope, &payload);
         match ev.envelope.event_type.as_str() {
             "TurnPrepared" => state.turns += 1,
+            // DR-PX-2026-10-25-017: a run that ended on the turn or tool-call
+            // budget, and a window an autonomous run was given while it made
+            // progress, each end the spending the budgets count: the next
+            // window starts from here. Cost and wall clock are not windowed.
+            "HarnessBudgetExhausted"
+                if matches!(
+                    payload["budget"].as_str(),
+                    Some("max_turns" | "max_tool_calls")
+                ) =>
+            {
+                state.open_budget_window();
+            }
+            "BudgetWindowExtended" => {
+                state.open_budget_window();
+            }
             "TaskBudgetsSet" => {
                 // The task's own limits (REQ-PX-116). A subagent's are its
                 // capsule's and nothing else's.
@@ -1970,6 +1985,17 @@ pub(crate) async fn rebuild(
             }
             // REQ-PX-043: the notice the model was shown of a background end.
             "BackgroundWakeDelivered" => {
+                if let Some(t) = payload["notice"].as_str().filter(|t| !t.is_empty()) {
+                    transcript.push(Message::text(Role::User, t.to_owned()));
+                }
+            }
+            // PX-145: what the Core's own verification after the model's edits
+            // told it, so a resumed run reads what the live one read.
+            crate::auto_verify::NOTICE_EVENT => {
+                state.auto_verifications += 1;
+                // The edits before the notice were verified by it; only a
+                // write after it (replayed later) leaves one unverified.
+                state.unverified_write = false;
                 if let Some(t) = payload["notice"].as_str().filter(|t| !t.is_empty()) {
                     transcript.push(Message::text(Role::User, t.to_owned()));
                 }
@@ -3743,7 +3769,55 @@ async fn run_loop(
             crate::spawn::refresh_children_held(&core, &task, &mut state).await;
         }
         if let Err(x) = state.check_turn_budget() {
-            break LoopEnd::BudgetExhausted(x);
+            // DR-PX-2026-10-25-017: an AUTONOMOUS run that is still making
+            // progress is given the next window, a bounded number of times,
+            // rather than stopped a step from done. Anything else stops and
+            // waits for the person, as it always did.
+            let extended = matches!(x.budget.as_str(), "max_turns" | "max_tool_calls")
+                && state.capsule.is_none()
+                && state.no_progress_turns == 0
+                && {
+                    let store = core.store.lock().await;
+                    core.tools
+                        .run_policies
+                        .mode_of(&store, task.task_id)
+                        .is_ok_and(|(mode, _, _)| {
+                            mode == modbit_domain::runmode::RunMode::Autonomous
+                        })
+                }
+                && state.open_budget_window();
+            if !extended {
+                break LoopEnd::BudgetExhausted(x);
+            }
+            let note = format!(
+                "[modbit] The {} budget ({}) was used up while you were making progress; the Core opened window {} of {} (cost and wall-clock limits are unchanged).",
+                x.budget,
+                x.limit,
+                state.budget_windows + 1,
+                modbit_core_runtime::harness::MAX_BUDGET_WINDOWS,
+            );
+            {
+                let mut store = core.store.lock().await;
+                let _ = append(
+                    &mut store,
+                    &core,
+                    lt,
+                    AggregateType::Workspace,
+                    crate::changes::records_aggregate(task.task_id),
+                    vec![crate::changes::record(
+                        "BudgetWindowExtended",
+                        serde_json::json!({
+                            "budget": x.budget,
+                            "limit": x.limit,
+                            "used": x.used,
+                            "window": state.budget_windows + 1,
+                            "reason": "AUTONOMOUS_PROGRESS",
+                        }),
+                        &actor,
+                    )],
+                );
+            }
+            transcript.push(Message::text(Role::User, note));
         }
         // M6.2 (REQ-EV-0272): the run's capacity ticket is renewed at every
         // turn boundary under the run's lease generation. A ticket that
@@ -4916,6 +4990,9 @@ async fn run_loop(
         let mut escalation: Option<RepairEscalation> = None;
         let mut scope_fail_closed: Option<String> = None;
         let mut step_ordinal = 2u32;
+        // PX-145: a turn that asked for no tool has nothing more it is about
+        // to do, which is when the Core looks at what it left.
+        let idle_turn = calls.is_empty();
         for (call_id, name, arguments_json) in calls {
             if cancel.is_cancelled() {
                 break;
@@ -6070,6 +6147,36 @@ async fn run_loop(
             {
                 break;
             }
+        }
+        // PX-145: edits that landed this turn are verified by the Core itself,
+        // so a model that carries on after breaking the build hears of it at
+        // the start of its next turn, and a repair attempt it recorded is
+        // concluded without waiting for it to ask.
+        if !completed
+            && pending_question.is_none()
+            && scope_fail_closed.is_none()
+            && escalation.is_none()
+            && !cancel.is_cancelled()
+            && crate::auto_verify::due(&task, &state, idle_turn)
+            && let Some(v) = crate::auto_verify::after_edits(
+                &core,
+                &task,
+                lt,
+                lturn,
+                &actor,
+                &mut state,
+                step_ordinal,
+            )
+            .await
+        {
+            step_ordinal += 1;
+            progress = true;
+            escalation = v.escalation;
+            apply_entry(
+                &mut transcript,
+                &mut state,
+                TranscriptEntry::User { text: v.notice },
+            );
         }
         if let Some(q) = pending_question {
             break LoopEnd::NeedsInput(q);
@@ -8241,7 +8348,7 @@ async fn record_escalation(
 /// from the signatures before and after, the change fingerprint from the
 /// attempt's `FileChanged` records, a WORSENED change reverted through the
 /// Change Engine, and the escalations of docs/28 §5.
-async fn conclude_repair(
+pub(crate) async fn conclude_repair(
     core: &Arc<Core>,
     task: &Task,
     lt: Lineage,
@@ -9295,7 +9402,7 @@ async fn execute_tool_call(
 }
 
 /// Derive (or reload) the verification plan for the task.
-async fn verification_plan(
+pub(crate) async fn verification_plan(
     core: &Core,
     task: &Task,
     state: &mut HarnessState,
@@ -9663,6 +9770,7 @@ async fn run_verification_stage(
             ok = true;
         }
         Stage::Targeted | Stage::Rerun => {
+            state.unverified_write = false;
             state.open_failures.retain(|f| !f.starts_with("verify:"));
             for sig in vrun.failure_signatures() {
                 let sym = sig
@@ -9682,6 +9790,7 @@ async fn run_verification_stage(
                     .all(|f| !f.starts_with("verify:"));
         }
         Stage::Completion => {
+            state.unverified_write = false;
             let base: std::collections::BTreeMap<String, modbit_verification::CheckStatus> = state
                 .baseline_checks
                 .iter()
