@@ -30157,6 +30157,13 @@
    "source": "docs/97_DOSSIER_MAINTENANCE_LOG.md"
   },
   {
+   "id": "DR-PX-2026-10-26-018",
+   "type": "change_record",
+   "title": "Approved: PX-147..191, the upgrade program: 27 adopted rows (hardening, robustness, hygiene, GUI agent, planner harness) and 18 deferred rows with activation text, over existing owners only, with seven proposed tasks folded into rows the ledger already owns",
+   "status": "APPROVED",
+   "source": "docs/97_DOSSIER_MAINTENANCE_LOG.md"
+  },
+  {
    "id": "REQ-PX-000",
    "type": "requirement",
    "title": "Headless CLI thin client for the task lifecycle",
@@ -32066,6 +32073,591 @@
    "release": "RELEASE_ZERO",
    "source": "docs/62_PRODUCT_EXTENSION_REQUIREMENTS_TASKS_AND_QUALIFICATIONS.md",
    "mandatory_behavior": "The real Core and a scripted model: a Supervised task that uses its turn window stops Waiting with the budget named and a `StartTask` with the same limit continues it to completion; an AUTONOMOUS task that is still making progress is given the next window by the Core (`BudgetWindowExtended`) and completes with no card; one that stops making progress is not extended and ends NO_PROGRESS; the tool-call window ends the run at the turn boundary; a request for more than the ceiling is clamped to 1000 turns and 5000 tool calls; a SIGKILL under an AUTONOMOUS task makes the restarted Core name it for resumption, and not a task in another mode nor one whose session the person ended, and the ordinary `StartTask` completes it with nothing asked."
+  },
+  {
+   "id": "REQ-PX-147",
+   "type": "requirement",
+   "title": "SSRF guard in the sandbox egress broker: the resolved address is checked before connect",
+   "disposition": "ADOPT",
+   "subsystem": "sandbox-cloud",
+   "owner_label": "sandbox-cloud",
+   "imp": "PX-147",
+   "qual": "QUAL-PX-147",
+   "release": "RELEASE_ZERO",
+   "source": "docs/62_PRODUCT_EXTENSION_REQUIREMENTS_TASKS_AND_QUALIFICATIONS.md",
+   "mandatory_behavior": "The real egress broker with a real listener: an allowed name that resolves to 127.0.0.1, to 10.x, to 169.254.169.254 and to an IPv6 loopback is refused and audited; a name whose DNS answer changes between the check and the connect cannot reach a refused address; an explicit IP-literal rule still connects; a public destination relays bytes both ways and its receipt is unchanged."
+  },
+  {
+   "id": "REQ-PX-148",
+   "type": "requirement",
+   "title": "Process hardening for the Core and the execution broker: no core dumps, not attachable, no injected libraries",
+   "disposition": "ADOPT",
+   "subsystem": "terminal",
+   "owner_label": "terminal",
+   "imp": "PX-148",
+   "qual": "QUAL-PX-148",
+   "release": "RELEASE_ZERO",
+   "source": "docs/62_PRODUCT_EXTENSION_REQUIREMENTS_TASKS_AND_QUALIFICATIONS.md",
+   "mandatory_behavior": "The real Core and the real broker started as processes on macOS and Linux: the limit is zero, the dumpable or deny-attach flag is set (read from the process), a debugger attach and a forced core dump fail, a planted `DYLD_INSERT_LIBRARIES` or `LD_PRELOAD` library is not loaded by either process, and every existing broker and Core suite still passes."
+  },
+  {
+   "id": "REQ-PX-149",
+   "type": "requirement",
+   "title": "Allow rules pinned to the resolved program path",
+   "disposition": "ADOPT",
+   "subsystem": "effects-security",
+   "owner_label": "effects-security",
+   "imp": "PX-149",
+   "qual": "QUAL-PX-149",
+   "release": "RELEASE_ZERO",
+   "source": "docs/62_PRODUCT_EXTENSION_REQUIREMENTS_TASKS_AND_QUALIFICATIONS.md",
+   "mandatory_behavior": "The real Core and kernel with a real repository: an approved `git status` rule still allows the real `git`; a repository `bin/git` placed first on the path does not satisfy it and the command asks with the new reason; a rule made before this change keeps working through a recorded one-time resolution or asks once, as the record states; a missing program fails closed."
+  },
+  {
+   "id": "REQ-PX-150",
+   "type": "requirement",
+   "title": "Tighter review sandbox: parameterised macOS profile, credential read denials, protected metadata",
+   "disposition": "ADOPT",
+   "subsystem": "terminal",
+   "owner_label": "terminal",
+   "imp": "PX-150",
+   "qual": "QUAL-PX-150",
+   "release": "RELEASE_ZERO",
+   "source": "docs/62_PRODUCT_EXTENSION_REQUIREMENTS_TASKS_AND_QUALIFICATIONS.md",
+   "mandatory_behavior": "A real confined process on macOS (and Linux where supported): it cannot read a planted file under `~/.ssh` or `~/.aws`, cannot write `.git` or `.modbit` inside the writable root, a working directory containing a backslash, a quote and a newline does not change the profile text, a real build and test run in the worktree still passes, and the sandbox conformance suite gains these cases."
+  },
+  {
+   "id": "REQ-PX-151",
+   "type": "requirement",
+   "title": "Linux write confinement through Landlock for the review sandbox, without a user namespace",
+   "disposition": "DEFERRED",
+   "subsystem": "terminal",
+   "owner_label": "terminal",
+   "imp": null,
+   "qual": "QUAL-PX-151",
+   "release": "POST_ZERO",
+   "source": "docs/62_PRODUCT_EXTENSION_REQUIREMENTS_TASKS_AND_QUALIFICATIONS.md",
+   "mandatory_behavior": "Deferred proof, entry condition and not a current proof: a real confined process on a supported Linux kernel cannot write outside the lease and cannot read the credential stores of the H04 row; a kernel without the mechanism refuses the review process or degrades exactly as the activating record states; the existing seccomp filter keeps working."
+  },
+  {
+   "id": "REQ-PX-152",
+   "type": "requirement",
+   "title": "A typed sandbox-denied result so the agent stops retrying a confined command blindly",
+   "disposition": "ADOPT",
+   "subsystem": "terminal",
+   "owner_label": "terminal",
+   "imp": "PX-152",
+   "qual": "QUAL-PX-152",
+   "release": "RELEASE_ZERO",
+   "source": "docs/62_PRODUCT_EXTENSION_REQUIREMENTS_TASKS_AND_QUALIFICATIONS.md",
+   "mandatory_behavior": "The real broker with a real confined command: a denied write and a denied read return the typed code, exit code and excerpt; an ordinary non-zero exit of a failing test returns no denial; the result reaches the model through the real tool path and the event log carries it once."
+  },
+  {
+   "id": "REQ-PX-153",
+   "type": "requirement",
+   "title": "Model-visible denial and timeout guidance and a denial circuit breaker that parks the run",
+   "disposition": "ADOPT",
+   "subsystem": "core-runtime",
+   "owner_label": "core-runtime",
+   "imp": "PX-153",
+   "qual": "QUAL-PX-153",
+   "release": "RELEASE_ZERO",
+   "source": "docs/62_PRODUCT_EXTENSION_REQUIREMENTS_TASKS_AND_QUALIFICATIONS.md",
+   "mandatory_behavior": "The real Core and a scripted model that is denied three times in a row: the task is parked with the typed reason after the third, the notice is on the log once and replays after a restart, the counter resets on an allowed effect, the guidance text is in each denial result, and a model that changes approach after the first denial is never parked."
+  },
+  {
+   "id": "REQ-PX-154",
+   "type": "requirement",
+   "title": "A local workspace-write sandbox profile with optional proxy-routed network for local autonomous runs",
+   "disposition": "DEFERRED",
+   "subsystem": "terminal",
+   "owner_label": "terminal",
+   "imp": null,
+   "qual": "QUAL-PX-154",
+   "release": "POST_ZERO",
+   "source": "docs/62_PRODUCT_EXTENSION_REQUIREMENTS_TASKS_AND_QUALIFICATIONS.md",
+   "mandatory_behavior": "Deferred proof, entry condition and not a current proof: a real autonomous run cannot write outside its worktree or reach a host the policy does not allow; an approved host persists as a rule; a missing sandbox refuses the run; the egress broker and `NetworkPolicy` are reused with no second policy engine."
+  },
+  {
+   "id": "REQ-PX-155",
+   "type": "requirement",
+   "title": "Context-overflow recovery: a typed provider error forces a synchronous compaction and one retry",
+   "disposition": "ADOPT",
+   "subsystem": "durability",
+   "owner_label": "durability",
+   "imp": "PX-155",
+   "qual": "QUAL-PX-155",
+   "release": "RELEASE_ZERO",
+   "source": "docs/62_PRODUCT_EXTENSION_REQUIREMENTS_TASKS_AND_QUALIFICATIONS.md",
+   "mandatory_behavior": "The real Core against a real provider transport (the recorded-transport server of the provider suites) that returns the overflow response for an oversized request: the Core compacts, retries once and completes the turn; a transport that overflows again ends with the typed failure; the compaction request and its commit are on the log; the transcript is intact and readable by range afterwards."
+  },
+  {
+   "id": "REQ-PX-156",
+   "type": "requirement",
+   "title": "Time parked on an approval is excluded from tool timeouts and wall-clock accounting",
+   "disposition": "ADOPT",
+   "subsystem": "core-runtime",
+   "owner_label": "core-runtime",
+   "imp": "PX-156",
+   "qual": "QUAL-PX-156",
+   "release": "RELEASE_ZERO",
+   "source": "docs/62_PRODUCT_EXTENSION_REQUIREMENTS_TASKS_AND_QUALIFICATIONS.md",
+   "mandatory_behavior": "The real Core and a scripted model with a call whose timeout is shorter than the time the approval is left waiting: the call completes after the approval with no timeout, the wall-clock budget is not charged for the wait, and the accounting names the parked time; a call that is not parked still times out on schedule."
+  },
+  {
+   "id": "REQ-PX-157",
+   "type": "requirement",
+   "title": "Secret redaction on memory proposals and use tracking from injected memory",
+   "disposition": "ADOPT",
+   "subsystem": "memory",
+   "owner_label": "memory",
+   "imp": "PX-157",
+   "qual": "QUAL-PX-157",
+   "release": "RELEASE_ZERO",
+   "source": "docs/62_PRODUCT_EXTENSION_REQUIREMENTS_TASKS_AND_QUALIFICATIONS.md",
+   "mandatory_behavior": "The real Core and memory store: a proposal containing a real-format API key and a private-key block is stored redacted or refused, a normal proposal is stored byte-for-byte, a prompt that injects an item increments its count and last-use once, and a restart rebuilds the same counts from the log."
+  },
+  {
+   "id": "REQ-PX-158",
+   "type": "requirement",
+   "title": "Image tokens are charged by size in compaction estimates",
+   "disposition": "ADOPT",
+   "subsystem": "durability",
+   "owner_label": "durability",
+   "imp": "PX-158",
+   "qual": "QUAL-PX-158",
+   "release": "RELEASE_ZERO",
+   "source": "docs/62_PRODUCT_EXTENSION_REQUIREMENTS_TASKS_AND_QUALIFICATIONS.md",
+   "mandatory_behavior": "The real Core with a real provider transport that reports usage: a transcript of many frames reaches the compaction threshold at the point the provider-reported usage does, within the calibrated margin; a text-only transcript is estimated as before; a shortened transcript never holds an image without its caption."
+  },
+  {
+   "id": "REQ-PX-159",
+   "type": "requirement",
+   "title": "Compaction telemetry promised by doc 34: tokens before and after, duration, mode, source, rejection and cost",
+   "disposition": "ADOPT",
+   "subsystem": "observability",
+   "owner_label": "observability",
+   "imp": "PX-159",
+   "qual": "QUAL-PX-159",
+   "release": "RELEASE_ZERO",
+   "source": "docs/62_PRODUCT_EXTENSION_REQUIREMENTS_TASKS_AND_QUALIFICATIONS.md",
+   "mandatory_behavior": "The real Core exporting to a real OTLP collector: a committed, a rejected (stale) and an extractive-fallback compaction each export the attributes; the exporter stays off by default and never blocks the run when the collector is down."
+  },
+  {
+   "id": "REQ-PX-160",
+   "type": "requirement",
+   "title": "Argv rule decisions Allow, Prompt and Forbid with a justification and strictest-wins evaluation",
+   "disposition": "DEFERRED",
+   "subsystem": "effects-security",
+   "owner_label": "effects-security",
+   "imp": null,
+   "qual": "QUAL-PX-160",
+   "release": "POST_ZERO",
+   "source": "docs/62_PRODUCT_EXTENSION_REQUIREMENTS_TASKS_AND_QUALIFICATIONS.md",
+   "mandatory_behavior": "Deferred proof, entry condition and not a current proof: a Forbid rule from an administrator layer refuses a command that a project or user layer cannot lift; of several matching rules the strictest wins; a rule carries a justification shown on the card; a rule that cannot match its own declared examples is rejected at registration."
+  },
+  {
+   "id": "REQ-PX-161",
+   "type": "requirement",
+   "title": "Read-only tool calls of one turn run concurrently and are journaled in call order",
+   "disposition": "ADOPT",
+   "subsystem": "core-runtime",
+   "owner_label": "core-runtime",
+   "imp": "PX-161",
+   "qual": "QUAL-PX-161",
+   "release": "RELEASE_ZERO",
+   "source": "docs/62_PRODUCT_EXTENSION_REQUIREMENTS_TASKS_AND_QUALIFICATIONS.md",
+   "mandatory_behavior": "The real Core and a scripted model issuing N reads and a write in one turn: the reads finish in less than the serial time, the write waits for them and runs alone, the log order equals the call order, a failing read reports its error and the other results are present, and a SIGKILL during the batch recovers with no result recorded twice."
+  },
+  {
+   "id": "REQ-PX-162",
+   "type": "requirement",
+   "title": "Rule, skill and memory changes arrive as appended transcript notes, not as rewritten early prompt segments",
+   "disposition": "ADOPT",
+   "subsystem": "context-engine",
+   "owner_label": "context-engine",
+   "imp": "PX-162",
+   "qual": "QUAL-PX-162",
+   "release": "RELEASE_ZERO",
+   "source": "docs/62_PRODUCT_EXTENSION_REQUIREMENTS_TASKS_AND_QUALIFICATIONS.md",
+   "mandatory_behavior": "The real Core with a real compiler and a provider transport that records requests: after an instruction file and a memory item change mid-task, the prefix bytes of the next request equal the previous request's, the appended note names both changes and what they replace, the model-visible instructions equal those of a freshly compiled task, and a resume rebuilds the same notes from the log."
+  },
+  {
+   "id": "REQ-PX-163",
+   "type": "requirement",
+   "title": "A patch-grammar input to the change tool, with rename and a live argument-diff preview",
+   "disposition": "DEFERRED",
+   "subsystem": "tool-runtime",
+   "owner_label": "tool-runtime",
+   "imp": null,
+   "qual": "QUAL-PX-163",
+   "release": "POST_ZERO",
+   "source": "docs/62_PRODUCT_EXTENSION_REQUIREMENTS_TASKS_AND_QUALIFICATIONS.md",
+   "mandatory_behavior": "Deferred proof, entry condition and not a current proof: a real patch with add, update, delete and move applies atomically through `apply_transaction`; a failure rolls back every file; a stale revision is refused; a preview of the arguments while the model is still writing changes no file and is marked non-authoritative."
+  },
+  {
+   "id": "REQ-PX-164",
+   "type": "requirement",
+   "title": "An OpenAI Responses API adapter as a third provider kind",
+   "disposition": "DEFERRED",
+   "subsystem": "model-gateway",
+   "owner_label": "model-gateway",
+   "imp": null,
+   "qual": "QUAL-PX-164",
+   "release": "POST_ZERO",
+   "source": "docs/62_PRODUCT_EXTENSION_REQUIREMENTS_TASKS_AND_QUALIFICATIONS.md",
+   "mandatory_behavior": "Deferred proof, entry condition and not a current proof: a tool turn through a real Responses transport completes with reasoning items carried and `previous_response_id` used; a stream cut before the first token retries and after it does not; the fault-injecting server row covers the failures."
+  },
+  {
+   "id": "REQ-PX-165",
+   "type": "requirement",
+   "title": "Budgeted persistent goals with idle auto-continuation and a wrap-up turn at the budget",
+   "disposition": "DEFERRED",
+   "subsystem": "core-runtime",
+   "owner_label": "core-runtime",
+   "imp": null,
+   "qual": "QUAL-PX-165",
+   "release": "POST_ZERO",
+   "source": "docs/62_PRODUCT_EXTENSION_REQUIREMENTS_TASKS_AND_QUALIFICATIONS.md",
+   "mandatory_behavior": "Deferred proof, entry condition and not a current proof: a goal spanning several user turns continues on idle through the existing input queue and harness, stops at its budget with a wrap-up report and not in needs-attention, and records its state on the log so a restart resumes it."
+  },
+  {
+   "id": "REQ-PX-166",
+   "type": "requirement",
+   "title": "Local provider presets for Ollama and LM Studio with a health probe, model list and pull",
+   "disposition": "DEFERRED",
+   "subsystem": "model-gateway",
+   "owner_label": "model-gateway",
+   "imp": null,
+   "qual": "QUAL-PX-166",
+   "release": "POST_ZERO",
+   "source": "docs/62_PRODUCT_EXTENSION_REQUIREMENTS_TASKS_AND_QUALIFICATIONS.md",
+   "mandatory_behavior": "Deferred proof, entry condition and not a current proof: a real local server is detected, its models are listed, a model is pulled with progress and a tool turn runs through the existing OpenAI-compatible path; an absent server is reported plainly and nothing is downloaded without the person's confirmation."
+  },
+  {
+   "id": "REQ-PX-167",
+   "type": "requirement",
+   "title": "Dependency advisory, license and unused-crate gates in CI, and a SECURITY.md",
+   "disposition": "ADOPT",
+   "subsystem": "governance",
+   "owner_label": "governance",
+   "imp": "PX-167",
+   "qual": "QUAL-PX-167",
+   "release": "RELEASE_ZERO",
+   "source": "docs/62_PRODUCT_EXTENSION_REQUIREMENTS_TASKS_AND_QUALIFICATIONS.md",
+   "mandatory_behavior": "The real CI configuration run on the repository: a planted crate with a denied license and a planted known-vulnerable version each fail the job; the unmodified tree passes; the job names the ignore list and each ignore's reason."
+  },
+  {
+   "id": "REQ-PX-168",
+   "type": "requirement",
+   "title": "Lint policy: no unwrap or expect outside tests, no lock held across await, no raw process spawn outside the owners",
+   "disposition": "ADOPT",
+   "subsystem": "governance",
+   "owner_label": "governance",
+   "imp": "PX-168",
+   "qual": "QUAL-PX-168",
+   "release": "RELEASE_ZERO",
+   "source": "docs/62_PRODUCT_EXTENSION_REQUIREMENTS_TASKS_AND_QUALIFICATIONS.md",
+   "mandatory_behavior": "The real build with the policy on: a planted `unwrap` in product code, a planted lock held across an await and a planted spawn in a non-owner crate each fail; the tree passes with the policy on; test code is exempt through configuration only."
+  },
+  {
+   "id": "REQ-PX-169",
+   "type": "requirement",
+   "title": "A feature-flag registry with lifecycle stages, strict configuration that rejects unknown keys, a published schema and a provenance view",
+   "disposition": "DEFERRED",
+   "subsystem": "effects-security",
+   "owner_label": "effects-security",
+   "imp": null,
+   "qual": "QUAL-PX-169",
+   "release": "POST_ZERO",
+   "source": "docs/62_PRODUCT_EXTENSION_REQUIREMENTS_TASKS_AND_QUALIFICATIONS.md",
+   "mandatory_behavior": "Deferred proof, entry condition and not a current proof: an unknown key fails with its file and path; an administrator can pin a flag off and cannot pin it on; the schema validates the shipped defaults; `config show --origins` prints the layer of each key; a flag moves through its stages with a recorded date."
+  },
+  {
+   "id": "REQ-PX-170",
+   "type": "requirement",
+   "title": "A one-shot `modbit exec` with structured output, then a thin published SDK over the adapter core",
+   "disposition": "DEFERRED",
+   "subsystem": "desktop",
+   "owner_label": "desktop",
+   "imp": null,
+   "qual": "QUAL-PX-170",
+   "release": "POST_ZERO",
+   "source": "docs/62_PRODUCT_EXTENSION_REQUIREMENTS_TASKS_AND_QUALIFICATIONS.md",
+   "mandatory_behavior": "Deferred proof, entry condition and not a current proof: a real one-shot run emits the documented event vocabulary, honours an output schema for the final message and exits with the documented code; the CLI opens no repository, provider or policy store itself (REQ-PX-000); the SDK passes the adapter conformance suite."
+  },
+  {
+   "id": "REQ-PX-171",
+   "type": "requirement",
+   "title": "Fault-injecting scripted provider server for the provider and Core suites",
+   "disposition": "ADOPT",
+   "subsystem": "eval-bench",
+   "owner_label": "eval-bench",
+   "imp": "PX-171",
+   "qual": "QUAL-PX-171",
+   "release": "RELEASE_ZERO",
+   "source": "docs/62_PRODUCT_EXTENSION_REQUIREMENTS_TASKS_AND_QUALIFICATIONS.md",
+   "mandatory_behavior": "The real gateway and Core against the server: a 429 with each retry header waits and retries only before the first token; a stream cut mid-event ends with a typed failure and no duplicate tool call; an idle stall times out on schedule; a malformed event is refused; each case runs for both wire formats and asserts the log."
+  },
+  {
+   "id": "REQ-PX-172",
+   "type": "requirement",
+   "title": "A grounding role in the provider layer: a frame token and an instruction in, a validated coordinate out",
+   "disposition": "DEFERRED",
+   "subsystem": "model-gateway",
+   "owner_label": "model-gateway",
+   "imp": null,
+   "qual": "QUAL-PX-172",
+   "release": "POST_ZERO",
+   "source": "docs/62_PRODUCT_EXTENSION_REQUIREMENTS_TASKS_AND_QUALIFICATIONS.md",
+   "mandatory_behavior": "Deferred proof, entry condition and not a current proof: a real grounding endpoint returns a coordinate that drives `computer.click` through the existing exact-intent approval, and the approval card shows the intended target; an out-of-frame, stale-token or malformed answer is refused; with no grounding configured the behaviour is today's; the model is reached only through a provider endpoint."
+  },
+  {
+   "id": "REQ-PX-173",
+   "type": "requirement",
+   "title": "A grounding qualification suite that scores candidate models on Modbit's own canvas before any adoption",
+   "disposition": "DEFERRED",
+   "subsystem": "eval-bench",
+   "owner_label": "eval-bench",
+   "imp": null,
+   "qual": "QUAL-PX-173",
+   "release": "POST_ZERO",
+   "source": "docs/62_PRODUCT_EXTENSION_REQUIREMENTS_TASKS_AND_QUALIFICATIONS.md",
+   "mandatory_behavior": "Deferred proof, entry condition and not a current proof: a retained result bundle compares the planning model's own grounding, a frontier vision model and MAI-UI-2B or 8B on the same Modbit frames; a threshold is written before the run; the bundle names model, endpoint, frames and cost."
+  },
+  {
+   "id": "REQ-PX-174",
+   "type": "requirement",
+   "title": "Screenshot window for computer-use runs: recent frames as images, older steps as text, the full record kept",
+   "disposition": "ADOPT",
+   "subsystem": "browser",
+   "owner_label": "browser",
+   "imp": "PX-174",
+   "qual": "QUAL-PX-174",
+   "release": "RELEASE_ZERO",
+   "source": "docs/62_PRODUCT_EXTENSION_REQUIREMENTS_TASKS_AND_QUALIFICATIONS.md",
+   "mandatory_behavior": "The real Core with the fixture actuator and a scripted model over a run of more than forty steps: the request carries at most N images, the token total stays under a stated ceiling, the model's later steps still name earlier steps correctly from the text, the full transcript and every frame remain readable afterwards, and N=1 and the ceiling clamp behave as stated."
+  },
+  {
+   "id": "REQ-PX-175",
+   "type": "requirement",
+   "title": "Ordered action batches in one decision, each action individually approved and bound to its own frame",
+   "disposition": "DEFERRED",
+   "subsystem": "browser",
+   "owner_label": "browser",
+   "imp": null,
+   "qual": "QUAL-PX-175",
+   "release": "POST_ZERO",
+   "source": "docs/62_PRODUCT_EXTENSION_REQUIREMENTS_TASKS_AND_QUALIFICATIONS.md",
+   "mandatory_behavior": "Deferred proof, entry condition and not a current proof: a real batch of four actions runs in order; a failed second action skips the rest and reports which ran; an unknown outcome latches input; each action carries its own exact-intent approval bound to its own frame; one observation follows the batch."
+  },
+  {
+   "id": "REQ-PX-176",
+   "type": "requirement",
+   "title": "One structured observation after a GUI action or a command: frame, stdout, stderr, exit code and tool result together",
+   "disposition": "ADOPT",
+   "subsystem": "browser",
+   "owner_label": "browser",
+   "imp": "PX-176",
+   "qual": "QUAL-PX-176",
+   "release": "RELEASE_ZERO",
+   "source": "docs/62_PRODUCT_EXTENSION_REQUIREMENTS_TASKS_AND_QUALIFICATIONS.md",
+   "mandatory_behavior": "The real Core with the fixture actuator and a scripted model that alternates a command and a click: each step's observation holds the stated fields, a command that times out returns as an error observation and the run continues to completion, output beyond the bound is truncated with the marker, and the same observation shape is replayed after a restart."
+  },
+  {
+   "id": "REQ-PX-177",
+   "type": "requirement",
+   "title": "Human takeover for steps only the person can do: a typed handover that pauses, shows the live state and resumes from the new state",
+   "disposition": "ADOPT",
+   "subsystem": "core-runtime",
+   "owner_label": "core-runtime",
+   "imp": "PX-177",
+   "qual": "QUAL-PX-177",
+   "release": "RELEASE_ZERO",
+   "source": "docs/62_PRODUCT_EXTENSION_REQUIREMENTS_TASKS_AND_QUALIFICATIONS.md",
+   "mandatory_behavior": "The real Core with the fixture actuator and the browser stack against a fixture page that shows a CAPTCHA-like challenge and a payment confirmation: the run parks with the typed reason, nothing is typed or clicked by the agent while parked, the person completes the step in the live view and resumes, the run continues from a new frame token, an unanswered handover expires without acting, and a restart while parked resumes the park."
+  },
+  {
+   "id": "REQ-PX-178",
+   "type": "requirement",
+   "title": "GUI task verifier and a failure judge that separates model, environment and policy outcomes",
+   "disposition": "ADOPT",
+   "subsystem": "verification",
+   "owner_label": "verification",
+   "imp": "PX-178",
+   "qual": "QUAL-PX-178",
+   "release": "RELEASE_ZERO",
+   "source": "docs/62_PRODUCT_EXTENSION_REQUIREMENTS_TASKS_AND_QUALIFICATIONS.md",
+   "mandatory_behavior": "The real Core and the fixture actuator: a completed fixture task passes its predicate, an unfinished one fails it, a run whose actuator is killed mid-run is classified as environment failure, a run stopped by an approval denial as policy stop, a run that clicks the wrong element as model failure; the classification is on the log with its basis."
+  },
+  {
+   "id": "REQ-PX-179",
+   "type": "requirement",
+   "title": "GUI regression suite: Modbit-owned tasks on the fixture desktop and a small real-app set, with a retained baseline",
+   "disposition": "ADOPT",
+   "subsystem": "eval-bench",
+   "owner_label": "eval-bench",
+   "imp": "PX-179",
+   "qual": "QUAL-PX-179",
+   "release": "RELEASE_ZERO",
+   "source": "docs/62_PRODUCT_EXTENSION_REQUIREMENTS_TASKS_AND_QUALIFICATIONS.md",
+   "mandatory_behavior": "The real Core and fixture actuator over at least twenty tasks with a scripted model and, where the owner supplies a prepared machine, the real actuator with a live model: a baseline is retained, a re-run produces the diff, a deliberately regressed model or actuator fails the gate, and results carry the model, build and cost."
+  },
+  {
+   "id": "REQ-PX-180",
+   "type": "requirement",
+   "title": "Sensitivity-aware routing for frames: a sensitive window's frame goes only to a provider the policy allows",
+   "disposition": "DEFERRED",
+   "subsystem": "model-gateway",
+   "owner_label": "model-gateway",
+   "imp": null,
+   "qual": "QUAL-PX-180",
+   "release": "POST_ZERO",
+   "source": "docs/62_PRODUCT_EXTENSION_REQUIREMENTS_TASKS_AND_QUALIFICATIONS.md",
+   "mandatory_behavior": "Deferred proof, entry condition and not a current proof: a real run in a window the policy marks sensitive refuses cloud routing, uses the permitted endpoint and records the routing decision; with no permitted endpoint the step stops with a typed reason."
+  },
+  {
+   "id": "REQ-PX-181",
+   "type": "requirement",
+   "title": "Android control through the computer-runtime contract, with virtual-display sessions",
+   "disposition": "DEFERRED",
+   "subsystem": "browser",
+   "owner_label": "browser",
+   "imp": null,
+   "qual": "QUAL-PX-181",
+   "release": "POST_ZERO",
+   "source": "docs/62_PRODUCT_EXTENSION_REQUIREMENTS_TASKS_AND_QUALIFICATIONS.md",
+   "mandatory_behavior": "Deferred proof, entry condition and not a current proof: a real device or emulator completes a task through an actuator that implements the same contract, per-call approvals and Stop as the macOS actuator; two sessions on separate virtual displays do not cross; a lost device is an environment failure."
+  },
+  {
+   "id": "REQ-PX-182",
+   "type": "requirement",
+   "title": "Scenario adapter: per-tool skill guidance compiled for the tools actually exposed, as a versioned configuration",
+   "disposition": "ADOPT",
+   "subsystem": "skills",
+   "owner_label": "skills",
+   "imp": "PX-182",
+   "qual": "QUAL-PX-182",
+   "release": "RELEASE_ZERO",
+   "source": "docs/62_PRODUCT_EXTENSION_REQUIREMENTS_TASKS_AND_QUALIFICATIONS.md",
+   "mandatory_behavior": "The real Core with real skill files: a task with a restricted tool set gets only the matching guidance blocks, a task with the full set gets all, the compiled configuration id appears in the run record and the context inspector, two compilations of the same inputs are byte-identical, and an untrusted skill's guidance is never included."
+  },
+  {
+   "id": "REQ-PX-183",
+   "type": "requirement",
+   "title": "Ranked skill selection beyond exact trigger phrases, inside the existing budget and trust rules",
+   "disposition": "ADOPT",
+   "subsystem": "skills",
+   "owner_label": "skills",
+   "imp": "PX-183",
+   "qual": "QUAL-PX-183",
+   "release": "RELEASE_ZERO",
+   "source": "docs/62_PRODUCT_EXTENSION_REQUIREMENTS_TASKS_AND_QUALIFICATIONS.md",
+   "mandatory_behavior": "The real Core with real skills: a goal that does not contain a trigger phrase is offered the right skill, an explicit name wins over a ranked one, an untrusted skill that matches best is not offered, two runs give the same ranking, and the index stays within the budget."
+  },
+  {
+   "id": "REQ-PX-184",
+   "type": "requirement",
+   "title": "Four-axis agent benchmark: tool use, memory, skills and sub-agent tasks with cost per thousand tasks",
+   "disposition": "ADOPT",
+   "subsystem": "eval-bench",
+   "owner_label": "eval-bench",
+   "imp": "PX-184",
+   "qual": "QUAL-PX-184",
+   "release": "RELEASE_ZERO",
+   "source": "docs/62_PRODUCT_EXTENSION_REQUIREMENTS_TASKS_AND_QUALIFICATIONS.md",
+   "mandatory_behavior": "The real Core, real fixtures and a scripted or live model: forty or more tasks run, each axis has a score, the cost per thousand is computed from recorded usage, a baseline bundle is retained, a re-run reports the difference, and an injected regression on one axis fails the gate for that axis only."
+  },
+  {
+   "id": "REQ-PX-185",
+   "type": "requirement",
+   "title": "Episodic and prospective memory kinds with evidence spans linking each item to its source events",
+   "disposition": "DEFERRED",
+   "subsystem": "memory",
+   "owner_label": "memory",
+   "imp": null,
+   "qual": "QUAL-PX-185",
+   "release": "POST_ZERO",
+   "source": "docs/62_PRODUCT_EXTENSION_REQUIREMENTS_TASKS_AND_QUALIFICATIONS.md",
+   "mandatory_behavior": "Deferred proof, entry condition and not a current proof: a prospective item fires only under its activation condition, expires and is marked complete; an episodic item opens its source span; the new kinds pass the existing promotion, scope, sensitivity and supersession rules."
+  },
+  {
+   "id": "REQ-PX-186",
+   "type": "requirement",
+   "title": "Memory retrieval ranking with recency, importance and diversity, kept only if it beats the current ranking on the benchmark",
+   "disposition": "ADOPT",
+   "subsystem": "memory",
+   "owner_label": "memory",
+   "imp": "PX-186",
+   "qual": "QUAL-PX-186",
+   "release": "RELEASE_ZERO",
+   "source": "docs/62_PRODUCT_EXTENSION_REQUIREMENTS_TASKS_AND_QUALIFICATIONS.md",
+   "mandatory_behavior": "The real Core and memory store over the memory-axis tasks: the new ranking and the current ranking run on the same tasks at the same token budget; the retained comparison shows recall and tokens; selection stays deterministic and revision-bound; sensitive items are never offered; the decision to keep or revert is recorded with the comparison."
+  },
+  {
+   "id": "REQ-PX-187",
+   "type": "requirement",
+   "title": "A consolidation proposer: an idle-time job that merges duplicates, flags contradictions and proposes supersession",
+   "disposition": "DEFERRED",
+   "subsystem": "memory",
+   "owner_label": "memory",
+   "imp": null,
+   "qual": "QUAL-PX-187",
+   "release": "POST_ZERO",
+   "source": "docs/62_PRODUCT_EXTENSION_REQUIREMENTS_TASKS_AND_QUALIFICATIONS.md",
+   "mandatory_behavior": "Deferred proof, entry condition and not a current proof: a real run over a log projection yields proposals only; nothing is promoted without the existing gate; a contradiction is flagged and a supersession is proposed with its evidence."
+  },
+  {
+   "id": "REQ-PX-188",
+   "type": "requirement",
+   "title": "Memory privacy: private and shared scope, redaction before sharing, deletion that clears derived context, and a person-facing inspect and delete view",
+   "disposition": "ADOPT",
+   "subsystem": "memory",
+   "owner_label": "memory",
+   "imp": "PX-188",
+   "qual": "QUAL-PX-188",
+   "release": "RELEASE_ZERO",
+   "source": "docs/62_PRODUCT_EXTENSION_REQUIREMENTS_TASKS_AND_QUALIFICATIONS.md",
+   "mandatory_behavior": "The real Core and desktop: a deleted memory is gone from the store, the projection, the selection and the next real prompt; a shared-scope promotion of an item with a personal detail stores the redacted form; another user's private item is never selected; the inspect view lists source and scope; a restart keeps all of it."
+  },
+  {
+   "id": "REQ-PX-189",
+   "type": "requirement",
+   "title": "A trace schema for execution evidence and a Core producer that feeds the Skill Evolution Lab",
+   "disposition": "ADOPT",
+   "subsystem": "skills",
+   "owner_label": "skills",
+   "imp": "PX-189",
+   "qual": "QUAL-PX-189",
+   "release": "RELEASE_ZERO",
+   "source": "docs/62_PRODUCT_EXTENSION_REQUIREMENTS_TASKS_AND_QUALIFICATIONS.md",
+   "mandatory_behavior": "The real Core and a scripted model: a finished run yields a sealed trace that the real lab reads and turns into a proposal; a planted secret in a tool result is absent from the trace; the trace links the skill configuration id of the compiled-configuration row; a run with no lab leaves behaviour unchanged; the lab output changes no skill, memory or policy."
+  },
+  {
+   "id": "REQ-PX-190",
+   "type": "requirement",
+   "title": "A planner routing role, adopted only if a controlled run shows a gain over the single-model plan at equal or lower cost",
+   "disposition": "DEFERRED",
+   "subsystem": "model-gateway",
+   "owner_label": "model-gateway",
+   "imp": null,
+   "qual": "QUAL-PX-190",
+   "release": "POST_ZERO",
+   "source": "docs/62_PRODUCT_EXTENSION_REQUIREMENTS_TASKS_AND_QUALIFICATIONS.md",
+   "mandatory_behavior": "Deferred proof, entry condition and not a current proof: on the four-axis benchmark a configuration with a planner slot is compared with the single-model plan at equal cost; the bundle states the result; a later record adopts or rejects the role on that evidence."
+  },
+  {
+   "id": "REQ-PX-191",
+   "type": "requirement",
+   "title": "A proactive pipeline: event, affair and proposed task, with a value gate, read-only preparation and confirmation before any external effect",
+   "disposition": "DEFERRED",
+   "subsystem": "automation",
+   "owner_label": "automation",
+   "imp": null,
+   "qual": "QUAL-PX-191",
+   "release": "POST_ZERO",
+   "source": "docs/62_PRODUCT_EXTENSION_REQUIREMENTS_TASKS_AND_QUALIFICATIONS.md",
+   "mandatory_behavior": "Deferred proof, entry condition and not a current proof: a real event produces a decision-ready card with options and executes nothing until confirmed; a rejected card is remembered; a flood of events produces a bounded number of cards; the first sources are forge events and signed webhooks."
   },
   {
    "id": "PX-000",
@@ -38409,6 +39001,605 @@
    "status_changed_on": "2026-10-25T18:06:09Z"
   },
   {
+   "id": "PX-147",
+   "type": "imp_task",
+   "title": "SSRF guard in the sandbox egress broker: the resolved address is checked before connect",
+   "requirement": "REQ-PX-147",
+   "qual": "QUAL-PX-147",
+   "subsystem": "sandbox-cloud",
+   "owner_label": "sandbox-cloud",
+   "milestone": "M10",
+   "release": "RELEASE_ZERO",
+   "disposition": "ADOPT",
+   "source": "docs/62_PRODUCT_EXTENSION_REQUIREMENTS_TASKS_AND_QUALIFICATIONS.md",
+   "acceptance": "The real egress broker with a real listener: an allowed name that resolves to 127.0.0.1, to 10.x, to 169.254.169.254 and to an IPv6 loopback is refused and audited; a name whose DNS answer changes between the check and the connect cannot reach a refused address; an explicit IP-literal rule still connects; a public destination relays bytes both ways and its receipt is unchanged.",
+   "prerequisites": [
+    "DOC-PX-017"
+   ],
+   "related_requirements": [],
+   "task_card": "docs/62_PRODUCT_EXTENSION_REQUIREMENTS_TASKS_AND_QUALIFICATIONS.md#px-147",
+   "audit_at_adoption": "DOCUMENTED-ONLY; no product caller present",
+   "status": "NOT_STARTED",
+   "evidence": []
+  },
+  {
+   "id": "PX-148",
+   "type": "imp_task",
+   "title": "Process hardening for the Core and the execution broker: no core dumps, not attachable, no injected libraries",
+   "requirement": "REQ-PX-148",
+   "qual": "QUAL-PX-148",
+   "subsystem": "terminal",
+   "owner_label": "terminal",
+   "milestone": "M10",
+   "release": "RELEASE_ZERO",
+   "disposition": "ADOPT",
+   "source": "docs/62_PRODUCT_EXTENSION_REQUIREMENTS_TASKS_AND_QUALIFICATIONS.md",
+   "acceptance": "The real Core and the real broker started as processes on macOS and Linux: the limit is zero, the dumpable or deny-attach flag is set (read from the process), a debugger attach and a forced core dump fail, a planted `DYLD_INSERT_LIBRARIES` or `LD_PRELOAD` library is not loaded by either process, and every existing broker and Core suite still passes.",
+   "prerequisites": [
+    "DOC-PX-017"
+   ],
+   "related_requirements": [],
+   "task_card": "docs/62_PRODUCT_EXTENSION_REQUIREMENTS_TASKS_AND_QUALIFICATIONS.md#px-148",
+   "audit_at_adoption": "DOCUMENTED-ONLY; no product caller present",
+   "status": "NOT_STARTED",
+   "evidence": []
+  },
+  {
+   "id": "PX-149",
+   "type": "imp_task",
+   "title": "Allow rules pinned to the resolved program path",
+   "requirement": "REQ-PX-149",
+   "qual": "QUAL-PX-149",
+   "subsystem": "effects-security",
+   "owner_label": "effects-security",
+   "milestone": "M10",
+   "release": "RELEASE_ZERO",
+   "disposition": "ADOPT",
+   "source": "docs/62_PRODUCT_EXTENSION_REQUIREMENTS_TASKS_AND_QUALIFICATIONS.md",
+   "acceptance": "The real Core and kernel with a real repository: an approved `git status` rule still allows the real `git`; a repository `bin/git` placed first on the path does not satisfy it and the command asks with the new reason; a rule made before this change keeps working through a recorded one-time resolution or asks once, as the record states; a missing program fails closed.",
+   "prerequisites": [
+    "DOC-PX-017"
+   ],
+   "related_requirements": [],
+   "task_card": "docs/62_PRODUCT_EXTENSION_REQUIREMENTS_TASKS_AND_QUALIFICATIONS.md#px-149",
+   "audit_at_adoption": "DOCUMENTED-ONLY; no product caller present",
+   "status": "NOT_STARTED",
+   "evidence": []
+  },
+  {
+   "id": "PX-150",
+   "type": "imp_task",
+   "title": "Tighter review sandbox: parameterised macOS profile, credential read denials, protected metadata",
+   "requirement": "REQ-PX-150",
+   "qual": "QUAL-PX-150",
+   "subsystem": "terminal",
+   "owner_label": "terminal",
+   "milestone": "M10",
+   "release": "RELEASE_ZERO",
+   "disposition": "ADOPT",
+   "source": "docs/62_PRODUCT_EXTENSION_REQUIREMENTS_TASKS_AND_QUALIFICATIONS.md",
+   "acceptance": "A real confined process on macOS (and Linux where supported): it cannot read a planted file under `~/.ssh` or `~/.aws`, cannot write `.git` or `.modbit` inside the writable root, a working directory containing a backslash, a quote and a newline does not change the profile text, a real build and test run in the worktree still passes, and the sandbox conformance suite gains these cases.",
+   "prerequisites": [
+    "DOC-PX-017"
+   ],
+   "related_requirements": [],
+   "task_card": "docs/62_PRODUCT_EXTENSION_REQUIREMENTS_TASKS_AND_QUALIFICATIONS.md#px-150",
+   "audit_at_adoption": "DOCUMENTED-ONLY; no product caller present",
+   "status": "NOT_STARTED",
+   "evidence": []
+  },
+  {
+   "id": "PX-152",
+   "type": "imp_task",
+   "title": "A typed sandbox-denied result so the agent stops retrying a confined command blindly",
+   "requirement": "REQ-PX-152",
+   "qual": "QUAL-PX-152",
+   "subsystem": "terminal",
+   "owner_label": "terminal",
+   "milestone": "M10",
+   "release": "RELEASE_ZERO",
+   "disposition": "ADOPT",
+   "source": "docs/62_PRODUCT_EXTENSION_REQUIREMENTS_TASKS_AND_QUALIFICATIONS.md",
+   "acceptance": "The real broker with a real confined command: a denied write and a denied read return the typed code, exit code and excerpt; an ordinary non-zero exit of a failing test returns no denial; the result reaches the model through the real tool path and the event log carries it once.",
+   "prerequisites": [
+    "PX-150",
+    "DOC-PX-017"
+   ],
+   "related_requirements": [],
+   "task_card": "docs/62_PRODUCT_EXTENSION_REQUIREMENTS_TASKS_AND_QUALIFICATIONS.md#px-152",
+   "audit_at_adoption": "DOCUMENTED-ONLY; no product caller present",
+   "status": "NOT_STARTED",
+   "evidence": []
+  },
+  {
+   "id": "PX-153",
+   "type": "imp_task",
+   "title": "Model-visible denial and timeout guidance and a denial circuit breaker that parks the run",
+   "requirement": "REQ-PX-153",
+   "qual": "QUAL-PX-153",
+   "subsystem": "core-runtime",
+   "owner_label": "core-runtime",
+   "milestone": "M10",
+   "release": "RELEASE_ZERO",
+   "disposition": "ADOPT",
+   "source": "docs/62_PRODUCT_EXTENSION_REQUIREMENTS_TASKS_AND_QUALIFICATIONS.md",
+   "acceptance": "The real Core and a scripted model that is denied three times in a row: the task is parked with the typed reason after the third, the notice is on the log once and replays after a restart, the counter resets on an allowed effect, the guidance text is in each denial result, and a model that changes approach after the first denial is never parked.",
+   "prerequisites": [
+    "DOC-PX-017"
+   ],
+   "related_requirements": [],
+   "task_card": "docs/62_PRODUCT_EXTENSION_REQUIREMENTS_TASKS_AND_QUALIFICATIONS.md#px-153",
+   "audit_at_adoption": "DOCUMENTED-ONLY; no product caller present",
+   "status": "NOT_STARTED",
+   "evidence": []
+  },
+  {
+   "id": "PX-155",
+   "type": "imp_task",
+   "title": "Context-overflow recovery: a typed provider error forces a synchronous compaction and one retry",
+   "requirement": "REQ-PX-155",
+   "qual": "QUAL-PX-155",
+   "subsystem": "durability",
+   "owner_label": "durability",
+   "milestone": "M10",
+   "release": "RELEASE_ZERO",
+   "disposition": "ADOPT",
+   "source": "docs/62_PRODUCT_EXTENSION_REQUIREMENTS_TASKS_AND_QUALIFICATIONS.md",
+   "acceptance": "The real Core against a real provider transport (the recorded-transport server of the provider suites) that returns the overflow response for an oversized request: the Core compacts, retries once and completes the turn; a transport that overflows again ends with the typed failure; the compaction request and its commit are on the log; the transcript is intact and readable by range afterwards.",
+   "prerequisites": [
+    "DOC-PX-017"
+   ],
+   "related_requirements": [],
+   "task_card": "docs/62_PRODUCT_EXTENSION_REQUIREMENTS_TASKS_AND_QUALIFICATIONS.md#px-155",
+   "audit_at_adoption": "DOCUMENTED-ONLY; no product caller present",
+   "status": "NOT_STARTED",
+   "evidence": []
+  },
+  {
+   "id": "PX-156",
+   "type": "imp_task",
+   "title": "Time parked on an approval is excluded from tool timeouts and wall-clock accounting",
+   "requirement": "REQ-PX-156",
+   "qual": "QUAL-PX-156",
+   "subsystem": "core-runtime",
+   "owner_label": "core-runtime",
+   "milestone": "M10",
+   "release": "RELEASE_ZERO",
+   "disposition": "ADOPT",
+   "source": "docs/62_PRODUCT_EXTENSION_REQUIREMENTS_TASKS_AND_QUALIFICATIONS.md",
+   "acceptance": "The real Core and a scripted model with a call whose timeout is shorter than the time the approval is left waiting: the call completes after the approval with no timeout, the wall-clock budget is not charged for the wait, and the accounting names the parked time; a call that is not parked still times out on schedule.",
+   "prerequisites": [
+    "DOC-PX-017"
+   ],
+   "related_requirements": [],
+   "task_card": "docs/62_PRODUCT_EXTENSION_REQUIREMENTS_TASKS_AND_QUALIFICATIONS.md#px-156",
+   "audit_at_adoption": "DOCUMENTED-ONLY; no product caller present",
+   "status": "NOT_STARTED",
+   "evidence": []
+  },
+  {
+   "id": "PX-157",
+   "type": "imp_task",
+   "title": "Secret redaction on memory proposals and use tracking from injected memory",
+   "requirement": "REQ-PX-157",
+   "qual": "QUAL-PX-157",
+   "subsystem": "memory",
+   "owner_label": "memory",
+   "milestone": "M10",
+   "release": "RELEASE_ZERO",
+   "disposition": "ADOPT",
+   "source": "docs/62_PRODUCT_EXTENSION_REQUIREMENTS_TASKS_AND_QUALIFICATIONS.md",
+   "acceptance": "The real Core and memory store: a proposal containing a real-format API key and a private-key block is stored redacted or refused, a normal proposal is stored byte-for-byte, a prompt that injects an item increments its count and last-use once, and a restart rebuilds the same counts from the log.",
+   "prerequisites": [
+    "DOC-PX-017"
+   ],
+   "related_requirements": [],
+   "task_card": "docs/62_PRODUCT_EXTENSION_REQUIREMENTS_TASKS_AND_QUALIFICATIONS.md#px-157",
+   "audit_at_adoption": "DOCUMENTED-ONLY; no product caller present",
+   "status": "NOT_STARTED",
+   "evidence": []
+  },
+  {
+   "id": "PX-158",
+   "type": "imp_task",
+   "title": "Image tokens are charged by size in compaction estimates",
+   "requirement": "REQ-PX-158",
+   "qual": "QUAL-PX-158",
+   "subsystem": "durability",
+   "owner_label": "durability",
+   "milestone": "M10",
+   "release": "RELEASE_ZERO",
+   "disposition": "ADOPT",
+   "source": "docs/62_PRODUCT_EXTENSION_REQUIREMENTS_TASKS_AND_QUALIFICATIONS.md",
+   "acceptance": "The real Core with a real provider transport that reports usage: a transcript of many frames reaches the compaction threshold at the point the provider-reported usage does, within the calibrated margin; a text-only transcript is estimated as before; a shortened transcript never holds an image without its caption.",
+   "prerequisites": [
+    "DOC-PX-017"
+   ],
+   "related_requirements": [],
+   "task_card": "docs/62_PRODUCT_EXTENSION_REQUIREMENTS_TASKS_AND_QUALIFICATIONS.md#px-158",
+   "audit_at_adoption": "DOCUMENTED-ONLY; no product caller present",
+   "status": "NOT_STARTED",
+   "evidence": []
+  },
+  {
+   "id": "PX-159",
+   "type": "imp_task",
+   "title": "Compaction telemetry promised by doc 34: tokens before and after, duration, mode, source, rejection and cost",
+   "requirement": "REQ-PX-159",
+   "qual": "QUAL-PX-159",
+   "subsystem": "observability",
+   "owner_label": "observability",
+   "milestone": "M10",
+   "release": "RELEASE_ZERO",
+   "disposition": "ADOPT",
+   "source": "docs/62_PRODUCT_EXTENSION_REQUIREMENTS_TASKS_AND_QUALIFICATIONS.md",
+   "acceptance": "The real Core exporting to a real OTLP collector: a committed, a rejected (stale) and an extractive-fallback compaction each export the attributes; the exporter stays off by default and never blocks the run when the collector is down.",
+   "prerequisites": [
+    "DOC-PX-017"
+   ],
+   "related_requirements": [],
+   "task_card": "docs/62_PRODUCT_EXTENSION_REQUIREMENTS_TASKS_AND_QUALIFICATIONS.md#px-159",
+   "audit_at_adoption": "DOCUMENTED-ONLY; no product caller present",
+   "status": "NOT_STARTED",
+   "evidence": []
+  },
+  {
+   "id": "PX-161",
+   "type": "imp_task",
+   "title": "Read-only tool calls of one turn run concurrently and are journaled in call order",
+   "requirement": "REQ-PX-161",
+   "qual": "QUAL-PX-161",
+   "subsystem": "core-runtime",
+   "owner_label": "core-runtime",
+   "milestone": "M10",
+   "release": "RELEASE_ZERO",
+   "disposition": "ADOPT",
+   "source": "docs/62_PRODUCT_EXTENSION_REQUIREMENTS_TASKS_AND_QUALIFICATIONS.md",
+   "acceptance": "The real Core and a scripted model issuing N reads and a write in one turn: the reads finish in less than the serial time, the write waits for them and runs alone, the log order equals the call order, a failing read reports its error and the other results are present, and a SIGKILL during the batch recovers with no result recorded twice.",
+   "prerequisites": [
+    "DOC-PX-017"
+   ],
+   "related_requirements": [],
+   "task_card": "docs/62_PRODUCT_EXTENSION_REQUIREMENTS_TASKS_AND_QUALIFICATIONS.md#px-161",
+   "audit_at_adoption": "DOCUMENTED-ONLY; no product caller present",
+   "status": "NOT_STARTED",
+   "evidence": []
+  },
+  {
+   "id": "PX-162",
+   "type": "imp_task",
+   "title": "Rule, skill and memory changes arrive as appended transcript notes, not as rewritten early prompt segments",
+   "requirement": "REQ-PX-162",
+   "qual": "QUAL-PX-162",
+   "subsystem": "context-engine",
+   "owner_label": "context-engine",
+   "milestone": "M10",
+   "release": "RELEASE_ZERO",
+   "disposition": "ADOPT",
+   "source": "docs/62_PRODUCT_EXTENSION_REQUIREMENTS_TASKS_AND_QUALIFICATIONS.md",
+   "acceptance": "The real Core with a real compiler and a provider transport that records requests: after an instruction file and a memory item change mid-task, the prefix bytes of the next request equal the previous request's, the appended note names both changes and what they replace, the model-visible instructions equal those of a freshly compiled task, and a resume rebuilds the same notes from the log.",
+   "prerequisites": [
+    "DOC-PX-017"
+   ],
+   "related_requirements": [],
+   "task_card": "docs/62_PRODUCT_EXTENSION_REQUIREMENTS_TASKS_AND_QUALIFICATIONS.md#px-162",
+   "audit_at_adoption": "DOCUMENTED-ONLY; no product caller present",
+   "status": "NOT_STARTED",
+   "evidence": []
+  },
+  {
+   "id": "PX-167",
+   "type": "imp_task",
+   "title": "Dependency advisory, license and unused-crate gates in CI, and a SECURITY.md",
+   "requirement": "REQ-PX-167",
+   "qual": "QUAL-PX-167",
+   "subsystem": "governance",
+   "owner_label": "governance",
+   "milestone": "M10",
+   "release": "RELEASE_ZERO",
+   "disposition": "ADOPT",
+   "source": "docs/62_PRODUCT_EXTENSION_REQUIREMENTS_TASKS_AND_QUALIFICATIONS.md",
+   "acceptance": "The real CI configuration run on the repository: a planted crate with a denied license and a planted known-vulnerable version each fail the job; the unmodified tree passes; the job names the ignore list and each ignore's reason.",
+   "prerequisites": [
+    "DOC-PX-017"
+   ],
+   "related_requirements": [],
+   "task_card": "docs/62_PRODUCT_EXTENSION_REQUIREMENTS_TASKS_AND_QUALIFICATIONS.md#px-167",
+   "audit_at_adoption": "DOCUMENTED-ONLY; no product caller present",
+   "status": "NOT_STARTED",
+   "evidence": []
+  },
+  {
+   "id": "PX-168",
+   "type": "imp_task",
+   "title": "Lint policy: no unwrap or expect outside tests, no lock held across await, no raw process spawn outside the owners",
+   "requirement": "REQ-PX-168",
+   "qual": "QUAL-PX-168",
+   "subsystem": "governance",
+   "owner_label": "governance",
+   "milestone": "M10",
+   "release": "RELEASE_ZERO",
+   "disposition": "ADOPT",
+   "source": "docs/62_PRODUCT_EXTENSION_REQUIREMENTS_TASKS_AND_QUALIFICATIONS.md",
+   "acceptance": "The real build with the policy on: a planted `unwrap` in product code, a planted lock held across an await and a planted spawn in a non-owner crate each fail; the tree passes with the policy on; test code is exempt through configuration only.",
+   "prerequisites": [
+    "DOC-PX-017"
+   ],
+   "related_requirements": [],
+   "task_card": "docs/62_PRODUCT_EXTENSION_REQUIREMENTS_TASKS_AND_QUALIFICATIONS.md#px-168",
+   "audit_at_adoption": "DOCUMENTED-ONLY; no product caller present",
+   "status": "NOT_STARTED",
+   "evidence": []
+  },
+  {
+   "id": "PX-171",
+   "type": "imp_task",
+   "title": "Fault-injecting scripted provider server for the provider and Core suites",
+   "requirement": "REQ-PX-171",
+   "qual": "QUAL-PX-171",
+   "subsystem": "eval-bench",
+   "owner_label": "eval-bench",
+   "milestone": "M10",
+   "release": "RELEASE_ZERO",
+   "disposition": "ADOPT",
+   "source": "docs/62_PRODUCT_EXTENSION_REQUIREMENTS_TASKS_AND_QUALIFICATIONS.md",
+   "acceptance": "The real gateway and Core against the server: a 429 with each retry header waits and retries only before the first token; a stream cut mid-event ends with a typed failure and no duplicate tool call; an idle stall times out on schedule; a malformed event is refused; each case runs for both wire formats and asserts the log.",
+   "prerequisites": [
+    "DOC-PX-017"
+   ],
+   "related_requirements": [],
+   "task_card": "docs/62_PRODUCT_EXTENSION_REQUIREMENTS_TASKS_AND_QUALIFICATIONS.md#px-171",
+   "audit_at_adoption": "DOCUMENTED-ONLY; no product caller present",
+   "status": "NOT_STARTED",
+   "evidence": []
+  },
+  {
+   "id": "PX-174",
+   "type": "imp_task",
+   "title": "Screenshot window for computer-use runs: recent frames as images, older steps as text, the full record kept",
+   "requirement": "REQ-PX-174",
+   "qual": "QUAL-PX-174",
+   "subsystem": "browser",
+   "owner_label": "browser",
+   "milestone": "M10",
+   "release": "RELEASE_ZERO",
+   "disposition": "ADOPT",
+   "source": "docs/62_PRODUCT_EXTENSION_REQUIREMENTS_TASKS_AND_QUALIFICATIONS.md",
+   "acceptance": "The real Core with the fixture actuator and a scripted model over a run of more than forty steps: the request carries at most N images, the token total stays under a stated ceiling, the model's later steps still name earlier steps correctly from the text, the full transcript and every frame remain readable afterwards, and N=1 and the ceiling clamp behave as stated.",
+   "prerequisites": [
+    "PX-158",
+    "DOC-PX-017"
+   ],
+   "related_requirements": [],
+   "task_card": "docs/62_PRODUCT_EXTENSION_REQUIREMENTS_TASKS_AND_QUALIFICATIONS.md#px-174",
+   "audit_at_adoption": "DOCUMENTED-ONLY; no product caller present",
+   "status": "NOT_STARTED",
+   "evidence": []
+  },
+  {
+   "id": "PX-176",
+   "type": "imp_task",
+   "title": "One structured observation after a GUI action or a command: frame, stdout, stderr, exit code and tool result together",
+   "requirement": "REQ-PX-176",
+   "qual": "QUAL-PX-176",
+   "subsystem": "browser",
+   "owner_label": "browser",
+   "milestone": "M10",
+   "release": "RELEASE_ZERO",
+   "disposition": "ADOPT",
+   "source": "docs/62_PRODUCT_EXTENSION_REQUIREMENTS_TASKS_AND_QUALIFICATIONS.md",
+   "acceptance": "The real Core with the fixture actuator and a scripted model that alternates a command and a click: each step's observation holds the stated fields, a command that times out returns as an error observation and the run continues to completion, output beyond the bound is truncated with the marker, and the same observation shape is replayed after a restart.",
+   "prerequisites": [
+    "DOC-PX-017"
+   ],
+   "related_requirements": [],
+   "task_card": "docs/62_PRODUCT_EXTENSION_REQUIREMENTS_TASKS_AND_QUALIFICATIONS.md#px-176",
+   "audit_at_adoption": "DOCUMENTED-ONLY; no product caller present",
+   "status": "NOT_STARTED",
+   "evidence": []
+  },
+  {
+   "id": "PX-177",
+   "type": "imp_task",
+   "title": "Human takeover for steps only the person can do: a typed handover that pauses, shows the live state and resumes from the new state",
+   "requirement": "REQ-PX-177",
+   "qual": "QUAL-PX-177",
+   "subsystem": "core-runtime",
+   "owner_label": "core-runtime",
+   "milestone": "M10",
+   "release": "RELEASE_ZERO",
+   "disposition": "ADOPT",
+   "source": "docs/62_PRODUCT_EXTENSION_REQUIREMENTS_TASKS_AND_QUALIFICATIONS.md",
+   "acceptance": "The real Core with the fixture actuator and the browser stack against a fixture page that shows a CAPTCHA-like challenge and a payment confirmation: the run parks with the typed reason, nothing is typed or clicked by the agent while parked, the person completes the step in the live view and resumes, the run continues from a new frame token, an unanswered handover expires without acting, and a restart while parked resumes the park.",
+   "prerequisites": [
+    "DOC-PX-017"
+   ],
+   "related_requirements": [],
+   "task_card": "docs/62_PRODUCT_EXTENSION_REQUIREMENTS_TASKS_AND_QUALIFICATIONS.md#px-177",
+   "audit_at_adoption": "DOCUMENTED-ONLY; no product caller present",
+   "status": "NOT_STARTED",
+   "evidence": []
+  },
+  {
+   "id": "PX-178",
+   "type": "imp_task",
+   "title": "GUI task verifier and a failure judge that separates model, environment and policy outcomes",
+   "requirement": "REQ-PX-178",
+   "qual": "QUAL-PX-178",
+   "subsystem": "verification",
+   "owner_label": "verification",
+   "milestone": "M10",
+   "release": "RELEASE_ZERO",
+   "disposition": "ADOPT",
+   "source": "docs/62_PRODUCT_EXTENSION_REQUIREMENTS_TASKS_AND_QUALIFICATIONS.md",
+   "acceptance": "The real Core and the fixture actuator: a completed fixture task passes its predicate, an unfinished one fails it, a run whose actuator is killed mid-run is classified as environment failure, a run stopped by an approval denial as policy stop, a run that clicks the wrong element as model failure; the classification is on the log with its basis.",
+   "prerequisites": [
+    "DOC-PX-017"
+   ],
+   "related_requirements": [],
+   "task_card": "docs/62_PRODUCT_EXTENSION_REQUIREMENTS_TASKS_AND_QUALIFICATIONS.md#px-178",
+   "audit_at_adoption": "DOCUMENTED-ONLY; no product caller present",
+   "status": "NOT_STARTED",
+   "evidence": []
+  },
+  {
+   "id": "PX-179",
+   "type": "imp_task",
+   "title": "GUI regression suite: Modbit-owned tasks on the fixture desktop and a small real-app set, with a retained baseline",
+   "requirement": "REQ-PX-179",
+   "qual": "QUAL-PX-179",
+   "subsystem": "eval-bench",
+   "owner_label": "eval-bench",
+   "milestone": "M10",
+   "release": "RELEASE_ZERO",
+   "disposition": "ADOPT",
+   "source": "docs/62_PRODUCT_EXTENSION_REQUIREMENTS_TASKS_AND_QUALIFICATIONS.md",
+   "acceptance": "The real Core and fixture actuator over at least twenty tasks with a scripted model and, where the owner supplies a prepared machine, the real actuator with a live model: a baseline is retained, a re-run produces the diff, a deliberately regressed model or actuator fails the gate, and results carry the model, build and cost.",
+   "prerequisites": [
+    "PX-178",
+    "DOC-PX-017"
+   ],
+   "related_requirements": [],
+   "task_card": "docs/62_PRODUCT_EXTENSION_REQUIREMENTS_TASKS_AND_QUALIFICATIONS.md#px-179",
+   "audit_at_adoption": "DOCUMENTED-ONLY; no product caller present",
+   "status": "NOT_STARTED",
+   "evidence": []
+  },
+  {
+   "id": "PX-182",
+   "type": "imp_task",
+   "title": "Scenario adapter: per-tool skill guidance compiled for the tools actually exposed, as a versioned configuration",
+   "requirement": "REQ-PX-182",
+   "qual": "QUAL-PX-182",
+   "subsystem": "skills",
+   "owner_label": "skills",
+   "milestone": "M10",
+   "release": "RELEASE_ZERO",
+   "disposition": "ADOPT",
+   "source": "docs/62_PRODUCT_EXTENSION_REQUIREMENTS_TASKS_AND_QUALIFICATIONS.md",
+   "acceptance": "The real Core with real skill files: a task with a restricted tool set gets only the matching guidance blocks, a task with the full set gets all, the compiled configuration id appears in the run record and the context inspector, two compilations of the same inputs are byte-identical, and an untrusted skill's guidance is never included.",
+   "prerequisites": [
+    "DOC-PX-017"
+   ],
+   "related_requirements": [],
+   "task_card": "docs/62_PRODUCT_EXTENSION_REQUIREMENTS_TASKS_AND_QUALIFICATIONS.md#px-182",
+   "audit_at_adoption": "DOCUMENTED-ONLY; no product caller present",
+   "status": "NOT_STARTED",
+   "evidence": []
+  },
+  {
+   "id": "PX-183",
+   "type": "imp_task",
+   "title": "Ranked skill selection beyond exact trigger phrases, inside the existing budget and trust rules",
+   "requirement": "REQ-PX-183",
+   "qual": "QUAL-PX-183",
+   "subsystem": "skills",
+   "owner_label": "skills",
+   "milestone": "M10",
+   "release": "RELEASE_ZERO",
+   "disposition": "ADOPT",
+   "source": "docs/62_PRODUCT_EXTENSION_REQUIREMENTS_TASKS_AND_QUALIFICATIONS.md",
+   "acceptance": "The real Core with real skills: a goal that does not contain a trigger phrase is offered the right skill, an explicit name wins over a ranked one, an untrusted skill that matches best is not offered, two runs give the same ranking, and the index stays within the budget.",
+   "prerequisites": [
+    "DOC-PX-017"
+   ],
+   "related_requirements": [],
+   "task_card": "docs/62_PRODUCT_EXTENSION_REQUIREMENTS_TASKS_AND_QUALIFICATIONS.md#px-183",
+   "audit_at_adoption": "DOCUMENTED-ONLY; no product caller present",
+   "status": "NOT_STARTED",
+   "evidence": []
+  },
+  {
+   "id": "PX-184",
+   "type": "imp_task",
+   "title": "Four-axis agent benchmark: tool use, memory, skills and sub-agent tasks with cost per thousand tasks",
+   "requirement": "REQ-PX-184",
+   "qual": "QUAL-PX-184",
+   "subsystem": "eval-bench",
+   "owner_label": "eval-bench",
+   "milestone": "M10",
+   "release": "RELEASE_ZERO",
+   "disposition": "ADOPT",
+   "source": "docs/62_PRODUCT_EXTENSION_REQUIREMENTS_TASKS_AND_QUALIFICATIONS.md",
+   "acceptance": "The real Core, real fixtures and a scripted or live model: forty or more tasks run, each axis has a score, the cost per thousand is computed from recorded usage, a baseline bundle is retained, a re-run reports the difference, and an injected regression on one axis fails the gate for that axis only.",
+   "prerequisites": [
+    "DOC-PX-017"
+   ],
+   "related_requirements": [],
+   "task_card": "docs/62_PRODUCT_EXTENSION_REQUIREMENTS_TASKS_AND_QUALIFICATIONS.md#px-184",
+   "audit_at_adoption": "DOCUMENTED-ONLY; no product caller present",
+   "status": "NOT_STARTED",
+   "evidence": []
+  },
+  {
+   "id": "PX-186",
+   "type": "imp_task",
+   "title": "Memory retrieval ranking with recency, importance and diversity, kept only if it beats the current ranking on the benchmark",
+   "requirement": "REQ-PX-186",
+   "qual": "QUAL-PX-186",
+   "subsystem": "memory",
+   "owner_label": "memory",
+   "milestone": "M10",
+   "release": "RELEASE_ZERO",
+   "disposition": "ADOPT",
+   "source": "docs/62_PRODUCT_EXTENSION_REQUIREMENTS_TASKS_AND_QUALIFICATIONS.md",
+   "acceptance": "The real Core and memory store over the memory-axis tasks: the new ranking and the current ranking run on the same tasks at the same token budget; the retained comparison shows recall and tokens; selection stays deterministic and revision-bound; sensitive items are never offered; the decision to keep or revert is recorded with the comparison.",
+   "prerequisites": [
+    "PX-184",
+    "DOC-PX-017"
+   ],
+   "related_requirements": [],
+   "task_card": "docs/62_PRODUCT_EXTENSION_REQUIREMENTS_TASKS_AND_QUALIFICATIONS.md#px-186",
+   "audit_at_adoption": "DOCUMENTED-ONLY; no product caller present",
+   "status": "NOT_STARTED",
+   "evidence": []
+  },
+  {
+   "id": "PX-188",
+   "type": "imp_task",
+   "title": "Memory privacy: private and shared scope, redaction before sharing, deletion that clears derived context, and a person-facing inspect and delete view",
+   "requirement": "REQ-PX-188",
+   "qual": "QUAL-PX-188",
+   "subsystem": "memory",
+   "owner_label": "memory",
+   "milestone": "M10",
+   "release": "RELEASE_ZERO",
+   "disposition": "ADOPT",
+   "source": "docs/62_PRODUCT_EXTENSION_REQUIREMENTS_TASKS_AND_QUALIFICATIONS.md",
+   "acceptance": "The real Core and desktop: a deleted memory is gone from the store, the projection, the selection and the next real prompt; a shared-scope promotion of an item with a personal detail stores the redacted form; another user's private item is never selected; the inspect view lists source and scope; a restart keeps all of it.",
+   "prerequisites": [
+    "PX-157",
+    "DOC-PX-017"
+   ],
+   "related_requirements": [],
+   "task_card": "docs/62_PRODUCT_EXTENSION_REQUIREMENTS_TASKS_AND_QUALIFICATIONS.md#px-188",
+   "audit_at_adoption": "DOCUMENTED-ONLY; no product caller present",
+   "status": "NOT_STARTED",
+   "evidence": []
+  },
+  {
+   "id": "PX-189",
+   "type": "imp_task",
+   "title": "A trace schema for execution evidence and a Core producer that feeds the Skill Evolution Lab",
+   "requirement": "REQ-PX-189",
+   "qual": "QUAL-PX-189",
+   "subsystem": "skills",
+   "owner_label": "skills",
+   "milestone": "M10",
+   "release": "RELEASE_ZERO",
+   "disposition": "ADOPT",
+   "source": "docs/62_PRODUCT_EXTENSION_REQUIREMENTS_TASKS_AND_QUALIFICATIONS.md",
+   "acceptance": "The real Core and a scripted model: a finished run yields a sealed trace that the real lab reads and turns into a proposal; a planted secret in a tool result is absent from the trace; the trace links the skill configuration id of the compiled-configuration row; a run with no lab leaves behaviour unchanged; the lab output changes no skill, memory or policy.",
+   "prerequisites": [
+    "DOC-PX-017"
+   ],
+   "related_requirements": [],
+   "task_card": "docs/62_PRODUCT_EXTENSION_REQUIREMENTS_TASKS_AND_QUALIFICATIONS.md#px-189",
+   "audit_at_adoption": "DOCUMENTED-ONLY; no product caller present",
+   "status": "NOT_STARTED",
+   "evidence": []
+  },
+  {
    "id": "QUAL-PX-000",
    "type": "qual_test",
    "requirement": "REQ-PX-000",
@@ -39879,6 +41070,456 @@
    "source": "docs/62_PRODUCT_EXTENSION_REQUIREMENTS_TASKS_AND_QUALIFICATIONS.md"
   },
   {
+   "id": "QUAL-PX-147",
+   "type": "qual_test",
+   "requirement": "REQ-PX-147",
+   "owner_label": "sandbox-cloud",
+   "title": "The real egress broker with a real listener: an allowed name that resolves to 127.0.0.1, to 10.x, to 169.254.169.254 and to an IPv6 loopback is refused and audited; a name whose DNS answer changes between the check and the connect cannot reach a refused address; an explicit IP-literal rule still connects; a public destination relays bytes both ways and its receipt is unchanged.",
+   "failure_proof": "A refused address that is connected anyway, a second resolution after the check, an audit record missing the reason code, or a regression for an admitted public destination fails the suite; a mutation that connects by name fails the DNS-rebind case.",
+   "evidence_class": "real-system or production-equivalent",
+   "source": "docs/62_PRODUCT_EXTENSION_REQUIREMENTS_TASKS_AND_QUALIFICATIONS.md"
+  },
+  {
+   "id": "QUAL-PX-148",
+   "type": "qual_test",
+   "requirement": "REQ-PX-148",
+   "owner_label": "terminal",
+   "title": "The real Core and the real broker started as processes on macOS and Linux: the limit is zero, the dumpable or deny-attach flag is set (read from the process), a debugger attach and a forced core dump fail, a planted `DYLD_INSERT_LIBRARIES` or `LD_PRELOAD` library is not loaded by either process, and every existing broker and Core suite still passes.",
+   "failure_proof": "A flag set after threads start, an inherited injection variable, a child that loses its pinned environment, or a platform where the call fails silently fails the suite; a startup that cannot set a flag must say so in the log rather than continue silently.",
+   "evidence_class": "real-system or production-equivalent",
+   "source": "docs/62_PRODUCT_EXTENSION_REQUIREMENTS_TASKS_AND_QUALIFICATIONS.md"
+  },
+  {
+   "id": "QUAL-PX-149",
+   "type": "qual_test",
+   "requirement": "REQ-PX-149",
+   "owner_label": "effects-security",
+   "title": "The real Core and kernel with a real repository: an approved `git status` rule still allows the real `git`; a repository `bin/git` placed first on the path does not satisfy it and the command asks with the new reason; a rule made before this change keeps working through a recorded one-time resolution or asks once, as the record states; a missing program fails closed.",
+   "failure_proof": "A match on name alone, a rule that records no path, a silent allow after a path change, or a regression for the system program fails the suite; a mutation that compares only argv[0] fails the shadowing case.",
+   "evidence_class": "real-system or production-equivalent",
+   "source": "docs/62_PRODUCT_EXTENSION_REQUIREMENTS_TASKS_AND_QUALIFICATIONS.md"
+  },
+  {
+   "id": "QUAL-PX-150",
+   "type": "qual_test",
+   "requirement": "REQ-PX-150",
+   "owner_label": "terminal",
+   "title": "A real confined process on macOS (and Linux where supported): it cannot read a planted file under `~/.ssh` or `~/.aws`, cannot write `.git` or `.modbit` inside the writable root, a working directory containing a backslash, a quote and a newline does not change the profile text, a real build and test run in the worktree still passes, and the sandbox conformance suite gains these cases.",
+   "failure_proof": "A profile built by concatenation, a readable credential file, a writable `.git`, or a build that now fails because the profile is too tight fails the suite; a missing sandbox still refuses the review process (`SANDBOX_UNAVAILABLE`).",
+   "evidence_class": "real-system or production-equivalent",
+   "source": "docs/62_PRODUCT_EXTENSION_REQUIREMENTS_TASKS_AND_QUALIFICATIONS.md"
+  },
+  {
+   "id": "QUAL-PX-151",
+   "type": "qual_test",
+   "requirement": "REQ-PX-151",
+   "owner_label": "terminal",
+   "title": "Deferred proof, entry condition and not a current proof: a real confined process on a supported Linux kernel cannot write outside the lease and cannot read the credential stores of the H04 row; a kernel without the mechanism refuses the review process or degrades exactly as the activating record states; the existing seccomp filter keeps working.",
+   "failure_proof": "A write outside the lease that succeeds, a ruleset that fails open, or a degrade that is not logged fails the suite.",
+   "evidence_class": "real-system or production-equivalent",
+   "source": "docs/62_PRODUCT_EXTENSION_REQUIREMENTS_TASKS_AND_QUALIFICATIONS.md"
+  },
+  {
+   "id": "QUAL-PX-152",
+   "type": "qual_test",
+   "requirement": "REQ-PX-152",
+   "owner_label": "terminal",
+   "title": "The real broker with a real confined command: a denied write and a denied read return the typed code, exit code and excerpt; an ordinary non-zero exit of a failing test returns no denial; the result reaches the model through the real tool path and the event log carries it once.",
+   "failure_proof": "A denial reported as an ordinary failure, an ordinary failure reported as a denial, an unbounded excerpt, or a secret value in the excerpt fails the suite.",
+   "evidence_class": "real-system or production-equivalent",
+   "source": "docs/62_PRODUCT_EXTENSION_REQUIREMENTS_TASKS_AND_QUALIFICATIONS.md"
+  },
+  {
+   "id": "QUAL-PX-153",
+   "type": "qual_test",
+   "requirement": "REQ-PX-153",
+   "owner_label": "core-runtime",
+   "title": "The real Core and a scripted model that is denied three times in a row: the task is parked with the typed reason after the third, the notice is on the log once and replays after a restart, the counter resets on an allowed effect, the guidance text is in each denial result, and a model that changes approach after the first denial is never parked.",
+   "failure_proof": "A park that needs a client, a counter that is lost on restart, a second notice for one park, guidance that is missing for one of the four denial kinds, or a parked task that cannot be resumed fails the suite.",
+   "evidence_class": "real-system or production-equivalent",
+   "source": "docs/62_PRODUCT_EXTENSION_REQUIREMENTS_TASKS_AND_QUALIFICATIONS.md"
+  },
+  {
+   "id": "QUAL-PX-154",
+   "type": "qual_test",
+   "requirement": "REQ-PX-154",
+   "owner_label": "terminal",
+   "title": "Deferred proof, entry condition and not a current proof: a real autonomous run cannot write outside its worktree or reach a host the policy does not allow; an approved host persists as a rule; a missing sandbox refuses the run; the egress broker and `NetworkPolicy` are reused with no second policy engine.",
+   "failure_proof": "A write outside the worktree, a reachable non-allowed host, a second network policy, or an unconfined fallback when the sandbox is missing fails the suite.",
+   "evidence_class": "real-system or production-equivalent",
+   "source": "docs/62_PRODUCT_EXTENSION_REQUIREMENTS_TASKS_AND_QUALIFICATIONS.md"
+  },
+  {
+   "id": "QUAL-PX-155",
+   "type": "qual_test",
+   "requirement": "REQ-PX-155",
+   "owner_label": "durability",
+   "title": "The real Core against a real provider transport (the recorded-transport server of the provider suites) that returns the overflow response for an oversized request: the Core compacts, retries once and completes the turn; a transport that overflows again ends with the typed failure; the compaction request and its commit are on the log; the transcript is intact and readable by range afterwards.",
+   "failure_proof": "A retry loop, an untyped failure, a compaction that drops the user's messages, or a retry that bypasses the existing validation of the summary fails the suite.",
+   "evidence_class": "real-system or production-equivalent",
+   "source": "docs/62_PRODUCT_EXTENSION_REQUIREMENTS_TASKS_AND_QUALIFICATIONS.md"
+  },
+  {
+   "id": "QUAL-PX-156",
+   "type": "qual_test",
+   "requirement": "REQ-PX-156",
+   "owner_label": "core-runtime",
+   "title": "The real Core and a scripted model with a call whose timeout is shorter than the time the approval is left waiting: the call completes after the approval with no timeout, the wall-clock budget is not charged for the wait, and the accounting names the parked time; a call that is not parked still times out on schedule.",
+   "failure_proof": "A timeout that fires while parked, a wall-clock budget that ends a task that was only waiting for a person, or an unbounded wait with no existing expiry fails the suite.",
+   "evidence_class": "real-system or production-equivalent",
+   "source": "docs/62_PRODUCT_EXTENSION_REQUIREMENTS_TASKS_AND_QUALIFICATIONS.md"
+  },
+  {
+   "id": "QUAL-PX-157",
+   "type": "qual_test",
+   "requirement": "REQ-PX-157",
+   "owner_label": "memory",
+   "title": "The real Core and memory store: a proposal containing a real-format API key and a private-key block is stored redacted or refused, a normal proposal is stored byte-for-byte, a prompt that injects an item increments its count and last-use once, and a restart rebuilds the same counts from the log.",
+   "failure_proof": "A secret that reaches the store or the prompt, a count that double-counts a replay, or a redaction that alters ordinary text fails the suite.",
+   "evidence_class": "real-system or production-equivalent",
+   "source": "docs/62_PRODUCT_EXTENSION_REQUIREMENTS_TASKS_AND_QUALIFICATIONS.md"
+  },
+  {
+   "id": "QUAL-PX-158",
+   "type": "qual_test",
+   "requirement": "REQ-PX-158",
+   "owner_label": "durability",
+   "title": "The real Core with a real provider transport that reports usage: a transcript of many frames reaches the compaction threshold at the point the provider-reported usage does, within the calibrated margin; a text-only transcript is estimated as before; a shortened transcript never holds an image without its caption.",
+   "failure_proof": "A frame counted as a label, an estimate that diverges from reported usage by more than the margin, or an orphaned image fails the suite.",
+   "evidence_class": "real-system or production-equivalent",
+   "source": "docs/62_PRODUCT_EXTENSION_REQUIREMENTS_TASKS_AND_QUALIFICATIONS.md"
+  },
+  {
+   "id": "QUAL-PX-159",
+   "type": "qual_test",
+   "requirement": "REQ-PX-159",
+   "owner_label": "observability",
+   "title": "The real Core exporting to a real OTLP collector: a committed, a rejected (stale) and an extractive-fallback compaction each export the attributes; the exporter stays off by default and never blocks the run when the collector is down.",
+   "failure_proof": "A missing attribute, an unredacted summary text in an attribute, or a run that waits on the exporter fails the suite.",
+   "evidence_class": "real-system or production-equivalent",
+   "source": "docs/62_PRODUCT_EXTENSION_REQUIREMENTS_TASKS_AND_QUALIFICATIONS.md"
+  },
+  {
+   "id": "QUAL-PX-160",
+   "type": "qual_test",
+   "requirement": "REQ-PX-160",
+   "owner_label": "effects-security",
+   "title": "Deferred proof, entry condition and not a current proof: a Forbid rule from an administrator layer refuses a command that a project or user layer cannot lift; of several matching rules the strictest wins; a rule carries a justification shown on the card; a rule that cannot match its own declared examples is rejected at registration.",
+   "failure_proof": "A project rule that lifts an administrator Forbid, a rule that loosens when merged, or a rule that is accepted with failing examples fails the suite.",
+   "evidence_class": "real-system or production-equivalent",
+   "source": "docs/62_PRODUCT_EXTENSION_REQUIREMENTS_TASKS_AND_QUALIFICATIONS.md"
+  },
+  {
+   "id": "QUAL-PX-161",
+   "type": "qual_test",
+   "requirement": "REQ-PX-161",
+   "owner_label": "core-runtime",
+   "title": "The real Core and a scripted model issuing N reads and a write in one turn: the reads finish in less than the serial time, the write waits for them and runs alone, the log order equals the call order, a failing read reports its error and the other results are present, and a SIGKILL during the batch recovers with no result recorded twice.",
+   "failure_proof": "A write that overlaps a read, a log order that follows completion, a lost result, an unbounded fan-out, or a duplicate after recovery fails the suite.",
+   "evidence_class": "real-system or production-equivalent",
+   "source": "docs/62_PRODUCT_EXTENSION_REQUIREMENTS_TASKS_AND_QUALIFICATIONS.md"
+  },
+  {
+   "id": "QUAL-PX-162",
+   "type": "qual_test",
+   "requirement": "REQ-PX-162",
+   "owner_label": "context-engine",
+   "title": "The real Core with a real compiler and a provider transport that records requests: after an instruction file and a memory item change mid-task, the prefix bytes of the next request equal the previous request's, the appended note names both changes and what they replace, the model-visible instructions equal those of a freshly compiled task, and a resume rebuilds the same notes from the log.",
+   "failure_proof": "A changed prefix, a note without provenance, a delta that is lost on resume, or a note that carries content from an untrusted instruction file fails the suite.",
+   "evidence_class": "real-system or production-equivalent",
+   "source": "docs/62_PRODUCT_EXTENSION_REQUIREMENTS_TASKS_AND_QUALIFICATIONS.md"
+  },
+  {
+   "id": "QUAL-PX-163",
+   "type": "qual_test",
+   "requirement": "REQ-PX-163",
+   "owner_label": "tool-runtime",
+   "title": "Deferred proof, entry condition and not a current proof: a real patch with add, update, delete and move applies atomically through `apply_transaction`; a failure rolls back every file; a stale revision is refused; a preview of the arguments while the model is still writing changes no file and is marked non-authoritative.",
+   "failure_proof": "A partial application, a preview that writes, a stale revision that applies, or a grammar escape that touches a path outside the workspace fails the suite.",
+   "evidence_class": "real-system or production-equivalent",
+   "source": "docs/62_PRODUCT_EXTENSION_REQUIREMENTS_TASKS_AND_QUALIFICATIONS.md"
+  },
+  {
+   "id": "QUAL-PX-164",
+   "type": "qual_test",
+   "requirement": "REQ-PX-164",
+   "owner_label": "model-gateway",
+   "title": "Deferred proof, entry condition and not a current proof: a tool turn through a real Responses transport completes with reasoning items carried and `previous_response_id` used; a stream cut before the first token retries and after it does not; the fault-injecting server row covers the failures.",
+   "failure_proof": "A retry after the first token, a lost reasoning item, or a duplicate tool call after a cut fails the suite.",
+   "evidence_class": "real-system or production-equivalent",
+   "source": "docs/62_PRODUCT_EXTENSION_REQUIREMENTS_TASKS_AND_QUALIFICATIONS.md"
+  },
+  {
+   "id": "QUAL-PX-165",
+   "type": "qual_test",
+   "requirement": "REQ-PX-165",
+   "owner_label": "core-runtime",
+   "title": "Deferred proof, entry condition and not a current proof: a goal spanning several user turns continues on idle through the existing input queue and harness, stops at its budget with a wrap-up report and not in needs-attention, and records its state on the log so a restart resumes it.",
+   "failure_proof": "A second scheduler, a continuation that ignores the budget, or a lost goal after a restart fails the suite.",
+   "evidence_class": "real-system or production-equivalent",
+   "source": "docs/62_PRODUCT_EXTENSION_REQUIREMENTS_TASKS_AND_QUALIFICATIONS.md"
+  },
+  {
+   "id": "QUAL-PX-166",
+   "type": "qual_test",
+   "requirement": "REQ-PX-166",
+   "owner_label": "model-gateway",
+   "title": "Deferred proof, entry condition and not a current proof: a real local server is detected, its models are listed, a model is pulled with progress and a tool turn runs through the existing OpenAI-compatible path; an absent server is reported plainly and nothing is downloaded without the person's confirmation.",
+   "failure_proof": "A download without confirmation, a preset that sends data to a non-local host, or a silent fallback to a cloud provider fails the suite.",
+   "evidence_class": "real-system or production-equivalent",
+   "source": "docs/62_PRODUCT_EXTENSION_REQUIREMENTS_TASKS_AND_QUALIFICATIONS.md"
+  },
+  {
+   "id": "QUAL-PX-167",
+   "type": "qual_test",
+   "requirement": "REQ-PX-167",
+   "owner_label": "governance",
+   "title": "The real CI configuration run on the repository: a planted crate with a denied license and a planted known-vulnerable version each fail the job; the unmodified tree passes; the job names the ignore list and each ignore's reason.",
+   "failure_proof": "A job that cannot fail, an ignore without a reason, or a gate that is skipped when the tool is missing fails the suite.",
+   "evidence_class": "real-system or production-equivalent",
+   "source": "docs/62_PRODUCT_EXTENSION_REQUIREMENTS_TASKS_AND_QUALIFICATIONS.md"
+  },
+  {
+   "id": "QUAL-PX-168",
+   "type": "qual_test",
+   "requirement": "REQ-PX-168",
+   "owner_label": "governance",
+   "title": "The real build with the policy on: a planted `unwrap` in product code, a planted lock held across an await and a planted spawn in a non-owner crate each fail; the tree passes with the policy on; test code is exempt through configuration only.",
+   "failure_proof": "A planted violation that passes, a blanket allow added to make the tree pass, or a test exemption that leaks into product code fails the suite.",
+   "evidence_class": "real-system or production-equivalent",
+   "source": "docs/62_PRODUCT_EXTENSION_REQUIREMENTS_TASKS_AND_QUALIFICATIONS.md"
+  },
+  {
+   "id": "QUAL-PX-169",
+   "type": "qual_test",
+   "requirement": "REQ-PX-169",
+   "owner_label": "effects-security",
+   "title": "Deferred proof, entry condition and not a current proof: an unknown key fails with its file and path; an administrator can pin a flag off and cannot pin it on; the schema validates the shipped defaults; `config show --origins` prints the layer of each key; a flag moves through its stages with a recorded date.",
+   "failure_proof": "A flag that an administrator can force on, an unknown key that is accepted, or a schema that disagrees with the code fails the suite.",
+   "evidence_class": "real-system or production-equivalent",
+   "source": "docs/62_PRODUCT_EXTENSION_REQUIREMENTS_TASKS_AND_QUALIFICATIONS.md"
+  },
+  {
+   "id": "QUAL-PX-170",
+   "type": "qual_test",
+   "requirement": "REQ-PX-170",
+   "owner_label": "desktop",
+   "title": "Deferred proof, entry condition and not a current proof: a real one-shot run emits the documented event vocabulary, honours an output schema for the final message and exits with the documented code; the CLI opens no repository, provider or policy store itself (REQ-PX-000); the SDK passes the adapter conformance suite.",
+   "failure_proof": "A CLI that decides policy, an event vocabulary that drifts from the protocol, or an exit code outside the documented set fails the suite.",
+   "evidence_class": "real-system or production-equivalent",
+   "source": "docs/62_PRODUCT_EXTENSION_REQUIREMENTS_TASKS_AND_QUALIFICATIONS.md"
+  },
+  {
+   "id": "QUAL-PX-171",
+   "type": "qual_test",
+   "requirement": "REQ-PX-171",
+   "owner_label": "eval-bench",
+   "title": "The real gateway and Core against the server: a 429 with each retry header waits and retries only before the first token; a stream cut mid-event ends with a typed failure and no duplicate tool call; an idle stall times out on schedule; a malformed event is refused; each case runs for both wire formats and asserts the log.",
+   "failure_proof": "A fault that is injected but never asserted, a retry after the first token, a duplicate tool call after a cut, or a server that can only succeed fails the suite.",
+   "evidence_class": "real-system or production-equivalent",
+   "source": "docs/62_PRODUCT_EXTENSION_REQUIREMENTS_TASKS_AND_QUALIFICATIONS.md"
+  },
+  {
+   "id": "QUAL-PX-172",
+   "type": "qual_test",
+   "requirement": "REQ-PX-172",
+   "owner_label": "model-gateway",
+   "title": "Deferred proof, entry condition and not a current proof: a real grounding endpoint returns a coordinate that drives `computer.click` through the existing exact-intent approval, and the approval card shows the intended target; an out-of-frame, stale-token or malformed answer is refused; with no grounding configured the behaviour is today's; the model is reached only through a provider endpoint.",
+   "failure_proof": "A coordinate used without a bound frame token, an approval that shows only pixels, a grounding answer that skips the approval, or a model that is bundled or downloaded by the product fails the suite.",
+   "evidence_class": "real-system or production-equivalent",
+   "source": "docs/62_PRODUCT_EXTENSION_REQUIREMENTS_TASKS_AND_QUALIFICATIONS.md"
+  },
+  {
+   "id": "QUAL-PX-173",
+   "type": "qual_test",
+   "requirement": "REQ-PX-173",
+   "owner_label": "eval-bench",
+   "title": "Deferred proof, entry condition and not a current proof: a retained result bundle compares the planning model's own grounding, a frontier vision model and MAI-UI-2B or 8B on the same Modbit frames; a threshold is written before the run; the bundle names model, endpoint, frames and cost.",
+   "failure_proof": "A threshold written after the run, a comparison on different frames, or a dataset used against its license fails the suite.",
+   "evidence_class": "real-system or production-equivalent",
+   "source": "docs/62_PRODUCT_EXTENSION_REQUIREMENTS_TASKS_AND_QUALIFICATIONS.md"
+  },
+  {
+   "id": "QUAL-PX-174",
+   "type": "qual_test",
+   "requirement": "REQ-PX-174",
+   "owner_label": "browser",
+   "title": "The real Core with the fixture actuator and a scripted model over a run of more than forty steps: the request carries at most N images, the token total stays under a stated ceiling, the model's later steps still name earlier steps correctly from the text, the full transcript and every frame remain readable afterwards, and N=1 and the ceiling clamp behave as stated.",
+   "failure_proof": "A request that carries more than N images, an older step that loses its text record, a dropped frame that cannot be read back, or a ceiling that is exceeded fails the suite.",
+   "evidence_class": "real-system or production-equivalent",
+   "source": "docs/62_PRODUCT_EXTENSION_REQUIREMENTS_TASKS_AND_QUALIFICATIONS.md"
+  },
+  {
+   "id": "QUAL-PX-175",
+   "type": "qual_test",
+   "requirement": "REQ-PX-175",
+   "owner_label": "browser",
+   "title": "Deferred proof, entry condition and not a current proof: a real batch of four actions runs in order; a failed second action skips the rest and reports which ran; an unknown outcome latches input; each action carries its own exact-intent approval bound to its own frame; one observation follows the batch.",
+   "failure_proof": "A parallel execution, an approval that covers a batch as a whole, a continuation after a failure, or a missed latch fails the suite.",
+   "evidence_class": "real-system or production-equivalent",
+   "source": "docs/62_PRODUCT_EXTENSION_REQUIREMENTS_TASKS_AND_QUALIFICATIONS.md"
+  },
+  {
+   "id": "QUAL-PX-176",
+   "type": "qual_test",
+   "requirement": "REQ-PX-176",
+   "owner_label": "browser",
+   "title": "The real Core with the fixture actuator and a scripted model that alternates a command and a click: each step's observation holds the stated fields, a command that times out returns as an error observation and the run continues to completion, output beyond the bound is truncated with the marker, and the same observation shape is replayed after a restart.",
+   "failure_proof": "An observation split across calls, a timeout that ends the run, an unbounded output, or a secret field that reaches the observation fails the suite.",
+   "evidence_class": "real-system or production-equivalent",
+   "source": "docs/62_PRODUCT_EXTENSION_REQUIREMENTS_TASKS_AND_QUALIFICATIONS.md"
+  },
+  {
+   "id": "QUAL-PX-177",
+   "type": "qual_test",
+   "requirement": "REQ-PX-177",
+   "owner_label": "core-runtime",
+   "title": "The real Core with the fixture actuator and the browser stack against a fixture page that shows a CAPTCHA-like challenge and a payment confirmation: the run parks with the typed reason, nothing is typed or clicked by the agent while parked, the person completes the step in the live view and resumes, the run continues from a new frame token, an unanswered handover expires without acting, and a restart while parked resumes the park.",
+   "failure_proof": "An agent action while parked, a resume from a stale frame token, a handover that needs a client to be alive, or an expiry that acts fails the suite.",
+   "evidence_class": "real-system or production-equivalent",
+   "source": "docs/62_PRODUCT_EXTENSION_REQUIREMENTS_TASKS_AND_QUALIFICATIONS.md"
+  },
+  {
+   "id": "QUAL-PX-178",
+   "type": "qual_test",
+   "requirement": "REQ-PX-178",
+   "owner_label": "verification",
+   "title": "The real Core and the fixture actuator: a completed fixture task passes its predicate, an unfinished one fails it, a run whose actuator is killed mid-run is classified as environment failure, a run stopped by an approval denial as policy stop, a run that clicks the wrong element as model failure; the classification is on the log with its basis.",
+   "failure_proof": "A verifier that passes on a model's claim, an environment failure classified as model failure, a predicate that reads outside the declared evidence, or a verifier result that can approve an effect fails the suite.",
+   "evidence_class": "real-system or production-equivalent",
+   "source": "docs/62_PRODUCT_EXTENSION_REQUIREMENTS_TASKS_AND_QUALIFICATIONS.md"
+  },
+  {
+   "id": "QUAL-PX-179",
+   "type": "qual_test",
+   "requirement": "REQ-PX-179",
+   "owner_label": "eval-bench",
+   "title": "The real Core and fixture actuator over at least twenty tasks with a scripted model and, where the owner supplies a prepared machine, the real actuator with a live model: a baseline is retained, a re-run produces the diff, a deliberately regressed model or actuator fails the gate, and results carry the model, build and cost.",
+   "failure_proof": "A suite that cannot fail, a baseline that is not retained, a task whose verifier passes without the effect, or a result with no build and model identity fails the suite.",
+   "evidence_class": "real-system or production-equivalent",
+   "source": "docs/62_PRODUCT_EXTENSION_REQUIREMENTS_TASKS_AND_QUALIFICATIONS.md"
+  },
+  {
+   "id": "QUAL-PX-180",
+   "type": "qual_test",
+   "requirement": "REQ-PX-180",
+   "owner_label": "model-gateway",
+   "title": "Deferred proof, entry condition and not a current proof: a real run in a window the policy marks sensitive refuses cloud routing, uses the permitted endpoint and records the routing decision; with no permitted endpoint the step stops with a typed reason.",
+   "failure_proof": "A sensitive frame sent to a non-permitted provider, a routing decision that is not recorded, or a silent fallback to cloud fails the suite.",
+   "evidence_class": "real-system or production-equivalent",
+   "source": "docs/62_PRODUCT_EXTENSION_REQUIREMENTS_TASKS_AND_QUALIFICATIONS.md"
+  },
+  {
+   "id": "QUAL-PX-181",
+   "type": "qual_test",
+   "requirement": "REQ-PX-181",
+   "owner_label": "browser",
+   "title": "Deferred proof, entry condition and not a current proof: a real device or emulator completes a task through an actuator that implements the same contract, per-call approvals and Stop as the macOS actuator; two sessions on separate virtual displays do not cross; a lost device is an environment failure.",
+   "failure_proof": "An action without approval, a session crossing displays, or an actuator that lacks the kill path fails the suite.",
+   "evidence_class": "real-system or production-equivalent",
+   "source": "docs/62_PRODUCT_EXTENSION_REQUIREMENTS_TASKS_AND_QUALIFICATIONS.md"
+  },
+  {
+   "id": "QUAL-PX-182",
+   "type": "qual_test",
+   "requirement": "REQ-PX-182",
+   "owner_label": "skills",
+   "title": "The real Core with real skill files: a task with a restricted tool set gets only the matching guidance blocks, a task with the full set gets all, the compiled configuration id appears in the run record and the context inspector, two compilations of the same inputs are byte-identical, and an untrusted skill's guidance is never included.",
+   "failure_proof": "Guidance for an unavailable tool, a configuration that is not reproducible, a missing configuration id in the record, or an untrusted skill that compiles fails the suite.",
+   "evidence_class": "real-system or production-equivalent",
+   "source": "docs/62_PRODUCT_EXTENSION_REQUIREMENTS_TASKS_AND_QUALIFICATIONS.md"
+  },
+  {
+   "id": "QUAL-PX-183",
+   "type": "qual_test",
+   "requirement": "REQ-PX-183",
+   "owner_label": "skills",
+   "title": "The real Core with real skills: a goal that does not contain a trigger phrase is offered the right skill, an explicit name wins over a ranked one, an untrusted skill that matches best is not offered, two runs give the same ranking, and the index stays within the budget.",
+   "failure_proof": "A skill offered while untrusted or disabled, a nondeterministic ranking, an index over budget, or an explicit name that is overridden fails the suite.",
+   "evidence_class": "real-system or production-equivalent",
+   "source": "docs/62_PRODUCT_EXTENSION_REQUIREMENTS_TASKS_AND_QUALIFICATIONS.md"
+  },
+  {
+   "id": "QUAL-PX-184",
+   "type": "qual_test",
+   "requirement": "REQ-PX-184",
+   "owner_label": "eval-bench",
+   "title": "The real Core, real fixtures and a scripted or live model: forty or more tasks run, each axis has a score, the cost per thousand is computed from recorded usage, a baseline bundle is retained, a re-run reports the difference, and an injected regression on one axis fails the gate for that axis only.",
+   "failure_proof": "A task without its own verifier, an axis with fewer than ten tasks, a cost figure not derived from recorded usage, or a gate that cannot fail fails the suite.",
+   "evidence_class": "real-system or production-equivalent",
+   "source": "docs/62_PRODUCT_EXTENSION_REQUIREMENTS_TASKS_AND_QUALIFICATIONS.md"
+  },
+  {
+   "id": "QUAL-PX-185",
+   "type": "qual_test",
+   "requirement": "REQ-PX-185",
+   "owner_label": "memory",
+   "title": "Deferred proof, entry condition and not a current proof: a prospective item fires only under its activation condition, expires and is marked complete; an episodic item opens its source span; the new kinds pass the existing promotion, scope, sensitivity and supersession rules.",
+   "failure_proof": "A prospective item that fires without its condition, an item without a source span, or a kind that bypasses the promotion gate fails the suite.",
+   "evidence_class": "real-system or production-equivalent",
+   "source": "docs/62_PRODUCT_EXTENSION_REQUIREMENTS_TASKS_AND_QUALIFICATIONS.md"
+  },
+  {
+   "id": "QUAL-PX-186",
+   "type": "qual_test",
+   "requirement": "REQ-PX-186",
+   "owner_label": "memory",
+   "title": "The real Core and memory store over the memory-axis tasks: the new ranking and the current ranking run on the same tasks at the same token budget; the retained comparison shows recall and tokens; selection stays deterministic and revision-bound; sensitive items are never offered; the decision to keep or revert is recorded with the comparison.",
+   "failure_proof": "A ranking that is nondeterministic, a sensitive item offered, a change kept without the comparison, or a comparison at unequal tokens fails the suite.",
+   "evidence_class": "real-system or production-equivalent",
+   "source": "docs/62_PRODUCT_EXTENSION_REQUIREMENTS_TASKS_AND_QUALIFICATIONS.md"
+  },
+  {
+   "id": "QUAL-PX-187",
+   "type": "qual_test",
+   "requirement": "REQ-PX-187",
+   "owner_label": "memory",
+   "title": "Deferred proof, entry condition and not a current proof: a real run over a log projection yields proposals only; nothing is promoted without the existing gate; a contradiction is flagged and a supersession is proposed with its evidence.",
+   "failure_proof": "A promotion without the gate, a proposal without evidence, or a job that blocks a run fails the suite.",
+   "evidence_class": "real-system or production-equivalent",
+   "source": "docs/62_PRODUCT_EXTENSION_REQUIREMENTS_TASKS_AND_QUALIFICATIONS.md"
+  },
+  {
+   "id": "QUAL-PX-188",
+   "type": "qual_test",
+   "requirement": "REQ-PX-188",
+   "owner_label": "memory",
+   "title": "The real Core and desktop: a deleted memory is gone from the store, the projection, the selection and the next real prompt; a shared-scope promotion of an item with a personal detail stores the redacted form; another user's private item is never selected; the inspect view lists source and scope; a restart keeps all of it.",
+   "failure_proof": "A deleted item that reappears in a prompt or cache, a shared item with personal detail, a private item selected for another principal, or an inspect view that shows an item the person cannot see fails the suite.",
+   "evidence_class": "real-system or production-equivalent",
+   "source": "docs/62_PRODUCT_EXTENSION_REQUIREMENTS_TASKS_AND_QUALIFICATIONS.md"
+  },
+  {
+   "id": "QUAL-PX-189",
+   "type": "qual_test",
+   "requirement": "REQ-PX-189",
+   "owner_label": "skills",
+   "title": "The real Core and a scripted model: a finished run yields a sealed trace that the real lab reads and turns into a proposal; a planted secret in a tool result is absent from the trace; the trace links the skill configuration id of the compiled-configuration row; a run with no lab leaves behaviour unchanged; the lab output changes no skill, memory or policy.",
+   "failure_proof": "A secret in a trace, an unsealed trace, a lab output that is applied to a run, or a producer that writes to the log it reads fails the suite.",
+   "evidence_class": "real-system or production-equivalent",
+   "source": "docs/62_PRODUCT_EXTENSION_REQUIREMENTS_TASKS_AND_QUALIFICATIONS.md"
+  },
+  {
+   "id": "QUAL-PX-190",
+   "type": "qual_test",
+   "requirement": "REQ-PX-190",
+   "owner_label": "model-gateway",
+   "title": "Deferred proof, entry condition and not a current proof: on the four-axis benchmark a configuration with a planner slot is compared with the single-model plan at equal cost; the bundle states the result; a later record adopts or rejects the role on that evidence.",
+   "failure_proof": "A role added without the comparison, a comparison at unequal cost, or an edit of a LOCKED row without a record fails the suite.",
+   "evidence_class": "real-system or production-equivalent",
+   "source": "docs/62_PRODUCT_EXTENSION_REQUIREMENTS_TASKS_AND_QUALIFICATIONS.md"
+  },
+  {
+   "id": "QUAL-PX-191",
+   "type": "qual_test",
+   "requirement": "REQ-PX-191",
+   "owner_label": "automation",
+   "title": "Deferred proof, entry condition and not a current proof: a real event produces a decision-ready card with options and executes nothing until confirmed; a rejected card is remembered; a flood of events produces a bounded number of cards; the first sources are forge events and signed webhooks.",
+   "failure_proof": "An action with external effect before confirmation, an unbounded card flood, or an operating-system notification source without its privacy record fails the suite.",
+   "evidence_class": "real-system or production-equivalent",
+   "source": "docs/62_PRODUCT_EXTENSION_REQUIREMENTS_TASKS_AND_QUALIFICATIONS.md"
+  },
+  {
    "id": "PX-E2E-000",
    "type": "scenario",
    "kind": "px-e2e",
@@ -40877,6 +42518,195 @@
    "type": "scenario",
    "kind": "px-e2e",
    "title": "Budget windows for turns and tool calls and crash resumption of Autonomous tasks",
+   "source": "docs/62_PRODUCT_EXTENSION_REQUIREMENTS_TASKS_AND_QUALIFICATIONS.md"
+  },
+  {
+   "id": "PX-E2E-147",
+   "type": "scenario",
+   "kind": "px-e2e",
+   "title": "SSRF guard in the sandbox egress broker: the resolved address is checked before connect",
+   "source": "docs/62_PRODUCT_EXTENSION_REQUIREMENTS_TASKS_AND_QUALIFICATIONS.md"
+  },
+  {
+   "id": "PX-E2E-148",
+   "type": "scenario",
+   "kind": "px-e2e",
+   "title": "Process hardening for the Core and the execution broker: no core dumps, not attachable, no injected libraries",
+   "source": "docs/62_PRODUCT_EXTENSION_REQUIREMENTS_TASKS_AND_QUALIFICATIONS.md"
+  },
+  {
+   "id": "PX-E2E-149",
+   "type": "scenario",
+   "kind": "px-e2e",
+   "title": "Allow rules pinned to the resolved program path",
+   "source": "docs/62_PRODUCT_EXTENSION_REQUIREMENTS_TASKS_AND_QUALIFICATIONS.md"
+  },
+  {
+   "id": "PX-E2E-150",
+   "type": "scenario",
+   "kind": "px-e2e",
+   "title": "Tighter review sandbox: parameterised macOS profile, credential read denials, protected metadata",
+   "source": "docs/62_PRODUCT_EXTENSION_REQUIREMENTS_TASKS_AND_QUALIFICATIONS.md"
+  },
+  {
+   "id": "PX-E2E-152",
+   "type": "scenario",
+   "kind": "px-e2e",
+   "title": "A typed sandbox-denied result so the agent stops retrying a confined command blindly",
+   "source": "docs/62_PRODUCT_EXTENSION_REQUIREMENTS_TASKS_AND_QUALIFICATIONS.md"
+  },
+  {
+   "id": "PX-E2E-153",
+   "type": "scenario",
+   "kind": "px-e2e",
+   "title": "Model-visible denial and timeout guidance and a denial circuit breaker that parks the run",
+   "source": "docs/62_PRODUCT_EXTENSION_REQUIREMENTS_TASKS_AND_QUALIFICATIONS.md"
+  },
+  {
+   "id": "PX-E2E-155",
+   "type": "scenario",
+   "kind": "px-e2e",
+   "title": "Context-overflow recovery: a typed provider error forces a synchronous compaction and one retry",
+   "source": "docs/62_PRODUCT_EXTENSION_REQUIREMENTS_TASKS_AND_QUALIFICATIONS.md"
+  },
+  {
+   "id": "PX-E2E-156",
+   "type": "scenario",
+   "kind": "px-e2e",
+   "title": "Time parked on an approval is excluded from tool timeouts and wall-clock accounting",
+   "source": "docs/62_PRODUCT_EXTENSION_REQUIREMENTS_TASKS_AND_QUALIFICATIONS.md"
+  },
+  {
+   "id": "PX-E2E-157",
+   "type": "scenario",
+   "kind": "px-e2e",
+   "title": "Secret redaction on memory proposals and use tracking from injected memory",
+   "source": "docs/62_PRODUCT_EXTENSION_REQUIREMENTS_TASKS_AND_QUALIFICATIONS.md"
+  },
+  {
+   "id": "PX-E2E-158",
+   "type": "scenario",
+   "kind": "px-e2e",
+   "title": "Image tokens are charged by size in compaction estimates",
+   "source": "docs/62_PRODUCT_EXTENSION_REQUIREMENTS_TASKS_AND_QUALIFICATIONS.md"
+  },
+  {
+   "id": "PX-E2E-159",
+   "type": "scenario",
+   "kind": "px-e2e",
+   "title": "Compaction telemetry promised by doc 34: tokens before and after, duration, mode, source, rejection and cost",
+   "source": "docs/62_PRODUCT_EXTENSION_REQUIREMENTS_TASKS_AND_QUALIFICATIONS.md"
+  },
+  {
+   "id": "PX-E2E-161",
+   "type": "scenario",
+   "kind": "px-e2e",
+   "title": "Read-only tool calls of one turn run concurrently and are journaled in call order",
+   "source": "docs/62_PRODUCT_EXTENSION_REQUIREMENTS_TASKS_AND_QUALIFICATIONS.md"
+  },
+  {
+   "id": "PX-E2E-162",
+   "type": "scenario",
+   "kind": "px-e2e",
+   "title": "Rule, skill and memory changes arrive as appended transcript notes, not as rewritten early prompt segments",
+   "source": "docs/62_PRODUCT_EXTENSION_REQUIREMENTS_TASKS_AND_QUALIFICATIONS.md"
+  },
+  {
+   "id": "PX-E2E-167",
+   "type": "scenario",
+   "kind": "px-e2e",
+   "title": "Dependency advisory, license and unused-crate gates in CI, and a SECURITY.md",
+   "source": "docs/62_PRODUCT_EXTENSION_REQUIREMENTS_TASKS_AND_QUALIFICATIONS.md"
+  },
+  {
+   "id": "PX-E2E-168",
+   "type": "scenario",
+   "kind": "px-e2e",
+   "title": "Lint policy: no unwrap or expect outside tests, no lock held across await, no raw process spawn outside the owners",
+   "source": "docs/62_PRODUCT_EXTENSION_REQUIREMENTS_TASKS_AND_QUALIFICATIONS.md"
+  },
+  {
+   "id": "PX-E2E-171",
+   "type": "scenario",
+   "kind": "px-e2e",
+   "title": "Fault-injecting scripted provider server for the provider and Core suites",
+   "source": "docs/62_PRODUCT_EXTENSION_REQUIREMENTS_TASKS_AND_QUALIFICATIONS.md"
+  },
+  {
+   "id": "PX-E2E-174",
+   "type": "scenario",
+   "kind": "px-e2e",
+   "title": "Screenshot window for computer-use runs: recent frames as images, older steps as text, the full record kept",
+   "source": "docs/62_PRODUCT_EXTENSION_REQUIREMENTS_TASKS_AND_QUALIFICATIONS.md"
+  },
+  {
+   "id": "PX-E2E-176",
+   "type": "scenario",
+   "kind": "px-e2e",
+   "title": "One structured observation after a GUI action or a command: frame, stdout, stderr, exit code and tool result together",
+   "source": "docs/62_PRODUCT_EXTENSION_REQUIREMENTS_TASKS_AND_QUALIFICATIONS.md"
+  },
+  {
+   "id": "PX-E2E-177",
+   "type": "scenario",
+   "kind": "px-e2e",
+   "title": "Human takeover for steps only the person can do: a typed handover that pauses, shows the live state and resumes from the new state",
+   "source": "docs/62_PRODUCT_EXTENSION_REQUIREMENTS_TASKS_AND_QUALIFICATIONS.md"
+  },
+  {
+   "id": "PX-E2E-178",
+   "type": "scenario",
+   "kind": "px-e2e",
+   "title": "GUI task verifier and a failure judge that separates model, environment and policy outcomes",
+   "source": "docs/62_PRODUCT_EXTENSION_REQUIREMENTS_TASKS_AND_QUALIFICATIONS.md"
+  },
+  {
+   "id": "PX-E2E-179",
+   "type": "scenario",
+   "kind": "px-e2e",
+   "title": "GUI regression suite: Modbit-owned tasks on the fixture desktop and a small real-app set, with a retained baseline",
+   "source": "docs/62_PRODUCT_EXTENSION_REQUIREMENTS_TASKS_AND_QUALIFICATIONS.md"
+  },
+  {
+   "id": "PX-E2E-182",
+   "type": "scenario",
+   "kind": "px-e2e",
+   "title": "Scenario adapter: per-tool skill guidance compiled for the tools actually exposed, as a versioned configuration",
+   "source": "docs/62_PRODUCT_EXTENSION_REQUIREMENTS_TASKS_AND_QUALIFICATIONS.md"
+  },
+  {
+   "id": "PX-E2E-183",
+   "type": "scenario",
+   "kind": "px-e2e",
+   "title": "Ranked skill selection beyond exact trigger phrases, inside the existing budget and trust rules",
+   "source": "docs/62_PRODUCT_EXTENSION_REQUIREMENTS_TASKS_AND_QUALIFICATIONS.md"
+  },
+  {
+   "id": "PX-E2E-184",
+   "type": "scenario",
+   "kind": "px-e2e",
+   "title": "Four-axis agent benchmark: tool use, memory, skills and sub-agent tasks with cost per thousand tasks",
+   "source": "docs/62_PRODUCT_EXTENSION_REQUIREMENTS_TASKS_AND_QUALIFICATIONS.md"
+  },
+  {
+   "id": "PX-E2E-186",
+   "type": "scenario",
+   "kind": "px-e2e",
+   "title": "Memory retrieval ranking with recency, importance and diversity, kept only if it beats the current ranking on the benchmark",
+   "source": "docs/62_PRODUCT_EXTENSION_REQUIREMENTS_TASKS_AND_QUALIFICATIONS.md"
+  },
+  {
+   "id": "PX-E2E-188",
+   "type": "scenario",
+   "kind": "px-e2e",
+   "title": "Memory privacy: private and shared scope, redaction before sharing, deletion that clears derived context, and a person-facing inspect and delete view",
+   "source": "docs/62_PRODUCT_EXTENSION_REQUIREMENTS_TASKS_AND_QUALIFICATIONS.md"
+  },
+  {
+   "id": "PX-E2E-189",
+   "type": "scenario",
+   "kind": "px-e2e",
+   "title": "A trace schema for execution evidence and a Core producer that feeds the Skill Evolution Lab",
    "source": "docs/62_PRODUCT_EXTENSION_REQUIREMENTS_TASKS_AND_QUALIFICATIONS.md"
   },
   {
@@ -42259,6 +44089,16 @@
     "commit:6e32d883"
    ],
    "status_changed_on": "2026-10-25T18:06:04Z"
+  },
+  {
+   "id": "DOC-PX-017",
+   "type": "dossier_task",
+   "title": "Product extension stage: Upgrade program from Codex, MAI-UI and Qwen-Planner-Agent, PX-147..191",
+   "subsystem": "governance",
+   "source": "docs/97_DOSSIER_MAINTENANCE_LOG.md",
+   "acceptance": "Decision Record, its rows, specification, supersession entries and change record added; implementation audit recorded; full integrity gate passes; the record is accepted by the owner and its status and approval are recorded; no product proof",
+   "status": "NOT_STARTED",
+   "evidence": []
   },
   {
    "id": "ALPHA",
@@ -57967,6 +59807,21 @@
    "type": "refines"
   },
   {
+   "from": "DR-PX-2026-10-26-018",
+   "to": "97_DOSSIER_MAINTENANCE_LOG.md",
+   "type": "specified_by"
+  },
+  {
+   "from": "DR-PX-2026-10-26-018",
+   "to": "62_PRODUCT_EXTENSION_REQUIREMENTS_TASKS_AND_QUALIFICATIONS.md",
+   "type": "specified_by"
+  },
+  {
+   "from": "DR-PX-2026-10-26-018",
+   "to": "DR-PX-2026-09-05",
+   "type": "refines"
+  },
+  {
    "from": "REQ-PX-000",
    "to": "desktop",
    "type": "owned_by_req"
@@ -62195,6 +64050,1266 @@
    "from": "REQ-PX-146",
    "to": "PX-146",
    "type": "implemented_by"
+  },
+  {
+   "from": "REQ-PX-147",
+   "to": "sandbox-cloud",
+   "type": "owned_by_req"
+  },
+  {
+   "from": "REQ-PX-147",
+   "to": "QUAL-PX-147",
+   "type": "qualified_by"
+  },
+  {
+   "from": "REQ-PX-147",
+   "to": "62_PRODUCT_EXTENSION_REQUIREMENTS_TASKS_AND_QUALIFICATIONS.md",
+   "type": "specified_by"
+  },
+  {
+   "from": "REQ-PX-147",
+   "to": "DR-PX-2026-09-05",
+   "type": "authorized_by"
+  },
+  {
+   "from": "REQ-PX-147",
+   "to": "DR-PX-2026-10-26-018",
+   "type": "authorized_by"
+  },
+  {
+   "from": "REQ-PX-147",
+   "to": "PX-147",
+   "type": "implemented_by"
+  },
+  {
+   "from": "REQ-PX-148",
+   "to": "terminal",
+   "type": "owned_by_req"
+  },
+  {
+   "from": "REQ-PX-148",
+   "to": "QUAL-PX-148",
+   "type": "qualified_by"
+  },
+  {
+   "from": "REQ-PX-148",
+   "to": "62_PRODUCT_EXTENSION_REQUIREMENTS_TASKS_AND_QUALIFICATIONS.md",
+   "type": "specified_by"
+  },
+  {
+   "from": "REQ-PX-148",
+   "to": "DR-PX-2026-09-05",
+   "type": "authorized_by"
+  },
+  {
+   "from": "REQ-PX-148",
+   "to": "DR-PX-2026-10-26-018",
+   "type": "authorized_by"
+  },
+  {
+   "from": "REQ-PX-148",
+   "to": "PX-148",
+   "type": "implemented_by"
+  },
+  {
+   "from": "REQ-PX-149",
+   "to": "effects-security",
+   "type": "owned_by_req"
+  },
+  {
+   "from": "REQ-PX-149",
+   "to": "QUAL-PX-149",
+   "type": "qualified_by"
+  },
+  {
+   "from": "REQ-PX-149",
+   "to": "62_PRODUCT_EXTENSION_REQUIREMENTS_TASKS_AND_QUALIFICATIONS.md",
+   "type": "specified_by"
+  },
+  {
+   "from": "REQ-PX-149",
+   "to": "DR-PX-2026-09-05",
+   "type": "authorized_by"
+  },
+  {
+   "from": "REQ-PX-149",
+   "to": "DR-PX-2026-10-26-018",
+   "type": "authorized_by"
+  },
+  {
+   "from": "REQ-PX-149",
+   "to": "PX-149",
+   "type": "implemented_by"
+  },
+  {
+   "from": "REQ-PX-150",
+   "to": "terminal",
+   "type": "owned_by_req"
+  },
+  {
+   "from": "REQ-PX-150",
+   "to": "QUAL-PX-150",
+   "type": "qualified_by"
+  },
+  {
+   "from": "REQ-PX-150",
+   "to": "62_PRODUCT_EXTENSION_REQUIREMENTS_TASKS_AND_QUALIFICATIONS.md",
+   "type": "specified_by"
+  },
+  {
+   "from": "REQ-PX-150",
+   "to": "DR-PX-2026-09-05",
+   "type": "authorized_by"
+  },
+  {
+   "from": "REQ-PX-150",
+   "to": "DR-PX-2026-10-26-018",
+   "type": "authorized_by"
+  },
+  {
+   "from": "REQ-PX-150",
+   "to": "PX-150",
+   "type": "implemented_by"
+  },
+  {
+   "from": "REQ-PX-151",
+   "to": "terminal",
+   "type": "owned_by_req"
+  },
+  {
+   "from": "REQ-PX-151",
+   "to": "QUAL-PX-151",
+   "type": "qualified_by"
+  },
+  {
+   "from": "REQ-PX-151",
+   "to": "62_PRODUCT_EXTENSION_REQUIREMENTS_TASKS_AND_QUALIFICATIONS.md",
+   "type": "specified_by"
+  },
+  {
+   "from": "REQ-PX-151",
+   "to": "DR-PX-2026-09-05",
+   "type": "authorized_by"
+  },
+  {
+   "from": "REQ-PX-151",
+   "to": "DR-PX-2026-10-26-018",
+   "type": "authorized_by"
+  },
+  {
+   "from": "REQ-PX-152",
+   "to": "terminal",
+   "type": "owned_by_req"
+  },
+  {
+   "from": "REQ-PX-152",
+   "to": "QUAL-PX-152",
+   "type": "qualified_by"
+  },
+  {
+   "from": "REQ-PX-152",
+   "to": "62_PRODUCT_EXTENSION_REQUIREMENTS_TASKS_AND_QUALIFICATIONS.md",
+   "type": "specified_by"
+  },
+  {
+   "from": "REQ-PX-152",
+   "to": "DR-PX-2026-09-05",
+   "type": "authorized_by"
+  },
+  {
+   "from": "REQ-PX-152",
+   "to": "DR-PX-2026-10-26-018",
+   "type": "authorized_by"
+  },
+  {
+   "from": "REQ-PX-152",
+   "to": "PX-152",
+   "type": "implemented_by"
+  },
+  {
+   "from": "REQ-PX-153",
+   "to": "core-runtime",
+   "type": "owned_by_req"
+  },
+  {
+   "from": "REQ-PX-153",
+   "to": "QUAL-PX-153",
+   "type": "qualified_by"
+  },
+  {
+   "from": "REQ-PX-153",
+   "to": "62_PRODUCT_EXTENSION_REQUIREMENTS_TASKS_AND_QUALIFICATIONS.md",
+   "type": "specified_by"
+  },
+  {
+   "from": "REQ-PX-153",
+   "to": "DR-PX-2026-09-05",
+   "type": "authorized_by"
+  },
+  {
+   "from": "REQ-PX-153",
+   "to": "DR-PX-2026-10-26-018",
+   "type": "authorized_by"
+  },
+  {
+   "from": "REQ-PX-153",
+   "to": "PX-153",
+   "type": "implemented_by"
+  },
+  {
+   "from": "REQ-PX-154",
+   "to": "terminal",
+   "type": "owned_by_req"
+  },
+  {
+   "from": "REQ-PX-154",
+   "to": "QUAL-PX-154",
+   "type": "qualified_by"
+  },
+  {
+   "from": "REQ-PX-154",
+   "to": "62_PRODUCT_EXTENSION_REQUIREMENTS_TASKS_AND_QUALIFICATIONS.md",
+   "type": "specified_by"
+  },
+  {
+   "from": "REQ-PX-154",
+   "to": "DR-PX-2026-09-05",
+   "type": "authorized_by"
+  },
+  {
+   "from": "REQ-PX-154",
+   "to": "DR-PX-2026-10-26-018",
+   "type": "authorized_by"
+  },
+  {
+   "from": "REQ-PX-155",
+   "to": "durability",
+   "type": "owned_by_req"
+  },
+  {
+   "from": "REQ-PX-155",
+   "to": "QUAL-PX-155",
+   "type": "qualified_by"
+  },
+  {
+   "from": "REQ-PX-155",
+   "to": "62_PRODUCT_EXTENSION_REQUIREMENTS_TASKS_AND_QUALIFICATIONS.md",
+   "type": "specified_by"
+  },
+  {
+   "from": "REQ-PX-155",
+   "to": "DR-PX-2026-09-05",
+   "type": "authorized_by"
+  },
+  {
+   "from": "REQ-PX-155",
+   "to": "DR-PX-2026-10-26-018",
+   "type": "authorized_by"
+  },
+  {
+   "from": "REQ-PX-155",
+   "to": "PX-155",
+   "type": "implemented_by"
+  },
+  {
+   "from": "REQ-PX-156",
+   "to": "core-runtime",
+   "type": "owned_by_req"
+  },
+  {
+   "from": "REQ-PX-156",
+   "to": "QUAL-PX-156",
+   "type": "qualified_by"
+  },
+  {
+   "from": "REQ-PX-156",
+   "to": "62_PRODUCT_EXTENSION_REQUIREMENTS_TASKS_AND_QUALIFICATIONS.md",
+   "type": "specified_by"
+  },
+  {
+   "from": "REQ-PX-156",
+   "to": "DR-PX-2026-09-05",
+   "type": "authorized_by"
+  },
+  {
+   "from": "REQ-PX-156",
+   "to": "DR-PX-2026-10-26-018",
+   "type": "authorized_by"
+  },
+  {
+   "from": "REQ-PX-156",
+   "to": "PX-156",
+   "type": "implemented_by"
+  },
+  {
+   "from": "REQ-PX-157",
+   "to": "memory",
+   "type": "owned_by_req"
+  },
+  {
+   "from": "REQ-PX-157",
+   "to": "QUAL-PX-157",
+   "type": "qualified_by"
+  },
+  {
+   "from": "REQ-PX-157",
+   "to": "62_PRODUCT_EXTENSION_REQUIREMENTS_TASKS_AND_QUALIFICATIONS.md",
+   "type": "specified_by"
+  },
+  {
+   "from": "REQ-PX-157",
+   "to": "DR-PX-2026-09-05",
+   "type": "authorized_by"
+  },
+  {
+   "from": "REQ-PX-157",
+   "to": "DR-PX-2026-10-26-018",
+   "type": "authorized_by"
+  },
+  {
+   "from": "REQ-PX-157",
+   "to": "PX-157",
+   "type": "implemented_by"
+  },
+  {
+   "from": "REQ-PX-158",
+   "to": "durability",
+   "type": "owned_by_req"
+  },
+  {
+   "from": "REQ-PX-158",
+   "to": "QUAL-PX-158",
+   "type": "qualified_by"
+  },
+  {
+   "from": "REQ-PX-158",
+   "to": "62_PRODUCT_EXTENSION_REQUIREMENTS_TASKS_AND_QUALIFICATIONS.md",
+   "type": "specified_by"
+  },
+  {
+   "from": "REQ-PX-158",
+   "to": "DR-PX-2026-09-05",
+   "type": "authorized_by"
+  },
+  {
+   "from": "REQ-PX-158",
+   "to": "DR-PX-2026-10-26-018",
+   "type": "authorized_by"
+  },
+  {
+   "from": "REQ-PX-158",
+   "to": "PX-158",
+   "type": "implemented_by"
+  },
+  {
+   "from": "REQ-PX-159",
+   "to": "observability",
+   "type": "owned_by_req"
+  },
+  {
+   "from": "REQ-PX-159",
+   "to": "QUAL-PX-159",
+   "type": "qualified_by"
+  },
+  {
+   "from": "REQ-PX-159",
+   "to": "62_PRODUCT_EXTENSION_REQUIREMENTS_TASKS_AND_QUALIFICATIONS.md",
+   "type": "specified_by"
+  },
+  {
+   "from": "REQ-PX-159",
+   "to": "DR-PX-2026-09-05",
+   "type": "authorized_by"
+  },
+  {
+   "from": "REQ-PX-159",
+   "to": "DR-PX-2026-10-26-018",
+   "type": "authorized_by"
+  },
+  {
+   "from": "REQ-PX-159",
+   "to": "PX-159",
+   "type": "implemented_by"
+  },
+  {
+   "from": "REQ-PX-160",
+   "to": "effects-security",
+   "type": "owned_by_req"
+  },
+  {
+   "from": "REQ-PX-160",
+   "to": "QUAL-PX-160",
+   "type": "qualified_by"
+  },
+  {
+   "from": "REQ-PX-160",
+   "to": "62_PRODUCT_EXTENSION_REQUIREMENTS_TASKS_AND_QUALIFICATIONS.md",
+   "type": "specified_by"
+  },
+  {
+   "from": "REQ-PX-160",
+   "to": "DR-PX-2026-09-05",
+   "type": "authorized_by"
+  },
+  {
+   "from": "REQ-PX-160",
+   "to": "DR-PX-2026-10-26-018",
+   "type": "authorized_by"
+  },
+  {
+   "from": "REQ-PX-161",
+   "to": "core-runtime",
+   "type": "owned_by_req"
+  },
+  {
+   "from": "REQ-PX-161",
+   "to": "QUAL-PX-161",
+   "type": "qualified_by"
+  },
+  {
+   "from": "REQ-PX-161",
+   "to": "62_PRODUCT_EXTENSION_REQUIREMENTS_TASKS_AND_QUALIFICATIONS.md",
+   "type": "specified_by"
+  },
+  {
+   "from": "REQ-PX-161",
+   "to": "DR-PX-2026-09-05",
+   "type": "authorized_by"
+  },
+  {
+   "from": "REQ-PX-161",
+   "to": "DR-PX-2026-10-26-018",
+   "type": "authorized_by"
+  },
+  {
+   "from": "REQ-PX-161",
+   "to": "PX-161",
+   "type": "implemented_by"
+  },
+  {
+   "from": "REQ-PX-162",
+   "to": "context-engine",
+   "type": "owned_by_req"
+  },
+  {
+   "from": "REQ-PX-162",
+   "to": "QUAL-PX-162",
+   "type": "qualified_by"
+  },
+  {
+   "from": "REQ-PX-162",
+   "to": "62_PRODUCT_EXTENSION_REQUIREMENTS_TASKS_AND_QUALIFICATIONS.md",
+   "type": "specified_by"
+  },
+  {
+   "from": "REQ-PX-162",
+   "to": "DR-PX-2026-09-05",
+   "type": "authorized_by"
+  },
+  {
+   "from": "REQ-PX-162",
+   "to": "DR-PX-2026-10-26-018",
+   "type": "authorized_by"
+  },
+  {
+   "from": "REQ-PX-162",
+   "to": "PX-162",
+   "type": "implemented_by"
+  },
+  {
+   "from": "REQ-PX-163",
+   "to": "tool-runtime",
+   "type": "owned_by_req"
+  },
+  {
+   "from": "REQ-PX-163",
+   "to": "QUAL-PX-163",
+   "type": "qualified_by"
+  },
+  {
+   "from": "REQ-PX-163",
+   "to": "62_PRODUCT_EXTENSION_REQUIREMENTS_TASKS_AND_QUALIFICATIONS.md",
+   "type": "specified_by"
+  },
+  {
+   "from": "REQ-PX-163",
+   "to": "DR-PX-2026-09-05",
+   "type": "authorized_by"
+  },
+  {
+   "from": "REQ-PX-163",
+   "to": "DR-PX-2026-10-26-018",
+   "type": "authorized_by"
+  },
+  {
+   "from": "REQ-PX-164",
+   "to": "model-gateway",
+   "type": "owned_by_req"
+  },
+  {
+   "from": "REQ-PX-164",
+   "to": "QUAL-PX-164",
+   "type": "qualified_by"
+  },
+  {
+   "from": "REQ-PX-164",
+   "to": "62_PRODUCT_EXTENSION_REQUIREMENTS_TASKS_AND_QUALIFICATIONS.md",
+   "type": "specified_by"
+  },
+  {
+   "from": "REQ-PX-164",
+   "to": "DR-PX-2026-09-05",
+   "type": "authorized_by"
+  },
+  {
+   "from": "REQ-PX-164",
+   "to": "DR-PX-2026-10-26-018",
+   "type": "authorized_by"
+  },
+  {
+   "from": "REQ-PX-165",
+   "to": "core-runtime",
+   "type": "owned_by_req"
+  },
+  {
+   "from": "REQ-PX-165",
+   "to": "QUAL-PX-165",
+   "type": "qualified_by"
+  },
+  {
+   "from": "REQ-PX-165",
+   "to": "62_PRODUCT_EXTENSION_REQUIREMENTS_TASKS_AND_QUALIFICATIONS.md",
+   "type": "specified_by"
+  },
+  {
+   "from": "REQ-PX-165",
+   "to": "DR-PX-2026-09-05",
+   "type": "authorized_by"
+  },
+  {
+   "from": "REQ-PX-165",
+   "to": "DR-PX-2026-10-26-018",
+   "type": "authorized_by"
+  },
+  {
+   "from": "REQ-PX-166",
+   "to": "model-gateway",
+   "type": "owned_by_req"
+  },
+  {
+   "from": "REQ-PX-166",
+   "to": "QUAL-PX-166",
+   "type": "qualified_by"
+  },
+  {
+   "from": "REQ-PX-166",
+   "to": "62_PRODUCT_EXTENSION_REQUIREMENTS_TASKS_AND_QUALIFICATIONS.md",
+   "type": "specified_by"
+  },
+  {
+   "from": "REQ-PX-166",
+   "to": "DR-PX-2026-09-05",
+   "type": "authorized_by"
+  },
+  {
+   "from": "REQ-PX-166",
+   "to": "DR-PX-2026-10-26-018",
+   "type": "authorized_by"
+  },
+  {
+   "from": "REQ-PX-167",
+   "to": "governance",
+   "type": "owned_by_req"
+  },
+  {
+   "from": "REQ-PX-167",
+   "to": "QUAL-PX-167",
+   "type": "qualified_by"
+  },
+  {
+   "from": "REQ-PX-167",
+   "to": "62_PRODUCT_EXTENSION_REQUIREMENTS_TASKS_AND_QUALIFICATIONS.md",
+   "type": "specified_by"
+  },
+  {
+   "from": "REQ-PX-167",
+   "to": "DR-PX-2026-09-05",
+   "type": "authorized_by"
+  },
+  {
+   "from": "REQ-PX-167",
+   "to": "DR-PX-2026-10-26-018",
+   "type": "authorized_by"
+  },
+  {
+   "from": "REQ-PX-167",
+   "to": "PX-167",
+   "type": "implemented_by"
+  },
+  {
+   "from": "REQ-PX-168",
+   "to": "governance",
+   "type": "owned_by_req"
+  },
+  {
+   "from": "REQ-PX-168",
+   "to": "QUAL-PX-168",
+   "type": "qualified_by"
+  },
+  {
+   "from": "REQ-PX-168",
+   "to": "62_PRODUCT_EXTENSION_REQUIREMENTS_TASKS_AND_QUALIFICATIONS.md",
+   "type": "specified_by"
+  },
+  {
+   "from": "REQ-PX-168",
+   "to": "DR-PX-2026-09-05",
+   "type": "authorized_by"
+  },
+  {
+   "from": "REQ-PX-168",
+   "to": "DR-PX-2026-10-26-018",
+   "type": "authorized_by"
+  },
+  {
+   "from": "REQ-PX-168",
+   "to": "PX-168",
+   "type": "implemented_by"
+  },
+  {
+   "from": "REQ-PX-169",
+   "to": "effects-security",
+   "type": "owned_by_req"
+  },
+  {
+   "from": "REQ-PX-169",
+   "to": "QUAL-PX-169",
+   "type": "qualified_by"
+  },
+  {
+   "from": "REQ-PX-169",
+   "to": "62_PRODUCT_EXTENSION_REQUIREMENTS_TASKS_AND_QUALIFICATIONS.md",
+   "type": "specified_by"
+  },
+  {
+   "from": "REQ-PX-169",
+   "to": "DR-PX-2026-09-05",
+   "type": "authorized_by"
+  },
+  {
+   "from": "REQ-PX-169",
+   "to": "DR-PX-2026-10-26-018",
+   "type": "authorized_by"
+  },
+  {
+   "from": "REQ-PX-170",
+   "to": "desktop",
+   "type": "owned_by_req"
+  },
+  {
+   "from": "REQ-PX-170",
+   "to": "QUAL-PX-170",
+   "type": "qualified_by"
+  },
+  {
+   "from": "REQ-PX-170",
+   "to": "62_PRODUCT_EXTENSION_REQUIREMENTS_TASKS_AND_QUALIFICATIONS.md",
+   "type": "specified_by"
+  },
+  {
+   "from": "REQ-PX-170",
+   "to": "DR-PX-2026-09-05",
+   "type": "authorized_by"
+  },
+  {
+   "from": "REQ-PX-170",
+   "to": "DR-PX-2026-10-26-018",
+   "type": "authorized_by"
+  },
+  {
+   "from": "REQ-PX-171",
+   "to": "eval-bench",
+   "type": "owned_by_req"
+  },
+  {
+   "from": "REQ-PX-171",
+   "to": "QUAL-PX-171",
+   "type": "qualified_by"
+  },
+  {
+   "from": "REQ-PX-171",
+   "to": "62_PRODUCT_EXTENSION_REQUIREMENTS_TASKS_AND_QUALIFICATIONS.md",
+   "type": "specified_by"
+  },
+  {
+   "from": "REQ-PX-171",
+   "to": "DR-PX-2026-09-05",
+   "type": "authorized_by"
+  },
+  {
+   "from": "REQ-PX-171",
+   "to": "DR-PX-2026-10-26-018",
+   "type": "authorized_by"
+  },
+  {
+   "from": "REQ-PX-171",
+   "to": "PX-171",
+   "type": "implemented_by"
+  },
+  {
+   "from": "REQ-PX-172",
+   "to": "model-gateway",
+   "type": "owned_by_req"
+  },
+  {
+   "from": "REQ-PX-172",
+   "to": "QUAL-PX-172",
+   "type": "qualified_by"
+  },
+  {
+   "from": "REQ-PX-172",
+   "to": "62_PRODUCT_EXTENSION_REQUIREMENTS_TASKS_AND_QUALIFICATIONS.md",
+   "type": "specified_by"
+  },
+  {
+   "from": "REQ-PX-172",
+   "to": "DR-PX-2026-09-05",
+   "type": "authorized_by"
+  },
+  {
+   "from": "REQ-PX-172",
+   "to": "DR-PX-2026-10-26-018",
+   "type": "authorized_by"
+  },
+  {
+   "from": "REQ-PX-173",
+   "to": "eval-bench",
+   "type": "owned_by_req"
+  },
+  {
+   "from": "REQ-PX-173",
+   "to": "QUAL-PX-173",
+   "type": "qualified_by"
+  },
+  {
+   "from": "REQ-PX-173",
+   "to": "62_PRODUCT_EXTENSION_REQUIREMENTS_TASKS_AND_QUALIFICATIONS.md",
+   "type": "specified_by"
+  },
+  {
+   "from": "REQ-PX-173",
+   "to": "DR-PX-2026-09-05",
+   "type": "authorized_by"
+  },
+  {
+   "from": "REQ-PX-173",
+   "to": "DR-PX-2026-10-26-018",
+   "type": "authorized_by"
+  },
+  {
+   "from": "REQ-PX-174",
+   "to": "browser",
+   "type": "owned_by_req"
+  },
+  {
+   "from": "REQ-PX-174",
+   "to": "QUAL-PX-174",
+   "type": "qualified_by"
+  },
+  {
+   "from": "REQ-PX-174",
+   "to": "62_PRODUCT_EXTENSION_REQUIREMENTS_TASKS_AND_QUALIFICATIONS.md",
+   "type": "specified_by"
+  },
+  {
+   "from": "REQ-PX-174",
+   "to": "DR-PX-2026-09-05",
+   "type": "authorized_by"
+  },
+  {
+   "from": "REQ-PX-174",
+   "to": "DR-PX-2026-10-26-018",
+   "type": "authorized_by"
+  },
+  {
+   "from": "REQ-PX-174",
+   "to": "PX-174",
+   "type": "implemented_by"
+  },
+  {
+   "from": "REQ-PX-175",
+   "to": "browser",
+   "type": "owned_by_req"
+  },
+  {
+   "from": "REQ-PX-175",
+   "to": "QUAL-PX-175",
+   "type": "qualified_by"
+  },
+  {
+   "from": "REQ-PX-175",
+   "to": "62_PRODUCT_EXTENSION_REQUIREMENTS_TASKS_AND_QUALIFICATIONS.md",
+   "type": "specified_by"
+  },
+  {
+   "from": "REQ-PX-175",
+   "to": "DR-PX-2026-09-05",
+   "type": "authorized_by"
+  },
+  {
+   "from": "REQ-PX-175",
+   "to": "DR-PX-2026-10-26-018",
+   "type": "authorized_by"
+  },
+  {
+   "from": "REQ-PX-176",
+   "to": "browser",
+   "type": "owned_by_req"
+  },
+  {
+   "from": "REQ-PX-176",
+   "to": "QUAL-PX-176",
+   "type": "qualified_by"
+  },
+  {
+   "from": "REQ-PX-176",
+   "to": "62_PRODUCT_EXTENSION_REQUIREMENTS_TASKS_AND_QUALIFICATIONS.md",
+   "type": "specified_by"
+  },
+  {
+   "from": "REQ-PX-176",
+   "to": "DR-PX-2026-09-05",
+   "type": "authorized_by"
+  },
+  {
+   "from": "REQ-PX-176",
+   "to": "DR-PX-2026-10-26-018",
+   "type": "authorized_by"
+  },
+  {
+   "from": "REQ-PX-176",
+   "to": "PX-176",
+   "type": "implemented_by"
+  },
+  {
+   "from": "REQ-PX-177",
+   "to": "core-runtime",
+   "type": "owned_by_req"
+  },
+  {
+   "from": "REQ-PX-177",
+   "to": "QUAL-PX-177",
+   "type": "qualified_by"
+  },
+  {
+   "from": "REQ-PX-177",
+   "to": "62_PRODUCT_EXTENSION_REQUIREMENTS_TASKS_AND_QUALIFICATIONS.md",
+   "type": "specified_by"
+  },
+  {
+   "from": "REQ-PX-177",
+   "to": "DR-PX-2026-09-05",
+   "type": "authorized_by"
+  },
+  {
+   "from": "REQ-PX-177",
+   "to": "DR-PX-2026-10-26-018",
+   "type": "authorized_by"
+  },
+  {
+   "from": "REQ-PX-177",
+   "to": "PX-177",
+   "type": "implemented_by"
+  },
+  {
+   "from": "REQ-PX-178",
+   "to": "verification",
+   "type": "owned_by_req"
+  },
+  {
+   "from": "REQ-PX-178",
+   "to": "QUAL-PX-178",
+   "type": "qualified_by"
+  },
+  {
+   "from": "REQ-PX-178",
+   "to": "62_PRODUCT_EXTENSION_REQUIREMENTS_TASKS_AND_QUALIFICATIONS.md",
+   "type": "specified_by"
+  },
+  {
+   "from": "REQ-PX-178",
+   "to": "DR-PX-2026-09-05",
+   "type": "authorized_by"
+  },
+  {
+   "from": "REQ-PX-178",
+   "to": "DR-PX-2026-10-26-018",
+   "type": "authorized_by"
+  },
+  {
+   "from": "REQ-PX-178",
+   "to": "PX-178",
+   "type": "implemented_by"
+  },
+  {
+   "from": "REQ-PX-179",
+   "to": "eval-bench",
+   "type": "owned_by_req"
+  },
+  {
+   "from": "REQ-PX-179",
+   "to": "QUAL-PX-179",
+   "type": "qualified_by"
+  },
+  {
+   "from": "REQ-PX-179",
+   "to": "62_PRODUCT_EXTENSION_REQUIREMENTS_TASKS_AND_QUALIFICATIONS.md",
+   "type": "specified_by"
+  },
+  {
+   "from": "REQ-PX-179",
+   "to": "DR-PX-2026-09-05",
+   "type": "authorized_by"
+  },
+  {
+   "from": "REQ-PX-179",
+   "to": "DR-PX-2026-10-26-018",
+   "type": "authorized_by"
+  },
+  {
+   "from": "REQ-PX-179",
+   "to": "PX-179",
+   "type": "implemented_by"
+  },
+  {
+   "from": "REQ-PX-180",
+   "to": "model-gateway",
+   "type": "owned_by_req"
+  },
+  {
+   "from": "REQ-PX-180",
+   "to": "QUAL-PX-180",
+   "type": "qualified_by"
+  },
+  {
+   "from": "REQ-PX-180",
+   "to": "62_PRODUCT_EXTENSION_REQUIREMENTS_TASKS_AND_QUALIFICATIONS.md",
+   "type": "specified_by"
+  },
+  {
+   "from": "REQ-PX-180",
+   "to": "DR-PX-2026-09-05",
+   "type": "authorized_by"
+  },
+  {
+   "from": "REQ-PX-180",
+   "to": "DR-PX-2026-10-26-018",
+   "type": "authorized_by"
+  },
+  {
+   "from": "REQ-PX-181",
+   "to": "browser",
+   "type": "owned_by_req"
+  },
+  {
+   "from": "REQ-PX-181",
+   "to": "QUAL-PX-181",
+   "type": "qualified_by"
+  },
+  {
+   "from": "REQ-PX-181",
+   "to": "62_PRODUCT_EXTENSION_REQUIREMENTS_TASKS_AND_QUALIFICATIONS.md",
+   "type": "specified_by"
+  },
+  {
+   "from": "REQ-PX-181",
+   "to": "DR-PX-2026-09-05",
+   "type": "authorized_by"
+  },
+  {
+   "from": "REQ-PX-181",
+   "to": "DR-PX-2026-10-26-018",
+   "type": "authorized_by"
+  },
+  {
+   "from": "REQ-PX-182",
+   "to": "skills",
+   "type": "owned_by_req"
+  },
+  {
+   "from": "REQ-PX-182",
+   "to": "QUAL-PX-182",
+   "type": "qualified_by"
+  },
+  {
+   "from": "REQ-PX-182",
+   "to": "62_PRODUCT_EXTENSION_REQUIREMENTS_TASKS_AND_QUALIFICATIONS.md",
+   "type": "specified_by"
+  },
+  {
+   "from": "REQ-PX-182",
+   "to": "DR-PX-2026-09-05",
+   "type": "authorized_by"
+  },
+  {
+   "from": "REQ-PX-182",
+   "to": "DR-PX-2026-10-26-018",
+   "type": "authorized_by"
+  },
+  {
+   "from": "REQ-PX-182",
+   "to": "PX-182",
+   "type": "implemented_by"
+  },
+  {
+   "from": "REQ-PX-183",
+   "to": "skills",
+   "type": "owned_by_req"
+  },
+  {
+   "from": "REQ-PX-183",
+   "to": "QUAL-PX-183",
+   "type": "qualified_by"
+  },
+  {
+   "from": "REQ-PX-183",
+   "to": "62_PRODUCT_EXTENSION_REQUIREMENTS_TASKS_AND_QUALIFICATIONS.md",
+   "type": "specified_by"
+  },
+  {
+   "from": "REQ-PX-183",
+   "to": "DR-PX-2026-09-05",
+   "type": "authorized_by"
+  },
+  {
+   "from": "REQ-PX-183",
+   "to": "DR-PX-2026-10-26-018",
+   "type": "authorized_by"
+  },
+  {
+   "from": "REQ-PX-183",
+   "to": "PX-183",
+   "type": "implemented_by"
+  },
+  {
+   "from": "REQ-PX-184",
+   "to": "eval-bench",
+   "type": "owned_by_req"
+  },
+  {
+   "from": "REQ-PX-184",
+   "to": "QUAL-PX-184",
+   "type": "qualified_by"
+  },
+  {
+   "from": "REQ-PX-184",
+   "to": "62_PRODUCT_EXTENSION_REQUIREMENTS_TASKS_AND_QUALIFICATIONS.md",
+   "type": "specified_by"
+  },
+  {
+   "from": "REQ-PX-184",
+   "to": "DR-PX-2026-09-05",
+   "type": "authorized_by"
+  },
+  {
+   "from": "REQ-PX-184",
+   "to": "DR-PX-2026-10-26-018",
+   "type": "authorized_by"
+  },
+  {
+   "from": "REQ-PX-184",
+   "to": "PX-184",
+   "type": "implemented_by"
+  },
+  {
+   "from": "REQ-PX-185",
+   "to": "memory",
+   "type": "owned_by_req"
+  },
+  {
+   "from": "REQ-PX-185",
+   "to": "QUAL-PX-185",
+   "type": "qualified_by"
+  },
+  {
+   "from": "REQ-PX-185",
+   "to": "62_PRODUCT_EXTENSION_REQUIREMENTS_TASKS_AND_QUALIFICATIONS.md",
+   "type": "specified_by"
+  },
+  {
+   "from": "REQ-PX-185",
+   "to": "DR-PX-2026-09-05",
+   "type": "authorized_by"
+  },
+  {
+   "from": "REQ-PX-185",
+   "to": "DR-PX-2026-10-26-018",
+   "type": "authorized_by"
+  },
+  {
+   "from": "REQ-PX-186",
+   "to": "memory",
+   "type": "owned_by_req"
+  },
+  {
+   "from": "REQ-PX-186",
+   "to": "QUAL-PX-186",
+   "type": "qualified_by"
+  },
+  {
+   "from": "REQ-PX-186",
+   "to": "62_PRODUCT_EXTENSION_REQUIREMENTS_TASKS_AND_QUALIFICATIONS.md",
+   "type": "specified_by"
+  },
+  {
+   "from": "REQ-PX-186",
+   "to": "DR-PX-2026-09-05",
+   "type": "authorized_by"
+  },
+  {
+   "from": "REQ-PX-186",
+   "to": "DR-PX-2026-10-26-018",
+   "type": "authorized_by"
+  },
+  {
+   "from": "REQ-PX-186",
+   "to": "PX-186",
+   "type": "implemented_by"
+  },
+  {
+   "from": "REQ-PX-187",
+   "to": "memory",
+   "type": "owned_by_req"
+  },
+  {
+   "from": "REQ-PX-187",
+   "to": "QUAL-PX-187",
+   "type": "qualified_by"
+  },
+  {
+   "from": "REQ-PX-187",
+   "to": "62_PRODUCT_EXTENSION_REQUIREMENTS_TASKS_AND_QUALIFICATIONS.md",
+   "type": "specified_by"
+  },
+  {
+   "from": "REQ-PX-187",
+   "to": "DR-PX-2026-09-05",
+   "type": "authorized_by"
+  },
+  {
+   "from": "REQ-PX-187",
+   "to": "DR-PX-2026-10-26-018",
+   "type": "authorized_by"
+  },
+  {
+   "from": "REQ-PX-188",
+   "to": "memory",
+   "type": "owned_by_req"
+  },
+  {
+   "from": "REQ-PX-188",
+   "to": "QUAL-PX-188",
+   "type": "qualified_by"
+  },
+  {
+   "from": "REQ-PX-188",
+   "to": "62_PRODUCT_EXTENSION_REQUIREMENTS_TASKS_AND_QUALIFICATIONS.md",
+   "type": "specified_by"
+  },
+  {
+   "from": "REQ-PX-188",
+   "to": "DR-PX-2026-09-05",
+   "type": "authorized_by"
+  },
+  {
+   "from": "REQ-PX-188",
+   "to": "DR-PX-2026-10-26-018",
+   "type": "authorized_by"
+  },
+  {
+   "from": "REQ-PX-188",
+   "to": "PX-188",
+   "type": "implemented_by"
+  },
+  {
+   "from": "REQ-PX-189",
+   "to": "skills",
+   "type": "owned_by_req"
+  },
+  {
+   "from": "REQ-PX-189",
+   "to": "QUAL-PX-189",
+   "type": "qualified_by"
+  },
+  {
+   "from": "REQ-PX-189",
+   "to": "62_PRODUCT_EXTENSION_REQUIREMENTS_TASKS_AND_QUALIFICATIONS.md",
+   "type": "specified_by"
+  },
+  {
+   "from": "REQ-PX-189",
+   "to": "DR-PX-2026-09-05",
+   "type": "authorized_by"
+  },
+  {
+   "from": "REQ-PX-189",
+   "to": "DR-PX-2026-10-26-018",
+   "type": "authorized_by"
+  },
+  {
+   "from": "REQ-PX-189",
+   "to": "PX-189",
+   "type": "implemented_by"
+  },
+  {
+   "from": "REQ-PX-190",
+   "to": "model-gateway",
+   "type": "owned_by_req"
+  },
+  {
+   "from": "REQ-PX-190",
+   "to": "QUAL-PX-190",
+   "type": "qualified_by"
+  },
+  {
+   "from": "REQ-PX-190",
+   "to": "62_PRODUCT_EXTENSION_REQUIREMENTS_TASKS_AND_QUALIFICATIONS.md",
+   "type": "specified_by"
+  },
+  {
+   "from": "REQ-PX-190",
+   "to": "DR-PX-2026-09-05",
+   "type": "authorized_by"
+  },
+  {
+   "from": "REQ-PX-190",
+   "to": "DR-PX-2026-10-26-018",
+   "type": "authorized_by"
+  },
+  {
+   "from": "REQ-PX-191",
+   "to": "automation",
+   "type": "owned_by_req"
+  },
+  {
+   "from": "REQ-PX-191",
+   "to": "QUAL-PX-191",
+   "type": "qualified_by"
+  },
+  {
+   "from": "REQ-PX-191",
+   "to": "62_PRODUCT_EXTENSION_REQUIREMENTS_TASKS_AND_QUALIFICATIONS.md",
+   "type": "specified_by"
+  },
+  {
+   "from": "REQ-PX-191",
+   "to": "DR-PX-2026-09-05",
+   "type": "authorized_by"
+  },
+  {
+   "from": "REQ-PX-191",
+   "to": "DR-PX-2026-10-26-018",
+   "type": "authorized_by"
   },
   {
    "from": "PX-000",
@@ -71852,6 +74967,1246 @@
    "type": "proves"
   },
   {
+   "from": "PX-147",
+   "to": "DR-PX-2026-09-05",
+   "type": "authorized_by"
+  },
+  {
+   "from": "PX-147",
+   "to": "DR-PX-2026-10-26-018",
+   "type": "authorized_by"
+  },
+  {
+   "from": "PX-147",
+   "to": "sandbox-cloud",
+   "type": "owned_by"
+  },
+  {
+   "from": "PX-147",
+   "to": "M10",
+   "type": "scheduled_in"
+  },
+  {
+   "from": "PX-147",
+   "to": "QUAL-PX-147",
+   "type": "proven_by"
+  },
+  {
+   "from": "PX-147",
+   "to": "62_PRODUCT_EXTENSION_REQUIREMENTS_TASKS_AND_QUALIFICATIONS.md",
+   "type": "specified_by"
+  },
+  {
+   "from": "PX-147",
+   "to": "DOC-PX-017",
+   "type": "after"
+  },
+  {
+   "from": "PX-147",
+   "to": "PX-E2E-147",
+   "type": "proven_by"
+  },
+  {
+   "from": "PX-E2E-147",
+   "to": "M10",
+   "type": "proves"
+  },
+  {
+   "from": "PX-148",
+   "to": "DR-PX-2026-09-05",
+   "type": "authorized_by"
+  },
+  {
+   "from": "PX-148",
+   "to": "DR-PX-2026-10-26-018",
+   "type": "authorized_by"
+  },
+  {
+   "from": "PX-148",
+   "to": "terminal",
+   "type": "owned_by"
+  },
+  {
+   "from": "PX-148",
+   "to": "M10",
+   "type": "scheduled_in"
+  },
+  {
+   "from": "PX-148",
+   "to": "QUAL-PX-148",
+   "type": "proven_by"
+  },
+  {
+   "from": "PX-148",
+   "to": "62_PRODUCT_EXTENSION_REQUIREMENTS_TASKS_AND_QUALIFICATIONS.md",
+   "type": "specified_by"
+  },
+  {
+   "from": "PX-148",
+   "to": "DOC-PX-017",
+   "type": "after"
+  },
+  {
+   "from": "PX-148",
+   "to": "PX-E2E-148",
+   "type": "proven_by"
+  },
+  {
+   "from": "PX-E2E-148",
+   "to": "M10",
+   "type": "proves"
+  },
+  {
+   "from": "PX-149",
+   "to": "DR-PX-2026-09-05",
+   "type": "authorized_by"
+  },
+  {
+   "from": "PX-149",
+   "to": "DR-PX-2026-10-26-018",
+   "type": "authorized_by"
+  },
+  {
+   "from": "PX-149",
+   "to": "effects-security",
+   "type": "owned_by"
+  },
+  {
+   "from": "PX-149",
+   "to": "M10",
+   "type": "scheduled_in"
+  },
+  {
+   "from": "PX-149",
+   "to": "QUAL-PX-149",
+   "type": "proven_by"
+  },
+  {
+   "from": "PX-149",
+   "to": "62_PRODUCT_EXTENSION_REQUIREMENTS_TASKS_AND_QUALIFICATIONS.md",
+   "type": "specified_by"
+  },
+  {
+   "from": "PX-149",
+   "to": "DOC-PX-017",
+   "type": "after"
+  },
+  {
+   "from": "PX-149",
+   "to": "PX-E2E-149",
+   "type": "proven_by"
+  },
+  {
+   "from": "PX-E2E-149",
+   "to": "M10",
+   "type": "proves"
+  },
+  {
+   "from": "PX-150",
+   "to": "DR-PX-2026-09-05",
+   "type": "authorized_by"
+  },
+  {
+   "from": "PX-150",
+   "to": "DR-PX-2026-10-26-018",
+   "type": "authorized_by"
+  },
+  {
+   "from": "PX-150",
+   "to": "terminal",
+   "type": "owned_by"
+  },
+  {
+   "from": "PX-150",
+   "to": "M10",
+   "type": "scheduled_in"
+  },
+  {
+   "from": "PX-150",
+   "to": "QUAL-PX-150",
+   "type": "proven_by"
+  },
+  {
+   "from": "PX-150",
+   "to": "62_PRODUCT_EXTENSION_REQUIREMENTS_TASKS_AND_QUALIFICATIONS.md",
+   "type": "specified_by"
+  },
+  {
+   "from": "PX-150",
+   "to": "DOC-PX-017",
+   "type": "after"
+  },
+  {
+   "from": "PX-150",
+   "to": "PX-E2E-150",
+   "type": "proven_by"
+  },
+  {
+   "from": "PX-E2E-150",
+   "to": "M10",
+   "type": "proves"
+  },
+  {
+   "from": "PX-152",
+   "to": "DR-PX-2026-09-05",
+   "type": "authorized_by"
+  },
+  {
+   "from": "PX-152",
+   "to": "DR-PX-2026-10-26-018",
+   "type": "authorized_by"
+  },
+  {
+   "from": "PX-152",
+   "to": "terminal",
+   "type": "owned_by"
+  },
+  {
+   "from": "PX-152",
+   "to": "M10",
+   "type": "scheduled_in"
+  },
+  {
+   "from": "PX-152",
+   "to": "QUAL-PX-152",
+   "type": "proven_by"
+  },
+  {
+   "from": "PX-152",
+   "to": "62_PRODUCT_EXTENSION_REQUIREMENTS_TASKS_AND_QUALIFICATIONS.md",
+   "type": "specified_by"
+  },
+  {
+   "from": "PX-152",
+   "to": "PX-150",
+   "type": "after"
+  },
+  {
+   "from": "PX-152",
+   "to": "DOC-PX-017",
+   "type": "after"
+  },
+  {
+   "from": "PX-152",
+   "to": "PX-E2E-152",
+   "type": "proven_by"
+  },
+  {
+   "from": "PX-E2E-152",
+   "to": "M10",
+   "type": "proves"
+  },
+  {
+   "from": "PX-153",
+   "to": "DR-PX-2026-09-05",
+   "type": "authorized_by"
+  },
+  {
+   "from": "PX-153",
+   "to": "DR-PX-2026-10-26-018",
+   "type": "authorized_by"
+  },
+  {
+   "from": "PX-153",
+   "to": "core-runtime",
+   "type": "owned_by"
+  },
+  {
+   "from": "PX-153",
+   "to": "M10",
+   "type": "scheduled_in"
+  },
+  {
+   "from": "PX-153",
+   "to": "QUAL-PX-153",
+   "type": "proven_by"
+  },
+  {
+   "from": "PX-153",
+   "to": "62_PRODUCT_EXTENSION_REQUIREMENTS_TASKS_AND_QUALIFICATIONS.md",
+   "type": "specified_by"
+  },
+  {
+   "from": "PX-153",
+   "to": "DOC-PX-017",
+   "type": "after"
+  },
+  {
+   "from": "PX-153",
+   "to": "PX-E2E-153",
+   "type": "proven_by"
+  },
+  {
+   "from": "PX-E2E-153",
+   "to": "M10",
+   "type": "proves"
+  },
+  {
+   "from": "PX-155",
+   "to": "DR-PX-2026-09-05",
+   "type": "authorized_by"
+  },
+  {
+   "from": "PX-155",
+   "to": "DR-PX-2026-10-26-018",
+   "type": "authorized_by"
+  },
+  {
+   "from": "PX-155",
+   "to": "durability",
+   "type": "owned_by"
+  },
+  {
+   "from": "PX-155",
+   "to": "M10",
+   "type": "scheduled_in"
+  },
+  {
+   "from": "PX-155",
+   "to": "QUAL-PX-155",
+   "type": "proven_by"
+  },
+  {
+   "from": "PX-155",
+   "to": "62_PRODUCT_EXTENSION_REQUIREMENTS_TASKS_AND_QUALIFICATIONS.md",
+   "type": "specified_by"
+  },
+  {
+   "from": "PX-155",
+   "to": "DOC-PX-017",
+   "type": "after"
+  },
+  {
+   "from": "PX-155",
+   "to": "PX-E2E-155",
+   "type": "proven_by"
+  },
+  {
+   "from": "PX-E2E-155",
+   "to": "M10",
+   "type": "proves"
+  },
+  {
+   "from": "PX-156",
+   "to": "DR-PX-2026-09-05",
+   "type": "authorized_by"
+  },
+  {
+   "from": "PX-156",
+   "to": "DR-PX-2026-10-26-018",
+   "type": "authorized_by"
+  },
+  {
+   "from": "PX-156",
+   "to": "core-runtime",
+   "type": "owned_by"
+  },
+  {
+   "from": "PX-156",
+   "to": "M10",
+   "type": "scheduled_in"
+  },
+  {
+   "from": "PX-156",
+   "to": "QUAL-PX-156",
+   "type": "proven_by"
+  },
+  {
+   "from": "PX-156",
+   "to": "62_PRODUCT_EXTENSION_REQUIREMENTS_TASKS_AND_QUALIFICATIONS.md",
+   "type": "specified_by"
+  },
+  {
+   "from": "PX-156",
+   "to": "DOC-PX-017",
+   "type": "after"
+  },
+  {
+   "from": "PX-156",
+   "to": "PX-E2E-156",
+   "type": "proven_by"
+  },
+  {
+   "from": "PX-E2E-156",
+   "to": "M10",
+   "type": "proves"
+  },
+  {
+   "from": "PX-157",
+   "to": "DR-PX-2026-09-05",
+   "type": "authorized_by"
+  },
+  {
+   "from": "PX-157",
+   "to": "DR-PX-2026-10-26-018",
+   "type": "authorized_by"
+  },
+  {
+   "from": "PX-157",
+   "to": "memory",
+   "type": "owned_by"
+  },
+  {
+   "from": "PX-157",
+   "to": "M10",
+   "type": "scheduled_in"
+  },
+  {
+   "from": "PX-157",
+   "to": "QUAL-PX-157",
+   "type": "proven_by"
+  },
+  {
+   "from": "PX-157",
+   "to": "62_PRODUCT_EXTENSION_REQUIREMENTS_TASKS_AND_QUALIFICATIONS.md",
+   "type": "specified_by"
+  },
+  {
+   "from": "PX-157",
+   "to": "DOC-PX-017",
+   "type": "after"
+  },
+  {
+   "from": "PX-157",
+   "to": "PX-E2E-157",
+   "type": "proven_by"
+  },
+  {
+   "from": "PX-E2E-157",
+   "to": "M10",
+   "type": "proves"
+  },
+  {
+   "from": "PX-158",
+   "to": "DR-PX-2026-09-05",
+   "type": "authorized_by"
+  },
+  {
+   "from": "PX-158",
+   "to": "DR-PX-2026-10-26-018",
+   "type": "authorized_by"
+  },
+  {
+   "from": "PX-158",
+   "to": "durability",
+   "type": "owned_by"
+  },
+  {
+   "from": "PX-158",
+   "to": "M10",
+   "type": "scheduled_in"
+  },
+  {
+   "from": "PX-158",
+   "to": "QUAL-PX-158",
+   "type": "proven_by"
+  },
+  {
+   "from": "PX-158",
+   "to": "62_PRODUCT_EXTENSION_REQUIREMENTS_TASKS_AND_QUALIFICATIONS.md",
+   "type": "specified_by"
+  },
+  {
+   "from": "PX-158",
+   "to": "DOC-PX-017",
+   "type": "after"
+  },
+  {
+   "from": "PX-158",
+   "to": "PX-E2E-158",
+   "type": "proven_by"
+  },
+  {
+   "from": "PX-E2E-158",
+   "to": "M10",
+   "type": "proves"
+  },
+  {
+   "from": "PX-159",
+   "to": "DR-PX-2026-09-05",
+   "type": "authorized_by"
+  },
+  {
+   "from": "PX-159",
+   "to": "DR-PX-2026-10-26-018",
+   "type": "authorized_by"
+  },
+  {
+   "from": "PX-159",
+   "to": "observability",
+   "type": "owned_by"
+  },
+  {
+   "from": "PX-159",
+   "to": "M10",
+   "type": "scheduled_in"
+  },
+  {
+   "from": "PX-159",
+   "to": "QUAL-PX-159",
+   "type": "proven_by"
+  },
+  {
+   "from": "PX-159",
+   "to": "62_PRODUCT_EXTENSION_REQUIREMENTS_TASKS_AND_QUALIFICATIONS.md",
+   "type": "specified_by"
+  },
+  {
+   "from": "PX-159",
+   "to": "DOC-PX-017",
+   "type": "after"
+  },
+  {
+   "from": "PX-159",
+   "to": "PX-E2E-159",
+   "type": "proven_by"
+  },
+  {
+   "from": "PX-E2E-159",
+   "to": "M10",
+   "type": "proves"
+  },
+  {
+   "from": "PX-161",
+   "to": "DR-PX-2026-09-05",
+   "type": "authorized_by"
+  },
+  {
+   "from": "PX-161",
+   "to": "DR-PX-2026-10-26-018",
+   "type": "authorized_by"
+  },
+  {
+   "from": "PX-161",
+   "to": "core-runtime",
+   "type": "owned_by"
+  },
+  {
+   "from": "PX-161",
+   "to": "M10",
+   "type": "scheduled_in"
+  },
+  {
+   "from": "PX-161",
+   "to": "QUAL-PX-161",
+   "type": "proven_by"
+  },
+  {
+   "from": "PX-161",
+   "to": "62_PRODUCT_EXTENSION_REQUIREMENTS_TASKS_AND_QUALIFICATIONS.md",
+   "type": "specified_by"
+  },
+  {
+   "from": "PX-161",
+   "to": "DOC-PX-017",
+   "type": "after"
+  },
+  {
+   "from": "PX-161",
+   "to": "PX-E2E-161",
+   "type": "proven_by"
+  },
+  {
+   "from": "PX-E2E-161",
+   "to": "M10",
+   "type": "proves"
+  },
+  {
+   "from": "PX-162",
+   "to": "DR-PX-2026-09-05",
+   "type": "authorized_by"
+  },
+  {
+   "from": "PX-162",
+   "to": "DR-PX-2026-10-26-018",
+   "type": "authorized_by"
+  },
+  {
+   "from": "PX-162",
+   "to": "context-engine",
+   "type": "owned_by"
+  },
+  {
+   "from": "PX-162",
+   "to": "M10",
+   "type": "scheduled_in"
+  },
+  {
+   "from": "PX-162",
+   "to": "QUAL-PX-162",
+   "type": "proven_by"
+  },
+  {
+   "from": "PX-162",
+   "to": "62_PRODUCT_EXTENSION_REQUIREMENTS_TASKS_AND_QUALIFICATIONS.md",
+   "type": "specified_by"
+  },
+  {
+   "from": "PX-162",
+   "to": "DOC-PX-017",
+   "type": "after"
+  },
+  {
+   "from": "PX-162",
+   "to": "PX-E2E-162",
+   "type": "proven_by"
+  },
+  {
+   "from": "PX-E2E-162",
+   "to": "M10",
+   "type": "proves"
+  },
+  {
+   "from": "PX-167",
+   "to": "DR-PX-2026-09-05",
+   "type": "authorized_by"
+  },
+  {
+   "from": "PX-167",
+   "to": "DR-PX-2026-10-26-018",
+   "type": "authorized_by"
+  },
+  {
+   "from": "PX-167",
+   "to": "governance",
+   "type": "owned_by"
+  },
+  {
+   "from": "PX-167",
+   "to": "M10",
+   "type": "scheduled_in"
+  },
+  {
+   "from": "PX-167",
+   "to": "QUAL-PX-167",
+   "type": "proven_by"
+  },
+  {
+   "from": "PX-167",
+   "to": "62_PRODUCT_EXTENSION_REQUIREMENTS_TASKS_AND_QUALIFICATIONS.md",
+   "type": "specified_by"
+  },
+  {
+   "from": "PX-167",
+   "to": "DOC-PX-017",
+   "type": "after"
+  },
+  {
+   "from": "PX-167",
+   "to": "PX-E2E-167",
+   "type": "proven_by"
+  },
+  {
+   "from": "PX-E2E-167",
+   "to": "M10",
+   "type": "proves"
+  },
+  {
+   "from": "PX-168",
+   "to": "DR-PX-2026-09-05",
+   "type": "authorized_by"
+  },
+  {
+   "from": "PX-168",
+   "to": "DR-PX-2026-10-26-018",
+   "type": "authorized_by"
+  },
+  {
+   "from": "PX-168",
+   "to": "governance",
+   "type": "owned_by"
+  },
+  {
+   "from": "PX-168",
+   "to": "M10",
+   "type": "scheduled_in"
+  },
+  {
+   "from": "PX-168",
+   "to": "QUAL-PX-168",
+   "type": "proven_by"
+  },
+  {
+   "from": "PX-168",
+   "to": "62_PRODUCT_EXTENSION_REQUIREMENTS_TASKS_AND_QUALIFICATIONS.md",
+   "type": "specified_by"
+  },
+  {
+   "from": "PX-168",
+   "to": "DOC-PX-017",
+   "type": "after"
+  },
+  {
+   "from": "PX-168",
+   "to": "PX-E2E-168",
+   "type": "proven_by"
+  },
+  {
+   "from": "PX-E2E-168",
+   "to": "M10",
+   "type": "proves"
+  },
+  {
+   "from": "PX-171",
+   "to": "DR-PX-2026-09-05",
+   "type": "authorized_by"
+  },
+  {
+   "from": "PX-171",
+   "to": "DR-PX-2026-10-26-018",
+   "type": "authorized_by"
+  },
+  {
+   "from": "PX-171",
+   "to": "eval-bench",
+   "type": "owned_by"
+  },
+  {
+   "from": "PX-171",
+   "to": "M10",
+   "type": "scheduled_in"
+  },
+  {
+   "from": "PX-171",
+   "to": "QUAL-PX-171",
+   "type": "proven_by"
+  },
+  {
+   "from": "PX-171",
+   "to": "62_PRODUCT_EXTENSION_REQUIREMENTS_TASKS_AND_QUALIFICATIONS.md",
+   "type": "specified_by"
+  },
+  {
+   "from": "PX-171",
+   "to": "DOC-PX-017",
+   "type": "after"
+  },
+  {
+   "from": "PX-171",
+   "to": "PX-E2E-171",
+   "type": "proven_by"
+  },
+  {
+   "from": "PX-E2E-171",
+   "to": "M10",
+   "type": "proves"
+  },
+  {
+   "from": "PX-174",
+   "to": "DR-PX-2026-09-05",
+   "type": "authorized_by"
+  },
+  {
+   "from": "PX-174",
+   "to": "DR-PX-2026-10-26-018",
+   "type": "authorized_by"
+  },
+  {
+   "from": "PX-174",
+   "to": "browser",
+   "type": "owned_by"
+  },
+  {
+   "from": "PX-174",
+   "to": "M10",
+   "type": "scheduled_in"
+  },
+  {
+   "from": "PX-174",
+   "to": "QUAL-PX-174",
+   "type": "proven_by"
+  },
+  {
+   "from": "PX-174",
+   "to": "62_PRODUCT_EXTENSION_REQUIREMENTS_TASKS_AND_QUALIFICATIONS.md",
+   "type": "specified_by"
+  },
+  {
+   "from": "PX-174",
+   "to": "PX-158",
+   "type": "after"
+  },
+  {
+   "from": "PX-174",
+   "to": "DOC-PX-017",
+   "type": "after"
+  },
+  {
+   "from": "PX-174",
+   "to": "PX-E2E-174",
+   "type": "proven_by"
+  },
+  {
+   "from": "PX-E2E-174",
+   "to": "M10",
+   "type": "proves"
+  },
+  {
+   "from": "PX-176",
+   "to": "DR-PX-2026-09-05",
+   "type": "authorized_by"
+  },
+  {
+   "from": "PX-176",
+   "to": "DR-PX-2026-10-26-018",
+   "type": "authorized_by"
+  },
+  {
+   "from": "PX-176",
+   "to": "browser",
+   "type": "owned_by"
+  },
+  {
+   "from": "PX-176",
+   "to": "M10",
+   "type": "scheduled_in"
+  },
+  {
+   "from": "PX-176",
+   "to": "QUAL-PX-176",
+   "type": "proven_by"
+  },
+  {
+   "from": "PX-176",
+   "to": "62_PRODUCT_EXTENSION_REQUIREMENTS_TASKS_AND_QUALIFICATIONS.md",
+   "type": "specified_by"
+  },
+  {
+   "from": "PX-176",
+   "to": "DOC-PX-017",
+   "type": "after"
+  },
+  {
+   "from": "PX-176",
+   "to": "PX-E2E-176",
+   "type": "proven_by"
+  },
+  {
+   "from": "PX-E2E-176",
+   "to": "M10",
+   "type": "proves"
+  },
+  {
+   "from": "PX-177",
+   "to": "DR-PX-2026-09-05",
+   "type": "authorized_by"
+  },
+  {
+   "from": "PX-177",
+   "to": "DR-PX-2026-10-26-018",
+   "type": "authorized_by"
+  },
+  {
+   "from": "PX-177",
+   "to": "core-runtime",
+   "type": "owned_by"
+  },
+  {
+   "from": "PX-177",
+   "to": "M10",
+   "type": "scheduled_in"
+  },
+  {
+   "from": "PX-177",
+   "to": "QUAL-PX-177",
+   "type": "proven_by"
+  },
+  {
+   "from": "PX-177",
+   "to": "62_PRODUCT_EXTENSION_REQUIREMENTS_TASKS_AND_QUALIFICATIONS.md",
+   "type": "specified_by"
+  },
+  {
+   "from": "PX-177",
+   "to": "DOC-PX-017",
+   "type": "after"
+  },
+  {
+   "from": "PX-177",
+   "to": "PX-E2E-177",
+   "type": "proven_by"
+  },
+  {
+   "from": "PX-E2E-177",
+   "to": "M10",
+   "type": "proves"
+  },
+  {
+   "from": "PX-178",
+   "to": "DR-PX-2026-09-05",
+   "type": "authorized_by"
+  },
+  {
+   "from": "PX-178",
+   "to": "DR-PX-2026-10-26-018",
+   "type": "authorized_by"
+  },
+  {
+   "from": "PX-178",
+   "to": "verification",
+   "type": "owned_by"
+  },
+  {
+   "from": "PX-178",
+   "to": "M10",
+   "type": "scheduled_in"
+  },
+  {
+   "from": "PX-178",
+   "to": "QUAL-PX-178",
+   "type": "proven_by"
+  },
+  {
+   "from": "PX-178",
+   "to": "62_PRODUCT_EXTENSION_REQUIREMENTS_TASKS_AND_QUALIFICATIONS.md",
+   "type": "specified_by"
+  },
+  {
+   "from": "PX-178",
+   "to": "DOC-PX-017",
+   "type": "after"
+  },
+  {
+   "from": "PX-178",
+   "to": "PX-E2E-178",
+   "type": "proven_by"
+  },
+  {
+   "from": "PX-E2E-178",
+   "to": "M10",
+   "type": "proves"
+  },
+  {
+   "from": "PX-179",
+   "to": "DR-PX-2026-09-05",
+   "type": "authorized_by"
+  },
+  {
+   "from": "PX-179",
+   "to": "DR-PX-2026-10-26-018",
+   "type": "authorized_by"
+  },
+  {
+   "from": "PX-179",
+   "to": "eval-bench",
+   "type": "owned_by"
+  },
+  {
+   "from": "PX-179",
+   "to": "M10",
+   "type": "scheduled_in"
+  },
+  {
+   "from": "PX-179",
+   "to": "QUAL-PX-179",
+   "type": "proven_by"
+  },
+  {
+   "from": "PX-179",
+   "to": "62_PRODUCT_EXTENSION_REQUIREMENTS_TASKS_AND_QUALIFICATIONS.md",
+   "type": "specified_by"
+  },
+  {
+   "from": "PX-179",
+   "to": "PX-178",
+   "type": "after"
+  },
+  {
+   "from": "PX-179",
+   "to": "DOC-PX-017",
+   "type": "after"
+  },
+  {
+   "from": "PX-179",
+   "to": "PX-E2E-179",
+   "type": "proven_by"
+  },
+  {
+   "from": "PX-E2E-179",
+   "to": "M10",
+   "type": "proves"
+  },
+  {
+   "from": "PX-182",
+   "to": "DR-PX-2026-09-05",
+   "type": "authorized_by"
+  },
+  {
+   "from": "PX-182",
+   "to": "DR-PX-2026-10-26-018",
+   "type": "authorized_by"
+  },
+  {
+   "from": "PX-182",
+   "to": "skills",
+   "type": "owned_by"
+  },
+  {
+   "from": "PX-182",
+   "to": "M10",
+   "type": "scheduled_in"
+  },
+  {
+   "from": "PX-182",
+   "to": "QUAL-PX-182",
+   "type": "proven_by"
+  },
+  {
+   "from": "PX-182",
+   "to": "62_PRODUCT_EXTENSION_REQUIREMENTS_TASKS_AND_QUALIFICATIONS.md",
+   "type": "specified_by"
+  },
+  {
+   "from": "PX-182",
+   "to": "DOC-PX-017",
+   "type": "after"
+  },
+  {
+   "from": "PX-182",
+   "to": "PX-E2E-182",
+   "type": "proven_by"
+  },
+  {
+   "from": "PX-E2E-182",
+   "to": "M10",
+   "type": "proves"
+  },
+  {
+   "from": "PX-183",
+   "to": "DR-PX-2026-09-05",
+   "type": "authorized_by"
+  },
+  {
+   "from": "PX-183",
+   "to": "DR-PX-2026-10-26-018",
+   "type": "authorized_by"
+  },
+  {
+   "from": "PX-183",
+   "to": "skills",
+   "type": "owned_by"
+  },
+  {
+   "from": "PX-183",
+   "to": "M10",
+   "type": "scheduled_in"
+  },
+  {
+   "from": "PX-183",
+   "to": "QUAL-PX-183",
+   "type": "proven_by"
+  },
+  {
+   "from": "PX-183",
+   "to": "62_PRODUCT_EXTENSION_REQUIREMENTS_TASKS_AND_QUALIFICATIONS.md",
+   "type": "specified_by"
+  },
+  {
+   "from": "PX-183",
+   "to": "DOC-PX-017",
+   "type": "after"
+  },
+  {
+   "from": "PX-183",
+   "to": "PX-E2E-183",
+   "type": "proven_by"
+  },
+  {
+   "from": "PX-E2E-183",
+   "to": "M10",
+   "type": "proves"
+  },
+  {
+   "from": "PX-184",
+   "to": "DR-PX-2026-09-05",
+   "type": "authorized_by"
+  },
+  {
+   "from": "PX-184",
+   "to": "DR-PX-2026-10-26-018",
+   "type": "authorized_by"
+  },
+  {
+   "from": "PX-184",
+   "to": "eval-bench",
+   "type": "owned_by"
+  },
+  {
+   "from": "PX-184",
+   "to": "M10",
+   "type": "scheduled_in"
+  },
+  {
+   "from": "PX-184",
+   "to": "QUAL-PX-184",
+   "type": "proven_by"
+  },
+  {
+   "from": "PX-184",
+   "to": "62_PRODUCT_EXTENSION_REQUIREMENTS_TASKS_AND_QUALIFICATIONS.md",
+   "type": "specified_by"
+  },
+  {
+   "from": "PX-184",
+   "to": "DOC-PX-017",
+   "type": "after"
+  },
+  {
+   "from": "PX-184",
+   "to": "PX-E2E-184",
+   "type": "proven_by"
+  },
+  {
+   "from": "PX-E2E-184",
+   "to": "M10",
+   "type": "proves"
+  },
+  {
+   "from": "PX-186",
+   "to": "DR-PX-2026-09-05",
+   "type": "authorized_by"
+  },
+  {
+   "from": "PX-186",
+   "to": "DR-PX-2026-10-26-018",
+   "type": "authorized_by"
+  },
+  {
+   "from": "PX-186",
+   "to": "memory",
+   "type": "owned_by"
+  },
+  {
+   "from": "PX-186",
+   "to": "M10",
+   "type": "scheduled_in"
+  },
+  {
+   "from": "PX-186",
+   "to": "QUAL-PX-186",
+   "type": "proven_by"
+  },
+  {
+   "from": "PX-186",
+   "to": "62_PRODUCT_EXTENSION_REQUIREMENTS_TASKS_AND_QUALIFICATIONS.md",
+   "type": "specified_by"
+  },
+  {
+   "from": "PX-186",
+   "to": "PX-184",
+   "type": "after"
+  },
+  {
+   "from": "PX-186",
+   "to": "DOC-PX-017",
+   "type": "after"
+  },
+  {
+   "from": "PX-186",
+   "to": "PX-E2E-186",
+   "type": "proven_by"
+  },
+  {
+   "from": "PX-E2E-186",
+   "to": "M10",
+   "type": "proves"
+  },
+  {
+   "from": "PX-188",
+   "to": "DR-PX-2026-09-05",
+   "type": "authorized_by"
+  },
+  {
+   "from": "PX-188",
+   "to": "DR-PX-2026-10-26-018",
+   "type": "authorized_by"
+  },
+  {
+   "from": "PX-188",
+   "to": "memory",
+   "type": "owned_by"
+  },
+  {
+   "from": "PX-188",
+   "to": "M10",
+   "type": "scheduled_in"
+  },
+  {
+   "from": "PX-188",
+   "to": "QUAL-PX-188",
+   "type": "proven_by"
+  },
+  {
+   "from": "PX-188",
+   "to": "62_PRODUCT_EXTENSION_REQUIREMENTS_TASKS_AND_QUALIFICATIONS.md",
+   "type": "specified_by"
+  },
+  {
+   "from": "PX-188",
+   "to": "PX-157",
+   "type": "after"
+  },
+  {
+   "from": "PX-188",
+   "to": "DOC-PX-017",
+   "type": "after"
+  },
+  {
+   "from": "PX-188",
+   "to": "PX-E2E-188",
+   "type": "proven_by"
+  },
+  {
+   "from": "PX-E2E-188",
+   "to": "M10",
+   "type": "proves"
+  },
+  {
+   "from": "PX-189",
+   "to": "DR-PX-2026-09-05",
+   "type": "authorized_by"
+  },
+  {
+   "from": "PX-189",
+   "to": "DR-PX-2026-10-26-018",
+   "type": "authorized_by"
+  },
+  {
+   "from": "PX-189",
+   "to": "skills",
+   "type": "owned_by"
+  },
+  {
+   "from": "PX-189",
+   "to": "M10",
+   "type": "scheduled_in"
+  },
+  {
+   "from": "PX-189",
+   "to": "QUAL-PX-189",
+   "type": "proven_by"
+  },
+  {
+   "from": "PX-189",
+   "to": "62_PRODUCT_EXTENSION_REQUIREMENTS_TASKS_AND_QUALIFICATIONS.md",
+   "type": "specified_by"
+  },
+  {
+   "from": "PX-189",
+   "to": "DOC-PX-017",
+   "type": "after"
+  },
+  {
+   "from": "PX-189",
+   "to": "PX-E2E-189",
+   "type": "proven_by"
+  },
+  {
+   "from": "PX-E2E-189",
+   "to": "M10",
+   "type": "proves"
+  },
+  {
    "from": "domain-events",
    "to": "38_EXECUTION_POLICY_CONTRACTS_AND_ALGORITHMS.md",
    "type": "specified_by"
@@ -72859,6 +77214,31 @@
   {
    "from": "DOC-PX-016",
    "to": "DR-PX-2026-10-25-017",
+   "type": "authorized_by"
+  },
+  {
+   "from": "DOC-PX-017",
+   "to": "DOC-GOV-007",
+   "type": "after"
+  },
+  {
+   "from": "DOC-PX-017",
+   "to": "governance",
+   "type": "owned_by"
+  },
+  {
+   "from": "DOC-PX-017",
+   "to": "97_DOSSIER_MAINTENANCE_LOG.md",
+   "type": "specified_by"
+  },
+  {
+   "from": "DOC-PX-017",
+   "to": "62_PRODUCT_EXTENSION_REQUIREMENTS_TASKS_AND_QUALIFICATIONS.md",
+   "type": "specified_by"
+  },
+  {
+   "from": "DOC-PX-017",
+   "to": "DR-PX-2026-10-26-018",
    "type": "authorized_by"
   },
   {
@@ -77549,6 +81929,141 @@
   {
    "from": "RELEASE_ZERO",
    "to": "PX-146",
+   "type": "includes"
+  },
+  {
+   "from": "RELEASE_ZERO",
+   "to": "PX-147",
+   "type": "includes"
+  },
+  {
+   "from": "RELEASE_ZERO",
+   "to": "PX-148",
+   "type": "includes"
+  },
+  {
+   "from": "RELEASE_ZERO",
+   "to": "PX-149",
+   "type": "includes"
+  },
+  {
+   "from": "RELEASE_ZERO",
+   "to": "PX-150",
+   "type": "includes"
+  },
+  {
+   "from": "RELEASE_ZERO",
+   "to": "PX-152",
+   "type": "includes"
+  },
+  {
+   "from": "RELEASE_ZERO",
+   "to": "PX-153",
+   "type": "includes"
+  },
+  {
+   "from": "RELEASE_ZERO",
+   "to": "PX-155",
+   "type": "includes"
+  },
+  {
+   "from": "RELEASE_ZERO",
+   "to": "PX-156",
+   "type": "includes"
+  },
+  {
+   "from": "RELEASE_ZERO",
+   "to": "PX-157",
+   "type": "includes"
+  },
+  {
+   "from": "RELEASE_ZERO",
+   "to": "PX-158",
+   "type": "includes"
+  },
+  {
+   "from": "RELEASE_ZERO",
+   "to": "PX-159",
+   "type": "includes"
+  },
+  {
+   "from": "RELEASE_ZERO",
+   "to": "PX-161",
+   "type": "includes"
+  },
+  {
+   "from": "RELEASE_ZERO",
+   "to": "PX-162",
+   "type": "includes"
+  },
+  {
+   "from": "RELEASE_ZERO",
+   "to": "PX-167",
+   "type": "includes"
+  },
+  {
+   "from": "RELEASE_ZERO",
+   "to": "PX-168",
+   "type": "includes"
+  },
+  {
+   "from": "RELEASE_ZERO",
+   "to": "PX-171",
+   "type": "includes"
+  },
+  {
+   "from": "RELEASE_ZERO",
+   "to": "PX-174",
+   "type": "includes"
+  },
+  {
+   "from": "RELEASE_ZERO",
+   "to": "PX-176",
+   "type": "includes"
+  },
+  {
+   "from": "RELEASE_ZERO",
+   "to": "PX-177",
+   "type": "includes"
+  },
+  {
+   "from": "RELEASE_ZERO",
+   "to": "PX-178",
+   "type": "includes"
+  },
+  {
+   "from": "RELEASE_ZERO",
+   "to": "PX-179",
+   "type": "includes"
+  },
+  {
+   "from": "RELEASE_ZERO",
+   "to": "PX-182",
+   "type": "includes"
+  },
+  {
+   "from": "RELEASE_ZERO",
+   "to": "PX-183",
+   "type": "includes"
+  },
+  {
+   "from": "RELEASE_ZERO",
+   "to": "PX-184",
+   "type": "includes"
+  },
+  {
+   "from": "RELEASE_ZERO",
+   "to": "PX-186",
+   "type": "includes"
+  },
+  {
+   "from": "RELEASE_ZERO",
+   "to": "PX-188",
+   "type": "includes"
+  },
+  {
+   "from": "RELEASE_ZERO",
+   "to": "PX-189",
    "type": "includes"
   },
   {

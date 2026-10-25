@@ -14,15 +14,15 @@ One JSON file that answers *what exists, what depends on what, what proves what,
 | `milestone` | 11 | M0–M10 from docs/43; carries proof statement and dependency edges |
 | `milestone_task` | 78 | Mx.y row from docs/43 (plus five tasks the V2 sequencing delta named but did not enumerate); ordered inside its milestone; carries status |
 | `subsystem` | 23 | canonical single-owner boundary (docs/81); owns REQ rows and IMP tasks; delivered in a primary milestone |
-| `requirement` | 458 | REQ-EV from docs/40, additive REQ-EPR from docs/49 or additive REQ-PX from docs/62 |
-| `imp_task` | 428 | IMP-EV from docs/41, EPR from docs/49 or PX from docs/62; carries status and evidence |
-| `dossier_task` | 25 | governance package work outside product milestone roll-ups |
+| `requirement` | 503 | REQ-EV from docs/40, additive REQ-EPR from docs/49 or additive REQ-PX from docs/62 |
+| `imp_task` | 455 | IMP-EV from docs/41, EPR from docs/49 or PX from docs/62; carries status and evidence |
+| `dossier_task` | 26 | governance package work outside product milestone roll-ups |
 | `release_gate` | 7 | EPR promotion gate from docs/61; derived state OPEN/TASKS_COMPLETE/SATISFIED; carries attestation evidence, never a lifecycle status |
 | `source_patch` | 2 | immutable user-supplied patch provenance |
-| `change_record` | 21 | explicit approved dossier amendment |
-| `qual_test` | 458 | QUAL-EV from docs/42, QUAL-EPR from docs/61 or QUAL-PX from docs/62 |
+| `change_record` | 22 | explicit approved dossier amendment |
+| `qual_test` | 503 | QUAL-EV from docs/42, QUAL-EPR from docs/61 or QUAL-PX from docs/62 |
 | `release` | 3 | ALPHA / BETA / RELEASE_ZERO projection from docs/75; readiness derived from included work items and required gates, never stored |
-| `scenario` | 260 | E2E-nnn, WSK-E2E-nnn, MEDIA-E2E-nnn, EPR-E2E/FI-nnn or PX-E2E-nnn scenario, or FI-nn fault case |
+| `scenario` | 287 | E2E-nnn, WSK-E2E-nnn, MEDIA-E2E-nnn, EPR-E2E/FI-nnn or PX-E2E-nnn scenario, or FI-nn fault case |
 | `decision` | 61 | MOD-* or ADR-R-* decision from docs/02 with authority status |
 
 | Edge type | Count | Meaning |
@@ -31,25 +31,25 @@ One JSON file that answers *what exists, what depends on what, what proves what,
 | `references` | 572 | doc → doc (explicit filename mention) |
 | `depends_on` | 18 | milestone → milestone it requires COMPLETE first |
 | `part_of` | 78 | milestone_task → milestone |
-| `after` | 593 | work item → required COMPLETE work item, including cross-milestone EPR dependencies |
+| `after` | 626 | work item → required COMPLETE work item, including cross-milestone EPR dependencies |
 | `delivered_in` | 22 | subsystem → primary milestone |
-| `specified_by` | 465 | subsystem → doc |
-| `owned_by_req` | 458 | requirement → subsystem |
-| `owned_by` | 453 | imp_task → subsystem |
-| `scheduled_in` | 428 | imp_task → milestone |
-| `implemented_by` | 428 | requirement → imp_task |
-| `qualified_by` | 458 | requirement → qual_test |
-| `proven_by` | 638 | imp_task → qual_test |
-| `proves` | 260 | scenario → milestone |
+| `specified_by` | 541 | subsystem → doc |
+| `owned_by_req` | 503 | requirement → subsystem |
+| `owned_by` | 481 | imp_task → subsystem |
+| `scheduled_in` | 455 | imp_task → milestone |
+| `implemented_by` | 455 | requirement → imp_task |
+| `qualified_by` | 503 | requirement → qual_test |
+| `proven_by` | 692 | imp_task → qual_test |
+| `proves` | 287 | scenario → milestone |
 | `constrains` | 64 | decision → subsystem |
 | `requires_task` | 27 | release gate → required implementation task |
 | `extends` | 392 | additive requirement → related preserved EV requirement |
-| `authorized_by` | 628 | adopted task/decision/requirement → approved change record |
+| `authorized_by` | 773 | adopted task/decision/requirement → approved change record |
 | `adopts` | 2 | change record → immutable source patch |
 | `supersedes` | 10 | new authority → prior authority, only within the recorded scope |
-| `refines` | 15 | v1.1 source/change → previous source/change; non-conflicting authority survives |
+| `refines` | 16 | v1.1 source/change → previous source/change; non-conflicting authority survives |
 | `gated_by` | 7 | milestone → release gate that must be SATISFIED before the milestone rolls up COMPLETE |
-| `includes` | 938 | release → product work item whose COMPLETE status the release requires |
+| `includes` | 965 | release → product work item whose COMPLETE status the release requires |
 | `requires_gate` | 7 | release → release gate that must be SATISFIED before the release is READY |
 
 ## Milestone dependency graph (live status)
@@ -66,7 +66,7 @@ flowchart LR
   M7["M7<br/>Live browser<br/>28/28 done"]
   M8["M8<br/>Cloud isolated execution<br/>28/28 done"]
   M9["M9<br/>Engineering memory/effects/security hardening<br/>33/33 done"]
-  M10["M10<br/>Release hardening<br/>30/127 done"]
+  M10["M10<br/>Release hardening<br/>30/154 done"]
   M0 --> M1
   M1 --> M2
   M2 --> M3
@@ -114,7 +114,7 @@ Critical path (reliability spine): **M0 → M1 → M2 → M4**. Do not start bro
 | M7 Live browser | COMPLETE | yes | 8 | 20 | 28 | 0 | M2 | E2E-013..016. |
 | M8 Cloud isolated execution | COMPLETE | yes | 9 | 19 | 28 | 0 | M4, M7 | E2E-017/018/024. |
 | M9 Engineering memory/effects/security hardening | COMPLETE | yes | 6 | 27 | 33 | 0 | M4, M5 | memory cannot be created from transcript without promotion; receipt chain verifies; threat tests pass. |
-| M10 Release hardening | IN_PROGRESS | yes | 7 | 120 | 30 | 0 | M3, M5, M6, M7, M8, M9 | full Release Zero proof + package evidence + EPR gates A–G SATISFIED. |
+| M10 Release hardening | IN_PROGRESS | yes | 7 | 147 | 30 | 0 | M3, M5, M6, M7, M8, M9 | full Release Zero proof + package evidence + EPR gates A–G SATISFIED. |
 
 ## Subsystems → milestones
 
@@ -123,73 +123,73 @@ Each canonical subsystem is a single-owner boundary (`docs/81_ARCHITECTURE_GUARD
 ```mermaid
 flowchart TB
   subgraph M0["M0 — Repository and authority"]
-    governance["Architecture Governance & Product Scope<br/>29 tasks"]
+    governance["Architecture Governance & Product Scope<br/>32 tasks"]
   end
   subgraph M1["M1 — Durable local shell and Core"]
     domain_events["Domain Model, Event Store & Protocol State<br/>22 tasks"]
-    core_runtime["Agent Runtime, Scheduler, WorkGraph/AgentGraph<br/>61 tasks"]
+    core_runtime["Agent Runtime, Scheduler, WorkGraph/AgentGraph<br/>65 tasks"]
     desktop["Desktop Surface & UI<br/>51 tasks"]
   end
   subgraph M2["M2 — Real local engineering loop"]
     model_gateway["Execution Policy Router & Provider Gateway<br/>13 tasks"]
     tool_runtime["Tool Registry & Capability Kernel<br/>10 tasks"]
     workspace_git["Workspace Fabric, Change Engine & Git<br/>27 tasks"]
-    terminal["Terminal Broker & Execution Router<br/>10 tasks"]
-    verification["Verification Engine & Quality Gates<br/>18 tasks"]
+    terminal["Terminal Broker & Execution Router<br/>13 tasks"]
+    verification["Verification Engine & Quality Gates<br/>19 tasks"]
   end
   subgraph M3["M3 — Context intelligence"]
-    context_engine["Context Engine, Retrieval & Diagnostics<br/>51 tasks"]
-    eval_bench["Eval Harness & Benchmarks<br/>23 tasks"]
+    context_engine["Context Engine, Retrieval & Diagnostics<br/>52 tasks"]
+    eval_bench["Eval Harness & Benchmarks<br/>26 tasks"]
   end
   subgraph M4["M4 — Durable recovery spine"]
-    durability["Compaction, Checkpoints & Recovery Spine<br/>7 tasks"]
+    durability["Compaction, Checkpoints & Recovery Spine<br/>9 tasks"]
   end
   subgraph M5["M5 — Procedural runtime and skills"]
     procedural_runtime["Procedural Tool Runtime<br/>3 tasks"]
-    skills["Skill Registry, Compiler & Evolution Lab<br/>24 tasks"]
+    skills["Skill Registry, Compiler & Evolution Lab<br/>27 tasks"]
     media["Media Pipeline & Artifact Store<br/>6 tasks"]
   end
   subgraph M7["M7 — Live browser"]
-    browser["Browser & Computer Runtime<br/>27 tasks"]
+    browser["Browser & Computer Runtime<br/>29 tasks"]
   end
   subgraph M8["M8 — Cloud isolated execution"]
-    sandbox_cloud["Sandbox Gateway, Guest & Cloud Control Plane<br/>17 tasks"]
+    sandbox_cloud["Sandbox Gateway, Guest & Cloud Control Plane<br/>18 tasks"]
   end
   subgraph M9["M9 — Engineering memory/effects/security hardening"]
-    effects_security["Policy Kernel, Effect Ledger & Secrets<br/>25 tasks"]
-    memory["Engineering Memory<br/>2 tasks"]
+    effects_security["Policy Kernel, Effect Ledger & Secrets<br/>26 tasks"]
+    memory["Engineering Memory<br/>5 tasks"]
     external_tools["MCP Hub, Integrations & Web Gateway<br/>8 tasks"]
     extensions_hooks["Hook Bus, Extension System & Importers<br/>12 tasks"]
   end
   subgraph M10["M10 — Release hardening"]
-    observability["Observability, Cost & Operations<br/>6 tasks"]
+    observability["Observability, Cost & Operations<br/>7 tasks"]
   end
 ```
 
 | Subsystem | Primary milestone | Crates / apps | Spec docs | REQ rows | IMP tasks | Decisions |
 |---|---|---|---|---:|---:|---|
-| `automation` Automation / Scheduling (DEFERRED) | — | — | `02` | 3 | 1 | MOD-MOBILE-001, MOD-AUTO-001, MOD-AUTO-002 |
-| `browser` Browser & Computer Runtime | M7 | `crates/browser` | `22` | 27 | 27 | MOD-BROWSE-001 |
-| `context-engine` Context Engine, Retrieval & Diagnostics | M3 | `crates/context`, `crates/retrieval`, `crates/diagnostics` | `18`, `28`, `76` | 54 | 51 | MOD-CTX-001, MOD-CTX-002, MOD-EMB-001, MOD-CTX-003 |
-| `core-runtime` Agent Runtime, Scheduler, WorkGraph/AgentGraph | M1 | `crates/core-runtime` | `14`, `28`, `38` | 64 | 61 | MOD-CORE-001, MOD-AGENT-001, MOD-ORCH-001, MOD-INPUT-001, ADR-R-042, ADR-R-043, ADR-R-047, ADR-R-048, ADR-R-049, ADR-R-053, ADR-R-054 |
-| `desktop` Desktop Surface & UI | M1 | `apps/desktop`, `apps/cli`, `packages/ui`, `packages/surface-protocol`, `packages/ide-adapter-core`, `packages/design-tokens` | `10`, `29`, `32`, `39` | 54 | 51 | MOD-SURF-001, MOD-SURF-002, MOD-UX-001, MOD-DESK-001 |
+| `automation` Automation / Scheduling (DEFERRED) | — | — | `02` | 4 | 1 | MOD-MOBILE-001, MOD-AUTO-001, MOD-AUTO-002 |
+| `browser` Browser & Computer Runtime | M7 | `crates/browser` | `22` | 31 | 29 | MOD-BROWSE-001 |
+| `context-engine` Context Engine, Retrieval & Diagnostics | M3 | `crates/context`, `crates/retrieval`, `crates/diagnostics` | `18`, `28`, `76` | 55 | 52 | MOD-CTX-001, MOD-CTX-002, MOD-EMB-001, MOD-CTX-003 |
+| `core-runtime` Agent Runtime, Scheduler, WorkGraph/AgentGraph | M1 | `crates/core-runtime` | `14`, `28`, `38` | 69 | 65 | MOD-CORE-001, MOD-AGENT-001, MOD-ORCH-001, MOD-INPUT-001, ADR-R-042, ADR-R-043, ADR-R-047, ADR-R-048, ADR-R-049, ADR-R-053, ADR-R-054 |
+| `desktop` Desktop Surface & UI | M1 | `apps/desktop`, `apps/cli`, `packages/ui`, `packages/surface-protocol`, `packages/ide-adapter-core`, `packages/design-tokens` | `10`, `29`, `32`, `39` | 55 | 51 | MOD-SURF-001, MOD-SURF-002, MOD-UX-001, MOD-DESK-001 |
 | `domain-events` Domain Model, Event Store & Protocol State | M1 | `crates/domain`, `crates/protocol`, `crates/event-store`, `crates/protocol-state` | `13`, `30`, `31`, `38` | 26 | 22 | — |
-| `durability` Compaction, Checkpoints & Recovery Spine | M4 | `crates/compaction`, `crates/checkpoint` | `19` | 7 | 7 | MOD-STATE-001, MOD-STATE-002, MOD-STATE-003 |
-| `effects-security` Policy Kernel, Effect Ledger & Secrets | M9 | `crates/policy`, `crates/effects`, `crates/secrets` | `23`, `52`, `38` | 26 | 25 | MOD-EFFECT-001, ADR-R-043, ADR-R-046, ADR-R-052, ADR-R-053 |
-| `eval-bench` Eval Harness & Benchmarks | M3 | `benchmarks/retrieval`, `benchmarks/context-economics`, `benchmarks/agent-engineering`, `benchmarks/latency` | `53`, `61`, `63`, `38` | 26 | 23 | MOD-JIT-001, ADR-R-044, ADR-R-051, ADR-R-056 |
+| `durability` Compaction, Checkpoints & Recovery Spine | M4 | `crates/compaction`, `crates/checkpoint` | `19` | 9 | 9 | MOD-STATE-001, MOD-STATE-002, MOD-STATE-003 |
+| `effects-security` Policy Kernel, Effect Ledger & Secrets | M9 | `crates/policy`, `crates/effects`, `crates/secrets` | `23`, `52`, `38` | 29 | 26 | MOD-EFFECT-001, ADR-R-043, ADR-R-046, ADR-R-052, ADR-R-053 |
+| `eval-bench` Eval Harness & Benchmarks | M3 | `benchmarks/retrieval`, `benchmarks/context-economics`, `benchmarks/agent-engineering`, `benchmarks/latency` | `53`, `61`, `63`, `38` | 30 | 26 | MOD-JIT-001, ADR-R-044, ADR-R-051, ADR-R-056 |
 | `extensions-hooks` Hook Bus, Extension System & Importers | M9 | `crates/tools (hooks)`, `crates/skills (import)` | `25` | 13 | 12 | — |
 | `external-tools` MCP Hub, Integrations & Web Gateway | M9 | `crates/tools (external.*)`, `crates/tools (forge.*)` | `16`, `29` | 9 | 8 | — |
-| `governance` Architecture Governance & Product Scope | M0 | `tools/architecture-lint`, `tools/evidence-check`, `docs/decisions` | `02`, `03`, `76`, `81`, `82` | 10 | 29 | MOD-PROD-001, MOD-IDE-001, MOD-IDE-002, MOD-COV-001 |
+| `governance` Architecture Governance & Product Scope | M0 | `tools/architecture-lint`, `tools/evidence-check`, `docs/decisions` | `02`, `03`, `76`, `81`, `82` | 12 | 32 | MOD-PROD-001, MOD-IDE-001, MOD-IDE-002, MOD-COV-001 |
 | `media` Media Pipeline & Artifact Store | M5 | `crates/tools (media)`, `object store` | `25` | 6 | 6 | MOD-MEDIA-001, MOD-MEDIA-002, MOD-MM-001 |
-| `memory` Engineering Memory | M9 | `crates/memory` | `19` | 2 | 2 | — |
-| `model-gateway` Execution Policy Router & Provider Gateway | M2 | `crates/providers` | `15`, `27`, `38` | 13 | 13 | ADR-R-039, ADR-R-040, ADR-R-041, ADR-R-047, ADR-R-049, ADR-R-050 |
-| `observability` Observability, Cost & Operations | M10 | `crates/observability` | `34`, `71`, `38` | 7 | 6 | ADR-R-045, ADR-R-048, ADR-R-055 |
+| `memory` Engineering Memory | M9 | `crates/memory` | `19` | 7 | 5 | — |
+| `model-gateway` Execution Policy Router & Provider Gateway | M2 | `crates/providers` | `15`, `27`, `38` | 18 | 13 | ADR-R-039, ADR-R-040, ADR-R-041, ADR-R-047, ADR-R-049, ADR-R-050 |
+| `observability` Observability, Cost & Operations | M10 | `crates/observability` | `34`, `71`, `38` | 8 | 7 | ADR-R-045, ADR-R-048, ADR-R-055 |
 | `procedural-runtime` Procedural Tool Runtime | M5 | `crates/procedural-runtime` | `16` | 3 | 3 | — |
-| `sandbox-cloud` Sandbox Gateway, Guest & Cloud Control Plane | M8 | `crates/sandbox`, `apps/cloud-api`, `apps/cloud-worker`, `apps/sandbox-gateway`, `services/modbit-guest` | `21`, `24` | 18 | 17 | MOD-SBX-001, MOD-AUTH-001, MOD-CLOUD-001 |
-| `skills` Skill Registry, Compiler & Evolution Lab | M5 | `crates/skills`, `crates/prompt-compiler` | `26`, `38` | 25 | 24 | MOD-SKILL-001, MOD-SKILL-002 |
-| `terminal` Terminal Broker & Execution Router | M2 | `crates/terminal`, `services/modbit-execd` | `21` | 10 | 10 | MOD-EXEC-001, MOD-EXEC-002 |
-| `tool-runtime` Tool Registry & Capability Kernel | M2 | `crates/tools`, `crates/policy` | `16`, `17` | 10 | 10 | MOD-TOOL-001, MOD-TOOL-002, MOD-TOOL-003 |
-| `verification` Verification Engine & Quality Gates | M2 | `crates/verification`, `tools/release-gate` | `28`, `50`, `51`, `63`, `64`, `76`, `83`, `38`, `61` | 18 | 18 | MOD-VERIFY-001, ADR-R-052, ADR-R-056 |
+| `sandbox-cloud` Sandbox Gateway, Guest & Cloud Control Plane | M8 | `crates/sandbox`, `apps/cloud-api`, `apps/cloud-worker`, `apps/sandbox-gateway`, `services/modbit-guest` | `21`, `24` | 19 | 18 | MOD-SBX-001, MOD-AUTH-001, MOD-CLOUD-001 |
+| `skills` Skill Registry, Compiler & Evolution Lab | M5 | `crates/skills`, `crates/prompt-compiler` | `26`, `38` | 28 | 27 | MOD-SKILL-001, MOD-SKILL-002 |
+| `terminal` Terminal Broker & Execution Router | M2 | `crates/terminal`, `services/modbit-execd` | `21` | 15 | 13 | MOD-EXEC-001, MOD-EXEC-002 |
+| `tool-runtime` Tool Registry & Capability Kernel | M2 | `crates/tools`, `crates/policy` | `16`, `17` | 11 | 10 | MOD-TOOL-001, MOD-TOOL-002, MOD-TOOL-003 |
+| `verification` Verification Engine & Quality Gates | M2 | `crates/verification`, `tools/release-gate` | `28`, `50`, `51`, `63`, `64`, `76`, `83`, `38`, `61` | 19 | 19 | MOD-VERIFY-001, ADR-R-052, ADR-R-056 |
 | `workspace-git` Workspace Fabric, Change Engine & Git | M2 | `crates/workspace`, `crates/git` | `20`, `64` | 27 | 27 | — |
 
 ## Requirement → task → test chain
@@ -211,7 +211,7 @@ flowchart LR
   ETASK -->|owned_by| SUB
 ```
 
-Disposition counts: ADAPT 63, ADOPT 352, ALREADY COVERED 11, DEFERRED 13, EXPERIMENT 13, REJECT 6.
+Disposition counts: ADAPT 63, ADOPT 379, ALREADY COVERED 11, DEFERRED 31, EXPERIMENT 13, REJECT 6.
 
 ## Execution policy development dependencies
 
@@ -324,7 +324,7 @@ Releases are projections over work items and gates (docs/75). Readiness is compu
 |---|---|---:|---:|---:|---|---|
 | ALPHA: Local coding loop and recovery spine | READY | 114 | 114 | 0 | none | / ALPHA / Local coding loop and recovery spine / M0, M1, M2, M4 / M2.10 / EPR- / — / — / |
 | BETA: Intelligence, fleet and browser | READY | 318 | 318 | 0 | none | / BETA / Intelligence, fleet and browser / M0, M1, M2, M3, M4, M5, M6, M7 / — / — / — / — / |
-| RELEASE_ZERO: Full end-to-end proof | NOT_READY | 506 | 409 | 0 | EPR-GATE-A, EPR-GATE-B, EPR-GATE-C, EPR-GATE-D, EPR-GATE-E, EPR-GATE-F, EPR-GATE-G | / RELEASE_ZERO / Full end-to-end proof / ALL / — / — / — / EPR-GATE-A, EPR-GATE-B, EPR-GATE-C, EPR-GATE-D, EPR-GATE-E, EPR-GATE-F, EPR-GATE-G / |
+| RELEASE_ZERO: Full end-to-end proof | NOT_READY | 533 | 409 | 0 | EPR-GATE-A, EPR-GATE-B, EPR-GATE-C, EPR-GATE-D, EPR-GATE-E, EPR-GATE-F, EPR-GATE-G | / RELEASE_ZERO / Full end-to-end proof / ALL / — / — / — / EPR-GATE-A, EPR-GATE-B, EPR-GATE-C, EPR-GATE-D, EPR-GATE-E, EPR-GATE-F, EPR-GATE-G / |
 
 ## Scoped v1.1 supersessions and source provenance
 
@@ -385,6 +385,7 @@ flowchart LR
 - `DOC-PX-014`: NOT_STARTED; Product extension stage: Per-task harness refinement and lesson library, PX-140 (deferred); evidence: none
 - `DOC-PX-015`: COMPLETE; Product extension stage: ZCode design language for the desktop renderer, PX-141..143; evidence: artifact:evidence/dossier-px-015/validation.json, artifact:evidence/dossier-px-015/tests.log, commit:437419a8e81bc76a52c7ef1b72dccb48e357941f
 - `DOC-PX-016`: COMPLETE; Product extension stage: Autonomous coding engine inside the Capability Kernel's envelope, PX-144..146; evidence: artifact:evidence/dossier-px-016/tests.log, artifact:evidence/dossier-px-016/validation.json, commit:6e32d883
+- `DOC-PX-017`: NOT_STARTED; Product extension stage: Upgrade program from Codex, MAI-UI and Qwen-Planner-Agent, PX-147..191; evidence: none
 
 ## Milestone tasks in execution order
 
@@ -535,7 +536,7 @@ flowchart LR
 | M7 | E2E-013, E2E-014, E2E-015, E2E-016, FI-13, FI-14, FI-15 |
 | M8 | E2E-017, E2E-018, E2E-024, FI-17, FI-18, FI-30, PX-E2E-011 |
 | M9 | E2E-023, EPR-E2E-010, EPR-E2E-011, EPR-E2E-019, EPR-FI-010, EPR-FI-011, EPR-FI-019, FI-25, FI-26, PX-E2E-008, PX-E2E-009 |
-| M10 | E2E-025, EPR-E2E-012, EPR-E2E-013, EPR-FI-012, EPR-FI-013, PX-E2E-021, PX-E2E-025, PX-E2E-030, PX-E2E-031, PX-E2E-041, PX-E2E-042, PX-E2E-043, PX-E2E-044, PX-E2E-045, PX-E2E-046, PX-E2E-047, PX-E2E-048, PX-E2E-049, PX-E2E-050, PX-E2E-051, PX-E2E-052, PX-E2E-053, PX-E2E-054, PX-E2E-055, PX-E2E-056, PX-E2E-057, PX-E2E-058, PX-E2E-059, PX-E2E-060, PX-E2E-061, PX-E2E-062, PX-E2E-063, PX-E2E-064, PX-E2E-065, PX-E2E-066, PX-E2E-067, PX-E2E-068, PX-E2E-069, PX-E2E-070, PX-E2E-071, PX-E2E-072, PX-E2E-073, PX-E2E-074, PX-E2E-075, PX-E2E-076, PX-E2E-077, PX-E2E-078, PX-E2E-079, PX-E2E-080, PX-E2E-081, PX-E2E-082, PX-E2E-083, PX-E2E-084, PX-E2E-085, PX-E2E-086, PX-E2E-087, PX-E2E-088, PX-E2E-089, PX-E2E-090, PX-E2E-091, PX-E2E-092, PX-E2E-093, PX-E2E-094, PX-E2E-095, PX-E2E-096, PX-E2E-097, PX-E2E-098, PX-E2E-099, PX-E2E-100, PX-E2E-101, PX-E2E-102, PX-E2E-103, PX-E2E-104, PX-E2E-105, PX-E2E-106, PX-E2E-107, PX-E2E-108, PX-E2E-109, PX-E2E-110, PX-E2E-111, PX-E2E-112, PX-E2E-113, PX-E2E-114, PX-E2E-115, PX-E2E-116, PX-E2E-117, PX-E2E-118, PX-E2E-119, PX-E2E-120, PX-E2E-121, PX-E2E-122, PX-E2E-123, PX-E2E-124, PX-E2E-125, PX-E2E-126, PX-E2E-127, PX-E2E-128, PX-E2E-129, PX-E2E-130, PX-E2E-131, PX-E2E-132, PX-E2E-133, PX-E2E-134, PX-E2E-135, PX-E2E-136, PX-E2E-137, PX-E2E-138, PX-E2E-139, PX-E2E-141, PX-E2E-142, PX-E2E-143, PX-E2E-144, PX-E2E-145, PX-E2E-146 |
+| M10 | E2E-025, EPR-E2E-012, EPR-E2E-013, EPR-FI-012, EPR-FI-013, PX-E2E-021, PX-E2E-025, PX-E2E-030, PX-E2E-031, PX-E2E-041, PX-E2E-042, PX-E2E-043, PX-E2E-044, PX-E2E-045, PX-E2E-046, PX-E2E-047, PX-E2E-048, PX-E2E-049, PX-E2E-050, PX-E2E-051, PX-E2E-052, PX-E2E-053, PX-E2E-054, PX-E2E-055, PX-E2E-056, PX-E2E-057, PX-E2E-058, PX-E2E-059, PX-E2E-060, PX-E2E-061, PX-E2E-062, PX-E2E-063, PX-E2E-064, PX-E2E-065, PX-E2E-066, PX-E2E-067, PX-E2E-068, PX-E2E-069, PX-E2E-070, PX-E2E-071, PX-E2E-072, PX-E2E-073, PX-E2E-074, PX-E2E-075, PX-E2E-076, PX-E2E-077, PX-E2E-078, PX-E2E-079, PX-E2E-080, PX-E2E-081, PX-E2E-082, PX-E2E-083, PX-E2E-084, PX-E2E-085, PX-E2E-086, PX-E2E-087, PX-E2E-088, PX-E2E-089, PX-E2E-090, PX-E2E-091, PX-E2E-092, PX-E2E-093, PX-E2E-094, PX-E2E-095, PX-E2E-096, PX-E2E-097, PX-E2E-098, PX-E2E-099, PX-E2E-100, PX-E2E-101, PX-E2E-102, PX-E2E-103, PX-E2E-104, PX-E2E-105, PX-E2E-106, PX-E2E-107, PX-E2E-108, PX-E2E-109, PX-E2E-110, PX-E2E-111, PX-E2E-112, PX-E2E-113, PX-E2E-114, PX-E2E-115, PX-E2E-116, PX-E2E-117, PX-E2E-118, PX-E2E-119, PX-E2E-120, PX-E2E-121, PX-E2E-122, PX-E2E-123, PX-E2E-124, PX-E2E-125, PX-E2E-126, PX-E2E-127, PX-E2E-128, PX-E2E-129, PX-E2E-130, PX-E2E-131, PX-E2E-132, PX-E2E-133, PX-E2E-134, PX-E2E-135, PX-E2E-136, PX-E2E-137, PX-E2E-138, PX-E2E-139, PX-E2E-141, PX-E2E-142, PX-E2E-143, PX-E2E-144, PX-E2E-145, PX-E2E-146, PX-E2E-147, PX-E2E-148, PX-E2E-149, PX-E2E-150, PX-E2E-152, PX-E2E-153, PX-E2E-155, PX-E2E-156, PX-E2E-157, PX-E2E-158, PX-E2E-159, PX-E2E-161, PX-E2E-162, PX-E2E-167, PX-E2E-168, PX-E2E-171, PX-E2E-174, PX-E2E-176, PX-E2E-177, PX-E2E-178, PX-E2E-179, PX-E2E-182, PX-E2E-183, PX-E2E-184, PX-E2E-186, PX-E2E-188, PX-E2E-189 |
 
 ## Document map
 
