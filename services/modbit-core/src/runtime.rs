@@ -1747,10 +1747,11 @@ pub(crate) async fn rebuild(
             // progress, each end the spending the budgets count: the next
             // window starts from here. Cost and wall clock are not windowed.
             "HarnessBudgetExhausted"
-                if matches!(
-                    payload["budget"].as_str(),
-                    Some("max_turns" | "max_tool_calls")
-                ) =>
+                if task.origin != modbit_domain::task::TaskOrigin::Subagent
+                    && matches!(
+                        payload["budget"].as_str(),
+                        Some("max_turns" | "max_tool_calls")
+                    ) =>
             {
                 state.open_budget_window();
             }

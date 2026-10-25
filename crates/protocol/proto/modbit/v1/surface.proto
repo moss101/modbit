@@ -1143,6 +1143,21 @@ message VerificationRunView {
   repeated string check_statuses = 7;
 }
 
+// One repair attempt the Core recorded for the task (PX-018; shown from
+// DR-PX-2026-10-25-017). `outcome` is empty while the attempt is open,
+// RESOLVED | PARTIAL | UNCHANGED | WORSENED once concluded, and ESCALATED for
+// the entry the loop writes when it refuses a further attempt (`escalation`
+// then carries the reason and `ordinal` the attempts so far).
+message RepairAttemptView {
+  uint32 ordinal = 1;
+  string failure_signature = 2;
+  string hypothesis = 3;
+  string intended_fix = 4;
+  string outcome = 5;
+  bool reverted = 6;
+  string escalation = 7;
+}
+
 message ReviewBundle {
   Id task_id = 1;
   string task_state = 2;
@@ -1163,6 +1178,8 @@ message ReviewBundle {
   // seen, untrusted, with what became of each; and the CI runs refused.
   repeated ReviewCommentThreadView review_comments = 360;
   repeated CiRejectedView ci_rejected = 361;
+  // The repair attempts of the task, in the order they were recorded.
+  repeated RepairAttemptView repair_attempts = 362;
 }
 
 message GetCodeView {

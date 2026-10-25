@@ -22,11 +22,12 @@ use std::time::{Duration, Instant};
 use modbit_protocol::client::{Client, ClientError};
 use modbit_protocol::v1::{
     AddAllowRule, AllowRuleList, AllowRuleRevoked, AllowRuleView, ApprovalList,
-    ContextAccountingView, EditQueuedInput, EffectReceiptList, GetContextAccounting, GetRunMode,
-    Id, InputQueued, InterruptAccepted, InterruptTask, ListAllowRules, ListApprovals,
-    ListQueuedInputs, QueueInput, QueuedInputChanged, QueuedInputList, RemoveQueuedInput,
-    ReorderQueuedInput, ResolveApproval, ResumeTask, RevokeAllowRule, RunModeView,
-    SendQueuedInputNow, SetRunMode, StartTask, TaskResumeResult, TaskRunStarted,
+    ContextAccountingView, EditQueuedInput, EffectReceiptList, GetContextAccounting,
+    GetReviewBundle, GetRunMode, Id, InputQueued, InterruptAccepted, InterruptTask, ListAllowRules,
+    ListApprovals, ListQueuedInputs, QueueInput, QueuedInputChanged, QueuedInputList,
+    RemoveQueuedInput, ReorderQueuedInput, ResolveApproval, ResumeTask, ReviewBundle,
+    RevokeAllowRule, RunModeView, SendQueuedInputNow, SetRunMode, StartTask, TaskResumeResult,
+    TaskRunStarted,
 };
 use prost::Message;
 use px_common::*;
@@ -2619,6 +2620,30 @@ async fn qual_px_145_sequential_build_failures_are_repaired_through_the_cores_ow
             .collect::<Vec<_>>(),
         vec!["UNCHANGED", "RESOLVED"]
     );
+    // The desktop reads the same attempts from the review bundle, with the
+    // outcome the Core recorded for each.
+    let bundle: ReviewBundle = cmd(
+        &mut c,
+        "GetReviewBundle",
+        GetReviewBundle {
+            task_id: Some(t.clone()),
+        },
+        None,
+    )
+    .await
+    .unwrap();
+    let shown: Vec<(u32, &str)> = bundle
+        .repair_attempts
+        .iter()
+        .map(|a| (a.ordinal, a.outcome.as_str()))
+        .collect();
+    assert_eq!(shown, vec![(1, "UNCHANGED"), (2, "RESOLVED")]);
+    assert!(
+        bundle
+            .repair_attempts
+            .iter()
+            .all(|a| !a.hypothesis.is_empty() && !a.failure_signature.is_empty())
+    );
     assert_eq!(approvals_in(&mut c, &session).await, 0, "nothing asked");
 }
 
@@ -2973,6 +2998,98 @@ async fn qual_px_146_an_autonomous_run_that_makes_no_progress_is_not_extended() 
     assert_eq!(st.state, "Waiting", "{st:?}");
     assert_eq!(st.failure_code, "NO_PROGRESS", "{st:?}");
     let events = replay(&core, &session).await;
+    assert!(kinds(&events, "BudgetWindowExtended").is_empty());
+}
+
+/// A subagent keeps the capsule it was admitted under: a parent a person put
+/// in AUTONOMOUS does not hand the child that mode, the child cannot be put in
+/// it, and a window of budget is never opened for it (its turns are a slice
+/// of the parent's, reserved against the parent).
+#[tokio::test(flavor = "multi_thread")]
+async fn qual_px_146_a_subagent_does_not_inherit_autonomous_or_a_budget_window() {
+    let reply: Script = Arc::new(|body, _| {
+        let text = body["messages"].to_string();
+        let r = tool_result_count(body);
+        if text.contains("Task goal: write the child file") {
+            return match r {
+                0 => Step::call(
+                    "plan.update",
+                    json!({"outcome": "the file exists", "expected_files": ["child/c.txt"]}),
+                ),
+                1 => Step::call(
+                    "change.apply",
+                    json!({"path": "child/c.txt", "op": "create", "content": "from the child\n"}),
+                ),
+                _ => complete_call(),
+            };
+        }
+        match r {
+            0 => Step::call(
+                "plan.update",
+                json!({"outcome": "keep notes", "expected_files": ["notes.md"], "protected_effects": ["git.merge"]}),
+            ),
+            1 => Step::call(
+                "agent.spawn",
+                json!({"idempotency_key": "kid", "objective": "write the child file", "write_scope": ["child/"]}),
+            ),
+            2 => Step::call(
+                "agent.wait",
+                json!({"idempotency_key": "kid", "timeout_ms": 60000}),
+            ),
+            3 => Step::call(
+                "git.merge.abort",
+                json!({"child": "kid", "discard": true, "reason": "integration of the fixture"}),
+            ),
+            _ => complete_call(),
+        }
+    });
+    let (_repo, root) = plain_repo(&[("notes.md", "notes\n"), ("child/.keep", "")]);
+    let (base, _seen) = model(reply).await;
+    let dir = tempfile::tempdir().unwrap();
+    let core = spawn(dir.path(), &env_of(&base, &[]));
+    let mut c = core.client().await;
+    let (session, g) = session_with_lease(&mut c, 0x10).await;
+    let _approver = spawn_approver(&core, &session, g).await;
+    let t = create_task(
+        &mut c,
+        &session,
+        g,
+        &root,
+        0x11,
+        "local_trusted",
+        "keep notes",
+    )
+    .await;
+    set_mode(&mut c, &t, g, "AUTONOMOUS", true).await.unwrap();
+    start_with(&mut c, &t, g, 40, 0).await;
+    let st = wait_task(&mut c, &t, 180).await;
+    assert_eq!(st.state, "ReadyForReview", "{st:?}");
+
+    let events = replay(&core, &session).await;
+    let admitted = kinds(&events, "SubagentAdmitted");
+    assert_eq!(admitted.len(), 1, "one real child was admitted");
+    let child_uuid = pl(&admitted[0])["child_task_id"]
+        .as_str()
+        .unwrap()
+        .to_owned();
+    let child = Id {
+        value: hex::decode(child_uuid.replace('-', "")).unwrap(),
+    };
+    let mode: RunModeView = cmd(
+        &mut c,
+        "GetRunMode",
+        GetRunMode {
+            task_id: Some(child.clone()),
+        },
+        None,
+    )
+    .await
+    .unwrap();
+    assert_eq!(mode.mode, "ASK", "the child did not inherit AUTONOMOUS");
+    let refused = set_mode(&mut c, &child, g, "AUTONOMOUS", true)
+        .await
+        .unwrap_err();
+    assert_eq!(refused.0, "UNATTENDED_SUBAGENT", "{refused:?}");
     assert!(kinds(&events, "BudgetWindowExtended").is_empty());
 }
 

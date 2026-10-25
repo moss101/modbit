@@ -1140,6 +1140,15 @@ async fn set_run_mode(
             "an automation's run takes its principal's ceiling and asks for every protected effect; a run mode cannot widen it",
         ));
     }
+    // DR-PX-2026-10-25-017: a subagent runs inside its capsule's ceiling and
+    // a slice of its parent's budget; a person's autonomy choice is made on
+    // the task they attend, and the child never inherits it (REQ-EV-0046).
+    if mode == RunMode::Autonomous && task.origin == TaskOrigin::Subagent {
+        return Err(refuse(
+            "UNATTENDED_SUBAGENT",
+            "AUTONOMOUS is chosen on the task a person attends; a subagent stays inside its capsule and its slice of the parent's budget",
+        ));
+    }
     require_lease(core, &env.command_id, env, &task.session_id)
         .await
         .map_err(|ack| (ack.error_code, ack.error_message))?;

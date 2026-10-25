@@ -97,3 +97,50 @@ test("PX-144/145: Autonomous is chosen in the run-mode dialog; a broken TypeScri
     model.server.close();
   }
 });
+
+test("PX-145: a first fix that does not build is a repair attempt the Core records, concludes from its own verification, and the Evidence app shows", async () => {
+  test.skip(process.platform === "win32" || !existsSync(REPO_TSC), "needs a POSIX shell and this checkout's installed TypeScript");
+  test.setTimeout(300_000);
+  const root = brokenProject();
+  const notices = (body: string): number => body.split("[modbit: automatic verification]").length - 1;
+  const openFailure = (body: string): string => [...body.matchAll(/open failure\(s\): (.+?)(?:, |\\n|")/g)].pop()?.[1]?.trim() ?? "";
+  const model = await routedModel((_goal, results, body) => {
+    if (body.includes("every mandatory check passed")) return [{ call: { name: "task.complete", args: { summary: "the build passes", self_review: { findings: [] } } } }];
+    const n = notices(body);
+    if (results === 0) return ["Planning.", { call: { name: "plan.update", args: { outcome: "the build passes", expected_files: ["src/index.ts"], verification: ["npm run build"] } } }];
+    if (results === 1) return [{ call: { name: "fs.read", args: { path: "src/index.ts" } } }];
+    // A first fix that is wrong: another string where a number is declared.
+    if (results === 2) return ["Trying a string.", { call: { name: "change.apply", args: { path: "src/index.ts", op: "replace", content: 'export const total: number = "42";\n' } } }];
+    if (n === 1 && results === 3) {
+      return [{ call: { name: "repair.attempt", args: { failure_signature: openFailure(body), hypothesis: "the declared type is number, so the value must be a number literal", intended_fix: "use the number 42" } } }];
+    }
+    if (n === 1 && results === 4) return [{ call: { name: "change.apply", args: { path: "src/index.ts", op: "replace", content: "export const total: number = 42;\n" } } }];
+    return ["Waiting for the Core's verification."];
+  });
+  const dataDir = mkdtempSync(join(tmpdir(), "modbit-e2e-autonomy-repair-"));
+  const { app, page } = await launch(dataDir, { env: { MODBIT_OPENAI_BASE_URL: model.url } });
+  try {
+    await setContentSize(app, page, 1280, 800);
+    const taskId = await createTask(page, "The build is broken: fix the TypeScript compile error", root);
+    await openConversation(page, taskId);
+    const sessionId = await sessionOf(page);
+    await page.evaluate(([s, t]) => window.modbit.setRunMode(s!, t!, "AUTONOMOUS", true), [sessionId, taskId]);
+    await page.evaluate(([s, t]) => window.modbit.startTask(s!, t!), [sessionId, taskId]);
+    await expect.poll(() => page.evaluate((t) => window.modbit.taskStatus(t).then((s) => s.state), taskId), { timeout: 240_000 }).toBe("ReadyForReview");
+    expect(buildPasses(root), "the build passes after the repair").toBe(true);
+    expect(await page.evaluate((s) => window.modbit.pendingApprovals(s!).then((l) => l.length), sessionId)).toBe(0);
+    // The bridge carries the attempt the Core recorded, and the app shows the same one.
+    const bundle = await page.evaluate((t) => window.modbit.reviewBundle(t), taskId);
+    expect(bundle.repairAttempts.map((a) => [a.ordinal, a.outcome])).toEqual([[1, "RESOLVED"]]);
+    if ((await page.getByTestId("region-apps").count()) === 0) await page.getByTestId("toggle-apps-panel").click();
+    await page.getByTestId("tab-evidence").click();
+    await expect(page.getByTestId("app-evidence")).toBeVisible();
+    await expect(page.getByTestId("evidence-repair")).toHaveCount(1, { timeout: 30_000 });
+    await expect(page.getByTestId("evidence-repair")).toHaveAttribute("data-outcome", "RESOLVED");
+    await expect(page.getByTestId("evidence-repair")).toContainText("the value must be a number literal");
+    await expect(page.getByTestId("evidence-repair-summary")).toHaveText("1 repair attempt, 1 resolved");
+  } finally {
+    await closeApp(app);
+    model.server.close();
+  }
+});

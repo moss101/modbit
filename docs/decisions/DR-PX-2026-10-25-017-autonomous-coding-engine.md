@@ -67,6 +67,10 @@ Section 1.
 
 **D7 — An AUTONOMOUS task resumes after a crash.** The Core names, with the tasks a person asked to resume, the AUTONOMOUS tasks whose run a restart suspended, unless the session was ended on purpose after they last started or `MODBIT_AUTO_RESUME=0`. The client resumes them with its ordinary `StartTask`, which judges the lease, the provider, the envelope, the mode and every rule's scope and expiry afresh, and reconciles a call the dead Core had dispatched with its target instead of replaying it. Nothing resumes without a client.
 
+**D8 — A subagent inherits neither the mode nor a window (follow-up, 2026-10-25).** A child runs inside its capsule's effect ceiling (REQ-EV-0046) and a slice of its parent's budget that is reserved against the parent, so what the parent's person chose for the task they attend does not widen it. Stated as three guards, each tested with a real child (`qual_px_146_a_subagent_does_not_inherit_autonomous_or_a_budget_window`): a child's mode is `ASK` whatever its parent's is (D1); `SetRunMode` to `AUTONOMOUS` on a task of origin `subagent` is refused (`UNATTENDED_SUBAGENT`); and a child never opens a budget window, neither by the Autonomous extension (D6, already gated on the capsule) nor by a replayed `HarnessBudgetExhausted` (new: a resumed child would otherwise spend again what its parent has already been charged). The Core's automatic verification (D5) stays off for a child, as before.
+
+**D9 — The repair attempts are shown (follow-up, 2026-10-25).** `RepairAttemptView` and `ReviewBundle.repair_attempts = 362` are additive: the Core folds the task's own `RepairAttemptRecorded`, `RepairAttemptConcluded` and `RepairEscalated` events into the review bundle the Evidence app already reads, and the app lists each attempt with its hypothesis and the outcome the Core recorded (open, RESOLVED, PARTIAL, UNCHANGED, WORSENED, reverted) and a stopped loop as a stop. No new state, store or channel; the preload type gains one field and its pinned hash moves with this record's review.
+
 ## 6. Migration
 
 No schema or protocol change. `RunMode` gains the string `AUTONOMOUS`; older logs hold none. The run-control proto comment is updated. Existing rules and modes keep their meaning; a task that never had a mode set is `ALLOWLIST` (attended origins) from this commit, which asks exactly as `ASK` did while no rule exists.
@@ -91,7 +95,17 @@ Changed: the default-mode assertions of `qual_px_057_*` in `services/modbit-core
 | 4 | same | ReadyForReview in 461 s; 13 calls; 2 verifications; 0 repair attempts; build and tests pass; test file unchanged; 0 approvals |
 | 5 | same | ReadyForReview in 843 s; 18 calls; 2 verifications; 1 repair attempt (RESOLVED); build and tests pass; test file unchanged; 0 approvals |
 
-Three of three runs on a working endpoint reached a verified result with nothing asked. That is n = 3 on one model and one small application, a measurement of the path with a real model, not of how often a model succeeds on real repositories; the second COMPLETION stage in each run is the gate repeating the checks. Not covered by it: a larger repository, other models, the desktop's unscripted approval deck, Windows and Linux.
+Three of three runs on a working endpoint reached a verified result with nothing asked. That is n = 3 on one model and one small application, a measurement of the path with a real model, not of how often a model succeeds on real repositories; the second COMPLETION stage in each run is the gate repeating the checks.
+
+**The approval deck with the same real model (follow-up, same day, same credential and bounds).** `apps/desktop/e2e/live-approvals.spec.ts`: the default Supervised mode, the same seeded application, and an instruction whose natural steps include a command no rule covers; the test plays the person at the deck. Retained under `evidence/m10/PX-144/`:
+
+| Run | Instruction adds | Result |
+|---|---|---|
+| 1 | commit after setting a git identity with `git config` | ReadyForReview in 444 s; 11 calls; 2 real cards (`git config user.name`, `git config user.email`, "protected write", the Core's reason shown), each approved once; each approval is named in its receipt; build and tests pass; test file unchanged; 1 repair attempt RESOLVED. `git config` is a protected path, which never offers Always, so no rule was made |
+| 2 | two `git remote add` commands | the test chose the bare prefix `git`; the Core refused the rule (`PATTERN_TOO_BROAD`), the second command asked again and was approved once; ReadyForReview in 342 s. A flaw in the test's prefix choice, kept as a result: the refusal is the Core's, through the real UI |
+| 3 | same, prefix `git remote` | ReadyForReview in 213 s; 9 calls; ONE card (`git remote add backup`), Always made one task rule, the second `git remote add mirror` ran with no card and its receipt names the rule (`allowlist:<rule id>`); build and tests pass; test file unchanged |
+
+So a real model reached a protected effect, the deck showed it with its exact command and reason, a person's Always made a rule that took effect (the defect finding 2 described), and the run continued. n = 1 for the reuse leg, one model, one command family. Not covered by any live run: a larger repository, other models, Windows and Linux, a cost-capped run (the binding is unmetered), repair-attempt display against a live run (the Electron test covers it with a scripted provider).
 
 ## 10. Rollback
 
