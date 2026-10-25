@@ -9,6 +9,7 @@ import { GEOMETRY } from "@modbit/design-tokens";
 import { computeLayout, ratioForPanel, clampListWidth, clampPanelRatio } from "./layout.ts";
 import { Splitter } from "./splitter.tsx";
 import type { UiPrefs } from "./prefs.ts";
+import { insetChrome } from "./chrome.ts";
 
 export interface ShellFrameProps {
   prefs: UiPrefs;
@@ -59,6 +60,8 @@ export function ShellFrame({ prefs, onPrefs, panelOpen, panel, agents, topBar, b
   return (
     <div ref={root} className="shell" data-testid="shell" data-list-px={layout.listPx} data-center-px={layout.centerPx} data-panel-px={layout.panelPx} data-rail={layout.rail} data-stacked={layout.stacked} data-single-pane={layout.singlePane} style={fixedWidth === undefined ? undefined : { width: fixedWidth }}>
       <nav className="shell-list" aria-label="Agents" data-testid="region-agents" data-rail={layout.rail} style={{ width: layout.listPx }}>
+        {/* REQ-PX-094: where the native window controls float; empty and draggable, so content never sits under them. */}
+        {insetChrome() && <div className="shell-list-strip" data-testid="window-controls-strip" aria-hidden="true" />}
         <div className="shell-scroll">{agents(layout.rail)}</div>
         {!layout.rail && (
           <Splitter

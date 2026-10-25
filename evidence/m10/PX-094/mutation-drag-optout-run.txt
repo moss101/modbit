@@ -1,0 +1,39 @@
+
+Running 1 test using 1 worker
+
+[electron] modbit-core: recovery complete: boot_generation=1 events_verified=0 aggregates=0 projections_rebuilt=false sessions=0 tasks=0 in 0ms
+[electron] Debugger ending on ws://127.0.0.1:52436/9f44b14c-ef06-490d-b938-a012e8cdee1e
+For help, see: https://nodejs.org/learn/getting-started/debugging
+  ✘  1 e2e/window-chrome.spec.ts:92:1 › PX-094: every control in the bar is keyboard reachable and opts out of dragging; the empty bar and the strip drag the window (527ms)
+
+
+  1) e2e/window-chrome.spec.ts:92:1 › PX-094: every control in the bar is keyboard reachable and opts out of dragging; the empty bar and the strip drag the window 
+
+    Error: toggle-agent-list opts out of dragging
+
+    expect(received).toBe(expected) // Object.is equality
+
+    Expected: "no-drag"
+    Received: "drag"
+
+      106 |     );
+      107 |     expect(interactive.length, "the bar has controls").toBeGreaterThan(3);
+    > 108 |     for (const c of interactive) expect(c.region, `${c.id} opts out of dragging`).toBe("no-drag");
+          |                                                                                   ^
+      109 |     // Keyboard: Tab from just before the bar visits every enabled control in it, in order, and leaves it.
+      110 |     const expected = interactive.filter((c) => !c.disabled).map((c) => c.id);
+      111 |     await page.evaluate(() => (document.querySelector('[data-testid="region-agents"] button, [data-testid="region-agents"] a, [data-testid="region-agents"] input') as HTMLElement | null)?.focus());
+        at /Users/mohsin/projects/modbit/.claude/worktrees/agent-a4d77584f811c0945/apps/desktop/e2e/window-chrome.spec.ts:108:83
+
+    Error Context: test-results/window-chrome-PX-094-every-893c0-d-the-strip-drag-the-window/error-context.md
+
+    attachment #2: trace (application/zip) ─────────────────────────────────────────────────────────
+    test-results/window-chrome-PX-094-every-893c0-d-the-strip-drag-the-window/trace.zip
+    Usage:
+
+        npx playwright show-trace test-results/window-chrome-PX-094-every-893c0-d-the-strip-drag-the-window/trace.zip
+
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+  1 failed
+    e2e/window-chrome.spec.ts:92:1 › PX-094: every control in the bar is keyboard reachable and opts out of dragging; the empty bar and the strip drag the window 

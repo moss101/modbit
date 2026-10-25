@@ -80,3 +80,7 @@ A budget miss fails the packaged E2E for the release-critical tier and is report
 ## Measurement and evidence
 
 PX-E2E-022 measures onboarding on fresh profiles with Playwright driving the packaged app; PX-E2E-023 checks the state matrix by forcing each degraded condition against a real Core; PX-E2E-024 traverses every screen by keyboard and runs the accessibility suite; PX-E2E-025 asserts the budgets. Screenshots are supplemental; state and timing come from Core events and Playwright traces.
+
+## Window chrome flows (PX-094)
+
+As built (PX-094): dragging an empty part of the top bar or the strip above the agent list moves the window; clicking any control in the bar acts and never starts a drag; Tab reaches every enabled control in the bar in order. The window controls never overlap content at 100, 125 and 150 percent zoom or with the agent list collapsed to its rail. Reopening the app restores the window's position, size, maximised and fullscreen state for the same displays; if its display is gone it opens centred on the primary display. Translucency is off unless opted in and is never shown under Reduce transparency. See docs/32 "Window chrome".

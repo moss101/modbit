@@ -1,0 +1,53 @@
+
+Running 1 test using 1 worker
+
+[electron] modbit-core: recovery complete: boot_generation=1 events_verified=0 aggregates=0 projections_rebuilt=false sessions=0 tasks=0 in 7ms
+[electron] Debugger ending on ws://127.0.0.1:52383/93261817-0e56-4c6c-8893-70b00c667a73
+For help, see: https://nodejs.org/learn/getting-started/debugging
+[electron] modbit-core: supervising client closed its pipe; exiting
+[electron] modbit-core: reattached to the terminal broker a previous Core left alive
+[electron] Debugger ending on ws://127.0.0.1:52398/61e466c0-ea94-4902-a843-92cc4f21dfa1
+For help, see: https://nodejs.org/learn/getting-started/debugging
+[electron] modbit-core: supervising client closed its pipe; exiting
+  ✘  1 e2e/window-chrome.spec.ts:217:1 › PX-094: a window saved for a display that is gone, and a corrupt state file, open on a screen that exists (2.1s)
+
+
+  1) e2e/window-chrome.spec.ts:217:1 › PX-094: a window saved for a display that is gone, and a corrupt state file, open on a screen that exists 
+
+    Error: centred on the primary display at the size it had
+
+    expect(received).toEqual(expected) // deep equality
+
+    - Expected  - 2
+    + Received  + 2
+
+      Object {
+        "height": 800,
+        "width": 1200,
+    -   "x": 264,
+    -   "y": 138,
+    +   "x": 528,
+    +   "y": 200,
+      }
+
+      230 |     // The window system alone would nudge a stray window back; the app's own rule is that it is centred, at its saved size, on the primary display.
+      231 |     const wa = real.find((d) => d.primary)!.workArea;
+    > 232 |     expect(b, "centred on the primary display at the size it had").toEqual({ x: Math.round(wa.x + (wa.width - 1200) / 2), y: Math.round(wa.y + (wa.height - 800) / 2), width: 1200, height: 800 });
+          |                                                                    ^
+      233 |   } finally {
+      234 |     await closeApp(app);
+      235 |   }
+        at /Users/mohsin/projects/modbit/.claude/worktrees/agent-a4d77584f811c0945/apps/desktop/e2e/window-chrome.spec.ts:232:68
+
+    Error Context: test-results/window-chrome-PX-094-a-win-6ee9b-pen-on-a-screen-that-exists/error-context.md
+
+    attachment #2: trace (application/zip) ─────────────────────────────────────────────────────────
+    test-results/window-chrome-PX-094-a-win-6ee9b-pen-on-a-screen-that-exists/trace.zip
+    Usage:
+
+        npx playwright show-trace test-results/window-chrome-PX-094-a-win-6ee9b-pen-on-a-screen-that-exists/trace.zip
+
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+  1 failed
+    e2e/window-chrome.spec.ts:217:1 › PX-094: a window saved for a display that is gone, and a corrupt state file, open on a screen that exists 
