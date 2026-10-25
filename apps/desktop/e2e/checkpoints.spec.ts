@@ -6,7 +6,7 @@
  * are real; only the provider is scripted. No test waits on a clock for a
  * state: a Gate holds the model where a test needs the run to stand still.
  */
-import { expect, test, type Page } from "@playwright/test";
+import { expect, test, type Locator, type Page } from "@playwright/test";
 import { existsSync, mkdtempSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
@@ -215,6 +215,13 @@ test("PX-062: Fork from a turn opens the child task with that turn's files and l
   }
 });
 
+/** On a short display a message sent while an older row is in view leaves the "new message" pill floating over that row: take it first, then hover. */
+async function hoverRow(page: Page, row: Locator): Promise<void> {
+  const pill = page.getByTestId("conv-pill");
+  if (await pill.isVisible()) await pill.click();
+  await row.hover();
+}
+
 test("PX-062: Restore checkpoint on a message makes it editable in place; editing an older message asks Revert or Keep; Redo returns the files", async () => {
   test.setTimeout(420_000);
   const repo = makeRepo(mkdtempSync(join(tmpdir(), "modbit-ckpt-repo-")));
@@ -264,7 +271,7 @@ test("PX-062: Restore checkpoint on a message makes it editable in place; editin
     await expect(users.nth(0).getByTestId("restore-checkpoint")).toHaveCount(0);
 
     // Restore checkpoint on the second message: the files are as they were when it was sent (a.txt only).
-    await steered.hover();
+    await hoverRow(page, steered);
     await steered.getByTestId("restore-checkpoint").click();
     await expect(page.getByTestId("restore-intro")).toContainText("before your message");
     await expect(page.getByTestId("restore-summary")).toBeVisible({ timeout: 30_000 });
@@ -286,7 +293,7 @@ test("PX-062: Restore checkpoint on a message makes it editable in place; editin
     expect(snap(repo)).toEqual(end);
 
     // Editing the older message while the files differ from its checkpoint asks Revert or Keep. Keep (Shift+Enter) sends it and leaves the files.
-    await steered.hover();
+    await hoverRow(page, steered);
     await steered.getByTestId("edit-message").click();
     await page.getByTestId("edit-text").fill("please also write d.txt instead");
     await page.getByTestId("edit-send").click();
@@ -300,7 +307,7 @@ test("PX-062: Restore checkpoint on a message makes it editable in place; editin
     expect(snap(repo), "Keep leaves the files as they were").toEqual(end);
 
     // Revert restores the message's checkpoint first, then sends the edit.
-    await steered.hover();
+    await hoverRow(page, steered);
     await steered.getByTestId("edit-message").click();
     await page.getByTestId("edit-text").fill("and a different edit");
     await page.getByTestId("edit-send").click();
