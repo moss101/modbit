@@ -15,6 +15,7 @@ import { AgentList } from "../agents/agent-list.tsx";
 import { ProjectDetail } from "../projects/project-detail.tsx";
 import { useProjects } from "../projects/use-projects.ts";
 import { WorktreesPanel } from "../worktrees/worktrees-panel.tsx";
+import { Customize } from "../customize/customize.tsx";
 import { useWorktrees } from "../worktrees/use-worktrees.ts";
 import { Conversation } from "../conversation/conversation.tsx";
 import { FleetView } from "../fleet/fleet-view.tsx";
@@ -66,6 +67,7 @@ export function Shell({ app }: { app: AppState }) {
   const [notice, setNotice] = useState("");
   // REQ-PX-086: the Automations surface fills the centre region while it is open.
   const [automationsOpen, setAutomationsOpen] = useState(false);
+  const [customizeOpen, setCustomizeOpen] = useState(false);
   // AUT-E03: a task an automation created lives in the run's own session; its session id is the Core's (ListAutomationRuns by task).
   const [runSessions, setRunSessions] = useState<Record<string, string>>({});
   // PX-046/047: the conversation open in the centre region (null = the Fleet board). `rowId` is a search hit to scroll to.
@@ -161,18 +163,19 @@ export function Shell({ app }: { app: AppState }) {
 
   const toFleet = useCallback(
     (then: () => void) => {
-      const overlay = reviewing !== null || browsing !== null || conversation !== null || automationsOpen || projectPage !== null || worktreesOpen;
+      const overlay = reviewing !== null || browsing !== null || conversation !== null || automationsOpen || customizeOpen || projectPage !== null || worktreesOpen;
       setReviewing(null);
       setBrowsing(null);
       setConversation(null);
       setAutomationsOpen(false);
+      setCustomizeOpen(false);
       setProjectPage(null);
       setWorktreesOpen(false);
       // The fleet is re-shown on the next render; act on it after that.
       if (overlay) setTimeout(then, 0);
       else then();
     },
-    [reviewing, browsing, conversation, automationsOpen, projectPage, worktreesOpen, setReviewing, setBrowsing],
+    [reviewing, browsing, conversation, automationsOpen, customizeOpen, projectPage, worktreesOpen, setReviewing, setBrowsing],
   );
   /** Opens a task's conversation (or, with null, the Fleet board). */
   const openConversation = useCallback(
@@ -181,6 +184,7 @@ export function Shell({ app }: { app: AppState }) {
       setBrowsing(null);
       setDashboardOpen(false);
       setAutomationsOpen(false);
+      setCustomizeOpen(false);
       setProjectPage(null);
       setWorktreesOpen(false);
       if (taskId === null) {
@@ -215,6 +219,7 @@ export function Shell({ app }: { app: AppState }) {
       setDashboardOpen(false);
       setConversation(null);
       setAutomationsOpen(false);
+      setCustomizeOpen(false);
       setWorktreesOpen(false);
       setProjectPage(projectId);
     },
@@ -226,6 +231,7 @@ export function Shell({ app }: { app: AppState }) {
     setDashboardOpen(false);
     setConversation(null);
     setAutomationsOpen(false);
+    setCustomizeOpen(false);
     setProjectPage(null);
     setWorktreesOpen(true);
   }, [setReviewing, setBrowsing, setDashboardOpen]);
@@ -263,11 +269,13 @@ export function Shell({ app }: { app: AppState }) {
     openAutomations: () => {
       setProjectPage(null);
       setWorktreesOpen(false);
+      setCustomizeOpen(false);
       setAutomationsOpen(true);
     },
     goBack: () => {
       // Back leaves the conversation (or an automations / project / worktrees page) for the Fleet board once nothing else is open over it.
-      if (automationsOpen) setAutomationsOpen(false);
+      if (customizeOpen) setCustomizeOpen(false);
+      else if (automationsOpen) setAutomationsOpen(false);
       else if (projectPage && !reviewing && !browsing && !dashboardOpen) setProjectPage(null);
       else if (worktreesOpen && !reviewing && !browsing && !dashboardOpen) setWorktreesOpen(false);
       else if (conversation && !reviewing && !browsing && !dashboardOpen) setConversation(null);
@@ -280,7 +288,7 @@ export function Shell({ app }: { app: AppState }) {
     stopComputer: () => void computerStop.stopAll(presence.info?.controls ?? []),
     computerStopAvailability: () => ((presence.info?.controls ?? []).some(holdsMachine) ? true : "Nothing is controlling this computer"),
     openComputerPermissions: () => setPermissionsOpen(true),
-    canGoBack: () => reviewing !== null || browsing !== null || dashboardOpen || conversation !== null || automationsOpen || projectPage !== null || worktreesOpen,
+    canGoBack: () => reviewing !== null || browsing !== null || dashboardOpen || conversation !== null || automationsOpen || customizeOpen || projectPage !== null || worktreesOpen,
   };
   const actionsRef = useRef(actions);
   actionsRef.current = actions;
@@ -372,7 +380,7 @@ export function Shell({ app }: { app: AppState }) {
 
   const overlayTitle = reviewing ? model.tasks.get(reviewing)?.goalText : browsing ? model.tasks.get(browsing.taskId)?.goalText : conversation ? model.tasks.get(conversation.taskId)?.goalText : undefined;
   const openedProject = projectPage ? projects.projects.find((p) => p.projectId === projectPage) : undefined;
-  const title = automationsOpen ? "Automations" : dashboardOpen ? "Dashboard" : reviewing || browsing ? (overlayTitle ?? "Fleet") : projectPage ? (openedProject?.name ?? "Project") : worktreesOpen ? "Worktrees" : (overlayTitle ?? "Fleet");
+  const title = customizeOpen ? "Customize" : automationsOpen ? "Automations" : dashboardOpen ? "Dashboard" : reviewing || browsing ? (overlayTitle ?? "Fleet") : projectPage ? (openedProject?.name ?? "Project") : worktreesOpen ? "Worktrees" : (overlayTitle ?? "Fleet");
   const panelRefreshKey = useThrottled(`${panelTask?.state ?? ""}:${panelTask?.lastOffset ?? ""}`, 1200);
   const panelUnavailable = panelTaskId === null ? "no task has an artifact yet" : null;
   // REQ-PX-049: what the Core recovered at start, as counts of its own task states, shown once its snapshot and attention list are in.
@@ -413,6 +421,7 @@ export function Shell({ app }: { app: AppState }) {
               tab={panelState.tab}
               onTab={(tab) => setPanelState(panelTaskId, { ...panelState, tab })}
               onOpenReview={() => setReviewing(panelTaskId)}
+              onOpenCall={(callId) => openConversation(panelTaskId, `tool:${callId}`)}
               onOpenBrowser={() => void openBrowser(panelTaskId)}
             />
           ) : null
@@ -457,6 +466,9 @@ export function Shell({ app }: { app: AppState }) {
             automationsOpen={automationsOpen}
             automationsDisabled={core.state !== "connected"}
             onToggleAutomations={() => setAutomationsOpen((o) => !o)}
+            customizeOpen={customizeOpen}
+            customizeDisabled={core.state !== "connected"}
+            onToggleCustomize={() => setCustomizeOpen((o) => !o)}
             panelOpen={panelOpen}
             panelUnavailable={panelUnavailable}
             onTogglePanel={() => actions.togglePanel()}
@@ -485,7 +497,14 @@ export function Shell({ app }: { app: AppState }) {
           />
         }
       >
-        {automationsOpen ? (
+        {customizeOpen ? (
+          <div className="conv-wrap" data-testid="customize-region">
+            <StatusRegion app={app} />
+            <div className="autos-scroll">
+              <Customize connected={core.state === "connected"} sessionId={model.sessionId} taskId={conversation?.taskId ?? selectedTaskId ?? [...model.tasks.keys()][0] ?? null} onClose={() => setCustomizeOpen(false)} />
+            </div>
+          </div>
+        ) : automationsOpen ? (
           <div className="conv-wrap" data-testid="automations-region">
             <StatusRegion app={app} />
             <div className="autos-scroll">

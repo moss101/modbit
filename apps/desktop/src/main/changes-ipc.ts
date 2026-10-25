@@ -9,9 +9,9 @@
  * Core's hardened Git runner, and the push is the Core's protected effect.
  * Main writes no file and runs no Git.
  */
-import { commitAndPush, getChangesState, revertChanges, stageChanges } from "@modbit/ide-adapter-core";
-import type { ChangesState, CommitAndPushAck, RevertChangesAck, StageChangesAck } from "@modbit/surface-protocol";
-import type { ChangeEffectInfo, ChangesStateInfo, CommitPushAckInfo, CommitPushInput, RevertAckInfo, RevertInput, StageAckInfo } from "../shared/changes-types.ts";
+import { commitAndPush, decideHunk, getChangesState, revertChanges, stageChanges } from "@modbit/ide-adapter-core";
+import type { ChangesState, CommitAndPushAck, DecideHunkAck, RevertChangesAck, StageChangesAck } from "@modbit/surface-protocol";
+import type { ChangeEffectInfo, ChangesStateInfo, CommitPushAckInfo, CommitPushInput, DecideHunkAckInfo, RevertAckInfo, RevertInput, StageAckInfo } from "../shared/changes-types.ts";
 import { bad, validBool, validCommandId } from "./control-args.ts";
 import type { Registrar } from "./conversation-ipc.ts";
 
@@ -56,6 +56,24 @@ export function validRevertInput(v: unknown): { path: string; wholeFile: boolean
     expectedFileRevision: validFileRevision(o.expectedFileRevision),
     commandId: validCommandId(o.commandId),
   };
+}
+
+const MAX_REASON = 2000;
+
+/** A per-hunk decision (PX-103): the hunk is named by path and index, the file revision and hunk digest are the ones the Core showed, the reason is bounded text. The Core decides everything else. */
+export function validDecideHunkInput(v: unknown): { path: string; hunkIndex: number; decision: "ACCEPT" | "REJECT" | "AUTO_ACCEPT"; expectedFileRevision: string; expectedHunkDigest: string; reason: string; commandId: Uint8Array | undefined } {
+  const o = validObject(v, "decision");
+  const hunk = o.hunkIndex;
+  if (typeof hunk !== "number" || !Number.isInteger(hunk) || hunk < 0 || hunk > 100_000) bad("hunkIndex must be the index of a hunk the Core listed");
+  const decision = o.decision;
+  if (decision !== "ACCEPT" && decision !== "REJECT" && decision !== "AUTO_ACCEPT") bad("decision must be ACCEPT, REJECT or AUTO_ACCEPT");
+  const rev = validFileRevision(o.expectedFileRevision);
+  if (rev === "") bad("a decision names the file revision it was made on");
+  const digest = o.expectedHunkDigest === undefined || o.expectedHunkDigest === null || o.expectedHunkDigest === "" ? "" : o.expectedHunkDigest;
+  if (typeof digest !== "string" || (digest !== "" && !HEX64.test(digest))) bad("expectedHunkDigest must be the digest the Core named");
+  const reason = o.reason === undefined || o.reason === null ? "" : o.reason;
+  if (typeof reason !== "string" || reason.length > MAX_REASON || reason.includes("\u0000")) bad(`the reason is text of at most ${MAX_REASON} characters`);
+  return { path: validChangePath(o.path), hunkIndex: hunk as number, decision: decision as "ACCEPT" | "REJECT" | "AUTO_ACCEPT", expectedFileRevision: rev, expectedHunkDigest: digest as string, reason: reason as string, commandId: validCommandId(o.commandId) };
 }
 
 export function validStagePaths(v: unknown): { path: string; expectedFileRevision: string }[] {
@@ -132,6 +150,26 @@ export function revertInfo(a: RevertChangesAck): RevertAckInfo {
   };
 }
 
+export function decideInfo(a: DecideHunkAck): DecideHunkAckInfo {
+  return {
+    result: a.result,
+    path: a.path,
+    hunkIndex: a.hunkIndex,
+    hunkDigest: a.hunkDigest,
+    decisionId: a.decisionId,
+    attributedCallId: a.attributedCallId,
+    attributedTool: a.attributedTool,
+    runLive: a.runLive,
+    agentNotice: a.agentNotice,
+    fileRevision: a.fileRevision,
+    beforeHash: a.beforeHash,
+    checkpointId: a.checkpointId,
+    workspaceRevision: a.workspaceRevision.toString(),
+    offset: a.offset.toString(),
+    replayed: a.replayed,
+  };
+}
+
 export function stageInfo(a: StageChangesAck): StageAckInfo {
   return { paths: [...a.paths], staged: a.staged, stagedDigest: a.stagedDigest, offset: a.offset.toString() };
 }
@@ -174,6 +212,15 @@ export function registerChangesHandlers(r: Registrar): void {
     const c = r.client();
     await r.lease(c, sid);
     return revertInfo(await revertChanges(c, sid, tid, { path: input.path, wholeFile: input.wholeFile, hunkIndex: input.hunkIndex, expectedFileRevision: input.expectedFileRevision }, input.commandId));
+  });
+  r.handle("changes:decideHunk", async (...a) => {
+    const sid = r.sessionId(a[0]);
+    const tid = r.taskId(a[1]);
+    const input = validDecideHunkInput(a[2]);
+    const c = r.client();
+    await r.lease(c, sid);
+    const { commandId, ...d } = input;
+    return decideInfo(await decideHunk(c, sid, tid, d, commandId));
   });
   r.handle("changes:stage", async (...a) => {
     const sid = r.sessionId(a[0]);

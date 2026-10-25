@@ -1,0 +1,29 @@
+PX-103 mutation check (QUAL-PX-103: a mutation that skips attribution for shell writes must fail the attribution test)
+date: 2026-10-24T20:19:12Z
+base revision: b78b0c1cbe13eec0e3d8ffe93e7538814ac5f607 (plus the working tree of this task)
+
+== baseline (unmutated) ==
+test qual_px_103_an_unattributable_hunk_is_shown_as_such_and_blocks_auto_accept ... ok
+test qual_px_103_sigkill_after_the_revert_recovers_to_one_consistent_outcome ... ok
+test qual_px_103_hunks_name_their_call_and_a_mid_run_rejection_reverts_exactly_that_hunk ... ok
+test result: ok. 3 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 6.92s
+baseline exit: 0
+
+== mutation: services/modbit-core/src/tools.rs 'file_events.extend(crate::hunks::barrier_events(' -> 'drop(crate::hunks::barrier_events(' ==
+test qual_px_103_an_unattributable_hunk_is_shown_as_such_and_blocks_auto_accept ... ok
+test qual_px_103_hunks_name_their_call_and_a_mid_run_rejection_reverts_exactly_that_hunk ... FAILED
+test qual_px_103_sigkill_after_the_revert_recovers_to_one_consistent_outcome ... ok
+thread 'qual_px_103_hunks_name_their_call_and_a_mid_run_rejection_reverts_exactly_that_hunk' (42253044) panicked at services/modbit-core/tests/px_103_hunks.rs:397:5:
+assertion `left == right` failed: HunkView { index: 1, header: "@@ -9,7 +9,7 @@ row-08", old_start: 9, old_lines: 7, new_start: 9, new_lines: 7, lines: [" row-09", " row-10", " row-11", "-row-12", "+row-12 (shell)", " row-13", " row-14", " row-15"], tool_call_id: "", tool_name: "", turn_id: "", run_id: "", attributed: false, also_call_ids: [], attribution_basis: "UNATTRIBUTED", hunk_digest: "fa1284b9acb9d89aebbe4a36749afa9c1c23aeb58b89b6eed76d96d91a9f1279", decision: "", auto_accept_eligible: false }
+  left: ""
+ right: "01a16f91897d74b0b137338e2e68fb7a"
+test result: FAILED. 2 passed; 1 failed; 0 ignored; 0 measured; 0 filtered out; finished in 6.79s
+error: test failed, to rerun pass `-p modbit-core --test px_103_hunks`
+mutated exit: 101
+
+== restored ==
+test qual_px_103_an_unattributable_hunk_is_shown_as_such_and_blocks_auto_accept ... ok
+test qual_px_103_sigkill_after_the_revert_recovers_to_one_consistent_outcome ... ok
+test qual_px_103_hunks_name_their_call_and_a_mid_run_rejection_reverts_exactly_that_hunk ... ok
+test result: ok. 3 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 7.30s
+restored exit: 0

@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
-import { canCommitPush, changeSummary, commitLabel, commitMode, effectWords, isReviewable, lineKind, newCommandId, rangesContain, refusalWords, stageState } from "./changes-model.ts";
+import { callRowId, canCommitPush, canDecide, changeSummary, chipText, commitLabel, decisionWords, commitMode, effectWords, isReviewable, lineKind, newCommandId, rangesContain, refusalWords, stageState } from "./changes-model.ts";
 import { categoryLabel, percent, windowLine } from "./evidence-model.ts";
 import { formatBytes, parentOf, refusalText, withheldText } from "./files-model.ts";
 import { groupByTask } from "./use-terminals.ts";
@@ -91,4 +91,18 @@ test("changes actions: a command id is 32 hex characters and differs per click",
   const b = newCommandId();
   assert.match(a, /^[0-9a-f]{32}$/);
   assert.notEqual(a, b);
+});
+
+test("PX-104: the chip says what the Core attributed and a decision never waits for the task to stop", () => {
+  assert.equal(chipText({ attributed: true, toolName: "change.apply", toolCallId: "c1" }), "Written by change.apply");
+  assert.equal(chipText({ attributed: false, toolName: "", toolCallId: "" }), "Not attributed to a tool call");
+  assert.match(chipText({ attributed: false, toolName: "shell.exec", toolCallId: "c2" }), /Partly written by shell.exec/);
+  assert.equal(callRowId("0192-abc"), "tool:0192-abc");
+  assert.equal(canDecide(false, false), true, "a running task does not disable a decision");
+  assert.equal(canDecide(true, false), false);
+  assert.equal(canDecide(false, true), false, "a binary file reverts as a whole file");
+  assert.match(decisionWords({ result: "REJECTED", path: "a.txt", hunkIndex: 1, runLive: true, agentNotice: "n" }), /Rejected hunk 2 of a.txt; the run goes on/);
+  assert.equal(decisionWords({ result: "ACCEPTED", path: "a.txt", hunkIndex: 0, runLive: false, agentNotice: "" }), "Accepted hunk 1 of a.txt.");
+  assert.match(refusalWords("STALE_HUNK"), /no longer the one you were shown/);
+  assert.match(refusalWords("UNATTRIBUTED_HUNK"), /never accepted automatically/);
 });

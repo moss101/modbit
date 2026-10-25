@@ -7,8 +7,8 @@
   "scope_rule": "docs/*.md, root *.md except MANIFEST.md, docs/decisions/*.md, graph JSON/Markdown, tools/*.py, evidence payloads; manifests exclude themselves and transient caches",
   "counts": {
     "docs": 97,
-    "root_and_tooling": 1790,
-    "docs_bytes": 2172253
+    "root_and_tooling": 1801,
+    "docs_bytes": 2176644
   },
   "sections": [
     {
@@ -221,8 +221,8 @@
       "section": "architecture",
       "section_title": "Architecture and subsystems",
       "title": "Workspace, Git, Worktrees, Diagnostics, and Trusted Code Surface",
-      "bytes": 5998,
-      "sha256": "3141341c6e15d16acc300ec007deed57ed128da36486b75a1fbb95758689d859"
+      "bytes": 8023,
+      "sha256": "a20c03022f1edd6debf6b76853d1edfd6625153d2680f11057b63535176f1b96"
     },
     {
       "path": "docs/21_TERMINAL_EXECUTION_AND_SANDBOX.md",
@@ -311,8 +311,8 @@
       "section": "implementation",
       "section_title": "Implementation specifications",
       "title": "Protocol, APIs, and Event Schemas",
-      "bytes": 53615,
-      "sha256": "a55b9bfad1f03bdd53d266ea28f584258e94df95abec92993d8471c306c4618a"
+      "bytes": 55981,
+      "sha256": "d88a9d6b84bb7a1b84c458fef7ed67b2e14380252c996fc4ceb67ce707127e99"
     },
     {
       "path": "docs/31_DATABASE_AND_STORAGE_SCHEMA.md",
@@ -2212,6 +2212,61 @@
       "path": "evidence/m10/PX-099/evidence.json",
       "bytes": 1484,
       "sha256": "6f5e382a877e71f9391af8ce0898dde8c0908cdcefce80690b8f06f1cda50720"
+    },
+    {
+      "path": "evidence/m10/PX-103/TASK_CARD.md",
+      "bytes": 6219,
+      "sha256": "9df6c45bcf9f40f419a18336733f119672b82e8e9f0e547b75800a7bb7130ffa"
+    },
+    {
+      "path": "evidence/m10/PX-103/mutation-check.txt",
+      "bytes": 2365,
+      "sha256": "4cd514224e19d9d37c134047136dc7e2f9838f4845f988e55c5bd07e914adf33"
+    },
+    {
+      "path": "evidence/m10/PX-103/test-log.txt",
+      "bytes": 4028,
+      "sha256": "39770b0de588976963c57268463f868ce3d6c350a8bbe82dda6ee64d1ca1d369"
+    },
+    {
+      "path": "evidence/m10/PX-104/TASK_CARD.md",
+      "bytes": 4472,
+      "sha256": "855a70042b31008d5f1e62cae19539d3435532cfb51378386ac474642d6418df"
+    },
+    {
+      "path": "evidence/m10/PX-104/mutation-check.txt",
+      "bytes": 1443,
+      "sha256": "776d0cb0d374e92f720c6c4250477e8dc9ffb4dfdfd41a48b0575205bd088e9e"
+    },
+    {
+      "path": "evidence/m10/PX-104/test-log.txt",
+      "bytes": 4972,
+      "sha256": "52d3a7c722e74ea473b4f07eec9e31f4b54c7119b28c97bc78fbc6ebf8d219cf"
+    },
+    {
+      "path": "evidence/m10/PX-106/TASK_CARD.md",
+      "bytes": 6840,
+      "sha256": "d5d76f91837984dfe2275e653b11b47fa6231c5587633c3b89b3bc56a639d38c"
+    },
+    {
+      "path": "evidence/m10/PX-106/mutation-check-core.txt",
+      "bytes": 2023,
+      "sha256": "420f9ce5f3c8e2253454a2506d9bd23877300c893b9487dbe4f06b36c9e0d82b"
+    },
+    {
+      "path": "evidence/m10/PX-106/mutation-check.txt",
+      "bytes": 2730,
+      "sha256": "3fcb46c58d8e7cfe1ea2f3febe2652d4943c76ac702481c78a8ac4d5dfc4b34b"
+    },
+    {
+      "path": "evidence/m10/PX-106/playwright-log.txt",
+      "bytes": 4972,
+      "sha256": "52d3a7c722e74ea473b4f07eec9e31f4b54c7119b28c97bc78fbc6ebf8d219cf"
+    },
+    {
+      "path": "evidence/m10/PX-106/test-log.txt",
+      "bytes": 4028,
+      "sha256": "39770b0de588976963c57268463f868ce3d6c350a8bbe82dda6ee64d1ca1d369"
     },
     {
       "path": "evidence/m10/PX-107/TASK_CARD.md",

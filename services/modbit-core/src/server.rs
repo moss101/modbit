@@ -816,6 +816,8 @@ async fn serve_connection(core: Arc<Core>, mut stream: BoxedStream) -> Result<()
                     "ApplyUserPatch",
                     "GetChangesState",
                     "RevertChanges",
+                    "DecideHunk",
+                    "SetHookEnabled",
                     "StageChanges",
                     "CommitAndPush",
                     "SubmitExternalDiagnostics",
@@ -1490,7 +1492,7 @@ fn required_client_capability(env: &CommandEnvelope) -> Option<&'static str> {
         // PX-048: the Changes app reverts and stages the person's own working
         // tree like an inline patch; Commit and push is a review decision
         // about where work leaves the tree, like opening a pull request.
-        "RevertChanges" | "StageChanges" => "task.author",
+        "RevertChanges" | "StageChanges" | "DecideHunk" => "task.author",
         "CommitAndPush" => "review.decide",
         // Counteracting an effect on the forge is the same class of decision
         // as the pull request it counteracts (REQ-EV-0066).
@@ -1542,6 +1544,9 @@ fn required_client_capability(env: &CommandEnvelope) -> Option<&'static str> {
         "LoadExtension" | "UnloadExtension" | "InspectExtension" | "TrustExtension" => {
             "repository.trust"
         }
+        // REQ-PX-106: switching a hook off changes what runs against the
+        // workspace, so it is the same class of decision as trusting one.
+        "SetHookEnabled" => "repository.trust",
         "RunExtensionCommand" => "task.author",
         // REQ-PX-116: a task's limits are the author's; REQ-PX-105: letting
         // a skill reach the model is trusting content a person did not
@@ -6454,7 +6459,26 @@ pub(crate) async fn handle_command_as(
                 return reject(cid, "BAD_PAYLOAD", "ListHooks");
             };
             let Some(task_id) = p.task_id.as_ref().and_then(id16).map(TaskId::from_bytes) else {
-                return reject(cid, "BAD_PAYLOAD", "task_id required");
+                // REQ-PX-106: with no task, the session's extensions only.
+                let Some(session_id) = p
+                    .session_id
+                    .as_ref()
+                    .and_then(id16)
+                    .map(SessionId::from_bytes)
+                else {
+                    return reject(cid, "BAD_PAYLOAD", "task_id or session_id required");
+                };
+                let store = core.store.lock().await;
+                match store.session(&session_id) {
+                    Ok(Some(_)) => {}
+                    Ok(None) => return reject(cid, "UNKNOWN_SESSION", session_id.to_string()),
+                    Err(e) => return reject(cid, error_code(&e), e.to_string()),
+                }
+                let view = wire::HookListView {
+                    extension_rows: crate::hooks::extension_rows(core, &store, session_id),
+                    ..Default::default()
+                };
+                return accept(cid, false, view.encode_to_vec());
             };
             let task = match core.store.lock().await.task(&task_id) {
                 Ok(Some(t)) => t,
@@ -6463,6 +6487,37 @@ pub(crate) async fn handle_command_as(
             };
             let view = crate::hooks::list(core, &task).await;
             accept(cid, false, view.encode_to_vec())
+        }
+        "SetHookEnabled" => {
+            let Ok(p) = wire::SetHookEnabled::decode(env.payload.as_slice()) else {
+                return reject(cid, "BAD_PAYLOAD", "SetHookEnabled");
+            };
+            let Some(session_id) = p
+                .session_id
+                .as_ref()
+                .and_then(id16)
+                .map(SessionId::from_bytes)
+            else {
+                return reject(cid, "BAD_PAYLOAD", "session_id required");
+            };
+            let Some(task_id) = p.task_id.as_ref().and_then(id16).map(TaskId::from_bytes) else {
+                return reject(cid, "BAD_PAYLOAD", "task_id required");
+            };
+            let task = match core.store.lock().await.task(&task_id) {
+                Ok(Some(t)) if t.session_id == session_id => t,
+                Ok(Some(_)) => {
+                    return reject(cid, "UNKNOWN_TASK", "the task is not in that session");
+                }
+                Ok(None) => return reject(cid, "UNKNOWN_TASK", task_id.to_string()),
+                Err(e) => return reject(cid, error_code(&e), e.to_string()),
+            };
+            if let Err(ack) = require_lease(core, &cid, &env, &session_id).await {
+                return ack;
+            }
+            match crate::hooks::set_enabled(core, &task, &p.hook_id, p.enabled, actor).await {
+                Ok(v) => accept(cid, false, v.encode_to_vec()),
+                Err((code, detail)) => reject(cid, &code, detail),
+            }
         }
         "TrustRepository" => {
             let Ok(p) = wire::TrustRepository::decode(env.payload.as_slice()) else {
@@ -7836,11 +7891,14 @@ pub(crate) async fn handle_command_as(
                 Err((code, msg)) => reject(cid, &code, msg),
             }
         }
-        "RevertChanges" | "StageChanges" | "CommitAndPush" => {
+        "RevertChanges" | "DecideHunk" | "StageChanges" | "CommitAndPush" => {
             let (task_id, bad) = match env.command_type.as_str() {
                 "RevertChanges" => wire::RevertChanges::decode(env.payload.as_slice())
                     .map(|p| p.task_id)
                     .map_err(|_| "RevertChanges"),
+                "DecideHunk" => wire::DecideHunk::decode(env.payload.as_slice())
+                    .map(|p| p.task_id)
+                    .map_err(|_| "DecideHunk"),
                 "StageChanges" => wire::StageChanges::decode(env.payload.as_slice())
                     .map(|p| p.task_id)
                     .map_err(|_| "StageChanges"),
@@ -7874,6 +7932,18 @@ pub(crate) async fn handle_command_as(
                         actor,
                     )
                     .await
+                    {
+                        Ok(v) => {
+                            let replayed = v.replayed;
+                            accept(cid, replayed, v.encode_to_vec())
+                        }
+                        Err((code, msg)) => reject(cid, &code, msg),
+                    }
+                }
+                "DecideHunk" => {
+                    let p = wire::DecideHunk::decode(env.payload.as_slice()).expect("decoded");
+                    match crate::hunks::decide(core, &p, command_id, record("DecideHunk"), actor)
+                        .await
                     {
                         Ok(v) => {
                             let replayed = v.replayed;

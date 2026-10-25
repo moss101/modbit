@@ -51,6 +51,7 @@ mod gate;
 mod git_state;
 mod handoff;
 mod hooks;
+mod hunks;
 mod index_host;
 mod inspector;
 mod knowledge;
@@ -108,6 +109,9 @@ mod worktrees;
 fn usage() -> &'static str {
     "usage: modbit-core --data-dir <dir> [--tether-stdin] [--idle-exit-secs N] [--tenant-id <uuid>]"
 }
+
+/// Stack of each runtime worker thread (see `main`).
+const WORKER_STACK_BYTES: usize = 16 * 1024 * 1024;
 
 fn main() -> ExitCode {
     let mut data_dir: Option<PathBuf> = None;
@@ -184,7 +188,17 @@ fn main() -> ExitCode {
             });
         }
     }
+    // The command dispatcher is one very large async function and some
+    // commands re-enter it (ResumeTask re-enters StartTask), so an unoptimised
+    // build polls it with a frame that is a large share of tokio's default
+    // 2 MiB worker stack: measured with the stack shrunk, the resume path needs
+    // ~2.0 MiB on arm64 macOS and passes on a hosted Windows runner only until
+    // another match arm is added (PR #143: "thread 'tokio-rt-worker' has
+    // overflowed its stack", Core aborted, clients saw "connection closed").
+    // The workers get room instead of a margin of a few kilobytes; the memory
+    // is reserved address space that is committed only as it is touched.
     let rt = match tokio::runtime::Builder::new_multi_thread()
+        .thread_stack_size(WORKER_STACK_BYTES)
         .enable_all()
         .build()
     {

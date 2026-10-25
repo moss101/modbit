@@ -1974,6 +1974,12 @@ pub(crate) async fn rebuild(
                     transcript.push(Message::text(Role::User, t.to_owned()));
                 }
             }
+            // REQ-PX-103: the notice the model was shown of a rejected hunk.
+            "HunkNoticeDelivered" => {
+                if let Some(t) = payload["notice"].as_str().filter(|t| !t.is_empty()) {
+                    transcript.push(Message::text(Role::User, t.to_owned()));
+                }
+            }
             "VerificationBaselineRecorded" => {
                 state.baseline_recorded = true;
                 state.verification_plan_ref = payload["plan_ref"].as_str().map(str::to_owned);
@@ -3720,6 +3726,12 @@ async fn run_loop(
         for note in
             crate::background_process::deliver_wakes(&core, &task, lt, &actor, Some(run_id)).await
         {
+            transcript.push(Message::text(Role::User, note));
+        }
+        // REQ-PX-103: a hunk a person rejected while this run was live is told
+        // to the model once, as a labelled Core notice read from the typed
+        // `HunkDecided` record, never as an input or a message of the person.
+        for note in crate::hunks::deliver_notices(&core, &task, lt, &actor, Some(run_id)).await {
             transcript.push(Message::text(Role::User, note));
         }
         // REQ-PX-116: the round boundary is where the whole tree's spend is

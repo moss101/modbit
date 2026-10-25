@@ -1814,6 +1814,28 @@ impl ToolHost {
             );
             let _ = root;
         }
+        // PX-103: what a shell or test process wrote in the workspace (the
+        // change barrier's snapshot diff) is attributed to this call on the
+        // workspace log, beside - never as - the file service's own records.
+        if let (Some(ws), Some(root)) = (&ctx.workspace, &root)
+            && let Some(list) = result
+                .structured_output
+                .get("workspace_diff")
+                .and_then(|d| d.get("attribution"))
+                .and_then(serde_json::Value::as_array)
+        {
+            let rev = ws.lock().await.revision().number;
+            let objects = store.lock().await.objects().clone();
+            file_events.extend(crate::hunks::barrier_events(
+                &objects,
+                root,
+                task_id,
+                tool_call_id,
+                tool_name,
+                rev,
+                list,
+            ));
+        }
         let effect_class = outcome
             .effect_class
             .unwrap_or(modbit_domain::toolcall::EffectClass::ReadOnly);

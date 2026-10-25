@@ -124,6 +124,8 @@ const BRIDGE_ALLOW_LIST = [
   "listProjects", "getProject", "createProject", "renameProject", "archiveProject", "addProjectMember", "removeProjectMember", "listWorktrees", "removeWorktree", "runWorktreeCleanup", "applyWorktree", "undoApply", "discardWorktree",
   // REQ-PX-048 (the Changes app): the Core's state beside the review bundle, revert, stage and Commit and push. Added on purpose; each is a typed request main validates (changes-ipc.ts).
   "changesState", "revertChanges", "stageChanges", "commitAndPush",
+  // REQ-PX-103 / 104 / 106 (live hunk review, Customize). Added on purpose; each is one typed Core command or read main validates.
+  "decideHunk", "customizeSkills", "customizeSkillTrust", "customizeSkillRevoke", "customizeHooks", "customizeHookEnabled", "customizeExtensionTrust", "customizeExtensionUnload", "customizeImport", "customizeOpenSource",
   // REQ-PX-048 (the apps panel): the terminal stream, the read-only Files app and the effect receipts. Added on purpose; each is a typed request main validates.
   "terminalList", "terminalAttach", "terminalAck", "terminalDetach", "terminalInput", "terminalResize", "terminalWrite", "terminalKill", "terminalHistory", "onTerminalFrame", "listWorkspaceDir", "readWorkspaceFile", "effectReceipts",
   // REQ-PX-054..056 (the composer): mode, preference, queue, interrupt, send behaviour, slash inventory, model variants and the side question. Added on purpose; each is one typed Core command or read that main validates (composer-ipc.ts).
