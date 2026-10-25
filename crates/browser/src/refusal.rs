@@ -83,6 +83,7 @@ pub fn escalation_for(code: &str) -> Escalation {
         | "NAVIGATION_BLOCKED"
         | "FILE_ORIGIN"
         | "SITE_TOOL_PREFERRED"
+        | "PAGE_TOOLS_UNSUPPORTED"
         | "FRAME_NOT_ACTIONABLE"
         | "SECRET_FIELD_REQUIRES_CREDENTIAL"
         | "CREDENTIAL_TARGET_NOT_FIELD"

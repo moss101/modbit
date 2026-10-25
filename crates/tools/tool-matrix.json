@@ -850,6 +850,35 @@
           "effect_note": "an agent input like browser.act: refused under the person's control, halted by an emergency stop, latched when its outcome is unknown"
     },
     {
+          "tool": "browser.page_tools",
+          "family": "browser",
+          "source_behaviors": [
+                "WebMCP navigator.modelContext (page-declared tools)",
+                "MCP tools/list"
+          ],
+          "owner": "Browser Runtime (host bridge, docs/22)",
+          "effect": "ReadOnly",
+          "capabilities": [
+                "browser.control"
+          ],
+          "test": "qual_px_124_page_declared_tools_are_untrusted_origin_bound_proposals_judged_by_their_annotations"
+    },
+    {
+          "tool": "browser.page_tool",
+          "family": "browser",
+          "source_behaviors": [
+                "WebMCP navigator.modelContext tool execute",
+                "MCP tools/call"
+          ],
+          "owner": "Browser Runtime (host bridge, docs/22)",
+          "effect": "ReadOnly",
+          "capabilities": [
+                "browser.control"
+          ],
+          "test": "qual_px_124_page_declared_tools_are_untrusted_origin_bound_proposals_judged_by_their_annotations",
+          "effect_note": "per call: a tool the page annotated read-only (and not destructive) is a read; any other, including an unannotated one, is an ExternalSideEffect that asks, the approval bound to origin, frame, page load and name"
+    },
+    {
           "tool": "browser.wait",
           "family": "browser",
           "source_behaviors": [

@@ -9262,6 +9262,9 @@ async fn execute_tool_call(
                 || name == "browser.navigate"
                 || name == "browser.act"
                 || name == "browser.fill_form"
+                // PX-124: calling a tool the page declared is an action on the
+                // page, like browser.act; listing the tools is a read.
+                || name == "browser.page_tool"
                 // PX-069: an input to the application, or a session opened for
                 // one, advances the work; looking at it does not.
                 || matches!(

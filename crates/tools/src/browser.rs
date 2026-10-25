@@ -194,6 +194,26 @@ pub const FAILURE_TAXONOMY: &[(&str, &str)] = &[
         "the element does not take text: pick the field the page names for this value",
     ),
     (
+        "PAGE_TOOL_UNKNOWN",
+        "list the page's tools again (browser.page_tools) and call one by a handle it names now; a handle names one frame, one page load and one name",
+    ),
+    (
+        "PAGE_TOOL_STALE",
+        "the page that declared this tool is gone (it navigated or reloaded): list the page's tools again, or use browser.snapshot and browser.act",
+    ),
+    (
+        "PAGE_TOOL_GONE",
+        "the page withdrew this tool: list the page's tools again, or use browser.snapshot and browser.act",
+    ),
+    (
+        "PAGE_TOOL_THREW",
+        "the page's own tool failed: read the page (browser.snapshot) and do the task through its interface (browser.act) instead",
+    ),
+    (
+        "PAGE_TOOLS_UNSUPPORTED",
+        "this host offers pages no model-context interface: use browser.snapshot and browser.act",
+    ),
+    (
         "SITE_TOOL_PREFERRED",
         "this site offers a structured way to do this (docs/22 rung 1): call the external tool the answer names instead of driving the interface; drive it only when no site tool is available",
     ),
@@ -1795,6 +1815,8 @@ pub fn register_browser(registry: &mut ToolRegistry) -> Result<()> {
         crate::browser_feedback::scroll(),
         crate::browser_feedback::wait(),
         crate::browser_forms::tool(),
+        crate::browser_page_tools::list_tool(),
+        crate::browser_page_tools::call_tool(),
     ] {
         registry.register(t)?;
     }

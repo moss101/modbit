@@ -7,8 +7,8 @@
   "scope_rule": "docs/*.md, root *.md except MANIFEST.md, docs/decisions/*.md, graph JSON/Markdown, tools/*.py, evidence payloads; manifests exclude themselves and transient caches",
   "counts": {
     "docs": 97,
-    "root_and_tooling": 1749,
-    "docs_bytes": 2153217
+    "root_and_tooling": 1762,
+    "docs_bytes": 2160700
   },
   "sections": [
     {
@@ -194,8 +194,8 @@
       "section": "architecture",
       "section_title": "Architecture and subsystems",
       "title": "Canonical Tool and Capability Inventory",
-      "bytes": 7044,
-      "sha256": "3542409ed94a42a9479b38ff322e578a06eefab925fb3cc60b7bc8cded4c4b65"
+      "bytes": 7755,
+      "sha256": "d728b5e69f715c9f28484dce95aca9e74f3d241c49f0f9dcc93f622fa3ab9bbb"
     },
     {
       "path": "docs/18_CONTEXT_RETRIEVAL_AND_ENGINEERING_KNOWLEDGE.md",
@@ -239,8 +239,8 @@
       "section": "architecture",
       "section_title": "Architecture and subsystems",
       "title": "Browser and Computer-Use Architecture",
-      "bytes": 31715,
-      "sha256": "0a846ff68035d09959118091e559439cd5d0f893e9d005e4d52b2ce495baebf7"
+      "bytes": 35582,
+      "sha256": "3dc0f96f22061190e9c59e75ecbb9b028496766ad91827f31ba633b629c8cc8a"
     },
     {
       "path": "docs/23_SECURITY_POLICY_EFFECT_LEDGER.md",
@@ -329,8 +329,8 @@
       "section": "implementation",
       "section_title": "Implementation specifications",
       "title": "Desktop Frontend Implementation",
-      "bytes": 13937,
-      "sha256": "12c2bca2dbdf369a01eb94549dfff7f23d270300ad1a880068ce54c9f83769aa"
+      "bytes": 16176,
+      "sha256": "5d9a73e36b009b73a941a60fba28e6966a89128effbc34bbce1a4fc427f478e4"
     },
     {
       "path": "docs/33_CORE_AND_CLOUD_BACKEND_IMPLEMENTATION.md",
@@ -392,8 +392,8 @@
       "section": "implementation",
       "section_title": "Implementation specifications",
       "title": "UX flows, onboarding and interaction budgets",
-      "bytes": 15814,
-      "sha256": "d941a887e6775d6c756b91470cb52b702d383d777451f87cda4b55f2454fd4a2"
+      "bytes": 16480,
+      "sha256": "ac43be5a2ba3b7236598876fbe343c458bd667efb3cfa4d65b00885611efd0e2"
     },
     {
       "path": "docs/40_EVIDENCE_DERIVED_REQUIREMENT_LEDGER.md",
@@ -2179,6 +2179,31 @@
       "sha256": "67faed3f80c47c7e59214bfc43398d57ba2a9c758960239d4e70d29c4eca6430"
     },
     {
+      "path": "evidence/m10/PX-094/TASK_CARD.md",
+      "bytes": 1237,
+      "sha256": "24d750e58c7a7332e3df3673e79cff943d0b7f8072a58e17b19bcd4311c1c0ca"
+    },
+    {
+      "path": "evidence/m10/PX-094/e2e-run.txt",
+      "bytes": 4160,
+      "sha256": "1553519cd7787cc27f48cba19cc23a2d82c93778e86cff3efc7f8fc9f099a9e8"
+    },
+    {
+      "path": "evidence/m10/PX-094/mutation-check.txt",
+      "bytes": 1026,
+      "sha256": "a3bdd52e8dcd971b2b8b277c33d3097a67fe48b3dfd1e9bf4821e2efad8b1f17"
+    },
+    {
+      "path": "evidence/m10/PX-094/mutation-drag-optout-run.txt",
+      "bytes": 2709,
+      "sha256": "076332cdbdb3c8039590ca43ac8ee802fa5eabbcff29e75f25577ee14a6e3205"
+    },
+    {
+      "path": "evidence/m10/PX-094/mutation-restore-visibility-run.txt",
+      "bytes": 3038,
+      "sha256": "74b9dd222adf80ee06f437b9d0dc4889166ddf6ed353e36f20d6aff6c645b0ef"
+    },
+    {
       "path": "evidence/m10/PX-099/TASK_CARD.md",
       "bytes": 1506,
       "sha256": "176efbba92374c5adc0774fef998ebc2ea6f6e23f3942f3d59ebe863211e73bd"
@@ -2337,6 +2362,46 @@
       "path": "evidence/m10/PX-123/mutation-check.txt",
       "bytes": 3103,
       "sha256": "632b9e3b5aeefeee1c2308225abe1bca8f0eb5071624a401345ab3466fff7b94"
+    },
+    {
+      "path": "evidence/m10/PX-124/TASK_CARD.md",
+      "bytes": 2379,
+      "sha256": "ff9361af1d5cd9d23f3dc6e27c85f99986958f9537a702df459d8062dddb2d4a"
+    },
+    {
+      "path": "evidence/m10/PX-124/core-test-run.txt",
+      "bytes": 4847,
+      "sha256": "4c8e6fcf1f276b04a9e0c7ba339b1a8c64546da5ec46510b83883c48054b12bc"
+    },
+    {
+      "path": "evidence/m10/PX-124/e2e-run.txt",
+      "bytes": 7594,
+      "sha256": "54bd3d7b326ba671fff468b148b19d2f00f241f1f43dc75571e9cfb55e02cc1f"
+    },
+    {
+      "path": "evidence/m10/PX-124/mutation-check.txt",
+      "bytes": 1336,
+      "sha256": "f9210d64859a6dbdb4bdca15414e47321117d4f97fa8a21a4629557d8c9f019b"
+    },
+    {
+      "path": "evidence/m10/PX-124/mutation-readonly-run.txt",
+      "bytes": 3920,
+      "sha256": "92542ec3bfab1c58475638d9d1759977e629151a7dd09a1c6ae99cddcfdec6ce"
+    },
+    {
+      "path": "evidence/m10/PX-124/mutation-stale-run.txt",
+      "bytes": 10259,
+      "sha256": "033def935833b1025135a8d9a76577ee7c4f3d573120fdc1692de20517e6a436"
+    },
+    {
+      "path": "evidence/m10/PX-128/TASK_CARD.md",
+      "bytes": 3734,
+      "sha256": "0acec3d26817e89bc6a300bdac65af2f599c24d0ac4a718b8214019d1a14df26"
+    },
+    {
+      "path": "evidence/m10/PX-128/baseline-px_128_cloud_client-run.txt",
+      "bytes": 407,
+      "sha256": "69c5f3d9703327629ae2ee06ca1b6151dfb6e94b61d982ddb8023b8488e16759"
     },
     {
       "path": "evidence/m10/PX-131/TASK_CARD.md",

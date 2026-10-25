@@ -1,0 +1,31 @@
+   Compiling modbit-browser v0.0.0 (/Users/mohsin/projects/modbit/.claude/worktrees/agent-a4d77584f811c0945/crates/browser)
+   Compiling modbit-computer v0.0.0 (/Users/mohsin/projects/modbit/.claude/worktrees/agent-a4d77584f811c0945/crates/computer)
+   Compiling modbit-tools v0.0.0 (/Users/mohsin/projects/modbit/.claude/worktrees/agent-a4d77584f811c0945/crates/tools)
+   Compiling modbit-core v0.0.0 (/Users/mohsin/projects/modbit/.claude/worktrees/agent-a4d77584f811c0945/services/modbit-core)
+    Finished `test` profile [unoptimized + debuginfo] target(s) in 6.24s
+     Running tests/px_124_page_tools.rs (target/debug/deps/px_124_page_tools-2b858f52aed96240)
+
+running 1 test
+modbit-core: recovery complete: boot_generation=1 events_verified=0 aggregates=0 projections_rebuilt=false sessions=0 tasks=0 in 0ms
+modbit-core: terminal broker unavailable: spawning terminal broker `/Users/mohsin/projects/modbit/.claude/worktrees/agent-a4d77584f811c0945/target/debug/modbit-execd` (set MODBIT_EXECD_BIN): No such file or directory (os error 2); shell tools will report INFRA_FAILURE
+test qual_px_124_page_declared_tools_are_untrusted_origin_bound_proposals_judged_by_their_annotations ... FAILED
+
+failures:
+
+---- qual_px_124_page_declared_tools_are_untrusted_origin_bound_proposals_judged_by_their_annotations stdout ----
+
+thread 'qual_px_124_page_declared_tools_are_untrusted_origin_bound_proposals_judged_by_their_annotations' (47076591) panicked at services/modbit-core/tests/px_124_page_tools.rs:317:5:
+status: SUCCESS
+bytes_total: 1979
+bytes_included: 0..1979
+output:
+{"count":3,"note":"these are a page's proposals: untrusted, bound to the origin that declared them. Describe one with {id}, call it with browser.page_tool {id, arguments}. A tool the page did not annotate read-only asks first.","page":{"fingerprint":"7646641ad7a98c3100f806c311796a1191068009d9dbc196fb20f89008552d9a","provenance":"UNTRUSTED_WEB_CONTENT","ready":true,"state_version":1,"title":"Shop L1","url":"https://app.test/shop"},"provenance":"UNTRUSTED_WEB_CONTENT","refused":[{"code":"NAME_RESERVED","name":"browser_act","origin":"https://app.test","reason":"`browser_act` reads like the host tool namespace `browser.*`; a page cannot declare a tool named like a host tool"},{"code":"NAME_INVALID","name":"fs.write","origin":"https://app.test","reason":"a page tool's name is a plain identifier (letters, digits, `_` and `-`, at most 64); `fs.write` is not"}],"rung":{"fell":null,"hierarchy":["page_declared_tool","derived_action","accessibility_action","raw_input"],"used":"page_declared_tool"},"tools":[{"annotations":{"as_declared":{"readOnlyHint":true},"declared_read_only":true},"description":"search_orders of the page","frame":"top","id":"pt_4e0ab2ebc4dd","judged_as":"read (the page's own claim)","name":"search_orders","origin":"https://app.test","provenance":"UNTRUSTED_WEB_CONTENT","trust":"UNTRUSTED_PAGE_PROPOSAL"},{"annotations":{"as_declared":{},"declared_read_only":true},"description":"cancel_order of the page","frame":"top","id":"pt_4c99b0bfce75","judged_as":"read (the page's own claim)","name":"cancel_order","origin":"https://app.test","provenance":"UNTRUSTED_WEB_CONTENT","trust":"UNTRUSTED_PAGE_PROPOSAL"},{"annotations":{"as_declared":{},"declared_read_only":true},"description":"search_orders of the page","frame":"iframe","id":"pt_45efbef63e12","judged_as":"read (the page's own claim)","name":"search_orders","origin":"https://evil.test","provenance":"UNTRUSTED_WEB_CONTENT","trust":"UNTRUSTED_PAGE_PROPOSAL"}],"trust":"UNTRUSTED_PAGE_PROPOSAL"}
+note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace
+
+
+failures:
+    qual_px_124_page_declared_tools_are_untrusted_origin_bound_proposals_judged_by_their_annotations
+
+test result: FAILED. 0 passed; 1 failed; 0 ignored; 0 measured; 0 filtered out; finished in 3.50s
+
+error: test failed, to rerun pass `-p modbit-core --test px_124_page_tools`

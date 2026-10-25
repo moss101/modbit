@@ -1,0 +1,18 @@
+QUAL-PX-124 mutation checks (2026-10-25, base b8cd6880 + PX-124 working tree)
+
+MUTATION unannotated-is-a-read
+  file:   crates/browser/src/page_tools.rs
+  change: declared_read_only() returns true for every annotation (an unannotated tool is a read)
+  commands: cargo test -p modbit-core --test px_124_page_tools -> exit 101 (the unannotated tool no longer asks);
+            cargo test -p modbit-browser page_tools -> a_tool_is_a_read_only_when_the_page_says_so... FAILED
+  (full output: mutation-readonly-run.txt)
+
+MUTATION host-admits-any-call
+  file:   apps/desktop/src/main/browser-webmcp.ts
+  change: admitsCall() returns ok as soon as the frame exists (no page-load or origin check)
+  command: playwright e2e/browser-webmcp.spec.ts (real Chromium, rebuilt dist, Core rebuilt from the restored source) -> exit 1
+  verdict: the stale call after navigation answers PAGE_TOOL_GONE instead of PAGE_TOOL_STALE ("Expected substring: PAGE_TOOL_STALE")
+  (full output: mutation-stale-run.txt)
+
+Sources restored afterwards (diff against the saved copies empty); unmutated: core test 1 passed, e2e 1 passed (e2e-run.txt, core-test-run.txt).
+Note: the first run of the second mutation used a Core binary that the first mutation's cargo test had left built with the mutated Rust; it was rebuilt from restored source before the verdict above.

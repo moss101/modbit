@@ -1,0 +1,46 @@
+
+Running 7 tests using 1 worker
+
+[electron] Debugger ending on ws://127.0.0.1:52458/1e1476ce-9189-4c93-8f95-a22a7eef4e9b
+For help, see: https://nodejs.org/learn/getting-started/debugging
+  ✓  1 e2e/window-chrome.spec.ts:37:1 › PX-094: on macOS the title bar is inset and the window controls sit where the OS-version table puts them (509ms)
+[electron] Debugger ending on ws://127.0.0.1:52464/da9efeef-50ac-42f0-ba23-e3743f4922c1
+For help, see: https://nodejs.org/learn/getting-started/debugging
+  ✓  2 e2e/window-chrome.spec.ts:50:1 › PX-094: the controls stay inside the agent-list strip and clear of content at 100, 125 and 150 percent zoom, expanded and on the rail (824ms)
+[electron] modbit-core: recovery complete: boot_generation=1 events_verified=0 aggregates=0 projections_rebuilt=false sessions=0 tasks=0 in 0ms
+[electron] Debugger ending on ws://127.0.0.1:52469/6f7d7e4d-f1ff-46db-90a3-7a866bd3afcb
+For help, see: https://nodejs.org/learn/getting-started/debugging
+  ✓  3 e2e/window-chrome.spec.ts:92:1 › PX-094: every control in the bar is keyboard reachable and opts out of dragging; the empty bar and the strip drag the window (788ms)
+[electron] modbit-core: recovery complete: boot_generation=1 events_verified=0 aggregates=0 projections_rebuilt=false sessions=0 tasks=0 in 0ms
+[electron] Debugger ending on ws://127.0.0.1:52473/e2d5c36f-db3e-4e7c-87d7-d085e27f55c4
+For help, see: https://nodejs.org/learn/getting-started/debugging
+[electron] modbit-core: recovery complete: boot_generation=1 events_verified=0 aggregates=0 projections_rebuilt=false sessions=0 tasks=0 in 0ms
+[electron] Debugger ending on ws://127.0.0.1:52478/2cd81530-1fd1-4a06-9e84-ebd65fb3f918
+For help, see: https://nodejs.org/learn/getting-started/debugging
+[electron] modbit-core: reattached to the terminal broker a previous Core left alive
+[electron] Debugger ending on ws://127.0.0.1:52483/b11fb635-34a5-4ac3-b7af-9361a0671e8e
+For help, see: https://nodejs.org/learn/getting-started/debugging
+  ✓  4 e2e/window-chrome.spec.ts:140:1 › PX-094: translucency is off by default, the opt-in changes only the designed surfaces, and Reduce transparency puts the opaque look back (1.6s)
+[electron] Debugger ending on ws://127.0.0.1:52487/83d6d488-91f0-455e-8769-f6dd0c4f2d70
+For help, see: https://nodejs.org/learn/getting-started/debugging
+[electron] modbit-core: recovery complete: boot_generation=2 events_verified=0 aggregates=0 projections_rebuilt=false sessions=0 tasks=0 in 11ms
+[electron] modbit-core: reattached to the terminal broker a previous Core left alive
+[electron] Debugger ending on ws://127.0.0.1:52491/b394d1c7-201e-466e-a7a5-12e4e3f70184
+For help, see: https://nodejs.org/learn/getting-started/debugging
+[electron] modbit-core: reattached to the terminal broker a previous Core left alive
+[electron] Debugger ending on ws://127.0.0.1:52495/28a34046-2f45-4d7e-a425-bb66bdbeef02
+For help, see: https://nodejs.org/learn/getting-started/debugging
+  ✓  5 e2e/window-chrome.spec.ts:185:1 › PX-094: the window comes back where it was, maximised or not, on the same displays (3.9s)
+[electron] modbit-core: recovery complete: boot_generation=1 events_verified=0 aggregates=0 projections_rebuilt=false sessions=0 tasks=0 in 0ms
+[electron] Debugger ending on ws://127.0.0.1:52499/47614b7b-b792-4ed7-af1f-d560a4f7da14
+For help, see: https://nodejs.org/learn/getting-started/debugging
+[electron] Debugger ending on ws://127.0.0.1:52503/c850a076-9f42-46d2-acbc-aa3e230ecdcd
+For help, see: https://nodejs.org/learn/getting-started/debugging
+[electron] modbit-core: recovery complete: boot_generation=1 events_verified=0 aggregates=0 projections_rebuilt=false sessions=0 tasks=0 in 0ms
+[electron] Debugger ending on ws://127.0.0.1:52508/d8ae0d73-0e3c-410b-a039-244d98492e74
+For help, see: https://nodejs.org/learn/getting-started/debugging
+  ✓  6 e2e/window-chrome.spec.ts:217:1 › PX-094: a window saved for a display that is gone, and a corrupt state file, open on a screen that exists (1.6s)
+  -  7 e2e/window-chrome.spec.ts:248:1 › PX-094: Windows and Linux keep their platform frame and the page is told no chrome
+
+  1 skipped
+  6 passed (9.4s)

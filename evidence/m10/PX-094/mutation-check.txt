@@ -1,0 +1,18 @@
+QUAL-PX-094 mutation checks (2026-10-25, base c7768d0d)
+
+MUTATION restore-visibility
+  file:   apps/desktop/src/main/window-chrome.ts
+  change: isVisible() returns true unconditionally (a saved window is never judged off-screen)
+  commands: playwright e2e/window-chrome.spec.ts -g "display that is gone" -> exit 1
+            node --test src/main/window-chrome.test.ts -> 4 failures
+  e2e verdict: "centred on the primary display at the size it had": expected x 264,y 138 / received x 528,y 200
+  (full output: mutation-restore-visibility-run.txt)
+
+MUTATION drag-opt-out
+  file:   apps/desktop/src/renderer/styles.ts
+  change: ".topbar :is(button, a, ...) { -webkit-app-region: no-drag; }" -> "drag"
+  command: playwright e2e/window-chrome.spec.ts -g "keyboard reachable" -> exit 1
+  e2e verdict: "toggle-agent-list opts out of dragging": expected "no-drag", received "drag"
+  (full output: mutation-drag-optout-run.txt)
+
+Sources restored afterwards; the unmutated spec: 6 passed, 1 skipped (non-macOS), exit 0 (e2e-run.txt).

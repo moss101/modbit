@@ -13,7 +13,12 @@ import { Shell } from "./shell/shell.tsx";
 import { useApp } from "./state/use-app.ts";
 import { Gallery } from "./gallery/gallery.tsx";
 
+import { applyChrome } from "./shell/chrome.ts";
+
 declare const __MODBIT_GALLERY__: boolean;
+
+// REQ-PX-094: the window chrome the main process opened this page in, before anything renders.
+applyChrome(document, location.search);
 
 function App() {
   const app = useApp();

@@ -5,7 +5,7 @@
  * preload bridge. The renderer gets durable ids and Core events; it never gets
  * the socket, the secret, Node, or the filesystem.
  */
-import { app, BrowserWindow, dialog, ipcMain, nativeImage, Notification, safeStorage, session, shell, type IpcMainInvokeEvent } from "electron";
+import { app, BrowserWindow, dialog, ipcMain, nativeImage, nativeTheme, Notification, safeStorage, screen, session, shell, type IpcMainInvokeEvent } from "electron";
 import { existsSync, mkdirSync, readFileSync, statSync, writeFileSync } from "node:fs";
 import { join, resolve } from "node:path";
 import { CoreSupervisor, freshId, type CoreClient, type CoreStatus } from "@modbit/ide-adapter-core";
@@ -24,6 +24,8 @@ import { registerAutomationHandlers } from "./automation-ipc.js";
 import { optionalWindow, requireBool, requireCursor, requireDimension, requireHandle, requireKeystrokes, requireWorkspacePath } from "./apps-args.js";
 import { noWork, quitChoice, quitPrompt, runShutdown, SESSION_END_DEADLINE_MS, sessionEndFailure, WINDOW_DEFAULT, WINDOW_MIN, type ActiveWork, type SessionEndRun, type ShutdownStep } from "./lifecycle.js";
 import { TerminalHost } from "./terminal-host.js";
+import { chromeOptions, chromeQuery, effectiveTranslucent, readTranslucencyOptIn, validateRestore, WindowStateStore, type DisplayInfo } from "./window-chrome.js";
+import { release } from "node:os";
 
 const dataDir = process.env.MODBIT_DATA_DIR ?? join(app.getPath("userData"), "modbit");
 // A profile named by MODBIT_DATA_DIR is a whole profile: the renderer's
@@ -932,13 +934,23 @@ handle("debug:rendererLog", () => rendererLog.slice());
 // its cursor, as at any start. Nothing of the session lives in the renderer
 // to lose.
 const rendererLog: { reason: string; exitCode: number; reloaded: boolean; atMs: number }[] = [];
+// REQ-PX-094: the window's chrome (inset title bar, optional translucency) and its remembered state; see window-chrome.ts.
+const windowState = new WindowStateStore(join(dataDir, "window-state.json"));
+const chromeFile = join(dataDir, "window-chrome.json");
+const displaysNow = (): DisplayInfo[] => screen.getAllDisplays().map((d) => ({ bounds: d.bounds, workArea: d.workArea, primary: d.id === screen.getPrimaryDisplay().id }));
+/** Reduce transparency follows the operating system and wins over the opt-in; MODBIT_REDUCE_TRANSPARENCY=1 is the harness's way to set it (it can only make the window more opaque). */
+const reduceTransparency = (): boolean => process.env.MODBIT_REDUCE_TRANSPARENCY === "1" || nativeTheme.prefersReducedTransparency;
+const chromeNow = () => ({ platform: process.platform, osRelease: release(), translucent: effectiveTranslucent(readTranslucencyOptIn(chromeFile), reduceTransparency(), process.platform) });
 function createWindow(bounds?: Electron.Rectangle): void {
+  const chrome = chromeNow();
+  const restore = validateRestore(windowState.get(displaysNow()), displaysNow(), WINDOW_DEFAULT, WINDOW_MIN);
   const w = new BrowserWindow({
-    ...(bounds ?? WINDOW_DEFAULT),
+    ...(bounds ?? restore.bounds),
     // REQ-PX-049 / AFW-A02: the window never gets smaller than the shell's layout can use.
     minWidth: WINDOW_MIN.width,
     minHeight: WINDOW_MIN.height,
     show: true,
+    ...chromeOptions(chrome),
     webPreferences: {
       preload: join(__dirname, "..", "preload", "preload.cjs"),
       contextIsolation: true,
@@ -948,8 +960,35 @@ function createWindow(bounds?: Electron.Rectangle): void {
     },
   });
   win = w;
+  if (!bounds) {
+    if (restore.fullscreen) w.setFullScreen(true);
+    else if (restore.maximized) w.maximize();
+  }
+  // REQ-PX-094: position, size, maximised and fullscreen are remembered per display configuration (written when they settle, and at close).
+  let saveTimer: ReturnType<typeof setTimeout> | undefined;
+  const saveState = () => {
+    clearTimeout(saveTimer);
+    if (w.isDestroyed() || w.isMinimized()) return;
+    windowState.set(displaysNow(), { bounds: w.getNormalBounds(), maximized: w.isMaximized(), fullscreen: w.isFullScreen() });
+  };
+  for (const ev of ["resize", "move", "maximize", "unmaximize", "enter-full-screen", "leave-full-screen"] as const) {
+    w.on(ev as "resize", () => {
+      clearTimeout(saveTimer);
+      saveTimer = setTimeout(saveState, 400);
+    });
+  }
+  // The material follows the operating system's Reduce transparency while the app runs.
+  const onTheme = () => {
+    if (w.isDestroyed() || process.platform !== "darwin") return;
+    const now = chromeNow();
+    w.setVibrancy(now.translucent ? "sidebar" : null);
+    void w.webContents.executeJavaScript(`document.documentElement.dataset.translucent=${JSON.stringify(now.translucent ? "1" : "")}`).catch(() => undefined);
+  };
+  nativeTheme.on("updated", onTheme);
+  w.on("closed", () => nativeTheme.off("updated", onTheme));
   // REQ-PX-049: closing the window asks first when work is running (the same question as quitting).
   w.on("close", (e) => {
+    saveState();
     if (quitConfirmed || win !== w) return;
     e.preventDefault();
     void requestQuit();
@@ -1008,7 +1047,7 @@ function createWindow(bounds?: Electron.Rectangle): void {
     } else lastDeadPid = pid;
   }, 1000);
   w.on("closed", () => clearInterval(watch));
-  void w.loadFile(join(__dirname, "..", "renderer", "index.html"));
+  void w.loadFile(join(__dirname, "..", "renderer", "index.html"), { query: chromeQuery(chrome) });
 }
 
 app.whenReady().then(async () => {

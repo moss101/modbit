@@ -1,0 +1,128 @@
+
+Running 1 test using 1 worker
+
+[electron] modbit-core: recovery complete: boot_generation=1 events_verified=0 aggregates=0 projections_rebuilt=false sessions=0 tasks=0 in 0ms
+[electron] modbit-core: terminal broker unavailable: spawning terminal broker `/Users/mohsin/projects/modbit/.claude/worktrees/agent-a4d77584f811c0945/target/debug/modbit-execd` (set MODBIT_EXECD_BIN): No such file or directory (os error 2); shell tools will report INFRA_FAILURE
+[electron] Error occurred in handler for 'terminal:list': RejectedError: NO_BROKER: no terminal broker is attached to this Core
+    at _CoreClient.dispatch (/Users/mohsin/projects/modbit/.claude/worktrees/agent-a4d77584f811c0945/apps/desktop/dist/main/main.cjs:3872:61)
+    at Socket.<anonymous> (/Users/mohsin/projects/modbit/.claude/worktrees/agent-a4d77584f811c0945/apps/desktop/dist/main/main.cjs:3848:16)
+    at Socket.emit (node:events:514:28)
+    at addChunk (node:internal/streams/readable:567:12)
+    at readableAddChunkPushByteMode (node:internal/streams/readable:518:3)
+    at Readable.push (node:internal/streams/readable:398:5)
+    at Pipe.onStreamRead (node:internal/stream_base_commons:189:23) {
+  code: 'NO_BROKER'
+}
+[electron] Error occurred in handler for 'terminal:list': RejectedError: NO_BROKER: no terminal broker is attached to this Core
+    at _CoreClient.dispatch (/Users/mohsin/projects/modbit/.claude/worktrees/agent-a4d77584f811c0945/apps/desktop/dist/main/main.cjs:3872:61)
+    at Socket.<anonymous> (/Users/mohsin/projects/modbit/.claude/worktrees/agent-a4d77584f811c0945/apps/desktop/dist/main/main.cjs:3848:16)
+    at Socket.emit (node:events:514:28)
+    at addChunk (node:internal/streams/readable:567:12)
+    at readableAddChunkPushByteMode (node:internal/streams/readable:518:3)
+    at Readable.push (node:internal/streams/readable:398:5)
+    at Pipe.onStreamRead (node:internal/stream_base_commons:189:23) {
+  code: 'NO_BROKER'
+}
+[electron] Error occurred in handler for 'terminal:list': RejectedError: NO_BROKER: no terminal broker is attached to this Core
+    at _CoreClient.dispatch (/Users/mohsin/projects/modbit/.claude/worktrees/agent-a4d77584f811c0945/apps/desktop/dist/main/main.cjs:3872:61)
+    at Socket.<anonymous> (/Users/mohsin/projects/modbit/.claude/worktrees/agent-a4d77584f811c0945/apps/desktop/dist/main/main.cjs:3848:16)
+    at Socket.emit (node:events:514:28)
+    at addChunk (node:internal/streams/readable:567:12)
+    at readableAddChunkPushByteMode (node:internal/streams/readable:518:3)
+    at Readable.push (node:internal/streams/readable:398:5)
+    at Pipe.onStreamRead (node:internal/stream_base_commons:189:23) {
+  code: 'NO_BROKER'
+}
+[electron] Error occurred in handler for 'terminal:list': RejectedError: NO_BROKER: no terminal broker is attached to this Core
+    at _CoreClient.dispatch (/Users/mohsin/projects/modbit/.claude/worktrees/agent-a4d77584f811c0945/apps/desktop/dist/main/main.cjs:3872:61)
+    at Socket.<anonymous> (/Users/mohsin/projects/modbit/.claude/worktrees/agent-a4d77584f811c0945/apps/desktop/dist/main/main.cjs:3848:16)
+    at Socket.emit (node:events:514:28)
+    at addChunk (node:internal/streams/readable:567:12)
+    at readableAddChunkPushByteMode (node:internal/streams/readable:518:3)
+    at Readable.push (node:internal/streams/readable:398:5)
+    at Pipe.onStreamRead (node:internal/stream_base_commons:189:23) {
+  code: 'NO_BROKER'
+}
+[electron] Error occurred in handler for 'terminal:list': RejectedError: NO_BROKER: no terminal broker is attached to this Core
+    at _CoreClient.dispatch (/Users/mohsin/projects/modbit/.claude/worktrees/agent-a4d77584f811c0945/apps/desktop/dist/main/main.cjs:3872:61)
+    at Socket.<anonymous> (/Users/mohsin/projects/modbit/.claude/worktrees/agent-a4d77584f811c0945/apps/desktop/dist/main/main.cjs:3848:16)
+    at Socket.emit (node:events:514:28)
+    at addChunk (node:internal/streams/readable:567:12)
+    at readableAddChunkPushByteMode (node:internal/streams/readable:518:3)
+    at Readable.push (node:internal/streams/readable:398:5)
+    at Pipe.onStreamRead (node:internal/stream_base_commons:189:23) {
+  code: 'NO_BROKER'
+}
+[electron] Error occurred in handler for 'terminal:list': RejectedError: NO_BROKER: no terminal broker is attached to this Core
+    at _CoreClient.dispatch (/Users/mohsin/projects/modbit/.claude/worktrees/agent-a4d77584f811c0945/apps/desktop/dist/main/main.cjs:3872:61)
+    at Socket.<anonymous> (/Users/mohsin/projects/modbit/.claude/worktrees/agent-a4d77584f811c0945/apps/desktop/dist/main/main.cjs:3848:16)
+    at Socket.emit (node:events:514:28)
+    at addChunk (node:internal/streams/readable:567:12)
+    at readableAddChunkPushByteMode (node:internal/streams/readable:518:3)
+    at Readable.push (node:internal/streams/readable:398:5)
+    at Pipe.onStreamRead (node:internal/stream_base_commons:189:23) {
+  code: 'NO_BROKER'
+}
+[electron] Error occurred in handler for 'terminal:list': RejectedError: NO_BROKER: no terminal broker is attached to this Core
+    at _CoreClient.dispatch (/Users/mohsin/projects/modbit/.claude/worktrees/agent-a4d77584f811c0945/apps/desktop/dist/main/main.cjs:3872:61)
+    at Socket.<anonymous> (/Users/mohsin/projects/modbit/.claude/worktrees/agent-a4d77584f811c0945/apps/desktop/dist/main/main.cjs:3848:16)
+    at Socket.emit (node:events:514:28)
+    at addChunk (node:internal/streams/readable:567:12)
+    at readableAddChunkPushByteMode (node:internal/streams/readable:518:3)
+    at Readable.push (node:internal/streams/readable:398:5)
+    at Pipe.onStreamRead (node:internal/stream_base_commons:189:23) {
+  code: 'NO_BROKER'
+}
+[electron] Error occurred in handler for 'terminal:list': RejectedError: NO_BROKER: no terminal broker is attached to this Core
+    at _CoreClient.dispatch (/Users/mohsin/projects/modbit/.claude/worktrees/agent-a4d77584f811c0945/apps/desktop/dist/main/main.cjs:3872:61)
+    at Socket.<anonymous> (/Users/mohsin/projects/modbit/.claude/worktrees/agent-a4d77584f811c0945/apps/desktop/dist/main/main.cjs:3848:16)
+    at Socket.emit (node:events:514:28)
+    at addChunk (node:internal/streams/readable:567:12)
+    at readableAddChunkPushByteMode (node:internal/streams/readable:518:3)
+    at Readable.push (node:internal/streams/readable:398:5)
+    at Pipe.onStreamRead (node:internal/stream_base_commons:189:23) {
+  code: 'NO_BROKER'
+}
+  ✘  1 e2e/browser-webmcp.spec.ts:55:1 › PX-124: page-declared tools are untrusted origin-bound proposals; the read-only one runs, the unannotated one asks; a second origin cannot call or shadow; a navigation removes them and a stale call is refused; a result with instruction text is labelled; a look-alike of a host tool is refused (5.7s)
+[electron] Debugger ending on ws://127.0.0.1:58800/ff1edde4-6778-4b6d-afdc-2e7f2fd2cb67
+For help, see: https://nodejs.org/learn/getting-started/debugging
+
+
+  1) e2e/browser-webmcp.spec.ts:55:1 › PX-124: page-declared tools are untrusted origin-bound proposals; the read-only one runs, the unannotated one asks; a second origin cannot call or shadow; a navigation removes them and a stale call is refused; a result with instruction text is labelled; a look-alike of a host tool is refused 
+
+    Error: expect(received).toContain(expected) // indexOf
+
+    Expected substring: "PAGE_TOOL_STALE"
+    Received string:    "status: APPLICATIONFAILURE
+    error_code: PAGE_TOOL_GONE
+    error: the page withdrew this tool; the page withdrew this tool: list the page's tools again, or use browser.snapshot and browser.act
+    bytes_total: 339
+    bytes_included: 0..339
+    output:
+    {\"code\":\"PAGE_TOOL_GONE\",\"escalation\":\"re_observe\",\"rung\":{\"attempted\":\"page_declared_tool\",\"fell\":{\"from\":\"page_declared_tool\",\"next\":\"browser.snapshot, then browser.act on a ref it names\",\"reason\":\"PAGE_TOOL_GONE\",\"to\":\"derived_action\"},\"hierarchy\":[\"page_declared_tool\",\"derived_action\",\"accessibility_action\",\"raw_input\"],\"used\":null}}failure_class: APPLICATION
+    retryable: true
+    recovery: the operation ran and reported failure; read its output and change the command or the code before running it again
+    repair: {\"code\":\"PAGE_TOOL_GONE\",\"evidence_refs\":[\"6d436af4cb9a9e8f487700c38fa6c1d4492873f31d729e2d8dccfafc2d718c22\"],\"failure_class\":\"APPLICATION\",\"recovery_path\":\"the operation ran and reported failure; read its output and change the command or the code before running it again\",\"retryable\":true,\"user_action\":\"\"}
+    "
+
+      153 |
+      154 |     // After the page navigated, the old handle is refused by the host and the call records the rung it fell from; the new page declares nothing.
+    > 155 |     expect(T[9]).toContain("PAGE_TOOL_STALE");
+          |                  ^
+      156 |     expect(T[9]).toContain('"attempted":"page_declared_tool"');
+      157 |     expect(T[9]).toContain('"to":"derived_action"');
+      158 |     expect(top.hits.filter((h) => h.includes("tool=search"))).toHaveLength(1);
+        at /Users/mohsin/projects/modbit/.claude/worktrees/agent-a4d77584f811c0945/apps/desktop/e2e/browser-webmcp.spec.ts:155:18
+
+    Error Context: test-results/browser-webmcp-PX-124-page-36ed0-e-of-a-host-tool-is-refused/error-context.md
+
+    attachment #2: trace (application/zip) ─────────────────────────────────────────────────────────
+    test-results/browser-webmcp-PX-124-page-36ed0-e-of-a-host-tool-is-refused/trace.zip
+    Usage:
+
+        npx playwright show-trace test-results/browser-webmcp-PX-124-page-36ed0-e-of-a-host-tool-is-refused/trace.zip
+
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+  1 failed
+    e2e/browser-webmcp.spec.ts:55:1 › PX-124: page-declared tools are untrusted origin-bound proposals; the read-only one runs, the unannotated one asks; a second origin cannot call or shadow; a navigation removes them and a stale call is refused; a result with instruction text is labelled; a look-alike of a host tool is refused 

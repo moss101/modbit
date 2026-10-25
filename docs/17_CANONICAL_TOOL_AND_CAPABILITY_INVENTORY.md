@@ -57,3 +57,7 @@ A new first-party tool is accepted only when existing tools plus a skill cannot 
 ## Skill vs tool
 
 Use a **skill** for procedural knowledge over existing governed operations. Add a **tool** only for a new precise effector/protocol/stream/transaction/host-enforced capability.
+
+## Page-declared tools (PX-124)
+
+`browser.page_tools` (a read) and `browser.page_tool` (registered a read, judged per call) are the WebMCP rung of docs/22. The class of a `browser.page_tool` call comes from the page's annotation (`readOnlyHint` without `destructiveHint` = read; anything else, including no annotation = `ExternalSideEffect`, asks, the approval bound to origin, frame, page load and name); `Tool::effect_of` can only raise the registered class, so the registered class is the lowest. Calling one counts as progress for the run's no-progress counter, listing does not. See docs/22 "Action hierarchy" for the trust label, the origin binding and the accepted risk of a page's own read-only claim.

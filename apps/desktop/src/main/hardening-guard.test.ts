@@ -12,6 +12,7 @@ import { readFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { test } from "node:test";
 import { fileURLToPath } from "node:url";
+import { CHROME_OPTION_KEYS, chromeOptions } from "./window-chrome.ts";
 
 const here = dirname(fileURLToPath(import.meta.url));
 const mainSource = readFileSync(join(here, "main.ts"), "utf8");
@@ -57,11 +58,28 @@ test("PX-049: webPreferences is the pinned block (isolated, sandboxed, no Node)"
 test("PX-049: the window constructor takes the size options and nothing else beside webPreferences", () => {
   const body = windowOptions();
   const keys = [...body.matchAll(/^ {4}([A-Za-z]+)[:,]/gm)].map((k) => k[1]!);
-  // `...(bounds ?? WINDOW_DEFAULT)` supplies width and height; they are listed as the keys the spread provides.
-  const all = body.includes("...(bounds ?? WINDOW_DEFAULT)") ? ["width", "height", ...keys] : keys;
+  // `...(bounds ?? restore.bounds)` (the saved window, validated on a display that exists, PX-094) supplies width and height; they are listed as the keys the spread provides.
+  const all = body.includes("...(bounds ?? restore.bounds)") ? ["width", "height", ...keys] : keys;
   assert.deepEqual(
     all.filter((k, i, a) => a.indexOf(k) === i),
     PINS.windowOptionKeys,
     "an option other than the window size, visibility and webPreferences was added to the constructor",
   );
+});
+
+// PX-094: the window chrome arrives through exactly one spread, and that spread can carry only chrome keys.
+test("PX-094: the constructor's chrome is one spread of window-chrome.ts, whose keys are chrome and nothing that loosens the boundary", () => {
+  const body = windowOptions();
+  assert.equal([...body.matchAll(/\.\.\.chromeOptions\(/g)].length, 1, "the chrome options come from chromeOptions() and only from it");
+  const allowed = new Set<string>(CHROME_OPTION_KEYS);
+  assert.deepEqual([...allowed].sort(), ["backgroundColor", "backgroundMaterial", "titleBarStyle", "trafficLightPosition", "vibrancy"]);
+  for (const platform of ["darwin", "win32", "linux"]) {
+    for (const translucent of [false, true]) {
+      for (const k of Object.keys(chromeOptions({ platform, osRelease: "27.0.0", translucent }))) assert.ok(allowed.has(k), `${platform}: chromeOptions returned ${k}`);
+    }
+  }
+});
+
+test("PX-094: main.ts loads the page with the chrome query and nothing else about how the page is loaded changes", () => {
+  assert.match(mainSource, /loadFile\(join\(__dirname, "\.\.", "renderer", "index\.html"\), \{ query: chromeQuery\(chrome\) \}\)/);
 });

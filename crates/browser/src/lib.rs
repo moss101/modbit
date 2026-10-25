@@ -17,6 +17,7 @@
 pub mod compiler;
 pub mod feedback;
 pub mod injection;
+pub mod page_tools;
 pub mod refusal;
 pub mod semantic;
 
@@ -222,6 +223,27 @@ pub enum HostRequest {
     /// Whether the session's document can reach Node or Electron
     /// privileges (must be false; a host answers from the page itself).
     Isolation,
+    /// The tools the page's frames declare through `navigator.modelContext`
+    /// (PX-124): every frame of the current page, each tool bound to the
+    /// frame and origin the browser reports and to the page load. A read.
+    PageTools,
+    /// Call one page-declared tool in the frame that declared it (PX-124).
+    /// An agent input like `Act`: refused while the person holds control,
+    /// halted by an emergency stop, fenced by the lease generation. The
+    /// host refuses it when the frame, the page load or the origin is no
+    /// longer the one the catalog entry names.
+    CallPageTool {
+        /// The declaring frame.
+        frame: String,
+        /// The page load that declared the tool.
+        load: String,
+        /// The origin the catalog entry names.
+        origin: String,
+        /// The tool's name.
+        name: String,
+        /// The arguments (a JSON object).
+        arguments: serde_json::Value,
+    },
     /// Release the session's view.
     Close,
 }
@@ -375,6 +397,35 @@ pub enum HostResponse {
         sandboxed: bool,
         /// Whether context isolation is on.
         context_isolated: bool,
+    },
+    /// The page-declared tools of the page (PX-124).
+    PageTools {
+        /// The page.
+        state: PageState,
+        /// What the frames declared, bounded.
+        tools: Vec<page_tools::PageToolDecl>,
+        /// Declarations the host refused to list.
+        #[serde(default)]
+        refused: Vec<page_tools::PageToolRefusal>,
+        /// Whether the host could offer a model-context interface to the page.
+        #[serde(default)]
+        supported: bool,
+    },
+    /// The outcome of a `CallPageTool` (PX-124).
+    PageToolResult {
+        /// The page after.
+        state: PageState,
+        /// `returned` | `threw`.
+        outcome: String,
+        /// The tool's result as JSON text (bounded by the host); empty on `threw`.
+        #[serde(default)]
+        result_json: String,
+        /// The error text the tool threw (untrusted).
+        #[serde(default)]
+        error: String,
+        /// Whether the result was cut at the bound.
+        #[serde(default)]
+        truncated: bool,
     },
     /// The host could not do it.
     Error {

@@ -134,6 +134,8 @@ export function Shell({ app }: { app: AppState }) {
   useEffect(() => applyTheme(prefs.theme), [prefs.theme]);
   useEffect(() => {
     document.documentElement.style.zoom = prefs.zoom === 1 ? "" : String(prefs.zoom);
+    // REQ-PX-094: the native window controls do not scale with the page, so what is reserved for them is divided by the zoom.
+    document.documentElement.style.setProperty("--mb-zoom", String(prefs.zoom));
   }, [prefs.zoom]);
   useEffect(() => {
     if (!notice) return;

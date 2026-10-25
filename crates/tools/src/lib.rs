@@ -23,6 +23,7 @@ pub mod browser;
 mod browser_feedback;
 #[allow(clippy::result_large_err)]
 mod browser_forms;
+mod browser_page_tools;
 #[allow(clippy::result_large_err)]
 pub mod computer;
 pub mod direct;

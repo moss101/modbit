@@ -1572,6 +1572,41 @@ impl ToolHost {
                 &actor,
             ));
         }
+        // PX-124: a page that declared a tool named like a host tool (or
+        // otherwise outside the bounds) tried something; the refusal is
+        // security evidence on the task, naming the origin and the name.
+        if tool_name == "browser.page_tools"
+            && result.status == ToolStatus::Success
+            && let Some(refused) = result.structured_output["refused"].as_array()
+            && !refused.is_empty()
+        {
+            retrieval_events.push(typed_task_event(
+                "SecurityEventRecorded",
+                &modbit_domain::task::TaskEvent::SecurityEventRecorded {
+                    kind: "PAGE_TOOL_DECLARATION_REFUSED".into(),
+                    tool_name: tool_name.to_owned(),
+                    tool_call_id: tool_call_id.to_string(),
+                    patterns: refused
+                        .iter()
+                        .take(16)
+                        .map(|r| {
+                            format!(
+                                "{} {}: {}",
+                                r["origin"].as_str().unwrap_or_default(),
+                                r["name"].as_str().unwrap_or_default(),
+                                r["code"].as_str().unwrap_or_default()
+                            )
+                        })
+                        .collect(),
+                    detail: format!(
+                        "{} page-declared tool(s) refused by the host's bounds",
+                        refused.len()
+                    ),
+                    action: "REFUSED".into(),
+                },
+                &actor,
+            ));
+        }
         // M9.4 (REQ-EV-0128 audit): what an external server tried that the
         // host refused is security evidence on the task, not a log line.
         if tool_name.starts_with("external.") {

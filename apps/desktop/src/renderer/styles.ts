@@ -173,4 +173,25 @@ pre.codeview .add { background: var(--mb-color-ok-tint); color: var(--mb-color-t
 .gallery-card[data-tone="warn"] { background: var(--mb-color-warn-tint); }
 .gallery-shell-box { height: 360px; border: 1px solid var(--mb-color-border-control); overflow: hidden; }
 html:has(.gallery), html:has(.gallery) body, html:has(.gallery) #root { height: auto; }
+/* REQ-PX-094 (docs/78 ESH-B01..B03): window chrome. Inset title bar: the 40 pt bar and the agent-list strip are the drag region, every control in
+   the bar opts out of dragging, and the native window controls float over the strip, whose box is reserved in native points (divided by the zoom). */
+html[data-chrome="inset"] { --mb-chrome-strip-h: max(var(--mb-top-bar), calc(var(--mb-chrome-reserve-h) / var(--mb-zoom, 1))); }
+html[data-chrome="inset"] .topbar { height: var(--mb-chrome-strip-h); -webkit-app-region: drag; }
+html[data-chrome="inset"] .topbar :is(button, a, input, select, textarea, summary, [role="button"], [role="menu"], [role="menuitem"], [tabindex]) { -webkit-app-region: no-drag; }
+html[data-chrome="inset"] .shell-list { display: flex; flex-direction: column; }
+html[data-chrome="inset"] .shell-list > .shell-scroll { height: auto; flex: 1 1 0; min-height: 0; }
+.shell-list-strip { flex: none; box-sizing: border-box; height: var(--mb-chrome-strip-h); border-bottom: 1px solid var(--mb-color-border); -webkit-app-region: drag; }
+/* On the 40 px rail the controls are wider than the rail: the bar's own content starts after them. */
+html[data-chrome="inset"] .shell[data-rail="true"] .topbar { padding-left: calc(var(--mb-chrome-reserve-w) / var(--mb-zoom, 1) - var(--mb-rail-w, 40px)); }
+/* The platform draws no hairline round a frameless window: this one does, above everything and out of the way of the pointer. */
+html[data-chrome="inset"] body::after { content: ""; position: fixed; inset: 0; border: 1px solid var(--mb-color-border); border-radius: 10px; pointer-events: none; z-index: 2147483000; }
+/* Translucency is opt-in and off by default; the surfaces that may show the window material are the agent list and its strip, nothing else. */
+html[data-translucent="1"], html[data-translucent="1"] body, html[data-translucent="1"] #root, html[data-translucent="1"] .shell { background: transparent; }
+html[data-translucent="1"] .shell-center { background: var(--mb-color-bg); }
+html[data-translucent="1"] .shell-list { background: color-mix(in srgb, var(--mb-color-panel) 70%, transparent); }
+/* Reduce transparency (the operating system's, which also clears data-translucent in the main process): every surface is opaque again. */
+@media (prefers-reduced-transparency: reduce) {
+  html[data-translucent="1"], html[data-translucent="1"] body, html[data-translucent="1"] .shell { background: var(--mb-color-bg); }
+  html[data-translucent="1"] .shell-list { background: var(--mb-color-panel); }
+}
 `;
