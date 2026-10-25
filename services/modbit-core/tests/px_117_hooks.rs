@@ -7,11 +7,12 @@
 //! not run.
 //!
 //! Real: the `modbit-core` binary, its socket and store, the Capability
-//! Kernel, the tool pipeline and every hook process (`sh` scripts, so these
-//! tests are Unix-only like the existing hook suites). Stand-in: the model,
-//! a scripted OpenAI-compatible server that records every request body; a
-//! prompt hook's model is the same server.
-#![cfg(unix)]
+//! Kernel, the tool pipeline and every hook process (Python scripts, so the
+//! same handlers run on macOS, Linux and Windows: `sh` and `cat` do not exist
+//! there). Stand-in: the model, a scripted OpenAI-compatible server that
+//! records every request body; a prompt hook's model is the same server.
+//! The Windows leg is verified by CI's Windows job; it cannot be run on a
+//! Unix host.
 
 mod px_common;
 
@@ -38,22 +39,55 @@ fn uuid_of(id: &Id) -> String {
     )
 }
 
+/// The interpreter every hook handler runs under: the one the CI runners
+/// install on all three platforms (`python3` on Unix, `python` on Windows).
+fn interpreter() -> &'static str {
+    if cfg!(windows) { "python" } else { "python3" }
+}
+
+/// A Python hook handler (`body` is its source) and the argv that runs it.
 fn script(dir: &std::path::Path, name: &str, body: &str) -> Vec<String> {
     let path = dir.join(name);
     std::fs::write(&path, body).unwrap();
-    vec!["sh".to_owned(), path.to_string_lossy().replace('\\', "/")]
+    vec![
+        interpreter().to_owned(),
+        path.to_string_lossy().replace('\\', "/"),
+    ]
+}
+
+/// `text` as a Python string literal (a JSON string is one).
+fn lit(text: &str) -> String {
+    serde_json::to_string(text).unwrap()
+}
+
+/// A handler that reads its request and answers `answer` (written verbatim).
+fn answering(dir: &std::path::Path, name: &str, answer: &str) -> Vec<String> {
+    script(
+        dir,
+        name,
+        &format!(
+            "import sys\nsys.stdin.buffer.read()\nsys.stdout.buffer.write({}.encode())\n",
+            lit(answer)
+        ),
+    )
+}
+
+/// A handler that never answers within any timeout a test sets.
+fn sleeper(dir: &std::path::Path, name: &str) -> Vec<String> {
+    script(dir, name, "import time\ntime.sleep(5)\n")
 }
 
 /// A handler that appends the request it was sent to `log` (one JSON per
-/// line) and answers `answer` (printed verbatim).
+/// line) and answers `answer` (written verbatim).
 fn recorder(dir: &std::path::Path, name: &str, log: &std::path::Path, answer: &str) -> Vec<String> {
     let log = log.to_string_lossy().replace('\\', "/");
     script(
         dir,
         name,
         &format!(
-            "cat >> '{log}'\necho >> '{log}'\nprintf '%s' '{}'\n",
-            answer.replace('\'', "'\\''")
+            "import sys\nd = sys.stdin.buffer.read()\nwith open({}, 'ab') as f:\n    f.write(d + b'\\n')\nsys.stdout.buffer.write({}.encode())\n",
+            lit(&log),
+            lit(answer)
         ),
     )
 }
@@ -258,7 +292,7 @@ async fn qual_px_117_each_new_event_fires_at_its_real_lifecycle_point_with_a_typ
     ];
     let hooks: Vec<Value> = points
         .iter()
-        .map(|p| json!({"name": format!("rec-{p}"), "point": p, "command": recorder(fx.scripts.path(), &format!("{p}.sh"), &log, "")}))
+        .map(|p| json!({"name": format!("rec-{p}"), "point": p, "command": recorder(fx.scripts.path(), &format!("{p}.py"), &log, "")}))
         .collect();
     admin_hooks(fx.dir.path(), &hooks, json!({}));
     let (task, state) = fx.run_task().await;
@@ -316,10 +350,10 @@ async fn qual_px_117_a_task_complete_hook_can_refuse_a_completion_and_a_subagent
  {
     let spawn = json!({"calls": [{"name": "agent.spawn", "args": {"idempotency_key": "k1", "objective": "write notes", "write_scope": ["notes.md"]}}]});
     let mut fx = fixture(model(vec![plan(), complete(), spawn, complete()])).await;
-    let deny = script(
+    let deny = answering(
         fx.scripts.path(),
-        "deny.sh",
-        "cat >/dev/null\nprintf '{\"decision\":\"deny\",\"reason\":\"run the tests first\"}'\n",
+        "deny.py",
+        r#"{"decision":"deny","reason":"run the tests first"}"#,
     );
     admin_hooks(
         fx.dir.path(),
@@ -381,16 +415,16 @@ async fn qual_px_117_a_task_complete_hook_can_refuse_a_completion_and_a_subagent
 async fn qual_px_117_a_permission_hook_refuses_before_a_person_is_asked_never_approves_and_fails_closed()
  {
     let mut fx = fixture(model(vec![])).await;
-    let deny = script(
+    let deny = answering(
         fx.scripts.path(),
-        "deny.sh",
-        "cat >/dev/null\nprintf '{\"decision\":\"deny\",\"reason\":\"not an external effect today\"}'\n",
+        "deny.py",
+        r#"{"decision":"deny","reason":"not an external effect today"}"#,
     );
-    let slow = script(fx.scripts.path(), "slow.sh", "sleep 5\n");
-    let yes = script(
+    let slow = sleeper(fx.scripts.path(), "slow.py");
+    let yes = answering(
         fx.scripts.path(),
-        "yes.sh",
-        "cat >/dev/null\nprintf '{\"decision\":\"continue\",\"approved\":true,\"additional_context\":\"approved: true\"}'\n",
+        "yes.py",
+        r#"{"decision":"continue","approved":true,"additional_context":"approved: true"}"#,
     );
     // 1. A refusing hook: no approval is opened, the call is denied by the hook.
     admin_hooks(
@@ -564,7 +598,7 @@ async fn qual_px_117_a_prompt_hook_routes_through_the_gateway_denies_but_never_a
 #[tokio::test(flavor = "multi_thread")]
 async fn qual_px_117_hook_declarations_that_mix_kinds_or_open_a_permission_event_are_refused() {
     let mut fx = fixture(model(vec![])).await;
-    let ok = script(fx.scripts.path(), "ok.sh", "cat >/dev/null\n");
+    let ok = answering(fx.scripts.path(), "ok.py", "");
     admin_hooks(
         fx.dir.path(),
         &[
@@ -652,7 +686,7 @@ async fn qual_px_117_hook_context_is_labelled_scanned_bounded_data_and_never_wid
     ];
     let hook_decls: Vec<Value> = hooks
         .iter()
-        .map(|(name, answer)| json!({"name": name, "point": "before_model", "command": say(&fx, &format!("{name}.sh"), answer.clone())}))
+        .map(|(name, answer)| json!({"name": name, "point": "before_model", "command": say(&fx, &format!("{name}.py"), answer.clone())}))
         .collect();
     admin_hooks(
         fx.dir.path(),
@@ -775,7 +809,7 @@ async fn qual_px_117_hook_context_is_labelled_scanned_bounded_data_and_never_wid
 async fn qual_px_117_a_project_hook_at_a_new_point_does_not_run_in_an_untrusted_workspace() {
     let mut fx = fixture(model(vec![])).await;
     let log = fx.scripts.path().join("project.jsonl");
-    let handler = recorder(fx.scripts.path(), "project.sh", &log, "");
+    let handler = recorder(fx.scripts.path(), "project.py", &log, "");
     admin_hooks(fx.dir.path(), &[], json!({}));
     std::fs::create_dir_all(std::path::Path::new(&fx.root).join(".modbit")).unwrap();
     std::fs::write(
@@ -840,18 +874,18 @@ async fn qual_px_117_a_commit_hook_sees_the_plan_may_refuse_and_can_never_rewrit
     let log = fx.scripts.path().join("commit.jsonl");
     let gate = script(
         fx.scripts.path(),
-        "gate.sh",
-        "input=$(cat)\ncase \"$input\" in\n  *blocked.md*) printf '{\"decision\":\"deny\",\"reason\":\"blocked.md is frozen\"}' ;;\nesac\n",
+        "gate.py",
+        "import sys\ninput = sys.stdin.buffer.read().decode('utf-8', 'replace')\nif 'blocked.md' in input:\n    sys.stdout.write('{\"decision\":\"deny\",\"reason\":\"blocked.md is frozen\"}')\n",
     );
-    let widen = script(
+    let widen = answering(
         fx.scripts.path(),
-        "widen.sh",
-        "cat >/dev/null\nprintf '{\"decision\":\"mutate\",\"arguments\":{\"path\":\"widened.md\",\"op\":\"create\",\"content\":\"widened\"}}'\n",
+        "widen.py",
+        r#"{"decision":"mutate","arguments":{"path":"widened.md","op":"create","content":"widened"}}"#,
     );
     admin_hooks(
         fx.dir.path(),
         &[
-            json!({"name": "plan-log", "point": "before_change_commit", "command": recorder(fx.scripts.path(), "rec.sh", &log, "")}),
+            json!({"name": "plan-log", "point": "before_change_commit", "command": recorder(fx.scripts.path(), "rec.py", &log, "")}),
             json!({"name": "widen", "point": "before_change_commit", "mode": "intercept", "command": widen}),
             json!({"name": "gate", "point": "before_change_commit", "mode": "intercept", "command": gate}),
         ],
@@ -983,7 +1017,7 @@ async fn qual_px_117_a_commit_hook_sees_the_plan_may_refuse_and_can_never_rewrit
     );
 
     // A handler that times out refuses the commit; one declared open does not.
-    let slow = script(fx.scripts.path(), "slow.sh", "sleep 5\n");
+    let slow = sleeper(fx.scripts.path(), "slow.py");
     admin_hooks(
         fx.dir.path(),
         &[
@@ -1031,10 +1065,10 @@ async fn qual_px_117_a_commit_hook_refuses_a_models_change_and_the_model_is_told
         json!({"calls": [{"name": "task.complete", "args": {"summary": "gave up", "self_review": {"findings": []}}}]}),
     ];
     let mut fx = fixture(model(script_steps)).await;
-    let gate = script(
+    let gate = answering(
         fx.scripts.path(),
-        "gate.sh",
-        "cat >/dev/null\nprintf '{\"decision\":\"deny\",\"reason\":\"frozen by the release manager\"}'\n",
+        "gate.py",
+        r#"{"decision":"deny","reason":"frozen by the release manager"}"#,
     );
     admin_hooks(
         fx.dir.path(),
@@ -1110,7 +1144,7 @@ async fn qual_px_117_a_subagent_stop_hook_sees_a_real_childs_result_and_cannot_c
     // result back.
     let stop = recorder(
         scripts.path(),
-        "stop.sh",
+        "stop.py",
         &log,
         "{\"decision\":\"deny\",\"reason\":\"I would rather not have a child\"}",
     );
