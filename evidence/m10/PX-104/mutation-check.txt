@@ -1,0 +1,21 @@
+PX-104 mutation check (QUAL-PX-104: a mutation that drops the revision from the decision call must fail the stale test)
+date: 2026-10-24T20:30:27Z
+base revision: b78b0c1cbe13eec0e3d8ffe93e7538814ac5f607 (plus the working tree of this task)
+
+== baseline (unmutated) ==
+[electron] Error occurred in handler for 'changes:decideHunk': RejectedError: STALE_REVISION: `notes.txt` is at revision 431d1bbc4f74f52663fc36a18ab7a1e4ea719e0e1ba4d4912655015f7ea6038d, the revert was made against 77f50f4f746ea778fd7dfac971c5d1cf1da5bfbabf8e706b042a827d241b966d; reload the changes
+  6 passed (10.7s)
+baseline exit: 0
+
+== mutation: packages/ide-adapter-core/src/changes.ts 'expectedFileRevision: d.expectedFileRevision, expectedHunkDigest' -> 'expectedFileRevision: "", expectedHunkDigest' ==
+[electron] Error occurred in handler for 'changes:decideHunk': RejectedError: BAD_PAYLOAD: expected_file_revision required: a decision is made on the revision that was shown
+    Error: expect(locator).toHaveAttribute(expected) failed
+    Error: element(s) not found
+  1 failed
+  2 passed (19.7s)
+mutated exit: 1
+
+== restored ==
+[electron] Error occurred in handler for 'changes:decideHunk': RejectedError: STALE_REVISION: `notes.txt` is at revision 431d1bbc4f74f52663fc36a18ab7a1e4ea719e0e1ba4d4912655015f7ea6038d, the revert was made against 77f50f4f746ea778fd7dfac971c5d1cf1da5bfbabf8e706b042a827d241b966d; reload the changes
+  6 passed (11.4s)
+restored exit: 0

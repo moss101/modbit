@@ -57,18 +57,18 @@ fn refuse(code: &str, msg: impl Into<String>) -> Refusal {
 
 /// The aggregate this app's records live on: one per task, beside (never on)
 /// the workspace's own `FileChanged` log.
-fn records_aggregate(task: TaskId) -> [u8; 16] {
+pub(crate) fn records_aggregate(task: TaskId) -> [u8; 16] {
     let h = Sha256::digest(format!("changes-app:{task}").as_bytes());
     let mut b = [0u8; 16];
     b.copy_from_slice(&h[..16]);
     b
 }
 
-fn record(event_type: &str, payload: Value, actor: &Actor) -> NewEvent {
+pub(crate) fn record(event_type: &str, payload: Value, actor: &Actor) -> NewEvent {
     typed(event_type, &payload, actor.clone())
 }
 
-fn append_request(core: &Core, task: &Task, events: Vec<NewEvent>) -> AppendRequest {
+pub(crate) fn append_request(core: &Core, task: &Task, events: Vec<NewEvent>) -> AppendRequest {
     AppendRequest {
         tenant_id: core.tenant_id,
         session_id: task.session_id,
@@ -81,6 +81,10 @@ fn append_request(core: &Core, task: &Task, events: Vec<NewEvent>) -> AppendRequ
         expected_sequence: None,
         events,
     }
+}
+
+pub(crate) async fn load_task_pub(core: &Core, id: Option<&wire::Id>) -> Result<Task, Refusal> {
+    load_task(core, id).await
 }
 
 async fn load_task(core: &Core, id: Option<&wire::Id>) -> Result<Task, Refusal> {
@@ -442,6 +446,23 @@ pub(crate) async fn revert(
     record_: CommandRecord,
     actor: Actor,
 ) -> Result<wire::RevertChangesAck, Refusal> {
+    revert_impl(core, p, command_id, record_, actor, None)
+        .await
+        .map(|(a, _)| a)
+}
+
+/// The revert, and with `decide` (PX-103) the per-hunk rejection that is
+/// allowed while the task's loop runs: the hunk is attributed and checked
+/// against the digest the person saw, and the `HunkDecided` record lands in
+/// the same transaction as the revert. A replay returns the recorded decision.
+pub(crate) async fn revert_impl(
+    core: &Core,
+    p: &wire::RevertChanges,
+    command_id: [u8; 16],
+    record_: CommandRecord,
+    actor: Actor,
+    decide: Option<&crate::hunks::DecideCtx>,
+) -> Result<(wire::RevertChangesAck, Option<(Value, u64)>), Refusal> {
     if p.path.trim().is_empty() {
         return Err(refuse("BAD_PAYLOAD", "path required"));
     }
@@ -450,7 +471,12 @@ pub(crate) async fn revert(
         let store = core.store.lock().await;
         match store.prior_command(&record_) {
             Ok(Some(CommandOutcome::Replayed(events))) => {
+                let decided = events
+                    .iter()
+                    .find(|e| e.envelope.event_type == "HunkDecided")
+                    .and_then(|e| store.payload(&e.envelope).ok().map(|p| (p, e.offset)));
                 return revert_ack_of(&events, &store)
+                    .map(|a| (a, decided))
                     .ok_or_else(|| refuse("REPLAY", "the recorded command carries no revert"));
             }
             Ok(_) => {}
@@ -459,7 +485,13 @@ pub(crate) async fn revert(
     }
     let task = load_task(core, p.task_id.as_ref()).await?;
     let root = root_of(&task)?;
-    require_stopped(core, &task, "a revert").await?;
+    // The loop owns the tree while it runs; a per-hunk decision is the one
+    // revert that does not wait for it: the file service's content-hash
+    // precondition refuses it if the loop wrote the file in the meantime.
+    if decide.is_none() {
+        require_stopped(core, &task, "a revert").await?;
+    }
+    let run_live = core.runtime.is_running(&task.task_id).await;
     let (ws, _) = core
         .tools
         .workspace(&root)
@@ -544,6 +576,7 @@ pub(crate) async fn revert(
                 .map_err(git_err)?,
         )
     };
+    let mut decided_info: Option<crate::hunks::HunkInfo> = None;
     let (kind, action) = if p.whole_file {
         match (file.status, &base_bytes) {
             ('A', _) => (ChangeOpKind::Delete, "DELETED_FILE"),
@@ -596,6 +629,30 @@ pub(crate) async fn revert(
         }
         let keep: Vec<u32> = all.iter().copied().filter(|i| *i != p.hunk_index).collect();
         let rebuilt = apply_selected(&base, &file.hunks, &keep);
+        if let Some(d) = decide {
+            let shown = &file.hunks[p.hunk_index as usize];
+            if !d.expected_digest.is_empty()
+                && d.expected_digest != crate::hunks::hunk_digest(shown)
+            {
+                return Err(refuse(
+                    "STALE_HUNK",
+                    format!(
+                        "{relative}#{} is no longer the hunk that was shown; reload the changes",
+                        p.hunk_index
+                    ),
+                ));
+            }
+            let inputs = [crate::hunks::FileInput {
+                path: &relative,
+                base: Some(base.clone()),
+                current: Some(now.clone()),
+                hunks: &file.hunks,
+            }];
+            decided_info = crate::hunks::attribute(core, &root, &inputs)
+                .await
+                .remove(&relative)
+                .and_then(|v| v.into_iter().nth(p.hunk_index as usize));
+        }
         (
             ChangeOpKind::ReplaceExact(rebuilt.into_bytes()),
             "REVERTED_HUNK",
@@ -686,10 +743,34 @@ pub(crate) async fn revert(
     );
     let mut ws_request = append_request(core, &task, file_events);
     ws_request.aggregate_id = workspace_aggregate_id(&root);
+    let mut records = vec![note];
+    if let (Some(d), Some(info)) = (decide, &decided_info) {
+        let shown = cand
+            .files
+            .iter()
+            .find(|f| f.path == relative)
+            .and_then(|f| f.hunks.get(p.hunk_index as usize))
+            .cloned();
+        if let Some(h) = shown {
+            records.push(crate::hunks::rejected_record(
+                d,
+                &relative,
+                &h,
+                info,
+                command_id,
+                run_live,
+                &before_hash,
+                &after_hash,
+                workspace_revision,
+                &checkpoint_id,
+                &actor,
+            ));
+        }
+    }
     let outcome = store
         .execute_command_all(
             record_,
-            vec![ws_request, append_request(core, &task, vec![note])],
+            vec![ws_request, append_request(core, &task, records)],
         )
         .map_err(|e| refuse(crate::server::error_code(&e), e.to_string()))?;
     let events = match outcome {
@@ -697,18 +778,21 @@ pub(crate) async fn revert(
     };
     let offset = events.last().map_or(0, |e| e.offset);
     core.last_offset.send_replace(offset);
-    Ok(wire::RevertChangesAck {
-        path: relative,
-        action: action.to_owned(),
-        hunk_index: p.hunk_index,
-        workspace_revision,
-        previous_revision: revision_before,
-        file_revision: after_hash,
-        before_hash,
-        checkpoint_id,
-        offset,
-        replayed: false,
-    })
+    Ok((
+        wire::RevertChangesAck {
+            path: relative,
+            action: action.to_owned(),
+            hunk_index: p.hunk_index,
+            workspace_revision,
+            previous_revision: revision_before,
+            file_revision: after_hash,
+            before_hash,
+            checkpoint_id,
+            offset,
+            replayed: false,
+        },
+        None,
+    ))
 }
 
 // ------------------------------------------------------------------- stage

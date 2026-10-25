@@ -1075,6 +1075,9 @@ struct Barrier {
 /// How many changed paths are listed inline in the structured output.
 const DIFF_INLINE_ENTRIES: usize = 12;
 
+/// How many changed paths one call's attribution record names (PX-103).
+const ATTRIBUTION_ENTRIES: usize = 256;
+
 /// Content hashes learned by the last snapshot of each workspace root, so the
 /// next call re-reads only files whose size or mtime moved (a pure cache, see
 /// [`modbit_workspace::snapshot::HashCache`]); a handful of roots at most.
@@ -1226,6 +1229,20 @@ impl Barrier {
         );
         if deltas.len() > DIFF_INLINE_ENTRIES {
             doc.insert("omitted".into(), json!(deltas.len() - DIFF_INLINE_ENTRIES));
+        }
+        // PX-103: the paths this call changed that stay changed, for the Core
+        // to attribute hunks to the call (the inline list above is capped for
+        // the model; this one is for the record). A path put back from the
+        // snapshot, and the git surfaces, are not the call's work.
+        let attributable: Vec<Value> = deltas
+            .iter()
+            .filter(|d| !d.path.starts_with(".git/"))
+            .filter(|d| !(restored.is_some() && d.protected_by.is_some()))
+            .take(ATTRIBUTION_ENTRIES)
+            .map(|d| json!({"path": d.path, "change": d.kind.label(), "before": d.before, "after": d.after}))
+            .collect();
+        if !attributable.is_empty() {
+            doc.insert("attribution".into(), Value::Array(attributable));
         }
         if incomplete {
             doc.insert("incomplete".into(), json!(true));

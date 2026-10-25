@@ -219,6 +219,7 @@ impl Fx {
                     "ListHooks",
                     ListHooks {
                         task_id: Some(task.clone()),
+                        ..Default::default()
                     }
                     .encode_to_vec(),
                 ))

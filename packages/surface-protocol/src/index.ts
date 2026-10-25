@@ -31,6 +31,7 @@ export * from "./gen/modbit/v1/composer_pb.js";
 export * from "./gen/modbit/v1/automations_pb.js";
 export * from "./gen/modbit/v1/projects_pb.js";
 export * from "./gen/modbit/v1/mode_proposals_pb.js";
+export * from "./gen/modbit/v1/customize_pb.js";
 // PX-074: the desktop surface's computer-control messages. Named exports only: the actuator RPC in the same file
 // (Rect, Point, Scope, ...) is the Core's and the actuator's, and a client never speaks it.
 export {

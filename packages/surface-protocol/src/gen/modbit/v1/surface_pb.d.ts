@@ -21,6 +21,7 @@ import type { MemoryEventView, MemoryInjectionView } from "./context_knowledge_p
 import type { ContextAccountingView } from "./run_control_pb.js";
 import type { ProcessServiceView } from "./security_runtime_pb.js";
 import type { ReviewCommentThreadView } from "./forge_cloud_pb.js";
+import type { ExtensionRow } from "./customize_pb.js";
 import type { CaptureCost } from "./checkpoints_pb.js";
 
 /**
@@ -4591,6 +4592,75 @@ export declare type HunkView = Message<"modbit.v1.HunkView"> & {
    * @generated from field: repeated string lines = 7;
    */
   lines: string[];
+
+  /**
+   * PX-103 (additive): where the hunk came from, decided by the Core from the
+   * workspace's FileChanged log, never by a client.
+   *
+   * the call that produced the hunk; "" when unattributed
+   *
+   * @generated from field: string tool_call_id = 8;
+   */
+  toolCallId: string;
+
+  /**
+   * that call's tool (e.g. change.apply, proc.exec), or user_revert / user_direct_edit
+   *
+   * @generated from field: string tool_name = 9;
+   */
+  toolName: string;
+
+  /**
+   * @generated from field: string turn_id = 10;
+   */
+  turnId: string;
+
+  /**
+   * @generated from field: string run_id = 11;
+   */
+  runId: string;
+
+  /**
+   * false: some of the hunk is not explained by any recorded call
+   *
+   * @generated from field: bool attributed = 12;
+   */
+  attributed: boolean;
+
+  /**
+   * other calls whose lines the hunk holds
+   *
+   * @generated from field: repeated string also_call_ids = 13;
+   */
+  alsoCallIds: string[];
+
+  /**
+   * CHANGE_TRANSACTION | BARRIER_DIFF | USER | UNATTRIBUTED
+   *
+   * @generated from field: string attribution_basis = 14;
+   */
+  attributionBasis: string;
+
+  /**
+   * sha256 of header + lines; a decision names it
+   *
+   * @generated from field: string hunk_digest = 15;
+   */
+  hunkDigest: string;
+
+  /**
+   * "" | ACCEPTED (a person's recorded accept of this exact hunk)
+   *
+   * @generated from field: string decision = 16;
+   */
+  decision: string;
+
+  /**
+   * false for an unattributed hunk
+   *
+   * @generated from field: bool auto_accept_eligible = 17;
+   */
+  autoAcceptEligible: boolean;
 };
 
 /**
@@ -7095,6 +7165,14 @@ export declare type ListHooks = Message<"modbit.v1.ListHooks"> & {
    * @generated from field: modbit.v1.Id task_id = 1;
    */
   taskId?: Id | undefined;
+
+  /**
+   * PX-106 (additive): with no task, the session's extensions only (the
+   * hooks in force are a task's, resolved from its pinned configuration).
+   *
+   * @generated from field: modbit.v1.Id session_id = 20;
+   */
+  sessionId?: Id | undefined;
 };
 
 /**
@@ -7158,6 +7236,60 @@ export declare type HookView = Message<"modbit.v1.HookView"> & {
    * @generated from field: repeated string command = 8;
    */
   command: string[];
+
+  /**
+   * PX-106 (additive): the Customize view's facts about the hook.
+   *
+   * DEVICE | ADMIN | PROJECT | USER | EXTENSION
+   *
+   * @generated from field: string scope = 20;
+   */
+  scope: string;
+
+  /**
+   * false: switched off with SetHookEnabled; it fires on no event
+   *
+   * @generated from field: bool enabled = 21;
+   */
+  enabled: boolean;
+
+  /**
+   * the Core would accept SetHookEnabled(false) for it
+   *
+   * @generated from field: bool can_disable = 22;
+   */
+  canDisable: boolean;
+
+  /**
+   * in force only while the session trusts the repository
+   *
+   * @generated from field: bool trusted_workspace_gate = 23;
+   */
+  trustedWorkspaceGate: boolean;
+
+  /**
+   * the latest HookInvoked outcome on the log; "" when it never ran
+   *
+   * @generated from field: string last_outcome = 24;
+   */
+  lastOutcome: string;
+
+  /**
+   * @generated from field: string last_detail = 25;
+   */
+  lastDetail: string;
+
+  /**
+   * @generated from field: uint64 last_duration_ms = 26;
+   */
+  lastDurationMs: bigint;
+
+  /**
+   * HookInvoked records for it on the session's log
+   *
+   * @generated from field: uint32 invocations = 27;
+   */
+  invocations: number;
 };
 
 /**
@@ -7188,6 +7320,13 @@ export declare type HookListView = Message<"modbit.v1.HookListView"> & {
    * @generated from field: repeated string extensions = 3;
    */
   extensions: string[];
+
+  /**
+   * PX-106: the same, structured
+   *
+   * @generated from field: repeated modbit.v1.ExtensionRow extension_rows = 20;
+   */
+  extensionRows: ExtensionRow[];
 };
 
 /**

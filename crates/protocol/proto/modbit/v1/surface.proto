@@ -19,6 +19,7 @@ import "modbit/v1/tasking.proto";
 import "modbit/v1/run_control.proto";
 import "modbit/v1/worktrees.proto";
 import "modbit/v1/forge_cloud.proto";
+import "modbit/v1/customize.proto";
 
 // Authentication sent with Hello: the boot-scoped secret the client obtained
 // from the Core it spawned (docs/30). Never logged, never persisted.
@@ -1108,6 +1109,18 @@ message HunkView {
   uint32 new_start = 5;
   uint32 new_lines = 6;
   repeated string lines = 7;     // unified lines with their prefix
+  // PX-103 (additive): where the hunk came from, decided by the Core from the
+  // workspace's FileChanged log, never by a client.
+  string tool_call_id = 8;       // the call that produced the hunk; "" when unattributed
+  string tool_name = 9;          // that call's tool (e.g. change.apply, proc.exec), or user_revert / user_direct_edit
+  string turn_id = 10;
+  string run_id = 11;
+  bool attributed = 12;          // false: some of the hunk is not explained by any recorded call
+  repeated string also_call_ids = 13;   // other calls whose lines the hunk holds
+  string attribution_basis = 14; // CHANGE_TRANSACTION | BARRIER_DIFF | USER | UNATTRIBUTED
+  string hunk_digest = 15;       // sha256 of header + lines; a decision names it
+  string decision = 16;          // "" | ACCEPTED (a person's recorded accept of this exact hunk)
+  bool auto_accept_eligible = 17; // false for an unattributed hunk
 }
 
 message ReviewFile {
@@ -1703,6 +1716,9 @@ message ExtensionUnloadedView {
 
 message ListHooks {
   Id task_id = 1;
+  // PX-106 (additive): with no task, the session's extensions only (the
+  // hooks in force are a task's, resolved from its pinned configuration).
+  Id session_id = 20;
 }
 
 message HookView {
@@ -1714,12 +1730,22 @@ message HookView {
   uint64 timeout_ms = 6;
   repeated string tools = 7;       // scope at tool/change points; empty = every tool
   repeated string command = 8;
+  // PX-106 (additive): the Customize view's facts about the hook.
+  string scope = 20;               // DEVICE | ADMIN | PROJECT | USER | EXTENSION
+  bool enabled = 21;               // false: switched off with SetHookEnabled; it fires on no event
+  bool can_disable = 22;           // the Core would accept SetHookEnabled(false) for it
+  bool trusted_workspace_gate = 23; // in force only while the session trusts the repository
+  string last_outcome = 24;        // the latest HookInvoked outcome on the log; "" when it never ran
+  string last_detail = 25;
+  uint64 last_duration_ms = 26;
+  uint32 invocations = 27;         // HookInvoked records for it on the session's log
 }
 
 message HookListView {
   repeated HookView hooks = 1;
   repeated string refused = 2;     // "<hook> (<source>): <reason>"
   repeated string extensions = 3;  // "<extension_id> <name>@<version> sha256:<digest> <path>"
+  repeated ExtensionRow extension_rows = 20;  // PX-106: the same, structured
 }
 
 // REQ-PX-049: the person is quitting. The Core runs the session's session_end
