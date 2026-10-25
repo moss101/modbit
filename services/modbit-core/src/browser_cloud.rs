@@ -676,6 +676,8 @@ impl CloudHost {
             HostRequest::Scroll { .. }
             | HostRequest::Console { .. }
             | HostRequest::Network { .. }
+            | HostRequest::PageTools
+            | HostRequest::CallPageTool { .. }
             | HostRequest::Activity => Err((
                 "UNSUPPORTED".into(),
                 "the cloud browser does not serve scroll, console, network or activity reads yet"

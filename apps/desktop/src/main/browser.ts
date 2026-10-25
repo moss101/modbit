@@ -26,6 +26,7 @@ import { PageFeedback } from "./browser-feedback.ts";
 import { bringsBackReclaimed, NoticeBatcher, OBSERVER_BINDING, OBSERVER_SOURCE, OBSERVER_WORLD, type Notice } from "./browser-observer.ts";
 import { CdpDenied, PolicyStore, checkOrigin, checkUrlLiteral, describeClass, guardCdp, type AddressClass, type BrowserPolicy } from "./browser-policy.ts";
 import { admitsAgentInput, isHumanInput } from "./lease.ts";
+import { admitsCall, BOUNDS, bindDecls, frameOrigin, WEBMCP_GLOBAL, WEBMCP_SOURCE, type FrameFacts, type RawDecl } from "./browser-webmcp.ts";
 import { StopRegistry } from "./stop.ts";
 import { TargetProxy, resolverWithOverrides, type Denial, type Resolver } from "./target-proxy.ts";
 
@@ -88,6 +89,8 @@ export interface HostedSession {
   children: Map<string, ChildTarget>;
   /** The frames the last snapshot covered. */
   frames: Map<string, FrameRec>;
+  /** The page-world execution context of each frame, by `<devtools session>|<frame id>` (PX-124). */
+  contexts: Map<string, number>;
   /** Times the view's process died: an action that spans one has an unknown outcome. */
   goneCount: number;
   /** When the session last served a request or was shown (the LRU order). */
@@ -129,12 +132,14 @@ type HostRequest =
   | { kind: "network"; since?: number; limit: number; failed_only?: boolean }
   | { kind: "activity" }
   | { kind: "isolation" }
+  | { kind: "page_tools" }
+  | { kind: "call_page_tool"; frame: string; load: string; origin: string; name: string; arguments: unknown }
   | { kind: "close" };
 
 const HOST_KIND = "electron-main";
 
 /** The requests that look at or act on the page: each is gated on the page's origin. */
-const PAGE_GATED = new Set(["snapshot", "capture", "act", "scroll", "console", "network", "activity"]);
+const PAGE_GATED = new Set(["snapshot", "capture", "act", "scroll", "console", "network", "activity", "page_tools", "call_page_tool"]);
 
 /** The permissions a page may use (everything else is denied and named). */
 const PERMISSIONS_ALLOWED = new Set(["clipboard-sanitized-write"]);
@@ -260,6 +265,7 @@ export class BrowserHost {
       cdpReady: false,
       children: new Map(),
       frames: new Map(),
+      contexts: new Map(),
       goneCount: 0,
       lastUsedAt: this.touchSeq(),
       reclaimed: null,
@@ -942,7 +948,7 @@ export class BrowserHost {
         h.pendingReset = null;
         return { kind: "error", code: "VIEW_RESET", message: why };
       }
-      if (req.kind === "navigate" || req.kind === "act" || req.kind === "scroll") {
+      if (req.kind === "navigate" || req.kind === "act" || req.kind === "scroll" || req.kind === "call_page_tool") {
         // IMP-EV-0085: under an emergency stop no input runs, whatever the Core's loop does.
         const stop = this.stops.reason(h.sessionId);
         if (stop !== null) return { kind: "error", code: "EMERGENCY_STOPPED", message: stop };
@@ -992,6 +998,10 @@ export class BrowserHost {
           return { kind: "activity", inflight: h.feedback.inflight, quiet_ms: h.feedback.quietMs(), change_seq: h.batcher.changeSeq, loading: h.view.webContents.isLoading() };
         case "isolation":
           return this.isolation(h);
+        case "page_tools":
+          return this.pageTools(h);
+        case "call_page_tool":
+          return this.callPageTool(h, req);
         case "close": {
           const state = this.state(h);
           this.release(h);
@@ -1139,6 +1149,88 @@ export class BrowserHost {
     await ok(this.send(h, "Network.enable", {}, opts));
     await ok(this.send(h, "Runtime.addBinding", { name: OBSERVER_BINDING, executionContextName: OBSERVER_WORLD }, opts));
     await ok(this.send(h, "Page.addScriptToEvaluateOnNewDocument", { source: OBSERVER_SOURCE, worldName: OBSERVER_WORLD, runImmediately: true }, opts));
+    // PX-124: the model-context interface the page declares its tools through, in the page's own world.
+    await ok(this.send(h, "Page.addScriptToEvaluateOnNewDocument", { source: WEBMCP_SOURCE, runImmediately: true }, opts));
+  }
+
+  /** Every frame of the page with the identity the browser gives it: the page's own frames and those of out-of-process frames. */
+  private async framesOf(h: HostedSession): Promise<FrameFacts[]> {
+    const out: FrameFacts[] = [];
+    const walk = (t: FrameTree, top: boolean, sessionId?: string) => {
+      const f = t.frame;
+      out.push({ id: f.id, loaderId: f.loaderId ?? "", url: f.url, origin: frameOrigin(f.securityOrigin, f.url), top, ...(sessionId ? { sessionId } : {}) });
+      for (const c of t.childFrames ?? []) walk(c, false, sessionId);
+    };
+    const tree = (await this.send(h, "Page.getFrameTree")) as { frameTree: FrameTree };
+    walk(tree.frameTree, true);
+    for (const [sid, child] of h.children) {
+      if (child.type !== "iframe") continue;
+      try {
+        const ft = (await this.send(h, "Page.getFrameTree", {}, { sessionId: sid })) as { frameTree: FrameTree };
+        walk(ft.frameTree, false, sid);
+      } catch {
+        // a frame that went away while it was read is not on the page now
+      }
+    }
+    return out;
+  }
+
+  /** PX-124: what the frames of the page declared, each tool bound to the frame, origin and page load the browser reports. */
+  private async pageTools(h: HostedSession): Promise<unknown> {
+    await this.ensureCdp(h);
+    const frames = await this.framesOf(h);
+    const decls: ReturnType<typeof bindDecls>["decls"] = [];
+    const refused: ReturnType<typeof bindDecls>["refused"] = [];
+    for (const f of frames) {
+      if (f.origin === "") continue;
+      const contextId = h.contexts.get(`${f.sessionId ?? ""}|${f.id}`);
+      if (contextId === undefined) continue;
+      let raw: unknown;
+      try {
+        const r = (await this.send(h, "Runtime.evaluate", { expression: `globalThis.${WEBMCP_GLOBAL} ? globalThis.${WEBMCP_GLOBAL}.list() : null`, contextId, returnByValue: true }, f.sessionId ? { sessionId: f.sessionId } : {})) as { result?: { value?: unknown } };
+        raw = r.result?.value;
+      } catch {
+        continue;
+      }
+      if (!Array.isArray(raw)) continue;
+      const bound = bindDecls(f, raw as RawDecl[], BOUNDS.tools - decls.length);
+      decls.push(...bound.decls);
+      refused.push(...bound.refused);
+    }
+    return { kind: "page_tools", state: this.state(h), tools: decls, refused, supported: true };
+  }
+
+  /** PX-124: one call, in the frame that declared the tool, only while that frame is still the same page load at the same origin. */
+  private async callPageTool(h: HostedSession, req: Extract<HostRequest, { kind: "call_page_tool" }>): Promise<unknown> {
+    await this.ensureCdp(h);
+    const frames = await this.framesOf(h);
+    const verdict = admitsCall(req, frames);
+    if (!verdict.ok) return { kind: "error", code: verdict.code, message: verdict.message };
+    const f = frames.find((x) => x.id === req.frame)!;
+    const contextId = h.contexts.get(`${f.sessionId ?? ""}|${f.id}`);
+    if (contextId === undefined) return { kind: "error", code: "PAGE_TOOL_STALE", message: "the frame has no page world to run the tool in" };
+    const opts = f.sessionId ? { sessionId: f.sessionId } : {};
+    const expression = `globalThis.${WEBMCP_GLOBAL} ? globalThis.${WEBMCP_GLOBAL}.call(${JSON.stringify(req.name)}, ${JSON.stringify(req.arguments ?? {})}) : { gone: true }`;
+    let timer: ReturnType<typeof setTimeout> | undefined;
+    const timedOut = new Promise<"timeout">((res) => {
+      timer = setTimeout(() => res("timeout"), BOUNDS.callMs);
+    });
+    const run = this.send(h, "Runtime.evaluate", { expression, contextId, awaitPromise: true, returnByValue: true, userGesture: false }, opts) as Promise<{ result?: { value?: { gone?: boolean; ok?: boolean; json?: string; truncated?: boolean; error?: string } }; exceptionDetails?: { text?: string } }>;
+    const first = await Promise.race([run, timedOut]).finally(() => clearTimeout(timer));
+    if (first === "timeout") {
+      void run.catch(() => {});
+      // The page's code may still be running, and what it did is not known.
+      return { kind: "error", code: "OUTCOME_UNKNOWN", message: "the page's tool did not answer in time; it may have run" };
+    }
+    // The document may have moved on while the tool ran: the answer of a tool of an earlier page is not offered as this page's.
+    const after = admitsCall(req, await this.framesOf(h));
+    if (!after.ok) return { kind: "error", code: "OUTCOME_UNKNOWN", message: "the page navigated while its tool was running; the tool may have run" };
+    const v = first.result?.value;
+    if (first.exceptionDetails || !v) return { kind: "page_tool_result", state: this.state(h), outcome: "threw", error: first.exceptionDetails?.text ?? "the tool did not return" };
+    if (v.gone) return { kind: "error", code: "PAGE_TOOL_GONE", message: "the page withdrew this tool" };
+    if (v.ok === false) return { kind: "page_tool_result", state: this.state(h), outcome: "threw", error: String(v.error ?? "") };
+    const json = String(v.json ?? "null").slice(0, BOUNDS.resultBytes);
+    return { kind: "page_tool_result", state: this.state(h), outcome: "returned", result_json: json, truncated: v.truncated === true };
   }
 
   private onCdpEvent(h: HostedSession, method: string, params: Record<string, unknown>, sessionId?: string): void {
@@ -1152,6 +1244,16 @@ export class BrowserHost {
     if (method === "Page.javascriptDialogClosed" && !sessionId) {
       h.dialogOpen = false;
       return;
+    }
+    // PX-124: the page-world execution context of each frame, from the browser's own events.
+    if (method === "Runtime.executionContextCreated") {
+      const c = (params as { context?: { id?: number; auxData?: { frameId?: string; isDefault?: boolean } } }).context;
+      if (c?.id !== undefined && c.auxData?.isDefault === true && c.auxData.frameId) h.contexts.set(`${sessionId ?? ""}|${c.auxData.frameId}`, c.id);
+    } else if (method === "Runtime.executionContextDestroyed") {
+      const id = (params as { executionContextId?: number }).executionContextId;
+      for (const [k, v] of h.contexts) if (v === id && k.startsWith(`${sessionId ?? ""}|`)) h.contexts.delete(k);
+    } else if (method === "Runtime.executionContextsCleared") {
+      for (const k of h.contexts.keys()) if (k.startsWith(`${sessionId ?? ""}|`)) h.contexts.delete(k);
     }
     if (method === "Runtime.bindingCalled") {
       const p = params as { name?: string; payload?: string };
@@ -1696,7 +1798,7 @@ export class BrowserHost {
 }
 
 interface FrameTree {
-  frame: { id: string; parentId?: string; url: string; name?: string; securityOrigin?: string };
+  frame: { id: string; loaderId?: string; parentId?: string; url: string; name?: string; securityOrigin?: string };
   childFrames?: FrameTree[];
 }
 

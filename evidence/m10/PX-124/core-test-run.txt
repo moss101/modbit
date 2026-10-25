@@ -1,0 +1,27 @@
+   Compiling modbit-core v0.0.0 (/Users/mohsin/projects/modbit/.claude/worktrees/agent-a4d77584f811c0945/services/modbit-core)
+    Finished `test` profile [unoptimized + debuginfo] target(s) in 1.20s
+     Running tests/px_124_page_tools.rs (target/debug/deps/px_124_page_tools-2b858f52aed96240)
+
+running 1 test
+modbit-core: recovery complete: boot_generation=1 events_verified=0 aggregates=0 projections_rebuilt=false sessions=0 tasks=0 in 0ms
+modbit-core: terminal broker unavailable: spawning terminal broker `/Users/mohsin/projects/modbit/.claude/worktrees/agent-a4d77584f811c0945/target/debug/modbit-execd` (set MODBIT_EXECD_BIN): No such file or directory (os error 2); shell tools will report INFRA_FAILURE
+DEBUG status TaskStatus { state: "ReadyForReview", wait_reason: "", run_state: "Completed", loop_alive: false, last_offset: 381, attention_reason: "", failure_class: "", failure_code: "", retryable: false, user_action: "", recovery_path: "", evidence_refs: [], diagnostic_features: [], user_explanation: "", posture: Some(TaskPostureView { task_id: Some(Id { value: [17, 17, 17, 17, 17, 17, 17, 17, 17, 17, 17, 17, 17, 17, 17, 17] }), mode: Agent, mode_offset: 0, mode_in_force: Agent, posture: Some(ModePostureView { effect_ceiling: "NONE", allowed_capabilities: [], subagents: true, reproduction_first: false, writes: true }), preference: Some(ExecutionPreferenceView { objective: Unspecified, effort: "", service_tier: "", pin_endpoint: "", pin_model: "", offset: 0, applied_offset: 0, effort_applied: "", service_tier_applied: "" }), routing: Some(RoutingOutcomeView { outcome: "DIRECT", reason_code: "NO_ACTIVE_REGISTRY", detail: "no signed registry is active: the direct path dispatches the one binding the task starts with, so an objective cannot select a different one; the preference is recorded, and its effort and tier apply to that binding", floor_mode: "", registry_generation: "" }) }) }
+"CapacityTicketReleased" {"kind":"inline","payload":{"event_type":"CapacityTicketReleased","holder":"run:11111111-1111-1111-1111-111111111111","reason":"RELEASED","ticket_id":"t-1"}}
+"AgentNodeTransitioned" {"kind":"inline","payload":{"agent_id":"01a171c1-2775-7820-bd42-a40ee01f11a6","event_type":"AgentNodeTransitioned","from":"RUNNING","reason":"completion proposed; the candidate is with the user","run_id":"01a171c1-276e-7311-a5f6-9a86f077c4a2","to":"COMPLETED"}}
+"RequestOutcomeRecorded" {"kind":"inline","payload":{"accounting_version":"request-accounting/1","currency":"USD","event_type":"RequestOutcomeRecorded","final_outcome":"open","first_pass_success":false,"initial_leg_success":null,"missing_signals":["explicit_feedback","tests_passed","build_passed","merge_signal","keep_signal
+"TaskReadyForReview" {"kind":"inline","payload":{"event_type":"TaskReadyForReview"}}
+"RunCompleted" {"kind":"inline","payload":{"event_type":"RunCompleted"}}
+"RouteReevaluated" {"kind":"inline","payload":{"boundary":"REVIEW","cache_state":null,"chosen":"openai/gpt-5","current":"openai/gpt-5","decision":"STAY","economics_version":"economics-1","event_type":"RouteReevaluated","plan_id":"direct:01a171c1-276e-7311-a5f6-9a86f077c4a2","reason":"the acceptance gate requires indep
+"CheckpointCommitted" {"kind":"inline","payload":{"base_checkpoint_id":"01a171c1-2f31-7011-938f-484c8c53fb53","blobs_written":0,"bytes_written":0,"cache_hits":0,"capture_ms":43,"checkpoint_id":"01a171c1-300a-7c00-b4ef-14203a6c5360","epoch":14,"event_offset":374,"event_type":"CheckpointCommitted","files":0,"git_head":"855
+"CheckpointStarted" {"kind":"inline","payload":{"base_checkpoint_id":"01a171c1-2f31-7011-938f-484c8c53fb53","checkpoint_id":"01a171c1-300a-7c00-b4ef-14203a6c5360","epoch":14,"event_type":"CheckpointStarted","kind":"DELTA","reason":"turn_boundary"}}
+"TurnCompleted" {"kind":"inline","payload":{"event_type":"TurnCompleted"}}
+"TurnVerifying" {"kind":"inline","payload":{"event_type":"TurnVerifying"}}
+"StepSucceeded" {"kind":"inline","payload":{"event_type":"StepSucceeded","output_ref":"a785c4f389c376a5c63e78950cef76da8a97ab615050ac0a101e9ffe06ed05e9"}}
+"StepStarted" {"kind":"inline","payload":{"event_type":"StepStarted"}}
+"StepScheduled" {"kind":"inline","payload":{"event_type":"StepScheduled","input_ref":null,"ordinal":3,"step_type":{"kind":"SELF_REVIEW"},"turn_id":"01a171c1-2f0e-7432-af5f-ddfaa7ccf1bd"}}
+"StepSucceeded" {"kind":"inline","payload":{"event_type":"StepSucceeded","output_ref":"8a5a4d0c2f06bbb3f77dbbe4a8194a4eee34a764c938775c2a5adef195c1a770"}}
+PAGE-TOOL EVENT TYPES ["ApprovalRequested", "CapabilitySnapshotRecorded", "SecurityEventRecorded", "ToolCallProposed", "ToolProjectionSelected", "ToolsActivated"]
+test qual_px_124_page_declared_tools_are_untrusted_origin_bound_proposals_judged_by_their_annotations ... ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 5.11s
+

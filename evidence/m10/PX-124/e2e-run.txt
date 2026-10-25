@@ -1,0 +1,100 @@
+
+Running 1 test using 1 worker
+
+[electron] Error occurred in handler for 'terminal:list': RejectedError: NO_BROKER: no terminal broker is attached to this Core
+    at _CoreClient.dispatch (/Users/mohsin/projects/modbit/.claude/worktrees/agent-a4d77584f811c0945/apps/desktop/dist/main/main.cjs:3872:61)
+    at Socket.<anonymous> (/Users/mohsin/projects/modbit/.claude/worktrees/agent-a4d77584f811c0945/apps/desktop/dist/main/main.cjs:3848:16)
+    at Socket.emit (node:events:514:28)
+    at addChunk (node:internal/streams/readable:567:12)
+    at readableAddChunkPushByteMode (node:internal/streams/readable:518:3)
+    at Readable.push (node:internal/streams/readable:398:5)
+    at Pipe.onStreamRead (node:internal/stream_base_commons:189:23) {
+  code: 'NO_BROKER'
+}
+[electron] Error occurred in handler for 'terminal:list': RejectedError: NO_BROKER: no terminal broker is attached to this Core
+    at _CoreClient.dispatch (/Users/mohsin/projects/modbit/.claude/worktrees/agent-a4d77584f811c0945/apps/desktop/dist/main/main.cjs:3872:61)
+    at Socket.<anonymous> (/Users/mohsin/projects/modbit/.claude/worktrees/agent-a4d77584f811c0945/apps/desktop/dist/main/main.cjs:3848:16)
+    at Socket.emit (node:events:514:28)
+    at addChunk (node:internal/streams/readable:567:12)
+    at readableAddChunkPushByteMode (node:internal/streams/readable:518:3)
+    at Readable.push (node:internal/streams/readable:398:5)
+    at Pipe.onStreamRead (node:internal/stream_base_commons:189:23) {
+  code: 'NO_BROKER'
+}
+[electron] Error occurred in handler for 'terminal:list': RejectedError: NO_BROKER: no terminal broker is attached to this Core
+    at _CoreClient.dispatch (/Users/mohsin/projects/modbit/.claude/worktrees/agent-a4d77584f811c0945/apps/desktop/dist/main/main.cjs:3872:61)
+    at Socket.<anonymous> (/Users/mohsin/projects/modbit/.claude/worktrees/agent-a4d77584f811c0945/apps/desktop/dist/main/main.cjs:3848:16)
+    at Socket.emit (node:events:514:28)
+    at addChunk (node:internal/streams/readable:567:12)
+    at readableAddChunkPushByteMode (node:internal/streams/readable:518:3)
+    at Readable.push (node:internal/streams/readable:398:5)
+    at Pipe.onStreamRead (node:internal/stream_base_commons:189:23) {
+  code: 'NO_BROKER'
+}
+[electron] Error occurred in handler for 'terminal:list': RejectedError: NO_BROKER: no terminal broker is attached to this Core
+    at _CoreClient.dispatch (/Users/mohsin/projects/modbit/.claude/worktrees/agent-a4d77584f811c0945/apps/desktop/dist/main/main.cjs:3872:61)
+    at Socket.<anonymous> (/Users/mohsin/projects/modbit/.claude/worktrees/agent-a4d77584f811c0945/apps/desktop/dist/main/main.cjs:3848:16)
+    at Socket.emit (node:events:514:28)
+    at addChunk (node:internal/streams/readable:567:12)
+    at readableAddChunkPushByteMode (node:internal/streams/readable:518:3)
+    at Readable.push (node:internal/streams/readable:398:5)
+    at Pipe.onStreamRead (node:internal/stream_base_commons:189:23) {
+  code: 'NO_BROKER'
+}
+[electron] Error occurred in handler for 'terminal:list': RejectedError: NO_BROKER: no terminal broker is attached to this Core
+    at _CoreClient.dispatch (/Users/mohsin/projects/modbit/.claude/worktrees/agent-a4d77584f811c0945/apps/desktop/dist/main/main.cjs:3872:61)
+    at Socket.<anonymous> (/Users/mohsin/projects/modbit/.claude/worktrees/agent-a4d77584f811c0945/apps/desktop/dist/main/main.cjs:3848:16)
+    at Socket.emit (node:events:514:28)
+    at addChunk (node:internal/streams/readable:567:12)
+    at readableAddChunkPushByteMode (node:internal/streams/readable:518:3)
+    at Readable.push (node:internal/streams/readable:398:5)
+    at Pipe.onStreamRead (node:internal/stream_base_commons:189:23) {
+  code: 'NO_BROKER'
+}
+[electron] Error occurred in handler for 'terminal:list': RejectedError: NO_BROKER: no terminal broker is attached to this Core
+    at _CoreClient.dispatch (/Users/mohsin/projects/modbit/.claude/worktrees/agent-a4d77584f811c0945/apps/desktop/dist/main/main.cjs:3872:61)
+    at Socket.<anonymous> (/Users/mohsin/projects/modbit/.claude/worktrees/agent-a4d77584f811c0945/apps/desktop/dist/main/main.cjs:3848:16)
+    at Socket.emit (node:events:514:28)
+    at addChunk (node:internal/streams/readable:567:12)
+    at readableAddChunkPushByteMode (node:internal/streams/readable:518:3)
+    at Readable.push (node:internal/streams/readable:398:5)
+    at Pipe.onStreamRead (node:internal/stream_base_commons:189:23) {
+  code: 'NO_BROKER'
+}
+[electron] Error occurred in handler for 'terminal:list': RejectedError: NO_BROKER: no terminal broker is attached to this Core
+    at _CoreClient.dispatch (/Users/mohsin/projects/modbit/.claude/worktrees/agent-a4d77584f811c0945/apps/desktop/dist/main/main.cjs:3872:61)
+    at Socket.<anonymous> (/Users/mohsin/projects/modbit/.claude/worktrees/agent-a4d77584f811c0945/apps/desktop/dist/main/main.cjs:3848:16)
+    at Socket.emit (node:events:514:28)
+    at addChunk (node:internal/streams/readable:567:12)
+    at readableAddChunkPushByteMode (node:internal/streams/readable:518:3)
+    at Readable.push (node:internal/streams/readable:398:5)
+    at Pipe.onStreamRead (node:internal/stream_base_commons:189:23) {
+  code: 'NO_BROKER'
+}
+[electron] Debugger ending on ws://127.0.0.1:59065/344ae20b-65db-47c5-9758-60796bfa01a4
+For help, see: https://nodejs.org/learn/getting-started/debugging
+[electron] Error occurred in handler for 'terminal:list': RejectedError: NO_BROKER: no terminal broker is attached to this Core
+    at _CoreClient.dispatch (/Users/mohsin/projects/modbit/.claude/worktrees/agent-a4d77584f811c0945/apps/desktop/dist/main/main.cjs:3872:61)
+    at Socket.<anonymous> (/Users/mohsin/projects/modbit/.claude/worktrees/agent-a4d77584f811c0945/apps/desktop/dist/main/main.cjs:3848:16)
+    at Socket.emit (node:events:514:28)
+    at addChunk (node:internal/streams/readable:567:12)
+    at readableAddChunkPushByteMode (node:internal/streams/readable:518:3)
+    at Readable.push (node:internal/streams/readable:398:5)
+    at Pipe.onStreamRead (node:internal/stream_base_commons:189:23) {
+  code: 'NO_BROKER'
+}
+[electron] Error occurred in handler for 'automations:taskHeaders': ProtocolError: DISCONNECTED: closed by client
+    at _CoreClient.fail (/Users/mohsin/projects/modbit/.claude/worktrees/agent-a4d77584f811c0945/apps/desktop/dist/main/main.cjs:3917:54)
+    at _CoreClient.close (/Users/mohsin/projects/modbit/.claude/worktrees/agent-a4d77584f811c0945/apps/desktop/dist/main/main.cjs:3922:10)
+    at CoreSupervisor.stop (/Users/mohsin/projects/modbit/.claude/worktrees/agent-a4d77584f811c0945/apps/desktop/dist/main/main.cjs:5021:18)
+    at Object.run (/Users/mohsin/projects/modbit/.claude/worktrees/agent-a4d77584f811c0945/apps/desktop/dist/main/main.cjs:11565:43)
+    at /Users/mohsin/projects/modbit/.claude/worktrees/agent-a4d77584f811c0945/apps/desktop/dist/main/main.cjs:10273:15
+    at Array.map (<anonymous>)
+    at runShutdown (/Users/mohsin/projects/modbit/.claude/worktrees/agent-a4d77584f811c0945/apps/desktop/dist/main/main.cjs:10271:22)
+    at /Users/mohsin/projects/modbit/.claude/worktrees/agent-a4d77584f811c0945/apps/desktop/dist/main/main.cjs:11568:24
+    at process.processTicksAndRejections (node:internal/process/task_queues:104:5) {
+  code: 'DISCONNECTED'
+}
+  ✓  1 e2e/browser-webmcp.spec.ts:55:1 › PX-124: page-declared tools are untrusted origin-bound proposals; the read-only one runs, the unannotated one asks; a second origin cannot call or shadow; a navigation removes them and a stale call is refused; a result with instruction text is labelled; a look-alike of a host tool is refused (3.6s)
+
+  1 passed (3.8s)

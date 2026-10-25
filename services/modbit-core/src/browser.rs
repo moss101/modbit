@@ -489,7 +489,10 @@ impl BrowserSessions {
             // one decided under an earlier generation is refused as stale.
             let agent_input = matches!(
                 request,
-                HostRequest::Navigate { .. } | HostRequest::Act { .. } | HostRequest::Scroll { .. }
+                HostRequest::Navigate { .. }
+                    | HostRequest::Act { .. }
+                    | HostRequest::Scroll { .. }
+                    | HostRequest::CallPageTool { .. }
             );
             let stamp = observed.unwrap_or(lease.generation);
             if agent_input {
