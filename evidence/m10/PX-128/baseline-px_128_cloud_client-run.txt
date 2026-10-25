@@ -1,0 +1,8 @@
+    Finished `test` profile [unoptimized + debuginfo] target(s) in 0.18s
+     Running tests/px_128_cloud_client.rs (target/debug/deps/px_128_cloud_client-bfd957e27aea8dd1)
+
+running 1 test
+test qual_px_128_the_cli_hands_a_local_task_to_the_cloud_after_a_confirmation_and_watches_and_answers_its_approval ... ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 16.62s
+
