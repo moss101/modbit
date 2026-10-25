@@ -7,8 +7,8 @@
   "scope_rule": "docs/*.md, root *.md except MANIFEST.md, docs/decisions/*.md, graph JSON/Markdown, tools/*.py, evidence payloads; manifests exclude themselves and transient caches",
   "counts": {
     "docs": 97,
-    "root_and_tooling": 1749,
-    "docs_bytes": 2153217
+    "root_and_tooling": 1754,
+    "docs_bytes": 2156122
   },
   "sections": [
     {
@@ -329,8 +329,8 @@
       "section": "implementation",
       "section_title": "Implementation specifications",
       "title": "Desktop Frontend Implementation",
-      "bytes": 13937,
-      "sha256": "12c2bca2dbdf369a01eb94549dfff7f23d270300ad1a880068ce54c9f83769aa"
+      "bytes": 16176,
+      "sha256": "5d9a73e36b009b73a941a60fba28e6966a89128effbc34bbce1a4fc427f478e4"
     },
     {
       "path": "docs/33_CORE_AND_CLOUD_BACKEND_IMPLEMENTATION.md",
@@ -392,8 +392,8 @@
       "section": "implementation",
       "section_title": "Implementation specifications",
       "title": "UX flows, onboarding and interaction budgets",
-      "bytes": 15814,
-      "sha256": "d941a887e6775d6c756b91470cb52b702d383d777451f87cda4b55f2454fd4a2"
+      "bytes": 16480,
+      "sha256": "ac43be5a2ba3b7236598876fbe343c458bd667efb3cfa4d65b00885611efd0e2"
     },
     {
       "path": "docs/40_EVIDENCE_DERIVED_REQUIREMENT_LEDGER.md",
@@ -2177,6 +2177,31 @@
       "path": "evidence/m10/PX-086/mutation-check.txt",
       "bytes": 1017,
       "sha256": "67faed3f80c47c7e59214bfc43398d57ba2a9c758960239d4e70d29c4eca6430"
+    },
+    {
+      "path": "evidence/m10/PX-094/TASK_CARD.md",
+      "bytes": 1237,
+      "sha256": "24d750e58c7a7332e3df3673e79cff943d0b7f8072a58e17b19bcd4311c1c0ca"
+    },
+    {
+      "path": "evidence/m10/PX-094/e2e-run.txt",
+      "bytes": 4160,
+      "sha256": "1553519cd7787cc27f48cba19cc23a2d82c93778e86cff3efc7f8fc9f099a9e8"
+    },
+    {
+      "path": "evidence/m10/PX-094/mutation-check.txt",
+      "bytes": 1026,
+      "sha256": "a3bdd52e8dcd971b2b8b277c33d3097a67fe48b3dfd1e9bf4821e2efad8b1f17"
+    },
+    {
+      "path": "evidence/m10/PX-094/mutation-drag-optout-run.txt",
+      "bytes": 2709,
+      "sha256": "076332cdbdb3c8039590ca43ac8ee802fa5eabbcff29e75f25577ee14a6e3205"
+    },
+    {
+      "path": "evidence/m10/PX-094/mutation-restore-visibility-run.txt",
+      "bytes": 3038,
+      "sha256": "74b9dd222adf80ee06f437b9d0dc4889166ddf6ed353e36f20d6aff6c645b0ef"
     },
     {
       "path": "evidence/m10/PX-099/TASK_CARD.md",
