@@ -2,13 +2,13 @@
   "product": "Modbit",
   "edition": "V3.3 EPR v1.1",
   "authority_date": "2026-09-05",
-  "generated_on": "2026-10-25",
+  "generated_on": "2026-10-26",
   "hash_algorithm": "sha256",
   "scope_rule": "docs/*.md, root *.md except MANIFEST.md, docs/decisions/*.md, graph JSON/Markdown, tools/*.py, evidence payloads; manifests exclude themselves and transient caches",
   "counts": {
     "docs": 97,
-    "root_and_tooling": 1816,
-    "docs_bytes": 2200731
+    "root_and_tooling": 1819,
+    "docs_bytes": 2201530
   },
   "sections": [
     {
@@ -914,8 +914,8 @@
       "section": "governance",
       "section_title": "Agent process and governance",
       "title": "Dossier maintenance log",
-      "bytes": 132417,
-      "sha256": "84b820773648462992e3bd3bc73c3f57b8d299a16ed43369e06c60911e4ecde1"
+      "bytes": 133216,
+      "sha256": "ebe592b98aff46e59f339aeb50a818b502e2afeb35b160bce8c380d9c680729f"
     },
     {
       "path": "docs/98_BUILD_MANIFEST.md",
@@ -1095,8 +1095,8 @@
     },
     {
       "path": "docs/decisions/DR-PX-2026-10-25-017-autonomous-coding-engine.md",
-      "bytes": 19801,
-      "sha256": "2c63775bbbce16944e078d6e66eb2a95f4b011ef1e70702fb931a97282d59aef"
+      "bytes": 23080,
+      "sha256": "df3d341b7141ae0b29d5086f3b8629127b0a97723856bafae3e96524722e6db2"
     },
     {
       "path": "docs/decisions/README.md",
@@ -2560,8 +2560,23 @@
     },
     {
       "path": "evidence/m10/PX-144/TASK_CARD.md",
-      "bytes": 781,
-      "sha256": "1fdf2e90dc60eacdc013589fc0183a1ac887e4b3a1d3731326b7e62884cc0c2c"
+      "bytes": 1148,
+      "sha256": "39f25d8e0b67ca36a2d4d95f6213ebe457ee1fa912b39f47ba2a43ce6167a751"
+    },
+    {
+      "path": "evidence/m10/PX-144/live-approvals-run-1.json",
+      "bytes": 1602,
+      "sha256": "8783c950150e4d0794f80ca414a7abf978c72d750178de1e4570cbad67d68605"
+    },
+    {
+      "path": "evidence/m10/PX-144/live-approvals-run-2-prefix-too-broad.json",
+      "bytes": 1927,
+      "sha256": "052ab30222825eaad941076ea0bd523668ec66879816f4170f02bdd779c83f10"
+    },
+    {
+      "path": "evidence/m10/PX-144/live-approvals-run-3.json",
+      "bytes": 1273,
+      "sha256": "074ebd11d88dec3b16204212a8a0f90b2502417f997fcbeec4bb0223d32b6d89"
     },
     {
       "path": "evidence/m10/PX-145/TASK_CARD.md",
@@ -9946,12 +9961,12 @@
     {
       "path": "graph/PROJECT_GRAPH.md",
       "bytes": 45713,
-      "sha256": "6878b3864b9b4bbb1398280e45dcd69501b59a81073d2a8ee1b394d2da1a91c0"
+      "sha256": "155ab35228d508b0e131886c268790a6981e54cbab4b200cf951c4065576ef90"
     },
     {
       "path": "graph/project-graph.json",
-      "bytes": 2309532,
-      "sha256": "8f73a897422f7aaf2c00fd5c3ebe3ab1e9637d05488d377be90396280a33e2a0"
+      "bytes": 2309750,
+      "sha256": "2ee688c9e137a91b97367836963d1e095ed18aa6112b26e74cd033adc60ad61e"
     },
     {
       "path": "tools/build_graph.py",

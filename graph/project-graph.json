@@ -3,7 +3,7 @@
  "product": "Modbit",
  "edition": "V3.3 EPR v1.1",
  "authority_date": "2026-09-05",
- "generated_on": "2026-10-25",
+ "generated_on": "2026-10-26",
  "generator": "tools/build_graph.py",
  "status_vocabulary": [
   "NOT_STARTED",
@@ -38326,13 +38326,18 @@
    ],
    "task_card": "docs/62_PRODUCT_EXTENSION_REQUIREMENTS_TASKS_AND_QUALIFICATIONS.md#px-144",
    "audit_at_adoption": "DOCUMENTED-ONLY; no product caller present",
-   "status": "REAL_TESTING",
+   "status": "E2E_PROVEN",
    "evidence": [
     "artifact:evidence/m10/PX-144/TASK_CARD.md",
     "commit:6e32d883",
-    "artifact:evidence/m10/PX-145/rust-tests.txt"
+    "artifact:evidence/m10/PX-145/rust-tests.txt",
+    "commit:989a7974",
+    "artifact:evidence/m10/PX-144/live-approvals-run-3.json",
+    "artifact:evidence/m10/PX-144/live-approvals-run-1.json",
+    "test:qual_px_144_run_modes_core_real",
+    "test:autonomy.spec.ts"
    ],
-   "status_changed_on": "2026-10-25T18:06:08Z"
+   "status_changed_on": "2026-10-25T21:07:44Z"
   },
   {
    "id": "PX-145",
