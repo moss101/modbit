@@ -38326,8 +38326,13 @@
    ],
    "task_card": "docs/62_PRODUCT_EXTENSION_REQUIREMENTS_TASKS_AND_QUALIFICATIONS.md#px-144",
    "audit_at_adoption": "DOCUMENTED-ONLY; no product caller present",
-   "status": "NOT_STARTED",
-   "evidence": []
+   "status": "REAL_TESTING",
+   "evidence": [
+    "artifact:evidence/m10/PX-144/TASK_CARD.md",
+    "commit:6e32d883",
+    "artifact:evidence/m10/PX-145/rust-tests.txt"
+   ],
+   "status_changed_on": "2026-10-25T18:06:08Z"
   },
   {
    "id": "PX-145",
@@ -38355,8 +38360,16 @@
    ],
    "task_card": "docs/62_PRODUCT_EXTENSION_REQUIREMENTS_TASKS_AND_QUALIFICATIONS.md#px-145",
    "audit_at_adoption": "DOCUMENTED-ONLY; no product caller present",
-   "status": "NOT_STARTED",
-   "evidence": []
+   "status": "E2E_PROVEN",
+   "evidence": [
+    "artifact:evidence/m10/PX-145/TASK_CARD.md",
+    "commit:6e32d883",
+    "artifact:evidence/m10/PX-145/rust-tests.txt",
+    "artifact:evidence/m10/PX-145/live-desktop-run-3.json",
+    "artifact:evidence/m10/PX-145/live-desktop-run-4.json",
+    "artifact:evidence/m10/PX-145/live-desktop-run-5.json"
+   ],
+   "status_changed_on": "2026-10-25T18:06:09Z"
   },
   {
    "id": "PX-146",
@@ -38382,8 +38395,13 @@
    ],
    "task_card": "docs/62_PRODUCT_EXTENSION_REQUIREMENTS_TASKS_AND_QUALIFICATIONS.md#px-146",
    "audit_at_adoption": "DOCUMENTED-ONLY; no product caller present",
-   "status": "NOT_STARTED",
-   "evidence": []
+   "status": "REAL_TESTING",
+   "evidence": [
+    "artifact:evidence/m10/PX-146/TASK_CARD.md",
+    "commit:6e32d883",
+    "artifact:evidence/m10/PX-145/rust-tests.txt"
+   ],
+   "status_changed_on": "2026-10-25T18:06:09Z"
   },
   {
    "id": "QUAL-PX-000",
@@ -42229,8 +42247,13 @@
    "subsystem": "governance",
    "source": "docs/97_DOSSIER_MAINTENANCE_LOG.md",
    "acceptance": "Decision Record, its rows, specification, supersession entries and change record added; implementation audit recorded; full integrity gate passes; the record is accepted by the owner and its status and approval are recorded; no product proof",
-   "status": "NOT_STARTED",
-   "evidence": []
+   "status": "COMPLETE",
+   "evidence": [
+    "artifact:evidence/dossier-px-016/tests.log",
+    "artifact:evidence/dossier-px-016/validation.json",
+    "commit:6e32d883"
+   ],
+   "status_changed_on": "2026-10-25T18:06:04Z"
   },
   {
    "id": "ALPHA",
@@ -77558,5 +77581,6 @@
    "to": "EPR-GATE-G",
    "type": "requires_gate"
   }
- ]
+ ],
+ "updated_on": "2026-10-25T18:06:09Z"
 }

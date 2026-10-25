@@ -1932,8 +1932,8 @@ A dossier package is valid only if every path below exists with the listed SHA-2
 | `evidence/zcode-ui/reference/zcode-colors-rgba.json` | retained evidence | 18690 | `76372c3edbcd50fe596d5e4b7fcd7991adab9686588ddc578a728afa24b4f028` |
 | `evidence/zcode-ui/reference/zcode-computed.json` | retained evidence | 718674 | `9ae8821ce72aa0fff3be44aacd0f4c9d995465c54bad7f17d1a81f92841d1c2d` |
 | `evidence/zcode-ui/reference/zcode-tokens-resolved.json` | retained evidence | 30635 | `066725c00059a05d073fbcdac9a8d965eab05f05c1f5df16e654854ff3e22b91` |
-| `graph/PROJECT_GRAPH.md` | human view of the graph | 45611 | `8add4f26c23a085a02612c4306260b20fc0cf1ec24341253d7217074351ba100` |
-| `graph/project-graph.json` | project driver graph with live status | 2308652 | `a9c647502701432409e8776aa3e77aaa576064d7d930f726093441ba1f829961` |
+| `graph/PROJECT_GRAPH.md` | human view of the graph | 45713 | `6878b3864b9b4bbb1398280e45dcd69501b59a81073d2a8ee1b394d2da1a91c0` |
+| `graph/project-graph.json` | project driver graph with live status | 2309571 | `bbc997ae8bc759bebc94bb509a77da947c1668db0a7bcecbd1568d6908d40813` |
 | `tools/build_graph.py` | regenerates graph structure from docs | 63713 | `3e3681d0b47e011fc2a2a9ea71e2d3a1a1c957b88aca6b5afaf5ff1ab0d40bc2` |
 | `tools/build_manifest.py` | regenerates this manifest | 14871 | `b35f87f995ebea778ef5002f42c4dcb2f195f303ae121d7b4d73070d95d665b7` |
 | `tools/check_dossier.py` | integrity gate | 18887 | `1bd2634078a0c20b34a565ccf0f6d9061e83bd0945b7bf719ac137611e3fcf35` |
