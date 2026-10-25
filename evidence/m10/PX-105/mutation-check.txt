@@ -1,0 +1,34 @@
+PX-105 mutation check (QUAL-PX-105: removing the content-hash binding of owner trust must fail the one-byte tests on the CLI and Core suites)
+date: 2026-10-25T06:24Z
+base revision: c7768d0da2ff5134850726b7293d137ddfe60000 (plus the uncommitted tests of this change)
+
+== baseline (unmutated) ==
+test skill_trust_by_hash_from_the_cli_gates_what_reaches_the_model_and_one_byte_revokes_it ... ok
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 5.24s
+test qual_px_105_a_system_skill_is_not_shadowed_and_a_system_prohibition_overrides_user_trust ... ok
+test qual_px_105_the_index_degrades_under_its_budget_and_a_path_gated_skill_waits_for_its_files ... ok
+test qual_px_105_an_imported_skill_stays_quarantined_until_the_owner_trusts_its_hash ... ok
+test qual_px_105_052_trust_by_hash_index_and_skill_load_reach_a_model_only_when_the_owner_says ... ok
+test result: ok. 4 passed; 0 failed; 0 ignored; 0 measured; 199 filtered out; finished in 5.20s
+baseline exit: 0
+
+== mutation: crates/skills/src/trust.rs
+-    self.owner.contains(&(name.to_owned(), hash.to_owned()))
++    self.owner.iter().any(|(n, _)| n == name)
+test skill_trust_by_hash_from_the_cli_gates_what_reaches_the_model_and_one_byte_revokes_it ... FAILED
+thread 'skill_trust_by_hash_from_the_cli_gates_what_reaches_the_model_and_one_byte_revokes_it' (46939452) panicked at apps/cli/tests/px_105_skill_cli.rs:419:5:
+assertion `left == right` failed
+  left: ("TRUSTED_BY_OWNER", "true")
+test result: FAILED. 0 passed; 1 failed; 0 ignored; 0 measured; 0 filtered out; finished in 4.49s
+error: test failed, to rerun pass `-p modbit-cli --test px_105_skill_cli`
+mutated exit: 101 (non-zero expected)
+
+== restored ==
+test skill_trust_by_hash_from_the_cli_gates_what_reaches_the_model_and_one_byte_revokes_it ... ok
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 5.66s
+test qual_px_105_a_system_skill_is_not_shadowed_and_a_system_prohibition_overrides_user_trust ... ok
+test qual_px_105_the_index_degrades_under_its_budget_and_a_path_gated_skill_waits_for_its_files ... ok
+test qual_px_105_an_imported_skill_stays_quarantined_until_the_owner_trusts_its_hash ... ok
+test qual_px_105_052_trust_by_hash_index_and_skill_load_reach_a_model_only_when_the_owner_says ... ok
+test result: ok. 4 passed; 0 failed; 0 ignored; 0 measured; 199 filtered out; finished in 5.11s
+restored exit: 0

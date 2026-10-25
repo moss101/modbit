@@ -1717,6 +1717,243 @@ async fn px_102_a_second_collector_and_a_restore_are_refused_while_a_collection_
     assert!(gc(&mut fx, 1, false).await.is_ok());
 }
 
+/// What the worktree holds at the checkpoint of turn `t` of a `files_script`
+/// run: turn 1 plans, turn `t >= 2` has created `f1..f{t-1}` (the same rule
+/// the REQ-PX-061 proof checks at turn 3), the completion's turn all of them.
+fn expected_at_turn(
+    base: &BTreeMap<String, String>,
+    t: u32,
+    files: u32,
+) -> BTreeMap<String, String> {
+    use sha2::Digest;
+    let mut out = base.clone();
+    for i in 1..=t.saturating_sub(1).min(files) {
+        out.insert(
+            format!("f{i}.txt"),
+            hex::encode(sha2::Sha256::digest(format!("file {i}\n").as_bytes())),
+        );
+    }
+    out
+}
+
+/// QUAL-PX-102 at its stated scale (real Core, real worktree, the real object
+/// store): forty real turns leave forty turn checkpoints, three are named and
+/// one is forked from; the collector thins the finished task; the named, the
+/// fork-parent and the latest checkpoints survive; and EVERY surviving turn
+/// checkpoint restores to file hashes equal to the state it recorded.
+#[tokio::test]
+async fn px_102_forty_turns_three_named_every_survivor_restores_to_its_recorded_hashes() {
+    const FILES: u32 = 40;
+    let (mut fx, _seen) =
+        Fx::new(files_script(FILES as usize, None), &[("a.txt", "a\n")], &[]).await;
+    fx.run_to_review().await;
+    // The state before any turn's file: what the repository was created with.
+    let base: BTreeMap<String, String> = {
+        let mut t = tree(&fx.root);
+        t.retain(|p, _| !(p.starts_with('f') && p.ends_with(".txt")));
+        t
+    };
+    assert!(base.contains_key("a.txt"), "{base:?}");
+    let l = fx.checkpoints().await;
+    let turns: Vec<_> = l
+        .checkpoints
+        .iter()
+        .filter(|c| c.reason == "turn_boundary")
+        .collect();
+    assert!(
+        turns.len() >= 40,
+        "forty turns leave forty checkpoints, got {}",
+        turns.len()
+    );
+    let _: modbit_protocol::v1::TaskCancelRequested = ok(
+        &mut fx.c,
+        "CancelTask",
+        CancelTask {
+            task_id: Some(fx.task.clone()),
+        },
+        Some(fx.g),
+    )
+    .await;
+    assert_eq!(fx.status().await.state, "Cancelled");
+    let named = [
+        (7u32, "turn seven"),
+        (19, "turn nineteen"),
+        (33, "turn thirty-three"),
+    ];
+    for (t, label) in named {
+        name(&mut fx, &turn_checkpoint(&l, t).checkpoint_id, label)
+            .await
+            .unwrap();
+    }
+    let fork_parent = turn_checkpoint(&l, 12).checkpoint_id;
+    let _: TaskForked = ok(
+        &mut fx.c,
+        "ForkTask",
+        ForkTask {
+            task_id: Some(fx.task.clone()),
+            checkpoint_id: fork_parent.clone(),
+            ..Default::default()
+        },
+        Some(fx.g),
+    )
+    .await;
+    let latest = fx.checkpoints().await.current_checkpoint_id;
+    let (report, _) = gc(&mut fx, 1, false).await.unwrap();
+    assert!(
+        report.removed >= 10,
+        "a finished forty-turn task is thinned: {report:?}"
+    );
+    let after = fx.checkpoints().await;
+    let alive: Vec<_> = after
+        .checkpoints
+        .iter()
+        .filter(|c| matches!(c.status.as_str(), "CURRENT" | "SUPERSEDED"))
+        .cloned()
+        .collect();
+    let survives = |id: &str| alive.iter().any(|c| c.checkpoint_id == id);
+    for (t, label) in named {
+        assert!(survives(&turn_checkpoint(&l, t).checkpoint_id), "{label}");
+    }
+    assert!(survives(&fork_parent), "the fork parent survives");
+    assert!(survives(&latest), "the latest survives");
+    assert!(alive.len() < turns.len(), "thinning removed some");
+    // Every surviving turn checkpoint restores to the hashes it recorded.
+    let mut restored_n = 0;
+    for c in alive.iter().filter(|c| c.reason == "turn_boundary") {
+        let (r, _) = fx
+            .restore(RestoreCheckpoint {
+                checkpoint_id: c.checkpoint_id.clone(),
+                ..Default::default()
+            })
+            .await
+            .unwrap();
+        assert!(r.restored, "{c:?}: {r:?}");
+        assert_eq!(
+            tree(&fx.root),
+            expected_at_turn(&base, c.turn_ordinal, FILES),
+            "turn {} restores to what it recorded",
+            c.turn_ordinal
+        );
+        restored_n += 1;
+    }
+    assert!(restored_n >= 5, "{restored_n} survivors were restored");
+}
+
+/// QUAL-PX-102 with a real `SIGKILL` from outside (no abort in the Core): the
+/// sweep is stalled after its first blob has been deleted, the process is
+/// killed there, and the next Core has no broken chain, every survivor
+/// restores, and the next run completes the sweep.
+#[tokio::test]
+async fn px_102_sigkill_during_the_sweep_leaves_no_broken_chain_and_the_next_run_completes() {
+    let mut fx = many_checkpoints(20).await;
+    let l = fx.checkpoints().await;
+    let hand: Vec<_> = l
+        .checkpoints
+        .iter()
+        .filter(|c| c.reason.starts_with("hand "))
+        .cloned()
+        .collect();
+    name(&mut fx, &hand[4].checkpoint_id, "keeper")
+        .await
+        .unwrap();
+    let (objects_before, _) = object_files(&fx.data);
+    fx.restart(&[("MODBIT_FAULT_CHECKPOINT_STALL", "MID_GC_SWEEP:120000")])
+        .await;
+    let (task, session, g) = (fx.task.clone(), fx.session.clone(), fx.g);
+    let mut collector = fx.core.client().await;
+    let in_flight = tokio::spawn(async move {
+        send::<_, CheckpointGcReport>(
+            &mut collector,
+            None,
+            "RunCheckpointGc",
+            RunCheckpointGc {
+                session_id: Some(session),
+                task_id: Some(task),
+                reason: "sigkill".into(),
+                policy: Some(modbit_protocol::v1::CheckpointRetentionPolicy {
+                    keep_recent: 1,
+                    min_age_ms: 1,
+                    max_bytes: 0,
+                }),
+                dry_run: false,
+            },
+            Some(g),
+        )
+        .await
+    });
+    // The sweep has deleted a blob and is held: the work is half done.
+    let deadline = std::time::Instant::now() + Duration::from_secs(60);
+    while object_files(&fx.data).0 >= objects_before {
+        assert!(
+            std::time::Instant::now() < deadline,
+            "the sweep never deleted a blob"
+        );
+        tokio::time::sleep(Duration::from_millis(20)).await;
+    }
+    let (during, _) = object_files(&fx.data);
+    fx.core.kill();
+    assert!(
+        in_flight.await.unwrap().is_err(),
+        "the collector was killed"
+    );
+    fx.restart(&[]).await;
+    let mid = fx.checkpoints().await;
+    assert!(
+        mid.checkpoints.iter().any(|c| c.status == "COLLECTED"),
+        "the collection of the restorable set is on the log"
+    );
+    let (r, _) = fx
+        .restore(RestoreCheckpoint {
+            name: "keeper".into(),
+            ..Default::default()
+        })
+        .await
+        .unwrap();
+    assert!(r.restored, "{r:?}");
+    assert_eq!(
+        std::fs::read_to_string(format!("{}/hand.txt", fx.root)).unwrap(),
+        "hand-written version 4\n".repeat(40)
+    );
+    for c in mid
+        .checkpoints
+        .iter()
+        .filter(|c| matches!(c.status.as_str(), "CURRENT" | "SUPERSEDED"))
+    {
+        let preview = send::<_, modbit_protocol::v1::RewindPreview>(
+            &mut fx.c,
+            None,
+            "PreviewRewind",
+            modbit_protocol::v1::PreviewRewind {
+                task_id: Some(fx.task.clone()),
+                checkpoint_id: c.checkpoint_id.clone(),
+                ..Default::default()
+            },
+            None,
+        )
+        .await
+        .unwrap()
+        .0;
+        assert_eq!(
+            preview.refusal, "",
+            "{} has a broken chain",
+            c.checkpoint_id
+        );
+    }
+    let (finish, _) = gc(&mut fx, 1, false).await.unwrap();
+    let (after, _) = object_files(&fx.data);
+    assert!(
+        finish.blobs_removed > 0,
+        "the next run finishes: {finish:?}"
+    );
+    assert!(after < during, "{after} < {during}");
+    let (again, _) = gc(&mut fx, 1, false).await.unwrap();
+    assert_eq!(
+        (again.blobs_removed, again.bytes_freed),
+        (0, 0),
+        "{again:?}"
+    );
+}
+
 // ============================================================================
 // REQ-PX-101: PauseTask and ResumeTask.
 // ============================================================================
