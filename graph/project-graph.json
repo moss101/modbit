@@ -39019,8 +39019,21 @@
    "related_requirements": [],
    "task_card": "docs/62_PRODUCT_EXTENSION_REQUIREMENTS_TASKS_AND_QUALIFICATIONS.md#px-147",
    "audit_at_adoption": "DOCUMENTED-ONLY; no product caller present",
-   "status": "NOT_STARTED",
-   "evidence": []
+   "status": "REAL_TESTING",
+   "evidence": [
+    "artifact:evidence/m10/PX-147/TASK_CARD.md",
+    "commit:a977c779",
+    "artifact:evidence/m10/PX-147/rust-tests.txt"
+   ],
+   "notes": [
+    {
+     "at": "2026-10-26T19:16:14Z",
+     "from": "NOT_STARTED",
+     "to": "AUDITING",
+     "note": "task card"
+    }
+   ],
+   "status_changed_on": "2026-10-26T19:16:14Z"
   },
   {
    "id": "PX-148",
@@ -39041,8 +39054,21 @@
    "related_requirements": [],
    "task_card": "docs/62_PRODUCT_EXTENSION_REQUIREMENTS_TASKS_AND_QUALIFICATIONS.md#px-148",
    "audit_at_adoption": "DOCUMENTED-ONLY; no product caller present",
-   "status": "NOT_STARTED",
-   "evidence": []
+   "status": "REAL_TESTING",
+   "evidence": [
+    "artifact:evidence/m10/PX-148/TASK_CARD.md",
+    "commit:a977c779",
+    "artifact:evidence/m10/PX-148/rust-tests.txt"
+   ],
+   "notes": [
+    {
+     "at": "2026-10-26T19:16:14Z",
+     "from": "NOT_STARTED",
+     "to": "AUDITING",
+     "note": "task card"
+    }
+   ],
+   "status_changed_on": "2026-10-26T19:16:15Z"
   },
   {
    "id": "PX-149",
@@ -39063,8 +39089,21 @@
    "related_requirements": [],
    "task_card": "docs/62_PRODUCT_EXTENSION_REQUIREMENTS_TASKS_AND_QUALIFICATIONS.md#px-149",
    "audit_at_adoption": "DOCUMENTED-ONLY; no product caller present",
-   "status": "NOT_STARTED",
-   "evidence": []
+   "status": "REAL_TESTING",
+   "evidence": [
+    "artifact:evidence/m10/PX-149/TASK_CARD.md",
+    "commit:a977c779",
+    "artifact:evidence/m10/PX-149/rust-tests.txt"
+   ],
+   "notes": [
+    {
+     "at": "2026-10-26T19:16:15Z",
+     "from": "NOT_STARTED",
+     "to": "AUDITING",
+     "note": "task card"
+    }
+   ],
+   "status_changed_on": "2026-10-26T19:16:15Z"
   },
   {
    "id": "PX-150",
@@ -39085,8 +39124,21 @@
    "related_requirements": [],
    "task_card": "docs/62_PRODUCT_EXTENSION_REQUIREMENTS_TASKS_AND_QUALIFICATIONS.md#px-150",
    "audit_at_adoption": "DOCUMENTED-ONLY; no product caller present",
-   "status": "NOT_STARTED",
-   "evidence": []
+   "status": "REAL_TESTING",
+   "evidence": [
+    "artifact:evidence/m10/PX-150/TASK_CARD.md",
+    "commit:a977c779",
+    "artifact:evidence/m10/PX-150/rust-tests.txt"
+   ],
+   "notes": [
+    {
+     "at": "2026-10-26T19:16:15Z",
+     "from": "NOT_STARTED",
+     "to": "AUDITING",
+     "note": "task card"
+    }
+   ],
+   "status_changed_on": "2026-10-26T19:16:15Z"
   },
   {
    "id": "PX-152",
@@ -39130,8 +39182,21 @@
    "related_requirements": [],
    "task_card": "docs/62_PRODUCT_EXTENSION_REQUIREMENTS_TASKS_AND_QUALIFICATIONS.md#px-153",
    "audit_at_adoption": "DOCUMENTED-ONLY; no product caller present",
-   "status": "NOT_STARTED",
-   "evidence": []
+   "status": "REAL_TESTING",
+   "evidence": [
+    "artifact:evidence/m10/PX-153/TASK_CARD.md",
+    "commit:a977c779",
+    "artifact:evidence/m10/PX-153/rust-tests.txt"
+   ],
+   "notes": [
+    {
+     "at": "2026-10-26T19:16:15Z",
+     "from": "NOT_STARTED",
+     "to": "AUDITING",
+     "note": "task card"
+    }
+   ],
+   "status_changed_on": "2026-10-26T19:16:16Z"
   },
   {
    "id": "PX-155",

@@ -7,8 +7,8 @@
   "scope_rule": "docs/*.md, root *.md except MANIFEST.md, docs/decisions/*.md, graph JSON/Markdown, tools/*.py, evidence payloads; manifests exclude themselves and transient caches",
   "counts": {
     "docs": 97,
-    "root_and_tooling": 1822,
-    "docs_bytes": 2294708
+    "root_and_tooling": 1834,
+    "docs_bytes": 2294864
   },
   "sections": [
     {
@@ -149,8 +149,8 @@
       "section": "architecture",
       "section_title": "Architecture and subsystems",
       "title": "Clean Repository and Module Layout",
-      "bytes": 9671,
-      "sha256": "da440789203a82536000d62d0e7feb1868a1934be4e49a66cb5cea584a7919a7"
+      "bytes": 9827,
+      "sha256": "6a03cf10d2e3969ad96d6e72b5ea598a54155f72f840989c297ff239adf02246"
     },
     {
       "path": "docs/13_DOMAIN_MODEL_AND_STATE_MACHINES.md",
@@ -2632,6 +2632,66 @@
       "path": "evidence/m10/PX-146/TASK_CARD.md",
       "bytes": 799,
       "sha256": "9ec357e608432e28137e426489c95d03bb2f83633865549c2f3a18bfb2fd7ae0"
+    },
+    {
+      "path": "evidence/m10/PX-147/TASK_CARD.md",
+      "bytes": 944,
+      "sha256": "9ce49b5bbbc733db517ea563f6467c7bb3b2bb12690d7635dd36c1a71215bf1c"
+    },
+    {
+      "path": "evidence/m10/PX-147/rust-tests.txt",
+      "bytes": 49004,
+      "sha256": "efe82e4127e8ec867520fb82ff8b81d723277022abafb032916a9bc54961938e"
+    },
+    {
+      "path": "evidence/m10/PX-148/TASK_CARD.md",
+      "bytes": 1083,
+      "sha256": "54e8705619d0946c7fc679134a065877ecfd2cee07248c70b29672e3449d9883"
+    },
+    {
+      "path": "evidence/m10/PX-148/rust-tests.txt",
+      "bytes": 49004,
+      "sha256": "efe82e4127e8ec867520fb82ff8b81d723277022abafb032916a9bc54961938e"
+    },
+    {
+      "path": "evidence/m10/PX-149/TASK_CARD.md",
+      "bytes": 999,
+      "sha256": "72d78ba5c6ee57374c73891309a8984ef381db7b46887e37896bebfdf3a28584"
+    },
+    {
+      "path": "evidence/m10/PX-149/rust-tests.txt",
+      "bytes": 49004,
+      "sha256": "efe82e4127e8ec867520fb82ff8b81d723277022abafb032916a9bc54961938e"
+    },
+    {
+      "path": "evidence/m10/PX-150/TASK_CARD.md",
+      "bytes": 933,
+      "sha256": "18232a293112f5d73c19a7ce6294bbcb0c29eddf52f8e5619bcd358729339a34"
+    },
+    {
+      "path": "evidence/m10/PX-150/rust-tests.txt",
+      "bytes": 49004,
+      "sha256": "efe82e4127e8ec867520fb82ff8b81d723277022abafb032916a9bc54961938e"
+    },
+    {
+      "path": "evidence/m10/PX-152/TASK_CARD.md",
+      "bytes": 970,
+      "sha256": "2cc7082c407dcf6ae936ebae9b050e5cbbcfcdb5226823ee7062e9c583114635"
+    },
+    {
+      "path": "evidence/m10/PX-152/rust-tests.txt",
+      "bytes": 49004,
+      "sha256": "efe82e4127e8ec867520fb82ff8b81d723277022abafb032916a9bc54961938e"
+    },
+    {
+      "path": "evidence/m10/PX-153/TASK_CARD.md",
+      "bytes": 961,
+      "sha256": "b74ef5be9a26f8b924ae73e1ad20441a711ea63c445acb554c0cd7cf000da5b4"
+    },
+    {
+      "path": "evidence/m10/PX-153/rust-tests.txt",
+      "bytes": 49004,
+      "sha256": "efe82e4127e8ec867520fb82ff8b81d723277022abafb032916a9bc54961938e"
     },
     {
       "path": "evidence/m2/IMP-EV-0011/TASK_CARD.md",
@@ -9980,8 +10040,8 @@
     },
     {
       "path": "graph/project-graph.json",
-      "bytes": 2464539,
-      "sha256": "dd47a0f015649a23693317e9be1511d34dbe2a50b8fa69eeaa529604ea74dea4"
+      "bytes": 2466129,
+      "sha256": "e7c06b0257adae00e7ce10d0178caec297c137497ff9193a5513efab41309133"
     },
     {
       "path": "tools/build_graph.py",

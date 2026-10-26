@@ -14,14 +14,14 @@ A dossier package is valid only if every path below exists with the listed SHA-2
 | Section | Range | Files | Bytes |
 |---|---|---:|---:|
 | Authority and orientation | 00–09 | 8 | 88408 |
-| Architecture and subsystems | 10–29 | 20 | 392909 |
+| Architecture and subsystems | 10–29 | 20 | 393065 |
 | Implementation specifications | 30–39 | 10 | 176407 |
 | Requirements, tasks and traceability | 40–49 | 10 | 351840 |
 | Verification and testing | 50–69 | 20 | 943552 |
 | Delivery and operations | 70–79 | 10 | 125383 |
 | Agent process and governance | 80–97 | 18 | 201248 |
 | Live state | 98–99 | 1 | 14961 |
-| **Total docs** | | **97** | **2294708** |
+| **Total docs** | | **97** | **2294864** |
 
 ## Specification files (`docs/`)
 
@@ -37,7 +37,7 @@ A dossier package is valid only if every path below exists with the listed SHA-2
 | 07 | `docs/07_PRODUCT_EXTENSION_DECISION_RECORD.md` | Product extension decision record | authority | 6505 | `4c1d01b41e9aa50ec6b4d21bdcfd7aa98abee07be3e579b6e7202ad585ceb92a` |
 | 10 | `docs/10_PRODUCT_PRD_AND_UX.md` | Product Requirements and UX Specification | architecture | 12469 | `33e7e3c922f924f23031db1d1635cbba9001ce406e0474228d9b2ec0d4b5b224` |
 | 11 | `docs/11_SYSTEM_ARCHITECTURE.md` | End-to-End System Architecture | architecture | 12638 | `34b51dd3be83dac06e6d2a50d9fc8baed4b9d7839597c9a3ebe1b38c66552233` |
-| 12 | `docs/12_REPOSITORY_AND_MODULE_LAYOUT.md` | Clean Repository and Module Layout | architecture | 9671 | `da440789203a82536000d62d0e7feb1868a1934be4e49a66cb5cea584a7919a7` |
+| 12 | `docs/12_REPOSITORY_AND_MODULE_LAYOUT.md` | Clean Repository and Module Layout | architecture | 9827 | `6a03cf10d2e3969ad96d6e72b5ea598a54155f72f840989c297ff239adf02246` |
 | 13 | `docs/13_DOMAIN_MODEL_AND_STATE_MACHINES.md` | Canonical Domain Model and State Machines | architecture | 6829 | `7c15fd3f525fe0f863ce28e00bb31d0eb8f0313babd53befd83148d18378f5c3` |
 | 14 | `docs/14_AGENT_RUNTIME_AND_ORCHESTRATION.md` | Agent Runtime and Orchestration | architecture | 31655 | `90151e707f63799f0fd90cbe4d0cd164990f8603971793f9975e1e04df1a0b41` |
 | 15 | `docs/15_MODEL_ROUTER_AND_PROVIDER_GATEWAY.md` | Execution Policy Router and Provider Gateway | architecture | 15853 | `421f4a345d4c7409d8a182f911c686b339a3d50841242c819dba7aff50bdaa21` |
@@ -470,6 +470,18 @@ A dossier package is valid only if every path below exists with the listed SHA-2
 | `evidence/m10/PX-145/live-desktop-run-5.json` | retained evidence | 757 | `62a8b1be0c876cb0bae373249d5169128cf6a51f5385b64eedf6a981cbccea80` |
 | `evidence/m10/PX-145/rust-tests.txt` | retained evidence | 1511 | `8938ce82af03ced81a3d6cc2c29e4b80b7775e0e7aabe3c5741ab4281b14f90a` |
 | `evidence/m10/PX-146/TASK_CARD.md` | retained evidence | 799 | `9ec357e608432e28137e426489c95d03bb2f83633865549c2f3a18bfb2fd7ae0` |
+| `evidence/m10/PX-147/TASK_CARD.md` | retained evidence | 944 | `9ce49b5bbbc733db517ea563f6467c7bb3b2bb12690d7635dd36c1a71215bf1c` |
+| `evidence/m10/PX-147/rust-tests.txt` | retained evidence | 49004 | `efe82e4127e8ec867520fb82ff8b81d723277022abafb032916a9bc54961938e` |
+| `evidence/m10/PX-148/TASK_CARD.md` | retained evidence | 1083 | `54e8705619d0946c7fc679134a065877ecfd2cee07248c70b29672e3449d9883` |
+| `evidence/m10/PX-148/rust-tests.txt` | retained evidence | 49004 | `efe82e4127e8ec867520fb82ff8b81d723277022abafb032916a9bc54961938e` |
+| `evidence/m10/PX-149/TASK_CARD.md` | retained evidence | 999 | `72d78ba5c6ee57374c73891309a8984ef381db7b46887e37896bebfdf3a28584` |
+| `evidence/m10/PX-149/rust-tests.txt` | retained evidence | 49004 | `efe82e4127e8ec867520fb82ff8b81d723277022abafb032916a9bc54961938e` |
+| `evidence/m10/PX-150/TASK_CARD.md` | retained evidence | 933 | `18232a293112f5d73c19a7ce6294bbcb0c29eddf52f8e5619bcd358729339a34` |
+| `evidence/m10/PX-150/rust-tests.txt` | retained evidence | 49004 | `efe82e4127e8ec867520fb82ff8b81d723277022abafb032916a9bc54961938e` |
+| `evidence/m10/PX-152/TASK_CARD.md` | retained evidence | 970 | `2cc7082c407dcf6ae936ebae9b050e5cbbcfcdb5226823ee7062e9c583114635` |
+| `evidence/m10/PX-152/rust-tests.txt` | retained evidence | 49004 | `efe82e4127e8ec867520fb82ff8b81d723277022abafb032916a9bc54961938e` |
+| `evidence/m10/PX-153/TASK_CARD.md` | retained evidence | 961 | `b74ef5be9a26f8b924ae73e1ad20441a711ea63c445acb554c0cd7cf000da5b4` |
+| `evidence/m10/PX-153/rust-tests.txt` | retained evidence | 49004 | `efe82e4127e8ec867520fb82ff8b81d723277022abafb032916a9bc54961938e` |
 | `evidence/m2/IMP-EV-0011/TASK_CARD.md` | retained evidence | 1620 | `22a7ddc2c80526c5aba876366bfeb862fac72742059962c5ad19deb8239fb5d2` |
 | `evidence/m2/IMP-EV-0011/ci-run-34409173853-tests.log` | retained evidence | 80671 | `523c4dc423fa906a9c846d64d864d36c759cb9f98bd8f4e582600a39d7c14b05` |
 | `evidence/m2/IMP-EV-0011/ci-run-34409173853.json` | retained evidence | 36682 | `49f5cd98348f61290daeee2920913a705bc385ed441cf7a15a9d9a357ad2ebdf` |
@@ -1939,7 +1951,7 @@ A dossier package is valid only if every path below exists with the listed SHA-2
 | `evidence/zcode-ui/reference/zcode-computed.json` | retained evidence | 718674 | `9ae8821ce72aa0fff3be44aacd0f4c9d995465c54bad7f17d1a81f92841d1c2d` |
 | `evidence/zcode-ui/reference/zcode-tokens-resolved.json` | retained evidence | 30635 | `066725c00059a05d073fbcdac9a8d965eab05f05c1f5df16e654854ff3e22b91` |
 | `graph/PROJECT_GRAPH.md` | human view of the graph | 46280 | `b242103e3bdf33b99204f1b181f20252000e291516e656f12498769f53faf873` |
-| `graph/project-graph.json` | project driver graph with live status | 2464539 | `dd47a0f015649a23693317e9be1511d34dbe2a50b8fa69eeaa529604ea74dea4` |
+| `graph/project-graph.json` | project driver graph with live status | 2466129 | `e7c06b0257adae00e7ce10d0178caec297c137497ff9193a5513efab41309133` |
 | `tools/build_graph.py` | regenerates graph structure from docs | 64312 | `a0ed29e361e000b219b6be973e0be77417831fa4b7f0f2cd2c5845f553e90a54` |
 | `tools/build_manifest.py` | regenerates this manifest | 14871 | `b35f87f995ebea778ef5002f42c4dcb2f195f303ae121d7b4d73070d95d665b7` |
 | `tools/check_dossier.py` | integrity gate | 18887 | `1bd2634078a0c20b34a565ccf0f6d9061e83bd0945b7bf719ac137611e3fcf35` |
