@@ -58,6 +58,11 @@ export function whyAsked(r: ApprovalReasonView): Why {
   const code = r.code;
   if (code === "MODE_ASK") return { headline: "Every protected effect asks in the Ask mode.", detail: "Change the run mode to let rules you make run without asking." };
   if (code === "NOT_IN_ALLOWLIST") return { headline: "No allowlist rule covers this command.", detail: r.contained ? "It would run inside a sandbox, but the mode in force does not approve that on its own." : "Run it once, or allow its prefix so the same kind of command runs without asking." };
+  // PX-149: a rule matched the command's words but not the program that would run it.
+  if (code === "PROGRAM_PATH_CHANGED") return { headline: "The program is not the one this rule was made for.", detail: "A rule that matches this command was made for a program at a different path. Check where the program comes from before running it; the rule stays as it is." };
+  if (code === "RULE_NOT_PINNED") return { headline: "A rule matches, but it was made before rules recorded their program.", detail: "Run it once, or choose Always to make the rule again so it remembers which program it covers." };
+  if (code === "PROGRAM_NOT_FOUND") return { headline: "The program was not found, so no rule can vouch for it.", detail: "Nothing on the search path matches the command's first word. Run it once only if you expect it to fail or to be provided another way." };
+  if (code === "PROGRAM_IN_WORKSPACE") return { headline: "The shell that would run this is a file in the workspace.", detail: "The commands a rule allows would be run by a program that belongs to the repository, not the system. No rule covers that." };
   if (code === "BUDGET_RAISE") return { headline: "A budget raise spends more than was set.", detail: "Approving lets this one raise apply when it is asked again; it changes the task's caps and nothing else. The organisation's ceiling still holds." };
   if (code.startsWith("ALWAYS_ASK:")) {
     const cls = code.slice("ALWAYS_ASK:".length);

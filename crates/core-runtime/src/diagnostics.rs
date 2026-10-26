@@ -57,7 +57,7 @@ pub enum FailureSource<'a> {
     },
     /// The loop stopped for the user (question, repair escalation, no progress).
     Loop {
-        /// `QUESTION_PENDING`, `REPAIR_ESCALATED`, `NO_PROGRESS`.
+        /// `QUESTION_PENDING`, `REPAIR_ESCALATED`, `NO_PROGRESS`, `DENIAL_STREAK`.
         code: &'a str,
         /// Message.
         message: &'a str,
@@ -172,7 +172,10 @@ pub fn classify(source: &FailureSource<'_>) -> FailureDiagnostic {
                     "TIMEOUT",
                     true,
                     "",
-                    "run it again with a larger timeout_ms, or split the command; a process that timed out was killed and left no result to trust",
+                    &format!(
+                        "run it again with a larger timeout_ms, or split the command; a process that timed out was killed and left no result to trust. {}",
+                        crate::denials::TIMEOUT_GUIDANCE
+                    ),
                     ev,
                     f,
                     msg,
@@ -234,7 +237,10 @@ pub fn classify(source: &FailureSource<'_>) -> FailureDiagnostic {
                             "APPROVAL_EXPIRED",
                             true,
                             "ask again only if the effect is still needed; a new approval is requested",
-                            "the effect did not happen; the run continues without it",
+                            &format!(
+                                "the effect did not happen; the run continues without it. {}",
+                                crate::denials::guidance("APPROVAL_EXPIRED")
+                            ),
                             ev,
                             f,
                             msg,
@@ -245,7 +251,10 @@ pub fn classify(source: &FailureSource<'_>) -> FailureDiagnostic {
                             "APPROVAL_DENIED",
                             false,
                             "",
-                            "the effect did not happen; the run continues without it",
+                            &format!(
+                                "the effect did not happen; the run continues without it. {}",
+                                crate::denials::guidance("APPROVAL_DENIED")
+                            ),
                             ev,
                             f,
                             msg,
@@ -260,7 +269,10 @@ pub fn classify(source: &FailureSource<'_>) -> FailureDiagnostic {
                             },
                             false,
                             "widen the task's lease or profile if the effect is wanted",
-                            "the effect did not happen; the run continues without it",
+                            &format!(
+                                "the effect did not happen; the run continues without it. {}",
+                                crate::denials::guidance(code_s)
+                            ),
                             ev,
                             f,
                             msg,
@@ -318,6 +330,19 @@ pub fn classify(source: &FailureSource<'_>) -> FailureDiagnostic {
                         )
                     }
                 }
+                // PX-152: the review sandbox refused something the process
+                // attempted. Not a failing command: retrying it unchanged is
+                // refused again.
+                "APPLICATION_FAILURE" if code_s == "SANDBOX_DENIED" => diag(
+                    FailureClass::Policy,
+                    code_s,
+                    false,
+                    "run the check somewhere it is allowed to run, or change the command so it stays inside the worktree and needs no network",
+                    "the sandbox refused an operation; this is outside the confinement the task runs under, so do not retry the same command unchanged: change it, or say that it cannot run here",
+                    ev,
+                    f,
+                    msg,
+                ),
                 _ => diag(
                     FailureClass::Application,
                     if code_s.is_empty() { "FAILED" } else { code_s },
@@ -484,6 +509,18 @@ pub fn classify(source: &FailureSource<'_>) -> FailureDiagnostic {
                     false,
                     "read the attempt history and steer, or return the task to work with a new hypothesis",
                     "the repair loop stopped by policy; resume with StartTask and a steer",
+                    vec![],
+                    f,
+                    message,
+                ),
+                // PX-153: the model was refused again and again; the task is
+                // parked for a person to look at what it is attempting.
+                "DENIAL_STREAK" => diag(
+                    FailureClass::Policy,
+                    code,
+                    false,
+                    "read the refused requests, then steer the agent or change the run mode or the rules; StartTask resumes the task",
+                    "the task is parked, not ended: the count starts again when it resumes",
                     vec![],
                     f,
                     message,

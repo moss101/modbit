@@ -35,6 +35,10 @@ pub struct PolicyRequest {
     /// The argv of a command-shaped call, for the run mode's rules (PX-057);
     /// `None` for a call that is not a command.
     pub command: Option<Vec<String>>,
+    /// Where a command-shaped call will run and the search path its process
+    /// will get, so the host can resolve the programs it names (PX-149).
+    /// `None` when `command` is.
+    pub exec: Option<ExecContext>,
     /// The tool's classifier found a write outside the workspace.
     pub outside_workspace_write: bool,
     /// The tool's classifier found a write to configuration.
@@ -49,6 +53,17 @@ pub struct PolicyRequest {
     /// (`Tool::prepare`): shown on the approval, and already part of
     /// `intent_hash`. `None` for a tool that binds nothing.
     pub bound_intent: Option<serde_json::Value>,
+}
+
+/// The working directory and search path a command-shaped call runs with.
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct ExecContext {
+    /// The absolute working directory (the task's workspace root, with the
+    /// call's own `cwd` joined lexically).
+    pub cwd: String,
+    /// The `PATH` the process gets: the pinned environment's entries in front
+    /// of the host's.
+    pub path: String,
 }
 
 /// A workspace-relative path a call names, and the capability reaching it.
