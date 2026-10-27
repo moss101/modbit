@@ -3,7 +3,7 @@
  "product": "Modbit",
  "edition": "V3.3 EPR v1.1",
  "authority_date": "2026-09-05",
- "generated_on": "2026-10-26",
+ "generated_on": "2026-10-27",
  "generator": "tools/build_graph.py",
  "status_vocabulary": [
   "NOT_STARTED",
@@ -38240,14 +38240,17 @@
    ],
    "task_card": "docs/62_PRODUCT_EXTENSION_REQUIREMENTS_TASKS_AND_QUALIFICATIONS.md#px-141",
    "audit_at_adoption": "DOCUMENTED-ONLY; no product caller present",
-   "status": "REAL_TESTING",
+   "status": "COMPLETE",
    "evidence": [
     "artifact:evidence/m10/PX-141/evidence.json",
     "artifact:evidence/m10/PX-141/mutation-check.txt",
     "test:apps/desktop/e2e/zdl-tokens.spec.ts",
-    "test:packages/design-tokens/src/design-language.test.ts"
+    "test:packages/design-tokens/src/design-language.test.ts",
+    "run:40239702943",
+    "artifact:evidence/m10/PX-141/ci-run-40239702943.json",
+    "commit:84eecda2"
    ],
-   "status_changed_on": "2026-10-24T16:29:43Z"
+   "status_changed_on": "2026-10-27T19:34:19Z"
   },
   {
    "id": "PX-142",
@@ -38271,8 +38274,14 @@
    ],
    "task_card": "docs/62_PRODUCT_EXTENSION_REQUIREMENTS_TASKS_AND_QUALIFICATIONS.md#px-142",
    "audit_at_adoption": "DOCUMENTED-ONLY; no product caller present",
-   "status": "NOT_STARTED",
-   "evidence": []
+   "status": "COMPLETE",
+   "evidence": [
+    "artifact:evidence/m10/PX-142/evidence.json",
+    "run:40239702943",
+    "artifact:evidence/m10/PX-142/ci-run-40239702943.json",
+    "commit:84eecda2"
+   ],
+   "status_changed_on": "2026-10-27T19:34:19Z"
   },
   {
    "id": "PX-143",
@@ -38298,8 +38307,14 @@
    ],
    "task_card": "docs/62_PRODUCT_EXTENSION_REQUIREMENTS_TASKS_AND_QUALIFICATIONS.md#px-143",
    "audit_at_adoption": "DOCUMENTED-ONLY; no product caller present",
-   "status": "NOT_STARTED",
-   "evidence": []
+   "status": "COMPLETE",
+   "evidence": [
+    "artifact:evidence/m10/PX-143/evidence.json",
+    "run:40239702943",
+    "artifact:evidence/m10/PX-143/ci-run-40239702943.json",
+    "commit:84eecda2"
+   ],
+   "status_changed_on": "2026-10-27T19:34:20Z"
   },
   {
    "id": "PX-144",

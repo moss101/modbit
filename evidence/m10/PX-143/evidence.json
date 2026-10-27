@@ -16,6 +16,15 @@
   "apps/desktop/src/renderer/shell/shell.test.ts"
  ],
  "proof": "Local, macOS arm64: the whole desktop e2e suite against a real Core passes (168 of 170 on the first full run on this tree, the two failures being a vendor name in a CSS comment and the composer height, both fixed and rerun green); shell geometry 264/48 measured; axe clean in light, dark and high contrast on every gallery state and region after fixing three findings the new look produced; before and after screenshots retained. Final full desktop e2e run on the committed tree b4748de1: 170 passed, exit 0 (macOS arm64, real Core).",
- "limitations": "Not movable in the graph until PX-142 is COMPLETE. Windows and Linux are CI-only. Window chrome and translucency belong to PX-094.",
- "runs": []
+ "limitations": "Not movable in the graph until PX-142 is COMPLETE. Windows and Linux are CI-only. Window chrome and translucency belong to PX-094. CI run 40239702943 (PR #147 head 40ef7536, landed on main as 84eecda2) is green on macOS, Linux and Windows for the node and desktop E2E jobs, which closes the CI-leg limitation stated above; the remaining scope statements stand.",
+ "runs": [
+  "40239702943"
+ ],
+ "ci": {
+  "run_id": "40239702943",
+  "head_sha": "40ef75361860d4c1f6fda0730086beef6e55984a",
+  "conclusion": "success",
+  "json": "evidence/m10/PX-143/ci-run-40239702943.json",
+  "landed_as": "84eecda2"
+ }
 }
