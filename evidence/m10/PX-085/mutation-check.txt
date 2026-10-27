@@ -1,0 +1,50 @@
+=== BASELINE (unmutated), local Postgres 17
+     Running tests/px_085_automations.rs (target/debug/deps/px_085_automations-5fc0b5c24fa37fa1)
+test qual_px_085_an_endpoint_maps_one_tenant_a_body_or_header_cannot_name_another_and_an_unknown_endpoint_is_indistinguishable ... ok
+test qual_px_085_a_definition_that_can_act_needs_a_cost_limit_and_a_secret_value_is_refused_at_save ... ok
+test qual_px_085_a_signed_webhook_creates_exactly_one_canonical_task_and_a_duplicate_or_replay_creates_none ... ok
+test qual_px_085_an_unapproved_or_edited_definition_does_not_fire_and_the_approval_is_bound_to_the_exact_hash_and_lists ... ok
+test qual_px_085_endpoint_secrets_are_derived_shown_once_never_stored_and_rotation_and_revocation_end_the_old_one ... ok
+test qual_px_085_filters_skip_a_non_matching_body_and_two_concurrent_identical_deliveries_create_one_task ... ok
+test qual_px_085_concurrency_policies_hourly_and_daily_limits_pauses_and_kill_switches_decide_in_the_store ... ok
+test qual_px_085_forge_events_fire_event_triggers_of_the_mapped_tenant_and_the_issue_intake_is_unchanged ... ok
+test qual_px_085_forged_tampered_stale_future_and_malformed_signatures_are_refused_and_audited_under_typed_codes ... ok
+test qual_px_085_without_a_master_key_no_endpoint_exists_and_the_intake_fails_closed ... ok
+test qual_px_085_the_automation_clock_is_the_database_clock_and_the_offset_needs_the_test_variable ... ok
+test result: ok. 11 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 1.00s
+     Running unittests src/lib.rs (target/debug/deps/modbit_automation-bf21b031b2eb806e)
+test webhook::tests::a_nonce_is_good_once_inside_the_window ... ok
+test webhook::tests::malformed_headers_and_nonces_are_refused ... ok
+test webhook::tests::the_window_bounds_both_directions_and_the_timestamp_is_signed ... ok
+test webhook::tests::a_good_signature_verifies_and_a_changed_byte_does_not ... ok
+test filter::tests::webhook_field_filters_use_pointers ... ok
+test result: ok. 5 passed; 0 failed; 0 ignored; 0 measured; 26 filtered out; finished in 0.00s
+exit=0
+=== MUTATION drop-timestamp-window: the Stale check removed from crates/automation/src/webhook.rs verify()
+     Running tests/px_085_automations.rs (target/debug/deps/px_085_automations-5fc0b5c24fa37fa1)
+test qual_px_085_a_definition_that_can_act_needs_a_cost_limit_and_a_secret_value_is_refused_at_save ... ok
+test qual_px_085_an_unapproved_or_edited_definition_does_not_fire_and_the_approval_is_bound_to_the_exact_hash_and_lists ... ok
+test qual_px_085_an_endpoint_maps_one_tenant_a_body_or_header_cannot_name_another_and_an_unknown_endpoint_is_indistinguishable ... ok
+test qual_px_085_a_signed_webhook_creates_exactly_one_canonical_task_and_a_duplicate_or_replay_creates_none ... ok
+test qual_px_085_endpoint_secrets_are_derived_shown_once_never_stored_and_rotation_and_revocation_end_the_old_one ... ok
+test qual_px_085_filters_skip_a_non_matching_body_and_two_concurrent_identical_deliveries_create_one_task ... ok
+test qual_px_085_forge_events_fire_event_triggers_of_the_mapped_tenant_and_the_issue_intake_is_unchanged ... ok
+test qual_px_085_concurrency_policies_hourly_and_daily_limits_pauses_and_kill_switches_decide_in_the_store ... ok
+test qual_px_085_forged_tampered_stale_future_and_malformed_signatures_are_refused_and_audited_under_typed_codes ... FAILED
+test qual_px_085_the_automation_clock_is_the_database_clock_and_the_offset_needs_the_test_variable ... ok
+test qual_px_085_without_a_master_key_no_endpoint_exists_and_the_intake_fails_closed ... ok
+failures:
+failures:
+    qual_px_085_forged_tampered_stale_future_and_malformed_signatures_are_refused_and_audited_under_typed_codes
+test result: FAILED. 10 passed; 1 failed; 0 ignored; 0 measured; 0 filtered out; finished in 1.23s
+     Running unittests src/lib.rs (target/debug/deps/modbit_automation-bf21b031b2eb806e)
+test webhook::tests::a_nonce_is_good_once_inside_the_window ... ok
+test webhook::tests::malformed_headers_and_nonces_are_refused ... ok
+test webhook::tests::a_good_signature_verifies_and_a_changed_byte_does_not ... ok
+test webhook::tests::the_window_bounds_both_directions_and_the_timestamp_is_signed ... FAILED
+test filter::tests::webhook_field_filters_use_pointers ... ok
+failures:
+failures:
+    webhook::tests::the_window_bounds_both_directions_and_the_timestamp_is_signed
+test result: FAILED. 4 passed; 1 failed; 0 ignored; 0 measured; 26 filtered out; finished in 0.00s
+exit=101 (KILLED)
