@@ -46,8 +46,28 @@ fn refuse(code: &str, why: impl Into<String>) -> Refusal {
     (code.to_owned(), why.into())
 }
 
+/// The run mode of a task nobody has set one for (DR-PX-2026-10-25-017).
+///
+/// A task a person attends (desktop, CLI, IDE adapter, a fork of one) starts
+/// in `ALLOWLIST`, which approves nothing a person has not already said yes
+/// to: with no rule it asks exactly as `ASK` does, and a rule exists only
+/// because a person made it (the "Always" button, `AddAllowRule`). The default
+/// used to be `ASK`, which ignores every rule, so a rule made from an approval
+/// card never took effect; `ASK` remains a mode a person can choose. Every
+/// other origin (a forge event, a reviewer, a replay, a subagent, an
+/// automation) is unattended or disposable and starts in `ASK`: a rule a
+/// person made for their own sessions does not approve its effects.
+pub(crate) const fn default_mode_for(origin: TaskOrigin) -> RunMode {
+    match origin {
+        TaskOrigin::Desktop | TaskOrigin::Cli | TaskOrigin::IdeAdapter | TaskOrigin::Fork => {
+            RunMode::Allowlist
+        }
+        _ => RunMode::Ask,
+    }
+}
+
 /// The warning a move to a mode that approves more must acknowledge.
-pub(crate) const RISK_WARNING: &str = "A mode that approves effects without asking lets anything the agent is made to attempt run inside its envelope, including an attempt planted by a prompt injection in a file, a page or a tool result, and data it can reach can leave through an effect that is approved without you seeing it. Effects that write outside the workspace, reach the network, use a secret, touch protected or configuration paths, delete, push or escalate still ask in every mode.";
+pub(crate) const RISK_WARNING: &str = "A mode that approves effects without asking lets anything the agent is made to attempt run inside its envelope, including an attempt planted by a prompt injection in a file, a page or a tool result, and data it can reach can leave through an effect that is approved without you seeing it. Effects that write outside the workspace, reach the network, use a secret, touch protected or configuration paths, delete, push or escalate still ask in every mode; the one exception is AUTONOMOUS, which also lets the install of the project's own declared dependencies (npm ci, pnpm install, cargo fetch and the like, with no package named on the command line) reach the network.";
 
 /// Most live allowlist rules this Core holds.
 const MAX_RULES: usize = 1000;
@@ -178,9 +198,15 @@ impl RunPolicies {
         task: TaskId,
     ) -> Result<(RunMode, bool, u64), String> {
         let f = self.refresh(store)?;
-        Ok(f.modes.get(&task).map_or((RunMode::Ask, false, 0), |m| {
-            (m.mode, m.acknowledged, m.offset)
-        }))
+        if let Some(m) = f.modes.get(&task) {
+            return Ok((m.mode, m.acknowledged, m.offset));
+        }
+        drop(f);
+        let default = match store.task(&task) {
+            Ok(Some(t)) => default_mode_for(t.origin),
+            _ => RunMode::Ask,
+        };
+        Ok((default, false, 0))
     }
 
     /// Every rule that has not been revoked.
@@ -1094,7 +1120,7 @@ async fn set_run_mode(
         return Err(refuse(
             "UNKNOWN_RUN_MODE",
             format!(
-                "`{}` is not a run mode; use ASK, ALLOWLIST, ALLOWLIST_SANDBOX or RUN_EVERYTHING",
+                "`{}` is not a run mode; use ASK, ALLOWLIST, ALLOWLIST_SANDBOX, RUN_EVERYTHING or AUTONOMOUS",
                 p.mode
             ),
         ));
@@ -1112,6 +1138,15 @@ async fn set_run_mode(
         return Err(refuse(
             "UNATTENDED_AUTOMATION",
             "an automation's run takes its principal's ceiling and asks for every protected effect; a run mode cannot widen it",
+        ));
+    }
+    // DR-PX-2026-10-25-017: a subagent runs inside its capsule's ceiling and
+    // a slice of its parent's budget; a person's autonomy choice is made on
+    // the task they attend, and the child never inherits it (REQ-EV-0046).
+    if mode == RunMode::Autonomous && task.origin == TaskOrigin::Subagent {
+        return Err(refuse(
+            "UNATTENDED_SUBAGENT",
+            "AUTONOMOUS is chosen on the task a person attends; a subagent stays inside its capsule and its slice of the parent's budget",
         ));
     }
     require_lease(core, &env.command_id, env, &task.session_id)

@@ -59,6 +59,8 @@ export interface ReviewBundleView {
   /** PX-127: the forge's CI runs for the pushed commit — external evidence with provenance `ci`, never a verification result. */
   ciEvidence: { name: string; runId: string; status: string; conclusion: string; url: string; completedAt: string; logRef: string; logTruncated: boolean; commit: string; provenance: string }[];
   ciRejected: { name: string; headSha: string; reason: string }[];
+  /** The Core's repair attempts for the task (PX-018), in the order recorded; outcome is empty while open, ESCALATED for the entry the loop wrote when it refused another attempt. */
+  repairAttempts: { ordinal: number; failureSignature: string; hypothesis: string; intendedFix: string; outcome: string; reverted: boolean; escalation: string }[];
   /** PX-127: the pull request's comments the task has seen — untrusted text, what became of each. */
   reviewComments: { commentId: string; kind: string; author: string; url: string; path: string; line: string; body: string; trust: string; disposition: string; reason: string; inputId: string; answered: boolean; reportedBack: boolean; createdAt: string }[];
 }

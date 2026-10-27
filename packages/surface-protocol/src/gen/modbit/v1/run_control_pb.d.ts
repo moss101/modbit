@@ -544,8 +544,10 @@ export declare type InterruptAccepted = Message<"modbit.v1.InterruptAccepted"> &
 export declare const InterruptAcceptedSchema: GenMessage<InterruptAccepted>;
 
 /**
- * Set who approves protected effects for the task: ASK (default) | ALLOWLIST |
- * ALLOWLIST_SANDBOX | RUN_EVERYTHING. A mode that approves more than the one
+ * Set who approves protected effects for the task: ASK | ALLOWLIST (default;
+ * asks for everything no live rule covers) | ALLOWLIST_SANDBOX | RUN_EVERYTHING |
+ * AUTONOMOUS (RUN_EVERYTHING plus the install of the project's declared
+ * dependencies; durable). A mode that approves more than the one
  * in force (RUN_EVERYTHING above all) must carry `acknowledge_risk`, the
  * person's acknowledgement that a prompt injection or an exfiltration could
  * run inside the envelope; it is recorded with the warning text. RUN_EVERYTHING

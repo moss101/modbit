@@ -1,0 +1,1348 @@
+{
+ "recorded": "2026-10-24",
+ "platform": "macOS arm64, Electron 44.3.0, device scale 2",
+ "elementsPixelCompared": 190,
+ "unexempt": 128,
+ "identical": 78,
+ "worstInteriorMismatch": 0.0493,
+ "bound": 0.05,
+ "declaredDeviations": {
+  "ZDX-01": 12,
+  "ZDX-02": 6,
+  "ZDX-03": 160,
+  "ZDX-05": 6
+ },
+ "undeclaredDeviations": 0,
+ "pixels": [
+  {
+   "key": "button-matrix|button|default|xs",
+   "theme": "light",
+   "index": 0,
+   "ratio": 0.0037230081906180195,
+   "exempt": null
+  },
+  {
+   "key": "button-matrix|button|default|sm",
+   "theme": "light",
+   "index": 0,
+   "ratio": 0.00963718820861678,
+   "exempt": null
+  },
+  {
+   "key": "button-matrix|button|default|default",
+   "theme": "light",
+   "index": 0,
+   "ratio": 0.0061818181818181816,
+   "exempt": null
+  },
+  {
+   "key": "button-matrix|button|default|default",
+   "theme": "light",
+   "index": 1,
+   "ratio": 0.005869565217391304,
+   "exempt": null
+  },
+  {
+   "key": "button-matrix|button|default|default",
+   "theme": "light",
+   "index": 2,
+   "ratio": 0.014929577464788733,
+   "exempt": null
+  },
+  {
+   "key": "button-matrix|button|default|lg",
+   "theme": "light",
+   "index": 0,
+   "ratio": 0.01277139208173691,
+   "exempt": null
+  },
+  {
+   "key": "button-matrix|button|outline|xs",
+   "theme": "light",
+   "index": 0,
+   "ratio": 0.0007639419404125286,
+   "exempt": "ZDX-03"
+  },
+  {
+   "key": "button-matrix|button|outline|sm",
+   "theme": "light",
+   "index": 0,
+   "ratio": 0.012048192771084338,
+   "exempt": "ZDX-03"
+  },
+  {
+   "key": "button-matrix|button|outline|default",
+   "theme": "light",
+   "index": 0,
+   "ratio": 0.009357798165137614,
+   "exempt": "ZDX-03"
+  },
+  {
+   "key": "button-matrix|button|outline|default",
+   "theme": "light",
+   "index": 1,
+   "ratio": 0.004347826086956522,
+   "exempt": "ZDX-03"
+  },
+  {
+   "key": "button-matrix|button|outline|default",
+   "theme": "light",
+   "index": 2,
+   "ratio": 0.0022535211267605635,
+   "exempt": "ZDX-03"
+  },
+  {
+   "key": "button-matrix|button|outline|lg",
+   "theme": "light",
+   "index": 0,
+   "ratio": 0.014655172413793103,
+   "exempt": "ZDX-03"
+  },
+  {
+   "key": "button-matrix|button|secondary|xs",
+   "theme": "light",
+   "index": 0,
+   "ratio": 0,
+   "exempt": null
+  },
+  {
+   "key": "button-matrix|button|secondary|sm",
+   "theme": "light",
+   "index": 0,
+   "ratio": 0,
+   "exempt": null
+  },
+  {
+   "key": "button-matrix|button|secondary|default",
+   "theme": "light",
+   "index": 0,
+   "ratio": 0,
+   "exempt": null
+  },
+  {
+   "key": "button-matrix|button|secondary|default",
+   "theme": "light",
+   "index": 1,
+   "ratio": 0,
+   "exempt": null
+  },
+  {
+   "key": "button-matrix|button|secondary|default",
+   "theme": "light",
+   "index": 2,
+   "ratio": 0,
+   "exempt": null
+  },
+  {
+   "key": "button-matrix|button|secondary|lg",
+   "theme": "light",
+   "index": 0,
+   "ratio": 0,
+   "exempt": null
+  },
+  {
+   "key": "button-matrix|button|ghost|xs",
+   "theme": "light",
+   "index": 0,
+   "ratio": 0,
+   "exempt": null
+  },
+  {
+   "key": "button-matrix|button|ghost|sm",
+   "theme": "light",
+   "index": 0,
+   "ratio": 0,
+   "exempt": null
+  },
+  {
+   "key": "button-matrix|button|ghost|default",
+   "theme": "light",
+   "index": 0,
+   "ratio": 0,
+   "exempt": null
+  },
+  {
+   "key": "button-matrix|button|ghost|default",
+   "theme": "light",
+   "index": 1,
+   "ratio": 0,
+   "exempt": null
+  },
+  {
+   "key": "button-matrix|button|ghost|default",
+   "theme": "light",
+   "index": 2,
+   "ratio": 0,
+   "exempt": null
+  },
+  {
+   "key": "button-matrix|button|ghost|lg",
+   "theme": "light",
+   "index": 0,
+   "ratio": 0,
+   "exempt": null
+  },
+  {
+   "key": "button-matrix|button|destructive|xs",
+   "theme": "light",
+   "index": 0,
+   "ratio": 0.001664816870144284,
+   "exempt": null
+  },
+  {
+   "key": "button-matrix|button|destructive|sm",
+   "theme": "light",
+   "index": 0,
+   "ratio": 0.009991496598639456,
+   "exempt": null
+  },
+  {
+   "key": "button-matrix|button|destructive|default",
+   "theme": "light",
+   "index": 0,
+   "ratio": 0.008405797101449276,
+   "exempt": null
+  },
+  {
+   "key": "button-matrix|button|destructive|default",
+   "theme": "light",
+   "index": 1,
+   "ratio": 0.004347826086956522,
+   "exempt": null
+  },
+  {
+   "key": "button-matrix|button|destructive|default",
+   "theme": "light",
+   "index": 2,
+   "ratio": 0.014647887323943662,
+   "exempt": null
+  },
+  {
+   "key": "button-matrix|button|destructive|lg",
+   "theme": "light",
+   "index": 0,
+   "ratio": 0.013286934514394179,
+   "exempt": null
+  },
+  {
+   "key": "button-matrix|button|ghost|icon-xs",
+   "theme": "light",
+   "index": 0,
+   "ratio": 0,
+   "exempt": null
+  },
+  {
+   "key": "button-matrix|button|ghost|icon-sm",
+   "theme": "light",
+   "index": 0,
+   "ratio": 0,
+   "exempt": null
+  },
+  {
+   "key": "button-matrix|button|ghost|icon",
+   "theme": "light",
+   "index": 0,
+   "ratio": 0,
+   "exempt": null
+  },
+  {
+   "key": "button-matrix|button|ghost|icon-lg",
+   "theme": "light",
+   "index": 0,
+   "ratio": 0,
+   "exempt": null
+  },
+  {
+   "key": "button-matrix|button|outline|icon-xs",
+   "theme": "light",
+   "index": 0,
+   "ratio": 0.0034602076124567475,
+   "exempt": "ZDX-03"
+  },
+  {
+   "key": "button-matrix|button|outline|icon-sm",
+   "theme": "light",
+   "index": 0,
+   "ratio": 0.022675736961451247,
+   "exempt": "ZDX-03"
+  },
+  {
+   "key": "button-matrix|button|outline|icon",
+   "theme": "light",
+   "index": 0,
+   "ratio": 0.016,
+   "exempt": "ZDX-03"
+  },
+  {
+   "key": "button-matrix|button|outline|icon-lg",
+   "theme": "light",
+   "index": 0,
+   "ratio": 0.020214030915576695,
+   "exempt": "ZDX-03"
+  },
+  {
+   "key": "badge|badge|default|",
+   "theme": "light",
+   "index": 0,
+   "ratio": 0,
+   "exempt": null
+  },
+  {
+   "key": "badge|badge|secondary|",
+   "theme": "light",
+   "index": 0,
+   "ratio": 0,
+   "exempt": null
+  },
+  {
+   "key": "badge|badge|destructive|",
+   "theme": "light",
+   "index": 0,
+   "ratio": 0.010977630488815244,
+   "exempt": "ZDX-02"
+  },
+  {
+   "key": "badge|badge|outline|",
+   "theme": "light",
+   "index": 0,
+   "ratio": 0,
+   "exempt": null
+  },
+  {
+   "key": "fields|label||",
+   "theme": "light",
+   "index": 0,
+   "ratio": 0,
+   "exempt": null
+  },
+  {
+   "key": "fields|input||",
+   "theme": "light",
+   "index": 0,
+   "ratio": 0.02546067415730337,
+   "exempt": "ZDX-03"
+  },
+  {
+   "key": "fields|input||",
+   "theme": "light",
+   "index": 1,
+   "ratio": 0.0008988764044943821,
+   "exempt": "ZDX-03"
+  },
+  {
+   "key": "fields|input||",
+   "theme": "light",
+   "index": 2,
+   "ratio": 0.00044943820224719103,
+   "exempt": "ZDX-03"
+  },
+  {
+   "key": "fields|input||",
+   "theme": "light",
+   "index": 3,
+   "ratio": 0,
+   "exempt": null
+  },
+  {
+   "key": "fields|textarea||",
+   "theme": "light",
+   "index": 0,
+   "ratio": 0.016135568244612267,
+   "exempt": "ZDX-03"
+  },
+  {
+   "key": "fields|checkbox||",
+   "theme": "light",
+   "index": 0,
+   "ratio": 0,
+   "exempt": null
+  },
+  {
+   "key": "fields|checkbox||",
+   "theme": "light",
+   "index": 1,
+   "ratio": 0.005917159763313609,
+   "exempt": "ZDX-03"
+  },
+  {
+   "key": "tabs|tabs||",
+   "theme": "light",
+   "index": 0,
+   "ratio": 0,
+   "exempt": null
+  },
+  {
+   "key": "tabs|tabs-list|default|",
+   "theme": "light",
+   "index": 0,
+   "ratio": 0,
+   "exempt": null
+  },
+  {
+   "key": "tabs|tabs-trigger||",
+   "theme": "light",
+   "index": 0,
+   "ratio": 0,
+   "exempt": null
+  },
+  {
+   "key": "tabs|tabs-trigger||",
+   "theme": "light",
+   "index": 1,
+   "ratio": 0,
+   "exempt": "ZDX-01"
+  },
+  {
+   "key": "tabs|tabs-trigger||",
+   "theme": "light",
+   "index": 2,
+   "ratio": 0,
+   "exempt": "ZDX-01"
+  },
+  {
+   "key": "tabs|tabs-content||",
+   "theme": "light",
+   "index": 0,
+   "ratio": 0,
+   "exempt": null
+  },
+  {
+   "key": "surfaces|card||default",
+   "theme": "light",
+   "index": 0,
+   "ratio": 0.0013725490196078432,
+   "exempt": null
+  },
+  {
+   "key": "surfaces|card-header||",
+   "theme": "light",
+   "index": 0,
+   "ratio": 0,
+   "exempt": null
+  },
+  {
+   "key": "surfaces|card-title||",
+   "theme": "light",
+   "index": 0,
+   "ratio": 0,
+   "exempt": null
+  },
+  {
+   "key": "surfaces|card-description||",
+   "theme": "light",
+   "index": 0,
+   "ratio": 0,
+   "exempt": "ZDX-01"
+  },
+  {
+   "key": "surfaces|card-content||",
+   "theme": "light",
+   "index": 0,
+   "ratio": 0,
+   "exempt": null
+  },
+  {
+   "key": "surfaces|card-footer||",
+   "theme": "light",
+   "index": 0,
+   "ratio": 0.003633980698200882,
+   "exempt": null
+  },
+  {
+   "key": "surfaces|button|default|sm",
+   "theme": "light",
+   "index": 0,
+   "ratio": 0.024322169059011165,
+   "exempt": null
+  },
+  {
+   "key": "surfaces|kbd-group||",
+   "theme": "light",
+   "index": 0,
+   "ratio": 0,
+   "exempt": null
+  },
+  {
+   "key": "surfaces|kbd||",
+   "theme": "light",
+   "index": 0,
+   "ratio": 0,
+   "exempt": null
+  },
+  {
+   "key": "surfaces|kbd||",
+   "theme": "light",
+   "index": 1,
+   "ratio": 0,
+   "exempt": null
+  },
+  {
+   "key": "|dropdown-menu-trigger|outline|default",
+   "theme": "light",
+   "index": 0,
+   "ratio": 0.00463768115942029,
+   "exempt": "ZDX-03"
+  },
+  {
+   "key": "dropdown-menu|dropdown-menu-item|default|",
+   "theme": "light",
+   "index": 0,
+   "ratio": 0.01417233560090703,
+   "exempt": null
+  },
+  {
+   "key": "dropdown-menu|dropdown-menu-item|default|",
+   "theme": "light",
+   "index": 1,
+   "ratio": 0,
+   "exempt": null
+  },
+  {
+   "key": "dropdown-menu|dropdown-menu-item|default|",
+   "theme": "light",
+   "index": 2,
+   "ratio": 0,
+   "exempt": null
+  },
+  {
+   "key": "dropdown-menu|dropdown-menu-shortcut||",
+   "theme": "light",
+   "index": 0,
+   "ratio": 0.2027310924369748,
+   "exempt": "ZDX-01"
+  },
+  {
+   "key": "dropdown-menu|dropdown-menu-checkbox-item||",
+   "theme": "light",
+   "index": 0,
+   "ratio": 0,
+   "exempt": null
+  },
+  {
+   "key": "dropdown-menu|dropdown-menu-checkbox-item-indicator||",
+   "theme": "light",
+   "index": 0,
+   "ratio": 0,
+   "exempt": null
+  },
+  {
+   "key": "dropdown-menu|dropdown-menu-separator||",
+   "theme": "light",
+   "index": 0,
+   "ratio": 0,
+   "exempt": null
+  },
+  {
+   "key": "dropdown-menu|dropdown-menu-item|destructive|",
+   "theme": "light",
+   "index": 0,
+   "ratio": 0.017148526077097506,
+   "exempt": "ZDX-02"
+  },
+  {
+   "key": "select-trigger|select-trigger|input|default",
+   "theme": "light",
+   "index": 0,
+   "ratio": 0.037013574660633486,
+   "exempt": "ZDX-03"
+  },
+  {
+   "key": "|tooltip-trigger|ghost|icon",
+   "theme": "light",
+   "index": 0,
+   "ratio": 0,
+   "exempt": null
+  },
+  {
+   "key": "tooltip|tooltip-content||",
+   "theme": "light",
+   "index": 0,
+   "ratio": 0.03365817091454273,
+   "exempt": null
+  },
+  {
+   "key": "tooltip|kbd||",
+   "theme": "light",
+   "index": 0,
+   "ratio": 0.038461538461538464,
+   "exempt": null
+  },
+  {
+   "key": "dialog|dialog-content||",
+   "theme": "light",
+   "index": 0,
+   "ratio": 0.049301908117811315,
+   "exempt": null
+  },
+  {
+   "key": "dialog|dialog-header||",
+   "theme": "light",
+   "index": 0,
+   "ratio": 0.00940881089196045,
+   "exempt": null
+  },
+  {
+   "key": "dialog|dialog-title||",
+   "theme": "light",
+   "index": 0,
+   "ratio": 0.0030413625304136255,
+   "exempt": null
+  },
+  {
+   "key": "dialog|dialog-description||",
+   "theme": "light",
+   "index": 0,
+   "ratio": 3.0413625304136255e-05,
+   "exempt": "ZDX-01"
+  },
+  {
+   "key": "dialog|input||",
+   "theme": "light",
+   "index": 0,
+   "ratio": 0.031326034063260344,
+   "exempt": "ZDX-03"
+  },
+  {
+   "key": "dialog|dialog-footer||",
+   "theme": "light",
+   "index": 0,
+   "ratio": 0.01485588620625117,
+   "exempt": null
+  },
+  {
+   "key": "dialog|button|outline|default",
+   "theme": "light",
+   "index": 0,
+   "ratio": 0.026923076923076925,
+   "exempt": "ZDX-03"
+  },
+  {
+   "key": "dialog|button|default|default",
+   "theme": "light",
+   "index": 0,
+   "ratio": 0.02898966704936854,
+   "exempt": null
+  },
+  {
+   "key": "|alert-dialog-overlay||",
+   "theme": "light",
+   "index": 0,
+   "ratio": 0.00035365530193321403,
+   "exempt": null
+  },
+  {
+   "key": "alert-dialog|alert-dialog-content||",
+   "theme": "light",
+   "index": 0,
+   "ratio": 0.006299212598425197,
+   "exempt": null
+  },
+  {
+   "key": "alert-dialog|alert-dialog-header||",
+   "theme": "light",
+   "index": 0,
+   "ratio": 0,
+   "exempt": null
+  },
+  {
+   "key": "alert-dialog|alert-dialog-title||",
+   "theme": "light",
+   "index": 0,
+   "ratio": 0,
+   "exempt": null
+  },
+  {
+   "key": "alert-dialog|alert-dialog-description||",
+   "theme": "light",
+   "index": 0,
+   "ratio": 0,
+   "exempt": "ZDX-01"
+  },
+  {
+   "key": "alert-dialog|alert-dialog-footer||",
+   "theme": "light",
+   "index": 0,
+   "ratio": 0.010791788856304985,
+   "exempt": null
+  },
+  {
+   "key": "alert-dialog|alert-dialog-cancel||",
+   "theme": "light",
+   "index": 0,
+   "ratio": 0.02360655737704918,
+   "exempt": "ZDX-03"
+  },
+  {
+   "key": "alert-dialog|alert-dialog-action||",
+   "theme": "light",
+   "index": 0,
+   "ratio": 0.007017543859649123,
+   "exempt": null
+  },
+  {
+   "key": "button-matrix|button|default|xs",
+   "theme": "dark",
+   "index": 0,
+   "ratio": 0.0037230081906180195,
+   "exempt": null
+  },
+  {
+   "key": "button-matrix|button|default|sm",
+   "theme": "dark",
+   "index": 0,
+   "ratio": 0.00963718820861678,
+   "exempt": null
+  },
+  {
+   "key": "button-matrix|button|default|default",
+   "theme": "dark",
+   "index": 0,
+   "ratio": 0.0061818181818181816,
+   "exempt": null
+  },
+  {
+   "key": "button-matrix|button|default|default",
+   "theme": "dark",
+   "index": 1,
+   "ratio": 0.005869565217391304,
+   "exempt": null
+  },
+  {
+   "key": "button-matrix|button|default|default",
+   "theme": "dark",
+   "index": 2,
+   "ratio": 0.014929577464788733,
+   "exempt": null
+  },
+  {
+   "key": "button-matrix|button|default|lg",
+   "theme": "dark",
+   "index": 0,
+   "ratio": 0.01277139208173691,
+   "exempt": null
+  },
+  {
+   "key": "button-matrix|button|outline|xs",
+   "theme": "dark",
+   "index": 0,
+   "ratio": 0.0007639419404125286,
+   "exempt": "ZDX-03"
+  },
+  {
+   "key": "button-matrix|button|outline|sm",
+   "theme": "dark",
+   "index": 0,
+   "ratio": 0.010613884107860011,
+   "exempt": "ZDX-03"
+  },
+  {
+   "key": "button-matrix|button|outline|default",
+   "theme": "dark",
+   "index": 0,
+   "ratio": 0.008073394495412844,
+   "exempt": "ZDX-03"
+  },
+  {
+   "key": "button-matrix|button|outline|default",
+   "theme": "dark",
+   "index": 1,
+   "ratio": 0.0034782608695652175,
+   "exempt": "ZDX-03"
+  },
+  {
+   "key": "button-matrix|button|outline|default",
+   "theme": "dark",
+   "index": 2,
+   "ratio": 0,
+   "exempt": "ZDX-03"
+  },
+  {
+   "key": "button-matrix|button|outline|lg",
+   "theme": "dark",
+   "index": 0,
+   "ratio": 0.013793103448275862,
+   "exempt": "ZDX-03"
+  },
+  {
+   "key": "button-matrix|button|secondary|xs",
+   "theme": "dark",
+   "index": 0,
+   "ratio": 0,
+   "exempt": null
+  },
+  {
+   "key": "button-matrix|button|secondary|sm",
+   "theme": "dark",
+   "index": 0,
+   "ratio": 0,
+   "exempt": null
+  },
+  {
+   "key": "button-matrix|button|secondary|default",
+   "theme": "dark",
+   "index": 0,
+   "ratio": 0,
+   "exempt": null
+  },
+  {
+   "key": "button-matrix|button|secondary|default",
+   "theme": "dark",
+   "index": 1,
+   "ratio": 0,
+   "exempt": null
+  },
+  {
+   "key": "button-matrix|button|secondary|default",
+   "theme": "dark",
+   "index": 2,
+   "ratio": 0,
+   "exempt": null
+  },
+  {
+   "key": "button-matrix|button|secondary|lg",
+   "theme": "dark",
+   "index": 0,
+   "ratio": 0,
+   "exempt": null
+  },
+  {
+   "key": "button-matrix|button|ghost|xs",
+   "theme": "dark",
+   "index": 0,
+   "ratio": 0,
+   "exempt": null
+  },
+  {
+   "key": "button-matrix|button|ghost|sm",
+   "theme": "dark",
+   "index": 0,
+   "ratio": 0,
+   "exempt": null
+  },
+  {
+   "key": "button-matrix|button|ghost|default",
+   "theme": "dark",
+   "index": 0,
+   "ratio": 0,
+   "exempt": null
+  },
+  {
+   "key": "button-matrix|button|ghost|default",
+   "theme": "dark",
+   "index": 1,
+   "ratio": 0,
+   "exempt": null
+  },
+  {
+   "key": "button-matrix|button|ghost|default",
+   "theme": "dark",
+   "index": 2,
+   "ratio": 0,
+   "exempt": null
+  },
+  {
+   "key": "button-matrix|button|ghost|lg",
+   "theme": "dark",
+   "index": 0,
+   "ratio": 0,
+   "exempt": null
+  },
+  {
+   "key": "button-matrix|button|destructive|xs",
+   "theme": "dark",
+   "index": 0,
+   "ratio": 0.23931742508324083,
+   "exempt": "ZDX-05"
+  },
+  {
+   "key": "button-matrix|button|destructive|sm",
+   "theme": "dark",
+   "index": 0,
+   "ratio": 0.20227465986394558,
+   "exempt": "ZDX-05"
+  },
+  {
+   "key": "button-matrix|button|destructive|default",
+   "theme": "dark",
+   "index": 0,
+   "ratio": 0.1803623188405797,
+   "exempt": "ZDX-05"
+  },
+  {
+   "key": "button-matrix|button|destructive|default",
+   "theme": "dark",
+   "index": 1,
+   "ratio": 0.13608695652173913,
+   "exempt": "ZDX-05"
+  },
+  {
+   "key": "button-matrix|button|destructive|default",
+   "theme": "dark",
+   "index": 2,
+   "ratio": 0.15929577464788733,
+   "exempt": "ZDX-05"
+  },
+  {
+   "key": "button-matrix|button|destructive|lg",
+   "theme": "dark",
+   "index": 0,
+   "ratio": 0.14837076874406832,
+   "exempt": "ZDX-05"
+  },
+  {
+   "key": "button-matrix|button|ghost|icon-xs",
+   "theme": "dark",
+   "index": 0,
+   "ratio": 0,
+   "exempt": null
+  },
+  {
+   "key": "button-matrix|button|ghost|icon-sm",
+   "theme": "dark",
+   "index": 0,
+   "ratio": 0,
+   "exempt": null
+  },
+  {
+   "key": "button-matrix|button|ghost|icon",
+   "theme": "dark",
+   "index": 0,
+   "ratio": 0,
+   "exempt": null
+  },
+  {
+   "key": "button-matrix|button|ghost|icon-lg",
+   "theme": "dark",
+   "index": 0,
+   "ratio": 0,
+   "exempt": null
+  },
+  {
+   "key": "button-matrix|button|outline|icon-xs",
+   "theme": "dark",
+   "index": 0,
+   "ratio": 0.0034602076124567475,
+   "exempt": "ZDX-03"
+  },
+  {
+   "key": "button-matrix|button|outline|icon-sm",
+   "theme": "dark",
+   "index": 0,
+   "ratio": 0.018140589569160998,
+   "exempt": "ZDX-03"
+  },
+  {
+   "key": "button-matrix|button|outline|icon",
+   "theme": "dark",
+   "index": 0,
+   "ratio": 0.0128,
+   "exempt": "ZDX-03"
+  },
+  {
+   "key": "button-matrix|button|outline|icon-lg",
+   "theme": "dark",
+   "index": 0,
+   "ratio": 0.0178359096313912,
+   "exempt": "ZDX-03"
+  },
+  {
+   "key": "badge|badge|default|",
+   "theme": "dark",
+   "index": 0,
+   "ratio": 0,
+   "exempt": null
+  },
+  {
+   "key": "badge|badge|secondary|",
+   "theme": "dark",
+   "index": 0,
+   "ratio": 0,
+   "exempt": null
+  },
+  {
+   "key": "badge|badge|destructive|",
+   "theme": "dark",
+   "index": 0,
+   "ratio": 0.02568351284175642,
+   "exempt": "ZDX-02"
+  },
+  {
+   "key": "badge|badge|outline|",
+   "theme": "dark",
+   "index": 0,
+   "ratio": 0,
+   "exempt": null
+  },
+  {
+   "key": "fields|label||",
+   "theme": "dark",
+   "index": 0,
+   "ratio": 0,
+   "exempt": null
+  },
+  {
+   "key": "fields|input||",
+   "theme": "dark",
+   "index": 0,
+   "ratio": 0.025213483146067417,
+   "exempt": "ZDX-03"
+  },
+  {
+   "key": "fields|input||",
+   "theme": "dark",
+   "index": 1,
+   "ratio": 0.00044943820224719103,
+   "exempt": "ZDX-03"
+  },
+  {
+   "key": "fields|input||",
+   "theme": "dark",
+   "index": 2,
+   "ratio": 0,
+   "exempt": "ZDX-03"
+  },
+  {
+   "key": "fields|input||",
+   "theme": "dark",
+   "index": 3,
+   "ratio": 0,
+   "exempt": null
+  },
+  {
+   "key": "fields|textarea||",
+   "theme": "dark",
+   "index": 0,
+   "ratio": 0.015251427518880088,
+   "exempt": "ZDX-03"
+  },
+  {
+   "key": "fields|checkbox||",
+   "theme": "dark",
+   "index": 0,
+   "ratio": 0,
+   "exempt": null
+  },
+  {
+   "key": "fields|checkbox||",
+   "theme": "dark",
+   "index": 1,
+   "ratio": 0,
+   "exempt": "ZDX-03"
+  },
+  {
+   "key": "tabs|tabs||",
+   "theme": "dark",
+   "index": 0,
+   "ratio": 0.0014831460674157304,
+   "exempt": null
+  },
+  {
+   "key": "tabs|tabs-list|default|",
+   "theme": "dark",
+   "index": 0,
+   "ratio": 0.008245877061469266,
+   "exempt": null
+  },
+  {
+   "key": "tabs|tabs-trigger||",
+   "theme": "dark",
+   "index": 0,
+   "ratio": 0,
+   "exempt": null
+  },
+  {
+   "key": "tabs|tabs-trigger||",
+   "theme": "dark",
+   "index": 1,
+   "ratio": 0.035869565217391305,
+   "exempt": "ZDX-01"
+  },
+  {
+   "key": "tabs|tabs-trigger||",
+   "theme": "dark",
+   "index": 2,
+   "ratio": 0,
+   "exempt": "ZDX-01"
+  },
+  {
+   "key": "tabs|tabs-content||",
+   "theme": "dark",
+   "index": 0,
+   "ratio": 0,
+   "exempt": null
+  },
+  {
+   "key": "surfaces|card||default",
+   "theme": "dark",
+   "index": 0,
+   "ratio": 0.0013725490196078432,
+   "exempt": null
+  },
+  {
+   "key": "surfaces|card-header||",
+   "theme": "dark",
+   "index": 0,
+   "ratio": 0,
+   "exempt": null
+  },
+  {
+   "key": "surfaces|card-title||",
+   "theme": "dark",
+   "index": 0,
+   "ratio": 0,
+   "exempt": null
+  },
+  {
+   "key": "surfaces|card-description||",
+   "theme": "dark",
+   "index": 0,
+   "ratio": 0,
+   "exempt": "ZDX-01"
+  },
+  {
+   "key": "surfaces|card-content||",
+   "theme": "dark",
+   "index": 0,
+   "ratio": 0,
+   "exempt": null
+  },
+  {
+   "key": "surfaces|card-footer||",
+   "theme": "dark",
+   "index": 0,
+   "ratio": 0.003633980698200882,
+   "exempt": null
+  },
+  {
+   "key": "surfaces|button|default|sm",
+   "theme": "dark",
+   "index": 0,
+   "ratio": 0.024322169059011165,
+   "exempt": null
+  },
+  {
+   "key": "surfaces|kbd-group||",
+   "theme": "dark",
+   "index": 0,
+   "ratio": 0,
+   "exempt": null
+  },
+  {
+   "key": "surfaces|kbd||",
+   "theme": "dark",
+   "index": 0,
+   "ratio": 0,
+   "exempt": null
+  },
+  {
+   "key": "surfaces|kbd||",
+   "theme": "dark",
+   "index": 1,
+   "ratio": 0,
+   "exempt": null
+  },
+  {
+   "key": "|dropdown-menu-trigger|outline|default",
+   "theme": "dark",
+   "index": 0,
+   "ratio": 0.004057971014492754,
+   "exempt": "ZDX-03"
+  },
+  {
+   "key": "dropdown-menu|dropdown-menu-item|default|",
+   "theme": "dark",
+   "index": 0,
+   "ratio": 0.014243197278911565,
+   "exempt": null
+  },
+  {
+   "key": "dropdown-menu|dropdown-menu-item|default|",
+   "theme": "dark",
+   "index": 1,
+   "ratio": 0,
+   "exempt": null
+  },
+  {
+   "key": "dropdown-menu|dropdown-menu-item|default|",
+   "theme": "dark",
+   "index": 2,
+   "ratio": 0,
+   "exempt": null
+  },
+  {
+   "key": "dropdown-menu|dropdown-menu-shortcut||",
+   "theme": "dark",
+   "index": 0,
+   "ratio": 0.2111344537815126,
+   "exempt": "ZDX-01"
+  },
+  {
+   "key": "dropdown-menu|dropdown-menu-checkbox-item||",
+   "theme": "dark",
+   "index": 0,
+   "ratio": 0,
+   "exempt": null
+  },
+  {
+   "key": "dropdown-menu|dropdown-menu-checkbox-item-indicator||",
+   "theme": "dark",
+   "index": 0,
+   "ratio": 0,
+   "exempt": null
+  },
+  {
+   "key": "dropdown-menu|dropdown-menu-separator||",
+   "theme": "dark",
+   "index": 0,
+   "ratio": 0,
+   "exempt": null
+  },
+  {
+   "key": "dropdown-menu|dropdown-menu-item|destructive|",
+   "theme": "dark",
+   "index": 0,
+   "ratio": 0.008857709750566893,
+   "exempt": "ZDX-02"
+  },
+  {
+   "key": "select-trigger|select-trigger|input|default",
+   "theme": "dark",
+   "index": 0,
+   "ratio": 0.035339366515837106,
+   "exempt": "ZDX-03"
+  },
+  {
+   "key": "|tooltip-trigger|ghost|icon",
+   "theme": "dark",
+   "index": 0,
+   "ratio": 0,
+   "exempt": null
+  },
+  {
+   "key": "tooltip|tooltip-content||",
+   "theme": "dark",
+   "index": 0,
+   "ratio": 0.02638680659670165,
+   "exempt": null
+  },
+  {
+   "key": "tooltip|kbd||",
+   "theme": "dark",
+   "index": 0,
+   "ratio": 0.019230769230769232,
+   "exempt": null
+  },
+  {
+   "key": "dialog|dialog-content||",
+   "theme": "dark",
+   "index": 0,
+   "ratio": 0.04707133834186557,
+   "exempt": null
+  },
+  {
+   "key": "dialog|dialog-header||",
+   "theme": "dark",
+   "index": 0,
+   "ratio": 0.008166381943365946,
+   "exempt": null
+  },
+  {
+   "key": "dialog|dialog-title||",
+   "theme": "dark",
+   "index": 0,
+   "ratio": 0.0030413625304136255,
+   "exempt": null
+  },
+  {
+   "key": "dialog|dialog-description||",
+   "theme": "dark",
+   "index": 0,
+   "ratio": 0,
+   "exempt": "ZDX-01"
+  },
+  {
+   "key": "dialog|input||",
+   "theme": "dark",
+   "index": 0,
+   "ratio": 0.012773722627737226,
+   "exempt": "ZDX-03"
+  },
+  {
+   "key": "dialog|dialog-footer||",
+   "theme": "dark",
+   "index": 0,
+   "ratio": 0.013920082350739285,
+   "exempt": null
+  },
+  {
+   "key": "dialog|button|outline|default",
+   "theme": "dark",
+   "index": 0,
+   "ratio": 0.023237179487179488,
+   "exempt": "ZDX-03"
+  },
+  {
+   "key": "dialog|button|default|default",
+   "theme": "dark",
+   "index": 0,
+   "ratio": 0.02812858783008037,
+   "exempt": null
+  },
+  {
+   "key": "|alert-dialog-overlay||",
+   "theme": "dark",
+   "index": 0,
+   "ratio": 0.0003404440406540997,
+   "exempt": null
+  },
+  {
+   "key": "alert-dialog|alert-dialog-content||",
+   "theme": "dark",
+   "index": 0,
+   "ratio": 0.006063897185265635,
+   "exempt": null
+  },
+  {
+   "key": "alert-dialog|alert-dialog-header||",
+   "theme": "dark",
+   "index": 0,
+   "ratio": 0,
+   "exempt": null
+  },
+  {
+   "key": "alert-dialog|alert-dialog-title||",
+   "theme": "dark",
+   "index": 0,
+   "ratio": 0,
+   "exempt": null
+  },
+  {
+   "key": "alert-dialog|alert-dialog-description||",
+   "theme": "dark",
+   "index": 0,
+   "ratio": 0,
+   "exempt": "ZDX-01"
+  },
+  {
+   "key": "alert-dialog|alert-dialog-footer||",
+   "theme": "dark",
+   "index": 0,
+   "ratio": 0.009736070381231672,
+   "exempt": null
+  },
+  {
+   "key": "alert-dialog|alert-dialog-cancel||",
+   "theme": "dark",
+   "index": 0,
+   "ratio": 0.01901639344262295,
+   "exempt": "ZDX-03"
+  },
+  {
+   "key": "alert-dialog|alert-dialog-action||",
+   "theme": "dark",
+   "index": 0,
+   "ratio": 0.007017543859649123,
+   "exempt": null
+  }
+ ]
+}

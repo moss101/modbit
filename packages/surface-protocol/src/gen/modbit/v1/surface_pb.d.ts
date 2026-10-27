@@ -4770,6 +4770,58 @@ export declare type VerificationRunView = Message<"modbit.v1.VerificationRunView
 export declare const VerificationRunViewSchema: GenMessage<VerificationRunView>;
 
 /**
+ * One repair attempt the Core recorded for the task (PX-018; shown from
+ * DR-PX-2026-10-25-017). `outcome` is empty while the attempt is open,
+ * RESOLVED | PARTIAL | UNCHANGED | WORSENED once concluded, and ESCALATED for
+ * the entry the loop writes when it refuses a further attempt (`escalation`
+ * then carries the reason and `ordinal` the attempts so far).
+ *
+ * @generated from message modbit.v1.RepairAttemptView
+ */
+export declare type RepairAttemptView = Message<"modbit.v1.RepairAttemptView"> & {
+  /**
+   * @generated from field: uint32 ordinal = 1;
+   */
+  ordinal: number;
+
+  /**
+   * @generated from field: string failure_signature = 2;
+   */
+  failureSignature: string;
+
+  /**
+   * @generated from field: string hypothesis = 3;
+   */
+  hypothesis: string;
+
+  /**
+   * @generated from field: string intended_fix = 4;
+   */
+  intendedFix: string;
+
+  /**
+   * @generated from field: string outcome = 5;
+   */
+  outcome: string;
+
+  /**
+   * @generated from field: bool reverted = 6;
+   */
+  reverted: boolean;
+
+  /**
+   * @generated from field: string escalation = 7;
+   */
+  escalation: string;
+};
+
+/**
+ * Describes the message modbit.v1.RepairAttemptView.
+ * Use `create(RepairAttemptViewSchema)` to create a new message.
+ */
+export declare const RepairAttemptViewSchema: GenMessage<RepairAttemptView>;
+
+/**
  * @generated from message modbit.v1.ReviewBundle
  */
 export declare type ReviewBundle = Message<"modbit.v1.ReviewBundle"> & {
@@ -4868,6 +4920,13 @@ export declare type ReviewBundle = Message<"modbit.v1.ReviewBundle"> & {
    * @generated from field: repeated modbit.v1.CiRejectedView ci_rejected = 361;
    */
   ciRejected: CiRejectedView[];
+
+  /**
+   * The repair attempts of the task, in the order they were recorded.
+   *
+   * @generated from field: repeated modbit.v1.RepairAttemptView repair_attempts = 362;
+   */
+  repairAttempts: RepairAttemptView[];
 };
 
 /**

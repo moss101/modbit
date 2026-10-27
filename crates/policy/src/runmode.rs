@@ -15,6 +15,10 @@
 //!   model's word).
 //! * `RUN_EVERYTHING` approves every in-envelope effect that is not in an
 //!   always-ask class.
+//! * `AUTONOMOUS` approves what `RUN_EVERYTHING` does, and the install of the
+//!   project's own declared dependencies (the one network reach it lets pass,
+//!   and only when the tool's classifier says that is all the call does).
+//!   It is durable; the other modes are as before (DR-PX-2026-10-25-017).
 //!
 //! In every mode the always-ask classes ([`AskClass`]) ask, unless a durable
 //! rule created with `covers_always_ask` (explicit, task or repository scope
@@ -508,6 +512,11 @@ pub struct RunPolicy {
     pub argv: Option<Vec<String>>,
     /// The always-ask classes the call falls in.
     pub ask_classes: Vec<AskClass>,
+    /// The call's only network reach is the install of the project's declared
+    /// dependencies, as the tool's own classifier established
+    /// (DR-PX-2026-10-25-017). Only the `AUTONOMOUS` mode lets it pass the
+    /// NETWORK class, and nothing else about the call.
+    pub dependency_install: bool,
     /// Whether the call runs fully contained in a sandbox: an isolated
     /// profile, which enforces no network and writes confined to its tree.
     pub contained: bool,
@@ -555,11 +564,22 @@ impl RunPolicy {
     /// Whether the mode lets the call run without asking.
     #[must_use]
     pub fn decide(&self, now_ms: i64) -> RunDecision {
-        let always_ask = !self.ask_classes.is_empty();
-        let always_ask_code = self
+        // The classes that ask in this mode. `AUTONOMOUS` is the one mode
+        // that lets the NETWORK class pass, and only for a call the host's
+        // classifier found to be nothing but a manifest install; any other
+        // class the call falls in still asks.
+        let asking: Vec<AskClass> = self
             .ask_classes
-            .first()
-            .map(|c| format!("ALWAYS_ASK:{}", c.name()));
+            .iter()
+            .copied()
+            .filter(|c| {
+                !(self.mode == RunMode::Autonomous
+                    && self.dependency_install
+                    && *c == AskClass::Network)
+            })
+            .collect();
+        let always_ask = !asking.is_empty();
+        let always_ask_code = asking.first().map(|c| format!("ALWAYS_ASK:{}", c.name()));
         if self.mode == RunMode::Ask {
             return RunDecision::Ask {
                 code: always_ask_code.unwrap_or_else(|| "MODE_ASK".into()),
@@ -594,6 +614,13 @@ impl RunPolicy {
             },
             RunMode::RunEverything => RunDecision::Approve {
                 rule: "run_mode:RUN_EVERYTHING".into(),
+            },
+            RunMode::Autonomous => RunDecision::Approve {
+                rule: if self.dependency_install && self.ask_classes.contains(&AskClass::Network) {
+                    "run_mode:AUTONOMOUS:dependency_install".into()
+                } else {
+                    "run_mode:AUTONOMOUS".into()
+                },
             },
             _ => RunDecision::Ask {
                 code: "NOT_IN_ALLOWLIST".into(),
@@ -632,6 +659,7 @@ mod tests {
             rules,
             argv: Some(v(argv)),
             ask_classes: vec![],
+            dependency_install: false,
             contained: false,
         }
     }

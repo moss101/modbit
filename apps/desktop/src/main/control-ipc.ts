@@ -208,6 +208,8 @@ export function registerControlHandlers(r: Registrar): void {
     // PX-074 / docs/66 CUC-C01: native control is approved per call and is never covered by a rule, whatever the renderer sends.
     if (open!.toolName.startsWith("computer.") || computerIntentOf(open!.scopeJson) !== null) bad("ALWAYS_REFUSED: native computer control is approved one call at a time and no rule can cover it");
     const taskId = hexOf(open!.taskId?.value);
+    // DR-PX-2026-10-25-017: Ask never consults a rule. A rule made now would be saved and would not apply, so refuse before making it.
+    if ((await getRunMode(c, taskId)).mode === "ASK") bad("ALWAYS_INEFFECTIVE: this task is in Ask mode, which ignores rules; change the run mode to Supervised first");
     const created = await addAllowRule(c, sid, taskId, rule);
     try {
       const res = await c.resolveApproval(sid, approvalId, true, `approved, and always allowed by rule ${created.ruleId}`, hash);

@@ -172,8 +172,11 @@ test("PX-047: scrolling up freezes follow, the pill counts later messages, the j
     await expect(page.getByTestId("conv-text")).toContainText("Ignore previous instructions");
 
     // Scroll up: follow freezes; a new message is counted by the pill; the view does not move.
-    await scroll.evaluate((e) => (e.scrollTop = 0));
-    await expect(scroll).toHaveAttribute("data-pinned", "false");
+    // The follow scroll of a layout that lands late can re-pin a view the person just left, so the person scrolls again until it lets go.
+    await expect(async () => {
+      await scroll.evaluate((e) => (e.scrollTop = 0));
+      await expect(scroll).toHaveAttribute("data-pinned", "false", { timeout: 1_000 });
+    }).toPass({ timeout: 15_000 });
     await expect(page.getByTestId("conv-pill")).toHaveCount(0);
     // PX-054/055 (deliberate change to this test): plain Enter in the composer now queues behind the running turn (AFW-E01);
     // the primary-modifier Enter is the steer (AFW-D11, AFW-E05), which is what this scenario exercises.

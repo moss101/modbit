@@ -46,10 +46,18 @@ test("AFW-A11: the scale tokens follow the spec's grid", () => {
   assert.equal(shared["--mb-space-1_5"], "6px");
   assert.equal(shared["--mb-radius-full"], "9999px");
   assert.equal(shared["--mb-control-md"], "28px");
-  assert.equal(shared["--mb-type-chrome-size"], "13px");
-  assert.equal(shared["--mb-type-chrome-line"], "18px");
+  // DR-PX-2026-10-24-016 ZDL-02: chrome text is ZCode's `text-ui-base` (14 px at the default), driven by the one --ui-font-size.
+  assert.equal(shared["--mb-type-chrome-size"], "var(--text-ui-base)");
+  assert.equal(shared["--mb-type-chrome-line"], "calc(var(--text-ui-base) * 1.5)");
   assert.equal(shared["--mb-motion-fast"], "100ms");
   assert.equal(shared["--mb-press-scale"], "0.98");
+  assert.equal(shared["--ui-font-size"], "14px");
+  assert.equal(shared["--text-ui-base"], "var(--ui-font-size)");
+  assert.equal(shared["--text-ui-xl"], "calc(var(--ui-font-size) + 4px)");
+  assert.equal(shared["--text-ui-caption"], "calc(var(--ui-font-size) - 1px)");
+  assert.equal(shared["--text-ui-xs"], "calc(var(--ui-font-size) - 4px)");
+  assert.equal(shared["--radius-xl"], "12px");
+  assert.equal(shared["--radius-2xl"], "16px");
   assert.match(shared["--mb-font-sans"]!, /system-ui/);
   assert.equal(conversationType(100).size, 14);
   assert.equal(conversationType(1000).size, conversationType(140).size, "the Text size setting is clamped");

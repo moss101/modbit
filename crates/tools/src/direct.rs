@@ -170,6 +170,7 @@ macro_rules! tool {
                     argv: crate::shell_class::rule_argv(args),
                     outside_workspace_write: effect.outside_workspace,
                     protected_path: effect.protected_path,
+                    dependency_install: effect.dependency_install,
                 }
             }
             fn invoke<'a>(

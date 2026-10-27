@@ -160,8 +160,9 @@ const supervisor = new CoreSupervisor(
             recoveryMs: r.recoveryMs.toString(),
           };
           send("core:recovery", lastRecovery);
-          // REQ-PX-049: tasks the person chose, when quitting, to have resumed on reopen. The Core names them (recovery has
-          // suspended them); resuming is the ordinary StartTask, after the provider and the session lease are in place.
+          // REQ-PX-049: tasks the person chose, when quitting, to have resumed on reopen, and (DR-PX-2026-10-25-017) the
+          // AUTONOMOUS tasks a crash cut short. The Core names them (recovery has suspended them); resuming is the ordinary
+          // StartTask, after the provider and the session lease are in place, and it judges every permission afresh.
           const resume = r.resumeRequestedTasks.map((t) => Buffer.from(t.value).toString("hex"));
           if (resume.length === 0 || !local.sessionId) return;
           await providerHanded;
@@ -501,6 +502,7 @@ handle("review:bundle", async (_e: IpcMainInvokeEvent, taskId: unknown) => {
     evidenceLinks: b.evidenceLinks,
     ciEvidence: b.ciEvidence.map((c) => ({ name: c.name, runId: c.runId.toString(), status: c.status, conclusion: c.conclusion, url: c.url, completedAt: c.completedAt, logRef: c.logRef, logTruncated: c.logTruncated, commit: c.commit, provenance: c.provenance })),
     ciRejected: b.ciRejected.map((c) => ({ name: c.name, headSha: c.headSha, reason: c.reason })),
+    repairAttempts: b.repairAttempts.map((a) => ({ ordinal: a.ordinal, failureSignature: a.failureSignature, hypothesis: a.hypothesis, intendedFix: a.intendedFix, outcome: a.outcome, reverted: a.reverted, escalation: a.escalation })),
     reviewComments: b.reviewComments.map((t) => ({ commentId: t.commentId.toString(), kind: t.kind, author: t.author, url: t.url, path: t.path, line: t.line.toString(), body: t.body, trust: t.trust, disposition: t.disposition, reason: t.reason, inputId: t.inputId, answered: t.answered, reportedBack: t.reportedBack, createdAt: t.createdAt })),
   };
 });

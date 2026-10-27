@@ -111,3 +111,14 @@ A screen is not complete until Playwright/Electron E2E drives the real app again
 ## Execution policy projections
 
 Implement objective preference controls and allowed manual pins using `SetExecutionPreference` in SurfaceProtocol. Render plan/leg verification and escalation progress, complete task usage and exact failure/attention reasons from Core events. Expose `GetRoutingDiagnostics` only when authorized; labels follow organization policy. Do not ship routing classifier, model economics, weights, registry authority or credentials in renderer/plugin business logic. Reconnect by event cursor with no repeated provider dispatch. The `execution-policy/` module owns the preference controls, the executed-path timeline (initial leg, escalation, independent review, human), the acceptance verdict with its required assurance, reviewer findings and per-leg cost; the Review surface embeds these projections and cannot render a done state while the verdict is REJECT or INCONCLUSIVE. Path labels and model labels follow the policy bundle's visibility rule. Validate these flows through EPR-005/007/010 in doc 61.
+
+## Design language (DR-PX-2026-10-24-016, PX-141..143)
+
+The renderer's look is ZCode's design language (Zai Light as `light`, Zai Dark as `dark`), measured and not approximated.
+
+- **One source.** `packages/design-tokens` emits, from one typed function, ZCode's `--color-*` tokens (`design-language.ts`, generated from `evidence/zcode-ui/reference`), the `--text-ui-*` scale driven by `--ui-font-size`, `--radius-*`, `--shadow-*` and the font stacks, and derives Modbit's `--mb-color-*` roles from them (`palette.ts`, one role map). Rules in `packages/ui` and the renderer read these names; no literal colour appears in a rule.
+- **Primitives** (`packages/ui/src/styles.ts`) are the CSS expression of ZCode's component recipes; native `input`, `textarea`, `select` and checkbox are styled at the element level so every screen inherits them. Test ids, roles, accessible names and key maps are unchanged.
+- **Icons** are the generated Lucide table (`icons.generated.ts`) drawn by `Icon`; status glyphs of AFW-A14 stay Modbit's.
+- **Accessibility floor.** AFW-A12 to A14 are not relaxed. Where ZCode's own value would breach AA the declared exceptions ZDX-01..09 apply (muted text role, status-surface foregrounds, 3:1 control edges, a visible focus ring, the dark destructive label, an opaque window root, reduced motion); the high-contrast palette is Modbit's own.
+- **Proof.** `e2e/zdl-tokens.spec.ts` resolves every token in the built app and compares it exactly with the capture; `e2e/fidelity.spec.ts` renders the specimen sheets of `#fidelity/<sheet>/<theme>` (gallery build only), probes Modbit's elements with the function that probed ZCode's, and compares style, size and pixels, allowing only the declared exceptions. Regenerate the capture with `tools/zcode-reference/`.
+

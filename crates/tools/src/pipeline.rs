@@ -763,6 +763,7 @@ impl ToolRuntime {
             command: facts.argv,
             outside_workspace_write: facts.outside_workspace_write,
             protected_path: facts.protected_path,
+            dependency_install: facts.dependency_install,
             declared_escalation: args
                 .get("escalation")
                 .and_then(Value::as_str)

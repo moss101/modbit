@@ -228,6 +228,7 @@ pub async fn bundle(
     let mut evidence_links = Vec::new();
     let mut receipts = 0u32;
     let mut run_ids = Vec::new();
+    let mut repair_attempts: Vec<wire::RepairAttemptView> = Vec::new();
     for ev in events
         .iter()
         .filter(|e| e.envelope.task_id == Some(task.task_id))
@@ -274,6 +275,37 @@ pub async fn bundle(
             "RunCreated" => {
                 run_ids.push(modbit_domain::RunId::from_bytes(ev.envelope.aggregate_id))
             }
+            "RepairAttemptRecorded" => repair_attempts.push(wire::RepairAttemptView {
+                ordinal: p["attempt_ordinal"].as_u64().unwrap_or_default() as u32,
+                failure_signature: p["failure_signature"]
+                    .as_str()
+                    .unwrap_or_default()
+                    .to_owned(),
+                hypothesis: p["hypothesis"].as_str().unwrap_or_default().to_owned(),
+                intended_fix: p["intended_fix"].as_str().unwrap_or_default().to_owned(),
+                ..Default::default()
+            }),
+            "RepairAttemptConcluded" => {
+                let ordinal = p["attempt_ordinal"].as_u64().unwrap_or_default() as u32;
+                if let Some(a) = repair_attempts
+                    .iter_mut()
+                    .rev()
+                    .find(|a| a.ordinal == ordinal && a.outcome.is_empty())
+                {
+                    a.outcome = p["outcome"].as_str().unwrap_or_default().to_owned();
+                    a.reverted = p["reverted"].as_bool().unwrap_or_default();
+                }
+            }
+            "RepairEscalated" => repair_attempts.push(wire::RepairAttemptView {
+                ordinal: p["attempts"].as_u64().unwrap_or_default() as u32,
+                failure_signature: p["failure_signature"]
+                    .as_str()
+                    .unwrap_or_default()
+                    .to_owned(),
+                outcome: "ESCALATED".into(),
+                escalation: p["reason"].as_str().unwrap_or_default().to_owned(),
+                ..Default::default()
+            }),
             "ToolCallSucceeded" | "ToolCallFailed" => {
                 if let Some(r) = p["result_ref"].as_str() {
                     evidence_links.push(format!("tool_result:{r}"));
@@ -332,6 +364,7 @@ pub async fn bundle(
         ci_evidence,
         review_comments,
         ci_rejected,
+        repair_attempts,
     })
 }
 

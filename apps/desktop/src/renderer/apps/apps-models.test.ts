@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
 import { callRowId, canCommitPush, canDecide, changeSummary, chipText, commitLabel, decisionWords, commitMode, effectWords, isReviewable, lineKind, newCommandId, rangesContain, refusalWords, stageState } from "./changes-model.ts";
-import { categoryLabel, percent, windowLine } from "./evidence-model.ts";
+import { categoryLabel, percent, repairLine, repairSummary, windowLine } from "./evidence-model.ts";
 import { formatBytes, parentOf, refusalText, withheldText } from "./files-model.ts";
 import { groupByTask } from "./use-terminals.ts";
 
@@ -105,4 +105,15 @@ test("PX-104: the chip says what the Core attributed and a decision never waits 
   assert.equal(decisionWords({ result: "ACCEPTED", path: "a.txt", hunkIndex: 0, runLive: false, agentNotice: "" }), "Accepted hunk 1 of a.txt.");
   assert.match(refusalWords("STALE_HUNK"), /no longer the one you were shown/);
   assert.match(refusalWords("UNATTRIBUTED_HUNK"), /never accepted automatically/);
+});
+
+test("DR-PX-2026-10-25-017: a repair attempt is shown as what was tried and what the Core recorded of it, an escalation as a stop", () => {
+  const open = { ordinal: 1, failureSignature: "ts:2322", hypothesis: "the argument is a string", intendedFix: "src/a.ts", outcome: "", reverted: false, escalation: "" };
+  assert.equal(repairLine(open), "Attempt 1 (in progress): the argument is a string");
+  assert.equal(repairLine({ ...open, outcome: "WORSENED", reverted: true }), "Attempt 1 (worsened, reverted): the argument is a string");
+  assert.equal(repairLine({ ...open, hypothesis: "", outcome: "RESOLVED" }), "Attempt 1 (resolved): src/a.ts");
+  const stop = { ...open, ordinal: 3, outcome: "ESCALATED", hypothesis: "", intendedFix: "", escalation: "the same hypothesis twice" };
+  assert.equal(repairLine(stop), "Stopped after 3 attempts: the same hypothesis twice.");
+  assert.equal(repairSummary([{ ...open, outcome: "RESOLVED" }]), "1 repair attempt, 1 resolved");
+  assert.equal(repairSummary([{ ...open, outcome: "UNCHANGED" }, stop]), "1 repair attempt, 0 resolved; the loop stopped and asked for you");
 });

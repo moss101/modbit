@@ -1,6 +1,8 @@
 import { useCallback, useEffect, useId, useRef, useState, type KeyboardEvent, type ReactNode } from "react";
 import { useLayer, useOutsidePress } from "./hooks.ts";
-import { Kbd } from "./status.tsx";
+import type { ButtonVariant } from "./button.tsx";
+import { Icon } from "./icons.tsx";
+import { chordParts, isMacPlatform } from "./keys.ts";
 import { navTarget, nextEnabled, typeAheadTarget } from "./nav.ts";
 
 export interface MenuItem {
@@ -14,6 +16,8 @@ export interface MenuItem {
   radio?: boolean | undefined;
   /** A separator is drawn before this item. */
   separatorBefore?: boolean | undefined;
+  /** "destructive" draws the item in the destructive colour (an action that deletes or discards). */
+  tone?: "destructive" | undefined;
   onSelect: () => void;
 }
 
@@ -27,6 +31,8 @@ export interface MenuProps {
   /** Test hook / styling hook for the trigger. */
   triggerTestId?: string | undefined;
   triggerClassName?: string | undefined;
+  /** The trigger button's variant; a ghost icon-like button by default. */
+  triggerVariant?: ButtonVariant | undefined;
 }
 
 /**
@@ -34,7 +40,7 @@ export interface MenuProps {
  * on the last); arrows, Home, End and type-ahead move; Enter or Space selects;
  * Escape (the layer stack) and Tab close it and focus returns to the trigger.
  */
-export function Menu({ label, trigger, items, placement = "down", align = "start", triggerTestId, triggerClassName }: MenuProps) {
+export function Menu({ label, trigger, items, placement = "down", align = "start", triggerTestId, triggerClassName, triggerVariant = "ghost" }: MenuProps) {
   const id = useId();
   const [open, setOpen] = useState(false);
   const [active, setActive] = useState(0);
@@ -100,7 +106,7 @@ export function Menu({ label, trigger, items, placement = "down", align = "start
 
   return (
     <span className="mb-menu-host">
-      <button ref={triggerRef} type="button" className={`mb-btn${triggerClassName ? ` ${triggerClassName}` : ""}`} data-variant="ghost" data-size="md" data-testid={triggerTestId} aria-haspopup="menu" aria-expanded={open} aria-controls={open ? id : undefined} aria-label={label} onClick={() => (open ? close(false) : openAt("first"))} onKeyDown={onTriggerKey}>
+      <button ref={triggerRef} type="button" className={`mb-btn${triggerClassName ? ` ${triggerClassName}` : ""}`} data-variant={triggerVariant} data-size="md" data-testid={triggerTestId} aria-haspopup="menu" aria-expanded={open} aria-controls={open ? id : undefined} aria-label={label} onClick={() => (open ? close(false) : openAt("first"))} onKeyDown={onTriggerKey}>
         {trigger}
       </button>
       {open && (
@@ -117,6 +123,7 @@ export function Menu({ label, trigger, items, placement = "down", align = "start
                 aria-disabled={item.disabled ? true : undefined}
                 tabIndex={i === active ? 0 : -1}
                 className="mb-menu-item"
+                data-tone={item.tone}
                 data-testid={`menu-item-${item.id}`}
                 onClick={() => select(item)}
                 onMouseMove={() => !item.disabled && setActive(i)}
@@ -127,11 +134,17 @@ export function Menu({ label, trigger, items, placement = "down", align = "start
                   }
                 }}
               >
-                <span className="mb-menu-check" aria-hidden="true">
-                  {item.checked ? "✓" : ""}
-                </span>
                 <span className="mb-menu-label">{item.label}</span>
-                {item.shortcut && <Kbd chord={item.shortcut} />}
+                {item.shortcut && (
+                  <span className="mb-menu-shortcut" data-chord={item.shortcut}>
+                    {chordParts(item.shortcut, isMacPlatform()).join(isMacPlatform() ? "" : "+")}
+                  </span>
+                )}
+                {item.checked !== undefined && (
+                  <span className="mb-menu-check" aria-hidden="true">
+                    {item.checked ? <Icon name="check" size={16} /> : null}
+                  </span>
+                )}
               </div>
             </div>
           ))}

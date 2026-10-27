@@ -29,6 +29,29 @@ pub struct Budgets {
     pub max_children: u32,
 }
 
+/// Turns a run's window allows by default (DR-PX-2026-10-25-017). A real
+/// coding task (read, plan, edit, build, repair, test) does not fit sixty;
+/// the number is a default a person or the environment can change, and never
+/// the limit: [`MAX_TURNS_CEILING`] is.
+pub const DEFAULT_MAX_TURNS: u32 = 200;
+/// Tool calls a run's window allows by default.
+pub const DEFAULT_MAX_TOOL_CALLS: u32 = 1000;
+/// The most turns any window can be given, whoever asks.
+pub const MAX_TURNS_CEILING: u32 = 1000;
+/// The most tool calls any window can be given, whoever asks.
+pub const MAX_TOOL_CALLS_CEILING: u32 = 5000;
+/// How many windows of turns and tool calls a task is ever given: the first,
+/// and one more each time a person resumes it after the budget ran out or an
+/// autonomous run is extended while it is making progress. Cost and wall
+/// clock are never windowed; they accumulate across all of them.
+pub const MAX_BUDGET_WINDOWS: u32 = 4;
+
+/// Verifications the Core runs on its own after edits, per task (PX-145).
+/// Each is a full plan stage, so the bound keeps a model that edits and breaks
+/// the build in turn from spending the budget on checks; the turn and
+/// no-progress budgets and the repair policy still apply on top.
+pub const MAX_AUTO_VERIFICATIONS: u32 = 60;
+
 /// Live children a parent may have at once by default: what the Core's
 /// capacity pool admits beside the parent's own run.
 pub const DEFAULT_MAX_CHILDREN: u32 = 3;
@@ -40,8 +63,8 @@ fn default_max_children() -> u32 {
 impl Default for Budgets {
     fn default() -> Self {
         Self {
-            max_turns: 60,
-            max_tool_calls: 300,
+            max_turns: DEFAULT_MAX_TURNS,
+            max_tool_calls: DEFAULT_MAX_TOOL_CALLS,
             // The no-progress bound is the repair policy's, not a second copy.
             max_consecutive_no_progress_turns: RepairPolicy::default()
                 .max_consecutive_no_progress_turns,
@@ -98,6 +121,17 @@ pub struct HarnessState {
     pub turns: u32,
     /// Tool calls used.
     pub tool_calls: u32,
+    /// Turns and tool calls spent before the current window began
+    /// (DR-PX-2026-10-25-017): the budgets above bound the window, not the
+    /// task's lifetime, so a resume after `BUDGET_EXHAUSTED` can continue.
+    #[serde(default)]
+    pub window_turn_base: u32,
+    /// See [`HarnessState::window_turn_base`].
+    #[serde(default)]
+    pub window_tool_base: u32,
+    /// Windows the task has been given beyond its first.
+    #[serde(default)]
+    pub budget_windows: u32,
     /// Cost of the task's own model calls so far, minor units
     /// (REQ-PX-116): priced at each call's own binding in the active
     /// registry, from the canonical usage events.
@@ -146,6 +180,19 @@ pub struct HarnessState {
     /// BASELINE verification recorded (docs/64 §1); writes wait for it.
     #[serde(default)]
     pub baseline_recorded: bool,
+    /// Every path a write has landed on in this task (PX-145), so the Core
+    /// can tell an edit the plan has finished from one it is still making.
+    #[serde(default)]
+    pub written_paths: Vec<String>,
+    /// A write has landed since the last TARGETED, RERUN or COMPLETION run
+    /// (PX-145): the Core verifies it itself at the end of the turn rather
+    /// than waiting for the model to call `verify.run`.
+    #[serde(default)]
+    pub unverified_write: bool,
+    /// Verifications the Core ran by itself after edits (PX-145), bounded by
+    /// [`MAX_AUTO_VERIFICATIONS`] so a loop of edit and failure still ends.
+    #[serde(default)]
+    pub auto_verifications: u32,
     /// Derived verification plan object.
     #[serde(default)]
     pub verification_plan_ref: Option<String>,
@@ -582,7 +629,11 @@ impl Default for RepairPolicy {
     fn default() -> Self {
         Self {
             max_attempts_per_signature: 2,
-            max_attempts_per_task: 6,
+            // A broken build reports one failure at a time (a type error
+            // hides the next), so a task that mends five of them in turn
+            // needs more than six attempts; each attempt is still bounded
+            // per signature, and an equivalent hypothesis is refused.
+            max_attempts_per_task: 12,
             max_worsened_before_escalation: 1,
             reproduction_required: true,
             max_consecutive_no_progress_turns: 3,
@@ -778,7 +829,8 @@ impl HarnessState {
     /// Check a turn may start; `Err` names the exhausted budget.
     pub fn check_turn_budget(&self) -> Result<(), Exhausted> {
         // Turns the children hold count against the parent (REQ-PX-116).
-        let turns = u64::from(self.turns).saturating_add(self.children_held.turns);
+        let turns = u64::from(self.turns.saturating_sub(self.window_turn_base))
+            .saturating_add(self.children_held.turns);
         if turns >= u64::from(self.budgets.max_turns) {
             return Err(Exhausted {
                 budget: "max_turns".into(),
@@ -786,6 +838,10 @@ impl HarnessState {
                 used: turns,
             });
         }
+        // The tool-call window is judged at the same boundary, so the run
+        // ends cleanly as BUDGET_EXHAUSTED instead of meeting a refusal on
+        // every call it tries.
+        self.check_tool_budget()?;
         // The round boundary is where cost and wall clock are judged, on
         // every path (a direct run included): the spend of the round that
         // just ended is on the log by now.
@@ -829,7 +885,8 @@ impl HarnessState {
 
     /// Check a tool call may run.
     pub fn check_tool_budget(&self) -> Result<(), Exhausted> {
-        let calls = u64::from(self.tool_calls).saturating_add(self.children_held.tool_calls);
+        let calls = u64::from(self.tool_calls.saturating_sub(self.window_tool_base))
+            .saturating_add(self.children_held.tool_calls);
         if calls >= u64::from(self.budgets.max_tool_calls) {
             return Err(Exhausted {
                 budget: "max_tool_calls".into(),
@@ -838,6 +895,36 @@ impl HarnessState {
             });
         }
         Ok(())
+    }
+
+    /// Whether the plan's declared files have all been written (PX-145): a
+    /// directory entry (ending in `/`) is covered by any write under it. A plan
+    /// that names no file has nothing left to wait for.
+    #[must_use]
+    pub fn plan_edits_complete(&self) -> bool {
+        let Some(plan) = &self.plan else {
+            return true;
+        };
+        plan.expected_files.iter().all(|f| {
+            if f.ends_with('/') {
+                self.written_paths.iter().any(|w| w.starts_with(f.as_str()))
+            } else {
+                self.written_paths.iter().any(|w| w == f)
+            }
+        })
+    }
+
+    /// Open the next window of turns and tool calls: the ones spent so far no
+    /// longer count against the budgets. `false` (and nothing changes) once
+    /// the task has had [`MAX_BUDGET_WINDOWS`].
+    pub fn open_budget_window(&mut self) -> bool {
+        if self.budget_windows + 1 >= MAX_BUDGET_WINDOWS {
+            return false;
+        }
+        self.budget_windows += 1;
+        self.window_turn_base = self.turns;
+        self.window_tool_base = self.tool_calls;
+        true
     }
 
     /// Harness rule for a tool the model requested (before the kernel sees it).
@@ -1190,6 +1277,10 @@ impl HarnessState {
 
     /// Note a write to `path`; returns true when it is outside the original write set.
     pub fn note_write(&mut self, path: &str) -> bool {
+        self.unverified_write = true;
+        if !self.written_paths.iter().any(|p| p == path) {
+            self.written_paths.push(path.to_owned());
+        }
         let outside = !self.original_write_set.iter().any(|f| f == path);
         if outside && !self.out_of_plan_files.iter().any(|f| f == path) {
             self.out_of_plan_files.push(path.to_owned());
@@ -1645,7 +1736,7 @@ mod tests {
                 p.reproduction_required,
                 p.max_consecutive_no_progress_turns
             ),
-            (2, 6, 1, true, 3)
+            (2, 12, 1, true, 3)
         );
         assert_eq!(
             Budgets::default().max_consecutive_no_progress_turns,
@@ -1775,6 +1866,59 @@ mod tests {
         h.budgets.max_turns = 1;
         h.turns = 1;
         assert_eq!(h.check_turn_budget().unwrap_err().budget, "max_turns");
+    }
+
+    #[test]
+    fn a_window_of_turns_and_tool_calls_can_be_reopened_a_bounded_number_of_times() {
+        let mut h = HarnessState::default();
+        assert_eq!(
+            (h.budgets.max_turns, h.budgets.max_tool_calls),
+            (DEFAULT_MAX_TURNS, DEFAULT_MAX_TOOL_CALLS)
+        );
+        h.budgets.max_turns = 10;
+        h.budgets.max_tool_calls = 20;
+        h.turns = 10;
+        assert_eq!(h.check_turn_budget().unwrap_err().budget, "max_turns");
+        // The tool-call window is judged at the turn boundary too.
+        h.turns = 3;
+        h.tool_calls = 20;
+        assert_eq!(h.check_turn_budget().unwrap_err().budget, "max_tool_calls");
+        assert_eq!(h.check_tool_budget().unwrap_err().used, 20);
+        // A new window does not forget what was spent; it stops counting it.
+        h.turns = 10;
+        assert!(h.open_budget_window());
+        assert_eq!((h.window_turn_base, h.window_tool_base), (10, 20));
+        assert_eq!(h.check_turn_budget(), Ok(()));
+        h.turns = 19;
+        h.tool_calls = 39;
+        assert_eq!(h.check_turn_budget(), Ok(()));
+        h.turns = 20;
+        assert_eq!(h.check_turn_budget().unwrap_err().budget, "max_turns");
+        // Only so many windows are ever given.
+        let mut given = 1;
+        while h.open_budget_window() {
+            given += 1;
+        }
+        assert_eq!(
+            given + 1,
+            MAX_BUDGET_WINDOWS,
+            "the first window plus {given} more"
+        );
+        assert!(!h.open_budget_window());
+        h.turns = h.window_turn_base + 10;
+        assert_eq!(
+            h.check_turn_budget().unwrap_err().budget,
+            "max_turns",
+            "the last window ends for good"
+        );
+        // Cost and wall clock are not windowed.
+        let mut c = HarnessState::default();
+        c.budgets.max_cost_minor = Some(100);
+        c.cost_minor = 100;
+        c.open_budget_window();
+        assert_eq!(c.check_turn_budget().unwrap_err().budget, "max_cost_minor");
+        const { assert!(DEFAULT_MAX_TURNS <= MAX_TURNS_CEILING) };
+        const { assert!(DEFAULT_MAX_TOOL_CALLS <= MAX_TOOL_CALLS_CEILING) };
     }
 
     #[test]

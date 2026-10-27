@@ -91,6 +91,7 @@ fn policy(mode: RunMode, rules: Vec<AllowRule>, argv: &[&str]) -> RunPolicy {
         rules,
         argv: Some(argv.iter().map(|s| (*s).to_owned()).collect()),
         ask_classes: vec![],
+        dependency_install: false,
         contained: false,
     }
 }
@@ -476,4 +477,140 @@ fn no_allowlist_rule_can_name_a_computer_tool() {
         ))
         .is_ok()
     );
+}
+
+/// DR-PX-2026-10-25-017: `AUTONOMOUS` is the one mode that lets the install of
+/// a project's declared dependencies pass the NETWORK class; it approves
+/// nothing else that asks in every mode, and widens no part of the envelope.
+#[test]
+fn autonomous_approves_a_manifest_install_and_nothing_else_that_always_asks() {
+    let k = CapabilityKernel::default();
+    let c = caps(&["shell.exec"]);
+    let l = lease("local_trusted");
+    let install = |mode: RunMode, classes: Vec<AskClass>, dependency_install: bool| RunPolicy {
+        ask_classes: classes,
+        dependency_install,
+        ..policy(mode, vec![], &["npm", "ci"])
+    };
+    let decide = |p: &RunPolicy| {
+        code(&k.decide(&req(
+            EffectClass::ExternalSideEffect,
+            &c,
+            "local_trusted",
+            Some(&l),
+            Some(p),
+        )))
+    };
+    // The install passes in AUTONOMOUS, and the receipt names why.
+    let p = install(RunMode::Autonomous, vec![AskClass::Network], true);
+    match k.decide(&req(
+        EffectClass::ExternalSideEffect,
+        &c,
+        "local_trusted",
+        Some(&l),
+        Some(&p),
+    )) {
+        KernelDecision::Allow { rule, .. } => {
+            assert_eq!(rule, "run_mode:AUTONOMOUS:dependency_install");
+        }
+        other => panic!("{other:?}"),
+    }
+    // The same call asks in every other mode, whatever the flag says.
+    for mode in [
+        RunMode::Ask,
+        RunMode::Allowlist,
+        RunMode::AllowlistSandbox,
+        RunMode::RunEverything,
+    ] {
+        let p = install(mode, vec![AskClass::Network], true);
+        assert_eq!(decide(&p), "APPROVAL_REQUIRED", "{mode:?}");
+    }
+    // A network reach that is not a manifest install asks in AUTONOMOUS too.
+    let p = install(RunMode::Autonomous, vec![AskClass::Network], false);
+    assert_eq!(decide(&p), "APPROVAL_REQUIRED");
+    // Another always-ask class on the same call still asks.
+    for other in [
+        AskClass::Secret,
+        AskClass::Deletion,
+        AskClass::Push,
+        AskClass::OutsideWorkspaceWrite,
+        AskClass::ProtectedPath,
+        AskClass::Escalation,
+    ] {
+        let p = install(RunMode::Autonomous, vec![AskClass::Network, other], true);
+        assert_eq!(decide(&p), "APPROVAL_REQUIRED", "{other:?}");
+    }
+    // It approves a protected write outside the always-ask classes like
+    // RUN_EVERYTHING does (an unknown project script), but only inside the
+    // envelope: a missing capability, a ceiling and a stop are decided first.
+    let script = RunPolicy {
+        argv: Some(vec!["./tools/gen".into()]),
+        ..policy(RunMode::Autonomous, vec![], &[])
+    };
+    assert_eq!(
+        code(&k.decide(&req(
+            EffectClass::ProtectedWrite,
+            &c,
+            "local_trusted",
+            Some(&l),
+            Some(&script)
+        ))),
+        "ALLOW"
+    );
+    let no_cap = caps(&["deploy"]);
+    assert_eq!(
+        code(&k.decide(&req(
+            EffectClass::ProtectedWrite,
+            &no_cap,
+            "local_trusted",
+            Some(&l),
+            Some(&script)
+        ))),
+        "CAPABILITY_NOT_LEASED"
+    );
+    let auto = lease("local_autonomous");
+    assert_eq!(
+        code(&k.decide(&req(
+            EffectClass::ProtectedWrite,
+            &c,
+            "local_autonomous",
+            Some(&auto),
+            Some(&script)
+        ))),
+        "PROFILE_CEILING"
+    );
+    let mut stopped = req(
+        EffectClass::ProtectedWrite,
+        &c,
+        "local_trusted",
+        Some(&l),
+        Some(&script),
+    );
+    stopped.emergency_stopped = true;
+    assert_eq!(code(&k.decide(&stopped)), "EMERGENCY_STOP");
+    // A destructive effect (a deletion) asks in AUTONOMOUS as everywhere.
+    let del = RunPolicy {
+        ask_classes: vec![AskClass::Deletion],
+        ..policy(RunMode::Autonomous, vec![], &["rm", "-rf", "dist"])
+    };
+    assert_eq!(
+        code(&k.decide(&req(
+            EffectClass::Destructive,
+            &c,
+            "local_trusted",
+            Some(&l),
+            Some(&del)
+        ))),
+        "APPROVAL_REQUIRED"
+    );
+}
+
+#[test]
+fn autonomous_is_durable_and_approves_more_than_every_other_mode() {
+    assert!(RunMode::Autonomous.durable());
+    assert!(!RunMode::RunEverything.durable());
+    assert_eq!(RunMode::parse("AUTONOMOUS"), Some(RunMode::Autonomous));
+    let ranks: Vec<u8> = RunMode::ALL.iter().map(|m| m.rank()).collect();
+    assert!(ranks.windows(2).all(|w| w[0] < w[1]), "{ranks:?}");
+    assert_eq!(RunMode::ALL.last(), Some(&RunMode::Autonomous));
 }

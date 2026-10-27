@@ -2561,6 +2561,7 @@ impl CapabilityPort for KernelPort {
                 req.protected_path,
                 &req.declared_escalation,
             ),
+            dependency_install: req.dependency_install,
             contained: matches!(
                 req.execution_profile.as_str(),
                 modbit_policy::kernel::PROFILE_CLOUD_ISOLATED
