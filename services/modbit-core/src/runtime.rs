@@ -7482,6 +7482,24 @@ fn compaction_worker_hold() -> Option<std::time::Duration> {
         .map(std::time::Duration::from_millis)
 }
 
+/// The summarizer calls of one compaction as its commit records them
+/// (PX-159), in the shape `usage::call_cost` prices.
+fn summarizer_record(usage: &[crate::compaction_model::SummarizerUsage]) -> Vec<serde_json::Value> {
+    usage
+        .iter()
+        .map(|u| {
+            serde_json::json!({
+                "endpoint": u.endpoint,
+                "requested_model": u.model,
+                "input_tokens": u.usage.input_tokens,
+                "output_tokens": u.usage.output_tokens,
+                "cached_input_tokens": u.usage.cached_input_tokens,
+                "reported": u.reported,
+            })
+        })
+        .collect()
+}
+
 /// Install an epoch: store the manifest, put `ContextEpochOpened` (the
 /// model-facing epoch) and `CompactionCommitted` (the durability record) on
 /// the log, and replace the summarised prefix by the projection.
@@ -7497,7 +7515,11 @@ async fn install_epoch(
     cut: usize,
     compaction_id: &str,
     mode: &str,
+    summarizer_usage: Vec<serde_json::Value>,
 ) {
+    let tokens_after = manifest
+        .projection_tokens
+        .saturating_add(transcript_tokens(&transcript[cut.min(transcript.len())..]));
     let manifest_ref = {
         let store = core.store.lock().await;
         store
@@ -7550,6 +7572,8 @@ async fn install_epoch(
                         mode: mode.to_owned(),
                         summary_source: manifest.summary_source.clone(),
                         fallback_reason: manifest.fallback_reason.clone(),
+                        tokens_after,
+                        summarizer_usage,
                     },
                     actor.clone(),
                 ),
@@ -7778,6 +7802,7 @@ async fn compaction_step(
         let w = worker.take().expect("checked");
         match w.handle.await {
             Ok(built) => {
+                let summarizer = summarizer_record(built.usage.as_slice());
                 ctx.usage.extend(built.usage);
                 let manifest = built.manifest;
                 let (_, _, branch_now) = compaction_coordinates(core, task).await;
@@ -7792,7 +7817,7 @@ async fn compaction_step(
                     Ok(()) => {
                         install_epoch(
                             core, task, lt, actor, transcript, epoch, manifest, w.cut, &w.id,
-                            "ASYNC",
+                            "ASYNC", summarizer,
                         )
                         .await;
                         *ctx.rearm_floor =
@@ -7899,6 +7924,7 @@ async fn compaction_step(
                     window_tokens: th.window,
                     budget_tokens: budget,
                     budget_source: th.source.label().to_owned(),
+                    tokens_before: transcript_tokens(transcript),
                 },
                 actor.clone(),
             )],
@@ -7931,6 +7957,7 @@ async fn compaction_step(
         // call inside it is bounded by the summarizer's own timeout, and its
         // failure is the extractive epoch, not a failed compaction.
         let built = crate::compaction_model::build(core, task, ladder, ctx.cancel).await;
+        let summarizer = summarizer_record(built.usage.as_slice());
         ctx.usage.extend(built.usage);
         let manifest = built.manifest;
         // docs/19: the result installs only while its source is still current.
@@ -7953,6 +7980,7 @@ async fn compaction_step(
                     cut,
                     &id,
                     "SYNC_FALLBACK",
+                    summarizer,
                 )
                 .await;
                 *ctx.rearm_floor =

@@ -2324,3 +2324,273 @@ async fn px_109_thresholds_follow_the_models_context_window() {
     assert!(tiny.1 >= 1, "the small-window model compacted: {tiny:?}");
     assert_eq!(huge.1, 0, "the large-window model did not: {huge:?}");
 }
+
+// ---- PX-159: compaction telemetry --------------------------------------
+
+/// A local OTLP/HTTP collector on a real socket: every trace export body,
+/// answered 200.
+fn otlp_collector() -> (String, Arc<Mutex<Vec<Value>>>) {
+    use std::io::{Read, Write};
+    let listener = std::net::TcpListener::bind("127.0.0.1:0").unwrap();
+    let base = format!("http://127.0.0.1:{}", listener.local_addr().unwrap().port());
+    let got: Arc<Mutex<Vec<Value>>> = Arc::default();
+    let g = Arc::clone(&got);
+    std::thread::spawn(move || {
+        for s in listener.incoming() {
+            let Ok(mut s) = s else { break };
+            let mut buf = Vec::new();
+            let mut tmp = [0u8; 8192];
+            let (head_end, len) = loop {
+                let n = s.read(&mut tmp).unwrap_or(0);
+                if n == 0 {
+                    break (0, 0);
+                }
+                buf.extend_from_slice(&tmp[..n]);
+                if let Some(i) = buf.windows(4).position(|w| w == b"\r\n\r\n") {
+                    let head = String::from_utf8_lossy(&buf[..i]).to_lowercase();
+                    let len = head
+                        .lines()
+                        .find_map(|l| {
+                            l.strip_prefix("content-length:")
+                                .map(|v| v.trim().parse().unwrap_or(0))
+                        })
+                        .unwrap_or(0);
+                    break (i + 4, len);
+                }
+            };
+            while head_end > 0 && buf.len() < head_end + len {
+                let n = s.read(&mut tmp).unwrap_or(0);
+                if n == 0 {
+                    break;
+                }
+                buf.extend_from_slice(&tmp[..n]);
+            }
+            if head_end > 0
+                && String::from_utf8_lossy(&buf[..head_end]).contains("/v1/traces")
+                && let Ok(v) = serde_json::from_slice::<Value>(&buf[head_end..])
+            {
+                g.lock().unwrap().push(v);
+            }
+            let _ = s.write_all(b"HTTP/1.1 200 OK\r\ncontent-type: application/json\r\ncontent-length: 2\r\nconnection: close\r\n\r\n{}");
+        }
+    });
+    (base, got)
+}
+
+fn exported_spans(got: &Arc<Mutex<Vec<Value>>>, name: &str) -> Vec<Value> {
+    got.lock()
+        .unwrap()
+        .iter()
+        .flat_map(|v| v["resourceSpans"].as_array().cloned().unwrap_or_default())
+        .flat_map(|rs| rs["scopeSpans"].as_array().cloned().unwrap_or_default())
+        .flat_map(|ss| ss["spans"].as_array().cloned().unwrap_or_default())
+        .filter(|s| s["name"] == name)
+        .collect()
+}
+
+fn span_attr(span: &Value, key: &str) -> Value {
+    span["attributes"]
+        .as_array()
+        .and_then(|a| a.iter().find(|x| x["key"] == key))
+        .map(|a| {
+            let v = &a["value"];
+            if let Some(s) = v["stringValue"].as_str() {
+                json!(s)
+            } else if let Some(i) = v["intValue"].as_str() {
+                json!(i.parse::<i64>().unwrap_or(0))
+            } else if let Some(b) = v["boolValue"].as_bool() {
+                json!(b)
+            } else {
+                v.clone()
+            }
+        })
+        .unwrap_or(Value::Null)
+}
+
+/// End the compacted run: the exporter sends a run's spans when it ends
+/// (completed, failed or cancelled), and this harness's run stops waiting
+/// for a person.
+async fn end_run(c: &mut Compacted) {
+    use modbit_protocol::v1::{CancelTask, TaskCancelRequested};
+    let ack = c
+        .live
+        .surface
+        .c
+        .command(envelope(
+            random_id(),
+            "CancelTask",
+            CancelTask {
+                task_id: Some(c.task.clone()),
+            }
+            .encode_to_vec(),
+            c.live.surface.lease,
+        ))
+        .await
+        .unwrap();
+    let _: TaskCancelRequested = Client::result(&ack).unwrap();
+}
+
+async fn compaction_spans(got: &Arc<Mutex<Vec<Value>>>, want: usize) -> Vec<Value> {
+    let deadline = std::time::Instant::now() + Duration::from_secs(30);
+    loop {
+        let s = exported_spans(got, "modbit.compaction");
+        if s.len() >= want || std::time::Instant::now() > deadline {
+            return s;
+        }
+        tokio::time::sleep(Duration::from_millis(100)).await;
+    }
+}
+
+/// QUAL-PX-159 on the real Core exporting to a real OTLP collector: an
+/// extractive-fallback compaction, a committed model summary and a stale
+/// rejected result each export a `modbit.compaction` span with tokens before and after, duration, mode,
+/// summary source, fallback reason and the summarizer's calls and cost; no
+/// summary text travels in an attribute.
+#[tokio::test]
+async fn px_159_compactions_export_their_tokens_duration_mode_source_and_cost() {
+    // Extractive fallback: no summarizer is named.
+    let (base, got) = otlp_collector();
+    let env = [
+        ("MODBIT_COMPACTION_TOKEN_BUDGET", "3000"),
+        ("MODBIT_OTLP_ENDPOINT", base.as_str()),
+        ("MODBIT_OTLP_INTERVAL_MS", "200"),
+    ];
+    let mut c = compacted_run(9, &env, |_, _| Reply::text("unused")).await;
+    let committed: Vec<Value> = c
+        .evs
+        .iter()
+        .filter(|(_, t, _)| t == "CompactionCommitted")
+        .map(|(_, _, p)| p.clone())
+        .collect();
+    assert!(
+        !committed.is_empty(),
+        "{:?}",
+        c.evs.iter().map(|e| &e.1).collect::<Vec<_>>()
+    );
+    end_run(&mut c).await;
+    let spans = compaction_spans(&got, committed.len()).await;
+    assert_eq!(spans.len(), committed.len(), "one span per compaction");
+    let s = &spans[0];
+    assert_eq!(span_attr(s, "modbit.compaction.outcome"), "COMMITTED");
+    assert_eq!(
+        span_attr(s, "modbit.compaction.fallback_reason"),
+        "SUMMARIZER_NOT_CONFIGURED"
+    );
+    assert!(
+        span_attr(s, "modbit.compaction.mode")
+            .as_str()
+            .is_some_and(|m| !m.is_empty())
+    );
+    assert!(
+        span_attr(s, "modbit.compaction.summary_source")
+            .as_str()
+            .is_some_and(|m| !m.is_empty())
+    );
+    let before = span_attr(s, "modbit.compaction.tokens_before")
+        .as_i64()
+        .unwrap();
+    let after = span_attr(s, "modbit.compaction.tokens_after")
+        .as_i64()
+        .unwrap();
+    assert!(before > after && after > 0, "{before} -> {after}");
+    assert!(
+        span_attr(s, "modbit.compaction.duration_ms")
+            .as_i64()
+            .unwrap()
+            >= 0
+    );
+    assert_eq!(span_attr(s, "modbit.compaction.summarizer_calls"), 0);
+    drop(c);
+
+    // A committed model summary: the summarizer's call is on the span.
+    let (base, got) = otlp_collector();
+    let env = [
+        ("MODBIT_COMPACTION_TOKEN_BUDGET", "3000"),
+        ("MODBIT_COMPACTION_SUMMARIZER", "run"),
+        ("MODBIT_OTLP_ENDPOINT", base.as_str()),
+        ("MODBIT_OTLP_INTERVAL_MS", "200"),
+    ];
+    let mut c = compacted_run(9, &env, |body, _| {
+        Reply::text(faithful_summary(body).to_string())
+    })
+    .await;
+    end_run(&mut c).await;
+    let spans = compaction_spans(&got, 1).await;
+    let s = spans
+        .iter()
+        .find(|s| {
+            span_attr(s, "modbit.compaction.summarizer_calls")
+                .as_i64()
+                .unwrap_or(0)
+                > 0
+        })
+        .unwrap_or_else(|| panic!("no span with the summarizer's call: {spans:#?}"));
+    assert_eq!(span_attr(s, "modbit.compaction.outcome"), "COMMITTED");
+    assert!(
+        span_attr(s, "modbit.compaction.fallback_reason").is_null(),
+        "{s}"
+    );
+    assert!(
+        span_attr(s, "modbit.compaction.summarizer_cost_minor")
+            .as_i64()
+            .is_some()
+    );
+    assert!(span_attr(s, "modbit.compaction.summarizer_unmetered").is_boolean());
+    let text = serde_json::to_string(&*got.lock().unwrap()).unwrap();
+    assert!(
+        !text.contains("SCRIPTED-PROGRESS-7") && !text.contains("SCRIPTED-PLAN-7"),
+        "no summary text exported"
+    );
+    drop(c);
+
+    // A stale result: the worker's result is held (docs/54 fault 10) until a
+    // synchronous compaction has installed, then refused; it exports as a
+    // rejected compaction with its code.
+    let (base, got) = otlp_collector();
+    let env = [
+        ("MODBIT_COMPACTION_TOKEN_BUDGET", "24000"),
+        ("MODBIT_COMPACTION_WORKER_DELAY_MS", "60000"),
+        ("MODBIT_OTLP_ENDPOINT", base.as_str()),
+        ("MODBIT_OTLP_INTERVAL_MS", "200"),
+    ];
+    let mut c = compacted_run(30, &env, |_, _| Reply::text("unused")).await;
+    let rejected: Vec<Value> = c
+        .evs
+        .iter()
+        .filter(|(_, t, _)| t == "CompactionRejectedStale")
+        .map(|(_, _, p)| p.clone())
+        .collect();
+    assert!(
+        !rejected.is_empty(),
+        "{:?}",
+        c.evs.iter().map(|e| &e.1).collect::<Vec<_>>()
+    );
+    end_run(&mut c).await;
+    let deadline = std::time::Instant::now() + Duration::from_secs(30);
+    let r = loop {
+        let spans = exported_spans(&got, "modbit.compaction");
+        if let Some(r) = spans
+            .into_iter()
+            .find(|s| span_attr(s, "modbit.compaction.outcome") == "REJECTED")
+        {
+            break r;
+        }
+        assert!(
+            std::time::Instant::now() < deadline,
+            "no rejected compaction exported"
+        );
+        tokio::time::sleep(Duration::from_millis(100)).await;
+    };
+    assert_eq!(
+        span_attr(&r, "modbit.compaction.rejection"),
+        rejected[0]["reason"]
+    );
+    assert_eq!(span_attr(&r, "modbit.compaction.mode"), "ASYNC");
+    assert!(
+        span_attr(&r, "modbit.compaction.tokens_before")
+            .as_i64()
+            .unwrap()
+            > 0
+    );
+    drop(c);
+}
