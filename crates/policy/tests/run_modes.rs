@@ -632,6 +632,7 @@ fn ask_reason(d: &KernelDecision) -> String {
     scope["ask_reason"].as_str().unwrap_or_default().to_owned()
 }
 
+#[cfg(unix)]
 fn executable(path: &std::path::Path) {
     use std::os::unix::fs::PermissionsExt;
     std::fs::create_dir_all(path.parent().unwrap()).unwrap();

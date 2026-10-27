@@ -2,13 +2,13 @@
   "product": "Modbit",
   "edition": "V3.3 EPR v1.1",
   "authority_date": "2026-09-05",
-  "generated_on": "2026-10-26",
+  "generated_on": "2026-10-27",
   "hash_algorithm": "sha256",
   "scope_rule": "docs/*.md, root *.md except MANIFEST.md, docs/decisions/*.md, graph JSON/Markdown, tools/*.py, evidence payloads; manifests exclude themselves and transient caches",
   "counts": {
     "docs": 97,
     "root_and_tooling": 1834,
-    "docs_bytes": 2294864
+    "docs_bytes": 2294708
   },
   "sections": [
     {
@@ -149,8 +149,8 @@
       "section": "architecture",
       "section_title": "Architecture and subsystems",
       "title": "Clean Repository and Module Layout",
-      "bytes": 9827,
-      "sha256": "6a03cf10d2e3969ad96d6e72b5ea598a54155f72f840989c297ff239adf02246"
+      "bytes": 9671,
+      "sha256": "da440789203a82536000d62d0e7feb1868a1934be4e49a66cb5cea584a7919a7"
     },
     {
       "path": "docs/13_DOMAIN_MODEL_AND_STATE_MACHINES.md",
@@ -10036,12 +10036,12 @@
     {
       "path": "graph/PROJECT_GRAPH.md",
       "bytes": 46280,
-      "sha256": "b242103e3bdf33b99204f1b181f20252000e291516e656f12498769f53faf873"
+      "sha256": "420271c636bec7b105df58e3bb5b497ec51e62df911b7b23e232040098509ed1"
     },
     {
       "path": "graph/project-graph.json",
       "bytes": 2466129,
-      "sha256": "e7c06b0257adae00e7ce10d0178caec297c137497ff9193a5513efab41309133"
+      "sha256": "d9dff49b138ca68a7e12c0c85e7985cabbfc1259057c596354cd05d2205ada80"
     },
     {
       "path": "tools/build_graph.py",

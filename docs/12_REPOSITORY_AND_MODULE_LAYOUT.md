@@ -43,7 +43,6 @@ modbit/
 │  ├─ git/                      # branches/worktrees/diff/commit
 │  ├─ diagnostics/              # headless LSP lifecycle + normalized diagnostics
 │  ├─ terminal/                 # exec client, streams, OutputRef handling
-│  ├─ process-hardening/        # first-statement hardening of the Core and the broker: no core dumps, not attachable, no injected libraries (PX-148)
 │  ├─ browser/                  # semantic browser protocol + control leases
 │  ├─ sandbox/                  # execution router + sandbox gateway client
 │  ├─ verification/             # deterministic gates, Acceptance Gate, test plans

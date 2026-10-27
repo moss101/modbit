@@ -110,6 +110,7 @@ fn sh(c_id: &str, cwd: &Path, script: &str) -> ExecRequest {
 
 struct Rig {
     _data: tempfile::TempDir,
+    #[cfg_attr(not(target_os = "macos"), allow(dead_code))]
     home: tempfile::TempDir,
     wt: tempfile::TempDir,
     execd: Execd,
