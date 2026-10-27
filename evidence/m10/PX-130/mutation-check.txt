@@ -1,0 +1,22 @@
+=== BASELINE px_130_broker (unmutated)
+test qual_px_130_a_planted_provider_key_is_in_no_artifact_and_no_child_process_sees_it ... ok
+test qual_px_130_a_provider_key_is_used_through_the_broker_counted_revoked_and_rotated ... ok
+test qual_px_130_an_mcp_servers_credential_comes_from_the_broker_is_counted_and_refused_once_revoked ... ok
+test result: ok. 3 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 7.81s
+exit=0
+=== MUTATION resolved-key-into-request-body (crates/providers/src/gateway.rs)
+test qual_px_130_a_planted_provider_key_is_in_no_artifact_and_no_child_process_sees_it ... FAILED
+test qual_px_130_a_provider_key_is_used_through_the_broker_counted_revoked_and_rotated ... ok
+test qual_px_130_an_mcp_servers_credential_comes_from_the_broker_is_counted_and_refused_once_revoked ... ok
+    qual_px_130_a_planted_provider_key_is_in_no_artifact_and_no_child_process_sees_it
+test result: FAILED. 2 passed; 1 failed; 0 ignored; 0 measured; 0 filtered out; finished in 6.55s
+error: test failed, to rerun pass `-p modbit-core --test px_130_broker`
+exit=101 (KILLED)
+=== MUTATION resolved-key-written-to-a-log-in-the-data-dir (crates/providers/src/gateway.rs)
+test qual_px_130_a_planted_provider_key_is_in_no_artifact_and_no_child_process_sees_it ... FAILED
+test qual_px_130_a_provider_key_is_used_through_the_broker_counted_revoked_and_rotated ... ok
+test qual_px_130_an_mcp_servers_credential_comes_from_the_broker_is_counted_and_refused_once_revoked ... ok
+    qual_px_130_a_planted_provider_key_is_in_no_artifact_and_no_child_process_sees_it
+test result: FAILED. 2 passed; 1 failed; 0 ignored; 0 measured; 0 filtered out; finished in 7.31s
+error: test failed, to rerun pass `-p modbit-core --test px_130_broker`
+exit=101 (KILLED)
