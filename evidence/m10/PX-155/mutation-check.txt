@@ -1,0 +1,23 @@
+=== BASELINE px_155_context_overflow
+test qual_px_155_a_second_overflow_ends_with_the_typed_failure_and_never_loops ... ok
+test qual_px_155_an_overflow_compacts_synchronously_and_the_retry_completes_the_turn ... ok
+test result: ok. 2 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 3.86s
+exit=0
+=== MUTATION retry-loop: the one-retry latch never set (services/modbit-core/src/runtime.rs)
+test qual_px_155_a_second_overflow_ends_with_the_typed_failure_and_never_loops ... FAILED
+test qual_px_155_an_overflow_compacts_synchronously_and_the_retry_completes_the_turn ... ok
+test result: FAILED. 1 passed; 1 failed; 0 ignored; 0 measured; 0 filtered out; finished in 3.91s
+error: test failed, to rerun pass `-p modbit-core --test px_155_context_overflow`
+exit=101 (KILLED)
+=== MUTATION no-forced-compaction: the overflow boundary does not force the synchronous compaction (services/modbit-core/src/runtime.rs)
+test qual_px_155_a_second_overflow_ends_with_the_typed_failure_and_never_loops ... FAILED
+test qual_px_155_an_overflow_compacts_synchronously_and_the_retry_completes_the_turn ... FAILED
+test result: FAILED. 0 passed; 2 failed; 0 ignored; 0 measured; 0 filtered out; finished in 3.80s
+error: test failed, to rerun pass `-p modbit-core --test px_155_context_overflow`
+exit=101 (KILLED)
+=== MUTATION untyped-overflow: the gateway no longer types the overflow (crates/providers/src/gateway.rs)
+test qual_px_155_an_overflow_compacts_synchronously_and_the_retry_completes_the_turn ... FAILED
+test qual_px_155_a_second_overflow_ends_with_the_typed_failure_and_never_loops ... FAILED
+test result: FAILED. 0 passed; 2 failed; 0 ignored; 0 measured; 0 filtered out; finished in 3.77s
+error: test failed, to rerun pass `-p modbit-core --test px_155_context_overflow`
+exit=101 (KILLED)
