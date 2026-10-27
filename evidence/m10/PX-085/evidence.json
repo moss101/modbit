@@ -1,0 +1,29 @@
+{
+ "task": "PX-085",
+ "requirements": [
+  "REQ-PX-085",
+  "QUAL-PX-085",
+  "docs/62_PRODUCT_EXTENSION_REQUIREMENTS_TASKS_AND_QUALIFICATIONS.md#px-085"
+ ],
+ "scenarios": [
+  "QUAL-PX-085 / PX-E2E-085"
+ ],
+ "tests": [
+  "apps/cloud-api/tests/px_085_automations.rs",
+  "apps/cloud-worker/tests/px_085_cloud_triggers.rs",
+  "apps/cloud-worker/tests/px_085_egress.rs",
+  "crates/automation/src/webhook.rs::tests"
+ ],
+ "proof": "Real Cloud API, worker and Core over real Postgres and S3-compatible storage in the hosted cloud job of CI run 40239702943 (which fails on any self-skip): 11 + 6 + 1 PX-085 tests ok. Locally on Postgres 17: 11 of 11 plus 5 webhook unit tests; dropping the timestamp window is killed (mutation-check.txt).",
+ "limitations": "CI-hosted Cloud API rather than a deployed staging environment; scripted model. No product code changed in this closing; no gate attested.",
+ "runs": [
+  "40239702943"
+ ],
+ "ci": {
+  "run_id": "40239702943",
+  "head_sha": "40ef75361860d4c1f6fda0730086beef6e55984a",
+  "conclusion": "success",
+  "json": "evidence/m10/PX-085/ci-run-40239702943.json",
+  "landed_as": "84eecda2"
+ }
+}

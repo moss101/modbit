@@ -36875,8 +36875,16 @@
    ],
    "task_card": "docs/62_PRODUCT_EXTENSION_REQUIREMENTS_TASKS_AND_QUALIFICATIONS.md#px-084",
    "audit_at_adoption": "DOCUMENTED-ONLY; no product caller present",
-   "status": "NOT_STARTED",
-   "evidence": []
+   "status": "COMPLETE",
+   "evidence": [
+    "artifact:evidence/m10/PX-084/TASK_CARD.md",
+    "run:40239702943",
+    "artifact:evidence/m10/PX-084/ci-run-40239702943.json",
+    "artifact:evidence/m10/PX-084/mutation-check.txt",
+    "commit:84eecda2",
+    "artifact:evidence/m10/PX-084/evidence.json"
+   ],
+   "status_changed_on": "2026-10-27T19:40:08Z"
   },
   {
    "id": "PX-085",
@@ -36904,8 +36912,16 @@
    ],
    "task_card": "docs/62_PRODUCT_EXTENSION_REQUIREMENTS_TASKS_AND_QUALIFICATIONS.md#px-085",
    "audit_at_adoption": "DOCUMENTED-ONLY; no product caller present",
-   "status": "NOT_STARTED",
-   "evidence": []
+   "status": "COMPLETE",
+   "evidence": [
+    "artifact:evidence/m10/PX-085/TASK_CARD.md",
+    "run:40239702943",
+    "artifact:evidence/m10/PX-085/ci-run-40239702943.json",
+    "artifact:evidence/m10/PX-085/mutation-check.txt",
+    "commit:84eecda2",
+    "artifact:evidence/m10/PX-085/evidence.json"
+   ],
+   "status_changed_on": "2026-10-27T19:40:08Z"
   },
   {
    "id": "PX-086",

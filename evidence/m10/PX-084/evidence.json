@@ -1,0 +1,34 @@
+{
+ "task": "PX-084",
+ "requirements": [
+  "REQ-PX-084",
+  "QUAL-PX-084",
+  "docs/62_PRODUCT_EXTENSION_REQUIREMENTS_TASKS_AND_QUALIFICATIONS.md#px-084"
+ ],
+ "scenarios": [
+  "QUAL-PX-084 / PX-E2E-084"
+ ],
+ "tests": [
+  "services/modbit-core/tests/automations_px.rs::px_084_an_unattended_run_is_held_to_its_ceiling_by_the_kernel",
+  "services/modbit-core/tests/automations_px.rs::px_084_a_parked_approval_expires_into_a_typed_cancellation_and_is_never_auto_approved",
+  "services/modbit-core/tests/automations_px.rs::px_084_a_hostile_trigger_payload_changes_neither_tools_nor_approvals_nor_the_definition",
+  "services/modbit-core/tests/automations_px.rs::px_084_kill_switches_stop_queued_and_running_runs_and_hold_new_firings",
+  "services/modbit-core/tests/automations_px.rs::px_084_budgets_stop_a_runaway_and_five_failures_disable_the_definition",
+  "services/modbit-core/tests/automations_px.rs::px_084_the_reference_definition_reports_drift_and_can_never_change_the_tree",
+  "services/modbit-core/tests/automations_px.rs::px_084_without_a_price_a_cost_limit_stops_the_run_instead_of_spending_unmeasured",
+  "services/modbit-core/tests/automations_px.rs::px_084_a_parked_approval_the_person_grants_later_lets_the_run_continue_exactly_once",
+  "services/modbit-core/tests/automations_px.rs::px_084_a_persons_rules_and_modes_computer_tools_and_approving_tools_do_not_reach_a_run"
+ ],
+ "proof": "Real Core binary, SQLite store, Capability Kernel and Git worktree with the scripted model: 27 of 27 automations_px tests pass locally (macOS) and the nine px_084 tests pass on macOS, Linux and Windows in CI run 40239702943. Three mutations of the ceiling intersection in narrow_lease are each killed (mutation-check.txt).",
+ "limitations": "Scripted model, not a live gateway; the later approval is ResolveApproval over the Surface Protocol, not a click on the desktop card (desktop surface is PX-086). No product code changed in this closing; no gate attested.",
+ "runs": [
+  "40239702943"
+ ],
+ "ci": {
+  "run_id": "40239702943",
+  "head_sha": "40ef75361860d4c1f6fda0730086beef6e55984a",
+  "conclusion": "success",
+  "json": "evidence/m10/PX-084/ci-run-40239702943.json",
+  "landed_as": "84eecda2"
+ }
+}
