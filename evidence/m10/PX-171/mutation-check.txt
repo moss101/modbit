@@ -1,0 +1,80 @@
+=== BASELINE faults (providers) + px_171_faults (Core)
+test qual_px_171_a_malformed_event_is_refused ... ok
+test qual_px_171_a_cut_after_the_first_token_is_typed_and_never_retried ... ok
+test qual_px_171_a_stream_that_stops_short_is_typed_after_the_first_token_and_retried_before_it ... ok
+test qual_px_171_a_cut_before_any_event_is_retried ... ok
+test qual_px_171_an_idle_stall_times_out_on_schedule ... ok
+test qual_px_171_a_rate_limit_with_either_retry_header_is_waited_and_retried_before_the_first_token ... ok
+test result: ok. 6 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 2.73s
+test qual_px_171_a_cut_inside_a_tool_call_is_a_typed_failure_with_no_tool_call ... ok
+test qual_px_171_a_rate_limit_is_retried_once_and_the_route_records_it ... ok
+test result: ok. 2 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 5.12s
+exit=0
+=== MUTATION retry-after-first-token (body error): a stream cut after the first token is retried (crates/providers/src/gateway.rs)
+test qual_px_171_a_malformed_event_is_refused ... ok
+test qual_px_171_a_cut_after_the_first_token_is_typed_and_never_retried ... FAILED
+test qual_px_171_a_cut_before_any_event_is_retried ... ok
+test qual_px_171_a_stream_that_stops_short_is_typed_after_the_first_token_and_retried_before_it ... ok
+test qual_px_171_an_idle_stall_times_out_on_schedule ... ok
+test qual_px_171_a_rate_limit_with_either_retry_header_is_waited_and_retried_before_the_first_token ... ok
+test result: FAILED. 5 passed; 1 failed; 0 ignored; 0 measured; 0 filtered out; finished in 2.73s
+error: test failed, to rerun pass `-p modbit-providers --test faults`
+test qual_px_171_a_cut_inside_a_tool_call_is_a_typed_failure_with_no_tool_call ... FAILED
+test qual_px_171_a_rate_limit_is_retried_once_and_the_route_records_it ... ok
+test result: FAILED. 1 passed; 1 failed; 0 ignored; 0 measured; 0 filtered out; finished in 5.45s
+error: test failed, to rerun pass `-p modbit-core --test px_171_faults`
+exit=101 (KILLED)
+=== MUTATION retry-after-first-token (clean end): a stream that ends after the first token is retried (crates/providers/src/gateway.rs)
+test qual_px_171_a_malformed_event_is_refused ... ok
+test qual_px_171_a_cut_after_the_first_token_is_typed_and_never_retried ... ok
+test qual_px_171_a_stream_that_stops_short_is_typed_after_the_first_token_and_retried_before_it ... FAILED
+test qual_px_171_a_cut_before_any_event_is_retried ... ok
+test qual_px_171_an_idle_stall_times_out_on_schedule ... ok
+test qual_px_171_a_rate_limit_with_either_retry_header_is_waited_and_retried_before_the_first_token ... ok
+test result: FAILED. 5 passed; 1 failed; 0 ignored; 0 measured; 0 filtered out; finished in 2.73s
+error: test failed, to rerun pass `-p modbit-providers --test faults`
+test qual_px_171_a_cut_inside_a_tool_call_is_a_typed_failure_with_no_tool_call ... ok
+test qual_px_171_a_rate_limit_is_retried_once_and_the_route_records_it ... ok
+test result: ok. 2 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 5.32s
+exit=101 (KILLED)
+=== MUTATION ignore-retry-header: the provider's retry-after is not waited (crates/providers/src/gateway.rs)
+test qual_px_171_a_malformed_event_is_refused ... ok
+test qual_px_171_a_cut_after_the_first_token_is_typed_and_never_retried ... ok
+test qual_px_171_a_rate_limit_with_either_retry_header_is_waited_and_retried_before_the_first_token ... FAILED
+test qual_px_171_a_stream_that_stops_short_is_typed_after_the_first_token_and_retried_before_it ... ok
+test qual_px_171_a_cut_before_any_event_is_retried ... ok
+test qual_px_171_an_idle_stall_times_out_on_schedule ... ok
+test result: FAILED. 5 passed; 1 failed; 0 ignored; 0 measured; 0 filtered out; finished in 1.61s
+error: test failed, to rerun pass `-p modbit-providers --test faults`
+test qual_px_171_a_rate_limit_is_retried_once_and_the_route_records_it ... FAILED
+test qual_px_171_a_cut_inside_a_tool_call_is_a_typed_failure_with_no_tool_call ... ok
+test result: FAILED. 1 passed; 1 failed; 0 ignored; 0 measured; 0 filtered out; finished in 4.11s
+error: test failed, to rerun pass `-p modbit-core --test px_171_faults`
+exit=101 (KILLED)
+=== MUTATION swallow-malformed: an OpenAI event that is not JSON is dropped (crates/providers/src/openai.rs)
+test qual_px_171_a_malformed_event_is_refused ... FAILED
+test qual_px_171_a_cut_after_the_first_token_is_typed_and_never_retried ... ok
+test qual_px_171_a_stream_that_stops_short_is_typed_after_the_first_token_and_retried_before_it ... ok
+test qual_px_171_a_cut_before_any_event_is_retried ... ok
+test qual_px_171_an_idle_stall_times_out_on_schedule ... ok
+test qual_px_171_a_rate_limit_with_either_retry_header_is_waited_and_retried_before_the_first_token ... ok
+test result: FAILED. 5 passed; 1 failed; 0 ignored; 0 measured; 0 filtered out; finished in 2.74s
+error: test failed, to rerun pass `-p modbit-providers --test faults`
+test qual_px_171_a_cut_inside_a_tool_call_is_a_typed_failure_with_no_tool_call ... ok
+test qual_px_171_a_rate_limit_is_retried_once_and_the_route_records_it ... ok
+test result: ok. 2 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 6.29s
+exit=101 (KILLED)
+=== MUTATION server-only-succeeds: every planned fault is answered as a whole answer (tests/support/fault_provider.rs)
+test qual_px_171_a_cut_before_any_event_is_retried ... FAILED
+test qual_px_171_an_idle_stall_times_out_on_schedule ... FAILED
+test qual_px_171_a_cut_after_the_first_token_is_typed_and_never_retried ... FAILED
+test qual_px_171_a_stream_that_stops_short_is_typed_after_the_first_token_and_retried_before_it ... FAILED
+test qual_px_171_a_rate_limit_with_either_retry_header_is_waited_and_retried_before_the_first_token ... FAILED
+test qual_px_171_a_malformed_event_is_refused ... FAILED
+test result: FAILED. 0 passed; 6 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.01s
+error: test failed, to rerun pass `-p modbit-providers --test faults`
+test qual_px_171_a_cut_inside_a_tool_call_is_a_typed_failure_with_no_tool_call ... FAILED
+test qual_px_171_a_rate_limit_is_retried_once_and_the_route_records_it ... FAILED
+test result: FAILED. 0 passed; 2 failed; 0 ignored; 0 measured; 0 filtered out; finished in 3.96s
+error: test failed, to rerun pass `-p modbit-core --test px_171_faults`
+exit=101 (KILLED)
