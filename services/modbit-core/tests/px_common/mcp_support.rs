@@ -52,7 +52,7 @@ pub async fn invoke_tool(
 }
 
 /// Whether a process still exists (a zombie counts as existing: it has not
-/// been reaped). Unix only.
+/// been reaped).
 #[cfg(unix)]
 pub fn process_exists(pid: u32) -> bool {
     Command::new("kill")
@@ -62,10 +62,31 @@ pub fn process_exists(pid: u32) -> bool {
         .is_ok_and(|s| s.success())
 }
 
-/// Kill a process outright. Unix only.
+/// Whether a process still exists. Windows has no zombies: a process that
+/// exited is no longer listed.
+#[cfg(windows)]
+pub fn process_exists(pid: u32) -> bool {
+    Command::new("tasklist")
+        .args(["/FI", &format!("PID eq {pid}"), "/NH", "/FO", "CSV"])
+        .stderr(Stdio::null())
+        .output()
+        .is_ok_and(|o| String::from_utf8_lossy(&o.stdout).contains(&format!("\"{pid}\"")))
+}
+
+/// Kill a process outright.
 #[cfg(unix)]
 pub fn kill_9(pid: u32) {
     let _ = Command::new("kill").args(["-9", &pid.to_string()]).status();
+}
+
+/// Kill a process outright.
+#[cfg(windows)]
+pub fn kill_9(pid: u32) {
+    let _ = Command::new("taskkill")
+        .args(["/F", "/PID", &pid.to_string()])
+        .stdout(Stdio::null())
+        .stderr(Stdio::null())
+        .status();
 }
 
 /// Poll until `done`, up to `secs`.
