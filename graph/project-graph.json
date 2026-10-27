@@ -37442,13 +37442,17 @@
    ],
    "task_card": "docs/62_PRODUCT_EXTENSION_REQUIREMENTS_TASKS_AND_QUALIFICATIONS.md#px-117",
    "audit_at_adoption": "DOCUMENTED-ONLY; no product caller present",
-   "status": "REAL_TESTING",
+   "status": "COMPLETE",
    "evidence": [
     "commit:5774ec68",
     "run:38990216920",
     "test:services/modbit-core/tests/px_117_hooks.rs::qual_px_117_each_new_event_fires_at_its_real_lifecycle_point_with_a_typed_versioned_payload",
     "test:services/modbit-core/tests/px_117_hooks.rs::qual_px_117_hook_context_is_labelled_scanned_bounded_data_and_never_widens_authority",
-    "test:services/modbit-core/tests/px_117_hooks.rs::qual_px_117_a_prompt_hook_routes_through_the_gateway_denies_but_never_allows_and_fails_closed"
+    "test:services/modbit-core/tests/px_117_hooks.rs::qual_px_117_a_prompt_hook_routes_through_the_gateway_denies_but_never_allows_and_fails_closed",
+    "run:40239702943",
+    "artifact:evidence/m10/PX-117/ci-run-40239702943.json",
+    "commit:84eecda2",
+    "artifact:evidence/m10/PX-117/evidence.json"
    ],
    "notes": [
     {
@@ -37459,7 +37463,7 @@
     }
    ],
    "owner_agent": "graph-integrator",
-   "status_changed_on": "2026-10-17T06:34:57Z"
+   "status_changed_on": "2026-10-27T19:45:57Z"
   },
   {
    "id": "PX-118",
@@ -37873,11 +37877,15 @@
    ],
    "task_card": "docs/62_PRODUCT_EXTENSION_REQUIREMENTS_TASKS_AND_QUALIFICATIONS.md#px-130",
    "audit_at_adoption": "DOCUMENTED-ONLY; no product caller present",
-   "status": "IMPLEMENTING",
+   "status": "REAL_TESTING",
    "evidence": [
     "commit:d10d46d7",
     "run:38990216920",
-    "test:services/modbit-core/tests/px_130_broker.rs::qual_px_130_a_provider_key_is_used_through_the_broker_counted_revoked_and_rotated"
+    "test:services/modbit-core/tests/px_130_broker.rs::qual_px_130_a_provider_key_is_used_through_the_broker_counted_revoked_and_rotated",
+    "artifact:evidence/m10/PX-130/TASK_CARD.md",
+    "test:services/modbit-core/tests/px_130_broker.rs",
+    "artifact:evidence/m10/PX-130/mutation-check.txt",
+    "artifact:evidence/m10/PX-130/evidence.json"
    ],
    "notes": [
     {
@@ -37885,10 +37893,22 @@
      "from": "AUDITING",
      "to": "IMPLEMENTING",
      "note": "graph integration 2026-10-17 on main dbe83fc9: Only the provider consumer is proven through the broker (counted, revoked, rotated); tools, MCP, browser and cloud consumers are not migrated and the architecture lint fixture does not exist. Open: cloud apps and guest HMAC path not migrated; no lint that fails a direct credential read (PR #64)"
+    },
+    {
+     "at": "2026-10-27T19:47:33Z",
+     "from": "IMPLEMENTING",
+     "to": "WIRED",
+     "note": "consumers (provider, MCP, browser fill, forge, cloud-api, cloud-worker, sandbox-gateway) verified on the one broker at c48afabf; lint #119 present"
+    },
+    {
+     "at": "2026-10-27T19:47:33Z",
+     "from": "WIRED",
+     "to": "REAL_TESTING",
+     "note": "Open: live provider on the compatible gateway and the staging cloud legs of QUAL-PX-130 (owner credentials)"
     }
    ],
    "owner_agent": "graph-integrator",
-   "status_changed_on": "2026-10-17T06:34:57Z"
+   "status_changed_on": "2026-10-27T19:47:33Z"
   },
   {
    "id": "PX-131",
