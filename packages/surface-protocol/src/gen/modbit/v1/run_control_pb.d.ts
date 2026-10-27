@@ -998,6 +998,13 @@ export declare type BudgetAccountingView = Message<"modbit.v1.BudgetAccountingVi
    * @generated from field: bool forbid_spawn = 8;
    */
   forbidSpawn: boolean;
+
+  /**
+   * PX-156: time parked on a person's approval, not in wall_ms_used.
+   *
+   * @generated from field: uint64 wall_ms_parked = 9;
+   */
+  wallMsParked: bigint;
 };
 
 /**

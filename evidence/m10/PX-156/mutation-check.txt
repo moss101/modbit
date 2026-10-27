@@ -1,0 +1,23 @@
+=== BASELINE px_156_parked_time
+test qual_px_156_a_call_that_is_not_parked_still_times_out_on_schedule ... ok
+test qual_px_156_a_call_parked_on_an_approval_is_neither_timed_out_nor_charged_to_the_wall_clock ... ok
+test result: ok. 2 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 6.41s
+exit=0
+=== MUTATION loop-charges-parked: the round boundary charges the parked time (services/modbit-core/src/runtime.rs)
+test qual_px_156_a_call_that_is_not_parked_still_times_out_on_schedule ... ok
+test qual_px_156_a_call_parked_on_an_approval_is_neither_timed_out_nor_charged_to_the_wall_clock ... FAILED
+test result: FAILED. 1 passed; 1 failed; 0 ignored; 0 measured; 0 filtered out; finished in 6.24s
+error: test failed, to rerun pass `-p modbit-core --test px_156_parked_time`
+exit=101 (KILLED)
+=== MUTATION scan-charges-parked: the log reading charges the parked time (services/modbit-core/src/usage.rs)
+test qual_px_156_a_call_that_is_not_parked_still_times_out_on_schedule ... ok
+test qual_px_156_a_call_parked_on_an_approval_is_neither_timed_out_nor_charged_to_the_wall_clock ... FAILED
+test result: FAILED. 1 passed; 1 failed; 0 ignored; 0 measured; 0 filtered out; finished in 6.49s
+error: test failed, to rerun pass `-p modbit-core --test px_156_parked_time`
+exit=101 (KILLED)
+=== MUTATION no-park-recognised: an approval wait is not recognised (services/modbit-core/src/usage.rs)
+test qual_px_156_a_call_that_is_not_parked_still_times_out_on_schedule ... ok
+test qual_px_156_a_call_parked_on_an_approval_is_neither_timed_out_nor_charged_to_the_wall_clock ... FAILED
+test result: FAILED. 1 passed; 1 failed; 0 ignored; 0 measured; 0 filtered out; finished in 6.34s
+error: test failed, to rerun pass `-p modbit-core --test px_156_parked_time`
+exit=101 (KILLED)

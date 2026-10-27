@@ -253,6 +253,8 @@ message BudgetAccountingView {
   uint32 max_children = 6;
   uint32 live_children = 7;
   bool forbid_spawn = 8;
+  // PX-156: time parked on a person's approval, not in wall_ms_used.
+  uint64 wall_ms_parked = 9;
 }
 
 // The Core's breakdown of the request it last sent: the nine categories sum to
