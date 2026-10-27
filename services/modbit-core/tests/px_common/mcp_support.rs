@@ -1,7 +1,6 @@
 //! Helpers for the real-MCP-server tests (PX-115).
 #![allow(dead_code)]
 
-#[cfg(unix)]
 use std::process::{Command, Stdio};
 use std::time::Duration;
 
