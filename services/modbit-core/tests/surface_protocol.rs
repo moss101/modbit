@@ -49998,3 +49998,143 @@ async fn fix_18_restore_refuses_after_head_drift_and_works_when_head_is_back() {
     drop(c);
     core.kill();
 }
+
+/// QUAL-PX-183 on the real Core with real skill files: the index the model
+/// reads is ranked by relevance to the goal inside its budget. A goal that
+/// contains no trigger phrase still gets the skill it is about at the head of
+/// a tight index, where name order would have dropped it; an untrusted skill
+/// that matches better is never listed; an explicitly named skill is injected
+/// whatever it scores; two tasks with the same goal record the same ranking;
+/// the index stays within its budget.
+#[tokio::test]
+async fn qual_px_183_the_skill_index_is_ranked_by_the_goal_within_its_budget() {
+    use modbit_protocol::v1::{StartTask, TaskRunStarted};
+    use serde_json::json;
+    let (_repo, root) = plain_repo(&[("NOTES.md", "# notes\n")]);
+    let dir = tempfile::tempdir().unwrap();
+    let skills = dir.path().join("skills");
+    let mut trusted: Vec<(String, String)> = Vec::new();
+    for i in 0..40 {
+        let name = format!("aa-filler-px183-{i:02}");
+        let h = px_skill(
+            &skills,
+            &name,
+            "description: provision a staging cluster with the deployment chart and rotate its certificates",
+            "FILLER-BODY",
+        );
+        trusted.push((name, h));
+    }
+    let lint = px_skill(
+        &skills,
+        "zz-lintfix-px183",
+        "description: fix the warnings a linter reports in the changed files\ntriggers: [\"run lint fix\"]",
+        "LINT-BODY-MARKER",
+    );
+    trusted.push(("zz-lintfix-px183".into(), lint));
+    let explicit = px_skill(
+        &skills,
+        "explicit-px183",
+        "description: write release notes",
+        "EXPLICIT-BODY-MARKER",
+    );
+    trusted.push(("explicit-px183".into(), explicit));
+    // Matches the goal best, and is never trusted.
+    px_skill(
+        &skills,
+        "aaa-untrusted-px183",
+        "description: linter warnings in changed files: fix the warnings the linter reports",
+        "UNTRUSTED-BODY-MARKER",
+    );
+    let script = vec![
+        json!({"calls": [{"name": "plan.update", "args": {"outcome": "fix the warnings", "expected_files": []}}]}),
+        json!({"calls": [{"name": "task.complete", "args": {"summary": "done", "self_review": {"findings": []}}}]}),
+    ];
+    let (base, seen) = scripted_model(script, None).await;
+    let env = [
+        ("MODBIT_OPENAI_BASE_URL", base.as_str()),
+        ("OPENAI_API_KEY", ""),
+        ("ANTHROPIC_API_KEY", ""),
+        ("MODBIT_SKILL_BUDGET_TOKENS", "260"),
+    ];
+    let core = CoreProcess::spawn_with_env(dir.path(), &env);
+    let mut c = core.client().await;
+    let (session, _) = create_session(&mut c, id16(0xD1)).await;
+    let g = lease_for(&session);
+    for (name, hash) in &trusted {
+        px_trust(&mut c, name, hash, None).await.unwrap();
+    }
+    let goal = "the linter warns about the changed files; fix the warnings";
+    let mut recorded = Vec::new();
+    for (n, cmd) in [(0xD2u8, 0xD3u8), (0xD4, 0xD5)] {
+        let task = create_task_with_goal(&mut c, &session, g, &root, n, goal).await;
+        let before = seen.lock().unwrap().len();
+        let ack = c
+            .command(envelope_fenced(
+                id16(cmd),
+                "StartTask",
+                StartTask {
+                    task_id: Some(task.clone()),
+                    endpoint: String::new(),
+                    model: "gpt-5-mini".into(),
+                    max_turns: 8,
+                    max_tool_calls: 0,
+                    max_no_progress_turns: 6,
+                    skills: vec!["explicit-px183".into()],
+                    ..Default::default()
+                }
+                .encode_to_vec(),
+                g,
+            ))
+            .await
+            .unwrap();
+        let _: TaskRunStarted = Client::result(&ack).unwrap();
+        wait_task(&mut c, &task, 180).await;
+        let first = seen.lock().unwrap()[before].to_string();
+        assert!(
+            first.contains("EXPLICIT-BODY-MARKER"),
+            "an explicit name is injected"
+        );
+        assert!(
+            !first.contains("aaa-untrusted-px183"),
+            "an untrusted skill is never listed"
+        );
+        assert!(!first.contains("UNTRUSTED-BODY-MARKER"));
+        let lint_at = first
+            .find("- zz-lintfix-px183")
+            .unwrap_or_else(|| panic!("the goal's skill is in the index: {first}"));
+        let filler_at = first.find("- aa-filler-px183-").unwrap_or(usize::MAX);
+        assert!(lint_at < filler_at, "ranked first, ahead of name order");
+        let evs = task_events(&core, &session, &task).await;
+        let idx = evs
+            .iter()
+            .find(|(_, t, _)| t == "SkillIndexRecorded")
+            .map(|(_, _, p)| p.clone())
+            .expect("an index was recorded");
+        assert!(
+            idx["omitted"].as_u64().unwrap() > 0,
+            "the budget is tight enough to drop skills: {idx}"
+        );
+        assert!(idx["tokens"].as_u64().unwrap() <= idx["budget_tokens"].as_u64().unwrap());
+        let entries: Vec<&str> = idx["entries"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .map(|e| e.as_str().unwrap())
+            .collect();
+        assert!(entries[0].starts_with("zz-lintfix-px183:"), "{entries:?}");
+        let scores: Vec<&str> = idx["scores"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .map(|e| e.as_str().unwrap())
+            .collect();
+        let top: u32 = scores[0].rsplit(':').next().unwrap().parse().unwrap();
+        assert!(
+            scores[0].starts_with("zz-lintfix-px183:") && top > 0,
+            "{scores:?}"
+        );
+        assert!(scores[1..].iter().all(|s| s.ends_with(":0")), "{scores:?}");
+        recorded.push((idx["index_hash"].clone(), idx["scores"].clone()));
+    }
+    assert_eq!(recorded[0], recorded[1], "the same goal ranks the same");
+}

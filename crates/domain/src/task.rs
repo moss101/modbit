@@ -2002,6 +2002,10 @@ pub enum TaskEvent {
         body_tokens: u32,
         /// Hash of the index text.
         index_hash: String,
+        /// Each entry's relevance to the goal, in index order (`name:score`,
+        /// PX-183).
+        #[serde(default)]
+        scores: Vec<String>,
     },
     /// `SkillRejected`: a skill named for the task was not used, with why.
     /// No state change.
