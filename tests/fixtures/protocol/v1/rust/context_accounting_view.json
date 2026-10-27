@@ -9,6 +9,7 @@
       "maxCostMinor": "5000",
       "maxWallMs": "9007199254740993",
       "spentMinor": "1234",
+      "wallMsParked": "3500",
       "wallMsUsed": "42"
     },
     "categories": [
