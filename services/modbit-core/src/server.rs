@@ -1731,6 +1731,14 @@ pub(crate) fn memory_item_view(v: &serde_json::Value) -> wire::MemoryItemView {
             .get("validated")
             .and_then(serde_json::Value::as_bool)
             .unwrap_or(false),
+        uses: v
+            .get("uses")
+            .and_then(serde_json::Value::as_u64)
+            .unwrap_or(0),
+        last_used_at_ms: v
+            .get("last_used_at_ms")
+            .and_then(serde_json::Value::as_i64)
+            .unwrap_or(0),
     }
 }
 

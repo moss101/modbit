@@ -1348,6 +1348,7 @@ impl ToolHost {
                         session: session_id,
                         task: Some(task_id),
                         actor: actor.clone(),
+                        redactor: self.redactor(),
                     },
                     root.as_ref().map(|p| p.to_string_lossy().into_owned()),
                 ))

@@ -208,6 +208,94 @@ pub struct MemoryCtx {
     pub task: Option<TaskId>,
     /// The actor the events are attributed to.
     pub actor: Actor,
+    /// The one redactor over what this Core holds and every credential
+    /// shape (PX-157): a proposal passes it before it is stored.
+    pub redactor: modbit_secrets::Redactor,
+}
+
+/// The refusal code of a proposal that is wholly a secret (PX-157).
+pub const MEMORY_SECRET: &str = "MEMORY_SECRET";
+
+/// A proposal as it may be stored (PX-157): its topic and content through the
+/// redactor (values this Core holds and every credential shape). Ordinary
+/// text is untouched and keeps its id; a redacted proposal is a different
+/// item, content-addressed over what is stored. A proposal that is nothing
+/// but a secret is refused with [`MEMORY_SECRET`]; the value is never echoed.
+pub fn screen(
+    item: MemoryItem,
+    redactor: &modbit_secrets::Redactor,
+) -> Result<MemoryItem, (String, String)> {
+    let topic = redactor.error(&item.topic);
+    let content = redactor.error(&item.content);
+    if !topic.changed() && !content.changed() {
+        return Ok(item);
+    }
+    let left = content.text.replace(modbit_secrets::REDACTED, "");
+    if !left.chars().any(char::is_alphanumeric) {
+        return Err((
+            MEMORY_SECRET.to_owned(),
+            "the proposal is a credential and nothing else; memory holds no secret value (use a credential handle the broker resolves)".to_owned(),
+        ));
+    }
+    let mut out = MemoryItem::propose(
+        item.scope.clone(),
+        item.record_type,
+        topic.text,
+        content.text,
+        item.source,
+        item.author.clone(),
+        item.confidence,
+        item.created_at_ms,
+    );
+    out.expires_at_ms = item.expires_at_ms;
+    out.sensitivity = item.sensitivity;
+    out.last_validation_revision = item.last_validation_revision;
+    Ok(out)
+}
+
+/// How often and when an item was put into a prompt (PX-157): one count per
+/// turn that injected it, read from its `MemoryUsed` events, so a restart
+/// and a replay give the same numbers.
+pub fn usage(store: &EventStore, memory_id: &str) -> (u64, i64) {
+    let events = store
+        .read_aggregate_of_types(&memory_aggregate_id(memory_id), &["MemoryUsed"], 0)
+        .unwrap_or_default();
+    let mut turns = std::collections::HashSet::new();
+    let mut last = 0;
+    for e in &events {
+        let p = store.payload(&e.envelope).unwrap_or_default();
+        let key = p["turn_id"].as_str().unwrap_or_default().to_owned();
+        if turns.insert(key) {
+            last = last.max(e.envelope.occurred_at.0);
+        }
+    }
+    (turns.len() as u64, last)
+}
+
+/// The `MemoryUsed` events of one prompt: one per injected item, on the
+/// item's own aggregate, naming the turn and the pack that carried it.
+pub fn used_events(
+    injected: &[String],
+    turn_id: &str,
+    context_pack_id: &str,
+    actor: &Actor,
+) -> Vec<(AggregateType, [u8; 16], Vec<NewEvent>)> {
+    injected
+        .iter()
+        .map(|id| {
+            (
+                AggregateType::Memory,
+                memory_aggregate_id(id),
+                vec![memory_event(
+                    "MemoryUsed",
+                    id,
+                    None,
+                    json!({"turn_id": turn_id, "context_pack_id": context_pack_id}),
+                    actor,
+                )],
+            )
+        })
+        .collect()
 }
 
 /// The git HEAD of `root`, if it is a repository with a commit.
@@ -453,6 +541,14 @@ pub async fn list_scoped(
         }
         views.push(view(&item));
     }
+    {
+        let st = store.lock().await;
+        for v in &mut views {
+            let (uses, last) = usage(&st, v["id"].as_str().unwrap_or_default());
+            v["uses"] = json!(uses);
+            v["last_used_at_ms"] = json!(last);
+        }
+    }
     let now = Timestamp::now().0;
     Ok((views, keys, mem.conflicts(now)))
 }
@@ -523,20 +619,22 @@ pub struct Proposed {
 pub async fn propose(
     store: &Arc<Mutex<EventStore>>,
     ctx: &MemoryCtx,
-    mut item: MemoryItem,
+    item: MemoryItem,
     command: Option<CommandRecord>,
-) -> Result<Proposed, String> {
+) -> Result<Proposed, (String, String)> {
+    let store_err = |e: String| ("MEMORY_STORE".to_owned(), e);
     if item.topic.trim().is_empty() || item.content.trim().is_empty() {
-        return Err("topic and content required".to_owned());
+        return Err(store_err("topic and content required".to_owned()));
     }
     if item.topic.chars().count() > MAX_TOPIC_CHARS || item.content.len() > MAX_CONTENT_BYTES {
-        return Err(format!(
+        return Err(store_err(format!(
             "a memory item's topic is at most {MAX_TOPIC_CHARS} characters and its content at most {MAX_CONTENT_BYTES} bytes"
-        ));
+        )));
     }
+    let mut item = screen(item, &ctx.redactor)?;
     item.status = Status::Proposed;
     let mut st = store.lock().await;
-    if let Some(events) = replayed(&st, command.as_ref())? {
+    if let Some(events) = replayed(&st, command.as_ref()).map_err(store_err)? {
         return Ok(Proposed {
             id: item.id.clone(),
             status: Status::Proposed,
@@ -546,7 +644,7 @@ pub async fn propose(
             replayed: true,
         });
     }
-    if let Some(existing) = load(&st, &item.id)? {
+    if let Some(existing) = load(&st, &item.id).map_err(store_err)? {
         return Ok(Proposed {
             id: existing.id,
             status: existing.status,
@@ -564,7 +662,8 @@ pub async fn propose(
         json!({"scope": item.scope.key(), "source": item.source}),
         &ctx.actor,
     );
-    let (events, replayed) = commit(&mut st, command, vec![request(ctx, &item.id, vec![ev])])?;
+    let (events, replayed) =
+        commit(&mut st, command, vec![request(ctx, &item.id, vec![ev])]).map_err(store_err)?;
     Ok(Proposed {
         id: item.id.clone(),
         status: Status::Proposed,
@@ -1316,9 +1415,7 @@ impl modbit_tools::pipeline::MemoryPort for CoreMemory {
             }
             // A proposal is a candidate on the log (status `Proposed`); it is
             // never promoted here.
-            let done = propose(&self.store, &self.ctx, item, None)
-                .await
-                .map_err(|e| ("MEMORY_STORE".to_owned(), e))?;
+            let done = propose(&self.store, &self.ctx, item, None).await?;
             Ok(json!({
                 "id": done.id,
                 "status": label(done.status),
