@@ -311,7 +311,11 @@ tool!(
             .get("max_bytes")
             .and_then(Value::as_u64)
             .unwrap_or(u64::MAX) as usize;
-        match ws.lock().await.read(&s(&args, "path")) {
+        // PX-161: the workspace is locked for the read itself and not for
+        // what is made of it, so reads of one turn overlap in their
+        // decoding and shaping.
+        let read = ws.lock().await.read(&s(&args, "path"));
+        match read {
             // REQ-EV-0186: a notebook reads as structure — cells with their
             // stable ids, types, sources and output summaries — never as a
             // JSON blob to be string-replaced.
