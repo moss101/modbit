@@ -873,6 +873,114 @@ pub async fn forget(
     })
 }
 
+// PX-188: no protocol command or desktop surface calls `share` yet; the tested operation lands first.
+#[allow(dead_code)]
+/// What [`share`] did.
+#[derive(Debug)]
+pub enum Shared {
+    /// The redacted copy is on record in the wider scope (as a proposal; a
+    /// shared item becomes curated only through [`promote`], like any other).
+    Done {
+        /// The new item's id.
+        id: String,
+        /// The scope key it lives in.
+        scope: String,
+        /// The same redacted content was already there; nothing was appended.
+        existed: bool,
+        /// A retry that replayed.
+        replayed: bool,
+    },
+    /// No such item.
+    Unknown,
+    /// Refused, with a code and a reason.
+    Refused {
+        /// Code.
+        code: String,
+        /// Detail.
+        detail: String,
+    },
+}
+
+// PX-188: no protocol command or desktop surface calls `share` yet; the tested operation lands first.
+#[allow(dead_code)]
+/// Share a private item into a broader scope (PX-188). An item is private to
+/// its author: only that person may share it, never an agent, and only into a
+/// scope wider than the item's own. What lands in the wider scope is the
+/// redacted copy ([`modbit_memory::redact_personal`], then the secret
+/// redactor), a proposal that names its source in the event so the link is
+/// kept; the private original is untouched.
+pub async fn share(
+    store: &Arc<Mutex<EventStore>>,
+    ctx: &MemoryCtx,
+    id: &str,
+    target: Scope,
+    command: Option<CommandRecord>,
+) -> Result<Shared, String> {
+    let refused = |code: &str, detail: &str| {
+        Ok(Shared::Refused {
+            code: code.to_owned(),
+            detail: detail.to_owned(),
+        })
+    };
+    let Actor::User(user) = &ctx.actor else {
+        return refused("SHARE_NEEDS_PERSON", "only a person shares private memory");
+    };
+    let author = format!("user:{user}");
+    let mut st = store.lock().await;
+    if let Some(events) = replayed(&st, command.as_ref())? {
+        let new_id = events
+            .first()
+            .and_then(|e| st.payload(&e.envelope).ok())
+            .and_then(|p| p["memory_id"].as_str().map(str::to_owned))
+            .unwrap_or_default();
+        return Ok(Shared::Done {
+            id: new_id,
+            scope: target.key(),
+            existed: false,
+            replayed: true,
+        });
+    }
+    let Some(item) = load(&st, id)? else {
+        return Ok(Shared::Unknown);
+    };
+    if item.author != author {
+        return refused("SHARE_NOT_OWNER", "the item is private to its author");
+    }
+    if !matches!(item.status, Status::Proposed | Status::Curated) {
+        return refused("SHARE_NOT_SHAREABLE", "only a live item can be shared");
+    }
+    let Some(shared) = item.shared_as(target, &author, Timestamp::now().0) else {
+        return refused("SHARE_NOT_WIDER", "a share goes to a broader scope");
+    };
+    let shared = match screen(shared, &ctx.redactor) {
+        Ok(s) => s,
+        Err((code, detail)) => return refused(&code, &detail),
+    };
+    if load(&st, &shared.id)?.is_some() {
+        return Ok(Shared::Done {
+            id: shared.id.clone(),
+            scope: shared.scope.key(),
+            existed: true,
+            replayed: false,
+        });
+    }
+    let row = row_of(&shared);
+    let ev = memory_event(
+        "MemoryProposed",
+        &shared.id,
+        Some(&row),
+        json!({"scope": shared.scope.key(), "source": shared.source, "shared_from": id}),
+        &ctx.actor,
+    );
+    let (_events, replayed) = commit(&mut st, command, vec![request(ctx, &shared.id, vec![ev])])?;
+    Ok(Shared::Done {
+        id: shared.id.clone(),
+        scope: shared.scope.key(),
+        existed: false,
+        replayed,
+    })
+}
+
 /// What [`edit`] did.
 #[derive(Debug)]
 pub enum Edited {
@@ -1566,5 +1674,100 @@ mod tests {
             resolve_prefix(&both, "abcdef0123").unwrap().as_deref(),
             Some("abcdef0123")
         );
+    }
+
+    fn ctx_for(actor: Actor, session: SessionId, tenant: TenantId) -> MemoryCtx {
+        MemoryCtx {
+            tenant,
+            session,
+            task: None,
+            actor,
+            redactor: modbit_secrets::Redactor::new(Vec::<String>::new()),
+        }
+    }
+
+    #[tokio::test]
+    async fn sharing_stores_the_redacted_form_privacy_holds_and_a_delete_leaves_nothing() {
+        let dir = tempfile::tempdir().unwrap();
+        let (tenant, session) = (TenantId::new(), SessionId::new());
+        let jane = modbit_domain::UserId::new();
+        let sam = modbit_domain::UserId::new();
+        let store = Arc::new(Mutex::new(EventStore::open(dir.path()).unwrap()));
+        let jane_ctx = ctx_for(Actor::User(jane), session, tenant);
+        let private = MemoryItem::propose(
+            Scope::User {
+                id: jane.to_string(),
+            },
+            RecordType::UserPreference,
+            "release contact",
+            "Ping jane@example.com or +1 415 555 0132 for releases; checkout is /Users/jane/app",
+            Source::UserStated,
+            format!("user:{jane}"),
+            0.9,
+            1,
+        );
+        let pid = private.id.clone();
+        propose(&store, &jane_ctx, private, None).await.unwrap();
+
+        // Only the author shares; an agent and another person are refused.
+        let space = Scope::Space { id: "team".into() };
+        for who in [Actor::User(sam), Actor::Agent("a1".into())] {
+            let c = ctx_for(who, session, tenant);
+            let r = share(&store, &c, &pid, space.clone(), None).await.unwrap();
+            assert!(matches!(r, Shared::Refused { .. }), "{r:?}");
+        }
+        // A share only widens.
+        let r = share(&store, &jane_ctx, &pid, Scope::Run { id: "r".into() }, None)
+            .await
+            .unwrap();
+        assert!(matches!(r, Shared::Refused { ref code, .. } if code == "SHARE_NOT_WIDER"));
+
+        let Shared::Done {
+            id: shared_id,
+            existed,
+            ..
+        } = share(&store, &jane_ctx, &pid, space.clone(), None)
+            .await
+            .unwrap()
+        else {
+            panic!("share refused");
+        };
+        assert!(!existed);
+        {
+            let st = store.lock().await;
+            let rows = st.memory_in_scopes(&[space.key()]).unwrap();
+            assert_eq!(rows.len(), 1);
+            let it = item_of(&rows[0]).unwrap();
+            for gone in ["jane", "example.com", "555 0132"] {
+                assert!(!it.content.contains(gone), "{gone} stored: {}", it.content);
+            }
+            assert!(it.content.contains("/Users/[personal]/app"));
+            // Another person's private view never holds Jane's private item.
+            let theirs = st
+                .memory_in_scopes(&[Scope::User {
+                    id: sam.to_string(),
+                }
+                .key()])
+                .unwrap();
+            assert!(theirs.is_empty());
+        }
+        // The same share again is the same item.
+        let Shared::Done { existed, .. } = share(&store, &jane_ctx, &pid, space.clone(), None)
+            .await
+            .unwrap()
+        else {
+            panic!("share refused");
+        };
+        assert!(existed);
+
+        // Delete the private original: gone from the store, the shared copy
+        // (a separate, redacted item) stays until its own delete.
+        let f = forget(&store, &jane_ctx, &pid, false, None).await.unwrap();
+        assert_eq!(f.status, "deleted");
+        drop(store);
+        // A restart keeps all of it.
+        let st = EventStore::open(dir.path()).unwrap();
+        assert!(st.memory_get(&pid).unwrap().is_none());
+        assert!(st.memory_get(&shared_id).unwrap().is_some());
     }
 }
