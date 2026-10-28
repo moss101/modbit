@@ -742,6 +742,19 @@ fn system_text(body: &Value) -> String {
         .join("\n")
 }
 
+/// REQ-PX-162: the instruction updates a request carries as appended notes.
+fn update_notes(body: &Value) -> String {
+    body["messages"]
+        .as_array()
+        .into_iter()
+        .flatten()
+        .filter(|m| m["role"] == "user")
+        .filter_map(|m| m["content"].as_str())
+        .filter(|c| c.starts_with("[modbit: instruction update]"))
+        .collect::<Vec<_>>()
+        .join("\n")
+}
+
 fn instruction_repo() -> (tempfile::TempDir, String) {
     repo(&[
         ("notes.txt", "n\n"),
@@ -835,16 +848,19 @@ async fn px_107_agents_md_reaches_the_model_only_in_a_trusted_repository_with_pr
         "{first}"
     );
     assert!(first.contains("cannot grant a tool, an approval or a permission"));
-    // After the read of pkg/a.txt the nested file is in force and listed
-    // before (so, over) the root's; AGENTS.md precedes CLAUDE.md.
+    // After the read of pkg/a.txt the nested file is in force. REQ-PX-162:
+    // the prefix is byte-for-byte the first request's, and the nested file
+    // arrives once, as an appended, labelled note.
     let second = system_text(&bodies[1]);
-    let at = |m: &str| {
-        second
-            .find(m)
-            .unwrap_or_else(|| panic!("{m} missing: {second}"))
-    };
-    assert!(at("AGENTS-PKG-MARKER") < at("AGENTS-ROOT-MARKER"));
-    assert!(at("AGENTS-ROOT-MARKER") < at("CLAUDE-ROOT-MARKER"));
+    assert_eq!(second, first, "the cached prefix does not change");
+    assert!(!second.contains("AGENTS-PKG-MARKER"));
+    let note = update_notes(&bodies[1]);
+    assert!(
+        note.contains("AGENTS-PKG-MARKER")
+            && note.contains("[instructions pkg/AGENTS.md — sha256:")
+            && !note.contains("AGENTS-ROOT-MARKER"),
+        "{note}"
+    );
     // The log and the Inspector name each file, its hash and why it is active.
     let last = of(&trusted.evs, "RulesSelected").pop().unwrap();
     let active = last["active"].as_array().unwrap();
@@ -901,10 +917,15 @@ async fn px_107_editing_agents_md_between_turns_changes_the_next_request_and_its
     assert!(bodies.len() >= 3, "{}", bodies.len());
     assert!(system_text(&bodies[0]).contains("EDIT-VERSION-ONE"));
     assert!(system_text(&bodies[1]).contains("EDIT-VERSION-ONE"));
-    let third = system_text(&bodies[2]);
+    // REQ-PX-162: the edit is an appended note naming what it replaces; the
+    // prefix keeps the version it was compiled from.
+    assert_eq!(system_text(&bodies[2]), system_text(&bodies[0]));
+    let note = update_notes(&bodies[2]);
     assert!(
-        third.contains("EDIT-VERSION-TWO") && !third.contains("EDIT-VERSION-ONE"),
-        "{third}"
+        note.contains("EDIT-VERSION-TWO")
+            && note.contains("replaces [instructions AGENTS.md in the instructions above")
+            && !note.contains("EDIT-VERSION-ONE"),
+        "{note}"
     );
     let hashes: Vec<String> = of(&run.evs, "RulesSelected")
         .iter()
