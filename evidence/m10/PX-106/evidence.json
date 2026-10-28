@@ -1,0 +1,10 @@
+{
+ "task": "PX-106",
+ "requirements": ["REQ-PX-106", "QUAL-PX-106"],
+ "scenarios": ["QUAL-PX-106"],
+ "tests": ["services/modbit-core/tests/px_106_customize.rs", "apps/desktop/e2e/px-106-customize.spec.ts", "apps/desktop/src/main/customize-ipc.test.ts", "apps/desktop/src/renderer/customize/customize-model.test.ts"],
+ "proof": "CI run 40742315645: px-106-customize.spec.ts passes on the real Electron app against the real modbit-core (trust by the hash shown writes the record the Core reads and the next request carries the index line; revoke removes it; a hook switched off does not fire; an imported configuration is quarantined until its manifest is trusted; no catalog or install affordance; axe-core and keyboard operation pass); px_106_customize.rs passes against the real Core with SIGKILL. mutation-check.txt and mutation-check-core.txt show a trust-by-name-only button and a switched-off hook left in force each fail the suite.",
+ "limitations": "Shipped views over registries that exist; there is no marketplace (PX-087..093 belong to the unratified DR-PX-2026-10-03-011). The CLI-state clause is proven through the shared on-disk trust record and the PX-105 CLI test, not through one test that drives both surfaces. The macOS desktop E2E job flaked once in an unrelated spec and passed on rerun.",
+ "runs": ["40742315645"],
+ "ci": {"run_id": "40742315645", "head_sha": "440be364", "conclusion": "success", "json": "evidence/m10/PX-106/ci-run-40742315645.json", "landed_as": "c8edbf5f"}
+}
