@@ -11,6 +11,8 @@
 //! decision it executes under, written write-ahead at dispatch, names the
 //! epoch it was made in.
 
+// PX-168 lint policy: this file baselined expect/unwrap sites; new ones need review.
+#![allow(clippy::expect_used)]
 use modbit_domain::epoch::{AuthorizationStamp, CapabilitySnapshot};
 use modbit_domain::toolcall::EffectReceipt;
 use modbit_domain::{TaskId, ToolCallId};

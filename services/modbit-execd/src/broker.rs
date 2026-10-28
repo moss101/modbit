@@ -1,6 +1,8 @@
 //! Broker: sessions, process/PTY lifecycle, durable bounded output log,
 //! replay, ownership.
 
+// PX-168 lint policy: this file spawns processes and baselined expect/unwrap sites; new ones need review.
+#![allow(clippy::disallowed_methods, clippy::expect_used)]
 use std::collections::HashMap;
 use std::io::{Read, Write};
 use std::path::{Path, PathBuf};

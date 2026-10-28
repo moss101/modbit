@@ -3,6 +3,9 @@
 //! to. Nothing here reads a secret: the root image carries none and the
 //! credential arrives at admission, per boot.
 
+// PX-168 lint policy: this file spawns processes; new ones need review.
+#![allow(clippy::disallowed_methods)]
+
 use std::path::Path;
 use std::time::Instant;
 

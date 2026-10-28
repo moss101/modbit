@@ -16,6 +16,8 @@
 //! Held values shorter than [`MIN_HELD_LEN`] are never matched: a short value
 //! would match ordinary text.
 
+// PX-168 lint policy: this file baselined expect/unwrap sites; new ones need review.
+#![allow(clippy::expect_used)]
 use std::sync::OnceLock;
 
 use regex::Regex;

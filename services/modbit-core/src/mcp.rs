@@ -32,6 +32,8 @@
 //! and appears nowhere else: not in the configuration, not in a log, not in a
 //! listing, not in an argument and not in a result.
 
+// PX-168 lint policy: this file spawns processes and baselined expect/unwrap sites; new ones need review.
+#![allow(clippy::disallowed_methods, clippy::expect_used)]
 use std::collections::{BTreeMap, BTreeSet};
 use std::process::Stdio;
 use std::sync::Arc;

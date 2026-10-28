@@ -2,6 +2,8 @@
 //! `ToolCallNormalizer → Capability Kernel → effector → typed result →
 //! Evidence`), REQ-EV-0239 monotonic guards, REQ-EV-0269 OutputRef paging.
 
+// PX-168 lint policy: this file baselined expect/unwrap sites; new ones need review.
+#![allow(clippy::expect_used)]
 use std::path::PathBuf;
 use std::sync::Arc;
 

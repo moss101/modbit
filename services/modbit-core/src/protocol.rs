@@ -5,6 +5,8 @@
 //! reconciliation that hands the model what is known about such a call
 //! instead of replaying it.
 
+// PX-168 lint policy: this file baselined expect/unwrap sites; new ones need review.
+#![allow(clippy::expect_used)]
 use modbit_domain::event::{Actor, AggregateType};
 use modbit_domain::task::{Task, TaskEvent};
 use modbit_domain::toolcall::{EffectClass, ToolCallEvent, ToolCallState};

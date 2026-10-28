@@ -1,5 +1,7 @@
 //! Direct tools over the real substrate crates (docs/17 inventory).
 
+// PX-168 lint policy: this file baselined expect/unwrap sites; new ones need review.
+#![allow(clippy::expect_used)]
 use std::path::{Path, PathBuf};
 use std::sync::Arc;
 

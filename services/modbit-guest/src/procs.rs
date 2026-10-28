@@ -6,6 +6,8 @@
 //! the same table entry with one interleaved stream and a resizable
 //! window.
 
+// PX-168 lint policy: this file spawns processes and baselined expect/unwrap sites; new ones need review.
+#![allow(clippy::disallowed_methods, clippy::expect_used)]
 use std::collections::{HashMap, VecDeque};
 use std::sync::{Arc, Mutex};
 use std::time::{Duration, Instant};

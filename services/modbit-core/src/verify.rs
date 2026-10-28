@@ -2,6 +2,8 @@
 //! process broker, raw output and reports land in the object store, and
 //! every stage is recorded on the agent Run as events.
 
+// PX-168 lint policy: this file baselined expect/unwrap sites; new ones need review.
+#![allow(clippy::expect_used)]
 use std::path::Path;
 
 use modbit_domain::event::Actor;

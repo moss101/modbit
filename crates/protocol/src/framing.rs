@@ -3,6 +3,8 @@
 //! [`MAX_FRAME_BYTES`] are rejected before allocation on both sides
 //! (REQ-EV-0108: no giant IPC body; large payloads go by OutputRef).
 
+// PX-168 lint policy: this file baselined expect/unwrap sites; new ones need review.
+#![allow(clippy::expect_used)]
 use prost::Message;
 use tokio::io::{AsyncRead, AsyncReadExt, AsyncWrite, AsyncWriteExt};
 

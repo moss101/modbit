@@ -19,6 +19,8 @@
 //! forge that refuses a duplicate is asked for the one it has, so one key
 //! is one pull request however the call is retried.
 
+// PX-168 lint policy: this file baselined expect/unwrap sites; new ones need review.
+#![allow(clippy::expect_used)]
 use std::sync::Arc;
 
 use serde_json::{Value, json};

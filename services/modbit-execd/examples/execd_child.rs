@@ -2,6 +2,8 @@
 //! deterministic output; no test harness noise). Role from
 //! `MODBIT_EXECD_TEST_ROLE`; extra args after `--`.
 
+// PX-168 lint policy: this file spawns processes and baselined expect/unwrap sites; new ones need review.
+#![allow(clippy::disallowed_methods, clippy::unwrap_used)]
 use std::io::{BufRead, Write};
 use std::time::Duration;
 

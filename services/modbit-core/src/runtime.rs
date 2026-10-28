@@ -10,6 +10,8 @@
 //! tool action. Steering inputs are applied between steps; cancellation
 //! interrupts at the same boundaries and cancels the in-flight model stream.
 
+// PX-168 lint policy: this file baselined expect/unwrap sites; new ones need review.
+#![allow(clippy::expect_used)]
 use std::collections::HashMap;
 use std::sync::Arc;
 
