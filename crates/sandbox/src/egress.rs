@@ -60,6 +60,115 @@ pub mod reason {
     pub const CREDENTIAL_MISSING: &str = "CREDENTIAL_MISSING";
     /// The guest asked in a form the broker does not speak.
     pub const BAD_REQUEST: &str = "BAD_REQUEST";
+    /// A rule admits the name and the name resolves to an address that is not
+    /// public (loopback, private, link-local, unique-local, multicast, cloud
+    /// metadata); only a rule that names the IP literal itself reaches one
+    /// (PX-147).
+    pub const TARGET_NOT_PUBLIC: &str = "TARGET_NOT_PUBLIC";
+}
+
+/// Whether `ip` is an address a name-based rule may reach: not loopback,
+/// unspecified, private, link-local, unique-local, shared (CGNAT), documentation,
+/// benchmarking, multicast or reserved, and not an IPv4 address carried inside an
+/// IPv6 one (mapped, NAT64, 6to4) that is itself refused (PX-147). The cloud
+/// metadata endpoints are inside these ranges (`169.254.169.254`,
+/// `fd00:ec2::254`, `100.100.100.200`).
+#[must_use]
+pub fn is_public_address(ip: std::net::IpAddr) -> bool {
+    use std::net::IpAddr;
+    match ip {
+        IpAddr::V4(a) => public_v4(a),
+        IpAddr::V6(a) => {
+            if let Some(v4) = a.to_ipv4_mapped() {
+                return public_v4(v4);
+            }
+            let s = a.segments();
+            // NAT64 well-known prefix 64:ff9b::/96 and 6to4 2002::/16 embed
+            // an IPv4 address; the embedded one decides.
+            if s[0] == 0x0064 && s[1] == 0xff9b && s[2..6].iter().all(|x| *x == 0) {
+                let [a0, a1] = s[6].to_be_bytes();
+                let [a2, a3] = s[7].to_be_bytes();
+                return public_v4(std::net::Ipv4Addr::new(a0, a1, a2, a3));
+            }
+            if s[0] == 0x2002 {
+                let [a0, a1] = s[1].to_be_bytes();
+                let [a2, a3] = s[2].to_be_bytes();
+                return public_v4(std::net::Ipv4Addr::new(a0, a1, a2, a3));
+            }
+            !(a.is_unspecified()
+                || a.is_loopback()
+                || a.is_multicast()
+                || (s[0] & 0xfe00) == 0xfc00 // unique-local fc00::/7
+                || (s[0] & 0xffc0) == 0xfe80 // link-local fe80::/10
+                || (s[0] & 0xffc0) == 0xfec0 // site-local, deprecated
+                || (s[0] == 0x2001 && s[1] == 0x0db8) // documentation
+                || (s[0] == 0x0100 && s[1..4].iter().all(|x| *x == 0))) // discard 100::/64
+        }
+    }
+}
+
+fn public_v4(a: std::net::Ipv4Addr) -> bool {
+    let o = a.octets();
+    !(a.is_unspecified()
+        || a.is_loopback()
+        || a.is_private()
+        || a.is_link_local()
+        || a.is_broadcast()
+        || a.is_multicast()
+        || a.is_documentation()
+        || o[0] == 0 // "this network"
+        || (o[0] == 100 && (o[1] & 0xc0) == 64) // shared address space 100.64/10
+        || (o[0] == 192 && o[1] == 0 && o[2] == 0) // IETF protocol assignments
+        || (o[0] == 198 && (o[1] & 0xfe) == 18) // benchmarking 198.18/15
+        || o[0] >= 240) // reserved
+}
+
+/// How the broker turns an admitted name into a connection. The one
+/// production implementation is [`SystemDialer`]; the trait is the seam that
+/// lets a suite answer a name differently on a second lookup (a DNS rebind)
+/// and observe which address is connected.
+pub trait EgressDialer: Send + Sync {
+    /// Resolve `host` to socket addresses. The broker calls this once per
+    /// destination.
+    fn resolve<'a>(
+        &'a self,
+        host: &'a str,
+        port: u16,
+    ) -> futures_util::future::BoxFuture<'a, std::io::Result<Vec<std::net::SocketAddr>>>;
+
+    /// Connect to an address the broker has already checked.
+    fn connect(
+        &self,
+        addr: std::net::SocketAddr,
+    ) -> futures_util::future::BoxFuture<'_, std::io::Result<tokio::net::TcpStream>>;
+}
+
+/// The system resolver and a plain TCP connect.
+pub struct SystemDialer;
+
+impl EgressDialer for SystemDialer {
+    fn resolve<'a>(
+        &'a self,
+        host: &'a str,
+        port: u16,
+    ) -> futures_util::future::BoxFuture<'a, std::io::Result<Vec<std::net::SocketAddr>>> {
+        Box::pin(async move { Ok(tokio::net::lookup_host((host, port)).await?.collect()) })
+    }
+
+    fn connect(
+        &self,
+        addr: std::net::SocketAddr,
+    ) -> futures_util::future::BoxFuture<'_, std::io::Result<tokio::net::TcpStream>> {
+        Box::pin(tokio::net::TcpStream::connect(addr))
+    }
+}
+
+/// Why an admitted destination could not be dialled.
+enum DialError {
+    /// Every answer was checked and one is not public: nothing is connected.
+    NotPublic(std::net::SocketAddr),
+    /// Resolution or connection failed.
+    Io(std::io::Error),
 }
 
 /// Where decisions go.
@@ -120,8 +229,10 @@ enum CredentialLookup {
 
 /// What the policy decides for one destination.
 enum Decision {
-    /// A rule admits it (its capability, for the audit).
-    Admit(String),
+    /// A rule admits it (its capability, for the audit). `literal` is true
+    /// when the rule names an IP address itself, the one case that may reach a
+    /// non-public address (PX-147).
+    Admit { capability: String, literal: bool },
     /// No rule names it.
     NoRule,
     /// A rule names it and the organisation's list does not (the list's note).
@@ -142,6 +253,7 @@ pub struct EgressBroker {
     /// passes, the secret is dropped here, not merely refused.
     secrets: std::sync::Mutex<HashMap<String, String>>,
     audit: Arc<dyn EgressAudit>,
+    dialer: Arc<dyn EgressDialer>,
 }
 
 impl EgressBroker {
@@ -153,12 +265,59 @@ impl EgressBroker {
         secrets: HashMap<String, String>,
         audit: Arc<dyn EgressAudit>,
     ) -> Arc<Self> {
+        Self::with_dialer(sandbox_id, policy, secrets, audit, Arc::new(SystemDialer))
+    }
+
+    /// A broker that resolves and connects through `dialer` (a suite's
+    /// rebinding resolver; production uses [`SystemDialer`] through [`Self::new`]).
+    #[must_use]
+    pub fn with_dialer(
+        sandbox_id: &str,
+        policy: NetworkPolicy,
+        secrets: HashMap<String, String>,
+        audit: Arc<dyn EgressAudit>,
+        dialer: Arc<dyn EgressDialer>,
+    ) -> Arc<Self> {
         Arc::new(Self {
             sandbox_id: sandbox_id.to_owned(),
             policy: std::sync::Mutex::new(policy),
             secrets: std::sync::Mutex::new(secrets),
             audit,
+            dialer,
         })
+    }
+
+    /// Resolve `host` once, refuse unless every answer is public (or the rule
+    /// named an IP literal), and connect to an address that was checked. The
+    /// name is never resolved a second time, so an answer that changes after
+    /// the check cannot steer the connection.
+    async fn dial(
+        &self,
+        host: &str,
+        port: u16,
+        literal: bool,
+    ) -> Result<tokio::net::TcpStream, DialError> {
+        let addrs = self
+            .dialer
+            .resolve(host, port)
+            .await
+            .map_err(DialError::Io)?;
+        if addrs.is_empty() {
+            return Err(DialError::Io(std::io::Error::other(
+                "the name did not resolve",
+            )));
+        }
+        if !literal && let Some(bad) = addrs.iter().find(|a| !is_public_address(a.ip())) {
+            return Err(DialError::NotPublic(*bad));
+        }
+        let mut last = std::io::Error::other("no address connected");
+        for addr in addrs {
+            match self.dialer.connect(addr).await {
+                Ok(s) => return Ok(s),
+                Err(e) => last = e,
+            }
+        }
+        Err(DialError::Io(last))
     }
 
     /// Hand the broker a fresh secret and lifetime for a handle it already
@@ -262,7 +421,10 @@ impl EgressBroker {
         };
         match policy.org_refusal(host, port) {
             Some(org) => Decision::Org(org.note.clone()),
-            None => Decision::Admit(rule.capability.clone()),
+            None => Decision::Admit {
+                capability: rule.capability.clone(),
+                literal: rule.host.trim().parse::<std::net::IpAddr>().is_ok(),
+            },
         }
     }
 
@@ -365,13 +527,28 @@ impl EgressBroker {
     ) -> std::io::Result<()> {
         let mut inner = r.into_inner();
         match self.decide(host, port) {
-            Decision::Admit(cap) => match tokio::net::TcpStream::connect((host, port)).await {
+            Decision::Admit {
+                capability: cap,
+                literal,
+            } => match self.dial(host, port, literal).await {
                 Ok(upstream) => {
                     self.record(kind, rest, true, &cap, "", "");
                     inner.write_all(b"OK\r\n").await?;
                     relay(inner, upstream).await
                 }
-                Err(e) => {
+                Err(DialError::NotPublic(addr)) => {
+                    let detail = format!(
+                        "{host} resolves to {}, which is not a public address; only a rule that names the IP address itself reaches it",
+                        addr.ip()
+                    );
+                    self.record(kind, rest, false, "", reason::TARGET_NOT_PUBLIC, &detail);
+                    inner
+                        .write_all(
+                            format!("DENIED {} {detail}\r\n", reason::TARGET_NOT_PUBLIC).as_bytes(),
+                        )
+                        .await
+                }
+                Err(DialError::Io(e)) => {
                     self.record(
                         kind,
                         rest,
@@ -555,5 +732,343 @@ async fn forward_credentialed(
                 .await?;
             guest.shutdown().await
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use std::net::{IpAddr, SocketAddr};
+    use std::sync::Mutex;
+    use std::sync::atomic::{AtomicUsize, Ordering};
+
+    use futures_util::future::BoxFuture;
+    use tokio::io::{AsyncReadExt, AsyncWriteExt};
+
+    use super::*;
+    use crate::policy::EgressRule;
+
+    fn ip(s: &str) -> IpAddr {
+        s.parse().expect("address")
+    }
+
+    #[test]
+    fn qual_px_147_the_address_classifier_refuses_every_non_public_range() {
+        for refused in [
+            "127.0.0.1",
+            "127.255.255.254",
+            "0.0.0.0",
+            "10.1.2.3",
+            "172.16.0.1",
+            "172.31.255.255",
+            "192.168.1.1",
+            "169.254.169.254", // cloud metadata
+            "169.254.0.1",
+            "100.64.0.1",
+            "100.100.100.200", // a cloud metadata address in shared space
+            "100.127.255.255",
+            "192.0.0.8",
+            "192.0.2.1",
+            "198.18.0.1",
+            "198.19.255.255",
+            "198.51.100.1",
+            "203.0.113.1",
+            "224.0.0.1",
+            "239.255.255.255",
+            "240.0.0.1",
+            "255.255.255.255",
+            "::",
+            "::1",
+            "fe80::1",
+            "fc00::1",
+            "fd00:ec2::254", // cloud metadata over IPv6
+            "ff02::1",
+            "2001:db8::1",
+            "::ffff:127.0.0.1", // IPv4-mapped
+            "::ffff:10.0.0.1",
+            "::ffff:169.254.169.254",
+            "64:ff9b::7f00:1", // NAT64 around 127.0.0.1
+            "64:ff9b::a9fe:a9fe",
+            "2002:7f00:1::1", // 6to4 around 127.0.0.1
+            "100::1",
+        ] {
+            assert!(!is_public_address(ip(refused)), "{refused} must be refused");
+        }
+        for admitted in [
+            "93.184.216.34",
+            "8.8.8.8",
+            "1.1.1.1",
+            "172.15.255.255", // just outside 172.16/12
+            "172.32.0.1",
+            "100.63.255.255", // just outside 100.64/10
+            "100.128.0.1",
+            "198.17.255.255",
+            "198.20.0.1",
+            "2606:4700:4700::1111",
+            "2a00:1450:4001:81b::200e",
+            "::ffff:8.8.8.8",
+            "64:ff9b::808:808",
+        ] {
+            assert!(is_public_address(ip(admitted)), "{admitted} must pass");
+        }
+    }
+
+    /// A dialer whose answers and connections the test controls: it answers
+    /// the n-th lookup with `answers[n]` (the last answer repeats), counts
+    /// lookups and connections, records the addresses it was asked to
+    /// connect to, and redirects every connection to `backend` (a real
+    /// listener) so bytes can flow.
+    struct Scripted {
+        answers: Vec<Vec<SocketAddr>>,
+        lookups: AtomicUsize,
+        connects: Mutex<Vec<SocketAddr>>,
+        backend: SocketAddr,
+    }
+
+    impl Scripted {
+        fn new(answers: Vec<Vec<&str>>, port: u16, backend: SocketAddr) -> Arc<Self> {
+            Arc::new(Self {
+                answers: answers
+                    .into_iter()
+                    .map(|set| {
+                        set.into_iter()
+                            .map(|a| SocketAddr::new(ip(a), port))
+                            .collect()
+                    })
+                    .collect(),
+                lookups: AtomicUsize::new(0),
+                connects: Mutex::new(Vec::new()),
+                backend,
+            })
+        }
+    }
+
+    impl EgressDialer for Scripted {
+        fn resolve<'a>(
+            &'a self,
+            _host: &'a str,
+            _port: u16,
+        ) -> BoxFuture<'a, std::io::Result<Vec<SocketAddr>>> {
+            let n = self.lookups.fetch_add(1, Ordering::SeqCst);
+            let answer = self.answers[n.min(self.answers.len() - 1)].clone();
+            Box::pin(async move { Ok(answer) })
+        }
+
+        fn connect(
+            &self,
+            addr: SocketAddr,
+        ) -> BoxFuture<'_, std::io::Result<tokio::net::TcpStream>> {
+            self.connects.lock().expect("connects").push(addr);
+            Box::pin(tokio::net::TcpStream::connect(self.backend))
+        }
+    }
+
+    /// A real TCP listener that upper-cases what it reads (so a relay in
+    /// both directions is observable) and counts accepted connections.
+    async fn backend() -> (SocketAddr, Arc<AtomicUsize>) {
+        let l = tokio::net::TcpListener::bind("127.0.0.1:0")
+            .await
+            .expect("bind");
+        let addr = l.local_addr().expect("addr");
+        let accepted = Arc::new(AtomicUsize::new(0));
+        let seen = Arc::clone(&accepted);
+        tokio::spawn(async move {
+            while let Ok((mut s, _)) = l.accept().await {
+                seen.fetch_add(1, Ordering::SeqCst);
+                tokio::spawn(async move {
+                    let mut buf = [0u8; 256];
+                    while let Ok(n) = s.read(&mut buf).await {
+                        if n == 0 {
+                            break;
+                        }
+                        let up: Vec<u8> = buf[..n].iter().map(u8::to_ascii_uppercase).collect();
+                        if s.write_all(&up).await.is_err() {
+                            break;
+                        }
+                    }
+                });
+            }
+        });
+        (addr, accepted)
+    }
+
+    struct Rig {
+        audit: Arc<MemoryAudit>,
+        broker: Arc<EgressBroker>,
+    }
+
+    fn rig(rule_host: &str, port: u16, dialer: Arc<dyn EgressDialer>) -> Rig {
+        let audit = Arc::new(MemoryAudit::default());
+        let broker = EgressBroker::with_dialer(
+            "sbx-px147",
+            NetworkPolicy {
+                egress: vec![EgressRule {
+                    host: rule_host.into(),
+                    port,
+                    capability: "network.egress".into(),
+                }],
+                ..NetworkPolicy::default()
+            },
+            HashMap::new(),
+            Arc::clone(&audit) as Arc<dyn EgressAudit>,
+            dialer,
+        );
+        Rig { audit, broker }
+    }
+
+    /// One guest channel against the broker: send `request`, return the
+    /// broker's answer line and the still-open guest end.
+    async fn ask(broker: &Arc<EgressBroker>, request: &str) -> (String, tokio::io::DuplexStream) {
+        let (mut guest, host_end) = tokio::io::duplex(8192);
+        let b = Arc::clone(broker);
+        tokio::spawn(async move {
+            let _ = b.handle(Box::new(host_end)).await;
+        });
+        guest
+            .write_all(format!("{request}\r\n").as_bytes())
+            .await
+            .expect("write");
+        let mut line = Vec::new();
+        let mut byte = [0u8; 1];
+        while guest.read_exact(&mut byte).await.is_ok() {
+            if byte[0] == b'\n' {
+                break;
+            }
+            line.push(byte[0]);
+        }
+        (String::from_utf8_lossy(&line).trim().to_owned(), guest)
+    }
+
+    #[tokio::test]
+    async fn qual_px_147_a_name_that_resolves_to_a_non_public_address_is_refused_and_audited() {
+        let (backend_addr, accepted) = backend().await;
+        for (label, answers) in [
+            ("loopback", vec!["127.0.0.1"]),
+            ("private 10/8", vec!["10.0.0.5"]),
+            ("private 192.168/16", vec!["192.168.7.7"]),
+            ("cloud metadata", vec!["169.254.169.254"]),
+            ("ipv6 loopback", vec!["::1"]),
+            ("ipv4-mapped loopback", vec!["::ffff:127.0.0.1"]),
+            ("unique-local metadata", vec!["fd00:ec2::254"]),
+            (
+                "a public answer next to a private one",
+                vec!["93.184.216.34", "10.0.0.5"],
+            ),
+        ] {
+            for (verb, rule_host) in [("TUNNEL", "svc.example.test"), ("HTTP", "*.example.test")] {
+                let dialer = Scripted::new(vec![answers.clone()], 443, backend_addr);
+                let r = rig(rule_host, 443, Arc::clone(&dialer) as Arc<dyn EgressDialer>);
+                let (reply, _guest) = ask(&r.broker, &format!("{verb} svc.example.test:443")).await;
+                assert!(
+                    reply.starts_with(&format!("DENIED {}", reason::TARGET_NOT_PUBLIC)),
+                    "{label} via {verb}: {reply}"
+                );
+                assert!(
+                    dialer.connects.lock().expect("connects").is_empty(),
+                    "{label} via {verb}: nothing may be connected"
+                );
+                let records = r.audit.records("sbx-px147");
+                assert_eq!(records.len(), 1, "{label} via {verb}");
+                assert!(!records[0].allowed);
+                assert_eq!(records[0].reason, reason::TARGET_NOT_PUBLIC);
+                assert!(
+                    records[0].detail.contains("not a public address"),
+                    "{records:?}"
+                );
+            }
+        }
+        assert_eq!(
+            accepted.load(Ordering::SeqCst),
+            0,
+            "the backend saw no connection"
+        );
+    }
+
+    #[tokio::test]
+    async fn qual_px_147_the_checked_address_is_the_one_connected_and_the_name_is_resolved_once() {
+        // The DNS answer changes between the check and a would-be connect:
+        // the first lookup is public, every later one is loopback. The broker
+        // must look up once and connect to the address it checked.
+        let (backend_addr, accepted) = backend().await;
+        let dialer = Scripted::new(
+            vec![vec!["93.184.216.34"], vec!["127.0.0.1"]],
+            443,
+            backend_addr,
+        );
+        let r = rig(
+            "svc.example.test",
+            443,
+            Arc::clone(&dialer) as Arc<dyn EgressDialer>,
+        );
+        let (reply, mut guest) = ask(&r.broker, "TUNNEL svc.example.test:443").await;
+        assert_eq!(reply, "OK");
+        guest.write_all(b"hello broker").await.expect("write");
+        let mut back = [0u8; 12];
+        guest.read_exact(&mut back).await.expect("relayed back");
+        assert_eq!(&back, b"HELLO BROKER", "bytes flow both ways");
+        assert_eq!(
+            dialer.lookups.load(Ordering::SeqCst),
+            1,
+            "resolved exactly once"
+        );
+        assert_eq!(
+            *dialer.connects.lock().expect("connects"),
+            vec![SocketAddr::new(ip("93.184.216.34"), 443)],
+            "the connection went to the address that was checked"
+        );
+        assert_eq!(accepted.load(Ordering::SeqCst), 1);
+        let records = r.audit.records("sbx-px147");
+        assert_eq!(records.len(), 1);
+        assert!(records[0].allowed, "{records:?}");
+        assert_eq!(records[0].capability, "network.egress");
+        assert_eq!(
+            records[0].reason, "",
+            "the receipt of an admitted destination is unchanged"
+        );
+        assert_eq!(records[0].kind, "tunnel");
+    }
+
+    #[tokio::test]
+    async fn qual_px_147_a_rule_that_names_the_ip_literal_still_reaches_it() {
+        // The existing suites reach fixture servers on 127.0.0.1 by a rule
+        // that names that address; that is the one way past the check.
+        let (backend_addr, _accepted) = backend().await;
+        let port = backend_addr.port();
+        let r = rig("127.0.0.1", port, Arc::new(SystemDialer));
+        let (reply, mut guest) = ask(&r.broker, &format!("TUNNEL 127.0.0.1:{port}")).await;
+        assert_eq!(reply, "OK");
+        guest.write_all(b"ping").await.expect("write");
+        let mut back = [0u8; 4];
+        guest.read_exact(&mut back).await.expect("relayed back");
+        assert_eq!(&back, b"PING");
+        let records = r.audit.records("sbx-px147");
+        assert!(
+            records[0].allowed && records[0].reason.is_empty(),
+            "{records:?}"
+        );
+
+        // A rule that names an IPv6 literal works the same way.
+        let r6 = rig("::1", port, Arc::new(SystemDialer));
+        let (reply6, _g) = ask(&r6.broker, &format!("TUNNEL [::1]:{port}")).await;
+        // The backend listens on IPv4 only: the guard admits the literal and
+        // the failure is a plain connect failure, never TARGET_NOT_PUBLIC.
+        assert!(
+            reply6.starts_with(&format!("DENIED {}", reason::CONNECT_FAILED)),
+            "{reply6}"
+        );
+    }
+
+    #[tokio::test]
+    async fn qual_px_147_a_name_rule_does_not_reach_loopback_through_the_system_resolver() {
+        // No fixture dialer: the real resolver answers `localhost` with a
+        // loopback address and the broker refuses it.
+        let (backend_addr, accepted) = backend().await;
+        let port = backend_addr.port();
+        let r = rig("localhost", port, Arc::new(SystemDialer));
+        let (reply, _g) = ask(&r.broker, &format!("TUNNEL localhost:{port}")).await;
+        assert!(
+            reply.starts_with(&format!("DENIED {}", reason::TARGET_NOT_PUBLIC)),
+            "{reply}"
+        );
+        assert_eq!(accepted.load(Ordering::SeqCst), 0);
     }
 }

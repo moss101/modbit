@@ -420,6 +420,30 @@ fn read(
     Ok(ReadOutcome::Chunk { tag, data })
 }
 
+/// The last `max` bytes of the retained output, read from the newest
+/// segments (the raw bytes of both streams, in the order they were logged). A
+/// segment that is gone, or unreadable, yields what could be read.
+pub fn tail(dir: &Path, id: &str, segments: &[Segment], max: usize) -> Vec<u8> {
+    let mut out: Vec<u8> = Vec::new();
+    for seg in segments.iter().rev() {
+        if out.len() >= max {
+            break;
+        }
+        let Ok(mut f) = File::open(data_path(dir, id, seg.base)) else {
+            break;
+        };
+        let want = (max - out.len()) as u64;
+        let start = seg.len.saturating_sub(want);
+        let mut buf = vec![0u8; (seg.len - start) as usize];
+        if f.seek(SeekFrom::Start(start)).is_err() || f.read_exact(&mut buf).is_err() {
+            break;
+        }
+        buf.extend_from_slice(&out);
+        out = buf;
+    }
+    out
+}
+
 /// What sealing a log into the object store produced.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Sealed {

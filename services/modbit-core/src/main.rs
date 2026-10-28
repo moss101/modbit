@@ -5,6 +5,10 @@
 //! subscriptions. Scheduler, providers and tools arrive with later tasks.
 //!
 //! Usage: `modbit-core --data-dir <dir>`
+//!
+//! The first statement of `main` hardens the process (PX-148: no core dumps,
+//! not attachable, no injected libraries); `modbit-core --hardening-report`
+//! prints the state that leaves, read from the process.
 
 use std::path::PathBuf;
 use std::process::ExitCode;
@@ -108,13 +112,19 @@ mod worktree_cleanup;
 mod worktrees;
 
 fn usage() -> &'static str {
-    "usage: modbit-core --data-dir <dir> [--tether-stdin] [--idle-exit-secs N] [--tenant-id <uuid>]"
+    "usage: modbit-core --data-dir <dir> [--tether-stdin] [--idle-exit-secs N] [--tenant-id <uuid>] | --hardening-report"
 }
 
 /// Stack of each runtime worker thread (see `main`).
 const WORKER_STACK_BYTES: usize = 16 * 1024 * 1024;
 
 fn main() -> ExitCode {
+    // PX-148: before any thread, store or key. A protection that cannot be set
+    // is said so, not skipped.
+    let hardening = modbit_process_hardening::harden();
+    for failure in &hardening.failed {
+        eprintln!("modbit-core: hardening: {failure}");
+    }
     let mut data_dir: Option<PathBuf> = None;
     let mut tether_stdin = false;
     let mut idle_exit_secs: Option<u64> = None;
@@ -134,6 +144,10 @@ fn main() -> ExitCode {
                         return ExitCode::from(2);
                     }
                 }
+            }
+            "--hardening-report" => {
+                println!("{}", modbit_process_hardening::report_json(&hardening));
+                return ExitCode::SUCCESS;
             }
             "-h" | "--help" => {
                 println!("{}", usage());

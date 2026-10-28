@@ -1280,9 +1280,29 @@ async fn add_rule(
     } else {
         p.rule_id.chars().take(128).collect()
     };
+    // PX-149: the rule is made for the program the pattern's first word
+    // resolves to now, in the directory and search path the task's commands
+    // get. A program that resolves to nothing cannot be allowed: there is no
+    // path to pin, and a rule that pins none would never hold.
+    let program_path = {
+        let cwd = task.workspace_root.clone().unwrap_or_default();
+        let path = match core.tools.environments.get(&task_id) {
+            Some(e) => modbit_tools::pipeline::ProcessEnvironment {
+                env: Default::default(),
+                path: e.revision.path.clone(),
+            }
+            .search_path(),
+            None => std::env::var("PATH").unwrap_or_default(),
+        };
+        match p.pattern.first() {
+            Some(first) => modbit_policy::runmode::resolve_program(first, &cwd, &path),
+            None => None,
+        }
+    };
     let rule = AllowRule {
         rule_id: rule_id.clone(),
         pattern: p.pattern,
+        program_path: program_path.clone().unwrap_or_default(),
         scope,
         scope_key,
         created_by: format!("user:{}", core.user_id),
@@ -1292,6 +1312,15 @@ async fn add_rule(
         origin_task: task_id.to_string(),
     };
     modbit_policy::runmode::validate_rule(&rule).map_err(|r| refuse(r.code, r.reason))?;
+    if program_path.is_none() {
+        return Err(refuse(
+            modbit_policy::runmode::pin::PROGRAM_NOT_FOUND,
+            format!(
+                "`{}` does not resolve to a program in this task's working directory and search path, so a rule cannot be pinned to it; install it or fix the path first",
+                rule.pattern.first().map(String::as_str).unwrap_or_default()
+            ),
+        ));
+    }
     require_lease(core, &env.command_id, env, &task.session_id)
         .await
         .map_err(|ack| (ack.error_code, ack.error_message))?;

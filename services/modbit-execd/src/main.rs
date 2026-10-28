@@ -18,6 +18,10 @@
 //! `<data-dir>/objects`; the Core starts the broker with its own object
 //! store there, so one content-addressed store serves both.
 //!
+//! The first statement of `main` hardens the process (PX-148: no core dumps,
+//! not attachable, no injected libraries); `modbit-execd --hardening-report`
+//! prints the state that leaves, read from the process.
+//!
 //! On Linux it is also its own review-sandbox launcher (EPR-018):
 //! `modbit-execd --review-sandbox-exec -- <argv...>` runs `argv` with no
 //! network, and `--review-sandbox-selfcheck` reports whether that holds.
@@ -32,6 +36,12 @@ mod seccomp_net;
 mod seglog;
 
 fn main() -> ExitCode {
+    // PX-148: before any thread or child. A protection that cannot be set is
+    // said so, not skipped.
+    let hardening = modbit_process_hardening::harden();
+    for failure in &hardening.failed {
+        eprintln!("modbit-execd: hardening: {failure}");
+    }
     let mut data_dir: Option<PathBuf> = None;
     let mut tether_stdin = false;
     let mut orphan_grace: Option<std::time::Duration> = None;
@@ -71,6 +81,10 @@ fn main() -> ExitCode {
                     ExitCode::from(1)
                 };
             }
+            "--hardening-report" => {
+                println!("{}", modbit_process_hardening::report_json(&hardening));
+                return ExitCode::SUCCESS;
+            }
             "--data-dir" => data_dir = args.next().map(PathBuf::from),
             "--tether-stdin" => tether_stdin = true,
             "--orphan-grace-secs" => {
@@ -97,7 +111,7 @@ fn main() -> ExitCode {
             }
             "-h" | "--help" => {
                 println!(
-                    "usage: modbit-execd --data-dir <dir> [--object-dir <dir>] [--replay-window-bytes <n>] [--segment-bytes <n>] [--retain-sessions <n>] [--retain-secs <n>] [--tether-stdin] [--orphan-grace-secs <n>]"
+                    "usage: modbit-execd --data-dir <dir> [--object-dir <dir>] [--replay-window-bytes <n>] [--segment-bytes <n>] [--retain-sessions <n>] [--retain-secs <n>] [--tether-stdin] [--orphan-grace-secs <n>] | --hardening-report"
                 );
                 return ExitCode::SUCCESS;
             }
