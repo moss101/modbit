@@ -1,0 +1,24 @@
+{
+ "task": "PX-156",
+ "requirements": [
+  "REQ-PX-156",
+  "QUAL-PX-156"
+ ],
+ "scenarios": [
+  "QUAL-PX-156"
+ ],
+ "tests": [
+  "services/modbit-core/tests/px_156_parked_time.rs"
+ ],
+ "proof": "Time parked on approval is excluded from wall-clock budget; an unparked call still times out on schedule (unix-gated test). CI run 40636209456 on head 93d4c932: all jobs green on macOS, Linux and Windows; mutation-check.txt where present.",
+ "limitations": "Scripted/recorded provider transport; no live-provider leg. Sealed against the PR-head CI run; landed on main in merge 398fd685 (or 7d4537c3/b99a4632/149 squash).",
+ "runs": [
+  "40636209456"
+ ],
+ "ci": {
+  "run_id": "40636209456",
+  "head_sha": "93d4c932",
+  "conclusion": "success",
+  "json": "evidence/m10/PX-156/ci-run-40636209456.json"
+ }
+}

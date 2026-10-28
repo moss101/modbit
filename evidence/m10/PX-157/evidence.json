@@ -1,0 +1,24 @@
+{
+ "task": "PX-157",
+ "requirements": [
+  "REQ-PX-157",
+  "QUAL-PX-157"
+ ],
+ "scenarios": [
+  "QUAL-PX-157"
+ ],
+ "tests": [
+  "services/modbit-core/tests/memory_graph_index.rs"
+ ],
+ "proof": "Memory proposals are screened by the redactor and uses are counted from MemoryUsed events. CI run 40636260752 on head d3b7ab0d: all jobs green on macOS, Linux and Windows; mutation-check.txt where present.",
+ "limitations": "Scripted/recorded provider transport; no live-provider leg. Sealed against the PR-head CI run; landed on main in merge 398fd685 (or 7d4537c3/b99a4632/149 squash).",
+ "runs": [
+  "40636260752"
+ ],
+ "ci": {
+  "run_id": "40636260752",
+  "head_sha": "d3b7ab0d",
+  "conclusion": "success",
+  "json": "evidence/m10/PX-157/ci-run-40636260752.json"
+ }
+}

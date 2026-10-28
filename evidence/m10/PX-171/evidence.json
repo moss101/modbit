@@ -1,0 +1,25 @@
+{
+ "task": "PX-171",
+ "requirements": [
+  "REQ-PX-171",
+  "QUAL-PX-171"
+ ],
+ "scenarios": [
+  "QUAL-PX-171"
+ ],
+ "tests": [
+  "crates/providers/tests/faults.rs",
+  "services/modbit-core/tests/px_171_faults.rs"
+ ],
+ "proof": "Shared fault-injecting provider server for both wires; six provider and two Core tests; mutations killed. CI run 40636189116 on head 690d0d02: all jobs green on macOS, Linux and Windows; mutation-check.txt where present.",
+ "limitations": "Scripted/recorded provider transport; no live-provider leg. Sealed against the PR-head CI run; landed on main in merge 398fd685 (or 7d4537c3/b99a4632/149 squash).",
+ "runs": [
+  "40636189116"
+ ],
+ "ci": {
+  "run_id": "40636189116",
+  "head_sha": "690d0d02",
+  "conclusion": "success",
+  "json": "evidence/m10/PX-171/ci-run-40636189116.json"
+ }
+}
