@@ -4177,7 +4177,7 @@ async fn run_loop(
                     request_estimate.saturating_sub(
                         transcript
                             .iter()
-                            .map(|m| modbit_compaction::estimate_tokens_v2(&message_text(m)))
+                            .map(|m| message_tokens(m, modbit_compaction::estimate_tokens_v2))
                             .sum(),
                     ),
                 );
@@ -7564,7 +7564,7 @@ fn estimate_request_tokens(request: &modbit_providers::ModelRequest) -> u32 {
     let messages: u32 = request
         .messages
         .iter()
-        .map(|m| modbit_compaction::estimate_tokens_v2(&message_text(m)))
+        .map(|m| message_tokens(m, modbit_compaction::estimate_tokens_v2))
         .sum();
     let tools = modbit_compaction::estimate_tokens_v2(
         &serde_json::to_string(&request.tool_projection).unwrap_or_default(),
@@ -7576,7 +7576,7 @@ fn estimate_request_tokens(request: &modbit_providers::ModelRequest) -> u32 {
 fn transcript_tokens(transcript: &[Message]) -> u32 {
     transcript
         .iter()
-        .map(|m| modbit_compaction::estimate_tokens(&message_text(m)))
+        .map(|m| message_tokens(m, modbit_compaction::estimate_tokens))
         .sum()
 }
 
@@ -7846,7 +7846,7 @@ fn measured_tokens(
         calibration.apply(
             transcript
                 .iter()
-                .map(|m| modbit_compaction::estimate_tokens_v2(&message_text(m)))
+                .map(|m| message_tokens(m, modbit_compaction::estimate_tokens_v2))
                 .sum(),
         )
     } else {
@@ -8182,6 +8182,49 @@ async fn compaction_step(
 }
 
 /// The text of a message, for the token estimate and the compaction source.
+/// Tokens an image costs the model, charged by its size (PX-158): about one
+/// token per 750 pixels, floored at a small image's cost and capped where the
+/// providers resize. An image whose size the result did not name is charged
+/// a mid-size default rather than nothing.
+fn image_tokens(mime: &str, alt: &str) -> u32 {
+    const MIN: u64 = 85;
+    const MAX: u64 = 1600;
+    const UNKNOWN: u64 = 1200;
+    if !mime.starts_with("image/") {
+        return 0;
+    }
+    let bytes = alt.as_bytes();
+    let size = (1..bytes.len().saturating_sub(1)).find_map(|i| {
+        if bytes[i] != b'x' {
+            return None;
+        }
+        let digits = |it: &mut dyn Iterator<Item = &u8>| {
+            let d: Vec<u8> = it.take_while(|b| b.is_ascii_digit()).copied().collect();
+            (!d.is_empty()).then_some(d)
+        };
+        let mut left = digits(&mut bytes[..i].iter().rev())?;
+        left.reverse();
+        let right = digits(&mut bytes[i + 1..].iter())?;
+        let n = |d: Vec<u8>| String::from_utf8(d).ok()?.parse::<u64>().ok();
+        Some(n(left)?.saturating_mul(n(right)?))
+    });
+    size.map_or(UNKNOWN, |px| (px / 750).clamp(MIN, MAX)) as u32
+}
+
+/// Estimated tokens of one message: its text through `estimate`, plus the
+/// size-charged cost of each image it carries.
+fn message_tokens(m: &Message, estimate: fn(&str) -> u32) -> u32 {
+    let images: u32 = m
+        .parts
+        .iter()
+        .map(|p| match p {
+            ContentPart::Media { mime, alt, .. } => image_tokens(mime, alt),
+            _ => 0,
+        })
+        .sum();
+    estimate(&message_text(m)).saturating_add(images)
+}
+
 fn message_text(m: &Message) -> String {
     m.parts
         .iter()
@@ -10860,7 +10903,58 @@ fn protected_question_unavailable(core: &Core, task: &Task) -> Option<String> {
 
 #[cfg(test)]
 mod tests {
-    use super::{ContentPart, b64, media_parts, media_refs};
+    fn frame(w: u32, h: u32) -> Message {
+        let output = serde_json::json!({"media": {
+            "mime": "image/png", "egress_ref": "b".repeat(64), "width": w, "height": h
+        }});
+        Message {
+            role: modbit_providers::Role::Tool,
+            parts: media_parts("c", &media_refs(&output)),
+        }
+    }
+
+    /// PX-158: an image is charged by its size, never by its caption.
+    #[test]
+    fn image_tokens_follow_the_size_the_result_named() {
+        let small = image_tokens("image/png", "image/png read from a.png, 32x16; x");
+        let screen = image_tokens("image/png", "image/png read from a.png, 1024x768; x");
+        let huge = image_tokens("image/png", "image/png read from a.png, 9000x9000; x");
+        assert_eq!(small, 85, "a tiny image costs the floor");
+        assert_eq!(screen, 786_432 / 750);
+        assert_eq!(huge, 1600, "capped where providers resize");
+        assert_eq!(image_tokens("image/png", "no size named"), 1200);
+        assert_eq!(image_tokens("application/pdf", "10x10"), 0);
+    }
+
+    #[test]
+    fn many_frames_reach_a_threshold_their_captions_never_would() {
+        let frames: Vec<Message> = (0..40).map(|_| frame(1280, 800)).collect();
+        let by_text: u32 = frames
+            .iter()
+            .map(|m| modbit_compaction::estimate_tokens(&message_text(m)))
+            .sum();
+        let charged = transcript_tokens(&frames);
+        assert!(by_text < 3_000, "captions alone are cheap: {by_text}");
+        assert!(
+            charged > 40 * 1_000,
+            "frames are charged by size: {charged}"
+        );
+        // A text-only transcript is estimated exactly as before.
+        let text = vec![Message {
+            role: modbit_providers::Role::User,
+            parts: vec![ContentPart::Text {
+                text: "hello there".into(),
+            }],
+        }];
+        assert_eq!(
+            transcript_tokens(&text),
+            modbit_compaction::estimate_tokens("hello there")
+        );
+    }
+
+    use super::{
+        ContentPart, b64, image_tokens, media_parts, media_refs, message_text, transcript_tokens,
+    };
 
     #[test]
     fn base64_matches_the_standard_alphabet_and_padding() {
