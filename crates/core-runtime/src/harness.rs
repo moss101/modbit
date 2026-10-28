@@ -171,6 +171,10 @@ pub struct HarnessState {
     pub open_failures: Vec<String>,
     /// Consecutive turns without progress.
     pub no_progress_turns: u32,
+    /// Refused tool results, folded from the task's log (PX-153). Not part of
+    /// what the model reads.
+    #[serde(skip)]
+    pub denials: crate::denials::DenialWatch,
     /// Candidate revision (workspace revision after the last write).
     pub candidate_revision: Option<u64>,
     /// Whether a self-review was recorded with no unresolved findings.

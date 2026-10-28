@@ -20,6 +20,7 @@ pub mod admission;
 pub mod budget;
 pub mod capacity;
 pub mod conflict;
+pub mod denials;
 pub mod diagnostics;
 pub mod harness;
 pub mod input_queue;
