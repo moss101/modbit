@@ -3207,6 +3207,9 @@ async fn run_loop(
     let mut calibration = modbit_compaction::Calibration::default();
     let mut overhead_tokens: u32 = 0;
     let mut rearm_floor: u32 = 0;
+    // PX-155: whether the request now being retried already followed a
+    // context-overflow compaction (one retry, never a loop).
+    let mut overflow_retried = false;
     let mut summarizer_usage: Vec<crate::compaction_model::SummarizerUsage> = Vec::new();
     // The vision bridge for a text-only routed model (REQ-EV-0184/0185):
     // one description per media digest per run, recorded on the task.
@@ -3964,6 +3967,7 @@ async fn run_loop(
                         calibration,
                         rearm_floor: &mut rearm_floor,
                         usage: &mut summarizer_usage,
+                        force: false,
                     },
                 )
                 .await;
@@ -4765,6 +4769,9 @@ async fn run_loop(
                     );
                     break 'outer LoopEnd::Cancelled;
                 }
+                if error.is_none() {
+                    overflow_retried = false;
+                }
                 if let Some((code, message)) = error {
                     let mut store = core.store.lock().await;
                     // A failed attempt is accounted the same way: unknown, not free.
@@ -4837,6 +4844,59 @@ async fn run_loop(
                         )],
                     );
                     drop(store);
+                    // PX-155: the request was over the model's window. The
+                    // first time, compact synchronously through the ladder and
+                    // send the request once more; a second overflow, or a
+                    // compaction that could not install an epoch, ends the
+                    // run with the typed failure and never loops.
+                    if code == modbit_providers::gateway::CONTEXT_OVERFLOW {
+                        if !overflow_retried {
+                            let epoch_before = epoch.as_ref().map(|m| m.epoch);
+                            compaction_step(
+                                &core,
+                                &task,
+                                lt,
+                                &actor,
+                                &mut transcript,
+                                &mut epoch,
+                                &mut compaction_worker,
+                                &mut CompactionCtx {
+                                    endpoint: &cfg.endpoint,
+                                    model: &cfg.model,
+                                    state: &state,
+                                    cancel: &cancel,
+                                    overhead: overhead_tokens,
+                                    calibration,
+                                    rearm_floor: &mut rearm_floor,
+                                    usage: &mut summarizer_usage,
+                                    force: true,
+                                },
+                            )
+                            .await;
+                            if epoch.as_ref().map(|m| m.epoch) != epoch_before {
+                                overflow_retried = true;
+                                reroute_at_boundary(
+                                    &core,
+                                    &task,
+                                    run_id,
+                                    &mut cfg,
+                                    "COMPACTION",
+                                    &actor,
+                                )
+                                .await;
+                                preturn.compaction_opened();
+                                continue 'outer;
+                            }
+                        }
+                        break 'outer LoopEnd::ProviderFailed(
+                            code,
+                            if overflow_retried {
+                                format!("{message} (again after a compaction; not retried)")
+                            } else {
+                                format!("{message} (a compaction could not reduce the context)")
+                            },
+                        );
+                    }
                     // REQ-EV-0030: an approved fallback continues the leg the
                     // provider failed; without one the run stops as before.
                     match crate::escalation::at_provider_boundary(
@@ -7728,6 +7788,9 @@ struct CompactionCtx<'a> {
     calibration: modbit_compaction::Calibration,
     /// The transcript size the next compaction waits to exceed (hysteresis).
     rearm_floor: &'a mut u32,
+    /// PX-155: the provider refused the last request as over the model's
+    /// window, so this boundary compacts synchronously whatever the estimate.
+    force: bool,
     /// What summarizer calls cost, until the turn can take it.
     usage: &'a mut Vec<crate::compaction_model::SummarizerUsage>,
 }
@@ -7900,7 +7963,7 @@ async fn compaction_step(
     // Hysteresis: a model-aware trigger that has just compacted waits for the
     // transcript to grow past where the epoch left it.
     let armed = tokens > *ctx.rearm_floor;
-    let hard = armed && tokens > budget;
+    let hard = (armed && tokens > budget) || ctx.force;
     let soft_over = if th.model_aware() {
         tokens > th.soft
     } else {
