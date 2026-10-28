@@ -209,6 +209,8 @@ pub(crate) struct Choice {
     world: World,
     selected: Vec<(modbit_skills::Selection, bool)>,
     refused: Vec<(String, String, String)>,
+    /// The task's goal, which orders the index (PX-183).
+    goal: String,
 }
 
 pub(crate) fn choose(core: &Core, task: &Task, explicit: &[String]) -> Choice {
@@ -317,6 +319,7 @@ fn choose_with(
         world,
         selected,
         refused,
+        goal: task.goal_text.clone(),
     }
 }
 
@@ -345,6 +348,8 @@ pub(crate) struct Plan {
     pub body_tokens: u32,
     /// Skills the model may load (the index's, and the selected ones').
     pub loadable: usize,
+    /// Each index entry's relevance to the goal, in index order (PX-183).
+    pub scores: Vec<(String, u32)>,
 }
 
 fn precedence(a: &RegisteredSkill, b: &RegisteredSkill) -> std::cmp::Ordering {
@@ -380,15 +385,27 @@ pub(crate) fn plan(c: &Choice, active: &[String], projection: &[String], budget:
         .filter(|s| c.world.model_loadable(s))
         .filter(|s| modbit_skills::paths_active(&s.package.manifest, active))
         .collect();
-    eligible.sort_by(|a, b| precedence(a, b));
+    // PX-183: the index is read most relevant first, so under a tight
+    // budget it is the skills that fit the goal that stay; equal scores keep
+    // the precedence order, so a goal no skill matches gives the index it
+    // always gave.
+    let score = |s: &RegisteredSkill| modbit_skills::relevance(&c.goal, &s.package.manifest);
+    eligible.sort_by(|a, b| score(b).cmp(&score(a)).then_with(|| precedence(a, b)));
     let loadable = eligible.len();
-    let entries: Vec<IndexEntry> = eligible
+    let listed: Vec<&&RegisteredSkill> = eligible
         .iter()
         .filter(|s| !bodies.iter().any(|(n, _, _)| *n == s.package.manifest.name))
+        .collect();
+    let entries: Vec<IndexEntry> = listed
+        .iter()
         .map(|s| IndexEntry {
             name: s.package.manifest.name.clone(),
             description: s.package.manifest.description.clone(),
         })
+        .collect();
+    let scores = listed
+        .iter()
+        .map(|s| (s.package.manifest.name.clone(), score(s)))
         .collect();
     let index = modbit_skills::index::build(&entries, budget.saturating_sub(body_tokens));
     Plan {
@@ -397,6 +414,7 @@ pub(crate) fn plan(c: &Choice, active: &[String], projection: &[String], budget:
         index,
         body_tokens,
         loadable,
+        scores,
     }
 }
 
@@ -579,6 +597,7 @@ impl RunSkills {
                     budget_tokens: budget_tokens(),
                     body_tokens: p.body_tokens,
                     index_hash: index_hash.clone(),
+                    scores: p.scores.iter().map(|(n, s)| format!("{n}:{s}")).collect(),
                 },
                 actor.clone(),
             ));
@@ -992,6 +1011,7 @@ pub(crate) async fn handle(
                         world: world_of(&task),
                         selected: vec![],
                         refused: vec![],
+                        goal: String::new(),
                     };
                     (Some(plan(&c, &active, &[], budget)), vec![])
                 }

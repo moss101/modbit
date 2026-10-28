@@ -966,6 +966,48 @@ pub struct Rejection {
     pub error: SkillError,
 }
 
+/// Words a ranking compares: lower-case runs of letters and digits of three
+/// or more characters, without a few function words, with a plural or verb
+/// ending taken off so "linter", "lints" and "lint" meet.
+fn rank_words(text: &str) -> std::collections::BTreeSet<String> {
+    const STOP: &[&str] = &[
+        "the", "and", "for", "with", "that", "this", "from", "into", "your", "you", "are", "was",
+        "will", "can", "all", "any", "not", "but", "our", "its", "use", "when", "what", "how",
+        "has", "have", "then", "than", "them", "they", "out", "one",
+    ];
+    text.split(|c: char| !c.is_alphanumeric())
+        .map(str::to_lowercase)
+        .filter(|w| w.chars().count() >= 3 && !STOP.contains(&w.as_str()))
+        .map(|w| {
+            for end in ["ing", "ers", "er", "es", "ed", "s"] {
+                if w.chars().count() > end.len() + 3 && w.ends_with(end) {
+                    return w[..w.len() - end.len()].to_owned();
+                }
+            }
+            w
+        })
+        .collect()
+}
+
+/// How well a skill matches a goal (PX-183), for ordering the index the
+/// model reads within its budget: the distinct goal words a trigger phrase
+/// shares count five each, the name's three each and the description's one
+/// each. Lexical and deterministic: the same goal and manifest always give
+/// the same score, and a skill no word of the goal touches scores 0. It
+/// ranks; it never selects, trusts or enables.
+#[must_use]
+pub fn relevance(goal: &str, manifest: &SkillManifest) -> u32 {
+    let goal = rank_words(goal);
+    if goal.is_empty() {
+        return 0;
+    }
+    let shared = |text: &str| -> u32 {
+        u32::try_from(rank_words(text).intersection(&goal).count()).unwrap_or(u32::MAX)
+    };
+    let triggers = shared(&manifest.triggers.join(" "));
+    5 * triggers + 3 * shared(&manifest.name) + shared(&manifest.description)
+}
+
 /// Select skills for a task: the explicit names first (refused with a
 /// reason when unknown or not enabled), then every enabled, model-invocable
 /// skill one of whose trigger phrases occurs in the goal.
@@ -1267,4 +1309,33 @@ fn copy_tree(from: &Path, to: &Path) -> Result<(), SkillError> {
         }
     }
     Ok(())
+}
+
+#[cfg(test)]
+mod relevance_tests {
+    use super::{parse_skill_md, relevance};
+
+    fn manifest(front: &str) -> super::SkillManifest {
+        parse_skill_md(&format!(
+            "---\nname: lint-fixer\nversion: 1.0.0\n{front}\n---\nbody\n"
+        ))
+        .unwrap()
+        .0
+    }
+
+    #[test]
+    fn a_goal_scores_a_skill_by_shared_words_and_the_score_is_stable() {
+        let m =
+            manifest("description: fix the warnings a linter reports\ntriggers: [\"lint fix\"]");
+        let goal = "the linter warns; fix the warnings";
+        let s = relevance(goal, &m);
+        assert!(s > 0);
+        assert_eq!(s, relevance(goal, &m), "deterministic");
+        assert_eq!(relevance("rotate the certificates", &m), 0);
+        assert_eq!(relevance("", &m), 0);
+        // A trigger word outweighs a description word.
+        let by_trigger = manifest("description: something else\ntriggers: [\"lint\"]");
+        let by_description = manifest("description: lint\ntriggers: []");
+        assert!(relevance("lint", &by_trigger) > relevance("lint", &by_description));
+    }
 }
