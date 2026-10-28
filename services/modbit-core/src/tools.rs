@@ -1154,6 +1154,14 @@ impl ToolHost {
                     .map(|s| s.effect_class)
                     .unwrap_or(modbit_domain::toolcall::EffectClass::ReadOnly),
             };
+            // PX-161: wait for the call issued before this one to be proposed.
+            let after = PROPOSAL_ORDER
+                .try_with(|o| o.after.lock().ok().and_then(|mut g| g.take()))
+                .ok()
+                .flatten();
+            if let Some(after) = after {
+                let _ = after.await;
+            }
             let mut st = store.lock().await;
             let arguments_ref = if carries_secret {
                 None
@@ -1193,6 +1201,14 @@ impl ToolHost {
                 Some(g) => st.append_fenced(req, g)?,
                 None => st.append(req)?,
             };
+            drop(st);
+            let proposed = PROPOSAL_ORDER
+                .try_with(|o| o.proposed.lock().ok().and_then(|mut g| g.take()))
+                .ok()
+                .flatten();
+            if let Some(proposed) = proposed {
+                let _ = proposed.send(());
+            }
         }
         let journal: Arc<dyn modbit_tools::DispatchJournal> = Arc::new(DispatchLog {
             store: Arc::clone(store),
@@ -2427,6 +2443,30 @@ pub struct InvokeRequest<'a> {
     /// The effect this call compensates, when it is a compensation
     /// (REQ-EV-0066): its receipt names it.
     pub compensates: Option<modbit_domain::EffectId>,
+}
+
+tokio::task_local! {
+    /// PX-161: set around a call that runs beside others of its turn, so its
+    /// proposal reaches the log after the previous call's and before the next.
+    pub static PROPOSAL_ORDER: ProposalOrder;
+}
+
+/// The two ends of a call's place in the order proposals are written in.
+pub struct ProposalOrder {
+    after: std::sync::Mutex<Option<tokio::sync::oneshot::Receiver<()>>>,
+    proposed: std::sync::Mutex<Option<tokio::sync::oneshot::Sender<()>>>,
+}
+
+impl ProposalOrder {
+    pub fn new(
+        after: Option<tokio::sync::oneshot::Receiver<()>>,
+        proposed: tokio::sync::oneshot::Sender<()>,
+    ) -> Self {
+        Self {
+            after: std::sync::Mutex::new(after),
+            proposed: std::sync::Mutex::new(Some(proposed)),
+        }
+    }
 }
 
 /// What an invocation produced.

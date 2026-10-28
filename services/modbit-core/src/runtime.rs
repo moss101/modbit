@@ -6050,9 +6050,18 @@ async fn run_loop(
                                 if run.len() > 1 {
                                     // One task per call, so a read that blocks its
                                     // thread does not hold up the others.
+                                    // Each call's proposal still lands on the log in the
+                                    // order the model issued it: a call waits for the
+                                    // one before it to be proposed, then they overlap.
+                                    let mut previous = None;
                                     let handles: Vec<_> = run
                                         .iter()
                                         .map(|(cid, n, a)| {
+                                            let (sent, next) = tokio::sync::oneshot::channel();
+                                            let order = crate::tools::ProposalOrder::new(
+                                                previous.replace(next),
+                                                sent,
+                                            );
                                             let (core, task, actor) =
                                                 (Arc::clone(&core), task.clone(), actor.clone());
                                             let mut local = state.clone();
@@ -6066,23 +6075,26 @@ async fn run_loop(
                                                 a,
                                             );
                                             let (cid, n, a) = (cid.clone(), n.clone(), a.clone());
-                                            tokio::spawn(async move {
-                                                let entry = execute_tool(
-                                                    &core,
-                                                    &task,
-                                                    lturn,
-                                                    &actor,
-                                                    &mut local,
-                                                    &cid,
-                                                    &n,
-                                                    &a,
-                                                    &round_int,
-                                                    resume,
-                                                    &projected,
-                                                )
-                                                .await;
-                                                (cid, entry)
-                                            })
+                                            tokio::spawn(crate::tools::PROPOSAL_ORDER.scope(
+                                                order,
+                                                async move {
+                                                    let entry = execute_tool(
+                                                        &core,
+                                                        &task,
+                                                        lturn,
+                                                        &actor,
+                                                        &mut local,
+                                                        &cid,
+                                                        &n,
+                                                        &a,
+                                                        &round_int,
+                                                        resume,
+                                                        &projected,
+                                                    )
+                                                    .await;
+                                                    (cid, entry)
+                                                },
+                                            ))
                                         })
                                         .collect();
                                     for handle in handles {

@@ -614,6 +614,17 @@ async fn px_161_reads_overlap_the_write_waits_and_results_come_back_in_call_orde
     assert_eq!(proposed.len(), READS + 1, "{ev:#?}");
     let reads: Vec<&str> = proposed[..READS].iter().map(|e| e.4.as_str()).collect();
     let write = proposed[READS].4.as_str();
+    // The proposals are on the log in the order the model issued the calls.
+    let call_ids: Vec<&str> = proposed
+        .iter()
+        .map(|e| e.1["call_id"].as_str().unwrap_or_default())
+        .collect();
+    let issued: Vec<String> = (0..=READS).map(|i| format!("call_1_{i}")).collect();
+    assert_eq!(
+        call_ids,
+        issued.iter().map(String::as_str).collect::<Vec<_>>(),
+        "{ev:#?}"
+    );
     let off = |kind: &str, agg: &str| ev.iter().find(|e| e.0 == kind && e.4 == agg).map(|e| e.3);
     // Together, in wall time: run one after another the batch takes the sum
     // of its calls' own times (each from proposal to result); run together it

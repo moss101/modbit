@@ -17,6 +17,6 @@ Classification: DOCUMENTED-ONLY. `services/modbit-core/src/runtime.rs` ran the c
 Mutation: `evidence/m10/PX-161/mutation-check.txt` (no call qualifies → the overlap test fails).
 
 ## Known limits
-- The log of each call's own lifecycle events (ToolCallProposed/Dispatched/Succeeded) is appended as the call proceeds, so those events of different calls of a batch interleave in completion order; the order the model, the transcript and the step records see is the call order.
+- The log of each call's own lifecycle events (ToolCallProposed/Dispatched/Succeeded) is appended as the call proceeds, so the Dispatched/Succeeded events of different calls of a batch interleave in completion order; each call's ToolCallProposed is written in the order the model issued the calls (a call waits for the previous one's proposal, then they overlap), which is the order the transcript, the model and the step records see. CI found the first version without that ordering: `qual_px_042` read `fs.stat` before `fs.read`.
 - Concurrency is bounded by what the tool itself serializes. The workspace service is one async mutex, so `fs.*` file tools overlap only in decoding and shaping; git and retrieval tools overlap fully. The overlap test uses `git.diff` for that reason.
 - A call of a run that the harness then refuses at its turn (plan, scope, retrieval rules) has already executed as a read; its result is discarded and the refusal recorded as before. Reads are side-effect free, and the discarded call remains on the tool-call log.
