@@ -51,6 +51,19 @@ message OutputChunk {
   bytes data = 4;
 }
 
+// PX-152: a confined process was refused by the sandbox. Present only when a
+// review-isolated process exited non-zero and its output carries the
+// platform's refusal; an ordinary failing command never has it.
+message SandboxDenied {
+  string code = 1;       // always SANDBOX_DENIED
+  int32 exit_code = 2;
+  // The class of the refused operation where the output states it
+  // ("network"); empty when it does not.
+  string operation = 3;
+  // The refusing lines of the output, bounded, nothing around them.
+  string excerpt = 4;
+}
+
 message ProcessExited {
   string session_id = 1;
   optional int32 exit_code = 2;
@@ -66,6 +79,8 @@ message ProcessExited {
   // dropped the head, and `output_ref` is the sha256 of the retained tail
   // (`total_bytes - retained_from` bytes), sealed in the Core's object store.
   uint64 retained_from = 9;
+  // PX-152: set when the sandbox refused something the process attempted.
+  optional SandboxDenied sandbox_denied = 10;
 }
 
 message Attach {

@@ -195,6 +195,48 @@ export declare type OutputChunk = Message<"modbit.v1.OutputChunk"> & {
 export declare const OutputChunkSchema: GenMessage<OutputChunk>;
 
 /**
+ * PX-152: a confined process was refused by the sandbox. Present only when a
+ * review-isolated process exited non-zero and its output carries the
+ * platform's refusal; an ordinary failing command never has it.
+ *
+ * @generated from message modbit.v1.SandboxDenied
+ */
+export declare type SandboxDenied = Message<"modbit.v1.SandboxDenied"> & {
+  /**
+   * always SANDBOX_DENIED
+   *
+   * @generated from field: string code = 1;
+   */
+  code: string;
+
+  /**
+   * @generated from field: int32 exit_code = 2;
+   */
+  exitCode: number;
+
+  /**
+   * The class of the refused operation where the output states it
+   * ("network"); empty when it does not.
+   *
+   * @generated from field: string operation = 3;
+   */
+  operation: string;
+
+  /**
+   * The refusing lines of the output, bounded, nothing around them.
+   *
+   * @generated from field: string excerpt = 4;
+   */
+  excerpt: string;
+};
+
+/**
+ * Describes the message modbit.v1.SandboxDenied.
+ * Use `create(SandboxDeniedSchema)` to create a new message.
+ */
+export declare const SandboxDeniedSchema: GenMessage<SandboxDenied>;
+
+/**
  * @generated from message modbit.v1.ProcessExited
  */
 export declare type ProcessExited = Message<"modbit.v1.ProcessExited"> & {
@@ -249,6 +291,13 @@ export declare type ProcessExited = Message<"modbit.v1.ProcessExited"> & {
    * @generated from field: uint64 retained_from = 9;
    */
   retainedFrom: bigint;
+
+  /**
+   * PX-152: set when the sandbox refused something the process attempted.
+   *
+   * @generated from field: optional modbit.v1.SandboxDenied sandbox_denied = 10;
+   */
+  sandboxDenied?: SandboxDenied | undefined;
 };
 
 /**
