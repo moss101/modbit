@@ -873,8 +873,6 @@ pub async fn forget(
     })
 }
 
-// PX-188: no protocol command or desktop surface calls `share` yet; the tested operation lands first.
-#[allow(dead_code)]
 /// What [`share`] did.
 #[derive(Debug)]
 pub enum Shared {
@@ -901,8 +899,6 @@ pub enum Shared {
     },
 }
 
-// PX-188: no protocol command or desktop surface calls `share` yet; the tested operation lands first.
-#[allow(dead_code)]
 /// Share a private item into a broader scope (PX-188). An item is private to
 /// its author: only that person may share it, never an agent, and only into a
 /// scope wider than the item's own. What lands in the wider scope is the
