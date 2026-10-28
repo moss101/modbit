@@ -354,6 +354,8 @@ pub async fn run_as(
     // REQ-PX-139: component health, persisted; and the OpenTelemetry export
     // when (and only when) the Core is configured to export.
     crate::telemetry::spawn(Arc::clone(&core));
+    // PX-189: the Skill Lab's traces, when (and only when) a lab is given.
+    crate::skills::spawn_trace_producer(Arc::clone(&core));
     // PX-111: the indexes of the workspaces unfinished tasks work in open from
     // the persisted store in the background, so the first query after a
     // restart finds them loaded (and a corrupt or stale store is found and

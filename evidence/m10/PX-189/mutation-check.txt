@@ -1,0 +1,19 @@
+=== BASELINE surface_protocol qual_px_189
+test qual_px_189_a_finished_run_becomes_a_sealed_redacted_trace_the_lab_proposes_from ... ok
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 204 filtered out; finished in 5.13s
+exit=0
+=== MUTATION no-redaction: trace texts are kept as read (services/modbit-core/src/skills.rs)
+test qual_px_189_a_finished_run_becomes_a_sealed_redacted_trace_the_lab_proposes_from ... FAILED
+test result: FAILED. 0 passed; 1 failed; 0 ignored; 0 measured; 204 filtered out; finished in 3.83s
+error: test failed, to rerun pass `-p modbit-core --test surface_protocol`
+exit=101 (KILLED)
+=== MUTATION no-configuration-link: the trace does not name the compiled configuration (services/modbit-core/src/skills.rs)
+test qual_px_189_a_finished_run_becomes_a_sealed_redacted_trace_the_lab_proposes_from ... FAILED
+test result: FAILED. 0 passed; 1 failed; 0 ignored; 0 measured; 204 filtered out; finished in 3.81s
+error: test failed, to rerun pass `-p modbit-core --test surface_protocol`
+exit=101 (KILLED)
+=== MUTATION always-on: the producer writes a lab when none is given (services/modbit-core/src/skills.rs)
+test qual_px_189_a_finished_run_becomes_a_sealed_redacted_trace_the_lab_proposes_from ... FAILED
+test result: FAILED. 0 passed; 1 failed; 0 ignored; 0 measured; 204 filtered out; finished in 5.27s
+error: test failed, to rerun pass `-p modbit-core --test surface_protocol`
+exit=101 (KILLED)

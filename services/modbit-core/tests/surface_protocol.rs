@@ -26313,6 +26313,7 @@ async fn wsk_e2e_005_010_a_promoted_skill_reaches_the_model_without_the_wiki_and
                     verification_result: format!("PASSED {marker}"),
                     cost: TraceCost::default(),
                     redaction_status: "REDACTED".into(),
+                    ..Default::default()
                 },
                 i,
             )
@@ -50295,5 +50296,197 @@ async fn qual_px_182_guidance_blocks_compile_for_the_tools_the_task_is_offered()
     assert_eq!(
         full[0].1["configuration_id"], full[1].1["configuration_id"],
         "the same inputs compile alike"
+    );
+}
+
+/// QUAL-PX-189 on the real Core with a scripted model: a finished run is
+/// sealed into the real Skill Lab as one trace — its compiled skill
+/// configuration, each tool call with arguments and response, the outcome —
+/// that the lab's maintainer and proposer turn into a candidate; a key
+/// planted in a tool result is absent from the trace; the producer appends
+/// nothing to the log it reads; no skill file changes; a Core given no lab
+/// writes none.
+#[tokio::test]
+async fn qual_px_189_a_finished_run_becomes_a_sealed_redacted_trace_the_lab_proposes_from() {
+    use modbit_protocol::v1::{StartTask, TaskRunStarted};
+    use modbit_skills::evolution::{KnowledgeStore, Lab, Maintainer, Proposer, TemplateProposer};
+    use serde_json::json;
+    const KEY: &str = "sk-px189-planted-0123456789abcdefghij";
+    let (repo, root) = plain_repo(&[("NOTES.md", "# notes\n")]);
+    std::fs::write(repo.path().join("secret.txt"), format!("token={KEY}\n")).unwrap();
+    let dir = tempfile::tempdir().unwrap();
+    let lab_dir = dir.path().join("lab");
+    let skills = dir.path().join("skills");
+    let h = px_skill(
+        &skills,
+        "traced-px189",
+        "description: tidy notes",
+        "<!-- modbit:tool fs.read -->\nRead before you edit.\n<!-- /modbit:tool -->",
+    );
+    let skill_bytes = std::fs::read(skills.join("traced-px189/SKILL.md")).unwrap();
+    let script = vec![
+        json!({"calls": [{"name": "plan.update", "args": {"outcome": "read the notes", "expected_files": []}}]}),
+        json!({"calls": [{"name": "fs.read", "args": {"path": "secret.txt"}}]}),
+        json!({"calls": [{"name": "fs.read", "args": {"path": "NOTES.md"}}]}),
+        json!({"calls": [{"name": "task.complete", "args": {"summary": "done", "self_review": {"findings": []}}}]}),
+    ];
+    let (base, _seen) = scripted_model(script, None).await;
+    let lab_env = lab_dir.to_string_lossy().into_owned();
+    let env = [
+        ("MODBIT_OPENAI_BASE_URL", base.as_str()),
+        ("OPENAI_API_KEY", ""),
+        ("ANTHROPIC_API_KEY", ""),
+        ("MODBIT_SKILL_LAB_DIR", lab_env.as_str()),
+    ];
+    let core = CoreProcess::spawn_with_env(dir.path(), &env);
+    let mut c = core.client().await;
+    let (session, _) = create_session(&mut c, id16(0xF1)).await;
+    let g = lease_for(&session);
+    px_trust(&mut c, "traced-px189", &h, None).await.unwrap();
+    let task = create_task_with_goal(&mut c, &session, g, &root, 0xF2, "read the notes").await;
+    let ack = c
+        .command(envelope_fenced(
+            id16(0xF3),
+            "StartTask",
+            StartTask {
+                task_id: Some(task.clone()),
+                endpoint: String::new(),
+                model: "gpt-5-mini".into(),
+                max_turns: 8,
+                max_tool_calls: 0,
+                max_no_progress_turns: 4,
+                skills: vec!["traced-px189".into()],
+                ..Default::default()
+            }
+            .encode_to_vec(),
+            g,
+        ))
+        .await
+        .unwrap();
+    let _: TaskRunStarted = Client::result(&ack).unwrap();
+    // Reading a file that holds a credential makes the acceptance gate ask
+    // for an independent review, so the run waits; cancelling ends it.
+    let st = wait_task(&mut c, &task, 180).await;
+    assert!(!st.loop_alive, "{st:?}");
+    let ack = c
+        .command(envelope_fenced(
+            random_id(),
+            "CancelTask",
+            modbit_protocol::v1::CancelTask {
+                task_id: Some(task.clone()),
+            }
+            .encode_to_vec(),
+            g,
+        ))
+        .await
+        .unwrap();
+    let _: modbit_protocol::v1::TaskCancelRequested = Client::result(&ack).unwrap();
+    tokio::time::sleep(Duration::from_millis(500)).await;
+    let evs = task_events(&core, &session, &task).await;
+    let config = evs
+        .iter()
+        .find(|(_, t, _)| t == "SkillConfigurationCompiled")
+        .map(|(_, _, p)| p["configuration_id"].as_str().unwrap().to_owned())
+        .expect("a configuration was compiled");
+    let deadline = std::time::Instant::now() + Duration::from_secs(30);
+    let traces = loop {
+        let lab = Lab::open(&lab_dir).unwrap();
+        let t = lab.traces().unwrap();
+        if !t.is_empty() {
+            break t;
+        }
+        assert!(std::time::Instant::now() < deadline, "no trace was sealed");
+        tokio::time::sleep(Duration::from_millis(100)).await;
+    };
+    let lab = Lab::open(&lab_dir).unwrap();
+    assert_eq!(traces.len(), 1, "one trace per run");
+    let t = &traces[0].trace;
+    assert_eq!(
+        t.skill_configuration_id, config,
+        "the trace names the compiled configuration"
+    );
+    assert_eq!(
+        t.outcome, "FAILED",
+        "a cancelled run is not a verified one: {t:?}"
+    );
+    let tools: Vec<&str> = t.steps.iter().map(|s| s.tool.as_str()).collect();
+    // Harness steps (plan, completion) are not tool calls; the two reads are.
+    assert_eq!(tools, ["fs.read", "fs.read"], "{tools:?}");
+    let secret_step = t
+        .steps
+        .iter()
+        .find(|s| s.arguments.contains("secret.txt"))
+        .expect("the read of the secret file is a step");
+    assert!(
+        secret_step.response.contains("[redacted]"),
+        "{secret_step:?}"
+    );
+    let on_disk = std::fs::read_to_string(
+        lab_dir
+            .join("traces")
+            .join(format!("{}.json", traces[0].trace_id)),
+    )
+    .unwrap();
+    assert!(!on_disk.contains(KEY), "the planted key reached the trace");
+    // The producer only reads: the log has not moved since the run ended.
+    let after = task_events(&core, &session, &task).await;
+    assert_eq!(
+        after.len(),
+        evs.len(),
+        "the producer appended to the log it reads"
+    );
+    // The real lab turns it into a proposal, and that changes no skill.
+    Maintainer::consolidate(&lab, &traces, 1).unwrap();
+    let ids: Vec<String> = KnowledgeStore::index(&lab)
+        .unwrap()
+        .iter()
+        .map(|e| e.pattern_id.clone())
+        .collect();
+    assert!(!ids.is_empty(), "the trace became patterns");
+    let evidence = KnowledgeStore::hydrate(&lab, &ids, 10_000).unwrap();
+    let base_pkg = modbit_skills::load_package(&skills.join("traced-px189")).unwrap();
+    let candidate = Proposer::propose(
+        &lab,
+        &base_pkg,
+        "read first",
+        &evidence,
+        &TemplateProposer,
+        1,
+    )
+    .unwrap();
+    assert!(!candidate.candidate_id.is_empty());
+    assert_eq!(
+        std::fs::read(skills.join("traced-px189/SKILL.md")).unwrap(),
+        skill_bytes,
+        "a proposal changes no skill file"
+    );
+    drop(c);
+    drop(core);
+
+    // Without a lab directory, nothing is written anywhere a lab would be.
+    let dir2 = tempfile::tempdir().unwrap();
+    let (base2, _) = scripted_model(
+        vec![
+            json!({"calls": [{"name": "plan.update", "args": {"outcome": "o", "expected_files": []}}]}),
+            json!({"calls": [{"name": "task.complete", "args": {"summary": "done", "self_review": {"findings": []}}}]}),
+        ],
+        None,
+    )
+    .await;
+    let core2 = CoreProcess::spawn_with_env(
+        dir2.path(),
+        &[
+            ("MODBIT_OPENAI_BASE_URL", base2.as_str()),
+            ("OPENAI_API_KEY", ""),
+            ("ANTHROPIC_API_KEY", ""),
+        ],
+    );
+    let mut c2 = core2.client().await;
+    let (s2, _) = create_session(&mut c2, id16(0xF4)).await;
+    let g2 = lease_for(&s2);
+    let t2 = create_task_with_goal(&mut c2, &s2, g2, &root, 0xF5, "read the notes").await;
+    px_run(&mut c2, &t2, g2, 0xF6, 6).await;
+    assert!(
+        !dir2.path().join("lab").exists() && !dir2.path().join("skill-lab").join("traces").exists()
     );
 }
