@@ -10935,11 +10935,16 @@ mod tests {
             .sum();
         let charged = transcript_tokens(&frames);
         assert!(by_text < 3_000, "captions alone are cheap: {by_text}");
-        assert!(charged > 40 * 1_000, "frames are charged by size: {charged}");
+        assert!(
+            charged > 40 * 1_000,
+            "frames are charged by size: {charged}"
+        );
         // A text-only transcript is estimated exactly as before.
         let text = vec![Message {
             role: modbit_providers::Role::User,
-            parts: vec![ContentPart::Text { text: "hello there".into() }],
+            parts: vec![ContentPart::Text {
+                text: "hello there".into(),
+            }],
         }];
         assert_eq!(
             transcript_tokens(&text),
@@ -10948,8 +10953,7 @@ mod tests {
     }
 
     use super::{
-        ContentPart, b64, image_tokens, media_parts, media_refs, message_text,
-        transcript_tokens,
+        ContentPart, b64, image_tokens, media_parts, media_refs, message_text, transcript_tokens,
     };
 
     #[test]
