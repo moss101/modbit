@@ -3,8 +3,8 @@
 //! binary over its real socket, a real git repository, a real SQLite event
 //! store and a scripted OpenAI-compatible server standing in for the model.
 
-// Some imports are used only by the Unix-only tests below.
-#![cfg_attr(not(unix), allow(unused_imports))]
+// Some imports and helpers are used only by the Unix-only tests below.
+#![cfg_attr(not(unix), allow(unused_imports, dead_code))]
 
 use std::collections::BTreeMap;
 use std::io::{BufRead, BufReader};
