@@ -5094,7 +5094,13 @@ async fn run_loop(
         // PX-145: a turn that asked for no tool has nothing more it is about
         // to do, which is when the Core looks at what it left.
         let idle_turn = calls.is_empty();
-        for (call_id, name, arguments_json) in calls {
+        // PX-161: the turn's calls as the model issued them, so a run of
+        // read-only calls can be started together when the first of them
+        // reaches dispatch.
+        let issued: Vec<(String, String, String)> = calls.clone();
+        let mut prefetched: std::collections::HashMap<String, TranscriptEntry> =
+            std::collections::HashMap::new();
+        for (call_idx, (call_id, name, arguments_json)) in calls.into_iter().enumerate() {
             if cancel.is_cancelled() {
                 break;
             }
@@ -6033,26 +6039,98 @@ async fn run_loop(
                             // the call; a tool the model was not offered this
                             // turn is refused at the pipeline's policy stage
                             // (TOOL_NOT_PROJECTED) before any effector.
-                            let entry = execute_tool(
-                                &core,
-                                &task,
-                                lturn,
-                                &actor,
-                                &mut state,
-                                &call_id,
-                                &name,
-                                &arguments_json,
-                                &round_int,
-                                crate::protocol::resumed_call(
-                                    &resume_state,
-                                    run_id,
-                                    &call_id,
-                                    &name,
-                                    &arguments_json,
-                                ),
-                                &projected_names,
-                            )
-                            .await;
+                            // PX-161: this call opens a run of read-only calls:
+                            // the run goes out together under a bound, and each
+                            // call below takes its own result in the order the
+                            // model issued it.
+                            if !prefetched.contains_key(&call_id)
+                                && parallel_read_only(&core, &task, &name, &arguments_json)
+                            {
+                                let run = parallel_run(&core, &task, &issued, call_idx);
+                                if run.len() > 1 {
+                                    // One task per call, so a read that blocks its
+                                    // thread does not hold up the others.
+                                    // Each call's proposal still lands on the log in the
+                                    // order the model issued it: a call waits for the
+                                    // one before it to be proposed, then they overlap.
+                                    let mut previous = None;
+                                    let handles: Vec<_> = run
+                                        .iter()
+                                        .map(|(cid, n, a)| {
+                                            let (sent, next) = tokio::sync::oneshot::channel();
+                                            let order = crate::tools::ProposalOrder::new(
+                                                previous.replace(next),
+                                                sent,
+                                            );
+                                            let (core, task, actor) =
+                                                (Arc::clone(&core), task.clone(), actor.clone());
+                                            let mut local = state.clone();
+                                            let round_int = round_int.clone();
+                                            let projected = projected_names.clone();
+                                            let resume = crate::protocol::resumed_call(
+                                                &resume_state,
+                                                run_id,
+                                                cid,
+                                                n,
+                                                a,
+                                            );
+                                            let (cid, n, a) = (cid.clone(), n.clone(), a.clone());
+                                            tokio::spawn(crate::tools::PROPOSAL_ORDER.scope(
+                                                order,
+                                                async move {
+                                                    let entry = execute_tool(
+                                                        &core,
+                                                        &task,
+                                                        lturn,
+                                                        &actor,
+                                                        &mut local,
+                                                        &cid,
+                                                        &n,
+                                                        &a,
+                                                        &round_int,
+                                                        resume,
+                                                        &projected,
+                                                    )
+                                                    .await;
+                                                    (cid, entry)
+                                                },
+                                            ))
+                                        })
+                                        .collect();
+                                    for handle in handles {
+                                        // A task that panicked has no result here;
+                                        // its call then runs on the ordinary path.
+                                        if let Ok((cid, entry)) = handle.await {
+                                            prefetched.insert(cid, entry);
+                                        }
+                                    }
+                                }
+                            }
+                            let entry = match prefetched.remove(&call_id) {
+                                Some(done) => done,
+                                None => {
+                                    execute_tool(
+                                        &core,
+                                        &task,
+                                        lturn,
+                                        &actor,
+                                        &mut state,
+                                        &call_id,
+                                        &name,
+                                        &arguments_json,
+                                        &round_int,
+                                        crate::protocol::resumed_call(
+                                            &resume_state,
+                                            run_id,
+                                            &call_id,
+                                            &name,
+                                            &arguments_json,
+                                        ),
+                                        &projected_names,
+                                    )
+                                    .await
+                                }
+                            };
                             // PX-050: a call the person's interrupt stopped
                             // is recorded with how it ended.
                             if round_int.is_cancelled()
@@ -9217,6 +9295,47 @@ async fn handle_complete(
             false,
         ),
     }
+}
+
+/// The most read-only calls of one turn started together.
+const PARALLEL_READ_BOUND: usize = 8;
+
+/// PX-161: whether one call may run beside others. Only a call whose tool
+/// is registered read-only for its own arguments in the task's profile, and
+/// that belongs to the file, Git or retrieval families, qualifies; anything
+/// that writes, runs a process, asks, needs an approval or reaches outside
+/// the workspace runs alone and in order.
+fn parallel_read_only(core: &Core, task: &Task, name: &str, args: &str) -> bool {
+    if !["fs.", "git.", "search.", "knowledge."]
+        .iter()
+        .any(|p| name.starts_with(p))
+    {
+        return false;
+    }
+    let Some(tool) = core.tools.runtime.registry().get(name) else {
+        return false;
+    };
+    let Ok(value) = serde_json::from_str::<serde_json::Value>(args) else {
+        return false;
+    };
+    let c = tool.effect_in_profile(&value, &task.execution_profile);
+    c == modbit_tools::EffectClass::ReadOnly
+}
+
+/// PX-161: the calls from `from` on that run together with the one at
+/// `from`: the unbroken stretch of read-only calls, at most the bound.
+fn parallel_run(
+    core: &Core,
+    task: &Task,
+    issued: &[(String, String, String)],
+    from: usize,
+) -> Vec<(String, String, String)> {
+    issued[from..]
+        .iter()
+        .take_while(|(_, n, a)| parallel_read_only(core, task, n, a))
+        .take(PARALLEL_READ_BOUND)
+        .cloned()
+        .collect()
 }
 
 /// One tool call, and — REQ-PX-132 — whatever the Core has observed about the
