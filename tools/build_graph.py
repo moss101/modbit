@@ -93,6 +93,9 @@ PX_PARITY = [
     # Behaviour over existing owners (effects-security, core-runtime); the record is the specification (its section 5), doc 65 carries the scoped supersession note.
     ("DR-PX-2026-10-25-017", "DOC-PX-016", 144, 146, "62_PRODUCT_EXTENSION_REQUIREMENTS_TASKS_AND_QUALIFICATIONS.md", "Autonomous coding engine inside the Capability Kernel's envelope, PX-144..146",
      "Proposed: PX-144..146, Supervised default and the AUTONOMOUS run mode, Core-run verification and repair conclusion over a derived Node/TypeScript and Go plan, budget windows and crash resumption, with a scoped supersession of AFW-F06, F07 and F08"),
+    # Rows over existing owners only: 27 ADOPT rows and 18 DEFERRED rows whose activation text is the record's Appendix B; no supersession.
+    ("DR-PX-2026-10-26-018", "DOC-PX-017", 147, 191, "62_PRODUCT_EXTENSION_REQUIREMENTS_TASKS_AND_QUALIFICATIONS.md", "Upgrade program from Codex, MAI-UI and Qwen-Planner-Agent, PX-147..191",
+     "Proposed: PX-147..191, the upgrade program: 27 adopted rows (hardening, robustness, hygiene, GUI agent, planner harness) and 18 deferred rows with activation text, over existing owners only, with seven proposed tasks folded into rows the ledger already owns"),
 ]
 
 

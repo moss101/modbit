@@ -25,6 +25,7 @@ members = [
     "crates/tools",
     "crates/procedural-runtime",
     "crates/context",
+    "crates/process-hardening",
     "benchmarks/agent-engineering",
     "benchmarks/context-economics",
     "benchmarks/gate-calibration",
@@ -99,6 +100,7 @@ modbit-workspace = { path = "crates/workspace" }
 modbit-git = { path = "crates/git" }
 modbit-diagnostics = { path = "crates/diagnostics" }
 modbit-terminal = { path = "crates/terminal" }
+modbit-process-hardening = { path = "crates/process-hardening" }
 modbit-browser = { path = "crates/browser" }
 modbit-computer = { path = "crates/computer" }
 modbit-sandbox = { path = "crates/sandbox" }
@@ -167,7 +169,9 @@ modbit-sandbox-gateway = { path = "apps/sandbox-gateway" }
 # a SAFETY note: a spawned child must not keep its parent's pipes open; and
 # the Linux review sandbox in services/modbit-execd (seccomp_net.rs: prctl
 # to install the no-network filter, one socket call in its self-check) and
-# its Unix process-group kill (broker.rs `kill_group`: one killpg call).
+# its Unix process-group kill (broker.rs `kill_group`: one killpg call); and
+# crates/process-hardening (PX-148: setrlimit, prctl or ptrace, the dyld image
+# list in the report), which the Core and the broker call first in `main`.
 unsafe_code = "deny"
 missing_docs = "warn"
 unused_crate_dependencies = "allow"
