@@ -2555,6 +2555,14 @@ impl CapabilityPort for KernelPort {
             repo_root: self.run.repo_root.clone(),
             rules: self.run.rules.clone(),
             argv: req.command.clone(),
+            // PX-149: where the programs the command names resolve to, from
+            // the working directory and search path the process will get.
+            programs: match (&req.command, &req.exec) {
+                (Some(argv), Some(exec)) => {
+                    modbit_policy::runmode::resolve_programs(argv, &exec.cwd, &exec.path)
+                }
+                _ => Default::default(),
+            },
             ask_classes: modbit_policy::runmode::ask_classes(
                 req.effect_class,
                 &req.required_capabilities,

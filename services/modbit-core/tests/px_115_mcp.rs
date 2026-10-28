@@ -386,7 +386,6 @@ async fn qual_px_115_list_changed_refreshes_the_catalog_without_a_restart() {
 
 /// An idle server is stopped when its input closes (graceful), and the next
 /// use starts a fresh process: lazily, with the history on the listing.
-#[cfg(unix)]
 #[tokio::test(flavor = "multi_thread")]
 async fn qual_px_115_an_idle_server_is_reaped_gracefully_and_the_next_call_reconnects() {
     let logs = tempfile::tempdir().unwrap();
@@ -444,7 +443,6 @@ async fn qual_px_115_an_idle_server_is_reaped_gracefully_and_the_next_call_recon
 
 /// A server that ignores its closed input is killed after the grace period:
 /// nothing outlives the reaper.
-#[cfg(unix)]
 #[tokio::test(flavor = "multi_thread")]
 async fn qual_px_115_a_server_that_ignores_the_shutdown_is_killed_after_the_grace_period() {
     let logs = tempfile::tempdir().unwrap();
@@ -500,7 +498,6 @@ async fn qual_px_115_a_server_that_ignores_the_shutdown_is_killed_after_the_grac
 /// A server killed while a call is in flight: the call fails with a typed
 /// code (never a hang, never a claim it succeeded), the dead process is
 /// reaped, and the next call starts a fresh one.
-#[cfg(unix)]
 #[tokio::test(flavor = "multi_thread")]
 async fn qual_px_115_a_server_killed_mid_call_fails_typed_is_reaped_and_the_next_call_reconnects() {
     let logs = tempfile::tempdir().unwrap();

@@ -1670,11 +1670,7 @@ async fn qual_px_057_ask_allowlist_rules_scope_expiry_and_revocation_against_the
 
     // ---- ALLOWLIST: the covered command runs without asking, and the
     // receipt names the rule.
-    let asked = run_until_asked_or_done(&mut c, &session, &t2, g).await;
-    assert!(
-        asked.is_empty(),
-        "a covered command does not ask: {asked:?}"
-    );
+    start(&mut c, &t2, g, "gpt-5-mini", 10).await;
     wait_task(&mut c, &t2, 60).await;
     assert!(out.exists());
     let r2 = receipts(&mut c, &t2).await;
@@ -3868,5 +3864,396 @@ async fn qual_px_059_after_a_compaction_epoch_the_summary_grows_and_the_conversa
     assert!(
         !category(&v, "SUMMARY").sources.is_empty(),
         "the epochs are named"
+    );
+}
+
+// =====================================================================
+// PX-153
+// =====================================================================
+
+/// A model that is refused again and again, or that changes approach.
+///
+/// `g-refused`: three different commands in turn, each of which asks in the
+/// default mode, then it says it is done. `g-adapts`: a refused command, then a
+/// read, over and over: never three refusals in a row.
+fn refused_model() -> Script {
+    Arc::new(|body, _| {
+        let n = tool_result_count(body);
+        let goal = goal_of(body);
+        let command =
+            |argv: &[&str]| Step::call("shell.exec", json!({"argv": argv, "inherit_env": true}));
+        match (goal.as_str(), n) {
+            ("g-refused", 0) => command(&["mytool", "build"]),
+            ("g-refused", 1) => command(&["mytool", "build", "--fast"]),
+            ("g-refused", 2) => command(&["mytool", "check"]),
+            ("g-adapts", n) if n < 8 => {
+                if n % 2 == 0 {
+                    command(&["mytool", "build"])
+                } else {
+                    Step::call("fs.read", json!({"path": "a.txt"}))
+                }
+            }
+            _ => Step::text("done"),
+        }
+    })
+}
+
+fn attention_notices(events: &[Value], task: &Id) -> Vec<Value> {
+    kinds(events, "TaskNeedsAttention")
+        .into_iter()
+        .filter(|e| e["task_id"] == hex_id(task))
+        .filter(|e| pl(e)["diagnostic"]["code"] == "DENIAL_STREAK")
+        .collect()
+}
+
+/// The tool results of the fullest request the model was sent: everything it
+/// had been shown by then, in order.
+fn shown_tool_results(seen: &Seen) -> Vec<String> {
+    let bodies = seen.lock().unwrap().clone();
+    bodies
+        .iter()
+        .map(|b| {
+            b["messages"]
+                .as_array()
+                .into_iter()
+                .flatten()
+                .filter(|m| m["role"] == "tool")
+                .filter_map(|m| m["content"].as_str().map(str::to_owned))
+                .collect::<Vec<_>>()
+        })
+        .max_by_key(Vec::len)
+        .unwrap_or_default()
+}
+
+/// A scripted model that is refused three times in a row: the Core parks the
+/// task after the third with the typed reason, puts one notice on the log, and
+/// every refusal reached the model with the instruction not to go round it. A
+/// restart keeps exactly that one notice, and the resumed task is not parked
+/// again by what it was parked for.
+#[tokio::test]
+async fn qual_px_153_three_refusals_in_a_row_park_the_task_once_and_the_notice_survives_a_restart()
+{
+    let (_repo, root) = plain_repo(&[("a.txt", "alpha\n")]);
+    let (base, seen) = model(refused_model()).await;
+    let bin = tool_dir();
+    let dir = tempfile::tempdir().unwrap();
+    let env = env_of(&base, &[("PATH", &path_with(&bin))]);
+    let mut core = spawn(dir.path(), &env);
+    let mut c = core.client().await;
+    let (session, g) = session_with_lease(&mut c, 0x10).await;
+    let t = task_for(&mut c, &session, g, &root, 0x11, "g-refused").await;
+    let out = std::path::Path::new(&root).join("out.txt");
+
+    start(&mut c, &t, g, "gpt-5-mini", 10).await;
+    for n in 1..=3 {
+        let deadline = Instant::now() + Duration::from_secs(60);
+        let asked = loop {
+            let asked: Vec<_> = pending_approvals(&mut c, &session)
+                .await
+                .into_iter()
+                .filter(|a| a.task_id.as_ref() == Some(&t))
+                .collect();
+            if !asked.is_empty() {
+                break asked;
+            }
+            assert!(Instant::now() < deadline, "refusal {n} was never asked");
+            tokio::time::sleep(Duration::from_millis(50)).await;
+        };
+        decide(&mut c, &asked[0], false, g).await;
+    }
+    let st = wait_task(&mut c, &t, 60).await;
+    assert!(!st.loop_alive, "the run stopped");
+    assert!(!out.exists(), "nothing the person refused ever ran");
+    let events = replay(&core, &session).await;
+    let notices = attention_notices(&events, &t);
+    assert_eq!(notices.len(), 1, "one durable notice for one park");
+    assert!(
+        pl(&notices[0])["reason"]
+            .as_str()
+            .unwrap()
+            .contains("3 tool calls in a row were refused"),
+        "{:?}",
+        pl(&notices[0])
+    );
+    assert_eq!(
+        kinds(&events, "TaskCompleted").len() + kinds(&events, "TaskCancelled").len(),
+        0,
+        "parked, not ended"
+    );
+
+    // Restart: the notice replays, once, and the resumed task is not parked
+    // again by what it was parked for.
+    drop(c);
+    core.kill();
+    drop(core);
+    let core = spawn(dir.path(), &env);
+    let mut c = core.client().await;
+    let g = lease_again(&mut c, &session).await;
+    let events = replay(&core, &session).await;
+    assert_eq!(
+        attention_notices(&events, &t).len(),
+        1,
+        "the notice is on the log, and replays once after a restart"
+    );
+    start(&mut c, &t, g, "gpt-5-mini", 10).await;
+    wait_task(&mut c, &t, 60).await;
+    let events = replay(&core, &session).await;
+    assert_eq!(
+        attention_notices(&events, &t).len(),
+        1,
+        "the count started again with the park: no second notice"
+    );
+
+    // The model was told, for each of the three refusals, not to go round it.
+    let results = shown_tool_results(&seen);
+    let refusals: Vec<&String> = results
+        .iter()
+        .filter(|r| r.contains("APPROVAL_DENIED"))
+        .collect();
+    assert_eq!(refusals.len(), 3, "{results:#?}");
+    for r in refusals {
+        assert!(
+            r.contains("Do not reach the same effect by another route")
+                && r.contains("materially safer alternative")
+                && r.contains("stop and ask the user"),
+            "{r}"
+        );
+    }
+}
+
+/// A model that changes approach after a refusal is never parked.
+#[tokio::test]
+async fn qual_px_153_a_model_that_changes_approach_after_a_refusal_is_never_parked() {
+    let (_repo, root) = plain_repo(&[("a.txt", "alpha\n")]);
+    let (base, _seen) = model(refused_model()).await;
+    let bin = tool_dir();
+    let dir = tempfile::tempdir().unwrap();
+    let core = spawn(dir.path(), &env_of(&base, &[("PATH", &path_with(&bin))]));
+    let mut c = core.client().await;
+    let (session, g) = session_with_lease(&mut c, 0x10).await;
+    let t = task_for(&mut c, &session, g, &root, 0x11, "g-adapts").await;
+
+    start(&mut c, &t, g, "gpt-5-mini", 10).await;
+    let mut refused = 0;
+    let deadline = Instant::now() + Duration::from_secs(120);
+    loop {
+        let asked: Vec<_> = pending_approvals(&mut c, &session)
+            .await
+            .into_iter()
+            .filter(|a| a.task_id.as_ref() == Some(&t))
+            .collect();
+        if let Some(a) = asked.first() {
+            decide(&mut c, a, false, g).await;
+            refused += 1;
+        } else {
+            let ack = c
+                .command(envelope(
+                    rand_id(),
+                    "GetTaskStatus",
+                    modbit_protocol::v1::GetTaskStatus {
+                        task_id: Some(t.clone()),
+                    }
+                    .encode_to_vec(),
+                ))
+                .await
+                .unwrap();
+            let st: modbit_protocol::v1::TaskStatus = Client::result(&ack).unwrap();
+            if !st.loop_alive {
+                break;
+            }
+        }
+        assert!(Instant::now() < deadline, "the run did not finish");
+        tokio::time::sleep(Duration::from_millis(50)).await;
+    }
+    assert_eq!(refused, 4, "four refusals, each followed by a read");
+    let events = replay(&core, &session).await;
+    assert!(
+        attention_notices(&events, &t).is_empty(),
+        "never three in a row: never parked"
+    );
+}
+
+/// The count is the log's: two refusals, a restart with the third call waiting
+/// on its approval, and the third refusal still parks the task.
+#[tokio::test]
+async fn qual_px_153_the_count_survives_a_restart_because_it_is_folded_from_the_log() {
+    let (_repo, root) = plain_repo(&[("a.txt", "alpha\n")]);
+    let (base, _seen) = model(refused_model()).await;
+    let bin = tool_dir();
+    let dir = tempfile::tempdir().unwrap();
+    let env = env_of(&base, &[("PATH", &path_with(&bin))]);
+    let mut core = spawn(dir.path(), &env);
+    let mut c = core.client().await;
+    let (session, g) = session_with_lease(&mut c, 0x10).await;
+    let t = task_for(&mut c, &session, g, &root, 0x11, "g-refused").await;
+
+    start(&mut c, &t, g, "gpt-5-mini", 10).await;
+    for n in 1..=3 {
+        let deadline = Instant::now() + Duration::from_secs(60);
+        let asked = loop {
+            let asked: Vec<_> = pending_approvals(&mut c, &session)
+                .await
+                .into_iter()
+                .filter(|a| a.task_id.as_ref() == Some(&t))
+                .collect();
+            if !asked.is_empty() {
+                break asked;
+            }
+            assert!(Instant::now() < deadline, "call {n} was never asked");
+            tokio::time::sleep(Duration::from_millis(50)).await;
+        };
+        if n < 3 {
+            decide(&mut c, &asked[0], false, g).await;
+            continue;
+        }
+        // Two refusals are on the log and the third call waits for its answer:
+        // the Core dies here.
+        drop(c);
+        core.kill();
+        break;
+    }
+    drop(core);
+    let core = spawn(dir.path(), &env);
+    let mut c = core.client().await;
+    let g = lease_again(&mut c, &session).await;
+    // The suspended task resumes at the same call, which is still asking.
+    start(&mut c, &t, g, "gpt-5-mini", 10).await;
+    let deadline = Instant::now() + Duration::from_secs(60);
+    let asked = loop {
+        let asked: Vec<_> = pending_approvals(&mut c, &session)
+            .await
+            .into_iter()
+            .filter(|a| a.task_id.as_ref() == Some(&t))
+            .collect();
+        if !asked.is_empty() {
+            break asked;
+        }
+        assert!(
+            Instant::now() < deadline,
+            "the third call never asked again"
+        );
+        tokio::time::sleep(Duration::from_millis(50)).await;
+    };
+    decide(&mut c, &asked[0], false, g).await;
+    wait_task(&mut c, &t, 60).await;
+    let events = replay(&core, &session).await;
+    assert_eq!(
+        attention_notices(&events, &t).len(),
+        1,
+        "two refusals before the restart and one after make three: parked"
+    );
+}
+
+// =====================================================================
+// PX-152
+// =====================================================================
+
+fn confined_model() -> Script {
+    Arc::new(|body, _| {
+        if has_tool_result(body) {
+            return Step::text("done");
+        }
+        match goal_of(body).as_str() {
+            // A network attempt: refused by the sandbox, in every review sandbox.
+            "g-confined-network" => Step::call(
+                "shell.exec",
+                json!({"argv": ["python3", "-c", "import socket; socket.create_connection(('127.0.0.1', 9), timeout=2)"]}),
+            ),
+            // A command that fails for its own reasons.
+            "g-confined-failing" => Step::call(
+                "shell.exec",
+                json!({"argv": ["sh", "-c", "echo '2 tests failed'; exit 1"]}),
+            ),
+            _ => Step::text("nothing to do"),
+        }
+    })
+}
+
+fn failed_codes(events: &[Value], task: &Id) -> Vec<String> {
+    kinds(events, "ToolCallFailed")
+        .into_iter()
+        .filter(|e| e["task_id"] == hex_id(task))
+        .filter_map(|e| pl(&e)["failure_code"].as_str().map(str::to_owned))
+        .collect()
+}
+
+/// A command the sandbox refuses comes back to the model as `SANDBOX_DENIED`,
+/// told as outside its confinement and not as a failing command; the log
+/// carries the failure once; a command that merely fails is never labelled so.
+#[tokio::test]
+async fn qual_px_152_a_refusal_by_the_sandbox_reaches_the_model_typed_and_a_failing_command_does_not()
+ {
+    let (_repo, root) = plain_repo(&[("a.txt", "alpha\n")]);
+    let (base, seen) = model(confined_model()).await;
+    let dir = tempfile::tempdir().unwrap();
+    let core = spawn(dir.path(), &env_of(&base, &[]));
+    let mut c = core.client().await;
+    let (session, g) = session_with_lease(&mut c, 0x10).await;
+
+    // The review profile is confined by the host's sandbox, or refused.
+    if !cfg!(any(target_os = "macos", target_os = "linux")) {
+        eprintln!("skipped: no review sandbox on this host");
+        return;
+    }
+
+    // ---- the refusal
+    let t = create_task(
+        &mut c,
+        &session,
+        g,
+        &root,
+        0x11,
+        "review_isolated",
+        "g-confined-network",
+    )
+    .await;
+    set_mode(&mut c, &t, g, "ALLOWLIST_SANDBOX", true)
+        .await
+        .unwrap();
+    // Contained and in no always-ask class, the call runs without asking, and
+    // the sandbox refuses what it attempts.
+    start(&mut c, &t, g, "gpt-5-mini", 10).await;
+    wait_task(&mut c, &t, 60).await;
+    let events = replay(&core, &session).await;
+    assert_eq!(
+        failed_codes(&events, &t),
+        vec!["SANDBOX_DENIED".to_owned()],
+        "the log carries the failure once, with the typed code"
+    );
+    let shown = shown_tool_results(&seen);
+    let result = shown
+        .iter()
+        .find(|r| r.contains("SANDBOX_DENIED"))
+        .unwrap_or_else(|| panic!("the model never saw SANDBOX_DENIED: {shown:#?}"));
+    assert!(result.contains("Operation not permitted"), "{result}");
+    assert!(
+        result.contains("do not retry the same command unchanged"),
+        "told it is outside its confinement: {result}"
+    );
+    assert!(!result.contains("NON_ZERO_EXIT"), "{result}");
+    assert!(result.contains("\"sandbox_denied\""), "{result}");
+
+    // ---- the ordinary failure
+    let t2 = create_task(
+        &mut c,
+        &session,
+        g,
+        &root,
+        0x12,
+        "review_isolated",
+        "g-confined-failing",
+    )
+    .await;
+    set_mode(&mut c, &t2, g, "ALLOWLIST_SANDBOX", true)
+        .await
+        .unwrap();
+    // Contained, so it runs without asking, and fails for its own reasons.
+    start(&mut c, &t2, g, "gpt-5-mini", 10).await;
+    wait_task(&mut c, &t2, 60).await;
+    let events = replay(&core, &session).await;
+    assert_eq!(
+        failed_codes(&events, &t2),
+        vec!["NON_ZERO_EXIT".to_owned()],
+        "a failing test is a failing test"
     );
 }

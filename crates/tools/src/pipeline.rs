@@ -282,16 +282,24 @@ impl ProcessEnvironment {
             env.entry(k.clone()).or_insert_with(|| v.clone());
         }
         if !self.path.is_empty() && !env.contains_key("PATH") {
-            let mut full: Vec<std::path::PathBuf> =
-                self.path.iter().map(std::path::PathBuf::from).collect();
-            if let Ok(host) = std::env::var("PATH") {
-                full.extend(std::env::split_paths(&host));
-            }
-            if let Ok(joined) = std::env::join_paths(full) {
-                env.insert("PATH".into(), joined.to_string_lossy().into_owned());
-            }
+            env.insert("PATH".into(), self.search_path());
         }
         env
+    }
+
+    /// The `PATH` a process gets when the call sets none: the revision's
+    /// entries in front of the host's. The same value `apply` puts in the
+    /// environment, so the policy resolves programs against what will run.
+    #[must_use]
+    pub fn search_path(&self) -> String {
+        let mut full: Vec<std::path::PathBuf> =
+            self.path.iter().map(std::path::PathBuf::from).collect();
+        if let Ok(host) = std::env::var("PATH") {
+            full.extend(std::env::split_paths(&host));
+        }
+        std::env::join_paths(full)
+            .map(|j| j.to_string_lossy().into_owned())
+            .unwrap_or_default()
     }
 }
 
@@ -759,8 +767,31 @@ impl ToolRuntime {
             None => self.policy.as_ref(),
         };
         let facts = tool.call_facts(&args, &ctx.execution_profile);
+        // PX-149: where the command runs and the search path it gets, so the
+        // host can resolve the programs it names and a rule can be held to the
+        // program it was made for.
+        let exec = facts.argv.as_ref().map(|_| {
+            let root = ctx
+                .workspace_root
+                .as_deref()
+                .map(|r| r.to_string_lossy().into_owned())
+                .unwrap_or_default();
+            let cwd = match args.get("cwd").and_then(Value::as_str) {
+                Some(rel) if !rel.is_empty() => std::path::Path::new(&root)
+                    .join(rel)
+                    .to_string_lossy()
+                    .into_owned(),
+                _ => root,
+            };
+            let path = match &ctx.environment {
+                Some(e) => e.search_path(),
+                None => std::env::var("PATH").unwrap_or_default(),
+            };
+            crate::policy::ExecContext { cwd, path }
+        });
         let decision = port.decide(&PolicyRequest {
             command: facts.argv,
+            exec,
             outside_workspace_write: facts.outside_workspace_write,
             protected_path: facts.protected_path,
             dependency_install: facts.dependency_install,

@@ -435,20 +435,203 @@ fn prefix_matches(pattern: &[String], command: &[String]) -> bool {
     command.len() >= pattern.len() && command.iter().zip(pattern).all(|(a, b)| a == b)
 }
 
-/// The rules (by id) that together cover every sub-command of `argv`, or
-/// `None` when any sub-command is not covered. Each sub-command is covered by
-/// the first rule, in order, whose pattern is a token prefix of it.
+/// The typed reasons a rule whose pattern matches a command still does not
+/// cover it (PX-149).
+pub mod pin {
+    /// The rule predates program pinning: it records no path and asks. Making
+    /// the rule again (the "Always" button) pins it.
+    pub const RULE_NOT_PINNED: &str = "RULE_NOT_PINNED";
+    /// The program now resolves to a different path than the one the rule was
+    /// made for (a repository's `bin/` earlier on the search path, a moved
+    /// tool): the rule does not apply and the person is asked.
+    pub const PROGRAM_PATH_CHANGED: &str = "PROGRAM_PATH_CHANGED";
+    /// The program resolves to nothing, so no rule can say it is the one that
+    /// was approved: fail closed.
+    pub const PROGRAM_NOT_FOUND: &str = "PROGRAM_NOT_FOUND";
+    /// A shell that wraps the script resolves to a file inside the task's own
+    /// workspace: the interpreter that would run the approved commands is
+    /// repository content, not the system's.
+    pub const PROGRAM_IN_WORKSPACE: &str = "PROGRAM_IN_WORKSPACE";
+}
+
+/// Where a program name resolves to, for each program a command names: the
+/// absolute path of the file the process would execute, or `None` when
+/// nothing is there. Built by the host from the search path and working
+/// directory the process will actually get ([`resolve_programs`]); the policy
+/// only compares.
+pub type Programs = std::collections::BTreeMap<String, Option<String>>;
+
+/// Remove `.` components and resolve `..` lexically (no filesystem access, no
+/// symlink resolution: the pin is the path as the search found it).
+fn clean_path(p: &std::path::Path) -> std::path::PathBuf {
+    use std::path::Component;
+    let mut out = std::path::PathBuf::new();
+    for c in p.components() {
+        match c {
+            Component::CurDir => {}
+            Component::ParentDir => {
+                if !out.pop() {
+                    out.push("..");
+                }
+            }
+            other => out.push(other.as_os_str()),
+        }
+    }
+    out
+}
+
+#[cfg(unix)]
+fn is_runnable(p: &std::path::Path) -> bool {
+    use std::os::unix::fs::PermissionsExt;
+    std::fs::metadata(p).is_ok_and(|m| m.is_file() && m.permissions().mode() & 0o111 != 0)
+}
+
+#[cfg(not(unix))]
+fn is_runnable(p: &std::path::Path) -> bool {
+    std::fs::metadata(p).is_ok_and(|m| m.is_file())
+}
+
+/// The absolute path `token` would execute as, searched the way the process
+/// will: a token with a path separator is taken against `cwd`; a bare name is
+/// looked up in `path`'s entries in order (an empty entry is `cwd`, as a shell
+/// reads it). The result is lexically clean and not symlink-resolved, so a tool
+/// that is a symlink into a package directory keeps its pin across upgrades,
+/// and a different directory earlier on the path does not match it.
 #[must_use]
-pub fn covering_rules<'r>(rules: &[&'r AllowRule], argv: &[String]) -> Option<Vec<&'r AllowRule>> {
-    let commands = sub_commands(argv)?;
+pub fn resolve_program(token: &str, cwd: &str, path: &str) -> Option<String> {
+    if token.is_empty() {
+        return None;
+    }
+    let cwd = std::path::Path::new(cwd);
+    let absolute = |p: &std::path::Path| {
+        if p.is_absolute() {
+            clean_path(p)
+        } else {
+            clean_path(&cwd.join(p))
+        }
+    };
+    let candidates = |dir: &std::path::Path| -> Vec<std::path::PathBuf> {
+        let base = absolute(&dir.join(token));
+        #[cfg(windows)]
+        {
+            let exts = std::env::var("PATHEXT").unwrap_or_else(|_| ".COM;.EXE;.BAT;.CMD".into());
+            let mut v = vec![base.clone()];
+            for e in exts.split(';').filter(|e| !e.is_empty()) {
+                let mut s = base.clone().into_os_string();
+                s.push(e);
+                v.push(s.into());
+            }
+            v
+        }
+        #[cfg(not(windows))]
+        {
+            vec![base]
+        }
+    };
+    let found = |cands: Vec<std::path::PathBuf>| {
+        cands
+            .into_iter()
+            .find(|c| is_runnable(c))
+            .map(|c| c.to_string_lossy().into_owned())
+    };
+    if token.contains('/') || (cfg!(windows) && token.contains('\\')) {
+        return found(candidates(std::path::Path::new("")));
+    }
+    for entry in std::env::split_paths(path) {
+        let dir = if entry.as_os_str().is_empty() {
+            cwd.to_path_buf()
+        } else {
+            entry
+        };
+        if let Some(f) = found(candidates(&dir)) {
+            return Some(f);
+        }
+    }
+    None
+}
+
+/// The programs a call's argv names, resolved: the first word of every simple
+/// command ([`sub_commands`]) and, when the call is a shell given a script,
+/// the shell itself. Empty when the argv is not a list of simple commands (no
+/// rule can cover it anyway).
+#[must_use]
+pub fn resolve_programs(argv: &[String], cwd: &str, path: &str) -> Programs {
+    let mut tokens: Vec<&str> = Vec::new();
+    if let Some(first) = argv.first() {
+        tokens.push(first);
+    }
+    let subs = sub_commands(argv);
+    for c in subs.iter().flatten() {
+        if let Some(t) = c.first() {
+            tokens.push(t);
+        }
+    }
+    tokens
+        .into_iter()
+        .map(|t| (t.to_owned(), resolve_program(t, cwd, path)))
+        .collect()
+}
+
+/// Why no rule covers a command.
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub enum Uncovered {
+    /// No rule's pattern is a prefix of it.
+    NoRule,
+    /// A rule's pattern matches and its pin does not hold; the code is one of
+    /// [`pin`].
+    Pin(&'static str),
+}
+
+/// The rule that covers one simple command: the first, in order, whose pattern
+/// is a token prefix of it **and** whose pinned program is the one the command
+/// would run. A matching rule that fails the pin is reported as the reason when
+/// nothing else covers the command.
+fn covering_rule<'r>(
+    rules: &[&'r AllowRule],
+    command: &[String],
+    programs: &Programs,
+) -> Result<&'r AllowRule, Uncovered> {
+    let mut why: Option<&'static str> = None;
+    for rule in rules.iter().filter(|r| prefix_matches(&r.pattern, command)) {
+        if rule.program_path.is_empty() {
+            why.get_or_insert(pin::RULE_NOT_PINNED);
+            continue;
+        }
+        match command.first().and_then(|t| programs.get(t)) {
+            Some(Some(now)) if *now == rule.program_path => return Ok(rule),
+            Some(Some(_)) => {
+                why.get_or_insert(pin::PROGRAM_PATH_CHANGED);
+            }
+            _ => {
+                why.get_or_insert(pin::PROGRAM_NOT_FOUND);
+            }
+        }
+    }
+    Err(why.map_or(Uncovered::NoRule, Uncovered::Pin))
+}
+
+/// The rules (by id) that together cover every sub-command of `argv`, or why
+/// not. Each sub-command is covered by the first rule, in order, whose pattern
+/// is a token prefix of it and whose pinned program is the one it would run
+/// (`programs`, see [`resolve_programs`]).
+///
+/// # Errors
+/// [`Uncovered`] for the first sub-command that no rule covers, or when the
+/// argv is not provably a list of simple commands.
+pub fn covering_rules<'r>(
+    rules: &[&'r AllowRule],
+    argv: &[String],
+    programs: &Programs,
+) -> Result<Vec<&'r AllowRule>, Uncovered> {
+    let commands = sub_commands(argv).ok_or(Uncovered::NoRule)?;
     let mut used: Vec<&AllowRule> = Vec::new();
     for command in &commands {
-        let rule = rules.iter().find(|r| prefix_matches(&r.pattern, command))?;
+        let rule = covering_rule(rules, command, programs)?;
         if !used.iter().any(|u| u.rule_id == rule.rule_id) {
             used.push(rule);
         }
     }
-    Some(used)
+    Ok(used)
 }
 
 /// The always-ask classes an effect falls in, from what the host resolved:
@@ -510,6 +693,10 @@ pub struct RunPolicy {
     /// The call's argv, for a shell-class tool; `None` otherwise (no rule
     /// can cover a call that is not a command).
     pub argv: Option<Vec<String>>,
+    /// Where each program the argv names resolves to, from the search path and
+    /// working directory the process will get (PX-149). A rule covers a command
+    /// only while its program still resolves to the path the rule recorded.
+    pub programs: Programs,
     /// The always-ask classes the call falls in.
     pub ask_classes: Vec<AskClass>,
     /// The call's only network reach is the install of the project's declared
@@ -532,7 +719,9 @@ pub enum RunDecision {
     },
     /// Ask a person; `code` is the typed reason the card shows.
     Ask {
-        /// `MODE_ASK` | `NOT_IN_ALLOWLIST` | `ALWAYS_ASK:<CLASS>`.
+        /// `MODE_ASK` | `NOT_IN_ALLOWLIST` | `ALWAYS_ASK:<CLASS>` | one of
+        /// [`pin`] (`RULE_NOT_PINNED`, `PROGRAM_PATH_CHANGED`,
+        /// `PROGRAM_NOT_FOUND`, `PROGRAM_IN_WORKSPACE`).
         code: String,
     },
 }
@@ -586,21 +775,31 @@ impl RunPolicy {
             };
         }
         // A durable rule covers a command, and covers an always-ask effect
-        // only when every rule that is needed says so.
+        // only when every rule that is needed says so. A rule whose pinned
+        // program is not the one the command would run covers nothing, and
+        // the reason is the typed code the card shows (PX-149).
+        let mut uncovered_code: Option<&'static str> = None;
         if let Some(argv) = &self.argv {
-            let live = self.live_rules(now_ms);
-            if let Some(used) = covering_rules(&live, argv)
-                && (!always_ask || used.iter().all(|r| r.covers_always_ask))
-            {
-                return RunDecision::Approve {
-                    rule: format!(
-                        "allowlist:{}",
-                        used.iter()
-                            .map(|r| r.rule_id.as_str())
-                            .collect::<Vec<_>>()
-                            .join("+")
-                    ),
-                };
+            if self.wrapper_in_workspace(argv) {
+                uncovered_code = Some(pin::PROGRAM_IN_WORKSPACE);
+            } else {
+                let live = self.live_rules(now_ms);
+                match covering_rules(&live, argv, &self.programs) {
+                    Ok(used) if !always_ask || used.iter().all(|r| r.covers_always_ask) => {
+                        return RunDecision::Approve {
+                            rule: format!(
+                                "allowlist:{}",
+                                used.iter()
+                                    .map(|r| r.rule_id.as_str())
+                                    .collect::<Vec<_>>()
+                                    .join("+")
+                            ),
+                        };
+                    }
+                    Ok(_) => {}
+                    Err(Uncovered::Pin(code)) => uncovered_code = Some(code),
+                    Err(Uncovered::NoRule) => {}
+                }
             }
         }
         if always_ask {
@@ -623,9 +822,26 @@ impl RunPolicy {
                 },
             },
             _ => RunDecision::Ask {
-                code: "NOT_IN_ALLOWLIST".into(),
+                code: uncovered_code.unwrap_or("NOT_IN_ALLOWLIST").into(),
             },
         }
+    }
+
+    /// The shell that wraps a script, when it resolves to a file inside the
+    /// task's workspace: the interpreter that would run the approved commands
+    /// is then repository content.
+    fn wrapper_in_workspace(&self, argv: &[String]) -> bool {
+        let Some(first) = argv.first() else {
+            return false;
+        };
+        if !SHELLS.contains(&program_name(first)) || self.repo_root.is_empty() {
+            return false;
+        }
+        let Some(Some(resolved)) = self.programs.get(first) else {
+            return false;
+        };
+        let root = std::path::Path::new(self.repo_root.trim_end_matches(['/', '\\']));
+        std::path::Path::new(resolved).starts_with(root)
     }
 }
 
@@ -637,10 +853,37 @@ mod tests {
         s.iter().map(|x| (*x).to_owned()).collect()
     }
 
+    /// Every program a command names resolves to `/bin/<name>`, the path
+    /// `rule` pins.
+    fn progs_of(argv: &[String]) -> Programs {
+        let mut tokens: Vec<String> = argv.first().cloned().into_iter().collect();
+        tokens.extend(
+            sub_commands(argv)
+                .into_iter()
+                .flatten()
+                .filter_map(|c| c.first().cloned()),
+        );
+        tokens
+            .into_iter()
+            .map(|t| {
+                let path = format!("/bin/{}", program_name(&t));
+                (t, Some(path))
+            })
+            .collect()
+    }
+
+    fn covering<'r>(
+        rules: &[&'r AllowRule],
+        argv: &[String],
+    ) -> Result<Vec<&'r AllowRule>, Uncovered> {
+        covering_rules(rules, argv, &progs_of(argv))
+    }
+
     fn rule(id: &str, pattern: &[&str], scope: RuleScope, key: &str) -> AllowRule {
         AllowRule {
             rule_id: id.into(),
             pattern: v(pattern),
+            program_path: format!("/bin/{}", program_name(pattern[0])),
             scope,
             scope_key: key.into(),
             created_by: "user:u".into(),
@@ -658,6 +901,7 @@ mod tests {
             repo_root: "/repo".into(),
             rules,
             argv: Some(v(argv)),
+            programs: progs_of(&v(argv)),
             ask_classes: vec![],
             dependency_install: false,
             contained: false,
@@ -703,11 +947,11 @@ mod tests {
     fn a_rule_covers_the_commands_that_start_with_its_prefix_token_by_token() {
         let r = rule("r1", &["cargo", "test"], RuleScope::Task, "t1");
         let rs = [&r];
-        assert!(covering_rules(&rs, &v(&["cargo", "test"])).is_some());
-        assert!(covering_rules(&rs, &v(&["cargo", "test", "--lib", "x"])).is_some());
-        assert!(covering_rules(&rs, &v(&["cargo", "tests"])).is_none());
-        assert!(covering_rules(&rs, &v(&["cargo"])).is_none());
-        assert!(covering_rules(&rs, &v(&["xcargo", "test"])).is_none());
+        assert!(covering(&rs, &v(&["cargo", "test"])).is_ok());
+        assert!(covering(&rs, &v(&["cargo", "test", "--lib", "x"])).is_ok());
+        assert!(covering(&rs, &v(&["cargo", "tests"])).is_err());
+        assert!(covering(&rs, &v(&["cargo"])).is_err());
+        assert!(covering(&rs, &v(&["xcargo", "test"])).is_err());
     }
 
     #[test]
@@ -717,11 +961,11 @@ mod tests {
         let both = [&a, &b];
         let only_a = [&a];
         let script = v(&["sh", "-c", "cargo build && cargo test --lib"]);
-        let used = covering_rules(&both, &script).expect("every sub-command is covered");
+        let used = covering(&both, &script).expect("every sub-command is covered");
         assert_eq!(used.len(), 2);
-        assert!(covering_rules(&only_a, &script).is_none(), "one is not");
+        assert!(covering(&only_a, &script).is_err(), "one is not");
         let script = v(&["bash", "-lc", "cargo build; cargo build"]);
-        assert_eq!(covering_rules(&only_a, &script).unwrap().len(), 1);
+        assert_eq!(covering(&only_a, &script).unwrap().len(), 1);
     }
 
     #[test]
@@ -752,15 +996,15 @@ mod tests {
             let argv = v(&["sh", "-c", script]);
             // Either it is refused outright or a sub-command is not covered;
             // it is never approved.
-            assert!(covering_rules(&rs, &argv).is_none(), "{script}");
+            assert!(covering(&rs, &argv).is_err(), "{script}");
         }
         // A quoted operator is a literal argument, not an operator.
         let argv = v(&["sh", "-c", "cargo test 'a|b' \"c>d\""]);
-        assert!(covering_rules(&rs, &argv).is_some());
+        assert!(covering(&rs, &argv).is_ok());
         // A shell that is not given a plain `-c script` is not provable.
-        assert!(covering_rules(&rs, &v(&["sh", "run.sh"])).is_none());
-        assert!(covering_rules(&rs, &v(&["sh", "-c", "cargo test", "$0"])).is_none());
-        assert!(covering_rules(&rs, &v(&["sh", "--norc", "-c", "cargo test"])).is_none());
+        assert!(covering(&rs, &v(&["sh", "run.sh"])).is_err());
+        assert!(covering(&rs, &v(&["sh", "-c", "cargo test", "$0"])).is_err());
+        assert!(covering(&rs, &v(&["sh", "--norc", "-c", "cargo test"])).is_err());
     }
 
     #[test]
@@ -769,8 +1013,8 @@ mod tests {
         assert!(validate_pattern(&v(&["echo", "$(cargo test)"])).is_err());
         // ...and a command that hides one never reaches a rule.
         let r = rule("r", &["cargo", "test"], RuleScope::User, "");
-        assert!(covering_rules(&[&r], &v(&["sh", "-c", "echo $(cargo test)"])).is_none());
-        assert!(covering_rules(&[&r], &v(&["sh", "-c", "echo `cargo test`"])).is_none());
+        assert!(covering(&[&r], &v(&["sh", "-c", "echo $(cargo test)"])).is_err());
+        assert!(covering(&[&r], &v(&["sh", "-c", "echo `cargo test`"])).is_err());
     }
 
     #[test]
