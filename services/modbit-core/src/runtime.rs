@@ -1742,6 +1742,15 @@ pub(crate) async fn rebuild(
         spend.observe(&ev.envelope, &payload);
         match ev.envelope.event_type.as_str() {
             "TurnPrepared" => state.turns += 1,
+            // PX-153: the refusals the task has met, from its own log.
+            "ToolCallPolicyDecision"
+            | "ToolCallFailed"
+            | "ToolCallSucceeded"
+            | "TaskNeedsAttention" => {
+                state
+                    .denials
+                    .observe_event(ev.envelope.event_type.as_str(), &payload);
+            }
             // DR-PX-2026-10-25-017: a run that ended on the turn or tool-call
             // budget, and a window an autonomous run was given while it made
             // progress, each end the spending the budgets count: the next
@@ -3061,6 +3070,8 @@ async fn run_loop(
     let lt = Lineage::run(core.tenant_id, task.session_id, task.task_id, run_id)
         .fenced(cfg.lease_generation);
     let (mut transcript, mut state, mut seen_offset, _) = rebuild(&core, &task, cfg.budgets).await;
+    // PX-153: where the denial watch has folded the log to.
+    let mut denial_offset = seen_offset;
     // REQ-EPR-008: the protected surfaces the run's write gate honours come
     // from the assurance policy this task is judged under.
     state.protected_paths = Some({
@@ -6381,6 +6392,45 @@ async fn run_loop(
         }
         if completed {
             break LoopEnd::ReadyForReview;
+        }
+        // PX-153: the tool results of this turn are folded from the log, the
+        // same fold a restart does, so the count is what the log says. A task
+        // that keeps being refused is parked for a person to look at, with the
+        // typed reason and one durable notice; it is not ended.
+        {
+            let events = core
+                .store
+                .lock()
+                .await
+                .read_session_of_types(
+                    &task.session_id,
+                    &modbit_core_runtime::denials::FOLDED_EVENTS,
+                    denial_offset,
+                )
+                .unwrap_or_default();
+            for ev in events
+                .iter()
+                .filter(|e| e.envelope.task_id == Some(task.task_id))
+            {
+                let payload = core
+                    .store
+                    .lock()
+                    .await
+                    .payload(&ev.envelope)
+                    .unwrap_or_default();
+                state
+                    .denials
+                    .observe_event(ev.envelope.event_type.as_str(), &payload);
+            }
+            if let Some(last) = events.last() {
+                denial_offset = denial_offset.max(last.offset);
+            }
+        }
+        if let Some(trip) = state.denials.trip() {
+            break 'outer LoopEnd::NeedsAttention {
+                code: modbit_core_runtime::denials::DENIAL_STREAK,
+                reason: trip.reason(),
+            };
         }
         if progress {
             state.no_progress_turns = 0;

@@ -326,6 +326,9 @@ class DossierTests(unittest.TestCase):
                       ("DR-PX-2026-10-03-011", "DOC-PX-011", 87, 93, False), ("DR-PX-2026-10-03-012", "DOC-PX-012", 94, 98, False),
                       ("DR-PX-2026-10-05-013", "DOC-PX-013", 99, 139, True)]
 
+    DR_018_DEFERRED = [151, 154, 160, 163, 164, 165, 166, 169, 170, 172, 173, 175, 180, 181, 185, 187, 190, 191]
+    DR_018_ADOPT = [147, 148, 149, 150, 152, 153, 155, 156, 157, 158, 159, 161, 162, 167, 168, 171, 174, 176, 177, 178, 179, 182, 183, 184, 186, 188, 189]
+
     def edges(self, g):
         after, auth, includes = {}, set(), {}
         for e in g["edges"]:
@@ -428,16 +431,16 @@ class DossierTests(unittest.TestCase):
 
     def test_parity_surface_counts_are_pinned_and_dr_013_is_traced(self):
         # The additive PX ledger pins nothing in tools/dossier_px.py (totals are computed); the parity-push surface is pinned here
-        # in the same reseal that adds a record: PX-000..146 (147 rows, 143 ADOPT tasks, 4 DEFERRED), ten records of which
+        # in the same reseal that adds a record: PX-000..191 (192 rows, 170 ADOPT tasks, 22 DEFERRED), eleven records of which
         # 007, 008, 010 and 013 are accepted, and the 41 rows of DR-PX-2026-10-05-013 (39 release-critical, 2 iteration).
         self.rebuild()
         g = self.graph()
         nodes = {n["id"]: n for n in g["nodes"]}
         reqs = [n for n in g["nodes"] if re.match(r"^REQ-PX-\d{3}$", n["id"])]
         tasks = [n for n in g["nodes"] if re.match(r"^PX-\d{3}$", n["id"]) and n["type"] == "imp_task"]
-        self.assertEqual(len(reqs), 147)
-        self.assertEqual(len(tasks), 143)
-        self.assertEqual(sorted(n["id"] for n in reqs if n.get("disposition") == "DEFERRED"), ["REQ-PX-003", "REQ-PX-012", "REQ-PX-013", "REQ-PX-140"])
+        self.assertEqual(len(reqs), 192)
+        self.assertEqual(len(tasks), 170)
+        self.assertEqual(sorted(n["id"] for n in reqs if n.get("disposition") == "DEFERRED"), ["REQ-PX-003", "REQ-PX-012", "REQ-PX-013", "REQ-PX-140"] + ["REQ-PX-%03d" % i for i in self.DR_018_DEFERRED])
         self.assertEqual(len([r for r in self.PARITY_RECORDS if r[4]]), 4)
         self.assertEqual(len(self.PARITY_RECORDS), 7)
         text = (self.root / "docs/62_PRODUCT_EXTENSION_REQUIREMENTS_TASKS_AND_QUALIFICATIONS.md").read_text()
@@ -488,6 +491,55 @@ class DossierTests(unittest.TestCase):
         record = (self.root / "docs/decisions/DR-PX-2026-10-19-014-per-task-harness-refinement.md").read_text()
         self.assertIn("status: accepted", record)
         self.assertIn("PX-E2E-140", record)  # the activation text is kept in the record
+
+    def test_dr_018_registers_the_upgrade_program_without_a_second_owner_and_defers_what_needs_a_decision(self):
+        # DR-PX-2026-10-26-018 (accepted 2026-10-26 on the owner's chat instruction, for the registration only): rows PX-147..191.
+        # Twenty-seven ADOPT rows are owned by existing subsystems, scheduled in M10, RELEASE_ZERO only, gated by DOC-PX-017; eighteen
+        # are DEFERRED (no task, card or scenario) and their activation text is Appendix B of the record. The record says what its
+        # approval does not cover and names the twelve open decisions, so the acceptance cannot be read as more than the registration.
+        self.rebuild()
+        g = self.graph()
+        nodes = {n["id"]: n for n in g["nodes"]}
+        after, auth, includes = self.edges(g)
+        dr = "DR-PX-2026-10-26-018"
+        self.assertEqual(nodes[dr]["type"], "change_record")
+        self.assertEqual(nodes[dr]["status"], "APPROVED")
+        self.assertEqual(nodes["DOC-PX-017"]["type"], "dossier_task")
+        self.assertIn(("DOC-PX-017", dr), auth)
+        self.assertIn("DOC-GOV-007", after["DOC-PX-017"])
+        subsystems = {n["id"] for n in g["nodes"] if n["type"] == "subsystem"}
+        owners = {e["from"]: e["to"] for e in g["edges"] if e["type"] == "owned_by"}
+        self.assertEqual(len(self.DR_018_ADOPT) + len(self.DR_018_DEFERRED), 45)
+        for i in self.DR_018_ADOPT:
+            pid = "PX-%03d" % i
+            self.assertEqual(nodes[pid]["type"], "imp_task", pid)
+            self.assertEqual(nodes[pid]["milestone"], "M10", pid)
+            self.assertEqual(nodes[pid]["release"], "RELEASE_ZERO", pid)
+            self.assertIn(owners[pid], subsystems, pid)
+            self.assertIn((pid, dr), auth, pid)
+            self.assertIn("DOC-PX-017", after[pid], pid)
+            self.assertEqual(includes.get(pid), {"RELEASE_ZERO"}, pid)
+        for i in self.DR_018_DEFERRED:
+            rid = "REQ-PX-%03d" % i
+            self.assertEqual(nodes[rid]["disposition"], "DEFERRED", rid)
+            self.assertIn(owners.get(rid, nodes[rid].get("subsystem")), subsystems | {None}, rid)
+            self.assertNotIn("PX-%03d" % i, nodes, rid)
+        text = (self.root / "docs/62_PRODUCT_EXTENSION_REQUIREMENTS_TASKS_AND_QUALIFICATIONS.md").read_text()
+        tiers = re.findall(r"\*\*Decision Record, phase and evidence tier:\*\* DR-PX-2026-10-26-018; upgrade program, [^;]+; (release-critical|iteration) \(", text)
+        self.assertEqual((tiers.count("release-critical"), tiers.count("iteration")), (21, 6))
+        # the chains inside the program
+        for later, earlier in (("PX-152", "PX-150"), ("PX-174", "PX-158"), ("PX-179", "PX-178"), ("PX-186", "PX-184"), ("PX-188", "PX-157")):
+            self.assertIn(earlier, after[later], later)
+        record = (self.root / "docs/decisions/DR-PX-2026-10-26-018-codex-mai-ui-planner-upgrade-program.md").read_text()
+        head = record.split("---")[1]
+        self.assertIn("status: accepted", head)
+        self.assertIn("approved_by: owner, chat instruction of 2026-10-26", head)
+        for needle in ("registration** of the program", "does **not** cover any of the twelve open decisions", "Appendix B", "Appendix C", "UPG-C02",
+                       "clean-room", "Twelve decisions are open", "ADR-R-039 and 041 stay LOCKED", "not verified"):
+            self.assertIn(needle, record)
+        for i in self.DR_018_DEFERRED:
+            self.assertIn("### PX-%03d — " % i, record)  # activation text kept for every DEFERRED row
+            self.assertNotIn("## PX-%03d — " % i, text.replace("### PX-%03d" % i, ""))  # and no task card in doc 62
 
     def test_dr_017_runs_the_coding_task_autonomously_inside_the_envelope_without_relaxing_the_other_always_ask_classes(self):
         # DR-PX-2026-10-25-017 (accepted 2026-10-25 on the owner's chat instruction): rows PX-144..146 are owned by the existing

@@ -46,7 +46,8 @@ pub use pipeline::{
     ToolCallResult, ToolRuntime, ToolStatus, arguments_hash,
 };
 pub use policy::{
-    CapabilityPort, PathTarget, PolicyDecision, PolicyRequest, ProfilePolicy, path_targets,
+    CapabilityPort, ExecContext, PathTarget, PolicyDecision, PolicyRequest, ProfilePolicy,
+    path_targets,
 };
 pub use registry::{CallFacts, Idempotency, Tool, ToolOutcome, ToolRegistry, ToolSpec};
 
