@@ -2117,6 +2117,9 @@ pub enum TaskEvent {
         /// `MODEL_WINDOW` | `ENV_OVERRIDE` | `FALLBACK`.
         #[serde(default)]
         budget_source: String,
+        /// PX-159: the transcript's estimated tokens when it started.
+        #[serde(default)]
+        tokens_before: u32,
     },
     /// `CompactionCommitted` (docs/30 "Durability", M4.2): the durability
     /// record of an installed epoch, beside the model-facing
@@ -2141,6 +2144,15 @@ pub enum TaskEvent {
         /// tried.
         #[serde(default)]
         fallback_reason: String,
+        /// PX-159: the context's estimated tokens once installed (the
+        /// projection and the kept tail).
+        #[serde(default)]
+        tokens_after: u32,
+        /// PX-159: the summarizer calls this compaction made, as
+        /// `{endpoint, requested_model, input_tokens, output_tokens,
+        /// reported}`, so its cost is priced the way every request is.
+        #[serde(default)]
+        summarizer_usage: Vec<serde_json::Value>,
     },
     /// `CompactionRejectedStale` (docs/19: a result is accepted only while
     /// its source is still current; docs/30 "Durability"; docs/54 fault 10):
