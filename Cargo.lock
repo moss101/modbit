@@ -2339,6 +2339,7 @@ dependencies = [
  "modbit-observability",
  "modbit-policy",
  "modbit-procedural-runtime",
+ "modbit-process-hardening",
  "modbit-prompt-compiler",
  "modbit-protocol",
  "modbit-protocol-state",
@@ -2444,6 +2445,7 @@ dependencies = [
  "hex",
  "libc",
  "modbit-domain",
+ "modbit-process-hardening",
  "modbit-protocol",
  "modbit-terminal",
  "portable-pty",
@@ -2543,6 +2545,7 @@ dependencies = [
  "serde",
  "serde_json",
  "sha2 0.11.0",
+ "tempfile",
 ]
 
 [[package]]
@@ -2555,6 +2558,13 @@ dependencies = [
  "serde_json",
  "thiserror 2.0.20",
  "tokio",
+]
+
+[[package]]
+name = "modbit-process-hardening"
+version = "0.0.0"
+dependencies = [
+ "libc",
 ]
 
 [[package]]

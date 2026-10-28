@@ -1591,18 +1591,42 @@ async fn run_process(ctx: &InvokeContext, args: &Value, request_id: &str) -> Too
                     infra_failure: false,
                     unknown_outcome: None,
                 };
+                // PX-152: the sandbox refused something the confined process
+                // attempted. The model is told it is outside its confinement,
+                // not that the command failed, so it stops repeating it.
+                if let Some(d) = &x.sandbox_denied
+                    && let Value::Object(m) = &mut o.structured_output
+                {
+                    m.insert(
+                        "sandbox_denied".into(),
+                        json!({
+                            "code": d.code,
+                            "exit_code": d.exit_code,
+                            "operation": d.operation,
+                            "excerpt": d.excerpt,
+                        }),
+                    );
+                }
                 if !ok {
                     o.error_code = Some(if x.timed_out {
                         "TIMEOUT".into()
                     } else if x.cancelled {
                         "CANCELLED".into()
+                    } else if x.sandbox_denied.is_some() {
+                        "SANDBOX_DENIED".into()
                     } else {
                         "NON_ZERO_EXIT".into()
                     });
-                    o.error_message = Some(format!(
-                        "exit_code={:?} timed_out={} cancelled={}",
-                        x.exit_code, x.timed_out, x.cancelled
-                    ));
+                    o.error_message = Some(match &x.sandbox_denied {
+                        Some(d) if !x.timed_out && !x.cancelled => format!(
+                            "the sandbox refused an operation (exit_code={}): {}. This is outside the confinement this task runs under: do not retry the same command unchanged. Change it so it stays inside the worktree and needs no network, or say that it cannot run here.",
+                            d.exit_code, d.excerpt
+                        ),
+                        _ => format!(
+                            "exit_code={:?} timed_out={} cancelled={}",
+                            x.exit_code, x.timed_out, x.cancelled
+                        ),
+                    });
                 }
                 return o;
             }
