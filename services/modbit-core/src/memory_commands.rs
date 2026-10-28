@@ -23,6 +23,7 @@ fn ctx_of(core: &Core, task: &Task, actor: Actor) -> MemoryCtx {
         session: task.session_id,
         task: Some(task.task_id),
         actor,
+        redactor: core.tools.redactor(),
     }
 }
 
@@ -154,9 +155,7 @@ pub(crate) async fn propose(
     if matches!(item.scope, Scope::Repository { .. }) {
         item.last_validation_revision = revision_of(task).await;
     }
-    let done = memory::propose(&core.store, &ctx_of(core, task, actor), item, Some(record))
-        .await
-        .map_err(|e| ("MEMORY_STORE".to_owned(), e))?;
+    let done = memory::propose(&core.store, &ctx_of(core, task, actor), item, Some(record)).await?;
     let replayed = done.replayed;
     Ok((
         wire::MemoryProposed {

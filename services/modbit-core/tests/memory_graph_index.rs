@@ -606,7 +606,8 @@ fn tool_names(body: &serde_json::Value) -> Vec<String> {
 
 /// The memory events on a data directory's log, `(event_type, aggregate)`,
 /// oldest first, read with a plain SQLite connection (the store is closed or
-/// quiescent).
+/// quiescent). These are the mutations; a use in a prompt (`MemoryUsed`,
+/// PX-157) is history of an item, not a change of it, and is read apart.
 fn memory_events(data: &std::path::Path) -> Vec<(String, String)> {
     let conn = rusqlite::Connection::open_with_flags(
         data.join("core/core.db"),
@@ -614,7 +615,7 @@ fn memory_events(data: &std::path::Path) -> Vec<(String, String)> {
     )
     .unwrap();
     let mut stmt = conn
-        .prepare("SELECT event_type, hex(aggregate_id) FROM events WHERE aggregate_type = 'memory' ORDER BY offset")
+        .prepare("SELECT event_type, hex(aggregate_id) FROM events WHERE aggregate_type = 'memory' AND event_type != 'MemoryUsed' ORDER BY offset")
         .unwrap();
     stmt.query_map([], |r| Ok((r.get(0)?, r.get(1)?)))
         .unwrap()
@@ -2568,4 +2569,189 @@ async fn wave1_a_paused_task_keeps_its_memory_and_indexes_across_a_killed_core()
     let done = s.index_status(&t).await;
     assert_eq!(done.builds, 0, "resuming rebuilt nothing: {done:?}");
     assert_eq!(memory_events(data.path()), events_before);
+}
+
+// ------------------------------------------------------------ PX-157 tests
+
+/// Every byte of a data directory's store: the log, its objects, the rows.
+fn store_bytes(data: &std::path::Path) -> Vec<u8> {
+    fn walk(p: &std::path::Path, out: &mut Vec<u8>) {
+        if let Ok(rd) = std::fs::read_dir(p) {
+            for e in rd.flatten() {
+                let path = e.path();
+                if path.is_dir() {
+                    walk(&path, out);
+                } else if let Ok(b) = std::fs::read(&path) {
+                    out.extend_from_slice(&b);
+                }
+            }
+        }
+    }
+    let mut out = Vec::new();
+    walk(data, &mut out);
+    out
+}
+
+fn contains(hay: &[u8], needle: &str) -> bool {
+    hay.windows(needle.len()).any(|w| w == needle.as_bytes())
+}
+
+/// QUAL-PX-157: a proposal carrying a real-format API key is stored with the
+/// key redacted, one that is a private-key block and nothing else is refused
+/// with a typed reason, a private key inside ordinary text loses its body
+/// with its header, and an ordinary proposal is stored byte for byte. The
+/// secret is in no row, event or object of the store.
+#[tokio::test]
+async fn qual_px_157_a_secret_in_a_proposal_is_redacted_or_refused_and_ordinary_text_is_kept() {
+    let (_repo, root) = repo(&[("a.txt", "a\n")]);
+    let data = tempfile::tempdir().unwrap();
+    let core = CoreProcess::spawn(data.path(), &[]);
+    let mut s = Seat::open(&core).await;
+    let t = s.task(&root, "remember the deploy").await;
+    let key = "sk-proj-Zq81mVb0XyLk2Ww9Rt5Np3Hs7Cd4Fg6J";
+    let with_key = s
+        .propose(
+            &t,
+            "user",
+            "fact",
+            "deploy",
+            &format!("deploy staging with {key} as the token"),
+        )
+        .await;
+    let body = "MIIEowIBAAKCAQEAu1SU1LfVLPHCozMxH2Mo4lgOEePzNm0tRgeLezV6ffAt0gunVTLw7onLRnrq0";
+    let block = format!("-----BEGIN RSA PRIVATE KEY-----\n{body}\n-----END RSA PRIVATE KEY-----");
+    let refused =
+        s.c.command(envelope(
+            fresh_id(),
+            "ProposeMemory",
+            ProposeMemory {
+                task_id: Some(t.clone()),
+                scope: "user".into(),
+                record_type: "fact".into(),
+                topic: "ssh".into(),
+                content: block.clone(),
+                ..Default::default()
+            }
+            .encode_to_vec(),
+            s.g,
+        ))
+        .await;
+    assert!(
+        matches!(refused, Err(ClientError::Rejected { ref code, ref message, .. }) if code == "MEMORY_SECRET" && !message.contains(body)),
+        "{refused:?}"
+    );
+    let embedded = s
+        .propose(
+            &t,
+            "user",
+            "fact",
+            "ssh host",
+            &format!("the bastion key is\n{block}\nrotate it monthly"),
+        )
+        .await;
+    let ordinary = "Run `cargo test -p core` before pushing; résumé of 2026-10 → keep ≤ 3 retries.\n\ttabs\tstay";
+    let plain = s
+        .propose(&t, "user", "convention", "pushing", ordinary)
+        .await;
+    let l = s.list(&t, |_| {}).await;
+    let by_id = |id: &str| {
+        l.items
+            .iter()
+            .find(|i| i.id == id)
+            .unwrap_or_else(|| panic!("{l:?}"))
+            .clone()
+    };
+    let k = by_id(&with_key.memory_id);
+    assert_eq!(
+        k.content, "deploy staging with [redacted] as the token",
+        "{k:?}"
+    );
+    let e = by_id(&embedded.memory_id);
+    assert!(
+        e.content.starts_with("the bastion key is") && e.content.ends_with("rotate it monthly"),
+        "{e:?}"
+    );
+    assert!(
+        !e.content.contains(body) && e.content.contains("[redacted]"),
+        "{e:?}"
+    );
+    assert_eq!(
+        by_id(&plain.memory_id).content,
+        ordinary,
+        "ordinary text is stored byte for byte"
+    );
+    assert_eq!(l.items.len(), 3, "the refused one left nothing: {l:?}");
+    drop(s);
+    drop(core);
+    let bytes = store_bytes(data.path());
+    assert!(!contains(&bytes, key), "the key is in the store");
+    assert!(!contains(&bytes, body), "the private key is in the store");
+    assert!(
+        contains(&bytes, "rotate it monthly"),
+        "the search reads the store"
+    );
+}
+
+/// QUAL-PX-157: each turn whose prompt carries an item counts one use, with
+/// its time; the counts are read from the log, so a restarted Core that
+/// rebuilds its projections reports the same numbers.
+#[tokio::test]
+async fn qual_px_157_each_prompt_that_injects_an_item_counts_once_and_a_restart_rebuilds_it() {
+    let (_repo, root) = repo(&[("src/parser.rs", "pub fn parse() {}\n")]);
+    let data = tempfile::tempdir().unwrap();
+    let (base, seen) = scripted_model(finish_script()).await;
+    let env = model_env(&base);
+    let mut core = CoreProcess::spawn(data.path(), &env);
+    let mut one = Seat::open(&core).await;
+    let s1 = one.session.clone();
+    let t1 = one.task(&root, "note a convention").await;
+    let convention = "always format the parser module with tabs, never spaces";
+    let id = one
+        .curate(&t1, "user", "convention", "indentation", convention)
+        .await;
+    let unused = one
+        .curate(&t1, "user", "convention", "commits", "sign every commit")
+        .await;
+    let fresh = one.list(&t1, |_| {}).await;
+    let item = fresh.items.iter().find(|i| i.id == id).unwrap();
+    assert_eq!((item.uses, item.last_used_at_ms), (0, 0), "{item:?}");
+    let before = std::time::SystemTime::now()
+        .duration_since(std::time::UNIX_EPOCH)
+        .unwrap()
+        .as_millis() as i64;
+    let t2 = one.task(&root, "fix the parser").await;
+    one.start(&t2).await;
+    let carried = seen
+        .lock()
+        .unwrap()
+        .iter()
+        .filter(|b| request_text(b).contains(convention))
+        .count() as u64;
+    assert!(carried >= 1, "the memory reached a prompt");
+    let l = one.list(&t2, |_| {}).await;
+    let item = l.items.iter().find(|i| i.id == id).unwrap().clone();
+    assert_eq!(
+        item.uses, carried,
+        "one use per prompt that carried it: {item:?}"
+    );
+    assert!(item.last_used_at_ms >= before, "{item:?}");
+    let other = l.items.iter().find(|i| i.id == unused).unwrap();
+    assert_eq!(other.uses, carried, "both were selected: {other:?}");
+    // A restart that rebuilds the projections from the log reports the same.
+    drop(one);
+    core.kill();
+    let conn = rusqlite::Connection::open(data.path().join("core/core.db")).unwrap();
+    conn.execute("UPDATE projection_state SET last_offset = 0", [])
+        .unwrap();
+    drop(conn);
+    let core2 = CoreProcess::spawn(data.path(), &env);
+    let mut again = Seat::rejoin(&core2, s1).await;
+    let t3 = again.task(&root, "check memory").await;
+    let l2 = again.list(&t3, |_| {}).await;
+    let after = l2.items.iter().find(|i| i.id == id).unwrap();
+    assert_eq!(
+        (after.uses, after.last_used_at_ms),
+        (item.uses, item.last_used_at_ms),
+        "{after:?}"
+    );
 }

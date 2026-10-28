@@ -4221,6 +4221,21 @@ async fn run_loop(
                             ),
                         ],
                     );
+                    // PX-157: each memory item this prompt carries is one use,
+                    // on the item's own history (counted once per turn).
+                    if !compiled.injected_memory.is_empty() {
+                        let _ = append_batch(
+                            &mut store,
+                            &core,
+                            lturn,
+                            crate::memory::used_events(
+                                &compiled.injected_memory,
+                                &turn_id.to_string(),
+                                &compiled.context_pack_id,
+                                &actor,
+                            ),
+                        );
+                    }
                     let _ = append(
                         &mut store,
                         &core,
