@@ -166,6 +166,14 @@ pub struct AllowRule {
     pub rule_id: String,
     /// The argv prefix, token by token.
     pub pattern: Vec<String>,
+    /// The absolute path the pattern's program resolved to when the rule was
+    /// made (PX-149). A command matches the rule only while its program still
+    /// resolves to this path, so a program placed earlier on the search path
+    /// (a repository's `bin/`) cannot stand in for the one the person
+    /// approved. Empty on a rule made before the field existed: such a rule
+    /// is not pinned and asks.
+    #[serde(default)]
+    pub program_path: String,
     /// Where it applies.
     pub scope: RuleScope,
     /// What the scope names: the task id (`TASK`), the canonical workspace
