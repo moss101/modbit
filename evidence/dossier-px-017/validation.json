@@ -1,0 +1,31 @@
+{
+ "task": "DOC-PX-017",
+ "change_record": "DR-PX-2026-10-26-018",
+ "change_record_status": "APPROVED",
+ "edition": "V3.3 EPR v1.1",
+ "scope": "Decision Record DR-PX-2026-10-26-018 (accepted by the owner's chat instruction of 2026-10-26, for the registration of the upgrade program only): rows PX-147..191 in doc 62 (27 ADOPT with cards and scenarios, 18 DEFERRED with activation text in the record's Appendix B), graph change record and dossier task, pinned parity counts (192 rows, 170 ADOPT, 22 DEFERRED), one dedicated test, doc 02/97 notes; dossier only, no product status or evidence claim changes here; the twelve open decisions are not accepted.",
+ "recorded_at_utc": "2026-10-25T23:10:29.252211+00:00",
+ "git": {
+  "baseline_commit": "40ef7536",
+  "branch": "wip/autonomous-coding-engine"
+ },
+ "tests": {
+  "command": [
+   "python3",
+   "tools/test_dossier.py"
+  ],
+  "exit_code": 0,
+  "output_ref": "evidence/dossier-px-017/tests.log",
+  "sha256": "190515621ea505b51d697ae21cdf42a81561d4b897e49f34d4300751d12191f8",
+  "result_line": "Ran 87 tests in 130.662s OK"
+ },
+ "integrity": {
+  "command": [
+   "python3",
+   "tools/check_dossier.py",
+   "--manifest"
+  ],
+  "exit_code": 0,
+  "output": "OK: 97 docs; base 291 REQ-EV/265 IMP-EV/291 QUAL-EV + EPR 20 + PX 192 (170 ADOPT tasks) = 503 requirements effective; 18 ADR-R, 7 gates, 3 releases; graph and references consistent; manifest hashes verified"
+ }
+}

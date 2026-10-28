@@ -73,6 +73,7 @@ fn rule(id: &str, pattern: &[&str], scope: RuleScope, key: &str) -> AllowRule {
     AllowRule {
         rule_id: id.into(),
         pattern: pattern.iter().map(|s| (*s).to_owned()).collect(),
+        program_path: format!("/bin/{}", pattern[0]),
         scope,
         scope_key: key.into(),
         created_by: "user:u".into(),
@@ -90,6 +91,12 @@ fn policy(mode: RunMode, rules: Vec<AllowRule>, argv: &[&str]) -> RunPolicy {
         repo_root: "/repo".into(),
         rules,
         argv: Some(argv.iter().map(|s| (*s).to_owned()).collect()),
+        // Every program the command names is the one the rules pinned.
+        programs: argv
+            .iter()
+            .take(1)
+            .map(|t| ((*t).to_owned(), Some(format!("/bin/{t}"))))
+            .collect(),
         ask_classes: vec![],
         dependency_install: false,
         contained: false,
@@ -613,4 +620,207 @@ fn autonomous_is_durable_and_approves_more_than_every_other_mode() {
     let ranks: Vec<u8> = RunMode::ALL.iter().map(|m| m.rank()).collect();
     assert!(ranks.windows(2).all(|w| w[0] < w[1]), "{ranks:?}");
     assert_eq!(RunMode::ALL.last(), Some(&RunMode::Autonomous));
+}
+
+// ---- PX-149: allow rules pinned to the resolved program path ----
+
+fn ask_reason(d: &KernelDecision) -> String {
+    let KernelDecision::ApprovalRequired { scope_json, .. } = d else {
+        panic!("expected an approval to be required, got {}", code(d));
+    };
+    let scope: serde_json::Value = serde_json::from_str(scope_json).unwrap();
+    scope["ask_reason"].as_str().unwrap_or_default().to_owned()
+}
+
+#[cfg(unix)]
+fn executable(path: &std::path::Path) {
+    use std::os::unix::fs::PermissionsExt;
+    std::fs::create_dir_all(path.parent().unwrap()).unwrap();
+    std::fs::write(path, "#!/bin/sh\nexit 0\n").unwrap();
+    std::fs::set_permissions(path, std::fs::Permissions::from_mode(0o755)).unwrap();
+}
+
+/// A rule made for `git` while it resolved to `pinned`, decided against `now`.
+fn decide_git(pinned: &str, now: Option<&str>, argv: &[&str]) -> KernelDecision {
+    let k = CapabilityKernel::default();
+    let c = caps(&["shell.exec"]);
+    let l = lease("local_trusted");
+    let mut r = rule("r1", &["git", "status"], RuleScope::Task, "t1");
+    r.program_path = pinned.to_owned();
+    let mut p = policy(RunMode::Allowlist, vec![r], argv);
+    p.programs = std::iter::once((argv[0].to_owned(), now.map(str::to_owned))).collect();
+    k.decide(&req(
+        EffectClass::ProtectedWrite,
+        &c,
+        "local_trusted",
+        Some(&l),
+        Some(&p),
+    ))
+}
+
+#[test]
+fn qual_px_149_a_rule_covers_a_command_only_while_its_program_resolves_to_the_pinned_path() {
+    // The system program the rule was made for still allows.
+    let d = decide_git("/usr/bin/git", Some("/usr/bin/git"), &["git", "status"]);
+    assert_eq!(
+        code(&d),
+        "ALLOW",
+        "the real program still satisfies the rule"
+    );
+    // A program placed earlier on the path does not, and asks with its own code.
+    let d = decide_git("/usr/bin/git", Some("/repo/bin/git"), &["git", "status"]);
+    assert_eq!(ask_reason(&d), "PROGRAM_PATH_CHANGED");
+    // A rule made before the field existed records no path and asks.
+    let d = decide_git("", Some("/usr/bin/git"), &["git", "status"]);
+    assert_eq!(ask_reason(&d), "RULE_NOT_PINNED");
+    // A program that resolves to nothing fails closed.
+    let d = decide_git("/usr/bin/git", None, &["git", "status"]);
+    assert_eq!(ask_reason(&d), "PROGRAM_NOT_FOUND");
+    // A command the rule's pattern does not match is still plainly outside the allowlist.
+    let d = decide_git("/usr/bin/git", Some("/usr/bin/git"), &["git", "push"]);
+    assert_eq!(ask_reason(&d), "NOT_IN_ALLOWLIST");
+}
+
+#[test]
+fn qual_px_149_a_pinned_rule_that_does_not_hold_does_not_widen_what_the_mode_would_do() {
+    // The widest mode approves whatever is not always-ask without consulting
+    // rules, so a failed pin costs nothing there; an always-ask class still asks.
+    let k = CapabilityKernel::default();
+    let c = caps(&["shell.exec"]);
+    let l = lease("local_trusted");
+    let mut r = rule("r1", &["git", "status"], RuleScope::Task, "t1");
+    r.program_path = "/usr/bin/git".into();
+    let mut p = policy(RunMode::RunEverything, vec![r], &["git", "status"]);
+    p.programs = std::iter::once(("git".to_owned(), Some("/repo/bin/git".to_owned()))).collect();
+    let d = k.decide(&req(
+        EffectClass::ProtectedWrite,
+        &c,
+        "local_trusted",
+        Some(&l),
+        Some(&p),
+    ));
+    assert_eq!(code(&d), "ALLOW");
+}
+
+#[test]
+fn qual_px_149_the_shell_that_wraps_a_script_cannot_be_a_file_in_the_workspace() {
+    let k = CapabilityKernel::default();
+    let c = caps(&["shell.exec"]);
+    let l = lease("local_trusted");
+    let argv = ["sh", "-c", "git status"];
+    for (sh, expected) in [("/bin/sh", "ALLOW"), ("/repo/bin/sh", "APPROVAL_REQUIRED")] {
+        let mut r = rule("r1", &["git", "status"], RuleScope::Task, "t1");
+        r.program_path = "/usr/bin/git".into();
+        let mut p = policy(RunMode::Allowlist, vec![r], &argv);
+        p.programs = [
+            ("sh".to_owned(), Some(sh.to_owned())),
+            ("git".to_owned(), Some("/usr/bin/git".to_owned())),
+        ]
+        .into_iter()
+        .collect();
+        let d = k.decide(&req(
+            EffectClass::ProtectedWrite,
+            &c,
+            "local_trusted",
+            Some(&l),
+            Some(&p),
+        ));
+        assert_eq!(code(&d), expected, "{sh}");
+        if expected == "APPROVAL_REQUIRED" {
+            assert_eq!(ask_reason(&d), "PROGRAM_IN_WORKSPACE");
+        }
+    }
+}
+
+/// The resolution the host does against a real repository and real search
+/// paths feeds the same decision: the shadowing case from the qualification.
+#[cfg(unix)]
+#[test]
+fn qual_px_149_a_repository_bin_first_on_the_path_does_not_satisfy_a_rule_made_for_the_system_program()
+ {
+    let dir = tempfile::tempdir().unwrap();
+    let system = dir.path().join("system/bin");
+    let repo = dir.path().join("repo");
+    executable(&system.join("git"));
+    executable(&repo.join("bin/git"));
+    let sys_git = system.join("git").to_string_lossy().into_owned();
+    let cwd = repo.to_string_lossy().into_owned();
+    let path_system = system.to_string_lossy().into_owned();
+    let path_shadowed = format!("{}:{path_system}", repo.join("bin").to_string_lossy());
+    let argv: Vec<String> = ["git", "status"].iter().map(|s| (*s).to_owned()).collect();
+
+    // At rule-creation time the program resolved to the system git.
+    let made = modbit_policy::runmode::resolve_program("git", &cwd, &path_system).unwrap();
+    assert_eq!(made, sys_git);
+
+    let decide_with = |path: &str| {
+        let mut r = rule("r1", &["git", "status"], RuleScope::Task, "t1");
+        r.program_path = made.clone();
+        let mut p = policy(RunMode::Allowlist, vec![r], &["git", "status"]);
+        p.programs = modbit_policy::runmode::resolve_programs(&argv, &cwd, path);
+        CapabilityKernel::default().decide(&req(
+            EffectClass::ProtectedWrite,
+            &caps(&["shell.exec"]),
+            "local_trusted",
+            Some(&lease("local_trusted")),
+            Some(&p),
+        ))
+    };
+    assert_eq!(code(&decide_with(&path_system)), "ALLOW");
+    let d = decide_with(&path_shadowed);
+    assert_eq!(ask_reason(&d), "PROGRAM_PATH_CHANGED", "{d:?}");
+    // A directory with no git at all: fail closed.
+    let empty = dir.path().join("empty");
+    std::fs::create_dir_all(&empty).unwrap();
+    let d = decide_with(&empty.to_string_lossy());
+    assert_eq!(ask_reason(&d), "PROGRAM_NOT_FOUND");
+}
+
+#[cfg(unix)]
+#[test]
+fn qual_px_149_resolution_follows_the_search_path_the_way_the_process_will() {
+    use modbit_policy::runmode::resolve_program;
+    let dir = tempfile::tempdir().unwrap();
+    let a = dir.path().join("a");
+    let b = dir.path().join("b");
+    executable(&a.join("tool"));
+    executable(&b.join("tool"));
+    executable(&b.join("only-b"));
+    // A file without the execute bit is not a program.
+    std::fs::write(a.join("data"), "x").unwrap();
+    let cwd = dir.path().to_string_lossy().into_owned();
+    let path = format!("{}:{}", a.to_string_lossy(), b.to_string_lossy());
+    assert_eq!(
+        resolve_program("tool", &cwd, &path),
+        Some(a.join("tool").to_string_lossy().into_owned()),
+        "the first entry wins"
+    );
+    assert_eq!(
+        resolve_program("only-b", &cwd, &path),
+        Some(b.join("only-b").to_string_lossy().into_owned())
+    );
+    assert_eq!(resolve_program("data", &cwd, &path), None, "not executable");
+    assert_eq!(resolve_program("missing", &cwd, &path), None);
+    assert_eq!(resolve_program("", &cwd, &path), None);
+    // A token with a separator is taken against the working directory.
+    assert_eq!(
+        resolve_program("./a/tool", &cwd, "/nonexistent"),
+        Some(a.join("tool").to_string_lossy().into_owned())
+    );
+    assert_eq!(
+        resolve_program("a/../b/tool", &cwd, "/nonexistent"),
+        Some(b.join("tool").to_string_lossy().into_owned()),
+        "lexically cleaned"
+    );
+    // A relative entry on the path is read against the working directory.
+    assert_eq!(
+        resolve_program("tool", &cwd, "b"),
+        Some(b.join("tool").to_string_lossy().into_owned())
+    );
+    // A symlink keeps its own path (the pin survives a package upgrade).
+    std::os::unix::fs::symlink(b.join("tool"), a.join("linked")).unwrap();
+    assert_eq!(
+        resolve_program("linked", &cwd, &a.to_string_lossy()),
+        Some(a.join("linked").to_string_lossy().into_owned())
+    );
 }
