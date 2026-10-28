@@ -39455,9 +39455,14 @@
    "related_requirements": [],
    "task_card": "docs/62_PRODUCT_EXTENSION_REQUIREMENTS_TASKS_AND_QUALIFICATIONS.md#px-167",
    "audit_at_adoption": "DOCUMENTED-ONLY; no product caller present",
-   "status": "WIRED",
-   "evidence": [],
-   "status_changed_on": "2026-10-28T09:47:57Z"
+   "status": "COMPLETE",
+   "evidence": [
+    "run:40679469851",
+    "artifact:evidence/m10/PX-167/ci-run-40679469851.json",
+    "commit:eb336971",
+    "artifact:evidence/m10/PX-167/evidence.json"
+   ],
+   "status_changed_on": "2026-10-28T12:33:17Z"
   },
   {
    "id": "PX-168",
