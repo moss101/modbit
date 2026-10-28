@@ -3,6 +3,8 @@
 //! a cloud-worker client (docs/33: the same Core runtime/domain code
 //! executes in cloud workers).
 
+// PX-168 lint policy: this file spawns processes and baselined expect/unwrap sites; new ones need review.
+#![allow(clippy::disallowed_methods, clippy::expect_used)]
 use std::io::{BufRead, BufReader};
 use std::path::Path;
 use std::process::{Child, Command, Stdio};

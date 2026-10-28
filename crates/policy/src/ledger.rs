@@ -2,6 +2,8 @@
 //! append-only, each receipt hashes its own fields plus the previous receipt
 //! hash, so the chain is independently verifiable from the projection alone.
 
+// PX-168 lint policy: this file baselined expect/unwrap sites; new ones need review.
+#![allow(clippy::expect_used)]
 use modbit_domain::toolcall::EffectReceipt;
 use sha2::{Digest, Sha256};
 

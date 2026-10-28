@@ -2,6 +2,8 @@
 //! path must carry a trailer naming an accepted Decision Record that exists in
 //! that commit's tree. Uses the real `git` binary; nothing is simulated.
 
+// PX-168 lint policy: this file spawns processes and baselined expect/unwrap sites; new ones need review.
+#![allow(clippy::disallowed_methods, clippy::expect_used)]
 use std::path::Path;
 use std::process::Command;
 

@@ -29,7 +29,8 @@
 //! `unsafe_code` and notes this exception in the root `Cargo.toml`.
 
 #![cfg_attr(not(unix), forbid(unsafe_code))]
-
+// PX-168 lint policy: this file spawns processes; new ones need review.
+#![allow(clippy::disallowed_methods)]
 /// The environment variable that marks the second image of the re-execution,
 /// so the process executes itself at most once. It is removed on sight.
 pub const REEXEC_MARK: &str = "MODBIT_HARDENING_REEXEC";

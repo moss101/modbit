@@ -7,6 +7,8 @@
 //! null cost and is counted as incomplete, because a later routing change must
 //! be compared against what was measured and not against a filled-in blank.
 
+// PX-168 lint policy: this file spawns processes; new ones need review.
+#![allow(clippy::disallowed_methods)]
 use modbit_domain::SessionId;
 use modbit_observability::baseline::{BaselineBundle, Interventions, TaskOutcome, Usage, publish};
 use modbit_protocol::v1 as wire;

@@ -30,6 +30,8 @@
 //! (`OVER_BOUNDS`) and the turn records why instead of half a checkpoint. The
 //! cost of every commit is on its `CheckpointCommitted` event.
 
+// PX-168 lint policy: this file baselined expect/unwrap sites; new ones need review.
+#![allow(clippy::expect_used)]
 use std::collections::{BTreeMap, BTreeSet, HashMap, HashSet};
 use std::path::PathBuf;
 use std::sync::{Arc, Mutex as StdMutex, OnceLock};

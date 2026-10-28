@@ -19,6 +19,8 @@
 //! agent and not a tuned search; it is the honest lower-effort baseline the
 //! planner profiles are asked to beat.
 
+// PX-168 lint policy: this file spawns processes; new ones need review.
+#![allow(clippy::disallowed_methods)]
 use std::collections::BTreeMap;
 use std::ffi::OsStr;
 use std::path::{Path, PathBuf};

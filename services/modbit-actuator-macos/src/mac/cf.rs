@@ -2,7 +2,8 @@
 //! what the C API hands out ("create"/"copy" rule); everything else holds a
 //! [`Cf`] and drops it.
 #![allow(unsafe_code)]
-
+// PX-168 lint policy: this file baselined expect/unwrap sites; new ones need review.
+#![allow(clippy::expect_used)]
 use std::ffi::{CString, c_char, c_void};
 
 use super::ffi::{

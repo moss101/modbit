@@ -6,6 +6,8 @@
 //! host buffer an unbounded line — and every message is validated as
 //! JSON-RPC before anything reads its payload.
 
+// PX-168 lint policy: this file baselined expect/unwrap sites; new ones need review.
+#![allow(clippy::expect_used)]
 use serde::{Deserialize, Serialize};
 use serde_json::{Value, json};
 

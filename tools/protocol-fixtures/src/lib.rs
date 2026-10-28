@@ -5,6 +5,8 @@
 //! binary encoding from Rust, and a plain JSON description of the field values
 //! that the TypeScript test compares against after decoding.
 
+// PX-168 lint policy: this file baselined expect/unwrap sites; new ones need review.
+#![allow(clippy::expect_used)]
 use std::path::{Path, PathBuf};
 
 use modbit_protocol::v1::*;

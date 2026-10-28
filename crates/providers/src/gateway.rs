@@ -4,6 +4,8 @@
 //! timeout, cancellation, and rolling health per endpoint. Raw credentials
 //! are resolved per request and never appear in events, errors or logs.
 
+// PX-168 lint policy: this file baselined expect/unwrap sites; new ones need review.
+#![allow(clippy::expect_used)]
 use std::collections::BTreeMap;
 use std::sync::{Arc, Mutex};
 use std::time::{Duration, Instant};

@@ -2,6 +2,8 @@
 //! storage"). Objects are immutable: written to a temporary file, fsynced,
 //! then renamed into place; a hash that already exists is never rewritten.
 
+// PX-168 lint policy: this file baselined expect/unwrap sites; new ones need review.
+#![allow(clippy::expect_used)]
 use std::fs;
 use std::io::Write;
 use std::path::{Path, PathBuf};

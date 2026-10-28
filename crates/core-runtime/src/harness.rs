@@ -2,6 +2,8 @@
 //! docs/28): the Core-enforced rules the one-agent runtime applies between
 //! model output and tool execution. Pure: no I/O, no clocks.
 
+// PX-168 lint policy: this file baselined expect/unwrap sites; new ones need review.
+#![allow(clippy::expect_used)]
 use modbit_domain::toolcall::EffectClass;
 use serde::{Deserialize, Serialize};
 use sha2::{Digest, Sha256};

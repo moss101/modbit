@@ -44,6 +44,8 @@
 //! registration was removed while it ran is discarded (`UNLOADED`), so no
 //! stale handler can still mutate a call.
 
+// PX-168 lint policy: this file spawns processes; new ones need review.
+#![allow(clippy::disallowed_methods)]
 use std::path::Path;
 use std::process::Stdio;
 use std::time::{Duration, Instant};

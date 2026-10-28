@@ -7,6 +7,8 @@
 //! identity outlives the model it happens to run on (REQ-EV-0256). Nothing
 //! here is a scheduler: admission (M6.3) decides what may run.
 
+// PX-168 lint policy: this file baselined expect/unwrap sites; new ones need review.
+#![allow(clippy::expect_used)]
 use serde::{Deserialize, Serialize};
 
 use crate::ids::{AgentId, RunId, TaskId};

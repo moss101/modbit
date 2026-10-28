@@ -7,6 +7,8 @@
 //! the connection with a `ProtocolError`. Multiple clients may attach to one
 //! session and resume from an event offset (REQ-EV-0010, REQ-EV-0192).
 
+// PX-168 lint policy: this file spawns processes and baselined expect/unwrap sites; new ones need review.
+#![allow(clippy::disallowed_methods, clippy::expect_used)]
 use std::path::{Path, PathBuf};
 use std::sync::Arc;
 
