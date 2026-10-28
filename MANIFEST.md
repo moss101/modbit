@@ -503,6 +503,8 @@ A dossier package is valid only if every path below exists with the listed SHA-2
 | `evidence/m10/PX-155/mutation-check.txt` | retained evidence | 1800 | `67b26ee1f7fce3b84ee5f6d642aeffa963216b56a1576f51c722176fb8b20ba7` |
 | `evidence/m10/PX-156/TASK_CARD.md` | retained evidence | 2987 | `92f931bb81fd76d36d454f438e6ff4cdc6511b7bd73b7e3c27fe4f765cc70ec3` |
 | `evidence/m10/PX-156/mutation-check.txt` | retained evidence | 1781 | `09014f672d4bdb8bde868a77f7b6e75b79eec14c592d3b299b76098e00a959fc` |
+| `evidence/m10/PX-171/TASK_CARD.md` | retained evidence | 3012 | `8866fa309cfe04f3f28db2186d31e7a503fe07893574765d6faa83d4505d9a1e` |
+| `evidence/m10/PX-171/mutation-check.txt` | retained evidence | 6282 | `dc84fd5bd9345da6899b9fcc956e024a4e7f2c06d6d012ae10c57b4d3cee7b08` |
 | `evidence/m2/IMP-EV-0011/TASK_CARD.md` | retained evidence | 1620 | `22a7ddc2c80526c5aba876366bfeb862fac72742059962c5ad19deb8239fb5d2` |
 | `evidence/m2/IMP-EV-0011/ci-run-34409173853-tests.log` | retained evidence | 80671 | `523c4dc423fa906a9c846d64d864d36c759cb9f98bd8f4e582600a39d7c14b05` |
 | `evidence/m2/IMP-EV-0011/ci-run-34409173853.json` | retained evidence | 36682 | `49f5cd98348f61290daeee2920913a705bc385ed441cf7a15a9d9a357ad2ebdf` |
