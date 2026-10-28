@@ -134,7 +134,11 @@ pub async fn run_as_init() -> std::io::Result<()> {
     let listener = vsock::VsockListener::bind_with_cid_port(vsock::VMADDR_CID_ANY, port)
         .map_err(std::io::Error::other)?;
     listener.set_nonblocking(true)?;
-    let listener = tokio::io::unix::AsyncFd::new(listener)?;
+    #[allow(unsafe_code)]
+    // SAFETY: the listener owns its descriptor and nothing else closes or
+    // replaces it while the AsyncFd holds it.
+    let listener =
+        unsafe { tokio::io::unix::AsyncFd::register(listener) }.map_err(std::io::Error::other)?;
     loop {
         let stream = loop {
             let mut guard = listener.readable().await?;
@@ -167,7 +171,11 @@ pub(crate) struct VsockAsync(tokio::io::unix::AsyncFd<vsock::VsockStream>);
 impl VsockAsync {
     /// Wrap a non-blocking vsock stream.
     pub(crate) fn new(s: vsock::VsockStream) -> std::io::Result<Self> {
-        Ok(Self(tokio::io::unix::AsyncFd::new(s)?))
+        #[allow(unsafe_code)]
+        // SAFETY: the stream owns its descriptor and nothing else closes or
+        // replaces it while the AsyncFd holds it.
+        let fd = unsafe { tokio::io::unix::AsyncFd::register(s) }.map_err(std::io::Error::other)?;
+        Ok(Self(fd))
     }
 }
 
