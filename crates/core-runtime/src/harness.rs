@@ -142,9 +142,13 @@ pub struct HarnessState {
     /// stop the run: spend control that cannot see the spend is not control.
     #[serde(default)]
     pub cost_unmetered_calls: u32,
-    /// Wall clock the task has used across its runs, milliseconds.
+    /// Wall clock the task has used across its runs, milliseconds, less the
+    /// time parked on a person's approval.
     #[serde(default)]
     pub wall_ms: u64,
+    /// Time the runs spent parked on a person's approval (PX-156).
+    #[serde(default)]
+    pub parked_ms: u64,
     /// What the task's children hold against it (REQ-PX-116): reserved
     /// turns, tool calls and cost of the live ones, the spend of the rest.
     #[serde(default)]

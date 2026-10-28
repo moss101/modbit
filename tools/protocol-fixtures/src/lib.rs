@@ -386,6 +386,7 @@ pub fn samples() -> Vec<Sample> {
             max_children: 3,
             live_children: 1,
             forbid_spawn: false,
+            wall_ms_parked: 3_500,
         }),
     };
     let command = CommandEnvelope {
@@ -1537,7 +1538,7 @@ pub fn samples() -> Vec<Sample> {
                 "memoryItemsInjected": 1, "compactionEpoch": 1, "compactionSummaries": 1,
                 "budgets": {
                     "maxCostMinor": "5000", "spentMinor": "1234", "heldByChildrenMinor": "100",
-                    "maxWallMs": "9007199254740993", "wallMsUsed": "42", "maxChildren": 3,
+                    "maxWallMs": "9007199254740993", "wallMsUsed": "42", "wallMsParked": "3500", "maxChildren": 3,
                     "liveChildren": 1, "forbidSpawn": false
                 }
             }),

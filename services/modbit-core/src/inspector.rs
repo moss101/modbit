@@ -818,6 +818,7 @@ async fn budget_view(core: &Core, task_id: TaskId) -> wire::BudgetAccountingView
         held_by_children_minor: state.children_held.cost_minor,
         max_wall_ms: state.budgets.max_wall_ms.unwrap_or(0),
         wall_ms_used: state.wall_ms,
+        wall_ms_parked: state.parked_ms,
         max_children: state.budgets.max_children,
         live_children: state.live_children,
         forbid_spawn: state.budgets.max_children == 0,

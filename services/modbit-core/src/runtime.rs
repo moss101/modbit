@@ -2277,6 +2277,7 @@ pub(crate) async fn rebuild(
     state.cost_minor = spent.cost_minor;
     state.cost_unmetered_calls = spent.unmetered_calls;
     state.wall_ms = spent.wall_ms;
+    state.parked_ms = spent.parked_ms;
     // The queue is the log's, read at each boundary; nothing is carried here.
     (transcript, state, last_offset, Vec::new())
 }
@@ -3089,11 +3090,14 @@ async fn run_loop(
     state.goal_reports_failure = harness::goal_reports_failure(&task.goal_text);
     // REQ-PX-116: the wall clock the task's earlier runs used, and this
     // run's own clock from here.
-    let wall_prior = {
+    // PX-156: the time this run has already spent parked on an approval is
+    // out of both numbers; what it parks from here is taken off at each
+    // boundary.
+    let (wall_prior, parked_at_start) = {
         let st = core.store.lock().await;
-        state
-            .wall_ms
-            .saturating_sub(crate::usage::run_span_ms(&st, &task.session_id, run_id))
+        let parked = crate::usage::run_parked_ms(&st, &task.task_id, run_id, Timestamp::now().0);
+        let span = crate::usage::run_span_ms(&st, &task.session_id, run_id).saturating_sub(parked);
+        (state.wall_ms.saturating_sub(span), parked)
     };
     let run_clock = std::time::Instant::now();
     // Protocol state (docs/19 layer 2, M4.1): the calls the model asked for
@@ -3775,8 +3779,16 @@ async fn run_loop(
         // REQ-PX-116: the round boundary is where the whole tree's spend is
         // judged — the wall clock the runs have used, and what the task's
         // children hold against it (the log's, so a restart sees the same).
-        state.wall_ms = wall_prior
-            .saturating_add(u64::try_from(run_clock.elapsed().as_millis()).unwrap_or(u64::MAX));
+        let parked_here = {
+            let st = core.store.lock().await;
+            crate::usage::run_parked_ms(&st, &task.task_id, run_id, Timestamp::now().0)
+                .saturating_sub(parked_at_start)
+        };
+        state.wall_ms = wall_prior.saturating_add(
+            u64::try_from(run_clock.elapsed().as_millis())
+                .unwrap_or(u64::MAX)
+                .saturating_sub(parked_here),
+        );
         if state.capsule.is_none() {
             crate::spawn::refresh_children_held(&core, &task, &mut state).await;
         }

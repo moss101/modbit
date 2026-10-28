@@ -1,7 +1,7 @@
 # Modbit Project Graph
 
 > Generated from `graph/project-graph.json` by `tools/graph.py render --write`. Do not edit by hand; edit the graph through `tools/graph.py set` or regenerate structure with `tools/build_graph.py`.  
-> Graph generated on 2026-10-27; view rendered on 2026-10-27.
+> Graph generated on 2026-10-28; view rendered on 2026-10-28.
 
 ## What the graph is
 
