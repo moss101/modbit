@@ -15,8 +15,8 @@ use modbit_protocol::local::{ReadyLine, decode_hex};
 use modbit_protocol::v1::{
     ClientKind, CommandEnvelope, CommandStatus, ContextInspectorView, CreateSession, CreateTask,
     EditMemory, ForgetMemory, GetContextInspector, Id, ListMemory, MemoryEdited, MemoryForgotten,
-    MemoryList, MemoryPromoted, MemoryProposed, PromoteMemory, ProposeMemory, SessionCreated,
-    StartTask, TaskCreated, TaskRunStarted,
+    MemoryList, MemoryPromoted, MemoryProposed, MemoryShared, PromoteMemory, ProposeMemory,
+    SessionCreated, ShareMemory, StartTask, TaskCreated, TaskRunStarted,
 };
 use prost::Message;
 use serde_json::json;
@@ -329,6 +329,25 @@ impl Seat {
         let r = self.promote(task, &p.memory_id).await;
         assert_eq!(r.outcome, "curated", "{r:?}");
         p.memory_id
+    }
+
+    async fn share(&mut self, task: &Id, memory_id: &str, scope: &str) -> MemoryShared {
+        let ack = self
+            .c
+            .command(envelope(
+                fresh_id(),
+                "ShareMemory",
+                ShareMemory {
+                    task_id: Some(task.clone()),
+                    memory_id: memory_id.into(),
+                    scope: scope.into(),
+                }
+                .encode_to_vec(),
+                self.g,
+            ))
+            .await
+            .unwrap();
+        Client::result(&ack).unwrap()
     }
 
     async fn forget(&mut self, task: &Id, memory_id: &str, supersede: bool) -> MemoryForgotten {
@@ -2753,5 +2772,84 @@ async fn qual_px_157_each_prompt_that_injects_an_item_counts_once_and_a_restart_
         (after.uses, after.last_used_at_ms),
         (item.uses, item.last_used_at_ms),
         "{after:?}"
+    );
+}
+
+#[tokio::test]
+async fn qual_px_188_a_shared_memory_is_redacted_reaches_the_prompt_and_survives_a_restart() {
+    let (_repo, root) = repo(&[("src/lib.rs", "pub fn f() {}\n")]);
+    let data = tempfile::tempdir().unwrap();
+    let (base, seen) = scripted_model(finish_script()).await;
+    let env = model_env(&base);
+    let mut core = CoreProcess::spawn(data.path(), &env);
+    let mut one = Seat::open(&core).await;
+    let t1 = one.task(&root, "note a contact").await;
+    let private = one
+        .propose(
+            &t1,
+            "user",
+            "user_preference",
+            "release contact",
+            "send release notes to jane.doe@example.com; her checkout is /Users/janedoe/app",
+        )
+        .await;
+    let shared = one.share(&t1, &private.memory_id, "organization").await;
+    assert_eq!(shared.outcome, "shared", "{shared:?}");
+    assert_ne!(shared.shared_memory_id, private.memory_id);
+    // A share only widens: the same item cannot be "shared" back into its own scope.
+    let back = one.share(&t1, &private.memory_id, "user").await;
+    assert_eq!(back.refusal_code, "SHARE_NOT_WIDER", "{back:?}");
+    // The shared copy is a proposal until promoted, like any other.
+    let r = one.promote(&t1, &shared.shared_memory_id).await;
+    assert_eq!(r.outcome, "curated", "{r:?}");
+    // Stored form: personal detail is gone; the source is on the log.
+    let rows = memory_rows(data.path());
+    let (_, _, stored) = rows
+        .iter()
+        .find(|(i, _, _)| *i == shared.shared_memory_id)
+        .unwrap_or_else(|| panic!("{rows:?}"));
+    assert!(
+        !stored.contains("jane") && stored.contains("[personal]"),
+        "{stored}"
+    );
+    let conn = rusqlite::Connection::open_with_flags(
+        data.path().join("core/core.db"),
+        rusqlite::OpenFlags::SQLITE_OPEN_READ_ONLY,
+    )
+    .unwrap();
+    let linked: i64 = conn
+        .query_row(
+            "SELECT count(*) FROM events WHERE event_type = 'MemoryProposed' AND payload_inline LIKE ?1",
+            [format!("%\"shared_from\":\"{}\"%", private.memory_id)],
+            |r| r.get(0),
+        )
+        .unwrap();
+    assert_eq!(linked, 1, "the link to the source is on the log");
+    drop(conn);
+    // A later session's real prompt carries the redacted form only.
+    let mut two = Seat::open(&core).await;
+    let t2 = two.task(&root, "release notes").await;
+    two.start(&t2).await;
+    let first = request_text(&seen.lock().unwrap()[0]);
+    assert!(first.contains("[personal]"), "{first}");
+    assert!(
+        !first.contains("jane.doe@example.com") && !first.contains("/Users/janedoe"),
+        "personal detail reached the prompt"
+    );
+    // A restart that rebuilds the store from the log keeps both items.
+    drop(one);
+    drop(two);
+    core.kill();
+    let conn = rusqlite::Connection::open(data.path().join("core/core.db")).unwrap();
+    conn.execute("UPDATE projection_state SET last_offset = 0", [])
+        .unwrap();
+    drop(conn);
+    let core2 = CoreProcess::spawn(data.path(), &env);
+    let mut again = Seat::open(&core2).await;
+    let t3 = again.task(&root, "check").await;
+    let l = again.list(&t3, |_| {}).await;
+    assert!(
+        l.items.iter().any(|i| i.id == shared.shared_memory_id),
+        "{l:?}"
     );
 }

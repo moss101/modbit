@@ -133,6 +133,98 @@ export declare type MemoryProposed = Message<"modbit.v1.MemoryProposed"> & {
 export declare const MemoryProposedSchema: GenMessage<MemoryProposed>;
 
 /**
+ * Share one of a person's private items into a broader scope (PX-188). Only
+ * its author may; what lands there is a proposal with personal detail
+ * removed, and the event names the source item.
+ *
+ * @generated from message modbit.v1.ShareMemory
+ */
+export declare type ShareMemory = Message<"modbit.v1.ShareMemory"> & {
+  /**
+   * @generated from field: modbit.v1.Id task_id = 1;
+   */
+  taskId?: Id | undefined;
+
+  /**
+   * the private item (full id or an unambiguous prefix)
+   *
+   * @generated from field: string memory_id = 2;
+   */
+  memoryId: string;
+
+  /**
+   * the broader scope: space|organization|repository|agent
+   *
+   * @generated from field: string scope = 3;
+   */
+  scope: string;
+};
+
+/**
+ * Describes the message modbit.v1.ShareMemory.
+ * Use `create(ShareMemorySchema)` to create a new message.
+ */
+export declare const ShareMemorySchema: GenMessage<ShareMemory>;
+
+/**
+ * @generated from message modbit.v1.MemoryShared
+ */
+export declare type MemoryShared = Message<"modbit.v1.MemoryShared"> & {
+  /**
+   * the source item
+   *
+   * @generated from field: string memory_id = 1;
+   */
+  memoryId: string;
+
+  /**
+   * the redacted copy in the wider scope
+   *
+   * @generated from field: string shared_memory_id = 2;
+   */
+  sharedMemoryId: string;
+
+  /**
+   * the scope key it landed in
+   *
+   * @generated from field: string scope = 3;
+   */
+  scope: string;
+
+  /**
+   * shared | refused | unknown
+   *
+   * @generated from field: string outcome = 4;
+   */
+  outcome: string;
+
+  /**
+   * SHARE_NEEDS_PERSON | SHARE_NOT_OWNER | SHARE_NOT_WIDER | SHARE_NOT_SHAREABLE
+   *
+   * @generated from field: string refusal_code = 5;
+   */
+  refusalCode: string;
+
+  /**
+   * @generated from field: string refusal_detail = 6;
+   */
+  refusalDetail: string;
+
+  /**
+   * the same redacted content was already there
+   *
+   * @generated from field: bool existed = 7;
+   */
+  existed: boolean;
+};
+
+/**
+ * Describes the message modbit.v1.MemoryShared.
+ * Use `create(MemorySharedSchema)` to create a new message.
+ */
+export declare const MemorySharedSchema: GenMessage<MemoryShared>;
+
+/**
  * Edit a proposal or a curated item. A change of topic or content is a new
  * item that supersedes the edited one (ids are content-addressed); a change
  * of confidence or time to live alone replaces the item in place. A curated

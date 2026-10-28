@@ -333,6 +333,68 @@ pub(crate) async fn edit(
     })
 }
 
+/// `ShareMemory`: a person's private item, redacted, into a broader scope.
+pub(crate) async fn share(
+    core: &Core,
+    task: &Task,
+    p: &wire::ShareMemory,
+    record: CommandRecord,
+    actor: Actor,
+) -> Result<(wire::MemoryShared, bool), Failure> {
+    let id = resolve_id(core, task, &p.memory_id).await?;
+    let chain = memory::chain_of(&core.store, core.tenant_id, task, None).await;
+    let scope = chain
+        .resolve((!p.scope.is_empty()).then_some(p.scope.as_str()))
+        .map_err(|e| ("BAD_PAYLOAD".to_owned(), e))?;
+    let outcome = memory::share(
+        &core.store,
+        &ctx_of(core, task, actor),
+        &id,
+        scope,
+        Some(record),
+    )
+    .await
+    .map_err(|e| ("MEMORY_STORE".to_owned(), e))?;
+    Ok(match outcome {
+        memory::Shared::Done {
+            id: shared,
+            scope,
+            existed,
+            replayed,
+        } => (
+            wire::MemoryShared {
+                memory_id: id,
+                shared_memory_id: shared,
+                scope,
+                outcome: "shared".into(),
+                existed,
+                ..Default::default()
+            },
+            replayed,
+        ),
+        memory::Shared::Unknown => (
+            wire::MemoryShared {
+                memory_id: id,
+                outcome: "unknown".into(),
+                refusal_code: "UNKNOWN_MEMORY".into(),
+                refusal_detail: "no such item".into(),
+                ..Default::default()
+            },
+            false,
+        ),
+        memory::Shared::Refused { code, detail } => (
+            wire::MemoryShared {
+                memory_id: id,
+                outcome: "refused".into(),
+                refusal_code: code,
+                refusal_detail: detail,
+                ..Default::default()
+            },
+            false,
+        ),
+    })
+}
+
 /// `ForgetMemory`: delete (it leaves the store) or supersede (it stays
 /// inspectable, marked).
 pub(crate) async fn forget(

@@ -851,6 +851,7 @@ async fn serve_connection(core: Arc<Core>, mut stream: BoxedStream) -> Result<()
                     "PromoteMemory",
                     "EditMemory",
                     "ForgetMemory",
+                    "ShareMemory",
                     "GetImpact",
                     "GetSymbolEdges",
                     "GetIndexStatus",
@@ -1593,7 +1594,7 @@ fn required_client_capability(env: &CommandEnvelope) -> Option<&'static str> {
         "ExportDiagnostics" => "events.subscribe",
         "GetEnvironment" | "RebuildEnvironment" => "task.author",
         "ListMemory" => "task.author",
-        "PromoteMemory" | "ForgetMemory" | "ProposeMemory" | "EditMemory" => "task.author",
+        "PromoteMemory" | "ForgetMemory" | "ShareMemory" | "ProposeMemory" | "EditMemory" => "task.author",
         "RebindTaskWorkspace" | "ImportObjects" => "session.mirror",
         "TrustRepository" => "repository.trust",
         "EmergencyStop" => "session.control",
@@ -7506,6 +7507,29 @@ pub(crate) async fn handle_command_as(
             {
                 Ok((v, replayed)) => {
                     if v.changed {
+                        let latest = core.store.lock().await.last_offset().unwrap_or(0);
+                        core.last_offset.send_replace(latest);
+                    }
+                    accept(cid, replayed, v.encode_to_vec())
+                }
+                Err((code, msg)) => reject(cid, &code, msg),
+            }
+        }
+        "ShareMemory" => {
+            let Ok(p) = wire::ShareMemory::decode(env.payload.as_slice()) else {
+                return reject(cid, "BAD_PAYLOAD", "ShareMemory");
+            };
+            if p.memory_id.is_empty() || p.scope.is_empty() {
+                return reject(cid, "BAD_PAYLOAD", "memory_id and scope required");
+            }
+            let task = match memory_task(core, &cid, &env, p.task_id.as_ref(), true).await {
+                Ok(t) => t,
+                Err(ack) => return ack,
+            };
+            match crate::memory_commands::share(core, &task, &p, record("ShareMemory"), actor).await
+            {
+                Ok((v, replayed)) => {
+                    if v.outcome == "shared" {
                         let latest = core.store.lock().await.last_offset().unwrap_or(0);
                         core.last_offset.send_replace(latest);
                     }
