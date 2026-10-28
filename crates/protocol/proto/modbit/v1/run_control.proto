@@ -287,4 +287,5 @@ message ContextAccountingView {
   uint32 compaction_epoch = 20;              // REQ-PX-109
   uint32 compaction_summaries = 21;
   BudgetAccountingView budgets = 22;         // REQ-PX-116
+  string skill_configuration_id = 23;        // PX-182: the run's compiled skill configuration
 }

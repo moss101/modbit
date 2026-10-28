@@ -610,6 +610,8 @@ struct LastAccounting {
     reported_input: Option<u64>,
     skills: Vec<String>,
     children: Vec<String>,
+    /// PX-182: the latest compiled skill configuration's id.
+    skill_configuration: String,
 }
 
 async fn last_accounting(core: &Core, task_id: TaskId) -> Option<LastAccounting> {
@@ -620,6 +622,7 @@ async fn last_accounting(core: &Core, task_id: TaskId) -> Option<LastAccounting>
     let mut usage: std::collections::HashMap<[u8; 16], u64> = std::collections::HashMap::new();
     let mut skills: Vec<String> = Vec::new();
     let mut children: Vec<String> = Vec::new();
+    let mut skill_configuration = String::new();
     for e in &events {
         if e.envelope.task_id != Some(task_id) {
             continue;
@@ -646,6 +649,7 @@ async fn last_accounting(core: &Core, task_id: TaskId) -> Option<LastAccounting>
                         reported_input: None,
                         skills: Vec::new(),
                         children: Vec::new(),
+                        skill_configuration: String::new(),
                     });
                 }
             }
@@ -667,6 +671,13 @@ async fn last_accounting(core: &Core, task_id: TaskId) -> Option<LastAccounting>
                     skills.push(n.to_owned());
                 }
             }
+            "SkillConfigurationCompiled" => {
+                if let Ok(p) = store.payload(&e.envelope)
+                    && let Some(id) = p["configuration_id"].as_str()
+                {
+                    id.clone_into(&mut skill_configuration);
+                }
+            }
             "SubagentAdmitted" => {
                 if let Ok(p) = store.payload(&e.envelope)
                     && let Some(c) = p["child_task_id"].as_str()
@@ -684,6 +695,7 @@ async fn last_accounting(core: &Core, task_id: TaskId) -> Option<LastAccounting>
         .filter(|n| *n > 0);
     last.skills = skills;
     last.children = children;
+    last.skill_configuration = skill_configuration;
     Some(last)
 }
 
@@ -784,6 +796,7 @@ pub(crate) async fn accounting(core: &Core, task_id: TaskId) -> wire::ContextAcc
         .unwrap_or_default();
     v.turn_ordinal = u32::try_from(rec["ordinal"].as_u64().unwrap_or(0)).unwrap_or(0);
     v.offset = last.offset;
+    v.skill_configuration_id = last.skill_configuration.clone();
     v.memory_items_injected = u32::try_from(strings("memory").len()).unwrap_or(u32::MAX);
     v.categories = Category::ALL
         .iter()

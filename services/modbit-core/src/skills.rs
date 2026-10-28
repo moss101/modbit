@@ -445,6 +445,8 @@ pub struct RunSkills {
     explicit: Vec<String>,
     last_selection: Option<String>,
     last_index: Option<String>,
+    /// The id of the last compiled configuration recorded (PX-182).
+    last_configuration: Option<String>,
     /// The skills the latest round selected, as `name@content_hash`
     /// (REQ-PX-131: what the round's capability snapshot names).
     selected: Vec<String>,
@@ -458,6 +460,7 @@ impl RunSkills {
             explicit,
             last_selection: None,
             last_index: None,
+            last_configuration: None,
             selected: Vec::new(),
         }
     }
@@ -510,6 +513,71 @@ impl RunSkills {
             p.index.text.as_bytes(),
         ));
         let mut events = Vec::new();
+        // PX-182: the selected skills compiled for this run's tools, as one
+        // versioned configuration. The same skills and tools give the same
+        // bytes and so the same id.
+        let compiled: Vec<modbit_skills::CompiledSkill> = c
+            .selected
+            .iter()
+            .filter(|(s, _)| !p.demoted.contains(&s.name))
+            .filter_map(|(s, _)| c.world.registry.get(&s.name))
+            .map(|reg| modbit_skills::compile(&reg.package, projection, INSTRUCTION_BUDGET_BYTES))
+            .collect();
+        if !compiled.is_empty() {
+            let mut tools: Vec<&String> = projection.iter().collect();
+            tools.sort();
+            tools.dedup();
+            let configuration = serde_json::json!({
+                "schema": "modbit.skill-configuration/1",
+                "skills": compiled.iter().map(|k| serde_json::json!({
+                    "name": k.name,
+                    "version": k.version,
+                    "content_hash": k.content_hash,
+                    "instructions_hash": k.instructions_hash,
+                    "guidance": k.guidance.iter().map(|(t, kept)| serde_json::json!({"tool": t, "kept": kept})).collect::<Vec<_>>(),
+                })).collect::<Vec<_>>(),
+                "tools": tools,
+            })
+            .to_string();
+            let id = hex::encode(<sha2::Sha256 as sha2::Digest>::digest(
+                configuration.as_bytes(),
+            ));
+            if self.last_configuration.as_deref() != Some(id.as_str()) {
+                let configuration_ref = core
+                    .store
+                    .lock()
+                    .await
+                    .objects()
+                    .put(configuration.as_bytes())
+                    .unwrap_or_default();
+                let pairs = |kept: bool| -> Vec<String> {
+                    compiled
+                        .iter()
+                        .flat_map(|k| {
+                            k.guidance
+                                .iter()
+                                .filter(move |(_, x)| *x == kept)
+                                .map(move |(t, _)| format!("{}:{t}", k.name))
+                        })
+                        .collect()
+                };
+                events.push(typed(
+                    "SkillConfigurationCompiled",
+                    &TaskEvent::SkillConfigurationCompiled {
+                        configuration_id: id.clone(),
+                        configuration_ref,
+                        skills: compiled
+                            .iter()
+                            .map(|k| format!("{}@{}", k.name, k.content_hash))
+                            .collect(),
+                        guidance_kept: pairs(true),
+                        guidance_dropped: pairs(false),
+                    },
+                    actor.clone(),
+                ));
+                self.last_configuration = Some(id);
+            }
+        }
         if self.last_selection.as_deref() != Some(key.as_str()) {
             // A package on disk that could not be loaded (REQ-EV-0114:
             // invalid metadata fails, visibly): recorded by its directory.

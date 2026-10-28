@@ -1984,6 +1984,23 @@ pub enum TaskEvent {
         /// Why no description came back, when it did not.
         error: Option<String>,
     },
+    /// `SkillConfigurationCompiled` (PX-182): the skills of this run compiled
+    /// for the tools it is offered — each skill's guidance blocks kept or
+    /// dropped by tool — as one versioned configuration whose object the
+    /// `configuration_ref` names and whose hash is its id. Recorded when it
+    /// differs from the last. No state change.
+    SkillConfigurationCompiled {
+        /// sha256 of the canonical configuration JSON.
+        configuration_id: String,
+        /// The object holding that JSON.
+        configuration_ref: String,
+        /// The skills, as `name@content_hash`.
+        skills: Vec<String>,
+        /// Guidance blocks kept, as `skill:tool`.
+        guidance_kept: Vec<String>,
+        /// Guidance blocks dropped for a tool the run is not offered.
+        guidance_dropped: Vec<String>,
+    },
     /// `SkillIndexRecorded` (REQ-PX-105): the skill index the model was told
     /// of changed — the skills it may load, in the form each took under the
     /// aggregate budget. Recorded when it differs from the last. No state
@@ -3189,6 +3206,7 @@ impl TaskEvent {
             Self::SkillSelected { .. } => "SkillSelected",
             Self::SkillRejected { .. } => "SkillRejected",
             Self::SkillIndexRecorded { .. } => "SkillIndexRecorded",
+            Self::SkillConfigurationCompiled { .. } => "SkillConfigurationCompiled",
             Self::RulesSelected { .. } => "RulesSelected",
             Self::AgentNodeCreated { .. } => "AgentNodeCreated",
             Self::AgentNodeTransitioned { .. } => "AgentNodeTransitioned",
@@ -3400,6 +3418,7 @@ impl Task {
             | TaskEvent::SkillSelected { .. }
             | TaskEvent::SkillRejected { .. }
             | TaskEvent::SkillIndexRecorded { .. }
+            | TaskEvent::SkillConfigurationCompiled { .. }
             | TaskEvent::RulesSelected { .. }
             | TaskEvent::MediaBridged { .. }
             | TaskEvent::CapacityTicketGranted { .. }

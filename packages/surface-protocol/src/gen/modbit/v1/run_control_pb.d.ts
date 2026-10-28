@@ -1163,6 +1163,13 @@ export declare type ContextAccountingView = Message<"modbit.v1.ContextAccounting
    * @generated from field: modbit.v1.BudgetAccountingView budgets = 22;
    */
   budgets?: BudgetAccountingView | undefined;
+
+  /**
+   * PX-182: the run's compiled skill configuration
+   *
+   * @generated from field: string skill_configuration_id = 23;
+   */
+  skillConfigurationId: string;
 };
 
 /**

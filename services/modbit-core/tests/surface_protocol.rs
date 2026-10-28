@@ -50138,3 +50138,162 @@ async fn qual_px_183_the_skill_index_is_ranked_by_the_goal_within_its_budget() {
     }
     assert_eq!(recorded[0], recorded[1], "the same goal ranks the same");
 }
+
+/// QUAL-PX-182 on the real Core with real skill files: a skill's guidance
+/// blocks are compiled for the tools the task is actually offered. Under the
+/// read-only `plan` profile, which offers no shell, the shell block is
+/// dropped and the read
+/// block kept; with the full set both are kept; a block for a tool no task
+/// offers never reaches a request. The compiled configuration is recorded
+/// as an object whose sha256 is its id, the id is in the context accounting,
+/// two compilations of the same inputs give the same id, and an untrusted
+/// skill's guidance is never compiled.
+#[tokio::test]
+async fn qual_px_182_guidance_blocks_compile_for_the_tools_the_task_is_offered() {
+    use modbit_protocol::v1::{
+        ContextAccountingView, GetContextAccounting, StartTask, TaskRunStarted,
+    };
+    use serde_json::json;
+    let body = "General advice.\n<!-- modbit:tool fs.read -->\nREAD-GUIDANCE-PX182: read the whole file first.\n<!-- /modbit:tool -->\n<!-- modbit:tool shell.exec -->\nSHELL-GUIDANCE-PX182: run the tests with the shell.\n<!-- /modbit:tool -->\n<!-- modbit:tool nowhere.tool -->\nNOWHERE-GUIDANCE-PX182\n<!-- /modbit:tool -->\nClosing advice.";
+    async fn one(
+        read_only: bool,
+        body: &str,
+        runs: u8,
+    ) -> Vec<(String, serde_json::Value, String, String)> {
+        let (_repo, root) = plain_repo(&[("NOTES.md", "# notes\n")]);
+        let dir = tempfile::tempdir().unwrap();
+        let skills = dir.path().join("skills");
+        let h = px_skill(
+            &skills,
+            "adapter-px182",
+            "description: tool-bound advice",
+            body,
+        );
+        px_skill(
+            &skills,
+            "untrusted-px182",
+            "description: never trusted",
+            "<!-- modbit:tool fs.read -->\nUNTRUSTED-GUIDANCE-PX182\n<!-- /modbit:tool -->",
+        );
+        let script = vec![
+            json!({"calls": [{"name": "plan.update", "args": {"outcome": "o", "expected_files": []}}]}),
+            json!({"calls": [{"name": "task.complete", "args": {"summary": "done", "self_review": {"findings": []}}}]}),
+        ];
+        let (base, seen) = scripted_model(script, None).await;
+        let env = [
+            ("MODBIT_OPENAI_BASE_URL", base.as_str()),
+            ("OPENAI_API_KEY", ""),
+            ("ANTHROPIC_API_KEY", ""),
+        ];
+        let core = CoreProcess::spawn_with_env(dir.path(), &env);
+        let mut c = core.client().await;
+        let (session, _) = create_session(&mut c, id16(0xE1)).await;
+        let g = lease_for(&session);
+        px_trust(&mut c, "adapter-px182", &h, None).await.unwrap();
+        let mut out = Vec::new();
+        for i in 0..runs {
+            // The read-only `plan` profile offers no shell; the trusted one does.
+            let profile = if read_only { "plan" } else { "local_trusted" };
+            let task =
+                create_task_with_profile(&mut c, &session, g, &root, 0xE2 + i * 2, profile).await;
+            let before = seen.lock().unwrap().len();
+            let ack = c
+                .command(envelope_fenced(
+                    id16(0xE3 + i * 2),
+                    "StartTask",
+                    StartTask {
+                        task_id: Some(task.clone()),
+                        endpoint: String::new(),
+                        model: "gpt-5-mini".into(),
+                        max_turns: 6,
+                        max_tool_calls: 0,
+                        max_no_progress_turns: 4,
+                        skills: vec!["adapter-px182".into(), "untrusted-px182".into()],
+                        ..Default::default()
+                    }
+                    .encode_to_vec(),
+                    g,
+                ))
+                .await
+                .unwrap();
+            let _: TaskRunStarted = Client::result(&ack).unwrap();
+            wait_task(&mut c, &task, 180).await;
+            let first = seen.lock().unwrap()[before].to_string();
+            let evs = task_events(&core, &session, &task).await;
+            let cfg = evs
+                .iter()
+                .find(|(_, t, _)| t == "SkillConfigurationCompiled")
+                .map(|(_, _, p)| p.clone())
+                .expect("a configuration was recorded");
+            let object = read_object(
+                &mut c,
+                random_id(),
+                cfg["configuration_ref"].as_str().unwrap(),
+            )
+            .await;
+            let ack = c
+                .command(envelope(
+                    random_id(),
+                    "GetContextAccounting",
+                    GetContextAccounting {
+                        task_id: Some(task.clone()),
+                    }
+                    .encode_to_vec(),
+                ))
+                .await
+                .unwrap();
+            let acc: ContextAccountingView = Client::result(&ack).unwrap();
+            out.push((first, cfg, object, acc.skill_configuration_id));
+        }
+        out
+    }
+    let restricted = one(true, body, 1).await;
+    let (first, cfg, object, accounted) = &restricted[0];
+    assert!(
+        first.contains("READ-GUIDANCE-PX182") && first.contains("General advice"),
+        "{first}"
+    );
+    assert!(
+        !first.contains("SHELL-GUIDANCE-PX182"),
+        "no guidance for a denied tool"
+    );
+    assert!(!first.contains("NOWHERE-GUIDANCE-PX182") && !first.contains("modbit:tool"));
+    assert!(
+        !first.contains("UNTRUSTED-GUIDANCE-PX182"),
+        "an untrusted skill compiles nothing"
+    );
+    assert_eq!(
+        cfg["guidance_dropped"],
+        json!(["adapter-px182:shell.exec", "adapter-px182:nowhere.tool"])
+    );
+    assert_eq!(cfg["guidance_kept"], json!(["adapter-px182:fs.read"]));
+    let id = cfg["configuration_id"].as_str().unwrap();
+    assert_eq!(
+        hex::encode(<sha2::Sha256 as sha2::Digest>::digest(object.as_bytes())),
+        id
+    );
+    assert!(!object.contains("untrusted-px182"), "{object}");
+    assert_eq!(
+        accounted, id,
+        "the accounting names the run's configuration"
+    );
+    let full = one(false, body, 2).await;
+    for (first, cfg, _, accounted) in &full {
+        assert!(first.contains("READ-GUIDANCE-PX182") && first.contains("SHELL-GUIDANCE-PX182"));
+        assert!(!first.contains("NOWHERE-GUIDANCE-PX182"));
+        assert_eq!(
+            cfg["guidance_dropped"],
+            json!(["adapter-px182:nowhere.tool"])
+        );
+        assert_eq!(accounted, cfg["configuration_id"].as_str().unwrap());
+        assert_ne!(
+            cfg["configuration_id"].as_str().unwrap(),
+            id,
+            "another tool set, another configuration"
+        );
+    }
+    assert_eq!(
+        full[0].1["configuration_id"], full[1].1["configuration_id"],
+        "the same inputs compile alike"
+    );
+}
