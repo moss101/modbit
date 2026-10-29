@@ -791,6 +791,21 @@ impl ComputerRuntime {
         }
     }
 
+    /// The person did a step in the target (PX-177): the tree and the frame
+    /// the task held are no longer the screen, so an element or a coordinate
+    /// from before is refused until the task observes again. Returns how many
+    /// sessions were reset.
+    pub fn handed_back(&self, task_id: TaskId) -> usize {
+        let mut st = self.lock();
+        let mut n = 0;
+        for s in st.sessions.values_mut().filter(|s| s.task_id == task_id) {
+            s.snapshot = None;
+            s.frame = None;
+            n += 1;
+        }
+        n
+    }
+
     /// Close the task's control sessions at the end of a run (the grant ends
     /// with the turn) and forget the run's stop.
     pub async fn end_run(&self, task_id: TaskId, run_id: &str, reason: &str) -> usize {
