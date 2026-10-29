@@ -12948,12 +12948,21 @@ async fn qual_px_105_the_index_degrades_under_its_budget_and_a_path_gated_skill_
     assert!(first.lines().filter(|l| l.starts_with("- ")).count() >= 1);
     // The gated skill is absent until a matching file was read, then present.
     assert!(!first.contains("aa-billing-px105"), "{first}");
-    let after_read = index_of(&bodies[2]);
+    // The activation arrives as an appended note (PX-162); the prefix keeps
+    // the index it was compiled with.
+    assert!(!index_of(&bodies[2]).contains("aa-billing-px105"));
+    let after_read: String = bodies[2]["messages"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .filter(|m| m["role"] == "user")
+        .filter_map(|m| m["content"].as_str())
+        .filter(|c| c.starts_with("[modbit: instruction update]"))
+        .collect();
     assert!(
         after_read.contains("aa-billing-px105"),
         "after src/billing/ledger.rs was read: {after_read}"
     );
-    assert!(after_read.len() <= budget as usize * 4);
     let evs = task_events(&core, &session, &task).await;
     let recorded: Vec<&serde_json::Value> = evs
         .iter()
@@ -26615,11 +26624,21 @@ async fn qual_ev_0059_0129_scoped_rules_activate_lazily_and_conflicts_name_the_w
         );
     }
     // From turn 3 (the billing file was read): the billing rule is in.
+    // It arrives as an appended note (PX-162); the rules segment is unchanged.
     for b in &bodies[2..] {
         let r = rules_of(b);
+        assert!(!r.contains("RULE-BILLING"), "prefix rewritten: {r}");
+        let notes: String = b["messages"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .filter(|m| m["role"] == "user")
+            .filter_map(|m| m["content"].as_str())
+            .filter(|c| c.starts_with("[modbit: instruction update]"))
+            .collect();
         assert!(
-            r.contains("RULE-BILLING") && r.contains("[rule billing — project]"),
-            "{r}"
+            notes.contains("RULE-BILLING") && notes.contains("[rule billing — project]"),
+            "{notes}"
         );
     }
     // On the log: the first selection (dormant billing, the conflict with

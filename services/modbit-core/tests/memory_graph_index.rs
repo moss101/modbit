@@ -3054,11 +3054,21 @@ async fn qual_px_162_a_changed_rule_file_and_memory_arrive_as_one_note_and_the_p
     // reads in its prefix is what the running task read as prefix + note.
     let mut two = Seat::open(&core).await;
     two.trust(&root).await;
-    let t2 = two.task(&root, "fix the parser").await;
-    let before = seen.lock().unwrap().len();
+    let t2 = two.task(&root, "fix the lexer").await;
     two.start_running(&t2).await;
-    until_requests(&seen, before + 1).await;
-    let fresh = prefix_of(&seen.lock().unwrap()[before]);
+    // The first task may still be issuing requests; take the new task's own.
+    let fresh = loop {
+        let found = seen
+            .lock()
+            .unwrap()
+            .iter()
+            .map(prefix_of)
+            .find(|p| p.contains("Task goal: fix the lexer"));
+        if let Some(p) = found {
+            break p;
+        }
+        tokio::time::sleep(Duration::from_millis(50)).await;
+    };
     for current in ["RULE-V2 use spaces", "MEM-V2 spaces everywhere"] {
         assert!(fresh.contains(current), "{current} in {fresh}");
         assert!(
