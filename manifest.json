@@ -2,13 +2,13 @@
   "product": "Modbit",
   "edition": "V3.3 EPR v1.1",
   "authority_date": "2026-09-05",
-  "generated_on": "2026-10-27",
+  "generated_on": "2026-10-30",
   "hash_algorithm": "sha256",
   "scope_rule": "docs/*.md, root *.md except MANIFEST.md, docs/decisions/*.md, graph JSON/Markdown, tools/*.py, evidence payloads; manifests exclude themselves and transient caches",
   "counts": {
     "docs": 97,
-    "root_and_tooling": 1851,
-    "docs_bytes": 2294708
+    "root_and_tooling": 1855,
+    "docs_bytes": 2299779
   },
   "sections": [
     {
@@ -599,8 +599,8 @@
       "section": "verification",
       "section_title": "Verification and testing",
       "title": "Product extension requirements, tasks and qualifications",
-      "bytes": 629017,
-      "sha256": "5fd2567b4b162bb2ceacc8ed314f82c364c501783c8f03a455fdd1130d1aa1b1"
+      "bytes": 629361,
+      "sha256": "3ab082606767bae355b4c78304eb0e7f5ca84f79cb2e791a28b73c9d27eabb0c"
     },
     {
       "path": "docs/63_AGENT_COMPETENCE_BENCHMARKS_AND_REGRESSION_SUITES.md",
@@ -914,8 +914,8 @@
       "section": "governance",
       "section_title": "Agent process and governance",
       "title": "Dossier maintenance log",
-      "bytes": 135384,
-      "sha256": "6d48035807801561b8165818fb017ee2d03eca848bf13ce387aed665e8099a79"
+      "bytes": 140111,
+      "sha256": "b1e55d1e2dcd6b0f78210ed6021e5d7f067208729d813dc984613f559f5d7280"
     },
     {
       "path": "docs/98_BUILD_MANIFEST.md",
@@ -952,6 +952,11 @@
       "path": "SKILLS.md",
       "bytes": 18835,
       "sha256": "2f441310c0e2909afde84cab80226a1e3b4452adbd6a627967e60debd8455b71"
+    },
+    {
+      "path": "docs/decisions/DR-GOV-2026-10-30-008-bind-trajectory-metrics-to-px-189.md",
+      "bytes": 1823,
+      "sha256": "bf0f93d05528f3c253046158c7e18f76458ba784999e75c3cf004e40dd56903c"
     },
     {
       "path": "docs/decisions/DR-M0-002-locked-architecture-file-guard.md",
@@ -1105,8 +1110,8 @@
     },
     {
       "path": "docs/decisions/README.md",
-      "bytes": 8907,
-      "sha256": "75c7d68d93843a3b16bb358872b68094f5fa00ff39a79a73f76c2ad83e871c31"
+      "bytes": 9123,
+      "sha256": "c5055e3ade6eb4d7ed4e37d058fa575216049688f9ca5340128516669e62fd85"
     },
     {
       "path": "evidence/dossier-epr-v1.1/baseline.json",
@@ -1232,6 +1237,21 @@
       "path": "evidence/dossier-gov-007/validation.json",
       "bytes": 7202,
       "sha256": "e8c16d6237842386ce48e23e99bcb7fbc5003b40aa59ec842b91fd8320c4b28e"
+    },
+    {
+      "path": "evidence/dossier-gov-008/baseline.json",
+      "bytes": 1161,
+      "sha256": "002901da69a5ba57c73803ec513188ba7567a0aed230e2714e0c62b299f7f057"
+    },
+    {
+      "path": "evidence/dossier-gov-008/tests.log",
+      "bytes": 7447,
+      "sha256": "c85f68e1e3f1327f95c05b4c078654388519943e363251edd8bf42c72da3e17c"
+    },
+    {
+      "path": "evidence/dossier-gov-008/validation.json",
+      "bytes": 1808,
+      "sha256": "f50c3729f5996902fac5fb232c6e71588a0e72e547dd2bb17a86ee66f1fa0156"
     },
     {
       "path": "evidence/dossier-gov/baseline.json",
@@ -10120,18 +10140,18 @@
     },
     {
       "path": "graph/PROJECT_GRAPH.md",
-      "bytes": 46280,
-      "sha256": "81529449f5f3e6dc3c13a69f156cb3ea8e1c32fc497e3867dc74bb8cca3ba38a"
+      "bytes": 46492,
+      "sha256": "39c7fa072719358f9cab578a07f92e879e0c477e99f0140f9500b67a8c3af14c"
     },
     {
       "path": "graph/project-graph.json",
-      "bytes": 2468096,
-      "sha256": "11636782eace20030f17b7f3c50dd7a1530746a9a52ebca2ec2a1871fee6768e"
+      "bytes": 2469719,
+      "sha256": "b186c9d23ac3b2614bfd94899aacab7d20cc13d15055686807ee25a6def6ed57"
     },
     {
       "path": "tools/build_graph.py",
-      "bytes": 64312,
-      "sha256": "a0ed29e361e000b219b6be973e0be77417831fa4b7f0f2cd2c5845f553e90a54"
+      "bytes": 65572,
+      "sha256": "1961207ee262c23bfe88037045e21d3a712b3a3a9a0b2d3f11a5b0ddb1f7304e"
     },
     {
       "path": "tools/build_manifest.py",
@@ -10180,8 +10200,8 @@
     },
     {
       "path": "tools/test_dossier.py",
-      "bytes": 80817,
-      "sha256": "7e4c90c036458548737e13f3fbcb7393c071c3beebada8200bd1c39a568efb00"
+      "bytes": 81350,
+      "sha256": "fb8a003a26c1987adb931fd38d8278cfd1b11545784530bdba13d6757a4d3c30"
     }
   ],
   "renames_v3_to_v3_1": {

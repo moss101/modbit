@@ -1175,3 +1175,53 @@ Accepted on the owner's chat instruction of 2026-10-26 ("Yes, promote the upgrad
 - **Folded, not registered:** MCP OAuth and elicitation (PX-090), release pipeline (PX-097, PX-098), plugin pipeline (PX-087, PX-088), hook contract and trust (PX-092, PX-117), durable external-tool rules (PX-090, PX-057), the live native proof and graph reconcile (PX-069..076) and failure diagnosis (PX-140): Appendix C binds their deltas.
 - **Tooling:** one entry in the parity table of `tools/build_graph.py`; `tools/test_dossier.py` pins 192 requirement rows, 170 ADOPT tasks and the 22 DEFERRED rows, and adds `test_dr_018_registers_the_upgrade_program_without_a_second_owner_and_defers_what_needs_a_decision`.
 - **Not done here:** every product behaviour of the rows; verification of the model and dataset licenses; any live run; the correction of `docs/66` section 3; the advance of any graph status.
+
+## DOC-GOV-008 — Bind the trajectory metrics module to the PX-189 production wiring
+
+### Identity and authority
+
+- Task: DOC-GOV-008 (`dossier_task`); owner: governance; prerequisite: DOC-GOV-007 COMPLETE; outside product roll-ups.
+- Decision Record: DR-GOV-2026-10-30-008, approved for dossier adoption. On 2026-10-30 the owner asked that the trajectory module committed in 74f52c33 have a governed home ("CAN fix this" about its missing caller, graph task and Decision Record) and chose, between binding it and building the producer, "Bind via DOC-GOV-008".
+- Scope: one line of the PX-189 task card in doc 62 (Production wiring), the change record and DOC-GOV-008 node in `../tools/build_graph.py`, one assertion block in `../tools/test_dossier.py`, and this entry. No requirement row, disposition, owner, task, qualification, gate, release rule or product status changes; PX-189 stays NOT_STARTED. Docs 40/41/42/49, `../AGENTS.md`, every Decision Record and every locked path stay byte-identical.
+- Revision before change: `../evidence/dossier-gov-008/baseline.json` (branch `wip/codex-hardening-px147-squash` at 74f52c33).
+
+### Decision Record (change-control fields)
+
+| Field | Content |
+|---|---|
+| Trigger / evidence | An analysis of MiniMax-AI/mcode-stack (its session-log digest that finds recurring openings, retries and tool errors) produced `crates/core-runtime/src/trajectory.rs`: read-only per-task counts of failed, cancelled, unknown-outcome and exact-repeat tool calls and recurring-goal detection over the task and tool-call projections. It was committed with unit tests and no caller. |
+| Current behavior | AUDIT (code read): the module is referenced by no Core, desktop or CLI code. PX-189's card names a read-only producer over the log projection feeding the Skill Evolution Lab and does not mention the module, so the module has no governed consumer and a second producer could be written beside it. |
+| Replacement | PX-189's Production wiring names the module as an input of the one producer and says the producer is its caller. No new requirement, owner or subsystem: the owner stays `skills`, the module stays in `core-runtime`. |
+| Migration | None. Additive change record and `dossier_task`; statuses untouched. |
+| Compatibility | Consistent with doc 81 (no second event store, scheduler or evidence system) and DR-PX-2026-10-26-018. Graph schema 1.2 unchanged. |
+| Security impact | None. The module is pure and read-only; the producer's redaction and sealing rules (QUAL-PX-189) apply to anything it emits. |
+| Test impact | The governance chain test in `../tools/test_dossier.py` checks that DOC-GOV-008 follows DOC-GOV-007 with its change record, both specifying docs and the governance owner, and that the PX-189 card names the module. |
+| Rollback | Revert the change commit, or restore the inventory below to the hashes in `baseline.json`, then rerun the reseal. |
+| Explicit user approval | The owner's chat reply on 2026-10-30: "Bind via DOC-GOV-008". |
+
+### Stage applicability
+
+| Stage | DOC-GOV-008 execution |
+|---|---|
+| AUDITING | PX-189's card and graph node read; grep of `crates`, `services` and `packages` for any caller of the module (none); doc 81 ownership checked. Baseline hashes recorded. |
+| IMPLEMENTING | The card line, builder wiring, test assertion, this entry |
+| WIRED | Graph and manifests regenerated through the real CLIs |
+| REAL_TESTING | `check_dossier --manifest` and the copied-package suite |
+| E2E_PROVEN | Pull request green on hosted CI and landed on `main` |
+| COMPLETE | One-step ladder with evidence citing the landing commit; seal pull request |
+| Product qualification | Non-applicable: no product behavior, status or evidence claim changes. PX-189 itself still needs its producer and PX-E2E-189. |
+
+### Status and handoff
+
+- **Evidence:** the `../evidence/dossier-gov-008/` bundle (baseline, tests.log, validation.json).
+- **Remaining product work:** PX-189 in full (the producer, redaction, sealing, the lab read, PX-E2E-189); the module's first caller.
+- **Next safe action:** land the change, then seal DOC-GOV-008 from the CI run.
+
+### Exact file inventory for this change
+
+| Action | Path |
+|---|---|
+| Added | `evidence/dossier-gov-008/baseline.json`, `tests.log`, `validation.json`, `docs/decisions/DR-GOV-2026-10-30-008-bind-trajectory-metrics-to-px-189.md` (the accepted record doc 62's locked path requires) |
+| Changed | `docs/62_PRODUCT_EXTENSION_REQUIREMENTS_TASKS_AND_QUALIFICATIONS.md`, `docs/97_DOSSIER_MAINTENANCE_LOG.md`, `docs/decisions/README.md` (ledger row) |
+| Changed | `tools/build_graph.py`, `tools/test_dossier.py` |
+| Changed | `MANIFEST.md`, `manifest.json`, `graph/PROJECT_GRAPH.md`, `graph/project-graph.json` |
