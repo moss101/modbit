@@ -307,7 +307,10 @@ mod tests {
         let note = s.note.expect("a note");
         assert_eq!(note.changes.len(), 2, "{:?}", note.changes);
         assert!(note.text.contains("use spaces") && note.text.contains("use sqlite"));
-        assert!(note.text.contains("replaces the version"));
+        assert!(
+            note.text
+                .contains("replaces [instructions AGENTS.md in the instructions above")
+        );
         // Told once.
         let s = t.step(second, Some(0));
         assert!(s.note.is_none() && s.rebuilt.is_none());
