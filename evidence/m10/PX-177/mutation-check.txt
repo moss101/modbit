@@ -1,0 +1,5 @@
+thread 'qual_px_177_a_handover_parks_for_the_person_and_the_run_resumes_from_a_fresh_observation' (6077587) panicked at services/modbit-core/tests/px_computer.rs:3990:5:
+assertion `left != right` failed: status: SUCCESS
+  left: Some("status: SUCCESS")
+ right: Some("status: SUCCESS")
+test result: FAILED. 0 passed; 1 failed; 0 ignored; 0 measured; 37 filtered out; finished in 4.38s
