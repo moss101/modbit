@@ -1996,6 +1996,12 @@ pub(crate) async fn rebuild(
                 }
             }
             // REQ-PX-043: the notice the model was shown of a background end.
+            // REQ-PX-162: the instruction update the model was shown.
+            crate::instruction_delta::NOTE_EVENT => {
+                if let Some(t) = payload["notice"].as_str().filter(|t| !t.is_empty()) {
+                    transcript.push(Message::text(Role::User, t.to_owned()));
+                }
+            }
             "BackgroundWakeDelivered" => {
                 if let Some(t) = payload["notice"].as_str().filter(|t| !t.is_empty()) {
                     transcript.push(Message::text(Role::User, t.to_owned()));
@@ -3188,6 +3194,9 @@ async fn run_loop(
     // REQ-PX-105: re-read every round, so trust, revocation and edits apply
     // to the next request.
     let mut run_skills = crate::skills::RunSkills::new(cfg.skills.clone());
+    // REQ-PX-162: what the prefix is compiled from, and what the model has
+    // been told changed since.
+    let mut instruction_tracker = crate::instruction_delta::Tracker::default();
     // Rules (REQ-EV-0059/0105/0129): loaded once, selected every turn from
     // the paths the task has made active, recorded when the selection
     // changes.
@@ -4113,14 +4122,69 @@ async fn run_loop(
                     &cfg.model,
                     crate::model_registry::dispatch_limits(&core, &cfg.endpoint, &cfg.model),
                 );
+                // REQ-PX-162: the prefix keeps the instructions it was compiled
+                // from; a change since is one appended, labelled note.
+                let instructions = {
+                    let current = crate::instruction_delta::Instructions {
+                        rules: rules.select(&core, &task, lt, &actor, &state).await,
+                        skills: skill_instructions.clone(),
+                        memory: prompt_memory.fragments.clone(),
+                    };
+                    let step = instruction_tracker
+                        .step(current, epoch.as_ref().map(|m| u64::from(m.epoch)));
+                    // A rebuilt prefix after the first request is a deliberate
+                    // new one (an epoch, or text withdrawn); it is on the log.
+                    if let Some(why) = step.rebuilt.filter(|w| *w != "FIRST_REQUEST") {
+                        let mut store = core.store.lock().await;
+                        let _ = append(
+                            &mut store,
+                            &core,
+                            lt,
+                            AggregateType::Workspace,
+                            crate::changes::records_aggregate(task.task_id),
+                            vec![crate::changes::record(
+                                crate::instruction_delta::REBUILT_EVENT,
+                                serde_json::json!({"reason": why, "run_id": run_id.to_string()}),
+                                &actor,
+                            )],
+                        );
+                    }
+                    if let Some(note) = step.note {
+                        {
+                            let mut store = core.store.lock().await;
+                            let _ = append(
+                                &mut store,
+                                &core,
+                                lt,
+                                AggregateType::Workspace,
+                                crate::changes::records_aggregate(task.task_id),
+                                vec![crate::changes::record(
+                                    crate::instruction_delta::NOTE_EVENT,
+                                    serde_json::json!({
+                                        "notice": note.text,
+                                        "changes": note.changes,
+                                        "run_id": run_id.to_string(),
+                                    }),
+                                    &actor,
+                                )],
+                            );
+                        }
+                        apply_entry(
+                            &mut transcript,
+                            &mut state,
+                            TranscriptEntry::User { text: note.text },
+                        );
+                    }
+                    step.base
+                };
                 let compiled =
                     modbit_prompt_compiler::compile(modbit_prompt_compiler::PromptInput {
                         goal: task.goal_text.clone(),
                         task_attachments,
                         workspace_root: task.workspace_root.clone(),
                         execution_profile: task.execution_profile.clone(),
-                        workspace_rules: rules.select(&core, &task, lt, &actor, &state).await,
-                        skills: skill_instructions.clone(),
+                        workspace_rules: instructions.rules,
+                        skills: instructions.skills,
                         compaction_summary: epoch.as_ref().map(|m| m.projection.clone()),
                         compaction_narrative: epoch
                             .as_ref()
@@ -4134,7 +4198,7 @@ async fn run_loop(
                             t
                         },
                         context: context_fragments,
-                        memory: prompt_memory.fragments.clone(),
+                        memory: instructions.memory,
                         tools: tools.clone(),
                         surface_note: if state.exec_only {
                             crate::tool_projection::EXEC_ONLY_NOTE.to_owned()
