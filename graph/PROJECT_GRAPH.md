@@ -1,7 +1,7 @@
 # Modbit Project Graph
 
 > Generated from `graph/project-graph.json` by `tools/graph.py render --write`. Do not edit by hand; edit the graph through `tools/graph.py set` or regenerate structure with `tools/build_graph.py`.  
-> Graph generated on 2026-10-27; view rendered on 2026-10-27.
+> Graph generated on 2026-10-30; view rendered on 2026-10-30.
 
 ## What the graph is
 
@@ -16,10 +16,10 @@ One JSON file that answers *what exists, what depends on what, what proves what,
 | `subsystem` | 23 | canonical single-owner boundary (docs/81); owns REQ rows and IMP tasks; delivered in a primary milestone |
 | `requirement` | 503 | REQ-EV from docs/40, additive REQ-EPR from docs/49 or additive REQ-PX from docs/62 |
 | `imp_task` | 455 | IMP-EV from docs/41, EPR from docs/49 or PX from docs/62; carries status and evidence |
-| `dossier_task` | 26 | governance package work outside product milestone roll-ups |
+| `dossier_task` | 27 | governance package work outside product milestone roll-ups |
 | `release_gate` | 7 | EPR promotion gate from docs/61; derived state OPEN/TASKS_COMPLETE/SATISFIED; carries attestation evidence, never a lifecycle status |
 | `source_patch` | 2 | immutable user-supplied patch provenance |
-| `change_record` | 22 | explicit approved dossier amendment |
+| `change_record` | 23 | explicit approved dossier amendment |
 | `qual_test` | 503 | QUAL-EV from docs/42, QUAL-EPR from docs/61 or QUAL-PX from docs/62 |
 | `release` | 3 | ALPHA / BETA / RELEASE_ZERO projection from docs/75; readiness derived from included work items and required gates, never stored |
 | `scenario` | 287 | E2E-nnn, WSK-E2E-nnn, MEDIA-E2E-nnn, EPR-E2E/FI-nnn or PX-E2E-nnn scenario, or FI-nn fault case |
@@ -31,11 +31,11 @@ One JSON file that answers *what exists, what depends on what, what proves what,
 | `references` | 572 | doc → doc (explicit filename mention) |
 | `depends_on` | 18 | milestone → milestone it requires COMPLETE first |
 | `part_of` | 78 | milestone_task → milestone |
-| `after` | 626 | work item → required COMPLETE work item, including cross-milestone EPR dependencies |
+| `after` | 627 | work item → required COMPLETE work item, including cross-milestone EPR dependencies |
 | `delivered_in` | 22 | subsystem → primary milestone |
-| `specified_by` | 541 | subsystem → doc |
+| `specified_by` | 544 | subsystem → doc |
 | `owned_by_req` | 503 | requirement → subsystem |
-| `owned_by` | 481 | imp_task → subsystem |
+| `owned_by` | 482 | imp_task → subsystem |
 | `scheduled_in` | 455 | imp_task → milestone |
 | `implemented_by` | 455 | requirement → imp_task |
 | `qualified_by` | 503 | requirement → qual_test |
@@ -44,7 +44,7 @@ One JSON file that answers *what exists, what depends on what, what proves what,
 | `constrains` | 64 | decision → subsystem |
 | `requires_task` | 27 | release gate → required implementation task |
 | `extends` | 392 | additive requirement → related preserved EV requirement |
-| `authorized_by` | 773 | adopted task/decision/requirement → approved change record |
+| `authorized_by` | 774 | adopted task/decision/requirement → approved change record |
 | `adopts` | 2 | change record → immutable source patch |
 | `supersedes` | 10 | new authority → prior authority, only within the recorded scope |
 | `refines` | 16 | v1.1 source/change → previous source/change; non-conflicting authority survives |
@@ -123,7 +123,7 @@ Each canonical subsystem is a single-owner boundary (`docs/81_ARCHITECTURE_GUARD
 ```mermaid
 flowchart TB
   subgraph M0["M0 — Repository and authority"]
-    governance["Architecture Governance & Product Scope<br/>32 tasks"]
+    governance["Architecture Governance & Product Scope<br/>33 tasks"]
   end
   subgraph M1["M1 — Durable local shell and Core"]
     domain_events["Domain Model, Event Store & Protocol State<br/>22 tasks"]
@@ -179,7 +179,7 @@ flowchart TB
 | `eval-bench` Eval Harness & Benchmarks | M3 | `benchmarks/retrieval`, `benchmarks/context-economics`, `benchmarks/agent-engineering`, `benchmarks/latency` | `53`, `61`, `63`, `38` | 30 | 26 | MOD-JIT-001, ADR-R-044, ADR-R-051, ADR-R-056 |
 | `extensions-hooks` Hook Bus, Extension System & Importers | M9 | `crates/tools (hooks)`, `crates/skills (import)` | `25` | 13 | 12 | — |
 | `external-tools` MCP Hub, Integrations & Web Gateway | M9 | `crates/tools (external.*)`, `crates/tools (forge.*)` | `16`, `29` | 9 | 8 | — |
-| `governance` Architecture Governance & Product Scope | M0 | `tools/architecture-lint`, `tools/evidence-check`, `docs/decisions` | `02`, `03`, `76`, `81`, `82` | 12 | 32 | MOD-PROD-001, MOD-IDE-001, MOD-IDE-002, MOD-COV-001 |
+| `governance` Architecture Governance & Product Scope | M0 | `tools/architecture-lint`, `tools/evidence-check`, `docs/decisions` | `02`, `03`, `76`, `81`, `82` | 12 | 33 | MOD-PROD-001, MOD-IDE-001, MOD-IDE-002, MOD-COV-001 |
 | `media` Media Pipeline & Artifact Store | M5 | `crates/tools (media)`, `object store` | `25` | 6 | 6 | MOD-MEDIA-001, MOD-MEDIA-002, MOD-MM-001 |
 | `memory` Engineering Memory | M9 | `crates/memory` | `19` | 7 | 5 | — |
 | `model-gateway` Execution Policy Router & Provider Gateway | M2 | `crates/providers` | `15`, `27`, `38` | 18 | 13 | ADR-R-039, ADR-R-040, ADR-R-041, ADR-R-047, ADR-R-049, ADR-R-050 |
@@ -386,6 +386,7 @@ flowchart LR
 - `DOC-PX-015`: COMPLETE; Product extension stage: ZCode design language for the desktop renderer, PX-141..143; evidence: artifact:evidence/dossier-px-015/validation.json, artifact:evidence/dossier-px-015/tests.log, commit:437419a8e81bc76a52c7ef1b72dccb48e357941f
 - `DOC-PX-016`: COMPLETE; Product extension stage: Autonomous coding engine inside the Capability Kernel's envelope, PX-144..146; evidence: artifact:evidence/dossier-px-016/tests.log, artifact:evidence/dossier-px-016/validation.json, commit:6e32d883
 - `DOC-PX-017`: COMPLETE; Product extension stage: Upgrade program from Codex, MAI-UI and Qwen-Planner-Agent, PX-147..191; evidence: artifact:evidence/dossier-px-017/tests.log, artifact:evidence/dossier-px-017/validation.json, commit:f337daa9
+- `DOC-GOV-008`: REAL_TESTING; Bind crates/core-runtime/src/trajectory.rs to the PX-189 production wiring; evidence: artifact:evidence/dossier-gov-008/validation.json, artifact:evidence/dossier-gov-008/tests.log
 
 ## Milestone tasks in execution order
 
