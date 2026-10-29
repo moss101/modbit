@@ -9683,7 +9683,11 @@ async fn execute_tool_call(
             OBSERVATION_CEILING_BYTES,
         );
         // Failure evidence (docs/14 contract 3): commands and tests keep a signature until they pass.
-        let is_check = is_check_tool(name);
+        // PX-176: a computer-use child's command is auxiliary to the
+        // interface work, not a check of the candidate: a timed-out or failing
+        // one is an error observation, not an open failure that blocks completion.
+        let is_check = is_check_tool(name)
+            && !(name == "shell.exec" && core.tools.computer.is_child(task.task_id));
         let check_failed = is_check
             && (r.status != ToolStatus::Success
                 || r.structured_output["status"].as_str() == Some("FAILED")
@@ -9707,6 +9711,14 @@ async fn execute_tool_call(
                     cancelled,
                 });
             obs.text.push_str(&diagnostic.render());
+        }
+        // PX-176: a computer-use child hears every step as one structured record.
+        if let Some(record) =
+            core.tools
+                .computer
+                .step_observation(task.task_id, name, &status, &r.structured_output)
+        {
+            obs.text.push_str(&record);
         }
         // PX-075: the stall rules of a computer-use child watch its calls.
         if name.starts_with("computer.") {
@@ -9782,7 +9794,10 @@ async fn execute_tool_call(
                         | "computer.scroll"
                 )
                 || name.starts_with("lsp.")
-                || name.starts_with("git.worktree"));
+                || name.starts_with("git.worktree"))
+            // PX-176: a computer-use child's command result is a new
+            // observation of the work, as an interface read of the screen is.
+            || (name == "shell.exec" && core.tools.computer.is_child(task.task_id));
         return TranscriptEntry::ToolResult {
             call_id: call_id.into(),
             name: name.into(),

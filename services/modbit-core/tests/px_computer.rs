@@ -3804,3 +3804,146 @@ async fn qual_px_074_presence_reports_a_missing_permission_as_denied() {
     assert_eq!(p.permission_screen_recording, "DENIED");
     assert!(p.control.is_empty());
 }
+
+/// The `observation:` records a request's tool results carry, in order.
+fn observations(body: &Value) -> Vec<Value> {
+    st_of(body)
+        .texts
+        .iter()
+        .filter_map(|t| {
+            let at = t.find("\nobservation: ")?;
+            let json = &t[at + "\nobservation: ".len()..];
+            serde_json::Deserializer::from_str(json)
+                .into_iter::<Value>()
+                .next()?
+                .ok()
+        })
+        .collect()
+}
+
+/// QUAL-PX-176: a computer-use child that alternates commands and interface
+/// actions hears every step as one structured record - the tool and its
+/// status, the frame and snapshot it holds, the accessibility lines that
+/// changed, stdout, stderr, exit code - a command that times out is an error
+/// record and the run goes on to completion, output past the bound ends with
+/// the marker, and the record is part of the logged result a restart replays.
+#[tokio::test(flavor = "multi_thread")]
+async fn qual_px_176_every_step_of_a_computer_use_child_is_one_structured_observation() {
+    let mut child = vec![
+        fx(call(
+            "plan.update",
+            json!({"outcome": "alternate commands and clicks", "expected_files": [], "protected_effects": ["computer"]}),
+        )),
+        start(FORM),
+        fx(call("computer.state", json!({}))),
+        fx(call("shell.exec", json!({"argv": ["git", "--version"]}))),
+        st(|s| {
+            call(
+                "computer.set_value",
+                json!({"element": s.el("Name"), "value": "Ada"}),
+            )
+        }),
+        // Several kilobytes of output, past the record's bound.
+        fx(call("shell.exec", json!({"argv": ["git", "help", "-a"]}))),
+        st(|s| call("computer.press", json!({"element": s.el("Submit")}))),
+    ];
+    if cfg!(unix) {
+        child.push(fx(call(
+            "shell.exec",
+            json!({"argv": ["sleep", "20"], "timeout_ms": 500}),
+        )));
+    }
+    child.extend([
+        fx(call("computer.release", json!({}))),
+        fx(
+            json!({"calls": [{"name": "task.complete", "args": {"summary": "submitted the order for Ada", "self_review": {"findings": []}}}]}),
+        ),
+    ]);
+    let parent = vec![
+        parent_plan(),
+        spawn_gui(
+            "submit the order form for Ada",
+            Some("the fixture order form is running and idle (computer.apps lists it)"),
+            "FOREGROUND",
+        ),
+        fx(call("agent.result", json!({"idempotency_key": "gui-1"}))),
+    ];
+    let (base, seen) = routed(parent, child).await;
+    let mut rig = setup_model(Opts::default(), base, seen, approve_all()).await;
+    rig.begin().await;
+    rig.finish().await;
+    let bodies = rig.seen.lock().unwrap().clone();
+    let last = bodies
+        .iter()
+        .rev()
+        .find(|b| b["messages"].to_string().contains(CHILD_MARKER))
+        .unwrap();
+    let obs = observations(last);
+    let tools: Vec<&str> = obs.iter().map(|o| o["tool"].as_str().unwrap()).collect();
+    let mut want = vec![
+        "computer.start",
+        "computer.state",
+        "shell.exec",
+        "computer.set_value",
+        "shell.exec",
+        "computer.press",
+    ];
+    if cfg!(unix) {
+        want.push("shell.exec");
+    }
+    assert_eq!(tools[..want.len()], want[..], "{obs:#?}");
+    // Steps are numbered in order.
+    for (i, o) in obs.iter().enumerate() {
+        assert_eq!(o["step"], json!(i + 1), "{o}");
+        assert!(["gui", "command"].contains(&o["kind"].as_str().unwrap()));
+    }
+    // A command: the record holds its streams and exit code, and the frame
+    // token of the interface the child last saw, beside it.
+    let git = &obs[2];
+    assert_eq!(git["kind"], "command");
+    assert_eq!(git["exit_code"], 0, "{git}");
+    assert!(git["stdout"].as_str().unwrap().contains("git version"));
+    assert_eq!(git["timed_out"], false);
+    assert_eq!(git["tree_delta"], Value::Null);
+    let after_state = &obs[1];
+    assert_eq!(after_state["kind"], "gui");
+    assert!(
+        after_state["snapshot"]
+            .as_str()
+            .is_some_and(|s| !s.is_empty()),
+        "{after_state}"
+    );
+    assert_eq!(git["snapshot"], after_state["snapshot"], "{git}");
+    assert_eq!(git["frame"], after_state["frame"], "{git}");
+    // An interface action: the accessibility lines that changed come with it.
+    let set = &obs[3];
+    assert_eq!(set["kind"], "gui");
+    assert!(set["tree_delta"]["changes"].is_array(), "{set}");
+    assert!(
+        after_state["tree_delta"]["added"].is_array(),
+        "{after_state}"
+    );
+    assert_eq!(set["stdout"], "");
+    assert_eq!(set["exit_code"], Value::Null);
+    // Output past the bound ends with the marker, never silently cut.
+    let big = &obs[4];
+    assert_eq!(big["truncated"], true, "{big}");
+    assert!(
+        big["stdout"]
+            .as_str()
+            .unwrap()
+            .ends_with("[…truncated by the Core]"),
+        "{big}"
+    );
+    assert!(big["stdout"].as_str().unwrap().chars().count() < 4_100);
+    // A command that times out is an error record and the run went on.
+    if cfg!(unix) {
+        let slow = &obs[6];
+        assert_eq!(slow["timed_out"], true, "{slow}");
+        assert_ne!(slow["status"], "SUCCESS", "{slow}");
+    }
+    let env = child_envelope(&rig).await;
+    assert_eq!(env["status"], "COMPLETED", "{env}");
+    // The record is in the logged result, which is what a restart replays.
+    assert!(objects_containing(&rig, "observation: {") >= obs.len());
+}

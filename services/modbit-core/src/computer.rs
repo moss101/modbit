@@ -97,6 +97,43 @@ struct Stall {
     last_tree: String,
     blockers: Vec<Value>,
     report: Option<Value>,
+    /// PX-176: what the one observation record carries between steps.
+    frame: String,
+    snapshot: String,
+    tree_full: String,
+    steps: u64,
+}
+
+/// Longest text of one stream in an observation record, in characters.
+const OBS_STREAM_CHARS: usize = 4_000;
+/// Most added or removed accessibility lines an observation record names.
+const OBS_DELTA_LINES: usize = 40;
+/// Longest tree the delta is computed against, in characters.
+const OBS_TREE_CHARS: usize = 60_000;
+/// The marker a bounded stream ends with.
+const OBS_MARKER: &str = "[…truncated by the Core]";
+
+fn bounded(text: &str) -> (String, bool) {
+    if text.chars().count() <= OBS_STREAM_CHARS {
+        return (text.to_owned(), false);
+    }
+    let head: String = text.chars().take(OBS_STREAM_CHARS).collect();
+    (format!("{head}\n{OBS_MARKER}"), true)
+}
+
+/// The accessibility lines that differ between two trees: what appeared and
+/// what went away, bounded.
+fn tree_delta(before: &str, after: &str) -> Value {
+    let old: std::collections::HashSet<&str> = before.lines().collect();
+    let new: std::collections::HashSet<&str> = after.lines().collect();
+    let take = |a: &mut dyn Iterator<Item = &str>| -> (Vec<String>, bool) {
+        let all: Vec<String> = a.map(str::to_owned).collect();
+        let cut = all.len() > OBS_DELTA_LINES;
+        (all.into_iter().take(OBS_DELTA_LINES).collect(), cut)
+    };
+    let (added, a_cut) = take(&mut after.lines().filter(|l| !old.contains(l)));
+    let (removed, r_cut) = take(&mut before.lines().filter(|l| !new.contains(l)));
+    serde_json::json!({"added": added, "removed": removed, "truncated": a_cut || r_cut})
 }
 
 /// One stored frame the retention sweep knows of.
@@ -274,6 +311,72 @@ impl ComputerHost {
             st.last_code = code.unwrap_or("FAILED").to_owned();
             st.last_message = message.unwrap_or_default().chars().take(300).collect();
         }
+    }
+
+    /// PX-176: the one structured record a computer-use child gets after a
+    /// step, whether the step was an interface action or a command: the tool
+    /// and how it ended, the frame token and snapshot the child now holds, the
+    /// accessibility lines that changed, and the command's stdout, stderr,
+    /// exit code and timeout. `None` for a task that is not such a child or a
+    /// tool that is neither `computer.*` nor `shell.exec`.
+    pub(crate) fn step_observation(
+        &self,
+        task: TaskId,
+        tool: &str,
+        status: &str,
+        out: &Value,
+    ) -> Option<String> {
+        let gui = tool.starts_with("computer.");
+        if !(gui || tool == "shell.exec") || !self.is_child(task) {
+            return None;
+        }
+        let mut m = self.stall.lock().unwrap_or_else(|e| e.into_inner());
+        let st = m.entry(task).or_default();
+        st.steps += 1;
+        if !gui {
+            // A command's result is a new observation for the stall rules,
+            // whether it succeeded, failed or timed out.
+            st.progress += 1;
+        }
+        let mut delta = Value::Null;
+        if gui {
+            if let Some(f) = out["frame"].as_str() {
+                st.frame = f.to_owned();
+            }
+            if let Some(sn) = out["snapshot"].as_str() {
+                st.snapshot = sn.to_owned();
+            }
+            if let Some(tree) = out["tree"].as_str() {
+                let tree: String = tree.chars().take(OBS_TREE_CHARS).collect();
+                delta = tree_delta(&st.tree_full, &tree);
+                st.tree_full = tree;
+            } else if out.get("changes").is_some() {
+                // An input reports what it changed in the tree itself.
+                delta = serde_json::json!({
+                    "changes": out["changes"],
+                    "structure_changed": out["structure_changed"],
+                });
+            }
+        }
+        let text = |k: &str| out[k].as_str().unwrap_or_default();
+        let (stdout, out_cut) = bounded(text("stdout_preview"));
+        let (stderr, err_cut) = bounded(text("stderr_preview"));
+        let record = serde_json::json!({
+            "step": st.steps,
+            "tool": tool,
+            "kind": if gui { "gui" } else { "command" },
+            "status": status,
+            "frame": (!st.frame.is_empty()).then(|| st.frame.clone()),
+            "snapshot": (!st.snapshot.is_empty()).then(|| st.snapshot.clone()),
+            "tree_delta": delta,
+            "stdout": stdout,
+            "stderr": stderr,
+            "exit_code": out["exit_code"],
+            "timed_out": out["timed_out"].as_bool().unwrap_or(false),
+            "truncated": out_cut || err_cut || out["stdout_truncated"].as_bool().unwrap_or(false)
+                || out["stderr_truncated"].as_bool().unwrap_or(false),
+        });
+        Some(format!("\nobservation: {record}\n"))
     }
 
     /// A model turn of the task ended. When a stall rule trips, the report
