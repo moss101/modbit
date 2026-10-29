@@ -1,0 +1,10 @@
+{
+ "task": "PX-162",
+ "requirements": ["REQ-PX-162", "QUAL-PX-162"],
+ "scenarios": ["QUAL-PX-162"],
+ "tests": ["services/modbit-core/tests/memory_graph_index.rs", "services/modbit-core/tests/context_rules_pack.rs", "services/modbit-core/tests/surface_protocol.rs", "services/modbit-core/src/instruction_delta.rs"],
+ "proof": "CI run 40808930739 (head 36441deb) green on all 15 jobs. Real modbit-core, real git, real SQLite, real memory commands and a scripted model: an AGENTS.md edit and a memory edit made while a task runs reach the model as one appended note while every request keeps a byte-identical prefix; a SIGKILL resume rebuilds the identical note from the log; a forgotten memory rebuilds the prefix and is logged; an untrusted repository adds no note. mutation-check.txt shows an always-rebuild tracker fails the tests. Lazy rule and skill activation tests (qual_ev_0059_0129, qual_px_105) now assert the appended-note delivery.",
+ "limitations": "A replaced item's old text stays in the cached prefix and the note says it is superseded; removals rebuild the prefix (a logged cache miss); a rule whose header changes is a removal plus an addition. The completion gate refuses tasks whose workspace the test edited, so tests stop at the requests. PR CI needed reruns for unrelated flakes (fix_17, px_132) and a timing-sensitive PX-161 overlap comparison was relaxed for fast reads.",
+ "runs": ["40808930739"],
+ "ci": {"run_id": "40808930739", "head_sha": "36441deb", "conclusion": "success", "json": "evidence/m10/PX-162/ci-run-40808930739.json", "landed_as": "6e2bb4b6"}
+}
