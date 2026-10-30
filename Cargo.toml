@@ -171,7 +171,9 @@ modbit-sandbox-gateway = { path = "apps/sandbox-gateway" }
 # to install the no-network filter, one socket call in its self-check) and
 # its Unix process-group kill (broker.rs `kill_group`: one killpg call); and
 # crates/process-hardening (PX-148: setrlimit, prctl or ptrace, the dyld image
-# list in the report), which the Core and the broker call first in `main`.
+# list in the report), which the Core and the broker call first in `main`;
+# and services/modbit-guest (`AsyncFd::register` on a vsock listener and
+# stream it owns: tokio deprecated the safe constructor as unsound).
 unsafe_code = "deny"
 missing_docs = "warn"
 unused_crate_dependencies = "allow"

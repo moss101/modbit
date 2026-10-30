@@ -7,6 +7,8 @@
 //! nothing — no run, no worktree, no lease — was created. Subagent
 //! admission (M6.3) takes its tickets through the same door.
 
+// PX-168 lint policy: this file baselined expect/unwrap sites; new ones need review.
+#![allow(clippy::expect_used)]
 use std::collections::HashMap;
 use std::sync::{Arc, Mutex};
 

@@ -5,6 +5,8 @@
 //! nothing in it is secret. The refresh token is opaque, stored hashed by
 //! the store, and rotated on every use (a replay revokes the family).
 
+// PX-168 lint policy: this file baselined expect/unwrap sites; new ones need review.
+#![allow(clippy::expect_used)]
 use base64::Engine;
 use hmac::{Hmac, KeyInit, Mac};
 use modbit_domain::TenantId;

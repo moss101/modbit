@@ -93,3 +93,24 @@ const REFUSAL_WORDS: Record<string, string> = {
 export function refusalWords(code: string): string {
   return REFUSAL_WORDS[code] ?? (code ? "The Core refused this." : "This could not be done.");
 }
+
+/** The scopes a private memory may be shared into (PX-188); the Core refuses any other and any that is not wider than the item's own. */
+export const MEMORY_SHARE_SCOPES = ["space", "organization", "repository"] as const;
+
+/** Whether a memory is private to a person or a session: those are the ones a share widens. Only a hint for the button; the Core decides ownership. */
+export function offersShare(row: { scope: string; status: string }): boolean {
+  const kind = row.scope.split(":", 1)[0] ?? "";
+  return (kind === "user" || kind === "session" || kind === "run") && (row.status === "proposed" || row.status === "curated");
+}
+
+/** One line of where a memory lives and where it came from, as the Memory view prints it. */
+export function memoryWhere(row: { scope: string; source: string; author: string; status: string }): string {
+  const kind = (row.scope.split(":", 1)[0] ?? "").replace("_", " ");
+  return `${kind} scope · from ${row.source.replace(/_/g, " ")} by ${row.author || "unknown"} · ${row.status}`;
+}
+
+/** What the Core said about a share, in words. */
+export function shareWords(r: { outcome: string; refusalCode: string; scope: string; existed: boolean }): string {
+  if (r.outcome === "shared") return r.existed ? `Already shared into ${r.scope}.` : `Shared into ${r.scope} with personal detail removed; it is a proposal there until promoted.`;
+  return `Not shared (${r.refusalCode || r.outcome}).`;
+}

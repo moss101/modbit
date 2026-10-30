@@ -2,6 +2,8 @@
 //! `<name>.bin` (canonical bytes) and `<name>.json` (type name + expected
 //! field values). Exit 1 if `--check` finds the files on disk differ.
 
+// PX-168 lint policy: this file baselined expect/unwrap sites; new ones need review.
+#![allow(clippy::expect_used)]
 use std::process::ExitCode;
 
 use protocol_fixtures::{fixture_dir, samples};

@@ -12,9 +12,9 @@
  */
 import { useCallback, useEffect, useRef, useState } from "react";
 import { Badge, Button } from "@modbit/ui";
-import type { CustomizeHooksView, ImportReportInfo, SkillsView } from "../../shared/customize-types.ts";
+import type { CustomizeHooksView, ImportReportInfo, MemoryView, SkillsView } from "../../shared/customize-types.ts";
 import { parseRefusal } from "../projects/project-model.ts";
-import { budgetText, extensionState, lastResult, offersRevoke, offersTrust, refusalWords, scopeWords, serverWords, shareText, shortHash, trustWords, whyLocked } from "./customize-model.ts";
+import { MEMORY_SHARE_SCOPES, budgetText, extensionState, memoryWhere, offersShare, shareWords, lastResult, offersRevoke, offersTrust, refusalWords, scopeWords, serverWords, shareText, shortHash, trustWords, whyLocked } from "./customize-model.ts";
 
 export interface CustomizeProps {
   connected: boolean;
@@ -27,6 +27,11 @@ export interface CustomizeProps {
 export function Customize({ connected, sessionId, taskId, onClose }: CustomizeProps) {
   const [skills, setSkills] = useState<SkillsView | null>(null);
   const [hooks, setHooks] = useState<CustomizeHooksView | null>(null);
+  const [memory, setMemory] = useState<MemoryView | null>(null);
+  const [noteTopic, setNoteTopic] = useState("");
+  const [noteText, setNoteText] = useState("");
+  const [noteScope, setNoteScope] = useState<"user" | "session">("user");
+  const [shareScope, setShareScope] = useState<string>(MEMORY_SHARE_SCOPES[1]);
   const [error, setError] = useState<string | null>(null);
   const [refusal, setRefusal] = useState<{ code: string; detail: string } | null>(null);
   const [note, setNote] = useState<string | null>(null);
@@ -39,10 +44,11 @@ export function Customize({ connected, sessionId, taskId, onClose }: CustomizePr
     if (!connected) return;
     const mine = ++seq.current;
     try {
-      const [s, h] = await Promise.all([window.modbit.customizeSkills(taskId ?? undefined), sessionId ? window.modbit.customizeHooks(sessionId, taskId ?? undefined) : Promise.resolve(null)]);
+      const [s, h, m] = await Promise.all([window.modbit.customizeSkills(taskId ?? undefined), sessionId ? window.modbit.customizeHooks(sessionId, taskId ?? undefined) : Promise.resolve(null), taskId ? window.modbit.customizeMemory(taskId) : Promise.resolve(null)]);
       if (mine !== seq.current) return;
       setSkills(s);
       setHooks(h);
+      setMemory(m);
       setError(null);
     } catch (e) {
       if (mine === seq.current) setError((e as Error).message);
@@ -274,6 +280,74 @@ export function Customize({ connected, sessionId, taskId, onClose }: CustomizePr
             </p>
           </div>
         )}
+      </section>
+      <section aria-labelledby="customize-mem-h" data-testid="customize-memory">
+        <h3 id="customize-mem-h">Memory</h3>
+        <p className="meta">What is remembered for this task, where it lives and where it came from. Delete removes an item from the store and from every later prompt. Share copies one of yours into a wider scope with personal detail removed.</p>
+        {sessionId && taskId && (
+          <div className="customize-import">
+            <label htmlFor="customize-memory-topic" className="meta">
+              Remember (private to you until you share it)
+            </label>
+            <input id="customize-memory-topic" type="text" maxLength={200} placeholder="Topic" value={noteTopic} onChange={(e) => setNoteTopic(e.target.value)} data-testid="customize-memory-topic" />
+            <input type="text" aria-label="What to remember" maxLength={8192} placeholder="What to remember" value={noteText} onChange={(e) => setNoteText(e.target.value)} data-testid="customize-memory-content" />
+            <select aria-label="Keep it for" value={noteScope} onChange={(e) => setNoteScope(e.target.value as "user" | "session")} data-testid="customize-memory-note-scope">
+              <option value="user">you</option>
+              <option value="session">this session</option>
+            </select>
+            <Button
+              size="sm"
+              disabled={busy || noteTopic.trim() === "" || noteText.trim() === ""}
+              onClick={() => void act(() => window.modbit.customizeMemoryRemember(sessionId, taskId, noteScope, noteTopic, noteText), (r) => (r.existed ? "That is already remembered." : `Remembered as a proposal in ${r.scope}.`)).then((r) => r && (setNoteTopic(""), setNoteText("")))}
+              data-testid="customize-memory-remember"
+            >
+              Remember
+            </Button>
+          </div>
+        )}
+        {memory && memory.items.length === 0 && <p className="meta">Nothing is remembered in this task's scopes.</p>}
+        {memory && memory.items.length > 0 && (
+          <label className="meta">
+            Share into{" "}
+            <select value={shareScope} onChange={(e) => setShareScope(e.target.value)} data-testid="customize-memory-share-scope">
+              {MEMORY_SHARE_SCOPES.map((k) => (
+                <option key={k} value={k}>
+                  {k}
+                </option>
+              ))}
+            </select>
+          </label>
+        )}
+        <ul className="customize-list" aria-label="Memories">
+          {memory?.items.map((m) => (
+            <li key={m.id} className="customize-row" data-testid="customize-memory-item" data-id={m.id} data-scope={m.scope} data-status={m.status}>
+              <div>
+                <strong>{m.topic}</strong> <Badge tone={m.status === "curated" ? "ok" : "neutral"}>{m.status}</Badge>
+              </div>
+              <p>{m.content}</p>
+              <p className="meta" data-testid="customize-memory-where">
+                {memoryWhere(m)}
+              </p>
+              <div className="customize-actions">
+                {m.status === "proposed" && sessionId && taskId && (
+                  <Button size="sm" variant="primary" disabled={busy} onClick={() => void act(() => window.modbit.customizeMemoryPromote(sessionId, taskId, m.id), (r) => (r.outcome === "curated" ? `Kept ${m.topic}; it can reach later prompts.` : `Not kept (${r.refusalCode || r.outcome}).`))} aria-label={`Keep ${m.topic}`} data-testid="customize-memory-promote">
+                    Keep
+                  </Button>
+                )}
+                {offersShare(m) && sessionId && taskId && (
+                  <Button size="sm" disabled={busy} onClick={() => void act(() => window.modbit.customizeMemoryShare(sessionId, taskId, m.id, shareScope), shareWords)} aria-label={`Share ${m.topic} into ${shareScope}`} data-testid="customize-memory-share">
+                    Share
+                  </Button>
+                )}
+                {sessionId && taskId && (
+                  <Button size="sm" disabled={busy} onClick={() => void act(() => window.modbit.customizeMemoryForget(sessionId, taskId, m.id), () => `Deleted ${m.topic}; it is gone from the store and from the next prompt.`)} aria-label={`Delete ${m.topic}`} data-testid="customize-memory-delete">
+                    Delete
+                  </Button>
+                )}
+              </div>
+            </li>
+          ))}
+        </ul>
       </section>
     </section>
   );

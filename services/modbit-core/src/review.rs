@@ -5,6 +5,8 @@
 //! Workspace File Service as a revision-bound change with provenance
 //! `user_review` and, on accept, committed to the worktree branch.
 
+// PX-168 lint policy: this file baselined expect/unwrap sites; new ones need review.
+#![allow(clippy::expect_used)]
 use std::sync::Arc;
 
 use modbit_domain::event::{Actor, AggregateType};

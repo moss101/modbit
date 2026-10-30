@@ -35,6 +35,25 @@ message MemoryProposed {
   uint64 offset = 5;
 }
 
+// Share one of a person's private items into a broader scope (PX-188). Only
+// its author may; what lands there is a proposal with personal detail
+// removed, and the event names the source item.
+message ShareMemory {
+  Id task_id = 1;
+  string memory_id = 2;          // the private item (full id or an unambiguous prefix)
+  string scope = 3;              // the broader scope: space|organization|repository|agent
+}
+
+message MemoryShared {
+  string memory_id = 1;          // the source item
+  string shared_memory_id = 2;   // the redacted copy in the wider scope
+  string scope = 3;              // the scope key it landed in
+  string outcome = 4;            // shared | refused | unknown
+  string refusal_code = 5;       // SHARE_NEEDS_PERSON | SHARE_NOT_OWNER | SHARE_NOT_WIDER | SHARE_NOT_SHAREABLE
+  string refusal_detail = 6;
+  bool existed = 7;              // the same redacted content was already there
+}
+
 // Edit a proposal or a curated item. A change of topic or content is a new
 // item that supersedes the edited one (ids are content-addressed); a change
 // of confidence or time to live alone replaces the item in place. A curated

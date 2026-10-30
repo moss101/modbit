@@ -12369,6 +12369,20 @@ export declare type MemoryItemView = Message<"modbit.v1.MemoryItemView"> & {
    * @generated from field: bool validated = 16;
    */
   validated: boolean;
+
+  /**
+   * turns whose prompt carried it (PX-157)
+   *
+   * @generated from field: uint64 uses = 17;
+   */
+  uses: bigint;
+
+  /**
+   * 0 = never
+   *
+   * @generated from field: int64 last_used_at_ms = 18;
+   */
+  lastUsedAtMs: bigint;
 };
 
 /**

@@ -12,17 +12,22 @@
  * downloads or installs from a network location, or updates anything.
  */
 import {
+  forgetMemory,
   importAgentConfig,
+  listMemory,
+  promoteMemory,
+  proposeMemory,
   listHooks,
   loadExtension,
   setHookEnabled,
+  shareMemory,
   trustExtension,
   trustSkill,
   unloadExtension,
   untrustSkill,
 } from "@modbit/ide-adapter-core";
 import type { ExtensionRow, HookListView, ImportReportView, SkillList, SkillTrustResult } from "@modbit/surface-protocol";
-import type { CustomizeHooksView, ExtensionRowInfo, HookEnabledInfo, ImportReportInfo, SkillRow, SkillsView, SkillTrustInfo } from "../shared/customize-types.ts";
+import type { CustomizeHooksView, MemoryForgetInfo, MemoryPromoteInfo, MemoryRememberInfo, MemoryShareInfo, MemoryView, ExtensionRowInfo, HookEnabledInfo, ImportReportInfo, SkillRow, SkillsView, SkillTrustInfo } from "../shared/customize-types.ts";
 import { bad, validBool } from "./control-args.ts";
 import type { Registrar } from "./conversation-ipc.ts";
 
@@ -182,11 +187,82 @@ export function importInfo(r: ImportReportView, quarantined: string): ImportRepo
 
 const optionalTask = (r: Registrar, v: unknown): string | undefined => (v === undefined || v === null || v === "" ? undefined : r.taskId(v));
 
+/** A memory id as the Core lists it: lowercase hex, 8 to 64 characters (a prefix of at least 8 resolves). */
+export function validMemoryId(v: unknown): string {
+  if (typeof v !== "string" || !/^[0-9a-f]{8,64}$/.test(v)) bad("memoryId must be 8 to 64 lowercase hex characters");
+  return v as string;
+}
+
+/** The scopes a person may write a note into from the view: private ones; wider scopes are reached by sharing, which redacts. */
+export function validRememberScope(v: unknown): string {
+  if (v !== "user" && v !== "session") bad("scope must be user or session");
+  return v as string;
+}
+
+export function validNoteText(v: unknown, what: string, max: number): string {
+  if (typeof v !== "string" || v.trim() === "" || v.length > max) bad(`${what} must be 1 to ${max} characters`);
+  return (v as string).trim();
+}
+
+/** The scopes a private item may be shared into; a narrower or unknown name never reaches the Core. */
+export const SHARE_SCOPES = ["agent_profile", "repository", "space", "organization"] as const;
+export function validShareScope(v: unknown): string {
+  if (typeof v !== "string" || !(SHARE_SCOPES as readonly string[]).includes(v)) bad(`scope must be one of ${SHARE_SCOPES.join(", ")}`);
+  return v as string;
+}
+
 /** The commands of the Customize view. */
 export function registerCustomizeHandlers(r: Registrar, host: CustomizeHost): void {
   r.handle("customize:skills", async (...a) => {
     const tid = optionalTask(r, a[0]);
     return skillsView(await r.client().listSkills(tid));
+  });
+  r.handle("customize:memory", async (...a) => {
+    const tid = r.taskId(a[0]);
+    const l = await listMemory(r.client(), tid);
+    return {
+      scopes: [...l.scopes],
+      items: l.items.map((i) => ({ id: i.id, scope: i.scope, recordType: i.recordType, topic: i.topic, content: i.content, source: i.source, author: i.author, sensitivity: i.sensitivity, status: i.status, validated: i.validated })),
+    } satisfies MemoryView;
+  });
+  r.handle("customize:memoryRemember", async (...a) => {
+    const sid = r.sessionId(a[0]);
+    const tid = r.taskId(a[1]);
+    const scope = validRememberScope(a[2]);
+    const topic = validNoteText(a[3], "topic", 200);
+    const content = validNoteText(a[4], "content", 8192);
+    const c = r.client();
+    await r.lease(c, sid);
+    const m = await proposeMemory(c, sid, tid, scope, topic, content);
+    return { memoryId: m.memoryId, status: m.status, scope: m.scope, existed: m.existed } satisfies MemoryRememberInfo;
+  });
+  r.handle("customize:memoryPromote", async (...a) => {
+    const sid = r.sessionId(a[0]);
+    const tid = r.taskId(a[1]);
+    const memoryId = validMemoryId(a[2]);
+    const c = r.client();
+    await r.lease(c, sid);
+    const m = await promoteMemory(c, sid, tid, memoryId);
+    return { memoryId: m.memoryId, outcome: m.outcome, refusalCode: m.refusalCode, refusalDetail: m.refusalDetail } satisfies MemoryPromoteInfo;
+  });
+  r.handle("customize:memoryForget", async (...a) => {
+    const sid = r.sessionId(a[0]);
+    const tid = r.taskId(a[1]);
+    const memoryId = validMemoryId(a[2]);
+    const c = r.client();
+    await r.lease(c, sid);
+    const f = await forgetMemory(c, sid, tid, memoryId);
+    return { memoryId: f.memoryId, changed: f.changed, status: f.status } satisfies MemoryForgetInfo;
+  });
+  r.handle("customize:memoryShare", async (...a) => {
+    const sid = r.sessionId(a[0]);
+    const tid = r.taskId(a[1]);
+    const memoryId = validMemoryId(a[2]);
+    const scope = validShareScope(a[3]);
+    const c = r.client();
+    await r.lease(c, sid);
+    const m = await shareMemory(c, sid, tid, memoryId, scope);
+    return { memoryId: m.memoryId, sharedMemoryId: m.sharedMemoryId, scope: m.scope, outcome: m.outcome, refusalCode: m.refusalCode, refusalDetail: m.refusalDetail, existed: m.existed } satisfies MemoryShareInfo;
   });
   r.handle("customize:skillTrust", async (...a) => {
     const name = validSkillName(a[0]);

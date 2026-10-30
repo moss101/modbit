@@ -8,7 +8,7 @@ import type { TerminalFrameJson, TerminalViewJson } from "../main/terminal-host.
 import type { AttachmentResult, InterruptView, ModeChangedView, ModelCatalogView, PostureView, PreferencePatch, PreferenceSetView, QueuedChangeView, QueueView, SendBehaviorState, SideAnswerView, SlashInventoryView, TaskModeId, InputModeId } from "../shared/composer-types.ts";
 import type { AutoDetail, AutoEnableInput, AutoKillReport, AutoList, AutoRepoLoad, AutoRun, AutoRunInput, AutoRunStarted, AutoValidation, AutoView } from "../shared/automation-types.ts";
 import type { ApplyAckInfo, ApplyInputArgs, CleanupReportInfo, ProjectChangedInfo, ProjectInput, ProjectListInfo, ProjectPatch, WorktreeListInfo, WorktreeRemovalInfo } from "../shared/project-types.ts";
-import type { CustomizeHooksView, HookEnabledInfo, ImportReportInfo, SkillsView, SkillTrustInfo } from "../shared/customize-types.ts";
+import type { CustomizeHooksView, HookEnabledInfo, MemoryForgetInfo, MemoryPromoteInfo, MemoryRememberInfo, MemoryShareInfo, MemoryView, ImportReportInfo, SkillsView, SkillTrustInfo } from "../shared/customize-types.ts";
 import type { ChangesStateInfo, CommitPushAckInfo, CommitPushInput, DecideHunkAckInfo, DecideHunkInput, RevertAckInfo, RevertInput, StageAckInfo } from "../shared/changes-types.ts";
 import type { ComputerCardsInfo, ComputerFrameInfo, ComputerPresenceInfo, ComputerStopInfo, OpenSettingsInfo, PermissionName } from "../shared/computer-types.ts";
 import type { AccountingInfo, AddRuleInput, AllowRuleInfo, CheckpointListInfo, CheckpointTargetInput, DockApprovalView, ExpiredApprovalView, ForkOutcome, ModeProposalDecisionInfo, ModeProposalListInfo, RestoreOutcome, RewindPreviewInfo, RunModeInfo, TaskBudgetsInfo } from "../shared/control-types.ts";
@@ -306,6 +306,12 @@ export interface ModbitBridge {
   commitAndPush(sessionId: string, taskId: string, input: CommitPushInput): Promise<CommitPushAckInfo>;
   // REQ-PX-106 (the Customize view): the Core's skills, hooks and extensions, and the few actions the Core already offers on them. No catalog, no install from a network location, no update.
   customizeSkills(taskId?: string): Promise<SkillsView>;
+  /** PX-188: the person's memories with source and scope; forget deletes, share copies a redacted proposal into a broader scope. */
+  customizeMemory(taskId: string): Promise<MemoryView>;
+  customizeMemoryRemember(sessionId: string, taskId: string, scope: string, topic: string, content: string): Promise<MemoryRememberInfo>;
+  customizeMemoryPromote(sessionId: string, taskId: string, memoryId: string): Promise<MemoryPromoteInfo>;
+  customizeMemoryForget(sessionId: string, taskId: string, memoryId: string): Promise<MemoryForgetInfo>;
+  customizeMemoryShare(sessionId: string, taskId: string, memoryId: string, scope: string): Promise<MemoryShareInfo>;
   /** Trust a skill by the content hash shown; the Core refuses any other (HASH_MISMATCH) and trust by name alone does not exist. */
   customizeSkillTrust(name: string, contentHash: string, taskId?: string): Promise<SkillTrustInfo>;
   customizeSkillRevoke(name: string, contentHash?: string): Promise<SkillTrustInfo>;
@@ -521,6 +527,11 @@ const bridge: ModbitBridge = {
   revertChanges: (sessionId, taskId, input) => ipcRenderer.invoke("changes:revert", sessionId, taskId, input),
   decideHunk: (sessionId, taskId, input) => ipcRenderer.invoke("changes:decideHunk", sessionId, taskId, input),
   customizeSkills: (taskId) => ipcRenderer.invoke("customize:skills", taskId),
+  customizeMemory: (taskId) => ipcRenderer.invoke("customize:memory", taskId),
+  customizeMemoryRemember: (sessionId, taskId, scope, topic, content) => ipcRenderer.invoke("customize:memoryRemember", sessionId, taskId, scope, topic, content),
+  customizeMemoryPromote: (sessionId, taskId, memoryId) => ipcRenderer.invoke("customize:memoryPromote", sessionId, taskId, memoryId),
+  customizeMemoryForget: (sessionId, taskId, memoryId) => ipcRenderer.invoke("customize:memoryForget", sessionId, taskId, memoryId),
+  customizeMemoryShare: (sessionId, taskId, memoryId, scope) => ipcRenderer.invoke("customize:memoryShare", sessionId, taskId, memoryId, scope),
   customizeSkillTrust: (name, contentHash, taskId) => ipcRenderer.invoke("customize:skillTrust", name, contentHash, taskId),
   customizeSkillRevoke: (name, contentHash) => ipcRenderer.invoke("customize:skillRevoke", name, contentHash),
   customizeHooks: (sessionId, taskId) => ipcRenderer.invoke("customize:hooks", sessionId, taskId),

@@ -13,7 +13,8 @@
 //! Canonical owner: workspace-git (`docs/12`).
 
 #![forbid(unsafe_code)]
-
+// PX-168 lint policy: this file baselined expect/unwrap sites; new ones need review.
+#![allow(clippy::unwrap_used)]
 use std::path::{Path, PathBuf};
 
 pub mod apply;

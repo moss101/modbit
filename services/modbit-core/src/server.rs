@@ -7,6 +7,8 @@
 //! the connection with a `ProtocolError`. Multiple clients may attach to one
 //! session and resume from an event offset (REQ-EV-0010, REQ-EV-0192).
 
+// PX-168 lint policy: this file spawns processes and baselined expect/unwrap sites; new ones need review.
+#![allow(clippy::disallowed_methods, clippy::expect_used)]
 use std::path::{Path, PathBuf};
 use std::sync::Arc;
 
@@ -354,6 +356,8 @@ pub async fn run_as(
     // REQ-PX-139: component health, persisted; and the OpenTelemetry export
     // when (and only when) the Core is configured to export.
     crate::telemetry::spawn(Arc::clone(&core));
+    // PX-189: the Skill Lab's traces, when (and only when) a lab is given.
+    crate::skills::spawn_trace_producer(Arc::clone(&core));
     // PX-111: the indexes of the workspaces unfinished tasks work in open from
     // the persisted store in the background, so the first query after a
     // restart finds them loaded (and a corrupt or stale store is found and
@@ -847,6 +851,7 @@ async fn serve_connection(core: Arc<Core>, mut stream: BoxedStream) -> Result<()
                     "PromoteMemory",
                     "EditMemory",
                     "ForgetMemory",
+                    "ShareMemory",
                     "GetImpact",
                     "GetSymbolEdges",
                     "GetIndexStatus",
@@ -1589,7 +1594,7 @@ fn required_client_capability(env: &CommandEnvelope) -> Option<&'static str> {
         "ExportDiagnostics" => "events.subscribe",
         "GetEnvironment" | "RebuildEnvironment" => "task.author",
         "ListMemory" => "task.author",
-        "PromoteMemory" | "ForgetMemory" | "ProposeMemory" | "EditMemory" => "task.author",
+        "PromoteMemory" | "ForgetMemory" | "ShareMemory" | "ProposeMemory" | "EditMemory" => "task.author",
         "RebindTaskWorkspace" | "ImportObjects" => "session.mirror",
         "TrustRepository" => "repository.trust",
         "EmergencyStop" => "session.control",
@@ -1731,6 +1736,14 @@ pub(crate) fn memory_item_view(v: &serde_json::Value) -> wire::MemoryItemView {
             .get("validated")
             .and_then(serde_json::Value::as_bool)
             .unwrap_or(false),
+        uses: v
+            .get("uses")
+            .and_then(serde_json::Value::as_u64)
+            .unwrap_or(0),
+        last_used_at_ms: v
+            .get("last_used_at_ms")
+            .and_then(serde_json::Value::as_i64)
+            .unwrap_or(0),
     }
 }
 
@@ -7494,6 +7507,29 @@ pub(crate) async fn handle_command_as(
             {
                 Ok((v, replayed)) => {
                     if v.changed {
+                        let latest = core.store.lock().await.last_offset().unwrap_or(0);
+                        core.last_offset.send_replace(latest);
+                    }
+                    accept(cid, replayed, v.encode_to_vec())
+                }
+                Err((code, msg)) => reject(cid, &code, msg),
+            }
+        }
+        "ShareMemory" => {
+            let Ok(p) = wire::ShareMemory::decode(env.payload.as_slice()) else {
+                return reject(cid, "BAD_PAYLOAD", "ShareMemory");
+            };
+            if p.memory_id.is_empty() || p.scope.is_empty() {
+                return reject(cid, "BAD_PAYLOAD", "memory_id and scope required");
+            }
+            let task = match memory_task(core, &cid, &env, p.task_id.as_ref(), true).await {
+                Ok(t) => t,
+                Err(ack) => return ack,
+            };
+            match crate::memory_commands::share(core, &task, &p, record("ShareMemory"), actor).await
+            {
+                Ok((v, replayed)) => {
+                    if v.outcome == "shared" {
                         let latest = core.store.lock().await.last_offset().unwrap_or(0);
                         core.last_offset.send_replace(latest);
                     }

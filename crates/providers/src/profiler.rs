@@ -22,6 +22,8 @@
 //! profiler is disabled, or the repository metadata is stale or missing, the
 //! answer is the conservative profile rather than a guess.
 
+// PX-168 lint policy: this file baselined expect/unwrap sites; new ones need review.
+#![allow(clippy::expect_used)]
 use serde::{Deserialize, Serialize};
 use sha2::{Digest, Sha256};
 

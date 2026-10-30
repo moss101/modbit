@@ -7,6 +7,8 @@
 //! tools consult for idempotency is the task's log: `ForgePullRequestOpened`
 //! / `ForgePullRequestUpdated` by key.
 
+// PX-168 lint policy: this file baselined expect/unwrap sites; new ones need review.
+#![allow(clippy::expect_used)]
 use std::sync::{Arc, Mutex};
 
 use modbit_domain::event::{Actor, AggregateType};

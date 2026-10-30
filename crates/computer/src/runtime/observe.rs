@@ -1,6 +1,8 @@
 //! Starting and ending a control session, and observing (PX-069, PX-076):
 //! applications, resolution, the accessibility tree, the screenshot, wait.
 
+// PX-168 lint policy: this file baselined expect/unwrap sites; new ones need review.
+#![allow(clippy::expect_used)]
 use std::time::{Duration, Instant};
 
 use modbit_domain::task::TaskEvent;

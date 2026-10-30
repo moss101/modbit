@@ -27,6 +27,8 @@
 //! description, an oversize and a too-deep schema, smuggled capability and
 //! system-prompt fields, and more tools than any host should keep.
 
+// PX-168 lint policy: this file baselined expect/unwrap sites; new ones need review.
+#![allow(clippy::expect_used)]
 use std::collections::BTreeMap;
 use std::io::{BufRead, Write};
 use std::sync::atomic::{AtomicBool, Ordering};

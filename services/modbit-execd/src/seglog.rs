@@ -22,6 +22,8 @@
 //! The sealed `OutputRef` object is the retained bytes (`retained_from`
 //! says where they start), content-addressed in the Core's object store.
 
+// PX-168 lint policy: this file baselined expect/unwrap sites; new ones need review.
+#![allow(clippy::expect_used)]
 use std::fs::{File, OpenOptions};
 use std::io::{Read, Seek, SeekFrom, Write};
 use std::path::{Path, PathBuf};

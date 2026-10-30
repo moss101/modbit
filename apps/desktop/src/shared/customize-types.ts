@@ -124,3 +124,57 @@ export interface ImportReportInfo {
   quarantined: string;
   items: { kind: string; source: string; target: string; status: string; reason: string }[];
 }
+
+/** One memory item as the Memory view shows it (PX-188): source, scope and status are the Core's answers. */
+export interface MemoryRowInfo {
+  id: string;
+  /** kind:id of the scope the item lives in. */
+  scope: string;
+  recordType: string;
+  topic: string;
+  content: string;
+  /** user_stated | agent_observed | transcript_summary | ... */
+  source: string;
+  author: string;
+  sensitivity: string;
+  /** proposed | curated | superseded | expired */
+  status: string;
+  validated: boolean;
+}
+
+export interface MemoryView {
+  items: MemoryRowInfo[];
+  scopes: string[];
+}
+
+export interface MemoryForgetInfo {
+  memoryId: string;
+  changed: boolean;
+  status: string;
+}
+
+export interface MemoryShareInfo {
+  memoryId: string;
+  sharedMemoryId: string;
+  scope: string;
+  /** shared | refused | unknown */
+  outcome: string;
+  refusalCode: string;
+  refusalDetail: string;
+  existed: boolean;
+}
+
+export interface MemoryRememberInfo {
+  memoryId: string;
+  status: string;
+  scope: string;
+  existed: boolean;
+}
+
+export interface MemoryPromoteInfo {
+  memoryId: string;
+  /** curated | refused | unknown */
+  outcome: string;
+  refusalCode: string;
+  refusalDetail: string;
+}

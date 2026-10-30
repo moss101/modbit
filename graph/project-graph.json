@@ -35777,13 +35777,17 @@
    ],
    "task_card": "docs/62_PRODUCT_EXTENSION_REQUIREMENTS_TASKS_AND_QUALIFICATIONS.md#px-052",
    "audit_at_adoption": "DOCUMENTED-ONLY; no product caller present",
-   "status": "REAL_TESTING",
+   "status": "COMPLETE",
    "evidence": [
     "commit:d10d46d7",
     "run:38990216920",
     "test:services/modbit-core/tests/slash_inventory.rs::qual_px_052_the_slash_inventory_is_one_ordered_union_of_what_the_core_holds",
     "test:services/modbit-core/tests/surface_protocol.rs::qual_px_105_052_trust_by_hash_index_and_skill_load_reach_a_model_only_when_the_owner_says",
-    "test:apps/desktop/e2e/composer.spec.ts"
+    "test:apps/desktop/e2e/composer.spec.ts",
+    "run:40576148614",
+    "artifact:evidence/m10/PX-052/ci-run-40576148614.json",
+    "commit:1ce0b3e9",
+    "artifact:evidence/m10/PX-052/evidence.json"
    ],
    "notes": [
     {
@@ -35794,7 +35798,7 @@
     }
    ],
    "owner_agent": "graph-integrator",
-   "status_changed_on": "2026-10-17T06:34:55Z"
+   "status_changed_on": "2026-10-28T09:36:19Z"
   },
   {
    "id": "PX-053",
@@ -37515,8 +37519,15 @@
    ],
    "task_card": "docs/62_PRODUCT_EXTENSION_REQUIREMENTS_TASKS_AND_QUALIFICATIONS.md#px-105",
    "audit_at_adoption": "DOCUMENTED-ONLY; no product caller present",
-   "status": "NOT_STARTED",
-   "evidence": []
+   "status": "COMPLETE",
+   "evidence": [
+    "artifact:evidence/m10/PX-105/TASK_CARD.md",
+    "commit:24926b6b",
+    "run:40742315645",
+    "artifact:evidence/m10/PX-105/evidence.json",
+    "artifact:evidence/m10/PX-105/mutation-check.txt"
+   ],
+   "status_changed_on": "2026-10-28T20:02:08Z"
   },
   {
    "id": "PX-106",
@@ -37545,8 +37556,15 @@
    ],
    "task_card": "docs/62_PRODUCT_EXTENSION_REQUIREMENTS_TASKS_AND_QUALIFICATIONS.md#px-106",
    "audit_at_adoption": "DOCUMENTED-ONLY; no product caller present",
-   "status": "NOT_STARTED",
-   "evidence": []
+   "status": "COMPLETE",
+   "evidence": [
+    "artifact:evidence/m10/PX-106/TASK_CARD.md",
+    "commit:c8edbf5f",
+    "run:40742315645",
+    "artifact:evidence/m10/PX-106/evidence.json",
+    "artifact:evidence/m10/PX-106/mutation-check.txt"
+   ],
+   "status_changed_on": "2026-10-28T20:04:25Z"
   },
   {
    "id": "PX-107",
@@ -37940,13 +37958,17 @@
    ],
    "task_card": "docs/62_PRODUCT_EXTENSION_REQUIREMENTS_TASKS_AND_QUALIFICATIONS.md#px-115",
    "audit_at_adoption": "DOCUMENTED-ONLY; no product caller present",
-   "status": "REAL_TESTING",
+   "status": "COMPLETE",
    "evidence": [
     "commit:5774ec68",
     "run:38990216920",
     "test:services/modbit-core/tests/px_115_mcp.rs::qual_px_115_a_five_hundred_tool_catalog_lists_by_name_in_pages_with_no_schemas_and_bounded_latency",
     "test:services/modbit-core/tests/px_115_mcp.rs::qual_px_115_describe_returns_exactly_the_named_schemas_and_never_authorises_a_call",
-    "test:services/modbit-core/tests/px_115_mcp.rs::qual_px_115_list_changed_refreshes_the_catalog_without_a_restart"
+    "test:services/modbit-core/tests/px_115_mcp.rs::qual_px_115_list_changed_refreshes_the_catalog_without_a_restart",
+    "run:40576148614",
+    "artifact:evidence/m10/PX-115/ci-run-40576148614.json",
+    "commit:1ce0b3e9",
+    "artifact:evidence/m10/PX-115/evidence.json"
    ],
    "notes": [
     {
@@ -37957,7 +37979,7 @@
     }
    ],
    "owner_agent": "graph-integrator",
-   "status_changed_on": "2026-10-17T06:34:57Z"
+   "status_changed_on": "2026-10-28T09:36:19Z"
   },
   {
    "id": "PX-116",
@@ -39268,8 +39290,14 @@
    "related_requirements": [],
    "task_card": "docs/62_PRODUCT_EXTENSION_REQUIREMENTS_TASKS_AND_QUALIFICATIONS.md#px-155",
    "audit_at_adoption": "DOCUMENTED-ONLY; no product caller present",
-   "status": "NOT_STARTED",
-   "evidence": []
+   "status": "COMPLETE",
+   "evidence": [
+    "run:40636221020",
+    "artifact:evidence/m10/PX-155/ci-run-40636221020.json",
+    "commit:708854d3",
+    "artifact:evidence/m10/PX-155/evidence.json"
+   ],
+   "status_changed_on": "2026-10-28T09:36:27Z"
   },
   {
    "id": "PX-156",
@@ -39290,8 +39318,14 @@
    "related_requirements": [],
    "task_card": "docs/62_PRODUCT_EXTENSION_REQUIREMENTS_TASKS_AND_QUALIFICATIONS.md#px-156",
    "audit_at_adoption": "DOCUMENTED-ONLY; no product caller present",
-   "status": "NOT_STARTED",
-   "evidence": []
+   "status": "COMPLETE",
+   "evidence": [
+    "run:40636209456",
+    "artifact:evidence/m10/PX-156/ci-run-40636209456.json",
+    "commit:7d4537c3",
+    "artifact:evidence/m10/PX-156/evidence.json"
+   ],
+   "status_changed_on": "2026-10-28T09:36:28Z"
   },
   {
    "id": "PX-157",
@@ -39312,8 +39346,14 @@
    "related_requirements": [],
    "task_card": "docs/62_PRODUCT_EXTENSION_REQUIREMENTS_TASKS_AND_QUALIFICATIONS.md#px-157",
    "audit_at_adoption": "DOCUMENTED-ONLY; no product caller present",
-   "status": "NOT_STARTED",
-   "evidence": []
+   "status": "COMPLETE",
+   "evidence": [
+    "run:40636260752",
+    "artifact:evidence/m10/PX-157/ci-run-40636260752.json",
+    "commit:398fd685",
+    "artifact:evidence/m10/PX-157/evidence.json"
+   ],
+   "status_changed_on": "2026-10-28T09:36:28Z"
   },
   {
    "id": "PX-158",
@@ -39334,8 +39374,9 @@
    "related_requirements": [],
    "task_card": "docs/62_PRODUCT_EXTENSION_REQUIREMENTS_TASKS_AND_QUALIFICATIONS.md#px-158",
    "audit_at_adoption": "DOCUMENTED-ONLY; no product caller present",
-   "status": "NOT_STARTED",
-   "evidence": []
+   "status": "WIRED",
+   "evidence": [],
+   "status_changed_on": "2026-10-28T09:42:38Z"
   },
   {
    "id": "PX-159",
@@ -39356,8 +39397,14 @@
    "related_requirements": [],
    "task_card": "docs/62_PRODUCT_EXTENSION_REQUIREMENTS_TASKS_AND_QUALIFICATIONS.md#px-159",
    "audit_at_adoption": "DOCUMENTED-ONLY; no product caller present",
-   "status": "NOT_STARTED",
-   "evidence": []
+   "status": "COMPLETE",
+   "evidence": [
+    "run:40636236316",
+    "artifact:evidence/m10/PX-159/ci-run-40636236316.json",
+    "commit:398fd685",
+    "artifact:evidence/m10/PX-159/evidence.json"
+   ],
+   "status_changed_on": "2026-10-28T09:36:28Z"
   },
   {
    "id": "PX-161",
@@ -39378,8 +39425,15 @@
    "related_requirements": [],
    "task_card": "docs/62_PRODUCT_EXTENSION_REQUIREMENTS_TASKS_AND_QUALIFICATIONS.md#px-161",
    "audit_at_adoption": "DOCUMENTED-ONLY; no product caller present",
-   "status": "NOT_STARTED",
-   "evidence": []
+   "status": "COMPLETE",
+   "evidence": [
+    "artifact:evidence/m10/PX-161/TASK_CARD.md",
+    "commit:1124f5fa",
+    "run:40777489593",
+    "artifact:evidence/m10/PX-161/mutation-check.txt",
+    "artifact:evidence/m10/PX-161/evidence.json"
+   ],
+   "status_changed_on": "2026-10-28T23:30:28Z"
   },
   {
    "id": "PX-162",
@@ -39400,8 +39454,13 @@
    "related_requirements": [],
    "task_card": "docs/62_PRODUCT_EXTENSION_REQUIREMENTS_TASKS_AND_QUALIFICATIONS.md#px-162",
    "audit_at_adoption": "DOCUMENTED-ONLY; no product caller present",
-   "status": "NOT_STARTED",
-   "evidence": []
+   "status": "COMPLETE",
+   "evidence": [
+    "run:40808930739",
+    "artifact:evidence/m10/PX-162/evidence.json",
+    "commit:6e2bb4b6"
+   ],
+   "status_changed_on": "2026-10-29T04:12:06Z"
   },
   {
    "id": "PX-167",
@@ -39422,8 +39481,14 @@
    "related_requirements": [],
    "task_card": "docs/62_PRODUCT_EXTENSION_REQUIREMENTS_TASKS_AND_QUALIFICATIONS.md#px-167",
    "audit_at_adoption": "DOCUMENTED-ONLY; no product caller present",
-   "status": "NOT_STARTED",
-   "evidence": []
+   "status": "COMPLETE",
+   "evidence": [
+    "run:40679469851",
+    "artifact:evidence/m10/PX-167/ci-run-40679469851.json",
+    "commit:eb336971",
+    "artifact:evidence/m10/PX-167/evidence.json"
+   ],
+   "status_changed_on": "2026-10-28T12:33:17Z"
   },
   {
    "id": "PX-168",
@@ -39444,8 +39509,13 @@
    "related_requirements": [],
    "task_card": "docs/62_PRODUCT_EXTENSION_REQUIREMENTS_TASKS_AND_QUALIFICATIONS.md#px-168",
    "audit_at_adoption": "DOCUMENTED-ONLY; no product caller present",
-   "status": "NOT_STARTED",
-   "evidence": []
+   "status": "COMPLETE",
+   "evidence": [
+    "run:40703198985",
+    "artifact:evidence/m10/PX-168/evidence.json",
+    "commit:7d877129"
+   ],
+   "status_changed_on": "2026-10-28T15:34:27Z"
   },
   {
    "id": "PX-171",
@@ -39466,8 +39536,14 @@
    "related_requirements": [],
    "task_card": "docs/62_PRODUCT_EXTENSION_REQUIREMENTS_TASKS_AND_QUALIFICATIONS.md#px-171",
    "audit_at_adoption": "DOCUMENTED-ONLY; no product caller present",
-   "status": "NOT_STARTED",
-   "evidence": []
+   "status": "COMPLETE",
+   "evidence": [
+    "run:40636189116",
+    "artifact:evidence/m10/PX-171/ci-run-40636189116.json",
+    "commit:2647ea12",
+    "artifact:evidence/m10/PX-171/evidence.json"
+   ],
+   "status_changed_on": "2026-10-28T09:36:29Z"
   },
   {
    "id": "PX-174",
@@ -39511,8 +39587,13 @@
    "related_requirements": [],
    "task_card": "docs/62_PRODUCT_EXTENSION_REQUIREMENTS_TASKS_AND_QUALIFICATIONS.md#px-176",
    "audit_at_adoption": "DOCUMENTED-ONLY; no product caller present",
-   "status": "NOT_STARTED",
-   "evidence": []
+   "status": "COMPLETE",
+   "evidence": [
+    "run:40817515703",
+    "artifact:evidence/m10/PX-176/evidence.json",
+    "commit:e087852f"
+   ],
+   "status_changed_on": "2026-10-29T05:58:14Z"
   },
   {
    "id": "PX-177",
@@ -39600,8 +39681,14 @@
    "related_requirements": [],
    "task_card": "docs/62_PRODUCT_EXTENSION_REQUIREMENTS_TASKS_AND_QUALIFICATIONS.md#px-182",
    "audit_at_adoption": "DOCUMENTED-ONLY; no product caller present",
-   "status": "NOT_STARTED",
-   "evidence": []
+   "status": "COMPLETE",
+   "evidence": [
+    "run:40636271638",
+    "artifact:evidence/m10/PX-182/ci-run-40636271638.json",
+    "commit:398fd685",
+    "artifact:evidence/m10/PX-182/evidence.json"
+   ],
+   "status_changed_on": "2026-10-28T09:36:29Z"
   },
   {
    "id": "PX-183",
@@ -39622,8 +39709,14 @@
    "related_requirements": [],
    "task_card": "docs/62_PRODUCT_EXTENSION_REQUIREMENTS_TASKS_AND_QUALIFICATIONS.md#px-183",
    "audit_at_adoption": "DOCUMENTED-ONLY; no product caller present",
-   "status": "NOT_STARTED",
-   "evidence": []
+   "status": "COMPLETE",
+   "evidence": [
+    "run:40636265904",
+    "artifact:evidence/m10/PX-183/ci-run-40636265904.json",
+    "commit:b99a4632",
+    "artifact:evidence/m10/PX-183/evidence.json"
+   ],
+   "status_changed_on": "2026-10-28T09:36:30Z"
   },
   {
    "id": "PX-184",
@@ -39690,8 +39783,15 @@
    "related_requirements": [],
    "task_card": "docs/62_PRODUCT_EXTENSION_REQUIREMENTS_TASKS_AND_QUALIFICATIONS.md#px-188",
    "audit_at_adoption": "DOCUMENTED-ONLY; no product caller present",
-   "status": "NOT_STARTED",
-   "evidence": []
+   "status": "COMPLETE",
+   "evidence": [
+    "commit:HEAD",
+    "commit:0d2525b1",
+    "run:40742315645",
+    "artifact:evidence/m10/PX-188/evidence.json",
+    "artifact:evidence/m10/PX-188/ci-run-40742315645.json"
+   ],
+   "status_changed_on": "2026-10-28T19:57:08Z"
   },
   {
    "id": "PX-189",
@@ -39712,8 +39812,14 @@
    "related_requirements": [],
    "task_card": "docs/62_PRODUCT_EXTENSION_REQUIREMENTS_TASKS_AND_QUALIFICATIONS.md#px-189",
    "audit_at_adoption": "DOCUMENTED-ONLY; no product caller present",
-   "status": "NOT_STARTED",
-   "evidence": []
+   "status": "COMPLETE",
+   "evidence": [
+    "run:40636280892",
+    "artifact:evidence/m10/PX-189/ci-run-40636280892.json",
+    "commit:398fd685",
+    "artifact:evidence/m10/PX-189/evidence.json"
+   ],
+   "status_changed_on": "2026-10-28T09:36:30Z"
   },
   {
    "id": "QUAL-PX-000",
@@ -44235,13 +44341,8 @@
    "subsystem": "governance",
    "source": "docs/97_DOSSIER_MAINTENANCE_LOG.md",
    "acceptance": "The PX-189 task card names crates/core-runtime/src/trajectory.rs in its production wiring and says the producer is its caller; no requirement row, disposition, owner, task, qualification, gate, release rule or product status changes; full integrity gate passes; no product proof",
-   "status": "REAL_TESTING",
-   "evidence": [
-    "artifact:evidence/dossier-gov-008/validation.json",
-    "artifact:evidence/dossier-gov-008/tests.log"
-   ],
-   "owner_agent": "claude",
-   "status_changed_on": "2026-10-29T21:25:43Z"
+   "status": "NOT_STARTED",
+   "evidence": []
   },
   {
    "id": "ALPHA",

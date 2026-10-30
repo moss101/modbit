@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
-import { budgetText, extensionState, lastResult, offersCatalog, offersRevoke, offersTrust, refusalWords, scopeWords, serverWords, shareText, shortHash, trustWords, whyLocked } from "./customize-model.ts";
+import { budgetText, extensionState, lastResult, offersCatalog, offersRevoke, offersShare, memoryWhere, shareWords, offersTrust, refusalWords, scopeWords, serverWords, shareText, shortHash, trustWords, whyLocked } from "./customize-model.ts";
 
 test("PX-106: Trust is offered only where a trust decision can change something, and Revoke only for the owner's own", () => {
   assert.equal(offersTrust({ trust: "UNTRUSTED", scope: "USER" }), true);
@@ -36,4 +36,14 @@ test("PX-106: no label offers a catalog, an install from the network or an updat
   const ok = ["Trust this version", "Revoke", "Open source", "Switch off", "Switch on", "Unload", "Trust this manifest", "Import another agent's configuration…", "Refresh", "Close"];
   assert.deepEqual(offersCatalog(ok), []);
   for (const bad of ["Browse the marketplace", "Install from URL", "Update all", "Download", "Skill catalog", "Discover extensions"]) assert.deepEqual(offersCatalog([bad]), [bad], bad);
+});
+
+test("PX-188: Share is offered for live private items only, and the words say where an item lives and came from", () => {
+  assert.equal(offersShare({ scope: "user:u1", status: "curated" }), true);
+  assert.equal(offersShare({ scope: "session:s", status: "proposed" }), true);
+  assert.equal(offersShare({ scope: "organization:t", status: "curated" }), false, "already broad");
+  assert.equal(offersShare({ scope: "user:u1", status: "superseded" }), false, "not live");
+  assert.equal(memoryWhere({ scope: "agent_profile:p", source: "agent_observed", author: "agent:x", status: "proposed" }), "agent profile scope · from agent observed by agent:x · proposed");
+  assert.match(shareWords({ outcome: "shared", refusalCode: "", scope: "organization:t", existed: false }), /personal detail removed/);
+  assert.match(shareWords({ outcome: "refused", refusalCode: "SHARE_NOT_OWNER", scope: "", existed: false }), /SHARE_NOT_OWNER/);
 });

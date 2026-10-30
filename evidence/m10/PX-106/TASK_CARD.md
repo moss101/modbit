@@ -36,3 +36,7 @@
 - Hooks are listed for a task (they are resolved from its pinned configuration); the view uses the open or most recent task.
 - The live gateway leg is not run; macOS only; unpackaged build.
 - The Core's `ListSkills` index share is displayed as the Core costs it; this task did not change the index or `skill.load` (PX-105's).
+
+## Seal note (2026-10-28)
+
+The caveat in the Identity section ("COMPLETE is not claimed: prerequisite PX-105 is NOT_STARTED") is superseded: PX-105 and PX-052 are COMPLETE in the graph, and the `apps/cli` skill verbs exist (`apps/cli/tests/px_105_skill_cli.rs`), so "trusting by hash changes the CLI state too" holds. CI run 40742315645 passes `px-106-customize.spec.ts` (six tests, including the axe pass) on the real Electron app against the real Core, on macOS, Ubuntu and Windows.

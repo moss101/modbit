@@ -33,6 +33,8 @@
 //! The broker is memory-only by design: a restarted Core has no grants, which
 //! is revocation by construction; a credential must be configured again.
 
+// PX-168 lint policy: this file baselined expect/unwrap sites; new ones need review.
+#![allow(clippy::expect_used)]
 use std::collections::{BTreeMap, HashMap, HashSet, VecDeque};
 use std::fmt;
 use std::sync::{Arc, Mutex};

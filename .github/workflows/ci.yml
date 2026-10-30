@@ -359,9 +359,29 @@ jobs:
           python3 tools/ci_label.py --self-test
           python3 tools/support_claims.py
 
+  supply-chain:
+    name: supply chain (advisories, licenses, unused crates; PX-167)
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
+      - name: Install pinned Rust toolchain (rust-toolchain.toml)
+        run: rustup show
+      - uses: Swatinem/rust-cache@6323deb102c322ba6fcbdcafc7e3dddab59af2b6 # v2
+      - name: Install cargo-deny and cargo-machete
+        run: cargo install cargo-deny cargo-machete --locked
+      - name: Advisories, yanked crates, licenses, bans and sources (deny.toml)
+        run: cargo deny check
+      - name: Every advisory ignore and its reason
+        run: grep -A1 'RUSTSEC' deny.toml | grep -E 'id =' || true
+      - name: No unused dependency beyond the recorded baseline
+        run: tools/check_unused_crates.sh
+      - name: Product-code lint policy (PX-168; unwrap/expect, lock across await, raw spawn)
+        run: tools/lint_policy.sh
+
   ci-compatible:
     name: CI_COMPATIBLE summary (not release-grade)
-    needs: [rust, node, cloud, desktop-e2e, protocol-roundtrip, locked-files, dossier]
+    needs: [rust, node, cloud, desktop-e2e, protocol-roundtrip, locked-files, dossier, supply-chain]
     # Runs whatever happened upstream, so a failed platform suite is named
     # here and fails this job too — the label is earned, never assumed.
     if: always()

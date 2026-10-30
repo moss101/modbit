@@ -28,6 +28,8 @@
 //!   step of the dispatch is idempotent on ids derived from the firing's key,
 //!   so a Core that dies at any point finishes it once on the next start.
 
+// PX-168 lint policy: this file baselined expect/unwrap sites; new ones need review.
+#![allow(clippy::expect_used)]
 use std::collections::HashSet;
 use std::sync::Arc;
 use std::sync::atomic::{AtomicI64, Ordering};

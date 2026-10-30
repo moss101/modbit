@@ -224,6 +224,97 @@ pub enum Status {
     Expired,
 }
 
+/// The marker that stands where personal detail was removed.
+pub const PERSONAL_REDACTED: &str = "[personal]";
+
+/// Remove user-specific detail from text before it reaches a shared scope
+/// (PX-188): email addresses, phone numbers, and the account name inside a
+/// home-directory path (`/Users/<name>/`, `/home/<name>/`,
+/// `C:\\Users\\<name>\\`). Everything else is untouched, so ordinary
+/// text keeps its meaning. Pure and idempotent.
+#[must_use]
+pub fn redact_personal(text: &str) -> String {
+    let mut out = String::with_capacity(text.len());
+    let chars: Vec<char> = text.chars().collect();
+    let mut i = 0;
+    while i < chars.len() {
+        let rest: String = chars[i..].iter().take(12).collect();
+        // A home directory: keep the prefix, drop the account name.
+        let prefix = ["/Users/", "/home/", "C:\\Users\\", "c:\\users\\"]
+            .into_iter()
+            .find(|p| rest.starts_with(p));
+        if let Some(p) = prefix {
+            let sep = if p.contains('\\') { '\\' } else { '/' };
+            let start = i + p.chars().count();
+            let mut j = start;
+            while j < chars.len() && chars[j] != sep && !chars[j].is_whitespace() {
+                j += 1;
+            }
+            if j > start && chars[start..j].iter().collect::<String>() != PERSONAL_REDACTED {
+                out.push_str(p);
+                out.push_str(PERSONAL_REDACTED);
+                i = j;
+                continue;
+            }
+        }
+        // An email address: a word run around an '@' with a dotted domain.
+        if chars[i] == '@' && i > 0 {
+            let mut a = i;
+            while a > 0 && is_local(chars[a - 1]) {
+                a -= 1;
+            }
+            let mut b = i + 1;
+            while b < chars.len() && (chars[b].is_alphanumeric() || matches!(chars[b], '.' | '-')) {
+                b += 1;
+            }
+            while b > i + 1 && chars[b - 1] == '.' {
+                b -= 1;
+            }
+            let domain: String = chars[i + 1..b].iter().collect();
+            if a < i && domain.contains('.') && !domain.starts_with('.') {
+                let kept = out.chars().count() - (i - a);
+                out = out.chars().take(kept).collect();
+                out.push_str(PERSONAL_REDACTED);
+                i = b;
+                continue;
+            }
+        }
+        // A phone number: 9+ digits across digits, spaces, dashes, dots,
+        // parentheses and an optional leading plus.
+        if chars[i].is_ascii_digit()
+            || (chars[i] == '+' && chars.get(i + 1).is_some_and(char::is_ascii_digit))
+        {
+            let mut j = i;
+            let mut digits = 0;
+            while j < chars.len()
+                && (chars[j].is_ascii_digit()
+                    || matches!(chars[j], ' ' | '-' | '.' | '(' | ')' | '+'))
+            {
+                if chars[j].is_ascii_digit() {
+                    digits += 1;
+                }
+                j += 1;
+            }
+            while j > i && !chars[j - 1].is_ascii_digit() {
+                j -= 1;
+            }
+            let dotted_version = chars[i..j].iter().all(|c| c.is_ascii_digit() || *c == '.');
+            if digits >= 9 && !dotted_version {
+                out.push_str(PERSONAL_REDACTED);
+                i = j;
+                continue;
+            }
+        }
+        out.push(chars[i]);
+        i += 1;
+    }
+    out
+}
+
+fn is_local(c: char) -> bool {
+    c.is_alphanumeric() || matches!(c, '.' | '_' | '+' | '-' | '%')
+}
+
 /// One governed engineering-memory item (docs/19: every field an item
 /// stores). Values are the item's own; the store adds nothing implicit.
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
@@ -375,6 +466,34 @@ impl MemoryItem {
             }
         }
         Ok(next)
+    }
+
+    /// The item as it is stored when a person shares it into a broader scope
+    /// (PX-188): the same knowledge with personal detail removed
+    /// ([`redact_personal`]), a new proposal in `target` (content-addressed
+    /// there), authored by the sharer, and never validated by the act of
+    /// sharing. The source item's id stays with the caller, which records it
+    /// on the event so the link back is kept. `None` when `target` is not
+    /// broader than the item's own scope (a share only widens).
+    #[must_use]
+    pub fn shared_as(&self, target: Scope, author: &str, now_ms: i64) -> Option<Self> {
+        if target.rank() <= self.scope.rank() {
+            return None;
+        }
+        let mut out = MemoryItem::propose(
+            target,
+            self.record_type,
+            redact_personal(&self.topic),
+            redact_personal(&self.content),
+            self.source,
+            author,
+            self.confidence,
+            now_ms,
+        );
+        out.sensitivity = self.sensitivity;
+        out.expires_at_ms = self.expires_at_ms;
+        out.last_validation_revision = self.last_validation_revision.clone();
+        Some(out)
     }
 
     /// The key an item occupies within its scope: scope + record type +
@@ -1399,5 +1518,48 @@ mod tests {
             ),
             Err(EditRefusal::Empty)
         );
+    }
+
+    #[test]
+    fn personal_detail_is_removed_and_ordinary_text_is_not() {
+        let t = "Mail jane.doe+ci@example.co.uk or call +1 (415) 555-0132; \
+                 the key is in /Users/jane/work/app and C:\\Users\\jane\\app";
+        let r = redact_personal(t);
+        for gone in ["jane", "example.co.uk", "555-0132"] {
+            assert!(!r.contains(gone), "{gone} survived: {r}");
+        }
+        assert!(r.contains("/Users/[personal]/work/app"), "{r}");
+        assert!(r.contains("C:\\Users\\[personal]\\app"), "{r}");
+        // Not personal: a version, a port, a bare @, prose.
+        let plain = "Use node 20.11.1 on port 8080; the @types scope is fine; run cargo test.";
+        assert_eq!(redact_personal(plain), plain);
+        assert_eq!(redact_personal(&r), r, "idempotent");
+    }
+
+    #[test]
+    fn a_share_widens_redacts_and_never_validates() {
+        let mine = MemoryItem::propose(
+            Scope::User { id: "u1".into() },
+            RecordType::UserPreference,
+            "contact",
+            "Reach me at jane@example.com about releases",
+            Source::UserStated,
+            "user:u1",
+            0.9,
+            1,
+        );
+        let space = Scope::Space { id: "s1".into() };
+        let shared = mine.shared_as(space.clone(), "user:u1", 5).unwrap();
+        assert_eq!(shared.scope, space);
+        assert_eq!(shared.content, "Reach me at [personal] about releases");
+        assert!(!shared.validated);
+        assert_eq!(shared.status, Status::Proposed);
+        assert_ne!(shared.id, mine.id);
+        // A share only widens.
+        assert!(
+            mine.shared_as(Scope::Run { id: "r".into() }, "user:u1", 5)
+                .is_none()
+        );
+        assert!(mine.shared_as(mine.scope.clone(), "user:u1", 5).is_none());
     }
 }

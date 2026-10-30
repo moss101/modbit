@@ -1,0 +1,29 @@
+=== BASELINE memory_graph_index qual_px_157
+test qual_px_157_a_secret_in_a_proposal_is_redacted_or_refused_and_ordinary_text_is_kept ... ok
+test qual_px_157_each_prompt_that_injects_an_item_counts_once_and_a_restart_rebuilds_it ... ok
+test result: ok. 2 passed; 0 failed; 0 ignored; 0 measured; 15 filtered out; finished in 2.52s
+exit=0
+=== MUTATION no-screen: a proposal is stored without passing the redactor (services/modbit-core/src/memory.rs)
+test qual_px_157_a_secret_in_a_proposal_is_redacted_or_refused_and_ordinary_text_is_kept ... FAILED
+test qual_px_157_each_prompt_that_injects_an_item_counts_once_and_a_restart_rebuilds_it ... ok
+test result: FAILED. 1 passed; 1 failed; 0 ignored; 0 measured; 15 filtered out; finished in 2.60s
+error: test failed, to rerun pass `-p modbit-core --test memory_graph_index`
+exit=101 (KILLED)
+=== MUTATION header-only: the private-key shape matches the header, not the block (crates/secrets/src/redact.rs)
+test qual_px_157_a_secret_in_a_proposal_is_redacted_or_refused_and_ordinary_text_is_kept ... FAILED
+test qual_px_157_each_prompt_that_injects_an_item_counts_once_and_a_restart_rebuilds_it ... ok
+test result: FAILED. 1 passed; 1 failed; 0 ignored; 0 measured; 15 filtered out; finished in 2.59s
+error: test failed, to rerun pass `-p modbit-core --test memory_graph_index`
+exit=101 (KILLED)
+=== MUTATION no-use-record: the prompt's injected items are not recorded (services/modbit-core/src/runtime.rs)
+test qual_px_157_a_secret_in_a_proposal_is_redacted_or_refused_and_ordinary_text_is_kept ... ok
+test qual_px_157_each_prompt_that_injects_an_item_counts_once_and_a_restart_rebuilds_it ... FAILED
+test result: FAILED. 1 passed; 1 failed; 0 ignored; 0 measured; 15 filtered out; finished in 2.58s
+error: test failed, to rerun pass `-p modbit-core --test memory_graph_index`
+exit=101 (KILLED)
+=== MUTATION projection-rejects-use: MemoryUsed falls through to the row upsert (crates/event-store/src/projections.rs)
+test qual_px_157_a_secret_in_a_proposal_is_redacted_or_refused_and_ordinary_text_is_kept ... ok
+test qual_px_157_each_prompt_that_injects_an_item_counts_once_and_a_restart_rebuilds_it ... FAILED
+test result: FAILED. 1 passed; 1 failed; 0 ignored; 0 measured; 15 filtered out; finished in 2.63s
+error: test failed, to rerun pass `-p modbit-core --test memory_graph_index`
+exit=101 (KILLED)

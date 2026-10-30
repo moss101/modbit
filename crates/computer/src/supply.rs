@@ -33,6 +33,8 @@
 //! waiting for a live control session) is the application updater's (M10.2);
 //! the interface it needs from here is "verify this directory" ([`plan`]).
 
+// PX-168 lint policy: this file spawns processes and baselined expect/unwrap sites; new ones need review.
+#![allow(clippy::disallowed_methods, clippy::expect_used)]
 use std::fmt;
 use std::path::{Path, PathBuf};
 use std::process::Command;

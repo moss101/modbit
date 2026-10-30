@@ -966,6 +966,48 @@ pub struct Rejection {
     pub error: SkillError,
 }
 
+/// Words a ranking compares: lower-case runs of letters and digits of three
+/// or more characters, without a few function words, with a plural or verb
+/// ending taken off so "linter", "lints" and "lint" meet.
+fn rank_words(text: &str) -> std::collections::BTreeSet<String> {
+    const STOP: &[&str] = &[
+        "the", "and", "for", "with", "that", "this", "from", "into", "your", "you", "are", "was",
+        "will", "can", "all", "any", "not", "but", "our", "its", "use", "when", "what", "how",
+        "has", "have", "then", "than", "them", "they", "out", "one",
+    ];
+    text.split(|c: char| !c.is_alphanumeric())
+        .map(str::to_lowercase)
+        .filter(|w| w.chars().count() >= 3 && !STOP.contains(&w.as_str()))
+        .map(|w| {
+            for end in ["ing", "ers", "er", "es", "ed", "s"] {
+                if w.chars().count() > end.len() + 3 && w.ends_with(end) {
+                    return w[..w.len() - end.len()].to_owned();
+                }
+            }
+            w
+        })
+        .collect()
+}
+
+/// How well a skill matches a goal (PX-183), for ordering the index the
+/// model reads within its budget: the distinct goal words a trigger phrase
+/// shares count five each, the name's three each and the description's one
+/// each. Lexical and deterministic: the same goal and manifest always give
+/// the same score, and a skill no word of the goal touches scores 0. It
+/// ranks; it never selects, trusts or enables.
+#[must_use]
+pub fn relevance(goal: &str, manifest: &SkillManifest) -> u32 {
+    let goal = rank_words(goal);
+    if goal.is_empty() {
+        return 0;
+    }
+    let shared = |text: &str| -> u32 {
+        u32::try_from(rank_words(text).intersection(&goal).count()).unwrap_or(u32::MAX)
+    };
+    let triggers = shared(&manifest.triggers.join(" "));
+    5 * triggers + 3 * shared(&manifest.name) + shared(&manifest.description)
+}
+
 /// Select skills for a task: the explicit names first (refused with a
 /// reason when unknown or not enabled), then every enabled, model-invocable
 /// skill one of whose trigger phrases occurs in the goal.
@@ -1052,6 +1094,60 @@ pub struct CompiledSkill {
     pub procedures: Vec<(String, String)>,
     /// Resources, by reference.
     pub resources: Vec<ResourceRef>,
+    /// Its tool-bound guidance blocks (PX-182), in body order: the tool each
+    /// is bound to and whether this compilation kept it.
+    #[serde(default)]
+    pub guidance: Vec<(String, bool)>,
+}
+
+/// The fence that opens a guidance block bound to one tool or capability:
+/// `<!-- modbit:tool NAME -->`, closed by [`GUIDANCE_CLOSE`].
+pub const GUIDANCE_OPEN: &str = "<!-- modbit:tool ";
+/// The fence that closes a guidance block.
+pub const GUIDANCE_CLOSE: &str = "<!-- /modbit:tool -->";
+
+/// The body with its guidance blocks resolved against the tools a task is
+/// offered (PX-182): a block bound to a tool the projection holds (the tool
+/// itself or one under it, `git` for `git.diff`) is kept without its fences;
+/// any other block is dropped whole, so no guidance names a tool the task
+/// cannot call. Text outside blocks is kept as it is; an unclosed block runs
+/// to the end. Pure: the same body and tools give the same text.
+#[must_use]
+pub fn bind_guidance(body: &str, projection: &[String]) -> (String, Vec<(String, bool)>) {
+    let offered = |tool: &str| {
+        projection
+            .iter()
+            .any(|p| p == tool || p.starts_with(&format!("{tool}.")))
+    };
+    let mut out = String::new();
+    let mut blocks = Vec::new();
+    let mut rest = body;
+    while let Some(at) = rest.find(GUIDANCE_OPEN) {
+        out.push_str(&rest[..at]);
+        let after = &rest[at + GUIDANCE_OPEN.len()..];
+        let Some(head_end) = after.find("-->") else {
+            out.push_str(&rest[at..]);
+            rest = "";
+            break;
+        };
+        let tool = after[..head_end].trim().to_owned();
+        let inner_start = &after[head_end + 3..];
+        let (inner, next) = match inner_start.find(GUIDANCE_CLOSE) {
+            Some(end) => (
+                &inner_start[..end],
+                &inner_start[end + GUIDANCE_CLOSE.len()..],
+            ),
+            None => (inner_start, ""),
+        };
+        let kept = !tool.is_empty() && offered(&tool);
+        if kept {
+            out.push_str(inner.trim_matches('\n'));
+        }
+        blocks.push((tool, kept));
+        rest = next;
+    }
+    out.push_str(rest);
+    (out, blocks)
 }
 
 /// Compile a skill against the tools the task may use at most (its policy
@@ -1060,9 +1156,10 @@ pub struct CompiledSkill {
 /// given — a skill never widens what the task may do (docs/16).
 #[must_use]
 pub fn compile(skill: &SkillPackage, projection: &[String], budget_bytes: usize) -> CompiledSkill {
+    let (body, guidance) = bind_guidance(&skill.instructions, projection);
     let mut instructions = format!(
         "# Skill: {} v{}\n{}\n\n{}",
-        skill.manifest.name, skill.manifest.version, skill.manifest.description, skill.instructions
+        skill.manifest.name, skill.manifest.version, skill.manifest.description, body
     );
     let mut truncated = false;
     if instructions.len() > budget_bytes {
@@ -1124,6 +1221,7 @@ pub fn compile(skill: &SkillPackage, projection: &[String], budget_bytes: usize)
             .map(|p| (p.name.clone(), p.hash.clone()))
             .collect(),
         resources: skill.resources.clone(),
+        guidance,
     }
 }
 
@@ -1267,4 +1365,59 @@ fn copy_tree(from: &Path, to: &Path) -> Result<(), SkillError> {
         }
     }
     Ok(())
+}
+
+#[cfg(test)]
+mod relevance_tests {
+    use super::{parse_skill_md, relevance};
+
+    fn manifest(front: &str) -> super::SkillManifest {
+        parse_skill_md(&format!(
+            "---\nname: lint-fixer\nversion: 1.0.0\n{front}\n---\nbody\n"
+        ))
+        .unwrap()
+        .0
+    }
+
+    #[test]
+    fn a_goal_scores_a_skill_by_shared_words_and_the_score_is_stable() {
+        let m =
+            manifest("description: fix the warnings a linter reports\ntriggers: [\"lint fix\"]");
+        let goal = "the linter warns; fix the warnings";
+        let s = relevance(goal, &m);
+        assert!(s > 0);
+        assert_eq!(s, relevance(goal, &m), "deterministic");
+        assert_eq!(relevance("rotate the certificates", &m), 0);
+        assert_eq!(relevance("", &m), 0);
+        // A trigger word outweighs a description word.
+        let by_trigger = manifest("description: something else\ntriggers: [\"lint\"]");
+        let by_description = manifest("description: lint\ntriggers: []");
+        assert!(relevance("lint", &by_trigger) > relevance("lint", &by_description));
+    }
+}
+
+#[cfg(test)]
+mod guidance_tests {
+    use super::bind_guidance;
+
+    #[test]
+    fn a_block_is_kept_only_for_an_offered_tool_and_the_result_is_stable() {
+        let body = "a\n<!-- modbit:tool git -->\nGIT\n<!-- /modbit:tool -->\nb\n<!-- modbit:tool shell.exec -->\nSHELL\n<!-- /modbit:tool -->\nc";
+        let tools = vec!["git.diff".to_owned(), "fs.read".to_owned()];
+        let (text, blocks) = bind_guidance(body, &tools);
+        assert_eq!(text, "a\nGIT\nb\n\nc");
+        assert_eq!(
+            blocks,
+            vec![("git".to_owned(), true), ("shell.exec".to_owned(), false)]
+        );
+        assert_eq!(bind_guidance(body, &tools), (text, blocks), "deterministic");
+        let (plain, none) = bind_guidance("no blocks here", &tools);
+        assert_eq!((plain.as_str(), none.len()), ("no blocks here", 0));
+        let (open, b) = bind_guidance("x <!-- modbit:tool nope -->\nrest", &tools);
+        assert_eq!(
+            (open.as_str(), b.len()),
+            ("x ", 1),
+            "an unclosed block for an absent tool drops to the end"
+        );
+    }
 }

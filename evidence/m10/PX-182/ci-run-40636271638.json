@@ -1,0 +1,1915 @@
+{
+ "conclusion": "success",
+ "databaseId": 40636271638,
+ "headSha": "03a5c0948311c074e8b9dc7c35f5b1fc66107c4d",
+ "jobs": [
+  {
+   "completedAt": "2026-10-28T06:04:32Z",
+   "conclusion": "success",
+   "databaseId": 122643851187,
+   "name": "cloud CI_COMPATIBLE (ubuntu-latest, real Postgres and S3-compatible storage)",
+   "startedAt": "2026-10-28T05:55:41Z",
+   "status": "completed",
+   "steps": [
+    {
+     "completedAt": "2026-10-28T05:55:43Z",
+     "conclusion": "success",
+     "name": "Set up job",
+     "number": 1,
+     "startedAt": "2026-10-28T05:55:42Z",
+     "status": "completed"
+    },
+    {
+     "completedAt": "2026-10-28T05:55:46Z",
+     "conclusion": "success",
+     "name": "Run actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09",
+     "number": 2,
+     "startedAt": "2026-10-28T05:55:43Z",
+     "status": "completed"
+    },
+    {
+     "completedAt": "2026-10-28T05:55:55Z",
+     "conclusion": "success",
+     "name": "Install pinned Rust toolchain (rust-toolchain.toml)",
+     "number": 3,
+     "startedAt": "2026-10-28T05:55:46Z",
+     "status": "completed"
+    },
+    {
+     "completedAt": "2026-10-28T05:56:20Z",
+     "conclusion": "success",
+     "name": "Run Swatinem/rust-cache@6323deb102c322ba6fcbdcafc7e3dddab59af2b6",
+     "number": 4,
+     "startedAt": "2026-10-28T05:55:55Z",
+     "status": "completed"
+    },
+    {
+     "completedAt": "2026-10-28T05:56:44Z",
+     "conclusion": "success",
+     "name": "Start Postgres 16 and SeaweedFS S3 (docs/24 \u2014 Postgres and S3-compatible object storage)",
+     "number": 5,
+     "startedAt": "2026-10-28T05:56:20Z",
+     "status": "completed"
+    },
+    {
+     "completedAt": "2026-10-28T05:57:47Z",
+     "conclusion": "success",
+     "name": "Build the real modbit-core the cloud worker hosts (M8.2) and the guest the reference backend runs (M8.3)",
+     "number": 6,
+     "startedAt": "2026-10-28T05:56:44Z",
+     "status": "completed"
+    },
+    {
+     "completedAt": "2026-10-28T05:57:53Z",
+     "conclusion": "success",
+     "name": "Sandbox substrate (M8.3) \u2014 Firecracker v1.17.0, the Firecracker CI kernel 6.1.155, BusyBox 1.35.0, pinned and checksummed; KVM for the runner",
+     "number": 7,
+     "startedAt": "2026-10-28T05:57:47Z",
+     "status": "completed"
+    },
+    {
+     "completedAt": "2026-10-28T05:58:22Z",
+     "conclusion": "success",
+     "name": "Guest image (M8.3) \u2014 modbit-guest as a static musl /init over a BusyBox userland",
+     "number": 8,
+     "startedAt": "2026-10-28T05:57:53Z",
+     "status": "completed"
+    },
+    {
+     "completedAt": "2026-10-28T05:58:53Z",
+     "conclusion": "success",
+     "name": "Sign the guest images (M8.4) \u2014 a publisher key minted for this job; the gateway trusts only it",
+     "number": 9,
+     "startedAt": "2026-10-28T05:58:22Z",
+     "status": "completed"
+    },
+    {
+     "completedAt": "2026-10-28T06:04:29Z",
+     "conclusion": "success",
+     "name": "Cloud API, worker, sandbox backend and gateway qualification (M8.1\u2013M8.9, PX-011 \u2014 real Postgres, real S3-compatible store (SeaweedFS), real modbit-core, real Firecracker MicroVM, signed images, a browser in the guest)",
+     "number": 10,
+     "startedAt": "2026-10-28T05:58:53Z",
+     "status": "completed"
+    },
+    {
+     "completedAt": "2026-10-28T06:04:29Z",
+     "conclusion": "success",
+     "name": "Post Run Swatinem/rust-cache@6323deb102c322ba6fcbdcafc7e3dddab59af2b6",
+     "number": 19,
+     "startedAt": "2026-10-28T06:04:29Z",
+     "status": "completed"
+    },
+    {
+     "completedAt": "2026-10-28T06:04:29Z",
+     "conclusion": "success",
+     "name": "Post Run actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09",
+     "number": 20,
+     "startedAt": "2026-10-28T06:04:29Z",
+     "status": "completed"
+    },
+    {
+     "completedAt": "2026-10-28T06:04:29Z",
+     "conclusion": "success",
+     "name": "Complete job",
+     "number": 21,
+     "startedAt": "2026-10-28T06:04:29Z",
+     "status": "completed"
+    }
+   ],
+   "url": "https://github.com/moss101/modbit/actions/runs/40636271638/job/122643851187"
+  },
+  {
+   "completedAt": "2026-10-28T07:23:43Z",
+   "conclusion": "success",
+   "databaseId": 122643851311,
+   "name": "desktop E2E \u2014 real Electron app against real modbit-core (macos-latest)",
+   "startedAt": "2026-10-28T06:48:15Z",
+   "status": "completed",
+   "steps": [
+    {
+     "completedAt": "2026-10-28T06:48:17Z",
+     "conclusion": "success",
+     "name": "Set up job",
+     "number": 1,
+     "startedAt": "2026-10-28T06:48:15Z",
+     "status": "completed"
+    },
+    {
+     "completedAt": "2026-10-28T06:48:22Z",
+     "conclusion": "success",
+     "name": "Run actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09",
+     "number": 2,
+     "startedAt": "2026-10-28T06:48:17Z",
+     "status": "completed"
+    },
+    {
+     "completedAt": "2026-10-28T06:48:29Z",
+     "conclusion": "success",
+     "name": "Install pinned Rust toolchain (rust-toolchain.toml)",
+     "number": 3,
+     "startedAt": "2026-10-28T06:48:22Z",
+     "status": "completed"
+    },
+    {
+     "completedAt": "2026-10-28T06:48:30Z",
+     "conclusion": "success",
+     "name": "Run Swatinem/rust-cache@6323deb102c322ba6fcbdcafc7e3dddab59af2b6",
+     "number": 4,
+     "startedAt": "2026-10-28T06:48:29Z",
+     "status": "completed"
+    },
+    {
+     "completedAt": "2026-10-28T06:48:31Z",
+     "conclusion": "success",
+     "name": "Run pnpm/action-setup@b906affcce14559ad1aafd4ab0e942779e9f58b1",
+     "number": 5,
+     "startedAt": "2026-10-28T06:48:30Z",
+     "status": "completed"
+    },
+    {
+     "completedAt": "2026-10-28T06:48:40Z",
+     "conclusion": "success",
+     "name": "Run actions/setup-node@a0853c24544627f65ddf259abe73b1d18a591444",
+     "number": 6,
+     "startedAt": "2026-10-28T06:48:31Z",
+     "status": "completed"
+    },
+    {
+     "completedAt": "2026-10-28T06:48:42Z",
+     "conclusion": "success",
+     "name": "Run pnpm install --frozen-lockfile",
+     "number": 7,
+     "startedAt": "2026-10-28T06:48:40Z",
+     "status": "completed"
+    },
+    {
+     "completedAt": "2026-10-28T06:50:41Z",
+     "conclusion": "success",
+     "name": "Build the real Core",
+     "number": 8,
+     "startedAt": "2026-10-28T06:48:42Z",
+     "status": "completed"
+    },
+    {
+     "completedAt": "2026-10-28T06:50:42Z",
+     "conclusion": "success",
+     "name": "Build desktop bundles",
+     "number": 9,
+     "startedAt": "2026-10-28T06:50:41Z",
+     "status": "completed"
+    },
+    {
+     "completedAt": "2026-10-28T06:50:45Z",
+     "conclusion": "success",
+     "name": "Warm the Electron binary (a cold download inside the test budget stalls macOS runners)",
+     "number": 10,
+     "startedAt": "2026-10-28T06:50:42Z",
+     "status": "completed"
+    },
+    {
+     "completedAt": "2026-10-28T06:58:53Z",
+     "conclusion": "success",
+     "name": "Thin-client conformance suite on the real Core (PX-001)",
+     "number": 11,
+     "startedAt": "2026-10-28T06:50:45Z",
+     "status": "completed"
+    },
+    {
+     "completedAt": "2026-10-28T06:58:58Z",
+     "conclusion": "success",
+     "name": "VS Code adapter against the real Core \u2014 restart and resume by cursor (PX-002)",
+     "number": 12,
+     "startedAt": "2026-10-28T06:58:53Z",
+     "status": "completed"
+    },
+    {
+     "completedAt": "2026-10-28T06:59:11Z",
+     "conclusion": "success",
+     "name": "VS Code adapter in the real extension host (PX-002; Linux under xvfb)",
+     "number": 13,
+     "startedAt": "2026-10-28T06:58:58Z",
+     "status": "completed"
+    },
+    {
+     "completedAt": "2026-10-28T07:23:27Z",
+     "conclusion": "success",
+     "name": "Playwright drives the Electron app (Linux under xvfb)",
+     "number": 14,
+     "startedAt": "2026-10-28T06:59:11Z",
+     "status": "completed"
+    },
+    {
+     "completedAt": "2026-10-28T07:23:27Z",
+     "conclusion": "skipped",
+     "name": "Upload traces on failure",
+     "number": 15,
+     "startedAt": "2026-10-28T07:23:27Z",
+     "status": "completed"
+    },
+    {
+     "completedAt": "2026-10-28T07:23:27Z",
+     "conclusion": "success",
+     "name": "Post Run actions/setup-node@a0853c24544627f65ddf259abe73b1d18a591444",
+     "number": 27,
+     "startedAt": "2026-10-28T07:23:27Z",
+     "status": "completed"
+    },
+    {
+     "completedAt": "2026-10-28T07:23:27Z",
+     "conclusion": "success",
+     "name": "Post Run pnpm/action-setup@b906affcce14559ad1aafd4ab0e942779e9f58b1",
+     "number": 28,
+     "startedAt": "2026-10-28T07:23:27Z",
+     "status": "completed"
+    },
+    {
+     "completedAt": "2026-10-28T07:23:38Z",
+     "conclusion": "success",
+     "name": "Post Run Swatinem/rust-cache@6323deb102c322ba6fcbdcafc7e3dddab59af2b6",
+     "number": 29,
+     "startedAt": "2026-10-28T07:23:27Z",
+     "status": "completed"
+    },
+    {
+     "completedAt": "2026-10-28T07:23:39Z",
+     "conclusion": "success",
+     "name": "Post Run actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09",
+     "number": 30,
+     "startedAt": "2026-10-28T07:23:38Z",
+     "status": "completed"
+    },
+    {
+     "completedAt": "2026-10-28T07:23:42Z",
+     "conclusion": "success",
+     "name": "Complete job",
+     "number": 31,
+     "startedAt": "2026-10-28T07:23:39Z",
+     "status": "completed"
+    }
+   ],
+   "url": "https://github.com/moss101/modbit/actions/runs/40636271638/job/122643851311"
+  },
+  {
+   "completedAt": "2026-10-28T07:23:09Z",
+   "conclusion": "success",
+   "databaseId": 122643851315,
+   "name": "dossier integrity",
+   "startedAt": "2026-10-28T07:18:38Z",
+   "status": "completed",
+   "steps": [
+    {
+     "completedAt": "2026-10-28T07:18:40Z",
+     "conclusion": "success",
+     "name": "Set up job",
+     "number": 1,
+     "startedAt": "2026-10-28T07:18:39Z",
+     "status": "completed"
+    },
+    {
+     "completedAt": "2026-10-28T07:18:42Z",
+     "conclusion": "success",
+     "name": "Run actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09",
+     "number": 2,
+     "startedAt": "2026-10-28T07:18:40Z",
+     "status": "completed"
+    },
+    {
+     "completedAt": "2026-10-28T07:18:43Z",
+     "conclusion": "success",
+     "name": "Run actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1",
+     "number": 3,
+     "startedAt": "2026-10-28T07:18:42Z",
+     "status": "completed"
+    },
+    {
+     "completedAt": "2026-10-28T07:18:44Z",
+     "conclusion": "success",
+     "name": "Manifest, graph and traceability integrity (REQ\u2192IMP\u2192QUAL, owners, qualifying evidence; M0.4)",
+     "number": 4,
+     "startedAt": "2026-10-28T07:18:43Z",
+     "status": "completed"
+    },
+    {
+     "completedAt": "2026-10-28T07:20:46Z",
+     "conclusion": "success",
+     "name": "Dossier self-tests",
+     "number": 5,
+     "startedAt": "2026-10-28T07:18:44Z",
+     "status": "completed"
+    },
+    {
+     "completedAt": "2026-10-28T07:23:03Z",
+     "conclusion": "success",
+     "name": "Declared examples are executable, not illustrative (REQ-EV-0212)",
+     "number": 6,
+     "startedAt": "2026-10-28T07:20:46Z",
+     "status": "completed"
+    },
+    {
+     "completedAt": "2026-10-28T07:23:05Z",
+     "conclusion": "success",
+     "name": "Every integration is qualified at every level it needs; mock-only cannot pass (REQ-EV-0211)",
+     "number": 7,
+     "startedAt": "2026-10-28T07:23:03Z",
+     "status": "completed"
+    },
+    {
+     "completedAt": "2026-10-28T07:23:05Z",
+     "conclusion": "success",
+     "name": "Platform support claims (PX-030, docs/76)",
+     "number": 8,
+     "startedAt": "2026-10-28T07:23:05Z",
+     "status": "completed"
+    },
+    {
+     "completedAt": "2026-10-28T07:23:05Z",
+     "conclusion": "success",
+     "name": "Post Run actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1",
+     "number": 15,
+     "startedAt": "2026-10-28T07:23:05Z",
+     "status": "completed"
+    },
+    {
+     "completedAt": "2026-10-28T07:23:06Z",
+     "conclusion": "success",
+     "name": "Post Run actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09",
+     "number": 16,
+     "startedAt": "2026-10-28T07:23:05Z",
+     "status": "completed"
+    },
+    {
+     "completedAt": "2026-10-28T07:23:06Z",
+     "conclusion": "success",
+     "name": "Complete job",
+     "number": 17,
+     "startedAt": "2026-10-28T07:23:06Z",
+     "status": "completed"
+    }
+   ],
+   "url": "https://github.com/moss101/modbit/actions/runs/40636271638/job/122643851315"
+  },
+  {
+   "completedAt": "2026-10-28T07:02:41Z",
+   "conclusion": "success",
+   "databaseId": 122643851327,
+   "name": "protocol Rust<->TS round trip and generated-code freshness (M0.3)",
+   "startedAt": "2026-10-28T07:01:36Z",
+   "status": "completed",
+   "steps": [
+    {
+     "completedAt": "2026-10-28T07:01:39Z",
+     "conclusion": "success",
+     "name": "Set up job",
+     "number": 1,
+     "startedAt": "2026-10-28T07:01:37Z",
+     "status": "completed"
+    },
+    {
+     "completedAt": "2026-10-28T07:01:42Z",
+     "conclusion": "success",
+     "name": "Run actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09",
+     "number": 2,
+     "startedAt": "2026-10-28T07:01:39Z",
+     "status": "completed"
+    },
+    {
+     "completedAt": "2026-10-28T07:01:50Z",
+     "conclusion": "success",
+     "name": "Install pinned Rust toolchain (rust-toolchain.toml)",
+     "number": 3,
+     "startedAt": "2026-10-28T07:01:42Z",
+     "status": "completed"
+    },
+    {
+     "completedAt": "2026-10-28T07:01:51Z",
+     "conclusion": "success",
+     "name": "Run Swatinem/rust-cache@6323deb102c322ba6fcbdcafc7e3dddab59af2b6",
+     "number": 4,
+     "startedAt": "2026-10-28T07:01:50Z",
+     "status": "completed"
+    },
+    {
+     "completedAt": "2026-10-28T07:01:52Z",
+     "conclusion": "success",
+     "name": "Run pnpm/action-setup@b906affcce14559ad1aafd4ab0e942779e9f58b1",
+     "number": 5,
+     "startedAt": "2026-10-28T07:01:51Z",
+     "status": "completed"
+    },
+    {
+     "completedAt": "2026-10-28T07:02:01Z",
+     "conclusion": "success",
+     "name": "Run actions/setup-node@a0853c24544627f65ddf259abe73b1d18a591444",
+     "number": 6,
+     "startedAt": "2026-10-28T07:01:52Z",
+     "status": "completed"
+    },
+    {
+     "completedAt": "2026-10-28T07:02:04Z",
+     "conclusion": "success",
+     "name": "Run pnpm install --frozen-lockfile",
+     "number": 7,
+     "startedAt": "2026-10-28T07:02:01Z",
+     "status": "completed"
+    },
+    {
+     "completedAt": "2026-10-28T07:02:06Z",
+     "conclusion": "success",
+     "name": "Regenerate TypeScript bindings from crates/protocol/proto and require no drift (docs/70)",
+     "number": 8,
+     "startedAt": "2026-10-28T07:02:04Z",
+     "status": "completed"
+    },
+    {
+     "completedAt": "2026-10-28T07:02:31Z",
+     "conclusion": "success",
+     "name": "Rust fixtures are fresh (Rust encoding of the samples)",
+     "number": 9,
+     "startedAt": "2026-10-28T07:02:06Z",
+     "status": "completed"
+    },
+    {
+     "completedAt": "2026-10-28T07:02:31Z",
+     "conclusion": "success",
+     "name": "TS: decode Rust bytes, rebuild independently, encode (writes ts fixtures)",
+     "number": 10,
+     "startedAt": "2026-10-28T07:02:31Z",
+     "status": "completed"
+    },
+    {
+     "completedAt": "2026-10-28T07:02:32Z",
+     "conclusion": "success",
+     "name": "Rust: decode TS bytes and require identical canonical encoding",
+     "number": 11,
+     "startedAt": "2026-10-28T07:02:31Z",
+     "status": "completed"
+    },
+    {
+     "completedAt": "2026-10-28T07:02:32Z",
+     "conclusion": "success",
+     "name": "Committed fixtures match what both sides produced",
+     "number": 12,
+     "startedAt": "2026-10-28T07:02:32Z",
+     "status": "completed"
+    },
+    {
+     "completedAt": "2026-10-28T07:02:32Z",
+     "conclusion": "success",
+     "name": "Post Run actions/setup-node@a0853c24544627f65ddf259abe73b1d18a591444",
+     "number": 21,
+     "startedAt": "2026-10-28T07:02:32Z",
+     "status": "completed"
+    },
+    {
+     "completedAt": "2026-10-28T07:02:32Z",
+     "conclusion": "success",
+     "name": "Post Run pnpm/action-setup@b906affcce14559ad1aafd4ab0e942779e9f58b1",
+     "number": 22,
+     "startedAt": "2026-10-28T07:02:32Z",
+     "status": "completed"
+    },
+    {
+     "completedAt": "2026-10-28T07:02:38Z",
+     "conclusion": "success",
+     "name": "Post Run Swatinem/rust-cache@6323deb102c322ba6fcbdcafc7e3dddab59af2b6",
+     "number": 23,
+     "startedAt": "2026-10-28T07:02:32Z",
+     "status": "completed"
+    },
+    {
+     "completedAt": "2026-10-28T07:02:39Z",
+     "conclusion": "success",
+     "name": "Post Run actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09",
+     "number": 24,
+     "startedAt": "2026-10-28T07:02:38Z",
+     "status": "completed"
+    },
+    {
+     "completedAt": "2026-10-28T07:02:39Z",
+     "conclusion": "success",
+     "name": "Complete job",
+     "number": 25,
+     "startedAt": "2026-10-28T07:02:39Z",
+     "status": "completed"
+    }
+   ],
+   "url": "https://github.com/moss101/modbit/actions/runs/40636271638/job/122643851327"
+  },
+  {
+   "completedAt": "2026-10-28T08:47:32Z",
+   "conclusion": "success",
+   "databaseId": 122643851348,
+   "name": "rust CI_COMPATIBLE (macos-latest)",
+   "startedAt": "2026-10-28T07:52:58Z",
+   "status": "completed",
+   "steps": [
+    {
+     "completedAt": "2026-10-28T07:53:02Z",
+     "conclusion": "success",
+     "name": "Set up job",
+     "number": 1,
+     "startedAt": "2026-10-28T07:52:59Z",
+     "status": "completed"
+    },
+    {
+     "completedAt": "2026-10-28T07:53:06Z",
+     "conclusion": "success",
+     "name": "Run actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09",
+     "number": 2,
+     "startedAt": "2026-10-28T07:53:02Z",
+     "status": "completed"
+    },
+    {
+     "completedAt": "2026-10-28T07:53:16Z",
+     "conclusion": "success",
+     "name": "Install pinned Rust toolchain (rust-toolchain.toml)",
+     "number": 3,
+     "startedAt": "2026-10-28T07:53:06Z",
+     "status": "completed"
+    },
+    {
+     "completedAt": "2026-10-28T07:53:39Z",
+     "conclusion": "success",
+     "name": "Run Swatinem/rust-cache@6323deb102c322ba6fcbdcafc7e3dddab59af2b6",
+     "number": 4,
+     "startedAt": "2026-10-28T07:53:16Z",
+     "status": "completed"
+    },
+    {
+     "completedAt": "2026-10-28T07:53:41Z",
+     "conclusion": "success",
+     "name": "Run pnpm/action-setup@b906affcce14559ad1aafd4ab0e942779e9f58b1",
+     "number": 5,
+     "startedAt": "2026-10-28T07:53:39Z",
+     "status": "completed"
+    },
+    {
+     "completedAt": "2026-10-28T07:53:53Z",
+     "conclusion": "success",
+     "name": "Run actions/setup-node@a0853c24544627f65ddf259abe73b1d18a591444",
+     "number": 6,
+     "startedAt": "2026-10-28T07:53:41Z",
+     "status": "completed"
+    },
+    {
+     "completedAt": "2026-10-28T07:53:58Z",
+     "conclusion": "success",
+     "name": "Install workspace packages (the ts-webapp fixture's vitest, docs/50)",
+     "number": 7,
+     "startedAt": "2026-10-28T07:53:53Z",
+     "status": "completed"
+    },
+    {
+     "completedAt": "2026-10-28T07:54:02Z",
+     "conclusion": "success",
+     "name": "Install pytest (the python-service fixture's runner, PX-033)",
+     "number": 8,
+     "startedAt": "2026-10-28T07:53:58Z",
+     "status": "completed"
+    },
+    {
+     "completedAt": "2026-10-28T07:54:07Z",
+     "conclusion": "success",
+     "name": "Format",
+     "number": 9,
+     "startedAt": "2026-10-28T07:54:02Z",
+     "status": "completed"
+    },
+    {
+     "completedAt": "2026-10-28T07:56:49Z",
+     "conclusion": "success",
+     "name": "Clippy",
+     "number": 10,
+     "startedAt": "2026-10-28T07:54:07Z",
+     "status": "completed"
+    },
+    {
+     "completedAt": "2026-10-28T07:59:40Z",
+     "conclusion": "success",
+     "name": "Build",
+     "number": 11,
+     "startedAt": "2026-10-28T07:56:49Z",
+     "status": "completed"
+    },
+    {
+     "completedAt": "2026-10-28T08:41:32Z",
+     "conclusion": "success",
+     "name": "Test (includes real cargo-metadata forbidden-edge test)",
+     "number": 12,
+     "startedAt": "2026-10-28T07:59:40Z",
+     "status": "completed"
+    },
+    {
+     "completedAt": "2026-10-28T08:43:47Z",
+     "conclusion": "success",
+     "name": "Record the PX-041 Core-share latency distribution (DR-PX-2026-10-21-015) - recorded on every runner, asserted only on the reference profile",
+     "number": 13,
+     "startedAt": "2026-10-28T08:41:32Z",
+     "status": "completed"
+    },
+    {
+     "completedAt": "2026-10-28T08:43:49Z",
+     "conclusion": "success",
+     "name": "Upload the recorded latency distribution",
+     "number": 14,
+     "startedAt": "2026-10-28T08:43:47Z",
+     "status": "completed"
+    },
+    {
+     "completedAt": "2026-10-28T08:47:20Z",
+     "conclusion": "success",
+     "name": "macOS actuator real-permission tests (PX-071) - SKIPPED loudly where the runner has no Accessibility / Screen Recording grant",
+     "number": 15,
+     "startedAt": "2026-10-28T08:43:49Z",
+     "status": "completed"
+    },
+    {
+     "completedAt": "2026-10-28T08:47:25Z",
+     "conclusion": "success",
+     "name": "Architecture dependency lint (docs/12, docs/81)",
+     "number": 16,
+     "startedAt": "2026-10-28T08:47:20Z",
+     "status": "completed"
+    },
+    {
+     "completedAt": "2026-10-28T08:47:26Z",
+     "conclusion": "success",
+     "name": "Git spawn lint \u2014 a Git process is built only by the hardened runner (PX-067, docs/65 AFW-J09)",
+     "number": 17,
+     "startedAt": "2026-10-28T08:47:25Z",
+     "status": "completed"
+    },
+    {
+     "completedAt": "2026-10-28T08:47:26Z",
+     "conclusion": "success",
+     "name": "Credential-read lint \u2014 a credential is resolved only through the broker (PX-130, QUAL-PX-130)",
+     "number": 18,
+     "startedAt": "2026-10-28T08:47:26Z",
+     "status": "completed"
+    },
+    {
+     "completedAt": "2026-10-28T08:47:27Z",
+     "conclusion": "success",
+     "name": "Module registration lint \u2014 owner, canonical single-owner systems, capability requirement ids (M0.4, docs/45, docs/81)",
+     "number": 19,
+     "startedAt": "2026-10-28T08:47:26Z",
+     "status": "completed"
+    },
+    {
+     "completedAt": "2026-10-28T08:47:27Z",
+     "conclusion": "success",
+     "name": "Post Run actions/setup-node@a0853c24544627f65ddf259abe73b1d18a591444",
+     "number": 35,
+     "startedAt": "2026-10-28T08:47:27Z",
+     "status": "completed"
+    },
+    {
+     "completedAt": "2026-10-28T08:47:27Z",
+     "conclusion": "success",
+     "name": "Post Run pnpm/action-setup@b906affcce14559ad1aafd4ab0e942779e9f58b1",
+     "number": 36,
+     "startedAt": "2026-10-28T08:47:27Z",
+     "status": "completed"
+    },
+    {
+     "completedAt": "2026-10-28T08:47:28Z",
+     "conclusion": "success",
+     "name": "Post Run Swatinem/rust-cache@6323deb102c322ba6fcbdcafc7e3dddab59af2b6",
+     "number": 37,
+     "startedAt": "2026-10-28T08:47:27Z",
+     "status": "completed"
+    },
+    {
+     "completedAt": "2026-10-28T08:47:28Z",
+     "conclusion": "success",
+     "name": "Post Run actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09",
+     "number": 38,
+     "startedAt": "2026-10-28T08:47:28Z",
+     "status": "completed"
+    },
+    {
+     "completedAt": "2026-10-28T08:47:30Z",
+     "conclusion": "success",
+     "name": "Complete job",
+     "number": 39,
+     "startedAt": "2026-10-28T08:47:28Z",
+     "status": "completed"
+    }
+   ],
+   "url": "https://github.com/moss101/modbit/actions/runs/40636271638/job/122643851348"
+  },
+  {
+   "completedAt": "2026-10-28T06:37:29Z",
+   "conclusion": "success",
+   "databaseId": 122643851356,
+   "name": "desktop E2E \u2014 real Electron app against real modbit-core (windows-latest)",
+   "startedAt": "2026-10-28T05:37:17Z",
+   "status": "completed",
+   "steps": [
+    {
+     "completedAt": "2026-10-28T05:37:20Z",
+     "conclusion": "success",
+     "name": "Set up job",
+     "number": 1,
+     "startedAt": "2026-10-28T05:37:18Z",
+     "status": "completed"
+    },
+    {
+     "completedAt": "2026-10-28T05:37:29Z",
+     "conclusion": "success",
+     "name": "Run actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09",
+     "number": 2,
+     "startedAt": "2026-10-28T05:37:20Z",
+     "status": "completed"
+    },
+    {
+     "completedAt": "2026-10-28T05:37:47Z",
+     "conclusion": "success",
+     "name": "Install pinned Rust toolchain (rust-toolchain.toml)",
+     "number": 3,
+     "startedAt": "2026-10-28T05:37:29Z",
+     "status": "completed"
+    },
+    {
+     "completedAt": "2026-10-28T05:37:57Z",
+     "conclusion": "success",
+     "name": "Run Swatinem/rust-cache@6323deb102c322ba6fcbdcafc7e3dddab59af2b6",
+     "number": 4,
+     "startedAt": "2026-10-28T05:37:47Z",
+     "status": "completed"
+    },
+    {
+     "completedAt": "2026-10-28T05:38:01Z",
+     "conclusion": "success",
+     "name": "Run pnpm/action-setup@b906affcce14559ad1aafd4ab0e942779e9f58b1",
+     "number": 5,
+     "startedAt": "2026-10-28T05:37:57Z",
+     "status": "completed"
+    },
+    {
+     "completedAt": "2026-10-28T05:38:21Z",
+     "conclusion": "success",
+     "name": "Run actions/setup-node@a0853c24544627f65ddf259abe73b1d18a591444",
+     "number": 6,
+     "startedAt": "2026-10-28T05:38:01Z",
+     "status": "completed"
+    },
+    {
+     "completedAt": "2026-10-28T05:38:25Z",
+     "conclusion": "success",
+     "name": "Run pnpm install --frozen-lockfile",
+     "number": 7,
+     "startedAt": "2026-10-28T05:38:21Z",
+     "status": "completed"
+    },
+    {
+     "completedAt": "2026-10-28T05:44:16Z",
+     "conclusion": "success",
+     "name": "Build the real Core",
+     "number": 8,
+     "startedAt": "2026-10-28T05:38:25Z",
+     "status": "completed"
+    },
+    {
+     "completedAt": "2026-10-28T05:44:17Z",
+     "conclusion": "success",
+     "name": "Build desktop bundles",
+     "number": 9,
+     "startedAt": "2026-10-28T05:44:16Z",
+     "status": "completed"
+    },
+    {
+     "completedAt": "2026-10-28T05:44:27Z",
+     "conclusion": "success",
+     "name": "Warm the Electron binary (a cold download inside the test budget stalls macOS runners)",
+     "number": 10,
+     "startedAt": "2026-10-28T05:44:17Z",
+     "status": "completed"
+    },
+    {
+     "completedAt": "2026-10-28T05:52:48Z",
+     "conclusion": "success",
+     "name": "Thin-client conformance suite on the real Core (PX-001)",
+     "number": 11,
+     "startedAt": "2026-10-28T05:44:27Z",
+     "status": "completed"
+    },
+    {
+     "completedAt": "2026-10-28T05:52:59Z",
+     "conclusion": "success",
+     "name": "VS Code adapter against the real Core \u2014 restart and resume by cursor (PX-002)",
+     "number": 12,
+     "startedAt": "2026-10-28T05:52:48Z",
+     "status": "completed"
+    },
+    {
+     "completedAt": "2026-10-28T05:53:23Z",
+     "conclusion": "success",
+     "name": "VS Code adapter in the real extension host (PX-002; Linux under xvfb)",
+     "number": 13,
+     "startedAt": "2026-10-28T05:52:59Z",
+     "status": "completed"
+    },
+    {
+     "completedAt": "2026-10-28T06:37:05Z",
+     "conclusion": "success",
+     "name": "Playwright drives the Electron app (Linux under xvfb)",
+     "number": 14,
+     "startedAt": "2026-10-28T05:53:23Z",
+     "status": "completed"
+    },
+    {
+     "completedAt": "2026-10-28T06:37:05Z",
+     "conclusion": "skipped",
+     "name": "Upload traces on failure",
+     "number": 15,
+     "startedAt": "2026-10-28T06:37:05Z",
+     "status": "completed"
+    },
+    {
+     "completedAt": "2026-10-28T06:37:05Z",
+     "conclusion": "success",
+     "name": "Post Run actions/setup-node@a0853c24544627f65ddf259abe73b1d18a591444",
+     "number": 27,
+     "startedAt": "2026-10-28T06:37:05Z",
+     "status": "completed"
+    },
+    {
+     "completedAt": "2026-10-28T06:37:06Z",
+     "conclusion": "success",
+     "name": "Post Run pnpm/action-setup@b906affcce14559ad1aafd4ab0e942779e9f58b1",
+     "number": 28,
+     "startedAt": "2026-10-28T06:37:05Z",
+     "status": "completed"
+    },
+    {
+     "completedAt": "2026-10-28T06:37:25Z",
+     "conclusion": "success",
+     "name": "Post Run Swatinem/rust-cache@6323deb102c322ba6fcbdcafc7e3dddab59af2b6",
+     "number": 29,
+     "startedAt": "2026-10-28T06:37:06Z",
+     "status": "completed"
+    },
+    {
+     "completedAt": "2026-10-28T06:37:27Z",
+     "conclusion": "success",
+     "name": "Post Run actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09",
+     "number": 30,
+     "startedAt": "2026-10-28T06:37:25Z",
+     "status": "completed"
+    },
+    {
+     "completedAt": "2026-10-28T06:37:27Z",
+     "conclusion": "success",
+     "name": "Complete job",
+     "number": 31,
+     "startedAt": "2026-10-28T06:37:27Z",
+     "status": "completed"
+    }
+   ],
+   "url": "https://github.com/moss101/modbit/actions/runs/40636271638/job/122643851356"
+  },
+  {
+   "completedAt": "2026-10-28T07:03:27Z",
+   "conclusion": "success",
+   "databaseId": 122643851373,
+   "name": "node CI_COMPATIBLE (ubuntu-latest)",
+   "startedAt": "2026-10-28T07:02:44Z",
+   "status": "completed",
+   "steps": [
+    {
+     "completedAt": "2026-10-28T07:02:45Z",
+     "conclusion": "success",
+     "name": "Set up job",
+     "number": 1,
+     "startedAt": "2026-10-28T07:02:44Z",
+     "status": "completed"
+    },
+    {
+     "completedAt": "2026-10-28T07:02:48Z",
+     "conclusion": "success",
+     "name": "Run actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09",
+     "number": 2,
+     "startedAt": "2026-10-28T07:02:45Z",
+     "status": "completed"
+    },
+    {
+     "completedAt": "2026-10-28T07:03:03Z",
+     "conclusion": "success",
+     "name": "Run pnpm/action-setup@b906affcce14559ad1aafd4ab0e942779e9f58b1",
+     "number": 3,
+     "startedAt": "2026-10-28T07:02:48Z",
+     "status": "completed"
+    },
+    {
+     "completedAt": "2026-10-28T07:03:10Z",
+     "conclusion": "success",
+     "name": "Run actions/setup-node@a0853c24544627f65ddf259abe73b1d18a591444",
+     "number": 4,
+     "startedAt": "2026-10-28T07:03:03Z",
+     "status": "completed"
+    },
+    {
+     "completedAt": "2026-10-28T07:03:13Z",
+     "conclusion": "success",
+     "name": "Install (frozen lockfile)",
+     "number": 5,
+     "startedAt": "2026-10-28T07:03:10Z",
+     "status": "completed"
+    },
+    {
+     "completedAt": "2026-10-28T07:03:16Z",
+     "conclusion": "success",
+     "name": "Typecheck",
+     "number": 6,
+     "startedAt": "2026-10-28T07:03:13Z",
+     "status": "completed"
+    },
+    {
+     "completedAt": "2026-10-28T07:03:24Z",
+     "conclusion": "success",
+     "name": "Test",
+     "number": 7,
+     "startedAt": "2026-10-28T07:03:16Z",
+     "status": "completed"
+    },
+    {
+     "completedAt": "2026-10-28T07:03:25Z",
+     "conclusion": "success",
+     "name": "Post Run actions/setup-node@a0853c24544627f65ddf259abe73b1d18a591444",
+     "number": 12,
+     "startedAt": "2026-10-28T07:03:24Z",
+     "status": "completed"
+    },
+    {
+     "completedAt": "2026-10-28T07:03:25Z",
+     "conclusion": "success",
+     "name": "Post Run pnpm/action-setup@b906affcce14559ad1aafd4ab0e942779e9f58b1",
+     "number": 13,
+     "startedAt": "2026-10-28T07:03:25Z",
+     "status": "completed"
+    },
+    {
+     "completedAt": "2026-10-28T07:03:25Z",
+     "conclusion": "success",
+     "name": "Post Run actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09",
+     "number": 14,
+     "startedAt": "2026-10-28T07:03:25Z",
+     "status": "completed"
+    },
+    {
+     "completedAt": "2026-10-28T07:03:25Z",
+     "conclusion": "success",
+     "name": "Complete job",
+     "number": 15,
+     "startedAt": "2026-10-28T07:03:25Z",
+     "status": "completed"
+    }
+   ],
+   "url": "https://github.com/moss101/modbit/actions/runs/40636271638/job/122643851373"
+  },
+  {
+   "completedAt": "2026-10-28T07:44:41Z",
+   "conclusion": "success",
+   "databaseId": 122643851379,
+   "name": "rust CI_COMPATIBLE (ubuntu-latest)",
+   "startedAt": "2026-10-28T07:03:53Z",
+   "status": "completed",
+   "steps": [
+    {
+     "completedAt": "2026-10-28T07:03:55Z",
+     "conclusion": "success",
+     "name": "Set up job",
+     "number": 1,
+     "startedAt": "2026-10-28T07:03:54Z",
+     "status": "completed"
+    },
+    {
+     "completedAt": "2026-10-28T07:03:58Z",
+     "conclusion": "success",
+     "name": "Run actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09",
+     "number": 2,
+     "startedAt": "2026-10-28T07:03:56Z",
+     "status": "completed"
+    },
+    {
+     "completedAt": "2026-10-28T07:04:08Z",
+     "conclusion": "success",
+     "name": "Install pinned Rust toolchain (rust-toolchain.toml)",
+     "number": 3,
+     "startedAt": "2026-10-28T07:03:58Z",
+     "status": "completed"
+    },
+    {
+     "completedAt": "2026-10-28T07:04:11Z",
+     "conclusion": "success",
+     "name": "Run Swatinem/rust-cache@6323deb102c322ba6fcbdcafc7e3dddab59af2b6",
+     "number": 4,
+     "startedAt": "2026-10-28T07:04:08Z",
+     "status": "completed"
+    },
+    {
+     "completedAt": "2026-10-28T07:04:12Z",
+     "conclusion": "success",
+     "name": "Run pnpm/action-setup@b906affcce14559ad1aafd4ab0e942779e9f58b1",
+     "number": 5,
+     "startedAt": "2026-10-28T07:04:11Z",
+     "status": "completed"
+    },
+    {
+     "completedAt": "2026-10-28T07:04:20Z",
+     "conclusion": "success",
+     "name": "Run actions/setup-node@a0853c24544627f65ddf259abe73b1d18a591444",
+     "number": 6,
+     "startedAt": "2026-10-28T07:04:12Z",
+     "status": "completed"
+    },
+    {
+     "completedAt": "2026-10-28T07:04:23Z",
+     "conclusion": "success",
+     "name": "Install workspace packages (the ts-webapp fixture's vitest, docs/50)",
+     "number": 7,
+     "startedAt": "2026-10-28T07:04:20Z",
+     "status": "completed"
+    },
+    {
+     "completedAt": "2026-10-28T07:04:26Z",
+     "conclusion": "success",
+     "name": "Install pytest (the python-service fixture's runner, PX-033)",
+     "number": 8,
+     "startedAt": "2026-10-28T07:04:23Z",
+     "status": "completed"
+    },
+    {
+     "completedAt": "2026-10-28T07:04:32Z",
+     "conclusion": "success",
+     "name": "Format",
+     "number": 9,
+     "startedAt": "2026-10-28T07:04:26Z",
+     "status": "completed"
+    },
+    {
+     "completedAt": "2026-10-28T07:09:14Z",
+     "conclusion": "success",
+     "name": "Clippy",
+     "number": 10,
+     "startedAt": "2026-10-28T07:04:32Z",
+     "status": "completed"
+    },
+    {
+     "completedAt": "2026-10-28T07:12:11Z",
+     "conclusion": "success",
+     "name": "Build",
+     "number": 11,
+     "startedAt": "2026-10-28T07:09:14Z",
+     "status": "completed"
+    },
+    {
+     "completedAt": "2026-10-28T07:41:58Z",
+     "conclusion": "success",
+     "name": "Test (includes real cargo-metadata forbidden-edge test)",
+     "number": 12,
+     "startedAt": "2026-10-28T07:12:11Z",
+     "status": "completed"
+    },
+    {
+     "completedAt": "2026-10-28T07:44:07Z",
+     "conclusion": "success",
+     "name": "Record the PX-041 Core-share latency distribution (DR-PX-2026-10-21-015) - recorded on every runner, asserted only on the reference profile",
+     "number": 13,
+     "startedAt": "2026-10-28T07:41:58Z",
+     "status": "completed"
+    },
+    {
+     "completedAt": "2026-10-28T07:44:09Z",
+     "conclusion": "success",
+     "name": "Upload the recorded latency distribution",
+     "number": 14,
+     "startedAt": "2026-10-28T07:44:07Z",
+     "status": "completed"
+    },
+    {
+     "completedAt": "2026-10-28T07:44:09Z",
+     "conclusion": "skipped",
+     "name": "macOS actuator real-permission tests (PX-071) - SKIPPED loudly where the runner has no Accessibility / Screen Recording grant",
+     "number": 15,
+     "startedAt": "2026-10-28T07:44:09Z",
+     "status": "completed"
+    },
+    {
+     "completedAt": "2026-10-28T07:44:18Z",
+     "conclusion": "success",
+     "name": "Architecture dependency lint (docs/12, docs/81)",
+     "number": 16,
+     "startedAt": "2026-10-28T07:44:09Z",
+     "status": "completed"
+    },
+    {
+     "completedAt": "2026-10-28T07:44:18Z",
+     "conclusion": "success",
+     "name": "Git spawn lint \u2014 a Git process is built only by the hardened runner (PX-067, docs/65 AFW-J09)",
+     "number": 17,
+     "startedAt": "2026-10-28T07:44:18Z",
+     "status": "completed"
+    },
+    {
+     "completedAt": "2026-10-28T07:44:19Z",
+     "conclusion": "success",
+     "name": "Credential-read lint \u2014 a credential is resolved only through the broker (PX-130, QUAL-PX-130)",
+     "number": 18,
+     "startedAt": "2026-10-28T07:44:18Z",
+     "status": "completed"
+    },
+    {
+     "completedAt": "2026-10-28T07:44:19Z",
+     "conclusion": "success",
+     "name": "Module registration lint \u2014 owner, canonical single-owner systems, capability requirement ids (M0.4, docs/45, docs/81)",
+     "number": 19,
+     "startedAt": "2026-10-28T07:44:19Z",
+     "status": "completed"
+    },
+    {
+     "completedAt": "2026-10-28T07:44:19Z",
+     "conclusion": "success",
+     "name": "Post Run actions/setup-node@a0853c24544627f65ddf259abe73b1d18a591444",
+     "number": 35,
+     "startedAt": "2026-10-28T07:44:19Z",
+     "status": "completed"
+    },
+    {
+     "completedAt": "2026-10-28T07:44:19Z",
+     "conclusion": "success",
+     "name": "Post Run pnpm/action-setup@b906affcce14559ad1aafd4ab0e942779e9f58b1",
+     "number": 36,
+     "startedAt": "2026-10-28T07:44:19Z",
+     "status": "completed"
+    },
+    {
+     "completedAt": "2026-10-28T07:44:39Z",
+     "conclusion": "success",
+     "name": "Post Run Swatinem/rust-cache@6323deb102c322ba6fcbdcafc7e3dddab59af2b6",
+     "number": 37,
+     "startedAt": "2026-10-28T07:44:19Z",
+     "status": "completed"
+    },
+    {
+     "completedAt": "2026-10-28T07:44:39Z",
+     "conclusion": "success",
+     "name": "Post Run actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09",
+     "number": 38,
+     "startedAt": "2026-10-28T07:44:39Z",
+     "status": "completed"
+    },
+    {
+     "completedAt": "2026-10-28T07:44:39Z",
+     "conclusion": "success",
+     "name": "Complete job",
+     "number": 39,
+     "startedAt": "2026-10-28T07:44:39Z",
+     "status": "completed"
+    }
+   ],
+   "url": "https://github.com/moss101/modbit/actions/runs/40636271638/job/122643851379"
+  },
+  {
+   "completedAt": "2026-10-28T05:55:38Z",
+   "conclusion": "success",
+   "databaseId": 122643851387,
+   "name": "node CI_COMPATIBLE (macos-latest)",
+   "startedAt": "2026-10-28T05:55:07Z",
+   "status": "completed",
+   "steps": [
+    {
+     "completedAt": "2026-10-28T05:55:08Z",
+     "conclusion": "success",
+     "name": "Set up job",
+     "number": 1,
+     "startedAt": "2026-10-28T05:55:07Z",
+     "status": "completed"
+    },
+    {
+     "completedAt": "2026-10-28T05:55:11Z",
+     "conclusion": "success",
+     "name": "Run actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09",
+     "number": 2,
+     "startedAt": "2026-10-28T05:55:08Z",
+     "status": "completed"
+    },
+    {
+     "completedAt": "2026-10-28T05:55:13Z",
+     "conclusion": "success",
+     "name": "Run pnpm/action-setup@b906affcce14559ad1aafd4ab0e942779e9f58b1",
+     "number": 3,
+     "startedAt": "2026-10-28T05:55:11Z",
+     "status": "completed"
+    },
+    {
+     "completedAt": "2026-10-28T05:55:23Z",
+     "conclusion": "success",
+     "name": "Run actions/setup-node@a0853c24544627f65ddf259abe73b1d18a591444",
+     "number": 4,
+     "startedAt": "2026-10-28T05:55:13Z",
+     "status": "completed"
+    },
+    {
+     "completedAt": "2026-10-28T05:55:26Z",
+     "conclusion": "success",
+     "name": "Install (frozen lockfile)",
+     "number": 5,
+     "startedAt": "2026-10-28T05:55:23Z",
+     "status": "completed"
+    },
+    {
+     "completedAt": "2026-10-28T05:55:28Z",
+     "conclusion": "success",
+     "name": "Typecheck",
+     "number": 6,
+     "startedAt": "2026-10-28T05:55:26Z",
+     "status": "completed"
+    },
+    {
+     "completedAt": "2026-10-28T05:55:34Z",
+     "conclusion": "success",
+     "name": "Test",
+     "number": 7,
+     "startedAt": "2026-10-28T05:55:28Z",
+     "status": "completed"
+    },
+    {
+     "completedAt": "2026-10-28T05:55:34Z",
+     "conclusion": "success",
+     "name": "Post Run actions/setup-node@a0853c24544627f65ddf259abe73b1d18a591444",
+     "number": 12,
+     "startedAt": "2026-10-28T05:55:34Z",
+     "status": "completed"
+    },
+    {
+     "completedAt": "2026-10-28T05:55:34Z",
+     "conclusion": "success",
+     "name": "Post Run pnpm/action-setup@b906affcce14559ad1aafd4ab0e942779e9f58b1",
+     "number": 13,
+     "startedAt": "2026-10-28T05:55:34Z",
+     "status": "completed"
+    },
+    {
+     "completedAt": "2026-10-28T05:55:34Z",
+     "conclusion": "success",
+     "name": "Post Run actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09",
+     "number": 14,
+     "startedAt": "2026-10-28T05:55:34Z",
+     "status": "completed"
+    },
+    {
+     "completedAt": "2026-10-28T05:55:35Z",
+     "conclusion": "success",
+     "name": "Complete job",
+     "number": 15,
+     "startedAt": "2026-10-28T05:55:34Z",
+     "status": "completed"
+    }
+   ],
+   "url": "https://github.com/moss101/modbit/actions/runs/40636271638/job/122643851387"
+  },
+  {
+   "completedAt": "2026-10-28T07:01:51Z",
+   "conclusion": "success",
+   "databaseId": 122643851389,
+   "name": "node CI_COMPATIBLE (windows-latest)",
+   "startedAt": "2026-10-28T07:00:56Z",
+   "status": "completed",
+   "steps": [
+    {
+     "completedAt": "2026-10-28T07:00:58Z",
+     "conclusion": "success",
+     "name": "Set up job",
+     "number": 1,
+     "startedAt": "2026-10-28T07:00:57Z",
+     "status": "completed"
+    },
+    {
+     "completedAt": "2026-10-28T07:01:06Z",
+     "conclusion": "success",
+     "name": "Run actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09",
+     "number": 2,
+     "startedAt": "2026-10-28T07:00:58Z",
+     "status": "completed"
+    },
+    {
+     "completedAt": "2026-10-28T07:01:10Z",
+     "conclusion": "success",
+     "name": "Run pnpm/action-setup@b906affcce14559ad1aafd4ab0e942779e9f58b1",
+     "number": 3,
+     "startedAt": "2026-10-28T07:01:06Z",
+     "status": "completed"
+    },
+    {
+     "completedAt": "2026-10-28T07:01:27Z",
+     "conclusion": "success",
+     "name": "Run actions/setup-node@a0853c24544627f65ddf259abe73b1d18a591444",
+     "number": 4,
+     "startedAt": "2026-10-28T07:01:10Z",
+     "status": "completed"
+    },
+    {
+     "completedAt": "2026-10-28T07:01:33Z",
+     "conclusion": "success",
+     "name": "Install (frozen lockfile)",
+     "number": 5,
+     "startedAt": "2026-10-28T07:01:27Z",
+     "status": "completed"
+    },
+    {
+     "completedAt": "2026-10-28T07:01:38Z",
+     "conclusion": "success",
+     "name": "Typecheck",
+     "number": 6,
+     "startedAt": "2026-10-28T07:01:33Z",
+     "status": "completed"
+    },
+    {
+     "completedAt": "2026-10-28T07:01:47Z",
+     "conclusion": "success",
+     "name": "Test",
+     "number": 7,
+     "startedAt": "2026-10-28T07:01:38Z",
+     "status": "completed"
+    },
+    {
+     "completedAt": "2026-10-28T07:01:47Z",
+     "conclusion": "success",
+     "name": "Post Run actions/setup-node@a0853c24544627f65ddf259abe73b1d18a591444",
+     "number": 12,
+     "startedAt": "2026-10-28T07:01:47Z",
+     "status": "completed"
+    },
+    {
+     "completedAt": "2026-10-28T07:01:47Z",
+     "conclusion": "success",
+     "name": "Post Run pnpm/action-setup@b906affcce14559ad1aafd4ab0e942779e9f58b1",
+     "number": 13,
+     "startedAt": "2026-10-28T07:01:47Z",
+     "status": "completed"
+    },
+    {
+     "completedAt": "2026-10-28T07:01:50Z",
+     "conclusion": "success",
+     "name": "Post Run actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09",
+     "number": 14,
+     "startedAt": "2026-10-28T07:01:47Z",
+     "status": "completed"
+    },
+    {
+     "completedAt": "2026-10-28T07:01:50Z",
+     "conclusion": "success",
+     "name": "Complete job",
+     "number": 15,
+     "startedAt": "2026-10-28T07:01:50Z",
+     "status": "completed"
+    }
+   ],
+   "url": "https://github.com/moss101/modbit/actions/runs/40636271638/job/122643851389"
+  },
+  {
+   "completedAt": "2026-10-28T08:00:54Z",
+   "conclusion": "success",
+   "databaseId": 122643851417,
+   "name": "desktop E2E \u2014 real Electron app against real modbit-core (ubuntu-latest)",
+   "startedAt": "2026-10-28T07:23:32Z",
+   "status": "completed",
+   "steps": [
+    {
+     "completedAt": "2026-10-28T07:23:35Z",
+     "conclusion": "success",
+     "name": "Set up job",
+     "number": 1,
+     "startedAt": "2026-10-28T07:23:33Z",
+     "status": "completed"
+    },
+    {
+     "completedAt": "2026-10-28T07:23:38Z",
+     "conclusion": "success",
+     "name": "Run actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09",
+     "number": 2,
+     "startedAt": "2026-10-28T07:23:35Z",
+     "status": "completed"
+    },
+    {
+     "completedAt": "2026-10-28T07:23:48Z",
+     "conclusion": "success",
+     "name": "Install pinned Rust toolchain (rust-toolchain.toml)",
+     "number": 3,
+     "startedAt": "2026-10-28T07:23:38Z",
+     "status": "completed"
+    },
+    {
+     "completedAt": "2026-10-28T07:23:49Z",
+     "conclusion": "success",
+     "name": "Run Swatinem/rust-cache@6323deb102c322ba6fcbdcafc7e3dddab59af2b6",
+     "number": 4,
+     "startedAt": "2026-10-28T07:23:48Z",
+     "status": "completed"
+    },
+    {
+     "completedAt": "2026-10-28T07:23:50Z",
+     "conclusion": "success",
+     "name": "Run pnpm/action-setup@b906affcce14559ad1aafd4ab0e942779e9f58b1",
+     "number": 5,
+     "startedAt": "2026-10-28T07:23:49Z",
+     "status": "completed"
+    },
+    {
+     "completedAt": "2026-10-28T07:23:58Z",
+     "conclusion": "success",
+     "name": "Run actions/setup-node@a0853c24544627f65ddf259abe73b1d18a591444",
+     "number": 6,
+     "startedAt": "2026-10-28T07:23:50Z",
+     "status": "completed"
+    },
+    {
+     "completedAt": "2026-10-28T07:24:01Z",
+     "conclusion": "success",
+     "name": "Run pnpm install --frozen-lockfile",
+     "number": 7,
+     "startedAt": "2026-10-28T07:23:58Z",
+     "status": "completed"
+    },
+    {
+     "completedAt": "2026-10-28T07:27:51Z",
+     "conclusion": "success",
+     "name": "Build the real Core",
+     "number": 8,
+     "startedAt": "2026-10-28T07:24:01Z",
+     "status": "completed"
+    },
+    {
+     "completedAt": "2026-10-28T07:27:52Z",
+     "conclusion": "success",
+     "name": "Build desktop bundles",
+     "number": 9,
+     "startedAt": "2026-10-28T07:27:51Z",
+     "status": "completed"
+    },
+    {
+     "completedAt": "2026-10-28T07:28:00Z",
+     "conclusion": "success",
+     "name": "Warm the Electron binary (a cold download inside the test budget stalls macOS runners)",
+     "number": 10,
+     "startedAt": "2026-10-28T07:27:52Z",
+     "status": "completed"
+    },
+    {
+     "completedAt": "2026-10-28T07:36:05Z",
+     "conclusion": "success",
+     "name": "Thin-client conformance suite on the real Core (PX-001)",
+     "number": 11,
+     "startedAt": "2026-10-28T07:28:00Z",
+     "status": "completed"
+    },
+    {
+     "completedAt": "2026-10-28T07:36:09Z",
+     "conclusion": "success",
+     "name": "VS Code adapter against the real Core \u2014 restart and resume by cursor (PX-002)",
+     "number": 12,
+     "startedAt": "2026-10-28T07:36:05Z",
+     "status": "completed"
+    },
+    {
+     "completedAt": "2026-10-28T07:36:34Z",
+     "conclusion": "success",
+     "name": "VS Code adapter in the real extension host (PX-002; Linux under xvfb)",
+     "number": 13,
+     "startedAt": "2026-10-28T07:36:09Z",
+     "status": "completed"
+    },
+    {
+     "completedAt": "2026-10-28T08:00:40Z",
+     "conclusion": "success",
+     "name": "Playwright drives the Electron app (Linux under xvfb)",
+     "number": 14,
+     "startedAt": "2026-10-28T07:36:34Z",
+     "status": "completed"
+    },
+    {
+     "completedAt": "2026-10-28T08:00:40Z",
+     "conclusion": "skipped",
+     "name": "Upload traces on failure",
+     "number": 15,
+     "startedAt": "2026-10-28T08:00:40Z",
+     "status": "completed"
+    },
+    {
+     "completedAt": "2026-10-28T08:00:41Z",
+     "conclusion": "success",
+     "name": "Post Run actions/setup-node@a0853c24544627f65ddf259abe73b1d18a591444",
+     "number": 27,
+     "startedAt": "2026-10-28T08:00:40Z",
+     "status": "completed"
+    },
+    {
+     "completedAt": "2026-10-28T08:00:41Z",
+     "conclusion": "success",
+     "name": "Post Run pnpm/action-setup@b906affcce14559ad1aafd4ab0e942779e9f58b1",
+     "number": 28,
+     "startedAt": "2026-10-28T08:00:41Z",
+     "status": "completed"
+    },
+    {
+     "completedAt": "2026-10-28T08:00:51Z",
+     "conclusion": "success",
+     "name": "Post Run Swatinem/rust-cache@6323deb102c322ba6fcbdcafc7e3dddab59af2b6",
+     "number": 29,
+     "startedAt": "2026-10-28T08:00:41Z",
+     "status": "completed"
+    },
+    {
+     "completedAt": "2026-10-28T08:00:52Z",
+     "conclusion": "success",
+     "name": "Post Run actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09",
+     "number": 30,
+     "startedAt": "2026-10-28T08:00:51Z",
+     "status": "completed"
+    },
+    {
+     "completedAt": "2026-10-28T08:00:52Z",
+     "conclusion": "success",
+     "name": "Complete job",
+     "number": 31,
+     "startedAt": "2026-10-28T08:00:52Z",
+     "status": "completed"
+    }
+   ],
+   "url": "https://github.com/moss101/modbit/actions/runs/40636271638/job/122643851417"
+  },
+  {
+   "completedAt": "2026-10-28T07:23:45Z",
+   "conclusion": "success",
+   "databaseId": 122643851499,
+   "name": "locked architecture files require a Decision Record (DR-M0-002)",
+   "startedAt": "2026-10-28T07:23:11Z",
+   "status": "completed",
+   "steps": [
+    {
+     "completedAt": "2026-10-28T07:23:13Z",
+     "conclusion": "success",
+     "name": "Set up job",
+     "number": 1,
+     "startedAt": "2026-10-28T07:23:12Z",
+     "status": "completed"
+    },
+    {
+     "completedAt": "2026-10-28T07:23:17Z",
+     "conclusion": "success",
+     "name": "Run actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09",
+     "number": 2,
+     "startedAt": "2026-10-28T07:23:13Z",
+     "status": "completed"
+    },
+    {
+     "completedAt": "2026-10-28T07:23:26Z",
+     "conclusion": "success",
+     "name": "Install pinned Rust toolchain (rust-toolchain.toml)",
+     "number": 3,
+     "startedAt": "2026-10-28T07:23:17Z",
+     "status": "completed"
+    },
+    {
+     "completedAt": "2026-10-28T07:23:27Z",
+     "conclusion": "success",
+     "name": "Run Swatinem/rust-cache@6323deb102c322ba6fcbdcafc7e3dddab59af2b6",
+     "number": 4,
+     "startedAt": "2026-10-28T07:23:26Z",
+     "status": "completed"
+    },
+    {
+     "completedAt": "2026-10-28T07:23:37Z",
+     "conclusion": "success",
+     "name": "Check every commit in range for locked-path changes without an accepted Decision Record trailer",
+     "number": 5,
+     "startedAt": "2026-10-28T07:23:27Z",
+     "status": "completed"
+    },
+    {
+     "completedAt": "2026-10-28T07:23:43Z",
+     "conclusion": "success",
+     "name": "Post Run Swatinem/rust-cache@6323deb102c322ba6fcbdcafc7e3dddab59af2b6",
+     "number": 9,
+     "startedAt": "2026-10-28T07:23:37Z",
+     "status": "completed"
+    },
+    {
+     "completedAt": "2026-10-28T07:23:44Z",
+     "conclusion": "success",
+     "name": "Post Run actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09",
+     "number": 10,
+     "startedAt": "2026-10-28T07:23:43Z",
+     "status": "completed"
+    },
+    {
+     "completedAt": "2026-10-28T07:23:44Z",
+     "conclusion": "success",
+     "name": "Complete job",
+     "number": 11,
+     "startedAt": "2026-10-28T07:23:44Z",
+     "status": "completed"
+    }
+   ],
+   "url": "https://github.com/moss101/modbit/actions/runs/40636271638/job/122643851499"
+  },
+  {
+   "completedAt": "2026-10-28T08:39:31Z",
+   "conclusion": "success",
+   "databaseId": 122643851556,
+   "name": "rust CI_COMPATIBLE (windows-latest)",
+   "startedAt": "2026-10-28T07:15:41Z",
+   "status": "completed",
+   "steps": [
+    {
+     "completedAt": "2026-10-28T07:15:45Z",
+     "conclusion": "success",
+     "name": "Set up job",
+     "number": 1,
+     "startedAt": "2026-10-28T07:15:42Z",
+     "status": "completed"
+    },
+    {
+     "completedAt": "2026-10-28T07:15:53Z",
+     "conclusion": "success",
+     "name": "Run actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09",
+     "number": 2,
+     "startedAt": "2026-10-28T07:15:45Z",
+     "status": "completed"
+    },
+    {
+     "completedAt": "2026-10-28T07:16:08Z",
+     "conclusion": "success",
+     "name": "Install pinned Rust toolchain (rust-toolchain.toml)",
+     "number": 3,
+     "startedAt": "2026-10-28T07:15:53Z",
+     "status": "completed"
+    },
+    {
+     "completedAt": "2026-10-28T07:16:46Z",
+     "conclusion": "success",
+     "name": "Run Swatinem/rust-cache@6323deb102c322ba6fcbdcafc7e3dddab59af2b6",
+     "number": 4,
+     "startedAt": "2026-10-28T07:16:08Z",
+     "status": "completed"
+    },
+    {
+     "completedAt": "2026-10-28T07:16:48Z",
+     "conclusion": "success",
+     "name": "Run pnpm/action-setup@b906affcce14559ad1aafd4ab0e942779e9f58b1",
+     "number": 5,
+     "startedAt": "2026-10-28T07:16:46Z",
+     "status": "completed"
+    },
+    {
+     "completedAt": "2026-10-28T07:17:03Z",
+     "conclusion": "success",
+     "name": "Run actions/setup-node@a0853c24544627f65ddf259abe73b1d18a591444",
+     "number": 6,
+     "startedAt": "2026-10-28T07:16:48Z",
+     "status": "completed"
+    },
+    {
+     "completedAt": "2026-10-28T07:17:08Z",
+     "conclusion": "success",
+     "name": "Install workspace packages (the ts-webapp fixture's vitest, docs/50)",
+     "number": 7,
+     "startedAt": "2026-10-28T07:17:03Z",
+     "status": "completed"
+    },
+    {
+     "completedAt": "2026-10-28T07:17:17Z",
+     "conclusion": "success",
+     "name": "Install pytest (the python-service fixture's runner, PX-033)",
+     "number": 8,
+     "startedAt": "2026-10-28T07:17:08Z",
+     "status": "completed"
+    },
+    {
+     "completedAt": "2026-10-28T07:17:25Z",
+     "conclusion": "success",
+     "name": "Format",
+     "number": 9,
+     "startedAt": "2026-10-28T07:17:17Z",
+     "status": "completed"
+    },
+    {
+     "completedAt": "2026-10-28T07:19:59Z",
+     "conclusion": "success",
+     "name": "Clippy",
+     "number": 10,
+     "startedAt": "2026-10-28T07:17:25Z",
+     "status": "completed"
+    },
+    {
+     "completedAt": "2026-10-28T07:23:22Z",
+     "conclusion": "success",
+     "name": "Build",
+     "number": 11,
+     "startedAt": "2026-10-28T07:19:59Z",
+     "status": "completed"
+    },
+    {
+     "completedAt": "2026-10-28T08:36:25Z",
+     "conclusion": "success",
+     "name": "Test (includes real cargo-metadata forbidden-edge test)",
+     "number": 12,
+     "startedAt": "2026-10-28T07:23:22Z",
+     "status": "completed"
+    },
+    {
+     "completedAt": "2026-10-28T08:39:17Z",
+     "conclusion": "success",
+     "name": "Record the PX-041 Core-share latency distribution (DR-PX-2026-10-21-015) - recorded on every runner, asserted only on the reference profile",
+     "number": 13,
+     "startedAt": "2026-10-28T08:36:25Z",
+     "status": "completed"
+    },
+    {
+     "completedAt": "2026-10-28T08:39:19Z",
+     "conclusion": "success",
+     "name": "Upload the recorded latency distribution",
+     "number": 14,
+     "startedAt": "2026-10-28T08:39:17Z",
+     "status": "completed"
+    },
+    {
+     "completedAt": "2026-10-28T08:39:19Z",
+     "conclusion": "skipped",
+     "name": "macOS actuator real-permission tests (PX-071) - SKIPPED loudly where the runner has no Accessibility / Screen Recording grant",
+     "number": 15,
+     "startedAt": "2026-10-28T08:39:19Z",
+     "status": "completed"
+    },
+    {
+     "completedAt": "2026-10-28T08:39:23Z",
+     "conclusion": "success",
+     "name": "Architecture dependency lint (docs/12, docs/81)",
+     "number": 16,
+     "startedAt": "2026-10-28T08:39:19Z",
+     "status": "completed"
+    },
+    {
+     "completedAt": "2026-10-28T08:39:24Z",
+     "conclusion": "success",
+     "name": "Git spawn lint \u2014 a Git process is built only by the hardened runner (PX-067, docs/65 AFW-J09)",
+     "number": 17,
+     "startedAt": "2026-10-28T08:39:23Z",
+     "status": "completed"
+    },
+    {
+     "completedAt": "2026-10-28T08:39:25Z",
+     "conclusion": "success",
+     "name": "Credential-read lint \u2014 a credential is resolved only through the broker (PX-130, QUAL-PX-130)",
+     "number": 18,
+     "startedAt": "2026-10-28T08:39:24Z",
+     "status": "completed"
+    },
+    {
+     "completedAt": "2026-10-28T08:39:26Z",
+     "conclusion": "success",
+     "name": "Module registration lint \u2014 owner, canonical single-owner systems, capability requirement ids (M0.4, docs/45, docs/81)",
+     "number": 19,
+     "startedAt": "2026-10-28T08:39:25Z",
+     "status": "completed"
+    },
+    {
+     "completedAt": "2026-10-28T08:39:26Z",
+     "conclusion": "success",
+     "name": "Post Run actions/setup-node@a0853c24544627f65ddf259abe73b1d18a591444",
+     "number": 35,
+     "startedAt": "2026-10-28T08:39:26Z",
+     "status": "completed"
+    },
+    {
+     "completedAt": "2026-10-28T08:39:26Z",
+     "conclusion": "success",
+     "name": "Post Run pnpm/action-setup@b906affcce14559ad1aafd4ab0e942779e9f58b1",
+     "number": 36,
+     "startedAt": "2026-10-28T08:39:26Z",
+     "status": "completed"
+    },
+    {
+     "completedAt": "2026-10-28T08:39:26Z",
+     "conclusion": "success",
+     "name": "Post Run Swatinem/rust-cache@6323deb102c322ba6fcbdcafc7e3dddab59af2b6",
+     "number": 37,
+     "startedAt": "2026-10-28T08:39:26Z",
+     "status": "completed"
+    },
+    {
+     "completedAt": "2026-10-28T08:39:29Z",
+     "conclusion": "success",
+     "name": "Post Run actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09",
+     "number": 38,
+     "startedAt": "2026-10-28T08:39:26Z",
+     "status": "completed"
+    },
+    {
+     "completedAt": "2026-10-28T08:39:29Z",
+     "conclusion": "success",
+     "name": "Complete job",
+     "number": 39,
+     "startedAt": "2026-10-28T08:39:29Z",
+     "status": "completed"
+    }
+   ],
+   "url": "https://github.com/moss101/modbit/actions/runs/40636271638/job/122643851556"
+  },
+  {
+   "completedAt": "2026-10-28T08:47:42Z",
+   "conclusion": "success",
+   "databaseId": 122718113207,
+   "name": "CI_COMPATIBLE summary (not release-grade)",
+   "startedAt": "2026-10-28T08:47:35Z",
+   "status": "completed",
+   "steps": [
+    {
+     "completedAt": "2026-10-28T08:47:36Z",
+     "conclusion": "success",
+     "name": "Set up job",
+     "number": 1,
+     "startedAt": "2026-10-28T08:47:36Z",
+     "status": "completed"
+    },
+    {
+     "completedAt": "2026-10-28T08:47:39Z",
+     "conclusion": "success",
+     "name": "Run actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09",
+     "number": 2,
+     "startedAt": "2026-10-28T08:47:36Z",
+     "status": "completed"
+    },
+    {
+     "completedAt": "2026-10-28T08:47:39Z",
+     "conclusion": "success",
+     "name": "Label the run from its job results (PX-030)",
+     "number": 3,
+     "startedAt": "2026-10-28T08:47:39Z",
+     "status": "completed"
+    },
+    {
+     "completedAt": "2026-10-28T08:47:39Z",
+     "conclusion": "success",
+     "name": "Post Run actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09",
+     "number": 6,
+     "startedAt": "2026-10-28T08:47:39Z",
+     "status": "completed"
+    },
+    {
+     "completedAt": "2026-10-28T08:47:39Z",
+     "conclusion": "success",
+     "name": "Complete job",
+     "number": 7,
+     "startedAt": "2026-10-28T08:47:39Z",
+     "status": "completed"
+    }
+   ],
+   "url": "https://github.com/moss101/modbit/actions/runs/40636271638/job/122718113207"
+  }
+ ],
+ "url": "https://github.com/moss101/modbit/actions/runs/40636271638",
+ "workflowName": "ci"
+}

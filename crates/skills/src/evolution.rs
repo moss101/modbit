@@ -86,9 +86,25 @@ pub struct TraceCost {
     pub wall_ms: u64,
 }
 
+/// One tool call of a run as its trace keeps it (PX-189): the tool, its
+/// arguments and the executor's response, each redacted and bounded, and
+/// the typed error when it failed.
+#[derive(Clone, Debug, Default, PartialEq, Eq, Serialize, Deserialize)]
+pub struct TraceStep {
+    /// Tool name.
+    pub tool: String,
+    /// Arguments as the model sent them (redacted, bounded).
+    pub arguments: String,
+    /// What the executor returned (redacted, bounded).
+    pub response: String,
+    /// The failure code, empty on success.
+    #[serde(default, skip_serializing_if = "String::is_empty")]
+    pub error: String,
+}
+
 /// An `EvolutionTrace` (docs/26 "Storage contracts"): one run of one task,
 /// immutable once sealed.
-#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Clone, Debug, Default, PartialEq, Eq, Serialize, Deserialize)]
 pub struct EvolutionTrace {
     /// Benchmark / task id.
     pub task: String,
@@ -117,6 +133,16 @@ pub struct EvolutionTrace {
     pub cost: TraceCost,
     /// `REDACTED` | `RAW`.
     pub redaction_status: String,
+    /// PX-189: the compiled skill configuration the run used (PX-182).
+    /// Absent from a trace written before it, so that trace's id holds.
+    #[serde(default, skip_serializing_if = "String::is_empty")]
+    pub skill_configuration_id: String,
+    /// PX-189: the memory items put into the run's prompts, by id.
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub memory: Vec<String>,
+    /// PX-189: the run's tool calls in order.
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub steps: Vec<TraceStep>,
 }
 
 /// A sealed trace: the trace and the digest that names it.

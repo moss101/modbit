@@ -52,7 +52,7 @@ function harness() {
 
 test("PX-106: the Customize view registers nine typed channels and none installs, browses a catalog or updates", () => {
   const channels = harness().channels().sort();
-  assert.deepEqual(channels, ["customize:extensionTrust", "customize:extensionUnload", "customize:hookEnabled", "customize:hooks", "customize:import", "customize:openSource", "customize:skillRevoke", "customize:skillTrust", "customize:skills"]);
+  assert.deepEqual(channels, ["customize:extensionTrust", "customize:extensionUnload", "customize:hookEnabled", "customize:hooks", "customize:import", "customize:memory", "customize:memoryForget", "customize:memoryPromote", "customize:memoryRemember", "customize:memoryShare", "customize:openSource", "customize:skillRevoke", "customize:skillTrust", "customize:skills"]);
   assert.equal(channels.filter((c) => /catalog|market|install|download|update|browse/i.test(c)).length, 0);
 });
 

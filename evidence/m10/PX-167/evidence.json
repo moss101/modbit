@@ -1,0 +1,26 @@
+{
+ "task": "PX-167",
+ "requirements": [
+  "REQ-PX-167",
+  "QUAL-PX-167"
+ ],
+ "scenarios": [
+  "QUAL-PX-167"
+ ],
+ "tests": [
+  "tools/check_unused_crates.sh",
+  "deny.toml"
+ ],
+ "proof": "CI run 40679469851 on head d77aae11: the supply-chain job (cargo deny check; the ignore list and each reason printed; unused-crate baseline gate) passes on the unmodified tree; mutation-check.txt shows a planted vulnerable crate and a planted denied-license crate each fail cargo deny, and a planted unused dependency fails the baseline gate.",
+ "limitations": "Five advisories with no compatible fix are ignored with reasons (quick-xml, zstd); 29 existing unused dependencies are baselined, not removed. The planted-crate runs were local, not CI.",
+ "runs": [
+  "40679469851"
+ ],
+ "ci": {
+  "run_id": "40679469851",
+  "head_sha": "d77aae11",
+  "conclusion": "success",
+  "json": "evidence/m10/PX-167/ci-run-40679469851.json",
+  "landed_as": "eb336971"
+ }
+}

@@ -6,6 +6,8 @@
 //! registrations (owner, canonical systems, capabilities) against the project
 //! graph (M0.4). Exit 0 when clean, 1 when violations exist, 2 on error.
 
+// PX-168 lint policy: this file baselined expect/unwrap sites; new ones need review.
+#![allow(clippy::unwrap_used)]
 use std::path::PathBuf;
 use std::process::ExitCode;
 

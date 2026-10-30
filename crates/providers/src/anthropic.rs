@@ -235,6 +235,25 @@ pub fn request_body(req: &ModelRequest) -> Value {
     body
 }
 
+/// Whether an error response says the request exceeded the model's context
+/// window (PX-155). Anthropic answers HTTP 400 `invalid_request_error` with
+/// "prompt is too long: N tokens > M maximum", and 413 `request_too_large`
+/// when the request body itself is over the limit.
+#[must_use]
+pub fn is_context_overflow(status: u16, body: &str) -> bool {
+    let v: Value = serde_json::from_str(body).unwrap_or(Value::Null);
+    let err = &v["error"];
+    match status {
+        413 => err["type"].as_str() == Some("request_too_large"),
+        400 => {
+            let msg = err["message"].as_str().unwrap_or("").to_ascii_lowercase();
+            err["type"].as_str() == Some("invalid_request_error")
+                && (msg.contains("prompt is too long") || msg.contains("context window"))
+        }
+        _ => false,
+    }
+}
+
 /// Streaming state: content blocks by index.
 #[derive(Debug, Default)]
 pub struct Decoder {
@@ -396,5 +415,21 @@ impl Decoder {
     #[must_use]
     pub fn finished(&self) -> bool {
         self.done
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::is_context_overflow;
+
+    #[test]
+    fn a_prompt_too_long_error_is_an_overflow_and_other_rejections_are_not() {
+        let body = r#"{"type":"error","error":{"type":"invalid_request_error","message":"prompt is too long: 215032 tokens > 200000 maximum"}}"#;
+        assert!(is_context_overflow(400, body));
+        let large = r#"{"type":"error","error":{"type":"request_too_large","message":"Request exceeds the maximum allowed number of bytes."}}"#;
+        assert!(is_context_overflow(413, large));
+        let other = r#"{"type":"error","error":{"type":"invalid_request_error","message":"max_tokens: must be at most 64000"}}"#;
+        assert!(!is_context_overflow(400, other));
+        assert!(!is_context_overflow(500, body));
     }
 }

@@ -5,6 +5,8 @@
 //! binary encoding from Rust, and a plain JSON description of the field values
 //! that the TypeScript test compares against after decoding.
 
+// PX-168 lint policy: this file baselined expect/unwrap sites; new ones need review.
+#![allow(clippy::expect_used)]
 use std::path::{Path, PathBuf};
 
 use modbit_protocol::v1::*;
@@ -377,6 +379,7 @@ pub fn samples() -> Vec<Sample> {
         memory_items_injected: 1,
         compaction_epoch: 1,
         compaction_summaries: 1,
+        skill_configuration_id: "5f".repeat(32),
         budgets: Some(BudgetAccountingView {
             max_cost_minor: 5000,
             spent_minor: 1234,
@@ -386,6 +389,7 @@ pub fn samples() -> Vec<Sample> {
             max_children: 3,
             live_children: 1,
             forbid_spawn: false,
+            wall_ms_parked: 3_500,
         }),
     };
     let command = CommandEnvelope {
@@ -1535,9 +1539,10 @@ pub fn samples() -> Vec<Sample> {
                 "turnId": "01a09072-1262-70f2-b103-63d3e8f0feda", "turnOrdinal": 4,
                 "offset": "9007199254741001", "instructionLayersInForce": 2,
                 "memoryItemsInjected": 1, "compactionEpoch": 1, "compactionSummaries": 1,
+                "skillConfigurationId": "5f".repeat(32),
                 "budgets": {
                     "maxCostMinor": "5000", "spentMinor": "1234", "heldByChildrenMinor": "100",
-                    "maxWallMs": "9007199254740993", "wallMsUsed": "42", "maxChildren": 3,
+                    "maxWallMs": "9007199254740993", "wallMsUsed": "42", "wallMsParked": "3500", "maxChildren": 3,
                     "liveChildren": 1, "forbidSpawn": false
                 }
             }),

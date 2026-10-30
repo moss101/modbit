@@ -23,6 +23,8 @@
 //! log, and records only what changed since — including `GONE` for a service
 //! that stopped while the Core was down.
 
+// PX-168 lint policy: this file baselined expect/unwrap sites; new ones need review.
+#![allow(clippy::expect_used)]
 use std::collections::{HashMap, HashSet};
 use std::sync::Arc;
 use std::time::{Duration, Instant};

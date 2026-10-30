@@ -2899,6 +2899,8 @@ message MemoryItemView {
   repeated string conflicts = 14;
   string last_validation_revision = 15;
   bool validated = 16;
+  uint64 uses = 17;              // turns whose prompt carried it (PX-157)
+  int64 last_used_at_ms = 18;    // 0 = never
 }
 
 // List the engineering memory in a task's scope chain, for inspection

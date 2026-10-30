@@ -4,6 +4,8 @@
 //! evaluates the rules in `rules.toml` (docs/12, docs/81, docs/35). Forbidden
 //! edges are reported with the concrete dependency path that realises them.
 
+// PX-168 lint policy: this file baselined expect/unwrap sites; new ones need review.
+#![allow(clippy::expect_used)]
 use std::collections::{BTreeMap, BTreeSet, HashMap, VecDeque};
 use std::path::Path;
 

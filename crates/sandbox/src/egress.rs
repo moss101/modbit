@@ -16,6 +16,8 @@
 //! `HTTP <host>[:<port>]`; the broker answers `OK` or `DENIED <reason>`;
 //! then bytes flow.
 
+// PX-168 lint policy: this file baselined expect/unwrap sites; new ones need review.
+#![allow(clippy::expect_used)]
 use std::collections::HashMap;
 use std::sync::Arc;
 

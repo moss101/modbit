@@ -66,7 +66,7 @@ flowchart LR
   M7["M7<br/>Live browser<br/>28/28 done"]
   M8["M8<br/>Cloud isolated execution<br/>28/28 done"]
   M9["M9<br/>Engineering memory/effects/security hardening<br/>33/33 done"]
-  M10["M10<br/>Release hardening<br/>36/154 done"]
+  M10["M10<br/>Release hardening<br/>54/154 done"]
   M0 --> M1
   M1 --> M2
   M2 --> M3
@@ -114,7 +114,7 @@ Critical path (reliability spine): **M0 → M1 → M2 → M4**. Do not start bro
 | M7 Live browser | COMPLETE | yes | 8 | 20 | 28 | 0 | M2 | E2E-013..016. |
 | M8 Cloud isolated execution | COMPLETE | yes | 9 | 19 | 28 | 0 | M4, M7 | E2E-017/018/024. |
 | M9 Engineering memory/effects/security hardening | COMPLETE | yes | 6 | 27 | 33 | 0 | M4, M5 | memory cannot be created from transcript without promotion; receipt chain verifies; threat tests pass. |
-| M10 Release hardening | IN_PROGRESS | yes | 7 | 147 | 36 | 0 | M3, M5, M6, M7, M8, M9 | full Release Zero proof + package evidence + EPR gates A–G SATISFIED. |
+| M10 Release hardening | IN_PROGRESS | yes | 7 | 147 | 54 | 0 | M3, M5, M6, M7, M8, M9 | full Release Zero proof + package evidence + EPR gates A–G SATISFIED. |
 
 ## Subsystems → milestones
 
@@ -324,7 +324,7 @@ Releases are projections over work items and gates (docs/75). Readiness is compu
 |---|---|---:|---:|---:|---|---|
 | ALPHA: Local coding loop and recovery spine | READY | 114 | 114 | 0 | none | / ALPHA / Local coding loop and recovery spine / M0, M1, M2, M4 / M2.10 / EPR- / — / — / |
 | BETA: Intelligence, fleet and browser | READY | 318 | 318 | 0 | none | / BETA / Intelligence, fleet and browser / M0, M1, M2, M3, M4, M5, M6, M7 / — / — / — / — / |
-| RELEASE_ZERO: Full end-to-end proof | NOT_READY | 533 | 415 | 0 | EPR-GATE-A, EPR-GATE-B, EPR-GATE-C, EPR-GATE-D, EPR-GATE-E, EPR-GATE-F, EPR-GATE-G | / RELEASE_ZERO / Full end-to-end proof / ALL / — / — / — / EPR-GATE-A, EPR-GATE-B, EPR-GATE-C, EPR-GATE-D, EPR-GATE-E, EPR-GATE-F, EPR-GATE-G / |
+| RELEASE_ZERO: Full end-to-end proof | NOT_READY | 533 | 433 | 0 | EPR-GATE-A, EPR-GATE-B, EPR-GATE-C, EPR-GATE-D, EPR-GATE-E, EPR-GATE-F, EPR-GATE-G | / RELEASE_ZERO / Full end-to-end proof / ALL / — / — / — / EPR-GATE-A, EPR-GATE-B, EPR-GATE-C, EPR-GATE-D, EPR-GATE-E, EPR-GATE-F, EPR-GATE-G / |
 
 ## Scoped v1.1 supersessions and source provenance
 
@@ -386,7 +386,7 @@ flowchart LR
 - `DOC-PX-015`: COMPLETE; Product extension stage: ZCode design language for the desktop renderer, PX-141..143; evidence: artifact:evidence/dossier-px-015/validation.json, artifact:evidence/dossier-px-015/tests.log, commit:437419a8e81bc76a52c7ef1b72dccb48e357941f
 - `DOC-PX-016`: COMPLETE; Product extension stage: Autonomous coding engine inside the Capability Kernel's envelope, PX-144..146; evidence: artifact:evidence/dossier-px-016/tests.log, artifact:evidence/dossier-px-016/validation.json, commit:6e32d883
 - `DOC-PX-017`: COMPLETE; Product extension stage: Upgrade program from Codex, MAI-UI and Qwen-Planner-Agent, PX-147..191; evidence: artifact:evidence/dossier-px-017/tests.log, artifact:evidence/dossier-px-017/validation.json, commit:f337daa9
-- `DOC-GOV-008`: REAL_TESTING; Bind crates/core-runtime/src/trajectory.rs to the PX-189 production wiring; evidence: artifact:evidence/dossier-gov-008/validation.json, artifact:evidence/dossier-gov-008/tests.log
+- `DOC-GOV-008`: NOT_STARTED; Bind crates/core-runtime/src/trajectory.rs to the PX-189 production wiring; evidence: none
 
 ## Milestone tasks in execution order
 
