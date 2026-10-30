@@ -958,6 +958,74 @@ mod unix {
         );
     }
 
+    /// A continuation read of a still-running background command that returns
+    /// nothing is polling: the real broker session answers it with a hint to
+    /// stop, while the first read (which has output) and a read of an exited
+    /// command carry none.
+    #[tokio::test]
+    async fn shell_read_hints_to_stop_polling_an_idle_running_command() {
+        let (_repo, root) = workspace();
+        let dir = tempfile::tempdir().unwrap();
+        let core = CoreProcess::spawn(dir.path(), &[]);
+        let mut c = core.client().await;
+        let (session, g) = create_session(&mut c, 0x41).await;
+        let task = create_task(&mut c, &session, g, &root).await;
+        let sid = start_shell(&mut c, &task, g, "echo first; read hold").await;
+        // The first read has output and starts at cursor 0: no hint.
+        let r = invoke(
+            &mut c,
+            &task,
+            g,
+            "shell.read",
+            &json!({"session_id": sid, "wait_ms": 1500}),
+        )
+        .await;
+        assert_eq!(r.status, "SUCCESS", "{r:?}");
+        let first = so(&r);
+        assert!(first["preview"].as_str().unwrap().contains("first"));
+        assert!(first.get("hint").is_none(), "{first}");
+        let cursor = first["next_cursor"].as_u64().unwrap();
+        assert!(cursor > 0);
+        // Reading on from that cursor: nothing new, still running -> hint.
+        let r = invoke(
+            &mut c,
+            &task,
+            g,
+            "shell.read",
+            &json!({"session_id": sid, "after_cursor": cursor, "wait_ms": 200}),
+        )
+        .await;
+        assert_eq!(r.status, "SUCCESS", "{r:?}");
+        let idle = so(&r);
+        assert_eq!(idle["running"], json!(true), "{idle}");
+        assert_eq!(idle["preview_bytes"], json!(0), "{idle}");
+        assert!(
+            idle["hint"].as_str().unwrap().contains("stop polling"),
+            "{idle}"
+        );
+        // Once the command exits the same cursor read reports the exit, no hint.
+        let r = invoke(
+            &mut c,
+            &task,
+            g,
+            "shell.input",
+            &json!({"session_id": sid, "text": "go"}),
+        )
+        .await;
+        assert_eq!(r.status, "SUCCESS", "{r:?}");
+        let r = invoke(
+            &mut c,
+            &task,
+            g,
+            "shell.read",
+            &json!({"session_id": sid, "after_cursor": cursor, "wait_ms": 3000}),
+        )
+        .await;
+        let done = so(&r);
+        assert_eq!(done["running"], json!(false), "{done}");
+        assert!(done.get("hint").is_none(), "{done}");
+    }
+
     /// PX-099: the agent answers an interactive prompt through `shell.input`
     /// and reads the reply through `shell.attach` from a cursor; typing is
     /// classified like running (a privileged command needs an approval and

@@ -2395,11 +2395,23 @@ tool!(
                 Err(e) => return ToolOutcome::infra("BROKER_ERROR", e.to_string()),
             }
         }
-        ToolOutcome::ok(
-            json!({"session_id": session_id, "after_cursor": after, "preview": String::from_utf8_lossy(&data), "preview_bytes": data.len(), "next_cursor": next_cursor, "truncated": truncated, "running": running, "exited": exited}),
-        )
+        let mut out = json!({"session_id": session_id, "after_cursor": after, "preview": String::from_utf8_lossy(&data), "preview_bytes": data.len(), "next_cursor": next_cursor, "truncated": truncated, "running": running, "exited": exited});
+        if let Some(hint) = idle_poll_hint(after, data.len(), running) {
+            out["hint"] = json!(hint);
+        }
+        ToolOutcome::ok(out)
     }
 );
+
+/// A continuation read (`after_cursor > 0`) of a still-running command that
+/// returned nothing is polling: every such round trip is a full model request
+/// that learns nothing, and while it runs the prompt cache can expire. Tell
+/// the model to wait longer or do other work instead of reading again.
+fn idle_poll_hint(after: u64, preview_bytes: usize, running: bool) -> Option<&'static str> {
+    (running && after > 0 && preview_bytes == 0).then_some(
+        "no new output and the command is still running: stop polling. Do other work, or call shell.read again once with a longer wait_ms (up to 10000); do not re-read in a loop.",
+    )
+}
 
 tool!(
     ShellList,

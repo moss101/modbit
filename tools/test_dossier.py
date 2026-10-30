@@ -313,6 +313,11 @@ class DossierTests(unittest.TestCase):
         out = self.run_tool("graph", "show", "DOC-GOV-007")
         for required in ("DOC-GOV-006", "DR-GOV-2026-09-25-007", "77_RELEASE_ZERO_EXECUTION_GOAL.md", "97_DOSSIER_MAINTENANCE_LOG.md", "governance"):
             self.assertIn(required, out)
+        out = self.run_tool("graph", "show", "DOC-GOV-008")
+        for required in ("DOC-GOV-007", "DR-GOV-2026-10-30-008", "62_PRODUCT_EXTENSION_REQUIREMENTS_TASKS_AND_QUALIFICATIONS.md", "97_DOSSIER_MAINTENANCE_LOG.md", "governance"):
+            self.assertIn(required, out)
+        card = (ROOT / "docs" / "62_PRODUCT_EXTENSION_REQUIREMENTS_TASKS_AND_QUALIFICATIONS.md").read_text(encoding="utf-8")
+        self.assertIn("crates/core-runtime/src/trajectory.rs", card.split("## PX-189 ")[1].split("## Real-system scenarios")[0])
         out = self.run_tool("graph", "show", "DOC-GOV-001")
         for required in ("DOC-EPR-002", "DR-GOV-2026-09-05", "96_DOSSIER_GOVERNANCE_MAINTENANCE_TASK_AND_HANDOFF.md", "governance"):
             self.assertIn(required, out)
