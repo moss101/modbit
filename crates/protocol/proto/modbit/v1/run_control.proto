@@ -253,6 +253,8 @@ message BudgetAccountingView {
   uint32 max_children = 6;
   uint32 live_children = 7;
   bool forbid_spawn = 8;
+  // PX-156: time parked on a person's approval, not in wall_ms_used.
+  uint64 wall_ms_parked = 9;
 }
 
 // The Core's breakdown of the request it last sent: the nine categories sum to
@@ -285,4 +287,5 @@ message ContextAccountingView {
   uint32 compaction_epoch = 20;              // REQ-PX-109
   uint32 compaction_summaries = 21;
   BudgetAccountingView budgets = 22;         // REQ-PX-116
+  string skill_configuration_id = 23;        // PX-182: the run's compiled skill configuration
 }

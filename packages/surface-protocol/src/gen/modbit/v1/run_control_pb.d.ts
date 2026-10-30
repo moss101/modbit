@@ -998,6 +998,13 @@ export declare type BudgetAccountingView = Message<"modbit.v1.BudgetAccountingVi
    * @generated from field: bool forbid_spawn = 8;
    */
   forbidSpawn: boolean;
+
+  /**
+   * PX-156: time parked on a person's approval, not in wall_ms_used.
+   *
+   * @generated from field: uint64 wall_ms_parked = 9;
+   */
+  wallMsParked: bigint;
 };
 
 /**
@@ -1156,6 +1163,13 @@ export declare type ContextAccountingView = Message<"modbit.v1.ContextAccounting
    * @generated from field: modbit.v1.BudgetAccountingView budgets = 22;
    */
   budgets?: BudgetAccountingView | undefined;
+
+  /**
+   * PX-182: the run's compiled skill configuration
+   *
+   * @generated from field: string skill_configuration_id = 23;
+   */
+  skillConfigurationId: string;
 };
 
 /**

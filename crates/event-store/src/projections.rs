@@ -1374,6 +1374,11 @@ pub fn apply(tx: &Transaction<'_>, ev: &StoredEvent, objects: &crate::ObjectStor
 /// when it says `removed` (a forgotten item leaves the store; the log keeps
 /// the fact that it was forgotten).
 fn project_memory(tx: &Transaction<'_>, payload: &serde_json::Value) -> Result<()> {
+    // PX-157: a use of an item in a prompt is history, not a change of the
+    // item; its count is read from the log.
+    if payload["event_type"] == "MemoryUsed" {
+        return Ok(());
+    }
     if payload["removed"].as_bool() == Some(true) {
         let id = payload["memory_id"].as_str().unwrap_or_default();
         tx.execute("DELETE FROM memory_items WHERE id = ?1", params![id])?;

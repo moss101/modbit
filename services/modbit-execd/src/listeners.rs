@@ -14,7 +14,8 @@
 //! pure and compiled on every platform so their tests run everywhere.
 
 #![allow(dead_code)]
-
+// PX-168 lint policy: this file spawns processes; new ones need review.
+#![allow(clippy::disallowed_methods)]
 use std::collections::{HashMap, HashSet};
 
 /// One process of the process table.

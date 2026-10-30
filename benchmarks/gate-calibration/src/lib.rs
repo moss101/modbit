@@ -23,6 +23,8 @@
 //! threshold profile: no profile, too few samples or an unsafe gate fails
 //! it, whatever the router saves.
 
+// PX-168 lint policy: this file spawns processes; new ones need review.
+#![allow(clippy::disallowed_methods)]
 pub mod live;
 pub mod widened;
 

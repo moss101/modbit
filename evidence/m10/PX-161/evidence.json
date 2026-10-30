@@ -1,0 +1,10 @@
+{
+ "task": "PX-161",
+ "requirements": ["REQ-PX-161", "QUAL-PX-161"],
+ "scenarios": ["QUAL-PX-161"],
+ "tests": ["services/modbit-core/tests/px_161_parallel_reads.rs", "services/modbit-core/tests/stream_transcript.rs"],
+ "proof": "CI run 40777489593 (head 817913b1) green on all 15 jobs. Real modbit-core, real git, real SQLite and a scripted model: six git.diff reads of one turn overlap (span x10 < own time x8), the write is proposed only after every read's result, results reach the model in call order, a failing read reports its error beside the other results, and a SIGKILL mid-batch recovers with no result recorded twice. mutation-check.txt shows disabling the parallel path fails the overlap test. CI also found and the final code fixes proposal ordering (qual_px_042).",
+ "limitations": "Dispatched/Succeeded events of a batch interleave in completion order; only the proposals are ordered. Concurrency is bounded by tool-internal locks, so fs.* overlap little (workspace mutex) and the overlap test uses git.diff. A read in a run the harness later refuses has already executed and its result is discarded. The overlap timing assertion failed once in about 11 local runs under load and an earlier version ran serially about one run in three for an undiagnosed reason.",
+ "runs": ["40777489593"],
+ "ci": {"run_id": "40777489593", "head_sha": "817913b1", "conclusion": "success", "json": "evidence/m10/PX-161/ci-run-40777489593.json", "landed_as": "1124f5fa"}
+}

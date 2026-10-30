@@ -3,6 +3,8 @@
 //! reproducibility). Generated code is written to `OUT_DIR`; the schema source
 //! under `proto/` is the only authority.
 
+// PX-168 lint policy: this file baselined expect/unwrap sites; new ones need review.
+#![allow(clippy::expect_used)]
 use std::path::PathBuf;
 
 fn main() {

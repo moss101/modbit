@@ -14,6 +14,8 @@
 //! configures (`OPENAI_API_KEY` or a gateway endpoint in the environment);
 //! nothing here supplies one.
 
+// PX-168 lint policy: this file spawns processes; new ones need review.
+#![allow(clippy::disallowed_methods)]
 use std::path::{Path, PathBuf};
 use std::process::Command;
 

@@ -5,6 +5,8 @@
 //! cost. Validation refuses what QUAL-PX-020 names: gold-patch access, an
 //! unpinned container image, a missing or inconsistent trial count.
 
+// PX-168 lint policy: this file baselined expect/unwrap sites; new ones need review.
+#![allow(clippy::expect_used)]
 use std::collections::BTreeMap;
 
 use modbit_bench_outcome_statistics::wilson;

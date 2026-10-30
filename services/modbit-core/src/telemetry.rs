@@ -346,6 +346,9 @@ fn spans_of_run(core: &Core, store: &EventStore, task: TaskId, run: RunId) -> Ve
         out.extend(open.into_iter().map(|(t, start)| (start, u64::MAX, t)));
         out
     };
+    // PX-159: a compaction from its request to its outcome — when it started,
+    // the transcript's tokens then and its mode — keyed by compaction id.
+    let mut compactions: HashMap<String, (i64, u64, String)> = HashMap::new();
     for (e, p) in &facts.events {
         let env = &e.envelope;
         let at = env.occurred_at.0;
@@ -598,6 +601,103 @@ fn spans_of_run(core: &Core, store: &EventStore, task: TaskId, run: RunId) -> Ve
                         ok: status == "COMPLETED",
                     });
                 }
+            }
+            "CompactionStarted" => {
+                compactions.insert(
+                    text(&p["compaction_id"]).to_owned(),
+                    (
+                        at,
+                        p["tokens_before"].as_u64().unwrap_or(0),
+                        text(&p["mode"]).to_owned(),
+                    ),
+                );
+            }
+            "CompactionCommitted" | "CompactionRejectedStale" => {
+                let id = text(&p["compaction_id"]).to_owned();
+                let (start, before, started_mode) =
+                    compactions.remove(&id).unwrap_or((at, 0, String::new()));
+                let committed = env.event_type == "CompactionCommitted";
+                let mode = if committed {
+                    text(&p["mode"]).to_owned()
+                } else {
+                    started_mode
+                };
+                let mut attrs = vec![
+                    ("modbit.compaction.id".into(), Attr::from(id.clone())),
+                    (
+                        "modbit.compaction.epoch".into(),
+                        Attr::from(p["epoch"].as_u64().unwrap_or(0)),
+                    ),
+                    ("modbit.compaction.mode".into(), Attr::from(mode)),
+                    (
+                        "modbit.compaction.outcome".into(),
+                        Attr::from(if committed { "COMMITTED" } else { "REJECTED" }),
+                    ),
+                    ("modbit.compaction.tokens_before".into(), Attr::from(before)),
+                    (
+                        "modbit.compaction.duration_ms".into(),
+                        Attr::from(u64::try_from(at - start).unwrap_or(0)),
+                    ),
+                ];
+                if committed {
+                    attrs.push((
+                        "modbit.compaction.tokens_after".into(),
+                        Attr::from(p["tokens_after"].as_u64().unwrap_or(0)),
+                    ));
+                    attrs.push((
+                        "modbit.compaction.summary_source".into(),
+                        Attr::from(text(&p["summary_source"]).to_owned()),
+                    ));
+                    if !text(&p["fallback_reason"]).is_empty() {
+                        attrs.push((
+                            "modbit.compaction.fallback_reason".into(),
+                            Attr::from(text(&p["fallback_reason"]).to_owned()),
+                        ));
+                    }
+                    // The summarizer's cost, priced as every request is; a
+                    // call the registry cannot price is said to be unmetered.
+                    let mut cost = 0u64;
+                    let mut unmetered = false;
+                    for u in p["summarizer_usage"].as_array().into_iter().flatten() {
+                        match crate::usage::call_cost(
+                            registry.as_ref(),
+                            u,
+                            &crate::usage::usage_of(u),
+                            u["reported"].as_bool().unwrap_or(false),
+                        ) {
+                            crate::usage::CallCost::Priced(m) => cost = cost.saturating_add(m),
+                            crate::usage::CallCost::Unmetered => unmetered = true,
+                            crate::usage::CallCost::NoRequest => {}
+                        }
+                    }
+                    attrs.push((
+                        "modbit.compaction.summarizer_calls".into(),
+                        Attr::from(p["summarizer_usage"].as_array().map_or(0, Vec::len) as u64),
+                    ));
+                    attrs.push((
+                        "modbit.compaction.summarizer_cost_minor".into(),
+                        Attr::from(cost),
+                    ));
+                    attrs.push((
+                        "modbit.compaction.summarizer_unmetered".into(),
+                        Attr::from(unmetered),
+                    ));
+                } else {
+                    attrs.push((
+                        "modbit.compaction.rejection".into(),
+                        Attr::from(text(&p["reason"]).to_owned()),
+                    ));
+                }
+                spans.push(Span {
+                    trace_id: facts.trace,
+                    span_id: id8("compaction", &format!("{run_s}:{id}")),
+                    parent_span_id: Some(turn_span),
+                    name: "modbit.compaction".into(),
+                    start_ns: ns(start),
+                    end_ns: ns(at),
+                    attrs,
+                    ok: committed,
+                });
             }
             "ContextEpochOpened" => {
                 spans.push(Span {

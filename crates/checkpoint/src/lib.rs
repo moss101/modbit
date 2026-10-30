@@ -13,6 +13,8 @@
 //! the worktree into content-addressed objects, hands the entries here, and
 //! writes the restored files back through the workspace service.
 
+// PX-168 lint policy: this file baselined expect/unwrap sites; new ones need review.
+#![allow(clippy::expect_used)]
 use std::collections::{BTreeMap, BTreeSet};
 
 use modbit_domain::{CheckpointId, TaskId, Timestamp};

@@ -6,7 +6,8 @@
 //! hashed, not logged - so it cannot reach the model, the Core or a frame
 //! (CUC-B06, CUC-F01).
 #![allow(unsafe_code)]
-
+// PX-168 lint policy: this file baselined expect/unwrap sites; new ones need review.
+#![allow(clippy::expect_used)]
 use std::collections::VecDeque;
 use std::sync::OnceLock;
 use std::time::{Duration, Instant};

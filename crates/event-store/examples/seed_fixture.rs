@@ -4,6 +4,8 @@
 //! Usage: `cargo run -p modbit-event-store --example seed_fixture -- <out-dir>`
 //! Writes `<out-dir>/core.db` with one session, one task and one run.
 
+// PX-168 lint policy: this file baselined expect/unwrap sites; new ones need review.
+#![allow(clippy::expect_used)]
 use modbit_domain::event::{Actor, AggregateType};
 use modbit_domain::{SessionId, TaskId, TenantId};
 use modbit_event_store::{AppendRequest, EventStore, NewEvent};

@@ -14,6 +14,8 @@
 //! gateway's credential broker and never formatted: not in `Debug`, not in an
 //! error.
 
+// PX-168 lint policy: this file baselined expect/unwrap sites; new ones need review.
+#![allow(clippy::unwrap_used)]
 use std::time::Instant;
 
 use modbit_providers::{

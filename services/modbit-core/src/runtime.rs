@@ -10,6 +10,8 @@
 //! tool action. Steering inputs are applied between steps; cancellation
 //! interrupts at the same boundaries and cancels the in-flight model stream.
 
+// PX-168 lint policy: this file baselined expect/unwrap sites; new ones need review.
+#![allow(clippy::expect_used)]
 use std::collections::HashMap;
 use std::sync::Arc;
 
@@ -1994,6 +1996,12 @@ pub(crate) async fn rebuild(
                 }
             }
             // REQ-PX-043: the notice the model was shown of a background end.
+            // REQ-PX-162: the instruction update the model was shown.
+            crate::instruction_delta::NOTE_EVENT => {
+                if let Some(t) = payload["notice"].as_str().filter(|t| !t.is_empty()) {
+                    transcript.push(Message::text(Role::User, t.to_owned()));
+                }
+            }
             "BackgroundWakeDelivered" => {
                 if let Some(t) = payload["notice"].as_str().filter(|t| !t.is_empty()) {
                     transcript.push(Message::text(Role::User, t.to_owned()));
@@ -2277,6 +2285,7 @@ pub(crate) async fn rebuild(
     state.cost_minor = spent.cost_minor;
     state.cost_unmetered_calls = spent.unmetered_calls;
     state.wall_ms = spent.wall_ms;
+    state.parked_ms = spent.parked_ms;
     // The queue is the log's, read at each boundary; nothing is carried here.
     (transcript, state, last_offset, Vec::new())
 }
@@ -3089,11 +3098,14 @@ async fn run_loop(
     state.goal_reports_failure = harness::goal_reports_failure(&task.goal_text);
     // REQ-PX-116: the wall clock the task's earlier runs used, and this
     // run's own clock from here.
-    let wall_prior = {
+    // PX-156: the time this run has already spent parked on an approval is
+    // out of both numbers; what it parks from here is taken off at each
+    // boundary.
+    let (wall_prior, parked_at_start) = {
         let st = core.store.lock().await;
-        state
-            .wall_ms
-            .saturating_sub(crate::usage::run_span_ms(&st, &task.session_id, run_id))
+        let parked = crate::usage::run_parked_ms(&st, &task.task_id, run_id, Timestamp::now().0);
+        let span = crate::usage::run_span_ms(&st, &task.session_id, run_id).saturating_sub(parked);
+        (state.wall_ms.saturating_sub(span), parked)
     };
     let run_clock = std::time::Instant::now();
     // Protocol state (docs/19 layer 2, M4.1): the calls the model asked for
@@ -3182,6 +3194,9 @@ async fn run_loop(
     // REQ-PX-105: re-read every round, so trust, revocation and edits apply
     // to the next request.
     let mut run_skills = crate::skills::RunSkills::new(cfg.skills.clone());
+    // REQ-PX-162: what the prefix is compiled from, and what the model has
+    // been told changed since.
+    let mut instruction_tracker = crate::instruction_delta::Tracker::default();
     // Rules (REQ-EV-0059/0105/0129): loaded once, selected every turn from
     // the paths the task has made active, recorded when the selection
     // changes.
@@ -3203,6 +3218,9 @@ async fn run_loop(
     let mut calibration = modbit_compaction::Calibration::default();
     let mut overhead_tokens: u32 = 0;
     let mut rearm_floor: u32 = 0;
+    // PX-155: whether the request now being retried already followed a
+    // context-overflow compaction (one retry, never a loop).
+    let mut overflow_retried = false;
     let mut summarizer_usage: Vec<crate::compaction_model::SummarizerUsage> = Vec::new();
     // The vision bridge for a text-only routed model (REQ-EV-0184/0185):
     // one description per media digest per run, recorded on the task.
@@ -3775,8 +3793,16 @@ async fn run_loop(
         // REQ-PX-116: the round boundary is where the whole tree's spend is
         // judged — the wall clock the runs have used, and what the task's
         // children hold against it (the log's, so a restart sees the same).
-        state.wall_ms = wall_prior
-            .saturating_add(u64::try_from(run_clock.elapsed().as_millis()).unwrap_or(u64::MAX));
+        let parked_here = {
+            let st = core.store.lock().await;
+            crate::usage::run_parked_ms(&st, &task.task_id, run_id, Timestamp::now().0)
+                .saturating_sub(parked_at_start)
+        };
+        state.wall_ms = wall_prior.saturating_add(
+            u64::try_from(run_clock.elapsed().as_millis())
+                .unwrap_or(u64::MAX)
+                .saturating_sub(parked_here),
+        );
         if state.capsule.is_none() {
             crate::spawn::refresh_children_held(&core, &task, &mut state).await;
         }
@@ -3952,6 +3978,7 @@ async fn run_loop(
                         calibration,
                         rearm_floor: &mut rearm_floor,
                         usage: &mut summarizer_usage,
+                        force: false,
                     },
                 )
                 .await;
@@ -4095,14 +4122,69 @@ async fn run_loop(
                     &cfg.model,
                     crate::model_registry::dispatch_limits(&core, &cfg.endpoint, &cfg.model),
                 );
+                // REQ-PX-162: the prefix keeps the instructions it was compiled
+                // from; a change since is one appended, labelled note.
+                let instructions = {
+                    let current = crate::instruction_delta::Instructions {
+                        rules: rules.select(&core, &task, lt, &actor, &state).await,
+                        skills: skill_instructions.clone(),
+                        memory: prompt_memory.fragments.clone(),
+                    };
+                    let step = instruction_tracker
+                        .step(current, epoch.as_ref().map(|m| u64::from(m.epoch)));
+                    // A rebuilt prefix after the first request is a deliberate
+                    // new one (an epoch, or text withdrawn); it is on the log.
+                    if let Some(why) = step.rebuilt.filter(|w| *w != "FIRST_REQUEST") {
+                        let mut store = core.store.lock().await;
+                        let _ = append(
+                            &mut store,
+                            &core,
+                            lt,
+                            AggregateType::Workspace,
+                            crate::changes::records_aggregate(task.task_id),
+                            vec![crate::changes::record(
+                                crate::instruction_delta::REBUILT_EVENT,
+                                serde_json::json!({"reason": why, "run_id": run_id.to_string()}),
+                                &actor,
+                            )],
+                        );
+                    }
+                    if let Some(note) = step.note {
+                        {
+                            let mut store = core.store.lock().await;
+                            let _ = append(
+                                &mut store,
+                                &core,
+                                lt,
+                                AggregateType::Workspace,
+                                crate::changes::records_aggregate(task.task_id),
+                                vec![crate::changes::record(
+                                    crate::instruction_delta::NOTE_EVENT,
+                                    serde_json::json!({
+                                        "notice": note.text,
+                                        "changes": note.changes,
+                                        "run_id": run_id.to_string(),
+                                    }),
+                                    &actor,
+                                )],
+                            );
+                        }
+                        apply_entry(
+                            &mut transcript,
+                            &mut state,
+                            TranscriptEntry::User { text: note.text },
+                        );
+                    }
+                    step.base
+                };
                 let compiled =
                     modbit_prompt_compiler::compile(modbit_prompt_compiler::PromptInput {
                         goal: task.goal_text.clone(),
                         task_attachments,
                         workspace_root: task.workspace_root.clone(),
                         execution_profile: task.execution_profile.clone(),
-                        workspace_rules: rules.select(&core, &task, lt, &actor, &state).await,
-                        skills: skill_instructions.clone(),
+                        workspace_rules: instructions.rules,
+                        skills: instructions.skills,
                         compaction_summary: epoch.as_ref().map(|m| m.projection.clone()),
                         compaction_narrative: epoch
                             .as_ref()
@@ -4116,7 +4198,7 @@ async fn run_loop(
                             t
                         },
                         context: context_fragments,
-                        memory: prompt_memory.fragments.clone(),
+                        memory: instructions.memory,
                         tools: tools.clone(),
                         surface_note: if state.exec_only {
                             crate::tool_projection::EXEC_ONLY_NOTE.to_owned()
@@ -4161,7 +4243,7 @@ async fn run_loop(
                     request_estimate.saturating_sub(
                         transcript
                             .iter()
-                            .map(|m| modbit_compaction::estimate_tokens_v2(&message_text(m)))
+                            .map(|m| message_tokens(m, modbit_compaction::estimate_tokens_v2))
                             .sum(),
                     ),
                 );
@@ -4205,6 +4287,21 @@ async fn run_loop(
                             ),
                         ],
                     );
+                    // PX-157: each memory item this prompt carries is one use,
+                    // on the item's own history (counted once per turn).
+                    if !compiled.injected_memory.is_empty() {
+                        let _ = append_batch(
+                            &mut store,
+                            &core,
+                            lturn,
+                            crate::memory::used_events(
+                                &compiled.injected_memory,
+                                &turn_id.to_string(),
+                                &compiled.context_pack_id,
+                                &actor,
+                            ),
+                        );
+                    }
                     let _ = append(
                         &mut store,
                         &core,
@@ -4753,6 +4850,9 @@ async fn run_loop(
                     );
                     break 'outer LoopEnd::Cancelled;
                 }
+                if error.is_none() {
+                    overflow_retried = false;
+                }
                 if let Some((code, message)) = error {
                     let mut store = core.store.lock().await;
                     // A failed attempt is accounted the same way: unknown, not free.
@@ -4825,6 +4925,59 @@ async fn run_loop(
                         )],
                     );
                     drop(store);
+                    // PX-155: the request was over the model's window. The
+                    // first time, compact synchronously through the ladder and
+                    // send the request once more; a second overflow, or a
+                    // compaction that could not install an epoch, ends the
+                    // run with the typed failure and never loops.
+                    if code == modbit_providers::gateway::CONTEXT_OVERFLOW {
+                        if !overflow_retried {
+                            let epoch_before = epoch.as_ref().map(|m| m.epoch);
+                            compaction_step(
+                                &core,
+                                &task,
+                                lt,
+                                &actor,
+                                &mut transcript,
+                                &mut epoch,
+                                &mut compaction_worker,
+                                &mut CompactionCtx {
+                                    endpoint: &cfg.endpoint,
+                                    model: &cfg.model,
+                                    state: &state,
+                                    cancel: &cancel,
+                                    overhead: overhead_tokens,
+                                    calibration,
+                                    rearm_floor: &mut rearm_floor,
+                                    usage: &mut summarizer_usage,
+                                    force: true,
+                                },
+                            )
+                            .await;
+                            if epoch.as_ref().map(|m| m.epoch) != epoch_before {
+                                overflow_retried = true;
+                                reroute_at_boundary(
+                                    &core,
+                                    &task,
+                                    run_id,
+                                    &mut cfg,
+                                    "COMPACTION",
+                                    &actor,
+                                )
+                                .await;
+                                preturn.compaction_opened();
+                                continue 'outer;
+                            }
+                        }
+                        break 'outer LoopEnd::ProviderFailed(
+                            code,
+                            if overflow_retried {
+                                format!("{message} (again after a compaction; not retried)")
+                            } else {
+                                format!("{message} (a compaction could not reduce the context)")
+                            },
+                        );
+                    }
                     // REQ-EV-0030: an approved fallback continues the leg the
                     // provider failed; without one the run stops as before.
                     match crate::escalation::at_provider_boundary(
@@ -5005,7 +5158,13 @@ async fn run_loop(
         // PX-145: a turn that asked for no tool has nothing more it is about
         // to do, which is when the Core looks at what it left.
         let idle_turn = calls.is_empty();
-        for (call_id, name, arguments_json) in calls {
+        // PX-161: the turn's calls as the model issued them, so a run of
+        // read-only calls can be started together when the first of them
+        // reaches dispatch.
+        let issued: Vec<(String, String, String)> = calls.clone();
+        let mut prefetched: std::collections::HashMap<String, TranscriptEntry> =
+            std::collections::HashMap::new();
+        for (call_idx, (call_id, name, arguments_json)) in calls.into_iter().enumerate() {
             if cancel.is_cancelled() {
                 break;
             }
@@ -5944,26 +6103,98 @@ async fn run_loop(
                             // the call; a tool the model was not offered this
                             // turn is refused at the pipeline's policy stage
                             // (TOOL_NOT_PROJECTED) before any effector.
-                            let entry = execute_tool(
-                                &core,
-                                &task,
-                                lturn,
-                                &actor,
-                                &mut state,
-                                &call_id,
-                                &name,
-                                &arguments_json,
-                                &round_int,
-                                crate::protocol::resumed_call(
-                                    &resume_state,
-                                    run_id,
-                                    &call_id,
-                                    &name,
-                                    &arguments_json,
-                                ),
-                                &projected_names,
-                            )
-                            .await;
+                            // PX-161: this call opens a run of read-only calls:
+                            // the run goes out together under a bound, and each
+                            // call below takes its own result in the order the
+                            // model issued it.
+                            if !prefetched.contains_key(&call_id)
+                                && parallel_read_only(&core, &task, &name, &arguments_json)
+                            {
+                                let run = parallel_run(&core, &task, &issued, call_idx);
+                                if run.len() > 1 {
+                                    // One task per call, so a read that blocks its
+                                    // thread does not hold up the others.
+                                    // Each call's proposal still lands on the log in the
+                                    // order the model issued it: a call waits for the
+                                    // one before it to be proposed, then they overlap.
+                                    let mut previous = None;
+                                    let handles: Vec<_> = run
+                                        .iter()
+                                        .map(|(cid, n, a)| {
+                                            let (sent, next) = tokio::sync::oneshot::channel();
+                                            let order = crate::tools::ProposalOrder::new(
+                                                previous.replace(next),
+                                                sent,
+                                            );
+                                            let (core, task, actor) =
+                                                (Arc::clone(&core), task.clone(), actor.clone());
+                                            let mut local = state.clone();
+                                            let round_int = round_int.clone();
+                                            let projected = projected_names.clone();
+                                            let resume = crate::protocol::resumed_call(
+                                                &resume_state,
+                                                run_id,
+                                                cid,
+                                                n,
+                                                a,
+                                            );
+                                            let (cid, n, a) = (cid.clone(), n.clone(), a.clone());
+                                            tokio::spawn(crate::tools::PROPOSAL_ORDER.scope(
+                                                order,
+                                                async move {
+                                                    let entry = execute_tool(
+                                                        &core,
+                                                        &task,
+                                                        lturn,
+                                                        &actor,
+                                                        &mut local,
+                                                        &cid,
+                                                        &n,
+                                                        &a,
+                                                        &round_int,
+                                                        resume,
+                                                        &projected,
+                                                    )
+                                                    .await;
+                                                    (cid, entry)
+                                                },
+                                            ))
+                                        })
+                                        .collect();
+                                    for handle in handles {
+                                        // A task that panicked has no result here;
+                                        // its call then runs on the ordinary path.
+                                        if let Ok((cid, entry)) = handle.await {
+                                            prefetched.insert(cid, entry);
+                                        }
+                                    }
+                                }
+                            }
+                            let entry = match prefetched.remove(&call_id) {
+                                Some(done) => done,
+                                None => {
+                                    execute_tool(
+                                        &core,
+                                        &task,
+                                        lturn,
+                                        &actor,
+                                        &mut state,
+                                        &call_id,
+                                        &name,
+                                        &arguments_json,
+                                        &round_int,
+                                        crate::protocol::resumed_call(
+                                            &resume_state,
+                                            run_id,
+                                            &call_id,
+                                            &name,
+                                            &arguments_json,
+                                        ),
+                                        &projected_names,
+                                    )
+                                    .await
+                                }
+                            };
                             // PX-050: a call the person's interrupt stopped
                             // is recorded with how it ended.
                             if round_int.is_cancelled()
@@ -7477,7 +7708,7 @@ fn estimate_request_tokens(request: &modbit_providers::ModelRequest) -> u32 {
     let messages: u32 = request
         .messages
         .iter()
-        .map(|m| modbit_compaction::estimate_tokens_v2(&message_text(m)))
+        .map(|m| message_tokens(m, modbit_compaction::estimate_tokens_v2))
         .sum();
     let tools = modbit_compaction::estimate_tokens_v2(
         &serde_json::to_string(&request.tool_projection).unwrap_or_default(),
@@ -7489,7 +7720,7 @@ fn estimate_request_tokens(request: &modbit_providers::ModelRequest) -> u32 {
 fn transcript_tokens(transcript: &[Message]) -> u32 {
     transcript
         .iter()
-        .map(|m| modbit_compaction::estimate_tokens(&message_text(m)))
+        .map(|m| message_tokens(m, modbit_compaction::estimate_tokens))
         .sum()
 }
 
@@ -7532,6 +7763,24 @@ fn compaction_worker_hold() -> Option<std::time::Duration> {
         .map(std::time::Duration::from_millis)
 }
 
+/// The summarizer calls of one compaction as its commit records them
+/// (PX-159), in the shape `usage::call_cost` prices.
+fn summarizer_record(usage: &[crate::compaction_model::SummarizerUsage]) -> Vec<serde_json::Value> {
+    usage
+        .iter()
+        .map(|u| {
+            serde_json::json!({
+                "endpoint": u.endpoint,
+                "requested_model": u.model,
+                "input_tokens": u.usage.input_tokens,
+                "output_tokens": u.usage.output_tokens,
+                "cached_input_tokens": u.usage.cached_input_tokens,
+                "reported": u.reported,
+            })
+        })
+        .collect()
+}
+
 /// Install an epoch: store the manifest, put `ContextEpochOpened` (the
 /// model-facing epoch) and `CompactionCommitted` (the durability record) on
 /// the log, and replace the summarised prefix by the projection.
@@ -7547,7 +7796,11 @@ async fn install_epoch(
     cut: usize,
     compaction_id: &str,
     mode: &str,
+    summarizer_usage: Vec<serde_json::Value>,
 ) {
+    let tokens_after = manifest
+        .projection_tokens
+        .saturating_add(transcript_tokens(&transcript[cut.min(transcript.len())..]));
     let manifest_ref = {
         let store = core.store.lock().await;
         store
@@ -7600,6 +7853,8 @@ async fn install_epoch(
                         mode: mode.to_owned(),
                         summary_source: manifest.summary_source.clone(),
                         fallback_reason: manifest.fallback_reason.clone(),
+                        tokens_after,
+                        summarizer_usage,
                     },
                     actor.clone(),
                 ),
@@ -7716,6 +7971,9 @@ struct CompactionCtx<'a> {
     calibration: modbit_compaction::Calibration,
     /// The transcript size the next compaction waits to exceed (hysteresis).
     rearm_floor: &'a mut u32,
+    /// PX-155: the provider refused the last request as over the model's
+    /// window, so this boundary compacts synchronously whatever the estimate.
+    force: bool,
     /// What summarizer calls cost, until the turn can take it.
     usage: &'a mut Vec<crate::compaction_model::SummarizerUsage>,
 }
@@ -7732,7 +7990,7 @@ fn measured_tokens(
         calibration.apply(
             transcript
                 .iter()
-                .map(|m| modbit_compaction::estimate_tokens_v2(&message_text(m)))
+                .map(|m| message_tokens(m, modbit_compaction::estimate_tokens_v2))
                 .sum(),
         )
     } else {
@@ -7828,6 +8086,7 @@ async fn compaction_step(
         let w = worker.take().expect("checked");
         match w.handle.await {
             Ok(built) => {
+                let summarizer = summarizer_record(built.usage.as_slice());
                 ctx.usage.extend(built.usage);
                 let manifest = built.manifest;
                 let (_, _, branch_now) = compaction_coordinates(core, task).await;
@@ -7842,7 +8101,7 @@ async fn compaction_step(
                     Ok(()) => {
                         install_epoch(
                             core, task, lt, actor, transcript, epoch, manifest, w.cut, &w.id,
-                            "ASYNC",
+                            "ASYNC", summarizer,
                         )
                         .await;
                         *ctx.rearm_floor =
@@ -7888,7 +8147,7 @@ async fn compaction_step(
     // Hysteresis: a model-aware trigger that has just compacted waits for the
     // transcript to grow past where the epoch left it.
     let armed = tokens > *ctx.rearm_floor;
-    let hard = armed && tokens > budget;
+    let hard = (armed && tokens > budget) || ctx.force;
     let soft_over = if th.model_aware() {
         tokens > th.soft
     } else {
@@ -7949,6 +8208,7 @@ async fn compaction_step(
                     window_tokens: th.window,
                     budget_tokens: budget,
                     budget_source: th.source.label().to_owned(),
+                    tokens_before: transcript_tokens(transcript),
                 },
                 actor.clone(),
             )],
@@ -7981,6 +8241,7 @@ async fn compaction_step(
         // call inside it is bounded by the summarizer's own timeout, and its
         // failure is the extractive epoch, not a failed compaction.
         let built = crate::compaction_model::build(core, task, ladder, ctx.cancel).await;
+        let summarizer = summarizer_record(built.usage.as_slice());
         ctx.usage.extend(built.usage);
         let manifest = built.manifest;
         // docs/19: the result installs only while its source is still current.
@@ -8003,6 +8264,7 @@ async fn compaction_step(
                     cut,
                     &id,
                     "SYNC_FALLBACK",
+                    summarizer,
                 )
                 .await;
                 *ctx.rearm_floor =
@@ -8064,6 +8326,49 @@ async fn compaction_step(
 }
 
 /// The text of a message, for the token estimate and the compaction source.
+/// Tokens an image costs the model, charged by its size (PX-158): about one
+/// token per 750 pixels, floored at a small image's cost and capped where the
+/// providers resize. An image whose size the result did not name is charged
+/// a mid-size default rather than nothing.
+fn image_tokens(mime: &str, alt: &str) -> u32 {
+    const MIN: u64 = 85;
+    const MAX: u64 = 1600;
+    const UNKNOWN: u64 = 1200;
+    if !mime.starts_with("image/") {
+        return 0;
+    }
+    let bytes = alt.as_bytes();
+    let size = (1..bytes.len().saturating_sub(1)).find_map(|i| {
+        if bytes[i] != b'x' {
+            return None;
+        }
+        let digits = |it: &mut dyn Iterator<Item = &u8>| {
+            let d: Vec<u8> = it.take_while(|b| b.is_ascii_digit()).copied().collect();
+            (!d.is_empty()).then_some(d)
+        };
+        let mut left = digits(&mut bytes[..i].iter().rev())?;
+        left.reverse();
+        let right = digits(&mut bytes[i + 1..].iter())?;
+        let n = |d: Vec<u8>| String::from_utf8(d).ok()?.parse::<u64>().ok();
+        Some(n(left)?.saturating_mul(n(right)?))
+    });
+    size.map_or(UNKNOWN, |px| (px / 750).clamp(MIN, MAX)) as u32
+}
+
+/// Estimated tokens of one message: its text through `estimate`, plus the
+/// size-charged cost of each image it carries.
+fn message_tokens(m: &Message, estimate: fn(&str) -> u32) -> u32 {
+    let images: u32 = m
+        .parts
+        .iter()
+        .map(|p| match p {
+            ContentPart::Media { mime, alt, .. } => image_tokens(mime, alt),
+            _ => 0,
+        })
+        .sum();
+    estimate(&message_text(m)).saturating_add(images)
+}
+
 fn message_text(m: &Message) -> String {
     m.parts
         .iter()
@@ -9056,6 +9361,47 @@ async fn handle_complete(
     }
 }
 
+/// The most read-only calls of one turn started together.
+const PARALLEL_READ_BOUND: usize = 8;
+
+/// PX-161: whether one call may run beside others. Only a call whose tool
+/// is registered read-only for its own arguments in the task's profile, and
+/// that belongs to the file, Git or retrieval families, qualifies; anything
+/// that writes, runs a process, asks, needs an approval or reaches outside
+/// the workspace runs alone and in order.
+fn parallel_read_only(core: &Core, task: &Task, name: &str, args: &str) -> bool {
+    if !["fs.", "git.", "search.", "knowledge."]
+        .iter()
+        .any(|p| name.starts_with(p))
+    {
+        return false;
+    }
+    let Some(tool) = core.tools.runtime.registry().get(name) else {
+        return false;
+    };
+    let Ok(value) = serde_json::from_str::<serde_json::Value>(args) else {
+        return false;
+    };
+    let c = tool.effect_in_profile(&value, &task.execution_profile);
+    c == modbit_tools::EffectClass::ReadOnly
+}
+
+/// PX-161: the calls from `from` on that run together with the one at
+/// `from`: the unbroken stretch of read-only calls, at most the bound.
+fn parallel_run(
+    core: &Core,
+    task: &Task,
+    issued: &[(String, String, String)],
+    from: usize,
+) -> Vec<(String, String, String)> {
+    issued[from..]
+        .iter()
+        .take_while(|(_, n, a)| parallel_read_only(core, task, n, a))
+        .take(PARALLEL_READ_BOUND)
+        .cloned()
+        .collect()
+}
+
 /// One tool call, and — REQ-PX-132 — whatever the Core has observed about the
 /// listening services of the task's terminals since the model was last told,
 /// appended to the result as labelled data. The model never has to call a
@@ -9337,7 +9683,11 @@ async fn execute_tool_call(
             OBSERVATION_CEILING_BYTES,
         );
         // Failure evidence (docs/14 contract 3): commands and tests keep a signature until they pass.
-        let is_check = is_check_tool(name);
+        // PX-176: a computer-use child's command is auxiliary to the
+        // interface work, not a check of the candidate: a timed-out or failing
+        // one is an error observation, not an open failure that blocks completion.
+        let is_check = is_check_tool(name)
+            && !(name == "shell.exec" && core.tools.computer.is_child(task.task_id));
         let check_failed = is_check
             && (r.status != ToolStatus::Success
                 || r.structured_output["status"].as_str() == Some("FAILED")
@@ -9361,6 +9711,14 @@ async fn execute_tool_call(
                     cancelled,
                 });
             obs.text.push_str(&diagnostic.render());
+        }
+        // PX-176: a computer-use child hears every step as one structured record.
+        if let Some(record) =
+            core.tools
+                .computer
+                .step_observation(task.task_id, name, &status, &r.structured_output)
+        {
+            obs.text.push_str(&record);
         }
         // PX-075: the stall rules of a computer-use child watch its calls.
         if name.starts_with("computer.") {
@@ -9436,7 +9794,10 @@ async fn execute_tool_call(
                         | "computer.scroll"
                 )
                 || name.starts_with("lsp.")
-                || name.starts_with("git.worktree"));
+                || name.starts_with("git.worktree"))
+            // PX-176: a computer-use child's command result is a new
+            // observation of the work, as an interface read of the screen is.
+            || (name == "shell.exec" && core.tools.computer.is_child(task.task_id));
         return TranscriptEntry::ToolResult {
             call_id: call_id.into(),
             name: name.into(),
@@ -10742,7 +11103,58 @@ fn protected_question_unavailable(core: &Core, task: &Task) -> Option<String> {
 
 #[cfg(test)]
 mod tests {
-    use super::{ContentPart, b64, media_parts, media_refs};
+    fn frame(w: u32, h: u32) -> Message {
+        let output = serde_json::json!({"media": {
+            "mime": "image/png", "egress_ref": "b".repeat(64), "width": w, "height": h
+        }});
+        Message {
+            role: modbit_providers::Role::Tool,
+            parts: media_parts("c", &media_refs(&output)),
+        }
+    }
+
+    /// PX-158: an image is charged by its size, never by its caption.
+    #[test]
+    fn image_tokens_follow_the_size_the_result_named() {
+        let small = image_tokens("image/png", "image/png read from a.png, 32x16; x");
+        let screen = image_tokens("image/png", "image/png read from a.png, 1024x768; x");
+        let huge = image_tokens("image/png", "image/png read from a.png, 9000x9000; x");
+        assert_eq!(small, 85, "a tiny image costs the floor");
+        assert_eq!(screen, 786_432 / 750);
+        assert_eq!(huge, 1600, "capped where providers resize");
+        assert_eq!(image_tokens("image/png", "no size named"), 1200);
+        assert_eq!(image_tokens("application/pdf", "10x10"), 0);
+    }
+
+    #[test]
+    fn many_frames_reach_a_threshold_their_captions_never_would() {
+        let frames: Vec<Message> = (0..40).map(|_| frame(1280, 800)).collect();
+        let by_text: u32 = frames
+            .iter()
+            .map(|m| modbit_compaction::estimate_tokens(&message_text(m)))
+            .sum();
+        let charged = transcript_tokens(&frames);
+        assert!(by_text < 3_000, "captions alone are cheap: {by_text}");
+        assert!(
+            charged > 40 * 1_000,
+            "frames are charged by size: {charged}"
+        );
+        // A text-only transcript is estimated exactly as before.
+        let text = vec![Message {
+            role: modbit_providers::Role::User,
+            parts: vec![ContentPart::Text {
+                text: "hello there".into(),
+            }],
+        }];
+        assert_eq!(
+            transcript_tokens(&text),
+            modbit_compaction::estimate_tokens("hello there")
+        );
+    }
+
+    use super::{
+        ContentPart, b64, image_tokens, media_parts, media_refs, message_text, transcript_tokens,
+    };
 
     #[test]
     fn base64_matches_the_standard_alphabet_and_padding() {

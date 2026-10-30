@@ -1,0 +1,10 @@
+{
+ "task": "PX-105",
+ "requirements": ["REQ-PX-105", "QUAL-PX-105"],
+ "scenarios": ["QUAL-PX-105"],
+ "tests": ["apps/cli/tests/px_105_skill_cli.rs", "services/modbit-core/tests/surface_protocol.rs", "crates/skills/tests/trust_and_load.rs"],
+ "proof": "Re-run on 2026-10-28: the CLI test (1) and the four qual_px_105 Core tests pass against the real Core process and a scripted provider capturing request bodies; CI run 40742315645 (rust CI_COMPATIBLE on macOS, Ubuntu, Windows) passes the same workspace tests. mutation-check.txt shows removing the content-hash binding fails the one-byte test.",
+ "limitations": "The System scope is read from the device and admin policy file; no MDM-delivered source is exercised. The provider is scripted, not a live model, so whether a live model chooses to call skill.load is not proven here.",
+ "runs": ["40742315645"],
+ "ci": {"run_id": "40742315645", "head_sha": "440be364", "conclusion": "success", "json": "evidence/m10/PX-105/ci-run-40742315645.json", "landed_as": "24926b6b"}
+}

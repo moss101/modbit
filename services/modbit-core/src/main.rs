@@ -59,6 +59,7 @@ mod hooks;
 mod hunks;
 mod index_host;
 mod inspector;
+mod instruction_delta;
 mod knowledge;
 mod languages;
 mod mcp;

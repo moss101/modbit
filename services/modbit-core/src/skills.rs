@@ -209,6 +209,8 @@ pub(crate) struct Choice {
     world: World,
     selected: Vec<(modbit_skills::Selection, bool)>,
     refused: Vec<(String, String, String)>,
+    /// The task's goal, which orders the index (PX-183).
+    goal: String,
 }
 
 pub(crate) fn choose(core: &Core, task: &Task, explicit: &[String]) -> Choice {
@@ -317,6 +319,7 @@ fn choose_with(
         world,
         selected,
         refused,
+        goal: task.goal_text.clone(),
     }
 }
 
@@ -345,6 +348,8 @@ pub(crate) struct Plan {
     pub body_tokens: u32,
     /// Skills the model may load (the index's, and the selected ones').
     pub loadable: usize,
+    /// Each index entry's relevance to the goal, in index order (PX-183).
+    pub scores: Vec<(String, u32)>,
 }
 
 fn precedence(a: &RegisteredSkill, b: &RegisteredSkill) -> std::cmp::Ordering {
@@ -380,15 +385,27 @@ pub(crate) fn plan(c: &Choice, active: &[String], projection: &[String], budget:
         .filter(|s| c.world.model_loadable(s))
         .filter(|s| modbit_skills::paths_active(&s.package.manifest, active))
         .collect();
-    eligible.sort_by(|a, b| precedence(a, b));
+    // PX-183: the index is read most relevant first, so under a tight
+    // budget it is the skills that fit the goal that stay; equal scores keep
+    // the precedence order, so a goal no skill matches gives the index it
+    // always gave.
+    let score = |s: &RegisteredSkill| modbit_skills::relevance(&c.goal, &s.package.manifest);
+    eligible.sort_by(|a, b| score(b).cmp(&score(a)).then_with(|| precedence(a, b)));
     let loadable = eligible.len();
-    let entries: Vec<IndexEntry> = eligible
+    let listed: Vec<&&RegisteredSkill> = eligible
         .iter()
         .filter(|s| !bodies.iter().any(|(n, _, _)| *n == s.package.manifest.name))
+        .collect();
+    let entries: Vec<IndexEntry> = listed
+        .iter()
         .map(|s| IndexEntry {
             name: s.package.manifest.name.clone(),
             description: s.package.manifest.description.clone(),
         })
+        .collect();
+    let scores = listed
+        .iter()
+        .map(|s| (s.package.manifest.name.clone(), score(s)))
         .collect();
     let index = modbit_skills::index::build(&entries, budget.saturating_sub(body_tokens));
     Plan {
@@ -397,6 +414,7 @@ pub(crate) fn plan(c: &Choice, active: &[String], projection: &[String], budget:
         index,
         body_tokens,
         loadable,
+        scores,
     }
 }
 
@@ -427,6 +445,8 @@ pub struct RunSkills {
     explicit: Vec<String>,
     last_selection: Option<String>,
     last_index: Option<String>,
+    /// The id of the last compiled configuration recorded (PX-182).
+    last_configuration: Option<String>,
     /// The skills the latest round selected, as `name@content_hash`
     /// (REQ-PX-131: what the round's capability snapshot names).
     selected: Vec<String>,
@@ -440,6 +460,7 @@ impl RunSkills {
             explicit,
             last_selection: None,
             last_index: None,
+            last_configuration: None,
             selected: Vec::new(),
         }
     }
@@ -492,6 +513,71 @@ impl RunSkills {
             p.index.text.as_bytes(),
         ));
         let mut events = Vec::new();
+        // PX-182: the selected skills compiled for this run's tools, as one
+        // versioned configuration. The same skills and tools give the same
+        // bytes and so the same id.
+        let compiled: Vec<modbit_skills::CompiledSkill> = c
+            .selected
+            .iter()
+            .filter(|(s, _)| !p.demoted.contains(&s.name))
+            .filter_map(|(s, _)| c.world.registry.get(&s.name))
+            .map(|reg| modbit_skills::compile(&reg.package, projection, INSTRUCTION_BUDGET_BYTES))
+            .collect();
+        if !compiled.is_empty() {
+            let mut tools: Vec<&String> = projection.iter().collect();
+            tools.sort();
+            tools.dedup();
+            let configuration = serde_json::json!({
+                "schema": "modbit.skill-configuration/1",
+                "skills": compiled.iter().map(|k| serde_json::json!({
+                    "name": k.name,
+                    "version": k.version,
+                    "content_hash": k.content_hash,
+                    "instructions_hash": k.instructions_hash,
+                    "guidance": k.guidance.iter().map(|(t, kept)| serde_json::json!({"tool": t, "kept": kept})).collect::<Vec<_>>(),
+                })).collect::<Vec<_>>(),
+                "tools": tools,
+            })
+            .to_string();
+            let id = hex::encode(<sha2::Sha256 as sha2::Digest>::digest(
+                configuration.as_bytes(),
+            ));
+            if self.last_configuration.as_deref() != Some(id.as_str()) {
+                let configuration_ref = core
+                    .store
+                    .lock()
+                    .await
+                    .objects()
+                    .put(configuration.as_bytes())
+                    .unwrap_or_default();
+                let pairs = |kept: bool| -> Vec<String> {
+                    compiled
+                        .iter()
+                        .flat_map(|k| {
+                            k.guidance
+                                .iter()
+                                .filter(move |(_, x)| *x == kept)
+                                .map(move |(t, _)| format!("{}:{t}", k.name))
+                        })
+                        .collect()
+                };
+                events.push(typed(
+                    "SkillConfigurationCompiled",
+                    &TaskEvent::SkillConfigurationCompiled {
+                        configuration_id: id.clone(),
+                        configuration_ref,
+                        skills: compiled
+                            .iter()
+                            .map(|k| format!("{}@{}", k.name, k.content_hash))
+                            .collect(),
+                        guidance_kept: pairs(true),
+                        guidance_dropped: pairs(false),
+                    },
+                    actor.clone(),
+                ));
+                self.last_configuration = Some(id);
+            }
+        }
         if self.last_selection.as_deref() != Some(key.as_str()) {
             // A package on disk that could not be loaded (REQ-EV-0114:
             // invalid metadata fails, visibly): recorded by its directory.
@@ -579,6 +665,7 @@ impl RunSkills {
                     budget_tokens: budget_tokens(),
                     body_tokens: p.body_tokens,
                     index_hash: index_hash.clone(),
+                    scores: p.scores.iter().map(|(n, s)| format!("{n}:{s}")).collect(),
                 },
                 actor.clone(),
             ));
@@ -992,6 +1079,7 @@ pub(crate) async fn handle(
                         world: world_of(&task),
                         selected: vec![],
                         refused: vec![],
+                        goal: String::new(),
                     };
                     (Some(plan(&c, &active, &[], budget)), vec![])
                 }
@@ -1183,4 +1271,225 @@ pub(crate) async fn handle(
             )
         }
     }
+}
+
+// ------------------------------------------------- traces for the Skill Lab
+
+/// The longest argument or response text a trace step keeps.
+const TRACE_TEXT_CHARS: usize = 2_000;
+
+/// PX-189: the producer of the Skill Evolution Lab's inputs. Off unless the
+/// Core is given a lab directory (`MODBIT_SKILL_LAB_DIR`). When a run ends
+/// it reads that run's records off the log — and only reads: it appends
+/// nothing — and seals one trace into the lab with every text passed through
+/// the one redactor. The lab proposes only; nothing it writes reaches a run,
+/// the registry, memory or policy.
+pub(crate) fn spawn_trace_producer(core: Arc<Core>) {
+    let Some(dir) = std::env::var_os("MODBIT_SKILL_LAB_DIR").map(PathBuf::from) else {
+        return;
+    };
+    tokio::spawn(async move {
+        let Ok(lab) = modbit_skills::evolution::Lab::open(&dir) else {
+            eprintln!(
+                "modbit-core: the skill lab at {} could not be opened; no traces",
+                dir.display()
+            );
+            return;
+        };
+        let mut cursor = core.store.lock().await.last_offset().unwrap_or(0);
+        loop {
+            tokio::time::sleep(std::time::Duration::from_millis(250)).await;
+            let ended: Vec<(TaskId, modbit_domain::RunId, String)> = {
+                let store = core.store.lock().await;
+                let batch = store.read_all_after(cursor, 1_000).unwrap_or_default();
+                if let Some(last) = batch.last() {
+                    cursor = last.offset;
+                }
+                batch
+                    .iter()
+                    .filter(|e| {
+                        matches!(
+                            e.envelope.event_type.as_str(),
+                            "RunCompleted" | "RunFailed" | "RunCancelled"
+                        )
+                    })
+                    .filter_map(|e| {
+                        Some((
+                            e.envelope.task_id?,
+                            e.envelope.run_id?,
+                            e.envelope.event_type.clone(),
+                        ))
+                    })
+                    .collect()
+            };
+            for (task, run, end) in ended {
+                let trace = {
+                    let store = core.store.lock().await;
+                    trace_of_run(&core, &store, task, run, &end)
+                };
+                if let Some(t) = trace {
+                    let _ = lab.seal(&t, modbit_domain::Timestamp::now().0);
+                }
+            }
+        }
+    });
+}
+
+/// One run as a lab trace: the compiled skill configuration, the memory its
+/// prompts carried, each tool call with its arguments and response, the
+/// capability snapshot, the verification outcome and the cost — redacted.
+fn trace_of_run(
+    core: &Core,
+    store: &modbit_event_store::EventStore,
+    task: TaskId,
+    run: modbit_domain::RunId,
+    end: &str,
+) -> Option<modbit_skills::evolution::EvolutionTrace> {
+    use modbit_skills::evolution::{EvolutionTrace, TraceCost, TraceStep};
+    let t = store.task(&task).ok()??;
+    let redactor = core.tools.redactor();
+    let clean = |text: &str| -> String {
+        redactor
+            .error_text(text)
+            .chars()
+            .take(TRACE_TEXT_CHARS)
+            .collect()
+    };
+    let object = |r: &str| -> String {
+        store
+            .objects()
+            .get(r)
+            .map(|b| String::from_utf8_lossy(&b).into_owned())
+            .unwrap_or_default()
+    };
+    let events = store.read_session(&t.session_id, 0, usize::MAX).ok()?;
+    let mut steps: Vec<([u8; 16], TraceStep)> = Vec::new();
+    let mut memory: BTreeSet<String> = BTreeSet::new();
+    let (mut config, mut snapshot, mut model) = (String::new(), String::new(), String::new());
+    let (mut verification, mut verified) = ("NONE".to_owned(), true);
+    let mut cost = TraceCost::default();
+    let (mut first, mut last) = (u64::MAX, 0u64);
+    let (mut started, mut ended) = (i64::MAX, i64::MIN);
+    for e in &events {
+        let env = &e.envelope;
+        if env.task_id != Some(task) || env.run_id.is_some_and(|r| r != run) {
+            continue;
+        }
+        let in_run = env.run_id == Some(run);
+        let p = store.payload(env).unwrap_or_default();
+        match env.event_type.as_str() {
+            "SkillConfigurationCompiled" => {
+                config = p["configuration_id"]
+                    .as_str()
+                    .unwrap_or_default()
+                    .to_owned();
+            }
+            _ if !in_run => continue,
+            "CapabilitySnapshotRecorded" if snapshot.is_empty() => {
+                snapshot = p["snapshot_hash"].as_str().unwrap_or_default().to_owned();
+            }
+            "ModelUsageRecorded" => {
+                cost.input_tokens += p["input_tokens"].as_u64().unwrap_or(0);
+                cost.output_tokens += p["output_tokens"].as_u64().unwrap_or(0);
+                if model.is_empty() {
+                    model = format!(
+                        "{}/{}",
+                        p["route"]["endpoint"].as_str().unwrap_or_default(),
+                        p["route"]["requested_model"].as_str().unwrap_or_default()
+                    );
+                }
+            }
+            "StepSucceeded" => {
+                if let Some(r) = p["output_ref"].as_str()
+                    && let Ok(v) = serde_json::from_str::<serde_json::Value>(&object(r))
+                {
+                    for id in v["injected_memory"].as_array().into_iter().flatten() {
+                        if let Some(id) = id.as_str() {
+                            memory.insert(id.to_owned());
+                        }
+                    }
+                }
+            }
+            "ToolCallProposed" => {
+                cost.tool_calls += 1;
+                steps.push((
+                    env.aggregate_id,
+                    TraceStep {
+                        tool: p["tool_name"].as_str().unwrap_or_default().to_owned(),
+                        arguments: clean(&object(p["arguments_ref"].as_str().unwrap_or_default())),
+                        ..TraceStep::default()
+                    },
+                ));
+            }
+            "ToolCallSucceeded" | "ToolCallFailed" => {
+                if let Some((_, s)) = steps.iter_mut().rev().find(|(a, _)| *a == env.aggregate_id) {
+                    s.response = clean(&object(p["result_ref"].as_str().unwrap_or_default()));
+                    if env.event_type == "ToolCallFailed" {
+                        s.error = p["failure_code"].as_str().unwrap_or_default().to_owned();
+                    }
+                }
+            }
+            "VerificationRunRecorded" => {
+                verification = p["status"].as_str().unwrap_or_default().to_owned();
+                verified = verification == "PASSED";
+            }
+            _ => {}
+        }
+        if in_run {
+            first = first.min(e.offset);
+            last = last.max(e.offset);
+            started = started.min(env.occurred_at.0);
+            ended = ended.max(env.occurred_at.0);
+        }
+    }
+    if first == u64::MAX {
+        return None;
+    }
+    cost.wall_ms = u64::try_from(ended - started).unwrap_or(0);
+    let steps: Vec<TraceStep> = steps.into_iter().map(|(_, s)| s).collect();
+    let tools: Vec<&str> = steps.iter().map(|s| s.tool.as_str()).collect();
+    let before = |a: &[&str], b: &[&str]| -> bool {
+        let first_b = tools.iter().position(|t| b.contains(t));
+        let first_a = tools.iter().position(|t| a.contains(t));
+        matches!((first_a, first_b), (Some(x), Some(y)) if x < y)
+    };
+    let mut observations: Vec<String> = Vec::new();
+    if before(
+        &["fs.read", "search.exact", "search.regex"],
+        &["change.apply", "change.batch"],
+    ) {
+        observations.push("read-before-edit".into());
+    }
+    if before(
+        &["test.run", "verify.run", "shell.exec"],
+        &["task.complete"],
+    ) {
+        observations.push("tests-before-complete".into());
+    }
+    let mut used: Vec<String> = tools.iter().map(|t| format!("uses:{t}")).collect();
+    used.sort();
+    used.dedup();
+    observations.extend(used);
+    Some(EvolutionTrace {
+        task: task.to_string(),
+        task_class: "agent-run".into(),
+        repository_revision: String::new(),
+        model_config: model,
+        instruction_manifest_hash: config.clone(),
+        tool_capability_snapshot_hash: snapshot,
+        environment_revision: String::new(),
+        evidence_refs: vec![format!("events:{first}..{last}")],
+        observations,
+        outcome: if end == "RunCompleted" && verified {
+            "VERIFIED".into()
+        } else {
+            "FAILED".into()
+        },
+        verification_result: verification,
+        cost,
+        redaction_status: "REDACTED".into(),
+        skill_configuration_id: config,
+        memory: memory.into_iter().collect(),
+        steps,
+    })
 }

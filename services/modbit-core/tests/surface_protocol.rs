@@ -12948,12 +12948,21 @@ async fn qual_px_105_the_index_degrades_under_its_budget_and_a_path_gated_skill_
     assert!(first.lines().filter(|l| l.starts_with("- ")).count() >= 1);
     // The gated skill is absent until a matching file was read, then present.
     assert!(!first.contains("aa-billing-px105"), "{first}");
-    let after_read = index_of(&bodies[2]);
+    // The activation arrives as an appended note (PX-162); the prefix keeps
+    // the index it was compiled with.
+    assert!(!index_of(&bodies[2]).contains("aa-billing-px105"));
+    let after_read: String = bodies[2]["messages"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .filter(|m| m["role"] == "user")
+        .filter_map(|m| m["content"].as_str())
+        .filter(|c| c.starts_with("[modbit: instruction update]"))
+        .collect();
     assert!(
         after_read.contains("aa-billing-px105"),
         "after src/billing/ledger.rs was read: {after_read}"
     );
-    assert!(after_read.len() <= budget as usize * 4);
     let evs = task_events(&core, &session, &task).await;
     let recorded: Vec<&serde_json::Value> = evs
         .iter()
@@ -26313,6 +26322,7 @@ async fn wsk_e2e_005_010_a_promoted_skill_reaches_the_model_without_the_wiki_and
                     verification_result: format!("PASSED {marker}"),
                     cost: TraceCost::default(),
                     redaction_status: "REDACTED".into(),
+                    ..Default::default()
                 },
                 i,
             )
@@ -26614,11 +26624,21 @@ async fn qual_ev_0059_0129_scoped_rules_activate_lazily_and_conflicts_name_the_w
         );
     }
     // From turn 3 (the billing file was read): the billing rule is in.
+    // It arrives as an appended note (PX-162); the rules segment is unchanged.
     for b in &bodies[2..] {
         let r = rules_of(b);
+        assert!(!r.contains("RULE-BILLING"), "prefix rewritten: {r}");
+        let notes: String = b["messages"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .filter(|m| m["role"] == "user")
+            .filter_map(|m| m["content"].as_str())
+            .filter(|c| c.starts_with("[modbit: instruction update]"))
+            .collect();
         assert!(
-            r.contains("RULE-BILLING") && r.contains("[rule billing — project]"),
-            "{r}"
+            notes.contains("RULE-BILLING") && notes.contains("[rule billing — project]"),
+            "{notes}"
         );
     }
     // On the log: the first selection (dormant billing, the conflict with
@@ -49997,4 +50017,495 @@ async fn fix_18_restore_refuses_after_head_drift_and_works_when_head_is_back() {
     assert_eq!(restored_events(&evs), 1);
     drop(c);
     core.kill();
+}
+
+/// QUAL-PX-183 on the real Core with real skill files: the index the model
+/// reads is ranked by relevance to the goal inside its budget. A goal that
+/// contains no trigger phrase still gets the skill it is about at the head of
+/// a tight index, where name order would have dropped it; an untrusted skill
+/// that matches better is never listed; an explicitly named skill is injected
+/// whatever it scores; two tasks with the same goal record the same ranking;
+/// the index stays within its budget.
+#[tokio::test]
+async fn qual_px_183_the_skill_index_is_ranked_by_the_goal_within_its_budget() {
+    use modbit_protocol::v1::{StartTask, TaskRunStarted};
+    use serde_json::json;
+    let (_repo, root) = plain_repo(&[("NOTES.md", "# notes\n")]);
+    let dir = tempfile::tempdir().unwrap();
+    let skills = dir.path().join("skills");
+    let mut trusted: Vec<(String, String)> = Vec::new();
+    for i in 0..40 {
+        let name = format!("aa-filler-px183-{i:02}");
+        let h = px_skill(
+            &skills,
+            &name,
+            "description: provision a staging cluster with the deployment chart and rotate its certificates",
+            "FILLER-BODY",
+        );
+        trusted.push((name, h));
+    }
+    let lint = px_skill(
+        &skills,
+        "zz-lintfix-px183",
+        "description: fix the warnings a linter reports in the changed files\ntriggers: [\"run lint fix\"]",
+        "LINT-BODY-MARKER",
+    );
+    trusted.push(("zz-lintfix-px183".into(), lint));
+    let explicit = px_skill(
+        &skills,
+        "explicit-px183",
+        "description: write release notes",
+        "EXPLICIT-BODY-MARKER",
+    );
+    trusted.push(("explicit-px183".into(), explicit));
+    // Matches the goal best, and is never trusted.
+    px_skill(
+        &skills,
+        "aaa-untrusted-px183",
+        "description: linter warnings in changed files: fix the warnings the linter reports",
+        "UNTRUSTED-BODY-MARKER",
+    );
+    let script = vec![
+        json!({"calls": [{"name": "plan.update", "args": {"outcome": "fix the warnings", "expected_files": []}}]}),
+        json!({"calls": [{"name": "task.complete", "args": {"summary": "done", "self_review": {"findings": []}}}]}),
+    ];
+    let (base, seen) = scripted_model(script, None).await;
+    let env = [
+        ("MODBIT_OPENAI_BASE_URL", base.as_str()),
+        ("OPENAI_API_KEY", ""),
+        ("ANTHROPIC_API_KEY", ""),
+        ("MODBIT_SKILL_BUDGET_TOKENS", "260"),
+    ];
+    let core = CoreProcess::spawn_with_env(dir.path(), &env);
+    let mut c = core.client().await;
+    let (session, _) = create_session(&mut c, id16(0xD1)).await;
+    let g = lease_for(&session);
+    for (name, hash) in &trusted {
+        px_trust(&mut c, name, hash, None).await.unwrap();
+    }
+    let goal = "the linter warns about the changed files; fix the warnings";
+    let mut recorded = Vec::new();
+    for (n, cmd) in [(0xD2u8, 0xD3u8), (0xD4, 0xD5)] {
+        let task = create_task_with_goal(&mut c, &session, g, &root, n, goal).await;
+        let before = seen.lock().unwrap().len();
+        let ack = c
+            .command(envelope_fenced(
+                id16(cmd),
+                "StartTask",
+                StartTask {
+                    task_id: Some(task.clone()),
+                    endpoint: String::new(),
+                    model: "gpt-5-mini".into(),
+                    max_turns: 8,
+                    max_tool_calls: 0,
+                    max_no_progress_turns: 6,
+                    skills: vec!["explicit-px183".into()],
+                    ..Default::default()
+                }
+                .encode_to_vec(),
+                g,
+            ))
+            .await
+            .unwrap();
+        let _: TaskRunStarted = Client::result(&ack).unwrap();
+        wait_task(&mut c, &task, 180).await;
+        let first = seen.lock().unwrap()[before].to_string();
+        assert!(
+            first.contains("EXPLICIT-BODY-MARKER"),
+            "an explicit name is injected"
+        );
+        assert!(
+            !first.contains("aaa-untrusted-px183"),
+            "an untrusted skill is never listed"
+        );
+        assert!(!first.contains("UNTRUSTED-BODY-MARKER"));
+        let lint_at = first
+            .find("- zz-lintfix-px183")
+            .unwrap_or_else(|| panic!("the goal's skill is in the index: {first}"));
+        let filler_at = first.find("- aa-filler-px183-").unwrap_or(usize::MAX);
+        assert!(lint_at < filler_at, "ranked first, ahead of name order");
+        let evs = task_events(&core, &session, &task).await;
+        let idx = evs
+            .iter()
+            .find(|(_, t, _)| t == "SkillIndexRecorded")
+            .map(|(_, _, p)| p.clone())
+            .expect("an index was recorded");
+        assert!(
+            idx["omitted"].as_u64().unwrap() > 0,
+            "the budget is tight enough to drop skills: {idx}"
+        );
+        assert!(idx["tokens"].as_u64().unwrap() <= idx["budget_tokens"].as_u64().unwrap());
+        let entries: Vec<&str> = idx["entries"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .map(|e| e.as_str().unwrap())
+            .collect();
+        assert!(entries[0].starts_with("zz-lintfix-px183:"), "{entries:?}");
+        let scores: Vec<&str> = idx["scores"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .map(|e| e.as_str().unwrap())
+            .collect();
+        let top: u32 = scores[0].rsplit(':').next().unwrap().parse().unwrap();
+        assert!(
+            scores[0].starts_with("zz-lintfix-px183:") && top > 0,
+            "{scores:?}"
+        );
+        assert!(scores[1..].iter().all(|s| s.ends_with(":0")), "{scores:?}");
+        recorded.push((idx["index_hash"].clone(), idx["scores"].clone()));
+    }
+    assert_eq!(recorded[0], recorded[1], "the same goal ranks the same");
+}
+
+/// QUAL-PX-182 on the real Core with real skill files: a skill's guidance
+/// blocks are compiled for the tools the task is actually offered. Under the
+/// read-only `plan` profile, which offers no shell, the shell block is
+/// dropped and the read
+/// block kept; with the full set both are kept; a block for a tool no task
+/// offers never reaches a request. The compiled configuration is recorded
+/// as an object whose sha256 is its id, the id is in the context accounting,
+/// two compilations of the same inputs give the same id, and an untrusted
+/// skill's guidance is never compiled.
+#[tokio::test]
+async fn qual_px_182_guidance_blocks_compile_for_the_tools_the_task_is_offered() {
+    use modbit_protocol::v1::{
+        ContextAccountingView, GetContextAccounting, StartTask, TaskRunStarted,
+    };
+    use serde_json::json;
+    let body = "General advice.\n<!-- modbit:tool fs.read -->\nREAD-GUIDANCE-PX182: read the whole file first.\n<!-- /modbit:tool -->\n<!-- modbit:tool shell.exec -->\nSHELL-GUIDANCE-PX182: run the tests with the shell.\n<!-- /modbit:tool -->\n<!-- modbit:tool nowhere.tool -->\nNOWHERE-GUIDANCE-PX182\n<!-- /modbit:tool -->\nClosing advice.";
+    async fn one(
+        read_only: bool,
+        body: &str,
+        runs: u8,
+    ) -> Vec<(String, serde_json::Value, String, String)> {
+        let (_repo, root) = plain_repo(&[("NOTES.md", "# notes\n")]);
+        let dir = tempfile::tempdir().unwrap();
+        let skills = dir.path().join("skills");
+        let h = px_skill(
+            &skills,
+            "adapter-px182",
+            "description: tool-bound advice",
+            body,
+        );
+        px_skill(
+            &skills,
+            "untrusted-px182",
+            "description: never trusted",
+            "<!-- modbit:tool fs.read -->\nUNTRUSTED-GUIDANCE-PX182\n<!-- /modbit:tool -->",
+        );
+        let script = vec![
+            json!({"calls": [{"name": "plan.update", "args": {"outcome": "o", "expected_files": []}}]}),
+            json!({"calls": [{"name": "task.complete", "args": {"summary": "done", "self_review": {"findings": []}}}]}),
+        ];
+        let (base, seen) = scripted_model(script, None).await;
+        let env = [
+            ("MODBIT_OPENAI_BASE_URL", base.as_str()),
+            ("OPENAI_API_KEY", ""),
+            ("ANTHROPIC_API_KEY", ""),
+        ];
+        let core = CoreProcess::spawn_with_env(dir.path(), &env);
+        let mut c = core.client().await;
+        let (session, _) = create_session(&mut c, id16(0xE1)).await;
+        let g = lease_for(&session);
+        px_trust(&mut c, "adapter-px182", &h, None).await.unwrap();
+        let mut out = Vec::new();
+        for i in 0..runs {
+            // The read-only `plan` profile offers no shell; the trusted one does.
+            let profile = if read_only { "plan" } else { "local_trusted" };
+            let task =
+                create_task_with_profile(&mut c, &session, g, &root, 0xE2 + i * 2, profile).await;
+            let before = seen.lock().unwrap().len();
+            let ack = c
+                .command(envelope_fenced(
+                    id16(0xE3 + i * 2),
+                    "StartTask",
+                    StartTask {
+                        task_id: Some(task.clone()),
+                        endpoint: String::new(),
+                        model: "gpt-5-mini".into(),
+                        max_turns: 6,
+                        max_tool_calls: 0,
+                        max_no_progress_turns: 4,
+                        skills: vec!["adapter-px182".into(), "untrusted-px182".into()],
+                        ..Default::default()
+                    }
+                    .encode_to_vec(),
+                    g,
+                ))
+                .await
+                .unwrap();
+            let _: TaskRunStarted = Client::result(&ack).unwrap();
+            wait_task(&mut c, &task, 180).await;
+            let first = seen.lock().unwrap()[before].to_string();
+            let evs = task_events(&core, &session, &task).await;
+            let cfg = evs
+                .iter()
+                .find(|(_, t, _)| t == "SkillConfigurationCompiled")
+                .map(|(_, _, p)| p.clone())
+                .expect("a configuration was recorded");
+            let object = read_object(
+                &mut c,
+                random_id(),
+                cfg["configuration_ref"].as_str().unwrap(),
+            )
+            .await;
+            let ack = c
+                .command(envelope(
+                    random_id(),
+                    "GetContextAccounting",
+                    GetContextAccounting {
+                        task_id: Some(task.clone()),
+                    }
+                    .encode_to_vec(),
+                ))
+                .await
+                .unwrap();
+            let acc: ContextAccountingView = Client::result(&ack).unwrap();
+            out.push((first, cfg, object, acc.skill_configuration_id));
+        }
+        out
+    }
+    let restricted = one(true, body, 1).await;
+    let (first, cfg, object, accounted) = &restricted[0];
+    assert!(
+        first.contains("READ-GUIDANCE-PX182") && first.contains("General advice"),
+        "{first}"
+    );
+    assert!(
+        !first.contains("SHELL-GUIDANCE-PX182"),
+        "no guidance for a denied tool"
+    );
+    assert!(!first.contains("NOWHERE-GUIDANCE-PX182") && !first.contains("modbit:tool"));
+    assert!(
+        !first.contains("UNTRUSTED-GUIDANCE-PX182"),
+        "an untrusted skill compiles nothing"
+    );
+    assert_eq!(
+        cfg["guidance_dropped"],
+        json!(["adapter-px182:shell.exec", "adapter-px182:nowhere.tool"])
+    );
+    assert_eq!(cfg["guidance_kept"], json!(["adapter-px182:fs.read"]));
+    let id = cfg["configuration_id"].as_str().unwrap();
+    assert_eq!(
+        hex::encode(<sha2::Sha256 as sha2::Digest>::digest(object.as_bytes())),
+        id
+    );
+    assert!(!object.contains("untrusted-px182"), "{object}");
+    assert_eq!(
+        accounted, id,
+        "the accounting names the run's configuration"
+    );
+    let full = one(false, body, 2).await;
+    for (first, cfg, _, accounted) in &full {
+        assert!(first.contains("READ-GUIDANCE-PX182") && first.contains("SHELL-GUIDANCE-PX182"));
+        assert!(!first.contains("NOWHERE-GUIDANCE-PX182"));
+        assert_eq!(
+            cfg["guidance_dropped"],
+            json!(["adapter-px182:nowhere.tool"])
+        );
+        assert_eq!(accounted, cfg["configuration_id"].as_str().unwrap());
+        assert_ne!(
+            cfg["configuration_id"].as_str().unwrap(),
+            id,
+            "another tool set, another configuration"
+        );
+    }
+    assert_eq!(
+        full[0].1["configuration_id"], full[1].1["configuration_id"],
+        "the same inputs compile alike"
+    );
+}
+
+/// QUAL-PX-189 on the real Core with a scripted model: a finished run is
+/// sealed into the real Skill Lab as one trace — its compiled skill
+/// configuration, each tool call with arguments and response, the outcome —
+/// that the lab's maintainer and proposer turn into a candidate; a key
+/// planted in a tool result is absent from the trace; the producer appends
+/// nothing to the log it reads; no skill file changes; a Core given no lab
+/// writes none.
+#[tokio::test]
+async fn qual_px_189_a_finished_run_becomes_a_sealed_redacted_trace_the_lab_proposes_from() {
+    use modbit_protocol::v1::{StartTask, TaskRunStarted};
+    use modbit_skills::evolution::{KnowledgeStore, Lab, Maintainer, Proposer, TemplateProposer};
+    use serde_json::json;
+    const KEY: &str = "sk-px189-planted-0123456789abcdefghij";
+    let (repo, root) = plain_repo(&[("NOTES.md", "# notes\n")]);
+    std::fs::write(repo.path().join("secret.txt"), format!("token={KEY}\n")).unwrap();
+    let dir = tempfile::tempdir().unwrap();
+    let lab_dir = dir.path().join("lab");
+    let skills = dir.path().join("skills");
+    let h = px_skill(
+        &skills,
+        "traced-px189",
+        "description: tidy notes",
+        "<!-- modbit:tool fs.read -->\nRead before you edit.\n<!-- /modbit:tool -->",
+    );
+    let skill_bytes = std::fs::read(skills.join("traced-px189/SKILL.md")).unwrap();
+    let script = vec![
+        json!({"calls": [{"name": "plan.update", "args": {"outcome": "read the notes", "expected_files": []}}]}),
+        json!({"calls": [{"name": "fs.read", "args": {"path": "secret.txt"}}]}),
+        json!({"calls": [{"name": "fs.read", "args": {"path": "NOTES.md"}}]}),
+        json!({"calls": [{"name": "task.complete", "args": {"summary": "done", "self_review": {"findings": []}}}]}),
+    ];
+    let (base, _seen) = scripted_model(script, None).await;
+    let lab_env = lab_dir.to_string_lossy().into_owned();
+    let env = [
+        ("MODBIT_OPENAI_BASE_URL", base.as_str()),
+        ("OPENAI_API_KEY", ""),
+        ("ANTHROPIC_API_KEY", ""),
+        ("MODBIT_SKILL_LAB_DIR", lab_env.as_str()),
+    ];
+    let core = CoreProcess::spawn_with_env(dir.path(), &env);
+    let mut c = core.client().await;
+    let (session, _) = create_session(&mut c, id16(0xF1)).await;
+    let g = lease_for(&session);
+    px_trust(&mut c, "traced-px189", &h, None).await.unwrap();
+    let task = create_task_with_goal(&mut c, &session, g, &root, 0xF2, "read the notes").await;
+    let ack = c
+        .command(envelope_fenced(
+            id16(0xF3),
+            "StartTask",
+            StartTask {
+                task_id: Some(task.clone()),
+                endpoint: String::new(),
+                model: "gpt-5-mini".into(),
+                max_turns: 8,
+                max_tool_calls: 0,
+                max_no_progress_turns: 4,
+                skills: vec!["traced-px189".into()],
+                ..Default::default()
+            }
+            .encode_to_vec(),
+            g,
+        ))
+        .await
+        .unwrap();
+    let _: TaskRunStarted = Client::result(&ack).unwrap();
+    // Reading a file that holds a credential makes the acceptance gate ask
+    // for an independent review, so the run waits; cancelling ends it.
+    let st = wait_task(&mut c, &task, 180).await;
+    assert!(!st.loop_alive, "{st:?}");
+    let ack = c
+        .command(envelope_fenced(
+            random_id(),
+            "CancelTask",
+            modbit_protocol::v1::CancelTask {
+                task_id: Some(task.clone()),
+            }
+            .encode_to_vec(),
+            g,
+        ))
+        .await
+        .unwrap();
+    let _: modbit_protocol::v1::TaskCancelRequested = Client::result(&ack).unwrap();
+    tokio::time::sleep(Duration::from_millis(500)).await;
+    let evs = task_events(&core, &session, &task).await;
+    let config = evs
+        .iter()
+        .find(|(_, t, _)| t == "SkillConfigurationCompiled")
+        .map(|(_, _, p)| p["configuration_id"].as_str().unwrap().to_owned())
+        .expect("a configuration was compiled");
+    let deadline = std::time::Instant::now() + Duration::from_secs(30);
+    let traces = loop {
+        let lab = Lab::open(&lab_dir).unwrap();
+        let t = lab.traces().unwrap();
+        if !t.is_empty() {
+            break t;
+        }
+        assert!(std::time::Instant::now() < deadline, "no trace was sealed");
+        tokio::time::sleep(Duration::from_millis(100)).await;
+    };
+    let lab = Lab::open(&lab_dir).unwrap();
+    assert_eq!(traces.len(), 1, "one trace per run");
+    let t = &traces[0].trace;
+    assert_eq!(
+        t.skill_configuration_id, config,
+        "the trace names the compiled configuration"
+    );
+    assert_eq!(
+        t.outcome, "FAILED",
+        "a cancelled run is not a verified one: {t:?}"
+    );
+    let tools: Vec<&str> = t.steps.iter().map(|s| s.tool.as_str()).collect();
+    // Harness steps (plan, completion) are not tool calls; the two reads are.
+    assert_eq!(tools, ["fs.read", "fs.read"], "{tools:?}");
+    let secret_step = t
+        .steps
+        .iter()
+        .find(|s| s.arguments.contains("secret.txt"))
+        .expect("the read of the secret file is a step");
+    assert!(
+        secret_step.response.contains("[redacted]"),
+        "{secret_step:?}"
+    );
+    let on_disk = std::fs::read_to_string(
+        lab_dir
+            .join("traces")
+            .join(format!("{}.json", traces[0].trace_id)),
+    )
+    .unwrap();
+    assert!(!on_disk.contains(KEY), "the planted key reached the trace");
+    // The producer only reads: the log has not moved since the run ended.
+    let after = task_events(&core, &session, &task).await;
+    assert_eq!(
+        after.len(),
+        evs.len(),
+        "the producer appended to the log it reads"
+    );
+    // The real lab turns it into a proposal, and that changes no skill.
+    Maintainer::consolidate(&lab, &traces, 1).unwrap();
+    let ids: Vec<String> = KnowledgeStore::index(&lab)
+        .unwrap()
+        .iter()
+        .map(|e| e.pattern_id.clone())
+        .collect();
+    assert!(!ids.is_empty(), "the trace became patterns");
+    let evidence = KnowledgeStore::hydrate(&lab, &ids, 10_000).unwrap();
+    let base_pkg = modbit_skills::load_package(&skills.join("traced-px189")).unwrap();
+    let candidate = Proposer::propose(
+        &lab,
+        &base_pkg,
+        "read first",
+        &evidence,
+        &TemplateProposer,
+        1,
+    )
+    .unwrap();
+    assert!(!candidate.candidate_id.is_empty());
+    assert_eq!(
+        std::fs::read(skills.join("traced-px189/SKILL.md")).unwrap(),
+        skill_bytes,
+        "a proposal changes no skill file"
+    );
+    drop(c);
+    drop(core);
+
+    // Without a lab directory, nothing is written anywhere a lab would be.
+    let dir2 = tempfile::tempdir().unwrap();
+    let (base2, _) = scripted_model(
+        vec![
+            json!({"calls": [{"name": "plan.update", "args": {"outcome": "o", "expected_files": []}}]}),
+            json!({"calls": [{"name": "task.complete", "args": {"summary": "done", "self_review": {"findings": []}}}]}),
+        ],
+        None,
+    )
+    .await;
+    let core2 = CoreProcess::spawn_with_env(
+        dir2.path(),
+        &[
+            ("MODBIT_OPENAI_BASE_URL", base2.as_str()),
+            ("OPENAI_API_KEY", ""),
+            ("ANTHROPIC_API_KEY", ""),
+        ],
+    );
+    let mut c2 = core2.client().await;
+    let (s2, _) = create_session(&mut c2, id16(0xF4)).await;
+    let g2 = lease_for(&s2);
+    let t2 = create_task_with_goal(&mut c2, &s2, g2, &root, 0xF5, "read the notes").await;
+    px_run(&mut c2, &t2, g2, 0xF6, 6).await;
+    assert!(
+        !dir2.path().join("lab").exists() && !dir2.path().join("skill-lab").join("traces").exists()
+    );
 }

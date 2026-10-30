@@ -33,6 +33,8 @@
 //! files and the corpus, so `--verify <out-dir>` reproduces it without a
 //! provider.
 
+// PX-168 lint policy: this file spawns processes; new ones need review.
+#![allow(clippy::disallowed_methods)]
 use std::collections::BTreeMap;
 use std::io::Write as _;
 use std::path::{Path, PathBuf};

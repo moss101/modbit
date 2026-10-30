@@ -451,6 +451,21 @@ pub async fn scripted_model_fn(reply_fn: Reply) -> (String, Seen) {
                 if let Some(ms) = reply["delay_ms"].as_u64() {
                     tokio::time::sleep(Duration::from_millis(ms)).await;
                 }
+                // A reply may be an HTTP error response, as a provider sends
+                // one: `{"http_error": {"status": 400, "body": {...}}}`.
+                if let Some(e) = reply.get("http_error") {
+                    let status = e["status"].as_u64().unwrap_or(400);
+                    let body = e["body"].to_string();
+                    let head = format!(
+                        "HTTP/1.1 {status} Error\r\ncontent-type: application/json\r\nx-request-id: req_px_error\r\ncontent-length: {}\r\nconnection: close\r\n\r\n",
+                        body.len()
+                    );
+                    let _ = sock.write_all(head.as_bytes()).await;
+                    let _ = sock.write_all(body.as_bytes()).await;
+                    let _ = sock.flush().await;
+                    let _ = sock.shutdown().await;
+                    return;
+                }
                 let mut frames: Vec<String> = Vec::new();
                 if let Some(t) = reply["text"].as_str() {
                     frames.push(serde_json::json!({"id":"c","model":"scripted-1","choices":[{"index":0,"delta":{"content":t},"finish_reason":null}]}).to_string());

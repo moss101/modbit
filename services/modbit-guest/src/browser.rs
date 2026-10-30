@@ -10,6 +10,8 @@
 //! host's), else the image's `/opt/chromium/chrome-headless-shell` or
 //! `/opt/chromium/chrome`.
 
+// PX-168 lint policy: this file spawns processes and baselined expect/unwrap sites; new ones need review.
+#![allow(clippy::disallowed_methods, clippy::expect_used)]
 use std::path::{Path, PathBuf};
 use std::sync::Mutex;
 use std::time::{Duration, Instant};

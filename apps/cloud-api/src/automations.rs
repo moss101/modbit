@@ -20,6 +20,8 @@
 //!   tenant. An unknown endpoint answers exactly as a wrong signature does.
 //!   Every refusal is on the audit under a typed reason.
 
+// PX-168 lint policy: this file baselined expect/unwrap sites; new ones need review.
+#![allow(clippy::expect_used)]
 use std::sync::Arc;
 
 use axum::Json;

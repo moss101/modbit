@@ -1,0 +1,10 @@
+{
+ "task": "PX-176",
+ "requirements": ["REQ-PX-176", "QUAL-PX-176"],
+ "scenarios": ["QUAL-PX-176"],
+ "tests": ["services/modbit-core/tests/px_computer.rs"],
+ "proof": "CI run 40817515703 (head 1d8833fd) green on all 15 jobs. Real modbit-core, real fixture actuator process, real approvals, real git and sleep commands and a scripted model alternating commands and interface actions: every step is one observation record (tool, kind, status, frame, snapshot, accessibility delta, stdout, stderr, exit code, timeout, truncation); output past the bound ends with the marker; a command that times out is an error record and the child goes on to a COMPLETED envelope; the records are in the logged result objects. The full px_computer suite (32 tests, including QUAL-PX-075) passes. mutation-check.txt shows disabling the record fails the test.",
+ "limitations": "A command step does not re-read the interface: its frame and snapshot are the last the child saw and its tree_delta is null. A state delta is a line-set comparison. The timeout leg runs on Unix only. Restart replay is shown by the record being in the logged result; the test does not kill the Core mid-run.",
+ "runs": ["40817515703"],
+ "ci": {"run_id": "40817515703", "head_sha": "1d8833fd", "conclusion": "success", "json": "evidence/m10/PX-176/ci-run-40817515703.json", "landed_as": "e087852f"}
+}

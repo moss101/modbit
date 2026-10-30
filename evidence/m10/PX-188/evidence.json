@@ -1,0 +1,10 @@
+{
+ "task": "PX-188",
+ "requirements": ["REQ-PX-188", "QUAL-PX-188"],
+ "scenarios": ["QUAL-PX-188"],
+ "tests": ["services/modbit-core/tests/memory_graph_index.rs", "apps/desktop/e2e/px-188-memory.spec.ts", "crates/memory/src/lib.rs"],
+ "proof": "CI run 40742315645: real-Core test qual_px_188_a_shared_memory_is_redacted_reaches_the_prompt_and_survives_a_restart (redaction, SHARE_NOT_WIDER, promotion, shared_from link on the log, redacted text in the model prompt, rebuild after SIGKILL) and the desktop Playwright spec px-188-memory.spec.ts against the real Electron app and real modbit-core pass on macOS, Ubuntu and Windows; mutation-check.txt shows a removed redaction fails test 1.",
+ "limitations": "No axe accessibility pass on the new Memory section. 'Another user's private item' is covered only at the store level because the Core has a single local user. The macOS desktop E2E job flaked once in an unrelated browser-semantic spec (TARGET_NOT_EDITABLE) and passed on rerun.",
+ "runs": ["40742315645"],
+ "ci": {"run_id": "40742315645", "head_sha": "440be364", "conclusion": "success", "json": "evidence/m10/PX-188/ci-run-40742315645.json", "landed_as": "0d2525b1"}
+}

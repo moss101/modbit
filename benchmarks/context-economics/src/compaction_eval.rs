@@ -25,6 +25,8 @@
 //! completes the task. That needs a live provider and is reported as
 //! `LIVE: NOT RUN`.
 
+// PX-168 lint policy: this file baselined expect/unwrap sites; new ones need review.
+#![allow(clippy::expect_used)]
 use modbit_compaction::summary::{StructuredSummary, SummaryInput, validate};
 use modbit_compaction::{
     CompactionRequest, SourceEntry, compact, estimate_tokens_v2, transcript_objects,

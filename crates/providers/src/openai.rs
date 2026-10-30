@@ -163,6 +163,28 @@ pub fn request_body(req: &ModelRequest) -> Value {
     body
 }
 
+/// Whether an error response says the request exceeded the model's context
+/// window (PX-155). OpenAI and the compatible gateways answer HTTP 400 with
+/// `error.code == "context_length_exceeded"`; some gateways only say it in
+/// the message.
+#[must_use]
+pub fn is_context_overflow(status: u16, body: &str) -> bool {
+    if status != 400 && status != 413 {
+        return false;
+    }
+    let v: Value = serde_json::from_str(body).unwrap_or(Value::Null);
+    let err = &v["error"];
+    if err["code"].as_str() == Some("context_length_exceeded") {
+        return true;
+    }
+    let msg = err["message"]
+        .as_str()
+        .or_else(|| err.as_str())
+        .unwrap_or("")
+        .to_ascii_lowercase();
+    msg.contains("maximum context length") || msg.contains("context_length_exceeded")
+}
+
 /// Streaming state: accumulates tool-call deltas by index.
 #[derive(Debug, Default)]
 pub struct Decoder {
@@ -295,5 +317,22 @@ fn normalize_finish(f: Option<&str>) -> String {
         Some("tool_calls") | Some("function_call") => stop::TOOL_USE.into(),
         Some("length") => stop::MAX_TOKENS.into(),
         _ => stop::END_TURN.into(),
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::is_context_overflow;
+
+    #[test]
+    fn a_context_length_error_is_an_overflow_and_other_rejections_are_not() {
+        let body = r#"{"error":{"message":"This model's maximum context length is 128000 tokens. However, your messages resulted in 130211 tokens.","type":"invalid_request_error","param":"messages","code":"context_length_exceeded"}}"#;
+        assert!(is_context_overflow(400, body));
+        let only_message = r#"{"error":{"message":"This model's maximum context length is 8192 tokens","type":"invalid_request_error"}}"#;
+        assert!(is_context_overflow(400, only_message));
+        let other = r#"{"error":{"message":"Invalid value for 'temperature'","type":"invalid_request_error","code":"invalid_value"}}"#;
+        assert!(!is_context_overflow(400, other));
+        assert!(!is_context_overflow(429, body), "only a rejection status");
+        assert!(!is_context_overflow(400, "not json"));
     }
 }

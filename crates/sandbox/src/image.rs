@@ -10,6 +10,8 @@
 //! refused at admission. The same manifest form covers the reference
 //! backend's guest binary.
 
+// PX-168 lint policy: this file baselined expect/unwrap sites; new ones need review.
+#![allow(clippy::expect_used)]
 use std::path::Path;
 
 use ed25519_dalek::{Signature, Signer, SigningKey, Verifier, VerifyingKey};

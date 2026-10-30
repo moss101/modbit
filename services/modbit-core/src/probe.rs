@@ -3,6 +3,8 @@
 //! record (REQ-EV-0112). Nothing here touches the event log; the agent
 //! runtime (M2.7) is the production caller of the gateway.
 
+// PX-168 lint policy: this file baselined expect/unwrap sites; new ones need review.
+#![allow(clippy::expect_used)]
 use modbit_protocol::v1 as wire;
 use modbit_providers::{
     Message, ModelEvent, ModelPolicy, ModelRequest, ProviderGateway, Requirements, Role,

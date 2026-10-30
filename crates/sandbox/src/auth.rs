@@ -6,6 +6,8 @@
 //! the tenant and session a request acts for are checked against the cloud
 //! store's lease, never taken from the token).
 
+// PX-168 lint policy: this file baselined expect/unwrap sites; new ones need review.
+#![allow(clippy::expect_used)]
 use hmac::{Hmac, KeyInit, Mac};
 use prost::Message;
 use sha2::Sha256;

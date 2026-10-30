@@ -2,6 +2,8 @@
 //! the few behaviours an element can have. Nothing here touches a display or
 //! an operating-system permission.
 
+// PX-168 lint policy: this file baselined expect/unwrap sites; new ones need review.
+#![allow(clippy::expect_used)]
 use std::collections::HashMap;
 
 use serde::Deserialize;
