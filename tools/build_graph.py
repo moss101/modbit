@@ -57,6 +57,8 @@ GOAL_DOC = "77_RELEASE_ZERO_EXECUTION_GOAL.md"
 GOV6_CHANGE = "DR-GOV-2026-09-24-006"
 # DOC-GOV-007 (docs/97): the Unblocks cell of doc 77 §5 item 1 corrected (PX-020/M3 already unblocked).
 GOV7_CHANGE = "DR-GOV-2026-09-25-007"
+# DOC-GOV-008 (docs/97): the PX-189 production-wiring line binds the committed trajectory metrics module to its producer.
+GOV8_CHANGE = "DR-GOV-2026-10-30-008"
 PX_STAGES = [("DOC-PX-001", "DOC-GOV-004", "Product extension stage A: authority, PX ledger tooling, phased releases, governance tiering"),
              ("DOC-PX-002", "DOC-PX-001", "Product extension stage B: client surfaces and source-control integration"),
              ("DOC-PX-003", "DOC-PX-002", "Product extension stage C: agent competence contracts and benchmarks"),
@@ -835,6 +837,17 @@ def build(previous=None):
         link(_dr[1], GOV_LOG_DOC, "specified_by")
         link(_dr[1], _dr[4], "specified_by")
         link(_dr[1], _dr[0], "authorized_by")
+    add({"id": GOV8_CHANGE, "type": "change_record", "title": "Approved binding of the trajectory metrics module to the PX-189 producer's production wiring",
+         "status": "APPROVED", "source": "docs/" + GOV_LOG_DOC})
+    link(GOV8_CHANGE, GOV_LOG_DOC, "specified_by")
+    add({"id": "DOC-GOV-008", "type": "dossier_task", "title": "Bind crates/core-runtime/src/trajectory.rs to the PX-189 production wiring",
+         "subsystem": "governance", "source": "docs/" + GOV_LOG_DOC,
+         "acceptance": "The PX-189 task card names crates/core-runtime/src/trajectory.rs in its production wiring and says the producer is its caller; no requirement row, disposition, owner, task, qualification, gate, release rule or product status changes; full integrity gate passes; no product proof"})
+    link("DOC-GOV-008", "DOC-GOV-007", "after")
+    link("DOC-GOV-008", "governance", "owned_by")
+    link("DOC-GOV-008", GOV_LOG_DOC, "specified_by")
+    link("DOC-GOV-008", "62_PRODUCT_EXTENSION_REQUIREMENTS_TASKS_AND_QUALIFICATIONS.md", "specified_by")
+    link("DOC-GOV-008", GOV8_CHANGE, "authorized_by")
 
     # releases: derived projections over work items (docs/75) ----------------
     ms_of, owner_of = {}, {}

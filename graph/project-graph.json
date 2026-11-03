@@ -3,7 +3,7 @@
  "product": "Modbit",
  "edition": "V3.3 EPR v1.1",
  "authority_date": "2026-09-05",
- "generated_on": "2026-10-29",
+ "generated_on": "2026-10-30",
  "generator": "tools/build_graph.py",
  "status_vocabulary": [
   "NOT_STARTED",
@@ -44328,6 +44328,23 @@
    "status_changed_on": "2026-10-25T23:10:53Z"
   },
   {
+   "id": "DR-GOV-2026-10-30-008",
+   "type": "change_record",
+   "title": "Approved binding of the trajectory metrics module to the PX-189 producer's production wiring",
+   "status": "APPROVED",
+   "source": "docs/97_DOSSIER_MAINTENANCE_LOG.md"
+  },
+  {
+   "id": "DOC-GOV-008",
+   "type": "dossier_task",
+   "title": "Bind crates/core-runtime/src/trajectory.rs to the PX-189 production wiring",
+   "subsystem": "governance",
+   "source": "docs/97_DOSSIER_MAINTENANCE_LOG.md",
+   "acceptance": "The PX-189 task card names crates/core-runtime/src/trajectory.rs in its production wiring and says the producer is its caller; no requirement row, disposition, owner, task, qualification, gate, release rule or product status changes; full integrity gate passes; no product proof",
+   "status": "NOT_STARTED",
+   "evidence": []
+  },
+  {
    "id": "ALPHA",
    "type": "release",
    "title": "Local coding loop and recovery spine",
@@ -77466,6 +77483,36 @@
   {
    "from": "DOC-PX-017",
    "to": "DR-PX-2026-10-26-018",
+   "type": "authorized_by"
+  },
+  {
+   "from": "DR-GOV-2026-10-30-008",
+   "to": "97_DOSSIER_MAINTENANCE_LOG.md",
+   "type": "specified_by"
+  },
+  {
+   "from": "DOC-GOV-008",
+   "to": "DOC-GOV-007",
+   "type": "after"
+  },
+  {
+   "from": "DOC-GOV-008",
+   "to": "governance",
+   "type": "owned_by"
+  },
+  {
+   "from": "DOC-GOV-008",
+   "to": "97_DOSSIER_MAINTENANCE_LOG.md",
+   "type": "specified_by"
+  },
+  {
+   "from": "DOC-GOV-008",
+   "to": "62_PRODUCT_EXTENSION_REQUIREMENTS_TASKS_AND_QUALIFICATIONS.md",
+   "type": "specified_by"
+  },
+  {
+   "from": "DOC-GOV-008",
+   "to": "DR-GOV-2026-10-30-008",
    "type": "authorized_by"
   },
   {

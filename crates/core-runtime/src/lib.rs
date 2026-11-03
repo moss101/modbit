@@ -25,6 +25,7 @@ pub mod diagnostics;
 pub mod harness;
 pub mod input_queue;
 pub mod projection;
+pub mod trajectory;
 
 pub use admission::{Activation, Admission, Refused, RunLedger, admit_activation, admit_plan};
 pub use capacity::{CapacityPool, CapacityRefused, ResourceVector, Shortfall, Ticket};
