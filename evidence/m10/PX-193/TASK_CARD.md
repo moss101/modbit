@@ -16,7 +16,7 @@
 
 ## Verification
 
-- tests: `apps/desktop/e2e/awl.spec.ts`, `apps/desktop/e2e/shell.spec.ts`, `apps/desktop/e2e/gallery.spec.ts`, `apps/desktop/e2e/agents.spec.ts`, `apps/desktop/src/renderer/shell/shell.test.ts`; the whole desktop e2e suite against a real Core (evidence.json).
+- tests: `apps/desktop/e2e/awl.spec.ts`, `apps/desktop/e2e/shell.spec.ts`, `apps/desktop/e2e/gallery.spec.ts`, `apps/desktop/e2e/agents.spec.ts`, `apps/desktop/src/renderer/shell/shell.test.ts`; the whole desktop e2e suite against a real Core (evidence.json). 7de50046 extends `awl.spec.ts` to every size and theme the acceptance names and the primary, outline and ghost fills.
 
 ## Limitations
 

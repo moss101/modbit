@@ -16,7 +16,7 @@
 
 ## Verification
 
-- tests: `apps/desktop/e2e/awl.spec.ts`, `apps/desktop/e2e/conversation.spec.ts`, `apps/desktop/e2e/composer.spec.ts`, `apps/desktop/e2e/checkpoints.spec.ts`; the whole desktop e2e suite against a real Core (evidence.json).
+- tests: `apps/desktop/e2e/awl.spec.ts`, `apps/desktop/e2e/conversation.spec.ts`, `apps/desktop/e2e/composer.spec.ts`, `apps/desktop/e2e/checkpoints.spec.ts`; the whole desktop e2e suite against a real Core (evidence.json). 7de50046 extends `awl.spec.ts` to a scripted task with an edit, a terminal and an inline approval, asserting each density clause with a retained mutation (`awl-gate-local.log`).
 
 ## Limitations
 
