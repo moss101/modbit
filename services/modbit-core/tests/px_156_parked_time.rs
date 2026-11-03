@@ -175,7 +175,10 @@ async fn qual_px_156_a_call_parked_on_an_approval_is_neither_timed_out_nor_charg
 async fn qual_px_156_a_call_that_is_not_parked_still_times_out_on_schedule() {
     let (_repo, root) = plain_repo(&[("a.txt", "a\n")]);
     let (base, seen) = scripted_model(
-        script(json!({"argv": ["sh", "-c", "sleep 5"], "timeout_ms": 400})),
+        // The sleep is far longer than a loaded runner needs for the whole task (a 5 s sleep
+        // left about 2 s of margin locally and none on CI); the claim is only that the call
+        // does not wait it out.
+        script(json!({"argv": ["sh", "-c", "sleep 30"], "timeout_ms": 400})),
         vec![],
     )
     .await;
@@ -191,7 +194,7 @@ async fn qual_px_156_a_call_that_is_not_parked_still_times_out_on_schedule() {
     let st = wait_task(&mut c, &task, 120).await;
     assert!(!st.loop_alive, "{st:?}");
     assert!(
-        started.elapsed() < Duration::from_secs(5),
+        started.elapsed() < Duration::from_secs(30),
         "it did not wait out the sleep"
     );
     let results = shell_results(&seen.lock().unwrap());
