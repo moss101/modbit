@@ -39889,8 +39889,13 @@
    ],
    "task_card": "docs/62_PRODUCT_EXTENSION_REQUIREMENTS_TASKS_AND_QUALIFICATIONS.md#px-192",
    "audit_at_adoption": "DOCUMENTED-ONLY; no product caller present",
-   "status": "NOT_STARTED",
-   "evidence": []
+   "status": "E2E_PROVEN",
+   "evidence": [
+    "artifact:evidence/m10/PX-192/evidence.json",
+    "artifact:evidence/m10/PX-193/desktop-e2e-full.log",
+    "commit:34206ff6"
+   ],
+   "status_changed_on": "2026-11-03T19:24:41Z"
   },
   {
    "id": "PX-193",
@@ -82825,5 +82830,6 @@
    "to": "EPR-GATE-G",
    "type": "requires_gate"
   }
- ]
+ ],
+ "updated_on": "2026-11-03T19:24:41Z"
 }

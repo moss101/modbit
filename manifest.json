@@ -10545,8 +10545,8 @@
     },
     {
       "path": "graph/project-graph.json",
-      "bytes": 2490794,
-      "sha256": "7f05cbf2daf2a93c953961b32148edfe4a592458ac90d41fece8861471877652"
+      "bytes": 2491013,
+      "sha256": "2b6d646256cd271f988eb2713a500b61e531d249aa3d98c1fc0f1b428a5fc2f5"
     },
     {
       "path": "tools/build_graph.py",
