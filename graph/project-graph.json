@@ -39889,13 +39889,16 @@
    ],
    "task_card": "docs/62_PRODUCT_EXTENSION_REQUIREMENTS_TASKS_AND_QUALIFICATIONS.md#px-192",
    "audit_at_adoption": "DOCUMENTED-ONLY; no product caller present",
-   "status": "E2E_PROVEN",
+   "status": "COMPLETE",
    "evidence": [
     "artifact:evidence/m10/PX-192/evidence.json",
     "artifact:evidence/m10/PX-193/desktop-e2e-full.log",
-    "commit:34206ff6"
+    "commit:34206ff6",
+    "run:41706960923",
+    "artifact:evidence/m10/PX-192/ci-run-41706960923.json",
+    "commit:8d988dbe"
    ],
-   "status_changed_on": "2026-11-03T19:24:41Z"
+   "status_changed_on": "2026-11-03T21:56:45Z"
   },
   {
    "id": "PX-193",
@@ -39919,8 +39922,15 @@
    ],
    "task_card": "docs/62_PRODUCT_EXTENSION_REQUIREMENTS_TASKS_AND_QUALIFICATIONS.md#px-193",
    "audit_at_adoption": "DOCUMENTED-ONLY; no product caller present",
-   "status": "NOT_STARTED",
-   "evidence": []
+   "status": "COMPLETE",
+   "evidence": [
+    "artifact:evidence/m10/PX-193/evidence.json",
+    "artifact:evidence/m10/PX-193/desktop-e2e-full.log",
+    "commit:8d988dbe",
+    "run:41706960923",
+    "artifact:evidence/m10/PX-193/ci-run-41706960923.json"
+   ],
+   "status_changed_on": "2026-11-03T21:56:46Z"
   },
   {
    "id": "PX-194",
@@ -39944,8 +39954,15 @@
    ],
    "task_card": "docs/62_PRODUCT_EXTENSION_REQUIREMENTS_TASKS_AND_QUALIFICATIONS.md#px-194",
    "audit_at_adoption": "DOCUMENTED-ONLY; no product caller present",
-   "status": "NOT_STARTED",
-   "evidence": []
+   "status": "COMPLETE",
+   "evidence": [
+    "artifact:evidence/m10/PX-194/evidence.json",
+    "artifact:evidence/m10/PX-194/awl-gate-local.log",
+    "commit:8d988dbe",
+    "run:41706960923",
+    "artifact:evidence/m10/PX-194/ci-run-41706960923.json"
+   ],
+   "status_changed_on": "2026-11-03T21:56:46Z"
   },
   {
    "id": "QUAL-PX-000",
@@ -82883,5 +82900,6 @@
    "to": "EPR-GATE-G",
    "type": "requires_gate"
   }
- ]
+ ],
+ "updated_on": "2026-11-03T21:56:46Z"
 }
