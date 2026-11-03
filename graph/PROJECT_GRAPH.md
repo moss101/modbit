@@ -386,7 +386,7 @@ flowchart LR
 - `DOC-PX-015`: COMPLETE; Product extension stage: ZCode design language for the desktop renderer, PX-141..143; evidence: artifact:evidence/dossier-px-015/validation.json, artifact:evidence/dossier-px-015/tests.log, commit:437419a8e81bc76a52c7ef1b72dccb48e357941f
 - `DOC-PX-016`: COMPLETE; Product extension stage: Autonomous coding engine inside the Capability Kernel's envelope, PX-144..146; evidence: artifact:evidence/dossier-px-016/tests.log, artifact:evidence/dossier-px-016/validation.json, commit:6e32d883
 - `DOC-PX-017`: COMPLETE; Product extension stage: Upgrade program from Codex, MAI-UI and Qwen-Planner-Agent, PX-147..191; evidence: artifact:evidence/dossier-px-017/tests.log, artifact:evidence/dossier-px-017/validation.json, commit:f337daa9
-- `DOC-PX-018`: NOT_STARTED; Product extension stage: Agent workspace language for the desktop renderer, PX-192..194; evidence: none
+- `DOC-PX-018`: COMPLETE; Product extension stage: Agent workspace language for the desktop renderer, PX-192..194; evidence: artifact:evidence/dossier-px-018/tests.log, commit:b7ce15e88d18a1e9daaac5d27536db4d496f5f21, artifact:evidence/dossier-px-018/validation.json
 
 ## Milestone tasks in execution order
 

@@ -8,7 +8,7 @@
   "counts": {
     "docs": 97,
     "root_and_tooling": 1922,
-    "docs_bytes": 2312014
+    "docs_bytes": 2313336
   },
   "sections": [
     {
@@ -329,8 +329,8 @@
       "section": "implementation",
       "section_title": "Implementation specifications",
       "title": "Desktop Frontend Implementation",
-      "bytes": 15719,
-      "sha256": "9ecc6191c08e22fa22094e8756f63ea759e1d71edb82c9bae113f1fdb5f39cb8"
+      "bytes": 16953,
+      "sha256": "1ce89dcebf686437b4bac7913a335a460daf5547066d718b4093212cec726769"
     },
     {
       "path": "docs/33_CORE_AND_CLOUD_BACKEND_IMPLEMENTATION.md",
@@ -365,8 +365,8 @@
       "section": "implementation",
       "section_title": "Implementation specifications",
       "title": "Build / Buy / Dependency / License Decisions",
-      "bytes": 3774,
-      "sha256": "c9e0cb4d15cd4e653e4ec4bfe16a26ba2692e44db23978cc5870f12cc24db12d"
+      "bytes": 3862,
+      "sha256": "9f4ad90dfd8d3c137dd95aae5e3989f15f0e8554bdd23eec911c67d139d43fba"
     },
     {
       "path": "docs/37_EXISTING_CODE_DONOR_AND_REUSE_POLICY.md",
@@ -10475,13 +10475,13 @@
     },
     {
       "path": "graph/PROJECT_GRAPH.md",
-      "bytes": 46449,
-      "sha256": "85a0a64bbfb5ab6a075fb16448b4c8c5cf8f007a3ea3f4f4bb62a41b8f829502"
+      "bytes": 46583,
+      "sha256": "f5a793af97451a6ab8deb627da23872a21870189315d8d806db7a6cc3d590aa3"
     },
     {
       "path": "graph/project-graph.json",
-      "bytes": 2490585,
-      "sha256": "7d5d9b477d7a4ec37dc904642b4fab2a6841dec78ef1deb9311f2ca3e53fb1f4"
+      "bytes": 2490833,
+      "sha256": "4b439f097c11f91ba630c8349304c8938e3c7ff0419fdc63a7defc31a1b3d554"
     },
     {
       "path": "tools/build_graph.py",

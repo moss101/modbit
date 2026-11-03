@@ -44506,8 +44506,13 @@
    "subsystem": "governance",
    "source": "docs/97_DOSSIER_MAINTENANCE_LOG.md",
    "acceptance": "Decision Record, its rows, specification, supersession entries and change record added; implementation audit recorded; full integrity gate passes; the record is accepted by the owner and its status and approval are recorded; no product proof",
-   "status": "NOT_STARTED",
-   "evidence": []
+   "status": "COMPLETE",
+   "evidence": [
+    "artifact:evidence/dossier-px-018/tests.log",
+    "commit:b7ce15e88d18a1e9daaac5d27536db4d496f5f21",
+    "artifact:evidence/dossier-px-018/validation.json"
+   ],
+   "status_changed_on": "2026-11-03T19:03:55Z"
   },
   {
    "id": "ALPHA",
@@ -82820,5 +82825,6 @@
    "to": "EPR-GATE-G",
    "type": "requires_gate"
   }
- ]
+ ],
+ "updated_on": "2026-11-03T19:03:55Z"
 }
