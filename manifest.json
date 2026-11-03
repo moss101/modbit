@@ -7,8 +7,8 @@
   "scope_rule": "docs/*.md, root *.md except MANIFEST.md, docs/decisions/*.md, graph JSON/Markdown, tools/*.py, evidence payloads; manifests exclude themselves and transient caches",
   "counts": {
     "docs": 97,
-    "root_and_tooling": 1936,
-    "docs_bytes": 2313336
+    "root_and_tooling": 1940,
+    "docs_bytes": 2318407
   },
   "sections": [
     {
@@ -599,8 +599,8 @@
       "section": "verification",
       "section_title": "Verification and testing",
       "title": "Product extension requirements, tasks and qualifications",
-      "bytes": 642283,
-      "sha256": "186d3b8212294ab3b26e1cefef12408a7d07da1738d838c09646cfa052873fce"
+      "bytes": 642627,
+      "sha256": "c921bb0a06de0999596373a1a192cd6b016a208ca8d330ea5fe8f4ec2749eaf5"
     },
     {
       "path": "docs/63_AGENT_COMPETENCE_BENCHMARKS_AND_REGRESSION_SUITES.md",
@@ -914,8 +914,8 @@
       "section": "governance",
       "section_title": "Agent process and governance",
       "title": "Dossier maintenance log",
-      "bytes": 137359,
-      "sha256": "3ca659cc7eccbcc5b32f07dd77097806a94f72869a61bd34bdf995508296e76e"
+      "bytes": 142086,
+      "sha256": "2206d2c7dc78700abfc1aba51b5cb347646588bb150d93e818363f7d0b7edda0"
     },
     {
       "path": "docs/98_BUILD_MANIFEST.md",
@@ -957,6 +957,11 @@
       "path": "SKILLS.md",
       "bytes": 18835,
       "sha256": "2f441310c0e2909afde84cab80226a1e3b4452adbd6a627967e60debd8455b71"
+    },
+    {
+      "path": "docs/decisions/DR-GOV-2026-10-30-008-bind-trajectory-metrics-to-px-189.md",
+      "bytes": 1823,
+      "sha256": "bf0f93d05528f3c253046158c7e18f76458ba784999e75c3cf004e40dd56903c"
     },
     {
       "path": "docs/decisions/DR-M0-002-locked-architecture-file-guard.md",
@@ -1115,8 +1120,8 @@
     },
     {
       "path": "docs/decisions/README.md",
-      "bytes": 9782,
-      "sha256": "f4e7dcae5dc705b3c833540df27932bb44889c01e854474befa95988e5077e37"
+      "bytes": 9998,
+      "sha256": "b7d0ae036c8b4a5bbf4ce639525b17416a14d0b981e910ad561061b399fdce08"
     },
     {
       "path": "evidence/dossier-epr-v1.1/baseline.json",
@@ -1242,6 +1247,21 @@
       "path": "evidence/dossier-gov-007/validation.json",
       "bytes": 7202,
       "sha256": "e8c16d6237842386ce48e23e99bcb7fbc5003b40aa59ec842b91fd8320c4b28e"
+    },
+    {
+      "path": "evidence/dossier-gov-008/baseline.json",
+      "bytes": 1161,
+      "sha256": "002901da69a5ba57c73803ec513188ba7567a0aed230e2714e0c62b299f7f057"
+    },
+    {
+      "path": "evidence/dossier-gov-008/tests.log",
+      "bytes": 7447,
+      "sha256": "c85f68e1e3f1327f95c05b4c078654388519943e363251edd8bf42c72da3e17c"
+    },
+    {
+      "path": "evidence/dossier-gov-008/validation.json",
+      "bytes": 1808,
+      "sha256": "f50c3729f5996902fac5fb232c6e71588a0e72e547dd2bb17a86ee66f1fa0156"
     },
     {
       "path": "evidence/dossier-gov/baseline.json",
@@ -10545,18 +10565,18 @@
     },
     {
       "path": "graph/PROJECT_GRAPH.md",
-      "bytes": 46583,
-      "sha256": "f5a793af97451a6ab8deb627da23872a21870189315d8d806db7a6cc3d590aa3"
+      "bytes": 46861,
+      "sha256": "a6969b3a1e24f6030e4f2fe8b43af480c403f1e5562d73d7b0716d63e229f125"
     },
     {
       "path": "graph/project-graph.json",
-      "bytes": 2490974,
-      "sha256": "80053dc7eec8dbcd970e5533f075a417d9224e471e0cd81c0b5df9486851d2ad"
+      "bytes": 2492647,
+      "sha256": "6706708225aa8b2d0d82a419accb2331f79b798b07c1396294dc62e83841bab4"
     },
     {
       "path": "tools/build_graph.py",
-      "bytes": 64953,
-      "sha256": "9a572ccb1ed0ca4d34d6b96ed95c979871b6570e10d0ccdc35cbe4cb7c6afe30"
+      "bytes": 66213,
+      "sha256": "8586baa1383086a447e8229fd1f5f898f91645a4688cfdad68c78960f138a0a1"
     },
     {
       "path": "tools/build_manifest.py",
@@ -10605,8 +10625,8 @@
     },
     {
       "path": "tools/test_dossier.py",
-      "bytes": 83857,
-      "sha256": "e7ac5c75004ac95f2f51c2bb6ecb2db2a203c01ac5a4bb28019e73e174e87511"
+      "bytes": 84390,
+      "sha256": "79ddf1f39f4893d64fa19962fea6f594010f714e2b35a48ca493460d15a7ea81"
     }
   ],
   "renames_v3_to_v3_1": {
