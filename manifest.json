@@ -2,12 +2,12 @@
   "product": "Modbit",
   "edition": "V3.3 EPR v1.1",
   "authority_date": "2026-09-05",
-  "generated_on": "2026-11-03",
+  "generated_on": "2026-11-04",
   "hash_algorithm": "sha256",
   "scope_rule": "docs/*.md, root *.md except MANIFEST.md, docs/decisions/*.md, graph JSON/Markdown, tools/*.py, evidence payloads; manifests exclude themselves and transient caches",
   "counts": {
     "docs": 97,
-    "root_and_tooling": 1940,
+    "root_and_tooling": 1943,
     "docs_bytes": 2318407
   },
   "sections": [
@@ -3155,18 +3155,28 @@
     },
     {
       "path": "evidence/m10/PX-192/TASK_CARD.md",
-      "bytes": 1670,
-      "sha256": "da181c49cb7c5f47ec4e6ce64ae8d7b765505663f7cd6a6b15ca6ea69c24be23"
+      "bytes": 2237,
+      "sha256": "920af3d4fd68f3a5f21532c7867ba68547df40c00df065002ee8f1274053debc"
+    },
+    {
+      "path": "evidence/m10/PX-192/ci-run-41706960923.json",
+      "bytes": 49464,
+      "sha256": "e4891796978f29ad97c52389fbab9d504bb6bb07dbe8a41d03b29818b96ee036"
     },
     {
       "path": "evidence/m10/PX-192/evidence.json",
-      "bytes": 1515,
-      "sha256": "80a487a4ae1142d28737f54a8525ce07d7c665e379e47a0957b38f0948d52763"
+      "bytes": 2294,
+      "sha256": "2abd0b459eb4d3d5aa3b68e3447ce4a4baf75ef5abb8670d2b6dbd9a566a17d2"
     },
     {
       "path": "evidence/m10/PX-193/TASK_CARD.md",
-      "bytes": 1866,
-      "sha256": "ddebeabeca7c0ce621c20a6a6c4c5b038acb87423ac266405b045b44ec6a3ca5"
+      "bytes": 2433,
+      "sha256": "50a1893125e3a763761a61c3ec6d244c0342bcc99bf856b3af2e215fe29acfd3"
+    },
+    {
+      "path": "evidence/m10/PX-193/ci-run-41706960923.json",
+      "bytes": 49464,
+      "sha256": "e4891796978f29ad97c52389fbab9d504bb6bb07dbe8a41d03b29818b96ee036"
     },
     {
       "path": "evidence/m10/PX-193/desktop-e2e-full.log",
@@ -3175,13 +3185,13 @@
     },
     {
       "path": "evidence/m10/PX-193/evidence.json",
-      "bytes": 1956,
-      "sha256": "897abcc99bdd0c7b37f2fa35a6474dcc97a5950eea1bffc88f07d8bca2ee650a"
+      "bytes": 2735,
+      "sha256": "707d2f0cb3cc0232a2f6e81a71147907df123b382a6e4c628f010df21f850587"
     },
     {
       "path": "evidence/m10/PX-194/TASK_CARD.md",
-      "bytes": 1771,
-      "sha256": "2e5465bf2411e3da76c4839fffdb064ad5b00b1b30d2b76105bd0899cd0e80f5"
+      "bytes": 2338,
+      "sha256": "876f00c7abd72a980e03287edf9f830159c6417dbcf8cc2a7a033fa8fa0cda8f"
     },
     {
       "path": "evidence/m10/PX-194/after/home-light.png",
@@ -3219,9 +3229,14 @@
       "sha256": "ab18962b2de814bd29dfdfe10554294d9782bb01dcd8da6e254086ed282b428e"
     },
     {
+      "path": "evidence/m10/PX-194/ci-run-41706960923.json",
+      "bytes": 49464,
+      "sha256": "e4891796978f29ad97c52389fbab9d504bb6bb07dbe8a41d03b29818b96ee036"
+    },
+    {
       "path": "evidence/m10/PX-194/evidence.json",
-      "bytes": 2730,
-      "sha256": "206505cb85ddb4b289ef6a45b1432abf6645a899c83751aaf94079c5db7bde7a"
+      "bytes": 3509,
+      "sha256": "53a8590f35765da70c08ce59aec6840d552d0b45948317470c3abd74efece595"
     },
     {
       "path": "evidence/m2/IMP-EV-0011/TASK_CARD.md",

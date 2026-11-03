@@ -20,4 +20,4 @@
 
 ## Limitations
 
-- macOS arm64 only so far; Windows and Linux are CI legs not yet run. Native window chrome and translucency stay with PX-094. Colours are Modbit's own (doc 65 section 2): they are near the reference product, not identical.
+- CI run 41706960923 (PR #168 head 8d988dbe) is green on macOS, Linux and Windows for the rust, node and desktop E2E jobs, which closes the CI legs. That run predates the merges of main (c43db71f, Rust and dossier only, no renderer file) and the PX-156 test margin (d2c3b904). On those later heads the failures were outside this row's code: px_156 timing on Ubuntu (fixed), and on macOS fix_17 and the actuator ax_fixture (runner GUI session: human_active true, no key arrived) with macOS desktop E2E cancelled before its limit; main's own run showed the same E2E cancellation, on a Rust job that had not finished when this was written. Native window chrome and translucency stay with PX-094. Colours are Modbit's own (doc 65 section 2): they are near the reference product, not identical.
