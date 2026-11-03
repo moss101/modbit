@@ -1,7 +1,7 @@
 # Modbit Dossier Manifest — V3.3 EPR v1.1
 
 > **Authority date:** 2026-09-05  
-> **Generated:** 2026-10-30 by `tools/build_manifest.py`  
+> **Generated:** 2026-11-03 by `tools/build_manifest.py`  
 > **Scope:** every specification file in `docs/` plus the root governing files and tooling. The previous `99_MANIFEST.md` covered only 39 Part 2 files; this manifest covers all 97 docs.
 > **Machine-readable twin:** `manifest.json` (same content, same hashes).
 
@@ -2039,8 +2039,8 @@ A dossier package is valid only if every path below exists with the listed SHA-2
 | `evidence/zcode-ui/reference/zcode-colors-rgba.json` | retained evidence | 18690 | `76372c3edbcd50fe596d5e4b7fcd7991adab9686588ddc578a728afa24b4f028` |
 | `evidence/zcode-ui/reference/zcode-computed.json` | retained evidence | 718674 | `9ae8821ce72aa0fff3be44aacd0f4c9d995465c54bad7f17d1a81f92841d1c2d` |
 | `evidence/zcode-ui/reference/zcode-tokens-resolved.json` | retained evidence | 30635 | `066725c00059a05d073fbcdac9a8d965eab05f05c1f5df16e654854ff3e22b91` |
-| `graph/PROJECT_GRAPH.md` | human view of the graph | 46401 | `8a1899351796465ef7134acda8634774bb4ea257a56090b5fd79be204d0204ef` |
-| `graph/project-graph.json` | project driver graph with live status | 2473112 | `66beea6ee2f5f766a18144337c09f18ef6395756202c6f4c66060caa49d97372` |
+| `graph/PROJECT_GRAPH.md` | human view of the graph | 46558 | `5f2722726b86bc5d7b595b1ddc7f5d1f8901cbaf37dac1287b7f31c96c02db52` |
+| `graph/project-graph.json` | project driver graph with live status | 2473350 | `30b6174d6d4f9b98733f5344dd0835780d2968284025764f3c5f03dcf7d82b9e` |
 | `tools/build_graph.py` | regenerates graph structure from docs | 65572 | `1961207ee262c23bfe88037045e21d3a712b3a3a9a0b2d3f11a5b0ddb1f7304e` |
 | `tools/build_manifest.py` | regenerates this manifest | 14871 | `b35f87f995ebea778ef5002f42c4dcb2f195f303ae121d7b4d73070d95d665b7` |
 | `tools/check_dossier.py` | integrity gate | 18887 | `1bd2634078a0c20b34a565ccf0f6d9061e83bd0945b7bf719ac137611e3fcf35` |

@@ -1,7 +1,7 @@
 # Modbit Project Graph
 
 > Generated from `graph/project-graph.json` by `tools/graph.py render --write`. Do not edit by hand; edit the graph through `tools/graph.py set` or regenerate structure with `tools/build_graph.py`.  
-> Graph generated on 2026-10-30; view rendered on 2026-10-30.
+> Graph generated on 2026-11-03; view rendered on 2026-11-03.
 
 ## What the graph is
 
@@ -386,7 +386,7 @@ flowchart LR
 - `DOC-PX-015`: COMPLETE; Product extension stage: ZCode design language for the desktop renderer, PX-141..143; evidence: artifact:evidence/dossier-px-015/validation.json, artifact:evidence/dossier-px-015/tests.log, commit:437419a8e81bc76a52c7ef1b72dccb48e357941f
 - `DOC-PX-016`: COMPLETE; Product extension stage: Autonomous coding engine inside the Capability Kernel's envelope, PX-144..146; evidence: artifact:evidence/dossier-px-016/tests.log, artifact:evidence/dossier-px-016/validation.json, commit:6e32d883
 - `DOC-PX-017`: COMPLETE; Product extension stage: Upgrade program from Codex, MAI-UI and Qwen-Planner-Agent, PX-147..191; evidence: artifact:evidence/dossier-px-017/tests.log, artifact:evidence/dossier-px-017/validation.json, commit:f337daa9
-- `DOC-GOV-008`: NOT_STARTED; Bind crates/core-runtime/src/trajectory.rs to the PX-189 production wiring; evidence: none
+- `DOC-GOV-008`: COMPLETE; Bind crates/core-runtime/src/trajectory.rs to the PX-189 production wiring; evidence: artifact:evidence/dossier-gov-008/validation.json, artifact:evidence/dossier-gov-008/tests.log, run:gha-41561897083, commit:0d8e2d7c0bc32c1e6df5ac3afc98978ba2973230
 
 ## Milestone tasks in execution order
 
