@@ -305,8 +305,8 @@ export function Gallery() {
             onPrefs={(u) => setPrefs(u)}
             panelOpen={panelOpen}
             panel={<p className="meta" style={{ padding: 12 }}>Apps panel fixture.</p>}
-            agents={(rail) => <AgentRegion rail={rail} canExpand={false} taskCount={3} attentionCount={1} onNewTask={() => {}} onExpand={() => {}} />}
-            topBar={<TopBar title="Fleet" location="Local, trusted workspace" agentListCollapsed={false} onToggleAgentList={() => {}} canGoBack={false} onBack={() => {}} menuItems={[]} dashboardOpen={false} dashboardDisabled onToggleDashboard={() => {}} panelOpen={panelOpen} panelUnavailable={null} onTogglePanel={() => setPanelOpen((o) => !o)} />}
+            agents={(rail) => <AgentRegion rail={rail} canExpand={false} taskCount={3} attentionCount={1} onNewTask={() => {}} onExpand={() => {}} dashboardOpen={false} dashboardDisabled onToggleDashboard={() => {}} />}
+            topBar={<TopBar title="Fleet" location="Local, trusted workspace" agentListCollapsed={false} onToggleAgentList={() => {}} canGoBack={false} onBack={() => {}} menuItems={[]} panelOpen={panelOpen} panelUnavailable={null} onTogglePanel={() => setPanelOpen((o) => !o)} />}
             tray={null}
             statusRow={<StatusRow coreLabel="Core connected (fixture)" coreStatus="ok" platform={null} location="Local, trusted workspace" />}
           >

@@ -1,4 +1,4 @@
-import { Badge, Button, IconButton, Menu, type MenuItem } from "@modbit/ui";
+import { Badge, IconButton, Menu, type MenuItem } from "@modbit/ui";
 import { IconBack, IconLocal, IconMore, IconPanel, IconSidebar } from "./icons.tsx";
 
 export interface TopBarProps {
@@ -11,24 +11,16 @@ export interface TopBarProps {
   canGoBack: boolean;
   onBack: () => void;
   menuItems: readonly MenuItem[];
-  dashboardOpen: boolean;
-  dashboardDisabled: boolean;
-  onToggleDashboard: () => void;
-  /** REQ-PX-086: the Automations surface. */
-  automationsOpen?: boolean | undefined;
-  automationsDisabled?: boolean | undefined;
-  onToggleAutomations?: (() => void) | undefined;
-  /** REQ-PX-106: the Customize view over skills, hooks and extensions. */
-  customizeOpen?: boolean | undefined;
-  customizeDisabled?: boolean | undefined;
-  onToggleCustomize?: (() => void) | undefined;
   panelOpen: boolean;
   /** Why the panel cannot open (no task has an artifact), or null when it can. */
   panelUnavailable: string | null;
   onTogglePanel: () => void;
 }
 
-/** The 40 px top bar (AFW-A04): sidebar toggle, back, title with location, dashboard, overflow menu and the apps-panel toggle. */
+/**
+ * The 40 px top bar (AFW-A04, DR-PX-2026-11-03-019 AWL-06): sidebar toggle, back, title with location, overflow menu and the
+ * apps-panel toggle. Dashboard, Automations and Customize are navigation entries of the agent list.
+ */
 export function TopBar(p: TopBarProps) {
   return (
     <header className="topbar" data-testid="top-bar">
@@ -44,19 +36,6 @@ export function TopBar(p: TopBarProps) {
         {p.location}
       </Badge>
       <span className="topbar-spacer" />
-      {p.onToggleAutomations && (
-        <Button size="sm" data-testid="open-automations" aria-pressed={p.automationsOpen ?? false} disabled={p.automationsDisabled ?? false} onClick={p.onToggleAutomations}>
-          Automations
-        </Button>
-      )}
-      {p.onToggleCustomize && (
-        <Button size="sm" data-testid="open-customize" aria-pressed={p.customizeOpen ?? false} disabled={p.customizeDisabled ?? false} onClick={p.onToggleCustomize}>
-          Customize
-        </Button>
-      )}
-      <Button size="sm" data-testid="open-dashboard" disabled={p.dashboardDisabled} onClick={p.onToggleDashboard}>
-        {p.dashboardOpen ? "Close dashboard" : "Dashboard"}
-      </Button>
       <Menu label="More actions" trigger={<IconMore />} items={p.menuItems} align="end" triggerTestId="overflow-menu" />
       <IconButton label={p.panelUnavailable ? `Apps panel (${p.panelUnavailable})` : "Apps panel"} icon={<IconPanel />} pressed={p.panelOpen} aria-disabled={p.panelUnavailable !== null} data-testid="toggle-apps-panel" onClick={() => p.panelUnavailable === null && p.onTogglePanel()} />
     </header>

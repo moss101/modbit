@@ -8,7 +8,8 @@
  */
 import { PALETTES, type ColorRole, type ColorRoles, type ThemeName } from "./palette.ts";
 import { CONTROL, ELEVATION, FONT, GEOMETRY, MOTION, PRESS_SCALE, RADIUS, SPACE, TYPE, UI_FONT_SIZE, UI_TEXT, Z, ZRADIUS, ZSHADOW } from "./scale.ts";
-import { ZDL_DARK, ZDL_LIGHT, type ZdlColors, type ZdlToken } from "./design-language.ts";
+import { type ZdlColors, type ZdlToken } from "./design-language.ts";
+import { AWL_COLORS_DARK, AWL_COLORS_LIGHT } from "./workspace-language.ts";
 
 export interface TokenSet {
   theme: ThemeName;
@@ -33,8 +34,8 @@ const kebab = (s: string) => s.replace(/[A-Z]/g, (c) => `-${c.toLowerCase()}`);
 const step = (k: string | number) => String(k).replace(".", "_");
 
 /**
- * The ZCode token names for the high-contrast theme, which has no ZCode original (ZDX-06): the semantic ones read the
- * high-contrast role they stand for and every other token keeps its Zai Dark value, so no `--color-*` is ever undefined.
+ * The `--color-*` names for the high-contrast theme (ZDX-06 carried over): the semantic ones read the high-contrast role they
+ * stand for and every other name keeps its AWL dark value, so no `--color-*` is ever undefined.
  */
 const HC_TOKENS: Partial<Record<ZdlToken, ColorRole>> = {
   background: "panel", "background-win-alt": "bg", "background-alt": "bg", panel: "panel", header: "panel", sidebar: "panel", surface: "sunken",
@@ -49,12 +50,12 @@ const HC_TOKENS: Partial<Record<ZdlToken, ColorRole>> = {
   "interaction-ask-foreground": "accentText", "interaction-confirmation-foreground": "ok", "resize-handle": "focus",
 };
 
-/** ZCode's colour tokens for a theme: Zai Light, Zai Dark, or (high contrast) the dark table with the semantic tokens re-pointed at Modbit's roles. */
+/** The `--color-*` values of a theme (DR-PX-2026-11-03-019): AWL light, AWL dark, or (high contrast) the dark table with the semantic names re-pointed at Modbit's roles. */
 export function zdlColors(theme: ThemeName): ZdlColors {
-  if (theme === "light") return ZDL_LIGHT;
-  if (theme === "dark") return ZDL_DARK;
+  if (theme === "light") return AWL_COLORS_LIGHT;
+  if (theme === "dark") return AWL_COLORS_DARK;
   const roles = PALETTES["high-contrast"];
-  const out: ZdlColors = { ...ZDL_DARK };
+  const out: ZdlColors = { ...AWL_COLORS_DARK };
   for (const [token, role] of Object.entries(HC_TOKENS) as [ZdlToken, ColorRole][]) out[token] = roles[role];
   return out;
 }
@@ -79,12 +80,12 @@ export function sharedVariables(): Record<string, string> {
   out["--mb-font-mono"] = FONT.mono;
   out["--font-sans"] = FONT.sans;
   out["--font-mono"] = FONT.mono;
-  // ZCode's one-knob type scale: only `--ui-font-size` changes, never the root font size (ZDL-02).
+  // One-knob type scale: only `--ui-font-size` changes, never the root font size (AWL-04).
   out["--ui-font-size"] = `${UI_FONT_SIZE}px`;
   for (const [k, offset] of Object.entries(UI_TEXT)) out[`--text-ui-${k}`] = offset === 0 ? "var(--ui-font-size)" : `calc(var(--ui-font-size) ${offset < 0 ? "-" : "+"} ${Math.abs(offset)}px)`;
   for (const [k, v] of Object.entries(TYPE)) {
     out[`--mb-type-${k}-size`] = `var(--text-ui-${v.ui})`;
-    out[`--mb-type-${k}-line`] = `calc(var(--text-ui-${v.ui}) * 1.5)`;
+    out[`--mb-type-${k}-line`] = `calc(var(--text-ui-${v.ui}) * ${+(v.line / v.size).toFixed(4)})`;
   }
   for (const [k, v] of Object.entries(ZRADIUS)) out[`--radius-${k}`] = `${v}px`;
   for (const [k, v] of Object.entries(ZSHADOW)) out[`--shadow-${k}`] = v;

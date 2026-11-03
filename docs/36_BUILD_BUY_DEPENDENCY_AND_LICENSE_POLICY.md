@@ -30,7 +30,7 @@ Evaluate in order: dependency → integration → fork → reimplement → build
 | Browser automation | **BUILD semantic layer on Chromium/CDP** | Do not build browser engine; can borrow/reference AX/semantic patterns |
 | Model providers | **INTEGRATE APIs** | Modbit owns normalized gateway/router, not model service |
 | MCP | **INTEGRATE protocol** | External tools remain capability-gated/untrusted |
-| Design language | **INTEGRATE: ZCode design tokens (Apache-2.0), Tailwind palette values (MIT), Lucide icon shapes (ISC, MIT for Feather-derived)** | Values and path data are copied as generated typed data with notices (`third-party/zcode-ui`); no UI package, Tailwind, Radix or icon package becomes a dependency; upstream is pinned to one revision and measured by a retained capture (DR-PX-2026-10-24-016) |
+| Design language | **BUILD: Modbit's own agent workspace tokens (DR-PX-2026-11-03-019); INTEGRATE: Lucide icon shapes (ISC, MIT for Feather-derived), Tailwind shadow values (MIT), primitive recipe structure from ZCode (Apache-2.0)** | Path data is copied as generated typed data with notices (`third-party/zcode-ui`); no UI package, Tailwind, Radix or icon package becomes a dependency; colour values are Modbit's own and none is taken from the reference product (doc 65 section 2) or from ZCode |
 
 ## Fork policy
 

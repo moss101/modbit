@@ -68,23 +68,25 @@ export const workspaceCss = `
 /* The status region (banners, the welcome card) never takes the surface from the content below it: on a short window it scrolls inside its own share instead of overlapping the controls under it. */
 .conv-wrap > [role="region"][aria-label="Status and notifications"] { flex: 0 0 auto; max-height: 45%; overflow-y: auto; }
 .conv { flex: 1 1 0; min-height: 0; display: flex; flex-direction: column; }
-.conv-head { flex: none; display: flex; align-items: center; gap: var(--mb-space-2); padding: var(--mb-space-1) var(--mb-space-4); border-bottom: 1px solid var(--mb-color-border); font-size: var(--mb-type-chrome-size); }
+.conv-head { flex: none; display: flex; align-items: center; gap: var(--mb-space-2); min-height: 32px; padding: 0 var(--mb-space-4); color: var(--mb-color-text-muted); font-size: var(--mb-type-caption-size); }
 .conv-spacer { flex: 1 1 0; }
 .conv-density { display: inline-flex; align-items: center; gap: var(--mb-space-1); }
 .conv-density select { font: inherit; font-size: var(--mb-type-chrome-size); padding: 1px var(--mb-space-1); border: 1px solid var(--mb-color-border-control); border-radius: var(--radius-md); background: var(--mb-color-sunken); color: var(--mb-color-text); }
 .conv-body { position: relative; flex: 1 1 0; min-height: 0; display: flex; flex-direction: column; }
-.conv-scroll { flex: 1 1 0; min-height: 0; overflow-y: auto; padding: var(--mb-space-3) var(--mb-space-4); }
-.conv-inner { display: flex; flex-direction: column; gap: var(--mb-space-2); }
+.conv-scroll { flex: 1 1 0; min-height: 0; overflow-y: auto; padding: var(--mb-space-2) var(--mb-space-5) var(--mb-space-4); }
+/* AWL-07: one centred column with the 840 px cap; rows 14 px apart. */
+.conv-inner { display: flex; flex-direction: column; gap: 14px; width: 100%; max-width: 840px; margin: 0 auto; }
 .conv-scroll:focus-visible { outline: 2px solid var(--mb-color-focus); outline-offset: -2px; }
 .conv-empty { margin: var(--mb-space-4) 0; font-style: normal; }
-.conv-row { flex: none; content-visibility: auto; contain-intrinsic-size: auto 48px; max-width: 78ch; }
+.conv-row { flex: none; content-visibility: auto; contain-intrinsic-size: auto 48px; max-width: none; }
 .conv-row[data-highlight="true"] { outline: 2px solid var(--mb-color-focus); outline-offset: 2px; border-radius: var(--radius-md); }
-.conv-user { align-self: flex-end; background: var(--color-secondary); border: 0; border-radius: var(--radius-lg); padding: 12px 16px; max-width: 70ch; }
+.conv-user { align-self: stretch; background: var(--color-panel); border: 1px solid var(--color-tab-border); border-radius: var(--radius-xl); padding: 8px 12px; max-width: none; font-size: var(--mb-type-body-size); line-height: var(--mb-type-body-line); }
 .conv-user[data-sticky="true"] { position: sticky; top: calc(-1 * var(--mb-space-3)); z-index: var(--mb-z-panel); box-shadow: var(--mb-elevation-1); content-visibility: visible; }
 .conv-user-text { margin: 0; white-space: pre-wrap; overflow-wrap: anywhere; }
-.conv-user .meta { margin: var(--mb-space-0_5) 0 0; }
+.conv-user { position: relative; }
+.conv-user .meta { margin: var(--mb-space-0_5) 0 0; font-size: var(--mb-type-caption-size); }
 .conv-assistant { content-visibility: visible; }
-.conv-text { line-height: 1.55; }
+.conv-text { font-size: var(--mb-type-body-size); line-height: var(--mb-type-body-line); }
 .conv-para { margin: 0 0 var(--mb-space-2); white-space: pre-wrap; overflow-wrap: anywhere; }
 .conv-fresh { text-decoration: underline 1px transparent; text-underline-offset: 2px; animation: conv-fade var(--mb-motion-slow, 300ms) ease-out both; }
 /* New text is marked by a fading underline, never by fading the glyphs: text at partial opacity is below AA contrast for as long as it fades (WCAG 1.4.3). */
@@ -97,19 +99,30 @@ export const workspaceCss = `
 .conv-aborted { border: 1px dashed var(--mb-color-warn); background: var(--mb-color-warn-tint); border-radius: var(--radius-md); padding: var(--mb-space-2); }
 .conv-aborted p { margin: 0 0 var(--mb-space-1); }
 .conv-partial { opacity: 0.85; border-left: 2px solid var(--mb-color-warn); padding-left: var(--mb-space-2); }
-.conv-tool { display: flex; flex-wrap: wrap; align-items: baseline; gap: var(--mb-space-2); padding: var(--mb-space-0_5) var(--mb-space-2); border-left: 2px solid var(--mb-color-border-control); font-size: var(--mb-type-chrome-size); }
-.conv-tool[data-status="FAILED"], .conv-tool[data-status="DENIED"] { border-left-color: var(--mb-color-danger); }
+.conv-tool { display: flex; flex-wrap: wrap; align-items: baseline; gap: var(--mb-space-2); padding: var(--mb-space-0_5) 0; color: var(--mb-color-text-muted); font-size: var(--mb-type-chrome-size); }
+.conv-tool[data-status="FAILED"], .conv-tool[data-status="DENIED"] { color: var(--mb-color-text); }
 .conv-tool-class { font-size: var(--mb-type-caption-size); color: var(--mb-color-text-muted); min-width: 4.5em; }
 .conv-tool-text { font: var(--mb-type-mono-size)/var(--mb-type-mono-line) var(--mb-font-mono); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 46ch; }
 .conv-tool-failure { color: var(--mb-color-text); font-weight: 600; }
-.conv-group { border: 1px solid var(--mb-color-border); border-radius: var(--radius-lg); background: var(--mb-color-panel); }
-.conv-group > summary { cursor: pointer; padding: var(--mb-space-1) var(--mb-space-2); font-size: var(--mb-type-chrome-size); }
-.conv-group-label { font-weight: 600; }
-.conv-group-body { padding: var(--mb-space-1) var(--mb-space-2) var(--mb-space-2); display: flex; flex-direction: column; gap: var(--mb-space-1); }
-.conv-approval { border: 1px solid var(--mb-color-warn); background: var(--mb-color-warn-tint); border-radius: var(--radius-lg); padding: var(--mb-space-2) var(--mb-space-3); }
+/* AWL-07: a step group is a one-line disclosure row with no box. */
+.conv-group { border: 0; border-radius: 0; background: transparent; }
+.conv-group > summary { cursor: pointer; display: flex; align-items: center; gap: var(--mb-space-1_5); min-height: 24px; padding: 0; color: var(--mb-color-text-muted); font-size: var(--mb-type-chrome-size); list-style: none; }
+.conv-group > summary::-webkit-details-marker { display: none; }
+.conv-group > summary::before { content: ""; flex: none; width: 6px; height: 6px; margin: 0 3px; border-right: 1.5px solid currentColor; border-bottom: 1.5px solid currentColor; transform: rotate(-45deg); transition: transform var(--mb-motion-slow); }
+.conv-group[open] > summary::before { transform: rotate(45deg); }
+.conv-group > summary:hover { color: var(--mb-color-text); }
+.conv-group-label { font-weight: 400; color: var(--mb-color-text); }
+.conv-group-body { padding: var(--mb-space-1) 0 var(--mb-space-1) 18px; display: flex; flex-direction: column; gap: var(--mb-space-1); }
+.conv-approval { border: 1px solid var(--mb-color-warn); background: var(--color-panel); border-radius: var(--radius-xl); padding: var(--mb-space-2) var(--mb-space-3); }
 .conv-approval[data-state="APPROVED"], .conv-approval[data-state="ANSWERED"] { border-color: var(--mb-color-border); background: var(--mb-color-panel); }
 .conv-approval p { margin: 0 0 var(--mb-space-1); }
-.conv-footer { display: flex; align-items: center; gap: var(--mb-space-2); font-size: var(--mb-type-caption-size); color: var(--mb-color-text-muted); }
+/* AWL-07: a completed turn's footer is transparent until the turn is hovered or focused; it stays in the tab order and the accessibility tree. A failed or interrupted turn always shows it. */
+.conv-footer { display: flex; flex-wrap: nowrap; align-items: center; gap: var(--mb-space-2); min-height: 24px; font-size: var(--mb-type-caption-size); color: var(--mb-color-text-muted); white-space: nowrap; }
+.conv-footer > .meta { flex: 0 1 auto; min-width: 0; overflow: hidden; text-overflow: ellipsis; }
+.conv-footer .ckpt { flex: 0 1 auto; min-width: 0; flex-wrap: nowrap; overflow: hidden; }
+.conv-footer .ckpt > span { overflow: hidden; text-overflow: ellipsis; }
+.conv-footer[data-outcome="COMPLETED"] { opacity: 0; margin-top: -10px; transition: opacity var(--mb-motion-fast); }
+.conv-footer[data-outcome="COMPLETED"]:hover, .conv-footer[data-outcome="COMPLETED"]:focus-within, .conv-assistant:hover + .conv-footer[data-outcome="COMPLETED"] { opacity: 1; }
 .conv-boundary { align-self: center; text-align: center; padding: var(--mb-space-1) 0; }
 .conv-divider { display: flex; align-items: center; gap: var(--mb-space-2); color: var(--mb-color-accent-text); font-size: var(--mb-type-caption-size); font-weight: 600; max-width: none; }
 .conv-divider::before, .conv-divider::after { content: ""; flex: 1 1 0; border-top: 1px solid var(--mb-color-accent); }
@@ -122,7 +135,7 @@ export const workspaceCss = `
 .conv-pill button { font: inherit; background: transparent; border: 0; color: inherit; padding: var(--mb-space-1) var(--mb-space-3); }
 .conv-pill button:hover:not(:disabled) { background: transparent; text-decoration: underline; }
 .conv-pill .conv-pill-x { padding: var(--mb-space-1) var(--mb-space-2); border-left: 1px solid var(--mb-color-text-muted); }
-.conv-composer { flex: none; border-top: 1px solid var(--mb-color-border); padding: var(--mb-space-2) var(--mb-space-4); background: var(--mb-color-panel); }
+.conv-composer { flex: none; padding: var(--mb-space-2) var(--mb-space-4); background: transparent; }
 .conv-composer p { margin: 0 0 var(--mb-space-1); }
 .conv-composer input { flex: 1 1 14em; min-width: 0; }
 @media (prefers-reduced-motion: reduce) { .conv-fresh { animation: none; } }
