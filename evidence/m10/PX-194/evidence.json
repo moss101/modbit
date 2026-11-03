@@ -1,0 +1,25 @@
+{
+ "task": "PX-194",
+ "requirements": [
+  "REQ-PX-194",
+  "QUAL-PX-194",
+  "docs/62_PRODUCT_EXTENSION_REQUIREMENTS_TASKS_AND_QUALIFICATIONS.md#px-194"
+ ],
+ "scenarios": [
+  "QUAL-PX-194 / PX-E2E-194"
+ ],
+ "decision_record": "DR-PX-2026-11-03-019",
+ "tier": "iteration",
+ "tests": [
+  "apps/desktop/e2e/awl.spec.ts",
+  "apps/desktop/e2e/conversation.spec.ts",
+  "apps/desktop/e2e/composer.spec.ts",
+  "apps/desktop/e2e/checkpoints.spec.ts"
+ ],
+ "proof": "Local, macOS arm64, real Core and scripted model: the whole desktop e2e suite on the committed tree 34206ff6 passed 185 of 187 with 2 skipped, exit 0 (evidence/m10/PX-193/desktop-e2e-full.log); the first full run on the same tree failed 15 specs because only modbit-core and modbit-execd were built (modbit-cli and the computer actuator were absent), and all 15 passed after `cargo build --workspace --bins`. awl.spec.ts reads every emitted colour variable, measures 260/40, unframed panes, 30 px navigation rows, the button and tab recipes and the one-line status row at 1280 and 900, runs axe in light, dark and high contrast, and fails on each retained mutation (ZDL primary, 48 px bar, black bare button). Follow-up c16e1805 (navigation inset, CSS only): awl, shell, gallery and agents specs 20 passed. Unit: desktop 305, design-tokens 10, ui 10.",
+ "limitations": "macOS arm64 only so far; Windows and Linux are CI legs not yet run. Native window chrome and translucency stay with PX-094. Colours are Modbit's own (doc 65 section 2): they are near the reference product, not identical.",
+ "commits": [
+  "34206ff6",
+  "c16e1805"
+ ]
+}
