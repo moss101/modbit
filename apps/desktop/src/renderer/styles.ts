@@ -112,8 +112,8 @@ export const shellCss = `
 .statusrow > .meta { flex: 1 1 0; }
 .statusrow .status { margin-left: 0; }
 .agent-region { padding: 0 var(--mb-space-2) var(--mb-space-2); display: flex; flex-direction: column; gap: var(--mb-space-1); }
-.agent-region-head { box-sizing: border-box; height: var(--mb-top-bar); display: flex; align-items: center; justify-content: space-between; padding: 0 var(--mb-space-2); }
-.agent-nav { list-style: none; margin: 0 0 var(--mb-space-2); padding: 0; display: flex; flex-direction: column; gap: 1px; }
+.agent-region-head { box-sizing: border-box; height: var(--mb-top-bar); display: flex; align-items: center; justify-content: space-between; padding: 0 var(--mb-space-4); }
+.agent-nav { list-style: none; margin: 0 var(--mb-space-2) var(--mb-space-2); padding: 0; display: flex; flex-direction: column; gap: 1px; }
 .agent-nav-row.agent-nav-row { box-sizing: border-box; width: 100%; height: 30px; min-height: 0; display: flex; align-items: center; gap: var(--mb-space-2); padding: 0 var(--mb-space-2); border: 0; border-radius: var(--radius-lg); background: transparent; color: var(--mb-color-text-muted); font: inherit; font-size: var(--mb-type-chrome-size); text-align: left; transition: none; }
 .agent-nav-row.agent-nav-row:hover:not(:disabled) { background: var(--color-hover); color: var(--color-foreground); }
 .agent-nav-row.agent-nav-row[aria-pressed="true"] { background: var(--color-selected); color: var(--color-foreground); }
