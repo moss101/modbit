@@ -1175,3 +1175,14 @@ Accepted on the owner's chat instruction of 2026-10-26 ("Yes, promote the upgrad
 - **Folded, not registered:** MCP OAuth and elicitation (PX-090), release pipeline (PX-097, PX-098), plugin pipeline (PX-087, PX-088), hook contract and trust (PX-092, PX-117), durable external-tool rules (PX-090, PX-057), the live native proof and graph reconcile (PX-069..076) and failure diagnosis (PX-140): Appendix C binds their deltas.
 - **Tooling:** one entry in the parity table of `tools/build_graph.py`; `tools/test_dossier.py` pins 192 requirement rows, 170 ADOPT tasks and the 22 DEFERRED rows, and adds `test_dr_018_registers_the_upgrade_program_without_a_second_owner_and_defers_what_needs_a_decision`.
 - **Not done here:** every product behaviour of the rows; verification of the model and dataset licenses; any live run; the correction of `docs/66` section 3; the advance of any graph status.
+
+## DOC-PX-018 — Agent workspace language: DR-PX-2026-11-03-019 and rows PX-192..194 (2026-11-03)
+
+Accepted on the owner's chat instruction of 2026-11-03 ("can you redesign frontend of this application exactly exactly like cursor - first share an image before we approve", then "Yes, go ahead" after a mockup in light and dark and a side-by-side capture of the running app on `3207cb21`). Dossier only: no product code, status or evidence claim changes in this task.
+
+- **Record:** `docs/decisions/DR-PX-2026-11-03-019-agent-workspace-language.md` (new), the ledger row and the acceptance sentence in `docs/decisions/README.md`, a register section in doc 02. The record lists what the capture showed and its cause in the renderer, the goal and its exit criteria, the options (copying the reference product's palette is rejected under doc 65 section 2), Modbit's own tokens, the control recipes, the restored geometry, the density rules and the gate that replaces the retired ZCode fidelity gate.
+- **Rows:** REQ-PX-192..194, QUAL-PX-192..194, task cards PX-192..194 and scenarios PX-E2E-192..194 in doc 62 (owner `desktop`, M10, RELEASE_ZERO, iteration tier, chained after PX-143, DOC-PX-018 a prerequisite). QUAL-PX-045 carries the restored numbers (260 px, 40 px).
+- **Supersession, scoped:** DR-PX-2026-10-24-016 sections 2, 5.1 (ZDL-01..06), 5.3 and 6; in doc 65 a note after the earlier one restores AFW-A03, A04, A05, the composer radius of A07 (12 px) and the provenance clause of AFW-A11 for every source. The Lucide table (ZDL-07) and the accessibility exceptions carry over. AFW-A12, A13, A14 and the clean-room posture are unchanged.
+- **Tooling:** one entry in the parity table of `tools/build_graph.py` (creates the change record and DOC-PX-018); `tools/test_dossier.py` pins 195 PX rows and 173 ADOPT tasks and adds `test_dr_019_adopts_the_agent_workspace_language_inside_the_clean_room_posture`.
+- **Not done here:** every product behaviour of PX-192..194.
+

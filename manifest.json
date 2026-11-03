@@ -2,13 +2,13 @@
   "product": "Modbit",
   "edition": "V3.3 EPR v1.1",
   "authority_date": "2026-09-05",
-  "generated_on": "2026-10-29",
+  "generated_on": "2026-11-03",
   "hash_algorithm": "sha256",
   "scope_rule": "docs/*.md, root *.md except MANIFEST.md, docs/decisions/*.md, graph JSON/Markdown, tools/*.py, evidence payloads; manifests exclude themselves and transient caches",
   "counts": {
     "docs": 97,
-    "root_and_tooling": 1919,
-    "docs_bytes": 2294708
+    "root_and_tooling": 1922,
+    "docs_bytes": 2312014
   },
   "sections": [
     {
@@ -77,8 +77,8 @@
       "section": "authority",
       "section_title": "Authority and orientation",
       "title": "Authority, Decision Register, and Conflict Resolution",
-      "bytes": 31162,
-      "sha256": "45f3dcbfe931161fa1dac8cf801b05f98ae64385d045513df73cb4b02d1921ff"
+      "bytes": 32496,
+      "sha256": "4e1972da8ffea6949886d92f845fc534b9ca9385a27c0e1c95d79f500e0b1a80"
     },
     {
       "path": "docs/03_ARCHITECTURAL_CONFLICTS_AND_SUPERSESSIONS.md",
@@ -599,8 +599,8 @@
       "section": "verification",
       "section_title": "Verification and testing",
       "title": "Product extension requirements, tasks and qualifications",
-      "bytes": 629017,
-      "sha256": "5fd2567b4b162bb2ceacc8ed314f82c364c501783c8f03a455fdd1130d1aa1b1"
+      "bytes": 642283,
+      "sha256": "186d3b8212294ab3b26e1cefef12408a7d07da1738d838c09646cfa052873fce"
     },
     {
       "path": "docs/63_AGENT_COMPETENCE_BENCHMARKS_AND_REGRESSION_SUITES.md",
@@ -626,8 +626,8 @@
       "section": "verification",
       "section_title": "Verification and testing",
       "title": "Agent-first workspace specification (clean-room)",
-      "bytes": 86862,
-      "sha256": "2ea571d1914332ab70dab9d5450a713f1c45edf0d20e22c7d5e6068536d4a51a"
+      "bytes": 87593,
+      "sha256": "753c4f653afff5489b2cf63bd60f5ee2dda70a25f81677701a19bf8f8fecacd3"
     },
     {
       "path": "docs/66_NATIVE_COMPUTER_CONTROL_SPECIFICATION.md",
@@ -914,8 +914,8 @@
       "section": "governance",
       "section_title": "Agent process and governance",
       "title": "Dossier maintenance log",
-      "bytes": 135384,
-      "sha256": "6d48035807801561b8165818fb017ee2d03eca848bf13ce387aed665e8099a79"
+      "bytes": 137359,
+      "sha256": "3ca659cc7eccbcc5b32f07dd77097806a94f72869a61bd34bdf995508296e76e"
     },
     {
       "path": "docs/98_BUILD_MANIFEST.md",
@@ -1109,9 +1109,14 @@
       "sha256": "013e6a60bbfb3719dc1db5ab068bca46e4dbb6bd480ee06ecb125fb9bfba5a01"
     },
     {
+      "path": "docs/decisions/DR-PX-2026-11-03-019-agent-workspace-language.md",
+      "bytes": 14683,
+      "sha256": "fa544e8bb20d252c50c3f7c658bb564eeb20bb0ce2cefe6c371811cb769567c6"
+    },
+    {
       "path": "docs/decisions/README.md",
-      "bytes": 8907,
-      "sha256": "75c7d68d93843a3b16bb358872b68094f5fa00ff39a79a73f76c2ad83e871c31"
+      "bytes": 9782,
+      "sha256": "f4e7dcae5dc705b3c833540df27932bb44889c01e854474befa95988e5077e37"
     },
     {
       "path": "evidence/dossier-epr-v1.1/baseline.json",
@@ -1442,6 +1447,16 @@
       "path": "evidence/dossier-px-017/validation.json",
       "bytes": 1416,
       "sha256": "53ad72f3ae8462aa34299115ba97f4d0322d96d3f2c81f5ae8ffc901d9430a15"
+    },
+    {
+      "path": "evidence/dossier-px-018/tests.log",
+      "bytes": 7556,
+      "sha256": "c06d90c3286386225d958cd256022b150c059b03702a2548d4a281b4fb4d58cb"
+    },
+    {
+      "path": "evidence/dossier-px-018/validation.json",
+      "bytes": 1412,
+      "sha256": "367e9852236b4055babe90b369d91a67a96089b63b7e5bd6991b779d787d7e8f"
     },
     {
       "path": "evidence/m0/IMP-EV-0208/TASK_CARD.md",
@@ -10460,18 +10475,18 @@
     },
     {
       "path": "graph/PROJECT_GRAPH.md",
-      "bytes": 46280,
-      "sha256": "43fc7598b8edcb7ed21e244ec546a5fe0f64379e900ca6ee9252dde0fbe0903d"
+      "bytes": 46449,
+      "sha256": "85a0a64bbfb5ab6a075fb16448b4c8c5cf8f007a3ea3f4f4bb62a41b8f829502"
     },
     {
       "path": "graph/project-graph.json",
-      "bytes": 2471677,
-      "sha256": "88c4265d8b699a3f265d4d848a08058cf816eea86b887ce35bfe3ffc287830b6"
+      "bytes": 2490585,
+      "sha256": "7d5d9b477d7a4ec37dc904642b4fab2a6841dec78ef1deb9311f2ca3e53fb1f4"
     },
     {
       "path": "tools/build_graph.py",
-      "bytes": 64312,
-      "sha256": "a0ed29e361e000b219b6be973e0be77417831fa4b7f0f2cd2c5845f553e90a54"
+      "bytes": 64953,
+      "sha256": "9a572ccb1ed0ca4d34d6b96ed95c979871b6570e10d0ccdc35cbe4cb7c6afe30"
     },
     {
       "path": "tools/build_manifest.py",
@@ -10520,8 +10535,8 @@
     },
     {
       "path": "tools/test_dossier.py",
-      "bytes": 80817,
-      "sha256": "7e4c90c036458548737e13f3fbcb7393c071c3beebada8200bd1c39a568efb00"
+      "bytes": 83857,
+      "sha256": "e7ac5c75004ac95f2f51c2bb6ecb2db2a203c01ac5a4bb28019e73e174e87511"
     }
   ],
   "renames_v3_to_v3_1": {
