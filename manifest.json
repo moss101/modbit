@@ -7,8 +7,8 @@
   "scope_rule": "docs/*.md, root *.md except MANIFEST.md, docs/decisions/*.md, graph JSON/Markdown, tools/*.py, evidence payloads; manifests exclude themselves and transient caches",
   "counts": {
     "docs": 97,
-    "root_and_tooling": 1943,
-    "docs_bytes": 2318407
+    "root_and_tooling": 1958,
+    "docs_bytes": 2333673
   },
   "sections": [
     {
@@ -77,8 +77,8 @@
       "section": "authority",
       "section_title": "Authority and orientation",
       "title": "Authority, Decision Register, and Conflict Resolution",
-      "bytes": 32496,
-      "sha256": "4e1972da8ffea6949886d92f845fc534b9ca9385a27c0e1c95d79f500e0b1a80"
+      "bytes": 33270,
+      "sha256": "55523c6c81e2aad51a94c005d54240e5877e77f7788c9308e2b80e04be54b0e5"
     },
     {
       "path": "docs/03_ARCHITECTURAL_CONFLICTS_AND_SUPERSESSIONS.md",
@@ -131,8 +131,8 @@
       "section": "architecture",
       "section_title": "Architecture and subsystems",
       "title": "Product Requirements and UX Specification",
-      "bytes": 12469,
-      "sha256": "33e7e3c922f924f23031db1d1635cbba9001ce406e0474228d9b2ec0d4b5b224"
+      "bytes": 12707,
+      "sha256": "ba6495ce7ac10fc441d4a0652c64193f252c5ec64e6d81d1a51223eaf7132ccc"
     },
     {
       "path": "docs/11_SYSTEM_ARCHITECTURE.md",
@@ -329,8 +329,8 @@
       "section": "implementation",
       "section_title": "Implementation specifications",
       "title": "Desktop Frontend Implementation",
-      "bytes": 16953,
-      "sha256": "1ce89dcebf686437b4bac7913a335a460daf5547066d718b4093212cec726769"
+      "bytes": 17605,
+      "sha256": "444cdd71b0822584c2e85d4d44d22bbea55f1de4880d354aed44dc62867c0b71"
     },
     {
       "path": "docs/33_CORE_AND_CLOUD_BACKEND_IMPLEMENTATION.md",
@@ -392,8 +392,8 @@
       "section": "implementation",
       "section_title": "Implementation specifications",
       "title": "UX flows, onboarding and interaction budgets",
-      "bytes": 15814,
-      "sha256": "d941a887e6775d6c756b91470cb52b702d383d777451f87cda4b55f2454fd4a2"
+      "bytes": 15858,
+      "sha256": "2a2b5501ac47114af1bcaddf2fef046493050ef711b376fcaefeadec9cdea5b1"
     },
     {
       "path": "docs/40_EVIDENCE_DERIVED_REQUIREMENT_LEDGER.md",
@@ -599,8 +599,8 @@
       "section": "verification",
       "section_title": "Verification and testing",
       "title": "Product extension requirements, tasks and qualifications",
-      "bytes": 642627,
-      "sha256": "c921bb0a06de0999596373a1a192cd6b016a208ca8d330ea5fe8f4ec2749eaf5"
+      "bytes": 654118,
+      "sha256": "8511a7d1438189755732037d8ae0ae46af795505dbddcc7bbec104fa6e592c1e"
     },
     {
       "path": "docs/63_AGENT_COMPETENCE_BENCHMARKS_AND_REGRESSION_SUITES.md",
@@ -626,8 +626,8 @@
       "section": "verification",
       "section_title": "Verification and testing",
       "title": "Agent-first workspace specification (clean-room)",
-      "bytes": 87593,
-      "sha256": "753c4f653afff5489b2cf63bd60f5ee2dda70a25f81677701a19bf8f8fecacd3"
+      "bytes": 88258,
+      "sha256": "c4d9c1637f21e1c55ba495781b262fc939d6aea5c622022849a4cbab44ca759b"
     },
     {
       "path": "docs/66_NATIVE_COMPUTER_CONTROL_SPECIFICATION.md",
@@ -914,8 +914,8 @@
       "section": "governance",
       "section_title": "Agent process and governance",
       "title": "Dossier maintenance log",
-      "bytes": 142086,
-      "sha256": "2206d2c7dc78700abfc1aba51b5cb347646588bb150d93e818363f7d0b7edda0"
+      "bytes": 143488,
+      "sha256": "c276594c796fd43779722b5a6e4c3876242a7ee0ff9ed9262fb0d1776977216f"
     },
     {
       "path": "docs/98_BUILD_MANIFEST.md",
@@ -1119,9 +1119,14 @@
       "sha256": "fa544e8bb20d252c50c3f7c658bb564eeb20bb0ce2cefe6c371811cb769567c6"
     },
     {
+      "path": "docs/decisions/DR-PX-2026-11-04-020-agent-workspace-screens.md",
+      "bytes": 11629,
+      "sha256": "5ec9cbf5c63f88b521c9453244d20fef8c20ccd3afdeca649d19a3e904907f1a"
+    },
+    {
       "path": "docs/decisions/README.md",
-      "bytes": 9998,
-      "sha256": "b7d0ae036c8b4a5bbf4ce639525b17416a14d0b981e910ad561061b399fdce08"
+      "bytes": 10488,
+      "sha256": "063ce1263209688a7948246a7bc1fecaf4f5f1a1b01b6e1f64f461fa0800c117"
     },
     {
       "path": "evidence/dossier-epr-v1.1/baseline.json",
@@ -1477,6 +1482,16 @@
       "path": "evidence/dossier-px-018/validation.json",
       "bytes": 1412,
       "sha256": "367e9852236b4055babe90b369d91a67a96089b63b7e5bd6991b779d787d7e8f"
+    },
+    {
+      "path": "evidence/dossier-px-019/tests.log",
+      "bytes": 7672,
+      "sha256": "efd59ffc814eead2af6c5960c3b665b9504ee16a4c07f727f0d1b62912a90384"
+    },
+    {
+      "path": "evidence/dossier-px-019/validation.json",
+      "bytes": 1141,
+      "sha256": "8c12bb42524adc9a7b0d0ee3684754c9b2706b0c13e33d334798d2294b98c615"
     },
     {
       "path": "evidence/m0/IMP-EV-0208/TASK_CARD.md",
@@ -3237,6 +3252,66 @@
       "path": "evidence/m10/PX-194/evidence.json",
       "bytes": 3509,
       "sha256": "53a8590f35765da70c08ce59aec6840d552d0b45948317470c3abd74efece595"
+    },
+    {
+      "path": "evidence/m10/PX-195/TASK_CARD.md",
+      "bytes": 2535,
+      "sha256": "696788172676826bc268ed20850b39f8b6191d6452f09ffa0a6a5f10b94df3e7"
+    },
+    {
+      "path": "evidence/m10/PX-195/after/home-light.png",
+      "bytes": 83980,
+      "sha256": "fbcb289999b10cd39c61c78d0563bec3984411f78e7f10cb474893a613b75e95"
+    },
+    {
+      "path": "evidence/m10/PX-195/desktop-e2e-full.log",
+      "bytes": 84782,
+      "sha256": "4b7078ae19804572b2bd1be978517a23d19199384740a3e1759a1c7e978a650c"
+    },
+    {
+      "path": "evidence/m10/PX-195/evidence.json",
+      "bytes": 1901,
+      "sha256": "e6b61221a45ebd17582e7b6d899903d3cc54bbbd79a2e05117ea1d3e9e7cbedd"
+    },
+    {
+      "path": "evidence/m10/PX-196/TASK_CARD.md",
+      "bytes": 2486,
+      "sha256": "9ec0f2717c20984ffede1b86fe14e4fbf9ede00366d2009ea4ea1d60730f1073"
+    },
+    {
+      "path": "evidence/m10/PX-196/evidence.json",
+      "bytes": 1904,
+      "sha256": "7dc1d0b02ee59dbfce53ec52cbc8b3daf84363cb5c5b9a5e3b31859326ab0b1f"
+    },
+    {
+      "path": "evidence/m10/PX-197/TASK_CARD.md",
+      "bytes": 2533,
+      "sha256": "6779b32fed865101967d4043e9691a539ffd198bd5016d00f85f556117e10d7a"
+    },
+    {
+      "path": "evidence/m10/PX-197/after/conv-light.png",
+      "bytes": 252029,
+      "sha256": "abdc6f5669628664150fe8617f444ceae396ec13f8adaf8014a14c150a970cd4"
+    },
+    {
+      "path": "evidence/m10/PX-197/after/details-light.png",
+      "bytes": 415222,
+      "sha256": "d4334991780759a96c3e362a502539c2b5027cf723013df839e2b128408f4ff9"
+    },
+    {
+      "path": "evidence/m10/PX-197/after/workspace-dark.png",
+      "bytes": 305077,
+      "sha256": "829fdc022255018cf49ccfb0be27f3062bdc6d6cf1c80cec7e3371395268c0d0"
+    },
+    {
+      "path": "evidence/m10/PX-197/after/workspace-light.png",
+      "bytes": 305334,
+      "sha256": "94f62cad82508c443ac3734bc09fe346bc44fb5f2d151dca31c7fae57e128412"
+    },
+    {
+      "path": "evidence/m10/PX-197/evidence.json",
+      "bytes": 1953,
+      "sha256": "f0b297549e9332187859021f3baf43cbaa99797c878cb4f0a7c923230f1c98bd"
     },
     {
       "path": "evidence/m2/IMP-EV-0011/TASK_CARD.md",
@@ -10580,18 +10655,18 @@
     },
     {
       "path": "graph/PROJECT_GRAPH.md",
-      "bytes": 46861,
-      "sha256": "838dd82676bd8bd3b08fc6b0f0f125aad98522935d50d63b73c005be200909b7"
+      "bytes": 47004,
+      "sha256": "c279e04c5ab6eb80938fcc5ed8b2d321faf2f213a6495a720a150515264523d7"
     },
     {
       "path": "graph/project-graph.json",
-      "bytes": 2493310,
-      "sha256": "576b87ac45d9120a491076fac0403c2beb0bca414eeed9f86cc384ec4862df7d"
+      "bytes": 2509968,
+      "sha256": "bcc903ad98c9dd66975fbefdcef46394ac667a4e0b5d274c18101545e7dc44ab"
     },
     {
       "path": "tools/build_graph.py",
-      "bytes": 66213,
-      "sha256": "8586baa1383086a447e8229fd1f5f898f91645a4688cfdad68c78960f138a0a1"
+      "bytes": 66687,
+      "sha256": "3df787bdd1053b447b28e905d9d859d4c4f440e8a2761649b122e0c1983b04b0"
     },
     {
       "path": "tools/build_manifest.py",
@@ -10640,8 +10715,8 @@
     },
     {
       "path": "tools/test_dossier.py",
-      "bytes": 84390,
-      "sha256": "79ddf1f39f4893d64fa19962fea6f594010f714e2b35a48ca493460d15a7ea81"
+      "bytes": 87037,
+      "sha256": "c2c66987337777856d41eb10236756d173f2dccf9440b37effd7363259cc6af8"
     }
   ],
   "renames_v3_to_v3_1": {

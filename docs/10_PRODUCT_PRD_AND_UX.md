@@ -73,6 +73,9 @@ Settings
 ## Core screens
 
 ### 1. Home / Fleet
+
+> DR-PX-2026-11-04-020 (accepted 2026-11-04) removed the board: home is one composer, and these states are carried by the agent list and the Approvals page. The states below still hold; only the board that drew them as columns is gone.
+
 attention-first supervision, implemented as Modbit-native states:
 - **Needs Attention**: approval, blocked credential, ambiguity, protected effect, conflict, human-required continuation of an execution plan, quality floor infeasible under current policy, budget exhausted with partial evidence.
 - **Ready for Review**: completed work with evidence and unresolved review decisions.

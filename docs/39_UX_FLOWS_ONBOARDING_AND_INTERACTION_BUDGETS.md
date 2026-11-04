@@ -31,7 +31,7 @@ Each screen defines five states: **empty**, **loading**, **populated**, **error*
 
 | Screen | Degraded and recovery states that must exist |
 |---|---|
-| Home / Fleet | Core restarting (banner with the last persisted state and a countdown), provider down (tasks Waiting with cause), stale policy bundle (routing on last-good bundle, `REGISTRY_STALE`), offline (local tasks continue, cloud features disabled with reason) |
+| Home and agent list (a board until DR-PX-2026-11-04-020) | Core restarting (banner with the last persisted state and a countdown), provider down (tasks Waiting with cause), stale policy bundle (routing on last-good bundle, `REGISTRY_STALE`), offline (local tasks continue, cloud features disabled with reason) |
 | New Task | provider unavailable, repository untrusted or missing, budget exhausted for the day, policy forbids the requested execution mode |
 | Task workspace | event stream reconnecting by cursor, unknown tool outcome under reconciliation, awaiting approval with the exact intent, quality floor infeasible under policy, awaiting human continuation |
 | Review | verification incomplete (verdict INCONCLUSIVE with missing evidence listed), REJECT with reasons, stale candidate revision, PR push denied or failed with receipt state |

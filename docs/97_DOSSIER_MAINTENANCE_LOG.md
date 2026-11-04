@@ -1236,3 +1236,12 @@ Accepted on the owner's chat instruction of 2026-11-03 ("can you redesign fronte
 - **Tooling:** one entry in the parity table of `tools/build_graph.py` (creates the change record and DOC-PX-018); `tools/test_dossier.py` pins 195 PX rows and 173 ADOPT tasks and adds `test_dr_019_adopts_the_agent_workspace_language_inside_the_clean_room_posture`.
 - **Not done here:** every product behaviour of PX-192..194.
 
+## DOC-PX-019 — Agent workspace screens: DR-PX-2026-11-04-020 and rows PX-195..197 (2026-11-04)
+
+Accepted on the owner's chat instruction of 2026-11-04 ("there is no parity with cursor frontend - seems like old app is not deleted", then "Yes, remove it"). The record says why the gate of DR-PX-2026-11-03-019 passed while the screens were wrong, and adds the owner's review of real screenshots as an exit criterion.
+
+- **Record:** `docs/decisions/DR-PX-2026-11-04-020-agent-workspace-screens.md` (new), the ledger row in `docs/decisions/README.md`, a register section in doc 02.
+- **Rows:** REQ-PX-195..197, QUAL-PX-195..197, task cards PX-195..197 and scenarios PX-E2E-195..197 in doc 62 (owner `desktop`, M10, RELEASE_ZERO, release-critical, chained after PX-194, DOC-PX-019 a prerequisite).
+- **Supersession, scoped:** DR-PX-2026-11-03-019 section 5.5's "Modbit keeps Fleet", its navigation rows, the one-line status row and the banner rule; doc 10's and doc 39's board as the home; a note in doc 65 for AFW-A01, A06, A07 and D12. REQ-EV-0037 and REQ-EV-0143 stay.
+- **Tooling:** one entry in the parity table of `tools/build_graph.py` (creates the change record and DOC-PX-019); `tools/test_dossier.py` pins 198 PX rows and 176 ADOPT tasks and adds `test_dr_020_rebuilds_the_screens_and_removes_the_board_inside_the_clean_room_posture`.
+- **Not done here:** the product behaviour of PX-195..197.

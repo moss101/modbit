@@ -1,0 +1,30 @@
+{
+ "task": "DOC-PX-019",
+ "change_record": "DR-PX-2026-11-04-020",
+ "change_record_status": "APPROVED",
+ "edition": "V3.3 EPR v1.1",
+ "scope": "Decision Record DR-PX-2026-11-04-020 (accepted by the owner's chat instruction of 2026-11-04): rows PX-195..197 in doc 62 (owner desktop, M10, RELEASE_ZERO, release-critical, chained after PX-194), graph change record and dossier task, pinned surface 198 rows and 176 ADOPT tasks",
+ "recorded_at_utc": "2026-11-04T09:09:17.190068+00:00",
+ "git": {
+  "baseline_commit": "f4fd683f",
+  "branch": "wip/agent-workspace-rebuild"
+ },
+ "tests": {
+  "command": [
+   "python3",
+   "tools/test_dossier.py"
+  ],
+  "exit_code": 0,
+  "output_ref": "evidence/dossier-px-019/tests.log",
+  "sha256": "efd59ffc814eead2af6c5960c3b665b9504ee16a4c07f727f0d1b62912a90384",
+  "result_line": "Ran 89 tests in 133.291s OK"
+ },
+ "integrity": {
+  "command": [
+   "python3",
+   "tools/check_dossier.py"
+  ],
+  "exit_code": 0,
+  "output": "OK: 97 docs; base 291 REQ-EV/265 IMP-EV/291 QUAL-EV + EPR 20 + PX 198 (176 ADOPT tasks) = 509 requirements effective; 18 ADR-R, 7 gates, 3 releases; graph and references consistent"
+ }
+}
