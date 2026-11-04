@@ -37,8 +37,10 @@ export interface AgentRegionProps {
   userName?: string | undefined;
   coreLabel: string;
   coreStatus: "ok" | "warn" | "danger";
-  /** The gear menu: Settings, the views that have no row of their own, theme and zoom. */
+  /** The person's menu: the views that have no row of their own, theme and zoom. */
   menuItems: readonly MenuItem[];
+  settingsOpen?: boolean | undefined;
+  onOpenSettings: () => void;
 }
 
 interface NavEntry {
@@ -83,6 +85,38 @@ const initialsOf = (name: string) =>
     .map((w) => w[0]!.toUpperCase())
     .join("");
 
+/** The foot of the left column, in the list and in Settings: the person (their name opens the menu), the Core's state and the gear, which opens Settings. */
+export function PersonRow(p: Pick<AgentRegionProps, "userName" | "coreLabel" | "coreStatus" | "menuItems" | "settingsOpen" | "onOpenSettings">) {
+  const name = p.userName ?? "";
+  return (
+    <footer className="agent-foot" data-testid="agent-foot">
+      <Menu
+        label={`${name || "Account"}: palette, shortcuts, theme and more`}
+        trigger={
+          <>
+            <span className="agent-avatar" aria-hidden="true">
+              {initialsOf(name)}
+            </span>
+            <span className="agent-nav-label agent-user" data-testid="agent-user">
+              {name}
+            </span>
+          </>
+        }
+        items={p.menuItems}
+        align="start"
+        placement="up"
+        triggerClassName="agent-person"
+        triggerTestId="overflow-menu"
+      />
+      <span className="agent-core" data-testid="core-status" data-status={p.coreStatus} aria-live="polite" title={p.coreLabel}>
+        <span className="agent-core-dot" aria-hidden="true" />
+        <span className="mb-sr-only">{p.coreLabel}</span>
+      </span>
+      <IconButton label="Settings" icon={<Icon name="settings" />} pressed={p.settingsOpen ?? false} onClick={p.onOpenSettings} data-testid="open-settings" />
+    </footer>
+  );
+}
+
 /**
  * The agent list region: window controls, the navigation rows, the agent list, the repositories and the person's own row. Below
  * a 448 px centre it is a 40 px rail.
@@ -104,7 +138,6 @@ export function AgentRegion(p: AgentRegionProps) {
   if (p.onToggleAutomations) entries.push({ testId: "open-automations", icon: "clock", label: "Automations", onClick: p.onToggleAutomations, pressed: p.automationsOpen ?? false, disabled: p.automationsDisabled });
   if (p.onToggleInbox) entries.push({ testId: "open-inbox", icon: "shield-check", label: "Approvals", onClick: p.onToggleInbox, pressed: p.inboxOpen ?? false, count: attentionCount });
   if (p.onToggleCustomize) entries.push({ testId: "open-customize", icon: "blocks", label: "Customize", onClick: p.onToggleCustomize, pressed: p.customizeOpen ?? false, disabled: p.customizeDisabled });
-  const name = p.userName ?? "";
   return (
     <div className="agent-region">
       <div className="agent-region-head">
@@ -141,19 +174,7 @@ export function AgentRegion(p: AgentRegionProps) {
           </ul>
         </section>
       )}
-      <footer className="agent-foot" data-testid="agent-foot">
-        <span className="agent-avatar" aria-hidden="true">
-          {initialsOf(name)}
-        </span>
-        <span className="agent-nav-label agent-user" data-testid="agent-user">
-          {name}
-        </span>
-        <span className="agent-core" data-testid="core-status" data-status={p.coreStatus} aria-live="polite" title={p.coreLabel}>
-          <span className="agent-core-dot" aria-hidden="true" />
-          <span className="mb-sr-only">{p.coreLabel}</span>
-        </span>
-        <Menu label="Settings and more" trigger={<Icon name="settings" />} items={p.menuItems} align="end" placement="up" triggerTestId="overflow-menu" />
-      </footer>
+      <PersonRow {...p} />
     </div>
   );
 }

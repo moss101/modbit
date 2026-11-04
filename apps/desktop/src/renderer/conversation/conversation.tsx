@@ -50,6 +50,8 @@ export interface ConversationProps {
   screenState?: DerivedScreenState | null | undefined;
   /** The task works in a worktree of its own. */
   worktree?: boolean | undefined;
+  /** Where the Core says the task runs ("local" or "cloud"). */
+  executionLocation?: string | undefined;
   /** The branch, once the Changes app has read it; unknown until then. */
   branch?: string | undefined;
   onReview?: (() => void) | undefined;
@@ -82,7 +84,7 @@ function collectTurnText(rows: readonly TranscriptRowView[], turnId: string, out
 }
 
 export function Conversation(props: ConversationProps) {
-  const { taskId, sessionId, connected, card, title, focusRowId, onResume, onNewTask, onOpenTerminal, onOpenTask, titleOf, topSlot, subtasks, screenState, worktree, branch, onReview, onBrowser, onCancelTask } = props;
+  const { taskId, sessionId, connected, card, title, focusRowId, onResume, onNewTask, onOpenTerminal, onOpenTask, titleOf, topSlot, subtasks, screenState, worktree, executionLocation, branch, onReview, onBrowser, onCancelTask } = props;
   const [prefs, setPrefs] = useState<ConversationPrefs>(loadConversationPrefs);
   useEffect(() => saveConversationPrefs(prefs), [prefs]);
   const conv = useConversation(taskId, sessionId, prefs.density, connected);
@@ -337,7 +339,7 @@ export function Conversation(props: ConversationProps) {
       {ckpt.overlay}
       {/* The one tray host: docked directly above the composer, never beside or below it (AFW-H01). */}
       <TrayHost />
-      <Composer taskId={taskId} sessionId={sessionId} connected={connected} card={card} approvalPending={conv.approvals.length > 0} lastUserText={lastUserText} hasMessages={conv.rows.length > 0} onResume={onResume} onNewTask={onNewTask} onOpenTerminal={onOpenTerminal} onReview={onReview} foot={<><span className="cmp-foot-item" data-testid="conv-location"><Icon name="laptop" size={14} /> This Mac{worktree ? " · worktree" : ""}</span><span className="cmp-spacer" /><RunModeControl sessionId={sessionId} taskId={taskId} connected={connected} open={modeOpen} onOpenChange={setModeOpen} /></>} />
+      <Composer taskId={taskId} sessionId={sessionId} connected={connected} card={card} approvalPending={conv.approvals.length > 0} lastUserText={lastUserText} hasMessages={conv.rows.length > 0} onResume={onResume} onNewTask={onNewTask} onOpenTerminal={onOpenTerminal} onReview={onReview} foot={<><span className="cmp-foot-item" data-testid="conv-location"><Icon name={executionLocation === "cloud" ? "globe" : "laptop"} size={14} /> {executionLocation === "cloud" ? "Isolated cloud" : "This Mac"}{worktree ? " · worktree" : ""}</span><span className="cmp-spacer" /><RunModeControl sessionId={sessionId} taskId={taskId} connected={connected} open={modeOpen} onOpenChange={setModeOpen} /></>} />
     </section>
   );
 }

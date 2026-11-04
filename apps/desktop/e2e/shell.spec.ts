@@ -33,6 +33,60 @@ test("DR-PX-2026-11-04-020: started the way `pnpm start` starts it, the app find
   }
 });
 
+test("AFW-A10: Settings replaces the left column with its own navigation, holds doc 10's list, says plainly what the desktop cannot do yet, and Back returns", async () => {
+  const { app, page } = await launch(mkdtempSync(join(tmpdir(), "modbit-e2e-shell-settings-view-")));
+  try {
+    await setContentSize(app, page, 1280, 800);
+    await page.getByTestId("open-settings").click();
+    const nav = page.getByTestId("settings-nav");
+    await expect(nav).toBeVisible();
+    await expect(page.getByTestId("agents-new-task"), "the agent list has given way").toHaveCount(0);
+    await expect(nav.getByTestId("core-status"), "the footer stays pinned").toContainText("Core connected");
+    await expect(page.getByTestId("open-settings")).toHaveAttribute("aria-pressed", "true");
+    // Doc 10's list, every one a real section.
+    for (const id of ["provider", "locations", "permissions", "browser", "memory", "account"]) {
+      await expect(nav.getByTestId(`settings-nav-${id}`)).toBeVisible();
+      await expect(page.getByTestId(`settings-section-${id}`)).toBeVisible();
+    }
+    const column = await box(page, "settings");
+    expect(column.width, "one centred column of about 680").toBeLessThanOrEqual(681);
+    // The provider can be changed from here, and what is not built is said, never drawn as if it worked.
+    await expect(page.getByTestId("provider-key")).toBeVisible();
+    await expect(page.getByTestId("settings-cloud-state")).toContainText("Not available from this app yet");
+    await expect(page.getByTestId("settings-account-state")).toContainText("no sign-in yet");
+    // A control does what it says: the theme applies, the toggle is a real switch of 32 x 18.
+    await page.getByTestId("settings-theme-dark").click();
+    await expect(page.locator("html")).toHaveAttribute("data-theme", "dark");
+    await page.getByTestId("settings-theme-light").click();
+    await expect(page.locator("html")).toHaveAttribute("data-theme", "light");
+    const toggle = await box(page, "notify-attention");
+    near(toggle.width, 32, 1, "toggle width");
+    near(toggle.height, 18, 1, "toggle height");
+    await page.getByTestId("notify-attention").check();
+    await expect(page.getByTestId("notify-attention")).toBeChecked();
+    // Search narrows the navigation and the page together; a miss says so.
+    await page.getByTestId("settings-search").fill("cloud");
+    await expect(page.getByTestId("settings-section-locations")).toBeVisible();
+    await expect(page.getByTestId("settings-section-appearance")).toHaveCount(0);
+    await expect(nav.getByTestId("settings-nav-appearance")).toHaveCount(0);
+    await page.getByTestId("settings-search").fill("zzzzqqq");
+    await expect(page.getByTestId("settings-no-match")).toBeVisible();
+    await page.getByTestId("settings-search").fill("");
+    await accessible(page, "the Settings view");
+    await page.getByTestId("nav-back").click();
+    await expect(nav).toHaveCount(0);
+    await expect(page.getByTestId("agents-new-task")).toBeVisible();
+    await expect(page.getByTestId("goal")).toBeVisible();
+    // The person's name opens the other menu, and the gear is not hidden inside it.
+    await page.getByTestId("overflow-menu").click();
+    await expect(page.getByTestId("menu-item-open-worktrees")).toBeVisible();
+    await expect(page.getByTestId("menu-item-settings.open")).toHaveCount(0);
+    await page.keyboard.press("Escape");
+  } finally {
+    await closeApp(app);
+  }
+});
+
 test("PX-045: geometry at 1280 x 800, keyboard-resizable splits inside 210..400, persisted across a restart", async () => {
   const dataDir = mkdtempSync(join(tmpdir(), "modbit-e2e-shell-geom-"));
   let { app, page } = await launch(dataDir);

@@ -119,12 +119,12 @@ export function newTaskState(input: { core: CoreStatusLike; provider: { configur
       return state("newTask", "degraded", "budget or capacity exhausted", { cause: e, nextAction: "wait for a running task to finish, or raise the budget", evidence: "the Core's rejection" });
     }
     if (e.includes("NO_PROVIDER") || e.includes("PROVIDER")) {
-      return state("newTask", "degraded", "provider unavailable", { cause: e, nextAction: "set up a provider (step 2 above) before starting", evidence: "the Core's rejection" });
+      return state("newTask", "degraded", "provider unavailable", { cause: e, nextAction: "set up a provider above before starting", evidence: "the Core's rejection" });
     }
     return state("newTask", "error", "refused", { cause: e, nextAction: "read the cause, then adjust the request", evidence: "the Core's rejection" });
   }
   if (input.provider && !input.provider.configured) {
-    return state("newTask", "degraded", "provider unavailable", { cause: "no provider is configured in this Core", nextAction: "a task can be created but will not start until a provider is set up (step 2 above)", evidence: "provider status" });
+    return state("newTask", "degraded", "provider unavailable", { cause: "no provider is configured in this Core", nextAction: "a task can be created but will not start until a provider is set up (above)", evidence: "provider status" });
   }
   const root = input.workspaceRoot.trim();
   if (root && input.trusted !== root) return state("newTask", "populated", "repository not yet trusted (running trusts it, scoped to it)");

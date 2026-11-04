@@ -304,7 +304,7 @@ export function Gallery() {
             onPrefs={(u) => setPrefs(u)}
             panelOpen={panelOpen}
             panel={<p className="meta" style={{ padding: 12 }}>Apps panel fixture.</p>}
-            agents={(rail) => <AgentRegion rail={rail} canExpand={false} taskCount={3} attentionCount={1} onNewTask={() => {}} onExpand={() => {}} onToggleAgentList={() => {}} canGoBack={false} onBack={() => {}} canGoForward={false} onForward={() => {}} userName="Fixture" coreLabel="Core connected (fixture)" coreStatus="ok" menuItems={[]} />}
+            agents={(rail) => <AgentRegion rail={rail} canExpand={false} taskCount={3} attentionCount={1} onNewTask={() => {}} onExpand={() => {}} onToggleAgentList={() => {}} canGoBack={false} onBack={() => {}} canGoForward={false} onForward={() => {}} userName="Fixture" coreLabel="Core connected (fixture)" coreStatus="ok" menuItems={[]} onOpenSettings={() => {}} />}
             topBar={<TopBar title="New task" slotRef={() => {}} panelOpen={panelOpen} panelUnavailable={null} onTogglePanel={() => setPanelOpen((o) => !o)} />}
             tray={null}
             statusRow={null}

@@ -64,13 +64,16 @@ export function NewProjectDialog({ open, workspaces, onCreate, onClose }: NewPro
   const [problem, setProblem] = useState<string | null>(null);
   const nameRef = useRef<HTMLInputElement>(null);
   const errId = useId();
+  // Reset when the dialog opens, not when the list of workspaces changes: any Core event re-reads the tasks, and that must not wipe what the person typed.
   useEffect(() => {
     if (open) {
       setName("");
       setProblem(null);
       setBusy(false);
-      setWorkspace((w) => (workspaces.includes(w) ? w : (workspaces[0] ?? "")));
     }
+  }, [open]);
+  useEffect(() => {
+    if (open) setWorkspace((w) => (workspaces.includes(w) ? w : (workspaces[0] ?? "")));
   }, [open, workspaces]);
   const submit = async () => {
     setBusy(true);

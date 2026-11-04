@@ -7,6 +7,7 @@ import { expect, type Locator, type Page } from "@playwright/test";
 /** Shows the home composer (a task's conversation or a page may be open). */
 export async function toNewTask(page: Page): Promise<void> {
   const goal = page.getByTestId("goal");
+  if (await page.getByTestId("settings-nav").isVisible()) await page.getByTestId("nav-back").click();
   if (!(await goal.isVisible())) await page.getByTestId("agents-new-task").click();
   await expect(goal).toBeVisible();
 }
@@ -55,8 +56,13 @@ export async function openTaskDetails(page: Page): Promise<Locator> {
   return panel;
 }
 
-/** One item of the gear menu at the foot of the agent list: settings.open, open-dashboard, open-worktrees, theme.dark and so on. */
+/** Settings (the gear), or one item of the person's menu at the foot of the left column: open-dashboard, open-worktrees, theme.dark and so on. */
 export async function gearMenu(page: Page, itemId: string): Promise<void> {
+  if (itemId === "settings.open") {
+    await page.getByTestId("open-settings").click();
+    await expect(page.getByTestId("settings-nav")).toBeVisible();
+    return;
+  }
   await page.getByTestId("overflow-menu").click();
   await page.getByTestId(`menu-item-${itemId}`).click();
 }

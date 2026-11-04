@@ -170,7 +170,9 @@ async function workspaceDrift(page: Page): Promise<string[]> {
   if ((await page.getByTestId("app-changes").count()) === 1) {
     const commit = await box(page, "changes-commit");
     if (Math.abs(commit.y + commit.height - (panel.y + panel.height)) > 1) bad.push("the commit bar is not at the foot of the panel");
-    if (commit.height > 60) bad.push(`the commit bar is ${commit.height} tall`);
+    // One row: a note may sit under it (no git identity on this machine), and an approval replaces it.
+    const row = page.locator(".changes-commit-actions");
+    if ((await row.count()) === 1 && (await row.boundingBox())!.height > 40) bad.push(`the commit row is ${(await row.boundingBox())!.height} tall`);
     const line = page.locator(".hunk .dl").first();
     if ((await line.count()) === 1 && (await line.evaluate((el) => getComputedStyle(el).display)) !== "grid") bad.push("diff lines have no number columns");
   }

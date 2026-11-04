@@ -22,13 +22,14 @@ import { Browser } from "../browser/browser.tsx";
 import { Dashboard } from "../dashboard/dashboard.tsx";
 import { Home } from "../home/home.tsx";
 import { Review } from "../review/review.tsx";
+import { SettingsNav } from "../settings/settings-nav.tsx";
 import { SettingsPage } from "../settings/settings-page.tsx";
 import { Inbox } from "../approvals/inbox.tsx";
 import { childrenOf } from "../model.ts";
 import { taskState } from "../screens.ts";
 import type { AgentHeaderView } from "../../shared/conversation-types.ts";
 import { StatusRegion } from "./status-region.tsx";
-import { AgentRegion } from "./agent-region.tsx";
+import { AgentRegion, PersonRow } from "./agent-region.tsx";
 import { useTerminals } from "../apps/use-terminals.ts";
 import { recoverySummary } from "../../main/lifecycle.ts";
 import { AppsPanel } from "./apps-panel.tsx";
@@ -77,6 +78,8 @@ export function Shell({ app }: { app: AppState }) {
   const [runSessions, setRunSessions] = useState<Record<string, string>>({});
   const [inboxOpen, setInboxOpen] = useState(false);
   const [settingsOpen, setSettingsOpen] = useState(false);
+  const [settingsQuery, setSettingsQuery] = useState("");
+  const [settingsSection, setSettingsSection] = useState<string | null>(null);
   // PX-046/047: the conversation open in the centre region (null = the home composer). `rowId` is a search hit to scroll to.
   const [conversation, setConversation] = useState<{ taskId: string; rowId: string | null } | null>(null);
   // The conversation Back left, for Forward.
@@ -391,7 +394,6 @@ export function Shell({ app }: { app: AppState }) {
       return { id, label: d.title, shortcut: d.keys?.[0], disabled: why !== true, onSelect: () => runCommand(id), ...extra };
     };
     return [
-      fromRegistry("settings.open"),
       { id: "open-dashboard", label: "Dashboard", disabled: !model.sessionId, onSelect: () => runCommand("view.dashboard") },
       { id: "open-worktrees", label: "Worktrees", onSelect: () => openWorktrees() },
       fromRegistry("palette.open"),
@@ -458,7 +460,19 @@ export function Shell({ app }: { app: AppState }) {
             />
           ) : null
         }
-        agents={(rail) => (
+        agents={(rail) => !rail && settingsOpen ? (
+          <SettingsNav
+            query={settingsQuery}
+            onQuery={setSettingsQuery}
+            active={settingsSection}
+            onPick={(id) => {
+              setSettingsSection(id);
+              document.getElementById(`settings-${id}`)?.scrollIntoView({ block: "start" });
+            }}
+            onBack={() => setSettingsOpen(false)}
+            foot={<PersonRow userName={userName} coreLabel={coreLabel} coreStatus={coreStatus} menuItems={menuItems} settingsOpen onOpenSettings={() => setSettingsOpen(false)} />}
+          />
+        ) : (
           <AgentRegion
             rail={rail}
             canExpand={prefs.listCollapsed}
@@ -499,6 +513,8 @@ export function Shell({ app }: { app: AppState }) {
             coreLabel={coreLabel}
             coreStatus={coreStatus}
             menuItems={menuItems}
+            settingsOpen={settingsOpen}
+            onOpenSettings={() => actions.openSettings()}
             list={rail ? undefined : <AgentList sessionId={model.sessionId} connected={core.state === "connected"} selectedTaskId={conversation?.taskId ?? null} onSelect={openConversation} onHeaderList={setHeaders} projects={projects} selectedProjectId={projectPage} onOpenProject={openProject} onProjectArchived={(id, archived) => { if (archived && projectPage === id) setProjectPage(null); }} />}
           />
         )}
@@ -534,7 +550,23 @@ export function Shell({ app }: { app: AppState }) {
             <StatusRegion app={app} />
           </div>
           {settingsOpen ? (
-            <SettingsPage app={app} />
+            <SettingsPage
+              app={app}
+              query={settingsQuery}
+              theme={prefs.theme}
+              onTheme={(theme) => setPrefs((p) => ({ ...p, theme }))}
+              zoom={prefs.zoom}
+              onZoom={(delta) => actions.zoom(delta)}
+              onCustomize={() => {
+                closePages();
+                setCustomizeOpen(true);
+              }}
+              onAutomations={() => actions.openAutomations()}
+              onWorktrees={openWorktrees}
+              onDashboard={model.sessionId ? () => actions.openDashboard() : null}
+              onShortcuts={() => setHelpOpen(true)}
+              onComputerPermissions={() => setPermissionsOpen(true)}
+            />
           ) : customizeOpen ? (
             <div className="autos-scroll" data-testid="customize-region">
               <Customize connected={core.state === "connected"} sessionId={model.sessionId} taskId={conversation?.taskId ?? selectedTaskId ?? [...model.tasks.keys()][0] ?? null} onClose={() => setCustomizeOpen(false)} />
@@ -579,6 +611,7 @@ export function Shell({ app }: { app: AppState }) {
               subtasks={childrenOf(model, conversation.taskId)}
               screenState={model.tasks.has(conversation.taskId) ? taskState({ card: model.tasks.get(conversation.taskId)!, core, attention: attentionItems }) : null}
               worktree={Boolean(openedHeader?.checkoutRoot)}
+              executionLocation={openedHeader?.executionLocation}
               branch={branchByTask[conversation.taskId]}
               onReview={() => setReviewing(conversation.taskId)}
               onBrowser={() => void openBrowser(conversation.taskId)}

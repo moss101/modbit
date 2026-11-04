@@ -67,12 +67,15 @@ export function Home({ app }: { app: AppState }) {
             <input id="issue-url" className="home-issue" data-testid="issue-url" value={issueUrl} onChange={(e) => setIssueUrl(e.target.value)} placeholder="Or a GitHub issue URL" title="Its text enters as untrusted context" disabled={!connected} spellCheck={false} />
           </div>
           {provider !== null && !provider.configured && (
-            <p className="meta home-note" role="status" data-testid="composer-no-provider">
+            <p className="mb-sr-only" role="status" data-testid="composer-no-provider">
               No provider is set up: a task can be created but will not start until one is.
             </p>
           )}
           {!connected && <p className="meta home-note">Task creation is disabled until the Core is connected.</p>}
-          <StateLine state={composer} testid="composer-state" />
+          {/* Without a provider the setup card above already says it; the state line stays for the accessibility tree. */}
+          <div className={provider !== null && !provider.configured ? "mb-sr-only" : undefined}>
+            <StateLine state={composer} testid="composer-state" />
+          </div>
         </form>
         {onboarding && provider !== null && provider.configured && <Welcome app={app} />}
       </div>
