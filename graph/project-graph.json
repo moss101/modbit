@@ -3,7 +3,7 @@
  "product": "Modbit",
  "edition": "V3.3 EPR v1.1",
  "authority_date": "2026-09-05",
- "generated_on": "2026-11-04",
+ "generated_on": "2026-11-05",
  "generator": "tools/build_graph.py",
  "status_vocabulary": [
   "NOT_STARTED",
@@ -32728,7 +32728,7 @@
   {
    "id": "REQ-PX-196",
    "type": "requirement",
-   "title": "Agent workspace chrome: the agent list's head, navigation, repositories and person's row, the top bar and the task's details",
+   "title": "Agent workspace chrome: the agent list's head, navigation, repositories and person's row, the top bar, the task's details and the Settings view",
    "disposition": "ADOPT",
    "subsystem": "desktop",
    "owner_label": "desktop",
@@ -83416,6 +83416,5 @@
    "to": "EPR-GATE-G",
    "type": "requires_gate"
   }
- ],
- "updated_on": "2026-11-04T09:09:31Z"
+ ]
 }

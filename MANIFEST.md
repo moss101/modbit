@@ -1,7 +1,7 @@
 # Modbit Dossier Manifest — V3.3 EPR v1.1
 
 > **Authority date:** 2026-09-05  
-> **Generated:** 2026-11-04 by `tools/build_manifest.py`  
+> **Generated:** 2026-11-05 by `tools/build_manifest.py`  
 > **Scope:** every specification file in `docs/` plus the root governing files and tooling. The previous `99_MANIFEST.md` covered only 39 Part 2 files; this manifest covers all 97 docs.
 > **Machine-readable twin:** `manifest.json` (same content, same hashes).
 
@@ -17,11 +17,11 @@ A dossier package is valid only if every path below exists with the listed SHA-2
 | Architecture and subsystems | 10–29 | 20 | 393147 |
 | Implementation specifications | 30–39 | 10 | 178425 |
 | Requirements, tasks and traceability | 40–49 | 10 | 351840 |
-| Verification and testing | 50–69 | 20 | 970049 |
+| Verification and testing | 50–69 | 20 | 970113 |
 | Delivery and operations | 70–79 | 10 | 125383 |
 | Agent process and governance | 80–97 | 18 | 209352 |
 | Live state | 98–99 | 1 | 14961 |
-| **Total docs** | | **97** | **2333673** |
+| **Total docs** | | **97** | **2333737** |
 
 ## Specification files (`docs/`)
 
@@ -87,7 +87,7 @@ A dossier package is valid only if every path below exists with the listed SHA-2
 | 59 | `docs/59_RELEASE_ZERO_PROOF_SCENARIO.md` | Release Zero — Single Proof Scenario | verification | 3669 | `15fbb005f7a8196b4987468034f8de113dcd15a1ebd3f34dba822075012064fc` |
 | 60 | `docs/60_RELEASE_ZERO_EXPANDED_PROOF.md` | Release Zero Expanded Proof — Clean-Slate V2 | verification | 4001 | `0a3cc3ce5329c15cafb402833cb6bd70c9c6e4afdbdb838d2a811176c975939e` |
 | 61 | `docs/61_EXECUTION_POLICY_QUALIFICATION_AND_ROLLOUT_GATES.md` | Execution policy qualification and rollout gates | verification | 44986 | `c9929445ac4d98fde8fea87be19d54d9e01808052af53d09ed3f1b113db3badb` |
-| 62 | `docs/62_PRODUCT_EXTENSION_REQUIREMENTS_TASKS_AND_QUALIFICATIONS.md` | Product extension requirements, tasks and qualifications | verification | 654118 | `8511a7d1438189755732037d8ae0ae46af795505dbddcc7bbec104fa6e592c1e` |
+| 62 | `docs/62_PRODUCT_EXTENSION_REQUIREMENTS_TASKS_AND_QUALIFICATIONS.md` | Product extension requirements, tasks and qualifications | verification | 654182 | `39978ca0d3d58f6a4da711c9ee02644ecbaa86042a3bffe62c15c71a7f344fad` |
 | 63 | `docs/63_AGENT_COMPETENCE_BENCHMARKS_AND_REGRESSION_SUITES.md` | Agent competence benchmarks and regression suites | verification | 10372 | `0123956ac1431d47487f96049e83a395704f6b1ae0c4b11d7503d4f8ae347c62` |
 | 64 | `docs/64_VERIFICATION_EXECUTION_CONTRACTS.md` | Verification execution contracts: baseline, targeting, result normalization, flake handling and diff invariants | verification | 17948 | `5a293d4a39999f8043a17fe7eb75a17a828f91816fe8e2cb53b72a76df04b5f3` |
 | 65 | `docs/65_AGENT_FIRST_WORKSPACE_SPECIFICATION.md` | Agent-first workspace specification (clean-room) | verification | 88258 | `c4d9c1637f21e1c55ba495781b262fc939d6aea5c622022849a4cbab44ca759b` |
@@ -167,7 +167,7 @@ A dossier package is valid only if every path below exists with the listed SHA-2
 | `docs/decisions/DR-PX-2026-10-25-017-autonomous-coding-engine.md` | source patch provenance | 23080 | `df3d341b7141ae0b29d5086f3b8629127b0a97723856bafae3e96524722e6db2` |
 | `docs/decisions/DR-PX-2026-10-26-018-codex-mai-ui-planner-upgrade-program.md` | source patch provenance | 40216 | `013e6a60bbfb3719dc1db5ab068bca46e4dbb6bd480ee06ecb125fb9bfba5a01` |
 | `docs/decisions/DR-PX-2026-11-03-019-agent-workspace-language.md` | source patch provenance | 14683 | `fa544e8bb20d252c50c3f7c658bb564eeb20bb0ce2cefe6c371811cb769567c6` |
-| `docs/decisions/DR-PX-2026-11-04-020-agent-workspace-screens.md` | source patch provenance | 11629 | `5ec9cbf5c63f88b521c9453244d20fef8c20ccd3afdeca649d19a3e904907f1a` |
+| `docs/decisions/DR-PX-2026-11-04-020-agent-workspace-screens.md` | source patch provenance | 13872 | `d0f2b690c72da623de0310b2673894ed37ed06b452d76163862d85a0903bc8cc` |
 | `docs/decisions/README.md` | source patch provenance | 10488 | `063ce1263209688a7948246a7bc1fecaf4f5f1a1b01b6e1f64f461fa0800c117` |
 | `evidence/dossier-epr-v1.1/baseline.json` | retained evidence | 11128 | `ae11c9be07272788d2957bff45bc1333f879e121d2b5205ebc01ce780ec62543` |
 | `evidence/dossier-epr-v1.1/tests.log` | retained evidence | 2071 | `2f4bbebb6db1f0f0c6802f8dee65e5d6aa7933db6d1bda28a8acd70aa9bd88b3` |
@@ -594,18 +594,21 @@ A dossier package is valid only if every path below exists with the listed SHA-2
 | `evidence/m10/PX-194/before/workspace-light.png` | retained evidence | 446026 | `ab18962b2de814bd29dfdfe10554294d9782bb01dcd8da6e254086ed282b428e` |
 | `evidence/m10/PX-194/ci-run-41706960923.json` | retained evidence | 49464 | `e4891796978f29ad97c52389fbab9d504bb6bb07dbe8a41d03b29818b96ee036` |
 | `evidence/m10/PX-194/evidence.json` | retained evidence | 3509 | `53a8590f35765da70c08ce59aec6840d552d0b45948317470c3abd74efece595` |
-| `evidence/m10/PX-195/TASK_CARD.md` | retained evidence | 2535 | `696788172676826bc268ed20850b39f8b6191d6452f09ffa0a6a5f10b94df3e7` |
+| `evidence/m10/PX-195/TASK_CARD.md` | retained evidence | 3227 | `d6f3919ac9643b62b127398896d210ba669bb65f1cf87d0da9a216829323671b` |
 | `evidence/m10/PX-195/after/home-light.png` | retained evidence | 83980 | `fbcb289999b10cd39c61c78d0563bec3984411f78e7f10cb474893a613b75e95` |
 | `evidence/m10/PX-195/desktop-e2e-full.log` | retained evidence | 84782 | `4b7078ae19804572b2bd1be978517a23d19199384740a3e1759a1c7e978a650c` |
-| `evidence/m10/PX-195/evidence.json` | retained evidence | 1901 | `e6b61221a45ebd17582e7b6d899903d3cc54bbbd79a2e05117ea1d3e9e7cbedd` |
-| `evidence/m10/PX-196/TASK_CARD.md` | retained evidence | 2486 | `9ec0f2717c20984ffede1b86fe14e4fbf9ede00366d2009ea4ea1d60730f1073` |
-| `evidence/m10/PX-196/evidence.json` | retained evidence | 1904 | `7dc1d0b02ee59dbfce53ec52cbc8b3daf84363cb5c5b9a5e3b31859326ab0b1f` |
-| `evidence/m10/PX-197/TASK_CARD.md` | retained evidence | 2533 | `6779b32fed865101967d4043e9691a539ffd198bd5016d00f85f556117e10d7a` |
+| `evidence/m10/PX-195/evidence.json` | retained evidence | 2623 | `f9ff42871438eeceb1a7f589e58efde73eea31e8e300391ad6d4ac38053831f6` |
+| `evidence/m10/PX-196/TASK_CARD.md` | retained evidence | 3178 | `654081ca553b41108f813974f9d39eb7153d0c7796e2573d3f6f68c88a1006f7` |
+| `evidence/m10/PX-196/after/settings-appearance.png` | retained evidence | 253545 | `941d1d32eaa364db2c4cd3e91fffba910fac82fda06b70845d17c9ff52a02c68` |
+| `evidence/m10/PX-196/after/settings-top.png` | retained evidence | 276491 | `e8808148efb9c5c331773b543df1901cf2cf31712b0b2af2e5cf6d8f96f99c72` |
+| `evidence/m10/PX-196/desktop-e2e-full.log` | retained evidence | 89923 | `18757b975ecbc2d21f2e99ef5768bffa3751895aa93d68fc39624aab337123f0` |
+| `evidence/m10/PX-196/evidence.json` | retained evidence | 2626 | `5235a351b3e047185a0a171772f34f736e32b431346903d7ff02f0a333aba0cb` |
+| `evidence/m10/PX-197/TASK_CARD.md` | retained evidence | 3225 | `1569da64f52f07bd1c26e2c1c98cf4171bc0d5084e3ce425d5be8f71e2cef59c` |
 | `evidence/m10/PX-197/after/conv-light.png` | retained evidence | 252029 | `abdc6f5669628664150fe8617f444ceae396ec13f8adaf8014a14c150a970cd4` |
 | `evidence/m10/PX-197/after/details-light.png` | retained evidence | 415222 | `d4334991780759a96c3e362a502539c2b5027cf723013df839e2b128408f4ff9` |
 | `evidence/m10/PX-197/after/workspace-dark.png` | retained evidence | 305077 | `829fdc022255018cf49ccfb0be27f3062bdc6d6cf1c80cec7e3371395268c0d0` |
 | `evidence/m10/PX-197/after/workspace-light.png` | retained evidence | 305334 | `94f62cad82508c443ac3734bc09fe346bc44fb5f2d151dca31c7fae57e128412` |
-| `evidence/m10/PX-197/evidence.json` | retained evidence | 1953 | `f0b297549e9332187859021f3baf43cbaa99797c878cb4f0a7c923230f1c98bd` |
+| `evidence/m10/PX-197/evidence.json` | retained evidence | 2675 | `c3246f69bacce460cd1838ac540c99fe0bb84ff17933da6ae02eaf491b38d885` |
 | `evidence/m2/IMP-EV-0011/TASK_CARD.md` | retained evidence | 1620 | `22a7ddc2c80526c5aba876366bfeb862fac72742059962c5ad19deb8239fb5d2` |
 | `evidence/m2/IMP-EV-0011/ci-run-34409173853-tests.log` | retained evidence | 80671 | `523c4dc423fa906a9c846d64d864d36c759cb9f98bd8f4e582600a39d7c14b05` |
 | `evidence/m2/IMP-EV-0011/ci-run-34409173853.json` | retained evidence | 36682 | `49f5cd98348f61290daeee2920913a705bc385ed441cf7a15a9d9a357ad2ebdf` |
@@ -2074,8 +2077,8 @@ A dossier package is valid only if every path below exists with the listed SHA-2
 | `evidence/zcode-ui/reference/zcode-colors-rgba.json` | retained evidence | 18690 | `76372c3edbcd50fe596d5e4b7fcd7991adab9686588ddc578a728afa24b4f028` |
 | `evidence/zcode-ui/reference/zcode-computed.json` | retained evidence | 718674 | `9ae8821ce72aa0fff3be44aacd0f4c9d995465c54bad7f17d1a81f92841d1c2d` |
 | `evidence/zcode-ui/reference/zcode-tokens-resolved.json` | retained evidence | 30635 | `066725c00059a05d073fbcdac9a8d965eab05f05c1f5df16e654854ff3e22b91` |
-| `graph/PROJECT_GRAPH.md` | human view of the graph | 47138 | `5d55eee5d36f001f488e7751fe775b9f811265127bde6c7ec28b7ff876d46d0d` |
-| `graph/project-graph.json` | project driver graph with live status | 2510265 | `b992ea34a57a2fea332bdcb6a91aea9799cb973c76699a843442d44c1b210a3d` |
+| `graph/PROJECT_GRAPH.md` | human view of the graph | 47138 | `050d645891a5362ea6b48caeee28a58f42426da052f2a98658853b6932007222` |
+| `graph/project-graph.json` | project driver graph with live status | 2510245 | `cbb1b416e6bff2dcee7551c3622189d962ccbdd3dd9ec8b243bc6c8d8dfa28f0` |
 | `tools/build_graph.py` | regenerates graph structure from docs | 66687 | `3df787bdd1053b447b28e905d9d859d4c4f440e8a2761649b122e0c1983b04b0` |
 | `tools/build_manifest.py` | regenerates this manifest | 14871 | `b35f87f995ebea778ef5002f42c4dcb2f195f303ae121d7b4d73070d95d665b7` |
 | `tools/check_dossier.py` | integrity gate | 18887 | `1bd2634078a0c20b34a565ccf0f6d9061e83bd0945b7bf719ac137611e3fcf35` |

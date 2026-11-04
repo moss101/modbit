@@ -2,13 +2,13 @@
   "product": "Modbit",
   "edition": "V3.3 EPR v1.1",
   "authority_date": "2026-09-05",
-  "generated_on": "2026-11-04",
+  "generated_on": "2026-11-05",
   "hash_algorithm": "sha256",
   "scope_rule": "docs/*.md, root *.md except MANIFEST.md, docs/decisions/*.md, graph JSON/Markdown, tools/*.py, evidence payloads; manifests exclude themselves and transient caches",
   "counts": {
     "docs": 97,
-    "root_and_tooling": 1958,
-    "docs_bytes": 2333673
+    "root_and_tooling": 1961,
+    "docs_bytes": 2333737
   },
   "sections": [
     {
@@ -599,8 +599,8 @@
       "section": "verification",
       "section_title": "Verification and testing",
       "title": "Product extension requirements, tasks and qualifications",
-      "bytes": 654118,
-      "sha256": "8511a7d1438189755732037d8ae0ae46af795505dbddcc7bbec104fa6e592c1e"
+      "bytes": 654182,
+      "sha256": "39978ca0d3d58f6a4da711c9ee02644ecbaa86042a3bffe62c15c71a7f344fad"
     },
     {
       "path": "docs/63_AGENT_COMPETENCE_BENCHMARKS_AND_REGRESSION_SUITES.md",
@@ -1120,8 +1120,8 @@
     },
     {
       "path": "docs/decisions/DR-PX-2026-11-04-020-agent-workspace-screens.md",
-      "bytes": 11629,
-      "sha256": "5ec9cbf5c63f88b521c9453244d20fef8c20ccd3afdeca649d19a3e904907f1a"
+      "bytes": 13872,
+      "sha256": "d0f2b690c72da623de0310b2673894ed37ed06b452d76163862d85a0903bc8cc"
     },
     {
       "path": "docs/decisions/README.md",
@@ -3255,8 +3255,8 @@
     },
     {
       "path": "evidence/m10/PX-195/TASK_CARD.md",
-      "bytes": 2535,
-      "sha256": "696788172676826bc268ed20850b39f8b6191d6452f09ffa0a6a5f10b94df3e7"
+      "bytes": 3227,
+      "sha256": "d6f3919ac9643b62b127398896d210ba669bb65f1cf87d0da9a216829323671b"
     },
     {
       "path": "evidence/m10/PX-195/after/home-light.png",
@@ -3270,23 +3270,38 @@
     },
     {
       "path": "evidence/m10/PX-195/evidence.json",
-      "bytes": 1901,
-      "sha256": "e6b61221a45ebd17582e7b6d899903d3cc54bbbd79a2e05117ea1d3e9e7cbedd"
+      "bytes": 2623,
+      "sha256": "f9ff42871438eeceb1a7f589e58efde73eea31e8e300391ad6d4ac38053831f6"
     },
     {
       "path": "evidence/m10/PX-196/TASK_CARD.md",
-      "bytes": 2486,
-      "sha256": "9ec0f2717c20984ffede1b86fe14e4fbf9ede00366d2009ea4ea1d60730f1073"
+      "bytes": 3178,
+      "sha256": "654081ca553b41108f813974f9d39eb7153d0c7796e2573d3f6f68c88a1006f7"
+    },
+    {
+      "path": "evidence/m10/PX-196/after/settings-appearance.png",
+      "bytes": 253545,
+      "sha256": "941d1d32eaa364db2c4cd3e91fffba910fac82fda06b70845d17c9ff52a02c68"
+    },
+    {
+      "path": "evidence/m10/PX-196/after/settings-top.png",
+      "bytes": 276491,
+      "sha256": "e8808148efb9c5c331773b543df1901cf2cf31712b0b2af2e5cf6d8f96f99c72"
+    },
+    {
+      "path": "evidence/m10/PX-196/desktop-e2e-full.log",
+      "bytes": 89923,
+      "sha256": "18757b975ecbc2d21f2e99ef5768bffa3751895aa93d68fc39624aab337123f0"
     },
     {
       "path": "evidence/m10/PX-196/evidence.json",
-      "bytes": 1904,
-      "sha256": "7dc1d0b02ee59dbfce53ec52cbc8b3daf84363cb5c5b9a5e3b31859326ab0b1f"
+      "bytes": 2626,
+      "sha256": "5235a351b3e047185a0a171772f34f736e32b431346903d7ff02f0a333aba0cb"
     },
     {
       "path": "evidence/m10/PX-197/TASK_CARD.md",
-      "bytes": 2533,
-      "sha256": "6779b32fed865101967d4043e9691a539ffd198bd5016d00f85f556117e10d7a"
+      "bytes": 3225,
+      "sha256": "1569da64f52f07bd1c26e2c1c98cf4171bc0d5084e3ce425d5be8f71e2cef59c"
     },
     {
       "path": "evidence/m10/PX-197/after/conv-light.png",
@@ -3310,8 +3325,8 @@
     },
     {
       "path": "evidence/m10/PX-197/evidence.json",
-      "bytes": 1953,
-      "sha256": "f0b297549e9332187859021f3baf43cbaa99797c878cb4f0a7c923230f1c98bd"
+      "bytes": 2675,
+      "sha256": "c3246f69bacce460cd1838ac540c99fe0bb84ff17933da6ae02eaf491b38d885"
     },
     {
       "path": "evidence/m2/IMP-EV-0011/TASK_CARD.md",
@@ -10656,12 +10671,12 @@
     {
       "path": "graph/PROJECT_GRAPH.md",
       "bytes": 47138,
-      "sha256": "5d55eee5d36f001f488e7751fe775b9f811265127bde6c7ec28b7ff876d46d0d"
+      "sha256": "050d645891a5362ea6b48caeee28a58f42426da052f2a98658853b6932007222"
     },
     {
       "path": "graph/project-graph.json",
-      "bytes": 2510265,
-      "sha256": "b992ea34a57a2fea332bdcb6a91aea9799cb973c76699a843442d44c1b210a3d"
+      "bytes": 2510245,
+      "sha256": "cbb1b416e6bff2dcee7551c3622189d962ccbdd3dd9ec8b243bc6c8d8dfa28f0"
     },
     {
       "path": "tools/build_graph.py",

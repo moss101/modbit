@@ -50,7 +50,7 @@ With no task open and no page open the centre shows one composer in the middle o
 
 ### 5.2 Agent list (AWS-02)
 
-Top to bottom: the 40 px head (list toggle, back, forward; on macOS the window controls sit in it, `titleBarStyle: hiddenInset`), navigation rows of 28 px (New task, Search, Automations, Approvals with its count, Customize), Projects with its `+` and list options, the repository groups with their tasks (two-line rows, 50 px), Repositories (a click starts a new task there), and the person's row: initials, the local account name, the Core's state as a dot with its words in the accessibility tree, and the gear menu (Settings, Dashboard, Worktrees, command palette, shortcuts, theme, zoom). Search, grouping, filters and views fold behind list options and show by themselves while they narrow the list.
+Top to bottom: the 40 px head (list toggle, back, forward; on macOS the window controls sit in it, `titleBarStyle: hiddenInset`), navigation rows of 28 px (New task, Search, Automations, Approvals with its count, Customize), Projects with its `+` and list options, the repository groups with their tasks (two-line rows, 50 px), Repositories (a click starts a new task there), and the person's row: initials and the local account name, which open a menu (Dashboard, Worktrees, command palette, shortcuts, theme, zoom), the Core's state as a dot with its words in the accessibility tree, and the gear, which opens Settings. Search, grouping, filters and views fold behind list options and show by themselves while they narrow the list.
 
 ### 5.3 Top bar and task details (AWS-03)
 
@@ -86,6 +86,14 @@ Tabs with icons in the panel's own 40 px top row, with widen and close at its en
 
 Keyboard: `j`, `k` and the arrows move over rows; `a` opens Approvals on the first item; `r` goes to a running row. Column keys are gone.
 
+### 5.7 Settings (AWS-08; added 2026-11-05 after the owner reported "settings are missing")
+
+The first version of this record left Settings as the old form under a menu, with no way to change a provider. That was wrong against AFW-A10 and doc 10, neither of which had been read for it. Settings now replaces the left column: Back, a search field, grouped entries and the pinned person's row; the content is one centred column of at most 680 px, rows of at least 44 px, switches of 32 x 18 px. The sections are doc 10's list (models and providers with execution policy, execution locations, permissions, login credentials, browser permissions, memory, account and cloud) and then the app's own (appearance, notifications, automations and worktrees, this build). What belongs to one task stays with the task and the page says so.
+
+### 5.8 Execution location: what is true (AWS-09; added 2026-11-05)
+
+The product is local and isolated cloud on one Core (doc 01, doc 10, M8). **The desktop today is local only.** It has no cloud client: PX-128 owns "Continue in Cloud", its cloud-sessions list and sign-in with PX-129, and neither is delivered by this record. So this record does not satisfy AFW-B09's location pill or AFW-D12's location selector as selectors; it shows where a task runs as text read from the Core's header (`executionLocation`, never hard-coded on a conversation), and Settings says in words that cloud is not available from this app yet and names the CLI's `modbit cloud handoff`. Nothing is drawn that does nothing.
+
 ## 6. The gate
 
 `apps/desktop/e2e/awl.spec.ts` keeps the token, geometry and recipe checks and adds `homeDrift` and `workspaceDrift`: no removed surface is present, the composer sits centred, the list reads in order, the conversation is one column at most 640 wide, the composer's bar is under its text with a round send, the location is under the box, steps say what they did, the panel's tabs are in the top row and the commit bar at its foot. Retained mutations show the checks failing on a surface pushed back to the old layout.
@@ -113,6 +121,9 @@ The specs that drove the board now drive the workspace. An assertion moves with 
 Revert the merge. The tokens and the graph entries of DR-019 are untouched by a revert of the renderer alone.
 
 ## 12. Risks and open items (not decided here)
+
+- **How this record was prepared.** It was written after the rebuild and without following the read order of `AGENTS.md` and doc 01: doc 10's Settings list, AFW-A10, AFW-B09 and AFW-D12 were not read first, and the agents that migrated the specs were given a migration guide, not the specifications. Sections 5.7 and 5.8 are the corrections found so far. A full comparison of the app with docs 10, 32, 39 and 65 has not been done.
+- Doc 10 lists more that the desktop does not show: objective profile on a task, Agents and agent profiles, Workspaces with engineering memory, and an Artifacts area. The composer's model menu holds the objective; the others are not addressed here.
 
 - The Review still opens by itself on `TaskReadyForReview` (docs/39 step 5). The mockup does not show this; it was not asked to change.
 - Tasks of different turns are not merged into one `Explored` row: the Core groups by turn.

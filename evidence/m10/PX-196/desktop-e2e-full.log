@@ -1,0 +1,1883 @@
+
+Running 190 tests using 1 worker
+
+[1/190] e2e/agent-workspace.spec.ts:32:1 › the agent list, the conversation and the apps panel work together on one running task, and quitting with it running asks first
+e2e/agent-workspace.spec.ts:32:1 › the agent list, the conversation and the apps panel work together on one running task, and quitting with it running asks first
+
+
+
+[2/190] e2e/agents.spec.ts:26:1 › PX-046: classes show glyph and words from the Core; unread clears when the conversation is seen; a search finds a tool result and opens its row; pins, filters, grouping, archive with undo, keyboard and ax
+e2e/agents.spec.ts:26:1 › PX-046: classes show glyph and words from the Core; unread clears when the conversation is seen; a search finds a tool result and opens its row; pins, filters, grouping, archive with undo, keyboard and axe
+For help, see: https://nodejs.org/learn/getting-started/debugging
+
+  1) e2e/agents.spec.ts:26:1 › PX-046: classes show glyph and words from the Core; unread clears when the conversation is seen; a search finds a tool result and opens its row; pins, filters, grouping, archive with undo, keyboard and axe 
+
+    TimeoutError: locator.click: Timeout 30000ms exceeded.
+    Call log:
+      - waiting for locator('[data-testid="agent-row"][data-agent-id="2c3abab0b7e99c4858d4e18c9e0b4cf0"]').getByTestId('agent-pin')
+        - locator resolved to <button type="button" tabindex="-1" data-size="sm" data-variant="ghost" aria-pressed="false" data-testid="agent-pin" class="mb-btn mb-icon-btn" aria-label="Pin Third draft task">…</button>
+      - attempting click action
+        2 × waiting for element to be visible, enabled and stable
+          - element is not visible
+        - retrying click action
+        - waiting 20ms
+        2 × waiting for element to be visible, enabled and stable
+          - element is not visible
+        - retrying click action
+          - waiting 100ms
+        59 × waiting for element to be visible, enabled and stable
+           - element is not visible
+         - retrying click action
+           - waiting 500ms
+
+
+      105 |     // Pins form the first section; the pin button is a labelled control.
+      106 |     await rowOf(page, c).hover();
+    > 107 |     await rowOf(page, c).getByTestId("agent-pin").click();
+          |                                                   ^
+      108 |     await expect(groups.first()).toHaveAttribute("data-section", "pinned");
+      109 |     await expect(rowOf(page, c)).toHaveAttribute("data-pinned", "true");
+      110 |
+
+    Error Context: ../../../../../../tmp/pw-full/agents-PX-046-classes-show-44e7c--with-undo-keyboard-and-axe/error-context.md
+
+    attachment #2: trace (application/zip) ─────────────────────────────────────────────────────────
+    ../../../../../../tmp/pw-full/agents-PX-046-classes-show-44e7c--with-undo-keyboard-and-axe/trace.zip
+    Usage:
+
+        npx playwright show-trace ../../../../../../tmp/pw-full/agents-PX-046-classes-show-44e7c--with-undo-keyboard-and-axe/trace.zip
+
+    ──────────────────────────────────────────────────────────────────────────────�
+
+
+[3/190] e2e/agents.spec.ts:162:1 › PX-046: archiving a running task asks first; stopping is the Core's recorded cancellation, and keeping it running changes nothing
+e2e/agents.spec.ts:162:1 › PX-046: archiving a running task asks first; stopping is the Core's recorded cancellation, and keeping it running changes nothing
+  code: 'TASK_RUNNING'
+}
+
+For help, see: https://nodejs.org/learn/getting-started/debugging
+
+[4/190] e2e/agents.spec.ts:200:1 › PX-046: a thousand tasks stay responsive: the list holds only the rows in view, scrolls to the end, filters and groups within a generous bound, and a Core event reaches it
+e2e/agents.spec.ts:200:1 › PX-046: a thousand tasks stay responsive: the list holds only the rows in view, scrolls to the end, filters and groups within a generous bound, and a Core event reaches it
+For help, see: https://nodejs.org/learn/getting-started/debugging
+
+
+[5/190] e2e/approvals.spec.ts:42:1 › PX-058: a pending effect docks a card with the exact intent and the Core's reason; a stale hash is refused; it survives a reload and a Core kill; Run executes it once
+e2e/approvals.spec.ts:42:1 › PX-058: a pending effect docks a card with the exact intent and the Core's reason; a stale hash is refused; it survives a reload and a Core kill; Run executes it once
+  code: 'INTENT_MISMATCH'
+}
+
+
+
+
+
+
+
+For help, see: https://nodejs.org/learn/getting-started/debugging
+
+  code: 'DISCONNECTED'
+}
+
+  code: 'DISCONNECTED'
+}
+  code: 'DISCONNECTED'
+}
+  code: 'DISCONNECTED'
+}
+
+
+
+
+
+
+
+[6/190] e2e/approvals.spec.ts:104:1 › PX-058: three pending approvals form a deck, oldest first, each decided on its own; a bare key never decides another agent's card; Skip is a typed user decision
+e2e/approvals.spec.ts:104:1 › PX-058: three pending approvals form a deck, oldest first, each decided on its own; a bare key never decides another agent's card; Skip is a typed user decision
+For help, see: https://nodejs.org/learn/getting-started/debugging
+
+  code: 'DISCONNECTED'
+}
+
+
+
+modbit-core: connection ended: io: Broken pipe (os error 32)
+modbit-core: supervising client closed its pipe; exiting
+
+[7/190] e2e/approvals.spec.ts:180:1 › PX-058: an effect that cannot be undone asks twice, and a key typed into a text field never decides; Always is not offered for it; the file is only deleted after the second confirmation
+e2e/approvals.spec.ts:180:1 › PX-058: an effect that cannot be undone asks twice, and a key typed into a text field never decides; Always is not offered for it; the file is only deleted after the second confirmation
+For help, see: https://nodejs.org/learn/getting-started/debugging
+
+
+
+
+
+
+
+[8/190] e2e/approvals.spec.ts:225:1 › PX-057/058: Allowlist plus Always on a card makes a durable rule through the Core; the same kind of command then runs silently and its receipt names the rule; the rule can be revoked
+e2e/approvals.spec.ts:225:1 › PX-057/058: Allowlist plus Always on a card makes a durable rule through the Core; the same kind of command then runs silently and its receipt names the rule; the rule can be revoked
+  code: 'PATTERN_WRAPPER'
+}
+
+For help, see: https://nodejs.org/learn/getting-started/debugging
+
+
+
+
+[9/190] e2e/approvals.spec.ts:293:1 › PX-057: the widest preset needs its warning and still asks for the always-ask classes; everything else in the envelope runs without asking
+e2e/approvals.spec.ts:293:1 › PX-057: the widest preset needs its warning and still asks for the always-ask classes; everything else in the envelope runs without asking
+For help, see: https://nodejs.org/learn/getting-started/debugging
+
+  code: 'DISCONNECTED'
+}
+
+  code: 'DISCONNECTED'
+}
+  code: 'DISCONNECTED'
+}
+
+  code: 'DISCONNECTED'
+}
+  code: 'DISCONNECTED'
+}
+
+
+
+
+
+
+modbit-core: connection ended: io: Broken pipe (os error 32)
+
+
+[10/190] e2e/approvals.spec.ts:343:1 › PX-057/058: the main process rejects invalid arguments before the Core sees them
+e2e/approvals.spec.ts:343:1 › PX-057/058: the main process rejects invalid arguments before the Core sees them
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+For help, see: https://nodejs.org/learn/getting-started/debugging
+
+[11/190] e2e/apps-browser.spec.ts:17:1 › Browser tab: the lease badge follows the Core, Take control moves the lease and blocks the agent's input, Return control lets the agent act
+e2e/apps-browser.spec.ts:17:1 › Browser tab: the lease badge follows the Core, Take control moves the lease and blocks the agent's input, Return control lets the agent act
+For help, see: https://nodejs.org/learn/getting-started/debugging
+
+[12/190] e2e/apps-panel-state.spec.ts:33:1 › the panel keeps its own tab for each task, by the task's id, across selection and a restart of the app
+e2e/apps-panel-state.spec.ts:33:1 › the panel keeps its own tab for each task, by the task's id, across selection and a restart of the app
+For help, see: https://nodejs.org/learn/getting-started/debugging
+
+  code: 'DISCONNECTED'
+}
+
+  code: 'DISCONNECTED'
+}
+
+  code: 'DISCONNECTED'
+}
+
+  code: 'DISCONNECTED'
+}
+  code: 'DISCONNECTED'
+}
+  code: 'DISCONNECTED'
+}
+  code: 'DISCONNECTED'
+}
+
+  code: 'DISCONNECTED'
+}
+
+
+
+For help, see: https://nodejs.org/learn/getting-started/debugging
+
+  code: 'DISCONNECTED'
+}
+
+  code: 'DISCONNECTED'
+}
+  code: 'DISCONNECTED'
+}
+
+  code: 'DISCONNECTED'
+}
+  code: 'DISCONNECTED'
+}
+
+  code: 'DISCONNECTED'
+}
+  code: 'DISCONNECTED'
+}
+  code: 'DISCONNECTED'
+}
+  code: 'DISCONNECTED'
+}
+
+
+
+[13/190] e2e/apps-panel.spec.ts:92:1 › the panel is absent until the task runs; then Changes shows the live diff while the task is still Running
+[14/190] e2e/apps-panel.spec.ts:113:1 › Terminal: owners and states are listed, an exited terminal shows its code, typing reaches the PTY and the output comes back
+[15/190] e2e/apps-panel.spec.ts:153:1 › the person's input lease: held while typing, the agent's shell.input is refused meanwhile, released on blur
+[16/190] e2e/apps-panel.spec.ts:178:1 › replay: a reload shows the same bytes; two attaches from the start read identical bytes (byte-exact)
+[17/190] e2e/apps-panel.spec.ts:219:1 › resize: the viewer's size reaches the PTY and the child prints it
+[18/190] e2e/apps-panel.spec.ts:243:1 › slow consumer at the IPC level: the Core sends no more than the window beyond the last acknowledgement
+[19/190] e2e/apps-panel.spec.ts:293:1 › a stopped terminal: Stop warns that a running process ends, and the list shows it stopped
+[20/190] e2e/apps-panel.spec.ts:305:1 › Files: the workspace is browsable read-only; binary, oversized, protected and outside paths are refused in the Core's terms
+e2e/apps-panel.spec.ts:305:1 › Files: the workspace is browsable read-only; binary, oversized, protected and outside paths are refused in the Core's terms
+
+
+
+
+  code: 'PROTECTED'
+}
+
+  code: 'OUTSIDE_ROOT'
+}
+
+  code: 'OUTSIDE_ROOT'
+}
+
+  code: 'NOT_FOUND'
+}
+
+
+[21/190] e2e/apps-panel.spec.ts:356:1 › Evidence: the task's receipts, checks and context accounting are shown read-only
+[22/190] e2e/apps-panel.spec.ts:394:1 › the apps are keyboard reachable: tabs by arrows, Shift+Escape leaves the terminal, and the terminal keeps the keys it is typed into
+[23/190] e2e/apps-panel.spec.ts:410:1 › invalid arguments to the new calls are rejected by main
+e2e/apps-panel.spec.ts:410:1 › invalid arguments to the new calls are rejected by main
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+For help, see: https://nodejs.org/learn/getting-started/debugging
+
+  code: 'DISCONNECTED'
+}
+
+  code: 'DISCONNECTED'
+}
+  code: 'DISCONNECTED'
+}
+  code: 'DISCONNECTED'
+}
+
+
+[24/190] e2e/attention.spec.ts:67:1 › attention: a start refused for capacity is an item from the Core and clears when the task starts
+e2e/attention.spec.ts:67:1 › attention: a start refused for capacity is an item from the Core and clears when the task starts
+  code: 'CAPACITY_EXHAUSTED'
+}
+
+For help, see: https://nodejs.org/learn/getting-started/debugging
+
+[25/190] e2e/automations.spec.ts:75:1 › PX-086: the editor shows the Core's typed issues with path and code, will not save an invalid definition, and previews the next due time; a saved write-capable definition needs the exact, listed app
+e2e/automations.spec.ts:75:1 › PX-086: the editor shows the Core's typed issues with path and code, will not save an invalid definition, and previews the next due time; a saved write-capable definition needs the exact, listed approval
+  code: 'APPROVAL_MISMATCH'
+}
+
+  code: 'APPROVAL_LISTS_DIFFER'
+}
+
+  code: 'APPROVAL_LISTS_DIFFER'
+}
+
+  code: 'APPROVAL_MISMATCH'
+}
+
+  code: 'APPROVAL_LISTS_DIFFER'
+}
+
+  code: 'REPOSITORY_UNTRUSTED'
+}
+
+  code: 'BUDGET_REQUIRED'
+}
+
+For help, see: https://nodejs.org/learn/getting-started/debugging
+
+[26/190] e2e/automations.spec.ts:231:1 › PX-086: a repository definition is data until its exact bytes are approved; a changed byte on disk shows content_changed, and a reload raises SOURCE_CHANGED and needs a new approval
+e2e/automations.spec.ts:231:1 › PX-086: a repository definition is data until its exact bytes are approved; a changed byte on disk shows content_changed, and a reload raises SOURCE_CHANGED and needs a new approval
+  code: 'SOURCE_CHANGED'
+}
+
+  code: 'SOURCE_CHANGED'
+}
+
+For help, see: https://nodejs.org/learn/getting-started/debugging
+
+[27/190] e2e/automations.spec.ts:328:1 › PX-086: a manual run, a dry test run and a schedule slot on a controlled clock leave history rows; the run's task wears the automation badge; pause, global pause and a missing approval are recorded
+e2e/automations.spec.ts:328:1 › PX-086: a manual run, a dry test run and a schedule slot on a controlled clock leave history rows; the run's task wears the automation badge; pause, global pause and a missing approval are recorded with the
+  code: 'NOT_ENABLED'
+}
+
+For help, see: https://nodejs.org/learn/getting-started/debugging
+
+[28/190] e2e/automations.spec.ts:450:1 › PX-086: Kill asks first, cancels the run in progress and reports the Core's counts; the history keeps the typed reason
+e2e/automations.spec.ts:450:1 › PX-086: Kill asks first, cancels the run in progress and reports the Core's counts; the history keeps the typed reason
+
+For help, see: https://nodejs.org/learn/getting-started/debugging
+
+[29/190] e2e/autonomy.spec.ts:51:1 › PX-144/145: Autonomous is chosen in the run-mode dialog; a broken TypeScript build is verified by the Core after the edit and the task completes with no approval
+e2e/autonomy.spec.ts:51:1 › PX-144/145: Autonomous is chosen in the run-mode dialog; a broken TypeScript build is verified by the Core after the edit and the task completes with no approval
+For help, see: https://nodejs.org/learn/getting-started/debugging
+
+[30/190] e2e/autonomy.spec.ts:101:1 › PX-145: a first fix that does not build is a repair attempt the Core records, concludes from its own verification, and the Evidence app shows
+e2e/autonomy.spec.ts:101:1 › PX-145: a first fix that does not build is a repair attempt the Core records, concludes from its own verification, and the Evidence app shows
+For help, see: https://nodejs.org/learn/getting-started/debugging
+
+[31/190] e2e/awl.spec.ts:182:1 › PX-192..194: the agent workspace language on the real app: tokens, unframed geometry, navigation, recipes and the approved home, and the gate fails on a restored ZDL value
+e2e/awl.spec.ts:182:1 › PX-192..194: the agent workspace language on the real app: tokens, unframed geometry, navigation, recipes and the approved home, and the gate fails on a restored ZDL value
+For help, see: https://nodejs.org/learn/getting-started/debugging
+
+[32/190] e2e/awl.spec.ts:340:1 › PX-194: a scripted task with tool steps, an edit, a terminal and an approval shows the approved workspace in light and dark, keeps the footer reachable, and the gate fails on a restored value
+e2e/awl.spec.ts:340:1 › PX-194: a scripted task with tool steps, an edit, a terminal and an approval shows the approved workspace in light and dark, keeps the footer reachable, and the gate fails on a restored value
+For help, see: https://nodejs.org/learn/getting-started/debugging
+
+[33/190] e2e/browser-feedback.spec.ts:18:1 › console, network, viewport, scroll and wait read a real page; secrets are redacted and a hostile console line is marked; a click that kills the page's process latches UNKNOWN until the page is 
+e2e/browser-feedback.spec.ts:18:1 › console, network, viewport, scroll and wait read a real page; secrets are redacted and a hostile console line is marked; a click that kills the page's process latches UNKNOWN until the page is read agai
+For help, see: https://nodejs.org/learn/getting-started/debugging
+
+
+[34/190] e2e/browser-feedback.spec.ts:135:1 › the occlusion hint now recommends scroll, because the tool exists
+[35/190] e2e/browser-hardening.spec.ts:55:1 › PX-120: a destination on this machine or its network is refused unless the policy names it - by address, by a name that resolves privately, at a redirect hop, in a sub-frame, in a sub-resource
+e2e/browser-hardening.spec.ts:55:1 › PX-120: a destination on this machine or its network is refused unless the policy names it - by address, by a name that resolves privately, at a redirect hop, in a sub-frame, in a sub-resource - and no
+For help, see: https://nodejs.org/learn/getting-started/debugging
+
+[36/190] e2e/browser-hardening.spec.ts:173:1 › PX-120: a link that points straight at a local or private target is refused when clicked, the page stays where it was, and the server behind it is never reached
+e2e/browser-hardening.spec.ts:173:1 › PX-120: a link that points straight at a local or private target is refused when clicked, the page stays where it was, and the server behind it is never reached
+For help, see: https://nodejs.org/learn/getting-started/debugging
+
+[37/190] e2e/browser-hardening.spec.ts:247:1 › PX-073: every call looks at the page's origin - a client-side redirect after an allowed navigation, file: and an unknown origin are all refused, and the refusal lists what is allowed
+e2e/browser-hardening.spec.ts:247:1 › PX-073: every call looks at the page's origin - a client-side redirect after an allowed navigation, file: and an unknown origin are all refused, and the refusal lists what is allowed
+For help, see: https://nodejs.org/learn/getting-started/debugging
+
+[38/190] e2e/browser-hardening.spec.ts:336:1 › PX-073: a certificate error waits for the person - Reject fails the request, Trust is remembered per workspace, listed, and cleared
+e2e/browser-hardening.spec.ts:336:1 › PX-073: a certificate error waits for the person - Reject fails the request, Trust is remembered per workspace, listed, and cleared
+
+
+(Use `Electron --trace-warnings ...` to show where the warning was created)
+
+
+For help, see: https://nodejs.org/learn/getting-started/debugging
+
+
+[39/190] e2e/browser-hardening.spec.ts:429:1 › PX-073: the page's permissions are denied and named, signing out wipes the partition, and the session gives the page no download
+e2e/browser-hardening.spec.ts:429:1 › PX-073: the page's permissions are denied and named, signing out wipes the partition, and the session gives the page no download
+For help, see: https://nodejs.org/learn/getting-started/debugging
+
+[40/190] e2e/browser-hardening.spec.ts:531:1 › PX-073: a task lists and selects only the views it owns; hidden views are reclaimed least recently used - never one the person holds - and the reset is stated
+e2e/browser-hardening.spec.ts:531:1 › PX-073: a task lists and selects only the views it owns; hidden views are reclaimed least recently used - never one the person holds - and the reset is stated
+For help, see: https://nodejs.org/learn/getting-started/debugging
+
+[41/190] e2e/browser-observer.spec.ts:41:1 › a page's own update is journaled as a delta with no model call; since_fingerprint answers exactly the changes since, an unknown fingerprint the full page with the reason; frames are read and ac
+e2e/browser-observer.spec.ts:41:1 › a page's own update is journaled as a delta with no model call; since_fingerprint answers exactly the changes since, an unknown fingerprint the full page with the reason; frames are read and acted in wi
+For help, see: https://nodejs.org/learn/getting-started/debugging
+
+[42/190] e2e/browser-observer.spec.ts:133:1 › a page that mutates thousands of nodes a second, and tries to take the observer away, is reported at a bounded rate
+e2e/browser-observer.spec.ts:133:1 › a page that mutates thousands of nodes a second, and tries to take the observer away, is reported at a bounded rate
+For help, see: https://nodejs.org/learn/getting-started/debugging
+
+[43/190] e2e/browser-observer.spec.ts:185:1 › an element keeps its reference when the page re-renders it under a new name, so the model's reference still acts on it
+e2e/browser-observer.spec.ts:185:1 › an element keeps its reference when the page re-renders it under a new name, so the model's reference still acts on it
+For help, see: https://nodejs.org/learn/getting-started/debugging
+
+[44/190] e2e/browser-semantic.spec.ts:71:1 › pages are classified, forms grouped, a form is filled in the order it needs with a credential handle and verified; links to another origin and destructive dialog buttons ask for the stricter ap
+e2e/browser-semantic.spec.ts:71:1 › pages are classified, forms grouped, a form is filled in the order it needs with a credential handle and verified; links to another origin and destructive dialog buttons ask for the stricter approval; p
+
+For help, see: https://nodejs.org/learn/getting-started/debugging
+
+[45/190] e2e/browser-semantic.spec.ts:169:1 › page kinds are classified correctly on a labelled set of real pages, and a derived action whose result cannot be read back is reported unverified, never success
+e2e/browser-semantic.spec.ts:169:1 › page kinds are classified correctly on a labelled set of real pages, and a derived action whose result cannot be read back is reported unverified, never success
+For help, see: https://nodejs.org/learn/getting-started/debugging
+
+[46/190] e2e/browser.spec.ts:147:1 › browser session: a sandboxed WebContentsView in the app, attached to the Core, driven by the agent through the CDP bridge; the page is untrusted, file: is refused, nothing privileged is reachable
+e2e/browser.spec.ts:147:1 › browser session: a sandboxed WebContentsView in the app, attached to the Core, driven by the agent through the CDP bridge; the page is untrusted, file: is refused, nothing privileged is reachable
+For help, see: https://nodejs.org/learn/getting-started/debugging
+
+[47/190] e2e/browser.spec.ts:358:1 › browser takeover: the person takes control of the same session and types; the agent's input is blocked at once while it can still observe; returning control moves the lease and the agent acts again
+e2e/browser.spec.ts:358:1 › browser takeover: the person takes control of the same session and types; the agent's input is blocked at once while it can still observe; returning control moves the lease and the agent acts again
+For help, see: https://nodejs.org/learn/getting-started/debugging
+
+[48/190] e2e/browser.spec.ts:470:1 › prompt injection: hostile page and README are marked data; the key never leaves; the forbidden tool stays unavailable
+e2e/browser.spec.ts:470:1 › prompt injection: hostile page and README are marked data; the key never leaves; the forbidden tool stays unavailable
+For help, see: https://nodejs.org/learn/getting-started/debugging
+
+  code: 'DISCONNECTED'
+}
+
+
+
+[49/190] e2e/browser.spec.ts:574:1 › credential handle fill: the agent fills a bound credential by handle, never sees the value, and the site receives it in the approved sign-in
+e2e/browser.spec.ts:574:1 › credential handle fill: the agent fills a bound credential by handle, never sees the value, and the site receives it in the approved sign-in
+For help, see: https://nodejs.org/learn/getting-started/debugging
+
+[50/190] e2e/browser.spec.ts:693:1 › human activity preemption: a real key from the person takes control; the agent's input is refused until control is returned
+e2e/browser.spec.ts:693:1 › human activity preemption: a real key from the person takes control; the agent's input is refused until control is returned
+For help, see: https://nodejs.org/learn/getting-started/debugging
+
+[51/190] e2e/browser.spec.ts:782:1 › human activity preemption: a mouse press or a scroll from the person takes control; a hover does not
+e2e/browser.spec.ts:782:1 › human activity preemption: a mouse press or a scroll from the person takes control; a hover does not
+For help, see: https://nodejs.org/learn/getting-started/debugging
+
+
+
+[52/190] e2e/browser.spec.ts:862:1 › fault taxonomy, clipboard guard and emergency stop on a real page
+e2e/browser.spec.ts:862:1 › fault taxonomy, clipboard guard and emergency stop on a real page
+
+For help, see: https://nodejs.org/learn/getting-started/debugging
+
+
+
+[53/190] e2e/changes-app.spec.ts:98:1 › the Changes tab shows the finished task's change set with its index, branch and remote
+[54/190] e2e/changes-app.spec.ts:118:1 › reverting one hunk goes through the Core, leaves the other, and a checkpoint undoes it
+[55/190] e2e/changes-app.spec.ts:136:1 › a revert of a file edited since the view was read is refused as stale and writes nothing
+e2e/changes-app.spec.ts:136:1 › a revert of a file edited since the view was read is refused as stale and writes nothing
+  code: 'STALE_REVISION'
+}
+
+[56/190] e2e/changes-app.spec.ts:153:1 › staging moves the real git index; a staged path cannot be reverted under it
+e2e/changes-app.spec.ts:153:1 › staging moves the real git index; a staged path cannot be reverted under it
+  code: 'DIRTY_CONFLICT'
+}
+
+[57/190] e2e/changes-app.spec.ts:173:1 › Commit and push asks for an approval that shows the exact intent, and runs only after it
+[58/190] e2e/changes-app.spec.ts:220:1 › a denied approval commits and pushes nothing
+[59/190] e2e/changes-app.spec.ts:236:1 › a protected path is refused by the Core, not hidden by the app
+e2e/changes-app.spec.ts:236:1 › a protected path is refused by the Core, not hidden by the app
+  code: 'PROTECTED_PATH'
+}
+
+  code: 'PROTECTED_PATH'
+}
+
+[60/190] e2e/changes-app.spec.ts:260:1 › the Core killed in the middle of a push: the effect is shown as in doubt after the restart, and the retry converges
+e2e/changes-app.spec.ts:260:1 › the Core killed in the middle of a push: the effect is shown as in doubt after the restart, and the retry converges
+
+  code: 'DISCONNECTED'
+}
+
+  code: 'DISCONNECTED'
+}
+
+  code: 'DISCONNECTED'
+}
+
+  code: 'DISCONNECTED'
+}
+
+  code: 'DISCONNECTED'
+}
+
+  code: 'DISCONNECTED'
+}
+
+  code: 'DISCONNECTED'
+}
+
+  code: 'DISCONNECTED'
+}
+
+  code: 'DISCONNECTED'
+}
+
+  code: 'DISCONNECTED'
+}
+
+
+
+
+
+
+For help, see: https://nodejs.org/learn/getting-started/debugging
+
+  code: 'DISCONNECTED'
+}
+
+
+
+
+[61/190] e2e/checkpoints.spec.ts:46:1 › PX-062: Restore puts the bytes of a turn's checkpoint back (Cancel changes nothing), Redo restores the exact state, Undo all needs a second click; all by hash on disk and by keyboard
+e2e/checkpoints.spec.ts:46:1 › PX-062: Restore puts the bytes of a turn's checkpoint back (Cancel changes nothing), Redo restores the exact state, Undo all needs a second click; all by hash on disk and by keyboard
+For help, see: https://nodejs.org/learn/getting-started/debugging
+
+
+
+
+[62/190] e2e/checkpoints.spec.ts:122:1 › PX-062: a file the person edited needs their own choice and is kept; a renderer killed with the dialog open leaves the workspace unchanged; a restore is refused while the agent works
+e2e/checkpoints.spec.ts:122:1 › PX-062: a file the person edited needs their own choice and is kept; a renderer killed with the dialog open leaves the workspace unchanged; a restore is refused while the agent works
+  code: 'TASK_RUNNING'
+}
+
+For help, see: https://nodejs.org/learn/getting-started/debugging
+
+  code: 'DISCONNECTED'
+}
+
+
+
+
+
+
+[63/190] e2e/checkpoints.spec.ts:179:1 › PX-062: Fork from a turn opens the child task with that turn's files and leaves the parent alone
+e2e/checkpoints.spec.ts:179:1 › PX-062: Fork from a turn opens the child task with that turn's files and leaves the parent alone
+For help, see: https://nodejs.org/learn/getting-started/debugging
+
+  code: 'DISCONNECTED'
+}
+
+
+[64/190] e2e/checkpoints.spec.ts:227:1 › PX-062: Restore checkpoint on a message makes it editable in place; editing an older message asks Revert or Keep; Redo returns the files
+e2e/checkpoints.spec.ts:227:1 › PX-062: Restore checkpoint on a message makes it editable in place; editing an older message asks Revert or Keep; Redo returns the files
+For help, see: https://nodejs.org/learn/getting-started/debugging
+
+
+
+
+
+
+[65/190] e2e/composer.spec.ts:22:1 › PX-055: messages sent during a turn queue in the Core, can be edited, reordered and deleted, survive a reload, and drain in order as their own turns
+e2e/composer.spec.ts:22:1 › PX-055: messages sent during a turn queue in the Core, can be edited, reordered and deleted, survive a reload, and drain in order as their own turns
+For help, see: https://nodejs.org/learn/getting-started/debugging
+
+
+[66/190] e2e/composer.spec.ts:133:1 › PX-055: Send now cuts the live stream as a user interrupt, keeps the partial text marked partial, and the new turn starts from the sent message
+e2e/composer.spec.ts:133:1 › PX-055: Send now cuts the live stream as a user interrupt, keeps the partial text marked partial, and the new turn starts from the sent message
+For help, see: https://nodejs.org/learn/getting-started/debugging
+
+
+[67/190] e2e/composer.spec.ts:169:1 › PX-055: Stop ends the turn as a user interrupt, leaves the message editable and re-sends nothing; Continue resumes only when the person says so
+e2e/composer.spec.ts:169:1 › PX-055: Stop ends the turn as a user interrupt, leaves the message editable and re-sends nothing; Continue resumes only when the person says so
+For help, see: https://nodejs.org/learn/getting-started/debugging
+
+  code: 'DISCONNECTED'
+}
+
+
+
+
+[68/190] e2e/composer.spec.ts:204:1 › PX-054: Shift+Tab walks the modes with the right chip and placeholder, the Core's mode field is authoritative, and a write in Plan is refused at the kernel
+e2e/composer.spec.ts:204:1 › PX-054: Shift+Tab walks the modes with the right chip and placeholder, the Core's mode field is authoritative, and a write in Plan is refused at the kernel
+For help, see: https://nodejs.org/learn/getting-started/debugging
+
+  code: 'DISCONNECTED'
+}
+
+
+
+
+
+
+[69/190] e2e/composer.spec.ts:281:1 › PX-054: the slash menu lists the Core's inventory in its order with a divider, shows an untrusted skill disabled with the Core's reason, treats a planted description as text, and runs a trusted skill
+e2e/composer.spec.ts:281:1 › PX-054: the slash menu lists the Core's inventory in its order with a divider, shows an untrusted skill disabled with the Core's reason, treats a planted description as text, and runs a trusted skill
+For help, see: https://nodejs.org/learn/getting-started/debugging
+
+
+
+[70/190] e2e/composer.spec.ts:334:1 › PX-054: an attachment is validated and ingested by the Core, an image shows a thumbnail and reaches the model, and what is not allowed is refused with its reason
+e2e/composer.spec.ts:334:1 › PX-054: an attachment is validated and ingested by the Core, an image shows a thumbnail and reaches the model, and what is not allowed is refused with its reason
+
+
+For help, see: https://nodejs.org/learn/getting-started/debugging
+
+
+
+[71/190] e2e/composer.spec.ts:388:1 › PX-056: the picker lists the Core's variants, records the objective and a pin, shows a policy-blocked model with the Core's reason and keeps the prompt, and the choice reaches the model request and su
+e2e/composer.spec.ts:388:1 › PX-056: the picker lists the Core's variants, records the objective and a pin, shows a policy-blocked model with the Core's reason and keeps the prompt, and the choice reaches the model request and survives a 
+  code: 'POLICY_BLOCKED'
+}
+
+For help, see: https://nodejs.org/learn/getting-started/debugging
+
+
+
+[72/190] e2e/composer.spec.ts:480:1 › PX-056: a model the policy blocks at the run (the task's default) fails before any token; the prompt is restored and the tray names the typed cause
+e2e/composer.spec.ts:480:1 › PX-056: a model the policy blocks at the run (the task's default) fails before any token; the prompt is restored and the tray names the typed cause
+For help, see: https://nodejs.org/learn/getting-started/debugging
+
+  code: 'DISCONNECTED'
+}
+
+  code: 'DISCONNECTED'
+}
+
+
+[73/190] e2e/composer.spec.ts:510:1 › PX-054: the @ menu lists the Core's sources and a protected path cannot be attached; a draft and its chips survive navigation and a reload and are never sent; Alt+Up and Alt+Down walk the history
+e2e/composer.spec.ts:510:1 › PX-054: the @ menu lists the Core's sources and a protected path cannot be attached; a draft and its chips survive navigation and a reload and are never sent; Alt+Up and Alt+Down walk the history
+For help, see: https://nodejs.org/learn/getting-started/debugging
+
+
+
+[74/190] e2e/composer.spec.ts:609:1 › PX-055: the background-terminals tray lists a live terminal with its timer, opens it in the Terminal tab, kills it after a confirm and wakes the agent once; a side question is answered without enterin
+e2e/composer.spec.ts:609:1 › PX-055: the background-terminals tray lists a live terminal with its timer, opens it in the Terminal tab, kills it after a confirm and wakes the agent once; a side question is answered without entering the mai
+For help, see: https://nodejs.org/learn/getting-started/debugging
+
+  code: 'DISCONNECTED'
+}
+
+  code: 'DISCONNECTED'
+}
+
+  code: 'DISCONNECTED'
+}
+  code: 'DISCONNECTED'
+}
+  code: 'DISCONNECTED'
+}
+
+
+[75/190] e2e/composer.spec.ts:669:1 › PX-054: a message to a task waiting for review is queued for its next run and says so; the same send replayed sends once
+e2e/composer.spec.ts:669:1 › PX-054: a message to a task waiting for review is queued for its next run and says so; the same send replayed sends once
+For help, see: https://nodejs.org/learn/getting-started/debugging
+
+
+
+
+
+[76/190] e2e/composer.spec.ts:712:1 › PX-055: the queue is the Core's: it survives the Core being killed mid-stream, and the interrupted stream shows as stopped by a restart, not by the person
+e2e/composer.spec.ts:712:1 › PX-055: the queue is the Core's: it survives the Core being killed mid-stream, and the interrupted stream shows as stopped by a restart, not by the person
+
+  code: 'DISCONNECTED'
+}
+
+  code: 'DISCONNECTED'
+}
+
+  code: 'DISCONNECTED'
+}
+
+
+
+
+
+
+
+
+
+For help, see: https://nodejs.org/learn/getting-started/debugging
+
+
+
+[77/190] e2e/computer-surface.spec.ts:44:1 › PX-074: the permission window shows checking, allow and ready from the Core's actuator; the deep link only opens a pane; a grant is noticed; it is keyboard-operable and accessible
+e2e/computer-surface.spec.ts:44:1 › PX-074: the permission window shows checking, allow and ready from the Core's actuator; the deep link only opens a pane; a grant is noticed; it is keyboard-operable and accessible
+For help, see: https://nodejs.org/learn/getting-started/debugging
+
+[78/190] e2e/computer-surface.spec.ts:96:1 › PX-074: Stop halts an in-flight input, is sticky for the turn, and presence and the cards say so
+e2e/computer-surface.spec.ts:96:1 › PX-074: Stop halts an in-flight input, is sticky for the turn, and presence and the cards say so
+For help, see: https://nodejs.org/learn/getting-started/debugging
+
+
+
+
+
+[79/190] e2e/computer-surface.spec.ts:177:1 › PX-074: action cards for success, a typed refusal and an unknown outcome; the latch is resolved by the person and the surface returns to the Core's truth
+e2e/computer-surface.spec.ts:177:1 › PX-074: action cards for success, a typed refusal and an unknown outcome; the latch is resolved by the person and the surface returns to the Core's truth
+For help, see: https://nodejs.org/learn/getting-started/debugging
+
+
+
+[80/190] e2e/computer-surface.spec.ts:242:1 › PX-074: a screenshot card shows the masked frame through the artifact path; secure fields are blacked out and counted; a frame the task did not take cannot be read
+e2e/computer-surface.spec.ts:242:1 › PX-074: a screenshot card shows the masked frame through the artifact path; secure fields are blacked out and counted; a frame the task did not take cannot be read
+
+
+For help, see: https://nodejs.org/learn/getting-started/debugging
+
+
+
+[81/190] e2e/computer-surface.spec.ts:289:1 › PX-074: every call is approved on its own exact card; no mode, rule or Always covers native control; a stale intent is refused; Skip is typed; the keyboard operates the card
+e2e/computer-surface.spec.ts:289:1 › PX-074: every call is approved on its own exact card; no mode, rule or Always covers native control; a stale intent is refused; Skip is typed; the keyboard operates the card
+
+  code: 'INTENT_MISMATCH'
+}
+
+For help, see: https://nodejs.org/learn/getting-started/debugging
+
+
+
+[82/190] e2e/computer-surface.spec.ts:353:1 › PX-074: a Core killed with control active leaves the surface showing only what the restarted Core says
+e2e/computer-surface.spec.ts:353:1 › PX-074: a Core killed with control active leaves the surface showing only what the restarted Core says
+
+
+
+
+
+
+
+
+For help, see: https://nodejs.org/learn/getting-started/debugging
+
+
+
+
+
+
+
+[83/190] e2e/computer-surface.spec.ts:392:1 › PX-074: Stop is one chord away and keyboard-only, even behind a modal dialog
+e2e/computer-surface.spec.ts:392:1 › PX-074: Stop is one chord away and keyboard-only, even behind a modal dialog
+For help, see: https://nodejs.org/learn/getting-started/debugging
+
+  code: 'DISCONNECTED'
+}
+
+  code: 'DISCONNECTED'
+}
+
+  code: 'DISCONNECTED'
+}
+
+  code: 'DISCONNECTED'
+}
+
+  code: 'DISCONNECTED'
+}
+
+  code: 'DISCONNECTED'
+}
+
+
+
+
+
+
+
+
+
+
+[84/190] e2e/computer-surface.spec.ts:421:1 › PX-074: a call blocked by a missing permission routes the permission window once; closing it keeps it closed; a grant is noticed
+e2e/computer-surface.spec.ts:421:1 › PX-074: a call blocked by a missing permission routes the permission window once; closing it keeps it closed; a grant is noticed
+For help, see: https://nodejs.org/learn/getting-started/debugging
+
+
+
+[85/190] e2e/computer-surface.spec.ts:451:1 › PX-074: the renderer is killed while the agent holds the machine; the replacement window shows the Core's presence, the typed Stop still reaches the actuator and the stopped state stands
+e2e/computer-surface.spec.ts:451:1 › PX-074: the renderer is killed while the agent holds the machine; the replacement window shows the Core's presence, the typed Stop still reaches the actuator and the stopped state stands
+
+For help, see: https://nodejs.org/learn/getting-started/debugging
+
+  code: 'DISCONNECTED'
+}
+
+  code: 'DISCONNECTED'
+}
+
+
+
+
+[86/190] e2e/context.spec.ts:45:1 › PX-060: the ring shows the Core's usage; its tray lists the nine categories that sum to the total; it updates after a turn; the usage summary and the budget caps appear as set
+e2e/context.spec.ts:45:1 › PX-060: the ring shows the Core's usage; its tray lists the nine categories that sum to the total; it updates after a turn; the usage summary and the budget caps appear as set
+For help, see: https://nodejs.org/learn/getting-started/debugging
+
+
+[87/190] e2e/context.spec.ts:133:1 › PX-060: BUDGET_EXHAUSTED docks a limit tray naming what ran out; raising the cap resumes the run with its work kept
+e2e/context.spec.ts:133:1 › PX-060: BUDGET_EXHAUSTED docks a limit tray naming what ran out; raising the cap resumes the run with its work kept
+For help, see: https://nodejs.org/learn/getting-started/debugging
+
+  code: 'DISCONNECTED'
+}
+
+
+[88/190] e2e/context.spec.ts:223:1 › PX-060: a raise above the organisation's ceiling is refused with the Core's typed reason and changes nothing, also after the Core is killed; a raise within it resumes the run
+e2e/context.spec.ts:223:1 › PX-060: a raise above the organisation's ceiling is refused with the Core's typed reason and changes nothing, also after the Core is killed; a raise within it resumes the run
+  code: 'BUDGET_CEILING_EXCEEDED'
+}
+
+
+
+
+
+
+
+  code: 'BUDGET_CEILING_EXCEEDED'
+}
+
+  code: 'BUDGET_CEILING_EXCEEDED'
+}
+
+For help, see: https://nodejs.org/learn/getting-started/debugging
+
+  code: 'DISCONNECTED'
+}
+
+
+[89/190] e2e/context.spec.ts:263:1 › PX-060: a raise that policy sends for approval waits in the approval stack with its exact caps, applies once approved and asked again, and survives a Core kill
+e2e/context.spec.ts:263:1 › PX-060: a raise that policy sends for approval waits in the approval stack with its exact caps, applies once approved and asked again, and survives a Core kill
+  code: 'BUDGET_RAISE_NEEDS_APPROVAL'
+}
+
+
+
+
+
+
+For help, see: https://nodejs.org/learn/getting-started/debugging
+
+  code: 'DISCONNECTED'
+}
+
+
+[90/190] e2e/context.spec.ts:306:1 › PX-060: a Core that goes away docks an offline tray while it is gone, keeps the conversation readable, and takes the tray away when it is back
+e2e/context.spec.ts:306:1 › PX-060: a Core that goes away docks an offline tray while it is gone, keeps the conversation readable, and takes the tray away when it is back
+
+
+
+
+
+
+
+For help, see: https://nodejs.org/learn/getting-started/debugging
+
+[91/190] e2e/context.spec.ts:341:1 › PX-060: when policy blocks the model the turn fails before any token and a tray names the cause in the Core's words
+e2e/context.spec.ts:341:1 › PX-060: when policy blocks the model the turn fails before any token and a tray names the cause in the Core's words
+For help, see: https://nodejs.org/learn/getting-started/debugging
+
+
+[92/190] e2e/conversation.spec.ts:24:1 › PX-047: a streamed answer appears incrementally, is never shown as final while open, only grows, and is final when the stream completes
+e2e/conversation.spec.ts:24:1 › PX-047: a streamed answer appears incrementally, is never shown as final while open, only grows, and is final when the stream completes
+For help, see: https://nodejs.org/learn/getting-started/debugging
+
+
+
+modbit-core: connection ended: io: Broken pipe (os error 32)
+
+[93/190] e2e/conversation.spec.ts:71:1 › PX-047: a reload in the middle of a stream resumes it: the partial text comes back and the rest follows
+e2e/conversation.spec.ts:71:1 › PX-047: a reload in the middle of a stream resumes it: the partial text comes back and the rest follows
+For help, see: https://nodejs.org/learn/getting-started/debugging
+
+  code: 'DISCONNECTED'
+}
+
+
+
+
+
+
+[94/190] e2e/conversation.spec.ts:103:1 › PX-047: killing the Core mid-stream shows the response as stopped, with its cause, never as an answer
+e2e/conversation.spec.ts:103:1 › PX-047: killing the Core mid-stream shows the response as stopped, with its cause, never as an answer
+
+
+
+
+
+
+
+
+
+For help, see: https://nodejs.org/learn/getting-started/debugging
+
+
+
+
+
+
+[95/190] e2e/conversation.spec.ts:132:1 › PX-047: scrolling up freezes follow, the pill counts later messages, the jump returns to the tail; planted markup and instructions render as inert text
+e2e/conversation.spec.ts:132:1 › PX-047: scrolling up freezes follow, the pill counts later messages, the jump returns to the tail; planted markup and instructions render as inert text
+For help, see: https://nodejs.org/learn/getting-started/debugging
+
+  code: 'DISCONNECTED'
+}
+
+
+
+
+
+
+[96/190] e2e/conversation.spec.ts:190:1 › PX-047: tool steps fold by density without changing the rows; a question is answered inline and an approval on the docked card with the exact intent, neither folded away; both survive a reload and
+e2e/conversation.spec.ts:190:1 › PX-047: tool steps fold by density without changing the rows; a question is answered inline and an approval on the docked card with the exact intent, neither folded away; both survive a reload and a Core r
+
+
+
+
+
+For help, see: https://nodejs.org/learn/getting-started/debugging
+
+
+[97/190] e2e/dashboard.spec.ts:74:1 › the operations dashboard shows the Core's own aggregation of its log, the same numbers the CLI reads
+e2e/dashboard.spec.ts:74:1 › the operations dashboard shows the Core's own aggregation of its log, the same numbers the CLI reads
+[cli dashboard]
+tasks ReadyForReview=1
+cost cost_minor=0 currency=- scale=0 priced=0 unpriced=3 unreported=0
+tokens input=123 cached=0 output=21
+model gpt-5 calls=3 input=123 output=21 cost_minor=0 unpriced=3
+task c9d60b25-6bae-5d1b-ea7c-51ef7aa1ea4e state=ReadyForReview model_calls=3 tool_calls=1 cost_minor=0 complete=false starts=0
+tools succeeded=1 failed=0 unknown_outcome=0 cancelled=0
+slo cold starts=0 ready_p50_ms=-1 ready_max_ms=-1 first_token_p50_ms=-1 first_token_max_ms=-1
+slo warm starts=0 ready_p50_ms=-1 ready_max_ms=-1 first_token_p50_ms=-1 first_token_max_ms=-1
+provider openai: requests=3 successes=3 failures=0 rate_limited=0 first_token_ms=0
+
+
+For help, see: https://nodejs.org/learn/getting-started/debugging
+
+
+
+[98/190] e2e/fleet-agents.spec.ts:80:1 › M6.6: a delegating parent shows its phase, agents and the nested child; the child is never a primary task
+e2e/fleet-agents.spec.ts:80:1 › M6.6: a delegating parent shows its phase, agents and the nested child; the child is never a primary task
+For help, see: https://nodejs.org/learn/getting-started/debugging
+
+  code: 'DISCONNECTED'
+}
+
+
+
+For help, see: https://nodejs.org/learn/getting-started/debugging
+
+  code: 'DISCONNECTED'
+}
+
+
+[99/190] e2e/fleet.spec.ts:33:1 › new task renders from Core ids, the list reduces Core events, and survives Core kill and app restart
+e2e/fleet.spec.ts:33:1 › new task renders from Core ids, the list reduces Core events, and survives Core kill and app restart
+
+
+
+
+
+
+
+
+
+
+
+
+For help, see: https://nodejs.org/learn/getting-started/debugging
+
+
+For help, see: https://nodejs.org/learn/getting-started/debugging
+
+[100/190] e2e/fleet.spec.ts:109:1 › renderer messages with invalid arguments are rejected by main (REQ-EV-0103)
+e2e/fleet.spec.ts:109:1 › renderer messages with invalid arguments are rejected by main (REQ-EV-0103)
+
+
+For help, see: https://nodejs.org/learn/getting-started/debugging
+
+[101/190] e2e/forge-evidence.spec.ts:130:1 › review shows the forge's CI runs as external evidence and the pull request's comments as untrusted text, survives a restart, and CI never accepts the task
+e2e/forge-evidence.spec.ts:130:1 › review shows the forge's CI runs as external evidence and the pull request's comments as untrusted text, survives a restart, and CI never accepts the task
+
+
+  code: 'NO_PULL_REQUEST'
+}
+
+For help, see: https://nodejs.org/learn/getting-started/debugging
+
+For help, see: https://nodejs.org/learn/getting-started/debugging
+
+[102/190] e2e/gallery-automations.spec.ts:26:1 › PX-086: every automations state is on the gallery with its words, and accessible in every theme: the empty list, every definition state and attention kind, the editor's issues, the approval
+e2e/gallery-automations.spec.ts:26:1 › PX-086: every automations state is on the gallery with its words, and accessible in every theme: the empty list, every definition state and attention kind, the editor's issues, the approval of a writ
+
+
+
+
+
+
+
+For help, see: https://nodejs.org/learn/getting-started/debugging
+
+[103/190] e2e/gallery-computer.spec.ts:23:1 › PX-074: every state of the native-control surface is accessible in every theme, says its state in words, and offers no Always on a computer card
+e2e/gallery-computer.spec.ts:23:1 › PX-074: every state of the native-control surface is accessible in every theme, says its state in words, and offers no Always on a computer card
+
+
+
+
+For help, see: https://nodejs.org/learn/getting-started/debugging
+
+[104/190] e2e/gallery-controls.spec.ts:23:1 › PX-058/057/060/062: every new state is accessible in every theme: approval cards, the run-mode and warning dialogs, the ring and its trays, the restore, redo and Revert-or-Keep dialogs, the ed
+e2e/gallery-controls.spec.ts:23:1 › PX-058/057/060/062: every new state is accessible in every theme: approval cards, the run-mode and warning dialogs, the ring and its trays, the restore, redo and Revert-or-Keep dialogs, the edit box and
+
+
+
+
+
+
+
+
+For help, see: https://nodejs.org/learn/getting-started/debugging
+
+[105/190] e2e/gallery-projects.spec.ts:25:1 › PX-063/064/068: the project, worktree and apply-back states render from fixtures with no Core, with words beside every state, and are accessible in every theme
+e2e/gallery-projects.spec.ts:25:1 › PX-063/064/068: the project, worktree and apply-back states render from fixtures with no Core, with words beside every state, and are accessible in every theme
+
+
+
+
+
+
+For help, see: https://nodejs.org/learn/getting-started/debugging
+
+[106/190] e2e/gallery.spec.ts:42:1 › PX-044: the production bundle contains no gallery; the gallery build is separate
+[107/190] e2e/gallery.spec.ts:48:1 › PX-044: approvals, generating, error, empty and offline render from fixtures with no Core; axe passes on every state in light, dark and high contrast
+e2e/gallery.spec.ts:48:1 › PX-044: approvals, generating, error, empty and offline render from fixtures with no Core; axe passes on every state in light, dark and high contrast
+
+
+
+
+
+
+For help, see: https://nodejs.org/learn/getting-started/debugging
+
+[108/190] e2e/gallery.spec.ts:83:1 › PX-044: the tray host keeps one active tray, and the scoped keys move with it
+e2e/gallery.spec.ts:83:1 › PX-044: the tray host keeps one active tray, and the scoped keys move with it
+
+
+
+For help, see: https://nodejs.org/learn/getting-started/debugging
+
+[109/190] e2e/gallery.spec.ts:131:1 › PX-054..056: the composer's menus, trays, chips and picker render from fixtures with no Core; axe passes on each in light, dark and high contrast
+e2e/gallery.spec.ts:131:1 › PX-054..056: the composer's menus, trays, chips and picker render from fixtures with no Core; axe passes on each in light, dark and high contrast
+
+
+
+
+For help, see: https://nodejs.org/learn/getting-started/debugging
+
+[110/190] e2e/gallery.spec.ts:164:1 › PX-044: every primitive operates by keyboard alone with its ARIA contract
+e2e/gallery.spec.ts:164:1 › PX-044: every primitive operates by keyboard alone with its ARIA contract
+
+
+
+
+For help, see: https://nodejs.org/learn/getting-started/debugging
+
+[111/190] e2e/gallery.spec.ts:271:1 › PX-044: with prefers-reduced-motion no transition or animation runs
+e2e/gallery.spec.ts:271:1 › PX-044: with prefers-reduced-motion no transition or animation runs
+
+
+For help, see: https://nodejs.org/learn/getting-started/debugging
+
+[112/190] e2e/gallery.spec.ts:293:1 › PX-044/045: the shell geometry in the gallery frame: 1280 with the panel, 900 stacked, 600 as a rail
+e2e/gallery.spec.ts:293:1 › PX-044/045: the shell geometry in the gallery frame: 1280 with the panel, 900 stacked, 600 as a rail
+
+
+
+For help, see: https://nodejs.org/learn/getting-started/debugging
+
+[113/190] e2e/gallery.spec.ts:331:1 › PX-046/047: the agent list shows every status class with a glyph and words, and the conversation rows (streaming, stopped, approval, failure) pass axe in light, dark and high contrast
+e2e/gallery.spec.ts:331:1 › PX-046/047: the agent list shows every status class with a glyph and words, and the conversation rows (streaming, stopped, approval, failure) pass axe in light, dark and high contrast
+
+
+
+
+For help, see: https://nodejs.org/learn/getting-started/debugging
+
+[114/190] e2e/issue-intake.spec.ts:93:1 › issue intake: New Task from an issue URL and `modbit-cli task from-issue` create tasks named after the issue with its text as untrusted context; an unreadable issue is an error and no task
+e2e/issue-intake.spec.ts:93:1 › issue intake: New Task from an issue URL and `modbit-cli task from-issue` create tasks named after the issue with its text as untrusted context; an unreadable issue is an error and no task
+
+[fake-github] GET /repos/o/r/issues/404 authorized=true
+
+  code: 'FORGE_ISSUE_UNREADABLE'
+}
+
+[fake-github] GET /repos/o/r/issues/7 authorized=true
+
+[fake-github] GET /repos/o/r/issues/7 authorized=true
+
+[fake-github] GET /repos/o/r/issues/404 authorized=true
+
+For help, see: https://nodejs.org/learn/getting-started/debugging
+
+[115/190] e2e/keyboard.spec.ts:80:1 › keyboard: every screen by keyboard only — shortcuts, list and review navigation, confirmed approval and cancellation, focus retained across Core events, live announcements, the accessibility suite o
+e2e/keyboard.spec.ts:80:1 › keyboard: every screen by keyboard only — shortcuts, list and review navigation, confirmed approval and cancellation, focus retained across Core events, live announcements, the accessibility suite on each scr
+For help, see: https://nodejs.org/learn/getting-started/debugging
+
+[116/190] e2e/lifecycle.spec.ts:32:1 › PX-049: the window opens at 1280 x 800 and cannot be made smaller than 900 x 600
+e2e/lifecycle.spec.ts:32:1 › PX-049: the window opens at 1280 x 800 and cannot be made smaller than 900 x 600
+For help, see: https://nodejs.org/learn/getting-started/debugging
+
+[117/190] e2e/lifecycle.spec.ts:66:1 › PX-049: quitting with nothing running does not ask
+e2e/lifecycle.spec.ts:66:1 › PX-049: quitting with nothing running does not ask
+
+[118/190] e2e/lifecycle.spec.ts:77:1 › PX-049: quitting or closing the window with a task running asks first, says what quitting does, and keeps the app open on the default answer
+e2e/lifecycle.spec.ts:77:1 › PX-049: quitting or closing the window with a task running asks first, says what quitting does, and keeps the app open on the default answer
+
+
+
+
+[119/190] e2e/lifecycle.spec.ts:133:1 › PX-049: a restart after a quit with a task running shows the Core's recovery counts, and the task is there to resume
+e2e/lifecycle.spec.ts:133:1 › PX-049: a restart after a quit with a task running shows the Core's recovery counts, and the task is there to resume
+
+
+
+For help, see: https://nodejs.org/learn/getting-started/debugging
+
+[120/190] e2e/live-approvals.spec.ts:34:1 › live: the approval deck with a real model: a card for a command no rule covers, Always makes a rule that applies, the run continues
+[121/190] e2e/live-autonomy.spec.ts:31:1 › live: 'Fix my broken application.' on the real desktop, a real model, a real tsc and npm, in Autonomous mode under a cost cap
+[122/190] e2e/onboarding.spec.ts:136:1 › onboarding: a fresh profile reaches a first reviewed change through provider setup, repository trust and a starter task, within five minutes at the median
+e2e/onboarding.spec.ts:136:1 › onboarding: a fresh profile reaches a first reviewed change through provider setup, repository trust and a starter task, within five minutes at the median
+For help, see: https://nodejs.org/learn/getting-started/debugging
+
+For help, see: https://nodejs.org/learn/getting-started/debugging
+
+For help, see: https://nodejs.org/learn/getting-started/debugging
+
+ONBOARDING samples_s=[2.464,2.525,2.542] median_s=2.5 p90_s=2.5 platform=darwin/arm64
+
+[123/190] e2e/onboarding.spec.ts:152:1 › onboarding: an invalid key, an unreachable endpoint and a missing repository each name their cause; a profile without a provider cannot start a task
+e2e/onboarding.spec.ts:152:1 › onboarding: an invalid key, an unreachable endpoint and a missing repository each name their cause; a profile without a provider cannot start a task
+  code: 'NO_PROVIDER'
+}
+
+
+For help, see: https://nodejs.org/learn/getting-started/debugging
+
+[124/190] e2e/perf-budgets.spec.ts:55:1 › PERF PX-041/PX-047: a streamed delta renders within 100 ms of its event timestamp at p95, every delta and the first of each message
+e2e/perf-budgets.spec.ts:55:1 › PERF PX-041/PX-047: a streamed delta renders within 100 ms of its event timestamp at p95, every delta and the first of each message
+[perf] px041-px047-stream-render {"run":"2026-11-04T22-58-15-197Z","distributions":{"event timestamp to rendered frame, every delta":{"n":789,"min":1.5,"p50":14.7,"p95":124.3,"p99":198.6,"max":253.8,"mean":37.06},"event timestamp to rendere
+
+For help, see: https://nodejs.org/learn/getting-started/debugging
+
+  code: 'DISCONNECTED'
+}
+
+  code: 'DISCONNECTED'
+}
+
+  code: 'DISCONNECTED'
+}
+
+
+[125/190] e2e/perf-budgets.spec.ts:199:1 › PERF PX-046: the agent list reflects a Core event within 150 ms at p95 with a 200-task list
+e2e/perf-budgets.spec.ts:199:1 › PERF PX-046: the agent list reflects a Core event within 150 ms at p95 with a 200-task list
+[perf] px046-agent-list {"run":"2026-11-04T22-58-37-989Z","distributions":{"event timestamp to rendered frame, a task appears":{"n":220,"min":16.1,"p50":52.5,"p95":69.7,"p99":110.3,"max":113.5,"mean":54.05},"event timestamp to rendered fram
+
+For help, see: https://nodejs.org/learn/getting-started/debugging
+
+[126/190] e2e/perf-budgets.spec.ts:293:1 › PERF PX-047: a long transcript scrolls; the frame distribution is recorded (the dossier names no frame budget; 1,000 rows need MODBIT_PERF_STEERS)
+e2e/perf-budgets.spec.ts:293:1 › PERF PX-047: a long transcript scrolls; the frame distribution is recorded (the dossier names no frame budget; 1,000 rows need MODBIT_PERF_STEERS)
+[perf] queued 40 inputs after 255 ms
+
+[perf] waiting for the run to use its turns: Running/ loopAlive=true  
+
+[perf] waiting for the run to use its turns: Running/ loopAlive=true  
+
+[perf] waiting for the run to use its turns: Running/ loopAlive=true  
+
+[perf] waiting for the run to use its turns: Running/ loopAlive=true  
+
+[perf] px047-scroll-frames {"run":"2026-11-04T23-01-06-727Z","distributions":{"frame interval while scrolling (ms)":{"n":7696,"min":5.7,"p50":8.3,"p95":9.8,"p99":10.3,"max":91.8,"mean":8.5}},"verdict":{"met":null,"text":"1239 rows; 17 of 76
+
+For help, see: https://nodejs.org/learn/getting-started/debugging
+
+[127/190] e2e/projects.spec.ts:90:1 › PX-063/064: a project is created, filled by menu, drag and keyboard, refuses each forbidden move with the Core's reason, shows the Core's rollup, archives with an undo that leaves its tasks alone, and
+e2e/projects.spec.ts:90:1 › PX-063/064: a project is created, filled by menu, drag and keyboard, refuses each forbidden move with the Core's reason, shows the Core's rollup, archives with an undo that leaves its tasks alone, and groups, f
+  code: 'PROJECT_NAME_TAKEN'
+}
+
+  code: 'TASK_IS_DRAFT'
+}
+
+  code: 'WORKSPACE_MISMATCH'
+}
+
+  code: 'IN_ANOTHER_PROJECT'
+}
+
+For help, see: https://nodejs.org/learn/getting-started/debugging
+
+  code: 'PROJECT_ARCHIVED'
+}
+
+For help, see: https://nodejs.org/learn/getting-started/debugging
+
+[128/190] e2e/projects.spec.ts:301:1 › PX-063: the main process rejects invalid project arguments before the Core sees them, and a lease-less or foreign command is the Core's refusal
+e2e/projects.spec.ts:301:1 › PX-063: the main process rejects invalid project arguments before the Core sees them, and a lease-less or foreign command is the Core's refusal
+
+
+
+
+
+
+  code: 'UNKNOWN_PROJECT'
+}
+
+  code: 'PROJECT_NAME_INVALID'
+}
+
+For help, see: https://nodejs.org/learn/getting-started/debugging
+
+
+[129/190] e2e/px-104-live-review.spec.ts:104:1 › the Changes tab is open while the task is Running; each hunk's chip names the call the Core attributed it to
+[130/190] e2e/px-104-live-review.spec.ts:123:1 › the chip opens the producing call in the conversation
+[131/190] e2e/px-104-live-review.spec.ts:134:1 › rejecting one hunk by keyboard while the run is live reverts exactly that hunk, and the agent continues and is told why
+[132/190] e2e/px-104-live-review.spec.ts:156:1 › with the task waiting for the person, a decision on a file that moved is refused with the Core's code, and a refresh works
+e2e/px-104-live-review.spec.ts:156:1 › with the task waiting for the person, a decision on a file that moved is refused with the Core's code, and a refresh works
+  code: 'STALE_REVISION'
+}
+
+[133/190] e2e/px-104-live-review.spec.ts:172:1 › a write by no tool call is shown unattributed, blocks automatic acceptance, and only the person accepts it
+[134/190] e2e/px-104-live-review.spec.ts:185:1 › the renderer's process is killed and the replacement view shows the same decisions, read from the Core
+e2e/px-104-live-review.spec.ts:185:1 › the renderer's process is killed and the replacement view shows the same decisions, read from the Core
+
+For help, see: https://nodejs.org/learn/getting-started/debugging
+
+  code: 'DISCONNECTED'
+}
+
+  code: 'DISCONNECTED'
+}
+  code: 'DISCONNECTED'
+}
+  code: 'DISCONNECTED'
+}
+
+  code: 'DISCONNECTED'
+}
+
+  code: 'DISCONNECTED'
+}
+
+  code: 'DISCONNECTED'
+}
+  code: 'DISCONNECTED'
+}
+
+
+modbit-core: supervising client closed its pipe; exiting
+
+[135/190] e2e/px-106-customize.spec.ts:129:1 › each list shows the Core's scope, trust and provenance, and the first task's hook run is in the journal
+[136/190] e2e/px-106-customize.spec.ts:157:1 › the view offers no catalog, no install from the network and no update flow
+[137/190] e2e/px-106-customize.spec.ts:166:1 › trusting a skill by the hash it shows is the Core's record, reaches the next request, and revoking removes it
+e2e/px-106-customize.spec.ts:166:1 › trusting a skill by the hash it shows is the Core's record, reaches the next request, and revoking removes it
+
+  code: 'HASH_MISMATCH'
+}
+
+[138/190] e2e/px-106-customize.spec.ts:196:1 › a skill that changed under the view is refused with the Core's code, and trust is bound to the new hash
+e2e/px-106-customize.spec.ts:196:1 › a skill that changed under the view is refused with the Core's code, and trust is bound to the new hash
+  code: 'HASH_MISMATCH'
+}
+
+[139/190] e2e/px-106-customize.spec.ts:212:1 › an administrator's hook cannot be switched off; the person's can, and it does not fire on the next event
+e2e/px-106-customize.spec.ts:212:1 › an administrator's hook cannot be switched off; the person's can, and it does not fire on the next event
+  code: 'HOOK_SCOPE_FORBIDS'
+}
+
+[140/190] e2e/px-106-customize.spec.ts:236:1 › another agent's configuration imports quarantined; its skill is absent until the exact manifest is trusted, then still untrusted until trusted by hash
+[141/190] e2e/px-106-customize.spec.ts:270:1 › open source shows the folder the Core listed; every control works by keyboard
+e2e/px-106-customize.spec.ts:270:1 › open source shows the folder the Core listed; every control works by keyboard
+For help, see: https://nodejs.org/learn/getting-started/debugging
+
+[142/190] e2e/px-188-memory.spec.ts:86:1 › a private note is listed with its scope and source, and sharing stores the redacted copy
+[143/190] e2e/px-188-memory.spec.ts:108:1 › only the redacted copy reaches the next real request, and deleting the original removes it everywhere
+e2e/px-188-memory.spec.ts:108:1 › only the redacted copy reaches the next real request, and deleting the original removes it everywhere
+For help, see: https://nodejs.org/learn/getting-started/debugging
+
+
+For help, see: https://nodejs.org/learn/getting-started/debugging
+
+[144/190] e2e/qual-gaps.spec.ts:18:1 › PX-054: in Ask a write the model asks for is refused by the Core and nothing is written
+e2e/qual-gaps.spec.ts:18:1 › PX-054: in Ask a write the model asks for is refused by the Core and nothing is written
+For help, see: https://nodejs.org/learn/getting-started/debugging
+
+
+[145/190] e2e/qual-gaps.spec.ts:45:1 › PX-054: a mode the Core has not acknowledged is drawn unconfirmed and never as active; the Core's acknowledgement confirms it
+e2e/qual-gaps.spec.ts:45:1 › PX-054: a mode the Core has not acknowledged is drawn unconfirmed and never as active; the Core's acknowledgement confirms it
+For help, see: https://nodejs.org/learn/getting-started/debugging
+
+
+
+
+
+[146/190] e2e/qual-gaps.spec.ts:77:1 › PX-055: the send-behaviour education is shown once and its acknowledgement persists across a reload
+e2e/qual-gaps.spec.ts:77:1 › PX-055: the send-behaviour education is shown once and its acknowledgement persists across a reload
+For help, see: https://nodejs.org/learn/getting-started/debugging
+
+  code: 'DISCONNECTED'
+}
+
+  code: 'DISCONNECTED'
+}
+
+  code: 'DISCONNECTED'
+}
+
+
+
+
+
+[147/190] e2e/qual-gaps.spec.ts:105:1 › PX-062: a checkpoint of another task is refused and nothing changes; a Continue replayed with its command id restores once
+e2e/qual-gaps.spec.ts:105:1 › PX-062: a checkpoint of another task is refused and nothing changes; a Continue replayed with its command id restores once
+For help, see: https://nodejs.org/learn/getting-started/debugging
+
+
+
+
+
+
+
+[148/190] e2e/qual-gaps.spec.ts:154:1 › PX-056: a pin sent from a session that does not own the task is refused by the Core and the task's preference is unchanged
+e2e/qual-gaps.spec.ts:154:1 › PX-056: a pin sent from a session that does not own the task is refused by the Core and the task's preference is unchanged
+  code: 'WRONG_SESSION'
+}
+
+For help, see: https://nodejs.org/learn/getting-started/debugging
+
+
+[149/190] e2e/qual-gaps.spec.ts:173:1 › PX-060: after a compaction the ring and the tray still equal the Core's accounting, and the Core recorded the epoch
+e2e/qual-gaps.spec.ts:173:1 › PX-060: after a compaction the ring and the tray still equal the Core's accounting, and the Core recorded the epoch
+For help, see: https://nodejs.org/learn/getting-started/debugging
+
+
+
+[150/190] e2e/qual-gaps.spec.ts:202:1 › PX-060: the ring shows the Core's figure for the task's own model across a model switch and never the other model's numbers
+e2e/qual-gaps.spec.ts:202:1 › PX-060: the ring shows the Core's figure for the task's own model across a model switch and never the other model's numbers
+For help, see: https://nodejs.org/learn/getting-started/debugging
+
+[151/190] e2e/qual-gaps.spec.ts:254:1 › PX-060: a provider failure shows the Core's cause with Retry; Retry (even double-clicked) starts one new run that goes on from the log
+e2e/qual-gaps.spec.ts:254:1 › PX-060: a provider failure shows the Core's cause with Retry; Retry (even double-clicked) starts one new run that goes on from the log
+  code: 'TASK_ALREADY_RUNNING'
+}
+
+For help, see: https://nodejs.org/learn/getting-started/debugging
+
+  code: 'DISCONNECTED'
+}
+
+  code: 'DISCONNECTED'
+}
+  code: 'DISCONNECTED'
+}
+
+  code: 'DISCONNECTED'
+}
+
+  code: 'DISCONNECTED'
+}
+  code: 'DISCONNECTED'
+}
+
+  code: 'DISCONNECTED'
+}
+  code: 'DISCONNECTED'
+}
+
+
+
+[152/190] e2e/qual-gaps.spec.ts:303:1 › PX-062: once the agent has worked on after a restore, no redo is offered and the Core refuses the stale redo
+e2e/qual-gaps.spec.ts:303:1 › PX-062: once the agent has worked on after a restore, no redo is offered and the Core refuses the stale redo
+For help, see: https://nodejs.org/learn/getting-started/debugging
+
+  code: 'DISCONNECTED'
+}
+
+
+[153/190] e2e/qual-gaps.spec.ts:340:1 › PX-060: a budget change the Core does not allow is refused with its typed reason and the caps stay as they were
+e2e/qual-gaps.spec.ts:340:1 › PX-060: a budget change the Core does not allow is refused with its typed reason and the caps stay as they were
+  code: 'TASK_ENDED'
+}
+
+
+For help, see: https://nodejs.org/learn/getting-started/debugging
+
+
+
+
+
+[154/190] e2e/qual-gaps.spec.ts:376:1 › PX-058: an approval nobody answers expires by the Core and shows as expired; it can no longer be approved; the agent is told and asks again
+e2e/qual-gaps.spec.ts:376:1 › PX-058: an approval nobody answers expires by the Core and shows as expired; it can no longer be approved; the agent is told and asks again
+  code: 'APPROVAL_EXPIRED'
+}
+
+For help, see: https://nodejs.org/learn/getting-started/debugging
+
+  code: 'DISCONNECTED'
+}
+
+  code: 'DISCONNECTED'
+}
+  code: 'DISCONNECTED'
+}
+
+
+
+
+
+
+
+
+[155/190] e2e/qual-gaps.spec.ts:445:1 › PX-055: the agent's mode proposal is a card; nothing changes until Switch; Switch moves the mode through the Core and the card says so
+e2e/qual-gaps.spec.ts:445:1 › PX-055: the agent's mode proposal is a card; nothing changes until Switch; Switch moves the mode through the Core and the card says so
+For help, see: https://nodejs.org/learn/getting-started/debugging
+
+  code: 'DISCONNECTED'
+}
+
+  code: 'DISCONNECTED'
+}
+
+modbit-core: supervising client closed its pipe; exiting
+
+[156/190] e2e/qual-gaps.spec.ts:494:1 › PX-055: a proposal left unanswered shows skipped after 15 s, the mode unchanged; Core-side, the late answer is refused
+e2e/qual-gaps.spec.ts:494:1 › PX-055: a proposal left unanswered shows skipped after 15 s, the mode unchanged; Core-side, the late answer is refused
+  code: 'PROPOSAL_NOT_PENDING'
+}
+
+For help, see: https://nodejs.org/learn/getting-started/debugging
+
+  code: 'DISCONNECTED'
+}
+
+
+
+
+
+
+
+
+[157/190] e2e/qual-gaps.spec.ts:531:1 › PX-055: a Core killed with a proposal pending comes back with it skipped, never accepted
+e2e/qual-gaps.spec.ts:531:1 › PX-055: a Core killed with a proposal pending comes back with it skipped, never accepted
+
+
+
+
+
+
+
+
+For help, see: https://nodejs.org/learn/getting-started/debugging
+
+
+[158/190] e2e/review.spec.ts:66:1 › review surface: per-hunk decision commits exactly the user's choice and survives an app restart
+e2e/review.spec.ts:66:1 › review surface: per-hunk decision commits exactly the user's choice and survives an app restart
+For help, see: https://nodejs.org/learn/getting-started/debugging
+
+For help, see: https://nodejs.org/learn/getting-started/debugging
+
+[159/190] e2e/secrets.spec.ts:66:1 › keychain custody: ciphertext only at rest and restored after a restart, or nothing kept where the OS has no keychain
+e2e/secrets.spec.ts:66:1 › keychain custody: ciphertext only at rest and restored after a restart, or nothing kept where the OS has no keychain
+For help, see: https://nodejs.org/learn/getting-started/debugging
+
+For help, see: https://nodejs.org/learn/getting-started/debugging
+
+[160/190] e2e/session-end.spec.ts:117:1 › PX-049: a session-end hook that takes 2 s completes before the app exits, and what it said is journaled
+e2e/session-end.spec.ts:117:1 › PX-049: a session-end hook that takes 2 s completes before the app exits, and what it said is journaled
+  code: 'DISCONNECTED'
+}
+
+  code: 'DISCONNECTED'
+}
+
+  code: 'DISCONNECTED'
+}
+
+
+
+[161/190] e2e/session-end.spec.ts:141:1 › PX-049: a session-end hook that fails is shown to the person and journaled
+e2e/session-end.spec.ts:141:1 › PX-049: a session-end hook that fails is shown to the person and journaled
+  code: 'DISCONNECTED'
+}
+
+
+
+[162/190] e2e/session-end.spec.ts:166:1 › PX-049: choosing resume at the quit records it in the Core, and the next start recovers the run, shows the counts and continues it
+e2e/session-end.spec.ts:166:1 › PX-049: choosing resume at the quit records it in the Core, and the next start recovers the run, shows the counts and continues it
+
+
+For help, see: https://nodejs.org/learn/getting-started/debugging
+
+[163/190] e2e/session-end.spec.ts:203:1 › PX-049: quitting and leaving the run suspended keeps it recoverable, and nothing continues on the next start
+e2e/session-end.spec.ts:203:1 › PX-049: quitting and leaving the run suspended keeps it recoverable, and nothing continues on the next start
+
+
+
+For help, see: https://nodejs.org/learn/getting-started/debugging
+
+[164/190] e2e/session-end.spec.ts:230:1 › PX-049: killing the Core while the session-end hook runs fails visibly and leaves the task recoverable (the unrecorded choice does not resume it)
+e2e/session-end.spec.ts:230:1 › PX-049: killing the Core while the session-end hook runs fails visibly and leaves the task recoverable (the unrecorded choice does not resume it)
+
+  code: 'DISCONNECTED'
+}
+
+  code: 'DISCONNECTED'
+}
+
+  code: 'DISCONNECTED'
+}
+
+  code: 'DISCONNECTED'
+}
+
+  code: 'DISCONNECTED'
+}
+
+
+
+For help, see: https://nodejs.org/learn/getting-started/debugging
+
+[165/190] e2e/shell.spec.ts:25:1 › DR-PX-2026-11-04-020: started the way `pnpm start` starts it, the app finds the Core with no override
+[166/190] e2e/shell.spec.ts:36:1 › AFW-A10: Settings replaces the left column with its own navigation, holds doc 10's list, says plainly what the desktop cannot do yet, and Back returns
+e2e/shell.spec.ts:36:1 › AFW-A10: Settings replaces the left column with its own navigation, holds doc 10's list, says plainly what the desktop cannot do yet, and Back returns
+For help, see: https://nodejs.org/learn/getting-started/debugging
+
+  2) e2e/shell.spec.ts:36:1 › AFW-A10: Settings replaces the left column with its own navigation, holds doc 10's list, says plainly what the desktop cannot do yet, and Back returns 
+
+    Error: toggle width: 16 vs 32
+
+    expect(received).toBeLessThanOrEqual(expected)
+
+    Expected: <= 1
+    Received:    16
+
+      21 | const rgb = (hex: string) => `rgb(${parseInt(hex.slice(1, 3), 16)}, ${parseInt(hex.slice(3, 5), 16)}, ${parseInt(hex.slice(5, 7), 16)})`;
+      22 |
+    > 23 | const near = (actual: number, expected: number, tol: number, what: string) => expect(Math.abs(actual - expected), `${what}: ${actual} vs ${expected}`).toBeLessThanOrEqual(tol);
+         |                                                                                                                                                        ^
+      24 |
+      25 | test("DR-PX-2026-11-04-020: started the way `pnpm start` starts it, the app finds the Core with no override", async () => {
+      26 |   const { MODBIT_CORE_BIN: _ignored, ...env } = process.env;
+
+    Error Context: ../../../../../../tmp/pw-full/shell-AFW-A10-Settings-rep-c8268-not-do-yet-and-Back-returns/error-context.md
+
+    attachment #2: trace (application/zip) ─────────────────────────────────────────────────────────
+    ../../../../../../tmp/pw-full/shell-AFW-A10-Settings-rep-c8268-not-do-yet-and-Back-returns/trace.zip
+    Usage:
+
+        npx playwright show-trace ../../../../../../tmp/pw-full/shell-AFW-A10-Settings-rep-c8268-not-do-yet-and-Back-returns/trace.zip
+
+    ──────────────────────────────────────────────────────────────────────────────�
+
+
+[167/190] e2e/shell.spec.ts:90:1 › PX-045: geometry at 1280 x 800, keyboard-resizable splits inside 210..400, persisted across a restart
+e2e/shell.spec.ts:90:1 › PX-045: geometry at 1280 x 800, keyboard-resizable splits inside 210..400, persisted across a restart
+For help, see: https://nodejs.org/learn/getting-started/debugging
+
+For help, see: https://nodejs.org/learn/getting-started/debugging
+
+[168/190] e2e/shell.spec.ts:148:1 › PX-045: below a 448 centre the shell is single-pane with the 40 px rail; the list can also be collapsed
+e2e/shell.spec.ts:148:1 › PX-045: below a 448 centre the shell is single-pane with the 40 px rail; the list can also be collapsed
+For help, see: https://nodejs.org/learn/getting-started/debugging
+
+
+[169/190] e2e/shell.spec.ts:176:1 › PX-045: at 1000 x 700 and 900 x 600 the list keeps 260, the top bar 40 and the centre stays above the single-pane threshold with nothing overflowing
+e2e/shell.spec.ts:176:1 › PX-045: at 1000 x 700 and 900 x 600 the list keeps 260, the top bar 40 and the centre stays above the single-pane threshold with nothing overflowing
+For help, see: https://nodejs.org/learn/getting-started/debugging
+
+[170/190] e2e/shell.spec.ts:195:1 › PX-045: opening Settings with a running task neither stops nor alters the task
+e2e/shell.spec.ts:195:1 › PX-045: opening Settings with a running task neither stops nor alters the task
+For help, see: https://nodejs.org/learn/getting-started/debugging
+
+
+
+
+
+[171/190] e2e/shell.spec.ts:220:1 › PX-045: the command palette and the shortcut registry by keyboard alone; Escape closes the innermost layer; focus returns
+e2e/shell.spec.ts:220:1 › PX-045: the command palette and the shortcut registry by keyboard alone; Escape closes the innermost layer; focus returns
+For help, see: https://nodejs.org/learn/getting-started/debugging
+
+  3) e2e/shell.spec.ts:220:1 › PX-045: the command palette and the shortcut registry by keyboard alone; Escape closes the innermost layer; focus returns 
+
+    Error: expect(locator).toHaveCount(expected) failed
+
+    Locator:  getByTestId('palette')
+    Expected: 0
+    Received: 1
+    Timeout:  15000ms
+
+    Call log:
+      - Expect "toHaveCount" getByTestId('palette') with timeout 15000ms
+      - waiting for getByTestId('palette')
+        34 × locator resolved to 1 element
+           - unexpected value "1"
+
+
+      254 |     await expect(agentOption).toContainText("Palette findable task");
+      255 |     await page.keyboard.press("Enter");
+    > 256 |     await expect(page.getByTestId("palette")).toHaveCount(0);
+          |                                               ^
+      257 |     await expect(page.getByTestId("conversation")).toHaveAttribute("data-task-id", taskId);
+      258 |
+      259 |     // It finds a setting and focuses it.
+
+    Error Context: ../../../../../../tmp/pw-full/shell-PX-045-the-command-p-0ba0c-nermost-layer-focus-returns/error-context.md
+
+    attachment #2: trace (application/zip) ─────────────────────────────────────────────────────────
+    ../../../../../../tmp/pw-full/shell-PX-045-the-command-p-0ba0c-nermost-layer-focus-returns/trace.zip
+    Usage:
+
+        npx playwright show-trace ../../../../../../tmp/pw-full/shell-PX-045-the-command-p-0ba0c-nermost-layer-focus-returns/trace.zip
+
+    ──────────────────────────────────────────────────────────────────────────────�
+
+
+[172/190] e2e/shell.spec.ts:336:1 › PX-044/045: themes, high contrast and reduced motion; the send button meets AA; axe on every region in every theme
+e2e/shell.spec.ts:336:1 › PX-044/045: themes, high contrast and reduced motion; the send button meets AA; axe on every region in every theme
+For help, see: https://nodejs.org/learn/getting-started/debugging
+
+[173/190] e2e/shell.spec.ts:388:1 › PX-045: the apps panel appears for a task with an artifact, within the geometry; per-task state and width persist; it stacks when it cannot fit
+e2e/shell.spec.ts:388:1 › PX-045: the apps panel appears for a task with an artifact, within the geometry; per-task state and width persist; it stacks when it cannot fit
+For help, see: https://nodejs.org/learn/getting-started/debugging
+
+  code: 'DISCONNECTED'
+}
+
+  code: 'DISCONNECTED'
+}
+  code: 'DISCONNECTED'
+}
+
+  code: 'DISCONNECTED'
+}
+
+  code: 'DISCONNECTED'
+}
+  code: 'DISCONNECTED'
+}
+
+  code: 'DISCONNECTED'
+}
+
+  code: 'DISCONNECTED'
+}
+
+
+modbit-core: connection ended: io: Broken pipe (os error 32)
+
+
+For help, see: https://nodejs.org/learn/getting-started/debugging
+
+  code: 'DISCONNECTED'
+}
+
+
+[174/190] e2e/states.spec.ts:135:1 › screen states: provider down, human continuation, review gate and a denied then opened pull request; notifications coalesce, deep-link and honour opt-in and quiet hours
+e2e/states.spec.ts:135:1 › screen states: provider down, human continuation, review gate and a denied then opened pull request; notifications coalesce, deep-link and honour opt-in and quiet hours
+
+
+[scripted-model] tool results so far: 0; roles: system,system,system,user,user; reply: fs.read; last result: 
+
+[scripted-model] tool results so far: 1; roles: system,system,system,user,assistant,tool,user; reply: plan.update; last result: status: SUCCESS bytes_total: 207 bytes_included: 0..207 output: {"byte_length":14,"content":"line 1\nline 2\n","
+
+[scripted-model] tool results so far: 2; roles: system,system,system,user,assistant,tool,assistant,tool,user; reply: change.apply; last result: status: SUCCESS plan version 1 recorded (ref ab9e6e7cea7d839a1fee2a39f5489ea08b68a3cb26e7e578506
+
+[scripted-model] tool results so far: 3; roles: system,system,system,user,assistant,tool,assistant,tool,assistant,tool,user,user; reply: task.complete; last result: status: SUCCESS bytes_total: 555 bytes_included: 0..555 output: {"change":{
+
+[fake-github] POST /repos/o/r/pulls authorized=true
+
+For help, see: https://nodejs.org/learn/getting-started/debugging
+
+
+[175/190] e2e/states.spec.ts:285:1 › screen states: a Core that dies before committing a tool outcome comes back reconciling — degraded, recovery, then the task's unknown outcome with its evidence; the restart notifies
+e2e/states.spec.ts:285:1 › screen states: a Core that dies before committing a tool outcome comes back reconciling — degraded, recovery, then the task's unknown outcome with its evidence; the restart notifies
+
+
+[scripted-model] tool results so far: 0; roles: system,system,system,user,user; reply: plan.update; last result: 
+
+[scripted-model] tool results so far: 1; roles: system,system,system,user,assistant,tool,user; reply: fs.read; last result: status: SUCCESS plan version 1 recorded (ref ab9e6e7cea7d839a1fee2a39f5489ea08b68a3cb26e7e5785061f2032b5ec24a)
+
+[scripted-model] tool results so far: 2; roles: system,system,system,user,assistant,tool,assistant,tool,user; reply: change.apply; last result: status: SUCCESS bytes_total: 207 bytes_included: 0..207 output: {"byte_length":14,"content":"lin
+
+
+
+  code: 'DISCONNECTED'
+}
+
+  code: 'DISCONNECTED'
+}
+
+  code: 'DISCONNECTED'
+}
+  code: 'DISCONNECTED'
+}
+
+  code: 'DISCONNECTED'
+}
+
+  code: 'DISCONNECTED'
+}
+  code: 'DISCONNECTED'
+}
+  code: 'DISCONNECTED'
+}
+
+  code: 'DISCONNECTED'
+}
+
+  code: 'DISCONNECTED'
+}
+
+  code: 'DISCONNECTED'
+}
+
+
+
+
+
+
+For help, see: https://nodejs.org/learn/getting-started/debugging
+
+[176/190] e2e/states.spec.ts:365:1 › task workspace: awaiting your answer (the agent's typed question) and awaiting approval with the exact intent, decided in the conversation; the reasons notify and coalesce
+e2e/states.spec.ts:365:1 › task workspace: awaiting your answer (the agent's typed question) and awaiting approval with the exact intent, decided in the conversation; the reasons notify and coalesce
+
+
+[scripted-model] tool results so far: 0; roles: system,system,system,user,user; reply: plan.update; last result: 
+
+[scripted-model] tool results so far: 1; roles: system,system,system,user,assistant,tool,user; reply: user.ask; last result: status: SUCCESS plan version 1 recorded (ref db02930b45cee4fff2358224d60ca0e8499f7cd2300abc6d427dd0cbfea2b67e)
+
+[scripted-model] tool results so far: 2; roles: system,system,system,user,assistant,tool,assistant,tool,user; reply: git.worktree.close; last result: {"option_id":"yes","status":"ANSWERED","text":null}
+
+[scripted-model] tool results so far: 3; roles: system,system,system,user,assistant,tool,assistant,tool,assistant,tool,user; reply: task.complete; last result: status: SUCCESS bytes_total: 118 bytes_included: 0..118 output: {"removed":"/pri
+
+For help, see: https://nodejs.org/learn/getting-started/debugging
+
+
+[177/190] e2e/terminal-history.spec.ts:94:1 › a build streams live into the Terminal tab: output arrives while the process runs, on one attachment, and the exit is shown when it ends
+[178/190] e2e/terminal-history.spec.ts:116:1 › scrolling above the view reads the older output as OutputRef ranges: in order, once, from the Core's retained start to the view
+[179/190] e2e/terminal-history.spec.ts:240:1 › a build that is still running has no sealed output: the Core refuses a history read, and the view offers none
+e2e/terminal-history.spec.ts:240:1 › a build that is still running has no sealed output: the Core refuses a history read, and the view offers none
+
+
+
+
+
+
+
+[180/190] e2e/terminal-history.spec.ts:273:1 › input policy: a finished terminal takes no keystroke; a write without the input lease is refused by the Core and reaches nothing
+e2e/terminal-history.spec.ts:273:1 › input policy: a finished terminal takes no keystroke; a write without the input lease is refused by the Core and reaches nothing
+  code: 'LEASE_REQUIRED'
+}
+
+For help, see: https://nodejs.org/learn/getting-started/debugging
+
+
+
+
+[181/190] e2e/terminal-renderer-restart.spec.ts:18:1 › a background terminal survives a crashed renderer: same handle, same Core, replayed screen, live input
+e2e/terminal-renderer-restart.spec.ts:18:1 › a background terminal survives a crashed renderer: same handle, same Core, replayed screen, live input
+
+For help, see: https://nodejs.org/learn/getting-started/debugging
+
+  code: 'DISCONNECTED'
+}
+  code: 'DISCONNECTED'
+}
+
+modbit-core: supervising client closed its pipe; exiting
+
+[182/190] e2e/user-patch.spec.ts:65:1 › inline patch: a one-hunk user edit lands through the Core's change transaction; stale and protected attempts are refused; no buffer survives
+e2e/user-patch.spec.ts:65:1 › inline patch: a one-hunk user edit lands through the Core's change transaction; stale and protected attempts are refused; no buffer survives
+  code: 'PROTECTED_PATH'
+}
+
+  code: 'STALE_REVISION'
+}
+
+For help, see: https://nodejs.org/learn/getting-started/debugging
+
+[183/190] e2e/wave4.spec.ts:55:1 › Wave 4: compose with an @ chip and an attachment, queue-edit-send-now, decide two approvals on the docked card, read the receipts in Evidence, open the context ring, restore and redo a checkpoint
+e2e/wave4.spec.ts:55:1 › Wave 4: compose with an @ chip and an attachment, queue-edit-send-now, decide two approvals on the docked card, read the receipts in Evidence, open the context ring, restore and redo a checkpoint
+For help, see: https://nodejs.org/learn/getting-started/debugging
+
+
+
+
+
+
+
+
+[184/190] e2e/workers.spec.ts:141:1 › renderer compromise (REQ-EV-0075): the app's renderer holds no secret, no Node, no socket; the bridge is typed requests only; the Core refuses what the renderer cannot vouch for; a foreign window with
+e2e/workers.spec.ts:141:1 › renderer compromise (REQ-EV-0075): the app's renderer holds no secret, no Node, no socket; the bridge is typed requests only; the Core refuses what the renderer cannot vouch for; a foreign window with the same 
+  code: 'UNKNOWN_APPROVAL'
+}
+
+  code: 'UNKNOWN_TASK'
+}
+
+
+
+
+For help, see: https://nodejs.org/learn/getting-started/debugging
+
+[185/190] e2e/workers.spec.ts:245:1 › renderer killed (REQ-EV-0076): the renderer's process dies mid-session; main keeps the Core, the lease and the stream; the renderer comes back from the Core's snapshot and cursor with the session's tr
+e2e/workers.spec.ts:245:1 › renderer killed (REQ-EV-0076): the renderer's process dies mid-session; main keeps the Core, the lease and the stream; the renderer comes back from the Core's snapshot and cursor with the session's truth unchan
+[renderer-diag] window renderer pid=67449 webContents=1; processes: 67446:Browser 67447:GPU 67448:Utility(Network Service) 67449:Tab
+
+[renderer-diag] page1.crash at 16 ms
+
+
+[renderer-diag] page1.close at 43 ms
+
+[renderer-diag] main-replaced at 119 ms
+
+[renderer-diag] renderer-pid-gone at 120 ms
+
+[renderer-diag] playwright-window at 120 ms
+
+For help, see: https://nodejs.org/learn/getting-started/debugging
+
+
+[186/190] e2e/workers.spec.ts:364:1 › browser view killed (REQ-EV-0081): the view's process dies under the agent's session; the host restarts the view at its page and attaches it again to the same session; the Core, its log and the task a
+e2e/workers.spec.ts:364:1 › browser view killed (REQ-EV-0081): the view's process dies under the agent's session; the host restarts the view at its page and attaches it again to the same session; the Core, its log and the task are untouch
+For help, see: https://nodejs.org/learn/getting-started/debugging
+
+[187/190] e2e/worktrees.spec.ts:64:1 › PX-068: the list shows real worktrees with the Core's states; a running or unapplied one is refused removal with the Core's typed explanation and nothing is touched; a clean one is removed after the 
+e2e/worktrees.spec.ts:64:1 › PX-068: the list shows real worktrees with the Core's states; a running or unapplied one is refused removal with the Core's typed explanation and nothing is touched; a clean one is removed after the Core says 
+[renderer-diag] 5 s after the kill: pid 67449 alive=false; main windows=Error: electronApplication.evaluate: Target page, context or browser has been closed; processes: 
+
+  code: 'TASK_RUNNING'
+}
+
+  code: 'TASK_RUNNING'
+}
+
+  code: 'WORKTREE_NEEDS_DECISION'
+}
+
+  code: 'DISCARD_NOT_CONFIRMED'
+}
+
+For help, see: https://nodejs.org/learn/getting-started/debugging
+
+[188/190] e2e/worktrees.spec.ts:211:1 › PX-068: a real apply-back conflict through the modal - Cancel is the default and changes nothing, an overwrite needs its files typed (and the Core refuses it otherwise), the pre-apply bytes come bac
+e2e/worktrees.spec.ts:211:1 › PX-068: a real apply-back conflict through the modal - Cancel is the default and changes nothing, an overwrite needs its files typed (and the Core refuses it otherwise), the pre-apply bytes come back exactly 
+For help, see: https://nodejs.org/learn/getting-started/debugging
+
+
+
+
+[189/190] e2e/worktrees.spec.ts:355:1 › PX-068: the main process rejects invalid worktree arguments before the Core sees them
+e2e/worktrees.spec.ts:355:1 › PX-068: the main process rejects invalid worktree arguments before the Core sees them
+
+
+
+
+
+  code: 'UNKNOWN_WORKTREE'
+}
+
+  code: 'UNKNOWN_TASK'
+}
+
+For help, see: https://nodejs.org/learn/getting-started/debugging
+
+
+[190/190] e2e/worktrees.spec.ts:378:1 › PX-068: a scheduled cleanup that finds a preview holding the lease is recorded and shown as Skipped, never as completed, and the preview itself is not kept as a run
+e2e/worktrees.spec.ts:378:1 › PX-068: a scheduled cleanup that finds a preview holding the lease is recorded and shown as Skipped, never as completed, and the preview itself is not kept as a run
+For help, see: https://nodejs.org/learn/getting-started/debugging
+
+
+  3 failed
+    e2e/agents.spec.ts:26:1 › PX-046: classes show glyph and words from the Core; unread clears when the conversation is seen; a search finds a tool result and opens its row; pins, filters, grouping, archive with undo, keyboard and axe 
+    e2e/shell.spec.ts:36:1 › AFW-A10: Settings replaces the left column with its own navigation, holds doc 10's list, says plainly what the desktop cannot do yet, and Back returns 
+    e2e/shell.spec.ts:220:1 › PX-045: the command palette and the shortcut registry by keyboard alone; Escape closes the innermost layer; focus returns 
+  2 skipped
+  185 passed (18.3m)
