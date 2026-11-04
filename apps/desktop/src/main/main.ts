@@ -6,7 +6,9 @@
  * the socket, the secret, Node, or the filesystem.
  */
 import { app, BrowserWindow, dialog, ipcMain, nativeImage, Notification, safeStorage, session, shell, type IpcMainInvokeEvent } from "electron";
+import { execFileSync } from "node:child_process";
 import { existsSync, mkdirSync, readFileSync, statSync, writeFileSync } from "node:fs";
+import { userInfo } from "node:os";
 import { join, resolve } from "node:path";
 import { CoreSupervisor, freshId, type CoreClient, type CoreStatus } from "@modbit/ide-adapter-core";
 import { serializeEvent, type WireEvent } from "./events.js";
@@ -36,6 +38,21 @@ mkdirSync(dataDir, { recursive: true });
 /** Client-local convenience only: which session this window last used. The
  *  session itself is Core truth; losing this file loses nothing durable. */
 const stateFile = join(dataDir, "desktop-state.json");
+let cachedUserName: string | null = null;
+/** The name the agent list shows for the person: the account's full name where the OS gives one, else its login name. Local display only. */
+function localUserName(): string {
+  if (cachedUserName !== null) return cachedUserName;
+  let name = "";
+  if (process.platform === "darwin") {
+    try {
+      name = execFileSync("/usr/bin/id", ["-F"], { encoding: "utf8", timeout: 1000 }).trim();
+    } catch {
+      // The login name below stands in.
+    }
+  }
+  cachedUserName = name || userInfo().username;
+  return cachedUserName;
+}
 function loadLocalState(): { sessionId?: string } {
   try {
     return existsSync(stateFile) ? (JSON.parse(readFileSync(stateFile, "utf8")) as { sessionId?: string }) : {};
@@ -267,7 +284,7 @@ function handle(channel: string, fn: (e: IpcMainInvokeEvent, ...args: unknown[])
   });
 }
 handle("core:status", () => supervisor.status);
-handle("core:localState", () => ({ ...loadLocalState(), platform: platformState() }));
+handle("core:localState", () => ({ ...loadLocalState(), platform: platformState(), userName: localUserName() }));
 // Context Inspector (REQ-EV-0035 / 0131 / 0175): what the pack selected and
 // excluded, and what the prompt envelope injected.
 // Workspace context bridge (REQ-EV-0141 / 0160): what the reviewer has
@@ -940,6 +957,8 @@ function createWindow(bounds?: Electron.Rectangle): void {
     // REQ-PX-049 / AFW-A02: the window never gets smaller than the shell's layout can use.
     minWidth: WINDOW_MIN.width,
     minHeight: WINDOW_MIN.height,
+    // The window controls sit in the agent list's own 40 px head on macOS.
+    ...(process.platform === "darwin" ? { titleBarStyle: "hiddenInset" as const, trafficLightPosition: { x: 14, y: 13 } } : {}),
     show: true,
     webPreferences: {
       preload: join(__dirname, "..", "preload", "preload.cjs"),

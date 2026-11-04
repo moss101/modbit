@@ -171,10 +171,11 @@ const proj = (id: string, name: string, over: Partial<ProjectInfo> = {}): Projec
 const items = (over: Partial<Parameters<typeof listItems>[0]> & { headers: ReturnType<typeof h>[] }) => listItems({ projects: [], grouping: "repository", pins: [], collapsed: new Set(), nowMs: NOW, sort: "recent", showArchived: false, ...over });
 const kinds = (xs: ListItem[]) => xs.map((i) => (i.kind === "row" ? `row:${i.header.taskId}` : i.kind === "section" ? `section:${i.label}` : i.kind === "project" ? `project:${i.project.name}` : i.kind));
 
-test("without a project the list is exactly what it was: no Projects group, no new row", () => {
+test("without a project the list is the repositories under an empty Projects heading (its + makes the first one)", () => {
   const rows = [h(), h()];
   const before = flatten(groupHeaders(rows, "repository", [], NOW), new Set());
-  assert.deepEqual(items({ headers: rows }), before);
+  assert.deepEqual(items({ headers: rows }).slice(1), before);
+  assert.equal(items({ headers: rows })[0]?.kind, "projects-head");
 });
 
 test("the Projects group sits after the pins and before the repositories; a member is shown under its project and nowhere else", () => {
@@ -185,7 +186,7 @@ test("the Projects group sits after the pins and before the repositories; a memb
   const free = h();
   const pinned = h({ projectId: "pb" });
   const out = items({ headers: [m1, m2, free, pinned], projects: [a, b], pins: [pinned.taskId] });
-  assert.deepEqual(kinds(out), ["section:Pinned", `row:${pinned.taskId}`, "projects-head", "project:Alpha", `row:${m1.taskId}`, `row:${m2.taskId}`, "project:Beta", "new-project", "section:alpha", `row:${free.taskId}`]);
+  assert.deepEqual(kinds(out), ["section:Pinned", `row:${pinned.taskId}`, "projects-head", "project:Alpha", `row:${m1.taskId}`, `row:${m2.taskId}`, "project:Beta", "section:alpha", `row:${free.taskId}`]);
   // Each task appears once; the pinned member stays pinned and does not appear under its project.
   const rowIds = out.flatMap((i) => (i.kind === "row" ? [i.header.taskId] : []));
   assert.equal(new Set(rowIds).size, rowIds.length);
@@ -196,7 +197,7 @@ test("the Projects group sits after the pins and before the repositories; a memb
 test("collapsing a project hides its tasks and collapsing the group hides the projects, each by its own key", () => {
   const a = proj("pa", "Alpha");
   const m = h({ projectId: "pa" });
-  assert.deepEqual(kinds(items({ headers: [m], projects: [a], collapsed: new Set(["project:pa"]) })), ["projects-head", "project:Alpha", "new-project"]);
+  assert.deepEqual(kinds(items({ headers: [m], projects: [a], collapsed: new Set(["project:pa"]) })), ["projects-head", "project:Alpha"]);
   assert.deepEqual(kinds(items({ headers: [m], projects: [a], collapsed: new Set(["projects"]) })), ["projects-head"], "the group is closed and the member is not listed a second time");
 });
 
@@ -204,9 +205,9 @@ test("an archived project is not a parent unless archived items are asked for; i
   const old = proj("pa", "Old", { archived: true });
   const m = h({ projectId: "pa" });
   const hidden = items({ headers: [m], projects: [old] });
-  assert.deepEqual(kinds(hidden), ["section:alpha", `row:${m.taskId}`]);
+  assert.deepEqual(kinds(hidden), ["projects-head", "section:alpha", `row:${m.taskId}`]);
   const shown = items({ headers: [m], projects: [old], showArchived: true });
-  assert.deepEqual(kinds(shown), ["projects-head", "project:Old", `row:${m.taskId}`, "new-project"]);
+  assert.deepEqual(kinds(shown), ["projects-head", "project:Old", `row:${m.taskId}`]);
 });
 
 test("the Project grouping makes the projects the sections, empty ones included, and tasks of no project last", () => {
@@ -215,9 +216,9 @@ test("the Project grouping makes the projects the sections, empty ones included,
   const m = h({ projectId: "pa" });
   const free = h();
   const out = items({ headers: [free, m], projects: [a, b], grouping: "project" });
-  assert.deepEqual(kinds(out), ["section:Alpha", `row:${m.taskId}`, "section:Beta", "section:No project", `row:${free.taskId}`]);
+  assert.deepEqual(kinds(out), ["projects-head", "section:Alpha", `row:${m.taskId}`, "section:Beta", "section:No project", `row:${free.taskId}`]);
   // A task whose project the list does not show is in no project here.
-  assert.deepEqual(kinds(items({ headers: [m], projects: [], grouping: "project" })), ["section:No project", `row:${m.taskId}`]);
+  assert.deepEqual(kinds(items({ headers: [m], projects: [], grouping: "project" })), ["projects-head", "section:No project", `row:${m.taskId}`]);
 });
 
 test("project chips filter by the Core's map; 'no project' is its own chip and a chip never matches by name", () => {

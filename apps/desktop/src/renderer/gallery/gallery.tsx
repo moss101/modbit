@@ -12,7 +12,6 @@ import { THEME_LABEL, THEME_PREFERENCES, type ThemePreference } from "@modbit/de
 import { AgentRegion } from "../shell/agent-region.tsx";
 import { IconPlus } from "../shell/icons.tsx";
 import { ShellFrame } from "../shell/shell-frame.tsx";
-import { StatusRow } from "../shell/status-row.tsx";
 import { TopBar } from "../shell/top-bar.tsx";
 import { DEFAULT_UI_PREFS, type UiPrefs } from "../shell/prefs.ts";
 import { AgentListView } from "../agents/agent-list-view.tsx";
@@ -305,10 +304,10 @@ export function Gallery() {
             onPrefs={(u) => setPrefs(u)}
             panelOpen={panelOpen}
             panel={<p className="meta" style={{ padding: 12 }}>Apps panel fixture.</p>}
-            agents={(rail) => <AgentRegion rail={rail} canExpand={false} taskCount={3} attentionCount={1} onNewTask={() => {}} onExpand={() => {}} dashboardOpen={false} dashboardDisabled onToggleDashboard={() => {}} />}
-            topBar={<TopBar title="Fleet" location="Local, trusted workspace" agentListCollapsed={false} onToggleAgentList={() => {}} canGoBack={false} onBack={() => {}} menuItems={[]} panelOpen={panelOpen} panelUnavailable={null} onTogglePanel={() => setPanelOpen((o) => !o)} />}
+            agents={(rail) => <AgentRegion rail={rail} canExpand={false} taskCount={3} attentionCount={1} onNewTask={() => {}} onExpand={() => {}} onToggleAgentList={() => {}} canGoBack={false} onBack={() => {}} canGoForward={false} onForward={() => {}} userName="Fixture" coreLabel="Core connected (fixture)" coreStatus="ok" menuItems={[]} />}
+            topBar={<TopBar title="New task" slotRef={() => {}} panelOpen={panelOpen} panelUnavailable={null} onTogglePanel={() => setPanelOpen((o) => !o)} />}
             tray={null}
-            statusRow={<StatusRow coreLabel="Core connected (fixture)" coreStatus="ok" platform={null} location="Local, trusted workspace" />}
+            statusRow={null}
           >
             <p className="meta" style={{ padding: 12 }}>Conversation region fixture.</p>
           </ShellFrame>

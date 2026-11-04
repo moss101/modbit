@@ -137,7 +137,7 @@ export function isActivatable(el: Element | null): boolean {
 /** The reference card of the shortcuts, for the help panel and the docs. */
 export const SHORTCUTS: { keys: string; command: Command; what: string }[] = [
   { keys: "⌘/Ctrl+N", command: "newTask", what: "new task (focus the goal)" },
-  { keys: "/", command: "search", what: "search: type-ahead filter of the fleet (⌘/Ctrl+K opens the command palette, which finds tasks too)" },
+  { keys: "/", command: "search", what: "search: opens the command palette (so does ⌘/Ctrl+K), which finds tasks too)" },
   { keys: "a", command: "jumpAttention", what: "jump to the attention list" },
   { keys: "r", command: "jumpRunning", what: "jump to the running column" },
   { keys: "y", command: "approve", what: "approve the focused card's effect (Enter confirms an irreversible one)" },
@@ -147,7 +147,7 @@ export const SHORTCUTS: { keys: string; command: Command; what: string }[] = [
   { keys: "↑ ↓ / j k", command: "next", what: "previous / next card in the column; in Review: previous / next change" },
   { keys: "← →", command: "columnNext", what: "previous / next column" },
   { keys: "Enter", command: "open", what: "open the focused card (Review when ready); in Review: expand or collapse the hunk" },
-  { keys: "Escape", command: "back", what: "back to the fleet; cancel a confirmation" },
+  { keys: "Escape", command: "back", what: "back; cancel a confirmation" },
   { keys: "u", command: "toggleSplit", what: "Review: unified / split" },
   { keys: "f", command: "jumpFailing", what: "Review: jump to the failing check" },
   { keys: "?", command: "help", what: "this list" },

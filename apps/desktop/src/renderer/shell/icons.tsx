@@ -5,8 +5,5 @@
 import { Icon } from "@modbit/ui";
 
 export const IconSidebar = () => <Icon name="panel-left" />;
-export const IconBack = () => <Icon name="chevron-left" />;
 export const IconPanel = () => <Icon name="panel-right" />;
-export const IconMore = () => <Icon name="ellipsis" />;
 export const IconPlus = () => <Icon name="plus" />;
-export const IconLocal = () => <Icon name="monitor" />;

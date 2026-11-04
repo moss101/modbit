@@ -75,7 +75,7 @@ export const GEOMETRY = {
   rail: 40,
   centerMin: 424,
   panelMin: 384,
-  panelRatioDefault: 0.5,
+  panelRatioDefault: 0.39,
   singlePaneBelow: 448,
   windowDefault: { width: 1280, height: 800 },
   windowMin: { width: 900, height: 600 },

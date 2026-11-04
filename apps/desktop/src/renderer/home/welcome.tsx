@@ -1,18 +1,18 @@
 
+import { useState } from "react";
 import type { AppState } from "../state/use-app.ts";
 
 export function Welcome({ app }: { app: AppState }) {
-  const { core, error, goal, submitting, provider, providerKind, setProviderKind, providerKey, setProviderKey, providerUrl, setProviderUrl, providerBusy, providerResult, trustRoot, setTrustRoot, trusted, trustBusy, trustError, starters, confirm, submit, setupProvider, trustRepository, runStarter, tasks } = app;
+  const [repoOpen, setRepoOpen] = useState(false);
+  const { core, submitting, provider, providerKind, setProviderKind, providerKey, setProviderKey, providerUrl, setProviderUrl, providerBusy, providerResult, trustRoot, setTrustRoot, trusted, trustBusy, trustError, starters, setupProvider, trustRepository, runStarter } = app;
   return (
-    <section className="welcome" data-testid="welcome" aria-label="Welcome">
-      <h2 style={{ margin: 0, fontSize: 16 }}>Welcome to Modbit</h2>
-      <p className="meta">Three steps to a first reviewed change. Nothing here is stored outside the Core and your OS keychain.</p>
+    <section className="welcome" data-testid="welcome" aria-label="Setup" data-needs-provider={provider?.configured ? "false" : "true"}>
       <ol className="steps">
-        <li data-testid="welcome-step-core" data-done="true">Core running (pid {core.state === "connected" ? core.pid : "…"})</li>
-        <li data-testid="welcome-step-provider" data-done={provider?.configured ? "true" : "false"} data-active={!provider?.configured ? "true" : "false"}>
-          <strong>Provider.</strong>{" "}
+        <li className="mb-sr-only" data-testid="welcome-step-core" data-done="true">Core running (pid {core.state === "connected" ? core.pid : "…"})</li>
+        <li className={provider?.configured && !providerResult?.ok ? "welcome-quiet" : undefined} data-testid="welcome-step-provider" data-done={provider?.configured ? "true" : "false"} data-active={!provider?.configured ? "true" : "false"}>
+          <strong className={provider?.configured ? "mb-sr-only" : undefined}>Provider.</strong>{" "}
           {provider?.configured ? (
-            <span data-testid="provider-ready">
+            <span data-testid="provider-ready" className={providerResult?.ok ? undefined : "mb-sr-only"}>
               Ready: {provider.endpoints.join(", ")}.
               {providerResult?.ok && (
                 <span className="meta" role="status" data-testid="provider-result" data-ok="true">
@@ -50,11 +50,13 @@ export function Welcome({ app }: { app: AppState }) {
           )}
         </li>
         <li data-testid="welcome-step-repository" data-done={trusted ? "true" : "false"} data-active={provider?.configured && !trusted ? "true" : "false"}>
-          <strong>Repository.</strong>{" "}
           {trusted ? (
-            <span data-testid="repository-trusted">Trusted: {trusted}. Indexing runs in the background; you can start now.</span>
+            <span className="meta" data-testid="repository-trusted">Trusted: {trusted}. Indexing runs in the background; you can start now.</span>
           ) : (
-            <form
+            <details className="welcome-repo" data-testid="welcome-repo-toggle" onToggle={(e) => setRepoOpen(e.currentTarget.open)}>
+            <summary className="meta">Trust a repository first and get starter tasks</summary>
+            {/* Rendered only while open: what a closed details hides has its transitions paused, and they would never finish. */}
+            {repoOpen && <form
               onSubmit={(ev) => {
                 ev.preventDefault();
                 void trustRepository();
@@ -72,14 +74,15 @@ export function Welcome({ app }: { app: AppState }) {
                   {trustError}
                 </div>
               )}
-            </form>
+            </form>}
+            </details>
           )}
         </li>
       </ol>
       {trusted && starters && (
         <div data-testid="starter-tasks">
           <strong>First task</strong>
-          <span className="meta"> — detected: {starters.stacks.join(", ")}. Pick one, or write your own goal below.</span>
+          <span className="meta"> — detected: {starters.stacks.join(", ")}. Pick one, or write your own below.</span>
           <ul>
             {starters.tasks.map((t) => (
               <li key={t.id}>

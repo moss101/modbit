@@ -11,7 +11,7 @@ import { createServer } from "node:http";
 import { mkdtempSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { accessible, MOD, setContentSize } from "./support/ui-harness.ts";
+import { accessible, setContentSize } from "./support/ui-harness.ts";
 import { closeApp, fixtureRepo, gate, launch, refOf, scriptedModel, startBrowserTask, toolResults } from "./support/browser-harness.ts";
 
 test("Browser tab: the lease badge follows the Core, Take control moves the lease and blocks the agent's input, Return control lets the agent act", async () => {
@@ -48,9 +48,7 @@ test("Browser tab: the lease badge follows the Core, Take control moves the leas
     expect(model.toolTexts[1]).toContain("status: SUCCESS");
 
     // The tab: the agent holds the lease (generation 1) and the page the agent loaded is named.
-    const card = page.getByTestId("task-card").first();
-    await card.focus();
-    await page.keyboard.press(`${MOD}+e`);
+    await page.getByTestId("toggle-apps-panel").click();
     await expect(page.getByTestId("region-apps")).toBeVisible();
     await page.getByTestId("tab-browser").click();
     const tab = page.getByTestId("app-browser");

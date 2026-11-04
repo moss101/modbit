@@ -1,5 +1,5 @@
 import type { ReactNode } from "react";
-import { Icon, IconButton, type IconName } from "@modbit/ui";
+import { Icon, IconButton, Menu, type IconName, type MenuItem } from "@modbit/ui";
 import { IconPlus, IconSidebar } from "./icons.tsx";
 
 export interface AgentRegionProps {
@@ -10,27 +10,35 @@ export interface AgentRegionProps {
   attentionCount: number;
   onNewTask: () => void;
   onExpand: () => void;
-  /** The agent list (PX-046): the region's typed extension point. Absent, the region says only what the fleet model knows. */
+  onToggleAgentList: () => void;
+  canGoBack: boolean;
+  onBack: () => void;
+  canGoForward: boolean;
+  onForward: () => void;
+  /** The agent list (PX-046): the region's typed extension point. Absent, the region says only what the model knows. */
   list?: ReactNode | undefined;
   /** The command palette (search tasks, commands and settings). */
   onSearch?: (() => void) | undefined;
-  /** The Fleet board is the view in the centre (it stays reachable as its own view). */
-  fleetActive?: boolean | undefined;
-  onShowFleet?: (() => void) | undefined;
-  /** The worktree list (PX-068) is its own view in the centre. */
-  worktreesActive?: boolean | undefined;
-  onShowWorktrees?: (() => void) | undefined;
   /** REQ-PX-086: the Automations surface. */
   automationsOpen?: boolean | undefined;
   automationsDisabled?: boolean | undefined;
   onToggleAutomations?: (() => void) | undefined;
+  /** What needs the person across every task. */
+  inboxOpen?: boolean | undefined;
+  onToggleInbox?: (() => void) | undefined;
   /** REQ-PX-106: the Customize view over skills, hooks and extensions. */
   customizeOpen?: boolean | undefined;
   customizeDisabled?: boolean | undefined;
   onToggleCustomize?: (() => void) | undefined;
-  dashboardOpen?: boolean | undefined;
-  dashboardDisabled?: boolean | undefined;
-  onToggleDashboard?: (() => void) | undefined;
+  /** The repositories the tasks ran in; a click starts a new task there. */
+  repositories?: readonly string[] | undefined;
+  onOpenRepository?: ((root: string) => void) | undefined;
+  /** The person's name on this machine; the initials stand in for a picture. */
+  userName?: string | undefined;
+  coreLabel: string;
+  coreStatus: "ok" | "warn" | "danger";
+  /** The gear menu: Settings, the views that have no row of their own, theme and zoom. */
+  menuItems: readonly MenuItem[];
 }
 
 interface NavEntry {
@@ -41,10 +49,11 @@ interface NavEntry {
   pressed?: boolean | undefined;
   disabled?: boolean | undefined;
   shortcut?: string | undefined;
+  count?: number | undefined;
 }
 
-/** One 30 px navigation row (AWL-06): an icon and a label, the same command and test id it had in the head or the top bar. */
-function NavRow({ testId, icon, label, onClick, pressed, disabled, shortcut }: NavEntry) {
+/** One 28 px navigation row: an icon and a label, the same command and test id it has always had. */
+function NavRow({ testId, icon, label, onClick, pressed, disabled, shortcut, count }: NavEntry) {
   return (
     <li>
       <button type="button" className="agent-nav-row" data-testid={testId} onClick={onClick} disabled={disabled ?? false} {...(pressed === undefined ? {} : { "aria-pressed": pressed })}>
@@ -55,15 +64,28 @@ function NavRow({ testId, icon, label, onClick, pressed, disabled, shortcut }: N
             {shortcut}
           </span>
         )}
+        {count !== undefined && count > 0 && (
+          <span className="agent-nav-count" data-testid={`${testId}-count`}>
+            {count}
+          </span>
+        )}
       </button>
     </li>
   );
 }
 
+const baseName = (p: string) => p.replace(/[/\\]+$/, "").split(/[/\\]/).pop() ?? p;
+const initialsOf = (name: string) =>
+  name
+    .split(/\s+/)
+    .filter(Boolean)
+    .slice(0, 2)
+    .map((w) => w[0]!.toUpperCase())
+    .join("");
+
 /**
- * The agent list region (AFW-A01, AFW-A05, DR-PX-2026-11-03-019 AWL-06): the brand, then the navigation entries in one column
- * (a new task, search, the Fleet board, worktrees, automations, customize, the dashboard), then the list. Below a 448 px centre
- * it is a 40 px rail.
+ * The agent list region: window controls, the navigation rows, the agent list, the repositories and the person's own row. Below
+ * a 448 px centre it is a 40 px rail.
  */
 export function AgentRegion(p: AgentRegionProps) {
   const { rail, canExpand, taskCount, attentionCount, onNewTask, onExpand, list } = p;
@@ -72,30 +94,31 @@ export function AgentRegion(p: AgentRegionProps) {
       <div className="agent-rail" data-testid="agent-rail">
         {canExpand && <IconButton label="Expand agent list" icon={<IconSidebar />} onClick={onExpand} data-testid="rail-expand" />}
         <IconButton label="New task" icon={<IconPlus />} onClick={onNewTask} data-testid="rail-new-task" />
+        <IconButton label="Back" icon={<Icon name="arrow-left" />} disabled={!p.canGoBack} onClick={p.onBack} data-testid="nav-back" />
       </div>
     );
   }
   const mac = typeof navigator !== "undefined" && /Mac/.test(navigator.platform);
-  const entries: NavEntry[] = [{ testId: "agents-new-task", icon: "square-pen", label: "New task", onClick: onNewTask }];
+  const entries: NavEntry[] = [{ testId: "agents-new-task", icon: "square-pen", label: "New task", onClick: onNewTask, shortcut: mac ? "⌘N" : "Ctrl+N" }];
   if (p.onSearch) entries.push({ testId: "agents-search-open", icon: "search", label: "Search", onClick: p.onSearch, shortcut: mac ? "⌘K" : "Ctrl+K" });
-  if (p.onShowFleet) entries.push({ testId: "agents-fleet", icon: "layout-grid", label: "Fleet board", onClick: p.onShowFleet, pressed: p.fleetActive === true });
-  if (p.onShowWorktrees) entries.push({ testId: "agents-worktrees", icon: "git-branch", label: "Worktrees", onClick: p.onShowWorktrees, pressed: p.worktreesActive === true });
   if (p.onToggleAutomations) entries.push({ testId: "open-automations", icon: "clock", label: "Automations", onClick: p.onToggleAutomations, pressed: p.automationsOpen ?? false, disabled: p.automationsDisabled });
+  if (p.onToggleInbox) entries.push({ testId: "open-inbox", icon: "shield-check", label: "Approvals", onClick: p.onToggleInbox, pressed: p.inboxOpen ?? false, count: attentionCount });
   if (p.onToggleCustomize) entries.push({ testId: "open-customize", icon: "blocks", label: "Customize", onClick: p.onToggleCustomize, pressed: p.customizeOpen ?? false, disabled: p.customizeDisabled });
-  if (p.onToggleDashboard) entries.push({ testId: "open-dashboard", icon: "chart-column", label: p.dashboardOpen ? "Close dashboard" : "Dashboard", onClick: p.onToggleDashboard, disabled: p.dashboardDisabled });
+  const name = p.userName ?? "";
   return (
     <div className="agent-region">
       <div className="agent-region-head">
-        <span className="brand" data-testid="brand">
-          Modbit
-        </span>
+        <IconButton label="Agent list" icon={<IconSidebar />} onClick={p.onToggleAgentList} data-testid="toggle-agent-list" />
+        <span className="topbar-spacer" />
+        <IconButton label="Back" icon={<Icon name="arrow-left" />} disabled={!p.canGoBack} onClick={p.onBack} data-testid="nav-back" />
+        <IconButton label="Forward" icon={<Icon name="arrow-right" />} disabled={!p.canGoForward} onClick={p.onForward} data-testid="nav-forward" />
       </div>
       <ul className="agent-nav" aria-label="Navigation">
         {entries.map((e) => (
           <NavRow key={e.testId} {...e} />
         ))}
       </ul>
-      <p className="meta agent-region-meta" data-testid="agents-summary">
+      <p className="mb-sr-only" data-testid="agents-summary">
         {taskCount} {taskCount === 1 ? "task" : "tasks"}, {attentionCount} need{attentionCount === 1 ? "s" : ""} attention.
       </p>
       {list ?? (
@@ -103,6 +126,34 @@ export function AgentRegion(p: AgentRegionProps) {
           The agent list is not connected in this view.
         </p>
       )}
+      {p.repositories && p.repositories.length > 0 && (
+        <section className="agent-repos" aria-label="Repositories" data-testid="agent-repositories">
+          <h2 className="agents-section-label agent-repos-head">Repositories</h2>
+          <ul className="agent-nav">
+            {p.repositories.map((root) => (
+              <li key={root}>
+                <button type="button" className="agent-nav-row" title={root} data-testid="agent-repository" data-root={root} onClick={() => p.onOpenRepository?.(root)}>
+                  <Icon name="folder" size={14} />
+                  <span className="agent-nav-label">{baseName(root)}</span>
+                </button>
+              </li>
+            ))}
+          </ul>
+        </section>
+      )}
+      <footer className="agent-foot" data-testid="agent-foot">
+        <span className="agent-avatar" aria-hidden="true">
+          {initialsOf(name)}
+        </span>
+        <span className="agent-nav-label agent-user" data-testid="agent-user">
+          {name}
+        </span>
+        <span className="agent-core" data-testid="core-status" data-status={p.coreStatus} aria-live="polite" title={p.coreLabel}>
+          <span className="agent-core-dot" aria-hidden="true" />
+          <span className="mb-sr-only">{p.coreLabel}</span>
+        </span>
+        <Menu label="Settings and more" trigger={<Icon name="settings" />} items={p.menuItems} align="end" placement="up" triggerTestId="overflow-menu" />
+      </footer>
     </div>
   );
 }

@@ -12,6 +12,7 @@ import { createServer, type Server } from "node:http";
 import { tmpdir } from "node:os";
 import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
+import { openTaskDetails, queueTask } from "./new-task.ts";
 
 export const appDir = resolve(dirname(fileURLToPath(import.meta.url)), "..", "..");
 export const coreBin = process.env.MODBIT_CORE_BIN ?? resolve(appDir, "..", "..", "target", "debug", process.platform === "win32" ? "modbit-core.exe" : "modbit-core");
@@ -80,13 +81,12 @@ export async function launch(dataDir: string, extraEnv: Record<string, string>):
 
 /** The task reaches review - or the failure names what the card and the model saw (a hosted runner's only witness). */
 export async function readyForReview(page: Page, model: { toolTexts: string[] }, timeoutMs = 90_000): Promise<void> {
-  const ready = page.getByTestId("column-readyForReview").getByTestId("task-card");
+  const row = page.getByTestId("agent-row").first();
   const deadline = Date.now() + timeoutMs;
-  while ((await ready.count()) === 0) {
+  while ((await page.locator('[data-testid="agent-row"][data-state="ReadyForReview"]').count()) === 0) {
     if (Date.now() > deadline) {
-      const card = page.getByTestId("task-card").first();
-      const state = await card.getAttribute("data-state").catch(() => null);
-      const line = await card.getByTestId("task-screen-state").textContent().catch(() => null);
+      const state = await row.getAttribute("data-state").catch(() => null);
+      const line = await row.getByTestId("agent-status").textContent().catch(() => null);
       const tail = model.toolTexts.map((t, i) => `[${i}] ${t.slice(0, 300).replace(/\n/g, " | ")}`).join("\n");
       throw new Error(`the task never reached review: state=${state} line=${line}\ntool texts:\n${tail}`);
     }
@@ -96,13 +96,9 @@ export async function readyForReview(page: Page, model: { toolTexts: string[] },
 
 /** Create the task, open its browser session and start the run, with the panel closed (the host serves the agent). */
 export async function startBrowserTask(page: Page, repo: string, goal: string): Promise<{ taskId: string; bsid: string }> {
-  await page.getByTestId("workspace").fill(repo);
-  await page.getByTestId("goal").fill(goal);
-  await page.getByTestId("run").click();
-  const card = page.getByTestId("task-card").first();
-  await expect(card).toContainText(goal, { timeout: 30_000 });
-  const taskId = (await card.getAttribute("data-task-id"))!;
-  await card.getByTestId("task-browser").click();
+  const taskId = await queueTask(page, goal, repo);
+  await openTaskDetails(page);
+  await page.getByTestId("task-browser").click();
   const panel = page.getByTestId("browser");
   await expect(panel).toHaveAttribute("data-browser-session-id", /^[0-9a-f]{32}$/, { timeout: 30_000 });
   const bsid = (await panel.getAttribute("data-browser-session-id"))!;
@@ -110,7 +106,7 @@ export async function startBrowserTask(page: Page, repo: string, goal: string): 
   await expect(panel).toHaveCount(0);
   // The view has left the window before anything else is clicked (a click on a view still there would be the person's).
   await expect.poll(async () => (await page.evaluate((id) => window.modbit.describeBrowser(id), bsid))?.shown, { timeout: 15_000 }).toBe(false);
-  await card.getByTestId("task-start").click();
+  await page.getByTestId("conv-start").click();
   return { taskId, bsid };
 }
 

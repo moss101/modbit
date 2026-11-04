@@ -2,11 +2,13 @@ import type { NotificationKind } from "../notifications.ts";
 import { StateLine } from "../shell/state-line.tsx";
 import type { AppState } from "../state/use-app.ts";
 
-export function SettingsPanel({ app }: { app: AppState }) {
-  const { core, error, provider, credentials, credentialForm, setCredentialForm, credentialError, setCredentialError, refreshCredentials, prefs, submit, attention, settings, notifications, savePrefs } = app;
+/** The Settings page: provider credentials, login credentials, notifications, and what this build claims about its platform and languages. */
+export function SettingsPage({ app }: { app: AppState }) {
+  const { core, provider, credentials, credentialForm, setCredentialForm, credentialError, setCredentialError, refreshCredentials, prefs, settings, savePrefs, platform, languages } = app;
   return (
-    <section className="settings" data-testid="settings" aria-label="Settings" tabIndex={-1}>
-      <h2 style={{ margin: 0, fontSize: 14 }}>Settings</h2>
+    <div className="page">
+    <section className="page-col settings" data-testid="settings" aria-label="Settings" tabIndex={-1}>
+      <h2 className="page-title">Settings</h2>
       <div className="meta">
         Credentials: {provider === null ? "loading…" : provider.configured ? `${provider.stored ? "provider key in the OS keychain" : "provider key held for this session only"} (${provider.provider})` : "no provider key"}; the Core holds keys in memory only and never shows one again.
       </div>
@@ -83,6 +85,20 @@ export function SettingsPanel({ app }: { app: AppState }) {
           </span>
         )}
       </fieldset>
+      <fieldset data-testid="about-build">
+        <legend className="meta">This build</legend>
+        {platform && (
+          <p className="meta" data-testid="platform-state" data-state={platform.state}>
+            {platform.statement}
+          </p>
+        )}
+        {languages.length > 0 && (
+          <p className="meta" data-testid="language-labels" title={languages.map((l) => `${l.language}: ${l.label}`).join("\n")}>
+            Languages: {languages.filter((l) => l.tier === "ALPHA_BASELINE").map((l) => l.language).join(", ")} at the Alpha baseline (Tier C plus compile and test evidence; structural intelligence not yet claimed); everything else unsupported.
+          </p>
+        )}
+      </fieldset>
     </section>
+    </div>
   );
 }

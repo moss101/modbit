@@ -268,7 +268,7 @@ export const unpin = (pins: readonly string[], taskId: string): string[] => pins
 // ------------------------------------------------------------- virtual list
 
 export const SECTION_HEIGHT = 28;
-export const ROW_HEIGHT = 56;
+export const ROW_HEIGHT = 50;
 
 export type ListItem =
   | { kind: "section"; key: string; label: string; count: number; collapsed: boolean; pinned: boolean }
@@ -277,8 +277,7 @@ export type ListItem =
   | { kind: "projects-head"; key: string; label: string; count: number; collapsed: boolean }
   /** A project parent: its facts are the Core's record and rollup; `shown` is how many of its tasks pass the filters. */
   | { kind: "project"; key: string; project: ProjectInfo; shown: number; collapsed: boolean }
-  /** The "New project" row that closes the Projects group. */
-  | { kind: "new-project"; key: string };
+  ;
 
 /** The flat, ordered items of the list: a section header, then its rows unless the section is collapsed. */
 export function flatten(sections: readonly Section[], collapsed: ReadonlySet<string>): ListItem[] {
@@ -297,8 +296,7 @@ export interface Layout {
 }
 
 /** Height of a project parent row and of the "New project" row. */
-export const PROJECT_HEIGHT = 40;
-export const NEW_PROJECT_HEIGHT = 32;
+export const PROJECT_HEIGHT = 30;
 
 export const heightOf = (item: ListItem): number => {
   switch (item.kind) {
@@ -307,8 +305,6 @@ export const heightOf = (item: ListItem): number => {
       return SECTION_HEIGHT;
     case "project":
       return PROJECT_HEIGHT;
-    case "new-project":
-      return NEW_PROJECT_HEIGHT;
     default:
       return ROW_HEIGHT;
   }
@@ -425,7 +421,9 @@ export const projectKey = (projectId: string): string => `project:${projectId}`;
  */
 export function listItems(i: ItemsInput): ListItem[] {
   const shown = visibleProjects(i.projects, i.showArchived);
-  if (i.grouping === "project") return flatten(groupHeaders(i.headers, "project", i.pins, i.nowMs, { projects: shown, sort: i.sort }), i.collapsed);
+  // The heading stays in every grouping: it holds the list's options and its +.
+  const head: ListItem = { kind: "projects-head", key: `s:${PROJECTS_KEY}`, label: "Projects", count: shown.length, collapsed: i.collapsed.has(PROJECTS_KEY) };
+  if (i.grouping === "project") return [head, ...(head.collapsed ? [] : flatten(groupHeaders(i.headers, "project", i.pins, i.nowMs, { projects: shown, sort: i.sort }), i.collapsed))];
   const shownIds = new Set(shown.map((p) => p.projectId));
   const pinned = new Set(i.pins);
   const inShownProject = (h: AgentHeaderView) => h.projectId !== undefined && h.projectId !== "" && shownIds.has(h.projectId) && !pinned.has(h.taskId);
@@ -434,17 +432,13 @@ export function listItems(i: ItemsInput): ListItem[] {
   const out: ListItem[] = [];
   const first = sections[0];
   if (first?.pinned) out.push(...flatten([sections.shift()!], i.collapsed));
-  if (shown.length > 0) {
-    const groupCollapsed = i.collapsed.has(PROJECTS_KEY);
-    out.push({ kind: "projects-head", key: `s:${PROJECTS_KEY}`, label: "Projects", count: shown.length, collapsed: groupCollapsed });
-    if (!groupCollapsed) {
-      for (const p of shown) {
-        const rows = members.filter((h) => h.projectId === p.projectId).sort(byOrder(i.sort));
-        const pc = i.collapsed.has(projectKey(p.projectId));
-        out.push({ kind: "project", key: `p:${p.projectId}`, project: p, shown: rows.length, collapsed: pc });
-        if (!pc) for (const h of rows) out.push({ kind: "row", key: `r:${projectKey(p.projectId)}:${h.taskId}`, header: h, sectionKey: projectKey(p.projectId) });
-      }
-      out.push({ kind: "new-project", key: "np" });
+  out.push(head);
+  if (!head.collapsed) {
+    for (const p of shown) {
+      const rows = members.filter((h) => h.projectId === p.projectId).sort(byOrder(i.sort));
+      const pc = i.collapsed.has(projectKey(p.projectId));
+      out.push({ kind: "project", key: `p:${p.projectId}`, project: p, shown: rows.length, collapsed: pc });
+      if (!pc) for (const h of rows) out.push({ kind: "row", key: `r:${projectKey(p.projectId)}:${h.taskId}`, header: h, sectionKey: projectKey(p.projectId) });
     }
   }
   out.push(...flatten(sections, i.collapsed));

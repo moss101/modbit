@@ -4,12 +4,11 @@
  * nodes, never markup, so a planted `<script>` or `<img onerror>` in a model
  * answer, a tool result or a repository file is inert, and a link is text (a
  * link opens only through main's allow-list, which no row can reach: nothing
- * here calls anything but the typed approval, question and steer controls the
- * Fleet already uses). Rows are memoised so a streaming delta re-renders only
+ * here calls anything but the typed approval, question and steer controls). Rows are memoised so a streaming delta re-renders only
  * the row that grew.
  */
 import { memo, useEffect, useRef, useState, type ReactNode } from "react";
-import { Button, StatusDot } from "@modbit/ui";
+import { Button, Icon, StatusDot, type IconName } from "@modbit/ui";
 import type { PendingApprovalView, TranscriptRowView } from "../../shared/conversation-types.ts";
 import type { TaskCard } from "../model.ts";
 import { needsEyes, presentAssistant, streamKey, type LiveStreams, type MessageState, type PresentedRow } from "./model.ts";
@@ -155,7 +154,8 @@ function UserRow({ row, ctx }: { row: TranscriptRowView; ctx: RowContext }) {
   return (
     <article className="conv-row conv-user" data-testid="conv-user" data-row-id={row.rowId} data-kind="USER_MESSAGE" data-sticky={sticky} data-highlight={ctx.highlightRowId === row.rowId} aria-label="Your message">
       {ctx.checkpoints?.editingRowId === row.rowId ? <EditBox row={row} cp={ctx.checkpoints} /> : <p className="conv-user-text">{row.text}</p>}
-      <p className="meta">
+      {/* The plain task message needs no label; an answer, a queued input and text from outside say what they are. */}
+      <p className={f?.untrusted || f?.source === "answer" || f?.source === "queued_input" ? "meta" : "mb-sr-only"}>
         {f?.source === "answer" ? "Your answer" : f?.source === "queued_input" ? `Queued ${f.mode ? f.mode.toLowerCase() : "input"}` : "Task"}
         {f?.untrusted ? ` · from ${f.provenance.replace(/_/g, " ") || "outside"} (untrusted text)` : ""}
         {row.atMs ? ` · ${clock(row.atMs)}` : ""}
@@ -165,7 +165,42 @@ function UserRow({ row, ctx }: { row: TranscriptRowView; ctx: RowContext }) {
   );
 }
 
-const CLASS_WORD: Record<string, string> = { READ: "Read", SEARCH: "Search", SHELL: "Command", EDIT: "Edit", BROWSER: "Browser", OTHER: "Tool" };
+const CLASS_VERB: Record<string, string> = { READ: "Read", SEARCH: "Searched", SHELL: "Ran", EDIT: "Edited", BROWSER: "Browsed", OTHER: "Used" };
+const CLASS_ICON: Record<string, IconName> = { READ: "search", SEARCH: "search", SHELL: "terminal", EDIT: "square-pen", BROWSER: "globe", OTHER: "ellipsis" };
+const baseName = (p: string): string => p.replace(/[/\\]+$/, "").split(/[/\\]/).pop() ?? p;
+const plural = (n: number, one: string, many = `${one}s`): string => `${n} ${n === 1 ? one : many}`;
+
+/** A file edit reads by its file name; everything else by the Core's text for the call. */
+const stepText = (row: TranscriptRowView): string => {
+  const f = row.facts.type === "tool" ? row.facts : null;
+  if (f?.toolClass === "EDIT" && f.paths.length === 1) return baseName(f.paths[0]!);
+  return f && row.text.startsWith(`${f.toolName} `) ? row.text.slice(f.toolName.length + 1) : row.text;
+};
+
+/** What a fold of tool calls did, in words, from the calls' own facts (the Core's label stays in the row's title). */
+export function groupSummary(children: readonly TranscriptRowView[]): { icon: IconName; words: string } | null {
+  const tools = children.filter((c) => c.facts.type === "tool");
+  if (tools.length === 0) return null;
+  const of = (c: string) => tools.filter((t) => t.facts.type === "tool" && t.facts.toolClass === c);
+  const reads = of("READ");
+  const searches = of("SEARCH");
+  const shells = of("SHELL");
+  const edits = of("EDIT");
+  const browsing = of("BROWSER");
+  const others = of("OTHER");
+  const readFiles = new Set(reads.flatMap((t) => (t.facts.type === "tool" ? t.facts.paths : [])));
+  const editFiles = new Set(edits.flatMap((t) => (t.facts.type === "tool" ? t.facts.paths : [])));
+  const parts: string[] = [];
+  if (reads.length + searches.length > 0) parts.push(`Explored ${[reads.length > 0 ? plural(readFiles.size || reads.length, "file") : "", searches.length > 0 ? plural(searches.length, "search", "searches") : ""].filter(Boolean).join(", ")}`);
+  if (edits.length > 0) parts.push(editFiles.size === 1 ? `Edited ${baseName([...editFiles][0]!)}` : `Edited ${plural(editFiles.size || edits.length, "file")}`);
+  if (shells.length > 0) parts.push(shells.length === 1 ? `Ran ${stepText(shells[0]!)}` : `Ran ${plural(shells.length, "command")}`);
+  if (browsing.length > 0) parts.push(`Browsed ${plural(browsing.length, "page")}`);
+  const planning = others.filter((t) => t.facts.type === "tool" && t.facts.toolName.startsWith("plan."));
+  if (planning.length > 0) parts.push("Updated the plan");
+  if (others.length > planning.length) parts.push(`Used ${plural(others.length - planning.length, "tool")}`);
+  const icon: IconName = planning.length === tools.length ? "list-tree" : edits.length > 0 ? "square-pen" : shells.length > 0 ? "terminal" : browsing.length > 0 ? "globe" : reads.length + searches.length > 0 ? "search" : "ellipsis";
+  return { icon, words: parts.join(", ") };
+}
 const TOOL_STATUS_WORD: Record<string, string> = { PENDING: "Waiting to run", RUNNING: "Running", AWAITING_APPROVAL: "Waiting for approval", SUCCEEDED: "Done", FAILED: "Failed", DENIED: "Denied", CANCELLED: "Cancelled", UNKNOWN_OUTCOME: "Outcome unknown" };
 
 function ToolRow({ row, ctx }: { row: TranscriptRowView; ctx: RowContext }) {
@@ -176,22 +211,28 @@ function ToolRow({ row, ctx }: { row: TranscriptRowView; ctx: RowContext }) {
   // PX-074: a native-control call is a numbered action card, not a command line.
   if (f && f.toolName.startsWith("computer.") && ctx.computer) return <ComputerActionCard toolCallId={f.toolCallId} tool={f.toolName} state={status} failureCode={f.failureCode} atMs={row.atMs} highlight={ctx.highlightRowId === row.rowId} rowId={row.rowId} ctx={ctx.computer} />;
   return (
-    <div className="conv-row conv-tool" data-testid="conv-tool" data-row-id={row.rowId} data-kind="TOOL_CARD" data-tool-class={f?.toolClass} data-status={status} data-highlight={ctx.highlightRowId === row.rowId}>
-      <span className="conv-tool-class">{CLASS_WORD[f?.toolClass ?? "OTHER"] ?? "Tool"}</span>
-      <code className="conv-tool-text" title={row.text}>
-        {row.text}
-      </code>
-      <span className="conv-tool-status" data-bad={bad}>
-        {bad ? <StatusDot status={status === "FAILED" ? "danger" : "warn"} label={word} showLabel /> : status === "RUNNING" ? <StatusDot status="running" label={word} showLabel /> : <span className="meta">{word}</span>}
+    <div className="conv-row conv-tool" data-testid="conv-tool" data-row-id={row.rowId} data-kind="TOOL_CARD" data-tool-class={f?.toolClass} data-status={status} data-highlight={ctx.highlightRowId === row.rowId} title={row.hints.durationMs > 0 ? `${word}, ${formatDuration(row.hints.durationMs)}` : word}>
+      <Icon name={CLASS_ICON[f?.toolClass ?? "OTHER"] ?? "ellipsis"} size={14} />
+      <span className="conv-tool-class">{CLASS_VERB[f?.toolClass ?? "OTHER"] ?? "Used"}</span>
+      <span className="conv-tool-text" data-mono={f?.toolClass === "SHELL"} title={row.text}>
+        {stepText(row)}
       </span>
-      {row.hints.durationMs > 0 && <span className="meta">{formatDuration(row.hints.durationMs)}</span>}
-      {(row.hints.linesAdded > 0 || row.hints.linesRemoved > 0) && (
-        <span className="meta">
-          +{row.hints.linesAdded} −{row.hints.linesRemoved}
+      {row.hints.linesAdded > 0 && <span className="conv-add">+{row.hints.linesAdded}</span>}
+      {row.hints.linesRemoved > 0 && <span className="conv-del">−{row.hints.linesRemoved}</span>}
+      {bad ? (
+        <span className="conv-tool-status" data-bad="true">
+          <StatusDot status={status === "FAILED" ? "danger" : "warn"} label={word} showLabel />
         </span>
+      ) : status === "RUNNING" || status === "PENDING" ? (
+        <span className="conv-tool-status">
+          <StatusDot status="running" label={word} showLabel />
+        </span>
+      ) : (
+        <span className="mb-sr-only">{word}</span>
       )}
+      {row.hints.durationMs > 0 && <span className="mb-sr-only">{formatDuration(row.hints.durationMs)}</span>}
       {f && f.failureCode && <span className="conv-tool-failure">Failed: {f.failureCode.replace(/_/g, " ").toLowerCase()}</span>}
-      {f && f.paths.length > 0 && <span className="meta conv-tool-paths">{f.paths.join(", ")}</span>}
+      {f && f.paths.length > 1 && <span className="mb-sr-only">{f.paths.join(", ")}</span>}
     </div>
   );
 }
@@ -201,15 +242,20 @@ function GroupRow({ row, ctx }: { row: TranscriptRowView; ctx: RowContext }) {
   // A fold that would hide something the person must act on or a failure stays open.
   const forced = needsEyes(row);
   const open = forced || ctx.openGroups.has(row.rowId);
+  const summary = groupSummary(row.children);
   return (
     <details className="conv-row conv-group" data-testid="conv-group" data-row-id={row.rowId} data-kind="WORK_GROUP" data-open={open} data-forced={forced} open={open} onToggle={(e) => !forced && ctx.onToggleGroup(row.rowId, (e.currentTarget as HTMLDetailsElement).open)}>
-      <summary data-testid="conv-group-summary">
-        <span className="conv-group-label">{row.text || f?.label}</span>
+      <summary data-testid="conv-group-summary" title={row.text || f?.label}>
+        <Icon name={summary?.icon ?? "ellipsis"} size={14} />
+        <span className="conv-group-label" data-open-work={f?.open === true}>
+          {summary?.words || row.text || f?.label}
+        </span>
+        {f && f.linesAdded > 0 && <span className="conv-add">+{f.linesAdded}</span>}
+        {f && f.linesRemoved > 0 && <span className="conv-del">−{f.linesRemoved}</span>}
         {f && f.steps > 0 && (
-          <span className="meta">
+          <span className="mb-sr-only">
             {" "}
             · {f.steps} {f.steps === 1 ? "step" : "steps"}
-            {f.linesAdded + f.linesRemoved > 0 ? ` · +${f.linesAdded} −${f.linesRemoved}` : ""}
             {f.open ? " · in progress" : ""}
           </span>
         )}
@@ -266,6 +312,13 @@ function ApprovalRow({ row, ctx }: { row: TranscriptRowView; ctx: RowContext }) 
   const known = requested && isQuestion && card?.question && card.question.questionId === f?.approvalId ? card.question : null;
   // After a reload the options are not in the renderer; the Core still takes a free-text answer to its question and decides whether it is acceptable.
   const question = known ?? (requested && isQuestion && f ? { questionId: f.approvalId, text: row.text, options: [] as { id: string; label: string }[], allowFreeText: true } : null);
+  // A live approval is decided on the docked card above the composer, with its exact intent; the transcript only records it.
+  if (live && !confirming && !question)
+    return (
+      <p className="mb-sr-only" data-testid="conv-approval" data-row-id={row.rowId} data-kind="APPROVAL_CARD" data-state={row.hints.status}>
+        Approval requested: {f?.toolName || "a protected action"}
+      </p>
+    );
   return (
     <article className="conv-row conv-approval" data-testid="conv-approval" data-row-id={row.rowId} data-kind="APPROVAL_CARD" data-state={row.hints.status} data-highlight={ctx.highlightRowId === row.rowId} aria-label={isQuestion ? "Question from the agent" : "Approval request"}>
       <p>

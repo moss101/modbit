@@ -9,8 +9,11 @@
  * Nothing in this file holds authority: every effect is a typed preload call.
  */
 import { memo, useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
-import { Button, StatusDot, TrayHost } from "@modbit/ui";
-import { DENSITIES, type Density, type TranscriptRowView } from "../../shared/conversation-types.ts";
+import { createPortal } from "react-dom";
+import { Button, Icon, IconButton, StatusDot, TrayHost } from "@modbit/ui";
+import type { TranscriptRowView } from "../../shared/conversation-types.ts";
+import type { ScreenState as DerivedScreenState } from "../screens.ts";
+import { TaskDetails } from "./task-details.tsx";
 import type { TaskCard } from "../model.ts";
 import { INITIAL_FOLLOW, identityOf, messageIds, onDismiss, onJumpToBottom, onMessages, onScroll, pillText, stallLevel, withDivider, withLiveOnly, type Follow } from "./model.ts";
 import { RowView, type RowContext } from "./rows.tsx";
@@ -41,9 +44,18 @@ export interface ConversationProps {
   onOpenTask?: ((taskId: string) => void) | undefined;
   /** A task's name for the approvals of other agents shown above this composer. */
   titleOf?: ((taskId: string) => string) | undefined;
+  /** The top bar's slot for this conversation's state, branch and overflow. */
+  topSlot?: HTMLElement | null | undefined;
+  subtasks?: readonly TaskCard[] | undefined;
+  screenState?: DerivedScreenState | null | undefined;
+  /** The task works in a worktree of its own. */
+  worktree?: boolean | undefined;
+  /** The branch, once the Changes app has read it; unknown until then. */
+  branch?: string | undefined;
+  onReview?: (() => void) | undefined;
+  onBrowser?: (() => void) | undefined;
+  onCancelTask?: (() => void) | undefined;
 }
-
-const DENSITY_LABEL: Record<Density, string> = { COMPACT: "Compact", BALANCED: "Balanced", DETAILED: "Detailed" };
 
 const findRow = (rows: readonly TranscriptRowView[], id: string, path: string[] = []): string[] | null => {
   for (const r of rows) {
@@ -70,7 +82,7 @@ function collectTurnText(rows: readonly TranscriptRowView[], turnId: string, out
 }
 
 export function Conversation(props: ConversationProps) {
-  const { taskId, sessionId, connected, card, title, focusRowId, onResume, onNewTask, onOpenTerminal, onOpenTask, titleOf } = props;
+  const { taskId, sessionId, connected, card, title, focusRowId, onResume, onNewTask, onOpenTerminal, onOpenTask, titleOf, topSlot, subtasks, screenState, worktree, branch, onReview, onBrowser, onCancelTask } = props;
   const [prefs, setPrefs] = useState<ConversationPrefs>(loadConversationPrefs);
   useEffect(() => saveConversationPrefs(prefs), [prefs]);
   const conv = useConversation(taskId, sessionId, prefs.density, connected);
@@ -83,8 +95,18 @@ export function Conversation(props: ConversationProps) {
   // REQ-PX-057 / 062: the run-mode dialog (also opened from an approval card) and the checkpoint surface.
   const [modeOpen, setModeOpen] = useState(false);
   const ckpt = useCheckpointSurface({ taskId, sessionId, connected, card, onResume, onOpenTask });
+  const [detailsOpen, setDetailsOpen] = useState(false);
+  useEffect(() => {
+    if (!detailsOpen) return;
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") setDetailsOpen(false);
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [detailsOpen]);
 
-  const body = useMemo(() => withDivider(withLiveOnly(conv.rows, conv.live), conv.dividerOffset, (n) => `${n} new`), [conv.rows, conv.live, conv.dividerOffset]);
+  // The unread divider marks what was new when the conversation was opened; what arrives while it is open is not "unread".
+  const body = useMemo(() => withDivider(withLiveOnly(conv.dividerOffset === null ? conv.rows.filter((r) => r.kind !== "UNREAD_DIVIDER") : conv.rows, conv.live), conv.dividerOffset, (n) => `${n} new`), [conv.rows, conv.live, conv.dividerOffset]);
   const latestUser = useMemo(() => [...body].reverse().find((r) => r.kind === "USER_MESSAGE")?.rowId ?? null, [body]);
 
   // Follow the tail while pinned; scrolling up freezes it.
@@ -242,24 +264,27 @@ export function Conversation(props: ConversationProps) {
 
   return (
     <section className="conv" aria-label={`Conversation: ${title}`} data-testid="conversation" data-task-id={taskId} data-density={prefs.density} data-loaded={conv.loaded}>
-      <div className="conv-head">
-        <span className="conv-status" data-testid="conv-status">
-          {card ? `${card.state}${card.waitReason ? `, waiting on ${card.waitReason}` : ""}` : conv.taskState}
-        </span>
-        <span className="conv-spacer" />
-        {ckpt.head}
-        <RunModeControl sessionId={sessionId} taskId={taskId} connected={connected} open={modeOpen} onOpenChange={setModeOpen} />
-        <label className="conv-density">
-          <span className="meta">Density</span>
-          <select value={prefs.density} onChange={(e) => setPrefs((p) => ({ ...p, density: e.target.value as Density }))} data-testid="conv-density" aria-label="Conversation density">
-            {DENSITIES.map((d) => (
-              <option key={d} value={d}>
-                {DENSITY_LABEL[d]}
-              </option>
-            ))}
-          </select>
-        </label>
-      </div>
+      <span className="mb-sr-only" data-testid="conv-status">
+        {card ? `${card.state}${card.waitReason ? `, waiting on ${card.waitReason}` : ""}` : conv.taskState}
+      </span>
+      {topSlot &&
+        createPortal(
+          <>
+            <span className="topbar-pill" data-testid="top-bar-state">
+              {card?.state ?? conv.taskState}
+            </span>
+            <span className="topbar-spacer" />
+            {branch && (
+              <span className="topbar-branch" data-testid="top-bar-branch" title={branch}>
+                <Icon name="git-branch" size={14} />
+                <span>{branch}</span>
+              </span>
+            )}
+            <IconButton label="Task details" icon={<Icon name="ellipsis" />} pressed={detailsOpen} onClick={() => setDetailsOpen((o) => !o)} data-testid="task-details-toggle" />
+            {detailsOpen && <TaskDetails taskId={taskId} card={card} subtasks={subtasks ?? []} screenState={screenState ?? null} density={prefs.density} onDensity={(density) => setPrefs((p) => ({ ...p, density }))} undoAll={ckpt.head} onBrowser={() => onBrowser?.()} onCancel={() => onCancelTask?.()} onOpenTask={(id) => onOpenTask?.(id)} />}
+          </>,
+          topSlot,
+        )}
       <div className="conv-body">
         <div ref={scroller} className="conv-scroll" role="region" aria-label="Messages" tabIndex={0} onScroll={onScrollEvent} onKeyDown={onKeyDown} data-testid="conv-scroll" data-pinned={follow.pinned} data-row-count={body.length}>
           <div ref={inner} className="conv-inner">
@@ -312,7 +337,7 @@ export function Conversation(props: ConversationProps) {
       {ckpt.overlay}
       {/* The one tray host: docked directly above the composer, never beside or below it (AFW-H01). */}
       <TrayHost />
-      <Composer taskId={taskId} sessionId={sessionId} connected={connected} card={card} approvalPending={conv.approvals.length > 0} lastUserText={lastUserText} hasMessages={conv.rows.length > 0} onResume={onResume} onNewTask={onNewTask} onOpenTerminal={onOpenTerminal} />
+      <Composer taskId={taskId} sessionId={sessionId} connected={connected} card={card} approvalPending={conv.approvals.length > 0} lastUserText={lastUserText} hasMessages={conv.rows.length > 0} onResume={onResume} onNewTask={onNewTask} onOpenTerminal={onOpenTerminal} onReview={onReview} foot={<><span className="cmp-foot-item" data-testid="conv-location"><Icon name="laptop" size={14} /> This Mac{worktree ? " · worktree" : ""}</span><span className="cmp-spacer" /><RunModeControl sessionId={sessionId} taskId={taskId} connected={connected} open={modeOpen} onOpenChange={setModeOpen} /></>} />
     </section>
   );
 }

@@ -14,8 +14,9 @@
  * answers are shown as they come. A draft is a local convenience: it is never
  * sent without the person pressing send.
  */
-import { useCallback, useEffect, useId, useLayoutEffect, useMemo, useRef, useState } from "react";
-import { Button, IconButton, Menu, trays, useLayer, type MenuItem } from "@modbit/ui";
+import { useCallback, useEffect, useId, useLayoutEffect, useMemo, useRef, useState, type ReactNode } from "react";
+import { Button, Icon, IconButton, Menu, trays, useLayer, type IconName, type MenuItem } from "@modbit/ui";
+import { ContextRing } from "../context/ring.tsx";
 import type { AttachmentResult, TaskModeId } from "../../shared/composer-types.ts";
 import { MAX_ATTACHMENTS_PER_MESSAGE, MAX_ATTACHMENT_BYTES } from "../../shared/attachments.ts";
 import type { TaskCard } from "../model.ts";
@@ -44,7 +45,6 @@ import {
   reorderTarget,
   runningTerminals,
   saveStore,
-  suggestionsFor,
   triggerAt,
   walkHistory,
   withDraft,
@@ -59,7 +59,13 @@ import { MentionMenu, SlashMenuView, useMentionSources, useSlashItems, type Ment
 import { ModelPicker, type PickerChoice } from "./model-picker.tsx";
 import { EducationTray, PolicyTray, QueueTray, SendBehaviorPanel, SideQuestionPanel, StoppedTray, TerminalsChip, TerminalsTray } from "./trays.tsx";
 
+const MODE_ICON: Record<TaskModeId, IconName> = { AGENT: "infinity", PLAN: "list-tree", DEBUG: "bug", MULTITASK: "layers", ASK: "circle-question-mark" };
+
 export interface ComposerProps {
+  /** The line under the box: where the task runs and its run mode. */
+  foot?: ReactNode | undefined;
+  /** The task is ready for review: the box offers the review. */
+  onReview?: (() => void) | undefined;
   taskId: string;
   sessionId: string | null;
   connected: boolean;
@@ -633,9 +639,11 @@ export function Composer(props: ComposerProps) {
             {state === "Waiting" ? "Resume" : "Start"}
           </Button>
         )}
-        <Button size="sm" onClick={onNewTask} data-testid="conv-new-task">
-          New task
-        </Button>
+        {state === "ReadyForReview" && props.onReview && (
+          <Button size="sm" variant="primary" onClick={props.onReview} data-testid="task-review">
+            Review
+          </Button>
+        )}
         {core.stale && (
           <span className="meta" role="status" data-testid="composer-stale">
             The Core is not answering; what is shown may be out of date.
@@ -678,13 +686,6 @@ export function Composer(props: ComposerProps) {
           </div>
         )}
         <div className="cmp-row">
-          <Menu label="Add to the message" placement="up" triggerTestId="add-context" triggerClassName="cmp-plus" trigger={<span aria-hidden="true">+</span>} items={addItems} />
-          {shownMode !== "AGENT" && (
-            <span className="cmp-mode" data-testid="mode-chip" data-mode={shownMode}>
-              <Menu label={`Mode: ${MODE_DEFS[shownMode].label}. Choose another`} placement="up" triggerTestId="mode-chip-button" triggerClassName="cmp-chip cmp-mode-btn" trigger={<><span aria-hidden="true">{MODE_DEFS[shownMode].icon}</span> <span data-testid="mode-label">{MODE_DEFS[shownMode].label}</span>{status === "unconfirmed" && <span className="cmp-dim" data-testid="mode-unconfirmed"> unconfirmed</span>}</>} items={modeItems} />
-              <IconButton label={`Leave ${MODE_DEFS[shownMode].label} mode`} icon={<span>×</span>} size="sm" onClick={() => applyMode("AGENT")} data-testid="mode-clear" />
-            </span>
-          )}
           <div className="cmp-input">
             <textarea
               ref={area}
@@ -720,15 +721,24 @@ export function Composer(props: ComposerProps) {
             {mentionOpen && <MentionMenu id={listId} options={mentionSources.options} loading={mentionSources.loading} active={activeIdx} onActive={setActiveIdx} onChoose={chooseMention} />}
             {slashOpen && <SlashMenuView id={listId} items={slash.items} dividerAt={slash.dividerAt} active={activeIdx} onActive={setActiveIdx} onChoose={chooseSlash} loaded={slashInv !== null} />}
           </div>
+        </div>
+        <div className="cmp-bar">
+          <span className="cmp-mode" data-testid="mode-chip" data-mode={shownMode}>
+            <Menu label={`Mode: ${MODE_DEFS[shownMode].label}. Choose another`} placement="up" triggerTestId="mode-chip-button" triggerClassName="cmp-chip cmp-mode-btn" trigger={<><Icon name={MODE_ICON[shownMode]} size={14} /> <span data-testid="mode-label">{MODE_DEFS[shownMode].label}</span>{status === "unconfirmed" && <span className="cmp-dim" data-testid="mode-unconfirmed"> unconfirmed</span>}<Icon name="chevron-down" size={10} /></>} items={modeItems} />
+            {shownMode !== "AGENT" && <IconButton label={`Leave ${MODE_DEFS[shownMode].label} mode`} icon={<Icon name="x" size={12} />} size="sm" onClick={() => applyMode("AGENT")} data-testid="mode-clear" />}
+          </span>
           <ModelPicker posture={posture} catalog={catalogState.catalog} catalogError={catalogState.error} disabled={!sessionId} onOpen={() => setPickerWanted(true)} onChoose={choose} />
+          <Menu label="Add to the message" placement="up" triggerTestId="add-context" triggerClassName="cmp-plus" trigger={<Icon name="at-sign" size={14} />} items={addItems} />
+          <span className="cmp-spacer" />
+          {connected && <ContextRing key={taskId} taskId={taskId} connected={connected} />}
           {running && (
             <button type="button" className="cmp-stop" aria-label="Stop the turn" title="Stop: ends the turn at a safe point" onClick={() => void stop()} disabled={busy} data-testid="composer-stop">
               <span aria-hidden="true" />
             </button>
           )}
-          <Button variant="primary" className="cmp-send" disabled={!hasText || busy || !sessionId || !connected} onClick={() => void send(false)} data-testid="composer-send" aria-label={running ? "Queue the message" : "Send"} data-tint={shownMode === "ASK" && hasText ? "ask" : undefined}>
-            {running ? "Queue" : "Send"}
-          </Button>
+          <button type="button" className="cmp-send" disabled={!hasText || busy || !sessionId || !connected} onClick={() => void send(false)} data-testid="composer-send" aria-label={running ? "Queue the message" : "Send"} title={running ? "Queue" : "Send"} data-tint={shownMode === "ASK" ? "ask" : undefined}>
+            <Icon name="arrow-up" size={14} />
+          </button>
         </div>
         {error && (
           <p className="cmp-reason" role="alert" data-testid="composer-error">
@@ -741,14 +751,9 @@ export function Composer(props: ComposerProps) {
           </p>
         )}
       </div>
-      {!hasText && !running && (
-        <div className="cmp-suggest" data-testid="composer-suggestions">
-          {suggestionsFor(shownMode).map((s) => (
-            <button key={s.mode} type="button" className="cmp-chip" onClick={() => applyMode(s.mode)} data-testid={`suggest-${s.mode.toLowerCase()}`}>
-              {s.label}
-              <span className="meta"> Shift+Tab</span>
-            </button>
-          ))}
+      {props.foot && (
+        <div className="cmp-foot" data-testid="composer-foot">
+          {props.foot}
         </div>
       )}
       <input ref={fileInput} type="file" multiple hidden tabIndex={-1} aria-hidden="true" data-testid="attach-input" onChange={(e) => { const files = [...(e.target.files ?? [])]; e.target.value = ""; void attach(files); }} />

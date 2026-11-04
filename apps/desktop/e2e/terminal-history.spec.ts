@@ -17,6 +17,7 @@ import { mkdtempSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { ECHO_LOOP, expectTerminals, gate, nodeTerminal, readTerminal, steppedModel, type Step } from "./support/apps-harness.ts";
+import { expectTaskState, queueTask } from "./support/new-task.ts";
 import { accessible, closeApp, launch, makeRepo, MOD, setContentSize } from "./support/ui-harness.ts";
 
 test.describe.configure({ mode: "serial" });
@@ -66,14 +67,12 @@ test.beforeAll(async () => {
   const dataDir = mkdtempSync(join(tmpdir(), "modbit-e2e-term-history-"));
   ({ app, page } = await launch(dataDir, { env: { MODBIT_OPENAI_BASE_URL: m.url, MODBIT_EXECD_REPLAY_WINDOW_BYTES: "1048576", MODBIT_EXECD_SEGMENT_BYTES: "65536" } }));
   await setContentSize(app, page, 1280, 800);
-  await page.getByTestId("goal").fill("Run the builds");
-  await page.getByTestId("workspace").fill(repo);
-  await page.getByTestId("run").click();
-  const card = page.getByTestId("task-card").first();
-  taskId = (await card.getAttribute("data-task-id"))!;
+  taskId = await queueTask(page, "Run the builds", repo);
   sessionId = (await page.evaluate(() => window.modbit.localState()).then((s) => s.sessionId))!;
-  await card.getByTestId("task-start").click();
-  await expect(card.getByTestId("task-state")).toHaveText("Running", { timeout: 60_000 });
+  // Started from the conversation, so the Running state is awaited from the start itself: the scripted model's third step is never
+  // reached (the four terminals' results jump the step count), and the Core suspends the task for no progress about half a second in.
+  await page.getByTestId("conv-start").click();
+  await expectTaskState(page, taskId, "Running");
   await expectTerminals(page, taskId, 4);
   const all = await listTerminals();
   const by = (needle: string) => all.find((t) => t.title.includes(needle))!.terminalId;
@@ -81,7 +80,6 @@ test.beforeAll(async () => {
   handle.ended = by("MARK_ENDED");
   handle.running = by("MARK_RUNNING");
   handle.echo = by("READY");
-  await card.focus();
   await page.keyboard.press(`${MOD}+e`);
   await expect(page.getByTestId("region-apps")).toBeVisible();
   await page.getByTestId("tab-terminal").click();

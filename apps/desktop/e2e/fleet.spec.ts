@@ -1,7 +1,7 @@
 /**
  * Packaged-app E2E (docs/32 "Frontend completion gate"): Playwright drives the
- * real Electron app, which spawns the real modbit-core. Verifies the New Task
- * flow renders from durable Core ids, the Fleet reduces Core events, the
+ * real Electron app, which spawns the real modbit-core. Verifies the new task
+ * flow renders from durable Core ids, the agent list reduces Core events, the
  * degraded/recovery states appear when the Core is hard-killed, and state
  * survives a full app restart.
  */
@@ -10,6 +10,7 @@ import { mkdtempSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
+import { agentRow, gearMenu, openTaskDetails, queueTask, runTask } from "./support/new-task.ts";
 
 const appDir = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 const coreBin = process.env.MODBIT_CORE_BIN ?? resolve(appDir, "..", "..", "target", "debug", process.platform === "win32" ? "modbit-core.exe" : "modbit-core");
@@ -29,35 +30,37 @@ async function launch(dataDir: string): Promise<{ app: ElectronApplication; page
   return { app, page };
 }
 
-test("new task renders from Core ids, fleet reduces Core events, and survives Core kill and app restart", async () => {
+test("new task renders from Core ids, the list reduces Core events, and survives Core kill and app restart", async () => {
   const dataDir = mkdtempSync(join(tmpdir(), "modbit-e2e-"));
   const { app, page } = await launch(dataDir);
 
   // Empty state first.
-  await expect(page.getByTestId("fleet-empty")).toBeVisible();
+  await expect(page.getByTestId("agents-empty")).toBeVisible();
   // PX-030 / docs/76: the app states what this platform has earned — CI
   // compatibility, a development guarantee — and never presents it as support.
+  await gearMenu(page, "settings.open");
   const platform = page.getByTestId("platform-state");
   await expect(platform).toHaveAttribute("data-state", "CI_COMPATIBLE");
   await expect(platform).toContainText("CI_COMPATIBLE");
   await expect(platform).toContainText("not a support claim");
+  // PX-026: the honest language labels are visible in the desktop.
+  await expect(page.getByTestId("language-labels")).toContainText("Alpha baseline", { timeout: 15_000 });
+  await expect(page.getByTestId("language-labels")).toContainText("python");
+  await page.getByTestId("nav-back").click();
 
-  // New Task: CreateSession then CreateTask; the card appears with the durable id.
-  await page.getByTestId("goal").fill("Make the flaky test deterministic");
-  await page.getByTestId("run").click();
-  const card = page.getByTestId("task-card").first();
-  await expect(card).toBeVisible();
-  await expect(card).toContainText("Make the flaky test deterministic");
-  await expect(card.getByTestId("task-state")).toHaveText("Queued");
-  const taskId = await card.getAttribute("data-task-id");
+  // New Task: CreateSession then CreateTask; the row appears with the durable id. No provider is set up here, so the task stays Queued.
+  const taskId = await runTask(page, "Make the flaky test deterministic");
   expect(taskId).toMatch(/^[0-9a-f]{32}$/);
-  // Queued tasks sit in Waiting; nothing is invented as Running or Completed.
-  await expect(page.getByTestId("column-waiting").getByTestId("task-card")).toHaveCount(1);
-  await expect(page.getByTestId("column-running").getByTestId("task-card")).toHaveCount(0);
-  await expect(page.getByTestId("column-completed").getByTestId("task-card")).toHaveCount(0);
+  const row = agentRow(page, taskId);
+  await expect(row).toBeVisible();
+  await expect(row).toContainText("Make the flaky test deterministic");
+  await expect(row).toHaveAttribute("data-state", "Queued");
+  // Nothing is invented as Running or Completed.
+  await expect(page.locator('[data-testid="agent-row"][data-state="Running"]')).toHaveCount(0);
+  await expect(page.locator('[data-testid="agent-row"][data-state="Completed"]')).toHaveCount(0);
 
   // REQ-EV-0190: attach a real PNG through the desktop; the Core normalizes it to the
-  // canonical MediaEnvelope (same as a workspace read) and the card reflects the event.
+  // canonical MediaEnvelope (same as a workspace read) and the task's details reflect the event.
   const png = resolve(appDir, "..", "..", "tests", "fixtures", "media", "label.png");
   const attached = await page.evaluate(async ([tid, path]) => {
     const s = await window.modbit.localState();
@@ -66,19 +69,17 @@ test("new task renders from Core ids, fleet reduces Core events, and survives Co
   expect(attached.kind).toBe("IMAGE");
   expect(attached.mime).toBe("image/png");
   expect(attached.contentRef).toMatch(/^[0-9a-f]{64}$/);
-  await expect(card.getByTestId("task-attachments")).toHaveText("1");
+  await openTaskDetails(page);
+  await expect(page.getByTestId("task-attachments")).toHaveText("1");
   const attachedAgain = await page.evaluate(async ([tid, path]) => {
     const s = await window.modbit.localState();
     return window.modbit.attachFile(s.sessionId!, tid!, path!);
   }, [taskId, png]);
   expect(attachedAgain.replayed).toBe(true);
-  await expect(card.getByTestId("task-attachments")).toHaveText("1");
+  await expect(page.getByTestId("task-attachments")).toHaveText("1");
 
   // Degraded state: hard-kill the Core; the banner shows; main respawns; recovery banner shows;
   // the task is still there because the Core persisted it before answering.
-  // PX-026: the honest language labels are visible in the desktop.
-  await expect(page.getByTestId("language-labels")).toContainText("Alpha baseline", { timeout: 15_000 });
-  await expect(page.getByTestId("language-labels")).toContainText("python");
   const info = await page.evaluate(() => window.modbit.debugCoreInfo());
   expect(info?.pid).toBeGreaterThan(0);
   process.kill(info!.pid, "SIGKILL");
@@ -88,21 +89,20 @@ test("new task renders from Core ids, fleet reduces Core events, and survives Co
   // The recovery banner states what the Core actually recovered (docs/39): one session, one task, chain verified.
   await expect(page.getByTestId("banner-recovered")).toContainText("recovered 1 session(s) and 1 task(s)", { timeout: 15_000 });
   await expect(page.getByTestId("banner-recovered")).toContainText("nothing left to reconcile");
-  await expect(page.getByTestId("task-card")).toHaveCount(1);
-  await expect(page.getByTestId("task-card").first()).toHaveAttribute("data-task-id", taskId!);
+  await expect(page.getByTestId("agent-row")).toHaveCount(1);
+  await expect(page.getByTestId("agent-row").first()).toHaveAttribute("data-task-id", taskId);
 
   // A second task after recovery works against the respawned Core.
-  await page.getByTestId("goal").fill("Second task after recovery");
-  await page.getByTestId("run").click();
-  await expect(page.getByTestId("task-card")).toHaveCount(2);
+  await queueTask(page, "Second task after recovery");
+  await expect(page.getByTestId("agent-row")).toHaveCount(2);
   await app.close();
 
   // Full app restart: both tasks come back from the Core projection, not from the renderer.
   const again = await launch(dataDir);
-  await expect(again.page.getByTestId("task-card")).toHaveCount(2);
-  const ids = await again.page.getByTestId("task-card").evaluateAll((els) => els.map((e) => e.getAttribute("data-task-id")));
+  await expect(again.page.getByTestId("agent-row")).toHaveCount(2);
+  const ids = await again.page.getByTestId("agent-row").evaluateAll((els) => els.map((e) => e.getAttribute("data-task-id")));
   expect(ids).toContain(taskId);
-  await expect(again.page.getByTestId("column-waiting").getByTestId("task-card")).toHaveCount(2);
+  await expect(again.page.locator('[data-testid="agent-row"][data-state="Queued"]')).toHaveCount(2);
   await again.app.close();
 });
 

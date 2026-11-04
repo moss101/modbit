@@ -1,15 +1,15 @@
 /**
  * The agent-first shell (REQ-PX-045): three regions, a top bar, the apps-panel
- * host, a status row, the tray host, the command palette and the shortcut
- * registry, wired over the renderer's existing state (`useApp`). The Fleet,
- * Review, Browser and Dashboard screens live inside the conversation region
- * unchanged. The renderer holds no authority (docs/81): every Core effect is
- * still a typed preload call made by those screens.
+ * host, the tray host, the command palette and the shortcut registry, wired
+ * over the renderer's existing state (`useApp`). The centre shows the home
+ * composer, a conversation or one page at a time. The renderer holds no
+ * authority (docs/81): every Core effect is a typed preload call made by those
+ * screens.
  */
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { TrayHost, chordMatches, isMacPlatform, useEscapeLayers, useKeyDispatch, useKeyScope, type MenuItem } from "@modbit/ui";
 import type { KeyScope } from "@modbit/ui/logic";
-import { THEME_LABEL, THEME_PREFERENCES, type ThemePreference } from "@modbit/design-tokens";
+import { GEOMETRY, THEME_LABEL, THEME_PREFERENCES, type ThemePreference } from "@modbit/design-tokens";
 import type { AppState } from "../state/use-app.ts";
 import { AgentList } from "../agents/agent-list.tsx";
 import { ProjectDetail } from "../projects/project-detail.tsx";
@@ -18,8 +18,16 @@ import { WorktreesPanel } from "../worktrees/worktrees-panel.tsx";
 import { Customize } from "../customize/customize.tsx";
 import { useWorktrees } from "../worktrees/use-worktrees.ts";
 import { Conversation } from "../conversation/conversation.tsx";
-import { FleetView } from "../fleet/fleet-view.tsx";
-import { StatusRegion } from "../fleet/status-region.tsx";
+import { Browser } from "../browser/browser.tsx";
+import { Dashboard } from "../dashboard/dashboard.tsx";
+import { Home } from "../home/home.tsx";
+import { Review } from "../review/review.tsx";
+import { SettingsPage } from "../settings/settings-page.tsx";
+import { Inbox } from "../approvals/inbox.tsx";
+import { childrenOf } from "../model.ts";
+import { taskState } from "../screens.ts";
+import type { AgentHeaderView } from "../../shared/conversation-types.ts";
+import { StatusRegion } from "./status-region.tsx";
 import { AgentRegion } from "./agent-region.tsx";
 import { useTerminals } from "../apps/use-terminals.ts";
 import { recoverySummary } from "../../main/lifecycle.ts";
@@ -29,18 +37,15 @@ import { artifactsOf, panelTaskFor } from "./artifacts.ts";
 import { shellRegistry, type ShellActions } from "./commands.ts";
 import { CommandPalette, type PaletteItem } from "./palette.tsx";
 import { clampZoom, loadUiPrefs, saveUiPrefs, ZOOM_STEP, type AppKind, type PanelState, type UiPrefs } from "./prefs.ts";
+import { clampPanelRatio, PANEL_MAX_RATIO } from "./layout.ts";
 import { ShellFrame } from "./shell-frame.tsx";
 import { ShortcutHelp } from "./shortcut-help.tsx";
-import { StatusRow } from "./status-row.tsx";
-import { ContextRing } from "../context/ring.tsx";
 import { TrayDirector } from "../context/tray-director.tsx";
 import { TopBar } from "./top-bar.tsx";
 import { PermissionsDialog } from "../computer/permissions-dialog.tsx";
 import { PresenceBar, STOP_CHORD, useComputerStop } from "../computer/presence-bar.tsx";
 import { holdsMachine, permissionsNeeded } from "../computer/model.ts";
 import { useComputerPresence } from "../computer/use-computer.ts";
-
-const LOCATION = "Local, trusted workspace";
 
 /** A value that follows `value` at most once per `ms` (a task emits events in bursts; the apps read the Core once per beat). */
 function useThrottled<T>(value: T, ms: number): T {
@@ -60,7 +65,7 @@ function applyTheme(theme: ThemePreference): void {
 }
 
 export function Shell({ app }: { app: AppState }) {
-  const { core, platform, model, tasks, cols, reviewing, browsing, dashboardOpen, setDashboardOpen, setReviewing, setBrowsing, openBrowser, selectedTaskId, setSelectedTaskId, helpOpen, setHelpOpen, runFleetCommand, confirm, startTask } = app;
+  const { core, platform, model, tasks, cols, reviewing, browsing, dashboardOpen, setDashboardOpen, setReviewing, setBrowsing, openBrowser, selectedTaskId, setSelectedTaskId, helpOpen, setHelpOpen, runKeyCommand, confirm, startTask, setConfirm, attentionItems, navRequest, setWorkspaceRoot } = app;
   const [prefs, setPrefsState] = useState<UiPrefs>(loadUiPrefs);
   const setPrefs = useCallback((update: (p: UiPrefs) => UiPrefs) => setPrefsState(update), []);
   const [paletteOpen, setPaletteOpen] = useState(false);
@@ -70,8 +75,17 @@ export function Shell({ app }: { app: AppState }) {
   const [customizeOpen, setCustomizeOpen] = useState(false);
   // AUT-E03: a task an automation created lives in the run's own session; its session id is the Core's (ListAutomationRuns by task).
   const [runSessions, setRunSessions] = useState<Record<string, string>>({});
-  // PX-046/047: the conversation open in the centre region (null = the Fleet board). `rowId` is a search hit to scroll to.
+  const [inboxOpen, setInboxOpen] = useState(false);
+  const [settingsOpen, setSettingsOpen] = useState(false);
+  // PX-046/047: the conversation open in the centre region (null = the home composer). `rowId` is a search hit to scroll to.
   const [conversation, setConversation] = useState<{ taskId: string; rowId: string | null } | null>(null);
+  // The conversation Back left, for Forward.
+  const [leftConversation, setLeftConversation] = useState<string | null>(null);
+  const [headers, setHeaders] = useState<readonly AgentHeaderView[]>([]);
+  const [topSlot, setTopSlot] = useState<HTMLSpanElement | null>(null);
+  const [userName, setUserName] = useState("");
+  const [branchByTask, setBranchByTask] = useState<Record<string, string>>({});
+  const noteBranch = useCallback((taskId: string, branch: string) => setBranchByTask((m) => (m[taskId] === branch ? m : { ...m, [taskId]: branch })), []);
   // PX-064: a project's page and PX-068: the worktree list take the centre like a conversation does.
   const [projectPage, setProjectPage] = useState<string | null>(null);
   const [worktreesOpen, setWorktreesOpen] = useState(false);
@@ -91,6 +105,9 @@ export function Shell({ app }: { app: AppState }) {
   }, [worktreesOpen, worktrees.list]);
   useEscapeLayers();
   useKeyDispatch();
+  useEffect(() => {
+    void window.modbit.localState().then((l) => setUserName((l as { userName?: string }).userName ?? "")).catch(() => {});
+  }, []);
 
   // Stop is never behind a dialog: this listener sits beside the key dispatcher and answers the chord even while a modal blocks the shell's other keys.
   const controlsRef = useRef(presence.info?.controls ?? []);
@@ -161,32 +178,34 @@ export function Shell({ app }: { app: AppState }) {
     [setPrefs],
   );
 
-  const toFleet = useCallback(
+  /** Closes every page; what is left is the conversation, or the home composer without one. */
+  const closePages = useCallback(() => {
+    setReviewing(null);
+    setBrowsing(null);
+    setDashboardOpen(false);
+    setAutomationsOpen(false);
+    setInboxOpen(false);
+    setCustomizeOpen(false);
+    setSettingsOpen(false);
+    setProjectPage(null);
+    setWorktreesOpen(false);
+  }, [setReviewing, setBrowsing, setDashboardOpen]);
+  /** Shows the home composer and acts on it once it is on screen. */
+  const toHome = useCallback(
     (then: () => void) => {
-      const overlay = reviewing !== null || browsing !== null || conversation !== null || automationsOpen || customizeOpen || projectPage !== null || worktreesOpen;
-      setReviewing(null);
-      setBrowsing(null);
+      const elsewhere = reviewing !== null || browsing !== null || dashboardOpen || conversation !== null || automationsOpen || inboxOpen || customizeOpen || settingsOpen || projectPage !== null || worktreesOpen;
+      closePages();
+      if (conversation) setLeftConversation(conversation.taskId);
       setConversation(null);
-      setAutomationsOpen(false);
-      setCustomizeOpen(false);
-      setProjectPage(null);
-      setWorktreesOpen(false);
-      // The fleet is re-shown on the next render; act on it after that.
-      if (overlay) setTimeout(then, 0);
+      if (elsewhere) setTimeout(then, 0);
       else then();
     },
-    [reviewing, browsing, conversation, automationsOpen, customizeOpen, projectPage, worktreesOpen, setReviewing, setBrowsing],
+    [reviewing, browsing, dashboardOpen, conversation, automationsOpen, inboxOpen, customizeOpen, settingsOpen, projectPage, worktreesOpen, closePages],
   );
-  /** Opens a task's conversation (or, with null, the Fleet board). */
+  /** Opens a task's conversation (or, with null, the home composer). */
   const openConversation = useCallback(
     (taskId: string | null, rowId?: string) => {
-      setReviewing(null);
-      setBrowsing(null);
-      setDashboardOpen(false);
-      setAutomationsOpen(false);
-      setCustomizeOpen(false);
-      setProjectPage(null);
-      setWorktreesOpen(false);
+      closePages();
       if (taskId === null) {
         setConversation(null);
         return;
@@ -194,8 +213,20 @@ export function Shell({ app }: { app: AppState }) {
       setSelectedTaskId(taskId);
       setConversation({ taskId, rowId: rowId ?? null });
     },
-    [setReviewing, setBrowsing, setDashboardOpen, setSelectedTaskId],
+    [closePages, setSelectedTaskId],
   );
+  useEffect(() => {
+    if (!navRequest) return;
+    if (navRequest.kind === "task") openConversation(navRequest.taskId);
+    else if (navRequest.kind === "palette") setPaletteOpen(true);
+    else {
+      closePages();
+      setInboxOpen(true);
+      setTimeout(() => document.querySelector<HTMLElement>('[data-testid="attention-item"]')?.focus(), 0);
+    }
+    // Each request is acted on once.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [navRequest]);
   const openedTaskId = conversation?.taskId ?? null;
   useEffect(() => {
     if (!openedTaskId || model.tasks.has(openedTaskId) || runSessions[openedTaskId] !== undefined || core.state !== "connected") return;
@@ -214,33 +245,22 @@ export function Shell({ app }: { app: AppState }) {
   /** Opens a project's page in the centre region. */
   const openProject = useCallback(
     (projectId: string) => {
-      setReviewing(null);
-      setBrowsing(null);
-      setDashboardOpen(false);
+      closePages();
       setConversation(null);
-      setAutomationsOpen(false);
-      setCustomizeOpen(false);
-      setWorktreesOpen(false);
       setProjectPage(projectId);
     },
-    [setReviewing, setBrowsing, setDashboardOpen],
+    [closePages],
   );
   const openWorktrees = useCallback(() => {
-    setReviewing(null);
-    setBrowsing(null);
-    setDashboardOpen(false);
+    closePages();
     setConversation(null);
-    setAutomationsOpen(false);
-    setCustomizeOpen(false);
-    setProjectPage(null);
     setWorktreesOpen(true);
-  }, [setReviewing, setBrowsing, setDashboardOpen]);
-  const focusTestId = (id: string) => {
-    const el = document.querySelector<HTMLElement>(`[data-testid="${id}"]`);
-    el?.scrollIntoView({ block: "center" });
-    el?.focus();
-  };
-
+  }, [closePages]);
+  const openSettings = useCallback((then?: () => void) => {
+    closePages();
+    setSettingsOpen(true);
+    if (then) setTimeout(then, 0);
+  }, [closePages]);
   const appAvailability = (kind: AppKind): true | string => {
     if (!panelTaskId) return "No task has an artifact to show yet";
     if (!artifacts.includes(kind)) return { changes: "The task has no change set to show yet", terminal: "The task has no terminal", browser: "The task has no browser session to show yet", files: "The task has not started, so it has no workspace to browse", evidence: "The task has not started, so it has no evidence yet" }[kind];
@@ -248,14 +268,14 @@ export function Shell({ app }: { app: AppState }) {
   };
 
   const actions: ShellActions = {
-    focusNewTask: () => toFleet(() => void runFleetCommand("newTask")),
-    focusFilter: () => toFleet(() => void runFleetCommand("search")),
-    jumpAttention: () => toFleet(() => void runFleetCommand("jumpAttention")),
-    jumpRunning: () => toFleet(() => void runFleetCommand("jumpRunning")),
+    focusNewTask: () => toHome(() => void runKeyCommand("newTask")),
+    focusFilter: () => setPaletteOpen(true),
+    jumpAttention: () => void runKeyCommand("jumpAttention"),
+    jumpRunning: () => void runKeyCommand("jumpRunning"),
     openPalette: () => setPaletteOpen(true),
     toggleHelp: () => setHelpOpen((h) => !h),
-    openSettings: () => toFleet(() => focusTestId("settings")),
-    focusSettingsSection: (id) => toFleet(() => (document.querySelector<HTMLElement>(`[data-testid="${id}"] input`) ?? document.querySelector<HTMLElement>(`[data-testid="${id}"]`))?.focus()),
+    openSettings: () => openSettings(() => document.querySelector<HTMLElement>('[data-testid="settings"]')?.focus()),
+    focusSettingsSection: (id) => openSettings(() => (document.querySelector<HTMLElement>(`[data-testid="${id}"] input`) ?? document.querySelector<HTMLElement>(`[data-testid="${id}"]`))?.focus()),
     toggleAgentList: () => setPrefs((p) => ({ ...p, listCollapsed: !p.listCollapsed })),
     togglePanel: () => {
       if (panelTaskId) setPanelState(panelTaskId, { ...panelState, open: !panelState.open });
@@ -265,21 +285,27 @@ export function Shell({ app }: { app: AppState }) {
       if (ok === true && panelTaskId) setPanelState(panelTaskId, { open: kind === "terminal" ? !(panelState.open && panelState.tab === "terminal") : true, tab: kind });
       return ok;
     },
-    openDashboard: () => setDashboardOpen(true),
+    openDashboard: () => {
+      closePages();
+      setDashboardOpen(true);
+    },
     openAutomations: () => {
-      setProjectPage(null);
-      setWorktreesOpen(false);
-      setCustomizeOpen(false);
+      closePages();
       setAutomationsOpen(true);
     },
     goBack: () => {
-      // Back leaves the conversation (or an automations / project / worktrees page) for the Fleet board once nothing else is open over it.
-      if (customizeOpen) setCustomizeOpen(false);
+      // Back closes the page on top, then leaves the conversation for the home composer.
+      if (settingsOpen) setSettingsOpen(false);
+      else if (customizeOpen) setCustomizeOpen(false);
+      else if (inboxOpen) setInboxOpen(false);
       else if (automationsOpen) setAutomationsOpen(false);
-      else if (projectPage && !reviewing && !browsing && !dashboardOpen) setProjectPage(null);
-      else if (worktreesOpen && !reviewing && !browsing && !dashboardOpen) setWorktreesOpen(false);
-      else if (conversation && !reviewing && !browsing && !dashboardOpen) setConversation(null);
-      else void runFleetCommand("back");
+      else if (dashboardOpen) setDashboardOpen(false);
+      else if (projectPage && !reviewing && !browsing) setProjectPage(null);
+      else if (worktreesOpen && !reviewing && !browsing) setWorktreesOpen(false);
+      else if (conversation && !reviewing && !browsing) {
+        setLeftConversation(conversation.taskId);
+        setConversation(null);
+      } else void runKeyCommand("back");
     },
     setTheme: (theme) => setPrefs((p) => ({ ...p, theme })),
     zoom: (delta) => setPrefs((p) => ({ ...p, zoom: delta === 0 ? 1 : clampZoom(p.zoom + delta * ZOOM_STEP) })),
@@ -288,7 +314,7 @@ export function Shell({ app }: { app: AppState }) {
     stopComputer: () => void computerStop.stopAll(presence.info?.controls ?? []),
     computerStopAvailability: () => ((presence.info?.controls ?? []).some(holdsMachine) ? true : "Nothing is controlling this computer"),
     openComputerPermissions: () => setPermissionsOpen(true),
-    canGoBack: () => reviewing !== null || browsing !== null || dashboardOpen || conversation !== null || automationsOpen || customizeOpen || projectPage !== null || worktreesOpen,
+    canGoBack: () => reviewing !== null || browsing !== null || dashboardOpen || conversation !== null || automationsOpen || inboxOpen || customizeOpen || settingsOpen || projectPage !== null || worktreesOpen,
   };
   const actionsRef = useRef(actions);
   actionsRef.current = actions;
@@ -318,21 +344,19 @@ export function Shell({ app }: { app: AppState }) {
     [runCommand],
   );
   useKeyScope(true, globalScope);
-
-  const focusTask = useCallback(
-    (taskId: string) => {
-      setSelectedTaskId(taskId);
-      toFleet(() => {
-        const el = document.querySelector<HTMLElement>(`[data-testid="task-card"][data-task-id="${taskId}"]`);
-        el?.scrollIntoView({ block: "center" });
-        el?.focus();
-      });
-    },
-    [setSelectedTaskId, toFleet],
+  // A pending confirmation owns Enter and Escape: a docked approval card behind it must not take them as Run or Skip.
+  const confirmScope = useMemo<KeyScope>(
+    () => ({
+      id: "confirmation",
+      blocking: false,
+      resolve: (e) => (e.key === "Enter" ? () => void runKeyCommand("confirm") : e.key === "Escape" ? () => void runKeyCommand("back") : null),
+    }),
+    [runKeyCommand],
   );
+  useKeyScope(confirm !== null, confirmScope);
 
   const paletteItems = useMemo<PaletteItem[]>(() => {
-    const agentItems: PaletteItem[] = tasks.map((t) => ({ id: `agent:${t.taskId}`, kind: "agent", title: t.goalText || t.taskId, detail: t.state, keywords: [t.taskId, t.state], run: () => focusTask(t.taskId) }));
+    const agentItems: PaletteItem[] = tasks.map((t) => ({ id: `agent:${t.taskId}`, kind: "agent", title: t.goalText || t.taskId, detail: t.state, keywords: [t.taskId, t.state], run: () => openConversation(t.taskId) }));
     const commandItems: PaletteItem[] = shellRegistry
       .all()
       .filter((d) => d.palette !== false)
@@ -358,7 +382,7 @@ export function Shell({ app }: { app: AppState }) {
     return [...agentItems, ...surfaceItems, ...commandItems];
     // actionsRef is a ref: availability is re-read on each palette open via `paletteOpen`.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [tasks, prefs.theme, focusTask, runCommand, paletteOpen, panelTaskId, artifacts, browsing, reviewing, dashboardOpen, projects.projects, openProject, openWorktrees]);
+  }, [tasks, prefs.theme, openConversation, runCommand, paletteOpen, panelTaskId, artifacts, browsing, reviewing, dashboardOpen, projects.projects, openProject, openWorktrees]);
 
   const menuItems = useMemo<MenuItem[]>(() => {
     const fromRegistry = (id: string, extra: Partial<MenuItem> = {}): MenuItem => {
@@ -367,20 +391,24 @@ export function Shell({ app }: { app: AppState }) {
       return { id, label: d.title, shortcut: d.keys?.[0], disabled: why !== true, onSelect: () => runCommand(id), ...extra };
     };
     return [
+      fromRegistry("settings.open"),
+      { id: "open-dashboard", label: "Dashboard", disabled: !model.sessionId, onSelect: () => runCommand("view.dashboard") },
+      { id: "open-worktrees", label: "Worktrees", onSelect: () => openWorktrees() },
       fromRegistry("palette.open"),
       fromRegistry("help.shortcuts"),
-      fromRegistry("settings.open"),
       ...THEME_PREFERENCES.map((t, i) => fromRegistry(`theme.${t}`, { label: THEME_LABEL[t], checked: prefs.theme === t, radio: true, separatorBefore: i === 0 })),
       fromRegistry("zoom.in", { separatorBefore: true }),
       fromRegistry("zoom.out"),
       fromRegistry("zoom.reset"),
     ];
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [prefs.theme, runCommand, browsing]);
+  }, [prefs.theme, runCommand, browsing, model.sessionId, openWorktrees]);
 
   const overlayTitle = reviewing ? model.tasks.get(reviewing)?.goalText : browsing ? model.tasks.get(browsing.taskId)?.goalText : conversation ? model.tasks.get(conversation.taskId)?.goalText : undefined;
   const openedProject = projectPage ? projects.projects.find((p) => p.projectId === projectPage) : undefined;
-  const title = customizeOpen ? "Customize" : automationsOpen ? "Automations" : dashboardOpen ? "Dashboard" : reviewing || browsing ? (overlayTitle ?? "Fleet") : projectPage ? (openedProject?.name ?? "Project") : worktreesOpen ? "Worktrees" : (overlayTitle ?? "Fleet");
+  const title = settingsOpen ? "Settings" : customizeOpen ? "Customize" : inboxOpen ? "Approvals" : automationsOpen ? "Automations" : dashboardOpen ? "Dashboard" : reviewing || browsing ? (overlayTitle ?? "Task") : projectPage ? (openedProject?.name ?? "Project") : worktreesOpen ? "Worktrees" : (overlayTitle ?? "New task");
+  const repositories = useMemo(() => [...new Set(headers.filter((h) => !h.archived).map((h) => h.checkoutRoot || h.workspaceRoot).filter((r) => r !== ""))].slice(0, 5), [headers]);
+  const openedHeader = conversation ? headers.find((h) => h.taskId === conversation.taskId) : undefined;
   const panelRefreshKey = useThrottled(`${panelTask?.state ?? ""}:${panelTask?.lastOffset ?? ""}`, 1200);
   const panelUnavailable = panelTaskId === null ? "no task has an artifact yet" : null;
   // REQ-PX-049: what the Core recovered at start, as counts of its own task states, shown once its snapshot and attention list are in.
@@ -423,6 +451,10 @@ export function Shell({ app }: { app: AppState }) {
               onOpenReview={() => setReviewing(panelTaskId)}
               onOpenCall={(callId) => openConversation(panelTaskId, `tool:${callId}`)}
               onOpenBrowser={() => void openBrowser(panelTaskId)}
+              onBranch={noteBranch}
+              onClose={() => actions.togglePanel()}
+              maximized={prefs.panelRatio >= PANEL_MAX_RATIO}
+              onToggleMaximize={() => setPrefs((p) => ({ ...p, panelRatio: clampPanelRatio(p.panelRatio >= PANEL_MAX_RATIO ? GEOMETRY.panelRatioDefault : PANEL_MAX_RATIO) }))}
             />
           ) : null
         }
@@ -434,21 +466,40 @@ export function Shell({ app }: { app: AppState }) {
             attentionCount={cols.needsAttention.length}
             onNewTask={() => actions.focusNewTask()}
             onExpand={() => actions.toggleAgentList()}
-            fleetActive={conversation === null && projectPage === null && !worktreesOpen}
-            onShowFleet={() => toFleet(() => {})}
-            worktreesActive={worktreesOpen}
-            onShowWorktrees={openWorktrees}
+            onToggleAgentList={() => actions.toggleAgentList()}
+            canGoBack={actions.canGoBack()}
+            onBack={() => actions.goBack()}
+            canGoForward={leftConversation !== null && conversation === null}
+            onForward={() => {
+              if (leftConversation) openConversation(leftConversation);
+            }}
             onSearch={() => setPaletteOpen(true)}
-            dashboardOpen={dashboardOpen}
-            dashboardDisabled={!model.sessionId}
-            onToggleDashboard={() => setDashboardOpen((o) => !o)}
             automationsOpen={automationsOpen}
             automationsDisabled={core.state !== "connected"}
-            onToggleAutomations={() => setAutomationsOpen((o) => !o)}
+            onToggleAutomations={() => (automationsOpen ? setAutomationsOpen(false) : actions.openAutomations())}
+            inboxOpen={inboxOpen}
+            onToggleInbox={() => {
+              const open = !inboxOpen;
+              closePages();
+              setInboxOpen(open);
+            }}
             customizeOpen={customizeOpen}
             customizeDisabled={core.state !== "connected"}
-            onToggleCustomize={() => setCustomizeOpen((o) => !o)}
-            list={rail ? undefined : <AgentList sessionId={model.sessionId} connected={core.state === "connected"} selectedTaskId={conversation?.taskId ?? null} onSelect={openConversation} projects={projects} selectedProjectId={projectPage} onOpenProject={openProject} onProjectArchived={(id, archived) => { if (archived && projectPage === id) setProjectPage(null); }} />}
+            onToggleCustomize={() => {
+              const open = !customizeOpen;
+              closePages();
+              setCustomizeOpen(open);
+            }}
+            repositories={repositories}
+            onOpenRepository={(root) => {
+              setWorkspaceRoot(root);
+              actions.focusNewTask();
+            }}
+            userName={userName}
+            coreLabel={coreLabel}
+            coreStatus={coreStatus}
+            menuItems={menuItems}
+            list={rail ? undefined : <AgentList sessionId={model.sessionId} connected={core.state === "connected"} selectedTaskId={conversation?.taskId ?? null} onSelect={openConversation} onHeaderList={setHeaders} projects={projects} selectedProjectId={projectPage} onOpenProject={openProject} onProjectArchived={(id, archived) => { if (archived && projectPage === id) setProjectPage(null); }} />}
           />
         )}
         banner={
@@ -462,70 +513,84 @@ export function Shell({ app }: { app: AppState }) {
           />
         }
         topBar={
-          <TopBar
-            title={title}
-            location={LOCATION}
-            agentListCollapsed={prefs.listCollapsed}
-            onToggleAgentList={() => actions.toggleAgentList()}
-            canGoBack={actions.canGoBack()}
-            onBack={() => actions.goBack()}
-            menuItems={menuItems}
-            panelOpen={panelOpen}
-            panelUnavailable={panelUnavailable}
-            onTogglePanel={() => actions.togglePanel()}
-          />
+          <TopBar title={title} slotRef={setTopSlot} panelOpen={panelOpen} panelUnavailable={panelUnavailable} onTogglePanel={() => actions.togglePanel()} />
         }
         tray={conversation && !reviewing && !browsing && !dashboardOpen ? null : <TrayHost />}
         statusRow={
-          <StatusRow
-            coreLabel={coreLabel}
-            coreStatus={coreStatus}
-            platform={platform}
-            location={LOCATION}
-            extra={
-              <>
-                {conversation && <ContextRing key={conversation.taskId} taskId={conversation.taskId} connected={core.state === "connected"} />}
-                {recoveryNote && (
-                  <span className="meta" data-testid="recovery-summary">
-                    Recovered at start: {recoveryNote.text}
-                  </span>
-                )}
-                <span className="meta" role="status" aria-live="polite" data-testid="shell-notice">
-                  {notice}
-                </span>
-              </>
-            }
-          />
+          <section aria-label="App notices">
+            {recoveryNote && (
+              <p className="shell-toast meta" data-testid="recovery-summary">
+                Recovered at start: {recoveryNote.text}
+              </p>
+            )}
+            <p className={notice ? "shell-toast meta" : "mb-sr-only"} role="status" aria-live="polite" data-testid="shell-notice">
+              {notice}
+            </p>
+          </section>
         }
       >
-        {customizeOpen ? (
-          <div className="conv-wrap" data-testid="customize-region">
+        <div className="conv-wrap">
+          <div className="conv-banners" data-testid="conv-banners" role="region" aria-label="Task status" tabIndex={-1}>
             <StatusRegion app={app} />
-            <div className="autos-scroll">
+          </div>
+          {settingsOpen ? (
+            <SettingsPage app={app} />
+          ) : customizeOpen ? (
+            <div className="autos-scroll" data-testid="customize-region">
               <Customize connected={core.state === "connected"} sessionId={model.sessionId} taskId={conversation?.taskId ?? selectedTaskId ?? [...model.tasks.keys()][0] ?? null} onClose={() => setCustomizeOpen(false)} />
             </div>
-          </div>
-        ) : automationsOpen ? (
-          <div className="conv-wrap" data-testid="automations-region">
-            <StatusRegion app={app} />
-            <div className="autos-scroll">
+          ) : inboxOpen ? (
+            <Inbox app={app} onOpenTask={(id) => openConversation(id)} />
+          ) : automationsOpen ? (
+            <div className="autos-scroll" data-testid="automations-region">
               <Automations connected={core.state === "connected"} onOpenTask={(id) => openConversation(id)} onClose={() => setAutomationsOpen(false)} />
             </div>
-          </div>
-        ) : projectPage && !reviewing && !browsing && !dashboardOpen ? (
-          <ProjectDetail project={openedProject ?? null} loaded={projects.loaded} sessionId={model.sessionId} projects={projects} onOpenTask={(id) => openConversation(id)} announce={setNotice} />
-        ) : worktreesOpen && !reviewing && !browsing && !dashboardOpen ? (
-          <WorktreesPanel state={worktrees} sessionId={model.sessionId} titleOf={(id) => model.tasks.get(id)?.goalText ?? "another task"} taskStateOf={(id) => model.tasks.get(id)?.state} nowMs={nowMs} onOpenTask={(id) => openConversation(id)} announce={setNotice} />
-        ) : conversation && !reviewing && !browsing && !dashboardOpen ? (
-          <div className="conv-wrap">
-            <div className="conv-banners" data-testid="conv-banners" role="region" aria-label="Task status" tabIndex={0}>
-              <StatusRegion app={app} />
+          ) : dashboardOpen && model.sessionId ? (
+            <div className="autos-scroll">
+              <Dashboard sessionId={model.sessionId} onClose={() => setDashboardOpen(false)} />
             </div>
-            <Conversation key={conversation.taskId} taskId={conversation.taskId} sessionId={model.tasks.has(conversation.taskId) ? model.sessionId : (runSessions[conversation.taskId] ?? model.sessionId)} connected={core.state === "connected"} card={model.tasks.get(conversation.taskId)} title={model.tasks.get(conversation.taskId)?.goalText ?? "Task"} focusRowId={conversation.rowId} onResume={(id) => void startTask(id)} onNewTask={() => actions.focusNewTask()} onOpenTerminal={(tid, termId) => { setTerminalPick((m) => ({ ...m, [tid]: termId })); setPanelState(tid, { open: true, tab: "terminal" }); }} onOpenTask={(id) => openConversation(id)} titleOf={(id) => model.tasks.get(id)?.goalText ?? "another task"} />
-          </div>
-        ) : (
-          <FleetView app={app} />
-        )}
+          ) : reviewing && model.sessionId ? (
+            <div className="autos-scroll">
+              <Review taskId={reviewing} sessionId={model.sessionId} card={model.tasks.get(reviewing) ?? null} onClose={() => void runKeyCommand("back")} />
+            </div>
+          ) : browsing ? (
+            <div className="autos-scroll">
+              <Browser browsing={browsing} card={model.tasks.get(browsing.taskId) ?? null} sessionId={model.sessionId} onReopen={() => void openBrowser(browsing.taskId)} onClose={() => void runKeyCommand("back")} />
+            </div>
+          ) : projectPage ? (
+            <ProjectDetail project={openedProject ?? null} loaded={projects.loaded} sessionId={model.sessionId} projects={projects} onOpenTask={(id) => openConversation(id)} announce={setNotice} />
+          ) : worktreesOpen ? (
+            <WorktreesPanel state={worktrees} sessionId={model.sessionId} titleOf={(id) => model.tasks.get(id)?.goalText ?? "another task"} taskStateOf={(id) => model.tasks.get(id)?.state} nowMs={nowMs} onOpenTask={(id) => openConversation(id)} announce={setNotice} />
+          ) : conversation ? (
+            <Conversation
+              key={conversation.taskId}
+              taskId={conversation.taskId}
+              sessionId={model.tasks.has(conversation.taskId) ? model.sessionId : (runSessions[conversation.taskId] ?? model.sessionId)}
+              connected={core.state === "connected"}
+              card={model.tasks.get(conversation.taskId)}
+              title={model.tasks.get(conversation.taskId)?.goalText ?? "Task"}
+              focusRowId={conversation.rowId}
+              onResume={(id) => void startTask(id)}
+              onNewTask={() => actions.focusNewTask()}
+              onOpenTerminal={(tid, termId) => { setTerminalPick((m) => ({ ...m, [tid]: termId })); setPanelState(tid, { open: true, tab: "terminal" }); }}
+              onOpenTask={(id) => openConversation(id)}
+              titleOf={(id) => model.tasks.get(id)?.goalText ?? "another task"}
+              topSlot={topSlot}
+              subtasks={childrenOf(model, conversation.taskId)}
+              screenState={model.tasks.has(conversation.taskId) ? taskState({ card: model.tasks.get(conversation.taskId)!, core, attention: attentionItems }) : null}
+              worktree={Boolean(openedHeader?.checkoutRoot)}
+              branch={branchByTask[conversation.taskId]}
+              onReview={() => setReviewing(conversation.taskId)}
+              onBrowser={() => void openBrowser(conversation.taskId)}
+              onCancelTask={() => {
+                const t = model.tasks.get(conversation.taskId);
+                if (t) setConfirm({ kind: "cancel", taskId: t.taskId, text: `Cancel “${t.goalText}”? The run stops at its next safe boundary; the task cannot be resumed.` });
+              }}
+            />
+          ) : (
+            <Home app={app} />
+          )}
+        </div>
       </ShellFrame>
       <TrayDirector core={{ state: core.state, reason: core.state === "restarting" || core.state === "failed" ? core.reason : "" }} sessionId={model.sessionId} taskId={conversation?.taskId ?? null} card={conversation ? model.tasks.get(conversation.taskId) : undefined} onResume={(id) => void startTask(id)} />
       <PermissionsDialog open={permissionsOpen} onClose={() => setPermissionsOpen(false)} info={presence.info} refresh={presence.refresh} />

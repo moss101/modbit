@@ -17,6 +17,7 @@ import { createServer, type Server } from "node:http";
 import { tmpdir } from "node:os";
 import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
+import { agentRow, expectTaskState, openTask, runTask } from "./support/new-task.ts";
 import { closeApp } from "./support/close-app.ts";
 
 const appDir = resolve(dirname(fileURLToPath(import.meta.url)), "..");
@@ -155,13 +156,9 @@ test("review shows the forge's CI runs as external evidence and the pull request
   const env = { MODBIT_OPENAI_BASE_URL: url, MODBIT_GITHUB_API_BASE_URL: gh.url, MODBIT_GITHUB_TOKEN: TOKEN, MODBIT_GITHUB_WEB_HOST: "github.test" };
   try {
     const { app, page } = await launch(dataDir, env);
-    await page.getByTestId("workspace").fill(repo);
-    await page.getByTestId("goal").fill("annotate line 2");
-    await page.getByTestId("run").click();
-    const card = page.getByTestId("task-card").first();
-    await expect(card).toContainText("annotate line 2", { timeout: 30_000 });
-    await card.getByTestId("task-start").click();
-    await expect(page.getByTestId("column-readyForReview").getByTestId("task-card")).toHaveCount(1, { timeout: 90_000 });
+    const taskId = await runTask(page, "annotate line 2", repo);
+    await expect(agentRow(page, taskId)).toContainText("annotate line 2", { timeout: 30_000 });
+    await expectTaskState(page, taskId, "ReadyForReview", 90_000);
     await expect(page.getByTestId("review")).toBeVisible({ timeout: 15_000 });
     // Before any pull request: nothing from the forge, said so.
     await expect(page.getByTestId("review-ci-empty")).toBeVisible();
@@ -211,7 +208,8 @@ test("review shows the forge's CI runs as external evidence and the pull request
     // Restart the whole app mid-review: both are re-read from the Core.
     await closeApp(app);
     const again = await launch(dataDir, env);
-    await expect(again.page.getByTestId("column-readyForReview").getByTestId("task-card")).toHaveCount(1, { timeout: 30_000 });
+    await expectTaskState(again.page, taskId, "ReadyForReview", 30_000);
+    await openTask(again.page, taskId);
     await again.page.getByTestId("task-review").click();
     await expect(again.page.getByTestId("review-ci-run")).toHaveCount(1);
     await expect(again.page.getByTestId("review-comment")).toHaveCount(2);
@@ -221,9 +219,9 @@ test("review shows the forge's CI runs as external evidence and the pull request
     await again.page.getByTestId("review-return").click();
     await expect(again.page.getByTestId("review-result")).toContainText("Returned to work", { timeout: 30_000 });
     await again.page.getByTestId("review-close").click();
-    const card2 = again.page.getByTestId("task-card").first();
-    await card2.getByTestId("task-start").click();
-    await expect(again.page.getByTestId("column-readyForReview").getByTestId("task-card")).toHaveCount(1, { timeout: 90_000 });
+    await openTask(again.page, taskId);
+    await again.page.getByTestId("conv-start").click();
+    await expectTaskState(again.page, taskId, "ReadyForReview", 90_000);
     await expect(again.page.getByTestId("review")).toBeVisible({ timeout: 15_000 });
     await expect(again.page.getByTestId("review-comment").filter({ hasText: "@reviewer" })).toHaveAttribute("data-answered", "true", { timeout: 15_000 });
     expect(readFileSync(join(repo, "notes.txt"), "utf8")).toBe("line 1\nline 2 annotated\nline 3 annotated\n");

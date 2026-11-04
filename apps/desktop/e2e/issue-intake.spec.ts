@@ -13,6 +13,7 @@ import { createServer, type Server } from "node:http";
 import { tmpdir } from "node:os";
 import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
+import { agentRow, expectTaskState, toNewTask } from "./support/new-task.ts";
 import { closeApp } from "./support/close-app.ts";
 
 const appDir = resolve(dirname(fileURLToPath(import.meta.url)), "..");
@@ -112,17 +113,21 @@ test("issue intake: New Task from an issue URL and `modbit-cli task from-issue` 
   try {
     const { app, page } = await launch(dataDir, env);
     // Desktop: an unreadable issue is a clear error and no task.
+    await toNewTask(page);
     await page.getByTestId("workspace").fill(repo);
     await page.getByTestId("issue-url").fill("https://github.test/o/r/issues/404");
     await page.getByTestId("run").click();
     await expect(page.getByTestId("banner-error")).toContainText("FORGE_ISSUE_UNREADABLE", { timeout: 30_000 });
-    await expect(page.getByTestId("task-card")).toHaveCount(0);
-    // Desktop: a readable issue becomes a task named after it.
+    await expect(page.getByTestId("agent-row")).toHaveCount(0);
+    // Desktop: a readable issue becomes a task named after it (Alt+Enter creates it without starting it).
     await page.getByTestId("issue-url").fill("https://github.test/o/r/issues/7");
-    await page.getByTestId("run").click();
-    const card = page.getByTestId("task-card").first();
-    await expect(card).toContainText("Totals are wrong for negative quantities (#7)", { timeout: 30_000 });
-    await expect(card.getByTestId("task-state")).toHaveText("Queued");
+    await page.getByTestId("goal").press("Alt+Enter");
+    const conv = page.getByTestId("conversation");
+    await expect(conv).toHaveAttribute("data-task-id", /.+/, { timeout: 30_000 });
+    const taskId = (await conv.getAttribute("data-task-id"))!;
+    const row = agentRow(page, taskId);
+    await expect(row).toContainText("Totals are wrong for negative quantities (#7)", { timeout: 30_000 });
+    await expectTaskState(page, taskId, "Queued");
     // CLI, on the same Core: the same intake, the same refusal.
     const ids = await page.evaluate(async () => {
       const s = await window.modbit.localState();
@@ -136,10 +141,10 @@ test("issue intake: New Task from an issue URL and `modbit-cli task from-issue` 
     const bad = await cli(["--data-dir", dataDir, "task", "from-issue", "--session", ids.sessionId, "--workspace", repo, "https://github.test/o/r/issues/404"], cliEnv);
     expect(bad.status).not.toBe(0);
     expect(bad.stderr + bad.stdout).toContain("FORGE_ISSUE_UNREADABLE");
-    await expect(page.getByTestId("task-card")).toHaveCount(2, { timeout: 30_000 });
+    await expect(page.getByTestId("agent-row")).toHaveCount(2, { timeout: 30_000 });
     // The ordinary loop runs the desktop's task to review with the issue as data.
-    await card.getByTestId("task-start").click();
-    await expect(page.getByTestId("column-readyForReview").getByTestId("task-card")).toHaveCount(1, { timeout: 90_000 });
+    await page.getByTestId("conv-start").click();
+    await expectTaskState(page, taskId, "ReadyForReview", 90_000);
     // Every forge call carried the Core's token; none went anywhere else.
     expect(gh.requests.length).toBeGreaterThanOrEqual(4);
     expect(gh.requests.every((r) => r.authorized)).toBe(true);
