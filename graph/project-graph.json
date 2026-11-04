@@ -40033,8 +40033,9 @@
    ],
    "task_card": "docs/62_PRODUCT_EXTENSION_REQUIREMENTS_TASKS_AND_QUALIFICATIONS.md#px-195",
    "audit_at_adoption": "DOCUMENTED-ONLY; no product caller present",
-   "status": "NOT_STARTED",
-   "evidence": []
+   "status": "REAL_TESTING",
+   "evidence": [],
+   "status_changed_on": "2026-11-04T09:09:31Z"
   },
   {
    "id": "PX-196",
@@ -44718,8 +44719,13 @@
    "subsystem": "governance",
    "source": "docs/97_DOSSIER_MAINTENANCE_LOG.md",
    "acceptance": "Decision Record, its rows, specification, supersession entries and change record added; implementation audit recorded; full integrity gate passes; the record is accepted by the owner and its status and approval are recorded; no product proof",
-   "status": "NOT_STARTED",
-   "evidence": []
+   "status": "COMPLETE",
+   "evidence": [
+    "artifact:evidence/dossier-px-019/tests.log",
+    "commit:d35b956c6f6fb5b5aa48fc062e620d0667d2033a",
+    "artifact:evidence/dossier-px-019/validation.json"
+   ],
+   "status_changed_on": "2026-11-04T09:09:30Z"
   },
   {
    "id": "DR-GOV-2026-10-30-008",
@@ -83410,5 +83416,6 @@
    "to": "EPR-GATE-G",
    "type": "requires_gate"
   }
- ]
+ ],
+ "updated_on": "2026-11-04T09:09:31Z"
 }
