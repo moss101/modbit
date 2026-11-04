@@ -370,9 +370,9 @@ A dossier package is valid only if every path below exists with the listed SHA-2
 | `evidence/m10/PX-045/TASK_CARD.md` | retained evidence | 2091 | `2b67d21ff7e968b175197d1b83baa80341294e4d0dd4e94e51d0442f614ef7d0` |
 | `evidence/m10/PX-045/ci-run-40018683027.json` | retained evidence | 46978 | `4c8f2b65e0e6636167fab16c719c969ad08b38234e126f8d31b52d77d3e8c10e` |
 | `evidence/m10/PX-045/evidence.json` | retained evidence | 2016 | `3a560df28f9b64ca68eb3bbbe39999bf70253105e64eda9f1ce0e9482840a6dc` |
-| `evidence/m10/PX-048/TASK_CARD.md` | retained evidence | 4995 | `d24d5eb6faf0a694fade2acfe1d2dad1e6901a6b91d3f8176b3e3f5ba3b81037` |
+| `evidence/m10/PX-048/TASK_CARD.md` | retained evidence | 5610 | `d048760106c18714e820c65d94c1d15613fa359be1216120d3529c56b48108eb` |
 | `evidence/m10/PX-048/read-leaves-index/mutations.log` | retained evidence | 2510 | `6736d5f6f697646065beec5a33fc0f9f252feb9e8321ffa4f0dbbe907f77a551` |
-| `evidence/m10/PX-048/read-leaves-index/tests.log` | retained evidence | 8142 | `b53dca7597539f102d6232f9bcb42c724312d2b8a3da4a1194f018d4358b834d` |
+| `evidence/m10/PX-048/read-leaves-index/tests.log` | retained evidence | 9245 | `7194390f084f1ceb65083e85676f7b357ac7b6ee6104417598632bc42a799b62` |
 | `evidence/m10/PX-049/TASK_CARD.md` | retained evidence | 2291 | `e98ec599dff77dcb6058f16967e9798e33d3af05b5bf1179c60037fba07622c0` |
 | `evidence/m10/PX-049/ci-run-40076778858.json` | retained evidence | 46978 | `16c350396d23347c7da97b19d930be458ae150460cd60df6435469573b252e5e` |
 | `evidence/m10/PX-049/evidence.json` | retained evidence | 2080 | `f19a33d095f3910654493009f9570912653ff05218562b1c372c036ca67a3003` |

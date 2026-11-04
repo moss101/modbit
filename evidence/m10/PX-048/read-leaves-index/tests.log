@@ -78,3 +78,13 @@ binaries 52 passed 715 failed 0
 ✓  14 e2e/changes-app.spec.ts:260:1 › the Core killed in the middle of a push: the effect is shown as in doubt after the restart, and the retry conver
 ✓  15 e2e/review.spec.ts:66:1 › review surface: per-hunk decision commits exactly the user's choice and survives an app restart (4.9s)
   15 passed (52.1s)
+
+## CI run 41916300081 at 8a74fbc0: e2e/checkpoints.spec.ts:45 failed on macOS, Linux and Windows; every other desktop test passed (Linux and macOS 185 passed, 2 skipped; Windows 181 passed, 6 skipped)
+Expected the Undo all sentence to say 4 files put back to the last commit; the Core's preview now says 1 put back and 3 deleted. Assertion corrected to the exact sentence.
+
+## Playwright after the correction: e2e/checkpoints, real Electron on the real Core of this change
+✓  1 e2e/checkpoints.spec.ts:45:1 › PX-062: Restore puts the bytes of a turn's checkpoint back (Cancel changes nothing), Redo restores the exact state
+✓  2 e2e/checkpoints.spec.ts:121:1 › PX-062: a file the person edited needs their own choice and is kept; a renderer killed with the dialog open leave
+✓  3 e2e/checkpoints.spec.ts:178:1 › PX-062: Fork from a turn opens the child task with that turn's files and leaves the parent alone (4.1s)
+✓  4 e2e/checkpoints.spec.ts:226:1 › PX-062: Restore checkpoint on a message makes it editable in place; editing an older message asks Revert or Keep;
+  4 passed (22.9s)

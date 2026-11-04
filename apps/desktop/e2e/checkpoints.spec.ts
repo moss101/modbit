@@ -99,7 +99,8 @@ test("PX-062: Restore puts the bytes of a turn's checkpoint back (Cancel changes
     await expect(undo).toHaveAttribute("data-armed", "false");
     await undo.click();
     await expect(undo).toHaveAttribute("data-armed", "true");
-    await expect(page.getByTestId("undo-all-armed")).toContainText("4 files are put back to the last commit");
+    // The edit goes back to the commit; the agent's new files are untracked, so they are deleted.
+    await expect(page.getByTestId("undo-all-armed")).toContainText("1 file is put back to the last commit (a file that is new since then is removed); 3 files are deleted.");
     expect(snap(repo)).toEqual(end);
     await accessible(page, "Undo all, armed");
     await undo.click();

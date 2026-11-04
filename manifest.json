@@ -2135,8 +2135,8 @@
     },
     {
       "path": "evidence/m10/PX-048/TASK_CARD.md",
-      "bytes": 4995,
-      "sha256": "d24d5eb6faf0a694fade2acfe1d2dad1e6901a6b91d3f8176b3e3f5ba3b81037"
+      "bytes": 5610,
+      "sha256": "d048760106c18714e820c65d94c1d15613fa359be1216120d3529c56b48108eb"
     },
     {
       "path": "evidence/m10/PX-048/read-leaves-index/mutations.log",
@@ -2145,8 +2145,8 @@
     },
     {
       "path": "evidence/m10/PX-048/read-leaves-index/tests.log",
-      "bytes": 8142,
-      "sha256": "b53dca7597539f102d6232f9bcb42c724312d2b8a3da4a1194f018d4358b834d"
+      "bytes": 9245,
+      "sha256": "7194390f084f1ceb65083e85676f7b357ac7b6ee6104417598632bc42a799b62"
     },
     {
       "path": "evidence/m10/PX-049/TASK_CARD.md",
