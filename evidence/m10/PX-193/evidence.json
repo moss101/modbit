@@ -1,0 +1,36 @@
+{
+ "task": "PX-193",
+ "requirements": [
+  "REQ-PX-193",
+  "QUAL-PX-193",
+  "docs/62_PRODUCT_EXTENSION_REQUIREMENTS_TASKS_AND_QUALIFICATIONS.md#px-193"
+ ],
+ "scenarios": [
+  "QUAL-PX-193 / PX-E2E-193"
+ ],
+ "decision_record": "DR-PX-2026-11-03-019",
+ "tier": "iteration",
+ "tests": [
+  "apps/desktop/e2e/awl.spec.ts",
+  "apps/desktop/e2e/shell.spec.ts",
+  "apps/desktop/e2e/gallery.spec.ts",
+  "apps/desktop/e2e/agents.spec.ts",
+  "apps/desktop/src/renderer/shell/shell.test.ts"
+ ],
+ "proof": "Local, macOS arm64, real Core and scripted model: the whole desktop e2e suite on the committed tree 34206ff6 passed 185 of 187 with 2 skipped, exit 0 (evidence/m10/PX-193/desktop-e2e-full.log); the first full run on the same tree failed 15 specs because only modbit-core and modbit-execd were built (modbit-cli and the computer actuator were absent), and all 15 passed after `cargo build --workspace --bins`. awl.spec.ts reads every emitted colour variable, measures 260/40, unframed panes, 30 px navigation rows, the button and tab recipes and the one-line status row at 1280 and 900, runs axe in light, dark and high contrast, and fails on each retained mutation (ZDL primary, 48 px bar, black bare button). Follow-up c16e1805 (navigation inset, CSS only): awl, shell, gallery and agents specs 20 passed. Unit: desktop 305, design-tokens 10, ui 10. Gate strengthened in 7de50046 (audit of QUAL-PX-193 found 1000 x 700, dark at the smaller sizes and the primary/outline/ghost fills unasserted): the shell and every recipe now hold at 1280 x 800, 1000 x 700 and 900 x 600 in light and dark; awl.spec.ts 2 passed locally (evidence/m10/PX-194/awl-gate-local.log).",
+ "limitations": "CI run 41706960923 (PR #168 head 8d988dbe) is green on macOS, Linux and Windows for the rust, node and desktop E2E jobs, which closes the CI legs. That run predates the merges of main (c43db71f, Rust and dossier only, no renderer file) and the PX-156 test margin (d2c3b904). On those later heads the failures were outside this row's code: px_156 timing on Ubuntu (fixed), and on macOS fix_17 and the actuator ax_fixture (runner GUI session: human_active true, no key arrived) with macOS desktop E2E cancelled before its limit; main's own run showed the same E2E cancellation, on a Rust job that had not finished when this was written. Native window chrome and translucency stay with PX-094. Colours are Modbit's own (doc 65 section 2): they are near the reference product, not identical.",
+ "commits": [
+  "34206ff6",
+  "c16e1805",
+  "7de50046"
+ ],
+ "runs": [
+  "41706960923"
+ ],
+ "ci": {
+  "run_id": "41706960923",
+  "head_sha": "8d988dbef8eb638551a9b5df6ed35fc011a10a72",
+  "conclusion": "success",
+  "json": "evidence/m10/PX-193/ci-run-41706960923.json"
+ }
+}

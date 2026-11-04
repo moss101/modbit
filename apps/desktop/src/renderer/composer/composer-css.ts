@@ -5,13 +5,14 @@
  * `button` rule explicitly, including its hover state.
  */
 export const composerCss = `
-.cmp { flex: none; display: flex; flex-direction: column; gap: var(--mb-space-2); padding: var(--mb-space-2) var(--mb-space-3) var(--mb-space-3); border-top: 1px solid var(--mb-color-border); background: var(--mb-color-bg); }
+.cmp { flex: none; display: flex; flex-direction: column; gap: var(--mb-space-2); padding: var(--mb-space-1) var(--mb-space-5) var(--mb-space-2); background: transparent; }
 .cmp > * { width: 100%; max-width: 840px; margin-inline: auto; box-sizing: border-box; }
 .cmp-dock { display: flex; flex-direction: column; gap: var(--mb-space-1_5); }
 .cmp-dock:empty { display: none; }
 .cmp-chips { display: flex; flex-wrap: wrap; gap: var(--mb-space-1_5); align-items: center; }
 .cmp-chips:empty { display: none; }
-.cmp-box { position: relative; border: 1px solid var(--mb-color-border-control); border-radius: var(--radius-2xl); background: var(--color-input); padding: 4px var(--mb-space-2); display: flex; flex-direction: column; gap: var(--mb-space-1); }
+/* AWL-08: the composer is a 12 px editor-surface box with the 3:1 control edge (ZDX-03) and a 1 px shadow. */
+.cmp-box { position: relative; border: 1px solid var(--mb-color-border-control); border-radius: var(--radius-xl); background: var(--color-panel); box-shadow: 0 1px 2px rgb(0 0 0 / 0.05); padding: 6px var(--mb-space-2); display: flex; flex-direction: column; gap: var(--mb-space-1); }
 .cmp-box:focus-within { border-color: var(--mb-color-focus); }
 .cmp-box[data-tint="ask"] { border-color: var(--mb-color-mode-ask); }
 .cmp-box[data-tint="plan"] { border-color: var(--mb-color-mode-plan); }
@@ -22,8 +23,8 @@ export const composerCss = `
 .cmp-row > * { flex: none; }
 .cmp-input { position: relative; flex: 1 1 0; min-width: 0; }
 .cmp-textarea { display: block; width: 100%; box-sizing: border-box; min-height: 0; max-height: 40vh; resize: none; border: 0; border-radius: var(--radius-md); background: transparent; color: var(--mb-color-text); padding: 6px 6px; line-height: 1.35; }
-.cmp-textarea::placeholder { color: var(--mb-color-text-muted); opacity: 1; }
-.mb-btn.cmp-plus { width: var(--mb-control-md); padding: 0; border-radius: calc(infinity * 1px); border-color: var(--mb-color-border-control); font-size: var(--text-ui-lg); }
+.cmp-textarea::placeholder { color: var(--mb-color-text-muted); opacity: 1; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.mb-btn.cmp-plus { width: var(--mb-control-md); padding: 0; border-radius: calc(infinity * 1px); border-color: transparent; background: var(--color-selected); font-size: var(--text-ui-lg); }
 .cmp-chip, .cmp-seg { font: inherit; font-size: var(--mb-type-chrome-size); line-height: var(--mb-type-chrome-line); display: inline-flex; align-items: center; gap: var(--mb-space-1); min-height: var(--mb-control-sm); padding: 0 var(--mb-space-2); border-radius: calc(infinity * 1px); border: 1px solid var(--mb-color-border-control); background: var(--mb-color-raised); color: var(--mb-color-text); cursor: pointer; }
 .cmp-chip, .cmp-seg { border-color: transparent; border-radius: var(--radius-md); }
 .cmp-chip:hover:not(:disabled), .cmp-seg:hover:not(:disabled) { background: var(--mb-color-hover); border-color: var(--mb-color-border-control); color: var(--mb-color-text); }
@@ -54,7 +55,8 @@ export const composerCss = `
 .cmp-reason { margin: 0; font-size: var(--mb-type-caption-size); color: var(--mb-color-danger); }
 .cmp-suggest { display: flex; gap: var(--mb-space-1_5); flex-wrap: wrap; }
 .cmp-spacer { flex: 1 1 0; }
-.cmp-tray { background: var(--mb-color-raised); border: 1px solid var(--mb-color-border-control); border-radius: var(--radius-xl); padding: var(--mb-space-1_5) var(--mb-space-3); font-size: var(--mb-type-chrome-size); }
+/* AWL-08: trays dock above the composer on the sidebar surface with an 8 % edge. */
+.cmp-tray { background: var(--color-sidebar); border: 1px solid var(--color-tab-border); border-radius: var(--radius-xl); padding: var(--mb-space-1_5) var(--mb-space-3); font-size: var(--mb-type-chrome-size); }
 .cmp-attn[data-tone="error"] { background: var(--mb-color-danger-tint); border-color: var(--mb-color-danger); }
 .cmp-attn[data-tone="warn"] { background: var(--mb-color-warn-tint); border-color: var(--mb-color-warn); }
 .cmp-attn[data-tone="info"] { background: var(--mb-color-info-tint); border-color: var(--mb-color-info); }
@@ -75,7 +77,7 @@ export const composerCss = `
 .cmp-menu { position: absolute; z-index: var(--mb-z-popover); left: 0; right: 0; bottom: calc(100% + 8px); max-height: 300px; overflow: auto; background: var(--mb-color-raised); color: var(--mb-color-text); border: 1px solid var(--mb-color-border-control); border-radius: var(--radius-xl); box-shadow: var(--mb-elevation-2); padding: var(--mb-space-1); }
 .cmp-slash { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 220px); gap: var(--mb-space-2); }
 .cmp-list { list-style: none; margin: 0; padding: 0; }
-.cmp-group { font-size: var(--mb-type-caption-size); color: var(--mb-color-text-muted); text-transform: uppercase; letter-spacing: 0.04em; padding: var(--mb-space-1) var(--mb-space-2) 0; }
+.cmp-group { font-size: var(--mb-type-caption-size); font-weight: 600; color: var(--mb-color-text-muted); padding: var(--mb-space-1) var(--mb-space-2) 0; }
 .cmp-divider { height: 1px; margin: var(--mb-space-1) 0; background: var(--mb-color-border); }
 .cmp-option { display: flex; align-items: center; gap: var(--mb-space-2); min-height: 28px; padding: 0 var(--mb-space-2); border-radius: var(--radius-md); cursor: pointer; font-size: var(--mb-type-chrome-size); }
 .cmp-option[data-active="true"] { background: var(--mb-color-selected); }

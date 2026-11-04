@@ -98,6 +98,9 @@ PX_PARITY = [
     # Rows over existing owners only: 27 ADOPT rows and 18 DEFERRED rows whose activation text is the record's Appendix B; no supersession.
     ("DR-PX-2026-10-26-018", "DOC-PX-017", 147, 191, "62_PRODUCT_EXTENSION_REQUIREMENTS_TASKS_AND_QUALIFICATIONS.md", "Upgrade program from Codex, MAI-UI and Qwen-Planner-Agent, PX-147..191",
      "Proposed: PX-147..191, the upgrade program: 27 adopted rows (hardening, robustness, hygiene, GUI agent, planner harness) and 18 deferred rows with activation text, over existing owners only, with seven proposed tasks folded into rows the ledger already owns"),
+    # A presentation change over the existing owner `desktop` that supersedes DR-PX-2026-10-24-016 in a named scope; the record is the specification (its section 5), doc 65 carries the note.
+    ("DR-PX-2026-11-03-019", "DOC-PX-018", 192, 194, "65_AGENT_FIRST_WORKSPACE_SPECIFICATION.md", "Agent workspace language for the desktop renderer, PX-192..194",
+     "Proposed: PX-192..194, the agent workspace language: the reference product's layout, geometry and density as doc 65 records them in Modbit's own neutral tokens, superseding the ZCode design language in a named scope, with AFW-A12, A13, A14 and the clean-room posture unchanged"),
 ]
 
 

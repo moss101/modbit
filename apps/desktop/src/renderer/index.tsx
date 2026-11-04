@@ -12,7 +12,6 @@ import { createRoot } from "react-dom/client";
 import { Shell } from "./shell/shell.tsx";
 import { useApp } from "./state/use-app.ts";
 import { Gallery } from "./gallery/gallery.tsx";
-import { FidelityGallery } from "./gallery/fidelity-gallery.tsx";
 
 declare const __MODBIT_GALLERY__: boolean;
 
@@ -28,7 +27,6 @@ function Root() {
     window.addEventListener("hashchange", onHash);
     return () => window.removeEventListener("hashchange", onHash);
   }, []);
-  if (__MODBIT_GALLERY__ && hash.startsWith("#fidelity")) return <FidelityGallery />;
   return __MODBIT_GALLERY__ && hash.startsWith("#gallery") ? <Gallery /> : <App />;
 }
 

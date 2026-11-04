@@ -1,16 +1,14 @@
 /**
- * Modbit's colour roles (AFW-A11, as superseded by DR-PX-2026-10-24-016). Every theme has exactly the same key set: the
- * `ColorRoles` record type makes a missing or extra role a compile error, and `index.test.ts` asserts it at run time.
+ * Modbit's colour roles (AFW-A11, DR-PX-2026-11-03-019). Every theme has exactly the same key set: the `ColorRoles` record type
+ * makes a missing or extra role a compile error, and `index.test.ts` asserts it at run time.
  *
- * Light and dark are derived from ZCode's Zai Light and Zai Dark tokens (`design-language.ts`, Apache-2.0, see
- * third-party/zcode-ui/NOTICE.md) through ONE explicit role map (`rolesFrom`): each role names the ZCode token it takes and, for
- * a translucent token, the surface it is composited over, so a role is exactly the pixels ZCode shows. The five places where
- * ZCode's own value would fall under AFW-A12 are explicit values that name their exception (ZDX-03 control edge, ZDX-04 focus,
- * ZDX-05 solid-button labels); the computed contrast test (`pairs.ts`) proves every pair in every theme. The high-contrast
- * palette is Modbit's own (ZDX-06): ZCode has none.
+ * Light and dark are derived from the agent workspace language inputs (`workspace-language.ts`, Modbit's own values: three
+ * achromatic surfaces, one base and the AFW-A11 ladder, one blue accent) through ONE explicit role map (`rolesFrom`); a
+ * translucent step is composited over the surface it sits on, so a role is exactly the pixels shown. The computed contrast test
+ * (`pairs.ts`) proves every pair in every theme. The high-contrast palette is Modbit's own and unchanged.
  */
-import { over } from "./contrast.ts";
-import { ZDL_DARK, ZDL_LIGHT, type ZdlColors } from "./design-language.ts";
+import { mix, over } from "./contrast.ts";
+import { AWL_DARK, AWL_LIGHT, alpha, step, type AwlInputs } from "./workspace-language.ts";
 
 export type ThemeName = "light" | "dark" | "high-contrast";
 
@@ -28,10 +26,10 @@ export const COLOR_ROLES = [
   "textDisabled",
   "textOnAccent",
   "textOnInverse",
-  /** Icons and chevrons that ZCode draws at its subtle foreground level: 3:1, never text (ZDX-01). */
+  /** Icons and chevrons at the 52 % icon step: 3:1, never text (AWL-02). */
   "iconMuted",
   // Edges and focus.
-  /** A decorative edge: cards, panels, menus, dialogs, separators. ZCode's own `border`. */
+  /** A decorative edge: cards, panels, menus, dialogs, separators (stroke 12 %). */
   "border",
   /** The edge of an interactive control (input, select, outline button, checkbox, radio, switch track): 3:1 (ZDX-03). */
   "borderControl",
@@ -49,7 +47,7 @@ export const COLOR_ROLES = [
   "warnTint",
   "dangerTint",
   "infoTint",
-  // The solid destructive button and its label (ZDX-05). ZCode's solid warning variant is not adopted: Modbit renders none.
+  // The solid destructive button and its label (ZDX-05 carried over). Modbit renders no solid warning button.
   "dangerSolid",
   "textOnDangerSolid",
   // Composer-mode tints (AFW-D04): never the only signal, always with an icon and a label.
@@ -57,7 +55,7 @@ export const COLOR_ROLES = [
   "modePlan",
   "modeDebug",
   "modeMultitask",
-  // Selection and hover fills (opaque; the translucent ZCode token composited over the panel).
+  // Selection and hover fills (opaque; the 6 % and 8 % fill steps composited over the panel).
   "hover",
   "selected",
   // Scrim behind modal layers (not a text background).
@@ -66,77 +64,52 @@ export const COLOR_ROLES = [
 export type ColorRole = (typeof COLOR_ROLES)[number];
 export type ColorRoles = Record<ColorRole, string>;
 
-/** Values that are not a ZCode token as ZCode wrote it, each tied to its declared exception in DR-PX-2026-10-24-016 section 5.2. */
-interface Exceptions {
-  /** ZDX-03: at least 3:1 on every surface, because ZCode's `border` is 1.25:1 (light) and 1.36:1 (dark). */
-  borderControl: string;
-  /** ZDX-04: ZCode removes every focus ring; Modbit keeps a visible 2 px ring in this colour. */
-  focus: string;
-  /** ZDX-05: ZCode's white label on its solid destructive button is 3.03:1 in dark. */
-  textOnDangerSolid: string;
-  scrim: string;
-}
-
-/** The one role map: light and dark share it, so their key sets and meanings cannot drift apart. */
-function rolesFrom(z: ZdlColors, x: Exceptions): ColorRoles {
-  const panel = z.background;
+/**
+ * The one role map (AWL-01..03): light and dark share it, so their key sets and meanings cannot drift apart. `panel` is the
+ * conversation surface (chrome), `raised` the editor surface (apps panel, cards, composer, menus), `bg` the window root.
+ */
+function rolesFrom(i: AwlInputs): ColorRoles {
+  const panel = i.chrome;
   return {
-    bg: z["background-win-alt"],
+    bg: i.chrome,
     panel,
-    raised: z.card,
-    sunken: over(z.surface, panel),
-    inverse: z.tooltip,
-    text: z.foreground,
-    textMuted: z["remote-foreground-muted"],
-    textDisabled: over(z["foreground-subtlest"], panel),
-    textOnAccent: z["primary-foreground"],
-    textOnInverse: z["tooltip-foreground"],
-    iconMuted: over(z["foreground-subtle"], panel),
-    border: over(z.border, panel),
-    borderControl: x.borderControl,
-    focus: x.focus,
-    accent: z.primary,
-    accentHover: over(withAlpha(z.primary, 0.8), panel),
-    accentText: z["interaction-ask-foreground"],
-    ok: z["success-surface-foreground"],
-    warn: z["warning-surface-foreground"],
-    danger: z["destructive-surface-foreground"],
-    info: z["progress-surface-foreground"],
-    okTint: over(z["success-surface"], panel),
-    warnTint: over(z["warning-surface"], panel),
-    dangerTint: over(z["destructive-surface"], panel),
-    infoTint: over(z["progress-surface"], panel),
-    dangerSolid: z.destructive,
-    textOnDangerSolid: x.textOnDangerSolid,
-    modeAsk: z["success-surface-foreground"],
-    modePlan: z["warning-surface-foreground"],
-    modeDebug: z["destructive-surface-foreground"],
-    modeMultitask: z["remote-docker-foreground"],
-    hover: over(z.hover, panel),
-    selected: over(z.selected, panel),
-    scrim: x.scrim,
+    raised: i.editor,
+    sunken: step(i, 0.04, panel),
+    inverse: i.base,
+    text: i.base,
+    textMuted: i.muted,
+    textDisabled: step(i, 0.36, panel),
+    textOnAccent: i.onAccent,
+    textOnInverse: i.chrome,
+    iconMuted: step(i, 0.52, panel),
+    border: step(i, 0.12, panel),
+    borderControl: i.control,
+    focus: i.accent,
+    accent: i.accent,
+    accentHover: mix(i.accent, i.base, 0.1),
+    accentText: i.accent,
+    ok: i.ok,
+    warn: i.warn,
+    danger: i.danger,
+    info: i.info,
+    okTint: over(alpha(i.ok, 0.12), panel),
+    warnTint: over(alpha(i.warn, 0.12), panel),
+    dangerTint: over(alpha(i.danger, 0.12), panel),
+    infoTint: over(alpha(i.info, 0.12), panel),
+    dangerSolid: i.dangerSolid,
+    textOnDangerSolid: i.onDangerSolid,
+    modeAsk: i.ok,
+    modePlan: i.warn,
+    modeDebug: i.danger,
+    modeMultitask: i.purple,
+    hover: step(i, 0.06, panel),
+    selected: step(i, 0.08, panel),
+    scrim: "#000000",
   };
 }
 
-/** An opaque `#rrggbb` token at a given alpha, as ZCode's `bg-primary/80` hover state draws it. */
-function withAlpha(hex: string, alpha: number): string {
-  const n = parseInt(hex.slice(1), 16);
-  return `rgba(${(n >> 16) & 255}, ${(n >> 8) & 255}, ${n & 255}, ${alpha})`;
-}
-
-const light: ColorRoles = rolesFrom(ZDL_LIGHT, {
-  borderControl: "#858585",
-  focus: "#0066dd",
-  textOnDangerSolid: ZDL_LIGHT["destructive-foreground"],
-  scrim: "#0b0d12",
-});
-
-const dark: ColorRoles = rolesFrom(ZDL_DARK, {
-  borderControl: "#797979",
-  focus: "#80beff",
-  textOnDangerSolid: ZDL_DARK["foreground-inverse"],
-  scrim: "#000000",
-});
+const light: ColorRoles = rolesFrom(AWL_LIGHT);
+const dark: ColorRoles = rolesFrom(AWL_DARK);
 
 const highContrast: ColorRoles = {
   bg: "#000000",

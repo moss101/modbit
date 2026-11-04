@@ -30164,6 +30164,13 @@
    "source": "docs/97_DOSSIER_MAINTENANCE_LOG.md"
   },
   {
+   "id": "DR-PX-2026-11-03-019",
+   "type": "change_record",
+   "title": "Approved: PX-192..194, the agent workspace language: the reference product's layout, geometry and density as doc 65 records them in Modbit's own neutral tokens, superseding the ZCode design language in a named scope, with AFW-A12, A13, A14 and the clean-room posture unchanged",
+   "status": "APPROVED",
+   "source": "docs/97_DOSSIER_MAINTENANCE_LOG.md"
+  },
+  {
    "id": "REQ-PX-000",
    "type": "requirement",
    "title": "Headless CLI thin client for the task lifecycle",
@@ -30759,7 +30766,7 @@
    "qual": "QUAL-PX-045",
    "release": "RELEASE_ZERO",
    "source": "docs/62_PRODUCT_EXTENSION_REQUIREMENTS_TASKS_AND_QUALIFICATIONS.md",
-   "mandatory_behavior": "Playwright on the packaged app and a real Core at 1280 x 800, 1000 x 700 and 900 x 600: at 1280 the agent list is 264 px (within 2 px; 260 pt before DR-PX-2026-10-24-016), the top bar 48 px (40 pt before it), the centre pane at least 424 pt with the panel open and the panel at least 384 pt; dragging the divider respects 210 to 400 pt; below 448 pt the single-pane mode and rail appear; layout survives an app restart; the palette finds a task by title and a setting; every shortcut of the registry fires its command and none collides; the six PX-023 screen states still render with cause and next action."
+   "mandatory_behavior": "Playwright on the packaged app and a real Core at 1280 x 800, 1000 x 700 and 900 x 600: at 1280 the agent list is 260 px (within 2 px; 264 px under DR-PX-2026-10-24-016, restored by DR-PX-2026-11-03-019), the top bar 40 px (48 px under DR-PX-2026-10-24-016, restored by DR-PX-2026-11-03-019), the centre pane at least 424 pt with the panel open and the panel at least 384 pt; dragging the divider respects 210 to 400 pt; below 448 pt the single-pane mode and rail appear; layout survives an app restart; the palette finds a task by title and a setting; every shortcut of the registry fires its command and none collides; the six PX-023 screen states still render with cause and next action."
   },
   {
    "id": "REQ-PX-046",
@@ -32658,6 +32665,45 @@
    "release": "POST_ZERO",
    "source": "docs/62_PRODUCT_EXTENSION_REQUIREMENTS_TASKS_AND_QUALIFICATIONS.md",
    "mandatory_behavior": "Deferred proof, entry condition and not a current proof: a real event produces a decision-ready card with options and executes nothing until confirmed; a rejected card is remembered; a flood of events produces a bounded number of cards; the first sources are forge events and signed webhooks."
+  },
+  {
+   "id": "REQ-PX-192",
+   "type": "requirement",
+   "title": "Agent workspace language tokens: three achromatic surfaces and one base, the AFW-A11 neutral ladder, one blue accent and chrome type 13/18, with the ZCode parity gate retired",
+   "disposition": "ADOPT",
+   "subsystem": "desktop",
+   "owner_label": "desktop",
+   "imp": "PX-192",
+   "qual": "QUAL-PX-192",
+   "release": "RELEASE_ZERO",
+   "source": "docs/62_PRODUCT_EXTENSION_REQUIREMENTS_TASKS_AND_QUALIFICATIONS.md",
+   "mandatory_behavior": "The real Electron app built from the tree, in light, dark and high contrast: the emitted `--mb-color-*` and `--color-*` variables, resolved by the browser to canonical sRGB, equal the section 5.1 tables of the record in light and dark and the unchanged high-contrast palette; the token unit test pins the same tables; the computed contrast test covers every pair in all three themes at 4.5:1 for text and 3:1 for control edges and icons; chrome text computes to 13 px on 18 px and conversation body to 14 px on 22 px; the retired ZCode parity specs are absent and no ZCode name is in the bundle."
+  },
+  {
+   "id": "REQ-PX-193",
+   "type": "requirement",
+   "title": "Agent workspace shell and controls: unframed panes with the doc 65 geometry, the navigation in the agent list, and the default, primary, outline, ghost and tab recipes",
+   "disposition": "ADOPT",
+   "subsystem": "desktop",
+   "owner_label": "desktop",
+   "imp": "PX-193",
+   "qual": "QUAL-PX-193",
+   "release": "RELEASE_ZERO",
+   "source": "docs/62_PRODUCT_EXTENSION_REQUIREMENTS_TASKS_AND_QUALIFICATIONS.md",
+   "mandatory_behavior": "Playwright on the real app and a real Core at 1280 x 800, 1000 x 700 and 900 x 600 in light and dark: agent list 260 px within 2 px (210 to 400 kept), top bar 40 px, panes with no radius and no gap and a 1 px divider, navigation rows 30 px in the agent list carrying New task, Search, Fleet board, Worktrees, Automations, Customize and Dashboard with their existing test ids, a bare button and each `Button` variant computing to the recipes of section 5.2, pill tabs, the centre keeping 424 pt with the panel open; the desktop e2e suite passes with only the assertions section 10 names changed; axe passes on every region in three themes."
+  },
+  {
+   "id": "REQ-PX-194",
+   "type": "requirement",
+   "title": "Agent workspace density: conversation turns, composer and trays, the one-line status row, banners and the apps panel in the agent workspace language",
+   "disposition": "ADOPT",
+   "subsystem": "desktop",
+   "owner_label": "desktop",
+   "imp": "PX-194",
+   "qual": "QUAL-PX-194",
+   "release": "RELEASE_ZERO",
+   "source": "docs/62_PRODUCT_EXTENSION_REQUIREMENTS_TASKS_AND_QUALIFICATIONS.md",
+   "mandatory_behavior": "The real app, a real Core and a scripted model running a task with tool steps, an edit, a terminal and an approval, in light and dark: the user message is an editor-surface bubble, a step group is one line with no box, the turn footer is transparent until hover or keyboard focus and stays in the tab order and the accessibility tree, the composer has radius 12, the status row is one line at any window width with its full text in the accessible name, the language and support-claim banners are one caption line, the Changes app's explanatory text is caption and muted, and headings are sentence case; the whole desktop suite and axe pass."
   },
   {
    "id": "PX-000",
@@ -35513,7 +35559,7 @@
    "release": "RELEASE_ZERO",
    "disposition": "ADOPT",
    "source": "docs/62_PRODUCT_EXTENSION_REQUIREMENTS_TASKS_AND_QUALIFICATIONS.md",
-   "acceptance": "Playwright on the packaged app and a real Core at 1280 x 800, 1000 x 700 and 900 x 600: at 1280 the agent list is 264 px (within 2 px; 260 pt before DR-PX-2026-10-24-016), the top bar 48 px (40 pt before it), the centre pane at least 424 pt with the panel open and the panel at least 384 pt; dragging the divider respects 210 to 400 pt; below 448 pt the single-pane mode and rail appear; layout survives an app restart; the palette finds a task by title and a setting; every shortcut of the registry fires its command and none collides; the six PX-023 screen states still render with cause and next action.",
+   "acceptance": "Playwright on the packaged app and a real Core at 1280 x 800, 1000 x 700 and 900 x 600: at 1280 the agent list is 260 px (within 2 px; 264 px under DR-PX-2026-10-24-016, restored by DR-PX-2026-11-03-019), the top bar 40 px (48 px under DR-PX-2026-10-24-016, restored by DR-PX-2026-11-03-019), the centre pane at least 424 pt with the panel open and the panel at least 384 pt; dragging the divider respects 210 to 400 pt; below 448 pt the single-pane mode and rail appear; layout survives an app restart; the palette finds a task by title and a setting; every shortcut of the registry fires its command and none collides; the six PX-023 screen states still render with cause and next action.",
    "prerequisites": [
     "M6.6",
     "PX-024",
@@ -39822,6 +39868,103 @@
    "status_changed_on": "2026-10-28T09:36:30Z"
   },
   {
+   "id": "PX-192",
+   "type": "imp_task",
+   "title": "Agent workspace language tokens: three achromatic surfaces and one base, the AFW-A11 neutral ladder, one blue accent and chrome type 13/18, with the ZCode parity gate retired",
+   "requirement": "REQ-PX-192",
+   "qual": "QUAL-PX-192",
+   "subsystem": "desktop",
+   "owner_label": "desktop",
+   "milestone": "M10",
+   "release": "RELEASE_ZERO",
+   "disposition": "ADOPT",
+   "source": "docs/62_PRODUCT_EXTENSION_REQUIREMENTS_TASKS_AND_QUALIFICATIONS.md",
+   "acceptance": "The real Electron app built from the tree, in light, dark and high contrast: the emitted `--mb-color-*` and `--color-*` variables, resolved by the browser to canonical sRGB, equal the section 5.1 tables of the record in light and dark and the unchanged high-contrast palette; the token unit test pins the same tables; the computed contrast test covers every pair in all three themes at 4.5:1 for text and 3:1 for control edges and icons; chrome text computes to 13 px on 18 px and conversation body to 14 px on 22 px; the retired ZCode parity specs are absent and no ZCode name is in the bundle.",
+   "prerequisites": [
+    "PX-143",
+    "DOC-PX-018"
+   ],
+   "related_requirements": [
+    "REQ-EV-0037"
+   ],
+   "task_card": "docs/62_PRODUCT_EXTENSION_REQUIREMENTS_TASKS_AND_QUALIFICATIONS.md#px-192",
+   "audit_at_adoption": "DOCUMENTED-ONLY; no product caller present",
+   "status": "COMPLETE",
+   "evidence": [
+    "artifact:evidence/m10/PX-192/evidence.json",
+    "artifact:evidence/m10/PX-193/desktop-e2e-full.log",
+    "commit:34206ff6",
+    "run:41706960923",
+    "artifact:evidence/m10/PX-192/ci-run-41706960923.json",
+    "commit:8d988dbe"
+   ],
+   "status_changed_on": "2026-11-03T21:56:45Z"
+  },
+  {
+   "id": "PX-193",
+   "type": "imp_task",
+   "title": "Agent workspace shell and controls: unframed panes with the doc 65 geometry, the navigation in the agent list, and the default, primary, outline, ghost and tab recipes",
+   "requirement": "REQ-PX-193",
+   "qual": "QUAL-PX-193",
+   "subsystem": "desktop",
+   "owner_label": "desktop",
+   "milestone": "M10",
+   "release": "RELEASE_ZERO",
+   "disposition": "ADOPT",
+   "source": "docs/62_PRODUCT_EXTENSION_REQUIREMENTS_TASKS_AND_QUALIFICATIONS.md",
+   "acceptance": "Playwright on the real app and a real Core at 1280 x 800, 1000 x 700 and 900 x 600 in light and dark: agent list 260 px within 2 px (210 to 400 kept), top bar 40 px, panes with no radius and no gap and a 1 px divider, navigation rows 30 px in the agent list carrying New task, Search, Fleet board, Worktrees, Automations, Customize and Dashboard with their existing test ids, a bare button and each `Button` variant computing to the recipes of section 5.2, pill tabs, the centre keeping 424 pt with the panel open; the desktop e2e suite passes with only the assertions section 10 names changed; axe passes on every region in three themes.",
+   "prerequisites": [
+    "PX-192",
+    "DOC-PX-018"
+   ],
+   "related_requirements": [
+    "REQ-EV-0037"
+   ],
+   "task_card": "docs/62_PRODUCT_EXTENSION_REQUIREMENTS_TASKS_AND_QUALIFICATIONS.md#px-193",
+   "audit_at_adoption": "DOCUMENTED-ONLY; no product caller present",
+   "status": "COMPLETE",
+   "evidence": [
+    "artifact:evidence/m10/PX-193/evidence.json",
+    "artifact:evidence/m10/PX-193/desktop-e2e-full.log",
+    "commit:8d988dbe",
+    "run:41706960923",
+    "artifact:evidence/m10/PX-193/ci-run-41706960923.json"
+   ],
+   "status_changed_on": "2026-11-03T21:56:46Z"
+  },
+  {
+   "id": "PX-194",
+   "type": "imp_task",
+   "title": "Agent workspace density: conversation turns, composer and trays, the one-line status row, banners and the apps panel in the agent workspace language",
+   "requirement": "REQ-PX-194",
+   "qual": "QUAL-PX-194",
+   "subsystem": "desktop",
+   "owner_label": "desktop",
+   "milestone": "M10",
+   "release": "RELEASE_ZERO",
+   "disposition": "ADOPT",
+   "source": "docs/62_PRODUCT_EXTENSION_REQUIREMENTS_TASKS_AND_QUALIFICATIONS.md",
+   "acceptance": "The real app, a real Core and a scripted model running a task with tool steps, an edit, a terminal and an approval, in light and dark: the user message is an editor-surface bubble, a step group is one line with no box, the turn footer is transparent until hover or keyboard focus and stays in the tab order and the accessibility tree, the composer has radius 12, the status row is one line at any window width with its full text in the accessible name, the language and support-claim banners are one caption line, the Changes app's explanatory text is caption and muted, and headings are sentence case; the whole desktop suite and axe pass.",
+   "prerequisites": [
+    "PX-193",
+    "DOC-PX-018"
+   ],
+   "related_requirements": [
+    "REQ-EV-0037"
+   ],
+   "task_card": "docs/62_PRODUCT_EXTENSION_REQUIREMENTS_TASKS_AND_QUALIFICATIONS.md#px-194",
+   "audit_at_adoption": "DOCUMENTED-ONLY; no product caller present",
+   "status": "COMPLETE",
+   "evidence": [
+    "artifact:evidence/m10/PX-194/evidence.json",
+    "artifact:evidence/m10/PX-194/awl-gate-local.log",
+    "commit:8d988dbe",
+    "run:41706960923",
+    "artifact:evidence/m10/PX-194/ci-run-41706960923.json"
+   ],
+   "status_changed_on": "2026-11-03T21:56:46Z"
+  },
+  {
    "id": "QUAL-PX-000",
    "type": "qual_test",
    "requirement": "REQ-PX-000",
@@ -40276,7 +40419,7 @@
    "type": "qual_test",
    "requirement": "REQ-PX-045",
    "owner_label": "desktop",
-   "title": "Playwright on the packaged app and a real Core at 1280 x 800, 1000 x 700 and 900 x 600: at 1280 the agent list is 264 px (within 2 px; 260 pt before DR-PX-2026-10-24-016), the top bar 48 px (40 pt before it), the centre pane at least 424 pt with the panel open and the panel at least 384 pt; dragging the divider respects 210 to 400 pt; below 448 pt the single-pane mode and rail appear; layout survives an app restart; the palette finds a task by title and a setting; every shortcut of the registry fires its command and none collides; the six PX-023 screen states still render with cause and next action.",
+   "title": "Playwright on the packaged app and a real Core at 1280 x 800, 1000 x 700 and 900 x 600: at 1280 the agent list is 260 px (within 2 px; 264 px under DR-PX-2026-10-24-016, restored by DR-PX-2026-11-03-019), the top bar 40 px (48 px under DR-PX-2026-10-24-016, restored by DR-PX-2026-11-03-019), the centre pane at least 424 pt with the panel open and the panel at least 384 pt; dragging the divider respects 210 to 400 pt; below 448 pt the single-pane mode and rail appear; layout survives an app restart; the palette finds a task by title and a setting; every shortcut of the registry fires its command and none collides; the six PX-023 screen states still render with cause and next action.",
    "failure_proof": "A shortcut registered twice fails the conflict test; a panel ratio that would push the centre under 424 pt is clamped; a layout preference written into task state fails the persistence check; a shell state with no keyboard path fails PX-024; opening Settings with a running task never stops or alters the task.",
    "evidence_class": "real-system or production-equivalent",
    "source": "docs/62_PRODUCT_EXTENSION_REQUIREMENTS_TASKS_AND_QUALIFICATIONS.md"
@@ -41742,6 +41885,36 @@
    "source": "docs/62_PRODUCT_EXTENSION_REQUIREMENTS_TASKS_AND_QUALIFICATIONS.md"
   },
   {
+   "id": "QUAL-PX-192",
+   "type": "qual_test",
+   "requirement": "REQ-PX-192",
+   "owner_label": "desktop",
+   "title": "The real Electron app built from the tree, in light, dark and high contrast: the emitted `--mb-color-*` and `--color-*` variables, resolved by the browser to canonical sRGB, equal the section 5.1 tables of the record in light and dark and the unchanged high-contrast palette; the token unit test pins the same tables; the computed contrast test covers every pair in all three themes at 4.5:1 for text and 3:1 for control edges and icons; chrome text computes to 13 px on 18 px and conversation body to 14 px on 22 px; the retired ZCode parity specs are absent and no ZCode name is in the bundle.",
+   "failure_proof": "A token that differs from the table, a pair under its ratio, a muted text step under 4.5:1 on any surface, or a high-contrast value that moved fails the spec; the retained mutation that restores one ZDL value must fail it.",
+   "evidence_class": "real-system or production-equivalent",
+   "source": "docs/62_PRODUCT_EXTENSION_REQUIREMENTS_TASKS_AND_QUALIFICATIONS.md"
+  },
+  {
+   "id": "QUAL-PX-193",
+   "type": "qual_test",
+   "requirement": "REQ-PX-193",
+   "owner_label": "desktop",
+   "title": "Playwright on the real app and a real Core at 1280 x 800, 1000 x 700 and 900 x 600 in light and dark: agent list 260 px within 2 px (210 to 400 kept), top bar 40 px, panes with no radius and no gap and a 1 px divider, navigation rows 30 px in the agent list carrying New task, Search, Fleet board, Worktrees, Automations, Customize and Dashboard with their existing test ids, a bare button and each `Button` variant computing to the recipes of section 5.2, pill tabs, the centre keeping 424 pt with the panel open; the desktop e2e suite passes with only the assertions section 10 names changed; axe passes on every region in three themes.",
+   "failure_proof": "A framed pane, a bare button with the accent or black fill, a top bar other than 40 px, a navigation entry that lost its test id, or a layout that pushes the centre under 424 pt fails the spec; the mutation that restores the 48 px bar must fail it.",
+   "evidence_class": "real-system or production-equivalent",
+   "source": "docs/62_PRODUCT_EXTENSION_REQUIREMENTS_TASKS_AND_QUALIFICATIONS.md"
+  },
+  {
+   "id": "QUAL-PX-194",
+   "type": "qual_test",
+   "requirement": "REQ-PX-194",
+   "owner_label": "desktop",
+   "title": "The real app, a real Core and a scripted model running a task with tool steps, an edit, a terminal and an approval, in light and dark: the user message is an editor-surface bubble, a step group is one line with no box, the turn footer is transparent until hover or keyboard focus and stays in the tab order and the accessibility tree, the composer has radius 12, the status row is one line at any window width with its full text in the accessible name, the language and support-claim banners are one caption line, the Changes app's explanatory text is caption and muted, and headings are sentence case; the whole desktop suite and axe pass.",
+   "failure_proof": "A status row that wraps, a turn footer that is removed from the tab order or the accessibility tree, a banner whose full text is lost, an uppercase heading, or a state shown by colour alone fails the spec.",
+   "evidence_class": "real-system or production-equivalent",
+   "source": "docs/62_PRODUCT_EXTENSION_REQUIREMENTS_TASKS_AND_QUALIFICATIONS.md"
+  },
+  {
    "id": "PX-E2E-000",
    "type": "scenario",
    "kind": "px-e2e",
@@ -42929,6 +43102,27 @@
    "type": "scenario",
    "kind": "px-e2e",
    "title": "A trace schema for execution evidence and a Core producer that feeds the Skill Evolution Lab",
+   "source": "docs/62_PRODUCT_EXTENSION_REQUIREMENTS_TASKS_AND_QUALIFICATIONS.md"
+  },
+  {
+   "id": "PX-E2E-192",
+   "type": "scenario",
+   "kind": "px-e2e",
+   "title": "Agent workspace language tokens: three achromatic surfaces and one base, the AFW-A11 neutral ladder, one blue accent and chrome type 13/18, with the ZCode parity gate retired",
+   "source": "docs/62_PRODUCT_EXTENSION_REQUIREMENTS_TASKS_AND_QUALIFICATIONS.md"
+  },
+  {
+   "id": "PX-E2E-193",
+   "type": "scenario",
+   "kind": "px-e2e",
+   "title": "Agent workspace shell and controls: unframed panes with the doc 65 geometry, the navigation in the agent list, and the default, primary, outline, ghost and tab recipes",
+   "source": "docs/62_PRODUCT_EXTENSION_REQUIREMENTS_TASKS_AND_QUALIFICATIONS.md"
+  },
+  {
+   "id": "PX-E2E-194",
+   "type": "scenario",
+   "kind": "px-e2e",
+   "title": "Agent workspace density: conversation turns, composer and trays, the one-line status row, banners and the apps panel in the agent workspace language",
    "source": "docs/62_PRODUCT_EXTENSION_REQUIREMENTS_TASKS_AND_QUALIFICATIONS.md"
   },
   {
@@ -44326,6 +44520,21 @@
     "commit:f337daa9"
    ],
    "status_changed_on": "2026-10-25T23:10:53Z"
+  },
+  {
+   "id": "DOC-PX-018",
+   "type": "dossier_task",
+   "title": "Product extension stage: Agent workspace language for the desktop renderer, PX-192..194",
+   "subsystem": "governance",
+   "source": "docs/97_DOSSIER_MAINTENANCE_LOG.md",
+   "acceptance": "Decision Record, its rows, specification, supersession entries and change record added; implementation audit recorded; full integrity gate passes; the record is accepted by the owner and its status and approval are recorded; no product proof",
+   "status": "COMPLETE",
+   "evidence": [
+    "artifact:evidence/dossier-px-018/tests.log",
+    "commit:b7ce15e88d18a1e9daaac5d27536db4d496f5f21",
+    "artifact:evidence/dossier-px-018/validation.json"
+   ],
+   "status_changed_on": "2026-11-03T19:03:55Z"
   },
   {
    "id": "DR-GOV-2026-10-30-008",
@@ -60072,6 +60281,21 @@
    "type": "refines"
   },
   {
+   "from": "DR-PX-2026-11-03-019",
+   "to": "97_DOSSIER_MAINTENANCE_LOG.md",
+   "type": "specified_by"
+  },
+  {
+   "from": "DR-PX-2026-11-03-019",
+   "to": "65_AGENT_FIRST_WORKSPACE_SPECIFICATION.md",
+   "type": "specified_by"
+  },
+  {
+   "from": "DR-PX-2026-11-03-019",
+   "to": "DR-PX-2026-09-05",
+   "type": "refines"
+  },
+  {
    "from": "REQ-PX-000",
    "to": "desktop",
    "type": "owned_by_req"
@@ -65560,6 +65784,96 @@
    "from": "REQ-PX-191",
    "to": "DR-PX-2026-10-26-018",
    "type": "authorized_by"
+  },
+  {
+   "from": "REQ-PX-192",
+   "to": "desktop",
+   "type": "owned_by_req"
+  },
+  {
+   "from": "REQ-PX-192",
+   "to": "QUAL-PX-192",
+   "type": "qualified_by"
+  },
+  {
+   "from": "REQ-PX-192",
+   "to": "62_PRODUCT_EXTENSION_REQUIREMENTS_TASKS_AND_QUALIFICATIONS.md",
+   "type": "specified_by"
+  },
+  {
+   "from": "REQ-PX-192",
+   "to": "DR-PX-2026-09-05",
+   "type": "authorized_by"
+  },
+  {
+   "from": "REQ-PX-192",
+   "to": "DR-PX-2026-11-03-019",
+   "type": "authorized_by"
+  },
+  {
+   "from": "REQ-PX-192",
+   "to": "PX-192",
+   "type": "implemented_by"
+  },
+  {
+   "from": "REQ-PX-193",
+   "to": "desktop",
+   "type": "owned_by_req"
+  },
+  {
+   "from": "REQ-PX-193",
+   "to": "QUAL-PX-193",
+   "type": "qualified_by"
+  },
+  {
+   "from": "REQ-PX-193",
+   "to": "62_PRODUCT_EXTENSION_REQUIREMENTS_TASKS_AND_QUALIFICATIONS.md",
+   "type": "specified_by"
+  },
+  {
+   "from": "REQ-PX-193",
+   "to": "DR-PX-2026-09-05",
+   "type": "authorized_by"
+  },
+  {
+   "from": "REQ-PX-193",
+   "to": "DR-PX-2026-11-03-019",
+   "type": "authorized_by"
+  },
+  {
+   "from": "REQ-PX-193",
+   "to": "PX-193",
+   "type": "implemented_by"
+  },
+  {
+   "from": "REQ-PX-194",
+   "to": "desktop",
+   "type": "owned_by_req"
+  },
+  {
+   "from": "REQ-PX-194",
+   "to": "QUAL-PX-194",
+   "type": "qualified_by"
+  },
+  {
+   "from": "REQ-PX-194",
+   "to": "62_PRODUCT_EXTENSION_REQUIREMENTS_TASKS_AND_QUALIFICATIONS.md",
+   "type": "specified_by"
+  },
+  {
+   "from": "REQ-PX-194",
+   "to": "DR-PX-2026-09-05",
+   "type": "authorized_by"
+  },
+  {
+   "from": "REQ-PX-194",
+   "to": "DR-PX-2026-11-03-019",
+   "type": "authorized_by"
+  },
+  {
+   "from": "REQ-PX-194",
+   "to": "PX-194",
+   "type": "implemented_by"
   },
   {
    "from": "PX-000",
@@ -76457,6 +76771,171 @@
    "type": "proves"
   },
   {
+   "from": "PX-192",
+   "to": "DR-PX-2026-09-05",
+   "type": "authorized_by"
+  },
+  {
+   "from": "PX-192",
+   "to": "DR-PX-2026-11-03-019",
+   "type": "authorized_by"
+  },
+  {
+   "from": "PX-192",
+   "to": "desktop",
+   "type": "owned_by"
+  },
+  {
+   "from": "PX-192",
+   "to": "M10",
+   "type": "scheduled_in"
+  },
+  {
+   "from": "PX-192",
+   "to": "QUAL-PX-192",
+   "type": "proven_by"
+  },
+  {
+   "from": "PX-192",
+   "to": "62_PRODUCT_EXTENSION_REQUIREMENTS_TASKS_AND_QUALIFICATIONS.md",
+   "type": "specified_by"
+  },
+  {
+   "from": "PX-192",
+   "to": "PX-143",
+   "type": "after"
+  },
+  {
+   "from": "PX-192",
+   "to": "DOC-PX-018",
+   "type": "after"
+  },
+  {
+   "from": "REQ-PX-192",
+   "to": "REQ-EV-0037",
+   "type": "extends"
+  },
+  {
+   "from": "PX-192",
+   "to": "PX-E2E-192",
+   "type": "proven_by"
+  },
+  {
+   "from": "PX-E2E-192",
+   "to": "M10",
+   "type": "proves"
+  },
+  {
+   "from": "PX-193",
+   "to": "DR-PX-2026-09-05",
+   "type": "authorized_by"
+  },
+  {
+   "from": "PX-193",
+   "to": "DR-PX-2026-11-03-019",
+   "type": "authorized_by"
+  },
+  {
+   "from": "PX-193",
+   "to": "desktop",
+   "type": "owned_by"
+  },
+  {
+   "from": "PX-193",
+   "to": "M10",
+   "type": "scheduled_in"
+  },
+  {
+   "from": "PX-193",
+   "to": "QUAL-PX-193",
+   "type": "proven_by"
+  },
+  {
+   "from": "PX-193",
+   "to": "62_PRODUCT_EXTENSION_REQUIREMENTS_TASKS_AND_QUALIFICATIONS.md",
+   "type": "specified_by"
+  },
+  {
+   "from": "PX-193",
+   "to": "PX-192",
+   "type": "after"
+  },
+  {
+   "from": "PX-193",
+   "to": "DOC-PX-018",
+   "type": "after"
+  },
+  {
+   "from": "REQ-PX-193",
+   "to": "REQ-EV-0037",
+   "type": "extends"
+  },
+  {
+   "from": "PX-193",
+   "to": "PX-E2E-193",
+   "type": "proven_by"
+  },
+  {
+   "from": "PX-E2E-193",
+   "to": "M10",
+   "type": "proves"
+  },
+  {
+   "from": "PX-194",
+   "to": "DR-PX-2026-09-05",
+   "type": "authorized_by"
+  },
+  {
+   "from": "PX-194",
+   "to": "DR-PX-2026-11-03-019",
+   "type": "authorized_by"
+  },
+  {
+   "from": "PX-194",
+   "to": "desktop",
+   "type": "owned_by"
+  },
+  {
+   "from": "PX-194",
+   "to": "M10",
+   "type": "scheduled_in"
+  },
+  {
+   "from": "PX-194",
+   "to": "QUAL-PX-194",
+   "type": "proven_by"
+  },
+  {
+   "from": "PX-194",
+   "to": "62_PRODUCT_EXTENSION_REQUIREMENTS_TASKS_AND_QUALIFICATIONS.md",
+   "type": "specified_by"
+  },
+  {
+   "from": "PX-194",
+   "to": "PX-193",
+   "type": "after"
+  },
+  {
+   "from": "PX-194",
+   "to": "DOC-PX-018",
+   "type": "after"
+  },
+  {
+   "from": "REQ-PX-194",
+   "to": "REQ-EV-0037",
+   "type": "extends"
+  },
+  {
+   "from": "PX-194",
+   "to": "PX-E2E-194",
+   "type": "proven_by"
+  },
+  {
+   "from": "PX-E2E-194",
+   "to": "M10",
+   "type": "proves"
+  },
+  {
    "from": "domain-events",
    "to": "38_EXECUTION_POLICY_CONTRACTS_AND_ALGORITHMS.md",
    "type": "specified_by"
@@ -77489,6 +77968,31 @@
   {
    "from": "DOC-PX-017",
    "to": "DR-PX-2026-10-26-018",
+   "type": "authorized_by"
+  },
+  {
+   "from": "DOC-PX-018",
+   "to": "DOC-GOV-007",
+   "type": "after"
+  },
+  {
+   "from": "DOC-PX-018",
+   "to": "governance",
+   "type": "owned_by"
+  },
+  {
+   "from": "DOC-PX-018",
+   "to": "97_DOSSIER_MAINTENANCE_LOG.md",
+   "type": "specified_by"
+  },
+  {
+   "from": "DOC-PX-018",
+   "to": "65_AGENT_FIRST_WORKSPACE_SPECIFICATION.md",
+   "type": "specified_by"
+  },
+  {
+   "from": "DOC-PX-018",
+   "to": "DR-PX-2026-11-03-019",
    "type": "authorized_by"
   },
   {
@@ -82348,6 +82852,21 @@
   },
   {
    "from": "RELEASE_ZERO",
+   "to": "PX-192",
+   "type": "includes"
+  },
+  {
+   "from": "RELEASE_ZERO",
+   "to": "PX-193",
+   "type": "includes"
+  },
+  {
+   "from": "RELEASE_ZERO",
+   "to": "PX-194",
+   "type": "includes"
+  },
+  {
+   "from": "RELEASE_ZERO",
    "to": "EPR-GATE-A",
    "type": "requires_gate"
   },
@@ -82381,5 +82900,6 @@
    "to": "EPR-GATE-G",
    "type": "requires_gate"
   }
- ]
+ ],
+ "updated_on": "2026-11-03T21:56:46Z"
 }

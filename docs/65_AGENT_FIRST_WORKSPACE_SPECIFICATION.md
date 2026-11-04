@@ -18,6 +18,8 @@ What is carried over is facts, not expression. No code, stylesheet, theme file, 
 
 > **Scoped supersession (DR-PX-2026-10-24-016, accepted 2026-10-24).** The clean-room posture of this section is about the Cursor reference product and is unchanged. The owner has since adopted the design language of a different, Apache-2.0 product (ZCode) for the renderer; that record supersedes, and only, the numbers of AFW-A03 (agent list default 264 px), AFW-A04 (top bar 48 px), AFW-A05 (navigation row radius 6 px) and AFW-A07 (composer radius 16 px), and the provenance clause of AFW-A11 (tokens come from ZCode's Zai themes under the record's section 4, with the declared exceptions that keep AFW-A12, A13 and A14). Where a row below still shows the older number, the record governs.
 
+> **Scoped supersession (DR-PX-2026-11-03-019, accepted 2026-11-03).** The owner has since asked for the renderer to follow the reference product's layout. That record supersedes DR-PX-2026-10-24-016 in the scope its front matter names: AFW-A03 (260 px), AFW-A04 (40 px), AFW-A05 (radius 8) return to the numbers in the rows below, AFW-A07's composer radius is 12 px, and the provenance clause of AFW-A11 again applies to every source, so the renderer's colours are Modbit's own (the record's section 5.1), neither the reference product's nor ZCode's. The clean-room posture of this section is unchanged and governs the record: layout, proportions and density only. Where this note and the earlier one disagree, this one governs.
+
 ## 3. Verification tags
 
 Every requirement carries the tag of the parity fact it derives from. A tag says how the fact was learned, not whether Modbit must follow it.

@@ -436,15 +436,15 @@ class DossierTests(unittest.TestCase):
 
     def test_parity_surface_counts_are_pinned_and_dr_013_is_traced(self):
         # The additive PX ledger pins nothing in tools/dossier_px.py (totals are computed); the parity-push surface is pinned here
-        # in the same reseal that adds a record: PX-000..191 (192 rows, 170 ADOPT tasks, 22 DEFERRED), eleven records of which
+        # in the same reseal that adds a record: PX-000..194 (195 rows, 173 ADOPT tasks, 22 DEFERRED), eleven records of which
         # 007, 008, 010 and 013 are accepted, and the 41 rows of DR-PX-2026-10-05-013 (39 release-critical, 2 iteration).
         self.rebuild()
         g = self.graph()
         nodes = {n["id"]: n for n in g["nodes"]}
         reqs = [n for n in g["nodes"] if re.match(r"^REQ-PX-\d{3}$", n["id"])]
         tasks = [n for n in g["nodes"] if re.match(r"^PX-\d{3}$", n["id"]) and n["type"] == "imp_task"]
-        self.assertEqual(len(reqs), 192)
-        self.assertEqual(len(tasks), 170)
+        self.assertEqual(len(reqs), 195)
+        self.assertEqual(len(tasks), 173)
         self.assertEqual(sorted(n["id"] for n in reqs if n.get("disposition") == "DEFERRED"), ["REQ-PX-003", "REQ-PX-012", "REQ-PX-013", "REQ-PX-140"] + ["REQ-PX-%03d" % i for i in self.DR_018_DEFERRED])
         self.assertEqual(len([r for r in self.PARITY_RECORDS if r[4]]), 4)
         self.assertEqual(len(self.PARITY_RECORDS), 7)
@@ -626,6 +626,48 @@ class DossierTests(unittest.TestCase):
         spec = (self.root / "docs/65_AGENT_FIRST_WORKSPACE_SPECIFICATION.md").read_text()
         self.assertIn("Scoped supersession (DR-PX-2026-10-24-016", spec)
         # the clean-room posture for the Cursor reference product is untouched
+        self.assertIn("No code, stylesheet, theme file, colour value taken from a theme", spec)
+
+    def test_dr_019_adopts_the_agent_workspace_language_inside_the_clean_room_posture(self):
+        # DR-PX-2026-11-03-019 (accepted 2026-11-03 on the owner's chat instruction): rows PX-192..194 are owned by the existing
+        # subsystem `desktop`, scheduled in M10, RELEASE_ZERO only, iteration tier, chained 192 -> 193 -> 194 after PX-143, gated by
+        # DOC-PX-018; the record supersedes DR-PX-2026-10-24-016 in a named scope only, keeps AFW-A12/A13/A14 and the clean-room posture.
+        self.rebuild()
+        g = self.graph()
+        nodes = {n["id"]: n for n in g["nodes"]}
+        after, auth, includes = self.edges(g)
+        dr = "DR-PX-2026-11-03-019"
+        self.assertEqual(nodes[dr]["type"], "change_record")
+        self.assertEqual(nodes[dr]["status"], "APPROVED")
+        self.assertEqual(nodes["DOC-PX-018"]["type"], "dossier_task")
+        self.assertIn(("DOC-PX-018", dr), auth)
+        owners = {e["from"]: e["to"] for e in g["edges"] if e["type"] == "owned_by"}
+        for pid in ("PX-192", "PX-193", "PX-194"):
+            self.assertEqual(nodes[pid]["milestone"], "M10", pid)
+            self.assertEqual(nodes[pid]["release"], "RELEASE_ZERO", pid)
+            self.assertEqual(owners[pid], "desktop", pid)
+            self.assertIn((pid, dr), auth, pid)
+            self.assertIn("DOC-PX-018", after[pid], pid)
+            self.assertEqual(includes.get(pid), {"RELEASE_ZERO"}, pid)
+        self.assertIn("PX-143", after["PX-192"])
+        self.assertIn("PX-192", after["PX-193"])
+        self.assertIn("PX-193", after["PX-194"])
+        text = (self.root / "docs/62_PRODUCT_EXTENSION_REQUIREMENTS_TASKS_AND_QUALIFICATIONS.md").read_text()
+        tiers = re.findall(r"\*\*Decision Record, phase and evidence tier:\*\* DR-PX-2026-11-03-019; [^;]+; (release-critical|iteration) \(", text)
+        self.assertEqual(tiers, ["iteration"] * 3)
+        self.assertIn("keep the clean-room posture of doc 65 section 2, and leave AFW-A12, A13 and A14 unrelaxed", text)
+        record = (self.root / "docs/decisions/DR-PX-2026-11-03-019-agent-workspace-language.md").read_text()
+        head = record.split("---")[1]
+        self.assertIn("status: accepted", head)
+        self.assertIn("approved_by: owner, chat instruction of 2026-11-03", head)
+        self.assertIn("supersedes: scoped — DR-PX-2026-10-24-016", head)
+        for awl in range(1, 10):
+            self.assertIn("AWL-%02d" % awl, record)
+        # the approval is bounded: no accessibility relaxation and no asset, colour or string of the reference product
+        self.assertIn("does **not** cover any relaxation of AFW-A12 (WCAG 2.2 AA), AFW-A13 (themes) or AFW-A14", record)
+        self.assertIn("never its colours, theme file, icons, fonts, logo, brand colour or strings", record)
+        spec = (self.root / "docs/65_AGENT_FIRST_WORKSPACE_SPECIFICATION.md").read_text()
+        self.assertIn("Scoped supersession (DR-PX-2026-11-03-019", spec)
         self.assertIn("No code, stylesheet, theme file, colour value taken from a theme", spec)
 
     def test_decision_record_status_and_approval_match_the_graph(self):

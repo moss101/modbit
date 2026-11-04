@@ -438,6 +438,16 @@ export function Shell({ app }: { app: AppState }) {
             onShowFleet={() => toFleet(() => {})}
             worktreesActive={worktreesOpen}
             onShowWorktrees={openWorktrees}
+            onSearch={() => setPaletteOpen(true)}
+            dashboardOpen={dashboardOpen}
+            dashboardDisabled={!model.sessionId}
+            onToggleDashboard={() => setDashboardOpen((o) => !o)}
+            automationsOpen={automationsOpen}
+            automationsDisabled={core.state !== "connected"}
+            onToggleAutomations={() => setAutomationsOpen((o) => !o)}
+            customizeOpen={customizeOpen}
+            customizeDisabled={core.state !== "connected"}
+            onToggleCustomize={() => setCustomizeOpen((o) => !o)}
             list={rail ? undefined : <AgentList sessionId={model.sessionId} connected={core.state === "connected"} selectedTaskId={conversation?.taskId ?? null} onSelect={openConversation} projects={projects} selectedProjectId={projectPage} onOpenProject={openProject} onProjectArchived={(id, archived) => { if (archived && projectPage === id) setProjectPage(null); }} />}
           />
         )}
@@ -460,15 +470,6 @@ export function Shell({ app }: { app: AppState }) {
             canGoBack={actions.canGoBack()}
             onBack={() => actions.goBack()}
             menuItems={menuItems}
-            dashboardOpen={dashboardOpen}
-            dashboardDisabled={!model.sessionId}
-            onToggleDashboard={() => setDashboardOpen((o) => !o)}
-            automationsOpen={automationsOpen}
-            automationsDisabled={core.state !== "connected"}
-            onToggleAutomations={() => setAutomationsOpen((o) => !o)}
-            customizeOpen={customizeOpen}
-            customizeDisabled={core.state !== "connected"}
-            onToggleCustomize={() => setCustomizeOpen((o) => !o)}
             panelOpen={panelOpen}
             panelUnavailable={panelUnavailable}
             onTogglePanel={() => actions.togglePanel()}

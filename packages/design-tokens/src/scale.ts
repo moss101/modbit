@@ -1,7 +1,7 @@
 /**
- * Non-colour tokens (AFW-A11 as superseded by DR-PX-2026-10-24-016): a 4 pt spacing grid with half steps, radii, control heights,
- * type, motion, elevation and z-layers. The type scale, the radius hierarchy, the fonts and the shadows are ZCode's (ZDL-02..05,
- * Apache-2.0, third-party/zcode-ui/NOTICE.md), measured from its real stylesheet in evidence/zcode-ui/reference.
+ * Non-colour tokens (AFW-A11, DR-PX-2026-11-03-019 AWL-04): a 4 pt spacing grid with half steps, radii, control heights, type,
+ * motion, elevation and z-layers. The font stacks and the overlay shadows are the generic system stacks and Tailwind CSS shadows
+ * (MIT) that DR-PX-2026-10-24-016 introduced; the type scale, radii and geometry are this record's.
  */
 
 export const SPACE = { 0: 0, 0.5: 2, 1: 4, 1.5: 6, 2: 8, 3: 12, 4: 16, 5: 20, 6: 24, 8: 32, 10: 40, 12: 48 } as const;
@@ -16,27 +16,27 @@ export const FONT = {
   mono: 'ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", "Microsoft YaHei UI", "Microsoft YaHei", "PingFang SC", "Noto Sans CJK SC", monospace',
 } as const;
 
-/** ZCode's `text-ui-*` scale (ZDL-02): one `--ui-font-size` (14 px by default) and fixed offsets; never the root font size. */
-export const UI_FONT_SIZE = 14;
-export const UI_TEXT = { xl: 4, lg: 2, base: 0, caption: -1, sm: -2, xs: -4 } as const;
+/** The `text-ui-*` scale (AWL-04): one `--ui-font-size` (13 px, chrome type) and fixed offsets; never the root font size. */
+export const UI_FONT_SIZE = 13;
+export const UI_TEXT = { xl: 4, lg: 1, base: 0, caption: -1, sm: -1, xs: -2 } as const;
 export type UiText = keyof typeof UI_TEXT;
 
 /**
- * Type roles: the `text-ui-*` step each role uses and its size and line in px at the default `--ui-font-size`. Lines are 1.5 x the
- * size, the leading ZCode's text inherits (measured: 14 px -> 21 px, 12 px -> 18 px, 10 px -> 15 px). The conversation size is
- * scaled by a Text size setting once a screen exposes it (`conversationType`).
+ * Type roles (AWL-04): the `text-ui-*` step each role uses and its size and line in px at the default `--ui-font-size`: chrome
+ * 13/18, caption 12/16, conversation body 14/22, title 14/20, heading 17/24, mono 12/20. The conversation size is scaled by a
+ * Text size setting once a screen exposes it (`conversationType`).
  */
 export const TYPE = {
-  caption: { ui: "sm", size: 12, line: 18 },
-  chrome: { ui: "base", size: 14, line: 21 },
-  body: { ui: "base", size: 14, line: 21 },
-  title: { ui: "lg", size: 16, line: 24 },
-  heading: { ui: "xl", size: 18, line: 27 },
-  mono: { ui: "sm", size: 12, line: 18 },
+  caption: { ui: "caption", size: 12, line: 16 },
+  chrome: { ui: "base", size: 13, line: 18 },
+  body: { ui: "lg", size: 14, line: 22 },
+  title: { ui: "lg", size: 14, line: 20 },
+  heading: { ui: "xl", size: 17, line: 24 },
+  mono: { ui: "sm", size: 12, line: 20 },
 } as const satisfies Record<string, { ui: UiText; size: number; line: number }>;
 
-/** ZCode's radius hierarchy (ZDL-03): the first rounded container is xl, nested ones step down to sm. */
-export const ZRADIUS = { sm: 4, md: 6, lg: 8, xl: 12, "2xl": 16 } as const;
+/** The radius hierarchy (AWL-04): rows 8, controls 6, cards, the composer, menus and dialogs 12. */
+export const ZRADIUS = { sm: 4, md: 6, lg: 8, xl: 12, "2xl": 14 } as const;
 
 /** ZCode's overlay shadows (Tailwind's `shadow-sm`, `shadow-md`, `shadow-lg`, measured on its menu and dialog): the same in both themes. */
 export const ZSHADOW = {
@@ -46,11 +46,11 @@ export const ZSHADOW = {
   "2xl": "0 25px 50px -12px rgb(0 0 0 / 0.25)",
 } as const;
 
-/** The conversation text size for a Text size setting (percent, clamped to 80..140); line pitch stays 24/14 of the size. */
+/** The conversation text size for a Text size setting (percent, clamped to 80..140); line pitch stays 22/14 of the size. */
 export function conversationType(percent: number): { size: number; line: number } {
   const p = Math.min(140, Math.max(80, Math.round(percent)));
   const size = Math.round((14 * p) / 100);
-  return { size, line: Math.round(size * (24 / 14)) };
+  return { size, line: Math.round(size * (22 / 14)) };
 }
 
 /** Durations in ms. With prefers-reduced-motion every one collapses to 0 (AFW-A14). */
@@ -66,10 +66,10 @@ export const ELEVATION = {
   "high-contrast": { 0: "none", 1: "none", 2: "0 0 0 1px #ffffff", 3: "0 0 0 2px #ffffff" },
 } as const;
 
-/** The shell geometry of AFW-A01..A08 (px, the pt of the spec). the top bar (48) and the list default (264) are ZCode's header and sidebar (DR-PX-2026-10-24-016 section 5.3). */
+/** The shell geometry of AFW-A01..A08 (px, the pt of the spec), as restored by DR-PX-2026-11-03-019 section 5.3. */
 export const GEOMETRY = {
-  topBar: 48,
-  listDefault: 264,
+  topBar: 40,
+  listDefault: 260,
   listMin: 210,
   listMax: 400,
   rail: 40,

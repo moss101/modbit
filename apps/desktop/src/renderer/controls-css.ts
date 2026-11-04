@@ -71,6 +71,8 @@ export const controlsCss = `
 .ckpt { display: inline-flex; align-items: center; flex-wrap: wrap; gap: var(--mb-space-1); font-size: var(--mb-type-caption-size); color: var(--mb-color-text-muted); }
 .ckpt-actions { display: flex; flex-wrap: wrap; gap: var(--mb-space-1); align-items: center; }
 .conv-user .ckpt-actions { margin-top: var(--mb-space-1); justify-content: flex-end; }
+/* AWL-07: a message's hover-only actions overlay the bubble's corner instead of reserving a line. */
+.conv-user .ckpt-actions[data-hover-only="true"] { position: absolute; right: var(--mb-space-2); bottom: var(--mb-space-1); margin: 0; background: var(--color-panel); border-radius: var(--radius-md); }
 .conv-user:not(:hover):not(:focus-within) .ckpt-actions[data-hover-only="true"] { opacity: 0; }
 .ckpt-redo { display: flex; align-items: center; gap: var(--mb-space-2); font-size: var(--mb-type-chrome-size); padding: var(--mb-space-1) var(--mb-space-3); border: 1px dashed var(--mb-color-border-control); border-radius: var(--radius-md); }
 .ckpt-dialog { display: flex; flex-direction: column; gap: var(--mb-space-2); max-height: 65vh; overflow: auto; }
