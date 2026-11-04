@@ -1,0 +1,80 @@
+# macOS arm64, git 2.54.0, base f4fd683f, working tree of this change
+
+## cargo fmt --all -- --check: exit 0; cargo clippy -p modbit-git -p modbit-core --all-targets --locked -- -D warnings: exit 0
+
+## cargo test -p modbit-git
+test result: ok. 7 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+test result: ok. 9 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 1.57s
+test result: ok. 6 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 2.73s
+test result: ok. 6 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.52s
+test status_leaves_a_stat_dirty_index_alone ... ok
+test a_diff_read_on_a_corrupt_index_fails_and_leaves_it_as_it_was ... ok
+test a_file_gone_since_the_status_is_left_out_and_the_rest_still_shows ... ok
+test git_clean_removes_a_file_a_diff_read_has_shown ... ok
+test a_diff_with_no_untracked_files_is_the_plain_worktree_diff ... ok
+test a_diff_with_untracked_files_equals_add_n_and_never_touches_the_real_index ... ok
+test a_diff_read_in_a_linked_worktree_leaves_both_indexes_alone ... ok
+test a_diff_read_takes_more_untracked_files_than_a_command_line_holds ... ok
+test result: ok. 13 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 1.21s
+test result: ok. 4 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.55s
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+## cargo test -p modbit-core -p modbit-tools --no-fail-fast
+test px_048_a_revert_command_id_replays_without_writing_twice ... ok
+test px_048_no_remote_and_a_detached_head_are_refused_before_anything_is_asked ... ok
+test px_048_reverting_a_new_file_leaves_no_trace_in_the_index ... ok
+test px_048_stage_and_unstage_act_on_the_real_index ... ok
+test px_048_reading_the_change_set_leaves_the_index_alone_and_git_clean_removes_new_files ... ok
+test px_048_the_actions_work_in_a_task_worktree_and_the_checkout_never_changes ... ok
+test px_048_a_changed_stage_after_the_approval_runs_nothing_and_a_rejected_push_keeps_the_commit ... ok
+test px_048_a_core_killed_mid_push_leaves_the_effect_in_doubt_and_a_retry_converges ... ok
+test px_048_revert_by_hunk_and_file_goes_through_the_change_transaction_with_a_checkpoint ... ok
+test px_048_commit_and_push_is_one_protected_effect_bound_to_its_exact_intent ... ok
+test m2_9_review_surface_applies_per_hunk_decisions_and_commits ... ok
+test review_accept_rejecting_the_only_new_file_completes_without_a_commit ... ok
+test review_accept_with_a_wholly_rejected_new_file_commits_the_rest ... ok
+binaries 52 passed 715 failed 0
+
+## Playwright: e2e changes-app, review, approvals (matched px-104-live-review and live-approvals too), real Electron on the real Core of this change
+✓   1 e2e/approvals.spec.ts:53:1 › PX-058: a pending effect docks a card with the exact intent and the Core's reason; a stale hash is refused; it surv
+✓   2 e2e/approvals.spec.ts:115:1 › PX-058: three pending approvals form a deck, oldest first, each decided on its own; a bare key never decides anoth
+✓   3 e2e/approvals.spec.ts:191:1 › PX-058: an effect that cannot be undone asks twice, and a key typed into a text field never decides; Always is not
+✓   4 e2e/approvals.spec.ts:236:1 › PX-057/058: Allowlist plus Always on a card makes a durable rule through the Core; the same kind of command then r
+✓   5 e2e/approvals.spec.ts:304:1 › PX-057: the widest preset needs its warning and still asks for the always-ask classes; everything else in the enve
+✓   6 e2e/approvals.spec.ts:354:1 › PX-057/058: the main process rejects invalid arguments before the Core sees them (560ms)
+✓   7 e2e/changes-app.spec.ts:97:1 › the Changes tab shows the finished task's change set with its index, branch and remote (4.1s)
+✓   8 e2e/changes-app.spec.ts:125:1 › reverting one hunk goes through the Core, leaves the other, and a checkpoint undoes it (1.6s)
+✓   9 e2e/changes-app.spec.ts:143:1 › a revert of a file edited since the view was read is refused as stale and writes nothing (2.3s)
+✓  10 e2e/changes-app.spec.ts:160:1 › staging moves the real git index; a staged path cannot be reverted under it (4.0s)
+✓  11 e2e/changes-app.spec.ts:180:1 › Commit and push asks for an approval that shows the exact intent, and runs only after it (3.4s)
+✓  12 e2e/changes-app.spec.ts:227:1 › a denied approval commits and pushes nothing (4.3s)
+✓  13 e2e/changes-app.spec.ts:243:1 › a protected path is refused by the Core, not hidden by the app (336ms)
+✓  14 e2e/changes-app.spec.ts:267:1 › the Core killed in the middle of a push: the effect is shown as in doubt after the restart, and the retry conver
+-  15 e2e/live-approvals.spec.ts:34:1 › live: the approval deck with a real model: a card for a command no rule covers, Always makes a rule that appli
+✓  16 e2e/px-104-live-review.spec.ts:103:1 › the Changes tab is open while the task is Running; each hunk's chip names the call the Core attributed it
+✓  17 e2e/px-104-live-review.spec.ts:127:1 › the chip opens the producing call in the conversation (90ms)
+✓  18 e2e/px-104-live-review.spec.ts:138:1 › rejecting one hunk by keyboard while the run is live reverts exactly that hunk, and the agent continues a
+✓  19 e2e/px-104-live-review.spec.ts:160:1 › with the task waiting for the person, a decision on a file that moved is refused with the Core's code, an
+✓  20 e2e/px-104-live-review.spec.ts:176:1 › a write by no tool call is shown unattributed, blocks automatic acceptance, and only the person accepts i
+✓  21 e2e/px-104-live-review.spec.ts:189:1 › the renderer's process is killed and the replacement view shows the same decisions, read from the Core (1
+✓  22 e2e/review.spec.ts:65:1 › review surface: per-hunk decision commits exactly the user's choice and survives an app restart (4.2s)
+  1 skipped
+  21 passed (1.0m)
+
+## Playwright: PR moss101/modbit#169 at 14eff22d, its own specs (e2e/changes-app e2e/review e2e/approvals), on the Core of this change
+✓   1 e2e/approvals.spec.ts:42:1 › PX-058: a pending effect docks a card with the exact intent and the Core's reason; a stale hash is refused; it surv
+✓   2 e2e/approvals.spec.ts:104:1 › PX-058: three pending approvals form a deck, oldest first, each decided on its own; a bare key never decides anoth
+✓   3 e2e/approvals.spec.ts:180:1 › PX-058: an effect that cannot be undone asks twice, and a key typed into a text field never decides; Always is not
+✓   4 e2e/approvals.spec.ts:225:1 › PX-057/058: Allowlist plus Always on a card makes a durable rule through the Core; the same kind of command then r
+✓   5 e2e/approvals.spec.ts:293:1 › PX-057: the widest preset needs its warning and still asks for the always-ask classes; everything else in the enve
+✓   6 e2e/approvals.spec.ts:343:1 › PX-057/058: the main process rejects invalid arguments before the Core sees them (576ms)
+✓   7 e2e/changes-app.spec.ts:98:1 › the Changes tab shows the finished task's change set with its index, branch and remote (4.1s)
+✓   8 e2e/changes-app.spec.ts:118:1 › reverting one hunk goes through the Core, leaves the other, and a checkpoint undoes it (1.7s)
+✓   9 e2e/changes-app.spec.ts:136:1 › a revert of a file edited since the view was read is refused as stale and writes nothing (2.3s)
+✓  10 e2e/changes-app.spec.ts:153:1 › staging moves the real git index; a staged path cannot be reverted under it (4.5s)
+✓  11 e2e/changes-app.spec.ts:173:1 › Commit and push asks for an approval that shows the exact intent, and runs only after it (3.6s)
+✓  12 e2e/changes-app.spec.ts:220:1 › a denied approval commits and pushes nothing (5.4s)
+✓  13 e2e/changes-app.spec.ts:236:1 › a protected path is refused by the Core, not hidden by the app (18ms)
+✓  14 e2e/changes-app.spec.ts:260:1 › the Core killed in the middle of a push: the effect is shown as in doubt after the restart, and the retry conver
+✓  15 e2e/review.spec.ts:66:1 › review surface: per-hunk decision commits exactly the user's choice and survives an app restart (4.9s)
+  15 passed (52.1s)

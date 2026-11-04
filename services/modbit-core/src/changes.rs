@@ -258,7 +258,13 @@ pub(crate) async fn state(
         for f in &cand.files {
             let code = codes.get(f.path.as_str()).copied().unwrap_or("..");
             let mut chars = code.chars();
-            let (x, y) = (chars.next().unwrap_or('.'), chars.next().unwrap_or('.'));
+            // An untracked file in the change set is an addition in the working
+            // tree that the index does not hold yet.
+            let (x, y) = if code == "??" {
+                ('.', 'A')
+            } else {
+                (chars.next().unwrap_or('.'), chars.next().unwrap_or('.'))
+            };
             let protected_path = matches!(
                 svc.resolve(&f.path),
                 Err(modbit_workspace::Error::Protected { .. })

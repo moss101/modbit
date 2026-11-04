@@ -50509,3 +50509,182 @@ async fn qual_px_189_a_finished_run_becomes_a_sealed_redacted_trace_the_lab_prop
         !dir2.path().join("lab").exists() && !dir2.path().join("skill-lab").join("traces").exists()
     );
 }
+
+/// A new file the index never held: rejecting all of it deletes the file, and
+/// the accept commits what is left. `git add -A -- <path>` refuses a path that
+/// is neither on disk nor in the index, so this works only if the accept does
+/// not ask git to stage the file it just deleted.
+#[tokio::test]
+async fn review_accept_with_a_wholly_rejected_new_file_commits_the_rest() {
+    let commit = accept_rejecting_a_new_file(true).await;
+    assert!(!commit.is_empty(), "the accepted file is committed");
+}
+
+/// With nothing left to commit the accept completes the task without a commit:
+/// the file is gone, and a failed `git commit` must not follow that.
+#[tokio::test]
+async fn review_accept_rejecting_the_only_new_file_completes_without_a_commit() {
+    let commit = accept_rejecting_a_new_file(false).await;
+    assert_eq!(commit, "");
+}
+
+async fn accept_rejecting_a_new_file(with_a_second_file: bool) -> String {
+    use modbit_protocol::v1::{
+        DecideReview, GetReviewBundle, HunkRef, ReviewBundle, ReviewDecided, StartTask,
+        TaskRunStarted,
+    };
+    use serde_json::json;
+    let repo = tempfile::tempdir().unwrap();
+    std::fs::write(repo.path().join("notes.txt"), "line 1\n").unwrap();
+    std::fs::create_dir_all(repo.path().join(".modbit")).unwrap();
+    std::fs::write(repo.path().join(NOOP_CHECK.0), NOOP_CHECK.1).unwrap();
+    let git = |args: &[&str]| {
+        let out = Command::new("git")
+            .arg("-C")
+            .arg(repo.path())
+            .args(args)
+            .output()
+            .unwrap();
+        assert!(out.status.success(), "{args:?}");
+        String::from_utf8_lossy(&out.stdout).trim().to_owned()
+    };
+    git(&["init", "-q", "-b", "main"]);
+    git(&["add", "-A"]);
+    git(&[
+        "-c",
+        "user.name=t",
+        "-c",
+        "user.email=t@e",
+        "commit",
+        "-q",
+        "-m",
+        "base",
+    ]);
+    let root = repo
+        .path()
+        .canonicalize()
+        .unwrap()
+        .to_string_lossy()
+        .trim_start_matches(r"\\?\")
+        .to_owned();
+    let mut script = vec![
+        json!({"calls": [{"name": "plan.update", "args": {"outcome": "new files", "expected_files": ["keep.txt", "drop.txt"]}}]}),
+        json!({"calls": [{"name": "change.apply", "args": {"path": "drop.txt", "op": "create", "content": "drop\n"}}]}),
+    ];
+    if with_a_second_file {
+        script.push(json!({"calls": [{"name": "change.apply", "args": {"path": "keep.txt", "op": "create", "content": "keep\n"}}]}));
+    }
+    script.push(json!({"calls": [{"name": "task.complete", "args": {"summary": "added", "self_review": {"findings": []}}}]}));
+    let (base, _seen) = scripted_model(script, None).await;
+    let dir = tempfile::tempdir().unwrap();
+    let core = CoreProcess::spawn_with_env(
+        dir.path(),
+        &[
+            ("MODBIT_OPENAI_BASE_URL", &base),
+            ("OPENAI_API_KEY", ""),
+            ("ANTHROPIC_API_KEY", ""),
+        ],
+    );
+    let mut c = core.client_of(ClientKind::Desktop).await;
+    let (session, _) = create_session(&mut c, id16(0xC0)).await;
+    let g = lease_for(&session);
+    let ack = c
+        .command(envelope_fenced(
+            id16(0xC1),
+            "CreateTask",
+            CreateTask {
+                session_id: Some(session.clone()),
+                goal_text: "Add two files".into(),
+                origin: "cli".into(),
+                workspace_root: root,
+                ..Default::default()
+            }
+            .encode_to_vec(),
+            g,
+        ))
+        .await
+        .unwrap();
+    let task = Client::result::<TaskCreated>(&ack)
+        .unwrap()
+        .task_id
+        .unwrap();
+    let ack = c
+        .command(envelope_fenced(
+            id16(0xC2),
+            "StartTask",
+            StartTask {
+                task_id: Some(task.clone()),
+                model: "gpt-5-mini".into(),
+                max_turns: 10,
+                max_no_progress_turns: 3,
+                ..Default::default()
+            }
+            .encode_to_vec(),
+            g,
+        ))
+        .await
+        .unwrap();
+    let _: TaskRunStarted = Client::result(&ack).unwrap();
+    let st = wait_task(&mut c, &task, 60).await;
+    assert_eq!(st.state, "ReadyForReview", "{st:?}");
+    let ack = c
+        .command(envelope(
+            id16(0xC3),
+            "GetReviewBundle",
+            GetReviewBundle {
+                task_id: Some(task.clone()),
+            }
+            .encode_to_vec(),
+        ))
+        .await
+        .unwrap();
+    let b: ReviewBundle = Client::result(&ack).unwrap();
+    let drop_file = b.files.iter().find(|f| f.path == "drop.txt").unwrap();
+    assert_eq!(drop_file.status, "A");
+    assert_eq!(
+        git(&["--no-optional-locks", "status", "--porcelain"])
+            .lines()
+            .filter(|l| l.contains("drop.txt") || l.contains("keep.txt"))
+            .collect::<Vec<_>>(),
+        if with_a_second_file {
+            vec!["?? drop.txt", "?? keep.txt"]
+        } else {
+            vec!["?? drop.txt"]
+        },
+        "the bundle read left the new files untracked"
+    );
+    let ack = c
+        .command(envelope_fenced(
+            id16(0xC4),
+            "DecideReview",
+            DecideReview {
+                task_id: Some(task.clone()),
+                decision: "ACCEPT".into(),
+                rejected: vec![HunkRef {
+                    path: "drop.txt".into(),
+                    index: 0,
+                }],
+                note: String::new(),
+                expected_workspace_revision: b.workspace_revision,
+            }
+            .encode_to_vec(),
+            g,
+        ))
+        .await
+        .unwrap();
+    let d: ReviewDecided = Client::result(&ack).unwrap();
+    assert_eq!(d.task_state, "Completed");
+    assert_eq!(d.reverted, ["drop.txt#0"]);
+    assert!(!repo.path().join("drop.txt").exists());
+    if with_a_second_file {
+        assert_eq!(
+            git(&["show", "--name-only", "--format=", "HEAD"]),
+            "keep.txt",
+            "the commit holds the accepted file and nothing else"
+        );
+    } else {
+        assert_eq!(git(&["log", "-1", "--format=%s"]), "base");
+    }
+    assert!(!git(&["ls-files", "--stage"]).contains("drop.txt"));
+    d.commit
+}

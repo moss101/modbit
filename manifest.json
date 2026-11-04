@@ -2,13 +2,13 @@
   "product": "Modbit",
   "edition": "V3.3 EPR v1.1",
   "authority_date": "2026-09-05",
-  "generated_on": "2026-11-04",
+  "generated_on": "2026-11-05",
   "hash_algorithm": "sha256",
   "scope_rule": "docs/*.md, root *.md except MANIFEST.md, docs/decisions/*.md, graph JSON/Markdown, tools/*.py, evidence payloads; manifests exclude themselves and transient caches",
   "counts": {
     "docs": 97,
-    "root_and_tooling": 1943,
-    "docs_bytes": 2318407
+    "root_and_tooling": 1945,
+    "docs_bytes": 2318888
   },
   "sections": [
     {
@@ -221,8 +221,8 @@
       "section": "architecture",
       "section_title": "Architecture and subsystems",
       "title": "Workspace, Git, Worktrees, Diagnostics, and Trusted Code Surface",
-      "bytes": 8023,
-      "sha256": "a20c03022f1edd6debf6b76853d1edfd6625153d2680f11057b63535176f1b96"
+      "bytes": 8504,
+      "sha256": "3bdb3079f97ceaac3fdf2287d3d4caecdc0d26900e740ea9662ae53323879a98"
     },
     {
       "path": "docs/21_TERMINAL_EXECUTION_AND_SANDBOX.md",
@@ -2135,8 +2135,18 @@
     },
     {
       "path": "evidence/m10/PX-048/TASK_CARD.md",
-      "bytes": 1892,
-      "sha256": "2f8ed1ee7e3ef5d1615326fd88bf32979c5f98bf8bb2d260584430e176ee40c4"
+      "bytes": 4995,
+      "sha256": "d24d5eb6faf0a694fade2acfe1d2dad1e6901a6b91d3f8176b3e3f5ba3b81037"
+    },
+    {
+      "path": "evidence/m10/PX-048/read-leaves-index/mutations.log",
+      "bytes": 2510,
+      "sha256": "6736d5f6f697646065beec5a33fc0f9f252feb9e8321ffa4f0dbbe907f77a551"
+    },
+    {
+      "path": "evidence/m10/PX-048/read-leaves-index/tests.log",
+      "bytes": 8142,
+      "sha256": "b53dca7597539f102d6232f9bcb42c724312d2b8a3da4a1194f018d4358b834d"
     },
     {
       "path": "evidence/m10/PX-049/TASK_CARD.md",
@@ -10581,12 +10591,12 @@
     {
       "path": "graph/PROJECT_GRAPH.md",
       "bytes": 46861,
-      "sha256": "838dd82676bd8bd3b08fc6b0f0f125aad98522935d50d63b73c005be200909b7"
+      "sha256": "330c3edb77a3cde1fa814802812696ac9069f002e257deb199752e4be37d5213"
     },
     {
       "path": "graph/project-graph.json",
-      "bytes": 2493310,
-      "sha256": "576b87ac45d9120a491076fac0403c2beb0bca414eeed9f86cc384ec4862df7d"
+      "bytes": 2493271,
+      "sha256": "7817d380255bf0b6b409035eab2c6d3cf5e652889d2de8df30a06826bf6e56b0"
     },
     {
       "path": "tools/build_graph.py",

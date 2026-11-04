@@ -1,7 +1,7 @@
 # Modbit Dossier Manifest — V3.3 EPR v1.1
 
 > **Authority date:** 2026-09-05  
-> **Generated:** 2026-11-04 by `tools/build_manifest.py`  
+> **Generated:** 2026-11-05 by `tools/build_manifest.py`  
 > **Scope:** every specification file in `docs/` plus the root governing files and tooling. The previous `99_MANIFEST.md` covered only 39 Part 2 files; this manifest covers all 97 docs.
 > **Machine-readable twin:** `manifest.json` (same content, same hashes).
 
@@ -14,14 +14,14 @@ A dossier package is valid only if every path below exists with the listed SHA-2
 | Section | Range | Files | Bytes |
 |---|---|---:|---:|
 | Authority and orientation | 00–09 | 8 | 89742 |
-| Architecture and subsystems | 10–29 | 20 | 392909 |
+| Architecture and subsystems | 10–29 | 20 | 393390 |
 | Implementation specifications | 30–39 | 10 | 177729 |
 | Requirements, tasks and traceability | 40–49 | 10 | 351840 |
 | Verification and testing | 50–69 | 20 | 957893 |
 | Delivery and operations | 70–79 | 10 | 125383 |
 | Agent process and governance | 80–97 | 18 | 207950 |
 | Live state | 98–99 | 1 | 14961 |
-| **Total docs** | | **97** | **2318407** |
+| **Total docs** | | **97** | **2318888** |
 
 ## Specification files (`docs/`)
 
@@ -45,7 +45,7 @@ A dossier package is valid only if every path below exists with the listed SHA-2
 | 17 | `docs/17_CANONICAL_TOOL_AND_CAPABILITY_INVENTORY.md` | Canonical Tool and Capability Inventory | architecture | 7044 | `3542409ed94a42a9479b38ff322e578a06eefab925fb3cc60b7bc8cded4c4b65` |
 | 18 | `docs/18_CONTEXT_RETRIEVAL_AND_ENGINEERING_KNOWLEDGE.md` | Context, Retrieval, and Engineering Knowledge Engine | architecture | 5728 | `c6a362588d301b22d0f57bd11accecd6af33a9a5f7abc391afb15d7bef6f2303` |
 | 19 | `docs/19_DURABLE_STATE_MEMORY_COMPACTION_CHECKPOINTS.md` | Durable State, Memory, Compaction, and Checkpoints | architecture | 16793 | `acff8854dd43baf890236375c579746100e05a57eccdfd450a41cba70aed3ad9` |
-| 20 | `docs/20_WORKSPACE_GIT_AND_TRUSTED_CODE_SURFACE.md` | Workspace, Git, Worktrees, Diagnostics, and Trusted Code Surface | architecture | 8023 | `a20c03022f1edd6debf6b76853d1edfd6625153d2680f11057b63535176f1b96` |
+| 20 | `docs/20_WORKSPACE_GIT_AND_TRUSTED_CODE_SURFACE.md` | Workspace, Git, Worktrees, Diagnostics, and Trusted Code Surface | architecture | 8504 | `3bdb3079f97ceaac3fdf2287d3d4caecdc0d26900e740ea9662ae53323879a98` |
 | 21 | `docs/21_TERMINAL_EXECUTION_AND_SANDBOX.md` | Terminal, Execution Router, and Sandbox Architecture | architecture | 30764 | `7373d4480d7ff4165b57db3204cb2df9eb13d3df2050471f6838af1a67329f4f` |
 | 22 | `docs/22_BROWSER_AND_COMPUTER_USE.md` | Browser and Computer-Use Architecture | architecture | 31715 | `0a846ff68035d09959118091e559439cd5d0f893e9d005e4d52b2ce495baebf7` |
 | 23 | `docs/23_SECURITY_POLICY_EFFECT_LEDGER.md` | Security, Policy, Capabilities, Secrets, and Effect Ledger | architecture | 20490 | `5b46eabc1fe83deee7155bc40860a8d2e98d658d2810e40d3183c6ccce5c1364` |
@@ -370,7 +370,9 @@ A dossier package is valid only if every path below exists with the listed SHA-2
 | `evidence/m10/PX-045/TASK_CARD.md` | retained evidence | 2091 | `2b67d21ff7e968b175197d1b83baa80341294e4d0dd4e94e51d0442f614ef7d0` |
 | `evidence/m10/PX-045/ci-run-40018683027.json` | retained evidence | 46978 | `4c8f2b65e0e6636167fab16c719c969ad08b38234e126f8d31b52d77d3e8c10e` |
 | `evidence/m10/PX-045/evidence.json` | retained evidence | 2016 | `3a560df28f9b64ca68eb3bbbe39999bf70253105e64eda9f1ce0e9482840a6dc` |
-| `evidence/m10/PX-048/TASK_CARD.md` | retained evidence | 1892 | `2f8ed1ee7e3ef5d1615326fd88bf32979c5f98bf8bb2d260584430e176ee40c4` |
+| `evidence/m10/PX-048/TASK_CARD.md` | retained evidence | 4995 | `d24d5eb6faf0a694fade2acfe1d2dad1e6901a6b91d3f8176b3e3f5ba3b81037` |
+| `evidence/m10/PX-048/read-leaves-index/mutations.log` | retained evidence | 2510 | `6736d5f6f697646065beec5a33fc0f9f252feb9e8321ffa4f0dbbe907f77a551` |
+| `evidence/m10/PX-048/read-leaves-index/tests.log` | retained evidence | 8142 | `b53dca7597539f102d6232f9bcb42c724312d2b8a3da4a1194f018d4358b834d` |
 | `evidence/m10/PX-049/TASK_CARD.md` | retained evidence | 2291 | `e98ec599dff77dcb6058f16967e9798e33d3af05b5bf1179c60037fba07622c0` |
 | `evidence/m10/PX-049/ci-run-40076778858.json` | retained evidence | 46978 | `16c350396d23347c7da97b19d930be458ae150460cd60df6435469573b252e5e` |
 | `evidence/m10/PX-049/evidence.json` | retained evidence | 2080 | `f19a33d095f3910654493009f9570912653ff05218562b1c372c036ca67a3003` |
@@ -2059,8 +2061,8 @@ A dossier package is valid only if every path below exists with the listed SHA-2
 | `evidence/zcode-ui/reference/zcode-colors-rgba.json` | retained evidence | 18690 | `76372c3edbcd50fe596d5e4b7fcd7991adab9686588ddc578a728afa24b4f028` |
 | `evidence/zcode-ui/reference/zcode-computed.json` | retained evidence | 718674 | `9ae8821ce72aa0fff3be44aacd0f4c9d995465c54bad7f17d1a81f92841d1c2d` |
 | `evidence/zcode-ui/reference/zcode-tokens-resolved.json` | retained evidence | 30635 | `066725c00059a05d073fbcdac9a8d965eab05f05c1f5df16e654854ff3e22b91` |
-| `graph/PROJECT_GRAPH.md` | human view of the graph | 46861 | `838dd82676bd8bd3b08fc6b0f0f125aad98522935d50d63b73c005be200909b7` |
-| `graph/project-graph.json` | project driver graph with live status | 2493310 | `576b87ac45d9120a491076fac0403c2beb0bca414eeed9f86cc384ec4862df7d` |
+| `graph/PROJECT_GRAPH.md` | human view of the graph | 46861 | `330c3edb77a3cde1fa814802812696ac9069f002e257deb199752e4be37d5213` |
+| `graph/project-graph.json` | project driver graph with live status | 2493271 | `7817d380255bf0b6b409035eab2c6d3cf5e652889d2de8df30a06826bf6e56b0` |
 | `tools/build_graph.py` | regenerates graph structure from docs | 66213 | `8586baa1383086a447e8229fd1f5f898f91645a4688cfdad68c78960f138a0a1` |
 | `tools/build_manifest.py` | regenerates this manifest | 14871 | `b35f87f995ebea778ef5002f42c4dcb2f195f303ae121d7b4d73070d95d665b7` |
 | `tools/check_dossier.py` | integrity gate | 18887 | `1bd2634078a0c20b34a565ccf0f6d9061e83bd0945b7bf719ac137611e3fcf35` |

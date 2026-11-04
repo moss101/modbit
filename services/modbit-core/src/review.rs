@@ -82,10 +82,11 @@ pub(crate) fn candidate(
     let repo =
         Repo::open(std::path::Path::new(&root)).map_err(|e| ("GIT".to_owned(), e.to_string()))?;
     let base_commit = repo.head().map_err(|e| ("GIT".to_owned(), e.to_string()))?;
-    // Untracked files are part of the candidate: stage them into the index view
-    // without committing so `git diff HEAD` shows them (`-N` intent-to-add).
-    // Residue a verification stage produced (bytecode caches, reporter files)
-    // is not the agent's work and stays out of the candidate.
+    // Untracked files are part of the candidate, as additions in its diff. This
+    // is a read behind every Changes and review view, so the person's index
+    // stays as it is: a file marked intent-to-add here is one `git clean` then
+    // leaves behind. Residue a verification stage produced (bytecode caches,
+    // reporter files) is not the agent's work and stays out of the candidate.
     let status = repo
         .status()
         .map_err(|e| ("GIT".to_owned(), e.to_string()))?;
@@ -95,13 +96,8 @@ pub(crate) fn candidate(
         .filter(|e| !crate::verify::is_residue(&e.path, residue))
         .map(|e| e.path.as_str())
         .collect();
-    if !untracked.is_empty() {
-        let mut args = vec!["add", "-N", "--"];
-        args.extend(untracked.iter().copied());
-        let _ = modbit_git::output(std::path::Path::new(&root), &args);
-    }
     let diff = repo
-        .diff_worktree()
+        .diff_worktree_with_untracked(&untracked)
         .map_err(|e| ("GIT".to_owned(), e.to_string()))?;
     let files = parse_unified(&diff.unified)
         .into_iter()
@@ -618,8 +614,22 @@ pub async fn decide(
                 reverted.push(format!("{}#{i}", f.path));
             }
         }
-        // Git history reflects the accepted change (docs/51 E2E-001).
-        let paths: Vec<&str> = touched.iter().map(String::as_str).collect();
+        // Git history reflects the accepted change (docs/51 E2E-001). A new file
+        // whose every hunk was rejected is gone and was never in the index, so
+        // git has nothing to stage for it and refuses a path that matches
+        // nothing.
+        let listed: std::collections::HashSet<String> = cand
+            .repo
+            .status()
+            .map_err(|e| ("GIT".to_owned(), e.to_string()))?
+            .into_iter()
+            .map(|e| e.path)
+            .collect();
+        let paths: Vec<&str> = touched
+            .iter()
+            .filter(|p| listed.contains(*p) || std::path::Path::new(&cand.root).join(p).exists())
+            .map(String::as_str)
+            .collect();
         let message = format!(
             "{}\n\nModbit task {} reviewed: {} hunk(s) accepted, {} rejected\nCandidate workspace revision {}",
             if p.note.trim().is_empty() {

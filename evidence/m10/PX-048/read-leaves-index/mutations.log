@@ -1,0 +1,37 @@
+== M1-candidate-marks-intent-to-add-in-the-real-index
+exit=101 (non-zero is the mutation caught)
+test px_048_reverting_a_new_file_leaves_no_trace_in_the_index ... FAILED
+test px_048_reading_the_change_set_leaves_the_index_alone_and_git_clean_removes_new_files ... FAILED
+thread 'px_048_reverting_a_new_file_leaves_no_trace_in_the_index' (18295713) panicked at services/modbit-core/tests/px_048_changes.rs:805:5:
+  left: "D fresh.txt"
+ right: ""
+thread 'px_048_reading_the_change_set_leaves_the_index_alone_and_git_clean_removes_new_files' (18295712) panicked at services/modbit-core/tests/px_048_changes.rs:737:5:
+  left: "A deep/er/new.txt\n A fresh.txt\n M notes.txt"
+ right: "M notes.txt\n?? deep/\n?? fresh.txt"
+test result: FAILED. 0 passed; 2 failed; 0 ignored; 0 measured; 8 filtered out; finished in 2.29s
+error: test failed, to rerun pass `-p modbit-core --test px_048_changes`
+
+== M2-status-refreshes-the-real-index
+exit=101 (non-zero is the mutation caught)
+test px_048_reading_the_change_set_leaves_the_index_alone_and_git_clean_removes_new_files ... FAILED
+thread 'px_048_reading_the_change_set_leaves_the_index_alone_and_git_clean_removes_new_files' (18299837) panicked at services/modbit-core/tests/px_048_changes.rs:739:5:
+the index file was rewritten
+test result: FAILED. 0 passed; 1 failed; 0 ignored; 0 measured; 9 filtered out; finished in 2.34s
+error: test failed, to rerun pass `-p modbit-core --test px_048_changes`
+
+== M3-accept-stages-a-deleted-untracked-file
+exit=101 (non-zero is the mutation caught)
+test review_accept_with_a_wholly_rejected_new_file_commits_the_rest ... FAILED
+thread 'review_accept_with_a_wholly_rejected_new_file_commits_the_rest' (18302725) panicked at services/modbit-core/tests/surface_protocol.rs:50655:10:
+test result: FAILED. 0 passed; 1 failed; 0 ignored; 0 measured; 206 filtered out; finished in 3.62s
+error: test failed, to rerun pass `-p modbit-core --test surface_protocol`
+
+== M4-a-new-file-loses-its-unstaged-addition
+exit=101 (non-zero is the mutation caught)
+test px_048_reading_the_change_set_leaves_the_index_alone_and_git_clean_removes_new_files ... FAILED
+thread 'px_048_reading_the_change_set_leaves_the_index_alone_and_git_clean_removes_new_files' (18305587) panicked at services/modbit-core/tests/px_048_changes.rs:756:5:
+  left: ("A", "", "")
+ right: ("A", "", "A")
+test result: FAILED. 0 passed; 1 failed; 0 ignored; 0 measured; 9 filtered out; finished in 2.33s
+error: test failed, to rerun pass `-p modbit-core --test px_048_changes`
+

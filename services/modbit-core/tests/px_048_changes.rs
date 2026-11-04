@@ -16,13 +16,13 @@ use std::time::Duration;
 
 use modbit_protocol::client::{Client, ClientError};
 use modbit_protocol::v1::{
-    ApprovalResolvedAck, ChangesState, CheckpointRestoreResult, CommitAndPush, CommitAndPushAck,
-    CreateTask, GetChangesState, Id, InvokeTool, ResolveApproval, RestoreCheckpoint, RevertChanges,
-    RevertChangesAck, StageChanges, StageChangesAck, StagePath, TaskCreated, TaskIsolation,
-    ToolInvoked,
+    ApprovalResolvedAck, ChangesState, CheckpointRestoreResult, ClientKind, CodeViewModel,
+    CommitAndPush, CommitAndPushAck, CreateTask, GetChangesState, GetCodeView, GetReviewBundle, Id,
+    InvokeTool, ResolveApproval, RestoreCheckpoint, RevertChanges, RevertChangesAck, ReviewBundle,
+    StageChanges, StageChangesAck, StagePath, TaskCreated, TaskIsolation, ToolInvoked,
 };
 use prost::Message;
-use px_common::{CoreProcess, envelope_fenced, id16, plain_repo, session_with_lease};
+use px_common::{CoreProcess, envelope, envelope_fenced, id16, plain_repo, session_with_lease};
 use sha2::{Digest, Sha256};
 
 type Reject = (String, String);
@@ -634,6 +634,179 @@ async fn px_048_stage_and_unstage_act_on_the_real_index() {
     // A path with no change is refused rather than ignored.
     let none = fx.stage(&[("other.txt", &sha("other\n"))], true).await;
     assert_eq!(none.unwrap_err().0, "NO_SUCH_CHANGE");
+}
+
+/// The real index byte for byte, what `git status --porcelain` says and every
+/// index entry. The status is asked with `--no-optional-locks`: a plain one
+/// would refresh the very index under test.
+fn index_state(root: &Path) -> (Vec<u8>, String, String) {
+    (
+        std::fs::read(root.join(".git/index")).unwrap(),
+        git(root, &["--no-optional-locks", "status", "--porcelain"]),
+        git(root, &["ls-files", "--stage"]),
+    )
+}
+
+/// What a client is told about the change set, with the digests and revisions
+/// a later decision binds to.
+type ChangeView = Vec<(
+    String,
+    String,
+    String,
+    String,
+    String,
+    Vec<String>,
+    Vec<u32>,
+)>;
+
+fn change_view(state: &ChangesState, bundle: &ReviewBundle) -> ChangeView {
+    let mut view: ChangeView = bundle
+        .files
+        .iter()
+        .map(|f| {
+            let s = state.paths.iter().find(|p| p.path == f.path).unwrap();
+            (
+                f.path.clone(),
+                f.status.clone(),
+                s.staged.clone(),
+                s.unstaged.clone(),
+                f.file_revision.clone(),
+                f.hunks.iter().map(|h| h.hunk_digest.clone()).collect(),
+                f.hunks.iter().map(|h| h.new_lines).collect(),
+            )
+        })
+        .collect();
+    view.sort();
+    view
+}
+
+async fn read_bundle(fx: &mut Fx) -> ReviewBundle {
+    let task = fx.task.clone();
+    fx.cmd(
+        "GetReviewBundle",
+        GetReviewBundle {
+            task_id: Some(task),
+        },
+        false,
+    )
+    .await
+    .unwrap()
+}
+
+// A read must not change the person's index: `changesState`, `reviewBundle` and
+// `codeView` once marked untracked files intent-to-add, and a later `git clean
+// -fd` then reported success and left those files behind.
+#[tokio::test]
+async fn px_048_reading_the_change_set_leaves_the_index_alone_and_git_clean_removes_new_files() {
+    let mut fx = Fx::new(&[("notes.txt", &notes()), ("same.txt", "same\n")]).await;
+    let root = PathBuf::from(&fx.root);
+    write(
+        &fx.path("notes.txt"),
+        &notes().replace("line 1\n", "line one\n"),
+    );
+    write(&fx.path("fresh.txt"), "brand new\n");
+    write(&fx.path("deep/er/new.txt"), "nested\n");
+    // Same content, new inode: git's own status would refresh the index for this.
+    std::fs::remove_file(fx.path("same.txt")).unwrap();
+    write(&fx.path("same.txt"), "same\n");
+
+    let before = index_state(&root);
+
+    let state = fx.state().await;
+    let bundle = read_bundle(&mut fx).await;
+    // The code view is a desktop surface.
+    let mut desktop = fx.core.client_of_kind(ClientKind::Desktop).await;
+    let ack = desktop
+        .command(envelope(
+            id16(0xE0),
+            "GetCodeView",
+            GetCodeView {
+                task_id: Some(fx.task.clone()),
+                path: "fresh.txt".into(),
+                expected_file_revision: String::new(),
+            }
+            .encode_to_vec(),
+        ))
+        .await
+        .unwrap();
+    let code: CodeViewModel = Client::result(&ack).unwrap();
+    assert!(code.text.contains("brand new"));
+    assert_eq!(code.changed_ranges, [1, 1]);
+
+    let after = index_state(&root);
+    assert_eq!(after.1, before.1, "git status --porcelain changed");
+    assert_eq!(after.2, before.2, "the index's entries changed");
+    assert!(after.0 == before.0, "the index file was rewritten");
+    assert!(
+        after.1.contains("?? fresh.txt") && after.1.contains("?? deep/"),
+        "{}",
+        after.1
+    );
+    let litter: Vec<_> = std::fs::read_dir(root.join(".git"))
+        .unwrap()
+        .map(|e| e.unwrap().file_name().to_string_lossy().into_owned())
+        .filter(|n| n.starts_with("modbit-"))
+        .collect();
+    assert!(litter.is_empty(), "{litter:?}");
+
+    // What a client sees is the same as when the index held intent-to-add
+    // entries, and every digest and revision a decision binds to is too.
+    let shown = change_view(&state, &bundle);
+    let fresh = shown.iter().find(|v| v.0 == "fresh.txt").unwrap();
+    assert_eq!(
+        (fresh.1.as_str(), fresh.2.as_str(), fresh.3.as_str()),
+        ("A", "", "A"),
+        "a new file is an unstaged addition"
+    );
+    assert_eq!(fresh.4, sha("brand new\n"));
+    assert!(shown.iter().any(|v| v.0 == "deep/er/new.txt"), "{shown:?}");
+    let staged_digest = state.staged_digest.clone();
+    git(&root, &["add", "-N", "--", "fresh.txt", "deep/er/new.txt"]);
+    let state_ita = fx.state().await;
+    let bundle_ita = read_bundle(&mut fx).await;
+    assert_eq!(change_view(&state_ita, &bundle_ita), shown);
+    assert_eq!(state_ita.staged_digest, staged_digest);
+    git(&root, &["reset", "-q"]);
+
+    // The change set stays actionable with nothing in the index: staging a new
+    // file works, and unstaging it leaves it untracked again.
+    let rev = sha("brand new\n");
+    fx.stage(&[("fresh.txt", &rev)], true).await.unwrap();
+    assert_eq!(
+        git(&root, &["diff", "--cached", "--name-only"]),
+        "fresh.txt"
+    );
+    fx.stage(&[("fresh.txt", "")], false).await.unwrap();
+    assert_eq!(git(&root, &["diff", "--cached", "--name-only"]), "");
+
+    fx.state().await;
+    read_bundle(&mut fx).await;
+    // The real effect: the clean deletes what it said it would.
+    git(&root, &["clean", "-fd"]);
+    assert!(!fx.path("fresh.txt").exists(), "git clean left fresh.txt");
+    assert!(!fx.path("deep").exists(), "git clean left deep/");
+    assert_eq!(
+        git(&root, &["--no-optional-locks", "status", "--porcelain"]),
+        "M notes.txt"
+    );
+}
+
+// A whole-file revert of a new file the index never held deletes it and leaves
+// nothing behind, in the index or in `git status`.
+#[tokio::test]
+async fn px_048_reverting_a_new_file_leaves_no_trace_in_the_index() {
+    let mut fx = Fx::new(&[("notes.txt", &notes())]).await;
+    let root = PathBuf::from(&fx.root);
+    write(&fx.path("fresh.txt"), "brand new\n");
+    let state = fx.state().await;
+    let rev = Fx::revision_of(&state, "fresh.txt");
+    fx.revert("fresh.txt", true, 0, &rev).await.unwrap();
+    assert!(!fx.path("fresh.txt").exists());
+    assert_eq!(
+        git(&root, &["--no-optional-locks", "status", "--porcelain"]),
+        ""
+    );
+    assert!(!git(&root, &["ls-files", "--stage"]).contains("fresh.txt"));
 }
 
 // ===========================================================================
