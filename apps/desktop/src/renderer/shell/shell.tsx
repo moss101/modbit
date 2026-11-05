@@ -47,6 +47,7 @@ import { PermissionsDialog } from "../computer/permissions-dialog.tsx";
 import { PresenceBar, STOP_CHORD, useComputerStop } from "../computer/presence-bar.tsx";
 import { holdsMachine, permissionsNeeded } from "../computer/model.ts";
 import { useComputerPresence } from "../computer/use-computer.ts";
+import { rowFactsOf } from "../agents/row-facts.ts";
 
 /** A value that follows `value` at most once per `ms` (a task emits events in bursts; the apps read the Core once per beat). */
 function useThrottled<T>(value: T, ms: number): T {
@@ -358,6 +359,7 @@ export function Shell({ app }: { app: AppState }) {
   );
   useKeyScope(confirm !== null, confirmScope);
 
+  const rowFacts = useMemo(() => new Map(tasks.map((t) => [t.taskId, rowFactsOf(t, attentionItems)])), [tasks, attentionItems]);
   const paletteItems = useMemo<PaletteItem[]>(() => {
     const agentItems: PaletteItem[] = tasks.map((t) => ({ id: `agent:${t.taskId}`, kind: "agent", title: t.goalText || t.taskId, detail: t.state, keywords: [t.taskId, t.state], run: () => openConversation(t.taskId) }));
     const commandItems: PaletteItem[] = shellRegistry
@@ -515,7 +517,7 @@ export function Shell({ app }: { app: AppState }) {
             menuItems={menuItems}
             settingsOpen={settingsOpen}
             onOpenSettings={() => actions.openSettings()}
-            list={rail ? undefined : <AgentList sessionId={model.sessionId} connected={core.state === "connected"} selectedTaskId={conversation?.taskId ?? null} onSelect={openConversation} onHeaderList={setHeaders} projects={projects} selectedProjectId={projectPage} onOpenProject={openProject} onProjectArchived={(id, archived) => { if (archived && projectPage === id) setProjectPage(null); }} />}
+            list={rail ? undefined : <AgentList sessionId={model.sessionId} connected={core.state === "connected"} selectedTaskId={conversation?.taskId ?? null} onSelect={openConversation} onHeaderList={setHeaders} facts={rowFacts} projects={projects} selectedProjectId={projectPage} onOpenProject={openProject} onProjectArchived={(id, archived) => { if (archived && projectPage === id) setProjectPage(null); }} />}
           />
         )}
         banner={

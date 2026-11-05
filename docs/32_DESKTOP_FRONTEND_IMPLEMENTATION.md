@@ -114,7 +114,7 @@ Implement objective preference controls and allowed manual pins using `SetExecut
 
 ## The agent workspace screens (DR-PX-2026-11-04-020, PX-195..197)
 
-Home is one composer (`renderer/home`): send creates, starts and opens the task, Alt+Enter creates without starting. There is no board. The agent list, top bar, task details (`conversation/task-details.tsx`), Approvals page (`approvals/inbox.tsx`) and Settings page (`settings/settings-page.tsx`) hold what it held; the record's section 5.6 is the table. `e2e/awl.spec.ts` is the gate, and it is not the whole proof: the owner reviews real screenshots beside the mockup.
+Home is one composer (`renderer/home`): send creates, starts and opens the task, Alt+Enter creates without starting. There is no board. The agent list, top bar, task details (`conversation/task-details.tsx`), Approvals page (`approvals/inbox.tsx`) and Settings page (`settings/settings-page.tsx`) hold what it held; the record's section 5.6 is the table. `e2e/awl.spec.ts` is the gate, and it is not the whole proof: the owner reviews real screenshots beside the mockup. Supervision (section 5.9 of the record): the state views and row facts are in `agents/` (`list-model.ts`, `row-facts.ts`), the task's notice in `conversation/conversation.tsx` with its rule in `screens.ts`, the draft mode and model on home in `home/home.tsx` and `state/use-app.ts`; `e2e/supervision.spec.ts` proves them.
 
 ## Design language (DR-PX-2026-11-03-019, PX-192..194; superseding DR-PX-2026-10-24-016 in a named scope)
 

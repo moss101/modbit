@@ -1245,3 +1245,8 @@ Accepted on the owner's chat instruction of 2026-11-04 ("there is no parity with
 - **Supersession, scoped:** DR-PX-2026-11-03-019 section 5.5's "Modbit keeps Fleet", its navigation rows, the one-line status row and the banner rule; doc 10's and doc 39's board as the home; a note in doc 65 for AFW-A01, A06, A07 and D12. REQ-EV-0037 and REQ-EV-0143 stay.
 - **Tooling:** one entry in the parity table of `tools/build_graph.py` (creates the change record and DOC-PX-019); `tools/test_dossier.py` pins 198 PX rows and 176 ADOPT tasks and adds `test_dr_020_rebuilds_the_screens_and_removes_the_board_inside_the_clean_room_posture`.
 - **Not done here:** the product behaviour of PX-195..197.
+
+### Amendment to DR-PX-2026-11-04-020, section 5.9 (2026-11-05)
+
+The owner's chat instruction of 2026-11-05 ("Yes, fix those first") after a comparison of the app with docs 10, 32, 39 and 65: six corrections the record had made necessary (visible task state, row facts, mode and model on home, first-class state views under MOD-UX-001, shortcut help, location selector), and the record's wrong deny key (`n`, correctly `x`). Docs 10, 32, 39 and 65 carry a note; QUAL-PX-195..197 name the new proof. No row, pinned count or owner changes. The record's section 12 lists what the comparison found that this does not fix.
+

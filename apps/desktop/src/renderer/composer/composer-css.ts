@@ -25,9 +25,11 @@ export const composerCss = `
 .cmp-textarea { display: block; width: 100%; box-sizing: border-box; min-height: 44px; max-height: 40vh; resize: none; border: 0; border-radius: 0; outline: none; background: transparent; color: var(--mb-color-text); padding: 0; font: inherit; font-size: var(--mb-type-body-size); line-height: var(--mb-type-body-line); }
 .cmp-bar { display: flex; align-items: center; gap: 6px; min-width: 0; min-height: 24px; }
 .cmp-bar > * { flex: none; }
+.cmp-bar > .home-repo { flex: 1 1 0; }
 .cmp-foot { display: flex; align-items: center; gap: var(--mb-space-2); min-width: 0; padding: 0 4px; font-size: var(--mb-type-caption-size); color: var(--mb-color-text-muted); }
 .cmp-foot-item { flex: none; display: inline-flex; align-items: center; gap: 6px; white-space: nowrap; }
 .cmp-foot button { -webkit-app-region: no-drag; }
+.cmp-foot .cmp-chip { min-height: 22px; height: 22px; padding: 0 4px; font-size: var(--mb-type-caption-size); color: var(--mb-color-text-muted); background: transparent; }
 .cmp-textarea::placeholder { color: var(--mb-color-text-muted); opacity: 1; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .mb-btn.cmp-plus { width: 24px; min-height: 22px; height: 22px; padding: 0; border-radius: var(--radius-md); border-color: transparent; background: transparent; color: var(--mb-color-text-muted); }
 .cmp-chip, .cmp-seg { font: inherit; font-size: var(--mb-type-chrome-size); line-height: var(--mb-type-chrome-line); display: inline-flex; align-items: center; gap: var(--mb-space-1); min-height: var(--mb-control-sm); padding: 0 var(--mb-space-2); border-radius: calc(infinity * 1px); border: 1px solid var(--mb-color-border-control); background: var(--mb-color-raised); color: var(--mb-color-text); cursor: pointer; }
@@ -101,6 +103,7 @@ export const composerCss = `
 .cmp-detail p { margin: var(--mb-space-1) 0; }
 .cmp-picker-host { position: relative; display: inline-flex; }
 .cmp-picker { position: absolute; z-index: var(--mb-z-popover); right: 0; bottom: calc(100% + 8px); width: 300px; max-height: 420px; overflow: auto; background: var(--mb-color-raised); color: var(--mb-color-text); border: 1px solid var(--mb-color-border-control); border-radius: var(--radius-xl); box-shadow: var(--mb-elevation-2); padding: var(--mb-space-2); }
+.home .cmp-picker { top: calc(100% + 8px); bottom: auto; left: 0; right: auto; max-height: min(420px, 40vh); }
 .cmp-picker-search { width: 100%; box-sizing: border-box; }
 .cmp-auto { margin-top: var(--mb-space-2); }
 .cmp-auto-title { margin: 0 0 var(--mb-space-1); }

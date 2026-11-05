@@ -25,6 +25,7 @@ export const controlsCss = `
 .appr-fine.appr-fine { padding-bottom: 8px; }
 .appr-foot.appr-foot { padding-block: 8px; border-top: 1px solid var(--color-tab-border); }
 .appr-why.appr-why, .appr-fine.appr-fine { display: inline; padding-bottom: 0; }
+.appr-foot + .appr-fine.appr-fine { display: block; padding-bottom: 8px; }
 .appr-args.appr-args { padding-bottom: 2px; }
 .appr { container-type: inline-size; }
 .appr-foot.appr-foot { flex-wrap: nowrap; }

@@ -1,7 +1,7 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import { applyEvent, emptyModel, type Event, type TaskCard } from "./model.ts";
-import { fleetState, newTaskState, reviewState, settingsState, taskState, type AttentionLike, type CoreStatusLike } from "./screens.ts";
+import { fleetState, newTaskState, noticeWanted, reviewState, settingsState, taskState, type AttentionLike, type CoreStatusLike, type ScreenState } from "./screens.ts";
 
 const ev = (offset: number, eventType: string, payload: unknown = {}, aggregate: { type?: string; id?: string } = {}): Event => ({ offset: String(offset), sequence: "1", eventType, sessionId: "s", payload, occurredAtMs: offset, ...(aggregate.type ? { aggregateType: aggregate.type } : {}), ...(aggregate.id ? { aggregateId: aggregate.id } : {}) });
 const connected: CoreStatusLike = { state: "connected", restarts: 0 };
@@ -115,4 +115,17 @@ test("PX-023: TaskStarted/Resumed clear the diagnostic and the awaiting-human ph
   assert.equal(resumed.diagnostic, null);
   assert.equal(resumed.lastOffset, "5");
   assert.equal(taskState({ card: resumed, core: connected, attention: [] }).kind, "populated");
+});
+
+test("a task's state stands above the composer only when it is wrong and nothing else on the screen says it", () => {
+  const degraded = (label: string): ScreenState => ({ screen: "task", kind: "degraded", label });
+  assert.equal(noticeWanted(degraded("reconnecting by cursor"), false, false), true);
+  assert.equal(noticeWanted(degraded("quality floor infeasible under policy"), false, false), true);
+  assert.equal(noticeWanted({ screen: "task", kind: "error", label: "failed" }, false, false), true);
+  assert.equal(noticeWanted({ screen: "task", kind: "populated", label: "running · drafting" }, false, false), false);
+  // The failure block, the docked card and the inline question say it themselves.
+  assert.equal(noticeWanted({ screen: "task", kind: "error", label: "failed" }, true, false), false);
+  assert.equal(noticeWanted(degraded("provider stopped the task"), false, true), false);
+  assert.equal(noticeWanted(degraded("awaiting approval"), false, false), false);
+  assert.equal(noticeWanted(degraded("awaiting your answer"), false, false), false);
 });

@@ -11,10 +11,11 @@ import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, typ
 import { Badge, Icon, IconButton, Menu, StatusDot, type MenuItem } from "@modbit/ui";
 import type { AgentHeaderView, ConversationSearchView } from "../../shared/conversation-types.ts";
 import type { ProjectInfo } from "../../shared/project-types.ts";
-import { CLASS_META, GROUPINGS, LOCATION_FILTERS, NO_FILTERS, NO_PROJECT, ORIGIN_FILTERS, PROJECTS_KEY, PROJECT_HEIGHT, ROW_HEIGHT, SORTS, STATE_FILTERS, SUBTITLE_FIELDS, filterCount, layoutOf, listItems, passes, projectKey, relativeAge, rowLabel, subtitleOf, viewMatches, visibleProjects, visibleRange, type Filters, type Grouping, type ListItem, type SortKey, type StoredView, type SubtitleField } from "./list-model.ts";
+import { CLASS_META, FACT_FIELDS, GROUPINGS, LOCATION_FILTERS, NO_FILTERS, NO_PROJECT, ORIGIN_FILTERS, PROJECTS_KEY, PROJECT_HEIGHT, ROW_HEIGHT, SORTS, STATE_FILTERS, STATE_VIEWS, SUBTITLE_FIELDS, filterCount, layoutOf, listItems, passes, projectKey, relativeAge, rowLabel, rowLine, rowTitle, toggleView, viewCounts, viewMatches, visibleProjects, visibleRange, type FactField, type Filters, type Grouping, type ListItem, type RowFacts, type SortKey, type StoredView, type SubtitleField } from "./list-model.ts";
 import { ProjectGlyph } from "../projects/project-glyph.tsx";
 import { projectMenuFor, rollupWords } from "../projects/project-model.ts";
 import { highlightRuns } from "./snippets.ts";
+import { localMachine } from "../location.ts";
 import { IconArchive, IconFilter, IconPin, IconProject, IconRename, IconRestore, IconViews } from "./icons.tsx";
 
 /** What the list can do with projects (PX-064). Every call is a Core command made by the connected list; the view only reports the person's intent. */
@@ -48,6 +49,10 @@ export interface AgentListViewProps {
   grouping: Grouping;
   filters: Filters;
   subtitleFields: readonly SubtitleField[];
+  /** What each task is doing and needs; a view with no cards passes nothing and the row shows its header's facts. */
+  facts?: ReadonlyMap<string, RowFacts> | undefined;
+  factFields?: readonly FactField[] | undefined;
+  onFactFields?: ((f: FactField[]) => void) | undefined;
   collapsed: ReadonlySet<string>;
   nowMs: number;
   query: string;
@@ -74,6 +79,7 @@ export interface AgentListViewProps {
 
 const toggle = <T,>(xs: readonly T[], x: T): T[] => (xs.includes(x) ? xs.filter((y) => y !== x) : [...xs, x]);
 const EMPTY_PROJECTS: readonly ProjectInfo[] = [];
+const ALL_FACTS: readonly FactField[] = FACT_FIELDS.map((x) => x.id);
 
 export function AgentListView(p: AgentListViewProps) {
   const [panelOpen, setPanelOpen] = useState(false);
@@ -87,6 +93,11 @@ export function AgentListView(p: AgentListViewProps) {
   const pinned = useMemo(() => new Set(p.pins), [p.pins]);
   const f = filterCount(p.filters);
   const searching = p.query.trim().length > 0;
+  // A state view is its own control, so choosing one does not unfold the search and the chips.
+  const narrowed = f - p.filters.states.length > 0;
+  const counts = useMemo(() => viewCounts(p.headers), [p.headers]);
+  const views = STATE_VIEWS.filter((v) => (counts.get(v.id) ?? 0) > 0 || p.filters.states.includes(v.id));
+  const factFields = p.factFields ?? ALL_FACTS;
 
   const visible = useMemo(() => p.headers.filter((h) => passes(h, p.filters)), [p.headers, p.filters]);
   const projects = p.projects ?? EMPTY_PROJECTS;
@@ -199,7 +210,16 @@ export function AgentListView(p: AgentListViewProps) {
 
   return (
     <div className="agents" data-testid="agent-list" data-count={p.headers.length} data-visible={visible.length}>
-      {(toolsOpen || f > 0 || searching) && <div className="agents-controls" data-testid="agents-controls">
+      {views.length > 0 && (
+        <div className="agents-states" role="group" aria-label="Task states" data-testid="agents-states">
+          {views.map((v) => (
+            <button key={v.id} type="button" className="agents-state" aria-pressed={p.filters.states.includes(v.id)} onClick={() => p.onFilters(toggleView(p.filters, v.id))} aria-label={`${v.label}, ${counts.get(v.id) ?? 0}`} title={v.label} data-testid={`state-view-${v.id}`} data-count={counts.get(v.id) ?? 0}>
+              {v.short} <span className="agents-state-count">{counts.get(v.id) ?? 0}</span>
+            </button>
+          ))}
+        </div>
+      )}
+      {(toolsOpen || narrowed || searching) && <div className="agents-controls" data-testid="agents-controls">
         <input type="search" className="agents-search" aria-label="Search conversations" placeholder="Search tasks and conversations" value={p.query} onChange={(e) => p.onQuery(e.target.value)} data-testid="agents-search" autoComplete="off" spellCheck={false} />
         <div className="agents-tools">
           <label className="agents-group">
@@ -271,6 +291,12 @@ export function AgentListView(p: AgentListViewProps) {
                   {s.label}
                 </Chip>
               ))}
+              {p.onFactFields &&
+                FACT_FIELDS.map((s) => (
+                  <Chip key={s.id} on={factFields.includes(s.id)} testId={`subtitle-${s.id}`} onClick={() => p.onFactFields?.(toggle(factFields, s.id))}>
+                    {s.label}
+                  </Chip>
+                ))}
             </FilterGroup>
             {f > 0 && (
               <button type="button" className="agents-link" data-testid="filters-clear" onClick={() => p.onFilters(NO_FILTERS)}>
@@ -439,7 +465,8 @@ function ItemView({ item, top, p, pinned, selected, tabStop, toolsOpen, onToggle
   const meta = CLASS_META[h.statusClass];
   const isPinned = pinned.has(h.taskId);
   const isTab = tabStop === h.taskId;
-  const sub = subtitleOf(h, p.subtitleFields);
+  const facts = p.facts?.get(h.taskId);
+  const sub = rowLine(h, p.subtitleFields, facts, p.factFields ?? ALL_FACTS);
   const words = h.statusLabel || meta.short;
   const pa = p.projectActions;
   const menu = pa ? projectMenuFor(h, p.projects ?? EMPTY_PROJECTS) : [];
@@ -471,8 +498,8 @@ function ItemView({ item, top, p, pinned, selected, tabStop, toolsOpen, onToggle
         data-testid="agent-open"
         tabIndex={isTab ? 0 : -1}
         aria-current={selected === h.taskId ? "true" : undefined}
-        aria-label={rowLabel(h, isPinned)}
-        title={`${h.title || "Untitled task"}${h.workspaceRoot ? `\n${h.workspaceRoot}` : ""}`}
+        aria-label={rowLabel(h, isPinned, facts)}
+        title={rowTitle(h, facts, localMachine(), p.nowMs)}
         onClick={() => p.onSelect(h.taskId)}
       >
         <span className="agents-glyph">
@@ -491,7 +518,7 @@ function ItemView({ item, top, p, pinned, selected, tabStop, toolsOpen, onToggle
             <span className="agents-status" data-testid="agent-status">
               {words}
             </span>
-            {sub ? ` · ${sub}` : ""}
+            {sub ? <span data-testid="agent-facts"> · {sub}</span> : null}
             {inProject && p.grouping !== "project" && item.sectionKey.startsWith("project:") === false ? ` · ${inProject.name}` : ""}
           </span>
         </span>

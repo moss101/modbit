@@ -78,7 +78,7 @@ export function shellCommandDefs(): Def[] {
     { id: "computer.stop", title: "Stop computer control", group: "General", keys: ["mod+shift+s"], keywords: ["emergency", "halt", "agent", "mouse", "keyboard", "application"], enabled: (a) => a.computerStopAvailability(), run: (a) => a.stopComputer() },
     { id: "computer.permissions", title: "Computer control permissions", group: "Settings", keywords: ["accessibility", "screen recording", "helper", "applications", "system settings"], run: (a) => a.openComputerPermissions() },
     { id: "view.dashboard", title: "Open dashboard", group: "General", keywords: ["telemetry", "cost"], run: (a) => a.openDashboard() },
-    { id: "nav.back", title: "Back", group: "General", keywords: ["close", "return"], enabled: (a) => (a.canGoBack() ? true : "Already on the fleet"), run: (a) => a.goBack() },
+    { id: "nav.back", title: "Back", group: "General", keywords: ["close", "return"], enabled: (a) => (a.canGoBack() ? true : "Already on the home screen"), run: (a) => a.goBack() },
     { id: "zoom.in", title: "Zoom in", group: "View", keys: ["mod+plus"], enabled: (a) => a.zoomAvailability(), run: (a) => a.zoom(1) },
     { id: "zoom.out", title: "Zoom out", group: "View", keys: ["mod+minus"], enabled: (a) => a.zoomAvailability(), run: (a) => a.zoom(-1) },
     { id: "zoom.reset", title: "Reset zoom", group: "View", keys: ["mod+0"], enabled: (a) => a.zoomAvailability(), run: (a) => a.zoom(0) },

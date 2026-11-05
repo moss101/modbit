@@ -19,8 +19,6 @@ export type Command =
   // Lists.
   | "next"
   | "previous"
-  | "columnNext"
-  | "columnPrevious"
   | "open"
   | "back"
   // Review.
@@ -96,10 +94,6 @@ export function commandFor(e: KeyLike, ctx: KeyContext): Command | null {
       return ctx.screen === "review" ? "hunkNext" : "next";
     case "k":
       return ctx.screen === "review" ? "hunkPrevious" : "previous";
-    case "ArrowRight":
-      return ctx.screen === "fleet" ? "columnNext" : null;
-    case "ArrowLeft":
-      return ctx.screen === "fleet" ? "columnPrevious" : null;
     case "Enter":
       return ctx.screen === "review" ? "hunkToggle" : "open";
     case "e":
@@ -136,19 +130,18 @@ export function isActivatable(el: Element | null): boolean {
 
 /** The reference card of the shortcuts, for the help panel and the docs. */
 export const SHORTCUTS: { keys: string; command: Command; what: string }[] = [
-  { keys: "⌘/Ctrl+N", command: "newTask", what: "new task (focus the goal)" },
-  { keys: "/", command: "search", what: "search: opens the command palette (so does ⌘/Ctrl+K), which finds tasks too)" },
-  { keys: "a", command: "jumpAttention", what: "jump to the attention list" },
-  { keys: "r", command: "jumpRunning", what: "jump to the running column" },
-  { keys: "y", command: "approve", what: "approve the focused card's effect (Enter confirms an irreversible one)" },
-  { keys: "x", command: "deny", what: "deny the focused card's effect" },
-  { keys: "c", command: "cancelTask", what: "cancel the focused task (Enter confirms)" },
-  { keys: "s", command: "steerTask", what: "steer the focused task (type, Enter sends)" },
-  { keys: "↑ ↓ / j k", command: "next", what: "previous / next card in the column; in Review: previous / next change" },
-  { keys: "← →", command: "columnNext", what: "previous / next column" },
-  { keys: "Enter", command: "open", what: "open the focused card (Review when ready); in Review: expand or collapse the hunk" },
-  { keys: "Escape", command: "back", what: "back; cancel a confirmation" },
+  { keys: "⌘/Ctrl+N", command: "newTask", what: "New task (focus the goal)" },
+  { keys: "/", command: "search", what: "Search: opens the command palette (so does ⌘/Ctrl+K), which finds tasks too" },
+  { keys: "a", command: "jumpAttention", what: "Open Approvals on the first item" },
+  { keys: "r", command: "jumpRunning", what: "Go to a running task in the list" },
+  { keys: "y", command: "approve", what: "Approve the open task's pending effect (Enter confirms an irreversible one)" },
+  { keys: "x", command: "deny", what: "Deny the open task's pending effect" },
+  { keys: "c", command: "cancelTask", what: "Cancel the open task (Enter confirms)" },
+  { keys: "s", command: "steerTask", what: "Steer: go to the open task's composer" },
+  { keys: "↑ ↓ / j k", command: "next", what: "Previous / next task in the list; in Review: previous / next change" },
+  { keys: "Enter", command: "open", what: "Open the Review of a finished task; in Review: expand or collapse the change" },
+  { keys: "Escape", command: "back", what: "Back; cancel a confirmation" },
   { keys: "u", command: "toggleSplit", what: "Review: unified / split" },
   { keys: "f", command: "jumpFailing", what: "Review: jump to the failing check" },
-  { keys: "?", command: "help", what: "this list" },
+  { keys: "?", command: "help", what: "This list" },
 ];

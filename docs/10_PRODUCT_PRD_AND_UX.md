@@ -74,7 +74,7 @@ Settings
 
 ### 1. Home / Fleet
 
-> DR-PX-2026-11-04-020 (accepted 2026-11-04) removed the board: home is one composer, and these states are carried by the agent list and the Approvals page. The states below still hold; only the board that drew them as columns is gone.
+> DR-PX-2026-11-04-020 (accepted 2026-11-04) removed the board: home is one composer, and these states are carried by the agent list and the Approvals page. The states below still hold; only the board that drew them as columns is gone. They are views above the agent list's Projects, and a row's second line carries its next action, phase, agents, risk and evidence (that record's section 5.9). Objective profile is not on a row yet; duration is in its tooltip.
 
 attention-first supervision, implemented as Modbit-native states:
 - **Needs Attention**: approval, blocked credential, ambiguity, protected effect, conflict, human-required continuation of an execution plan, quality floor infeasible under current policy, budget exhausted with partial evidence.

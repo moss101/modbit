@@ -12,8 +12,10 @@ import { memo, useCallback, useEffect, useLayoutEffect, useMemo, useRef, useStat
 import { createPortal } from "react-dom";
 import { Button, Icon, IconButton, StatusDot, TrayHost } from "@modbit/ui";
 import type { TranscriptRowView } from "../../shared/conversation-types.ts";
-import type { ScreenState as DerivedScreenState } from "../screens.ts";
+import { noticeWanted, type ScreenState as DerivedScreenState } from "../screens.ts";
 import { TaskDetails } from "./task-details.tsx";
+import { StateLine } from "../shell/state-line.tsx";
+import { localMachine } from "../location.ts";
 import type { TaskCard } from "../model.ts";
 import { INITIAL_FOLLOW, identityOf, messageIds, onDismiss, onJumpToBottom, onMessages, onScroll, pillText, stallLevel, withDivider, withLiveOnly, type Follow } from "./model.ts";
 import { RowView, type RowContext } from "./rows.tsx";
@@ -262,6 +264,8 @@ export function Conversation(props: ConversationProps) {
   const phase = tailFacts?.phase ?? "";
   const tailLabel = phase === "RUNNING" && streaming ? "Responding" : (tailFacts?.label ?? "");
   const failed = conv.taskState === "Failed" || phase === "FAILED" || phase === "NEEDS_ATTENTION";
+  // What is wrong and what to do stands above the composer while it holds (docs/39 "Every state names the next action"); a quiet state stays in the accessibility tree.
+  const noticeShown = !!screenState && noticeWanted(screenState, failed, conv.approvals.length > 0);
   const lastUserText = useMemo(() => [...conv.rows].reverse().find((r) => r.kind === "USER_MESSAGE")?.text ?? "", [conv.rows]);
 
   return (
@@ -283,7 +287,7 @@ export function Conversation(props: ConversationProps) {
               </span>
             )}
             <IconButton label="Task details" icon={<Icon name="ellipsis" />} pressed={detailsOpen} onClick={() => setDetailsOpen((o) => !o)} data-testid="task-details-toggle" />
-            {detailsOpen && <TaskDetails taskId={taskId} card={card} subtasks={subtasks ?? []} screenState={screenState ?? null} density={prefs.density} onDensity={(density) => setPrefs((p) => ({ ...p, density }))} undoAll={ckpt.head} onBrowser={() => onBrowser?.()} onCancel={() => onCancelTask?.()} onOpenTask={(id) => onOpenTask?.(id)} />}
+            {detailsOpen && <TaskDetails taskId={taskId} card={card} subtasks={subtasks ?? []} density={prefs.density} onDensity={(density) => setPrefs((p) => ({ ...p, density }))} undoAll={ckpt.head} onBrowser={() => onBrowser?.()} onCancel={() => onCancelTask?.()} onOpenTask={(id) => onOpenTask?.(id)} />}
           </>,
           topSlot,
         )}
@@ -333,13 +337,18 @@ export function Conversation(props: ConversationProps) {
       <p className="mb-sr-only" role="status" aria-live="polite" data-testid="conv-live">
         {copied}
       </p>
+      {screenState && (
+        <div className={noticeShown ? "conv-notice" : "mb-sr-only"} data-testid="task-notice" data-shown={noticeShown} data-kind={screenState.kind}>
+          <StateLine state={screenState} testid="task-screen-state" />
+        </div>
+      )}
       {ckpt.bar}
       <ModeProposalDock sessionId={sessionId} taskId={taskId} connected={connected} />
       <ApprovalDock sessionId={sessionId} taskId={taskId} connected={connected} onChangeMode={() => setModeOpen(true)} titleOf={titleOf ?? ((id) => id.slice(0, 8))} onOpenTask={onOpenTask ?? (() => {})} />
       {ckpt.overlay}
       {/* The one tray host: docked directly above the composer, never beside or below it (AFW-H01). */}
       <TrayHost />
-      <Composer taskId={taskId} sessionId={sessionId} connected={connected} card={card} approvalPending={conv.approvals.length > 0} lastUserText={lastUserText} hasMessages={conv.rows.length > 0} onResume={onResume} onNewTask={onNewTask} onOpenTerminal={onOpenTerminal} onReview={onReview} foot={<><span className="cmp-foot-item" data-testid="conv-location"><Icon name={executionLocation === "cloud" ? "globe" : "laptop"} size={14} /> {executionLocation === "cloud" ? "Isolated cloud" : "This Mac"}{worktree ? " · worktree" : ""}</span><span className="cmp-spacer" /><RunModeControl sessionId={sessionId} taskId={taskId} connected={connected} open={modeOpen} onOpenChange={setModeOpen} /></>} />
+      <Composer taskId={taskId} sessionId={sessionId} connected={connected} card={card} approvalPending={conv.approvals.length > 0} lastUserText={lastUserText} hasMessages={conv.rows.length > 0} onResume={onResume} onNewTask={onNewTask} onOpenTerminal={onOpenTerminal} onReview={onReview} foot={<><span className="cmp-foot-item" data-testid="conv-location"><Icon name={executionLocation === "cloud" ? "globe" : "laptop"} size={14} /> {executionLocation === "cloud" ? "Isolated cloud" : localMachine()}{worktree ? " · worktree" : ""}</span><span className="cmp-spacer" /><RunModeControl sessionId={sessionId} taskId={taskId} connected={connected} open={modeOpen} onOpenChange={setModeOpen} /></>} />
     </section>
   );
 }
@@ -370,7 +379,7 @@ export const TailStatus = memo(function TailStatus({ phase, label, detail, lastA
 
 /** A failed run in the Core's typed words: what happened, what only the person can do, how the system recovers, and a retry when the Core says it can. */
 export function FailureBlock({ taskId, card, onResume, promptText }: { taskId: string; card: TaskCard | undefined; onResume: (taskId: string) => void; promptText: string }) {
-  const [status, setStatus] = useState<{ failureClass: string; failureCode: string; attentionReason: string; userAction: string; recoveryPath: string; retryable: boolean } | null>(null);
+  const [status, setStatus] = useState<{ failureClass: string; failureCode: string; attentionReason: string; userAction: string; recoveryPath: string; retryable: boolean; evidenceRefs: string[]; lastOffset: string } | null>(null);
   const [note, setNote] = useState("");
   useEffect(() => {
     if (card?.diagnostic) return;
@@ -384,8 +393,9 @@ export function FailureBlock({ taskId, card, onResume, promptText }: { taskId: s
     };
   }, [taskId, card?.diagnostic, card?.state]);
   const d = card?.diagnostic
-    ? { failureClass: card.diagnostic.class, failureCode: card.diagnostic.code, attentionReason: card.diagnostic.detail, userAction: card.diagnostic.userAction, recoveryPath: card.diagnostic.recoveryPath, retryable: card.diagnostic.retryable }
+    ? { failureClass: card.diagnostic.class, failureCode: card.diagnostic.code, attentionReason: card.diagnostic.detail, userAction: card.diagnostic.userAction, recoveryPath: card.diagnostic.recoveryPath, retryable: card.diagnostic.retryable, evidenceRefs: card.diagnostic.evidenceRefs, lastOffset: card.lastOffset }
     : status;
+  const evidence = d?.evidenceRefs.join(", ") || (d ? `offset ${d.lastOffset}` : "");
   const words = (x: string) => x.replace(/_/g, " ").toLowerCase();
   return (
     <div className="conv-failure" role="alert" data-testid="conv-failure" aria-label="The task needs attention">
@@ -404,6 +414,11 @@ export function FailureBlock({ taskId, card, onResume, promptText }: { taskId: s
         </p>
       )}
       {d?.recoveryPath && <p className="meta">How Modbit recovers: {d.recoveryPath}</p>}
+      {evidence && (
+        <p className="meta" data-testid="conv-failure-evidence">
+          Evidence: {evidence}
+        </p>
+      )}
       <div className="decision">
         {d?.retryable === true && (
           <Button size="sm" variant="primary" onClick={() => onResume(taskId)} data-testid="conv-retry">

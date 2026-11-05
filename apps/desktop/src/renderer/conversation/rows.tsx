@@ -11,7 +11,7 @@ import { memo, useEffect, useRef, useState, type ReactNode } from "react";
 import { Button, Icon, StatusDot, type IconName } from "@modbit/ui";
 import type { PendingApprovalView, TranscriptRowView } from "../../shared/conversation-types.ts";
 import type { TaskCard } from "../model.ts";
-import { needsEyes, presentAssistant, streamKey, type LiveStreams, type MessageState, type PresentedRow } from "./model.ts";
+import { needsEyes, presentAssistant, streamKey, toolVerb, unfinishedCalls, type LiveStreams, type MessageState, type PresentedRow } from "./model.ts";
 import { sameBlock, splitBlocks, type Block } from "./blocks.ts";
 import { EditBox, MessageActions, TurnMarker, type CheckpointContext } from "./checkpoint-controls.tsx";
 import { ComputerActionCard, type ComputerCardContext } from "../computer/action-card.tsx";
@@ -165,7 +165,6 @@ function UserRow({ row, ctx }: { row: TranscriptRowView; ctx: RowContext }) {
   );
 }
 
-const CLASS_VERB: Record<string, string> = { READ: "Read", SEARCH: "Searched", SHELL: "Ran", EDIT: "Edited", BROWSER: "Browsed", OTHER: "Used" };
 const CLASS_ICON: Record<string, IconName> = { READ: "search", SEARCH: "search", SHELL: "terminal", EDIT: "square-pen", BROWSER: "globe", OTHER: "ellipsis" };
 const baseName = (p: string): string => p.replace(/[/\\]+$/, "").split(/[/\\]/).pop() ?? p;
 const plural = (n: number, one: string, many = `${one}s`): string => `${n} ${n === 1 ? one : many}`;
@@ -179,8 +178,10 @@ const stepText = (row: TranscriptRowView): string => {
 
 /** What a fold of tool calls did, in words, from the calls' own facts (the Core's label stays in the row's title). */
 export function groupSummary(children: readonly TranscriptRowView[]): { icon: IconName; words: string } | null {
-  const tools = children.filter((c) => c.facts.type === "tool");
-  if (tools.length === 0) return null;
+  const calls = children.filter((c) => c.facts.type === "tool");
+  if (calls.length === 0) return null;
+  // Only what happened is told in the past tense; the rest is said as not finished or not run.
+  const tools = calls.filter((c) => !["PENDING", "RUNNING", "AWAITING_APPROVAL", "DENIED", "CANCELLED"].includes(c.hints.status));
   const of = (c: string) => tools.filter((t) => t.facts.type === "tool" && t.facts.toolClass === c);
   const reads = of("READ");
   const searches = of("SEARCH");
@@ -198,7 +199,8 @@ export function groupSummary(children: readonly TranscriptRowView[]): { icon: Ic
   const planning = others.filter((t) => t.facts.type === "tool" && t.facts.toolName.startsWith("plan."));
   if (planning.length > 0) parts.push("Updated the plan");
   if (others.length > planning.length) parts.push(`Used ${plural(others.length - planning.length, "tool")}`);
-  const icon: IconName = planning.length === tools.length ? "list-tree" : edits.length > 0 ? "square-pen" : shells.length > 0 ? "terminal" : browsing.length > 0 ? "globe" : reads.length + searches.length > 0 ? "search" : "ellipsis";
+  parts.push(...unfinishedCalls(calls.map((c) => c.hints.status)));
+  const icon: IconName = tools.length > 0 && planning.length === tools.length ? "list-tree" : edits.length > 0 ? "square-pen" : shells.length > 0 ? "terminal" : browsing.length > 0 ? "globe" : reads.length + searches.length > 0 ? "search" : "ellipsis";
   return { icon, words: parts.join(", ") };
 }
 const TOOL_STATUS_WORD: Record<string, string> = { PENDING: "Waiting to run", RUNNING: "Running", AWAITING_APPROVAL: "Waiting for approval", SUCCEEDED: "Done", FAILED: "Failed", DENIED: "Denied", CANCELLED: "Cancelled", UNKNOWN_OUTCOME: "Outcome unknown" };
@@ -213,7 +215,7 @@ function ToolRow({ row, ctx }: { row: TranscriptRowView; ctx: RowContext }) {
   return (
     <div className="conv-row conv-tool" data-testid="conv-tool" data-row-id={row.rowId} data-kind="TOOL_CARD" data-tool-class={f?.toolClass} data-status={status} data-highlight={ctx.highlightRowId === row.rowId} title={row.hints.durationMs > 0 ? `${word}, ${formatDuration(row.hints.durationMs)}` : word}>
       <Icon name={CLASS_ICON[f?.toolClass ?? "OTHER"] ?? "ellipsis"} size={14} />
-      <span className="conv-tool-class">{CLASS_VERB[f?.toolClass ?? "OTHER"] ?? "Used"}</span>
+      <span className="conv-tool-class">{toolVerb(f?.toolClass ?? "OTHER", status)}</span>
       <span className="conv-tool-text" data-mono={f?.toolClass === "SHELL"} title={row.text}>
         {stepText(row)}
       </span>
@@ -223,9 +225,9 @@ function ToolRow({ row, ctx }: { row: TranscriptRowView; ctx: RowContext }) {
         <span className="conv-tool-status" data-bad="true">
           <StatusDot status={status === "FAILED" ? "danger" : "warn"} label={word} showLabel />
         </span>
-      ) : status === "RUNNING" || status === "PENDING" ? (
+      ) : status === "RUNNING" || status === "PENDING" || status === "AWAITING_APPROVAL" ? (
         <span className="conv-tool-status">
-          <StatusDot status="running" label={word} showLabel />
+          <StatusDot status={status === "AWAITING_APPROVAL" ? "warn" : "running"} label={word} showLabel />
         </span>
       ) : (
         <span className="mb-sr-only">{word}</span>

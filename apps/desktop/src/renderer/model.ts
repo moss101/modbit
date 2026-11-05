@@ -21,6 +21,17 @@ export interface AgentCounts {
  *  events only. */
 export type Phase = "drafting" | "verifying" | "reviewing" | "escalating" | "awaitingHuman" | "waitingCapacity" | "delegating" | "done";
 
+export const PHASE_LABEL: Record<Phase, string> = {
+  drafting: "drafting",
+  verifying: "verifying",
+  reviewing: "reviewing",
+  escalating: "escalating",
+  awaitingHuman: "awaiting human",
+  waitingCapacity: "waiting for capacity",
+  delegating: "delegating",
+  done: "done",
+};
+
 export interface TaskCard {
   taskId: string;
   goalText: string;

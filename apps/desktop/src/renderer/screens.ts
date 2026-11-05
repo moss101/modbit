@@ -166,6 +166,15 @@ export function taskState(input: { card: TaskCard; core: CoreStatusLike; attenti
   return state("task", "populated", `${card.state.toLowerCase()} · ${card.phase}`);
 }
 
+/** States another surface of the task's screen states along with its decision: the docked approval card, the inline question. */
+const SAID_ELSEWHERE = new Set(["awaiting approval", "awaiting your answer", "approval", "question"]);
+
+/** Whether a task's state stands above its composer: it is wrong in a way the person should see, and no failure block or approval card already says it. */
+export function noticeWanted(s: ScreenState, failureShown: boolean, approvalDocked: boolean): boolean {
+  if (s.kind !== "error" && s.kind !== "degraded" && s.kind !== "recovery") return false;
+  return !failureShown && !approvalDocked && !SAID_ELSEWHERE.has(s.label);
+}
+
 export interface ReviewInputs {
   loading: boolean;
   error: string | null;

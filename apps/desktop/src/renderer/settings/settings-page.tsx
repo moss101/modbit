@@ -10,6 +10,7 @@ import type { NotificationKind } from "../notifications.ts";
 import { StateLine } from "../shell/state-line.tsx";
 import type { AppState } from "../state/use-app.ts";
 import { ProviderForm } from "./provider-form.tsx";
+import { localMachine } from "../location.ts";
 
 export interface SettingsEntry {
   id: string;
@@ -136,7 +137,7 @@ export function SettingsPage({ app, query, theme, onTheme, zoom, onZoom, onCusto
 
         <Section id="locations" query={query}>
           <div className="settings-card" data-testid="settings-locations">
-            <Row title="This Mac" detail="Available. A new task runs here unless you choose otherwise, and never takes its location from the task you last viewed. It can work in your checkout or in a worktree of its own." />
+            <Row title={localMachine()} detail="Available. A new task runs here unless you choose otherwise, and never takes its location from the task you last viewed. It can work in your checkout or in a worktree of its own." />
             <Row title="Isolated cloud" detail={<span data-testid="settings-cloud-state">Not available from this app yet: the desktop has no cloud client (PX-128). The command line can hand a task over with <code>modbit cloud handoff</code>.</span>} />
           </div>
         </Section>

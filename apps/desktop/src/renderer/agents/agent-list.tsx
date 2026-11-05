@@ -10,7 +10,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Button, Dialog, trays } from "@modbit/ui";
 import type { AgentHeaderView, ConversationSearchView } from "../../shared/conversation-types.ts";
 import { AgentListView } from "./agent-list-view.tsx";
-import { deleteView, listItems, nearestSibling, passes, pin as pinTask, saveView, unpin as unpinTask, visibleTaskIds, type Filters, type Grouping, type SortKey, type StoredView, type SubtitleField } from "./list-model.ts";
+import { deleteView, listItems, nearestSibling, passes, pin as pinTask, saveView, unpin as unpinTask, visibleTaskIds, type FactField, type Filters, type Grouping, type RowFacts, type SortKey, type StoredView, type SubtitleField } from "./list-model.ts";
 import { loadListPrefs, saveListPrefs, type ListPrefs } from "./prefs.ts";
 import { useAgents } from "./use-agents.ts";
 import { NewProjectDialog, RenameProjectDialog, SaveViewDialog } from "../projects/project-dialogs.tsx";
@@ -32,6 +32,8 @@ export interface AgentListProps {
   onHeaders?: ((n: { total: number; attention: number }) => void) | undefined;
   /** Tells the shell the headers themselves (the repositories, the open task's worktree). */
   onHeaderList?: ((headers: readonly AgentHeaderView[]) => void) | undefined;
+  /** What each task is doing and needs, from its card and the Core's attention view. */
+  facts?: ReadonlyMap<string, RowFacts> | undefined;
   /** The Core's projects (PX-063), read once by the shell and shared with the project page. */
   projects?: ProjectsState | undefined;
   selectedProjectId?: string | null | undefined;
@@ -41,7 +43,7 @@ export interface AgentListProps {
   onProjectArchived?: ((projectId: string, archived: boolean) => void) | undefined;
 }
 
-export function AgentList({ sessionId, connected, selectedTaskId, onSelect, onHeaders, onHeaderList, projects, selectedProjectId = null, onOpenProject, onProjectArchived }: AgentListProps) {
+export function AgentList({ sessionId, connected, selectedTaskId, onSelect, onHeaders, onHeaderList, facts, projects, selectedProjectId = null, onOpenProject, onProjectArchived }: AgentListProps) {
   const [prefs, setPrefs] = useState<ListPrefs>(loadListPrefs);
   const update = useCallback((f: (p: ListPrefs) => ListPrefs) => setPrefs((p) => f(p)), []);
   useEffect(() => saveListPrefs(prefs), [prefs]);
@@ -254,6 +256,9 @@ export function AgentList({ sessionId, connected, selectedTaskId, onSelect, onHe
         grouping={prefs.grouping}
         filters={prefs.filters}
         subtitleFields={prefs.subtitle}
+        facts={facts}
+        factFields={prefs.facts}
+        onFactFields={(f: FactField[]) => update((p) => ({ ...p, facts: f }))}
         collapsed={collapsed}
         nowMs={nowMs}
         query={query}

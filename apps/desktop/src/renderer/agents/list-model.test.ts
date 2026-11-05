@@ -1,7 +1,7 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import { STATUS_CLASSES, type AgentHeaderView, type StatusClass } from "../../shared/conversation-types.ts";
-import { CLASS_META, MAX_VIEWS, NO_FILTERS, NO_PROJECT, PIN_CAP, PIN_CAP_MESSAGE, SECTION_HEIGHT, ROW_HEIGHT, classRank, deleteView, filterCount, flatten, groupHeaders, layoutOf, listItems, nearestSibling, passes, pin, relativeAge, saveView, timeBucket, unpin, viewMatches, visibleRange, visibleTaskIds, type ListItem, type StoredView } from "./list-model.ts";
+import { CLASS_META, FACT_FIELDS, MAX_VIEWS, NO_FILTERS, NO_PROJECT, PIN_CAP, PIN_CAP_MESSAGE, SECTION_HEIGHT, ROW_HEIGHT, classRank, deleteView, filterCount, flatten, groupHeaders, layoutOf, listItems, nearestSibling, passes, pin, relativeAge, saveView, rowLine, rowTitle, STATE_VIEWS, timeBucket, toggleView, unpin, viewCounts, viewMatches, visibleRange, visibleTaskIds, type ListItem, type StoredView, type OriginFilter, type RowFacts, type StateFilter } from "./list-model.ts";
 import type { ProjectInfo } from "../../shared/project-types.ts";
 import { DEFAULT_LIST_PREFS, parseListPrefs, serializeListPrefs } from "./prefs.ts";
 import { highlightRuns } from "./snippets.ts";
@@ -93,7 +93,9 @@ test("filters: chips widen within a family and narrow across families; archived 
   assert.deepEqual(ids({ ...NO_FILTERS, states: ["failed"], locations: ["cloud"] }), [failed.taskId]);
   assert.deepEqual(ids({ ...NO_FILTERS, states: ["failed"], locations: ["local"] }), []);
   assert.deepEqual(ids({ ...NO_FILTERS, states: ["unread"] }), [unread.taskId]);
-  assert.deepEqual(ids({ ...NO_FILTERS, states: ["done"] }), [unread.taskId]);
+  // MOD-UX-001: ready for review and completed are separate views.
+  assert.deepEqual(ids({ ...NO_FILTERS, states: ["review"] }), [unread.taskId]);
+  assert.deepEqual(ids({ ...NO_FILTERS, states: ["done"] }), []);
   assert.deepEqual(ids({ ...NO_FILTERS, origins: ["cli"] }), [failed.taskId]);
   assert.equal(ids({ ...NO_FILTERS, showArchived: true }).length, 4);
   assert.equal(filterCount({ states: ["running"], locations: ["local"], origins: [], projects: [], showArchived: true }), 3);
@@ -296,4 +298,34 @@ test("stored preferences with views: hostile entries are cut back; valid views r
   assert.deepEqual(parseListPrefs(serializeListPrefs(p)), p);
   assert.equal(parseListPrefs(JSON.stringify({ sort: "sideways" })).sort, "recent");
   assert.deepEqual(parseListPrefs(JSON.stringify({ views: "nope" })).views, []);
+});
+
+test("MOD-UX-001: each first-class view holds exactly its class, seen and unseen review together, archived tasks in none", () => {
+  const rows = (["NEEDS_ATTENTION", "READY_FOR_REVIEW_UNSEEN", "READY_FOR_REVIEW_SEEN", "RUNNING", "WAITING", "COMPLETED", "FAILED"] as StatusClass[]).map((c) => h({ statusClass: c }));
+  rows.push(h({ statusClass: "WAITING", archived: true }));
+  assert.deepEqual(STATE_VIEWS.map((v) => v.id), ["attention", "review", "running", "waiting", "done", "failed"]);
+  assert.deepEqual([...viewCounts(rows).entries()], [["attention", 1], ["review", 2], ["running", 1], ["waiting", 1], ["done", 1], ["failed", 1]]);
+});
+
+test("a view shows that view alone; choosing it again shows everything, and other chips stay", () => {
+  const f = { ...NO_FILTERS, states: ["running", "failed"] as StateFilter[], origins: ["cli"] as OriginFilter[] };
+  assert.deepEqual(toggleView(f, "review").states, ["review"]);
+  assert.deepEqual(toggleView(toggleView(f, "review"), "review").states, []);
+  assert.deepEqual(toggleView(f, "review").origins, ["cli"]);
+});
+
+test("a row says what is needed before where it is, and each fact can be turned off", () => {
+  const row = h({ statusClass: "FAILED", subtitle: "alpha", filesChanged: 2, linesAdded: 4, linesRemoved: 1 });
+  const facts: RowFacts = { next: "cargo test exited 101", phase: "verifying", activeAgents: 2, totalAgents: 3, risk: "HIGH", evidence: "acceptance gate REJECT" };
+  const all = FACT_FIELDS.map((x) => x.id);
+  const fields = ["repository", "changes"] as const;
+  assert.equal(rowLine(row, fields, facts, all), "cargo test exited 101 · 2 agents · high risk · alpha · 2 files +4 −1 · acceptance gate REJECT");
+  assert.equal(rowLine(row, fields, { ...facts, next: "" }, ["phase"]), "verifying · alpha · 2 files +4 −1");
+  assert.equal(rowLine(row, fields, facts, []), "alpha · 2 files +4 −1");
+  assert.equal(rowLine(row, fields, undefined, all), "alpha · 2 files +4 −1");
+  // Low risk is not an indicator on the row; it stays in the tooltip with the rest.
+  assert.doesNotMatch(rowLine(row, fields, { ...facts, risk: "LOW" }, all), /risk/);
+  const title = rowTitle(row, { ...facts, risk: "LOW" }, "This Mac", NOW);
+  for (const part of ["Runs on: This Mac", "Phase: verifying", "Agents: 2 active of 3", "Risk: low", "Evidence: acceptance gate REJECT", "Next: cargo test exited 101"]) assert.ok(title.includes(part), part);
+  assert.ok(rowTitle({ ...row, executionLocation: "cloud" }, undefined, "This Mac", NOW).includes("Runs on: isolated cloud"));
 });

@@ -8,20 +8,8 @@ import { useEffect, useState, type ReactNode } from "react";
 import { Button } from "@modbit/ui";
 import { DENSITIES, type Density } from "../../shared/conversation-types.ts";
 import type { ContextInspectorSummary, TaskEconomicsSummary } from "../../preload/preload.ts";
-import type { TaskCard } from "../model.ts";
-import type { ScreenState as DerivedScreenState } from "../screens.ts";
-import { StateLine } from "../shell/state-line.tsx";
+import { PHASE_LABEL, type TaskCard } from "../model.ts";
 
-const PHASE_LABEL: Record<TaskCard["phase"], string> = {
-  drafting: "drafting",
-  verifying: "verifying",
-  reviewing: "reviewing",
-  escalating: "escalating",
-  awaitingHuman: "awaiting human",
-  waitingCapacity: "waiting for capacity",
-  delegating: "delegating",
-  done: "done",
-};
 const DENSITY_LABEL: Record<Density, string> = { COMPACT: "Compact", BALANCED: "Balanced", DETAILED: "Detailed" };
 
 function Fact({ label, children }: { label: string; children: ReactNode }) {
@@ -38,7 +26,6 @@ export interface TaskDetailsProps {
   card: TaskCard | undefined;
   /** The subagents the Core nested under this task. */
   subtasks: readonly TaskCard[];
-  screenState: DerivedScreenState | null;
   density: Density;
   onDensity: (d: Density) => void;
   /** The checkpoint surface's undo-all control. */
@@ -48,7 +35,7 @@ export interface TaskDetailsProps {
   onOpenTask: (taskId: string) => void;
 }
 
-export function TaskDetails({ taskId, card, subtasks, screenState, density, onDensity, undoAll, onBrowser, onCancel, onOpenTask }: TaskDetailsProps) {
+export function TaskDetails({ taskId, card, subtasks, density, onDensity, undoAll, onBrowser, onCancel, onOpenTask }: TaskDetailsProps) {
   const [inspector, setInspector] = useState<ContextInspectorSummary | null>(null);
   const [economics, setEconomics] = useState<TaskEconomicsSummary | null>(null);
   const offset = card?.lastOffset;
@@ -108,7 +95,6 @@ export function TaskDetails({ taskId, card, subtasks, screenState, density, onDe
           {card.nextAction && <Fact label="Next">{card.nextAction}</Fact>}
         </dl>
       )}
-      {screenState && <StateLine state={screenState} testid="task-screen-state" />}
       {subtasks.length > 0 && (
         <ul className="task-subtasks" data-testid="task-children" aria-label="subagents">
           {subtasks.map((c) => (

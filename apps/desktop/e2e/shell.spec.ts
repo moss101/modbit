@@ -226,8 +226,9 @@ test("PX-045: the command palette and the shortcut registry by keyboard alone; E
     await page.keyboard.press(`${MOD}+n`);
     expect(await focusedTestId(page)).toBe("goal");
     await page.keyboard.type("Palette findable task");
-    await page.keyboard.press("Tab");
-    await page.keyboard.press("Tab");
+    // Past the mode, the model and the repository to send.
+    for (let i = 0; i < 4; i++) await page.keyboard.press("Tab");
+    expect(await focusedTestId(page)).toBe("run");
     await page.keyboard.press("Enter");
     await expect(page.getByTestId("conversation")).toHaveAttribute("data-task-id", /.+/, { timeout: 30_000 });
     const taskId = (await page.getByTestId("conversation").getAttribute("data-task-id"))!;

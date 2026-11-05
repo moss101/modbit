@@ -113,9 +113,16 @@ test("keyboard: every screen by keyboard only — shortcuts, list and review nav
     // the repository; Alt+Enter creates without starting.
     await page.keyboard.press(`${MOD}+n`);
     await expect.poll(() => focusedTestId(page)).toBe("goal");
+    // From the goal: the mode, the model, the repository, send.
+    await page.keyboard.press("Tab");
+    expect(await focusedTestId(page)).toBe("home-mode-button");
+    await page.keyboard.press("Tab");
+    expect(await focusedTestId(page)).toBe("model-chip");
     await page.keyboard.press("Tab");
     expect(await focusedTestId(page)).toBe("workspace");
     await page.keyboard.type(repo);
+    await page.keyboard.press("Shift+Tab");
+    await page.keyboard.press("Shift+Tab");
     await page.keyboard.press("Shift+Tab");
     expect(await focusedTestId(page)).toBe("goal");
     await page.keyboard.type("alpha task");

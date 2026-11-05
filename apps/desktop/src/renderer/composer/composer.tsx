@@ -59,7 +59,7 @@ import { MentionMenu, SlashMenuView, useMentionSources, useSlashItems, type Ment
 import { ModelPicker, type PickerChoice } from "./model-picker.tsx";
 import { EducationTray, PolicyTray, QueueTray, SendBehaviorPanel, SideQuestionPanel, StoppedTray, TerminalsChip, TerminalsTray } from "./trays.tsx";
 
-const MODE_ICON: Record<TaskModeId, IconName> = { AGENT: "infinity", PLAN: "list-tree", DEBUG: "bug", MULTITASK: "layers", ASK: "circle-question-mark" };
+export const MODE_ICON: Record<TaskModeId, IconName> = { AGENT: "infinity", PLAN: "list-tree", DEBUG: "bug", MULTITASK: "layers", ASK: "circle-question-mark" };
 
 export interface ComposerProps {
   /** The line under the box: where the task runs and its run mode. */
