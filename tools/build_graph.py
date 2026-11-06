@@ -101,6 +101,9 @@ PX_PARITY = [
     # A presentation change over the existing owner `desktop` that supersedes DR-PX-2026-10-24-016 in a named scope; the record is the specification (its section 5), doc 65 carries the note.
     ("DR-PX-2026-11-03-019", "DOC-PX-018", 192, 194, "65_AGENT_FIRST_WORKSPACE_SPECIFICATION.md", "Agent workspace language for the desktop renderer, PX-192..194",
      "Proposed: PX-192..194, the agent workspace language: the reference product's layout, geometry and density as doc 65 records them in Modbit's own neutral tokens, superseding the ZCode design language in a named scope, with AFW-A12, A13, A14 and the clean-room posture unchanged"),
+    # The screens rebuilt to the approved mockup: the Fleet board removed, over the existing owner `desktop`.
+    ("DR-PX-2026-11-04-020", "DOC-PX-019", 195, 197, "65_AGENT_FIRST_WORKSPACE_SPECIFICATION.md", "Agent workspace screens, PX-195..197",
+     "Proposed: PX-195..197, the desktop's screens rebuilt to the mockup the owner approved, with the Fleet board removed and every capability it offered given a home, AFW-A12, A13, A14 and the clean-room posture unchanged"),
 ]
 
 

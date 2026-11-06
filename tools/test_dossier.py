@@ -436,15 +436,15 @@ class DossierTests(unittest.TestCase):
 
     def test_parity_surface_counts_are_pinned_and_dr_013_is_traced(self):
         # The additive PX ledger pins nothing in tools/dossier_px.py (totals are computed); the parity-push surface is pinned here
-        # in the same reseal that adds a record: PX-000..194 (195 rows, 173 ADOPT tasks, 22 DEFERRED), eleven records of which
+        # in the same reseal that adds a record: PX-000..197 (198 rows, 176 ADOPT tasks, 22 DEFERRED), eleven records of which
         # 007, 008, 010 and 013 are accepted, and the 41 rows of DR-PX-2026-10-05-013 (39 release-critical, 2 iteration).
         self.rebuild()
         g = self.graph()
         nodes = {n["id"]: n for n in g["nodes"]}
         reqs = [n for n in g["nodes"] if re.match(r"^REQ-PX-\d{3}$", n["id"])]
         tasks = [n for n in g["nodes"] if re.match(r"^PX-\d{3}$", n["id"]) and n["type"] == "imp_task"]
-        self.assertEqual(len(reqs), 195)
-        self.assertEqual(len(tasks), 173)
+        self.assertEqual(len(reqs), 198)
+        self.assertEqual(len(tasks), 176)
         self.assertEqual(sorted(n["id"] for n in reqs if n.get("disposition") == "DEFERRED"), ["REQ-PX-003", "REQ-PX-012", "REQ-PX-013", "REQ-PX-140"] + ["REQ-PX-%03d" % i for i in self.DR_018_DEFERRED])
         self.assertEqual(len([r for r in self.PARITY_RECORDS if r[4]]), 4)
         self.assertEqual(len(self.PARITY_RECORDS), 7)
@@ -669,6 +669,43 @@ class DossierTests(unittest.TestCase):
         spec = (self.root / "docs/65_AGENT_FIRST_WORKSPACE_SPECIFICATION.md").read_text()
         self.assertIn("Scoped supersession (DR-PX-2026-11-03-019", spec)
         self.assertIn("No code, stylesheet, theme file, colour value taken from a theme", spec)
+
+    def test_dr_020_rebuilds_the_screens_and_removes_the_board_inside_the_clean_room_posture(self):
+        # DR-PX-2026-11-04-020 (accepted 2026-11-04 on the owner's chat instruction): rows PX-195..197 are owned by `desktop`, M10,
+        # RELEASE_ZERO only, release-critical because send starts a run and the approval surface moved, chained after PX-194, gated by
+        # DOC-PX-019; the record supersedes DR-019 in a named scope, and the owner's review of real screens is an exit criterion.
+        self.rebuild()
+        g = self.graph()
+        nodes = {n["id"]: n for n in g["nodes"]}
+        after, auth, includes = self.edges(g)
+        dr = "DR-PX-2026-11-04-020"
+        self.assertEqual(nodes[dr]["status"], "APPROVED")
+        self.assertEqual(nodes["DOC-PX-019"]["type"], "dossier_task")
+        owners = {e["from"]: e["to"] for e in g["edges"] if e["type"] == "owned_by"}
+        for pid in ("PX-195", "PX-196", "PX-197"):
+            self.assertEqual(nodes[pid]["milestone"], "M10", pid)
+            self.assertEqual(owners[pid], "desktop", pid)
+            self.assertIn((pid, dr), auth, pid)
+            self.assertIn("DOC-PX-019", after[pid], pid)
+            self.assertEqual(includes.get(pid), {"RELEASE_ZERO"}, pid)
+        self.assertIn("PX-194", after["PX-195"])
+        self.assertIn("PX-195", after["PX-196"])
+        self.assertIn("PX-196", after["PX-197"])
+        text = (self.root / "docs/62_PRODUCT_EXTENSION_REQUIREMENTS_TASKS_AND_QUALIFICATIONS.md").read_text()
+        tiers = re.findall(r"\*\*Decision Record, phase and evidence tier:\*\* DR-PX-2026-11-04-020; [^;]+; (release-critical|iteration) \(", text)
+        self.assertEqual(tiers, ["release-critical"] * 3)
+        record = (self.root / "docs/decisions/DR-PX-2026-11-04-020-agent-workspace-screens.md").read_text()
+        head = record.split("---")[1]
+        self.assertIn("status: accepted", head)
+        self.assertIn("approved_by: owner, chat instruction of 2026-11-04", head)
+        self.assertIn("supersedes: scoped — DR-PX-2026-11-03-019", head)
+        for aws in range(1, 8):
+            self.assertIn("AWS-%02d" % aws, record)
+        self.assertIn("does **not** cover any relaxation of AFW-A12 (WCAG 2.2 AA), AFW-A13 (themes) or AFW-A14", record)
+        self.assertIn("never the reference product's colours, theme file, icons, fonts, logo, brand colour or strings", record)
+        self.assertIn("The owner sees real screenshots beside the mockup before merge", record)
+        spec = (self.root / "docs/65_AGENT_FIRST_WORKSPACE_SPECIFICATION.md").read_text()
+        self.assertIn("Scoped supersession (DR-PX-2026-11-04-020", spec)
 
     def test_decision_record_status_and_approval_match_the_graph(self):
         # An accepted record names who approved it; a proposed one says it is pending; the graph change record follows the file.

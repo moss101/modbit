@@ -2,13 +2,13 @@
   "product": "Modbit",
   "edition": "V3.3 EPR v1.1",
   "authority_date": "2026-09-05",
-  "generated_on": "2026-11-05",
+  "generated_on": "2026-11-06",
   "hash_algorithm": "sha256",
   "scope_rule": "docs/*.md, root *.md except MANIFEST.md, docs/decisions/*.md, graph JSON/Markdown, tools/*.py, evidence payloads; manifests exclude themselves and transient caches",
   "counts": {
     "docs": 97,
-    "root_and_tooling": 1945,
-    "docs_bytes": 2318888
+    "root_and_tooling": 1971,
+    "docs_bytes": 2336672
   },
   "sections": [
     {
@@ -77,8 +77,8 @@
       "section": "authority",
       "section_title": "Authority and orientation",
       "title": "Authority, Decision Register, and Conflict Resolution",
-      "bytes": 32496,
-      "sha256": "4e1972da8ffea6949886d92f845fc534b9ca9385a27c0e1c95d79f500e0b1a80"
+      "bytes": 33270,
+      "sha256": "55523c6c81e2aad51a94c005d54240e5877e77f7788c9308e2b80e04be54b0e5"
     },
     {
       "path": "docs/03_ARCHITECTURAL_CONFLICTS_AND_SUPERSESSIONS.md",
@@ -131,8 +131,8 @@
       "section": "architecture",
       "section_title": "Architecture and subsystems",
       "title": "Product Requirements and UX Specification",
-      "bytes": 12469,
-      "sha256": "33e7e3c922f924f23031db1d1635cbba9001ce406e0474228d9b2ec0d4b5b224"
+      "bytes": 12933,
+      "sha256": "50b1a953fbb80d4d3059e43888856ba569550e0d1becdc8b2760c1ea025dce88"
     },
     {
       "path": "docs/11_SYSTEM_ARCHITECTURE.md",
@@ -329,8 +329,8 @@
       "section": "implementation",
       "section_title": "Implementation specifications",
       "title": "Desktop Frontend Implementation",
-      "bytes": 16953,
-      "sha256": "1ce89dcebf686437b4bac7913a335a460daf5547066d718b4093212cec726769"
+      "bytes": 17927,
+      "sha256": "3a6b1f4176e5657368a336536d0a67c01e7479ae880d2d55130c5f99090fcd0c"
     },
     {
       "path": "docs/33_CORE_AND_CLOUD_BACKEND_IMPLEMENTATION.md",
@@ -392,8 +392,8 @@
       "section": "implementation",
       "section_title": "Implementation specifications",
       "title": "UX flows, onboarding and interaction budgets",
-      "bytes": 15814,
-      "sha256": "d941a887e6775d6c756b91470cb52b702d383d777451f87cda4b55f2454fd4a2"
+      "bytes": 16332,
+      "sha256": "58c970c11c93518a9244b50be57545f8ccc871da9c10074715718fbafb9570db"
     },
     {
       "path": "docs/40_EVIDENCE_DERIVED_REQUIREMENT_LEDGER.md",
@@ -599,8 +599,8 @@
       "section": "verification",
       "section_title": "Verification and testing",
       "title": "Product extension requirements, tasks and qualifications",
-      "bytes": 642627,
-      "sha256": "c921bb0a06de0999596373a1a192cd6b016a208ca8d330ea5fe8f4ec2749eaf5"
+      "bytes": 654723,
+      "sha256": "db81113d3b3e12473efe2f5382a99f5cd0b4a21e6ae5460c6ad49b1d54aa28c7"
     },
     {
       "path": "docs/63_AGENT_COMPETENCE_BENCHMARKS_AND_REGRESSION_SUITES.md",
@@ -626,8 +626,8 @@
       "section": "verification",
       "section_title": "Verification and testing",
       "title": "Agent-first workspace specification (clean-room)",
-      "bytes": 87593,
-      "sha256": "753c4f653afff5489b2cf63bd60f5ee2dda70a25f81677701a19bf8f8fecacd3"
+      "bytes": 88529,
+      "sha256": "a6d515aba3f734f2a64789effd48ce6d1ceb57bc4bb64db61a860d1b1cbf08a7"
     },
     {
       "path": "docs/66_NATIVE_COMPUTER_CONTROL_SPECIFICATION.md",
@@ -914,8 +914,8 @@
       "section": "governance",
       "section_title": "Agent process and governance",
       "title": "Dossier maintenance log",
-      "bytes": 142086,
-      "sha256": "2206d2c7dc78700abfc1aba51b5cb347646588bb150d93e818363f7d0b7edda0"
+      "bytes": 144108,
+      "sha256": "64c43d2a9f6cb7d2cb8276c4b7738330b8d93d234db18cc98c0e0f839c580c30"
     },
     {
       "path": "docs/98_BUILD_MANIFEST.md",
@@ -1119,9 +1119,14 @@
       "sha256": "fa544e8bb20d252c50c3f7c658bb564eeb20bb0ce2cefe6c371811cb769567c6"
     },
     {
+      "path": "docs/decisions/DR-PX-2026-11-04-020-agent-workspace-screens.md",
+      "bytes": 18990,
+      "sha256": "5c464105969bf7e764cd677fcb2545cf9132978c60e28fef4c1c80ad5ffcacdc"
+    },
+    {
       "path": "docs/decisions/README.md",
-      "bytes": 9998,
-      "sha256": "b7d0ae036c8b4a5bbf4ce639525b17416a14d0b981e910ad561061b399fdce08"
+      "bytes": 10488,
+      "sha256": "063ce1263209688a7948246a7bc1fecaf4f5f1a1b01b6e1f64f461fa0800c117"
     },
     {
       "path": "evidence/dossier-epr-v1.1/baseline.json",
@@ -1477,6 +1482,16 @@
       "path": "evidence/dossier-px-018/validation.json",
       "bytes": 1412,
       "sha256": "367e9852236b4055babe90b369d91a67a96089b63b7e5bd6991b779d787d7e8f"
+    },
+    {
+      "path": "evidence/dossier-px-019/tests.log",
+      "bytes": 7672,
+      "sha256": "efd59ffc814eead2af6c5960c3b665b9504ee16a4c07f727f0d1b62912a90384"
+    },
+    {
+      "path": "evidence/dossier-px-019/validation.json",
+      "bytes": 1141,
+      "sha256": "8c12bb42524adc9a7b0d0ee3684754c9b2706b0c13e33d334798d2294b98c615"
     },
     {
       "path": "evidence/m0/IMP-EV-0208/TASK_CARD.md",
@@ -2135,8 +2150,8 @@
     },
     {
       "path": "evidence/m10/PX-048/TASK_CARD.md",
-      "bytes": 5610,
-      "sha256": "d048760106c18714e820c65d94c1d15613fa359be1216120d3529c56b48108eb"
+      "bytes": 5728,
+      "sha256": "00e6d9d8ad04f42b6295d9d84d253072c9ebc161a0cb1f2d99ea0c6f80e3d3e9"
     },
     {
       "path": "evidence/m10/PX-048/read-leaves-index/mutations.log",
@@ -3247,6 +3262,121 @@
       "path": "evidence/m10/PX-194/evidence.json",
       "bytes": 3509,
       "sha256": "53a8590f35765da70c08ce59aec6840d552d0b45948317470c3abd74efece595"
+    },
+    {
+      "path": "evidence/m10/PX-195/TASK_CARD.md",
+      "bytes": 4407,
+      "sha256": "37c628b1c1e2fbe34a5a4342e25f98ecdee634f286f8f6a1c9b831e6d875f736"
+    },
+    {
+      "path": "evidence/m10/PX-195/after/home-light.png",
+      "bytes": 83980,
+      "sha256": "fbcb289999b10cd39c61c78d0563bec3984411f78e7f10cb474893a613b75e95"
+    },
+    {
+      "path": "evidence/m10/PX-195/after/home-location-menu.png",
+      "bytes": 107303,
+      "sha256": "13bfa895c016aa6bd7ae7436784f518c3e93302729e72d1c4c05a35175fd40c9"
+    },
+    {
+      "path": "evidence/m10/PX-195/after/home-mode-model-location.png",
+      "bytes": 102181,
+      "sha256": "08bc855aa65cb0c494d68c753f29d26e113de2de1739985a49dbd29dfe3c068c"
+    },
+    {
+      "path": "evidence/m10/PX-195/after/home-model-picker.png",
+      "bytes": 163760,
+      "sha256": "61ef942b6b55df5313bd6561eb48b0f778554939ab767c078c558acd223a896f"
+    },
+    {
+      "path": "evidence/m10/PX-195/desktop-e2e-full.log",
+      "bytes": 84782,
+      "sha256": "4b7078ae19804572b2bd1be978517a23d19199384740a3e1759a1c7e978a650c"
+    },
+    {
+      "path": "evidence/m10/PX-195/evidence.json",
+      "bytes": 3890,
+      "sha256": "8e30b6c5a1a9d3a3bb33dc825883ced6e473ee6b295212a6bea15a851f704ea0"
+    },
+    {
+      "path": "evidence/m10/PX-196/TASK_CARD.md",
+      "bytes": 4358,
+      "sha256": "3159a4e0c39a8c6597b6fed77f98be31cf863c7ef52041ff91ffb024a75fe913"
+    },
+    {
+      "path": "evidence/m10/PX-196/after/list-attention-view.png",
+      "bytes": 188320,
+      "sha256": "d49a8994dd61763c39c064a808050a1d8e1d5eb51ec6b667393129f0c27d8942"
+    },
+    {
+      "path": "evidence/m10/PX-196/after/list-state-views-row-facts.png",
+      "bytes": 212531,
+      "sha256": "17f6846f96acf7460fc28d3e1978ba4afe52ef99632e93c5c72531442e409f87"
+    },
+    {
+      "path": "evidence/m10/PX-196/after/settings-appearance.png",
+      "bytes": 253545,
+      "sha256": "941d1d32eaa364db2c4cd3e91fffba910fac82fda06b70845d17c9ff52a02c68"
+    },
+    {
+      "path": "evidence/m10/PX-196/after/settings-top.png",
+      "bytes": 276491,
+      "sha256": "e8808148efb9c5c331773b543df1901cf2cf31712b0b2af2e5cf6d8f96f99c72"
+    },
+    {
+      "path": "evidence/m10/PX-196/after/shortcut-help.png",
+      "bytes": 264711,
+      "sha256": "5997bb454ab6d1672f0dc04ff7c0d978ec47e6fbc9753a4a9d94504037343b9c"
+    },
+    {
+      "path": "evidence/m10/PX-196/desktop-e2e-full-after-section-5-9.log",
+      "bytes": 461706,
+      "sha256": "86ce7cae06b9f28eb02f28ef6505ce15425095a5e22b167604815102d7d6264a"
+    },
+    {
+      "path": "evidence/m10/PX-196/desktop-e2e-full.log",
+      "bytes": 89923,
+      "sha256": "18757b975ecbc2d21f2e99ef5768bffa3751895aa93d68fc39624aab337123f0"
+    },
+    {
+      "path": "evidence/m10/PX-196/evidence.json",
+      "bytes": 3893,
+      "sha256": "5b31d8a4660165134f82a7004d78b0848000f547dfebac60747d8034d8a6c03e"
+    },
+    {
+      "path": "evidence/m10/PX-197/TASK_CARD.md",
+      "bytes": 4405,
+      "sha256": "4f05349fd315a47b12f5ff853ad5c4b9a550ecec4b04822324279a2a11244af7"
+    },
+    {
+      "path": "evidence/m10/PX-197/after/conv-light.png",
+      "bytes": 252029,
+      "sha256": "abdc6f5669628664150fe8617f444ceae396ec13f8adaf8014a14c150a970cd4"
+    },
+    {
+      "path": "evidence/m10/PX-197/after/details-light.png",
+      "bytes": 415222,
+      "sha256": "d4334991780759a96c3e362a502539c2b5027cf723013df839e2b128408f4ff9"
+    },
+    {
+      "path": "evidence/m10/PX-197/after/step-waiting-on-approval.png",
+      "bytes": 197992,
+      "sha256": "706de47f9e03f9f2afd3db4c23f41cb2a61db0ff1609f0e139527cd491b50a55"
+    },
+    {
+      "path": "evidence/m10/PX-197/after/workspace-dark.png",
+      "bytes": 305077,
+      "sha256": "829fdc022255018cf49ccfb0be27f3062bdc6d6cf1c80cec7e3371395268c0d0"
+    },
+    {
+      "path": "evidence/m10/PX-197/after/workspace-light.png",
+      "bytes": 305334,
+      "sha256": "94f62cad82508c443ac3734bc09fe346bc44fb5f2d151dca31c7fae57e128412"
+    },
+    {
+      "path": "evidence/m10/PX-197/evidence.json",
+      "bytes": 3942,
+      "sha256": "a276bd70210875c91e92bbe17b59828ca83f585dad09972802850d2613517d25"
     },
     {
       "path": "evidence/m2/IMP-EV-0011/TASK_CARD.md",
@@ -10590,18 +10720,18 @@
     },
     {
       "path": "graph/PROJECT_GRAPH.md",
-      "bytes": 46861,
-      "sha256": "330c3edb77a3cde1fa814802812696ac9069f002e257deb199752e4be37d5213"
+      "bytes": 47138,
+      "sha256": "e2512149f84ba1170dfc47d403eda30d878a1a3d43a0f5b279d6533cf29c9858"
     },
     {
       "path": "graph/project-graph.json",
-      "bytes": 2493271,
-      "sha256": "7817d380255bf0b6b409035eab2c6d3cf5e652889d2de8df30a06826bf6e56b0"
+      "bytes": 2511868,
+      "sha256": "e3c3623de6cd85eaad6907885e951b585305e291172ca3cf5f9fe115e1b85be9"
     },
     {
       "path": "tools/build_graph.py",
-      "bytes": 66213,
-      "sha256": "8586baa1383086a447e8229fd1f5f898f91645a4688cfdad68c78960f138a0a1"
+      "bytes": 66687,
+      "sha256": "3df787bdd1053b447b28e905d9d859d4c4f440e8a2761649b122e0c1983b04b0"
     },
     {
       "path": "tools/build_manifest.py",
@@ -10650,8 +10780,8 @@
     },
     {
       "path": "tools/test_dossier.py",
-      "bytes": 84390,
-      "sha256": "79ddf1f39f4893d64fa19962fea6f594010f714e2b35a48ca493460d15a7ea81"
+      "bytes": 87037,
+      "sha256": "c2c66987337777856d41eb10236756d173f2dccf9440b37effd7363259cc6af8"
     }
   ],
   "renames_v3_to_v3_1": {

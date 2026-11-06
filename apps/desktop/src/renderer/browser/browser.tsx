@@ -114,7 +114,7 @@ export function Browser({ browsing, card, sessionId, onReopen, onClose }: { brow
           {core ? ` · ${core.controller.toLowerCase()} holds control (generation ${core.leaseGeneration})` : ""}
         </span>
         <button type="button" data-testid="browser-close" onClick={onClose} aria-keyshortcuts="Escape">
-          Back to fleet
+          Back to the task
         </button>
       </div>
       <StateLine state={state} testid="browser-state" />

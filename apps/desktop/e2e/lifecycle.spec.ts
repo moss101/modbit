@@ -12,6 +12,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { closeApp, launch, makeRepo, setContentSize } from "./support/ui-harness.ts";
 import { gate, steppedModel, type Step } from "./support/apps-harness.ts";
+import { agentRow, expectTaskState, runTask } from "./support/new-task.ts";
 
 /** Replaces the main process's message box with a recorder that answers `answer`. */
 async function recordDialog(app: ElectronApplication, answer: number): Promise<void> {
@@ -89,12 +90,8 @@ test("PX-049: quitting or closing the window with a task running asks first, say
   let quitDone = false;
   try {
     await setContentSize(app, page, 1280, 800);
-    await page.getByTestId("goal").fill("Edit the notes");
-    await page.getByTestId("workspace").fill(repo);
-    await page.getByTestId("run").click();
-    const card = page.getByTestId("task-card").first();
-    await card.getByTestId("task-start").click();
-    await expect(card.getByTestId("task-state")).toHaveText("Running", { timeout: 60_000 });
+    const taskId = await runTask(page, "Edit the notes", repo);
+    await expectTaskState(page, taskId, "Running");
 
     // Quit (the application menu, Cmd+Q): the question names the running task and the truth about what quitting does.
     await recordDialog(app, 0);
@@ -108,7 +105,7 @@ test("PX-049: quitting or closing the window with a task running asks first, say
     expect(first.buttons[0]).toBe("Keep Modbit open");
     // The default answer keeps everything as it was: the window, the Core and the run.
     await expect(page.getByTestId("core-status")).toContainText("Core connected");
-    await expect(card.getByTestId("task-state")).toHaveText("Running");
+    await expect(agentRow(page, taskId)).toHaveAttribute("data-state", "Running");
     expect(app.process().exitCode).toBeNull();
 
     // Closing the window asks the same question.
@@ -147,12 +144,8 @@ test("PX-049: a restart after a quit with a task running shows the Core's recove
   const dataDir = mkdtempSync(join(tmpdir(), "modbit-e2e-recovery-"));
   let { app, page } = await launch(dataDir, { env: { MODBIT_OPENAI_BASE_URL: url, MODBIT_QUIT_PROMPT: "" } });
   try {
-    await page.getByTestId("goal").fill("Edit the notes");
-    await page.getByTestId("workspace").fill(repo);
-    await page.getByTestId("run").click();
-    const card = page.getByTestId("task-card").first();
-    await card.getByTestId("task-start").click();
-    await expect(card.getByTestId("task-state")).toHaveText("Running", { timeout: 60_000 });
+    const taskId = await runTask(page, "Edit the notes", repo);
+    await expectTaskState(page, taskId, "Running");
     expect(await page.getByTestId("recovery-summary").count(), "a first start has nothing to recover").toBe(0);
 
     // Stop the app the way a crash would: the Core dies with the task running, nothing was asked.
@@ -172,14 +165,14 @@ test("PX-049: a restart after a quit with a task running shows the Core's recove
     hold.open();
 
     ({ app, page } = await launch(dataDir, { env: { MODBIT_OPENAI_BASE_URL: url, MODBIT_QUIT_PROMPT: "" } }));
-    await expect(page.getByTestId("task-card")).toHaveCount(1, { timeout: 30_000 });
+    await expect(page.getByTestId("agent-row")).toHaveCount(1, { timeout: 30_000 });
     const summary = page.getByTestId("recovery-summary");
     await expect(summary).toBeVisible({ timeout: 30_000 });
     const text = (await summary.textContent())!;
     expect(text).toMatch(/^Recovered at start: (\d+ tasks? resumed|\d+ needs? attention|\d+ recovered idle)/);
-    // The counts are the Core's: what the summary says needs attention is what the Needs Attention column shows.
-    const attention = await page.getByTestId("column-needsAttention").getByTestId("task-card").count();
-    const running = await page.getByTestId("column-running").getByTestId("task-card").count();
+    // The counts are the Core's: what the summary says needs attention is what the agent list shows as needing attention.
+    const attention = await page.locator('[data-testid="agent-row"][data-class="NEEDS_ATTENTION"]').count();
+    const running = await page.locator('[data-testid="agent-row"][data-class="RUNNING"]').count();
     const claimed = (re: RegExp) => Number(re.exec(text)?.[1] ?? 0);
     expect(claimed(/(\d+) needs? attention/)).toBe(attention);
     expect(claimed(/(\d+) tasks? resumed/)).toBe(running);

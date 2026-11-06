@@ -16,6 +16,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { createHash } from "node:crypto";
 import { BIG_OUTPUT, ECHO_LOOP, EXIT_THREE, expectTerminals, SIZE_REPORTER, gate, handlesIn, nodeTerminal, readTerminal, steppedModel, toolResults, type Step } from "./support/apps-harness.ts";
+import { expectTaskState, queueTask } from "./support/new-task.ts";
 import { accessible, closeApp, describeRenderer, git, launch, makeRepo, MOD, setContentSize } from "./support/ui-harness.ts";
 
 test.describe.configure({ mode: "serial" });
@@ -89,18 +90,13 @@ test.afterAll(async () => {
 });
 
 test("the panel is absent until the task runs; then Changes shows the live diff while the task is still Running", async () => {
-  await page.getByTestId("goal").fill("Edit the notes");
-  await page.getByTestId("workspace").fill(repo);
-  await page.getByTestId("run").click();
-  const card = page.getByTestId("task-card").first();
-  taskId = (await card.getAttribute("data-task-id"))!;
+  taskId = await queueTask(page, "Edit the notes", repo);
   sessionId = (await page.evaluate(() => window.modbit.localState()).then((s) => s.sessionId))!;
   expect(await page.getByTestId("region-apps").count(), "a task that has not started has no artifact").toBe(0);
-  await card.getByTestId("task-start").click();
-  await expect(card.getByTestId("task-state")).toHaveText("Running", { timeout: 60_000 });
+  await page.getByTestId("conv-start").click();
+  await expectTaskState(page, taskId, "Running");
   // Four terminals appear as the script starts them; the task is held at the gate.
   await expectTerminals(page, taskId, 4);
-  await card.focus();
   await page.keyboard.press(`${MOD}+e`);
   await expect(page.getByTestId("region-apps")).toBeVisible();
   await expect(page.getByTestId("app-changes")).toHaveAttribute("data-task-state", "Running");
@@ -161,7 +157,7 @@ test("the person's input lease: held while typing, the agent's shell.input is re
   // Now the agent tries to type into the terminal the person holds. Its next call in the same turn (closing a worktree) waits for the
   // person's approval, so the card asks for it only after the input attempt has been decided: the lease is still held until then.
   modelGate.open();
-  await expect(page.getByTestId("task-card").first().getByTestId("task-approval")).toBeVisible({ timeout: 60_000 });
+  await expect(page.getByTestId("approval-card")).toBeVisible({ timeout: 60_000 });
   await expect(terminalView()).toHaveAttribute("data-lease", "held");
   expect(await screen().textContent()).not.toContain("agent-typed");
   // Leaving the terminal gives the lease back.
@@ -169,13 +165,11 @@ test("the person's input lease: held while typing, the agent's shell.input is re
   await expect(terminalView()).toHaveAttribute("data-lease", "free");
   await expect.poll(async () => (await listTerminals()).find((t) => t.terminalId === echo)!.inputLeaseHolder).toBe("");
 
-  // The agent's worktree close is waiting for the person: approve the exact intent from the card (y, then Enter), as the keyboard model does.
-  const card = page.getByTestId("task-card").first();
-  await card.focus();
-  await page.keyboard.press("y");
-  await expect(page.getByTestId("confirm")).toHaveAttribute("data-confirm-kind", "approve");
-  await page.keyboard.press("Enter");
-  await expect(page.getByTestId("confirm")).toHaveCount(0);
+  // The agent's worktree close is waiting for the person: run the exact intent the docked card shows.
+  await page.getByTestId("approval-run").click();
+  await expect(page.getByTestId("approval-confirm")).toContainText("This effect cannot be undone");
+  await page.getByTestId("approval-confirm-run").click();
+  await expect(page.getByTestId("approval-card")).toHaveCount(0, { timeout: 30_000 });
   // The model's next request carries the result of the agent's earlier input attempt: refused while the person held the lease.
   await expect.poll(() => seen.shellInput, { timeout: 60_000 }).not.toBeNull();
   expect(seen.shellInput!, "the Core refused the agent's input while the person held the lease").toContain("INPUT_LEASED");
@@ -405,7 +399,7 @@ test("the apps are keyboard reachable: tabs by arrows, Shift+Escape leaves the t
   await expect(page.getByTestId("tab-terminal")).toHaveAttribute("aria-selected", "true");
   await pickTerminal(handles[0]!);
   await screen().click();
-  // Escape belongs to the process; the app's own "back to the fleet" handler must not take it.
+  // Escape belongs to the process; the app's own "back" handler must not take it.
   await page.keyboard.press("Escape");
   await expect(page.getByTestId("region-apps")).toBeVisible();
   await expect(terminalView()).toBeVisible();

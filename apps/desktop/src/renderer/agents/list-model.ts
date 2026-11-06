@@ -29,16 +29,21 @@ export const classRank = (c: StatusClass): number => STATUS_CLASSES.indexOf(c);
 
 // ------------------------------------------------------------------ filters
 
-/** The chips of AFW-B06 that the header projection can answer. */
+/** The chips of AFW-B06 that the header projection can answer. The first six are MOD-UX-001's first-class views, in its order. */
 export const STATE_FILTERS = [
   { id: "attention", label: "Needs attention" },
-  { id: "unread", label: "Unread" },
+  { id: "review", label: "Ready for review" },
   { id: "running", label: "Running" },
-  { id: "draft", label: "Draft" },
-  { id: "done", label: "Done" },
+  { id: "waiting", label: "Waiting" },
+  { id: "done", label: "Completed" },
   { id: "failed", label: "Failed" },
+  { id: "unread", label: "Unread" },
+  { id: "draft", label: "Draft" },
 ] as const;
 export type StateFilter = (typeof STATE_FILTERS)[number]["id"];
+
+const VIEW_SHORT = ["Attention", "Review", "Running", "Waiting", "Completed", "Failed"];
+export const STATE_VIEWS: readonly { id: StateFilter; label: string; short: string }[] = STATE_FILTERS.slice(0, 6).map((f, i) => ({ ...f, short: VIEW_SHORT[i]! }));
 
 export const LOCATION_FILTERS = ["local", "cloud"] as const;
 export type LocationFilter = (typeof LOCATION_FILTERS)[number];
@@ -68,20 +73,22 @@ export interface Filters {
 
 export const NO_FILTERS: Filters = { states: [], locations: [], origins: [], projects: [], showArchived: false };
 
-const DONE_CLASSES: readonly StatusClass[] = ["COMPLETED", "READY_FOR_REVIEW_UNSEEN", "READY_FOR_REVIEW_SEEN"];
-
 function matchesState(h: AgentHeaderView, f: StateFilter): boolean {
   switch (f) {
     case "attention":
       return h.statusClass === "NEEDS_ATTENTION";
+    case "review":
+      return h.statusClass === "READY_FOR_REVIEW_UNSEEN" || h.statusClass === "READY_FOR_REVIEW_SEEN";
     case "unread":
       return h.unread;
     case "running":
       return h.statusClass === "RUNNING";
+    case "waiting":
+      return h.statusClass === "WAITING";
     case "draft":
       return h.statusClass === "DRAFT";
     case "done":
-      return DONE_CLASSES.includes(h.statusClass);
+      return h.statusClass === "COMPLETED";
     case "failed":
       return h.statusClass === "FAILED";
   }
@@ -96,6 +103,17 @@ export function passes(h: AgentHeaderView, f: Filters): boolean {
   // The project a header is in is the Core's map (AgentHeader.projectId); a chip names a project or "no project".
   if (f.projects.length > 0 && !f.projects.some((id) => (id === NO_PROJECT ? !h.projectId : h.projectId === id))) return false;
   return true;
+}
+
+/** How many live tasks each first-class view holds; the class is the Core's. */
+export function viewCounts(headers: readonly AgentHeaderView[]): Map<StateFilter, number> {
+  const live = headers.filter((h) => !h.archived);
+  return new Map(STATE_VIEWS.map((v) => [v.id, live.filter((h) => matchesState(h, v.id)).length]));
+}
+
+/** A click on a view shows that view alone; a click on the view already alone shows everything again. */
+export function toggleView(f: Filters, id: StateFilter): Filters {
+  return { ...f, states: f.states.length === 1 && f.states[0] === id ? [] : [id] };
 }
 
 export function filterCount(f: Filters): number {
@@ -268,7 +286,7 @@ export const unpin = (pins: readonly string[], taskId: string): string[] => pins
 // ------------------------------------------------------------- virtual list
 
 export const SECTION_HEIGHT = 28;
-export const ROW_HEIGHT = 56;
+export const ROW_HEIGHT = 50;
 
 export type ListItem =
   | { kind: "section"; key: string; label: string; count: number; collapsed: boolean; pinned: boolean }
@@ -277,8 +295,7 @@ export type ListItem =
   | { kind: "projects-head"; key: string; label: string; count: number; collapsed: boolean }
   /** A project parent: its facts are the Core's record and rollup; `shown` is how many of its tasks pass the filters. */
   | { kind: "project"; key: string; project: ProjectInfo; shown: number; collapsed: boolean }
-  /** The "New project" row that closes the Projects group. */
-  | { kind: "new-project"; key: string };
+  ;
 
 /** The flat, ordered items of the list: a section header, then its rows unless the section is collapsed. */
 export function flatten(sections: readonly Section[], collapsed: ReadonlySet<string>): ListItem[] {
@@ -297,8 +314,7 @@ export interface Layout {
 }
 
 /** Height of a project parent row and of the "New project" row. */
-export const PROJECT_HEIGHT = 40;
-export const NEW_PROJECT_HEIGHT = 32;
+export const PROJECT_HEIGHT = 30;
 
 export const heightOf = (item: ListItem): number => {
   switch (item.kind) {
@@ -307,8 +323,6 @@ export const heightOf = (item: ListItem): number => {
       return SECTION_HEIGHT;
     case "project":
       return PROJECT_HEIGHT;
-    case "new-project":
-      return NEW_PROJECT_HEIGHT;
     default:
       return ROW_HEIGHT;
   }
@@ -380,6 +394,58 @@ export const SUBTITLE_FIELDS = [
 ] as const;
 export type SubtitleField = (typeof SUBTITLE_FIELDS)[number]["id"];
 
+/** What a task is doing and what it needs, read from the Core's events and attention view (doc 10 "Cards show"). */
+export interface RowFacts {
+  /** What the person must do or know, in the Core's words; "" when nothing waits on them. */
+  next: string;
+  /** The execution phase while it says more than the status does; "" otherwise. */
+  phase: string;
+  activeAgents: number;
+  totalAgents: number;
+  risk: string;
+  evidence: string;
+}
+
+/** The task's facts a row can show, each individually toggleable like the subtitle fields (AFW-B06). */
+export const FACT_FIELDS = [
+  { id: "next", label: "Next action" },
+  { id: "phase", label: "Phase" },
+  { id: "agents", label: "Agents" },
+  { id: "risk", label: "Risk" },
+  { id: "evidence", label: "Evidence" },
+] as const;
+export type FactField = (typeof FACT_FIELDS)[number]["id"];
+
+const words = (x: string) => x.replace(/_/g, " ").toLowerCase();
+
+/** The row's second line after its status: what is needed or what is happening first, then where, then the latest evidence. */
+export function rowLine(h: AgentHeaderView, fields: readonly SubtitleField[], facts: RowFacts | undefined, factFields: readonly FactField[]): string {
+  const on = (f: FactField) => factFields.includes(f);
+  const parts: string[] = [];
+  if (facts && on("next") && facts.next) parts.push(facts.next);
+  else if (facts && on("phase") && facts.phase) parts.push(facts.phase);
+  if (facts && on("agents") && facts.activeAgents > 1) parts.push(`${facts.activeAgents} agents`);
+  if (facts && on("risk") && (facts.risk === "HIGH" || facts.risk === "CRITICAL")) parts.push(`${words(facts.risk)} risk`);
+  const where = subtitleOf(h, fields);
+  if (where) parts.push(where);
+  if (facts && on("evidence") && facts.evidence) parts.push(facts.evidence);
+  return parts.join(" · ");
+}
+
+/** The row's tooltip: everything the card knows, whichever fields the row shows. */
+export function rowTitle(h: AgentHeaderView, facts: RowFacts | undefined, machine: string, nowMs: number): string {
+  const lines = [h.title || "Untitled task"];
+  if (h.workspaceRoot) lines.push(h.workspaceRoot);
+  lines.push(`Runs on: ${h.executionLocation === "cloud" ? "isolated cloud" : machine}`);
+  if (h.createdAtMs) lines.push(`Started: ${relativeAge(h.createdAtMs, nowMs)}`);
+  if (facts?.phase) lines.push(`Phase: ${facts.phase}`);
+  if (facts && facts.totalAgents > 0) lines.push(`Agents: ${facts.activeAgents} active of ${facts.totalAgents}`);
+  if (facts?.risk) lines.push(`Risk: ${words(facts.risk)}`);
+  if (facts?.evidence) lines.push(`Evidence: ${facts.evidence}`);
+  if (facts?.next) lines.push(`Next: ${facts.next}`);
+  return lines.join("\n");
+}
+
 export function subtitleOf(h: AgentHeaderView, fields: readonly SubtitleField[]): string {
   const parts: string[] = [];
   const repo = h.checkoutRoot ? baseName(h.checkoutRoot) : h.subtitle;
@@ -391,8 +457,8 @@ export function subtitleOf(h: AgentHeaderView, fields: readonly SubtitleField[])
 }
 
 /** Accessible name of a row: title, status words, unread, attention. */
-export function rowLabel(h: AgentHeaderView, pinned: boolean): string {
-  return [h.title || "Untitled task", h.statusLabel || CLASS_META[h.statusClass].short, h.origin === "automation" ? "started by an automation" : "", h.unread ? "unread" : "", h.pendingApproval ? "waiting on your approval" : "", pinned ? "pinned" : ""].filter(Boolean).join(", ");
+export function rowLabel(h: AgentHeaderView, pinned: boolean, facts?: RowFacts): string {
+  return [h.title || "Untitled task", h.statusLabel || CLASS_META[h.statusClass].short, h.origin === "automation" ? "started by an automation" : "", h.unread ? "unread" : "", h.pendingApproval ? "waiting on your approval" : "", pinned ? "pinned" : "", facts?.next ?? "", facts?.next ? "" : (facts?.phase ?? "")].filter(Boolean).join(", ");
 }
 
 // -------------------------------------------------------- the projects group
@@ -425,7 +491,9 @@ export const projectKey = (projectId: string): string => `project:${projectId}`;
  */
 export function listItems(i: ItemsInput): ListItem[] {
   const shown = visibleProjects(i.projects, i.showArchived);
-  if (i.grouping === "project") return flatten(groupHeaders(i.headers, "project", i.pins, i.nowMs, { projects: shown, sort: i.sort }), i.collapsed);
+  // The heading stays in every grouping: it holds the list's options and its +.
+  const head: ListItem = { kind: "projects-head", key: `s:${PROJECTS_KEY}`, label: "Projects", count: shown.length, collapsed: i.collapsed.has(PROJECTS_KEY) };
+  if (i.grouping === "project") return [head, ...(head.collapsed ? [] : flatten(groupHeaders(i.headers, "project", i.pins, i.nowMs, { projects: shown, sort: i.sort }), i.collapsed))];
   const shownIds = new Set(shown.map((p) => p.projectId));
   const pinned = new Set(i.pins);
   const inShownProject = (h: AgentHeaderView) => h.projectId !== undefined && h.projectId !== "" && shownIds.has(h.projectId) && !pinned.has(h.taskId);
@@ -434,17 +502,13 @@ export function listItems(i: ItemsInput): ListItem[] {
   const out: ListItem[] = [];
   const first = sections[0];
   if (first?.pinned) out.push(...flatten([sections.shift()!], i.collapsed));
-  if (shown.length > 0) {
-    const groupCollapsed = i.collapsed.has(PROJECTS_KEY);
-    out.push({ kind: "projects-head", key: `s:${PROJECTS_KEY}`, label: "Projects", count: shown.length, collapsed: groupCollapsed });
-    if (!groupCollapsed) {
-      for (const p of shown) {
-        const rows = members.filter((h) => h.projectId === p.projectId).sort(byOrder(i.sort));
-        const pc = i.collapsed.has(projectKey(p.projectId));
-        out.push({ kind: "project", key: `p:${p.projectId}`, project: p, shown: rows.length, collapsed: pc });
-        if (!pc) for (const h of rows) out.push({ kind: "row", key: `r:${projectKey(p.projectId)}:${h.taskId}`, header: h, sectionKey: projectKey(p.projectId) });
-      }
-      out.push({ kind: "new-project", key: "np" });
+  out.push(head);
+  if (!head.collapsed) {
+    for (const p of shown) {
+      const rows = members.filter((h) => h.projectId === p.projectId).sort(byOrder(i.sort));
+      const pc = i.collapsed.has(projectKey(p.projectId));
+      out.push({ kind: "project", key: `p:${p.projectId}`, project: p, shown: rows.length, collapsed: pc });
+      if (!pc) for (const h of rows) out.push({ kind: "row", key: `r:${projectKey(p.projectId)}:${h.taskId}`, header: h, sectionKey: projectKey(p.projectId) });
     }
   }
   out.push(...flatten(sections, i.collapsed));

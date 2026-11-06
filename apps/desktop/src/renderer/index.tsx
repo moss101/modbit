@@ -1,7 +1,7 @@
 /**
  * Renderer entry (docs/32): mounts the agent-first shell (REQ-PX-045) over the
  * renderer's controller hook. Runs sandboxed; all Core access goes through
- * `window.modbit` (the preload bridge) from the screens under fleet/, review/,
+ * `window.modbit` (the preload bridge) from the screens under home/, review/,
  * browser/ and dashboard/. Screen states follow docs/39 PX-023. The model-free
  * state gallery (PX-044) is reachable only in a build made with
  * MODBIT_GALLERY=1 and only at `#gallery`; a production bundle defines the flag
@@ -29,6 +29,8 @@ function Root() {
   }, []);
   return __MODBIT_GALLERY__ && hash.startsWith("#gallery") ? <Gallery /> : <App />;
 }
+
+if (/Mac/.test(navigator.platform)) document.documentElement.dataset.chrome = "mac";
 
 createRoot(document.getElementById("root")!).render(
   <StrictMode>

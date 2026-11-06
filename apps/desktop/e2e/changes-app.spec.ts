@@ -19,6 +19,7 @@ import { createServer, type Server } from "node:http";
 import type { Socket } from "node:net";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
+import { expectTaskState, openTask, runTask } from "./support/new-task.ts";
 import { accessible, closeApp, git, launch, MOD, scriptedModel, setContentSize } from "./support/ui-harness.ts";
 
 test.describe.configure({ mode: "serial" });
@@ -95,18 +96,13 @@ test.afterAll(async () => {
 });
 
 test("the Changes tab shows the finished task's change set with its index, branch and remote", async () => {
-  await page.getByTestId("goal").fill("Edit the notes");
-  await page.getByTestId("workspace").fill(repo);
-  await page.getByTestId("run").click();
-  const card = page.getByTestId("task-card").first();
-  taskId = (await card.getAttribute("data-task-id"))!;
+  taskId = await runTask(page, "Edit the notes", repo);
   sessionId = (await page.evaluate(() => window.modbit.localState()).then((s) => s.sessionId))!;
-  await card.getByTestId("task-start").click();
-  await expect(page.getByTestId("column-readyForReview").getByTestId("task-card")).toHaveCount(1, { timeout: 90_000 });
+  await expectTaskState(page, taskId, "ReadyForReview", 90_000);
   // The first result opens the Review itself; the Changes tab is one keystroke from the task.
   await expect(page.getByTestId("review")).toBeVisible({ timeout: 15_000 });
   await page.getByTestId("review-close").click();
-  await page.getByTestId("task-card").first().focus();
+  await openTask(page, taskId);
   await page.keyboard.press(`${MOD}+e`);
   await expect(page.getByTestId("app-changes")).toHaveAttribute("data-task-state", "ReadyForReview");
   await expect(rows()).toHaveCount(2);

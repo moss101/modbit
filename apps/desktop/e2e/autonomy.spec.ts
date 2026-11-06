@@ -79,7 +79,7 @@ test("PX-144/145: Autonomous is chosen in the run-mode dialog; a broken TypeScri
     await page.getByTestId("runmode-warning-confirm").click();
     await expect(page.getByTestId("runmode-current")).toHaveText("Autonomous");
     await page.getByTestId("runmode-close").click();
-    // Start it through the bridge, as the Fleet card does.
+    // Start it through the bridge, as the conversation's Start does.
     const sessionId = await sessionOf(page);
     await page.evaluate(([s, t]) => window.modbit.startTask(s!, t!), [sessionId, taskId]);
     await expect.poll(() => page.evaluate((t) => window.modbit.taskStatus(t).then((s) => s.state), taskId), { timeout: 240_000 }).toBe("ReadyForReview");

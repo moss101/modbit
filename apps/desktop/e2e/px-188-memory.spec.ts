@@ -20,6 +20,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { steppedModel, type Step } from "./support/apps-harness.ts";
 import { closeApp, launch, makeRepo, setContentSize } from "./support/ui-harness.ts";
+import { runTask as runHomeTask } from "./support/new-task.ts";
 
 test.describe.configure({ mode: "serial" });
 
@@ -41,13 +42,8 @@ const rowsIn = (scope: string) => page.locator(`[data-testid="customize-memory-i
 async function runTask(goal: string): Promise<string> {
   const mark = bodies.length;
   if (sessionId === "") {
-    await page.getByTestId("goal").fill(goal);
-    await page.getByTestId("workspace").fill(repo);
-    await page.getByTestId("run").click();
-    const card = page.getByTestId("task-card").first();
-    taskId = (await card.getAttribute("data-task-id"))!;
+    taskId = await runHomeTask(page, goal, repo);
     sessionId = (await page.evaluate(() => window.modbit.localState()).then((s) => s.sessionId))!;
-    await card.getByTestId("task-start").click();
   } else {
     n += 1;
     const commandId = n.toString(16).padStart(32, "0");

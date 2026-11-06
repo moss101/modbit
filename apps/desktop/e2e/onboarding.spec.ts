@@ -18,6 +18,7 @@ import { createServer, type Server } from "node:http";
 import { tmpdir } from "node:os";
 import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
+import { agentRow, openTask } from "./support/new-task.ts";
 
 const appDir = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 const coreBin = process.env.MODBIT_CORE_BIN ?? resolve(appDir, "..", "..", "target", "debug", process.platform === "win32" ? "modbit-core.exe" : "modbit-core");
@@ -113,13 +114,14 @@ async function onboardOnce(url: string, repo: string): Promise<number> {
     await expect(page.getByTestId("provider-ready")).toContainText("openai");
     // Step 3: explicit, scoped trust; the starter tasks follow from the stack.
     await expect(page.getByTestId("welcome-step-repository")).toHaveAttribute("data-active", "true");
+    await page.getByTestId("welcome-repo-toggle").locator("summary").click();
     await page.getByTestId("trust-root").fill(repo);
     await page.getByTestId("trust-confirm").click();
     await expect(page.getByTestId("repository-trusted")).toContainText(repo.split(/[\\/]/).pop() ?? repo, { timeout: 15_000 });
     await expect(page.getByTestId("starter-tasks")).toContainText("python");
     // Step 4: a starter task starts immediately on the direct baseline.
     await page.getByTestId("starter-task").first().click();
-    await expect(page.getByTestId("task-card").first()).toBeVisible({ timeout: 15_000 });
+    await expect(page.getByTestId("agent-row").first()).toBeVisible({ timeout: 15_000 });
     // Step 5: the first result opens the Review on the diff with its evidence.
     await expect(page.getByTestId("review-meta")).toContainText("ReadyForReview", { timeout: 120_000 });
     const seconds = (Date.now() - started) / 1000;
@@ -164,12 +166,14 @@ test("onboarding: an invalid key, an unreachable endpoint and a missing reposito
       await page.getByTestId("goal").fill("summarise");
       await page.getByTestId("workspace").fill(repo);
       await page.getByTestId("run").click();
-      const card = page.getByTestId("task-card").first();
-      await expect(card.getByTestId("task-state")).toHaveText("Queued", { timeout: 15_000 });
-      await card.getByTestId("task-start").click();
+      await expect(page.getByTestId("conversation")).toHaveAttribute("data-task-id", /.+/, { timeout: 15_000 });
+      const taskId = (await page.getByTestId("conversation").getAttribute("data-task-id"))!;
+      await expect(agentRow(page, taskId)).toHaveAttribute("data-state", "Queued", { timeout: 15_000 });
+      await page.getByTestId("conv-start").click();
       await expect(page.getByTestId("banner-error")).toContainText("NO_PROVIDER", { timeout: 15_000 });
       await expect(page.getByTestId("fleet-state")).toHaveAttribute("data-kind", "error");
       await expect(page.getByTestId("fleet-state-cause")).toContainText("NO_PROVIDER");
+      await page.getByTestId("agents-new-task").click();
       // An invalid key: the provider refuses it and the step says so.
       await page.getByTestId("provider-key").fill("sk-invalid");
       await page.getByTestId("provider-url").fill(url);
@@ -183,7 +187,7 @@ test("onboarding: an invalid key, an unreachable endpoint and a missing reposito
       await page.getByTestId("provider-test").click();
       await expect(page.getByTestId("provider-result")).toHaveAttribute("data-ok", "false", { timeout: 60_000 });
       await expect(page.getByTestId("provider-result")).toContainText("could not be reached");
-      // The working endpoint confirms; with a task already on the fleet the
+      // The working endpoint confirms; with a task already in the list the
       // welcome retires (docs/39: it persists only while a step is missing)
       // and the composer no longer warns.
       await page.getByTestId("provider-key").fill("sk-onboarding-test-key");
@@ -202,8 +206,9 @@ test("onboarding: an invalid key, an unreachable endpoint and a missing reposito
       await expect(page.getByTestId("composer-state-cause")).toContainText("REPOSITORY_MISSING");
       // And the task that could not start before starts now that a provider
       // exists and its repository was trusted by the composer.
-      await card.getByTestId("task-start").click();
-      await expect(page.getByTestId("column-readyForReview").getByTestId("task-card")).toHaveCount(1, { timeout: 120_000 });
+      await openTask(page, taskId);
+      await page.getByTestId("conv-start").click();
+      await expect(agentRow(page, taskId)).toHaveAttribute("data-state", "ReadyForReview", { timeout: 120_000 });
     } finally {
       await app.close();
     }

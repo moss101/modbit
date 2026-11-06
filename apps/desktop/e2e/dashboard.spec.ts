@@ -15,6 +15,7 @@ import { tmpdir } from "node:os";
 import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { closeApp } from "./support/close-app.ts";
+import { expectTaskState, gearMenu, queueTask, runTask } from "./support/new-task.ts";
 
 const appDir = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 const coreBin = process.env.MODBIT_CORE_BIN ?? resolve(appDir, "..", "..", "target", "debug", process.platform === "win32" ? "modbit-core.exe" : "modbit-core");
@@ -90,15 +91,10 @@ test("the operations dashboard shows the Core's own aggregation of its log, the 
   const env = { MODBIT_OPENAI_BASE_URL: url };
   try {
     const { app, page } = await launch(dataDir, env);
-    await page.getByTestId("workspace").fill(repo);
-    await page.getByTestId("goal").fill("Read the notes");
-    await page.getByTestId("run").click();
-    const card = page.getByTestId("task-card").first();
-    await expect(card).toBeVisible({ timeout: 30_000 });
-    await card.getByTestId("task-start").click();
-    await expect(page.getByTestId("column-readyForReview").getByTestId("task-card")).toHaveCount(1, { timeout: 90_000 });
+    const first = await runTask(page, "Read the notes", repo);
+    await expectTaskState(page, first, "ReadyForReview", 90_000);
 
-    await page.getByTestId("open-dashboard").click();
+    await gearMenu(page, "open-dashboard");
     const dash = page.getByTestId("dashboard");
     await expect(dash.getByTestId("dashboard-task-row")).toHaveCount(1, { timeout: 15_000 });
     const sessionId = await page.evaluate(async () => (await window.modbit.localState()).sessionId ?? "");
@@ -131,12 +127,11 @@ test("the operations dashboard shows the Core's own aggregation of its log, the 
 
     // A second task, and a refresh follows the log.
     await page.getByTestId("dashboard-close").click();
-    // The review the finished task opened hides the composer; go back to it.
-    if (await page.getByTestId("review-close").isVisible()) await page.getByTestId("review-close").click();
-    await page.getByTestId("goal").fill("A second task, not started");
-    await page.getByTestId("run").click();
-    await expect(page.getByTestId("task-card")).toHaveCount(2, { timeout: 30_000 });
-    await page.getByTestId("open-dashboard").click();
+    // The second task is only created: Alt+Enter leaves it Queued.
+    const second = await queueTask(page, "A second task, not started", repo);
+    await expectTaskState(page, second, "Queued");
+    await expect(page.getByTestId("agent-row")).toHaveCount(2, { timeout: 30_000 });
+    await gearMenu(page, "open-dashboard");
     await expect(page.getByTestId("dashboard").getByTestId("dashboard-task-row")).toHaveCount(2, { timeout: 15_000 });
     await expect(page.getByTestId("dashboard").getByTestId("dashboard-states")).toContainText("ReadyForReview 1");
     await closeApp(app);

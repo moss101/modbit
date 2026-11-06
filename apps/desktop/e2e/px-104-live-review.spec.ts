@@ -23,6 +23,7 @@ import type { Server } from "node:http";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { gate, steppedModel, type Step } from "./support/apps-harness.ts";
+import { expectTaskState, openTask, runTask } from "./support/new-task.ts";
 import { accessible, closeApp, git, launch, makeRepo, MOD, setContentSize } from "./support/ui-harness.ts";
 
 test.describe.configure({ mode: "serial" });
@@ -50,7 +51,7 @@ const hunks = () => page.getByTestId("changes-hunk");
 const hunk = (i: number) => page.locator(`[data-testid="changes-hunk"][data-index="${i}"]`);
 async function openChanges(): Promise<void> {
   if ((await page.getByTestId("app-changes").count()) > 0) return;
-  await page.getByTestId("task-card").first().focus();
+  if ((await page.locator(`[data-testid="conversation"][data-task-id="${taskId}"]`).count()) === 0) await openTask(page, taskId);
   await page.keyboard.press(`${MOD}+e`);
   await expect(page.getByTestId("app-changes")).toBeVisible();
   const file = page.locator('[data-testid="changes-file"][data-path="notes.txt"]');
@@ -101,13 +102,8 @@ test.afterAll(async () => {
 });
 
 test("the Changes tab is open while the task is Running; each hunk's chip names the call the Core attributed it to", async () => {
-  await page.getByTestId("goal").fill("Edit the notes");
-  await page.getByTestId("workspace").fill(repo);
-  await page.getByTestId("run").click();
-  const card = page.getByTestId("task-card").first();
-  taskId = (await card.getAttribute("data-task-id"))!;
-  await card.getByTestId("task-start").click();
-  await expect(card.getByTestId("task-state")).toHaveText("Running", { timeout: 60_000 });
+  taskId = await runTask(page, "Edit the notes", repo);
+  await expectTaskState(page, taskId, "Running");
   await reachedGate;
   await openChanges();
   await expect(page.getByTestId("app-changes")).toHaveAttribute("data-task-state", "Running");

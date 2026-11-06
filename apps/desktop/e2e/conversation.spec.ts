@@ -5,12 +5,14 @@
  * provider is scripted. No test here waits on a clock for a state: a Gate
  * holds the stream open until the test releases it.
  */
-import { expect, test, type Page } from "@playwright/test";
+import { expect, test } from "@playwright/test";
 import { existsSync, mkdirSync, mkdtempSync, realpathSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { accessible, closeApp, git, launch, makeRepo, MOD, setContentSize } from "./support/ui-harness.ts";
 import { Gate, streamingModel } from "./support/stream-model.ts";
+import { openConversation, startAndOpen } from "./support/conversation-harness.ts";
+import { openTaskDetails } from "./support/new-task.ts";
 
 const FIRST = "The streamed answer begins here and keeps going for a while, ";
 const SECOND = "then it finishes with this closing sentence.";
@@ -18,27 +20,6 @@ const FULL = FIRST + SECOND;
 /** The answer ends the run as a real agent does: a plan (the completion gate needs one), then the completion tool. A text-only answer keeps the loop asking for turns (no progress). */
 const PLAN = { call: { name: "plan.update", args: { outcome: "answer the question", expected_files: [], protected_effects: [] } } };
 const DONE = { call: { name: "task.complete", args: { summary: "answered", self_review: { findings: [] } } } };
-
-/** Creates a task from the Fleet composer, starts it and opens its conversation from the agent list. */
-async function startAndOpen(page: Page, goal: string, repo: string): Promise<string> {
-  await page.getByTestId("goal").fill(goal);
-  await page.getByTestId("workspace").fill(repo);
-  await page.getByTestId("run").click();
-  const card = page.getByTestId("task-card").filter({ hasText: goal }).first();
-  await expect(card).toBeVisible();
-  const taskId = (await card.getAttribute("data-task-id"))!;
-  await card.getByTestId("task-start").click();
-  await openConversation(page, taskId);
-  return taskId;
-}
-
-async function openConversation(page: Page, taskId: string): Promise<void> {
-  const row = page.locator(`[data-testid="agent-row"][data-agent-id="${taskId}"] [data-testid="agent-open"]`);
-  await expect(row).toBeVisible({ timeout: 30_000 });
-  await row.click();
-  await expect(page.getByTestId("conversation")).toHaveAttribute("data-task-id", taskId);
-  await expect(page.getByTestId("conversation")).toHaveAttribute("data-loaded", "true");
-}
 
 test("PX-047: a streamed answer appears incrementally, is never shown as final while open, only grows, and is final when the stream completes", async () => {
   const repo = makeRepo(mkdtempSync(join(tmpdir(), "modbit-conv-repo-")));
@@ -206,7 +187,7 @@ test("PX-047: scrolling up freezes follow, the pill counts later messages, the j
   }
 });
 
-test("PX-047: tool steps fold by density without changing the rows; a question and an approval are answered inline with the exact intent and never folded away; both survive a reload and a Core restart", async () => {
+test("PX-047: tool steps fold by density without changing the rows; a question is answered inline and an approval on the docked card with the exact intent, neither folded away; both survive a reload and a Core restart", async () => {
   test.setTimeout(180_000);
   const repo = makeRepo(mkdtempSync(join(tmpdir(), "modbit-conv-repo-")));
   mkdirSync(`${repo}.modbit-worktrees`, { recursive: true });
@@ -235,15 +216,15 @@ test("PX-047: tool steps fold by density without changing the rows; a question a
     await question.getByTestId("conv-answer-option").filter({ hasText: "yes, close it" }).click();
     await expect(page.getByTestId("conv-decision-note")).toContainText("answered", { timeout: 15_000 });
     await page.getByTestId("conv-start").click();
-    // The approval, inline with the exact intent; the effect has not run; the row keeps its attention dot.
-    await expect(page.getByTestId("conv-approval-decision")).toBeVisible({ timeout: 60_000 });
-    expect(await page.getByTestId("conv-approval-intent").textContent()).toMatch(/^[0-9a-f]{16}$/);
+    // The approval, docked above the composer with the exact intent; the effect has not run; the row keeps its attention dot.
+    await expect(page.getByTestId("approval-card")).toBeVisible({ timeout: 60_000 });
+    expect(await page.getByTestId("approval-intent-hash").textContent()).toMatch(/^[0-9a-f]{16}$/);
     await expect(page.getByTestId("conv-tail")).toContainText("Waiting for approval");
     await expect(rowOf.getByTestId("agent-attention-dot")).toBeVisible();
     expect(existsSync(wt)).toBe(true);
     await accessible(page, "an inline approval");
 
-    // The pending approval survives a renderer reload and a Core restart: the row is there with its dot, and the card is again in the conversation.
+    // The pending approval survives a renderer reload and a Core restart: the row is there with its dot, and the card is docked again above the composer.
     await page.reload();
     await expect(page.getByTestId("core-status")).toContainText("Core connected", { timeout: 60_000 });
     await expect(rowOf.getByTestId("agent-attention-dot")).toBeVisible({ timeout: 30_000 });
@@ -254,12 +235,12 @@ test("PX-047: tool steps fold by density without changing the rows; a question a
     await expect(rowOf).toBeVisible({ timeout: 30_000 });
     await expect(rowOf.getByTestId("agent-attention-dot")).toBeVisible({ timeout: 30_000 });
     await openConversation(page, taskId);
-    await expect(page.getByTestId("conv-approval-decision")).toBeVisible({ timeout: 30_000 });
+    await expect(page.getByTestId("approval-card")).toBeVisible({ timeout: 30_000 });
 
     // Irreversible effect: a second step confirms it.
-    await page.getByTestId("conv-approve").click();
-    await page.getByTestId("conv-approve-confirm").click();
-    await expect(page.getByTestId("conv-decision-note")).toContainText("approved", { timeout: 15_000 });
+    await page.getByTestId("approval-run").click();
+    await page.getByTestId("approval-confirm-run").click();
+    await expect(page.getByTestId("approval-last")).toContainText("Approved", { timeout: 15_000 });
     // The restart suspended the run: the person resumes it, and the approved effect runs once.
     await page.getByTestId("conv-start").click();
     await expect(page.getByTestId("review")).toBeVisible({ timeout: 90_000 });
@@ -270,14 +251,14 @@ test("PX-047: tool steps fold by density without changing the rows; a question a
     // Densities: the same rows, grouped differently. Detailed shows every tool card; Compact folds them under a work group.
     const conv = page.getByTestId("conversation");
     await expect(conv).toBeVisible();
-    await page.getByTestId("conv-density").selectOption("DETAILED");
+    await (await openTaskDetails(page)).getByTestId("conv-density").selectOption("DETAILED");
     await expect(conv).toHaveAttribute("data-density", "DETAILED");
     await expect(page.getByTestId("conv-group")).toHaveCount(0);
     await expect(page.getByTestId("conv-tool").first()).toBeVisible();
     const detailed = await page.getByTestId("conv-tool").count();
     expect(detailed).toBeGreaterThanOrEqual(3);
     await expect(page.getByTestId("conv-approval").first()).toBeVisible();
-    await page.getByTestId("conv-density").selectOption("COMPACT");
+    await (await openTaskDetails(page)).getByTestId("conv-density").selectOption("COMPACT");
     await expect(page.getByTestId("conv-group").first()).toBeVisible();
     await expect(page.getByTestId("conv-approval").first()).toBeVisible();
     // Folding changed presentation only: opening every group shows the same tool cards.
@@ -289,7 +270,7 @@ test("PX-047: tool steps fold by density without changing the rows; a question a
     expect(await page.getByTestId("conv-tool").count()).toBe(detailed);
     await expect(page.getByTestId("conv-footer").first()).toBeVisible();
     await accessible(page, "a finished conversation in Compact");
-    await page.getByTestId("conv-density").selectOption("BALANCED");
+    await (await openTaskDetails(page)).getByTestId("conv-density").selectOption("BALANCED");
     await accessible(page, "a finished conversation in Balanced");
   } finally {
     await closeApp(app);

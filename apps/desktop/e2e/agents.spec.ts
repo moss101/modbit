@@ -11,6 +11,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { accessible, closeApp, git, launch, makeRepo, setContentSize } from "./support/ui-harness.ts";
 import { Gate, streamingModel } from "./support/stream-model.ts";
+import { openListTools, queueTask, runTask, toNewTask } from "./support/new-task.ts";
 
 function repoWithFile(): string {
   const repo = makeRepo(mkdtempSync(join(tmpdir(), "modbit-agents-repo-")));
@@ -20,44 +21,40 @@ function repoWithFile(): string {
   return repo;
 }
 
-async function createTask(page: Page, goal: string, repo: string): Promise<string> {
-  await page.getByTestId("goal").fill(goal);
-  await page.getByTestId("workspace").fill(repo);
-  await page.getByTestId("run").click();
-  const card = page.getByTestId("task-card").filter({ hasText: goal }).first();
-  await expect(card).toBeVisible();
-  return (await card.getAttribute("data-task-id"))!;
-}
-
 const rowOf = (page: Page, taskId: string) => page.locator(`[data-testid="agent-row"][data-agent-id="${taskId}"]`);
 
 test("PX-046: classes show glyph and words from the Core; unread clears when the conversation is seen; a search finds a tool result and opens its row; pins, filters, grouping, archive with undo, keyboard and axe", async () => {
   test.setTimeout(180_000);
   const repo = repoWithFile();
+  // The run is held before it completes, so the person can leave its conversation before the result arrives.
+  const finish = new Gate();
   const model = await streamingModel([
     { parts: [{ call: { name: "plan.update", args: { outcome: "read the findme file", expected_files: [] } } }] },
     { parts: [{ call: { name: "fs.read", args: { path: "findme.txt" } } }] },
-    { parts: [{ call: { name: "task.complete", args: { summary: "read it", self_review: { findings: [] } } } }] },
+    { parts: [{ wait: finish }, { call: { name: "task.complete", args: { summary: "read it", self_review: { findings: [] } } } }] },
   ]);
   const dataDir = mkdtempSync(join(tmpdir(), "modbit-e2e-agents-"));
   const { app, page } = await launch(dataDir, { env: { MODBIT_OPENAI_BASE_URL: model.url } });
   try {
     await setContentSize(app, page, 1280, 800);
-    const a = await createTask(page, "Read the findme file", repo);
-    const b = await createTask(page, "Second draft task", repo);
-    const c = await createTask(page, "Third draft task", repo);
+    const b = await queueTask(page, "Second draft task", repo);
+    const c = await queueTask(page, "Third draft task", repo);
     // Drafts: glyph and words, the Core's class.
     for (const id of [b, c]) {
       await expect(rowOf(page, id)).toHaveAttribute("data-class", "DRAFT");
       await expect(rowOf(page, id).getByTestId("agent-status")).toHaveText("Draft");
       expect(await rowOf(page, id).locator(".mb-dot-glyph svg").count()).toBe(1);
     }
-    await page.getByTestId("task-card").filter({ hasText: "Read the findme file" }).getByTestId("task-start").click();
+    // Send creates, starts and opens the task; leaving its conversation before the result keeps the result unseen.
+    const a = await runTask(page, "Read the findme file", repo);
+    await expect(rowOf(page, a)).toHaveAttribute("data-class", "RUNNING", { timeout: 60_000 });
+    await toNewTask(page);
+    finish.open();
     // Finished and unseen: ready for review, with the unread dot.
     await expect(rowOf(page, a)).toHaveAttribute("data-class", "READY_FOR_REVIEW_UNSEEN", { timeout: 60_000 });
     await expect(rowOf(page, a).getByTestId("agent-status")).toHaveText("Ready for review");
     await expect(rowOf(page, a).getByTestId("agent-unread-dot")).toBeVisible();
-    // The first result opened the Review over the fleet; back out of it.
+    // The first result opened the Review; back out of it.
     await expect(page.getByTestId("review")).toBeVisible({ timeout: 15_000 });
     await page.keyboard.press("Escape");
 
@@ -70,6 +67,7 @@ test("PX-046: classes show glyph and words from the Core; unread clears when the
     await expect(page.getByTestId("conv-tool").first()).toBeVisible().catch(() => undefined);
 
     // Search over conversations: a word only a tool result holds. The hit names its conversation; its snippet opens it at that row.
+    await openListTools(page);
     await page.getByTestId("agents-search").fill("quokka");
     const hit = page.getByTestId("search-hit");
     await expect(hit).toHaveCount(1, { timeout: 30_000 });
@@ -89,6 +87,7 @@ test("PX-046: classes show glyph and words from the Core; unread clears when the
     await expect(page.getByTestId("agents-scroll")).toBeVisible();
 
     // Filters and grouping change the list without opening a conversation.
+    await openListTools(page);
     await page.getByTestId("agents-filter-toggle").click();
     await page.getByTestId("filter-draft").click();
     await expect(page.getByTestId("agent-row")).toHaveCount(2);
@@ -97,14 +96,16 @@ test("PX-046: classes show glyph and words from the Core; unread clears when the
     await expect(page.getByTestId("agent-row")).toHaveCount(3);
     await page.getByTestId("agents-filter-toggle").click();
     await page.getByTestId("agents-grouping").selectOption("status");
-    const sections = await page.getByTestId("agents-section").evaluateAll((els) => els.map((e) => e.getAttribute("data-section")));
+    // The Projects heading is always the first section; the groupings are the sections after it.
+    const groups = page.locator('[data-testid="agents-section"]:not([data-section="projects"])');
+    const sections = await groups.evaluateAll((els) => els.map((e) => e.getAttribute("data-section")));
     expect(sections).toEqual(["status:READY_FOR_REVIEW_SEEN", "status:DRAFT"]);
     await page.getByTestId("agents-grouping").selectOption("repository");
 
     // Pins form the first section; the pin button is a labelled control.
     await rowOf(page, c).hover();
     await rowOf(page, c).getByTestId("agent-pin").click();
-    await expect(page.getByTestId("agents-section").first()).toHaveAttribute("data-section", "pinned");
+    await expect(groups.first()).toHaveAttribute("data-section", "pinned");
     await expect(rowOf(page, c)).toHaveAttribute("data-pinned", "true");
 
     // Keyboard only: arrows move between rows, Enter opens, p unpins, e archives.
@@ -147,6 +148,7 @@ test("PX-046: classes show glyph and words from the Core; unread clears when the
     await expect(page.getByTestId("core-status")).toContainText("Core connected", { timeout: 60_000 });
     await expect(rowOf(page, a)).toBeVisible({ timeout: 30_000 });
     await expect(rowOf(page, c)).toHaveCount(0);
+    await openListTools(page);
     await page.getByTestId("agents-filter-toggle").click();
     await page.getByTestId("filter-archived").click();
     await expect(rowOf(page, c)).toBeVisible({ timeout: 15_000 });
@@ -166,8 +168,7 @@ test("PX-046: archiving a running task asks first; stopping is the Core's record
   const { app, page } = await launch(dataDir, { env: { MODBIT_OPENAI_BASE_URL: model.url } });
   try {
     await setContentSize(app, page, 1280, 800);
-    const t = await createTask(page, "A long running task", repo);
-    await page.getByTestId("task-card").first().getByTestId("task-start").click();
+    const t = await runTask(page, "A long running task", repo);
     await expect(rowOf(page, t)).toHaveAttribute("data-class", "RUNNING", { timeout: 60_000 });
     await expect(rowOf(page, t).getByTestId("agent-status")).toHaveText("Running");
     await rowOf(page, t).hover();
@@ -203,10 +204,8 @@ test("PX-046: a thousand tasks stay responsive: the list holds only the rows in 
   const { app, page } = await launch(dataDir);
   try {
     await setContentSize(app, page, 1280, 800);
-    const first = await createTask(page, "The first task", repo);
-    await rowOf(page, first).getByTestId("agent-open").click();
+    await queueTask(page, "The first task", repo);
     await expect(page.getByTestId("conversation")).toBeVisible();
-    // With the conversation in view the Fleet board is not mounted, so 1000 cards are not drawn while they are created.
     const sid = (await page.evaluate(() => window.modbit.localState())).sessionId!;
     await page.evaluate(
       async ({ s, root }) => {
@@ -228,6 +227,9 @@ test("PX-046: a thousand tasks stay responsive: the list holds only the rows in 
     await scroller.evaluate((e) => (e.scrollTop = e.scrollHeight / 2));
     expect(await page.getByTestId("agent-row").count()).toBeLessThan(60);
     // Regrouping and filtering 1000 headers: measured in the page, with a bound that only a pathological implementation misses.
+    // The list's tools button sits in the Projects heading, which is the top of the list.
+    await scroller.evaluate((e) => (e.scrollTop = 0));
+    await openListTools(page);
     const ms = await page.evaluate(async () => {
       const select = document.querySelector<HTMLSelectElement>('[data-testid="agents-grouping"]')!;
       const t0 = performance.now();

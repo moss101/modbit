@@ -14,24 +14,13 @@ import { join } from "node:path";
 import { accessible, closeApp, git, launch, makeRepo, setContentSize } from "./support/ui-harness.ts";
 import { Gate, streamingModel } from "./support/stream-model.ts";
 import { openConversation, routedModel, sessionOf, startAndOpen } from "./support/conversation-harness.ts";
+import { runTask } from "./support/new-task.ts";
 
 const URL1 = "https://example.invalid/one.git";
 const URL2 = "https://example.invalid/two.git";
 const remoteAdd = (name: string, url: string) => ({ call: { name: "shell.exec", args: { argv: ["git", "remote", "add", name, url] } } });
 const remotes = (repo: string): string[] => git(repo, "remote").split("\n").filter(Boolean);
 const newRepo = () => makeRepo(mkdtempSync(join(tmpdir(), "modbit-appr-repo-")));
-
-/** Creates and starts a task from the Fleet board without opening its conversation. */
-async function createAndStart(page: Page, goal: string, repo: string): Promise<string> {
-  await page.getByTestId("goal").fill(goal);
-  await page.getByTestId("workspace").fill(repo);
-  await page.getByTestId("run").click();
-  const card = page.getByTestId("task-card").filter({ hasText: goal }).first();
-  await expect(card).toBeVisible();
-  const id = (await card.getAttribute("data-task-id"))!;
-  await card.getByTestId("task-start").click();
-  return id;
-}
 
 async function chooseMode(page: Page, mode: string, widest = false): Promise<void> {
   await page.getByTestId("runmode-button").click();
@@ -125,7 +114,7 @@ test("PX-058: three pending approvals form a deck, oldest first, each decided on
   try {
     await setContentSize(app, page, 1280, 800);
     const ids: string[] = [];
-    for (let i = 0; i < 3; i++) ids.push(await createAndStart(page, goals[i]!, repos[i]!));
+    for (let i = 0; i < 3; i++) ids.push(await runTask(page, goals[i]!, repos[i]!));
     const sid = await sessionOf(page);
     // Wait on what the Core lists, not on a clock.
     await expect.poll(() => page.evaluate((s) => window.modbit.dockApprovals(s).then((l) => l.length), sid), { timeout: 120_000 }).toBe(3);

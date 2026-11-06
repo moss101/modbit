@@ -37,8 +37,11 @@ export function clampListWidth(w: number): number {
   return Math.round(clamp(Number.isFinite(w) ? w : GEOMETRY.listDefault, GEOMETRY.listMin, GEOMETRY.listMax));
 }
 
+/** The widest the panel goes: its widen button goes here and back. */
+export const PANEL_MAX_RATIO = 0.8;
+
 export function clampPanelRatio(r: number): number {
-  return clamp(Number.isFinite(r) ? r : GEOMETRY.panelRatioDefault, 0.2, 0.8);
+  return clamp(Number.isFinite(r) ? r : GEOMETRY.panelRatioDefault, 0.2, PANEL_MAX_RATIO);
 }
 
 export function computeLayout(input: LayoutInput): Layout {

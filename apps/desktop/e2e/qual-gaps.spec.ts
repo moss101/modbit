@@ -11,6 +11,7 @@ import { join } from "node:path";
 import { accessible, closeApp, git, launch, makeRepo, setContentSize } from "./support/ui-harness.ts";
 import { createTask, Gate, openConversation, sequencedModel, startAndOpen, typeAndPress, type Part } from "./support/composer-harness.ts";
 import { routedModel, sessionOf, sha256File, type ModelPart } from "./support/conversation-harness.ts";
+import { runTask } from "./support/new-task.ts";
 
 const NOTES = "line 1\nline 2\nline 3\n";
 
@@ -118,7 +119,6 @@ test("PX-062: a checkpoint of another task is refused and nothing changes; a Con
     await page.keyboard.press("Escape");
     await expect(page.getByTestId("turn-checkpoint")).toHaveCount(3, { timeout: 60_000 });
     const sid = await sessionOf(page);
-    await page.getByTestId("nav-fleet").click().catch(() => undefined);
     const list = await page.evaluate((t) => window.modbit.checkpoints(t), taskA);
     const turn1 = list.checkpoints.find((c) => c.turnOrdinal === 1)!;
     const notesB = sha256File(join(repoB, "notes.txt"));
@@ -215,10 +215,10 @@ test("PX-060: the ring shows the Core's figure for the task's own model across a
       await expect(page.getByTestId("review")).toBeVisible({ timeout: 180_000 });
       await page.keyboard.press("Escape");
     };
-    // Task B is created first (the task form is on the Fleet) and switched to another model before it starts.
+    // Task B is created first (the task form is on the home page) and switched to another model before it starts.
     const taskB = await createTask(page, "second task on a switched model", repoB);
-    // Task A runs on the default model.
-    const taskA = await startAndOpen(page, "first task on the default model", repoA);
+    // Task A runs on the default model. It finishes within a moment and the Review opens over its conversation, so the conversation's own load is not waited for.
+    const taskA = await runTask(page, "first task on the default model", repoA);
     await done();
     const sid = await sessionOf(page);
     const a = await page.evaluate((t) => window.modbit.contextAccounting(t), taskA);
@@ -476,8 +476,10 @@ test("PX-055: the agent's mode proposal is a card; nothing changes until Switch;
     await expect(result).toHaveAttribute("data-outcome", "ACCEPTED", { timeout: 30_000 });
     await expect(result).toContainText("Switched to Agent");
     await expect(card).toHaveCount(0);
-    // Agent is the default: the composer shows no mode chip for it (the Plan chip is gone), and the Core's own field says Agent.
-    await expect(page.getByTestId("mode-chip")).toHaveCount(0, { timeout: 30_000 });
+    // Agent is the default: the composer's mode chip says Agent and offers no way to leave it (the Plan chip's clear button is gone), and the Core's own field says Agent.
+    await expect(page.getByTestId("mode-chip")).toHaveAttribute("data-mode", "AGENT", { timeout: 30_000 });
+    await expect(page.getByTestId("mode-label")).toHaveText("Agent");
+    await expect(page.getByTestId("mode-clear")).toHaveCount(0);
     expect(await page.evaluate((t) => window.modbit.composerPosture(t).then((p) => p.mode), taskId)).toBe("AGENT");
     const proposals = await page.evaluate((t) => window.modbit.modeProposals(t), taskId);
     expect(proposals.proposals.map((p) => [p.status, p.outcomeReason])).toEqual([["ACCEPTED", "ACCEPTED_BY_USER"]]);
