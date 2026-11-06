@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from "react";
-import { Badge, Button } from "@modbit/ui";
+import { Badge, Button, Icon, IconButton } from "@modbit/ui";
 import type { CodeView, ReviewBundleView, ReviewFileView } from "../../preload/preload.ts";
 import type { ChangeEffectInfo, ChangesStateInfo, CommitPushAckInfo, DecideHunkAckInfo, RevertAckInfo } from "../../shared/changes-types.ts";
 import { parseRefusal } from "../projects/project-model.ts";
@@ -28,7 +28,7 @@ import { callRowId, canCommitPush, canDecide, changeSummary, chipText, commitLab
  * hunk and the run goes on; the notice the agent will get is shown. Nothing is
  * computed here: eligibility, staleness and attribution are the Core's.
  */
-export function ChangesApp({ sessionId, taskId, taskState, refreshKey, onOpenReview, onOpenCall }: { sessionId: string; taskId: string; taskState: string; refreshKey: string; onOpenReview: () => void; onOpenCall?: (toolCallId: string) => void }) {
+export function ChangesApp({ sessionId, taskId, taskState, refreshKey, onOpenReview, onOpenCall, onBranch }: { sessionId: string; taskId: string; taskState: string; refreshKey: string; onOpenReview: () => void; onOpenCall?: (toolCallId: string) => void; onBranch?: ((branch: string) => void) | undefined }) {
   const [bundle, setBundle] = useState<ReviewBundleView | null>(null);
   const [state, setState] = useState<ChangesStateInfo | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -42,6 +42,12 @@ export function ChangesApp({ sessionId, taskId, taskState, refreshKey, onOpenRev
   const [commit, setCommit] = useState<CommitPushAckInfo | null>(null);
   const [decided, setDecided] = useState<DecideHunkAckInfo | null>(null);
   const [reason, setReason] = useState("");
+  const branchNow = state?.branch;
+  useEffect(() => {
+    if (branchNow) onBranch?.(branchNow);
+    // The callback changes identity with the panel's render; the branch is what matters.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [branchNow]);
   const seq = useRef(0);
   /** The load that last set `state`, and the sequence number the current approval card was raised at: a state read before the card existed says nothing about it. */
   const loaded = useRef(0);
@@ -196,33 +202,42 @@ export function ChangesApp({ sessionId, taskId, taskState, refreshKey, onOpenRev
   }
   const stateOf = (p: string) => state.paths.find((x) => x.path === p);
   const locked = busy || state.taskRunning;
+  const unstaged = state.paths.filter((x) => stageState(x) !== "staged" && !x.unmerged && !x.protectedPath);
+  const stageAll = async () => {
+    await act(() => window.modbit.stageChanges(sessionId, taskId, unstaged.map((x) => ({ path: x.path, expectedFileRevision: x.fileRevision })), true));
+  };
   return (
     <div className="changes-app" data-testid="app-changes" data-task-state={taskState} data-workspace-revision={bundle.workspaceRevision} data-staged-digest={state.stagedDigest}>
       <div className="changes-head">
-        <span data-testid="changes-summary">{changeSummary(bundle.files)}</span>
-        <Badge tone={isReviewable(taskState) ? "ok" : "info"}>{taskState}</Badge>
-        <Button size="sm" onClick={() => void load()} data-testid="changes-refresh">
-          Refresh
+        <span className="changes-summary" data-testid="changes-summary">{changeSummary(bundle.files)}</span>
+        <span className="mb-sr-only">
+          <Badge tone={isReviewable(taskState) ? "ok" : "info"}>{taskState}</Badge>
+        </span>
+        <span className="conv-spacer" />
+        <IconButton label="Refresh" icon={<Icon name="rotate-ccw" size={14} />} size="sm" onClick={() => void load()} data-testid="changes-refresh" />
+        <Button size="sm" variant="outline" onClick={onOpenReview} data-testid="panel-open-review" title={isReviewable(taskState) ? "Open review" : "Open review (read-only)"}>
+          Review
         </Button>
-        <Button size="sm" variant="primary" onClick={onOpenReview} data-testid="panel-open-review">
-          {isReviewable(taskState) ? "Open review" : "Open review (read-only)"}
+        <Button size="sm" variant="outline" disabled={locked || unstaged.length === 0} onClick={() => void stageAll()} data-testid="changes-stage-all">
+          Stage all
         </Button>
       </div>
-      <p className="meta" data-testid="changes-note">
+      <p className="mb-sr-only" data-testid="changes-note">
         {isReviewable(taskState)
           ? "This task is ready for review: accept or return it, hunk by hunk, in the review."
           : "The task is still working. This is its change set as of workspace revision " + bundle.workspaceRevision + ". You can accept or reject a single hunk now; the run goes on and a rejected hunk is reverted and told to the agent."}
       </p>
-      <p className="meta" data-testid="changes-branch" data-branch={state.branch} data-remote={state.remote} data-unpushed={state.unpushed}>
+      <p className="mb-sr-only" data-testid="changes-branch" data-branch={state.branch} data-remote={state.remote} data-unpushed={state.unpushed}>
         {state.branch ? `On ${state.branch}` : "HEAD is detached"}
         {state.remote ? ` → ${state.remote} (${state.remoteUrl})` : " · no remote"}
         {state.unpushed > 0 ? ` · ${state.unpushed} ${state.unpushed === 1 ? "commit" : "commits"} not on the remote` : ""}
       </p>
       {state.taskRunning && (
-        <p className="meta" role="status" data-testid="changes-locked">
+        <p className="mb-sr-only" role="status" data-testid="changes-locked">
           The task is running and owns its files; whole-file revert, stage and commit wait until it stops. Accepting or rejecting one hunk does not wait.
         </p>
       )}
+      <div className="changes-scroll">
       {refusal && (
         <div className="changes-refusal" role="alert" data-testid="changes-refusal" data-code={refusal.code}>
           <p>
@@ -275,11 +290,13 @@ export function ChangesApp({ sessionId, taskId, taskState, refreshKey, onOpenRev
                     data-testid="changes-stage"
                     onChange={() => s && void toggleStage(s)}
                   />
-                  <button type="button" className="changes-file" aria-pressed={f.path === file?.path} data-testid="changes-file" data-path={f.path} onClick={() => { setPath(f.path); setFull(null); setFullError(null); }}>
-                    <span className="changes-status">{f.status}</span> {f.path}
-                    <span className="meta"> · {f.binary ? "binary" : `${f.hunks.length} ${f.hunks.length === 1 ? "hunk" : "hunks"}`}{staged === "staged" ? " · staged" : staged === "partial" ? " · partly staged" : ""}</span>
+                  <button type="button" className="changes-file" aria-pressed={f.path === file?.path} data-testid="changes-file" data-path={f.path} title={f.path} onClick={() => { setPath(f.path); setFull(null); setFullError(null); }}>
+                    <span className="changes-status" data-status={f.status}>{f.status}</span>
+                    <span className="changes-path">{f.path}</span>
+                    <span className="mb-sr-only"> · {f.binary ? "binary" : `${f.hunks.length} ${f.hunks.length === 1 ? "hunk" : "hunks"}`}{staged === "staged" ? " · staged" : staged === "partial" ? " · partly staged" : ""}</span>
+                    {!f.binary && <FileCounts f={f} />}
                   </button>
-                  <Button size="sm" onClick={() => void revert(f, true, 0)} disabled={locked} aria-label={`Revert ${f.path}`} data-testid="changes-revert-file">
+                  <Button size="sm" variant="ghost" className="changes-revert" onClick={() => void revert(f, true, 0)} disabled={locked} aria-label={`Revert ${f.path}`} data-testid="changes-revert-file">
                     Revert
                   </Button>
                 </li>
@@ -288,10 +305,6 @@ export function ChangesApp({ sessionId, taskId, taskState, refreshKey, onOpenRev
           </ul>
           {file && (
             <section aria-label={`Diff of ${file.path}`} data-testid="changes-diff" data-path={file.path} data-file-revision={file.fileRevision}>
-              <label htmlFor="changes-reject-reason" className="meta">
-                Reason for rejecting a hunk (the agent is told)
-              </label>
-              <input id="changes-reject-reason" type="text" maxLength={2000} value={reason} onChange={(e) => setReason(e.target.value)} data-testid="changes-reject-reason" />
               {file.binary ? (
                 <p className="meta">Binary file: its change is not shown as text.</p>
               ) : (
@@ -319,21 +332,28 @@ export function ChangesApp({ sessionId, taskId, taskState, refreshKey, onOpenRev
                       </Button>
                     </div>
                     <pre>
-                      {h.lines.map((l, i) => (
-                        <span key={i} className={lineKind(l)}>
-                          {l}
-                          {"\n"}
+                      {numberedLines(h.header, h.lines).map((l, i) => (
+                        <span key={i} className={`dl ${lineKind(l.text)}`}>
+                          <span className="dl-n" aria-hidden="true">{l.old}</span>
+                          <span className="dl-n" aria-hidden="true">{l.new}</span>
+                          <span className="dl-t">{l.text}{"\n"}</span>
                         </span>
                       ))}
                     </pre>
                   </div>
                 ))
               )}
-              {!file.binary && file.status !== "D" && (
-                <Button size="sm" onClick={() => void showFull()} data-testid="changes-show-full">
-                  Show the full file
-                </Button>
-              )}
+              <div className="changes-diff-foot">
+                <label htmlFor="changes-reject-reason" className="mb-sr-only">
+                  Reason for rejecting a hunk (the agent is told)
+                </label>
+                <input id="changes-reject-reason" type="text" maxLength={2000} value={reason} onChange={(e) => setReason(e.target.value)} placeholder="Reason told to the agent when you reject a hunk" data-testid="changes-reject-reason" />
+                {!file.binary && file.status !== "D" && (
+                  <Button size="sm" variant="ghost" onClick={() => void showFull()} data-testid="changes-show-full">
+                    Show the full file
+                  </Button>
+                )}
+              </div>
               {fullError && (
                 <p className="meta" role="status" data-testid="changes-full-error">
                   {fullError}
@@ -363,33 +383,6 @@ export function ChangesApp({ sessionId, taskId, taskState, refreshKey, onOpenRev
           )}
         </>
       )}
-      <section className="changes-commit" aria-label="Commit and push" data-testid="changes-commit" data-mode={mode}>
-        <h2>Commit and push</h2>
-        {commit?.status === "APPROVAL_PENDING" ? (
-          <ApprovalCard ack={commit} busy={busy} onDecide={(ok) => void decide(commit, ok)} />
-        ) : (
-          <>
-            {mode !== "push" && (
-              <>
-                <label htmlFor="changes-message" className="meta">
-                  Commit message
-                </label>
-                <textarea id="changes-message" data-testid="changes-commit-message" rows={3} value={message} disabled={locked} onChange={(e) => setMessage(e.target.value)} placeholder={mode === "none" ? "Stage files to commit them" : "Describe the change"} />
-              </>
-            )}
-            <div className="changes-commit-actions">
-              <Button variant="primary" size="sm" disabled={locked || !canCommitPush(mode, message, state.taskRunning)} onClick={() => void askToCommit()} data-testid="changes-commit-push">
-                {commitLabel(mode, state.unpushed)}
-              </Button>
-              <span className="meta" data-testid="changes-commit-hint">
-                {mode === "commit" ? `${state.paths.filter((p) => p.staged !== "").length} staged · asks for your approval first` : mode === "push" ? "Nothing is staged; this pushes the commits the remote lacks, after your approval." : "Nothing is staged and the remote lacks no commit."}
-              </span>
-            </div>
-            {state.identity === "" && <p className="meta">No git identity is configured here, so the commit is authored as Modbit.</p>}
-          </>
-        )}
-        {commit && commit.status !== "APPROVAL_PENDING" && <CommitResult ack={commit} onDismiss={() => setCommit(null)} />}
-      </section>
       {state.effects.length > 0 && (
         <section className="changes-effects" aria-label="Earlier commits and pushes" data-testid="changes-effects">
           <h2>Earlier attempts</h2>
@@ -400,8 +393,63 @@ export function ChangesApp({ sessionId, taskId, taskState, refreshKey, onOpenRev
           </ul>
         </section>
       )}
+      </div>
+      <section className="changes-commit" aria-label="Commit and push" data-testid="changes-commit" data-mode={mode}>
+        <h2 className="mb-sr-only">Commit and push</h2>
+        {commit?.status === "APPROVAL_PENDING" ? (
+          <ApprovalCard ack={commit} busy={busy} onDecide={(ok) => void decide(commit, ok)} />
+        ) : (
+          <>
+            <div className="changes-commit-actions">
+              {mode !== "push" && (
+                <>
+                  <label htmlFor="changes-message" className="mb-sr-only">
+                    Commit message
+                  </label>
+                  <textarea id="changes-message" data-testid="changes-commit-message" rows={1} value={message} disabled={locked} onChange={(e) => setMessage(e.target.value)} placeholder="Commit message" title={mode === "none" ? "Stage files to commit them" : "Describe the change"} />
+                </>
+              )}
+              <Button variant="primary" size="sm" disabled={locked || !canCommitPush(mode, message, state.taskRunning)} onClick={() => void askToCommit()} data-testid="changes-commit-push">
+                <Icon name="check" size={14} /> {commitLabel(mode, state.unpushed)}
+              </Button>
+            </div>
+            <span className="mb-sr-only" data-testid="changes-commit-hint">
+              {mode === "commit" ? `${state.paths.filter((p) => p.staged !== "").length} staged · asks for your approval first` : mode === "push" ? "Nothing is staged; this pushes the commits the remote lacks, after your approval." : "Nothing is staged and the remote lacks no commit."}
+            </span>
+            {state.identity === "" && <p className="meta">No git identity is configured here, so the commit is authored as Modbit.</p>}
+          </>
+        )}
+        {commit && commit.status !== "APPROVAL_PENDING" && <CommitResult ack={commit} onDismiss={() => setCommit(null)} />}
+      </section>
     </div>
   );
+}
+
+/** The added and removed line counts of a file, from its hunks. */
+function FileCounts({ f }: { f: ReviewFileView }) {
+  const lines = f.hunks.flatMap((h) => h.lines);
+  const add = lines.filter((l) => lineKind(l) === "add").length;
+  const del = lines.filter((l) => lineKind(l) === "del").length;
+  return (
+    <span className="changes-counts">
+      {add > 0 && <span className="conv-add">+{add}</span>}
+      {del > 0 && <span className="conv-del">−{del}</span>}
+    </span>
+  );
+}
+
+/** A hunk's lines with their old and new numbers, counted from its `@@ -a,b +c,d @@` header. */
+function numberedLines(header: string, lines: readonly string[]): { old: string; new: string; text: string }[] {
+  const m = /^@@ -(\d+)(?:,\d+)? \+(\d+)/.exec(header);
+  let a = m ? Number(m[1]) : 0;
+  let b = m ? Number(m[2]) : 0;
+  return lines.map((text) => {
+    const kind = lineKind(text);
+    if (!m) return { old: "", new: "", text };
+    if (kind === "add") return { old: "", new: String(b++), text };
+    if (kind === "del") return { old: String(a++), new: "", text };
+    return { old: String(a++), new: String(b++), text };
+  });
 }
 
 function ApprovalCard({ ack, busy, onDecide }: { ack: CommitPushAckInfo; busy: boolean; onDecide: (ok: boolean) => void }) {

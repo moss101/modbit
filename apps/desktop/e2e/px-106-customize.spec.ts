@@ -26,6 +26,7 @@ import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { steppedModel, type Step } from "./support/apps-harness.ts";
 import { accessible, closeApp, launch, makeRepo, setContentSize } from "./support/ui-harness.ts";
+import { runTask as runHomeTask } from "./support/new-task.ts";
 
 test.describe.configure({ mode: "serial" });
 
@@ -55,19 +56,14 @@ const fired = (log: string): number => {
 };
 const logOf = (name: string) => join(scripts, `${name}.log`);
 
-/** Runs one scripted task to its end through the app's own bridge (a person would use the New task form) and returns what the model was sent. */
+/** Runs one scripted task to its end through the app's own bridge (a person would use the home composer) and returns what the model was sent. */
 async function runTask(goal: string): Promise<string> {
   const mark = bodies.length;
   let taskId: string;
   if (sessionId === "") {
-    // The first task is made with the New task form, which also makes the session.
-    await page.getByTestId("goal").fill(goal);
-    await page.getByTestId("workspace").fill(repo);
-    await page.getByTestId("run").click();
-    const card = page.getByTestId("task-card").first();
-    taskId = (await card.getAttribute("data-task-id"))!;
+    // The first task is made with the home composer, which also makes the session.
+    taskId = await runHomeTask(page, goal, repo);
     sessionId = (await page.evaluate(() => window.modbit.localState()).then((s) => s.sessionId))!;
-    await card.getByTestId("task-start").click();
   } else {
     n += 1;
     const commandId = n.toString(16).padStart(32, "0");

@@ -18,6 +18,8 @@ Rows REQ-PX-147..191 are additionally authorized by DR-PX-2026-10-26-018 (the up
 
 Rows REQ-PX-192..194 are additionally authorized by DR-PX-2026-11-03-019 (the agent workspace language for the desktop renderer: the reference product's layout, geometry and density as doc 65 records them, in Modbit's own neutral tokens, superseding the ZCode design language of DR-PX-2026-10-24-016 in the scope its front matter names), accepted on 2026-11-03 on the owner's chat instruction. They are scheduled in M10 for RELEASE_ZERO, list DOC-PX-018 as a prerequisite, name the existing owner `desktop` (no subsystem is added), change no protocol, persistence, policy or security behaviour, keep the clean-room posture of doc 65 section 2, and leave AFW-A12, A13 and A14 unrelaxed.
 
+Rows REQ-PX-195..197 are additionally authorized by DR-PX-2026-11-04-020 (the desktop's screens rebuilt to the mockup the owner approved, the Fleet board removed), accepted on 2026-11-04 on the owner's chat instruction. They are scheduled in M10 for RELEASE_ZERO, list DOC-PX-019 as a prerequisite, name the existing owner `desktop` (no subsystem is added), change no protocol, persistence, policy or preload behaviour, keep the clean-room posture of doc 65 section 2, and leave AFW-A12, A13 and A14 unrelaxed.
+
 ## Ledger
 
 | Requirement | Title | Task | Qualification | Owner | Milestone | Release | Disposition | After |
@@ -217,6 +219,12 @@ Rows REQ-PX-192..194 are additionally authorized by DR-PX-2026-11-03-019 (the ag
 | REQ-PX-192 | Agent workspace language tokens: three achromatic surfaces and one base, the AFW-A11 neutral ladder, one blue accent and chrome type 13/18, with the ZCode parity gate retired | PX-192 | QUAL-PX-192 | desktop | M10 | RELEASE_ZERO | ADOPT | PX-143,DOC-PX-018 |
 | REQ-PX-193 | Agent workspace shell and controls: unframed panes with the doc 65 geometry, the navigation in the agent list, and the default, primary, outline, ghost and tab recipes | PX-193 | QUAL-PX-193 | desktop | M10 | RELEASE_ZERO | ADOPT | PX-192,DOC-PX-018 |
 | REQ-PX-194 | Agent workspace density: conversation turns, composer and trays, the one-line status row, banners and the apps panel in the agent workspace language | PX-194 | QUAL-PX-194 | desktop | M10 | RELEASE_ZERO | ADOPT | PX-193,DOC-PX-018 |
+| QUAL-PX-195 | REQ-PX-195 | desktop | The real app, a real Core and a scripted model: a send from home reaches a running conversation in one action, Alt+Enter leaves the task Queued with Start offered, no provider leaves it Queued and says so, a missing repository names itself; none of the removed test ids is present on any screen; every fact of section 5.6 is reachable; the whole desktop suite and axe pass. The mode and model chosen on home reach the Core before the first model request, a refusal leaves the task unstarted and says why with no model call, and the location selector names this machine and says why cloud cannot be chosen. | A removed surface that returns, a send that does not start a task with a provider configured, a task started without a provider, a board fact with no home, or a repository trusted without the person naming it fails the spec. |
+| QUAL-PX-196 | REQ-PX-196 | desktop | The real app against a real Core at 1280, 1000 and 900 wide in light and dark: the list reads head, navigation, list, person in that order, list tools show only when asked for or narrowing, the Core's state has its words in the accessibility tree, the details show each fact for the open task, and Approvals lists the Core's attention items; axe passes. Each of the six states is a view holding the Core's class, a row says what its task needs before where it is, and the shortcut help names no board. | A list tool that hides an active filter, a Core state shown by colour alone, details that show another task's facts, or a control with no keyboard route fails the spec. |
+| QUAL-PX-197 | REQ-PX-197 | desktop | The real app, a real Core and a scripted model running a task with reads, edits, a terminal and an approval, in light and dark, against the record: one column, one decision surface with the exact intent and no decision control in the transcript, an irreversible effect still asks twice, Escape on a confirmation does not skip the card behind it, the bar under the text with a round send, the commit bar at the panel's foot; the gate's retained mutations fail; the whole desktop suite and axe pass; real screenshots beside the mockup are in the evidence. A step is in the past tense only once it happened, and a task's state that nothing else says stands above the composer with its cause, next action and evidence. | A second decision surface, an approval without its exact intent, an Escape that denies an effect the person only meant to step back from, a failure that is not in words, or a hunk action with no keyboard route fails the spec. |
+| REQ-PX-195 | Agent workspace home: one composer where send creates, starts and opens the task, the Fleet board removed | PX-195 | QUAL-PX-195 | desktop | M10 | RELEASE_ZERO | ADOPT | PX-194,DOC-PX-019 |
+| REQ-PX-196 | Agent workspace chrome: the agent list's head, navigation, repositories and person's row, the top bar, the task's details and the Settings view | PX-196 | QUAL-PX-196 | desktop | M10 | RELEASE_ZERO | ADOPT | PX-195,DOC-PX-019 |
+| REQ-PX-197 | Agent workspace conversation, composer and apps panel: steps that say what they did, one approval card, the two-row composer, the rebuilt Changes panel | PX-197 | QUAL-PX-197 | desktop | M10 | RELEASE_ZERO | ADOPT | PX-196,DOC-PX-019 |
 
 ## Qualifications
 
@@ -2949,6 +2957,51 @@ Rows REQ-PX-192..194 are additionally authorized by DR-PX-2026-11-03-019 (the ag
 - **Evidence:** build digest, renderer revision, Playwright traces and screenshots, run ids, artifact digests and the declared evidence tier under the existing evidence rules.
 - **Completion:** production-equivalent real proof and no unresolved acceptance criteria; graph.py is the only status writer. Product status is NOT_STARTED at adoption.
 
+<a id="px-195"></a>
+
+## PX-195 — Agent workspace home: one composer where send creates, starts and opens the task, the Fleet board removed
+
+- **Requirement:** REQ-PX-195; **related preserved requirements:** REQ-EV-0037, REQ-EV-0143.
+- **Owner / milestone / release:** desktop / M10 / RELEASE_ZERO; **prerequisites:** PX-194, DOC-PX-019.
+- **Decision Record, phase and evidence tier:** DR-PX-2026-11-04-020; agent workspace screens goal; release-critical (send now starts a run and the approval's decision surface moved; the full desktop suite against a real Core on macOS, Linux and Windows, axe and the computed contrast test are the proof of record, doc 83).
+- **Specification requirements (DR-PX-2026-11-04-020 section 5, with basis):** AWS-01 [DECIDED], AWS-07 [DECIDED]; AFW-A12, AFW-A13, AFW-A14 unchanged.
+- **Scope and acceptance:** Home is one centred composer. Send creates the task, starts it and opens its conversation; Alt+Enter creates without starting; with no provider the task is created, not started, and the screen says so. Provider setup sits above the composer while none exists and starter tasks fold under it. The Fleet board's components, columns, filter box and state line are deleted, and each of its facts and controls has the home section 5.6 names.
+- **Production wiring:** `apps/desktop/src/renderer` (home, agents, state, settings), `packages/ui` tabs, `apps/desktop/src/main` (window style, account name); no preload, protocol or CSP change.
+- **Real qualification:** QUAL-PX-195 / PX-E2E-195.
+- **Failure and negative proof:** as in QUAL-PX-195.
+- **Evidence:** build digest, renderer revision, Playwright traces and screenshots beside the approved mockup, run ids, artifact digests and the declared evidence tier under the existing evidence rules.
+- **Completion:** production-equivalent real proof and no unresolved acceptance criteria; graph.py is the only status writer. Product status is NOT_STARTED at adoption.
+
+<a id="px-196"></a>
+
+## PX-196 — Agent workspace chrome: the agent list's head, navigation, repositories and person's row, the top bar and the task's details
+
+- **Requirement:** REQ-PX-196; **related preserved requirements:** REQ-EV-0037, REQ-EV-0143.
+- **Owner / milestone / release:** desktop / M10 / RELEASE_ZERO; **prerequisites:** PX-195, DOC-PX-019.
+- **Decision Record, phase and evidence tier:** DR-PX-2026-11-04-020; agent workspace screens goal; release-critical (send now starts a run and the approval's decision surface moved; the full desktop suite against a real Core on macOS, Linux and Windows, axe and the computed contrast test are the proof of record, doc 83).
+- **Specification requirements (DR-PX-2026-11-04-020 section 5, with basis):** AWS-02 [DECIDED], AWS-03 [DECIDED], AWS-08 [DECIDED]; AFW-A10; AFW-A12, AFW-A13, AFW-A14 unchanged.
+- **Scope and acceptance:** The list's 40 px head, 28 px navigation rows with the Approvals count, Projects with its + and folded list options, two-line rows, Repositories and the person's row with the Core's state and the gear menu; on macOS the window controls in the head. The top bar is the title, state, branch and overflow; the overflow opens the task's details; Approvals and Settings are pages.
+- **Production wiring:** `apps/desktop/src/renderer` (shell, agents, conversation, approvals), `packages/ui` tabs, `apps/desktop/src/main` (window style, account name); no preload, protocol or CSP change.
+- **Real qualification:** QUAL-PX-196 / PX-E2E-196.
+- **Failure and negative proof:** as in QUAL-PX-196.
+- **Evidence:** build digest, renderer revision, Playwright traces and screenshots beside the approved mockup, run ids, artifact digests and the declared evidence tier under the existing evidence rules.
+- **Completion:** production-equivalent real proof and no unresolved acceptance criteria; graph.py is the only status writer. Product status is NOT_STARTED at adoption.
+
+<a id="px-197"></a>
+
+## PX-197 — Agent workspace conversation, composer and apps panel: steps that say what they did, one approval card, the two-row composer, the rebuilt Changes panel
+
+- **Requirement:** REQ-PX-197; **related preserved requirements:** REQ-EV-0037, REQ-EV-0143.
+- **Owner / milestone / release:** desktop / M10 / RELEASE_ZERO; **prerequisites:** PX-196, DOC-PX-019.
+- **Decision Record, phase and evidence tier:** DR-PX-2026-11-04-020; agent workspace screens goal; release-critical (send now starts a run and the approval's decision surface moved; the full desktop suite against a real Core on macOS, Linux and Windows, axe and the computed contrast test are the proof of record, doc 83).
+- **Specification requirements (DR-PX-2026-11-04-020 section 5, with basis):** AWS-04 [DECIDED], AWS-05 [DECIDED], AWS-06 [DECIDED], AWS-09 [DECIDED]; AFW-A12, AFW-A13, AFW-A14 unchanged.
+- **Scope and acceptance:** A 640 px column; steps read from the calls' facts; one docked approval card with the exact intent; a pending confirmation owns Enter and Escape; the composer's text, bar and foot; the panel's tabs in its top row, the Changes head, file list, numbered diff and commit bar at the foot; `pnpm start` finds the Core.
+- **Production wiring:** `apps/desktop/src/renderer` (conversation, composer, approvals, apps), `packages/ui` tabs, `apps/desktop/src/main` (window style, account name); no preload, protocol or CSP change.
+- **Real qualification:** QUAL-PX-197 / PX-E2E-197.
+- **Failure and negative proof:** as in QUAL-PX-197.
+- **Evidence:** build digest, renderer revision, Playwright traces and screenshots beside the approved mockup, run ids, artifact digests and the declared evidence tier under the existing evidence rules.
+- **Completion:** production-equivalent real proof and no unresolved acceptance criteria; graph.py is the only status writer. Product status is NOT_STARTED at adoption.
+
 ## Real-system scenarios
 
 ### PX-E2E-000 — Headless CLI task lifecycle
@@ -3988,3 +4041,21 @@ Rows REQ-PX-192..194 are additionally authorized by DR-PX-2026-11-03-019 (the ag
 **Setup:** the packaged app, a real Core, a scripted model running a task with steps, an edit, a terminal and an approval, in light and dark.  
 **Action:** inspect the conversation rows, reveal a turn footer by hover and by keyboard, narrow the window to 900 px, read the status row and banners, open Changes, run axe and the full suite; capture before and after screenshots.  
 **Pass:** the rows, composer, status row, banners and apps panel match the record, nothing lost its role, name, test id or tab stop, axe is clean, the suite is green.
+
+### PX-E2E-195 — Agent workspace home: one composer where send creates, starts and opens the task, the Fleet board removed
+
+**Setup:** the packaged app, a real Core and a scripted model, in light and dark.  
+**Action:** the real app, a real Core and a scripted model: a send from home reaches a running conversation in one action, Alt+Enter leaves the task Queued with Start offered, no provider leaves it Queued and says so, a missing repository names itself; none of the removed test ids is present on any screen; every fact of section 5.6 is reachable; the whole desktop suite and axe pass.  
+**Pass:** the screens match DR-PX-2026-11-04-020 section 5, no removed surface is present, axe is clean, the suite is green on the three operating systems.
+
+### PX-E2E-196 — Agent workspace chrome: the agent list's head, navigation, repositories and person's row, the top bar and the task's details
+
+**Setup:** the packaged app, a real Core and a scripted model, in light and dark.  
+**Action:** the real app against a real Core at 1280, 1000 and 900 wide in light and dark: the list reads head, navigation, list, person in that order, list tools show only when asked for or narrowing, the Core's state has its words in the accessibility tree, the details show each fact for the open task, and Approvals lists the Core's attention items; axe passes.  
+**Pass:** the screens match DR-PX-2026-11-04-020 section 5, no removed surface is present, axe is clean, the suite is green on the three operating systems.
+
+### PX-E2E-197 — Agent workspace conversation, composer and apps panel: steps that say what they did, one approval card, the two-row composer, the rebuilt Changes panel
+
+**Setup:** the packaged app, a real Core and a scripted model, in light and dark.  
+**Action:** the real app, a real Core and a scripted model running a task with reads, edits, a terminal and an approval, in light and dark, against the record: one column, one decision surface with the exact intent and no decision control in the transcript, an irreversible effect still asks twice, Escape on a confirmation does not skip the card behind it, the bar under the text with a round send, the commit bar at the panel's foot; the gate's retained mutations fail; the whole desktop suite and axe pass; real screenshots beside the mockup are in the evidence.  
+**Pass:** the screens match DR-PX-2026-11-04-020 section 5, no removed surface is present, axe is clean, the suite is green on the three operating systems.

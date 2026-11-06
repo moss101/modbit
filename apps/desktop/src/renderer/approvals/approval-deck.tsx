@@ -100,7 +100,7 @@ export function ApprovalDeck(props: DeckProps) {
   const n = approvals.length;
   return (
     <div ref={root} className="appr" tabIndex={-1} role="group" aria-label={`Approval request ${index + 1} of ${n}`} data-testid="approval-card" data-approval-id={a.approvalId} data-intent-hash={a.intentHash} data-effect-class={a.effectClass} data-ask-reason={a.reason.code}>
-      <div className="appr-deckbar" data-testid="approval-deck">
+      <div className={n > 1 ? "appr-deckbar" : "appr-deckbar mb-sr-only"} data-testid="approval-deck">
         <span data-testid="approval-count" aria-live="polite">
           {n} pending{n > 1 ? `, showing ${index + 1} of ${n}` : ""}
         </span>
@@ -175,7 +175,7 @@ export function ApprovalDeck(props: DeckProps) {
           </>
         )}
         <dt>Effect</dt>
-        <dd data-testid="approval-effect">
+        <dd className="mb-sr-only" data-testid="approval-effect">
           {effectWords(a.effectClass)}
           {a.reason.contained ? ", contained in a sandbox" : ", not sandboxed"}
         </dd>
@@ -199,14 +199,14 @@ export function ApprovalDeck(props: DeckProps) {
       )}
       {!cc && (
         <p className="appr-why" data-testid="approval-why">
-          <strong>{why.headline}</strong> {why.detail}
+          {why.headline} <span className="mb-sr-only">{why.detail}</span>
         </p>
       )}
       <p className="appr-fine">
-        Intent <code data-testid="approval-intent-hash" title={a.intentHash}>{a.intentHash.slice(0, 16)}</code>. {cc ? "Approving it once approves exactly this; the same action asked again asks again." : "Running it once runs exactly this; the same command asked again asks again."}
+        Intent <code data-testid="approval-intent-hash" title={a.intentHash}>{a.intentHash.slice(0, 16)}</code>. <span className="mb-sr-only">{cc ? "Approving it once approves exactly this; the same action asked again asks again." : "Running it once runs exactly this; the same command asked again asks again."}</span>
         {!cc && a.reason.runMode && (
           <>
-            {" "}Run mode: <span data-testid="approval-mode">{a.reason.runMode.replace(/_/g, " ").toLowerCase()}</span>.{" "}
+            {" "}<span className="mb-sr-only">Run mode: <span data-testid="approval-mode">{a.reason.runMode.replace(/_/g, " ").toLowerCase()}</span>.</span>{" "}
             <button type="button" className="agents-link" onClick={props.onChangeMode} data-testid="approval-change-mode">
               Change run mode
             </button>

@@ -6,7 +6,7 @@ import { readFileSync, writeFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import { join } from "node:path";
 
-export const ICONS = ["plus", "settings", "trash-2", "chevron-down", "chevron-right", "check", "x", "search", "panel-left", "panel-right", "chevron-left", "ellipsis", "monitor", "pin", "archive", "funnel", "folder-plus", "pencil", "rotate-ccw", "bookmark", "square-pen", "layout-grid", "git-branch", "clock", "blocks", "chart-column"];
+export const ICONS = ["plus", "settings", "trash-2", "chevron-down", "chevron-right", "check", "x", "search", "panel-left", "panel-right", "chevron-left", "ellipsis", "monitor", "pin", "archive", "funnel", "folder-plus", "pencil", "rotate-ccw", "bookmark", "square-pen", "layout-grid", "git-branch", "clock", "blocks", "chart-column", "arrow-left", "arrow-right", "arrow-up", "shield-check", "folder", "terminal", "globe", "eye", "file-plus", "file-text", "infinity", "laptop", "at-sign", "maximize-2", "file-diff", "git-compare", "list-tree", "bug", "circle-question-mark", "layers"];
 
 const dir = process.argv[2];
 if (!dir) throw new Error("usage: gen-icons.mjs <lucide-react dir>");

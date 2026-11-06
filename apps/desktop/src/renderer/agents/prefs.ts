@@ -6,7 +6,7 @@
  * convenience of this viewer and the cap is enforced here). Everything read
  * back is validated; a missing or hostile entry falls back to the default.
  */
-import { GROUPINGS, LOCATION_FILTERS, MAX_VIEWS, MAX_VIEW_NAME, NO_FILTERS, ORIGIN_FILTERS, PIN_CAP, SORTS, STATE_FILTERS, SUBTITLE_FIELDS, type Filters, type Grouping, type SortKey, type StoredView, type SubtitleField } from "./list-model.ts";
+import { FACT_FIELDS, GROUPINGS, LOCATION_FILTERS, MAX_VIEWS, MAX_VIEW_NAME, NO_FILTERS, ORIGIN_FILTERS, PIN_CAP, SORTS, STATE_FILTERS, SUBTITLE_FIELDS, type FactField, type Filters, type Grouping, type SortKey, type StoredView, type SubtitleField } from "./list-model.ts";
 
 export interface ListPrefs {
   grouping: Grouping;
@@ -15,6 +15,8 @@ export interface ListPrefs {
   /** Collapsed section keys, kept per grouping. */
   collapsed: Record<string, string[]>;
   subtitle: SubtitleField[];
+  /** The task's facts a row shows; absent from a profile saved before they existed, so they default to on. */
+  facts: FactField[];
   /** How rows are ordered inside a section (PX-064). */
   sort: SortKey;
   /** The stored views: saved queries of this viewer (grouping, filter chips, sort). */
@@ -22,7 +24,7 @@ export interface ListPrefs {
 }
 
 export const LIST_PREFS_KEY = "modbit.agents.v1";
-export const DEFAULT_LIST_PREFS: ListPrefs = { grouping: "repository", filters: NO_FILTERS, pins: [], collapsed: {}, subtitle: ["repository", "changes", "location", "origin"], sort: "recent", views: [] };
+export const DEFAULT_LIST_PREFS: ListPrefs = { grouping: "repository", filters: NO_FILTERS, pins: [], collapsed: {}, subtitle: ["repository", "changes", "location", "origin"], facts: FACT_FIELDS.map((f) => f.id), sort: "recent", views: [] };
 
 const isObject = (v: unknown): v is Record<string, unknown> => typeof v === "object" && v !== null && !Array.isArray(v);
 const strings = (v: unknown, max: number): string[] => (Array.isArray(v) ? v.filter((x): x is string => typeof x === "string" && x.length > 0 && x.length < 512).slice(0, max) : []);
@@ -70,10 +72,11 @@ export function parseListPrefs(raw: string | null): ListPrefs {
   const collapsed: Record<string, string[]> = {};
   if (isObject(v.collapsed)) for (const [g, keys] of Object.entries(v.collapsed).slice(0, GROUPINGS.length)) if (GROUPINGS.some((x) => x.id === g)) collapsed[g] = strings(keys, 200);
   const subtitle = Array.isArray(v.subtitle) ? pick(v.subtitle, SUBTITLE_FIELDS.map((s) => s.id)) : DEFAULT_LIST_PREFS.subtitle;
+  const facts = Array.isArray(v.facts) ? pick(v.facts, FACT_FIELDS.map((f) => f.id)) : DEFAULT_LIST_PREFS.facts;
   // A stored list longer than the cap (an older cap, a hand edit) is cut, never trusted.
   const pins = [...new Set(strings(v.pins, PIN_CAP))];
   const sort = SORTS.find((s) => s.id === v.sort)?.id ?? DEFAULT_LIST_PREFS.sort;
-  return { grouping, filters, pins, collapsed, subtitle, sort, views: parseViews(v.views) };
+  return { grouping, filters, pins, collapsed, subtitle, facts, sort, views: parseViews(v.views) };
 }
 
 export function serializeListPrefs(p: ListPrefs): string {

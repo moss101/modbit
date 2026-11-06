@@ -73,7 +73,7 @@ async function accessible(page: Page, screen: string): Promise<void> {
 }
 
 const focusedTestId = (page: Page) => page.evaluate(() => document.activeElement?.getAttribute("data-testid") ?? document.activeElement?.tagName ?? "");
-const focusedTaskId = (page: Page) => page.evaluate(() => document.activeElement?.closest('[data-testid="task-card"]')?.getAttribute("data-task-id") ?? "");
+const focusedTaskId = (page: Page) => page.evaluate(() => document.activeElement?.closest('[data-testid="agent-row"]')?.getAttribute("data-task-id") ?? "");
 /** Focus settles within a frame or two of a key; poll rather than race the renderer. */
 const expectFocusedTask = (page: Page, id: string | null, why?: string) => expect.poll(() => focusedTaskId(page), { message: why ?? `focused task ${id}`, timeout: 5_000 }).toBe(id);
 
@@ -108,41 +108,53 @@ test("keyboard: every screen by keyboard only — shortcuts, list and review nav
   try {
     const { app, page } = await launch(dataDir, { MODBIT_OPENAI_BASE_URL: url });
     await expect(page.getByTestId("fleet-state")).toHaveAttribute("data-kind", "empty", { timeout: 30_000 });
-    await accessible(page, "fleet (empty) and New Task");
-    // New Task by keyboard: the global shortcut focuses the goal; Tab reaches
-    // every field; Enter in the workspace field submits.
+    await accessible(page, "home (empty)");
+    // New task by keyboard: the global shortcut focuses the goal; Tab reaches
+    // the repository; Alt+Enter creates without starting.
     await page.keyboard.press(`${MOD}+n`);
-    expect(await focusedTestId(page)).toBe("goal");
-    await page.keyboard.type("alpha task");
+    await expect.poll(() => focusedTestId(page)).toBe("goal");
+    // From the goal: the mode, the model, the repository, send.
     await page.keyboard.press("Tab");
-    expect(await focusedTestId(page)).toBe("issue-url");
+    expect(await focusedTestId(page)).toBe("home-mode-button");
+    await page.keyboard.press("Tab");
+    expect(await focusedTestId(page)).toBe("model-chip");
     await page.keyboard.press("Tab");
     expect(await focusedTestId(page)).toBe("workspace");
     await page.keyboard.type(repo);
-    await page.keyboard.press("Enter");
-    const alpha = page.getByTestId("task-card").filter({ hasText: "alpha task" });
+    await page.keyboard.press("Shift+Tab");
+    await page.keyboard.press("Shift+Tab");
+    await page.keyboard.press("Shift+Tab");
+    expect(await focusedTestId(page)).toBe("goal");
+    await page.keyboard.type("alpha task");
+    await page.keyboard.press("Alt+Enter");
+    const alpha = page.getByTestId("agent-row").filter({ hasText: "alpha task" });
     await expect(alpha).toHaveCount(1, { timeout: 30_000 });
+    await expect(page.getByTestId("conversation")).toBeVisible();
     await page.keyboard.press(`${MOD}+n`);
+    await expect.poll(() => focusedTestId(page)).toBe("goal");
     await page.keyboard.type("beta task");
-    await page.keyboard.press("Tab");
-    await page.keyboard.press("Tab");
-    await page.keyboard.press("Enter");
-    const beta = page.getByTestId("task-card").filter({ hasText: "beta task" });
+    await page.keyboard.press("Alt+Enter");
+    const beta = page.getByTestId("agent-row").filter({ hasText: "beta task" });
     await expect(beta).toHaveCount(1, { timeout: 30_000 });
     const alphaId = (await alpha.getAttribute("data-task-id"))!;
     const betaId = (await beta.getAttribute("data-task-id"))!;
-    await accessible(page, "fleet (populated)");
-    // Settings by Tab: the preference checkboxes are reachable and toggle with Space.
+    await accessible(page, "the workspace (populated)");
+    // Settings by chord: the preference checkboxes are reachable and toggle with Space.
+    await page.keyboard.press(`${MOD}+Comma`);
+    await expect.poll(() => focusedTestId(page)).toBe("settings");
     await page.getByTestId("notify-attention").focus();
     expect(await focusedTestId(page)).toBe("notify-attention");
     await expect(page.getByTestId("notify-attention")).not.toBeChecked();
     await page.keyboard.press("Space");
     await expect(page.getByTestId("notify-attention")).toBeChecked();
-    // Escape leaves any field; the list: ↓ enters the first column with
-    // cards, ↓/↑ move within it, Enter opens the focused card's control.
+    await page.getByTestId("nav-back").focus();
+    await page.keyboard.press("Enter");
+    await expect(page.getByTestId("settings")).toHaveCount(0);
+    // Escape leaves any field; the list: ↓ enters the first row, ↓/↑ move within it, Enter opens the task.
     await page.keyboard.press("Escape");
-    const waiting = page.getByTestId("column-waiting").getByTestId("task-card");
-    const [first, second] = [await waiting.nth(0).getAttribute("data-task-id"), await waiting.nth(1).getAttribute("data-task-id")];
+    const rows = page.getByTestId("agent-row");
+    const [first, second] = [await rows.nth(0).getAttribute("data-task-id"), await rows.nth(1).getAttribute("data-task-id")];
+    await page.evaluate(() => (document.activeElement as HTMLElement | null)?.blur());
     await page.keyboard.press("ArrowDown");
     await expectFocusedTask(page, first);
     await page.keyboard.press("ArrowDown");
@@ -151,49 +163,42 @@ test("keyboard: every screen by keyboard only — shortcuts, list and review nav
     await expectFocusedTask(page, first);
     await page.keyboard.press("ArrowUp");
     await expectFocusedTask(page, first, "the top stays the top");
-    // Type-ahead filter: / focuses the search, the fleet narrows, Escape returns.
+    // / opens the search over tasks; Escape closes it and focus returns.
     await page.keyboard.press("/");
-    expect(await focusedTestId(page)).toBe("search");
+    await expect(page.getByTestId("palette")).toBeVisible();
+    expect(await focusedTestId(page)).toBe("palette-input");
     await page.keyboard.type("beta");
-    await expect(page.getByTestId("task-card")).toHaveCount(1);
-    await expect(beta).toHaveCount(1);
-    await page.keyboard.press(`${MOD}+a`);
-    await page.keyboard.press("Backspace");
-    await expect(page.getByTestId("task-card")).toHaveCount(2);
+    await expect(page.getByTestId("palette-option").first()).toContainText("beta task");
     await page.keyboard.press("Escape");
+    await expect(page.getByTestId("palette")).toHaveCount(0);
+    await expectFocusedTask(page, first, "focus returns to the row");
     // ? opens the shortcut list; Escape closes it.
     await page.keyboard.press("?");
     await expect(page.getByTestId("help")).toBeVisible();
     await accessible(page, "help");
     await page.keyboard.press("Escape");
     await expect(page.getByTestId("help")).toHaveCount(0);
-    // Start alpha: focus the card (↓ enters the column, ↓/↑ finds it), Enter
-    // reaches its Start button, Enter starts.
-    await page.keyboard.press("ArrowDown");
-    if ((await focusedTaskId(page)) !== alphaId) await page.keyboard.press("ArrowDown");
+    // Start alpha: ↓/↑ finds its row, Enter opens it, its Start button starts it.
+    await alpha.getByTestId("agent-open").focus();
     await expectFocusedTask(page, alphaId);
     await page.keyboard.press("Enter");
-    expect(await focusedTestId(page)).toBe("task-start");
+    await expect(page.getByTestId("conversation")).toHaveAttribute("data-task-id", alphaId);
+    await page.getByTestId("conv-start").focus();
     await page.keyboard.press("Enter");
-    // The run reaches its protected effect: the card moves to Needs
-    // Attention on the Core's events and keeps the focus; the live region
-    // announces the approval in words.
-    await expect(page.getByTestId("column-needsAttention").getByTestId("task-card").filter({ hasText: "alpha task" })).toHaveCount(1, { timeout: 90_000 });
-    await expect(alpha.getByTestId("task-approval")).toBeVisible({ timeout: 15_000 });
-    await expectFocusedTask(page, alphaId, "focus survives the column move");
+    // The run reaches its protected effect: the row turns to Needs attention on the Core's events, the card docks above the
+    // composer and the live region announces the approval in words.
+    await expect(alpha).toHaveAttribute("data-class", "NEEDS_ATTENTION", { timeout: 90_000 });
+    await expect(page.getByTestId("approval-card")).toBeVisible({ timeout: 15_000 });
     await expect(page.getByTestId("live-attention")).toContainText(/Needs attention: approval on alpha task: git\.worktree\.close asks for a Destructive effect/, { timeout: 15_000 });
-    await accessible(page, "fleet (attention)");
-    // r jumps to Running (empty: the column itself), a to the attention list, then back to the card.
-    await page.keyboard.press("r");
-    expect(await focusedTestId(page)).toBe("column-running");
+    await accessible(page, "the conversation (attention)");
+    // a opens the approvals page on the first item; Enter goes back to its task.
     await page.keyboard.press("a");
-    expect(await focusedTestId(page)).toBe("attention-item");
-    // ← from outside the board lands on the last column with cards (beta,
-    // waiting); ← again reaches alpha in Needs Attention.
-    await page.keyboard.press("ArrowLeft");
-    await expectFocusedTask(page, betaId);
-    await page.keyboard.press("ArrowLeft");
-    await expectFocusedTask(page, alphaId);
+    await expect(page.getByTestId("inbox")).toBeVisible();
+    await expect.poll(() => focusedTestId(page)).toBe("attention-item");
+    await accessible(page, "the approvals page");
+    await page.keyboard.press("Enter");
+    await expect(page.getByTestId("conversation")).toHaveAttribute("data-task-id", alphaId);
+    await expect(page.getByTestId("approval-card")).toBeVisible({ timeout: 15_000 });
     // y on a Destructive effect asks for confirmation; Escape declines
     // (nothing resolved); y then Enter approves the exact intent.
     expect(existsSync(wt)).toBe(true);
@@ -203,33 +208,21 @@ test("keyboard: every screen by keyboard only — shortcuts, list and review nav
     await accessible(page, "confirmation");
     await page.keyboard.press("Escape");
     await expect(page.getByTestId("confirm")).toHaveCount(0);
-    await expectFocusedTask(page, alphaId);
-    await expect(alpha.getByTestId("task-approval")).toBeVisible();
+    await expect(page.getByTestId("approval-card")).toBeVisible();
     await page.keyboard.press("y");
     await page.keyboard.press("Enter");
     await expect(page.getByTestId("confirm")).toHaveCount(0);
-    // A fast runner takes the task from Waiting through Running to
-    // ReadyForReview within one poll; while it is Running the focus is on
-    // the moved card (the same retention the attention move proved above).
-    await expect(alpha.getByTestId("task-state")).toHaveText(/Running|ReadyForReview/, { timeout: 60_000 });
-    // While it is Running the focus is on the moved card; the moment it is
-    // ReadyForReview the Review takes the focus (checked below).
-    await expect
-      .poll(async () => ((await alpha.getByTestId("task-state").textContent()) === "Running" ? await focusedTaskId(page) : alphaId), { message: "focus survives Waiting → Running (the card moves columns)", timeout: 60_000 })
-      .toBe(alphaId);
-    // The first result opens the Review on the diff (docs/39): the focus
-    // moves into it; Escape returns to the card.
-    await expect(page.getByTestId("column-readyForReview").getByTestId("task-card").filter({ hasText: "alpha task" })).toHaveCount(1, { timeout: 90_000 });
+    // The first result opens the Review on the diff (docs/39): the focus moves into it; Escape returns to the conversation.
+    await expect(alpha).toHaveAttribute("data-state", "ReadyForReview", { timeout: 90_000 });
     expect(existsSync(wt)).toBe(false);
     await expect(page.getByTestId("review")).toBeVisible({ timeout: 15_000 });
     expect(await focusedTestId(page)).toBe("review");
     await page.keyboard.press("Escape");
     await expect(page.getByTestId("review")).toHaveCount(0);
-    await expectFocusedTask(page, alphaId, "focus returns to the card the Review was about");
-    // Enter on a ReadyForReview card opens the Review; ↓/↑ move between
-    // changes; Enter collapses and expands the focused hunk; u toggles
-    // unified/split; f jumps to the failing check (none here: the
-    // verification list); Escape returns with the card focused.
+    await expect(page.getByTestId("conversation")).toHaveAttribute("data-task-id", alphaId);
+    // The composer's Review button opens it again; ↓/↑ move between changes; Enter collapses and expands the focused hunk; u
+    // toggles unified/split; f jumps to the failing check (none here: the verification list); Escape closes it.
+    await page.getByTestId("task-review").focus();
     await page.keyboard.press("Enter");
     await expect(page.getByTestId("review")).toBeVisible();
     await expect(page.getByTestId("review-hunk")).toHaveCount(1, { timeout: 30_000 });
@@ -252,18 +245,20 @@ test("keyboard: every screen by keyboard only — shortcuts, list and review nav
     expect(await focusedTestId(page)).toBe("review-verification");
     await page.keyboard.press("Escape");
     await expect(page.getByTestId("review")).toHaveCount(0);
-    await expectFocusedTask(page, alphaId);
-    // Cancel beta with confirmation: → to the next column with cards, c, Enter.
-    await page.keyboard.press("ArrowRight");
+    // Cancel beta with confirmation: its row, c, Enter.
+    await beta.getByTestId("agent-open").focus();
     await expectFocusedTask(page, betaId);
     await page.keyboard.press("c");
     await expect(page.getByTestId("confirm")).toHaveAttribute("data-confirm-kind", "cancel");
     await page.keyboard.press("Enter");
-    await expect(beta.getByTestId("task-state")).toHaveText("Cancelled", { timeout: 30_000 });
+    await expect(beta).toHaveAttribute("data-state", "Cancelled", { timeout: 30_000 });
     await expectFocusedTask(page, betaId, "focus survives the cancellation");
     // Status is never colour-only: every state line carries its kind in text.
+    await page.getByTestId("task-details-toggle").focus();
+    await page.keyboard.press("Enter");
     for (const line of await page.getByTestId("task-screen-state").all()) await expect(line).toHaveAttribute("aria-label", /^(empty|loading|populated|error|degraded|recovery): /);
-    await accessible(page, "fleet (final)");
+    await page.keyboard.press("Escape");
+    await accessible(page, "the workspace (final)");
     await closeApp(app);
   } finally {
     server.close();

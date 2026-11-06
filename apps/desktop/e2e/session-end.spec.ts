@@ -14,6 +14,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { closeApp, launch, makeRepo } from "./support/ui-harness.ts";
 import { gate, steppedModel, type Step } from "./support/apps-harness.ts";
+import { agentRow, expectTaskState, queueTask, runTask } from "./support/new-task.ts";
 
 /** A message-box recorder that appends every question to `file`, so it can be read after the app has gone. */
 async function recordDialogToFile(app: ElectronApplication, answer: number, file: string): Promise<void> {
@@ -80,20 +81,18 @@ process.stdin.on("end", () => {
   return marks;
 }
 
-async function createTaskCard(page: Page, repo: string) {
-  await page.getByTestId("goal").fill("Edit the notes");
-  await page.getByTestId("workspace").fill(repo);
-  await page.getByTestId("run").click();
-  const card = page.getByTestId("task-card").first();
-  await expect(card).toBeVisible({ timeout: 30_000 });
-  return card;
+/** A task created from the home composer and left unstarted (Alt+Enter): the session has a task to end. */
+async function createTaskRow(page: Page, repo: string): Promise<string> {
+  const taskId = await queueTask(page, "Edit the notes", repo);
+  await expect(agentRow(page, taskId)).toBeVisible({ timeout: 30_000 });
+  return taskId;
 }
 
-async function startedCard(page: Page, repo: string) {
-  const card = await createTaskCard(page, repo);
-  await card.getByTestId("task-start").click();
-  await expect(card.getByTestId("task-state")).toHaveText("Running", { timeout: 60_000 });
-  return card;
+/** A task sent from the home composer: created, started and running. */
+async function startedTask(page: Page, repo: string): Promise<string> {
+  const taskId = await runTask(page, "Edit the notes", repo);
+  await expectTaskState(page, taskId, "Running");
+  return taskId;
 }
 
 /** A task held mid-run by the model, and a count of the model requests it has made. */
@@ -120,7 +119,7 @@ test("PX-049: a session-end hook that takes 2 s completes before the app exits, 
   const dataDir = mkdtempSync(join(tmpdir(), "modbit-e2e-hook-ok-"));
   const marks = declareSessionEndHook(dataDir, { ms: 2000 });
   const { app, page } = await launch(dataDir);
-  await createTaskCard(page, repo);
+  await createTaskRow(page, repo);
   const done = exited(app);
   const t0 = Date.now();
   await app.evaluate(({ app: a }) => a.quit());
@@ -146,7 +145,7 @@ test("PX-049: a session-end hook that fails is shown to the person and journaled
   const { app, page } = await launch(dataDir, { env: { MODBIT_QUIT_PROMPT: "" } });
   const asks = join(dataDir, "asked.jsonl");
   await recordDialogToFile(app, 0, asks);
-  await createTaskCard(page, repo);
+  await createTaskRow(page, repo);
   const done = exited(app);
   await app.evaluate(({ app: a }) => a.quit());
   await done;
@@ -168,7 +167,7 @@ test("PX-049: choosing resume at the quit records it in the Core, and the next s
   const h = await heldRun("resume");
   let { app, page } = await launch(h.dataDir, { env: h.env });
   try {
-    await startedCard(page, h.repo);
+    const taskId = await startedTask(page, h.repo);
     await expect.poll(() => h.seen.requests, { timeout: 60_000, message: "the run is waiting on the model" }).toBe(1);
     const asks = join(h.dataDir, "asked.jsonl");
     await recordDialogToFile(app, 1, asks);
@@ -189,10 +188,9 @@ test("PX-049: choosing resume at the quit records it in the Core, and the next s
     await expect(summary).toBeVisible({ timeout: 30_000 });
     const text = (await summary.textContent())!;
     expect(text).toMatch(/^Recovered at start: /);
-    const card = page.getByTestId("task-card").first();
-    await expect(card.getByTestId("task-state")).toHaveText("Running", { timeout: 30_000 });
-    // The counts are the Core's: what the summary says is resumed is what the Running column shows.
-    const running = await page.getByTestId("column-running").getByTestId("task-card").count();
+    await expectTaskState(page, taskId, "Running", 30_000);
+    // The counts are the Core's: what the summary says is resumed is what the list shows as running.
+    const running = await page.locator('[data-testid="agent-row"][data-state="Running"]').count();
     expect(Number(/(\d+) tasks? resumed/.exec(text)?.[1] ?? 0)).toBe(running);
   } finally {
     h.first.open();
@@ -206,7 +204,7 @@ test("PX-049: quitting and leaving the run suspended keeps it recoverable, and n
   const h = await heldRun("suspend");
   let { app, page } = await launch(h.dataDir, { env: h.env });
   try {
-    await startedCard(page, h.repo);
+    await startedTask(page, h.repo);
     await expect.poll(() => h.seen.requests, { timeout: 60_000, message: "the run is waiting on the model" }).toBe(1);
     const asks = join(h.dataDir, "asked.jsonl");
     await recordDialogToFile(app, 2, asks);
@@ -217,10 +215,10 @@ test("PX-049: quitting and leaving the run suspended keeps it recoverable, and n
 
     ({ app, page } = await launch(h.dataDir, { env: h.env }));
     await expect(page.getByTestId("recovery-summary")).toBeVisible({ timeout: 30_000 });
-    await expect(page.getByTestId("column-needsAttention").getByTestId("task-card")).toHaveCount(1, { timeout: 30_000 });
+    await expect(page.locator('[data-testid="agent-row"][data-class="NEEDS_ATTENTION"]')).toHaveCount(1, { timeout: 30_000 });
     await page.waitForTimeout(4000);
     expect(h.seen.requests, "no model request: the run waits for the person").toBe(1);
-    expect(await page.getByTestId("column-running").getByTestId("task-card").count()).toBe(0);
+    expect(await page.locator('[data-testid="agent-row"][data-state="Running"]').count()).toBe(0);
   } finally {
     h.first.open();
     h.later.open();
@@ -234,7 +232,7 @@ test("PX-049: killing the Core while the session-end hook runs fails visibly and
   const marks = declareSessionEndHook(h.dataDir, { ms: 8000 });
   let { app, page } = await launch(h.dataDir, { env: h.env });
   try {
-    await startedCard(page, h.repo);
+    await startedTask(page, h.repo);
     await expect.poll(() => h.seen.requests, { timeout: 60_000, message: "the run is waiting on the model" }).toBe(1);
     const asks = join(h.dataDir, "asked.jsonl");
     // Resume is chosen, but the Core dies before it can record the choice.
@@ -253,7 +251,7 @@ test("PX-049: killing the Core while the session-end hook runs fails visibly and
     rmSync(join(h.dataDir, "admin-config.json"));
     ({ app, page } = await launch(h.dataDir, { env: h.env }));
     await expect(page.getByTestId("recovery-summary")).toBeVisible({ timeout: 30_000 });
-    await expect(page.getByTestId("column-needsAttention").getByTestId("task-card")).toHaveCount(1, { timeout: 30_000 });
+    await expect(page.locator('[data-testid="agent-row"][data-class="NEEDS_ATTENTION"]')).toHaveCount(1, { timeout: 30_000 });
     await page.waitForTimeout(3000);
     expect(h.seen.requests, "recoverable, not resumed").toBe(1);
   } finally {

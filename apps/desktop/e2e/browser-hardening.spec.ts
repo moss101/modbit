@@ -23,6 +23,7 @@ import { mkdtempSync, readFileSync, readdirSync, statSync, writeFileSync } from 
 import { tmpdir } from "node:os";
 import { dirname, join, resolve } from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
+import { openTaskDetails } from "./support/new-task.ts";
 import { closeApp, collectEvents, eventsOf, fixtureRepo, gate, launch, lastJson, readyForReview, refOf, scriptedModel, sleep, startBrowserTask, toolResults } from "./support/browser-harness.ts";
 
 type Site = { server: Server; port: number; hits: string[] };
@@ -199,12 +200,15 @@ test("PX-120: a link that points straight at a local or private target is refuse
     let live = true;
     const decided = new Set<string>();
     void (async () => {
-      const card = ui.getByTestId("task-card").first();
+      const card = ui.getByTestId("approval-card");
       while (live) {
         try {
-          const id = await card.getByTestId("task-approval").evaluate((el) => el.getAttribute("data-approval-id") ?? "", undefined, { timeout: 1_000 });
+          const { id, effect } = await card.evaluate((el) => ({ id: el.getAttribute("data-approval-id") ?? "", effect: el.getAttribute("data-effect-class") ?? "" }), undefined, { timeout: 1_000 });
           if (id && !decided.has(id)) {
-            await card.locator(`[data-testid="task-approval"][data-approval-id="${id}"]`).getByTestId("task-approve").click({ timeout: 10_000 });
+            const mine = ui.locator(`[data-testid="approval-card"][data-approval-id="${id}"]`);
+            await mine.getByTestId("approval-run").click({ timeout: 10_000 });
+            // An effect that cannot be undone (a click that leaves the origin) asks a second time.
+            if (/destructive|external/i.test(effect)) await mine.getByTestId("approval-confirm-run").click({ timeout: 10_000 });
             decided.add(id);
           }
         } catch {
@@ -376,8 +380,8 @@ test("PX-073: a certificate error waits for the person - Reject fails the reques
     expect(pending!.subject).toContain("localhost");
     expect(pending!.issuer).toContain("localhost");
     // The person sees it in the Browser panel with issuer, subject, validity and fingerprint, and rejects it.
-    const card = ui.getByTestId("task-card").first();
-    await card.getByTestId("task-browser").click();
+    await openTaskDetails(ui);
+    await ui.getByTestId("task-browser").click();
     await expect(ui.getByTestId("browser-cert")).toBeVisible({ timeout: 15_000 });
     await expect(ui.getByTestId("browser-cert-details")).toContainText("issuer");
     await expect(ui.getByTestId("browser-cert-details")).toContainText("fingerprint sha256/");

@@ -3,7 +3,7 @@
  "product": "Modbit",
  "edition": "V3.3 EPR v1.1",
  "authority_date": "2026-09-05",
- "generated_on": "2026-11-03",
+ "generated_on": "2026-11-05",
  "generator": "tools/build_graph.py",
  "status_vocabulary": [
   "NOT_STARTED",
@@ -30171,6 +30171,13 @@
    "source": "docs/97_DOSSIER_MAINTENANCE_LOG.md"
   },
   {
+   "id": "DR-PX-2026-11-04-020",
+   "type": "change_record",
+   "title": "Approved: PX-195..197, the desktop's screens rebuilt to the mockup the owner approved, with the Fleet board removed and every capability it offered given a home, AFW-A12, A13, A14 and the clean-room posture unchanged",
+   "status": "APPROVED",
+   "source": "docs/97_DOSSIER_MAINTENANCE_LOG.md"
+  },
+  {
    "id": "REQ-PX-000",
    "type": "requirement",
    "title": "Headless CLI thin client for the task lifecycle",
@@ -32704,6 +32711,45 @@
    "release": "RELEASE_ZERO",
    "source": "docs/62_PRODUCT_EXTENSION_REQUIREMENTS_TASKS_AND_QUALIFICATIONS.md",
    "mandatory_behavior": "The real app, a real Core and a scripted model running a task with tool steps, an edit, a terminal and an approval, in light and dark: the user message is an editor-surface bubble, a step group is one line with no box, the turn footer is transparent until hover or keyboard focus and stays in the tab order and the accessibility tree, the composer has radius 12, the status row is one line at any window width with its full text in the accessible name, the language and support-claim banners are one caption line, the Changes app's explanatory text is caption and muted, and headings are sentence case; the whole desktop suite and axe pass."
+  },
+  {
+   "id": "REQ-PX-195",
+   "type": "requirement",
+   "title": "Agent workspace home: one composer where send creates, starts and opens the task, the Fleet board removed",
+   "disposition": "ADOPT",
+   "subsystem": "desktop",
+   "owner_label": "desktop",
+   "imp": "PX-195",
+   "qual": "QUAL-PX-195",
+   "release": "RELEASE_ZERO",
+   "source": "docs/62_PRODUCT_EXTENSION_REQUIREMENTS_TASKS_AND_QUALIFICATIONS.md",
+   "mandatory_behavior": "The real app, a real Core and a scripted model: a send from home reaches a running conversation in one action, Alt+Enter leaves the task Queued with Start offered, no provider leaves it Queued and says so, a missing repository names itself; none of the removed test ids is present on any screen; every fact of section 5.6 is reachable; the whole desktop suite and axe pass. The mode and model chosen on home reach the Core before the first model request, a refusal leaves the task unstarted and says why with no model call, and the location selector names this machine and says why cloud cannot be chosen."
+  },
+  {
+   "id": "REQ-PX-196",
+   "type": "requirement",
+   "title": "Agent workspace chrome: the agent list's head, navigation, repositories and person's row, the top bar, the task's details and the Settings view",
+   "disposition": "ADOPT",
+   "subsystem": "desktop",
+   "owner_label": "desktop",
+   "imp": "PX-196",
+   "qual": "QUAL-PX-196",
+   "release": "RELEASE_ZERO",
+   "source": "docs/62_PRODUCT_EXTENSION_REQUIREMENTS_TASKS_AND_QUALIFICATIONS.md",
+   "mandatory_behavior": "The real app against a real Core at 1280, 1000 and 900 wide in light and dark: the list reads head, navigation, list, person in that order, list tools show only when asked for or narrowing, the Core's state has its words in the accessibility tree, the details show each fact for the open task, and Approvals lists the Core's attention items; axe passes. Each of the six states is a view holding the Core's class, a row says what its task needs before where it is, and the shortcut help names no board."
+  },
+  {
+   "id": "REQ-PX-197",
+   "type": "requirement",
+   "title": "Agent workspace conversation, composer and apps panel: steps that say what they did, one approval card, the two-row composer, the rebuilt Changes panel",
+   "disposition": "ADOPT",
+   "subsystem": "desktop",
+   "owner_label": "desktop",
+   "imp": "PX-197",
+   "qual": "QUAL-PX-197",
+   "release": "RELEASE_ZERO",
+   "source": "docs/62_PRODUCT_EXTENSION_REQUIREMENTS_TASKS_AND_QUALIFICATIONS.md",
+   "mandatory_behavior": "The real app, a real Core and a scripted model running a task with reads, edits, a terminal and an approval, in light and dark, against the record: one column, one decision surface with the exact intent and no decision control in the transcript, an irreversible effect still asks twice, Escape on a confirmation does not skip the card behind it, the bar under the text with a round send, the commit bar at the panel's foot; the gate's retained mutations fail; the whole desktop suite and axe pass; real screenshots beside the mockup are in the evidence. A step is in the past tense only once it happened, and a task's state that nothing else says stands above the composer with its cause, next action and evidence."
   },
   {
    "id": "PX-000",
@@ -39965,6 +40011,85 @@
    "status_changed_on": "2026-11-03T21:56:46Z"
   },
   {
+   "id": "PX-195",
+   "type": "imp_task",
+   "title": "Agent workspace home: one composer where send creates, starts and opens the task, the Fleet board removed",
+   "requirement": "REQ-PX-195",
+   "qual": "QUAL-PX-195",
+   "subsystem": "desktop",
+   "owner_label": "desktop",
+   "milestone": "M10",
+   "release": "RELEASE_ZERO",
+   "disposition": "ADOPT",
+   "source": "docs/62_PRODUCT_EXTENSION_REQUIREMENTS_TASKS_AND_QUALIFICATIONS.md",
+   "acceptance": "The real app, a real Core and a scripted model: a send from home reaches a running conversation in one action, Alt+Enter leaves the task Queued with Start offered, no provider leaves it Queued and says so, a missing repository names itself; none of the removed test ids is present on any screen; every fact of section 5.6 is reachable; the whole desktop suite and axe pass. The mode and model chosen on home reach the Core before the first model request, a refusal leaves the task unstarted and says why with no model call, and the location selector names this machine and says why cloud cannot be chosen.",
+   "prerequisites": [
+    "PX-194",
+    "DOC-PX-019"
+   ],
+   "related_requirements": [
+    "REQ-EV-0037",
+    "REQ-EV-0143"
+   ],
+   "task_card": "docs/62_PRODUCT_EXTENSION_REQUIREMENTS_TASKS_AND_QUALIFICATIONS.md#px-195",
+   "audit_at_adoption": "DOCUMENTED-ONLY; no product caller present",
+   "status": "REAL_TESTING",
+   "evidence": [],
+   "status_changed_on": "2026-11-04T09:09:31Z"
+  },
+  {
+   "id": "PX-196",
+   "type": "imp_task",
+   "title": "Agent workspace chrome: the agent list's head, navigation, repositories and person's row, the top bar and the task's details",
+   "requirement": "REQ-PX-196",
+   "qual": "QUAL-PX-196",
+   "subsystem": "desktop",
+   "owner_label": "desktop",
+   "milestone": "M10",
+   "release": "RELEASE_ZERO",
+   "disposition": "ADOPT",
+   "source": "docs/62_PRODUCT_EXTENSION_REQUIREMENTS_TASKS_AND_QUALIFICATIONS.md",
+   "acceptance": "The real app against a real Core at 1280, 1000 and 900 wide in light and dark: the list reads head, navigation, list, person in that order, list tools show only when asked for or narrowing, the Core's state has its words in the accessibility tree, the details show each fact for the open task, and Approvals lists the Core's attention items; axe passes. Each of the six states is a view holding the Core's class, a row says what its task needs before where it is, and the shortcut help names no board.",
+   "prerequisites": [
+    "PX-195",
+    "DOC-PX-019"
+   ],
+   "related_requirements": [
+    "REQ-EV-0037",
+    "REQ-EV-0143"
+   ],
+   "task_card": "docs/62_PRODUCT_EXTENSION_REQUIREMENTS_TASKS_AND_QUALIFICATIONS.md#px-196",
+   "audit_at_adoption": "DOCUMENTED-ONLY; no product caller present",
+   "status": "NOT_STARTED",
+   "evidence": []
+  },
+  {
+   "id": "PX-197",
+   "type": "imp_task",
+   "title": "Agent workspace conversation, composer and apps panel: steps that say what they did, one approval card, the two-row composer, the rebuilt Changes panel",
+   "requirement": "REQ-PX-197",
+   "qual": "QUAL-PX-197",
+   "subsystem": "desktop",
+   "owner_label": "desktop",
+   "milestone": "M10",
+   "release": "RELEASE_ZERO",
+   "disposition": "ADOPT",
+   "source": "docs/62_PRODUCT_EXTENSION_REQUIREMENTS_TASKS_AND_QUALIFICATIONS.md",
+   "acceptance": "The real app, a real Core and a scripted model running a task with reads, edits, a terminal and an approval, in light and dark, against the record: one column, one decision surface with the exact intent and no decision control in the transcript, an irreversible effect still asks twice, Escape on a confirmation does not skip the card behind it, the bar under the text with a round send, the commit bar at the panel's foot; the gate's retained mutations fail; the whole desktop suite and axe pass; real screenshots beside the mockup are in the evidence. A step is in the past tense only once it happened, and a task's state that nothing else says stands above the composer with its cause, next action and evidence.",
+   "prerequisites": [
+    "PX-196",
+    "DOC-PX-019"
+   ],
+   "related_requirements": [
+    "REQ-EV-0037",
+    "REQ-EV-0143"
+   ],
+   "task_card": "docs/62_PRODUCT_EXTENSION_REQUIREMENTS_TASKS_AND_QUALIFICATIONS.md#px-197",
+   "audit_at_adoption": "DOCUMENTED-ONLY; no product caller present",
+   "status": "NOT_STARTED",
+   "evidence": []
+  },
+  {
    "id": "QUAL-PX-000",
    "type": "qual_test",
    "requirement": "REQ-PX-000",
@@ -41915,6 +42040,36 @@
    "source": "docs/62_PRODUCT_EXTENSION_REQUIREMENTS_TASKS_AND_QUALIFICATIONS.md"
   },
   {
+   "id": "QUAL-PX-195",
+   "type": "qual_test",
+   "requirement": "REQ-PX-195",
+   "owner_label": "desktop",
+   "title": "The real app, a real Core and a scripted model: a send from home reaches a running conversation in one action, Alt+Enter leaves the task Queued with Start offered, no provider leaves it Queued and says so, a missing repository names itself; none of the removed test ids is present on any screen; every fact of section 5.6 is reachable; the whole desktop suite and axe pass. The mode and model chosen on home reach the Core before the first model request, a refusal leaves the task unstarted and says why with no model call, and the location selector names this machine and says why cloud cannot be chosen.",
+   "failure_proof": "A removed surface that returns, a send that does not start a task with a provider configured, a task started without a provider, a board fact with no home, or a repository trusted without the person naming it fails the spec.",
+   "evidence_class": "real-system or production-equivalent",
+   "source": "docs/62_PRODUCT_EXTENSION_REQUIREMENTS_TASKS_AND_QUALIFICATIONS.md"
+  },
+  {
+   "id": "QUAL-PX-196",
+   "type": "qual_test",
+   "requirement": "REQ-PX-196",
+   "owner_label": "desktop",
+   "title": "The real app against a real Core at 1280, 1000 and 900 wide in light and dark: the list reads head, navigation, list, person in that order, list tools show only when asked for or narrowing, the Core's state has its words in the accessibility tree, the details show each fact for the open task, and Approvals lists the Core's attention items; axe passes. Each of the six states is a view holding the Core's class, a row says what its task needs before where it is, and the shortcut help names no board.",
+   "failure_proof": "A list tool that hides an active filter, a Core state shown by colour alone, details that show another task's facts, or a control with no keyboard route fails the spec.",
+   "evidence_class": "real-system or production-equivalent",
+   "source": "docs/62_PRODUCT_EXTENSION_REQUIREMENTS_TASKS_AND_QUALIFICATIONS.md"
+  },
+  {
+   "id": "QUAL-PX-197",
+   "type": "qual_test",
+   "requirement": "REQ-PX-197",
+   "owner_label": "desktop",
+   "title": "The real app, a real Core and a scripted model running a task with reads, edits, a terminal and an approval, in light and dark, against the record: one column, one decision surface with the exact intent and no decision control in the transcript, an irreversible effect still asks twice, Escape on a confirmation does not skip the card behind it, the bar under the text with a round send, the commit bar at the panel's foot; the gate's retained mutations fail; the whole desktop suite and axe pass; real screenshots beside the mockup are in the evidence. A step is in the past tense only once it happened, and a task's state that nothing else says stands above the composer with its cause, next action and evidence.",
+   "failure_proof": "A second decision surface, an approval without its exact intent, an Escape that denies an effect the person only meant to step back from, a failure that is not in words, or a hunk action with no keyboard route fails the spec.",
+   "evidence_class": "real-system or production-equivalent",
+   "source": "docs/62_PRODUCT_EXTENSION_REQUIREMENTS_TASKS_AND_QUALIFICATIONS.md"
+  },
+  {
    "id": "PX-E2E-000",
    "type": "scenario",
    "kind": "px-e2e",
@@ -43123,6 +43278,27 @@
    "type": "scenario",
    "kind": "px-e2e",
    "title": "Agent workspace density: conversation turns, composer and trays, the one-line status row, banners and the apps panel in the agent workspace language",
+   "source": "docs/62_PRODUCT_EXTENSION_REQUIREMENTS_TASKS_AND_QUALIFICATIONS.md"
+  },
+  {
+   "id": "PX-E2E-195",
+   "type": "scenario",
+   "kind": "px-e2e",
+   "title": "Agent workspace home: one composer where send creates, starts and opens the task, the Fleet board removed",
+   "source": "docs/62_PRODUCT_EXTENSION_REQUIREMENTS_TASKS_AND_QUALIFICATIONS.md"
+  },
+  {
+   "id": "PX-E2E-196",
+   "type": "scenario",
+   "kind": "px-e2e",
+   "title": "Agent workspace chrome: the agent list's head, navigation, repositories and person's row, the top bar and the task's details",
+   "source": "docs/62_PRODUCT_EXTENSION_REQUIREMENTS_TASKS_AND_QUALIFICATIONS.md"
+  },
+  {
+   "id": "PX-E2E-197",
+   "type": "scenario",
+   "kind": "px-e2e",
+   "title": "Agent workspace conversation, composer and apps panel: steps that say what they did, one approval card, the two-row composer, the rebuilt Changes panel",
    "source": "docs/62_PRODUCT_EXTENSION_REQUIREMENTS_TASKS_AND_QUALIFICATIONS.md"
   },
   {
@@ -44535,6 +44711,21 @@
     "artifact:evidence/dossier-px-018/validation.json"
    ],
    "status_changed_on": "2026-11-03T19:03:55Z"
+  },
+  {
+   "id": "DOC-PX-019",
+   "type": "dossier_task",
+   "title": "Product extension stage: Agent workspace screens, PX-195..197",
+   "subsystem": "governance",
+   "source": "docs/97_DOSSIER_MAINTENANCE_LOG.md",
+   "acceptance": "Decision Record, its rows, specification, supersession entries and change record added; implementation audit recorded; full integrity gate passes; the record is accepted by the owner and its status and approval are recorded; no product proof",
+   "status": "COMPLETE",
+   "evidence": [
+    "artifact:evidence/dossier-px-019/tests.log",
+    "commit:d35b956c6f6fb5b5aa48fc062e620d0667d2033a",
+    "artifact:evidence/dossier-px-019/validation.json"
+   ],
+   "status_changed_on": "2026-11-04T09:09:30Z"
   },
   {
    "id": "DR-GOV-2026-10-30-008",
@@ -60296,6 +60487,21 @@
    "type": "refines"
   },
   {
+   "from": "DR-PX-2026-11-04-020",
+   "to": "97_DOSSIER_MAINTENANCE_LOG.md",
+   "type": "specified_by"
+  },
+  {
+   "from": "DR-PX-2026-11-04-020",
+   "to": "65_AGENT_FIRST_WORKSPACE_SPECIFICATION.md",
+   "type": "specified_by"
+  },
+  {
+   "from": "DR-PX-2026-11-04-020",
+   "to": "DR-PX-2026-09-05",
+   "type": "refines"
+  },
+  {
    "from": "REQ-PX-000",
    "to": "desktop",
    "type": "owned_by_req"
@@ -65873,6 +66079,96 @@
   {
    "from": "REQ-PX-194",
    "to": "PX-194",
+   "type": "implemented_by"
+  },
+  {
+   "from": "REQ-PX-195",
+   "to": "desktop",
+   "type": "owned_by_req"
+  },
+  {
+   "from": "REQ-PX-195",
+   "to": "QUAL-PX-195",
+   "type": "qualified_by"
+  },
+  {
+   "from": "REQ-PX-195",
+   "to": "62_PRODUCT_EXTENSION_REQUIREMENTS_TASKS_AND_QUALIFICATIONS.md",
+   "type": "specified_by"
+  },
+  {
+   "from": "REQ-PX-195",
+   "to": "DR-PX-2026-09-05",
+   "type": "authorized_by"
+  },
+  {
+   "from": "REQ-PX-195",
+   "to": "DR-PX-2026-11-04-020",
+   "type": "authorized_by"
+  },
+  {
+   "from": "REQ-PX-195",
+   "to": "PX-195",
+   "type": "implemented_by"
+  },
+  {
+   "from": "REQ-PX-196",
+   "to": "desktop",
+   "type": "owned_by_req"
+  },
+  {
+   "from": "REQ-PX-196",
+   "to": "QUAL-PX-196",
+   "type": "qualified_by"
+  },
+  {
+   "from": "REQ-PX-196",
+   "to": "62_PRODUCT_EXTENSION_REQUIREMENTS_TASKS_AND_QUALIFICATIONS.md",
+   "type": "specified_by"
+  },
+  {
+   "from": "REQ-PX-196",
+   "to": "DR-PX-2026-09-05",
+   "type": "authorized_by"
+  },
+  {
+   "from": "REQ-PX-196",
+   "to": "DR-PX-2026-11-04-020",
+   "type": "authorized_by"
+  },
+  {
+   "from": "REQ-PX-196",
+   "to": "PX-196",
+   "type": "implemented_by"
+  },
+  {
+   "from": "REQ-PX-197",
+   "to": "desktop",
+   "type": "owned_by_req"
+  },
+  {
+   "from": "REQ-PX-197",
+   "to": "QUAL-PX-197",
+   "type": "qualified_by"
+  },
+  {
+   "from": "REQ-PX-197",
+   "to": "62_PRODUCT_EXTENSION_REQUIREMENTS_TASKS_AND_QUALIFICATIONS.md",
+   "type": "specified_by"
+  },
+  {
+   "from": "REQ-PX-197",
+   "to": "DR-PX-2026-09-05",
+   "type": "authorized_by"
+  },
+  {
+   "from": "REQ-PX-197",
+   "to": "DR-PX-2026-11-04-020",
+   "type": "authorized_by"
+  },
+  {
+   "from": "REQ-PX-197",
+   "to": "PX-197",
    "type": "implemented_by"
   },
   {
@@ -76936,6 +77232,186 @@
    "type": "proves"
   },
   {
+   "from": "PX-195",
+   "to": "DR-PX-2026-09-05",
+   "type": "authorized_by"
+  },
+  {
+   "from": "PX-195",
+   "to": "DR-PX-2026-11-04-020",
+   "type": "authorized_by"
+  },
+  {
+   "from": "PX-195",
+   "to": "desktop",
+   "type": "owned_by"
+  },
+  {
+   "from": "PX-195",
+   "to": "M10",
+   "type": "scheduled_in"
+  },
+  {
+   "from": "PX-195",
+   "to": "QUAL-PX-195",
+   "type": "proven_by"
+  },
+  {
+   "from": "PX-195",
+   "to": "62_PRODUCT_EXTENSION_REQUIREMENTS_TASKS_AND_QUALIFICATIONS.md",
+   "type": "specified_by"
+  },
+  {
+   "from": "PX-195",
+   "to": "PX-194",
+   "type": "after"
+  },
+  {
+   "from": "PX-195",
+   "to": "DOC-PX-019",
+   "type": "after"
+  },
+  {
+   "from": "REQ-PX-195",
+   "to": "REQ-EV-0037",
+   "type": "extends"
+  },
+  {
+   "from": "REQ-PX-195",
+   "to": "REQ-EV-0143",
+   "type": "extends"
+  },
+  {
+   "from": "PX-195",
+   "to": "PX-E2E-195",
+   "type": "proven_by"
+  },
+  {
+   "from": "PX-E2E-195",
+   "to": "M10",
+   "type": "proves"
+  },
+  {
+   "from": "PX-196",
+   "to": "DR-PX-2026-09-05",
+   "type": "authorized_by"
+  },
+  {
+   "from": "PX-196",
+   "to": "DR-PX-2026-11-04-020",
+   "type": "authorized_by"
+  },
+  {
+   "from": "PX-196",
+   "to": "desktop",
+   "type": "owned_by"
+  },
+  {
+   "from": "PX-196",
+   "to": "M10",
+   "type": "scheduled_in"
+  },
+  {
+   "from": "PX-196",
+   "to": "QUAL-PX-196",
+   "type": "proven_by"
+  },
+  {
+   "from": "PX-196",
+   "to": "62_PRODUCT_EXTENSION_REQUIREMENTS_TASKS_AND_QUALIFICATIONS.md",
+   "type": "specified_by"
+  },
+  {
+   "from": "PX-196",
+   "to": "PX-195",
+   "type": "after"
+  },
+  {
+   "from": "PX-196",
+   "to": "DOC-PX-019",
+   "type": "after"
+  },
+  {
+   "from": "REQ-PX-196",
+   "to": "REQ-EV-0037",
+   "type": "extends"
+  },
+  {
+   "from": "REQ-PX-196",
+   "to": "REQ-EV-0143",
+   "type": "extends"
+  },
+  {
+   "from": "PX-196",
+   "to": "PX-E2E-196",
+   "type": "proven_by"
+  },
+  {
+   "from": "PX-E2E-196",
+   "to": "M10",
+   "type": "proves"
+  },
+  {
+   "from": "PX-197",
+   "to": "DR-PX-2026-09-05",
+   "type": "authorized_by"
+  },
+  {
+   "from": "PX-197",
+   "to": "DR-PX-2026-11-04-020",
+   "type": "authorized_by"
+  },
+  {
+   "from": "PX-197",
+   "to": "desktop",
+   "type": "owned_by"
+  },
+  {
+   "from": "PX-197",
+   "to": "M10",
+   "type": "scheduled_in"
+  },
+  {
+   "from": "PX-197",
+   "to": "QUAL-PX-197",
+   "type": "proven_by"
+  },
+  {
+   "from": "PX-197",
+   "to": "62_PRODUCT_EXTENSION_REQUIREMENTS_TASKS_AND_QUALIFICATIONS.md",
+   "type": "specified_by"
+  },
+  {
+   "from": "PX-197",
+   "to": "PX-196",
+   "type": "after"
+  },
+  {
+   "from": "PX-197",
+   "to": "DOC-PX-019",
+   "type": "after"
+  },
+  {
+   "from": "REQ-PX-197",
+   "to": "REQ-EV-0037",
+   "type": "extends"
+  },
+  {
+   "from": "REQ-PX-197",
+   "to": "REQ-EV-0143",
+   "type": "extends"
+  },
+  {
+   "from": "PX-197",
+   "to": "PX-E2E-197",
+   "type": "proven_by"
+  },
+  {
+   "from": "PX-E2E-197",
+   "to": "M10",
+   "type": "proves"
+  },
+  {
    "from": "domain-events",
    "to": "38_EXECUTION_POLICY_CONTRACTS_AND_ALGORITHMS.md",
    "type": "specified_by"
@@ -77993,6 +78469,31 @@
   {
    "from": "DOC-PX-018",
    "to": "DR-PX-2026-11-03-019",
+   "type": "authorized_by"
+  },
+  {
+   "from": "DOC-PX-019",
+   "to": "DOC-GOV-007",
+   "type": "after"
+  },
+  {
+   "from": "DOC-PX-019",
+   "to": "governance",
+   "type": "owned_by"
+  },
+  {
+   "from": "DOC-PX-019",
+   "to": "97_DOSSIER_MAINTENANCE_LOG.md",
+   "type": "specified_by"
+  },
+  {
+   "from": "DOC-PX-019",
+   "to": "65_AGENT_FIRST_WORKSPACE_SPECIFICATION.md",
+   "type": "specified_by"
+  },
+  {
+   "from": "DOC-PX-019",
+   "to": "DR-PX-2026-11-04-020",
    "type": "authorized_by"
   },
   {
@@ -82867,6 +83368,21 @@
   },
   {
    "from": "RELEASE_ZERO",
+   "to": "PX-195",
+   "type": "includes"
+  },
+  {
+   "from": "RELEASE_ZERO",
+   "to": "PX-196",
+   "type": "includes"
+  },
+  {
+   "from": "RELEASE_ZERO",
+   "to": "PX-197",
+   "type": "includes"
+  },
+  {
+   "from": "RELEASE_ZERO",
    "to": "EPR-GATE-A",
    "type": "requires_gate"
   },
@@ -82900,6 +83416,5 @@
    "to": "EPR-GATE-G",
    "type": "requires_gate"
   }
- ],
- "updated_on": "2026-11-03T21:56:46Z"
+ ]
 }

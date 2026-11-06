@@ -9,6 +9,7 @@ import { expect, test, type Page } from "@playwright/test";
 import { mkdtempSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
+import { expectTaskState, runTask } from "./support/new-task.ts";
 import { closeApp, launch, makeRepo, scriptedModel, setContentSize } from "./support/ui-harness.ts";
 
 const SCRIPT = [
@@ -18,16 +19,10 @@ const SCRIPT = [
   { calls: [{ name: "task.complete", args: { summary: "edited", self_review: { findings: [] } } }] },
 ];
 
-async function runToReview(page: Page, goal: string, repo: string, nth: number): Promise<string> {
-  await page.getByTestId("goal").fill(goal);
-  await page.getByTestId("workspace").fill(repo);
-  await page.getByTestId("run").click();
-  const card = page.getByTestId("task-card").filter({ hasText: goal });
-  await expect(card).toHaveCount(1);
-  const taskId = (await card.getAttribute("data-task-id"))!;
-  await card.getByTestId("task-start").click();
-  await expect(page.getByTestId("column-readyForReview").getByTestId("task-card")).toHaveCount(nth, { timeout: 60_000 });
-  // The first result opens the Review itself; leave it for the board.
+async function runToReview(page: Page, goal: string, repo: string): Promise<string> {
+  const taskId = await runTask(page, goal, repo);
+  await expectTaskState(page, taskId, "ReadyForReview");
+  // The first result opens the Review itself; leave it for the conversation.
   if ((await page.getByTestId("review").count()) > 0) await page.keyboard.press("Escape");
   await expect(page.getByTestId("review")).toHaveCount(0);
   return taskId;
@@ -44,8 +39,8 @@ test("the panel keeps its own tab for each task, by the task's id, across select
   let { app, page } = await launch(dataDir, { env: { MODBIT_OPENAI_BASE_URL: url } });
   try {
     await setContentSize(app, page, 1280, 800);
-    const a = await runToReview(page, "Edit the notes A", repoA, 1);
-    const b = await runToReview(page, "Edit the notes B", repoB, 2);
+    const a = await runToReview(page, "Edit the notes A", repoA);
+    const b = await runToReview(page, "Edit the notes B", repoB);
     expect(a).not.toBe(b);
 
     // Task A: Terminal. Task B: Evidence.
@@ -76,7 +71,8 @@ test("the panel keeps its own tab for each task, by the task's id, across select
     await closeApp(app);
     ({ app, page } = await launch(dataDir, { env: { MODBIT_OPENAI_BASE_URL: url } }));
     await setContentSize(app, page, 1280, 800);
-    await expect(page.getByTestId("column-readyForReview").getByTestId("task-card")).toHaveCount(2, { timeout: 30_000 });
+    await expectTaskState(page, a, "ReadyForReview", 30_000);
+    await expectTaskState(page, b, "ReadyForReview", 30_000);
     await row(page, b).click();
     await expect(page.getByTestId("apps-panel")).toHaveAttribute("data-task-id", b);
     await expect(page.getByTestId("tab-evidence")).toHaveAttribute("aria-selected", "true");

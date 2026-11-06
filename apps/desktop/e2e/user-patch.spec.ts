@@ -15,6 +15,7 @@ import { createServer, type Server } from "node:http";
 import { tmpdir } from "node:os";
 import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
+import { expectTaskState, openTask, queueTask } from "./support/new-task.ts";
 import { closeApp } from "./support/close-app.ts";
 
 const appDir = resolve(dirname(fileURLToPath(import.meta.url)), "..");
@@ -85,13 +86,10 @@ test("inline patch: a one-hunk user edit lands through the Core's change transac
   const env = { MODBIT_OPENAI_BASE_URL: url };
   try {
     const { app, page } = await launch(dataDir, env);
-    await page.getByTestId("goal").fill("Edit the notes");
-    await page.getByTestId("workspace").fill(repo);
-    await page.getByTestId("run").click();
-    const card = page.getByTestId("task-card").first();
-    await expect(card.getByTestId("task-state")).toHaveText("Queued");
-    await card.getByTestId("task-start").click();
-    await expect(page.getByTestId("column-readyForReview").getByTestId("task-card")).toHaveCount(1, { timeout: 60_000 });
+    const taskId = await queueTask(page, "Edit the notes", repo);
+    await expectTaskState(page, taskId, "Queued");
+    await page.getByTestId("conv-start").click();
+    await expectTaskState(page, taskId, "ReadyForReview", 60_000);
     // The first result opens the Review itself (docs/39 step 5).
     await expect(page.getByTestId("review")).toBeVisible({ timeout: 15_000 });
     await expect(page.getByTestId("review-meta")).toContainText("ReadyForReview");
@@ -116,11 +114,10 @@ test("inline patch: a one-hunk user edit lands through the Core's change transac
     // Protected: `.env` is not in the candidate, so the review offers no edit
     // for it; a client that names it anyway (through the same preload API the
     // panel uses) is refused by the Core's path policy, not by the renderer.
-    const ids = await page.evaluate(async () => {
+    const ids = await page.evaluate(async (taskId) => {
       const s = await window.modbit.localState();
-      const t = document.querySelector('[data-testid="task-card"]')?.getAttribute("data-task-id");
-      return { sessionId: s.sessionId ?? "", taskId: t ?? "" };
-    });
+      return { sessionId: s.sessionId ?? "", taskId };
+    }, taskId);
     expect(ids.sessionId).not.toBe("");
     expect(ids.taskId).not.toBe("");
     const protectedAttempt = await page.evaluate(
@@ -176,6 +173,7 @@ test("inline patch: a one-hunk user edit lands through the Core's change transac
     expect(readFileSync(join(repo, "notes.txt"), "utf8")).toBe(candidate.replace("line 7\n", "line 7 edited by hand\n").replace("line 9\n", "line 9 from the shell\n"));
     // After a reload the review is re-read from the Core: the new revision, no panel, no draft.
     await page.getByTestId("review-close").click();
+    await openTask(page, taskId);
     await page.getByTestId("task-review").click();
     await expect(page.getByTestId("review-meta")).toContainText(`workspace revision ${revisionBefore + 2}`);
     await expect(page.getByTestId("patch-panel")).toHaveCount(0);

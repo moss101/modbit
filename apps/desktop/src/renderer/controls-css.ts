@@ -8,11 +8,35 @@
 export const controlsCss = `
 /* The one tray host sits directly above the composer in the conversation; a tall approval deck scrolls inside it instead of squeezing the transcript out. */
 .conv > .mb-tray-host { flex: none; max-height: 45%; overflow-y: auto; padding-top: var(--mb-space-1); }
-.appr { display: flex; flex-direction: column; gap: var(--mb-space-2); outline: none; }
+/* The docked approval: one card the width of the composer, on the editor surface, with the 3:1 edge, its command in mono. */
+.conv > .mb-tray-host { width: calc(100% - 2 * var(--mb-space-5)); max-width: 640px; margin-inline: auto; padding: 0; box-sizing: border-box; flex: none; }
+.mb-tray[data-tray-id="approvals"] { background: var(--color-panel); border-color: var(--mb-color-border-control); padding: 0; overflow: hidden; }
+.mb-tray[data-tray-id="approvals"] .mb-tray-head { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); }
+.mb-tray[data-tray-id="approvals"] .mb-tray-body { margin: 0; }
+.appr { display: flex; flex-direction: column; gap: 0; outline: none; font-size: var(--mb-type-chrome-size); }
+.appr > * { padding-inline: 12px; }
+.appr-title.appr-title { padding-block: 8px; font-size: var(--mb-type-chrome-size); font-weight: 400; border-bottom: 1px solid var(--color-tab-border); align-items: center; }
+.appr-intent.appr-intent { display: block; padding-block: 8px; }
+.appr-intent.appr-intent dt { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); }
+.appr-command.appr-command { padding: 0; background: transparent; border: 0; }
+.appr-intent dd + dt + dd, .appr-intent [data-testid="approval-effect"] { color: var(--mb-color-text-muted); font-size: var(--mb-type-caption-size); }
+.appr-args { font-size: var(--mb-type-caption-size); color: var(--mb-color-text-muted); }
+.appr-why.appr-why { font-size: var(--mb-type-caption-size); color: var(--mb-color-text-muted); }
+.appr-fine.appr-fine { padding-bottom: 8px; }
+.appr-foot.appr-foot { padding-block: 8px; border-top: 1px solid var(--color-tab-border); }
+.appr-why.appr-why, .appr-fine.appr-fine { display: inline; padding-bottom: 0; }
+.appr-foot + .appr-fine.appr-fine { display: block; padding-bottom: 8px; }
+.appr-args.appr-args { padding-bottom: 2px; }
+.appr { container-type: inline-size; }
+.appr-foot.appr-foot { flex-wrap: nowrap; }
+.appr-foot .appr-prefix { flex: 0 1 150px; min-width: 60px; }
+@container (max-width: 620px) { .appr-foot kbd, .appr-foot .mb-kbd { display: none; } }
+.appr-foot label { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); }
+.appr-foot .mb-btn { white-space: nowrap; }
 .appr:focus-visible { outline: 2px solid var(--mb-color-accent); outline-offset: 2px; border-radius: var(--radius-md); }
-.appr-deckbar { display: flex; align-items: center; gap: var(--mb-space-2); font-size: var(--mb-type-caption-size); color: var(--mb-color-text-muted); }
+.appr-deckbar { padding-block: 6px; display: flex; align-items: center; gap: var(--mb-space-2); font-size: var(--mb-type-caption-size); color: var(--mb-color-text-muted); }
 .appr-deckbar .appr-spacer { flex: 1 1 auto; }
-.appr-title { margin: 0; font-size: var(--mb-type-body-size); display: flex; flex-wrap: wrap; align-items: baseline; gap: var(--mb-space-2); }
+.appr-title { margin: 0; display: flex; flex-wrap: wrap; align-items: baseline; gap: var(--mb-space-2); }
 .appr-title code { font: var(--mb-type-mono-size)/var(--mb-type-mono-line) var(--mb-font-mono); color: var(--mb-color-text-muted); }
 .appr-intent { margin: 0; display: grid; grid-template-columns: max-content minmax(0, 1fr); gap: var(--mb-space-0_5) var(--mb-space-3); font-size: var(--mb-type-chrome-size); }
 .appr-intent dt { color: var(--mb-color-text-muted); }

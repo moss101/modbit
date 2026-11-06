@@ -34,15 +34,15 @@ test("PX-063/064/068: the project, worktree and apply-back states render from fi
     const status = await page.evaluate(() => window.modbit.coreStatus());
     expect((status as { state: string }).state, "no Core is connected to this page").not.toBe("connected");
 
-    // The Projects group is separate from the repositories and holds its tasks and its New project row.
+    // The Projects group is separate from the repositories and holds its tasks; its heading has the New project button.
     const list = page.getByTestId("gallery-projects-list");
     await expect(list.locator('[data-testid="agents-section"][data-section="projects"]')).toBeVisible();
     await expect(list.getByTestId("project-row")).toHaveCount(3);
-    await expect(list.getByTestId("project-new-row")).toBeVisible();
+    await expect(list.getByTestId("agents-new-project")).toBeVisible();
     await expect(list.getByTestId("project-row").first().getByTestId("project-rollup")).toContainText("3 tasks · 1 needs attention");
     await expect(list.getByTestId("agents-note")).toContainText("A draft cannot join a project yet.");
     // Under the Project grouping the live projects (one empty) and the tasks of no project are the sections.
-    await expect(page.getByTestId("gallery-projects-grouped").getByTestId("agents-section")).toHaveCount(3);
+    await expect(page.getByTestId("gallery-projects-grouped").locator('[data-testid="agents-section"]:not([data-section="projects"])')).toHaveCount(3);
     // A project page: counts by class in words, the pull request and CI lines only where the log holds them.
     const page1 = page.getByTestId("gallery-project-page");
     await expect(page1.getByTestId("project-rollup-words")).toContainText("3 tasks");
