@@ -2,12 +2,12 @@
   "product": "Modbit",
   "edition": "V3.3 EPR v1.1",
   "authority_date": "2026-09-05",
-  "generated_on": "2026-11-05",
+  "generated_on": "2026-11-06",
   "hash_algorithm": "sha256",
   "scope_rule": "docs/*.md, root *.md except MANIFEST.md, docs/decisions/*.md, graph JSON/Markdown, tools/*.py, evidence payloads; manifests exclude themselves and transient caches",
   "counts": {
     "docs": 97,
-    "root_and_tooling": 1969,
+    "root_and_tooling": 1974,
     "docs_bytes": 2336191
   },
   "sections": [
@@ -3255,8 +3255,13 @@
     },
     {
       "path": "evidence/m10/PX-195/TASK_CARD.md",
-      "bytes": 4407,
-      "sha256": "37c628b1c1e2fbe34a5a4342e25f98ecdee634f286f8f6a1c9b831e6d875f736"
+      "bytes": 5317,
+      "sha256": "25a5c583ec352b88a6f6c48208d4ed33717c2144607d7a3349901ae54510b6bc"
+    },
+    {
+      "path": "evidence/m10/PX-195/after/home-dark.png",
+      "bytes": 81434,
+      "sha256": "86af9e849a13af2310fad83c72aa6e1d2d0063b58d06458b29d54e537d7c4e5f"
     },
     {
       "path": "evidence/m10/PX-195/after/home-light.png",
@@ -3279,24 +3284,34 @@
       "sha256": "61ef942b6b55df5313bd6561eb48b0f778554939ab767c078c558acd223a896f"
     },
     {
+      "path": "evidence/m10/PX-195/ci-run-41983983308.json",
+      "bytes": 1548,
+      "sha256": "c78dbff9a5208db1bbc762886439d1719d198a7a74d3808fb5fee510778dbf9c"
+    },
+    {
       "path": "evidence/m10/PX-195/desktop-e2e-full.log",
       "bytes": 84782,
       "sha256": "4b7078ae19804572b2bd1be978517a23d19199384740a3e1759a1c7e978a650c"
     },
     {
       "path": "evidence/m10/PX-195/evidence.json",
-      "bytes": 3890,
-      "sha256": "8e30b6c5a1a9d3a3bb33dc825883ced6e473ee6b295212a6bea15a851f704ea0"
+      "bytes": 4827,
+      "sha256": "17595105101d8c14a53df269fff6e384c11f8c577e361005a124c958f6464092"
     },
     {
       "path": "evidence/m10/PX-196/TASK_CARD.md",
-      "bytes": 4358,
-      "sha256": "3159a4e0c39a8c6597b6fed77f98be31cf863c7ef52041ff91ffb024a75fe913"
+      "bytes": 5268,
+      "sha256": "bd5425e4053b3d5d5e5adabf8a526c7cb91fec757e947e521fea762133203954"
     },
     {
       "path": "evidence/m10/PX-196/after/list-attention-view.png",
       "bytes": 188320,
       "sha256": "d49a8994dd61763c39c064a808050a1d8e1d5eb51ec6b667393129f0c27d8942"
+    },
+    {
+      "path": "evidence/m10/PX-196/after/list-dark-1000.png",
+      "bytes": 193230,
+      "sha256": "d57c7e9c73758f4df9b48c45e70ce576526427b09a9a6496aa55997f4a12d91b"
     },
     {
       "path": "evidence/m10/PX-196/after/list-state-views-row-facts.png",
@@ -3319,6 +3334,11 @@
       "sha256": "5997bb454ab6d1672f0dc04ff7c0d978ec47e6fbc9753a4a9d94504037343b9c"
     },
     {
+      "path": "evidence/m10/PX-196/ci-run-41983983308.json",
+      "bytes": 1548,
+      "sha256": "c78dbff9a5208db1bbc762886439d1719d198a7a74d3808fb5fee510778dbf9c"
+    },
+    {
       "path": "evidence/m10/PX-196/desktop-e2e-full-after-section-5-9.log",
       "bytes": 461706,
       "sha256": "86ce7cae06b9f28eb02f28ef6505ce15425095a5e22b167604815102d7d6264a"
@@ -3330,13 +3350,13 @@
     },
     {
       "path": "evidence/m10/PX-196/evidence.json",
-      "bytes": 3893,
-      "sha256": "5b31d8a4660165134f82a7004d78b0848000f547dfebac60747d8034d8a6c03e"
+      "bytes": 4830,
+      "sha256": "6a223ad3b5e5da4cadc2d9fd8e4a36986abdec2c75687eaaa686d2141bf2c8aa"
     },
     {
       "path": "evidence/m10/PX-197/TASK_CARD.md",
-      "bytes": 4405,
-      "sha256": "4f05349fd315a47b12f5ff853ad5c4b9a550ecec4b04822324279a2a11244af7"
+      "bytes": 5315,
+      "sha256": "8fd2c93582b50609e2eec8fea4be06f3396d9cfcf9a79c30b745b8a318003d49"
     },
     {
       "path": "evidence/m10/PX-197/after/conv-light.png",
@@ -3364,9 +3384,14 @@
       "sha256": "94f62cad82508c443ac3734bc09fe346bc44fb5f2d151dca31c7fae57e128412"
     },
     {
+      "path": "evidence/m10/PX-197/ci-run-41983983308.json",
+      "bytes": 1548,
+      "sha256": "c78dbff9a5208db1bbc762886439d1719d198a7a74d3808fb5fee510778dbf9c"
+    },
+    {
       "path": "evidence/m10/PX-197/evidence.json",
-      "bytes": 3942,
-      "sha256": "a276bd70210875c91e92bbe17b59828ca83f585dad09972802850d2613517d25"
+      "bytes": 4879,
+      "sha256": "f96a11e2affd29a6de999a7b29a4306b2b15c598d33c112891bccf92fc1fefc9"
     },
     {
       "path": "evidence/m2/IMP-EV-0011/TASK_CARD.md",
@@ -10711,12 +10736,12 @@
     {
       "path": "graph/PROJECT_GRAPH.md",
       "bytes": 47138,
-      "sha256": "050d645891a5362ea6b48caeee28a58f42426da052f2a98658853b6932007222"
+      "sha256": "33a0d2f3269a2a314b5fbc06ddc0e0fabde6426a64d91a42367130e239f73068"
     },
     {
       "path": "graph/project-graph.json",
-      "bytes": 2511868,
-      "sha256": "c5f7820d592ec7c29cf6bce5daa4fe917750fbd3df066609ae60f0eaa3b270b2"
+      "bytes": 2512431,
+      "sha256": "7107e00d8111e02ff1e98e300215990813207e8ef57a2574f815f86a3030ea0b"
     },
     {
       "path": "tools/build_graph.py",
