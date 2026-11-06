@@ -40033,9 +40033,14 @@
    ],
    "task_card": "docs/62_PRODUCT_EXTENSION_REQUIREMENTS_TASKS_AND_QUALIFICATIONS.md#px-195",
    "audit_at_adoption": "DOCUMENTED-ONLY; no product caller present",
-   "status": "REAL_TESTING",
-   "evidence": [],
-   "status_changed_on": "2026-11-04T09:09:31Z"
+   "status": "COMPLETE",
+   "evidence": [
+    "run:41983983308",
+    "commit:ae3315d7",
+    "artifact:evidence/m10/PX-195/evidence.json",
+    "artifact:evidence/m10/PX-195/ci-run-41983983308.json"
+   ],
+   "status_changed_on": "2026-11-06T15:01:19Z"
   },
   {
    "id": "PX-196",
@@ -40060,8 +40065,14 @@
    ],
    "task_card": "docs/62_PRODUCT_EXTENSION_REQUIREMENTS_TASKS_AND_QUALIFICATIONS.md#px-196",
    "audit_at_adoption": "DOCUMENTED-ONLY; no product caller present",
-   "status": "NOT_STARTED",
-   "evidence": []
+   "status": "COMPLETE",
+   "evidence": [
+    "run:41983983308",
+    "commit:ae3315d7",
+    "artifact:evidence/m10/PX-196/evidence.json",
+    "artifact:evidence/m10/PX-196/ci-run-41983983308.json"
+   ],
+   "status_changed_on": "2026-11-06T15:01:19Z"
   },
   {
    "id": "PX-197",
@@ -40086,8 +40097,14 @@
    ],
    "task_card": "docs/62_PRODUCT_EXTENSION_REQUIREMENTS_TASKS_AND_QUALIFICATIONS.md#px-197",
    "audit_at_adoption": "DOCUMENTED-ONLY; no product caller present",
-   "status": "NOT_STARTED",
-   "evidence": []
+   "status": "COMPLETE",
+   "evidence": [
+    "run:41983983308",
+    "commit:ae3315d7",
+    "artifact:evidence/m10/PX-197/evidence.json",
+    "artifact:evidence/m10/PX-197/ci-run-41983983308.json"
+   ],
+   "status_changed_on": "2026-11-06T15:01:20Z"
   },
   {
    "id": "QUAL-PX-000",
