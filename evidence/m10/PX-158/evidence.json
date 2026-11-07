@@ -1,0 +1,14 @@
+{
+ "task": "PX-158",
+ "requirements": ["REQ-PX-158", "QUAL-PX-158"],
+ "scenarios": ["QUAL-PX-158", "PX-E2E-158"],
+ "tests": [
+  "services/modbit-core/tests/px_158_image_tokens.rs::qual_px_158_frames_reach_the_compaction_threshold_where_reported_usage_does",
+  "services/modbit-core/tests/px_158_image_tokens.rs::qual_px_158_a_text_only_transcript_is_estimated_as_before",
+  "services/modbit-core/src/runtime.rs::image_tokens_follow_the_size_the_result_named",
+  "services/modbit-core/src/runtime.rs::many_frames_reach_a_threshold_their_captions_never_would"
+ ],
+ "proof": "Local run on base 9915c074. Real modbit-core, store, gateway HTTP/SSE client, Media Pipeline (fs.read of real 1280x800 and 1920x1080 PNGs sent as image_url), prompt compiler, calibrated MODEL_WINDOW trigger (24000-token catalog window) and compaction ladder, against a scripted OpenAI-compatible server that reports usage.prompt_tokens computed from the received body (text at four characters a token plus three a message, images by OpenAI's published high-detail tile rule). Every calibrated request estimate after the first is within window/50 (480) of the reported usage; the first CompactionStarted fires where the provider's transcript count crosses the soft threshold (1280x800: same request; 1920x1080: one request early, 362 tokens short, inside the margin); captions alone stay under the threshold even at the 3x calibration bound; after the epoch every image follows its own tool result and call. The text-only control triggers where the provider's count crosses and, under the pre-PX-158 estimator, with identical figures. mutation-check.txt: the trigger site counting a frame as its caption, and the pre-PX-158 estimator, both fail the frames test.",
+ "limitations": "Scripted provider applying a published rule, not a live tokenizer; no live leg. The Core charges one image rule (about w*h/750) for every provider, with no per-provider rule or detail class as the row's scope names; the calibration absorbs the difference at the two sizes tested, other sizes or mixed sizes were not tested. The margin window/50 is read from compaction_model::from_window; the dossier names none. The first, uncalibrated request is excluded from the margin check. Frames reach the model through fs.read of PNGs, not computer-use observations; only the OpenAI-compatible adapter is exercised; only the soft (asynchronous) trigger path is taken. No CI run yet.",
+ "runs": []
+}

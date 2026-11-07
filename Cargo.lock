@@ -2352,6 +2352,7 @@ dependencies = [
  "modbit-tools",
  "modbit-verification",
  "modbit-workspace",
+ "png",
  "prost",
  "prost-types",
  "rand 0.10.2",
