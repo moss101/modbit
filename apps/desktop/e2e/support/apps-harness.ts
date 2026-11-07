@@ -116,6 +116,8 @@ export async function readTerminal(page: Page, a: { sessionId: string; taskId: s
     const finished = new Promise<void>((r) => (done = r));
     let acked = BigInt(after);
     let maxInFlight = 0n;
+    /** Each frame must start where the previous one ended: a gap or an overlap is the stream's fault, reported as such. */
+    const breaks: string[] = [];
     const queue: { attachId: string; cursor: string; data: Uint8Array; kind: string }[] = [];
     const off = window.modbit.onTerminalFrame((f) => {
       if (f.kind === "output") queue.push({ attachId: f.attachId, cursor: f.cursor, data: f.data, kind: f.kind });
@@ -130,6 +132,7 @@ export async function readTerminal(page: Page, a: { sessionId: string; taskId: s
           const f = queue.shift()!;
           if (f.attachId !== attachId) continue;
           const at = BigInt(f.cursor);
+          if (at !== acked) breaks.push(`frame at cursor ${at} after the stream reached ${acked}`);
           chunks.push({ cursor: at, data: f.data });
           const end = at + BigInt(f.data.length);
           if (end - acked > maxInFlight) maxInFlight = end - acked;
@@ -150,6 +153,9 @@ export async function readTerminal(page: Page, a: { sessionId: string; taskId: s
     await window.modbit.terminalDetach(attachId);
     const all: number[] = [];
     for (const c of chunks) for (const b of c.data) all.push(b);
-    return { bytes: all, head: head.toString(), maxInFlight: maxInFlight.toString(), window: att.windowBytes };
-  }, a).then((r) => ({ bytes: r.bytes, head: r.head, maxInFlight: Number(r.maxInFlight), window: r.window }));
+    return { bytes: all, head: head.toString(), maxInFlight: maxInFlight.toString(), window: att.windowBytes, breaks };
+  }, a).then((r) => {
+    if (r.breaks.length) throw new Error(`the terminal stream was not contiguous from ${a.after}: ${r.breaks.slice(0, 5).join("; ")}`);
+    return { bytes: r.bytes, head: r.head, maxInFlight: Number(r.maxInFlight), window: r.window };
+  });
 }
