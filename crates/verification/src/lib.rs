@@ -15,6 +15,7 @@ pub mod adversarial;
 pub mod ci;
 pub mod engine;
 pub mod gate;
+pub mod gui;
 pub mod invariants;
 pub mod plan;
 pub mod report;

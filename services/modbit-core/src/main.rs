@@ -54,6 +54,7 @@ mod external_diagnostics;
 mod forge;
 mod gate;
 mod git_state;
+mod gui_evidence;
 mod handoff;
 mod hooks;
 mod hunks;
