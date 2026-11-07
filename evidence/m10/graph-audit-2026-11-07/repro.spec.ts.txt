@@ -1,0 +1,74 @@
+import { test, expect } from "@playwright/test";
+import { mkdtempSync, writeFileSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
+import { closeApp, launch, makeRepo, setContentSize } from "./support/ui-harness.ts";
+import { sequencedModel } from "./support/composer-harness.ts";
+import { Gate } from "./support/stream-model.ts";
+import { agentRow, toNewTask } from "./support/new-task.ts";
+const OUT = "/private/tmp/claude-501/-Users-mohsin-projects-modbit/5259dee3-ce69-40d7-96a7-c7cfe8d0e8af/scratchpad/graph-repro.log";
+const log = (s: string) => writeFileSync(OUT, s + "\n", { flag: "a" });
+const details = async (page: any) => {
+  await page.getByTestId("task-details-toggle").click();
+  await page.waitForTimeout(300);
+  const t = await page.locator(".task-facts").innerText();
+  return t.replace(/\n/g, " | ");
+};
+test("escape on a card with Task details open", async () => {
+  test.setTimeout(180_000);
+  const repo = makeRepo(mkdtempSync(join(tmpdir(), "modbit-r-")));
+  const hold = new Gate();
+  const model = await sequencedModel([
+    { parts: ["Cleaning.", { call: { name: "shell.exec", args: { argv: ["git", "clean", "-fd"] } } }] },
+    async () => { await hold.opened; return { parts: ["Late."] }; },
+  ]);
+  const { app, page } = await launch(mkdtempSync(join(tmpdir(), "modbit-rd-")), { env: { MODBIT_OPENAI_BASE_URL: model.url } });
+  try {
+    await setContentSize(app, page, 1440, 900);
+    await toNewTask(page);
+    await page.getByTestId("goal").fill("Clean the build output");
+    await page.getByTestId("workspace").fill(repo);
+    await page.getByTestId("run").click();
+    await expect(page.getByTestId("approval-card")).toBeVisible({ timeout: 60_000 });
+    log("T1 before: card=" + (await page.getByTestId("approval-card").count()));
+    await page.getByTestId("task-details-toggle").click();
+    await page.waitForTimeout(300);
+    log("T1 details open: facts=" + (await page.locator(".task-facts").count()));
+    await page.keyboard.press("Escape");
+    await page.waitForTimeout(1500);
+    log("T1 after Escape: card=" + (await page.getByTestId("approval-card").count()) + " facts=" + (await page.locator(".task-facts").count()));
+    log("T1 conversation: " + (await page.getByTestId("conversation").innerText()).replace(/\n/g, " | ").slice(0, 500));
+  } finally { hold.open(); await closeApp(app); model.server.closeAllConnections(); model.server.close(); }
+});
+test("details after a reload and a fold over failed calls", async () => {
+  test.setTimeout(240_000);
+  const repo = makeRepo(mkdtempSync(join(tmpdir(), "modbit-r-")));
+  const model = await sequencedModel([
+    { parts: [{ call: { name: "plan.update", args: { outcome: "nothing to change", expected_files: [] } } }] },
+    { parts: [{ call: { name: "shell.exec", args: { argv: ["sh", "-c", "exit 3"] } } }, { call: { name: "shell.exec", args: { argv: ["sh", "-c", "exit 4"] } } }] },
+    { parts: [{ call: { name: "task.complete", args: { summary: "nothing to change", self_review: { findings: [] } } } }] },
+    { parts: ["done"] },
+  ]);
+  const { app, page } = await launch(mkdtempSync(join(tmpdir(), "modbit-rd-")), { env: { MODBIT_OPENAI_BASE_URL: model.url } });
+  try {
+    await setContentSize(app, page, 1440, 900);
+    await toNewTask(page);
+    await page.getByTestId("goal").fill("Finish for review");
+    await page.getByTestId("workspace").fill(repo);
+    await page.getByTestId("run").click();
+    await expect(page.getByTestId("conversation")).toBeVisible();
+    const id = (await page.getByTestId("conversation").getAttribute("data-task-id"))!;
+    await expect(agentRow(page, id)).toHaveAttribute("data-state", /ReadyForReview|Waiting|Failed|Completed/, { timeout: 90_000 });
+    await page.waitForTimeout(1000);
+    log("T3 state=" + (await agentRow(page, id).getAttribute("data-state")));
+    log("T3 conversation: " + (await page.getByTestId("conversation").innerText()).replace(/\n/g, " | ").slice(0, 900));
+    log("T2 live facts: " + (await details(page)));
+    await page.keyboard.press("Escape");
+    await page.reload();
+    await expect(agentRow(page, id)).toBeVisible({ timeout: 30_000 });
+    await agentRow(page, id).click();
+    await expect(page.getByTestId("conversation")).toBeVisible();
+    await page.waitForTimeout(1000);
+    log("T2 reload facts: " + (await details(page)));
+  } finally { await closeApp(app); model.server.closeAllConnections(); model.server.close(); }
+});

@@ -2,13 +2,13 @@
   "product": "Modbit",
   "edition": "V3.3 EPR v1.1",
   "authority_date": "2026-09-05",
-  "generated_on": "2026-11-06",
+  "generated_on": "2026-11-07",
   "hash_algorithm": "sha256",
   "scope_rule": "docs/*.md, root *.md except MANIFEST.md, docs/decisions/*.md, graph JSON/Markdown, tools/*.py, evidence payloads; manifests exclude themselves and transient caches",
   "counts": {
     "docs": 97,
-    "root_and_tooling": 1976,
-    "docs_bytes": 2336672
+    "root_and_tooling": 1984,
+    "docs_bytes": 2338661
   },
   "sections": [
     {
@@ -914,8 +914,8 @@
       "section": "governance",
       "section_title": "Agent process and governance",
       "title": "Dossier maintenance log",
-      "bytes": 144108,
-      "sha256": "64c43d2a9f6cb7d2cb8276c4b7738330b8d93d234db18cc98c0e0f839c580c30"
+      "bytes": 146097,
+      "sha256": "52641648eeaf99f90409046fc1d2229cf4e742cf5da1bce95201c5e623a8f3c0"
     },
     {
       "path": "docs/98_BUILD_MANIFEST.md",
@@ -3310,8 +3310,8 @@
     },
     {
       "path": "evidence/m10/PX-196/TASK_CARD.md",
-      "bytes": 5268,
-      "sha256": "bd5425e4053b3d5d5e5adabf8a526c7cb91fec757e947e521fea762133203954"
+      "bytes": 5411,
+      "sha256": "155438dace1d712a133d5fa458b0afd5ae6bdb0e998e29301e30f742e13e3047"
     },
     {
       "path": "evidence/m10/PX-196/after/list-attention-view.png",
@@ -3365,8 +3365,8 @@
     },
     {
       "path": "evidence/m10/PX-197/TASK_CARD.md",
-      "bytes": 5315,
-      "sha256": "8fd2c93582b50609e2eec8fea4be06f3396d9cfcf9a79c30b745b8a318003d49"
+      "bytes": 5487,
+      "sha256": "224b55913f7d646308ba4065c69470128ec3cda7499f7e41dc043d83c38c3052"
     },
     {
       "path": "evidence/m10/PX-197/after/conv-light.png",
@@ -3402,6 +3402,46 @@
       "path": "evidence/m10/PX-197/evidence.json",
       "bytes": 4879,
       "sha256": "f96a11e2affd29a6de999a7b29a4306b2b15c598d33c112891bccf92fc1fefc9"
+    },
+    {
+      "path": "evidence/m10/graph-audit-2026-11-07/AUDIT.md",
+      "bytes": 4357,
+      "sha256": "d04a78f9769d8b7dccff0dad31b91c222c7e9e35e343901a1d084582b66d0c88"
+    },
+    {
+      "path": "evidence/m10/graph-audit-2026-11-07/reports/group-A-list-conversation.md",
+      "bytes": 15696,
+      "sha256": "99638cf1bc36e2112a89a175021d8b3f70f5bfc48d0ec51b8aca6b44ea532c61"
+    },
+    {
+      "path": "evidence/m10/graph-audit-2026-11-07/reports/group-B-composer-approvals.md",
+      "bytes": 14694,
+      "sha256": "88800064b6aa6740fdd82183ee600b584d1af7295edc162b15567d3a24374ee1"
+    },
+    {
+      "path": "evidence/m10/graph-audit-2026-11-07/reports/group-C-shell-platform.md",
+      "bytes": 15823,
+      "sha256": "c1611344703026136f22d23b9d22b8d5c02accef1ce21f5dc067f5516df1c9aa"
+    },
+    {
+      "path": "evidence/m10/graph-audit-2026-11-07/reports/group-D-review-cloud.md",
+      "bytes": 11113,
+      "sha256": "9bd8f5a603ef074eb22d16e47f132af8fb86f7199748a06717fe4827c5093f45"
+    },
+    {
+      "path": "evidence/m10/graph-audit-2026-11-07/reports/group-E-complete-rows.md",
+      "bytes": 9500,
+      "sha256": "cfe04d38459920d3ec2991bef1af9bec8e6187cc3d21c67a31f74089154c485e"
+    },
+    {
+      "path": "evidence/m10/graph-audit-2026-11-07/repro.log",
+      "bytes": 1905,
+      "sha256": "97281c7ad7ece99aa21048cc7d1926e91da6d882824175e9786aa3247e6bce7c"
+    },
+    {
+      "path": "evidence/m10/graph-audit-2026-11-07/repro.spec.ts.txt",
+      "bytes": 4454,
+      "sha256": "a92eae72897678c0c6ae174990aadfbb393c153781e51171d9a3594a9fa5808d"
     },
     {
       "path": "evidence/m2/IMP-EV-0011/TASK_CARD.md",
@@ -10746,12 +10786,12 @@
     {
       "path": "graph/PROJECT_GRAPH.md",
       "bytes": 47138,
-      "sha256": "33a0d2f3269a2a314b5fbc06ddc0e0fabde6426a64d91a42367130e239f73068"
+      "sha256": "7336d179b862e8654834b93ccc73abc5d30d9510378e4dbf87bad2219d95d2a2"
     },
     {
       "path": "graph/project-graph.json",
-      "bytes": 2512431,
-      "sha256": "7107e00d8111e02ff1e98e300215990813207e8ef57a2574f815f86a3030ea0b"
+      "bytes": 2533680,
+      "sha256": "b951e37ae39bbe49bdb0fc94ebc99634b62e330161413b6ee80022839e8ff638"
     },
     {
       "path": "tools/build_graph.py",

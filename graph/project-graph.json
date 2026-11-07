@@ -3,7 +3,7 @@
  "product": "Modbit",
  "edition": "V3.3 EPR v1.1",
  "authority_date": "2026-09-05",
- "generated_on": "2026-11-06",
+ "generated_on": "2026-11-07",
  "generator": "tools/build_graph.py",
  "status_vocabulary": [
   "NOT_STARTED",
@@ -4351,9 +4351,15 @@
      "from": "E2E_PROVEN",
      "to": "COMPLETE",
      "note": "sealed"
+    },
+    {
+     "at": "2026-11-07T08:07:31Z",
+     "from": "COMPLETE",
+     "to": "COMPLETE",
+     "note": "Audit 2026-11-07, stands: the desktop's rendering of the stream is outside M8.8 (docs/22 Cloud browser says not built; the task card proves transport with a protocol client). Open gap: no open row owns that rendering. REQ-EV-0283 names a remote viewer on COMPLETE IMP-EV-0283 with local evidence, and QUAL-PX-128 omits it. Needs a new row or a Decision Record adding it to PX-128."
     }
    ],
-   "status_changed_on": "2026-09-18T00:46:56Z"
+   "status_changed_on": "2026-11-07T08:07:31Z"
   },
   {
    "id": "M8.9",
@@ -17120,10 +17126,16 @@
      "from": "WIRED",
      "to": "REAL_TESTING",
      "note": "Named qualification test passes on hosted macOS/Linux/Windows."
+    },
+    {
+     "at": "2026-11-07T08:07:31Z",
+     "from": "COMPLETE",
+     "to": "COMPLETE",
+     "note": "Audit 2026-11-07, contradicted, kept COMPLETE pending the owner: QUAL-EV-0152 'UI reload derives all task state from Core APIs' is false for phase, agents and attachments, reproduced in the real app (evidence/m10/graph-audit-2026-11-07/repro.log T2; renderer/model.ts:143). Moving this M1 row back takes ALPHA and BETA off READY and raises 66 integrity findings, so it is recorded here and the fix is the correction."
     }
    ],
    "owner_agent": "claude",
-   "status_changed_on": "2026-09-09T11:49:02Z"
+   "status_changed_on": "2026-11-07T08:07:31Z"
   },
   {
    "id": "IMP-EV-0153",
@@ -34321,7 +34333,16 @@
    "task_card": "docs/62_PRODUCT_EXTENSION_REQUIREMENTS_TASKS_AND_QUALIFICATIONS.md#px-025",
    "audit_at_adoption": "DOCUMENTED-ONLY; no product caller present",
    "status": "NOT_STARTED",
-   "evidence": []
+   "evidence": [],
+   "notes": [
+    {
+     "at": "2026-11-07T08:07:30Z",
+     "from": "NOT_STARTED",
+     "to": "NOT_STARTED",
+     "note": "Audit 2026-11-07 at d4c5458a, code read, not run, evidence/m10/graph-audit-2026-11-07: IMPLEMENTED-PARTIAL. e2e/perf-budgets.spec.ts:55,199 measure two budgets, enforced only on MODBIT_PERF_PROFILE=reference, never in CI; onboarding.spec.ts:146 asserts a third. Five of eight doc 39 budgets unmeasured. All runs unpackaged. Missing link: no packaged build for the E2E to run on."
+    }
+   ],
+   "status_changed_on": "2026-11-07T08:07:30Z"
   },
   {
    "id": "PX-026",
@@ -34674,7 +34695,16 @@
    "task_card": "docs/62_PRODUCT_EXTENSION_REQUIREMENTS_TASKS_AND_QUALIFICATIONS.md#px-031",
    "audit_at_adoption": "DOCUMENTED-ONLY; no product caller present",
    "status": "NOT_STARTED",
-   "evidence": []
+   "evidence": [],
+   "notes": [
+    {
+     "at": "2026-11-07T08:07:30Z",
+     "from": "NOT_STARTED",
+     "to": "NOT_STARTED",
+     "note": "Audit 2026-11-07 at d4c5458a, code read, not run, evidence/m10/graph-audit-2026-11-07: SCAFFOLDED. apps/desktop/src/main/platform.ts, tools/platforms.json, tools/support_claims.py:98-116 label states and refuse RELEASE_GRADE until PX-031 COMPLETE; the gate reads no per-platform evidence or DR. Missing link: no packaged E2E catalog and no promotion path. All three stay CI_COMPATIBLE."
+    }
+   ],
+   "status_changed_on": "2026-11-07T08:07:30Z"
   },
   {
    "id": "PX-032",
@@ -35499,7 +35529,16 @@
    "task_card": "docs/62_PRODUCT_EXTENSION_REQUIREMENTS_TASKS_AND_QUALIFICATIONS.md#px-042",
    "audit_at_adoption": "DOCUMENTED-ONLY; no product caller present",
    "status": "NOT_STARTED",
-   "evidence": []
+   "evidence": [],
+   "notes": [
+    {
+     "at": "2026-11-07T08:07:29Z",
+     "from": "NOT_STARTED",
+     "to": "NOT_STARTED",
+     "note": "Audit 2026-11-07 at d4c5458a, code read, not run, evidence/m10/graph-audit-2026-11-07: IMPLEMENTED-PARTIAL. Real path: services/modbit-core/src/transcript.rs, conversation_search.rs, server.rs; proof tests/stream_transcript.rs qual_px_042_*. First missing link: no test deletes projection tables and restarts; recover_on_start rebuilds only on cursor lag. FAILED, WAITING and a true COMPLETED are not seeded on a real Core; fixture has 199 tasks."
+    }
+   ],
+   "status_changed_on": "2026-11-07T08:07:29Z"
   },
   {
    "id": "PX-043",
@@ -35545,10 +35584,16 @@
      "from": "WIRED",
      "to": "REAL_TESTING",
      "note": "graph integration 2026-10-17 on main dbe83fc9: Attach/reattach by cursor, kill-once, single typed wake and CLI parity are proven on a real PTY, but the >10 MB build stream is only exercised at 108 KB here and the broker catch-up defect fixed in unmerged PR #87 (tiny records replayed one Open: PR #87 (windowed catch-up of tiny records, test deadline) is not on main; no >10 MB build-output test for PX-043 itself (PX-099 has a 200 MiB test)"
+    },
+    {
+     "at": "2026-11-07T08:07:31Z",
+     "from": "COMPLETE",
+     "to": "COMPLETE",
+     "note": "Audit 2026-11-07, contradicted, kept COMPLETE pending the owner: 'A client writing to an agent-owned terminal is rejected by the Core' and AFW-I03 are false. terminal_stream.rs:954 checks only the lease, and apps-panel.spec.ts:146 asserts typing works. The seal read this as the PX-099 lease, but PX-099's text and no Decision Record say so. Moving it back fails G4 (PX-099, PX-132 COMPLETE). Needs a Decision Record or a Core refusal."
     }
    ],
    "owner_agent": "graph-integrator",
-   "status_changed_on": "2026-10-23T05:28:44Z"
+   "status_changed_on": "2026-11-07T08:07:31Z"
   },
   {
    "id": "PX-044",
@@ -35652,7 +35697,16 @@
    "task_card": "docs/62_PRODUCT_EXTENSION_REQUIREMENTS_TASKS_AND_QUALIFICATIONS.md#px-046",
    "audit_at_adoption": "DOCUMENTED-ONLY; no product caller present",
    "status": "NOT_STARTED",
-   "evidence": []
+   "evidence": [],
+   "notes": [
+    {
+     "at": "2026-11-07T08:07:29Z",
+     "from": "NOT_STARTED",
+     "to": "NOT_STARTED",
+     "note": "Audit 2026-11-07 at d4c5458a, code read, not run, evidence/m10/graph-audit-2026-11-07: IMPLEMENTED-PARTIAL. Real path: renderer/agents/use-agents.ts, main/conversation-ipc.ts, Core headers; proof e2e/agents.spec.ts, conversation.spec.ts. First missing link: no real-Core spec renders every class (FAILED, WAITING, COMPLETED missing). Cloud clause vacuous (no cloud client), 150 ms p95 only recorded on CI profile, no recent-task switcher, unpackaged."
+    }
+   ],
+   "status_changed_on": "2026-11-07T08:07:29Z"
   },
   {
    "id": "PX-047",
@@ -35679,7 +35733,16 @@
    "task_card": "docs/62_PRODUCT_EXTENSION_REQUIREMENTS_TASKS_AND_QUALIFICATIONS.md#px-047",
    "audit_at_adoption": "DOCUMENTED-ONLY; no product caller present",
    "status": "NOT_STARTED",
-   "evidence": []
+   "evidence": [],
+   "notes": [
+    {
+     "at": "2026-11-07T08:07:29Z",
+     "from": "NOT_STARTED",
+     "to": "NOT_STARTED",
+     "note": "Audit 2026-11-07 at d4c5458a, code read, not run, evidence/m10/graph-audit-2026-11-07: IMPLEMENTED-PARTIAL. Real path: renderer/conversation/*, GetTranscript, delta events; proof e2e/conversation.spec.ts. First missing link: a hung command raises no STALL: attention.rs raises it only for a Waiting task with NO_PROGRESS; ladder is renderer wording, no e2e. Provider failure does not restore prompt or dock a tray; no tool-output plant test; unpackaged."
+    }
+   ],
+   "status_changed_on": "2026-11-07T08:07:29Z"
   },
   {
    "id": "PX-048",
@@ -35708,17 +35771,26 @@
    "task_card": "docs/62_PRODUCT_EXTENSION_REQUIREMENTS_TASKS_AND_QUALIFICATIONS.md#px-048",
    "audit_at_adoption": "DOCUMENTED-ONLY; no product caller present",
    "status": "REAL_TESTING",
-   "evidence": [],
+   "evidence": [
+    "commit:d4c5458a",
+    "run:42241954047"
+   ],
    "notes": [
     {
      "at": "2026-10-24T11:42:14Z",
      "from": "WIRED",
      "to": "REAL_TESTING",
      "note": "terminal scroll-back built (#132); user-terminal input policy, Windows exact line order and review of the preload pin remain open: evidence/m10/PX-048/TASK_CARD.md"
+    },
+    {
+     "at": "2026-11-07T08:07:29Z",
+     "from": "REAL_TESTING",
+     "to": "REAL_TESTING",
+     "note": "Audit 2026-11-07 at d4c5458a, code read, not run, evidence/m10/graph-audit-2026-11-07: IMPLEMENTED-PARTIAL; agent-terminal clause BROKEN-DRIFTED. #170 closed the change-set read. terminal_stream.rs:408,954 check the lease, no owner check; apps-panel.spec.ts:146 asserts typing works. Changes, panel state, browser, scroll-back proven unpackaged. Missing link: Core lacks agent-terminal refusal; no user terminal; Leave terminal has no click handler; no packaged run."
     }
    ],
    "owner_agent": "claude",
-   "status_changed_on": "2026-10-24T11:42:14Z"
+   "status_changed_on": "2026-11-07T08:07:29Z"
   },
   {
    "id": "PX-049",
@@ -35964,7 +36036,16 @@
    "task_card": "docs/62_PRODUCT_EXTENSION_REQUIREMENTS_TASKS_AND_QUALIFICATIONS.md#px-054",
    "audit_at_adoption": "DOCUMENTED-ONLY; no product caller present",
    "status": "NOT_STARTED",
-   "evidence": []
+   "evidence": [],
+   "notes": [
+    {
+     "at": "2026-11-07T08:07:29Z",
+     "from": "NOT_STARTED",
+     "to": "NOT_STARTED",
+     "note": "Audit 2026-11-07 at d4c5458a, code read, not run, evidence/m10/graph-audit-2026-11-07: IMPLEMENTED-PARTIAL. Real path: renderer/composer/composer.tsx, main/composer-ipc.ts, Core; proven in e2e/composer.spec.ts, qual-gaps.spec.ts on unpackaged Electron. First missing link: composer:attachPath reads any path in main (main.ts:847); Core IngestAttachment has no path policy, so outside-workspace refusal and read-only-by-Core fail. Tint, icon, chip keyboard untested."
+    }
+   ],
+   "status_changed_on": "2026-11-07T08:07:29Z"
   },
   {
    "id": "PX-055",
@@ -35993,7 +36074,16 @@
    "task_card": "docs/62_PRODUCT_EXTENSION_REQUIREMENTS_TASKS_AND_QUALIFICATIONS.md#px-055",
    "audit_at_adoption": "DOCUMENTED-ONLY; no product caller present",
    "status": "NOT_STARTED",
-   "evidence": []
+   "evidence": [],
+   "notes": [
+    {
+     "at": "2026-11-07T08:07:29Z",
+     "from": "NOT_STARTED",
+     "to": "NOT_STARTED",
+     "note": "Audit 2026-11-07 at d4c5458a, code read, not run, evidence/m10/graph-audit-2026-11-07: IMPLEMENTED-PARTIAL. Queue, Send now, Stop, education, terminals, side question, 15 s proposal are real: composer/trays.tsx, core run_control.rs, e2e/composer.spec.ts, qual-gaps.spec.ts; scripted model, unpackaged. First missing link: no test bounds Stop near 1 s (30 s poll, Core 10 s). Send now during unknown outcome has no surface or test; no live leg."
+    }
+   ],
+   "status_changed_on": "2026-11-07T08:07:29Z"
   },
   {
    "id": "PX-056",
@@ -36019,7 +36109,16 @@
    "task_card": "docs/62_PRODUCT_EXTENSION_REQUIREMENTS_TASKS_AND_QUALIFICATIONS.md#px-056",
    "audit_at_adoption": "DOCUMENTED-ONLY; no product caller present",
    "status": "NOT_STARTED",
-   "evidence": []
+   "evidence": [],
+   "notes": [
+    {
+     "at": "2026-11-07T08:07:29Z",
+     "from": "NOT_STARTED",
+     "to": "NOT_STARTED",
+     "note": "Audit 2026-11-07 at d4c5458a, code read, not run, evidence/m10/graph-audit-2026-11-07: IMPLEMENTED-PARTIAL. Picker, pin, blocked tray and prompt restore are real: composer/model-picker.tsx, composer-ipc.ts, e2e/composer.spec.ts, qual-gaps.spec.ts; unpackaged. First missing link: the desktop spec runs with no registry and asserts only the recorded preference, not the next compile's profile (Core-only: tests/task_modes.rs). Restart is reload only."
+    }
+   ],
+   "status_changed_on": "2026-11-07T08:07:29Z"
   },
   {
    "id": "PX-057",
@@ -36091,7 +36190,16 @@
    "task_card": "docs/62_PRODUCT_EXTENSION_REQUIREMENTS_TASKS_AND_QUALIFICATIONS.md#px-058",
    "audit_at_adoption": "DOCUMENTED-ONLY; no product caller present",
    "status": "NOT_STARTED",
-   "evidence": []
+   "evidence": [],
+   "notes": [
+    {
+     "at": "2026-11-07T08:07:29Z",
+     "from": "NOT_STARTED",
+     "to": "NOT_STARTED",
+     "note": "Audit 2026-11-07 at d4c5458a, code read, not run, evidence/m10/graph-audit-2026-11-07: IMPLEMENTED-PARTIAL. Dock, hash binding, deck, Skip, Always, Core SIGKILL are real: approvals/approval-deck.tsx, control-ipc.ts, e2e/approvals.spec.ts, qual-gaps.spec.ts; unpackaged. First missing link: no spec runs under the Ask run mode. Renderer kill is reload only; foreign cards are decidable by button, against the failure proof (approval-deck.tsx:121)."
+    }
+   ],
+   "status_changed_on": "2026-11-07T08:07:29Z"
   },
   {
    "id": "PX-059",
@@ -36161,7 +36269,16 @@
    "task_card": "docs/62_PRODUCT_EXTENSION_REQUIREMENTS_TASKS_AND_QUALIFICATIONS.md#px-060",
    "audit_at_adoption": "DOCUMENTED-ONLY; no product caller present",
    "status": "NOT_STARTED",
-   "evidence": []
+   "evidence": [],
+   "notes": [
+    {
+     "at": "2026-11-07T08:07:29Z",
+     "from": "NOT_STARTED",
+     "to": "NOT_STARTED",
+     "note": "Audit 2026-11-07 at d4c5458a, code read, not run, evidence/m10/graph-audit-2026-11-07: IMPLEMENTED-PARTIAL. Ring, categories, raise via budget policy, ceiling, retry are real: context/ring.tsx, tray-director.tsx, e2e/context.spec.ts, qual-gaps.spec.ts; unpackaged, scripted. First missing link: limit tray has no staged text or lower-cost action. Offline tray keys on Core state, never network; error tray is a block with no request id."
+    }
+   ],
+   "status_changed_on": "2026-11-07T08:07:29Z"
   },
   {
    "id": "PX-061",
@@ -36234,7 +36351,16 @@
    "task_card": "docs/62_PRODUCT_EXTENSION_REQUIREMENTS_TASKS_AND_QUALIFICATIONS.md#px-062",
    "audit_at_adoption": "DOCUMENTED-ONLY; no product caller present",
    "status": "NOT_STARTED",
-   "evidence": []
+   "evidence": [],
+   "notes": [
+    {
+     "at": "2026-11-07T08:07:29Z",
+     "from": "NOT_STARTED",
+     "to": "NOT_STARTED",
+     "note": "Audit 2026-11-07 at d4c5458a, code read, not run, evidence/m10/graph-audit-2026-11-07: IMPLEMENTED-PARTIAL. Real path: conversation/restore-dialog.tsx, use-checkpoint-surface.tsx, main/control-ipc.ts, Core checkpoint.rs; proof e2e/checkpoints.spec.ts, qual-gaps.spec.ts, SHA-256 on disk. First missing link: the renderer-kill clause uses page.reload, not a real crash. Changes scope menu and Changes chips not found; unpackaged."
+    }
+   ],
+   "status_changed_on": "2026-11-07T08:07:29Z"
   },
   {
    "id": "PX-063",
@@ -36303,7 +36429,16 @@
    "task_card": "docs/62_PRODUCT_EXTENSION_REQUIREMENTS_TASKS_AND_QUALIFICATIONS.md#px-064",
    "audit_at_adoption": "DOCUMENTED-ONLY; no product caller present",
    "status": "NOT_STARTED",
-   "evidence": []
+   "evidence": [],
+   "notes": [
+    {
+     "at": "2026-11-07T08:07:29Z",
+     "from": "NOT_STARTED",
+     "to": "NOT_STARTED",
+     "note": "Audit 2026-11-07 at d4c5458a, code read, not run, evidence/m10/graph-audit-2026-11-07: IMPLEMENTED-PARTIAL. Real path: renderer/agents/agent-list-view.tsx, main/project-ipc.ts, Core projects.rs; proof e2e/projects.spec.ts PX-063/064 test. First missing link: no pending state for a two-phase project operation in proto or renderer. Remove by drag absent, list menu remove undriven, no transcript-read counter assertion, unpackaged."
+    }
+   ],
+   "status_changed_on": "2026-11-07T08:07:29Z"
   },
   {
    "id": "PX-065",
@@ -36380,7 +36515,16 @@
    "task_card": "docs/62_PRODUCT_EXTENSION_REQUIREMENTS_TASKS_AND_QUALIFICATIONS.md#px-066",
    "audit_at_adoption": "DOCUMENTED-ONLY; no product caller present",
    "status": "NOT_STARTED",
-   "evidence": []
+   "evidence": [],
+   "notes": [
+    {
+     "at": "2026-11-07T08:07:29Z",
+     "from": "NOT_STARTED",
+     "to": "NOT_STARTED",
+     "note": "Audit 2026-11-07 at d4c5458a, code read, not run, evidence/m10/graph-audit-2026-11-07: IMPLEMENTED-PARTIAL. Real path: services/modbit-core/src/apply_back.rs, crates/git/src/apply.rs, apps/cli/src/worktree_verbs.rs; proof tests/worktrees_px.rs px_066_*, apps/cli/tests/px_066_apply_back.rs. First missing link: UNDO_AND_APPLY is never exercised with a prior apply in force. Same-command-id replay is never sent; ack is never Replayed; PX-061 open."
+    }
+   ],
+   "status_changed_on": "2026-11-07T08:07:29Z"
   },
   {
    "id": "PX-067",
@@ -36452,7 +36596,16 @@
    "task_card": "docs/62_PRODUCT_EXTENSION_REQUIREMENTS_TASKS_AND_QUALIFICATIONS.md#px-068",
    "audit_at_adoption": "DOCUMENTED-ONLY; no product caller present",
    "status": "NOT_STARTED",
-   "evidence": []
+   "evidence": [],
+   "notes": [
+    {
+     "at": "2026-11-07T08:07:29Z",
+     "from": "NOT_STARTED",
+     "to": "NOT_STARTED",
+     "note": "Audit 2026-11-07 at d4c5458a, code read, not run, evidence/m10/graph-audit-2026-11-07: IMPLEMENTED-PARTIAL. Real path: renderer/worktrees/*, main/project-ipc.ts, Core worktrees.rs, apply_back.rs; proof e2e/worktrees.spec.ts, hashes on disk. First missing link: STASH, FULL_OVERWRITE and UNDO_AND_APPLY are never driven through the modal. No keyboard-only modal proof; task-header actions, specific-file apply, copy path absent; unpackaged."
+    }
+   ],
+   "status_changed_on": "2026-11-07T08:07:29Z"
   },
   {
    "id": "PX-069",
@@ -36661,7 +36814,16 @@
    "task_card": "docs/62_PRODUCT_EXTENSION_REQUIREMENTS_TASKS_AND_QUALIFICATIONS.md#px-074",
    "audit_at_adoption": "DOCUMENTED-ONLY; no product caller present",
    "status": "NOT_STARTED",
-   "evidence": []
+   "evidence": [],
+   "notes": [
+    {
+     "at": "2026-11-07T08:07:30Z",
+     "from": "NOT_STARTED",
+     "to": "NOT_STARTED",
+     "note": "Audit 2026-11-07 at d4c5458a, code read, not run, evidence/m10/graph-audit-2026-11-07: IMPLEMENTED-PARTIAL. Permission window, presence, Stop, cards run against the fixture actuator: renderer/computer/*, main/computer-ipc.ts, e2e/computer-surface.spec.ts. First missing link: no desktop spec drives the real macOS helper or real permissions. Single-window app, so second-window presence has no path; 500 ms Stop only in ignored ax_fixture.rs; unpackaged."
+    }
+   ],
+   "status_changed_on": "2026-11-07T08:07:30Z"
   },
   {
    "id": "PX-075",
@@ -36806,7 +36968,16 @@
    "task_card": "docs/62_PRODUCT_EXTENSION_REQUIREMENTS_TASKS_AND_QUALIFICATIONS.md#px-079",
    "audit_at_adoption": "DOCUMENTED-ONLY; no product caller present",
    "status": "NOT_STARTED",
-   "evidence": []
+   "evidence": [],
+   "notes": [
+    {
+     "at": "2026-11-07T08:07:30Z",
+     "from": "NOT_STARTED",
+     "to": "NOT_STARTED",
+     "note": "Audit 2026-11-07 at d4c5458a, code read, not run, evidence/m10/graph-audit-2026-11-07: DOCUMENTED-ONLY (doc 67, DR-009 proposed; PX-077, PX-078 NOT_STARTED). renderer/apps/files-app.tsx is read-only; no SaveEdit in Core, proto or desktop; no text engine in apps/desktop/package.json. Missing link: no editing surface or save command. No draft, merge, find or large-file path."
+    }
+   ],
+   "status_changed_on": "2026-11-07T08:07:30Z"
   },
   {
    "id": "PX-080",
@@ -36834,7 +37005,16 @@
    "task_card": "docs/62_PRODUCT_EXTENSION_REQUIREMENTS_TASKS_AND_QUALIFICATIONS.md#px-080",
    "audit_at_adoption": "DOCUMENTED-ONLY; no product caller present",
    "status": "NOT_STARTED",
-   "evidence": []
+   "evidence": [],
+   "notes": [
+    {
+     "at": "2026-11-07T08:07:30Z",
+     "from": "NOT_STARTED",
+     "to": "NOT_STARTED",
+     "note": "Audit 2026-11-07 at d4c5458a, code read, not run, evidence/m10/graph-audit-2026-11-07: IMPLEMENTED-PARTIAL by reuse only. px-104-live-review.spec.ts:134,156 prove per-hunk reject and stale refusal; surface_protocol.rs:14465 selection reaches inspector; review.tsx:122 sends hunks only. Missing link: no editor selection or quick-edit command. No range check or agent-write notice; PX-079 absent."
+    }
+   ],
+   "status_changed_on": "2026-11-07T08:07:30Z"
   },
   {
    "id": "PX-081",
@@ -37049,7 +37229,16 @@
    "task_card": "docs/62_PRODUCT_EXTENSION_REQUIREMENTS_TASKS_AND_QUALIFICATIONS.md#px-086",
    "audit_at_adoption": "DOCUMENTED-ONLY; no product caller present",
    "status": "NOT_STARTED",
-   "evidence": []
+   "evidence": [],
+   "notes": [
+    {
+     "at": "2026-11-07T08:07:30Z",
+     "from": "NOT_STARTED",
+     "to": "NOT_STARTED",
+     "note": "Audit 2026-11-07 at d4c5458a, code read, not run, evidence/m10/graph-audit-2026-11-07: IMPLEMENTED-PARTIAL. Editor, enable approval, dry run, history, pause, kill, origin badge, CLI parity are real: renderer/automations/*, automation-ipc.ts, e2e/automations.spec.ts, apps/cli/tests/automation.rs, core automations_px.rs; unpackaged. First missing link: no desktop spec shows a failed run row. Pause tested on manual runs, not a schedule slot; run retry/cancel unbuilt."
+    }
+   ],
+   "status_changed_on": "2026-11-07T08:07:30Z"
   },
   {
    "id": "PX-087",
@@ -37254,7 +37443,16 @@
    "task_card": "docs/62_PRODUCT_EXTENSION_REQUIREMENTS_TASKS_AND_QUALIFICATIONS.md#px-093",
    "audit_at_adoption": "DOCUMENTED-ONLY; no product caller present",
    "status": "NOT_STARTED",
-   "evidence": []
+   "evidence": [],
+   "notes": [
+    {
+     "at": "2026-11-07T08:07:30Z",
+     "from": "NOT_STARTED",
+     "to": "NOT_STARTED",
+     "note": "Audit 2026-11-07 at d4c5458a, code read, not run, evidence/m10/graph-audit-2026-11-07: IMPLEMENTED-PARTIAL. renderer/customize/customize.tsx, main/customize-ipc.ts, e2e/px-106-customize.spec.ts prove quarantined import, digest trust, keyboard, axe. Missing link: no catalog in Core or protocol (customize.proto:4); DR-011 proposed. No seven tabs, disclosure, update or hook log; spec :157 asserts no catalog."
+    }
+   ],
+   "status_changed_on": "2026-11-07T08:07:30Z"
   },
   {
    "id": "PX-094",
@@ -37280,7 +37478,16 @@
    "task_card": "docs/62_PRODUCT_EXTENSION_REQUIREMENTS_TASKS_AND_QUALIFICATIONS.md#px-094",
    "audit_at_adoption": "DOCUMENTED-ONLY; no product caller present",
    "status": "NOT_STARTED",
-   "evidence": []
+   "evidence": [],
+   "notes": [
+    {
+     "at": "2026-11-07T08:07:30Z",
+     "from": "NOT_STARTED",
+     "to": "NOT_STARTED",
+     "note": "Audit 2026-11-07 at d4c5458a, code read, not run, evidence/m10/graph-audit-2026-11-07: IMPLEMENTED-PARTIAL. main.ts:961 hiddenInset; styles.ts:117-118,159-161 drag regions and mac padding; no spec covers them. Missing link: window bounds never saved (main.ts:56-65 stores sessionId only). No translucency, display fallback or geometry test. Guard test misses spread window options."
+    }
+   ],
+   "status_changed_on": "2026-11-07T08:07:30Z"
   },
   {
    "id": "PX-095",
@@ -37309,7 +37516,16 @@
    "task_card": "docs/62_PRODUCT_EXTENSION_REQUIREMENTS_TASKS_AND_QUALIFICATIONS.md#px-095",
    "audit_at_adoption": "DOCUMENTED-ONLY; no product caller present",
    "status": "NOT_STARTED",
-   "evidence": []
+   "evidence": [],
+   "notes": [
+    {
+     "at": "2026-11-07T08:07:30Z",
+     "from": "NOT_STARTED",
+     "to": "NOT_STARTED",
+     "note": "Audit 2026-11-07 at d4c5458a, code read, not run, evidence/m10/graph-audit-2026-11-07: DOCUMENTED-ONLY (doc 78, DR-012 proposed). main/main.ts:8 imports no Menu or Tray; no setBadge, single-instance lock, open-url or protocol handler. Notification at :729 has no click route; dialog at :823 serves import only. Missing link: no native integration code in main. No test."
+    }
+   ],
+   "status_changed_on": "2026-11-07T08:07:30Z"
   },
   {
    "id": "PX-096",
@@ -37336,7 +37552,16 @@
    "task_card": "docs/62_PRODUCT_EXTENSION_REQUIREMENTS_TASKS_AND_QUALIFICATIONS.md#px-096",
    "audit_at_adoption": "DOCUMENTED-ONLY; no product caller present",
    "status": "NOT_STARTED",
-   "evidence": []
+   "evidence": [],
+   "notes": [
+    {
+     "at": "2026-11-07T08:07:30Z",
+     "from": "NOT_STARTED",
+     "to": "NOT_STARTED",
+     "note": "Audit 2026-11-07 at d4c5458a, code read, not run, evidence/m10/graph-audit-2026-11-07: IMPLEMENTED-PARTIAL. main.ts:272-285 sender checks, workers.spec.ts:141,245, hardening-guard.test.ts CSP pin proven. main.ts:985-986 untested. Missing link: no packaged build or fuses, no ASAR integrity. No app-session permission handler, unresponsive handler, lag budget or channel schema inventory."
+    }
+   ],
+   "status_changed_on": "2026-11-07T08:07:30Z"
   },
   {
    "id": "PX-097",
@@ -37364,7 +37589,16 @@
    "task_card": "docs/62_PRODUCT_EXTENSION_REQUIREMENTS_TASKS_AND_QUALIFICATIONS.md#px-097",
    "audit_at_adoption": "DOCUMENTED-ONLY; no product caller present",
    "status": "NOT_STARTED",
-   "evidence": []
+   "evidence": [],
+   "notes": [
+    {
+     "at": "2026-11-07T08:07:30Z",
+     "from": "NOT_STARTED",
+     "to": "NOT_STARTED",
+     "note": "Audit 2026-11-07 at d4c5458a, code read, not run, evidence/m10/graph-audit-2026-11-07: DOCUMENTED-ONLY on d4c5458a (doc 78, DR-012 proposed). No updater, signing or staging code in tree; grep for autoUpdater, UpdateState, applyUpdate empty. wip/m10-2 branch exists, unread. Missing link: nothing checks, stages, verifies or applies an update. No test. No packaged signed build."
+    }
+   ],
+   "status_changed_on": "2026-11-07T08:07:30Z"
   },
   {
    "id": "PX-098",
@@ -37453,7 +37687,16 @@
    "task_card": "docs/62_PRODUCT_EXTENSION_REQUIREMENTS_TASKS_AND_QUALIFICATIONS.md#px-100",
    "audit_at_adoption": "DOCUMENTED-ONLY; no product caller present",
    "status": "NOT_STARTED",
-   "evidence": []
+   "evidence": [],
+   "notes": [
+    {
+     "at": "2026-11-07T08:07:30Z",
+     "from": "NOT_STARTED",
+     "to": "NOT_STARTED",
+     "note": "Audit 2026-11-07 at d4c5458a, code read, not run, evidence/m10/graph-audit-2026-11-07: IMPLEMENTED-PARTIAL. CLI verbs and Core enforcement are real: apps/cli/src/main.rs, apps/cli/tests/task_modes.rs; client in ide-adapter-core/src/modes.test.ts. First missing link: packages/vscode-adapter has no mode or preference command, so no extension-host leg. Policy-forbidden pin untested on CLI or IDE."
+    }
+   ],
+   "status_changed_on": "2026-11-07T08:07:30Z"
   },
   {
    "id": "PX-101",
@@ -37555,7 +37798,16 @@
    "task_card": "docs/62_PRODUCT_EXTENSION_REQUIREMENTS_TASKS_AND_QUALIFICATIONS.md#px-103",
    "audit_at_adoption": "DOCUMENTED-ONLY; no product caller present",
    "status": "NOT_STARTED",
-   "evidence": []
+   "evidence": [],
+   "notes": [
+    {
+     "at": "2026-11-07T08:07:31Z",
+     "from": "NOT_STARTED",
+     "to": "NOT_STARTED",
+     "note": "Audit 2026-11-07 at d4c5458a, code read, not run, evidence/m10/graph-audit-2026-11-07: IMPLEMENTED-PARTIAL. Real path: services/modbit-core/src/hunks.rs, changes.rs revert_impl, tools.rs:1848, runtime.rs:3790; test services/modbit-core/tests/px_103_hunks.rs (real Core, scripted model). First missing link: revert write (changes.rs:704) and HunkDecided commit (:776) are not atomic; a kill between leaves no decision or notice. Live gateway leg not run."
+    }
+   ],
+   "status_changed_on": "2026-11-07T08:07:31Z"
   },
   {
    "id": "PX-104",
@@ -37583,7 +37835,16 @@
    "task_card": "docs/62_PRODUCT_EXTENSION_REQUIREMENTS_TASKS_AND_QUALIFICATIONS.md#px-104",
    "audit_at_adoption": "DOCUMENTED-ONLY; no product caller present",
    "status": "NOT_STARTED",
-   "evidence": []
+   "evidence": [],
+   "notes": [
+    {
+     "at": "2026-11-07T08:07:31Z",
+     "from": "NOT_STARTED",
+     "to": "NOT_STARTED",
+     "note": "Audit 2026-11-07 at d4c5458a, code read, not run, evidence/m10/graph-audit-2026-11-07: IMPLEMENTED-PARTIAL. Real path: changes-app.tsx, changes-ipc.ts, preload decideHunk, ide-adapter-core changes.ts; test apps/desktop/e2e/px-104-live-review.spec.ts (unpackaged, scripted model). First missing link: canDecide in changes-model.ts leaves Reject enabled on a staged hunk the Core refuses DIRTY_CONFLICT. Approval-wait, failed, completed states undriven."
+    }
+   ],
+   "status_changed_on": "2026-11-07T08:07:31Z"
   },
   {
    "id": "PX-105",
@@ -38479,7 +38740,16 @@
    "task_card": "docs/62_PRODUCT_EXTENSION_REQUIREMENTS_TASKS_AND_QUALIFICATIONS.md#px-127",
    "audit_at_adoption": "DOCUMENTED-ONLY; no product caller present",
    "status": "NOT_STARTED",
-   "evidence": []
+   "evidence": [],
+   "notes": [
+    {
+     "at": "2026-11-07T08:07:31Z",
+     "from": "NOT_STARTED",
+     "to": "NOT_STARTED",
+     "note": "Audit 2026-11-07 at d4c5458a, code read, not run, evidence/m10/graph-audit-2026-11-07: IMPLEMENTED-PARTIAL. Real path over a GitHub fake: ci_evidence.rs, review_comments.rs, review.tsx:384-423, apps/cli/src/forge_verbs.rs; tests apps/cli/tests/px_127_forge.rs, e2e/forge-evidence.spec.ts. First missing link: no run on real GitHub, so no retained run id or PR URL (needs owner token and repo). Digest partial, no reply thread, unpackaged."
+    }
+   ],
+   "status_changed_on": "2026-11-07T08:07:31Z"
   },
   {
    "id": "PX-128",
@@ -38510,7 +38780,16 @@
    "task_card": "docs/62_PRODUCT_EXTENSION_REQUIREMENTS_TASKS_AND_QUALIFICATIONS.md#px-128",
    "audit_at_adoption": "DOCUMENTED-ONLY; no product caller present",
    "status": "NOT_STARTED",
-   "evidence": []
+   "evidence": [],
+   "notes": [
+    {
+     "at": "2026-11-07T08:07:31Z",
+     "from": "NOT_STARTED",
+     "to": "NOT_STARTED",
+     "note": "Audit 2026-11-07 at d4c5458a, code read, not run, evidence/m10/graph-audit-2026-11-07: IMPLEMENTED-PARTIAL. CLI half real: apps/cli/src/cloud.rs, core handoff.rs; test apps/cloud-worker/tests/px_128_cloud_client.rs (real Postgres and worker, local API). First missing link: desktop has no cloud client (no preload or main IPC; location.ts says so). Also no cloud return or delta back; committed secrets cross; unpackaged."
+    }
+   ],
+   "status_changed_on": "2026-11-07T08:07:31Z"
   },
   {
    "id": "PX-129",
@@ -40040,7 +40319,15 @@
     "artifact:evidence/m10/PX-195/evidence.json",
     "artifact:evidence/m10/PX-195/ci-run-41983983308.json"
    ],
-   "status_changed_on": "2026-11-06T15:01:19Z"
+   "notes": [
+    {
+     "at": "2026-11-07T08:07:31Z",
+     "from": "COMPLETE",
+     "to": "COMPLETE",
+     "note": "Audit 2026-11-07, kept COMPLETE: 'every fact of section 5.6 is reachable' is wrong after a reload for the same cause that reopened PX-196 (evidence/m10/graph-audit-2026-11-07/repro.log T2); the fix there clears it. Read after that fix. Also: after send with no provider the conversation says only Not started; the cause appears after clicking Start (code read, not run)."
+    }
+   ],
+   "status_changed_on": "2026-11-07T08:07:31Z"
   },
   {
    "id": "PX-196",
@@ -40065,14 +40352,23 @@
    ],
    "task_card": "docs/62_PRODUCT_EXTENSION_REQUIREMENTS_TASKS_AND_QUALIFICATIONS.md#px-196",
    "audit_at_adoption": "DOCUMENTED-ONLY; no product caller present",
-   "status": "COMPLETE",
+   "status": "REAL_TESTING",
    "evidence": [
     "run:41983983308",
     "commit:ae3315d7",
     "artifact:evidence/m10/PX-196/evidence.json",
-    "artifact:evidence/m10/PX-196/ci-run-41983983308.json"
+    "artifact:evidence/m10/PX-196/ci-run-41983983308.json",
+    "artifact:evidence/m10/graph-audit-2026-11-07/repro.log"
    ],
-   "status_changed_on": "2026-11-06T15:01:19Z"
+   "notes": [
+    {
+     "at": "2026-11-07T08:07:31Z",
+     "from": "COMPLETE",
+     "to": "REAL_TESTING",
+     "note": "Reopened 2026-11-07, regression found by audit and reproduced in the real app (evidence/m10/graph-audit-2026-11-07/repro.log T2): 'the details show each fact for the open task' holds only in a live session. The same task reads Phase awaiting human, Agents 0/1 live and Phase drafting, Agents 0/0 after a reload, because fromSnapshot (renderer/model.ts:143) fills defaults and load subscribes from the snapshot offset (use-app.ts:139). No spec opens the details after a restart."
+    }
+   ],
+   "status_changed_on": "2026-11-07T08:07:31Z"
   },
   {
    "id": "PX-197",
@@ -40097,14 +40393,23 @@
    ],
    "task_card": "docs/62_PRODUCT_EXTENSION_REQUIREMENTS_TASKS_AND_QUALIFICATIONS.md#px-197",
    "audit_at_adoption": "DOCUMENTED-ONLY; no product caller present",
-   "status": "COMPLETE",
+   "status": "REAL_TESTING",
    "evidence": [
     "run:41983983308",
     "commit:ae3315d7",
     "artifact:evidence/m10/PX-197/evidence.json",
-    "artifact:evidence/m10/PX-197/ci-run-41983983308.json"
+    "artifact:evidence/m10/PX-197/ci-run-41983983308.json",
+    "artifact:evidence/m10/graph-audit-2026-11-07/repro.log"
    ],
-   "status_changed_on": "2026-11-06T15:01:20Z"
+   "notes": [
+    {
+     "at": "2026-11-07T08:07:31Z",
+     "from": "COMPLETE",
+     "to": "REAL_TESTING",
+     "note": "Reopened 2026-11-07, regression found by audit and reproduced in the real app at the merged code (evidence/m10/graph-audit-2026-11-07/repro.log T1, T3). With an approval docked and Task details open, Escape denies the effect and leaves the panel open, against the failure proof (approvals/model.ts:154 and the capture dispatch in ui/hooks.ts win over the panel's listener). The fold then says 'Ran git clean -fd' for a command that was denied and never ran (rows.tsx groupSummary counts FAILED), against 'past tense only once it happened'. Code read, not run: a card docking after a confirmation also takes its Escape."
+    }
+   ],
+   "status_changed_on": "2026-11-07T08:07:31Z"
   },
   {
    "id": "QUAL-PX-000",

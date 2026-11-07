@@ -1250,3 +1250,13 @@ Accepted on the owner's chat instruction of 2026-11-04 ("there is no parity with
 
 The owner's chat instruction of 2026-11-05 ("Yes, fix those first") after a comparison of the app with docs 10, 32, 39 and 65: six corrections the record had made necessary (visible task state, row facts, mode and model on home, first-class state views under MOD-UX-001, shortcut help, location selector), and the record's wrong deny key (`n`, correctly `x`). Docs 10, 32, 39 and 65 carry a note; QUAL-PX-195..197 name the new proof. No row, pinned count or owner changes. The record's section 12 lists what the comparison found that this does not fix.
 
+## Graph audit — desktop rows checked against the code at `d4c5458a` (2026-11-07)
+
+A bookkeeping change to the project graph on the owner's chat instruction of 2026-11-07 ("Yes, correct the graph"). No requirement row, disposition, owner, Decision Record or product code changed, and no release gate was attested.
+
+- **Basis:** `../evidence/m10/graph-audit-2026-11-07/AUDIT.md`: five read-only audits under doc 84 of 29 unfinished rows and 32 rows at COMPLETE, spot-checked, and one local run in the real app of the contradictions it marks reproduced (`repro.log`).
+- **Moved back to REAL_TESTING, for regressions reproduced in the real app:** PX-197 (Escape with Task details open denies the effect; a fold says "Ran" for a denied command) and PX-196 (after a reload the details show default phase and agent counts). RELEASE_ZERO goes from 439 to 437 of 539; ALPHA and BETA stay READY.
+- **Audit notes, no status change:** PX-042, 046, 047, 054, 055, 056, 058, 060, 062, 064, 066, 068, 074, 079, 080, 086, 093, 094, 095, 096, 097, 100, 103, 104, 127, 128, 025 and 031 stay NOT_STARTED, because `graph.py set` refuses anything higher while a prerequisite is not COMPLETE. 24 of the 28 have real code; none can close. PX-048 stays REAL_TESTING and gains the evidence of pull request 170.
+- **Contradicted and kept COMPLETE with a note, for the owner:** IMP-EV-0152 (moving it takes ALPHA and BETA off READY and raises 66 integrity findings) and PX-043 (moving it fails G4 and it needs a Decision Record or a Core refusal). PX-195 and M8.8 stand, each with a note.
+- **Unfinished behaviour:** every gap in the row notes. No row owns the desktop's rendering of the cloud browser stream. Rows whose specs pull request 169 rewrote still cite earlier runs. Non-desktop open rows were not audited.
+- **Next safe action:** fix the reload defect and the Escape and fold defects, then walk PX-196 and PX-197 forward with a new CI run. The owner decides PX-043 and who owns the stream's rendering.
