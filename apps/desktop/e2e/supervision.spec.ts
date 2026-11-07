@@ -297,3 +297,94 @@ test("MOD-UX-001: each state a task can be in is a first-class view, holding the
     model.server.close();
   }
 });
+
+test("PX-196/197: Escape with the details open closes them, not the card; a confirmation keeps its keys from a card docking after it; a denied call is never told as run", async () => {
+  test.setTimeout(180_000);
+  const repo = newRepo();
+  const hold = new Gate();
+  const model = await sequencedModel([
+    async () => {
+      await hold.opened;
+      return { parts: ["Cleaning.", { call: { name: "shell.exec", args: { argv: ["git", "clean", "-fd"] } } }] };
+    },
+    { parts: ["Left it."] },
+  ]);
+  const { app, page } = await launch(tmp("escape"), { env: { MODBIT_OPENAI_BASE_URL: model.url } });
+  try {
+    await setContentSize(app, page, 1280, 800);
+    await toNewTask(page);
+    await page.getByTestId("goal").fill("Clean the build output");
+    await page.getByTestId("workspace").fill(repo);
+    await page.getByTestId("run").click();
+    await expect(page.getByTestId("conversation")).toBeVisible();
+    // A confirmation first, then a card docks behind it: Escape is the confirmation's "back", never the card's Skip.
+    await page.getByTestId("task-details-toggle").click();
+    await page.getByTestId("task-cancel").click();
+    await expect(page.getByTestId("confirm")).toHaveAttribute("data-confirm-kind", "cancel");
+    if (await page.getByTestId("task-details").isVisible()) await page.getByTestId("task-details-toggle").click();
+    hold.open();
+    await expect(page.getByTestId("approval-card")).toBeVisible({ timeout: 60_000 });
+    await page.keyboard.press("Escape");
+    await expect(page.getByTestId("confirm")).toHaveCount(0);
+    await expect(page.getByTestId("approval-card"), "the card behind the confirmation was not skipped").toBeVisible();
+    // With the details open, Escape closes them and the card stays.
+    await page.getByTestId("task-details-toggle").click();
+    await expect(page.getByTestId("task-details")).toBeVisible();
+    await page.keyboard.press("Escape");
+    await expect(page.getByTestId("task-details")).toHaveCount(0);
+    await expect(page.getByTestId("approval-card"), "Escape stepped back from the details and decided nothing").toBeVisible();
+    // Skipped on purpose now: the command never ran, and nothing says it did.
+    await page.getByTestId("approval-skip").click();
+    await expect(page.getByTestId("approval-card")).toHaveCount(0);
+    const tool = page.getByTestId("conv-tool").filter({ hasText: "git clean -fd" });
+    await expect(tool).toHaveAttribute("data-status", "DENIED", { timeout: 30_000 });
+    await expect(tool).not.toContainText("Ran");
+    for (const summary of await page.getByTestId("conv-group-summary").all()) await expect(summary).not.toContainText("Ran git clean");
+  } finally {
+    hold.open();
+    await closeApp(app);
+    model.server.closeAllConnections();
+    model.server.close();
+  }
+});
+
+test("PX-196: after a reload the details show the facts the Core folded from the log, not defaults; failed calls are told as failed", async () => {
+  test.setTimeout(240_000);
+  const repo = newRepo();
+  const model = await sequencedModel([
+    { parts: [{ call: { name: "plan.update", args: { outcome: "nothing to change", expected_files: [] } } }] },
+    { parts: [{ call: { name: "shell.exec", args: { argv: ["sh", "-c", "exit 3"] } } }, { call: { name: "shell.exec", args: { argv: ["sh", "-c", "exit 4"] } } }] },
+    { parts: [{ call: { name: "task.complete", args: { summary: "nothing to change", self_review: { findings: [] } } } }] },
+    { parts: ["done"] },
+  ]);
+  const { app, page } = await launch(tmp("reload"), { env: { MODBIT_OPENAI_BASE_URL: model.url } });
+  try {
+    await setContentSize(app, page, 1280, 800);
+    await toNewTask(page);
+    await page.getByTestId("goal").fill("Try twice and stop");
+    await page.getByTestId("workspace").fill(repo);
+    await page.getByTestId("run").click();
+    const id = await opened(page);
+    await expect(agentRow(page, id)).toHaveAttribute("data-state", "Waiting", { timeout: 90_000 });
+    const failedFold = page.getByTestId("conv-group-summary").filter({ hasText: "2 failed" });
+    await expect(failedFold).toHaveCount(1);
+    await expect(failedFold).not.toContainText("Ran");
+    const facts = async () => {
+      await page.getByTestId("task-details-toggle").click();
+      const out = [await page.getByTestId("task-phase").innerText(), await page.getByTestId("task-agents").innerText(), await page.getByTestId("task-attachments").innerText()];
+      await page.keyboard.press("Escape");
+      return out;
+    };
+    const live = await facts();
+    expect(live[0]).not.toBe("drafting");
+    await page.reload();
+    await openTask(page, id);
+    await expect.poll(facts, { message: "the details after a reload equal the details live" }).toEqual(live);
+    await accessible(page, "the conversation after a reload");
+  } finally {
+    await closeApp(app);
+    model.server.closeAllConnections();
+    model.server.close();
+  }
+});
+

@@ -1,7 +1,7 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import type { TranscriptRowView } from "../../shared/conversation-types.ts";
-import { INITIAL_FOLLOW, toolVerb, unfinishedCalls, abortWords, applyStreamEvent, dividerOffsetOf, identityOf, messageIds, needsEyes, onDismiss, onJumpToBottom, onMessages, onScroll, pillText, presentAssistant, reuseRows, seedStreams, stallLevel, withDivider, withLiveOnly, type LiveStreams } from "./model.ts";
+import { INITIAL_FOLLOW, callStatus, toolVerb, unfinishedCalls, abortWords, applyStreamEvent, dividerOffsetOf, identityOf, messageIds, needsEyes, onDismiss, onJumpToBottom, onMessages, onScroll, pillText, presentAssistant, reuseRows, seedStreams, stallLevel, withDivider, withLiveOnly, type LiveStreams } from "./model.ts";
 import { sameBlock, splitBlocks } from "./blocks.ts";
 import { DEFAULT_CONVERSATION_PREFS, parseConversationPrefs } from "./prefs.ts";
 
@@ -172,8 +172,16 @@ test("a step is in the past tense only once it happened", () => {
   assert.equal(toolVerb("NO_SUCH_CLASS", "SUCCEEDED"), "Used");
 });
 
-test("a fold says which of its calls did not finish or did not run, and a failed call did run", () => {
-  assert.deepEqual(unfinishedCalls(["SUCCEEDED", "FAILED"]), []);
+test("a fold says which of its calls did not finish, failed, ended unknown or did not run", () => {
+  assert.deepEqual(unfinishedCalls(["SUCCEEDED", "FAILED"]), ["1 failed"]);
+  assert.deepEqual(unfinishedCalls(["UNKNOWN_OUTCOME", "SUCCEEDED"]), ["1 with an unknown outcome"]);
   assert.deepEqual(unfinishedCalls(["SUCCEEDED", "AWAITING_APPROVAL", "RUNNING"]), ["2 not finished"]);
   assert.deepEqual(unfinishedCalls(["DENIED", "CANCELLED", "PENDING"]), ["1 not finished", "2 not run"]);
+});
+
+test("a call denied before it ran is told as denied, never as a failed command", () => {
+  assert.equal(callStatus("FAILED", "APPROVAL_DENIED"), "DENIED");
+  assert.equal(callStatus("FAILED", "POLICY_DENIED"), "DENIED");
+  assert.equal(callStatus("FAILED", "NON_ZERO_EXIT"), "FAILED");
+  assert.equal(callStatus("SUCCEEDED", ""), "SUCCEEDED");
 });
