@@ -71,6 +71,17 @@ test("AFW-H01: the innermost scope with a binding wins; a blocking scope stops t
   assert.deepEqual(ran, []);
 });
 
+test("a higher-priority scope runs before a scope pushed after it: a confirmation keeps Escape when a card docks later", () => {
+  const scopes = new KeyScopes();
+  const ran: string[] = [];
+  scopes.push({ ...bindingsScope("confirmation", { escape: () => ran.push("back"), enter: () => ran.push("confirm") }), priority: 1 });
+  const popCard = scopes.push(bindingsScope("approval-card", { escape: () => ran.push("skip"), enter: () => ran.push("run") }));
+  assert.equal(scopes.dispatch(ev("Escape"), false), true);
+  assert.equal(scopes.dispatch(ev("Enter"), false), true);
+  assert.deepEqual(ran, ["back", "confirm"], "the card pushed later never took the confirmation's keys");
+  popCard();
+});
+
 test("AFW-A16: a command or a chord registered twice fails (the conflict test)", () => {
   const reg = new CommandRegistry<void>();
   reg.register({ id: "newTask", title: "New task", group: "Task", keys: ["mod+n"], run: () => {} });

@@ -1,0 +1,1934 @@
+
+Running 198 tests using 1 worker
+
+[1/198] e2e/agent-workspace.spec.ts:32:1 › the agent list, the conversation and the apps panel work together on one running task, and quitting with it running asks first
+e2e/agent-workspace.spec.ts:32:1 › the agent list, the conversation and the apps panel work together on one running task, and quitting with it running asks first
+
+[2/198] e2e/agents.spec.ts:26:1 › PX-046: classes show glyph and words from the Core; unread clears when the conversation is seen; a search finds a tool result and opens its row; pins, filters, grouping, archive with undo, keyboard and axe
+e2e/agents.spec.ts:26:1 › PX-046: classes show glyph and words from the Core; unread clears when the conversation is seen; a search finds a tool result and opens its row; pins, filters, grouping, archive with undo, keyboard and axe
+
+[3/198] e2e/agents.spec.ts:162:1 › PX-046: archiving a running task asks first; stopping is the Core's recorded cancellation, and keeping it running changes nothing
+e2e/agents.spec.ts:162:1 › PX-046: archiving a running task asks first; stopping is the Core's recorded cancellation, and keeping it running changes nothing
+  code: 'TASK_RUNNING'
+}
+
+  code: 'TASK_RUNNING'
+}
+
+
+[4/198] e2e/agents.spec.ts:200:1 › PX-046: a thousand tasks stay responsive: the list holds only the rows in view, scrolls to the end, filters and groups within a generous bound, and a Core event reaches it
+e2e/agents.spec.ts:200:1 › PX-046: a thousand tasks stay responsive: the list holds only the rows in view, scrolls to the end, filters and groups within a generous bound, and a Core event reaches it
+
+  code: 'DISCONNECTED'
+}
+
+  code: 'DISCONNECTED'
+}
+
+
+[5/198] e2e/approvals.spec.ts:42:1 › PX-058: a pending effect docks a card with the exact intent and the Core's reason; a stale hash is refused; it survives a reload and a Core kill; Run executes it once
+e2e/approvals.spec.ts:42:1 › PX-058: a pending effect docks a card with the exact intent and the Core's reason; a stale hash is refused; it survives a reload and a Core kill; Run executes it once
+  code: 'INTENT_MISMATCH'
+}
+
+
+
+
+
+
+
+
+  code: 'DISCONNECTED'
+}
+
+  code: 'DISCONNECTED'
+}
+Error occurred in handler for 'projects:list': ProtocolError: DISCONNECTED: closed by client
+  code: 'DISCONNECTED'
+}
+Error occurred in handler for 'conversation:transcript': ProtocolError: DISCONNECTED: closed by client
+  code: 'DISCONNECTED'
+}
+
+
+
+Error occurred in handler for 'modeproposals:list': Error: CORE_UNAVAILABLE: the local Core is restarting; your last persisted state is shown
+
+Error occurred in handler for 'checkpoints:list': Error: CORE_UNAVAILABLE: the local Core is restarting; your last persisted state is shown
+Error occurred in handler for 'conversation:transcript': Error: CORE_UNAVAILABLE: the local Core is restarting; your last persisted state is shown
+modbit-core: connection ended: io: Broken pipe (os error 32)
+
+
+[6/198] e2e/approvals.spec.ts:104:1 › PX-058: three pending approvals form a deck, oldest first, each decided on its own; a bare key never decides another agent's card; Skip is a typed user decision
+e2e/approvals.spec.ts:104:1 › PX-058: three pending approvals form a deck, oldest first, each decided on its own; a bare key never decides another agent's card; Skip is a typed user decision
+
+
+
+
+
+
+
+
+[7/198] e2e/approvals.spec.ts:180:1 › PX-058: an effect that cannot be undone asks twice, and a key typed into a text field never decides; Always is not offered for it; the file is only deleted after the second confirmation
+e2e/approvals.spec.ts:180:1 › PX-058: an effect that cannot be undone asks twice, and a key typed into a text field never decides; Always is not offered for it; the file is only deleted after the second confirmation
+
+  code: 'DISCONNECTED'
+}
+
+  code: 'DISCONNECTED'
+}
+Error occurred in handler for 'agents:headers': ProtocolError: DISCONNECTED: closed by client
+  code: 'DISCONNECTED'
+}
+
+  code: 'DISCONNECTED'
+}
+
+  code: 'DISCONNECTED'
+}
+
+  code: 'DISCONNECTED'
+}
+
+  code: 'DISCONNECTED'
+}
+
+
+Error occurred in handler for 'automations:taskHeaders': Error: CORE_UNAVAILABLE: the local Core is restarting; your last persisted state is shown
+Error occurred in handler for 'agents:headers': Error: CORE_UNAVAILABLE: the local Core is restarting; your last persisted state is shown
+Error occurred in handler for 'projects:list': Error: CORE_UNAVAILABLE: the local Core is restarting; your last persisted state is shown
+
+
+
+[8/198] e2e/approvals.spec.ts:225:1 › PX-057/058: Allowlist plus Always on a card makes a durable rule through the Core; the same kind of command then runs silently and its receipt names the rule; the rule can be revoked
+e2e/approvals.spec.ts:225:1 › PX-057/058: Allowlist plus Always on a card makes a durable rule through the Core; the same kind of command then runs silently and its receipt names the rule; the rule can be revoked
+  code: 'PATTERN_WRAPPER'
+}
+
+
+  code: 'DISCONNECTED'
+}
+
+
+Error occurred in handler for 'modeproposals:list': Error: CORE_UNAVAILABLE: the local Core is restarting; your last persisted state is shown
+Error occurred in handler for 'approvals:dock': Error: CORE_UNAVAILABLE: the local Core is restarting; your last persisted state is shown
+
+[9/198] e2e/approvals.spec.ts:293:1 › PX-057: the widest preset needs its warning and still asks for the always-ask classes; everything else in the envelope runs without asking
+e2e/approvals.spec.ts:293:1 › PX-057: the widest preset needs its warning and still asks for the always-ask classes; everything else in the envelope runs without asking
+
+  code: 'DISCONNECTED'
+}
+
+  code: 'DISCONNECTED'
+}
+Error occurred in handler for 'checkpoints:list': ProtocolError: DISCONNECTED: closed by client
+  code: 'DISCONNECTED'
+}
+Error occurred in handler for 'conversation:markRead': ProtocolError: DISCONNECTED: closed by client
+  code: 'DISCONNECTED'
+}
+
+  code: 'DISCONNECTED'
+}
+Error occurred in handler for 'agents:headers': ProtocolError: DISCONNECTED: closed by client
+  code: 'DISCONNECTED'
+}
+Error occurred in handler for 'projects:list': ProtocolError: DISCONNECTED: closed by client
+  code: 'DISCONNECTED'
+}
+Error occurred in handler for 'accounting:get': ProtocolError: DISCONNECTED: closed by client
+  code: 'DISCONNECTED'
+}
+Error occurred in handler for 'task:economics': ProtocolError: DISCONNECTED: closed by client
+  code: 'DISCONNECTED'
+}
+
+  code: 'DISCONNECTED'
+}
+Error occurred in handler for 'approvals:dock': ProtocolError: DISCONNECTED: closed by client
+  code: 'DISCONNECTED'
+}
+
+
+
+
+
+
+modbit-core: supervising client closed its pipe; exiting
+
+[10/198] e2e/approvals.spec.ts:343:1 › PX-057/058: the main process rejects invalid arguments before the Core sees them
+e2e/approvals.spec.ts:343:1 › PX-057/058: the main process rejects invalid arguments before the Core sees them
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+[11/198] e2e/apps-browser.spec.ts:17:1 › Browser tab: the lease badge follows the Core, Take control moves the lease and blocks the agent's input, Return control lets the agent act
+e2e/apps-browser.spec.ts:17:1 › Browser tab: the lease badge follows the Core, Take control moves the lease and blocks the agent's input, Return control lets the agent act
+
+[12/198] e2e/apps-panel-state.spec.ts:33:1 › the panel keeps its own tab for each task, by the task's id, across selection and a restart of the app
+e2e/apps-panel-state.spec.ts:33:1 › the panel keeps its own tab for each task, by the task's id, across selection and a restart of the app
+
+  code: 'DISCONNECTED'
+}
+
+  code: 'DISCONNECTED'
+}
+
+
+
+  code: 'DISCONNECTED'
+}
+
+  code: 'DISCONNECTED'
+}
+Error occurred in handler for 'task:economics': ProtocolError: DISCONNECTED: closed by client
+  code: 'DISCONNECTED'
+}
+Error occurred in handler for 'conversation:approvals': ProtocolError: DISCONNECTED: closed by client
+  code: 'DISCONNECTED'
+}
+Error occurred in handler for 'checkpoints:list': ProtocolError: DISCONNECTED: closed by client
+  code: 'DISCONNECTED'
+}
+Error occurred in handler for 'modeproposals:list': ProtocolError: DISCONNECTED: closed by client
+  code: 'DISCONNECTED'
+}
+Error occurred in handler for 'accounting:get': ProtocolError: DISCONNECTED: closed by client
+  code: 'DISCONNECTED'
+}
+Error occurred in handler for 'task:economics': ProtocolError: DISCONNECTED: closed by client
+  code: 'DISCONNECTED'
+}
+
+  code: 'DISCONNECTED'
+}
+Error occurred in handler for 'composer:queue': ProtocolError: DISCONNECTED: closed by client
+  code: 'DISCONNECTED'
+}
+Error occurred in handler for 'composer:sendBehavior': ProtocolError: DISCONNECTED: closed by client
+  code: 'DISCONNECTED'
+}
+Error occurred in handler for 'terminal:list': ProtocolError: DISCONNECTED: closed by client
+  code: 'DISCONNECTED'
+}
+Error occurred in handler for 'conversation:approvals': ProtocolError: DISCONNECTED: closed by client
+  code: 'DISCONNECTED'
+}
+Error occurred in handler for 'checkpoints:list': ProtocolError: DISCONNECTED: closed by client
+  code: 'DISCONNECTED'
+}
+Error occurred in handler for 'approvals:dock': ProtocolError: DISCONNECTED: closed by client
+  code: 'DISCONNECTED'
+}
+Error occurred in handler for 'approvals:dock': ProtocolError: DISCONNECTED: closed by client
+  code: 'DISCONNECTED'
+}
+
+
+
+
+[13/198] e2e/apps-panel.spec.ts:92:1 › the panel is absent until the task runs; then Changes shows the live diff while the task is still Running
+[14/198] e2e/apps-panel.spec.ts:113:1 › Terminal: owners and states are listed, an exited terminal shows its code, typing reaches the PTY and the output comes back
+[15/198] e2e/apps-panel.spec.ts:153:1 › the person's input lease: held while typing, the agent's shell.input is refused meanwhile, released on blur
+[16/198] e2e/apps-panel.spec.ts:178:1 › replay: a reload shows the same bytes; two attaches from the start read identical bytes (byte-exact)
+[17/198] e2e/apps-panel.spec.ts:219:1 › resize: the viewer's size reaches the PTY and the child prints it
+[18/198] e2e/apps-panel.spec.ts:243:1 › slow consumer at the IPC level: the Core sends no more than the window beyond the last acknowledgement
+[19/198] e2e/apps-panel.spec.ts:293:1 › a stopped terminal: Stop warns that a running process ends, and the list shows it stopped
+[20/198] e2e/apps-panel.spec.ts:305:1 › Files: the workspace is browsable read-only; binary, oversized, protected and outside paths are refused in the Core's terms
+e2e/apps-panel.spec.ts:305:1 › Files: the workspace is browsable read-only; binary, oversized, protected and outside paths are refused in the Core's terms
+
+
+
+
+  code: 'PROTECTED'
+}
+
+  code: 'OUTSIDE_ROOT'
+}
+
+  code: 'OUTSIDE_ROOT'
+}
+
+  code: 'NOT_FOUND'
+}
+
+
+[21/198] e2e/apps-panel.spec.ts:356:1 › Evidence: the task's receipts, checks and context accounting are shown read-only
+[22/198] e2e/apps-panel.spec.ts:394:1 › the apps are keyboard reachable: tabs by arrows, Shift+Escape leaves the terminal, and the terminal keeps the keys it is typed into
+[23/198] e2e/apps-panel.spec.ts:410:1 › invalid arguments to the new calls are rejected by main
+e2e/apps-panel.spec.ts:410:1 › invalid arguments to the new calls are rejected by main
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+  code: 'DISCONNECTED'
+}
+Error occurred in handler for 'terminal:detach': ProtocolError: DISCONNECTED: closed by client
+  code: 'DISCONNECTED'
+}
+Error occurred in handler for 'terminal:detach': ProtocolError: DISCONNECTED: closed by client
+  code: 'DISCONNECTED'
+}
+Error occurred in handler for 'terminal:detach': ProtocolError: DISCONNECTED: closed by client
+  code: 'DISCONNECTED'
+}
+Error occurred in handler for 'terminal:resize': ProtocolError: DISCONNECTED: closed by client
+  code: 'DISCONNECTED'
+}
+
+
+[24/198] e2e/attention.spec.ts:67:1 › attention: a start refused for capacity is an item from the Core and clears when the task starts
+e2e/attention.spec.ts:67:1 › attention: a start refused for capacity is an item from the Core and clears when the task starts
+  code: 'CAPACITY_EXHAUSTED'
+}
+
+
+
+[25/198] e2e/automations.spec.ts:75:1 › PX-086: the editor shows the Core's typed issues with path and code, will not save an invalid definition, and previews the next due time; a saved write-capable definition needs the exact, listed approval
+e2e/automations.spec.ts:75:1 › PX-086: the editor shows the Core's typed issues with path and code, will not save an invalid definition, and previews the next due time; a saved write-capable definition needs the exact, listed approval
+  code: 'APPROVAL_MISMATCH'
+}
+
+  code: 'APPROVAL_LISTS_DIFFER'
+}
+
+  code: 'APPROVAL_LISTS_DIFFER'
+}
+
+  code: 'APPROVAL_MISMATCH'
+}
+
+  code: 'APPROVAL_LISTS_DIFFER'
+}
+
+  code: 'REPOSITORY_UNTRUSTED'
+}
+
+  code: 'BUDGET_REQUIRED'
+}
+
+
+[26/198] e2e/automations.spec.ts:231:1 › PX-086: a repository definition is data until its exact bytes are approved; a changed byte on disk shows content_changed, and a reload raises SOURCE_CHANGED and needs a new approval
+e2e/automations.spec.ts:231:1 › PX-086: a repository definition is data until its exact bytes are approved; a changed byte on disk shows content_changed, and a reload raises SOURCE_CHANGED and needs a new approval
+  code: 'SOURCE_CHANGED'
+}
+
+  code: 'SOURCE_CHANGED'
+}
+
+
+
+[27/198] e2e/automations.spec.ts:328:1 › PX-086: a manual run, a dry test run and a schedule slot on a controlled clock leave history rows; the run's task wears the automation badge; pause, global pause and a missing approval are recorded with their typed reasons
+e2e/automations.spec.ts:328:1 › PX-086: a manual run, a dry test run and a schedule slot on a controlled clock leave history rows; the run's task wears the automation badge; pause, global pause and a missing approval are recorded with their typed reasons
+  code: 'NOT_ENABLED'
+}
+
+
+
+[28/198] e2e/automations.spec.ts:450:1 › PX-086: Kill asks first, cancels the run in progress and reports the Core's counts; the history keeps the typed reason
+e2e/automations.spec.ts:450:1 › PX-086: Kill asks first, cancels the run in progress and reports the Core's counts; the history keeps the typed reason
+
+
+
+[29/198] e2e/autonomy.spec.ts:51:1 › PX-144/145: Autonomous is chosen in the run-mode dialog; a broken TypeScript build is verified by the Core after the edit and the task completes with no approval
+e2e/autonomy.spec.ts:51:1 › PX-144/145: Autonomous is chosen in the run-mode dialog; a broken TypeScript build is verified by the Core after the edit and the task completes with no approval
+
+
+[30/198] e2e/autonomy.spec.ts:101:1 › PX-145: a first fix that does not build is a repair attempt the Core records, concludes from its own verification, and the Evidence app shows
+e2e/autonomy.spec.ts:101:1 › PX-145: a first fix that does not build is a repair attempt the Core records, concludes from its own verification, and the Evidence app shows
+
+
+[31/198] e2e/awl.spec.ts:182:1 › PX-192..194: the agent workspace language on the real app: tokens, unframed geometry, navigation, recipes and the approved home, and the gate fails on a restored ZDL value
+e2e/awl.spec.ts:182:1 › PX-192..194: the agent workspace language on the real app: tokens, unframed geometry, navigation, recipes and the approved home, and the gate fails on a restored ZDL value
+
+
+[32/198] e2e/awl.spec.ts:340:1 › PX-194: a scripted task with tool steps, an edit, a terminal and an approval shows the approved workspace in light and dark, keeps the footer reachable, and the gate fails on a restored value
+e2e/awl.spec.ts:340:1 › PX-194: a scripted task with tool steps, an edit, a terminal and an approval shows the approved workspace in light and dark, keeps the footer reachable, and the gate fails on a restored value
+
+
+
+
+[33/198] e2e/browser-feedback.spec.ts:18:1 › console, network, viewport, scroll and wait read a real page; secrets are redacted and a hostile console line is marked; a click that kills the page's process latches UNKNOWN until the page is read again
+e2e/browser-feedback.spec.ts:18:1 › console, network, viewport, scroll and wait read a real page; secrets are redacted and a hostile console line is marked; a click that kills the page's process latches UNKNOWN until the page is read again
+
+[34/198] e2e/browser-feedback.spec.ts:135:1 › the occlusion hint now recommends scroll, because the tool exists
+[35/198] e2e/browser-hardening.spec.ts:55:1 › PX-120: a destination on this machine or its network is refused unless the policy names it - by address, by a name that resolves privately, at a redirect hop, in a sub-frame, in a sub-resource - and nothing reaches the refused server
+e2e/browser-hardening.spec.ts:55:1 › PX-120: a destination on this machine or its network is refused unless the policy names it - by address, by a name that resolves privately, at a redirect hop, in a sub-frame, in a sub-resource - and nothing reaches the refused server
+
+[36/198] e2e/browser-hardening.spec.ts:173:1 › PX-120: a link that points straight at a local or private target is refused when clicked, the page stays where it was, and the server behind it is never reached
+e2e/browser-hardening.spec.ts:173:1 › PX-120: a link that points straight at a local or private target is refused when clicked, the page stays where it was, and the server behind it is never reached
+
+
+
+[37/198] e2e/browser-hardening.spec.ts:247:1 › PX-073: every call looks at the page's origin - a client-side redirect after an allowed navigation, file: and an unknown origin are all refused, and the refusal lists what is allowed
+e2e/browser-hardening.spec.ts:247:1 › PX-073: every call looks at the page's origin - a client-side redirect after an allowed navigation, file: and an unknown origin are all refused, and the refusal lists what is allowed
+
+
+[38/198] e2e/browser-hardening.spec.ts:336:1 › PX-073: a certificate error waits for the person - Reject fails the request, Trust is remembered per workspace, listed, and cleared
+e2e/browser-hardening.spec.ts:336:1 › PX-073: a certificate error waits for the person - Reject fails the request, Trust is remembered per workspace, listed, and cleared
+
+
+(Use `Electron --trace-warnings ...` to show where the warning was created)
+
+
+
+
+[39/198] e2e/browser-hardening.spec.ts:429:1 › PX-073: the page's permissions are denied and named, signing out wipes the partition, and the session gives the page no download
+e2e/browser-hardening.spec.ts:429:1 › PX-073: the page's permissions are denied and named, signing out wipes the partition, and the session gives the page no download
+
+[40/198] e2e/browser-hardening.spec.ts:531:1 › PX-073: a task lists and selects only the views it owns; hidden views are reclaimed least recently used - never one the person holds - and the reset is stated
+e2e/browser-hardening.spec.ts:531:1 › PX-073: a task lists and selects only the views it owns; hidden views are reclaimed least recently used - never one the person holds - and the reset is stated
+
+[41/198] e2e/browser-observer.spec.ts:41:1 › a page's own update is journaled as a delta with no model call; since_fingerprint answers exactly the changes since, an unknown fingerprint the full page with the reason; frames are read and acted in with their origin
+e2e/browser-observer.spec.ts:41:1 › a page's own update is journaled as a delta with no model call; since_fingerprint answers exactly the changes since, an unknown fingerprint the full page with the reason; frames are read and acted in with their origin
+
+[42/198] e2e/browser-observer.spec.ts:133:1 › a page that mutates thousands of nodes a second, and tries to take the observer away, is reported at a bounded rate
+e2e/browser-observer.spec.ts:133:1 › a page that mutates thousands of nodes a second, and tries to take the observer away, is reported at a bounded rate
+
+[43/198] e2e/browser-observer.spec.ts:185:1 › an element keeps its reference when the page re-renders it under a new name, so the model's reference still acts on it
+e2e/browser-observer.spec.ts:185:1 › an element keeps its reference when the page re-renders it under a new name, so the model's reference still acts on it
+
+
+[44/198] e2e/browser-semantic.spec.ts:71:1 › pages are classified, forms grouped, a form is filled in the order it needs with a credential handle and verified; links to another origin and destructive dialog buttons ask for the stricter approval; page text is data
+e2e/browser-semantic.spec.ts:71:1 › pages are classified, forms grouped, a form is filled in the order it needs with a credential handle and verified; links to another origin and destructive dialog buttons ask for the stricter approval; page text is data
+
+[45/198] e2e/browser-semantic.spec.ts:169:1 › page kinds are classified correctly on a labelled set of real pages, and a derived action whose result cannot be read back is reported unverified, never success
+e2e/browser-semantic.spec.ts:169:1 › page kinds are classified correctly on a labelled set of real pages, and a derived action whose result cannot be read back is reported unverified, never success
+
+  code: 'DISCONNECTED'
+}
+
+
+[46/198] e2e/browser.spec.ts:147:1 › browser session: a sandboxed WebContentsView in the app, attached to the Core, driven by the agent through the CDP bridge; the page is untrusted, file: is refused, nothing privileged is reachable
+e2e/browser.spec.ts:147:1 › browser session: a sandboxed WebContentsView in the app, attached to the Core, driven by the agent through the CDP bridge; the page is untrusted, file: is refused, nothing privileged is reachable
+
+[47/198] e2e/browser.spec.ts:358:1 › browser takeover: the person takes control of the same session and types; the agent's input is blocked at once while it can still observe; returning control moves the lease and the agent acts again
+e2e/browser.spec.ts:358:1 › browser takeover: the person takes control of the same session and types; the agent's input is blocked at once while it can still observe; returning control moves the lease and the agent acts again
+
+[48/198] e2e/browser.spec.ts:470:1 › prompt injection: hostile page and README are marked data; the key never leaves; the forbidden tool stays unavailable
+e2e/browser.spec.ts:470:1 › prompt injection: hostile page and README are marked data; the key never leaves; the forbidden tool stays unavailable
+
+  code: 'DISCONNECTED'
+}
+
+[49/198] e2e/browser.spec.ts:574:1 › credential handle fill: the agent fills a bound credential by handle, never sees the value, and the site receives it in the approved sign-in
+e2e/browser.spec.ts:574:1 › credential handle fill: the agent fills a bound credential by handle, never sees the value, and the site receives it in the approved sign-in
+
+[50/198] e2e/browser.spec.ts:693:1 › human activity preemption: a real key from the person takes control; the agent's input is refused until control is returned
+e2e/browser.spec.ts:693:1 › human activity preemption: a real key from the person takes control; the agent's input is refused until control is returned
+
+[51/198] e2e/browser.spec.ts:782:1 › human activity preemption: a mouse press or a scroll from the person takes control; a hover does not
+e2e/browser.spec.ts:782:1 › human activity preemption: a mouse press or a scroll from the person takes control; a hover does not
+
+
+
+
+[52/198] e2e/browser.spec.ts:862:1 › fault taxonomy, clipboard guard and emergency stop on a real page
+e2e/browser.spec.ts:862:1 › fault taxonomy, clipboard guard and emergency stop on a real page
+
+
+
+
+[53/198] e2e/changes-app.spec.ts:98:1 › the Changes tab shows the finished task's change set with its index, branch and remote
+[54/198] e2e/changes-app.spec.ts:121:1 › reverting one hunk goes through the Core, leaves the other, and a checkpoint undoes it
+[55/198] e2e/changes-app.spec.ts:139:1 › a revert of a file edited since the view was read is refused as stale and writes nothing
+e2e/changes-app.spec.ts:139:1 › a revert of a file edited since the view was read is refused as stale and writes nothing
+  code: 'STALE_REVISION'
+}
+
+[56/198] e2e/changes-app.spec.ts:156:1 › staging moves the real git index; a staged path cannot be reverted under it
+e2e/changes-app.spec.ts:156:1 › staging moves the real git index; a staged path cannot be reverted under it
+  code: 'DIRTY_CONFLICT'
+}
+
+[57/198] e2e/changes-app.spec.ts:176:1 › Commit and push asks for an approval that shows the exact intent, and runs only after it
+[58/198] e2e/changes-app.spec.ts:223:1 › a denied approval commits and pushes nothing
+[59/198] e2e/changes-app.spec.ts:239:1 › a protected path is refused by the Core, not hidden by the app
+e2e/changes-app.spec.ts:239:1 › a protected path is refused by the Core, not hidden by the app
+  code: 'PROTECTED_PATH'
+}
+
+  code: 'PROTECTED_PATH'
+}
+
+[60/198] e2e/changes-app.spec.ts:263:1 › the Core killed in the middle of a push: the effect is shown as in doubt after the restart, and the retry converges
+e2e/changes-app.spec.ts:263:1 › the Core killed in the middle of a push: the effect is shown as in doubt after the restart, and the retry converges
+
+  code: 'DISCONNECTED'
+}
+Error occurred in handler for 'agents:headers': ProtocolError: DISCONNECTED: connection closed
+  code: 'DISCONNECTED'
+}
+Error occurred in handler for 'projects:list': ProtocolError: DISCONNECTED: connection closed
+  code: 'DISCONNECTED'
+}
+
+  code: 'DISCONNECTED'
+}
+
+  code: 'DISCONNECTED'
+}
+
+  code: 'DISCONNECTED'
+}
+
+  code: 'DISCONNECTED'
+}
+
+  code: 'DISCONNECTED'
+}
+
+  code: 'DISCONNECTED'
+}
+
+  code: 'DISCONNECTED'
+}
+
+  code: 'DISCONNECTED'
+}
+
+  code: 'DISCONNECTED'
+}
+
+  code: 'DISCONNECTED'
+}
+Error occurred in handler for 'changes:state': ProtocolError: DISCONNECTED: connection closed
+  code: 'DISCONNECTED'
+}
+
+
+
+
+
+
+
+
+[61/198] e2e/checkpoints.spec.ts:46:1 › PX-062: Restore puts the bytes of a turn's checkpoint back (Cancel changes nothing), Redo restores the exact state, Undo all needs a second click; all by hash on disk and by keyboard
+e2e/checkpoints.spec.ts:46:1 › PX-062: Restore puts the bytes of a turn's checkpoint back (Cancel changes nothing), Redo restores the exact state, Undo all needs a second click; all by hash on disk and by keyboard
+
+
+
+
+[62/198] e2e/checkpoints.spec.ts:123:1 › PX-062: a file the person edited needs their own choice and is kept; a renderer killed with the dialog open leaves the workspace unchanged; a restore is refused while the agent works
+e2e/checkpoints.spec.ts:123:1 › PX-062: a file the person edited needs their own choice and is kept; a renderer killed with the dialog open leaves the workspace unchanged; a restore is refused while the agent works
+  code: 'TASK_RUNNING'
+}
+
+
+  code: 'DISCONNECTED'
+}
+
+
+Error occurred in handler for 'approvals:dock': Error: CORE_UNAVAILABLE: the local Core is restarting; your last persisted state is shown
+
+
+[63/198] e2e/checkpoints.spec.ts:180:1 › PX-062: Fork from a turn opens the child task with that turn's files and leaves the parent alone
+e2e/checkpoints.spec.ts:180:1 › PX-062: Fork from a turn opens the child task with that turn's files and leaves the parent alone
+
+  code: 'DISCONNECTED'
+}
+
+
+Error occurred in handler for 'terminal:list': Error: CORE_UNAVAILABLE: the local Core is restarting; your last persisted state is shown
+modbit-core: connection ended: io: Broken pipe (os error 32)
+
+[64/198] e2e/checkpoints.spec.ts:228:1 › PX-062: Restore checkpoint on a message makes it editable in place; editing an older message asks Revert or Keep; Redo returns the files
+e2e/checkpoints.spec.ts:228:1 › PX-062: Restore checkpoint on a message makes it editable in place; editing an older message asks Revert or Keep; Redo returns the files
+
+[65/198] e2e/composer.spec.ts:22:1 › PX-055: messages sent during a turn queue in the Core, can be edited, reordered and deleted, survive a reload, and drain in order as their own turns
+e2e/composer.spec.ts:22:1 › PX-055: messages sent during a turn queue in the Core, can be edited, reordered and deleted, survive a reload, and drain in order as their own turns
+
+
+
+
+
+[66/198] e2e/composer.spec.ts:133:1 › PX-055: Send now cuts the live stream as a user interrupt, keeps the partial text marked partial, and the new turn starts from the sent message
+e2e/composer.spec.ts:133:1 › PX-055: Send now cuts the live stream as a user interrupt, keeps the partial text marked partial, and the new turn starts from the sent message
+
+
+
+
+[67/198] e2e/composer.spec.ts:169:1 › PX-055: Stop ends the turn as a user interrupt, leaves the message editable and re-sends nothing; Continue resumes only when the person says so
+e2e/composer.spec.ts:169:1 › PX-055: Stop ends the turn as a user interrupt, leaves the message editable and re-sends nothing; Continue resumes only when the person says so
+
+  code: 'DISCONNECTED'
+}
+
+  code: 'DISCONNECTED'
+}
+
+  code: 'DISCONNECTED'
+}
+
+  code: 'DISCONNECTED'
+}
+
+  code: 'DISCONNECTED'
+}
+
+  code: 'DISCONNECTED'
+}
+
+  code: 'DISCONNECTED'
+}
+
+  code: 'DISCONNECTED'
+}
+
+
+
+
+
+
+
+
+
+
+
+[68/198] e2e/composer.spec.ts:204:1 › PX-054: Shift+Tab walks the modes with the right chip and placeholder, the Core's mode field is authoritative, and a write in Plan is refused at the kernel
+e2e/composer.spec.ts:204:1 › PX-054: Shift+Tab walks the modes with the right chip and placeholder, the Core's mode field is authoritative, and a write in Plan is refused at the kernel
+
+
+
+[69/198] e2e/composer.spec.ts:281:1 › PX-054: the slash menu lists the Core's inventory in its order with a divider, shows an untrusted skill disabled with the Core's reason, treats a planted description as text, and runs a trusted skill
+e2e/composer.spec.ts:281:1 › PX-054: the slash menu lists the Core's inventory in its order with a divider, shows an untrusted skill disabled with the Core's reason, treats a planted description as text, and runs a trusted skill
+
+  code: 'DISCONNECTED'
+}
+
+  code: 'DISCONNECTED'
+}
+
+  code: 'DISCONNECTED'
+}
+
+
+
+
+
+
+
+
+
+[70/198] e2e/composer.spec.ts:334:1 › PX-054: an attachment is validated and ingested by the Core, an image shows a thumbnail and reaches the model, and what is not allowed is refused with its reason
+e2e/composer.spec.ts:334:1 › PX-054: an attachment is validated and ingested by the Core, an image shows a thumbnail and reaches the model, and what is not allowed is refused with its reason
+
+
+
+
+
+Error occurred in handler for 'checkpoints:list': Error: CORE_UNAVAILABLE: the local Core is restarting; your last persisted state is shown
+
+
+
+[71/198] e2e/composer.spec.ts:388:1 › PX-056: the picker lists the Core's variants, records the objective and a pin, shows a policy-blocked model with the Core's reason and keeps the prompt, and the choice reaches the model request and survives a reload
+e2e/composer.spec.ts:388:1 › PX-056: the picker lists the Core's variants, records the objective and a pin, shows a policy-blocked model with the Core's reason and keeps the prompt, and the choice reaches the model request and survives a reload
+  code: 'POLICY_BLOCKED'
+}
+
+
+  code: 'DISCONNECTED'
+}
+
+  code: 'DISCONNECTED'
+}
+Error occurred in handler for 'conversation:approvals': ProtocolError: DISCONNECTED: closed by client
+  code: 'DISCONNECTED'
+}
+
+
+Error occurred in handler for 'conversation:transcript': Error: CORE_UNAVAILABLE: the local Core is restarting; your last persisted state is shown
+
+
+
+
+
+
+[72/198] e2e/composer.spec.ts:480:1 › PX-056: a model the policy blocks at the run (the task's default) fails before any token; the prompt is restored and the tray names the typed cause
+e2e/composer.spec.ts:480:1 › PX-056: a model the policy blocks at the run (the task's default) fails before any token; the prompt is restored and the tray names the typed cause
+
+
+[73/198] e2e/composer.spec.ts:510:1 › PX-054: the @ menu lists the Core's sources and a protected path cannot be attached; a draft and its chips survive navigation and a reload and are never sent; Alt+Up and Alt+Down walk the history
+e2e/composer.spec.ts:510:1 › PX-054: the @ menu lists the Core's sources and a protected path cannot be attached; a draft and its chips survive navigation and a reload and are never sent; Alt+Up and Alt+Down walk the history
+
+  code: 'DISCONNECTED'
+}
+
+
+[74/198] e2e/composer.spec.ts:609:1 › PX-055: the background-terminals tray lists a live terminal with its timer, opens it in the Terminal tab, kills it after a confirm and wakes the agent once; a side question is answered without entering the main context
+e2e/composer.spec.ts:609:1 › PX-055: the background-terminals tray lists a live terminal with its timer, opens it in the Terminal tab, kills it after a confirm and wakes the agent once; a side question is answered without entering the main context
+
+
+
+
+
+
+
+
+[75/198] e2e/composer.spec.ts:669:1 › PX-054: a message to a task waiting for review is queued for its next run and says so; the same send replayed sends once
+e2e/composer.spec.ts:669:1 › PX-054: a message to a task waiting for review is queued for its next run and says so; the same send replayed sends once
+
+  code: 'DISCONNECTED'
+}
+
+  code: 'DISCONNECTED'
+}
+
+
+Error occurred in handler for 'modeproposals:list': Error: CORE_UNAVAILABLE: the local Core is restarting; your last persisted state is shown
+
+modbit-core: connection ended: io: Broken pipe (os error 32)
+
+[76/198] e2e/composer.spec.ts:712:1 › PX-055: the queue is the Core's: it survives the Core being killed mid-stream, and the interrupted stream shows as stopped by a restart, not by the person
+e2e/composer.spec.ts:712:1 › PX-055: the queue is the Core's: it survives the Core being killed mid-stream, and the interrupted stream shows as stopped by a restart, not by the person
+
+
+
+
+
+
+
+
+
+
+  code: 'DISCONNECTED'
+}
+
+
+Error occurred in handler for 'approvals:dock': Error: CORE_UNAVAILABLE: the local Core is restarting; your last persisted state is shown
+
+
+[77/198] e2e/computer-surface.spec.ts:44:1 › PX-074: the permission window shows checking, allow and ready from the Core's actuator; the deep link only opens a pane; a grant is noticed; it is keyboard-operable and accessible
+e2e/computer-surface.spec.ts:44:1 › PX-074: the permission window shows checking, allow and ready from the Core's actuator; the deep link only opens a pane; a grant is noticed; it is keyboard-operable and accessible
+
+[78/198] e2e/computer-surface.spec.ts:96:1 › PX-074: Stop halts an in-flight input, is sticky for the turn, and presence and the cards say so
+e2e/computer-surface.spec.ts:96:1 › PX-074: Stop halts an in-flight input, is sticky for the turn, and presence and the cards say so
+
+
+
+Error occurred in handler for 'modeproposals:list': Error: CORE_UNAVAILABLE: the local Core is restarting; your last persisted state is shown
+Error occurred in handler for 'approvals:dock': Error: CORE_UNAVAILABLE: the local Core is restarting; your last persisted state is shown
+Error occurred in handler for 'attention:list': Error: CORE_UNAVAILABLE: the local Core is restarting; your last persisted state is shown
+
+[79/198] e2e/computer-surface.spec.ts:177:1 › PX-074: action cards for success, a typed refusal and an unknown outcome; the latch is resolved by the person and the surface returns to the Core's truth
+e2e/computer-surface.spec.ts:177:1 › PX-074: action cards for success, a typed refusal and an unknown outcome; the latch is resolved by the person and the surface returns to the Core's truth
+
+
+[80/198] e2e/computer-surface.spec.ts:242:1 › PX-074: a screenshot card shows the masked frame through the artifact path; secure fields are blacked out and counted; a frame the task did not take cannot be read
+e2e/computer-surface.spec.ts:242:1 › PX-074: a screenshot card shows the masked frame through the artifact path; secure fields are blacked out and counted; a frame the task did not take cannot be read
+
+
+
+
+
+[81/198] e2e/computer-surface.spec.ts:289:1 › PX-074: every call is approved on its own exact card; no mode, rule or Always covers native control; a stale intent is refused; Skip is typed; the keyboard operates the card
+e2e/computer-surface.spec.ts:289:1 › PX-074: every call is approved on its own exact card; no mode, rule or Always covers native control; a stale intent is refused; Skip is typed; the keyboard operates the card
+
+  code: 'INTENT_MISMATCH'
+}
+
+
+
+Error occurred in handler for 'projects:list': Error: CORE_UNAVAILABLE: the local Core is restarting; your last persisted state is shown
+Error occurred in handler for 'computer:cards': Error: CORE_UNAVAILABLE: the local Core is restarting; your last persisted state is shown
+
+
+
+[82/198] e2e/computer-surface.spec.ts:353:1 › PX-074: a Core killed with control active leaves the surface showing only what the restarted Core says
+e2e/computer-surface.spec.ts:353:1 › PX-074: a Core killed with control active leaves the surface showing only what the restarted Core says
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+[83/198] e2e/computer-surface.spec.ts:392:1 › PX-074: Stop is one chord away and keyboard-only, even behind a modal dialog
+e2e/computer-surface.spec.ts:392:1 › PX-074: Stop is one chord away and keyboard-only, even behind a modal dialog
+
+  code: 'DISCONNECTED'
+}
+
+  code: 'DISCONNECTED'
+}
+
+  code: 'DISCONNECTED'
+}
+
+  code: 'DISCONNECTED'
+}
+
+  code: 'DISCONNECTED'
+}
+
+  code: 'DISCONNECTED'
+}
+
+  code: 'DISCONNECTED'
+}
+
+  code: 'DISCONNECTED'
+}
+
+
+Error occurred in handler for 'terminal:list': Error: CORE_UNAVAILABLE: the local Core is restarting; your last persisted state is shown
+
+
+
+[84/198] e2e/computer-surface.spec.ts:421:1 › PX-074: a call blocked by a missing permission routes the permission window once; closing it keeps it closed; a grant is noticed
+e2e/computer-surface.spec.ts:421:1 › PX-074: a call blocked by a missing permission routes the permission window once; closing it keeps it closed; a grant is noticed
+
+  code: 'DISCONNECTED'
+}
+
+
+
+[85/198] e2e/computer-surface.spec.ts:451:1 › PX-074: the renderer is killed while the agent holds the machine; the replacement window shows the Core's presence, the typed Stop still reaches the actuator and the stopped state stands
+e2e/computer-surface.spec.ts:451:1 › PX-074: the renderer is killed while the agent holds the machine; the replacement window shows the Core's presence, the typed Stop still reaches the actuator and the stopped state stands
+
+
+  code: 'DISCONNECTED'
+}
+
+  code: 'DISCONNECTED'
+}
+
+  code: 'DISCONNECTED'
+}
+
+
+Error occurred in handler for 'terminal:list': Error: CORE_UNAVAILABLE: the local Core is restarting; your last persisted state is shown
+modbit-core: connection ended: io: Broken pipe (os error 32)
+
+[86/198] e2e/context.spec.ts:45:1 › PX-060: the ring shows the Core's usage; its tray lists the nine categories that sum to the total; it updates after a turn; the usage summary and the budget caps appear as set
+e2e/context.spec.ts:45:1 › PX-060: the ring shows the Core's usage; its tray lists the nine categories that sum to the total; it updates after a turn; the usage summary and the budget caps appear as set
+
+
+[87/198] e2e/context.spec.ts:133:1 › PX-060: BUDGET_EXHAUSTED docks a limit tray naming what ran out; raising the cap resumes the run with its work kept
+e2e/context.spec.ts:133:1 › PX-060: BUDGET_EXHAUSTED docks a limit tray naming what ran out; raising the cap resumes the run with its work kept
+
+
+[88/198] e2e/context.spec.ts:223:1 › PX-060: a raise above the organisation's ceiling is refused with the Core's typed reason and changes nothing, also after the Core is killed; a raise within it resumes the run
+e2e/context.spec.ts:223:1 › PX-060: a raise above the organisation's ceiling is refused with the Core's typed reason and changes nothing, also after the Core is killed; a raise within it resumes the run
+  code: 'BUDGET_CEILING_EXCEEDED'
+}
+
+
+
+
+
+
+
+
+  code: 'BUDGET_CEILING_EXCEEDED'
+}
+
+  code: 'BUDGET_CEILING_EXCEEDED'
+}
+
+
+  code: 'DISCONNECTED'
+}
+
+
+[89/198] e2e/context.spec.ts:263:1 › PX-060: a raise that policy sends for approval waits in the approval stack with its exact caps, applies once approved and asked again, and survives a Core kill
+e2e/context.spec.ts:263:1 › PX-060: a raise that policy sends for approval waits in the approval stack with its exact caps, applies once approved and asked again, and survives a Core kill
+  code: 'BUDGET_RAISE_NEEDS_APPROVAL'
+}
+
+
+
+
+
+
+  code: 'DISCONNECTED'
+}
+
+
+[90/198] e2e/context.spec.ts:306:1 › PX-060: a Core that goes away docks an offline tray while it is gone, keeps the conversation readable, and takes the tray away when it is back
+e2e/context.spec.ts:306:1 › PX-060: a Core that goes away docks an offline tray while it is gone, keeps the conversation readable, and takes the tray away when it is back
+
+  code: 'DISCONNECTED'
+}
+
+
+
+
+
+
+
+
+
+
+
+[91/198] e2e/context.spec.ts:341:1 › PX-060: when policy blocks the model the turn fails before any token and a tray names the cause in the Core's words
+e2e/context.spec.ts:341:1 › PX-060: when policy blocks the model the turn fails before any token and a tray names the cause in the Core's words
+
+
+[92/198] e2e/conversation.spec.ts:24:1 › PX-047: a streamed answer appears incrementally, is never shown as final while open, only grows, and is final when the stream completes
+e2e/conversation.spec.ts:24:1 › PX-047: a streamed answer appears incrementally, is never shown as final while open, only grows, and is final when the stream completes
+
+
+
+
+
+
+[93/198] e2e/conversation.spec.ts:71:1 › PX-047: a reload in the middle of a stream resumes it: the partial text comes back and the rest follows
+e2e/conversation.spec.ts:71:1 › PX-047: a reload in the middle of a stream resumes it: the partial text comes back and the rest follows
+
+
+
+
+modbit-core: supervising client closed its pipe; exiting
+
+[94/198] e2e/conversation.spec.ts:103:1 › PX-047: killing the Core mid-stream shows the response as stopped, with its cause, never as an answer
+e2e/conversation.spec.ts:103:1 › PX-047: killing the Core mid-stream shows the response as stopped, with its cause, never as an answer
+
+
+
+
+Error occurred in handler for 'approvals:dock': Error: CORE_UNAVAILABLE: the local Core is restarting; your last persisted state is shown
+
+
+
+
+
+
+
+
+Error occurred in handler for 'terminal:list': Error: CORE_UNAVAILABLE: the local Core is restarting; your last persisted state is shown
+
+Error occurred in handler for 'projects:list': Error: CORE_UNAVAILABLE: the local Core is restarting; your last persisted state is shown
+
+
+[95/198] e2e/conversation.spec.ts:132:1 › PX-047: scrolling up freezes follow, the pill counts later messages, the jump returns to the tail; planted markup and instructions render as inert text
+e2e/conversation.spec.ts:132:1 › PX-047: scrolling up freezes follow, the pill counts later messages, the jump returns to the tail; planted markup and instructions render as inert text
+
+
+[96/198] e2e/conversation.spec.ts:190:1 › PX-047: tool steps fold by density without changing the rows; a question is answered inline and an approval on the docked card with the exact intent, neither folded away; both survive a reload and a Core restart
+e2e/conversation.spec.ts:190:1 › PX-047: tool steps fold by density without changing the rows; a question is answered inline and an approval on the docked card with the exact intent, neither folded away; both survive a reload and a Core restart
+
+
+
+
+
+
+
+
+[97/198] e2e/dashboard.spec.ts:74:1 › the operations dashboard shows the Core's own aggregation of its log, the same numbers the CLI reads
+e2e/dashboard.spec.ts:74:1 › the operations dashboard shows the Core's own aggregation of its log, the same numbers the CLI reads
+[cli dashboard]
+tasks ReadyForReview=1
+cost cost_minor=0 currency=- scale=0 priced=0 unpriced=3 unreported=0
+tokens input=123 cached=0 output=21
+model gpt-5 calls=3 input=123 output=21 cost_minor=0 unpriced=3
+task 13433db6-0d49-7fce-7180-0d3233666d63 state=ReadyForReview model_calls=3 tool_calls=1 cost_minor=0 complete=false starts=0
+tools succeeded=1 failed=0 unknown_outcome=0 cancelled=0
+slo cold starts=0 ready_p50_ms=-1 ready_max_ms=-1 first_token_p50_ms=-1 first_token_max_ms=-1
+slo warm starts=0 ready_p50_ms=-1 ready_max_ms=-1 first_token_p50_ms=-1 first_token_max_ms=-1
+provider openai: requests=3 successes=3 failures=0 rate_limited=0 first_token_ms=0
+
+
+
+
+[98/198] e2e/fleet-agents.spec.ts:80:1 › M6.6: a delegating parent shows its phase, agents and the nested child; the child is never a primary task
+e2e/fleet-agents.spec.ts:80:1 › M6.6: a delegating parent shows its phase, agents and the nested child; the child is never a primary task
+
+  code: 'DISCONNECTED'
+}
+
+
+
+
+[99/198] e2e/fleet.spec.ts:33:1 › new task renders from Core ids, the list reduces Core events, and survives Core kill and app restart
+e2e/fleet.spec.ts:33:1 › new task renders from Core ids, the list reduces Core events, and survives Core kill and app restart
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+[100/198] e2e/fleet.spec.ts:109:1 › renderer messages with invalid arguments are rejected by main (REQ-EV-0103)
+e2e/fleet.spec.ts:109:1 › renderer messages with invalid arguments are rejected by main (REQ-EV-0103)
+
+
+
+[101/198] e2e/forge-evidence.spec.ts:130:1 › review shows the forge's CI runs as external evidence and the pull request's comments as untrusted text, survives a restart, and CI never accepts the task
+e2e/forge-evidence.spec.ts:130:1 › review shows the forge's CI runs as external evidence and the pull request's comments as untrusted text, survives a restart, and CI never accepts the task
+
+
+  code: 'NO_PULL_REQUEST'
+}
+
+
+
+[102/198] e2e/gallery-automations.spec.ts:26:1 › PX-086: every automations state is on the gallery with its words, and accessible in every theme: the empty list, every definition state and attention kind, the editor's issues, the approval of a write-capable definition, repository definitions, every typed reason in the history, a dry run's report and the kill confirmation
+e2e/gallery-automations.spec.ts:26:1 › PX-086: every automations state is on the gallery with its words, and accessible in every theme: the empty list, every definition state and attention kind, the editor's issues, the approval of a write-capable definition, repository definitions, every typed reason in the history, a dry run's report and the kill confirmation
+
+
+
+
+
+
+
+
+
+[103/198] e2e/gallery-computer.spec.ts:23:1 › PX-074: every state of the native-control surface is accessible in every theme, says its state in words, and offers no Always on a computer card
+e2e/gallery-computer.spec.ts:23:1 › PX-074: every state of the native-control surface is accessible in every theme, says its state in words, and offers no Always on a computer card
+
+
+
+
+
+[104/198] e2e/gallery-controls.spec.ts:23:1 › PX-058/057/060/062: every new state is accessible in every theme: approval cards, the run-mode and warning dialogs, the ring and its trays, the restore, redo and Revert-or-Keep dialogs, the edit box and the Redo bar
+e2e/gallery-controls.spec.ts:23:1 › PX-058/057/060/062: every new state is accessible in every theme: approval cards, the run-mode and warning dialogs, the ring and its trays, the restore, redo and Revert-or-Keep dialogs, the edit box and the Redo bar
+
+
+
+
+
+
+
+
+
+
+[105/198] e2e/gallery-projects.spec.ts:25:1 › PX-063/064/068: the project, worktree and apply-back states render from fixtures with no Core, with words beside every state, and are accessible in every theme
+e2e/gallery-projects.spec.ts:25:1 › PX-063/064/068: the project, worktree and apply-back states render from fixtures with no Core, with words beside every state, and are accessible in every theme
+
+
+
+
+
+
+
+[106/198] e2e/gallery.spec.ts:42:1 › PX-044: the production bundle contains no gallery; the gallery build is separate
+[107/198] e2e/gallery.spec.ts:48:1 › PX-044: approvals, generating, error, empty and offline render from fixtures with no Core; axe passes on every state in light, dark and high contrast
+e2e/gallery.spec.ts:48:1 › PX-044: approvals, generating, error, empty and offline render from fixtures with no Core; axe passes on every state in light, dark and high contrast
+
+
+
+
+
+
+
+[108/198] e2e/gallery.spec.ts:83:1 › PX-044: the tray host keeps one active tray, and the scoped keys move with it
+e2e/gallery.spec.ts:83:1 › PX-044: the tray host keeps one active tray, and the scoped keys move with it
+
+
+
+
+[109/198] e2e/gallery.spec.ts:131:1 › PX-054..056: the composer's menus, trays, chips and picker render from fixtures with no Core; axe passes on each in light, dark and high contrast
+e2e/gallery.spec.ts:131:1 › PX-054..056: the composer's menus, trays, chips and picker render from fixtures with no Core; axe passes on each in light, dark and high contrast
+
+
+
+
+
+[110/198] e2e/gallery.spec.ts:164:1 › PX-044: every primitive operates by keyboard alone with its ARIA contract
+e2e/gallery.spec.ts:164:1 › PX-044: every primitive operates by keyboard alone with its ARIA contract
+
+
+
+
+
+[111/198] e2e/gallery.spec.ts:271:1 › PX-044: with prefers-reduced-motion no transition or animation runs
+e2e/gallery.spec.ts:271:1 › PX-044: with prefers-reduced-motion no transition or animation runs
+
+
+
+[112/198] e2e/gallery.spec.ts:293:1 › PX-044/045: the shell geometry in the gallery frame: 1280 with the panel, 900 stacked, 600 as a rail
+e2e/gallery.spec.ts:293:1 › PX-044/045: the shell geometry in the gallery frame: 1280 with the panel, 900 stacked, 600 as a rail
+
+
+
+
+[113/198] e2e/gallery.spec.ts:331:1 › PX-046/047: the agent list shows every status class with a glyph and words, and the conversation rows (streaming, stopped, approval, failure) pass axe in light, dark and high contrast
+e2e/gallery.spec.ts:331:1 › PX-046/047: the agent list shows every status class with a glyph and words, and the conversation rows (streaming, stopped, approval, failure) pass axe in light, dark and high contrast
+
+
+
+
+
+[114/198] e2e/issue-intake.spec.ts:93:1 › issue intake: New Task from an issue URL and `modbit-cli task from-issue` create tasks named after the issue with its text as untrusted context; an unreadable issue is an error and no task
+e2e/issue-intake.spec.ts:93:1 › issue intake: New Task from an issue URL and `modbit-cli task from-issue` create tasks named after the issue with its text as untrusted context; an unreadable issue is an error and no task
+
+[fake-github] GET /repos/o/r/issues/404 authorized=true
+
+  code: 'FORGE_ISSUE_UNREADABLE'
+}
+
+[fake-github] GET /repos/o/r/issues/7 authorized=true
+
+[fake-github] GET /repos/o/r/issues/7 authorized=true
+
+[fake-github] GET /repos/o/r/issues/404 authorized=true
+
+
+[115/198] e2e/keyboard.spec.ts:80:1 › keyboard: every screen by keyboard only — shortcuts, list and review navigation, confirmed approval and cancellation, focus retained across Core events, live announcements, the accessibility suite on each screen
+e2e/keyboard.spec.ts:80:1 › keyboard: every screen by keyboard only — shortcuts, list and review navigation, confirmed approval and cancellation, focus retained across Core events, live announcements, the accessibility suite on each screen
+
+  code: 'DISCONNECTED'
+}
+
+
+Error occurred in handler for 'approvals:dock': Error: CORE_UNAVAILABLE: the local Core is restarting; your last persisted state is shown
+Error occurred in handler for 'automations:taskHeaders': Error: CORE_UNAVAILABLE: the local Core is restarting; your last persisted state is shown
+
+[116/198] e2e/lifecycle.spec.ts:32:1 › PX-049: the window opens at 1280 x 800 and cannot be made smaller than 900 x 600
+e2e/lifecycle.spec.ts:32:1 › PX-049: the window opens at 1280 x 800 and cannot be made smaller than 900 x 600
+
+
+[117/198] e2e/lifecycle.spec.ts:66:1 › PX-049: quitting with nothing running does not ask
+e2e/lifecycle.spec.ts:66:1 › PX-049: quitting with nothing running does not ask
+
+[118/198] e2e/lifecycle.spec.ts:77:1 › PX-049: quitting or closing the window with a task running asks first, says what quitting does, and keeps the app open on the default answer
+e2e/lifecycle.spec.ts:77:1 › PX-049: quitting or closing the window with a task running asks first, says what quitting does, and keeps the app open on the default answer
+
+
+
+
+Error occurred in handler for 'modeproposals:list': Error: CORE_UNAVAILABLE: the local Core is restarting; your last persisted state is shown
+Error occurred in handler for 'approvals:dock': Error: CORE_UNAVAILABLE: the local Core is restarting; your last persisted state is shown
+
+
+
+
+[119/198] e2e/lifecycle.spec.ts:133:1 › PX-049: a restart after a quit with a task running shows the Core's recovery counts, and the task is there to resume
+e2e/lifecycle.spec.ts:133:1 › PX-049: a restart after a quit with a task running shows the Core's recovery counts, and the task is there to resume
+
+
+
+
+[120/198] e2e/live-approvals.spec.ts:34:1 › live: the approval deck with a real model: a card for a command no rule covers, Always makes a rule that applies, the run continues
+[121/198] e2e/live-autonomy.spec.ts:31:1 › live: 'Fix my broken application.' on the real desktop, a real model, a real tsc and npm, in Autonomous mode under a cost cap
+[122/198] e2e/onboarding.spec.ts:136:1 › onboarding: a fresh profile reaches a first reviewed change through provider setup, repository trust and a starter task, within five minutes at the median
+e2e/onboarding.spec.ts:136:1 › onboarding: a fresh profile reaches a first reviewed change through provider setup, repository trust and a starter task, within five minutes at the median
+
+
+
+ONBOARDING samples_s=[2.416,2.455,2.456] median_s=2.5 p90_s=2.5 platform=darwin/arm64
+
+[123/198] e2e/onboarding.spec.ts:152:1 › onboarding: an invalid key, an unreachable endpoint and a missing repository each name their cause; a profile without a provider cannot start a task
+e2e/onboarding.spec.ts:152:1 › onboarding: an invalid key, an unreachable endpoint and a missing repository each name their cause; a profile without a provider cannot start a task
+  code: 'NO_PROVIDER'
+}
+
+
+
+[124/198] e2e/perf-budgets.spec.ts:55:1 › PERF PX-041/PX-047: a streamed delta renders within 100 ms of its event timestamp at p95, every delta and the first of each message
+e2e/perf-budgets.spec.ts:55:1 › PERF PX-041/PX-047: a streamed delta renders within 100 ms of its event timestamp at p95, every delta and the first of each message
+[perf] px041-px047-stream-render {"run":"2026-11-07T12-52-52-298Z","distributions":{"event timestamp to rendered frame, every delta":{"n":794,"min":1.4,"p50":21.3,"p95":160.2,"p99":235.3,"max":366.9,"mean":48.67},"event timestamp to rendered frame, first delta of a message":{"n":204,"min":3.1,"p50":24.6,"p95":141.8,"p99":165.8,"max":314.9,"mean":42.46},"event timestamp to main-process receipt (Core append, its connection, socket)":{"n":794,"min":0,"p50":6,"p95":149,"p99":224,"max":350,"mean":38.28},"main-process receipt to renderer receipt (main thread, IPC)":{"n":794,"min":-1.8,"p50":0.5,"p95":14.5,"p99":29.8,"max":57.1,"mean":2.89},"event timestamp to rendered frame, 2nd delta of a message":{"n":204,"min":1.7,"p50":13.2,"p95":99.7,"p99":181.9,"max":253.9,"mean":29.04},"event timestamp to rendered frame, 3rd delta of a message":{"n":204,"min":1.4,"p50":10.6,"p95":141.5,"p99":198.7,"max":238.9,"mean":32.29},"event timestamp to rendered frame, 4th delta of a message":{"n":182,"min":4.1,"p50":119.5,"p95":202.7,"p99":274.5,"max":366.9,"mean":96},"diagnostic: one transcript read of the last task, IPC round trip":{"n":20,"min":43.8,"p50":53.9,"p95":420.4,"p99":999.6,"max":999.6,"mean":157.41},"diagnostic: one agent-headers read, IPC round trip":{"n":20,"min":27.6,"p50":34.9,"p95":129.1,"p99":426.8,"max":426.8,"mean":67.11},"diagnostic: renderer long tasks (>50 ms main-thread work)":{"n":0,"min":null,"p50":null,"p95":null,"p99":null,"max":null,"mean":0},"renderer receipt to DOM showing it":{"n":794,"min":0.7,"p50":2,"p95":11.3,"p99":19.3,"max":192.8,"mean":3.93},"DOM showing it to the next frame":{"n":794,"min":0.4,"p50":2.4,"p95":9.3,"p99":15.3,"max":29.7,"mean":3.57}},"verdict":{"met":false,"text":"recorded on the \"ci\" profile; asserted only on the reference profile"}}
+
+
+
+
+[125/198] e2e/perf-budgets.spec.ts:199:1 › PERF PX-046: the agent list reflects a Core event within 150 ms at p95 with a 200-task list
+e2e/perf-budgets.spec.ts:199:1 › PERF PX-046: the agent list reflects a Core event within 150 ms at p95 with a 200-task list
+[perf] px046-agent-list {"run":"2026-11-07T12-53-18-087Z","distributions":{"event timestamp to rendered frame, a task appears":{"n":220,"min":19.4,"p50":54.6,"p95":85.2,"p99":109.6,"max":121.4,"mean":56.98},"event timestamp to rendered frame, a task is archived":{"n":220,"min":0.2,"p50":1.7,"p95":54,"p99":66.3,"max":67.5,"mean":6.88},"event timestamp to rendered frame, both":{"n":440,"min":0.2,"p50":41.1,"p95":67.1,"p99":103.4,"max":121.4,"mean":31.93},"event timestamp to main-process receipt (Core append, its connection, socket)":{"n":440,"min":0,"p50":1,"p95":2,"p99":3,"max":8,"mean":1.06},"main-process receipt to renderer receipt (main thread, IPC)":{"n":440,"min":-0.4,"p50":0.4,"p95":2,"p99":7.5,"max":9.1,"mean":0.63},"renderer receipt to the row present or gone":{"n":440,"min":0,"p50":34.2,"p95":65.5,"p99":100.5,"max":119.3,"mean":28.78},"that to the next frame":{"n":440,"min":0,"p50":0.5,"p95":9.2,"p99":12.5,"max":13.6,"mean":1.46}},"verdict":{"met":true,"text":"recorded on the \"ci\" profile; asserted only on the reference profile"}}
+
+
+
+
+[126/198] e2e/perf-budgets.spec.ts:293:1 › PERF PX-047: a long transcript scrolls; the frame distribution is recorded (the dossier names no frame budget; 1,000 rows need MODBIT_PERF_STEERS)
+e2e/perf-budgets.spec.ts:293:1 › PERF PX-047: a long transcript scrolls; the frame distribution is recorded (the dossier names no frame budget; 1,000 rows need MODBIT_PERF_STEERS)
+[perf] queued 40 inputs after 229 ms
+
+[perf] waiting for the run to use its turns: Running/ loopAlive=true  
+
+[perf] waiting for the run to use its turns: Running/ loopAlive=true  
+
+[perf] waiting for the run to use its turns: Running/ loopAlive=true  
+
+[perf] waiting for the run to use its turns: Running/ loopAlive=true  
+
+[perf] waiting for the run to use its turns: Running/ loopAlive=true  
+
+[perf] px047-scroll-frames {"run":"2026-11-07T12-56-09-630Z","distributions":{"frame interval while scrolling (ms)":{"n":9272,"min":6.2,"p50":8.3,"p95":10.1,"p99":10.4,"max":90,"mean":8.47}},"verdict":{"met":null,"text":"1239 rows; 19 of 9272 frames over 33.3 ms (0.2 %); no numeric budget exists to judge them against"}}
+
+
+[127/198] e2e/projects.spec.ts:90:1 › PX-063/064: a project is created, filled by menu, drag and keyboard, refuses each forbidden move with the Core's reason, shows the Core's rollup, archives with an undo that leaves its tasks alone, and groups, filters and stores views
+e2e/projects.spec.ts:90:1 › PX-063/064: a project is created, filled by menu, drag and keyboard, refuses each forbidden move with the Core's reason, shows the Core's rollup, archives with an undo that leaves its tasks alone, and groups, filters and stores views
+  code: 'PROJECT_NAME_TAKEN'
+}
+
+  code: 'TASK_IS_DRAFT'
+}
+
+  code: 'WORKSPACE_MISMATCH'
+}
+
+  code: 'IN_ANOTHER_PROJECT'
+}
+
+
+
+  code: 'PROJECT_ARCHIVED'
+}
+
+
+[128/198] e2e/projects.spec.ts:301:1 › PX-063: the main process rejects invalid project arguments before the Core sees them, and a lease-less or foreign command is the Core's refusal
+e2e/projects.spec.ts:301:1 › PX-063: the main process rejects invalid project arguments before the Core sees them, and a lease-less or foreign command is the Core's refusal
+
+
+
+
+
+
+  code: 'UNKNOWN_PROJECT'
+}
+
+  code: 'PROJECT_NAME_INVALID'
+}
+
+
+
+[129/198] e2e/px-104-live-review.spec.ts:104:1 › the Changes tab is open while the task is Running; each hunk's chip names the call the Core attributed it to
+[130/198] e2e/px-104-live-review.spec.ts:123:1 › the chip opens the producing call in the conversation
+[131/198] e2e/px-104-live-review.spec.ts:134:1 › rejecting one hunk by keyboard while the run is live reverts exactly that hunk, and the agent continues and is told why
+[132/198] e2e/px-104-live-review.spec.ts:156:1 › with the task waiting for the person, a decision on a file that moved is refused with the Core's code, and a refresh works
+e2e/px-104-live-review.spec.ts:156:1 › with the task waiting for the person, a decision on a file that moved is refused with the Core's code, and a refresh works
+  code: 'STALE_REVISION'
+}
+
+[133/198] e2e/px-104-live-review.spec.ts:172:1 › a write by no tool call is shown unattributed, blocks automatic acceptance, and only the person accepts it
+[134/198] e2e/px-104-live-review.spec.ts:185:1 › the renderer's process is killed and the replacement view shows the same decisions, read from the Core
+e2e/px-104-live-review.spec.ts:185:1 › the renderer's process is killed and the replacement view shows the same decisions, read from the Core
+
+
+  code: 'DISCONNECTED'
+}
+
+  code: 'DISCONNECTED'
+}
+Error occurred in handler for 'task:economics': ProtocolError: DISCONNECTED: closed by client
+  code: 'DISCONNECTED'
+}
+Error occurred in handler for 'composer:posture': ProtocolError: DISCONNECTED: closed by client
+  code: 'DISCONNECTED'
+}
+Error occurred in handler for 'composer:queue': ProtocolError: DISCONNECTED: closed by client
+  code: 'DISCONNECTED'
+}
+Error occurred in handler for 'composer:sendBehavior': ProtocolError: DISCONNECTED: closed by client
+  code: 'DISCONNECTED'
+}
+
+  code: 'DISCONNECTED'
+}
+Error occurred in handler for 'approvals:dock': ProtocolError: DISCONNECTED: closed by client
+  code: 'DISCONNECTED'
+}
+
+
+
+
+[135/198] e2e/px-106-customize.spec.ts:129:1 › each list shows the Core's scope, trust and provenance, and the first task's hook run is in the journal
+[136/198] e2e/px-106-customize.spec.ts:157:1 › the view offers no catalog, no install from the network and no update flow
+[137/198] e2e/px-106-customize.spec.ts:166:1 › trusting a skill by the hash it shows is the Core's record, reaches the next request, and revoking removes it
+e2e/px-106-customize.spec.ts:166:1 › trusting a skill by the hash it shows is the Core's record, reaches the next request, and revoking removes it
+
+  code: 'HASH_MISMATCH'
+}
+
+[138/198] e2e/px-106-customize.spec.ts:196:1 › a skill that changed under the view is refused with the Core's code, and trust is bound to the new hash
+e2e/px-106-customize.spec.ts:196:1 › a skill that changed under the view is refused with the Core's code, and trust is bound to the new hash
+  code: 'HASH_MISMATCH'
+}
+
+[139/198] e2e/px-106-customize.spec.ts:212:1 › an administrator's hook cannot be switched off; the person's can, and it does not fire on the next event
+e2e/px-106-customize.spec.ts:212:1 › an administrator's hook cannot be switched off; the person's can, and it does not fire on the next event
+  code: 'HOOK_SCOPE_FORBIDS'
+}
+
+[140/198] e2e/px-106-customize.spec.ts:236:1 › another agent's configuration imports quarantined; its skill is absent until the exact manifest is trusted, then still untrusted until trusted by hash
+[141/198] e2e/px-106-customize.spec.ts:270:1 › open source shows the folder the Core listed; every control works by keyboard
+e2e/px-106-customize.spec.ts:270:1 › open source shows the folder the Core listed; every control works by keyboard
+
+[142/198] e2e/px-188-memory.spec.ts:86:1 › a private note is listed with its scope and source, and sharing stores the redacted copy
+[143/198] e2e/px-188-memory.spec.ts:108:1 › only the redacted copy reaches the next real request, and deleting the original removes it everywhere
+e2e/px-188-memory.spec.ts:108:1 › only the redacted copy reaches the next real request, and deleting the original removes it everywhere
+
+
+
+
+
+[144/198] e2e/qual-gaps.spec.ts:18:1 › PX-054: in Ask a write the model asks for is refused by the Core and nothing is written
+e2e/qual-gaps.spec.ts:18:1 › PX-054: in Ask a write the model asks for is refused by the Core and nothing is written
+
+
+
+
+
+Error occurred in handler for 'approvals:dock': Error: CORE_UNAVAILABLE: the local Core is restarting; your last persisted state is shown
+
+
+[145/198] e2e/qual-gaps.spec.ts:45:1 › PX-054: a mode the Core has not acknowledged is drawn unconfirmed and never as active; the Core's acknowledgement confirms it
+e2e/qual-gaps.spec.ts:45:1 › PX-054: a mode the Core has not acknowledged is drawn unconfirmed and never as active; the Core's acknowledgement confirms it
+
+
+
+Error occurred in handler for 'modeproposals:list': Error: CORE_UNAVAILABLE: the local Core is restarting; your last persisted state is shown
+Error occurred in handler for 'approvals:dock': Error: CORE_UNAVAILABLE: the local Core is restarting; your last persisted state is shown
+
+[146/198] e2e/qual-gaps.spec.ts:77:1 › PX-055: the send-behaviour education is shown once and its acknowledgement persists across a reload
+e2e/qual-gaps.spec.ts:77:1 › PX-055: the send-behaviour education is shown once and its acknowledgement persists across a reload
+
+  code: 'DISCONNECTED'
+}
+
+  code: 'DISCONNECTED'
+}
+
+  code: 'DISCONNECTED'
+}
+
+
+Error occurred in handler for 'agents:headers': Error: CORE_UNAVAILABLE: the local Core is restarting; your last persisted state is shown
+
+
+
+
+[147/198] e2e/qual-gaps.spec.ts:105:1 › PX-062: a checkpoint of another task is refused and nothing changes; a Continue replayed with its command id restores once
+e2e/qual-gaps.spec.ts:105:1 › PX-062: a checkpoint of another task is refused and nothing changes; a Continue replayed with its command id restores once
+
+  code: 'DISCONNECTED'
+}
+
+  code: 'DISCONNECTED'
+}
+
+
+
+
+
+
+
+[148/198] e2e/qual-gaps.spec.ts:154:1 › PX-056: a pin sent from a session that does not own the task is refused by the Core and the task's preference is unchanged
+e2e/qual-gaps.spec.ts:154:1 › PX-056: a pin sent from a session that does not own the task is refused by the Core and the task's preference is unchanged
+  code: 'WRONG_SESSION'
+}
+
+
+[149/198] e2e/qual-gaps.spec.ts:173:1 › PX-060: after a compaction the ring and the tray still equal the Core's accounting, and the Core recorded the epoch
+e2e/qual-gaps.spec.ts:173:1 › PX-060: after a compaction the ring and the tray still equal the Core's accounting, and the Core recorded the epoch
+
+[150/198] e2e/qual-gaps.spec.ts:202:1 › PX-060: the ring shows the Core's figure for the task's own model across a model switch and never the other model's numbers
+e2e/qual-gaps.spec.ts:202:1 › PX-060: the ring shows the Core's figure for the task's own model across a model switch and never the other model's numbers
+
+[151/198] e2e/qual-gaps.spec.ts:254:1 › PX-060: a provider failure shows the Core's cause with Retry; Retry (even double-clicked) starts one new run that goes on from the log
+e2e/qual-gaps.spec.ts:254:1 › PX-060: a provider failure shows the Core's cause with Retry; Retry (even double-clicked) starts one new run that goes on from the log
+  code: 'TASK_ALREADY_RUNNING'
+}
+
+
+  code: 'DISCONNECTED'
+}
+
+  code: 'DISCONNECTED'
+}
+Error occurred in handler for 'accounting:get': ProtocolError: DISCONNECTED: closed by client
+  code: 'DISCONNECTED'
+}
+Error occurred in handler for 'task:economics': ProtocolError: DISCONNECTED: closed by client
+  code: 'DISCONNECTED'
+}
+Error occurred in handler for 'approvals:dock': ProtocolError: DISCONNECTED: closed by client
+  code: 'DISCONNECTED'
+}
+
+
+Error occurred in handler for 'composer:sendBehavior': Error: CORE_UNAVAILABLE: the local Core is restarting; your last persisted state is shown
+Error occurred in handler for 'terminal:list': Error: CORE_UNAVAILABLE: the local Core is restarting; your last persisted state is shown
+
+Error occurred in handler for 'checkpoints:list': Error: CORE_UNAVAILABLE: the local Core is restarting; your last persisted state is shown
+
+
+[152/198] e2e/qual-gaps.spec.ts:303:1 › PX-062: once the agent has worked on after a restore, no redo is offered and the Core refuses the stale redo
+e2e/qual-gaps.spec.ts:303:1 › PX-062: once the agent has worked on after a restore, no redo is offered and the Core refuses the stale redo
+
+  code: 'DISCONNECTED'
+}
+
+
+[153/198] e2e/qual-gaps.spec.ts:340:1 › PX-060: a budget change the Core does not allow is refused with its typed reason and the caps stay as they were
+e2e/qual-gaps.spec.ts:340:1 › PX-060: a budget change the Core does not allow is refused with its typed reason and the caps stay as they were
+  code: 'TASK_ENDED'
+}
+
+
+
+
+
+
+
+
+[154/198] e2e/qual-gaps.spec.ts:376:1 › PX-058: an approval nobody answers expires by the Core and shows as expired; it can no longer be approved; the agent is told and asks again
+e2e/qual-gaps.spec.ts:376:1 › PX-058: an approval nobody answers expires by the Core and shows as expired; it can no longer be approved; the agent is told and asks again
+  code: 'APPROVAL_EXPIRED'
+}
+
+
+  code: 'DISCONNECTED'
+}
+
+  code: 'DISCONNECTED'
+}
+Error occurred in handler for 'attention:list': ProtocolError: DISCONNECTED: closed by client
+  code: 'DISCONNECTED'
+}
+Error occurred in handler for 'modeproposals:list': ProtocolError: DISCONNECTED: closed by client
+  code: 'DISCONNECTED'
+}
+Error occurred in handler for 'checkpoints:list': ProtocolError: DISCONNECTED: closed by client
+  code: 'DISCONNECTED'
+}
+
+  code: 'DISCONNECTED'
+}
+
+
+Error occurred in handler for 'conversation:transcript': Error: CORE_UNAVAILABLE: the local Core is restarting; your last persisted state is shown
+modbit-core: connection ended: io: Broken pipe (os error 32)
+modbit-core: supervising client closed its pipe; exiting
+
+
+[155/198] e2e/qual-gaps.spec.ts:445:1 › PX-055: the agent's mode proposal is a card; nothing changes until Switch; Switch moves the mode through the Core and the card says so
+e2e/qual-gaps.spec.ts:445:1 › PX-055: the agent's mode proposal is a card; nothing changes until Switch; Switch moves the mode through the Core and the card says so
+
+  code: 'DISCONNECTED'
+}
+
+  code: 'DISCONNECTED'
+}
+
+  code: 'DISCONNECTED'
+}
+
+
+
+
+modbit-core: connection ended: io: Broken pipe (os error 32)
+
+[156/198] e2e/qual-gaps.spec.ts:494:1 › PX-055: a proposal left unanswered shows skipped after 15 s, the mode unchanged; Core-side, the late answer is refused
+e2e/qual-gaps.spec.ts:494:1 › PX-055: a proposal left unanswered shows skipped after 15 s, the mode unchanged; Core-side, the late answer is refused
+  code: 'PROPOSAL_NOT_PENDING'
+}
+
+
+  code: 'DISCONNECTED'
+}
+Error occurred in handler for 'accounting:get': ProtocolError: DISCONNECTED: closed by client
+  code: 'DISCONNECTED'
+}
+Error occurred in handler for 'task:economics': ProtocolError: DISCONNECTED: closed by client
+  code: 'DISCONNECTED'
+}
+
+
+[157/198] e2e/qual-gaps.spec.ts:531:1 › PX-055: a Core killed with a proposal pending comes back with it skipped, never accepted
+e2e/qual-gaps.spec.ts:531:1 › PX-055: a Core killed with a proposal pending comes back with it skipped, never accepted
+
+
+
+
+
+
+
+
+
+
+[158/198] e2e/review.spec.ts:66:1 › review surface: per-hunk decision commits exactly the user's choice and survives an app restart
+e2e/review.spec.ts:66:1 › review surface: per-hunk decision commits exactly the user's choice and survives an app restart
+
+
+
+[159/198] e2e/secrets.spec.ts:66:1 › keychain custody: ciphertext only at rest and restored after a restart, or nothing kept where the OS has no keychain
+e2e/secrets.spec.ts:66:1 › keychain custody: ciphertext only at rest and restored after a restart, or nothing kept where the OS has no keychain
+
+
+[160/198] e2e/session-end.spec.ts:117:1 › PX-049: a session-end hook that takes 2 s completes before the app exits, and what it said is journaled
+e2e/session-end.spec.ts:117:1 › PX-049: a session-end hook that takes 2 s completes before the app exits, and what it said is journaled
+  code: 'DISCONNECTED'
+}
+
+  code: 'DISCONNECTED'
+}
+
+  code: 'DISCONNECTED'
+}
+
+
+
+[161/198] e2e/session-end.spec.ts:141:1 › PX-049: a session-end hook that fails is shown to the person and journaled
+e2e/session-end.spec.ts:141:1 › PX-049: a session-end hook that fails is shown to the person and journaled
+  code: 'DISCONNECTED'
+}
+
+
+
+
+[162/198] e2e/session-end.spec.ts:166:1 › PX-049: choosing resume at the quit records it in the Core, and the next start recovers the run, shows the counts and continues it
+e2e/session-end.spec.ts:166:1 › PX-049: choosing resume at the quit records it in the Core, and the next start recovers the run, shows the counts and continues it
+
+
+
+
+
+
+[163/198] e2e/session-end.spec.ts:203:1 › PX-049: quitting and leaving the run suspended keeps it recoverable, and nothing continues on the next start
+e2e/session-end.spec.ts:203:1 › PX-049: quitting and leaving the run suspended keeps it recoverable, and nothing continues on the next start
+
+
+
+
+
+
+[164/198] e2e/session-end.spec.ts:230:1 › PX-049: killing the Core while the session-end hook runs fails visibly and leaves the task recoverable (the unrecorded choice does not resume it)
+e2e/session-end.spec.ts:230:1 › PX-049: killing the Core while the session-end hook runs fails visibly and leaves the task recoverable (the unrecorded choice does not resume it)
+
+  code: 'DISCONNECTED'
+}
+
+
+
+
+
+[165/198] e2e/shell.spec.ts:25:1 › DR-PX-2026-11-04-020: started the way `pnpm start` starts it, the app finds the Core with no override
+[166/198] e2e/shell.spec.ts:36:1 › AFW-A10: Settings replaces the left column with its own navigation, holds doc 10's list, says plainly what the desktop cannot do yet, and Back returns
+e2e/shell.spec.ts:36:1 › AFW-A10: Settings replaces the left column with its own navigation, holds doc 10's list, says plainly what the desktop cannot do yet, and Back returns
+
+[167/198] e2e/shell.spec.ts:90:1 › PX-045: geometry at 1280 x 800, keyboard-resizable splits inside 210..400, persisted across a restart
+e2e/shell.spec.ts:90:1 › PX-045: geometry at 1280 x 800, keyboard-resizable splits inside 210..400, persisted across a restart
+
+
+[168/198] e2e/shell.spec.ts:148:1 › PX-045: below a 448 centre the shell is single-pane with the 40 px rail; the list can also be collapsed
+e2e/shell.spec.ts:148:1 › PX-045: below a 448 centre the shell is single-pane with the 40 px rail; the list can also be collapsed
+
+[169/198] e2e/shell.spec.ts:176:1 › PX-045: at 1000 x 700 and 900 x 600 the list keeps 260, the top bar 40 and the centre stays above the single-pane threshold with nothing overflowing
+e2e/shell.spec.ts:176:1 › PX-045: at 1000 x 700 and 900 x 600 the list keeps 260, the top bar 40 and the centre stays above the single-pane threshold with nothing overflowing
+
+[170/198] e2e/shell.spec.ts:195:1 › PX-045: opening Settings with a running task neither stops nor alters the task
+e2e/shell.spec.ts:195:1 › PX-045: opening Settings with a running task neither stops nor alters the task
+
+  code: 'DISCONNECTED'
+}
+
+  code: 'DISCONNECTED'
+}
+
+
+
+
+
+modbit-core: supervising client closed its pipe; exiting
+
+
+
+[171/198] e2e/shell.spec.ts:220:1 › PX-045: the command palette and the shortcut registry by keyboard alone; Escape closes the innermost layer; focus returns
+e2e/shell.spec.ts:220:1 › PX-045: the command palette and the shortcut registry by keyboard alone; Escape closes the innermost layer; focus returns
+
+  1) e2e/shell.spec.ts:220:1 › PX-045: the command palette and the shortcut registry by keyboard alone; Escape closes the innermost layer; focus returns 
+
+    Error: expect(locator).toHaveCount(expected) failed
+
+    Locator:  getByTestId('palette')
+    Expected: 0
+    Received: 1
+    Timeout:  15000ms
+
+    Call log:
+      - Expect "toHaveCount" getByTestId('palette') with timeout 15000ms
+      - waiting for getByTestId('palette')
+        34 × locator resolved to 1 element
+           - unexpected value "1"
+
+
+      255 |     await expect(agentOption).toContainText("Palette findable task");
+      256 |     await page.keyboard.press("Enter");
+    > 257 |     await expect(page.getByTestId("palette")).toHaveCount(0);
+          |                                               ^
+      258 |     await expect(page.getByTestId("conversation")).toHaveAttribute("data-task-id", taskId);
+      259 |
+      260 |     // It finds a setting and focuses it.
+
+    Error Context: ../../../../../../tmp/full-px196/shell-PX-045-the-command-p-0ba0c-nermost-layer-focus-returns/error-context.md
+
+    attachment #2: trace (application/zip) ─────────────────────────────────────────────────────────
+    ../../../../../../tmp/full-px196/shell-PX-045-the-command-p-0ba0c-nermost-layer-focus-returns/trace.zip
+    Usage:
+
+        npx playwright show-trace ../../../../../../tmp/full-px196/shell-PX-045-the-command-p-0ba0c-nermost-layer-focus-returns/trace.zip
+
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+
+[172/198] e2e/shell.spec.ts:337:1 › PX-044/045: themes, high contrast and reduced motion; the send button meets AA; axe on every region in every theme
+e2e/shell.spec.ts:337:1 › PX-044/045: themes, high contrast and reduced motion; the send button meets AA; axe on every region in every theme
+
+[173/198] e2e/shell.spec.ts:389:1 › PX-045: the apps panel appears for a task with an artifact, within the geometry; per-task state and width persist; it stacks when it cannot fit
+e2e/shell.spec.ts:389:1 › PX-045: the apps panel appears for a task with an artifact, within the geometry; per-task state and width persist; it stacks when it cannot fit
+
+  code: 'DISCONNECTED'
+}
+
+  code: 'DISCONNECTED'
+}
+Error occurred in handler for 'task:economics': ProtocolError: DISCONNECTED: closed by client
+  code: 'DISCONNECTED'
+}
+
+  code: 'DISCONNECTED'
+}
+Error occurred in handler for 'composer:queue': ProtocolError: DISCONNECTED: closed by client
+  code: 'DISCONNECTED'
+}
+Error occurred in handler for 'composer:sendBehavior': ProtocolError: DISCONNECTED: closed by client
+  code: 'DISCONNECTED'
+}
+
+  code: 'DISCONNECTED'
+}
+Error occurred in handler for 'approvals:dock': ProtocolError: DISCONNECTED: closed by client
+  code: 'DISCONNECTED'
+}
+
+
+modbit-core: connection ended: io: Broken pipe (os error 32)
+
+
+
+
+  code: 'DISCONNECTED'
+}
+
+
+[174/198] e2e/states.spec.ts:135:1 › screen states: provider down, human continuation, review gate and a denied then opened pull request; notifications coalesce, deep-link and honour opt-in and quiet hours
+e2e/states.spec.ts:135:1 › screen states: provider down, human continuation, review gate and a denied then opened pull request; notifications coalesce, deep-link and honour opt-in and quiet hours
+
+
+[scripted-model] tool results so far: 0; roles: system,system,system,user,user; reply: fs.read; last result: 
+
+[scripted-model] tool results so far: 1; roles: system,system,system,user,assistant,tool,user; reply: plan.update; last result: status: SUCCESS bytes_total: 207 bytes_included: 0..207 output: {"byte_length":14,"content":"line 1\nline 2\n","content_hash":"9060554863a62b9db5f726216876654e561896071d2e6480f2048b70e0fdadb9","encoding":"utf8","path":"notes.txt","truncated":false,"workspace_revision":1}
+
+[scripted-model] tool results so far: 2; roles: system,system,system,user,assistant,tool,assistant,tool,user; reply: change.apply; last result: status: SUCCESS plan version 1 recorded (ref ab9e6e7cea7d839a1fee2a39f5489ea08b68a3cb26e7e5785061f2032b5ec24a)
+
+[scripted-model] tool results so far: 3; roles: system,system,system,user,assistant,tool,assistant,tool,assistant,tool,user,user; reply: task.complete; last result: status: SUCCESS bytes_total: 555 bytes_included: 0..555 output: {"change":{"after_hash":"6ca9d5edb68deaadc1d3130c5fc3ec36e12db72ad54e93edcd63bdfb40a83300","before_hash":"9060554863a62b9db5f726216876654e561896071d2e6480f2048b70e0fdadb9","op":"atomic_replace","path":"notes.txt","workspace_revision":{"changed":{"notes.txt":"6ca9d5edb68deaadc1d3130c5fc3ec36e12db72ad54e93edcd63bdfb40a83300"},"fingerpri
+
+[fake-github] POST /repos/o/r/pulls authorized=true
+
+
+
+[175/198] e2e/states.spec.ts:285:1 › screen states: a Core that dies before committing a tool outcome comes back reconciling — degraded, recovery, then the task's unknown outcome with its evidence; the restart notifies
+e2e/states.spec.ts:285:1 › screen states: a Core that dies before committing a tool outcome comes back reconciling — degraded, recovery, then the task's unknown outcome with its evidence; the restart notifies
+
+
+[scripted-model] tool results so far: 0; roles: system,system,system,user,user; reply: plan.update; last result: 
+
+[scripted-model] tool results so far: 1; roles: system,system,system,user,assistant,tool,user; reply: fs.read; last result: status: SUCCESS plan version 1 recorded (ref ab9e6e7cea7d839a1fee2a39f5489ea08b68a3cb26e7e5785061f2032b5ec24a)
+
+[scripted-model] tool results so far: 2; roles: system,system,system,user,assistant,tool,assistant,tool,user; reply: change.apply; last result: status: SUCCESS bytes_total: 207 bytes_included: 0..207 output: {"byte_length":14,"content":"line 1\nline 2\n","content_hash":"9060554863a62b9db5f726216876654e561896071d2e6480f2048b70e0fdadb9","encoding":"utf8","path":"notes.txt","truncated":false,"workspace_revision":1}
+
+
+
+  code: 'DISCONNECTED'
+}
+
+  code: 'DISCONNECTED'
+}
+
+  code: 'DISCONNECTED'
+}
+
+  code: 'DISCONNECTED'
+}
+
+  code: 'DISCONNECTED'
+}
+
+  code: 'DISCONNECTED'
+}
+
+  code: 'DISCONNECTED'
+}
+
+  code: 'DISCONNECTED'
+}
+Error occurred in handler for 'attention:list': ProtocolError: DISCONNECTED: connection closed
+  code: 'DISCONNECTED'
+}
+Error occurred in handler for 'checkpoints:list': ProtocolError: DISCONNECTED: connection closed
+  code: 'DISCONNECTED'
+}
+
+  code: 'DISCONNECTED'
+}
+
+
+
+[degraded-render] {"kind":"degraded","label":"Core restarting","cause":"the Core stopped: connection lost: connection closed","taskLabel":"reconnecting by cursor","taskEvidence":"cursor 15"}
+
+
+
+
+
+[176/198] e2e/states.spec.ts:365:1 › task workspace: awaiting your answer (the agent's typed question) and awaiting approval with the exact intent, decided in the conversation; the reasons notify and coalesce
+e2e/states.spec.ts:365:1 › task workspace: awaiting your answer (the agent's typed question) and awaiting approval with the exact intent, decided in the conversation; the reasons notify and coalesce
+
+
+[scripted-model] tool results so far: 0; roles: system,system,system,user,user; reply: plan.update; last result: 
+
+[scripted-model] tool results so far: 1; roles: system,system,system,user,assistant,tool,user; reply: user.ask; last result: status: SUCCESS plan version 1 recorded (ref db02930b45cee4fff2358224d60ca0e8499f7cd2300abc6d427dd0cbfea2b67e)
+
+[scripted-model] tool results so far: 2; roles: system,system,system,user,assistant,tool,assistant,tool,user; reply: git.worktree.close; last result: {"option_id":"yes","status":"ANSWERED","text":null}
+
+[scripted-model] tool results so far: 3; roles: system,system,system,user,assistant,tool,assistant,tool,assistant,tool,user; reply: task.complete; last result: status: SUCCESS bytes_total: 118 bytes_included: 0..118 output: {"removed":"/private/var/folders/_1/1xvpd9n50m97rq8_c4ylpw940000gn/T/modbit-states-repo-j5csmC.modbit-worktrees/held"}
+
+
+[177/198] e2e/supervision.spec.ts:33:1 › home: the mode and the pin reach the Core before the first model call; a blocked model is not held; the next task starts from the defaults
+e2e/supervision.spec.ts:33:1 › home: the mode and the pin reach the Core before the first model call; a blocked model is not held; the next task starts from the defaults
+
+[178/198] e2e/supervision.spec.ts:101:1 › home: a mode the Core refuses leaves the task created, unstarted and saying why; no model call is made
+e2e/supervision.spec.ts:101:1 › home: a mode the Core refuses leaves the task created, unstarted and saying why; no model call is made
+
+
+
+[179/198] e2e/supervision.spec.ts:134:1 › home: the location is a selector that names this machine and says why cloud cannot be chosen; the shortcut help names no board
+e2e/supervision.spec.ts:134:1 › home: the location is a selector that names this machine and says why cloud cannot be chosen; the shortcut help names no board
+
+[180/198] e2e/supervision.spec.ts:170:1 › a stopped task says what is wrong and what to do on its row and in its conversation, with nothing opened
+e2e/supervision.spec.ts:170:1 › a stopped task says what is wrong and what to do on its row and in its conversation, with nothing opened
+
+[181/198] e2e/supervision.spec.ts:202:1 › a state nothing else on the screen says stands above the composer: a Core that dies while a task is open
+e2e/supervision.spec.ts:202:1 › a state nothing else on the screen says stands above the composer: a Core that dies while a task is open
+
+
+
+
+
+
+
+
+
+[182/198] e2e/supervision.spec.ts:233:1 › MOD-UX-001: each state a task can be in is a first-class view, holding the Core's class, one click away
+e2e/supervision.spec.ts:233:1 › MOD-UX-001: each state a task can be in is a first-class view, holding the Core's class, one click away
+
+  code: 'DISCONNECTED'
+}
+
+  code: 'DISCONNECTED'
+}
+
+  code: 'DISCONNECTED'
+}
+
+  code: 'DISCONNECTED'
+}
+
+  code: 'DISCONNECTED'
+}
+
+
+
+
+modbit-core: supervising client closed its pipe; exiting
+
+[183/198] e2e/supervision.spec.ts:301:1 › PX-196/197: Escape with the details open closes them, not the card; a confirmation keeps its keys from a card docking after it; a denied call is never told as run
+e2e/supervision.spec.ts:301:1 › PX-196/197: Escape with the details open closes them, not the card; a confirmation keeps its keys from a card docking after it; a denied call is never told as run
+
+
+
+
+[184/198] e2e/supervision.spec.ts:351:1 › PX-196: after a reload the details show the facts the Core folded from the log, not defaults; failed calls are told as failed
+e2e/supervision.spec.ts:351:1 › PX-196: after a reload the details show the facts the Core folded from the log, not defaults; failed calls are told as failed
+
+
+
+
+[185/198] e2e/terminal-history.spec.ts:94:1 › a build streams live into the Terminal tab: output arrives while the process runs, on one attachment, and the exit is shown when it ends
+[186/198] e2e/terminal-history.spec.ts:116:1 › scrolling above the view reads the older output as OutputRef ranges: in order, once, from the Core's retained start to the view
+[187/198] e2e/terminal-history.spec.ts:240:1 › a build that is still running has no sealed output: the Core refuses a history read, and the view offers none
+e2e/terminal-history.spec.ts:240:1 › a build that is still running has no sealed output: the Core refuses a history read, and the view offers none
+
+
+
+
+
+
+
+[188/198] e2e/terminal-history.spec.ts:273:1 › input policy: a finished terminal takes no keystroke; a write without the input lease is refused by the Core and reaches nothing
+e2e/terminal-history.spec.ts:273:1 › input policy: a finished terminal takes no keystroke; a write without the input lease is refused by the Core and reaches nothing
+  code: 'LEASE_REQUIRED'
+}
+
+
+  code: 'DISCONNECTED'
+}
+
+
+Error occurred in handler for 'modeproposals:list': Error: CORE_UNAVAILABLE: the local Core is restarting; your last persisted state is shown
+
+Error occurred in handler for 'conversation:transcript': Error: CORE_UNAVAILABLE: the local Core is restarting; your last persisted state is shown
+
+[189/198] e2e/terminal-renderer-restart.spec.ts:18:1 › a background terminal survives a crashed renderer: same handle, same Core, replayed screen, live input
+e2e/terminal-renderer-restart.spec.ts:18:1 › a background terminal survives a crashed renderer: same handle, same Core, replayed screen, live input
+
+
+
+
+
+[190/198] e2e/user-patch.spec.ts:65:1 › inline patch: a one-hunk user edit lands through the Core's change transaction; stale and protected attempts are refused; no buffer survives
+e2e/user-patch.spec.ts:65:1 › inline patch: a one-hunk user edit lands through the Core's change transaction; stale and protected attempts are refused; no buffer survives
+  code: 'PROTECTED_PATH'
+}
+
+  code: 'STALE_REVISION'
+}
+
+
+[191/198] e2e/wave4.spec.ts:55:1 › Wave 4: compose with an @ chip and an attachment, queue-edit-send-now, decide two approvals on the docked card, read the receipts in Evidence, open the context ring, restore and redo a checkpoint
+e2e/wave4.spec.ts:55:1 › Wave 4: compose with an @ chip and an attachment, queue-edit-send-now, decide two approvals on the docked card, read the receipts in Evidence, open the context ring, restore and redo a checkpoint
+
+
+
+
+
+
+[192/198] e2e/workers.spec.ts:141:1 › renderer compromise (REQ-EV-0075): the app's renderer holds no secret, no Node, no socket; the bridge is typed requests only; the Core refuses what the renderer cannot vouch for; a foreign window with the same bridge is refused by main and audited
+e2e/workers.spec.ts:141:1 › renderer compromise (REQ-EV-0075): the app's renderer holds no secret, no Node, no socket; the bridge is typed requests only; the Core refuses what the renderer cannot vouch for; a foreign window with the same bridge is refused by main and audited
+  code: 'UNKNOWN_APPROVAL'
+}
+
+  code: 'UNKNOWN_TASK'
+}
+
+
+
+
+
+[193/198] e2e/workers.spec.ts:245:1 › renderer killed (REQ-EV-0076): the renderer's process dies mid-session; main keeps the Core, the lease and the stream; the renderer comes back from the Core's snapshot and cursor with the session's truth unchanged and its typed requests answered
+e2e/workers.spec.ts:245:1 › renderer killed (REQ-EV-0076): the renderer's process dies mid-session; main keeps the Core, the lease and the stream; the renderer comes back from the Core's snapshot and cursor with the session's truth unchanged and its typed requests answered
+[renderer-diag] window renderer pid=37698 webContents=1; processes: 37695:Browser 37696:GPU 37697:Utility(Network Service) 37698:Tab
+
+[renderer-diag] page1.crash at 20 ms
+
+
+[renderer-diag] page1.close at 46 ms
+
+[renderer-diag] main-replaced at 124 ms
+
+[renderer-diag] renderer-pid-gone at 125 ms
+
+[renderer-diag] playwright-window at 125 ms
+
+
+[194/198] e2e/workers.spec.ts:364:1 › browser view killed (REQ-EV-0081): the view's process dies under the agent's session; the host restarts the view at its page and attaches it again to the same session; the Core, its log and the task are untouched, and the agent's next observation reads the restarted page
+e2e/workers.spec.ts:364:1 › browser view killed (REQ-EV-0081): the view's process dies under the agent's session; the host restarts the view at its page and attaches it again to the same session; the Core, its log and the task are untouched, and the agent's next observation reads the restarted page
+
+
+[195/198] e2e/worktrees.spec.ts:64:1 › PX-068: the list shows real worktrees with the Core's states; a running or unapplied one is refused removal with the Core's typed explanation and nothing is touched; a clean one is removed after the Core says what is lost; the reaper's attention and a discard are the Core's
+e2e/worktrees.spec.ts:64:1 › PX-068: the list shows real worktrees with the Core's states; a running or unapplied one is refused removal with the Core's typed explanation and nothing is touched; a clean one is removed after the Core says what is lost; the reaper's attention and a discard are the Core's
+[renderer-diag] 5 s after the kill: pid 37698 alive=false; main windows=Error: electronApplication.evaluate: Target page, context or browser has been closed; processes: 
+
+  code: 'TASK_RUNNING'
+}
+
+  code: 'TASK_RUNNING'
+}
+
+  code: 'WORKTREE_NEEDS_DECISION'
+}
+
+  code: 'DISCARD_NOT_CONFIRMED'
+}
+
+
+[196/198] e2e/worktrees.spec.ts:211:1 › PX-068: a real apply-back conflict through the modal - Cancel is the default and changes nothing, an overwrite needs its files typed (and the Core refuses it otherwise), the pre-apply bytes come back exactly with Undo, and only a non-destructive choice is remembered
+e2e/worktrees.spec.ts:211:1 › PX-068: a real apply-back conflict through the modal - Cancel is the default and changes nothing, an overwrite needs its files typed (and the Core refuses it otherwise), the pre-apply bytes come back exactly with Undo, and only a non-destructive choice is remembered
+
+  code: 'DISCONNECTED'
+}
+
+  code: 'DISCONNECTED'
+}
+Error occurred in handler for 'attention:list': ProtocolError: DISCONNECTED: closed by client
+  code: 'DISCONNECTED'
+}
+
+
+[197/198] e2e/worktrees.spec.ts:355:1 › PX-068: the main process rejects invalid worktree arguments before the Core sees them
+e2e/worktrees.spec.ts:355:1 › PX-068: the main process rejects invalid worktree arguments before the Core sees them
+
+
+
+
+
+  code: 'UNKNOWN_WORKTREE'
+}
+
+  code: 'UNKNOWN_TASK'
+}
+
+
+
+[198/198] e2e/worktrees.spec.ts:378:1 › PX-068: a scheduled cleanup that finds a preview holding the lease is recorded and shown as Skipped, never as completed, and the preview itself is not kept as a run
+e2e/worktrees.spec.ts:378:1 › PX-068: a scheduled cleanup that finds a preview holding the lease is recorded and shown as Skipped, never as completed, and the preview itself is not kept as a run
+
+
+  Slow test file: e2e/perf-budgets.spec.ts (5.4m)
+  Consider running tests from slow files in parallel. See: https://playwright.dev/docs/test-parallel
+  1 failed
+    e2e/shell.spec.ts:220:1 › PX-045: the command palette and the shortcut registry by keyboard alone; Escape closes the innermost layer; focus returns 
+  2 skipped
+  195 passed (23.5m)
+exit=1
+
+Rerun of the one failure alone, twice: e2e/shell.spec.ts:220 passed 2/2 (2.1 s, 2.0 s).

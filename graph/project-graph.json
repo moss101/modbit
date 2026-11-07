@@ -40365,13 +40365,16 @@
    ],
    "task_card": "docs/62_PRODUCT_EXTENSION_REQUIREMENTS_TASKS_AND_QUALIFICATIONS.md#px-196",
    "audit_at_adoption": "DOCUMENTED-ONLY; no product caller present",
-   "status": "REAL_TESTING",
+   "status": "COMPLETE",
    "evidence": [
     "run:41983983308",
     "commit:ae3315d7",
     "artifact:evidence/m10/PX-196/evidence.json",
     "artifact:evidence/m10/PX-196/ci-run-41983983308.json",
-    "artifact:evidence/m10/graph-audit-2026-11-07/repro.log"
+    "artifact:evidence/m10/graph-audit-2026-11-07/repro.log",
+    "run:42375302523",
+    "artifact:evidence/m10/PX-196/ci-run-42375302523.json",
+    "commit:53813a83"
    ],
    "notes": [
     {
@@ -40379,9 +40382,21 @@
      "from": "COMPLETE",
      "to": "REAL_TESTING",
      "note": "Reopened 2026-11-07, regression found by audit and reproduced in the real app (evidence/m10/graph-audit-2026-11-07/repro.log T2): 'the details show each fact for the open task' holds only in a live session. The same task reads Phase awaiting human, Agents 0/1 live and Phase drafting, Agents 0/0 after a reload, because fromSnapshot (renderer/model.ts:143) fills defaults and load subscribes from the snapshot offset (use-app.ts:139). No spec opens the details after a restart."
+    },
+    {
+     "at": "2026-11-07T15:53:43Z",
+     "from": "REAL_TESTING",
+     "to": "E2E_PROVEN",
+     "note": "The reopened clauses (Escape keeps the effect pending; a fold says what succeeded; details read the Core's facts after a reload) are proven by the desktop suite against a real Core on macOS, Linux and Windows in CI run 42375302523 (head 18ef6283), mutation-check-2026-11-07.txt"
+    },
+    {
+     "at": "2026-11-07T15:53:43Z",
+     "from": "E2E_PROVEN",
+     "to": "COMPLETE",
+     "note": "Merged to main as 53813a83 (#171); all 15 CI jobs green on run 42375302523"
     }
    ],
-   "status_changed_on": "2026-11-07T08:07:31Z"
+   "status_changed_on": "2026-11-07T15:53:43Z"
   },
   {
    "id": "PX-197",
@@ -40406,13 +40421,16 @@
    ],
    "task_card": "docs/62_PRODUCT_EXTENSION_REQUIREMENTS_TASKS_AND_QUALIFICATIONS.md#px-197",
    "audit_at_adoption": "DOCUMENTED-ONLY; no product caller present",
-   "status": "REAL_TESTING",
+   "status": "COMPLETE",
    "evidence": [
     "run:41983983308",
     "commit:ae3315d7",
     "artifact:evidence/m10/PX-197/evidence.json",
     "artifact:evidence/m10/PX-197/ci-run-41983983308.json",
-    "artifact:evidence/m10/graph-audit-2026-11-07/repro.log"
+    "artifact:evidence/m10/graph-audit-2026-11-07/repro.log",
+    "run:42375302523",
+    "artifact:evidence/m10/PX-197/ci-run-42375302523.json",
+    "commit:53813a83"
    ],
    "notes": [
     {
@@ -40420,9 +40438,21 @@
      "from": "COMPLETE",
      "to": "REAL_TESTING",
      "note": "Reopened 2026-11-07, regression found by audit and reproduced in the real app at the merged code (evidence/m10/graph-audit-2026-11-07/repro.log T1, T3). With an approval docked and Task details open, Escape denies the effect and leaves the panel open, against the failure proof (approvals/model.ts:154 and the capture dispatch in ui/hooks.ts win over the panel's listener). The fold then says 'Ran git clean -fd' for a command that was denied and never ran (rows.tsx groupSummary counts FAILED), against 'past tense only once it happened'. Code read, not run: a card docking after a confirmation also takes its Escape."
+    },
+    {
+     "at": "2026-11-07T15:53:43Z",
+     "from": "REAL_TESTING",
+     "to": "E2E_PROVEN",
+     "note": "The reopened clauses (Escape keeps the effect pending; a fold says what succeeded; details read the Core's facts after a reload) are proven by the desktop suite against a real Core on macOS, Linux and Windows in CI run 42375302523 (head 18ef6283), mutation-check-2026-11-07.txt"
+    },
+    {
+     "at": "2026-11-07T15:53:43Z",
+     "from": "E2E_PROVEN",
+     "to": "COMPLETE",
+     "note": "Merged to main as 53813a83 (#171); all 15 CI jobs green on run 42375302523"
     }
    ],
-   "status_changed_on": "2026-11-07T08:07:31Z"
+   "status_changed_on": "2026-11-07T15:53:43Z"
   },
   {
    "id": "QUAL-PX-000",
