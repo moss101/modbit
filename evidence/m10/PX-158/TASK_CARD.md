@@ -3,7 +3,7 @@
 Classification at start: DOCUMENTED-ONLY (`message_text` counted a media part as its caption only).
 First missing link: the estimator had no per-image cost, so a transcript of screenshots never reached the compaction threshold.
 
-Change (PR #159, 41f7ff83): `image_tokens` (about 1 token per 750 px, floor 85, cap 1600, 1200 when the size is unnamed) and `message_tokens`, used by all four estimate sites in `runtime.rs`; text-only transcripts are estimated exactly as before.
+Change (PR #159, 41f7ff83, then per provider on this branch): `image_tokens` (first one rule, about 1 token per 750 px, floor 85, cap 1600, 1200 when the size is unnamed; now the routed provider family's published rule, see Limits) and `message_tokens`, used by all four estimate sites in `runtime.rs`; text-only transcripts are estimated exactly as before.
 
 ## Proof
 
@@ -25,7 +25,7 @@ Local: both tests pass; `RUSTFLAGS="-D warnings" cargo clippy --workspace --all-
 ## Limits (why REAL_TESTING, not further)
 
 - The provider is a scripted server applying a published rule, not a live provider's tokenizer. Its text rule (four characters a token) is an approximation real tokenizers do not follow exactly; agreement here is agreement with the stated rule. A live leg against a usage-reporting endpoint has not been run.
-- The Core charges one rule (about w*h/750, Anthropic's published estimate) for every provider. The row's scope says "a documented per-provider rule ... and detail class"; there is no per-provider rule and no detail class in the code. Against the OpenAI tile rule the calibration absorbs the difference: at 1280x800 the image over-count (1365/1105) happens to sit close to the text over-count, at 1920x1080 it does not and the trigger fires one request early, inside the margin. Sizes whose two rules diverge further (very wide or very small images), or a transcript that mixes sizes, were not tested and could fall outside the margin.
+- Per-provider rule (2026-11-07, this branch): `ImageRule` charges each image by its family's published rule, chosen from the routed endpoint's `ProviderKind`: Anthropic `Area` (resize to a 1568 px long edge and about 1.15 megapixels, then w*h/750) and OpenAI `TilesHigh` (fit 2048, short side 768, 85 + 170 per 512 px tile). The detail class is the one the adapter produces: it leaves `detail` unset, so the provider applies `auto`, charged as `high` (the dearer class); no `low` request is ever sent, so no `low` rule is kept. An unnamed size is a full-HD screenshot under the family's rule. Unit test `image_tokens_follow_the_size_the_result_named` pins both rules against values computed independently; the two integration tests pass with the OpenAI rule now matching the scripted provider's. Not covered: the Anthropic transport end to end (unit-tested only), and what `auto` really picks for small images (charged as high, an over-count).
 - The margin (`window / 50`) is our reading of the code; the dossier names none. The first request of a run is uncalibrated and is excluded from the margin check (the Core estimated 7913 where the provider reported 6304).
 - Frames reach the model here through `fs.read` of PNG files (the Media Pipeline path that `media` and external `media_parts` results share). Computer-use observation frames (`computer.*`) were not exercised; whether and with what size caption they reach the model as image parts is PX-174's ground.
 - The OpenAI-compatible adapter is the only transport exercised; the Anthropic adapter's media placement is not.
