@@ -1,0 +1,131 @@
+{
+  "schema": "modbit-four-axis-report/1",
+  "suite_id": "four-axis",
+  "suite_version": "1.0.0",
+  "task_list_digest": "d129a6a0cb84d4a5e32456fd0ba4fcafcbc506037484d017e9bc9878e1da6a3f",
+  "bundle_digest": "e4e380fac17dc75ee444cc5f02fa7ea7c6aa14b9d1c46afcfdd68a70700b5e3b",
+  "endpoint": "openai",
+  "model": "gpt-5-mini",
+  "configuration": "direct",
+  "axes": {
+    "memory": {
+      "tasks": [
+        "memory/changelog-prefix",
+        "memory/current-api-version",
+        "memory/database-name",
+        "memory/deploy-procedure",
+        "memory/flaky-upload",
+        "memory/propose-lint-pitfall",
+        "memory/propose-port-convention",
+        "memory/release-owner",
+        "memory/staging-port",
+        "memory/timeout-unit"
+      ],
+      "verified": {
+        "successes": 10,
+        "n": 10,
+        "rate": 1.0,
+        "ci95": [
+          0.7224672001371106,
+          0.9999999999999999
+        ]
+      },
+      "output_tokens": 1280,
+      "output_tokens_per_thousand_tasks": 128000.0,
+      "cost_usd_per_thousand_tasks": 2.5480000000000005,
+      "failures": []
+    },
+    "skill_use": {
+      "tasks": [
+        "skill_use/adr",
+        "skill_use/branch-name",
+        "skill_use/changelog-section",
+        "skill_use/ini-order",
+        "skill_use/license-header",
+        "skill_use/metric-name",
+        "skill_use/release-note",
+        "skill_use/status-code",
+        "skill_use/todo-format",
+        "skill_use/version-bump"
+      ],
+      "verified": {
+        "successes": 10,
+        "n": 10,
+        "rate": 1.0,
+        "ci95": [
+          0.7224672001371106,
+          0.9999999999999999
+        ]
+      },
+      "output_tokens": 1408,
+      "output_tokens_per_thousand_tasks": 140800.0,
+      "cost_usd_per_thousand_tasks": 2.6375,
+      "failures": []
+    },
+    "subagent": {
+      "tasks": [
+        "subagent/api-doc",
+        "subagent/feature-flags",
+        "subagent/fixture-json",
+        "subagent/modules",
+        "subagent/monthly-notes",
+        "subagent/package-versions",
+        "subagent/report",
+        "subagent/setup-notes",
+        "subagent/translations",
+        "subagent/two-parts"
+      ],
+      "verified": {
+        "successes": 10,
+        "n": 10,
+        "rate": 1.0,
+        "ci95": [
+          0.7224672001371106,
+          0.9999999999999999
+        ]
+      },
+      "output_tokens": 4800,
+      "output_tokens_per_thousand_tasks": 480000.0,
+      "cost_usd_per_thousand_tasks": 9.5181,
+      "failures": []
+    },
+    "tool_use": {
+      "tasks": [
+        "tool_use/american-spelling",
+        "tool_use/batch-create",
+        "tool_use/bump-retries",
+        "tool_use/count-assets",
+        "tool_use/find-channel",
+        "tool_use/fix-typo",
+        "tool_use/last-commit-subject",
+        "tool_use/list-cfg-files",
+        "tool_use/sorted-names",
+        "tool_use/sum-numbers"
+      ],
+      "verified": {
+        "successes": 10,
+        "n": 10,
+        "rate": 1.0,
+        "ci95": [
+          0.7224672001371106,
+          0.9999999999999999
+        ]
+      },
+      "output_tokens": 1248,
+      "output_tokens_per_thousand_tasks": 124800.0,
+      "cost_usd_per_thousand_tasks": 2.3656,
+      "failures": []
+    }
+  },
+  "cost": {
+    "trials": 40,
+    "model_calls": 273,
+    "output_tokens": 8736,
+    "output_tokens_per_thousand_tasks": 218400.0,
+    "cost_usd_per_thousand_tasks": 4.2673000000000005,
+    "source": "per trial: GetTaskEconomics of the task and every child it admitted, equal to the ModelUsageRecorded events of the trial's log"
+  },
+  "gate": {
+    "max_drop": 0.05
+  }
+}

@@ -1,0 +1,3951 @@
+{
+  "about": "Trajectories of the scripted OpenAI-compatible model the PX-184 tests drive the real Core with. The Core never sees this file: the test's model server answers each request from the trajectory whose goal is the request's 'Task goal:' line, one step per assistant turn already in the conversation. A live model replaces it.",
+  "tasks": {
+    "tool_use/sum-numbers": {
+      "goal": "Read data/numbers.txt (one integer per line) and write their sum, followed by a newline, to out/sum.txt.",
+      "script": [
+        {
+          "calls": [
+            {
+              "name": "fs.read",
+              "args": {
+                "path": "data/numbers.txt"
+              }
+            }
+          ]
+        },
+        {
+          "calls": [
+            {
+              "name": "plan.update",
+              "args": {
+                "outcome": "the sum is written",
+                "expected_files": [
+                  "out/sum.txt"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "calls": [
+            {
+              "name": "change.apply",
+              "args": {
+                "path": "out/sum.txt",
+                "op": "create",
+                "content": "108\n"
+              }
+            }
+          ]
+        },
+        {
+          "calls": [
+            {
+              "name": "task.complete",
+              "args": {
+                "summary": "out/sum.txt holds 108",
+                "self_review": {
+                  "findings": [
+                    {
+                      "text": "out/sum.txt holds 108",
+                      "resolved": true
+                    }
+                  ]
+                }
+              }
+            }
+          ]
+        }
+      ]
+    },
+    "tool_use/find-channel": {
+      "goal": "Search the workspace for the RELEASE_CHANNEL setting and write its value, followed by a newline, to out/channel.txt.",
+      "script": [
+        {
+          "calls": [
+            {
+              "name": "search.exact",
+              "args": {
+                "query": "RELEASE_CHANNEL"
+              }
+            }
+          ]
+        },
+        {
+          "calls": [
+            {
+              "name": "plan.update",
+              "args": {
+                "outcome": "the channel is written",
+                "expected_files": [
+                  "out/channel.txt"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "calls": [
+            {
+              "name": "change.apply",
+              "args": {
+                "path": "out/channel.txt",
+                "op": "create",
+                "content": "beta-7\n"
+              }
+            }
+          ]
+        },
+        {
+          "calls": [
+            {
+              "name": "task.complete",
+              "args": {
+                "summary": "out/channel.txt holds beta-7",
+                "self_review": {
+                  "findings": [
+                    {
+                      "text": "out/channel.txt holds beta-7",
+                      "resolved": true
+                    }
+                  ]
+                }
+              }
+            }
+          ]
+        }
+      ]
+    },
+    "tool_use/bump-retries": {
+      "goal": "In config/app.ini change retries from 3 to 5 and leave every other line exactly as it is.",
+      "script": [
+        {
+          "calls": [
+            {
+              "name": "fs.read",
+              "args": {
+                "path": "config/app.ini"
+              }
+            }
+          ]
+        },
+        {
+          "calls": [
+            {
+              "name": "plan.update",
+              "args": {
+                "outcome": "retries is 5",
+                "expected_files": [
+                  "config/app.ini"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "calls": [
+            {
+              "name": "change.apply",
+              "args": {
+                "path": "config/app.ini",
+                "op": "edit",
+                "text_edits": [
+                  {
+                    "old": "retries = 3\n",
+                    "new": "retries = 5\n"
+                  }
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "calls": [
+            {
+              "name": "task.complete",
+              "args": {
+                "summary": "retries set to 5",
+                "self_review": {
+                  "findings": [
+                    {
+                      "text": "retries set to 5",
+                      "resolved": true
+                    }
+                  ]
+                }
+              }
+            }
+          ]
+        }
+      ]
+    },
+    "tool_use/list-cfg-files": {
+      "goal": "Find every .cfg file under src/ and write their workspace-relative paths, sorted, one per line, to out/cfg-files.txt.",
+      "script": [
+        {
+          "calls": [
+            {
+              "name": "fs.glob",
+              "args": {
+                "pattern": "src/**/*.cfg"
+              }
+            }
+          ]
+        },
+        {
+          "calls": [
+            {
+              "name": "plan.update",
+              "args": {
+                "outcome": "the list is written",
+                "expected_files": [
+                  "out/cfg-files.txt"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "calls": [
+            {
+              "name": "change.apply",
+              "args": {
+                "path": "out/cfg-files.txt",
+                "op": "create",
+                "content": "src/settings/channel.cfg\nsrc/settings/limits.cfg\nsrc/settings/region.cfg\n"
+              }
+            }
+          ]
+        },
+        {
+          "calls": [
+            {
+              "name": "task.complete",
+              "args": {
+                "summary": "three cfg files listed",
+                "self_review": {
+                  "findings": [
+                    {
+                      "text": "three cfg files listed",
+                      "resolved": true
+                    }
+                  ]
+                }
+              }
+            }
+          ]
+        }
+      ]
+    },
+    "tool_use/count-assets": {
+      "goal": "Count the files in the assets directory and write the count, followed by a newline, to out/assets.txt.",
+      "script": [
+        {
+          "calls": [
+            {
+              "name": "fs.list",
+              "args": {
+                "path": "assets"
+              }
+            }
+          ]
+        },
+        {
+          "calls": [
+            {
+              "name": "plan.update",
+              "args": {
+                "outcome": "the count is written",
+                "expected_files": [
+                  "out/assets.txt"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "calls": [
+            {
+              "name": "change.apply",
+              "args": {
+                "path": "out/assets.txt",
+                "op": "create",
+                "content": "3\n"
+              }
+            }
+          ]
+        },
+        {
+          "calls": [
+            {
+              "name": "task.complete",
+              "args": {
+                "summary": "three assets",
+                "self_review": {
+                  "findings": [
+                    {
+                      "text": "three assets",
+                      "resolved": true
+                    }
+                  ]
+                }
+              }
+            }
+          ]
+        }
+      ]
+    },
+    "tool_use/last-commit-subject": {
+      "goal": "Run git to find the subject line of the latest commit and write it, followed by a newline, to out/subject.txt.",
+      "script": [
+        {
+          "calls": [
+            {
+              "name": "shell.exec",
+              "args": {
+                "argv": [
+                  "git",
+                  "log",
+                  "-1",
+                  "--format=%s"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "calls": [
+            {
+              "name": "plan.update",
+              "args": {
+                "outcome": "the subject is written",
+                "expected_files": [
+                  "out/subject.txt"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "calls": [
+            {
+              "name": "change.apply",
+              "args": {
+                "path": "out/subject.txt",
+                "op": "create",
+                "content": "fixture\n"
+              }
+            }
+          ]
+        },
+        {
+          "calls": [
+            {
+              "name": "task.complete",
+              "args": {
+                "summary": "the latest subject is fixture",
+                "self_review": {
+                  "findings": [
+                    {
+                      "text": "the latest subject is fixture",
+                      "resolved": true
+                    }
+                  ]
+                }
+              }
+            }
+          ]
+        }
+      ]
+    },
+    "tool_use/fix-typo": {
+      "goal": "Fix the misspelled word in src/greeting.txt so that it reads Hello, World! and change nothing else.",
+      "script": [
+        {
+          "calls": [
+            {
+              "name": "fs.read",
+              "args": {
+                "path": "src/greeting.txt"
+              }
+            }
+          ]
+        },
+        {
+          "calls": [
+            {
+              "name": "plan.update",
+              "args": {
+                "outcome": "the greeting is spelled right",
+                "expected_files": [
+                  "src/greeting.txt"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "calls": [
+            {
+              "name": "change.apply",
+              "args": {
+                "path": "src/greeting.txt",
+                "op": "edit",
+                "text_edits": [
+                  {
+                    "old": "Wrold",
+                    "new": "World"
+                  }
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "calls": [
+            {
+              "name": "task.complete",
+              "args": {
+                "summary": "typo fixed",
+                "self_review": {
+                  "findings": [
+                    {
+                      "text": "typo fixed",
+                      "resolved": true
+                    }
+                  ]
+                }
+              }
+            }
+          ]
+        }
+      ]
+    },
+    "tool_use/american-spelling": {
+      "goal": "In docs/guide.md replace every occurrence of the word colour with color and change nothing else.",
+      "script": [
+        {
+          "calls": [
+            {
+              "name": "fs.read",
+              "args": {
+                "path": "docs/guide.md"
+              }
+            }
+          ]
+        },
+        {
+          "calls": [
+            {
+              "name": "plan.update",
+              "args": {
+                "outcome": "color everywhere",
+                "expected_files": [
+                  "docs/guide.md"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "calls": [
+            {
+              "name": "change.apply",
+              "args": {
+                "path": "docs/guide.md",
+                "op": "edit",
+                "text_edits": [
+                  {
+                    "old": "a colour for",
+                    "new": "a color for"
+                  },
+                  {
+                    "old": "The colour is",
+                    "new": "The color is"
+                  }
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "calls": [
+            {
+              "name": "task.complete",
+              "args": {
+                "summary": "two words respelled",
+                "self_review": {
+                  "findings": [
+                    {
+                      "text": "two words respelled",
+                      "resolved": true
+                    }
+                  ]
+                }
+              }
+            }
+          ]
+        }
+      ]
+    },
+    "tool_use/sorted-names": {
+      "goal": "Read data/users.csv and write the user names, sorted alphabetically, one per line, to out/names.txt.",
+      "script": [
+        {
+          "calls": [
+            {
+              "name": "fs.read",
+              "args": {
+                "path": "data/users.csv"
+              }
+            }
+          ]
+        },
+        {
+          "calls": [
+            {
+              "name": "plan.update",
+              "args": {
+                "outcome": "names are written",
+                "expected_files": [
+                  "out/names.txt"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "calls": [
+            {
+              "name": "change.apply",
+              "args": {
+                "path": "out/names.txt",
+                "op": "create",
+                "content": "ada\ngrace\nlinus\n"
+              }
+            }
+          ]
+        },
+        {
+          "calls": [
+            {
+              "name": "task.complete",
+              "args": {
+                "summary": "three names sorted",
+                "self_review": {
+                  "findings": [
+                    {
+                      "text": "three names sorted",
+                      "resolved": true
+                    }
+                  ]
+                }
+              }
+            }
+          ]
+        }
+      ]
+    },
+    "tool_use/batch-create": {
+      "goal": "In one atomic change create out/a.txt containing the line A and out/b.txt containing the line B.",
+      "script": [
+        {
+          "calls": [
+            {
+              "name": "plan.update",
+              "args": {
+                "outcome": "both files exist",
+                "expected_files": [
+                  "out/a.txt",
+                  "out/b.txt"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "calls": [
+            {
+              "name": "change.batch",
+              "args": {
+                "ops": [
+                  {
+                    "path": "out/a.txt",
+                    "op": "create",
+                    "content": "A\n"
+                  },
+                  {
+                    "path": "out/b.txt",
+                    "op": "create",
+                    "content": "B\n"
+                  }
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "calls": [
+            {
+              "name": "task.complete",
+              "args": {
+                "summary": "both files created together",
+                "self_review": {
+                  "findings": [
+                    {
+                      "text": "both files created together",
+                      "resolved": true
+                    }
+                  ]
+                }
+              }
+            }
+          ]
+        }
+      ]
+    },
+    "memory/staging-port": {
+      "goal": "Write the staging port recorded in the team's memory, followed by a newline, to out/staging.port.",
+      "script": [
+        {
+          "calls": [
+            {
+              "name": "memory.query",
+              "args": {
+                "topic": "staging port"
+              }
+            }
+          ]
+        },
+        {
+          "calls": [
+            {
+              "name": "plan.update",
+              "args": {
+                "outcome": "the remembered value is written",
+                "expected_files": [
+                  "out/staging.port"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "calls": [
+            {
+              "name": "change.apply",
+              "args": {
+                "path": "out/staging.port",
+                "op": "create",
+                "content": "8431\n"
+              }
+            }
+          ]
+        },
+        {
+          "calls": [
+            {
+              "name": "task.complete",
+              "args": {
+                "summary": "out/staging.port written from memory",
+                "self_review": {
+                  "findings": [
+                    {
+                      "text": "out/staging.port written from memory",
+                      "resolved": true
+                    }
+                  ]
+                }
+              }
+            }
+          ]
+        }
+      ]
+    },
+    "memory/release-owner": {
+      "goal": "Write the contact of the release owner recorded in memory, followed by a newline, to out/release-owner.txt.",
+      "script": [
+        {
+          "calls": [
+            {
+              "name": "memory.query",
+              "args": {
+                "topic": "release owner"
+              }
+            }
+          ]
+        },
+        {
+          "calls": [
+            {
+              "name": "plan.update",
+              "args": {
+                "outcome": "the remembered value is written",
+                "expected_files": [
+                  "out/release-owner.txt"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "calls": [
+            {
+              "name": "change.apply",
+              "args": {
+                "path": "out/release-owner.txt",
+                "op": "create",
+                "content": "plat-ops\n"
+              }
+            }
+          ]
+        },
+        {
+          "calls": [
+            {
+              "name": "task.complete",
+              "args": {
+                "summary": "out/release-owner.txt written from memory",
+                "self_review": {
+                  "findings": [
+                    {
+                      "text": "out/release-owner.txt written from memory",
+                      "resolved": true
+                    }
+                  ]
+                }
+              }
+            }
+          ]
+        }
+      ]
+    },
+    "memory/database-name": {
+      "goal": "Write config/db.ini with a [db] section whose name key is the database name recorded in memory.",
+      "script": [
+        {
+          "calls": [
+            {
+              "name": "memory.query",
+              "args": {
+                "topic": "database name"
+              }
+            }
+          ]
+        },
+        {
+          "calls": [
+            {
+              "name": "plan.update",
+              "args": {
+                "outcome": "the remembered value is written",
+                "expected_files": [
+                  "config/db.ini"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "calls": [
+            {
+              "name": "change.apply",
+              "args": {
+                "path": "config/db.ini",
+                "op": "create",
+                "content": "[db]\nname = inv_main_v2\n"
+              }
+            }
+          ]
+        },
+        {
+          "calls": [
+            {
+              "name": "task.complete",
+              "args": {
+                "summary": "config/db.ini written from memory",
+                "self_review": {
+                  "findings": [
+                    {
+                      "text": "config/db.ini written from memory",
+                      "resolved": true
+                    }
+                  ]
+                }
+              }
+            }
+          ]
+        }
+      ]
+    },
+    "memory/changelog-prefix": {
+      "goal": "Add CHANGELOG.md with one entry for ticket 12, add retries, written in the changelog convention recorded in memory.",
+      "script": [
+        {
+          "calls": [
+            {
+              "name": "memory.query",
+              "args": {
+                "topic": "changelog entries"
+              }
+            }
+          ]
+        },
+        {
+          "calls": [
+            {
+              "name": "plan.update",
+              "args": {
+                "outcome": "the remembered value is written",
+                "expected_files": [
+                  "CHANGELOG.md"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "calls": [
+            {
+              "name": "change.apply",
+              "args": {
+                "path": "CHANGELOG.md",
+                "op": "create",
+                "content": "- INV-12 add retries\n"
+              }
+            }
+          ]
+        },
+        {
+          "calls": [
+            {
+              "name": "task.complete",
+              "args": {
+                "summary": "CHANGELOG.md written from memory",
+                "self_review": {
+                  "findings": [
+                    {
+                      "text": "CHANGELOG.md written from memory",
+                      "resolved": true
+                    }
+                  ]
+                }
+              }
+            }
+          ]
+        }
+      ]
+    },
+    "memory/timeout-unit": {
+      "goal": "Write a request timeout of 2.5 seconds to out/timeout.txt in the format the user prefers, as recorded in memory.",
+      "script": [
+        {
+          "calls": [
+            {
+              "name": "memory.query",
+              "args": {
+                "topic": "timeout format"
+              }
+            }
+          ]
+        },
+        {
+          "calls": [
+            {
+              "name": "plan.update",
+              "args": {
+                "outcome": "the remembered value is written",
+                "expected_files": [
+                  "out/timeout.txt"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "calls": [
+            {
+              "name": "change.apply",
+              "args": {
+                "path": "out/timeout.txt",
+                "op": "create",
+                "content": "2.5s\n"
+              }
+            }
+          ]
+        },
+        {
+          "calls": [
+            {
+              "name": "task.complete",
+              "args": {
+                "summary": "out/timeout.txt written from memory",
+                "self_review": {
+                  "findings": [
+                    {
+                      "text": "out/timeout.txt written from memory",
+                      "resolved": true
+                    }
+                  ]
+                }
+              }
+            }
+          ]
+        }
+      ]
+    },
+    "memory/flaky-upload": {
+      "goal": "Write the exact command that runs the upload test reliably, as recorded in memory, followed by a newline, to out/upload-cmd.txt.",
+      "script": [
+        {
+          "calls": [
+            {
+              "name": "memory.query",
+              "args": {
+                "topic": "upload test"
+              }
+            }
+          ]
+        },
+        {
+          "calls": [
+            {
+              "name": "plan.update",
+              "args": {
+                "outcome": "the remembered value is written",
+                "expected_files": [
+                  "out/upload-cmd.txt"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "calls": [
+            {
+              "name": "change.apply",
+              "args": {
+                "path": "out/upload-cmd.txt",
+                "op": "create",
+                "content": "pytest -k test_upload -p no:xdist\n"
+              }
+            }
+          ]
+        },
+        {
+          "calls": [
+            {
+              "name": "task.complete",
+              "args": {
+                "summary": "out/upload-cmd.txt written from memory",
+                "self_review": {
+                  "findings": [
+                    {
+                      "text": "out/upload-cmd.txt written from memory",
+                      "resolved": true
+                    }
+                  ]
+                }
+              }
+            }
+          ]
+        }
+      ]
+    },
+    "memory/deploy-procedure": {
+      "goal": "Write the deploy procedure recorded in memory as a numbered list to out/deploy.md.",
+      "script": [
+        {
+          "calls": [
+            {
+              "name": "memory.query",
+              "args": {
+                "topic": "deploy procedure"
+              }
+            }
+          ]
+        },
+        {
+          "calls": [
+            {
+              "name": "plan.update",
+              "args": {
+                "outcome": "the remembered value is written",
+                "expected_files": [
+                  "out/deploy.md"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "calls": [
+            {
+              "name": "change.apply",
+              "args": {
+                "path": "out/deploy.md",
+                "op": "create",
+                "content": "1. tag the build\n2. push the tag\n3. announce in #ship\n"
+              }
+            }
+          ]
+        },
+        {
+          "calls": [
+            {
+              "name": "task.complete",
+              "args": {
+                "summary": "out/deploy.md written from memory",
+                "self_review": {
+                  "findings": [
+                    {
+                      "text": "out/deploy.md written from memory",
+                      "resolved": true
+                    }
+                  ]
+                }
+              }
+            }
+          ]
+        }
+      ]
+    },
+    "memory/current-api-version": {
+      "goal": "Write the current API version recorded in memory, followed by a newline, to out/api-version.txt.",
+      "script": [
+        {
+          "calls": [
+            {
+              "name": "memory.query",
+              "args": {
+                "topic": "api version"
+              }
+            }
+          ]
+        },
+        {
+          "calls": [
+            {
+              "name": "plan.update",
+              "args": {
+                "outcome": "the remembered value is written",
+                "expected_files": [
+                  "out/api-version.txt"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "calls": [
+            {
+              "name": "change.apply",
+              "args": {
+                "path": "out/api-version.txt",
+                "op": "create",
+                "content": "v4\n"
+              }
+            }
+          ]
+        },
+        {
+          "calls": [
+            {
+              "name": "task.complete",
+              "args": {
+                "summary": "out/api-version.txt written from memory",
+                "self_review": {
+                  "findings": [
+                    {
+                      "text": "out/api-version.txt written from memory",
+                      "resolved": true
+                    }
+                  ]
+                }
+              }
+            }
+          ]
+        }
+      ]
+    },
+    "memory/propose-port-convention": {
+      "goal": "Record in memory, as a team convention with the topic port files, that a port file holds one number followed by a newline; then write the port 8080 to out/default.port following it.",
+      "script": [
+        {
+          "calls": [
+            {
+              "name": "plan.update",
+              "args": {
+                "outcome": "the convention is recorded and followed",
+                "expected_files": [
+                  "out/default.port"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "calls": [
+            {
+              "name": "memory.propose",
+              "args": {
+                "record_type": "convention",
+                "topic": "port files",
+                "content": "A port file holds one number followed by a newline."
+              }
+            }
+          ]
+        },
+        {
+          "calls": [
+            {
+              "name": "change.apply",
+              "args": {
+                "path": "out/default.port",
+                "op": "create",
+                "content": "8080\n"
+              }
+            }
+          ]
+        },
+        {
+          "calls": [
+            {
+              "name": "task.complete",
+              "args": {
+                "summary": "convention recorded; port written",
+                "self_review": {
+                  "findings": [
+                    {
+                      "text": "convention recorded; port written",
+                      "resolved": true
+                    }
+                  ]
+                }
+              }
+            }
+          ]
+        }
+      ]
+    },
+    "memory/propose-lint-pitfall": {
+      "goal": "Record in memory, as a known pitfall with the topic lint cache, that the lint step needs the .cache directory; then create .cache/README.md saying the directory must exist.",
+      "script": [
+        {
+          "calls": [
+            {
+              "name": "plan.update",
+              "args": {
+                "outcome": "the failure pattern is recorded and the directory exists",
+                "expected_files": [
+                  ".cache/README.md"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "calls": [
+            {
+              "name": "memory.propose",
+              "args": {
+                "record_type": "failure_pattern",
+                "topic": "lint cache",
+                "content": "The lint step needs the .cache directory; keep .cache/README.md in the repository."
+              }
+            }
+          ]
+        },
+        {
+          "calls": [
+            {
+              "name": "change.apply",
+              "args": {
+                "path": ".cache/README.md",
+                "op": "create",
+                "content": "The .cache directory must exist for the lint step.\n"
+              }
+            }
+          ]
+        },
+        {
+          "calls": [
+            {
+              "name": "task.complete",
+              "args": {
+                "summary": "failure pattern recorded; directory kept",
+                "self_review": {
+                  "findings": [
+                    {
+                      "text": "failure pattern recorded; directory kept",
+                      "resolved": true
+                    }
+                  ]
+                }
+              }
+            }
+          ]
+        }
+      ]
+    },
+    "skill_use/release-note": {
+      "goal": "Using the release-notes skill, add a release note for the parser area saying handle empty input.",
+      "script": [
+        {
+          "calls": [
+            {
+              "name": "skill.load",
+              "args": {
+                "name": "release-notes"
+              }
+            }
+          ]
+        },
+        {
+          "calls": [
+            {
+              "name": "plan.update",
+              "args": {
+                "outcome": "the note is added",
+                "expected_files": [
+                  "NOTES.md"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "calls": [
+            {
+              "name": "change.apply",
+              "args": {
+                "path": "NOTES.md",
+                "op": "create",
+                "content": "- [parser] handle empty input\n"
+              }
+            }
+          ]
+        },
+        {
+          "calls": [
+            {
+              "name": "task.complete",
+              "args": {
+                "summary": "release note added",
+                "self_review": {
+                  "findings": [
+                    {
+                      "text": "release note added",
+                      "resolved": true
+                    }
+                  ]
+                }
+              }
+            }
+          ]
+        }
+      ]
+    },
+    "skill_use/adr": {
+      "goal": "Using the adr-template skill, write ADR 0007 titled Use SQLite for cache.",
+      "script": [
+        {
+          "calls": [
+            {
+              "name": "skill.load",
+              "args": {
+                "name": "adr-template"
+              }
+            }
+          ]
+        },
+        {
+          "calls": [
+            {
+              "name": "plan.update",
+              "args": {
+                "outcome": "the ADR exists",
+                "expected_files": [
+                  "docs/adr/0007-use-sqlite-for-cache.md"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "calls": [
+            {
+              "name": "change.apply",
+              "args": {
+                "path": "docs/adr/0007-use-sqlite-for-cache.md",
+                "op": "create",
+                "content": "# 0007. Use SQLite for cache\n\nStatus: proposed\n"
+              }
+            }
+          ]
+        },
+        {
+          "calls": [
+            {
+              "name": "task.complete",
+              "args": {
+                "summary": "ADR 0007 written",
+                "self_review": {
+                  "findings": [
+                    {
+                      "text": "ADR 0007 written",
+                      "resolved": true
+                    }
+                  ]
+                }
+              }
+            }
+          ]
+        }
+      ]
+    },
+    "skill_use/version-bump": {
+      "goal": "Using the version-bump skill, bump the version for a patch release.",
+      "script": [
+        {
+          "calls": [
+            {
+              "name": "skill.load",
+              "args": {
+                "name": "version-bump"
+              }
+            }
+          ]
+        },
+        {
+          "calls": [
+            {
+              "name": "fs.read",
+              "args": {
+                "path": "VERSION"
+              }
+            }
+          ]
+        },
+        {
+          "calls": [
+            {
+              "name": "plan.update",
+              "args": {
+                "outcome": "the version is bumped",
+                "expected_files": [
+                  "VERSION",
+                  "out/bumps.log"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "calls": [
+            {
+              "name": "change.apply",
+              "args": {
+                "path": "VERSION",
+                "op": "edit",
+                "text_edits": [
+                  {
+                    "old": "1.4.2",
+                    "new": "1.4.3"
+                  }
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "calls": [
+            {
+              "name": "change.apply",
+              "args": {
+                "path": "out/bumps.log",
+                "op": "create",
+                "content": "bump: 1.4.2 -> 1.4.3\n"
+              }
+            }
+          ]
+        },
+        {
+          "calls": [
+            {
+              "name": "task.complete",
+              "args": {
+                "summary": "bumped to 1.4.3",
+                "self_review": {
+                  "findings": [
+                    {
+                      "text": "bumped to 1.4.3",
+                      "resolved": true
+                    }
+                  ]
+                }
+              }
+            }
+          ]
+        }
+      ]
+    },
+    "skill_use/license-header": {
+      "goal": "Using the license-header skill, create src/util.rs containing the function pub fn one() -> u32 { 1 }.",
+      "script": [
+        {
+          "calls": [
+            {
+              "name": "skill.load",
+              "args": {
+                "name": "license-header"
+              }
+            }
+          ]
+        },
+        {
+          "calls": [
+            {
+              "name": "plan.update",
+              "args": {
+                "outcome": "the file exists with its header",
+                "expected_files": [
+                  "src/util.rs"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "calls": [
+            {
+              "name": "change.apply",
+              "args": {
+                "path": "src/util.rs",
+                "op": "create",
+                "content": "// SPDX-License-Identifier: Apache-2.0\n\npub fn one() -> u32 { 1 }\n"
+              }
+            }
+          ]
+        },
+        {
+          "calls": [
+            {
+              "name": "task.complete",
+              "args": {
+                "summary": "src/util.rs created",
+                "self_review": {
+                  "findings": [
+                    {
+                      "text": "src/util.rs created",
+                      "resolved": true
+                    }
+                  ]
+                }
+              }
+            }
+          ]
+        }
+      ]
+    },
+    "skill_use/changelog-section": {
+      "goal": "Using the keep-a-changelog skill, start CHANGELOG.md with an entry for the new retry support.",
+      "script": [
+        {
+          "calls": [
+            {
+              "name": "skill.load",
+              "args": {
+                "name": "keep-a-changelog"
+              }
+            }
+          ]
+        },
+        {
+          "calls": [
+            {
+              "name": "plan.update",
+              "args": {
+                "outcome": "the changelog has the entry",
+                "expected_files": [
+                  "CHANGELOG.md"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "calls": [
+            {
+              "name": "change.apply",
+              "args": {
+                "path": "CHANGELOG.md",
+                "op": "create",
+                "content": "## [Unreleased]\n### Added\n- retry support\n"
+              }
+            }
+          ]
+        },
+        {
+          "calls": [
+            {
+              "name": "task.complete",
+              "args": {
+                "summary": "changelog started",
+                "self_review": {
+                  "findings": [
+                    {
+                      "text": "changelog started",
+                      "resolved": true
+                    }
+                  ]
+                }
+              }
+            }
+          ]
+        }
+      ]
+    },
+    "skill_use/todo-format": {
+      "goal": "Using the todo-format skill, add a TODO for owner ada to remove the legacy path, in out/todo.txt.",
+      "script": [
+        {
+          "calls": [
+            {
+              "name": "skill.load",
+              "args": {
+                "name": "todo-format"
+              }
+            }
+          ]
+        },
+        {
+          "calls": [
+            {
+              "name": "plan.update",
+              "args": {
+                "outcome": "the TODO is written",
+                "expected_files": [
+                  "out/todo.txt"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "calls": [
+            {
+              "name": "change.apply",
+              "args": {
+                "path": "out/todo.txt",
+                "op": "create",
+                "content": "TODO(ada): remove the legacy path\n"
+              }
+            }
+          ]
+        },
+        {
+          "calls": [
+            {
+              "name": "task.complete",
+              "args": {
+                "summary": "TODO added",
+                "self_review": {
+                  "findings": [
+                    {
+                      "text": "TODO added",
+                      "resolved": true
+                    }
+                  ]
+                }
+              }
+            }
+          ]
+        }
+      ]
+    },
+    "skill_use/metric-name": {
+      "goal": "Using the metrics-naming skill, write the name of the request latency metric measured in seconds, followed by a newline, to out/metrics.txt.",
+      "script": [
+        {
+          "calls": [
+            {
+              "name": "skill.load",
+              "args": {
+                "name": "metrics-naming"
+              }
+            }
+          ]
+        },
+        {
+          "calls": [
+            {
+              "name": "plan.update",
+              "args": {
+                "outcome": "the metric is named",
+                "expected_files": [
+                  "out/metrics.txt"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "calls": [
+            {
+              "name": "change.apply",
+              "args": {
+                "path": "out/metrics.txt",
+                "op": "create",
+                "content": "inv_request_latency_seconds\n"
+              }
+            }
+          ]
+        },
+        {
+          "calls": [
+            {
+              "name": "task.complete",
+              "args": {
+                "summary": "metric named",
+                "self_review": {
+                  "findings": [
+                    {
+                      "text": "metric named",
+                      "resolved": true
+                    }
+                  ]
+                }
+              }
+            }
+          ]
+        }
+      ]
+    },
+    "skill_use/branch-name": {
+      "goal": "Using the branch-naming skill, write the branch name for ticket INV-31, add export, followed by a newline, to out/branch.txt.",
+      "script": [
+        {
+          "calls": [
+            {
+              "name": "skill.load",
+              "args": {
+                "name": "branch-naming"
+              }
+            }
+          ]
+        },
+        {
+          "calls": [
+            {
+              "name": "plan.update",
+              "args": {
+                "outcome": "the branch is named",
+                "expected_files": [
+                  "out/branch.txt"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "calls": [
+            {
+              "name": "change.apply",
+              "args": {
+                "path": "out/branch.txt",
+                "op": "create",
+                "content": "feat/INV-31-add-export\n"
+              }
+            }
+          ]
+        },
+        {
+          "calls": [
+            {
+              "name": "task.complete",
+              "args": {
+                "summary": "branch named",
+                "self_review": {
+                  "findings": [
+                    {
+                      "text": "branch named",
+                      "resolved": true
+                    }
+                  ]
+                }
+              }
+            }
+          ]
+        }
+      ]
+    },
+    "skill_use/ini-order": {
+      "goal": "Using the ini-style skill, add the key pool = 4 to the [service] section of config/app.ini.",
+      "script": [
+        {
+          "calls": [
+            {
+              "name": "skill.load",
+              "args": {
+                "name": "ini-style"
+              }
+            }
+          ]
+        },
+        {
+          "calls": [
+            {
+              "name": "fs.read",
+              "args": {
+                "path": "config/app.ini"
+              }
+            }
+          ]
+        },
+        {
+          "calls": [
+            {
+              "name": "plan.update",
+              "args": {
+                "outcome": "pool is set in order",
+                "expected_files": [
+                  "config/app.ini"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "calls": [
+            {
+              "name": "change.apply",
+              "args": {
+                "path": "config/app.ini",
+                "op": "edit",
+                "text_edits": [
+                  {
+                    "old": "name = inventory\n",
+                    "new": "name = inventory\npool = 4\n"
+                  }
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "calls": [
+            {
+              "name": "task.complete",
+              "args": {
+                "summary": "pool added in order",
+                "self_review": {
+                  "findings": [
+                    {
+                      "text": "pool added in order",
+                      "resolved": true
+                    }
+                  ]
+                }
+              }
+            }
+          ]
+        }
+      ]
+    },
+    "skill_use/status-code": {
+      "goal": "Using the code-registry skill, register code 42 with the message quota exceeded.",
+      "script": [
+        {
+          "calls": [
+            {
+              "name": "skill.load",
+              "args": {
+                "name": "code-registry"
+              }
+            }
+          ]
+        },
+        {
+          "calls": [
+            {
+              "name": "fs.read",
+              "args": {
+                "path": "docs/errors.md"
+              }
+            }
+          ]
+        },
+        {
+          "calls": [
+            {
+              "name": "plan.update",
+              "args": {
+                "outcome": "the code is registered",
+                "expected_files": [
+                  "docs/errors.md"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "calls": [
+            {
+              "name": "change.apply",
+              "args": {
+                "path": "docs/errors.md",
+                "op": "edit",
+                "text_edits": [
+                  {
+                    "old": "| E0001 | unknown item |\n",
+                    "new": "| E0001 | unknown item |\n| E0042 | quota exceeded |\n"
+                  }
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "calls": [
+            {
+              "name": "task.complete",
+              "args": {
+                "summary": "E0042 registered",
+                "self_review": {
+                  "findings": [
+                    {
+                      "text": "E0042 registered",
+                      "resolved": true
+                    }
+                  ]
+                }
+              }
+            }
+          ]
+        }
+      ]
+    },
+    "subagent/two-parts": {
+      "goal": "Delegate part/a/a.txt (the line alpha) and part/b/b.txt (the line beta) to two child agents, integrate both, then write out/parts.txt listing a.txt and b.txt.",
+      "script": [
+        {
+          "calls": [
+            {
+              "name": "plan.update",
+              "args": {
+                "outcome": "children's files integrated and indexed",
+                "expected_files": [
+                  "part/a/a.txt",
+                  "part/b/b.txt",
+                  "out/parts.txt"
+                ],
+                "protected_effects": [
+                  "git.merge"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "calls": [
+            {
+              "name": "agent.spawn",
+              "args": {
+                "idempotency_key": "k-a",
+                "objective": "Create part/a/a.txt containing the line alpha.",
+                "write_scope": [
+                  "part/a/"
+                ],
+                "max_turns": 6
+              }
+            }
+          ]
+        },
+        {
+          "calls": [
+            {
+              "name": "agent.spawn",
+              "args": {
+                "idempotency_key": "k-b",
+                "objective": "Create part/b/b.txt containing the line beta.",
+                "write_scope": [
+                  "part/b/"
+                ],
+                "max_turns": 6
+              }
+            }
+          ]
+        },
+        {
+          "calls": [
+            {
+              "name": "agent.wait",
+              "args": {
+                "idempotency_key": "k-a",
+                "timeout_ms": 90000
+              }
+            }
+          ]
+        },
+        {
+          "calls": [
+            {
+              "name": "agent.wait",
+              "args": {
+                "idempotency_key": "k-b",
+                "timeout_ms": 90000
+              }
+            }
+          ]
+        },
+        {
+          "calls": [
+            {
+              "name": "git.merge.prepare",
+              "args": {
+                "child": "k-a",
+                "id": "tx-1"
+              }
+            }
+          ]
+        },
+        {
+          "calls": [
+            {
+              "name": "git.merge.commit",
+              "args": {
+                "id": "tx-1"
+              }
+            }
+          ]
+        },
+        {
+          "calls": [
+            {
+              "name": "fs.read",
+              "args": {
+                "path": "part/a/a.txt"
+              }
+            }
+          ]
+        },
+        {
+          "calls": [
+            {
+              "name": "git.merge.prepare",
+              "args": {
+                "child": "k-b",
+                "id": "tx-2"
+              }
+            }
+          ]
+        },
+        {
+          "calls": [
+            {
+              "name": "git.merge.commit",
+              "args": {
+                "id": "tx-2"
+              }
+            }
+          ]
+        },
+        {
+          "calls": [
+            {
+              "name": "fs.read",
+              "args": {
+                "path": "part/b/b.txt"
+              }
+            }
+          ]
+        },
+        {
+          "calls": [
+            {
+              "name": "change.apply",
+              "args": {
+                "path": "out/parts.txt",
+                "op": "create",
+                "content": "a.txt\nb.txt\n"
+              }
+            }
+          ]
+        },
+        {
+          "calls": [
+            {
+              "name": "task.complete",
+              "args": {
+                "summary": "children integrated",
+                "self_review": {
+                  "findings": [
+                    {
+                      "text": "children integrated",
+                      "resolved": true
+                    }
+                  ]
+                }
+              }
+            }
+          ]
+        }
+      ],
+      "children": [
+        {
+          "goal": "Create part/a/a.txt containing the line alpha.",
+          "script": [
+            {
+              "calls": [
+                {
+                  "name": "plan.update",
+                  "args": {
+                    "outcome": "the file exists",
+                    "expected_files": [
+                      "part/a/a.txt"
+                    ]
+                  }
+                }
+              ]
+            },
+            {
+              "calls": [
+                {
+                  "name": "change.apply",
+                  "args": {
+                    "path": "part/a/a.txt",
+                    "op": "create",
+                    "content": "alpha\n"
+                  }
+                }
+              ]
+            },
+            {
+              "calls": [
+                {
+                  "name": "task.complete",
+                  "args": {
+                    "summary": "part/a/a.txt written",
+                    "self_review": {
+                      "findings": [
+                        {
+                          "text": "part/a/a.txt written",
+                          "resolved": true
+                        }
+                      ]
+                    }
+                  }
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "goal": "Create part/b/b.txt containing the line beta.",
+          "script": [
+            {
+              "calls": [
+                {
+                  "name": "plan.update",
+                  "args": {
+                    "outcome": "the file exists",
+                    "expected_files": [
+                      "part/b/b.txt"
+                    ]
+                  }
+                }
+              ]
+            },
+            {
+              "calls": [
+                {
+                  "name": "change.apply",
+                  "args": {
+                    "path": "part/b/b.txt",
+                    "op": "create",
+                    "content": "beta\n"
+                  }
+                }
+              ]
+            },
+            {
+              "calls": [
+                {
+                  "name": "task.complete",
+                  "args": {
+                    "summary": "part/b/b.txt written",
+                    "self_review": {
+                      "findings": [
+                        {
+                          "text": "part/b/b.txt written",
+                          "resolved": true
+                        }
+                      ]
+                    }
+                  }
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    "subagent/api-doc": {
+      "goal": "Delegate writing docs/api.md (a heading API and one line GET /items) to a child agent, integrate it, then write out/docs-ready.txt containing api.md.",
+      "script": [
+        {
+          "calls": [
+            {
+              "name": "plan.update",
+              "args": {
+                "outcome": "children's files integrated and indexed",
+                "expected_files": [
+                  "docs/api.md",
+                  "out/docs-ready.txt"
+                ],
+                "protected_effects": [
+                  "git.merge"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "calls": [
+            {
+              "name": "agent.spawn",
+              "args": {
+                "idempotency_key": "k-api",
+                "objective": "Create docs/api.md with the heading # API and the line GET /items.",
+                "write_scope": [
+                  "docs/api.md"
+                ],
+                "max_turns": 6
+              }
+            }
+          ]
+        },
+        {
+          "calls": [
+            {
+              "name": "agent.wait",
+              "args": {
+                "idempotency_key": "k-api",
+                "timeout_ms": 90000
+              }
+            }
+          ]
+        },
+        {
+          "calls": [
+            {
+              "name": "git.merge.prepare",
+              "args": {
+                "child": "k-api",
+                "id": "tx-1"
+              }
+            }
+          ]
+        },
+        {
+          "calls": [
+            {
+              "name": "git.merge.commit",
+              "args": {
+                "id": "tx-1"
+              }
+            }
+          ]
+        },
+        {
+          "calls": [
+            {
+              "name": "fs.read",
+              "args": {
+                "path": "docs/api.md"
+              }
+            }
+          ]
+        },
+        {
+          "calls": [
+            {
+              "name": "change.apply",
+              "args": {
+                "path": "out/docs-ready.txt",
+                "op": "create",
+                "content": "api.md\n"
+              }
+            }
+          ]
+        },
+        {
+          "calls": [
+            {
+              "name": "task.complete",
+              "args": {
+                "summary": "children integrated",
+                "self_review": {
+                  "findings": [
+                    {
+                      "text": "children integrated",
+                      "resolved": true
+                    }
+                  ]
+                }
+              }
+            }
+          ]
+        }
+      ],
+      "children": [
+        {
+          "goal": "Create docs/api.md with the heading # API and the line GET /items.",
+          "script": [
+            {
+              "calls": [
+                {
+                  "name": "plan.update",
+                  "args": {
+                    "outcome": "the file exists",
+                    "expected_files": [
+                      "docs/api.md"
+                    ]
+                  }
+                }
+              ]
+            },
+            {
+              "calls": [
+                {
+                  "name": "change.apply",
+                  "args": {
+                    "path": "docs/api.md",
+                    "op": "create",
+                    "content": "# API\n\nGET /items\n"
+                  }
+                }
+              ]
+            },
+            {
+              "calls": [
+                {
+                  "name": "task.complete",
+                  "args": {
+                    "summary": "docs/api.md written",
+                    "self_review": {
+                      "findings": [
+                        {
+                          "text": "docs/api.md written",
+                          "resolved": true
+                        }
+                      ]
+                    }
+                  }
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    "subagent/translations": {
+      "goal": "Delegate the English and French greetings to two child agents (i18n/en.txt hello, i18n/fr.txt bonjour), integrate both, then write i18n/index.txt listing en and fr.",
+      "script": [
+        {
+          "calls": [
+            {
+              "name": "plan.update",
+              "args": {
+                "outcome": "children's files integrated and indexed",
+                "expected_files": [
+                  "i18n/en.txt",
+                  "i18n/fr.txt",
+                  "i18n/index.txt"
+                ],
+                "protected_effects": [
+                  "git.merge"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "calls": [
+            {
+              "name": "agent.spawn",
+              "args": {
+                "idempotency_key": "k-en",
+                "objective": "Create i18n/en.txt containing the line hello.",
+                "write_scope": [
+                  "i18n/en.txt"
+                ],
+                "max_turns": 6
+              }
+            }
+          ]
+        },
+        {
+          "calls": [
+            {
+              "name": "agent.spawn",
+              "args": {
+                "idempotency_key": "k-fr",
+                "objective": "Create i18n/fr.txt containing the line bonjour.",
+                "write_scope": [
+                  "i18n/fr.txt"
+                ],
+                "max_turns": 6
+              }
+            }
+          ]
+        },
+        {
+          "calls": [
+            {
+              "name": "agent.wait",
+              "args": {
+                "idempotency_key": "k-en",
+                "timeout_ms": 90000
+              }
+            }
+          ]
+        },
+        {
+          "calls": [
+            {
+              "name": "agent.wait",
+              "args": {
+                "idempotency_key": "k-fr",
+                "timeout_ms": 90000
+              }
+            }
+          ]
+        },
+        {
+          "calls": [
+            {
+              "name": "git.merge.prepare",
+              "args": {
+                "child": "k-en",
+                "id": "tx-1"
+              }
+            }
+          ]
+        },
+        {
+          "calls": [
+            {
+              "name": "git.merge.commit",
+              "args": {
+                "id": "tx-1"
+              }
+            }
+          ]
+        },
+        {
+          "calls": [
+            {
+              "name": "fs.read",
+              "args": {
+                "path": "i18n/en.txt"
+              }
+            }
+          ]
+        },
+        {
+          "calls": [
+            {
+              "name": "git.merge.prepare",
+              "args": {
+                "child": "k-fr",
+                "id": "tx-2"
+              }
+            }
+          ]
+        },
+        {
+          "calls": [
+            {
+              "name": "git.merge.commit",
+              "args": {
+                "id": "tx-2"
+              }
+            }
+          ]
+        },
+        {
+          "calls": [
+            {
+              "name": "fs.read",
+              "args": {
+                "path": "i18n/fr.txt"
+              }
+            }
+          ]
+        },
+        {
+          "calls": [
+            {
+              "name": "change.apply",
+              "args": {
+                "path": "i18n/index.txt",
+                "op": "create",
+                "content": "en\nfr\n"
+              }
+            }
+          ]
+        },
+        {
+          "calls": [
+            {
+              "name": "task.complete",
+              "args": {
+                "summary": "children integrated",
+                "self_review": {
+                  "findings": [
+                    {
+                      "text": "children integrated",
+                      "resolved": true
+                    }
+                  ]
+                }
+              }
+            }
+          ]
+        }
+      ],
+      "children": [
+        {
+          "goal": "Create i18n/en.txt containing the line hello.",
+          "script": [
+            {
+              "calls": [
+                {
+                  "name": "plan.update",
+                  "args": {
+                    "outcome": "the file exists",
+                    "expected_files": [
+                      "i18n/en.txt"
+                    ]
+                  }
+                }
+              ]
+            },
+            {
+              "calls": [
+                {
+                  "name": "change.apply",
+                  "args": {
+                    "path": "i18n/en.txt",
+                    "op": "create",
+                    "content": "hello\n"
+                  }
+                }
+              ]
+            },
+            {
+              "calls": [
+                {
+                  "name": "task.complete",
+                  "args": {
+                    "summary": "i18n/en.txt written",
+                    "self_review": {
+                      "findings": [
+                        {
+                          "text": "i18n/en.txt written",
+                          "resolved": true
+                        }
+                      ]
+                    }
+                  }
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "goal": "Create i18n/fr.txt containing the line bonjour.",
+          "script": [
+            {
+              "calls": [
+                {
+                  "name": "plan.update",
+                  "args": {
+                    "outcome": "the file exists",
+                    "expected_files": [
+                      "i18n/fr.txt"
+                    ]
+                  }
+                }
+              ]
+            },
+            {
+              "calls": [
+                {
+                  "name": "change.apply",
+                  "args": {
+                    "path": "i18n/fr.txt",
+                    "op": "create",
+                    "content": "bonjour\n"
+                  }
+                }
+              ]
+            },
+            {
+              "calls": [
+                {
+                  "name": "task.complete",
+                  "args": {
+                    "summary": "i18n/fr.txt written",
+                    "self_review": {
+                      "findings": [
+                        {
+                          "text": "i18n/fr.txt written",
+                          "resolved": true
+                        }
+                      ]
+                    }
+                  }
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    "subagent/report": {
+      "goal": "Delegate creating data/report.csv (header sku,qty and one row widget,3) to a child agent, integrate it, then write out/report-ready.txt containing report.csv.",
+      "script": [
+        {
+          "calls": [
+            {
+              "name": "plan.update",
+              "args": {
+                "outcome": "children's files integrated and indexed",
+                "expected_files": [
+                  "data/report.csv",
+                  "out/report-ready.txt"
+                ],
+                "protected_effects": [
+                  "git.merge"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "calls": [
+            {
+              "name": "agent.spawn",
+              "args": {
+                "idempotency_key": "k-report",
+                "objective": "Create data/report.csv with the header sku,qty and the row widget,3.",
+                "write_scope": [
+                  "data/report.csv"
+                ],
+                "max_turns": 6
+              }
+            }
+          ]
+        },
+        {
+          "calls": [
+            {
+              "name": "agent.wait",
+              "args": {
+                "idempotency_key": "k-report",
+                "timeout_ms": 90000
+              }
+            }
+          ]
+        },
+        {
+          "calls": [
+            {
+              "name": "git.merge.prepare",
+              "args": {
+                "child": "k-report",
+                "id": "tx-1"
+              }
+            }
+          ]
+        },
+        {
+          "calls": [
+            {
+              "name": "git.merge.commit",
+              "args": {
+                "id": "tx-1"
+              }
+            }
+          ]
+        },
+        {
+          "calls": [
+            {
+              "name": "fs.read",
+              "args": {
+                "path": "data/report.csv"
+              }
+            }
+          ]
+        },
+        {
+          "calls": [
+            {
+              "name": "change.apply",
+              "args": {
+                "path": "out/report-ready.txt",
+                "op": "create",
+                "content": "report.csv\n"
+              }
+            }
+          ]
+        },
+        {
+          "calls": [
+            {
+              "name": "task.complete",
+              "args": {
+                "summary": "children integrated",
+                "self_review": {
+                  "findings": [
+                    {
+                      "text": "children integrated",
+                      "resolved": true
+                    }
+                  ]
+                }
+              }
+            }
+          ]
+        }
+      ],
+      "children": [
+        {
+          "goal": "Create data/report.csv with the header sku,qty and the row widget,3.",
+          "script": [
+            {
+              "calls": [
+                {
+                  "name": "plan.update",
+                  "args": {
+                    "outcome": "the file exists",
+                    "expected_files": [
+                      "data/report.csv"
+                    ]
+                  }
+                }
+              ]
+            },
+            {
+              "calls": [
+                {
+                  "name": "change.apply",
+                  "args": {
+                    "path": "data/report.csv",
+                    "op": "create",
+                    "content": "sku,qty\nwidget,3\n"
+                  }
+                }
+              ]
+            },
+            {
+              "calls": [
+                {
+                  "name": "task.complete",
+                  "args": {
+                    "summary": "data/report.csv written",
+                    "self_review": {
+                      "findings": [
+                        {
+                          "text": "data/report.csv written",
+                          "resolved": true
+                        }
+                      ]
+                    }
+                  }
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    "subagent/modules": {
+      "goal": "Delegate src/mod_a.txt (module a) and src/mod_b.txt (module b) to two child agents, integrate both, then write src/modules.txt listing mod_a and mod_b.",
+      "script": [
+        {
+          "calls": [
+            {
+              "name": "plan.update",
+              "args": {
+                "outcome": "children's files integrated and indexed",
+                "expected_files": [
+                  "src/mod_a.txt",
+                  "src/mod_b.txt",
+                  "src/modules.txt"
+                ],
+                "protected_effects": [
+                  "git.merge"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "calls": [
+            {
+              "name": "agent.spawn",
+              "args": {
+                "idempotency_key": "k-ma",
+                "objective": "Create src/mod_a.txt containing the line module a.",
+                "write_scope": [
+                  "src/mod_a.txt"
+                ],
+                "max_turns": 6
+              }
+            }
+          ]
+        },
+        {
+          "calls": [
+            {
+              "name": "agent.spawn",
+              "args": {
+                "idempotency_key": "k-mb",
+                "objective": "Create src/mod_b.txt containing the line module b.",
+                "write_scope": [
+                  "src/mod_b.txt"
+                ],
+                "max_turns": 6
+              }
+            }
+          ]
+        },
+        {
+          "calls": [
+            {
+              "name": "agent.wait",
+              "args": {
+                "idempotency_key": "k-ma",
+                "timeout_ms": 90000
+              }
+            }
+          ]
+        },
+        {
+          "calls": [
+            {
+              "name": "agent.wait",
+              "args": {
+                "idempotency_key": "k-mb",
+                "timeout_ms": 90000
+              }
+            }
+          ]
+        },
+        {
+          "calls": [
+            {
+              "name": "git.merge.prepare",
+              "args": {
+                "child": "k-ma",
+                "id": "tx-1"
+              }
+            }
+          ]
+        },
+        {
+          "calls": [
+            {
+              "name": "git.merge.commit",
+              "args": {
+                "id": "tx-1"
+              }
+            }
+          ]
+        },
+        {
+          "calls": [
+            {
+              "name": "fs.read",
+              "args": {
+                "path": "src/mod_a.txt"
+              }
+            }
+          ]
+        },
+        {
+          "calls": [
+            {
+              "name": "git.merge.prepare",
+              "args": {
+                "child": "k-mb",
+                "id": "tx-2"
+              }
+            }
+          ]
+        },
+        {
+          "calls": [
+            {
+              "name": "git.merge.commit",
+              "args": {
+                "id": "tx-2"
+              }
+            }
+          ]
+        },
+        {
+          "calls": [
+            {
+              "name": "fs.read",
+              "args": {
+                "path": "src/mod_b.txt"
+              }
+            }
+          ]
+        },
+        {
+          "calls": [
+            {
+              "name": "change.apply",
+              "args": {
+                "path": "src/modules.txt",
+                "op": "create",
+                "content": "mod_a\nmod_b\n"
+              }
+            }
+          ]
+        },
+        {
+          "calls": [
+            {
+              "name": "task.complete",
+              "args": {
+                "summary": "children integrated",
+                "self_review": {
+                  "findings": [
+                    {
+                      "text": "children integrated",
+                      "resolved": true
+                    }
+                  ]
+                }
+              }
+            }
+          ]
+        }
+      ],
+      "children": [
+        {
+          "goal": "Create src/mod_a.txt containing the line module a.",
+          "script": [
+            {
+              "calls": [
+                {
+                  "name": "plan.update",
+                  "args": {
+                    "outcome": "the file exists",
+                    "expected_files": [
+                      "src/mod_a.txt"
+                    ]
+                  }
+                }
+              ]
+            },
+            {
+              "calls": [
+                {
+                  "name": "change.apply",
+                  "args": {
+                    "path": "src/mod_a.txt",
+                    "op": "create",
+                    "content": "module a\n"
+                  }
+                }
+              ]
+            },
+            {
+              "calls": [
+                {
+                  "name": "task.complete",
+                  "args": {
+                    "summary": "src/mod_a.txt written",
+                    "self_review": {
+                      "findings": [
+                        {
+                          "text": "src/mod_a.txt written",
+                          "resolved": true
+                        }
+                      ]
+                    }
+                  }
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "goal": "Create src/mod_b.txt containing the line module b.",
+          "script": [
+            {
+              "calls": [
+                {
+                  "name": "plan.update",
+                  "args": {
+                    "outcome": "the file exists",
+                    "expected_files": [
+                      "src/mod_b.txt"
+                    ]
+                  }
+                }
+              ]
+            },
+            {
+              "calls": [
+                {
+                  "name": "change.apply",
+                  "args": {
+                    "path": "src/mod_b.txt",
+                    "op": "create",
+                    "content": "module b\n"
+                  }
+                }
+              ]
+            },
+            {
+              "calls": [
+                {
+                  "name": "task.complete",
+                  "args": {
+                    "summary": "src/mod_b.txt written",
+                    "self_review": {
+                      "findings": [
+                        {
+                          "text": "src/mod_b.txt written",
+                          "resolved": true
+                        }
+                      ]
+                    }
+                  }
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    "subagent/fixture-json": {
+      "goal": "Delegate creating tests/fixture.json (an object with items set to 2) to a child agent, integrate it, then write out/fixtures.txt containing fixture.json.",
+      "script": [
+        {
+          "calls": [
+            {
+              "name": "plan.update",
+              "args": {
+                "outcome": "children's files integrated and indexed",
+                "expected_files": [
+                  "tests/fixture.json",
+                  "out/fixtures.txt"
+                ],
+                "protected_effects": [
+                  "git.merge"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "calls": [
+            {
+              "name": "agent.spawn",
+              "args": {
+                "idempotency_key": "k-fx",
+                "objective": "Create tests/fixture.json containing the JSON object {\"items\": 2}.",
+                "write_scope": [
+                  "tests/fixture.json"
+                ],
+                "max_turns": 6
+              }
+            }
+          ]
+        },
+        {
+          "calls": [
+            {
+              "name": "agent.wait",
+              "args": {
+                "idempotency_key": "k-fx",
+                "timeout_ms": 90000
+              }
+            }
+          ]
+        },
+        {
+          "calls": [
+            {
+              "name": "git.merge.prepare",
+              "args": {
+                "child": "k-fx",
+                "id": "tx-1"
+              }
+            }
+          ]
+        },
+        {
+          "calls": [
+            {
+              "name": "git.merge.commit",
+              "args": {
+                "id": "tx-1"
+              }
+            }
+          ]
+        },
+        {
+          "calls": [
+            {
+              "name": "fs.read",
+              "args": {
+                "path": "tests/fixture.json"
+              }
+            }
+          ]
+        },
+        {
+          "calls": [
+            {
+              "name": "change.apply",
+              "args": {
+                "path": "out/fixtures.txt",
+                "op": "create",
+                "content": "fixture.json\n"
+              }
+            }
+          ]
+        },
+        {
+          "calls": [
+            {
+              "name": "task.complete",
+              "args": {
+                "summary": "children integrated",
+                "self_review": {
+                  "findings": [
+                    {
+                      "text": "children integrated",
+                      "resolved": true
+                    }
+                  ]
+                }
+              }
+            }
+          ]
+        }
+      ],
+      "children": [
+        {
+          "goal": "Create tests/fixture.json containing the JSON object {\"items\": 2}.",
+          "script": [
+            {
+              "calls": [
+                {
+                  "name": "plan.update",
+                  "args": {
+                    "outcome": "the file exists",
+                    "expected_files": [
+                      "tests/fixture.json"
+                    ]
+                  }
+                }
+              ]
+            },
+            {
+              "calls": [
+                {
+                  "name": "change.apply",
+                  "args": {
+                    "path": "tests/fixture.json",
+                    "op": "create",
+                    "content": "{\"items\": 2}\n"
+                  }
+                }
+              ]
+            },
+            {
+              "calls": [
+                {
+                  "name": "task.complete",
+                  "args": {
+                    "summary": "tests/fixture.json written",
+                    "self_review": {
+                      "findings": [
+                        {
+                          "text": "tests/fixture.json written",
+                          "resolved": true
+                        }
+                      ]
+                    }
+                  }
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    "subagent/monthly-notes": {
+      "goal": "Delegate the January and February notes to two child agents (notes/2026-01.md and notes/2026-02.md, each with its month as a heading), integrate both, then write notes/README.md listing both files.",
+      "script": [
+        {
+          "calls": [
+            {
+              "name": "plan.update",
+              "args": {
+                "outcome": "children's files integrated and indexed",
+                "expected_files": [
+                  "notes/2026-01.md",
+                  "notes/2026-02.md",
+                  "notes/README.md"
+                ],
+                "protected_effects": [
+                  "git.merge"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "calls": [
+            {
+              "name": "agent.spawn",
+              "args": {
+                "idempotency_key": "k-jan",
+                "objective": "Create notes/2026-01.md with the heading # January.",
+                "write_scope": [
+                  "notes/2026-01.md"
+                ],
+                "max_turns": 6
+              }
+            }
+          ]
+        },
+        {
+          "calls": [
+            {
+              "name": "agent.spawn",
+              "args": {
+                "idempotency_key": "k-feb",
+                "objective": "Create notes/2026-02.md with the heading # February.",
+                "write_scope": [
+                  "notes/2026-02.md"
+                ],
+                "max_turns": 6
+              }
+            }
+          ]
+        },
+        {
+          "calls": [
+            {
+              "name": "agent.wait",
+              "args": {
+                "idempotency_key": "k-jan",
+                "timeout_ms": 90000
+              }
+            }
+          ]
+        },
+        {
+          "calls": [
+            {
+              "name": "agent.wait",
+              "args": {
+                "idempotency_key": "k-feb",
+                "timeout_ms": 90000
+              }
+            }
+          ]
+        },
+        {
+          "calls": [
+            {
+              "name": "git.merge.prepare",
+              "args": {
+                "child": "k-jan",
+                "id": "tx-1"
+              }
+            }
+          ]
+        },
+        {
+          "calls": [
+            {
+              "name": "git.merge.commit",
+              "args": {
+                "id": "tx-1"
+              }
+            }
+          ]
+        },
+        {
+          "calls": [
+            {
+              "name": "fs.read",
+              "args": {
+                "path": "notes/2026-01.md"
+              }
+            }
+          ]
+        },
+        {
+          "calls": [
+            {
+              "name": "git.merge.prepare",
+              "args": {
+                "child": "k-feb",
+                "id": "tx-2"
+              }
+            }
+          ]
+        },
+        {
+          "calls": [
+            {
+              "name": "git.merge.commit",
+              "args": {
+                "id": "tx-2"
+              }
+            }
+          ]
+        },
+        {
+          "calls": [
+            {
+              "name": "fs.read",
+              "args": {
+                "path": "notes/2026-02.md"
+              }
+            }
+          ]
+        },
+        {
+          "calls": [
+            {
+              "name": "change.apply",
+              "args": {
+                "path": "notes/README.md",
+                "op": "create",
+                "content": "2026-01.md\n2026-02.md\n"
+              }
+            }
+          ]
+        },
+        {
+          "calls": [
+            {
+              "name": "task.complete",
+              "args": {
+                "summary": "children integrated",
+                "self_review": {
+                  "findings": [
+                    {
+                      "text": "children integrated",
+                      "resolved": true
+                    }
+                  ]
+                }
+              }
+            }
+          ]
+        }
+      ],
+      "children": [
+        {
+          "goal": "Create notes/2026-01.md with the heading # January.",
+          "script": [
+            {
+              "calls": [
+                {
+                  "name": "plan.update",
+                  "args": {
+                    "outcome": "the file exists",
+                    "expected_files": [
+                      "notes/2026-01.md"
+                    ]
+                  }
+                }
+              ]
+            },
+            {
+              "calls": [
+                {
+                  "name": "change.apply",
+                  "args": {
+                    "path": "notes/2026-01.md",
+                    "op": "create",
+                    "content": "# January\n"
+                  }
+                }
+              ]
+            },
+            {
+              "calls": [
+                {
+                  "name": "task.complete",
+                  "args": {
+                    "summary": "notes/2026-01.md written",
+                    "self_review": {
+                      "findings": [
+                        {
+                          "text": "notes/2026-01.md written",
+                          "resolved": true
+                        }
+                      ]
+                    }
+                  }
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "goal": "Create notes/2026-02.md with the heading # February.",
+          "script": [
+            {
+              "calls": [
+                {
+                  "name": "plan.update",
+                  "args": {
+                    "outcome": "the file exists",
+                    "expected_files": [
+                      "notes/2026-02.md"
+                    ]
+                  }
+                }
+              ]
+            },
+            {
+              "calls": [
+                {
+                  "name": "change.apply",
+                  "args": {
+                    "path": "notes/2026-02.md",
+                    "op": "create",
+                    "content": "# February\n"
+                  }
+                }
+              ]
+            },
+            {
+              "calls": [
+                {
+                  "name": "task.complete",
+                  "args": {
+                    "summary": "notes/2026-02.md written",
+                    "self_review": {
+                      "findings": [
+                        {
+                          "text": "notes/2026-02.md written",
+                          "resolved": true
+                        }
+                      ]
+                    }
+                  }
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    "subagent/feature-flags": {
+      "goal": "Delegate creating config/flags.ini (a [flags] section with export = on) to a child agent, integrate it, then write out/flags-ready.txt containing flags.ini.",
+      "script": [
+        {
+          "calls": [
+            {
+              "name": "plan.update",
+              "args": {
+                "outcome": "children's files integrated and indexed",
+                "expected_files": [
+                  "config/flags.ini",
+                  "out/flags-ready.txt"
+                ],
+                "protected_effects": [
+                  "git.merge"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "calls": [
+            {
+              "name": "agent.spawn",
+              "args": {
+                "idempotency_key": "k-flags",
+                "objective": "Create config/flags.ini with a [flags] section and the key export = on.",
+                "write_scope": [
+                  "config/flags.ini"
+                ],
+                "max_turns": 6
+              }
+            }
+          ]
+        },
+        {
+          "calls": [
+            {
+              "name": "agent.wait",
+              "args": {
+                "idempotency_key": "k-flags",
+                "timeout_ms": 90000
+              }
+            }
+          ]
+        },
+        {
+          "calls": [
+            {
+              "name": "git.merge.prepare",
+              "args": {
+                "child": "k-flags",
+                "id": "tx-1"
+              }
+            }
+          ]
+        },
+        {
+          "calls": [
+            {
+              "name": "git.merge.commit",
+              "args": {
+                "id": "tx-1"
+              }
+            }
+          ]
+        },
+        {
+          "calls": [
+            {
+              "name": "fs.read",
+              "args": {
+                "path": "config/flags.ini"
+              }
+            }
+          ]
+        },
+        {
+          "calls": [
+            {
+              "name": "change.apply",
+              "args": {
+                "path": "out/flags-ready.txt",
+                "op": "create",
+                "content": "flags.ini\n"
+              }
+            }
+          ]
+        },
+        {
+          "calls": [
+            {
+              "name": "task.complete",
+              "args": {
+                "summary": "children integrated",
+                "self_review": {
+                  "findings": [
+                    {
+                      "text": "children integrated",
+                      "resolved": true
+                    }
+                  ]
+                }
+              }
+            }
+          ]
+        }
+      ],
+      "children": [
+        {
+          "goal": "Create config/flags.ini with a [flags] section and the key export = on.",
+          "script": [
+            {
+              "calls": [
+                {
+                  "name": "plan.update",
+                  "args": {
+                    "outcome": "the file exists",
+                    "expected_files": [
+                      "config/flags.ini"
+                    ]
+                  }
+                }
+              ]
+            },
+            {
+              "calls": [
+                {
+                  "name": "change.apply",
+                  "args": {
+                    "path": "config/flags.ini",
+                    "op": "create",
+                    "content": "[flags]\nexport = on\n"
+                  }
+                }
+              ]
+            },
+            {
+              "calls": [
+                {
+                  "name": "task.complete",
+                  "args": {
+                    "summary": "config/flags.ini written",
+                    "self_review": {
+                      "findings": [
+                        {
+                          "text": "config/flags.ini written",
+                          "resolved": true
+                        }
+                      ]
+                    }
+                  }
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    "subagent/package-versions": {
+      "goal": "Delegate pkg/x/VERSION (1.0.0) and pkg/y/VERSION (2.0.0) to two child agents, integrate both, then write pkg/VERSIONS listing x 1.0.0 and y 2.0.0.",
+      "script": [
+        {
+          "calls": [
+            {
+              "name": "plan.update",
+              "args": {
+                "outcome": "children's files integrated and indexed",
+                "expected_files": [
+                  "pkg/x/VERSION",
+                  "pkg/y/VERSION",
+                  "pkg/VERSIONS"
+                ],
+                "protected_effects": [
+                  "git.merge"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "calls": [
+            {
+              "name": "agent.spawn",
+              "args": {
+                "idempotency_key": "k-px",
+                "objective": "Create pkg/x/VERSION containing the line 1.0.0.",
+                "write_scope": [
+                  "pkg/x/"
+                ],
+                "max_turns": 6
+              }
+            }
+          ]
+        },
+        {
+          "calls": [
+            {
+              "name": "agent.spawn",
+              "args": {
+                "idempotency_key": "k-py",
+                "objective": "Create pkg/y/VERSION containing the line 2.0.0.",
+                "write_scope": [
+                  "pkg/y/"
+                ],
+                "max_turns": 6
+              }
+            }
+          ]
+        },
+        {
+          "calls": [
+            {
+              "name": "agent.wait",
+              "args": {
+                "idempotency_key": "k-px",
+                "timeout_ms": 90000
+              }
+            }
+          ]
+        },
+        {
+          "calls": [
+            {
+              "name": "agent.wait",
+              "args": {
+                "idempotency_key": "k-py",
+                "timeout_ms": 90000
+              }
+            }
+          ]
+        },
+        {
+          "calls": [
+            {
+              "name": "git.merge.prepare",
+              "args": {
+                "child": "k-px",
+                "id": "tx-1"
+              }
+            }
+          ]
+        },
+        {
+          "calls": [
+            {
+              "name": "git.merge.commit",
+              "args": {
+                "id": "tx-1"
+              }
+            }
+          ]
+        },
+        {
+          "calls": [
+            {
+              "name": "fs.read",
+              "args": {
+                "path": "pkg/x/VERSION"
+              }
+            }
+          ]
+        },
+        {
+          "calls": [
+            {
+              "name": "git.merge.prepare",
+              "args": {
+                "child": "k-py",
+                "id": "tx-2"
+              }
+            }
+          ]
+        },
+        {
+          "calls": [
+            {
+              "name": "git.merge.commit",
+              "args": {
+                "id": "tx-2"
+              }
+            }
+          ]
+        },
+        {
+          "calls": [
+            {
+              "name": "fs.read",
+              "args": {
+                "path": "pkg/y/VERSION"
+              }
+            }
+          ]
+        },
+        {
+          "calls": [
+            {
+              "name": "change.apply",
+              "args": {
+                "path": "pkg/VERSIONS",
+                "op": "create",
+                "content": "x 1.0.0\ny 2.0.0\n"
+              }
+            }
+          ]
+        },
+        {
+          "calls": [
+            {
+              "name": "task.complete",
+              "args": {
+                "summary": "children integrated",
+                "self_review": {
+                  "findings": [
+                    {
+                      "text": "children integrated",
+                      "resolved": true
+                    }
+                  ]
+                }
+              }
+            }
+          ]
+        }
+      ],
+      "children": [
+        {
+          "goal": "Create pkg/x/VERSION containing the line 1.0.0.",
+          "script": [
+            {
+              "calls": [
+                {
+                  "name": "plan.update",
+                  "args": {
+                    "outcome": "the file exists",
+                    "expected_files": [
+                      "pkg/x/VERSION"
+                    ]
+                  }
+                }
+              ]
+            },
+            {
+              "calls": [
+                {
+                  "name": "change.apply",
+                  "args": {
+                    "path": "pkg/x/VERSION",
+                    "op": "create",
+                    "content": "1.0.0\n"
+                  }
+                }
+              ]
+            },
+            {
+              "calls": [
+                {
+                  "name": "task.complete",
+                  "args": {
+                    "summary": "pkg/x/VERSION written",
+                    "self_review": {
+                      "findings": [
+                        {
+                          "text": "pkg/x/VERSION written",
+                          "resolved": true
+                        }
+                      ]
+                    }
+                  }
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "goal": "Create pkg/y/VERSION containing the line 2.0.0.",
+          "script": [
+            {
+              "calls": [
+                {
+                  "name": "plan.update",
+                  "args": {
+                    "outcome": "the file exists",
+                    "expected_files": [
+                      "pkg/y/VERSION"
+                    ]
+                  }
+                }
+              ]
+            },
+            {
+              "calls": [
+                {
+                  "name": "change.apply",
+                  "args": {
+                    "path": "pkg/y/VERSION",
+                    "op": "create",
+                    "content": "2.0.0\n"
+                  }
+                }
+              ]
+            },
+            {
+              "calls": [
+                {
+                  "name": "task.complete",
+                  "args": {
+                    "summary": "pkg/y/VERSION written",
+                    "self_review": {
+                      "findings": [
+                        {
+                          "text": "pkg/y/VERSION written",
+                          "resolved": true
+                        }
+                      ]
+                    }
+                  }
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    "subagent/setup-notes": {
+      "goal": "Delegate writing scripts/SETUP.md (the line run make setup) to a child agent, integrate it, then write out/setup-ready.txt containing SETUP.md.",
+      "script": [
+        {
+          "calls": [
+            {
+              "name": "plan.update",
+              "args": {
+                "outcome": "children's files integrated and indexed",
+                "expected_files": [
+                  "scripts/SETUP.md",
+                  "out/setup-ready.txt"
+                ],
+                "protected_effects": [
+                  "git.merge"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "calls": [
+            {
+              "name": "agent.spawn",
+              "args": {
+                "idempotency_key": "k-setup",
+                "objective": "Create scripts/SETUP.md containing the line run make setup.",
+                "write_scope": [
+                  "scripts/SETUP.md"
+                ],
+                "max_turns": 6
+              }
+            }
+          ]
+        },
+        {
+          "calls": [
+            {
+              "name": "agent.wait",
+              "args": {
+                "idempotency_key": "k-setup",
+                "timeout_ms": 90000
+              }
+            }
+          ]
+        },
+        {
+          "calls": [
+            {
+              "name": "git.merge.prepare",
+              "args": {
+                "child": "k-setup",
+                "id": "tx-1"
+              }
+            }
+          ]
+        },
+        {
+          "calls": [
+            {
+              "name": "git.merge.commit",
+              "args": {
+                "id": "tx-1"
+              }
+            }
+          ]
+        },
+        {
+          "calls": [
+            {
+              "name": "fs.read",
+              "args": {
+                "path": "scripts/SETUP.md"
+              }
+            }
+          ]
+        },
+        {
+          "calls": [
+            {
+              "name": "change.apply",
+              "args": {
+                "path": "out/setup-ready.txt",
+                "op": "create",
+                "content": "SETUP.md\n"
+              }
+            }
+          ]
+        },
+        {
+          "calls": [
+            {
+              "name": "task.complete",
+              "args": {
+                "summary": "children integrated",
+                "self_review": {
+                  "findings": [
+                    {
+                      "text": "children integrated",
+                      "resolved": true
+                    }
+                  ]
+                }
+              }
+            }
+          ]
+        }
+      ],
+      "children": [
+        {
+          "goal": "Create scripts/SETUP.md containing the line run make setup.",
+          "script": [
+            {
+              "calls": [
+                {
+                  "name": "plan.update",
+                  "args": {
+                    "outcome": "the file exists",
+                    "expected_files": [
+                      "scripts/SETUP.md"
+                    ]
+                  }
+                }
+              ]
+            },
+            {
+              "calls": [
+                {
+                  "name": "change.apply",
+                  "args": {
+                    "path": "scripts/SETUP.md",
+                    "op": "create",
+                    "content": "run make setup\n"
+                  }
+                }
+              ]
+            },
+            {
+              "calls": [
+                {
+                  "name": "task.complete",
+                  "args": {
+                    "summary": "scripts/SETUP.md written",
+                    "self_review": {
+                      "findings": [
+                        {
+                          "text": "scripts/SETUP.md written",
+                          "resolved": true
+                        }
+                      ]
+                    }
+                  }
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    }
+  }
+}
