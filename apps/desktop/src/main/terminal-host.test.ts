@@ -68,6 +68,32 @@ test("PX-048: a frame that beats the attach's own registration is held and relea
   assert.deepEqual(sent.map((s) => (s.kind === "output" ? new TextDecoder().decode(s.data) : "")), ["first", "second"]);
 });
 
+test("PX-048: a frame that arrives after the attach registers but before the held frames are released follows them, never overtakes them", async () => {
+  const { host, sent } = fake();
+  host.onFrame(out("att1", 0, "first"));
+  host.onFrame(out("att1", 5, "second"));
+  await host.attach(SID, TID, "t1", 0n, { windowBytes: 0n, takeInputLease: false, stealInputLease: false });
+  // The Core's next read lands in the same turn of the event loop as the attach's answer, before the release.
+  host.onFrame(out("att1", 11, "third"));
+  await new Promise((r) => setImmediate(r));
+  host.onFrame(out("att1", 16, "fourth"));
+  assert.deepEqual(
+    sent.map((s) => (s.kind === "output" ? `${s.cursor}:${new TextDecoder().decode(s.data)}` : "")),
+    ["0:first", "5:second", "11:third", "16:fourth"],
+    "the renderer receives the output in cursor order",
+  );
+});
+
+test("PX-048: frames held for an attachment that is detached before their release are dropped", async () => {
+  const { host, sent } = fake();
+  host.onFrame(out("att1", 0, "first"));
+  await host.attach(SID, TID, "t1", 0n, { windowBytes: 0n, takeInputLease: false, stealInputLease: false });
+  host.onFrame(out("att1", 5, "second"));
+  await host.detach("att1");
+  await new Promise((r) => setImmediate(r));
+  assert.equal(sent.filter((s) => s.kind === "output").length, 0);
+});
+
 test("PX-048: acknowledgements only move forward and only for attachments this window holds", async () => {
   const { host, calls } = fake();
   await host.attach(SID, TID, "t1", 100n, { windowBytes: 0n, takeInputLease: false, stealInputLease: false });

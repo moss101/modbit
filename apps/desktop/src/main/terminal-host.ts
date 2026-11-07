@@ -116,6 +116,11 @@ export class TerminalHost {
   /** The highest cursor acknowledged to the Core per attachment: acknowledgements never go backwards. */
   private readonly acked = new Map<string, bigint>();
   private readonly early = new Map<string, TerminalFrame[]>();
+  /**
+   * The early frames of a registered attachment until their release, and every frame of it that arrives meanwhile: the
+   * Core's next read can land between the registration and the release, and must follow the held frames, not overtake them.
+   */
+  private readonly held = new Map<string, TerminalFrame[]>();
 
   private readonly client: () => CoreClient;
   private readonly ensureLease: (c: CoreClient, sessionId: string) => Promise<void>;
@@ -145,11 +150,12 @@ export class TerminalHost {
     this.acked.set(a.attachId, afterCursor);
     if (!a.terminal) throw new Error("CORE_PROTOCOL: the attach answered without the terminal");
     // Release what arrived before the id was registered, after the renderer has the attach's answer (it queues frames until then).
-    const waiting = this.early.get(a.attachId) ?? [];
-    this.early.delete(a.attachId);
-    setImmediate(() => {
-      for (const f of waiting) this.onFrame(f);
-    });
+    const waiting = this.early.get(a.attachId);
+    if (waiting) {
+      this.early.delete(a.attachId);
+      this.held.set(a.attachId, waiting);
+      setImmediate(() => this.release(a.attachId));
+    }
     return { attachId: a.attachId, terminal: viewJson(a.terminal), afterCursor: a.afterCursor.toString(), windowBytes: a.windowBytes.toString(), inputLeaseHeld: a.inputLeaseHeld };
   }
 
@@ -162,6 +168,11 @@ export class TerminalHost {
    * dropped when the wait is full.
    */
   onFrame(f: TerminalFrame): void {
+    const held = this.held.get(f.attachId);
+    if (held) {
+      held.push(f);
+      return;
+    }
     if (!this.attachments.has(f.attachId)) {
       const waiting = this.early.get(f.attachId) ?? [];
       if (waiting.length < MAX_EARLY_FRAMES) waiting.push(f);
@@ -171,6 +182,17 @@ export class TerminalHost {
     }
     const j = frameJson(f);
     if (j) this.send(j);
+  }
+
+  /** Send an attachment's held frames in the order they arrived; nothing if it was detached meanwhile. */
+  private release(attachId: string): void {
+    const held = this.held.get(attachId) ?? [];
+    this.held.delete(attachId);
+    if (!this.attachments.has(attachId)) return;
+    for (const f of held) {
+      const j = frameJson(f);
+      if (j) this.send(j);
+    }
   }
 
   async ack(attachId: string, cursor: bigint): Promise<string> {
@@ -185,6 +207,7 @@ export class TerminalHost {
     this.owned(attachId);
     this.attachments.delete(attachId);
     this.acked.delete(attachId);
+    this.held.delete(attachId);
     const d = await this.client().detachTerminal(attachId);
     return { wasAttached: d.wasAttached, ackedCursor: d.ackedCursor.toString() };
   }
@@ -256,6 +279,7 @@ export class TerminalHost {
     const open = this.open();
     this.attachments.clear();
     this.acked.clear();
+    this.held.clear();
     await Promise.all(open.map((a) => this.client().detachTerminal(a.attachId).catch(() => undefined)));
   }
 
@@ -264,6 +288,7 @@ export class TerminalHost {
     const open = this.open();
     this.attachments.clear();
     this.acked.clear();
+    this.held.clear();
     for (const a of open) this.send({ attachId: a.attachId, terminalId: a.terminalId, kind: "ended", reason: "CORE_RESTARTED", message: "the Core connection was replaced", oldestCursor: "0", resumeCursor: "0" });
   }
 

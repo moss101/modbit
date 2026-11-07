@@ -477,6 +477,32 @@ async fn scripted_model_held(
     script: Vec<serde_json::Value>,
     hold: Option<(usize, Duration)>,
 ) -> (String, Seen) {
+    scripted_model_holds(
+        script,
+        hold.map(|(at, wait)| (at, Hold::For(wait)))
+            .into_iter()
+            .collect(),
+    )
+    .await
+}
+
+/// How long a reply is held back.
+#[derive(Clone)]
+enum Hold {
+    /// For a fixed time.
+    For(Duration),
+    /// Until the test opens the gate: a change the test makes while the reply
+    /// is held is in place before the run builds its next request.
+    Until(std::sync::Arc<tokio::sync::Notify>),
+}
+
+/// The scripted server with any number of held replies, keyed by the number
+/// of tool results the request carries.
+async fn scripted_model_holds(
+    script: Vec<serde_json::Value>,
+    holds: Vec<(usize, Hold)>,
+) -> (String, Seen) {
+    let holds = std::sync::Arc::new(holds);
     use tokio::io::{AsyncReadExt, AsyncWriteExt};
     let listener = tokio::net::TcpListener::bind("127.0.0.1:0").await.unwrap();
     let port = listener.local_addr().unwrap().port();
@@ -490,6 +516,7 @@ async fn scripted_model_held(
             };
             let seen = std::sync::Arc::clone(&seen2);
             let script = std::sync::Arc::clone(&script);
+            let holds = std::sync::Arc::clone(&holds);
             tokio::spawn(async move {
                 let mut buf = Vec::new();
                 let mut tmp = [0u8; 8192];
@@ -527,10 +554,14 @@ async fn scripted_model_held(
                     .map(|m| m.iter().filter(|x| x["role"] == "tool").count())
                     .unwrap_or(0);
                 seen.lock().unwrap().push(body);
-                if let Some((at, wait)) = hold
-                    && at == results
-                {
-                    tokio::time::sleep(wait).await;
+                for (at, hold) in holds.iter() {
+                    if *at != results {
+                        continue;
+                    }
+                    match hold {
+                        Hold::For(wait) => tokio::time::sleep(*wait).await,
+                        Hold::Until(gate) => gate.notified().await,
+                    }
                 }
                 let reply = script
                     .get(results)
@@ -2981,8 +3012,14 @@ async fn qual_px_162_a_changed_rule_file_and_memory_arrive_as_one_note_and_the_p
         ("AGENTS.md", "RULE-V1 use tabs.\n"),
     ]);
     let data = tempfile::tempdir().unwrap();
-    let (base, seen) =
-        scripted_model_held(px_162_script(), Some((1, Duration::from_secs(8)))).await;
+    // The second reply is held until both edits are done, so the third
+    // request is compiled after them.
+    let edited = std::sync::Arc::new(tokio::sync::Notify::new());
+    let (base, seen) = scripted_model_holds(
+        px_162_script(),
+        vec![(1, Hold::Until(std::sync::Arc::clone(&edited)))],
+    )
+    .await;
     let env = model_env(&base);
     let mut core = CoreProcess::spawn(data.path(), &env);
     let mut s = Seat::open(&core).await;
@@ -3013,6 +3050,7 @@ async fn qual_px_162_a_changed_rule_file_and_memory_arrive_as_one_note_and_the_p
         )
         .await;
     assert_eq!(e.outcome, "edited", "{e:?}");
+    edited.notify_one();
     // The completion gate would refuse a task whose workspace the test
     // edited; the proof is in the requests, so stop at the fourth.
     until_requests(&seen, 4).await;
@@ -3094,8 +3132,17 @@ async fn qual_px_162_a_resume_rebuilds_the_same_note_from_the_log() {
         ("AGENTS.md", "RULE-V1 use tabs.\n"),
     ]);
     let data = tempfile::tempdir().unwrap();
-    let (base, seen) =
-        scripted_model_held(px_162_script(), Some((2, Duration::from_secs(60)))).await;
+    // The second reply waits for the rule file to change, so the third request is built after it; the third reply is
+    // held while the Core is killed.
+    let changed = std::sync::Arc::new(tokio::sync::Notify::new());
+    let (base, seen) = scripted_model_holds(
+        px_162_script(),
+        vec![
+            (1, Hold::Until(std::sync::Arc::clone(&changed))),
+            (2, Hold::For(Duration::from_secs(60))),
+        ],
+    )
+    .await;
     let env = model_env(&base);
     let mut core = CoreProcess::spawn(data.path(), &env);
     let mut s = Seat::open(&core).await;
@@ -3105,6 +3152,7 @@ async fn qual_px_162_a_resume_rebuilds_the_same_note_from_the_log() {
     s.start_running(&t).await;
     until_requests(&seen, 2).await;
     std::fs::write(repo_dir.path().join("AGENTS.md"), "RULE-V2 use spaces.\n").unwrap();
+    changed.notify_one();
     // The third request (held) is the first to carry the note.
     until_requests(&seen, 3).await;
     let note = notes_of(&seen.lock().unwrap()[2]);
@@ -3147,8 +3195,14 @@ async fn qual_px_162_a_forgotten_memory_rebuilds_the_prefix_and_an_untrusted_fil
         ("AGENTS.md", "RULE-V1 use tabs.\n"),
     ]);
     let data = tempfile::tempdir().unwrap();
-    let (base, seen) =
-        scripted_model_held(px_162_script(), Some((1, Duration::from_secs(8)))).await;
+    // The second reply is held until the file is written and the memory
+    // forgotten, so the third request is compiled after both.
+    let changed = std::sync::Arc::new(tokio::sync::Notify::new());
+    let (base, seen) = scripted_model_holds(
+        px_162_script(),
+        vec![(1, Hold::Until(std::sync::Arc::clone(&changed)))],
+    )
+    .await;
     let env = model_env(&base);
     let mut core = CoreProcess::spawn(data.path(), &env);
     let mut s = Seat::open(&core).await;
@@ -3172,6 +3226,7 @@ async fn qual_px_162_a_forgotten_memory_rebuilds_the_prefix_and_an_untrusted_fil
     .unwrap();
     let f = s.forget(&t, &mem, false).await;
     assert!(f.changed, "{f:?}");
+    changed.notify_one();
     until_requests(&seen, 4).await;
     let bodies = seen.lock().unwrap().clone();
     assert!(bodies.len() >= 3);
