@@ -3012,8 +3012,14 @@ async fn qual_px_162_a_changed_rule_file_and_memory_arrive_as_one_note_and_the_p
         ("AGENTS.md", "RULE-V1 use tabs.\n"),
     ]);
     let data = tempfile::tempdir().unwrap();
-    let (base, seen) =
-        scripted_model_held(px_162_script(), Some((1, Duration::from_secs(8)))).await;
+    // The second reply is held until both edits are done, so the third
+    // request is compiled after them.
+    let edited = std::sync::Arc::new(tokio::sync::Notify::new());
+    let (base, seen) = scripted_model_holds(
+        px_162_script(),
+        vec![(1, Hold::Until(std::sync::Arc::clone(&edited)))],
+    )
+    .await;
     let env = model_env(&base);
     let mut core = CoreProcess::spawn(data.path(), &env);
     let mut s = Seat::open(&core).await;
@@ -3044,6 +3050,7 @@ async fn qual_px_162_a_changed_rule_file_and_memory_arrive_as_one_note_and_the_p
         )
         .await;
     assert_eq!(e.outcome, "edited", "{e:?}");
+    edited.notify_one();
     // The completion gate would refuse a task whose workspace the test
     // edited; the proof is in the requests, so stop at the fourth.
     until_requests(&seen, 4).await;
@@ -3188,8 +3195,14 @@ async fn qual_px_162_a_forgotten_memory_rebuilds_the_prefix_and_an_untrusted_fil
         ("AGENTS.md", "RULE-V1 use tabs.\n"),
     ]);
     let data = tempfile::tempdir().unwrap();
-    let (base, seen) =
-        scripted_model_held(px_162_script(), Some((1, Duration::from_secs(8)))).await;
+    // The second reply is held until the file is written and the memory
+    // forgotten, so the third request is compiled after both.
+    let changed = std::sync::Arc::new(tokio::sync::Notify::new());
+    let (base, seen) = scripted_model_holds(
+        px_162_script(),
+        vec![(1, Hold::Until(std::sync::Arc::clone(&changed)))],
+    )
+    .await;
     let env = model_env(&base);
     let mut core = CoreProcess::spawn(data.path(), &env);
     let mut s = Seat::open(&core).await;
@@ -3213,6 +3226,7 @@ async fn qual_px_162_a_forgotten_memory_rebuilds_the_prefix_and_an_untrusted_fil
     .unwrap();
     let f = s.forget(&t, &mem, false).await;
     assert!(f.changed, "{f:?}");
+    changed.notify_one();
     until_requests(&seen, 4).await;
     let bodies = seen.lock().unwrap().clone();
     assert!(bodies.len() >= 3);
