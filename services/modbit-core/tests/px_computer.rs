@@ -94,11 +94,10 @@ async fn spawn_person(
                 .await;
             let Ok(ack) = ack else { return };
             let list: ApprovalList = Client::result(&ack).unwrap();
-            for a in list
-                .approvals
-                .iter()
-                .filter(|a| a.status == "REQUESTED" && a.tool_name.starts_with("computer."))
-            {
+            for a in list.approvals.iter().filter(|a| {
+                a.status == "REQUESTED"
+                    && (a.tool_name.starts_with("computer.") || a.tool_name == "handover.request")
+            }) {
                 let id = a.approval_id.clone().unwrap();
                 if !done.insert(id.value.clone()) {
                     continue;
@@ -325,7 +324,7 @@ async fn start_task_long(c: &mut Client, task: &Id, g: Option<u64>, id: u8) {
 fn plan() -> Value {
     call(
         "plan.update",
-        json!({"outcome": "operate a native application", "expected_files": [], "protected_effects": ["computer"]}),
+        json!({"outcome": "operate a native application", "expected_files": [], "protected_effects": ["computer", "handover"]}),
     )
 }
 
@@ -3946,4 +3945,224 @@ async fn qual_px_176_every_step_of_a_computer_use_child_is_one_structured_observ
     assert_eq!(env["status"], "COMPLETED", "{env}");
     // The record is in the logged result, which is what a restart replays.
     assert!(objects_containing(&rig, "observation: {") >= obs.len());
+}
+
+fn handover(kind: &str, instruction: &str) -> Step {
+    fx(call(
+        "handover.request",
+        json!({"kind": kind, "target": "computer", "instruction": instruction}),
+    ))
+}
+
+/// QUAL-PX-177: the agent reaches a step only the person can do and hands it over. The call is an
+/// approval the person sees with its typed reason and instruction; while it waits nothing is typed
+/// or clicked; the person's approval resumes the run, which must observe again, and the frame it
+/// held before is not accepted afterwards.
+#[tokio::test(flavor = "multi_thread")]
+async fn qual_px_177_a_handover_parks_for_the_person_and_the_run_resumes_from_a_fresh_observation()
+{
+    let person: Decider = Arc::new(|a, _| {
+        if a.tool_name == "handover.request" {
+            std::thread::sleep(Duration::from_millis(600));
+        }
+        Decision::Approve
+    });
+    let (rig, o) = quick(
+        Opts::default(),
+        vec![
+            start(FORM),
+            fx(call("computer.state", json!({}))),
+            handover("captcha", "solve the picture challenge in the form window"),
+            // The snapshot read before the handover is stale for an element.
+            st(|s| call("computer.press", json!({"element": s.el("Submit")}))),
+            fx(call("computer.state", json!({}))),
+            st(|s| call("computer.press", json!({"element": s.el("Submit")}))),
+        ],
+        person,
+    )
+    .await;
+    // The handover returned handed_back and told the model to observe again.
+    assert_eq!(o[2].1["handed_back"], true, "{}", o[2].0);
+    assert_eq!(o[2].1["kind"], "captcha");
+    assert!(o[2].0.contains("observe the target again"), "{}", o[2].0);
+    // What the child held before the handover is not the screen any more: the press on the old
+    // snapshot is refused, and after a fresh read the same press goes through.
+    assert_ne!(o[3].0.lines().next(), Some("status: SUCCESS"), "{}", o[3].0);
+    assert_eq!(o[5].1["performed"], "press", "{}", o[5].0);
+    assert_eq!(
+        of(&rig.events().await, "ComputerActionPerformed").len(),
+        1,
+        "only the press after the fresh read ran"
+    );
+    let evs = rig.events().await;
+    let requested = of(&evs, "ApprovalRequested");
+    let hand = requested
+        .iter()
+        .find(|e| e["payload"]["payload"]["tool_name"] == "handover.request")
+        .unwrap_or_else(|| panic!("no approval for the handover: {requested:#?}"));
+    let scope = hand["payload"]["payload"]["scope_json"].as_str().unwrap();
+    assert!(
+        scope.contains("captcha") && scope.contains("solve the picture challenge"),
+        "{scope}"
+    );
+    let asked_at = hand["offset"].as_u64().unwrap();
+    let resolved_at = of(&evs, "ApprovalResolved")
+        .iter()
+        .filter(|e| e["offset"].as_u64().unwrap() > asked_at)
+        .map(|e| e["offset"].as_u64().unwrap())
+        .next()
+        .expect("the person resolved it");
+    // Nothing was typed or clicked while the run was parked.
+    assert!(
+        of(&evs, "ComputerActionPerformed")
+            .iter()
+            .all(|e| !(asked_at..resolved_at).contains(&e["offset"].as_u64().unwrap())),
+        "an input ran while the handover was parked"
+    );
+}
+
+/// QUAL-PX-177: a person who declines the handover leaves the step undone and the agent is told so;
+/// an approval nobody answers expires and acts on nothing.
+#[tokio::test(flavor = "multi_thread")]
+async fn qual_px_177_a_declined_or_unanswered_handover_acts_on_nothing() {
+    let deny: Decider = Arc::new(|a, _| {
+        if a.tool_name == "handover.request" {
+            Decision::Deny
+        } else {
+            Decision::Approve
+        }
+    });
+    let (rig, o) = quick(
+        Opts::default(),
+        vec![
+            start(FORM),
+            fx(call("computer.state", json!({}))),
+            handover(
+                "payment_confirmation",
+                "confirm the payment on the card reader",
+            ),
+            fx(call("computer.state", json!({}))),
+        ],
+        deny,
+    )
+    .await;
+    assert_eq!(error_code(&o[2].0), "APPROVAL_DENIED", "{}", o[2].0);
+    assert!(o[2].1.get("handed_back").is_none(), "{}", o[2].0);
+    assert!(of(&rig.events().await, "ComputerActionPerformed").is_empty());
+
+    // Unanswered: the existing approval expiry closes it.
+    let ignore: Decider = Arc::new(|a, _| {
+        if a.tool_name == "handover.request" {
+            Decision::Ignore
+        } else {
+            Decision::Approve
+        }
+    });
+    let opts = Opts {
+        env: vec![("MODBIT_APPROVAL_TTL_MS", "2500".to_owned())],
+        ..Opts::default()
+    };
+    let (rig, o) = quick(
+        opts,
+        vec![
+            start(FORM),
+            handover("second_factor", "type the code from your phone"),
+            fx(call("computer.state", json!({}))),
+        ],
+        ignore,
+    )
+    .await;
+    let evs = rig.events().await;
+    assert!(
+        !of(&evs, "ApprovalExpired").is_empty(),
+        "the unanswered handover did not expire"
+    );
+    assert!(o[1].1.get("handed_back").is_none(), "{}", o[1].0);
+    assert!(of(&evs, "ComputerActionPerformed").is_empty());
+}
+
+/// QUAL-PX-177: a Core killed while a handover waits for the person comes back with the same
+/// handover still waiting, unanswered and unexpired, and nothing was done to the application.
+#[tokio::test(flavor = "multi_thread")]
+async fn qual_px_177_a_restart_while_a_handover_is_parked_keeps_it_parked() {
+    use modbit_protocol::v1::{AcquireSessionLease, SessionLeaseAcquired};
+    let ignore: Decider = Arc::new(|a, _| {
+        if a.tool_name == "handover.request" {
+            Decision::Ignore
+        } else {
+            Decision::Approve
+        }
+    });
+    let mut rig = run(
+        Opts::default(),
+        vec![
+            start(FORM),
+            fx(call("computer.state", json!({}))),
+            handover("captcha", "solve the picture challenge"),
+            fx(call("computer.state", json!({}))),
+        ],
+        ignore,
+    )
+    .await;
+    let list = |c: Client, session: Id| async move {
+        let mut c = c;
+        let ack = c
+            .command(envelope(
+                rand_id(),
+                "ListApprovals",
+                ListApprovals {
+                    session_id: Some(session),
+                }
+                .encode_to_vec(),
+            ))
+            .await
+            .unwrap();
+        Client::result::<ApprovalList>(&ack).unwrap().approvals
+    };
+    let mut parked = None;
+    let deadline = std::time::Instant::now() + Duration::from_secs(WAIT_SECS);
+    while std::time::Instant::now() < deadline {
+        let c = rig.core.client().await;
+        parked = list(c, rig.session.clone())
+            .await
+            .into_iter()
+            .find(|a| a.tool_name == "handover.request" && a.status == "REQUESTED");
+        if parked.is_some() {
+            break;
+        }
+        tokio::time::sleep(Duration::from_millis(100)).await;
+    }
+    let parked = parked.expect("the handover waits for the person");
+    rig.core.kill();
+    let env_refs: Vec<(&str, &str)> = rig
+        .env
+        .iter()
+        .map(|(k, v)| (k.as_str(), v.as_str()))
+        .collect();
+    rig.core = CoreProcess::spawn_with_env(rig.dir.path(), &env_refs);
+    let mut c = rig.core.client().await;
+    let ack = c
+        .command(envelope(
+            rand_id(),
+            "AcquireSessionLease",
+            AcquireSessionLease {
+                session_id: Some(rig.session.clone()),
+                owner: "test2".into(),
+            }
+            .encode_to_vec(),
+        ))
+        .await
+        .unwrap();
+    let _: SessionLeaseAcquired = Client::result(&ack).unwrap();
+    let again = list(rig.core.client().await, rig.session.clone())
+        .await
+        .into_iter()
+        .find(|a| a.tool_name == "handover.request")
+        .expect("the handover survived the restart");
+    assert_eq!(again.approval_id, parked.approval_id);
+    assert_eq!(again.intent_hash, parked.intent_hash);
+    assert_eq!(again.status, "REQUESTED", "still waiting for the person");
+    let evs = rig.events().await;
+    assert!(of(&evs, "ComputerActionPerformed").is_empty());
+    assert!(of(&evs, "ApprovalExpired").is_empty());
 }

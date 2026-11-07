@@ -379,6 +379,19 @@ impl ComputerHost {
         Some(format!("\nobservation: {record}\n"))
     }
 
+    /// PX-177: the person did a step in the target; what the child held of it
+    /// is stale and the next observation starts from nothing.
+    pub(crate) fn handed_back(&self, task: TaskId) {
+        self.runtime.handed_back(task);
+        let mut m = self.stall.lock().unwrap_or_else(|e| e.into_inner());
+        if let Some(st) = m.get_mut(&task) {
+            st.frame.clear();
+            st.snapshot.clear();
+            st.tree_full.clear();
+            st.progress += 1;
+        }
+    }
+
     /// A model turn of the task ended. When a stall rule trips, the report
     /// the child stops with: what it observed, what blocked it and the best
     /// next step.
