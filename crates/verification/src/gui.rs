@@ -97,7 +97,20 @@ impl CompletionEvidence {
                 check("path", path)?;
                 check("contains", contains)?;
                 let p = std::path::Path::new(path);
-                if p.is_absolute()
+                // Rooted on any platform: a leading separator (`/etc`, `\\server`), a Windows
+                // prefix or a drive (`C:`) is never workspace-relative, whatever this host's
+                // own notion of absolute is.
+                let rooted = p.is_absolute()
+                    || path.starts_with(['/', '\\'])
+                    || path.as_bytes().get(1) == Some(&b':')
+                    || p.components().any(|c| {
+                        matches!(
+                            c,
+                            std::path::Component::Prefix(_) | std::path::Component::RootDir
+                        )
+                    });
+                if rooted
+                    || path.split(['/', '\\']).any(|seg| seg == "..")
                     || p.components()
                         .any(|c| matches!(c, std::path::Component::ParentDir))
                 {
@@ -507,6 +520,21 @@ mod tests {
             contains: "x".into(),
         };
         assert!(abs.validate().is_err());
+        for rooted in [
+            "\\\\server\\share\\f.txt",
+            "C:\\Windows\\win.ini",
+            "c:/x.txt",
+            "out\\..\\..\\x",
+        ] {
+            let f = CompletionEvidence::File {
+                path: rooted.into(),
+                contains: "x".into(),
+            };
+            assert!(
+                f.validate().is_err(),
+                "{rooted} is refused on every platform"
+            );
+        }
         let empty = CompletionEvidence::Accessibility {
             app: String::new(),
             role: None,
