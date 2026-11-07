@@ -759,6 +759,15 @@ export declare type TranscriptPage = Message<"modbit.v1.TranscriptPage"> & {
    * @generated from field: uint64 events_read = 11;
    */
   eventsRead: bigint;
+
+  /**
+   * The task's facts folded from the same log at as_of_offset (PX-196): what a
+   * client shows for the task after a restart, when it has seen none of its events.
+   * Field numbers 440-449 are the block PX-196 uses for additions to existing messages.
+   *
+   * @generated from field: modbit.v1.TaskFacts facts = 440;
+   */
+  facts?: TaskFacts | undefined;
 };
 
 /**
@@ -766,6 +775,86 @@ export declare type TranscriptPage = Message<"modbit.v1.TranscriptPage"> & {
  * Use `create(TranscriptPageSchema)` to create a new message.
  */
 export declare const TranscriptPageSchema: GenMessage<TranscriptPage>;
+
+/**
+ * A task's facts as its events left them, by the rules the desktop folds live
+ * events with (apps/desktop/src/renderer/model.ts): never a default the log
+ * does not support.
+ *
+ * @generated from message modbit.v1.TaskFacts
+ */
+export declare type TaskFacts = Message<"modbit.v1.TaskFacts"> & {
+  /**
+   * drafting | verifying | reviewing | escalating | awaitingHuman | waitingCapacity | delegating | done
+   *
+   * @generated from field: string phase = 1;
+   */
+  phase: string;
+
+  /**
+   * The task's agents by status (M6.6): total, then one counter per bucket.
+   *
+   * @generated from field: uint32 agents_total = 2;
+   */
+  agentsTotal: number;
+
+  /**
+   * @generated from field: uint32 agents_running = 3;
+   */
+  agentsRunning: number;
+
+  /**
+   * @generated from field: uint32 agents_background = 4;
+   */
+  agentsBackground: number;
+
+  /**
+   * @generated from field: uint32 agents_waiting = 5;
+   */
+  agentsWaiting: number;
+
+  /**
+   * @generated from field: uint32 agents_done = 6;
+   */
+  agentsDone: number;
+
+  /**
+   * @generated from field: uint32 agents_failed = 7;
+   */
+  agentsFailed: number;
+
+  /**
+   * @generated from field: uint32 attachments = 8;
+   */
+  attachments: number;
+
+  /**
+   * "" when none
+   *
+   * @generated from field: string latest_evidence = 9;
+   */
+  latestEvidence: string;
+
+  /**
+   * "" when none
+   *
+   * @generated from field: string risk = 10;
+   */
+  risk: string;
+
+  /**
+   * "" when none
+   *
+   * @generated from field: string next_action = 11;
+   */
+  nextAction: string;
+};
+
+/**
+ * Describes the message modbit.v1.TaskFacts.
+ * Use `create(TaskFactsSchema)` to create a new message.
+ */
+export declare const TaskFactsSchema: GenMessage<TaskFacts>;
 
 /**
  * @generated from message modbit.v1.GetAgentHeaders

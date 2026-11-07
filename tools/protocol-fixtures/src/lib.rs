@@ -137,6 +137,16 @@ pub fn samples() -> Vec<Sample> {
         task_state: "Running".into(),
         read_offset: 40,
         events_read: 12,
+        facts: Some(TaskFacts {
+            phase: "verifying".into(),
+            agents_total: 2,
+            agents_running: 1,
+            agents_done: 1,
+            attachments: 1,
+            latest_evidence: "final verification PASSED".into(),
+            next_action: "Review the result".into(),
+            ..Default::default()
+        }),
     };
     let row_json = |ordinal: u32,
                     row_id: &str,
@@ -1397,7 +1407,12 @@ pub fn samples() -> Vec<Sample> {
                 ],
                 "totalRows": 2, "nextAfterRow": 0, "hasMore": false,
                 "asOfOffset": "90", "lastOffset": "90", "taskState": "Running",
-                "readOffset": "40", "eventsRead": "12"
+                "readOffset": "40", "eventsRead": "12",
+                "facts": {
+                    "phase": "verifying", "agentsTotal": 2, "agentsRunning": 1, "agentsBackground": 0,
+                    "agentsWaiting": 0, "agentsDone": 1, "agentsFailed": 0, "attachments": 1,
+                    "latestEvidence": "final verification PASSED", "risk": "", "nextAction": "Review the result"
+                }
             }),
             decode: reencode::<TranscriptPage>,
         },

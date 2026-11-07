@@ -126,6 +126,7 @@ struct Folded {
     atoms: Vec<wire::TranscriptRow>,
     turns: HashMap<String, TurnInfo>,
     attention: Option<String>,
+    facts: wire::TaskFacts,
 }
 
 fn row(
@@ -715,11 +716,272 @@ fn fold(store: &EventStore, task: &Task, until: u64) -> Result<Folded, Refusal> 
             hints(r).has_reasoning = true;
         }
     }
+    let facts = task_facts(
+        log.iter()
+            .filter(|e| FACT_EVENTS.contains(&e.envelope.event_type.as_str()))
+            .map(|e| {
+                let p = store
+                    .payload(&e.envelope)
+                    .unwrap_or(serde_json::Value::Null);
+                (e.envelope.event_type.as_str(), p)
+            }),
+    );
     Ok(Folded {
         atoms,
         turns,
         attention,
+        facts,
     })
+}
+
+// ------------------------------------------------------------------ facts
+
+/// The events that move a task's facts; the rest leave them as they are.
+const FACT_EVENTS: &[&str] = &[
+    "TaskQueued",
+    "TaskStarted",
+    "TaskResumed",
+    "TaskReturnedToWork",
+    "TaskWaiting",
+    "TaskReadyForReview",
+    "TaskCompleted",
+    "TaskFailed",
+    "TaskCancelled",
+    "AttachmentIngested",
+    "TaskNeedsAttention",
+    "AgentNodeCreated",
+    "AgentNodeTransitioned",
+    "SubagentAdmitted",
+    "SubagentAdmissionRefused",
+    "SubagentProtectedEffect",
+    "SubagentResultRecorded",
+    "CapacityDenied",
+    "CapacityTicketGranted",
+    "VerificationRunRecorded",
+    "AcceptanceGateEvaluated",
+    "ContinuationActivated",
+    "RealizedRiskDerived",
+];
+
+/// A payload value as the desktop's `String(p[x] ?? "")` reads it.
+fn text(v: &serde_json::Value) -> String {
+    match v {
+        serde_json::Value::Null => String::new(),
+        serde_json::Value::String(s) => s.clone(),
+        other => other.to_string(),
+    }
+}
+
+/// A wait reason in one spelling (`USER_INPUT`, `UserInput` → `USERINPUT`).
+fn reason_key(r: &str) -> String {
+    r.chars()
+        .filter(|c| *c != '_')
+        .collect::<String>()
+        .to_ascii_uppercase()
+}
+
+/// Which agent counter a node status joins (the desktop's `bucketOf`).
+fn bucket(status: &str) -> Option<usize> {
+    match status {
+        "RUNNING" | "ADMITTED" | "ADMISSION_PENDING" => Some(0),
+        "BACKGROUND" => Some(1),
+        "WAITING" | "PARKED" => Some(2),
+        "COMPLETED" => Some(3),
+        "FAILED" | "CANCELLED" => Some(4),
+        _ => None,
+    }
+}
+
+/// A task's facts, folded in log order by the desktop's rules for the same
+/// events (renderer/model.ts `fold`), so a client that saw none of the events
+/// shows what one that saw all of them shows.
+pub(crate) fn task_facts<'a>(
+    events: impl IntoIterator<Item = (&'a str, serde_json::Value)>,
+) -> wire::TaskFacts {
+    let mut phase = "drafting";
+    let mut state = "Created";
+    let mut wait = String::new();
+    let mut next: Option<String> = None;
+    let mut attachments = 0u32;
+    let mut evidence: Option<String> = None;
+    let mut risk: Option<String> = None;
+    let mut agents: HashMap<String, String> = HashMap::new();
+    let mut counts = [0u32; 5];
+    let mut total = 0u32;
+    for (kind, p) in events {
+        let mut set_agent = |id: String, to: String| {
+            match agents.get(&id) {
+                None => total += 1,
+                Some(was) => {
+                    if let Some(b) = bucket(was) {
+                        counts[b] = counts[b].saturating_sub(1);
+                    }
+                }
+            }
+            if let Some(b) = bucket(&to) {
+                counts[b] += 1;
+            }
+            agents.insert(id, to);
+        };
+        match kind {
+            "TaskQueued" => {
+                state = "Queued";
+                wait = "CAPACITY".into();
+            }
+            "TaskStarted" | "TaskResumed" | "TaskReturnedToWork" => {
+                state = "Running";
+                wait.clear();
+                next = None;
+                if phase == "awaitingHuman" {
+                    phase = "drafting";
+                }
+            }
+            "TaskWaiting" => {
+                state = "Waiting";
+                let r = text(&p["reason"]);
+                wait = reason_key(if r.is_empty() { "External" } else { &r });
+                next = match wait.as_str() {
+                    "APPROVAL" => Some("Approve or deny the pending effect".into()),
+                    "USERINPUT" => Some("Answer the agent's question".into()),
+                    _ => None,
+                };
+            }
+            "TaskReadyForReview" => {
+                state = "ReadyForReview";
+                next = Some("Review the result".into());
+            }
+            "TaskCompleted" => {
+                state = "Completed";
+                next = None;
+            }
+            "TaskFailed" => {
+                state = "Failed";
+                next = Some(text(&p["failure_code"]));
+            }
+            "TaskCancelled" => state = "Cancelled",
+            "AttachmentIngested" => attachments += 1,
+            "TaskNeedsAttention" => {
+                let r = text(&p["reason"]);
+                next = Some(if p["reason"].is_null() {
+                    "Needs attention".into()
+                } else {
+                    r
+                });
+                if wait == "CAPACITY" {
+                    phase = "waitingCapacity";
+                }
+            }
+            "AgentNodeCreated" => {
+                let node = &p["node"];
+                set_agent(text(&node["agent_id"]), text(&node["status"]));
+                if text(&node["kind"]) == "SUBAGENT" {
+                    phase = "delegating";
+                }
+            }
+            "AgentNodeTransitioned" => set_agent(text(&p["agent_id"]), text(&p["to"])),
+            "SubagentAdmitted" => {
+                phase = "delegating";
+                let key = if p["idempotency_key"].is_null() {
+                    "a child".to_owned()
+                } else {
+                    text(&p["idempotency_key"])
+                };
+                evidence = Some(format!("delegated {key} ({})", text(&p["mode"])));
+            }
+            "SubagentAdmissionRefused" => {
+                evidence = Some(format!(
+                    "delegation refused: {} at {}",
+                    text(&p["code"]),
+                    text(&p["stage"])
+                ));
+            }
+            "SubagentProtectedEffect" => {
+                evidence = Some(format!(
+                    "child {} reached a protected effect: {} ({})",
+                    text(&p["idempotency_key"]),
+                    text(&p["tool"]),
+                    text(&p["effect_class"])
+                ));
+            }
+            "SubagentResultRecorded" => {
+                let status = text(&p["status"]);
+                let summary = text(&p["summary"]);
+                evidence = Some(format!("child {}: {summary}", status.to_lowercase()));
+                if status == "FAILED" || status == "WAITING" {
+                    next = Some(format!(
+                        "A child agent needs attention ({}): {summary}",
+                        status.to_lowercase()
+                    ));
+                }
+            }
+            "CapacityDenied" => {
+                wait = "CAPACITY".into();
+                phase = "waitingCapacity";
+                next = Some(format!(
+                    "Waiting for capacity: {} {}/{}",
+                    text(&p["dimension"]),
+                    text(&p["available"]),
+                    text(&p["needed"])
+                ));
+            }
+            "CapacityTicketGranted" => {
+                if phase == "waitingCapacity" {
+                    phase = "drafting";
+                }
+                if next
+                    .as_deref()
+                    .is_some_and(|n| n.starts_with("Waiting for capacity"))
+                {
+                    next = None;
+                }
+            }
+            "VerificationRunRecorded" => {
+                phase = "verifying";
+                evidence = Some(format!(
+                    "{} verification {}",
+                    text(&p["stage"]),
+                    text(&p["status"])
+                ));
+            }
+            "AcceptanceGateEvaluated" => {
+                phase = if p["human_required"] == serde_json::Value::Bool(true) {
+                    "awaitingHuman"
+                } else {
+                    "reviewing"
+                };
+                evidence = Some(format!("acceptance gate {}", text(&p["verdict"])));
+            }
+            "ContinuationActivated" => {
+                phase = "escalating";
+                evidence = Some(format!(
+                    "escalated to {}/{}",
+                    text(&p["endpoint"]),
+                    text(&p["model"])
+                ));
+            }
+            "RealizedRiskDerived" => risk = Some(text(&p["level"])),
+            _ => continue,
+        }
+        if state == "Waiting" && (wait == "APPROVAL" || wait == "USERINPUT") {
+            phase = "awaitingHuman";
+        }
+        if state == "Completed" {
+            phase = "done";
+        }
+    }
+    wire::TaskFacts {
+        phase: phase.into(),
+        agents_total: total,
+        agents_running: counts[0],
+        agents_background: counts[1],
+        agents_waiting: counts[2],
+        agents_done: counts[3],
+        agents_failed: counts[4],
+        attachments,
+        latest_evidence: evidence.unwrap_or_default(),
+        risk: risk.unwrap_or_default(),
+        next_action: next.unwrap_or_default(),
+    }
 }
 
 fn group_label(kind: &str, facts: &wire::GroupFacts) -> String {
@@ -1222,6 +1484,7 @@ pub(crate) fn page(
         task_state: task_state_label(&task.state),
         read_offset,
         events_read: store.events_read() - before,
+        facts: Some(folded.facts),
     })
 }
 
@@ -1424,7 +1687,98 @@ pub(crate) fn headers(
 #[cfg(test)]
 mod tests {
     use super::*;
+    use serde_json::json;
     use wire::AgentStatusClass as C;
+
+    #[test]
+    fn task_facts_fold_the_log_by_the_desktops_rules_and_invent_nothing() {
+        let none = task_facts(std::iter::empty());
+        assert_eq!(
+            (none.phase.as_str(), none.agents_total, none.attachments),
+            ("drafting", 0, 0)
+        );
+        assert!(
+            none.latest_evidence.is_empty() && none.risk.is_empty() && none.next_action.is_empty()
+        );
+
+        let f = task_facts([
+            ("TaskStarted", json!({})),
+            ("AttachmentIngested", json!({})),
+            (
+                "AgentNodeCreated",
+                json!({"node": {"agent_id": "root", "status": "RUNNING", "kind": "ROOT"}}),
+            ),
+            (
+                "AgentNodeCreated",
+                json!({"node": {"agent_id": "c1", "status": "ADMITTED", "kind": "SUBAGENT"}}),
+            ),
+            (
+                "AgentNodeTransitioned",
+                json!({"agent_id": "c1", "to": "COMPLETED"}),
+            ),
+            (
+                "VerificationRunRecorded",
+                json!({"stage": "final", "status": "PASSED"}),
+            ),
+            ("RealizedRiskDerived", json!({"level": "LOW"})),
+            ("TaskWaiting", json!({"reason": "USER_INPUT"})),
+        ]);
+        assert_eq!(
+            f.phase, "awaitingHuman",
+            "a task waiting on the person is awaiting a human whatever ran before"
+        );
+        assert_eq!((f.agents_total, f.agents_running, f.agents_done), (2, 1, 1));
+        assert_eq!(f.attachments, 1);
+        assert_eq!(f.latest_evidence, "final verification PASSED");
+        assert_eq!(f.risk, "LOW");
+        assert_eq!(f.next_action, "Answer the agent's question");
+
+        let resumed = task_facts([
+            ("TaskWaiting", json!({"reason": "APPROVAL"})),
+            ("TaskResumed", json!({})),
+        ]);
+        assert_eq!(
+            (resumed.phase.as_str(), resumed.next_action.as_str()),
+            ("drafting", "")
+        );
+
+        let capacity = task_facts([(
+            "CapacityDenied",
+            json!({"dimension": "agents", "available": 0, "needed": 1}),
+        )]);
+        assert_eq!(
+            (capacity.phase.as_str(), capacity.next_action.as_str()),
+            ("waitingCapacity", "Waiting for capacity: agents 0/1")
+        );
+        let granted = task_facts([
+            (
+                "CapacityDenied",
+                json!({"dimension": "agents", "available": 0, "needed": 1}),
+            ),
+            ("CapacityTicketGranted", json!({})),
+        ]);
+        assert_eq!(
+            (granted.phase.as_str(), granted.next_action.as_str()),
+            ("drafting", "")
+        );
+
+        let gate = task_facts([
+            (
+                "AcceptanceGateEvaluated",
+                json!({"verdict": "ACCEPT", "human_required": true}),
+            ),
+            ("TaskCompleted", json!({})),
+        ]);
+        assert_eq!(
+            (gate.phase.as_str(), gate.latest_evidence.as_str()),
+            ("done", "acceptance gate ACCEPT")
+        );
+        let unknown = task_facts([("ToolCallSucceeded", json!({}))]);
+        assert_eq!(
+            unknown.phase, "drafting",
+            "an event outside the rules moves nothing"
+        );
+    }
 
     fn inputs(
         state: TaskState,
