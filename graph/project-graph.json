@@ -39985,8 +39985,38 @@
    "related_requirements": [],
    "task_card": "docs/62_PRODUCT_EXTENSION_REQUIREMENTS_TASKS_AND_QUALIFICATIONS.md#px-177",
    "audit_at_adoption": "DOCUMENTED-ONLY; no product caller present",
-   "status": "NOT_STARTED",
-   "evidence": []
+   "status": "REAL_TESTING",
+   "evidence": [
+    "test:services/modbit-core/tests/px_computer.rs::qual_px_177_a_handover_parks_for_the_person_and_the_run_resumes_from_a_fresh_observation",
+    "artifact:evidence/m10/PX-177/mutation-check.txt"
+   ],
+   "notes": [
+    {
+     "at": "2026-11-07T16:05:26Z",
+     "from": "NOT_STARTED",
+     "to": "AUDITING",
+     "note": "Audit (evidence/m10/PX-177/TASK_CARD.md): DOCUMENTED-ONLY. user.ask is a free question with no typed reason, no expiry and no effect on the control session; first missing link: no handover tool and no state."
+    },
+    {
+     "at": "2026-11-07T16:05:26Z",
+     "from": "AUDITING",
+     "to": "IMPLEMENTING",
+     "note": "crates/tools/src/handover.rs (handover.request, approval-bound under browser.control), ComputerHost::handed_back resets the control session's snapshot and frame"
+    },
+    {
+     "at": "2026-11-07T16:05:26Z",
+     "from": "IMPLEMENTING",
+     "to": "WIRED",
+     "note": "Registered in the Core tool host; offered to the computer-use profile with when to use it; parking, expiry and restart through the existing approval machinery"
+    },
+    {
+     "at": "2026-11-07T16:05:26Z",
+     "from": "WIRED",
+     "to": "REAL_TESTING",
+     "note": "Local real Core, real fixture actuator, real approvals, scripted model: the three qual_px_177 tests pass (parks and resumes from a fresh observation; a denied or expired handover acts on nothing; a restart keeps it parked); full px_computer 35/35; mutation-check.txt. CI on the rebased branch (#166) still to run."
+    }
+   ],
+   "status_changed_on": "2026-11-07T16:05:26Z"
   },
   {
    "id": "PX-178",
