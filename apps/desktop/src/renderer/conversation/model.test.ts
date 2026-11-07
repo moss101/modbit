@@ -177,6 +177,10 @@ test("a fold says which of its calls did not finish, failed, ended unknown or di
   assert.deepEqual(unfinishedCalls(["UNKNOWN_OUTCOME", "SUCCEEDED"]), ["1 with an unknown outcome"]);
   assert.deepEqual(unfinishedCalls(["SUCCEEDED", "AWAITING_APPROVAL", "RUNNING"]), ["2 not finished"]);
   assert.deepEqual(unfinishedCalls(["DENIED", "CANCELLED", "PENDING"]), ["1 not finished", "2 not run"]);
+  // A call whose status is not one of the named ones (no hint yet, a state between dispatch and the first fact) is
+  // still told, as not finished: a fold never loses the words for a call (the AWL gate "step does not say what it did").
+  assert.deepEqual(unfinishedCalls([""]), ["1 not finished"]);
+  assert.deepEqual(unfinishedCalls(["DISPATCHED", "SUCCEEDED"]), ["1 not finished"]);
 });
 
 test("a call denied before it ran is told as denied, never as a failed command", () => {

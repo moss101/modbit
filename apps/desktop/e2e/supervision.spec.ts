@@ -86,11 +86,12 @@ test("home: the mode and the pin reach the Core before the first model call; a b
     await page.getByTestId("model-chip").click();
     await page.getByTestId("objective-cost").click();
     await expect(page.getByTestId("model-chip-variant")).toHaveText("Cost");
-    const before = model.requests();
     const queued = await queueTask(page, "Queued with a cost objective", repo);
     await expect.poll(() => page.evaluate((t) => window.modbit.composerPosture(t).then((p) => `${p.mode}/${p.preference.objective}`), queued)).toBe("DEBUG/COST");
     await expectTaskState(page, queued, "Queued");
-    expect(model.requests()).toBe(before);
+    // Recorded, not started: no request the model received carries the queued task's goal. (A count of all requests is
+    // not this claim: the first task may still be talking to the same model, and a slow runner saw its late request.)
+    expect(model.bodies().filter((b) => JSON.stringify(b).includes("Queued with a cost objective")), "the queued task reached the model").toEqual([]);
   } finally {
     await closeApp(app);
     model.server.closeAllConnections();
