@@ -4,6 +4,8 @@
 //! Also supervises the `modbit-execd` broker the shell tools need (docs/33
 //! startup step 7).
 
+// PX-168 lint policy: this file spawns processes and baselined expect/unwrap sites; new ones need review.
+#![allow(clippy::disallowed_methods, clippy::expect_used)]
 use std::collections::HashMap;
 use std::io::{BufRead, BufReader};
 use std::path::{Path, PathBuf};
@@ -1152,6 +1154,14 @@ impl ToolHost {
                     .map(|s| s.effect_class)
                     .unwrap_or(modbit_domain::toolcall::EffectClass::ReadOnly),
             };
+            // PX-161: wait for the call issued before this one to be proposed.
+            let after = PROPOSAL_ORDER
+                .try_with(|o| o.after.lock().ok().and_then(|mut g| g.take()))
+                .ok()
+                .flatten();
+            if let Some(after) = after {
+                let _ = after.await;
+            }
             let mut st = store.lock().await;
             let arguments_ref = if carries_secret {
                 None
@@ -1191,6 +1201,14 @@ impl ToolHost {
                 Some(g) => st.append_fenced(req, g)?,
                 None => st.append(req)?,
             };
+            drop(st);
+            let proposed = PROPOSAL_ORDER
+                .try_with(|o| o.proposed.lock().ok().and_then(|mut g| g.take()))
+                .ok()
+                .flatten();
+            if let Some(proposed) = proposed {
+                let _ = proposed.send(());
+            }
         }
         let journal: Arc<dyn modbit_tools::DispatchJournal> = Arc::new(DispatchLog {
             store: Arc::clone(store),
@@ -1348,6 +1366,7 @@ impl ToolHost {
                         session: session_id,
                         task: Some(task_id),
                         actor: actor.clone(),
+                        redactor: self.redactor(),
                     },
                     root.as_ref().map(|p| p.to_string_lossy().into_owned()),
                 ))
@@ -1813,6 +1832,28 @@ impl ToolHost {
                 "",
             );
             let _ = root;
+        }
+        // PX-103: what a shell or test process wrote in the workspace (the
+        // change barrier's snapshot diff) is attributed to this call on the
+        // workspace log, beside - never as - the file service's own records.
+        if let (Some(ws), Some(root)) = (&ctx.workspace, &root)
+            && let Some(list) = result
+                .structured_output
+                .get("workspace_diff")
+                .and_then(|d| d.get("attribution"))
+                .and_then(serde_json::Value::as_array)
+        {
+            let rev = ws.lock().await.revision().number;
+            let objects = store.lock().await.objects().clone();
+            file_events.extend(crate::hunks::barrier_events(
+                &objects,
+                root,
+                task_id,
+                tool_call_id,
+                tool_name,
+                rev,
+                list,
+            ));
         }
         let effect_class = outcome
             .effect_class
@@ -2404,6 +2445,30 @@ pub struct InvokeRequest<'a> {
     pub compensates: Option<modbit_domain::EffectId>,
 }
 
+tokio::task_local! {
+    /// PX-161: set around a call that runs beside others of its turn, so its
+    /// proposal reaches the log after the previous call's and before the next.
+    pub static PROPOSAL_ORDER: ProposalOrder;
+}
+
+/// The two ends of a call's place in the order proposals are written in.
+pub struct ProposalOrder {
+    after: std::sync::Mutex<Option<tokio::sync::oneshot::Receiver<()>>>,
+    proposed: std::sync::Mutex<Option<tokio::sync::oneshot::Sender<()>>>,
+}
+
+impl ProposalOrder {
+    pub fn new(
+        after: Option<tokio::sync::oneshot::Receiver<()>>,
+        proposed: tokio::sync::oneshot::Sender<()>,
+    ) -> Self {
+        Self {
+            after: std::sync::Mutex::new(after),
+            proposed: std::sync::Mutex::new(Some(proposed)),
+        }
+    }
+}
+
 /// What an invocation produced.
 pub struct Invoked {
     /// Result.
@@ -2532,6 +2597,14 @@ impl CapabilityPort for KernelPort {
             repo_root: self.run.repo_root.clone(),
             rules: self.run.rules.clone(),
             argv: req.command.clone(),
+            // PX-149: where the programs the command names resolve to, from
+            // the working directory and search path the process will get.
+            programs: match (&req.command, &req.exec) {
+                (Some(argv), Some(exec)) => {
+                    modbit_policy::runmode::resolve_programs(argv, &exec.cwd, &exec.path)
+                }
+                _ => Default::default(),
+            },
             ask_classes: modbit_policy::runmode::ask_classes(
                 req.effect_class,
                 &req.required_capabilities,
@@ -2539,6 +2612,7 @@ impl CapabilityPort for KernelPort {
                 req.protected_path,
                 &req.declared_escalation,
             ),
+            dependency_install: req.dependency_install,
             contained: matches!(
                 req.execution_profile.as_str(),
                 modbit_policy::kernel::PROFILE_CLOUD_ISOLATED

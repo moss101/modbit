@@ -13,6 +13,7 @@ import { createServer, type Server } from "node:http";
 import { tmpdir } from "node:os";
 import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
+import { expectTaskState, openTask, queueTask } from "./support/new-task.ts";
 
 const appDir = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 const coreBin = process.env.MODBIT_CORE_BIN ?? resolve(appDir, "..", "..", "target", "debug", process.platform === "win32" ? "modbit-core.exe" : "modbit-core");
@@ -85,15 +86,12 @@ test("review surface: per-hunk decision commits exactly the user's choice and su
   const env = { MODBIT_OPENAI_BASE_URL: url };
   try {
     const { app, page } = await launch(dataDir, env);
-    await page.getByTestId("goal").fill("Edit the notes");
-    await page.getByTestId("workspace").fill(repo);
-    await page.getByTestId("run").click();
-    const card = page.getByTestId("task-card").first();
-    await expect(card.getByTestId("task-state")).toHaveText("Queued");
-    await card.getByTestId("task-start").click();
-    await expect(page.getByTestId("column-readyForReview").getByTestId("task-card")).toHaveCount(1, { timeout: 60_000 });
-    // The first result opens the Review itself (docs/39 step 5); the fleet
-    // is behind it until "Back to fleet".
+    const taskId = await queueTask(page, "Edit the notes", repo);
+    await expectTaskState(page, taskId, "Queued");
+    await page.getByTestId("conv-start").click();
+    await expectTaskState(page, taskId, "ReadyForReview", 60_000);
+    // The first result opens the Review itself (docs/39 step 5); the task's
+    // conversation is behind it until the Review is closed.
     await expect(page.getByTestId("review")).toBeVisible({ timeout: 15_000 });
     await expect(page.getByTestId("review-meta")).toContainText("ReadyForReview");
     await expect(page.getByTestId("review-hunk")).toHaveCount(2);
@@ -102,7 +100,8 @@ test("review surface: per-hunk decision commits exactly the user's choice and su
     // Restart the whole app mid-review: the review is rebuilt from the Core, not from renderer state.
     await app.close();
     const again = await launch(dataDir, env);
-    await expect(again.page.getByTestId("column-readyForReview").getByTestId("task-card")).toHaveCount(1, { timeout: 30_000 });
+    await expectTaskState(again.page, taskId, "ReadyForReview", 30_000);
+    await openTask(again.page, taskId);
     await again.page.getByTestId("task-review").click();
     await expect(again.page.getByTestId("review-hunk")).toHaveCount(2);
     // Reject the second hunk, accept the rest with a commit message.
@@ -115,7 +114,7 @@ test("review surface: per-hunk decision commits exactly the user's choice and su
     await expect(again.page.getByTestId("review-result")).toContainText("Accepted", { timeout: 30_000 });
     await expect(again.page.getByTestId("review-result")).toContainText("1 hunk(s) reverted");
     await again.page.getByTestId("review-close").click();
-    await expect(again.page.getByTestId("column-completed").getByTestId("task-card")).toHaveCount(1, { timeout: 30_000 });
+    await expectTaskState(again.page, taskId, "Completed", 30_000);
     // The Git diff matches the user's choice exactly (REQ-EV-0036) and the history reflects it (E2E-001).
     expect(readFileSync(join(repo, "notes.txt"), "utf8")).toBe(original.replace("line 2\n", "line 2 changed\n"));
     expect(git(repo, "log", "--format=%s", "-1").trim()).toBe("Keep the second region");

@@ -1,0 +1,19 @@
+=== BASELINE surface_protocol qual_px_182
+test qual_px_182_guidance_blocks_compile_for_the_tools_the_task_is_offered ... ok
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 203 filtered out; finished in 4.87s
+exit=0
+=== MUTATION keep-every-block: guidance for a tool the task is not offered is kept (crates/skills/src/lib.rs)
+test qual_px_182_guidance_blocks_compile_for_the_tools_the_task_is_offered ... FAILED
+test result: FAILED. 0 passed; 1 failed; 0 ignored; 0 measured; 203 filtered out; finished in 3.03s
+error: test failed, to rerun pass `-p modbit-core --test surface_protocol`
+exit=101 (KILLED)
+=== MUTATION unstable-config: the configuration carries the time it was compiled (services/modbit-core/src/skills.rs)
+test qual_px_182_guidance_blocks_compile_for_the_tools_the_task_is_offered ... FAILED
+test result: FAILED. 0 passed; 1 failed; 0 ignored; 0 measured; 203 filtered out; finished in 3.02s
+error: test failed, to rerun pass `-p modbit-core --test surface_protocol`
+exit=101 (KILLED)
+=== MUTATION no-record: the configuration is never recorded (services/modbit-core/src/skills.rs)
+test qual_px_182_guidance_blocks_compile_for_the_tools_the_task_is_offered ... FAILED
+test result: FAILED. 0 passed; 1 failed; 0 ignored; 0 measured; 203 filtered out; finished in 3.11s
+error: test failed, to rerun pass `-p modbit-core --test surface_protocol`
+exit=101 (KILLED)

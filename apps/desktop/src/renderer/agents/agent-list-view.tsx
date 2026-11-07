@@ -8,13 +8,14 @@
  * document, so a thousand tasks cost the same as twenty.
  */
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, type KeyboardEvent, type ReactNode } from "react";
-import { Badge, IconButton, Menu, StatusDot, type MenuItem } from "@modbit/ui";
+import { Badge, Icon, IconButton, Menu, StatusDot, type MenuItem } from "@modbit/ui";
 import type { AgentHeaderView, ConversationSearchView } from "../../shared/conversation-types.ts";
 import type { ProjectInfo } from "../../shared/project-types.ts";
-import { CLASS_META, GROUPINGS, LOCATION_FILTERS, NO_FILTERS, NO_PROJECT, ORIGIN_FILTERS, PROJECTS_KEY, ROW_HEIGHT, SORTS, STATE_FILTERS, SUBTITLE_FIELDS, filterCount, layoutOf, listItems, passes, projectKey, relativeAge, rowLabel, subtitleOf, viewMatches, visibleProjects, visibleRange, type Filters, type Grouping, type ListItem, type SortKey, type StoredView, type SubtitleField } from "./list-model.ts";
+import { CLASS_META, FACT_FIELDS, GROUPINGS, LOCATION_FILTERS, NO_FILTERS, NO_PROJECT, ORIGIN_FILTERS, PROJECTS_KEY, PROJECT_HEIGHT, ROW_HEIGHT, SORTS, STATE_FILTERS, STATE_VIEWS, SUBTITLE_FIELDS, filterCount, layoutOf, listItems, passes, projectKey, relativeAge, rowLabel, rowLine, rowTitle, toggleView, viewCounts, viewMatches, visibleProjects, visibleRange, type FactField, type Filters, type Grouping, type ListItem, type RowFacts, type SortKey, type StoredView, type SubtitleField } from "./list-model.ts";
 import { ProjectGlyph } from "../projects/project-glyph.tsx";
 import { projectMenuFor, rollupWords } from "../projects/project-model.ts";
 import { highlightRuns } from "./snippets.ts";
+import { localMachine } from "../location.ts";
 import { IconArchive, IconFilter, IconPin, IconProject, IconRename, IconRestore, IconViews } from "./icons.tsx";
 
 /** What the list can do with projects (PX-064). Every call is a Core command made by the connected list; the view only reports the person's intent. */
@@ -48,6 +49,10 @@ export interface AgentListViewProps {
   grouping: Grouping;
   filters: Filters;
   subtitleFields: readonly SubtitleField[];
+  /** What each task is doing and needs; a view with no cards passes nothing and the row shows its header's facts. */
+  facts?: ReadonlyMap<string, RowFacts> | undefined;
+  factFields?: readonly FactField[] | undefined;
+  onFactFields?: ((f: FactField[]) => void) | undefined;
   collapsed: ReadonlySet<string>;
   nowMs: number;
   query: string;
@@ -74,15 +79,25 @@ export interface AgentListViewProps {
 
 const toggle = <T,>(xs: readonly T[], x: T): T[] => (xs.includes(x) ? xs.filter((y) => y !== x) : [...xs, x]);
 const EMPTY_PROJECTS: readonly ProjectInfo[] = [];
+const ALL_FACTS: readonly FactField[] = FACT_FIELDS.map((x) => x.id);
 
 export function AgentListView(p: AgentListViewProps) {
   const [panelOpen, setPanelOpen] = useState(false);
+  // Search, grouping, filters and views stay out of the way until asked for, except while one of them is narrowing the list.
+  const [toolsOpen, setToolsOpen] = useState(false);
   const scroller = useRef<HTMLDivElement>(null);
   const [scrollTop, setScrollTop] = useState(0);
   const [viewport, setViewport] = useState(480);
   const [activeId, setActiveId] = useState<string | null>(null);
   const pendingFocus = useRef<string | null>(null);
   const pinned = useMemo(() => new Set(p.pins), [p.pins]);
+  const f = filterCount(p.filters);
+  const searching = p.query.trim().length > 0;
+  // A state view is its own control, so choosing one does not unfold the search and the chips.
+  const narrowed = f - p.filters.states.length > 0;
+  const counts = useMemo(() => viewCounts(p.headers), [p.headers]);
+  const views = STATE_VIEWS.filter((v) => (counts.get(v.id) ?? 0) > 0 || p.filters.states.includes(v.id));
+  const factFields = p.factFields ?? ALL_FACTS;
 
   const visible = useMemo(() => p.headers.filter((h) => passes(h, p.filters)), [p.headers, p.filters]);
   const projects = p.projects ?? EMPTY_PROJECTS;
@@ -193,12 +208,18 @@ export function AgentListView(p: AgentListViewProps) {
     }
   };
 
-  const f = filterCount(p.filters);
-  const searching = p.query.trim().length > 0;
-
   return (
     <div className="agents" data-testid="agent-list" data-count={p.headers.length} data-visible={visible.length}>
-      <div className="agents-controls">
+      {views.length > 0 && (
+        <div className="agents-states" role="group" aria-label="Task states" data-testid="agents-states">
+          {views.map((v) => (
+            <button key={v.id} type="button" className="agents-state" aria-pressed={p.filters.states.includes(v.id)} onClick={() => p.onFilters(toggleView(p.filters, v.id))} aria-label={`${v.label}, ${counts.get(v.id) ?? 0}`} title={v.label} data-testid={`state-view-${v.id}`} data-count={counts.get(v.id) ?? 0}>
+              {v.short} <span className="agents-state-count">{counts.get(v.id) ?? 0}</span>
+            </button>
+          ))}
+        </div>
+      )}
+      {(toolsOpen || narrowed || searching) && <div className="agents-controls" data-testid="agents-controls">
         <input type="search" className="agents-search" aria-label="Search conversations" placeholder="Search tasks and conversations" value={p.query} onChange={(e) => p.onQuery(e.target.value)} data-testid="agents-search" autoComplete="off" spellCheck={false} />
         <div className="agents-tools">
           <label className="agents-group">
@@ -214,7 +235,6 @@ export function AgentListView(p: AgentListViewProps) {
           <IconButton label={f > 0 ? `Filters, ${f} active` : "Filters"} icon={<IconFilter />} pressed={panelOpen} onClick={() => setPanelOpen((o) => !o)} aria-expanded={panelOpen} aria-controls="agents-filter-panel" data-testid="agents-filter-toggle" />
           {f > 0 && <Badge tone="accent">{f}</Badge>}
           {p.viewActions && <ViewsMenu v={p.viewActions} now={now} />}
-          {p.projectActions && <IconButton label="New project" icon={<IconProject />} onClick={p.projectActions.onNew} data-testid="agents-new-project" />}
         </div>
         {panelOpen && (
           <div id="agents-filter-panel" className="agents-filters" role="group" aria-label="Filters" data-testid="agents-filters">
@@ -271,6 +291,12 @@ export function AgentListView(p: AgentListViewProps) {
                   {s.label}
                 </Chip>
               ))}
+              {p.onFactFields &&
+                FACT_FIELDS.map((s) => (
+                  <Chip key={s.id} on={factFields.includes(s.id)} testId={`subtitle-${s.id}`} onClick={() => p.onFactFields?.(toggle(factFields, s.id))}>
+                    {s.label}
+                  </Chip>
+                ))}
             </FilterGroup>
             {f > 0 && (
               <button type="button" className="agents-link" data-testid="filters-clear" onClick={() => p.onFilters(NO_FILTERS)}>
@@ -279,7 +305,7 @@ export function AgentListView(p: AgentListViewProps) {
             )}
           </div>
         )}
-      </div>
+      </div>}
       {p.note && (
         <p className="agents-note meta" role="status" data-testid="agents-note">
           {p.note}
@@ -299,16 +325,16 @@ export function AgentListView(p: AgentListViewProps) {
               The task list is unavailable: {p.error}
             </p>
           )}
-          {p.loaded && items.length === 0 && (
+          <div className="agents-canvas" style={{ height: layout.total }}>
+            {items.slice(range.start, range.end).map((item, i) => (
+              <ItemView key={item.key} item={item} top={layout.offsets[range.start + i]!} p={p} pinned={pinned} selected={p.selectedId} tabStop={tabStop} toolsOpen={toolsOpen} onToggleTools={() => setToolsOpen((o) => !o)} />
+            ))}
+          </div>
+          {p.loaded && items.every((i) => i.kind === "projects-head") && (
             <p className="meta agents-empty" data-testid="agents-empty">
               {p.headers.length === 0 ? "No tasks yet. New task starts one." : "No task matches these filters."}
             </p>
           )}
-          <div className="agents-canvas" style={{ height: layout.total }}>
-            {items.slice(range.start, range.end).map((item, i) => (
-              <ItemView key={item.key} item={item} top={layout.offsets[range.start + i]!} p={p} pinned={pinned} selected={p.selectedId} tabStop={tabStop} />
-            ))}
-          </div>
         </div>
       )}
     </div>
@@ -350,7 +376,7 @@ function ProjectRow({ item, top, p }: { item: Extract<ListItem, { kind: "project
   return (
     <div
       className="agents-project"
-      style={{ top, height: 40 }}
+      style={{ top, height: PROJECT_HEIGHT }}
       data-testid="project-row"
       data-project-id={pr.projectId}
       data-archived={pr.archived}
@@ -384,9 +410,12 @@ function ProjectRow({ item, top, p }: { item: Extract<ListItem, { kind: "project
             {pr.name}
             {pr.archived ? " (archived)" : ""}
           </span>
-          <span className="agents-sub" data-testid="project-rollup">
+          <span className="mb-sr-only" data-testid="project-rollup">
             {words}
           </span>
+        </span>
+        <span className="agents-age" aria-hidden="true">
+          {item.shown}
         </span>
         {pr.rollup.attentionTasks > 0 && <span className="agents-dot" data-kind="attention" data-testid="project-attention-dot" aria-hidden="true" />}
       </button>
@@ -400,7 +429,7 @@ function ProjectRow({ item, top, p }: { item: Extract<ListItem, { kind: "project
   );
 }
 
-function ItemView({ item, top, p, pinned, selected, tabStop }: { item: ListItem; top: number; p: AgentListViewProps; pinned: ReadonlySet<string>; selected: string | null; tabStop: string | null }) {
+function ItemView({ item, top, p, pinned, selected, tabStop, toolsOpen, onToggleTools }: { item: ListItem; top: number; p: AgentListViewProps; pinned: ReadonlySet<string>; selected: string | null; tabStop: string | null; toolsOpen: boolean; onToggleTools: () => void }) {
   if (item.kind === "projects-head") {
     return (
       <div className="agents-section" style={{ top }} data-testid="agents-section" data-section={PROJECTS_KEY}>
@@ -409,21 +438,15 @@ function ItemView({ item, top, p, pinned, selected, tabStop }: { item: ListItem;
             {item.collapsed ? "▸" : "▾"}
           </span>
           <span className="agents-section-label">{item.label}</span>
-          <span className="meta">{item.count}</span>
         </button>
+        <span className="agents-section-tools">
+          <IconButton label="List options" icon={<Icon name="ellipsis" size={14} />} size="sm" pressed={toolsOpen} onClick={onToggleTools} data-testid="agents-tools-toggle" />
+          {p.projectActions && <IconButton label="New project" icon={<Icon name="plus" size={14} />} size="sm" onClick={p.projectActions.onNew} data-testid="agents-new-project" />}
+        </span>
       </div>
     );
   }
   if (item.kind === "project") return <ProjectRow item={item} top={top} p={p} />;
-  if (item.kind === "new-project") {
-    return (
-      <div className="agents-newproject" style={{ top, height: 32 }}>
-        <button type="button" className="agents-link agents-newproject-btn" onClick={() => p.projectActions?.onNew()} data-testid="project-new-row">
-          + New project
-        </button>
-      </div>
-    );
-  }
   if (item.kind === "section") {
     const key = item.key.slice(2);
     return (
@@ -442,7 +465,8 @@ function ItemView({ item, top, p, pinned, selected, tabStop }: { item: ListItem;
   const meta = CLASS_META[h.statusClass];
   const isPinned = pinned.has(h.taskId);
   const isTab = tabStop === h.taskId;
-  const sub = subtitleOf(h, p.subtitleFields);
+  const facts = p.facts?.get(h.taskId);
+  const sub = rowLine(h, p.subtitleFields, facts, p.factFields ?? ALL_FACTS);
   const words = h.statusLabel || meta.short;
   const pa = p.projectActions;
   const menu = pa ? projectMenuFor(h, p.projects ?? EMPTY_PROJECTS) : [];
@@ -453,6 +477,9 @@ function ItemView({ item, top, p, pinned, selected, tabStop }: { item: ListItem;
       style={{ top, height: ROW_HEIGHT }}
       data-testid="agent-row"
       data-agent-id={h.taskId}
+      data-task-id={h.taskId}
+      data-state={h.taskState}
+      data-subagent={h.subagent}
       data-class={h.statusClass}
       data-unread={h.unread}
       data-selected={selected === h.taskId}
@@ -471,8 +498,8 @@ function ItemView({ item, top, p, pinned, selected, tabStop }: { item: ListItem;
         data-testid="agent-open"
         tabIndex={isTab ? 0 : -1}
         aria-current={selected === h.taskId ? "true" : undefined}
-        aria-label={rowLabel(h, isPinned)}
-        title={`${h.title || "Untitled task"}${h.workspaceRoot ? `\n${h.workspaceRoot}` : ""}`}
+        aria-label={rowLabel(h, isPinned, facts)}
+        title={rowTitle(h, facts, localMachine(), p.nowMs)}
         onClick={() => p.onSelect(h.taskId)}
       >
         <span className="agents-glyph">
@@ -491,7 +518,7 @@ function ItemView({ item, top, p, pinned, selected, tabStop }: { item: ListItem;
             <span className="agents-status" data-testid="agent-status">
               {words}
             </span>
-            {sub ? ` · ${sub}` : ""}
+            {sub ? <span data-testid="agent-facts"> · {sub}</span> : null}
             {inProject && p.grouping !== "project" && item.sectionKey.startsWith("project:") === false ? ` · ${inProject.name}` : ""}
           </span>
         </span>

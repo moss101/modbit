@@ -44,10 +44,16 @@ async function launch(extraEnv: Record<string, string> = {}): Promise<Launched> 
   const app = await electron.launch({ executablePath: installed.exe, env });
   const page = await app.firstWindow();
   await expect(page.getByTestId("core-status")).toContainText("Core connected", { timeout: 60_000 });
+  await openUpdates(page);
   return { app, page };
 }
 
 const state = (p: Page) => p.getByTestId("update-state");
+/** The updater's state and controls live in Settings, under "This build". */
+async function openUpdates(p: Page): Promise<void> {
+  await p.getByTestId("open-settings").click();
+  await expect(state(p)).toBeVisible({ timeout: 30_000 });
+}
 const updateDir = () => join(dataDir, "update");
 const pendingFile = () => join(updateDir(), "pending.json");
 
@@ -89,6 +95,7 @@ test("a build with no pinned key verifies nothing and offers no update", async (
   });
   try {
     const page = await app.firstWindow();
+    await openUpdates(page);
     await expect(state(page)).toHaveAttribute("data-state", "disabled");
     await expect(state(page)).toContainText("Updates off");
     await expect(page.getByTestId("update-check")).toHaveCount(0);

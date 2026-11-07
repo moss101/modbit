@@ -25,6 +25,17 @@ test("REQ-PX-058: the typed reason is worded from the Core's code; an unknown co
   assert.match(whyAsked({ ...approval().reason, code: "" }).headline, /did not give a reason/);
 });
 
+test("PX-149: a rule that matched but does not hold is worded by its own code, never as a missing rule", () => {
+  const worded = (code: string) => whyAsked({ ...approval().reason, code });
+  assert.match(worded("PROGRAM_PATH_CHANGED").headline, /not the one this rule was made for/);
+  assert.match(worded("RULE_NOT_PINNED").detail, /choose Always/);
+  assert.match(worded("PROGRAM_NOT_FOUND").headline, /not found/);
+  assert.match(worded("PROGRAM_IN_WORKSPACE").headline, /file in the workspace/);
+  for (const c of ["PROGRAM_PATH_CHANGED", "RULE_NOT_PINNED", "PROGRAM_NOT_FOUND", "PROGRAM_IN_WORKSPACE"]) {
+    assert.doesNotMatch(worded(c).headline, /No allowlist rule covers/);
+  }
+});
+
 test("REQ-PX-058: the command line keeps token boundaries visible; the prefix ladder grows one word at a time and the default is the exact command", () => {
   assert.equal(commandLine(["git", "commit", "-m", "a b"]), 'git commit -m "a b"');
   assert.deepEqual(prefixLadder(["a", "b", "c"]), [["a"], ["a", "b"], ["a", "b", "c"]]);
@@ -37,6 +48,10 @@ test("REQ-PX-058: Always is offered only for a command with an argv that is not 
   assert.equal(alwaysAvailable(approval({ intent: { ...approval().intent, argv: null } })).ok, false);
   assert.equal(alwaysAvailable(approval({ reason: { ...approval().reason, askClasses: ["NETWORK"], code: "ALWAYS_ASK:NETWORK" } })).ok, false);
   assert.equal(alwaysAvailable(approval({ effectClass: "Destructive" })).ok, false);
+  // DR-PX-2026-10-25-017: Ask never reads a rule, so Always is withheld there, with the reason, instead of saving a rule that does nothing.
+  const inAsk = alwaysAvailable(approval({ reason: { ...approval().reason, runMode: "ASK", code: "MODE_ASK" } }));
+  assert.equal(inAsk.ok, false);
+  assert.match((inAsk as { why: string }).why, /Ask mode.*never uses rules/);
   assert.equal(isIrreversible("Destructive"), true);
   assert.equal(isIrreversible("ExternalSideEffect"), true);
   assert.equal(isIrreversible("ProtectedWrite"), false);

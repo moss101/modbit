@@ -15,21 +15,13 @@ import { tmpdir } from "node:os";
 import { basename, join } from "node:path";
 import { accessible, closeApp, launch, makeRepo, setContentSize } from "./support/ui-harness.ts";
 import { streamingModel } from "./support/stream-model.ts";
+import { openListTools, queueTask } from "./support/new-task.ts";
 
 const hex32 = () => Array.from(crypto.getRandomValues(new Uint8Array(16)), (x) => x.toString(16).padStart(2, "0")).join("");
 
 const rowOf = (page: Page, taskId: string) => page.locator(`[data-testid="agent-row"][data-agent-id="${taskId}"]`);
 const projectRow = (page: Page, projectId: string) => page.locator(`[data-testid="project-row"][data-project-id="${projectId}"]`);
 const note = (page: Page) => page.getByTestId("agents-note");
-
-async function createViaFleet(page: Page, goal: string, repo: string): Promise<string> {
-  await page.getByTestId("goal").fill(goal);
-  await page.getByTestId("workspace").fill(repo);
-  await page.getByTestId("run").click();
-  const card = page.getByTestId("task-card").filter({ hasText: goal }).first();
-  await expect(card).toBeVisible();
-  return (await card.getAttribute("data-task-id"))!;
-}
 
 async function session(page: Page): Promise<string> {
   return (await page.evaluate(() => window.modbit.localState())).sessionId!;
@@ -106,7 +98,7 @@ test("PX-063/064: a project is created, filled by menu, drag and keyboard, refus
   try {
     await setContentSize(app, page, 1280, 800);
     // ---- Tasks: three of repository A that can join (stopped, stopped, waiting for an approval), one draft, one of repository B.
-    const a1 = await createViaFleet(page, "Alpha one", repoA);
+    const a1 = await queueTask(page, "Alpha one", repoA);
     const sid = await session(page);
     await page.evaluate(([s, t]) => window.modbit.cancelTask(s!, t!), [sid, a1]);
     const a2 = await makeTask(page, "Alpha two", repoA, true);
@@ -120,7 +112,6 @@ test("PX-063/064: a project is created, filled by menu, drag and keyboard, refus
 
     // ---- No project yet: the list is what it was; nothing is invented.
     await expect(page.getByTestId("project-row")).toHaveCount(0);
-    await expect(page.locator('[data-testid="agents-section"][data-section="projects"]')).toHaveCount(0);
     expect((await coreProjects(page)).projects).toEqual([]);
 
     // ---- Create: name, workspace, palette colour and icon; the page opens on the Core's record.
@@ -141,10 +132,10 @@ test("PX-063/064: a project is created, filled by menu, drag and keyboard, refus
     // The Projects group is separate from the repositories and has its New Project row.
     await expect(projectRow(page, pid)).toBeVisible();
     await expect(page.locator('[data-testid="agents-section"][data-section="projects"]')).toBeVisible();
-    await expect(page.getByTestId("project-new-row")).toBeVisible();
+    await expect(page.getByTestId("agents-new-project")).toBeVisible();
     await expect(projectRow(page, pid).getByTestId("project-rollup")).toHaveText("0 tasks");
     // A name taken in the workspace is refused by the Core, in the dialog, and the typed text stays.
-    await page.getByTestId("project-new-row").click();
+    await page.getByTestId("agents-new-project").click();
     await page.getByTestId("project-name").fill("release");
     await page.getByTestId("project-new-create").click();
     await expect(page.getByTestId("project-problem")).toContainText("already used");
@@ -221,6 +212,7 @@ test("PX-063/064: a project is created, filled by menu, drag and keyboard, refus
     await expect(rowOf(page, a2)).not.toHaveAttribute("data-project-id", /./);
 
     // ---- Project grouping and the project chip, without opening a transcript.
+    await openListTools(page);
     await page.getByTestId("agents-grouping").selectOption("project");
     await expect(page.locator(`[data-testid="agents-section"][data-section="project:${pid}"]`)).toBeVisible();
     await expect(page.locator(`[data-testid="agents-section"][data-section="project:${otherId}"]`)).toBeVisible();
@@ -241,6 +233,7 @@ test("PX-063/064: a project is created, filled by menu, drag and keyboard, refus
     await page.getByTestId("view-save").click();
     await expect(page.getByTestId("view-save-dialog")).toHaveCount(0);
     await page.getByTestId("filters-clear").click();
+    await openListTools(page);
     await page.getByTestId("agents-grouping").selectOption("status");
     await expect.poll(async () => (await listedTaskIds(page)).sort()).toEqual([a1, a2, a3, b1, draft].sort());
     await page.getByTestId("agents-views").click();
@@ -252,16 +245,18 @@ test("PX-063/064: a project is created, filled by menu, drag and keyboard, refus
     await closeApp(app);
     ({ app, page } = await launch(dataDir, { env: { MODBIT_OPENAI_BASE_URL: model.url } }));
     await setContentSize(app, page, 1280, 800);
+    await openListTools(page);
     await expect(page.getByTestId("agents-grouping")).toHaveValue("project");
     await expect(page.locator(`[data-testid="agents-section"][data-section="project:${otherId}"] button`)).toHaveAttribute("aria-expanded", "false");
     await expect(page.getByTestId("agent-row")).toHaveCount(2, { timeout: 30_000 });
     await page.getByTestId("agents-views").click();
     await expect(page.getByRole("menuitemradio", { name: "Release by title" })).toHaveAttribute("aria-checked", "true");
     await page.keyboard.press("Escape");
-    await page.getByTestId("agents-filter-toggle").click();
-    await page.getByTestId("filters-clear").click();
+    // The Projects heading (and with it the list's tools button) is absent while the list is grouped by project, so the grouping is changed while the chip still keeps the controls in view.
+    await openListTools(page);
     await page.getByTestId("agents-grouping").selectOption("repository");
-    await page.getByTestId("agents-filter-toggle").click();
+    if (!(await page.getByTestId("filters-clear").isVisible())) await page.getByTestId("agents-filter-toggle").click();
+    await page.getByTestId("filters-clear").click();
 
     // ---- Archive by keyboard: the project leaves the list, its tasks do not move, Undo brings it back.
     const states = async () => (await page.evaluate((s) => window.modbit.agentHeaders(s, true), sid)).headers.map((h) => [h.taskId, h.taskState, h.archived, h.projectId] as const).sort();
@@ -288,7 +283,8 @@ test("PX-063/064: a project is created, filled by menu, drag and keyboard, refus
     expect(await membersOf(page, pid)).toEqual([a1, a3].sort());
     // An archived project accepts nothing: the Core says so.
     await page.evaluate(([s, p]) => window.modbit.archiveProject(s!, p!, true), [sid, pid]);
-    await page.getByTestId("agents-filter-toggle").click();
+    await openListTools(page);
+    if (!(await page.getByTestId("filter-archived").isVisible())) await page.getByTestId("agents-filter-toggle").click();
     await page.getByTestId("filter-archived").click();
     await expect(projectRow(page, pid).getByTestId("project-name-text")).toContainText("(archived)");
     const refusal = await page.evaluate(([s, p, t]) => window.modbit.addProjectMember(s!, p!, t!).then(() => "accepted", (e: Error) => e.message), [sid, pid, a2]);
@@ -308,7 +304,7 @@ test("PX-063: the main process rejects invalid project arguments before the Core
   const dataDir = mkdtempSync(join(tmpdir(), "modbit-e2e-projargs-"));
   const { app, page } = await launch(dataDir);
   try {
-    await createViaFleet(page, "Args task", repo);
+    await queueTask(page, "Args task", repo);
     const sid = await session(page);
     const call = (expr: string) => page.evaluate(`(async () => { try { await (${expr}); return "accepted"; } catch (e) { return e.message; } })()`) as Promise<string>;
     expect(await call(`window.modbit.createProject("zz", { name: "A", workspaceRoot: "/w" })`)).toContain("BAD_ARGUMENT");

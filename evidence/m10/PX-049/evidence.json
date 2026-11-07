@@ -1,0 +1,29 @@
+{
+ "task": "PX-049",
+ "requirements": [
+  "REQ-PX-049",
+  "QUAL-PX-049",
+  "docs/62_PRODUCT_EXTENSION_REQUIREMENTS_TASKS_AND_QUALIFICATIONS.md#px-049"
+ ],
+ "scenarios": [
+  "QUAL-PX-049 / PX-E2E-049"
+ ],
+ "tests": [
+  "apps/desktop/e2e/lifecycle.spec.ts (opens at 1280 x 800 and cannot go below 900 x 600; quitting or closing with work running asks first; does not ask when idle)",
+  "apps/desktop/e2e/session-end.spec.ts (resume chosen: recovered run with the Core's counts and the run continues; leaving suspended: nothing continues; a 2 s session-end hook completes before exit with its sentinel; a failing hook is shown and journaled; killing the Core while the hook runs leaves the task recoverable)",
+  "services/modbit-core/tests/px_049_session_end.rs (5 tests: resume survives a real kill and is spent by the resume, without resume, 2 s hook, failed/timed-out/malformed hooks)",
+  "apps/desktop/src/main/hardening-guard.test.ts (preload, CSP and webPreferences pins over the LF form)",
+  "apps/desktop/src/main/lifecycle.test.ts (window constants, quitChoice)"
+ ],
+ "proof": "Real Core / real broker / real CLI as each test states. CI run 40076778858 (head f3081826): conclusion success.",
+ "limitations": "The QUAL asks that the main.ts diff show only window options and quit handling; the #134 diff also holds the recovery re-send and the resume call, which is recovery presentation under PX-049 and needs a reviewer to accept it. Cited run 40076778858 is the green PR run on head f3081826; the squash commit cc41fce2 has an identical tree (git diff empty), and main's own run on cc41fce2 failed on hosted-macOS actuator tests unrelated to PX-049 (a rerun was requested). Hook output journaled is the hook's answer reason, not its stdout/stderr; a session with no tasks runs no hooks; the Core never resumes tasks at boot on its own, a headless client calls StartTask. No gate attested.",
+ "runs": [
+  "40076778858"
+ ],
+ "ci": {
+  "run_id": "40076778858",
+  "head_sha": "f3081826",
+  "conclusion": "success",
+  "json": "evidence/m10/PX-049/ci-run-40076778858.json"
+ }
+}

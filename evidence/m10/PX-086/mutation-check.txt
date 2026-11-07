@@ -1,0 +1,19 @@
+QUAL-PX-086 mutation check (2026-10-24, base b78b0c1c + this change)
+
+MUTATION dry-run-denied-effects
+  file:   services/modbit-core/src/automation.rs (outputs_of, the dry-run report)
+  change: 'if test {' (the block that lists refused TOOL_NOT_VISIBLE calls)
+          ->  'if false && test {'
+          (a write the agent asks for in a test run is no longer listed
+          in the report; the run still changes nothing)
+  command: cargo test -p modbit-core --test automations_px px_086
+  cargo exit: 101 (the test FAILS, as the QUAL requires)
+
+Output (verdict lines of the mutated run):
+test px_086_a_test_run_of_a_write_capable_definition_changes_nothing_and_leaves_no_receipt ... FAILED
+assertion `left == right` failed: {"dry_run":true,"task_state":"ReadyForReview","would_have_asked":[]}
+  left: []
+ right: [("change.apply", "DENIED"), ("shell.exec", "DENIED")]
+test result: FAILED. 0 passed; 1 failed; 0 ignored; 0 measured; 26 filtered out
+
+The mutation was reverted; the unmutated suite passes (27 passed).

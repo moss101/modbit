@@ -544,8 +544,10 @@ export declare type InterruptAccepted = Message<"modbit.v1.InterruptAccepted"> &
 export declare const InterruptAcceptedSchema: GenMessage<InterruptAccepted>;
 
 /**
- * Set who approves protected effects for the task: ASK (default) | ALLOWLIST |
- * ALLOWLIST_SANDBOX | RUN_EVERYTHING. A mode that approves more than the one
+ * Set who approves protected effects for the task: ASK | ALLOWLIST (default;
+ * asks for everything no live rule covers) | ALLOWLIST_SANDBOX | RUN_EVERYTHING |
+ * AUTONOMOUS (RUN_EVERYTHING plus the install of the project's declared
+ * dependencies; durable). A mode that approves more than the one
  * in force (RUN_EVERYTHING above all) must carry `acknowledge_risk`, the
  * person's acknowledgement that a prompt injection or an exfiltration could
  * run inside the envelope; it is recorded with the warning text. RUN_EVERYTHING
@@ -996,6 +998,13 @@ export declare type BudgetAccountingView = Message<"modbit.v1.BudgetAccountingVi
    * @generated from field: bool forbid_spawn = 8;
    */
   forbidSpawn: boolean;
+
+  /**
+   * PX-156: time parked on a person's approval, not in wall_ms_used.
+   *
+   * @generated from field: uint64 wall_ms_parked = 9;
+   */
+  wallMsParked: bigint;
 };
 
 /**
@@ -1154,6 +1163,13 @@ export declare type ContextAccountingView = Message<"modbit.v1.ContextAccounting
    * @generated from field: modbit.v1.BudgetAccountingView budgets = 22;
    */
   budgets?: BudgetAccountingView | undefined;
+
+  /**
+   * PX-182: the run's compiled skill configuration
+   *
+   * @generated from field: string skill_configuration_id = 23;
+   */
+  skillConfigurationId: string;
 };
 
 /**

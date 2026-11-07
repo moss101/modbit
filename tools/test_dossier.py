@@ -313,6 +313,11 @@ class DossierTests(unittest.TestCase):
         out = self.run_tool("graph", "show", "DOC-GOV-007")
         for required in ("DOC-GOV-006", "DR-GOV-2026-09-25-007", "77_RELEASE_ZERO_EXECUTION_GOAL.md", "97_DOSSIER_MAINTENANCE_LOG.md", "governance"):
             self.assertIn(required, out)
+        out = self.run_tool("graph", "show", "DOC-GOV-008")
+        for required in ("DOC-GOV-007", "DR-GOV-2026-10-30-008", "62_PRODUCT_EXTENSION_REQUIREMENTS_TASKS_AND_QUALIFICATIONS.md", "97_DOSSIER_MAINTENANCE_LOG.md", "governance"):
+            self.assertIn(required, out)
+        card = (ROOT / "docs" / "62_PRODUCT_EXTENSION_REQUIREMENTS_TASKS_AND_QUALIFICATIONS.md").read_text(encoding="utf-8")
+        self.assertIn("crates/core-runtime/src/trajectory.rs", card.split("## PX-189 ")[1].split("## Real-system scenarios")[0])
         out = self.run_tool("graph", "show", "DOC-GOV-001")
         for required in ("DOC-EPR-002", "DR-GOV-2026-09-05", "96_DOSSIER_GOVERNANCE_MAINTENANCE_TASK_AND_HANDOFF.md", "governance"):
             self.assertIn(required, out)
@@ -325,6 +330,9 @@ class DossierTests(unittest.TestCase):
                       ("DR-PX-2026-10-03-009", "DOC-PX-009", 77, 81, False), ("DR-PX-2026-10-03-010", "DOC-PX-010", 82, 86, True),
                       ("DR-PX-2026-10-03-011", "DOC-PX-011", 87, 93, False), ("DR-PX-2026-10-03-012", "DOC-PX-012", 94, 98, False),
                       ("DR-PX-2026-10-05-013", "DOC-PX-013", 99, 139, True)]
+
+    DR_018_DEFERRED = [151, 154, 160, 163, 164, 165, 166, 169, 170, 172, 173, 175, 180, 181, 185, 187, 190, 191]
+    DR_018_ADOPT = [147, 148, 149, 150, 152, 153, 155, 156, 157, 158, 159, 161, 162, 167, 168, 171, 174, 176, 177, 178, 179, 182, 183, 184, 186, 188, 189]
 
     def edges(self, g):
         after, auth, includes = {}, set(), {}
@@ -428,16 +436,16 @@ class DossierTests(unittest.TestCase):
 
     def test_parity_surface_counts_are_pinned_and_dr_013_is_traced(self):
         # The additive PX ledger pins nothing in tools/dossier_px.py (totals are computed); the parity-push surface is pinned here
-        # in the same reseal that adds a record: PX-000..140 (141 rows, 137 ADOPT tasks, 4 DEFERRED), eight records of which
+        # in the same reseal that adds a record: PX-000..197 (198 rows, 176 ADOPT tasks, 22 DEFERRED), eleven records of which
         # 007, 008, 010 and 013 are accepted, and the 41 rows of DR-PX-2026-10-05-013 (39 release-critical, 2 iteration).
         self.rebuild()
         g = self.graph()
         nodes = {n["id"]: n for n in g["nodes"]}
         reqs = [n for n in g["nodes"] if re.match(r"^REQ-PX-\d{3}$", n["id"])]
         tasks = [n for n in g["nodes"] if re.match(r"^PX-\d{3}$", n["id"]) and n["type"] == "imp_task"]
-        self.assertEqual(len(reqs), 141)
-        self.assertEqual(len(tasks), 137)
-        self.assertEqual(sorted(n["id"] for n in reqs if n.get("disposition") == "DEFERRED"), ["REQ-PX-003", "REQ-PX-012", "REQ-PX-013", "REQ-PX-140"])
+        self.assertEqual(len(reqs), 198)
+        self.assertEqual(len(tasks), 176)
+        self.assertEqual(sorted(n["id"] for n in reqs if n.get("disposition") == "DEFERRED"), ["REQ-PX-003", "REQ-PX-012", "REQ-PX-013", "REQ-PX-140"] + ["REQ-PX-%03d" % i for i in self.DR_018_DEFERRED])
         self.assertEqual(len([r for r in self.PARITY_RECORDS if r[4]]), 4)
         self.assertEqual(len(self.PARITY_RECORDS), 7)
         text = (self.root / "docs/62_PRODUCT_EXTENSION_REQUIREMENTS_TASKS_AND_QUALIFICATIONS.md").read_text()
@@ -488,6 +496,216 @@ class DossierTests(unittest.TestCase):
         record = (self.root / "docs/decisions/DR-PX-2026-10-19-014-per-task-harness-refinement.md").read_text()
         self.assertIn("status: accepted", record)
         self.assertIn("PX-E2E-140", record)  # the activation text is kept in the record
+
+    def test_dr_018_registers_the_upgrade_program_without_a_second_owner_and_defers_what_needs_a_decision(self):
+        # DR-PX-2026-10-26-018 (accepted 2026-10-26 on the owner's chat instruction, for the registration only): rows PX-147..191.
+        # Twenty-seven ADOPT rows are owned by existing subsystems, scheduled in M10, RELEASE_ZERO only, gated by DOC-PX-017; eighteen
+        # are DEFERRED (no task, card or scenario) and their activation text is Appendix B of the record. The record says what its
+        # approval does not cover and names the twelve open decisions, so the acceptance cannot be read as more than the registration.
+        self.rebuild()
+        g = self.graph()
+        nodes = {n["id"]: n for n in g["nodes"]}
+        after, auth, includes = self.edges(g)
+        dr = "DR-PX-2026-10-26-018"
+        self.assertEqual(nodes[dr]["type"], "change_record")
+        self.assertEqual(nodes[dr]["status"], "APPROVED")
+        self.assertEqual(nodes["DOC-PX-017"]["type"], "dossier_task")
+        self.assertIn(("DOC-PX-017", dr), auth)
+        self.assertIn("DOC-GOV-007", after["DOC-PX-017"])
+        subsystems = {n["id"] for n in g["nodes"] if n["type"] == "subsystem"}
+        owners = {e["from"]: e["to"] for e in g["edges"] if e["type"] == "owned_by"}
+        self.assertEqual(len(self.DR_018_ADOPT) + len(self.DR_018_DEFERRED), 45)
+        for i in self.DR_018_ADOPT:
+            pid = "PX-%03d" % i
+            self.assertEqual(nodes[pid]["type"], "imp_task", pid)
+            self.assertEqual(nodes[pid]["milestone"], "M10", pid)
+            self.assertEqual(nodes[pid]["release"], "RELEASE_ZERO", pid)
+            self.assertIn(owners[pid], subsystems, pid)
+            self.assertIn((pid, dr), auth, pid)
+            self.assertIn("DOC-PX-017", after[pid], pid)
+            self.assertEqual(includes.get(pid), {"RELEASE_ZERO"}, pid)
+        for i in self.DR_018_DEFERRED:
+            rid = "REQ-PX-%03d" % i
+            self.assertEqual(nodes[rid]["disposition"], "DEFERRED", rid)
+            self.assertIn(owners.get(rid, nodes[rid].get("subsystem")), subsystems | {None}, rid)
+            self.assertNotIn("PX-%03d" % i, nodes, rid)
+        text = (self.root / "docs/62_PRODUCT_EXTENSION_REQUIREMENTS_TASKS_AND_QUALIFICATIONS.md").read_text()
+        tiers = re.findall(r"\*\*Decision Record, phase and evidence tier:\*\* DR-PX-2026-10-26-018; upgrade program, [^;]+; (release-critical|iteration) \(", text)
+        self.assertEqual((tiers.count("release-critical"), tiers.count("iteration")), (21, 6))
+        # the chains inside the program
+        for later, earlier in (("PX-152", "PX-150"), ("PX-174", "PX-158"), ("PX-179", "PX-178"), ("PX-186", "PX-184"), ("PX-188", "PX-157")):
+            self.assertIn(earlier, after[later], later)
+        record = (self.root / "docs/decisions/DR-PX-2026-10-26-018-codex-mai-ui-planner-upgrade-program.md").read_text()
+        head = record.split("---")[1]
+        self.assertIn("status: accepted", head)
+        self.assertIn("approved_by: owner, chat instruction of 2026-10-26", head)
+        for needle in ("registration** of the program", "does **not** cover any of the twelve open decisions", "Appendix B", "Appendix C", "UPG-C02",
+                       "clean-room", "Twelve decisions are open", "ADR-R-039 and 041 stay LOCKED", "not verified"):
+            self.assertIn(needle, record)
+        for i in self.DR_018_DEFERRED:
+            self.assertIn("### PX-%03d — " % i, record)  # activation text kept for every DEFERRED row
+            self.assertNotIn("## PX-%03d — " % i, text.replace("### PX-%03d" % i, ""))  # and no task card in doc 62
+
+    def test_dr_017_runs_the_coding_task_autonomously_inside_the_envelope_without_relaxing_the_other_always_ask_classes(self):
+        # DR-PX-2026-10-25-017 (accepted 2026-10-25 on the owner's chat instruction): rows PX-144..146 are owned by the existing
+        # subsystems `effects-security` and `core-runtime`, scheduled in M10, RELEASE_ZERO only, release-critical, gated by
+        # DOC-PX-016. The record scopes AFW-F06/F07/F08 and the Alpha defaults of docs 14 and 28, keeps every other always-ask
+        # class, authorizes no live-provider spend, and the ledger says so too.
+        self.rebuild()
+        g = self.graph()
+        nodes = {n["id"]: n for n in g["nodes"]}
+        after, auth, includes = self.edges(g)
+        dr = "DR-PX-2026-10-25-017"
+        self.assertEqual(nodes[dr]["type"], "change_record")
+        self.assertEqual(nodes[dr]["status"], "APPROVED")
+        self.assertEqual(nodes["DOC-PX-016"]["type"], "dossier_task")
+        self.assertIn(("DOC-PX-016", dr), auth)
+        self.assertIn("DOC-GOV-007", after["DOC-PX-016"])
+        owners = {e["from"]: e["to"] for e in g["edges"] if e["type"] == "owned_by"}
+        for pid, owner in (("PX-144", "effects-security"), ("PX-145", "core-runtime"), ("PX-146", "core-runtime")):
+            self.assertEqual(nodes[pid]["milestone"], "M10", pid)
+            self.assertEqual(nodes[pid]["release"], "RELEASE_ZERO", pid)
+            self.assertEqual(owners[pid], owner, pid)
+            self.assertIn((pid, dr), auth, pid)
+            self.assertIn("DOC-PX-016", after[pid], pid)
+            self.assertEqual(includes.get(pid), {"RELEASE_ZERO"}, pid)
+        text = (self.root / "docs/62_PRODUCT_EXTENSION_REQUIREMENTS_TASKS_AND_QUALIFICATIONS.md").read_text()
+        tiers = re.findall(r"\*\*Decision Record, phase and evidence tier:\*\* DR-PX-2026-10-25-017; [^;]+; (release-critical|iteration) \(", text)
+        self.assertEqual(tiers, ["release-critical"] * 3)
+        record = (self.root / "docs/decisions/DR-PX-2026-10-25-017-autonomous-coding-engine.md").read_text()
+        head = record.split("---")[1]
+        self.assertIn("status: accepted", head)
+        self.assertIn("approved_by: owner, chat instruction of 2026-10-25", head)
+        for needle in ("AFW-F06", "AFW-F07", "AFW-F08", "`dependency_install`", "run_mode:AUTONOMOUS:dependency_install", "MODBIT_AUTO_VERIFY=0",
+                       "MODBIT_AUTO_RESUME=0", "MODBIT_DEFAULT_MAX_TURNS", "Live proof", "spending on a live model provider"):
+            self.assertIn(needle, record)
+        # the approval is bounded: the record says what it does not cover
+        self.assertIn("It does **not** cover:", record)
+        self.assertIn("any change to the always-ask classes for a secret, a deletion, a push, a write outside the workspace, a protected or configuration path, an escalation", record)
+
+    def test_dr_016_adopts_the_zcode_design_language_without_relaxing_the_accessibility_floor(self):
+        # DR-PX-2026-10-24-016 (accepted 2026-10-24 on the owner's chat instruction): rows PX-141..143 are owned by the existing
+        # subsystem `desktop`, scheduled in M10, RELEASE_ZERO only, iteration tier, chained 141 -> 142 -> 143, gated by DOC-PX-015,
+        # and the record keeps AFW-A12/A13/A14, lists the nine declared exceptions and supersedes only the named doc 65 numbers.
+        self.rebuild()
+        g = self.graph()
+        nodes = {n["id"]: n for n in g["nodes"]}
+        after, auth, includes = self.edges(g)
+        dr = "DR-PX-2026-10-24-016"
+        self.assertEqual(nodes[dr]["type"], "change_record")
+        self.assertEqual(nodes[dr]["status"], "APPROVED")
+        self.assertEqual(nodes["DOC-PX-015"]["type"], "dossier_task")
+        self.assertIn(("DOC-PX-015", dr), auth)
+        self.assertIn("DOC-GOV-007", after["DOC-PX-015"])
+        owners = {e["from"]: e["to"] for e in g["edges"] if e["type"] == "owned_by"}
+        for pid in ("PX-141", "PX-142", "PX-143"):
+            self.assertEqual(nodes[pid]["milestone"], "M10", pid)
+            self.assertEqual(nodes[pid]["release"], "RELEASE_ZERO", pid)
+            self.assertEqual(owners[pid], "desktop", pid)
+            self.assertIn((pid, dr), auth, pid)
+            self.assertIn("DOC-PX-015", after[pid], pid)
+            self.assertTrue(self.reaches(after, pid, {"DOC-PX-015"}), pid)
+            self.assertEqual(includes.get(pid), {"RELEASE_ZERO"}, pid)
+        self.assertIn("PX-141", after["PX-142"])
+        self.assertIn("PX-142", after["PX-143"])
+        self.assertIn("PX-044", after["PX-141"])
+        text = (self.root / "docs/62_PRODUCT_EXTENSION_REQUIREMENTS_TASKS_AND_QUALIFICATIONS.md").read_text()
+        tiers = re.findall(r"\*\*Decision Record, phase and evidence tier:\*\* DR-PX-2026-10-24-016; [^;]+; (release-critical|iteration) \(", text)
+        self.assertEqual(tiers, ["iteration"] * 3)
+        record = (self.root / "docs/decisions/DR-PX-2026-10-24-016-zcode-design-language.md").read_text()
+        head = record.split("---")[1]
+        self.assertIn("status: accepted", head)
+        self.assertIn("approved_by: owner, chat instruction of 2026-10-24", head)
+        for zdx in range(1, 10):
+            self.assertIn("| ZDX-%02d |" % zdx, record)
+        for needle in ("AFW-A12", "AFW-A13", "AFW-A14", "third-party/zcode-ui", "3c5b227649371507ddc4eb46ac5133afe6db1cab", "Apache-2.0"):
+            self.assertIn(needle, record)
+        # the approval is bounded: the record says it does not cover a relaxation of the accessibility floor, and the ledger says so too
+        self.assertIn("does **not** cover any relaxation of AFW-A12 (WCAG 2.2 AA), AFW-A13 (themes) or AFW-A14", record)
+        self.assertIn("leave AFW-A12, A13 and A14 unrelaxed", text)
+        spec = (self.root / "docs/65_AGENT_FIRST_WORKSPACE_SPECIFICATION.md").read_text()
+        self.assertIn("Scoped supersession (DR-PX-2026-10-24-016", spec)
+        # the clean-room posture for the Cursor reference product is untouched
+        self.assertIn("No code, stylesheet, theme file, colour value taken from a theme", spec)
+
+    def test_dr_019_adopts_the_agent_workspace_language_inside_the_clean_room_posture(self):
+        # DR-PX-2026-11-03-019 (accepted 2026-11-03 on the owner's chat instruction): rows PX-192..194 are owned by the existing
+        # subsystem `desktop`, scheduled in M10, RELEASE_ZERO only, iteration tier, chained 192 -> 193 -> 194 after PX-143, gated by
+        # DOC-PX-018; the record supersedes DR-PX-2026-10-24-016 in a named scope only, keeps AFW-A12/A13/A14 and the clean-room posture.
+        self.rebuild()
+        g = self.graph()
+        nodes = {n["id"]: n for n in g["nodes"]}
+        after, auth, includes = self.edges(g)
+        dr = "DR-PX-2026-11-03-019"
+        self.assertEqual(nodes[dr]["type"], "change_record")
+        self.assertEqual(nodes[dr]["status"], "APPROVED")
+        self.assertEqual(nodes["DOC-PX-018"]["type"], "dossier_task")
+        self.assertIn(("DOC-PX-018", dr), auth)
+        owners = {e["from"]: e["to"] for e in g["edges"] if e["type"] == "owned_by"}
+        for pid in ("PX-192", "PX-193", "PX-194"):
+            self.assertEqual(nodes[pid]["milestone"], "M10", pid)
+            self.assertEqual(nodes[pid]["release"], "RELEASE_ZERO", pid)
+            self.assertEqual(owners[pid], "desktop", pid)
+            self.assertIn((pid, dr), auth, pid)
+            self.assertIn("DOC-PX-018", after[pid], pid)
+            self.assertEqual(includes.get(pid), {"RELEASE_ZERO"}, pid)
+        self.assertIn("PX-143", after["PX-192"])
+        self.assertIn("PX-192", after["PX-193"])
+        self.assertIn("PX-193", after["PX-194"])
+        text = (self.root / "docs/62_PRODUCT_EXTENSION_REQUIREMENTS_TASKS_AND_QUALIFICATIONS.md").read_text()
+        tiers = re.findall(r"\*\*Decision Record, phase and evidence tier:\*\* DR-PX-2026-11-03-019; [^;]+; (release-critical|iteration) \(", text)
+        self.assertEqual(tiers, ["iteration"] * 3)
+        self.assertIn("keep the clean-room posture of doc 65 section 2, and leave AFW-A12, A13 and A14 unrelaxed", text)
+        record = (self.root / "docs/decisions/DR-PX-2026-11-03-019-agent-workspace-language.md").read_text()
+        head = record.split("---")[1]
+        self.assertIn("status: accepted", head)
+        self.assertIn("approved_by: owner, chat instruction of 2026-11-03", head)
+        self.assertIn("supersedes: scoped — DR-PX-2026-10-24-016", head)
+        for awl in range(1, 10):
+            self.assertIn("AWL-%02d" % awl, record)
+        # the approval is bounded: no accessibility relaxation and no asset, colour or string of the reference product
+        self.assertIn("does **not** cover any relaxation of AFW-A12 (WCAG 2.2 AA), AFW-A13 (themes) or AFW-A14", record)
+        self.assertIn("never its colours, theme file, icons, fonts, logo, brand colour or strings", record)
+        spec = (self.root / "docs/65_AGENT_FIRST_WORKSPACE_SPECIFICATION.md").read_text()
+        self.assertIn("Scoped supersession (DR-PX-2026-11-03-019", spec)
+        self.assertIn("No code, stylesheet, theme file, colour value taken from a theme", spec)
+
+    def test_dr_020_rebuilds_the_screens_and_removes_the_board_inside_the_clean_room_posture(self):
+        # DR-PX-2026-11-04-020 (accepted 2026-11-04 on the owner's chat instruction): rows PX-195..197 are owned by `desktop`, M10,
+        # RELEASE_ZERO only, release-critical because send starts a run and the approval surface moved, chained after PX-194, gated by
+        # DOC-PX-019; the record supersedes DR-019 in a named scope, and the owner's review of real screens is an exit criterion.
+        self.rebuild()
+        g = self.graph()
+        nodes = {n["id"]: n for n in g["nodes"]}
+        after, auth, includes = self.edges(g)
+        dr = "DR-PX-2026-11-04-020"
+        self.assertEqual(nodes[dr]["status"], "APPROVED")
+        self.assertEqual(nodes["DOC-PX-019"]["type"], "dossier_task")
+        owners = {e["from"]: e["to"] for e in g["edges"] if e["type"] == "owned_by"}
+        for pid in ("PX-195", "PX-196", "PX-197"):
+            self.assertEqual(nodes[pid]["milestone"], "M10", pid)
+            self.assertEqual(owners[pid], "desktop", pid)
+            self.assertIn((pid, dr), auth, pid)
+            self.assertIn("DOC-PX-019", after[pid], pid)
+            self.assertEqual(includes.get(pid), {"RELEASE_ZERO"}, pid)
+        self.assertIn("PX-194", after["PX-195"])
+        self.assertIn("PX-195", after["PX-196"])
+        self.assertIn("PX-196", after["PX-197"])
+        text = (self.root / "docs/62_PRODUCT_EXTENSION_REQUIREMENTS_TASKS_AND_QUALIFICATIONS.md").read_text()
+        tiers = re.findall(r"\*\*Decision Record, phase and evidence tier:\*\* DR-PX-2026-11-04-020; [^;]+; (release-critical|iteration) \(", text)
+        self.assertEqual(tiers, ["release-critical"] * 3)
+        record = (self.root / "docs/decisions/DR-PX-2026-11-04-020-agent-workspace-screens.md").read_text()
+        head = record.split("---")[1]
+        self.assertIn("status: accepted", head)
+        self.assertIn("approved_by: owner, chat instruction of 2026-11-04", head)
+        self.assertIn("supersedes: scoped — DR-PX-2026-11-03-019", head)
+        for aws in range(1, 8):
+            self.assertIn("AWS-%02d" % aws, record)
+        self.assertIn("does **not** cover any relaxation of AFW-A12 (WCAG 2.2 AA), AFW-A13 (themes) or AFW-A14", record)
+        self.assertIn("never the reference product's colours, theme file, icons, fonts, logo, brand colour or strings", record)
+        self.assertIn("The owner sees real screenshots beside the mockup before merge", record)
+        spec = (self.root / "docs/65_AGENT_FIRST_WORKSPACE_SPECIFICATION.md").read_text()
+        self.assertIn("Scoped supersession (DR-PX-2026-11-04-020", spec)
 
     def test_decision_record_status_and_approval_match_the_graph(self):
         # An accepted record names who approved it; a proposed one says it is pending; the graph change record follows the file.
@@ -637,6 +855,23 @@ class DossierTests(unittest.TestCase):
         self.write_graph(g)
         result = subprocess.run([sys.executable, "tools/check_dossier.py"], cwd=self.root, capture_output=True, text=True, timeout=30)
         self.assertNotIn("[G9]", result.stdout + result.stderr)
+
+    def test_gallery_state_counted_as_proof_is_rejected(self):
+        """QUAL-PX-044: a model-free gallery state is design review only, never proof."""
+        g = self.graph()
+        for node in g["nodes"]:
+            if node["id"] == "IMP-EV-0208":
+                node["status"] = "COMPLETE"
+                node["evidence"] = ["test:apps/desktop/e2e/gallery.spec.ts", "commit:abc123"]
+        self.write_graph(g)
+        out = self.run_tool("check_dossier", ok=False, contains="[G11]")
+        self.assertIn("gallery-state evidence only", out)
+        for node in g["nodes"]:
+            if node["id"] == "IMP-EV-0208":
+                node["evidence"] = ["test:apps/desktop/e2e/gallery.spec.ts", "test:services/modbit-core/tests/x.rs::real", "commit:abc123"]
+        self.write_graph(g)
+        result = subprocess.run([sys.executable, "tools/check_dossier.py"], cwd=self.root, capture_output=True, text=True, timeout=30)
+        self.assertNotIn("[G11]", result.stdout + result.stderr)
 
     def test_release_readiness_is_derived_from_tasks(self):
         self.reset_m01_fixture()

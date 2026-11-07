@@ -19,6 +19,8 @@
 //! real JPEG rung would be a dependency admission; the ladder is the place it
 //! would slot in.
 
+// PX-168 lint policy: this file baselined expect/unwrap sites; new ones need review.
+#![allow(clippy::expect_used)]
 use std::collections::HashSet;
 use std::io::Cursor;
 use std::sync::Arc;

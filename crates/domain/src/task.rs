@@ -1984,6 +1984,23 @@ pub enum TaskEvent {
         /// Why no description came back, when it did not.
         error: Option<String>,
     },
+    /// `SkillConfigurationCompiled` (PX-182): the skills of this run compiled
+    /// for the tools it is offered — each skill's guidance blocks kept or
+    /// dropped by tool — as one versioned configuration whose object the
+    /// `configuration_ref` names and whose hash is its id. Recorded when it
+    /// differs from the last. No state change.
+    SkillConfigurationCompiled {
+        /// sha256 of the canonical configuration JSON.
+        configuration_id: String,
+        /// The object holding that JSON.
+        configuration_ref: String,
+        /// The skills, as `name@content_hash`.
+        skills: Vec<String>,
+        /// Guidance blocks kept, as `skill:tool`.
+        guidance_kept: Vec<String>,
+        /// Guidance blocks dropped for a tool the run is not offered.
+        guidance_dropped: Vec<String>,
+    },
     /// `SkillIndexRecorded` (REQ-PX-105): the skill index the model was told
     /// of changed — the skills it may load, in the form each took under the
     /// aggregate budget. Recorded when it differs from the last. No state
@@ -2002,6 +2019,10 @@ pub enum TaskEvent {
         body_tokens: u32,
         /// Hash of the index text.
         index_hash: String,
+        /// Each entry's relevance to the goal, in index order (`name:score`,
+        /// PX-183).
+        #[serde(default)]
+        scores: Vec<String>,
     },
     /// `SkillRejected`: a skill named for the task was not used, with why.
     /// No state change.
@@ -2096,6 +2117,9 @@ pub enum TaskEvent {
         /// `MODEL_WINDOW` | `ENV_OVERRIDE` | `FALLBACK`.
         #[serde(default)]
         budget_source: String,
+        /// PX-159: the transcript's estimated tokens when it started.
+        #[serde(default)]
+        tokens_before: u32,
     },
     /// `CompactionCommitted` (docs/30 "Durability", M4.2): the durability
     /// record of an installed epoch, beside the model-facing
@@ -2120,6 +2144,15 @@ pub enum TaskEvent {
         /// tried.
         #[serde(default)]
         fallback_reason: String,
+        /// PX-159: the context's estimated tokens once installed (the
+        /// projection and the kept tail).
+        #[serde(default)]
+        tokens_after: u32,
+        /// PX-159: the summarizer calls this compaction made, as
+        /// `{endpoint, requested_model, input_tokens, output_tokens,
+        /// reported}`, so its cost is priced the way every request is.
+        #[serde(default)]
+        summarizer_usage: Vec<serde_json::Value>,
     },
     /// `CompactionRejectedStale` (docs/19: a result is accepted only while
     /// its source is still current; docs/30 "Durability"; docs/54 fault 10):
@@ -3185,6 +3218,7 @@ impl TaskEvent {
             Self::SkillSelected { .. } => "SkillSelected",
             Self::SkillRejected { .. } => "SkillRejected",
             Self::SkillIndexRecorded { .. } => "SkillIndexRecorded",
+            Self::SkillConfigurationCompiled { .. } => "SkillConfigurationCompiled",
             Self::RulesSelected { .. } => "RulesSelected",
             Self::AgentNodeCreated { .. } => "AgentNodeCreated",
             Self::AgentNodeTransitioned { .. } => "AgentNodeTransitioned",
@@ -3396,6 +3430,7 @@ impl Task {
             | TaskEvent::SkillSelected { .. }
             | TaskEvent::SkillRejected { .. }
             | TaskEvent::SkillIndexRecorded { .. }
+            | TaskEvent::SkillConfigurationCompiled { .. }
             | TaskEvent::RulesSelected { .. }
             | TaskEvent::MediaBridged { .. }
             | TaskEvent::CapacityTicketGranted { .. }

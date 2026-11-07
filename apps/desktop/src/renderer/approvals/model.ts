@@ -58,6 +58,11 @@ export function whyAsked(r: ApprovalReasonView): Why {
   const code = r.code;
   if (code === "MODE_ASK") return { headline: "Every protected effect asks in the Ask mode.", detail: "Change the run mode to let rules you make run without asking." };
   if (code === "NOT_IN_ALLOWLIST") return { headline: "No allowlist rule covers this command.", detail: r.contained ? "It would run inside a sandbox, but the mode in force does not approve that on its own." : "Run it once, or allow its prefix so the same kind of command runs without asking." };
+  // PX-149: a rule matched the command's words but not the program that would run it.
+  if (code === "PROGRAM_PATH_CHANGED") return { headline: "The program is not the one this rule was made for.", detail: "A rule that matches this command was made for a program at a different path. Check where the program comes from before running it; the rule stays as it is." };
+  if (code === "RULE_NOT_PINNED") return { headline: "A rule matches, but it was made before rules recorded their program.", detail: "Run it once, or choose Always to make the rule again so it remembers which program it covers." };
+  if (code === "PROGRAM_NOT_FOUND") return { headline: "The program was not found, so no rule can vouch for it.", detail: "Nothing on the search path matches the command's first word. Run it once only if you expect it to fail or to be provided another way." };
+  if (code === "PROGRAM_IN_WORKSPACE") return { headline: "The shell that would run this is a file in the workspace.", detail: "The commands a rule allows would be run by a program that belongs to the repository, not the system. No rule covers that." };
   if (code === "BUDGET_RAISE") return { headline: "A budget raise spends more than was set.", detail: "Approving lets this one raise apply when it is asked again; it changes the task's caps and nothing else. The organisation's ceiling still holds." };
   if (code.startsWith("ALWAYS_ASK:")) {
     const cls = code.slice("ALWAYS_ASK:".length);
@@ -90,6 +95,8 @@ export function defaultPrefix(argv: readonly string[]): string[] {
 export function alwaysAvailable(a: DockApprovalView): { ok: true } | { ok: false; why: string } {
   // PX-074 / docs/66 CUC-C01: native control is approved one call at a time. No rule, prefix or run mode covers it.
   if (a.computer || a.toolName.startsWith("computer.")) return { ok: false, why: "Native computer control is approved one call at a time. No rule and no run mode covers it." };
+  // DR-PX-2026-10-25-017: Ask ignores every rule, so a rule made from this card would be saved and never apply. Say so instead of saving it.
+  if (a.reason.runMode === "ASK") return { ok: false, why: "This task is in Ask mode, which never uses rules. Change the run mode to Supervised, then Always allow will take effect." };
   if (!a.intent.argv || a.intent.argv.length === 0) return { ok: false, why: "Only a command with an argument list can be allowed by prefix." };
   if (a.reason.askClasses.length > 0 || a.reason.code.startsWith("ALWAYS_ASK:")) return { ok: false, why: "This kind of effect always asks. A rule that covers it is made in the run-mode settings, on purpose." };
   if (isIrreversible(a.effectClass)) return { ok: false, why: "An effect that cannot be undone is never allowed by a rule from this card." };

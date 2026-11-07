@@ -1,6 +1,6 @@
 /**
  * Packaged-app E2E for REQ-EV-0151 / REQ-EV-0275 (docs/10 "Needs Attention",
- * docs/32): the board's attention strip shows what the Core derives from
+ * docs/32): the Approvals page's attention list shows what the Core derives from
  * canonical unresolved state — here a start refused for capacity on a
  * one-slot host — and it clears the moment the resolving event lands
  * (the task starts). Nothing is invented in the renderer.
@@ -13,6 +13,7 @@ import { tmpdir } from "node:os";
 import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { closeApp } from "./support/close-app.ts";
+import { expectTaskState, openTask, runTask } from "./support/new-task.ts";
 
 const appDir = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 const coreBin = process.env.MODBIT_CORE_BIN ?? resolve(appDir, "..", "..", "target", "debug", process.platform === "win32" ? "modbit-core.exe" : "modbit-core");
@@ -83,37 +84,43 @@ test("attention: a start refused for capacity is an item from the Core and clear
   const env = { MODBIT_OPENAI_BASE_URL: url, MODBIT_CAPACITY: "model=1,provider=4" };
   try {
     const { app, page } = await launch(dataDir, env);
+    // The Approvals page lists what the Core derives; the item count shows in the list's entry for it.
+    const showInbox = async () => {
+      if (!(await page.getByTestId("inbox").isVisible())) await page.getByTestId("open-inbox").click();
+      await expect(page.getByTestId("inbox")).toBeVisible();
+    };
+    const items = page.getByTestId("attention-item");
+    await showInbox();
+    await expect(page.getByTestId("inbox-empty")).toBeVisible();
     await expect(page.getByTestId("attention")).toHaveCount(0);
-    // Two tasks; the first takes the only model slot.
-    for (const goal of ["read notes one", "read notes two"]) {
-      await page.getByTestId("goal").fill(goal);
-      await page.getByTestId("workspace").fill(repo);
-      await page.getByTestId("run").click();
-      await expect(page.getByTestId("task-card").filter({ hasText: goal })).toHaveCount(1);
-    }
-    const one = page.getByTestId("task-card").filter({ hasText: "read notes one" });
-    const two = page.getByTestId("task-card").filter({ hasText: "read notes two" });
-    await one.getByTestId("task-start").click();
-    await expect(one.getByTestId("task-state")).toHaveText("Running", { timeout: 30_000 });
-    await two.getByTestId("task-start").click();
+    // Two tasks; the first takes the only model slot. Sending creates and starts a task and opens its conversation.
+    const one = await runTask(page, "read notes one", repo);
+    await expectTaskState(page, one, "Running", 30_000);
+    const two = await runTask(page, "read notes two", repo);
     // The Core refused the second start: one CAPACITY item, named and actionable.
-    const item = page.getByTestId("attention-item");
-    await expect(item).toHaveCount(1, { timeout: 30_000 });
-    await expect(item).toHaveAttribute("data-kind", "CAPACITY");
-    await expect(item).toContainText("model_concurrency");
-    await expect(item).toContainText("StartTask");
-    const twoId = await two.getAttribute("data-task-id");
-    await expect(item).toHaveAttribute("data-task-id", twoId!);
+    await showInbox();
+    await expect(items).toHaveCount(1, { timeout: 30_000 });
+    await expect(items).toHaveAttribute("data-kind", "CAPACITY");
+    await expect(items).toContainText("model_concurrency");
+    await expect(items).toContainText("StartTask");
+    await expect(items).toHaveAttribute("data-task-id", two);
+    await expect(page.getByTestId("open-inbox-count")).toHaveText("1");
     // The first finishes; starting the second clears the item from its
-    // canonical event (TaskStarted), nothing else.
-    await expect(page.getByTestId("column-readyForReview").getByTestId("task-card")).toHaveCount(1, { timeout: 60_000 });
-    // The first result opened the Review over the fleet (docs/39 step 5); back to the board.
+    // canonical event (TaskStarted), nothing else. The Approvals page is closed first: the Review opens over the page the person is on.
+    await page.getByTestId("open-inbox").click();
+    await expect(page.getByTestId("inbox")).toHaveCount(0);
+    await expectTaskState(page, one, "ReadyForReview", 60_000);
+    // The first result opened the Review (docs/39 step 5); close it.
     await expect(page.getByTestId("review")).toBeVisible({ timeout: 15_000 });
     await page.getByTestId("review-close").click();
-    await expect(item).toHaveCount(1);
-    await two.getByTestId("task-start").click();
-    await expect(page.getByTestId("attention-item")).toHaveCount(0, { timeout: 30_000 });
-    await expect(page.getByTestId("column-readyForReview").getByTestId("task-card")).toHaveCount(2, { timeout: 60_000 });
+    await showInbox();
+    await expect(items).toHaveCount(1);
+    await openTask(page, two);
+    await page.getByTestId("conv-start").click();
+    await showInbox();
+    await expect(items).toHaveCount(0, { timeout: 30_000 });
+    await expectTaskState(page, two, "ReadyForReview", 60_000);
+    await expectTaskState(page, one, "ReadyForReview");
     await closeApp(app);
   } finally {
     server.close();

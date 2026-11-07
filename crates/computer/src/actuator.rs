@@ -16,6 +16,8 @@
 //! and [`CallError::Lost`] (sent; the outcome is unknown), and
 //! [`CallError::Remote`] (the actuator answered with an error).
 
+// PX-168 lint policy: this file spawns processes; new ones need review.
+#![allow(clippy::disallowed_methods)]
 use std::collections::HashMap;
 use std::path::PathBuf;
 use std::pin::Pin;

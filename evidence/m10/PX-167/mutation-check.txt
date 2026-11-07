@@ -1,0 +1,5 @@
+PX-167 planted-failure checks (deny.toml copied into a scratch crate each time):
+- dependency time =0.1.45 (known RUSTSEC-2020-0071): `cargo deny check` -> "advisories FAILED" (non-zero)
+- dependency gmp-mpfr-sys =1.6.4 (LGPL-3.0, not in the allow list): `cargo deny check` -> "licenses FAILED" (non-zero)
+- unmodified tree: `cargo deny check` -> advisories ok, bans ok, licenses ok, sources ok
+- a new unused dependency (serde_yaml added to crates/git, not used): tools/check_unused_crates.sh exits 1; restored, the unmodified tree passes

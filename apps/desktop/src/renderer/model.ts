@@ -3,6 +3,9 @@
  * State is advisory; every fact comes from a Core snapshot or a Core event.
  * A task card never shows "Completed" unless the Core emitted TaskCompleted.
  */
+
+import type { TaskFactsView } from "../shared/conversation-types.ts";
+
 export type FleetColumn = "needsAttention" | "readyForReview" | "running" | "waiting" | "completed" | "failed";
 
 /** The agents of a task as the Fleet counts them (M6.6): every node the
@@ -20,6 +23,17 @@ export interface AgentCounts {
  *  escalating, awaiting human, waiting for capacity. Derived from Core
  *  events only. */
 export type Phase = "drafting" | "verifying" | "reviewing" | "escalating" | "awaitingHuman" | "waitingCapacity" | "delegating" | "done";
+
+export const PHASE_LABEL: Record<Phase, string> = {
+  drafting: "drafting",
+  verifying: "verifying",
+  reviewing: "reviewing",
+  escalating: "escalating",
+  awaitingHuman: "awaiting human",
+  waitingCapacity: "waiting for capacity",
+  delegating: "delegating",
+  done: "done",
+};
 
 export interface TaskCard {
   taskId: string;
@@ -512,6 +526,26 @@ function fold(d: Draft, e: Event, taskIdHint?: string): void {
       return;
     }
   }
+}
+
+const PHASES = new Set<string>(Object.keys(PHASE_LABEL));
+
+/**
+ * The card with the facts the Core folded from the task's log (PX-196), when they are at least as new as the
+ * last event this window folded into it: after a restart the window has seen none of the task's events, and
+ * its defaults ("drafting", no agents) are not facts. A newer live event wins until the next page.
+ */
+export function withCoreFacts(card: TaskCard, facts: TaskFactsView | null, asOfOffset: string): TaskCard {
+  if (!facts || !/^\d+$/.test(asOfOffset) || BigInt(asOfOffset) < BigInt(card.lastOffset || "0")) return card;
+  return {
+    ...card,
+    phase: PHASES.has(facts.phase) ? (facts.phase as Phase) : card.phase,
+    agents: { ...facts.agents },
+    attachments: facts.attachments,
+    latestEvidence: facts.latestEvidence || null,
+    risk: facts.risk || null,
+    nextAction: card.nextAction ?? (facts.nextAction || null),
+  };
 }
 
 /** The children of a task, in admission order. */

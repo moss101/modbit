@@ -1,0 +1,13 @@
+
+Running 2 tests using 1 worker
+
+[electron] modbit-core: recovery complete: boot_generation=1 events_verified=0 aggregates=0 projections_rebuilt=false sessions=0 tasks=0 in 9ms
+[electron] Debugger ending on ws://127.0.0.1:51664/71a6f0d0-78c9-4c15-849c-06005f653a29
+For help, see: https://nodejs.org/learn/getting-started/debugging
+  ✓  1 e2e/awl.spec.ts:116:1 › PX-192..194: the agent workspace language on the real app: tokens, unframed geometry, navigation, recipes, one-line status row, and the gate fails on a restored ZDL value (4.5s)
+[electron] sandbox_extension_issue_file failed for /Users/mohsin/projects/modbit/node_modules/.pnpm/electron@44.3.0_supports-color@8.1.1/node_modules/electron/dist/Electron.app/Contents/Frameworks/Electron Helper.app/Contents/Resources: 1 (Operation not permitted)
+[electron] Debugger ending on ws://127.0.0.1:51677/ba63ffca-daa8-490c-89c5-beadfda03cbb
+For help, see: https://nodejs.org/learn/getting-started/debugging
+  ✓  2 e2e/awl.spec.ts:300:1 › PX-194: a scripted task with tool steps, an edit, a terminal and an approval shows the agent workspace density in light and dark, keeps the footer reachable, and the gate fails on a restored value (10.2s)
+
+  2 passed (15.0s)

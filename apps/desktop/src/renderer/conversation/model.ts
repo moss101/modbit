@@ -294,3 +294,36 @@ export function withDivider(rows: readonly TranscriptRowView[], dividerOffset: s
   const divider: TranscriptRowView = { ordinal: 0, rowId: "divider:remembered", kind: "UNREAD_DIVIDER", offset: dividerOffset, lastOffset: dividerOffset, atMs: 0, turnId: "", hints: { renderable: true, groupable: false, hasReasoning: false, durationMs: 0, shortText: label(unread), linesAdded: 0, linesRemoved: 0, status: "" }, text: label(unread), textTruncated: false, textRef: "", children: [], facts: { type: "none" } };
   return [...rows.slice(0, i), divider, ...rows.slice(i)];
 }
+
+const VERB_DONE: Record<string, string> = { READ: "Read", SEARCH: "Searched", SHELL: "Ran", EDIT: "Edited", BROWSER: "Browsed", OTHER: "Used" };
+const VERB_NOW: Record<string, string> = { READ: "Reading", SEARCH: "Searching", SHELL: "Running", EDIT: "Editing", BROWSER: "Browsing", OTHER: "Using" };
+const VERB_ASKED: Record<string, string> = { READ: "Read", SEARCH: "Search", SHELL: "Run", EDIT: "Edit", BROWSER: "Browse", OTHER: "Use" };
+
+/** A tool step says what happened only once it happened: a call still waiting on approval, denied or failed has not "Ran". */
+export function toolVerb(toolClass: string, status: string): string {
+  const of = status === "SUCCEEDED" ? VERB_DONE : status === "RUNNING" ? VERB_NOW : VERB_ASKED;
+  return of[toolClass] ?? of.OTHER!;
+}
+
+/** Failure codes that mean the call was stopped before it ran: the person or the policy said no, or the approval lapsed. */
+const NEVER_RAN = new Set(["APPROVAL_DENIED", "POLICY_DENIED", "APPROVAL_EXPIRED"]);
+
+/** A call's status as it is told: a FAILED call that was denied before it ran is DENIED, not a failure of the command. */
+export function callStatus(status: string, failureCode: string): string {
+  return status === "FAILED" && NEVER_RAN.has(failureCode) ? "DENIED" : status;
+}
+
+/** The calls of a fold that did not succeed: said beside what the others did, never counted with them. */
+export function unfinishedCalls(statuses: readonly string[]): string[] {
+  const n = (...of: string[]) => statuses.filter((s) => of.includes(s)).length;
+  const parts: string[] = [];
+  const open = n("PENDING", "RUNNING", "AWAITING_APPROVAL");
+  const failed = n("FAILED");
+  const unknown = n("UNKNOWN_OUTCOME");
+  const notRun = n("DENIED", "CANCELLED");
+  if (open > 0) parts.push(`${open} not finished`);
+  if (failed > 0) parts.push(`${failed} failed`);
+  if (unknown > 0) parts.push(`${unknown} with an unknown outcome`);
+  if (notRun > 0) parts.push(`${notRun} not run`);
+  return parts;
+}

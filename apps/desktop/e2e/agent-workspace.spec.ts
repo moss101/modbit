@@ -13,6 +13,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { ECHO_LOOP, expectTerminals, gate, nodeTerminal, steppedModel, type Step } from "./support/apps-harness.ts";
 import { accessible, closeApp, launch, makeRepo, setContentSize } from "./support/ui-harness.ts";
+import { queueTask } from "./support/new-task.ts";
 
 async function recordDialog(app: ElectronApplication, answer: number): Promise<void> {
   await app.evaluate(({ dialog }, response) => {
@@ -49,18 +50,13 @@ test("the agent list, the conversation and the apps panel work together on one r
   try {
     await setContentSize(app, page, 1280, 800);
 
-    // Start a task from the UI. A draft has no artifact, so there is no apps panel, even with its conversation open.
-    await page.getByTestId("goal").fill("Edit the notes");
-    await page.getByTestId("workspace").fill(repo);
-    await page.getByTestId("run").click();
-    const card = page.getByTestId("task-card").first();
-    const taskId = (await card.getAttribute("data-task-id"))!;
+    // Create a task from the home composer without starting it (Alt+Enter). A draft has no artifact, so there is no apps panel, even with its conversation open.
+    const taskId = await queueTask(page, "Edit the notes", repo);
 
-    // It appears in the agent list, as a Draft by the Core's class; selecting it opens its conversation in the centre.
+    // It appears in the agent list, as a Draft by the Core's class, and its conversation is open in the centre.
     const row = page.locator(`[data-testid="agent-row"][data-agent-id="${taskId}"]`);
     await expect(row).toBeVisible();
     await expect(row).toHaveAttribute("data-class", "DRAFT");
-    await row.click();
     const conversation = page.getByTestId("conversation");
     await expect(conversation).toHaveAttribute("data-task-id", taskId);
     await expect(row).toHaveAttribute("data-selected", "true");
@@ -104,9 +100,9 @@ test("the agent list, the conversation and the apps panel work together on one r
     await expect(page.getByTestId("evidence-receipt")).toHaveCount(fromCore.receipts.length);
     await accessible(page, "agent list, conversation and apps panel together", '[data-testid="shell"]');
 
-    // Per-task tab memory holds with the conversation: leave to the Fleet board and come back, the task's tab is as it was.
+    // Per-task tab memory holds with the conversation: leave to the home composer and come back, the task's tab is as it was.
     await page.getByTestId("tab-changes").click();
-    await page.getByTestId("agents-fleet").click();
+    await page.getByTestId("agents-new-task").click();
     await expect(conversation).toHaveCount(0);
     await row.click();
     await expect(conversation).toHaveAttribute("data-task-id", taskId);

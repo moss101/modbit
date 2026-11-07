@@ -7,6 +7,8 @@
 //! limits), the host's network is the guest's. `isolates()` is false and a
 //! gateway serves tenants with it only when configured to.
 
+// PX-168 lint policy: this file spawns processes and baselined expect/unwrap sites; new ones need review.
+#![allow(clippy::disallowed_methods, clippy::expect_used)]
 use std::collections::HashMap;
 use std::path::PathBuf;
 use std::process::Stdio;

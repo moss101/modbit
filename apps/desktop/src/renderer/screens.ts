@@ -119,12 +119,12 @@ export function newTaskState(input: { core: CoreStatusLike; provider: { configur
       return state("newTask", "degraded", "budget or capacity exhausted", { cause: e, nextAction: "wait for a running task to finish, or raise the budget", evidence: "the Core's rejection" });
     }
     if (e.includes("NO_PROVIDER") || e.includes("PROVIDER")) {
-      return state("newTask", "degraded", "provider unavailable", { cause: e, nextAction: "set up a provider (step 2 above) before starting", evidence: "the Core's rejection" });
+      return state("newTask", "degraded", "provider unavailable", { cause: e, nextAction: "set up a provider above before starting", evidence: "the Core's rejection" });
     }
     return state("newTask", "error", "refused", { cause: e, nextAction: "read the cause, then adjust the request", evidence: "the Core's rejection" });
   }
   if (input.provider && !input.provider.configured) {
-    return state("newTask", "degraded", "provider unavailable", { cause: "no provider is configured in this Core", nextAction: "a task can be created but will not start until a provider is set up (step 2 above)", evidence: "provider status" });
+    return state("newTask", "degraded", "provider unavailable", { cause: "no provider is configured in this Core", nextAction: "a task can be created but will not start until a provider is set up (above)", evidence: "provider status" });
   }
   const root = input.workspaceRoot.trim();
   if (root && input.trusted !== root) return state("newTask", "populated", "repository not yet trusted (running trusts it, scoped to it)");
@@ -164,6 +164,15 @@ export function taskState(input: { card: TaskCard; core: CoreStatusLike; attenti
   if (other) return state("task", "degraded", other.kind.toLowerCase().replace(/_/g, " "), { cause: other.reason, nextAction: other.action, evidence: other.reference });
   if (card.state === "Completed" || card.state === "Cancelled") return state("task", "populated", card.state.toLowerCase());
   return state("task", "populated", `${card.state.toLowerCase()} · ${card.phase}`);
+}
+
+/** States another surface of the task's screen states along with its decision: the docked approval card, the inline question. */
+const SAID_ELSEWHERE = new Set(["awaiting approval", "awaiting your answer", "approval", "question"]);
+
+/** Whether a task's state stands above its composer: it is wrong in a way the person should see, and no failure block or approval card already says it. */
+export function noticeWanted(s: ScreenState, failureShown: boolean, approvalDocked: boolean): boolean {
+  if (s.kind !== "error" && s.kind !== "degraded" && s.kind !== "recovery") return false;
+  return !failureShown && !approvalDocked && !SAID_ELSEWHERE.has(s.label);
 }
 
 export interface ReviewInputs {

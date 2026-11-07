@@ -12,7 +12,7 @@
 //! queue send-now  --session <id> --task <id> --input <id> [--interrupt-id <id>]
 //! queue stop      --session <id> --task <id> [--interrupt-id <id>] [reason]
 //! run-mode get    --task <id>
-//! run-mode set    --session <id> --task <id> [--ack] <ASK|ALLOWLIST|ALLOWLIST_SANDBOX|RUN_EVERYTHING>
+//! run-mode set    --session <id> --task <id> [--ack] <ASK|ALLOWLIST|ALLOWLIST_SANDBOX|RUN_EVERYTHING|AUTONOMOUS>
 //! allow add       --session <id> --task <id> [--scope TASK|REPO|USER] [--expires-in-ms N]
 //!                 [--covers-always-ask] -- <argv-prefix>...
 //! allow list      [--task <id>] [--all]

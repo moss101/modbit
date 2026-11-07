@@ -14,24 +14,13 @@ import { join } from "node:path";
 import { accessible, closeApp, git, launch, makeRepo, setContentSize } from "./support/ui-harness.ts";
 import { Gate, streamingModel } from "./support/stream-model.ts";
 import { openConversation, routedModel, sessionOf, startAndOpen } from "./support/conversation-harness.ts";
+import { runTask } from "./support/new-task.ts";
 
 const URL1 = "https://example.invalid/one.git";
 const URL2 = "https://example.invalid/two.git";
 const remoteAdd = (name: string, url: string) => ({ call: { name: "shell.exec", args: { argv: ["git", "remote", "add", name, url] } } });
 const remotes = (repo: string): string[] => git(repo, "remote").split("\n").filter(Boolean);
 const newRepo = () => makeRepo(mkdtempSync(join(tmpdir(), "modbit-appr-repo-")));
-
-/** Creates and starts a task from the Fleet board without opening its conversation. */
-async function createAndStart(page: Page, goal: string, repo: string): Promise<string> {
-  await page.getByTestId("goal").fill(goal);
-  await page.getByTestId("workspace").fill(repo);
-  await page.getByTestId("run").click();
-  const card = page.getByTestId("task-card").filter({ hasText: goal }).first();
-  await expect(card).toBeVisible();
-  const id = (await card.getAttribute("data-task-id"))!;
-  await card.getByTestId("task-start").click();
-  return id;
-}
 
 async function chooseMode(page: Page, mode: string, widest = false): Promise<void> {
   await page.getByTestId("runmode-button").click();
@@ -45,7 +34,7 @@ async function chooseMode(page: Page, mode: string, widest = false): Promise<voi
   await page.getByTestId("runmode-understood").check();
   await page.getByTestId("runmode-warning-confirm").click();
   await expect(page.getByTestId("runmode-warning")).toHaveCount(0);
-  await expect(page.getByTestId("runmode-current")).toHaveText(mode === "ALLOWLIST" ? "Allowlist" : "Run everything (this session)");
+  await expect(page.getByTestId("runmode-current")).toHaveText(mode === "ALLOWLIST" ? "Supervised" : mode === "AUTONOMOUS" ? "Autonomous" : "Run everything (this session)");
   await page.getByTestId("runmode-close").click();
   await expect(page.getByTestId("runmode-dialog")).toHaveCount(0);
 }
@@ -65,8 +54,8 @@ test("PX-058: a pending effect docks a card with the exact intent and the Core's
     await expect(page.getByTestId("approval-tool")).toHaveText("shell.exec");
     await expect(page.getByTestId("approval-command")).toHaveText(`git remote add origin1 ${URL1}`);
     await expect(page.getByTestId("approval-effect")).toContainText("protected write");
-    await expect(page.getByTestId("approval-why")).toContainText("Every protected effect asks in the Ask mode");
-    await expect(card).toHaveAttribute("data-ask-reason", "MODE_ASK");
+    await expect(page.getByTestId("approval-why")).toContainText("No allowlist rule covers this command");
+    await expect(card).toHaveAttribute("data-ask-reason", "NOT_IN_ALLOWLIST");
     await expect(page.getByTestId("approval-count")).toContainText("1 pending");
     const hash = (await card.getAttribute("data-intent-hash"))!;
     expect(hash).toMatch(/^[0-9a-f]{64}$/);
@@ -125,7 +114,7 @@ test("PX-058: three pending approvals form a deck, oldest first, each decided on
   try {
     await setContentSize(app, page, 1280, 800);
     const ids: string[] = [];
-    for (let i = 0; i < 3; i++) ids.push(await createAndStart(page, goals[i]!, repos[i]!));
+    for (let i = 0; i < 3; i++) ids.push(await runTask(page, goals[i]!, repos[i]!));
     const sid = await sessionOf(page);
     // Wait on what the Core lists, not on a clock.
     await expect.poll(() => page.evaluate((s) => window.modbit.dockApprovals(s).then((l) => l.length), sid), { timeout: 120_000 }).toBe(3);
@@ -165,8 +154,17 @@ test("PX-058: three pending approvals form a deck, oldest first, each decided on
     expect(remotes(repos[1]!)).toEqual([]);
     expect(remotes(repos[2]!)).toEqual([]);
     await expect(page.getByTestId("approval-foreign")).toBeVisible();
-    await page.getByTestId("approval-run").click();
-    await expect.poll(() => remotes(repos[2]!), { timeout: 90_000 }).toEqual(["r3"]);
+    // The decision is read back from the Core (the approval leaves the dock), so a click the hosted Windows runner swallowed (the deck
+    // re-rendered between the actionability check and the press) is told apart from an approved effect that did not run. Run is pressed
+    // again only while the Core still lists this approval; the effect itself is asserted below, once.
+    const pendingIds = () => page.evaluate((s) => window.modbit.dockApprovals(s).then((l) => l.map((a) => a.approvalId)), sid);
+    await expect(async () => {
+      if ((await pendingIds()).includes(third) && (await page.getByTestId("approval-card").getAttribute("data-approval-id")) === third) {
+        await page.getByTestId("approval-run").click({ timeout: 5_000 });
+      }
+      expect(await pendingIds(), "the Core recorded the decision on the third agent's approval").not.toContain(third);
+    }).toPass({ timeout: 60_000, intervals: [1_000, 2_000, 5_000] });
+    await expect.poll(() => remotes(repos[2]!), { timeout: 90_000, message: "the approved effect ran in the third agent's repository" }).toEqual(["r3"]);
     expect(remotes(repos[1]!)).toEqual([]);
     // Skip is a typed user decision: the approval is DENIED by the user, the call ends with the typed code APPROVAL_DENIED, and the agent went on to another turn.
     await expect
@@ -247,14 +245,14 @@ test("PX-057/058: Allowlist plus Always on a card makes a durable rule through t
   try {
     await setContentSize(app, page, 1280, 800);
     const taskId = await startAndOpen(page, "add two remotes", repo);
-    await expect(page.getByTestId("runmode-current")).toHaveText("Ask");
+    // DR-PX-2026-10-25-017: an attended task starts Supervised, where a rule made from a card takes effect.
+    await expect(page.getByTestId("runmode-current")).toHaveText("Supervised");
     // The mode is chosen behind the warning dialog, with the always-ask classes explained.
     await page.getByTestId("runmode-button").click();
     await expect(page.getByTestId("runmode-always-ask")).toContainText("Deletions");
     await expect(page.getByTestId("runmode-always-ask")).toContainText("Network");
     await accessible(page, "the run-mode dialog");
     await page.getByTestId("runmode-close").click();
-    await chooseMode(page, "ALLOWLIST");
     gate.open();
     const card = page.getByTestId("approval-card");
     await expect(card).toBeVisible({ timeout: 90_000 });
@@ -322,7 +320,7 @@ test("PX-057: the widest preset needs its warning and still asks for the always-
     await expect(page.getByTestId("runmode-warning-text")).toContainText("prompt injection");
     await page.getByTestId("runmode-warning-cancel").click();
     await expect(page.getByTestId("runmode-warning")).toHaveCount(0);
-    await expect(page.getByTestId("runmode-current")).toHaveText("Ask");
+    await expect(page.getByTestId("runmode-current")).toHaveText("Supervised");
     await page.getByTestId("runmode-close").click();
     await chooseMode(page, "RUN_EVERYTHING", true);
     gate.open();

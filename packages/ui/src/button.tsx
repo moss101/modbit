@@ -1,7 +1,9 @@
 import { forwardRef, type ButtonHTMLAttributes, type ReactNode } from "react";
 
-export type ButtonVariant = "primary" | "secondary" | "ghost" | "danger";
-export type ButtonSize = "sm" | "md" | "lg";
+/** AWL-05: primary (accent), secondary (the quiet default fill), subtle (the same fill), outline (3:1 edge), ghost (muted) and danger (solid destructive). */
+export type ButtonVariant = "primary" | "secondary" | "subtle" | "outline" | "ghost" | "danger";
+/** Control heights 20, 24, 28 and 32 (CONTROL in design-tokens). */
+export type ButtonSize = "xs" | "sm" | "md" | "lg";
 
 export interface ButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {
   variant?: ButtonVariant | undefined;

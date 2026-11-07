@@ -13,6 +13,8 @@
 //! `..` and checks the canonical path stays under the checkout root, and
 //! every result is cut to [`TOOL_OUTPUT_CHARS`].
 
+// PX-168 lint policy: this file spawns processes; new ones need review.
+#![allow(clippy::disallowed_methods)]
 use std::path::{Component, Path, PathBuf};
 use std::process::{Command, Stdio};
 

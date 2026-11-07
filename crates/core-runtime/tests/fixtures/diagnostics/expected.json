@@ -1,4 +1,20 @@
 {
+  "approval_expired": {
+    "class": "APPROVAL",
+    "code": "APPROVAL_EXPIRED",
+    "detail": "the approval expired before anyone answered",
+    "evidence_refs": [],
+    "features": [
+      "class:approval",
+      "code:approval_expired",
+      "retryable",
+      "source:tool",
+      "tool:shell.exec"
+    ],
+    "recovery_path": "the effect did not happen; the run continues without it. No one answered in time. That is not a refusal and says nothing about whether the effect is safe or unsafe. Ask again only if the effect is still needed. Do not reach the same effect by another route (a different command, tool, path or wrapper). Continue only with a materially safer alternative that needs no further permission; otherwise stop and ask the user what to do.",
+    "retryable": true,
+    "user_action": "ask again only if the effect is still needed; a new approval is requested"
+  },
   "artifact_range_corrupt_object": {
     "class": "CORRUPT_STATE",
     "code": "OBJECT_MISMATCH",
@@ -146,7 +162,7 @@
       "source:tool",
       "tool:change.apply"
     ],
-    "recovery_path": "the effect did not happen; the run continues without it",
+    "recovery_path": "the effect did not happen; the run continues without it. Policy refused this call. Do not reach the same effect by another route (a different command, tool, path or wrapper). Continue only with a materially safer alternative that needs no further permission; otherwise stop and ask the user what to do.",
     "retryable": false,
     "user_action": "widen the task's lease or profile if the effect is wanted"
   },
@@ -162,7 +178,7 @@
       "source:tool",
       "tool:git.push"
     ],
-    "recovery_path": "the effect did not happen; the run continues without it",
+    "recovery_path": "the effect did not happen; the run continues without it. The user refused this effect. Do not reach the same effect by another route (a different command, tool, path or wrapper). Continue only with a materially safer alternative that needs no further permission; otherwise stop and ask the user what to do.",
     "retryable": false,
     "user_action": ""
   },
@@ -181,6 +197,22 @@
     "recovery_path": "the run waits at the approval; approving once runs the effect once",
     "retryable": true,
     "user_action": "resolve the approval bound to this intent (ResolveApproval); the same call re-enters once it is approved"
+  },
+  "hook_denied_call": {
+    "class": "POLICY",
+    "code": "HOOK_DENIED",
+    "detail": "before_tool: a hook refused the call",
+    "evidence_refs": [],
+    "features": [
+      "class:policy",
+      "code:hook_denied",
+      "not_retryable",
+      "source:tool",
+      "tool:shell.exec"
+    ],
+    "recovery_path": "the effect did not happen; the run continues without it. A configured hook refused this call. Do not reach the same effect by another route (a different command, tool, path or wrapper). Continue only with a materially safer alternative that needs no further permission; otherwise stop and ask the user what to do.",
+    "retryable": false,
+    "user_action": "widen the task's lease or profile if the effect is wanted"
   },
   "invalid_arguments": {
     "class": "INVALID",
@@ -227,6 +259,21 @@
     "recovery_path": "the run suspended at a turn boundary; StartTask takes a ticket again before it resumes",
     "retryable": true,
     "user_action": "wait for a running task to finish, or raise MODBIT_CAPACITY, then resume with StartTask"
+  },
+  "loop_denial_streak": {
+    "class": "POLICY",
+    "code": "DENIAL_STREAK",
+    "detail": "3 tool calls in a row were refused",
+    "evidence_refs": [],
+    "features": [
+      "class:policy",
+      "code:denial_streak",
+      "not_retryable",
+      "source:harness"
+    ],
+    "recovery_path": "the task is parked, not ended: the count starts again when it resumes",
+    "retryable": false,
+    "user_action": "read the refused requests, then steer the agent or change the run mode or the rules; StartTask resumes the task"
   },
   "loop_environment_stale": {
     "class": "INFRASTRUCTURE",
@@ -317,6 +364,22 @@
     "recovery_path": "resume with StartTask",
     "retryable": false,
     "user_action": ""
+  },
+  "policy_denied_call": {
+    "class": "POLICY",
+    "code": "PROFILE_NOT_ALLOWED",
+    "detail": "tool `shell.exec` does not run under `review_isolated`",
+    "evidence_refs": [],
+    "features": [
+      "class:policy",
+      "code:profile_not_allowed",
+      "not_retryable",
+      "source:tool",
+      "tool:shell.exec"
+    ],
+    "recovery_path": "the effect did not happen; the run continues without it. Policy refused this call. Do not reach the same effect by another route (a different command, tool, path or wrapper). Continue only with a materially safer alternative that needs no further permission; otherwise stop and ask the user what to do.",
+    "retryable": false,
+    "user_action": "widen the task's lease or profile if the effect is wanted"
   },
   "provider_auth_rejected": {
     "class": "PROVIDER",
@@ -572,9 +635,25 @@
       "timed_out",
       "tool:shell.exec"
     ],
-    "recovery_path": "run it again with a larger timeout_ms, or split the command; a process that timed out was killed and left no result to trust",
+    "recovery_path": "run it again with a larger timeout_ms, or split the command; a process that timed out was killed and left no result to trust. A timeout is not evidence that the command or its target is dangerous; it means only that no result arrived in time. Look at the target before repeating it, and prefer a smaller step.",
     "retryable": true,
     "user_action": ""
+  },
+  "shell_sandbox_denied": {
+    "class": "POLICY",
+    "code": "SANDBOX_DENIED",
+    "detail": "the sandbox refused an operation (exit_code=1): sh: ./x: Operation not permitted",
+    "evidence_refs": [],
+    "features": [
+      "class:policy",
+      "code:sandbox_denied",
+      "not_retryable",
+      "source:tool",
+      "tool:shell.exec"
+    ],
+    "recovery_path": "the sandbox refused an operation; this is outside the confinement the task runs under, so do not retry the same command unchanged: change it, or say that it cannot run here",
+    "retryable": false,
+    "user_action": "run the check somewhere it is allowed to run, or change the command so it stays inside the worktree and needs no network"
   },
   "store_integrity": {
     "class": "CORRUPT_STATE",
@@ -663,7 +742,7 @@
       "source:tool",
       "tool:git.worktree.close"
     ],
-    "recovery_path": "the effect did not happen; the run continues without it",
+    "recovery_path": "the effect did not happen; the run continues without it. Policy refused this call. Do not reach the same effect by another route (a different command, tool, path or wrapper). Continue only with a materially safer alternative that needs no further permission; otherwise stop and ask the user what to do.",
     "retryable": false,
     "user_action": "widen the task's lease or profile if the effect is wanted"
   },

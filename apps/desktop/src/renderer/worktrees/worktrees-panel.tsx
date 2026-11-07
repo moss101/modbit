@@ -20,7 +20,7 @@ export interface WorktreesPanelProps {
   state: WorktreesState;
   sessionId: string | null;
   titleOf: (taskId: string) => string;
-  /** The task's state as the Fleet model holds it (Running, ReadyForReview, ...); only used to choose words and to hold back an apply the Core would refuse. */
+  /** The task's state as the task model holds it (Running, ReadyForReview, ...); only used to choose words and to hold back an apply the Core would refuse. */
   taskStateOf: (taskId: string) => string | undefined;
   nowMs: number;
   onOpenTask: (taskId: string) => void;

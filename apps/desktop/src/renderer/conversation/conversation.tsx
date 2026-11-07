@@ -9,9 +9,14 @@
  * Nothing in this file holds authority: every effect is a typed preload call.
  */
 import { memo, useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
-import { Button, StatusDot, TrayHost } from "@modbit/ui";
-import { DENSITIES, type Density, type TranscriptRowView } from "../../shared/conversation-types.ts";
-import type { TaskCard } from "../model.ts";
+import { createPortal } from "react-dom";
+import { Button, Icon, IconButton, StatusDot, TrayHost, useLayer } from "@modbit/ui";
+import type { TranscriptRowView } from "../../shared/conversation-types.ts";
+import { noticeWanted, type ScreenState as DerivedScreenState } from "../screens.ts";
+import { TaskDetails } from "./task-details.tsx";
+import { StateLine } from "../shell/state-line.tsx";
+import { localMachine } from "../location.ts";
+import { withCoreFacts, type TaskCard } from "../model.ts";
 import { INITIAL_FOLLOW, identityOf, messageIds, onDismiss, onJumpToBottom, onMessages, onScroll, pillText, stallLevel, withDivider, withLiveOnly, type Follow } from "./model.ts";
 import { RowView, type RowContext } from "./rows.tsx";
 import { loadConversationPrefs, saveConversationPrefs, type ConversationPrefs } from "./prefs.ts";
@@ -41,9 +46,20 @@ export interface ConversationProps {
   onOpenTask?: ((taskId: string) => void) | undefined;
   /** A task's name for the approvals of other agents shown above this composer. */
   titleOf?: ((taskId: string) => string) | undefined;
+  /** The top bar's slot for this conversation's state, branch and overflow. */
+  topSlot?: HTMLElement | null | undefined;
+  subtasks?: readonly TaskCard[] | undefined;
+  screenState?: DerivedScreenState | null | undefined;
+  /** The task works in a worktree of its own. */
+  worktree?: boolean | undefined;
+  /** Where the Core says the task runs ("local" or "cloud"). */
+  executionLocation?: string | undefined;
+  /** The branch, once the Changes app has read it; unknown until then. */
+  branch?: string | undefined;
+  onReview?: (() => void) | undefined;
+  onBrowser?: (() => void) | undefined;
+  onCancelTask?: (() => void) | undefined;
 }
-
-const DENSITY_LABEL: Record<Density, string> = { COMPACT: "Compact", BALANCED: "Balanced", DETAILED: "Detailed" };
 
 const findRow = (rows: readonly TranscriptRowView[], id: string, path: string[] = []): string[] | null => {
   for (const r of rows) {
@@ -70,7 +86,7 @@ function collectTurnText(rows: readonly TranscriptRowView[], turnId: string, out
 }
 
 export function Conversation(props: ConversationProps) {
-  const { taskId, sessionId, connected, card, title, focusRowId, onResume, onNewTask, onOpenTerminal, onOpenTask, titleOf } = props;
+  const { taskId, sessionId, connected, card, title, focusRowId, onResume, onNewTask, onOpenTerminal, onOpenTask, titleOf, topSlot, subtasks, screenState, worktree, executionLocation, branch, onReview, onBrowser, onCancelTask } = props;
   const [prefs, setPrefs] = useState<ConversationPrefs>(loadConversationPrefs);
   useEffect(() => saveConversationPrefs(prefs), [prefs]);
   const conv = useConversation(taskId, sessionId, prefs.density, connected);
@@ -83,8 +99,14 @@ export function Conversation(props: ConversationProps) {
   // REQ-PX-057 / 062: the run-mode dialog (also opened from an approval card) and the checkpoint surface.
   const [modeOpen, setModeOpen] = useState(false);
   const ckpt = useCheckpointSurface({ taskId, sessionId, connected, card, onResume, onOpenTask });
+  // PX-196: what the Core folded from the task's log stands in for what this window has not seen since it started.
+  const detailsCard = useMemo(() => (card && conv.factsTaskId === taskId ? withCoreFacts(card, conv.facts, conv.asOfOffset) : card), [card, conv.facts, conv.factsTaskId, conv.asOfOffset, taskId]);
+  const [detailsOpen, setDetailsOpen] = useState(false);
+  // A layer: Escape closes the panel and nothing else, before any key scope (a docked card's Skip) sees it.
+  useLayer(detailsOpen, "task-details", false, () => setDetailsOpen(false));
 
-  const body = useMemo(() => withDivider(withLiveOnly(conv.rows, conv.live), conv.dividerOffset, (n) => `${n} new`), [conv.rows, conv.live, conv.dividerOffset]);
+  // The unread divider marks what was new when the conversation was opened; what arrives while it is open is not "unread".
+  const body = useMemo(() => withDivider(withLiveOnly(conv.dividerOffset === null ? conv.rows.filter((r) => r.kind !== "UNREAD_DIVIDER") : conv.rows, conv.live), conv.dividerOffset, (n) => `${n} new`), [conv.rows, conv.live, conv.dividerOffset]);
   const latestUser = useMemo(() => [...body].reverse().find((r) => r.kind === "USER_MESSAGE")?.rowId ?? null, [body]);
 
   // Follow the tail while pinned; scrolling up freezes it.
@@ -238,28 +260,33 @@ export function Conversation(props: ConversationProps) {
   const phase = tailFacts?.phase ?? "";
   const tailLabel = phase === "RUNNING" && streaming ? "Responding" : (tailFacts?.label ?? "");
   const failed = conv.taskState === "Failed" || phase === "FAILED" || phase === "NEEDS_ATTENTION";
+  // What is wrong and what to do stands above the composer while it holds (docs/39 "Every state names the next action"); a quiet state stays in the accessibility tree.
+  const noticeShown = !!screenState && noticeWanted(screenState, failed, conv.approvals.length > 0);
   const lastUserText = useMemo(() => [...conv.rows].reverse().find((r) => r.kind === "USER_MESSAGE")?.text ?? "", [conv.rows]);
 
   return (
     <section className="conv" aria-label={`Conversation: ${title}`} data-testid="conversation" data-task-id={taskId} data-density={prefs.density} data-loaded={conv.loaded}>
-      <div className="conv-head">
-        <span className="conv-status" data-testid="conv-status">
-          {card ? `${card.state}${card.waitReason ? `, waiting on ${card.waitReason}` : ""}` : conv.taskState}
-        </span>
-        <span className="conv-spacer" />
-        {ckpt.head}
-        <RunModeControl sessionId={sessionId} taskId={taskId} connected={connected} open={modeOpen} onOpenChange={setModeOpen} />
-        <label className="conv-density">
-          <span className="meta">Density</span>
-          <select value={prefs.density} onChange={(e) => setPrefs((p) => ({ ...p, density: e.target.value as Density }))} data-testid="conv-density" aria-label="Conversation density">
-            {DENSITIES.map((d) => (
-              <option key={d} value={d}>
-                {DENSITY_LABEL[d]}
-              </option>
-            ))}
-          </select>
-        </label>
-      </div>
+      <span className="mb-sr-only" data-testid="conv-status">
+        {card ? `${card.state}${card.waitReason ? `, waiting on ${card.waitReason}` : ""}` : conv.taskState}
+      </span>
+      {topSlot &&
+        createPortal(
+          <>
+            <span className="topbar-pill" data-testid="top-bar-state">
+              {card?.state ?? conv.taskState}
+            </span>
+            <span className="topbar-spacer" />
+            {branch && (
+              <span className="topbar-branch" data-testid="top-bar-branch" title={branch}>
+                <Icon name="git-branch" size={14} />
+                <span>{branch}</span>
+              </span>
+            )}
+            <IconButton label="Task details" icon={<Icon name="ellipsis" />} pressed={detailsOpen} onClick={() => setDetailsOpen((o) => !o)} data-testid="task-details-toggle" />
+            {detailsOpen && <TaskDetails taskId={taskId} card={detailsCard} subtasks={subtasks ?? []} density={prefs.density} onDensity={(density) => setPrefs((p) => ({ ...p, density }))} undoAll={ckpt.head} onBrowser={() => onBrowser?.()} onCancel={() => onCancelTask?.()} onOpenTask={(id) => onOpenTask?.(id)} />}
+          </>,
+          topSlot,
+        )}
       <div className="conv-body">
         <div ref={scroller} className="conv-scroll" role="region" aria-label="Messages" tabIndex={0} onScroll={onScrollEvent} onKeyDown={onKeyDown} data-testid="conv-scroll" data-pinned={follow.pinned} data-row-count={body.length}>
           <div ref={inner} className="conv-inner">
@@ -306,13 +333,18 @@ export function Conversation(props: ConversationProps) {
       <p className="mb-sr-only" role="status" aria-live="polite" data-testid="conv-live">
         {copied}
       </p>
+      {screenState && (
+        <div className={noticeShown ? "conv-notice" : "mb-sr-only"} data-testid="task-notice" data-shown={noticeShown} data-kind={screenState.kind}>
+          <StateLine state={screenState} testid="task-screen-state" />
+        </div>
+      )}
       {ckpt.bar}
       <ModeProposalDock sessionId={sessionId} taskId={taskId} connected={connected} />
       <ApprovalDock sessionId={sessionId} taskId={taskId} connected={connected} onChangeMode={() => setModeOpen(true)} titleOf={titleOf ?? ((id) => id.slice(0, 8))} onOpenTask={onOpenTask ?? (() => {})} />
       {ckpt.overlay}
       {/* The one tray host: docked directly above the composer, never beside or below it (AFW-H01). */}
       <TrayHost />
-      <Composer taskId={taskId} sessionId={sessionId} connected={connected} card={card} approvalPending={conv.approvals.length > 0} lastUserText={lastUserText} hasMessages={conv.rows.length > 0} onResume={onResume} onNewTask={onNewTask} onOpenTerminal={onOpenTerminal} />
+      <Composer taskId={taskId} sessionId={sessionId} connected={connected} card={card} approvalPending={conv.approvals.length > 0} lastUserText={lastUserText} hasMessages={conv.rows.length > 0} onResume={onResume} onNewTask={onNewTask} onOpenTerminal={onOpenTerminal} onReview={onReview} foot={<><span className="cmp-foot-item" data-testid="conv-location"><Icon name={executionLocation === "cloud" ? "globe" : "laptop"} size={14} /> {executionLocation === "cloud" ? "Isolated cloud" : localMachine()}{worktree ? " · worktree" : ""}</span><span className="cmp-spacer" /><RunModeControl sessionId={sessionId} taskId={taskId} connected={connected} open={modeOpen} onOpenChange={setModeOpen} /></>} />
     </section>
   );
 }
@@ -343,7 +375,7 @@ export const TailStatus = memo(function TailStatus({ phase, label, detail, lastA
 
 /** A failed run in the Core's typed words: what happened, what only the person can do, how the system recovers, and a retry when the Core says it can. */
 export function FailureBlock({ taskId, card, onResume, promptText }: { taskId: string; card: TaskCard | undefined; onResume: (taskId: string) => void; promptText: string }) {
-  const [status, setStatus] = useState<{ failureClass: string; failureCode: string; attentionReason: string; userAction: string; recoveryPath: string; retryable: boolean } | null>(null);
+  const [status, setStatus] = useState<{ failureClass: string; failureCode: string; attentionReason: string; userAction: string; recoveryPath: string; retryable: boolean; evidenceRefs: string[]; lastOffset: string } | null>(null);
   const [note, setNote] = useState("");
   useEffect(() => {
     if (card?.diagnostic) return;
@@ -357,8 +389,9 @@ export function FailureBlock({ taskId, card, onResume, promptText }: { taskId: s
     };
   }, [taskId, card?.diagnostic, card?.state]);
   const d = card?.diagnostic
-    ? { failureClass: card.diagnostic.class, failureCode: card.diagnostic.code, attentionReason: card.diagnostic.detail, userAction: card.diagnostic.userAction, recoveryPath: card.diagnostic.recoveryPath, retryable: card.diagnostic.retryable }
+    ? { failureClass: card.diagnostic.class, failureCode: card.diagnostic.code, attentionReason: card.diagnostic.detail, userAction: card.diagnostic.userAction, recoveryPath: card.diagnostic.recoveryPath, retryable: card.diagnostic.retryable, evidenceRefs: card.diagnostic.evidenceRefs, lastOffset: card.lastOffset }
     : status;
+  const evidence = d?.evidenceRefs.join(", ") || (d ? `offset ${d.lastOffset}` : "");
   const words = (x: string) => x.replace(/_/g, " ").toLowerCase();
   return (
     <div className="conv-failure" role="alert" data-testid="conv-failure" aria-label="The task needs attention">
@@ -377,6 +410,11 @@ export function FailureBlock({ taskId, card, onResume, promptText }: { taskId: s
         </p>
       )}
       {d?.recoveryPath && <p className="meta">How Modbit recovers: {d.recoveryPath}</p>}
+      {evidence && (
+        <p className="meta" data-testid="conv-failure-evidence">
+          Evidence: {evidence}
+        </p>
+      )}
       <div className="decision">
         {d?.retryable === true && (
           <Button size="sm" variant="primary" onClick={() => onResume(taskId)} data-testid="conv-retry">

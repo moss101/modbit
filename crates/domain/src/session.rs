@@ -169,6 +169,20 @@ pub enum SessionEvent {
         /// The handlers removed: `<name>@<point>`.
         removed: Vec<String>,
     },
+    /// `SessionEnding` (REQ-PX-049): the person is quitting. The session's
+    /// `session_end` hooks ran to completion (or failed, on their own
+    /// journal entries) and the person chose whether the running tasks
+    /// resume the next time the app opens. No state change.
+    SessionEnding {
+        /// The tasks that were running when the person quit.
+        running_tasks: Vec<String>,
+        /// The person chose to have those tasks resumed on reopen.
+        resume_on_reopen: bool,
+        /// `session_end` hook runs, and how many of them did not end OK.
+        hooks_run: u32,
+        /// Of those, the ones that failed, timed out or answered nonsense.
+        hooks_failed: u32,
+    },
     /// `SessionBranched` (docs/19 "Compaction epochs", M4.2): the session's
     /// history was forked, reverted or otherwise rewritten; the branch
     /// generation moves and every pending compaction computed under the old
@@ -243,6 +257,7 @@ impl SessionEvent {
             Self::ExtensionLoaded { .. } => "ExtensionLoaded",
             Self::ExtensionUnloaded { .. } => "ExtensionUnloaded",
             Self::ExtensionTrusted { .. } => "ExtensionTrusted",
+            Self::SessionEnding { .. } => "SessionEnding",
             Self::SessionBranched { .. } => "SessionBranched",
         }
     }
@@ -305,7 +320,8 @@ impl Session {
             | SessionEvent::RepositoryTrusted { .. }
             | SessionEvent::ExtensionLoaded { .. }
             | SessionEvent::ExtensionUnloaded { .. }
-            | SessionEvent::ExtensionTrusted { .. } => {
+            | SessionEvent::ExtensionTrusted { .. }
+            | SessionEvent::SessionEnding { .. } => {
                 if self.state.is_terminal() {
                     return Err(crate::InvalidTransition {
                         aggregate: "Session",

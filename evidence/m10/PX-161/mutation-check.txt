@@ -1,0 +1,16 @@
+PX-161 mutation check (QUAL-PX-161: running every call one after another must fail the overlap test)
+date: 2026-10-28T20:28:15Z
+
+== baseline ==
+test px_161_a_failing_read_reports_its_error_and_the_other_results_are_present ... ok
+test px_161_a_sigkill_during_the_batch_recovers_with_no_result_recorded_twice ... ok
+test px_161_reads_overlap_the_write_waits_and_results_come_back_in_call_order ... ok
+test result: ok. 3 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 6.35s
+
+== mutation: parallel_read_only always returns false ==
+test px_161_a_failing_read_reports_its_error_and_the_other_results_are_present ... ok
+test px_161_a_sigkill_during_the_batch_recovers_with_no_result_recorded_twice ... ok
+test px_161_reads_overlap_the_write_waits_and_results_come_back_in_call_order ... FAILED
+the 6 reads were not in flight together: 449 ms from first proposal to last result against 332 ms of their own
+test result: FAILED. 2 passed; 1 failed; 0 ignored; 0 measured; 0 filtered out; finished in 6.04s
+test result: ok. 3 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 6.18s

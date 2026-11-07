@@ -11,7 +11,7 @@
 import type { ComputerIntentView } from "./computer-types.ts";
 
 /** The run modes, least to most approving (the Core's own list; the view model reads `RunModeView.modes`). */
-export const RUN_MODES = ["ASK", "ALLOWLIST", "ALLOWLIST_SANDBOX", "RUN_EVERYTHING"] as const;
+export const RUN_MODES = ["ASK", "ALLOWLIST", "ALLOWLIST_SANDBOX", "RUN_EVERYTHING", "AUTONOMOUS"] as const;
 export type RunModeName = (typeof RUN_MODES)[number];
 
 /** Why the Core asked, from the typed `ask_reason` of the approval's scope (AFW-F12). */

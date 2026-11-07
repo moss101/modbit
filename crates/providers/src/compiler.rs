@@ -17,6 +17,8 @@
 //! inputs. Identical inputs produce an identical plan and an identical
 //! digest.
 
+// PX-168 lint policy: this file baselined expect/unwrap sites; new ones need review.
+#![allow(clippy::expect_used)]
 use modbit_domain::routing::{
     Budget, ConditionalExecutionPlan, Money, PlanScope, Provenance, ROUTING_SCHEMA_VERSION, Slot,
     Trigger,

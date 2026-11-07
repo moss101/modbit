@@ -76,23 +76,25 @@ export function ShellFrame({ prefs, onPrefs, panelOpen, panel, agents, topBar, b
         )}
       </nav>
       <div className="shell-center" data-testid="region-conversation">
-        {banner}
-        {topBar}
-        {layout.stacked && (
-          <nav aria-label="Conversation or apps" className="shell-segments" data-testid="stack-segments">
-            <button type="button" className="mb-btn" data-variant="secondary" data-size="sm" aria-pressed={!showApps} data-testid="segment-conversation" onClick={() => setSegment("conversation")}>
-              Conversation
-            </button>
-            <button type="button" className="mb-btn" data-variant="secondary" data-size="sm" aria-pressed={showApps} data-testid="segment-apps" onClick={() => setSegment("apps")}>
-              Apps
-            </button>
-          </nav>
-        )}
-        <Content className="shell-content" data-testid="shell-content">
-          {showApps ? panel : children}
-        </Content>
-        {tray}
-        {statusRow}
+        <div className="shell-frame">
+          {banner}
+          {topBar}
+          {layout.stacked && (
+            <nav aria-label="Conversation or apps" className="shell-segments" data-testid="stack-segments">
+              <button type="button" className="mb-btn" data-variant="secondary" data-size="sm" aria-pressed={!showApps} data-testid="segment-conversation" onClick={() => setSegment("conversation")}>
+                Conversation
+              </button>
+              <button type="button" className="mb-btn" data-variant="secondary" data-size="sm" aria-pressed={showApps} data-testid="segment-apps" onClick={() => setSegment("apps")}>
+                Apps
+              </button>
+            </nav>
+          )}
+          <Content className="shell-content" data-testid="shell-content">
+            {showApps ? panel : children}
+          </Content>
+          {tray}
+          {statusRow}
+        </div>
       </div>
       {hasPanel && panelOpen && !layout.stacked && (
         <PanelRegion nested={contentElement === "div"} style={{ width: layout.panelPx }}>

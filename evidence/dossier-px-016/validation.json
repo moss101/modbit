@@ -1,0 +1,32 @@
+{
+ "task": "DOC-PX-016",
+ "change_record": "DR-PX-2026-10-25-017",
+ "change_record_status": "APPROVED",
+ "edition": "V3.3 EPR v1.1",
+ "scope": "Decision Record DR-PX-2026-10-25-017 (accepted by the owner's chat instruction of 2026-10-25): the autonomous coding engine inside the Capability Kernel's envelope, rows PX-144..146 in doc 62, graph change record and dossier task, pinned parity counts (147 rows, 143 ADOPT), one dedicated test, doc 02/65/28/14/30/64/97 notes; dossier only, no product status or evidence claim changes here.",
+ "recorded_at_utc": "2026-10-25T18:05:30.981713+00:00",
+ "git": {
+  "baseline_commit": "076c1b70",
+  "branch": "wip/autonomous-coding-engine"
+ },
+ "tests": {
+  "command": [
+   "python3",
+   "tools/test_dossier.py",
+   "-v"
+  ],
+  "exit_code": 0,
+  "output_ref": "evidence/dossier-px-016/tests.log",
+  "sha256": "2f44a05c478cabc9c6f99c1aaa2442ce7e9cf1466a4af425e1b905a98173e914",
+  "result_line": "Ran 86 tests in 112.833s OK"
+ },
+ "integrity": {
+  "command": [
+   "python3",
+   "tools/check_dossier.py",
+   "--manifest"
+  ],
+  "exit_code": 0,
+  "output": "[M1] manifest coverage mismatch: missing=['evidence/dossier-px-016/tests.log'] extra=[]\nFAIL: 1 finding(s)"
+ }
+}

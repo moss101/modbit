@@ -1,0 +1,6 @@
+CI run 42384475339 (head 162735ce, merged to main as bc505574 via moss101/modbit#172), all 15 jobs success.
+Per-OS test binaries in the rust CI_COMPATIBLE jobs (passed / failed):
+  macos   : run_control 27/0, px_148_hardening (core) 1/0, px_148_hardening (execd) 15/0, px_150_152_review_sandbox 4/0, modbit_policy 41/0, run_modes 14/0, modbit_process_hardening 1/0, modbit_sandbox (egress) 12/0
+  ubuntu  : run_control 27/0, px_148_hardening (core) 1/0, px_148_hardening (execd) 1/0, px_150_152_review_sandbox 2/0, run_modes 14/0, modbit_process_hardening 1/0, modbit_sandbox (egress) 12/0
+  windows : run_control 0 (cfg(unix)), px_148_hardening 0 (cfg(unix)), px_150_152_review_sandbox 0 (cfg(unix)), modbit_policy 41/0, run_modes 12/0, modbit_process_hardening 1/0, modbit_sandbox (egress) 12/0
+The Linux branch of crates/process-hardening/tests/support run_qualification asserts core limits 0/0, PR_SET_DUMPABLE 0, /proc limits of the running server 0/0, /proc/<pid>/environ unreadable to the same user, and the planted LD_PRELOAD library not loaded (with an unhardened control that loads it).

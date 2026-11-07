@@ -19,6 +19,7 @@ import { tmpdir } from "node:os";
 import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { closeApp } from "./support/close-app.ts";
+import { agentRow, expectTaskState, openTaskDetails, queueTask, runTask } from "./support/new-task.ts";
 
 const appDir = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 const coreBin = process.env.MODBIT_CORE_BIN ?? resolve(appDir, "..", "..", "target", "debug", process.platform === "win32" ? "modbit-core.exe" : "modbit-core");
@@ -87,19 +88,15 @@ function smallRepo(): string {
   return repo;
 }
 
-/** The task reaches review — or the failure names what the card and the model saw. */
-async function readyForReview(page: Page, model: { toolTexts: string[] }): Promise<void> {
-  const ready = page.getByTestId("column-readyForReview").getByTestId("task-card");
-  const deadline = Date.now() + 90_000;
-  while ((await ready.count()) === 0) {
-    if (Date.now() > deadline) {
-      const card = page.getByTestId("task-card").first();
-      const state = await card.getAttribute("data-state").catch(() => null);
-      const line = await card.getByTestId("task-screen-state").textContent().catch(() => null);
-      const tail = model.toolTexts.map((t, i) => `[${i}] ${t.slice(0, 300).replace(/\n/g, " | ")}`).join("\n");
-      throw new Error(`the task never reached review: state=${state} line=${line}\ntool texts:\n${tail}`);
-    }
-    await new Promise((r) => setTimeout(r, 500));
+/** The task reaches review, or the failure names what the agent list, the conversation and the model saw. */
+async function readyForReview(page: Page, taskId: string, model: { toolTexts: string[] }): Promise<void> {
+  try {
+    await expectTaskState(page, taskId, "ReadyForReview", 90_000);
+  } catch (e) {
+    const state = await agentRow(page, taskId).getAttribute("data-state", { timeout: 2_000 }).catch(() => null);
+    const line = await page.getByTestId("conv-status").textContent({ timeout: 2_000 }).catch(() => null);
+    const tail = model.toolTexts.map((t, i) => `[${i}] ${t.slice(0, 300).replace(/\n/g, " | ")}`).join("\n");
+    throw new Error(`the task never reached review: state=${state} line=${line}\ntool texts:\n${tail}\n${String(e)}`);
   }
 }
 
@@ -124,8 +121,10 @@ const BRIDGE_ALLOW_LIST = [
   "listProjects", "getProject", "createProject", "renameProject", "archiveProject", "addProjectMember", "removeProjectMember", "listWorktrees", "removeWorktree", "runWorktreeCleanup", "applyWorktree", "undoApply", "discardWorktree",
   // REQ-PX-048 (the Changes app): the Core's state beside the review bundle, revert, stage and Commit and push. Added on purpose; each is a typed request main validates (changes-ipc.ts).
   "changesState", "revertChanges", "stageChanges", "commitAndPush",
+  // REQ-PX-103 / 104 / 106 (live hunk review, Customize). Added on purpose; each is one typed Core command or read main validates.
+  "decideHunk", "customizeSkills", "customizeSkillTrust", "customizeSkillRevoke", "customizeHooks", "customizeHookEnabled", "customizeExtensionTrust", "customizeExtensionUnload", "customizeImport", "customizeOpenSource", "customizeMemory", "customizeMemoryRemember", "customizeMemoryPromote", "customizeMemoryForget", "customizeMemoryShare",
   // REQ-PX-048 (the apps panel): the terminal stream, the read-only Files app and the effect receipts. Added on purpose; each is a typed request main validates.
-  "terminalList", "terminalAttach", "terminalAck", "terminalDetach", "terminalInput", "terminalResize", "terminalWrite", "terminalKill", "onTerminalFrame", "listWorkspaceDir", "readWorkspaceFile", "effectReceipts",
+  "terminalList", "terminalAttach", "terminalAck", "terminalDetach", "terminalInput", "terminalResize", "terminalWrite", "terminalKill", "terminalHistory", "onTerminalFrame", "listWorkspaceDir", "readWorkspaceFile", "effectReceipts",
   // REQ-PX-054..056 (the composer): mode, preference, queue, interrupt, send behaviour, slash inventory, model variants and the side question. Added on purpose; each is one typed Core command or read that main validates (composer-ipc.ts).
   "composerPosture", "composerSetMode", "composerSetPreference", "composerVariants", "composerSlash", "composerQueue", "composerQueueInput", "composerEditQueued", "composerRemoveQueued", "composerReorderQueued", "composerSendNow", "composerInterrupt", "composerSendBehavior", "composerSetSendBehavior", "composerSideQuestion",
   // REQ-PX-057 / 058 / 060 / 062 (approval stack, run modes, context accounting, checkpoints). Added on purpose; each is a typed request main validates (control-ipc.ts, control-args.ts).
@@ -254,14 +253,9 @@ test("renderer killed (REQ-EV-0076): the renderer's process dies mid-session; ma
   const dataDir = mkdtempSync(join(tmpdir(), "modbit-e2e-workers-"));
   try {
     const { app, page: page1 } = await launch(dataDir, { MODBIT_OPENAI_BASE_URL: model.url });
-    await page1.getByTestId("workspace").fill(repo);
-    await page1.getByTestId("goal").fill("read the notes");
-    await page1.getByTestId("run").click();
-    const card1 = page1.getByTestId("task-card").first();
-    await expect(card1).toContainText("read the notes", { timeout: 30_000 });
-    await card1.getByTestId("task-start").click();
-    await readyForReview(page1, model);
-    const taskId = (await card1.getAttribute("data-task-id"))!;
+    const taskId = await runTask(page1, "read the notes", repo);
+    await expect(agentRow(page1, taskId)).toContainText("read the notes", { timeout: 30_000 });
+    await readyForReview(page1, taskId, model);
     const sessionId = (await page1.evaluate(() => window.modbit.localState())).sessionId!;
     const before = (await page1.evaluate((sid) => window.modbit.sessionSnapshot(sid), sessionId)) as Snapshot;
     const coreBefore = await page1.evaluate(() => window.modbit.debugCoreInfo());
@@ -350,11 +344,10 @@ test("renderer killed (REQ-EV-0076): the renderer's process dies mid-session; ma
     expect(after.lastOffset).toBe(before.lastOffset);
     expect(after.generation).toBe(before.generation);
     expect(after.tasks.map((t) => [t.taskId, t.state])).toEqual(before.tasks.map((t) => [t.taskId, t.state]));
-    // The new renderer rebuilt its view from that snapshot: the card is
+    // The new renderer rebuilt its view from that snapshot: the task's row is
     // where it was, and its typed requests are answered by the same Core.
-    const restored = page.getByTestId("column-readyForReview").getByTestId("task-card");
-    await expect(restored).toHaveCount(1, { timeout: 30_000 });
-    await expect(restored).toHaveAttribute("data-task-id", taskId);
+    await expectTaskState(page, taskId, "ReadyForReview", 30_000);
+    await expect(page.getByTestId("agent-row")).toHaveCount(1);
     const status = await page.evaluate((tid) => window.modbit.taskStatus(tid), taskId);
     expect(status.state).toBe("ReadyForReview");
     expect(status.lastOffset).toBe(before.lastOffset);
@@ -388,18 +381,14 @@ test("browser view killed (REQ-EV-0081): the view's process dies under the agent
   const dataDir = mkdtempSync(join(tmpdir(), "modbit-e2e-workers-"));
   try {
     const { app, page } = await launch(dataDir, { MODBIT_OPENAI_BASE_URL: model.url });
-    await page.getByTestId("workspace").fill(repo);
-    await page.getByTestId("goal").fill("read the greeter twice");
-    await page.getByTestId("run").click();
-    const card = page.getByTestId("task-card").first();
-    await expect(card).toContainText("read the greeter twice", { timeout: 30_000 });
-    const taskId = (await card.getAttribute("data-task-id"))!;
-    await card.getByTestId("task-browser").click();
+    const taskId = await queueTask(page, "read the greeter twice", repo);
+    await expect(agentRow(page, taskId)).toContainText("read the greeter twice", { timeout: 30_000 });
+    await (await openTaskDetails(page)).getByTestId("task-browser").click();
     const panel = page.getByTestId("browser");
     await expect(panel).toHaveAttribute("data-browser-session-id", /^[0-9a-f]{32}$/, { timeout: 30_000 });
     const bsid = (await panel.getAttribute("data-browser-session-id"))!;
     await page.getByTestId("browser-close").click();
-    await card.getByTestId("task-start").click();
+    await page.getByTestId("conv-start").click();
     // The first look at the page has been taken.
     await expect.poll(() => model.toolTexts.length, { timeout: 60_000 }).toBeGreaterThanOrEqual(3);
     expect(model.toolTexts[2]).toContain('"name":"Greeter"');
@@ -425,7 +414,7 @@ test("browser view killed (REQ-EV-0081): the view's process dies under the agent
     // The agent's next observation reads the restarted page; the task
     // completes on the same Core process, in the same session.
     releaseSecondLook();
-    await readyForReview(page, model);
+    await readyForReview(page, taskId, model);
     // The second look is a delta against the first (M7.2): the restarted
     // page is the same page — its entities unchanged, its state version
     // moved on by the restart's loads.

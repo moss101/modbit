@@ -9,6 +9,8 @@
 //! redacted by the caller's redactor before it is rendered. Everything an
 //! application says about itself is untrusted data, never instruction.
 
+// PX-168 lint policy: this file baselined expect/unwrap sites; new ones need review.
+#![allow(clippy::expect_used)]
 use std::sync::LazyLock;
 
 use regex::Regex;

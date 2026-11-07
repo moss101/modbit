@@ -249,6 +249,30 @@ pub(crate) struct Resolution {
     pub refused: Vec<HookRefusal>,
     /// Extension id → whether it is still loaded.
     pub flags: HashMap<String, Arc<AtomicBool>>,
+    /// Registrations a person switched off with `SetHookEnabled` (PX-106):
+    /// resolved, listed, and fired on no event.
+    pub disabled: Vec<Registration>,
+}
+
+/// The hooks a person switched off for `session`, from its log: the latest
+/// `HookEnabledSet` per hook id wins.
+pub(crate) fn switched_off(store: &EventStore, session: SessionId) -> HashSet<String> {
+    let mut off = HashSet::new();
+    for e in store
+        .read_session_of_types(&session, &["HookEnabledSet"], 0)
+        .unwrap_or_default()
+    {
+        let Ok(p) = store.payload(&e.envelope) else {
+            continue;
+        };
+        let id = p["hook_id"].as_str().unwrap_or_default().to_owned();
+        if p["enabled"].as_bool().unwrap_or(true) {
+            off.remove(&id);
+        } else {
+            off.insert(id);
+        }
+    }
+    off
 }
 
 /// Resolve the task's hooks from its configuration and its session's
@@ -323,10 +347,15 @@ pub(crate) fn resolve(
             ));
         }
     }
+    // PX-106: a hook switched off in this session is resolved but not in force.
+    let off = switched_off(store, session_id);
+    let (disabled, active): (Vec<Registration>, Vec<Registration>) =
+        active.into_iter().partition(|r| off.contains(&r.id));
     Resolution {
         active,
         refused,
         flags,
+        disabled,
     }
 }
 
@@ -765,16 +794,11 @@ impl modbit_tools::hooks::HookPort for HookScope {
     }
 }
 
-/// The scope for `task`: its pinned configuration's hooks and its
-/// session's extensions.
-pub(crate) async fn scope(
+/// The hooks resolved for `task`, with the configuration they came from.
+pub(crate) async fn resolution_of(
     core: &crate::server::Core,
     task: &Task,
-    run_id: Option<RunId>,
-    turn_id: Option<TurnId>,
-    lease_generation: Option<u64>,
-    actor: &Actor,
-) -> (HookScope, Vec<HookRefusal>) {
+) -> (Resolution, Arc<ResolvedConfig>) {
     let cfg = core.tools.configurations.for_task(
         task.task_id,
         &core.data_dir,
@@ -790,6 +814,20 @@ pub(crate) async fn scope(
             &cfg,
         )
     };
+    (resolution, cfg)
+}
+
+/// The scope for `task`: its pinned configuration's hooks and its
+/// session's extensions.
+pub(crate) async fn scope(
+    core: &crate::server::Core,
+    task: &Task,
+    run_id: Option<RunId>,
+    turn_id: Option<TurnId>,
+    lease_generation: Option<u64>,
+    actor: &Actor,
+) -> (HookScope, Vec<HookRefusal>) {
+    let (resolution, cfg) = resolution_of(core, task).await;
     let allowed: Option<Vec<String>> = cfg
         .models_allow
         .as_ref()
@@ -824,16 +862,163 @@ pub(crate) async fn scope(
     )
 }
 
-/// `ListHooks`: what is in force for a task, and what was refused.
+/// The aggregate the Customize view's records live on: one per session,
+/// beside the session's own log (the session aggregate is a closed set of
+/// typed events; a person's hook switches are not part of it).
+fn customize_aggregate(session: SessionId) -> [u8; 16] {
+    use sha2::{Digest, Sha256};
+    let h = Sha256::digest(format!("customize:{session}").as_bytes());
+    let mut b = [0u8; 16];
+    b.copy_from_slice(&h[..16]);
+    b
+}
+
+/// The scope label of a registration (PX-106).
+fn scope_label(r: &Registration) -> &'static str {
+    match &r.source {
+        HookSource::Config { authority } => match authority.as_str() {
+            "device" => "DEVICE",
+            "admin" => "ADMIN",
+            "project" => "PROJECT",
+            _ => "USER",
+        },
+        HookSource::Extension { .. } => "EXTENSION",
+    }
+}
+
+/// Whether a person may switch the hook off: a device or administrator layer
+/// is above them and stays on.
+fn can_disable(r: &Registration) -> bool {
+    !matches!(scope_label(r), "DEVICE" | "ADMIN")
+}
+
+/// What the session's journal says of each hook: invocations and the latest
+/// outcome, detail and duration.
+fn journal_of(
+    store: &EventStore,
+    session: SessionId,
+) -> HashMap<String, (u32, String, String, u64)> {
+    let mut out: HashMap<String, (u32, String, String, u64)> = HashMap::new();
+    for e in store
+        .read_session_of_types(&session, &["HookInvoked"], 0)
+        .unwrap_or_default()
+    {
+        let Ok(p) = store.payload(&e.envelope) else {
+            continue;
+        };
+        let id = p["hook"].as_str().unwrap_or_default().to_owned();
+        let row = out.entry(id).or_default();
+        row.0 += 1;
+        row.1 = p["outcome"].as_str().unwrap_or_default().to_owned();
+        row.2 = p["detail"]
+            .as_str()
+            .unwrap_or_default()
+            .chars()
+            .take(300)
+            .collect();
+        row.3 = p["duration_ms"].as_u64().unwrap_or(0);
+    }
+    out
+}
+
+/// The session's extensions as the Customize view shows them.
+pub(crate) fn extension_rows(
+    core: &crate::server::Core,
+    store: &EventStore,
+    session: SessionId,
+) -> Vec<modbit_protocol::v1::ExtensionRow> {
+    core.tools
+        .hooks
+        .extensions_of(store, session)
+        .iter()
+        .map(|e| {
+            let active = e.active();
+            modbit_protocol::v1::ExtensionRow {
+                extension_id: e.extension_id.clone(),
+                name: e.manifest.name.clone(),
+                version: e.manifest.version.clone(),
+                scope: "SESSION".into(),
+                state: if active { "ACTIVE" } else { "QUARANTINED" }.into(),
+                quarantine_reason: e.quarantine.clone().unwrap_or_default(),
+                signature: e.signature.clone(),
+                manifest_digest: e.digest.clone(),
+                path: e.path.clone(),
+                publisher: e.manifest.publisher.clone(),
+                source: e.manifest.source.clone(),
+                hooks: e
+                    .manifest
+                    .hooks
+                    .iter()
+                    .map(|h| format!("{}@{}", h.name, h.point.label()))
+                    .collect(),
+                commands: e.manifest.commands.iter().map(|c| c.name.clone()).collect(),
+                providers: e
+                    .manifest
+                    .providers
+                    .iter()
+                    .map(|p| p.endpoint(&e.manifest.name))
+                    .collect(),
+                servers: e
+                    .manifest
+                    .tools
+                    .iter()
+                    .map(|t| modbit_protocol::v1::ToolServerRow {
+                        name: t.name.clone(),
+                        transport: match &t.transport {
+                            modbit_mcp::Transport::Stdio { .. } => "stdio".to_owned(),
+                        },
+                        state: if active { "CONFIGURED" } else { "INERT" }.into(),
+                        credential_required: t.credential.is_some(),
+                        credential_held: t
+                            .credential
+                            .as_deref()
+                            .is_some_and(|h| core.tools.mcp.has_credential(h)),
+                        scopes: t.scopes.iter().cloned().collect(),
+                    })
+                    .collect(),
+                capabilities: e.manifest.capabilities(),
+                can_trust: !active && !e.signature.starts_with("INVALID"),
+            }
+        })
+        .collect()
+}
+
+/// `ListHooks`: what is in force for a task, what a person switched off, and
+/// what was refused; with the session's extensions as structured rows.
 pub(crate) async fn list(
     core: &crate::server::Core,
     task: &Task,
 ) -> modbit_protocol::v1::HookListView {
-    let (scope, refused) = scope(core, task, None, None, None, &Actor::Core("hooks".into())).await;
-    let extensions = {
-        let store = core.store.lock().await;
-        core.tools.hooks.extensions_of(&store, task.session_id)
+    let (resolution, cfg) = resolution_of(core, task).await;
+    let store = core.store.lock().await;
+    let extensions = core.tools.hooks.extensions_of(&store, task.session_id);
+    let journal = journal_of(&store, task.session_id);
+    let trusted_gate = |r: &Registration| scope_label(r) == "PROJECT";
+    let _ = &cfg;
+    let view = |r: &Registration, enabled: bool| {
+        let (n, outcome, detail, ms) = journal.get(&r.id).cloned().unwrap_or_default();
+        modbit_protocol::v1::HookView {
+            id: r.id.clone(),
+            source: r.source.label(),
+            point: r.spec.point.label().to_owned(),
+            mode: r.spec.mode.label().to_owned(),
+            fail_policy: r.spec.fail_policy.label().to_owned(),
+            timeout_ms: r.spec.timeout_ms,
+            tools: r.spec.tools.clone(),
+            command: r.spec.command.clone(),
+            scope: scope_label(r).into(),
+            enabled,
+            can_disable: can_disable(r),
+            trusted_workspace_gate: trusted_gate(r),
+            last_outcome: outcome,
+            last_detail: detail,
+            last_duration_ms: ms,
+            invocations: n,
+        }
     };
+    let mut hooks: Vec<modbit_protocol::v1::HookView> =
+        resolution.active.iter().map(|r| view(r, true)).collect();
+    hooks.extend(resolution.disabled.iter().map(|r| view(r, false)));
     modbit_protocol::v1::HookListView {
         extensions: extensions
             .iter()
@@ -853,25 +1038,69 @@ pub(crate) async fn list(
                 )
             })
             .collect(),
-        hooks: scope
-            .registrations
-            .iter()
-            .map(|r| modbit_protocol::v1::HookView {
-                id: r.id.clone(),
-                source: r.source.label(),
-                point: r.spec.point.label().to_owned(),
-                mode: r.spec.mode.label().to_owned(),
-                fail_policy: r.spec.fail_policy.label().to_owned(),
-                timeout_ms: r.spec.timeout_ms,
-                tools: r.spec.tools.clone(),
-                command: r.spec.command.clone(),
-            })
-            .collect(),
-        refused: refused
+        hooks,
+        refused: resolution
+            .refused
             .into_iter()
             .map(|r| format!("{} ({}): {}", r.hook, r.source, r.reason))
             .collect(),
+        extension_rows: extension_rows(core, &store, task.session_id),
     }
+}
+
+/// `SetHookEnabled` (the caller has checked the session lease): record that
+/// one hook of the session is on or off. Refused with `HOOK_SCOPE_FORBIDS`
+/// for a hook a device or administrator layer declared, `HOOK_UNKNOWN` for one
+/// the session does not hold.
+pub(crate) async fn set_enabled(
+    core: &crate::server::Core,
+    task: &Task,
+    hook_id: &str,
+    enabled: bool,
+    actor: Actor,
+) -> Result<modbit_protocol::v1::HookEnabledSet, (String, String)> {
+    let (resolution, _) = resolution_of(core, task).await;
+    let Some(reg) = resolution
+        .active
+        .iter()
+        .chain(resolution.disabled.iter())
+        .find(|r| r.id == hook_id)
+    else {
+        return Err((
+            "HOOK_UNKNOWN".into(),
+            format!("no hook `{hook_id}` is in force for this session"),
+        ));
+    };
+    if !enabled && !can_disable(reg) {
+        return Err((
+            "HOOK_SCOPE_FORBIDS".into(),
+            format!(
+                "`{hook_id}` is declared by the {} layer, which is above you: it cannot be switched off here",
+                scope_label(reg).to_ascii_lowercase()
+            ),
+        ));
+    }
+    let scope = scope_label(reg).to_owned();
+    let mut store = core.store.lock().await;
+    let offset = crate::runtime::append(
+        &mut store,
+        core,
+        crate::runtime::Lineage::session(core.tenant_id, task.session_id),
+        AggregateType::Workspace,
+        customize_aggregate(task.session_id),
+        vec![crate::runtime::typed(
+            "HookEnabledSet",
+            &serde_json::json!({"event_type": "HookEnabledSet", "hook_id": hook_id, "enabled": enabled, "scope": scope, "task_id": task.task_id.to_string()}),
+            actor,
+        )],
+    )
+    .map_err(|e| ("STORE".to_owned(), e))?;
+    Ok(modbit_protocol::v1::HookEnabledSet {
+        hook_id: hook_id.to_owned(),
+        enabled,
+        scope,
+        offset,
+    })
 }
 
 /// Record the hooks in force as a run starts.

@@ -1,0 +1,5 @@
+PX-168 planted-failure checks with tools/lint_policy.sh (the policy build):
+- `v.unwrap()` appended to crates/policy/src/lib.rs: error "used `unwrap()` on an `Option` value", build fails
+- `std::process::Command::new("true")` appended to crates/policy/src/lib.rs (no owner allow): error "use of a disallowed method `std::process::Command::new`"
+- a std MutexGuard held across `.await` appended to crates/tools/src/lib.rs: error "this `MutexGuard` is held across an await point"
+- unmodified tree: the policy build passes on macOS

@@ -1,0 +1,30 @@
+{
+ "task": "PX-131",
+ "requirements": [
+  "REQ-PX-131",
+  "QUAL-PX-131",
+  "docs/62_PRODUCT_EXTENSION_REQUIREMENTS_TASKS_AND_QUALIFICATIONS.md#px-131"
+ ],
+ "scenarios": [
+  "QUAL-PX-131 / PX-E2E-131"
+ ],
+ "tests": [
+  "services/modbit-core/tests/px_131_epoch.rs::qual_px_131_a_policy_tightened_mid_round_applies_from_the_next_round_with_both_epochs_recorded",
+  "services/modbit-core/tests/px_131_epoch.rs::qual_px_131_an_emergency_stop_takes_effect_inside_the_round",
+  "services/modbit-core/tests/px_131_epoch.rs::qual_px_131_a_core_killed_mid_round_resumes_the_same_snapshot_and_epoch",
+  "services/modbit-core/tests/px_131_epoch.rs::qual_px_131_a_core_killed_between_epoch_changes_continues_the_sequence",
+  "services/modbit-core/tests/px_131_epoch.rs::qual_px_131_receipts_carry_the_decision_epoch_and_a_forged_epoch_fails_the_chain",
+  "services/modbit-core/tests/px_131_epoch.rs::qual_px_131_a_skill_revoked_mid_round_is_in_that_round_and_absent_from_the_next"
+ ],
+ "proof": "Real Core / real broker / real CLI as each test states. CI run 39960289486 (head f5a67b545a74017c3b632f687b09a8323cf2c8c3): conclusion success.",
+ "limitations": "Unix-only suite (shell calls): the Windows leg is not run; the revocation of the approving principal is covered by the emergency-stop path; no gate attested.",
+ "runs": [
+  "39960289486"
+ ],
+ "ci": {
+  "run_id": "39960289486",
+  "head_sha": "f5a67b545a74017c3b632f687b09a8323cf2c8c3",
+  "conclusion": "success",
+  "json": "evidence/m10/PX-131/ci-run-39960289486.json"
+ }
+}

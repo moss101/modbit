@@ -5,6 +5,8 @@
 //! binary encoding from Rust, and a plain JSON description of the field values
 //! that the TypeScript test compares against after decoding.
 
+// PX-168 lint policy: this file baselined expect/unwrap sites; new ones need review.
+#![allow(clippy::expect_used)]
 use std::path::{Path, PathBuf};
 
 use modbit_protocol::v1::*;
@@ -135,6 +137,16 @@ pub fn samples() -> Vec<Sample> {
         task_state: "Running".into(),
         read_offset: 40,
         events_read: 12,
+        facts: Some(TaskFacts {
+            phase: "verifying".into(),
+            agents_total: 2,
+            agents_running: 1,
+            agents_done: 1,
+            attachments: 1,
+            latest_evidence: "final verification PASSED".into(),
+            next_action: "Review the result".into(),
+            ..Default::default()
+        }),
     };
     let row_json = |ordinal: u32,
                     row_id: &str,
@@ -377,6 +389,7 @@ pub fn samples() -> Vec<Sample> {
         memory_items_injected: 1,
         compaction_epoch: 1,
         compaction_summaries: 1,
+        skill_configuration_id: "5f".repeat(32),
         budgets: Some(BudgetAccountingView {
             max_cost_minor: 5000,
             spent_minor: 1234,
@@ -386,6 +399,7 @@ pub fn samples() -> Vec<Sample> {
             max_children: 3,
             live_children: 1,
             forbid_spawn: false,
+            wall_ms_parked: 3_500,
         }),
     };
     let command = CommandEnvelope {
@@ -1393,7 +1407,12 @@ pub fn samples() -> Vec<Sample> {
                 ],
                 "totalRows": 2, "nextAfterRow": 0, "hasMore": false,
                 "asOfOffset": "90", "lastOffset": "90", "taskState": "Running",
-                "readOffset": "40", "eventsRead": "12"
+                "readOffset": "40", "eventsRead": "12",
+                "facts": {
+                    "phase": "verifying", "agentsTotal": 2, "agentsRunning": 1, "agentsBackground": 0,
+                    "agentsWaiting": 0, "agentsDone": 1, "agentsFailed": 0, "attachments": 1,
+                    "latestEvidence": "final verification PASSED", "risk": "", "nextAction": "Review the result"
+                }
             }),
             decode: reencode::<TranscriptPage>,
         },
@@ -1535,9 +1554,10 @@ pub fn samples() -> Vec<Sample> {
                 "turnId": "01a09072-1262-70f2-b103-63d3e8f0feda", "turnOrdinal": 4,
                 "offset": "9007199254741001", "instructionLayersInForce": 2,
                 "memoryItemsInjected": 1, "compactionEpoch": 1, "compactionSummaries": 1,
+                "skillConfigurationId": "5f".repeat(32),
                 "budgets": {
                     "maxCostMinor": "5000", "spentMinor": "1234", "heldByChildrenMinor": "100",
-                    "maxWallMs": "9007199254740993", "wallMsUsed": "42", "maxChildren": 3,
+                    "maxWallMs": "9007199254740993", "wallMsUsed": "42", "wallMsParked": "3500", "maxChildren": 3,
                     "liveChildren": 1, "forbidSpawn": false
                 }
             }),

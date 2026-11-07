@@ -86,6 +86,8 @@ export interface KeyScope {
   id: string;
   /** Nothing below a blocking scope is consulted for a key it does not bind. */
   blocking: boolean;
+  /** Higher runs first whatever the order of pushing (a pending confirmation outranks a card that docks after it); default 0. */
+  priority?: number;
   /** The handler this scope binds to the key, if any. */
   resolve: (e: KeyEventLike, isMac: boolean) => (() => void) | null;
 }
@@ -110,10 +112,10 @@ export class KeyScopes {
     return this.stack.map((s) => s.id);
   }
 
-  /** Runs the innermost matching binding; true when one ran. */
+  /** Runs the matching binding of the highest priority, innermost first within a priority; true when one ran. */
   dispatch(e: KeyEventLike, isMac: boolean): boolean {
-    for (let i = this.stack.length - 1; i >= 0; i--) {
-      const scope = this.stack[i]!;
+    const order = this.stack.map((s, i) => ({ s, i })).sort((a, b) => (b.s.priority ?? 0) - (a.s.priority ?? 0) || b.i - a.i);
+    for (const { s: scope } of order) {
       const run = scope.resolve(e, isMac);
       if (run) {
         run();

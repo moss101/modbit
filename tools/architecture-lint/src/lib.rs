@@ -4,6 +4,8 @@
 //! evaluates the rules in `rules.toml` (docs/12, docs/81, docs/35). Forbidden
 //! edges are reported with the concrete dependency path that realises them.
 
+// PX-168 lint policy: this file baselined expect/unwrap sites; new ones need review.
+#![allow(clippy::expect_used)]
 use std::collections::{BTreeMap, BTreeSet, HashMap, VecDeque};
 use std::path::Path;
 
@@ -91,6 +93,9 @@ pub struct Rules {
     /// Programs that may be spawned only from listed source paths (PX-067).
     #[serde(default)]
     pub spawns: Vec<spawns::SpawnRule>,
+    /// Where an environment variable that names a credential may be read (PX-130).
+    #[serde(default)]
+    pub credentials: Vec<credentials::CredentialRule>,
 }
 
 impl Rules {
@@ -301,6 +306,7 @@ pub fn check(graph: &Graph, rules: &Rules) -> Vec<Violation> {
     out
 }
 
+pub mod credentials;
 pub mod locked;
 pub mod modules;
 pub mod spawns;

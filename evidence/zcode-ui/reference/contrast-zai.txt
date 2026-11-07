@@ -1,0 +1,68 @@
+=== ZAI light
+  foreground                             background=14.25 panel=15.13 card=15.13 sidebar=13.28 tooltip=13.28
+  foreground-subtle                      background=4.04 panel=4.13 card=4.13 sidebar=3.94 tooltip=3.94
+  foreground-subtlest                    background=2.35 panel=2.37 card=2.37 sidebar=2.32 tooltip=2.32
+  remote-foreground-muted                background=6.60 panel=7.00 card=7.00 sidebar=6.15 tooltip=6.15
+  success                                background=4.15 panel=4.41 card=4.41 sidebar=3.87 tooltip=3.87
+  warning                                background=2.82 panel=3.00 card=3.00 sidebar=2.63 tooltip=2.63
+  destructive                            background=4.25 panel=4.51 card=4.51 sidebar=3.96 tooltip=3.96
+  brand                                  background=19.77 panel=21.00 card=21.00 sidebar=18.43 tooltip=18.43
+  interaction-confirmation-foreground    background=6.21 panel=6.60 card=6.60 sidebar=5.79 tooltip=5.79
+  success-surface-foreground             background=6.21 panel=6.60 card=6.60 sidebar=5.79 tooltip=5.79
+  warning-surface-foreground             background=6.00 panel=6.38 card=6.38 sidebar=5.59 tooltip=5.59
+  destructive-surface-foreground         background=6.24 panel=6.63 card=6.63 sidebar=5.82 tooltip=5.82
+  progress-surface-foreground            background=6.43 panel=6.83 card=6.83 sidebar=6.00 tooltip=6.00
+  git-modified                           background=2.82 panel=3.00 card=3.00 sidebar=2.63 tooltip=2.63
+  git-added                              background=4.15 panel=4.41 card=4.41 sidebar=3.87 tooltip=3.87
+  tooltip-foreground                     background=18.30 panel=19.44 card=19.44 sidebar=17.05 tooltip=17.05
+  tooltip-tag-foreground                 background=6.30 panel=6.69 card=6.69 sidebar=5.87 tooltip=5.87
+  interaction-ask-foreground             background=5.01 panel=5.32 card=5.32 sidebar=4.67 tooltip=4.67
+  terminal-blue                          background=3.60 panel=3.82 card=3.82 sidebar=3.35 tooltip=3.35
+  terminal-bright-blue                   background=5.01 panel=5.32 card=5.32 sidebar=4.67 tooltip=4.67
+  idle-task                              background=3.13 panel=3.33 card=3.33 sidebar=2.92 tooltip=2.92
+  file-node-foreground                   background=4.88 panel=5.18 card=5.18 sidebar=4.55 tooltip=4.55
+  skill-node-foreground                  background=5.48 panel=5.82 card=5.82 sidebar=5.11 tooltip=5.11
+  border on panel 1.25 | border-hover 1.39 | input-border-focused 1.39
+  primary-foreground on primary: 21.00
+  destructive-foreground on destructive: 4.51
+  warning-foreground on warning: 3.00
+  success-foreground on success: 4.41
+  diff-added-foreground on diff-added: 4.41
+  foreground on hover 13.64 on selected 13.64
+  remote-foreground-muted on hover 6.31 on selected 6.31
+  foreground-subtle on hover 3.98 on selected 3.98
+  secondary: #e6e6e6 tag #e6e6e6 surface over panel #f7f7f7
+=== ZAI dark
+  foreground                             background=12.21 panel=10.99 card=9.55 sidebar=12.21 tooltip=9.55
+  foreground-subtle                      background=5.10 panel=4.85 card=4.46 sidebar=5.10 tooltip=4.46
+  foreground-subtlest                    background=2.22 panel=2.23 card=2.18 sidebar=2.22 tooltip=2.18
+  remote-foreground-muted                background=8.63 panel=7.77 card=6.75 sidebar=8.63 tooltip=6.75
+  success                                background=7.72 panel=6.95 card=6.04 sidebar=7.72 tooltip=6.04
+  warning                                background=7.70 panel=6.93 card=6.02 sidebar=7.70 tooltip=6.02
+  destructive                            background=5.98 panel=5.38 card=4.68 sidebar=5.98 tooltip=4.68
+  brand                                  background=18.10 panel=16.29 card=14.16 sidebar=18.10 tooltip=14.16
+  interaction-confirmation-foreground    background=10.76 panel=9.69 card=8.42 sidebar=10.76 tooltip=8.42
+  success-surface-foreground             background=10.76 panel=9.69 card=8.42 sidebar=10.76 tooltip=8.42
+  warning-surface-foreground             background=9.04 panel=8.14 card=7.08 sidebar=9.04 tooltip=7.08
+  destructive-surface-foreground         background=7.71 panel=6.94 card=6.03 sidebar=7.71 tooltip=6.03
+  progress-surface-foreground            background=9.98 panel=8.99 card=7.81 sidebar=9.98 tooltip=7.81
+  git-modified                           background=7.70 panel=6.93 card=6.02 sidebar=7.70 tooltip=6.02
+  git-added                              background=7.72 panel=6.95 card=6.04 sidebar=7.72 tooltip=6.04
+  tooltip-foreground                     background=17.04 panel=15.34 card=13.33 sidebar=17.04 tooltip=13.33
+  tooltip-tag-foreground                 background=8.06 panel=7.26 card=6.31 sidebar=8.06 tooltip=6.31
+  interaction-ask-foreground             background=9.24 panel=8.32 card=7.23 sidebar=9.24 tooltip=7.23
+  terminal-blue                          background=6.22 panel=5.60 card=4.87 sidebar=6.22 tooltip=4.87
+  terminal-bright-blue                   background=9.24 panel=8.32 card=7.23 sidebar=9.24 tooltip=7.23
+  idle-task                              background=3.88 panel=3.49 card=3.04 sidebar=3.88 tooltip=3.04
+  file-node-foreground                   background=9.82 panel=8.85 card=7.69 sidebar=9.82 tooltip=7.69
+  skill-node-foreground                  background=8.35 panel=7.52 card=6.53 sidebar=8.35 tooltip=6.53
+  border on panel 1.36 | border-hover 1.60 | input-border-focused 1.60
+  primary-foreground on primary: 21.00
+  destructive-foreground on destructive: 3.03
+  warning-foreground on warning: 8.93
+  success-foreground on success: 8.96
+  diff-added-foreground on diff-added: 8.96
+  foreground on hover 9.50 on selected 8.06
+  remote-foreground-muted on hover 6.72 on selected 5.70
+  foreground-subtle on hover 4.44 on selected 3.99
+  secondary: #363636 tag #363636 surface over panel #2b2b2b

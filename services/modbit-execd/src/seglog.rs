@@ -22,6 +22,8 @@
 //! The sealed `OutputRef` object is the retained bytes (`retained_from`
 //! says where they start), content-addressed in the Core's object store.
 
+// PX-168 lint policy: this file baselined expect/unwrap sites; new ones need review.
+#![allow(clippy::expect_used)]
 use std::fs::{File, OpenOptions};
 use std::io::{Read, Seek, SeekFrom, Write};
 use std::path::{Path, PathBuf};
@@ -86,6 +88,10 @@ pub struct SegLog {
     active: Option<(File, File)>,
     /// High-water mark: the cursor of the next byte.
     written: u64,
+    /// Set when the output is sealed: the log is final, so what the registry lists (oldest cursor, head) is what the
+    /// sealed object holds and cannot move afterwards (a late write would append and evict, shifting every cursor
+    /// against the object).
+    frozen: bool,
 }
 
 impl SegLog {
@@ -99,6 +105,7 @@ impl SegLog {
             segment_bytes,
             segments: vec![Segment { base: 0, len: 0 }],
             active: Some(active),
+            frozen: false,
             written: 0,
         })
     }
@@ -203,12 +210,18 @@ impl SegLog {
             written: end,
             segments,
             active: Some((log, idx)),
+            frozen: false,
         }))
     }
 
     /// High-water mark.
     pub fn written(&self) -> u64 {
         self.written
+    }
+
+    /// Make the log final: later appends are dropped, so the oldest cursor and the head stay what they are now.
+    pub fn freeze(&mut self) {
+        self.frozen = true;
     }
 
     /// The oldest cursor still readable.
@@ -224,7 +237,7 @@ impl SegLog {
 
     /// Append one record; returns the new high-water mark.
     pub fn append(&mut self, tag: u8, data: &[u8]) -> std::io::Result<u64> {
-        if data.is_empty() {
+        if data.is_empty() || self.frozen {
             return Ok(self.written);
         }
         let last = *self.segments.last().expect("non-empty");
@@ -407,6 +420,30 @@ fn read(
     let mut data = vec![0u8; (stop - cursor) as usize];
     log.read_exact(&mut data)?;
     Ok(ReadOutcome::Chunk { tag, data })
+}
+
+/// The last `max` bytes of the retained output, read from the newest
+/// segments (the raw bytes of both streams, in the order they were logged). A
+/// segment that is gone, or unreadable, yields what could be read.
+pub fn tail(dir: &Path, id: &str, segments: &[Segment], max: usize) -> Vec<u8> {
+    let mut out: Vec<u8> = Vec::new();
+    for seg in segments.iter().rev() {
+        if out.len() >= max {
+            break;
+        }
+        let Ok(mut f) = File::open(data_path(dir, id, seg.base)) else {
+            break;
+        };
+        let want = (max - out.len()) as u64;
+        let start = seg.len.saturating_sub(want);
+        let mut buf = vec![0u8; (seg.len - start) as usize];
+        if f.seek(SeekFrom::Start(start)).is_err() || f.read_exact(&mut buf).is_err() {
+            break;
+        }
+        buf.extend_from_slice(&out);
+        out = buf;
+    }
+    out
 }
 
 /// What sealing a log into the object store produced.
@@ -672,6 +709,28 @@ mod tests {
             panic!()
         };
         assert_eq!(&data[..], &model[mid as usize..mid as usize + data.len()]);
+    }
+
+    /// A frozen log is final: a write after the seal is dropped, so the head
+    /// and the oldest cursor stay what the sealed object holds (a late write
+    /// would have appended and evicted a segment, shifting every cursor
+    /// against the object).
+    #[test]
+    fn a_frozen_log_neither_grows_nor_evicts() {
+        let dir = tempfile::tempdir().unwrap();
+        let mut log = SegLog::create(dir.path(), "f", 256, 64).unwrap();
+        for i in 0..40u8 {
+            log.append(TAG_PTY, &[b'a' + i % 26; 16]).unwrap();
+        }
+        let (oldest, written) = (log.oldest(), log.written());
+        assert!(oldest > 0, "the window has dropped the head already");
+        let (segments, total) = log.snapshot();
+        log.freeze();
+        for _ in 0..40 {
+            assert_eq!(log.append(TAG_PTY, &[b'z'; 16]).unwrap(), written);
+        }
+        assert_eq!((log.oldest(), log.written()), (oldest, written));
+        assert_eq!(log.snapshot(), (segments, total));
     }
 
     /// A log with a million tiny records is read at a cursor by binary

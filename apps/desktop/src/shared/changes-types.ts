@@ -112,3 +112,33 @@ export interface CommitPushAckInfo {
   detail: string;
   stagedDigest: string;
 }
+
+export interface DecideHunkInput {
+  path: string;
+  hunkIndex: number;
+  decision: "ACCEPT" | "REJECT" | "AUTO_ACCEPT";
+  expectedFileRevision: string;
+  expectedHunkDigest?: string;
+  reason?: string;
+  commandId?: string;
+}
+
+/** The Core's typed answer to a per-hunk decision (PX-103): applied (ACCEPTED or REJECTED); a stale or refused decision arrives as a refusal with the Core's code. */
+export interface DecideHunkAckInfo {
+  result: "ACCEPTED" | "REJECTED" | string;
+  path: string;
+  hunkIndex: number;
+  hunkDigest: string;
+  decisionId: string;
+  attributedCallId: string;
+  attributedTool: string;
+  runLive: boolean;
+  /** What the Core will tell the agent at its next round boundary ("" for an accept). */
+  agentNotice: string;
+  fileRevision: string;
+  beforeHash: string;
+  checkpointId: string;
+  workspaceRevision: string;
+  offset: string;
+  replayed: boolean;
+}

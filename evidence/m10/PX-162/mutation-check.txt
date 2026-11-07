@@ -1,0 +1,14 @@
+Mutation: Tracker::step always rebuilds the prefix from the current instructions (the pre-PX-162 behaviour).
+test qual_px_162_a_resume_rebuilds_the_same_note_from_the_log ... FAILED
+test qual_px_162_a_forgotten_memory_rebuilds_the_prefix_and_an_untrusted_file_adds_no_note ... ok
+test qual_px_162_a_changed_rule_file_and_memory_arrive_as_one_note_and_the_prefix_stays ... FAILED
+
+--
+thread 'qual_px_162_a_resume_rebuilds_the_same_note_from_the_log' (5112169) panicked at services/modbit-core/tests/memory_graph_index.rs:3101:5:
+assertion `left == right` failed: []
+--
+thread 'qual_px_162_a_changed_rule_file_and_memory_arrive_as_one_note_and_the_prefix_stays' (5112167) panicked at services/modbit-core/tests/memory_graph_index.rs:3028:9:
+assertion `left == right` failed: request 2 changed the prefix
+--
+test result: FAILED. 1 passed; 2 failed; 0 ignored; 0 measured; 18 filtered out; finished in 10.86s
+

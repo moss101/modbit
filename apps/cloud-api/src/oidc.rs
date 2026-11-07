@@ -101,9 +101,12 @@ impl OidcConfig {
             .ok()
             .filter(|s| !s.is_empty())?;
         let mut c = Self::new(&issuer, &client_id);
-        c.client_secret = std::env::var("MODBIT_CLOUD_OIDC_CLIENT_SECRET")
-            .ok()
-            .filter(|s| !s.is_empty());
+        c.client_secret = modbit_secrets::broker::env_secret(
+            modbit_secrets::broker::Kind::Cloud,
+            "MODBIT_CLOUD_OIDC_CLIENT_SECRET",
+            "cloud.oidc",
+        )
+        .map(|s| s.expose().to_owned());
         c.redirect_uris = std::env::var("MODBIT_CLOUD_OIDC_REDIRECT_URIS")
             .unwrap_or_default()
             .split(',')

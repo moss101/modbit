@@ -13,7 +13,7 @@
     "test": "node --test \"src/**/*.test.ts\"",
     "e2e": "node build.mjs && playwright test -c e2e/playwright.config.ts",
     "e2e:packaged": "playwright test -c e2e/playwright.packaged.config.ts",
-    "start": "node build.mjs && electron dist/main/main.cjs",
+    "start": "node build.mjs && electron .",
     "package": "node build.mjs && node prepare-package.mjs && electron-builder --config electron-builder.yml",
     "package:dir": "node build.mjs && node prepare-package.mjs && electron-builder --config electron-builder.yml --dir"
   },

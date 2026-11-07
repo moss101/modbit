@@ -1,0 +1,27 @@
+{
+ "task": "PX-044",
+ "requirements": [
+  "REQ-PX-044",
+  "QUAL-PX-044",
+  "docs/62_PRODUCT_EXTENSION_REQUIREMENTS_TASKS_AND_QUALIFICATIONS.md#px-044"
+ ],
+ "scenarios": [
+  "QUAL-PX-044 / PX-E2E-044"
+ ],
+ "tests": [
+  "apps/desktop/e2e/gallery.spec.ts",
+  "packages/design-tokens/src/index.test.ts",
+  "tools/test_dossier.py::test_gallery_state_counted_as_proof_is_rejected"
+ ],
+ "proof": "Real Core / real broker / real CLI as each test states. CI run 39960289486 (head f5a67b545a74017c3b632f687b09a8323cf2c8c3): conclusion success.",
+ "limitations": "The gallery spec is design-review evidence and is listed beside non-gallery tests; G11 refuses it alone. No gate attested.",
+ "runs": [
+  "39960289486"
+ ],
+ "ci": {
+  "run_id": "39960289486",
+  "head_sha": "f5a67b545a74017c3b632f687b09a8323cf2c8c3",
+  "conclusion": "success",
+  "json": "evidence/m10/PX-044/ci-run-39960289486.json"
+ }
+}

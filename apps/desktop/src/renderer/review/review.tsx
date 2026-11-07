@@ -98,8 +98,8 @@ export function Review({ taskId, sessionId, card, onClose }: { taskId: string; s
   useEffect(() => {
     void load();
   }, [load]);
-  // PX-024: the Review takes the focus when it opens (the fleet is hidden
-  // behind it); Escape or "Back to fleet" returns it to the card.
+  // PX-024: the Review takes the focus when it opens (the conversation is hidden
+  // behind it); Escape or "Back to the task" closes it.
   const section = useRef<HTMLElement>(null);
   useEffect(() => {
     section.current?.focus();
@@ -260,7 +260,7 @@ export function Review({ taskId, sessionId, card, onClose }: { taskId: string; s
           {bundle ? `task ${taskId.slice(0, 8)} · ${bundle.taskState} · workspace revision ${bundle.workspaceRevision} · base ${bundle.baseCommit.slice(0, 8)} · ${bundle.files.length} file(s), ${hunkCount} hunk(s), ${bundle.receipts} receipt(s)` : "loading from the Core…"}
         </span>
         <button type="button" data-testid="review-close" onClick={onClose} aria-keyshortcuts="Escape">
-          Back to fleet
+          Back to the task
         </button>
       </div>
       <StateLine state={state} testid="review-state" />

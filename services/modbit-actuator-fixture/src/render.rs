@@ -3,6 +3,8 @@
 //! scaler (independent of the Core's), with secure fields rendered as their
 //! value's pattern and then masked opaque black unless a fault says not to.
 
+// PX-168 lint policy: this file baselined expect/unwrap sites; new ones need review.
+#![allow(clippy::expect_used)]
 use sha2::{Digest, Sha256};
 
 use crate::desktop::{App, El, Rect, Win};

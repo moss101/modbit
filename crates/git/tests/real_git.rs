@@ -248,3 +248,180 @@ fn log_recent_lists_commits_with_their_paths_newest_first() {
     assert!(log[0].date.starts_with("20"));
     assert_eq!(repo.log_recent(1).unwrap().len(), 1);
 }
+
+/// What the real index holds, byte for byte, and what git says about it. The
+/// status is asked with `--no-optional-locks`: a plain `git status` would
+/// refresh the very index under test.
+fn index_state(repo: &Repo) -> (Vec<u8>, String, String) {
+    let git_dir = String::from_utf8_lossy(
+        &modbit_git::output(repo.dir(), &["rev-parse", "--absolute-git-dir"])
+            .unwrap()
+            .stdout,
+    )
+    .trim()
+    .to_owned();
+    let text = |args: &[&str]| {
+        let out = modbit_git::output(repo.dir(), args).unwrap();
+        assert!(out.status.success(), "{args:?}");
+        String::from_utf8_lossy(&out.stdout).into_owned()
+    };
+    (
+        std::fs::read(Path::new(&git_dir).join("index")).unwrap(),
+        text(&["--no-optional-locks", "status", "--porcelain"]),
+        text(&["ls-files", "--stage"]),
+    )
+}
+
+fn leftovers(repo: &Repo) -> Vec<String> {
+    let git_dir = String::from_utf8_lossy(
+        &modbit_git::output(repo.dir(), &["rev-parse", "--absolute-git-dir"])
+            .unwrap()
+            .stdout,
+    )
+    .trim()
+    .to_owned();
+    std::fs::read_dir(git_dir)
+        .unwrap()
+        .map(|e| e.unwrap().file_name().to_string_lossy().into_owned())
+        .filter(|n| n.starts_with("modbit-") || n.ends_with(".lock"))
+        .collect()
+}
+
+#[test]
+fn a_diff_with_untracked_files_equals_add_n_and_never_touches_the_real_index() {
+    let (_dir, repo) = seed();
+    // A tracked edit, a staged new file, new files with names a pathspec would
+    // misread, and a tracked file whose stat changed but whose content did not.
+    write(&repo.dir().join("src/lib.rs"), "pub fn a() { 1; }\n");
+    write(&repo.dir().join("staged.txt"), "staged\n");
+    repo.stage_paths(&["staged.txt"]).unwrap();
+    write(&repo.dir().join("fresh.txt"), "one\ntwo\n");
+    write(&repo.dir().join("a b[1].txt"), "bracket\n");
+    write(&repo.dir().join("deep/er/new.rs"), "// new\n");
+    write(&repo.dir().join("empty.txt"), "");
+    std::fs::remove_file(repo.dir().join("README.md")).unwrap();
+    write(&repo.dir().join("README.md"), "# demo\n");
+    let untracked = ["a b[1].txt", "deep/er/new.rs", "empty.txt", "fresh.txt"];
+
+    let before = index_state(&repo);
+    let read = repo.diff_worktree_with_untracked(&untracked).unwrap();
+    assert_eq!(
+        index_state(&repo),
+        before,
+        "the read changed the real index"
+    );
+    assert!(leftovers(&repo).is_empty(), "{:?}", leftovers(&repo));
+    for path in untracked {
+        assert!(
+            read.files.iter().any(|f| f.path == path),
+            "{path} is not in the diff: {:?}",
+            read.files
+        );
+    }
+
+    // Byte for byte what the real `add -N` then `diff HEAD` answers.
+    let mut add = vec!["add", "-N", "--"];
+    add.extend(untracked);
+    assert!(
+        modbit_git::output(repo.dir(), &add)
+            .unwrap()
+            .status
+            .success()
+    );
+    let real = repo.diff_worktree().unwrap();
+    assert_eq!(read.unified, real.unified);
+    assert_eq!(read.files, real.files);
+}
+
+#[test]
+fn a_diff_with_no_untracked_files_is_the_plain_worktree_diff() {
+    let (_dir, repo) = seed();
+    write(&repo.dir().join("src/lib.rs"), "pub fn a() { 1; }\n");
+    let before = index_state(&repo);
+    let read = repo.diff_worktree_with_untracked(&[]).unwrap();
+    assert_eq!(index_state(&repo), before);
+    assert_eq!(read.unified, repo.diff_worktree().unwrap().unified);
+}
+
+#[test]
+fn git_clean_removes_a_file_a_diff_read_has_shown() {
+    let (_dir, repo) = seed();
+    write(&repo.dir().join("junk/new.txt"), "scratch\n");
+    write(&repo.dir().join("top.txt"), "scratch\n");
+    repo.diff_worktree_with_untracked(&["junk/new.txt", "top.txt"])
+        .unwrap();
+    let out = modbit_git::output(repo.dir(), &["clean", "-fd"]).unwrap();
+    assert!(out.status.success());
+    assert!(!repo.dir().join("top.txt").exists());
+    assert!(!repo.dir().join("junk").exists());
+    assert!(repo.status().unwrap().is_empty());
+}
+
+#[test]
+fn a_diff_read_in_a_linked_worktree_leaves_both_indexes_alone() {
+    let (dir, repo) = seed();
+    let head = repo.head().unwrap();
+    repo.create_branch("task/w", &head).unwrap();
+    let wt = repo.worktree_add(&dir.path().join("wt"), "task/w").unwrap();
+    write(&wt.dir().join("fresh.txt"), "new\n");
+    let (main_before, wt_before) = (index_state(&repo), index_state(&wt));
+    let read = wt.diff_worktree_with_untracked(&["fresh.txt"]).unwrap();
+    assert!(read.files.iter().any(|f| f.path == "fresh.txt"));
+    assert_eq!(index_state(&repo), main_before);
+    assert_eq!(index_state(&wt), wt_before);
+    assert!(leftovers(&wt).is_empty(), "{:?}", leftovers(&wt));
+}
+
+#[test]
+fn a_diff_read_takes_more_untracked_files_than_a_command_line_holds() {
+    let (_dir, repo) = seed();
+    let names: Vec<String> = (0..4000)
+        .map(|i| format!("generated/{:0>60}.txt", i))
+        .collect();
+    for n in &names {
+        write(&repo.dir().join(n), "x\n");
+    }
+    let paths: Vec<&str> = names.iter().map(String::as_str).collect();
+    let read = repo.diff_worktree_with_untracked(&paths).unwrap();
+    assert_eq!(read.files.len(), names.len());
+}
+
+#[test]
+fn a_file_gone_since_the_status_is_left_out_and_the_rest_still_shows() {
+    let (_dir, repo) = seed();
+    write(&repo.dir().join("here.txt"), "here\n");
+    let read = repo
+        .diff_worktree_with_untracked(&["vanished.txt", "here.txt"])
+        .unwrap();
+    let paths: Vec<&str> = read.files.iter().map(|f| f.path.as_str()).collect();
+    assert_eq!(paths, ["here.txt"]);
+}
+
+#[test]
+fn a_diff_read_on_a_corrupt_index_fails_and_leaves_it_as_it_was() {
+    let (_dir, repo) = seed();
+    write(&repo.dir().join("fresh.txt"), "new\n");
+    let index = repo.dir().join(".git/index");
+    std::fs::write(&index, b"not an index").unwrap();
+    let err = repo
+        .diff_worktree_with_untracked(&["fresh.txt"])
+        .unwrap_err();
+    assert!(matches!(err, modbit_git::Error::Git { .. }), "{err:?}");
+    assert_eq!(std::fs::read(&index).unwrap(), b"not an index");
+    assert!(leftovers(&repo).is_empty(), "{:?}", leftovers(&repo));
+}
+
+#[test]
+fn status_leaves_a_stat_dirty_index_alone() {
+    let (_dir, repo) = seed();
+    // Same content, new inode: a plain `git status` rewrites the index to
+    // record the new stat data.
+    std::fs::remove_file(repo.dir().join("README.md")).unwrap();
+    write(&repo.dir().join("README.md"), "# demo\n");
+    let before = std::fs::read(repo.dir().join(".git/index")).unwrap();
+    assert!(repo.status().unwrap().is_empty());
+    assert_eq!(
+        std::fs::read(repo.dir().join(".git/index")).unwrap(),
+        before
+    );
+}

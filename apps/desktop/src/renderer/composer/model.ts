@@ -10,7 +10,7 @@
  * until the Core acknowledges it; a model shown as blocked is blocked because
  * the Core said so; a queue row's position is the Core's.
  */
-import type { InputModeId, ModelCatalogView, ModelEntryView, ModelVariantView, PostureView, QueuedInputItem, SendBehaviorState, SlashEntryView, SlashInventoryView, TaskModeId } from "../../shared/composer-types.ts";
+import type { InputModeId, ModelCatalogView, ModelEntryView, ModelVariantView, ObjectiveId, PostureView, PreferencePatch, QueuedInputItem, SendBehaviorState, SlashEntryView, SlashInventoryView, TaskModeId } from "../../shared/composer-types.ts";
 import { TASK_MODES } from "../../shared/composer-types.ts";
 
 // ------------------------------------------------------------------ modes
@@ -491,6 +491,32 @@ export function modelChip(posture: PostureView | null, catalog: ModelCatalogView
   }
   const objective = p.objective ? p.objective.charAt(0) + p.objective.slice(1).toLowerCase() : "Balance";
   return { name: "Auto", variant: objective, routing };
+}
+
+/** What the home composer holds until the task exists: Auto with an objective, or a pin of a catalog row. */
+export type DraftModel = { objective: ObjectiveId } | { row: PickerRow };
+
+/** The Core's command for a draft choice. */
+export function draftPatch(d: DraftModel): PreferencePatch {
+  if ("objective" in d) return { objective: d.objective };
+  const v = d.row.variant;
+  return { pin: { endpoint: d.row.endpoint, model: d.row.model }, ...(v.effort ? { effort: v.effort } : {}), ...(v.serviceTier ? { serviceTier: v.serviceTier } : {}) };
+}
+
+/** A draft shown through the model chip and picker: there is no task yet, so the router has said nothing. */
+export function draftPosture(mode: TaskModeId, d: DraftModel | null): PostureView {
+  const row = d && "row" in d ? d.row : null;
+  return {
+    mode,
+    modeInForce: mode,
+    modeOffset: "0",
+    writes: mode !== "ASK",
+    effectCeiling: "",
+    subagents: mode === "MULTITASK",
+    reproductionFirst: mode === "DEBUG",
+    preference: { objective: d && "objective" in d ? d.objective : "", effort: row?.variant.effort ?? "", serviceTier: row?.variant.serviceTier ?? "", pinEndpoint: row?.endpoint ?? "", pinModel: row?.model ?? "", offset: "0", appliedOffset: "0", effortApplied: "", serviceTierApplied: "" },
+    routing: { outcome: "", reasonCode: "", detail: "", floorMode: "", registryGeneration: "" },
+  };
 }
 
 export interface PickerRow {

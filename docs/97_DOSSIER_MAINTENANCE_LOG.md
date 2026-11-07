@@ -1106,3 +1106,157 @@ Accepted on the owner's chat instruction (Decisions 1 and 2). A decision record 
 - **Files:** `docs/decisions/DR-PX-2026-10-21-015-streamed-delta-durability.md` (new), `docs/decisions/README.md` (ledger row), `docs/02_AUTHORITY_AND_DECISIONS.md` (register section), `docs/31_DATABASE_AND_STORAGE_SCHEMA.md` ("Local storage": deltas are the stated exception to `synchronous=FULL`), regenerated manifest and graph.
 - **Product change under it:** `modbit-event-store` `Durability::Relaxed` (delta events of an assistant stream only; FULL restored before every call returns, fail closed), used only by the assistant stream's delta publish; tests `relaxed_durability.rs` and `qual_px_041_a_power_loss_...`; the Core-share budget of `perf_px_041` follows the profile rule.
 - **Not done:** the measurement on the hosted Windows runner (the record expects a smaller gain there); Decision 3 (the WAL autocheckpoint off the delta path) is deferred.
+
+## PX-043 closed COMPLETE (2026-10-23)
+
+- **Row:** PX-043 advanced REAL_TESTING → E2E_PROVEN → COMPLETE through `graph.py set` with `run:39873543897`, `commit:fc0db107` and `artifact:evidence/m10/PX-043/evidence.json`.
+- **Basis:** the >10 MB / detach / Core-restart / OutputRef test (#106) and the renderer-crash desktop E2E (#103), plus the existing attach, kill, wake and lease tests; CI run 39873543897, all 14 jobs green on macOS, Linux and Windows.
+- **Unfinished behaviour:** the user-versus-agent input clause is proven through the PX-099 lease (LEASE_REQUIRED, INPUT_LEASED), not a separate terminal-kind split; no gate attested.
+
+## PX-134, PX-044, PX-131, PX-132, PX-099 closed COMPLETE; PX-118 REAL_TESTING (2026-10-23)
+
+- **PX-134:** advanced NOT_STARTED → COMPLETE through `graph.py set` with `run:39960289486`, `commit:f5a67b545a74017c3b632f687b09a8323cf2c8c3` and `artifact:evidence/m10/PX-134/evidence.json`; the older-than-active refusal (REGISTRY_OLDER_THAN_ACTIVE) and the fsync before the history is published, with the real-process SIGKILL test (#117). Unfinished: Verify, sign, activate, rollback, tamper, unknown-key, revoked-binding and key-never-printed are proven through the real CLI and Core; the SIGKILL proof kills the Core at twelve points of an activation rather than at a named instruction; the dev-key verb is not for production; no gate attested.
+- **PX-044:** advanced REAL_TESTING → COMPLETE through `graph.py set` with `run:39960289486`, `commit:f5a67b545a74017c3b632f687b09a8323cf2c8c3` and `artifact:evidence/m10/PX-044/evidence.json`; check_dossier G11: a COMPLETE work item or an evidence bundle whose test evidence is only gallery specs fails (QUAL-PX-044 negative proof). Unfinished: The gallery spec is design-review evidence and is listed beside non-gallery tests; G11 refuses it alone. No gate attested.
+- **PX-131:** advanced REAL_TESTING → COMPLETE through `graph.py set` with `run:39960289486`, `commit:f5a67b545a74017c3b632f687b09a8323cf2c8c3` and `artifact:evidence/m10/PX-131/evidence.json`; the last QUAL clause: a skill revoked mid-round stays in that round's snapshot and is absent from the next. Unfinished: Unix-only suite (shell calls): the Windows leg is not run; the revocation of the approving principal is covered by the emergency-stop path; no gate attested.
+- **PX-132:** advanced NOT_STARTED → COMPLETE through `graph.py set` with `run:39960289486`, `commit:f5a67b545a74017c3b632f687b09a8323cf2c8c3` and `artifact:evidence/m10/PX-132/evidence.json`; none: the implementation and tests already existed on main; this closes the graph row after the audit. Unfinished: Unix-only suites; the Windows leg is not run; remote/cloud processes report through the guest RPC and are not exercised here; no gate attested.
+- **PX-099:** advanced NOT_STARTED → COMPLETE through `graph.py set` with `run:39960289486`, `commit:f5a67b545a74017c3b632f687b09a8323cf2c8c3` and `artifact:evidence/m10/PX-099/evidence.json`; the slow-client memory bound is now measured over the 200 MiB the QUAL states (#118). Unfinished: Unix-only PTY suites; the Windows leg is not run; no gate attested.
+- **PX-118:** advanced NOT_STARTED → REAL_TESTING (no evidence required to that step). The worktree suite (`worktrees_px.rs`, 38 tests) passes; open: the live-gateway leg of QUAL-PX-118 is not run by any workflow, so it is not E2E_PROVEN.
+
+## PX-082 closed COMPLETE (2026-10-23)
+
+- **PX-082:** advanced REAL_TESTING → COMPLETE through `graph.py set` with `run:39993797935`, `commit:ce0995876a03966eba4225b2bfa8e2c3c39a9194` and `artifact:evidence/m10/PX-082/evidence.json`; the Core suite now runs on Windows (#121, rust windows-latest green in this run) and the QUAL mutation check was run and retained: evidence/m10/PX-082/mutation-check.txt. Unfinished: Mutation A (the approval's hash binding dropped) fails the suite; mutation B (the run gate's duplicate hash comparison dropped) survives because the version comparison beside it still refuses an edited definition, so that line is defence in depth, not the binding the QUAL names. The reference drift definition is exercised with a scripted model; no live provider. No gate attested.
+
+## PX-045 closed COMPLETE (2026-10-24)
+
+- **PX-045:** advanced NOT_STARTED → COMPLETE through `graph.py set` with `run:40018683027`, `commit:f790ed1182c0cff0be35a67969e2102c22bab466` and `artifact:evidence/m10/PX-045/evidence.json`; #126 added the 1000 x 700 / 900 x 600 geometry test and the Settings-with-a-running-task test; the full desktop suite then ran green on main. Unfinished: The suite drives the built Electron app against a real Core with a scripted model, not a signed packaged installer (M10.2 owns signing). The QUAL mutation checks (double-registered shortcut, unclamped panel ratio) rely on shell.test.ts and the existing conflict test; no new mutation run was retained. No gate attested.
+
+## PX-083 closed COMPLETE (2026-10-24)
+
+- **PX-083:** advanced NOT_STARTED → COMPLETE through `graph.py set` with `run:40042355021`, `commit:812bac4466305f86307d6e9c7ad4b84d581b2592` and `artifact:evidence/m10/PX-083/evidence.json`; #130 added the worktree-isolation and gate-skip-budget tests and retained the idempotency mutation check (evidence/m10/PX-083/mutation-check.txt: removing the event-id dedupe fails three tests). Unfinished: Time-triggered paths are proven on a controlled clock against a real Core with real SIGKILL restarts; the forge-event trigger consumer has no clause-specific test here. The mutation touched only the Core pre-check, not the event-fold's own repeated-key check. The gate-skip test recomputes the gate session id derivation. No gate attested.
+
+## PX-049 closed COMPLETE (2026-10-24)
+
+- **PX-049:** advanced NOT_STARTED → COMPLETE through `graph.py set` with `run:40076778858`, `commit:cc41fce243671b8058c8065217e2ea5554a74b75` and `artifact:evidence/m10/PX-049/evidence.json`; #134 added the Core session_end hook point and EndSession command, the three-way quit prompt (keep open / quit and resume / quit and leave suspended), the recovery re-send after page load, and the hardening hash guard. Unfinished: The QUAL asks that the main.ts diff show only window options and quit handling; the #134 diff also holds the recovery re-send and the resume call, which is recovery presentation under PX-049 and needs a reviewer to accept it. Cited run 40076778858 is the green PR run on head f3081826; the squash commit cc41fce2 has an identical tree (git diff empty), and main's own run on cc41fce2 failed on hosted-macOS actuator tests unrelated to PX-049 (a rerun was requested). Hook output journaled is the hook's answer reason, not its stdout/stderr; a session with no tasks runs no hooks; the Core never resumes tasks at boot on its own, a headless client calls StartTask. No gate attested.
+
+## PX-048 moved to REAL_TESTING (2026-10-24)
+
+- **PX-048:** advanced NOT_STARTED → REAL_TESTING through `graph.py set` after #132 (terminal scroll-back by OutputRef range). Not COMPLETE: user-terminal input policy unprovable (no user-owned terminal in the Core), agent-terminal wording vs the lease model, Windows exact line order, an unreviewed preload pin; see evidence/m10/PX-048/TASK_CARD.md.
+
+## DOC-PX-015 — ZCode design language: DR-PX-2026-10-24-016 and rows PX-141..143 (2026-10-24)
+
+Accepted on the owner's chat instruction of 2026-10-24 ("investigate how we can use same frontend of zcode into modbit with same design aesthetics and high fidelity ... create a goal and complete that autonomously"). Dossier only: no product code, status or evidence claim changes in this task.
+
+- **Record:** `docs/decisions/DR-PX-2026-10-24-016-zcode-design-language.md` (new), the ledger row in `docs/decisions/README.md`, a register section in doc 02. The record is the investigation (ZCode's licence, size and coupling; why a transplant is rejected), the goal and its exit criteria, nine declared exceptions with measured ratios where ZCode's own values would breach AFW-A12, the scoped geometry supersession, the licence duties and the fidelity gate.
+- **Rows:** REQ-PX-141..143, QUAL-PX-141..143, task cards PX-141..143 and scenarios PX-E2E-141..143 in doc 62 (owner `desktop`, M10, RELEASE_ZERO, iteration tier, chained 141 to 142 to 143, DOC-PX-015 a prerequisite). The numbers of QUAL-PX-045 (agent list, top bar) carry the superseded values.
+- **Supersession, scoped (doc 65):** a note after section 2 and the record's section 5.3; AFW-A03, A04, A05, A07 and the provenance clause of AFW-A11 only. The clean-room posture for the Cursor reference product is unchanged. AFW-A12, A13 and A14 are not relaxed.
+- **Tooling:** one entry in the parity table of `tools/build_graph.py` (creates the change record and DOC-PX-015); `tools/test_dossier.py` pins 144 PX rows and 140 ADOPT tasks and adds `test_dr_016_adopts_the_zcode_design_language_without_relaxing_the_accessibility_floor`.
+- **Basis of the measurements:** a retained capture of ZCode's real primitives and stylesheet at upstream `3c5b227649371507ddc4eb46ac5133afe6db1cab`, rendered in Electron 44.3.0 (`evidence/zcode-ui/reference/`, `tools/zcode-reference/`, added by PX-141).
+- **Correction after the first implementation pass (2026-10-24):** the scope of the AFW-A11 supersession is stated in full (ladder percentages, radii, chrome type 13/18 and press scale; the kept parts are listed), ZDX-05 is narrowed to the dark destructive label (no solid warning button is rendered), the one changed assertion outside geometry (two window-root colour literals in `shell.spec.ts`) is named, and the fidelity gate is described as built. Measured while building: ZCode's real input is 28 px tall (its design document says 36), and its reference page surface is `--color-background`, not the transparent body its stylesheet declares.
+- **Product work after the record (2026-10-24, branch wip/zcode-design-language):** PX-141 (tokens, scale, notices, parity gate) is REAL_TESTING; PX-142 (primitive restyle and the fidelity gate) and PX-143 (framed-panel shell, screens, Lucide icons) are implemented with their task cards and evidence under `evidence/m10/` but stay NOT_STARTED in the graph, because `graph.py` refuses a move while a prerequisite is not COMPLETE and PX-141 needs the Linux and Windows CI legs.
+- **Not done here:** every product behaviour of PX-141..143; the Windows and Linux legs; tracking upstream after the pinned revision.
+
+## DOC-PX-016 — Autonomous coding engine: DR-PX-2026-10-25-017 and rows PX-144..146 (2026-10-25)
+
+Accepted on the owner's chat instruction of 2026-10-25 ("Transform Modbit from a partially autonomous coding assistant into a reliable autonomous software engineer ... Implement, test and verify ... Follow existing decision-record requirements. Do not weaken locked architectural invariants"). The task is dossier work: the record, the rows, the supersession notes and the tooling pins. The product behaviour it authorizes is built and tested on the same branch under PX-144..146 and is reported by their handoff, not by this entry.
+
+- **Record:** `docs/decisions/DR-PX-2026-10-25-017-autonomous-coding-engine.md` (new), the ledger row in `docs/decisions/README.md`, a register section in doc 02. The record verifies the ten findings of the owner's audit list against the code at `076c1b70` (nine confirmed in whole or in part, one, the live-model proof, confirmed and left open), states seven decisions, the options rejected (a classifier that approves; widening `RUN_EVERYTHING`; seeded `covers_always_ask` rules; a second verification engine), and what the approval does not cover (any other always-ask class, the envelope, leases, the emergency stop, and spending on a live provider).
+- **Rows:** REQ-PX-144..146, QUAL-PX-144..146, task cards PX-144..146 and scenarios PX-E2E-144..146 in doc 62 (owners `effects-security`, `core-runtime`, `core-runtime`; M10; RELEASE_ZERO; release-critical; DOC-PX-016 a prerequisite; every other prerequisite already COMPLETE, so the rows can be advanced on evidence, and none can be COMPLETE before its live leg).
+- **Supersession, scoped:** doc 65 gains one note after AFW-F13 (default mode, the AUTONOMOUS mode and the reading of AFW-F06's classifier clause); doc 28's `max_attempts_per_task` Alpha default is 12 and the loop's automatic verification is described; doc 14's budget defaults and windows; doc 30's two events and the mode string; doc 64's derived plan for Node/TypeScript and Go.
+- **Tooling:** one entry in the parity table of `tools/build_graph.py` (creates the change record and DOC-PX-016); `tools/test_dossier.py` pins 147 PX rows and 143 ADOPT tasks and adds `test_dr_017_runs_the_coding_task_autonomously_inside_the_envelope_without_relaxing_the_other_always_ask_classes`.
+- **Live leg:** not part of the record's approval; the owner authorized one live proof separately in the same session (the `ZCODE_API_KEY` z.ai credential, `glm-5.3-flash`). Five runs are retained under `evidence/m10/PX-145/` (two blocked attempts that are kept as the blockers they showed, three verified fixes); the record's section 9 states what they do and do not show. No cost cap could be applied (an unpriced binding is stopped as unmetered, fail closed), so the run is bounded by turns and wall clock. No release gate is attested.
+- **Follow-up (2026-10-25, same branch, PR 147):** D8 (a subagent inherits neither AUTONOMOUS nor a budget window: `SetRunMode` refuses it, a replayed exhaustion no longer opens a child's window) and D9 (`RepairAttemptView`, `ReviewBundle.repair_attempts = 362`, shown in the Evidence app; the preload bridge's pinned hash moves with this review: one type field, no channel). The live approval-deck runs (`evidence/m10/PX-144/live-approvals-run-1.json`, `-run-2-prefix-too-broad.json`, `-run-3.json`) are section 9 of the record. The CI protocol freshness check had failed on a stale generated binding for the `run_control.proto` comment; regenerated (`dde76fd5`). Not done here: the release gates A-G (they need an owner-approved threshold profile), the Windows and Linux legs, a larger repository.
+
+## DOC-PX-017 — The upgrade program: DR-PX-2026-10-26-018 and rows PX-147..191 (2026-10-26)
+
+Accepted on the owner's chat instruction of 2026-10-26 ("Yes, promote the upgrade program into the dossier ..."), after a study of OpenAI Codex (`970111f6`), MAI-UI and Qwen-UI-Agent (`3deabf1d`) and Qwen-Planner-Agent (`070038bc`). The task is dossier work: the record, the rows, the scoped notes and the tooling pins. The product behaviour it authorizes is not built here.
+
+- **Record:** `docs/decisions/DR-PX-2026-10-26-018-codex-mai-ui-planner-upgrade-program.md` (new), the ledger row in `docs/decisions/README.md`, a register section in doc 02. Six decisions (registration, provenance, source facts, the ADOPT/DEFERRED rule, binding notes, program rules); twelve decisions left open and listed; options rejected (adding "the agents", registering all 52 tasks as ADOPT, keeping the study in `research/`).
+- **Rows:** REQ-PX-147..191, QUAL-PX-147..191, task cards PX-147..149, 150, 152, 153, 155..159, 161, 162, 167, 168, 171, 174, 176..179, 182..184, 186, 188 and 189 (27) and their scenarios in doc 62; 18 DEFERRED rows (151, 154, 160, 163..166, 169, 170, 172, 173, 175, 180, 181, 185, 187, 190, 191) whose activation text is Appendix B of the record. Owners are existing subsystems (no subsystem is added); DOC-PX-017 is a prerequisite of every ADOPT row.
+- **Folded, not registered:** MCP OAuth and elicitation (PX-090), release pipeline (PX-097, PX-098), plugin pipeline (PX-087, PX-088), hook contract and trust (PX-092, PX-117), durable external-tool rules (PX-090, PX-057), the live native proof and graph reconcile (PX-069..076) and failure diagnosis (PX-140): Appendix C binds their deltas.
+- **Tooling:** one entry in the parity table of `tools/build_graph.py`; `tools/test_dossier.py` pins 192 requirement rows, 170 ADOPT tasks and the 22 DEFERRED rows, and adds `test_dr_018_registers_the_upgrade_program_without_a_second_owner_and_defers_what_needs_a_decision`.
+- **Not done here:** every product behaviour of the rows; verification of the model and dataset licenses; any live run; the correction of `docs/66` section 3; the advance of any graph status.
+
+## DOC-GOV-008 — Bind the trajectory metrics module to the PX-189 production wiring
+
+### Identity and authority
+
+- Task: DOC-GOV-008 (`dossier_task`); owner: governance; prerequisite: DOC-GOV-007 COMPLETE; outside product roll-ups.
+- Decision Record: DR-GOV-2026-10-30-008, approved for dossier adoption. On 2026-10-30 the owner asked that the trajectory module committed in 74f52c33 have a governed home ("CAN fix this" about its missing caller, graph task and Decision Record) and chose, between binding it and building the producer, "Bind via DOC-GOV-008".
+- Scope: one line of the PX-189 task card in doc 62 (Production wiring), the change record and DOC-GOV-008 node in `../tools/build_graph.py`, one assertion block in `../tools/test_dossier.py`, and this entry. No requirement row, disposition, owner, task, qualification, gate, release rule or product status changes; PX-189 stays NOT_STARTED. Docs 40/41/42/49, `../AGENTS.md`, every Decision Record and every locked path stay byte-identical.
+- Revision before change: `../evidence/dossier-gov-008/baseline.json` (branch `wip/codex-hardening-px147-squash` at 74f52c33).
+
+### Decision Record (change-control fields)
+
+| Field | Content |
+|---|---|
+| Trigger / evidence | An analysis of MiniMax-AI/mcode-stack (its session-log digest that finds recurring openings, retries and tool errors) produced `crates/core-runtime/src/trajectory.rs`: read-only per-task counts of failed, cancelled, unknown-outcome and exact-repeat tool calls and recurring-goal detection over the task and tool-call projections. It was committed with unit tests and no caller. |
+| Current behavior | AUDIT (code read): the module is referenced by no Core, desktop or CLI code. PX-189's card names a read-only producer over the log projection feeding the Skill Evolution Lab and does not mention the module, so the module has no governed consumer and a second producer could be written beside it. |
+| Replacement | PX-189's Production wiring names the module as an input of the one producer and says the producer is its caller. No new requirement, owner or subsystem: the owner stays `skills`, the module stays in `core-runtime`. |
+| Migration | None. Additive change record and `dossier_task`; statuses untouched. |
+| Compatibility | Consistent with doc 81 (no second event store, scheduler or evidence system) and DR-PX-2026-10-26-018. Graph schema 1.2 unchanged. |
+| Security impact | None. The module is pure and read-only; the producer's redaction and sealing rules (QUAL-PX-189) apply to anything it emits. |
+| Test impact | The governance chain test in `../tools/test_dossier.py` checks that DOC-GOV-008 follows DOC-GOV-007 with its change record, both specifying docs and the governance owner, and that the PX-189 card names the module. |
+| Rollback | Revert the change commit, or restore the inventory below to the hashes in `baseline.json`, then rerun the reseal. |
+| Explicit user approval | The owner's chat reply on 2026-10-30: "Bind via DOC-GOV-008". |
+
+### Stage applicability
+
+| Stage | DOC-GOV-008 execution |
+|---|---|
+| AUDITING | PX-189's card and graph node read; grep of `crates`, `services` and `packages` for any caller of the module (none); doc 81 ownership checked. Baseline hashes recorded. |
+| IMPLEMENTING | The card line, builder wiring, test assertion, this entry |
+| WIRED | Graph and manifests regenerated through the real CLIs |
+| REAL_TESTING | `check_dossier --manifest` and the copied-package suite |
+| E2E_PROVEN | Pull request green on hosted CI and landed on `main` |
+| COMPLETE | One-step ladder with evidence citing the landing commit; seal pull request |
+| Product qualification | Non-applicable: no product behavior, status or evidence claim changes. PX-189 itself still needs its producer and PX-E2E-189. |
+
+### Status and handoff
+
+- **Evidence:** the `../evidence/dossier-gov-008/` bundle (baseline, tests.log, validation.json).
+- **Remaining product work:** PX-189 in full (the producer, redaction, sealing, the lab read, PX-E2E-189); the module's first caller.
+- **Next safe action:** land the change, then seal DOC-GOV-008 from the CI run.
+
+### Exact file inventory for this change
+
+| Action | Path |
+|---|---|
+| Added | `evidence/dossier-gov-008/baseline.json`, `tests.log`, `validation.json`, `docs/decisions/DR-GOV-2026-10-30-008-bind-trajectory-metrics-to-px-189.md` (the accepted record doc 62's locked path requires) |
+| Changed | `docs/62_PRODUCT_EXTENSION_REQUIREMENTS_TASKS_AND_QUALIFICATIONS.md`, `docs/97_DOSSIER_MAINTENANCE_LOG.md`, `docs/decisions/README.md` (ledger row) |
+| Changed | `tools/build_graph.py`, `tools/test_dossier.py` |
+| Changed | `MANIFEST.md`, `manifest.json`, `graph/PROJECT_GRAPH.md`, `graph/project-graph.json` |
+
+## DOC-PX-018 — Agent workspace language: DR-PX-2026-11-03-019 and rows PX-192..194 (2026-11-03)
+
+Accepted on the owner's chat instruction of 2026-11-03 ("can you redesign frontend of this application exactly exactly like cursor - first share an image before we approve", then "Yes, go ahead" after a mockup in light and dark and a side-by-side capture of the running app on `3207cb21`). Dossier only: no product code, status or evidence claim changes in this task.
+
+- **Record:** `docs/decisions/DR-PX-2026-11-03-019-agent-workspace-language.md` (new), the ledger row and the acceptance sentence in `docs/decisions/README.md`, a register section in doc 02. The record lists what the capture showed and its cause in the renderer, the goal and its exit criteria, the options (copying the reference product's palette is rejected under doc 65 section 2), Modbit's own tokens, the control recipes, the restored geometry, the density rules and the gate that replaces the retired ZCode fidelity gate.
+- **Rows:** REQ-PX-192..194, QUAL-PX-192..194, task cards PX-192..194 and scenarios PX-E2E-192..194 in doc 62 (owner `desktop`, M10, RELEASE_ZERO, iteration tier, chained after PX-143, DOC-PX-018 a prerequisite). QUAL-PX-045 carries the restored numbers (260 px, 40 px).
+- **Supersession, scoped:** DR-PX-2026-10-24-016 sections 2, 5.1 (ZDL-01..06), 5.3 and 6; in doc 65 a note after the earlier one restores AFW-A03, A04, A05, the composer radius of A07 (12 px) and the provenance clause of AFW-A11 for every source. The Lucide table (ZDL-07) and the accessibility exceptions carry over. AFW-A12, A13, A14 and the clean-room posture are unchanged.
+- **Tooling:** one entry in the parity table of `tools/build_graph.py` (creates the change record and DOC-PX-018); `tools/test_dossier.py` pins 195 PX rows and 173 ADOPT tasks and adds `test_dr_019_adopts_the_agent_workspace_language_inside_the_clean_room_posture`.
+- **Not done here:** every product behaviour of PX-192..194.
+
+## DOC-PX-019 — Agent workspace screens: DR-PX-2026-11-04-020 and rows PX-195..197 (2026-11-04)
+
+Accepted on the owner's chat instruction of 2026-11-04 ("there is no parity with cursor frontend - seems like old app is not deleted", then "Yes, remove it"). The record says why the gate of DR-PX-2026-11-03-019 passed while the screens were wrong, and adds the owner's review of real screenshots as an exit criterion.
+
+- **Record:** `docs/decisions/DR-PX-2026-11-04-020-agent-workspace-screens.md` (new), the ledger row in `docs/decisions/README.md`, a register section in doc 02.
+- **Rows:** REQ-PX-195..197, QUAL-PX-195..197, task cards PX-195..197 and scenarios PX-E2E-195..197 in doc 62 (owner `desktop`, M10, RELEASE_ZERO, release-critical, chained after PX-194, DOC-PX-019 a prerequisite).
+- **Supersession, scoped:** DR-PX-2026-11-03-019 section 5.5's "Modbit keeps Fleet", its navigation rows, the one-line status row and the banner rule; doc 10's and doc 39's board as the home; a note in doc 65 for AFW-A01, A06, A07 and D12. REQ-EV-0037 and REQ-EV-0143 stay.
+- **Tooling:** one entry in the parity table of `tools/build_graph.py` (creates the change record and DOC-PX-019); `tools/test_dossier.py` pins 198 PX rows and 176 ADOPT tasks and adds `test_dr_020_rebuilds_the_screens_and_removes_the_board_inside_the_clean_room_posture`.
+- **Not done here:** the product behaviour of PX-195..197.
+
+### Amendment to DR-PX-2026-11-04-020, section 5.9 (2026-11-05)
+
+The owner's chat instruction of 2026-11-05 ("Yes, fix those first") after a comparison of the app with docs 10, 32, 39 and 65: six corrections the record had made necessary (visible task state, row facts, mode and model on home, first-class state views under MOD-UX-001, shortcut help, location selector), and the record's wrong deny key (`n`, correctly `x`). Docs 10, 32, 39 and 65 carry a note; QUAL-PX-195..197 name the new proof. No row, pinned count or owner changes. The record's section 12 lists what the comparison found that this does not fix.
+
+## Graph audit — desktop rows checked against the code at `d4c5458a` (2026-11-07)
+
+A bookkeeping change to the project graph on the owner's chat instruction of 2026-11-07 ("Yes, correct the graph"). No requirement row, disposition, owner, Decision Record or product code changed, and no release gate was attested.
+
+- **Basis:** `../evidence/m10/graph-audit-2026-11-07/AUDIT.md`: five read-only audits under doc 84 of 29 unfinished rows and 32 rows at COMPLETE, spot-checked, and one local run in the real app of the contradictions it marks reproduced (`repro.log`).
+- **Moved back to REAL_TESTING, for regressions reproduced in the real app:** PX-197 (Escape with Task details open denies the effect; a fold says "Ran" for a denied command) and PX-196 (after a reload the details show default phase and agent counts). RELEASE_ZERO goes from 439 to 437 of 539; ALPHA and BETA stay READY.
+- **Audit notes, no status change:** PX-042, 046, 047, 054, 055, 056, 058, 060, 062, 064, 066, 068, 074, 079, 080, 086, 093, 094, 095, 096, 097, 100, 103, 104, 127, 128, 025 and 031 stay NOT_STARTED, because `graph.py set` refuses anything higher while a prerequisite is not COMPLETE. 24 of the 28 have real code; none can close. PX-048 stays REAL_TESTING and gains the evidence of pull request 170.
+- **Contradicted and kept COMPLETE with a note, for the owner:** IMP-EV-0152 (moving it takes ALPHA and BETA off READY and raises 66 integrity findings) and PX-043 (moving it fails G4 and it needs a Decision Record or a Core refusal). PX-195 and M8.8 stand, each with a note.
+- **Unfinished behaviour:** every gap in the row notes. No row owns the desktop's rendering of the cloud browser stream. Rows whose specs pull request 169 rewrote still cite earlier runs. Non-desktop open rows were not audited.
+- **Next safe action:** fix the reload defect and the Escape and fold defects, then walk PX-196 and PX-197 forward with a new CI run. The owner decides PX-043 and who owns the stream's rendering.

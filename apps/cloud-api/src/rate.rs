@@ -3,6 +3,8 @@
 //! steady rate; a request over the budget is refused `RATE_LIMITED` before
 //! any handler runs.
 
+// PX-168 lint policy: this file baselined expect/unwrap sites; new ones need review.
+#![allow(clippy::expect_used)]
 use std::collections::HashMap;
 use std::sync::Mutex;
 use std::time::Instant;

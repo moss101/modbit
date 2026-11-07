@@ -16,6 +16,8 @@
 //! Held values shorter than [`MIN_HELD_LEN`] are never matched: a short value
 //! would match ordinary text.
 
+// PX-168 lint policy: this file baselined expect/unwrap sites; new ones need review.
+#![allow(clippy::expect_used)]
 use std::sync::OnceLock;
 
 use regex::Regex;
@@ -43,6 +45,12 @@ fn shapes() -> &'static [(Regex, &'static str)] {
             (
                 r"(?i)\b(api[_-]?key|access[_-]?token|auth[_-]?token)=[A-Za-z0-9._~+/-]{16,}",
                 "a credential parameter",
+            ),
+            // The whole block first, so its body goes with its header (PX-157);
+            // a header alone (a cut block) is still a private key.
+            (
+                r"(?s)-----BEGIN [A-Z ]*PRIVATE KEY-----.*?-----END [A-Z ]*PRIVATE KEY-----",
+                "a private key",
             ),
             (r"-----BEGIN [A-Z ]*PRIVATE KEY-----", "a private key"),
         ]
@@ -330,6 +338,17 @@ mod tests {
     use super::*;
 
     const KEY: &str = "sk-live-0123456789abcdefghij";
+
+    #[test]
+    fn a_private_key_block_goes_whole_and_a_cut_header_still_goes() {
+        let block = "-----BEGIN OPENSSH PRIVATE KEY-----\nb3BlbnNzaC1rZXktdjEAAAAA\n-----END OPENSSH PRIVATE KEY-----";
+        let r = Redactor::default().error(&format!("before\n{block}\nafter"));
+        assert_eq!(r.text, format!("before\n{REDACTED}\nafter"));
+        assert_eq!(r.shaped, 1);
+        let cut = Redactor::default().error_text("-----BEGIN EC PRIVATE KEY-----\nMHcCAQEE");
+        assert!(cut.starts_with(REDACTED), "{cut}");
+        assert_eq!(shape_of(block), Some("a private key"));
+    }
 
     #[test]
     fn a_held_value_is_replaced_wherever_it_appears_and_counted() {

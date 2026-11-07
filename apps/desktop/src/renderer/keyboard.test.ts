@@ -29,8 +29,9 @@ test("PX-024: list navigation on the fleet, change navigation in the review; a p
   assert.equal(commandFor(key("ArrowDown"), fleet), "next");
   assert.equal(commandFor(key("j"), fleet), "next");
   assert.equal(commandFor(key("ArrowUp"), fleet), "previous");
-  assert.equal(commandFor(key("ArrowRight"), fleet), "columnNext");
-  assert.equal(commandFor(key("ArrowLeft"), fleet), "columnPrevious");
+  // The board's column keys are gone (DR-PX-2026-11-04-020): the side arrows stay with whatever has the focus.
+  assert.equal(commandFor(key("ArrowRight"), fleet), null);
+  assert.equal(commandFor(key("ArrowLeft"), fleet), null);
   assert.equal(commandFor(key("Enter"), fleet), "open");
   assert.equal(commandFor(key("ArrowDown"), review), "hunkNext");
   assert.equal(commandFor(key("k"), review), "hunkPrevious");
@@ -48,5 +49,9 @@ test("PX-024: list navigation on the fleet, change navigation in the review; a p
 
 test("PX-024: every documented shortcut maps to a command", () => {
   const commands = new Set(SHORTCUTS.map((s) => s.command));
-  for (const c of ["newTask", "search", "jumpAttention", "jumpRunning", "approve", "deny", "cancelTask", "steerTask", "next", "columnNext", "open", "back", "toggleSplit", "jumpFailing", "help"]) assert.ok(commands.has(c as never), c);
+  for (const c of ["newTask", "search", "jumpAttention", "jumpRunning", "approve", "deny", "cancelTask", "steerTask", "next", "open", "back", "toggleSplit", "jumpFailing", "help"]) assert.ok(commands.has(c as never), c);
+});
+
+test("the shortcut help speaks of tasks: no shortcut names a board, a column or a card", () => {
+  for (const s of SHORTCUTS) assert.doesNotMatch(s.what, /\b(board|columns?|cards?|fleet)\b/i, s.keys);
 });

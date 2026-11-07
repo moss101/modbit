@@ -1,17 +1,19 @@
 /**
- * Modbit's own colour roles (AFW-A11). Every theme has exactly the same key
- * set: the `ColorRoles` record type makes a missing or extra role a compile
- * error, and `tokens.test.ts` asserts it at run time. Neutral surfaces are
- * derived from one base per theme with `mix`; the semantic colours are chosen
- * here and verified by the computed contrast test (`pairs.ts`), not by eye.
- * No value is taken from any other product.
+ * Modbit's colour roles (AFW-A11, DR-PX-2026-11-03-019). Every theme has exactly the same key set: the `ColorRoles` record type
+ * makes a missing or extra role a compile error, and `index.test.ts` asserts it at run time.
+ *
+ * Light and dark are derived from the agent workspace language inputs (`workspace-language.ts`, Modbit's own values: three
+ * achromatic surfaces, one base and the AFW-A11 ladder, one blue accent) through ONE explicit role map (`rolesFrom`); a
+ * translucent step is composited over the surface it sits on, so a role is exactly the pixels shown. The computed contrast test
+ * (`pairs.ts`) proves every pair in every theme. The high-contrast palette is Modbit's own and unchanged.
  */
-import { mix } from "./contrast.ts";
+import { mix, over } from "./contrast.ts";
+import { AWL_DARK, AWL_LIGHT, alpha, step, type AwlInputs } from "./workspace-language.ts";
 
 export type ThemeName = "light" | "dark" | "high-contrast";
 
 export const COLOR_ROLES = [
-  // Surfaces, from the app background up.
+  // Surfaces, from the window root up.
   "bg",
   "panel",
   "raised",
@@ -24,8 +26,12 @@ export const COLOR_ROLES = [
   "textDisabled",
   "textOnAccent",
   "textOnInverse",
+  /** Icons and chevrons at the 52 % icon step: 3:1, never text (AWL-02). */
+  "iconMuted",
   // Edges and focus.
+  /** A decorative edge: cards, panels, menus, dialogs, separators (stroke 12 %). */
   "border",
+  /** The edge of an interactive control (input, select, outline button, checkbox, radio, switch track): 3:1 (ZDX-03). */
   "borderControl",
   "focus",
   // Accent.
@@ -41,12 +47,15 @@ export const COLOR_ROLES = [
   "warnTint",
   "dangerTint",
   "infoTint",
+  // The solid destructive button and its label (ZDX-05 carried over). Modbit renders no solid warning button.
+  "dangerSolid",
+  "textOnDangerSolid",
   // Composer-mode tints (AFW-D04): never the only signal, always with an icon and a label.
   "modeAsk",
   "modePlan",
   "modeDebug",
   "modeMultitask",
-  // Selection and hover fills (opaque; derived from the surface ladder).
+  // Selection and hover fills (opaque; the 6 % and 8 % fill steps composited over the panel).
   "hover",
   "selected",
   // Scrim behind modal layers (not a text background).
@@ -55,76 +64,52 @@ export const COLOR_ROLES = [
 export type ColorRole = (typeof COLOR_ROLES)[number];
 export type ColorRoles = Record<ColorRole, string>;
 
-const LIGHT_BASE = "#f3f4f7";
-const DARK_BASE = "#12141a";
+/**
+ * The one role map (AWL-01..03): light and dark share it, so their key sets and meanings cannot drift apart. `panel` is the
+ * conversation surface (chrome), `raised` the editor surface (apps panel, cards, composer, menus), `bg` the window root.
+ */
+function rolesFrom(i: AwlInputs): ColorRoles {
+  const panel = i.chrome;
+  return {
+    bg: i.chrome,
+    panel,
+    raised: i.editor,
+    sunken: step(i, 0.04, panel),
+    inverse: i.base,
+    text: i.base,
+    textMuted: i.muted,
+    textDisabled: step(i, 0.36, panel),
+    textOnAccent: i.onAccent,
+    textOnInverse: i.chrome,
+    iconMuted: step(i, 0.52, panel),
+    border: step(i, 0.12, panel),
+    borderControl: i.control,
+    focus: i.accent,
+    accent: i.accent,
+    accentHover: mix(i.accent, i.base, 0.1),
+    accentText: i.accent,
+    ok: i.ok,
+    warn: i.warn,
+    danger: i.danger,
+    info: i.info,
+    okTint: over(alpha(i.ok, 0.12), panel),
+    warnTint: over(alpha(i.warn, 0.12), panel),
+    dangerTint: over(alpha(i.danger, 0.12), panel),
+    infoTint: over(alpha(i.info, 0.12), panel),
+    dangerSolid: i.dangerSolid,
+    textOnDangerSolid: i.onDangerSolid,
+    modeAsk: i.ok,
+    modePlan: i.warn,
+    modeDebug: i.danger,
+    modeMultitask: i.purple,
+    hover: step(i, 0.06, panel),
+    selected: step(i, 0.08, panel),
+    scrim: "#000000",
+  };
+}
 
-const light: ColorRoles = {
-  bg: LIGHT_BASE,
-  panel: "#ffffff",
-  raised: "#ffffff",
-  sunken: mix(LIGHT_BASE, "#ffffff", 0.55),
-  inverse: "#1c2027",
-  text: "#14171c",
-  textMuted: "#4a525d",
-  textDisabled: "#8a919b",
-  textOnAccent: "#ffffff",
-  textOnInverse: "#f3f4f7",
-  border: "#d4d8df",
-  borderControl: "#7a828e",
-  focus: "#1d4ed8",
-  accent: "#1d4ed8",
-  accentHover: "#1a43b8",
-  accentText: "#1d4ed8",
-  ok: "#1b6e35",
-  warn: "#8a4b00",
-  danger: "#b3261e",
-  info: "#1d4ed8",
-  okTint: "#e2f3e7",
-  warnTint: "#fcefd9",
-  dangerTint: "#fbe6e4",
-  infoTint: "#e4ebff",
-  modeAsk: "#1b6e35",
-  modePlan: "#8a4b00",
-  modeDebug: "#b3261e",
-  modeMultitask: "#6a3cc2",
-  hover: mix(LIGHT_BASE, "#14171c", 0.06),
-  selected: "#dfe7fb",
-  scrim: "#0b0d12",
-};
-
-const dark: ColorRoles = {
-  bg: DARK_BASE,
-  panel: mix(DARK_BASE, "#ffffff", 0.05),
-  raised: mix(DARK_BASE, "#ffffff", 0.09),
-  sunken: mix(DARK_BASE, "#000000", 0.35),
-  inverse: "#e8eaee",
-  text: "#e8eaee",
-  textMuted: "#a3acb8",
-  textDisabled: "#6a717c",
-  textOnAccent: "#0a1020",
-  textOnInverse: "#14171c",
-  border: "#2c313a",
-  borderControl: "#7d8794",
-  focus: "#8fb0ff",
-  accent: "#8fb0ff",
-  accentHover: "#a9c2ff",
-  accentText: "#8fb0ff",
-  ok: "#5ad27f",
-  warn: "#ffb454",
-  danger: "#ff7b72",
-  info: "#8fb0ff",
-  okTint: "#15301e",
-  warnTint: "#38290f",
-  dangerTint: "#3b1a19",
-  infoTint: "#1a2744",
-  modeAsk: "#5ad27f",
-  modePlan: "#ffb454",
-  modeDebug: "#ff7b72",
-  modeMultitask: "#b9a2ff",
-  hover: mix(DARK_BASE, "#ffffff", 0.1),
-  selected: "#243457",
-  scrim: "#000000",
-};
+const light: ColorRoles = rolesFrom(AWL_LIGHT);
+const dark: ColorRoles = rolesFrom(AWL_DARK);
 
 const highContrast: ColorRoles = {
   bg: "#000000",
@@ -137,6 +122,7 @@ const highContrast: ColorRoles = {
   textDisabled: "#8c8c8c",
   textOnAccent: "#000000",
   textOnInverse: "#000000",
+  iconMuted: "#e6e6e6",
   border: "#8c8c8c",
   borderControl: "#ffffff",
   focus: "#ffd400",
@@ -151,6 +137,8 @@ const highContrast: ColorRoles = {
   warnTint: "#2a2200",
   dangerTint: "#2e0a08",
   infoTint: "#00192b",
+  dangerSolid: "#ff9a93",
+  textOnDangerSolid: "#000000",
   modeAsk: "#6df28f",
   modePlan: "#ffd400",
   modeDebug: "#ff9a93",

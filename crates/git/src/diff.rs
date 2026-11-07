@@ -3,6 +3,8 @@
 //! revision-bound hunks and rejects some by rebuilding the file from the base
 //! text plus the accepted hunks only.
 
+// PX-168 lint policy: this file baselined expect/unwrap sites; new ones need review.
+#![allow(clippy::expect_used)]
 use serde::{Deserialize, Serialize};
 
 /// One hunk of a unified diff.

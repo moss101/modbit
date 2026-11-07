@@ -12,6 +12,9 @@
 //! has network of its own is a way out this filter does not close (neither
 //! does a network namespace).
 
+// PX-168 lint policy: this file spawns processes; new ones need review.
+#![allow(clippy::disallowed_methods)]
+
 use std::ffi::OsString;
 use std::io;
 

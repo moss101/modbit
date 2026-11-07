@@ -4,6 +4,8 @@
 //! leaves this process (CUC-F01). Pure and portable: every line here is
 //! tested on every operating system.
 
+// PX-168 lint policy: this file baselined expect/unwrap sites; new ones need review.
+#![allow(clippy::expect_used)]
 use sha2::{Digest, Sha256};
 
 /// Canvas width in pixels.

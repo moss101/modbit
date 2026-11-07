@@ -1,0 +1,66 @@
+// The Customize view's reads and actions over the registries that already
+// exist (REQ-PX-106; docs/62 PX-106): skills (ListSkills, TrustSkill,
+// UntrustSkill of skills_budgets.proto), hooks and installed extensions with
+// their tool servers. No catalog, no install from a network location and no
+// update flow belong here (DR-PX-2026-10-03-011 is not ratified).
+//
+// Additive: new messages only; the fields this adds to HookView, HookListView
+// and ListHooks (surface.proto) use the block 20-39.
+syntax = "proto3";
+
+package modbit.v1;
+
+import "modbit/v1/domain.proto";
+
+// One tool server an extension declares. `state` is what the Core knows
+// without starting it: CONFIGURED (the extension is active), INERT (it is
+// quarantined or unloaded, so the server is never started). It is not a
+// liveness probe.
+message ToolServerRow {
+  string name = 1;
+  string transport = 2;            // stdio | http | ...
+  string state = 3;                // CONFIGURED | INERT
+  bool credential_required = 4;    // the server names a broker handle
+  bool credential_held = 5;        // the broker holds it (never its value)
+  repeated string scopes = 6;
+}
+
+// One extension a session has loaded, as the Core holds it.
+message ExtensionRow {
+  string extension_id = 1;
+  string name = 2;
+  string version = 3;
+  string scope = 4;                // SESSION: loaded by this session
+  string state = 5;                // ACTIVE | QUARANTINED
+  string quarantine_reason = 6;
+  string signature = 7;            // VERIFIED:<key> | UNSIGNED | UNKNOWN_KEY:<key> | INVALID:<key>
+  string manifest_digest = 8;      // what TrustExtension and LoadExtension are bound to
+  string path = 9;                 // the directory it was loaded from
+  string publisher = 10;
+  string source = 11;
+  repeated string hooks = 12;      // "<name>@<point>"
+  repeated string commands = 13;
+  repeated string providers = 14;
+  repeated ToolServerRow servers = 15;
+  repeated string capabilities = 16;
+  bool can_trust = 17;             // quarantined and its signature does not forbid release
+}
+
+// `SetHookEnabled`: enable or disable one hook in force for the session.
+// Recorded on the session's log (it survives a restart) and applied from the
+// next event on. A hook a device or administrator layer declared cannot be
+// disabled here (HOOK_SCOPE_FORBIDS): a lower layer never switches off a
+// higher one. A hook the session does not hold is HOOK_UNKNOWN.
+message SetHookEnabled {
+  Id session_id = 1;
+  string hook_id = 2;              // "<source>/<name>", as ListHooks names it
+  bool enabled = 3;
+  Id task_id = 4;                  // the task whose hooks are in view (a configured hook is resolved for a task)
+}
+
+message HookEnabledSet {
+  string hook_id = 1;
+  bool enabled = 2;
+  string scope = 3;
+  uint64 offset = 4;
+}

@@ -12,6 +12,7 @@ import { mkdtempSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { ECHO_LOOP, expectTerminals, gate, nodeTerminal, readTerminal, steppedModel, type Step } from "./support/apps-harness.ts";
+import { expectTaskState, openTask, runTask } from "./support/new-task.ts";
 import { closeApp, launch, makeRepo, MOD, setContentSize } from "./support/ui-harness.ts";
 
 test("a background terminal survives a crashed renderer: same handle, same Core, replayed screen, live input", async () => {
@@ -32,20 +33,14 @@ test("a background terminal survives a crashed renderer: same handle, same Core,
   try {
     // A narrow window has no room for the apps panel; the hosted runners' default window is narrow.
     await setContentSize(app, page1, 1280, 800);
-    await page1.getByTestId("goal").fill("Keep a terminal running");
-    await page1.getByTestId("workspace").fill(repo);
-    await page1.getByTestId("run").click();
-    const card = page1.getByTestId("task-card").first();
-    const taskId = (await card.getAttribute("data-task-id"))!;
+    const taskId = await runTask(page1, "Keep a terminal running", repo);
     const sessionId = (await page1.evaluate(() => window.modbit.localState()).then((st) => st.sessionId))!;
-    await card.getByTestId("task-start").click();
-    await expect(card.getByTestId("task-state")).toHaveText("Running", { timeout: 60_000 });
+    await expectTaskState(page1, taskId, "Running");
     await expectTerminals(page1, taskId, 1);
     const before = (await page1.evaluate((t) => window.modbit.terminalList(t).then((l) => l.terminals), taskId))[0]!;
     const coreBefore = await page1.evaluate(() => window.modbit.debugCoreInfo());
 
     // Open the terminal, wait for the child's banner, then type once so the log holds a line the new view can only get from the Core.
-    await card.focus();
     await page1.keyboard.press(`${MOD}+e`);
     await page1.getByTestId("tab-terminal").click();
     await page1.locator(`[data-testid="terminal-row"][data-terminal-id="${before.terminalId}"] [data-testid="terminal-pick"]`).click();
@@ -82,7 +77,7 @@ test("a background terminal survives a crashed renderer: same handle, same Core,
 
     // The new view: reopen the panel if the crash closed it, pick the terminal; the screen is rebuilt from the Core's replay.
     if ((await page.getByTestId("region-apps").count()) === 0) {
-      await page.getByTestId("task-card").first().focus();
+      if ((await page.locator(`[data-testid="conversation"][data-task-id="${taskId}"]`).count()) === 0) await openTask(page, taskId);
       await page.keyboard.press(`${MOD}+e`);
     }
     await page.getByTestId("tab-terminal").click();

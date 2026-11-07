@@ -1,0 +1,27 @@
+{
+ "task": "PX-117",
+ "requirements": [
+  "REQ-PX-117",
+  "QUAL-PX-117",
+  "docs/62_PRODUCT_EXTENSION_REQUIREMENTS_TASKS_AND_QUALIFICATIONS.md#px-117"
+ ],
+ "scenarios": [
+  "QUAL-PX-117"
+ ],
+ "tests": [
+  "services/modbit-core/tests/px_117_hooks.rs"
+ ],
+ "proof": "Ten qual_px_117 tests pass on macOS, Linux and Windows in CI run 40239702943 (real Core, real hook processes); mutation-check.txt kills a hook that is not sent its request.",
+ "limitations": "Scripted model behind the gateway for prompt hooks; no product code changed in this closing.",
+ "runs": [
+  "38990216920",
+  "40239702943"
+ ],
+ "ci": {
+  "run_id": "40239702943",
+  "head_sha": "40ef75361860d4c1f6fda0730086beef6e55984a",
+  "conclusion": "success",
+  "json": "evidence/m10/PX-117/ci-run-40239702943.json",
+  "landed_as": "84eecda2"
+ }
+}

@@ -10,6 +10,16 @@ Rows REQ-PX-099..139 are additionally authorized by DR-PX-2026-10-05-013 (audit-
 
 Row REQ-PX-140 is additionally authorized by DR-PX-2026-10-19-014 (per-task harness refinement and a lesson library, an extension of doc 26), accepted on 2026-10-19 on the owner's chat instruction as option A: DEFERRED, POST_ZERO, a qualification and no task, card or scenario. The task card and scenario text that would activate it are kept in the record's appendix and are not part of this ledger; activation is a later Decision Record that changes the disposition. Its dossier task is DOC-PX-014.
 
+Rows REQ-PX-141..143 are additionally authorized by DR-PX-2026-10-24-016 (the ZCode design language for the desktop renderer, with the specification, the declared exceptions and the geometry supersession in the record), accepted on 2026-10-24 on the owner's chat instruction. They are scheduled in M10 for RELEASE_ZERO, list DOC-PX-015 as a prerequisite, name the existing owner `desktop` (no subsystem is added), change no protocol, persistence, policy or security behaviour, and leave AFW-A12, A13 and A14 unrelaxed.
+
+Rows REQ-PX-144..146 are additionally authorized by DR-PX-2026-10-25-017 (the autonomous coding engine inside the Capability Kernel's envelope: Supervised default and the AUTONOMOUS preset, Core-run verification and repair conclusion with a derived Node/TypeScript and Go plan, budget windows and crash resumption), accepted on 2026-10-25 on the owner's chat instruction. They are scheduled in M10 for RELEASE_ZERO, list DOC-PX-016 as a prerequisite, name existing owners (no subsystem is added), change no protocol (one run-mode string, two event types read only by the transcript rebuild), and leave the always-ask classes for a secret, a deletion, a push, a write outside the workspace, a protected path and an escalation, the capability envelope, the leases and the emergency stop unrelaxed. Their live-provider legs are not authorized by the record and stay open (section 9 of the record).
+
+Rows REQ-PX-147..191 are additionally authorized by DR-PX-2026-10-26-018 (the upgrade program drawn from a study of OpenAI Codex, MAI-UI and Qwen-UI-Agent, and Qwen-Planner-Agent: hardening, robustness, hygiene, the GUI agent and the planner harness), accepted on 2026-10-26 on the owner's chat instruction for the registration of the program only. Twenty-seven rows (PX-147..149, 150, 152, 153, 155..159, 161, 162, 167, 168, 171, 174, 176..179, 182..184, 186, 188, 189) are ADOPT, scheduled in M10 for RELEASE_ZERO, list DOC-PX-017 as a prerequisite, name existing owners (no subsystem is added) and carry a task card and a scenario. Eighteen rows are DEFERRED, POST_ZERO, with a qualification and no task, card or scenario: each needs a decision the owner has not made or is capability growth that Release Zero does not need, and the activation text for each is kept in Appendix B of the record, as for REQ-PX-140; activation is a later Decision Record that changes the disposition. Seven proposed tasks that the existing ledger already owns (PX-087, PX-088, PX-090, PX-092, PX-097, PX-098, PX-117, PX-140 and the live legs of PX-069..076) are not rows; Appendix C of the record binds their deltas to those rows. The dossier task is DOC-PX-017.
+
+Rows REQ-PX-192..194 are additionally authorized by DR-PX-2026-11-03-019 (the agent workspace language for the desktop renderer: the reference product's layout, geometry and density as doc 65 records them, in Modbit's own neutral tokens, superseding the ZCode design language of DR-PX-2026-10-24-016 in the scope its front matter names), accepted on 2026-11-03 on the owner's chat instruction. They are scheduled in M10 for RELEASE_ZERO, list DOC-PX-018 as a prerequisite, name the existing owner `desktop` (no subsystem is added), change no protocol, persistence, policy or security behaviour, keep the clean-room posture of doc 65 section 2, and leave AFW-A12, A13 and A14 unrelaxed.
+
+Rows REQ-PX-195..197 are additionally authorized by DR-PX-2026-11-04-020 (the desktop's screens rebuilt to the mockup the owner approved, the Fleet board removed), accepted on 2026-11-04 on the owner's chat instruction. They are scheduled in M10 for RELEASE_ZERO, list DOC-PX-019 as a prerequisite, name the existing owner `desktop` (no subsystem is added), change no protocol, persistence, policy or preload behaviour, keep the clean-room posture of doc 65 section 2, and leave AFW-A12, A13 and A14 unrelaxed.
+
 ## Ledger
 
 | Requirement | Title | Task | Qualification | Owner | Milestone | Release | Disposition | After |
@@ -155,6 +165,66 @@ Row REQ-PX-140 is additionally authorized by DR-PX-2026-10-19-014 (per-task harn
 | REQ-PX-138 | Compaction evaluation that is not self-referential | PX-138 | QUAL-PX-138 | eval-bench | M10 | RELEASE_ZERO | ADOPT | M4.2,PX-109,IMP-EV-0274,DOC-PX-013 |
 | REQ-PX-139 | OpenTelemetry export, child-cost rollup and persisted health | PX-139 | QUAL-PX-139 | observability | M10 | RELEASE_ZERO | ADOPT | M10.1,PX-116,IMP-EV-0032,DOC-PX-013 |
 | REQ-PX-140 | Per-task harness refinement (Propose–Probe–Compose) and lesson library, default off | — | QUAL-PX-140 | skills | — | POST_ZERO | DEFERRED | — |
+| REQ-PX-141 | ZCode design tokens: Zai Light and Zai Dark, type scale, radius, elevation and motion, with the retained reference capture and the declared accessibility exceptions | PX-141 | QUAL-PX-141 | desktop | M10 | RELEASE_ZERO | ADOPT | PX-044,PX-045,DOC-PX-015 |
+| REQ-PX-142 | Primitive restyle to the ZCode recipes with a fidelity gate over computed style, geometry and pixels against the reference capture | PX-142 | QUAL-PX-142 | desktop | M10 | RELEASE_ZERO | ADOPT | PX-141,DOC-PX-015 |
+| REQ-PX-143 | Shell, conversation, composer and remaining screens in the ZCode panel language, with the Lucide icon set and the geometry of the superseding record | PX-143 | QUAL-PX-143 | desktop | M10 | RELEASE_ZERO | ADOPT | PX-142,DOC-PX-015 |
+| REQ-PX-144 | Autonomy presets on the policy kernel: attended tasks start Supervised, the durable AUTONOMOUS run mode with the manifest-install carve-out, an Always rule that takes effect, and the toolchains a project installs known to the classifier | PX-144 | QUAL-PX-144 | effects-security | M10 | RELEASE_ZERO | ADOPT | M2.5,M9.2,DOC-PX-016 |
+| REQ-PX-145 | Core-run verification after the model's edits with repair-attempt conclusion, durable notices and diagnosis context, and a derived plan that names a Node/TypeScript or Go project's type check, build, lint and tests | PX-145 | QUAL-PX-145 | core-runtime | M10 | RELEASE_ZERO | ADOPT | PX-018,PX-035,PX-039,DOC-PX-016 |
+| REQ-PX-146 | Budget windows for turns and tool calls (configurable defaults, ceilings, person and Autonomous continuation) and crash resumption of Autonomous tasks | PX-146 | QUAL-PX-146 | core-runtime | M10 | RELEASE_ZERO | ADOPT | M2.7,M4.4,PX-049,DOC-PX-016 |
+| REQ-PX-147 | SSRF guard in the sandbox egress broker: the resolved address is checked before connect | PX-147 | QUAL-PX-147 | sandbox-cloud | M10 | RELEASE_ZERO | ADOPT | DOC-PX-017 |
+| REQ-PX-148 | Process hardening for the Core and the execution broker: no core dumps, not attachable, no injected libraries | PX-148 | QUAL-PX-148 | terminal | M10 | RELEASE_ZERO | ADOPT | DOC-PX-017 |
+| REQ-PX-149 | Allow rules pinned to the resolved program path | PX-149 | QUAL-PX-149 | effects-security | M10 | RELEASE_ZERO | ADOPT | DOC-PX-017 |
+| REQ-PX-150 | Tighter review sandbox: parameterised macOS profile, credential read denials, protected metadata | PX-150 | QUAL-PX-150 | terminal | M10 | RELEASE_ZERO | ADOPT | DOC-PX-017 |
+| REQ-PX-151 | Linux write confinement through Landlock for the review sandbox, without a user namespace | — | QUAL-PX-151 | terminal | — | POST_ZERO | DEFERRED | — |
+| REQ-PX-152 | A typed sandbox-denied result so the agent stops retrying a confined command blindly | PX-152 | QUAL-PX-152 | terminal | M10 | RELEASE_ZERO | ADOPT | PX-150,DOC-PX-017 |
+| REQ-PX-153 | Model-visible denial and timeout guidance and a denial circuit breaker that parks the run | PX-153 | QUAL-PX-153 | core-runtime | M10 | RELEASE_ZERO | ADOPT | DOC-PX-017 |
+| REQ-PX-154 | A local workspace-write sandbox profile with optional proxy-routed network for local autonomous runs | — | QUAL-PX-154 | terminal | — | POST_ZERO | DEFERRED | — |
+| REQ-PX-155 | Context-overflow recovery: a typed provider error forces a synchronous compaction and one retry | PX-155 | QUAL-PX-155 | durability | M10 | RELEASE_ZERO | ADOPT | DOC-PX-017 |
+| REQ-PX-156 | Time parked on an approval is excluded from tool timeouts and wall-clock accounting | PX-156 | QUAL-PX-156 | core-runtime | M10 | RELEASE_ZERO | ADOPT | DOC-PX-017 |
+| REQ-PX-157 | Secret redaction on memory proposals and use tracking from injected memory | PX-157 | QUAL-PX-157 | memory | M10 | RELEASE_ZERO | ADOPT | DOC-PX-017 |
+| REQ-PX-158 | Image tokens are charged by size in compaction estimates | PX-158 | QUAL-PX-158 | durability | M10 | RELEASE_ZERO | ADOPT | DOC-PX-017 |
+| REQ-PX-159 | Compaction telemetry promised by doc 34: tokens before and after, duration, mode, source, rejection and cost | PX-159 | QUAL-PX-159 | observability | M10 | RELEASE_ZERO | ADOPT | DOC-PX-017 |
+| REQ-PX-160 | Argv rule decisions Allow, Prompt and Forbid with a justification and strictest-wins evaluation | — | QUAL-PX-160 | effects-security | — | POST_ZERO | DEFERRED | — |
+| REQ-PX-161 | Read-only tool calls of one turn run concurrently and are journaled in call order | PX-161 | QUAL-PX-161 | core-runtime | M10 | RELEASE_ZERO | ADOPT | DOC-PX-017 |
+| REQ-PX-162 | Rule, skill and memory changes arrive as appended transcript notes, not as rewritten early prompt segments | PX-162 | QUAL-PX-162 | context-engine | M10 | RELEASE_ZERO | ADOPT | DOC-PX-017 |
+| REQ-PX-163 | A patch-grammar input to the change tool, with rename and a live argument-diff preview | — | QUAL-PX-163 | tool-runtime | — | POST_ZERO | DEFERRED | — |
+| REQ-PX-164 | An OpenAI Responses API adapter as a third provider kind | — | QUAL-PX-164 | model-gateway | — | POST_ZERO | DEFERRED | — |
+| REQ-PX-165 | Budgeted persistent goals with idle auto-continuation and a wrap-up turn at the budget | — | QUAL-PX-165 | core-runtime | — | POST_ZERO | DEFERRED | — |
+| REQ-PX-166 | Local provider presets for Ollama and LM Studio with a health probe, model list and pull | — | QUAL-PX-166 | model-gateway | — | POST_ZERO | DEFERRED | — |
+| REQ-PX-167 | Dependency advisory, license and unused-crate gates in CI, and a SECURITY.md | PX-167 | QUAL-PX-167 | governance | M10 | RELEASE_ZERO | ADOPT | DOC-PX-017 |
+| REQ-PX-168 | Lint policy: no unwrap or expect outside tests, no lock held across await, no raw process spawn outside the owners | PX-168 | QUAL-PX-168 | governance | M10 | RELEASE_ZERO | ADOPT | DOC-PX-017 |
+| REQ-PX-169 | A feature-flag registry with lifecycle stages, strict configuration that rejects unknown keys, a published schema and a provenance view | — | QUAL-PX-169 | effects-security | — | POST_ZERO | DEFERRED | — |
+| REQ-PX-170 | A one-shot `modbit exec` with structured output, then a thin published SDK over the adapter core | — | QUAL-PX-170 | desktop | — | POST_ZERO | DEFERRED | — |
+| REQ-PX-171 | Fault-injecting scripted provider server for the provider and Core suites | PX-171 | QUAL-PX-171 | eval-bench | M10 | RELEASE_ZERO | ADOPT | DOC-PX-017 |
+| REQ-PX-172 | A grounding role in the provider layer: a frame token and an instruction in, a validated coordinate out | — | QUAL-PX-172 | model-gateway | — | POST_ZERO | DEFERRED | — |
+| REQ-PX-173 | A grounding qualification suite that scores candidate models on Modbit's own canvas before any adoption | — | QUAL-PX-173 | eval-bench | — | POST_ZERO | DEFERRED | — |
+| REQ-PX-174 | Screenshot window for computer-use runs: recent frames as images, older steps as text, the full record kept | PX-174 | QUAL-PX-174 | browser | M10 | RELEASE_ZERO | ADOPT | PX-158,DOC-PX-017 |
+| REQ-PX-175 | Ordered action batches in one decision, each action individually approved and bound to its own frame | — | QUAL-PX-175 | browser | — | POST_ZERO | DEFERRED | — |
+| REQ-PX-176 | One structured observation after a GUI action or a command: frame, stdout, stderr, exit code and tool result together | PX-176 | QUAL-PX-176 | browser | M10 | RELEASE_ZERO | ADOPT | DOC-PX-017 |
+| REQ-PX-177 | Human takeover for steps only the person can do: a typed handover that pauses, shows the live state and resumes from the new state | PX-177 | QUAL-PX-177 | core-runtime | M10 | RELEASE_ZERO | ADOPT | DOC-PX-017 |
+| REQ-PX-178 | GUI task verifier and a failure judge that separates model, environment and policy outcomes | PX-178 | QUAL-PX-178 | verification | M10 | RELEASE_ZERO | ADOPT | DOC-PX-017 |
+| REQ-PX-179 | GUI regression suite: Modbit-owned tasks on the fixture desktop and a small real-app set, with a retained baseline | PX-179 | QUAL-PX-179 | eval-bench | M10 | RELEASE_ZERO | ADOPT | PX-178,DOC-PX-017 |
+| REQ-PX-180 | Sensitivity-aware routing for frames: a sensitive window's frame goes only to a provider the policy allows | — | QUAL-PX-180 | model-gateway | — | POST_ZERO | DEFERRED | — |
+| REQ-PX-181 | Android control through the computer-runtime contract, with virtual-display sessions | — | QUAL-PX-181 | browser | — | POST_ZERO | DEFERRED | — |
+| REQ-PX-182 | Scenario adapter: per-tool skill guidance compiled for the tools actually exposed, as a versioned configuration | PX-182 | QUAL-PX-182 | skills | M10 | RELEASE_ZERO | ADOPT | DOC-PX-017 |
+| REQ-PX-183 | Ranked skill selection beyond exact trigger phrases, inside the existing budget and trust rules | PX-183 | QUAL-PX-183 | skills | M10 | RELEASE_ZERO | ADOPT | DOC-PX-017 |
+| REQ-PX-184 | Four-axis agent benchmark: tool use, memory, skills and sub-agent tasks with cost per thousand tasks | PX-184 | QUAL-PX-184 | eval-bench | M10 | RELEASE_ZERO | ADOPT | DOC-PX-017 |
+| REQ-PX-185 | Episodic and prospective memory kinds with evidence spans linking each item to its source events | — | QUAL-PX-185 | memory | — | POST_ZERO | DEFERRED | — |
+| REQ-PX-186 | Memory retrieval ranking with recency, importance and diversity, kept only if it beats the current ranking on the benchmark | PX-186 | QUAL-PX-186 | memory | M10 | RELEASE_ZERO | ADOPT | PX-184,DOC-PX-017 |
+| REQ-PX-187 | A consolidation proposer: an idle-time job that merges duplicates, flags contradictions and proposes supersession | — | QUAL-PX-187 | memory | — | POST_ZERO | DEFERRED | — |
+| REQ-PX-188 | Memory privacy: private and shared scope, redaction before sharing, deletion that clears derived context, and a person-facing inspect and delete view | PX-188 | QUAL-PX-188 | memory | M10 | RELEASE_ZERO | ADOPT | PX-157,DOC-PX-017 |
+| REQ-PX-189 | A trace schema for execution evidence and a Core producer that feeds the Skill Evolution Lab | PX-189 | QUAL-PX-189 | skills | M10 | RELEASE_ZERO | ADOPT | DOC-PX-017 |
+| REQ-PX-190 | A planner routing role, adopted only if a controlled run shows a gain over the single-model plan at equal or lower cost | — | QUAL-PX-190 | model-gateway | — | POST_ZERO | DEFERRED | — |
+| REQ-PX-191 | A proactive pipeline: event, affair and proposed task, with a value gate, read-only preparation and confirmation before any external effect | — | QUAL-PX-191 | automation | — | POST_ZERO | DEFERRED | — |
+| REQ-PX-192 | Agent workspace language tokens: three achromatic surfaces and one base, the AFW-A11 neutral ladder, one blue accent and chrome type 13/18, with the ZCode parity gate retired | PX-192 | QUAL-PX-192 | desktop | M10 | RELEASE_ZERO | ADOPT | PX-143,DOC-PX-018 |
+| REQ-PX-193 | Agent workspace shell and controls: unframed panes with the doc 65 geometry, the navigation in the agent list, and the default, primary, outline, ghost and tab recipes | PX-193 | QUAL-PX-193 | desktop | M10 | RELEASE_ZERO | ADOPT | PX-192,DOC-PX-018 |
+| REQ-PX-194 | Agent workspace density: conversation turns, composer and trays, the one-line status row, banners and the apps panel in the agent workspace language | PX-194 | QUAL-PX-194 | desktop | M10 | RELEASE_ZERO | ADOPT | PX-193,DOC-PX-018 |
+| QUAL-PX-195 | REQ-PX-195 | desktop | The real app, a real Core and a scripted model: a send from home reaches a running conversation in one action, Alt+Enter leaves the task Queued with Start offered, no provider leaves it Queued and says so, a missing repository names itself; none of the removed test ids is present on any screen; every fact of section 5.6 is reachable; the whole desktop suite and axe pass. The mode and model chosen on home reach the Core before the first model request, a refusal leaves the task unstarted and says why with no model call, and the location selector names this machine and says why cloud cannot be chosen. | A removed surface that returns, a send that does not start a task with a provider configured, a task started without a provider, a board fact with no home, or a repository trusted without the person naming it fails the spec. |
+| QUAL-PX-196 | REQ-PX-196 | desktop | The real app against a real Core at 1280, 1000 and 900 wide in light and dark: the list reads head, navigation, list, person in that order, list tools show only when asked for or narrowing, the Core's state has its words in the accessibility tree, the details show each fact for the open task, and Approvals lists the Core's attention items; axe passes. Each of the six states is a view holding the Core's class, a row says what its task needs before where it is, and the shortcut help names no board. | A list tool that hides an active filter, a Core state shown by colour alone, details that show another task's facts, or a control with no keyboard route fails the spec. |
+| QUAL-PX-197 | REQ-PX-197 | desktop | The real app, a real Core and a scripted model running a task with reads, edits, a terminal and an approval, in light and dark, against the record: one column, one decision surface with the exact intent and no decision control in the transcript, an irreversible effect still asks twice, Escape on a confirmation does not skip the card behind it, the bar under the text with a round send, the commit bar at the panel's foot; the gate's retained mutations fail; the whole desktop suite and axe pass; real screenshots beside the mockup are in the evidence. A step is in the past tense only once it happened, and a task's state that nothing else says stands above the composer with its cause, next action and evidence. | A second decision surface, an approval without its exact intent, an Escape that denies an effect the person only meant to step back from, a failure that is not in words, or a hunk action with no keyboard route fails the spec. |
+| REQ-PX-195 | Agent workspace home: one composer where send creates, starts and opens the task, the Fleet board removed | PX-195 | QUAL-PX-195 | desktop | M10 | RELEASE_ZERO | ADOPT | PX-194,DOC-PX-019 |
+| REQ-PX-196 | Agent workspace chrome: the agent list's head, navigation, repositories and person's row, the top bar, the task's details and the Settings view | PX-196 | QUAL-PX-196 | desktop | M10 | RELEASE_ZERO | ADOPT | PX-195,DOC-PX-019 |
+| REQ-PX-197 | Agent workspace conversation, composer and apps panel: steps that say what they did, one approval card, the two-row composer, the rebuilt Changes panel | PX-197 | QUAL-PX-197 | desktop | M10 | RELEASE_ZERO | ADOPT | PX-196,DOC-PX-019 |
 
 ## Qualifications
 
@@ -205,7 +275,7 @@ Row REQ-PX-140 is additionally authorized by DR-PX-2026-10-19-014 (per-task harn
 | QUAL-PX-042 | REQ-PX-042 | domain-events | Real Core with 200 seeded tasks across states and a live task: the header list is served without loading any transcript (asserted by store read counters); each status class appears for its seeded condition and the precedence holds when several conditions coincide; the transcript projection of a finished turn equals the event log folded by the documented rules in all three densities; search finds a phrase that only exists in a conversation body; delete the projection tables, restart, and the projections rebuild byte-identically from the log. | A client-supplied status class is ignored; a header read that loads a transcript fails the counter assertion; two densities that disagree on the underlying events fail; an archive and an unarchive replayed with the same command id yield one event each; a stale cursor page is refused with the Core's code; the projection of a task of another session is refused. |
 | QUAL-PX-043 | REQ-PX-043 | terminal | Real Core, real PTY process and the TypeScript client: a build that prints more than 10 MB streams in order, a client detached and reattached by cursor misses nothing, and older output is read as OutputRef ranges; a long command detached to the background survives a renderer restart and a Core restart (the existing durable handle) and shows the right state; `KillTerminal` ends the process, the transcript records Stopped, and the agent receives one typed event and continues once; user input to a user terminal is journaled and refused for an agent terminal. | A client writing to an agent-owned terminal is rejected by the Core; a kill replayed with the same command id kills once and wakes once; an attach with a cursor beyond the head or older than the window answers with the typed range error, never silent truncation; a wake-up that arrives as a user message fails the suite; killing a terminal of another session is refused. |
 | QUAL-PX-044 | REQ-PX-044 | desktop | Playwright against the packaged app on a real Core in both colour schemes: the axe-core suite reports zero violations on every existing screen and on the gallery; the computed contrast test passes for every token pair and fails when a token is lowered below the ratio; every primitive operates by keyboard alone; with reduced motion on, no transition or animation runs; the tray host keeps one active tray and moves scoped keys with it. | A token below its AA ratio fails the contrast test before axe runs; a status shown by colour only fails the accessibility suite; a primitive with no accessible name fails; a gallery state counted as proof in an evidence bundle fails the evidence check; the dark and light key sets must be identical or the build fails. |
-| QUAL-PX-045 | REQ-PX-045 | desktop | Playwright on the packaged app and a real Core at 1280 x 800, 1000 x 700 and 900 x 600: at 1280 the agent list is 260 pt (within 2 pt), the top bar 40 pt, the centre pane at least 424 pt with the panel open and the panel at least 384 pt; dragging the divider respects 210 to 400 pt; below 448 pt the single-pane mode and rail appear; layout survives an app restart; the palette finds a task by title and a setting; every shortcut of the registry fires its command and none collides; the six PX-023 screen states still render with cause and next action. | A shortcut registered twice fails the conflict test; a panel ratio that would push the centre under 424 pt is clamped; a layout preference written into task state fails the persistence check; a shell state with no keyboard path fails PX-024; opening Settings with a running task never stops or alters the task. |
+| QUAL-PX-045 | REQ-PX-045 | desktop | Playwright on the packaged app and a real Core at 1280 x 800, 1000 x 700 and 900 x 600: at 1280 the agent list is 260 px (within 2 px; 264 px under DR-PX-2026-10-24-016, restored by DR-PX-2026-11-03-019), the top bar 40 px (48 px under DR-PX-2026-10-24-016, restored by DR-PX-2026-11-03-019), the centre pane at least 424 pt with the panel open and the panel at least 384 pt; dragging the divider respects 210 to 400 pt; below 448 pt the single-pane mode and rail appear; layout survives an app restart; the palette finds a task by title and a setting; every shortcut of the registry fires its command and none collides; the six PX-023 screen states still render with cause and next action. | A shortcut registered twice fails the conflict test; a panel ratio that would push the centre under 424 pt is clamped; a layout preference written into task state fails the persistence check; a shell state with no keyboard path fails PX-024; opening Settings with a running task never stops or alters the task. |
 | QUAL-PX-046 | REQ-PX-046 | desktop | Playwright on the packaged app with the 200-task fixture of PX-042 and a live task: every class renders its glyph and text and never colour alone; a pending approval puts the attention dot on its row and the row survives a renderer restart and a Core restart; archive removes the row, shows the undo for at least 8 s, undo restores it, and selection lands on the neighbouring row; archiving a running task asks first and stopping it is a Core event; a cloud task viewed last does not make the next new task cloud; filters and grouping change the list without loading transcripts; the list reflects a Core event within 150 ms at p95. | A renderer that recomputes the status class fails the single-source check; an archive of a running task without the confirmation fails; a pin beyond the cap shows the message and changes nothing; keyboard-only operation of every row action is required; a color-only status fails axe. |
 | QUAL-PX-047 | REQ-PX-047 | desktop | Playwright on the packaged app against a real Core and the live gateway plus the scripted endpoint: a streamed 400-word answer renders progressively and follows the tail; scrolling up freezes follow and the pill counts later rows; folding and density change presentation only and never the underlying rows; a running command shows its humanised tail status and a hung command escalates the wording and raises STALL at the configured threshold; a provider failure before any token restores the prompt and docks the error tray; a planted instruction in tool output renders as inert text; first-delta render is within 100 ms of the event timestamp at p95; 1,000 rows scroll without dropped frames beyond the budget. | A row that shrinks while streaming fails the monotonic check; HTML in assistant text is not executed; a link outside the allow-list does not open; folding that hides an approval card or an error fails; a stalled turn with no tail status fails; the renderer holding a provider credential or calling a provider fails the dependency scan of PX-001. |
 | QUAL-PX-048 | REQ-PX-048 | desktop | Playwright on the packaged app on a real Core: the terminal tab streams a real build live, a detached terminal reattaches after a renderer restart with no missing output, scrolling beyond the window loads OutputRef ranges, an agent terminal refuses typing and a user terminal accepts it only with policy; the changes tab revert and stage act on a real worktree and Commit and push asks for approval with the exact intent; panel state persists per task across restart; the browser tab keeps its lease badge and takeover. | Typing into an agent terminal is refused by the Core and shown; closing a running agent terminal without the warning fails; a commit or push that runs without an approval fails; revert of a file edited since the revision is refused as stale; a tab restored for another task's id fails the per-task state check. |
@@ -301,6 +371,60 @@ Row REQ-PX-140 is additionally authorized by DR-PX-2026-10-19-014 (per-task harn
 | QUAL-PX-138 | REQ-PX-138 | eval-bench | Real Core, forced compaction on at least twenty long fixture runs and the live compatible gateway: each run is scored for task success and for recall on questions whose answers are derived from the event log; the report compares extractive, structured and uncompacted arms with intervals and tokens saved; a deliberately lossy summarizer (a test double that drops files) scores worse on recall, proving the metric can fail; the report digest reproduces from retained data. | A metric that cannot fail (a lossy summarizer scoring the same), an oracle derived from the summary under test or a report without intervals fails the suite. |
 | QUAL-PX-139 | REQ-PX-139 | observability | Real Core, real children and a real local OpenTelemetry collector: a parent with two children exports one trace whose spans show the parent-child links and each span's cost, and the parent's cost equals its own plus its children's from the accounting record; a planted secret in a prompt and a file body appear in no span attribute; killing the collector mid-run does not delay or fail the task and the loss is counted; with export off nothing is sent; after a Core restart the health endpoint reports the previous state with its age; the exported cost equals the EPR accounting record for the same requests. | A secret or prompt body in a span, a task failed or delayed by an exporter fault, exported cost that differs from the accounting record or health reported as healthy with no observation fails the suite; a mutation that exports prompt text must fail the planted-secret test. |
 | QUAL-PX-140 | REQ-PX-140 | skills | Deferred proof, entry condition and not a current proof: on a fixture task the base harness fails, a default-off refinement run with k=1 executes base, two candidates and one composition with the real Core, forked worktrees and the live compatible gateway; the ledger shows four rollouts and three improver sessions; the selected candidate passes the real verification run and the Acceptance Gate; an overlay that edits a guardrail, a capability ceiling or a verification contract is rejected whole; a probe that attempts a push, a network write or a credential read is denied by the real kernel; planted hidden-test or rubric content in the evidence tree stops the run before any improver session; a killed and restarted Core leaves no applied overlay and no orphan worktree; the recorded cost equals the EPR-010 record; library lessons reach no production prompt. Activation also needs a paired comparison with the base harness on the doc 63 suite, with intervals and a cost ratio and no safety regression. The full text is in DR-PX-2026-10-19-014. | Deferred; not on the RELEASE_ZERO path. When activated: an overlay outside the closed surface being applied, a probe effect that is not denied, benchmark-leak content reaching an improver, a broken R = 4k or P = 3k ledger, cost missing from the single record, a library entry in a production prompt or a half-applied overlay after a kill fails the suite. |
+| QUAL-PX-141 | REQ-PX-141 | desktop | The real Electron app, built from the tree, in both Zai themes: the emitted custom properties, resolved by the browser to canonical sRGB with alpha, equal the retained ZCode capture for every colour token the renderer uses, except the declared exceptions ZDX-01..09, each of which names its AFW-A12 pair and measured ratio; the computed contrast test (alpha-aware, over the surface each translucent token sits on) and the packaged axe suite pass in light, dark and high contrast; the persisted theme preference, `data-theme` values and the high-contrast palette are unchanged; the shipped notices carry the Apache-2.0 and ISC texts and the upstream revision, and the bundle contains no ZCode, Z.ai or Zai name, logo or mark outside the attribution lines. | A token that differs from the capture and is not a declared exception, a declared exception that no longer differs, a pair below its ratio, an exception without a measured pair, a missing licence text or a vendor mark in the bundle fails the suite; a mutation that changes one reference-equal token by one channel must fail the parity gate. |
+| QUAL-PX-142 | REQ-PX-142 | desktop | The real Electron app and the model-free state gallery's specimen sheets against the retained capture of ZCode's real primitives in light and dark: for every specimen key the computed colour, border, radius, font, spacing, height, width, shadow and opacity equal the capture within the recorded tolerances except declared exceptions, and the per-specimen pixel difference is under the recorded bound; every primitive keeps its role, accessible name, test id and keyboard path, focus is a visible 2 px ring, the tray host keeps one active tray, and reduced motion collapses every transition; the packaged axe suite passes on every state in three themes; the whole desktop e2e suite still passes against a real Core. | A specimen outside tolerance, an undeclared deviation, a primitive that lost a role, name or key, focus suppression, or a gate that cannot fail fails the suite; a mutation that changes one radius, one colour and one font size must each fail the gate and be retained; a gallery or screenshot counted as proof fails check G11. |
+| QUAL-PX-143 | REQ-PX-143 | desktop | The real Electron app against a real Core and a scripted model at 1280 x 800, 1000 x 700 and 900 x 600 in light and dark: the shell is independent framed panels with the geometry of the record (agent list 264 px within 2 px, header 48 px, 4 px gaps, panel radius 12 px, resize indicator 2 px), the centre keeps 424 pt, Fleet, conversation rows (user, assistant, tool and diff cards, approval deck, checkpoints), the composer and its trays, Review, Settings, dialogs and the palette render in the ZCode language with every role, name and test id unchanged; the Lucide table covers every icon the renderer draws and no icon has lost its accessible name; the whole desktop e2e suite passes with only the geometry assertions of the record replaced; axe passes on every region in three themes; before and after screenshots of every screen are retained as the supplemental record. | An assertion changed outside the record's geometry table, a region that loses a role or name, a layout that pushes the centre under 424 pt or adds horizontal scroll, an icon-only control with no accessible name, or a state shown by colour alone fails the suite; a mutation that restores the old 40 px bar must fail the geometry spec. |
+| QUAL-PX-144 | REQ-PX-144 | effects-security | The real Core, its real execution broker and the real Capability Kernel with a scripted model: a task nobody gave a mode starts in ALLOWLIST and asks with `NOT_IN_ALLOWLIST`; a rule made in that mode applies to the next task without a mode change and the receipt names it; ASK ignores the same rule with `MODE_ASK`; AUTONOMOUS needs the acknowledgement, is durable across a SIGKILL with its acknowledgement, runs `npm ci` (a package manager on the path that fetches nothing) and an unknown project tool without a card with the receipt `run_mode:AUTONOMOUS:dependency_install`, and still asks, with the typed class, for `npm install <package>`, an install chained to `curl`, `curl`, `rm -rf`, `git config`, a write outside the workspace and, under RUN_EVERYTHING, for the install itself; the classifier states `dependency_install` only for a manifest install with no package, global, prefix, registry or environment override and nothing else that reaches out; the desktop withholds Always on a card from an ASK task and main refuses it, a repository Always rule expires in 30 days, and the Autonomous choice shows its warning in the real renderer. | Ignoring the classifier's flag in the kernel (mutation) fails the kernel and the Core tests; an always-ask class that passes in AUTONOMOUS, an unattended origin (forge, review, replay, subagent, automation) that starts in ALLOWLIST, an Always rule made in ASK, or a mode that is not acknowledged fails the suite. |
+| QUAL-PX-145 | REQ-PX-145 | core-runtime | The real Core with a real `tsc`, a real `npm run build`, a real git repository and a scripted model that never calls `verify.run` or `repair.attempt` to fix a seeded TypeScript build failure: BASELINE sees the build fail before the first write, the Core verifies the edit itself, the notice reaches the model and the task completes with the build passing and no approval; with two broken files and a wrong first fix the Core reports each failure after its edit, the second notice carries the first attempt's outcome and the quoted source, both attempts and their outcomes (UNCHANGED, RESOLVED) are on the log; a Core killed while the model is asked about the failure resumes in the same mode, the model reads the same notice from the rebuilt transcript once, and the task completes; the derived plan names the type check, build, lint and tests with the project's package manager, and a Go module's build, vet and tests. | Disabling the automatic verification (mutation) fails all three Core tests; a path outside the workspace, under `node_modules` or reached through a link quoted in a notice, a placeholder `npm init` test script treated as a check, a test or check skipped to obtain a pass, or an attempt repeated with an equivalent hypothesis accepted fails the suite. |
+| QUAL-PX-146 | REQ-PX-146 | core-runtime | The real Core and a scripted model: a Supervised task that uses its turn window stops Waiting with the budget named and a `StartTask` with the same limit continues it to completion; an AUTONOMOUS task that is still making progress is given the next window by the Core (`BudgetWindowExtended`) and completes with no card; one that stops making progress is not extended and ends NO_PROGRESS; the tool-call window ends the run at the turn boundary; a request for more than the ceiling is clamped to 1000 turns and 5000 tool calls; a SIGKILL under an AUTONOMOUS task makes the restarted Core name it for resumption, and not a task in another mode nor one whose session the person ended, and the ordinary `StartTask` completes it with nothing asked. | A window that is never bounded (more than four), a cost or wall-clock cap that a new window resets, an extension of a run with no progress, a resumption of a task the person ended on purpose, or a resumption that needs no client and lease fails the suite; a mutation that skips the window base fails the resume test. |
+| QUAL-PX-147 | REQ-PX-147 | sandbox-cloud | The real egress broker with a real listener: an allowed name that resolves to 127.0.0.1, to 10.x, to 169.254.169.254 and to an IPv6 loopback is refused and audited; a name whose DNS answer changes between the check and the connect cannot reach a refused address; an explicit IP-literal rule still connects; a public destination relays bytes both ways and its receipt is unchanged. | A refused address that is connected anyway, a second resolution after the check, an audit record missing the reason code, or a regression for an admitted public destination fails the suite; a mutation that connects by name fails the DNS-rebind case. |
+| QUAL-PX-148 | REQ-PX-148 | terminal | The real Core and the real broker started as processes on macOS and Linux: the limit is zero, the dumpable or deny-attach flag is set (read from the process), a debugger attach and a forced core dump fail, a planted `DYLD_INSERT_LIBRARIES` or `LD_PRELOAD` library is not loaded by either process, and every existing broker and Core suite still passes. | A flag set after threads start, an inherited injection variable, a child that loses its pinned environment, or a platform where the call fails silently fails the suite; a startup that cannot set a flag must say so in the log rather than continue silently. |
+| QUAL-PX-149 | REQ-PX-149 | effects-security | The real Core and kernel with a real repository: an approved `git status` rule still allows the real `git`; a repository `bin/git` placed first on the path does not satisfy it and the command asks with the new reason; a rule made before this change keeps working through a recorded one-time resolution or asks once, as the record states; a missing program fails closed. | A match on name alone, a rule that records no path, a silent allow after a path change, or a regression for the system program fails the suite; a mutation that compares only argv[0] fails the shadowing case. |
+| QUAL-PX-150 | REQ-PX-150 | terminal | A real confined process on macOS (and Linux where supported): it cannot read a planted file under `~/.ssh` or `~/.aws`, cannot write `.git` or `.modbit` inside the writable root, a working directory containing a backslash, a quote and a newline does not change the profile text, a real build and test run in the worktree still passes, and the sandbox conformance suite gains these cases. | A profile built by concatenation, a readable credential file, a writable `.git`, or a build that now fails because the profile is too tight fails the suite; a missing sandbox still refuses the review process (`SANDBOX_UNAVAILABLE`). |
+| QUAL-PX-151 | REQ-PX-151 | terminal | Deferred proof, entry condition and not a current proof: a real confined process on a supported Linux kernel cannot write outside the lease and cannot read the credential stores of the H04 row; a kernel without the mechanism refuses the review process or degrades exactly as the activating record states; the existing seccomp filter keeps working. | A write outside the lease that succeeds, a ruleset that fails open, or a degrade that is not logged fails the suite. |
+| QUAL-PX-152 | REQ-PX-152 | terminal | The real broker with a real confined command: a denied write and a denied read return the typed code, exit code and excerpt; an ordinary non-zero exit of a failing test returns no denial; the result reaches the model through the real tool path and the event log carries it once. | A denial reported as an ordinary failure, an ordinary failure reported as a denial, an unbounded excerpt, or a secret value in the excerpt fails the suite. |
+| QUAL-PX-153 | REQ-PX-153 | core-runtime | The real Core and a scripted model that is denied three times in a row: the task is parked with the typed reason after the third, the notice is on the log once and replays after a restart, the counter resets on an allowed effect, the guidance text is in each denial result, and a model that changes approach after the first denial is never parked. | A park that needs a client, a counter that is lost on restart, a second notice for one park, guidance that is missing for one of the four denial kinds, or a parked task that cannot be resumed fails the suite. |
+| QUAL-PX-154 | REQ-PX-154 | terminal | Deferred proof, entry condition and not a current proof: a real autonomous run cannot write outside its worktree or reach a host the policy does not allow; an approved host persists as a rule; a missing sandbox refuses the run; the egress broker and `NetworkPolicy` are reused with no second policy engine. | A write outside the worktree, a reachable non-allowed host, a second network policy, or an unconfined fallback when the sandbox is missing fails the suite. |
+| QUAL-PX-155 | REQ-PX-155 | durability | The real Core against a real provider transport (the recorded-transport server of the provider suites) that returns the overflow response for an oversized request: the Core compacts, retries once and completes the turn; a transport that overflows again ends with the typed failure; the compaction request and its commit are on the log; the transcript is intact and readable by range afterwards. | A retry loop, an untyped failure, a compaction that drops the user's messages, or a retry that bypasses the existing validation of the summary fails the suite. |
+| QUAL-PX-156 | REQ-PX-156 | core-runtime | The real Core and a scripted model with a call whose timeout is shorter than the time the approval is left waiting: the call completes after the approval with no timeout, the wall-clock budget is not charged for the wait, and the accounting names the parked time; a call that is not parked still times out on schedule. | A timeout that fires while parked, a wall-clock budget that ends a task that was only waiting for a person, or an unbounded wait with no existing expiry fails the suite. |
+| QUAL-PX-157 | REQ-PX-157 | memory | The real Core and memory store: a proposal containing a real-format API key and a private-key block is stored redacted or refused, a normal proposal is stored byte-for-byte, a prompt that injects an item increments its count and last-use once, and a restart rebuilds the same counts from the log. | A secret that reaches the store or the prompt, a count that double-counts a replay, or a redaction that alters ordinary text fails the suite. |
+| QUAL-PX-158 | REQ-PX-158 | durability | The real Core with a real provider transport that reports usage: a transcript of many frames reaches the compaction threshold at the point the provider-reported usage does, within the calibrated margin; a text-only transcript is estimated as before; a shortened transcript never holds an image without its caption. | A frame counted as a label, an estimate that diverges from reported usage by more than the margin, or an orphaned image fails the suite. |
+| QUAL-PX-159 | REQ-PX-159 | observability | The real Core exporting to a real OTLP collector: a committed, a rejected (stale) and an extractive-fallback compaction each export the attributes; the exporter stays off by default and never blocks the run when the collector is down. | A missing attribute, an unredacted summary text in an attribute, or a run that waits on the exporter fails the suite. |
+| QUAL-PX-160 | REQ-PX-160 | effects-security | Deferred proof, entry condition and not a current proof: a Forbid rule from an administrator layer refuses a command that a project or user layer cannot lift; of several matching rules the strictest wins; a rule carries a justification shown on the card; a rule that cannot match its own declared examples is rejected at registration. | A project rule that lifts an administrator Forbid, a rule that loosens when merged, or a rule that is accepted with failing examples fails the suite. |
+| QUAL-PX-161 | REQ-PX-161 | core-runtime | The real Core and a scripted model issuing N reads and a write in one turn: the reads finish in less than the serial time, the write waits for them and runs alone, the log order equals the call order, a failing read reports its error and the other results are present, and a SIGKILL during the batch recovers with no result recorded twice. | A write that overlaps a read, a log order that follows completion, a lost result, an unbounded fan-out, or a duplicate after recovery fails the suite. |
+| QUAL-PX-162 | REQ-PX-162 | context-engine | The real Core with a real compiler and a provider transport that records requests: after an instruction file and a memory item change mid-task, the prefix bytes of the next request equal the previous request's, the appended note names both changes and what they replace, the model-visible instructions equal those of a freshly compiled task, and a resume rebuilds the same notes from the log. | A changed prefix, a note without provenance, a delta that is lost on resume, or a note that carries content from an untrusted instruction file fails the suite. |
+| QUAL-PX-163 | REQ-PX-163 | tool-runtime | Deferred proof, entry condition and not a current proof: a real patch with add, update, delete and move applies atomically through `apply_transaction`; a failure rolls back every file; a stale revision is refused; a preview of the arguments while the model is still writing changes no file and is marked non-authoritative. | A partial application, a preview that writes, a stale revision that applies, or a grammar escape that touches a path outside the workspace fails the suite. |
+| QUAL-PX-164 | REQ-PX-164 | model-gateway | Deferred proof, entry condition and not a current proof: a tool turn through a real Responses transport completes with reasoning items carried and `previous_response_id` used; a stream cut before the first token retries and after it does not; the fault-injecting server row covers the failures. | A retry after the first token, a lost reasoning item, or a duplicate tool call after a cut fails the suite. |
+| QUAL-PX-165 | REQ-PX-165 | core-runtime | Deferred proof, entry condition and not a current proof: a goal spanning several user turns continues on idle through the existing input queue and harness, stops at its budget with a wrap-up report and not in needs-attention, and records its state on the log so a restart resumes it. | A second scheduler, a continuation that ignores the budget, or a lost goal after a restart fails the suite. |
+| QUAL-PX-166 | REQ-PX-166 | model-gateway | Deferred proof, entry condition and not a current proof: a real local server is detected, its models are listed, a model is pulled with progress and a tool turn runs through the existing OpenAI-compatible path; an absent server is reported plainly and nothing is downloaded without the person's confirmation. | A download without confirmation, a preset that sends data to a non-local host, or a silent fallback to a cloud provider fails the suite. |
+| QUAL-PX-167 | REQ-PX-167 | governance | The real CI configuration run on the repository: a planted crate with a denied license and a planted known-vulnerable version each fail the job; the unmodified tree passes; the job names the ignore list and each ignore's reason. | A job that cannot fail, an ignore without a reason, or a gate that is skipped when the tool is missing fails the suite. |
+| QUAL-PX-168 | REQ-PX-168 | governance | The real build with the policy on: a planted `unwrap` in product code, a planted lock held across an await and a planted spawn in a non-owner crate each fail; the tree passes with the policy on; test code is exempt through configuration only. | A planted violation that passes, a blanket allow added to make the tree pass, or a test exemption that leaks into product code fails the suite. |
+| QUAL-PX-169 | REQ-PX-169 | effects-security | Deferred proof, entry condition and not a current proof: an unknown key fails with its file and path; an administrator can pin a flag off and cannot pin it on; the schema validates the shipped defaults; `config show --origins` prints the layer of each key; a flag moves through its stages with a recorded date. | A flag that an administrator can force on, an unknown key that is accepted, or a schema that disagrees with the code fails the suite. |
+| QUAL-PX-170 | REQ-PX-170 | desktop | Deferred proof, entry condition and not a current proof: a real one-shot run emits the documented event vocabulary, honours an output schema for the final message and exits with the documented code; the CLI opens no repository, provider or policy store itself (REQ-PX-000); the SDK passes the adapter conformance suite. | A CLI that decides policy, an event vocabulary that drifts from the protocol, or an exit code outside the documented set fails the suite. |
+| QUAL-PX-171 | REQ-PX-171 | eval-bench | The real gateway and Core against the server: a 429 with each retry header waits and retries only before the first token; a stream cut mid-event ends with a typed failure and no duplicate tool call; an idle stall times out on schedule; a malformed event is refused; each case runs for both wire formats and asserts the log. | A fault that is injected but never asserted, a retry after the first token, a duplicate tool call after a cut, or a server that can only succeed fails the suite. |
+| QUAL-PX-172 | REQ-PX-172 | model-gateway | Deferred proof, entry condition and not a current proof: a real grounding endpoint returns a coordinate that drives `computer.click` through the existing exact-intent approval, and the approval card shows the intended target; an out-of-frame, stale-token or malformed answer is refused; with no grounding configured the behaviour is today's; the model is reached only through a provider endpoint. | A coordinate used without a bound frame token, an approval that shows only pixels, a grounding answer that skips the approval, or a model that is bundled or downloaded by the product fails the suite. |
+| QUAL-PX-173 | REQ-PX-173 | eval-bench | Deferred proof, entry condition and not a current proof: a retained result bundle compares the planning model's own grounding, a frontier vision model and MAI-UI-2B or 8B on the same Modbit frames; a threshold is written before the run; the bundle names model, endpoint, frames and cost. | A threshold written after the run, a comparison on different frames, or a dataset used against its license fails the suite. |
+| QUAL-PX-174 | REQ-PX-174 | browser | The real Core with the fixture actuator and a scripted model over a run of more than forty steps: the request carries at most N images, the token total stays under a stated ceiling, the model's later steps still name earlier steps correctly from the text, the full transcript and every frame remain readable afterwards, and N=1 and the ceiling clamp behave as stated. | A request that carries more than N images, an older step that loses its text record, a dropped frame that cannot be read back, or a ceiling that is exceeded fails the suite. |
+| QUAL-PX-175 | REQ-PX-175 | browser | Deferred proof, entry condition and not a current proof: a real batch of four actions runs in order; a failed second action skips the rest and reports which ran; an unknown outcome latches input; each action carries its own exact-intent approval bound to its own frame; one observation follows the batch. | A parallel execution, an approval that covers a batch as a whole, a continuation after a failure, or a missed latch fails the suite. |
+| QUAL-PX-176 | REQ-PX-176 | browser | The real Core with the fixture actuator and a scripted model that alternates a command and a click: each step's observation holds the stated fields, a command that times out returns as an error observation and the run continues to completion, output beyond the bound is truncated with the marker, and the same observation shape is replayed after a restart. | An observation split across calls, a timeout that ends the run, an unbounded output, or a secret field that reaches the observation fails the suite. |
+| QUAL-PX-177 | REQ-PX-177 | core-runtime | The real Core with the fixture actuator and the browser stack against a fixture page that shows a CAPTCHA-like challenge and a payment confirmation: the run parks with the typed reason, nothing is typed or clicked by the agent while parked, the person completes the step in the live view and resumes, the run continues from a new frame token, an unanswered handover expires without acting, and a restart while parked resumes the park. | An agent action while parked, a resume from a stale frame token, a handover that needs a client to be alive, or an expiry that acts fails the suite. |
+| QUAL-PX-178 | REQ-PX-178 | verification | The real Core and the fixture actuator: a completed fixture task passes its predicate, an unfinished one fails it, a run whose actuator is killed mid-run is classified as environment failure, a run stopped by an approval denial as policy stop, a run that clicks the wrong element as model failure; the classification is on the log with its basis. | A verifier that passes on a model's claim, an environment failure classified as model failure, a predicate that reads outside the declared evidence, or a verifier result that can approve an effect fails the suite. |
+| QUAL-PX-179 | REQ-PX-179 | eval-bench | The real Core and fixture actuator over at least twenty tasks with a scripted model and, where the owner supplies a prepared machine, the real actuator with a live model: a baseline is retained, a re-run produces the diff, a deliberately regressed model or actuator fails the gate, and results carry the model, build and cost. | A suite that cannot fail, a baseline that is not retained, a task whose verifier passes without the effect, or a result with no build and model identity fails the suite. |
+| QUAL-PX-180 | REQ-PX-180 | model-gateway | Deferred proof, entry condition and not a current proof: a real run in a window the policy marks sensitive refuses cloud routing, uses the permitted endpoint and records the routing decision; with no permitted endpoint the step stops with a typed reason. | A sensitive frame sent to a non-permitted provider, a routing decision that is not recorded, or a silent fallback to cloud fails the suite. |
+| QUAL-PX-181 | REQ-PX-181 | browser | Deferred proof, entry condition and not a current proof: a real device or emulator completes a task through an actuator that implements the same contract, per-call approvals and Stop as the macOS actuator; two sessions on separate virtual displays do not cross; a lost device is an environment failure. | An action without approval, a session crossing displays, or an actuator that lacks the kill path fails the suite. |
+| QUAL-PX-182 | REQ-PX-182 | skills | The real Core with real skill files: a task with a restricted tool set gets only the matching guidance blocks, a task with the full set gets all, the compiled configuration id appears in the run record and the context inspector, two compilations of the same inputs are byte-identical, and an untrusted skill's guidance is never included. | Guidance for an unavailable tool, a configuration that is not reproducible, a missing configuration id in the record, or an untrusted skill that compiles fails the suite. |
+| QUAL-PX-183 | REQ-PX-183 | skills | The real Core with real skills: a goal that does not contain a trigger phrase is offered the right skill, an explicit name wins over a ranked one, an untrusted skill that matches best is not offered, two runs give the same ranking, and the index stays within the budget. | A skill offered while untrusted or disabled, a nondeterministic ranking, an index over budget, or an explicit name that is overridden fails the suite. |
+| QUAL-PX-184 | REQ-PX-184 | eval-bench | The real Core, real fixtures and a scripted or live model: forty or more tasks run, each axis has a score, the cost per thousand is computed from recorded usage, a baseline bundle is retained, a re-run reports the difference, and an injected regression on one axis fails the gate for that axis only. | A task without its own verifier, an axis with fewer than ten tasks, a cost figure not derived from recorded usage, or a gate that cannot fail fails the suite. |
+| QUAL-PX-185 | REQ-PX-185 | memory | Deferred proof, entry condition and not a current proof: a prospective item fires only under its activation condition, expires and is marked complete; an episodic item opens its source span; the new kinds pass the existing promotion, scope, sensitivity and supersession rules. | A prospective item that fires without its condition, an item without a source span, or a kind that bypasses the promotion gate fails the suite. |
+| QUAL-PX-186 | REQ-PX-186 | memory | The real Core and memory store over the memory-axis tasks: the new ranking and the current ranking run on the same tasks at the same token budget; the retained comparison shows recall and tokens; selection stays deterministic and revision-bound; sensitive items are never offered; the decision to keep or revert is recorded with the comparison. | A ranking that is nondeterministic, a sensitive item offered, a change kept without the comparison, or a comparison at unequal tokens fails the suite. |
+| QUAL-PX-187 | REQ-PX-187 | memory | Deferred proof, entry condition and not a current proof: a real run over a log projection yields proposals only; nothing is promoted without the existing gate; a contradiction is flagged and a supersession is proposed with its evidence. | A promotion without the gate, a proposal without evidence, or a job that blocks a run fails the suite. |
+| QUAL-PX-188 | REQ-PX-188 | memory | The real Core and desktop: a deleted memory is gone from the store, the projection, the selection and the next real prompt; a shared-scope promotion of an item with a personal detail stores the redacted form; another user's private item is never selected; the inspect view lists source and scope; a restart keeps all of it. | A deleted item that reappears in a prompt or cache, a shared item with personal detail, a private item selected for another principal, or an inspect view that shows an item the person cannot see fails the suite. |
+| QUAL-PX-189 | REQ-PX-189 | skills | The real Core and a scripted model: a finished run yields a sealed trace that the real lab reads and turns into a proposal; a planted secret in a tool result is absent from the trace; the trace links the skill configuration id of the compiled-configuration row; a run with no lab leaves behaviour unchanged; the lab output changes no skill, memory or policy. | A secret in a trace, an unsealed trace, a lab output that is applied to a run, or a producer that writes to the log it reads fails the suite. |
+| QUAL-PX-190 | REQ-PX-190 | model-gateway | Deferred proof, entry condition and not a current proof: on the four-axis benchmark a configuration with a planner slot is compared with the single-model plan at equal cost; the bundle states the result; a later record adopts or rejects the role on that evidence. | A role added without the comparison, a comparison at unequal cost, or an edit of a LOCKED row without a record fails the suite. |
+| QUAL-PX-191 | REQ-PX-191 | automation | Deferred proof, entry condition and not a current proof: a real event produces a decision-ready card with options and executes nothing until confirmed; a rejected card is remembered; a flood of events produces a bounded number of cards; the first sources are forge events and signed webhooks. | An action with external effect before confirmation, an unbounded card flood, or an operating-system notification source without its privacy record fails the suite. |
+| QUAL-PX-192 | REQ-PX-192 | desktop | The real Electron app built from the tree, in light, dark and high contrast: the emitted `--mb-color-*` and `--color-*` variables, resolved by the browser to canonical sRGB, equal the section 5.1 tables of the record in light and dark and the unchanged high-contrast palette; the token unit test pins the same tables; the computed contrast test covers every pair in all three themes at 4.5:1 for text and 3:1 for control edges and icons; chrome text computes to 13 px on 18 px and conversation body to 14 px on 22 px; the retired ZCode parity specs are absent and no ZCode name is in the bundle. | A token that differs from the table, a pair under its ratio, a muted text step under 4.5:1 on any surface, or a high-contrast value that moved fails the spec; the retained mutation that restores one ZDL value must fail it. |
+| QUAL-PX-193 | REQ-PX-193 | desktop | Playwright on the real app and a real Core at 1280 x 800, 1000 x 700 and 900 x 600 in light and dark: agent list 260 px within 2 px (210 to 400 kept), top bar 40 px, panes with no radius and no gap and a 1 px divider, navigation rows 30 px in the agent list carrying New task, Search, Fleet board, Worktrees, Automations, Customize and Dashboard with their existing test ids, a bare button and each `Button` variant computing to the recipes of section 5.2, pill tabs, the centre keeping 424 pt with the panel open; the desktop e2e suite passes with only the assertions section 10 names changed; axe passes on every region in three themes. | A framed pane, a bare button with the accent or black fill, a top bar other than 40 px, a navigation entry that lost its test id, or a layout that pushes the centre under 424 pt fails the spec; the mutation that restores the 48 px bar must fail it. |
+| QUAL-PX-194 | REQ-PX-194 | desktop | The real app, a real Core and a scripted model running a task with tool steps, an edit, a terminal and an approval, in light and dark: the user message is an editor-surface bubble, a step group is one line with no box, the turn footer is transparent until hover or keyboard focus and stays in the tab order and the accessibility tree, the composer has radius 12, the status row is one line at any window width with its full text in the accessible name, the language and support-claim banners are one caption line, the Changes app's explanatory text is caption and muted, and headings are sentence case; the whole desktop suite and axe pass. | A status row that wraps, a turn footer that is removed from the tab order or the accessibility tree, a banner whose full text is lost, an uppercase heading, or a state shown by colour alone fails the spec. |
 
 ## Task cards
 
@@ -2293,6 +2417,591 @@ Row REQ-PX-140 is additionally authorized by DR-PX-2026-10-19-014 (per-task harn
 - **Evidence:** build digest, Core and client revisions, event cursor ranges, run ids, artifact digests and the declared evidence tier under the existing evidence rules.
 - **Completion:** production-equivalent real proof and no unresolved acceptance criteria; graph.py is the only status writer. Product status is NOT_STARTED at adoption.
 
+<a id="px-141"></a>
+
+## PX-141 — ZCode design tokens: Zai Light and Zai Dark, type scale, radius, elevation and motion, with the retained reference capture and the declared accessibility exceptions
+
+- **Requirement:** REQ-PX-141; **related preserved requirements:** REQ-EV-0037.
+- **Owner / milestone / release:** desktop / M10 / RELEASE_ZERO; **prerequisites:** PX-044, PX-045, DOC-PX-015.
+- **Decision Record, phase and evidence tier:** DR-PX-2026-10-24-016; ZCode design-language goal; iteration (presentation only: no effect, persistence, policy, protocol or security behaviour changes; the packaged UI smoke suite against a real Core, axe and the computed contrast test are the proof of record, doc 83; a need for a protocol, persistence, policy, main-process or CSP change stops the row and re-tiers it by a Decision Record).
+- **Specification requirements (DR-PX-2026-10-24-016 section 5, with basis):** ZDL-01 [MEASURED], ZDL-02 [MEASURED], ZDL-03 [MEASURED], ZDL-05 [MEASURED], ZDX-01..09 [MEASURED]; AFW-A12, AFW-A13, AFW-A14 unchanged.
+- **Scope and acceptance:** `packages/design-tokens` emits the Zai Light and Zai Dark colour tokens of the record (names kept, alpha preserved) from the one typed function, resolves Modbit's `--mb-color-*` roles onto them so every existing rule inherits the palette, adds the `text-ui-*` scale from one `--ui-font-size` (the Text size setting drives it), the radius and elevation scales and the motion rules, and keeps the high-contrast palette and the theme preference as they are. The contrast test becomes alpha-aware (a translucent token is composited over the surface it sits on) and covers every pair the new roles introduce in all three themes. The reference capture is retained under `evidence/zcode-ui/reference/` with its provenance, the harness recipe under `tools/zcode-reference/`, and a fidelity probe (shared with PX-142) compares the emitted tokens with it; the exceptions are a data file the probe reads. The shipped notices carry the Apache-2.0 and ISC texts and the upstream revision. No ZCode name, logo or mark enters the bundle.
+- **Production wiring:** `packages/design-tokens/src` (palette, scale, css, pairs, contrast, a typed Zai table), `apps/desktop/build.mjs` (one stylesheet from the one source), `apps/desktop/e2e` parity spec, `third-party/zcode-ui`, `evidence/zcode-ui/reference`, `tools/zcode-reference`; docs 32 and 36 updated by the implementing task; no main-process, preload or CSP change.
+- **Real qualification:** QUAL-PX-141 / PX-E2E-141.
+- **Failure and negative proof:** as in QUAL-PX-141.
+- **Evidence:** build digest, renderer revision, Playwright traces and screenshots, the retained reference capture digest, run ids, artifact digests and the declared evidence tier under the existing evidence rules.
+- **Completion:** production-equivalent real proof and no unresolved acceptance criteria; graph.py is the only status writer. Product status is NOT_STARTED at adoption.
+
+<a id="px-142"></a>
+
+## PX-142 — Primitive restyle to the ZCode recipes with a fidelity gate over computed style, geometry and pixels against the reference capture
+
+- **Requirement:** REQ-PX-142; **related preserved requirements:** REQ-EV-0037.
+- **Owner / milestone / release:** desktop / M10 / RELEASE_ZERO; **prerequisites:** PX-141, DOC-PX-015.
+- **Decision Record, phase and evidence tier:** DR-PX-2026-10-24-016; ZCode design-language goal; iteration (presentation only: no effect, persistence, policy, protocol or security behaviour changes; the packaged UI smoke suite against a real Core, axe and the computed contrast test are the proof of record, doc 83; a need for a protocol, persistence, policy, main-process or CSP change stops the row and re-tiers it by a Decision Record).
+- **Specification requirements (DR-PX-2026-10-24-016 section 5, with basis):** ZDL-01 [MEASURED], ZDL-02 [MEASURED], ZDL-03 [MEASURED], ZDL-04 [MEASURED], ZDL-05 [MEASURED], ZDX-03, ZDX-04, ZDX-05; AFW-C07, AFW-H01, AFW-K02 unchanged.
+- **Scope and acceptance:** `packages/ui` primitives (Button and IconButton, Badge, Kbd, Tooltip, Menu, Dialog, Tabs, List and Row, Tray, StatusDot, plus the native controls the screens use: input, textarea, select, checkbox, radio, switch) take the ZCode recipes for colour, border, radius, height, padding, gap, type size and weight, shadow and transition, keeping every role, accessible name, test id, key map, layer and tray rule. The model-free state gallery gains the specimen sheets of the record, each element carrying the `data-zdl` key of its reference record, and a Playwright spec drives the real Electron build in light and dark, probes the specimens with the same probe that captured the reference, and compares computed style, geometry and pixels within the recorded tolerances, reporting each deviation with the declared exception that covers it. A retained mutation run changes one colour, one radius and one font size and shows the gate failing each. The existing desktop suite and axe in three themes run unchanged.
+- **Production wiring:** `packages/ui/src/styles.ts` and the primitives, `apps/desktop/src/renderer/gallery`, `apps/desktop/e2e/fidelity.spec.ts` and its support probe, `evidence/zcode-ui`; doc 32 updated by the implementing task; no main-process, preload or CSP change.
+- **Real qualification:** QUAL-PX-142 / PX-E2E-142.
+- **Failure and negative proof:** as in QUAL-PX-142.
+- **Evidence:** build digest, renderer revision, Playwright traces and screenshots, the retained reference capture digest, run ids, artifact digests and the declared evidence tier under the existing evidence rules.
+- **Completion:** production-equivalent real proof and no unresolved acceptance criteria; graph.py is the only status writer. Product status is NOT_STARTED at adoption.
+
+<a id="px-143"></a>
+
+## PX-143 — Shell, conversation, composer and remaining screens in the ZCode panel language, with the Lucide icon set and the geometry of the superseding record
+
+- **Requirement:** REQ-PX-143; **related preserved requirements:** REQ-EV-0037, REQ-EV-0143, REQ-EV-0151.
+- **Owner / milestone / release:** desktop / M10 / RELEASE_ZERO; **prerequisites:** PX-142, DOC-PX-015.
+- **Decision Record, phase and evidence tier:** DR-PX-2026-10-24-016; ZCode design-language goal; iteration (presentation only: no effect, persistence, policy, protocol or security behaviour changes; the packaged UI smoke suite against a real Core, axe and the computed contrast test are the proof of record, doc 83; a need for a protocol, persistence, policy, main-process or CSP change stops the row and re-tiers it by a Decision Record).
+- **Specification requirements (DR-PX-2026-10-24-016 section 5, with basis):** ZDL-03 [MEASURED], ZDL-04 [MEASURED], ZDL-06 [MEASURED], ZDL-07 [MEASURED]; AFW-A03, AFW-A04, AFW-A05 and AFW-A07 as superseded in section 5.3; AFW-A01, A02, A06, A08, A09, A10 unchanged.
+- **Scope and acceptance:** The shell becomes independent framed panels over the window-root surface (agent list, conversation with its header, apps panel and terminal each `bg-background`, 12 px radius, `border-border`, 4 px resizable gaps, 2 px resize indicator), with the agent list 264 px by default (210 to 400 kept), the header 48 px with 8 px padding and a half-strength rule, navigation rows and the composer shell per section 5.3. Fleet, the conversation rows (user and assistant messages, tool, diff and computer-action cards, the approval deck and docks, checkpoints), the composer and its trays and menus, Review, Settings, the worktree, project and automation dialogs, the palette and the legacy screen styles move from literal sizes and the blue accent to the tokens, scale and radius hierarchy of the record. The renderer's inline icons become the typed Lucide table of `@modbit/ui` (status glyph shapes of AFW-A14 stay Modbit's). The geometry assertions of `shell.spec.ts` and `gallery.spec.ts` named in section 5.3 are replaced by the new numbers and no other assertion changes. Before and after screenshots of each screen in light and dark are retained as the supplemental record.
+- **Production wiring:** `apps/desktop/src/renderer` (shell, conversation, composer, fleet, review, apps, worktrees, projects, automations, computer, approvals and the CSS modules), `packages/ui` icons, `packages/design-tokens` GEOMETRY, the desktop e2e specs named in the record; docs 32 and 39 updated by the implementing task; no main-process, preload or CSP change (window chrome and translucency stay with PX-094).
+- **Real qualification:** QUAL-PX-143 / PX-E2E-143.
+- **Failure and negative proof:** as in QUAL-PX-143.
+- **Evidence:** build digest, renderer revision, Playwright traces and screenshots, the retained reference capture digest, run ids, artifact digests and the declared evidence tier under the existing evidence rules.
+- **Completion:** production-equivalent real proof and no unresolved acceptance criteria; graph.py is the only status writer. Product status is NOT_STARTED at adoption.
+
+<a id="px-144"></a>
+
+## PX-144 — Autonomy presets on the policy kernel: Supervised default, the AUTONOMOUS run mode, an Always rule that takes effect and the toolchains a project installs
+
+- **Requirement:** REQ-PX-144; **related preserved requirements:** REQ-EV-0194, REQ-EV-0088, REQ-EV-0031.
+- **Owner / milestone / release:** effects-security / M10 / RELEASE_ZERO; **prerequisites:** M2.5, M9.2, DOC-PX-016.
+- **Decision Record, phase and evidence tier:** DR-PX-2026-10-25-017; autonomous coding goal; release-critical (permissions and policy: who approves protected effects, the always-ask classes and a durable mode).
+- **Specification requirements (DR-PX-2026-10-25-017 section 5, with basis):** D1 [LIVE], D2 [LIVE], D3 [LIVE], D4 [LIVE]; AFW-F06, AFW-F07 and AFW-F08 of doc 65 as scoped by the record.
+- **Scope and acceptance:** The Core's default run mode for a task of origin desktop, CLI, IDE adapter or fork is ALLOWLIST (every other origin stays ASK); `RunMode::Autonomous` (string `AUTONOMOUS`, rank above RUN_EVERYTHING, durable) approves what RUN_EVERYTHING approves and passes the NETWORK class for a call whose classifier-stated `dependency_install` fact holds; the shell classifier owns that fact (`npm`/`pnpm`/`bun` install, ci; yarn; `cargo fetch`; `go mod download`; no package, global, prefix, registry, index, config or environment override, and nothing else that reaches out) and knows the toolchains of D4; the fact travels `CallFacts` to `PolicyRequest` to `RunPolicy` and only the AUTONOMOUS arm reads it; the desktop shows ALLOWLIST as Supervised, names AUTONOMOUS and its warning, withholds Always on an ASK card with the reason, refuses it in main (`ALWAYS_INEFFECTIVE`) and gives a repository rule a 30-day expiry; the run-mode warning text names the one install exception. No classifier approves anything: a person-set, acknowledged mode does.
+- **Production wiring:** `crates/domain/src/runmode.rs`, `crates/policy/src/runmode.rs`, `crates/tools/src/{shell_class,registry,policy,direct,pipeline}.rs`, `services/modbit-core/src/{run_control,tools}.rs`, `crates/protocol/proto/modbit/v1/run_control.proto` (comment), `apps/desktop/src/{main/control-ipc.ts,shared/control-types.ts,renderer/approvals}`, `apps/cli`; docs 65 and 23 updated by the implementing task.
+- **Real qualification:** QUAL-PX-144 / PX-E2E-144.
+- **Failure and negative proof:** as in QUAL-PX-144.
+- **Evidence:** build digest, Core and client revisions, event cursor ranges, run ids, effect-receipt chain heads, artifact digests and the declared evidence tier under the existing evidence rules.
+- **Completion:** production-equivalent real proof and no unresolved acceptance criteria; graph.py is the only status writer. Product status is NOT_STARTED at adoption.
+
+<a id="px-145"></a>
+
+## PX-145 — Core-run verification after edits with repair conclusion, durable notices and diagnosis context, and a derived plan for Node/TypeScript and Go projects
+
+- **Requirement:** REQ-PX-145; **related preserved requirements:** REQ-EV-0010, REQ-EV-0068, REQ-EV-0107.
+- **Owner / milestone / release:** core-runtime / M10 / RELEASE_ZERO; **prerequisites:** PX-018, PX-035, PX-039, DOC-PX-016.
+- **Decision Record, phase and evidence tier:** DR-PX-2026-10-25-017; autonomous coding goal; release-critical (execution and recovery: the loop runs verification and concludes a repair attempt on its own, and a new event is replayed into the transcript).
+- **Specification requirements (DR-PX-2026-10-25-017 section 5, with basis):** D5 [LIVE]; docs 28 section 5 and 64 as scoped by the record.
+- **Scope and acceptance:** At the end of a turn in which a write landed (baseline recorded, a plan, a mandatory check, not a reviewer, replay or subagent, fewer than 60 so far, `MODBIT_AUTO_VERIFY` not 0) the Core runs a TARGETED stage through `run_verification`, concludes the pending repair attempt through `conclude_repair`, and delivers the notice (observation, open failures, prior attempts and outcomes, source lines the diagnostics name, next step) as `AutoVerificationDelivered` on the task's records aggregate, which the transcript rebuild replays; a write sets `unverified_write` and a TARGETED, RERUN or COMPLETION stage clears it. The derived plan names a Node project's type check (script, else the installed `tsc --noEmit`), build, advisory lint and test script (not the placeholder), with the package manager the project uses, and a Go module's build, vet (advisory) and test. The repair policy's per-task bound is 12. Nothing selects, skips or weakens a check.
+- **Production wiring:** `services/modbit-core/src/{auto_verify,runtime}.rs`, `crates/core-runtime/src/harness.rs`, `crates/verification/src/plan.rs`; docs 28, 30 and 64 updated by the implementing task; desktop Evidence shows the stages through the existing events.
+- **Real qualification:** QUAL-PX-145 / PX-E2E-145.
+- **Failure and negative proof:** as in QUAL-PX-145.
+- **Evidence:** build digest, Core revision, event cursor ranges, run ids, verification run ids, artifact digests and the declared evidence tier under the existing evidence rules.
+- **Completion:** production-equivalent real proof and no unresolved acceptance criteria; graph.py is the only status writer. Product status is NOT_STARTED at adoption.
+
+<a id="px-146"></a>
+
+## PX-146 — Budget windows for turns and tool calls and crash resumption of Autonomous tasks
+
+- **Requirement:** REQ-PX-146; **related preserved requirements:** REQ-EV-0073, REQ-PX-116.
+- **Owner / milestone / release:** core-runtime / M10 / RELEASE_ZERO; **prerequisites:** M2.7, M4.4, PX-049, DOC-PX-016.
+- **Decision Record, phase and evidence tier:** DR-PX-2026-10-25-017; autonomous coding goal; release-critical (execution and recovery: how long a run may go on and what resumes after a crash).
+- **Specification requirements (DR-PX-2026-10-25-017 section 5, with basis):** D6 [LIVE], D7 [LIVE]; doc 14 contract 5 as scoped by the record.
+- **Scope and acceptance:** Defaults of 200 turns and 1000 tool calls, settable per Core by `MODBIT_DEFAULT_MAX_TURNS` and `MODBIT_DEFAULT_MAX_TOOL_CALLS`, per request, never above 1000 and 5000; the counts bound a window; a `HarnessBudgetExhausted` on `max_turns` or `max_tool_calls` and a `BudgetWindowExtended` each open the next window on rebuild, at most four windows per task; an AUTONOMOUS run with no consecutive no-progress turn is extended by the Core and tells the model; cost and wall clock are never windowed; the tool-call window is judged at the turn boundary. After a restart the Core names with the resume-requested tasks the AUTONOMOUS ones it suspended unless the session was ended on purpose after they last started or `MODBIT_AUTO_RESUME` is 0; the client resumes them with the ordinary `StartTask`.
+- **Production wiring:** `crates/core-runtime/src/harness.rs`, `services/modbit-core/src/{runtime,server,session_end}.rs`, `apps/desktop/src/main/main.ts` (comment); docs 14 and 30 updated by the implementing task.
+- **Real qualification:** QUAL-PX-146 / PX-E2E-146.
+- **Failure and negative proof:** as in QUAL-PX-146.
+- **Evidence:** build digest, Core revision, event cursor ranges, run ids, artifact digests and the declared evidence tier under the existing evidence rules.
+- **Completion:** production-equivalent real proof and no unresolved acceptance criteria; graph.py is the only status writer. Product status is NOT_STARTED at adoption.
+
+<a id="px-147"></a>
+
+## PX-147 — SSRF guard in the sandbox egress broker: the resolved address is checked before connect
+
+- **Requirement:** REQ-PX-147.
+- **Owner / milestone / release:** sandbox-cloud / M10 / RELEASE_ZERO; **prerequisites:** DOC-PX-017.
+- **Decision Record, phase and evidence tier:** DR-PX-2026-10-26-018; upgrade program, hardening; release-critical (it changes effect-bearing, execution, policy, persistence or security-boundary behaviour).
+- **Specification requirements (DR-PX-2026-10-26-018 section 5 and Appendix A, with basis):** D1, D2 [VERIFIED: `crates/sandbox/src/egress.rs` connects to `(host, port)` immediately after the allow decision; no address check found in sandbox, execd, core or the gateway].
+- **Scope and acceptance:** The egress broker resolves an admitted destination once, refuses a loopback, private, link-local, unique-local, multicast or cloud-metadata address unless the rule names that IP literal, and connects to the address it checked (never re-resolving); the refusal is recorded in the egress audit with its own reason code. An allowed public destination relays exactly as before.
+- **Production wiring:** `crates/sandbox/src/egress.rs` (the connect in `plain` and the tunnel path), `crates/sandbox/src/policy.rs` (`NetworkPolicy`), `apps/sandbox-gateway`.
+- **Real qualification:** QUAL-PX-147 / PX-E2E-147.
+- **Failure and negative proof:** as in QUAL-PX-147.
+- **Evidence:** build digest, Core revision, event cursor ranges, run ids, artifact digests and the declared evidence tier under the existing evidence rules.
+- **Completion:** production-equivalent real proof and no unresolved acceptance criteria; graph.py is the only status writer. Product status is NOT_STARTED at adoption.
+
+<a id="px-148"></a>
+
+## PX-148 — Process hardening for the Core and the execution broker: no core dumps, not attachable, no injected libraries
+
+- **Requirement:** REQ-PX-148.
+- **Owner / milestone / release:** terminal / M10 / RELEASE_ZERO; **prerequisites:** DOC-PX-017.
+- **Decision Record, phase and evidence tier:** DR-PX-2026-10-26-018; upgrade program, hardening; release-critical (it changes effect-bearing, execution, policy, persistence or security-boundary behaviour).
+- **Specification requirements (DR-PX-2026-10-26-018 section 5 and Appendix A, with basis):** D1, D2 [VERIFIED: no `PR_SET_DUMPABLE`, `PT_DENY_ATTACH`, `RLIMIT_CORE` or `LD_*`/`DYLD_*` handling found in services, crates or apps].
+- **Scope and acceptance:** At the first statement of `main` the Core and the execution broker set the core-dump limit to zero, mark themselves non-dumpable (Linux) or deny attach (macOS), and remove `LD_*` and `DYLD_*` from their own environment before any thread or child starts. Children keep today's pinned environment. One small helper serves both binaries.
+- **Production wiring:** `services/modbit-core/src/main.rs`, `services/modbit-execd/src/main.rs`, one shared helper module.
+- **Real qualification:** QUAL-PX-148 / PX-E2E-148.
+- **Failure and negative proof:** as in QUAL-PX-148.
+- **Evidence:** build digest, Core revision, event cursor ranges, run ids, artifact digests and the declared evidence tier under the existing evidence rules.
+- **Completion:** production-equivalent real proof and no unresolved acceptance criteria; graph.py is the only status writer. Product status is NOT_STARTED at adoption.
+
+<a id="px-149"></a>
+
+## PX-149 — Allow rules pinned to the resolved program path
+
+- **Requirement:** REQ-PX-149.
+- **Owner / milestone / release:** effects-security / M10 / RELEASE_ZERO; **prerequisites:** DOC-PX-017.
+- **Decision Record, phase and evidence tier:** DR-PX-2026-10-26-018; upgrade program, hardening; release-critical (it changes effect-bearing, execution, policy, persistence or security-boundary behaviour).
+- **Specification requirements (DR-PX-2026-10-26-018 section 5 and Appendix A, with basis):** D1, D2 [INFERRED from reading `prefix_matches` and the pinned environment, not run; the task begins by reproducing it].
+- **Scope and acceptance:** A durable allow rule records the absolute path its program resolved to when the rule was made. A command matches only when its program still resolves to that path; a program that now resolves elsewhere asks as if no rule existed, with its own reason code. A repository-supplied `bin/` earlier on the path can no longer satisfy a rule made for the system program.
+- **Production wiring:** `crates/policy/src/runmode.rs` (`AllowRule`, `prefix_matches`), `crates/domain/src/runmode.rs`, the rule-creation path in the Core.
+- **Real qualification:** QUAL-PX-149 / PX-E2E-149.
+- **Failure and negative proof:** as in QUAL-PX-149.
+- **Evidence:** build digest, Core revision, event cursor ranges, run ids, artifact digests and the declared evidence tier under the existing evidence rules.
+- **Completion:** production-equivalent real proof and no unresolved acceptance criteria; graph.py is the only status writer. Product status is NOT_STARTED at adoption.
+
+<a id="px-150"></a>
+
+## PX-150 — Tighter review sandbox: parameterised macOS profile, credential read denials, protected metadata
+
+- **Requirement:** REQ-PX-150.
+- **Owner / milestone / release:** terminal / M10 / RELEASE_ZERO; **prerequisites:** DOC-PX-017.
+- **Decision Record, phase and evidence tier:** DR-PX-2026-10-26-018; upgrade program, hardening; release-critical (it changes effect-bearing, execution, policy, persistence or security-boundary behaviour).
+- **Specification requirements (DR-PX-2026-10-26-018 section 5 and Appendix A, with basis):** D1, D2 [AUDIT (code read): the macOS profile is built with `format!` and strips only `"` from the working directory; reads are unrestricted; writes to all of `/dev` and the temp roots are allowed].
+- **Scope and acceptance:** The review sandbox profile on macOS takes its paths as parameters and not by string formatting; reads of the user's credential stores are denied (`~/.ssh`, `~/.aws`, `~/.gnupg`, the keychain directory and the cloud-CLI configuration directories); `.modbit` and `.git` inside the writable root are read-only to a confined process; writes to `/dev` and the temp roots are narrowed to what a build needs. The Linux profile gets the equivalent read denials where the mechanism allows, and says where it cannot.
+- **Production wiring:** `services/modbit-execd/src/broker.rs` (`review_sandbox`), `crates/sandbox/src/conformance.rs`.
+- **Real qualification:** QUAL-PX-150 / PX-E2E-150.
+- **Failure and negative proof:** as in QUAL-PX-150.
+- **Evidence:** build digest, Core revision, event cursor ranges, run ids, artifact digests and the declared evidence tier under the existing evidence rules.
+- **Completion:** production-equivalent real proof and no unresolved acceptance criteria; graph.py is the only status writer. Product status is NOT_STARTED at adoption.
+
+<a id="px-152"></a>
+
+## PX-152 — A typed sandbox-denied result so the agent stops retrying a confined command blindly
+
+- **Requirement:** REQ-PX-152.
+- **Owner / milestone / release:** terminal / M10 / RELEASE_ZERO; **prerequisites:** PX-150, DOC-PX-017.
+- **Decision Record, phase and evidence tier:** DR-PX-2026-10-26-018; upgrade program, hardening; release-critical (it changes effect-bearing, execution, policy, persistence or security-boundary behaviour).
+- **Specification requirements (DR-PX-2026-10-26-018 section 5 and Appendix A, with basis):** D1, D2 [AUDIT (code read): grep finds no sandbox-denial handling; a confined command that is refused looks like a failing test].
+- **Scope and acceptance:** When a confined process is refused by the sandbox, the broker's result carries a typed `SANDBOX_DENIED` with the exit code, the refused operation class where the platform states it, and a bounded output excerpt; the model-facing text tells the model the action is outside its confinement and not to retry it unchanged. A genuine test failure is never labelled as a denial.
+- **Production wiring:** `services/modbit-execd/src/broker.rs` result path, `crates/tools/src/shell_class.rs` consumer, the tool result shape in `crates/tools`.
+- **Real qualification:** QUAL-PX-152 / PX-E2E-152.
+- **Failure and negative proof:** as in QUAL-PX-152.
+- **Evidence:** build digest, Core revision, event cursor ranges, run ids, artifact digests and the declared evidence tier under the existing evidence rules.
+- **Completion:** production-equivalent real proof and no unresolved acceptance criteria; graph.py is the only status writer. Product status is NOT_STARTED at adoption.
+
+<a id="px-153"></a>
+
+## PX-153 — Model-visible denial and timeout guidance and a denial circuit breaker that parks the run
+
+- **Requirement:** REQ-PX-153.
+- **Owner / milestone / release:** core-runtime / M10 / RELEASE_ZERO; **prerequisites:** DOC-PX-017.
+- **Decision Record, phase and evidence tier:** DR-PX-2026-10-26-018; upgrade program, hardening; release-critical (it changes effect-bearing, execution, policy, persistence or security-boundary behaviour).
+- **Specification requirements (DR-PX-2026-10-26-018 section 5 and Appendix A, with basis):** D1, D2 [AUDIT (code read): `runtime.rs` returns only "the user denied this effect"; no repeated-denial control exists].
+- **Scope and acceptance:** A denied, expired, hook-denied or policy-denied effect returns guidance that tells the model not to reach the same effect by another route, to continue only with a materially safer alternative and otherwise to stop and ask, and that a timeout is not evidence of danger. After three consecutive denials, or ten in the last fifty tool results, the Core parks the task as needs-attention with a typed reason and delivers one durable notice; it does not end the task.
+- **Production wiring:** `services/modbit-core/src/runtime.rs` (the denial results), `crates/core-runtime/src/harness.rs` (a counter folded from the log), the attention classes in the Core.
+- **Real qualification:** QUAL-PX-153 / PX-E2E-153.
+- **Failure and negative proof:** as in QUAL-PX-153.
+- **Evidence:** build digest, Core revision, event cursor ranges, run ids, artifact digests and the declared evidence tier under the existing evidence rules.
+- **Completion:** production-equivalent real proof and no unresolved acceptance criteria; graph.py is the only status writer. Product status is NOT_STARTED at adoption.
+
+<a id="px-155"></a>
+
+## PX-155 — Context-overflow recovery: a typed provider error forces a synchronous compaction and one retry
+
+- **Requirement:** REQ-PX-155.
+- **Owner / milestone / release:** durability / M10 / RELEASE_ZERO; **prerequisites:** DOC-PX-017.
+- **Decision Record, phase and evidence tier:** DR-PX-2026-10-26-018; upgrade program, robustness; release-critical (it changes effect-bearing, execution, policy, persistence or security-boundary behaviour).
+- **Specification requirements (DR-PX-2026-10-26-018 section 5 and Appendix A, with basis):** D1, D2 [AUDIT (code read): provider errors are generic (`PROVIDER_ERROR`); the compaction trigger is an estimate with calibration only].
+- **Scope and acceptance:** Both provider adapters map the provider's context-window-exceeded response to a typed `CONTEXT_OVERFLOW`. The Core answers it with a forced synchronous compaction through the existing ladder and retries the request once; a second overflow ends the turn with a typed failure and never loops.
+- **Production wiring:** `crates/providers/src/{anthropic,openai}.rs`, `services/modbit-core/src/{runtime,compaction_model}.rs`, `crates/compaction`.
+- **Real qualification:** QUAL-PX-155 / PX-E2E-155.
+- **Failure and negative proof:** as in QUAL-PX-155.
+- **Evidence:** build digest, Core revision, event cursor ranges, run ids, artifact digests and the declared evidence tier under the existing evidence rules.
+- **Completion:** production-equivalent real proof and no unresolved acceptance criteria; graph.py is the only status writer. Product status is NOT_STARTED at adoption.
+
+<a id="px-156"></a>
+
+## PX-156 — Time parked on an approval is excluded from tool timeouts and wall-clock accounting
+
+- **Requirement:** REQ-PX-156.
+- **Owner / milestone / release:** core-runtime / M10 / RELEASE_ZERO; **prerequisites:** DOC-PX-017.
+- **Decision Record, phase and evidence tier:** DR-PX-2026-10-26-018; upgrade program, robustness; release-critical (it changes effect-bearing, execution, policy, persistence or security-boundary behaviour).
+- **Specification requirements (DR-PX-2026-10-26-018 section 5 and Appendix A, with basis):** D1, D2 [INFERRED: not traced; the run span is the wall clock (`runtime.rs`) and no exclusion for approval-parked time was found; the task begins by reproducing it].
+- **Scope and acceptance:** While a call is parked on an approval or a question, neither the call's timeout nor the task's wall-clock budget runs; the accounting record names the parked time separately.
+- **Production wiring:** `services/modbit-core/src/runtime.rs` (timeout and wall-clock paths), `crates/core-runtime/src/harness.rs`.
+- **Real qualification:** QUAL-PX-156 / PX-E2E-156.
+- **Failure and negative proof:** as in QUAL-PX-156.
+- **Evidence:** build digest, Core revision, event cursor ranges, run ids, artifact digests and the declared evidence tier under the existing evidence rules.
+- **Completion:** production-equivalent real proof and no unresolved acceptance criteria; graph.py is the only status writer. Product status is NOT_STARTED at adoption.
+
+<a id="px-157"></a>
+
+## PX-157 — Secret redaction on memory proposals and use tracking from injected memory
+
+- **Requirement:** REQ-PX-157.
+- **Owner / milestone / release:** memory / M10 / RELEASE_ZERO; **prerequisites:** DOC-PX-017.
+- **Decision Record, phase and evidence tier:** DR-PX-2026-10-26-018; upgrade program, robustness; release-critical (it changes effect-bearing, execution, policy, persistence or security-boundary behaviour).
+- **Specification requirements (DR-PX-2026-10-26-018 section 5 and Appendix A, with basis):** D1, D2 [AUDIT (code read): `memory.propose` has no redaction step; no use count exists].
+- **Scope and acceptance:** A memory proposal is passed through the existing secret redactor before it is stored; a proposal that is wholly a secret is refused with a typed reason. The Core records, from the `injected_memory` it already logs, how often and when each item was put into a prompt, and the projection exposes the count and last-use time.
+- **Production wiring:** `services/modbit-core/src/memory.rs`, `crates/memory/src/lib.rs`, the redactor in `crates/secrets`.
+- **Real qualification:** QUAL-PX-157 / PX-E2E-157.
+- **Failure and negative proof:** as in QUAL-PX-157.
+- **Evidence:** build digest, Core revision, event cursor ranges, run ids, artifact digests and the declared evidence tier under the existing evidence rules.
+- **Completion:** production-equivalent real proof and no unresolved acceptance criteria; graph.py is the only status writer. Product status is NOT_STARTED at adoption.
+
+<a id="px-158"></a>
+
+## PX-158 — Image tokens are charged by size in compaction estimates
+
+- **Requirement:** REQ-PX-158.
+- **Owner / milestone / release:** durability / M10 / RELEASE_ZERO; **prerequisites:** DOC-PX-017.
+- **Decision Record, phase and evidence tier:** DR-PX-2026-10-26-018; upgrade program, robustness; release-critical (it changes effect-bearing, execution, policy, persistence or security-boundary behaviour).
+- **Specification requirements (DR-PX-2026-10-26-018 section 5 and Appendix A, with basis):** D1, D2 [AUDIT (code read): `message_text` counts a media part as a short label, so image tokens are undercounted].
+- **Scope and acceptance:** The compaction estimator charges each image part by its dimensions and detail class using a documented per-provider rule, and keeps an image with its caption atomic when the transcript is shortened. Calibration against provider-reported usage still applies on top.
+- **Production wiring:** `services/modbit-core/src/runtime.rs` (`message_text`), `crates/compaction` estimator, the provider usage calibration.
+- **Real qualification:** QUAL-PX-158 / PX-E2E-158.
+- **Failure and negative proof:** as in QUAL-PX-158.
+- **Evidence:** build digest, Core revision, event cursor ranges, run ids, artifact digests and the declared evidence tier under the existing evidence rules.
+- **Completion:** production-equivalent real proof and no unresolved acceptance criteria; graph.py is the only status writer. Product status is NOT_STARTED at adoption.
+
+<a id="px-159"></a>
+
+## PX-159 — Compaction telemetry promised by doc 34: tokens before and after, duration, mode, source, rejection and cost
+
+- **Requirement:** REQ-PX-159.
+- **Owner / milestone / release:** observability / M10 / RELEASE_ZERO; **prerequisites:** DOC-PX-017.
+- **Decision Record, phase and evidence tier:** DR-PX-2026-10-26-018; upgrade program, robustness; iteration (export-only change over the existing exporter; it alters no effect, store, policy or protocol).
+- **Specification requirements (DR-PX-2026-10-26-018 section 5 and Appendix A, with basis):** D1, D2 [AUDIT (code read): the OTLP span exports epoch, source entries and projection tokens only; doc 34 promises more].
+- **Scope and acceptance:** The compaction span and counters carry tokens before and after, duration, mode (async or synchronous), summary source, rejection code and the summarizer's cost, through the existing redacted, bounded, never-blocking exporter.
+- **Production wiring:** `services/modbit-core/src/telemetry.rs`, `crates/observability`.
+- **Real qualification:** QUAL-PX-159 / PX-E2E-159.
+- **Failure and negative proof:** as in QUAL-PX-159.
+- **Evidence:** build digest, Core revision, event cursor ranges, run ids, artifact digests and the declared evidence tier under the existing evidence rules.
+- **Completion:** production-equivalent real proof and no unresolved acceptance criteria; graph.py is the only status writer. Product status is NOT_STARTED at adoption.
+
+<a id="px-161"></a>
+
+## PX-161 — Read-only tool calls of one turn run concurrently and are journaled in call order
+
+- **Requirement:** REQ-PX-161.
+- **Owner / milestone / release:** core-runtime / M10 / RELEASE_ZERO; **prerequisites:** DOC-PX-017.
+- **Decision Record, phase and evidence tier:** DR-PX-2026-10-26-018; upgrade program, robustness; release-critical (it changes effect-bearing, execution, policy, persistence or security-boundary behaviour).
+- **Specification requirements (DR-PX-2026-10-26-018 section 5 and Appendix A, with basis):** D1, D2 [AUDIT (code read): calls in a turn run strictly in sequence (`runtime.rs`) although providers declare parallel capability].
+- **Scope and acceptance:** Within one model turn, calls whose effect class is read-only run concurrently under a bound; any call that writes, runs a process with side effects, asks or needs approval runs alone and in order; results are appended to the log in the order the model issued the calls; one failing call does not lose the others' results.
+- **Production wiring:** `services/modbit-core/src/runtime.rs` (tool dispatch), `crates/tools/src/pipeline.rs`.
+- **Real qualification:** QUAL-PX-161 / PX-E2E-161.
+- **Failure and negative proof:** as in QUAL-PX-161.
+- **Evidence:** build digest, Core revision, event cursor ranges, run ids, artifact digests and the declared evidence tier under the existing evidence rules.
+- **Completion:** production-equivalent real proof and no unresolved acceptance criteria; graph.py is the only status writer. Product status is NOT_STARTED at adoption.
+
+<a id="px-162"></a>
+
+## PX-162 — Rule, skill and memory changes arrive as appended transcript notes, not as rewritten early prompt segments
+
+- **Requirement:** REQ-PX-162.
+- **Owner / milestone / release:** context-engine / M10 / RELEASE_ZERO; **prerequisites:** DOC-PX-017.
+- **Decision Record, phase and evidence tier:** DR-PX-2026-10-26-018; upgrade program, robustness; release-critical (it changes effect-bearing, execution, policy, persistence or security-boundary behaviour).
+- **Specification requirements (DR-PX-2026-10-26-018 section 5 and Appendix A, with basis):** D1, D2 [AUDIT (code read): `prompt-compiler` comments say a memory change is a deliberate new prefix; lazy nested rules and skills rewrite early segments].
+- **Scope and acceptance:** A change of an instruction file, a loaded skill or the selected memory during a task is delivered as one appended, provenance-labelled note carrying the delta and what it replaces; the cached prefix bytes are unchanged. A new task or a compaction still starts from the freshly compiled prefix.
+- **Production wiring:** `crates/prompt-compiler`, `services/modbit-core/src/runtime.rs` (compile step), the instruction and memory selection.
+- **Real qualification:** QUAL-PX-162 / PX-E2E-162.
+- **Failure and negative proof:** as in QUAL-PX-162.
+- **Evidence:** build digest, Core revision, event cursor ranges, run ids, artifact digests and the declared evidence tier under the existing evidence rules.
+- **Completion:** production-equivalent real proof and no unresolved acceptance criteria; graph.py is the only status writer. Product status is NOT_STARTED at adoption.
+
+<a id="px-167"></a>
+
+## PX-167 — Dependency advisory, license and unused-crate gates in CI, and a SECURITY.md
+
+- **Requirement:** REQ-PX-167.
+- **Owner / milestone / release:** governance / M10 / RELEASE_ZERO; **prerequisites:** DOC-PX-017.
+- **Decision Record, phase and evidence tier:** DR-PX-2026-10-26-018; upgrade program, hygiene; iteration (CI and repository metadata only; no product behaviour changes).
+- **Specification requirements (DR-PX-2026-10-26-018 section 5 and Appendix A, with basis):** D1, D2 [AUDIT: doc 70 promises dependency, license and secret scans; no deny configuration, audit job or SECURITY.md was found].
+- **Scope and acceptance:** CI runs a dependency-advisory and license check and an unused-dependency check on the Rust workspace, each with a reason and a removal condition on every ignore; the repository gains a SECURITY.md that states how to report a vulnerability and what is in scope.
+- **Production wiring:** `.github/workflows` (or the CI the repository uses), a deny configuration at the workspace root, `SECURITY.md`.
+- **Real qualification:** QUAL-PX-167 / PX-E2E-167.
+- **Failure and negative proof:** as in QUAL-PX-167.
+- **Evidence:** build digest, Core revision, event cursor ranges, run ids, artifact digests and the declared evidence tier under the existing evidence rules.
+- **Completion:** production-equivalent real proof and no unresolved acceptance criteria; graph.py is the only status writer. Product status is NOT_STARTED at adoption.
+
+<a id="px-168"></a>
+
+## PX-168 — Lint policy: no unwrap or expect outside tests, no lock held across await, no raw process spawn outside the owners
+
+- **Requirement:** REQ-PX-168.
+- **Owner / milestone / release:** governance / M10 / RELEASE_ZERO; **prerequisites:** DOC-PX-017.
+- **Decision Record, phase and evidence tier:** DR-PX-2026-10-26-018; upgrade program, hygiene; iteration (lint configuration; no product behaviour changes beyond fixing the flagged sites, which are reviewed one by one).
+- **Specification requirements (DR-PX-2026-10-26-018 section 5 and Appendix A, with basis):** D1, D2 [AUDIT: the workspace sets `clippy::all = warn` made fatal by `-D warnings`; no disallowed-methods or unwrap policy exists].
+- **Scope and acceptance:** The workspace denies `unwrap_used`, `expect_used` and `await_holding_lock` for non-test code, and denies `std::process::Command::new` outside the crates that own process spawning, with the existing architecture lint kept as a backstop. Existing violations are fixed or carry a reasoned allow.
+- **Production wiring:** workspace lint configuration, a clippy configuration file, `tools/architecture-lint`.
+- **Real qualification:** QUAL-PX-168 / PX-E2E-168.
+- **Failure and negative proof:** as in QUAL-PX-168.
+- **Evidence:** build digest, Core revision, event cursor ranges, run ids, artifact digests and the declared evidence tier under the existing evidence rules.
+- **Completion:** production-equivalent real proof and no unresolved acceptance criteria; graph.py is the only status writer. Product status is NOT_STARTED at adoption.
+
+<a id="px-171"></a>
+
+## PX-171 — Fault-injecting scripted provider server for the provider and Core suites
+
+- **Requirement:** REQ-PX-171.
+- **Owner / milestone / release:** eval-bench / M10 / RELEASE_ZERO; **prerequisites:** DOC-PX-017.
+- **Decision Record, phase and evidence tier:** DR-PX-2026-10-26-018; upgrade program, hygiene; iteration (test support only; it adds no product code path).
+- **Specification requirements (DR-PX-2026-10-26-018 section 5 and Appendix A, with basis):** D1, D2 [AUDIT: `tests/support/scripted_openai.rs` is 94 lines, keys replies on the tool-result count and cannot inject a status code, a 429 with headers, a mid-stream drop or an idle stall].
+- **Scope and acceptance:** The shared test support gains a scripted provider server that can answer a request with a chosen status, headers (`retry-after`, `retry-after-ms`), a body cut mid-event, an idle stall past the read timeout and a malformed event, for both wire formats; the provider and Core suites use it for the failures listed in doc 54.
+- **Production wiring:** `tests/support`, `crates/providers/tests`, `services/modbit-core/tests`.
+- **Real qualification:** QUAL-PX-171 / PX-E2E-171.
+- **Failure and negative proof:** as in QUAL-PX-171.
+- **Evidence:** build digest, Core revision, event cursor ranges, run ids, artifact digests and the declared evidence tier under the existing evidence rules.
+- **Completion:** production-equivalent real proof and no unresolved acceptance criteria; graph.py is the only status writer. Product status is NOT_STARTED at adoption.
+
+<a id="px-174"></a>
+
+## PX-174 — Screenshot window for computer-use runs: recent frames as images, older steps as text, the full record kept
+
+- **Requirement:** REQ-PX-174.
+- **Owner / milestone / release:** browser / M10 / RELEASE_ZERO; **prerequisites:** PX-158, DOC-PX-017.
+- **Decision Record, phase and evidence tier:** DR-PX-2026-10-26-018; upgrade program, gui agent; release-critical (it changes effect-bearing, execution, policy, persistence or security-boundary behaviour).
+- **Specification requirements (DR-PX-2026-10-26-018 section 5 and Appendix A, with basis):** D1, D2 [AUDIT (code read): frame retention is storage only (`MODBIT_COMPUTER_RETENTION_SECS`); no keep-last-N policy; MAI-UI's reference loop keeps three images].
+- **Scope and acceptance:** The computer-use child sends the last N frames (default three, set by policy, never above a ceiling) as images and every older step as its text record (action, target, outcome); older frames stay in the artifact store and in the log, readable by range, and are dropped from the prompt by the existing compaction rules.
+- **Production wiring:** `services/modbit-core/src/agent_profiles.rs` (computer-use profile), `crates/computer`, `crates/compaction`.
+- **Real qualification:** QUAL-PX-174 / PX-E2E-174.
+- **Failure and negative proof:** as in QUAL-PX-174.
+- **Evidence:** build digest, Core revision, event cursor ranges, run ids, artifact digests and the declared evidence tier under the existing evidence rules.
+- **Completion:** production-equivalent real proof and no unresolved acceptance criteria; graph.py is the only status writer. Product status is NOT_STARTED at adoption.
+
+<a id="px-176"></a>
+
+## PX-176 — One structured observation after a GUI action or a command: frame, stdout, stderr, exit code and tool result together
+
+- **Requirement:** REQ-PX-176.
+- **Owner / milestone / release:** browser / M10 / RELEASE_ZERO; **prerequisites:** DOC-PX-017.
+- **Decision Record, phase and evidence tier:** DR-PX-2026-10-26-018; upgrade program, gui agent; release-critical (it changes effect-bearing, execution, policy, persistence or security-boundary behaviour).
+- **Specification requirements (DR-PX-2026-10-26-018 section 5 and Appendix A, with basis):** D1, D2 [AUDIT (code read): the computer-use child holds `shell.exec` and `computer.*` in one loop but their results are separate; a command timeout handling for this loop was not traced].
+- **Scope and acceptance:** A step of the computer-use child returns its observation as one structured record: the post-action frame token, the accessibility delta, and for a command its stdout, stderr and exit code within the existing output bounds; a command that exceeds its timeout returns as an error observation and does not end the run. The shell remains the restricted, non-GUI one.
+- **Production wiring:** `services/modbit-core/src/agent_profiles.rs`, `crates/computer/src/ops.rs`, `crates/tools` shell result shape.
+- **Real qualification:** QUAL-PX-176 / PX-E2E-176.
+- **Failure and negative proof:** as in QUAL-PX-176.
+- **Evidence:** build digest, Core revision, event cursor ranges, run ids, artifact digests and the declared evidence tier under the existing evidence rules.
+- **Completion:** production-equivalent real proof and no unresolved acceptance criteria; graph.py is the only status writer. Product status is NOT_STARTED at adoption.
+
+<a id="px-177"></a>
+
+## PX-177 — Human takeover for steps only the person can do: a typed handover that pauses, shows the live state and resumes from the new state
+
+- **Requirement:** REQ-PX-177.
+- **Owner / milestone / release:** core-runtime / M10 / RELEASE_ZERO; **prerequisites:** DOC-PX-017.
+- **Decision Record, phase and evidence tier:** DR-PX-2026-10-26-018; upgrade program, gui agent; release-critical (it changes effect-bearing, execution, policy, persistence or security-boundary behaviour).
+- **Specification requirements (DR-PX-2026-10-26-018 section 5 and Appendix A, with basis):** D1, D2 [AUDIT (code read): `user.ask` exists; no handover state exists; Modbit never solves a CAPTCHA or enters a payment secret].
+- **Scope and acceptance:** When a computer-use or browser run reaches a step that needs the person (a CAPTCHA, a payment confirmation, a second factor, a secure field), the agent calls a handover; the task parks with a typed reason and a live view of the target; the person does the step and resumes; the run continues from a fresh frame. An unanswered handover expires with the existing parked-approval expiry and acts on nothing. The agent never completes the step itself.
+- **Production wiring:** `crates/core-runtime`, `services/modbit-core/src/computer.rs`, `crates/tools/src/browser.rs`, the desktop approval and attention surfaces.
+- **Real qualification:** QUAL-PX-177 / PX-E2E-177.
+- **Failure and negative proof:** as in QUAL-PX-177.
+- **Evidence:** build digest, Core revision, event cursor ranges, run ids, artifact digests and the declared evidence tier under the existing evidence rules.
+- **Completion:** production-equivalent real proof and no unresolved acceptance criteria; graph.py is the only status writer. Product status is NOT_STARTED at adoption.
+
+<a id="px-178"></a>
+
+## PX-178 — GUI task verifier and a failure judge that separates model, environment and policy outcomes
+
+- **Requirement:** REQ-PX-178.
+- **Owner / milestone / release:** verification / M10 / RELEASE_ZERO; **prerequisites:** DOC-PX-017.
+- **Decision Record, phase and evidence tier:** DR-PX-2026-10-26-018; upgrade program, gui agent; release-critical (it changes effect-bearing, execution, policy, persistence or security-boundary behaviour).
+- **Specification requirements (DR-PX-2026-10-26-018 section 5 and Appendix A, with basis):** D1, D2 [AUDIT: no GUI task verifier exists; the verification engine and completion run cover code tasks only].
+- **Scope and acceptance:** A GUI task declares its completion evidence (an accessibility-state predicate, a file or document predicate, or a recorded outcome) and the verification engine evaluates it as evidence, never as authority. A failed run is classified as model failure, environment failure (actuator unavailable, app crashed, permission lost) or policy stop, from the log and the evidence, with the classification and its basis recorded.
+- **Production wiring:** `crates/verification`, `crates/computer` outcome records, the completion path in the Core.
+- **Real qualification:** QUAL-PX-178 / PX-E2E-178.
+- **Failure and negative proof:** as in QUAL-PX-178.
+- **Evidence:** build digest, Core revision, event cursor ranges, run ids, artifact digests and the declared evidence tier under the existing evidence rules.
+- **Completion:** production-equivalent real proof and no unresolved acceptance criteria; graph.py is the only status writer. Product status is NOT_STARTED at adoption.
+
+<a id="px-179"></a>
+
+## PX-179 — GUI regression suite: Modbit-owned tasks on the fixture desktop and a small real-app set, with a retained baseline
+
+- **Requirement:** REQ-PX-179.
+- **Owner / milestone / release:** eval-bench / M10 / RELEASE_ZERO; **prerequisites:** PX-178, DOC-PX-017.
+- **Decision Record, phase and evidence tier:** DR-PX-2026-10-26-018; upgrade program, gui agent; iteration (evaluation suite and result bundles; it changes no effect, store, policy or protocol).
+- **Specification requirements (DR-PX-2026-10-26-018 section 5 and Appendix A, with basis):** D1, D2 [AUDIT: no GUI benchmark exists; the agent-engineering suite is six coding tasks].
+- **Scope and acceptance:** A suite of Modbit-owned GUI tasks runs on the fixture desktop in CI and on a small set of real macOS apps on a prepared machine; each task has a verifier from the GUI verifier row; a baseline bundle is retained and a re-run reports the difference; a regression blocks merge for the fixture set.
+- **Production wiring:** `benchmarks/`, `crates/computer` fixture desktop, the verifier of the GUI verifier row.
+- **Real qualification:** QUAL-PX-179 / PX-E2E-179.
+- **Failure and negative proof:** as in QUAL-PX-179.
+- **Evidence:** build digest, Core revision, event cursor ranges, run ids, artifact digests and the declared evidence tier under the existing evidence rules.
+- **Completion:** production-equivalent real proof and no unresolved acceptance criteria; graph.py is the only status writer. Product status is NOT_STARTED at adoption.
+
+<a id="px-182"></a>
+
+## PX-182 — Scenario adapter: per-tool skill guidance compiled for the tools actually exposed, as a versioned configuration
+
+- **Requirement:** REQ-PX-182.
+- **Owner / milestone / release:** skills / M10 / RELEASE_ZERO; **prerequisites:** DOC-PX-017.
+- **Decision Record, phase and evidence tier:** DR-PX-2026-10-26-018; upgrade program, planner harness; release-critical (it changes effect-bearing, execution, policy, persistence or security-boundary behaviour).
+- **Specification requirements (DR-PX-2026-10-26-018 section 5 and Appendix A, with basis):** D1, D2 [AUDIT (code read): `skills::compile` only intersects a skill's required tools with the projected tools; guidance is not per tool].
+- **Scope and acceptance:** A skill may carry guidance blocks each bound to a tool or capability. At task start the compiler selects the blocks whose tools are exposed to this task, drops every block that depends on an unavailable tool, and records the compiled configuration (skills, blocks, tools, hash) as a versioned artifact referenced from the run record. The same inputs compile to the same output. Trust, budget and loading rules are unchanged.
+- **Production wiring:** `crates/skills/src/lib.rs` (`compile`), `crates/prompt-compiler`, the run record in the Core.
+- **Real qualification:** QUAL-PX-182 / PX-E2E-182.
+- **Failure and negative proof:** as in QUAL-PX-182.
+- **Evidence:** build digest, Core revision, event cursor ranges, run ids, artifact digests and the declared evidence tier under the existing evidence rules.
+- **Completion:** production-equivalent real proof and no unresolved acceptance criteria; graph.py is the only status writer. Product status is NOT_STARTED at adoption.
+
+<a id="px-183"></a>
+
+## PX-183 — Ranked skill selection beyond exact trigger phrases, inside the existing budget and trust rules
+
+- **Requirement:** REQ-PX-183.
+- **Owner / milestone / release:** skills / M10 / RELEASE_ZERO; **prerequisites:** DOC-PX-017.
+- **Decision Record, phase and evidence tier:** DR-PX-2026-10-26-018; upgrade program, planner harness; release-critical (it changes effect-bearing, execution, policy, persistence or security-boundary behaviour).
+- **Specification requirements (DR-PX-2026-10-26-018 section 5 and Appendix A, with basis):** D1, D2 [AUDIT (code read): `select` is an explicit name or a trigger-phrase substring of the goal].
+- **Scope and acceptance:** Skill selection ranks enabled, trusted skills against the goal by their description and triggers within the existing 2,000-token index budget and loads on demand through `skill.load`; an explicit name still wins; an untrusted or disabled skill is never offered however well it ranks; the ranking is deterministic and its scores are recorded.
+- **Production wiring:** `crates/skills/src/lib.rs`, `services/modbit-core/src/skills.rs`.
+- **Real qualification:** QUAL-PX-183 / PX-E2E-183.
+- **Failure and negative proof:** as in QUAL-PX-183.
+- **Evidence:** build digest, Core revision, event cursor ranges, run ids, artifact digests and the declared evidence tier under the existing evidence rules.
+- **Completion:** production-equivalent real proof and no unresolved acceptance criteria; graph.py is the only status writer. Product status is NOT_STARTED at adoption.
+
+<a id="px-184"></a>
+
+## PX-184 — Four-axis agent benchmark: tool use, memory, skills and sub-agent tasks with cost per thousand tasks
+
+- **Requirement:** REQ-PX-184.
+- **Owner / milestone / release:** eval-bench / M10 / RELEASE_ZERO; **prerequisites:** DOC-PX-017.
+- **Decision Record, phase and evidence tier:** DR-PX-2026-10-26-018; upgrade program, planner harness; iteration (evaluation suite and result bundles; it changes no effect, store, policy or protocol).
+- **Specification requirements (DR-PX-2026-10-26-018 section 5 and Appendix A, with basis):** D1, D2 [AUDIT: `benchmarks/agent-engineering` has six coding tasks (PX-020 baseline); no axis tagging, no cost-per-thousand report].
+- **Scope and acceptance:** The agent-engineering suite grows to at least ten tasks on each of four axes (tool use, memory, skill use, sub-agent coordination), each task tagged by axis and verified by its own check; the report gives the score per axis and the output-token cost per thousand tasks; a baseline is retained.
+- **Production wiring:** `benchmarks/agent-engineering`, the Eval Harness, the existing result bundle format.
+- **Real qualification:** QUAL-PX-184 / PX-E2E-184.
+- **Failure and negative proof:** as in QUAL-PX-184.
+- **Evidence:** build digest, Core revision, event cursor ranges, run ids, artifact digests and the declared evidence tier under the existing evidence rules.
+- **Completion:** production-equivalent real proof and no unresolved acceptance criteria; graph.py is the only status writer. Product status is NOT_STARTED at adoption.
+
+<a id="px-186"></a>
+
+## PX-186 — Memory retrieval ranking with recency, importance and diversity, kept only if it beats the current ranking on the benchmark
+
+- **Requirement:** REQ-PX-186.
+- **Owner / milestone / release:** memory / M10 / RELEASE_ZERO; **prerequisites:** PX-184, DOC-PX-017.
+- **Decision Record, phase and evidence tier:** DR-PX-2026-10-26-018; upgrade program, planner harness; release-critical (it changes effect-bearing, execution, policy, persistence or security-boundary behaviour).
+- **Specification requirements (DR-PX-2026-10-26-018 section 5 and Appendix A, with basis):** D1, D2 [AUDIT (code read): ranking is keyword overlap 50%, scope 20%, confidence 20%, validated 10%; no recency, importance or diversity term].
+- **Scope and acceptance:** Selection adds recency, importance and a diversity penalty to the deterministic score, with optional semantic match reusing the existing embedder behind its admission rule. The weights are recorded in the selection record. The change is kept only if the memory axis of the four-axis benchmark improves at equal injected tokens; otherwise it is reverted and the negative result is retained.
+- **Production wiring:** `crates/memory/src/lib.rs`, `services/modbit-core/src/memory.rs`, `crates/retrieval` (read only).
+- **Real qualification:** QUAL-PX-186 / PX-E2E-186.
+- **Failure and negative proof:** as in QUAL-PX-186.
+- **Evidence:** build digest, Core revision, event cursor ranges, run ids, artifact digests and the declared evidence tier under the existing evidence rules.
+- **Completion:** production-equivalent real proof and no unresolved acceptance criteria; graph.py is the only status writer. Product status is NOT_STARTED at adoption.
+
+<a id="px-188"></a>
+
+## PX-188 — Memory privacy: private and shared scope, redaction before sharing, deletion that clears derived context, and a person-facing inspect and delete view
+
+- **Requirement:** REQ-PX-188.
+- **Owner / milestone / release:** memory / M10 / RELEASE_ZERO; **prerequisites:** PX-157, DOC-PX-017.
+- **Decision Record, phase and evidence tier:** DR-PX-2026-10-26-018; upgrade program, planner harness; release-critical (it changes effect-bearing, execution, policy, persistence or security-boundary behaviour).
+- **Specification requirements (DR-PX-2026-10-26-018 section 5 and Appendix A, with basis):** D1, D2 [AUDIT (code read): scopes and sensitivity exist; deletion's effect on generated context and caches, and a person-facing inspect and delete view, were not found].
+- **Scope and acceptance:** An item is private to its owner unless promoted to a shared scope; promotion to a shared scope passes a redaction step that removes user-specific detail and keeps the link to its source event; deleting an item removes it from the store, the projection, the selection cache and the next prompt, and records the deletion; the desktop lists a person's memories with their source and offers inspect, correct and delete.
+- **Production wiring:** `crates/memory`, `services/modbit-core/src/memory.rs`, the desktop Customize or settings surface.
+- **Real qualification:** QUAL-PX-188 / PX-E2E-188.
+- **Failure and negative proof:** as in QUAL-PX-188.
+- **Evidence:** build digest, Core revision, event cursor ranges, run ids, artifact digests and the declared evidence tier under the existing evidence rules.
+- **Completion:** production-equivalent real proof and no unresolved acceptance criteria; graph.py is the only status writer. Product status is NOT_STARTED at adoption.
+
+<a id="px-189"></a>
+
+## PX-189 — A trace schema for execution evidence and a Core producer that feeds the Skill Evolution Lab
+
+- **Requirement:** REQ-PX-189.
+- **Owner / milestone / release:** skills / M10 / RELEASE_ZERO; **prerequisites:** DOC-PX-017.
+- **Decision Record, phase and evidence tier:** DR-PX-2026-10-26-018; upgrade program, planner harness; release-critical (it changes effect-bearing, execution, policy, persistence or security-boundary behaviour).
+- **Specification requirements (DR-PX-2026-10-26-018 section 5 and Appendix A, with basis):** D1, D2 [AUDIT (code read): `crates/skills/src/evolution.rs` is library-only, referenced by no Core runtime code, with no trace producer].
+- **Scope and acceptance:** One trace record links the compiled skill configuration, the retrieved memory with its provenance, the tool and its arguments, the executor response, the state evidence, the error and the verifier outcome. The Core writes sealed traces from the event log into the lab's inputs, with secrets redacted; the lab continues to propose only and nothing it produces changes a run.
+- **Production wiring:** `crates/skills/src/evolution.rs`, `services/modbit-core` (a read-only producer over the log projection), `crates/event-store`, and `crates/core-runtime/src/trajectory.rs` (DR-GOV-2026-10-30-008: read-only per-task failed, cancelled, unknown-outcome and exact-repeat call counts and recurring-goal detection over the task and tool-call projections, committed in 74f52c33 with unit tests and no caller; the producer is its caller and calls nothing else for these figures).
+- **Real qualification:** QUAL-PX-189 / PX-E2E-189.
+- **Failure and negative proof:** as in QUAL-PX-189.
+- **Evidence:** build digest, Core revision, event cursor ranges, run ids, artifact digests and the declared evidence tier under the existing evidence rules.
+- **Completion:** production-equivalent real proof and no unresolved acceptance criteria; graph.py is the only status writer. Product status is NOT_STARTED at adoption.
+
+<a id="px-192"></a>
+
+## PX-192 — Agent workspace language tokens: three achromatic surfaces and one base, the AFW-A11 neutral ladder, one blue accent and chrome type 13/18, with the ZCode parity gate retired
+
+- **Requirement:** REQ-PX-192; **related preserved requirements:** REQ-EV-0037.
+- **Owner / milestone / release:** desktop / M10 / RELEASE_ZERO; **prerequisites:** PX-143, DOC-PX-018.
+- **Decision Record, phase and evidence tier:** DR-PX-2026-11-03-019; agent workspace language goal; iteration (presentation only: no effect, persistence, policy, protocol or security behaviour changes; the packaged UI smoke suite against a real Core, axe and the computed contrast test are the proof of record, doc 83; a need for a protocol, persistence, policy, main-process or CSP change stops the row and re-tiers it by a Decision Record).
+- **Specification requirements (DR-PX-2026-11-03-019 section 5, with basis):** AWL-01 [DECIDED], AWL-02 [DECIDED], AWL-03 [DECIDED], AWL-04 [DECIDED]; ZDX-03 to ZDX-06 and ZDX-09 carried over; AFW-A11 provenance clause restored; AFW-A12, AFW-A13, AFW-A14 unchanged.
+- **Scope and acceptance:** `packages/design-tokens` emits the section 5.1 surfaces, ladder, accent, status and mode values for light and dark from the one typed function, keeps the `--color-*` variable names as internal names with this record's values, keeps the high-contrast palette, sets `--ui-font-size` to 13 px with conversation body at 14/22, and pins the tables in its unit test; the ZCode parity unit tests and the specs `fidelity.spec.ts` and `zdl-tokens.spec.ts` with their support are removed as the record's section 10 says; the computed contrast test covers every pair in three themes.
+- **Production wiring:** `packages/design-tokens/src` (palette, scale, css, pairs, a typed AWL table), `apps/desktop/build.mjs` (one stylesheet from the one source), `apps/desktop/e2e/awl.spec.ts`; doc 32 updated by the implementing task; no main-process, preload or CSP change.
+- **Real qualification:** QUAL-PX-192 / PX-E2E-192.
+- **Failure and negative proof:** as in QUAL-PX-192.
+- **Evidence:** build digest, renderer revision, Playwright traces and screenshots, run ids, artifact digests and the declared evidence tier under the existing evidence rules.
+- **Completion:** production-equivalent real proof and no unresolved acceptance criteria; graph.py is the only status writer. Product status is NOT_STARTED at adoption.
+
+<a id="px-193"></a>
+
+## PX-193 — Agent workspace shell and controls: unframed panes with the doc 65 geometry, the navigation in the agent list, and the default, primary, outline, ghost and tab recipes
+
+- **Requirement:** REQ-PX-193; **related preserved requirements:** REQ-EV-0037.
+- **Owner / milestone / release:** desktop / M10 / RELEASE_ZERO; **prerequisites:** PX-192, DOC-PX-018.
+- **Decision Record, phase and evidence tier:** DR-PX-2026-11-03-019; agent workspace language goal; iteration (presentation only: no effect, persistence, policy, protocol or security behaviour changes; the packaged UI smoke suite against a real Core, axe and the computed contrast test are the proof of record, doc 83; a need for a protocol, persistence, policy, main-process or CSP change stops the row and re-tiers it by a Decision Record).
+- **Specification requirements (DR-PX-2026-11-03-019 section 5, with basis):** AWL-05 [DECIDED], AWL-06 [DECIDED]; AFW-A03, AFW-A04, AFW-A05 and AFW-A07 as restored in section 5.3; AFW-A01, A02, A06, A08, A09, A10 unchanged.
+- **Scope and acceptance:** The shell becomes one window of unframed panes (sidebar surface for the agent list, chrome for the conversation, editor for the apps panel, 1 px dividers, no radius or gap, a 4 px splitter), top bars 40 px, agent list default 260 px; the navigation entries move from the agent-region head and the top bar into one column of 30 px rows in the agent list with their test ids; a bare button and `Button` take the section 5.2 recipes and the main action of each surface takes the primary recipe; tabs are pills. `shell.spec.ts`, `shell.test.ts` and `gallery.spec.ts` change only the numbers section 10 names.
+- **Production wiring:** `apps/desktop/src/renderer/shell` (shell, top bar, agent region, splitter, apps panel), `apps/desktop/src/renderer/styles.ts`, `packages/ui` (button, tabs, styles), `packages/design-tokens` GEOMETRY, the desktop e2e specs named in the record; no main-process, preload or CSP change (window chrome stays with PX-094).
+- **Real qualification:** QUAL-PX-193 / PX-E2E-193.
+- **Failure and negative proof:** as in QUAL-PX-193.
+- **Evidence:** build digest, renderer revision, Playwright traces and screenshots, run ids, artifact digests and the declared evidence tier under the existing evidence rules.
+- **Completion:** production-equivalent real proof and no unresolved acceptance criteria; graph.py is the only status writer. Product status is NOT_STARTED at adoption.
+
+<a id="px-194"></a>
+
+## PX-194 — Agent workspace density: conversation turns, composer and trays, the one-line status row, banners and the apps panel in the agent workspace language
+
+- **Requirement:** REQ-PX-194; **related preserved requirements:** REQ-EV-0037.
+- **Owner / milestone / release:** desktop / M10 / RELEASE_ZERO; **prerequisites:** PX-193, DOC-PX-018.
+- **Decision Record, phase and evidence tier:** DR-PX-2026-11-03-019; agent workspace language goal; iteration (presentation only: no effect, persistence, policy, protocol or security behaviour changes; the packaged UI smoke suite against a real Core, axe and the computed contrast test are the proof of record, doc 83; a need for a protocol, persistence, policy, main-process or CSP change stops the row and re-tiers it by a Decision Record).
+- **Specification requirements (DR-PX-2026-11-03-019 section 5, with basis):** AWL-07 [DECIDED], AWL-08 [DECIDED], AWL-09 [DECIDED]; AFW-A07 as restored in section 5.3; AFW-A12, AFW-A14 unchanged.
+- **Scope and acceptance:** Conversation rows (user bubble, unboxed one-line step groups, the turn footer revealed on hover and focus, the centred 840 px column), the composer (radius 12, docked trays, chips), the one-line status row, the one-line banners, the apps panel (caption-size explanatory text, sentence-case headings, compact commit area) and the Fleet columns follow section 5.4 with every role, name and test id unchanged. Before and after screenshots of each screen in light and dark are retained as the supplemental record.
+- **Production wiring:** `apps/desktop/src/renderer` (conversation, composer, apps, fleet, workspace and screen CSS modules), `packages/ui` trays; no main-process, preload or CSP change.
+- **Real qualification:** QUAL-PX-194 / PX-E2E-194.
+- **Failure and negative proof:** as in QUAL-PX-194.
+- **Evidence:** build digest, renderer revision, Playwright traces and screenshots, run ids, artifact digests and the declared evidence tier under the existing evidence rules.
+- **Completion:** production-equivalent real proof and no unresolved acceptance criteria; graph.py is the only status writer. Product status is NOT_STARTED at adoption.
+
+<a id="px-195"></a>
+
+## PX-195 — Agent workspace home: one composer where send creates, starts and opens the task, the Fleet board removed
+
+- **Requirement:** REQ-PX-195; **related preserved requirements:** REQ-EV-0037, REQ-EV-0143.
+- **Owner / milestone / release:** desktop / M10 / RELEASE_ZERO; **prerequisites:** PX-194, DOC-PX-019.
+- **Decision Record, phase and evidence tier:** DR-PX-2026-11-04-020; agent workspace screens goal; release-critical (send now starts a run and the approval's decision surface moved; the full desktop suite against a real Core on macOS, Linux and Windows, axe and the computed contrast test are the proof of record, doc 83).
+- **Specification requirements (DR-PX-2026-11-04-020 section 5, with basis):** AWS-01 [DECIDED], AWS-07 [DECIDED]; AFW-A12, AFW-A13, AFW-A14 unchanged.
+- **Scope and acceptance:** Home is one centred composer. Send creates the task, starts it and opens its conversation; Alt+Enter creates without starting; with no provider the task is created, not started, and the screen says so. Provider setup sits above the composer while none exists and starter tasks fold under it. The Fleet board's components, columns, filter box and state line are deleted, and each of its facts and controls has the home section 5.6 names.
+- **Production wiring:** `apps/desktop/src/renderer` (home, agents, state, settings), `packages/ui` tabs, `apps/desktop/src/main` (window style, account name); no preload, protocol or CSP change.
+- **Real qualification:** QUAL-PX-195 / PX-E2E-195.
+- **Failure and negative proof:** as in QUAL-PX-195.
+- **Evidence:** build digest, renderer revision, Playwright traces and screenshots beside the approved mockup, run ids, artifact digests and the declared evidence tier under the existing evidence rules.
+- **Completion:** production-equivalent real proof and no unresolved acceptance criteria; graph.py is the only status writer. Product status is NOT_STARTED at adoption.
+
+<a id="px-196"></a>
+
+## PX-196 — Agent workspace chrome: the agent list's head, navigation, repositories and person's row, the top bar and the task's details
+
+- **Requirement:** REQ-PX-196; **related preserved requirements:** REQ-EV-0037, REQ-EV-0143.
+- **Owner / milestone / release:** desktop / M10 / RELEASE_ZERO; **prerequisites:** PX-195, DOC-PX-019.
+- **Decision Record, phase and evidence tier:** DR-PX-2026-11-04-020; agent workspace screens goal; release-critical (send now starts a run and the approval's decision surface moved; the full desktop suite against a real Core on macOS, Linux and Windows, axe and the computed contrast test are the proof of record, doc 83).
+- **Specification requirements (DR-PX-2026-11-04-020 section 5, with basis):** AWS-02 [DECIDED], AWS-03 [DECIDED], AWS-08 [DECIDED]; AFW-A10; AFW-A12, AFW-A13, AFW-A14 unchanged.
+- **Scope and acceptance:** The list's 40 px head, 28 px navigation rows with the Approvals count, Projects with its + and folded list options, two-line rows, Repositories and the person's row with the Core's state and the gear menu; on macOS the window controls in the head. The top bar is the title, state, branch and overflow; the overflow opens the task's details; Approvals and Settings are pages.
+- **Production wiring:** `apps/desktop/src/renderer` (shell, agents, conversation, approvals), `packages/ui` tabs, `apps/desktop/src/main` (window style, account name); no preload, protocol or CSP change.
+- **Real qualification:** QUAL-PX-196 / PX-E2E-196.
+- **Failure and negative proof:** as in QUAL-PX-196.
+- **Evidence:** build digest, renderer revision, Playwright traces and screenshots beside the approved mockup, run ids, artifact digests and the declared evidence tier under the existing evidence rules.
+- **Completion:** production-equivalent real proof and no unresolved acceptance criteria; graph.py is the only status writer. Product status is NOT_STARTED at adoption.
+
+<a id="px-197"></a>
+
+## PX-197 — Agent workspace conversation, composer and apps panel: steps that say what they did, one approval card, the two-row composer, the rebuilt Changes panel
+
+- **Requirement:** REQ-PX-197; **related preserved requirements:** REQ-EV-0037, REQ-EV-0143.
+- **Owner / milestone / release:** desktop / M10 / RELEASE_ZERO; **prerequisites:** PX-196, DOC-PX-019.
+- **Decision Record, phase and evidence tier:** DR-PX-2026-11-04-020; agent workspace screens goal; release-critical (send now starts a run and the approval's decision surface moved; the full desktop suite against a real Core on macOS, Linux and Windows, axe and the computed contrast test are the proof of record, doc 83).
+- **Specification requirements (DR-PX-2026-11-04-020 section 5, with basis):** AWS-04 [DECIDED], AWS-05 [DECIDED], AWS-06 [DECIDED], AWS-09 [DECIDED]; AFW-A12, AFW-A13, AFW-A14 unchanged.
+- **Scope and acceptance:** A 640 px column; steps read from the calls' facts; one docked approval card with the exact intent; a pending confirmation owns Enter and Escape; the composer's text, bar and foot; the panel's tabs in its top row, the Changes head, file list, numbered diff and commit bar at the foot; `pnpm start` finds the Core.
+- **Production wiring:** `apps/desktop/src/renderer` (conversation, composer, approvals, apps), `packages/ui` tabs, `apps/desktop/src/main` (window style, account name); no preload, protocol or CSP change.
+- **Real qualification:** QUAL-PX-197 / PX-E2E-197.
+- **Failure and negative proof:** as in QUAL-PX-197.
+- **Evidence:** build digest, renderer revision, Playwright traces and screenshots beside the approved mockup, run ids, artifact digests and the declared evidence tier under the existing evidence rules.
+- **Completion:** production-equivalent real proof and no unresolved acceptance criteria; graph.py is the only status writer. Product status is NOT_STARTED at adoption.
+
 ## Real-system scenarios
 
 ### PX-E2E-000 — Headless CLI task lifecycle
@@ -3116,3 +3825,237 @@ Row REQ-PX-140 is additionally authorized by DR-PX-2026-10-19-014 (per-task harn
 **Setup:** a real parent and two children, a local OTLP collector, a planted secret, a collector kill.  
 **Action:** run, export, kill the collector, restart the Core, compare exported and recorded cost.  
 **Pass:** the trace shows parent and child cost, nothing sensitive is exported, faults never touch the task, health persists, cost matches the record.
+
+### PX-E2E-141 — ZCode design tokens: Zai Light and Zai Dark, type scale, radius, elevation and motion, with the retained reference capture and the declared accessibility exceptions
+
+**Setup:** the built desktop app and the retained reference capture of ZCode's real stylesheet at the pinned upstream revision.  
+**Action:** resolve every colour token in light and dark, compare with the capture, run the contrast test and axe in three themes, change one reference-equal token by one channel, search the bundle for vendor marks.  
+**Pass:** every difference is a declared exception with a measured pair, all pairs pass, the mutation fails the gate, the notices are present and no vendor mark ships.
+
+### PX-E2E-142 — Primitive restyle to the ZCode recipes with a fidelity gate over computed style, geometry and pixels against the reference capture
+
+**Setup:** the desktop gallery build in the real Electron app, light and dark, and the retained capture of ZCode's real primitives.  
+**Action:** probe every specimen, compare style, geometry and pixels, operate every primitive by keyboard, run axe in three themes with reduced motion, apply the three mutations, run the desktop suite.  
+**Pass:** the specimens are inside tolerance except declared exceptions, each mutation fails the gate, every primitive keeps its role, name and key, and the suite is green.
+
+### PX-E2E-143 — Shell, conversation, composer and remaining screens in the ZCode panel language, with the Lucide icon set and the geometry of the superseding record
+
+**Setup:** the packaged app, a real Core, a scripted model and a fixture repository, at three window sizes in light and dark.  
+**Action:** measure the shell geometry, drive Fleet, a task with tool and diff cards, an approval, a checkpoint restore, the composer and its trays, Review, Settings and the palette, run axe and the full desktop suite, capture before and after screenshots.  
+**Pass:** the geometry matches the record, nothing lost its role, name or test id, only the superseded assertions changed, axe is clean and the suite is green.
+
+### PX-E2E-144 — Autonomy presets on the policy kernel: Supervised default, the AUTONOMOUS run mode, an Always rule that takes effect and the toolchains a project installs
+
+**Setup:** a real Core, the real execution broker, a git repository, a package manager on the path that records what it was asked, a scripted model, and the real Electron renderer.  
+**Action:** run a command with no rule, make the rule, run it again in a new task, choose ASK and run it, choose AUTONOMOUS with the acknowledgement and run an install, an unknown project tool, a package install, an install chained to a fetch, a deletion, a configuration write and an outside write, SIGKILL the Core, restart and run again; in the renderer choose Autonomous behind its warning and open an ASK card.  
+**Pass:** only the manifest install and the unknown tool run unasked, each other case asks with its typed class, the mode and its acknowledgement survive the kill, the receipt names why, Always is withheld in ASK.
+
+### PX-E2E-145 — Core-run verification after edits with repair conclusion, durable notices and diagnosis context, and a derived plan for Node/TypeScript and Go projects
+
+**Setup:** a real Core, a seeded TypeScript project whose `npm run build` fails through a real `tsc`, a scripted model that never names `verify.run` or `repair.attempt` to fix it, and a second project with two broken files.  
+**Action:** run "fix the broken build"; on the second project make a wrong first fix and a right second one; SIGKILL the Core while the model is asked about a failure and resume.  
+**Pass:** the Core verifies after each edit, the notices carry the observation, the prior attempt and the quoted source, attempts and outcomes are on the log, the resumed model reads the same notice once, the build passes, nothing was asked.
+
+### PX-E2E-146 — Budget windows for turns and tool calls and crash resumption of Autonomous tasks
+
+**Setup:** a real Core and a scripted model that reads many times before completing, three tasks (Supervised, Autonomous, Autonomous with no progress), a task killed mid-run in each mode and one in a session the person ended.  
+**Action:** run with small limits and resume; run a tool-call-limited task and an over-ceiling request; SIGKILL, restart, read the recovery report and resume.  
+**Pass:** the Supervised task waits and continues on a resume, the Autonomous one is extended and completes, the stalled one is not, the ceiling clamps, only the Autonomous crashed task is offered and it completes with nothing asked.
+
+### PX-E2E-147 — SSRF guard in the sandbox egress broker: the resolved address is checked before connect
+
+**Setup:** the real broker in a sandbox gateway process, a local TCP listener on loopback and a stub resolver that answers per query.  
+**Action:** request a tunnel to the four refused address classes and to an allowed public-style name, flip the resolver answer between check and connect, then read the audit log.  
+**Pass:** all refused classes get the typed denial and an audit record, the rebind attempt never reaches the listener, the allowed destination relays, and nothing outside the broker opened a socket.
+
+### PX-E2E-148 — Process hardening for the Core and the execution broker: no core dumps, not attachable, no injected libraries
+
+**Setup:** the real Core and broker binaries on the host platform, a test library that writes a marker file when loaded, a debugger or ptrace attempt.  
+**Action:** start both with an injected library variable, read the process flags, attempt an attach and a core dump.  
+**Pass:** the marker file is absent, the flags are set, the attach and the dump fail, and the processes serve a normal request.
+
+### PX-E2E-149 — Allow rules pinned to the resolved program path
+
+**Setup:** a real repository containing an executable `bin/git`, a path that lists it first, a rule created through the Core.  
+**Action:** approve and save a rule for `git status`, run it, then run it again with the shadowing program first on the path.  
+**Pass:** the first run is allowed by the rule, the shadowed run asks with the path-changed reason, and the repository program never ran unasked.
+
+### PX-E2E-150 — Tighter review sandbox: parameterised macOS profile, credential read denials, protected metadata
+
+**Setup:** a real review worktree, planted credential files, a working directory with hostile characters, the real sandbox tool of the host.  
+**Action:** run confined reads and writes against the credential files and the protected metadata, then run the real build and tests of the fixture.  
+**Pass:** the denied operations fail with the sandbox denial, the build passes, and the profile text equals the parameterised template.
+
+### PX-E2E-152 — A typed sandbox-denied result so the agent stops retrying a confined command blindly
+
+**Setup:** the real broker, a confined fixture that writes outside its root and a fixture whose test fails normally.  
+**Action:** run both, then read the tool results and the event log.  
+**Pass:** the first carries `SANDBOX_DENIED` with a bounded excerpt, the second is an ordinary failure, and the model-facing text for the first discourages an unchanged retry.
+
+### PX-E2E-153 — Model-visible denial and timeout guidance and a denial circuit breaker that parks the run
+
+**Setup:** the real Core, a scripted model that retries the same denied effect and one that changes approach, a real SIGKILL and restart.  
+**Action:** deny the effect three times, restart the Core, then resume and allow.  
+**Pass:** the task parks with the typed reason once, the notice replays after restart, and the resumed run continues; the other model is never parked.
+
+### PX-E2E-155 — Context-overflow recovery: a typed provider error forces a synchronous compaction and one retry
+
+**Setup:** the real Core, the provider transport server returning the overflow body in the format of each adapter, a long transcript.  
+**Action:** send a turn that overflows once, then one that overflows twice.  
+**Pass:** the first completes after one forced compaction and one retry, the second ends with the typed failure, and the log shows both paths.
+
+### PX-E2E-156 — Time parked on an approval is excluded from tool timeouts and wall-clock accounting
+
+**Setup:** the real Core, a scripted model, an approval left unanswered for longer than the tool timeout.  
+**Action:** request a call with a short timeout, leave the approval waiting, then approve.  
+**Pass:** the call runs and completes, nothing timed out while waiting, and the accounting shows the parked seconds.
+
+### PX-E2E-157 — Secret redaction on memory proposals and use tracking from injected memory
+
+**Setup:** the real Core, planted secrets in several formats, a scripted model that triggers injection of one item twice.  
+**Action:** propose the planted texts and an ordinary note, run two prompts that inject the note, restart.  
+**Pass:** the secrets are redacted or refused, the ordinary note is intact, the use count is two after the restart.
+
+### PX-E2E-158 — Image tokens are charged by size in compaction estimates
+
+**Setup:** the real Core, the recorded-transport provider server reporting usage for transcripts of frames, a long text transcript as the control.  
+**Action:** grow a transcript with frames until the soft threshold, compare with the reported usage.  
+**Pass:** compaction starts within the margin of the reported figure and the text-only control is unchanged.
+
+### PX-E2E-159 — Compaction telemetry promised by doc 34: tokens before and after, duration, mode, source, rejection and cost
+
+**Setup:** the real Core, the OTLP collector of the existing telemetry suite.  
+**Action:** run a committed, a stale-rejected and a fallback compaction, then stop the collector and run another.  
+**Pass:** the three exports carry the attributes, no content, and the last run is not delayed.
+
+### PX-E2E-161 — Read-only tool calls of one turn run concurrently and are journaled in call order
+
+**Setup:** the real Core, a scripted model, read tools with injected latency, a real SIGKILL and restart.  
+**Action:** issue the batch, then repeat with one read failing and one with a kill mid-batch.  
+**Pass:** elapsed time is below the serial total, order and results are intact, and recovery records each result once.
+
+### PX-E2E-162 — Rule, skill and memory changes arrive as appended transcript notes, not as rewritten early prompt segments
+
+**Setup:** the real Core, the recording provider transport, an instruction file and a memory store edited between turns.  
+**Action:** run a turn, edit the instruction file and add a memory, run the next turn, then restart and resume.  
+**Pass:** the prefix hash is identical across the two turns, the note carries the delta, and the resume replays it.
+
+### PX-E2E-167 — Dependency advisory, license and unused-crate gates in CI, and a SECURITY.md
+
+**Setup:** the repository CI definition run locally and on the hosted runner, one planted dependency per failure kind.  
+**Action:** run the jobs on the clean tree and on each planted tree.  
+**Pass:** the clean tree passes and each planted tree fails with the named finding.
+
+### PX-E2E-168 — Lint policy: no unwrap or expect outside tests, no lock held across await, no raw process spawn outside the owners
+
+**Setup:** the workspace build and the architecture lint on the clean tree and on three planted violations.  
+**Action:** build the clean tree and each planted tree.  
+**Pass:** the clean tree builds and each planted violation fails with the policy's message.
+
+### PX-E2E-171 — Fault-injecting scripted provider server for the provider and Core suites
+
+**Setup:** the real gateway and Core, the fault-injecting server for both wire formats.  
+**Action:** script each fault, run a turn against it and read the log.  
+**Pass:** every case ends as the doc 54 row says and the log records the typed outcome.
+
+### PX-E2E-174 — Screenshot window for computer-use runs: recent frames as images, older steps as text, the full record kept
+
+**Setup:** the real Core, the fixture actuator and desktop of the existing computer suite, a scripted model that refers back to earlier steps.  
+**Action:** run forty steps with N=3, then N=1, then an over-ceiling N.  
+**Pass:** image counts and token totals stay within bounds, the references resolve, and every frame is readable by range.
+
+### PX-E2E-176 — One structured observation after a GUI action or a command: frame, stdout, stderr, exit code and tool result together
+
+**Setup:** the real Core, the fixture actuator, a command that sleeps past its timeout, a command that prints more than the bound.  
+**Action:** run the alternating script, then the timing-out and the verbose commands.  
+**Pass:** each observation is one record with the fields, the timeout is an error observation, and the run completes.
+
+### PX-E2E-177 — Human takeover for steps only the person can do: a typed handover that pauses, shows the live state and resumes from the new state
+
+**Setup:** the real Core, the fixture actuator, the browser fixture page, a scripted model that requests the handover, a real SIGKILL and restart.  
+**Action:** reach the challenge, hand over, complete it as the person, resume; repeat leaving it unanswered; repeat with a restart while parked.  
+**Pass:** the first run continues from a fresh frame, the second expires with no action, the third resumes the park.
+
+### PX-E2E-178 — GUI task verifier and a failure judge that separates model, environment and policy outcomes
+
+**Setup:** the real Core, the fixture actuator and desktop, three seeded failures (killed actuator, denied approval, wrong target).  
+**Action:** run the completed task and each seeded failure.  
+**Pass:** the completed task passes, each failure carries its class and basis, and no verifier result changed an approval.
+
+### PX-E2E-179 — GUI regression suite: Modbit-owned tasks on the fixture desktop and a small real-app set, with a retained baseline
+
+**Setup:** the real Core, the fixture actuator, the retained baseline bundle, an injected regression.  
+**Action:** run the baseline, re-run unchanged, then re-run with the injected regression.  
+**Pass:** the unchanged re-run shows no difference and the regression fails the gate with the changed tasks named.
+
+### PX-E2E-182 — Scenario adapter: per-tool skill guidance compiled for the tools actually exposed, as a versioned configuration
+
+**Setup:** the real Core, skill files with per-tool blocks, two tasks with different tool sets.  
+**Action:** start both tasks, read the compiled configuration and the request, compile again.  
+**Pass:** each request carries only its tools' guidance, the ids are recorded, and the recompilation is identical.
+
+### PX-E2E-183 — Ranked skill selection beyond exact trigger phrases, inside the existing budget and trust rules
+
+**Setup:** the real Core, a set of skills including an untrusted best match, goals with and without trigger phrases.  
+**Action:** run the goals and read the offered index and the recorded scores.  
+**Pass:** the right skill is offered, the untrusted one is not, and repeated runs agree.
+
+### PX-E2E-184 — Four-axis agent benchmark: tool use, memory, skills and sub-agent tasks with cost per thousand tasks
+
+**Setup:** the real Core, the suite fixtures, the retained baseline, an injected regression on the memory axis.  
+**Action:** run the baseline, re-run, then re-run with the regression.  
+**Pass:** the re-run shows no difference and the regression fails only its axis.
+
+### PX-E2E-186 — Memory retrieval ranking with recency, importance and diversity, kept only if it beats the current ranking on the benchmark
+
+**Setup:** the real Core, the memory store, the memory-axis tasks, both rankings.  
+**Action:** run both rankings and write the comparison.  
+**Pass:** the comparison is retained, the kept ranking beats the other at equal tokens or the revert is recorded.
+
+### PX-E2E-188 — Memory privacy: private and shared scope, redaction before sharing, deletion that clears derived context, and a person-facing inspect and delete view
+
+**Setup:** the real Core and desktop, two principals, items with personal details, a real restart.  
+**Action:** create, promote, select, delete and restart.  
+**Pass:** the deleted item never reappears, the shared form is redacted, and the private item stays private.
+
+### PX-E2E-189 — A trace schema for execution evidence and a Core producer that feeds the Skill Evolution Lab
+
+**Setup:** the real Core, a scripted model with a planted secret in a tool result, the real lab.  
+**Action:** complete a run, produce the trace, run the lab and compare the next run.  
+**Pass:** the trace is sealed and redacted, the proposal exists, and the next run is unchanged.
+
+### PX-E2E-192 — Agent workspace language tokens: three achromatic surfaces and one base, the AFW-A11 neutral ladder, one blue accent and chrome type 13/18, with the ZCode parity gate retired
+
+**Setup:** the packaged app built from the tree in light, dark and high contrast.  
+**Action:** read every emitted colour variable, the chrome and body type, and run the contrast test and the token unit test; apply the retained mutation.  
+**Pass:** every value equals the record's table, every pair passes, the mutation fails the spec.
+
+### PX-E2E-193 — Agent workspace shell and controls: unframed panes with the doc 65 geometry, the navigation in the agent list, and the default, primary, outline, ghost and tab recipes
+
+**Setup:** the packaged app, a real Core, a scripted model and a fixture repository, at three window sizes in light and dark.  
+**Action:** measure the shell geometry, the navigation rows and the control recipes, drive each navigation entry by its test id, run axe and the full desktop suite; apply the 48 px mutation.  
+**Pass:** the geometry and recipes match the record, every entry works from its new place, only the named assertions changed, axe is clean, the mutation fails.
+
+### PX-E2E-194 — Agent workspace density: conversation turns, composer and trays, the one-line status row, banners and the apps panel in the agent workspace language
+
+**Setup:** the packaged app, a real Core, a scripted model running a task with steps, an edit, a terminal and an approval, in light and dark.  
+**Action:** inspect the conversation rows, reveal a turn footer by hover and by keyboard, narrow the window to 900 px, read the status row and banners, open Changes, run axe and the full suite; capture before and after screenshots.  
+**Pass:** the rows, composer, status row, banners and apps panel match the record, nothing lost its role, name, test id or tab stop, axe is clean, the suite is green.
+
+### PX-E2E-195 — Agent workspace home: one composer where send creates, starts and opens the task, the Fleet board removed
+
+**Setup:** the packaged app, a real Core and a scripted model, in light and dark.  
+**Action:** the real app, a real Core and a scripted model: a send from home reaches a running conversation in one action, Alt+Enter leaves the task Queued with Start offered, no provider leaves it Queued and says so, a missing repository names itself; none of the removed test ids is present on any screen; every fact of section 5.6 is reachable; the whole desktop suite and axe pass.  
+**Pass:** the screens match DR-PX-2026-11-04-020 section 5, no removed surface is present, axe is clean, the suite is green on the three operating systems.
+
+### PX-E2E-196 — Agent workspace chrome: the agent list's head, navigation, repositories and person's row, the top bar and the task's details
+
+**Setup:** the packaged app, a real Core and a scripted model, in light and dark.  
+**Action:** the real app against a real Core at 1280, 1000 and 900 wide in light and dark: the list reads head, navigation, list, person in that order, list tools show only when asked for or narrowing, the Core's state has its words in the accessibility tree, the details show each fact for the open task, and Approvals lists the Core's attention items; axe passes.  
+**Pass:** the screens match DR-PX-2026-11-04-020 section 5, no removed surface is present, axe is clean, the suite is green on the three operating systems.
+
+### PX-E2E-197 — Agent workspace conversation, composer and apps panel: steps that say what they did, one approval card, the two-row composer, the rebuilt Changes panel
+
+**Setup:** the packaged app, a real Core and a scripted model, in light and dark.  
+**Action:** the real app, a real Core and a scripted model running a task with reads, edits, a terminal and an approval, in light and dark, against the record: one column, one decision surface with the exact intent and no decision control in the transcript, an irreversible effect still asks twice, Escape on a confirmation does not skip the card behind it, the bar under the text with a round send, the commit bar at the panel's foot; the gate's retained mutations fail; the whole desktop suite and axe pass; real screenshots beside the mockup are in the evidence.  
+**Pass:** the screens match DR-PX-2026-11-04-020 section 5, no removed surface is present, axe is clean, the suite is green on the three operating systems.

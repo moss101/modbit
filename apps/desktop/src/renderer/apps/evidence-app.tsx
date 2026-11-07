@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { Badge, Button } from "@modbit/ui";
 import type { ContextInspectorSummary, ReceiptView, ReviewBundleView } from "../../preload/preload.ts";
-import { categoryLabel, percent, windowLine } from "./evidence-model.ts";
+import { categoryLabel, percent, repairLine, repairSummary, windowLine } from "./evidence-model.ts";
 
 interface Loaded {
   bundle: ReviewBundleView | null;
@@ -101,6 +101,18 @@ export function EvidenceApp({ taskId, refreshKey }: { taskId: string; refreshKey
                   </li>
                 ))}
               </ul>
+            )}
+            {bundle.repairAttempts.length > 0 && (
+              <>
+                <p className="meta" data-testid="evidence-repair-summary">{repairSummary(bundle.repairAttempts)}</p>
+                <ul className="evidence-list" aria-label="Repair attempts">
+                  {bundle.repairAttempts.map((a, i) => (
+                    <li key={`${a.ordinal}-${i}`} data-testid="evidence-repair" data-outcome={a.outcome || "OPEN"}>
+                      {repairLine(a)}
+                    </li>
+                  ))}
+                </ul>
+              </>
             )}
             {bundle.ciEvidence.length > 0 && (
               <ul className="evidence-list" aria-label="CI results">

@@ -9,6 +9,8 @@
 //! still written, with an explicit `missing` list); 2 when live mode is
 //! refused (nothing is written).
 
+// PX-168 lint policy: this file spawns processes; new ones need review.
+#![allow(clippy::disallowed_methods)]
 use std::path::{Path, PathBuf};
 use std::process::Command;
 use std::time::Instant;

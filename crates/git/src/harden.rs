@@ -52,6 +52,8 @@
 //!   refused, so the Core can put a security event on the task (FIX-01
 //!   neutralised silently).
 
+// PX-168 lint policy: this file spawns processes; new ones need review.
+#![allow(clippy::disallowed_methods)]
 use std::path::Path;
 use std::process::Command;
 

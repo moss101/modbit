@@ -1,0 +1,24 @@
+{
+ "task": "PX-155",
+ "requirements": [
+  "REQ-PX-155",
+  "QUAL-PX-155"
+ ],
+ "scenarios": [
+  "QUAL-PX-155"
+ ],
+ "tests": [
+  "services/modbit-core/tests/px_155_context_overflow.rs"
+ ],
+ "proof": "Real Core against the recorded-transport provider: overflow forces one compaction and retry; a second overflow ends with typed CONTEXT_OVERFLOW failure. CI run 40636221020 on head f283742d: all jobs green on macOS, Linux and Windows; mutation-check.txt where present.",
+ "limitations": "Scripted/recorded provider transport; no live-provider leg. Sealed against the PR-head CI run; landed on main in merge 398fd685 (or 7d4537c3/b99a4632/149 squash).",
+ "runs": [
+  "40636221020"
+ ],
+ "ci": {
+  "run_id": "40636221020",
+  "head_sha": "f283742d",
+  "conclusion": "success",
+  "json": "evidence/m10/PX-155/ci-run-40636221020.json"
+ }
+}

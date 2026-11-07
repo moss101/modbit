@@ -1,0 +1,19 @@
+=== BASELINE context_rules_pack px_159
+test px_159_compactions_export_their_tokens_duration_mode_source_and_cost ... ok
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 19 filtered out; finished in 10.10s
+exit=0
+=== MUTATION no-tokens-after: the commit records no tokens after (services/modbit-core/src/runtime.rs)
+test px_159_compactions_export_their_tokens_duration_mode_source_and_cost ... FAILED
+test result: FAILED. 0 passed; 1 failed; 0 ignored; 0 measured; 19 filtered out; finished in 3.87s
+error: test failed, to rerun pass `-p modbit-core --test context_rules_pack`
+exit=101 (KILLED)
+=== MUTATION no-summarizer-usage: the synchronous commit drops the summarizer's calls (services/modbit-core/src/runtime.rs)
+test px_159_compactions_export_their_tokens_duration_mode_source_and_cost ... FAILED
+test result: FAILED. 0 passed; 1 failed; 0 ignored; 0 measured; 19 filtered out; finished in 6.06s
+error: test failed, to rerun pass `-p modbit-core --test context_rules_pack`
+exit=101 (KILLED)
+=== MUTATION no-rejection-code: a rejected compaction exports without its code (services/modbit-core/src/telemetry.rs)
+test px_159_compactions_export_their_tokens_duration_mode_source_and_cost ... FAILED
+test result: FAILED. 0 passed; 1 failed; 0 ignored; 0 measured; 19 filtered out; finished in 10.16s
+error: test failed, to rerun pass `-p modbit-core --test context_rules_pack`
+exit=101 (KILLED)

@@ -1,6 +1,6 @@
 /**
  * Helpers for the approval-stack, context and checkpoint specs (REQ-PX-057,
- * 058, 060, 062): start a task from the Fleet composer against the real Core
+ * 058, 060, 062): start a task from the home composer against the real Core
  * and a scripted model, open its conversation, and read what the Core
  * recorded. No helper here waits on a clock for a state: every wait is on
  * something the Core or the renderer shows.
@@ -9,28 +9,18 @@ import { expect, type Page } from "@playwright/test";
 import { createHash } from "node:crypto";
 import { readFileSync } from "node:fs";
 import { createServer, type Server } from "node:http";
+import { queueTask, runTask } from "./new-task.ts";
 
-/** Creates a task from the Fleet composer, starts it and opens its conversation from the agent list. */
+/** Creates a task from the home composer, which starts it and opens its conversation. */
 export async function startAndOpen(page: Page, goal: string, repo: string): Promise<string> {
-  await page.getByTestId("goal").fill(goal);
-  await page.getByTestId("workspace").fill(repo);
-  await page.getByTestId("run").click();
-  const card = page.getByTestId("task-card").filter({ hasText: goal }).first();
-  await expect(card).toBeVisible();
-  const taskId = (await card.getAttribute("data-task-id"))!;
-  await card.getByTestId("task-start").click();
-  await openConversation(page, taskId);
+  const taskId = await runTask(page, goal, repo);
+  await expect(page.getByTestId("conversation")).toHaveAttribute("data-loaded", "true");
   return taskId;
 }
 
-/** Creates a task but does not start it (the Fleet card stays; the conversation can be opened later). */
+/** Creates a task but does not start it. */
 export async function createTask(page: Page, goal: string, repo: string): Promise<string> {
-  await page.getByTestId("goal").fill(goal);
-  await page.getByTestId("workspace").fill(repo);
-  await page.getByTestId("run").click();
-  const card = page.getByTestId("task-card").filter({ hasText: goal }).first();
-  await expect(card).toBeVisible();
-  return (await card.getAttribute("data-task-id"))!;
+  return queueTask(page, goal, repo);
 }
 
 export async function openConversation(page: Page, taskId: string): Promise<void> {

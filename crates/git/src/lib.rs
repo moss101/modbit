@@ -13,7 +13,8 @@
 //! Canonical owner: workspace-git (`docs/12`).
 
 #![forbid(unsafe_code)]
-
+// PX-168 lint policy: this file baselined expect/unwrap sites; new ones need review.
+#![allow(clippy::unwrap_used)]
 use std::path::{Path, PathBuf};
 
 pub mod apply;
@@ -115,17 +116,22 @@ fn run_bytes(dir: &Path, args: &[&str], envs: &[(&str, &str)]) -> Result<Vec<u8>
     }
     let out = cmd.output().map_err(Error::Spawn)?;
     if !out.status.success() {
-        let stderr = String::from_utf8_lossy(&out.stderr);
-        if harden::is_dubious_ownership(&stderr) {
-            return Err(Error::UnsafeRepository(dir.display().to_string()));
-        }
-        return Err(Error::Git {
-            args: args.iter().map(|s| redact_url_credentials(s)).collect(),
-            code: out.status.code(),
-            stderr: redact_url_credentials(stderr.trim()),
-        });
+        return Err(failure(dir, args, &out));
     }
     Ok(out.stdout)
+}
+
+/// The typed error of a `git` process that exited non-zero.
+fn failure(dir: &Path, args: &[&str], out: &std::process::Output) -> Error {
+    let stderr = String::from_utf8_lossy(&out.stderr);
+    if harden::is_dubious_ownership(&stderr) {
+        return Error::UnsafeRepository(dir.display().to_string());
+    }
+    Error::Git {
+        args: args.iter().map(|s| redact_url_credentials(s)).collect(),
+        code: out.status.code(),
+        stderr: redact_url_credentials(stderr.trim()),
+    }
 }
 
 /// A hardened `git -C <dir>` process, not yet started: the one way code
@@ -150,6 +156,31 @@ pub fn output(dir: &Path, args: &[&str]) -> Result<std::process::Output> {
 /// Run git in `dir`; returns stdout.
 fn run(dir: &Path, args: &[&str]) -> Result<String> {
     run_bytes(dir, args, &[]).map(|b| String::from_utf8_lossy(&b).into_owned())
+}
+
+/// [`run_bytes`] with `input` on the process's stdin.
+fn run_with_input(dir: &Path, args: &[&str], envs: &[(&str, &str)], input: &[u8]) -> Result<()> {
+    use std::io::Write as _;
+    use std::process::Stdio;
+    let mut cmd = harden::command(dir, args)?;
+    cmd.args(args)
+        .stdin(Stdio::piped())
+        .stdout(Stdio::piped())
+        .stderr(Stdio::piped());
+    for (k, v) in envs {
+        cmd.env(k, v);
+    }
+    let mut child = cmd.spawn().map_err(Error::Spawn)?;
+    // A process that exits without reading has its own error to report: a
+    // broken pipe here is not the failure the caller needs to hear about.
+    if let Some(mut stdin) = child.stdin.take() {
+        let _ = stdin.write_all(input);
+    }
+    let out = child.wait_with_output().map_err(Error::Spawn)?;
+    if !out.status.success() {
+        return Err(failure(dir, args, &out));
+    }
+    Ok(())
 }
 
 /// Status of one path (porcelain v2 simplified).
@@ -353,6 +384,10 @@ impl Repo {
     /// deleted old path and the added new path, which is what a consumer that
     /// captures or restores per path needs. The two-letter code keeps the
     /// porcelain-v2 spelling: `.` for "unchanged in this column".
+    ///
+    /// This is a read: `GIT_OPTIONAL_LOCKS=0` keeps git from refreshing the
+    /// index's stat data while it is here, which rewrites the file and can
+    /// collide with the person's own `git add` on `index.lock`.
     pub fn status(&self) -> Result<Vec<StatusEntry>> {
         let out = run_bytes(
             &self.dir,
@@ -363,7 +398,7 @@ impl Repo {
                 "--no-renames",
                 "--untracked-files=all",
             ],
-            &[],
+            &[("GIT_OPTIONAL_LOCKS", "0")],
         )?;
         let mut entries = Vec::new();
         let mut records = out.split(|b| *b == 0).filter(|r| !r.is_empty());
@@ -658,9 +693,13 @@ impl Repo {
         a
     }
 
-    fn numstat(&self, revs: &[&str]) -> Result<Vec<DiffFile>> {
+    fn numstat(&self, revs: &[&str], envs: &[(&str, &str)]) -> Result<Vec<DiffFile>> {
         // `-z`: `add\tdel\tpath\0`, and for a rename `add\tdel\t\0old\0new\0`.
-        let out = run_bytes(&self.dir, &Self::diff_args(&["--numstat", "-z"], revs), &[])?;
+        let out = run_bytes(
+            &self.dir,
+            &Self::diff_args(&["--numstat", "-z"], revs),
+            envs,
+        )?;
         let mut files = Vec::new();
         let mut records = out.split(|b| *b == 0).filter(|r| !r.is_empty());
         while let Some(rec) = records.next() {
@@ -695,7 +734,7 @@ impl Repo {
     /// `--output=…`, a range, or whitespace is refused, not interpreted.
     pub fn diff(&self, base: &str, target: &str) -> Result<Diff> {
         let (b, t) = (self.resolve(base)?, self.resolve(target)?);
-        let files = self.numstat(&[&b, &t])?;
+        let files = self.numstat(&[&b, &t], &[])?;
         let unified = run(&self.dir, &Self::diff_args(&[], &[&b, &t]))?;
         Ok(Diff {
             base: base.into(),
@@ -707,14 +746,87 @@ impl Repo {
 
     /// Typed diff of the worktree (staged + unstaged) against HEAD.
     pub fn diff_worktree(&self) -> Result<Diff> {
-        let files = self.numstat(&["HEAD"])?;
-        let unified = run(&self.dir, &Self::diff_args(&[], &["HEAD"]))?;
+        self.diff_worktree_with(&[])
+    }
+
+    /// [`Repo::diff_worktree`] in which `untracked` also show, each as an
+    /// added file, exactly as after `git add -N`. A read: all of it happens in
+    /// a throwaway copy of the index, so the real index is neither written nor
+    /// refreshed and `git status` and `git clean` go on seeing untracked files.
+    /// A path gone since the caller listed it is left out; `git add` would
+    /// refuse the whole list for it. Any other failure is an error, never a
+    /// diff that silently lacks the new files.
+    pub fn diff_worktree_with_untracked(&self, untracked: &[&str]) -> Result<Diff> {
+        let git_dir = self.git_dir()?;
+        let tmp_index = Self::temp_index_path(&git_dir, "diff");
+        let envs = [("GIT_INDEX_FILE", tmp_index.as_str())];
+        let diff = (|| -> Result<Diff> {
+            match std::fs::copy(git_dir.join("index"), &tmp_index) {
+                Ok(_) => {}
+                // No index yet is an empty one, to git and to its copy.
+                Err(e) if e.kind() == std::io::ErrorKind::NotFound => {}
+                Err(e) => return Err(Error::Spawn(e)),
+            }
+            let mut pathspecs = Vec::new();
+            for path in untracked {
+                if self.dir.join(path).symlink_metadata().is_ok() {
+                    pathspecs.extend_from_slice(path.as_bytes());
+                    pathspecs.push(0);
+                }
+            }
+            if !pathspecs.is_empty() {
+                // From stdin: the list can outgrow a command line, and NUL
+                // separators carry any file name.
+                run_with_input(
+                    &self.dir,
+                    &["add", "-N", "--pathspec-from-file=-", "--pathspec-file-nul"],
+                    &envs,
+                    &pathspecs,
+                )?;
+            }
+            self.diff_worktree_with(&envs)
+        })();
+        let _ = std::fs::remove_file(&tmp_index);
+        diff
+    }
+
+    fn diff_worktree_with(&self, envs: &[(&str, &str)]) -> Result<Diff> {
+        let files = self.numstat(&["HEAD"], envs)?;
+        let unified = run_bytes(&self.dir, &Self::diff_args(&[], &["HEAD"]), envs)
+            .map(|b| String::from_utf8_lossy(&b).into_owned())?;
         Ok(Diff {
             base: "HEAD".into(),
             target: "WORKTREE".into(),
             files,
             unified,
         })
+    }
+
+    /// This checkout's own git directory (a linked worktree has its own, and
+    /// its own index in it).
+    fn git_dir(&self) -> Result<PathBuf> {
+        let git_dir = run(&self.dir, &["rev-parse", "--git-dir"])?;
+        let git_dir = Path::new(git_dir.trim());
+        Ok(if git_dir.is_absolute() {
+            git_dir.to_path_buf()
+        } else {
+            self.dir.join(git_dir)
+        })
+    }
+
+    /// A path no other call is using for a throwaway index, in `git_dir`: on
+    /// the repository's own filesystem, where the file names and object ids an
+    /// index holds are no more readable than they already are.
+    fn temp_index_path(git_dir: &Path, purpose: &str) -> String {
+        static N: std::sync::atomic::AtomicU64 = std::sync::atomic::AtomicU64::new(0);
+        git_dir
+            .join(format!(
+                "modbit-{purpose}-index-{}-{}",
+                std::process::id(),
+                N.fetch_add(1, std::sync::atomic::Ordering::Relaxed)
+            ))
+            .to_string_lossy()
+            .into_owned()
     }
 
     /// Recent commits (newest first) with the paths each touched, for the
@@ -912,23 +1024,8 @@ impl Repo {
     /// index and the worktree are untouched. Two calls on an unchanged
     /// worktree answer the same tree.
     pub fn dirty_tree(&self) -> Result<String> {
-        static N: std::sync::atomic::AtomicU64 = std::sync::atomic::AtomicU64::new(0);
         let unborn = self.is_unborn();
-        let git_dir = run(&self.dir, &["rev-parse", "--git-dir"])?
-            .trim()
-            .to_owned();
-        let name = format!(
-            "modbit-snapshot-index-{}-{}",
-            std::process::id(),
-            N.fetch_add(1, std::sync::atomic::Ordering::Relaxed)
-        );
-        let tmp_index = if Path::new(&git_dir).is_absolute() {
-            PathBuf::from(&git_dir).join(name)
-        } else {
-            self.dir.join(&git_dir).join(name)
-        }
-        .to_string_lossy()
-        .into_owned();
+        let tmp_index = Self::temp_index_path(&self.git_dir()?, "snapshot");
         let with_index = |args: &[&str]| -> Result<String> {
             run_bytes(&self.dir, args, &[("GIT_INDEX_FILE", &tmp_index)])
                 .map(|b| String::from_utf8_lossy(&b).into_owned())

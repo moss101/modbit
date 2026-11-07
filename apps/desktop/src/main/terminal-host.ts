@@ -11,7 +11,7 @@
  * renderer says it has consumed, so a renderer that stops consuming stops the
  * stream and nothing here grows with it.
  */
-import type { CoreClient } from "@modbit/ide-adapter-core";
+import { readObjectRange, type CoreClient } from "@modbit/ide-adapter-core";
 import type { TerminalFrame, TerminalView } from "@modbit/surface-protocol";
 
 const MAX_EARLY_FRAMES = 512;
@@ -36,6 +36,8 @@ export interface TerminalViewJson {
   inputLeaseHolder: string;
   cwd: string;
   timedOut: boolean;
+  /** The process ended and the Core sealed its output: older output than the replay window can be read as ranges. */
+  hasOutputRef: boolean;
 }
 
 export function viewJson(t: TerminalView): TerminalViewJson {
@@ -57,6 +59,7 @@ export function viewJson(t: TerminalView): TerminalViewJson {
     inputLeaseHolder: t.inputLeaseHolder,
     cwd: t.cwd,
     timedOut: t.timedOut,
+    hasOutputRef: t.outputRef !== "",
   };
 }
 
@@ -85,6 +88,22 @@ export function frameJson(f: TerminalFrame): TerminalFrameJson | null {
   }
 }
 
+/** The most one history read returns: a page of the older output, never the whole object. */
+export const MAX_HISTORY_BYTES = 256 * 1024;
+const OBJECT_CHUNK = 1024n * 1024n;
+
+/**
+ * The cursor range of a sealed output that a read can serve. The object holds the bytes the broker retained: it ends at the
+ * head and starts at `start`. A range wholly before `start` is gone (empty); one that straddles it is clamped to it.
+ */
+export function planHistoryRange(start: bigint, head: bigint, from: bigint, to: bigint): { from: bigint; to: bigint } {
+  if (to > head) to = head;
+  if (from < start) from = start;
+  if (to <= from) return { from, to: from };
+  if (to - from > BigInt(MAX_HISTORY_BYTES)) to = from + BigInt(MAX_HISTORY_BYTES);
+  return { from, to };
+}
+
 export interface Attachment {
   attachId: string;
   terminalId: string;
@@ -97,6 +116,11 @@ export class TerminalHost {
   /** The highest cursor acknowledged to the Core per attachment: acknowledgements never go backwards. */
   private readonly acked = new Map<string, bigint>();
   private readonly early = new Map<string, TerminalFrame[]>();
+  /**
+   * The early frames of a registered attachment until their release, and every frame of it that arrives meanwhile: the
+   * Core's next read can land between the registration and the release, and must follow the held frames, not overtake them.
+   */
+  private readonly held = new Map<string, TerminalFrame[]>();
 
   private readonly client: () => CoreClient;
   private readonly ensureLease: (c: CoreClient, sessionId: string) => Promise<void>;
@@ -126,11 +150,12 @@ export class TerminalHost {
     this.acked.set(a.attachId, afterCursor);
     if (!a.terminal) throw new Error("CORE_PROTOCOL: the attach answered without the terminal");
     // Release what arrived before the id was registered, after the renderer has the attach's answer (it queues frames until then).
-    const waiting = this.early.get(a.attachId) ?? [];
-    this.early.delete(a.attachId);
-    setImmediate(() => {
-      for (const f of waiting) this.onFrame(f);
-    });
+    const waiting = this.early.get(a.attachId);
+    if (waiting) {
+      this.early.delete(a.attachId);
+      this.held.set(a.attachId, waiting);
+      setImmediate(() => this.release(a.attachId));
+    }
     return { attachId: a.attachId, terminal: viewJson(a.terminal), afterCursor: a.afterCursor.toString(), windowBytes: a.windowBytes.toString(), inputLeaseHeld: a.inputLeaseHeld };
   }
 
@@ -143,6 +168,11 @@ export class TerminalHost {
    * dropped when the wait is full.
    */
   onFrame(f: TerminalFrame): void {
+    const held = this.held.get(f.attachId);
+    if (held) {
+      held.push(f);
+      return;
+    }
     if (!this.attachments.has(f.attachId)) {
       const waiting = this.early.get(f.attachId) ?? [];
       if (waiting.length < MAX_EARLY_FRAMES) waiting.push(f);
@@ -152,6 +182,17 @@ export class TerminalHost {
     }
     const j = frameJson(f);
     if (j) this.send(j);
+  }
+
+  /** Send an attachment's held frames in the order they arrived; nothing if it was detached meanwhile. */
+  private release(attachId: string): void {
+    const held = this.held.get(attachId) ?? [];
+    this.held.delete(attachId);
+    if (!this.attachments.has(attachId)) return;
+    for (const f of held) {
+      const j = frameJson(f);
+      if (j) this.send(j);
+    }
   }
 
   async ack(attachId: string, cursor: bigint): Promise<string> {
@@ -166,6 +207,7 @@ export class TerminalHost {
     this.owned(attachId);
     this.attachments.delete(attachId);
     this.acked.delete(attachId);
+    this.held.delete(attachId);
     const d = await this.client().detachTerminal(attachId);
     return { wasAttached: d.wasAttached, ackedCursor: d.ackedCursor.toString() };
   }
@@ -201,11 +243,43 @@ export class TerminalHost {
     return { outcome: k.outcome, exitCode: k.exitCode ?? null };
   }
 
+  /**
+   * Older output than the replay window, as ranges of the sealed output (`output_ref`) the Core holds once the process ended.
+   * The renderer names a terminal of its task and a cursor range; the object hash is read from the Core's own terminal view
+   * here and never comes from the renderer. A range before the start of what the Core retained comes back empty (`exhausted`).
+   */
+  async history(taskId: string, terminalId: string, from: bigint, to: bigint): Promise<{ startCursor: string; from: string; data: Uint8Array; exhausted: boolean }> {
+    const c = this.client();
+    const t = (await c.listTerminals(taskId)).terminals.find((x) => x.sessionId === terminalId);
+    if (!t) throw new Error("UNKNOWN_TERMINAL: this task has no such terminal");
+    if (!t.outputRef) throw new Error("NO_OUTPUT_REF: the process is still running; its older output is sealed when it ends");
+    // The sealed object is the log's segments from the oldest retained cursor to the head, and the broker freezes the log when it
+    // seals, so for a finished terminal the listing and the object agree exactly. If they do not, a cursor cannot be placed in the
+    // object, and nothing is read rather than bytes from the wrong place.
+    const start = t.oldestCursor;
+    const probe = await readObjectRange(c, t.outputRef, 0n, 1n);
+    const end = start + probe.totalBytes;
+    if (end !== t.bytesSoFar) throw new Error(`OBJECT_LENGTH_MISMATCH: the sealed output holds ${probe.totalBytes} bytes from cursor ${start} but the log head is ${t.bytesSoFar}`);
+    const plan = planHistoryRange(start, end, from, to);
+    const parts: Uint8Array[] = [];
+    let at = plan.from;
+    while (at < plan.to) {
+      const want = plan.to - at < OBJECT_CHUNK ? plan.to - at : OBJECT_CHUNK;
+      const chunk = await readObjectRange(c, t.outputRef, at - start, want);
+      if (chunk.data.byteLength === 0) break;
+      parts.push(chunk.data);
+      at += BigInt(chunk.data.byteLength);
+    }
+    const data = parts.length === 1 ? parts[0]! : Buffer.concat(parts);
+    return { startCursor: start.toString(), from: plan.from.toString(), data, exhausted: plan.from <= start };
+  }
+
   /** The window went away (reload, crash): its attachments are over. Best effort on the Core. */
   async detachAll(): Promise<void> {
     const open = this.open();
     this.attachments.clear();
     this.acked.clear();
+    this.held.clear();
     await Promise.all(open.map((a) => this.client().detachTerminal(a.attachId).catch(() => undefined)));
   }
 
@@ -214,6 +288,7 @@ export class TerminalHost {
     const open = this.open();
     this.attachments.clear();
     this.acked.clear();
+    this.held.clear();
     for (const a of open) this.send({ attachId: a.attachId, terminalId: a.terminalId, kind: "ended", reason: "CORE_RESTARTED", message: "the Core connection was replaced", oldestCursor: "0", resumeCursor: "0" });
   }
 

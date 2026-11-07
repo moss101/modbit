@@ -12948,12 +12948,21 @@ async fn qual_px_105_the_index_degrades_under_its_budget_and_a_path_gated_skill_
     assert!(first.lines().filter(|l| l.starts_with("- ")).count() >= 1);
     // The gated skill is absent until a matching file was read, then present.
     assert!(!first.contains("aa-billing-px105"), "{first}");
-    let after_read = index_of(&bodies[2]);
+    // The activation arrives as an appended note (PX-162); the prefix keeps
+    // the index it was compiled with.
+    assert!(!index_of(&bodies[2]).contains("aa-billing-px105"));
+    let after_read: String = bodies[2]["messages"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .filter(|m| m["role"] == "user")
+        .filter_map(|m| m["content"].as_str())
+        .filter(|c| c.starts_with("[modbit: instruction update]"))
+        .collect();
     assert!(
         after_read.contains("aa-billing-px105"),
         "after src/billing/ledger.rs was read: {after_read}"
     );
-    assert!(after_read.len() <= budget as usize * 4);
     let evs = task_events(&core, &session, &task).await;
     let recorded: Vec<&serde_json::Value> = evs
         .iter()
@@ -13097,6 +13106,170 @@ async fn qual_px_105_a_system_skill_is_not_shadowed_and_a_system_prohibition_ove
         l.rejected.iter().any(|r| r.code == "TRUST_FILE_UNREADABLE"),
         "{l:#?}"
     );
+    drop(repo);
+}
+
+/// QUAL-PX-105 (an imported skill stays quarantined until trusted) on the real
+/// Core, the real importer and the scripted provider that records every
+/// request: another agent's skill is imported from a real directory; loaded
+/// into a session the extension is quarantined and the skill is in no request
+/// and `skill.load` refuses it; trusting the extension (which activates what
+/// the extension would do) does not trust the skill — it is listed, still
+/// untrusted, and still reaches no model; `TrustSkill` by its hash is what
+/// lets it in (its index line, then `skill.load`'s body).
+#[tokio::test]
+#[allow(clippy::too_many_lines)]
+async fn qual_px_105_an_imported_skill_stays_quarantined_until_the_owner_trusts_its_hash() {
+    use serde_json::json;
+    const BODY: &str = "IMPORTED-SKILL-BODY-MARKER: extract the tables first.";
+    let source = tempfile::tempdir().unwrap();
+    let pkg = source.path().join(".claude/skills/pdf-px105");
+    std::fs::create_dir_all(&pkg).unwrap();
+    std::fs::write(
+        pkg.join("SKILL.md"),
+        format!("---\nname: pdf-px105\ndescription: extract text from PDF files\n---\n{BODY}\n"),
+    )
+    .unwrap();
+    let source_root = source.path().canonicalize().unwrap();
+    let source_root = source_root
+        .to_string_lossy()
+        .trim_start_matches(r"\\?\")
+        .to_owned();
+    let (repo, root) = plain_repo(&[("NOTES.md", "# notes\n")]);
+    let script = vec![
+        json!({"calls": [{"name": "plan.update", "args": {"outcome": "read", "expected_files": []}}]}),
+        json!({"calls": [{"name": "task.complete", "args": {"summary": "done", "self_review": {"findings": []}}}]}),
+    ];
+    let (base, seen) = scripted_model(script, None).await;
+    let dir = tempfile::tempdir().unwrap();
+    let env = [
+        ("MODBIT_OPENAI_BASE_URL", base.as_str()),
+        ("OPENAI_API_KEY", ""),
+        ("ANTHROPIC_API_KEY", ""),
+    ];
+    let core = CoreProcess::spawn_with_env(dir.path(), &env);
+    let mut c = core.client().await;
+    let (session, _) = create_session(&mut c, id16(0xF1)).await;
+    let g = lease_for(&session);
+
+    // ---- import, load: the extension is quarantined, the skill reaches nothing
+    let report = import_config(&mut c, &session, g, &source_root, "px105-import", 0xF2).await;
+    assert!(
+        report
+            .items
+            .iter()
+            .any(|i| i.source.ends_with("pdf-px105") && i.status == "MAPPED"),
+        "{report:#?}"
+    );
+    let loaded = load_extension(&mut c, &session, g, &report.extension_path, 0xF3)
+        .await
+        .unwrap();
+    assert!(!loaded.quarantined.is_empty(), "{loaded:?}");
+    let task_a = create_task_with_profile(&mut c, &session, g, &root, 0xF4, "local_trusted").await;
+    let l = px_list_skills(&mut c, Some(&task_a)).await;
+    assert!(
+        l.skills
+            .iter()
+            .all(|s| !(s.name == "pdf-px105" && s.enabled)),
+        "a quarantined extension's skill is not enabled: {l:#?}"
+    );
+    let refused = invoke_tool(
+        &mut c,
+        &task_a,
+        g,
+        0xF5,
+        0xF6,
+        "skill.load",
+        r#"{"name":"pdf-px105"}"#,
+    )
+    .await;
+    assert_ne!(refused.status, "SUCCESS", "{refused:?}");
+    assert!(
+        !refused
+            .structured_output_json
+            .contains("IMPORTED-SKILL-BODY")
+    );
+    let before = seen.lock().unwrap().len();
+    px_run(&mut c, &task_a, g, 0xF7, 8).await;
+    let quarantined_reqs: Vec<serde_json::Value> = seen.lock().unwrap()[before..].to_vec();
+    assert!(!quarantined_reqs.is_empty());
+    for b in &quarantined_reqs {
+        let t = b.to_string();
+        for needle in ["IMPORTED-SKILL-BODY", "pdf-px105", "extract text from PDF"] {
+            assert!(
+                !t.contains(needle),
+                "a quarantined skill reached the model: {needle}"
+            );
+        }
+    }
+
+    // ---- the extension is trusted: the skill is listed, and is still not trusted
+    let active = trust_extension(
+        &mut c,
+        &session,
+        g,
+        &loaded.extension_id,
+        &loaded.manifest_digest,
+        0xF8,
+    )
+    .await;
+    assert!(active.quarantined.is_empty(), "{active:?}");
+    let task_b = create_task_with_profile(&mut c, &session, g, &root, 0xF9, "local_trusted").await;
+    let l = px_list_skills(&mut c, Some(&task_b)).await;
+    let v = px_skill_view(&l, "pdf-px105");
+    assert_eq!(v.scope, "EXTENSION", "{v:#?}");
+    assert_eq!(
+        (v.trust.as_str(), v.enabled, v.indexed),
+        ("UNTRUSTED", false, false),
+        "{v:#?}"
+    );
+    let hash = v.content_hash.clone();
+    let before = seen.lock().unwrap().len();
+    px_run(&mut c, &task_b, g, 0xFA, 8).await;
+    for b in &seen.lock().unwrap()[before..] {
+        assert!(
+            !b.to_string().contains("IMPORTED-SKILL-BODY") && !b.to_string().contains("pdf-px105"),
+            "an active extension's skill that nobody trusted reached the model"
+        );
+    }
+
+    // ---- the owner trusts the bytes: the index line is in the next request
+    let r = px_trust(&mut c, "pdf-px105", &hash, Some(&task_b))
+        .await
+        .unwrap();
+    assert_eq!(r.trust, "TRUSTED_BY_OWNER", "{r:?}");
+    let task_c = create_task_with_profile(&mut c, &session, g, &root, 0xFB, "local_trusted").await;
+    let before = seen.lock().unwrap().len();
+    px_run(&mut c, &task_c, g, 0xFC, 8).await;
+    let trusted_reqs: Vec<serde_json::Value> = seen.lock().unwrap()[before..].to_vec();
+    assert!(
+        trusted_reqs[0]
+            .to_string()
+            .contains("pdf-px105: extract text from PDF files"),
+        "the trusted imported skill is indexed"
+    );
+    assert!(
+        !trusted_reqs[0].to_string().contains("IMPORTED-SKILL-BODY"),
+        "the index carries no body"
+    );
+    let task_d = create_task_with_profile(&mut c, &session, g, &root, 0xFD, "local_trusted").await;
+    let loaded_body = invoke_tool(
+        &mut c,
+        &task_d,
+        g,
+        0xFE,
+        0xFF,
+        "skill.load",
+        r#"{"name":"pdf-px105"}"#,
+    )
+    .await;
+    assert_eq!(loaded_body.status, "SUCCESS", "{loaded_body:?}");
+    assert!(
+        loaded_body
+            .structured_output_json
+            .contains("IMPORTED-SKILL-BODY")
+    );
+
     drop(repo);
 }
 
@@ -26149,6 +26322,7 @@ async fn wsk_e2e_005_010_a_promoted_skill_reaches_the_model_without_the_wiki_and
                     verification_result: format!("PASSED {marker}"),
                     cost: TraceCost::default(),
                     redaction_status: "REDACTED".into(),
+                    ..Default::default()
                 },
                 i,
             )
@@ -26450,11 +26624,21 @@ async fn qual_ev_0059_0129_scoped_rules_activate_lazily_and_conflicts_name_the_w
         );
     }
     // From turn 3 (the billing file was read): the billing rule is in.
+    // It arrives as an appended note (PX-162); the rules segment is unchanged.
     for b in &bodies[2..] {
         let r = rules_of(b);
+        assert!(!r.contains("RULE-BILLING"), "prefix rewritten: {r}");
+        let notes: String = b["messages"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .filter(|m| m["role"] == "user")
+            .filter_map(|m| m["content"].as_str())
+            .filter(|c| c.starts_with("[modbit: instruction update]"))
+            .collect();
         assert!(
-            r.contains("RULE-BILLING") && r.contains("[rule billing — project]"),
-            "{r}"
+            notes.contains("RULE-BILLING") && notes.contains("[rule billing — project]"),
+            "{notes}"
         );
     }
     // On the log: the first selection (dormant billing, the conflict with
@@ -36063,6 +36247,28 @@ async fn qual_m7_8_a_credential_is_filled_by_handle_into_its_bound_origin_only_a
     assert_eq!(fills.len(), 1, "{served:#?}");
     assert_eq!(fills[0]["backend_dom_node_id"], 5);
     assert_eq!(fills[0]["credential_handle"], "cred_0123456789ab");
+    // PX-130: the fill that ran is one use at the broker's interface, and the
+    // broker never held a value (the host's custody): the counter equals the
+    // fills the host performed, and the view carries no secret.
+    {
+        use modbit_protocol::v1::{CredentialBrokerView, GetCredentialBroker};
+        let ack = c
+            .command(envelope(
+                id16(0xEE),
+                "GetCredentialBroker",
+                GetCredentialBroker { audit_limit: 100 }.encode_to_vec(),
+            ))
+            .await
+            .unwrap();
+        let view: CredentialBrokerView = Client::result(&ack).unwrap();
+        let row = view
+            .credentials
+            .iter()
+            .find(|r| r.id.contains("cred_0123456789ab"))
+            .unwrap_or_else(|| panic!("the browser credential is in the broker: {view:#?}"));
+        assert_eq!(row.kind, "browser", "{row:?}");
+        assert_eq!(row.uses, fills.len() as u64, "{row:?}");
+    }
     let bodies = seen.lock().unwrap().clone();
     let texts: Vec<String> = bodies.last().unwrap()["messages"]
         .as_array()
@@ -43685,6 +43891,7 @@ async fn qual_ev_0042_a_slow_or_failing_hook_follows_its_fail_policy_and_cannot_
                 "ListHooks",
                 ListHooks {
                     task_id: Some(task.clone()),
+                    ..Default::default()
                 }
                 .encode_to_vec(),
             ))
@@ -43964,6 +44171,7 @@ async fn qual_ev_0240_unloading_an_extension_removes_its_handlers_without_a_stal
             "ListHooks",
             ListHooks {
                 task_id: Some(task.clone()),
+                ..Default::default()
             }
             .encode_to_vec(),
         ))
@@ -49809,4 +50017,674 @@ async fn fix_18_restore_refuses_after_head_drift_and_works_when_head_is_back() {
     assert_eq!(restored_events(&evs), 1);
     drop(c);
     core.kill();
+}
+
+/// QUAL-PX-183 on the real Core with real skill files: the index the model
+/// reads is ranked by relevance to the goal inside its budget. A goal that
+/// contains no trigger phrase still gets the skill it is about at the head of
+/// a tight index, where name order would have dropped it; an untrusted skill
+/// that matches better is never listed; an explicitly named skill is injected
+/// whatever it scores; two tasks with the same goal record the same ranking;
+/// the index stays within its budget.
+#[tokio::test]
+async fn qual_px_183_the_skill_index_is_ranked_by_the_goal_within_its_budget() {
+    use modbit_protocol::v1::{StartTask, TaskRunStarted};
+    use serde_json::json;
+    let (_repo, root) = plain_repo(&[("NOTES.md", "# notes\n")]);
+    let dir = tempfile::tempdir().unwrap();
+    let skills = dir.path().join("skills");
+    let mut trusted: Vec<(String, String)> = Vec::new();
+    for i in 0..40 {
+        let name = format!("aa-filler-px183-{i:02}");
+        let h = px_skill(
+            &skills,
+            &name,
+            "description: provision a staging cluster with the deployment chart and rotate its certificates",
+            "FILLER-BODY",
+        );
+        trusted.push((name, h));
+    }
+    let lint = px_skill(
+        &skills,
+        "zz-lintfix-px183",
+        "description: fix the warnings a linter reports in the changed files\ntriggers: [\"run lint fix\"]",
+        "LINT-BODY-MARKER",
+    );
+    trusted.push(("zz-lintfix-px183".into(), lint));
+    let explicit = px_skill(
+        &skills,
+        "explicit-px183",
+        "description: write release notes",
+        "EXPLICIT-BODY-MARKER",
+    );
+    trusted.push(("explicit-px183".into(), explicit));
+    // Matches the goal best, and is never trusted.
+    px_skill(
+        &skills,
+        "aaa-untrusted-px183",
+        "description: linter warnings in changed files: fix the warnings the linter reports",
+        "UNTRUSTED-BODY-MARKER",
+    );
+    let script = vec![
+        json!({"calls": [{"name": "plan.update", "args": {"outcome": "fix the warnings", "expected_files": []}}]}),
+        json!({"calls": [{"name": "task.complete", "args": {"summary": "done", "self_review": {"findings": []}}}]}),
+    ];
+    let (base, seen) = scripted_model(script, None).await;
+    let env = [
+        ("MODBIT_OPENAI_BASE_URL", base.as_str()),
+        ("OPENAI_API_KEY", ""),
+        ("ANTHROPIC_API_KEY", ""),
+        ("MODBIT_SKILL_BUDGET_TOKENS", "260"),
+    ];
+    let core = CoreProcess::spawn_with_env(dir.path(), &env);
+    let mut c = core.client().await;
+    let (session, _) = create_session(&mut c, id16(0xD1)).await;
+    let g = lease_for(&session);
+    for (name, hash) in &trusted {
+        px_trust(&mut c, name, hash, None).await.unwrap();
+    }
+    let goal = "the linter warns about the changed files; fix the warnings";
+    let mut recorded = Vec::new();
+    for (n, cmd) in [(0xD2u8, 0xD3u8), (0xD4, 0xD5)] {
+        let task = create_task_with_goal(&mut c, &session, g, &root, n, goal).await;
+        let before = seen.lock().unwrap().len();
+        let ack = c
+            .command(envelope_fenced(
+                id16(cmd),
+                "StartTask",
+                StartTask {
+                    task_id: Some(task.clone()),
+                    endpoint: String::new(),
+                    model: "gpt-5-mini".into(),
+                    max_turns: 8,
+                    max_tool_calls: 0,
+                    max_no_progress_turns: 6,
+                    skills: vec!["explicit-px183".into()],
+                    ..Default::default()
+                }
+                .encode_to_vec(),
+                g,
+            ))
+            .await
+            .unwrap();
+        let _: TaskRunStarted = Client::result(&ack).unwrap();
+        wait_task(&mut c, &task, 180).await;
+        let first = seen.lock().unwrap()[before].to_string();
+        assert!(
+            first.contains("EXPLICIT-BODY-MARKER"),
+            "an explicit name is injected"
+        );
+        assert!(
+            !first.contains("aaa-untrusted-px183"),
+            "an untrusted skill is never listed"
+        );
+        assert!(!first.contains("UNTRUSTED-BODY-MARKER"));
+        let lint_at = first
+            .find("- zz-lintfix-px183")
+            .unwrap_or_else(|| panic!("the goal's skill is in the index: {first}"));
+        let filler_at = first.find("- aa-filler-px183-").unwrap_or(usize::MAX);
+        assert!(lint_at < filler_at, "ranked first, ahead of name order");
+        let evs = task_events(&core, &session, &task).await;
+        let idx = evs
+            .iter()
+            .find(|(_, t, _)| t == "SkillIndexRecorded")
+            .map(|(_, _, p)| p.clone())
+            .expect("an index was recorded");
+        assert!(
+            idx["omitted"].as_u64().unwrap() > 0,
+            "the budget is tight enough to drop skills: {idx}"
+        );
+        assert!(idx["tokens"].as_u64().unwrap() <= idx["budget_tokens"].as_u64().unwrap());
+        let entries: Vec<&str> = idx["entries"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .map(|e| e.as_str().unwrap())
+            .collect();
+        assert!(entries[0].starts_with("zz-lintfix-px183:"), "{entries:?}");
+        let scores: Vec<&str> = idx["scores"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .map(|e| e.as_str().unwrap())
+            .collect();
+        let top: u32 = scores[0].rsplit(':').next().unwrap().parse().unwrap();
+        assert!(
+            scores[0].starts_with("zz-lintfix-px183:") && top > 0,
+            "{scores:?}"
+        );
+        assert!(scores[1..].iter().all(|s| s.ends_with(":0")), "{scores:?}");
+        recorded.push((idx["index_hash"].clone(), idx["scores"].clone()));
+    }
+    assert_eq!(recorded[0], recorded[1], "the same goal ranks the same");
+}
+
+/// QUAL-PX-182 on the real Core with real skill files: a skill's guidance
+/// blocks are compiled for the tools the task is actually offered. Under the
+/// read-only `plan` profile, which offers no shell, the shell block is
+/// dropped and the read
+/// block kept; with the full set both are kept; a block for a tool no task
+/// offers never reaches a request. The compiled configuration is recorded
+/// as an object whose sha256 is its id, the id is in the context accounting,
+/// two compilations of the same inputs give the same id, and an untrusted
+/// skill's guidance is never compiled.
+#[tokio::test]
+async fn qual_px_182_guidance_blocks_compile_for_the_tools_the_task_is_offered() {
+    use modbit_protocol::v1::{
+        ContextAccountingView, GetContextAccounting, StartTask, TaskRunStarted,
+    };
+    use serde_json::json;
+    let body = "General advice.\n<!-- modbit:tool fs.read -->\nREAD-GUIDANCE-PX182: read the whole file first.\n<!-- /modbit:tool -->\n<!-- modbit:tool shell.exec -->\nSHELL-GUIDANCE-PX182: run the tests with the shell.\n<!-- /modbit:tool -->\n<!-- modbit:tool nowhere.tool -->\nNOWHERE-GUIDANCE-PX182\n<!-- /modbit:tool -->\nClosing advice.";
+    async fn one(
+        read_only: bool,
+        body: &str,
+        runs: u8,
+    ) -> Vec<(String, serde_json::Value, String, String)> {
+        let (_repo, root) = plain_repo(&[("NOTES.md", "# notes\n")]);
+        let dir = tempfile::tempdir().unwrap();
+        let skills = dir.path().join("skills");
+        let h = px_skill(
+            &skills,
+            "adapter-px182",
+            "description: tool-bound advice",
+            body,
+        );
+        px_skill(
+            &skills,
+            "untrusted-px182",
+            "description: never trusted",
+            "<!-- modbit:tool fs.read -->\nUNTRUSTED-GUIDANCE-PX182\n<!-- /modbit:tool -->",
+        );
+        let script = vec![
+            json!({"calls": [{"name": "plan.update", "args": {"outcome": "o", "expected_files": []}}]}),
+            json!({"calls": [{"name": "task.complete", "args": {"summary": "done", "self_review": {"findings": []}}}]}),
+        ];
+        let (base, seen) = scripted_model(script, None).await;
+        let env = [
+            ("MODBIT_OPENAI_BASE_URL", base.as_str()),
+            ("OPENAI_API_KEY", ""),
+            ("ANTHROPIC_API_KEY", ""),
+        ];
+        let core = CoreProcess::spawn_with_env(dir.path(), &env);
+        let mut c = core.client().await;
+        let (session, _) = create_session(&mut c, id16(0xE1)).await;
+        let g = lease_for(&session);
+        px_trust(&mut c, "adapter-px182", &h, None).await.unwrap();
+        let mut out = Vec::new();
+        for i in 0..runs {
+            // The read-only `plan` profile offers no shell; the trusted one does.
+            let profile = if read_only { "plan" } else { "local_trusted" };
+            let task =
+                create_task_with_profile(&mut c, &session, g, &root, 0xE2 + i * 2, profile).await;
+            let before = seen.lock().unwrap().len();
+            let ack = c
+                .command(envelope_fenced(
+                    id16(0xE3 + i * 2),
+                    "StartTask",
+                    StartTask {
+                        task_id: Some(task.clone()),
+                        endpoint: String::new(),
+                        model: "gpt-5-mini".into(),
+                        max_turns: 6,
+                        max_tool_calls: 0,
+                        max_no_progress_turns: 4,
+                        skills: vec!["adapter-px182".into(), "untrusted-px182".into()],
+                        ..Default::default()
+                    }
+                    .encode_to_vec(),
+                    g,
+                ))
+                .await
+                .unwrap();
+            let _: TaskRunStarted = Client::result(&ack).unwrap();
+            wait_task(&mut c, &task, 180).await;
+            let first = seen.lock().unwrap()[before].to_string();
+            let evs = task_events(&core, &session, &task).await;
+            let cfg = evs
+                .iter()
+                .find(|(_, t, _)| t == "SkillConfigurationCompiled")
+                .map(|(_, _, p)| p.clone())
+                .expect("a configuration was recorded");
+            let object = read_object(
+                &mut c,
+                random_id(),
+                cfg["configuration_ref"].as_str().unwrap(),
+            )
+            .await;
+            let ack = c
+                .command(envelope(
+                    random_id(),
+                    "GetContextAccounting",
+                    GetContextAccounting {
+                        task_id: Some(task.clone()),
+                    }
+                    .encode_to_vec(),
+                ))
+                .await
+                .unwrap();
+            let acc: ContextAccountingView = Client::result(&ack).unwrap();
+            out.push((first, cfg, object, acc.skill_configuration_id));
+        }
+        out
+    }
+    let restricted = one(true, body, 1).await;
+    let (first, cfg, object, accounted) = &restricted[0];
+    assert!(
+        first.contains("READ-GUIDANCE-PX182") && first.contains("General advice"),
+        "{first}"
+    );
+    assert!(
+        !first.contains("SHELL-GUIDANCE-PX182"),
+        "no guidance for a denied tool"
+    );
+    assert!(!first.contains("NOWHERE-GUIDANCE-PX182") && !first.contains("modbit:tool"));
+    assert!(
+        !first.contains("UNTRUSTED-GUIDANCE-PX182"),
+        "an untrusted skill compiles nothing"
+    );
+    assert_eq!(
+        cfg["guidance_dropped"],
+        json!(["adapter-px182:shell.exec", "adapter-px182:nowhere.tool"])
+    );
+    assert_eq!(cfg["guidance_kept"], json!(["adapter-px182:fs.read"]));
+    let id = cfg["configuration_id"].as_str().unwrap();
+    assert_eq!(
+        hex::encode(<sha2::Sha256 as sha2::Digest>::digest(object.as_bytes())),
+        id
+    );
+    assert!(!object.contains("untrusted-px182"), "{object}");
+    assert_eq!(
+        accounted, id,
+        "the accounting names the run's configuration"
+    );
+    let full = one(false, body, 2).await;
+    for (first, cfg, _, accounted) in &full {
+        assert!(first.contains("READ-GUIDANCE-PX182") && first.contains("SHELL-GUIDANCE-PX182"));
+        assert!(!first.contains("NOWHERE-GUIDANCE-PX182"));
+        assert_eq!(
+            cfg["guidance_dropped"],
+            json!(["adapter-px182:nowhere.tool"])
+        );
+        assert_eq!(accounted, cfg["configuration_id"].as_str().unwrap());
+        assert_ne!(
+            cfg["configuration_id"].as_str().unwrap(),
+            id,
+            "another tool set, another configuration"
+        );
+    }
+    assert_eq!(
+        full[0].1["configuration_id"], full[1].1["configuration_id"],
+        "the same inputs compile alike"
+    );
+}
+
+/// QUAL-PX-189 on the real Core with a scripted model: a finished run is
+/// sealed into the real Skill Lab as one trace — its compiled skill
+/// configuration, each tool call with arguments and response, the outcome —
+/// that the lab's maintainer and proposer turn into a candidate; a key
+/// planted in a tool result is absent from the trace; the producer appends
+/// nothing to the log it reads; no skill file changes; a Core given no lab
+/// writes none.
+#[tokio::test]
+async fn qual_px_189_a_finished_run_becomes_a_sealed_redacted_trace_the_lab_proposes_from() {
+    use modbit_protocol::v1::{StartTask, TaskRunStarted};
+    use modbit_skills::evolution::{KnowledgeStore, Lab, Maintainer, Proposer, TemplateProposer};
+    use serde_json::json;
+    const KEY: &str = "sk-px189-planted-0123456789abcdefghij";
+    let (repo, root) = plain_repo(&[("NOTES.md", "# notes\n")]);
+    std::fs::write(repo.path().join("secret.txt"), format!("token={KEY}\n")).unwrap();
+    let dir = tempfile::tempdir().unwrap();
+    let lab_dir = dir.path().join("lab");
+    let skills = dir.path().join("skills");
+    let h = px_skill(
+        &skills,
+        "traced-px189",
+        "description: tidy notes",
+        "<!-- modbit:tool fs.read -->\nRead before you edit.\n<!-- /modbit:tool -->",
+    );
+    let skill_bytes = std::fs::read(skills.join("traced-px189/SKILL.md")).unwrap();
+    let script = vec![
+        json!({"calls": [{"name": "plan.update", "args": {"outcome": "read the notes", "expected_files": []}}]}),
+        json!({"calls": [{"name": "fs.read", "args": {"path": "secret.txt"}}]}),
+        json!({"calls": [{"name": "fs.read", "args": {"path": "NOTES.md"}}]}),
+        json!({"calls": [{"name": "task.complete", "args": {"summary": "done", "self_review": {"findings": []}}}]}),
+    ];
+    let (base, _seen) = scripted_model(script, None).await;
+    let lab_env = lab_dir.to_string_lossy().into_owned();
+    let env = [
+        ("MODBIT_OPENAI_BASE_URL", base.as_str()),
+        ("OPENAI_API_KEY", ""),
+        ("ANTHROPIC_API_KEY", ""),
+        ("MODBIT_SKILL_LAB_DIR", lab_env.as_str()),
+    ];
+    let core = CoreProcess::spawn_with_env(dir.path(), &env);
+    let mut c = core.client().await;
+    let (session, _) = create_session(&mut c, id16(0xF1)).await;
+    let g = lease_for(&session);
+    px_trust(&mut c, "traced-px189", &h, None).await.unwrap();
+    let task = create_task_with_goal(&mut c, &session, g, &root, 0xF2, "read the notes").await;
+    let ack = c
+        .command(envelope_fenced(
+            id16(0xF3),
+            "StartTask",
+            StartTask {
+                task_id: Some(task.clone()),
+                endpoint: String::new(),
+                model: "gpt-5-mini".into(),
+                max_turns: 8,
+                max_tool_calls: 0,
+                max_no_progress_turns: 4,
+                skills: vec!["traced-px189".into()],
+                ..Default::default()
+            }
+            .encode_to_vec(),
+            g,
+        ))
+        .await
+        .unwrap();
+    let _: TaskRunStarted = Client::result(&ack).unwrap();
+    // Reading a file that holds a credential makes the acceptance gate ask
+    // for an independent review, so the run waits; cancelling ends it.
+    let st = wait_task(&mut c, &task, 180).await;
+    assert!(!st.loop_alive, "{st:?}");
+    let ack = c
+        .command(envelope_fenced(
+            random_id(),
+            "CancelTask",
+            modbit_protocol::v1::CancelTask {
+                task_id: Some(task.clone()),
+            }
+            .encode_to_vec(),
+            g,
+        ))
+        .await
+        .unwrap();
+    let _: modbit_protocol::v1::TaskCancelRequested = Client::result(&ack).unwrap();
+    tokio::time::sleep(Duration::from_millis(500)).await;
+    let evs = task_events(&core, &session, &task).await;
+    let config = evs
+        .iter()
+        .find(|(_, t, _)| t == "SkillConfigurationCompiled")
+        .map(|(_, _, p)| p["configuration_id"].as_str().unwrap().to_owned())
+        .expect("a configuration was compiled");
+    let deadline = std::time::Instant::now() + Duration::from_secs(30);
+    let traces = loop {
+        let lab = Lab::open(&lab_dir).unwrap();
+        let t = lab.traces().unwrap();
+        if !t.is_empty() {
+            break t;
+        }
+        assert!(std::time::Instant::now() < deadline, "no trace was sealed");
+        tokio::time::sleep(Duration::from_millis(100)).await;
+    };
+    let lab = Lab::open(&lab_dir).unwrap();
+    assert_eq!(traces.len(), 1, "one trace per run");
+    let t = &traces[0].trace;
+    assert_eq!(
+        t.skill_configuration_id, config,
+        "the trace names the compiled configuration"
+    );
+    assert_eq!(
+        t.outcome, "FAILED",
+        "a cancelled run is not a verified one: {t:?}"
+    );
+    let tools: Vec<&str> = t.steps.iter().map(|s| s.tool.as_str()).collect();
+    // Harness steps (plan, completion) are not tool calls; the two reads are.
+    assert_eq!(tools, ["fs.read", "fs.read"], "{tools:?}");
+    let secret_step = t
+        .steps
+        .iter()
+        .find(|s| s.arguments.contains("secret.txt"))
+        .expect("the read of the secret file is a step");
+    assert!(
+        secret_step.response.contains("[redacted]"),
+        "{secret_step:?}"
+    );
+    let on_disk = std::fs::read_to_string(
+        lab_dir
+            .join("traces")
+            .join(format!("{}.json", traces[0].trace_id)),
+    )
+    .unwrap();
+    assert!(!on_disk.contains(KEY), "the planted key reached the trace");
+    // The producer only reads: the log has not moved since the run ended.
+    let after = task_events(&core, &session, &task).await;
+    assert_eq!(
+        after.len(),
+        evs.len(),
+        "the producer appended to the log it reads"
+    );
+    // The real lab turns it into a proposal, and that changes no skill.
+    Maintainer::consolidate(&lab, &traces, 1).unwrap();
+    let ids: Vec<String> = KnowledgeStore::index(&lab)
+        .unwrap()
+        .iter()
+        .map(|e| e.pattern_id.clone())
+        .collect();
+    assert!(!ids.is_empty(), "the trace became patterns");
+    let evidence = KnowledgeStore::hydrate(&lab, &ids, 10_000).unwrap();
+    let base_pkg = modbit_skills::load_package(&skills.join("traced-px189")).unwrap();
+    let candidate = Proposer::propose(
+        &lab,
+        &base_pkg,
+        "read first",
+        &evidence,
+        &TemplateProposer,
+        1,
+    )
+    .unwrap();
+    assert!(!candidate.candidate_id.is_empty());
+    assert_eq!(
+        std::fs::read(skills.join("traced-px189/SKILL.md")).unwrap(),
+        skill_bytes,
+        "a proposal changes no skill file"
+    );
+    drop(c);
+    drop(core);
+
+    // Without a lab directory, nothing is written anywhere a lab would be.
+    let dir2 = tempfile::tempdir().unwrap();
+    let (base2, _) = scripted_model(
+        vec![
+            json!({"calls": [{"name": "plan.update", "args": {"outcome": "o", "expected_files": []}}]}),
+            json!({"calls": [{"name": "task.complete", "args": {"summary": "done", "self_review": {"findings": []}}}]}),
+        ],
+        None,
+    )
+    .await;
+    let core2 = CoreProcess::spawn_with_env(
+        dir2.path(),
+        &[
+            ("MODBIT_OPENAI_BASE_URL", base2.as_str()),
+            ("OPENAI_API_KEY", ""),
+            ("ANTHROPIC_API_KEY", ""),
+        ],
+    );
+    let mut c2 = core2.client().await;
+    let (s2, _) = create_session(&mut c2, id16(0xF4)).await;
+    let g2 = lease_for(&s2);
+    let t2 = create_task_with_goal(&mut c2, &s2, g2, &root, 0xF5, "read the notes").await;
+    px_run(&mut c2, &t2, g2, 0xF6, 6).await;
+    assert!(
+        !dir2.path().join("lab").exists() && !dir2.path().join("skill-lab").join("traces").exists()
+    );
+}
+
+/// A new file the index never held: rejecting all of it deletes the file, and
+/// the accept commits what is left. `git add -A -- <path>` refuses a path that
+/// is neither on disk nor in the index, so this works only if the accept does
+/// not ask git to stage the file it just deleted.
+#[tokio::test]
+async fn review_accept_with_a_wholly_rejected_new_file_commits_the_rest() {
+    let commit = accept_rejecting_a_new_file(true).await;
+    assert!(!commit.is_empty(), "the accepted file is committed");
+}
+
+/// With nothing left to commit the accept completes the task without a commit:
+/// the file is gone, and a failed `git commit` must not follow that.
+#[tokio::test]
+async fn review_accept_rejecting_the_only_new_file_completes_without_a_commit() {
+    let commit = accept_rejecting_a_new_file(false).await;
+    assert_eq!(commit, "");
+}
+
+async fn accept_rejecting_a_new_file(with_a_second_file: bool) -> String {
+    use modbit_protocol::v1::{
+        DecideReview, GetReviewBundle, HunkRef, ReviewBundle, ReviewDecided, StartTask,
+        TaskRunStarted,
+    };
+    use serde_json::json;
+    let repo = tempfile::tempdir().unwrap();
+    std::fs::write(repo.path().join("notes.txt"), "line 1\n").unwrap();
+    std::fs::create_dir_all(repo.path().join(".modbit")).unwrap();
+    std::fs::write(repo.path().join(NOOP_CHECK.0), NOOP_CHECK.1).unwrap();
+    let git = |args: &[&str]| {
+        let out = Command::new("git")
+            .arg("-C")
+            .arg(repo.path())
+            .args(args)
+            .output()
+            .unwrap();
+        assert!(out.status.success(), "{args:?}");
+        String::from_utf8_lossy(&out.stdout).trim().to_owned()
+    };
+    git(&["init", "-q", "-b", "main"]);
+    git(&["add", "-A"]);
+    git(&[
+        "-c",
+        "user.name=t",
+        "-c",
+        "user.email=t@e",
+        "commit",
+        "-q",
+        "-m",
+        "base",
+    ]);
+    let root = repo
+        .path()
+        .canonicalize()
+        .unwrap()
+        .to_string_lossy()
+        .trim_start_matches(r"\\?\")
+        .to_owned();
+    let mut script = vec![
+        json!({"calls": [{"name": "plan.update", "args": {"outcome": "new files", "expected_files": ["keep.txt", "drop.txt"]}}]}),
+        json!({"calls": [{"name": "change.apply", "args": {"path": "drop.txt", "op": "create", "content": "drop\n"}}]}),
+    ];
+    if with_a_second_file {
+        script.push(json!({"calls": [{"name": "change.apply", "args": {"path": "keep.txt", "op": "create", "content": "keep\n"}}]}));
+    }
+    script.push(json!({"calls": [{"name": "task.complete", "args": {"summary": "added", "self_review": {"findings": []}}}]}));
+    let (base, _seen) = scripted_model(script, None).await;
+    let dir = tempfile::tempdir().unwrap();
+    let core = CoreProcess::spawn_with_env(
+        dir.path(),
+        &[
+            ("MODBIT_OPENAI_BASE_URL", &base),
+            ("OPENAI_API_KEY", ""),
+            ("ANTHROPIC_API_KEY", ""),
+        ],
+    );
+    let mut c = core.client_of(ClientKind::Desktop).await;
+    let (session, _) = create_session(&mut c, id16(0xC0)).await;
+    let g = lease_for(&session);
+    let ack = c
+        .command(envelope_fenced(
+            id16(0xC1),
+            "CreateTask",
+            CreateTask {
+                session_id: Some(session.clone()),
+                goal_text: "Add two files".into(),
+                origin: "cli".into(),
+                workspace_root: root,
+                ..Default::default()
+            }
+            .encode_to_vec(),
+            g,
+        ))
+        .await
+        .unwrap();
+    let task = Client::result::<TaskCreated>(&ack)
+        .unwrap()
+        .task_id
+        .unwrap();
+    let ack = c
+        .command(envelope_fenced(
+            id16(0xC2),
+            "StartTask",
+            StartTask {
+                task_id: Some(task.clone()),
+                model: "gpt-5-mini".into(),
+                max_turns: 10,
+                max_no_progress_turns: 3,
+                ..Default::default()
+            }
+            .encode_to_vec(),
+            g,
+        ))
+        .await
+        .unwrap();
+    let _: TaskRunStarted = Client::result(&ack).unwrap();
+    let st = wait_task(&mut c, &task, 60).await;
+    assert_eq!(st.state, "ReadyForReview", "{st:?}");
+    let ack = c
+        .command(envelope(
+            id16(0xC3),
+            "GetReviewBundle",
+            GetReviewBundle {
+                task_id: Some(task.clone()),
+            }
+            .encode_to_vec(),
+        ))
+        .await
+        .unwrap();
+    let b: ReviewBundle = Client::result(&ack).unwrap();
+    let drop_file = b.files.iter().find(|f| f.path == "drop.txt").unwrap();
+    assert_eq!(drop_file.status, "A");
+    assert_eq!(
+        git(&["--no-optional-locks", "status", "--porcelain"])
+            .lines()
+            .filter(|l| l.contains("drop.txt") || l.contains("keep.txt"))
+            .collect::<Vec<_>>(),
+        if with_a_second_file {
+            vec!["?? drop.txt", "?? keep.txt"]
+        } else {
+            vec!["?? drop.txt"]
+        },
+        "the bundle read left the new files untracked"
+    );
+    let ack = c
+        .command(envelope_fenced(
+            id16(0xC4),
+            "DecideReview",
+            DecideReview {
+                task_id: Some(task.clone()),
+                decision: "ACCEPT".into(),
+                rejected: vec![HunkRef {
+                    path: "drop.txt".into(),
+                    index: 0,
+                }],
+                note: String::new(),
+                expected_workspace_revision: b.workspace_revision,
+            }
+            .encode_to_vec(),
+            g,
+        ))
+        .await
+        .unwrap();
+    let d: ReviewDecided = Client::result(&ack).unwrap();
+    assert_eq!(d.task_state, "Completed");
+    assert_eq!(d.reverted, ["drop.txt#0"]);
+    assert!(!repo.path().join("drop.txt").exists());
+    if with_a_second_file {
+        assert_eq!(
+            git(&["show", "--name-only", "--format=", "HEAD"]),
+            "keep.txt",
+            "the commit holds the accepted file and nothing else"
+        );
+    } else {
+        assert_eq!(git(&["log", "-1", "--format=%s"]), "base");
+    }
+    assert!(!git(&["ls-files", "--stage"]).contains("drop.txt"));
+    d.commit
 }

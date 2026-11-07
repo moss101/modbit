@@ -12,7 +12,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { accessible, closeApp, launch, makeRepo, setContentSize } from "./support/ui-harness.ts";
 import { Gate } from "./support/stream-model.ts";
-import { createTask, openConversation, routedModel, sessionOf, startAndOpen, type ModelPart } from "./support/conversation-harness.ts";
+import { createTask, routedModel, sessionOf, startAndOpen, type ModelPart } from "./support/conversation-harness.ts";
 
 const readNotes: ModelPart = { call: { name: "fs.read", args: { path: "notes.txt" } } };
 const plan: ModelPart = { call: { name: "plan.update", args: { outcome: "read the notes", expected_files: [] } } };
@@ -74,7 +74,7 @@ test("PX-060: the ring shows the Core's usage; its tray lists the nine categorie
     // Caps set through the Core appear beside the context numbers.
     await page.evaluate(([s, t]) => window.modbit.setTaskBudgets(s!, t!, { maxCostMinor: "1000", maxWallMs: "3600000" }), [sid, taskId]);
 
-    // The ring is in the status row; its tray lists the categories, summing to the total.
+    // The ring is in the composer bar; its tray lists the categories, summing to the total.
     const ring = page.getByTestId("context-ring");
     await expect(ring).toBeVisible();
     await expect(ring).toHaveAttribute("data-total", /^\d+$/, { timeout: 30_000 });
@@ -106,6 +106,9 @@ test("PX-060: the ring shows the Core's usage; its tray lists the nine categorie
     await expect(ring).toHaveAttribute("data-level", "warn");
     await expect(ring).toHaveAttribute("data-total", "340000");
     await expect(page.getByTestId("context-ring-text")).toHaveText("85%");
+    // The conversation was replaced by the review and back, which closed the tray: the ring is a fresh button, and its tray is opened again to read it.
+    if ((await ring.getAttribute("aria-expanded")) !== "true") await ring.click();
+    await expect(page.getByTestId("context-tray")).toBeVisible();
     const second = await breakdown(page);
     expect(second.total).toBe(340_000n);
     expect(second.sum, second.detail).toBe(second.total);
@@ -147,8 +150,8 @@ test("PX-060: BUDGET_EXHAUSTED docks a limit tray naming what ran out; raising t
     const taskId = await createTask(page, "read the notes twice", repo);
     const sid = await sessionOf(page);
     await page.evaluate(([s, t]) => window.modbit.setTaskBudgets(s!, t!, { maxWallMs: "1" }), [sid, taskId]);
-    await page.getByTestId("task-card").filter({ hasText: "read the notes twice" }).getByTestId("task-start").click();
-    await openConversation(page, taskId);
+    // The new task's conversation is open and not started: Start is in it.
+    await page.getByTestId("conv-start").click();
     release.open();
     const tray = page.getByTestId("tray-budget");
     await expect(tray).toBeVisible({ timeout: 120_000 });
@@ -192,8 +195,7 @@ async function exhaustedAtTheTray(env: Record<string, string>, tag: string) {
   const taskId = await createTask(page, "read the notes twice", repo);
   const sid = await sessionOf(page);
   await page.evaluate(([s, t]) => window.modbit.setTaskBudgets(s!, t!, { maxWallMs: "1" }), [sid, taskId]);
-  await page.getByTestId("task-card").filter({ hasText: "read the notes twice" }).getByTestId("task-start").click();
-  await openConversation(page, taskId);
+  await page.getByTestId("conv-start").click();
   release.open();
   await expect(page.getByTestId("tray-budget")).toBeVisible({ timeout: 120_000 });
   const close = async () => {

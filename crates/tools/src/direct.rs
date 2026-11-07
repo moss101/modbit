@@ -1,5 +1,7 @@
 //! Direct tools over the real substrate crates (docs/17 inventory).
 
+// PX-168 lint policy: this file baselined expect/unwrap sites; new ones need review.
+#![allow(clippy::expect_used)]
 use std::path::{Path, PathBuf};
 use std::sync::Arc;
 
@@ -170,6 +172,7 @@ macro_rules! tool {
                     argv: crate::shell_class::rule_argv(args),
                     outside_workspace_write: effect.outside_workspace,
                     protected_path: effect.protected_path,
+                    dependency_install: effect.dependency_install,
                 }
             }
             fn invoke<'a>(
@@ -308,7 +311,11 @@ tool!(
             .get("max_bytes")
             .and_then(Value::as_u64)
             .unwrap_or(u64::MAX) as usize;
-        match ws.lock().await.read(&s(&args, "path")) {
+        // PX-161: the workspace is locked for the read itself and not for
+        // what is made of it, so reads of one turn overlap in their
+        // decoding and shaping.
+        let read = ws.lock().await.read(&s(&args, "path"));
+        match read {
             // REQ-EV-0186: a notebook reads as structure — cells with their
             // stable ids, types, sources and output summaries — never as a
             // JSON blob to be string-replaced.
@@ -1075,6 +1082,9 @@ struct Barrier {
 /// How many changed paths are listed inline in the structured output.
 const DIFF_INLINE_ENTRIES: usize = 12;
 
+/// How many changed paths one call's attribution record names (PX-103).
+const ATTRIBUTION_ENTRIES: usize = 256;
+
 /// Content hashes learned by the last snapshot of each workspace root, so the
 /// next call re-reads only files whose size or mtime moved (a pure cache, see
 /// [`modbit_workspace::snapshot::HashCache`]); a handful of roots at most.
@@ -1226,6 +1236,20 @@ impl Barrier {
         );
         if deltas.len() > DIFF_INLINE_ENTRIES {
             doc.insert("omitted".into(), json!(deltas.len() - DIFF_INLINE_ENTRIES));
+        }
+        // PX-103: the paths this call changed that stay changed, for the Core
+        // to attribute hunks to the call (the inline list above is capped for
+        // the model; this one is for the record). A path put back from the
+        // snapshot, and the git surfaces, are not the call's work.
+        let attributable: Vec<Value> = deltas
+            .iter()
+            .filter(|d| !d.path.starts_with(".git/"))
+            .filter(|d| !(restored.is_some() && d.protected_by.is_some()))
+            .take(ATTRIBUTION_ENTRIES)
+            .map(|d| json!({"path": d.path, "change": d.kind.label(), "before": d.before, "after": d.after}))
+            .collect();
+        if !attributable.is_empty() {
+            doc.insert("attribution".into(), Value::Array(attributable));
         }
         if incomplete {
             doc.insert("incomplete".into(), json!(true));
@@ -1573,18 +1597,42 @@ async fn run_process(ctx: &InvokeContext, args: &Value, request_id: &str) -> Too
                     infra_failure: false,
                     unknown_outcome: None,
                 };
+                // PX-152: the sandbox refused something the confined process
+                // attempted. The model is told it is outside its confinement,
+                // not that the command failed, so it stops repeating it.
+                if let Some(d) = &x.sandbox_denied
+                    && let Value::Object(m) = &mut o.structured_output
+                {
+                    m.insert(
+                        "sandbox_denied".into(),
+                        json!({
+                            "code": d.code,
+                            "exit_code": d.exit_code,
+                            "operation": d.operation,
+                            "excerpt": d.excerpt,
+                        }),
+                    );
+                }
                 if !ok {
                     o.error_code = Some(if x.timed_out {
                         "TIMEOUT".into()
                     } else if x.cancelled {
                         "CANCELLED".into()
+                    } else if x.sandbox_denied.is_some() {
+                        "SANDBOX_DENIED".into()
                     } else {
                         "NON_ZERO_EXIT".into()
                     });
-                    o.error_message = Some(format!(
-                        "exit_code={:?} timed_out={} cancelled={}",
-                        x.exit_code, x.timed_out, x.cancelled
-                    ));
+                    o.error_message = Some(match &x.sandbox_denied {
+                        Some(d) if !x.timed_out && !x.cancelled => format!(
+                            "the sandbox refused an operation (exit_code={}): {}. This is outside the confinement this task runs under: do not retry the same command unchanged. Change it so it stays inside the worktree and needs no network, or say that it cannot run here.",
+                            d.exit_code, d.excerpt
+                        ),
+                        _ => format!(
+                            "exit_code={:?} timed_out={} cancelled={}",
+                            x.exit_code, x.timed_out, x.cancelled
+                        ),
+                    });
                 }
                 return o;
             }
@@ -2347,11 +2395,23 @@ tool!(
                 Err(e) => return ToolOutcome::infra("BROKER_ERROR", e.to_string()),
             }
         }
-        ToolOutcome::ok(
-            json!({"session_id": session_id, "after_cursor": after, "preview": String::from_utf8_lossy(&data), "preview_bytes": data.len(), "next_cursor": next_cursor, "truncated": truncated, "running": running, "exited": exited}),
-        )
+        let mut out = json!({"session_id": session_id, "after_cursor": after, "preview": String::from_utf8_lossy(&data), "preview_bytes": data.len(), "next_cursor": next_cursor, "truncated": truncated, "running": running, "exited": exited});
+        if let Some(hint) = idle_poll_hint(after, data.len(), running) {
+            out["hint"] = json!(hint);
+        }
+        ToolOutcome::ok(out)
     }
 );
+
+/// A continuation read (`after_cursor > 0`) of a still-running command that
+/// returned nothing is polling: every such round trip is a full model request
+/// that learns nothing, and while it runs the prompt cache can expire. Tell
+/// the model to wait longer or do other work instead of reading again.
+fn idle_poll_hint(after: u64, preview_bytes: usize, running: bool) -> Option<&'static str> {
+    (running && after > 0 && preview_bytes == 0).then_some(
+        "no new output and the command is still running: stop polling. Do other work, or call shell.read again once with a longer wait_ms (up to 10000); do not re-read in a loop.",
+    )
+}
 
 tool!(
     ShellList,
