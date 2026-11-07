@@ -1,0 +1,23 @@
+PX-174 mutation check (2026-11-07, local, macOS arm64)
+
+Mutation (exact string, services/modbit-core/src/runtime.rs, run_loop, the request path):
+-                let kept = frames_kept(&core, &task);
++                let kept = usize::MAX;
+Effect: every computer frame of the transcript stays an image in every request (the window is never applied to the request).
+
+Command:
+  cargo test -p modbit-core --test px_computer qual_px_174 -- --test-threads=2
+
+Result with the mutation: both PX-174 tests FAIL.
+  qual_px_174_policy_sets_one_frame_and_a_window_over_the_ceiling_is_clamped ... FAILED
+    panicked at services/modbit-core/tests/px_computer.rs: request 4 carries 2 images, more than 1
+  qual_px_174_a_long_computer_use_child_is_sent_its_last_three_frames_and_older_steps_as_text ... FAILED
+    panicked at services/modbit-core/tests/px_computer.rs: a request was estimated at 58032 tokens, over 40000
+    (the scripted child's refer-back step also found no frame_not_shown record to name: "an older frame recorded as text")
+  test result: FAILED. 0 passed; 2 failed
+
+Reverted with `git checkout -- services/modbit-core/src/runtime.rs` (a tracked file); `git diff` shows no change to runtime.rs afterwards and the original line is present once.
+
+Result without the mutation (same command): both PASS; the largest request estimate of the N=3 run was 35,911 tokens (ceiling 40,000).
+Full suite after revert: cargo test -p modbit-core --test px_computer -- --test-threads=4
+  test result: ok. 34 passed; 0 failed; 3 ignored (the macOS real-helper tests, run by services/modbit-actuator-macos/scripts/ax-tests.sh)

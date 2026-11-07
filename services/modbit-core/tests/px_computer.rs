@@ -4108,7 +4108,10 @@ fn step_outputs_with_media(rig: &Rig, object: &str) -> usize {
 /// The session's events from offset `from` to `to`, read by range.
 async fn events_in(rig: &Rig, from: u64, to: u64) -> Vec<Value> {
     let mut s = rig.core.client().await;
-    s.subscribe(rig.session.clone(), from).await.unwrap();
+    // The subscription starts after the offset it names.
+    s.subscribe(rig.session.clone(), from.saturating_sub(1))
+        .await
+        .unwrap();
     let mut out = Vec::new();
     while let Ok(Ok(Some(e))) =
         tokio::time::timeout(Duration::from_millis(600), s.next_event()).await
@@ -4143,7 +4146,10 @@ fn assert_window(bodies: &[Value], n: usize, marker: &str) -> usize {
             images.len()
         );
         let newest = &shots[shots.len().saturating_sub(n)..];
-        assert_eq!(images, newest, "request {i}: the images are the newest frames");
+        assert_eq!(
+            images, newest,
+            "request {i}: the images are the newest frames"
+        );
         for (k, call) in shots.iter().enumerate() {
             let text = tool_text(body, call);
             assert!(
@@ -4241,6 +4247,18 @@ async fn qual_px_174_a_long_computer_use_child_is_sent_its_last_three_frames_and
         .cloned()
         .collect();
     let last = child_bodies.last().unwrap();
+    // The token total stays under the stated ceiling.
+    let estimates = request_estimates(&rig);
+    let top = *estimates.iter().max().unwrap();
+    println!("PX-174 request estimates (max {top}): {estimates:?}");
+    assert!(
+        top <= PX_174_REQUEST_CEILING,
+        "a request was estimated at {top} tokens, over {PX_174_REQUEST_CEILING}"
+    );
+    // At most three images in every request, the newest three, and text for every older one.
+    let checked = assert_window(&child_bodies, 3, CHILD_MARKER);
+    assert!(checked > ROUNDS, "{checked} child requests");
+    assert!(estimates.len() >= checked, "{estimates:?}");
     // More than forty steps, all answered, twenty of them screenshots.
     let steps = last["messages"]
         .as_array()
@@ -4251,23 +4269,11 @@ async fn qual_px_174_a_long_computer_use_child_is_sent_its_last_three_frames_and
     assert!(steps > 40, "{steps} steps");
     let shots = screenshot_calls(last);
     assert_eq!(shots.len(), ROUNDS);
-    // At most three images in every request, the newest three, and text for every older one.
-    let checked = assert_window(&child_bodies, 3, CHILD_MARKER);
-    assert!(checked > ROUNDS, "{checked} child requests");
     assert_eq!(image_calls(last), shots[ROUNDS - 3..]);
     assert_eq!(
         last.to_string().matches("frame_not_shown: ").count(),
         ROUNDS - 3,
         "one record per frame not shown"
-    );
-    // The token total stays under the stated ceiling.
-    let estimates = request_estimates(&rig);
-    assert!(estimates.len() >= checked, "{estimates:?}");
-    let top = *estimates.iter().max().unwrap();
-    println!("PX-174 request estimates (max {top}): {estimates:?}");
-    assert!(
-        top <= PX_174_REQUEST_CEILING,
-        "a request was estimated at {top} tokens, over {PX_174_REQUEST_CEILING}"
     );
     // The child named its first frame from the text alone, correctly: the frame of that call is
     // the image it was shown while that frame was in the window.

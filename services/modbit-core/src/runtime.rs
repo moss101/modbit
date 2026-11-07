@@ -8223,8 +8223,12 @@ async fn compaction_step(
                             "ASYNC", summarizer,
                         )
                         .await;
-                        *ctx.rearm_floor =
-                            th.rearm_floor(measured_tokens(transcript, kept, &th, &ctx.calibration));
+                        *ctx.rearm_floor = th.rearm_floor(measured_tokens(
+                            transcript,
+                            kept,
+                            &th,
+                            &ctx.calibration,
+                        ));
                     }
                     Err(rejected) => {
                         reject_compaction(
@@ -11334,7 +11338,11 @@ mod tests {
         }
         let before = format!("{t:?}");
         let shown = super::frame_window(&t, 2);
-        assert_eq!(format!("{t:?}"), before, "the stored transcript is unchanged");
+        assert_eq!(
+            format!("{t:?}"),
+            before,
+            "the stored transcript is unchanged"
+        );
         assert_eq!(images(&shown), ["r1", "s4", "s5"]);
         for i in 1..=5 {
             let content = shown
