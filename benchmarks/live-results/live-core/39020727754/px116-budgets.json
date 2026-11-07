@@ -1,0 +1,185 @@
+{
+  "checks": [
+    {
+      "detail": "TaskStatus { state: \"ReadyForReview\", wait_reason: \"\", run_state: \"Completed\", loop_alive: false, last_offset: 565, attention_reason: \"\", failure_class: \"\", failure_code: \"\", retryable: false, user_action: \"\", recovery_path: \"\", evidence_refs: [], diagnostic_features: [], user_explanation: \"\", posture: Some(TaskPostureView { task_id: Some(Id { value: [193, 234, 127, 79, 244, 148, 129, 107, 141, 104, 42, 33, 99, 178, 146, 170] }), mode: Agent, mode_offset: 0, mode_in_force: Agent, posture: Some(ModePostureView { effect_ceiling: \"NONE\", allowed_capabilities: [], subagents: true, reproduction_first: false, writes: true }), preference: Some(ExecutionPreferenceView { objective: Unspecified, effort: \"\", service_tier: \"\", pin_endpoint: \"\", pin_model: \"\", offset: 0, applied_offset: 0, effort_applied: \"\", service_tier_applied: \"\" }), routing: Some(RoutingOutcomeView { outcome: \"NOT_YET_EVALUATED\", reason_code: \"NO_OBJECTIVE\", detail: \"the router reads the preference at its next compile; it would use the `auto` floor\", floor_mode: \"auto\", registry_generation: \"registry-live-core\" }) }) }",
+      "name": "parent_run_ended",
+      "ok": true
+    },
+    {
+      "detail": "3 admitted; refusals []",
+      "name": "three_children_admitted",
+      "ok": true
+    },
+    {
+      "detail": "the model did not use the three keys",
+      "name": "keys_k1_k2_k3",
+      "ok": true
+    },
+    {
+      "detail": "120 / 6",
+      "name": "first_two_reserved_as_asked",
+      "ok": true
+    },
+    {
+      "detail": "213",
+      "name": "third_clamped_below_its_request",
+      "ok": true
+    },
+    {
+      "detail": "[\"max_cost_minor 2000 -> 213\"]",
+      "name": "clamp_is_named",
+      "ok": true
+    },
+    {
+      "detail": "own 31 + reserved 339 against a cap of 400",
+      "name": "reservations_never_exceed_what_the_parent_could_give",
+      "ok": true
+    },
+    {
+      "detail": "Some(Object {\"budget\": String(\"max_cost_minor\"), \"event_type\": String(\"HarnessBudgetExhausted\"), \"limit\": Number(6), \"used\": Number(11)})",
+      "name": "cost_capped_child_exhausted_typed",
+      "ok": true
+    },
+    {
+      "detail": "[String(\"BUDGET_EXHAUSTED\"), String(\"COMPLETED\"), String(\"COMPLETED\")]",
+      "name": "budget_exhausted_result_recorded",
+      "ok": true
+    },
+    {
+      "detail": "spent 45 against 120",
+      "name": "child_k1_within_its_reservation",
+      "ok": true
+    },
+    {
+      "detail": "spent 11 against 6",
+      "name": "child_k2_within_its_reservation",
+      "ok": true
+    },
+    {
+      "detail": "spent 46 against 213",
+      "name": "child_k3_within_its_reservation",
+      "ok": true
+    },
+    {
+      "detail": "129 vs 129",
+      "name": "parent_cost_is_its_own_calls",
+      "ok": true
+    },
+    {
+      "detail": "TaskEconomicsView { task_id: \"c1ea7f4ff494816b8d682a2163b292aa\", state: \"ReadyForReview\", verified: true, checks_passed: 1, checks_failed: 0, model_calls: 7, input_tokens: 62587, cached_input_tokens: 46848, output_tokens: 4673, cost_usd: 0.01172455, tool_calls: 0, wall_ms: 129295, model_ms: 106916, tool_ms: 0, prefix_cache_hits: 5, prefix_cache_misses: 2, compaction_epochs: 0, compacted_entries: 0, context_tokens_injected: 3, pricing_known: 1, model: \"glm-5.3-flash\", verification: \"PASSED\", regressions: 0, cost_minor: 129, currency: \"USD\", scale: 4, priced_calls: 7, unpriced_calls: 0, unreported_calls: 0, priced_under: \"registry-live-core\", runs: [RunUsageView { run_id: \"01a1495b-f8a8-79a0-9bbd-d4fb13b37b31\", steps: [StepUsageView { turn_id: \"01a1495b-f8e8-7de0-bcee-83cc4da0242b\", model_calls: 1, input_tokens: 6694, cached_input_tokens: 5376, output_tokens: 789, cost_minor: 15, cost_complete: true, tool_calls: 0, tool_ms: 0, verification_ms: 0, models: [\"glm-5.3-flash\"], provider_request_ids: [\"7a472fb2-788a-455b-a455-192ee90fb21a\"] }, StepUsageView { turn_id: \"01a1495c-43b4-7443-aa81-3587c424b720\", model_calls: 1, input_tokens: 7372, cached_input_tokens: 6016, output_tokens: 457, cost_minor: 16, cost_complete: true, tool_calls: 0, tool_ms: 0, verification_ms: 0, models: [\"glm-5.3-flash\"], provider_request_ids: [\"06d2d3c9-3782-4991-bbac-624ecae30e67\"] }, StepUsageView { turn_id: \"01a1495c-6ed6-7050-b2a6-b8ed73a52794\", model_calls: 1, input_tokens: 8307, cached_input_tokens: 6016, output_tokens: 619, cost_minor: 18, cost_complete: true, tool_calls: 0, tool_ms: 0, verification_ms: 0, models: [\"glm-5.3-flash\"], provider_request_ids: [\"e2f226f3-480a-445e-be07-e5cfd1acd6c5\"] }, StepUsageView { turn_id: \"01a1495c-ed9c-7c50-a580-6a932ba373b2\", model_calls: 1, input_tokens: 9475, cached_input_tokens: 6336, output_tokens: 682, cost_minor: 19, cost_complete: true, tool_calls: 0, tool_ms: 0, verification_ms: 0, models: [\"glm-5.3-flash\"], provider_request_ids: [\"fefcf5d1-d8b6-4989-b200-f27e07acb034\"] }, StepUsageView { turn_id: \"01a1495d-2dcf-7c50-842d-25588f2b6869\", model_calls: 1, input_tokens: 9891, cached_input_tokens: 6336, output_tokens: 934, cost_minor: 21, cost_complete: true, tool_calls: 0, tool_ms: 0, verification_ms: 0, models: [\"glm-5.3-flash\"], provider_request_ids: [\"0d2116c9-b378-4af9-8206-8f8cdd24252c\"] }, StepUsageView { turn_id: \"01a1495d-7fbf-7ad2-b536-28792d4b3721\", model_calls: 1, input_tokens: 10267, cached_input_tokens: 8384, output_tokens: 719, cost_minor: 20, cost_complete: true, tool_calls: 0, tool_ms: 0, verification_ms: 0, models: [\"glm-5.3-flash\"], provider_request_ids: [\"853679e1-7535-42db-a85e-1804e39631bc\"] }, StepUsageView { turn_id: \"01a1495d-c6e9-7151-9a8c-0703ab969b46\", model_calls: 1, input_tokens: 10581, cached_input_tokens: 8384, output_tokens: 473, cost_minor: 20, cost_complete: true, tool_calls: 0, tool_ms: 0, verification_ms: 0, models: [\"glm-5.3-flash\"], provider_request_ids: [\"dc980fcb-81b3-487f-89cd-5d5d1fbb2fa0\"] }], input_tokens: 62587, output_tokens: 4673, cost_minor: 129, cost_complete: true }], children_cost_minor: 102, children_model_calls: 9, subtree_cost_minor: 231, children_unmetered_calls: 0, cost_cap_minor: 400, cost_reserved_minor: 0, cost_remaining_minor: 169 }",
+      "name": "child_spend_is_in_the_parents_accounting",
+      "ok": true
+    },
+    {
+      "detail": "subtree 231 of 400",
+      "name": "parent_total_inside_its_cap",
+      "ok": true
+    },
+    {
+      "detail": "0",
+      "name": "nothing_stays_reserved",
+      "ok": true
+    },
+    {
+      "detail": "TaskStatus { state: \"ReadyForReview\", wait_reason: \"\", run_state: \"Completed\", loop_alive: false, last_offset: 839, attention_reason: \"\", failure_class: \"\", failure_code: \"\", retryable: false, user_action: \"\", recovery_path: \"\", evidence_refs: [], diagnostic_features: [], user_explanation: \"\", posture: Some(TaskPostureView { task_id: Some(Id { value: [57, 83, 89, 201, 137, 53, 26, 119, 49, 127, 84, 110, 225, 164, 190, 172] }), mode: Agent, mode_offset: 0, mode_in_force: Agent, posture: Some(ModePostureView { effect_ceiling: \"NONE\", allowed_capabilities: [], subagents: true, reproduction_first: false, writes: true }), preference: Some(ExecutionPreferenceView { objective: Unspecified, effort: \"\", service_tier: \"\", pin_endpoint: \"\", pin_model: \"\", offset: 0, applied_offset: 0, effort_applied: \"\", service_tier_applied: \"\" }), routing: Some(RoutingOutcomeView { outcome: \"NOT_YET_EVALUATED\", reason_code: \"NO_OBJECTIVE\", detail: \"the router reads the preference at its next compile; it would use the `auto` floor\", floor_mode: \"auto\", registry_generation: \"registry-live-core\" }) }) }",
+      "name": "max_children_run_ended",
+      "ok": true
+    },
+    {
+      "detail": "admitted 1, refusals [Object {\"code\": String(\"MAX_CHILDREN_EXCEEDED\"), \"detail\": String(\"1 children are alive and this task allows 1 at once (max_children); wait for one to finish with agent.wait, or do the work yourself\"), \"event_type\": String(\"SubagentAdmissionRefused\"), \"idempotency_key\": String(\"k2\"), \"rolled_back\": Array [], \"stage\": String(\"LIMIT\")}]",
+      "name": "extra_spawn_refused_with_a_typed_reason",
+      "ok": true
+    },
+    {
+      "detail": "TaskStatus { state: \"ReadyForReview\", wait_reason: \"\", run_state: \"Completed\", loop_alive: false, last_offset: 1162, attention_reason: \"\", failure_class: \"\", failure_code: \"\", retryable: false, user_action: \"\", recovery_path: \"\", evidence_refs: [], diagnostic_features: [], user_explanation: \"\", posture: Some(TaskPostureView { task_id: Some(Id { value: [187, 205, 185, 182, 143, 200, 93, 92, 198, 197, 114, 47, 254, 98, 1, 36] }), mode: Agent, mode_offset: 0, mode_in_force: Agent, posture: Some(ModePostureView { effect_ceiling: \"NONE\", allowed_capabilities: [], subagents: true, reproduction_first: false, writes: true }), preference: Some(ExecutionPreferenceView { objective: Unspecified, effort: \"\", service_tier: \"\", pin_endpoint: \"\", pin_model: \"\", offset: 0, applied_offset: 0, effort_applied: \"\", service_tier_applied: \"\" }), routing: Some(RoutingOutcomeView { outcome: \"NOT_YET_EVALUATED\", reason_code: \"NO_OBJECTIVE\", detail: \"the router reads the preference at its next compile; it would use the `auto` floor\", floor_mode: \"auto\", registry_generation: \"registry-live-core\" }) }) }",
+      "name": "scope_run_ended",
+      "ok": true
+    },
+    {
+      "detail": "1",
+      "name": "scoped_child_admitted",
+      "ok": true
+    },
+    {
+      "detail": "the child never attempted the read, or the Kernel allowed it",
+      "name": "read_outside_scope_refused_by_the_kernel",
+      "ok": true
+    },
+    {
+      "detail": "the secret is in the child's log",
+      "name": "secret_never_reached_the_child",
+      "ok": true
+    },
+    {
+      "detail": "TaskStatus { state: \"ReadyForReview\", wait_reason: \"\", run_state: \"Completed\", loop_alive: false, last_offset: 1295, attention_reason: \"\", failure_class: \"\", failure_code: \"\", retryable: false, user_action: \"\", recovery_path: \"\", evidence_refs: [], diagnostic_features: [], user_explanation: \"\", posture: Some(TaskPostureView { task_id: Some(Id { value: [36, 116, 179, 132, 117, 246, 162, 113, 35, 145, 108, 163, 207, 77, 16, 86] }), mode: Agent, mode_offset: 0, mode_in_force: Agent, posture: Some(ModePostureView { effect_ceiling: \"NONE\", allowed_capabilities: [], subagents: true, reproduction_first: false, writes: true }), preference: Some(ExecutionPreferenceView { objective: Unspecified, effort: \"\", service_tier: \"\", pin_endpoint: \"\", pin_model: \"\", offset: 0, applied_offset: 0, effort_applied: \"\", service_tier_applied: \"\" }), routing: Some(RoutingOutcomeView { outcome: \"NOT_YET_EVALUATED\", reason_code: \"NO_OBJECTIVE\", detail: \"the router reads the preference at its next compile; it would use the `auto` floor\", floor_mode: \"auto\", registry_generation: \"registry-live-core\" }) }) }",
+      "name": "forbidden_run_ended",
+      "ok": true
+    },
+    {
+      "detail": "no ToolProjectionSelected",
+      "name": "projection_recorded",
+      "ok": true
+    },
+    {
+      "detail": "[\"context.fast\",\"context.pack\",\"fs.glob\",\"fs.list\",\"fs.read\",\"fs.stat\",\"plan.update\",\"proc.exec\",\"proc.wait\",\"repair.attempt\",\"search.exact\",\"search.retrieve\",\"shell.cancel\",\"shell.exec\",\"shell.read\",\"shell.start\",\"task.complete\",\"tool.search\",\"user.ask\",\"verify.run\"]",
+      "name": "no_agent_tool_offered_under_the_deny",
+      "ok": true
+    },
+    {
+      "detail": "a child was admitted",
+      "name": "no_child_admitted_under_the_deny",
+      "ok": true
+    },
+    {
+      "detail": "1 admissions",
+      "name": "reservation_is_on_the_log_once",
+      "ok": true
+    },
+    {
+      "detail": "TaskStatus { state: \"ReadyForReview\", wait_reason: \"\", run_state: \"Completed\", loop_alive: false, last_offset: 1564, attention_reason: \"runtime restarted while the task was running; resume with StartTask\", failure_class: \"INFRASTRUCTURE\", failure_code: \"RESTART_SUSPENDED\", retryable: true, user_action: \"resume with StartTask\", recovery_path: \"the run continues from its last recorded boundary; nothing is repeated\", evidence_refs: [], diagnostic_features: [\"boundary:turn_start\", \"class:infrastructure\", \"code:restart_suspended\", \"retryable\", \"source:restart\"], user_explanation: \"Something the agent depends on could not do its part (RESTART_SUSPENDED). Trying again may succeed. resume with StartTask.\", posture: Some(TaskPostureView { task_id: Some(Id { value: [25, 157, 171, 182, 39, 231, 180, 140, 19, 169, 46, 83, 92, 146, 112, 211] }), mode: Agent, mode_offset: 0, mode_in_force: Agent, posture: Some(ModePostureView { effect_ceiling: \"NONE\", allowed_capabilities: [], subagents: true, reproduction_first: false, writes: true }), preference: Some(ExecutionPreferenceView { objective: Unspecified, effort: \"\", service_tier: \"\", pin_endpoint: \"\", pin_model: \"\", offset: 0, applied_offset: 0, effort_applied: \"\", service_tier_applied: \"\" }), routing: Some(RoutingOutcomeView { outcome: \"NOT_YET_EVALUATED\", reason_code: \"NO_OBJECTIVE\", detail: \"the router reads the preference at its next compile; it would use the `auto` floor\", floor_mode: \"auto\", registry_generation: \"registry-live-core\" }) }) }",
+      "name": "parent_resumed_and_ended",
+      "ok": true
+    },
+    {
+      "detail": "the restart admitted the child again",
+      "name": "still_one_admission",
+      "ok": true
+    },
+    {
+      "detail": "the admitted child never started",
+      "name": "child_started_from_its_reservation",
+      "ok": true
+    },
+    {
+      "detail": "TaskEconomicsView { task_id: \"199dabb627e7b48c13a92e535c9270d3\", state: \"ReadyForReview\", verified: true, checks_passed: 1, checks_failed: 0, model_calls: 4, input_tokens: 29392, cached_input_tokens: 23616, output_tokens: 801, cost_usd: 0.004809299999999999, tool_calls: 0, wall_ms: 57442, model_ms: 27023, tool_ms: 0, prefix_cache_hits: 2, prefix_cache_misses: 2, compaction_epochs: 0, compacted_entries: 0, context_tokens_injected: 3, pricing_known: 1, model: \"glm-5.3-flash\", verification: \"PASSED\", regressions: 0, cost_minor: 55, currency: \"USD\", scale: 4, priced_calls: 4, unpriced_calls: 0, unreported_calls: 0, priced_under: \"registry-live-core\", runs: [RunUsageView { run_id: \"01a14962-2be9-71e1-9338-2539ea60f456\", steps: [StepUsageView { turn_id: \"01a14962-2ca6-7772-b6cf-db58f3b3a6cc\", model_calls: 1, input_tokens: 6603, cached_input_tokens: 5376, output_tokens: 310, cost_minor: 13, cost_complete: true, tool_calls: 0, tool_ms: 0, verification_ms: 0, models: [\"glm-5.3-flash\"], provider_request_ids: [\"c8981a2f-e844-4d40-8adf-4396030c6d23\"] }, StepUsageView { turn_id: \"01a14962-51a7-7822-8f02-42b0e0b548b7\", model_calls: 1, input_tokens: 7260, cached_input_tokens: 6016, output_tokens: 125, cost_minor: 13, cost_complete: true, tool_calls: 0, tool_ms: 0, verification_ms: 0, models: [\"glm-5.3-flash\"], provider_request_ids: [\"7cd337b9-106b-49c3-a06a-644f1c53f3cd\"] }, StepUsageView { turn_id: \"01a14962-6675-7ae1-8c6d-547ad0d50a6c\", model_calls: 1, input_tokens: 7559, cached_input_tokens: 6016, output_tokens: 139, cost_minor: 14, cost_complete: true, tool_calls: 0, tool_ms: 0, verification_ms: 0, models: [\"glm-5.3-flash\"], provider_request_ids: [\"84c46ba8-7eee-4644-af3e-02fd005fd9f8\"] }, StepUsageView { turn_id: \"01a14962-ecb1-7e91-8974-ab5a947613aa\", model_calls: 1, input_tokens: 7970, cached_input_tokens: 6208, output_tokens: 227, cost_minor: 15, cost_complete: true, tool_calls: 0, tool_ms: 0, verification_ms: 0, models: [\"glm-5.3-flash\"], provider_request_ids: [\"8d132ac3-8440-490b-a965-869b4e6246bf\"] }], input_tokens: 29392, output_tokens: 801, cost_minor: 55, cost_complete: true }], children_cost_minor: 46, children_model_calls: 4, subtree_cost_minor: 101, children_unmetered_calls: 0, cost_cap_minor: 400, cost_reserved_minor: 0, cost_remaining_minor: 299 }",
+      "name": "nothing_reserved_after_reconciliation",
+      "ok": true
+    }
+  ],
+  "cost_usd": 0.1150131,
+  "counts": {
+    "child_reads_refused_by_the_kernel": 1,
+    "children_completed": 2,
+    "children_cost_minor": 102,
+    "parent_own_cost_minor": 129,
+    "reserved_k1": 120,
+    "reserved_k2": 6,
+    "reserved_k3": 213
+  },
+  "elapsed_s": 466.252410143,
+  "endpoint": "https://api.z.ai/api/coding/paas/v4",
+  "input_tokens": 623354,
+  "leg": "budgets",
+  "live": true,
+  "model": "glm-5.3-flash",
+  "model_calls": 92,
+  "notes": [
+    "the wall-clock exhaustion of a child (BUDGET_EXHAUSTED on max_wall_ms and the return of its reservation) is time-driven and model-independent; it is proven in the scripted suite only"
+  ],
+  "output_tokens": 43020,
+  "passed": true,
+  "row": "px116",
+  "run_id": "39020727754",
+  "started_at_ms": 1792232126506,
+  "stopped_by_cap": false
+}

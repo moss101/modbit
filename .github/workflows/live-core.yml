@@ -31,12 +31,6 @@
 name: live-core
 
 on:
-  # TEMPORARY: a push to the development branch registers this workflow with
-  # GitHub before it exists on main, so it can be dispatched from the branch.
-  # The jobs below run only for a dispatch. Removed before merge.
-  push:
-    branches: [wave6/live-core]
-    paths: [".github/workflows/live-core.yml"]
   workflow_dispatch:
     inputs:
       which:

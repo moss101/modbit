@@ -492,6 +492,16 @@ async fn until_events(
         if pred(&ev) {
             return ev;
         }
+        // A gateway that rejects the credential answers nothing more; say so
+        // at once instead of waiting out the bound (run 42402648319).
+        if let Some(rejected) = ev.iter().find(|e| {
+            e.kind == "TaskNeedsAttention" && e.payload["diagnostic"]["code"] == "AUTH_REJECTED"
+        }) {
+            panic!(
+                "waiting for {what}: the gateway rejected the credential: {}",
+                rejected.payload["diagnostic"]["detail"]
+            );
+        }
         assert!(
             Instant::now() < deadline,
             "timed out waiting for {what}; the log held {:?}; the last events: {:?}",
